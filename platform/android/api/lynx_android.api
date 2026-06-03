@@ -3937,21 +3937,6 @@ public enum com::lynx::tasm::animation::keyframe::LynxKeyframeAnimator::LynxAnim
 public interface com::lynx::jsbridge::LynxAttribute {
 }
 
-public interface com::lynx::tasm::behavior::LynxAutolinkElement {
-  public String com.lynx.tasm.behavior.LynxAutolinkElement.name();
-  public boolean com.lynx.tasm.behavior.LynxAutolinkElement.isCreateAsync() default false;
-  public boolean com.lynx.tasm.behavior.LynxAutolinkElement.needProcessDirection() default false;
-  public boolean com.lynx.tasm.behavior.LynxAutolinkElement.supportFragmentLayerRender() default false;
-  public Class<? extends IRendererHost > com.lynx.tasm.behavior.LynxAutolinkElement.fragmentLayerRendererHost() default IRendererHost.class;
-}
-
-public interface com::lynx::jsbridge::LynxAutolinkNativeModule {
-  public String com.lynx.jsbridge.LynxAutolinkNativeModule.name();
-}
-
-public interface com::lynx::tasm::service::LynxAutolinkService {
-}
-
 public class com::lynx::tasm::behavior::ui::utils::LynxBackground : LynxDrawableManager< BackgroundDrawable > {
   public com.lynx.tasm.behavior.ui.utils.LynxBackground.LynxBackground(LynxContext context);
   public void com.lynx.tasm.behavior.ui.utils.LynxBackground.setBackgroundColor(int color);
@@ -5067,6 +5052,14 @@ public class com::lynx::devtoolwrapper::LynxDevToolUtils :  {
 }
 
 public class abstract com::lynx::tasm::behavior::ui::utils::LynxDrawableManager< T extends LayerDrawable :  {
+}
+
+public interface com::lynx::tasm::behavior::LynxElement {
+  public String com.lynx.tasm.behavior.LynxElement.name();
+  public boolean com.lynx.tasm.behavior.LynxElement.isCreateAsync() default false;
+  public boolean com.lynx.tasm.behavior.LynxElement.needProcessDirection() default false;
+  public boolean com.lynx.tasm.behavior.LynxElement.supportFragmentLayerRender() default false;
+  public Class<? extends IRendererHost > com.lynx.tasm.behavior.LynxElement.fragmentLayerRendererHost() default IRendererHost.class;
 }
 
 public class com::lynx::jsbridge::LynxEmbeddedModule : com.lynx.jsbridge.LynxContextModule {
@@ -6233,6 +6226,10 @@ public class com::lynx::tasm::base::LynxNativeMemoryTracer :  {
   public static void com.lynx.tasm.base.LynxNativeMemoryTracer.stopTracing();
 }
 
+public interface com::lynx::jsbridge::LynxNativeModule {
+  public String com.lynx.jsbridge.LynxNativeModule.name();
+}
+
 public class com::lynx::tasm::navigator::LynxNavigator :  {
   public static LynxNavigator com.lynx.tasm.navigator.LynxNavigator.inst();
   public LynxNavigator com.lynx.tasm.navigator.LynxNavigator.setSchemaInterceptor(LynxSchemaInterceptor interceptor);
@@ -6626,6 +6623,9 @@ public class com::lynx::tasm::event::LynxScrollEvent : com.lynx.tasm.event.LynxD
   public com.lynx.tasm.event.LynxScrollEvent.LynxScrollEvent(int tag, String type);
   public void com.lynx.tasm.event.LynxScrollEvent.setScrollParams(int left, int top, int contentHeight, int contentWidth, int x, int y);
   public static LynxScrollEvent com.lynx.tasm.event.LynxScrollEvent.createScrollEvent(int tag, String type);
+}
+
+public interface com::lynx::tasm::service::LynxService {
 }
 
 public class com::lynx::tasm::service::LynxServiceCenter :  {

@@ -6,17 +6,20 @@ package com.lynx.tasm.behavior;
 
 import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
-import com.lynx.tasm.behavior.render.IRendererHost;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.Target;
 
+/**
+ * Compile-time mirror used by LynxProcessor. Keep this in sync with the public
+ * LynxElement annotation.
+ */
 @Retention(RUNTIME)
 @Target(ElementType.TYPE)
-public @interface LynxAutolinkElement {
+public @interface LynxElement {
   String name();
   boolean isCreateAsync() default false;
   boolean needProcessDirection() default false;
   boolean supportFragmentLayerRender() default false;
-  Class<? extends IRendererHost> fragmentLayerRendererHost() default IRendererHost.class;
+  Class<?> fragmentLayerRendererHost() default void.class;
 }

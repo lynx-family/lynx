@@ -10,10 +10,6 @@ import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.Target;
 
-/**
- * Compile-time mirror used by LynxProcessor. Keep this in sync with the public
- * LynxAutolinkService annotation.
- */
 @Retention(RUNTIME)
 @Target(ElementType.TYPE)
-public @interface LynxAutolinkService {}
+public @interface LynxService {}

@@ -98,23 +98,23 @@ public class LynxLibraryProcessorTest {
     JavaFileObject element = JavaFileObjects.forSourceString("com.lib.Button",
         "package com.lib;\n"
             + "import com.lynx.tasm.behavior.LynxContext;\n"
-            + "import com.lynx.tasm.behavior.LynxAutolinkElement;\n"
+            + "import com.lynx.tasm.behavior.LynxElement;\n"
             + "import com.lynx.tasm.behavior.ui.LynxUI;\n"
-            + "@LynxAutolinkElement(name = \"button\")\n"
+            + "@LynxElement(name = \"button\")\n"
             + "public class Button extends LynxUI {\n"
             + "  public Button(LynxContext context) { super(context); }\n"
             + "}\n");
     JavaFileObject module = JavaFileObjects.forSourceString("com.lib.StorageModule",
         "package com.lib;\n"
             + "import com.lynx.jsbridge.LynxModule;\n"
-            + "import com.lynx.jsbridge.LynxAutolinkNativeModule;\n"
-            + "@LynxAutolinkNativeModule(name = \"NativeLocalStorage\")\n"
+            + "import com.lynx.jsbridge.LynxNativeModule;\n"
+            + "@LynxNativeModule(name = \"NativeLocalStorage\")\n"
             + "public class StorageModule extends LynxModule {}\n");
     JavaFileObject service = JavaFileObjects.forSourceString("com.lib.LogService",
         "package com.lib;\n"
             + "import com.lynx.tasm.service.IServiceProvider;\n"
-            + "import com.lynx.tasm.service.LynxAutolinkService;\n"
-            + "@LynxAutolinkService\n"
+            + "import com.lynx.tasm.service.LynxService;\n"
+            + "@LynxService\n"
             + "public class LogService implements IServiceProvider {}\n");
 
     Compilation compilation =
@@ -154,23 +154,23 @@ public class LynxLibraryProcessorTest {
     JavaFileObject element = JavaFileObjects.forSourceString("com.lib.Button",
         "package com.lib;\n"
             + "import com.lynx.tasm.behavior.LynxContext;\n"
-            + "import com.lynx.tasm.behavior.LynxAutolinkElement;\n"
+            + "import com.lynx.tasm.behavior.LynxElement;\n"
             + "import com.lynx.tasm.behavior.ui.LynxUI;\n"
-            + "@LynxAutolinkElement(name = \"button\")\n"
+            + "@LynxElement(name = \"button\")\n"
             + "public class Button extends LynxUI {\n"
             + "  public Button(LynxContext context) { super(context); }\n"
             + "}\n");
     JavaFileObject module = JavaFileObjects.forSourceString("com.lib.StorageModule",
         "package com.lib;\n"
             + "import com.lynx.jsbridge.LynxModule;\n"
-            + "import com.lynx.jsbridge.LynxAutolinkNativeModule;\n"
-            + "@LynxAutolinkNativeModule(name = \"NativeLocalStorage\")\n"
+            + "import com.lynx.jsbridge.LynxNativeModule;\n"
+            + "@LynxNativeModule(name = \"NativeLocalStorage\")\n"
             + "public class StorageModule extends LynxModule {}\n");
     JavaFileObject service = JavaFileObjects.forSourceString("com.lib.LogService",
         "package com.lib;\n"
             + "import com.lynx.tasm.service.IServiceProvider;\n"
-            + "import com.lynx.tasm.service.LynxAutolinkService;\n"
-            + "@LynxAutolinkService\n"
+            + "import com.lynx.tasm.service.LynxService;\n"
+            + "@LynxService\n"
             + "public class LogService implements IServiceProvider {}\n");
 
     Compilation compilation = javac()
