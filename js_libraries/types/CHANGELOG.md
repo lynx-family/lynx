@@ -1,24 +1,14 @@
 # CHANGELOG
 
-## 3.10.5
-- Add `current-color` prop typings for `<svg>`.
-
-## 3.10.4
-- Introduce `<markdown>` element types.
-
-## 3.10.3
-- Add `takeContentScreenshot` method typings for `<scroll-view>`.
-
-## 3.10.2
-- Add `-x-caret-gradient`, `-x-caret-width`, `-x-caret-height` and `-x-caret-radius` CSS typings.
-
-## 3.10.1
-- Introduce `<webview>`.
-
-## 3.10.0
+## 4.0.0
 - Introduce `<blur-view>`.
 - Add missing `lynx.loadScript<T>(sectionName, { bundleName }): T` declaration on `CommonLynx`. The platform API has existed since LynxSDK 3.7; this is a types-only fix.
 - Fix `ResponseHandler.then` signature: was `(info: BundleInfo) => {}`, corrected to `(callback: (info: BundleInfo) => void) => void` to match the runtime contract.
+- Introduce `<webview>`.
+- Add `-x-caret-gradient`, `-x-caret-width`, `-x-caret-height` and `-x-caret-radius` CSS typings.
+- Add `takeContentScreenshot` method typings for `<scroll-view>`.
+- Introduce `<markdown>` element types.
+- Add `current-color` prop typings for `<svg>`.
 
 ## 3.9.0
 
