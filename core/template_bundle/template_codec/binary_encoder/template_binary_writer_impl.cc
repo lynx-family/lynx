@@ -372,6 +372,13 @@ void TemplateBinaryWriter::EncodeCSSRules(
   WriteCompactU32(rules.size());
   for (const auto& rule : rules) {
     WriteU8(static_cast<uint8_t>(rule->type));
+    // Write a placeholder for payload length (fixed 4 bytes), then patch it
+    // after encoding the payload. This allows decoders to skip unknown rule
+    // types for forward compatibility.
+    size_t length_pos = Offset();
+    WriteU32(0);
+    size_t payload_start = Offset();
+
     switch (rule->type) {
       case CSSRuleType::kStyle:
         EncodeCSSStyleRule(
@@ -381,6 +388,11 @@ void TemplateBinaryWriter::EncodeCSSRules(
       case CSSRuleType::kSupports:
         EncodeCSSConditionRule(
             *static_cast<const encoder::LynxStyleRuleCondition*>(rule.get()));
+        break;
+      case CSSRuleType::kLayerBlock:
+      case CSSRuleType::kLayerStatement:
+        EncodeCSSLayerRule(
+            *static_cast<const encoder::LynxStyleRuleLayer*>(rule.get()));
         break;
       case CSSRuleType::kKeyframes:
         EncodeCSSKeyframesRule(
@@ -393,6 +405,11 @@ void TemplateBinaryWriter::EncodeCSSRules(
       default:
         break;
     }
+
+    // Patch the payload length.
+    uint32_t payload_size = static_cast<uint32_t>(Offset() - payload_start);
+    OverwriteData(reinterpret_cast<const uint8_t*>(&payload_size),
+                  sizeof(uint32_t), length_pos);
   }
 }
 
@@ -420,13 +437,89 @@ void TemplateBinaryWriter::EncodeCSSConditionRule(
   WriteCompactU32(rule.child_rules.size());
   for (const auto& child : rule.child_rules) {
     WriteU8(static_cast<uint8_t>(child->type));
+    // Per-rule length prefix for forward compatibility.
+    size_t length_pos = Offset();
+    WriteU32(0);
+    size_t payload_start = Offset();
+
     switch (child->type) {
       case CSSRuleType::kStyle:
         EncodeCSSStyleRule(
             *static_cast<const encoder::LynxStyleRule*>(child.get()));
         break;
-      default:
+      case CSSRuleType::kKeyframes:
+        EncodeCSSKeyframesRule(
+            *static_cast<const encoder::LynxStyleRuleKeyframes*>(child.get()));
         break;
+      case CSSRuleType::kFontFace:
+        EncodeCSSFontFaceRule(
+            *static_cast<const encoder::LynxStyleRuleFontFace*>(child.get()));
+        break;
+      default:
+        LOGE("Unsupported child rule type inside @media/@supports: "
+             << static_cast<int>(child->type));
+        break;
+    }
+
+    uint32_t payload_size = static_cast<uint32_t>(Offset() - payload_start);
+    OverwriteData(reinterpret_cast<const uint8_t*>(&payload_size),
+                  sizeof(uint32_t), length_pos);
+  }
+}
+
+void TemplateBinaryWriter::EncodeCSSLayerRule(
+    const encoder::LynxStyleRuleLayer& rule) {
+  WriteCompactU32(static_cast<uint32_t>(rule.name.size()));
+  for (const auto& segment : rule.name) {
+    EncodeUtf8Str(segment.c_str(), segment.length());
+  }
+  // `layer_position` is the parser's per-fragment document-order index for
+  // this @layer; it is NOT the cascade priority. Decoder/runtime is the
+  // single source of truth for canonical cascade order.
+  WriteCompactU32(static_cast<uint32_t>(rule.layer_position));
+  if (rule.type == CSSRuleType::kLayerBlock) {
+    WriteCompactU32(rule.child_rules.size());
+    for (const auto& child : rule.child_rules) {
+      WriteU8(static_cast<uint8_t>(child->type));
+      // Per-rule length prefix for forward compatibility.
+      size_t length_pos = Offset();
+      WriteU32(0);
+      size_t payload_start = Offset();
+
+      switch (child->type) {
+        case CSSRuleType::kStyle:
+          EncodeCSSStyleRule(
+              *static_cast<const encoder::LynxStyleRule*>(child.get()));
+          break;
+        case CSSRuleType::kMedia:
+        case CSSRuleType::kSupports:
+          EncodeCSSConditionRule(
+              *static_cast<const encoder::LynxStyleRuleCondition*>(
+                  child.get()));
+          break;
+        case CSSRuleType::kLayerBlock:
+        case CSSRuleType::kLayerStatement:
+          EncodeCSSLayerRule(
+              *static_cast<const encoder::LynxStyleRuleLayer*>(child.get()));
+          break;
+        case CSSRuleType::kKeyframes:
+          EncodeCSSKeyframesRule(
+              *static_cast<const encoder::LynxStyleRuleKeyframes*>(
+                  child.get()));
+          break;
+        case CSSRuleType::kFontFace:
+          EncodeCSSFontFaceRule(
+              *static_cast<const encoder::LynxStyleRuleFontFace*>(child.get()));
+          break;
+        default:
+          LOGE("Unsupported child rule type inside @layer: "
+               << static_cast<int>(child->type));
+          break;
+      }
+
+      uint32_t payload_size = static_cast<uint32_t>(Offset() - payload_start);
+      OverwriteData(reinterpret_cast<const uint8_t*>(&payload_size),
+                    sizeof(uint32_t), length_pos);
     }
   }
 }
