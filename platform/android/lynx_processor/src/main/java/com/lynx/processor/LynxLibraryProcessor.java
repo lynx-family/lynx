@@ -9,11 +9,11 @@ import static javax.tools.Diagnostic.Kind.ERROR;
 
 import androidx.annotation.Keep;
 import com.google.auto.service.AutoService;
-import com.lynx.jsbridge.LynxAutolinkNativeModule;
-import com.lynx.tasm.behavior.LynxAutolinkElement;
+import com.lynx.jsbridge.LynxNativeModule;
 import com.lynx.tasm.behavior.LynxBehavior;
+import com.lynx.tasm.behavior.LynxElement;
 import com.lynx.tasm.behavior.LynxGeneratorName;
-import com.lynx.tasm.service.LynxAutolinkService;
+import com.lynx.tasm.service.LynxService;
 import com.squareup.javapoet.ClassName;
 import com.squareup.javapoet.JavaFile;
 import com.squareup.javapoet.MethodSpec;
@@ -59,9 +59,9 @@ public class LynxLibraryProcessor extends AbstractProcessor {
   public Set<String> getSupportedAnnotationTypes() {
     Set<String> annotations = new HashSet<>();
     annotations.add(LynxBehavior.class.getCanonicalName());
-    annotations.add(LynxAutolinkElement.class.getCanonicalName());
-    annotations.add(LynxAutolinkNativeModule.class.getCanonicalName());
-    annotations.add(LynxAutolinkService.class.getCanonicalName());
+    annotations.add(LynxElement.class.getCanonicalName());
+    annotations.add(LynxNativeModule.class.getCanonicalName());
+    annotations.add(LynxService.class.getCanonicalName());
     annotations.add(LynxGeneratorName.class.getCanonicalName());
     return annotations;
   }
@@ -119,7 +119,7 @@ public class LynxLibraryProcessor extends AbstractProcessor {
     for (Element element : roundEnv.getElementsAnnotatedWith(LynxBehavior.class)) {
       return ClassName.get((TypeElement) element).packageName();
     }
-    for (Element element : roundEnv.getElementsAnnotatedWith(LynxAutolinkElement.class)) {
+    for (Element element : roundEnv.getElementsAnnotatedWith(LynxElement.class)) {
       return ClassName.get((TypeElement) element).packageName();
     }
     return "";
@@ -127,10 +127,9 @@ public class LynxLibraryProcessor extends AbstractProcessor {
 
   private List<ModuleInfo> getNativeModules(RoundEnvironment roundEnv) {
     List<ModuleInfo> modules = new ArrayList<>();
-    for (Element element : roundEnv.getElementsAnnotatedWith(LynxAutolinkNativeModule.class)) {
+    for (Element element : roundEnv.getElementsAnnotatedWith(LynxNativeModule.class)) {
       TypeElement typeElement = (TypeElement) element;
-      LynxAutolinkNativeModule annotation =
-          typeElement.getAnnotation(LynxAutolinkNativeModule.class);
+      LynxNativeModule annotation = typeElement.getAnnotation(LynxNativeModule.class);
       modules.add(new ModuleInfo(annotation.name(), ClassName.get(typeElement)));
     }
     return modules;
@@ -138,7 +137,7 @@ public class LynxLibraryProcessor extends AbstractProcessor {
 
   private List<ClassName> getServices(RoundEnvironment roundEnv) {
     List<ClassName> services = new ArrayList<>();
-    for (Element element : roundEnv.getElementsAnnotatedWith(LynxAutolinkService.class)) {
+    for (Element element : roundEnv.getElementsAnnotatedWith(LynxService.class)) {
       services.add(ClassName.get((TypeElement) element));
     }
     return services;

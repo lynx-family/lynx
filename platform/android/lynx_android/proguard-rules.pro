@@ -65,13 +65,13 @@
 -keep class * implements com.lynx.tasm.library.LynxLibraryProvider {
     *;
 }
--keep @com.lynx.tasm.behavior.LynxAutolinkElement class * {
+-keep @com.lynx.tasm.behavior.LynxElement class * {
     *;
 }
--keep @com.lynx.jsbridge.LynxAutolinkNativeModule class * {
+-keep @com.lynx.jsbridge.LynxNativeModule class * {
     *;
 }
--keep @com.lynx.tasm.service.LynxAutolinkService class * {
+-keep @com.lynx.tasm.service.LynxService class * {
     *;
 }
 
