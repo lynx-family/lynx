@@ -250,6 +250,9 @@ public class LynxTemplateRender
   @Nullable private LynxEngine mLynxEngineRef;
 
   private LynxModuleFactory mMainThreadModuleFactory;
+  @NonNull
+  private final LynxMemoryUsageFetcher mMemoryUsageFetcher =
+      new LynxTemplateRenderMemoryUsageFetcher(this);
 
   @Keep
   public LynxTemplateRender(Context context, UIBodyView bodyView, LynxViewBuilder builder) {
@@ -1010,6 +1013,7 @@ public class LynxTemplateRender
       mLynxContext.setInstanceId(instanceId);
       mPerformanceController.setInstanceId(instanceId);
     }
+    registerMemoryUsageFetcherIfNeeded();
 
     if (mBodyView != null) {
       mBodyView.setInstanceId(mLynxContext.getInstanceId());
@@ -1647,6 +1651,7 @@ public class LynxTemplateRender
         LLog.i(TAG, "call nativeReattachLynxEngineWrapper." + this);
         nativeReattachLynxEngineWrapper(mNativePtr, mNativeLifecycle, mLynxEngineRef.getNativePtr(),
             mEngineProxy != null ? mEngineProxy.getNativePtr() : 0);
+        registerMemoryUsageFetcherIfNeeded();
         if (mThreadStrategyForRendering == ThreadStrategyForRendering.ALL_ON_UI
             && mThreadStrategyForRendering != mLynxEngineRef.getThreadStrategy()) {
           attachEngineToUIThread();
@@ -1918,6 +1923,7 @@ public class LynxTemplateRender
           nativeReattachLynxEngineWrapper(mNativePtr, mNativeLifecycle,
               mLynxEngineRef.getNativePtr(),
               mEngineProxy != null ? mEngineProxy.getNativePtr() : 0);
+          registerMemoryUsageFetcherIfNeeded();
           if (mThreadStrategyForRendering == ThreadStrategyForRendering.ALL_ON_UI
               && mThreadStrategyForRendering != mLynxEngineRef.getThreadStrategy()) {
             attachEngineToUIThread();
@@ -3917,10 +3923,35 @@ public class LynxTemplateRender
     return "";
   }
 
+  private void registerMemoryUsageFetcherIfNeeded() {
+    LynxGlobalMemoryUsageCollector.getInstance().registerMemoryUsageFetcher(mMemoryUsageFetcher);
+  }
+
+  private void unregisterMemoryUsageFetcherIfNeeded() {
+    LynxGlobalMemoryUsageCollector.getInstance().unregisterMemoryUsageFetcher(mMemoryUsageFetcher);
+  }
+
+  void queryNativeMemoryUsageForGlobalCollectorAsync(
+      @NonNull LynxTemplateRenderMemoryUsageFetcher.InstanceMemoryUsageQuery receiver) {
+    UIThreadUtils.runOnUiThread(() -> {
+      // Keep native pointer/lifecycle access inside TemplateRender. The fetcher owns orchestration,
+      // but this class owns the private native bridge and reads these UI-thread-owned fields here.
+      long nativePtr = mNativePtr;
+      long nativeLifecycle = mNativeLifecycle;
+      if (nativePtr == 0 || nativeLifecycle == 0 || mIsDestroyed.get() || mHasDestroy
+          || mDestroying) {
+        nativeQueryNativeMemoryUsageAsync(0L, 0L, receiver);
+        return;
+      }
+      nativeQueryNativeMemoryUsageAsync(nativePtr, nativeLifecycle, receiver);
+    });
+  }
+
   private void destroyLynxEngine() {
     if (!mIsDestroyed.compareAndSet(false, true)) {
       return;
     }
+    unregisterMemoryUsageFetcherIfNeeded();
 
     if (mLynxUIRender != null) {
       mLynxUIRender.onDestroyTemplateRenderer();
@@ -4190,6 +4221,7 @@ public class LynxTemplateRender
       getLynxContext().getUIBody().detachUIBodyView();
     }
     if (mLynxEngineRef != null) {
+      unregisterMemoryUsageFetcherIfNeeded();
       mLynxUIRender = null;
       if (mBodyView != null) {
         mBodyView.setLynxUIRendererInternal(null);
@@ -4397,6 +4429,9 @@ public class LynxTemplateRender
   private static native Object nativeGetPageDataByKey(long ptr, long lifecycle, String[] keys);
 
   private static native JavaOnlyMap nativeGetAllJsSource(long ptr, long lifecycle);
+
+  private static native void nativeQueryNativeMemoryUsageAsync(
+      long ptr, long lifecycle, Object receiver);
 
   // list methods
   private static native void nativeRenderChild(

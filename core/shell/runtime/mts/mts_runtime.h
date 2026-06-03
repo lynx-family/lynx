@@ -196,6 +196,9 @@ class MTSRuntime : private MTSContextHolder {
   virtual lepus::Value GetGlobalData(const base::String& name);
 
   void SetGCThreshold(int64_t threshold);
+  // Reads current LepusNG heap stats without triggering GC. Non-LepusNG
+  // contexts return 0.
+  int64_t GetCurrentHeapSizeBytes();
 
   const std::string& name() const { return name_; }
 

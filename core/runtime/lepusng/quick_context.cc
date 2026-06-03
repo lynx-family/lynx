@@ -698,6 +698,12 @@ void QuickContext::UpdateGCTiming(bool is_start) {
   }
 }
 
+int64_t QuickContext::GetCurrentHeapSizeBytes() {
+  // Read current heap stats only. Active memory queries must not trigger GC
+  // because doing so would change the memory state being observed.
+  return runtime_ ? static_cast<int64_t>(LEPUS_GetHeapSize(runtime_)) : 0;
+}
+
 class GCPauseSuppressionMode {
  public:
   explicit GCPauseSuppressionMode(LEPUSRuntime* rt) : runtime_(rt) {
