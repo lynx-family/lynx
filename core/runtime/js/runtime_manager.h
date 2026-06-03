@@ -12,8 +12,9 @@
 
 #include "base/include/closure.h"
 #include "base/include/fml/task_runner.h"
+#include "base/include/memory/memory_pressure_level.h"
+#include "base/include/notification_center.h"
 #include "core/base/lynx_export.h"
-#include "core/base/memory/memory_pressure_callback.h"
 #include "core/base/memory/unsafe_owning_ptr.h"
 #include "core/public/page_options.h"
 #include "core/runtime/js/js_context_wrapper.h"
@@ -141,7 +142,7 @@ class LYNX_EXPORT_FOR_DEVTOOL RuntimeManager
       base::UnsafeWeakPtr<runtime::js::Runtime> runtime);
   void CompactWeakRuntimes();
 
-  void OnMemoryPressure(lynx::base::MemoryPressureLevel level);
+  void OnMemoryPressure(base::MemoryPressureLevel level);
 
   Shared_Context_Map shared_context_map_;
   std::unordered_map<runtime::js::JSRuntimeType,
@@ -152,7 +153,7 @@ class LYNX_EXPORT_FOR_DEVTOOL RuntimeManager
   // for memory pressure callback
   std::vector<base::UnsafeWeakPtr<runtime::js::Runtime>> weak_runtimes_;
   fml::RefPtr<fml::TaskRunner> memory_task_runner_;
-  std::unique_ptr<lynx::base::MemoryPressureCallback> memory_pressure_callback_;
+  base::NotificationCallback memory_pressure_callback_;
 };
 
 }  // namespace runtime

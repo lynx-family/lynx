@@ -7,8 +7,9 @@
 #include <string>
 #include <utility>
 
+#include "base/include/memory/memory_pressure_level.h"
+#include "base/include/notification_center.h"
 #include "core/base/android/jni_helper.h"
-#include "core/base/memory/memory_pressure_callback.h"
 #include "core/base/threading/task_runner_manufactor.h"
 #include "core/renderer/lynx_global_pool.h"
 #include "core/renderer/tasm/config.h"
@@ -75,8 +76,11 @@ jstring GetDebugEnvDescription(JNIEnv* env, jobject jcaller) {
 void InitUIThread(JNIEnv* env, jclass jcaller) { lynx::base::UIThread::Init(); }
 
 void OnMemoryPressure(JNIEnv* env, jclass jcaller, jint pressure) {
-  lynx::base::MemoryPressureCallback::NotifyMemoryPressure(
-      static_cast<lynx::base::MemoryPressureLevel>(pressure));
+  if (static_cast<lynx::base::MemoryPressureLevel>(pressure) !=
+      lynx::base::MemoryPressureLevel::MEMORY_PRESSURE_LEVEL_NONE) {
+    lynx::base::NotificationCallback::Notify(
+        lynx::base::MEMORY_PRESSURE_NOTIFICATION, pressure);
+  }
 }
 
 void RunJavaTaskOnConcurrentLoop(JNIEnv* env, jclass jcaller, jlong task_id,

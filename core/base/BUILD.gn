@@ -12,8 +12,6 @@ base_shared_sources = [
                         "lynx_export.h",
                         "lynx_settings.cc",
                         "lynx_settings.h",
-                        "memory/memory_pressure_callback.cc",
-                        "memory/memory_pressure_callback.h",
                         "memory/unsafe_owning_ptr.h",
                         "thread/once_task.h",
                         "thread/thread_utils.cc",
@@ -197,7 +195,6 @@ lynx_core_source_set("gtest_lynx_base_android") {
 unittest_set("base_testset") {
   sources = [
     "json/json_utils_unittests.cc",
-    "memory/memory_pressure_callback_unittest.cc",
     "memory/unsafe_owning_ptr_unittest.cc",
     "thread/blocking_queue_unittest.cc",
     "thread/once_task_unittest.cc",

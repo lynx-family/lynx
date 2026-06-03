@@ -10,12 +10,13 @@
 #include <utility>
 
 #include "base/include/log/logging.h"
+#include "base/include/memory/memory_pressure_level.h"
+#include "base/include/notification_center.h"
 #include "base/include/platform/harmony/harmony_vsync_manager.h"
 #include "base/include/platform/harmony/napi_util.h"
 #include "base/trace/native/platform/harmony/trace_controller_delegate_harmony.h"
 #include "base/trace/native/trace_event.h"
 #include "core/base/harmony/napi_convert_helper.h"
-#include "core/base/memory/memory_pressure_callback.h"
 #include "core/renderer/data/harmony/template_data_harmony.h"
 #include "core/renderer/dom/harmony/lynx_template_bundle_harmony.h"
 #include "core/renderer/ui_wrapper/painting/harmony/ui_delegate_harmony.h"
@@ -938,8 +939,11 @@ napi_value LynxTemplateRenderer::NotifyMemoryPressure(napi_env env,
   } else if (pressure > 2) {
     pressure = 2;
   }
-  lynx::base::MemoryPressureCallback::NotifyMemoryPressure(
-      static_cast<lynx::base::MemoryPressureLevel>(pressure));
+  if (static_cast<lynx::base::MemoryPressureLevel>(pressure) !=
+      lynx::base::MemoryPressureLevel::MEMORY_PRESSURE_LEVEL_NONE) {
+    lynx::base::NotificationCallback::Notify(
+        lynx::base::MEMORY_PRESSURE_NOTIFICATION, pressure);
+  }
   return nullptr;
 }
 

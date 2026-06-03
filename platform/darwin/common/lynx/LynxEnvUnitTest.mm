@@ -5,7 +5,9 @@
 #import <Lynx/LynxEnv+Internal.h>
 #import <Lynx/LynxEnv.h>
 #import <XCTest/XCTest.h>
-#include "core/base/memory/memory_pressure_callback.h"
+
+#include "base/include/memory/memory_pressure_level.h"
+#include "base/include/notification_center.h"
 
 @interface LynxEnvUnitTest : XCTestCase
 
@@ -42,11 +44,14 @@
 
 - (void)testTrimMemory {
   int callCount = 0;
-  lynx::base::MemoryPressureCallback listener([&callCount](lynx::base::MemoryPressureLevel level) {
-    if (level == lynx::base::MemoryPressureLevel::MEMORY_PRESSURE_LEVEL_CRITICAL) {
-      callCount++;
-    }
-  });
+  lynx::base::NotificationCallback listener(
+      lynx::base::MEMORY_PRESSURE_NOTIFICATION,
+      [&callCount](const std::string& tag, intptr_t data) {
+        if (static_cast<lynx::base::MemoryPressureLevel>(data) ==
+            lynx::base::MemoryPressureLevel::MEMORY_PRESSURE_LEVEL_CRITICAL) {
+          callCount++;
+        }
+      });
 
   [[LynxEnv sharedInstance] trimMemory:LynxMemoryPressureLevelCritical];
 

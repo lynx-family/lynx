@@ -33,10 +33,11 @@
 #import "LynxBytecodeResponseBlock+Converter.h"
 
 #include "base/include/fml/synchronization/shared_mutex.h"
+#include "base/include/memory/memory_pressure_level.h"
+#include "base/include/notification_center.h"
 #include "base/trace/native/trace_event.h"
 #include "core/base/darwin/lynx_env_darwin.h"
 #include "core/base/lynx_trace_categories.h"
-#include "core/base/memory/memory_pressure_callback.h"
 #include "core/renderer/css/computed_css_style.h"
 #include "core/renderer/tasm/config.h"
 #include "core/renderer/utils/devtool_lifecycle.h"
@@ -819,9 +820,10 @@
     case LynxMemoryPressureLevelNone:
     default:
       level = lynx::base::MemoryPressureLevel::MEMORY_PRESSURE_LEVEL_NONE;
-      break;
+      return;
   }
-  lynx::base::MemoryPressureCallback::NotifyMemoryPressure(level);
+  lynx::base::NotificationCallback::Notify(lynx::base::MEMORY_PRESSURE_NOTIFICATION,
+                                           static_cast<intptr_t>(level));
 }
 
 @end

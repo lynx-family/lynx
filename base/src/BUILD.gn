@@ -230,6 +230,7 @@ lynx_base_source_set("base_core") {
               "fml/time/timer.cc",
               "fml/unique_fd.cc",
               "md5.cc",
+              "notification_center.cc",
               "thread/timed_task.cc",
               "vector.cc",
             ]
@@ -358,6 +359,7 @@ if (enable_unittests) {
       "linked_hash_map_unittest.cc",
       "log/log_stream_unittest.cc",
       "lynx_actor_unittest.cc",
+      "notification_center_unittest.cc",
       "path_utils_unittest.cc",
       "sorted_for_each_unittest.cc",
       "string/string_number_convert_unittest.cc",

@@ -13,8 +13,7 @@ namespace base {
 // A Java counterpart is in
 // lynx/base/platform/android/src/main/java/com/lynx/base/memory/MemoryPressureLevel.java
 enum BASE_EXPORT MemoryPressureLevel {
-  // No problems, there is enough memory to use. This event is not sent via
-  // callback.
+  // No problems, there is enough memory to use.
   MEMORY_PRESSURE_LEVEL_NONE = 0,
 
   // Modules are advised to free buffers that are cheap to re-allocate and not
@@ -31,6 +30,8 @@ enum BASE_EXPORT MemoryPressureLevel {
   // UMA_HISTOGRAM_ENUMERATION macro.
   kMaxValue = MEMORY_PRESSURE_LEVEL_CRITICAL,
 };
+
+static constexpr const char* MEMORY_PRESSURE_NOTIFICATION = "memory_pressure";
 
 }  // namespace base
 }  // namespace lynx

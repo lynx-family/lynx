@@ -13,7 +13,6 @@
 #include "base/include/log/logging.h"
 #include "base/include/no_destructor.h"
 #include "base/trace/native/trace_event.h"
-#include "core/base/memory/memory_pressure_callback.h"
 #include "core/base/threading/task_runner_manufactor.h"
 #include "core/renderer/tasm/config.h"
 #include "core/runtime/js/bindings/global.h"
@@ -154,12 +153,11 @@ RuntimeManager* RuntimeManager::Instance() {
 }
 
 RuntimeManager::RuntimeManager()
-    : memory_task_runner_(nullptr),
-      memory_pressure_callback_(
-          std::make_unique<lynx::base::MemoryPressureCallback>(
-              [this](lynx::base::MemoryPressureLevel level) {
-                OnMemoryPressure(level);
-              })) {}
+    : memory_pressure_callback_(
+          base::MEMORY_PRESSURE_NOTIFICATION,
+          [this](const std::string& tag, intptr_t data) {
+            OnMemoryPressure(static_cast<base::MemoryPressureLevel>(data));
+          }) {}
 
 RuntimeManager::~RuntimeManager() {
   // Should destroy runtime_manager_delegate_ before mVMContainer_
@@ -593,7 +591,7 @@ bool RuntimeManager::IsInspectEnabled(bool force_use_lightweight_js_engine,
              force_use_lightweight_js_engine, debuggable);
 }
 
-void RuntimeManager::OnMemoryPressure(lynx::base::MemoryPressureLevel level) {
+void RuntimeManager::OnMemoryPressure(base::MemoryPressureLevel level) {
   if (!memory_task_runner_) {
     return;
   }
