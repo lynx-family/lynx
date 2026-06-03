@@ -111,6 +111,66 @@ public class TraceEventDef {
    * @trace_description: Dispatch memory pressure signal with level @args{pressure}.
    */
   public static final String LYNX_ENV_TRIM_MEMORY = "LynxEnv.trimMemory";
+  /**
+   * @trace_description: Schedule one global Lynx memory usage query.
+   */
+  public static final String MEMORY_USAGE_GLOBAL_QUERY = "GlobalMemoryUsage.query";
+  /**
+   * @trace_description: Start or coalesce a global Lynx memory usage query on the report thread.
+   */
+  public static final String MEMORY_USAGE_GLOBAL_REPORT_THREAD_QUERY =
+      "GlobalMemoryUsage.reportThreadQuery";
+  /**
+   * @trace_description: Fan out a global Lynx memory usage query to registered instance fetchers.
+   */
+  public static final String MEMORY_USAGE_GLOBAL_FETCHER_FAN_OUT =
+      "GlobalMemoryUsage.fetcherFanOut";
+  /**
+   * @trace_description: Build and deliver the final global Lynx memory usage result.
+   */
+  public static final String MEMORY_USAGE_GLOBAL_FINISH = "GlobalMemoryUsage.finish";
+  /**
+   * @trace_description: Record total duration and counts for one global Lynx memory usage query.
+   */
+  public static final String MEMORY_USAGE_GLOBAL_TOTAL = "GlobalMemoryUsage.total";
+  /**
+   * @trace_description: Query memory usage for one TemplateRender instance.
+   */
+  public static final String MEMORY_USAGE_TEMPLATE_RENDER_QUERY = "TemplateRenderMemoryUsage.query";
+  /**
+   * @trace_description: Dispatch native memory usage sampling for one TemplateRender instance.
+   */
+  public static final String MEMORY_USAGE_TEMPLATE_RENDER_DISPATCH_NATIVE =
+      "TemplateRenderMemoryUsage.dispatchNative";
+  /**
+   * @trace_description: Receive the native memory usage callback for one TemplateRender instance.
+   */
+  public static final String MEMORY_USAGE_TEMPLATE_RENDER_NATIVE_CALLBACK =
+      "TemplateRenderMemoryUsage.nativeCallback";
+  /**
+   * @trace_description: Complete native memory usage aggregation on the report thread.
+   */
+  public static final String MEMORY_USAGE_TEMPLATE_RENDER_NATIVE_COMPLETE =
+      "TemplateRenderMemoryUsage.nativeComplete";
+  /**
+   * @trace_description: Sample Android view memory for one TemplateRender instance on UI thread.
+   */
+  public static final String MEMORY_USAGE_TEMPLATE_RENDER_VIEW_SAMPLE =
+      "TemplateRenderMemoryUsage.viewSample";
+  /**
+   * @trace_description: Complete Android view memory aggregation on the report thread.
+   */
+  public static final String MEMORY_USAGE_TEMPLATE_RENDER_VIEW_COMPLETE =
+      "TemplateRenderMemoryUsage.viewComplete";
+  /**
+   * @trace_description: Build one TemplateRender instance memory usage result.
+   */
+  public static final String MEMORY_USAGE_TEMPLATE_RENDER_FINISH =
+      "TemplateRenderMemoryUsage.finish";
+  /**
+   * @trace_description: Record total duration and bytes for one TemplateRender memory usage query.
+   */
+  public static final String MEMORY_USAGE_TEMPLATE_RENDER_TOTAL = "TemplateRenderMemoryUsage.total";
 
   public static final String TRIGGER_EMBEDDED_MODE_LIFECYCLE = "TriggerEmbeddedModeLifecycle";
 

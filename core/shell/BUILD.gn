@@ -4,6 +4,7 @@
 
 import("../../testing/test.gni")
 import("../Lynx.gni")
+
 shell_shared_sources = [
   "common/platform_call_back.cc",
   "common/platform_call_back.h",
@@ -47,6 +48,8 @@ shell_shared_sources = [
   "native_facade_empty_implementation.h",
   "perf_controller_proxy_impl.cc",
   "perf_controller_proxy_impl.h",
+  "performance/native_memory_usage_query.cc",
+  "performance/native_memory_usage_query.h",
   "runtime/bts/bts_runtime.cc",
   "runtime/bts/bts_runtime.h",
   "runtime/bts/bts_runtime_mediator.cc",

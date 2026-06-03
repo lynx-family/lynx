@@ -4,6 +4,7 @@
 
 package com.lynx.tasm.performance.memory;
 
+import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -29,5 +30,18 @@ public class MemoryRecord {
 
   public String getCategory() {
     return mCategory;
+  }
+
+  /**
+   * Returns a detached copy of this record.
+   *
+   * <p>{@link MemoryRecord} is intentionally a mutable data holder. Use this method before moving a
+   * record across threads or ownership boundaries so later mutations to {@link #mDetail} do not
+   * affect the copied snapshot.
+   */
+  public MemoryRecord copy() {
+    Map<String, String> detail =
+        mDetail == null || mDetail.isEmpty() ? null : new HashMap<>(mDetail);
+    return new MemoryRecord(mCategory, mSizeBytes, mInstanceCount, detail);
   }
 }
