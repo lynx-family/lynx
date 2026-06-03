@@ -112,8 +112,21 @@ int ListContainerView::GetIndexFromItemKey(std::string item_key) const {
 }
 
 void ListContainerView::EraseStickyItem(BaseView* view) {
-  if (!view || !view->Is<Component>() || !enable_list_sticky_) return;
+  if (!view || !view->Is<Component>()) return;
   auto* component = static_cast<Component*>(view);
+  if (current_sticky_top_item_ == component) {
+    current_sticky_top_item_ = nullptr;
+  }
+  if (current_sticky_bottom_item_ == component) {
+    current_sticky_bottom_item_ = nullptr;
+  }
+  if (prev_sticky_top_item_ == component) {
+    prev_sticky_top_item_ = nullptr;
+  }
+  if (prev_sticky_bottom_item_ == component) {
+    prev_sticky_bottom_item_ = nullptr;
+  }
+  if (!enable_list_sticky_) return;
   if (update_sticky_for_diff_) {
     if (auto item_key = view->ItemKey(); !item_key.empty()) {
 #define ERASE_STICKY_ITEM(sticky_map_ref)                     \
@@ -451,6 +464,7 @@ void ListContainerView::UpdateStickyEnds(float offset_x, float offset_y) {
       sticky_end_item = end_component;
     }
   }
+  current_sticky_bottom_item_ = sticky_end_item;
   if (sticky_end_item != nullptr) {
     if (prev_sticky_bottom_item_ != sticky_end_item) {
       if (is_vertical) {
@@ -560,6 +574,7 @@ void ListContainerView::UpdateStickyStarts(float offset_x, float offset_y) {
       sticky_start_item = start_component;
     }
   }
+  current_sticky_top_item_ = sticky_start_item;
   if (sticky_start_item != nullptr) {
     if (prev_sticky_top_item_ != sticky_start_item) {
       if (is_vertical) {
@@ -802,6 +817,8 @@ void ListContainerView::DidUpdateAttributes() {
                              sticky_top_indexes_);
     GenerateStickyItemKeySet(sticky_bottom_item_key_set_,
                              sticky_bottom_item_map_, sticky_bottom_indexes_);
+    UpdateStickyStarts(scroll_offset_.x(), scroll_offset_.y());
+    UpdateStickyEnds(scroll_offset_.x(), scroll_offset_.y());
   }
 }
 
@@ -1044,34 +1061,81 @@ size_t ListContainerView::GetVisibleItemsInfo(
     std::vector<float>& left_array, std::vector<float>& right_array,
     std::vector<int>& position, std::vector<std::string>& id_array,
     std::vector<std::string>& item_key_array) {
-  std::vector<BaseView*> visible_children;
+  struct VisibleItemInfo {
+    Component* item = nullptr;
+    FloatRect rect;
+    int position = -1;
+    bool is_sticky = false;
+  };
+
+  std::vector<VisibleItemInfo> visible_items;
   FloatRect viewport(0, 0, Width(), Height());
+
+  auto add_visible_item = [&](BaseView* child, bool is_sticky) {
+    if (!child || !child->Is<Component>()) {
+      return;
+    }
+    auto* item = static_cast<Component*>(child);
+    const auto& item_key = item->ItemKey();
+    if (item_key.empty()) {
+      return;
+    }
+    int item_position = GetIndexFromItemKey(item_key);
+    if (item_position < 0) {
+      return;
+    }
+    auto item_rect = item->BoundsRelativeTo(this);
+    if (is_sticky && !item->GetTransformOps().IsIdentity()) {
+      item_rect = FloatRect(item->GetTransformOps().Apply().matrix().MapRect(
+          static_cast<skity::Rect>(item_rect)));
+    }
+    if (!item_rect.Intersects(viewport)) {
+      return;
+    }
+    visible_items.push_back(
+        VisibleItemInfo{item, item_rect, item_position, is_sticky});
+  };
+
   for (BaseView* child : children_) {
-    if (!child) {
-      continue;
-    }
-    auto item_rect = child->BoundsRelativeTo(this);
-    if (item_rect.Intersects(viewport)) {
-      visible_children.emplace_back(child);
-    }
+    add_visible_item(child, false);
   }
-  if (!visible_children.empty()) {
-    std::sort(visible_children.begin(), visible_children.end(),
-              [this](BaseView* lhs, BaseView* rhs) {
-                return GetIndexFromItemKey(lhs->ItemKey()) <
-                       GetIndexFromItemKey(rhs->ItemKey());
+
+  if (enable_list_sticky_) {
+    add_visible_item(current_sticky_top_item_, true);
+    add_visible_item(current_sticky_bottom_item_, true);
+  }
+
+  if (!visible_items.empty()) {
+    std::sort(visible_items.begin(), visible_items.end(),
+              [](const VisibleItemInfo& lhs, const VisibleItemInfo& rhs) {
+                if (lhs.position != rhs.position) {
+                  return lhs.position < rhs.position;
+                }
+                return !lhs.is_sticky && rhs.is_sticky;
               });
-    for (size_t i = 0; i < visible_children.size(); ++i) {
-      auto item = visible_children[i];
-      position.push_back(GetIndexFromItemKey(item->ItemKey()));
-      auto rect = item->BoundsRelativeTo(this);
+
+    std::vector<VisibleItemInfo> deduplicated_items;
+    for (const auto& item_info : visible_items) {
+      if (!deduplicated_items.empty() &&
+          deduplicated_items.back().position == item_info.position) {
+        if (item_info.is_sticky) {
+          deduplicated_items.back() = item_info;
+        }
+        continue;
+      }
+      deduplicated_items.push_back(item_info);
+    }
+
+    for (const auto& item_info : deduplicated_items) {
+      position.push_back(item_info.position);
+      auto rect = item_info.rect;
       auto logical_rect = page_view_->ConvertTo<kPixelTypeLogical>(rect);
       top_array.push_back(logical_rect.y());
       bottom_array.push_back(logical_rect.MaxY());
       left_array.push_back(logical_rect.x());
       right_array.push_back(logical_rect.MaxX());
-      id_array.push_back(item->GetIdSelector());
-      item_key_array.push_back(item->ItemKey());
+      id_array.push_back(item_info.item->GetIdSelector());
+      item_key_array.push_back(item_info.item->ItemKey());
     }
   }
   return top_array.size();

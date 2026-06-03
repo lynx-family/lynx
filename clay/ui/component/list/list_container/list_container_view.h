@@ -174,6 +174,8 @@ class ListContainerView : public WithTypeInfo<ListContainerView, ScrollView>,
 
   Component* prev_sticky_top_item_ = nullptr;
   Component* prev_sticky_bottom_item_ = nullptr;
+  Component* current_sticky_top_item_ = nullptr;
+  Component* current_sticky_bottom_item_ = nullptr;
 
   bool enable_recycle_sticky_item_ = true;
   bool update_sticky_for_diff_ = true;
