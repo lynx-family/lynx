@@ -51,15 +51,9 @@ const commonOptions = {
   // Path resolution
   alias: isWeb ? {
              // remove all polyfills for web
-             '@lynx-js/ios-polyfill': './kernel-build/web-polyfill.js',
              '@lynx-js/ios-polyfill-promise': './kernel-build/web-polyfill.js',
              'regenerator-runtime/runtime': './kernel-build/web-polyfill.js',
-           } :{
-    '@lynx-js/ios-polyfill':
-      TARGET.toLowerCase() === 'ios'
-        ? '@lynx-js/ios-polyfill'
-        : './kernel-build/android-polyfill.js',
-  },
+           } : {},
 
   // Transformation
   target:  isWeb ? ['esnext'] : TARGET.toLowerCase() === 'ios' ? ['ios11'] : ['es2019'],
