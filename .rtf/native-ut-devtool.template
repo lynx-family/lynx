@@ -51,7 +51,8 @@ coverage({
         "core/runtime/vm/lepus/*",
         "core/parser/*",
         "core/runtime/*",
-        "testing/*"
+        "testing/*",
+        "gfx/*",
     ],
     "type": "llvm",
 })

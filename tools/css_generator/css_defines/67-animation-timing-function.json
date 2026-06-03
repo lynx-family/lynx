@@ -17,5 +17,322 @@
     "cubic-bezier"
   ],
   "desc": "`animation-timing-function` property specifies how an animation progresses through each cycle.",
+  "compat_data": {
+    "animation-timing-function": {
+      "__compat": {
+        "lynx_path": "api/css/properties/animation-timing-function",
+        "mdn_url": "https://developer.mozilla.org/zh-CN/docs/Web/CSS/animation-timing-function",
+        "spec_url": [],
+        "status": {
+          "deprecated": false,
+          "experimental": false
+        },
+        "support": {
+          "android": {
+            "notes": "",
+            "version_added": "1.0"
+          },
+          "ios": {
+            "notes": "",
+            "version_added": "1.0"
+          },
+          "clay_android": {
+            "version_added": "1.0"
+          },
+          "clay_macos": {
+            "version_added": "1.0"
+          },
+          "clay_windows": {
+            "version_added": "1.0"
+          }
+        }
+      },
+      "linear": {
+        "__compat": {
+          "status": {
+            "deprecated": false,
+            "experimental": false
+          },
+          "support": {
+            "android": {
+              "version_added": "1.0"
+            },
+            "ios": {
+              "version_added": "1.0"
+            },
+            "clay_android": {
+              "version_added": "1.0"
+            },
+            "clay_macos": {
+              "version_added": "1.0"
+            },
+            "clay_windows": {
+              "version_added": "1.0"
+            }
+          }
+        }
+      },
+      "ease-in": {
+        "__compat": {
+          "status": {
+            "deprecated": false,
+            "experimental": false
+          },
+          "support": {
+            "android": {
+              "version_added": "1.0"
+            },
+            "ios": {
+              "version_added": "1.0"
+            },
+            "clay_android": {
+              "version_added": "1.0"
+            },
+            "clay_macos": {
+              "version_added": "1.0"
+            },
+            "clay_windows": {
+              "version_added": "1.0"
+            }
+          }
+        }
+      },
+      "ease-out": {
+        "__compat": {
+          "status": {
+            "deprecated": false,
+            "experimental": false
+          },
+          "support": {
+            "android": {
+              "version_added": "1.0"
+            },
+            "ios": {
+              "version_added": "1.0"
+            },
+            "clay_android": {
+              "version_added": "1.0"
+            },
+            "clay_macos": {
+              "version_added": "1.0"
+            },
+            "clay_windows": {
+              "version_added": "1.0"
+            }
+          }
+        }
+      },
+      "ease-in-ease-out": {
+        "__compat": {
+          "status": {
+            "deprecated": false,
+            "experimental": false
+          },
+          "support": {
+            "android": {
+              "version_added": "1.0"
+            },
+            "ios": {
+              "version_added": "1.0"
+            },
+            "clay_android": {
+              "version_added": "1.0"
+            },
+            "clay_macos": {
+              "version_added": "1.0"
+            },
+            "clay_windows": {
+              "version_added": "1.0"
+            }
+          }
+        }
+      },
+      "ease": {
+        "__compat": {
+          "status": {
+            "deprecated": false,
+            "experimental": false
+          },
+          "support": {
+            "android": {
+              "version_added": "1.0"
+            },
+            "ios": {
+              "version_added": "1.0"
+            },
+            "clay_android": {
+              "version_added": "1.0"
+            },
+            "clay_macos": {
+              "version_added": "1.0"
+            },
+            "clay_windows": {
+              "version_added": "1.0"
+            }
+          }
+        }
+      },
+      "ease-in-out": {
+        "__compat": {
+          "status": {
+            "deprecated": false,
+            "experimental": false
+          },
+          "support": {
+            "android": {
+              "version_added": "1.0"
+            },
+            "ios": {
+              "version_added": "1.0"
+            },
+            "clay_android": {
+              "version_added": "1.0"
+            },
+            "clay_macos": {
+              "version_added": "1.0"
+            },
+            "clay_windows": {
+              "version_added": "1.0"
+            }
+          }
+        }
+      },
+      "square-bezier": {
+        "__compat": {
+          "status": {
+            "deprecated": false,
+            "experimental": false
+          },
+          "support": {
+            "android": {
+              "notes": "The new animator supports <code>square-bezier()</code> since Lynx 4.0; the non-new animator has supported it since the original version.",
+              "version_added": "1.0"
+            },
+            "ios": {
+              "notes": "The new animator supports <code>square-bezier()</code> since Lynx 4.0; the non-new animator has supported it since the original version.",
+              "version_added": "1.0"
+            },
+            "clay_android": {
+              "notes": "The new animator supports <code>square-bezier()</code> since Lynx 4.0; the non-new animator has supported it since the original version.",
+              "version_added": "1.0"
+            },
+            "clay_macos": {
+              "notes": "The new animator supports <code>square-bezier()</code> since Lynx 4.0; the non-new animator has supported it since the original version.",
+              "version_added": "1.0"
+            },
+            "clay_windows": {
+              "notes": "The new animator supports <code>square-bezier()</code> since Lynx 4.0; the non-new animator has supported it since the original version.",
+              "version_added": "1.0"
+            }
+          }
+        }
+      },
+      "cubic-bezier": {
+        "__compat": {
+          "status": {
+            "deprecated": false,
+            "experimental": false
+          },
+          "support": {
+            "android": {
+              "version_added": "1.0"
+            },
+            "ios": {
+              "version_added": "1.0"
+            },
+            "clay_android": {
+              "version_added": "1.0"
+            },
+            "clay_macos": {
+              "version_added": "1.0"
+            },
+            "clay_windows": {
+              "version_added": "1.0"
+            }
+          }
+        }
+      },
+      "step-start": {
+        "__compat": {
+          "status": {
+            "deprecated": false,
+            "experimental": false
+          },
+          "support": {
+            "android": {
+              "version_added": "1.0"
+            },
+            "ios": {
+              "version_added": "1.0"
+            },
+            "clay_android": {
+              "version_added": "1.0"
+            },
+            "clay_macos": {
+              "version_added": "1.0"
+            },
+            "clay_windows": {
+              "version_added": "1.0"
+            }
+          }
+        }
+      },
+      "step-end": {
+        "__compat": {
+          "status": {
+            "deprecated": false,
+            "experimental": false
+          },
+          "support": {
+            "android": {
+              "version_added": "1.0"
+            },
+            "ios": {
+              "version_added": "1.0"
+            },
+            "clay_android": {
+              "version_added": "1.0"
+            },
+            "clay_macos": {
+              "version_added": "1.0"
+            },
+            "clay_windows": {
+              "version_added": "1.0"
+            }
+          }
+        }
+      },
+      "steps": {
+        "__compat": {
+          "status": {
+            "deprecated": false,
+            "experimental": false
+          },
+          "support": {
+            "android": {
+              "notes": "Lynx requires the second <code>&lt;step-position&gt;</code> argument; unlike Web, <code>steps(n)</code> is invalid. Use <code>steps(n, end)</code> or <code>steps(n, jump-end)</code>.",
+              "version_added": "1.0"
+            },
+            "ios": {
+              "notes": "Lynx requires the second <code>&lt;step-position&gt;</code> argument; unlike Web, <code>steps(n)</code> is invalid. Use <code>steps(n, end)</code> or <code>steps(n, jump-end)</code>.",
+              "version_added": "1.0"
+            },
+            "clay_android": {
+              "notes": "Lynx requires the second <code>&lt;step-position&gt;</code> argument; unlike Web, <code>steps(n)</code> is invalid. Use <code>steps(n, end)</code> or <code>steps(n, jump-end)</code>.",
+              "version_added": "1.0"
+            },
+            "clay_macos": {
+              "notes": "Lynx requires the second <code>&lt;step-position&gt;</code> argument; unlike Web, <code>steps(n)</code> is invalid. Use <code>steps(n, end)</code> or <code>steps(n, jump-end)</code>.",
+              "version_added": "1.0"
+            },
+            "clay_windows": {
+              "notes": "Lynx requires the second <code>&lt;step-position&gt;</code> argument; unlike Web, <code>steps(n)</code> is invalid. Use <code>steps(n, end)</code> or <code>steps(n, jump-end)</code>.",
+              "version_added": "1.0"
+            }
+          }
+        }
+      }
+    }
+  },
   "is_shorthand": false
 }
