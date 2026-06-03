@@ -2,7 +2,7 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#import "LynxMemoryRecord.h"
+#import <Lynx/LynxMemoryRecord.h>
 
 @implementation LynxMemoryRecord
 
@@ -15,6 +15,15 @@
     _detail = detail;
   }
   return self;
+}
+
+- (id)copyWithZone:(NSZone*)zone {
+  LynxMemoryRecord* recordCopy =
+      [[[self class] allocWithZone:zone] initWithCategory:[_category copy] ?: @""
+                                                sizeBytes:_sizeBytes
+                                                   detail:[_detail copy]];
+  recordCopy.instanceCount = _instanceCount;
+  return recordCopy;
 }
 
 @end
