@@ -2116,7 +2116,9 @@ float UIBase::OffsetYForCalcPosition() {
 }
 
 bool UIBase::IsVisible() {
-  if (!node_ || NodeManager::Instance().GetParent(DrawNode()) == nullptr) {
+  bool is_parent_js_ui = parent_ ? parent_->HasJSObject() : false;
+  if (!node_ || (!is_parent_js_ui &&
+                 NodeManager::Instance().GetParent(DrawNode()) == nullptr)) {
     return false;
   }
 
