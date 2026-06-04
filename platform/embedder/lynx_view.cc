@@ -65,6 +65,9 @@ LYNX_EXTERN_C lynx_view_t* lynx_view_create(lynx_view_builder_t* builder,
     settings.enable_js_group_thread = builder->group->enable_js_group_thread;
     settings.preload_js_paths = builder->group->preload_js_paths;
   }
+#if defined(OS_HARMONY) && defined(ENABLE_WINDOWLESS)
+  settings.use_quickjs = true;
+#endif
 #if ENABLE_NAPI_BINDING
   std::unordered_map<std::string,
                      std::tuple<extension_module_creator, bool, void*>>
