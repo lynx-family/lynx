@@ -655,6 +655,15 @@ lepus::Value CSSStringParser::ParseShapePath() {
   return lepus::Value();
 }
 
+lepus::Value CSSStringParser::ParseOffsetDistance() {
+  Advance();
+  auto result = NumberOrPercentage();
+  if (!result.IsNumber() || !AtEnd()) {
+    return lepus::Value();
+  }
+  return result;
+}
+
 lepus::Value CSSStringParser::ParseOffsetRotate() {
   Advance();
   Token angle_token;

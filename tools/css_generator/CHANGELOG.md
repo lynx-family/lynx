@@ -1,3 +1,7 @@
+## 0.0.14
+- Add formal_syntax and compat_data for `offset-distance` CSS property.
+- Add percentage value support for `offset-distance` CSS property.
+
 ## 0.0.13
 - Add compat_data and notes for `grid-column` and `grid-row` CSS properties.
 
