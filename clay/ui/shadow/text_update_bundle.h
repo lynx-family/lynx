@@ -31,6 +31,11 @@ struct TextInfo {
   std::optional<FloatPoint> location;
   // for inline_text
   std::optional<std::list<TextRange>> range_;
+  // inline-text inside inline-view is laid out by the inline-view subtree, not
+  // by the outer text paragraph.
+  bool use_inline_view_layout_box = false;
+  std::unique_ptr<txt::Paragraph> inline_view_paragraph;
+  std::u16string inline_view_text;
 };
 
 class TextUpdateBundle : public Bundle {
@@ -52,7 +57,7 @@ class TextUpdateBundle : public Bundle {
     text_stroke_map_ = std::move(text_stroke_map);
   }
   void SetLineSpacingOffset(double offset) { line_spacing_offset_ = offset; }
-  void PushTextInfo(TextInfo& info) { info_.emplace_back(info); }
+  void PushTextInfo(TextInfo info) { info_.emplace_back(std::move(info)); }
   void SetInlineEmojiInfo(std::vector<InlineEmojiInfo> inline_emoji_info) {
     inline_emoji_info_ = std::move(inline_emoji_info);
   }
@@ -60,9 +65,9 @@ class TextUpdateBundle : public Bundle {
 
  private:
   std::unique_ptr<txt::Paragraph> paragraph_ = nullptr;
-  TextAlignment text_paint_align_;
+  TextAlignment text_paint_align_ = TextAlignment::kLeft;
   std::u16string text_;
-  double line_spacing_offset_;
+  double line_spacing_offset_ = 0;
   std::map<int, std::shared_ptr<ColorSource>> gradient_shader_map_;
   std::map<int, std::pair<size_t, size_t>> range_map_;
   std::unordered_map<int, TextStroke> text_stroke_map_;

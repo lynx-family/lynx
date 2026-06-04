@@ -6,10 +6,13 @@
 
 #include <cstddef>
 #include <cstring>
+#include <memory>
 #include <limits>
 #include <optional>
 
 #include "clay/ui/common/attribute_utils.h"
+#include "clay/ui/component/text/layout_context.h"
+#include "clay/ui/component/text/text_paragraph_builder.h"
 #include "clay/ui/shadow/inline_image_shadow_node.h"
 #include "clay/ui/shadow/inline_text_shadow_node.h"
 #include "clay/ui/shadow/text_shadow_node.h"
@@ -21,6 +24,39 @@ namespace clay {
 static constexpr float kDefaultFontSizeInDip = 14.f;
 static constexpr Color kDefaultTextColor = Color(0xFF000000);
 static constexpr TextAlignment kDefaultAlignment = TextAlignment::kStart;
+
+namespace {
+
+bool IsInInlineViewSubtree(ShadowNode* node) {
+  for (auto* parent = node ? node->Parent() : nullptr; parent;
+       parent = parent->Parent()) {
+    if (parent->IsInlineViewShadowNode()) {
+      return true;
+    }
+    if (parent->IsTextShadowNode()) {
+      return false;
+    }
+  }
+  return false;
+}
+
+std::unique_ptr<txt::Paragraph> BuildInlineViewTextParagraph(
+    InlineTextShadowNode* node, float layout_width) {
+  if (!node) {
+    return nullptr;
+  }
+  node->EnsureDefaultStyle();
+  auto builder = std::make_unique<TextParagraphBuilder>(true, node->text_style_);
+  LayoutContextText context;
+  context.SetBuilder(builder.get());
+  node->TextLayout(&context);
+  auto paragraph = Build(std::move(builder));
+  paragraph->Layout(layout_width > 0 ? layout_width
+                                    : std::numeric_limits<float>::infinity());
+  return paragraph;
+}
+
+}  // namespace
 
 ShadowNode::ShadowNode(ShadowNodeOwner* owner, std::string tag, int id)
     : tag_(tag), id_(id), owner_(owner) {
@@ -251,9 +287,17 @@ void ShadowNode::CreateTextInfo(txt::Paragraph* paragraph) {
       last_glyph = paragraph->GetLineMetrics().back().end_index;
     }
     if (child->IsInlineTextShadowNode()) {
+      child->UpdateLayoutStylesFromLynx();
       info.range_ =
           static_cast<InlineTextShadowNode*>(child)->range_in_paragraph_;
       info.view_style = child->styles_;
+      info.use_inline_view_layout_box = IsInInlineViewSubtree(child);
+      if (info.use_inline_view_layout_box) {
+        auto* inline_text_node = static_cast<InlineTextShadowNode*>(child);
+        info.inline_view_text = inline_text_node->GetRawText();
+        info.inline_view_paragraph =
+            BuildInlineViewTextParagraph(inline_text_node, child->styles_.width);
+      }
       child->CreateTextInfo(paragraph);
     }
     if (child->IsInlineImageShadowNode()) {
@@ -308,7 +352,7 @@ void ShadowNode::CreateTextInfo(txt::Paragraph* paragraph) {
       }
       child->CreateTextInfo(paragraph);
     }
-    bundle->PushTextInfo(info);
+    bundle->PushTextInfo(std::move(info));
   }
 }
 

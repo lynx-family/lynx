@@ -4,6 +4,8 @@
 
 #include "clay/ui/shadow/text_update_bundle.h"
 
+#include <algorithm>
+
 #include "clay/ui/component/text/inline_text_view.h"
 #include "clay/ui/component/text/text_view.h"
 #include "clay/ui/rendering/text/render_inline_text.h"
@@ -12,15 +14,47 @@ namespace clay {
 
 TextUpdateBundle::~TextUpdateBundle() {}
 
+namespace {
+
+FloatPoint GetTextPaintOffset(TextView* text_view, txt::Paragraph* paragraph,
+                              TextAlignment text_paint_align,
+                              double line_spacing_offset) {
+  if (!text_view || !paragraph) {
+    return {};
+  }
+
+  auto* render_text = text_view->GetRenderText();
+  double x_offset = 0;
+  if (text_paint_align == TextAlignment::kCenter) {
+    x_offset =
+        std::max(0.0, (render_text->ContentWidth() -
+                       paragraph->GetLongestLine()) /
+                          2);
+  } else if (text_paint_align == TextAlignment::kRight) {
+    x_offset =
+        std::max(0.0, render_text->ContentWidth() - paragraph->GetLongestLine());
+  }
+  return render_text->PaintOffset() +
+         FloatPoint(static_cast<float>(x_offset),
+                    static_cast<float>(line_spacing_offset));
+}
+
+}  // namespace
+
 void TextUpdateBundle::UpdateExtraData(BaseView* view) {
   if (view && view->Is<TextView>() && paragraph_) {
     auto text_view = static_cast<TextView*>(view);
-    for (auto info : info_) {
-      auto info_view = text_view->page_view()->FindViewByViewId(info.id);
-      auto parent_view =
-          text_view->page_view()->FindViewByViewId(info.parent_id);
+    auto text_paint_offset = GetTextPaintOffset(
+        text_view, paragraph_.get(), text_paint_align_, line_spacing_offset_);
+    for (auto& info : info_) {
+      auto page_view = text_view->page_view();
+      if (!page_view || !page_view->GetViewContext()) {
+        continue;
+      }
+      auto info_view = page_view->FindViewByViewId(info.id);
+      auto parent_view = page_view->FindViewByViewId(info.parent_id);
       if (!info_view || !parent_view) {
-        break;
+        continue;
       }
       if (info.need_mount) {
         if (info.placeholder_index.value_or(-1) >= 0) {
@@ -38,22 +72,36 @@ void TextUpdateBundle::UpdateExtraData(BaseView* view) {
         if (info.view_style) {
           info_view->SetWidth(info.view_style->width);
           info_view->SetHeight(info.view_style->height);
-          info_view->SetPaddings(
-              info.view_style->padding_left, info.view_style->padding_top,
-              info.view_style->padding_right, info.view_style->padding_bottom);
+          info_view->SetPaddings(info.view_style->padding_left,
+                                 info.view_style->padding_top,
+                                 info.view_style->padding_right,
+                                 info.view_style->padding_bottom);
         }
         if (info.range_) {
           if (info_view->Is<InlineTextView>()) {
             auto render_object = info_view->render_object();
             static_cast<RenderInlineText*>(render_object)->ClearTextBox();
-            for (auto range : info.range_.value()) {
-              auto boxes = paragraph_->GetRectsForRange(
-                  range.start(), range.end(),
-                  txt::Paragraph::RectHeightStyle::kTight,
-                  txt::Paragraph::RectWidthStyle::kTight);
-              for (auto& box : boxes) {
+            if (info.use_inline_view_layout_box && info.view_style) {
+              static_cast<RenderInlineText*>(render_object)
+                  ->AddTextBox(skity::Rect::MakeLTRB(
+                      0, 0, info.view_style->width, info.view_style->height));
+              if (info.inline_view_paragraph) {
                 static_cast<RenderInlineText*>(render_object)
-                    ->AddTextBox(box.rect);
+                    ->SetParagraph(std::move(info.inline_view_paragraph),
+                                   info.inline_view_text);
+              }
+            } else {
+              for (auto range : info.range_.value()) {
+                auto boxes = paragraph_->GetRectsForRange(
+                    range.start(), range.end(),
+                    txt::Paragraph::RectHeightStyle::kTight,
+                    txt::Paragraph::RectWidthStyle::kTight);
+                for (auto& box : boxes) {
+                  box.rect.Offset(text_paint_offset.x(),
+                                  text_paint_offset.y());
+                  static_cast<RenderInlineText*>(render_object)
+                      ->AddTextBox(box.rect);
+                }
               }
             }
             static_cast<InlineTextView*>(info_view)->SetTextRange(

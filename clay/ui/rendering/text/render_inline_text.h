@@ -6,9 +6,13 @@
 #define CLAY_UI_RENDERING_TEXT_RENDER_INLINE_TEXT_H_
 
 #include <list>
+#include <memory>
+#include <string>
 
 #include "clay/gfx/geometry/float_rect.h"
+#include "clay/third_party/txt/src/txt/paragraph.h"
 #include "clay/ui/painter/painting_context.h"
+#include "clay/ui/painter/text_painter.h"
 #include "clay/ui/rendering/render_box.h"
 
 namespace clay {
@@ -29,6 +33,9 @@ class RenderInlineText : public RenderBox {
 
   void ClearTextBox() { text_boxes_.clear(); }
 
+  void SetParagraph(std::unique_ptr<txt::Paragraph> paragraph,
+                    const std::u16string& text);
+
   // Inline text can always be displayed when `Paint()` called because once
   // the parent text view is set to display:none, inline text won't be
   // requested to paint.
@@ -36,6 +43,9 @@ class RenderInlineText : public RenderBox {
 
  private:
   std::list<FloatRect> text_boxes_;
+  std::unique_ptr<txt::Paragraph> paragraph_;
+  std::u16string text_;
+  TextPainter text_painter_;
 };
 
 }  // namespace clay

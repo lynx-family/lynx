@@ -9,6 +9,14 @@
 
 namespace clay {
 
+void RenderInlineText::SetParagraph(std::unique_ptr<txt::Paragraph> paragraph,
+                                    const std::u16string& text) {
+  paragraph_ = std::move(paragraph);
+  text_ = text;
+  text_painter_.SetParagraph(paragraph_.get());
+  MarkNeedsPaint();
+}
+
 void RenderInlineText::Paint(PaintingContext& context,
                              const FloatPoint& offset) {
   auto box_painter = BoxPainter(this);
@@ -36,6 +44,14 @@ void RenderInlineText::Paint(PaintingContext& context,
                                              offset, box);
   }
   RenderBox::PaintChildren(context, offset);
+  if (text_painter_.CanPaint()) {
+    GraphicsContext::AutoRestore saver(context.GetGraphicsContext(), true);
+    auto paint_offset = offset + PaintOffset();
+    context.GetGraphicsContext()->Translate(paint_offset.x(), paint_offset.y());
+    text_painter_.SetWidth(ContentWidth());
+    text_painter_.SetHeight(ContentHeight());
+    text_painter_.Paint(context.GetGraphicsContext());
+  }
 }
 
 }  // namespace clay
