@@ -190,12 +190,19 @@ subspec_target("WebView") {
 
 subspec_target("SVG") {
   sources = [
+    "svg/LynxSVGRenderEngine.h",
+    "svg/LynxSVGRenderEngine.m",
+    "svg/LynxSVGRenderer.h",
+    "svg/LynxSVGRenderer.mm",
+    "svg/LynxSVGRendererHost.h",
+    "svg/LynxSVGRendererHost.m",
     "svg/LynxSVGView.h",
     "svg/LynxSVGView.m",
     "svg/LynxUISVG.h",
     "svg/LynxUISVG.m",
   ]
   public_header_files = [
+    "svg/LynxSVGRenderEngine.h",
     "svg/LynxSVGView.h",
     "svg/LynxUISVG.h",
   ]

@@ -2,20 +2,20 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#import <Lynx/LynxComponentRegistry.h>
 #import <Lynx/LynxPropsProcessor.h>
-#import <Lynx/LynxRootUI.h>
-#import <Lynx/LynxSubErrorCode.h>
 #import <Lynx/LynxUI+Internal.h>
-#import <Lynx/LynxView.h>
 #import <ServalSVG/SrSVG.h>
 #import <XElement/LynxUISVG.h>
 
+#import <XElement/LynxSVGRenderEngine.h>
+
 @interface LynxUISVG ()
-@property(nonatomic, strong) SrSVG *srSvg;
+@property(nonatomic, strong) LynxSVGRenderEngine *engine;
 @end
 
 @implementation LynxUISVG
+
+@dynamic src, content, color;
 
 - (void)invalidateViewOnMainThread {
   if ([NSThread isMainThread]) {
@@ -29,28 +29,90 @@
 
 - (LynxSVGView *)createView {
   LynxSVGView *view = [[LynxSVGView alloc] initWithFrame:CGRectZero ui:self];
-  self.srSvg = [[SrSVG alloc] init];
   view.clipsToBounds = YES;
   [view setTranslatesAutoresizingMaskIntoConstraints:YES];
   return view;
 }
 
+- (void)setContext:(LynxUIContext *)context {
+  [super setContext:context];
+
+  if (self.engine) {
+    return;
+  }
+
+  __weak typeof(self) weakSelf = self;
+  self.engine = [[LynxSVGRenderEngine alloc] initWithSrSVG:[[SrSVG alloc] init]
+      color:nil
+      genericFetcher:self.context.genericResourceFetcher
+      mediaFetcher:self.context.mediaResourceFetcher
+      asyncExecutor:^void(LynxSVGRenderBlock renderBlock, LynxSVGRenderCompletion completion) {
+        __strong typeof(weakSelf) strongSelf = weakSelf;
+        if (!strongSelf) {
+          if (completion) {
+            completion(nil);
+          }
+          return;
+        }
+        [strongSelf displayComplexBackgroundAsynchronouslyWithDisplay:renderBlock
+                                                           completion:completion];
+      }
+      reloadBlock:^{
+        __strong typeof(weakSelf) strongSelf = weakSelf;
+        if (!strongSelf) {
+          return;
+        }
+        if ([NSThread isMainThread]) {
+          [strongSelf.view invalidate];
+        } else {
+          dispatch_async(dispatch_get_main_queue(), ^{
+            [strongSelf.view invalidate];
+          });
+        }
+      }];
+}
+
+#pragma mark - Deprecated property getters/setters
+
+- (NSString *)src {
+  return self.engine.src;
+}
+
+- (void)setSrc:(NSString *)src {
+  self.engine.src = src;
+  [self.view invalidate];
+}
+
+- (NSString *)content {
+  return self.engine.content;
+}
+
+- (void)setContent:(NSString *)content {
+  self.engine.content = content;
+  [self.view invalidate];
+}
+
+- (NSString *)color {
+  return self.engine.color;
+}
+
+- (void)setColor:(NSString *)color {
+  self.engine.color = color;
+  [self invalidateViewOnMainThread];
+}
+
 LYNX_PROP_SETTER("src", setSrc, NSString *) {
   if ([value isKindOfClass:[NSString class]]) {
-    if (value.length != 0 || _src != nil) {
-      // src is not empty or src is changed to empty
-      _src = value;
-      [self.view invalidate];
+    if (value.length != 0 || self.src != nil) {
+      self.src = value;
     }
   }
 }
 
 LYNX_PROP_SETTER("content", setContent, NSString *) {
   if ([value isKindOfClass:[NSString class]]) {
-    if (value.length != 0 || _content != nil) {
-      // content is not empty or content is changed to empty
-      _content = value;
-      [self.view invalidate];
+    if (value.length != 0 || self.content != nil) {
+      self.content = value;
     }
   }
 }
@@ -62,11 +124,10 @@ LYNX_PROP_SETTER("current-color", setColor, NSString *) {
         stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
     nextColor = trimmedColor.length != 0 ? trimmedColor : nil;
   }
-  if ((nextColor == nil && _color == nil) || [nextColor isEqualToString:_color]) {
+  if ((nextColor == nil && self.color == nil) || [nextColor isEqualToString:self.color]) {
     return;
   }
-  _color = [nextColor copy];
-  [self invalidateViewOnMainThread];
+  self.color = nextColor;
 }
 
 // Call on main thread;
@@ -95,145 +156,45 @@ LYNX_PROP_SETTER("current-color", setColor, NSString *) {
   return kLynxUIMeaningfulContentStatusPending;
 }
 
-- (UIImage *)loadImageFromHref:(NSString *)href withSize:(CGSize)devSize {
-  if (self.imageHolder == nil) {
-    self.imageHolder = [LynxThreadSafeDictionary new];
-  }
-  __weak typeof(self) weakSelf = self;
-  UIImage *image = self.imageHolder[href];
-  if (!image) {
-    [self.imageHolder setObject:[NSNull null] forKey:href];
-
-    [self fetchSVGImage:href
-               withSize:devSize
-               complete:^(UIImage *_Nullable uiImage, NSError *_Nullable error) {
-                 if (uiImage) {
-                   [weakSelf.imageHolder setObject:uiImage forKey:href];
-                   if ([NSThread isMainThread]) {
-                     [weakSelf.view invalidate];
-                   } else {
-                     dispatch_async(dispatch_get_main_queue(), ^{
-                       [weakSelf.view invalidate];
-                     });
-                   }
-                 }
-               }];
-  }
-  if ((NSNull *)image != [NSNull null]) {
-    return image;
-  }
-  return nil;
-}
-
-- (UIImage *)processSVGData:(NSData *)data withSize:(CGSize)devSize {
-  if (data == nil || data.length == 0) {
-    return nil;
-  }
-  __weak typeof(self) weakSelf = self;
-
-  return [self.srSvg getSrSvgDrawImageWithData:data
-                                       andSize:devSize
-                                      andColor:self.color
-                                   andCallback:^UIImage *_Nullable(NSString *_Nullable href) {
-                                     return [weakSelf loadImageFromHref:href withSize:devSize];
-                                   }];
-}
-
 - (void)updateLayoutIfNeed {
   LynxSVGView *imageView = self.view;
-  // Image inside could be blurry due to the screen resolution after scaling.
   CGSize devSize = imageView.frame.size;
   devSize.width *= [UIScreen mainScreen].scale;
   devSize.height *= [UIScreen mainScreen].scale;
   if (devSize.width == 0 || devSize.height == 0) {
-    // Clear the dirty mark before return.
-    [self.view setImage:nil];
+    [imageView setImage:nil];
     return;
   }
 
   __weak typeof(self) weakSelf = self;
-  if (_src) {
-    if ([_src length] == 0) {
-      [imageView setImage:nil];
-      return;
-    }
-    NSURL *fileUrl = nil;
-    NSURL *baseUrl = nil;
-    if ([_src hasPrefix:@"./"]) {
-      if ([self.context.rootView isKindOfClass:[LynxView class]]) {
-        baseUrl = [NSURL URLWithString:[(LynxView *)self.context.rootView url]];
-      }
-      fileUrl = [NSURL URLWithString:[_src substringFromIndex:2]];
-    } else {
-      fileUrl = [NSURL URLWithString:_src];
-    }
-    if (!fileUrl) {
-      LynxError *lynxError = [LynxError lynxErrorWithCode:ECLynxResourceImagePicSource
-                                                  message:@"SVG cannot parse this src"
-                                            fixSuggestion:@"Please check the validity of the src"
-                                                    level:LynxErrorLevelError
-                                               customInfo:@{@"src" : _src}];
-      [self.context reportError:lynxError];
-      return;
-    }
-
-    void (^completionBlock)(NSData *_Nullable svgData, NSError *_Nullable error) =
-        ^(NSData *_Nullable svgData, NSError *_Nullable error) {
-          if (!svgData) {
-            return;
-          }
-          [self
-              displayComplexBackgroundAsynchronouslyWithDisplay:^UIImage *() {
-                __strong typeof(weakSelf) strongSelf = weakSelf;
-                return [strongSelf processSVGData:svgData withSize:devSize];
-              }
-              completion:^(UIImage *_Nonnull image) {
-                __strong typeof(weakSelf) strongSelf = weakSelf;
-                [strongSelf applyImage:image];
-              }];
-        };
-
-    [self fetchSVGResource:_src complete:completionBlock];
-
-  } else if (_content) {
-    if ([_content length] == 0) {
-      [imageView setImage:nil];
-      return;
-    }
-    NSData *svgData = [[_content stringByReplacingOccurrencesOfString:@"&quot;" withString:@"\""]
-        dataUsingEncoding:NSUTF8StringEncoding];
-    [self
-        displayComplexBackgroundAsynchronouslyWithDisplay:^UIImage *() {
-          __strong typeof(weakSelf) strongSelf = weakSelf;
-          return [strongSelf processSVGData:svgData withSize:devSize];
+  [self.engine renderWithSize:devSize
+      completion:^(UIImage *_Nullable image) {
+        __strong typeof(weakSelf) strongSelf = weakSelf;
+        if (!strongSelf) {
+          return;
         }
-        completion:^(UIImage *_Nonnull image) {
-          __strong typeof(weakSelf) strongSelf = weakSelf;
-          [strongSelf applyImage:image];
-        }];
-  } else {
-    [self.view setImage:nil];
-  }
-}
-
-- (void)fetchSVGResource:(NSString *)src
-                complete:(LynxGenericResourceCompletionBlock _Nonnull)callback {
-  LynxResourceRequest *request = [[LynxResourceRequest alloc] initWithUrl:src
-                                                                     type:LynxResourceTypeSVG];
-  [self.context.genericResourceFetcher fetchResource:request onComplete:callback];
-}
-
-- (void)fetchSVGImage:(NSString *_Nonnull)url
-             withSize:(CGSize)devSize
-             complete:(LynxMediaResourceCompletionBlock _Nonnull)callback {
-  (void)devSize;
-  [self.context.mediaResourceFetcher fetchUIImage:[[LynxResourceRequest alloc] initWithUrl:url]
-                                       onComplete:callback];
+        [strongSelf applyImage:image];
+      }
+      errorHandler:^(LynxError *error) {
+        __strong typeof(weakSelf) strongSelf = weakSelf;
+        if (!strongSelf) {
+          return;
+        }
+        [strongSelf.context reportError:error];
+      }];
 }
 
 - (void)layoutDidFinished {
   [super layoutDidFinished];
   [self invalidateViewOnMainThread];
+}
+
+- (UIImage *)processSVGData:(NSData *)data withSize:(CGSize)devSize {
+  return [self.engine renderSVGData:data withSize:devSize];
+}
+
+- (UIImage *)loadImageFromHref:(NSString *)href withSize:(CGSize)devSize {
+  return [self.engine loadImageFromHref:href withSize:devSize];
 }
 
 @end
