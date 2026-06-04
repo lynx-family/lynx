@@ -30,6 +30,7 @@ runs:
       id: hab
       shell: bash
       run: |
+        which python3
         if [[ "${{ inputs.target }}" == "" ]]; then
           python3 lynx/tools/ci/habitat_cache_helper.py
         else
@@ -87,6 +88,7 @@ runs:
         timeout_minutes: 20
         command: |
           set -e
+          which python3
           if [ "$RUNNER_OS" == "macOS" ]; then
             python3 -m pip install -r lynx/tools/vpython_tools/requirements.txt --break-system-packages --retries 10 --timeout 60
             python3 -m pip install -r lynx/testing/integration_test/test_script/requirements.txt --break-system-packages --retries 10 --timeout 60
