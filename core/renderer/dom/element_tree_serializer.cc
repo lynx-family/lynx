@@ -13,12 +13,23 @@
 #include "core/renderer/dom/attribute_holder.h"
 #include "core/renderer/dom/element.h"
 #include "core/renderer/dom/element_manager.h"
+#include "core/renderer/dom/element_manager_delegate.h"
+#include "core/renderer/starlight/layout/layout_object.h"
 #include "core/runtime/lepus/json_parser.h"
 
 namespace lynx {
 namespace tasm {
 
 namespace {
+
+bool IsValidRect(float, float, float width, float height) {
+  return width >= 0.f && height >= 0.f;
+}
+
+bool IsValidRect(const float* rect, size_t size) {
+  return rect != nullptr && size >= 4 &&
+         IsValidRect(rect[0], rect[1], rect[2], rect[3]);
+}
 
 bool IsSerializableAttributeValue(const lepus::Value& value) {
   return !value.IsJSFunction() && !value.IsNil() && !value.IsUndefined();
@@ -52,7 +63,7 @@ lepus::Value BuildInlineStyleValue(Element* node) {
 void AppendRectIfNeeded(const lepus::DictionaryPtr& target,
                         const base::String& key, const float* rect,
                         size_t size) {
-  if (rect == nullptr || size < 4) {
+  if (!IsValidRect(rect, size)) {
     return;
   }
 
@@ -84,15 +95,31 @@ Element* ResolveVirtualPositionSource(Element* node) {
   return node;
 }
 
-bool GetRectToScreen(Element* node, float* position) {
-  auto* element_manager = node->element_manager();
-  if (element_manager == nullptr ||
-      element_manager->painting_context() == nullptr) {
-    return false;
+void AppendOffsetRectIfNeeded(const lepus::DictionaryPtr& target,
+                              const base::String& key,
+                              const std::vector<float>& anchor_rect,
+                              float offset_x, float offset_y, float width,
+                              float height) {
+  if (!IsValidRect(anchor_rect.data(), anchor_rect.size())) {
+    return;
   }
-  element_manager->painting_context()->GetAbsolutePosition(node->impl_id(),
-                                                           position);
-  return position[2] >= 0.f && position[3] >= 0.f;
+
+  const float x = anchor_rect[0] + offset_x;
+  const float y = anchor_rect[1] + offset_y;
+  if (!IsValidRect(x, y, width, height)) {
+    return;
+  }
+
+  auto result = lepus::Dictionary::Create();
+  BASE_STATIC_STRING_DECL(kX, "x");
+  BASE_STATIC_STRING_DECL(kY, "y");
+  BASE_STATIC_STRING_DECL(kWidth, "width");
+  BASE_STATIC_STRING_DECL(kHeight, "height");
+  result->SetValue(kX, x);
+  result->SetValue(kY, y);
+  result->SetValue(kWidth, width);
+  result->SetValue(kHeight, height);
+  target->SetValue(key, std::move(result));
 }
 
 void AppendPositionRects(const lepus::DictionaryPtr& position, Element* node) {
@@ -111,15 +138,53 @@ void AppendPositionRects(const lepus::DictionaryPtr& position, Element* node) {
     auto frame_in_root = node->GetRectToLynxView();
     AppendRectIfNeeded(position, kFrameInRoot, frame_in_root.data(),
                        frame_in_root.size());
-    float frame_in_screen[4] = {0.f, 0.f, -1.f, -1.f};
-    if (GetRectToScreen(node, frame_in_screen)) {
-      AppendRectIfNeeded(position, kFrameInScreen, frame_in_screen, 4);
-    }
+    auto frame_in_screen = node->GetRectToScreen();
+    AppendRectIfNeeded(position, kFrameInScreen, frame_in_screen.data(),
+                       frame_in_screen.size());
     return;
   }
 
-  // TODO(songshourui.null): Support layout-only node position by sharing the
-  // DevTool box model path instead of duplicating offset calculation here.
+  // TODO(songshourui.null): Unify this lightweight layout-only and virtual node
+  // position resolution with the DevTool box model path.
+  auto* layout_object = node->GetLayoutObject();
+  if (layout_object == nullptr) {
+    return;
+  }
+
+  float offset_x = 0.f;
+  float offset_y = 0.f;
+  auto* anchor = node;
+  while (anchor != nullptr && !HasUIPrimitive(anchor)) {
+    auto* current_layout_object = anchor->GetLayoutObject();
+    if (current_layout_object != nullptr) {
+      offset_x +=
+          current_layout_object->GetBorderBoundLeftFromParentPaddingBound();
+      offset_y +=
+          current_layout_object->GetBorderBoundTopFromParentPaddingBound();
+    }
+    do {
+      anchor = anchor->parent();
+    } while (anchor != nullptr && anchor->is_wrapper());
+  }
+
+  if (anchor == nullptr) {
+    return;
+  }
+
+  auto* anchor_layout_object = anchor->GetLayoutObject();
+  if (anchor_layout_object != nullptr) {
+    offset_x += anchor_layout_object->GetLayoutBorderLeftWidth();
+    offset_y += anchor_layout_object->GetLayoutBorderTopWidth();
+  }
+
+  const float width = layout_object->GetBorderBoundWidth();
+  const float height = layout_object->GetBorderBoundHeight();
+  BASE_STATIC_STRING_DECL(kFrameInRoot, "frameInRoot");
+  BASE_STATIC_STRING_DECL(kFrameInScreen, "frameInScreen");
+  AppendOffsetRectIfNeeded(position, kFrameInRoot, anchor->GetRectToLynxView(),
+                           offset_x, offset_y, width, height);
+  AppendOffsetRectIfNeeded(position, kFrameInScreen, anchor->GetRectToScreen(),
+                           offset_x, offset_y, width, height);
 }
 
 lepus::Value BuildAttributesValue(Element* node) {
@@ -212,14 +277,39 @@ lepus::Value BuildEventsValue(Element* node) {
   return lepus::Value(std::move(events));
 }
 
+std::string ResolveEntryName(Element* node) {
+  for (auto* current = node; current != nullptr; current = current->parent()) {
+    const auto& entry_name = current->entry_name();
+    if (!entry_name.empty()) {
+      return entry_name.str();
+    }
+  }
+  return "";
+}
+
+std::shared_ptr<PageConfig> ResolvePageConfig(Element* node) {
+  auto* element_manager = node->element_manager();
+  if (element_manager == nullptr) {
+    return nullptr;
+  }
+
+  auto* delegate = element_manager->element_manager_delegate();
+  auto entry_name = ResolveEntryName(node);
+  if (delegate != nullptr && !entry_name.empty()) {
+    auto entry_config = delegate->GetPageConfigForEntry(entry_name);
+    if (entry_config != nullptr) {
+      return entry_config;
+    }
+  }
+  return element_manager->GetConfig();
+}
+
 lepus::Value BuildDebugInfoValue(Element* node) {
   auto debug_info = lepus::Dictionary::Create();
   BASE_STATIC_STRING_DECL(kNodeIndex, "nodeIndex");
   debug_info->SetValue(kNodeIndex, node->NodeIndex());
 
-  auto* element_manager = node->element_manager();
-  auto config =
-      element_manager == nullptr ? nullptr : element_manager->GetConfig();
+  auto config = ResolvePageConfig(node);
   if (config != nullptr) {
     const auto debug_metadata_url = config->GetDebugMetadataUrl();
     if (!debug_metadata_url.empty()) {

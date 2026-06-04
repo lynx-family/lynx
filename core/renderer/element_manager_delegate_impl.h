@@ -47,6 +47,9 @@ class ElementManagerDelegateImpl : public ElementManagerDelegate {
   void SendGlobalEvent(const std::string &event,
                        const lepus::Value &info) override;
 
+  std::shared_ptr<PageConfig> GetPageConfigForEntry(
+      const std::string &entry_name) const override;
+
   void TriggerLepusGlobalEvent(const std::string &event,
                                const lepus::Value &info) override;
 
