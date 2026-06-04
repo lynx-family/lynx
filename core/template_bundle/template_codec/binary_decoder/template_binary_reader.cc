@@ -420,7 +420,8 @@ TemplateBinaryReader::CreateRecycler() {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, TEMPLATE_BINARY_READER_COMPLETE_DECODE);
   // 0. copy the binary the template bundle
   auto recycler =
-      TemplateBinaryReader::Create(stream_->begin(), stream_->size());
+      std::make_unique<TemplateBinaryReader>(stream_->DeriveInputStream());
+
   recycler->template_bundle() = template_bundle();
 
   // 1. copy css settings

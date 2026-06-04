@@ -8,6 +8,7 @@
 #include <vector>
 
 #include "core/list/decoupled_list_types.h"
+#include "core/renderer/dom/fiber/template_element.h"
 #include "core/renderer/dom/fragment/fragment.h"
 #include "core/renderer/dom/fragment/list_fragment_behavior.h"
 #include "core/renderer/dom/list_component_info.h"
@@ -41,6 +42,20 @@ void SetTemplateCallbackAttribute(lepus::Value* target,
     return;
   }
   target->CopyWeakValue(value);
+}
+
+int32_t ResolveTemplateElementRootId(ElementManager* element_manager,
+                                     int32_t element_id) {
+  if (element_manager == nullptr) {
+    return element_id;
+  }
+  auto* element = element_manager->node_manager()->Get(element_id);
+  if (element == nullptr || !element->is_template()) {
+    return element_id;
+  }
+  auto* template_element = static_cast<TemplateElement*>(element);
+  auto root = template_element->GetRoot();
+  return root != nullptr ? root->impl_id() : element_id;
 }
 
 }  // namespace
@@ -243,7 +258,8 @@ int32_t ListElement::ComponentAtIndex(uint32_t index, int64_t operationId,
 
   lepus::Value value = tasm_->CallLepusMethod(component_at_index_, args);
 
-  return static_cast<int32_t>(value.Number());
+  return ResolveTemplateElementRootId(element_manager_,
+                                      static_cast<int32_t>(value.Number()));
 }
 
 void ListElement::ComponentAtIndexes(
@@ -569,6 +585,10 @@ void ListElement::SetListOrientation(
 }
 
 void ListElement::ResetAttribute(const base::String& key) {
+  if (key.IsEqual(lynx::list::kPropFiberUpdateListInfo)) {
+    return;
+  }
+
   FiberElement::ResetAttribute(key);
 
   if (key.IsEquals(kScrollOrientation) || key.IsEquals(kVerticalOrientation)) {

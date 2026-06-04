@@ -4937,13 +4937,12 @@ RENDERER_FUNCTION_CC(FiberFlushElementTree) {
           fml::static_ref_ptr_cast<FiberElement>(arg0->RefCounted()).get();
     }
   }
-  fml::RefPtr<FiberElement> materialized_template_root;
-  if (element != nullptr && element->is_template()) {
-    materialized_template_root =
-        static_cast<TemplateElement*>(element)->GetRoot();
-    if (materialized_template_root != nullptr) {
-      element = materialized_template_root.get();
-    }
+
+  // TemplateElement's materialized root is not attached to the main element
+  // tree. Flush through the nearest non-template ancestor so the following
+  // patch pipeline can resolve a target that is attached to the root tree.
+  while (element != nullptr && element->is_template()) {
+    element = static_cast<FiberElement*>(element->parent());
   }
 
   bool trigger_data_updated = false;
