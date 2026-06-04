@@ -51,6 +51,11 @@ declare_args() {
   # Whether enable richtext.
   enable_richtext = false
 
+  # TTText build options.
+  tttext_lite = true
+  use_lru_cache = true
+  boundary_analyst = "simple"
+
   # use napi from primjs with primjs suffix.
   use_primjs_napi = false
 

@@ -164,6 +164,10 @@ LYNX_CAPI_EXPORT void lynx_view_emulate_mouse_event(lynx_view_t* view,
                                                     float delta_x,
                                                     float delta_y);
 
+// Internal backing for headless CDP `Lynx.dumpUITree`. The returned string is
+// allocated with lynx_strdup() and must be released with lynx_free().
+LYNX_CAPI_EXPORT char* lynx_view_dump_ui_tree_for_cdp(lynx_view_t* view);
+
 LYNX_EXTERN_C_END
 
 #endif  // PLATFORM_EMBEDDER_PUBLIC_CAPI_LYNX_VIEW_CAPI_H_

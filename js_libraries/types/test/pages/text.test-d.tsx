@@ -3,11 +3,50 @@
 // LICENSE file in the root directory of this source tree.
 
 import { assertType } from 'vitest';
-import { LayoutEvent, TextLineInfo, UIMethods } from '../../types';
+import { expectError } from 'tsd';
+import {
+  ContentEditable,
+  IntrinsicElements,
+  LayoutEvent,
+  TextLineInfo,
+  UIMethods,
+} from '../../types';
 import type { SelectionChangeEvent } from '../../types/common/element/text';
 
 // Props Types Check
+let a;
 {
+  <text contenteditable />;
+  <text contenteditable={true} />;
+  <text contenteditable={false} />;
+  <text contenteditable="" />;
+  <text contenteditable="true" />;
+  <text contenteditable="false" />;
+  <x-markdown contenteditable />;
+  <x-markdown contenteditable="" />;
+  <inline-text contenteditable />;
+  <inline-text contenteditable="true" />;
+  <inline-text text-maxline={'1'} />;
+  assertType<ContentEditable | undefined>(
+    a as IntrinsicElements['text']['contenteditable']
+  );
+  assertType<ContentEditable | undefined>(
+    a as IntrinsicElements['x-markdown']['contenteditable']
+  );
+  assertType<ContentEditable | undefined>(
+    a as IntrinsicElements['inline-text']['contenteditable']
+  );
+  expectError(() => {
+    // @ts-expect-error type error
+    <text contenteditable="inherit" />;
+    // @ts-expect-error type error
+    <text contenteditable="plaintext-only" />;
+    // @ts-expect-error type error
+    <x-markdown contenteditable="inherit" />;
+    // @ts-expect-error type error
+    <x-markdown contenteditable={1} />;
+  });
+
   <text text-maxline={'1'} />;
   <text text-maxlength={'1'} />;
   <text enable-font-scaling={true} />;
@@ -121,6 +160,25 @@ function invoke<T extends keyof UIMethods>(_param: UIMethods[T]) {}
     success: (res) => {
       assertType<{
         selectedText: string;
+      }>(res);
+    },
+  });
+
+  invoke<'x-markdown'>({
+    method: 'applySourcePatch',
+    params: {
+      start: 1,
+      end: 2,
+      replacement: '**',
+    },
+    success: (res) => {
+      assertType<{
+        value: string;
+        selectionStart: number;
+        selectionEnd: number;
+        applied: boolean;
+        fallback: boolean;
+        error?: string;
       }>(res);
     },
   });

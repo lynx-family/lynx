@@ -14,7 +14,11 @@
 #include "clay/gfx/geometry/float_point.h"
 #include "clay/third_party/txt/src/txt/paragraph.h"
 #include "clay/ui/common/measure_constraint.h"
+#include "clay/ui/common/text_selection.h"
 #include "clay/ui/common/text_input_type_traits.h"
+#include "clay/ui/component/editable/ime_listener.h"
+#include "clay/ui/component/editable/caret_blink_controller.h"
+#include "clay/ui/component/editable/text_input_controller.h"
 #include "clay/ui/component/overlay_view.h"
 #include "clay/ui/component/scroll_view.h"
 #include "clay/ui/component/selection_handle_view.h"
@@ -29,8 +33,18 @@
 
 namespace clay {
 
+class TextShadowNode;
+struct EditableInlineAtomicDelete;
+enum class EditableInlineStreamItemType;
+class BaseTextShadowNode;
+class BaseView;
+class RawTextShadowNode;
+class ShadowNode;
+
 class TextView : public WithTypeInfo<TextView, BaseTextView>,
-                 public GestureRecognizer::Delegate {
+                 public GestureRecognizer::Delegate,
+                 public IMEListener,
+                 public TextInputClient {
  public:
   TextView(int id, PageView* page_view);
   TextView(int id, const std::string& tag,
@@ -61,6 +75,21 @@ class TextView : public WithTypeInfo<TextView, BaseTextView>,
   void SetColor(Color color);
 
   bool OnKeyEvent(const KeyEvent* event) override;
+  void OnCommitText(std::string text) override;
+  void OnComposingText(std::string text) override;
+  void OnKeyboardEvent(std::unique_ptr<KeyEvent> key_event) override;
+  void OnDeleteSurroundingText(int before_length, int after_length) override;
+  void OnPerformAction(KeyboardAction action) override;
+  void OnFinishInput() override;
+  void UpdateEditingState(std::string text, TextSelection selection,
+                          TextRange composing, Affinity affinity) override;
+  void PerformAction() override;
+
+  bool IsContentEditable() const { return content_editable_; }
+  bool InsertEditableText(const std::u16string& text);
+  void SetEditableTextShadowNodeForTesting(TextShadowNode* node);
+  void SetEditableCaretOffsetForTesting(size_t offset);
+
   bool ApplyHotKey(const KeyEvent* key_event);
   void UpdateHotKeyTag(LogicalKeyboardKey key_code, bool is_up);
   void HandleCommandHotKey(LogicalKeyboardKey key_code);
@@ -143,7 +172,70 @@ class TextView : public WithTypeInfo<TextView, BaseTextView>,
                               int platform_try_hit_id = -1);
   bool ClickOnText(size_t glyph_index, const FloatPoint& point_by_paragraph,
                    txt::Paragraph* paragraph);
+  bool HandleEditableKeyEvent(const KeyEvent* key_event);
+  FloatPoint ViewPointToParagraphPoint(FloatPoint point_by_self);
+  TextShadowNode* GetEditableTextShadowNode();
+  bool IsRuntimeContentEditable();
+  void EnsureRuntimeContentEditableState();
+  size_t GetEditableStreamLength(TextShadowNode* shadow_node);
+  std::u16string GetEditableStreamText(TextShadowNode* shadow_node);
+  size_t GetEditableOffsetForPoint(const FloatPoint& point_by_paragraph);
+  bool GetEditableAtomicOffsetForPoint(const FloatPoint& point_by_paragraph,
+                                       size_t* editable_offset);
+  size_t GetEditableOffsetForRenderOffset(size_t render_offset);
+  size_t GetRenderOffsetForEditableOffset(size_t editable_offset);
+  size_t GetEditableOffsetForPlaceholderId(int placeholder_id);
+  std::pair<size_t, size_t> GetEditableSelectionRange(size_t stream_length);
+  void SetEditableSelectionRange(size_t base, size_t extent);
+  bool ReplaceEditableRange(size_t start, size_t end,
+                            const std::u16string& replacement,
+                            size_t selection_offset);
+  bool UndoEditableMutation();
+  void PushEditableUndoSnapshot(TextShadowNode* shadow_node);
+  void RemoveEditableAtomicViews(
+      const std::vector<EditableInlineAtomicDelete>& deletes);
+  void BeginEditableInput();
+  void EndEditableInput();
+  void SyncEditableInputStateToPlatform();
+  void UpdateEditableCaretRectToPlatform();
+  void MoveEditableCaretToOffset(size_t offset);
+  void RefreshEditableTextView(TextShadowNode* shadow_node);
+#ifndef ENABLE_CLAY_LITE
+  void UpdateContentEditableCaretBlinking();
+  void StopContentEditableCaretBlinking();
+#endif
+
   bool is_text_selection_ = false;
+  bool content_editable_ = false;
+  bool editable_caret_initialized_ = false;
+  size_t editable_caret_offset_ = 0;
+  size_t editable_selection_base_offset_ = 0;
+  size_t editable_selection_extent_offset_ = 0;
+  bool syncing_editable_input_state_ = false;
+  bool applying_editable_selection_to_render_ = false;
+  bool ignore_next_collapsed_render_selection_change_ = false;
+  TextShadowNode* editable_text_shadow_node_for_testing_ = nullptr;
+  std::unique_ptr<TextInputController> text_input_controller_;
+  struct EditableRawTextSnapshot {
+    RawTextShadowNode* node = nullptr;
+    std::u16string text;
+  };
+  struct EditableAtomicSnapshot {
+    EditableInlineStreamItemType type;
+    ShadowNode* node = nullptr;
+    BaseTextShadowNode* parent = nullptr;
+    int child_index = -1;
+    BaseView* view_parent = nullptr;
+    int view_child_index = -1;
+    int placeholder_id = -1;
+  };
+  struct EditableUndoSnapshot {
+    std::vector<EditableRawTextSnapshot> raw_texts;
+    std::vector<EditableAtomicSnapshot> atomic_children;
+    size_t selection_base = 0;
+    size_t selection_extent = 0;
+  };
+  std::vector<EditableUndoSnapshot> editable_undo_stack_;
   MultiTapGestureRecognizer* multi_tap_recognizer_ = nullptr;
 #if defined(OS_ANDROID) || defined(OS_IOS)
   LongPressGestureRecognizer* long_press_recognizer_ = nullptr;
@@ -155,6 +247,7 @@ class TextView : public WithTypeInfo<TextView, BaseTextView>,
   OverlayView* selection_handle_container_ = nullptr;
   SelectionHandleView* start_selection_handle_ = nullptr;
   SelectionHandleView* end_selection_handle_ = nullptr;
+  std::unique_ptr<CaretBlinkController> caret_blink_controller_;
   int selection_start_pos_ = -1;
   int selection_end_pos_ = -1;
   FloatPoint scroll_offset_;

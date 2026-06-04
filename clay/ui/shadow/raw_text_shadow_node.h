@@ -25,11 +25,14 @@ class RawTextShadowNode : public ShadowNode {
   void SetAttribute(const char* attr_c, const clay::Value& value) override;
   void SetText(const std::string& text);
   void SetText(const std::u16string& text);
+  bool ReplaceEditableTextRange(size_t start, size_t end,
+                                const std::u16string& replacement);
 
   void TextLayout(LayoutContext* context) override;
   bool IfNeedTextIndent();
 
   std::u16string Text() { return text_.substr(0, truncated_index_); }
+  const std::u16string& EditableText() const { return origin_text_; }
 
   bool IsVirtual() override { return true; }
 
@@ -47,8 +50,11 @@ class RawTextShadowNode : public ShadowNode {
   void AddTextWithInlineEmoji(LayoutContextText* text_context,
                               const std::u16string& text,
                               bool need_text_indent);
+  size_t StartGlyph() const { return start_glyph_; }
+  size_t EndGlyph() const { return end_glyph_; }
   size_t GetLayoutTextLength() const;
   size_t GetRawEndIndexForLayoutTextLength(size_t layout_text_length) const;
+  size_t GetLayoutTextLengthForRawEndIndex(size_t raw_end_index) const;
 
  private:
   struct InlineEmojiTextRange {
@@ -63,6 +69,8 @@ class RawTextShadowNode : public ShadowNode {
 
   std::u16string origin_text_;
   std::u16string text_;
+  size_t start_glyph_ = 0;
+  size_t end_glyph_ = 0;
   std::vector<InlineEmojiTextRange> inline_emoji_text_ranges_;
   std::vector<size_t> layout_text_to_raw_end_indices_;
 };

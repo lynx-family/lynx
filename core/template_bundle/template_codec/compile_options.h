@@ -68,43 +68,43 @@ struct CompileOptions {
   ArchOption arch_option_ = RADON_ARCH;
 
   // Compile options auto generated start
-  std::string target_sdk_version_{""};
-  std::string template_debug_url_{""};
-  bool enable_css_external_class_{true};
-  bool enable_lepus_ng_{false};
-  bool enable_css_class_merge_{false};
-  bool enable_remove_css_scope_{false};
-  bool disable_multiple_cascade_css_{false};
-  bool remove_css_parser_log_{false};
-  bool lepusng_debuginfo_outside_{false};
-  bool enable_dynamic_component_{true};
-  bool enable_css_strict_mode_{false};
-  bool default_overflow_visible_{true};
-  bool enable_css_variable_{true};
-  bool default_implicit_animation_{false};
-  bool enable_keep_page_data{false};
-  bool default_display_linear_{true};
-  bool enable_lynx_air_{false};
-  FeOption enable_lazy_css_decode_{FE_OPTION_UNDEFINED};
-  FeOption enable_event_refactor_{FE_OPTION_UNDEFINED};
-  FeOption force_calc_new_style_{FE_OPTION_UNDEFINED};
-  FeOption enable_async_css_decode_{FE_OPTION_UNDEFINED};
-  bool enable_css_engine{true};
-  bool enable_component_config_{false};
-  uint8_t lynx_air_mode_{AIR_MODE_OFF};
-  bool enable_fiber_arch_{false};
-  bool enable_flexible_template_{false};
-  bool enable_css_selector_{false};
-  bool enable_reuse_context{false};
-  bool enable_css_invalidation_{false};
-  bool enable_air_raw_css_{true};
-  bool encode_quickjs_bytecode_{false};
-  bool enable_async_lepus_chunk_decode_{false};
-  bool enable_simple_styling_{false};
-  bool enable_opt_lepus_bytecode_{false};
-  uint8_t context_type_{0};
-  bool enable_keyframe_custom_property_declaration_{false};
-  // Compile options auto generated end
+                                                                                std::string target_sdk_version_{""};
+      std::string template_debug_url_{""};
+      bool enable_css_external_class_{true};
+      bool enable_lepus_ng_{false};
+      bool enable_css_class_merge_{false};
+      bool enable_remove_css_scope_{false};
+      bool disable_multiple_cascade_css_{false};
+      bool remove_css_parser_log_{false};
+      bool lepusng_debuginfo_outside_{false};
+      bool enable_dynamic_component_{true};
+      bool enable_css_strict_mode_{false};
+      bool default_overflow_visible_{true};
+      bool enable_css_variable_{true};
+      bool default_implicit_animation_{false};
+      bool enable_keep_page_data{false};
+      bool default_display_linear_{true};
+      bool enable_lynx_air_{false};
+      FeOption enable_lazy_css_decode_{FE_OPTION_UNDEFINED};
+      FeOption enable_event_refactor_{FE_OPTION_UNDEFINED};
+      FeOption force_calc_new_style_{FE_OPTION_UNDEFINED};
+      FeOption enable_async_css_decode_{FE_OPTION_UNDEFINED};
+      bool enable_css_engine{true};
+      bool enable_component_config_{false};
+      uint8_t lynx_air_mode_{AIR_MODE_OFF};
+      bool enable_fiber_arch_{false};
+      bool enable_flexible_template_{false};
+      bool enable_css_selector_{false};
+      bool enable_reuse_context{false};
+      bool enable_css_invalidation_{false};
+      bool enable_air_raw_css_{true};
+      bool encode_quickjs_bytecode_{false};
+      bool enable_async_lepus_chunk_decode_{false};
+      bool enable_simple_styling_{false};
+      bool enable_opt_lepus_bytecode_{false};
+      uint8_t context_type_{0};
+      bool enable_keyframe_custom_property_declaration_{false};
+                                                      // Compile options auto generated end
 
   // Derived from page config at compile/decode time. Do not serialize it into
   // the template header.

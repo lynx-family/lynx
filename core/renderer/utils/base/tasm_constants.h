@@ -164,6 +164,7 @@ static constexpr const char kSrc[] = "src";
 static constexpr const char kTextAttr[] = "text";
 static constexpr const char kTextMaxlineAttr[] = "text-maxline";
 static constexpr const char kTextOverflowAttr[] = "text-overflow";
+static constexpr const char kContentEditableAttr[] = "contenteditable";
 static constexpr const char kImageAutoSize[] = "auto-size";
 
 // storage API

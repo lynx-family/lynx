@@ -214,6 +214,11 @@ void RenderText::SetCaretVisible(bool visible) {
   }
 }
 
+void RenderText::SetCaretColor(const Color& color) {
+  caret_color_ = color;
+  MarkNeedsPaint();
+}
+
 void RenderText::SetAllSelection() {
   SetSelection(TextRange(0, text_.length()));
 }
@@ -241,7 +246,7 @@ void RenderText::PaintCaret(GraphicsContext* context) {
     return;
   }
   class Paint paint;
-  paint.setColor(kCaretColor);
+  paint.setColor(caret_color_ ? caret_color_->Value() : kCaretColor);
   context->DrawRect(caret_rect, paint);
 }
 

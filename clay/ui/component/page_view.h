@@ -214,6 +214,7 @@ class PageView : public BaseView,
   void RequestInput(IMEListener* ime_listener, KeyboardInputType type,
                     KeyboardAction action);
   void StopInput(IMEListener* ime_listener);
+  bool CommitTextInput(const std::string& text);
 
   void TriggerFirstPaintCallback();
 

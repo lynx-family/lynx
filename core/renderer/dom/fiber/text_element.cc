@@ -19,6 +19,13 @@
 
 namespace lynx {
 namespace tasm {
+namespace {
+
+bool ShouldParseContentEditable(const base::String& tag) {
+  return !tag.IsEqual(kElementXTextTag) && !tag.IsEqual(kElementXInlineTextTag);
+}
+
+}  // namespace
 
 TextElement::TextElement(ElementManager* manager, const base::String& tag)
     : FiberElement(manager, tag) {
@@ -100,6 +107,11 @@ base::String TextElement::ConvertContent(const lepus::Value value) {
 
 void TextElement::SetAttributeInternal(const base::String& key,
                                        const lepus::Value& value) {
+  if (key.IsEqual(kContentEditableAttr) && ShouldParseContentEditable(tag_)) {
+    EnsureTextProps();
+    text_props_->content_editable = ParseContentEditableState(value);
+  }
+
   bool processed = EnableLayoutInElementMode()
                        ? ProcessAttributeForLayoutInElement(key, value)
                        : ProcessAttributeForNormalLayoutMode(key, value);
@@ -109,6 +121,12 @@ void TextElement::SetAttributeInternal(const base::String& key,
 }
 
 void TextElement::ResetAttribute(const base::String& key) {
+  if (key.IsEqual(kContentEditableAttr) && ShouldParseContentEditable(tag_)) {
+    EnsureTextProps();
+    text_props_->content_editable =
+        TextProps::ContentEditableState::kNotEditable;
+  }
+
   if (!EnableLayoutInElementMode() && key.IsEqual(kTextOverflowAttr)) {
     RemoveStyleFromAttributes(kPropertyIDTextOverflow);
   }

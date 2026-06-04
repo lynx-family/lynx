@@ -54,6 +54,7 @@ class ClayHeadlessEngine : public clay::PlatformViewEmbedderDelegate {
   void SendPointerEvents(const ClayPointerEvent* events, size_t events_count);
   void SendKeyEvent(const ClayKeyEvent* event, ClayKeyEventCallback callback,
                     void* user_data);
+  bool CommitTextInput(const char* text);
   void PostPlatformThreadTask(ClayVoidCallback callback, void* callback_data);
   void* GetViewContext();
 

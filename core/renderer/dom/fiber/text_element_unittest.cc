@@ -28,6 +28,71 @@ namespace testing {
 
 class TextElementTest : public FiberElementTest {};
 
+TEST_P(TextElementTest, ContentEditableParsing) {
+  auto config = std::make_shared<PageConfig>();
+  config->SetEnableFiberArch(true);
+  manager->SetConfig(config);
+
+  auto text = manager->CreateFiberText("text");
+  auto attr = BASE_STATIC_STRING(kContentEditableAttr);
+
+  text->SetAttribute(attr, lepus::Value(true));
+  ASSERT_NE(text->text_props(), nullptr);
+  EXPECT_EQ(text->text_props()->content_editable,
+            TextProps::ContentEditableState::kEditable);
+
+  text->SetAttribute(attr, lepus::Value(""));
+  EXPECT_EQ(text->text_props()->content_editable,
+            TextProps::ContentEditableState::kEditable);
+
+  text->SetAttribute(attr, lepus::Value(false));
+  EXPECT_EQ(text->text_props()->content_editable,
+            TextProps::ContentEditableState::kNotEditable);
+
+  text->SetAttribute(attr, lepus::Value("false"));
+  EXPECT_EQ(text->text_props()->content_editable,
+            TextProps::ContentEditableState::kNotEditable);
+
+  text->SetAttribute(attr, lepus::Value("inherit"));
+  EXPECT_EQ(text->text_props()->content_editable,
+            TextProps::ContentEditableState::kNotEditable);
+
+  text->SetAttribute(attr, lepus::Value("plaintext-only"));
+  EXPECT_EQ(text->text_props()->content_editable,
+            TextProps::ContentEditableState::kNotEditable);
+
+  text->SetAttribute(attr, lepus::Value("invalid"));
+  EXPECT_EQ(text->text_props()->content_editable,
+            TextProps::ContentEditableState::kNotEditable);
+
+  text->SetAttribute(attr, lepus::Value(1));
+  EXPECT_EQ(text->text_props()->content_editable,
+            TextProps::ContentEditableState::kNotEditable);
+
+  text->SetAttribute(attr, lepus::Value(true));
+  text->ResetAttribute(attr);
+  EXPECT_EQ(text->text_props()->content_editable,
+            TextProps::ContentEditableState::kNotEditable);
+
+  auto x_text = manager->CreateFiberText("x-text");
+  x_text->SetAttribute(attr, lepus::Value(true));
+  EXPECT_EQ(x_text->text_props(), nullptr);
+
+  auto inline_text = manager->CreateFiberText("inline-text");
+  inline_text->SetAttribute(attr, lepus::Value(true));
+  ASSERT_NE(inline_text->text_props(), nullptr);
+  EXPECT_EQ(inline_text->text_props()->content_editable,
+            TextProps::ContentEditableState::kEditable);
+
+  inline_text->SetAttribute(attr, lepus::Value(false));
+  EXPECT_EQ(inline_text->text_props()->content_editable,
+            TextProps::ContentEditableState::kNotEditable);
+
+  auto x_inline_text = manager->CreateFiberText("x-inline-text");
+  x_inline_text->SetAttribute(attr, lepus::Value(true));
+  EXPECT_EQ(x_inline_text->text_props(), nullptr);
+}
+
 TEST_P(TextElementTest, TestInlineText) {
   auto config = std::make_shared<PageConfig>();
   config->SetEnableFiberArch(true);

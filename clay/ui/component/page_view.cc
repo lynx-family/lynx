@@ -1322,6 +1322,16 @@ void PageView::StopInput(IMEListener* ime_listener) {
   }
 }
 
+bool PageView::CommitTextInput(const std::string& text) {
+  if (!ime_listener_) {
+    return false;
+  }
+  OnKeyboardEvent(std::make_unique<KeyEvent>(
+      fml::TimePoint::Now().ToEpochDelta().ToMicroseconds(),
+      KeyEventType::kCommitText, 0, 0, true, text));
+  return true;
+}
+
 void PageView::Invalidate() { RequestNewFrame(); }
 
 void PageView::RequestNewFrame() {

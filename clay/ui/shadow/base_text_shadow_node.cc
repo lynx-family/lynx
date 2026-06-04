@@ -8,6 +8,7 @@
 #include <cmath>
 #include <codecvt>
 #include <cstdint>
+#include <cstring>
 #include <limits>
 #include <memory>
 #include <string_view>
@@ -24,7 +25,9 @@
 #include "clay/ui/component/text/layout_context.h"
 #include "clay/ui/component/text/text_paragraph_builder.h"
 #include "clay/ui/component/text/text_style.h"
+#include "clay/ui/component/text/unicode_util.h"
 #include "clay/ui/resource/font_collection.h"
+#include "clay/ui/shadow/inline_image_shadow_node.h"
 #include "clay/ui/shadow/inline_text_shadow_node.h"
 #include "clay/ui/shadow/inline_view_shadow_node.h"
 #include "clay/ui/shadow/measure_utils.h"
@@ -37,6 +40,153 @@ namespace clay {
 namespace utils = attribute_utils;
 namespace {
 static constexpr float kDefaultFontSizeInDip = 14.f;
+
+void AppendTextItem(EditableInlineStream& stream, ShadowNode* node,
+                    std::u16string text, size_t& offset) {
+  if (text.empty()) {
+    return;
+  }
+  EditableInlineStreamItem item;
+  item.type = EditableInlineStreamItemType::kText;
+  item.start = offset;
+  item.length = text.length();
+  item.node = node;
+  item.text = std::move(text);
+  stream.push_back(std::move(item));
+  offset += stream.back().length;
+}
+
+void AppendAtomicItem(EditableInlineStream& stream, ShadowNode* node,
+                      EditableInlineStreamItemType type, size_t& offset) {
+  EditableInlineStreamItem item;
+  item.type = type;
+  item.start = offset;
+  item.length = 1;
+  item.node = node;
+  stream.push_back(std::move(item));
+  ++offset;
+}
+
+void AppendEditableInlineStream(BaseTextShadowNode* node,
+                                EditableInlineStream& stream,
+                                size_t& offset) {
+  for (auto* child : node->GetChildren()) {
+    if (child->IsRawTextShadowNode()) {
+      AppendTextItem(stream, child,
+                     static_cast<RawTextShadowNode*>(child)->EditableText(),
+                     offset);
+    } else if (child->IsInlineTextShadowNode()) {
+      AppendEditableInlineStream(static_cast<InlineTextShadowNode*>(child),
+                                 stream, offset);
+    } else if (child->IsInlineImageShadowNode()) {
+      AppendAtomicItem(stream, child,
+                       EditableInlineStreamItemType::kAtomicInlineImage,
+                       offset);
+    } else if (child->IsInlineViewShadowNode()) {
+      AppendAtomicItem(stream, child,
+                       EditableInlineStreamItemType::kAtomicInlineView,
+                       offset);
+    }
+  }
+}
+
+size_t EditableInlineItemEnd(const EditableInlineStreamItem& item) {
+  return item.start + item.length;
+}
+
+bool IsEditableInlineAtomicItem(const EditableInlineStreamItem& item) {
+  return item.type == EditableInlineStreamItemType::kAtomicInlineImage ||
+         item.type == EditableInlineStreamItemType::kAtomicInlineView;
+}
+
+bool EditableInlineRangeIntersects(const EditableInlineStreamItem& item,
+                                   size_t start, size_t end) {
+  return end > item.start && start < EditableInlineItemEnd(item);
+}
+
+size_t EditableInlineStreamLength(const EditableInlineStream& stream) {
+  if (stream.empty()) {
+    return 0;
+  }
+  return EditableInlineItemEnd(stream.back());
+}
+
+bool FindEditableTextInsertionPoint(const EditableInlineStream& stream,
+                                    size_t start, size_t end,
+                                    RawTextShadowNode** node,
+                                    size_t* offset) {
+  for (const auto& item : stream) {
+    if (item.type != EditableInlineStreamItemType::kText) {
+      continue;
+    }
+    auto item_end = EditableInlineItemEnd(item);
+    if (item.start <= start && start <= item_end) {
+      *node = static_cast<RawTextShadowNode*>(item.node);
+      *offset = std::min(start - item.start, item.length);
+      return true;
+    }
+  }
+
+  for (const auto& item : stream) {
+    if (item.type != EditableInlineStreamItemType::kText) {
+      continue;
+    }
+    if (item.start == end) {
+      *node = static_cast<RawTextShadowNode*>(item.node);
+      *offset = 0;
+      return true;
+    }
+  }
+
+  return false;
+}
+
+bool IsContentEditableAttribute(const char* attr) {
+  return attr && std::strcmp(attr, "contenteditable") == 0;
+}
+
+bool IsSnapshotValuesAttribute(const char* attr) {
+  return attr && std::strcmp(attr, "values") == 0;
+}
+
+bool ParseContentEditableValue(const clay::Value& value) {
+  if (value.IsBool()) {
+    return value.GetBool();
+  }
+  if (value.IsString()) {
+    const auto& text = value.GetString();
+    return text.empty() || text == "true";
+  }
+  return false;
+}
+
+bool TryParseContentEditableFromSnapshotValue(const clay::Value& value,
+                                              bool* enabled) {
+  if (value.IsMap()) {
+    const auto& map = value.GetMap();
+    auto iter = map.find("contenteditable");
+    if (iter != map.end()) {
+      *enabled = ParseContentEditableValue(iter->second);
+      return true;
+    }
+    return false;
+  }
+  if (value.IsArray()) {
+    for (const auto& item : value.GetArray()) {
+      if (TryParseContentEditableFromSnapshotValue(item, enabled)) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+struct EditableTextEdit {
+  RawTextShadowNode* node = nullptr;
+  size_t start = 0;
+  size_t end = 0;
+  std::u16string replacement;
+};
 }
 
 BaseTextShadowNode::BaseTextShadowNode(ShadowNodeOwner* owner, std::string tag,
@@ -70,6 +220,17 @@ void BaseTextShadowNode::OnLayout(float width, TextMeasureMode width_mode,
 
 void BaseTextShadowNode::SetAttribute(const char* attr_c,
                                       const clay::Value& value) {
+  bool content_editable_value = false;
+  if (IsContentEditableAttribute(attr_c) ||
+      (IsSnapshotValuesAttribute(attr_c) &&
+       TryParseContentEditableFromSnapshotValue(value,
+                                                &content_editable_value))) {
+    content_editable_ = IsContentEditableAttribute(attr_c)
+                            ? ParseContentEditableValue(value)
+                            : content_editable_value;
+    return;
+  }
+
   auto kw = GetKeywordID(attr_c);
   SetAttribute(kw, attr_c, value);
 }
@@ -248,6 +409,11 @@ void BaseTextShadowNode::SetAttribute(KeywordID kw, const char* attr_c,
 }
 
 void BaseTextShadowNode::CreateRawTextNodeIfNeed(std::string text) {
+  CreateRawTextNodeIfNeed(UnicodeUtil::Utf8ToUtf16(text));
+}
+
+void BaseTextShadowNode::CreateRawTextNodeIfNeed(
+    const std::u16string& text) {
   if (IsTextShadowNode() || IsInlineTextShadowNode()) {
     for (auto child : GetChildren()) {
       if (child->IsRawTextShadowNode()) {
@@ -699,6 +865,99 @@ std::u16string BaseTextShadowNode::GetRawText() {
     }
     return result;
   }
+}
+
+EditableInlineStream BaseTextShadowNode::BuildEditableInlineStream() {
+  EditableInlineStream stream;
+  size_t offset = 0;
+  AppendEditableInlineStream(this, stream, offset);
+  return stream;
+}
+
+EditableInlineMutationResult
+BaseTextShadowNode::ApplyEditableInlineStreamMutation(
+    size_t start, size_t end, const std::u16string& replacement) {
+  EditableInlineMutationResult result;
+  result.selection_offset = start + replacement.length();
+
+  if (start > end) {
+    result.status = EditableInlineMutationStatus::kInvalidRange;
+    return result;
+  }
+
+  auto stream = BuildEditableInlineStream();
+  if (end > EditableInlineStreamLength(stream)) {
+    result.status = EditableInlineMutationStatus::kInvalidRange;
+    return result;
+  }
+
+  for (const auto& item : stream) {
+    if (!IsEditableInlineAtomicItem(item) ||
+        !EditableInlineRangeIntersects(item, start, end)) {
+      continue;
+    }
+    auto item_end = EditableInlineItemEnd(item);
+    if (start > item.start || end < item_end) {
+      result.status =
+          EditableInlineMutationStatus::kAtomicRangeMustCoverToken;
+      result.selection_offset = start;
+      return result;
+    }
+    result.atomic_deletes.push_back(
+        EditableInlineAtomicDelete{item.type, item.start, item.node});
+  }
+
+  RawTextShadowNode* insertion_node = nullptr;
+  size_t insertion_offset = 0;
+  bool replacement_consumed = replacement.empty();
+  if (!replacement.empty() &&
+      !FindEditableTextInsertionPoint(stream, start, end, &insertion_node,
+                                      &insertion_offset)) {
+    result.has_pending_text_insertion = true;
+    result.pending_text_insertion_offset = start;
+    result.pending_text_insertion = replacement;
+    replacement_consumed = true;
+  }
+
+  std::vector<EditableTextEdit> edits;
+  for (const auto& item : stream) {
+    if (item.type != EditableInlineStreamItemType::kText) {
+      continue;
+    }
+
+    auto item_end = EditableInlineItemEnd(item);
+    auto overlap_start = std::max(start, item.start);
+    auto overlap_end = std::min(end, item_end);
+    if (overlap_start >= overlap_end) {
+      continue;
+    }
+
+    auto* raw_text = static_cast<RawTextShadowNode*>(item.node);
+    auto local_start = overlap_start - item.start;
+    auto local_end = overlap_end - item.start;
+    std::u16string edit_replacement;
+    if (!replacement_consumed && raw_text == insertion_node &&
+        local_start == insertion_offset) {
+      edit_replacement = replacement;
+      replacement_consumed = true;
+    }
+    edits.push_back(
+        EditableTextEdit{raw_text, local_start, local_end, edit_replacement});
+  }
+
+  if (!replacement_consumed && insertion_node) {
+    edits.push_back(EditableTextEdit{insertion_node, insertion_offset,
+                                     insertion_offset, replacement});
+  }
+
+  for (auto edit = edits.rbegin(); edit != edits.rend(); ++edit) {
+    if (edit->node->ReplaceEditableTextRange(edit->start, edit->end,
+                                             edit->replacement)) {
+      result.text_changed = true;
+    }
+  }
+
+  return result;
 }
 
 }  // namespace clay

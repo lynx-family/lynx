@@ -12,6 +12,7 @@
 #include "clay/common/service/service_manager.h"
 #include "clay/gfx/image/animated_image.h"
 #include "clay/gfx/image/base_image.h"
+#include "clay/gfx/image/platform_image.h"
 #include "clay/gfx/image/static_image.h"
 #include "clay/gfx/image/svg_image.h"
 #include "clay/net/loader/resource_loader.h"
@@ -20,10 +21,100 @@
 #include "clay/net/url/url_helper.h"
 #include "skity/codec/codec.hpp"
 #include "skity/graphic/image.hpp"
+#include "skity/io/data.hpp"
+#include "skity/io/pixmap.hpp"
 
 namespace clay {
 
 namespace {
+
+std::shared_ptr<ResourceLoader> GetOrCreateResourceLoader(
+    std::shared_ptr<ResourceLoaderIntercept> intercept, const std::string& url,
+    fml::RefPtr<fml::TaskRunner> task_runner,
+    std::shared_ptr<ServiceManager> service_manager);
+
+class StaticPlatformImage final : public PlatformImage {
+ public:
+  explicit StaticPlatformImage(std::shared_ptr<skity::Pixmap> pixmap)
+      : pixmap_(std::move(pixmap)) {}
+
+  int GetWidth() override { return pixmap_ ? pixmap_->Width() : 0; }
+
+  int GetHeight() override { return pixmap_ ? pixmap_->Height() : 0; }
+
+  int64_t GetDuration() override { return 0; }
+
+  std::shared_ptr<skity::Pixmap> ToBitmap() override { return pixmap_; }
+
+  void DrawFrame(std::function<void()> on_frame_changed) override {
+    if (on_frame_changed) {
+      on_frame_changed();
+    }
+  }
+
+  bool IsAnimated() override { return false; }
+
+  void SetAutoPlay(bool) override {}
+  void SetLoopCount(int) override {}
+  void StartAnimation() override {}
+  void StopAnimation() override {}
+  void PauseAnimation() override {}
+  void ResumeAnimation() override {}
+
+ private:
+  std::shared_ptr<skity::Pixmap> pixmap_;
+};
+
+std::shared_ptr<PlatformImage> DecodePlatformImage(const uint8_t* data,
+                                                   size_t size) {
+  if (data == nullptr || size == 0) {
+    return nullptr;
+  }
+
+  auto skity_data = skity::Data::MakeWithCopy(data, size);
+  auto codec = skity::Codec::MakeFromData(skity_data);
+  if (!codec) {
+    return nullptr;
+  }
+
+  codec->SetData(skity_data);
+  auto pixmap = codec->Decode();
+  if (!pixmap) {
+    return nullptr;
+  }
+
+  return std::make_shared<StaticPlatformImage>(std::move(pixmap));
+}
+
+class DefaultImageFetcher final : public ImageFetcher {
+ public:
+  DefaultImageFetcher(std::shared_ptr<ResourceLoaderIntercept> intercept,
+                      clay::TaskRunners task_runners,
+                      fml::RefPtr<GPUUnrefQueue> unref_queue,
+                      std::shared_ptr<ServiceManager> service_manager)
+      : ImageFetcher(std::move(intercept), std::move(task_runners),
+                     std::move(unref_queue), std::move(service_manager)) {}
+
+ private:
+  void FetchImage(
+      const std::string& trimmed_url,
+      const std::function<void(std::shared_ptr<PlatformImage>)>& callback)
+      override {
+    auto loader = GetOrCreateResourceLoader(
+        resource_loader_intercept_, trimmed_url, task_runners_.GetUITaskRunner(),
+        service_manager_);
+    if (!loader) {
+      callback(nullptr);
+      return;
+    }
+
+    url_loader_map_[trimmed_url] = loader;
+    loader->Load(trimmed_url,
+                 [callback](const uint8_t* data, size_t size) {
+                   callback(DecodePlatformImage(data, size));
+                 });
+  }
+};
 
 uint64_t NextUniqueID() {
   static std::atomic<uint64_t> next_id(1);
@@ -71,6 +162,15 @@ ImageFetcher::ImageFetcher(std::shared_ptr<ResourceLoaderIntercept> intercept,
           task_runners_.GetUITaskRunner())) {}
 
 ImageFetcher::~ImageFetcher() = default;
+
+fml::RefPtr<ImageFetcher> ImageFetcher::Create(
+    std::shared_ptr<ResourceLoaderIntercept> intercept,
+    clay::TaskRunners task_runners, fml::RefPtr<GPUUnrefQueue> unref_queue,
+    std::shared_ptr<ServiceManager> service_manager) {
+  return fml::MakeRefCounted<DefaultImageFetcher>(
+      std::move(intercept), std::move(task_runners), std::move(unref_queue),
+      std::move(service_manager));
+}
 
 uint64_t ImageFetcher::FetchImage(const std::string& original_url, bool is_svg,
                                   const ImageCallback& callback) {

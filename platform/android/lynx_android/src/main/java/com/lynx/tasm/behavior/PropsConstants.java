@@ -35,6 +35,7 @@ public class PropsConstants {
   public static final String TEXT_OVERFLOW = "text-overflow";
   public static final String TEXT_MAXLINE = "text-maxline";
   public static final String TEXT_MAXLENGTH = "text-maxlength";
+  public static final String CONTENT_EDITABLE = "contenteditable";
   public static final String SKIP_REDIRECTION = "skip-redirection";
   public static final String SKIP_PLACEHOLDER_REDIRECTION = "skip-placeholder-redirection";
   public static final String SRC = "src";

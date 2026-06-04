@@ -26,898 +26,603 @@ class LynxConfigDecoder final {
   LynxConfigDecoder& operator=(LynxConfigDecoder&&) = delete;
 
   static inline void DecodePageConfig(std::shared_ptr<PageConfig>& page_config,
-                                      const rapidjson::Document& doc,
-                                      const std::string& target_sdk_version) {
-    if (doc.HasMember(config::kVersion) && doc[config::kVersion].IsString()) {
-      page_config->SetVersion(doc[config::kVersion].GetString());
-    }
-
-    if (doc.HasMember(config::kCliVersion) &&
-        doc[config::kCliVersion].IsString()) {
-      page_config->SetCliVersion(doc[config::kCliVersion].GetString());
-    }
-
-    if (doc.HasMember(config::kReactVersion) &&
-        doc[config::kReactVersion].IsString()) {
-      page_config->SetReactVersion(doc[config::kReactVersion].GetString());
-    }
-
-    if (doc.HasMember(config::kCustomData) &&
-        doc[config::kCustomData].IsString()) {
-      page_config->SetCustomData(doc[config::kCustomData].GetString());
-    }
-
-    if (doc.HasMember(config::kDebugMetadataUrl) &&
-        doc[config::kDebugMetadataUrl].IsString()) {
-      page_config->SetDebugMetadataUrl(
-          doc[config::kDebugMetadataUrl].GetString());
-    }
-
-    if (doc.HasMember(config::kTapSlop) && doc[config::kTapSlop].IsString()) {
-      page_config->SetTapSlop(doc[config::kTapSlop].GetString());
-    }
-
-    if (doc.HasMember(config::kPreferredFps) &&
-        doc[config::kPreferredFps].IsString()) {
-      page_config->SetPreferredFps(doc[config::kPreferredFps].GetString());
-    }
-
-    if (doc.HasMember(config::kLepusGCThreshold) &&
-        doc[config::kLepusGCThreshold].IsInt64()) {
-      page_config->SetLepusGCThreshold(
-          doc[config::kLepusGCThreshold].GetInt64());
-    }
-
-    if (doc.HasMember(config::kPipelineSchedulerConfig) &&
-        doc[config::kPipelineSchedulerConfig].IsUint64()) {
-      page_config->SetPipelineSchedulerConfig(
-          doc[config::kPipelineSchedulerConfig].GetUint64());
-    }
-
-    if (doc.HasMember(config::kLogBoxImageSizeWarningThreshold) &&
-        doc[config::kLogBoxImageSizeWarningThreshold].IsUint()) {
-      page_config->SetLogBoxImageSizeWarningThreshold(
-          doc[config::kLogBoxImageSizeWarningThreshold].GetUint());
-    }
-
-    if (doc.HasMember(config::kLepusQuickjsStacksize) &&
-        doc[config::kLepusQuickjsStacksize].IsUint()) {
-      page_config->SetLepusQuickjsStackSize(
-          doc[config::kLepusQuickjsStacksize].GetUint());
-    }
-
-    if (doc.HasMember(config::kObserverFrameRate) &&
-        doc[config::kObserverFrameRate].IsInt()) {
-      page_config->SetObserverFrameRate(
-          doc[config::kObserverFrameRate].GetInt());
-    }
-
-    if (doc.HasMember(config::kLongPressDuration) &&
-        doc[config::kLongPressDuration].IsInt()) {
-      page_config->SetLongPressDuration(
-          doc[config::kLongPressDuration].GetInt());
-    }
-
-    if (doc.HasMember(config::kUseNewImage) &&
-        doc[config::kUseNewImage].IsBool()) {
-      page_config->SetUseNewImage(doc[config::kUseNewImage].GetBool()
-                                      ? TernaryBool::TRUE_VALUE
-                                      : TernaryBool::FALSE_VALUE);
-    }
-
-    if (doc.HasMember(config::kEnableTextBoringLayout) &&
-        doc[config::kEnableTextBoringLayout].IsBool()) {
-      page_config->SetEnableTextBoringLayout(
-          doc[config::kEnableTextBoringLayout].GetBool()
-              ? TernaryBool::TRUE_VALUE
-              : TernaryBool::FALSE_VALUE);
-    }
-
-    if (doc.HasMember(config::kEnableTextLayerRender) &&
-        doc[config::kEnableTextLayerRender].IsBool()) {
-      page_config->SetEnableTextLayerRender(
-          doc[config::kEnableTextLayerRender].GetBool()
-              ? TernaryBool::TRUE_VALUE
-              : TernaryBool::FALSE_VALUE);
-    }
-
-    if (doc.HasMember(config::kEnableUseMapBuffer) &&
-        doc[config::kEnableUseMapBuffer].IsBool()) {
-      page_config->SetEnableUseMapBuffer(
-          doc[config::kEnableUseMapBuffer].GetBool()
-              ? TernaryBool::TRUE_VALUE
-              : TernaryBool::FALSE_VALUE);
-    }
-
-    if (doc.HasMember(config::kEnableOptPushStyleToBundle) &&
-        doc[config::kEnableOptPushStyleToBundle].IsBool()) {
-      page_config->SetEnableOptPushStyleToBundle(
-          doc[config::kEnableOptPushStyleToBundle].GetBool()
-              ? TernaryBool::TRUE_VALUE
-              : TernaryBool::FALSE_VALUE);
-    }
-
-    if (doc.HasMember(config::kEnableTextLayoutCache) &&
-        doc[config::kEnableTextLayoutCache].IsBool()) {
-      page_config->SetEnableTextLayoutCache(
-          doc[config::kEnableTextLayoutCache].GetBool()
-              ? TernaryBool::TRUE_VALUE
-              : TernaryBool::FALSE_VALUE);
-    }
-
-    if (doc.HasMember(config::kEnableUnifiedPipeline) &&
-        doc[config::kEnableUnifiedPipeline].IsBool()) {
-      page_config->SetEnableUnifiedPipeline(
-          doc[config::kEnableUnifiedPipeline].GetBool()
-              ? TernaryBool::TRUE_VALUE
-              : TernaryBool::FALSE_VALUE);
-    }
-
-    if (doc.HasMember(config::kEnableUseContextPool) &&
-        doc[config::kEnableUseContextPool].IsBool()) {
-      page_config->SetEnableUseContextPool(
-          doc[config::kEnableUseContextPool].GetBool()
-              ? TernaryBool::TRUE_VALUE
-              : TernaryBool::FALSE_VALUE);
-    }
-
-    if (doc.HasMember(config::kEnableCSSLazyImport) &&
-        doc[config::kEnableCSSLazyImport].IsBool()) {
-      page_config->SetEnableCSSLazyImport(
-          doc[config::kEnableCSSLazyImport].GetBool()
-              ? TernaryBool::TRUE_VALUE
-              : TernaryBool::FALSE_VALUE);
-    }
-
-    if (doc.HasMember(config::kEnableNewAnimator) &&
-        doc[config::kEnableNewAnimator].IsBool()) {
-      page_config->SetEnableNewAnimator(
-          doc[config::kEnableNewAnimator].GetBool() ? TernaryBool::TRUE_VALUE
-                                                    : TernaryBool::FALSE_VALUE);
-    }
-
-    if (doc.HasMember(config::kEnableComponentAsyncDecode) &&
-        doc[config::kEnableComponentAsyncDecode].IsBool()) {
-      page_config->SetEnableComponentAsyncDecode(
-          doc[config::kEnableComponentAsyncDecode].GetBool()
-              ? TernaryBool::TRUE_VALUE
-              : TernaryBool::FALSE_VALUE);
-    }
-
-    if (doc.HasMember(config::kEnableSignalAPI) &&
-        doc[config::kEnableSignalAPI].IsBool()) {
-      page_config->SetEnableSignalAPI(doc[config::kEnableSignalAPI].GetBool()
-                                          ? TernaryBool::TRUE_VALUE
-                                          : TernaryBool::FALSE_VALUE);
-    }
-
-    if (doc.HasMember(config::kEnableNativeScheduleCreateViewAsync) &&
-        doc[config::kEnableNativeScheduleCreateViewAsync].IsBool()) {
-      page_config->SetEnableNativeScheduleCreateViewAsync(
-          doc[config::kEnableNativeScheduleCreateViewAsync].GetBool()
-              ? TernaryBool::TRUE_VALUE
-              : TernaryBool::FALSE_VALUE);
-    }
-
-    if (doc.HasMember(config::kEnableNativeList) &&
-        doc[config::kEnableNativeList].IsBool()) {
-      page_config->SetEnableNativeList(doc[config::kEnableNativeList].GetBool()
-                                           ? TernaryBool::TRUE_VALUE
-                                           : TernaryBool::FALSE_VALUE);
-    }
-
-    if (doc.HasMember(config::kTrailNewImage) &&
-        doc[config::kTrailNewImage].IsBool()) {
-      page_config->SetTrailNewImage(doc[config::kTrailNewImage].GetBool()
-                                        ? TernaryBool::TRUE_VALUE
-                                        : TernaryBool::FALSE_VALUE);
-    }
-
-    if (doc.HasMember(config::kAsyncRedirect) &&
-        doc[config::kAsyncRedirect].IsBool()) {
-      page_config->SetAsyncRedirectUrl(doc[config::kAsyncRedirect].GetBool()
-                                           ? TernaryBool::TRUE_VALUE
-                                           : TernaryBool::FALSE_VALUE);
-    }
-
-    if (doc.HasMember(config::kEnableUIOperationOptimize) &&
-        doc[config::kEnableUIOperationOptimize].IsBool()) {
-      page_config->SetEnableUIOperationOptimize(
-          doc[config::kEnableUIOperationOptimize].GetBool()
-              ? TernaryBool::TRUE_VALUE
-              : TernaryBool::FALSE_VALUE);
-    }
-
-    if (doc.HasMember(config::kEnableMicrotaskPromisePolyfill) &&
-        doc[config::kEnableMicrotaskPromisePolyfill].IsBool()) {
-      page_config->SetEnableMicrotaskPromisePolyfill(
-          doc[config::kEnableMicrotaskPromisePolyfill].GetBool()
-              ? TernaryBool::TRUE_VALUE
-              : TernaryBool::FALSE_VALUE);
-    }
-
-    if (doc.HasMember(config::kMapContainerType) &&
-        doc[config::kMapContainerType].IsInt()) {
-      page_config->SetMapContainerType(doc[config::kMapContainerType].GetInt());
-    }
-
-    if (doc.HasMember(config::kFlatten) && doc[config::kFlatten].IsBool()) {
-      page_config->SetGlobalFlattern(doc[config::kFlatten].GetBool());
-    }
-
-    if (doc.HasMember(config::kImplicit) && doc[config::kImplicit].IsBool()) {
-      page_config->SetGlobalImplicit(doc[config::kImplicit].GetBool());
-    } else if (lynx::tasm::Config::IsHigherOrEqual(target_sdk_version,
-                                                   LYNX_VERSION_2_0)) {
-      page_config->SetGlobalImplicit(false);
-    }
-
-    if (doc.HasMember(config::kLepusStrict) &&
-        doc[config::kLepusStrict].IsBool()) {
-      page_config->SetEnableLepusStrictCheck(
-          doc[config::kLepusStrict].GetBool());
-    }
-
-    if (doc.HasMember(config::kLepusNullPropAsUndef) &&
-        doc[config::kLepusNullPropAsUndef].IsBool()) {
-      page_config->SetEnableLepusNullPropAsUndef(
-          doc[config::kLepusNullPropAsUndef].GetBool());
-    } else if (lynx::tasm::Config::IsHigherOrEqual(target_sdk_version,
-                                                   LYNX_VERSION_1_6)) {
-      page_config->SetEnableLepusNullPropAsUndef(true);
-    }
-
-    if (doc.HasMember(config::kDataStrictMode) &&
-        doc[config::kDataStrictMode].IsBool()) {
-      page_config->SetDataStrictMode(doc[config::kDataStrictMode].GetBool());
-    }
-
-    if (doc.HasMember(config::kEnableAsyncDisplay) &&
-        doc[config::kEnableAsyncDisplay].IsBool()) {
-      page_config->SetEnableAsyncDisplay(
-          doc[config::kEnableAsyncDisplay].GetBool());
-    }
-
-    if (doc.HasMember(config::kEnableImageDownsampling) &&
-        doc[config::kEnableImageDownsampling].IsBool()) {
-      page_config->SetEnableImageDownsampling(
-          doc[config::kEnableImageDownsampling].GetBool());
-    }
-
-    if (doc.HasMember(config::kEnableNewImage) &&
-        doc[config::kEnableNewImage].IsBool()) {
-      page_config->SetEnableNewImage(doc[config::kEnableNewImage].GetBool());
-    }
-
-    if (doc.HasMember(config::kEnableTextNonContiguousLayout) &&
-        doc[config::kEnableTextNonContiguousLayout].IsBool()) {
-      page_config->SetEnableTextNonContiguousLayout(
-          doc[config::kEnableTextNonContiguousLayout].GetBool());
-    }
-
-    if (doc.HasMember(config::kEnableViewReceiveTouch) &&
-        doc[config::kEnableViewReceiveTouch].IsBool()) {
-      page_config->SetEnableViewReceiveTouch(
-          doc[config::kEnableViewReceiveTouch].GetBool());
-    }
-
-    if (doc.HasMember(config::kEnableEventThrough) &&
-        doc[config::kEnableEventThrough].IsBool()) {
-      page_config->SetEnableEventThrough(
-          doc[config::kEnableEventThrough].GetBool());
-    }
-
-    if (doc.HasMember(config::kRemoveComponentElement) &&
-        doc[config::kRemoveComponentElement].IsBool()) {
-      page_config->SetRemoveComponentElement(
-          doc[config::kRemoveComponentElement].GetBool());
-    }
-
-    if (doc.HasMember(config::kStrictPropType) &&
-        doc[config::kStrictPropType].IsBool()) {
-      page_config->SetStrictPropType(doc[config::kStrictPropType].GetBool());
-    }
-
-    if (doc.HasMember(config::kSyncImageAttach) &&
-        doc[config::kSyncImageAttach].IsBool()) {
-      page_config->SetSyncImageAttach(doc[config::kSyncImageAttach].GetBool());
-    }
-
-    if (doc.HasMember(config::kUseImagePostProcessor) &&
-        doc[config::kUseImagePostProcessor].IsBool()) {
-      page_config->SetUseImagePostProcessor(
-          doc[config::kUseImagePostProcessor].GetBool());
-    }
-
-    if (doc.HasMember(config::kUseNewSwiper) &&
-        doc[config::kUseNewSwiper].IsBool()) {
-      page_config->SetUseNewSwiper(doc[config::kUseNewSwiper].GetBool());
-    }
-
-    if (doc.HasMember(config::kEnableAsyncInitVideoEngine) &&
-        doc[config::kEnableAsyncInitVideoEngine].IsBool()) {
-      page_config->SetEnableAsyncInitTTVideoEngine(
-          doc[config::kEnableAsyncInitVideoEngine].GetBool());
-    }
-
-    if (doc.HasMember(config::kEnableComponentLifecycleAlignWebview) &&
-        doc[config::kEnableComponentLifecycleAlignWebview].IsBool()) {
-      page_config->SetEnableComponentLifecycleAlignWebview(
-          doc[config::kEnableComponentLifecycleAlignWebview].GetBool());
-    }
-
-    if (doc.HasMember(config::kEnableListNewArchitecture) &&
-        doc[config::kEnableListNewArchitecture].IsBool()) {
-      page_config->SetListNewArchitecture(
-          doc[config::kEnableListNewArchitecture].GetBool());
-    } else {
-      page_config->SetListNewArchitecture(
-          LynxEnv::GetInstance().EnableListNewArchitecture());
-    }
-
-    if (doc.HasMember(config::kEnableNewListContainer) &&
-        doc[config::kEnableNewListContainer].IsBool()) {
-      page_config->SetEnableNewListContainer(
-          doc[config::kEnableNewListContainer].GetBool());
-    }
-
-    if (doc.HasMember(config::kEnableListPlug) &&
-        doc[config::kEnableListPlug].IsBool()) {
-      page_config->SetEnableListPlug(doc[config::kEnableListPlug].GetBool());
-    }
-
-    if (doc.HasMember(config::kEnableListMoveOperation) &&
-        doc[config::kEnableListMoveOperation].IsBool()) {
-      page_config->SetEnableListMoveOperation(
-          doc[config::kEnableListMoveOperation].GetBool());
-    }
-
-    if (doc.HasMember(config::kEnableCreateViewAsync) &&
-        doc[config::kEnableCreateViewAsync].IsBool()) {
-      page_config->SetEnableCreateViewAsync(
-          doc[config::kEnableCreateViewAsync].GetBool());
-    }
-
-    if (doc.HasMember(config::kEnableVsyncAlignedFlush) &&
-        doc[config::kEnableVsyncAlignedFlush].IsBool()) {
-      page_config->SetEnableVsyncAlignedFlush(
-          doc[config::kEnableVsyncAlignedFlush].GetBool());
-    }
-
-    if (doc.HasMember(config::kEnableAccessibilityElement) &&
-        doc[config::kEnableAccessibilityElement].IsBool()) {
-      page_config->SetEnableAccessibilityElement(
-          doc[config::kEnableAccessibilityElement].GetBool());
-    }
-
-    if (doc.HasMember(config::kEnableOverlapForAccessibilityElement) &&
-        doc[config::kEnableOverlapForAccessibilityElement].IsBool()) {
-      page_config->SetEnableOverlapForAccessibilityElement(
-          doc[config::kEnableOverlapForAccessibilityElement].GetBool());
-    }
-
-    if (doc.HasMember(config::kEnableNewAccessibility) &&
-        doc[config::kEnableNewAccessibility].IsBool()) {
-      page_config->SetEnableNewAccessibility(
-          doc[config::kEnableNewAccessibility].GetBool());
-    }
-
-    if (doc.HasMember(config::kEnableNewLayoutOnly) &&
-        doc[config::kEnableNewLayoutOnly].IsBool()) {
-      page_config->SetEnableNewLayoutOnly(
-          doc[config::kEnableNewLayoutOnly].GetBool());
-    }
-
-    if (doc.HasMember(config::kEnableReactOnlyPropsId) &&
-        doc[config::kEnableReactOnlyPropsId].IsBool()) {
-      page_config->SetEnableReactOnlyPropsId(
-          doc[config::kEnableReactOnlyPropsId].GetBool());
-    }
-
-    if (doc.HasMember(config::kEnableGlobalComponentMap) &&
-        doc[config::kEnableGlobalComponentMap].IsBool()) {
-      page_config->SetEnableGlobalComponentMap(
-          doc[config::kEnableGlobalComponentMap].GetBool());
-    }
-
-    if (doc.HasMember(config::kEnableTextRefactor) &&
-        doc[config::kEnableTextRefactor].IsBool()) {
-      page_config->SetEnableTextRefactor(
-          doc[config::kEnableTextRefactor].GetBool());
-    } else if (lynx::tasm::Config::IsHigherOrEqual(target_sdk_version,
-                                                   LYNX_VERSION_2_2)) {
-      page_config->SetEnableTextRefactor(true);
-    }
-
-    if (doc.HasMember(config::kEnableTextOverflow) &&
-        doc[config::kEnableTextOverflow].IsBool()) {
-      page_config->SetEnableTextOverflow(
-          doc[config::kEnableTextOverflow].GetBool());
-    } else if (lynx::tasm::Config::IsHigherOrEqual(target_sdk_version,
-                                                   LYNX_VERSION_2_8)) {
-      page_config->SetEnableTextOverflow(true);
-    }
-
-    if (doc.HasMember(config::kEnableNewClipMode) &&
-        doc[config::kEnableNewClipMode].IsBool()) {
-      page_config->SetEnableNewClipMode(
-          doc[config::kEnableNewClipMode].GetBool());
-    } else if (lynx::tasm::Config::IsHigherOrEqual(target_sdk_version,
-                                                   LYNX_VERSION_2_10)) {
-      page_config->SetEnableNewClipMode(true);
-    }
-
-    if (doc.HasMember(config::kAutoResumeAnimation) &&
-        doc[config::kAutoResumeAnimation].IsBool()) {
-      page_config->SetGlobalAutoResumeAnimation(
-          doc[config::kAutoResumeAnimation].GetBool());
-    } else if (lynx::tasm::Config::IsHigherOrEqual(target_sdk_version,
-                                                   LYNX_VERSION_2_3)) {
-      page_config->SetGlobalAutoResumeAnimation(true);
-    }
-
-    if (doc.HasMember(config::kEnableNewTransformOrigin) &&
-        doc[config::kEnableNewTransformOrigin].IsBool()) {
-      page_config->SetGlobalEnableNewTransformOrigin(
-          doc[config::kEnableNewTransformOrigin].GetBool());
-    } else if (lynx::tasm::Config::IsHigherOrEqual(target_sdk_version,
-                                                   LYNX_VERSION_2_6)) {
-      page_config->SetGlobalEnableNewTransformOrigin(true);
-    }
-
-    if (doc.HasMember(config::kEnableCircularDataCheck) &&
-        doc[config::kEnableCircularDataCheck].IsBool()) {
-      page_config->SetGlobalCircularDataCheck(
-          doc[config::kEnableCircularDataCheck].GetBool());
-    }
-
-    if (doc.HasMember(config::kEnableReduceInitDataCopy) &&
-        doc[config::kEnableReduceInitDataCopy].IsBool()) {
-      page_config->SetEnableReduceInitDataCopy(
-          doc[config::kEnableReduceInitDataCopy].GetBool());
-    }
-
-    if (doc.HasMember(config::kEnableSimultaneousTap) &&
-        doc[config::kEnableSimultaneousTap].IsBool()) {
-      page_config->SetEnableSimultaneousTap(
-          doc[config::kEnableSimultaneousTap].GetBool());
-    }
-
-    if (doc.HasMember(config::kEnableComponentLayoutOnly) &&
-        doc[config::kEnableComponentLayoutOnly].IsBool()) {
-      page_config->SetEnableComponentLayoutOnly(
-          doc[config::kEnableComponentLayoutOnly].GetBool());
-    } else if (lynx::tasm::Config::IsHigherOrEqual(target_sdk_version,
-                                                   LYNX_VERSION_2_6)) {
-      page_config->SetEnableComponentLayoutOnly(true);
-    }
-
-    if (doc.HasMember(config::kExtendedLayoutOnlyOpt) &&
-        doc[config::kExtendedLayoutOnlyOpt].IsBool()) {
-      page_config->SetEnableExtendedLayoutOpt(
-          doc[config::kExtendedLayoutOnlyOpt].GetBool());
-    } else if (lynx::tasm::Config::IsHigherOrEqual(target_sdk_version,
-                                                   LYNX_VERSION_2_13)) {
-      page_config->SetEnableExtendedLayoutOpt(true);
-    }
-
-    if (doc.HasMember(config::kEnableTouchRefactor) &&
-        doc[config::kEnableTouchRefactor].IsBool()) {
-      page_config->SetEnableTouchRefactor(
-          doc[config::kEnableTouchRefactor].GetBool());
-    }
-
-    if (doc.HasMember(config::kEnableEndGestureAtLastFingerUp) &&
-        doc[config::kEnableEndGestureAtLastFingerUp].IsBool()) {
-      page_config->SetEnableEndGestureAtLastFingerUp(
-          doc[config::kEnableEndGestureAtLastFingerUp].GetBool());
-    }
-
-    if (doc.HasMember(config::kDisableLongpressAfterScroll) &&
-        doc[config::kDisableLongpressAfterScroll].IsBool()) {
-      page_config->SetDisableLongpressAfterScroll(
-          doc[config::kDisableLongpressAfterScroll].GetBool());
-    }
-
-    if (doc.HasMember(config::kKeyboardCallbackPassRelativeHeight) &&
-        doc[config::kKeyboardCallbackPassRelativeHeight].IsBool()) {
-      page_config->SetKeyboardCallbackUseRelativeHeight(
-          doc[config::kKeyboardCallbackPassRelativeHeight].GetBool());
-    } else if (lynx::tasm::Config::IsHigherOrEqual(target_sdk_version,
-                                                   LYNX_VERSION_2_2)) {
-      page_config->SetKeyboardCallbackUseRelativeHeight(true);
-    }
-
-    if (doc.HasMember(config::kEnableCheckDataWhenUpdatePage) &&
-        doc[config::kEnableCheckDataWhenUpdatePage].IsBool()) {
-      page_config->SetEnableCheckDataWhenUpdatePage(
-          doc[config::kEnableCheckDataWhenUpdatePage].GetBool());
-    }
-
-    if (doc.HasMember(config::kEnableBackgroundShapeLayer) &&
-        doc[config::kEnableBackgroundShapeLayer].IsBool()) {
-      page_config->SetEnableBackgroundShapeLayer(
-          doc[config::kEnableBackgroundShapeLayer].GetBool());
-    }
-
-    if (doc.HasMember(config::kCompileRender) &&
-        doc[config::kCompileRender].IsBool()) {
-      page_config->SetCompileRender(doc[config::kCompileRender].GetBool());
-    }
-
-    if (doc.HasMember(config::kEnableTextLanguageAlignment) &&
-        doc[config::kEnableTextLanguageAlignment].IsBool()) {
-      page_config->SetEnableTextLanguageAlignment(
-          doc[config::kEnableTextLanguageAlignment].GetBool());
-    }
-
-    if (doc.HasMember(config::kEnableXTextLayoutReused) &&
-        doc[config::kEnableXTextLayoutReused].IsBool()) {
-      page_config->SetEnableXTextLayoutReused(
-          doc[config::kEnableXTextLayoutReused].GetBool());
-    }
-
-    if (doc.HasMember(config::kEnableRemoveComponentExtraData) &&
-        doc[config::kEnableRemoveComponentExtraData].IsBool()) {
-      page_config->SetEnableRemoveComponentExtraData(
-          doc[config::kEnableRemoveComponentExtraData].GetBool());
-    }
-
-    if (doc.HasMember(config::kEnableExposureUIMargin) &&
-        doc[config::kEnableExposureUIMargin].IsBool()) {
-      page_config->SetEnableExposureUIMargin(
-          doc[config::kEnableExposureUIMargin].GetBool());
-    }
-
-    if (doc.HasMember(config::kEnableNewGesture) &&
-        doc[config::kEnableNewGesture].IsBool()) {
-      page_config->SetEnableNewGesture(
-          doc[config::kEnableNewGesture].GetBool());
-    }
-
-    if (doc.HasMember(config::kEnablePlatformGesture) &&
-        doc[config::kEnablePlatformGesture].IsBool()) {
-      page_config->SetEnablePlatformGesture(
-          doc[config::kEnablePlatformGesture].GetBool());
-    }
-
-    if (doc.HasMember(config::kEnableHarmonyNewOverlay) &&
-        doc[config::kEnableHarmonyNewOverlay].IsBool()) {
-      page_config->SetEnableHarmonyNewOverlay(
-          doc[config::kEnableHarmonyNewOverlay].GetBool());
-    }
-
-    if (doc.HasMember(config::kEnableCheckLocalImage) &&
-        doc[config::kEnableCheckLocalImage].IsBool()) {
-      page_config->SetEnableCheckLocalImage(
-          doc[config::kEnableCheckLocalImage].GetBool());
-    }
-
-    if (doc.HasMember(config::kEnableAsyncRequestImage) &&
-        doc[config::kEnableAsyncRequestImage].IsBool()) {
-      page_config->SetEnableAsyncRequestImage(
-          doc[config::kEnableAsyncRequestImage].GetBool());
-    }
-
-    if (doc.HasMember(config::kEnableComponentNullProp) &&
-        doc[config::kEnableComponentNullProp].IsBool()) {
-      page_config->SetEnableComponentNullProp(
-          doc[config::kEnableComponentNullProp].GetBool());
-    }
-
-    if (doc.HasMember(config::kEnableCascadePseudo) &&
-        doc[config::kEnableCascadePseudo].IsBool()) {
-      page_config->SetEnableCascadePseudo(
-          doc[config::kEnableCascadePseudo].GetBool());
-    }
-
-    if (doc.HasMember(config::kAutoExpose) &&
-        doc[config::kAutoExpose].IsBool()) {
-      page_config->SetAutoExpose(doc[config::kAutoExpose].GetBool());
-    }
-
-    if (doc.HasMember(config::kDisableQuickTracingGC) &&
-        doc[config::kDisableQuickTracingGC].IsBool()) {
-      page_config->SetDisableQuickTracingGC(
-          doc[config::kDisableQuickTracingGC].GetBool());
-    }
-
-    if (doc.HasMember(config::kFixCSSImportRuleOrder) &&
-        doc[config::kFixCSSImportRuleOrder].IsBool()) {
-      page_config->SetFixCSSImportRuleOrder(
-          doc[config::kFixCSSImportRuleOrder].GetBool());
-    }
-
-    if (doc.HasMember(config::kEnableReloadLifecycle) &&
-        doc[config::kEnableReloadLifecycle].IsBool()) {
-      page_config->SetEnableReloadLifecycle(
-          doc[config::kEnableReloadLifecycle].GetBool());
-    }
-
-    if (doc.HasMember(config::kEnableA11y) &&
-        doc[config::kEnableA11y].IsBool()) {
-      page_config->SetEnableA11y(doc[config::kEnableA11y].GetBool());
-    }
-
-    if (doc.HasMember(config::kEnableA11yIDMutationObserver) &&
-        doc[config::kEnableA11yIDMutationObserver].IsBool()) {
-      page_config->SetEnableA11yIDMutationObserver(
-          doc[config::kEnableA11yIDMutationObserver].GetBool());
-    }
-
-    if (doc.HasMember(config::kEnableCheckExposureOptimize) &&
-        doc[config::kEnableCheckExposureOptimize].IsBool()) {
-      page_config->SetEnableCheckExposureOptimize(
-          doc[config::kEnableCheckExposureOptimize].GetBool());
-    }
-
-    if (doc.HasMember(config::kEnableDisexposureWhenLynxHidden) &&
-        doc[config::kEnableDisexposureWhenLynxHidden].IsBool()) {
-      page_config->SetEnableDisexposureWhenLynxHidden(
-          doc[config::kEnableDisexposureWhenLynxHidden].GetBool());
-    }
-
-    if (doc.HasMember(config::kEnableExposureWhenLayout) &&
-        doc[config::kEnableExposureWhenLayout].IsBool()) {
-      page_config->SetEnableExposureWhenLayout(
-          doc[config::kEnableExposureWhenLayout].GetBool());
-    }
-
-    if (doc.HasMember(config::kEnableExposureWhenReload) &&
-        doc[config::kEnableExposureWhenReload].IsBool()) {
-      page_config->SetEnableExposureWhenReload(
-          doc[config::kEnableExposureWhenReload].GetBool());
-    }
-
-    if (doc.HasMember(config::kEnableAirDetectRemovedKeysWhenUpdateData) &&
-        doc[config::kEnableAirDetectRemovedKeysWhenUpdateData].IsBool()) {
-      page_config->SetEnableAirDetectRemovedKeysWhenUpdateData(
-          doc[config::kEnableAirDetectRemovedKeysWhenUpdateData].GetBool());
-    }
-
-    if (doc.HasMember(config::kEnableJSDataProcessor) &&
-        doc[config::kEnableJSDataProcessor].IsBool()) {
-      page_config->SetEnableDataProcessorOnJs(
-          doc[config::kEnableJSDataProcessor].GetBool());
-    }
-
-    if (doc.HasMember(config::kEnableJsBindingApiThrowException) &&
-        doc[config::kEnableJsBindingApiThrowException].IsBool()) {
-      page_config->SetEnableJsBindingApiThrowException(
-          doc[config::kEnableJsBindingApiThrowException].GetBool());
-    } else if (lynx::tasm::Config::IsHigherOrEqual(target_sdk_version,
-                                                   LYNX_VERSION_2_14)) {
-      page_config->SetEnableJsBindingApiThrowException(true);
-    }
-
-    if (doc.HasMember(config::kEnableBindICU) &&
-        doc[config::kEnableBindICU].IsBool()) {
-      page_config->SetEnableBindICU(doc[config::kEnableBindICU].GetBool());
-    }
-
-    if (doc.HasMember(config::kEnableQueryComponentSync) &&
-        doc[config::kEnableQueryComponentSync].IsBool()) {
-      page_config->SetEnableQueryComponentSync(
-          doc[config::kEnableQueryComponentSync].GetBool());
-    }
-
-    if (doc.HasMember(config::kEnableAsyncFlushSubtree) &&
-        doc[config::kEnableAsyncFlushSubtree].IsBool()) {
-      page_config->SetEnableAsyncResolveSubtree(
-          doc[config::kEnableAsyncFlushSubtree].GetBool()
-              ? TernaryBool::TRUE_VALUE
-              : TernaryBool::FALSE_VALUE);
-    }
-
-    if (doc.HasMember(config::kAbsoluteInContentBound) &&
-        doc[config::kAbsoluteInContentBound].IsBool()) {
-      page_config->SetAbsoluteInContentBound(
-          doc[config::kAbsoluteInContentBound].GetBool());
-    }
-
-    if (doc.HasMember(config::kEnableFixedNew) &&
-        doc[config::kEnableFixedNew].IsBool()) {
-      page_config->SetEnableFixedNew(doc[config::kEnableFixedNew].GetBool());
-    } else {
-      page_config->SetEnableFixedNew(LynxEnv::GetInstance().EnableFixedNew());
-    }
-
-    if (doc.HasMember(config::kEnableCSSInheritance) &&
-        doc[config::kEnableCSSInheritance].IsBool()) {
-      page_config->SetEnableCSSInheritance(
-          doc[config::kEnableCSSInheritance].GetBool());
-    }
-
-    if (doc.HasMember(config::kCSSAlignWithLegacyW3C) &&
-        doc[config::kCSSAlignWithLegacyW3C].IsBool()) {
-      page_config->SetCSSAlignWithLegacyW3C(
-          doc[config::kCSSAlignWithLegacyW3C].GetBool());
-    }
-
-    if (doc.HasMember(config::kUnifyVWVHBehavior) &&
-        doc[config::kUnifyVWVHBehavior].IsBool()) {
-      page_config->SetUnifyVWVH(doc[config::kUnifyVWVHBehavior].GetBool());
-    } else if (lynx::tasm::Config::IsHigherOrEqual(target_sdk_version,
-                                                   LYNX_VERSION_2_3)) {
-      page_config->SetUnifyVWVH(true);
-    }
-
-    if (doc.HasMember(config::kFontScaleEffectiveOnlyOnSp) &&
-        doc[config::kFontScaleEffectiveOnlyOnSp].IsBool()) {
-      page_config->SetFontScaleSpOnly(
-          doc[config::kFontScaleEffectiveOnlyOnSp].GetBool());
-    }
-
-    if (doc.HasMember(config::kEnableNewIntersectionObserver) &&
-        doc[config::kEnableNewIntersectionObserver].IsBool()) {
-      page_config->SetEnableNewIntersectionObserver(
-          doc[config::kEnableNewIntersectionObserver].GetBool());
-    } else {
-      page_config->SetEnableNewIntersectionObserver(
-          LynxEnv::GetInstance().EnableNewIntersectionObserver());
-    }
-
-    if (doc.HasMember(config::kEnableParseIntFlex) &&
-        doc[config::kEnableParseIntFlex].IsBool()) {
-      page_config->SetEnableParseIntFlex(
-          doc[config::kEnableParseIntFlex].GetBool());
-    } else {
-      page_config->SetEnableParseIntFlex(
-          LynxEnv::GetInstance().EnableParseIntFlex());
-    }
-
-    if (doc.HasMember(config::kEnableGridPlacementShorthands) &&
-        doc[config::kEnableGridPlacementShorthands].IsBool()) {
-      page_config->SetEnableGridPlacementShorthands(
-          doc[config::kEnableGridPlacementShorthands].GetBool());
-    }
-
-    if (doc.HasMember(config::kEnableFlexBasisZeroPercent) &&
-        doc[config::kEnableFlexBasisZeroPercent].IsBool()) {
-      page_config->SetEnableFlexBasisZeroPercent(
-          doc[config::kEnableFlexBasisZeroPercent].GetBool());
-    }
-
-    if (doc.HasMember(config::kIncludeFontPadding) &&
-        doc[config::kIncludeFontPadding].IsBool()) {
-      page_config->SetIncludeFontPadding(
-          doc[config::kIncludeFontPadding].GetBool());
-    }
-
-    if (doc.HasMember(config::kEnableMultiTouch) &&
-        doc[config::kEnableMultiTouch].IsBool()) {
-      page_config->SetEnableMultiTouch(
-          doc[config::kEnableMultiTouch].GetBool());
-    } else {
-      page_config->SetEnableMultiTouch(
-          LynxEnv::GetInstance().EnableMultiTouch());
-    }
-
-    if (doc.HasMember(config::kEnableHarmonyVisibleAreaChangeForExposure) &&
-        doc[config::kEnableHarmonyVisibleAreaChangeForExposure].IsBool()) {
-      page_config->SetEnableHarmonyVisibleAreaChangeForExposure(
-          doc[config::kEnableHarmonyVisibleAreaChangeForExposure].GetBool());
-    }
-
-    if (doc.HasMember(config::kEnableTextGradientOpt) &&
-        doc[config::kEnableTextGradientOpt].IsBool()) {
-      page_config->SetEnableTextGradientOpt(
-          doc[config::kEnableTextGradientOpt].GetBool()
-              ? TernaryBool::TRUE_VALUE
-              : TernaryBool::FALSE_VALUE);
-    }
-
-    if (doc.HasMember(config::kEnableEventHandleRefactor) &&
-        doc[config::kEnableEventHandleRefactor].IsBool()) {
-      page_config->SetEnableEventHandleRefactor(
-          doc[config::kEnableEventHandleRefactor].GetBool());
-    } else {
-      page_config->SetEnableEventHandleRefactor(
-          LynxEnv::GetInstance().EnableEventHandleRefactor());
-    }
-
-    if (doc.HasMember(config::kEnableReuseLoadScriptExports) &&
-        doc[config::kEnableReuseLoadScriptExports].IsBool()) {
-      page_config->SetEnableReuseLoadScriptExports(
-          doc[config::kEnableReuseLoadScriptExports].GetBool());
-    }
-
-    if (doc.HasMember(config::kEnableCSSInlineVariables) &&
-        doc[config::kEnableCSSInlineVariables].IsBool()) {
-      page_config->SetEnableCSSInlineVariables(
-          doc[config::kEnableCSSInlineVariables].GetBool());
-    } else {
-      page_config->SetEnableCSSInlineVariables(
-          LynxEnv::GetInstance().EnableCSSInlineVariables());
-    }
-
-    if (doc.HasMember(config::kEnableMTSPreExecute) &&
-        doc[config::kEnableMTSPreExecute].IsBool()) {
-      page_config->SetEnableMTSPreExecute(
-          doc[config::kEnableMTSPreExecute].GetBool());
-    }
-
-    if (doc.HasMember(config::kEnablePropertyBasedSimpleStyle) &&
-        doc[config::kEnablePropertyBasedSimpleStyle].IsBool()) {
-      page_config->SetEnablePropertyBasedSimpleStyle(
-          doc[config::kEnablePropertyBasedSimpleStyle].GetBool());
-    }
-
-    if (doc.HasMember(config::kEnableUnifyFixedBehavior) &&
-        doc[config::kEnableUnifyFixedBehavior].IsBool()) {
-      page_config->SetEnableUnifyFixedBehavior(
-          doc[config::kEnableUnifyFixedBehavior].GetBool());
-    } else {
-      page_config->SetEnableUnifyFixedBehavior(
-          LynxEnv::GetInstance().EnableUnifyFixedBehavior());
-    }
-
-    if (doc.HasMember(config::kEnableTransformedTouchPosition) &&
-        doc[config::kEnableTransformedTouchPosition].IsBool()) {
-      page_config->SetEnableTransformedTouchPosition(
-          doc[config::kEnableTransformedTouchPosition].GetBool());
-    }
-
-    if (doc.HasMember(config::kEnableBatchLayoutTaskWithSyncLayout) &&
-        doc[config::kEnableBatchLayoutTaskWithSyncLayout].IsBool()) {
-      page_config->SetEnableBatchLayoutTaskWithSyncLayout(
-          doc[config::kEnableBatchLayoutTaskWithSyncLayout].GetBool());
-    } else {
-      page_config->SetEnableBatchLayoutTaskWithSyncLayout(
-          LynxEnv::GetInstance().EnableBatchLayoutTaskWithSyncLayout());
-    }
-
-    if (doc.HasMember(config::kEnableiOSAnimationLayerForExposure) &&
-        doc[config::kEnableiOSAnimationLayerForExposure].IsBool()) {
-      page_config->SetEnableiOSAnimationLayerForExposure(
-          doc[config::kEnableiOSAnimationLayerForExposure].GetBool());
-    }
-
-    if (doc.HasMember(config::kEnableFetchAPIStandardStreaming) &&
-        doc[config::kEnableFetchAPIStandardStreaming].IsBool()) {
-      page_config->SetEnableFetchAPIStandardStreaming(
-          doc[config::kEnableFetchAPIStandardStreaming].GetBool()
-              ? TernaryBool::TRUE_VALUE
-              : TernaryBool::FALSE_VALUE);
-    }
-
-    if (doc.HasMember(config::kAlignMouseEventWithW3C) &&
-        doc[config::kAlignMouseEventWithW3C].IsBool()) {
-      page_config->SetAlignMouseEventWithW3C(
-          doc[config::kAlignMouseEventWithW3C].GetBool());
-    }
-
-    if (doc.HasMember(config::kEnableDisexposureWhenBackground) &&
-        doc[config::kEnableDisexposureWhenBackground].IsBool()) {
-      page_config->SetEnableDisexposureWhenBackground(
-          doc[config::kEnableDisexposureWhenBackground].GetBool());
-    }
-
-    if (doc.HasMember(config::kEnableAnimationForwardUpdatePreservation) &&
-        doc[config::kEnableAnimationForwardUpdatePreservation].IsBool()) {
-      page_config->SetEnableAnimationForwardUpdatePreservation(
-          doc[config::kEnableAnimationForwardUpdatePreservation].GetBool());
-    } else {
-      page_config->SetEnableAnimationForwardUpdatePreservation(
-          LynxEnv::GetInstance().EnableAnimationForwardUpdatePreservation());
-    }
-
-    if (doc.HasMember(config::kEnableNewStylingPipeline) &&
-        doc[config::kEnableNewStylingPipeline].IsBool()) {
-      page_config->SetEnableNewStylingPipeline(
-          doc[config::kEnableNewStylingPipeline].GetBool());
-    } else {
-      page_config->SetEnableNewStylingPipeline(
-          LynxEnv::GetInstance().EnableNewStylingPipeline());
-    }
-
-    if (doc.HasMember(config::kEnableDispatchCustomEventForUI) &&
-        doc[config::kEnableDispatchCustomEventForUI].IsBool()) {
-      page_config->SetEnableDispatchCustomEventForUI(
-          doc[config::kEnableDispatchCustomEventForUI].GetBool());
-    }
+                               const rapidjson::Document& doc, const std::string& target_sdk_version) {
+
+
+      if (doc.HasMember(config::kVersion) && doc[config::kVersion].IsString()) {
+        page_config->SetVersion(doc[config::kVersion].GetString());
+      }
+
+      if (doc.HasMember(config::kCliVersion) && doc[config::kCliVersion].IsString()) {
+        page_config->SetCliVersion(doc[config::kCliVersion].GetString());
+      }
+
+      if (doc.HasMember(config::kReactVersion) && doc[config::kReactVersion].IsString()) {
+        page_config->SetReactVersion(doc[config::kReactVersion].GetString());
+      }
+
+      if (doc.HasMember(config::kCustomData) && doc[config::kCustomData].IsString()) {
+        page_config->SetCustomData(doc[config::kCustomData].GetString());
+      }
+
+      if (doc.HasMember(config::kDebugMetadataUrl) && doc[config::kDebugMetadataUrl].IsString()) {
+        page_config->SetDebugMetadataUrl(doc[config::kDebugMetadataUrl].GetString());
+      }
+
+      if (doc.HasMember(config::kTapSlop) && doc[config::kTapSlop].IsString()) {
+        page_config->SetTapSlop(doc[config::kTapSlop].GetString());
+      }
+
+      if (doc.HasMember(config::kPreferredFps) && doc[config::kPreferredFps].IsString()) {
+        page_config->SetPreferredFps(doc[config::kPreferredFps].GetString());
+      }
+
+
+
+      if (doc.HasMember(config::kLepusGCThreshold) && doc[config::kLepusGCThreshold].IsInt64()) {
+        page_config->SetLepusGCThreshold(doc[config::kLepusGCThreshold].GetInt64());
+      }
+
+      if (doc.HasMember(config::kPipelineSchedulerConfig) && doc[config::kPipelineSchedulerConfig].IsUint64()) {
+        page_config->SetPipelineSchedulerConfig(doc[config::kPipelineSchedulerConfig].GetUint64());
+      }
+
+      if (doc.HasMember(config::kLogBoxImageSizeWarningThreshold) && doc[config::kLogBoxImageSizeWarningThreshold].IsUint()) {
+        page_config->SetLogBoxImageSizeWarningThreshold(doc[config::kLogBoxImageSizeWarningThreshold].GetUint());
+      }
+
+      if (doc.HasMember(config::kLepusQuickjsStacksize) && doc[config::kLepusQuickjsStacksize].IsUint()) {
+        page_config->SetLepusQuickjsStackSize(doc[config::kLepusQuickjsStacksize].GetUint());
+      }
+
+      if (doc.HasMember(config::kObserverFrameRate) && doc[config::kObserverFrameRate].IsInt()) {
+        page_config->SetObserverFrameRate(doc[config::kObserverFrameRate].GetInt());
+      }
+
+      if (doc.HasMember(config::kLongPressDuration) && doc[config::kLongPressDuration].IsInt()) {
+        page_config->SetLongPressDuration(doc[config::kLongPressDuration].GetInt());
+      }
+
+      if (doc.HasMember(config::kUseNewImage) && doc[config::kUseNewImage].IsBool()) {
+        page_config->SetUseNewImage(doc[config::kUseNewImage].GetBool() ? TernaryBool::TRUE_VALUE : TernaryBool::FALSE_VALUE);
+      }
+
+      if (doc.HasMember(config::kEnableTextBoringLayout) && doc[config::kEnableTextBoringLayout].IsBool()) {
+        page_config->SetEnableTextBoringLayout(doc[config::kEnableTextBoringLayout].GetBool() ? TernaryBool::TRUE_VALUE : TernaryBool::FALSE_VALUE);
+      }
+
+      if (doc.HasMember(config::kEnableTextLayerRender) && doc[config::kEnableTextLayerRender].IsBool()) {
+        page_config->SetEnableTextLayerRender(doc[config::kEnableTextLayerRender].GetBool() ? TernaryBool::TRUE_VALUE : TernaryBool::FALSE_VALUE);
+      }
+
+      if (doc.HasMember(config::kEnableUseMapBuffer) && doc[config::kEnableUseMapBuffer].IsBool()) {
+        page_config->SetEnableUseMapBuffer(doc[config::kEnableUseMapBuffer].GetBool() ? TernaryBool::TRUE_VALUE : TernaryBool::FALSE_VALUE);
+      }
+
+
+      if (doc.HasMember(config::kEnableOptPushStyleToBundle) && doc[config::kEnableOptPushStyleToBundle].IsBool()) {
+        page_config->SetEnableOptPushStyleToBundle(doc[config::kEnableOptPushStyleToBundle].GetBool() ? TernaryBool::TRUE_VALUE : TernaryBool::FALSE_VALUE);
+      }
+
+      if (doc.HasMember(config::kEnableTextLayoutCache) && doc[config::kEnableTextLayoutCache].IsBool()) {
+        page_config->SetEnableTextLayoutCache(doc[config::kEnableTextLayoutCache].GetBool() ? TernaryBool::TRUE_VALUE : TernaryBool::FALSE_VALUE);
+      }
+
+      if (doc.HasMember(config::kEnableUnifiedPipeline) && doc[config::kEnableUnifiedPipeline].IsBool()) {
+        page_config->SetEnableUnifiedPipeline(doc[config::kEnableUnifiedPipeline].GetBool() ? TernaryBool::TRUE_VALUE : TernaryBool::FALSE_VALUE);
+      }
+
+      if (doc.HasMember(config::kEnableUseContextPool) && doc[config::kEnableUseContextPool].IsBool()) {
+        page_config->SetEnableUseContextPool(doc[config::kEnableUseContextPool].GetBool() ? TernaryBool::TRUE_VALUE : TernaryBool::FALSE_VALUE);
+      }
+
+      if (doc.HasMember(config::kEnableCSSLazyImport) && doc[config::kEnableCSSLazyImport].IsBool()) {
+        page_config->SetEnableCSSLazyImport(doc[config::kEnableCSSLazyImport].GetBool() ? TernaryBool::TRUE_VALUE : TernaryBool::FALSE_VALUE);
+      }
+
+      if (doc.HasMember(config::kEnableNewAnimator) && doc[config::kEnableNewAnimator].IsBool()) {
+        page_config->SetEnableNewAnimator(doc[config::kEnableNewAnimator].GetBool() ? TernaryBool::TRUE_VALUE : TernaryBool::FALSE_VALUE);
+      }
+
+      if (doc.HasMember(config::kEnableComponentAsyncDecode) && doc[config::kEnableComponentAsyncDecode].IsBool()) {
+        page_config->SetEnableComponentAsyncDecode(doc[config::kEnableComponentAsyncDecode].GetBool() ? TernaryBool::TRUE_VALUE : TernaryBool::FALSE_VALUE);
+      }
+
+      if (doc.HasMember(config::kEnableSignalAPI) && doc[config::kEnableSignalAPI].IsBool()) {
+        page_config->SetEnableSignalAPI(doc[config::kEnableSignalAPI].GetBool() ? TernaryBool::TRUE_VALUE : TernaryBool::FALSE_VALUE);
+      }
+
+      if (doc.HasMember(config::kEnableNativeScheduleCreateViewAsync) && doc[config::kEnableNativeScheduleCreateViewAsync].IsBool()) {
+        page_config->SetEnableNativeScheduleCreateViewAsync(doc[config::kEnableNativeScheduleCreateViewAsync].GetBool() ? TernaryBool::TRUE_VALUE : TernaryBool::FALSE_VALUE);
+      }
+
+      if (doc.HasMember(config::kEnableNativeList) && doc[config::kEnableNativeList].IsBool()) {
+        page_config->SetEnableNativeList(doc[config::kEnableNativeList].GetBool() ? TernaryBool::TRUE_VALUE : TernaryBool::FALSE_VALUE);
+      }
+
+      if (doc.HasMember(config::kTrailNewImage) && doc[config::kTrailNewImage].IsBool()) {
+        page_config->SetTrailNewImage(doc[config::kTrailNewImage].GetBool() ? TernaryBool::TRUE_VALUE : TernaryBool::FALSE_VALUE);
+      }
+
+      if (doc.HasMember(config::kAsyncRedirect) && doc[config::kAsyncRedirect].IsBool()) {
+        page_config->SetAsyncRedirectUrl(doc[config::kAsyncRedirect].GetBool() ? TernaryBool::TRUE_VALUE : TernaryBool::FALSE_VALUE);
+      }
+
+      if (doc.HasMember(config::kEnableUIOperationOptimize) && doc[config::kEnableUIOperationOptimize].IsBool()) {
+        page_config->SetEnableUIOperationOptimize(doc[config::kEnableUIOperationOptimize].GetBool() ? TernaryBool::TRUE_VALUE : TernaryBool::FALSE_VALUE);
+      }
+
+      if (doc.HasMember(config::kEnableMicrotaskPromisePolyfill) && doc[config::kEnableMicrotaskPromisePolyfill].IsBool()) {
+        page_config->SetEnableMicrotaskPromisePolyfill(doc[config::kEnableMicrotaskPromisePolyfill].GetBool() ? TernaryBool::TRUE_VALUE : TernaryBool::FALSE_VALUE);
+      }
+
+      if (doc.HasMember(config::kMapContainerType) && doc[config::kMapContainerType].IsInt()) {
+        page_config->SetMapContainerType(doc[config::kMapContainerType].GetInt());
+      }
+
+      if (doc.HasMember(config::kFlatten) && doc[config::kFlatten].IsBool()) {
+        page_config->SetGlobalFlattern(doc[config::kFlatten].GetBool());
+      }
+
+      if (doc.HasMember(config::kImplicit) && doc[config::kImplicit].IsBool()) {
+        page_config->SetGlobalImplicit(doc[config::kImplicit].GetBool());
+      } else if (lynx::tasm::Config::IsHigherOrEqual(target_sdk_version, LYNX_VERSION_2_0)) {
+        page_config->SetGlobalImplicit(false);
+      }
+
+      if (doc.HasMember(config::kLepusStrict) && doc[config::kLepusStrict].IsBool()) {
+        page_config->SetEnableLepusStrictCheck(doc[config::kLepusStrict].GetBool());
+      }
+
+      if (doc.HasMember(config::kLepusNullPropAsUndef) && doc[config::kLepusNullPropAsUndef].IsBool()) {
+        page_config->SetEnableLepusNullPropAsUndef(doc[config::kLepusNullPropAsUndef].GetBool());
+      } else if (lynx::tasm::Config::IsHigherOrEqual(target_sdk_version, LYNX_VERSION_1_6)) {
+        page_config->SetEnableLepusNullPropAsUndef(true);
+      }
+
+      if (doc.HasMember(config::kDataStrictMode) && doc[config::kDataStrictMode].IsBool()) {
+        page_config->SetDataStrictMode(doc[config::kDataStrictMode].GetBool());
+      }
+
+      if (doc.HasMember(config::kEnableAsyncDisplay) && doc[config::kEnableAsyncDisplay].IsBool()) {
+        page_config->SetEnableAsyncDisplay(doc[config::kEnableAsyncDisplay].GetBool());
+      }
+
+      if (doc.HasMember(config::kEnableImageDownsampling) && doc[config::kEnableImageDownsampling].IsBool()) {
+        page_config->SetEnableImageDownsampling(doc[config::kEnableImageDownsampling].GetBool());
+      }
+
+      if (doc.HasMember(config::kEnableNewImage) && doc[config::kEnableNewImage].IsBool()) {
+        page_config->SetEnableNewImage(doc[config::kEnableNewImage].GetBool());
+      }
+
+      if (doc.HasMember(config::kEnableTextNonContiguousLayout) && doc[config::kEnableTextNonContiguousLayout].IsBool()) {
+        page_config->SetEnableTextNonContiguousLayout(doc[config::kEnableTextNonContiguousLayout].GetBool());
+      }
+
+      if (doc.HasMember(config::kEnableViewReceiveTouch) && doc[config::kEnableViewReceiveTouch].IsBool()) {
+        page_config->SetEnableViewReceiveTouch(doc[config::kEnableViewReceiveTouch].GetBool());
+      }
+
+      if (doc.HasMember(config::kEnableEventThrough) && doc[config::kEnableEventThrough].IsBool()) {
+        page_config->SetEnableEventThrough(doc[config::kEnableEventThrough].GetBool());
+      }
+
+      if (doc.HasMember(config::kRemoveComponentElement) && doc[config::kRemoveComponentElement].IsBool()) {
+        page_config->SetRemoveComponentElement(doc[config::kRemoveComponentElement].GetBool());
+      }
+
+      if (doc.HasMember(config::kStrictPropType) && doc[config::kStrictPropType].IsBool()) {
+        page_config->SetStrictPropType(doc[config::kStrictPropType].GetBool());
+      }
+
+      if (doc.HasMember(config::kSyncImageAttach) && doc[config::kSyncImageAttach].IsBool()) {
+        page_config->SetSyncImageAttach(doc[config::kSyncImageAttach].GetBool());
+      }
+
+      if (doc.HasMember(config::kUseImagePostProcessor) && doc[config::kUseImagePostProcessor].IsBool()) {
+        page_config->SetUseImagePostProcessor(doc[config::kUseImagePostProcessor].GetBool());
+      }
+
+      if (doc.HasMember(config::kUseNewSwiper) && doc[config::kUseNewSwiper].IsBool()) {
+        page_config->SetUseNewSwiper(doc[config::kUseNewSwiper].GetBool());
+      }
+
+      if (doc.HasMember(config::kEnableAsyncInitVideoEngine) && doc[config::kEnableAsyncInitVideoEngine].IsBool()) {
+        page_config->SetEnableAsyncInitTTVideoEngine(doc[config::kEnableAsyncInitVideoEngine].GetBool());
+      }
+
+      if (doc.HasMember(config::kEnableComponentLifecycleAlignWebview) && doc[config::kEnableComponentLifecycleAlignWebview].IsBool()) {
+        page_config->SetEnableComponentLifecycleAlignWebview(doc[config::kEnableComponentLifecycleAlignWebview].GetBool());
+      }
+
+      if (doc.HasMember(config::kEnableListNewArchitecture) && doc[config::kEnableListNewArchitecture].IsBool()) {
+        page_config->SetListNewArchitecture(doc[config::kEnableListNewArchitecture].GetBool());
+      } else {
+        page_config->SetListNewArchitecture(LynxEnv::GetInstance().EnableListNewArchitecture());
+      }
+
+      if (doc.HasMember(config::kEnableNewListContainer) && doc[config::kEnableNewListContainer].IsBool()) {
+        page_config->SetEnableNewListContainer(doc[config::kEnableNewListContainer].GetBool());
+      }
+
+      if (doc.HasMember(config::kEnableListPlug) && doc[config::kEnableListPlug].IsBool()) {
+        page_config->SetEnableListPlug(doc[config::kEnableListPlug].GetBool());
+      }
+
+      if (doc.HasMember(config::kEnableListMoveOperation) && doc[config::kEnableListMoveOperation].IsBool()) {
+        page_config->SetEnableListMoveOperation(doc[config::kEnableListMoveOperation].GetBool());
+      }
+
+      if (doc.HasMember(config::kEnableCreateViewAsync) && doc[config::kEnableCreateViewAsync].IsBool()) {
+        page_config->SetEnableCreateViewAsync(doc[config::kEnableCreateViewAsync].GetBool());
+      }
+
+      if (doc.HasMember(config::kEnableVsyncAlignedFlush) && doc[config::kEnableVsyncAlignedFlush].IsBool()) {
+        page_config->SetEnableVsyncAlignedFlush(doc[config::kEnableVsyncAlignedFlush].GetBool());
+      }
+
+      if (doc.HasMember(config::kEnableAccessibilityElement) && doc[config::kEnableAccessibilityElement].IsBool()) {
+        page_config->SetEnableAccessibilityElement(doc[config::kEnableAccessibilityElement].GetBool());
+      }
+
+      if (doc.HasMember(config::kEnableOverlapForAccessibilityElement) && doc[config::kEnableOverlapForAccessibilityElement].IsBool()) {
+        page_config->SetEnableOverlapForAccessibilityElement(doc[config::kEnableOverlapForAccessibilityElement].GetBool());
+      }
+
+      if (doc.HasMember(config::kEnableNewAccessibility) && doc[config::kEnableNewAccessibility].IsBool()) {
+        page_config->SetEnableNewAccessibility(doc[config::kEnableNewAccessibility].GetBool());
+      }
+
+      if (doc.HasMember(config::kEnableNewLayoutOnly) && doc[config::kEnableNewLayoutOnly].IsBool()) {
+        page_config->SetEnableNewLayoutOnly(doc[config::kEnableNewLayoutOnly].GetBool());
+      }
+
+      if (doc.HasMember(config::kEnableReactOnlyPropsId) && doc[config::kEnableReactOnlyPropsId].IsBool()) {
+        page_config->SetEnableReactOnlyPropsId(doc[config::kEnableReactOnlyPropsId].GetBool());
+      }
+
+      if (doc.HasMember(config::kEnableGlobalComponentMap) && doc[config::kEnableGlobalComponentMap].IsBool()) {
+        page_config->SetEnableGlobalComponentMap(doc[config::kEnableGlobalComponentMap].GetBool());
+      }
+
+      if (doc.HasMember(config::kEnableTextRefactor) && doc[config::kEnableTextRefactor].IsBool()) {
+        page_config->SetEnableTextRefactor(doc[config::kEnableTextRefactor].GetBool());
+      } else if (lynx::tasm::Config::IsHigherOrEqual(target_sdk_version, LYNX_VERSION_2_2)) {
+        page_config->SetEnableTextRefactor(true);
+      }
+
+      if (doc.HasMember(config::kEnableTextOverflow) && doc[config::kEnableTextOverflow].IsBool()) {
+        page_config->SetEnableTextOverflow(doc[config::kEnableTextOverflow].GetBool());
+      } else if (lynx::tasm::Config::IsHigherOrEqual(target_sdk_version, LYNX_VERSION_2_8)) {
+        page_config->SetEnableTextOverflow(true);
+      }
+
+      if (doc.HasMember(config::kEnableNewClipMode) && doc[config::kEnableNewClipMode].IsBool()) {
+        page_config->SetEnableNewClipMode(doc[config::kEnableNewClipMode].GetBool());
+      } else if (lynx::tasm::Config::IsHigherOrEqual(target_sdk_version, LYNX_VERSION_2_10)) {
+        page_config->SetEnableNewClipMode(true);
+      }
+
+      if (doc.HasMember(config::kAutoResumeAnimation) && doc[config::kAutoResumeAnimation].IsBool()) {
+        page_config->SetGlobalAutoResumeAnimation(doc[config::kAutoResumeAnimation].GetBool());
+      } else if (lynx::tasm::Config::IsHigherOrEqual(target_sdk_version, LYNX_VERSION_2_3)) {
+        page_config->SetGlobalAutoResumeAnimation(true);
+      }
+
+      if (doc.HasMember(config::kEnableNewTransformOrigin) && doc[config::kEnableNewTransformOrigin].IsBool()) {
+        page_config->SetGlobalEnableNewTransformOrigin(doc[config::kEnableNewTransformOrigin].GetBool());
+      } else if (lynx::tasm::Config::IsHigherOrEqual(target_sdk_version, LYNX_VERSION_2_6)) {
+        page_config->SetGlobalEnableNewTransformOrigin(true);
+      }
+
+      if (doc.HasMember(config::kEnableCircularDataCheck) && doc[config::kEnableCircularDataCheck].IsBool()) {
+        page_config->SetGlobalCircularDataCheck(doc[config::kEnableCircularDataCheck].GetBool());
+      }
+
+      if (doc.HasMember(config::kEnableReduceInitDataCopy) && doc[config::kEnableReduceInitDataCopy].IsBool()) {
+        page_config->SetEnableReduceInitDataCopy(doc[config::kEnableReduceInitDataCopy].GetBool());
+      }
+
+      if (doc.HasMember(config::kEnableSimultaneousTap) && doc[config::kEnableSimultaneousTap].IsBool()) {
+        page_config->SetEnableSimultaneousTap(doc[config::kEnableSimultaneousTap].GetBool());
+      }
+
+      if (doc.HasMember(config::kEnableComponentLayoutOnly) && doc[config::kEnableComponentLayoutOnly].IsBool()) {
+        page_config->SetEnableComponentLayoutOnly(doc[config::kEnableComponentLayoutOnly].GetBool());
+      } else if (lynx::tasm::Config::IsHigherOrEqual(target_sdk_version, LYNX_VERSION_2_6)) {
+        page_config->SetEnableComponentLayoutOnly(true);
+      }
+
+      if (doc.HasMember(config::kExtendedLayoutOnlyOpt) && doc[config::kExtendedLayoutOnlyOpt].IsBool()) {
+        page_config->SetEnableExtendedLayoutOpt(doc[config::kExtendedLayoutOnlyOpt].GetBool());
+      } else if (lynx::tasm::Config::IsHigherOrEqual(target_sdk_version, LYNX_VERSION_2_13)) {
+        page_config->SetEnableExtendedLayoutOpt(true);
+      }
+
+      if (doc.HasMember(config::kEnableTouchRefactor) && doc[config::kEnableTouchRefactor].IsBool()) {
+        page_config->SetEnableTouchRefactor(doc[config::kEnableTouchRefactor].GetBool());
+      }
+
+      if (doc.HasMember(config::kEnableEndGestureAtLastFingerUp) && doc[config::kEnableEndGestureAtLastFingerUp].IsBool()) {
+        page_config->SetEnableEndGestureAtLastFingerUp(doc[config::kEnableEndGestureAtLastFingerUp].GetBool());
+      }
+
+      if (doc.HasMember(config::kDisableLongpressAfterScroll) && doc[config::kDisableLongpressAfterScroll].IsBool()) {
+        page_config->SetDisableLongpressAfterScroll(doc[config::kDisableLongpressAfterScroll].GetBool());
+      }
+
+      if (doc.HasMember(config::kKeyboardCallbackPassRelativeHeight) && doc[config::kKeyboardCallbackPassRelativeHeight].IsBool()) {
+        page_config->SetKeyboardCallbackUseRelativeHeight(doc[config::kKeyboardCallbackPassRelativeHeight].GetBool());
+      } else if (lynx::tasm::Config::IsHigherOrEqual(target_sdk_version, LYNX_VERSION_2_2)) {
+        page_config->SetKeyboardCallbackUseRelativeHeight(true);
+      }
+
+      if (doc.HasMember(config::kEnableCheckDataWhenUpdatePage) && doc[config::kEnableCheckDataWhenUpdatePage].IsBool()) {
+        page_config->SetEnableCheckDataWhenUpdatePage(doc[config::kEnableCheckDataWhenUpdatePage].GetBool());
+      }
+
+      if (doc.HasMember(config::kEnableBackgroundShapeLayer) && doc[config::kEnableBackgroundShapeLayer].IsBool()) {
+        page_config->SetEnableBackgroundShapeLayer(doc[config::kEnableBackgroundShapeLayer].GetBool());
+      }
+
+      if (doc.HasMember(config::kCompileRender) && doc[config::kCompileRender].IsBool()) {
+        page_config->SetCompileRender(doc[config::kCompileRender].GetBool());
+      }
+
+      if (doc.HasMember(config::kEnableTextLanguageAlignment) && doc[config::kEnableTextLanguageAlignment].IsBool()) {
+        page_config->SetEnableTextLanguageAlignment(doc[config::kEnableTextLanguageAlignment].GetBool());
+      }
+
+      if (doc.HasMember(config::kEnableXTextLayoutReused) && doc[config::kEnableXTextLayoutReused].IsBool()) {
+        page_config->SetEnableXTextLayoutReused(doc[config::kEnableXTextLayoutReused].GetBool());
+      }
+
+      if (doc.HasMember(config::kEnableRemoveComponentExtraData) && doc[config::kEnableRemoveComponentExtraData].IsBool()) {
+        page_config->SetEnableRemoveComponentExtraData(doc[config::kEnableRemoveComponentExtraData].GetBool());
+      }
+
+      if (doc.HasMember(config::kEnableExposureUIMargin) && doc[config::kEnableExposureUIMargin].IsBool()) {
+        page_config->SetEnableExposureUIMargin(doc[config::kEnableExposureUIMargin].GetBool());
+      }
+
+      if (doc.HasMember(config::kEnableNewGesture) && doc[config::kEnableNewGesture].IsBool()) {
+        page_config->SetEnableNewGesture(doc[config::kEnableNewGesture].GetBool());
+      }
+
+      if (doc.HasMember(config::kEnablePlatformGesture) && doc[config::kEnablePlatformGesture].IsBool()) {
+        page_config->SetEnablePlatformGesture(doc[config::kEnablePlatformGesture].GetBool());
+      }
+
+      if (doc.HasMember(config::kEnableHarmonyNewOverlay) && doc[config::kEnableHarmonyNewOverlay].IsBool()) {
+        page_config->SetEnableHarmonyNewOverlay(doc[config::kEnableHarmonyNewOverlay].GetBool());
+      }
+
+      if (doc.HasMember(config::kEnableCheckLocalImage) && doc[config::kEnableCheckLocalImage].IsBool()) {
+        page_config->SetEnableCheckLocalImage(doc[config::kEnableCheckLocalImage].GetBool());
+      }
+
+      if (doc.HasMember(config::kEnableAsyncRequestImage) && doc[config::kEnableAsyncRequestImage].IsBool()) {
+        page_config->SetEnableAsyncRequestImage(doc[config::kEnableAsyncRequestImage].GetBool());
+      }
+
+      if (doc.HasMember(config::kEnableComponentNullProp) && doc[config::kEnableComponentNullProp].IsBool()) {
+        page_config->SetEnableComponentNullProp(doc[config::kEnableComponentNullProp].GetBool());
+      }
+
+      if (doc.HasMember(config::kEnableCascadePseudo) && doc[config::kEnableCascadePseudo].IsBool()) {
+        page_config->SetEnableCascadePseudo(doc[config::kEnableCascadePseudo].GetBool());
+      }
+
+      if (doc.HasMember(config::kAutoExpose) && doc[config::kAutoExpose].IsBool()) {
+        page_config->SetAutoExpose(doc[config::kAutoExpose].GetBool());
+      }
+
+      if (doc.HasMember(config::kDisableQuickTracingGC) && doc[config::kDisableQuickTracingGC].IsBool()) {
+        page_config->SetDisableQuickTracingGC(doc[config::kDisableQuickTracingGC].GetBool());
+      }
+
+      if (doc.HasMember(config::kFixCSSImportRuleOrder) && doc[config::kFixCSSImportRuleOrder].IsBool()) {
+        page_config->SetFixCSSImportRuleOrder(doc[config::kFixCSSImportRuleOrder].GetBool());
+      }
+
+      if (doc.HasMember(config::kEnableReloadLifecycle) && doc[config::kEnableReloadLifecycle].IsBool()) {
+        page_config->SetEnableReloadLifecycle(doc[config::kEnableReloadLifecycle].GetBool());
+      }
+
+      if (doc.HasMember(config::kEnableA11y) && doc[config::kEnableA11y].IsBool()) {
+        page_config->SetEnableA11y(doc[config::kEnableA11y].GetBool());
+      }
+
+      if (doc.HasMember(config::kEnableA11yIDMutationObserver) && doc[config::kEnableA11yIDMutationObserver].IsBool()) {
+        page_config->SetEnableA11yIDMutationObserver(doc[config::kEnableA11yIDMutationObserver].GetBool());
+      }
+
+      if (doc.HasMember(config::kEnableCheckExposureOptimize) && doc[config::kEnableCheckExposureOptimize].IsBool()) {
+        page_config->SetEnableCheckExposureOptimize(doc[config::kEnableCheckExposureOptimize].GetBool());
+      }
+
+      if (doc.HasMember(config::kEnableDisexposureWhenLynxHidden) && doc[config::kEnableDisexposureWhenLynxHidden].IsBool()) {
+        page_config->SetEnableDisexposureWhenLynxHidden(doc[config::kEnableDisexposureWhenLynxHidden].GetBool());
+      }
+
+      if (doc.HasMember(config::kEnableExposureWhenLayout) && doc[config::kEnableExposureWhenLayout].IsBool()) {
+        page_config->SetEnableExposureWhenLayout(doc[config::kEnableExposureWhenLayout].GetBool());
+      }
+
+      if (doc.HasMember(config::kEnableExposureWhenReload) && doc[config::kEnableExposureWhenReload].IsBool()) {
+        page_config->SetEnableExposureWhenReload(doc[config::kEnableExposureWhenReload].GetBool());
+      }
+
+      if (doc.HasMember(config::kEnableAirDetectRemovedKeysWhenUpdateData) && doc[config::kEnableAirDetectRemovedKeysWhenUpdateData].IsBool()) {
+        page_config->SetEnableAirDetectRemovedKeysWhenUpdateData(doc[config::kEnableAirDetectRemovedKeysWhenUpdateData].GetBool());
+      }
+
+      if (doc.HasMember(config::kEnableJSDataProcessor) && doc[config::kEnableJSDataProcessor].IsBool()) {
+        page_config->SetEnableDataProcessorOnJs(doc[config::kEnableJSDataProcessor].GetBool());
+      }
+
+      if (doc.HasMember(config::kEnableJsBindingApiThrowException) && doc[config::kEnableJsBindingApiThrowException].IsBool()) {
+        page_config->SetEnableJsBindingApiThrowException(doc[config::kEnableJsBindingApiThrowException].GetBool());
+      } else if (lynx::tasm::Config::IsHigherOrEqual(target_sdk_version, LYNX_VERSION_2_14)) {
+        page_config->SetEnableJsBindingApiThrowException(true);
+      }
+
+      if (doc.HasMember(config::kEnableBindICU) && doc[config::kEnableBindICU].IsBool()) {
+        page_config->SetEnableBindICU(doc[config::kEnableBindICU].GetBool());
+      }
+
+      if (doc.HasMember(config::kEnableQueryComponentSync) && doc[config::kEnableQueryComponentSync].IsBool()) {
+        page_config->SetEnableQueryComponentSync(doc[config::kEnableQueryComponentSync].GetBool());
+      }
+
+      if (doc.HasMember(config::kEnableAsyncFlushSubtree) && doc[config::kEnableAsyncFlushSubtree].IsBool()) {
+        page_config->SetEnableAsyncResolveSubtree(doc[config::kEnableAsyncFlushSubtree].GetBool() ? TernaryBool::TRUE_VALUE : TernaryBool::FALSE_VALUE);
+      }
+
+      if (doc.HasMember(config::kAbsoluteInContentBound) && doc[config::kAbsoluteInContentBound].IsBool()) {
+        page_config->SetAbsoluteInContentBound(doc[config::kAbsoluteInContentBound].GetBool());
+      }
+
+      if (doc.HasMember(config::kEnableFixedNew) && doc[config::kEnableFixedNew].IsBool()) {
+        page_config->SetEnableFixedNew(doc[config::kEnableFixedNew].GetBool());
+      } else {
+        page_config->SetEnableFixedNew(LynxEnv::GetInstance().EnableFixedNew());
+      }
+
+      if (doc.HasMember(config::kEnableCSSInheritance) && doc[config::kEnableCSSInheritance].IsBool()) {
+        page_config->SetEnableCSSInheritance(doc[config::kEnableCSSInheritance].GetBool());
+      }
+
+      if (doc.HasMember(config::kCSSAlignWithLegacyW3C) && doc[config::kCSSAlignWithLegacyW3C].IsBool()) {
+        page_config->SetCSSAlignWithLegacyW3C(doc[config::kCSSAlignWithLegacyW3C].GetBool());
+      }
+
+      if (doc.HasMember(config::kUnifyVWVHBehavior) && doc[config::kUnifyVWVHBehavior].IsBool()) {
+        page_config->SetUnifyVWVH(doc[config::kUnifyVWVHBehavior].GetBool());
+      } else if (lynx::tasm::Config::IsHigherOrEqual(target_sdk_version, LYNX_VERSION_2_3)) {
+        page_config->SetUnifyVWVH(true);
+      }
+
+      if (doc.HasMember(config::kFontScaleEffectiveOnlyOnSp) && doc[config::kFontScaleEffectiveOnlyOnSp].IsBool()) {
+        page_config->SetFontScaleSpOnly(doc[config::kFontScaleEffectiveOnlyOnSp].GetBool());
+      }
+
+      if (doc.HasMember(config::kEnableNewIntersectionObserver) && doc[config::kEnableNewIntersectionObserver].IsBool()) {
+        page_config->SetEnableNewIntersectionObserver(doc[config::kEnableNewIntersectionObserver].GetBool());
+      } else {
+        page_config->SetEnableNewIntersectionObserver(LynxEnv::GetInstance().EnableNewIntersectionObserver());
+      }
+
+
+      if (doc.HasMember(config::kEnableParseIntFlex) && doc[config::kEnableParseIntFlex].IsBool()) {
+        page_config->SetEnableParseIntFlex(doc[config::kEnableParseIntFlex].GetBool());
+      } else {
+        page_config->SetEnableParseIntFlex(LynxEnv::GetInstance().EnableParseIntFlex());
+      }
+
+      if (doc.HasMember(config::kEnableGridPlacementShorthands) && doc[config::kEnableGridPlacementShorthands].IsBool()) {
+        page_config->SetEnableGridPlacementShorthands(doc[config::kEnableGridPlacementShorthands].GetBool());
+      }
+
+      if (doc.HasMember(config::kEnableFlexBasisZeroPercent) && doc[config::kEnableFlexBasisZeroPercent].IsBool()) {
+        page_config->SetEnableFlexBasisZeroPercent(doc[config::kEnableFlexBasisZeroPercent].GetBool());
+      }
+
+      if (doc.HasMember(config::kIncludeFontPadding) && doc[config::kIncludeFontPadding].IsBool()) {
+        page_config->SetIncludeFontPadding(doc[config::kIncludeFontPadding].GetBool());
+      }
+
+
+      if (doc.HasMember(config::kEnableMultiTouch) && doc[config::kEnableMultiTouch].IsBool()) {
+        page_config->SetEnableMultiTouch(doc[config::kEnableMultiTouch].GetBool());
+      } else {
+        page_config->SetEnableMultiTouch(LynxEnv::GetInstance().EnableMultiTouch());
+      }
+
+
+      if (doc.HasMember(config::kEnableHarmonyVisibleAreaChangeForExposure) && doc[config::kEnableHarmonyVisibleAreaChangeForExposure].IsBool()) {
+        page_config->SetEnableHarmonyVisibleAreaChangeForExposure(doc[config::kEnableHarmonyVisibleAreaChangeForExposure].GetBool());
+      }
+
+      if (doc.HasMember(config::kEnableTextGradientOpt) && doc[config::kEnableTextGradientOpt].IsBool()) {
+        page_config->SetEnableTextGradientOpt(doc[config::kEnableTextGradientOpt].GetBool() ? TernaryBool::TRUE_VALUE : TernaryBool::FALSE_VALUE);
+      }
+
+      if (doc.HasMember(config::kEnableEventHandleRefactor) && doc[config::kEnableEventHandleRefactor].IsBool()) {
+        page_config->SetEnableEventHandleRefactor(doc[config::kEnableEventHandleRefactor].GetBool());
+      } else {
+        page_config->SetEnableEventHandleRefactor(LynxEnv::GetInstance().EnableEventHandleRefactor());
+      }
+
+      if (doc.HasMember(config::kEnableReuseLoadScriptExports) && doc[config::kEnableReuseLoadScriptExports].IsBool()) {
+        page_config->SetEnableReuseLoadScriptExports(doc[config::kEnableReuseLoadScriptExports].GetBool());
+      }
+
+      if (doc.HasMember(config::kEnableCSSInlineVariables) && doc[config::kEnableCSSInlineVariables].IsBool()) {
+        page_config->SetEnableCSSInlineVariables(doc[config::kEnableCSSInlineVariables].GetBool());
+      } else {
+        page_config->SetEnableCSSInlineVariables(LynxEnv::GetInstance().EnableCSSInlineVariables());
+      }
+
+      if (doc.HasMember(config::kEnableMTSPreExecute) && doc[config::kEnableMTSPreExecute].IsBool()) {
+        page_config->SetEnableMTSPreExecute(doc[config::kEnableMTSPreExecute].GetBool());
+      }
+
+      if (doc.HasMember(config::kEnablePropertyBasedSimpleStyle) && doc[config::kEnablePropertyBasedSimpleStyle].IsBool()) {
+        page_config->SetEnablePropertyBasedSimpleStyle(doc[config::kEnablePropertyBasedSimpleStyle].GetBool());
+      }
+
+      if (doc.HasMember(config::kEnableUnifyFixedBehavior) && doc[config::kEnableUnifyFixedBehavior].IsBool()) {
+        page_config->SetEnableUnifyFixedBehavior(doc[config::kEnableUnifyFixedBehavior].GetBool());
+      } else {
+        page_config->SetEnableUnifyFixedBehavior(LynxEnv::GetInstance().EnableUnifyFixedBehavior());
+      }
+
+      if (doc.HasMember(config::kEnableTransformedTouchPosition) && doc[config::kEnableTransformedTouchPosition].IsBool()) {
+        page_config->SetEnableTransformedTouchPosition(doc[config::kEnableTransformedTouchPosition].GetBool());
+      }
+
+      if (doc.HasMember(config::kEnableBatchLayoutTaskWithSyncLayout) && doc[config::kEnableBatchLayoutTaskWithSyncLayout].IsBool()) {
+        page_config->SetEnableBatchLayoutTaskWithSyncLayout(doc[config::kEnableBatchLayoutTaskWithSyncLayout].GetBool());
+      } else {
+        page_config->SetEnableBatchLayoutTaskWithSyncLayout(LynxEnv::GetInstance().EnableBatchLayoutTaskWithSyncLayout());
+      }
+
+      if (doc.HasMember(config::kEnableiOSAnimationLayerForExposure) && doc[config::kEnableiOSAnimationLayerForExposure].IsBool()) {
+        page_config->SetEnableiOSAnimationLayerForExposure(doc[config::kEnableiOSAnimationLayerForExposure].GetBool());
+      }
+
+      if (doc.HasMember(config::kEnableFetchAPIStandardStreaming) && doc[config::kEnableFetchAPIStandardStreaming].IsBool()) {
+        page_config->SetEnableFetchAPIStandardStreaming(doc[config::kEnableFetchAPIStandardStreaming].GetBool() ? TernaryBool::TRUE_VALUE : TernaryBool::FALSE_VALUE);
+      }
+
+      if (doc.HasMember(config::kAlignMouseEventWithW3C) && doc[config::kAlignMouseEventWithW3C].IsBool()) {
+        page_config->SetAlignMouseEventWithW3C(doc[config::kAlignMouseEventWithW3C].GetBool());
+      }
+
+      if (doc.HasMember(config::kEnableDisexposureWhenBackground) && doc[config::kEnableDisexposureWhenBackground].IsBool()) {
+        page_config->SetEnableDisexposureWhenBackground(doc[config::kEnableDisexposureWhenBackground].GetBool());
+      }
+
+      if (doc.HasMember(config::kEnableAnimationForwardUpdatePreservation) && doc[config::kEnableAnimationForwardUpdatePreservation].IsBool()) {
+        page_config->SetEnableAnimationForwardUpdatePreservation(doc[config::kEnableAnimationForwardUpdatePreservation].GetBool());
+      } else {
+        page_config->SetEnableAnimationForwardUpdatePreservation(LynxEnv::GetInstance().EnableAnimationForwardUpdatePreservation());
+      }
+
+      if (doc.HasMember(config::kEnableNewStylingPipeline) && doc[config::kEnableNewStylingPipeline].IsBool()) {
+        page_config->SetEnableNewStylingPipeline(doc[config::kEnableNewStylingPipeline].GetBool());
+      } else {
+        page_config->SetEnableNewStylingPipeline(LynxEnv::GetInstance().EnableNewStylingPipeline());
+      }
+
+      if (doc.HasMember(config::kEnableDispatchCustomEventForUI) && doc[config::kEnableDispatchCustomEventForUI].IsBool()) {
+        page_config->SetEnableDispatchCustomEventForUI(doc[config::kEnableDispatchCustomEventForUI].GetBool());
+      }
+
   };
 };
-}  // namespace tasm
-}  // namespace lynx
+}
+}
 #endif  // CORE_TEMPLATE_BUNDLE_TEMPLATE_CODEC_BINARY_DECODER_LYNX_CONFIG_DECODER_H_

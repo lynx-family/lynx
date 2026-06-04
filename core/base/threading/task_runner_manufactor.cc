@@ -351,6 +351,12 @@ void TaskRunnerManufactor::CreateTASMRunner(
   return;
 #endif
 
+  if (!enable_vsync_aligned_msg_loop && ui_task_runner_ &&
+      loop.get() == ui_task_runner_->GetLoop().get()) {
+    tasm_task_runner_ = ui_task_runner_;
+    return;
+  }
+
   tasm_task_runner_ = fml::MakeRefCounted<fml::TaskRunner>(
       std::move(loop), enable_vsync_aligned_msg_loop);
 }

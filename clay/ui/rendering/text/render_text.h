@@ -83,6 +83,7 @@ class RenderText : public RenderBox {
   bool IsCollapsed() { return select_start_ == select_end_; }
 
   void SetCaretVisible(bool visible);
+  void SetCaretColor(const Color& color);
 
   TextBox GetLeftTextBox();
   TextBox GetRightTextBox();
@@ -114,6 +115,7 @@ class RenderText : public RenderBox {
 
   SelectionChangedCallback selection_changed_callback_;
   std::unordered_map<int, InlineEmojiRenderInfo> inline_emojis_;
+  std::optional<Color> caret_color_;
   bool caret_visible_ = false;
 };
 

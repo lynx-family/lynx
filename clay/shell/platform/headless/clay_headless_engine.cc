@@ -15,6 +15,7 @@
 #include "clay/shell/common/switches.h"
 #include "clay/shell/platform/embedder/embedder_engine.h"
 #include "clay/shell/platform/headless/clay_headless_renderer.h"
+#include "clay/ui/component/page_view.h"
 
 namespace clay {
 
@@ -336,6 +337,19 @@ void ClayHeadlessEngine::SetFontFaceCache(const char* font_family,
     return;
   }
   engine_->GetShell().GetEngine()->SetFontFaceCache(font_family, local_path);
+}
+
+bool ClayHeadlessEngine::CommitTextInput(const char* text) {
+  if (!IsValid() || !text) {
+    return false;
+  }
+
+  auto* page_view = engine_->GetShell().GetEngine()->GetPageView();
+  if (!page_view) {
+    return false;
+  }
+
+  return page_view->CommitTextInput(text);
 }
 
 void ClayHeadlessEngine::SendViewportMetrics(int32_t width, int32_t height,

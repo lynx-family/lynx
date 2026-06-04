@@ -4,11 +4,24 @@
 
 import { BaseEvent, Callback, BaseMethod, TextLayoutEventDetail, TextSelectionChangeEventDetail } from '../events';
 import { StandardProps } from '../props';
+import { ContentEditable } from './contenteditable';
 
 /**
  * Text Component
  */
 export interface TextProps extends StandardProps {
+  /**
+   * Enables editing for supported text content. In v1, only `true` and
+   * empty string are editable; `false`, missing, and unsupported values are
+   * not editable.
+   * @defaultValue false
+   * @Android
+   * @iOS
+   * @Harmony
+   * @PC
+   */
+  contenteditable?: ContentEditable;
+
   /**
    * Maximum number of lines for text display
    * @Android

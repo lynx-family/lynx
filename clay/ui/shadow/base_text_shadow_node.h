@@ -5,6 +5,7 @@
 #ifndef CLAY_UI_SHADOW_BASE_TEXT_SHADOW_NODE_H_
 #define CLAY_UI_SHADOW_BASE_TEXT_SHADOW_NODE_H_
 
+#include <cstddef>
 #include <cstdint>
 #include <string>
 #include <unordered_map>
@@ -19,6 +20,44 @@
 #include "clay/ui/shadow/vertical_align_style.h"
 
 namespace clay {
+
+enum class EditableInlineStreamItemType {
+  kText,
+  kAtomicInlineImage,
+  kAtomicInlineView,
+};
+
+struct EditableInlineStreamItem {
+  EditableInlineStreamItemType type;
+  size_t start = 0;
+  size_t length = 0;
+  ShadowNode* node = nullptr;
+  std::u16string text;
+};
+
+using EditableInlineStream = std::vector<EditableInlineStreamItem>;
+
+enum class EditableInlineMutationStatus {
+  kApplied,
+  kInvalidRange,
+  kAtomicRangeMustCoverToken,
+};
+
+struct EditableInlineAtomicDelete {
+  EditableInlineStreamItemType type;
+  size_t start = 0;
+  ShadowNode* node = nullptr;
+};
+
+struct EditableInlineMutationResult {
+  EditableInlineMutationStatus status = EditableInlineMutationStatus::kApplied;
+  size_t selection_offset = 0;
+  bool text_changed = false;
+  bool has_pending_text_insertion = false;
+  size_t pending_text_insertion_offset = 0;
+  std::u16string pending_text_insertion;
+  std::vector<EditableInlineAtomicDelete> atomic_deletes;
+};
 
 class BaseTextShadowNode : public ShadowNode {
   enum class RichType { kNone, kBracket };
@@ -69,6 +108,7 @@ class BaseTextShadowNode : public ShadowNode {
   void SetTextSingleLineVerticalAlign(const clay::Value& value);
   void SetRichType(const std::string& type);
   bool IsBracketRichType() const { return rich_type_ == RichType::kBracket; }
+  bool IsContentEditable() const { return content_editable_; }
 
   void RelayoutWhenSetFontFamily(const std::string& font_family);
 
@@ -93,6 +133,9 @@ class BaseTextShadowNode : public ShadowNode {
   void SetTextIndent(double indent);
 
   std::u16string GetRawText();
+  EditableInlineStream BuildEditableInlineStream();
+  EditableInlineMutationResult ApplyEditableInlineStreamMutation(
+      size_t start, size_t end, const std::u16string& replacement);
   // The absolute line height.
   std::optional<float> line_height_;
   std::optional<uint32_t> max_length_;
@@ -111,6 +154,7 @@ class BaseTextShadowNode : public ShadowNode {
   void SetAttribute(KeywordID attr, const char* attr_c,
                     const clay::Value&) override;
   void CreateRawTextNodeIfNeed(std::string text);
+  void CreateRawTextNodeIfNeed(const std::u16string& text);
 
  protected:
  private:
@@ -118,6 +162,7 @@ class BaseTextShadowNode : public ShadowNode {
 
   fml::WeakPtrFactory<BaseTextShadowNode> weak_factory_;
   RichType rich_type_ = RichType::kNone;
+  bool content_editable_ = false;
 };
 
 }  // namespace clay

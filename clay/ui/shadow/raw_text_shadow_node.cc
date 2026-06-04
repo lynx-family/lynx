@@ -84,6 +84,28 @@ void RawTextShadowNode::SetText(const std::u16string& text) {
   }
 }
 
+bool RawTextShadowNode::ReplaceEditableTextRange(
+    size_t start, size_t end, const std::u16string& replacement) {
+  if (start > end || end > origin_text_.length()) {
+    return false;
+  }
+
+  auto text = origin_text_;
+  text.replace(start, end - start, replacement);
+  if (text == origin_text_) {
+    return false;
+  }
+
+  text_ = text;
+  origin_text_ = text_;
+  inline_emoji_text_ranges_.clear();
+  layout_text_to_raw_end_indices_.clear();
+  SetEndIndex(text_.length());
+  MarkDirty();
+  MarkNeedsUpdate(TextUpdateFlag::kUpdateFlagChildren);
+  return true;
+}
+
 void RawTextShadowNode::TextLayout(LayoutContext* context) {
   if (!context) {
     return;
@@ -96,6 +118,7 @@ void RawTextShadowNode::TextLayout(LayoutContext* context) {
   inline_emoji_text_ranges_.clear();
   layout_text_to_raw_end_indices_.clear();
   auto start = text_context->TextSizeIncludingPlaceholders();
+  start_glyph_ = start;
   auto parent_text_shadow_node = FindTextShadowNodeAncestor();
   std::optional<TextStyle> text_style = std::nullopt;
   if (parent_text_shadow_node) {
@@ -114,7 +137,10 @@ void RawTextShadowNode::TextLayout(LayoutContext* context) {
   }
   if (parent_ && parent_->IsInlineTextShadowNode()) {
     auto end = text_context->TextSizeIncludingPlaceholders();
+    end_glyph_ = end;
     static_cast<InlineTextShadowNode*>(parent_)->AddTextRange(start, end);
+  } else {
+    end_glyph_ = text_context->TextSizeIncludingPlaceholders();
   }
 }
 
@@ -305,6 +331,37 @@ size_t RawTextShadowNode::GetRawEndIndexForLayoutTextLength(
                                          (layout_text_length - layout_cursor));
   }
   return RawEndIndexForLayoutTextIndex(base_length);
+}
+
+size_t RawTextShadowNode::GetLayoutTextLengthForRawEndIndex(
+    size_t raw_end_index) const {
+  raw_end_index = std::min(raw_end_index, CurrentRawTextEnd());
+  size_t base_length = LayoutTextLength();
+  size_t text_cursor = 0;
+  size_t layout_cursor = 0;
+  for (const auto& range : inline_emoji_text_ranges_) {
+    if (range.start >= base_length || range.end <= range.start) {
+      continue;
+    }
+    size_t range_start = std::max(text_cursor, range.start);
+    if (raw_end_index <= range_start) {
+      return layout_cursor + (raw_end_index - text_cursor);
+    }
+    layout_cursor += range_start - text_cursor;
+    text_cursor = range_start;
+
+    size_t range_end = std::min(range.end, base_length);
+    if (raw_end_index <= range_end) {
+      return layout_cursor + 1;
+    }
+    ++layout_cursor;
+    text_cursor = range_end;
+  }
+
+  if (raw_end_index <= base_length) {
+    return layout_cursor + (raw_end_index - text_cursor);
+  }
+  return GetLayoutTextLength();
 }
 
 bool RawTextShadowNode::IfNeedTextIndent() {

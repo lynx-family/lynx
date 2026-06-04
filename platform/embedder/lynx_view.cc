@@ -18,6 +18,7 @@
 #include "platform/embedder/lynx_view_priv.h"
 #include "platform/embedder/lynx_vsync_monitor_priv.h"
 #include "platform/embedder/module/global_module_registry.h"
+#include "platform/embedder/public/capi/lynx_memory_capi.h"
 #include "platform/embedder/resource/lynx_resource_loader_embedder.h"
 
 LYNX_EXTERN_C lynx_view_t* lynx_view_create(lynx_view_builder_t* builder,
@@ -376,4 +377,12 @@ LYNX_EXTERN_C void lynx_view_emulate_mouse_event(lynx_view_t* view,
                                                  float x, float y,
                                                  float delta_x, float delta_y) {
   view->lynx_ui_renderer->EmulateMouseEvent(event_name, x, y, delta_x, delta_y);
+}
+
+LYNX_EXTERN_C char* lynx_view_dump_ui_tree_for_cdp(lynx_view_t* view) {
+  if (!view || !view->lynx_ui_renderer) {
+    return lynx_strdup(R"({"available":false})");
+  }
+  const std::string dump = view->lynx_ui_renderer->DumpUITreeForCDP();
+  return lynx_strdup(dump.c_str());
 }

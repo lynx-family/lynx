@@ -171,6 +171,9 @@ LYNX_CAPI_EXPORT void lynx_windowless_renderer_send_pointer_event(
 // Sends a key event to the windowless renderer.
 LYNX_CAPI_EXPORT void lynx_windowless_renderer_send_key_event(
     lynx_windowless_renderer_t*, lynx_key_event_t* event);
+// Commits text to the active windowless text input client.
+LYNX_CAPI_EXPORT bool lynx_windowless_renderer_send_text_input(
+    lynx_windowless_renderer_t*, const char* text);
 
 /* ----- Callbacks for platform function ----- */
 typedef const char* (*get_clipboard_data)(lynx_windowless_renderer_t*);

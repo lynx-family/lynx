@@ -39,6 +39,7 @@ class LynxWindowlessRenderer
   std::function<void(lynx_task_t task)> run_task = nullptr;
   std::function<void(lynx_pointer_event_t* event)> send_pointer_event = nullptr;
   std::function<void(lynx_key_event_t* event)> send_key_event = nullptr;
+  std::function<bool(const char* text)> send_text_input = nullptr;
 
   ~LynxWindowlessRenderer();
 

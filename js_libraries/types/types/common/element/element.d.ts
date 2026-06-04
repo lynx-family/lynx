@@ -9,6 +9,7 @@ import { FilterImageProps } from './filter-image';
 import { ImageProps, ImageUIMethods } from './image';
 import { ListProps, ListUIMethods } from './list';
 import { ListItemProps } from './list-item';
+import { MarkdownProps, MarkdownUIMethods } from './markdown';
 import { PageProps } from './page';
 import { ScrollViewProps, ScrollViewUIMethods } from './scroll-view';
 import { TextProps, TextUIMethods } from './text';
@@ -38,6 +39,7 @@ export interface UIMethods {
   'input': InputUIMethods;
   'textarea': TextAreaUIMethods;
   'text': TextUIMethods;
+  'x-markdown': MarkdownUIMethods;
   'refresh': RefreshUIMethods;
   'scroll-coordinator': ScrollCoordinatorUIMethods;
   'viewpager': ViewPagerUIMethods;
@@ -60,6 +62,7 @@ export interface IntrinsicElements {
   'scroll-view': ScrollViewProps;
   'text': TextProps;
   'view': ViewProps;
+  'x-markdown': MarkdownProps;
   'raw-text': StandardProps & { text: number | string };
   'input': InputProps;
   'textarea': TextAreaProps;
@@ -95,6 +98,7 @@ declare module 'react' {
       'scroll-view': ScrollViewProps;
       'text': TextProps;
       'view': ViewProps;
+      'x-markdown': MarkdownProps;
       'raw-text': StandardProps & { text: number | string };
       'input': InputProps;
       'textarea': TextAreaProps;

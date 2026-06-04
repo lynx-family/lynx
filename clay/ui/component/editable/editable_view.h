@@ -17,6 +17,7 @@
 #include "clay/ui/common/text_input_type_traits.h"
 #include "clay/ui/common/text_selection.h"
 #include "clay/ui/component/base_view.h"
+#include "clay/ui/component/editable/caret_blink_controller.h"
 #include "clay/ui/component/editable/ime_listener.h"
 #include "clay/ui/component/editable/text_editing_controller.h"
 #include "clay/ui/component/editable/text_input_controller.h"
@@ -221,7 +222,6 @@ class EditableView : public WithTypeInfo<EditableView, BaseView>,
   void DoDelete();
   void MoveCaret(KeyCode keycode);
 
-  void ToggleCaret();
   void TwinkleCaretPeriodically();
 
   bool ApplyHotKey(const KeyEvent* key_event);
@@ -254,10 +254,7 @@ class EditableView : public WithTypeInfo<EditableView, BaseView>,
 
   std::vector<FilterFunc> filter_funcs_;
 
-  // Indicate whether caret is shown or hidden while twinkling.
-  // False if hidden.
-  bool twinkle_flag_ = false;
-  std::unique_ptr<fml::RepeatingTimer> caret_timer_;
+  std::unique_ptr<CaretBlinkController> caret_blink_controller_;
 
   // When has no contents, use this paragraph to measure a default line height.
   std::unique_ptr<txt::Paragraph> template_paragraph_;

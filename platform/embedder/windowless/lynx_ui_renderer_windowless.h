@@ -44,6 +44,8 @@ class LynxUIRendererWindowless : public LynxUIRenderer,
 
   void RegisterIMEHandler(void* handler, void* opaque) override {}
 
+  std::string DumpUITreeForCDP() override;
+
   /* headless delegate */
   const char* GetClipboardData() const override;
   void SetClipboardData(const char* data) override;

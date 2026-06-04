@@ -13,6 +13,7 @@
 
 #include "capi/lynx_view_builder_capi.h"
 #include "capi/lynx_view_capi.h"
+#include "capi/lynx_memory_capi.h"
 #include "lynx_event_simulation_proxy.h"
 #include "lynx_generic_resource_fetcher.h"
 #include "lynx_group.h"
@@ -254,6 +255,13 @@ class LynxView {
                          float delta_x = 0.f, float delta_y = 0.f) {
     lynx_view_emulate_mouse_event(lynx_view_, event_name.c_str(), x, y, delta_x,
                                   delta_y);
+  }
+
+  std::string DumpUITreeForCDP() {
+    char* dump = lynx_view_dump_ui_tree_for_cdp(lynx_view_);
+    std::string result = dump ? dump : "";
+    lynx_free(dump);
+    return result;
   }
 
   /**

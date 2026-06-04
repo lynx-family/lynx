@@ -166,6 +166,13 @@ void ViewContext::AddView(int id, int parent_id, int index) {
   if (index < 0) {
     parent->second->AddChild(target->second);
   } else {
+    auto child_count = parent->second->child_count();
+    if (static_cast<size_t>(index) > child_count) {
+      FML_LOG(WARNING) << "AddView index out of bounds, clamp to append. id:"
+                       << id << " parent id:" << parent_id
+                       << " index:" << index << " child_count:" << child_count;
+      index = static_cast<int>(child_count);
+    }
     parent->second->AddChild(target->second, index);
   }
 }

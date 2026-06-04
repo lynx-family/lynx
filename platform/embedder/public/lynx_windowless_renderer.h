@@ -247,6 +247,14 @@ class LynxWindowlessRenderer
     }
   }
 
+  bool SendTextInput(const char* text) {
+    if (windowless_renderer_) {
+      return lynx_windowless_renderer_send_text_input(windowless_renderer_,
+                                                      text);
+    }
+    return false;
+  }
+
   /* ----- Callbacks for platform function ----- */
   virtual const char* GetClipboardData() { return ""; }
   virtual void SetClipboardData(const char* data) {}

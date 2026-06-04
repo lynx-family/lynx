@@ -113,6 +113,16 @@ LYNX_EXTERN_C void lynx_windowless_renderer_send_key_event(
   }
 }
 
+LYNX_EXTERN_C bool lynx_windowless_renderer_send_text_input(
+    lynx_windowless_renderer_t* renderer, const char* text) {
+  if (reinterpret_cast<lynx::embedder::LynxWindowlessRenderer*>(renderer)
+          ->send_text_input) {
+    return reinterpret_cast<lynx::embedder::LynxWindowlessRenderer*>(renderer)
+        ->send_text_input(text);
+  }
+  return false;
+}
+
 LYNX_EXTERN_C void lynx_windowless_renderer_bind_get_clipboard_data(
     lynx_windowless_renderer_t* renderer,
     get_clipboard_data get_clipboard_data) {

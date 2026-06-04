@@ -91,8 +91,6 @@ constexpr float kDefaultLineHeight = 1.2f;
 // All in ARGB
 constexpr uint32_t kDefaultEditableTextColor = 0xff000000;
 
-constexpr uint64_t kCaretTwinkleIntervalMs = 500;
-
 // Hot key tags.
 constexpr uint32_t kTagCommand = 1;
 constexpr uint32_t kTagControl = 1 << 1;
@@ -209,6 +207,10 @@ EditableView::EditableView(int id, int callback_id, std::string tag,
   GetRenderEditable()->SetTextEditingController(text_editing_controller_.get());
   GetRenderEditable()->SetTextInputControllerDelegate(this);
   GetRenderEditable()->SetMultiline(is_multiline_);
+  caret_blink_controller_ = std::make_unique<CaretBlinkController>(
+      page_view->GetTaskRunner(), [this](bool display) {
+        GetRenderEditable()->SetCaretDisplay(display);
+      });
 
   SetFocusable(true);
 
@@ -999,10 +1001,7 @@ void EditableView::QuitEditing() {
     SetTextEditingValue(text_editing_value);
     MarkNeedsLayout();
   }
-  if (caret_timer_) {
-    caret_timer_.reset();
-    GetRenderEditable()->SetCaretDisplay(false);
-  }
+  caret_blink_controller_->Stop();
   text_input_controller_->Hide();
   text_input_controller_->ClearClient();
 }
@@ -1063,20 +1062,7 @@ void EditableView::TwinkleCaretPeriodically() {
   if (!editing_) {
     return;
   }
-  twinkle_flag_ = true;
-  GetRenderEditable()->SetCaretDisplay(true);
-
-  if (!caret_timer_) {
-    caret_timer_ =
-        std::make_unique<fml::RepeatingTimer>(page_view()->GetTaskRunner());
-  }
-  caret_timer_->Start(fml::TimeDelta::FromMilliseconds(kCaretTwinkleIntervalMs),
-                      [this] { ToggleCaret(); });
-}
-
-void EditableView::ToggleCaret() {
-  twinkle_flag_ = !twinkle_flag_;
-  GetRenderEditable()->SetCaretDisplay(twinkle_flag_);
+  caret_blink_controller_->Start();
 }
 
 void EditableView::SetDirection(int type) {

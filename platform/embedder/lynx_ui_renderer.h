@@ -5,6 +5,7 @@
 #define PLATFORM_EMBEDDER_LYNX_UI_RENDERER_H_
 
 #include <memory>
+#include <string>
 
 #include "core/public/ui_delegate.h"
 #include "platform/embedder/lynx_view_builder_priv.h"
@@ -68,6 +69,8 @@ class LynxUIRenderer {
   virtual void RegisterIMEHandler(void* handler, void* opaque) = 0;
 
   virtual void AddClient(LynxViewClients* client) {}
+
+  virtual std::string DumpUITreeForCDP() { return R"({"available":false})"; }
 
   // TODO: Add more methods.
 

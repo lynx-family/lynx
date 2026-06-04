@@ -7,6 +7,8 @@
 #include <optional>
 
 #include "base/include/value/base_string.h"
+#include "base/include/value/base_value.h"
+#include "core/renderer/utils/base/tasm_constants.h"
 
 namespace lynx {
 namespace tasm {
@@ -60,10 +62,29 @@ struct TextProps {
 
   enum class TextAlign { LEFT = 0, CENTER = 1, RIGHT = 2 };
 
+  enum class ContentEditableState { kNotEditable = 0, kEditable = 1 };
+
   // attributes
   std::optional<int> text_max_line;        //=-1
   std::optional<base::String> image_mode;  //""
+  ContentEditableState content_editable{
+      ContentEditableState::kNotEditable};
 };
+
+inline TextProps::ContentEditableState ParseContentEditableState(
+    const lepus::Value& value) {
+  if (value.IsBool()) {
+    return value.Bool() ? TextProps::ContentEditableState::kEditable
+                        : TextProps::ContentEditableState::kNotEditable;
+  }
+  if (!value.IsString()) {
+    return TextProps::ContentEditableState::kNotEditable;
+  }
+  const auto& content_editable = value.StdString();
+  return content_editable.empty() || content_editable == kTrue
+             ? TextProps::ContentEditableState::kEditable
+             : TextProps::ContentEditableState::kNotEditable;
+}
 
 // A lookup table to determine the number of UTF-16 code units contributed
 // by each possible UTF-8 byte value (0-255).

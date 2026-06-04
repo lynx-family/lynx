@@ -21,6 +21,8 @@ ui_component_sources = [
   "component_constants.h",
   "css_property.cc",
   "css_property.h",
+  "editable/caret_blink_controller.cc",
+  "editable/caret_blink_controller.h",
   "editable/ime_listener.h",
   "expose_manager/expose_observer.cc",
   "expose_manager/expose_observer.h",
