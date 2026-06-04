@@ -72,10 +72,6 @@ jobs:
         uses: ./lynx/.github/actions/common-deps
         with:
           cache-backend: github
-      - name: Setup Ruby Cache
-        uses: ./lynx/.github/actions/ios-common-deps
-        with:
-          cache-backend: 'github'
       - name: Prepare cocoapods publish source
         run: |-
           source tools/envsetup.sh

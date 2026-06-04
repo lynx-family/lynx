@@ -67,7 +67,7 @@ jobs:
 
   darwin-native-unittests-check:
     timeout-minutes: 60
-    runs-on: lynx-darwin-14-medium
+    runs-on: lynx-darwin-15.6.1-medium
     steps:
       - name: Download Source
         uses: actions/checkout@v6
@@ -79,7 +79,7 @@ jobs:
         run: |
           set -e
           source tools/envsetup.sh
-          tools/rtf/rtf native-ut run --names lynx
+          tools/rtf/rtf native-ut run --names lynx --disable-flutter-cxx
 
   linux-native-unittests-check:
     runs-on: lynx-ubuntu-22.04-large
@@ -123,7 +123,7 @@ jobs:
 
   ios-unittests-check:
     timeout-minutes: 60
-    runs-on: lynx-darwin-14-medium
+    runs-on: lynx-darwin-15.6.1-medium
     steps:
       - name: Download Source
         uses: actions/checkout@v6
@@ -131,10 +131,6 @@ jobs:
           path: lynx
       - name: Install Common Dependencies
         uses: ./lynx/.github/actions/common-deps
-      - name: Setup Ruby Cache
-        uses: ./lynx/.github/actions/ios-common-deps
-        with:
-          cache-backend: 'lynx-infra'
       - name: Install iOS Dependencies
         uses: nick-fields/retry@v2
         with:
@@ -156,9 +152,10 @@ jobs:
           xcodebuild -showsdks | grep -Eo -m 1 "iphonesimulator([0-9]{1,}\.)+[0-9]{1,}" > sdk.txt
           sdkVersion=$(awk '{ sub(/iphonesimulator/,""); print $0 }' sdk.txt)
           echo $sdkVersion > sdk.txt
-          xcodebuild build-for-testing ARCHS=arm64 -workspace LynxExplorer.xcworkspace -scheme LynxExplorerTests -enableCodeCoverage YES -configuration Debug -sdk iphonesimulator$(cat sdk.txt) COMPILER_INDEX_STORE_ENABLE=NO -derivedDataPath iOSCoreBuild/DerivedData -dest"platform=iOS Simulator,OS=$(cat sdk.txt),name=iPhone 11" SYMROOT=`pwd`/Build/Products -testPlan UTTest
+          SIMULATOR_ID=$(xcrun simctl list devices | grep -E "iPhone" | grep -v "unavailable" | head -1 | grep -Eo "[0-9A-F-]{36}")
+          xcodebuild build-for-testing ARCHS=arm64 -workspace LynxExplorer.xcworkspace -scheme LynxExplorerTests -enableCodeCoverage YES -configuration Debug -sdk iphonesimulator$(cat sdk.txt) COMPILER_INDEX_STORE_ENABLE=NO -derivedDataPath iOSCoreBuild/DerivedData -destination "platform=iOS Simulator,id=$SIMULATOR_ID" SYMROOT=`pwd`/Build/Products -testPlan UTTest
           chmod u+x xctestrunner
-          ./xctestrunner --xctestrun `pwd`/Build/Products/LynxExplorerTests_UTTest_iphonesimulator$(cat sdk.txt)-arm64.xctestrun --work_dir `pwd` --output_dir `pwd`/iOSCoreBuild/DerivedData simulator_test
+          ./xctestrunner --xctestrun `pwd`/Build/Products/LynxExplorerTests_UTTest_iphonesimulator$(cat sdk.txt)-arm64.xctestrun --work_dir `pwd` --output_dir `pwd`/iOSCoreBuild/DerivedData test --id $SIMULATOR_ID --platform ios_simulator
           popd
 
   cocoapods-lynx-library-build:
@@ -220,7 +217,7 @@ jobs:
 
   tasm-darwin-build:
     timeout-minutes: 60
-    runs-on: lynx-darwin-14-medium
+    runs-on: lynx-darwin-15.6.1-medium
     steps:
       - name: Download Source
         uses: actions/checkout@v6
@@ -243,7 +240,7 @@ jobs:
 
   tasm-wasm-build:
     timeout-minutes: 60
-    runs-on: lynx-darwin-14-medium
+    runs-on: lynx-darwin-15.6.1-medium
     steps:
       - name: Download Source
         uses: actions/checkout@v6
@@ -648,7 +645,7 @@ jobs:
 
   ios-explorer-build:
     timeout-minutes: 60
-    runs-on: lynx-darwin-14-medium
+    runs-on: lynx-darwin-15.6.1-medium
     strategy:
       matrix:
         arch: [arm64, x86_64]
@@ -671,7 +668,7 @@ jobs:
 
   ios-integration-test:
     timeout-minutes: 15
-    runs-on: lynx-darwin-14-medium
+    runs-on: lynx-darwin-15.6.1-medium
     env:
       LOCAL_POD_NAME: 'local_pod'
       POD_VERSION: '0.0.1-alpha.1'
@@ -684,14 +681,13 @@ jobs:
           path: lynx
       - name: Install Common Dependencies
         uses: ./lynx/.github/actions/common-deps
-      - name: Setup Ruby Cache
-        uses: ./lynx/.github/actions/ios-common-deps
-        with:
-          cache-backend: 'lynx-infra'
       - name: Prepare cocoapods publish source
         run: |-
           source tools/envsetup.sh
           export LANG=en_US.UTF-8
+          bundle -v
+          bundle config set path .
+          SDKROOT=/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk bundle install 
           python3 tools/ios_tools/cocoapods_publish_helper.py --prepare-source --tag $POD_VERSION --version $POD_VERSION --component all
       - name: Publish to Local Pod Source
         run: |-
@@ -715,8 +711,7 @@ jobs:
           python3 lynx/tools/ios_tools/process_podfile.py --action insert_pod_source --podfile demo/ios/HelloLynxObjc/Podfile --pod_source "file://$GITHUB_WORKSPACE/lynx/$LOCAL_POD_NAME"
           cd demo/ios/HelloLynxObjc
           export LANG=en_US.UTF-8
-          BUNDLE_GEMFILE=$GITHUB_WORKSPACE/lynx/Gemfile bundle --version
-          BUNDLE_GEMFILE=$GITHUB_WORKSPACE/lynx/Gemfile bundle exec pod install
+          pod install
           xcodebuild -workspace Hello-Lynx-OC.xcworkspace/ -scheme Hello-Lynx-OC CODE_SIGNING_ALLOWED=NO build
 
   ios-e2e-test:
@@ -725,7 +720,7 @@ jobs:
     env:
       APPIUM_TEST_SERVER_PORT: 4723
       APPIUM_TEST_SERVER_HOST: 127.0.0.1
-    runs-on: lynx-darwin-14-medium
+    runs-on: lynx-darwin-15.6.1-medium
     steps:
       - name: Download Source
         uses: actions/checkout@v6
@@ -733,10 +728,6 @@ jobs:
           path: lynx
       - name: Install Common Dependencies
         uses: ./lynx/.github/actions/common-deps
-      - name: Setup Ruby Cache
-        uses: ./lynx/.github/actions/ios-common-deps
-        with:
-          cache-backend: 'lynx-infra'
       - name: Get iOS simulator SDK version
         run: |
           xcodebuild -showsdks | grep -Eo -m 1 "iphonesimulator([0-9]{1,}\.)+[0-9]{1,}" > sdk.txt
@@ -757,16 +748,16 @@ jobs:
               -configuration Release \
               -sdk iphonesimulator${{ env.SDK_VERSION }} \
               -derivedDataPath ./WebDriverAgent/DerivedData \
-              -destination "platform=iOS Simulator,OS=${{ env.SDK_VERSION }},name=iPhone 15" \
+              -destination "platform=iOS Simulator,OS=${{ env.SDK_VERSION }},name=iPhone 17" \
               SYMROOT=$GITHUB_WORKSPACE/Build/Products
             popd
       - name: Start iOS Simulator
         run: |
-          xcrun simctl boot "iPhone 15"
+          xcrun simctl boot "iPhone 17"
       - name: Install WebDriverAgent to Simulator
         run: |
           set -e
-          SIMULATOR_UDID=$(xcrun simctl list devices "iOS ${{ env.SDK_VERSION }}" | grep "iPhone 15 (" | grep -oE '[0-9A-F-]{36}')
+          SIMULATOR_UDID=$(xcrun simctl list devices "iOS ${{ env.SDK_VERSION }}" | grep "iPhone 17 (" | grep -oE '[0-9A-F-]{36}')
           echo "SIMULATOR_UDID=$SIMULATOR_UDID" >> $GITHUB_ENV
           xcrun simctl install $SIMULATOR_UDID \
             $GITHUB_WORKSPACE/Build/Products/Release-iphonesimulator/WebDriverAgentRunner-Runner.app
@@ -896,7 +887,7 @@ jobs:
 
   clay-macos-build:
     timeout-minutes: 60
-    runs-on: lynx-darwin-14-medium
+    runs-on: lynx-darwin-15.6.1-medium
     steps:
       - name: Download Source
         uses: actions/checkout@v6
@@ -912,7 +903,7 @@ jobs:
 
   macos-explorer-build:
     timeout-minutes: 60
-    runs-on: lynx-darwin-14-medium
+    runs-on: lynx-darwin-15.6.1-medium
     strategy:
       matrix:
         arch: [arm64, x64]

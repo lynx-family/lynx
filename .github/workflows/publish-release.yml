@@ -177,7 +177,7 @@ jobs:
 
   ios-explorer-build:
     timeout-minutes: 60
-    runs-on: lynx-darwin-14-medium
+    runs-on: lynx-darwin-15.6.1-medium
     needs: get-version
     if: ${{ !contains(needs.get-version.outputs.version, '-nightly.') }}
     strategy:
@@ -313,10 +313,6 @@ jobs:
         uses: ./lynx/.github/actions/common-deps
         with:
           cache-backend: github
-      - name: Setup Ruby Cache
-        uses: ./lynx/.github/actions/ios-common-deps
-        with:
-          cache-backend: 'github'
       - name: Publish iOS SDK
         uses: ./lynx/.github/actions/ios-sdk-publish
         with:
@@ -491,7 +487,7 @@ jobs:
 
   macos-explorer-release:
     timeout-minutes: 60
-    runs-on: lynx-darwin-14-medium
+    runs-on: lynx-darwin-15.6.1-medium
     needs: get-version
     if: ${{ !contains(needs.get-version.outputs.version, '-nightly.') }}
     strategy:

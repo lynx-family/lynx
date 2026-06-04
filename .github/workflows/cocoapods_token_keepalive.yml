@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 jobs:
   token-keepalive:
-    runs-on: lynx-darwin-14-medium
+    runs-on: lynx-darwin-15.6.1-medium
     env:
       COCOAPODS_TRUNK_TOKEN: ${{ secrets.COCOAPODS_TRUNK_TOKEN }}
     steps:
@@ -14,10 +14,6 @@ jobs:
         uses: actions/checkout@v6
         with:
           path: lynx
-      - name: Setup Ruby Cache
-        uses: ./lynx/.github/actions/ios-common-deps
-        with:
-          cache-backend: 'lynx-infra'
       - name: Keep CocoaPods Token alive
         run: |
           cd $GITHUB_WORKSPACE/lynx
