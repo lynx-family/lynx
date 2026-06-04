@@ -63,12 +63,36 @@ jobs:
 
   darwin-native-unittests-check:
     timeout-minutes: 60
+    runs-on: lynx-darwin-15.6.1-medium
+    steps:
+      - name: Download Source
+        uses: actions/checkout@v4.2.2
+        with:
+          path: lynx
+      - name: check python version
+        run: |
+          python3 --version
+          which python3
+      - name: Install Common Dependencies
+        uses: ./lynx/.github/actions/common-deps
+      - name: Run Unittests
+        run: |
+          set -e
+          source tools/envsetup.sh
+          tools/rtf/rtf native-ut run --names lynx
+
+  darwin-native-unittests-check-old:
+    timeout-minutes: 60
     runs-on: lynx-darwin-14-medium
     steps:
       - name: Download Source
         uses: actions/checkout@v4.2.2
         with:
           path: lynx
+      - name: check python version
+        run: |
+          python3 --version
+          which python3
       - name: Install Common Dependencies
         uses: ./lynx/.github/actions/common-deps
       - name: Run Unittests
@@ -119,7 +143,7 @@ jobs:
 
   ios-unittests-check:
     timeout-minutes: 60
-    runs-on: lynx-darwin-14-medium
+    runs-on: lynx-darwin-15.6.1-medium
     steps:
       - name: Download Source
         uses: actions/checkout@v4.2.2
@@ -216,7 +240,7 @@ jobs:
 
   tasm-darwin-build:
     timeout-minutes: 60
-    runs-on: lynx-darwin-14-medium
+    runs-on: lynx-darwin-15.6.1-medium
     steps:
       - name: Download Source
         uses: actions/checkout@v4.2.2
@@ -239,7 +263,7 @@ jobs:
 
   tasm-wasm-build:
     timeout-minutes: 60
-    runs-on: lynx-darwin-14-medium
+    runs-on: lynx-darwin-15.6.1-medium
     steps:
       - name: Download Source
         uses: actions/checkout@v4.2.2
@@ -644,7 +668,7 @@ jobs:
 
   ios-explorer-build:
     timeout-minutes: 60
-    runs-on: lynx-darwin-14-medium
+    runs-on: lynx-darwin-15.6.1-medium
     strategy:
       matrix:
         arch: [arm64, x86_64]
@@ -667,7 +691,7 @@ jobs:
 
   ios-integration-test:
     timeout-minutes: 15
-    runs-on: lynx-darwin-14-medium
+    runs-on: lynx-darwin-15.6.1-medium
     env:
       LOCAL_POD_NAME: 'local_pod'
       POD_VERSION: '0.0.1-alpha.1'
@@ -721,7 +745,7 @@ jobs:
     env:
       APPIUM_TEST_SERVER_PORT: 4723
       APPIUM_TEST_SERVER_HOST: 127.0.0.1
-    runs-on: lynx-darwin-14-medium
+    runs-on: lynx-darwin-15.6.1-medium
     steps:
       - name: Download Source
         uses: actions/checkout@v4.2.2
@@ -892,7 +916,7 @@ jobs:
 
   clay-macos-build:
     timeout-minutes: 60
-    runs-on: lynx-darwin-14-medium
+    runs-on: lynx-darwin-15.6.1-medium
     steps:
       - name: Download Source
         uses: actions/checkout@v4.2.2
@@ -908,7 +932,7 @@ jobs:
 
   macos-explorer-build:
     timeout-minutes: 60
-    runs-on: lynx-darwin-14-medium
+    runs-on: lynx-darwin-15.6.1-medium
     strategy:
       matrix:
         arch: [arm64, x64]

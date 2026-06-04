@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 jobs:
   token-keepalive:
-    runs-on: lynx-darwin-14-medium
+    runs-on: lynx-darwin-15.6.1-medium
     env:
       COCOAPODS_TRUNK_TOKEN: ${{ secrets.COCOAPODS_TRUNK_TOKEN }}
     steps:
