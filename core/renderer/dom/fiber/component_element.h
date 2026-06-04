@@ -59,7 +59,10 @@ class ComponentElement : public WrapperElement, public BaseComponent {
 
   const base::String& component_entry() const { return entry_name_; }
 
-  void set_component_entry(const base::String& entry) { entry_name_ = entry; }
+  void set_component_entry(const base::String& entry) {
+    entry_name_ = entry;
+    set_entry_name(entry);
+  }
 
   void MarkAsWrapperComponent();
 
