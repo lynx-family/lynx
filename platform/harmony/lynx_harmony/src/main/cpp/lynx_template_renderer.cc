@@ -17,9 +17,11 @@
 #include "base/trace/native/platform/harmony/trace_controller_delegate_harmony.h"
 #include "base/trace/native/trace_event.h"
 #include "core/base/harmony/napi_convert_helper.h"
+#include "core/base/threading/task_runner_manufactor.h"
 #include "core/renderer/data/harmony/template_data_harmony.h"
 #include "core/renderer/dom/harmony/lynx_template_bundle_harmony.h"
 #include "core/renderer/ui_wrapper/painting/harmony/ui_delegate_harmony.h"
+#include "core/renderer/utils/base/base_def.h"
 #include "core/runtime/js/bytecode/harmony/js_cache_manager_harmony.h"
 #include "core/services/event_report/harmony/event_tracker_harmony.h"
 #include "core/services/performance/harmony/performance_controller_harmony.h"
@@ -27,6 +29,7 @@
 #include "core/shell/common/platform_call_back.h"
 #include "core/shell/event_tracker_proxy_impl.h"
 #include "core/shell/harmony/native_facade_harmony.h"
+#include "core/shell/harmony/platform_call_back_harmony.h"
 #include "core/shell/harmony/tasm_platform_invoker_harmony.h"
 #include "core/shell/lynx_engine_proxy_impl.h"
 #include "core/shell/lynx_layout_proxy_impl.h"
@@ -61,6 +64,12 @@ bool CheckNapiUnwrapObject(napi_status status, void* obj, const char* message) {
     return false;
   }
   return true;
+}
+
+bool IsNapiFunction(napi_env env, napi_value value) {
+  napi_valuetype type = napi_undefined;
+  napi_typeof(env, value, &type);
+  return type == napi_function;
 }
 
 void PrepareEnvWidthScreenSize(int width, int height, float density,
@@ -602,6 +611,9 @@ napi_value LynxTemplateRenderer::Init(napi_env env, napi_value exports) {
                           SubscribeSessionStorage),
       DECLARE_NAPI_METHOD("nativeUnsubscribeSessionStorage",
                           UnsubscribeSessionStorage),
+      DECLARE_NAPI_METHOD("nativeGetLynxElementRoot", GetLynxElementRoot),
+      DECLARE_NAPI_METHOD("nativeLynxElementToJSONString",
+                          LynxElementToJSONString),
       DECLARE_NAPI_METHOD("nativeGetAllJsSource", GetAllJsSource),
       DECLARE_NAPI_METHOD("invokeLepusCallback", InvokeLepusCallback),
   };
@@ -1800,6 +1812,72 @@ napi_value LynxTemplateRenderer::UnsubscribeSessionStorage(
     napi_delete_reference(env, it->second);
     obj->session_storage_callback_refs_.erase(it);
   }
+  return nullptr;
+}
+
+napi_value LynxTemplateRenderer::GetLynxElementRoot(napi_env env,
+                                                    napi_callback_info info) {
+  napi_value js_this = nullptr;
+  size_t argc = 1;
+  napi_value args[1] = {nullptr};
+  napi_get_cb_info(env, info, &argc, args, &js_this, nullptr);
+
+  if (argc < 1 || !IsNapiFunction(env, args[0])) {
+    return nullptr;
+  }
+
+  auto callback =
+      std::make_unique<shell::PlatformCallBackHarmony>(env, args[0]);
+
+  LynxTemplateRenderer* obj = nullptr;
+  napi_status status =
+      napi_unwrap(env, js_this, reinterpret_cast<void**>(&obj));
+  if (!CheckNapiUnwrapObject(status, obj, "GetLynxElementRoot failed")) {
+    callback->InvokeWithValue(lepus::Value(tasm::kInvalidImplId));
+    return nullptr;
+  }
+
+  if (!obj->shell_ || obj->shell_->IsDestroyed()) {
+    callback->InvokeWithValue(lepus::Value(tasm::kInvalidImplId));
+    return nullptr;
+  }
+
+  obj->shell_->GetLynxElementRootSignAsync(std::move(callback));
+  return nullptr;
+}
+
+napi_value LynxTemplateRenderer::LynxElementToJSONString(
+    napi_env env, napi_callback_info info) {
+  napi_value js_this = nullptr;
+  size_t argc = 2;
+  napi_value args[2] = {nullptr};
+  napi_get_cb_info(env, info, &argc, args, &js_this, nullptr);
+
+  if (argc < 2 || !IsNapiFunction(env, args[1])) {
+    return nullptr;
+  }
+
+  int32_t sign = tasm::kInvalidImplId;
+  napi_get_value_int32(env, args[0], &sign);
+
+  auto callback =
+      std::make_unique<shell::PlatformCallBackHarmony>(env, args[1]);
+
+  LynxTemplateRenderer* obj = nullptr;
+  napi_status status =
+      napi_unwrap(env, js_this, reinterpret_cast<void**>(&obj));
+  if (!CheckNapiUnwrapObject(status, obj, "LynxElementToJSONString failed")) {
+    callback->InvokeWithValue(lepus::Value(""));
+    return nullptr;
+  }
+
+  if (sign == tasm::kInvalidImplId || !obj->shell_ ||
+      obj->shell_->IsDestroyed()) {
+    callback->InvokeWithValue(lepus::Value(""));
+    return nullptr;
+  }
+
+  obj->shell_->GetLynxElementTreeAsJSONStringAsync(sign, std::move(callback));
   return nullptr;
 }
 

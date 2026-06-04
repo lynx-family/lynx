@@ -115,6 +115,8 @@ if (is_android) {
     "harmony/embedder_platform_harmony.h",
     "harmony/native_facade_harmony.cc",
     "harmony/native_facade_harmony.h",
+    "harmony/platform_call_back_harmony.cc",
+    "harmony/platform_call_back_harmony.h",
     "harmony/tasm_platform_invoker_harmony.cc",
     "harmony/tasm_platform_invoker_harmony.h",
   ]

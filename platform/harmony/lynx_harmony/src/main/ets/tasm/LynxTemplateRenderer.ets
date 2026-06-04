@@ -15,6 +15,7 @@ import { TemplateBundle } from './TemplateBundle';
 import { TemplateData } from './MetaData';
 import { SessionStorageCallback } from './SessionStorage';
 import { LynxDevTool } from '../devtool_wrapper/LynxDevTool';
+import { LynxElement, LynxElementImpl } from './LynxElement';
 import { PerformanceController } from './performance/PerformanceController';
 import { convertModuleArgs, LynxModuleManager, SendableLynxModuleManager } from '../jsbridge/LynxModuleManager';
 import { LynxLepusModule } from '../lepus/LynxLepusModule';
@@ -36,7 +37,7 @@ export class LynxTemplateRenderer extends lynx.LynxTemplateRenderer {
   private lynxDevTool?: LynxDevTool;
   private moduleManager: LynxModuleManager;
   private sendableModuleManager: SendableLynxModuleManager;
-  private destroyed = false;
+  private hasDestroyed = false;
   private displayInfo = LynxEnv.getDisplayInfo().clone();
 
   constructor(clients: LynxViewClient[], providers: (LynxResourceProvider | undefined)[],
@@ -88,7 +89,7 @@ export class LynxTemplateRenderer extends lynx.LynxTemplateRenderer {
 
   aboutToDisappear() {
     this.nativeDetach();
-    this.destroyed = true;
+    this.hasDestroyed = true;
     this.clients.forEach(client => client.onDestroy());
     if (this.lynxView) {
       this.lynxDevTool?.destroy(this.lynxView);
@@ -218,6 +219,26 @@ export class LynxTemplateRenderer extends lynx.LynxTemplateRenderer {
     return this.nativeGetAllJsSource();
   }
 
+  isDestroyed(): boolean {
+    return this.hasDestroyed;
+  }
+
+  /**
+   * Obtains the root LynxElement for this renderer.
+   */
+  getLynxElementRoot(callback: (result: LynxElement | null) => void): void {
+    if (typeof callback !== 'function') {
+      return;
+    }
+    if (this.hasDestroyed) {
+      callback(null);
+      return;
+    }
+    this.nativeGetLynxElementRoot((sign: number) => {
+      callback(sign !== 0 ? new LynxElementImpl(this, sign) : null);
+    });
+  }
+
   setPlatformConfig(config: string) {
     this.nativeSetPlatformConfig(config);
   }
@@ -259,7 +280,7 @@ export class LynxTemplateRenderer extends lynx.LynxTemplateRenderer {
   }
 
   override invokeLepusCallback(id: number, entryName: string, args: Object) {
-    if (this.destroyed) {
+    if (this.hasDestroyed) {
       return;
     }
     super.invokeLepusCallback(id, entryName, args);

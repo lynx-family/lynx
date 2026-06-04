@@ -205,6 +205,16 @@ export class LynxTemplateRenderer {
 
   nativeUnsubscribeSessionStorage(key: string, listenerId: number): void;
 
+  /**
+   * Obtains the root LynxElement.
+   */
+  nativeGetLynxElementRoot(callback: (result: number) => void): void;
+
+  nativeLynxElementToJSONString(
+    sign: number,
+    callback: (result: string | null) => void
+  ): void;
+
   invokeLepusCallback(id: number, entryName: string, args: Object): void;
 }
 

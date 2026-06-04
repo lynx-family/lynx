@@ -190,6 +190,7 @@ export abstract class LynxNodeController extends NodeController {
   aboutToReuse(params: Record<string, ESObject>): void;
   aboutToRecycle(): void;
   sendGlobalEvent(name: string, params: Object[]): void;
+  getLynxElementRoot(callback: (result: LynxElement | null) => void): void;
   override onMeasureSize(selfLayoutInfo: GeometryInfo, children: Measurable[], constraint: ConstraintSizeOptions): void;
   override onPlaceChildren(selfLayoutInfo: GeometryInfo, children: Layoutable[], constraint: ConstraintSizeOptions): void;
   reload(): void;
@@ -568,6 +569,10 @@ export class UIGroup extends UIBase {
   getContentSize(content: lynx.NativeContent): [number, number];
   children: lynx.NativeContent[]; = []
   hasCustomLayout: boolean; = true
+}
+
+export class LynxElement {
+  toJSONString(callback: (result: string | null) => void): void;
 }
 
 export class ShadowNodeOwner {

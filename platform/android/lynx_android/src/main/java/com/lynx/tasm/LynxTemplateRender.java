@@ -735,6 +735,50 @@ public class LynxTemplateRender
     return (mLynxUIRender != null) ? mLynxUIRender.getLynxRootUI() : null;
   }
 
+  void getLynxElementRoot(@NonNull final LynxElement.Callback<LynxElement> callback) {
+    if (callback == null) {
+      return;
+    }
+    final LynxTemplateRender templateRender = this;
+    final PlatformCallBack platformCallback = new PlatformCallBack() {
+      @Override
+      public void onSuccess(Object data) {
+        int sign = data instanceof Number ? ((Number) data).intValue() : 0;
+        UIThreadUtils.runOnUiThread(
+            () -> callback.onResult(sign != 0 ? new LynxElement(templateRender, sign) : null));
+      }
+    };
+    UIThreadUtils.runOnUiThread(() -> {
+      if (mNativePtr == 0 || mNativeLifecycle == 0) {
+        UIThreadUtils.runOnUiThread(() -> callback.onResult(null));
+        return;
+      }
+      nativeGetLynxElementRoot(mNativePtr, mNativeLifecycle, platformCallback);
+    });
+  }
+
+  void lynxElementToJSONString(
+      final int sign, @NonNull final LynxElement.Callback<String> callback) {
+    if (callback == null) {
+      return;
+    }
+    final PlatformCallBack platformCallback = new PlatformCallBack() {
+      @Override
+      public void onSuccess(Object data) {
+        String result = data instanceof String ? (String) data : null;
+        UIThreadUtils.runOnUiThread(
+            () -> callback.onResult(result != null && !result.isEmpty() ? result : null));
+      }
+    };
+    UIThreadUtils.runOnUiThread(() -> {
+      if (mNativePtr == 0 || mNativeLifecycle == 0 || sign == 0) {
+        UIThreadUtils.runOnUiThread(() -> callback.onResult(null));
+        return;
+      }
+      nativeLynxElementToJSONString(mNativePtr, mNativeLifecycle, sign, platformCallback);
+    });
+  }
+
   public LynxDevtool getDevTool() {
     return mDevTool;
   }
@@ -4502,6 +4546,11 @@ public class LynxTemplateRender
   private static native void nativeMarkDirty(long ptr, long lifecycle);
 
   private static native void nativeFlush(long ptr, long lifecycle);
+
+  static native void nativeGetLynxElementRoot(long ptr, long lifecycle, PlatformCallBack callback);
+
+  static native void nativeLynxElementToJSONString(
+      long ptr, long lifecycle, int sign, PlatformCallBack callback);
 
   private static native void nativeSyncPackageExternalPath(long ptr, String path);
 

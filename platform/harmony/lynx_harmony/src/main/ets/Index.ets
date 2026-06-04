@@ -53,6 +53,10 @@ export {
   UIGroup
 } from './tasm/behavior/ui/UIGroup'
 
+export {
+  LynxElement
+} from './tasm/LynxElement'
+
 export { NativeContent,
   UIOwner as NativeUIOwner,
   ShadowNodeOwner as NativeShadowNodeOwner,

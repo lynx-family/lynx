@@ -1207,6 +1207,10 @@ public interface com::lynx::react::bridge::Callback {
   public void com.lynx.react.bridge.Callback.invoke(Object... args);
 }
 
+public interface com::lynx::tasm::LynxElement::Callback {
+  public void com.lynx.tasm.LynxElement.Callback< T >.onResult(@Nullable T result);
+}
+
 public interface com::lynx::tasm::NativeFacade::Callback {
   public void com.lynx.tasm.NativeFacade.Callback.onLoaded(int templateSize);
   public void com.lynx.tasm.NativeFacade.Callback.onSSRHydrateFinished();
@@ -5069,6 +5073,10 @@ public interface com::lynx::tasm::behavior::LynxElement {
   public Class<? extends IRendererHost > com.lynx.tasm.behavior.LynxElement.fragmentLayerRendererHost() default IRendererHost.class;
 }
 
+public class com::lynx::tasm::LynxElement :  {
+  public void com.lynx.tasm.LynxElement.toJSONString(@NonNull final Callback< String > callback);
+}
+
 public class com::lynx::jsbridge::LynxEmbeddedModule : com.lynx.jsbridge.LynxContextModule {
   public final String com.lynx.jsbridge.LynxEmbeddedModule.NAME NAME;
   public com.lynx.jsbridge.LynxEmbeddedModule.LynxEmbeddedModule(LynxContext context, Object param);
@@ -7517,6 +7525,7 @@ public class com::lynx::tasm::LynxView : com.lynx.tasm.behavior.ui.UIBody.UIBody
   public View com.lynx.tasm.LynxView.findViewByIdSelector(String id);
   public LynxBaseUI com.lynx.tasm.LynxView.findUIByIdSelector(String id);
   public UIGroup< UIBodyView > com.lynx.tasm.LynxView.getLynxUIRoot();
+  public void com.lynx.tasm.LynxView.getLynxElementRoot(@NonNull LynxElement.Callback< LynxElement > callback);
   public void com.lynx.tasm.LynxView.syncFlush();
   public LynxBaseUI com.lynx.tasm.LynxView.findUIByIndex(int index);
   public void com.lynx.tasm.LynxView.setOnClickListener(@Nullable OnClickListener listener);
