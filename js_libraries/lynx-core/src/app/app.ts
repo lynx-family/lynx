@@ -12,7 +12,6 @@ import {
   requireParamObj,
 } from './interface';
 import { AMDFactory, AMDModule } from '../common';
-import { createSharedConsole, SharedConsole } from '@lynx-js/runtime-shared';
 import {
   Reporter,
   BaseError,
@@ -57,7 +56,7 @@ export abstract class BaseApp<
   _params: loadCardParams;
   lynx: LynxImpl;
   modules: Record<string, Record<string, AMDModule>>;
-  sharedConsole: SharedConsole;
+  sharedConsole: typeof nativeConsole;
   dynamicComponentExports: object;
   loadedDynamicComponentsSet: Set<string>;
   resolvedPromise: Promise<void>;
@@ -169,7 +168,7 @@ export abstract class BaseApp<
       this._nativeApp = CachedFunctionProxy.create<NativeAppProxy>(
         this._nativeApp
       );
-      this.sharedConsole = createSharedConsole(`runtimeId:${this.nativeAppId}`);
+      this.sharedConsole = nativeConsole;
       this.dynamicComponentExports = {};
       this.loadedDynamicComponentsSet = new Set();
       this._lazyCallableModules = new Map();

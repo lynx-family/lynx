@@ -3,6 +3,4 @@
 // LICENSE file in the root directory of this source tree.
 
 export { default as nativeGlobal } from './nativeGlobal';
-export * from './ttConsole';
-export { default as ttConsole } from './ttConsole';
 export * from './utils';

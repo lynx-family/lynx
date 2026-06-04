@@ -2,7 +2,6 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-import nativeConsole from '../../common/ttConsole';
 import { LYNX_CORE, RUN_TYPE } from '../../common';
 import { App, NativeApp } from '../../app';
 import { isObject } from '@lynx-js/runtime-shared';
