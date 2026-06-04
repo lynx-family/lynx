@@ -7,5 +7,44 @@
   "author": "liyun",
   "consumption_status": "layout-wanted",
   "desc": "The border shorthand CSS property sets an element's border.",
-  "is_shorthand": true
+  "is_shorthand": true,
+  "compat_data": {
+    "border": {
+      "__compat": {
+        "lynx_path": "api/css/properties/border",
+        "mdn_url": "https://developer.mozilla.org/zh-CN/docs/Web/CSS/border",
+        "spec_url": [],
+        "status": {
+          "deprecated": false,
+          "experimental": false
+        },
+        "support": {
+          "android": {
+            "version_added": "1.0"
+          },
+          "ios": {
+            "version_added": "1.0"
+          },
+          "harmony": {
+            "version_added": "3.4"
+          },
+          "clay_android": {
+            "version_added": "1.0"
+          },
+          "clay_ios": {
+            "version_added": "1.0"
+          },
+          "clay_macos": {
+            "version_added": "1.0"
+          },
+          "clay_windows": {
+            "version_added": "1.0"
+          },
+          "web_lynx": {
+            "version_added": true
+          }
+        }
+      }
+    }
+  }
 }

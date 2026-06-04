@@ -24,7 +24,13 @@
           "ios": {
             "version_added": "2.1"
           },
+          "harmony": {
+            "version_added": "3.4"
+          },
           "clay_android": {
+            "version_added": "2.1"
+          },
+          "clay_ios": {
             "version_added": "2.1"
           },
           "clay_macos": {
@@ -32,6 +38,9 @@
           },
           "clay_windows": {
             "version_added": "2.1"
+          },
+          "web_lynx": {
+            "version_added": true
           }
         }
       },
@@ -51,7 +60,14 @@
               "notes": "",
               "version_added": "2.18"
             },
+            "harmony": {
+              "notes": "",
+              "version_added": "3.4"
+            },
             "clay_android": {
+              "version_added": "2.18"
+            },
+            "clay_ios": {
               "version_added": "2.18"
             },
             "clay_macos": {
@@ -59,6 +75,9 @@
             },
             "clay_windows": {
               "version_added": "2.18"
+            },
+            "web_lynx": {
+              "version_added": true
             }
           }
         }
@@ -79,7 +98,14 @@
               "notes": "",
               "version_added": "3.0"
             },
+            "harmony": {
+              "notes": "",
+              "version_added": "3.4"
+            },
             "clay_android": {
+              "version_added": "3.0"
+            },
+            "clay_ios": {
               "version_added": "3.0"
             },
             "clay_macos": {
@@ -87,6 +113,9 @@
             },
             "clay_windows": {
               "version_added": "3.0"
+            },
+            "web_lynx": {
+              "version_added": true
             }
           }
         }
@@ -100,24 +129,35 @@
           },
           "support": {
             "android": {
-              "notes": "Or when <code>quirksMode >= 3.1</code>, Lynx supports <code>max-content</code>, <code>fit-content</code> and <code>minmax()</code>.",
+              "notes": "when <code>targetSdkVersion >= 3.1</code>, Lynx supports <code>max-content</code>, <code>fit-content</code> and <code>minmax()</code>.",
               "version_added": "targetSdkVersion 3.1"
             },
             "ios": {
-              "notes": "Or when <code>quirksMode >= 3.1</code>, Lynx supports <code>max-content</code>, <code>fit-content</code> and <code>minmax()</code>.",
+              "notes": "when <code>targetSdkVersion >= 3.1</code>, Lynx supports <code>max-content</code>, <code>fit-content</code> and <code>minmax()</code>.",
               "version_added": "targetSdkVersion 3.1"
             },
+            "harmony": {
+              "notes": "when <code>targetSdkVersion >= 3.4</code>, Lynx supports <code>max-content</code>, <code>fit-content</code> and <code>minmax()</code>.",
+              "version_added": "targetSdkVersion 3.4"
+            },
             "clay_android": {
-              "notes": "Or when <code>quirksMode >= 3.1</code>, Lynx supports <code>max-content</code>, <code>fit-content</code> and <code>minmax()</code>.",
+              "notes": "when <code>targetSdkVersion >= 3.1</code>, Lynx supports <code>max-content</code>, <code>fit-content</code> and <code>minmax()</code>.",
+              "version_added": "targetSdkVersion 3.1"
+            },
+            "clay_ios": {
+              "notes": "when <code>targetSdkVersion >= 3.1</code>, Lynx supports <code>max-content</code>, <code>fit-content</code> and <code>minmax()</code>.",
               "version_added": "targetSdkVersion 3.1"
             },
             "clay_macos": {
-              "notes": "Or when <code>quirksMode >= 3.1</code>, Lynx supports <code>max-content</code>, <code>fit-content</code> and <code>minmax()</code>.",
+              "notes": "when <code>targetSdkVersion >= 3.1</code>, Lynx supports <code>max-content</code>, <code>fit-content</code> and <code>minmax()</code>.",
               "version_added": "targetSdkVersion 3.1"
             },
             "clay_windows": {
-              "notes": "Or when <code>quirksMode >= 3.1</code>, Lynx supports <code>max-content</code>, <code>fit-content</code> and <code>minmax()</code>.",
+              "notes": "when <code>targetSdkVersion >= 3.1</code>, Lynx supports <code>max-content</code>, <code>fit-content</code> and <code>minmax()</code>.",
               "version_added": "targetSdkVersion 3.1"
+            },
+            "web_lynx": {
+              "version_added": true
             }
           }
         }
@@ -138,7 +178,14 @@
               "notes": "",
               "version_added": false
             },
+            "harmony": {
+              "notes": "",
+              "version_added": false
+            },
             "clay_android": {
+              "version_added": false
+            },
+            "clay_ios": {
               "version_added": false
             },
             "clay_macos": {
@@ -146,6 +193,9 @@
             },
             "clay_windows": {
               "version_added": false
+            },
+            "web_lynx": {
+              "version_added": true
             }
           }
         }
@@ -166,7 +216,14 @@
               "notes": "",
               "version_added": false
             },
+            "harmony": {
+              "notes": "",
+              "version_added": false
+            },
             "clay_android": {
+              "version_added": false
+            },
+            "clay_ios": {
               "version_added": false
             },
             "clay_macos": {
@@ -174,6 +231,9 @@
             },
             "clay_windows": {
               "version_added": false
+            },
+            "web_lynx": {
+              "version_added": true
             }
           }
         }

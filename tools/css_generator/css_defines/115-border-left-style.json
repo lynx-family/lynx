@@ -20,5 +20,44 @@
   ],
   "desc": "The border-left-style CSS property sets the line style of an element's left `border`.",
   "is_shorthand": false,
-  "formal_syntax": "<line-style>"
+  "formal_syntax": "<line-style>",
+  "compat_data": {
+    "border-left-style": {
+      "__compat": {
+        "lynx_path": "api/css/properties/border-left-style",
+        "mdn_url": "https://developer.mozilla.org/zh-CN/docs/Web/CSS/border-left-style",
+        "spec_url": [],
+        "status": {
+          "deprecated": false,
+          "experimental": false
+        },
+        "support": {
+          "android": {
+            "version_added": "1.0"
+          },
+          "ios": {
+            "version_added": "1.0"
+          },
+          "harmony": {
+            "version_added": "3.4"
+          },
+          "clay_android": {
+            "version_added": "1.0"
+          },
+          "clay_ios": {
+            "version_added": "1.0"
+          },
+          "clay_macos": {
+            "version_added": "1.0"
+          },
+          "clay_windows": {
+            "version_added": "1.0"
+          },
+          "web_lynx": {
+            "version_added": true
+          }
+        }
+      }
+    }
+  }
 }

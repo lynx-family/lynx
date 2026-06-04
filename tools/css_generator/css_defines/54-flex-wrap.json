@@ -43,7 +43,14 @@
             "notes": "",
             "version_added": "1.0"
           },
+          "harmony": {
+            "notes": "",
+            "version_added": "3.4"
+          },
           "clay_android": {
+            "version_added": "1.0"
+          },
+          "clay_ios": {
             "version_added": "1.0"
           },
           "clay_macos": {
@@ -51,6 +58,9 @@
           },
           "clay_windows": {
             "version_added": "1.0"
+          },
+          "web_lynx": {
+            "version_added": true
           }
         }
       },
@@ -69,7 +79,14 @@
               "notes": "",
               "version_added": "1.0"
             },
+            "harmony": {
+              "notes": "",
+              "version_added": "3.4"
+            },
             "clay_android": {
+              "version_added": "1.0"
+            },
+            "clay_ios": {
               "version_added": "1.0"
             },
             "clay_macos": {
@@ -77,6 +94,9 @@
             },
             "clay_windows": {
               "version_added": "1.0"
+            },
+            "web_lynx": {
+              "version_added": true
             }
           }
         }
@@ -96,7 +116,14 @@
               "notes": "",
               "version_added": "1.0"
             },
+            "harmony": {
+              "notes": "",
+              "version_added": "3.4"
+            },
             "clay_android": {
+              "version_added": "1.0"
+            },
+            "clay_ios": {
               "version_added": "1.0"
             },
             "clay_macos": {
@@ -104,6 +131,9 @@
             },
             "clay_windows": {
               "version_added": "1.0"
+            },
+            "web_lynx": {
+              "version_added": true
             }
           }
         }
@@ -123,7 +153,14 @@
               "notes": "",
               "version_added": "1.0"
             },
+            "harmony": {
+              "notes": "",
+              "version_added": "3.4"
+            },
             "clay_android": {
+              "version_added": "1.0"
+            },
+            "clay_ios": {
               "version_added": "1.0"
             },
             "clay_macos": {
@@ -131,6 +168,9 @@
             },
             "clay_windows": {
               "version_added": "1.0"
+            },
+            "web_lynx": {
+              "version_added": true
             }
           }
         }

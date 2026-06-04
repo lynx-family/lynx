@@ -13,5 +13,16 @@
     "scaleXY"
   ],
   "desc": "",
-  "is_shorthand": false
+  "is_shorthand": false,
+  "compat_data": {
+    "layout-animation-create-property": {
+      "__compat": {
+        "status": {
+          "deprecated": true,
+          "experimental": false
+        },
+        "support": {}
+      }
+    }
+  }
 }

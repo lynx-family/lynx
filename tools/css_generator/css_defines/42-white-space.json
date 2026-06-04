@@ -4,7 +4,7 @@
   "type": "enum",
   "default_value": "normal",
   "version": "1.0",
-  "desc": "`white-space`CSS property sets how white space inside an element is handled.\u3002.",
+  "desc": "`white-space`CSS property sets how white space inside an element is handled.。.",
   "author": "tangruiwen",
   "consumption_status": "skip",
   "values": [
@@ -19,5 +19,44 @@
       "desc": ""
     }
   ],
-  "is_shorthand": true
+  "is_shorthand": true,
+  "compat_data": {
+    "white-space": {
+      "__compat": {
+        "lynx_path": "api/css/properties/white-space",
+        "mdn_url": "https://developer.mozilla.org/zh-CN/docs/Web/CSS/white-space",
+        "spec_url": [],
+        "status": {
+          "deprecated": false,
+          "experimental": false
+        },
+        "support": {
+          "android": {
+            "version_added": "1.0"
+          },
+          "ios": {
+            "version_added": "1.0"
+          },
+          "harmony": {
+            "version_added": "3.4"
+          },
+          "clay_android": {
+            "version_added": "1.0"
+          },
+          "clay_ios": {
+            "version_added": "1.0"
+          },
+          "clay_macos": {
+            "version_added": "1.0"
+          },
+          "clay_windows": {
+            "version_added": "1.0"
+          },
+          "web_lynx": {
+            "version_added": true
+          }
+        }
+      }
+    }
+  }
 }

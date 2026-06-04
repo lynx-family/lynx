@@ -8,5 +8,43 @@
   "consumption_status": "skip",
   "desc": "The `-x-auto-font-size-line-ranges` property specifies the line ranges and corresponding min/max font sizes.",
   "formal_syntax": "line-range( <number [1,∞]> [ to ( <number [1,∞]> | infinity ) ]? , <length-percentage> [ , <length-percentage> ]? )#",
-  "is_shorthand": false
+  "is_shorthand": false,
+  "compat_data": {
+    "-x-auto-font-size-line-ranges": {
+      "__compat": {
+        "lynx_path": "api/css/properties/-x-auto-font-size-line-ranges",
+        "spec_url": [],
+        "status": {
+          "deprecated": false,
+          "experimental": false
+        },
+        "support": {
+          "android": {
+            "version_added": "3.8"
+          },
+          "ios": {
+            "version_added": "3.8"
+          },
+          "harmony": {
+            "version_added": false
+          },
+          "clay_android": {
+            "version_added": false
+          },
+          "clay_ios": {
+            "version_added": false
+          },
+          "clay_windows": {
+            "version_added": false
+          },
+          "clay_macos": {
+            "version_added": false
+          },
+          "web_lynx": {
+            "version_added": false
+          }
+        }
+      }
+    }
+  }
 }

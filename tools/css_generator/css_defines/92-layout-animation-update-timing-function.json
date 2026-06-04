@@ -17,5 +17,16 @@
     "cubic-bezier"
   ],
   "desc": "",
-  "is_shorthand": false
+  "is_shorthand": false,
+  "compat_data": {
+    "layout-animation-update-timing-function": {
+      "__compat": {
+        "status": {
+          "deprecated": true,
+          "experimental": false
+        },
+        "support": {}
+      }
+    }
+  }
 }

@@ -8,5 +8,44 @@
   "consumption_status": "skip",
   "desc": "The border-top-right-radius CSS property rounds the bottom-left corner of an element by specifying the radius (or the radius of the semi-major and semi-minor axes) of the ellipse defining the curvature of the corner.",
   "is_shorthand": false,
-  "formal_syntax": "<length-percentage [0,∞]>{1,2}"
+  "formal_syntax": "<length-percentage [0,∞]>{1,2}",
+  "compat_data": {
+    "border-top-right-radius": {
+      "__compat": {
+        "lynx_path": "api/css/properties/border-top-right-radius",
+        "mdn_url": "https://developer.mozilla.org/zh-CN/docs/Web/CSS/border-top-right-radius",
+        "spec_url": [],
+        "status": {
+          "deprecated": false,
+          "experimental": false
+        },
+        "support": {
+          "android": {
+            "version_added": "1.0"
+          },
+          "ios": {
+            "version_added": "1.0"
+          },
+          "harmony": {
+            "version_added": "3.4"
+          },
+          "clay_android": {
+            "version_added": "1.0"
+          },
+          "clay_ios": {
+            "version_added": "1.0"
+          },
+          "clay_macos": {
+            "version_added": "1.0"
+          },
+          "clay_windows": {
+            "version_added": "1.0"
+          },
+          "web_lynx": {
+            "version_added": true
+          }
+        }
+      }
+    }
+  }
 }

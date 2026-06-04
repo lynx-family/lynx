@@ -24,5 +24,43 @@
       "desc": ""
     }
   ],
-  "is_shorthand": false
+  "is_shorthand": false,
+  "compat_data": {
+    "-x-animation-color-interpolation": {
+      "__compat": {
+        "lynx_path": "api/css/properties/-x-animation-color-interpolation",
+        "spec_url": [],
+        "status": {
+          "deprecated": false,
+          "experimental": false
+        },
+        "support": {
+          "android": {
+            "version_added": "1.0"
+          },
+          "ios": {
+            "version_added": "1.0"
+          },
+          "harmony": {
+            "version_added": "3.4"
+          },
+          "clay_android": {
+            "version_added": "3.4"
+          },
+          "clay_ios": {
+            "version_added": "3.4"
+          },
+          "clay_windows": {
+            "version_added": "3.4"
+          },
+          "clay_macos": {
+            "version_added": "3.4"
+          },
+          "web_lynx": {
+            "version_added": null
+          }
+        }
+      }
+    }
+  }
 }

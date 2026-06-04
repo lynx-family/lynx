@@ -7,5 +7,43 @@
   "author": "zhouzhuangzhuang",
   "consumption_status": "skip",
   "desc": "The `-x-handle-color` property specifies the color of the floating marker when copying text, only valid in the selection pseudo-element.",
-  "is_shorthand": false
+  "is_shorthand": false,
+  "compat_data": {
+    "-x-handle-color": {
+      "__compat": {
+        "lynx_path": "api/css/properties/-x-handle-color",
+        "spec_url": [],
+        "status": {
+          "deprecated": false,
+          "experimental": false
+        },
+        "support": {
+          "android": {
+            "version_added": "1.0"
+          },
+          "ios": {
+            "version_added": "1.0"
+          },
+          "harmony": {
+            "version_added": false
+          },
+          "clay_android": {
+            "version_added": false
+          },
+          "clay_ios": {
+            "version_added": false
+          },
+          "clay_windows": {
+            "version_added": false
+          },
+          "clay_macos": {
+            "version_added": false
+          },
+          "web_lynx": {
+            "version_added": false
+          }
+        }
+      }
+    }
+  }
 }

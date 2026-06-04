@@ -46,7 +46,13 @@
           "ios": {
             "version_added": "2.0"
           },
+          "harmony": {
+            "version_added": "3.4"
+          },
           "clay_android": {
+            "version_added": "2.0"
+          },
+          "clay_ios": {
             "version_added": "2.0"
           },
           "clay_macos": {
@@ -57,7 +63,7 @@
           },
           "web_lynx": {
             "partial_implementation": true,
-            "version_added": "0.0.0",
+            "version_added": true,
             "notes": "direction:rtl is as powerful as direction:lynx-rtl"
           }
         }
@@ -76,7 +82,13 @@
             "ios": {
               "version_added": "2.0"
             },
+            "harmony": {
+              "version_added": "3.4"
+            },
             "clay_android": {
+              "version_added": "2.0"
+            },
+            "clay_ios": {
               "version_added": "2.0"
             },
             "clay_macos": {

@@ -26,7 +26,14 @@
             "notes": "",
             "version_added": "2.0"
           },
+          "harmony": {
+            "notes": "",
+            "version_added": "3.4"
+          },
           "clay_android": {
+            "version_added": "2.0"
+          },
+          "clay_ios": {
             "version_added": "2.0"
           },
           "clay_macos": {
@@ -34,6 +41,9 @@
           },
           "clay_windows": {
             "version_added": "2.0"
+          },
+          "web_lynx": {
+            "version_added": false
           }
         }
       }

@@ -26,7 +26,13 @@
             "notes": "",
             "version_added": "2.14"
           },
+          "harmony": {
+            "version_added": "3.4"
+          },
           "clay_android": {
+            "version_added": "2.14"
+          },
+          "clay_ios": {
             "version_added": "2.14"
           },
           "clay_macos": {
@@ -34,12 +40,15 @@
           },
           "clay_windows": {
             "version_added": "2.14"
+          },
+          "web_lynx": {
+            "version_added": true
           }
         }
       },
       "Flex": {
         "__compat": {
-          "description": "Supported in Flex Layout",
+          "description": "Supported in Flexible Box Layout",
           "status": {
             "deprecated": false,
             "experimental": false
@@ -53,7 +62,13 @@
               "notes": "",
               "version_added": "2.14"
             },
+            "harmony": {
+              "version_added": "3.4"
+            },
             "clay_android": {
+              "version_added": "2.14"
+            },
+            "clay_ios": {
               "version_added": "2.14"
             },
             "clay_macos": {
@@ -61,6 +76,9 @@
             },
             "clay_windows": {
               "version_added": "2.14"
+            },
+            "web_lynx": {
+              "version_added": true
             }
           }
         }
@@ -81,7 +99,13 @@
               "notes": "",
               "version_added": "2.14"
             },
+            "harmony": {
+              "version_added": "3.4"
+            },
             "clay_android": {
+              "version_added": "2.14"
+            },
+            "clay_ios": {
               "version_added": "2.14"
             },
             "clay_macos": {
@@ -89,6 +113,9 @@
             },
             "clay_windows": {
               "version_added": "2.14"
+            },
+            "web_lynx": {
+              "version_added": true
             }
           }
         }

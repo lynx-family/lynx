@@ -7,5 +7,16 @@
   "author": "liyanbo",
   "consumption_status": "skip",
   "desc": "",
-  "is_shorthand": false
+  "is_shorthand": false,
+  "compat_data": {
+    "layout-animation-delete-delay": {
+      "__compat": {
+        "status": {
+          "deprecated": true,
+          "experimental": false
+        },
+        "support": {}
+      }
+    }
+  }
 }

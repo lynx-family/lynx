@@ -50,6 +50,15 @@
           },
           "clay_windows": {
             "version_added": "1.0"
+          },
+          "harmony": {
+            "version_added": "3.4"
+          },
+          "clay_ios": {
+            "version_added": "1.0"
+          },
+          "web_lynx": {
+            "version_added": true
           }
         }
       },

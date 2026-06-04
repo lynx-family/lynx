@@ -7,5 +7,979 @@
   "author": "baiqiang",
   "consumption_status": "skip",
   "desc": "",
-  "is_shorthand": false
+  "is_shorthand": false,
+  "compat_data": {
+    "cursor": {
+      "__compat": {
+        "description": "The cursor CSS property controls the mouse pointer displayed when the pointer hovers over an element.",
+        "lynx_path": "api/css/properties/cursor",
+        "mdn_url": "https://developer.mozilla.org/en-US/docs/Web/CSS/cursor",
+        "spec_url": [],
+        "status": {
+          "deprecated": false,
+          "experimental": false
+        },
+        "support": {
+          "android": {
+            "version_added": false
+          },
+          "ios": {
+            "version_added": false
+          },
+          "harmony": {
+            "version_added": false
+          },
+          "clay_android": {
+            "version_added": false
+          },
+          "clay_ios": {
+            "version_added": false
+          },
+          "clay_macos": {
+            "version_added": "3.7",
+            "partial_implementation": true,
+            "notes": "Keyword values only. URL-based cursors, local image cursors, and custom hotspot positions are not supported."
+          },
+          "clay_windows": {
+            "version_added": "3.7",
+            "partial_implementation": true,
+            "notes": "Keyword values only. URL-based cursors, local image cursors, and custom hotspot positions are not supported."
+          },
+          "web_lynx": {
+            "version_added": true
+          }
+        }
+      },
+      "default": {
+        "__compat": {
+          "support": {
+            "android": {
+              "version_added": false
+            },
+            "ios": {
+              "version_added": false
+            },
+            "harmony": {
+              "version_added": false
+            },
+            "clay_android": {
+              "version_added": false
+            },
+            "clay_ios": {
+              "version_added": false
+            },
+            "clay_macos": {
+              "version_added": "3.7"
+            },
+            "clay_windows": {
+              "version_added": "3.7"
+            },
+            "web_lynx": {
+              "version_added": true
+            }
+          }
+        }
+      },
+      "none": {
+        "__compat": {
+          "support": {
+            "android": {
+              "version_added": false
+            },
+            "ios": {
+              "version_added": false
+            },
+            "harmony": {
+              "version_added": false
+            },
+            "clay_android": {
+              "version_added": false
+            },
+            "clay_ios": {
+              "version_added": false
+            },
+            "clay_macos": {
+              "version_added": "3.7"
+            },
+            "clay_windows": {
+              "version_added": "3.7"
+            },
+            "web_lynx": {
+              "version_added": true
+            }
+          }
+        }
+      },
+      "context-menu": {
+        "__compat": {
+          "support": {
+            "android": {
+              "version_added": false
+            },
+            "ios": {
+              "version_added": false
+            },
+            "harmony": {
+              "version_added": false
+            },
+            "clay_android": {
+              "version_added": false
+            },
+            "clay_ios": {
+              "version_added": false
+            },
+            "clay_macos": {
+              "version_added": "3.7"
+            },
+            "clay_windows": {
+              "version_added": false
+            },
+            "web_lynx": {
+              "version_added": true
+            }
+          }
+        }
+      },
+      "help": {
+        "__compat": {
+          "support": {
+            "android": {
+              "version_added": false
+            },
+            "ios": {
+              "version_added": false
+            },
+            "harmony": {
+              "version_added": false
+            },
+            "clay_android": {
+              "version_added": false
+            },
+            "clay_ios": {
+              "version_added": false
+            },
+            "clay_macos": {
+              "version_added": false
+            },
+            "clay_windows": {
+              "version_added": "3.7"
+            },
+            "web_lynx": {
+              "version_added": true
+            }
+          }
+        }
+      },
+      "pointer": {
+        "__compat": {
+          "support": {
+            "android": {
+              "version_added": false
+            },
+            "ios": {
+              "version_added": false
+            },
+            "harmony": {
+              "version_added": false
+            },
+            "clay_android": {
+              "version_added": false
+            },
+            "clay_ios": {
+              "version_added": false
+            },
+            "clay_macos": {
+              "version_added": "3.7"
+            },
+            "clay_windows": {
+              "version_added": "3.7"
+            },
+            "web_lynx": {
+              "version_added": true
+            }
+          }
+        }
+      },
+      "progress": {
+        "__compat": {
+          "support": {
+            "android": {
+              "version_added": false
+            },
+            "ios": {
+              "version_added": false
+            },
+            "harmony": {
+              "version_added": false
+            },
+            "clay_android": {
+              "version_added": false
+            },
+            "clay_ios": {
+              "version_added": false
+            },
+            "clay_macos": {
+              "version_added": false
+            },
+            "clay_windows": {
+              "version_added": "3.7"
+            },
+            "web_lynx": {
+              "version_added": true
+            }
+          }
+        }
+      },
+      "wait": {
+        "__compat": {
+          "support": {
+            "android": {
+              "version_added": false
+            },
+            "ios": {
+              "version_added": false
+            },
+            "harmony": {
+              "version_added": false
+            },
+            "clay_android": {
+              "version_added": false
+            },
+            "clay_ios": {
+              "version_added": false
+            },
+            "clay_macos": {
+              "version_added": false
+            },
+            "clay_windows": {
+              "version_added": "3.7"
+            },
+            "web_lynx": {
+              "version_added": true
+            }
+          }
+        }
+      },
+      "crosshair": {
+        "__compat": {
+          "support": {
+            "android": {
+              "version_added": false
+            },
+            "ios": {
+              "version_added": false
+            },
+            "harmony": {
+              "version_added": false
+            },
+            "clay_android": {
+              "version_added": false
+            },
+            "clay_ios": {
+              "version_added": false
+            },
+            "clay_macos": {
+              "version_added": "3.7"
+            },
+            "clay_windows": {
+              "version_added": "3.7"
+            },
+            "web_lynx": {
+              "version_added": true
+            }
+          }
+        }
+      },
+      "text": {
+        "__compat": {
+          "support": {
+            "android": {
+              "version_added": false
+            },
+            "ios": {
+              "version_added": false
+            },
+            "harmony": {
+              "version_added": false
+            },
+            "clay_android": {
+              "version_added": false
+            },
+            "clay_ios": {
+              "version_added": false
+            },
+            "clay_macos": {
+              "version_added": "3.7"
+            },
+            "clay_windows": {
+              "version_added": "3.7"
+            },
+            "web_lynx": {
+              "version_added": true
+            }
+          }
+        }
+      },
+      "vertical-text": {
+        "__compat": {
+          "support": {
+            "android": {
+              "version_added": false
+            },
+            "ios": {
+              "version_added": false
+            },
+            "harmony": {
+              "version_added": false
+            },
+            "clay_android": {
+              "version_added": false
+            },
+            "clay_ios": {
+              "version_added": false
+            },
+            "clay_macos": {
+              "version_added": "3.7"
+            },
+            "clay_windows": {
+              "version_added": false
+            },
+            "web_lynx": {
+              "version_added": true
+            }
+          }
+        }
+      },
+      "alias": {
+        "__compat": {
+          "support": {
+            "android": {
+              "version_added": false
+            },
+            "ios": {
+              "version_added": false
+            },
+            "harmony": {
+              "version_added": false
+            },
+            "clay_android": {
+              "version_added": false
+            },
+            "clay_ios": {
+              "version_added": false
+            },
+            "clay_macos": {
+              "version_added": "3.7"
+            },
+            "clay_windows": {
+              "version_added": false
+            },
+            "web_lynx": {
+              "version_added": true
+            }
+          }
+        }
+      },
+      "copy": {
+        "__compat": {
+          "support": {
+            "android": {
+              "version_added": false
+            },
+            "ios": {
+              "version_added": false
+            },
+            "harmony": {
+              "version_added": false
+            },
+            "clay_android": {
+              "version_added": false
+            },
+            "clay_ios": {
+              "version_added": false
+            },
+            "clay_macos": {
+              "version_added": "3.7"
+            },
+            "clay_windows": {
+              "version_added": false
+            },
+            "web_lynx": {
+              "version_added": true
+            }
+          }
+        }
+      },
+      "move": {
+        "__compat": {
+          "support": {
+            "android": {
+              "version_added": false
+            },
+            "ios": {
+              "version_added": false
+            },
+            "harmony": {
+              "version_added": false
+            },
+            "clay_android": {
+              "version_added": false
+            },
+            "clay_ios": {
+              "version_added": false
+            },
+            "clay_macos": {
+              "version_added": false
+            },
+            "clay_windows": {
+              "version_added": "3.7"
+            },
+            "web_lynx": {
+              "version_added": true
+            }
+          }
+        }
+      },
+      "no-drop": {
+        "__compat": {
+          "support": {
+            "android": {
+              "version_added": false
+            },
+            "ios": {
+              "version_added": false
+            },
+            "harmony": {
+              "version_added": false
+            },
+            "clay_android": {
+              "version_added": false
+            },
+            "clay_ios": {
+              "version_added": false
+            },
+            "clay_macos": {
+              "version_added": "3.7"
+            },
+            "clay_windows": {
+              "version_added": "3.7"
+            },
+            "web_lynx": {
+              "version_added": true
+            }
+          }
+        }
+      },
+      "not-allowed": {
+        "__compat": {
+          "support": {
+            "android": {
+              "version_added": false
+            },
+            "ios": {
+              "version_added": false
+            },
+            "harmony": {
+              "version_added": false
+            },
+            "clay_android": {
+              "version_added": false
+            },
+            "clay_ios": {
+              "version_added": false
+            },
+            "clay_macos": {
+              "version_added": "3.7"
+            },
+            "clay_windows": {
+              "version_added": "3.7"
+            },
+            "web_lynx": {
+              "version_added": true
+            }
+          }
+        }
+      },
+      "grab": {
+        "__compat": {
+          "support": {
+            "android": {
+              "version_added": false
+            },
+            "ios": {
+              "version_added": false
+            },
+            "harmony": {
+              "version_added": false
+            },
+            "clay_android": {
+              "version_added": false
+            },
+            "clay_ios": {
+              "version_added": false
+            },
+            "clay_macos": {
+              "version_added": "3.7"
+            },
+            "clay_windows": {
+              "version_added": false
+            },
+            "web_lynx": {
+              "version_added": true
+            }
+          }
+        }
+      },
+      "grabbing": {
+        "__compat": {
+          "support": {
+            "android": {
+              "version_added": false
+            },
+            "ios": {
+              "version_added": false
+            },
+            "harmony": {
+              "version_added": false
+            },
+            "clay_android": {
+              "version_added": false
+            },
+            "clay_ios": {
+              "version_added": false
+            },
+            "clay_macos": {
+              "version_added": "3.7"
+            },
+            "clay_windows": {
+              "version_added": false
+            },
+            "web_lynx": {
+              "version_added": true
+            }
+          }
+        }
+      },
+      "col-resize": {
+        "__compat": {
+          "support": {
+            "android": {
+              "version_added": false
+            },
+            "ios": {
+              "version_added": false
+            },
+            "harmony": {
+              "version_added": false
+            },
+            "clay_android": {
+              "version_added": false
+            },
+            "clay_ios": {
+              "version_added": false
+            },
+            "clay_macos": {
+              "version_added": "3.7"
+            },
+            "clay_windows": {
+              "version_added": "3.7"
+            },
+            "web_lynx": {
+              "version_added": true
+            }
+          }
+        }
+      },
+      "row-resize": {
+        "__compat": {
+          "support": {
+            "android": {
+              "version_added": false
+            },
+            "ios": {
+              "version_added": false
+            },
+            "harmony": {
+              "version_added": false
+            },
+            "clay_android": {
+              "version_added": false
+            },
+            "clay_ios": {
+              "version_added": false
+            },
+            "clay_macos": {
+              "version_added": "3.7"
+            },
+            "clay_windows": {
+              "version_added": "3.7"
+            },
+            "web_lynx": {
+              "version_added": true
+            }
+          }
+        }
+      },
+      "n-resize": {
+        "__compat": {
+          "support": {
+            "android": {
+              "version_added": false
+            },
+            "ios": {
+              "version_added": false
+            },
+            "harmony": {
+              "version_added": false
+            },
+            "clay_android": {
+              "version_added": false
+            },
+            "clay_ios": {
+              "version_added": false
+            },
+            "clay_macos": {
+              "version_added": "3.7"
+            },
+            "clay_windows": {
+              "version_added": "3.7"
+            },
+            "web_lynx": {
+              "version_added": true
+            }
+          }
+        }
+      },
+      "e-resize": {
+        "__compat": {
+          "support": {
+            "android": {
+              "version_added": false
+            },
+            "ios": {
+              "version_added": false
+            },
+            "harmony": {
+              "version_added": false
+            },
+            "clay_android": {
+              "version_added": false
+            },
+            "clay_ios": {
+              "version_added": false
+            },
+            "clay_macos": {
+              "version_added": "3.7"
+            },
+            "clay_windows": {
+              "version_added": "3.7"
+            },
+            "web_lynx": {
+              "version_added": true
+            }
+          }
+        }
+      },
+      "s-resize": {
+        "__compat": {
+          "support": {
+            "android": {
+              "version_added": false
+            },
+            "ios": {
+              "version_added": false
+            },
+            "harmony": {
+              "version_added": false
+            },
+            "clay_android": {
+              "version_added": false
+            },
+            "clay_ios": {
+              "version_added": false
+            },
+            "clay_macos": {
+              "version_added": "3.7"
+            },
+            "clay_windows": {
+              "version_added": "3.7"
+            },
+            "web_lynx": {
+              "version_added": true
+            }
+          }
+        }
+      },
+      "w-resize": {
+        "__compat": {
+          "support": {
+            "android": {
+              "version_added": false
+            },
+            "ios": {
+              "version_added": false
+            },
+            "harmony": {
+              "version_added": false
+            },
+            "clay_android": {
+              "version_added": false
+            },
+            "clay_ios": {
+              "version_added": false
+            },
+            "clay_macos": {
+              "version_added": "3.7"
+            },
+            "clay_windows": {
+              "version_added": "3.7"
+            },
+            "web_lynx": {
+              "version_added": true
+            }
+          }
+        }
+      },
+      "ne-resize": {
+        "__compat": {
+          "support": {
+            "android": {
+              "version_added": false
+            },
+            "ios": {
+              "version_added": false
+            },
+            "harmony": {
+              "version_added": false
+            },
+            "clay_android": {
+              "version_added": false
+            },
+            "clay_ios": {
+              "version_added": false
+            },
+            "clay_macos": {
+              "version_added": false
+            },
+            "clay_windows": {
+              "version_added": "3.7"
+            },
+            "web_lynx": {
+              "version_added": true
+            }
+          }
+        }
+      },
+      "nw-resize": {
+        "__compat": {
+          "support": {
+            "android": {
+              "version_added": false
+            },
+            "ios": {
+              "version_added": false
+            },
+            "harmony": {
+              "version_added": false
+            },
+            "clay_android": {
+              "version_added": false
+            },
+            "clay_ios": {
+              "version_added": false
+            },
+            "clay_macos": {
+              "version_added": false
+            },
+            "clay_windows": {
+              "version_added": "3.7"
+            },
+            "web_lynx": {
+              "version_added": true
+            }
+          }
+        }
+      },
+      "se-resize": {
+        "__compat": {
+          "support": {
+            "android": {
+              "version_added": false
+            },
+            "ios": {
+              "version_added": false
+            },
+            "harmony": {
+              "version_added": false
+            },
+            "clay_android": {
+              "version_added": false
+            },
+            "clay_ios": {
+              "version_added": false
+            },
+            "clay_macos": {
+              "version_added": false
+            },
+            "clay_windows": {
+              "version_added": "3.7"
+            },
+            "web_lynx": {
+              "version_added": true
+            }
+          }
+        }
+      },
+      "sw-resize": {
+        "__compat": {
+          "support": {
+            "android": {
+              "version_added": false
+            },
+            "ios": {
+              "version_added": false
+            },
+            "harmony": {
+              "version_added": false
+            },
+            "clay_android": {
+              "version_added": false
+            },
+            "clay_ios": {
+              "version_added": false
+            },
+            "clay_macos": {
+              "version_added": false
+            },
+            "clay_windows": {
+              "version_added": "3.7"
+            },
+            "web_lynx": {
+              "version_added": true
+            }
+          }
+        }
+      },
+      "ew-resize": {
+        "__compat": {
+          "support": {
+            "android": {
+              "version_added": false
+            },
+            "ios": {
+              "version_added": false
+            },
+            "harmony": {
+              "version_added": false
+            },
+            "clay_android": {
+              "version_added": false
+            },
+            "clay_ios": {
+              "version_added": false
+            },
+            "clay_macos": {
+              "version_added": "3.7"
+            },
+            "clay_windows": {
+              "version_added": "3.7"
+            },
+            "web_lynx": {
+              "version_added": true
+            }
+          }
+        }
+      },
+      "ns-resize": {
+        "__compat": {
+          "support": {
+            "android": {
+              "version_added": false
+            },
+            "ios": {
+              "version_added": false
+            },
+            "harmony": {
+              "version_added": false
+            },
+            "clay_android": {
+              "version_added": false
+            },
+            "clay_ios": {
+              "version_added": false
+            },
+            "clay_macos": {
+              "version_added": "3.7"
+            },
+            "clay_windows": {
+              "version_added": "3.7"
+            },
+            "web_lynx": {
+              "version_added": true
+            }
+          }
+        }
+      },
+      "nesw-resize": {
+        "__compat": {
+          "support": {
+            "android": {
+              "version_added": false
+            },
+            "ios": {
+              "version_added": false
+            },
+            "harmony": {
+              "version_added": false
+            },
+            "clay_android": {
+              "version_added": false
+            },
+            "clay_ios": {
+              "version_added": false
+            },
+            "clay_macos": {
+              "version_added": false
+            },
+            "clay_windows": {
+              "version_added": "3.7"
+            },
+            "web_lynx": {
+              "version_added": true
+            }
+          }
+        }
+      },
+      "nwse-resize": {
+        "__compat": {
+          "support": {
+            "android": {
+              "version_added": false
+            },
+            "ios": {
+              "version_added": false
+            },
+            "harmony": {
+              "version_added": false
+            },
+            "clay_android": {
+              "version_added": false
+            },
+            "clay_ios": {
+              "version_added": false
+            },
+            "clay_macos": {
+              "version_added": false
+            },
+            "clay_windows": {
+              "version_added": "3.7"
+            },
+            "web_lynx": {
+              "version_added": true
+            }
+          }
+        }
+      }
+    }
+  }
 }

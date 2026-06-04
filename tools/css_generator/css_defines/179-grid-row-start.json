@@ -24,7 +24,13 @@
           "ios": {
             "version_added": "2.1"
           },
+          "harmony": {
+            "version_added": "3.4"
+          },
           "clay_android": {
+            "version_added": "2.1"
+          },
+          "clay_ios": {
             "version_added": "2.1"
           },
           "clay_macos": {
@@ -32,6 +38,9 @@
           },
           "clay_windows": {
             "version_added": "2.1"
+          },
+          "web_lynx": {
+            "version_added": true
           }
         }
       }

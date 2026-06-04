@@ -7,5 +7,215 @@
   "author": "renzhongyue",
   "consumption_status": "skip",
   "desc": "The `clip-path` CSS property creates a clipping region that sets what part of an element should be shown.",
-  "is_shorthand": false
+  "is_shorthand": false,
+  "compat_data": {
+    "clip-path": {
+      "__compat": {
+        "lynx_path": "api/css/properties/clip-path",
+        "spec_url": [
+          "https://drafts.fxtf.org/css-masking/#the-clip-path"
+        ],
+        "status": {
+          "deprecated": false,
+          "experimental": false
+        },
+        "support": {
+          "android": {
+            "version_added": "2.13"
+          },
+          "ios": {
+            "version_added": "2.13"
+          },
+          "harmony": {
+            "version_added": "3.4"
+          },
+          "clay_android": {
+            "version_added": "3.5"
+          },
+          "clay_ios": {
+            "version_added": "3.5"
+          },
+          "clay_windows": {
+            "version_added": "3.5"
+          },
+          "clay_macos": {
+            "version_added": "3.5"
+          },
+          "web_lynx": {
+            "version_added": true
+          }
+        }
+      },
+      "circle()": {
+        "__compat": {
+          "status": {
+            "deprecated": false,
+            "experimental": false
+          },
+          "support": {
+            "android": {
+              "version_added": "2.13"
+            },
+            "ios": {
+              "version_added": "2.13"
+            },
+            "harmony": {
+              "version_added": "3.4"
+            },
+            "clay_android": {
+              "version_added": "3.5"
+            },
+            "clay_ios": {
+              "version_added": "3.5"
+            },
+            "clay_windows": {
+              "version_added": "3.5"
+            },
+            "clay_macos": {
+              "version_added": "3.5"
+            },
+            "web_lynx": {
+              "version_added": true
+            }
+          }
+        }
+      },
+      "inset()": {
+        "__compat": {
+          "status": {
+            "deprecated": false,
+            "experimental": false
+          },
+          "support": {
+            "android": {
+              "version_added": "2.13"
+            },
+            "ios": {
+              "version_added": "2.13"
+            },
+            "harmony": {
+              "version_added": "3.4"
+            },
+            "clay_android": {
+              "version_added": "3.5"
+            },
+            "clay_ios": {
+              "version_added": "3.5"
+            },
+            "clay_windows": {
+              "version_added": "3.5"
+            },
+            "clay_macos": {
+              "version_added": "3.5"
+            },
+            "web_lynx": {
+              "version_added": true
+            }
+          }
+        }
+      },
+      "ellipse()": {
+        "__compat": {
+          "status": {
+            "deprecated": false,
+            "experimental": false
+          },
+          "support": {
+            "android": {
+              "version_added": "2.13"
+            },
+            "ios": {
+              "version_added": "2.13"
+            },
+            "harmony": {
+              "version_added": "3.4"
+            },
+            "clay_android": {
+              "version_added": "3.5"
+            },
+            "clay_ios": {
+              "version_added": "3.5"
+            },
+            "clay_windows": {
+              "version_added": "3.5"
+            },
+            "clay_macos": {
+              "version_added": "3.5"
+            },
+            "web_lynx": {
+              "version_added": true
+            }
+          }
+        }
+      },
+      "path()": {
+        "__compat": {
+          "status": {
+            "deprecated": false,
+            "experimental": false
+          },
+          "support": {
+            "android": {
+              "version_added": "2.13"
+            },
+            "ios": {
+              "version_added": "2.13"
+            },
+            "harmony": {
+              "version_added": "3.4"
+            },
+            "clay_android": {
+              "version_added": "3.5"
+            },
+            "clay_ios": {
+              "version_added": "3.5"
+            },
+            "clay_windows": {
+              "version_added": "3.5"
+            },
+            "clay_macos": {
+              "version_added": "3.5"
+            },
+            "web_lynx": {
+              "version_added": true
+            }
+          }
+        }
+      },
+      "polygon()": {
+        "__compat": {
+          "status": {
+            "deprecated": false,
+            "experimental": false
+          },
+          "support": {
+            "android": {
+              "version_added": false
+            },
+            "ios": {
+              "version_added": false
+            },
+            "harmony": {
+              "version_added": false
+            },
+            "clay_android": {
+              "version_added": false
+            },
+            "clay_ios": {
+              "version_added": false
+            },
+            "clay_windows": {
+              "version_added": false
+            },
+            "clay_macos": {
+              "version_added": false
+            },
+            "web_lynx": {
+              "version_added": true
+            }
+          }
+        }
+      }
+    }
+  }
 }

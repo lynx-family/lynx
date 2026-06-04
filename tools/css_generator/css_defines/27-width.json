@@ -24,7 +24,13 @@
           "ios": {
             "version_added": "1.0"
           },
+          "harmony": {
+            "version_added": "3.4"
+          },
           "clay_android": {
+            "version_added": "1.0"
+          },
+          "clay_ios": {
             "version_added": "1.0"
           },
           "clay_macos": {
@@ -32,6 +38,9 @@
           },
           "clay_windows": {
             "version_added": "1.0"
+          },
+          "web_lynx": {
+            "version_added": true
           }
         }
       },
@@ -40,20 +49,29 @@
           "support": {
             "android": {
               "notes": "",
-              "version_added": "targetSdkVersion 1.6"
+              "version_added": "1.6"
             },
             "ios": {
               "notes": "",
-              "version_added": "targetSdkVersion 1.6"
+              "version_added": "1.6"
+            },
+            "harmony": {
+              "version_added": "3.4"
             },
             "clay_android": {
-              "version_added": "targetSdkVersion 1.6"
+              "version_added": "1.6"
+            },
+            "clay_ios": {
+              "version_added": "1.6"
             },
             "clay_macos": {
-              "version_added": "targetSdkVersion 1.6"
+              "version_added": "1.6"
             },
             "clay_windows": {
-              "version_added": "targetSdkVersion 1.6"
+              "version_added": "1.6"
+            },
+            "web_lynx": {
+              "version_added": true
             }
           },
           "status": {
@@ -71,20 +89,29 @@
           "support": {
             "android": {
               "notes": "",
-              "version_added": "targetSdkVersion 2.0"
+              "version_added": "2.0"
             },
             "ios": {
               "notes": "",
-              "version_added": "targetSdkVersion 2.0"
+              "version_added": "2.0"
+            },
+            "harmony": {
+              "version_added": "3.4"
             },
             "clay_android": {
-              "version_added": "targetSdkVersion 2.0"
+              "version_added": "2.0"
+            },
+            "clay_ios": {
+              "version_added": "2.0"
             },
             "clay_macos": {
-              "version_added": "targetSdkVersion 2.0"
+              "version_added": "2.0"
             },
             "clay_windows": {
-              "version_added": "targetSdkVersion 2.0"
+              "version_added": "2.0"
+            },
+            "web_lynx": {
+              "version_added": true
             }
           }
         }
@@ -104,7 +131,14 @@
               "notes": "",
               "version_added": false
             },
+            "harmony": {
+              "notes": "",
+              "version_added": false
+            },
             "clay_android": {
+              "version_added": false
+            },
+            "clay_ios": {
               "version_added": false
             },
             "clay_macos": {

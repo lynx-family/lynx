@@ -11,7 +11,7 @@
     "linear-weight-sum": {
       "__compat": {
         "description": "Child element's weight sum in linear layout.",
-        "lynx_path": "api/css/properties/linear-gravity",
+        "lynx_path": "api/css/properties/linear-weight-sum",
         "spec_url": [],
         "status": {
           "deprecated": false,
@@ -24,7 +24,13 @@
           "ios": {
             "version_added": "1.0"
           },
+          "harmony": {
+            "version_added": "3.4"
+          },
           "clay_android": {
+            "version_added": "1.0"
+          },
+          "clay_ios": {
             "version_added": "1.0"
           },
           "clay_macos": {
@@ -34,7 +40,9 @@
             "version_added": "1.0"
           },
           "web_lynx": {
-            "version_added": "4.1.0"
+            "version_added": true,
+            "partial_implementation": true,
+            "notes": "Do not support this property on the inline style"
           }
         }
       }

@@ -12,5 +12,44 @@
   ],
   "desc": "The overflow property specifies whether to clip the content when the content of an element is too big.",
   "is_shorthand": true,
-  "formal_syntax": "<overflow-block>{1,2}"
+  "formal_syntax": "<overflow-block>{1,2}",
+  "compat_data": {
+    "overflow": {
+      "__compat": {
+        "lynx_path": "api/css/properties/overflow",
+        "mdn_url": "https://developer.mozilla.org/zh-CN/docs/Web/CSS/overflow",
+        "spec_url": [],
+        "status": {
+          "deprecated": false,
+          "experimental": false
+        },
+        "support": {
+          "android": {
+            "version_added": "1.0"
+          },
+          "ios": {
+            "version_added": "1.0"
+          },
+          "harmony": {
+            "version_added": "3.4"
+          },
+          "clay_android": {
+            "version_added": "1.0"
+          },
+          "clay_ios": {
+            "version_added": "1.0"
+          },
+          "clay_macos": {
+            "version_added": "1.0"
+          },
+          "clay_windows": {
+            "version_added": "1.0"
+          },
+          "web_lynx": {
+            "version_added": true
+          }
+        }
+      }
+    }
+  }
 }

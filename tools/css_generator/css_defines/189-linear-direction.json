@@ -11,7 +11,7 @@
     "linear-direction": {
       "__compat": {
         "description": "sets how linear items are placed in the linear container defining the main axis and the direction.",
-        "lynx_path": "api/css/properties/linear-orientation",
+        "lynx_path": "api/css/properties/linear-direction",
         "spec_url": [],
         "status": {
           "deprecated": false,
@@ -24,7 +24,13 @@
           "ios": {
             "version_added": "1.0"
           },
+          "harmony": {
+            "version_added": "3.4"
+          },
           "clay_android": {
+            "version_added": "1.0"
+          },
+          "clay_ios": {
             "version_added": "1.0"
           },
           "clay_macos": {
@@ -32,99 +38,9 @@
           },
           "clay_windows": {
             "version_added": "1.0"
-          }
-        }
-      },
-      "support_linear_orientation": {
-        "__compat": {
-          "description": "Supported <code>linear-orientation</code>",
-          "status": {
-            "deprecated": false,
-            "experimental": false
           },
-          "support": {
-            "android": {
-              "notes": "",
-              "version_added": "1.0"
-            },
-            "ios": {
-              "notes": "",
-              "version_added": "1.0"
-            },
-            "clay_android": {
-              "version_added": "1.0"
-            },
-            "clay_macos": {
-              "version_added": "1.0"
-            },
-            "clay_windows": {
-              "version_added": "1.0"
-            },
-            "web_lynx": {
-              "version_added": "4.1.0"
-            }
-          }
-        },
-        "nested_value_1": {
-          "__compat": {
-            "description": "<code>vertical</code>, <code>horizontal</code>, <code>vertical-reverse</code>, <code>horizontal-reverse</code>",
-            "status": {
-              "deprecated": false,
-              "experimental": false
-            },
-            "support": {
-              "android": {
-                "notes": "",
-                "version_added": "1.0"
-              },
-              "ios": {
-                "notes": "",
-                "version_added": "1.0"
-              },
-              "clay_android": {
-                "version_added": "1.0"
-              },
-              "clay_macos": {
-                "version_added": "1.0"
-              },
-              "clay_windows": {
-                "version_added": "1.0"
-              },
-              "web_lynx": {
-                "version_added": "4.1.0"
-              }
-            }
-          }
-        },
-        "nested_value_2": {
-          "__compat": {
-            "description": "<code>row</code>, <code>row-reverse</code>, <code>column</code>, <code>column-reverse</code>",
-            "status": {
-              "deprecated": false,
-              "experimental": false
-            },
-            "support": {
-              "android": {
-                "notes": "",
-                "version_added": "2.2"
-              },
-              "ios": {
-                "notes": "",
-                "version_added": "2.2"
-              },
-              "clay_android": {
-                "version_added": "2.2"
-              },
-              "clay_macos": {
-                "version_added": "2.2"
-              },
-              "clay_windows": {
-                "version_added": "2.2"
-              },
-              "web_lynx": {
-                "version_added": "4.1.0"
-              }
-            }
+          "web_lynx": {
+            "version_added": true
           }
         }
       },
@@ -144,7 +60,14 @@
               "notes": "",
               "version_added": "2.2"
             },
+            "harmony": {
+              "notes": "",
+              "version_added": "3.4"
+            },
             "clay_android": {
+              "version_added": "2.2"
+            },
+            "clay_ios": {
               "version_added": "2.2"
             },
             "clay_macos": {
@@ -154,13 +77,13 @@
               "version_added": "2.2"
             },
             "web_lynx": {
-              "version_added": "4.1.0"
+              "version_added": true
             }
           }
         },
         "nested_value_1": {
           "__compat": {
-            "description": "<code>vertical</code>, <code>horizontal</code>, <code>vertical-reverse</code>, <code>horizontal-reverse</code>, <code>row</code>, <code>row-reverse</code>, <code>column</code>, <code>column-reverse</code>",
+            "description": "<code>row</code>, <code>row-reverse</code>, <code>column</code>, <code>column-reverse</code>",
             "status": {
               "deprecated": false,
               "experimental": false
@@ -174,7 +97,14 @@
                 "notes": "",
                 "version_added": "2.2"
               },
+              "harmony": {
+                "notes": "",
+                "version_added": "3.4"
+              },
               "clay_android": {
+                "version_added": "2.2"
+              },
+              "clay_ios": {
                 "version_added": "2.2"
               },
               "clay_macos": {
@@ -184,8 +114,84 @@
                 "version_added": "2.2"
               },
               "web_lynx": {
-                "version_added": "4.1.0"
+                "version_added": true
               }
+            }
+          }
+        },
+        "nested_value_2": {
+          "__compat": {
+            "description": "<code>vertical</code>, <code>horizontal</code>, <code>vertical-reverse</code>, <code>horizontal-reverse</code>",
+            "status": {
+              "deprecated": true,
+              "experimental": false
+            },
+            "support": {
+              "android": {
+                "notes": "",
+                "version_added": "2.2"
+              },
+              "ios": {
+                "notes": "",
+                "version_added": "2.2"
+              },
+              "harmony": {
+                "notes": "",
+                "version_added": "3.4"
+              },
+              "clay_android": {
+                "version_added": "2.2"
+              },
+              "clay_ios": {
+                "version_added": "2.2"
+              },
+              "clay_macos": {
+                "version_added": "2.2"
+              },
+              "clay_windows": {
+                "version_added": "2.2"
+              },
+              "web_lynx": {
+                "version_added": false
+              }
+            }
+          }
+        }
+      },
+      "support_linear_orientation": {
+        "__compat": {
+          "description": "Supported <code>linear-orientation</code>",
+          "status": {
+            "deprecated": true,
+            "experimental": false
+          },
+          "support": {
+            "android": {
+              "notes": "",
+              "version_added": "1.0"
+            },
+            "ios": {
+              "notes": "",
+              "version_added": "1.0"
+            },
+            "harmony": {
+              "notes": "",
+              "version_added": "3.4"
+            },
+            "clay_android": {
+              "version_added": "1.0"
+            },
+            "clay_ios": {
+              "version_added": "1.0"
+            },
+            "clay_macos": {
+              "version_added": "1.0"
+            },
+            "clay_windows": {
+              "version_added": "1.0"
+            },
+            "web_lynx": {
+              "version_added": true
             }
           }
         }

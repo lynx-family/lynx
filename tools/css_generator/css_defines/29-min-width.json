@@ -27,7 +27,14 @@
             "notes": "",
             "version_added": "1.0"
           },
+          "harmony": {
+            "notes": "",
+            "version_added": "3.4"
+          },
           "clay_android": {
+            "version_added": "1.0"
+          },
+          "clay_ios": {
             "version_added": "1.0"
           },
           "clay_macos": {
@@ -35,37 +42,9 @@
           },
           "clay_windows": {
             "version_added": "1.0"
-          }
-        }
-      },
-      "unsupported_value_": {
-        "__compat": {
-          "description": "<code>auto</code>",
-          "status": {
-            "deprecated": false,
-            "experimental": false
           },
-          "support": {
-            "android": {
-              "notes": "",
-              "version_added": false
-            },
-            "ios": {
-              "notes": "",
-              "version_added": false
-            },
-            "clay_android": {
-              "version_added": false
-            },
-            "clay_macos": {
-              "version_added": false
-            },
-            "clay_windows": {
-              "version_added": false
-            },
-            "web_lynx": {
-              "version_added": false
-            }
+          "web_lynx": {
+            "version_added": true
           }
         }
       }

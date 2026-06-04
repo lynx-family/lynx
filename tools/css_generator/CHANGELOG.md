@@ -1,3 +1,7 @@
+## 0.0.10
+- Sync compat_data fields for 181 CSS properties with lynx-compat-data.
+- Mark 11 layout-animation-* properties as deprecated in compat_data.
+
 ## 0.0.9
 - Add `grid-column` and `grid-row` CSS shorthand properties.
 

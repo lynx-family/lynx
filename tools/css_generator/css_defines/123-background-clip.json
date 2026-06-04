@@ -29,11 +29,117 @@
       "desc": ""
     },
     {
-      "value":"border-area",
-      "version":"3.6",
-      "desc":"Clips the background image layer to where the border paints."
+      "value": "border-area",
+      "version": "3.6",
+      "desc": "Clips the background image layer to where the border paints."
     }
   ],
   "is_shorthand": false,
-  "formal_syntax": "padding-box | border-box | content-box | border-area"
+  "formal_syntax": "padding-box | border-box | content-box | border-area",
+  "compat_data": {
+    "background-clip": {
+      "__compat": {
+        "lynx_path": "api/css/properties/background-clip",
+        "mdn_url": "https://developer.mozilla.org/zh-CN/docs/Web/CSS/background-clip",
+        "spec_url": [],
+        "status": {
+          "deprecated": false,
+          "experimental": false
+        },
+        "support": {
+          "android": {
+            "version_added": "1.0"
+          },
+          "ios": {
+            "version_added": "1.0"
+          },
+          "harmony": {
+            "version_added": "3.4"
+          },
+          "clay_android": {
+            "version_added": "1.0"
+          },
+          "clay_ios": {
+            "version_added": "1.0"
+          },
+          "clay_macos": {
+            "version_added": "1.0"
+          },
+          "clay_windows": {
+            "version_added": "1.0"
+          },
+          "web_lynx": {
+            "version_added": true
+          }
+        }
+      },
+      "box": {
+        "__compat": {
+          "description": "<code>&lt;box&gt;</code>",
+          "status": {
+            "deprecated": false,
+            "experimental": false
+          },
+          "support": {
+            "android": {
+              "version_added": "1.0"
+            },
+            "ios": {
+              "version_added": "1.0"
+            },
+            "harmony": {
+              "version_added": "3.4"
+            },
+            "clay_android": {
+              "version_added": "1.0"
+            },
+            "clay_ios": {
+              "version_added": "1.0"
+            },
+            "clay_macos": {
+              "version_added": "1.0"
+            },
+            "clay_windows": {
+              "version_added": "1.0"
+            },
+            "web_lynx": {
+              "version_added": true
+            }
+          }
+        }
+      },
+      "border-area": {
+        "__compat": {
+          "description": "<code>border-area</code>",
+          "status": {
+            "deprecated": false,
+            "experimental": false
+          },
+          "support": {
+            "android": {
+              "version_added": "3.7"
+            },
+            "ios": {
+              "version_added": "3.7"
+            },
+            "harmony": {
+              "version_added": "3.7"
+            },
+            "clay_android": {
+              "version_added": "3.7"
+            },
+            "clay_ios": {
+              "version_added": "3.7"
+            },
+            "clay_macos": {
+              "version_added": "3.7"
+            },
+            "clay_windows": {
+              "version_added": "3.7"
+            }
+          }
+        }
+      }
+    }
+  }
 }

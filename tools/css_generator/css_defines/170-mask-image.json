@@ -7,5 +7,48 @@
   "author": "zhangqinghua",
   "consumption_status": "skip",
   "desc": "The `mask-image` CSS property sets the image that is used as mask layer for an element.",
-  "is_shorthand": false
+  "is_shorthand": false,
+  "compat_data": {
+    "mask-image": {
+      "__compat": {
+        "description": "The mask-image CSS property sets the image that is used as mask layer for an element. By default this means the alpha channel of the mask image will be multiplied with the alpha channel of the element. This can be controlled with the mask-mode property.",
+        "lynx_path": "api/css/properties/mask-image",
+        "mdn_url": "https://developer.mozilla.org/zh-CN/docs/Web/CSS/mask-image",
+        "status": {
+          "deprecated": false,
+          "experimental": false
+        },
+        "support": {
+          "android": {
+            "notes": "src(), image() functions and svg elements reference are not supported",
+            "version_added": "2.13",
+            "partial_implementation": true
+          },
+          "ios": {
+            "notes": "src(), image() functions and svg elements reference are not supported",
+            "version_added": "2.13",
+            "partial_implementation": true
+          },
+          "harmony": {
+            "version_added": false
+          },
+          "clay_android": {
+            "version_added": "3.5"
+          },
+          "clay_ios": {
+            "version_added": "3.5"
+          },
+          "clay_macos": {
+            "version_added": "3.5"
+          },
+          "clay_windows": {
+            "version_added": "3.5"
+          },
+          "web_lynx": {
+            "version_added": true
+          }
+        }
+      }
+    }
+  }
 }

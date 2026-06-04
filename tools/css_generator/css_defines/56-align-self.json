@@ -71,7 +71,14 @@
             "notes": "",
             "version_added": "1.0"
           },
+          "harmony": {
+            "notes": "",
+            "version_added": "3.4"
+          },
           "clay_android": {
+            "version_added": "1.0"
+          },
+          "clay_ios": {
             "version_added": "1.0"
           },
           "clay_macos": {
@@ -79,43 +86,15 @@
           },
           "clay_windows": {
             "version_added": "1.0"
-          }
-        }
-      },
-      "unsupported_value_": {
-        "__compat": {
-          "description": "<code>normal</code>",
-          "status": {
-            "deprecated": false,
-            "experimental": false
           },
-          "support": {
-            "android": {
-              "notes": "",
-              "version_added": false
-            },
-            "ios": {
-              "notes": "",
-              "version_added": false
-            },
-            "clay_android": {
-              "version_added": false
-            },
-            "clay_macos": {
-              "version_added": false
-            },
-            "clay_windows": {
-              "version_added": false
-            },
-            "web_lynx": {
-              "version_added": false
-            }
+          "web_lynx": {
+            "version_added": true
           }
         }
       },
       "supported_in_flex_layout": {
         "__compat": {
-          "description": "Supported in Flex Layout",
+          "description": "Supported in Flexible Box Layout",
           "status": {
             "deprecated": false,
             "experimental": false
@@ -129,7 +108,14 @@
               "notes": "",
               "version_added": "1.0"
             },
+            "harmony": {
+              "notes": "",
+              "version_added": "3.4"
+            },
             "clay_android": {
+              "version_added": "1.0"
+            },
+            "clay_ios": {
               "version_added": "1.0"
             },
             "clay_macos": {
@@ -137,6 +123,9 @@
             },
             "clay_windows": {
               "version_added": "1.0"
+            },
+            "web_lynx": {
+              "version_added": true
             }
           }
         },
@@ -156,7 +145,14 @@
                 "notes": "",
                 "version_added": "1.0"
               },
+              "harmony": {
+                "notes": "",
+                "version_added": "3.4"
+              },
               "clay_android": {
+                "version_added": "1.0"
+              },
+              "clay_ios": {
                 "version_added": "1.0"
               },
               "clay_macos": {
@@ -164,34 +160,9 @@
               },
               "clay_windows": {
                 "version_added": "1.0"
-              }
-            }
-          }
-        },
-        "nested_value_2": {
-          "__compat": {
-            "description": "<code>baseline</code>",
-            "status": {
-              "deprecated": false,
-              "experimental": false
-            },
-            "support": {
-              "android": {
-                "notes": "",
-                "version_added": "2.6"
               },
-              "ios": {
-                "notes": "",
-                "version_added": "2.7"
-              },
-              "clay_android": {
-                "version_added": "2.7"
-              },
-              "clay_macos": {
-                "version_added": "2.7"
-              },
-              "clay_windows": {
-                "version_added": "2.7"
+              "web_lynx": {
+                "version_added": true
               }
             }
           }
@@ -212,7 +183,14 @@
                 "notes": "",
                 "version_added": "2.16"
               },
+              "harmony": {
+                "notes": "",
+                "version_added": "3.4"
+              },
               "clay_android": {
+                "version_added": "2.16"
+              },
+              "clay_ios": {
                 "version_added": "2.16"
               },
               "clay_macos": {
@@ -220,6 +198,47 @@
               },
               "clay_windows": {
                 "version_added": "2.16"
+              },
+              "web_lynx": {
+                "version_added": true
+              }
+            }
+          }
+        },
+        "baseline": {
+          "__compat": {
+            "description": "<code>baseline</code>",
+            "status": {
+              "deprecated": false,
+              "experimental": false
+            },
+            "support": {
+              "android": {
+                "notes": "",
+                "version_added": "2.6"
+              },
+              "ios": {
+                "notes": "",
+                "version_added": "2.7"
+              },
+              "harmony": {
+                "notes": "",
+                "version_added": "3.4"
+              },
+              "clay_android": {
+                "version_added": "2.7"
+              },
+              "clay_ios": {
+                "version_added": "2.7"
+              },
+              "clay_macos": {
+                "version_added": "2.7"
+              },
+              "clay_windows": {
+                "version_added": "2.7"
+              },
+              "web_lynx": {
+                "version_added": true
               }
             }
           }
@@ -235,20 +254,30 @@
           "support": {
             "android": {
               "notes": "",
-              "version_added": "targetSdkVersion 2.2"
+              "version_added": "2.2"
             },
             "ios": {
               "notes": "",
-              "version_added": "targetSdkVersion 2.2"
+              "version_added": "2.2"
+            },
+            "harmony": {
+              "notes": "",
+              "version_added": "3.4"
             },
             "clay_android": {
-              "version_added": "targetSdkVersion 2.2"
+              "version_added": "2.2"
+            },
+            "clay_ios": {
+              "version_added": "2.2"
             },
             "clay_macos": {
-              "version_added": "targetSdkVersion 2.2"
+              "version_added": "2.2"
             },
             "clay_windows": {
-              "version_added": "targetSdkVersion 2.2"
+              "version_added": "2.2"
+            },
+            "web_lynx": {
+              "version_added": false
             }
           }
         },
@@ -262,20 +291,30 @@
             "support": {
               "android": {
                 "notes": "",
-                "version_added": "targetSdkVersion 2.2"
+                "version_added": "2.2"
               },
               "ios": {
                 "notes": "",
-                "version_added": "targetSdkVersion 2.2"
+                "version_added": "2.2"
+              },
+              "harmony": {
+                "notes": "",
+                "version_added": "3.4"
               },
               "clay_android": {
-                "version_added": "targetSdkVersion 2.2"
+                "version_added": "2.2"
+              },
+              "clay_ios": {
+                "version_added": "2.2"
               },
               "clay_macos": {
-                "version_added": "targetSdkVersion 2.2"
+                "version_added": "2.2"
               },
               "clay_windows": {
-                "version_added": "targetSdkVersion 2.2"
+                "version_added": "2.2"
+              },
+              "web_lynx": {
+                "version_added": true
               }
             }
           }
@@ -289,24 +328,31 @@
             },
             "support": {
               "android": {
-                "notes": "targetSdkVersion should larger than 2.1",
+                "notes": "",
                 "version_added": "2.16"
               },
               "ios": {
-                "notes": "targetSdkVersion should larger than 2.1",
+                "notes": "",
                 "version_added": "2.16"
               },
+              "harmony": {
+                "notes": "",
+                "version_added": "3.4"
+              },
               "clay_android": {
-                "notes": "targetSdkVersion should larger than 2.1",
+                "version_added": "2.16"
+              },
+              "clay_ios": {
                 "version_added": "2.16"
               },
               "clay_macos": {
-                "notes": "targetSdkVersion should larger than 2.1",
                 "version_added": "2.16"
               },
               "clay_windows": {
-                "notes": "targetSdkVersion should larger than 2.1",
                 "version_added": "2.16"
+              },
+              "web_lynx": {
+                "version_added": true
               }
             }
           }
@@ -327,13 +373,23 @@
                 "notes": "",
                 "version_added": false
               },
+              "harmony": {
+                "notes": "",
+                "version_added": false
+              },
               "clay_android": {
+                "version_added": false
+              },
+              "clay_ios": {
                 "version_added": false
               },
               "clay_macos": {
                 "version_added": false
               },
               "clay_windows": {
+                "version_added": false
+              },
+              "web_lynx": {
                 "version_added": false
               }
             }
@@ -356,7 +412,14 @@
               "notes": "",
               "version_added": "2.1"
             },
+            "harmony": {
+              "notes": "",
+              "version_added": "3.4"
+            },
             "clay_android": {
+              "version_added": "2.1"
+            },
+            "clay_ios": {
               "version_added": "2.1"
             },
             "clay_macos": {
@@ -364,6 +427,9 @@
             },
             "clay_windows": {
               "version_added": "2.1"
+            },
+            "web_lynx": {
+              "version_added": true
             }
           }
         },
@@ -383,7 +449,14 @@
                 "notes": "",
                 "version_added": "2.1"
               },
+              "harmony": {
+                "notes": "",
+                "version_added": "3.4"
+              },
               "clay_android": {
+                "version_added": "2.1"
+              },
+              "clay_ios": {
                 "version_added": "2.1"
               },
               "clay_macos": {
@@ -391,6 +464,9 @@
               },
               "clay_windows": {
                 "version_added": "2.1"
+              },
+              "web_lynx": {
+                "version_added": true
               }
             }
           }
@@ -411,7 +487,14 @@
                 "notes": "",
                 "version_added": "2.16"
               },
+              "harmony": {
+                "notes": "",
+                "version_added": "3.4"
+              },
               "clay_android": {
+                "version_added": "2.16"
+              },
+              "clay_ios": {
                 "version_added": "2.16"
               },
               "clay_macos": {
@@ -419,11 +502,14 @@
               },
               "clay_windows": {
                 "version_added": "2.16"
+              },
+              "web_lynx": {
+                "version_added": true
               }
             }
           }
         },
-        "nested_value_3": {
+        "baseline": {
           "__compat": {
             "description": "<code>baseline</code>",
             "status": {
@@ -439,7 +525,14 @@
                 "notes": "",
                 "version_added": false
               },
+              "harmony": {
+                "notes": "",
+                "version_added": false
+              },
               "clay_android": {
+                "version_added": false
+              },
+              "clay_ios": {
                 "version_added": false
               },
               "clay_macos": {
@@ -447,7 +540,48 @@
               },
               "clay_windows": {
                 "version_added": false
+              },
+              "web_lynx": {
+                "version_added": true
               }
+            }
+          }
+        }
+      },
+      "normal": {
+        "__compat": {
+          "description": "<code>normal</code>",
+          "status": {
+            "deprecated": false,
+            "experimental": false
+          },
+          "support": {
+            "android": {
+              "notes": "",
+              "version_added": false
+            },
+            "ios": {
+              "notes": "",
+              "version_added": false
+            },
+            "harmony": {
+              "notes": "",
+              "version_added": false
+            },
+            "clay_android": {
+              "version_added": false
+            },
+            "clay_ios": {
+              "version_added": false
+            },
+            "clay_macos": {
+              "version_added": false
+            },
+            "clay_windows": {
+              "version_added": false
+            },
+            "web_lynx": {
+              "version_added": true
             }
           }
         }

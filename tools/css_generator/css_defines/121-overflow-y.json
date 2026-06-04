@@ -12,5 +12,44 @@
   ],
   "desc": "The overflow-y property specifies whether to clip the content when it overflows at the top and bottom edges.",
   "is_shorthand": false,
-  "formal_syntax": "<overflow-block>"
+  "formal_syntax": "<overflow-block>",
+  "compat_data": {
+    "overflow-y": {
+      "__compat": {
+        "lynx_path": "api/css/properties/overflow-y",
+        "mdn_url": "https://developer.mozilla.org/zh-CN/docs/Web/CSS/overflow-y",
+        "spec_url": [],
+        "status": {
+          "deprecated": false,
+          "experimental": false
+        },
+        "support": {
+          "android": {
+            "version_added": "1.0"
+          },
+          "ios": {
+            "version_added": "1.0"
+          },
+          "harmony": {
+            "version_added": "3.4"
+          },
+          "clay_android": {
+            "version_added": "1.0"
+          },
+          "clay_ios": {
+            "version_added": "1.0"
+          },
+          "clay_macos": {
+            "version_added": "1.0"
+          },
+          "clay_windows": {
+            "version_added": "1.0"
+          },
+          "web_lynx": {
+            "version_added": true
+          }
+        }
+      }
+    }
+  }
 }
