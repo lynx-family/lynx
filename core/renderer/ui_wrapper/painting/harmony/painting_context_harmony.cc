@@ -17,6 +17,22 @@
 namespace lynx {
 namespace tasm {
 
+namespace {
+
+void RunOnUITaskSync(const fml::RefPtr<fml::TaskRunner>& runner,
+                     base::MoveOnlyClosure<void> task) {
+  if (!runner) {
+    return;
+  }
+  if (runner->RunsTasksOnCurrentThread()) {
+    task();
+    return;
+  }
+  runner->PostSyncTask(std::move(task));
+}
+
+}  // namespace
+
 void PaintingContextHarmonyRef::InsertPaintingNode(int parent, int child,
                                                    int index) {
   ui_owner_->InsertUI(parent, child, index);
@@ -307,6 +323,27 @@ void PaintingContextHarmony::getAbsolutePosition(int id, float* position) {
   if (position == nullptr) {
     return;
   }
+  position[0] = 0.f;
+  position[1] = 0.f;
+  auto rect_to_lynx_view = GetRectToLynxView(id);
+  if (rect_to_lynx_view.size() >= 2) {
+    position[0] = rect_to_lynx_view[0];
+    position[1] = rect_to_lynx_view[1];
+  }
+}
+
+void PaintingContextHarmony::GetRectToScreen(int id, float* rect) {
+  if (rect == nullptr) {
+    return;
+  }
+  rect[0] = 0.f;
+  rect[1] = 0.f;
+  rect[2] = -1.f;
+  rect[3] = -1.f;
+  auto runner = GetUIOwner()->GetUITaskRunner();
+  if (!runner) {
+    return;
+  }
   float result[4] = {0, 0, 0, 0};
   bool found_ui = false;
   auto task = base::MoveOnlyClosure<void>(
@@ -319,14 +356,14 @@ void PaintingContextHarmony::getAbsolutePosition(int id, float* position) {
           ui->GetBoundingClientRect(result, true);
         }
       });
-  GetUIOwner()->GetUITaskRunner()->PostSyncTask(std::move(task));
+  RunOnUITaskSync(runner, std::move(task));
   if (!found_ui) {
     return;
   }
-  position[0] = result[0];
-  position[1] = result[1];
-  position[2] = result[2] - result[0];
-  position[3] = result[3] - result[1];
+  rect[0] = result[0];
+  rect[1] = result[1];
+  rect[2] = result[2] - result[0];
+  rect[3] = result[3] - result[1];
 }
 
 std::vector<float> PaintingContextHarmony::ScrollBy(int64_t id, float width,

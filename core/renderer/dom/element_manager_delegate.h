@@ -16,6 +16,7 @@ namespace tasm {
 
 class FrameElement;
 class PipelineContext;
+class PageConfig;
 struct PipelineLayoutData;
 
 /**
@@ -50,6 +51,11 @@ class ElementManagerDelegate {
   // Call for sending global event.
   virtual void SendGlobalEvent(const std::string &event,
                                const lepus::Value &info) = 0;
+
+  virtual std::shared_ptr<PageConfig> GetPageConfigForEntry(
+      const std::string &entry_name) const {
+    return nullptr;
+  }
 
   // Call for sending Lepus global event.
   virtual void TriggerLepusGlobalEvent(const std::string &event,
