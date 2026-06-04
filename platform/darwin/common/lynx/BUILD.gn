@@ -56,7 +56,7 @@ common_lynx_shared_sources = [
   "base/LynxPerformance.m",
   "base/LynxResourceServiceFetcher.mm",
   "base/LynxThreadManager.mm",
-  "base/LynxVersion.m",
+  "base/LynxVersion.mm",
   "devtool_wrapper/CustomizedMessage.mm",
   "devtool_wrapper/DevToolLogLevel.h",
   "devtool_wrapper/DevToolOverlayDelegate.mm",

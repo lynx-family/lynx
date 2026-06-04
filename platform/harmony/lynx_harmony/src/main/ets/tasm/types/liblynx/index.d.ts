@@ -12,6 +12,8 @@ export const registerImageService: (instance: number[]) => void;
 
 export const getBaseTraceBackend: () => number;
 
+export const getLynxVersion: () => string;
+
 export const setTracingDirPath: (tracingDirPath: string) => void;
 
 export const setCacheDirPath: (cacheDirPath: string) => void;
