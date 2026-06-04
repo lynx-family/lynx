@@ -8,6 +8,7 @@
 #include "core/renderer/dom/element_tree_serializer.h"
 
 #include <unordered_map>
+#include <utility>
 
 #include "core/base/threading/task_runner_manufactor.h"
 #include "core/public/page_options.h"
@@ -16,7 +17,10 @@
 #include "core/renderer/dom/fiber/component_element.h"
 #include "core/renderer/dom/fiber/fiber_element.h"
 #include "core/renderer/dom/fiber/view_element.h"
+#include "core/renderer/starlight/layout/layout_object.h"
 #include "core/renderer/tasm/react/testing/mock_painting_context.h"
+#include "core/renderer/template_entry.h"
+#include "core/renderer/utils/base/tasm_constants.h"
 #include "core/shell/tasm_operation_queue.h"
 #include "core/shell/testing/mock_tasm_delegate.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
@@ -44,6 +48,17 @@ void ExpectRect(const lepus::Value& rect, float x, float y, float width,
   EXPECT_EQ(GetProperty(rect, "height").Number(), height);
 }
 
+void SetLayoutObjectFrame(Element* element, float x, float y, float width,
+                          float height) {
+  static_cast<FiberElement*>(element)->EnsureSLNode();
+  auto* layout_object = element->GetLayoutObject();
+  ASSERT_NE(layout_object, nullptr);
+  layout_object->SetBorderBoundLeftFromParentPaddingBound(x);
+  layout_object->SetBorderBoundTopFromParentPaddingBound(y);
+  layout_object->SetBorderBoundWidth(width);
+  layout_object->SetBorderBoundHeight(height);
+}
+
 class NodeInfoPaintingContext : public MockPaintingContext {
  public:
   void SetRectToLynxView(int64_t id, std::vector<float> rect) {
@@ -60,8 +75,8 @@ class NodeInfoPaintingContext : public MockPaintingContext {
                                             : iter->second;
   }
 
-  void getAbsolutePosition(int id, float* position) override {
-    if (position == nullptr) {
+  void GetRectToScreen(int id, float* rect) override {
+    if (rect == nullptr) {
       return;
     }
     auto iter = rect_to_screen_.find(id);
@@ -69,7 +84,7 @@ class NodeInfoPaintingContext : public MockPaintingContext {
       return;
     }
     for (size_t i = 0; i < iter->second.size() && i < 4; ++i) {
-      position[i] = iter->second[i];
+      rect[i] = iter->second[i];
     }
   }
 
@@ -217,7 +232,13 @@ TEST_F(ElementTreeSerializerTest, ToLepusValueIncludesNodeInfoFields) {
 }
 
 TEST_F(ElementTreeSerializerTest,
-       ToLepusValueUsesPageDebugMetadataForComponents) {
+       ToLepusValueUsesEntryDebugMetadataForComponents) {
+  auto component_config = std::make_shared<PageConfig>();
+  component_config->SetDebugMetadataUrl("https://example.com/component.json");
+  auto component_entry = std::make_shared<TemplateEntry>();
+  component_entry->template_bundle().page_configs_ = component_config;
+  tasm_->template_entries_.insert_or_assign("component_entry", component_entry);
+
   auto root = manager_->CreateFiberPage("0", 10);
   auto component = manager_->CreateFiberComponent(
       "1", 0, "component_entry", "TestComp", "/components/TestComp");
@@ -235,12 +256,101 @@ TEST_F(ElementTreeSerializerTest,
   auto component_info = GetProperty(root_info, "children").Array()->get(0);
   auto component_debug_info = GetProperty(component_info, "debugInfo");
   EXPECT_EQ(GetProperty(component_debug_info, "debugMetadataUrl").StdString(),
-            "https://example.com/debug-info.json");
+            "https://example.com/component.json");
 
   auto child_info = GetProperty(component_info, "children").Array()->get(0);
   auto child_debug_info = GetProperty(child_info, "debugInfo");
   EXPECT_EQ(GetProperty(child_debug_info, "debugMetadataUrl").StdString(),
-            "https://example.com/debug-info.json");
+            "https://example.com/component.json");
+}
+
+TEST_F(ElementTreeSerializerTest,
+       ToLepusValueFallsBackToParentEntryDebugMetadataForComponents) {
+  auto parent_config = std::make_shared<PageConfig>();
+  parent_config->SetDebugMetadataUrl("https://example.com/parent.json");
+  auto parent_entry = std::make_shared<TemplateEntry>();
+  parent_entry->template_bundle().page_configs_ = parent_config;
+  tasm_->template_entries_.insert_or_assign("parent_entry", parent_entry);
+
+  auto root = manager_->CreateFiberPage("0", 10);
+  auto parent = manager_->CreateFiberComponent(
+      "1", 0, "parent_entry", "ParentComp", "/components/ParentComp");
+  parent->parent_component_element_ = root.get();
+  root->InsertNode(parent);
+  auto child_component = manager_->CreateFiberComponent(
+      "2", 0, "", "ChildComp", "/components/ChildComp");
+  child_component->parent_component_element_ = parent.get();
+  parent->InsertNode(child_component);
+  auto grandchild_component = manager_->CreateFiberComponent(
+      "3", 0, "", "GrandchildComp", "/components/GrandchildComp");
+  grandchild_component->parent_component_element_ = child_component.get();
+  child_component->InsertNode(grandchild_component);
+
+  auto root_info = ElementTreeSerializer::ToLepusValue(root.get());
+  auto parent_info = GetProperty(root_info, "children").Array()->get(0);
+  auto parent_debug_info = GetProperty(parent_info, "debugInfo");
+  EXPECT_EQ(GetProperty(parent_debug_info, "debugMetadataUrl").StdString(),
+            "https://example.com/parent.json");
+
+  auto child_component_info =
+      GetProperty(parent_info, "children").Array()->get(0);
+  auto child_component_debug_info =
+      GetProperty(child_component_info, "debugInfo");
+  EXPECT_EQ(
+      GetProperty(child_component_debug_info, "debugMetadataUrl").StdString(),
+      "https://example.com/parent.json");
+
+  auto grandchild_component_info =
+      GetProperty(child_component_info, "children").Array()->get(0);
+  auto grandchild_component_debug_info =
+      GetProperty(grandchild_component_info, "debugInfo");
+  EXPECT_EQ(GetProperty(grandchild_component_debug_info, "debugMetadataUrl")
+                .StdString(),
+            "https://example.com/parent.json");
+}
+
+TEST_F(ElementTreeSerializerTest,
+       ToLepusValueUsesElementEntryDebugMetadataAndFallsBackToParent) {
+  auto parent_config = std::make_shared<PageConfig>();
+  parent_config->SetDebugMetadataUrl("https://example.com/parent-entry.json");
+  auto parent_entry = std::make_shared<TemplateEntry>();
+  parent_entry->template_bundle().page_configs_ = parent_config;
+  tasm_->template_entries_.insert_or_assign("parent_entry", parent_entry);
+
+  auto child_config = std::make_shared<PageConfig>();
+  child_config->SetDebugMetadataUrl("https://example.com/child-entry.json");
+  auto child_entry = std::make_shared<TemplateEntry>();
+  child_entry->template_bundle().page_configs_ = child_config;
+  tasm_->template_entries_.insert_or_assign("child_entry", child_entry);
+
+  auto root = manager_->CreateFiberPage("0", 10);
+  auto parent = manager_->CreateFiberNode("view");
+  parent->set_entry_name(base::String("parent_entry"));
+  root->InsertNode(parent);
+  auto child = manager_->CreateFiberNode("text");
+  parent->InsertNode(child);
+  auto override_child = manager_->CreateFiberNode("image");
+  override_child->set_entry_name(base::String("child_entry"));
+  parent->InsertNode(override_child);
+
+  auto root_info = ElementTreeSerializer::ToLepusValue(root.get());
+  auto parent_info = GetProperty(root_info, "children").Array()->get(0);
+  auto parent_debug_info = GetProperty(parent_info, "debugInfo");
+  EXPECT_EQ(GetProperty(parent_debug_info, "debugMetadataUrl").StdString(),
+            "https://example.com/parent-entry.json");
+
+  auto child_info = GetProperty(parent_info, "children").Array()->get(0);
+  auto child_debug_info = GetProperty(child_info, "debugInfo");
+  EXPECT_EQ(GetProperty(child_debug_info, "debugMetadataUrl").StdString(),
+            "https://example.com/parent-entry.json");
+
+  auto override_child_info =
+      GetProperty(parent_info, "children").Array()->get(1);
+  auto override_child_debug_info =
+      GetProperty(override_child_info, "debugInfo");
+  EXPECT_EQ(
+      GetProperty(override_child_debug_info, "debugMetadataUrl").StdString(),
+      "https://example.com/child-entry.json");
 }
 
 TEST_F(ElementTreeSerializerTest, ToLepusValueKeepsChildrenOrder) {
@@ -267,7 +377,8 @@ TEST_F(ElementTreeSerializerTest, ToLepusValueKeepsChildrenOrder) {
       "second");
 }
 
-TEST_F(ElementTreeSerializerTest, ToLepusValueOmitsLayoutOnlyPosition) {
+TEST_F(ElementTreeSerializerTest,
+       ToLepusValueResolvesLayoutOnlyPositionFromAncestor) {
   auto root = manager_->CreateFiberPage("0", 10);
   auto layout_only = manager_->CreateFiberView();
   layout_only->parent_component_element_ = root.get();
@@ -277,13 +388,18 @@ TEST_F(ElementTreeSerializerTest, ToLepusValueOmitsLayoutOnlyPosition) {
   ASSERT_TRUE(layout_only->IsLayoutOnly());
   ASSERT_FALSE(layout_only->HasUIPrimitive());
 
+  SetLayoutObjectFrame(root.get(), 0.f, 0.f, 300.f, 400.f);
+  SetLayoutObjectFrame(layout_only.get(), 7.f, 9.f, 50.f, 60.f);
   painting_context_ptr_->SetRectToLynxView(root->impl_id(),
                                            {10.f, 20.f, 300.f, 400.f});
   painting_context_ptr_->SetRectToScreen(root->impl_id(),
                                          {100.f, 200.f, 300.f, 400.f});
 
   auto info = ElementTreeSerializer::ToLepusValue(layout_only.get());
-  EXPECT_TRUE(GetProperty(info, "position").IsNil());
+  auto position = GetProperty(info, "position");
+
+  ExpectRect(GetProperty(position, "frameInRoot"), 17.f, 29.f, 50.f, 60.f);
+  ExpectRect(GetProperty(position, "frameInScreen"), 107.f, 209.f, 50.f, 60.f);
 }
 
 TEST_F(ElementTreeSerializerTest,
@@ -304,6 +420,46 @@ TEST_F(ElementTreeSerializerTest,
   ExpectRect(GetProperty(position, "frameInRoot"), 10.f, 20.f, 300.f, 400.f);
   ExpectRect(GetProperty(position, "frameInScreen"), 100.f, 200.f, 300.f,
              400.f);
+}
+
+TEST_F(ElementTreeSerializerTest,
+       ToLepusValueAllowsNegativePositionOriginsAndSkipsInvalidRects) {
+  auto root = manager_->CreateFiberPage("0", 10);
+  auto child = manager_->CreateFiberNode("view");
+  root->InsertNode(child);
+
+  painting_context_ptr_->SetRectToLynxView(root->impl_id(), {1.f, 2.f, 3.f});
+  painting_context_ptr_->SetRectToScreen(root->impl_id(),
+                                         {-1.f, 2.f, 3.f, 4.f});
+  painting_context_ptr_->SetRectToLynxView(child->impl_id(),
+                                           {1.f, -2.f, 3.f, 4.f});
+  painting_context_ptr_->SetRectToScreen(child->impl_id(),
+                                         {1.f, 2.f, -3.f, 4.f});
+
+  auto root_position =
+      GetProperty(ElementTreeSerializer::ToLepusValue(root.get()), "position");
+  EXPECT_TRUE(GetProperty(root_position, "frameInRoot").IsNil());
+  ExpectRect(GetProperty(root_position, "frameInScreen"), -1.f, 2.f, 3.f, 4.f);
+
+  auto child_info =
+      GetProperty(ElementTreeSerializer::ToLepusValue(root.get()), "children")
+          .Array()
+          ->get(0);
+  auto child_position = GetProperty(child_info, "position");
+  ExpectRect(GetProperty(child_position, "frameInRoot"), 1.f, -2.f, 3.f, 4.f);
+  EXPECT_TRUE(GetProperty(child_position, "frameInScreen").IsNil());
+}
+
+TEST_F(ElementTreeSerializerTest, DefaultGetRectToScreenWritesInvalidRect) {
+  MockPaintingContext painting_context;
+  float rect[4] = {1.f, 2.f, 3.f, 4.f};
+
+  painting_context.GetRectToScreen(1, rect);
+
+  EXPECT_EQ(rect[0], 0.f);
+  EXPECT_EQ(rect[1], 0.f);
+  EXPECT_EQ(rect[2], -1.f);
+  EXPECT_EQ(rect[3], -1.f);
 }
 
 TEST_F(ElementTreeSerializerTest, ToLepusValueReturnsNilForNullElement) {

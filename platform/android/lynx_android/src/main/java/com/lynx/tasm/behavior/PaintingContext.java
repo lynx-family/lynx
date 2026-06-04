@@ -40,8 +40,11 @@ import com.lynx.tasm.utils.UIThreadUtils;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
 class IntValueIndex {
   public static final int LEFT = 0;
@@ -88,6 +91,7 @@ class CreateViewAsyncStatus {
 public final class PaintingContext implements IPaintingContext {
   private static final String TAG = "lynx_PaintingContext";
   private static final int STICKY_INFO_COUNT = 10;
+  private static final long UI_THREAD_QUERY_TIMEOUT_MS = 1000;
 
   private final LynxUIOwner mUIOwner;
   private TextLayout mTextLayout;
@@ -732,6 +736,10 @@ public final class PaintingContext implements IPaintingContext {
 
   @CalledByNative
   public float[] getRectToLynxView(int sign) {
+    return runOnUiThreadForFloatArray(sign, false);
+  }
+
+  private float[] getRectToLynxViewOnUiThread(int sign) {
     float[] res = new float[] {0, 0, 0, 0};
     LynxBaseUI ui = mUIOwner.getNode(sign);
     if (ui != null) {
@@ -746,6 +754,10 @@ public final class PaintingContext implements IPaintingContext {
 
   @CalledByNative
   private float[] getRectToScreen(int sign) {
+    return runOnUiThreadForFloatArray(sign, true);
+  }
+
+  private float[] getRectToScreenOnUiThread(int sign) {
     float[] res = new float[] {0, 0, 0, 0};
     LynxBaseUI ui = mUIOwner.getNode(sign);
     if (ui != null) {
@@ -764,6 +776,31 @@ public final class PaintingContext implements IPaintingContext {
       res[3] = point[1] - top;
     }
     return res;
+  }
+
+  private float[] runOnUiThreadForFloatArray(int sign, boolean toScreen) {
+    if (UIThreadUtils.isOnUiThread()) {
+      return toScreen ? getRectToScreenOnUiThread(sign) : getRectToLynxViewOnUiThread(sign);
+    }
+    final float[] fallback = toScreen ? new float[] {0, 0, -1, -1} : new float[] {0, 0, 0, 0};
+    AtomicReference<float[]> result = new AtomicReference<>(fallback);
+    CountDownLatch latch = new CountDownLatch(1);
+    UIThreadUtils.postAtFrontOfQueueOnUiThread(() -> {
+      try {
+        result.set(toScreen ? getRectToScreenOnUiThread(sign) : getRectToLynxViewOnUiThread(sign));
+      } finally {
+        latch.countDown();
+      }
+    });
+    try {
+      if (!latch.await(UI_THREAD_QUERY_TIMEOUT_MS, TimeUnit.MILLISECONDS)) {
+        return fallback;
+      }
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      return fallback;
+    }
+    return result.get();
   }
 
   @CalledByNative

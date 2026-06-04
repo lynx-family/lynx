@@ -45,6 +45,7 @@ ComponentElement::ComponentElement(ElementManager* manager,
   is_layout_only_ = false;
   MarkCanBeLayoutOnly(true);
   set_component_id(component_id);
+  set_entry_name(entry_name);
 
   if (element_manager_ == nullptr) {
     return;

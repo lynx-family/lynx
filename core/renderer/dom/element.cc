@@ -217,6 +217,7 @@ Element::Element(const Element& element, bool clone_resolved_props)
   }
   platform_css_style_ = std::make_unique<starlight::ComputedCSSStyle>(
       *(element.computed_css_style()));
+  element_entry_name_ = element.element_entry_name_;
 }
 
 void Element::AttachToElementManager(
@@ -317,6 +318,10 @@ void Element::SetGestureDetector(const uint32_t key,
 
 std::vector<float> Element::GetRectToLynxView() {
   return catalyzer_->GetRectToLynxView(this);
+}
+
+std::vector<float> Element::GetRectToScreen() {
+  return catalyzer_->GetRectToScreen(this);
 }
 
 void Element::set_will_destroy(bool destroy) {

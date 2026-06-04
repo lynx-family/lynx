@@ -195,7 +195,20 @@ class PaintingCtxPlatformImpl {
   virtual void InvokeUIMethod(int32_t view_id, const std::string& method,
                               fml::RefPtr<tasm::PropBundle> args,
                               int32_t callback_id) {}
+  // Legacy root-origin query. Prefer GetRectToLynxView or GetRectToScreen for
+  // new code that needs an explicit coordinate space.
   virtual void getAbsolutePosition(int id, float* position) {}
+  // Synchronously writes the node border-box rect in screen coordinates as
+  // [x, y, width, height].
+  virtual void GetRectToScreen(int id, float* rect) {
+    if (rect == nullptr) {
+      return;
+    }
+    rect[0] = 0.f;
+    rect[1] = 0.f;
+    rect[2] = -1.f;
+    rect[3] = -1.f;
+  }
 
   virtual void EnableUIOperationBatching(){};
 

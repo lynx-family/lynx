@@ -266,6 +266,7 @@ class Element : public lepus::RefCounted,
 
   std::vector<float> ScrollBy(float width, float height);
   std::vector<float> GetRectToLynxView();
+  std::vector<float> GetRectToScreen();
   void Invoke(const std::string& method, const pub::Value& params,
               const std::function<void(int32_t code, const pub::Value& data)>&
                   callback);
@@ -536,6 +537,10 @@ class Element : public lepus::RefCounted,
   virtual int ParentComponentId() const { return 0; }
   virtual std::string ParentComponentIdString() const;
   virtual const std::string& ParentComponentEntryName() const;
+  const base::String& entry_name() const { return element_entry_name_; }
+  void set_entry_name(const base::String& entry_name) {
+    element_entry_name_ = entry_name;
+  }
 
   inline bool IsLayoutOnly() { return is_layout_only_; }
   // Check if this element is a fixed element using the new fixed positioning
@@ -1676,6 +1681,7 @@ class Element : public lepus::RefCounted,
   base::Vector<base::closure> pending_invoke_tasks_;
 
   int32_t css_id_{kInvalidCssId};
+  base::String element_entry_name_;
 
   DynamicCSSStylesManager::StyleUpdateFlags dynamic_style_flags_{0};
 

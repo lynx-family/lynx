@@ -63,6 +63,14 @@ namespace lynx {
 namespace tasm {
 
 namespace {
+void RunOnMainThreadSync(dispatch_block_t block) {
+  if ([NSThread isMainThread]) {
+    block();
+    return;
+  }
+  dispatch_sync(dispatch_get_main_queue(), block);
+}
+
 #if ENABLE_TRACE_PERFETTO
 rapidjson::Value DumpUITreeLayoutRecursively(LynxUI* root, rapidjson::Document& doc) {
   rapidjson::Document::AllocatorType& allocator = doc.GetAllocator();
@@ -536,13 +544,20 @@ std::vector<float> PaintingContextDarwin::GetRectToWindow(int id) {
 std::vector<float> PaintingContextDarwin::GetRectToLynxView(int64_t id) {
   // x y width height
   std::vector<float> res;
-  LynxUI* ui = [uiOwner_ findUIBySign:(int)id];
-  if (ui != NULL) {
-    CGRect re = [ui getBoundingClientRect];
-    res.push_back(re.origin.x);
-    res.push_back(re.origin.y);
-    res.push_back(re.size.width);
-    res.push_back(re.size.height);
+  __block CGRect rect = CGRectZero;
+  __block BOOL found = NO;
+  RunOnMainThreadSync(^{
+    LynxUI* ui = [uiOwner_ findUIBySign:(int)id];
+    if (ui != NULL) {
+      rect = [ui getBoundingClientRect];
+      found = YES;
+    }
+  });
+  if (found) {
+    res.push_back(rect.origin.x);
+    res.push_back(rect.origin.y);
+    res.push_back(rect.size.width);
+    res.push_back(rect.size.height);
   }
   return res;
 }
@@ -551,14 +566,33 @@ void PaintingContextDarwin::getAbsolutePosition(int id, float* position) {
   if (position == nullptr) {
     return;
   }
-  LynxUI* ui = [uiOwner_ findUIBySign:id];
-  if (ui != NULL) {
-    CGRect rect = [ui getBoundingClientRectToScreen];
-    position[0] = rect.origin.x;
-    position[1] = rect.origin.y;
-    position[2] = rect.size.width;
-    position[3] = rect.size.height;
+  position[0] = 0.f;
+  position[1] = 0.f;
+  auto rect_to_lynx_view = GetRectToLynxView(id);
+  if (rect_to_lynx_view.size() >= 2) {
+    position[0] = rect_to_lynx_view[0];
+    position[1] = rect_to_lynx_view[1];
   }
+}
+
+void PaintingContextDarwin::GetRectToScreen(int id, float* rect) {
+  if (rect == nullptr) {
+    return;
+  }
+  rect[0] = 0.f;
+  rect[1] = 0.f;
+  rect[2] = -1.f;
+  rect[3] = -1.f;
+  RunOnMainThreadSync(^{
+    LynxUI* ui = [uiOwner_ findUIBySign:id];
+    if (ui != NULL) {
+      CGRect frame = [ui getBoundingClientRectToScreen];
+      rect[0] = frame.origin.x;
+      rect[1] = frame.origin.y;
+      rect[2] = frame.size.width;
+      rect[3] = frame.size.height;
+    }
+  });
 }
 
 std::vector<float> PaintingContextDarwin::ScrollBy(int64_t id, float width, float height) {

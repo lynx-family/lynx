@@ -42,6 +42,7 @@ class Catalyzer {
   LYNX_EXPORT_FOR_DEVTOOL std::vector<float> getWindowSize(Element* node);
 
   std::vector<float> GetRectToLynxView(Element* node);
+  std::vector<float> GetRectToScreen(Element* node);
   std::vector<float> ScrollBy(int64_t id, float width, float height);
   // 1 - active, 2 - fail, 3 - end
   void SetGestureDetectorState(int64_t id, int32_t gesture_id, int32_t state);

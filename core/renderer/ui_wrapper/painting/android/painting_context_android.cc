@@ -1114,6 +1114,38 @@ void PaintingContextAndroid::getAbsolutePosition(int id, float* position) {
   if (position == nullptr) {
     return;
   }
+  position[0] = 0.f;
+  position[1] = 0.f;
+  base::android::ScopedLocalJavaRef<jobject> local_ref(*impl_);
+  if (local_ref.IsNull()) {
+    return;
+  }
+
+  JNIEnv* env = base::android::AttachCurrentThread();
+  base::android::ScopedLocalJavaRef<jfloatArray> result =
+      Java_PaintingContext_getRectToLynxView(env, local_ref.Get(), id);
+  if (result.IsNull()) {
+    return;
+  }
+  jsize size = env->GetArrayLength(result.Get());
+  jfloat* arr = env->GetFloatArrayElements(result.Get(), nullptr);
+  if (arr == nullptr) {
+    return;
+  }
+  for (auto i = 0; i < size && i < 2; i++) {
+    position[i] = arr[i];
+  }
+  env->ReleaseFloatArrayElements(result.Get(), arr, JNI_ABORT);
+}
+
+void PaintingContextAndroid::GetRectToScreen(int id, float* rect) {
+  if (rect == nullptr) {
+    return;
+  }
+  rect[0] = 0.f;
+  rect[1] = 0.f;
+  rect[2] = -1.f;
+  rect[3] = -1.f;
   base::android::ScopedLocalJavaRef<jobject> local_ref(*impl_);
   if (local_ref.IsNull()) {
     return;
@@ -1125,15 +1157,13 @@ void PaintingContextAndroid::getAbsolutePosition(int id, float* position) {
   if (result.IsNull()) {
     return;
   }
-
   jsize size = env->GetArrayLength(result.Get());
   jfloat* arr = env->GetFloatArrayElements(result.Get(), nullptr);
   if (arr == nullptr) {
     return;
   }
-
   for (auto i = 0; i < size && i < 4; i++) {
-    position[i] = arr[i];
+    rect[i] = arr[i];
   }
   env->ReleaseFloatArrayElements(result.Get(), arr, JNI_ABORT);
 }

@@ -94,6 +94,15 @@ void ElementManagerDelegateImpl::SendGlobalEvent(const std::string &event,
   tasm_->SendGlobalEvent(event, info);
 }
 
+std::shared_ptr<PageConfig> ElementManagerDelegateImpl::GetPageConfigForEntry(
+    const std::string &entry_name) const {
+  if (tasm_ == nullptr) {
+    return nullptr;
+  }
+  const auto &entry = tasm_->FindTemplateEntry(entry_name);
+  return entry == nullptr ? nullptr : entry->template_bundle().GetPageConfig();
+}
+
 void ElementManagerDelegateImpl::TriggerLepusGlobalEvent(
     const std::string &event, const lepus::Value &info) {
   if (tasm_ == nullptr) {

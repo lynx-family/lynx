@@ -4804,15 +4804,17 @@ RENDERER_FUNCTION_CC(FiberSetCSSId) {
   CONVERT_ARG(arg0, 0);
   CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(arg1, 1, Number, FiberSetCSSId);
   std::string entry_name = tasm::DEFAULT_ENTRY_NAME;
+  bool has_entry_name = false;
   if (argc > 2) {
     CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(arg2, 2, String, FiberSetCSSId);
     entry_name = arg2->StdString();
+    has_entry_name = !entry_name.empty();
   }
 
   std::shared_ptr<CSSStyleSheetManager> style_sheet_manager =
       self->style_sheet_manager(entry_name);
-  auto looper = [style_sheet_manager, arg1](const lepus::Value& key,
-                                            const lepus::Value& value) {
+  auto looper = [style_sheet_manager, arg1, has_entry_name, entry_name](
+                    const lepus::Value& key, const lepus::Value& value) {
     if (!value.IsRefCounted()) {
       ElementAPIError(
           "FiberSetCSSId params 0 type should use RefCounted or "
@@ -4822,6 +4824,9 @@ RENDERER_FUNCTION_CC(FiberSetCSSId) {
 
     auto element = fml::static_ref_ptr_cast<FiberElement>(value.RefCounted());
     element->set_style_sheet_manager(style_sheet_manager);
+    if (has_entry_name) {
+      element->set_entry_name(base::String(entry_name));
+    }
     // For Lynx SDK's version < 2.17, when `ComponentElement` executes
     // `FiberSetCSSId`, it changes the `component_css_id_` of `ComponentElement`
     // instead of `css_id_`, which does not meet expectations. Since this API is

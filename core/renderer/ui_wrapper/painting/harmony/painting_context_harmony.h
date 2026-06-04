@@ -114,6 +114,7 @@ class PaintingContextHarmony : public PaintingCtxPlatformImpl {
    */
   std::vector<float> GetRectToLynxView(int64_t id) override;
   void getAbsolutePosition(int id, float* position) override;
+  void GetRectToScreen(int id, float* rect) override;
   std::vector<float> ScrollBy(int64_t id, float width, float height) override;
   void ConsumeGesture(int64_t id, int32_t gesture_id,
                       const pub::Value& params) override;
