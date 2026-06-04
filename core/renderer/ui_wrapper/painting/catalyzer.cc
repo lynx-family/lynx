@@ -61,6 +61,12 @@ std::vector<float> Catalyzer::GetRectToLynxView(Element* node) {
   return painting_context_->GetRectToLynxView(node->impl_id());
 }
 
+std::vector<float> Catalyzer::GetRectToScreen(Element* node) {
+  float rect[4] = {0.f, 0.f, -1.f, -1.f};
+  painting_context_->GetRectToScreen(node->impl_id(), rect);
+  return std::vector<float>(rect, rect + 4);
+}
+
 std::vector<float> Catalyzer::ScrollBy(int64_t id, float width, float height) {
   return painting_context_->ScrollBy(id, width, height);
 }
