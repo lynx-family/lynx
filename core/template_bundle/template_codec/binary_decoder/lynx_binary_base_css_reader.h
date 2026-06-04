@@ -8,6 +8,7 @@
 #include <memory>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include "core/renderer/css/css_value.h"
 #include "core/renderer/css/shared_css_fragment.h"
@@ -80,9 +81,23 @@ class LynxBinaryBaseCSSReader : public lepus::BaseBinaryReader,
   bool DecodeCSSConditionRule(SharedCSSFragment* fragment,
                               const CSSParserConfigs& parser_config,
                               uint8_t rule_type);
+  bool DecodeConditionRuleData(SharedCSSFragment* fragment,
+                               const CSSParserConfigs& parser_config,
+                               uint8_t rule_type,
+                               fml::RefPtr<css::ConditionRule>* out_rule);
   bool DecodeCSSKeyframesRule(SharedCSSFragment* fragment,
                               const CSSParserConfigs& parser_config);
+  bool DecodeKeyframesRuleData(const CSSParserConfigs& parser_config,
+                               base::String* out_name,
+                               fml::RefPtr<CSSKeyframesToken>* out_token);
   bool DecodeCSSFontFaceRule(SharedCSSFragment* fragment);
+  bool DecodeFontFaceRuleData(
+      std::string* out_family,
+      std::vector<std::shared_ptr<CSSFontFaceRule>>* out_tokens);
+
+  bool DecodeCSSLayerRule(SharedCSSFragment* fragment,
+                          const CSSParserConfigs& parser_config,
+                          uint8_t rule_type);
 
   bool DecodeCSSValue(tasm::CSSValue*);
   bool DecodeCSSValue(tasm::CSSValue* result, bool enable_css_parser,

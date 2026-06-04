@@ -47,8 +47,13 @@ class CSSRuleParser {
   std::unique_ptr<encoder::LynxStyleRuleFontFace> ParseFontFaceRule(
       const rapidjson::Value& rule, const std::string& path);
 
+  std::vector<std::unique_ptr<encoder::LynxStyleRuleLayer>> ParseLayerRule(
+      const rapidjson::Value& rule, const std::string& path);
+
   const CompileOptions& compile_options_;
   size_t rule_index_counter_ = 0;
+  // This is a document-position counter, NOT a cascade-priority counter —
+  size_t layer_position_ = 0;
   std::vector<Diagnostic> diagnostics_;
 };
 
