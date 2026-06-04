@@ -33,7 +33,12 @@
         "LynxTemplateBundleUnitTest\/testDynamicComponentTemplateBundle",
         "LynxTemplateBundleUnitTest\/testGetExtraInfo",
         "LynxTemplateBundleUnitTest\/testTemplateBundleLepus",
-        "LynxTemplateBundleUnitTest\/testTemplateBundleLepusNG"
+        "LynxTemplateBundleUnitTest\/testTemplateBundleLepusNG",
+        "LynxCustomGestureRecognizerUnitTest\/testBeginGesture",
+        "LynxCustomGestureRecognizerUnitTest\/testChangeGesture",
+        "LynxCustomGestureRecognizerUnitTest\/testEndGesture",
+        "LynxCustomGestureRecognizerUnitTest\/testFailGesture",
+        "LynxCustomGestureRecognizerUnitTest\/testPossibleGesture"
       ],
       "target" : {
         "containerPath" : "container:Pods\/Lynx.xcodeproj",
