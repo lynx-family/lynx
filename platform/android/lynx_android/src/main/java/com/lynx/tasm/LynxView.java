@@ -1214,6 +1214,9 @@ public class LynxView extends UIBodyView implements ILynxSecurityTarget {
           }
         });
 
+    boolean shouldRequestLayout = needLayout
+        && shouldRequestLayoutAfterExternalViewportUpdate(widthMeasureSpec, heightMeasureSpec);
+
     mCurrentWidthMeasureSpec = widthMeasureSpec;
     mCurrentHeightMeasureSpec = heightMeasureSpec;
 
@@ -1222,7 +1225,24 @@ public class LynxView extends UIBodyView implements ILynxSecurityTarget {
       return;
     }
     mLynxTemplateRender.updateViewport(widthMeasureSpec, heightMeasureSpec, needLayout);
+    if (shouldRequestLayout && !isLayoutRequested()) {
+      requestLayout();
+    }
     onTraceEventEnd(TraceEventDef.LYNX_VIEW_UPDATE_VIEWPORT);
+  }
+
+  private boolean shouldRequestLayoutAfterExternalViewportUpdate(
+      int widthMeasureSpec, int heightMeasureSpec) {
+    if (mCurrentWidthMeasureSpec == -1 || mCurrentHeightMeasureSpec == -1) {
+      return false;
+    }
+    return shouldRequestLayoutForMeasureSpecMismatch(mCurrentWidthMeasureSpec, widthMeasureSpec)
+        || shouldRequestLayoutForMeasureSpecMismatch(mCurrentHeightMeasureSpec, heightMeasureSpec);
+  }
+
+  private boolean shouldRequestLayoutForMeasureSpecMismatch(
+      int currentMeasureSpec, int targetMeasureSpec) {
+    return currentMeasureSpec != targetMeasureSpec;
   }
 
   /**
