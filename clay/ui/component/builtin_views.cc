@@ -3,14 +3,17 @@
 // LICENSE file in the root directory of this source tree.
 #include "clay/ui/component/builtin_views.h"
 
+#include "build/build_config.h"
 #include "clay/ui/component/component.h"
 
 #ifndef ENABLE_CLAY_LITE
+#ifndef OS_IOS
 #include "clay/ui/component/editable/input_ng_view.h"
 #include "clay/ui/component/editable/input_view.h"
 #include "clay/ui/component/editable/textarea_ng_view.h"
 #include "clay/ui/component/editable/textarea_view.h"
 #include "clay/ui/shadow/editable_shadow_node.h"
+#endif  // OS_IOS
 #endif  // ENABLE_CLAY_LITE
 
 #ifndef LYNX_ENABLE_CLAY_NATIVE_LIST
@@ -63,12 +66,14 @@ REGISTER_CLAY_ELEMENT("list", ListContainerWrapper, void);
 REGISTER_CLAY_ELEMENT("list-container", ListContainerWrapper, void);
 
 #ifndef ENABLE_CLAY_LITE
+#ifndef OS_IOS
 REGISTER_CLAY_ELEMENT("x-input-ng", InputNGView, EditableShadowNode);
 REGISTER_CLAY_ELEMENT("x-textarea-ng", TextAreaNGView, EditableShadowNode);
 REGISTER_CLAY_ELEMENT("x-textarea", TextAreaView, EditableShadowNode);
 REGISTER_CLAY_ELEMENT("textarea", TextAreaView, EditableShadowNode);
 REGISTER_CLAY_ELEMENT("input", InputView, EditableShadowNode);
 REGISTER_CLAY_ELEMENT("x-input", InputView, EditableShadowNode);
+#endif  // OS_IOS
 #endif  // ENABLE_CLAY_LITE
 
 #if (defined(OS_MAC) || defined(OS_WIN))
