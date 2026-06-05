@@ -12,6 +12,38 @@
 namespace lynx {
 namespace tasm {
 
+float PlatformEventTarget::ScrollOffsetX() {
+  UpdateScrollOffsetIfNeeded();
+  return scroll_offset_x_;
+}
+
+float PlatformEventTarget::ScrollOffsetY() {
+  UpdateScrollOffsetIfNeeded();
+  return scroll_offset_y_;
+}
+
+void PlatformEventTarget::RefreshScrollOffset() {
+  if (!is_scroll_container_) {
+    return;
+  }
+  scroll_offset_updated_ = false;
+  UpdateScrollOffsetIfNeeded();
+}
+
+void PlatformEventTarget::UpdateScrollOffsetIfNeeded() {
+  if (scroll_offset_updated_ || !is_scroll_container_) {
+    return;
+  }
+  scroll_offset_updated_ = true;
+  if (target_helper_ == nullptr) {
+    return;
+  }
+  float offset[2] = {scroll_offset_x_, scroll_offset_y_};
+  target_helper_->GetPlatformRendererScrollOffset(sign_, offset);
+  scroll_offset_x_ = offset[0];
+  scroll_offset_y_ = offset[1];
+}
+
 fml::RefPtr<PlatformEventTarget> PlatformEventTarget::HitTest(float point[2]) {
   fml::RefPtr<PlatformEventTarget> target = nullptr;
   const auto& children = ChildrenTargets();
