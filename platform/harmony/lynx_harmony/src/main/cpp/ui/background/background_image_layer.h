@@ -6,7 +6,6 @@
 #define PLATFORM_HARMONY_LYNX_HARMONY_SRC_MAIN_CPP_UI_BACKGROUND_BACKGROUND_IMAGE_LAYER_H_
 
 #include <multimedia/image_framework/image/image_source_native.h>
-#include <native_drawing/drawing_pixel_map.h>
 
 #include <memory>
 #include <string>
@@ -17,11 +16,11 @@
 #include "platform/harmony/lynx_harmony/src/main/cpp/lynx_context.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/background/background_layer.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/base/lynx_image_helper.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/ui/image_drawable.h"
 
 namespace lynx {
 namespace tasm {
 namespace harmony {
-class ImageData;
 class BackgroundImageLayer : public BackgroundLayer {
  public:
   explicit BackgroundImageLayer(const lepus::Value& data,
@@ -41,15 +40,6 @@ class BackgroundImageLayer : public BackgroundLayer {
 
  private:
   void LoadImageFromService();
-  struct ImageDrawable {
-    std::shared_ptr<ImageData> image_data{nullptr};
-    OH_Drawing_PixelMap* draw_bitmap{nullptr};
-    ~ImageDrawable() {
-      if (draw_bitmap) {
-        OH_Drawing_PixelMapDissolve(draw_bitmap);
-      }
-    }
-  };
 
   std::string url_;
   std::unique_ptr<LynxBaseImage> pixel_map_{nullptr};

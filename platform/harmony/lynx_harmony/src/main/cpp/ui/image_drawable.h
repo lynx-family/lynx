@@ -18,6 +18,7 @@
 namespace lynx {
 namespace tasm {
 namespace harmony {
+class ImageData;
 class ImageDrawable {
  public:
   enum class ImageMode {
@@ -38,6 +39,7 @@ class ImageDrawable {
                     float padding_left, float padding_top, float padding_right,
                     float padding_bottom, float scale_density);
   void UpdateDrawCurrent(std::unique_ptr<LynxBaseImage> pixelmap);
+  void UpdateDrawCurrent(std::shared_ptr<ImageData> image_data);
   void UpdateDrawMatrix();
   void UpdateMode(ImageMode mode);
   void UpdateImageRendering(starlight::ImageRenderingType);
@@ -46,12 +48,15 @@ class ImageDrawable {
   void Render(OH_Drawing_Canvas* canvas);
   void DrawPixelMap(OH_Drawing_Canvas* canvas,
                     OH_Drawing_PixelMap* draw_bitmap);
-  bool HasContent() { return pixel_maps_ != nullptr; }
+  bool HasContent() {
+    return pixel_maps_ != nullptr || !image_data_draw_bitmaps_.empty();
+  }
   bool IsAnimate();
   bool IsAnimateRunning() { return is_running_; };
   void StartAnimation();
   void StopAnimation();
   void PauseAnimation();
+  OH_Drawing_PixelMap* GetCurrentDrawBitmap();
   ~ImageDrawable();
   void ResetContent();
   void DestroyMatrix();
@@ -62,6 +67,8 @@ class ImageDrawable {
 
  private:
   std::unique_ptr<LynxBaseImage> pixel_maps_{nullptr};
+  std::shared_ptr<ImageData> image_data_{nullptr};
+  std::vector<OH_Drawing_PixelMap*> image_data_draw_bitmaps_;
   std::unique_ptr<base::TimedTaskManager> timer_task_manager_{nullptr};
   ImageMode mode_{ImageMode::kScaleToFill};
   std::weak_ptr<UIBase> ui_base_;
@@ -109,6 +116,16 @@ class ImageDrawable {
   bool IsInfiniteAnimation() { return loop_count_ == 0; };
 
   void UnScheduleSelf();
+
+  uint32_t FrameCount() const;
+
+  int32_t FrameDuration(int32_t frame_number) const;
+
+  OH_Drawing_PixelMap* FrameDrawBitmap(int32_t frame_number) const;
+
+  bool IsAnimImage() const;
+
+  void DestroyImageDataDrawBitmaps();
 
   void DispatchAnimationStart();
 
