@@ -25,7 +25,7 @@ class LynxLibraryAutolinkTest < Minitest::Test
       package_dir = write_library(dir, '@scope/demo-lib', 'DemoLib')
       File.write(File.join(package_dir, 'ios/DemoModule.m'), <<~OBJC)
         #import <Lynx/LynxModule.h>
-        @LynxNativeModuleRegister("NativeLocalStorage")
+        @LynxNativeModule("NativeLocalStorage")
         @interface DemoModule : NSObject <LynxModule>
         @end
         @implementation DemoModule
@@ -34,7 +34,7 @@ class LynxLibraryAutolinkTest < Minitest::Test
       OBJC
       File.write(File.join(package_dir, 'ios/DemoUI.m'), <<~OBJC)
         #import <Lynx/LynxUI.h>
-        @LynxUIRegister("marked-ui")
+        @LynxElement("marked-ui")
         @implementation DemoMarkedUI
         @end
 
@@ -49,7 +49,7 @@ class LynxLibraryAutolinkTest < Minitest::Test
       OBJC
       File.write(File.join(package_dir, 'ios/DemoService.m'), <<~OBJC)
         #import <LynxServiceAPI/ServiceAPI.h>
-        @LynxServiceRegister(DemoService, LynxDemoServiceProtocol)
+        @LynxService(DemoService, LynxDemoServiceProtocol)
         @implementation DemoService
         @end
 
@@ -96,7 +96,7 @@ class LynxLibraryAutolinkTest < Minitest::Test
       package_dir = write_library(dir, 'demo-lib', 'DemoLib')
       File.write(File.join(package_dir, 'ios/OldModule.m'), <<~OBJC)
         #import <Lynx/LynxModule.h>
-        LynxNativeModuleRegister("OldModule")
+        LynxNativeModule("OldModule")
         @interface OldModule : NSObject <LynxModule>
         @end
       OBJC

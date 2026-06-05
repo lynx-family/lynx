@@ -16,8 +16,8 @@
 #import <Lynx/LynxUITarget.h>
 #import <Lynx/UIScrollView+Nested.h>
 
-#if defined(__OBJC__) && !defined(LynxUIRegister)
-#define LynxUIRegister(name) class LynxUIRegisterMarker;
+#if defined(__OBJC__) && !defined(LynxElement)
+#define LynxElement(name) class LynxElementMarker;
 #endif
 
 NS_ASSUME_NONNULL_BEGIN
