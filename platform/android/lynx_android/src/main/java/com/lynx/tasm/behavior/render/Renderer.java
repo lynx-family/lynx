@@ -10,14 +10,11 @@ import android.graphics.Canvas;
 import android.graphics.Matrix;
 import android.graphics.Point;
 import android.graphics.Rect;
-import android.os.Build;
-import android.renderscript.Matrix4f;
 import android.view.View;
 import android.view.ViewGroup;
 import androidx.annotation.NonNull;
-import com.lynx.tasm.behavior.ui.LynxUI;
+import com.lynx.tasm.behavior.ui.LynxBaseUI;
 import com.lynx.tasm.behavior.ui.PropBundle;
-import com.lynx.tasm.behavior.ui.utils.TransformProps;
 
 public class Renderer {
   private static final String TAG = "NativeUIRenderer.Renderer";
@@ -37,29 +34,28 @@ public class Renderer {
   private DisplayListApplier mDisplayListApplier = null;
   private final DisplayList mDisplayList = new DisplayList();
   private IRendererHost mRenderHost;
-  private LynxUI<ViewGroup> mUIHost;
-  private TransformProps mTransformProps = null;
+  private LynxBaseUI mUIHost;
 
   private int mRepaintType = REPAINT_TYPE_GET_DISPLAY_LIST_AND_DRAW;
 
   public void setLynxFrame(boolean needClip, int l, int t, int r, int b, int dx, int dy) {
     mLynxFrame.set(l + dx, t + dy, r + dx, b + dy);
     mRenderOffset.set(dx, dy);
+    if (mRenderHost == null) {
+      return;
+    }
     if (needClip) {
-      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR2) {
-        mRenderHost.getView().setClipBounds(
-            new Rect(0, 0, mLynxFrame.width(), mLynxFrame.height()));
-      }
+      mRenderHost.applyRendererClipBounds(
+          true, new Rect(0, 0, mLynxFrame.width(), mLynxFrame.height()));
     } else {
       View self = mRenderHost.getView();
-      ViewGroup parent = (ViewGroup) self.getParent();
-      if (parent != null) {
+      if ((mUIHost == null || !mUIHost.isFlatten()) && self != null
+          && self.getParent() instanceof ViewGroup) {
+        ViewGroup parent = (ViewGroup) self.getParent();
         parent.setClipChildren(false);
         parent.setClipToPadding(false);
       }
-      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR2) {
-        self.setClipBounds(null);
-      }
+      mRenderHost.applyRendererClipBounds(false, null);
     }
   }
 
@@ -92,15 +88,21 @@ public class Renderer {
     return mSign;
   }
 
-  public LynxUI<ViewGroup> getUIHost() {
+  public LynxBaseUI getUIHost() {
     return mUIHost;
   }
 
-  public void setUIHost(LynxUI<ViewGroup> uiHost) {
+  public void setUIHost(LynxBaseUI uiHost) {
     mUIHost = uiHost;
   }
 
   public void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
+    if (mRenderHost == null) {
+      return;
+    }
+    if (mUIHost != null && mUIHost.isFlatten()) {
+      return;
+    }
     View view = mRenderHost.getView();
     if (!(view instanceof ViewGroup)) {
       return;
@@ -118,6 +120,12 @@ public class Renderer {
   }
 
   public void onLayout(boolean changed, int l, int t, int r, int b) {
+    if (mRenderHost == null) {
+      return;
+    }
+    if (mUIHost != null && mUIHost.isFlatten()) {
+      return;
+    }
     View view = mRenderHost.getView();
     if (!(view instanceof ViewGroup)) {
       return;
@@ -138,7 +146,7 @@ public class Renderer {
     }
     if (mDisplayListApplier == null) {
       mDisplayListApplier =
-          new DisplayListApplier(mDisplayList, mPlatformRendererContext, mRenderHost.getView());
+          new DisplayListApplier(mDisplayList, mPlatformRendererContext, mRenderHost);
     } else {
       mDisplayListApplier.setDisplayList(mDisplayList);
     }
@@ -146,10 +154,17 @@ public class Renderer {
   }
 
   public void beforeDrawHost(Canvas canvas) {
+    if (mDisplayListApplier == null) {
+      return;
+    }
     mDisplayListApplier.drawTillNextView(canvas);
   }
 
   public void beforeDrawChild(Canvas canvas, View child) {
+    if (mDisplayListApplier == null) {
+      canvas.save();
+      return;
+    }
     mDisplayListApplier.drawTillNextView(canvas);
     canvas.save();
     if (child instanceof ContainerRenderer) {
@@ -163,20 +178,21 @@ public class Renderer {
   }
 
   public void afterDispatchDraw(Canvas canvas) {
+    if (mDisplayListApplier == null) {
+      return;
+    }
     mDisplayListApplier.drawTillNextView(canvas);
     mDisplayListApplier.reset();
   }
 
   public void invalidate(int invalidateMask) {
-    if (getRendererHost().getView() == null) {
+    if (getRendererHost() == null) {
       return;
     }
-    mRenderHost.getView().invalidate();
-    if ((invalidateMask & INVALIDATE_PARENT) != 0
+    mRenderHost.invalidateForRenderer();
+    if ((invalidateMask & INVALIDATE_PARENT) != 0 && mRenderHost.getView() != null
         && mRenderHost.getView().getParent() instanceof View) {
-      if (mRenderHost.getView().getParent() instanceof View) {
-        ((View) mRenderHost.getView().getParent()).invalidate();
-      }
+      ((View) mRenderHost.getView().getParent()).invalidate();
     }
     if ((invalidateMask & INVALIDATE_DISPLAY_LIST) != 0) {
       mRepaintType = REPAINT_TYPE_GET_DISPLAY_LIST_AND_DRAW;
@@ -188,8 +204,8 @@ public class Renderer {
   public void onDestroy() {}
 
   public void applySubtreeProperties(java.nio.ByteBuffer buffer, int count) {
-    if (buffer == null || count <= 0 || getRendererHost() == null
-        || getRendererHost().getView() == null) {
+    IRendererHost rendererHost = getRendererHost();
+    if (buffer == null || count <= 0 || rendererHost == null) {
       return;
     }
 
@@ -208,57 +224,30 @@ public class Renderer {
         for (int j = 0; j < 16; j++) {
           transform[j] = buffer.getFloat();
         }
-        applyTransform(getRendererHost().getView(), transform);
+        rendererHost.applyRendererTransform(transform);
       } else if (type == SUBTREE_OP_OPACITY) {
         float opacity = buffer.getFloat();
-        applyOpacity(getRendererHost().getView(), opacity);
+        rendererHost.applyRendererOpacity(opacity);
       }
     }
   }
 
-  private void applyOpacity(View view, float opacity) {
-    view.setAlpha(opacity);
-  }
-
-  private void applyTransform(View view, float[] transform) {
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-      // Convert to Android Matrix (row-major 9 elements)
-      Matrix matrix = new Matrix();
-      float[] values = new float[9];
-      // C++ Matrix44 is column-major: [m00, m10, m20, m30, m01, m11, m21, m31, m02, m12, m22, m32,
-      // m03, m13, m23, m33] Android Matrix.setValues expects row-major: [scaleX, skewX, transX,
-      // skewY, scaleY, transY, persp0, persp1, persp2]
-      values[0] = transform[0]; // m00 -> scaleX
-      values[1] = transform[4]; // m01 -> skewX
-      values[2] = transform[12]; // m03 -> transX
-      values[3] = transform[1]; // m10 -> skewY
-      values[4] = transform[5]; // m11 -> scaleY
-      values[5] = transform[13]; // m13 -> transY
-      values[6] = transform[3]; // m30 -> persp0
-      values[7] = transform[7]; // m31 -> persp1
-      values[8] = transform[15]; // m33 -> persp2
-
-      matrix.setValues(values);
-      view.setAnimationMatrix(matrix);
-    } else {
-      if (mTransformProps == null) {
-        mTransformProps = new TransformProps();
-      } else {
-        mTransformProps.reset();
-      }
-      // Create Matrix4f from the 4x4 matrix data (column-major order)
-      Matrix4f matrix4f = new Matrix4f(transform);
-      TransformProps.matrix4fToTransformProps(matrix4f, mTransformProps);
-      view.setTranslationX(mTransformProps.getTranslationX());
-      view.setTranslationY(mTransformProps.getTranslationY());
-      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-        view.setTranslationZ(mTransformProps.getTranslationZ());
-      }
-      view.setRotation(mTransformProps.getRotation());
-      view.setRotationX(mTransformProps.getRotationX());
-      view.setRotationY(mTransformProps.getRotationY());
-      view.setScaleX(mTransformProps.getScaleX());
-      view.setScaleY(mTransformProps.getScaleY());
-    }
+  public static Matrix createTransformMatrix(float[] transform) {
+    Matrix matrix = new Matrix();
+    float[] values = new float[9];
+    // C++ Matrix44 is column-major: [m00, m10, m20, m30, m01, m11, m21, m31, m02, m12, m22, m32,
+    // m03, m13, m23, m33] Android Matrix.setValues expects row-major: [scaleX, skewX, transX,
+    // skewY, scaleY, transY, persp0, persp1, persp2]
+    values[0] = transform[0]; // m00 -> scaleX
+    values[1] = transform[4]; // m01 -> skewX
+    values[2] = transform[12]; // m03 -> transX
+    values[3] = transform[1]; // m10 -> skewY
+    values[4] = transform[5]; // m11 -> scaleY
+    values[5] = transform[13]; // m13 -> transY
+    values[6] = transform[3]; // m30 -> persp0
+    values[7] = transform[7]; // m31 -> persp1
+    values[8] = transform[15]; // m33 -> persp2
+    matrix.setValues(values);
+    return matrix;
   }
 }

@@ -5,6 +5,7 @@
 #ifndef CORE_RENDERER_DOM_FRAGMENT_EVENT_PLATFORM_EVENT_HANDLER_H_
 #define CORE_RENDERER_DOM_FRAGMENT_EVENT_PLATFORM_EVENT_HANDLER_H_
 
+#include <array>
 #include <deque>
 #include <limits>
 #include <string>
@@ -66,6 +67,8 @@ class PlatformEventHandler {
   void ResetPointerEnv(PlatformPointerEvent& event);
   void InitClickEnv();
   void ResetClickEnv();
+  void RecordScrollOffsetsForTap();
+  bool HasScrollContainerScrolledForTap();
 
   void OnPointerDown(PlatformPointerEvent& event);
   void OnPointerMove(PlatformPointerEvent& event);
@@ -100,6 +103,7 @@ class PlatformEventHandler {
   std::deque<fml::RefPtr<PlatformEventTarget>> click_target_chain_;
   std::unordered_map<int, PlatformEventTargetDetail> target_pointer_map_;
   std::unordered_set<int> gesture_recognized_target_set_;
+  std::unordered_map<int32_t, std::array<float, 2>> scroll_offset_for_tap_;
   bool has_pointer_moved_{false};
   bool first_pointer_moved_{false};
   bool first_pointer_outside_{false};
