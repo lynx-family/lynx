@@ -7,12 +7,28 @@
 #include <memory>
 
 #include "clay/ui/component/component.h"
+#ifndef LYNX_ENABLE_CLAY_NATIVE_LIST
+#include "clay/ui/component/list/base_list_view.h"
+#endif
 
 namespace clay {
 
 ListItemView::ListItemView(int32_t id, PageView* page_view)
     : WithTypeInfo(id, page_view) {
   tag_ = "ListItemView";
+}
+
+void ListItemView::OnContentSizeChanged(const FloatRect& old_rect,
+                                        const FloatRect& new_rect) {
+  Component::OnContentSizeChanged(old_rect, new_rect);
+#ifndef LYNX_ENABLE_CLAY_NATIVE_LIST
+  for (auto* ancestor = Parent(); ancestor; ancestor = ancestor->Parent()) {
+    if (ancestor->Is<BaseListView>()) {
+      static_cast<BaseListView*>(ancestor)->OnListItemSizeChanged();
+      break;
+    }
+  }
+#endif
 }
 
 }  // namespace clay

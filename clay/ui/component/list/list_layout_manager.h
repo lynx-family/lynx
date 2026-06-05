@@ -123,6 +123,8 @@ class ListLayoutManager {
     length_cache_->OnItemsMoved(from, to, item_count);
   }
 
+  virtual void InvalidateLayoutCache();
+
   // scroll state changed notification
   virtual void OnScrollStateChange(Scrollable::ScrollStatus state) {}
 
