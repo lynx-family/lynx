@@ -19,7 +19,7 @@ Lynx needs an open source `<video>` element for video playback. For now, this sp
   - `direct`: Execute immediately without waiting for the callback for previous operation to be dispatched.
   - `latest`: If the callback for previous operation has not been dispatched, keep only the latest pending operation and overwrite earlier pending operations.
   Defaults to `queue`.
-- `timeupdate-interval`: Minimum dispatch interval for the `bindtimeupdate` event, in seconds. Defaults to `0.33`.
+- `timeupdate-interval`: Minimum dispatch interval for the `bindtimeupdate` event, in seconds. Defaults to `0.33`. Values greater than `0` are valid and should be honored as the requested dispatch interval; implementations must not impose a larger positive engineering lower bound on valid values. Values less than or equal to `0` are invalid and should be ignored, keeping the previous valid interval. If no valid interval has been accepted yet, the default interval remains active.
 
 ### UIMethods
 
@@ -34,7 +34,14 @@ Lynx needs an open source `<video>` element for video playback. For now, this sp
 - `bindplaying`: Fired when video playback starts. This fires for the first playback and when playback resumes after a pause. It does not fire again when looping automatically restarts playback from the beginning.
 - `bindpaused`: Fired when video playback pauses.
 - `bindstopped`: Fired only when video playback is stopped by the `stop` method.
-- `bindtimeupdate`: Fired when the playback position updates. Parameters are `current` and `duration`, both in seconds.
+- `bindtimeupdate`: Fired when the playback position updates, aligned with Web `<video>` `timeupdate` semantics. Parameters are `current` and `duration`, both in seconds. The event is driven by playback position changes, not by node lifetime:
+  - It must not fire before playback has actually started.
+  - During normal playback, it may fire repeatedly, throttled by `timeupdate-interval`.
+  - In the steady `paused` state, it must not fire periodically. Entering pause may dispatch one final position update before `bindpaused` if the current position changed.
+  - In the steady `stopped` state, it must not fire periodically. Because Web `<video>` does not define a `stop()` method, Lynx treats `stop` as a playback stop/reset operation; an implementation may dispatch one final position update before `bindstopped` if stopping changes the current position.
+  - Seeking or otherwise changing the playback position while paused may dispatch `bindtimeupdate` for that position change, but must not restart periodic `bindtimeupdate` dispatch unless playback resumes.
+  - When playback reaches the end, an implementation may dispatch the final position update before `bindended`; after `bindended`, it must not dispatch more `bindtimeupdate` events until playback starts again.
+  - Changing `src` or entering an error state stops periodic `bindtimeupdate` dispatch for the previous playback.
 - `bindended`: Fired when video playback fully ends. This does not fire when `loop = true`.
 - `bindlooped`: Fired at the end of each loop iteration. When `loop = true`, it fires each time playback reaches the end and before playback automatically returns to the beginning. It does not fire when `loop = false`.
 - `binderror`: Fired when a video playback error occurs. Parameters are `errorCode` and `errorMsg`. Keep these values as consistent as possible across the three platforms.
