@@ -663,7 +663,11 @@ export abstract class BaseApp<
     }
 
     // get cache first
-    const cacheKey = this.getLoadScriptCacheKey(path, this.params.srcName);
+    const cacheKey = this.getLoadScriptCacheKey(
+      path,
+      undefined,
+      this.params.srcName
+    );
     const cache = tryGetLoadScriptCache(cacheKey);
     if (cache) {
       // cache hit
