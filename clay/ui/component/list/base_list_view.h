@@ -85,6 +85,8 @@ class BaseListView : public WithTypeInfo<BaseListView, NestedScrollable>,
 
   void SetWidth(float width) override;
   void SetHeight(float height) override;
+  void SetPaddings(float padding_left, float padding_top, float padding_right,
+                   float padding_bottom) override;
 
   void SetAdapter(ListAdapter* adapter);
   void SetLayoutManager(std::unique_ptr<ListLayoutManager> layout_manager);
@@ -196,6 +198,7 @@ class BaseListView : public WithTypeInfo<BaseListView, NestedScrollable>,
       const std::function<void(uint32_t, const std::string&)>& callback);
 
   ListLayoutManager* GetLayoutManager() const { return layout_manager_.get(); }
+  void OnListItemSizeChanged();
 
   void SetStickyEnabled(bool enabled);
   void OnFocusNodeDestructed(FocusNode*) override;

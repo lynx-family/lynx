@@ -20,9 +20,9 @@
 
 namespace clay {
 
-ListLayoutManager::ListLayoutManager(ScrollDirection orientation) {
+ListLayoutManager::ListLayoutManager(ScrollDirection orientation)
+    : length_cache_(std::make_unique<ListItemLengthCache>()) {
   SetOrientation(orientation);
-  length_cache_ = std::make_unique<ListItemLengthCache>();
 }
 
 ListLayoutManager::~ListLayoutManager() = default;
@@ -226,6 +226,7 @@ bool ListLayoutManager::SetOrientation(ScrollDirection orientation) {
   orientation_ = orientation;
   orientation_helper_ =
       ListOrientationHelper::CreateOrientationHelper(this, orientation);
+  InvalidateLayoutCache();
   return true;
 }
 
@@ -242,6 +243,8 @@ void ListLayoutManager::SetMainAxisGap(float main_axis_gap) {
     RequestLayout();
   }
 }
+
+void ListLayoutManager::InvalidateLayoutCache() { length_cache_->Clear(); }
 
 void ListLayoutManager::RequestLayout() {
   if (list_view_) {

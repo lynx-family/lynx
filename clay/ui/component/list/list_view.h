@@ -46,7 +46,7 @@ class ListView : public BaseListView {
  private:
   void InitAdapter();
   int64_t GenerateOperationId();
-  void SetNoDiffInfo(const clay::Value& value);
+  bool SetNoDiffInfo(const clay::Value& value);
   std::unique_ptr<LynxListAdapter> lynx_adapter_;
   std::optional<ListItemViewHolder*> waiting_for_child_;
   uint64_t op_counter_ = 0;
