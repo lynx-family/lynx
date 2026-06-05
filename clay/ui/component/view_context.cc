@@ -63,8 +63,9 @@ namespace clay {
 
 static bool ForceUseXElement(const std::string& tag) {
 #ifdef OS_IOS
-  return tag == "x-input";  // use xinput of xelement in iOS platform to avoid
-                            // some issues.
+  // Let iOS xelement text input registrations override Clay C++ entries.
+  return tag == "input" || tag == "x-input" || tag == "x-input-ng" ||
+         tag == "textarea" || tag == "x-textarea" || tag == "x-textarea-ng";
 #else
   return false;
 #endif
