@@ -12,7 +12,7 @@
 
 namespace clay {
 
-// The scheduler seperates "what to do next" from the updating of its internal
+// The scheduler separates "what to do next" from the updating of its internal
 // state to make testing cleaner.
 class Scheduler {
  public:

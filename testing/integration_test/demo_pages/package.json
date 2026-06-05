@@ -1,7 +1,7 @@
 {
     "name": "demo-pages",
     "version": "1.0.0",
-    "description": "Demo pages for lynx integeration test",
+    "description": "Demo pages for lynx integration test",
     "author": "Lynx Authors",
     "license": "Apache-2.0",
     "private": true,
