@@ -7,11 +7,14 @@ import static android.os.Build.VERSION.SDK_INT;
 
 import android.content.Context;
 import android.graphics.Canvas;
+import android.graphics.Matrix;
+import android.graphics.PointF;
 import android.graphics.RecordingCanvas;
 import android.graphics.Rect;
 import android.graphics.drawable.Drawable;
 import android.os.Build;
 import android.util.DisplayMetrics;
+import android.view.View;
 import androidx.annotation.CallSuper;
 import androidx.annotation.Nullable;
 import androidx.annotation.RequiresApi;
@@ -23,15 +26,24 @@ import com.lynx.tasm.behavior.LynxContext;
 import com.lynx.tasm.behavior.LynxProp;
 import com.lynx.tasm.behavior.PropsConstants;
 import com.lynx.tasm.behavior.StyleConstants;
+import com.lynx.tasm.behavior.render.IRendererHost;
+import com.lynx.tasm.behavior.render.PlatformRendererContext;
+import com.lynx.tasm.behavior.render.Renderer;
+import com.lynx.tasm.behavior.ui.utils.LynxUIHelper;
 import com.lynx.tasm.rendernode.compat.RenderNodeCompat;
 import com.lynx.tasm.rendernode.compat.RenderNodeFactory;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
-public class LynxFlattenUI extends LynxBaseUI {
+public class LynxFlattenUI extends LynxBaseUI implements IRendererHost {
   private float mAlpha = 1.0f;
   private RenderNodeCompat mRenderNode;
   private boolean mIsValidate = false;
+  private Renderer mRenderer;
+  private Rect mRendererClipBounds;
+  private float mRendererOpacity = 1.0f;
+  private Matrix mRendererTransformMatrix;
+  private int mRendererDrawingScopeSaveCount = -1;
 
   // We need to support the dark mode?
   public static Method sSetUsageHint; // refers to LynxContext
@@ -87,6 +99,10 @@ public class LynxFlattenUI extends LynxBaseUI {
   public void measure() {
     for (LynxBaseUI child : this.mChildren) {
       child.measure();
+    }
+    if (mRenderer != null) {
+      mRenderer.onMeasure(View.MeasureSpec.makeMeasureSpec(getWidth(), View.MeasureSpec.EXACTLY),
+          View.MeasureSpec.makeMeasureSpec(getHeight(), View.MeasureSpec.EXACTLY));
     }
   }
 
@@ -147,6 +163,116 @@ public class LynxFlattenUI extends LynxBaseUI {
         ((LynxFlattenUI) child).layout(childX, childY, childBounds);
       }
     }
+    if (mRenderer != null) {
+      mRenderer.onLayout(
+          false, getLeft(), getTop(), getLeft() + getWidth(), getTop() + getHeight());
+    }
+  }
+
+  @Override
+  public Renderer createRenderer(PlatformRendererContext platformRendererContext, int sign) {
+    return new Renderer(platformRendererContext, sign);
+  }
+
+  @Override
+  public void setRenderer(Renderer renderer) {
+    mRenderer = renderer;
+  }
+
+  @Override
+  public Renderer getRenderer() {
+    return mRenderer;
+  }
+
+  @Override
+  public View getView() {
+    LynxBaseUI drawParent = getDrawParent();
+    if (drawParent instanceof LynxUI) {
+      return ((LynxUI<?>) drawParent).getView();
+    }
+    return null;
+  }
+
+  @Override
+  public int getRendererHostWidth() {
+    return getWidth();
+  }
+
+  @Override
+  public int getRendererHostHeight() {
+    return getHeight();
+  }
+
+  @Override
+  public int getRendererHostScrollX() {
+    return 0;
+  }
+
+  @Override
+  public int getRendererHostScrollY() {
+    return 0;
+  }
+
+  @Override
+  public PointF convertPointInRendererHostToScreen(PointF point) {
+    PointF targetPoint = new PointF(point.x, point.y);
+    if (mRendererTransformMatrix != null) {
+      float[] values = new float[] {targetPoint.x, targetPoint.y};
+      mRendererTransformMatrix.mapPoints(values);
+      targetPoint.set(values[0], values[1]);
+    }
+    if (!(mDrawParent instanceof LynxUI) || ((LynxUI<?>) mDrawParent).getView() == null) {
+      LLog.e(
+          "LynxFlattenUI", "convertPointInRendererHostToScreen failed since draw parent is null.");
+      return targetPoint;
+    }
+    return LynxUIHelper.convertPointFromUIToScreen(this, targetPoint);
+  }
+
+  @Override
+  public void requestLayoutForRenderer() {
+    requestLayout();
+  }
+
+  @Override
+  public void invalidateForRenderer() {
+    invalidate();
+  }
+
+  @Override
+  public void setWillNotDrawForRenderer(boolean willNotDraw) {}
+
+  @Override
+  public void setClipChildrenForRenderer(boolean clipChildren) {}
+
+  @Override
+  public void applyRendererClipBounds(boolean needClip, Rect clipBounds) {
+    if (needClip && clipBounds != null) {
+      if (mRendererClipBounds == null) {
+        mRendererClipBounds = new Rect();
+      }
+      mRendererClipBounds.set(clipBounds);
+    } else {
+      mRendererClipBounds = null;
+    }
+    invalidate();
+  }
+
+  @Override
+  public void applyRendererOpacity(float opacity) {
+    mRendererOpacity = opacity;
+    invalidate();
+  }
+
+  @Override
+  public void applyRendererTransform(float[] transform) {
+    Matrix matrix = Renderer.createTransformMatrix(transform);
+    if (matrix.isIdentity()) {
+      mRendererTransformMatrix = null;
+    } else {
+      mRendererTransformMatrix = matrix;
+    }
+    invalidate();
   }
 
   @Override
@@ -208,6 +334,10 @@ public class LynxFlattenUI extends LynxBaseUI {
   }
 
   final void innerDraw(Canvas canvas) {
+    if (mRenderer != null) {
+      drawRendererHostStart(canvas);
+      return;
+    }
     // TODO: 2020/8/9
     // Using hidden APIs carries high risks. Control whether to use RenderNode online; by
     // default, it is not used.
@@ -227,6 +357,81 @@ public class LynxFlattenUI extends LynxBaseUI {
       return;
     }
     mRenderNode.drawRenderNode(canvas);
+  }
+
+  boolean isRendererHost() {
+    return mRenderer != null;
+  }
+
+  void drawRendererHostStart(Canvas canvas) {
+    if (!beginRendererDrawingScope(canvas)) {
+      return;
+    }
+    mRenderer.onDraw(canvas);
+    drawRendererContentUntilNextView(canvas);
+  }
+
+  void drawRendererContentUntilNextView(Canvas canvas) {
+    drawRendererContent(canvas, false);
+  }
+
+  void drawRendererHostEnd(Canvas canvas) {
+    try {
+      drawRendererContent(canvas, true);
+    } finally {
+      endRendererDrawingScope(canvas);
+    }
+  }
+
+  private void drawRendererContent(Canvas canvas, boolean finish) {
+    if (mRenderer == null || getEffectiveRendererAlpha() <= 0.0f
+        || mRendererDrawingScopeSaveCount < 0) {
+      return;
+    }
+    if (finish) {
+      mRenderer.afterDispatchDraw(canvas);
+    } else {
+      mRenderer.beforeDrawHost(canvas);
+    }
+  }
+
+  private boolean beginRendererDrawingScope(Canvas canvas) {
+    float alpha = getEffectiveRendererAlpha();
+    if (mRenderer == null || alpha <= 0.0f) {
+      return false;
+    }
+    if (mRendererDrawingScopeSaveCount >= 0) {
+      return true;
+    }
+    mRendererDrawingScopeSaveCount = canvas.save();
+    Rect bound = getBound();
+    if (bound != null) {
+      canvas.clipRect(bound);
+    }
+    final int left = getLeft();
+    final int top = getTop();
+    if ((left | top) != 0) {
+      canvas.translate(left, top);
+    }
+    if (mRendererTransformMatrix != null) {
+      canvas.concat(mRendererTransformMatrix);
+    }
+    if (mRendererClipBounds != null) {
+      canvas.clipRect(mRendererClipBounds);
+    }
+    if (alpha < 1.0f) {
+      canvas.saveLayerAlpha(
+          0, 0, getWidth(), getHeight(), (int) (alpha * 255), Canvas.ALL_SAVE_FLAG);
+    }
+    return true;
+  }
+
+  private void endRendererDrawingScope(Canvas canvas) {
+    if (mRendererDrawingScopeSaveCount < 0) {
+      return;
+    }
+    canvas.restoreToCount(mRendererDrawingScopeSaveCount);
+    mRendererDrawingScopeSaveCount = -1;
   }
 
   public final RenderNodeCompat updateRenderNode() {
@@ -264,6 +469,10 @@ public class LynxFlattenUI extends LynxBaseUI {
     }
   }
 
+  private float getEffectiveRendererAlpha() {
+    return mAlpha * mRendererOpacity;
+  }
+
   private boolean isHardwareDraw(Canvas canvas) {
     return canvas.isHardwareAccelerated();
   }
@@ -284,6 +493,12 @@ public class LynxFlattenUI extends LynxBaseUI {
   public void draw(Canvas canvas) {
     TraceEvent.beginSection(TraceEventDef.FLATTEN_UI_DRAW);
     if (mAlpha <= 0.0f) {
+      TraceEvent.endSection(TraceEventDef.FLATTEN_UI_DRAW);
+      return;
+    }
+    if (mRenderer != null) {
+      drawRendererHostStart(canvas);
+      drawRendererHostEnd(canvas);
       TraceEvent.endSection(TraceEventDef.FLATTEN_UI_DRAW);
       return;
     }

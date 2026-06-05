@@ -8,6 +8,7 @@ import static org.mockito.Mockito.*;
 
 import android.content.Context;
 import android.content.res.Resources;
+import android.graphics.PointF;
 import android.util.DisplayMetrics;
 import android.view.ViewGroup;
 import android.widget.FrameLayout;
@@ -16,6 +17,7 @@ import com.lynx.tasm.INativeLibraryLoader;
 import com.lynx.tasm.LynxEnv;
 import com.lynx.tasm.behavior.BehaviorRegistry;
 import com.lynx.tasm.behavior.LynxContext;
+import com.lynx.tasm.behavior.ui.LynxBaseUI;
 import com.lynx.tasm.behavior.ui.PropBundle;
 import com.lynx.tasm.behavior.ui.UIBody;
 import java.nio.ByteBuffer;
@@ -148,6 +150,56 @@ public class PlatformRendererContextTest {
   }
 
   @Test
+  public void testGetRendererHostScrollOffset() {
+    ViewGroup mockView = mock(ViewGroup.class);
+    IRendererHost host = new TestRendererHost(mockView, null, 12, 34);
+    rendererContext.mViewHolder.put(1, host);
+
+    assertArrayEquals(new float[] {12, 34}, rendererContext.getRendererHostScrollOffset(1), 0);
+    assertArrayEquals(new float[] {0, 0}, rendererContext.getRendererHostScrollOffset(99), 0);
+  }
+
+  @Test
+  public void testIsRendererHostScrollable() {
+    ViewGroup mockView = mock(ViewGroup.class);
+    Renderer renderer = new Renderer(rendererContext, 1);
+    LynxBaseUI uiHost = mock(LynxBaseUI.class);
+    when(uiHost.isScrollable()).thenReturn(true);
+    renderer.setUIHost(uiHost);
+    rendererContext.mViewHolder.put(1, createHost(mockView, renderer));
+
+    assertTrue(rendererContext.isRendererHostScrollable(1));
+    assertFalse(rendererContext.isRendererHostScrollable(99));
+  }
+
+  @Test
+  public void testConvertPointInViewToScreenDelegatesToRendererHost() {
+    IRendererHost host = mock(IRendererHost.class);
+    PointF point = new PointF(1, 2);
+    PointF convertedPoint = new PointF(3, 4);
+    when(host.convertPointInRendererHostToScreen(point)).thenReturn(convertedPoint);
+    rendererContext.mViewHolder.put(1, host);
+
+    assertSame(convertedPoint, rendererContext.convertPointInViewToScreen(1, point));
+    verify(host).convertPointInRendererHostToScreen(point);
+  }
+
+  @Test
+  public void testConvertPointInViewToScreenReturnsPointWhenHostMissing() {
+    PointF point = new PointF(1, 2);
+
+    assertSame(point, rendererContext.convertPointInViewToScreen(99, point));
+  }
+
+  @Test
+  public void testDefaultRendererHostConvertPointReturnsPointWhenViewMissing() {
+    IRendererHost host = new TestRendererHost(null);
+    PointF point = new PointF(1, 2);
+
+    assertSame(point, host.convertPointInRendererHostToScreen(point));
+  }
+
+  @Test
   public void testUpdatePlatformRendererFrame() {
     Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
     FrameLayout view = spy(new FrameLayout(context));
@@ -221,15 +273,62 @@ public class PlatformRendererContextTest {
   }
 
   private IRendererHost createHost(ViewGroup view) {
-    IRendererHost host = mock(IRendererHost.class);
-    when(host.getView()).thenReturn(view);
-    return host;
+    return new TestRendererHost(view);
   }
 
   private IRendererHost createHost(ViewGroup view, Renderer renderer) {
-    IRendererHost host = mock(IRendererHost.class);
-    when(host.getView()).thenReturn(view);
-    when(host.getRenderer()).thenReturn(renderer);
-    return host;
+    return new TestRendererHost(view, renderer);
+  }
+
+  private static class TestRendererHost implements IRendererHost {
+    private final ViewGroup view;
+    private final int scrollX;
+    private final int scrollY;
+    private Renderer renderer;
+
+    TestRendererHost(ViewGroup view) {
+      this(view, null);
+    }
+
+    TestRendererHost(ViewGroup view, Renderer renderer) {
+      this(view, renderer, 0, 0);
+    }
+
+    TestRendererHost(ViewGroup view, Renderer renderer, int scrollX, int scrollY) {
+      this.view = view;
+      this.renderer = renderer;
+      this.scrollX = scrollX;
+      this.scrollY = scrollY;
+    }
+
+    @Override
+    public void setRenderer(Renderer renderer) {
+      this.renderer = renderer;
+    }
+
+    @Override
+    public Renderer getRenderer() {
+      return renderer;
+    }
+
+    @Override
+    public ViewGroup getView() {
+      return view;
+    }
+
+    @Override
+    public int getRendererHostScrollX() {
+      return scrollX;
+    }
+
+    @Override
+    public int getRendererHostScrollY() {
+      return scrollY;
+    }
+
+    @Override
+    public Renderer createRenderer(PlatformRendererContext platformRendererContext, int sign) {
+      return renderer != null ? renderer : new Renderer(platformRendererContext, sign);
+    }
   }
 }

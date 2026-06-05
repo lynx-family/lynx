@@ -7,15 +7,25 @@
 
 #include "core/renderer/dom/fragment/fragment.h"
 
+#include <array>
+#include <memory>
+#include <unordered_map>
+#include <unordered_set>
+
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/dom/fiber/image_element.h"
 #include "core/renderer/dom/fiber/text_element.h"
 #include "core/renderer/dom/fiber/view_element.h"
 #include "core/renderer/dom/fragment/display_list_builder.h"
+#include "core/renderer/dom/fragment/fragment_behavior.h"
 #include "core/renderer/dom/fragment/image_fragment_behavior.h"
 #include "core/renderer/lynx_env_config.h"
 #include "core/renderer/starlight/types/layout_result.h"
 #include "core/renderer/tasm/react/testing/mock_painting_context.h"
+#include "core/renderer/ui_wrapper/common/testing/prop_bundle_mock.h"
+#include "core/renderer/ui_wrapper/painting/native_painting_context_platform_ref.h"
+#include "core/renderer/ui_wrapper/painting/platform_renderer_impl.h"
+#include "core/renderer/utils/base/tasm_constants.h"
 #include "core/shell/testing/mock_tasm_delegate.h"
 #include "third_party/googletest/googlemock/include/gmock/gmock.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
@@ -57,6 +67,221 @@ class FragmentTest : public ::testing::Test {
   std::unique_ptr<lynx::tasm::ElementManager> manager;
   std::shared_ptr<::testing::NiceMock<test::MockTasmDelegate>> tasm_mediator;
 };
+
+class RecordingFragmentBehavior : public FragmentBehavior {
+ public:
+  explicit RecordingFragmentBehavior(Fragment* fragment)
+      : FragmentBehavior(fragment) {}
+
+  void CreatePlatformRenderer(
+      const fml::RefPtr<PropBundle>& attributes) override {
+    attributes_ = attributes;
+  }
+
+  PlatformRendererType GetType() const override {
+    return PlatformRendererType::kText;
+  }
+
+  fml::RefPtr<PropBundle> attributes_;
+};
+
+class TestPlatformRenderer : public PlatformRendererImpl {
+ public:
+  TestPlatformRenderer(int id, PlatformRendererType type)
+      : PlatformRendererImpl(id, type, base::String()) {}
+
+ protected:
+  void OnUpdateDisplayList(DisplayList display_list) override {
+    if (display_list.HasContent()) {
+      display_list_ = std::move(display_list);
+    }
+  }
+  void OnUpdateAttributes(const fml::RefPtr<PropBundle>&, bool) override {}
+  void OnAddChild(PlatformRenderer*) override {}
+  void OnRemoveFromParent() override {}
+  void OnUpdateSubtreeProperties(const DisplayList&) override {}
+};
+
+class TestPlatformRendererFactory : public PlatformRendererFactory {
+ public:
+  fml::RefPtr<PlatformRenderer> CreateRenderer(
+      int id, PlatformRendererType type,
+      const fml::RefPtr<PropBundle>&) override {
+    return fml::MakeRefCounted<TestPlatformRenderer>(id, type);
+  }
+
+  fml::RefPtr<PlatformRenderer> CreateExtendedRenderer(
+      int id, const base::String&, const fml::RefPtr<PropBundle>&) override {
+    return fml::MakeRefCounted<TestPlatformRenderer>(
+        id, PlatformRendererType::kExtended);
+  }
+};
+
+class TestNativePaintingCtxPlatformRef : public NativePaintingCtxPlatformRef {
+ public:
+  TestNativePaintingCtxPlatformRef()
+      : NativePaintingCtxPlatformRef(
+            std::make_unique<TestPlatformRendererFactory>()) {}
+
+  void GetPlatformRendererScrollOffset(int32_t sign, float offset[2]) override {
+    auto it = scroll_offsets.find(sign);
+    if (it == scroll_offsets.end()) {
+      return;
+    }
+    offset[0] = it->second[0];
+    offset[1] = it->second[1];
+  }
+
+  bool IsPlatformRendererScrollable(int32_t sign) override {
+    return scrollable_signs.count(sign) > 0;
+  }
+
+  std::unordered_map<int32_t, std::array<float, 2>> scroll_offsets;
+  std::unordered_set<int32_t> scrollable_signs;
+};
+
+TEST_F(FragmentTest, CreateLayerIfNeededWritesFlattenInitData) {
+  auto element = manager->CreateFiberText("text");
+  element->MarkAsDirectChildOfCompatibleComponent(true);
+  Fragment fragment(element.get());
+  auto behavior = std::make_unique<RecordingFragmentBehavior>(&fragment);
+  auto* behavior_ptr = behavior.get();
+  fragment.SetBehavior(std::move(behavior));
+
+  ASSERT_TRUE(element->TendToFlatten());
+  fragment.CreateLayerIfNeeded(nullptr);
+
+  ASSERT_TRUE(behavior_ptr->attributes_);
+  auto* props = static_cast<PropBundleMock*>(behavior_ptr->attributes_.get());
+  ASSERT_TRUE(props->Contains(kTendsToFlattenInitDataKey));
+  EXPECT_TRUE(props->GetPropsMap().at(kTendsToFlattenInitDataKey).Bool());
+  EXPECT_TRUE(props->Contains(kDirectChildOfCompatibleComponentInitDataKey));
+}
+
+TEST_F(FragmentTest, ReusedEventTargetTreeRefreshesScrollOffsetForHitTest) {
+  auto root_renderer = fml::MakeRefCounted<TestPlatformRenderer>(
+      kRootId, PlatformRendererType::kPage);
+  DisplayListBuilder root_builder;
+  root_builder
+      .Begin(kRootId, PlatformRendererType::kPage, 0.f, 0.f, 100.f, 100.f)
+      .DrawView(1)
+      .End();
+  root_renderer->UpdateDisplayList(root_builder.Build());
+
+  auto scroll_renderer = fml::MakeRefCounted<TestPlatformRenderer>(
+      1, PlatformRendererType::kScroll);
+  DisplayListBuilder scroll_builder;
+  scroll_builder.Begin(1, PlatformRendererType::kScroll, 0.f, 0.f, 100.f, 50.f)
+      .Begin(2, PlatformRendererType::kView, 0.f, 60.f, 20.f, 20.f)
+      .End()
+      .End();
+  scroll_renderer->UpdateDisplayList(scroll_builder.Build());
+  root_renderer->AddChild(scroll_renderer);
+
+  TestNativePaintingCtxPlatformRef platform_ref;
+  platform_ref.renderers_.insert_or_assign(kRootId, root_renderer);
+  platform_ref.renderers_.insert_or_assign(1, scroll_renderer);
+  platform_ref.scrollable_signs.insert(1);
+  platform_ref.scroll_offsets[1] = {0.f, 0.f};
+  platform_ref.need_reconstruct_event_target_tree_ = true;
+
+  auto root_target = platform_ref.ReconstructEventTargetTreeRecursively();
+  ASSERT_NE(root_target, nullptr);
+
+  float point[2] = {10.f, 40.f};
+  auto hit_target = root_target->HitTest(point);
+  ASSERT_NE(hit_target, nullptr);
+  EXPECT_EQ(hit_target->Sign(), 1);
+
+  platform_ref.scroll_offsets[1] = {0.f, 30.f};
+  bool did_reconstruct = true;
+  auto reused_root =
+      platform_ref.ReconstructEventTargetTreeRecursively(&did_reconstruct);
+
+  EXPECT_FALSE(did_reconstruct);
+  EXPECT_EQ(root_target.get(), reused_root.get());
+  hit_target = reused_root->HitTest(point);
+  ASSERT_NE(hit_target, nullptr);
+  EXPECT_EQ(hit_target->Sign(), 2);
+}
+
+TEST_F(FragmentTest, ValidExposureEventPropsBypassEqualCheck) {
+  auto element = manager->CreateFiberText("text");
+  Fragment fragment(element.get());
+
+  EXPECT_FALSE(fragment.event_bundle_dirty_);
+
+  fragment.SetEventProp(PlatformEventPropName::kUnknown, lepus::Value("id"));
+  EXPECT_FALSE(fragment.event_bundle_dirty_);
+
+  fragment.SetEventProp(PlatformEventPropName::kIDSelector, lepus::Value("id"));
+  EXPECT_TRUE(fragment.event_bundle_dirty_);
+
+  fragment.event_bundle_dirty_ = false;
+  fragment.SetEventProp(PlatformEventPropName::kIDSelector, lepus::Value("id"));
+  EXPECT_FALSE(fragment.event_bundle_dirty_);
+
+  fragment.SetEventProp(PlatformEventPropName::kIDSelector,
+                        lepus::Value("next-id"));
+  EXPECT_TRUE(fragment.event_bundle_dirty_);
+
+  fragment.event_bundle_dirty_ = false;
+  fragment.SetEventProp(PlatformEventPropName::kExposureId,
+                        lepus::Value("exposure-id"));
+  EXPECT_TRUE(fragment.event_bundle_dirty_);
+
+  fragment.event_bundle_dirty_ = false;
+  fragment.SetEventProp(PlatformEventPropName::kExposureId,
+                        lepus::Value("exposure-id"));
+  EXPECT_TRUE(fragment.event_bundle_dirty_);
+
+  fragment.event_bundle_dirty_ = false;
+  fragment.SetEventProp(PlatformEventPropName::kExposureScene,
+                        lepus::Value("scene"));
+  EXPECT_TRUE(fragment.event_bundle_dirty_);
+
+  fragment.event_bundle_dirty_ = false;
+  fragment.SetEventProp(PlatformEventPropName::kExposureScene,
+                        lepus::Value("scene"));
+  EXPECT_TRUE(fragment.event_bundle_dirty_);
+
+  fragment.event_bundle_dirty_ = false;
+  fragment.SetEventProp(PlatformEventPropName::kExposureScene, lepus::Value());
+  EXPECT_TRUE(fragment.event_bundle_dirty_);
+
+  fragment.event_bundle_dirty_ = false;
+  fragment.SetEventProp(PlatformEventPropName::kExposureScene, lepus::Value());
+  EXPECT_FALSE(fragment.event_bundle_dirty_);
+
+  fragment.event_bundle_dirty_ = false;
+  fragment.ClearEventProps();
+  EXPECT_TRUE(fragment.event_bundle_dirty_);
+
+  fragment.event_bundle_dirty_ = false;
+  fragment.ClearEventProps();
+  EXPECT_FALSE(fragment.event_bundle_dirty_);
+
+  fragment.AddEventName(PlatformEventName::kUnknown);
+  EXPECT_FALSE(fragment.event_bundle_dirty_);
+
+  fragment.AddEventName(PlatformEventName::kUIAppear);
+  EXPECT_TRUE(fragment.event_bundle_dirty_);
+
+  fragment.event_bundle_dirty_ = false;
+  fragment.AddEventName(PlatformEventName::kUIAppear);
+  EXPECT_FALSE(fragment.event_bundle_dirty_);
+
+  fragment.AddEventName(PlatformEventName::kUIDisappear);
+  EXPECT_TRUE(fragment.event_bundle_dirty_);
+
+  fragment.event_bundle_dirty_ = false;
+  fragment.ClearEventNames();
+  EXPECT_TRUE(fragment.event_bundle_dirty_);
+
+  fragment.event_bundle_dirty_ = false;
+  fragment.ClearEventNames();
+  EXPECT_FALSE(fragment.event_bundle_dirty_);
+}
 
 TEST_F(FragmentTest, PlainRectGeneratesClipRectOp) {
   auto element = manager->CreateFiberText("text");

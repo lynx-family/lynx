@@ -16,11 +16,8 @@ namespace tasm {
 
 PlatformLayoutFunctionWrapper::PlatformLayoutFunctionWrapper(
     FiberElement& element, const fml::RefPtr<PropBundle>& initial_props)
-    : element_(element) {
+    : element_(element), id_(element.impl_id()) {
   layout_object_ = element.slnode();
-  if (layout_object_) {
-    id_ = element.impl_id();
-  }
 }
 
 FloatSize PlatformLayoutFunctionWrapper::MeasureCallback(

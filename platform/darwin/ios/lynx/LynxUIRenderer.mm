@@ -2,11 +2,12 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#import "LynxUIRenderer.h"
+#import <Lynx/LynxUIRenderer.h>
 
 #import <Lynx/DevToolOverlayDelegate.h>
 #import <Lynx/LUIConfigAdapter.h>
 #import <Lynx/ListNodeInfoFetcher.h>
+#import <Lynx/LynxContext+Internal.h>
 #import <Lynx/LynxEnv+Internal.h>
 #import <Lynx/LynxEventHandler+Internal.h>
 #import <Lynx/LynxEventHandler.h>
@@ -16,14 +17,13 @@
 #import <Lynx/LynxService.h>
 #import <Lynx/LynxServiceTextProtocol.h>
 #import <Lynx/LynxTemplateRender+Internal.h>
+#import <Lynx/LynxUIContext+Internal.h>
 #import <Lynx/LynxUIKitAPIAdapter.h>
 #import <Lynx/LynxWeakProxy.h>
 #import <Lynx/UIView+Lynx.h>
 #import "LynxBaseConfigurator+Internal.h"
-#import "LynxContext+Internal.h"
 #import "LynxTemplateRender+Protected.h"
 #import "LynxTouchHandler+Internal.h"
-#import "LynxUIContext+Internal.h"
 #import "LynxUIExposure+Internal.h"
 #import "LynxUIIntersectionObserver+Internal.h"
 
@@ -106,6 +106,7 @@ static id<LynxServiceTextProtocol> getTextService() {
   _uiOwner.uiContext.contextDict = [builder.config.contextDict copy];
   _uiOwner.uiContext.lynxModuleExtraData = builder.lynxModuleExtraData;
   _uiOwner.uiContext.imageConfig = builder.imageConfig;
+  [_uiOwner.uiContext.uiExposure setEnableExposureDetection:!_lynxContext.isFragmentLayerRenderOn];
 }
 
 - (void)setupResourceProviderWithBuilder:(LynxViewBuilder *)builder {
