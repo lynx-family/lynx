@@ -1,3 +1,6 @@
+## 0.0.13
+- Add compat_data and notes for `grid-column` and `grid-row` CSS properties.
+
 ## 0.0.12
 - Sync compat_data for `filter` function sub-properties: `blur`, `grayscale`, `brightness`, `contrast`, and `saturate`.
 
