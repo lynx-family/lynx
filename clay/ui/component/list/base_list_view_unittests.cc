@@ -13,6 +13,7 @@
 #include "clay/ui/component/list/list_adapter.h"
 #include "clay/ui/component/list/list_children_helper.h"
 #include "clay/ui/component/list/list_common/layout_types.h"
+#include "clay/ui/component/list/list_item_view.h"
 #include "clay/ui/component/list/list_item_view_holder.h"
 #include "clay/ui/component/list/list_layout_manager_grid.h"
 #include "clay/ui/component/list/list_layout_manager_staggered_grid.h"
@@ -53,7 +54,12 @@ class MockListItemViewHolder : public ListItemViewHolder {
         break;
       }
       default: {
-        GetView()->SetHeight(height_);
+        float height = height_;
+        if (double_height_when_width_expands_ && constraint.width &&
+            *constraint.width > width_expand_threshold_) {
+          height *= 2.f;
+        }
+        GetView()->SetHeight(height);
         break;
       }
     }
@@ -73,6 +79,8 @@ class MockListItemViewHolder : public ListItemViewHolder {
  public:
   float height_ = 0.f;
   float width_ = 0.f;
+  bool double_height_when_width_expands_ = false;
+  float width_expand_threshold_ = 0.f;
   PageView* page_;
   std::unique_ptr<View> my_view_;
 };
@@ -92,6 +100,10 @@ class MockAdapter : public ListAdapter {
     static_cast<MockListItemViewHolder*>(item)->height_ =
         height_list_[position];
     static_cast<MockListItemViewHolder*>(item)->width_ = height_list_[position];
+    static_cast<MockListItemViewHolder*>(item)
+        ->double_height_when_width_expands_ = double_height_when_width_expands_;
+    static_cast<MockListItemViewHolder*>(item)->width_expand_threshold_ =
+        width_expand_threshold_;
   }
 
   void OnDeleteListItem(ListItemViewHolder* view_holder) override {
@@ -109,6 +121,8 @@ class MockAdapter : public ListAdapter {
 
  public:
   std::vector<float> height_list_;
+  bool double_height_when_width_expands_ = false;
+  float width_expand_threshold_ = 0.f;
   std::forward_list<std::unique_ptr<MockListItemViewHolder>> holders_;
   std::vector<std::unique_ptr<MockListItemViewHolder>> deleted_;
 };
@@ -177,6 +191,24 @@ class ListLayoutManagerTest : public UITest {};
 class ListLayoutManagerLinearTest : public ListLayoutManagerTest {};
 class ListLayoutManagerGridTest : public ListLayoutManagerTest {};
 class ListLayoutManagerStaggeredGridTest : public ListLayoutManagerTest {};
+
+TEST_F_UI(ListLayoutManagerLinearTest, ListItemSizeChangedRequestsLayout) {
+  MockListView* list_view = new MockListView(page_.get());
+  auto list_item = std::make_unique<ListItemView>(100, page_.get());
+
+  list_view->BaseView::AddChild(list_item.get(), 0);
+  list_view->Layout();
+  EXPECT_FALSE(list_view->NeedsLayout());
+
+  list_item->SetBound(0.f, 0.f, 100.f, 20.f);
+  list_view->Layout();
+  EXPECT_FALSE(list_view->NeedsLayout());
+
+  list_item->SetBound(0.f, 0.f, 100.f, 40.f);
+  EXPECT_TRUE(list_view->NeedsLayout());
+
+  list_view->BaseView::RemoveChild(list_item.get());
+}
 
 TEST_F_UI(ListLayoutManagerLinearTest, Layout) {
   // Empty list
@@ -258,6 +290,27 @@ TEST_F_UI(ListLayoutManagerLinearTest, Layout) {
       expected_height += (i + 1) * 10.f;
     }
   }
+}
+
+TEST_F_UI(ListLayoutManagerLinearTest, InvalidateLengthCacheOnCrossAxisResize) {
+  MockListView* list_view = new MockListView(page_.get());
+  MockAdapter adapter(list_view);
+  list_view->SetAdapter(&adapter);
+  list_view->SetWidth(300.f);
+  list_view->SetHeight(50.f);
+  for (int i = 0; i < 100; ++i) {
+    adapter.height_list_.emplace_back(10.f);
+  }
+  adapter.double_height_when_width_expands_ = true;
+  adapter.width_expand_threshold_ = 300.f;
+
+  list_view->Layout();
+  EXPECT_EQ(list_view->GetTotalScrollLength(), 1000.f);
+
+  list_view->SetWidth(390.f);
+  list_view->Layout();
+
+  EXPECT_EQ(list_view->GetTotalScrollLength(), 2000.f);
 }
 
 TEST_F_UI(ListLayoutManagerLinearTest, Scroll) {
