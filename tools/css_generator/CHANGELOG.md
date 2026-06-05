@@ -1,3 +1,7 @@
+## 0.0.11
+- Add `lint:compat-keys` script to detect and auto-fix improperly named keys in compat_data.
+- Mark `linear-orientation` property as deprecated in compat_data.
+
 ## 0.0.10
 - Sync compat_data fields for 181 CSS properties with lynx-compat-data.
 - Mark 11 layout-animation-* properties as deprecated in compat_data.

@@ -56,7 +56,7 @@
         "lynx_path": "api/css/properties/linear-orientation",
         "spec_url": [],
         "status": {
-          "deprecated": false,
+          "deprecated": true,
           "experimental": false
         },
         "support": {
@@ -81,7 +81,7 @@
         "__compat": {
           "description": "Supported <code>linear-orientation</code>",
           "status": {
-            "deprecated": false,
+            "deprecated": true,
             "experimental": false
           },
           "support": {
@@ -111,7 +111,7 @@
           "__compat": {
             "description": "<code>vertical</code>, <code>horizontal</code>, <code>vertical-reverse</code>, <code>horizontal-reverse</code>",
             "status": {
-              "deprecated": false,
+              "deprecated": true,
               "experimental": false
             },
             "support": {
@@ -142,7 +142,7 @@
           "__compat": {
             "description": "<code>row</code>, <code>row-reverse</code>, <code>column</code>, <code>column-reverse</code>",
             "status": {
-              "deprecated": false,
+              "deprecated": true,
               "experimental": false
             },
             "support": {
@@ -174,7 +174,7 @@
         "__compat": {
           "description": "Support <code>linear-direction</code>",
           "status": {
-            "deprecated": false,
+            "deprecated": true,
             "experimental": false
           },
           "support": {
@@ -204,7 +204,7 @@
           "__compat": {
             "description": "<code>vertical</code>, <code>horizontal</code>, <code>vertical-reverse</code>, <code>horizontal-reverse</code>, <code>row</code>, <code>row-reverse</code>, <code>column</code>, <code>column-reverse</code>",
             "status": {
-              "deprecated": false,
+              "deprecated": true,
               "experimental": false
             },
             "support": {
