@@ -571,7 +571,7 @@ void ListLayoutManagerStaggeredGrid::SetSpanCount(int span_count) {
     return;
   }
   FML_CHECK(span_count > 0) << "Span count must greater than 0!";
-  lazy_span_lookup_->Clear();
+  InvalidateLayoutCache();
   span_count_ = span_count;
   remaining_spans_.resize(span_count);
   spans_.reserve(span_count);
@@ -1093,6 +1093,11 @@ void ListLayoutManagerStaggeredGrid::OnItemsMoved(BaseListView* list_view,
                                                   int item_count) {
   ListLayoutManager::OnItemsMoved(list_view, from, to, item_count);
   HandleUpdate(from, to, ListAdapterHelper::Type::kMove);
+}
+
+void ListLayoutManagerStaggeredGrid::InvalidateLayoutCache() {
+  ListLayoutManager::InvalidateLayoutCache();
+  lazy_span_lookup_->Clear();
 }
 
 void ListLayoutManagerStaggeredGrid::PrepareLayoutStateForDelta(

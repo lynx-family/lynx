@@ -270,13 +270,18 @@ void ListLayoutManagerGrid::OnItemsMoved(BaseListView* list_view, int from,
   span_size_lookup_->InvalidCaches();
 }
 
+void ListLayoutManagerGrid::InvalidateLayoutCache() {
+  ListLayoutManagerLinear::InvalidateLayoutCache();
+  span_size_lookup_->InvalidCaches();
+}
+
 void ListLayoutManagerGrid::SetSpanCount(int span_count) {
   if (span_count == span_count_) {
     return;
   }
   FML_CHECK(span_count > 0) << "Span count must greater than 0!";
+  InvalidateLayoutCache();
   span_count_ = span_count;
-  span_size_lookup_->InvalidCaches();
   RequestLayout();
 }
 
