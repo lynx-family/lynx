@@ -228,6 +228,35 @@ fml::RefPtr<PlatformEventTarget> PlatformEventTargetHelper::GetEventTarget(
   return nullptr;
 }
 
+void PlatformEventTargetHelper::RefreshScrollOffsets() {
+  RefreshScrollOffsetsRecursively(event_target_tree_);
+}
+
+void PlatformEventTargetHelper::RefreshScrollOffsetsRecursively(
+    const fml::RefPtr<PlatformEventTarget>& target) {
+  if (target == nullptr) {
+    return;
+  }
+  target->RefreshScrollOffset();
+  for (const auto& child : target->ChildrenTargets()) {
+    RefreshScrollOffsetsRecursively(child);
+  }
+}
+
+bool PlatformEventTargetHelper::IsScrollContainer(PlatformRendererType type,
+                                                  int32_t sign) {
+  switch (type) {
+    case PlatformRendererType::kScroll:
+    case PlatformRendererType::kList:
+      return true;
+    case PlatformRendererType::kExtended:
+      return platform_ref_ != nullptr &&
+             platform_ref_->IsPlatformRendererScrollable(sign);
+    default:
+      return false;
+  }
+}
+
 fml::RefPtr<PlatformEventTarget>
 PlatformEventTargetHelper::ReconstructEventTargetTreeRecursively(
     fml::RefPtr<PlatformRendererImpl> page_renderer) {
@@ -276,6 +305,7 @@ PlatformEventTargetHelper::ReconstructEventTargetTreeRecursively(
         auto event_target = fml::MakeRefCounted<PlatformEventTarget>(
             this, sign, left, top, width, height);
         event_target->SetPlatformRendererType(type);
+        event_target->SetScrollContainer(IsScrollContainer(type, sign));
         // the root event target.
         if (sign == kRootId) {
           event_target_tree_ = event_target;
@@ -609,6 +639,11 @@ void PlatformEventTargetHelper::GetScreenSize(float size[2]) {
 
 void PlatformEventTargetHelper::GetRootViewLocationOnScreen(float location[2]) {
   platform_ref_->GetRootViewLocationOnScreen(location);
+}
+
+void PlatformEventTargetHelper::GetPlatformRendererScrollOffset(
+    int32_t sign, float offset[2]) {
+  platform_ref_->GetPlatformRendererScrollOffset(sign, offset);
 }
 
 void PlatformEventTargetHelper::InvokeMethod(

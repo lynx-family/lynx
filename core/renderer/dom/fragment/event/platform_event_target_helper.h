@@ -27,6 +27,7 @@ class PlatformEventTargetHelper {
   GetEventTargets() const {
     return event_targets_;
   }
+  void RefreshScrollOffsets();
 
   fml::RefPtr<PlatformEventTarget> ReconstructEventTargetTreeRecursively(
       fml::RefPtr<PlatformRendererImpl> page_renderer);
@@ -90,14 +91,19 @@ class PlatformEventTargetHelper {
 
   void GetRootViewLocationOnScreen(float location[2]);
   void GetScreenSize(float size[2]);
+  void GetPlatformRendererScrollOffset(int32_t sign, float offset[2]);
 
   void InvokeMethod(
       int32_t id, const std::string& method, const lepus::Value& params,
       base::MoveOnlyClosure<void, int32_t, const lepus::Value&> callback);
 
  private:
+  bool IsScrollContainer(PlatformRendererType type, int32_t sign);
+
   void ApplyEventBundle(const fml::RefPtr<PlatformEventTarget>& target,
                         const PlatformEventBundle* bundle);
+  void RefreshScrollOffsetsRecursively(
+      const fml::RefPtr<PlatformEventTarget>& target);
   void UpdateExposureTargetRegistration(
       const fml::RefPtr<PlatformEventTarget>& target, bool has_custom_event,
       bool has_global_event);

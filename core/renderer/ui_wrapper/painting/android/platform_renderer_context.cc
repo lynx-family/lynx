@@ -294,6 +294,43 @@ std::vector<float> PlatformRendererContext::GetScreenSize() {
   return res;
 }
 
+std::vector<float> PlatformRendererContext::GetRendererHostScrollOffset(
+    int32_t sign) {
+  std::vector<float> res;
+  base::android::ScopedLocalJavaRef<jobject> local_ref(java_ref_);
+  if (local_ref.IsNull()) {
+    return res;
+  }
+
+  JNIEnv* env = base::android::AttachCurrentThread();
+  auto arr = Java_PlatformRendererContext_getRendererHostScrollOffset(
+      env, local_ref.Get(), sign);
+  if (arr.IsNull()) {
+    return res;
+  }
+
+  const jsize size = env->GetArrayLength(arr.Get());
+  jfloat* data = env->GetFloatArrayElements(arr.Get(), nullptr);
+  if (data != nullptr && size > 0) {
+    res.assign(data, data + size);
+  }
+  if (data != nullptr) {
+    env->ReleaseFloatArrayElements(arr.Get(), data, 0);
+  }
+  return res;
+}
+
+bool PlatformRendererContext::IsRendererHostScrollable(int32_t sign) {
+  base::android::ScopedLocalJavaRef<jobject> local_ref(java_ref_);
+  if (local_ref.IsNull()) {
+    return false;
+  }
+
+  JNIEnv* env = base::android::AttachCurrentThread();
+  return Java_PlatformRendererContext_isRendererHostScrollable(
+      env, local_ref.Get(), sign);
+}
+
 void PlatformRendererContext::UpdatePlatformRendererSubtreeProperties(
     int32_t id, const SubtreeProperty* properties, size_t count) {
   base::android::ScopedLocalJavaRef<jobject> local_ref(java_ref_);

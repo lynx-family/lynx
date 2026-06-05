@@ -32,7 +32,7 @@ import com.lynx.tasm.behavior.ui.PropBundle;
 import com.lynx.tasm.behavior.ui.UIBody;
 import com.lynx.tasm.behavior.ui.image.LynxImageManager;
 import com.lynx.tasm.behavior.ui.list.container.UIListContainer;
-import com.lynx.tasm.behavior.ui.utils.LynxUIHelper;
+import com.lynx.tasm.behavior.ui.scroll.AndroidScrollView;
 import com.lynx.tasm.behavior.ui.view.UIComponent;
 import com.lynx.tasm.event.EventsListener;
 import com.lynx.tasm.gesture.detector.GestureDetector;
@@ -47,6 +47,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class PlatformRendererContext implements TextMeasurerProvider {
   final private static String TAG = "PlatformRendererContext";
+  final private static String TENDS_TO_FLATTEN_INIT_DATA_KEY = "__lynx_tends_to_flatten";
 
   public static final class PlatformRendererType {
     public static final int kUnknown = 0;
@@ -135,12 +136,36 @@ public class PlatformRendererContext implements TextMeasurerProvider {
     return res;
   }
 
+  @CalledByNative
+  float[] getRendererHostScrollOffset(int sign) {
+    float[] res = new float[] {0, 0};
+    IRendererHost host = mViewHolder.get(sign);
+    if (host instanceof AndroidScrollView) {
+      AndroidScrollView scrollView = (AndroidScrollView) host;
+      res[0] = scrollView.getRealScrollX();
+      res[1] = scrollView.getRealScrollY();
+    } else if (host != null) {
+      res[0] = host.getRendererHostScrollX();
+      res[1] = host.getRendererHostScrollY();
+    }
+    return res;
+  }
+
+  @CalledByNative
+  boolean isRendererHostScrollable(int sign) {
+    IRendererHost host = mViewHolder.get(sign);
+    Renderer renderer = host != null ? host.getRenderer() : null;
+    LynxBaseUI uiHost = renderer != null ? renderer.getUIHost() : null;
+    return uiHost != null && uiHost.isScrollable();
+  }
+
   PointF convertPointInViewToScreen(int sign, PointF point) {
     IRendererHost host = mViewHolder.get(sign);
-    if (host == null || host.getView() == null) {
-      LLog.e(TAG, "convertPointInViewToScreen failed since can not find target view.");
+    if (host == null) {
+      LLog.e(TAG, "convertPointInViewToScreen failed since can not find target host.");
+      return point;
     }
-    return LynxUIHelper.convertPointInViewToScreen(host.getView(), point);
+    return host.convertPointInRendererHostToScreen(point);
   }
 
   public int getTargetWidth(int sign) {
@@ -150,7 +175,7 @@ public class PlatformRendererContext implements TextMeasurerProvider {
       return 0;
     }
 
-    return host.getView().getWidth();
+    return host.getRendererHostWidth();
   }
 
   public int getTargetHeight(int sign) {
@@ -160,7 +185,7 @@ public class PlatformRendererContext implements TextMeasurerProvider {
       return 0;
     }
 
-    return host.getView().getHeight();
+    return host.getRendererHostHeight();
   }
 
   public int getMeaningfulPaintingAreaVisibleStatus(int sign) {
@@ -301,21 +326,27 @@ public class PlatformRendererContext implements TextMeasurerProvider {
       ReadableMap initialProps = initData != null ? initData.getProps() : null;
       ReadableArray eventListeners = initData != null ? initData.getEventHandlers() : null;
       ReadableArray gestureDetectors = initData != null ? initData.getGestures() : null;
+      boolean isFlatten =
+          initialProps != null && initialProps.getBoolean(TENDS_TO_FLATTEN_INIT_DATA_KEY, false);
       owner.createView(
-          sign, tagName, initialProps, null, eventListeners, false, sign, gestureDetectors);
-      LynxUI ui = (LynxUI) owner.getNode(sign);
-      if (ui != null && ui.getView() instanceof IRendererHost) {
-        IRendererHost host = (IRendererHost) ui.getView();
+          sign, tagName, initialProps, null, eventListeners, isFlatten, sign, gestureDetectors);
+      LynxBaseUI createdUI = owner.getNode(sign);
+      IRendererHost host = null;
+      if (createdUI instanceof IRendererHost) {
+        host = (IRendererHost) createdUI;
+      } else if (createdUI instanceof LynxUI
+          && ((LynxUI) createdUI).getView() instanceof IRendererHost) {
+        host = (IRendererHost) ((LynxUI) createdUI).getView();
+      }
+      if (host != null) {
         Renderer renderer = host.createRenderer(this, sign);
-        renderer.setUIHost(ui);
+        renderer.setUIHost(createdUI);
         renderer.setRenderHost(host);
         host.setRenderer(renderer);
         mViewHolder.put(sign, host);
-        host.getView().setWillNotDraw(false);
-        if (host.getView() instanceof ViewGroup) {
-          ((ViewGroup) host.getView()).setClipChildren(false);
-        }
-        host.getView().invalidate();
+        host.setWillNotDrawForRenderer(false);
+        host.setClipChildrenForRenderer(false);
+        host.invalidateForRenderer();
         renderer.updateAttributes(initData);
         return;
       }
@@ -346,10 +377,11 @@ public class PlatformRendererContext implements TextMeasurerProvider {
     IRendererHost host = mViewHolder.get(sign);
     try {
       if (host != null) {
-        if (shouldRemoveFromNativeParent) {
-          View parent = (View) host.getView().getParent();
+        View hostView = host.getView();
+        if (shouldRemoveFromNativeParent && hostView != null) {
+          View parent = (View) hostView.getParent();
           if (parent instanceof ViewGroup) {
-            ((ViewGroup) parent).removeView(host.getView());
+            ((ViewGroup) parent).removeView(hostView);
           }
         }
         Renderer renderer = host.getRenderer();
@@ -380,6 +412,9 @@ public class PlatformRendererContext implements TextMeasurerProvider {
     }
     ViewGroup parentView = (ViewGroup) hParent.getView();
     View childView = hChild.getView();
+    if (childView == null) {
+      return;
+    }
     int count = parentView.getChildCount();
     if (index == -1 || index >= count) {
       parentView.addView(childView);
@@ -392,7 +427,7 @@ public class PlatformRendererContext implements TextMeasurerProvider {
   public void invalidatePlatformRenderer(int sign) {
     IRendererHost host = mViewHolder.get(sign);
     if (host != null) {
-      host.getView().invalidate();
+      host.invalidateForRenderer();
     }
   }
 
@@ -416,7 +451,7 @@ public class PlatformRendererContext implements TextMeasurerProvider {
           node.getBorderBottomWidth(), null, null, 0, sign);
     }
 
-    host.getView().requestLayout();
+    host.requestLayoutForRenderer();
     host.getRenderer().invalidate(Renderer.INVALIDATE_PARENT | Renderer.INVALIDATE_DISPLAY_LIST);
   }
 
@@ -610,9 +645,9 @@ public class PlatformRendererContext implements TextMeasurerProvider {
 
     IRendererHost host = mViewHolder.get(sign);
     if (host != null) {
-      View parent = (View) host.getView().getParent();
-      if (parent instanceof ViewGroup) {
-        ((ViewGroup) parent).removeView(host.getView());
+      View hostView = host.getView();
+      if (hostView != null && hostView.getParent() instanceof ViewGroup) {
+        ((ViewGroup) hostView.getParent()).removeView(hostView);
       }
     }
   }

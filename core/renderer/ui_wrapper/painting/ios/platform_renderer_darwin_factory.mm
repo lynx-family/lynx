@@ -19,7 +19,7 @@ fml::RefPtr<PlatformRenderer> PlatformRendererDarwinFactory::CreateRenderer(
   if (type == PlatformRendererType::kPage) {
     return fml::MakeRefCounted<PlatformRendererRootDarwin>(context_, id, type);
   }
-  return fml::MakeRefCounted<PlatformRendererDarwin>(context_, id, type);
+  return fml::MakeRefCounted<PlatformRendererDarwin>(context_, id, type, init_data);
 }
 
 fml::RefPtr<PlatformRenderer> PlatformRendererDarwinFactory::CreateExtendedRenderer(

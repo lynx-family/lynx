@@ -23,6 +23,7 @@ import com.lynx.tasm.behavior.ui.text.FlattenUIText;
 import com.lynx.tasm.behavior.ui.utils.BackgroundDrawable;
 import com.lynx.tasm.behavior.ui.view.AndroidView;
 import com.lynx.tasm.rendernode.compat.RenderNodeCompat;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.WeakHashMap;
@@ -37,6 +38,7 @@ public abstract class UIGroup<T extends ViewGroup>
   private static WeakHashMap<View, Integer> mZIndexHash = new WeakHashMap<>();
   private ViewGroupDrawingOrderHelper mDrawingOrderHelper;
   private boolean mIsInsertViewCalled = false;
+  private final ArrayList<LynxFlattenUI> mActiveFlattenRendererHosts = new ArrayList<>();
 
   public boolean isInsertViewCalled() {
     return mIsInsertViewCalled;
@@ -362,6 +364,7 @@ public abstract class UIGroup<T extends ViewGroup>
   public void beforeDispatchDraw(final Canvas canvas) {
     mCurrentDrawUI = mDrawHead;
     mCurrentDrawIndex = 0;
+    mActiveFlattenRendererHosts.clear();
     boolean hasShear = getSkewX() != 0 || getSkewY() != 0;
 
     if (getClipToRadius()
@@ -406,6 +409,7 @@ public abstract class UIGroup<T extends ViewGroup>
         drawChild((LynxFlattenUI) ui, canvas);
       }
     }
+    finishInactiveFlattenRendererHosts(null, canvas);
   }
 
   @Override
@@ -436,6 +440,7 @@ public abstract class UIGroup<T extends ViewGroup>
     for (LynxBaseUI ui = mCurrentDrawUI; ui != null; ui = ui.mNextDrawUI) {
       if (!ui.isFlatten()) {
         if (((LynxUI) ui).getView() == child) {
+          drawFlattenRendererContentBeforeUI(ui, canvas);
           bound = ui.getBound();
           mCurrentDrawUI = ui.mNextDrawUI;
           break;
@@ -480,6 +485,12 @@ public abstract class UIGroup<T extends ViewGroup>
   }
 
   protected void drawChild(LynxFlattenUI child, Canvas canvas) {
+    drawFlattenRendererContentBeforeUI(child, canvas);
+    if (child.isRendererHost()) {
+      child.innerDraw(canvas);
+      mActiveFlattenRendererHosts.add(child);
+      return;
+    }
     Rect bound = child.getBound();
     canvas.save();
     if (bound != null) {
@@ -487,6 +498,37 @@ public abstract class UIGroup<T extends ViewGroup>
     }
     child.innerDraw(canvas);
     canvas.restore();
+  }
+
+  private void drawFlattenRendererContentBeforeUI(LynxBaseUI ui, Canvas canvas) {
+    finishInactiveFlattenRendererHosts(ui, canvas);
+    if (mActiveFlattenRendererHosts.isEmpty()) {
+      return;
+    }
+    LynxFlattenUI host = mActiveFlattenRendererHosts.get(mActiveFlattenRendererHosts.size() - 1);
+    if (ui != host && isDescendantOf(ui, host)) {
+      host.drawRendererContentUntilNextView(canvas);
+    }
+  }
+
+  private void finishInactiveFlattenRendererHosts(LynxBaseUI nextUI, Canvas canvas) {
+    for (int index = mActiveFlattenRendererHosts.size() - 1; index >= 0; --index) {
+      LynxFlattenUI host = mActiveFlattenRendererHosts.get(index);
+      if (nextUI != null && isDescendantOf(nextUI, host)) {
+        break;
+      }
+      host.drawRendererHostEnd(canvas);
+      mActiveFlattenRendererHosts.remove(index);
+    }
+  }
+
+  private boolean isDescendantOf(LynxBaseUI ui, LynxBaseUI ancestor) {
+    for (LynxBaseUI current = ui; current != null; current = current.getParentBaseUI()) {
+      if (current == ancestor) {
+        return true;
+      }
+    }
+    return false;
   }
 
   @Override
