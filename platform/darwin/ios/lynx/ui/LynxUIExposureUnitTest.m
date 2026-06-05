@@ -59,6 +59,20 @@
   XCTAssertNotNil(mockExposure.displayLink);
 }
 
+- (void)testDisableExposureDetection {
+  LynxUIExposure *exposure = [[LynxUIExposure alloc] init];
+  [exposure setEnableExposureDetection:NO];
+
+  LynxUI *ui = [[LynxUI alloc] init];
+  ui.sign = 1;
+  ui.exposureID = @"1";
+  [exposure addLynxUI:ui withUniqueIdentifier:nil extraData:nil useOptions:nil];
+  [exposure addExposureToRunLoop];
+
+  XCTAssertEqual(exposure.exposedLynxUIMap.count, 0);
+  XCTAssertNil(exposure.displayLink);
+}
+
 - (void)testAddLynxUI {
   LynxUIExposure *mockExposure = OCMPartialMock([[LynxUIExposure alloc] init]);
   NSMutableDictionary<NSString *, LynxUIExposureDetail *> *map =

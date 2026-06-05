@@ -235,6 +235,7 @@ NativePaintingCtxPlatformRef::ReconstructEventTargetTreeRecursively(
   auto event_target_tree = event_target_helper_->GetRootEventTarget();
   if (need_reconstruct_event_target_tree_ == false &&
       event_target_tree != nullptr) {
+    event_target_helper_->RefreshScrollOffsets();
     if (did_reconstruct != nullptr) {
       *did_reconstruct = false;
     }
@@ -246,8 +247,12 @@ NativePaintingCtxPlatformRef::ReconstructEventTargetTreeRecursively(
   }
   TRACE_EVENT(LYNX_TRACE_CATEGORY,
               NATIVE_PAINTING_CONTEXT_RECONSTRUCT_EVENT_TARGET_TREE);
-  return event_target_helper_->ReconstructEventTargetTreeRecursively(
+  auto target = event_target_helper_->ReconstructEventTargetTreeRecursively(
       fml::static_ref_ptr_cast<PlatformRendererImpl>(page_renderer->second));
+  if (target != nullptr) {
+    event_target_helper_->RefreshScrollOffsets();
+  }
+  return target;
 }
 
 std::vector<int32_t>

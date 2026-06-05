@@ -6,6 +6,7 @@
 #import <Lynx/LynxBaseInspectorController.h>
 #import <Lynx/LynxEnv.h>
 #import <Lynx/LynxLog.h>
+#import <Lynx/LynxTemplateRender+Internal.h>
 #import <Lynx/LynxTraceEvent.h>
 #import <Lynx/LynxTraceEventWrapper.h>
 #import <Lynx/LynxUI+Internal.h>
@@ -15,7 +16,6 @@
 #import <Lynx/LynxView+Internal.h>
 #import <Lynx/LynxWeakProxy.h>
 #import "LynxGlobalObserver+Internal.h"
-#import "LynxTemplateRender+Internal.h"
 #import "LynxTraceEventDef.h"
 
 @interface LynxUIExposureDetail : NSObject
@@ -121,6 +121,7 @@
   // The callback that changes flag to YES reflecting the UI has changed.
   void (^_callback)(NSDictionary *);
   BOOL _enableDisexposureWhenBackground;
+  BOOL _enableExposureDetection;
 }
 
 - (void)didExposure {
@@ -139,6 +140,7 @@
     _lynxViewOldFrame = CGRectZero;
     _flag = NO;
     _enableCheckExposureOptimize = NO;
+    _enableExposureDetection = YES;
   }
   return self;
 }
@@ -229,6 +231,13 @@
 
 - (void)setEnableDisexposureWhenBackground:(BOOL)enableDisexposureWhenBackground {
   _enableDisexposureWhenBackground = enableDisexposureWhenBackground;
+}
+
+- (void)setEnableExposureDetection:(BOOL)enable {
+  _enableExposureDetection = enable;
+  if (!_enableExposureDetection) {
+    [self destroyExposure];
+  }
 }
 
 - (CGFloat)getIntersectionAreaRatio:(CGRect)targetRect otherRect:(CGRect)otherRect {
@@ -525,6 +534,9 @@
 }
 
 - (void)stopExposure:(NSDictionary *)options {
+  if (!_enableExposureDetection) {
+    return;
+  }
   if ([LynxEnv.sharedInstance highlightTouchEnabled]) {
     [self showMessageOnConsole:[NSString stringWithFormat:@"LynxUIExposure: stopExposure"]
                      withLevel:DevToolLogLevelInfo];
@@ -540,6 +552,9 @@
 }
 
 - (void)resumeExposure {
+  if (!_enableExposureDetection) {
+    return;
+  }
   if ([LynxEnv.sharedInstance highlightTouchEnabled]) {
     [self showMessageOnConsole:[NSString stringWithFormat:@"LynxUIExposure: resumeExposure"]
                      withLevel:DevToolLogLevelInfo];
@@ -734,6 +749,9 @@
 }
 
 - (void)setUpExposureDisplayLink {
+  if (!_enableExposureDetection) {
+    return;
+  }
   if (_frameRate == 0) {
     return;
   }
@@ -754,6 +772,9 @@
 }
 
 - (void)setUpLynxViewDisplayLink {
+  if (!_enableExposureDetection) {
+    return;
+  }
   if (!_enableCheckExposureOptimize || _frameRateForLynxView == 0) {
     return;
   }
@@ -779,6 +800,9 @@
     withUniqueIdentifier:(NSString *)uniqueID
                extraData:(NSDictionary *)data
               useOptions:(NSDictionary *)options {
+  if (!_enableExposureDetection) {
+    return;
+  }
   if (uniqueID || ui.exposureID || ui.internalSignature) {
     NSString *key;
     if (uniqueID) {
@@ -806,6 +830,9 @@
 
 - (void)removeLynxUI:(LynxUI *)ui withUniqueIdentifier:(NSString *)uniqueID {
   if (uniqueID || ui.exposureID || ui.internalSignature) {
+    if (!_enableExposureDetection) {
+      return;
+    }
     NSString *key;
     if (uniqueID) {
       key = [NSString stringWithFormat:@"%@_%@_%@", uniqueID, ui.exposureScene, ui.exposureID];

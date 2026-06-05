@@ -242,9 +242,7 @@ void PlatformEventTargetExposure::DoExposureCheck() {
   std::set<ExposureTargetDetail> appear_target_set;
   std::set<ExposureTargetDetail> disappear_target_set;
 
-  if (did_reconstruct) {
-    ResetCommonAncestorRectMap();
-  }
+  ResetCommonAncestorRectMap();
   if (did_reconstruct || !window_rect_valid_) {
     float size[2] = {0};
     helper->GetScreenSize(size);
