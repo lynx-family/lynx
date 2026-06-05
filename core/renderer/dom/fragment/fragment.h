@@ -201,6 +201,7 @@ class Fragment : public BaseElementContainer {
 
   PlatformEventPropMap event_props_;
   base::Vector<PlatformEventName> event_names_;
+  bool event_bundle_dirty_{false};
 
   float render_offset_[2] = {0, 0};
 

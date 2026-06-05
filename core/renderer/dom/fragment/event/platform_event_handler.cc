@@ -239,6 +239,46 @@ void PlatformEventHandler::ResetClickEnv() {
   }
 }
 
+void PlatformEventHandler::RecordScrollOffsetsForTap() {
+  scroll_offset_for_tap_.clear();
+  auto* target_helper = platform_ref_ != nullptr
+                            ? platform_ref_->GetEventTargetHelper()
+                            : nullptr;
+  if (target_helper == nullptr) {
+    return;
+  }
+
+  auto target = first_target_;
+  while (target && target->ParentTarget() != target) {
+    if (target->IsScrollContainer()) {
+      float offset[2] = {0.f, 0.f};
+      target_helper->GetPlatformRendererScrollOffset(target->Sign(), offset);
+      scroll_offset_for_tap_.insert_or_assign(
+          target->Sign(), std::array<float, 2>{offset[0], offset[1]});
+    }
+    target = target->ParentTarget();
+  }
+}
+
+bool PlatformEventHandler::HasScrollContainerScrolledForTap() {
+  auto* target_helper = platform_ref_ != nullptr
+                            ? platform_ref_->GetEventTargetHelper()
+                            : nullptr;
+  if (target_helper == nullptr) {
+    return false;
+  }
+
+  for (const auto& it : scroll_offset_for_tap_) {
+    float offset[2] = {0.f, 0.f};
+    target_helper->GetPlatformRendererScrollOffset(it.first, offset);
+    if (base::FloatsNotEqual(offset[0], it.second[0]) ||
+        base::FloatsNotEqual(offset[1], it.second[1])) {
+      return true;
+    }
+  }
+  return false;
+}
+
 void PlatformEventHandler::OnPointerDown(PlatformPointerEvent& event) {
   int num = event.PointerCount();
   for (int i = 0; i < num; ++i) {
@@ -248,6 +288,7 @@ void PlatformEventHandler::OnPointerDown(PlatformPointerEvent& event) {
       first_pointer_moved_ = false;
       first_pointer_outside_ = false;
       InitClickEnv();
+      RecordScrollOffsetsForTap();
       ActivePseudoStatus();
       break;
     }
@@ -309,9 +350,12 @@ void PlatformEventHandler::OnPointerUp(PlatformPointerEvent& event) {
   int num = event.PointerCount();
   for (int i = 0; i < num; ++i) {
     if (event.PointerID()[i] == 0) {
-      OnGestureEvent("tap", event);
-      OnGestureEvent("click", event);
+      if (CanRespondTap(first_target_)) {
+        OnGestureEvent("tap", event);
+        OnGestureEvent("click", event);
+      }
       ResetClickEnv();
+      scroll_offset_for_tap_.clear();
       UpdateFocusedTarget();
       DeactivatePseudoStatus(LynxPseudoStatus::kAll);
       break;
@@ -324,6 +368,7 @@ void PlatformEventHandler::OnPointerCancel(PlatformPointerEvent& event) {
   for (int i = 0; i < num; ++i) {
     if (event.PointerID()[i] == 0) {
       ResetClickEnv();
+      scroll_offset_for_tap_.clear();
       UpdateFocusedTarget();
       DeactivatePseudoStatus(LynxPseudoStatus::kAll);
       break;
@@ -394,6 +439,9 @@ void PlatformEventHandler::UpdateFocusedTarget() {
 bool PlatformEventHandler::CanRespondTap(
     fml::RefPtr<PlatformEventTarget> target) {
   if (!target) {
+    return false;
+  }
+  if (HasScrollContainerScrolledForTap()) {
     return false;
   }
   if (gesture_recognized_target_set_.empty()) {

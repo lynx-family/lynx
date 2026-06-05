@@ -60,5 +60,42 @@ void NativePaintingCtxAndroidRef::GetScreenSize(float size[2]) {
   }
 }
 
+void NativePaintingCtxAndroidRef::GetPlatformRendererScrollOffset(
+    int32_t sign, float offset[2]) {
+  if (offset == nullptr) {
+    return;
+  }
+  offset[0] = 0.f;
+  offset[1] = 0.f;
+
+  auto* factory =
+      static_cast<PlatformRendererAndroidFactory*>(view_factory_.get());
+  if (factory == nullptr) {
+    return;
+  }
+  auto* context = factory->GetContext();
+  if (context == nullptr) {
+    return;
+  }
+  const auto res = context->GetRendererHostScrollOffset(sign);
+  if (res.size() >= 2) {
+    offset[0] = res[0];
+    offset[1] = res[1];
+  }
+}
+
+bool NativePaintingCtxAndroidRef::IsPlatformRendererScrollable(int32_t sign) {
+  auto* factory =
+      static_cast<PlatformRendererAndroidFactory*>(view_factory_.get());
+  if (factory == nullptr) {
+    return false;
+  }
+  auto* context = factory->GetContext();
+  if (context == nullptr) {
+    return false;
+  }
+  return context->IsRendererHostScrollable(sign);
+}
+
 }  // namespace tasm
 }  // namespace lynx

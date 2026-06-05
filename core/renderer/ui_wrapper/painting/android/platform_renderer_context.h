@@ -86,6 +86,8 @@ class PlatformRendererContext {
 
   std::vector<float> GetRootViewLocationOnScreen();
   std::vector<float> GetScreenSize();
+  std::vector<float> GetRendererHostScrollOffset(int32_t sign);
+  bool IsRendererHostScrollable(int32_t sign);
 
  private:
   base::android::ScopedWeakGlobalJavaRef<jobject> java_ref_;

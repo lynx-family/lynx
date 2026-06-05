@@ -585,6 +585,7 @@ public class AndroidScrollView
   protected void onDraw(Canvas canvas) {
     if (mRenderer != null) {
       mRenderer.onDraw(canvas);
+      mRenderer.beforeDrawHost(canvas);
       return;
     }
 
