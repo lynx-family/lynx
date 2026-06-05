@@ -1592,7 +1592,7 @@ public class com::lynx::tasm::behavior::render::DisplayList :  {
 }
 
 public class com::lynx::tasm::behavior::render::DisplayListApplier : Drawable.Callback {
-  public com.lynx.tasm.behavior.render.DisplayListApplier.DisplayListApplier(DisplayList displayList, PlatformRendererContext platformRendererContext, View hostLayer);
+  public com.lynx.tasm.behavior.render.DisplayListApplier.DisplayListApplier(DisplayList displayList, PlatformRendererContext platformRendererContext, IRendererHost hostLayer);
   public void com.lynx.tasm.behavior.render.DisplayListApplier.reset();
   public void com.lynx.tasm.behavior.render.DisplayListApplier.drawTillNextView(Canvas canvas);
   public void com.lynx.tasm.behavior.render.DisplayListApplier.setDisplayList(DisplayList displayList);
@@ -3159,6 +3159,18 @@ public interface com::lynx::tasm::behavior::render::IRendererHost {
   public Renderer com.lynx.tasm.behavior.render.IRendererHost.getRenderer();
   public View com.lynx.tasm.behavior.render.IRendererHost.getView();
   public Renderer com.lynx.tasm.behavior.render.IRendererHost.createRenderer(PlatformRendererContext platformRendererContext, int sign);
+  public default int com.lynx.tasm.behavior.render.IRendererHost.getRendererHostWidth();
+  public default int com.lynx.tasm.behavior.render.IRendererHost.getRendererHostHeight();
+  public default int com.lynx.tasm.behavior.render.IRendererHost.getRendererHostScrollX();
+  public default int com.lynx.tasm.behavior.render.IRendererHost.getRendererHostScrollY();
+  public default PointF com.lynx.tasm.behavior.render.IRendererHost.convertPointInRendererHostToScreen(PointF point);
+  public default void com.lynx.tasm.behavior.render.IRendererHost.requestLayoutForRenderer();
+  public default void com.lynx.tasm.behavior.render.IRendererHost.invalidateForRenderer();
+  public default void com.lynx.tasm.behavior.render.IRendererHost.setWillNotDrawForRenderer(boolean willNotDraw);
+  public default void com.lynx.tasm.behavior.render.IRendererHost.setClipChildrenForRenderer(boolean clipChildren);
+  public default void com.lynx.tasm.behavior.render.IRendererHost.applyRendererClipBounds(boolean needClip, Rect clipBounds);
+  public default void com.lynx.tasm.behavior.render.IRendererHost.applyRendererOpacity(float opacity);
+  public default void com.lynx.tasm.behavior.render.IRendererHost.applyRendererTransform(float[] transform);
 }
 
 public interface com::lynx::tasm::behavior::ui::scroll::IScrollSticky {
@@ -5624,7 +5636,7 @@ public class com::lynx::jsbridge::network::LynxFetchModuleEventSender :  {
   public void com.lynx.jsbridge.network.LynxFetchModuleEventSender.sendGlobalEvent(String name, JavaOnlyArray params);
 }
 
-public class com::lynx::tasm::behavior::ui::LynxFlattenUI : com.lynx.tasm.behavior.ui.LynxBaseUI {
+public class com::lynx::tasm::behavior::ui::LynxFlattenUI : com.lynx.tasm.behavior.ui.LynxBaseUI, com.lynx.tasm.behavior.render.IRendererHost {
   public Method com.lynx.tasm.behavior.ui.LynxFlattenUI.sSetUsageHint sSetUsageHint;
   public com.lynx.tasm.behavior.ui.LynxFlattenUI.LynxFlattenUI(LynxContext context);
   public com.lynx.tasm.behavior.ui.LynxFlattenUI.LynxFlattenUI(LynxContext context, Object param);
@@ -5633,6 +5645,22 @@ public class com::lynx::tasm::behavior::ui::LynxFlattenUI : com.lynx.tasm.behavi
   public int com.lynx.tasm.behavior.ui.LynxFlattenUI.getInitialOverflowType();
   public void com.lynx.tasm.behavior.ui.LynxFlattenUI.measure();
   public void com.lynx.tasm.behavior.ui.LynxFlattenUI.layout(int x, int y, Rect bounds);
+  public Renderer com.lynx.tasm.behavior.ui.LynxFlattenUI.createRenderer(PlatformRendererContext platformRendererContext, int sign);
+  public void com.lynx.tasm.behavior.ui.LynxFlattenUI.setRenderer(Renderer renderer);
+  public Renderer com.lynx.tasm.behavior.ui.LynxFlattenUI.getRenderer();
+  public View com.lynx.tasm.behavior.ui.LynxFlattenUI.getView();
+  public int com.lynx.tasm.behavior.ui.LynxFlattenUI.getRendererHostWidth();
+  public int com.lynx.tasm.behavior.ui.LynxFlattenUI.getRendererHostHeight();
+  public int com.lynx.tasm.behavior.ui.LynxFlattenUI.getRendererHostScrollX();
+  public int com.lynx.tasm.behavior.ui.LynxFlattenUI.getRendererHostScrollY();
+  public PointF com.lynx.tasm.behavior.ui.LynxFlattenUI.convertPointInRendererHostToScreen(PointF point);
+  public void com.lynx.tasm.behavior.ui.LynxFlattenUI.requestLayoutForRenderer();
+  public void com.lynx.tasm.behavior.ui.LynxFlattenUI.invalidateForRenderer();
+  public void com.lynx.tasm.behavior.ui.LynxFlattenUI.setWillNotDrawForRenderer(boolean willNotDraw);
+  public void com.lynx.tasm.behavior.ui.LynxFlattenUI.setClipChildrenForRenderer(boolean clipChildren);
+  public void com.lynx.tasm.behavior.ui.LynxFlattenUI.applyRendererClipBounds(boolean needClip, Rect clipBounds);
+  public void com.lynx.tasm.behavior.ui.LynxFlattenUI.applyRendererOpacity(float opacity);
+  public void com.lynx.tasm.behavior.ui.LynxFlattenUI.applyRendererTransform(float[] transform);
   public void com.lynx.tasm.behavior.ui.LynxFlattenUI.onDrawingPositionChanged();
   public void com.lynx.tasm.behavior.ui.LynxFlattenUI.requestLayout();
   public void com.lynx.tasm.behavior.ui.LynxFlattenUI.invalidate();
@@ -9469,8 +9497,8 @@ public class com::lynx::tasm::behavior::render::Renderer :  {
   public com.lynx.tasm.behavior.render.Renderer.Renderer(@NonNull PlatformRendererContext platformRendererContext, int sign);
   public IRendererHost com.lynx.tasm.behavior.render.Renderer.getRendererHost();
   public com.lynx.tasm.behavior.LynxContext com.lynx.tasm.behavior.render.Renderer.getLynxContext();
-  public LynxUI< ViewGroup > com.lynx.tasm.behavior.render.Renderer.getUIHost();
-  public void com.lynx.tasm.behavior.render.Renderer.setUIHost(LynxUI< ViewGroup > uiHost);
+  public LynxBaseUI com.lynx.tasm.behavior.render.Renderer.getUIHost();
+  public void com.lynx.tasm.behavior.render.Renderer.setUIHost(LynxBaseUI uiHost);
   public void com.lynx.tasm.behavior.render.Renderer.onMeasure(int widthMeasureSpec, int heightMeasureSpec);
   public void com.lynx.tasm.behavior.render.Renderer.onLayout(boolean changed, int l, int t, int r, int b);
   public void com.lynx.tasm.behavior.render.Renderer.onDraw(Canvas canvas);
@@ -9483,6 +9511,7 @@ public class com::lynx::tasm::behavior::render::Renderer :  {
   public void com.lynx.tasm.behavior.render.Renderer.updateExtraData(Object extraData);
   public void com.lynx.tasm.behavior.render.Renderer.onDestroy();
   public void com.lynx.tasm.behavior.render.Renderer.applySubtreeProperties(java.nio.ByteBuffer buffer, int count);
+  public static Matrix com.lynx.tasm.behavior.render.Renderer.createTransformMatrix(float[] transform);
 }
 
 public class abstract com::lynx::tasm::rendernode::compat::RenderNodeCompat :  {

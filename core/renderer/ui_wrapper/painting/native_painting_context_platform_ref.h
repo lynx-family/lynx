@@ -106,6 +106,12 @@ class NativePaintingCtxPlatformRef : public PaintingCtxPlatformRef {
   // Get the size of the screen.
   virtual void GetScreenSize(float size[2]) {}
 
+  // Get the scroll offset of the platform renderer host.
+  virtual void GetPlatformRendererScrollOffset(int32_t sign, float offset[2]) {}
+
+  // Whether the platform renderer host is scrollable.
+  virtual bool IsPlatformRendererScrollable(int32_t sign) { return false; }
+
   bool IsNativePaintingCtxPlatformRef() override { return true; }
 
  protected:

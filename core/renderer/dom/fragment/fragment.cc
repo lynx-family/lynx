@@ -42,11 +42,12 @@ void Fragment::CreateLayerIfNeeded(const fml::RefPtr<PropBundle>& init_data) {
     return;
   }
 
+  const bool tends_to_flatten = element()->TendToFlatten();
   const bool can_flatten_without_platform_renderer =
       (!element()->is_direct_child_of_compatible_component() &&
        (element()->is_text() || element()->is_image() ||
         element()->is_view())) &&
-      element()->TendToFlatten();
+      tends_to_flatten;
   if (can_flatten_without_platform_renderer) {
     // If the fragment is a view, text, or image, and it tends to flatten,
     // then it does not need to be layerized.
@@ -69,7 +70,7 @@ void Fragment::CreateLayerIfNeeded(const fml::RefPtr<PropBundle>& init_data) {
 
   // TODO(zhongyr): abstract one behavior for layerize.
   fml::RefPtr<PropBundle> actual_init_data = init_data;
-  if (element()->is_direct_child_of_compatible_component()) {
+  auto ensure_actual_init_data = [&actual_init_data, this]() {
     if (actual_init_data == nullptr) {
       bool use_map_buffer =
           element()->element_manager()->GetEnableUseMapBuffer();
@@ -80,8 +81,16 @@ void Fragment::CreateLayerIfNeeded(const fml::RefPtr<PropBundle>& init_data) {
               ->CreatePropBundle(use_map_buffer,
                                  element()->EnableFragmentLayerRender());
     }
-    actual_init_data->SetProps(kDirectChildOfCompatibleComponentInitDataKey,
-                               true);
+    return actual_init_data != nullptr;
+  };
+  if (ensure_actual_init_data()) {
+    actual_init_data->SetProps(kTendsToFlattenInitDataKey, tends_to_flatten);
+  }
+  if (element()->is_direct_child_of_compatible_component()) {
+    if (ensure_actual_init_data()) {
+      actual_init_data->SetProps(kDirectChildOfCompatibleComponentInitDataKey,
+                                 true);
+    }
   }
   behavior_->CreatePlatformRenderer(actual_init_data);
   has_platform_renderer_ = true;
@@ -790,12 +799,33 @@ bool Fragment::IsReliableSibling() const {
          fragment_from_element_parent() == nullptr;
 }
 
+namespace {
+
+bool IsValidExposurePropValue(PlatformEventPropName name,
+                              const lepus::Value& value) {
+  if (name == PlatformEventPropName::kExposureId) {
+    return value.IsString() || value.IsNumber();
+  }
+  if (name == PlatformEventPropName::kExposureScene) {
+    return value.IsString();
+  }
+  return false;
+}
+
+}  // namespace
+
 void Fragment::SetEventProp(PlatformEventPropName name,
                             const lepus::Value& value) {
   if (name == PlatformEventPropName::kUnknown) {
     return;
   }
+  auto it = event_props_.find(name);
+  if (!IsValidExposurePropValue(name, value) && it != event_props_.end() &&
+      it->second.IsEqual(value)) {
+    return;
+  }
   event_props_.insert_or_assign(name, value);
+  event_bundle_dirty_ = true;
 }
 
 void Fragment::ClearEventProps() {
@@ -803,6 +833,7 @@ void Fragment::ClearEventProps() {
     return;
   }
   event_props_.clear();
+  event_bundle_dirty_ = true;
 }
 
 void Fragment::AddEventName(PlatformEventName name) {
@@ -815,6 +846,7 @@ void Fragment::AddEventName(PlatformEventName name) {
     }
   }
   event_names_.push_back(name);
+  event_bundle_dirty_ = true;
 }
 
 void Fragment::ClearEventNames() {
@@ -822,6 +854,7 @@ void Fragment::ClearEventNames() {
     return;
   }
   event_names_.clear();
+  event_bundle_dirty_ = true;
 }
 
 void Fragment::MarkHasExposureEventIfNeeded() const {
@@ -898,8 +931,11 @@ void Fragment::DrawFull(DisplayListBuilder& display_list_builder) {
                              layout_info_.layout_result.size_.width_,
                              layout_info_.layout_result.size_.height_);
 
-  painting_context()->impl()->CastToNativeCtx()->UpdatePlatformEventBundle(
-      id(), PlatformEventBundle(event_props_, event_names_));
+  if (event_bundle_dirty_) {
+    painting_context()->impl()->CastToNativeCtx()->UpdatePlatformEventBundle(
+        id(), PlatformEventBundle(event_props_, event_names_));
+    event_bundle_dirty_ = false;
+  }
 
   DrawBackground(display_list_builder);
   DrawBorder(display_list_builder);
