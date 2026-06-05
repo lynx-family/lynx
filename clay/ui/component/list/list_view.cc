@@ -137,26 +137,37 @@ int64_t ListView::GenerateOperationId() {
 void ListView::SetAttribute(const char* attr_c, const clay::Value& value) {
   auto kw = GetKeywordID(attr_c);
   if (kw == KeywordID::kUpdateListInfo) {
-    SetNoDiffInfo(value);
-    is_no_diff_mode_ = true;
+    is_no_diff_mode_ = SetNoDiffInfo(value);
   } else {
     BaseListView::SetAttribute(attr_c, value);
   }
 }
-void ListView::SetNoDiffInfo(const clay::Value& value) {
+
+bool ListView::SetNoDiffInfo(const clay::Value& value) {
   if (!value.IsMap()) {
     FML_DLOG(ERROR) << "the value of 'update-list-info' must be a map";
-    return;
+    no_diff_info_.reset();
+    return false;
   }
-
   auto info = std::make_unique<ListNoDiffInfo>();
   const auto& map = value.GetMap();
   auto update_actions = FindMapItem(map, "updateAction");
   auto insert_actions = FindMapItem(map, "insertAction");
   auto remove_actions = FindMapItem(map, "removeAction");
-
+  auto is_valid_action_array = [](const clay::Value* v) {
+    return v == nullptr || v->IsArray();
+  };
+  if (!is_valid_action_array(update_actions) ||
+      !is_valid_action_array(insert_actions) ||
+      !is_valid_action_array(remove_actions)) {
+    FML_DLOG(ERROR) << "invalid 'update-list-info' action array type";
+    no_diff_info_.reset();
+    return false;
+  }
+  bool has_action = false;
   if (update_actions && update_actions->IsArray()) {
     const auto& arr = update_actions->GetArray();
+    has_action = has_action || !arr.empty();
     for (size_t i = 0; i < arr.size(); i++) {
       const auto& map = arr[i].GetMap();
       ListNoDiffInfo::UpdateAction action;
@@ -175,6 +186,7 @@ void ListView::SetNoDiffInfo(const clay::Value& value) {
   }
   if (insert_actions && insert_actions->IsArray()) {
     const auto& arr = insert_actions->GetArray();
+    has_action = has_action || !arr.empty();
     for (size_t i = 0; i < arr.size(); i++) {
       const auto& map = arr[i].GetMap();
       ListNoDiffInfo::InsertAction action;
@@ -191,12 +203,17 @@ void ListView::SetNoDiffInfo(const clay::Value& value) {
   }
   if (remove_actions && remove_actions->IsArray()) {
     const auto& arr = remove_actions->GetArray();
+    has_action = has_action || !arr.empty();
     for (size_t i = 0; i < arr.size(); i++) {
       info->remove_actions.push_back(SafeGetInt(&arr[i]));
     }
   }
-
+  if (!has_action) {
+    no_diff_info_.reset();
+    return false;
+  }
   no_diff_info_ = std::move(info);
+  return true;
 }
 
 }  // namespace clay
