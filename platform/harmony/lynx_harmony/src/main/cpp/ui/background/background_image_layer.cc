@@ -42,8 +42,8 @@ void BackgroundImageLayer::Draw(OH_Drawing_Canvas* canvas,
   }
 
   OH_Drawing_PixelMap* draw_bitmap = nullptr;
-  if (image_drawable_ && image_drawable_->draw_bitmap) {
-    draw_bitmap = image_drawable_->draw_bitmap;
+  if (image_drawable_) {
+    draw_bitmap = image_drawable_->GetCurrentDrawBitmap();
   } else if (pixel_map_ && pixel_map_->FirstFrame() &&
              pixel_map_->FirstFrame()->DrawBitmap()) {
     draw_bitmap = pixel_map_->FirstFrame()->DrawBitmap();
@@ -59,7 +59,7 @@ void BackgroundImageLayer::Draw(OH_Drawing_Canvas* canvas,
 
 bool BackgroundImageLayer::IsReady() {
   return pixel_map_ != nullptr ||
-         (image_drawable_ && image_drawable_->image_data != nullptr);
+         (image_drawable_ && image_drawable_->HasContent());
 }
 
 void BackgroundImageLayer::OnUpdateBounds() {
@@ -160,10 +160,10 @@ void BackgroundImageLayer::LoadImageFromService() {
         image_layer->src_rect_ = OH_Drawing_RectCreate(
             0, 0, image_layer->image_width_, image_layer->image_height_);
         image_layer->image_drawable_ =
-            std::make_unique<BackgroundImageLayer::ImageDrawable>();
-        image_layer->image_drawable_->draw_bitmap =
-            OH_Drawing_PixelMapGetFromOhPixelMapNative(data->Pixelmap());
-        image_layer->image_drawable_->image_data = data;
+            std::make_unique<ImageDrawable>(image_layer->ui_base_);
+        image_layer->image_drawable_->UpdateLoopCount(0);
+        image_layer->image_drawable_->UpdateDrawCurrent(data);
+        image_layer->image_drawable_->StartAnimation();
         image_layer->pixel_map_.reset();
         ui_base_self->Invalidate();
       },
