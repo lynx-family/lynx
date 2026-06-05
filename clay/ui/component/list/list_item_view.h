@@ -16,6 +16,9 @@ namespace clay {
 class ListItemView : public WithTypeInfo<ListItemView, Component> {
  public:
   ListItemView(int32_t id, PageView* page_view);
+
+  void OnContentSizeChanged(const FloatRect& old_rect,
+                            const FloatRect& new_rect) override;
 };
 }  // namespace clay
 
