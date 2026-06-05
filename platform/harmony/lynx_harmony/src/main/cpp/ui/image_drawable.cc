@@ -15,6 +15,7 @@
 #include <utility>
 
 #include "base/include/float_comparison.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/public/image_service.h"
 
 namespace lynx {
 namespace tasm {
@@ -42,6 +43,7 @@ ImageDrawable::~ImageDrawable() {
   if (brush_) {
     OH_Drawing_BrushDestroy(brush_);
   }
+  DestroyImageDataDrawBitmaps();
   DestroyMatrix();
 }
 
@@ -64,6 +66,8 @@ void ImageDrawable::UpdateBounds(float left, float top, float width,
 }
 
 void ImageDrawable::UpdateDrawCurrent(std::unique_ptr<LynxBaseImage> pixelmap) {
+  DestroyImageDataDrawBitmaps();
+  image_data_.reset();
   pixel_maps_ = std::move(pixelmap);
   image_width_ = pixel_maps_->Width();
   image_height_ = pixel_maps_->Height();
@@ -78,6 +82,39 @@ void ImageDrawable::UpdateDrawCurrent(std::unique_ptr<LynxBaseImage> pixelmap) {
                                                MIPMAP_MODE_LINEAR);
   }
   UpdateDrawMatrix();
+  auto ui_base = ui_base_.lock();
+  if (ui_base) {
+    ui_base->Invalidate();
+  }
+}
+
+void ImageDrawable::UpdateDrawCurrent(std::shared_ptr<ImageData> image_data) {
+  pixel_maps_.reset();
+  DestroyImageDataDrawBitmaps();
+  loop_duration_ = 0;
+  if (!image_data || !image_data->Pixelmap()) {
+    image_data_.reset();
+    return;
+  }
+  image_data_ = std::move(image_data);
+
+  auto frame_count = image_data_->FrameCount();
+  auto* pixelmap_list = image_data_->PixelmapList();
+  auto* delay_time_list = image_data_->DelayTimeList();
+  if (frame_count > 1 && pixelmap_list && delay_time_list) {
+    image_data_draw_bitmaps_.reserve(frame_count);
+    for (uint32_t i = 0; i < frame_count; ++i) {
+      image_data_draw_bitmaps_.push_back(
+          pixelmap_list[i]
+              ? OH_Drawing_PixelMapGetFromOhPixelMapNative(pixelmap_list[i])
+              : nullptr);
+      loop_duration_ += std::max(delay_time_list[i], 0);
+    }
+  } else {
+    image_data_draw_bitmaps_.push_back(
+        OH_Drawing_PixelMapGetFromOhPixelMapNative(image_data_->Pixelmap()));
+  }
+
   auto ui_base = ui_base_.lock();
   if (ui_base) {
     ui_base->Invalidate();
@@ -228,14 +265,18 @@ ImageDrawable::ImageDrawable(const std::weak_ptr<UIBase>& ui_base)
   timer_task_manager_ = std::make_unique<base::TimedTaskManager>();
 }
 
-void ImageDrawable::ResetContent() { pixel_maps_ = nullptr; }
+void ImageDrawable::ResetContent() {
+  pixel_maps_ = nullptr;
+  image_data_.reset();
+  DestroyImageDataDrawBitmaps();
+}
 
 void ImageDrawable::UpdateLoopCount(int32_t loop_count) {
   loop_count_ = static_cast<int>(loop_count);
 }
 
 void ImageDrawable::StartAnimation() {
-  if (!pixel_maps_ || !pixel_maps_->isAnimImage()) {
+  if (!IsAnimImage()) {
     return;
   }
 
@@ -259,7 +300,7 @@ void ImageDrawable::StartAnimation() {
 }
 
 void ImageDrawable::StopAnimation() {
-  if (!pixel_maps_ || !pixel_maps_->isAnimImage()) {
+  if (!IsAnimImage()) {
     return;
   }
   if (!is_running_) {
@@ -275,7 +316,7 @@ void ImageDrawable::StopAnimation() {
 }
 
 void ImageDrawable::PauseAnimation() {
-  if (!pixel_maps_ || !pixel_maps_->isAnimImage()) {
+  if (!IsAnimImage()) {
     return;
   }
   if (is_paused_ || !is_running_) {
@@ -288,6 +329,57 @@ void ImageDrawable::PauseAnimation() {
   paused_last_drawn_frame_index_ = last_drawn_frame_index_;
   is_paused_ = true;
   UnScheduleSelf();
+}
+
+OH_Drawing_PixelMap* ImageDrawable::GetCurrentDrawBitmap() {
+  if (!HasContent()) {
+    return nullptr;
+  }
+  if (!IsAnimImage() || loop_duration_ == 0) {
+    return FrameDrawBitmap(0);
+  }
+
+  // For animation image.
+  const auto actual_render_time_start_ms = base::CurrentTimeMilliseconds();
+  const auto animation_time_ms =
+      is_running_
+          ? actual_render_time_start_ms - start_time_ms_ +
+                frame_scheduling_offset_ms_
+          : std::max(last_frame_anim_time_ms_, static_cast<uint64_t>(0));
+  auto frame_index_to_draw =
+      GetFrameIndexToRender(animation_time_ms, last_frame_anim_time_ms_);
+
+  if (frame_index_to_draw == kFrameIndexDone) {
+    frame_index_to_draw = FrameCount() - 1;
+    DispatchAnimationStop();
+    is_running_ = false;
+  } else if (frame_index_to_draw == 0) {
+    if (last_drawn_frame_index_ != kFrameIndexDone &&
+        last_drawn_frame_index_ != 0 &&
+        actual_render_time_start_ms >= expected_render_time_ms_) {
+      DispatchAnimationRepeat();
+    }
+  }
+  const auto draw_bitmap = FrameDrawBitmap(frame_index_to_draw);
+  last_drawn_frame_index_ = frame_index_to_draw;
+
+  int64_t target_render_time_for_next_frame_ms = 0;
+  int64_t scheduled_render_time_for_next_frame_ms = 0;
+  const auto actual_render_time_end = base::CurrentTimeMilliseconds();
+  if (is_running_) {
+    target_render_time_for_next_frame_ms = GetTargetRenderTimeForNextFrameMS(
+        actual_render_time_end - start_time_ms_);
+    if (target_render_time_for_next_frame_ms != 0) {
+      scheduled_render_time_for_next_frame_ms =
+          target_render_time_for_next_frame_ms + kfFrameSchedulingDelay;
+      ScheduleNextFrame(scheduled_render_time_for_next_frame_ms);
+    } else {
+      DispatchAnimationStop();
+      is_running_ = false;
+    }
+  }
+  last_frame_anim_time_ms_ = animation_time_ms;
+  return draw_bitmap;
 }
 
 void ImageDrawable::InvalidateSelf() {
@@ -326,12 +418,17 @@ int32_t ImageDrawable::GetFrameIndexToRender(uint64_t animation_time_ms,
 
 int32_t ImageDrawable::GetFrameNumberWithinLoop(
     uint64_t time_in_current_loop_ms) {
+  const auto frame_count = FrameCount();
+  if (frame_count == 0) {
+    return 0;
+  }
   int32_t frame = 0;
   uint64_t current_duration = 0;
   do {
-    current_duration += pixel_maps_->FrameDuration(frame);
+    current_duration += FrameDuration(frame);
     frame++;
-  } while (time_in_current_loop_ms >= current_duration);
+  } while (frame < static_cast<int32_t>(frame_count) &&
+           time_in_current_loop_ms >= current_duration);
   return frame - 1;
 }
 
@@ -348,11 +445,11 @@ uint64_t ImageDrawable::GetTargetRenderTimeForNextFrameMS(
   }
   auto time_passed_in_current_loop_ms = animation_time_ms % loop_duration_;
   auto time_of_next_frame_in_loop_ms = 0;
-  uint32_t frame_count = pixel_maps_->FrameCount();
+  uint32_t frame_count = FrameCount();
   for (uint32_t i = 0; i < frame_count && time_of_next_frame_in_loop_ms <=
                                               time_passed_in_current_loop_ms;
        ++i) {
-    time_of_next_frame_in_loop_ms += pixel_maps_->FrameDuration(i);
+    time_of_next_frame_in_loop_ms += FrameDuration(i);
   }
   auto time_until_next_frame_in_loop_ms =
       time_of_next_frame_in_loop_ms - time_passed_in_current_loop_ms;
@@ -377,8 +474,51 @@ void ImageDrawable::DrawPixelMap(OH_Drawing_Canvas* canvas,
   }
 }
 
-bool ImageDrawable::IsAnimate() {
-  return pixel_maps_ != nullptr && pixel_maps_->isAnimImage();
+bool ImageDrawable::IsAnimate() { return IsAnimImage(); }
+
+uint32_t ImageDrawable::FrameCount() const {
+  if (pixel_maps_) {
+    return pixel_maps_->FrameCount();
+  }
+  if (image_data_) {
+    return image_data_->FrameCount();
+  }
+  return 0;
+}
+
+int32_t ImageDrawable::FrameDuration(int32_t frame_number) const {
+  if (pixel_maps_) {
+    return pixel_maps_->FrameDuration(frame_number);
+  }
+  if (image_data_ && image_data_->DelayTimeList() && frame_number >= 0 &&
+      static_cast<uint32_t>(frame_number) < image_data_->FrameCount()) {
+    return std::max(image_data_->DelayTimeList()[frame_number], 0);
+  }
+  return 0;
+}
+
+OH_Drawing_PixelMap* ImageDrawable::FrameDrawBitmap(
+    int32_t frame_number) const {
+  if (pixel_maps_) {
+    auto* pixel_map = pixel_maps_->FramePixelMap(frame_number);
+    return pixel_map ? pixel_map->DrawBitmap() : nullptr;
+  }
+  if (frame_number >= 0 &&
+      static_cast<size_t>(frame_number) < image_data_draw_bitmaps_.size()) {
+    return image_data_draw_bitmaps_[frame_number];
+  }
+  return nullptr;
+}
+
+bool ImageDrawable::IsAnimImage() const { return FrameCount() > 1; }
+
+void ImageDrawable::DestroyImageDataDrawBitmaps() {
+  for (auto* draw_bitmap : image_data_draw_bitmaps_) {
+    if (draw_bitmap) {
+      OH_Drawing_PixelMapDissolve(draw_bitmap);
+    }
+  }
+  image_data_draw_bitmaps_.clear();
 }
 
 void ImageDrawable::AddImageAnimationListener(
