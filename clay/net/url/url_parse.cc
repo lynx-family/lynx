@@ -545,7 +545,7 @@ void DoParseMailtoURL(const char* spec, int spec_len, Parsed* parsed) {
     }
   }
 
-  // For compatability with the standard URL parser, treat no path as
+  // For compatibility with the standard URL parser, treat no path as
   // -1, rather than having a length of 0
   if (path_begin == path_end) {
     parsed->path.reset();

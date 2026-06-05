@@ -251,7 +251,7 @@ LynxPropSetter LynxPropSetterFromMethodInfoArray(NSArray<NSString*>* methodInfo)
     NSString* clazzName = [[NSString alloc] initWithUTF8String:class_getName(clazz)];
     PropSetterMap* setterMap = propSetterHolder[clazzName];
 
-    // If clazz has not been extracted, we should extract prop setter immediatly
+    // If clazz has not been extracted, we should extract prop setter immediately
     // and reassign setter map.
     if (!setterMap) {
       [self extractPropSetterFromComponent:clazz

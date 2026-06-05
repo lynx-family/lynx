@@ -172,8 +172,8 @@ static NSString *traceSectionName = @"view_light";
   if (verticalOrientation && ![_innerLayout isVerticalLayout]) {
     LynxError *dynamicChangeError =
         [LynxError lynxErrorWithCode:ECLynxComponentListDynamicChangeOrientation
-                             message:@"list dont support changing orientation dynamically"
-                       fixSuggestion:@"Please do not change teh value of vertical-orientation."
+                             message:@"list don't support changing orientation dynamically"
+                       fixSuggestion:@"Please do not change the value of vertical-orientation."
                                level:LynxErrorLevelError];
     [_context reportLynxError:dynamicChangeError];
   }

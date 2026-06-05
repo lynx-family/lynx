@@ -44,7 +44,7 @@ BASE_EXPORT jmethodID GetMethod(JNIEnv *env, jclass clazz, MethodType type,
 
 BASE_EXPORT bool HasException(JNIEnv *env);
 BASE_EXPORT bool ClearException(JNIEnv *env);
-// Return false if exception occured
+// Return false if exception occurred
 BASE_EXPORT bool CheckException(JNIEnv *env, std::string &exception_msg);
 BASE_EXPORT bool CheckAndPrintException(JNIEnv *env);
 std::string GetJavaExceptionInfo(JNIEnv *env, jthrowable java_throwable);

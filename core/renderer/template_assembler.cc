@@ -1032,10 +1032,10 @@ void TemplateAssembler::LoadTemplateInternal(
                       pipeline_options);
   }
 
-  // TODO(songshourui.null): We need read template's conifg or native config to
+  // TODO(songshourui.null): We need read template's config or native config to
   // check if enable unified pipeline for now, so we should init PipelineScope
   // after decoding. When default enable unified pipeline, we can put this at
-  // the begining of LoadTemplate.
+  // the beginning of LoadTemplate.
   PipelineScope pipeline_scope(this, pipeline_options);
 
   {
