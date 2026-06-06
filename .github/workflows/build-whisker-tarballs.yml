@@ -1,10 +1,23 @@
 name: build-whisker-tarballs
 
-# Produces the `whisker-lynx-android-<version>.tar.gz` (and later
-# `whisker-lynx-ios-<version>.tar.gz`) release assets that
-# `whisker-build::lynx::ensure_lynx_*` downloads. Triggered on
-# `v*-whisker.*` tag push; the tag name without leading `v` becomes
-# the `<version>` segment in tarball filenames.
+# Triggered on `v*-whisker.*` tag push. Produces three sets of
+# release artefacts; the tag name without leading `v` becomes the
+# `<version>` segment in each.
+#
+# 1. **Legacy tarballs** (`whisker-lynx-{android,ios}-<ver>.tar.gz`)
+#    that the current `whisker-build::lynx::ensure_lynx_*` fetcher
+#    downloads. Kept while the consumer migrates to Maven / SwiftPM.
+#
+# 2. **Maven repo** of the four Android AARs published to the
+#    `gh-pages` branch under `/maven/`, served at
+#    `https://whiskerrs.github.io/lynx/maven/`. Coordinates are
+#    `rs.whisker:lynx-{android,base-android,trace-android,
+#    service-api-android}:<ver>`.
+#
+# 3. **SwiftPM-ready xcframework zips** for the four iOS
+#    xcframeworks (`Lynx`, `LynxBase`, `LynxServiceAPI`, `PrimJS`),
+#    each with the SwiftPM checksum that `binaryTarget(url:,
+#    checksum:)` consumers paste verbatim.
 #
 # Companion: `whiskerrs/whisker` repo pins `LYNX_VERSION` /
 # `LYNX_FORK_TAG` / `LYNX_*_SHA256` constants in
@@ -23,7 +36,7 @@ on:
         default: ''
 
 permissions:
-  contents: write   # for softprops/action-gh-release
+  contents: write   # for softprops/action-gh-release + gh-pages push
 
 jobs:
   android:
@@ -196,6 +209,42 @@ jobs:
             whisker-lynx-android-*.tar.gz
             whisker-lynx-android-*.tar.gz.sha256
 
+      - name: Stage Maven repo layout
+        # See .whisker/android/stage-maven.sh — produces a Maven 2
+        # repository under $REPO_DIR with the four AARs under the
+        # `rs.whisker` group. Coordinates land as `rs.whisker:
+        # lynx-android`, `rs.whisker:lynx-base-android`, etc., which
+        # Whisker consumer `build.gradle.kts` reads via:
+        #
+        #     implementation("rs.whisker:lynx-android:<version>")
+        run: .whisker/android/stage-maven.sh
+        env:
+          VERSION: ${{ steps.ver.outputs.version }}
+          REPO_DIR: ${{ github.workspace }}/maven-out
+          LYNX_ROOT: lynx
+
+      - name: Upload Maven layout (workflow_dispatch)
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: maven-repo
+          path: maven-out/**
+
+      - name: Publish Maven repo to gh-pages (tag push)
+        # Serves the Maven 2 layout at
+        # https://whiskerrs.github.io/lynx/maven/  once GitHub
+        # Pages is enabled on the gh-pages branch (one-time repo
+        # setting). `keep_files: true` preserves prior tags so the
+        # index keeps growing rather than being clobbered.
+        if: ${{ startsWith(github.ref, 'refs/tags/') }}
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: maven-out
+          destination_dir: maven
+          keep_files: true
+          commit_message: "publish Maven artifacts for ${{ steps.ver.outputs.version }}"
+
   ios:
     runs-on: macos-14
     timeout-minutes: 120
@@ -273,3 +322,30 @@ jobs:
           files: |
             whisker-lynx-ios-*.tar.gz
             whisker-lynx-ios-*.tar.gz.sha256
+
+      - name: Pack individual xcframework zips + SwiftPM checksums
+        # See .whisker/ios/stage-swiftpm.sh — zips each xcframework
+        # produced by build-xcframeworks.sh and computes the SwiftPM
+        # checksum (`swift package compute-checksum`, NOT raw shasum)
+        # that consumers paste into `binaryTarget(url:, checksum:)`.
+        run: .whisker/ios/stage-swiftpm.sh
+        env:
+          VERSION: ${{ steps.ver.outputs.version }}
+          XCF_DIR: ${{ github.workspace }}/lynx-ios
+          OUT_DIR: ${{ github.workspace }}/swiftpm-out
+
+      - name: Upload xcframework zips (workflow_dispatch)
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: swiftpm-xcframeworks
+          path: swiftpm-out/**
+
+      - name: Upload xcframework zips to release (tag push)
+        if: ${{ startsWith(github.ref, 'refs/tags/') }}
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            swiftpm-out/*.xcframework.zip
+            swiftpm-out/*.xcframework.zip.sha256
+            swiftpm-out/swiftpm-manifest-*.txt

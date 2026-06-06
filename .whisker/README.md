@@ -42,6 +42,66 @@ in `crates/whisker-build/src/lynx.rs`. After cutting a release here:
    downloaded + verified + unpacked under
    `~/.cache/whisker/lynx/<version>/`.
 
+## Three publication channels (per release)
+
+Since `v3.8.0-whisker.4` the `build-whisker-tarballs.yml` workflow
+ships three flavors of the same Lynx + PrimJS build. Whisker
+consumers pick one depending on which side of the build pipeline
+they're integrating with:
+
+| Channel | Where it lands | Consumer |
+|---|---|---|
+| **Tarballs** (`whisker-lynx-{android,ios}-<ver>.tar.gz`) | GitHub Releases | Legacy whisker-build cache (`~/.cache/whisker/lynx/`); will be retired once Maven + SwiftPM are the canonical path |
+| **Maven repo** (`rs.whisker:lynx-{android,base-android,trace-android,service-api-android}:<ver>`) | gh-pages branch → `https://whiskerrs.github.io/lynx/maven/` | The new `whisker-gradle-plugin` and any user `build.gradle.kts` that wants to pull Lynx directly |
+| **SwiftPM xcframework zips** (`{Lynx,LynxBase,LynxServiceAPI,PrimJS}-<ver>.xcframework.zip` + `.sha256`) | GitHub Releases | `whisker-cng`-generated `Package.swift` uses `binaryTarget(url:, checksum:)` to pull these |
+
+### Maven consumer setup
+
+```kotlin
+// build.gradle.kts
+repositories {
+    maven { url = uri("https://whiskerrs.github.io/lynx/maven") }
+}
+
+dependencies {
+    implementation("rs.whisker:lynx-android:3.8.0-whisker.4")
+    implementation("rs.whisker:lynx-base-android:3.8.0-whisker.4")
+    implementation("rs.whisker:lynx-trace-android:3.8.0-whisker.4")
+    implementation("rs.whisker:lynx-service-api-android:3.8.0-whisker.4")
+}
+```
+
+GitHub Pages must be enabled on the `gh-pages` branch (one-time
+repo settings; the `peaceiris/actions-gh-pages@v3` step uses
+`GITHUB_TOKEN` to push, no extra secrets).
+
+### SwiftPM consumer setup
+
+The release attaches a `swiftpm-manifest-<ver>.txt` that lists
+each framework with its SwiftPM checksum:
+
+```
+Lynx=abc123…
+LynxBase=def456…
+LynxServiceAPI=ghi789…
+PrimJS=jkl012…
+```
+
+Paste into the consumer `Package.swift`:
+
+```swift
+.binaryTarget(
+    name: "Lynx",
+    url: "https://github.com/whiskerrs/lynx/releases/download/v3.8.0-whisker.4/Lynx-3.8.0-whisker.4.xcframework.zip",
+    checksum: "abc123…"
+),
+// … repeat for LynxBase / LynxServiceAPI / PrimJS
+```
+
+`whisker-cng`'s `Package.swift` template reads `swiftpm-manifest`
+once per fork version bump and bakes those values into the
+generated consumer-side `Package.swift`.
+
 ## Cutting a release
 
 ```bash
