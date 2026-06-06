@@ -22,7 +22,7 @@ lynx_core_source_set("renderer") {
     "tasm_platform_invoker_impl.h",
   ]
 
-  if (!enable_unittests && !is_oliver_node_lynx) {
+  if (!enable_unittests) {
     if (is_win || is_mac) {
       sources += [ "../../../core/services/event_report/embedder/event_tracker_platform_embedder_impl.cc" ]
     }
@@ -31,7 +31,7 @@ lynx_core_source_set("renderer") {
     "../../../core:lynx_native",
     "../../../third_party/jsoncpp:jsoncpp",
   ]
-  if (!enable_unittests && !is_oliver_node_lynx) {
+  if (!enable_unittests) {
     deps += [ "../lynx_service:lynx_service" ]
   }
   if (enable_inspector) {
