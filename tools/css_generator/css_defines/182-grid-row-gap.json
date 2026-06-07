@@ -149,7 +149,7 @@
             }
           }
         },
-        "nested_value_1": {
+        "grid-row-gap": {
           "__compat": {
             "description": "<code>grid-row-gap</code>",
             "status": {
@@ -177,7 +177,7 @@
             }
           }
         },
-        "nested_value_2": {
+        "row-gap": {
           "__compat": {
             "description": "<code>row-gap</code>",
             "status": {
