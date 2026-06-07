@@ -62,8 +62,11 @@ std::string JSSourceLoaderDesktop::LoadJSSource(const std::string& name) {
     if (path == nil) {
       NSBundle* frameworkBundle = [NSBundle bundleForClass:[JSSourceLoaderMac class]];
       NSURL* bundleUrl = [frameworkBundle URLForResource:@"LynxResources" withExtension:@"bundle"];
-      NSBundle* bundle = [NSBundle bundleWithURL:bundleUrl];
-      path = [bundle pathForResource:[str substringFromIndex:[ASSETS_SCHEME length]] ofType:@"js"];
+      if (bundleUrl) {
+        NSBundle* bundle = [NSBundle bundleWithURL:bundleUrl];
+        path = [bundle pathForResource:[str substringFromIndex:[ASSETS_SCHEME length]]
+                                ofType:@"js"];
+      }
     }
   } else if ([str length] > [FILE_SCHEME length] && [str hasPrefix:FILE_SCHEME]) {
     NSString* filePath = [str substringFromIndex:[FILE_SCHEME length]];

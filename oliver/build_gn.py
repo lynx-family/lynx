@@ -291,11 +291,21 @@ def build(system, debug, root_path, show_log, type, is_wasm, need_clean, is_loca
       return -1
   return 0
 
+def parse_bool(value):
+  if isinstance(value, bool):
+    return value
+  value = value.lower()
+  if value in ('1', 'true', 't', 'yes', 'y', 'on'):
+    return True
+  if value in ('0', 'false', 'f', 'no', 'n', 'off'):
+    return False
+  raise argparse.ArgumentTypeError('expected a boolean value')
+
 def parse_args():
   parser = argparse.ArgumentParser()
   parser.add_argument('-p', '--platform', help='Target platform')
   parser.add_argument('-t', '--type', help='Oliver product type. The type contains values such as ssr, tasm, security, and testing')
-  parser.add_argument('--clean', type=bool, default=True, help='run gn clean before build. Default is true')
+  parser.add_argument('--clean', type=parse_bool, default=True, help='run gn clean before build. Default is true')
   parser.add_argument('--debug', type=bool, default=False, help='Build product of debug type')
   parser.add_argument('--local', type=bool, default=False, help='Build for local CPU architecture. Only has effects on the Darwin system')
   parser.add_argument('--show_log', type=bool, default=False, help='Output compilation log')
