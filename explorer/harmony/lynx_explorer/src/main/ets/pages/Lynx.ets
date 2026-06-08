@@ -22,6 +22,7 @@ import {
 } from '@lynx/lynx';
 import { UISVG } from '@lynx/xelement_svg';
 import { UIWebView } from '@lynx/xelement_webview';
+import { UIVideo } from '@lynx/xelement_video';
 import Constants from '../common/constants';
 import { EntryLynxClient } from '../client/EntryLynxClient';
 import { ExampleGenericResourceFetcher } from '../provider/ExampleGenericResourceFetcher';
@@ -66,7 +67,8 @@ struct Lynx {
   private extraTiming: LynxExtraTiming = new LynxExtraTiming();
   private behaviors: BehaviorRegistryMap = new Map([
     ['svg',  new Behavior(UISVG, undefined)],
-    ['webview', new Behavior(UIWebView, undefined)]]);
+    ['webview', new Behavior(UIWebView, undefined)],
+    ['video', new Behavior(UIVideo, undefined)]]);
 
   aboutToAppear() {
     this.modules.set('ExplorerModule', {

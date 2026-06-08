@@ -18,6 +18,7 @@
     "@lynx/xelement_markdown": "@param:dependencies.lynx_version",
     "@lynx/xelement_svg": "@param:dependencies.lynx_version",
     "@lynx/xelement_webview": "@param:dependencies.lynx_version",
+    "@lynx/xelement_video": "@param:dependencies.lynx_version",
     "@ohos/imageknifepro": "1.0.9"
   },
   "scripts": {
