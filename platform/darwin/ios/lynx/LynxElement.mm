@@ -7,6 +7,12 @@
 
 #include <string>
 
+#if defined(LynxElement)
+#pragma push_macro("LynxElement")
+#undef LynxElement
+#define LYNX_RESTORE_LYNX_ELEMENT_EXTENSION 1
+#endif
+
 @interface LynxElement ()
 
 - (instancetype)initWithTemplateRender:(LynxTemplateRender *)templateRender
@@ -20,6 +26,11 @@
                                callback:(void (^_Nonnull)(NSString *_Nullable json))callback;
 
 @end
+
+#if defined(LYNX_RESTORE_LYNX_ELEMENT_EXTENSION)
+#pragma pop_macro("LynxElement")
+#undef LYNX_RESTORE_LYNX_ELEMENT_EXTENSION
+#endif
 
 namespace {
 
