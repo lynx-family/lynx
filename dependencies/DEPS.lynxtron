@@ -154,7 +154,7 @@ deps = {
             "PATH": os.pathsep.join([PNPM_PATH, os.path.dirname(NODE_PATH), os.environ["PATH"]])
         },
         "commands": [
-            "pnpm install --frozen-lockfile"
+            "pnpm install --no-frozen-lockfile --strict-peer-dependencies=false"
         ],
         "require": [
             "prepare_pnpm_shim"
