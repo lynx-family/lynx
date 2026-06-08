@@ -1985,3 +1985,15 @@ enableElementApiNewRegistration:
     - HarmonyOS
     - iOS
   export: false
+enableElementInvokeUIMethodPendingTask:
+  description: Controls whether element `invokeUIMethod` calls wait on the target element pending-invoke queue before being converted into a UI operation. When enabled, runtime appends the invoke task to `Element::AppendPendingInvokeTask` and enqueues it with other UI operations; when disabled, runtime keeps the legacy invoke path.
+  defaultValue: 'false'
+  valueType: bool
+  readSettings: true
+  author: hexionghui
+  since: '4.1'
+  supportPlatform:
+    - Android
+    - HarmonyOS
+    - iOS
+  export: false

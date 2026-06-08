@@ -671,5 +671,9 @@ bool LynxEnv::EnableReadableStreamMemFix() {
 bool LynxEnv::EnableElementApiNewRegistration() {
   return GetBoolEnv(Key::ENABLE_ELEMENT_API_NEW_REGISTRATION, false);
 }
+
+bool LynxEnv::EnableElementInvokeUIMethodPendingTask() {
+  return GetBoolEnv(Key::ENABLE_ELEMENT_INVOKE_UI_METHOD_PENDING_TASK, false);
+}
 }  // namespace tasm
 }  // namespace lynx

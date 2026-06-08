@@ -107,6 +107,37 @@ TEST(PageConfigTest, EnableEventTargetInfoNodeIndex) {
   EXPECT_TRUE(page_config->GetEnableEventTargetInfoNodeIndex());
 }
 
+TEST(PageConfigTest, EnableElementInvokeUIMethodPendingTask) {
+  auto& env = LynxEnv::GetInstance();
+  env.external_env_map_.erase(
+      LynxEnv::Key::ENABLE_ELEMENT_INVOKE_UI_METHOD_PENDING_TASK);
+
+  rapidjson::Document empty_doc;
+  empty_doc.Parse("{}");
+  std::shared_ptr<PageConfig> default_config = std::make_shared<PageConfig>();
+  LynxConfigDecoder::DecodePageConfig(default_config, empty_doc, "");
+  EXPECT_FALSE(default_config->GetEnableElementInvokeUIMethodPendingTask());
+
+  env.external_env_map_
+      [LynxEnv::Key::ENABLE_ELEMENT_INVOKE_UI_METHOD_PENDING_TASK] = "true";
+  std::shared_ptr<PageConfig> settings_config = std::make_shared<PageConfig>();
+  LynxConfigDecoder::DecodePageConfig(settings_config, empty_doc, "");
+  EXPECT_TRUE(settings_config->GetEnableElementInvokeUIMethodPendingTask());
+
+  rapidjson::Document explicit_false_doc;
+  explicit_false_doc.Parse(
+      "{\"enableElementInvokeUIMethodPendingTask\": false}");
+  std::shared_ptr<PageConfig> explicit_false_config =
+      std::make_shared<PageConfig>();
+  LynxConfigDecoder::DecodePageConfig(explicit_false_config, explicit_false_doc,
+                                      "");
+  EXPECT_FALSE(
+      explicit_false_config->GetEnableElementInvokeUIMethodPendingTask());
+
+  env.external_env_map_.erase(
+      LynxEnv::Key::ENABLE_ELEMENT_INVOKE_UI_METHOD_PENDING_TASK);
+}
+
 TEST(PageConfigTest, EnableComponentAsyncDecode) {
   CHECK_CONFIG_VALUE(EnableComponentAsyncDecode, false, true, false);
 }

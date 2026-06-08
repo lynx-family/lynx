@@ -771,15 +771,23 @@ void LepusElement::Invoke(const Napi::Object& object) {
   };
 
   auto page_config = tasm_ ? tasm_->GetPageConfig() : nullptr;
-  if (page_config && page_config->GetEnableUnifiedPipeline() ==
-                         tasm::TernaryBool::TRUE_VALUE) {
+  if (page_config && page_config->GetEnableElementInvokeUIMethodPendingTask()) {
     element->AppendPendingInvokeTask([element, method = std::move(method),
                                       params = std::move(params),
                                       invoke_callback]() mutable {
       element->EnqueueInvoke(method, params, invoke_callback);
     });
   } else {
-    element->Invoke(method, params, invoke_callback);
+    auto invoke_ui_method = [element, method = std::move(method),
+                             params = std::move(params),
+                             invoke_callback]() mutable {
+      element->Invoke(method, params, invoke_callback);
+    };
+    if (tasm_) {
+      tasm_->InvokeOrDefer(std::move(invoke_ui_method));
+    } else {
+      invoke_ui_method();
+    }
   }
 }
 }  // namespace worklet

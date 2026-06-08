@@ -81,6 +81,7 @@ export enum LynxTrailKey {
   FIX_FIBER_REINSERT_DETACH_FROM_OLD_RENDER_PARENT = 'fix_fiber_reinsert_detach_from_old_render_parent',
   ENABLE_NEW_STYLING_PIPELINE = 'enable_new_styling_pipeline',
   ENABLE_ELEMENT_API_NEW_REGISTRATION = 'enable_element_api_new_registration',
+  ENABLE_ELEMENT_INVOKE_UI_METHOD_PENDING_TASK = 'enable_element_invoke_ui_method_pending_task',
 }
 
 /**

@@ -962,6 +962,15 @@ class LynxConfigDecoder final {
       page_config->SetEnableElementApiNewRegistration(
           LynxEnv::GetInstance().EnableElementApiNewRegistration());
     }
+
+    if (doc.HasMember(config::kEnableElementInvokeUIMethodPendingTask) &&
+        doc[config::kEnableElementInvokeUIMethodPendingTask].IsBool()) {
+      page_config->SetEnableElementInvokeUIMethodPendingTask(
+          doc[config::kEnableElementInvokeUIMethodPendingTask].GetBool());
+    } else {
+      page_config->SetEnableElementInvokeUIMethodPendingTask(
+          LynxEnv::GetInstance().EnableElementInvokeUIMethodPendingTask());
+    }
   };
 };
 }  // namespace tasm
