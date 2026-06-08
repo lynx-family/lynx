@@ -644,26 +644,32 @@ public class AndroidScrollView
 
   public void applyOverflowClipState(int overflow, boolean enableOverflowHiddenPaddingVisible) {
     if (!enableOverflowHiddenPaddingVisible) {
-      boolean overflowVisible = overflow != LynxBaseUI.OVERFLOW_HIDDEN;
-      setClipChildren(!overflowVisible);
-      if (mHorizontalScrollView != null) {
-        mHorizontalScrollView.setClipChildren(!overflowVisible);
-      }
-      if (mLinearLayout != null) {
-        mLinearLayout.setClipChildren(true);
-        mLinearLayout.setClipToPadding(!overflowVisible);
-      }
+      applyLegacyOverflowClipState(overflow);
       return;
     }
-
     boolean overflowVisible = overflow != LynxBaseUI.OVERFLOW_HIDDEN;
     setClipChildren(!overflowVisible);
     if (mHorizontalScrollView != null) {
       mHorizontalScrollView.setClipChildren(!overflowVisible);
     }
     if (mLinearLayout != null) {
-      mLinearLayout.setClipChildren(!overflowVisible);
+      if (overflowVisible) {
+        mLinearLayout.setClipChildren(false);
+      }
       mLinearLayout.setClipToPadding(!(overflowVisible || enableOverflowHiddenPaddingVisible));
+    }
+  }
+
+  private void applyLegacyOverflowClipState(int overflow) {
+    if (overflow == LynxBaseUI.OVERFLOW_HIDDEN) {
+      return;
+    }
+    setClipChildren(false);
+    if (mHorizontalScrollView != null) {
+      mHorizontalScrollView.setClipChildren(false);
+    }
+    if (mLinearLayout != null) {
+      mLinearLayout.setClipToPadding(false);
     }
   }
 
