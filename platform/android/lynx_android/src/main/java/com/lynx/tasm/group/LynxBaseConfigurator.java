@@ -10,6 +10,7 @@ import com.lynx.tasm.EmbeddedMode;
 import com.lynx.tasm.IUIRendererCreator;
 import com.lynx.tasm.LynxBackgroundRuntimeOptions;
 import com.lynx.tasm.LynxBooleanOption;
+import com.lynx.tasm.LynxColorScheme;
 import com.lynx.tasm.LynxEnv;
 import com.lynx.tasm.LynxGroup;
 import com.lynx.tasm.LynxViewBuilder;
@@ -68,6 +69,9 @@ public class LynxBaseConfigurator<T extends LynxBaseConfigurator<T>> {
   protected int presetHeightMeasureSpec;
   protected float fontScale = 1.0f;
   protected boolean hasFontScaleSet = false;
+
+  protected LynxColorScheme colorScheme = LynxColorScheme.LIGHT;
+  protected boolean hasColorSchemeSet = false;
 
   protected boolean enablePreUpdateData = false;
   protected HashMap<String, Object> mContextData;
@@ -452,6 +456,15 @@ public class LynxBaseConfigurator<T extends LynxBaseConfigurator<T>> {
   public T setFontScale(float scale) {
     fontScale = scale;
     hasFontScaleSet = true;
+    return (T) this;
+  }
+
+  public T setColorScheme(LynxColorScheme scheme) {
+    if (scheme == null) {
+      return (T) this;
+    }
+    colorScheme = scheme;
+    hasColorSchemeSet = true;
     return (T) this;
   }
 

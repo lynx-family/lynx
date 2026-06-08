@@ -28,10 +28,8 @@ enum class MediaTristate {
   kPresent,
 };
 
-// Maps to the `prefers-color-scheme` media feature. `kNoPreference` models
-// the user-agent default when the platform has no signal.
+// Maps to the `prefers-color-scheme` media feature.
 enum class MediaPreferredColorScheme {
-  kNoPreference,
   kLight,
   kDark,
 };
@@ -108,7 +106,7 @@ class MediaValues {
   MediaTristate hover_ = MediaTristate::kUnknown;
   MediaTristate pointer_ = MediaTristate::kUnknown;
   MediaPreferredColorScheme preferred_color_scheme_ =
-      MediaPreferredColorScheme::kNoPreference;
+      MediaPreferredColorScheme::kLight;
   int color_bits_per_component_ = 8;
 };
 

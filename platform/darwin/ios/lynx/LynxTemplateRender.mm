@@ -285,6 +285,7 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
   _fetcher = builder.fetcher;
   _hasStartedLoad = NO;
   _fontScale = builder.fontScale;
+  _colorScheme = builder.colorScheme;
 
   _threadStrategyForRendering = builder.getThreadStrategyForRender;
   _enableLayoutSafepoint = builder.enableLayoutSafepoint;
@@ -1505,6 +1506,13 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
   shell_->UpdateFontScale(scale);
 }
 
+- (void)updateColorScheme:(LynxColorScheme)scheme {
+  if (shell_->IsDestroyed()) {
+    return;
+  }
+  shell_->UpdateColorScheme(static_cast<int>(scheme));
+}
+
 - (void)pauseRootLayoutAnimation {
   [_lynxUIRenderer pauseRootLayoutAnimation];
 }
@@ -2708,6 +2716,7 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
   return ^(LynxViewBuilder* builder) {
     builder.config = self->_config;
     builder.fontScale = self->_fontScale;
+    builder.colorScheme = self->_colorScheme;
     builder.enablePreUpdateData = YES;
     builder.enableMultiAsyncThread = self->_builder.enableMultiAsyncThread;
     builder.fetcher = self->_fetcher;

@@ -165,6 +165,7 @@ class LynxTemplateRenderer : public devtool::LynxDevToolProxy {
   void UpdateViewport(float width, int width_mode, float height,
                       int height_mode, bool need_layout);
   void UpdateFontScale(float scale);
+  void UpdateColorScheme(int scheme);
   void SetFontScale(float scale);
 
   void TriggerEventBus(const std::string& name, const lepus::Value& params);

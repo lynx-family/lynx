@@ -7,6 +7,7 @@ import com.lynx.tasm.ILynxLogicExecutor;
 import com.lynx.tasm.IUIRendererCreator;
 import com.lynx.tasm.LynxBackgroundRuntimeOptions;
 import com.lynx.tasm.LynxBooleanOption;
+import com.lynx.tasm.LynxColorScheme;
 import com.lynx.tasm.LynxGroup;
 import com.lynx.tasm.ThreadStrategyForRendering;
 import com.lynx.tasm.behavior.BehaviorRegistry;
@@ -141,6 +142,11 @@ public interface ILynxViewConfigProvider {
    * @return fontScale set;
    */
   float getFontScale();
+
+  /**
+   * @return colorScheme set;
+   */
+  LynxColorScheme getColorScheme();
 
   /**
    * @return whether preUpdateData enabled;

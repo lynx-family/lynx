@@ -80,3 +80,11 @@ typedef NS_OPTIONS(NSInteger, LynxEmbeddedMode) {
   LynxEmbeddedModeAll = LynxEmbeddedModeBase | LynxEmbeddedModeEnginePool |
                         LynxEmbeddedModeLayoutInElement
 };
+
+/**
+ * Preferred color scheme for media query evaluation (prefers-color-scheme).
+ */
+typedef NS_ENUM(NSInteger, LynxColorScheme) {
+  LynxColorSchemeLight = 0,
+  LynxColorSchemeDark = 1,
+};

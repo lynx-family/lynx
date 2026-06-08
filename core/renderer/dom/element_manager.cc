@@ -729,6 +729,24 @@ void ElementManager::UpdateFontScale(float font_scale) {
   }
 }
 
+void ElementManager::UpdateColorScheme(int scheme) {
+  auto value = static_cast<css::MediaPreferredColorScheme>(scheme);
+  if (value != css::MediaPreferredColorScheme::kLight &&
+      value != css::MediaPreferredColorScheme::kDark) {
+    return;
+  }
+  if (value == GetLynxEnvConfig().PreferredColorScheme()) {
+    return;
+  }
+  GetLynxEnvConfig().SetPreferredColorScheme(value);
+  if (root()) {
+    root()->UpdateDynamicElementStyle(
+        DynamicCSSStylesManager::kUpdateColorScheme, false);
+    auto options = std::make_shared<PipelineOptions>();
+    RequestResolve(options);
+  }
+}
+
 void ElementManager::SetInspectorElementObserver(
     const std::shared_ptr<InspectorElementObserver>
         &inspector_element_observer) {

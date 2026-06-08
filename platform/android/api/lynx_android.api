@@ -2780,6 +2780,7 @@ public interface com::lynx::tasm::group::ILynxViewConfigProvider {
   public int com.lynx.tasm.group.ILynxViewConfigProvider.getPresetWidthMeasureSpec();
   public int com.lynx.tasm.group.ILynxViewConfigProvider.getPresetHeightMeasureSpec();
   public float com.lynx.tasm.group.ILynxViewConfigProvider.getFontScale();
+  public LynxColorScheme com.lynx.tasm.group.ILynxViewConfigProvider.getColorScheme();
   public boolean com.lynx.tasm.group.ILynxViewConfigProvider.isEnablePreUpdateData();
   public IUIRendererCreator com.lynx.tasm.group.ILynxViewConfigProvider.getUIRendererCreator();
   public int com.lynx.tasm.group.ILynxViewConfigProvider.getEmbeddedMode();
@@ -4722,6 +4723,13 @@ public class com::lynx::tasm::navigator::LynxCardManager : com.lynx.tasm.navigat
   public void com.lynx.tasm.navigator.LynxCardManager.onLynxViewEvicted(LynxView view);
   public void com.lynx.tasm.navigator.LynxCardManager.onLynxViewRecreated(LynxRoute key, LynxViewCreationListener listener);
   public void com.lynx.tasm.navigator.LynxCardManager.onDestroy();
+}
+
+public enum com::lynx::tasm::LynxColorScheme {
+  public com.lynx.tasm.LynxColorScheme.LIGHT LIGHT;
+  public com.lynx.tasm.LynxColorScheme.DARK DARK;
+  public com.lynx.tasm.LynxColorScheme.LynxColorScheme(int id);
+  public int com.lynx.tasm.LynxColorScheme.id();
 }
 
 public class com::lynx::tasm::LynxConfigInfo :  {
@@ -6936,6 +6944,7 @@ public class com::lynx::tasm::LynxTemplateRender : com.lynx.tasm.ILynxEngine, co
   public void com.lynx.tasm.LynxTemplateRender.onLayout(boolean changed, int left, int top, int right, int bottom);
   public void com.lynx.tasm.LynxTemplateRender.updateViewport(int widthMeasureSpec, int heightMeasureSpec);
   public void com.lynx.tasm.LynxTemplateRender.updateFontScale(float scale);
+  public void com.lynx.tasm.LynxTemplateRender.updateColorScheme(LynxColorScheme scheme);
   public void com.lynx.tasm.LynxTemplateRender.destroy();
   public final ThreadStrategyForRendering com.lynx.tasm.LynxTemplateRender.getThreadStrategyForRendering();
   public void com.lynx.tasm.LynxTemplateRender.onErrorOccurred(int errCode, String errorMsg);
@@ -7541,6 +7550,7 @@ public class com::lynx::tasm::LynxView : com.lynx.tasm.behavior.ui.UIBody.UIBody
   public void com.lynx.tasm.LynxView.updateViewport(int widthMeasureSpec, int heightMeasureSpec, boolean needLayout);
   public void com.lynx.tasm.LynxView.updateViewport(int widthMeasureSpec, int heightMeasureSpec);
   public void com.lynx.tasm.LynxView.updateFontScale(float scale);
+  public void com.lynx.tasm.LynxView.updateColorScheme(LynxColorScheme scheme);
   public void com.lynx.tasm.LynxView.destroy();
   public ThreadStrategyForRendering com.lynx.tasm.LynxView.getThreadStrategyForRendering();
   public boolean com.lynx.tasm.LynxView.dispatchKeyEvent(KeyEvent event);
@@ -7637,6 +7647,7 @@ public class com::lynx::tasm::LynxViewBuilder : LynxBaseConfigurator< LynxViewBu
   public void com.lynx.tasm.LynxViewBuilder.setTemplateResourceFetcher(@NonNull LynxTemplateResourceFetcher fetcher);
   public void com.lynx.tasm.LynxViewBuilder.setEnableGenericResourceFetcher(LynxBooleanOption enabled);
   public LynxViewBuilder com.lynx.tasm.LynxViewBuilder.setFontScale(float scale);
+  public LynxViewBuilder com.lynx.tasm.LynxViewBuilder.setColorScheme(LynxColorScheme scheme);
   public LynxViewBuilder com.lynx.tasm.LynxViewBuilder.setScreenSize(int width, int height);
   public LynxViewBuilder com.lynx.tasm.LynxViewBuilder.setEnablePendingJsTask(boolean enablePendingJsTask);
   public LynxViewBuilder com.lynx.tasm.LynxViewBuilder.setEnableJSRuntime(boolean enable);
@@ -7678,6 +7689,7 @@ public class com::lynx::tasm::LynxViewBuilder : LynxBaseConfigurator< LynxViewBu
   public int com.lynx.tasm.LynxViewBuilder.getPresetWidthMeasureSpec();
   public int com.lynx.tasm.LynxViewBuilder.getPresetHeightMeasureSpec();
   public float com.lynx.tasm.LynxViewBuilder.getFontScale();
+  public LynxColorScheme com.lynx.tasm.LynxViewBuilder.getColorScheme();
   public boolean com.lynx.tasm.LynxViewBuilder.isEnablePreUpdateData();
   public IUIRendererCreator com.lynx.tasm.LynxViewBuilder.getUIRendererCreator();
   public int com.lynx.tasm.LynxViewBuilder.getEmbeddedMode();

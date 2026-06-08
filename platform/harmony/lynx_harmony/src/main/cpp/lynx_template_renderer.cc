@@ -440,6 +440,10 @@ void LynxTemplateRenderer::UpdateFontScale(float font_scale) {
   shell_->UpdateFontScale(font_scale);
 }
 
+void LynxTemplateRenderer::UpdateColorScheme(int scheme) {
+  shell_->UpdateColorScheme(scheme);
+}
+
 void LynxTemplateRenderer::SetEnableBytecode(bool enable,
                                              std::string source_url) {
   shell_->SetEnableBytecode(enable, std::move(source_url));
@@ -600,6 +604,7 @@ napi_value LynxTemplateRenderer::Init(napi_env env, napi_value exports) {
       DECLARE_NAPI_METHOD("getAllTimingInfo", GetAllTimingInfo),
       DECLARE_NAPI_METHOD("getInstanceId", GetInstanceId),
       DECLARE_NAPI_METHOD("updateFontScale", UpdateFontScale),
+      DECLARE_NAPI_METHOD("updateColorScheme", UpdateColorScheme),
       DECLARE_NAPI_METHOD("nativeSetEnableBytecode", NativeSetEnableBytecode),
       DECLARE_NAPI_METHOD("getPageDataByKey", GetPageDataByKey),
       DECLARE_NAPI_METHOD("setupExtensionDelegate", SetupExtensionDelegate),
@@ -1549,6 +1554,25 @@ napi_value LynxTemplateRenderer::UpdateFontScale(napi_env env,
     return nullptr;
   }
   obj->UpdateFontScale(scale);
+  return nullptr;
+}
+
+napi_value LynxTemplateRenderer::UpdateColorScheme(napi_env env,
+                                                   napi_callback_info info) {
+  napi_value js_this;
+  size_t argc = 1;
+  napi_value args[1] = {nullptr};
+  napi_get_cb_info(env, info, &argc, args, &js_this, nullptr);
+
+  auto scheme = base::NapiUtil::ConvertToInt32(env, args[0]);
+
+  LynxTemplateRenderer* obj = nullptr;
+  napi_status status =
+      napi_unwrap(env, js_this, reinterpret_cast<void**>(&obj));
+  if (!CheckNapiUnwrapObject(status, obj, "NativeUpdateColorScheme failed")) {
+    return nullptr;
+  }
+  obj->UpdateColorScheme(scheme);
   return nullptr;
 }
 

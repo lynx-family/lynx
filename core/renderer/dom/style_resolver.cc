@@ -850,6 +850,7 @@ std::unique_ptr<css::MediaQueryEvaluator> BuildMediaQueryEvaluator(
                        : env_config.ScreenHeight();
     values = css::MediaValues::WithViewport(width, height,
                                             env_config.DevicePixelRatio());
+    values.SetPreferredColorScheme(env_config.PreferredColorScheme());
     if (Element* root = element_manager->root()) {
       values.SetRootFontSize(root->GetFontSize());
     }

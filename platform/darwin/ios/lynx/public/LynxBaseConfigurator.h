@@ -48,6 +48,7 @@
 @property(nonatomic, assign) BOOL enableAsyncHydration;
 @property(nonatomic, assign) BOOL enableMTSModule;
 @property(nonatomic, assign) CGFloat fontScale;
+@property(nonatomic, assign) LynxColorScheme colorScheme;
 @property(nonatomic, assign) LynxBooleanOption enableGenericResourceFetcher;
 
 // generic resource fetcher api.

@@ -1142,6 +1142,8 @@ public class LynxTemplateRender
     if (mFontScale != 1.0f) {
       nativeSetFontScale(mNativePtr, mNativeLifecycle, mFontScale);
     }
+    LynxColorScheme colorScheme = mLynxViewConfigProvider.getColorScheme();
+    nativeUpdateColorScheme(mNativePtr, mNativeLifecycle, colorScheme.id());
     nativeOnLynxEngineCreated(mNativePtr, lynxUIRenderer().getUIDelegatePtr());
 
     TraceEvent.endSection(TraceEventDef.TEMPLATE_RENDER_CREATE_TASM);
@@ -2403,6 +2405,17 @@ public class LynxTemplateRender
       return;
     }
     nativeUpdateFontScale(mNativePtr, mNativeLifecycle, scale);
+  }
+
+  /**
+   * Update the preferred color scheme.
+   * @param scheme The color scheme value.
+   */
+  public void updateColorScheme(LynxColorScheme scheme) {
+    if (!checkIfEnvPrepared() || mNativePtr == 0 || scheme == null) {
+      return;
+    }
+    nativeUpdateColorScheme(mNativePtr, mNativeLifecycle, scheme.id());
   }
 
   public void destroy() {
@@ -4265,6 +4278,7 @@ public class LynxTemplateRender
         .setFontLoader(mLynxViewBuilder.fontLoader)
         .setImageFetcher(mLynxViewBuilder.imageFetcher)
         .setFontScale(mLynxViewBuilder.getFontScale())
+        .setColorScheme(mLynxViewBuilder.getColorScheme())
         .setEnablePreUpdateData(true)
         .setEnableMultiAsyncThread(mLynxViewBuilder.isEnableMultiAsyncThread())
         .setLynxGroup(mLynxViewBuilder.getLynxGroup())
@@ -4474,6 +4488,8 @@ public class LynxTemplateRender
   private static native void nativeSetPlatformConfig(long ptr, long lifecycle, String jsonString);
 
   private static native void nativeUpdateFontScale(long ptr, long lifecycle, float scale);
+
+  private static native void nativeUpdateColorScheme(long ptr, long lifecycle, int scheme);
 
   // layout
   private static native void nativeUpdateViewport(long ptr, long lifecycle, int width,

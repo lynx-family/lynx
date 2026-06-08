@@ -306,6 +306,11 @@ public class LynxViewBuilder
   }
 
   @Override
+  public LynxViewBuilder setColorScheme(LynxColorScheme scheme) {
+    return super.setColorScheme(scheme);
+  }
+
+  @Override
   public LynxViewBuilder setScreenSize(int width, int height) {
     return super.setScreenSize(width, height);
   }
@@ -631,6 +636,17 @@ public class LynxViewBuilder
       return lynxViewGroup.getFontScale();
     }
     return this.fontScale;
+  }
+
+  @Override
+  public LynxColorScheme getColorScheme() {
+    if (hasColorSchemeSet) {
+      return this.colorScheme;
+    }
+    if (lynxViewGroup != null) {
+      return lynxViewGroup.getColorScheme();
+    }
+    return LynxColorScheme.LIGHT;
   }
 
   @Override

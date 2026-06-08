@@ -619,6 +619,7 @@ public class LynxBaseConfigurator : NSObject {
   public BOOL LynxBaseConfigurator::enableAsyncHydration enableAsyncHydration;
   public BOOL LynxBaseConfigurator::enableMTSModule enableMTSModule;
   public CGFloat LynxBaseConfigurator::fontScale fontScale;
+  public LynxColorScheme LynxBaseConfigurator::colorScheme colorScheme;
   public LynxBooleanOption LynxBaseConfigurator::enableGenericResourceFetcher enableGenericResourceFetcher;
   public id<LynxGenericResourceFetcher> LynxBaseConfigurator::genericResourceFetcher genericResourceFetcher;
   public id<LynxMediaResourceFetcher> LynxBaseConfigurator::mediaResourceFetcher mediaResourceFetcher;
@@ -3985,6 +3986,7 @@ public protocol LynxTemplateRenderProtocol-p : <NSObject> {
   public void LynxTemplateRenderProtocol-p::updateViewport:(BOOL needLayout);
   public void LynxTemplateRenderProtocol-p::updateScreenMetricsWithWidth:height:(CGFloat width,[height] CGFloat height);
   public void LynxTemplateRenderProtocol-p::updateFontScale:(CGFloat scale);
+  public void LynxTemplateRenderProtocol-p::updateColorScheme:(LynxColorScheme scheme);
   public void LynxTemplateRenderProtocol-p::pauseRootLayoutAnimation();
   public void LynxTemplateRenderProtocol-p::resumeRootLayoutAnimation();
   public void LynxTemplateRenderProtocol-p::restartAnimation();
@@ -5448,6 +5450,7 @@ public class LynxView : UIView, <LUIBodyView>, <LynxSecurityTarget>, <LynxRender
   public void LynxView::unSubscribeSessionStorage:withId:(nonnull NSString *key,[withId] double callbackId);
   public void LynxView::updateScreenMetricsWithWidth:height:(CGFloat width,[height] CGFloat height);
   public void LynxView::updateFontScale:(CGFloat scale);
+  public void LynxView::updateColorScheme:(LynxColorScheme scheme);
   public void LynxView::pauseRootLayoutAnimation();
   public void LynxView::resumeRootLayoutAnimation();
   public void LynxView::resetAnimation();
@@ -6601,6 +6604,11 @@ public enum LynxThreadStrategyForRender {
   LynxThreadStrategyForRenderMostOnTASM
   LynxThreadStrategyForRenderPartOnLayout
   LynxThreadStrategyForRenderMultiThreads
+}
+
+public enum LynxColorScheme {
+  LynxColorSchemeLight
+  LynxColorSchemeDark
 }
 
   public typedef NS_OPTIONS(NSInteger, LynxEmbeddedMode);

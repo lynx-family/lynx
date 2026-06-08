@@ -197,6 +197,7 @@
 
   // FIXME
   shell_->SetFontScale(_fontScale);
+  shell_->UpdateColorScheme(static_cast<int>(_colorScheme));
 
   // Thread pool
   static dispatch_once_t onceToken;

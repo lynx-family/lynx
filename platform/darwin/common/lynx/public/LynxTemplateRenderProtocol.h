@@ -166,6 +166,8 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (void)updateFontScale:(CGFloat)scale;
 
+- (void)updateColorScheme:(LynxColorScheme)scheme;
+
 - (void)pauseRootLayoutAnimation;
 - (void)resumeRootLayoutAnimation;
 

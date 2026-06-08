@@ -347,6 +347,10 @@ void LynxTemplateRenderer::UpdateFontScale(float scale) {
   shell_->UpdateFontScale(scale);
 }
 
+void LynxTemplateRenderer::UpdateColorScheme(int scheme) {
+  shell_->UpdateColorScheme(scheme);
+}
+
 void LynxTemplateRenderer::TriggerEventBus(const std::string& name,
                                            const lepus::Value& params) {
   shell_->TriggerEventBus(name, params);
