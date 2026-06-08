@@ -406,7 +406,7 @@ void UINewImage::LoadImageWithTransform(const std::string& url,
   }
 }
 
-void UINewImage::LoadImage() {
+bool UINewImage::LoadImage() {
   const bool need_layout_size_for_effect =
       (effect_flags_ &
        (image::kFlagEffectCapInsets | image::kFlagEffectDropShadow)) != 0;
@@ -416,18 +416,29 @@ void UINewImage::LoadImage() {
   if (need_layout_size_for_effect && (width_ <= 0 || height_ <= 0) &&
       !auto_size_) {
     LOGE("LoadImage empty size, src: " << src_);
-    return;
+    return true;
   }
   if (SkipRedirection()) {
     LoadImageWithTransform(src_, placeholder_);
-    return;
+    return true;
   }
 
+  // Guard against synchronous destruction. During the synchronous call to the
+  // ArkTS function ShouldRedirectUrl, an UpdateMetaData operation might be
+  // inserted, causing the current UIImage instance to be destroyed.
+  auto weak_self = weak_from_this();
   std::string final_src =
       LynxImageHelper::GetRedirectUrl(src_, context_->GetResourceLoader());
   std::string final_placeholder = LynxImageHelper::GetRedirectUrl(
       placeholder_, context_->GetResourceLoader());
+  if (weak_self.expired()) {
+    LOGE(
+        "UIImage was destroyed during the synchronous ArkTS call to "
+        "ShouldRedirectUrl");
+    return false;
+  }
   LoadImageWithTransform(final_src, final_placeholder);
+  return true;
 }
 
 void UINewImage::OnNodeReady() {
@@ -446,7 +457,9 @@ void UINewImage::OnNodeReady() {
     if (!defer_src_invalidation_) {
       image_node_->Clear();
     }
-    LoadImage();
+    if (!LoadImage()) {
+      return;
+    }
   }
   if ((dirty_flags_ & image::kFlagImageRenderingChanged) != 0) {
     if (rendering_type_ == starlight::ImageRenderingType::kPixelated) {

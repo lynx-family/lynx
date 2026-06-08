@@ -164,8 +164,6 @@ void BackgroundImageLayer::LoadImageFromService() {
         image_layer->image_drawable_->UpdateLoopCount(0);
         image_layer->image_drawable_->UpdateDrawCurrent(data);
         image_layer->image_drawable_->StartAnimation();
-        image_layer->pixel_map_.reset();
-        ui_base_self->Invalidate();
       },
       [weak_self = weak_from_this(), url = url_](float width,
                                                  float height) mutable {

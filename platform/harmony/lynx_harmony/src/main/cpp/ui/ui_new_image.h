@@ -111,7 +111,11 @@ class UINewImage : public UIBase,
   void UpdateDownsampling(const lepus::Value& value);
   void UpdateEnableReportInfo(const lepus::Value& value);
   void AutoSizeIfNeeded();
-  void LoadImage();
+  // Synchronously calls ArkTS functions (e.g., GetResourceLoader), which may
+  // destroy `this`. Returns true if the instance remains valid, or false if
+  // destroyed. Callers must abort immediately if false is returned to prevent
+  // UAF.
+  bool LoadImage();
   void LoadImageFromService(const std::string& url,
                             const std::string& placeholder,
                             std::vector<std::string> fallback_urls = {});
