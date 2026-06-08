@@ -639,7 +639,8 @@ bool LynxEnv::EnableNativeList() {
 }
 
 bool LynxEnv::FixOldFixedInsertSelfUseRenderParent() {
-  return GetBoolEnv(Key::FIX_OLD_FIXED_INSERT_SELF_USE_RENDER_PARENT, false);
+  // TODO: Remove this setting in the next version.
+  return GetBoolEnv(Key::FIX_OLD_FIXED_INSERT_SELF_USE_RENDER_PARENT, true);
 }
 
 bool LynxEnv::FixFiberReinsertDetachFromOldRenderParent() {
