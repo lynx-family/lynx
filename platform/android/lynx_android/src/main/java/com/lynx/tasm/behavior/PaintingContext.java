@@ -7,6 +7,7 @@ import android.content.Context;
 import android.graphics.PointF;
 import android.graphics.Rect;
 import android.os.Build;
+import android.text.Layout;
 import android.util.DisplayMetrics;
 import android.view.Display;
 import android.view.MotionEvent;
@@ -26,9 +27,12 @@ import com.lynx.tasm.base.TraceEvent;
 import com.lynx.tasm.base.trace.TraceEventDef;
 import com.lynx.tasm.behavior.shadow.ShadowNodeType;
 import com.lynx.tasm.behavior.shadow.TextLayout;
+import com.lynx.tasm.behavior.shadow.text.TextUpdateBundle;
 import com.lynx.tasm.behavior.ui.LynxBaseUI;
 import com.lynx.tasm.behavior.ui.PropBundle;
 import com.lynx.tasm.behavior.ui.list.container.UIListContainer;
+import com.lynx.tasm.behavior.ui.text.FlattenUIText;
+import com.lynx.tasm.behavior.ui.text.UIText;
 import com.lynx.tasm.behavior.ui.view.UIComponent;
 import com.lynx.tasm.behavior.utils.LynxUIMethodsExecutor;
 import com.lynx.tasm.event.EventsListener;
@@ -92,6 +96,7 @@ public final class PaintingContext implements IPaintingContext {
   private static final String TAG = "lynx_PaintingContext";
   private static final int STICKY_INFO_COUNT = 10;
   private static final long UI_THREAD_QUERY_TIMEOUT_MS = 1000;
+  private static final String RECORDER_TEXT_EXTRA_DATA_TYPE = "text";
 
   private final LynxUIOwner mUIOwner;
   private TextLayout mTextLayout;
@@ -130,13 +135,13 @@ public final class PaintingContext implements IPaintingContext {
     return LynxFrameRecorder.inst().isRecordingEnabled(getInstanceId());
   }
 
-  private void recordCreateNode(int sign, String tagName, PropBundle bundle,
-      ReadableMapBuffer initialStyles, boolean isFlatten, int nodeIndex) {
+  private void recordCreateNode(
+      int sign, String tagName, PropBundle bundle, ReadableMapBuffer initialStyles) {
     if (!isRecordingEnabled()) {
       return;
     }
     LynxFrameRecorder.inst().recordCreateNode(
-        getInstanceId(), sign, tagName, bundle, initialStyles, isFlatten, nodeIndex);
+        getInstanceId(), sign, tagName, bundle, initialStyles);
   }
 
   private void recordNodeRelation(int eventType, int parentSign, int childSign, Integer index) {
@@ -160,7 +165,7 @@ public final class PaintingContext implements IPaintingContext {
       float paddingLeft, float paddingTop, float paddingRight, float paddingBottom,
       float marginLeft, float marginTop, float marginRight, float marginBottom,
       float borderLeftWidth, float borderTopWidth, float borderRightWidth, float borderBottomWidth,
-      Rect bounds, float[] sticky, float maxHeight, int nodeIndex) {
+      Rect bounds, float[] sticky, float maxHeight) {
     if (!isRecordingEnabled()) {
       return;
     }
@@ -169,27 +174,113 @@ public final class PaintingContext implements IPaintingContext {
         new float[] {marginLeft, marginTop, marginRight, marginBottom},
         new float[] {borderLeftWidth, borderTopWidth, borderRightWidth, borderBottomWidth},
         bounds != null ? new float[] {bounds.left, bounds.top, bounds.right, bounds.bottom} : null,
-        sticky, maxHeight, nodeIndex);
+        sticky, maxHeight);
   }
 
-  private void recordInvoke(
-      int sign, String method, ReadableMap params, long context, int callback) {
+  private void recordInvoke(int sign, String method, ReadableMap params) {
     if (!isRecordingEnabled()) {
       return;
     }
-    LynxFrameRecorder.inst().recordInvoke(getInstanceId(), sign, method, params, context, callback);
+    LynxFrameRecorder.inst().recordInvoke(getInstanceId(), sign, method, params);
+  }
+
+  private void recordTextExtraData(int sign, Object data) {
+    if (!isRecordingEnabled()) {
+      return;
+    }
+    String text = snapshotTextExtraData(data);
+    if (text == null) {
+      return;
+    }
+    LynxFrameRecorder.inst().recordUpdateExtraData(
+        getInstanceId(), sign, RECORDER_TEXT_EXTRA_DATA_TYPE, text);
   }
 
   @CalledByNative
   private void recordInitialTreeForReplay(int[] signs, String[] tagNames, Object[] bundles,
-      Object[] initialStyles, boolean[] isFlattens, int[] nodeIndexes, int[] parentSigns,
-      int[] childIndexes, float[] layouts, boolean[] hasBounds, boolean[] hasSticky) {
+      Object[] initialStyles, int[] parentSigns, int[] childIndexes, float[] layouts,
+      boolean[] hasBounds, boolean[] hasSticky) {
     if (!isRecordingEnabled()) {
       return;
     }
+    String[] textContents = snapshotInitialTreeTextContents(signs);
     LynxFrameRecorder.inst().recordInitialTree(getInstanceId(), signs, tagNames, bundles,
-        initialStyles, isFlattens, nodeIndexes, parentSigns, childIndexes, layouts, hasBounds,
-        hasSticky);
+        initialStyles, parentSigns, childIndexes, layouts, hasBounds, hasSticky, textContents);
+  }
+
+  private String[] snapshotInitialTreeTextContents(int[] signs) {
+    if (signs == null || signs.length == 0) {
+      return null;
+    }
+    String[] textContents = null;
+    for (int i = 0; i < signs.length; ++i) {
+      String text = snapshotTextFromUI(signs[i]);
+      if (text == null) {
+        continue;
+      }
+      if (textContents == null) {
+        textContents = new String[signs.length];
+      }
+      textContents[i] = text;
+    }
+    return textContents;
+  }
+
+  private String snapshotTextFromUI(int sign) {
+    String text = snapshotTextPage(mTextraPages.get(sign));
+    if (text != null) {
+      return text;
+    }
+    LynxBaseUI ui = mUIOwner != null ? mUIOwner.getNode(sign) : null;
+    if (ui instanceof UIText) {
+      return charSequenceToString(((UIText) ui).getOriginText());
+    }
+    if (ui instanceof FlattenUIText) {
+      return charSequenceToString(((FlattenUIText) ui).getOriginText());
+    }
+    return null;
+  }
+
+  private String snapshotTextExtraData(Object data) {
+    if (data instanceof TextUpdateBundle) {
+      return snapshotTextUpdateBundle((TextUpdateBundle) data);
+    }
+    if (data instanceof Page) {
+      return snapshotTextPage((Page) data);
+    }
+    return null;
+  }
+
+  private String snapshotTextUpdateBundle(TextUpdateBundle bundle) {
+    if (bundle == null) {
+      return null;
+    }
+    CharSequence text = bundle.getOriginText();
+    if (text == null) {
+      Layout layout = bundle.getTextLayout();
+      text = layout != null ? layout.getText() : null;
+    }
+    return charSequenceToString(text);
+  }
+
+  private String snapshotTextPage(Page page) {
+    if (page == null) {
+      return null;
+    }
+    try {
+      int length = page.getTextLength();
+      if (length < 0) {
+        return null;
+      }
+      return page.getSelectedText(0, length);
+    } catch (RuntimeException e) {
+      LLog.e(TAG, "record text page failed: " + e);
+      return null;
+    }
+  }
+
+  private String charSequenceToString(CharSequence text) {
+    return text != null ? text.toString() : null;
   }
 
   // this func will be execed on main thread.
@@ -313,7 +404,7 @@ public final class PaintingContext implements IPaintingContext {
       ReadableMap initialProps = bundle != null ? bundle.getProps() : null;
       ReadableArray eventListeners = bundle != null ? bundle.getEventHandlers() : null;
       ReadableArray gestureDetectors = bundle != null ? bundle.getGestures() : null;
-      recordCreateNode(sign, finalTagName, bundle, initialStyles, isFlatten, nodeIndex);
+      recordCreateNode(sign, finalTagName, bundle, initialStyles);
       final Future<Runnable> future = createNodeAsync(sign, finalTagName, initialProps,
           initialStyles, eventListeners, isFlatten, nodeIndex, gestureDetectors);
       return new Runnable() {
@@ -369,7 +460,7 @@ public final class PaintingContext implements IPaintingContext {
   @CalledByNative
   public void createPaintingNodeSync(int sign, String tagName, PropBundle bundle,
       ReadableMapBuffer initialStyles, boolean isFlatten, int nodeIndex) {
-    recordCreateNode(sign, tagName, bundle, initialStyles, isFlatten, nodeIndex);
+    recordCreateNode(sign, tagName, bundle, initialStyles);
     ReadableMap initialProps = bundle != null ? bundle.getProps() : null;
     ReadableArray eventListeners = bundle != null ? bundle.getEventHandlers() : null;
     ReadableArray gestureDetectors = bundle != null ? bundle.getGestures() : null;
@@ -398,7 +489,7 @@ public final class PaintingContext implements IPaintingContext {
   @CalledByNative
   public Object createPaintingNodeAsync(int sign, String tagName, PropBundle bundle,
       ReadableMapBuffer initialStyles, boolean isFlatten, int nodeIndex) {
-    recordCreateNode(sign, tagName, bundle, initialStyles, isFlatten, nodeIndex);
+    recordCreateNode(sign, tagName, bundle, initialStyles);
     ReadableMap initialProps = bundle != null ? bundle.getProps() : null;
     ReadableArray eventListeners = bundle != null ? bundle.getEventHandlers() : null;
     ReadableArray gestureDetectors = bundle != null ? bundle.getGestures() : null;
@@ -650,6 +741,7 @@ public final class PaintingContext implements IPaintingContext {
 
   @CalledByNative
   public void updateExtraData(int signature, Object data) {
+    recordTextExtraData(signature, data);
     mUIOwner.updateViewExtraData(signature, data);
   }
 
@@ -665,6 +757,7 @@ public final class PaintingContext implements IPaintingContext {
       return;
     }
 
+    recordTextExtraData(sign, page);
     Page old = mTextraPages.put(sign, page);
     if (old != null) {
       old.destroy();
@@ -836,7 +929,7 @@ public final class PaintingContext implements IPaintingContext {
   @CalledByNative
   public void invoke(
       int sign, String method, ReadableMap params, final long context, final int callback) {
-    recordInvoke(sign, method, params, context, callback);
+    recordInvoke(sign, method, params);
     UIThreadUtils.runOnUiThreadImmediately(new Runnable() {
       private void cb(Object... args) {
         if (mDestroyed || mUIOwner.getContext() == null) {
@@ -867,7 +960,7 @@ public final class PaintingContext implements IPaintingContext {
       int nodeIndex) {
     recordUpdateLayout(sign, x, y, width, height, paddingLeft, paddingTop, paddingRight,
         paddingBottom, marginLeft, marginTop, marginRight, marginBottom, borderLeftWidth,
-        borderTopWidth, borderRightWidth, borderBottomWidth, bounds, sticky, maxHeight, nodeIndex);
+        borderTopWidth, borderRightWidth, borderBottomWidth, bounds, sticky, maxHeight);
     mUIOwner.updateLayout(sign, x, y, width, height, paddingLeft, paddingTop, paddingRight,
         paddingBottom, marginLeft, marginTop, marginRight, marginBottom, borderLeftWidth,
         borderTopWidth, borderRightWidth, borderBottomWidth, bounds, sticky, maxHeight, nodeIndex);

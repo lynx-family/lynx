@@ -86,8 +86,6 @@ void CollectElementContainerForReplay(
     node.id = element->impl_id();
     node.tag = element->GetPlatformNodeTag().str();
     node.painting_data = element->GetPropBundleForRecording();
-    node.flatten = element->TendToFlatten();
-    node.node_index = element->NodeIndex();
     const auto layout = container->CalculateCurrentPlatformLayout();
     if (ui_parent != nullptr) {
       node.has_parent = true;

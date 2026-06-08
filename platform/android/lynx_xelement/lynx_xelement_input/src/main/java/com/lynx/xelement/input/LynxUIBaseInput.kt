@@ -44,6 +44,7 @@ import com.lynx.tasm.behavior.ui.LynxBaseUI
 import com.lynx.tasm.behavior.ui.LynxUI
 import com.lynx.tasm.event.LynxDetailEvent
 import com.lynx.tasm.fontface.FontFaceManager
+import com.lynx.tasm.recording.LynxFrameRecorder
 import com.lynx.tasm.utils.ColorUtils
 import com.lynx.tasm.utils.ContextUtils
 import com.lynx.tasm.utils.PixelUtils
@@ -191,19 +192,14 @@ open class LynxUIBaseInput(context: LynxContext, params: Any?) : LynxUI<LynxEdit
                     afterTextDidChanged(s)
                     if (mView != null) {
                       s?.let {
+                        val selectionStart = if (mView.isFocused) mView.selectionStart else -1
+                        val selectionEnd = if (mView.isFocused) mView.selectionEnd else -1
+                        recordInputValue(it.toString(), selectionStart, selectionEnd)
                         lynxContext.eventEmitter.sendCustomEvent(LynxDetailEvent(
                           sign,
                           "input"
                         ).apply {
                           addDetail("value", it.toString())
-                          var selectionStart = -1
-                          if (mView.isFocused) {
-                            selectionStart = mView.selectionStart
-                          }
-                          var selectionEnd = -1
-                          if (mView.isFocused) {
-                            selectionEnd = mView.selectionEnd
-                          }
                           addDetail("selectionStart", selectionStart)
                           addDetail("selectionEnd", selectionEnd)
                           addDetail("isComposing", mView?.inputConnection()?.hasComposingText(it))
@@ -244,6 +240,20 @@ open class LynxUIBaseInput(context: LynxContext, params: Any?) : LynxUI<LynxEdit
         }
         it.keyboardEvent.start()
       }
+    }
+
+    private fun recordInputValue(value: String, selectionStart: Int, selectionEnd: Int) {
+        val instanceId = mContext.instanceId
+        if (!LynxFrameRecorder.inst().isRecordingEnabled(instanceId)) {
+            return
+        }
+        LynxFrameRecorder.inst().recordInputValue(
+            instanceId,
+            sign,
+            value,
+            selectionStart,
+            selectionEnd
+        )
     }
 
     @LynxProp(name = "placeholder")
