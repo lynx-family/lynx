@@ -741,8 +741,6 @@ void PaintingContextAndroid::RecordInitialLynxUITreeForReplay(
     std::vector<jint> signs(size);
     std::vector<jint> parent_signs(size);
     std::vector<jint> child_indexes(size);
-    std::vector<jint> node_indexes(size);
-    std::vector<jboolean> flattens(size);
     std::vector<jboolean> has_bounds(size);
     std::vector<jboolean> has_sticky(size);
     std::vector<jfloat> layouts(layout_size);
@@ -772,8 +770,6 @@ void PaintingContextAndroid::RecordInitialLynxUITreeForReplay(
       signs[index] = node.id;
       parent_signs[index] = node.has_parent ? node.parent : -1;
       child_indexes[index] = node.has_parent ? node.index : -1;
-      node_indexes[index] = static_cast<jint>(node.node_index);
-      flattens[index] = static_cast<jboolean>(node.flatten);
       has_bounds[index] = static_cast<jboolean>(node.has_bounds);
       has_sticky[index] = static_cast<jboolean>(node.has_sticky);
 
@@ -810,11 +806,7 @@ void PaintingContextAndroid::RecordInitialLynxUITreeForReplay(
         env, env->NewIntArray(java_size));
     base::android::ScopedLocalJavaRef<jintArray> child_indexes_ref(
         env, env->NewIntArray(java_size));
-    base::android::ScopedLocalJavaRef<jintArray> node_indexes_ref(
-        env, env->NewIntArray(java_size));
 
-    base::android::ScopedLocalJavaRef<jbooleanArray> flattens_ref(
-        env, env->NewBooleanArray(java_size));
     base::android::ScopedLocalJavaRef<jbooleanArray> has_bounds_ref(
         env, env->NewBooleanArray(java_size));
     base::android::ScopedLocalJavaRef<jbooleanArray> has_sticky_ref(
@@ -828,10 +820,6 @@ void PaintingContextAndroid::RecordInitialLynxUITreeForReplay(
                              parent_signs.data());
       env->SetIntArrayRegion(child_indexes_ref.Get(), 0, java_size,
                              child_indexes.data());
-      env->SetIntArrayRegion(node_indexes_ref.Get(), 0, java_size,
-                             node_indexes.data());
-      env->SetBooleanArrayRegion(flattens_ref.Get(), 0, java_size,
-                                 flattens.data());
       env->SetBooleanArrayRegion(has_bounds_ref.Get(), 0, java_size,
                                  has_bounds.data());
       env->SetBooleanArrayRegion(has_sticky_ref.Get(), 0, java_size,
@@ -842,9 +830,8 @@ void PaintingContextAndroid::RecordInitialLynxUITreeForReplay(
 
     Java_PaintingContext_recordInitialTreeForReplay(
         env, local_ref.Get(), signs_ref.Get(), tag_names.Get(), bundles.Get(),
-        styles.Get(), flattens_ref.Get(), node_indexes_ref.Get(),
-        parent_signs_ref.Get(), child_indexes_ref.Get(), layouts_ref.Get(),
-        has_bounds_ref.Get(), has_sticky_ref.Get());
+        styles.Get(), parent_signs_ref.Get(), child_indexes_ref.Get(),
+        layouts_ref.Get(), has_bounds_ref.Get(), has_sticky_ref.Get());
   });
 }
 

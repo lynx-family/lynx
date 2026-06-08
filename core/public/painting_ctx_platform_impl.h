@@ -86,8 +86,6 @@ struct InitialLynxUITreeNodeForReplay {
   int id = 0;
   std::string tag;
   fml::RefPtr<PropBundle> painting_data;
-  bool flatten = false;
-  uint32_t node_index = 0;
 
   bool has_parent = false;
   int parent = 0;
