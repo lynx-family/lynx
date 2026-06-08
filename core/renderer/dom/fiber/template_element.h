@@ -49,6 +49,7 @@ class TemplateElement : public FiberElement {
 
   void PrepareAsyncCreateElementTree();
   fml::RefPtr<FiberElement> GetRoot();
+  fml::RefPtr<FiberElement> GetResolvedRoot() const { return result_; }
   lepus::Value Serialize() const;
   void SetAttributeSlot(uint32_t slot_index, const lepus::Value& value);
   void InsertElementSlotChild(uint32_t slot_index,
