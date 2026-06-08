@@ -87,12 +87,23 @@
 #include "core/shell/runtime/common/module_delegate_impl.h"
 #include "core/value_wrapper/darwin/value_impl_darwin.h"
 
+#if defined(LynxElement)
+#pragma push_macro("LynxElement")
+#undef LynxElement
+#define LYNX_RESTORE_LYNX_ELEMENT_EXTENSION 1
+#endif
+
 @interface LynxElement ()
 
 - (instancetype)initWithTemplateRender:(LynxTemplateRender*)templateRender
                                   sign:(int32_t)sign NS_DESIGNATED_INITIALIZER;
 
 @end
+
+#if defined(LYNX_RESTORE_LYNX_ELEMENT_EXTENSION)
+#pragma pop_macro("LynxElement")
+#undef LYNX_RESTORE_LYNX_ELEMENT_EXTENSION
+#endif
 
 @interface LynxTemplateRender (MemoryUsage)
 

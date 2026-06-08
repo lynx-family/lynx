@@ -18,6 +18,14 @@
 #include "core/public/lynx_runtime_proxy.h"
 #include "core/public/pub_value.h"
 
+// The Objective-C library marker macro shares this API name. Keep it out of
+// C++ declarations in Objective-C++ translation units.
+#if defined(__OBJC__) && defined(__cplusplus) && defined(LynxNativeModule)
+#pragma push_macro("LynxNativeModule")
+#undef LynxNativeModule
+#define LYNX_RESTORE_LYNX_NATIVE_MODULE_HEADER 1
+#endif
+
 // TODO(liyanbo.monster): after remove native promise, delete this.
 #if OS_IOS || OS_TVOS || OS_OSX || OS_ANDROID
 #include "core/runtime/js/bindings/modules/lynx_module_timing.h"
@@ -117,5 +125,10 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxNativeModule {
 
 }  // namespace runtime
 }  // namespace lynx
+
+#if defined(LYNX_RESTORE_LYNX_NATIVE_MODULE_HEADER)
+#pragma pop_macro("LynxNativeModule")
+#undef LYNX_RESTORE_LYNX_NATIVE_MODULE_HEADER
+#endif
 
 #endif  // CORE_PUBLIC_JSB_LYNX_NATIVE_MODULE_H_
