@@ -32,7 +32,7 @@ static BaseTraceBeginSectionFunc trace_begin_section_func = nullptr;
 static BaseTraceEndSectionFunc trace_end_section_func = nullptr;
 
 bool GetDefaultTraceBackend() {
-  void* lib = dlopen("liblynxtrace.so", RTLD_LOCAL | RTLD_NOW);
+  void* lib = dlopen("liblynxtrace.so", RTLD_LOCAL | RTLD_LAZY);
   if (!lib) {
     LOGE("GetDefaultTraceBackend can't find liblynxtrace.so");
     return false;
