@@ -972,6 +972,10 @@ class ElementManager : public ElementContextDelegate,
       const lepus::Value &component_at_index,
       const lepus::Value &enqueue_component,
       const lepus::Value &component_at_indexes);
+  // List layout consumes materialized roots, while Element Template callbacks
+  // track list item state by the TemplateElement shell uid.
+  int32_t ResolveTemplateElementRootIdForList(int32_t id);
+  int32_t ResolveTemplateElementShellIdForList(int32_t id);
 
   /**
    * create None Element, it's just meaningless Node
@@ -1461,6 +1465,7 @@ class ElementManager : public ElementContextDelegate,
 
   base::InlineLinearFlatSet<BaseElementContainer *, 4> dirty_stacking_contexts_;
   base::Vector<CachedTemplateElementTree> cached_template_element_trees_;
+  std::unordered_map<int32_t, int32_t> list_template_root_id_to_shell_id_;
 
   // TODO(yuyang), check this
   // This set holds the unique_id of the already flushed keyframes to ensure

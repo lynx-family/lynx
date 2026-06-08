@@ -185,6 +185,66 @@ TemplateCallbackValues CreateTemplateCallbackValues(
       lepus_runtime->GetGlobalData("componentAtIndexes")};
 }
 
+TemplateCallbackValues CreateTemplateCallbackValuesReturningSign(
+    TemplateAssembler* template_assembler, int32_t sign) {
+  auto lepus_runtime = runtime::MTSRuntime::CreateContext(
+      runtime::ContextType::LepusNGContextType);
+  lepus_runtime->Initialize();
+  lepus_runtime->SetGlobalData(
+      BASE_STATIC_STRING(tasm::kTemplateAssembler),
+      lepus::Value(
+          static_cast<runtime::MTSRuntime::Delegate*>(template_assembler)));
+  template_assembler->template_entries_[DEFAULT_ENTRY_NAME]->SetVm(
+      lepus_runtime);
+
+  std::string js_source =
+      "let componentAtIndex = () => " + std::to_string(sign) + R"(;
+       let enqueueComponent = () => {};
+       let componentAtIndexes = () => {};
+      )";
+  lepus::BytecodeGenerator::GenerateBytecode(
+      lepus_runtime->GetMTSContext(), js_source, lepus_runtime->GetSdkVersion(),
+      "");
+  lepus_runtime->Execute(nullptr);
+
+  return TemplateCallbackValues{
+      lepus_runtime, lepus_runtime->GetGlobalData("componentAtIndex"),
+      lepus_runtime->GetGlobalData("enqueueComponent"),
+      lepus_runtime->GetGlobalData("componentAtIndexes")};
+}
+
+TemplateCallbackValues CreateTemplateCallbackValuesRecordingEnqueue(
+    TemplateAssembler* template_assembler, int32_t sign) {
+  auto lepus_runtime = runtime::MTSRuntime::CreateContext(
+      runtime::ContextType::LepusNGContextType);
+  lepus_runtime->Initialize();
+  lepus_runtime->SetGlobalData(
+      BASE_STATIC_STRING(tasm::kTemplateAssembler),
+      lepus::Value(
+          static_cast<runtime::MTSRuntime::Delegate*>(template_assembler)));
+  template_assembler->template_entries_[DEFAULT_ENTRY_NAME]->SetVm(
+      lepus_runtime);
+
+  std::string js_source =
+      "let lastEnqueueSign = -1;"
+      "let componentAtIndex = () => " +
+      std::to_string(sign) + R"(;
+       let enqueueComponent = (_list, _listID, sign) => {
+         lastEnqueueSign = sign;
+       };
+       let componentAtIndexes = () => {};
+      )";
+  lepus::BytecodeGenerator::GenerateBytecode(
+      lepus_runtime->GetMTSContext(), js_source, lepus_runtime->GetSdkVersion(),
+      "");
+  lepus_runtime->Execute(nullptr);
+
+  return TemplateCallbackValues{
+      lepus_runtime, lepus_runtime->GetGlobalData("componentAtIndex"),
+      lepus_runtime->GetGlobalData("enqueueComponent"),
+      lepus_runtime->GetGlobalData("componentAtIndexes")};
+}
+
 const lepus::Value* DatasetValue(const FiberElement* element,
                                  const base::String& key) {
   auto it = element->data_model_->dataset().find(key);
@@ -11749,6 +11809,120 @@ TEST_P(FiberElementTest, ApplyTemplateAttributesListCallbackKeys) {
   EXPECT_EQ(target->ComponentAtIndex(0, 0, false), list::kInvalidIndex);
   target->ComponentAtIndexes(lepus::CArray::Create(), lepus::CArray::Create());
   target->EnqueueComponent(0);
+}
+
+TEST_P(FiberElementTest, ComponentAtIndexReturnsResolvedTemplateElementRootId) {
+  auto template_item =
+      fml::AdoptRef<TemplateElement>(new TemplateElement(manager));
+  template_item->SetTypedTag(base::String("view"));
+  auto template_root = template_item->GetRoot();
+  ASSERT_NE(template_root, nullptr);
+
+  auto callbacks = CreateTemplateCallbackValuesReturningSign(
+      tasm.get(), template_item->impl_id());
+  auto target = manager->CreateFiberList(
+      tasm.get(), base::String("list"), callbacks.component_at_index,
+      callbacks.enqueue_component, callbacks.component_at_indexes);
+  auto page = manager->CreateFiberPage("page", 11);
+  manager->SetFiberPageElement(page);
+  page->InsertNode(target);
+
+  EXPECT_EQ(target->ComponentAtIndex(0, 1, false), template_root->impl_id());
+}
+
+TEST_P(FiberElementTest, EnqueueComponentMapsResolvedTemplateRootIdToShellId) {
+  auto template_item =
+      fml::AdoptRef<TemplateElement>(new TemplateElement(manager));
+  template_item->SetTypedTag(base::String("view"));
+  auto template_root = template_item->GetRoot();
+  ASSERT_NE(template_root, nullptr);
+
+  auto callbacks = CreateTemplateCallbackValuesRecordingEnqueue(
+      tasm.get(), template_item->impl_id());
+  auto target = manager->CreateFiberList(
+      tasm.get(), base::String("list"), callbacks.component_at_index,
+      callbacks.enqueue_component, callbacks.component_at_indexes);
+  auto page = manager->CreateFiberPage("page", 11);
+  manager->SetFiberPageElement(page);
+  page->InsertNode(target);
+
+  ASSERT_EQ(target->ComponentAtIndex(0, 1, false), template_root->impl_id());
+  target->EnqueueComponent(template_root->impl_id());
+
+  EXPECT_EQ(callbacks.runtime->GetGlobalData("lastEnqueueSign").Number(),
+            template_item->impl_id());
+}
+
+TEST_P(FiberElementTest,
+       ComponentAtIndexKeepsUnresolvedTemplateElementShellId) {
+  auto template_item =
+      fml::AdoptRef<TemplateElement>(new TemplateElement(manager));
+  template_item->SetTypedTag(base::String("view"));
+  ASSERT_EQ(template_item->result_, nullptr);
+
+  auto callbacks = CreateTemplateCallbackValuesReturningSign(
+      tasm.get(), template_item->impl_id());
+  auto target = manager->CreateFiberList(
+      tasm.get(), base::String("list"), callbacks.component_at_index,
+      callbacks.enqueue_component, callbacks.component_at_indexes);
+  auto page = manager->CreateFiberPage("page", 11);
+  manager->SetFiberPageElement(page);
+  page->InsertNode(target);
+
+  EXPECT_EQ(target->ComponentAtIndex(0, 1, false), template_item->impl_id());
+  EXPECT_EQ(template_item->result_, nullptr);
+}
+
+TEST_P(FiberElementTest,
+       OnPatchFinishNormalizesTemplateListItemIdsAfterResolve) {
+  auto page = manager->CreateFiberPage("page", 11);
+  manager->SetFiberPageElement(page);
+
+  auto template_item =
+      fml::AdoptRef<TemplateElement>(new TemplateElement(manager));
+  template_item->SetTypedTag(base::String("view"));
+  auto template_root = template_item->GetRoot();
+  ASSERT_NE(template_root, nullptr);
+
+  auto normal_item = manager->CreateFiberView();
+  auto missing_id = template_root->impl_id() + normal_item->impl_id() + 1000;
+
+  auto options = std::make_shared<PipelineOptions>();
+  options->trigger_layout_ = false;
+  options->list_comp_id_ = template_item->impl_id();
+  options->list_item_ids_ = {template_item->impl_id(), normal_item->impl_id(),
+                             missing_id};
+
+  manager->OnPatchFinish(options, page.get());
+
+  EXPECT_EQ(options->list_comp_id_, template_root->impl_id());
+  ASSERT_EQ(options->list_item_ids_.size(), 3u);
+  EXPECT_EQ(options->list_item_ids_[0], template_root->impl_id());
+  EXPECT_EQ(options->list_item_ids_[1], normal_item->impl_id());
+  EXPECT_EQ(options->list_item_ids_[2], missing_id);
+}
+
+TEST_P(FiberElementTest,
+       OnPatchFinishKeepsUnresolvedTemplateListItemIdsUnchanged) {
+  auto page = manager->CreateFiberPage("page", 11);
+  manager->SetFiberPageElement(page);
+
+  auto template_item =
+      fml::AdoptRef<TemplateElement>(new TemplateElement(manager));
+  template_item->SetTypedTag(base::String("view"));
+  ASSERT_EQ(template_item->result_, nullptr);
+
+  auto options = std::make_shared<PipelineOptions>();
+  options->trigger_layout_ = false;
+  options->list_comp_id_ = template_item->impl_id();
+  options->list_item_ids_ = {template_item->impl_id()};
+
+  manager->OnPatchFinish(options, page.get());
+
+  EXPECT_EQ(options->list_comp_id_, template_item->impl_id());
+  ASSERT_EQ(options->list_item_ids_.size(), 1u);
+  EXPECT_EQ(options->list_item_ids_[0], template_item->impl_id());
+  EXPECT_EQ(template_item->result_, nullptr);
 }
 
 TEST_P(FiberElementTest, ApplyTemplateAttributesIgnoresInvalidListCallbacks) {

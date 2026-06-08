@@ -8,7 +8,6 @@
 #include <vector>
 
 #include "core/list/decoupled_list_types.h"
-#include "core/renderer/dom/fiber/template_element.h"
 #include "core/renderer/dom/fragment/fragment.h"
 #include "core/renderer/dom/fragment/list_fragment_behavior.h"
 #include "core/renderer/dom/list_component_info.h"
@@ -42,20 +41,6 @@ void SetTemplateCallbackAttribute(lepus::Value* target,
     return;
   }
   target->CopyWeakValue(value);
-}
-
-int32_t ResolveTemplateElementRootId(ElementManager* element_manager,
-                                     int32_t element_id) {
-  if (element_manager == nullptr) {
-    return element_id;
-  }
-  auto* element = element_manager->node_manager()->Get(element_id);
-  if (element == nullptr || !element->is_template()) {
-    return element_id;
-  }
-  auto* template_element = static_cast<TemplateElement*>(element);
-  auto root = template_element->GetRoot();
-  return root != nullptr ? root->impl_id() : element_id;
 }
 
 }  // namespace
@@ -258,8 +243,10 @@ int32_t ListElement::ComponentAtIndex(uint32_t index, int64_t operationId,
 
   lepus::Value value = tasm_->CallLepusMethod(component_at_index_, args);
 
-  return ResolveTemplateElementRootId(element_manager_,
-                                      static_cast<int32_t>(value.Number()));
+  return element_manager_ != nullptr
+             ? element_manager_->ResolveTemplateElementRootIdForList(
+                   static_cast<int32_t>(value.Number()))
+             : static_cast<int32_t>(value.Number());
 }
 
 void ListElement::ComponentAtIndexes(
@@ -314,9 +301,13 @@ void ListElement::EnqueueComponent(int32_t sign) {
   if (!enqueue_component_.IsCallable()) {
     return;
   }
+  auto resolved_sign =
+      element_manager_ != nullptr
+          ? element_manager_->ResolveTemplateElementShellIdForList(sign)
+          : sign;
   std::vector<lepus::Value> args = {
       lepus::Value(fml::RefPtr<ListElement>(this)), lepus::Value(impl_id()),
-      lepus::Value(sign)};
+      lepus::Value(resolved_sign)};
   tasm_->CallLepusMethod(enqueue_component_, args);
 }
 
