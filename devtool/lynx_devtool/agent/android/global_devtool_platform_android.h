@@ -7,6 +7,8 @@
 
 #include <jni.h>
 
+#include <cstdint>
+
 #include "base/include/no_destructor.h"
 #include "base/include/platform/android/scoped_java_ref.h"
 #include "devtool/lynx_devtool/agent/global_devtool_platform_facade.h"
@@ -17,6 +19,8 @@ class GlobalDevToolPlatformAndroid : public GlobalDevToolPlatformFacade {
  public:
   void StartMemoryTracing() override;
   void StopMemoryTracing() override;
+  void GetAllMemoryUsage(int64_t timeout_ms,
+                         MemoryUsageCallback callback) override;
 
 #if ENABLE_TRACE_PERFETTO || ENABLE_TRACE_SYSTRACE
   // The following functions are used for tracing agent.

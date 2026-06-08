@@ -25,6 +25,8 @@ class InspectorMemoryAgent : public CDPDomainAgentBase {
                     const Json::Value& message);
   void StopTracing(const std::shared_ptr<MessageSender>& sender,
                    const Json::Value& message);
+  void GetAllMemoryUsage(const std::shared_ptr<MessageSender>& sender,
+                         const Json::Value& message);
 
   std::map<std::string, MemoryAgentMethod> functions_map_;
 };

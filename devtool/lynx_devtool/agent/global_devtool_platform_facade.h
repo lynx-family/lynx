@@ -5,9 +5,12 @@
 #ifndef DEVTOOL_LYNX_DEVTOOL_AGENT_GLOBAL_DEVTOOL_PLATFORM_FACADE_H_
 #define DEVTOOL_LYNX_DEVTOOL_AGENT_GLOBAL_DEVTOOL_PLATFORM_FACADE_H_
 
+#include <cstdint>
 #include <memory>
 #include <string>
+#include <utility>
 
+#include "base/include/closure.h"
 #include "base/trace/native/trace_controller.h"
 
 namespace lynx {
@@ -36,6 +39,15 @@ platform-specific code is executed.
 class GlobalDevToolPlatformFacade
     : public std::enable_shared_from_this<GlobalDevToolPlatformFacade> {
  public:
+  // The platform completes Memory.getAllMemoryUsage exactly once.
+  //
+  // result_json must be a JSON object encoded as a string. error_message takes
+  // precedence when it is non-empty, so callers do not need to parse partial or
+  // platform-specific failure payloads. MoveOnlyClosure keeps the ownership
+  // model explicit for platform bridges that capture request-scoped resources.
+  using MemoryUsageCallback =
+      base::MoveOnlyClosure<void, const std::string&, const std::string&>;
+
   static GlobalDevToolPlatformFacade& GetInstance();
 
   virtual ~GlobalDevToolPlatformFacade() = default;
@@ -43,6 +55,15 @@ class GlobalDevToolPlatformFacade
   // The following functions are used for memory agent.
   virtual void StartMemoryTracing() = 0;
   virtual void StopMemoryTracing() = 0;
+  virtual void GetAllMemoryUsage(int64_t timeout_ms,
+                                 MemoryUsageCallback callback) {
+    (void)timeout_ms;
+    if (callback) {
+      std::move(callback)(
+          "{}",
+          "Memory.getAllMemoryUsage is not available in this Lynx runtime.");
+    }
+  }
 
   // The following functions are used for tracing agent.
   virtual lynx::trace::TraceController* GetTraceController() = 0;

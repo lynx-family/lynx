@@ -8,4 +8,15 @@
 
 namespace lynx {
 namespace testing {}  // namespace testing
+
+namespace devtool {
+GlobalDevToolPlatformFacade& GlobalDevToolPlatformFacade::GetInstance() {
+  // Keep the GetInstance definition in one .cc file. Defining this non-inline
+  // function in the mock header would give every test translation unit its own
+  // copy and can produce duplicate symbols once multiple DevTool tests include
+  // the mock facade.
+  static lynx::testing::GlobalDevToolPlatformFacadeMock instance;
+  return instance;
+}
+}  // namespace devtool
 }  // namespace lynx

@@ -14,16 +14,35 @@
 #import <LynxDevtool/LynxInstanceTrace.h>
 #import <LynxDevtool/LynxMemoryController.h>
 
+#include <utility>
+
 #include "devtool/lynx_devtool/agent/global_devtool_platform_facade.h"
 
 #pragma mark - GlobalDevToolPlatformDarwin
 namespace lynx {
 namespace devtool {
+
+constexpr char kDarwinMemoryUsageBridgeUnavailable[] =
+    "Memory.getAllMemoryUsage is not available in this Darwin Lynx runtime. "
+    "Upgrade the Lynx runtime and DevTool platform integration to a version "
+    "with the global memory bridge.";
+
 class GlobalDevToolPlatformDarwin : public GlobalDevToolPlatformFacade {
  public:
   void StartMemoryTracing() override { [GlobalDevToolPlatformDarwinDelegate startMemoryTracing]; }
 
   void StopMemoryTracing() override { [GlobalDevToolPlatformDarwinDelegate stopMemoryTracing]; }
+
+  void GetAllMemoryUsage(int64_t timeout_ms, MemoryUsageCallback callback) override {
+    (void)timeout_ms;
+    // This CDP method needs the Darwin-side memory bridge that lands in the
+    // platform integration. Reaching this fallback means the current runtime
+    // only contains the global CDP plumbing, so clients should upgrade the Lynx
+    // runtime and DevTool platform integration to a version with that bridge.
+    if (callback) {
+      std::move(callback)("{}", kDarwinMemoryUsageBridgeUnavailable);
+    }
+  }
 
   lynx::trace::TraceController* GetTraceController() override {
     intptr_t res = [GlobalDevToolPlatformDarwinDelegate getTraceController];

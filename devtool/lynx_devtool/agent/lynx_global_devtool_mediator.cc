@@ -4,6 +4,8 @@
 
 #include "devtool/lynx_devtool/agent/lynx_global_devtool_mediator.h"
 
+#include <utility>
+
 #include "base/trace/native/trace_event.h"
 #include "core/runtime/profile/runtime_profiler_manager.h"
 #include "core/services/recorder/recorder_controller.h"
@@ -17,6 +19,52 @@ namespace lynx {
 namespace devtool {
 
 constexpr int kDefaultBufferSize = 20 * 1024;  // 20M
+constexpr char kMemoryUsageTimeoutMs[] = "timeoutMs";
+constexpr int64_t kMaxMemoryUsageTimeoutMs = 5 * 60 * 1000;
+
+bool ParseMemoryUsageTimeoutMs(const Json::Value& message, int64_t& timeout_ms,
+                               std::string& error_message) {
+  timeout_ms = 0;
+  const Json::Value& params = message["params"];
+  // Memory.getAllMemoryUsage accepts optional params. When timeoutMs is absent
+  // we pass 0 down to the platform bridge, letting the platform choose its
+  // default wait policy.
+  if (params.isNull()) {
+    return true;
+  }
+  if (!params.isObject()) {
+    error_message = "Invalid params: expected object";
+    return false;
+  }
+  if (!params.isMember(kMemoryUsageTimeoutMs)) {
+    return true;
+  }
+  const Json::Value& timeout_value = params[kMemoryUsageTimeoutMs];
+  if (!timeout_value.isIntegral()) {
+    error_message = "Invalid timeoutMs: expected integer milliseconds";
+    return false;
+  }
+  if (!timeout_value.isInt64()) {
+    error_message = "Invalid timeoutMs: expected value <= 300000";
+    return false;
+  }
+  timeout_ms = timeout_value.asInt64();
+  if (timeout_ms < 0) {
+    error_message =
+        "Invalid timeoutMs: expected non-negative integer milliseconds";
+    return false;
+  }
+  if (timeout_ms == 0) {
+    timeout_ms = 0;
+    return true;
+  }
+  if (timeout_ms > kMaxMemoryUsageTimeoutMs) {
+    error_message = "Invalid timeoutMs: expected value <= 300000";
+    return false;
+  }
+  return true;
+}
+
 LynxGlobalDevToolMediator::LynxGlobalDevToolMediator()
     : tracing_session_id_(-1) {
   ui_task_runner_ = base::UIThread::GetRunner();
@@ -240,6 +288,63 @@ void LynxGlobalDevToolMediator::MemoryStopTracing(
       sender->SendMessage("CDP", response);
     });
   }
+}
+
+void LynxGlobalDevToolMediator::MemoryGetAllMemoryUsage(
+    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
+    const Json::Value& message) {
+  if (!default_task_runner_) {
+    sender->SendErrorResponse(message["id"].asInt64(),
+                              "Cannot find default task runner");
+    return;
+  }
+  RunOnTaskRunner(default_task_runner_, [this, sender, message]() {
+    int64_t id = message["id"].asInt64();
+    int64_t timeout_ms = 0;
+    std::string error_message;
+    if (!ParseMemoryUsageTimeoutMs(message, timeout_ms, error_message)) {
+      sender->SendErrorResponse(id, error_message);
+      return;
+    }
+
+    auto task_runner = default_task_runner_;
+    GlobalDevToolPlatformFacade::GetInstance().GetAllMemoryUsage(
+        timeout_ms,
+        [sender, id, task_runner](const std::string& result_json,
+                                  const std::string& error_message) {
+          // Platform bridges may finish on their own worker thread. Marshal the
+          // CDP response back through the mediator task runner so response
+          // ordering stays consistent with the other global DevTool commands.
+          auto send_response = [sender, id, result_json, error_message]() {
+            if (!error_message.empty()) {
+              sender->SendErrorResponse(id, error_message);
+              return;
+            }
+
+            Json::Value result(Json::ValueType::objectValue);
+            Json::Reader reader;
+            // The CDP response shape is owned by the mediator. Platforms only
+            // return the "result" object as JSON so native bridges do not need
+            // to construct protocol envelopes or know the request id.
+            if (!reader.parse(result_json, result, false) ||
+                !result.isObject()) {
+              sender->SendErrorResponse(id, "Invalid memory usage result JSON");
+              return;
+            }
+
+            Json::Value response(Json::ValueType::objectValue);
+            response["result"] = result;
+            response["id"] = id;
+            sender->SendMessage("CDP", response);
+          };
+          if (task_runner) {
+            lynx::fml::TaskRunner::RunNowOrPostTask(task_runner,
+                                                    std::move(send_response));
+          } else {
+            send_response();
+          }
+        });
+  });
 }
 
 void LynxGlobalDevToolMediator::SystemInfoGetInfo(
