@@ -7,6 +7,14 @@
 
 #import <Foundation/Foundation.h>
 
+// The Objective-C library marker macro shares this public class name. Keep it
+// out before declaring or extending the class API.
+#if defined(LynxElement)
+#pragma push_macro("LynxElement")
+#undef LynxElement
+#define LYNX_RESTORE_LYNX_ELEMENT_HEADER 1
+#endif
+
 NS_ASSUME_NONNULL_BEGIN
 
 @interface LynxElement : NSObject
@@ -25,5 +33,10 @@ NS_ASSUME_NONNULL_BEGIN
 @end
 
 NS_ASSUME_NONNULL_END
+
+#if defined(LYNX_RESTORE_LYNX_ELEMENT_HEADER)
+#pragma pop_macro("LynxElement")
+#undef LYNX_RESTORE_LYNX_ELEMENT_HEADER
+#endif
 
 #endif  // PLATFORM_DARWIN_IOS_LYNX_PUBLIC_LYNXELEMENT_H_
