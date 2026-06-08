@@ -762,6 +762,7 @@ public class com::lynx::tasm::behavior::ui::background::BackgroundLinearGradient
 public class com::lynx::tasm::behavior::ui::utils::BackgroundManager : com.lynx.tasm.behavior.ui.utils.LynxBackground {
   public com.lynx.tasm.behavior.ui.utils.BackgroundManager.BackgroundManager(LynxUI ui, LynxContext lynxContext);
   public void com.lynx.tasm.behavior.ui.utils.BackgroundManager.setPostTranslate(PointF translate);
+  public void com.lynx.tasm.behavior.ui.utils.BackgroundManager.setMotionPathPostTranslate(PointF translate);
   public void com.lynx.tasm.behavior.ui.utils.BackgroundManager.setTransformOrigin(TransformOrigin transformOrigin);
   public void com.lynx.tasm.behavior.ui.utils.BackgroundManager.appendTransform(@Nullable List< TransformRaw > styleProperty);
   public void com.lynx.tasm.behavior.ui.utils.BackgroundManager.setTransform(@Nullable List< TransformRaw > styleProperty);

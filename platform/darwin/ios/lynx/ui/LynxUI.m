@@ -75,8 +75,10 @@ static const CGFloat OFFSET_ROTATE_AUTO = -1024.f;
 @property(nonatomic) CATransform3D lastTransformWithoutRotate;
 @property(nonatomic) CATransform3D lastTransformWithoutRotateXY;
 @property(nonatomic, readwrite) CATransform3D offsetEffectTransform;
+@property(nonatomic, readwrite) CATransform3D baseTransform;
 @property(nonatomic, readwrite) CGFloat lastOffsetX;
 @property(nonatomic, readwrite) CGFloat lastOffsetY;
+@property(nonatomic, readwrite) BOOL hasOffsetEffect;
 @end
 
 @interface StickyRange : NSObject
@@ -231,6 +233,7 @@ static const CGFloat OFFSET_ROTATE_AUTO = -1024.f;
   _enableReuseAnimationState = YES;
   _enableExposureUIMargin = kLynxPropUndefined;
   _animationInfos = nil;
+  _offsetRotate = OFFSET_ROTATE_AUTO;
   _isAutoOffsetRotate = YES;
 }
 
@@ -693,6 +696,11 @@ static const CGFloat OFFSET_ROTATE_AUTO = -1024.f;
   // 1. Apply transform
   if ([self shouldReDoTransform]) {
     [self applyTransform];
+    // A transform update overwrites the layer transform, so reapply the
+    // existing offset effect to keep offset-rotate/position composed.
+    if (_offsetPathRef != nil) {
+      _offsetHasChanged = YES;
+    }
   }
   // 2. Apply offset
   if (_offsetHasChanged) {
@@ -712,6 +720,7 @@ static const CGFloat OFFSET_ROTATE_AUTO = -1024.f;
         resultPoint = [LynxOffsetCalculator pointAtProgress:_offsetDistance
                                                      onPath:_offsetPathRef
                                                 withTangent:NULL];
+        rotateDeg = _offsetRotate * M_PI / 180.0;
       }
     }
     [self applyOffset:resultPoint andRotate:rotateDeg];
@@ -4489,14 +4498,10 @@ LYNX_PROP_DEFINE("offset-distance", setOffsetDistance, CGFloat) {
 LYNX_PROP_DEFINE("offset-rotate", setOffsetRotate, CGFloat) {
   if (requestReset) {
     value = OFFSET_ROTATE_AUTO;
-    _isAutoOffsetRotate = YES;
-    _offsetHasChanged = YES;
   }
+  _isAutoOffsetRotate = value == OFFSET_ROTATE_AUTO;
   if (_offsetRotate != value) {
     _offsetRotate = value;
-    if (_offsetRotate != OFFSET_ROTATE_AUTO) {
-      _isAutoOffsetRotate = NO;
-    }
     _offsetHasChanged = YES;
   }
 }
@@ -4635,39 +4640,49 @@ LYNX_PROP_DEFINE("hit-slop", setHitSlop, NSObject*) {
   }
 }
 
-- (void)applyOffset:(CGPoint)resultPoint andRotate:(CGFloat)rotateDeg toLayer:(CALayer*)layer {
+- (void)applyOffset:(CGPoint)resultPoint
+          transform:(CATransform3D)transform
+            toLayer:(CALayer*)layer {
   if (layer) {
-    [self prepareLastInfo];
-
-    // Remove the old offset effect.
     CGPoint newPosition = layer.position;
     newPosition.x -= _lastInfo.lastOffsetX;
     newPosition.y -= _lastInfo.lastOffsetY;
-    CATransform3D inverseTransform = CATransform3DInvert(_lastInfo.offsetEffectTransform);
-    layer.transform = CATransform3DConcat(layer.transform, inverseTransform);
-
-    // Record new offset effect to old offset effect.
-    _lastInfo.lastOffsetX = resultPoint.x;
-    _lastInfo.lastOffsetY = resultPoint.y;
-    _lastInfo.offsetEffectTransform = CATransform3DMakeRotation(rotateDeg, 0, 0, 1);
-    newPosition.x += _lastInfo.lastOffsetX;
-    newPosition.y += _lastInfo.lastOffsetY;
+    newPosition.x += resultPoint.x;
+    newPosition.y += resultPoint.y;
 
     // Apply the new offset effect.
     layer.position = newPosition;
-    layer.transform = CATransform3DConcat(layer.transform, _lastInfo.offsetEffectTransform);
+    layer.transform = transform;
   }
 }
 
 - (void)applyOffset:(CGPoint)resultPoint andRotate:(CGFloat)rotateDeg {
+  [self prepareLastInfo];
+  CATransform3D baseTransform = self.view.layer.transform;
+  if (_lastInfo.hasOffsetEffect) {
+    CATransform3D expectedTransform =
+        CATransform3DConcat(_lastInfo.baseTransform, _lastInfo.offsetEffectTransform);
+    if (CATransform3DEqualToTransform(self.view.layer.transform, expectedTransform)) {
+      baseTransform = _lastInfo.baseTransform;
+    }
+  }
+  CATransform3D offsetEffectTransform = CATransform3DMakeRotation(rotateDeg, 0, 0, 1);
+  CATransform3D transform = CATransform3DConcat(baseTransform, offsetEffectTransform);
+
   // Move backgroundManager.borderLayer
-  [self applyOffset:resultPoint andRotate:rotateDeg toLayer:_backgroundManager.borderLayer];
+  [self applyOffset:resultPoint transform:transform toLayer:_backgroundManager.borderLayer];
   // Move backgroundManager.backgroundLayer.
-  [self applyOffset:resultPoint andRotate:rotateDeg toLayer:_backgroundManager.backgroundLayer];
+  [self applyOffset:resultPoint transform:transform toLayer:_backgroundManager.backgroundLayer];
   // Move backgroundManager.maskLayer.
-  [self applyOffset:resultPoint andRotate:rotateDeg toLayer:_backgroundManager.maskLayer];
+  [self applyOffset:resultPoint transform:transform toLayer:_backgroundManager.maskLayer];
   // Move view.layer.
-  [self applyOffset:resultPoint andRotate:rotateDeg toLayer:self.view.layer];
+  [self applyOffset:resultPoint transform:transform toLayer:self.view.layer];
+
+  _lastInfo.lastOffsetX = resultPoint.x;
+  _lastInfo.lastOffsetY = resultPoint.y;
+  _lastInfo.baseTransform = baseTransform;
+  _lastInfo.offsetEffectTransform = offsetEffectTransform;
+  _lastInfo.hasOffsetEffect = YES;
 }
 
 #pragma mark - Detach/Attach Layer Management
@@ -4721,6 +4736,7 @@ LYNX_PROP_DEFINE("hit-slop", setHitSlop, NSObject*) {
     _lastTransformRotation = [[LynxAnimationTransformRotation alloc] init];
     _lastTransformWithoutRotate = CATransform3DIdentity;
     _lastTransformWithoutRotateXY = CATransform3DIdentity;
+    _baseTransform = CATransform3DIdentity;
     _offsetEffectTransform = CATransform3DIdentity;
   }
   return self;

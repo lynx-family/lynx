@@ -25,7 +25,6 @@ import static com.lynx.tasm.behavior.StyleConstants.PLATFORM_PERSPECTIVE_UNIT_NU
 import static com.lynx.tasm.behavior.StyleConstants.PLATFORM_PERSPECTIVE_UNIT_VH;
 import static com.lynx.tasm.behavior.StyleConstants.PLATFORM_PERSPECTIVE_UNIT_VW;
 import static com.lynx.tasm.behavior.StyleConstants.TRANSFORM_ROTATE;
-import static com.lynx.tasm.behavior.StyleConstants.TRANSFORM_TRANSLATE;
 import static com.lynx.tasm.behavior.StyleConstants.VISIBILITY_VISIBLE;
 import static com.lynx.tasm.behavior.ui.accessibility.LynxAccessibilityWrapper.ACCESSIBILITY_ELEMENT_DEFAULT;
 import static com.lynx.tasm.behavior.ui.accessibility.LynxAccessibilityWrapper.ACCESSIBILITY_ELEMENT_TRUE;
@@ -80,7 +79,6 @@ import com.lynx.tasm.behavior.ui.shapes.BasicShape;
 import com.lynx.tasm.behavior.ui.shapes.LynxOffsetCalculator;
 import com.lynx.tasm.behavior.ui.text.AndroidText;
 import com.lynx.tasm.behavior.ui.utils.BackgroundManager;
-import com.lynx.tasm.behavior.ui.utils.PlatformLength;
 import com.lynx.tasm.behavior.ui.utils.TransformRaw;
 import com.lynx.tasm.behavior.ui.utils.ViewHelper;
 import com.lynx.tasm.behavior.ui.view.AndroidView;
@@ -172,9 +170,6 @@ public abstract class LynxUI<T extends View> extends LynxBaseUI implements IProc
   protected float mOffsetRotate = OFFSET_ROTATE_AUTO;
   protected boolean mIsAutoOffsetRotate = true;
   protected boolean mOffsetHasChanged = false;
-  protected float mLastOffsetEffectX;
-  protected float mLastOffsetEffectY;
-  protected float mLastOffsetEffectRotate;
 
   @Override
   public void onDrawingPositionChanged() {
@@ -981,6 +976,9 @@ public abstract class LynxUI<T extends View> extends LynxBaseUI implements IProc
           mTransitionAnimator.endTransitionAnimator(AnimationConstant.PROP_TRANSFORM);
         }
         mBackgroundManager.setTransform(mTransformRaw);
+        if (mOffsetPath != null) {
+          mOffsetHasChanged = true;
+        }
       }
     }
     if (mOffsetHasChanged) {
@@ -1013,24 +1011,18 @@ public abstract class LynxUI<T extends View> extends LynxBaseUI implements IProc
   }
 
   public void applyOffsetAndRotate(float offsetX, float offsetY, float rotate) {
+    // Keep motion path translation separate from CSS transform so scale/pivot updates
+    // do not remap the path position.
+    mBackgroundManager.setMotionPathPostTranslate(new PointF(offsetX, offsetY));
+
     List<TransformRaw> offsetEffect = new ArrayList<>();
-    offsetEffect.add(TransformRaw.createTransformRaw(TRANSFORM_TRANSLATE,
-        new PlatformLength(offsetX - mLastOffsetEffectX, PLATFORM_LENGTH_UNIT_NUMBER),
-        PLATFORM_LENGTH_UNIT_NUMBER,
-        new PlatformLength(offsetY - mLastOffsetEffectY, PLATFORM_LENGTH_UNIT_NUMBER),
-        PLATFORM_LENGTH_UNIT_NUMBER, new PlatformLength(0, PLATFORM_LENGTH_UNIT_NUMBER),
-        PLATFORM_LENGTH_UNIT_NUMBER));
-    offsetEffect.add(TransformRaw.createTransformRaw(TRANSFORM_ROTATE,
-        rotate - mLastOffsetEffectRotate, PLATFORM_LENGTH_UNIT_NUMBER, 0,
-        PLATFORM_LENGTH_UNIT_NUMBER, 0, PLATFORM_LENGTH_UNIT_NUMBER));
-    mLastOffsetEffectX = offsetX;
-    mLastOffsetEffectY = offsetY;
-    mLastOffsetEffectRotate = rotate;
-    if (mBackgroundManager.getTransformProps() == null) {
-      mBackgroundManager.setTransform(offsetEffect);
-    } else {
-      mBackgroundManager.appendTransform(offsetEffect);
+    offsetEffect.add(
+        TransformRaw.createTransformRaw(TRANSFORM_ROTATE, rotate, PLATFORM_LENGTH_UNIT_NUMBER, 0,
+            PLATFORM_LENGTH_UNIT_NUMBER, 0, PLATFORM_LENGTH_UNIT_NUMBER));
+    if (mTransformRaw != null) {
+      offsetEffect.addAll(mTransformRaw);
     }
+    mBackgroundManager.setTransform(offsetEffect);
   }
 
   public int getBackgroundColor() {

@@ -2906,9 +2906,9 @@ std::optional<transforms::Matrix44> UIBase::GetOffsetMatrix() const {
   }
 
   const auto& state = *state_opt;
-  // state.deg is the tangent angle relative to the +X axis. CSS offset-rotate
-  // uses +Y as reference, hence we convert here.
-  float rotate = is_auto_offset_rotate_ ? (90.0f - state.deg) : offset_rotate_;
+  // state.deg is the tangent angle relative to the +X axis, which matches CSS
+  // offset-rotate:auto.
+  float rotate = is_auto_offset_rotate_ ? state.deg : offset_rotate_;
   if (is_auto_offset_rotate_) {
     rotate = std::fmod(rotate, 360.0f);
     if (rotate < 0.0f) {

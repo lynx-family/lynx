@@ -60,17 +60,13 @@ static CGPoint getLineTangent(CGPoint start, CGPoint end) {
   return CGPointMake(end.x - start.x, end.y - start.y);
 }
 
-// Calculate the Angle between the vector and the positive Y-axis.
-static CGFloat angleWithPositiveYAxis(CGPoint vector) {
-  CGPoint yAxis = CGPointMake(0, 1);
-  CGFloat dotProduct = vector.x * yAxis.x + vector.y * yAxis.y;
-  CGFloat magnitudeProduct = hypot(vector.x, vector.y) * hypot(yAxis.x, yAxis.y);
-  CGFloat cosTheta = dotProduct / magnitudeProduct;
-  CGFloat angle = acos(cosTheta);
-  if (vector.x < 0) {
-    angle = 2 * M_PI - angle;
+// Calculate the angle between the vector and the positive X-axis.
+static CGFloat angleWithPositiveXAxis(CGPoint vector) {
+  if (vector.x == 0 && vector.y == 0) {
+    return 0;
   }
-  return angle;
+  CGFloat angle = atan2(vector.y, vector.x);
+  return angle < 0 ? angle + 2 * M_PI : angle;
 }
 
 // Calculate the length of the quadratic Bezier curve.
@@ -367,7 +363,7 @@ static void findTargetPoint(void *info, const CGPathElement *element) {
 
   CGPathApply(path, &info, findTargetPoint);
   if (tangent != nullptr) {
-    *tangent = angleWithPositiveYAxis(info.resultPointTangent);
+    *tangent = angleWithPositiveXAxis(info.resultPointTangent);
   }
   return info.resultPoint;
 }

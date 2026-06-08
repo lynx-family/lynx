@@ -86,7 +86,10 @@ public class LynxOffsetCalculator {
     // Get point coordinates at specified distance on the path
     pathMeasure.getPosTan(distanceInSegment, pos, tan);
 
-    float angle = (float) ((Math.toDegrees(Math.atan2(tan[0], tan[1])) + 360) % 180);
+    float angle = (float) Math.toDegrees(Math.atan2(tan[1], tan[0]));
+    if (angle < 0) {
+      angle += 360;
+    }
     return new float[] {pos[0], pos[1], angle};
   }
 }
