@@ -50,6 +50,7 @@ public class LynxViewBuilder
   LynxBackgroundRuntime lynxBackgroundRuntime;
   Uri uri = null;
   ILynxViewGroup lynxViewGroup;
+  boolean hasInheritedGroupRuntimeOptions = false;
 
   public LynxViewBuilder() {
     LynxEnv.inst().lazyInitIfNeeded();
@@ -114,6 +115,7 @@ public class LynxViewBuilder
 
   public LynxViewBuilder setLynxViewGroup(ILynxViewGroup group) {
     this.lynxViewGroup = group;
+    this.hasInheritedGroupRuntimeOptions = false;
     return this;
   }
 
@@ -412,26 +414,19 @@ public class LynxViewBuilder
 
   @Override
   public BehaviorRegistry getBehaviorRegistry() {
-    if (lynxViewGroup != null) {
-      return lynxViewGroup.getBehaviorRegistry();
-    }
-    return this.behaviorRegistry;
+    return !hasBehaviorRegistrySet && lynxViewGroup != null ? lynxViewGroup.getBehaviorRegistry()
+                                                            : behaviorRegistry;
   }
 
   @Override
   public boolean isEnableAutoExpose() {
-    if (lynxViewGroup != null) {
-      return lynxViewGroup.isEnableAutoExpose();
-    }
-    return this.enableAutoExpose;
+    return !hasEnableAutoExposeSet && lynxViewGroup != null ? lynxViewGroup.isEnableAutoExpose()
+                                                            : enableAutoExpose;
   }
 
   @Override
   public Float getDensity() {
-    if (lynxViewGroup != null) {
-      return lynxViewGroup.getDensity();
-    }
-    return this.densityOverride;
+    return !hasDensitySet && lynxViewGroup != null ? lynxViewGroup.getDensity() : densityOverride;
   }
 
   @Override
@@ -447,18 +442,16 @@ public class LynxViewBuilder
 
   @Override
   public boolean isEnableLayoutSafepoint() {
-    if (lynxViewGroup != null) {
-      return lynxViewGroup.isEnableLayoutSafepoint();
-    }
-    return this.enableLayoutSafepoint;
+    return !hasEnableLayoutSafepointSet && lynxViewGroup != null
+        ? lynxViewGroup.isEnableLayoutSafepoint()
+        : enableLayoutSafepoint;
   }
 
   @Override
   public boolean isEnableUnifiedPipeline() {
-    if (lynxViewGroup != null) {
-      return lynxViewGroup.isEnableUnifiedPipeline();
-    }
-    return this.enableUnifiedPipeline;
+    return !hasEnableUnifiedPipelineSet && lynxViewGroup != null
+        ? lynxViewGroup.isEnableUnifiedPipeline()
+        : enableUnifiedPipeline;
   }
 
   @Override
@@ -474,10 +467,18 @@ public class LynxViewBuilder
 
   @Override
   public LynxBackgroundRuntimeOptions getLynxRuntimeOptions() {
-    if (lynxViewGroup != null) {
-      return lynxViewGroup.getLynxRuntimeOptions();
-    }
+    inheritLynxViewGroupRuntimeOptions();
     return this.lynxRuntimeOptions;
+  }
+
+  private void inheritLynxViewGroupRuntimeOptions() {
+    if (lynxViewGroup == null || hasInheritedGroupRuntimeOptions) {
+      return;
+    }
+
+    LynxBackgroundRuntimeOptions groupOptions = lynxViewGroup.getLynxRuntimeOptions();
+    lynxRuntimeOptions.inheritRuntimeOptionsFromGroup(groupOptions);
+    hasInheritedGroupRuntimeOptions = true;
   }
 
   LynxViewBuilder mergeLynxRuntimeOptions(LynxBackgroundRuntimeOptions other) {
@@ -490,42 +491,33 @@ public class LynxViewBuilder
 
   @Override
   public int getScreenWidth() {
-    if (lynxViewGroup != null) {
-      return lynxViewGroup.getScreenWidth();
-    }
-    return this.screenWidth;
+    return !hasScreenSizeSet && lynxViewGroup != null ? lynxViewGroup.getScreenWidth()
+                                                      : screenWidth;
   }
 
   @Override
   public int getScreenHeight() {
-    if (lynxViewGroup != null) {
-      return lynxViewGroup.getScreenHeight();
-    }
-    return this.screenHeight;
+    return !hasScreenSizeSet && lynxViewGroup != null ? lynxViewGroup.getScreenHeight()
+                                                      : screenHeight;
   }
 
   @Override
   public boolean getForceDarkAllowed() {
-    if (lynxViewGroup != null) {
-      return lynxViewGroup.getForceDarkAllowed();
-    }
-    return this.forceDarkAllowed;
+    return !hasForceDarkAllowedSet && lynxViewGroup != null ? lynxViewGroup.getForceDarkAllowed()
+                                                            : forceDarkAllowed;
   }
 
   @Override
   public boolean isEnableMultiAsyncThread() {
-    if (lynxViewGroup != null) {
-      return lynxViewGroup.isEnableMultiAsyncThread();
-    }
-    return this.enableMultiAsyncThread;
+    return !hasEnableMultiAsyncThreadSet && lynxViewGroup != null
+        ? lynxViewGroup.isEnableMultiAsyncThread()
+        : enableMultiAsyncThread;
   }
 
   @Override
   public boolean isEnableSyncFlush() {
-    if (lynxViewGroup != null) {
-      return lynxViewGroup.isEnableSyncFlush();
-    }
-    return this.enableSyncFlush;
+    return !hasEnableSyncFlushSet && lynxViewGroup != null ? lynxViewGroup.isEnableSyncFlush()
+                                                           : enableSyncFlush;
   }
 
   @Override
@@ -536,42 +528,31 @@ public class LynxViewBuilder
 
   @Override
   public boolean isEnableVSyncAlignedMessageLoop() {
-    if (lynxViewGroup != null) {
-      return lynxViewGroup.isEnableVSyncAlignedMessageLoop();
-    }
-    return this.enableVSyncAlignedMessageLoop;
+    return !hasEnableVSyncAlignedMessageLoopSet && lynxViewGroup != null
+        ? lynxViewGroup.isEnableVSyncAlignedMessageLoop()
+        : enableVSyncAlignedMessageLoop;
   }
 
   @Override
   public boolean isEnablePendingJsTask() {
-    if (hasPendingJsTaskSet) {
-      return this.enablePendingJsTask;
-    }
-    if (lynxViewGroup != null) {
-      return lynxViewGroup.isEnablePendingJsTask();
-    }
-    return false;
+    return !hasPendingJsTaskSet && lynxViewGroup != null ? lynxViewGroup.isEnablePendingJsTask()
+                                                         : enablePendingJsTask;
   }
 
   @Override
   public boolean isEnableAsyncHydration() {
-    if (lynxViewGroup != null) {
-      return lynxViewGroup.isEnableAsyncHydration();
-    }
-    return this.enableAsyncHydration;
+    return !hasEnableAsyncHydrationSet && lynxViewGroup != null
+        ? lynxViewGroup.isEnableAsyncHydration()
+        : enableAsyncHydration;
   }
 
   @Override
   public boolean isEnableJSRuntime() {
-    if (lynxViewGroup != null) {
-      return lynxViewGroup.isEnableJSRuntime();
-    }
-
-    if (enableAirStrictMode) {
+    if (isEnableAirStrictMode()) {
       return false;
-    } else {
-      return enableJSRuntime;
     }
+    return !hasEnableJSRuntimeSet && lynxViewGroup != null ? lynxViewGroup.isEnableJSRuntime()
+                                                           : enableJSRuntime;
   }
 
   /**
@@ -586,18 +567,14 @@ public class LynxViewBuilder
 
   @Override
   public boolean isEnableAirStrictMode() {
-    if (lynxViewGroup != null) {
-      return lynxViewGroup.isEnableAirStrictMode();
-    }
-    return this.enableAirStrictMode;
+    return !hasEnableAirStrictModeSet && lynxViewGroup != null
+        ? lynxViewGroup.isEnableAirStrictMode()
+        : enableAirStrictMode;
   }
 
   @Override
   public boolean isDebuggable() {
-    if (lynxViewGroup != null) {
-      return lynxViewGroup.isDebuggable();
-    }
-    return this.debuggable;
+    return !hasDebuggableSet && lynxViewGroup != null ? lynxViewGroup.isDebuggable() : debuggable;
   }
 
   @Override
@@ -607,35 +584,21 @@ public class LynxViewBuilder
 
   @Override
   public int getPresetWidthMeasureSpec() {
-    if (this.hasPresetMeasureSpec) {
-      return this.presetWidthMeasureSpec;
-    }
-    if (lynxViewGroup != null) {
-      return lynxViewGroup.getPresetWidthMeasureSpec();
-    }
-    return this.presetWidthMeasureSpec;
+    return !hasPresetMeasureSpec && lynxViewGroup != null
+        ? lynxViewGroup.getPresetWidthMeasureSpec()
+        : presetWidthMeasureSpec;
   }
 
   @Override
   public int getPresetHeightMeasureSpec() {
-    if (this.hasPresetMeasureSpec) {
-      return this.presetHeightMeasureSpec;
-    }
-    if (lynxViewGroup != null) {
-      return lynxViewGroup.getPresetHeightMeasureSpec();
-    }
-    return this.presetHeightMeasureSpec;
+    return !hasPresetMeasureSpec && lynxViewGroup != null
+        ? lynxViewGroup.getPresetHeightMeasureSpec()
+        : presetHeightMeasureSpec;
   }
 
   @Override
   public float getFontScale() {
-    if (hasFontScaleSet) {
-      return this.fontScale;
-    }
-    if (lynxViewGroup != null) {
-      return lynxViewGroup.getFontScale();
-    }
-    return this.fontScale;
+    return !hasFontScaleSet && lynxViewGroup != null ? lynxViewGroup.getFontScale() : fontScale;
   }
 
   @Override
@@ -651,38 +614,34 @@ public class LynxViewBuilder
 
   @Override
   public boolean isEnablePreUpdateData() {
-    if (lynxViewGroup != null) {
-      return lynxViewGroup.isEnablePreUpdateData();
-    }
-    return this.enablePreUpdateData;
+    return !hasEnablePreUpdateDataSet && lynxViewGroup != null
+        ? lynxViewGroup.isEnablePreUpdateData()
+        : enablePreUpdateData;
   }
 
   @Override
   public IUIRendererCreator getUIRendererCreator() {
-    if (lynxViewGroup != null) {
-      return lynxViewGroup.getUIRendererCreator();
-    }
-    return this.uiRendererCreator;
+    return !hasUIRendererCreatorSet && lynxViewGroup != null ? lynxViewGroup.getUIRendererCreator()
+                                                             : uiRendererCreator;
   }
 
   @Override
   public int getEmbeddedMode() {
-    if (lynxViewGroup != null) {
-      return lynxViewGroup.getEmbeddedMode();
-    }
-    return this.embeddedMode;
+    return !hasEmbeddedModeSet && lynxViewGroup != null ? lynxViewGroup.getEmbeddedMode()
+                                                        : embeddedMode;
   }
 
   @Override
   public boolean isEnableMTSModule() {
-    if (lynxViewGroup != null) {
-      return lynxViewGroup.isEnableMTSModule();
-    }
-    return this.enableMTSModule;
+    return !hasEnableMTSModuleSet && lynxViewGroup != null ? lynxViewGroup.isEnableMTSModule()
+                                                           : enableMTSModule;
   }
 
   @Override
   public LynxBooleanOption isEnableGenericResourceFetcher() {
+    if (lynxRuntimeOptions.isEnableGenericResourceFetcher() != LynxBooleanOption.UNSET) {
+      return lynxRuntimeOptions.isEnableGenericResourceFetcher();
+    }
     if (lynxViewGroup != null) {
       return lynxViewGroup.isEnableGenericResourceFetcher();
     }
@@ -732,10 +691,7 @@ public class LynxViewBuilder
 
   @Override
   public String getTapSlop() {
-    if (lynxViewGroup != null) {
-      return lynxViewGroup.getTapSlop();
-    }
-    return this.tapSlop;
+    return !hasTapSlopSet && lynxViewGroup != null ? lynxViewGroup.getTapSlop() : tapSlop;
   }
 
   public LynxView build(@NonNull Context context) {

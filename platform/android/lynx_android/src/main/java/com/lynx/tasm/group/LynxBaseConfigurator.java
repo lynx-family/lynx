@@ -30,16 +30,25 @@ import java.util.List;
 
 public class LynxBaseConfigurator<T extends LynxBaseConfigurator<T>> {
   protected boolean enableMultiAsyncThread = true;
+  protected boolean hasEnableMultiAsyncThreadSet = false;
   protected Float densityOverride;
+  protected boolean hasDensitySet = false;
   protected BehaviorRegistry behaviorRegistry;
+  protected boolean hasBehaviorRegistrySet = false;
   protected LynxBackgroundRuntimeOptions lynxRuntimeOptions;
   protected boolean enableAutoExpose;
+  protected boolean hasEnableAutoExposeSet = false;
   protected boolean enableLayoutSafepoint;
+  protected boolean hasEnableLayoutSafepointSet = false;
   protected boolean enableUnifiedPipeline;
+  protected boolean hasEnableUnifiedPipelineSet = false;
   protected boolean forceDarkAllowed = false;
+  protected boolean hasForceDarkAllowedSet = false;
   protected boolean enableSyncFlush = false;
+  protected boolean hasEnableSyncFlushSet = false;
   @Deprecated protected boolean enableAutoConcurrency = false;
   protected boolean enableVSyncAlignedMessageLoop = false;
+  protected boolean hasEnableVSyncAlignedMessageLoopSet = false;
   protected boolean enablePendingJsTask = false;
   protected boolean hasPendingJsTaskSet = false;
   protected boolean hasPresetMeasureSpec = false;
@@ -50,6 +59,7 @@ public class LynxBaseConfigurator<T extends LynxBaseConfigurator<T>> {
    * enable async hydration of ssr.
    */
   protected boolean enableAsyncHydration = false;
+  protected boolean hasEnableAsyncHydrationSet = false;
 
   /**
    * enableJSRuntime、enableAirStrictMode both determine whether js thread will be enabled.
@@ -57,6 +67,7 @@ public class LynxBaseConfigurator<T extends LynxBaseConfigurator<T>> {
    * usage.
    */
   protected boolean enableJSRuntime = true;
+  protected boolean hasEnableJSRuntimeSet = false;
 
   /**
    * Add switch for Air Mode.
@@ -64,7 +75,9 @@ public class LynxBaseConfigurator<T extends LynxBaseConfigurator<T>> {
    * and further optimized logics may be involved.
    */
   protected boolean enableAirStrictMode = false;
+  protected boolean hasEnableAirStrictModeSet = false;
   protected boolean debuggable = false;
+  protected boolean hasDebuggableSet = false;
   protected int presetWidthMeasureSpec;
   protected int presetHeightMeasureSpec;
   protected float fontScale = 1.0f;
@@ -74,19 +87,25 @@ public class LynxBaseConfigurator<T extends LynxBaseConfigurator<T>> {
   protected boolean hasColorSchemeSet = false;
 
   protected boolean enablePreUpdateData = false;
+  protected boolean hasEnablePreUpdateDataSet = false;
   protected HashMap<String, Object> mContextData;
 
   protected ThreadStrategyForRendering threadStrategy = null;
 
   protected int screenWidth = DisplayMetricsHolder.UNDEFINE_SCREEN_SIZE_VALUE;
   protected int screenHeight = DisplayMetricsHolder.UNDEFINE_SCREEN_SIZE_VALUE;
+  protected boolean hasScreenSizeSet = false;
 
   protected IUIRendererCreator uiRendererCreator;
+  protected boolean hasUIRendererCreatorSet = false;
 
   protected int embeddedMode = EmbeddedMode.UNSET;
+  protected boolean hasEmbeddedModeSet = false;
   protected boolean enableMTSModule = false;
+  protected boolean hasEnableMTSModuleSet = false;
 
   protected String tapSlop = TouchEventDispatcher.mTapSlopDefault;
+  protected boolean hasTapSlopSet = false;
 
   public LynxBaseConfigurator() {
     LynxEnv.inst().lazyInitIfNeeded();
@@ -115,6 +134,7 @@ public class LynxBaseConfigurator<T extends LynxBaseConfigurator<T>> {
    */
   public void setCustomBehaviorRegistry(@NonNull BehaviorRegistry registry) {
     this.behaviorRegistry = registry;
+    this.hasBehaviorRegistrySet = true;
   }
 
   /**
@@ -130,6 +150,7 @@ public class LynxBaseConfigurator<T extends LynxBaseConfigurator<T>> {
   public T setScreenSize(int width, int height) {
     this.screenWidth = width;
     this.screenHeight = height;
+    this.hasScreenSizeSet = true;
     return (T) this;
   }
 
@@ -140,6 +161,7 @@ public class LynxBaseConfigurator<T extends LynxBaseConfigurator<T>> {
   public T setBehaviors(@Nullable List<Behavior> bundle) {
     if (bundle != null) {
       behaviorRegistry.addBehaviors(bundle);
+      hasBehaviorRegistrySet = true;
     }
     return (T) this;
   }
@@ -149,6 +171,7 @@ public class LynxBaseConfigurator<T extends LynxBaseConfigurator<T>> {
    */
   public T addBehaviors(@NonNull List<Behavior> behaviorList) {
     this.behaviorRegistry.addBehaviors(behaviorList);
+    this.hasBehaviorRegistrySet = true;
     return (T) this;
   }
 
@@ -157,6 +180,7 @@ public class LynxBaseConfigurator<T extends LynxBaseConfigurator<T>> {
    */
   public T addBehavior(@NonNull Behavior behavior) {
     this.behaviorRegistry.addBehavior(behavior);
+    this.hasBehaviorRegistrySet = true;
     return (T) this;
   }
 
@@ -167,6 +191,7 @@ public class LynxBaseConfigurator<T extends LynxBaseConfigurator<T>> {
    */
   public T enableAutoExpose(boolean enableAutoExpose) {
     this.enableAutoExpose = enableAutoExpose;
+    this.hasEnableAutoExposeSet = true;
     return (T) this;
   }
 
@@ -226,6 +251,7 @@ public class LynxBaseConfigurator<T extends LynxBaseConfigurator<T>> {
    */
   public T setDensity(float density) {
     this.densityOverride = density;
+    this.hasDensitySet = true;
     return (T) this;
   }
 
@@ -284,6 +310,7 @@ public class LynxBaseConfigurator<T extends LynxBaseConfigurator<T>> {
    */
   public T setEnableLayoutSafepoint(boolean enable) {
     enableLayoutSafepoint = enable;
+    hasEnableLayoutSafepointSet = true;
     return (T) this;
   }
 
@@ -295,6 +322,7 @@ public class LynxBaseConfigurator<T extends LynxBaseConfigurator<T>> {
    */
   public T setEnableUnifiedPipeline(boolean enableUnifiedPipeline) {
     this.enableUnifiedPipeline = enableUnifiedPipeline;
+    this.hasEnableUnifiedPipelineSet = true;
     return (T) this;
   }
 
@@ -340,6 +368,7 @@ public class LynxBaseConfigurator<T extends LynxBaseConfigurator<T>> {
 
   public T setForceDarkAllowed(boolean allowed) {
     this.forceDarkAllowed = allowed;
+    this.hasForceDarkAllowedSet = true;
     return (T) this;
   }
 
@@ -350,6 +379,7 @@ public class LynxBaseConfigurator<T extends LynxBaseConfigurator<T>> {
    */
   public T setEnableMultiAsyncThread(boolean enableMultiAsyncThread) {
     this.enableMultiAsyncThread = enableMultiAsyncThread;
+    this.hasEnableMultiAsyncThreadSet = true;
     return (T) this;
   }
 
@@ -368,6 +398,7 @@ public class LynxBaseConfigurator<T extends LynxBaseConfigurator<T>> {
    */
   public T setEnableSyncFlush(boolean enable) {
     enableSyncFlush = enable;
+    hasEnableSyncFlushSet = true;
     return (T) this;
   }
 
@@ -405,6 +436,7 @@ public class LynxBaseConfigurator<T extends LynxBaseConfigurator<T>> {
    */
   public T setEnableVSyncAlignedMessageLoop(boolean enable) {
     enableVSyncAlignedMessageLoop = enable;
+    hasEnableVSyncAlignedMessageLoopSet = true;
     return (T) this;
   }
 
@@ -413,16 +445,19 @@ public class LynxBaseConfigurator<T extends LynxBaseConfigurator<T>> {
    */
   public T setEnableAsyncHydration(boolean enable) {
     enableAsyncHydration = enable;
+    hasEnableAsyncHydrationSet = true;
     return (T) this;
   }
 
   public T setEnableJSRuntime(boolean enable) {
     enableJSRuntime = enable;
+    hasEnableJSRuntimeSet = true;
     return (T) this;
   }
 
   public T setEnableAirStrictMode(boolean enable) {
     enableAirStrictMode = enable;
+    hasEnableAirStrictModeSet = true;
     return (T) this;
   }
 
@@ -433,6 +468,7 @@ public class LynxBaseConfigurator<T extends LynxBaseConfigurator<T>> {
    */
   public T setDebuggable(boolean enable) {
     debuggable = enable;
+    hasDebuggableSet = true;
     return (T) this;
   }
 
@@ -475,11 +511,13 @@ public class LynxBaseConfigurator<T extends LynxBaseConfigurator<T>> {
    */
   public T setEnablePreUpdateData(boolean enable) {
     enablePreUpdateData = enable;
+    hasEnablePreUpdateDataSet = true;
     return (T) this;
   }
 
   public T setUIRendererCreator(@NonNull IUIRendererCreator uiRendererCreator) {
     this.uiRendererCreator = uiRendererCreator;
+    this.hasUIRendererCreatorSet = true;
     return (T) this;
   }
 
@@ -495,6 +533,7 @@ public class LynxBaseConfigurator<T extends LynxBaseConfigurator<T>> {
    */
   public T setEmbeddedMode(@EmbeddedMode.Mode int embeddedMode) {
     this.embeddedMode = embeddedMode;
+    this.hasEmbeddedModeSet = true;
     if ((embeddedMode & EmbeddedMode.EMBEDDED_MODE_BASE) > 0) {
       behaviorRegistry.setBuiltInBehaviors(BuiltInUIRegistry.getInstance().getBuiltInUIBehaviors());
     }
@@ -508,11 +547,13 @@ public class LynxBaseConfigurator<T extends LynxBaseConfigurator<T>> {
 
   public T setEnableMTSModule(boolean enable) {
     enableMTSModule = enable;
+    hasEnableMTSModuleSet = true;
     return (T) this;
   }
 
   public T setTapSlop(String tapSlop) {
     this.tapSlop = tapSlop;
+    this.hasTapSlopSet = true;
     return (T) this;
   }
 }
