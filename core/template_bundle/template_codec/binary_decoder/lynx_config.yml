@@ -1686,12 +1686,18 @@ enableGridPlacementShorthands:
   description: Controls whether the CSS parser accepts grid-column and grid-row shorthand syntax. When enabled, grid shorthand handlers parse placement shorthands into style values; when disabled, those shorthand declarations are rejected.
   defaultValue: 'false'
   valueType: bool
+  versionOverrides:
+    - minSDKVersion: LYNX_VERSION_4_1
+      value: 'true'
   author: renzhongyue
   since: '3.9'
 enableFlexBasisZeroPercent:
   description: When enabled, flex-basis defaults to 0% instead of 0 when omitted in flex shorthand, matching web browser behavior.
   defaultValue: 'false'
   valueType: bool
+  versionOverrides:
+    - minSDKVersion: LYNX_VERSION_4_1
+      value: 'true'
   author: renzhongyue
   since: '3.8'
   supportPlatform:

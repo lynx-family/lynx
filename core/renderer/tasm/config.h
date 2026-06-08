@@ -98,6 +98,7 @@
 #define LYNX_VERSION_3_8 tasm::V_3_8
 #define LYNX_VERSION_3_9 tasm::V_3_9
 #define LYNX_VERSION_4_0 tasm::V_4_0
+#define LYNX_VERSION_4_1 tasm::V_4_1
 
 #define LYNX_LEPUS_VERSION "2.3.0"
 

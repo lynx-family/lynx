@@ -775,12 +775,18 @@ class LynxConfigDecoder final {
         doc[config::kEnableGridPlacementShorthands].IsBool()) {
       page_config->SetEnableGridPlacementShorthands(
           doc[config::kEnableGridPlacementShorthands].GetBool());
+    } else if (lynx::tasm::Config::IsHigherOrEqual(target_sdk_version,
+                                                   LYNX_VERSION_4_1)) {
+      page_config->SetEnableGridPlacementShorthands(true);
     }
 
     if (doc.HasMember(config::kEnableFlexBasisZeroPercent) &&
         doc[config::kEnableFlexBasisZeroPercent].IsBool()) {
       page_config->SetEnableFlexBasisZeroPercent(
           doc[config::kEnableFlexBasisZeroPercent].GetBool());
+    } else if (lynx::tasm::Config::IsHigherOrEqual(target_sdk_version,
+                                                   LYNX_VERSION_4_1)) {
+      page_config->SetEnableFlexBasisZeroPercent(true);
     }
 
     if (doc.HasMember(config::kIncludeFontPadding) &&
