@@ -12,6 +12,7 @@
 #include <memory>
 #include <string>
 
+#include "platform/harmony/lynx_devtool/src/main/cpp/harmony_debug_router_message_handler.h"
 #include "platform/harmony/lynx_devtool/src/main/cpp/harmony_global_handler.h"
 #include "platform/harmony/lynx_devtool/src/main/cpp/harmony_session_handler.h"
 #include "third_party/debug_router/src/debug_router/common/debug_router.h"
@@ -33,6 +34,8 @@ class DebugRouterWrapper {
   static napi_value Constructor(napi_env env, napi_callback_info info);
   static napi_value AddGlobalHandler(napi_env env, napi_callback_info info);
   static napi_value RemoveGlobalHandler(napi_env env, napi_callback_info info);
+  static napi_value AddMessageHandler(napi_env env, napi_callback_info info);
+  static napi_value RemoveMessageHandler(napi_env env, napi_callback_info info);
   static napi_value SendDataAsync(napi_env env, napi_callback_info info);
   static napi_value AddSessionHandler(napi_env env, napi_callback_info info);
   static napi_value HandleSchema(napi_env env, napi_callback_info info);
@@ -45,6 +48,9 @@ class DebugRouterWrapper {
   static std::map<napi_value, std::shared_ptr<HarmonySessionHandler>,
                   NapiValueCompare>
       session_handlers_;
+  static std::map<std::string,
+                  std::shared_ptr<HarmonyDebugRouterMessageHandler>>
+      message_handlers_;
 };
 
 }  // namespace devtool

@@ -73,6 +73,12 @@ void DevToolMessageDispatcher::RegisterMessageHandler(
   handler_map_[type] = std::move(handler);
 }
 
+void DevToolMessageDispatcher::UnregisterMessageHandler(
+    const std::string& type) {
+  std::unique_lock<std::shared_mutex> lock(handler_mutex_);
+  handler_map_.erase(type);
+}
+
 void DevToolMessageDispatcher::RegisterAgent(
     const std::string& agent_name,
     std::unique_ptr<CDPDomainAgentBase>&& agent) {

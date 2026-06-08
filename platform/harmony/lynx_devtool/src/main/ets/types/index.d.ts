@@ -47,9 +47,15 @@ export interface HarmonyStateListener {
   onError: (error: string) => void;
 }
 
+export interface DebugRouterMessageHandler {
+  handle: (params: string) => string;
+}
+
 export declare class DebugRouterWrapper {
   static addGlobalHandler: (handler: HarmonyGlobalHandler) => void;
   static removeGlobalHandler: (handler: HarmonyGlobalHandler) => void;
+  static addMessageHandler: (name: string, handler: DebugRouterMessageHandler) => void;
+  static removeMessageHandler: (name: string) => void;
   static sendDataAsync: (type: string, session: number, data: string) => void;
   static addSessionHandler: (handler: HarmonySessionHandler) => void;
   static handleSchema: (url: string) => boolean;

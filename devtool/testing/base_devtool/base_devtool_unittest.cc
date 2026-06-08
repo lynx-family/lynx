@@ -32,6 +32,17 @@ class BaseDevToolTest : public ::testing::Test {
   std::shared_ptr<devtool::MockDevTool> mock_devtool_;
 };
 
+class TestDevToolMessageDispatcher : public devtool::DevToolMessageDispatcher {
+ public:
+  std::shared_ptr<devtool::MessageSender> GetSender() const override {
+    return sender_;
+  }
+
+ private:
+  std::shared_ptr<devtool::MessageSender> sender_ =
+      std::make_shared<devtool::MessageSenderMock>();
+};
+
 TEST_F(BaseDevToolTest, BaseDevToolAttachAndDetach) {
   std::string url = "www.mock.js";
   mock_devtool_->Attach(url);
@@ -266,6 +277,36 @@ TEST_F(BaseDevToolTest, GlobalMessageDispatcherGetSender) {
   auto sender2 = global_dispatcher->GetSender();
   ASSERT_NE(sender2, nullptr);
   EXPECT_EQ(sender.get(), sender2.get());
+}
+
+TEST_F(BaseDevToolTest, DevToolMessageDispatcherUnregisterMessageHandler) {
+  TestDevToolMessageDispatcher dispatcher;
+
+  devtool::MockReceiver::GetInstance().ResetAll();
+  auto handler = std::make_unique<devtool::MockMessageHandler>();
+  dispatcher.RegisterMessageHandler("TestHandler", std::move(handler));
+
+  const std::string handler_msg = R"({
+      "id": 1,
+      "params": "I am a test message"
+    })";
+  dispatcher.DispatchMessage(dispatcher.GetSender(), "TestHandler",
+                             handler_msg);
+  EXPECT_EQ(devtool::MockReceiver::GetInstance().received_message_.first,
+            "TestHandler");
+  EXPECT_TRUE(
+      devtool::MockReceiver::GetInstance().received_message_.second.find(
+          "MockMessageHandler") != std::string::npos);
+
+  devtool::MockReceiver::GetInstance().ResetAll();
+  dispatcher.UnregisterMessageHandler("TestHandler");
+  EXPECT_EQ(dispatcher.handler_map_.find("TestHandler"),
+            dispatcher.handler_map_.end());
+
+  dispatcher.DispatchMessage(dispatcher.GetSender(), "TestHandler",
+                             handler_msg);
+  EXPECT_EQ(devtool::MockReceiver::GetInstance().received_message_.first, "");
+  EXPECT_EQ(devtool::MockReceiver::GetInstance().received_message_.second, "");
 }
 
 // TODO(YUCHI): Add testcases for global handler and global slot

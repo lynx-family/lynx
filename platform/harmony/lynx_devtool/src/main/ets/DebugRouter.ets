@@ -3,7 +3,12 @@
 // LICENSE file in the root directory of this source tree.
 
 import util from '@ohos.util';
-import type { HarmonyGlobalHandler, HarmonySessionHandler, HarmonyStateListener } from 'liblynxdevtool.so';
+import type {
+  DebugRouterMessageHandler,
+  HarmonyGlobalHandler,
+  HarmonySessionHandler,
+  HarmonyStateListener
+} from 'liblynxdevtool.so';
 import { DebugRouterWrapper } from 'liblynxdevtool.so';
 import { LynxView, LynxEnv } from '@lynx/lynx';
 
@@ -70,8 +75,17 @@ export class DebugRouter {
     DebugRouterWrapper.addSessionHandler(handler);
   }
 
+  public static addMessageHandler(name: string, handler: DebugRouterMessageHandler): void {
+    DebugRouterWrapper.addMessageHandler(name, handler);
+  }
+
+  public static removeMessageHandler(name: string): void {
+    DebugRouterWrapper.removeMessageHandler(name);
+  }
+
   public static handleSchema(url: string): boolean {
-    return DebugRouterWrapper.handleSchema(url);
+    let result = DebugRouterWrapper.handleSchema(url);
+    return result;
   }
 
   public static getAppInfoByKey(key: string): string {

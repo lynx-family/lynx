@@ -44,6 +44,10 @@ export interface HarmonyStateListener {
   onError: (error: string) => void;
 }
 
+export interface DebugRouterMessageHandler {
+  handle: (params: string) => string;
+}
+
 export class LynxDevToolEnv {
   public static initDevToolEnv(): void;
   public static setSwitch(key: string, value: boolean): void;
@@ -62,6 +66,8 @@ export class DebugRouter {
   public static removeGlobalHandler(handler: HarmonyGlobalHandler): void;
   public static sendDataAsync(type: string, session: number, data: string): void;
   public static addSessionHandler(handler: HarmonySessionHandler): void;
+  public static addMessageHandler(name: string, handler: DebugRouterMessageHandler): void;
+  public static removeMessageHandler(name: string): void;
   public static handleSchema(url: string): boolean;
   public static getAppInfoByKey(key: string): string;
   public static addStateListener(listener: HarmonyStateListener): void;
