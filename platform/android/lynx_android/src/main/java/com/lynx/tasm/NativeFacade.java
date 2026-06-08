@@ -5,6 +5,7 @@ package com.lynx.tasm;
 
 import android.os.Bundle;
 import android.text.TextUtils;
+import android.util.DisplayMetrics;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import com.lynx.BuildConfig;
@@ -551,8 +552,12 @@ public class NativeFacade implements EventEmitter.LynxEventReporter {
         }
       };
       // ui_result is already checked in lynx engine
-      context.getLynxUIOwner().invokeUIMethodForSelectorQuery(
-          ui_result.getUiArray().getInt(0), method, params, callback);
+      int sign = ui_result.getUiArray().getInt(0);
+      int instanceId = context.getInstanceId();
+      if (LynxFrameRecorder.inst().isRecordingEnabled(instanceId)) {
+        LynxFrameRecorder.inst().recordInvoke(instanceId, sign, method, params);
+      }
+      context.getLynxUIOwner().invokeUIMethodForSelectorQuery(sign, method, params, callback);
     }
   }
 
@@ -566,11 +571,17 @@ public class NativeFacade implements EventEmitter.LynxEventReporter {
 
   @CalledByNative
   private void startRecording(ReadableMap params) {
-    int instanceId = getInstanceId();
+    LynxContext context = mLynxContext != null ? mLynxContext.get() : null;
+    if (context == null) {
+      return;
+    }
+    int instanceId = context.getInstanceId();
     if (instanceId == LynxContext.INSTANCE_ID_DEFAULT) {
       return;
     }
-    LynxFrameRecorder.inst().startRecording(instanceId);
+    DisplayMetrics screenMetrics = context.getScreenMetrics();
+    float screenDensity = screenMetrics != null ? screenMetrics.density : 0.f;
+    LynxFrameRecorder.inst().startRecording(instanceId, screenDensity);
   }
 
   @CalledByNative
