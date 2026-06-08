@@ -18,6 +18,7 @@ import com.lynx.tasm.ILynxLogicExecutor;
 import com.lynx.tasm.IUIRendererCreator;
 import com.lynx.tasm.LynxBackgroundRuntimeOptions;
 import com.lynx.tasm.LynxBooleanOption;
+import com.lynx.tasm.LynxColorScheme;
 import com.lynx.tasm.LynxEngine;
 import com.lynx.tasm.LynxGroup;
 import com.lynx.tasm.LynxView;
@@ -88,6 +89,7 @@ class LynxViewGroup implements ILynxViewGroup, ILynxViewRuntimeCacheManager {
   private int presetWidthMeasureSpec;
   private int presetHeightMeasureSpec;
   private float fontScale;
+  private LynxColorScheme colorScheme;
   private boolean enablePreUpdateData;
   private IUIRendererCreator uiRendererCreator;
   private int embeddedMode = EmbeddedMode.UNSET;
@@ -129,9 +131,10 @@ class LynxViewGroup implements ILynxViewGroup, ILynxViewRuntimeCacheManager {
       boolean enableSyncFlush, boolean enablePendingJsTask, boolean enableAsyncHydration,
       boolean enableVSyncAlignedMessageLoop, boolean enableJSRuntime, boolean enableAirStrictMode,
       boolean debuggable, int presetWidthMeasureSpec, int presetHeightMeasureSpec, float fontScale,
-      boolean enablePreUpdateData, IUIRendererCreator uiRendererCreator, int embeddedMode,
-      boolean hasPresetMeasureSpec, ILynxLogicExecutor logicExecutor, boolean enableMTSModule,
-      String tapSlop, boolean enableSharedModule) {
+      LynxColorScheme colorScheme, boolean enablePreUpdateData,
+      IUIRendererCreator uiRendererCreator, int embeddedMode, boolean hasPresetMeasureSpec,
+      ILynxLogicExecutor logicExecutor, boolean enableMTSModule, String tapSlop,
+      boolean enableSharedModule) {
     this.mContext = context;
     this.url = url;
     this.templateBundle = bundle;
@@ -159,6 +162,7 @@ class LynxViewGroup implements ILynxViewGroup, ILynxViewRuntimeCacheManager {
     this.presetWidthMeasureSpec = presetWidthMeasureSpec;
     this.presetHeightMeasureSpec = presetHeightMeasureSpec;
     this.fontScale = fontScale;
+    this.colorScheme = colorScheme;
     this.enablePreUpdateData = enablePreUpdateData;
     this.uiRendererCreator = uiRendererCreator;
     this.embeddedMode = embeddedMode;
@@ -324,6 +328,11 @@ class LynxViewGroup implements ILynxViewGroup, ILynxViewRuntimeCacheManager {
   @Override
   public float getFontScale() {
     return this.fontScale;
+  }
+
+  @Override
+  public LynxColorScheme getColorScheme() {
+    return this.colorScheme;
   }
 
   @Override

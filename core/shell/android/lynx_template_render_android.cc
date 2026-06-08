@@ -1003,6 +1003,17 @@ void UpdateFontScale(JNIEnv* env, jclass jcaller, jlong ptr, jlong lifecycle,
   AtomicLifecycle::TryFree(lifecycle_ptr);
 }
 
+void UpdateColorScheme(JNIEnv* env, jclass jcaller, jlong ptr, jlong lifecycle,
+                       jint scheme) {
+  AtomicLifecycle* lifecycle_ptr =
+      reinterpret_cast<AtomicLifecycle*>(lifecycle);
+  if (!AtomicLifecycle::TryLock(lifecycle_ptr)) {
+    return;
+  }
+  reinterpret_cast<LynxShell*>(ptr)->UpdateColorScheme(scheme);
+  AtomicLifecycle::TryFree(lifecycle_ptr);
+}
+
 void SyncFetchLayoutResult(JNIEnv* env, jclass jcaller, jlong ptr,
                            jlong lifecycle) {
   AtomicLifecycle* lifecycle_ptr =

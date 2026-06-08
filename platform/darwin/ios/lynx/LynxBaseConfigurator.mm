@@ -24,6 +24,7 @@
     [LynxLazyRegister loadLynxInitTask];
     self.enableAutoExpose = YES;
     self.fontScale = 1.0;
+    self.colorScheme = LynxColorSchemeLight;
     self.enableTextNonContiguousLayout = NO;
     self.enableLayoutOnly = YES;
     self.debuggable = false;

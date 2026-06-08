@@ -185,6 +185,8 @@ export class LynxTemplateRenderer {
 
   updateFontScale(scale: number): void;
 
+  updateColorScheme(scheme: number): void;
+
   nativeSetEnableBytecode(enableBytecode: boolean, sourceUrl: string): void;
 
   getPageDataByKey(keys: string[]): Object;

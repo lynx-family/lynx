@@ -392,8 +392,7 @@ bool MediaQueryEvaluator::EvalPointerFeature(
 bool MediaQueryEvaluator::EvalColorSchemeFeature(
     const MediaFeature& feature) const {
   if (feature.IsBoolean()) {
-    return values_.PreferredColorScheme() !=
-           MediaPreferredColorScheme::kNoPreference;
+    return true;
   }
   const auto& v = feature.LeftValue();
   if (!v.IsIdent()) return false;
