@@ -1509,6 +1509,9 @@ public class LynxTemplateRender
   }
 
   private void setUrl(String url) {
+    if (TextUtils.isEmpty(url)) {
+      return;
+    }
     mUrl = url;
     LynxEnv.inst().setLastUrl(mUrl);
     if (mLynxContext != null) {
@@ -2715,7 +2718,7 @@ public class LynxTemplateRender
             } else {
               templateData = TemplateData.fromString(mJsonData == null ? "" : mJsonData);
             }
-            renderTemplate(template, templateData);
+            renderTemplateWithBaseUrl(template, templateData, processUrl(mUrl)[0]);
           } else {
             // if loading with LynxLoadMeta.
             TimingOption timingOption = TimingOption.createTimingOption(TimingConstants.LOAD_BUNDLE,
