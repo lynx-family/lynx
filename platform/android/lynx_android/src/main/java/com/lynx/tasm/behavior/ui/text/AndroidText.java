@@ -653,6 +653,10 @@ public class AndroidText extends AndroidView implements ActionMode.Callback {
       // TextLayoutWarmer may invalidate AndroidText
       return;
     }
+    if (mTextraPage != null || drawable == null) {
+      invalidate();
+      return;
+    }
     if (mHasImage && getText() instanceof Spanned) {
       Spanned text = (Spanned) getText();
       AbsInlineImageSpan[] spans = text.getSpans(0, text.length(), AbsInlineImageSpan.class);
