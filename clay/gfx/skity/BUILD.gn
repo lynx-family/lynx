@@ -25,6 +25,10 @@ source_set("skity") {
 
   public_deps = [ "../../fml:fml" ]
 
+  if (enable_skity) {
+    public_deps += [ "//third_party/skity:skity" ]
+  }
+
   public_configs = [ "../../:config" ]
 
   if (!enable_skity) {

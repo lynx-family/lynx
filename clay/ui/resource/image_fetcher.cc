@@ -25,6 +25,28 @@ namespace clay {
 
 namespace {
 
+class SkityStaticPlatformImage : public PlatformImage {
+ public:
+  explicit SkityStaticPlatformImage(std::shared_ptr<skity::Pixmap> pixmap)
+      : pixmap_(std::move(pixmap)) {}
+
+  int GetWidth() override { return pixmap_ ? pixmap_->Width() : 0; }
+  int GetHeight() override { return pixmap_ ? pixmap_->Height() : 0; }
+  int64_t GetDuration() override { return 0; }
+  std::shared_ptr<skity::Pixmap> ToBitmap() override { return pixmap_; }
+  void DrawFrame(std::function<void()> on_frame_changed) override {}
+  bool IsAnimated() override { return false; }
+  void SetAutoPlay(bool auto_play) override {}
+  void SetLoopCount(int loop_count) override {}
+  void StartAnimation() override {}
+  void StopAnimation() override {}
+  void PauseAnimation() override {}
+  void ResumeAnimation() override {}
+
+ private:
+  std::shared_ptr<skity::Pixmap> pixmap_;
+};
+
 uint64_t NextUniqueID() {
   static std::atomic<uint64_t> next_id(1);
   uint64_t id;
@@ -56,7 +78,64 @@ std::shared_ptr<ResourceLoader> GetOrCreateResourceLoader(
 #endif
 }
 
+std::shared_ptr<PlatformImage> DecodeStaticImage(const uint8_t* data,
+                                                 size_t size) {
+  if (!data || size == 0) {
+    return nullptr;
+  }
+
+  auto image_data = skity::Data::MakeWithCopy(data, size);
+  auto codec = skity::Codec::MakeFromData(image_data);
+  if (!codec) {
+    return nullptr;
+  }
+
+  codec->SetData(image_data);
+  auto pixmap = codec->Decode();
+  if (!pixmap) {
+    return nullptr;
+  }
+
+  return std::make_shared<SkityStaticPlatformImage>(std::move(pixmap));
+}
+
+class DefaultImageFetcher : public ImageFetcher {
+ public:
+  using ImageFetcher::ImageFetcher;
+
+ private:
+  void FetchImage(
+      const std::string& trimmed_url,
+      const std::function<void(std::shared_ptr<PlatformImage>)>& callback,
+      bool need_redirect) override {
+    auto loader =
+        GetOrCreateResourceLoader(resource_loader_intercept_, trimmed_url,
+                                  task_runners_.GetUITaskRunner(),
+                                  service_manager_);
+    if (!loader) {
+      callback(nullptr);
+      return;
+    }
+
+    loader->Load(
+        trimmed_url,
+        [callback](const uint8_t* data, size_t size) {
+          callback(DecodeStaticImage(data, size));
+        },
+        ResourceType::kImage, need_redirect);
+  }
+};
+
 }  // namespace
+
+fml::RefPtr<ImageFetcher> ImageFetcher::Create(
+    std::shared_ptr<ResourceLoaderIntercept> intercept,
+    clay::TaskRunners task_runners, fml::RefPtr<GPUUnrefQueue> unref_queue,
+    std::shared_ptr<ServiceManager> service_manager) {
+  return fml::MakeRefCounted<DefaultImageFetcher>(
+      std::move(intercept), std::move(task_runners), std::move(unref_queue),
+      std::move(service_manager));
+}
 
 ImageFetcher::ImageFetcher(std::shared_ptr<ResourceLoaderIntercept> intercept,
                            clay::TaskRunners task_runners,
