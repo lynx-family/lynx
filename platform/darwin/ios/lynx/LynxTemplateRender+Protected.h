@@ -87,6 +87,7 @@ NS_ASSUME_NONNULL_BEGIN
   LynxEngine* _lynxEngine;
   LynxViewGroup* _lynxViewGroup;
   CGFloat _fontScale;
+  LynxColorScheme _colorScheme;
   CGSize _intrinsicContentSize;
   std::unique_ptr<lynx::shell::LynxShell> shell_;
   std::shared_ptr<lynx::tasm::PageConfig> pageConfig_;

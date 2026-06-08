@@ -8,6 +8,7 @@
 #include <memory>
 #include <string>
 
+#include "core/renderer/css/ng/media_query/media_values.h"
 #include "core/renderer/starlight/layout/layout_global.h"
 #include "core/renderer/starlight/types/layout_unit.h"
 #include "core/renderer/tasm/config.h"
@@ -54,6 +55,13 @@ class LynxEnvConfig {
     font_scale_sp_only_ = font_scale_sp_only;
   }
 
+  css::MediaPreferredColorScheme PreferredColorScheme() const {
+    return preferred_color_scheme_;
+  }
+  void SetPreferredColorScheme(css::MediaPreferredColorScheme scheme) {
+    preferred_color_scheme_ = scheme;
+  }
+
   float DevicePixelRatio() const {
     return layouts_unit_per_px_ * physical_pixels_per_layout_unit_;
   }
@@ -86,6 +94,8 @@ class LynxEnvConfig {
   starlight::LayoutUnit viewport_height_;
   float font_scale_ = 1.f;
   bool font_scale_sp_only_ = false;
+  css::MediaPreferredColorScheme preferred_color_scheme_ =
+      css::MediaPreferredColorScheme::kLight;
   // Currently, layout unit is equal to default unit used by platform
   // On iOS one layout unit equals to one ios point
   // On Android one layout unit equals to one physical pixel

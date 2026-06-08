@@ -467,6 +467,12 @@
                                                     : lynx::shell::kUnknownInstanceId)];
 }
 
+- (void)updateColorScheme:(LynxColorScheme)scheme {
+  if (_templateRender != nil) {
+    [_templateRender updateColorScheme:scheme];
+  }
+}
+
 - (void)pauseRootLayoutAnimation {
   RUN_RENDER_SAFELY([_templateRender pauseRootLayoutAnimation];);
 }

@@ -257,6 +257,7 @@ export interface LynxViewBuilder {
   enableAirStrictMode?: boolean;
   lynxImageConfig?: LynxImageConfig;
   fontScale?: number;
+  colorScheme?: ColorScheme;
 }
 
 export enum MeasureMode {
@@ -268,6 +269,11 @@ export enum MeasureMode {
 export enum ThreadStrategyForRendering {
   ALL_ON_UI = 0
   MOST_ON_TASM = 1
+}
+
+export enum ColorScheme {
+  LIGHT = 0
+  DARK = 1
 }
 
 export class LynxContext implements IContext {
@@ -303,6 +309,7 @@ export class LynxContext implements IContext {
   public setExtraTiming(extraTiming: LynxExtraTiming): void;
   public putParamsForReportingEvents(params: ReadonlyMap<string, LynxReportEventPropValue>): void;
   updateFontScale(scale: number): void;
+  updateColorScheme(scheme: ColorScheme): void;
   public setContextData(data: Record<string, Object>): void;
   public getContextData(): Record<string, Object> | undefined;
   public setMediaResourceFetcher(mediaResourceFetcher: LynxMediaResourceFetcher): void;

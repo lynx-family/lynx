@@ -1257,6 +1257,19 @@ public class LynxView extends UIBodyView implements ILynxSecurityTarget {
 
   /**
    * @apidoc
+   * @brief Update the preferred color scheme for this LynxView.
+   * @param scheme The color scheme value.
+   */
+  public void updateColorScheme(LynxColorScheme scheme) {
+    checkAccessFromNonUiThread("updateColorScheme");
+    if (mLynxTemplateRender == null || scheme == null) {
+      return;
+    }
+    mLynxTemplateRender.updateColorScheme(scheme);
+  }
+
+  /**
+   * @apidoc
    * @brief After `LynxView` becomes unavailable, you need to actively call this method
    * to release the `LynxView` memory, otherwise there will be a memory leak.
    */

@@ -67,7 +67,8 @@ class DynamicCSSStylesManager {
     kDirectionStyleType = 3,
     kFontScaleType = 4,
     kViewportType = 5,
-    kDynamicTypeCount = 6
+    kColorSchemeType = 6,
+    kDynamicTypeCount = 7
   };
 
  public:
@@ -80,11 +81,12 @@ class DynamicCSSStylesManager {
     kUpdateDirectionStyle = 1 << kDirectionStyleType,
     kUpdateFontScale = 1 << kFontScaleType,
     kUpdateViewport = 1 << kViewportType,
+    kUpdateColorScheme = 1 << kColorSchemeType,
   };
 
   static constexpr uint32_t kAllStyleUpdate =
       kUpdateEm | kUpdateRem | kUpdateScreenMetrics | kUpdateDirectionStyle |
-      kUpdateFontScale | kUpdateViewport;
+      kUpdateFontScale | kUpdateViewport | kUpdateColorScheme;
 
   static constexpr uint32_t kNoUpdate = 0;
 

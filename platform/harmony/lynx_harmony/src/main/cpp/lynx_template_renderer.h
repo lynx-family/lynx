@@ -83,6 +83,7 @@ class LynxTemplateRenderer : public devtool::LynxDevToolProxy {
   int32_t GetInstanceId() const;
   bool ShouldSendEventToMainThread() const;
   void UpdateFontScale(float font_scale);
+  void UpdateColorScheme(int scheme);
   void SetEnableBytecode(bool enable, std::string source_url);
   lepus::Value GetPageDataByKey(std::vector<std::string> keys);
 
@@ -202,6 +203,7 @@ class LynxTemplateRenderer : public devtool::LynxDevToolProxy {
   static napi_value ShouldSendEventToMainThread(napi_env env,
                                                 napi_callback_info info);
   static napi_value UpdateFontScale(napi_env env, napi_callback_info info);
+  static napi_value UpdateColorScheme(napi_env env, napi_callback_info info);
   static napi_value NativeSetEnableBytecode(napi_env env,
                                             napi_callback_info info);
   static napi_value GetPageDataByKey(napi_env env, napi_callback_info info);

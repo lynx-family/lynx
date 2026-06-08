@@ -43,7 +43,7 @@ TEST(MediaValuesTest, DefaultValues) {
   EXPECT_DOUBLE_EQ(v.FontSize(), 16.0);
   EXPECT_EQ(v.Hover(), MediaTristate::kUnknown);
   EXPECT_EQ(v.Pointer(), MediaTristate::kUnknown);
-  EXPECT_EQ(v.PreferredColorScheme(), MediaPreferredColorScheme::kNoPreference);
+  EXPECT_EQ(v.PreferredColorScheme(), MediaPreferredColorScheme::kLight);
 }
 
 TEST(MediaValuesTest, WithViewportFactory) {
