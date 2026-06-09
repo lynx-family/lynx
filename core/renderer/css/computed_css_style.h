@@ -579,6 +579,9 @@ class ComputedCSSStyle {
   V(TextAlign)                           \
   V(TextOverflow)                        \
   V(TextDecoration)                      \
+  V(TextDecorationThickness)             \
+  V(XTextDecorationWidth)                \
+  V(XTextDecorationGap)                  \
   V(TextDecorationColor)                 \
   V(ZIndex)                              \
   V(ImageRendering)                      \
