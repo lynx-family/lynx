@@ -74,10 +74,9 @@ napi_value EmbedderPlatformHarmony::New(napi_env env, napi_callback_info info) {
 
   auto context = std::make_shared<tasm::harmony::LynxContext>(shadow_node_owner,
                                                               ui_owner, env);
-  auto module_factory = std::make_unique<harmony::ModuleFactoryCAPI>(context);
 
   auto ui_delegate = std::make_unique<tasm::harmony::UIDelegateHarmony>(
-      ui_owner, shadow_node_owner, context, std::move(module_factory));
+      ui_owner, shadow_node_owner, context);
 
   EmbedderPlatformHarmony* native_object = new EmbedderPlatformHarmony(
       env, args[0], std::move(ui_delegate), context);

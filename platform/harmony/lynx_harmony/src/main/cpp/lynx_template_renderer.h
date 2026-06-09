@@ -163,7 +163,8 @@ class LynxTemplateRenderer : public devtool::LynxDevToolProxy {
       std::string js_group_thread_name, bool use_quickjs,
       bool enable_js_group_thread, std::vector<std::string> preload_js_paths,
       bool enable_bytecode, std::string bytecode_source_url, bool enable_js,
-      std::unique_ptr<ModuleFactoryHarmony> module_factory,
+      std::unique_ptr<ModuleFactoryHarmony> jsbridge_module_factory,
+      std::unique_ptr<ModuleFactoryHarmony> main_thread_module_factory,
       LynxRuntimeWrapper* runtime_wrapper,
       LynxWhiteBoard* white_board = nullptr);
 

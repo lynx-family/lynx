@@ -12,6 +12,7 @@
 #include <sstream>
 #include <string>
 #include <unordered_map>
+#include <utility>
 
 #include "base/include/string/string_number_convert.h"
 #include "base/include/string/string_utils.h"
@@ -24,6 +25,7 @@
 #include "core/renderer/ui_wrapper/painting/harmony/painting_context_harmony.h"
 #include "core/shell/harmony/embedder_platform_harmony.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/event/event_target.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/module/module_factory_capi.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/base/node_manager.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_owner.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_root.h"
@@ -234,7 +236,11 @@ UIDelegateHarmony::CreatePropBundleCreator() {
 
 std::unique_ptr<runtime::NativeModuleFactory>
 UIDelegateHarmony::GetCustomModuleFactory() {
-  return std::move(module_factory_);
+  auto lynx_context = lynx_context_.lock();
+  if (!lynx_context) {
+    return nullptr;
+  }
+  return std::make_unique<lynx::harmony::ModuleFactoryCAPI>(lynx_context);
 }
 
 void UIDelegateHarmony::OnLynxCreate(

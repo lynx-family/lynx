@@ -16,7 +16,6 @@
 #include "core/renderer/ui_wrapper/painting/harmony/ui_delegate_harmony.h"
 #include "core/resource/lynx_resource_loader_harmony.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/lynx_context.h"
-#include "platform/harmony/lynx_harmony/src/main/cpp/module/module_factory_capi.h"
 
 namespace lynx {
 namespace tasm {
