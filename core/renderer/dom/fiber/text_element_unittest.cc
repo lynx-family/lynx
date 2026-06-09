@@ -28,6 +28,12 @@ namespace testing {
 
 class TextElementTest : public FiberElementTest {};
 
+TEST(TextPropsTest, TextDecorationExtensionPropertiesAreWanted) {
+  EXPECT_EQ(IsTextMeasurerWanted(kPropertyIDTextDecorationThickness), 1);
+  EXPECT_EQ(IsTextMeasurerWanted(kPropertyIDXTextDecorationWidth), 1);
+  EXPECT_EQ(IsTextMeasurerWanted(kPropertyIDXTextDecorationGap), 1);
+}
+
 TEST_P(TextElementTest, TestInlineText) {
   auto config = std::make_shared<PageConfig>();
   config->SetEnableFiberArch(true);

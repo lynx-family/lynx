@@ -45,6 +45,19 @@ CSSValue MakeBackgroundPositionValue(float x, float y) {
   return CSSValue(std::move(position));
 }
 
+CSSValue MakeTextDecorationValue(bool with_thickness, double thickness = 2.0) {
+  auto decoration = lepus::CArray::Create();
+  decoration->emplace_back(
+      static_cast<uint32_t>(starlight::TextDecorationType::kUnderLine));
+  if (with_thickness) {
+    decoration->emplace_back(
+        static_cast<uint32_t>(starlight::TextDecorationType::kThickness));
+    decoration->emplace_back(thickness);
+    decoration->emplace_back(static_cast<int>(CSSValuePattern::PX));
+  }
+  return CSSValue(std::move(decoration));
+}
+
 }  // namespace
 
 TEST(ComputedCSSStyleTest, TracksResolvedValuesOnSetAndReset) {
@@ -81,6 +94,90 @@ TEST(ComputedCSSStyleTest, ResetClearsOptionalStateAndDirtyBits) {
   EXPECT_TRUE(style.BackgroundColorToLepus().IsEmpty());
   EXPECT_TRUE(style.GetResolvedValues().empty());
   EXPECT_TRUE(style.IsClean());
+}
+
+TEST(ComputedCSSStyleTest, StoresTextDecorationExtensionValues) {
+  starlight::ComputedCSSStyle style{1.f, 1.f};
+
+  EXPECT_TRUE(style.SetValue(CSSPropertyID::kPropertyIDTextDecorationThickness,
+                             CSSValue(2.0, CSSValuePattern::PX), false));
+  ASSERT_TRUE(style.text_attributes_.has_value());
+  ASSERT_TRUE(style.text_attributes_->text_decoration_thickness.has_value());
+  EXPECT_FLOAT_EQ(*style.text_attributes_->text_decoration_thickness, 2.f);
+
+  EXPECT_TRUE(style.SetValue(CSSPropertyID::kPropertyIDXTextDecorationWidth,
+                             CSSValue(8.0, CSSValuePattern::PX), false));
+  ASSERT_TRUE(style.text_attributes_->text_decoration_width.has_value());
+  EXPECT_FLOAT_EQ(*style.text_attributes_->text_decoration_width, 8.f);
+
+  EXPECT_TRUE(style.SetValue(CSSPropertyID::kPropertyIDXTextDecorationGap,
+                             CSSValue(4.0, CSSValuePattern::PX), false));
+  ASSERT_TRUE(style.text_attributes_->text_decoration_gap.has_value());
+  EXPECT_FLOAT_EQ(*style.text_attributes_->text_decoration_gap, 4.f);
+
+  EXPECT_TRUE(
+      style.ResetValue(CSSPropertyID::kPropertyIDTextDecorationThickness));
+  EXPECT_FALSE(style.text_attributes_->text_decoration_thickness.has_value());
+
+  EXPECT_TRUE(style.ResetValue(CSSPropertyID::kPropertyIDXTextDecorationWidth));
+  EXPECT_FALSE(style.text_attributes_->text_decoration_width.has_value());
+
+  EXPECT_TRUE(style.ResetValue(CSSPropertyID::kPropertyIDXTextDecorationGap));
+  EXPECT_FALSE(style.text_attributes_->text_decoration_gap.has_value());
+}
+
+TEST(ComputedCSSStyleTest, RejectsInvalidTextDecorationExtensionValues) {
+  starlight::ComputedCSSStyle style{1.f, 1.f};
+
+  EXPECT_FALSE(style.SetValue(CSSPropertyID::kPropertyIDTextDecorationThickness,
+                              CSSValue(-1.0, CSSValuePattern::PX), false));
+  ASSERT_TRUE(style.text_attributes_.has_value());
+  EXPECT_FALSE(style.text_attributes_->text_decoration_thickness.has_value());
+
+  EXPECT_FALSE(style.SetValue(CSSPropertyID::kPropertyIDXTextDecorationWidth,
+                              CSSValue(-1.0, CSSValuePattern::PX), false));
+  EXPECT_FALSE(style.text_attributes_->text_decoration_width.has_value());
+
+  EXPECT_FALSE(style.SetValue(CSSPropertyID::kPropertyIDXTextDecorationGap,
+                              CSSValue(-1.0, CSSValuePattern::PX), false));
+  EXPECT_FALSE(style.text_attributes_->text_decoration_gap.has_value());
+
+  EXPECT_TRUE(style.SetValue(CSSPropertyID::kPropertyIDXTextDecorationGap,
+                             CSSValue(0.0, CSSValuePattern::PX), false));
+  ASSERT_TRUE(style.text_attributes_->text_decoration_gap.has_value());
+  EXPECT_FLOAT_EQ(*style.text_attributes_->text_decoration_gap, 0.f);
+}
+
+TEST(ComputedCSSStyleTest, AppliesTextDecorationThicknessFromShorthand) {
+  starlight::ComputedCSSStyle style{1.f, 1.f};
+
+  EXPECT_TRUE(style.SetValue(CSSPropertyID::kPropertyIDTextDecoration,
+                             MakeTextDecorationValue(true), false));
+  ASSERT_TRUE(style.text_attributes_.has_value());
+  EXPECT_TRUE(style.text_attributes_->underline_decoration);
+  ASSERT_TRUE(style.text_attributes_->text_decoration_thickness.has_value());
+  EXPECT_FLOAT_EQ(*style.text_attributes_->text_decoration_thickness, 2.f);
+  EXPECT_TRUE(
+      style.GetChangedBitset().Has(CSSPropertyID::kPropertyIDTextDecoration));
+  EXPECT_TRUE(style.GetChangedBitset().Has(
+      CSSPropertyID::kPropertyIDTextDecorationThickness));
+
+  style.ClearDirtyBits();
+  EXPECT_TRUE(style.SetValue(CSSPropertyID::kPropertyIDTextDecoration,
+                             MakeTextDecorationValue(false), false));
+  EXPECT_TRUE(style.text_attributes_->underline_decoration);
+  EXPECT_FALSE(style.text_attributes_->text_decoration_thickness.has_value());
+  EXPECT_TRUE(style.GetChangedBitset().Has(
+      CSSPropertyID::kPropertyIDTextDecorationThickness));
+}
+
+TEST(ComputedCSSStyleTest, RejectsInvalidTextDecorationThicknessInShorthand) {
+  starlight::ComputedCSSStyle style{1.f, 1.f};
+
+  EXPECT_FALSE(style.SetValue(CSSPropertyID::kPropertyIDTextDecoration,
+                              MakeTextDecorationValue(true, -1.0), false));
+  ASSERT_TRUE(style.text_attributes_.has_value());
+  EXPECT_FALSE(style.text_attributes_->text_decoration_thickness.has_value());
 }
 
 TEST(ComputedCSSStyleTest, IsPlatformPropertyMatchesGetterSurface) {
