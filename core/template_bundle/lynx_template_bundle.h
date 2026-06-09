@@ -7,6 +7,7 @@
 
 #include <algorithm>
 #include <memory>
+#include <mutex>
 #include <optional>
 #include <string>
 #include <unordered_map>
@@ -94,7 +95,6 @@ class LynxTemplateBundle final {
       : css_style_manager_(std::make_shared<CSSStyleSheetManager>(nullptr)),
         string_list_(std::make_shared<std::vector<base::String>>()),
         lepus_chunk_manager_(std::make_shared<LepusChunkManager>()){};
-
   const runtime::js::JsBundle& GetJsBundle() const { return js_bundle_; }
   runtime::js::JsBundle& GetJsBundle() { return js_bundle_; }
 
@@ -201,6 +201,17 @@ class LynxTemplateBundle final {
 
   std::optional<Elements> TryGetElements(const std::string& key);
 
+  // Returns element-template info for the given key from the bundle cache
+  // first. On a cache miss, decodes through the bundle-owned lazy reader when
+  // available and stores the decoded result back into the cache. Without a lazy
+  // reader, or when lazy decoding cannot produce a valid info, creates and
+  // caches a missing ElementTemplateInfo entry whose exist_ remains false. The
+  // returned reference is stable until this bundle is destroyed or the cache is
+  // externally mutated; cache lookup and publication are protected by
+  // element_template_info_mutex_, while callers must not retain the reference
+  // past the bundle lifetime.
+  const ElementTemplateInfo& GetElementTemplateInfo(const std::string& key);
+
   // Returns parsed styles for the given key from the bundle cache first. On a
   // cache miss, decodes through the bundle-owned lazy reader when available and
   // stores the result back into the bundle cache. Without a lazy reader,
@@ -220,6 +231,16 @@ class LynxTemplateBundle final {
   }
 
  private:
+  struct CopyableMutex {
+    CopyableMutex() = default;
+    CopyableMutex(const CopyableMutex&) {}
+    CopyableMutex& operator=(const CopyableMutex&) { return *this; }
+    CopyableMutex(CopyableMutex&&) {}
+    CopyableMutex& operator=(CopyableMutex&&) { return *this; }
+
+    mutable std::mutex mutex_;
+  };
+
   void EnsureParseTaskScheduler();
 
   // header info.
@@ -289,6 +310,7 @@ class LynxTemplateBundle final {
   // fiber- element template info map
   std::unordered_map<std::string, std::shared_ptr<ElementTemplateInfo>>
       element_template_infos_{};
+  mutable CopyableMutex element_template_info_mutex_;
 
   // fiber- parsed styles map
   ParsedStylesMap parsed_styles_map_;

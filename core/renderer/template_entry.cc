@@ -452,40 +452,7 @@ lepus::Value TemplateEntry::ElementFromBinary(const std::string& key,
 const ElementTemplateInfo& TemplateEntry::GetElementTemplateInfo(
     const std::string& key) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, TEMPLATE_ENTRY_GET_ELEMENT_TEMPLATE_INFO);
-  return *DecodeOrGetElementTemplateInfoWithDedicatedReader(key);
-}
-
-std::shared_ptr<ElementTemplateInfo>
-TemplateEntry::DecodeOrGetElementTemplateInfoWithDedicatedReader(
-    const std::string& key) {
-  {
-    std::lock_guard<std::mutex> guard(element_template_info_mutex_);
-    auto iter = template_bundle_.element_template_infos_.find(key);
-    if (iter != template_bundle_.element_template_infos_.end()) {
-      return iter->second;
-    }
-  }
-
-  // Binary decode can be expensive, so keep the cache mutex scoped to map
-  // access and check the cache again before publishing the decoded result.
-  std::shared_ptr<ElementTemplateInfo> info;
-  if (reader_ == nullptr) {
-    info = std::make_shared<ElementTemplateInfo>();
-  } else {
-    auto recycler = reader_->CreateRecycler();
-    // TemplateEntry currently installs TemplateBinaryReader as the lazy reader.
-    auto* dedicated_reader = static_cast<TemplateBinaryReader*>(recycler.get());
-    info = dedicated_reader->DecodeElementTemplateInRender(key);
-  }
-
-  std::lock_guard<std::mutex> guard(element_template_info_mutex_);
-  auto iter = template_bundle_.element_template_infos_.find(key);
-  if (iter != template_bundle_.element_template_infos_.end()) {
-    return iter->second;
-  }
-  auto res =
-      template_bundle_.element_template_infos_.emplace(key, std::move(info));
-  return res.first->second;
+  return template_bundle_.GetElementTemplateInfo(key);
 }
 
 const std::shared_ptr<ParsedStyles>& TemplateEntry::GetParsedStyles(

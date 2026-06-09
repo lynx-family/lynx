@@ -6,7 +6,6 @@
 #define CORE_RENDERER_TEMPLATE_ENTRY_H_
 
 #include <memory>
-#include <mutex>
 #include <string>
 #include <unordered_map>
 #include <utility>
@@ -309,8 +308,6 @@ class TemplateEntry : public VmContextHolder, public CSSStyleSheetDelegate {
                         const PageOptions& page_options = PageOptions());
 
   std::string GenerateLepusJSFileName(const std::string& name);
-  std::shared_ptr<ElementTemplateInfo>
-  DecodeOrGetElementTemplateInfoWithDedicatedReader(const std::string& key);
 
   std::string name_;
   bool is_card_{true};
@@ -333,7 +330,6 @@ class TemplateEntry : public VmContextHolder, public CSSStyleSheetDelegate {
 
   std::weak_ptr<lepus::InspectorLepusObserver> lepus_observer_;
   std::shared_ptr<LynxBinaryLazyReaderDelegate> reader_;
-  std::mutex element_template_info_mutex_;
 
   LynxTemplateBundle template_bundle_{};
   // whether the template bundle if from pre-decode, which is complte

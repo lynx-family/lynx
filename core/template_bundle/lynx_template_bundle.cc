@@ -172,6 +172,41 @@ std::optional<Elements> LynxTemplateBundle::TryGetElements(
   return task_schedular_->TryGetElements(key, element_template_infos_[key]);
 }
 
+const ElementTemplateInfo &LynxTemplateBundle::GetElementTemplateInfo(
+    const std::string &key) {
+  {
+    std::lock_guard<std::mutex> guard(element_template_info_mutex_.mutex_);
+    auto iter = element_template_infos_.find(key);
+    if (iter != element_template_infos_.end()) {
+      return *iter->second;
+    }
+  }
+
+  // Binary decode can be expensive, so keep the cache mutex scoped to map
+  // access and check the cache again before publishing the decoded result.
+  auto info = std::make_shared<ElementTemplateInfo>();
+  if (lazy_reader_) {
+    auto recycler = lazy_reader_->CreateRecycler();
+    if (recycler) {
+      // LynxTemplateBundle installs TemplateBinaryReader as the lazy reader.
+      auto *dedicated_reader =
+          static_cast<TemplateBinaryReader *>(recycler.get());
+      if (auto decoded_info =
+              dedicated_reader->DecodeElementTemplateInRender(key)) {
+        info = std::move(decoded_info);
+      }
+    }
+  }
+
+  std::lock_guard<std::mutex> guard(element_template_info_mutex_.mutex_);
+  auto iter = element_template_infos_.find(key);
+  if (iter != element_template_infos_.end()) {
+    return *iter->second;
+  }
+  auto res = element_template_infos_.emplace(key, std::move(info));
+  return *res.first->second;
+}
+
 const std::shared_ptr<ParsedStyles> &LynxTemplateBundle::GetParsedStyles(
     const std::string &key) {
   auto iter = parsed_styles_map_.find(key);
