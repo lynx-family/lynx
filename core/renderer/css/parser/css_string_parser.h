@@ -163,7 +163,7 @@ class CSSStringParser final {
   void ParseCSSColorTo(CSSValue& target);
 
   /// <text-decoration> = <text-decoration-line> || <text-decoration-style> ||
-  /// <text-decoration-color>
+  /// <text-decoration-color> || <text-decoration-thickness>
   CSSValue ParseTextDecoration();
 
   /// <src> = [ <url> [ format( <string> ) ]? | local( <family-name> )

@@ -859,6 +859,43 @@ void PropBundleStyleWriter::WriteTextDecorationColor(
   }
 }
 
+void PropBundleStyleWriter::WriteTextDecorationThickness(
+    PropBundle* bundle, starlight::ComputedCSSStyle* style) {
+  auto& text_attributes = style->GetTextAttributes();
+  if (text_attributes &&
+      text_attributes->text_decoration_thickness.has_value()) {
+    bundle->SetPropsByID(
+        CSSPropertyID::kPropertyIDTextDecorationThickness,
+        static_cast<double>(*text_attributes->text_decoration_thickness));
+  } else {
+    bundle->SetNullPropsByID(CSSPropertyID::kPropertyIDTextDecorationThickness);
+  }
+}
+
+void PropBundleStyleWriter::WriteXTextDecorationWidth(
+    PropBundle* bundle, starlight::ComputedCSSStyle* style) {
+  auto& text_attributes = style->GetTextAttributes();
+  if (text_attributes && text_attributes->text_decoration_width.has_value()) {
+    bundle->SetPropsByID(
+        CSSPropertyID::kPropertyIDXTextDecorationWidth,
+        static_cast<double>(*text_attributes->text_decoration_width));
+  } else {
+    bundle->SetNullPropsByID(CSSPropertyID::kPropertyIDXTextDecorationWidth);
+  }
+}
+
+void PropBundleStyleWriter::WriteXTextDecorationGap(
+    PropBundle* bundle, starlight::ComputedCSSStyle* style) {
+  auto& text_attributes = style->GetTextAttributes();
+  if (text_attributes && text_attributes->text_decoration_gap.has_value()) {
+    bundle->SetPropsByID(
+        CSSPropertyID::kPropertyIDXTextDecorationGap,
+        static_cast<double>(*text_attributes->text_decoration_gap));
+  } else {
+    bundle->SetNullPropsByID(CSSPropertyID::kPropertyIDXTextDecorationGap);
+  }
+}
+
 void PropBundleStyleWriter::WriteZIndex(PropBundle* bundle,
                                         starlight::ComputedCSSStyle* style) {
   bundle->SetPropsByID(CSSPropertyID::kPropertyIDZIndex, style->GetZIndex());
