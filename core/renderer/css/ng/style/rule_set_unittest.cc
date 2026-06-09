@@ -9,10 +9,28 @@
 #include "core/renderer/css/ng/parser/css_tokenizer.h"
 #include "core/renderer/css/ng/selector/css_parser_context.h"
 #include "core/renderer/css/ng/selector/css_selector_parser.h"
+#include "core/renderer/css/ng/style/condition_rule.h"
+#include "core/renderer/css/ng/supports/supports_evaluator.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 namespace lynx {
 namespace css {
+
+namespace {
+
+uint32_t Version(uint16_t major, uint16_t minor) {
+  return SupportsEngineVersionNode::PackVersion(major, minor);
+}
+
+fml::RefPtr<const SupportsConditionNode> EngineVersion(uint16_t begin_major,
+                                                       uint16_t begin_minor,
+                                                       uint16_t end_major,
+                                                       uint16_t end_minor) {
+  return fml::MakeRefCounted<SupportsEngineVersionNode>(
+      Version(begin_major, begin_minor), Version(end_major, end_minor));
+}
+
+}  // namespace
 
 struct TestFragment {
   TestFragment() : rule_set_(nullptr) {}
@@ -191,6 +209,28 @@ TEST(RuleSetTest, HasAdjacentSiblingRules_MergedDeps) {
 
   parent_fragment.GetRuleSet().Merge(dep_fragment.GetRuleSet());
   EXPECT_TRUE(parent_fragment.GetRuleSet().HasAdjacentSiblingRules());
+}
+
+TEST(RuleSetTest, SupportsConditionWithoutEvaluatorDoesNotPoisonCache) {
+  auto condition_rule = fml::MakeRefCounted<ConditionRule>(nullptr);
+  condition_rule->SetSupportsCondition(EngineVersion(4, 0, 5, 0));
+
+  EXPECT_FALSE(condition_rule->MatchesSupportsCondition(nullptr));
+
+  SupportsEvaluator evaluator(Version(4, 0), {});
+  EXPECT_TRUE(condition_rule->MatchesSupportsCondition(&evaluator));
+}
+
+TEST(RuleSetTest, SupportsConditionResultIsCached) {
+  auto condition_rule = fml::MakeRefCounted<ConditionRule>(nullptr);
+  condition_rule->SetSupportsCondition(EngineVersion(4, 0, 5, 0));
+
+  SupportsEvaluator matching_evaluator(Version(4, 0), {});
+  EXPECT_TRUE(condition_rule->MatchesSupportsCondition(&matching_evaluator));
+
+  SupportsEvaluator non_matching_evaluator(Version(5, 0), {});
+  EXPECT_TRUE(
+      condition_rule->MatchesSupportsCondition(&non_matching_evaluator));
 }
 
 }  // namespace css
