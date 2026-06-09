@@ -149,6 +149,11 @@ public class LynxEngine {
   }
 
   public void destroy() {
+    if (mLynxEngineState == LynxEngineState.READY_BE_REUSED || mLynxTemplateRender == null
+        || mLynxTemplateRender.get() == null) {
+      destroyLynxUIRenderer(mLynxUIRenderer);
+      mLynxUIRenderer = null;
+    }
     updateLynxEngineState(LynxEngineState.DESTROYED);
     LynxEnginePool.getInstance().delete(this);
     if (mNativePtr != 0) {
@@ -156,6 +161,14 @@ public class LynxEngine {
       mNativePtr = 0;
       nativeDestroyEngine(nativePtr);
     }
+  }
+
+  static void destroyLynxUIRenderer(ILynxUIRenderer lynxUIRenderer) {
+    if (lynxUIRenderer == null) {
+      return;
+    }
+    lynxUIRenderer.onDestroyTemplateRenderer();
+    lynxUIRenderer.onDestroy();
   }
 
   private native long nativeCreate();
