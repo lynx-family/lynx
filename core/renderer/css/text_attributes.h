@@ -94,6 +94,9 @@ class TextAttributes {
   base::flex_optional<uint32_t> color;
   base::flex_optional<uint32_t> decoration_color;
   base::flex_optional<uint32_t> text_decoration_color;
+  base::flex_optional<float> text_decoration_thickness;
+  base::flex_optional<float> text_decoration_width;
+  base::flex_optional<float> text_decoration_gap;
   uint8_t text_decoration_style{
       DefaultComputedStyle::DEFAULT_TEXT_DECORATION_STYLE};
   // TODO(linxs) this type has changed.
@@ -134,6 +137,9 @@ class TextAttributes {
            letter_spacing == rhs.letter_spacing &&
            line_spacing == rhs.line_spacing &&
            text_stroke_width == rhs.text_stroke_width &&
+           text_decoration_thickness == rhs.text_decoration_thickness &&
+           text_decoration_width == rhs.text_decoration_width &&
+           text_decoration_gap == rhs.text_decoration_gap &&
            auto_font_size_min_size == rhs.auto_font_size_min_size &&
            auto_font_size_max_size == rhs.auto_font_size_max_size &&
            auto_font_size_step_granularity ==

@@ -1,0 +1,51 @@
+{
+  "name": "text-decoration-thickness",
+  "id": 234,
+  "type": "length",
+  "default_value": "0px",
+  "version": "4.0",
+  "author": "zhouchaoying",
+  "consumption_status": "skip",
+  "desc": "The `text-decoration-thickness` property sets the thickness of text decoration lines.",
+  "formal_syntax": "<length>",
+  "is_shorthand": false,
+  "compat_data": {
+    "text-decoration-thickness": {
+      "__compat": {
+        "lynx_path": "api/css/properties/text-decoration-thickness",
+        "mdn_url": "https://developer.mozilla.org/en-US/docs/Web/CSS/text-decoration-thickness",
+        "spec_url": "https://drafts.csswg.org/css-text-decor-4/#text-decoration-thickness-property",
+        "status": {
+          "deprecated": false,
+          "experimental": false
+        },
+        "support": {
+          "android": {
+            "version_added": "4.0"
+          },
+          "ios": {
+            "version_added": "4.0"
+          },
+          "harmony": {
+            "version_added": false
+          },
+          "clay_android": {
+            "version_added": false
+          },
+          "clay_ios": {
+            "version_added": false
+          },
+          "clay_macos": {
+            "version_added": false
+          },
+          "clay_windows": {
+            "version_added": false
+          },
+          "web_lynx": {
+            "version_added": false
+          }
+        }
+      }
+    }
+  }
+}
