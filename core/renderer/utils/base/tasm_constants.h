@@ -80,6 +80,7 @@ static constexpr const char* kElementParsedStyle = "parsedStyle";
 static constexpr const char* kElementComponentName = "name";
 static constexpr const char* kElementComponentPath = "path";
 static constexpr const char* kElementCSSID = "cssID";
+static constexpr const char* kElementAttrCSSID = "css-id";
 static constexpr const char kDirtyID[] = "dirtyID";
 static constexpr const char kDepth[] = "depth";
 static constexpr const char kCloneResolvedProps[] = "cloneResolvedProps";

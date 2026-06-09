@@ -213,7 +213,7 @@ bool ApplySpecialTemplateAttribute(FiberElement* element,
     element->SetIdSelector(value.IsString() ? value.String() : base::String());
     return true;
   }
-  if (key == kElementCSSID) {
+  if (key == kElementCSSID || key == kElementAttrCSSID) {
     element->SetCSSID(value.IsNumber() ? static_cast<int32_t>(value.Number())
                                        : kInvalidCssId);
     return true;
