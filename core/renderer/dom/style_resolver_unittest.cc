@@ -2452,6 +2452,100 @@ TEST_F(CSSPatchingTest,
       HasChanged(new_style, CSSPropertyID::kPropertyIDXPlaceholderFontSize));
 }
 
+TEST_F(CSSPatchingTest, NewStylingComputeStyleDiffMarksMaskCompositeChanges) {
+  auto page = CreatePageRoot(16.0);
+  auto element = manager->CreateFiberView();
+  page->InsertNode(element);
+
+  starlight::ComputedCSSStyle old_style(*manager->platform_computed_css());
+  starlight::ComputedCSSStyle new_style(*manager->platform_computed_css());
+  new_style.CopyFrom(old_style);
+  new_style.mask_data_.emplace();
+  new_style.mask_data_->image_data.emplace();
+  new_style.mask_data_->image_data->composite.emplace_back(
+      starlight::MaskCompositeType::kSubtract);
+  new_style.ClearChanged();
+  new_style.ClearReset();
+
+  EXPECT_TRUE(element->style_resolver_.ComputeStyleDiff(new_style, old_style));
+  EXPECT_TRUE(HasChanged(new_style, CSSPropertyID::kPropertyIDMaskComposite));
+
+  starlight::ComputedCSSStyle reset_old_style(
+      *manager->platform_computed_css());
+  reset_old_style.mask_data_.emplace();
+  reset_old_style.mask_data_->image_data.emplace();
+  reset_old_style.mask_data_->image_data->composite.emplace_back(
+      starlight::MaskCompositeType::kSubtract);
+  reset_old_style.ClearChanged();
+  reset_old_style.ClearReset();
+
+  starlight::ComputedCSSStyle reset_new_style(
+      *manager->platform_computed_css());
+  reset_new_style.CopyFrom(reset_old_style);
+  reset_new_style.mask_data_->image_data->composite.clear();
+  reset_new_style.ClearChanged();
+  reset_new_style.ClearReset();
+
+  EXPECT_TRUE(element->style_resolver_.ComputeStyleDiff(reset_new_style,
+                                                        reset_old_style));
+  EXPECT_TRUE(
+      HasChanged(reset_new_style, CSSPropertyID::kPropertyIDMaskComposite));
+}
+
+TEST_F(CSSPatchingTest, NewStylingComputeStyleDiffMarksCaretExtensionChanges) {
+  auto page = CreatePageRoot(16.0);
+  auto element = manager->CreateFiberView();
+  page->InsertNode(element);
+
+  starlight::ComputedCSSStyle old_style(*manager->platform_computed_css());
+  starlight::ComputedCSSStyle new_style(*manager->platform_computed_css());
+  new_style.CopyFrom(old_style);
+  new_style.caret_gradient_ = base::String("linear-gradient(red, blue)");
+  new_style.caret_width_ = 2.f;
+  new_style.caret_height_ = 16.f;
+  new_style.caret_radius_ = 1.f;
+  new_style.ClearChanged();
+  new_style.ClearReset();
+
+  EXPECT_TRUE(element->style_resolver_.ComputeStyleDiff(new_style, old_style));
+  EXPECT_TRUE(HasChanged(new_style, CSSPropertyID::kPropertyIDXCaretGradient));
+  EXPECT_TRUE(HasChanged(new_style, CSSPropertyID::kPropertyIDXCaretWidth));
+  EXPECT_TRUE(HasChanged(new_style, CSSPropertyID::kPropertyIDXCaretHeight));
+  EXPECT_TRUE(HasChanged(new_style, CSSPropertyID::kPropertyIDXCaretRadius));
+
+  starlight::ComputedCSSStyle reset_old_style(
+      *manager->platform_computed_css());
+  reset_old_style.caret_gradient_ = base::String("linear-gradient(red, blue)");
+  reset_old_style.caret_width_ = 2.f;
+  reset_old_style.caret_height_ = 16.f;
+  reset_old_style.caret_radius_ = 1.f;
+  reset_old_style.ClearChanged();
+  reset_old_style.ClearReset();
+
+  starlight::ComputedCSSStyle reset_new_style(
+      *manager->platform_computed_css());
+  reset_new_style.CopyFrom(reset_old_style);
+  reset_new_style.caret_gradient_ = base::String("none");
+  reset_new_style.caret_width_ = starlight::DefaultComputedStyle::DEFAULT_FLOAT;
+  reset_new_style.caret_height_ =
+      starlight::DefaultComputedStyle::DEFAULT_FLOAT;
+  reset_new_style.caret_radius_ =
+      starlight::DefaultComputedStyle::DEFAULT_FLOAT;
+  reset_new_style.ClearChanged();
+  reset_new_style.ClearReset();
+
+  EXPECT_TRUE(element->style_resolver_.ComputeStyleDiff(reset_new_style,
+                                                        reset_old_style));
+  EXPECT_TRUE(
+      HasChanged(reset_new_style, CSSPropertyID::kPropertyIDXCaretGradient));
+  EXPECT_TRUE(
+      HasChanged(reset_new_style, CSSPropertyID::kPropertyIDXCaretWidth));
+  EXPECT_TRUE(
+      HasChanged(reset_new_style, CSSPropertyID::kPropertyIDXCaretHeight));
+  EXPECT_TRUE(
+      HasChanged(reset_new_style, CSSPropertyID::kPropertyIDXCaretRadius));
+}
+
 TEST_F(CSSPatchingTest,
        NewStylingHasInheritedPropertyDiffUsesDefaultInheritList) {
   auto page = CreatePageRoot(16.0);

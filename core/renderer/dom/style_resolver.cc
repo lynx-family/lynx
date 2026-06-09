@@ -2386,6 +2386,7 @@ struct BackgroundDiffIds {
   CSSPropertyID size;
   CSSPropertyID origin;
   CSSPropertyID clip;
+  CSSPropertyID composite;
 };
 
 starlight::OutLineData DefaultOutline(
@@ -2535,6 +2536,10 @@ bool StyleResolver::ComputeStyleDiff(
   changed |= MarkIfChanged(new_style, n.field, o.field, ids.field);
     BACKGROUND_IMAGE_FIELDS(MARK_IMAGE_FIELD)
 #undef MARK_IMAGE_FIELD
+    if (ids.composite != kPropertyStart) {
+      changed |=
+          MarkIfChanged(new_style, n.composite, o.composite, ids.composite);
+    }
     return changed;
   };
   auto diff_background = [&](const auto& n, const auto& o,
@@ -2564,7 +2569,8 @@ bool StyleResolver::ComputeStyleDiff(
             n, o,
             {kPropertyIDBackgroundImage, kPropertyIDBackgroundPosition,
              kPropertyIDBackgroundRepeat, kPropertyIDBackgroundSize,
-             kPropertyIDBackgroundOrigin, kPropertyIDBackgroundClip},
+             kPropertyIDBackgroundOrigin, kPropertyIDBackgroundClip,
+             kPropertyStart},
             true);
       });
   changed |= DiffOptionalValue(
@@ -2572,11 +2578,12 @@ bool StyleResolver::ComputeStyleDiff(
       SharedDefaultProvider<starlight::BackgroundData>{},
       SharedDefaultProvider<starlight::BackgroundData>{},
       [&](const auto& n, const auto& o) {
-        return diff_background(n, o,
-                               {kPropertyIDMaskImage, kPropertyIDMaskPosition,
-                                kPropertyIDMaskRepeat, kPropertyIDMaskSize,
-                                kPropertyIDMaskOrigin, kPropertyIDMaskClip},
-                               false);
+        return diff_background(
+            n, o,
+            {kPropertyIDMaskImage, kPropertyIDMaskPosition,
+             kPropertyIDMaskRepeat, kPropertyIDMaskSize, kPropertyIDMaskOrigin,
+             kPropertyIDMaskClip, kPropertyIDMaskComposite},
+            false);
       });
   changed |= DiffOptionalValue(
       new_style.outline_, old_style.outline_,
@@ -2635,6 +2642,15 @@ bool StyleResolver::ComputeStyleDiff(
 
   changed |= MarkIfChanged(new_style, new_style.caret_color_,
                            old_style.caret_color_, kPropertyIDCaretColor);
+  changed |=
+      MarkIfChanged(new_style, new_style.caret_gradient_,
+                    old_style.caret_gradient_, kPropertyIDXCaretGradient);
+  changed |= MarkIfChanged(new_style, new_style.caret_width_,
+                           old_style.caret_width_, kPropertyIDXCaretWidth);
+  changed |= MarkIfChanged(new_style, new_style.caret_height_,
+                           old_style.caret_height_, kPropertyIDXCaretHeight);
+  changed |= MarkIfChanged(new_style, new_style.caret_radius_,
+                           old_style.caret_radius_, kPropertyIDXCaretRadius);
   changed |= DiffOptionalValue(
       new_style.text_attributes_, old_style.text_attributes_,
       [&new_style]() { return DefaultTextAttributes(new_style); },
