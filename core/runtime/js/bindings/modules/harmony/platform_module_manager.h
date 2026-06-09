@@ -8,6 +8,7 @@
 #include <napi/native_api.h>
 #include <node_api.h>
 
+#include <condition_variable>
 #include <map>
 #include <memory>
 #include <mutex>
@@ -16,6 +17,8 @@
 #include <unordered_set>
 #include <utility>
 #include <vector>
+
+#include "base/include/fml/task_runner.h"
 
 namespace lynx {
 namespace harmony {
@@ -46,13 +49,24 @@ class PlatformModuleManager {
  private:
   void AddPlatformModules(napi_value module_key, napi_value module_value,
                           napi_value sync_methods_value, bool sendable);
-  static napi_value EnsureSendable(napi_env env, void* buffer, napi_ref& ref);
+  static napi_value EnsureSendable(
+      napi_env env, void*& buffer, napi_ref& ref, napi_env& ref_env,
+      fml::RefPtr<fml::TaskRunner>& ref_task_runner, bool& initializing,
+      std::mutex& mutex, std::condition_variable& cv);
 
   napi_env env_;
   napi_ref js_module_manager_;
   napi_ref js_get_module_;
   napi_ref sendable_js_module_manager_ = nullptr;
   napi_ref sendable_js_get_module_ = nullptr;
+  napi_env sendable_js_module_manager_env_ = nullptr;
+  napi_env sendable_js_get_module_env_ = nullptr;
+  fml::RefPtr<fml::TaskRunner> sendable_js_module_manager_runner_;
+  fml::RefPtr<fml::TaskRunner> sendable_js_get_module_runner_;
+  std::mutex sendable_mutex_;
+  std::condition_variable sendable_cv_;
+  bool sendable_js_module_manager_initializing_ = false;
+  bool sendable_js_get_module_initializing_ = false;
 
   void* sendable_js_module_manager_buffer_ = nullptr;
   void* sendable_js_module_buffer_ = nullptr;

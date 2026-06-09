@@ -157,7 +157,8 @@ class LynxTemplateRenderer : public devtool::LynxDevToolProxy {
       std::string js_group_thread_name, bool use_quickjs,
       bool enable_js_group_thread, std::vector<std::string> preload_js_paths,
       bool enable_bytecode, std::string bytecode_source_url, bool enable_js,
-      std::unique_ptr<ModuleFactoryHarmony> module_factory,
+      std::unique_ptr<ModuleFactoryHarmony> jsbridge_module_factory,
+      std::unique_ptr<ModuleFactoryHarmony> mts_runtime_module_factory,
       LynxRuntimeWrapper* runtime_wrapper,
       LynxWhiteBoard* white_board = nullptr);
 
@@ -258,6 +259,11 @@ class LynxTemplateRenderer : public devtool::LynxDevToolProxy {
   std::shared_ptr<shell::PerfControllerProxy> perf_controller_proxy_;
   std::shared_ptr<shell::LynxShell> shell_;
   tasm::UIDelegate* ui_delegate_{nullptr};
+  std::weak_ptr<tasm::UIDelegate::WeakFlag>
+      cached_custom_module_factory_delegate_;
+  std::shared_ptr<runtime::NativeModuleFactory> cached_custom_module_factory_;
+  bool cached_custom_module_factory_has_runtime_wrapper_{false};
+  int32_t cached_custom_module_factory_instance_id_{-1};
   std::shared_ptr<LynxResourceLoaderHarmony> resource_loader_;
   std::weak_ptr<tasm::harmony::LynxContext> lynx_context_;
   std::shared_ptr<WeakFlag> weak_flag_;
