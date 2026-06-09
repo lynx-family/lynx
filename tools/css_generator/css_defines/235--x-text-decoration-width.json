@@ -1,0 +1,50 @@
+{
+  "name": "-x-text-decoration-width",
+  "id": 235,
+  "type": "length",
+  "default_value": "0px",
+  "version": "4.0",
+  "author": "zhouchaoying",
+  "consumption_status": "skip",
+  "desc": "The `-x-text-decoration-width` property sets the width of dashed text decoration segments or wavy text decoration periods.",
+  "formal_syntax": "<length>",
+  "is_shorthand": false,
+  "compat_data": {
+    "-x-text-decoration-width": {
+      "__compat": {
+        "lynx_path": "api/css/properties/-x-text-decoration-width",
+        "spec_url": [],
+        "status": {
+          "deprecated": false,
+          "experimental": false
+        },
+        "support": {
+          "android": {
+            "version_added": "4.0"
+          },
+          "ios": {
+            "version_added": "4.0"
+          },
+          "harmony": {
+            "version_added": false
+          },
+          "clay_android": {
+            "version_added": false
+          },
+          "clay_ios": {
+            "version_added": false
+          },
+          "clay_macos": {
+            "version_added": false
+          },
+          "clay_windows": {
+            "version_added": false
+          },
+          "web_lynx": {
+            "version_added": false
+          }
+        }
+      }
+    }
+  }
+}

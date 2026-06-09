@@ -35,6 +35,9 @@ enum TextPropertyKeyID {
   kTextPropAutoFontSize = 17,
   kTextPropAutoFontSizePresetSizes = 18,
   kTextPropAutoFontSizeLineRanges = 19,
+  kTextPropTextDecorationThickness = 20,
+  kTextPropTextDecorationWidth = 21,
+  kTextPropTextDecorationGap = 22,
 
   // attributes
   kTextPropTextMaxLine = 99,
@@ -136,6 +139,9 @@ static const uint8_t kUtf8ToUtf16Units[256] = {
   V(TextAlign, 1)                         \
   V(VerticalAlign, 1)                     \
   V(TextDecoration, 1)                    \
+  V(TextDecorationThickness, 1)           \
+  V(XTextDecorationWidth, 1)              \
+  V(XTextDecorationGap, 1)                \
   V(Overflow, 1)                          \
   V(OverflowX, 1)                         \
   V(OverflowY, 1)                         \
