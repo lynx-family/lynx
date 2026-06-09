@@ -131,7 +131,8 @@ void LynxTemplateRenderer::SetUpLynxShell(
     bool use_quickjs, bool enable_js_group_thread,
     std::vector<std::string> preload_js_paths, bool enable_bytecode,
     std::string bytecode_source_url, bool enable_js,
-    std::unique_ptr<ModuleFactoryHarmony> module_factory,
+    std::unique_ptr<ModuleFactoryHarmony> jsbridge_module_factory,
+    std::unique_ptr<ModuleFactoryHarmony> main_thread_module_factory,
     LynxRuntimeWrapper* runtime_wrapper, LynxWhiteBoard* white_board) {
   ui_delegate_ = ui_delegate;
   resource_loader_ = resource_loader;
@@ -168,6 +169,12 @@ void LynxTemplateRenderer::SetUpLynxShell(
   auto invoker = std::make_unique<TasmPlatformInvokerHarmony>(
       weak_flag_->weak_from_this());
   auto* invoker_ptr = invoker.get();
+  auto native_module_manager = std::make_unique<pub::LynxNativeModuleManager>();
+  native_module_manager->SetModuleFactory(
+      ui_delegate_->GetCustomModuleFactory());
+  native_module_manager->SetPlatformModuleFactory(
+      std::shared_ptr<runtime::NativeModuleFactory>(
+          std::move(main_thread_module_factory)));
   shell_.reset(
       shell::LynxShellBuilder()
           .SetNativeFacade(std::make_unique<NativeFacadeHarmony>(this))
@@ -199,6 +206,7 @@ void LynxTemplateRenderer::SetUpLynxShell(
                                       ? runtime_wrapper->RuntimeStandalone()
                                             .GetPerfControllerActor()
                                       : nullptr)
+          .SetNativeModuleManager(std::move(native_module_manager))
           .SetWhiteBoard(white_board ? white_board->GetWhiteBoard() : nullptr)
           .build());
   invoker_ptr->SetUITaskRunner(shell_->GetRunners()->GetUITaskRunner());
@@ -225,7 +233,7 @@ void LynxTemplateRenderer::SetUpLynxShell(
     // InitJSBridge
     auto module_manager = std::make_shared<runtime::js::LynxModuleManager>();
     module_manager->SetModuleFactory(ui_delegate_->GetCustomModuleFactory());
-    module_manager->SetModuleFactory(std::move(module_factory));
+    module_manager->SetModuleFactory(std::move(jsbridge_module_factory));
     napi_value module_param[1];
     module_param[0] = base::NapiUtil::CreatePtrArray(
         env, reinterpret_cast<uintptr_t>(module_manager.get()));
@@ -928,12 +936,17 @@ napi_value LynxTemplateRenderer::NativeReset(napi_env env,
   napi_value sendable_module_args[kArgsSize];
   base::NapiUtil::ConvertToArray(env, args[16], sendable_module_args,
                                  kArgsSize);
-  auto module_factory = std::make_unique<ModuleFactoryHarmony>(
+  auto main_thread_module_factory = std::make_unique<ModuleFactoryHarmony>(
       env, module_args, sendable_module_args);
 
   // LynxRuntimeWrapper
   LynxRuntimeWrapper* runtime_wrapper = nullptr;
   napi_unwrap(env, args[17], reinterpret_cast<void**>(&runtime_wrapper));
+  std::unique_ptr<ModuleFactoryHarmony> jsbridge_module_factory;
+  if (runtime_wrapper == nullptr) {
+    jsbridge_module_factory = std::make_unique<ModuleFactoryHarmony>(
+        env, module_args, sendable_module_args);
+  }
 
   LynxWhiteBoard* white_board = nullptr;
   if (argc > 18) {
@@ -960,7 +973,8 @@ napi_value LynxTemplateRenderer::NativeReset(napi_env env,
       js_perf_controller_wrapper, thread_mode, std::move(group_id),
       std::move(js_group_thread_name), use_quickjs, enable_js_group_thread,
       std::move(preload_js_paths), enable_bytecode,
-      std::move(bytecode_source_url), enable_js, std::move(module_factory),
+      std::move(bytecode_source_url), enable_js,
+      std::move(jsbridge_module_factory), std::move(main_thread_module_factory),
       runtime_wrapper, white_board);
   return nullptr;
 }

@@ -7,14 +7,12 @@
 
 #include <memory>
 #include <string>
-#include <utility>
 #include <vector>
 
 #include "base/include/platform/harmony/napi_util.h"
 #include "core/public/ui_delegate.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/devtool/harmony_emulated_touch_dispatcher.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/lynx_context.h"
-#include "platform/harmony/lynx_harmony/src/main/cpp/module/module_factory_capi.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/shadow_node/shadow_node_owner.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_owner.h"
 
@@ -29,14 +27,11 @@ namespace harmony {
 
 class UIDelegateHarmony : public UIDelegate {
  public:
-  UIDelegateHarmony(
-      UIOwner* ui_owner, ShadowNodeOwner* node_owner,
-      const std::shared_ptr<LynxContext>& lynx_context,
-      std::unique_ptr<lynx::harmony::ModuleFactoryCAPI> module_factory)
+  UIDelegateHarmony(UIOwner* ui_owner, ShadowNodeOwner* node_owner,
+                    const std::shared_ptr<LynxContext>& lynx_context)
       : ui_owner_(ui_owner),
         node_owner_(node_owner),
-        lynx_context_(lynx_context),
-        module_factory_(std::move(module_factory)) {}
+        lynx_context_(lynx_context) {}
   ~UIDelegateHarmony() override {}
 
   std::unique_ptr<PaintingCtxPlatformImpl> CreatePaintingContext() override;
@@ -101,7 +96,6 @@ class UIDelegateHarmony : public UIDelegate {
   UIOwner* ui_owner_;
   ShadowNodeOwner* node_owner_;
   std::weak_ptr<LynxContext> lynx_context_;
-  std::unique_ptr<lynx::harmony::ModuleFactoryCAPI> module_factory_;
   HarmonyEmulatedTouchDispatcher emulated_touch_dispatcher_;
   shell::EmbedderPlatformHarmony* platform_ = nullptr;
 
