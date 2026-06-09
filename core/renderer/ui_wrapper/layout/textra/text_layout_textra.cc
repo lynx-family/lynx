@@ -329,6 +329,30 @@ void TextLayoutTextra::ApplyTextStyle(Element* element,
           }
           paragraph_builder_->SetTextStyle(kTextPropTextDecoration,
                                            &(decoration), sizeof(int) * 3);
+          if (text_attributes->text_decoration_thickness.has_value()) {
+            float thickness = *text_attributes->text_decoration_thickness;
+            paragraph_builder_->SetTextStyle(kTextPropTextDecorationThickness,
+                                             &(thickness), sizeof(float));
+          }
+          break;
+        }
+        case kPropertyIDTextDecorationThickness: {
+          float thickness =
+              text_attributes->text_decoration_thickness.value_or(0.f);
+          paragraph_builder_->SetTextStyle(kTextPropTextDecorationThickness,
+                                           &(thickness), sizeof(float));
+          break;
+        }
+        case kPropertyIDXTextDecorationWidth: {
+          float width = text_attributes->text_decoration_width.value_or(0.f);
+          paragraph_builder_->SetTextStyle(kTextPropTextDecorationWidth,
+                                           &(width), sizeof(float));
+          break;
+        }
+        case kPropertyIDXTextDecorationGap: {
+          float gap = text_attributes->text_decoration_gap.value_or(0.f);
+          paragraph_builder_->SetTextStyle(kTextPropTextDecorationGap, &(gap),
+                                           sizeof(float));
           break;
         }
         default:
