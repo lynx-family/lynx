@@ -19821,8 +19821,7 @@ TEST_P(FiberElementTest,
   queries.push_back(std::move(media_query));
   auto mq_set = fml::MakeRefCounted<css::MediaQuerySet>(std::move(queries));
 
-  auto condition_rule = fml::MakeRefCounted<css::ConditionRule>(
-      "(min-width: 500px)", fragment.get());
+  auto condition_rule = fml::MakeRefCounted<css::ConditionRule>(fragment.get());
   condition_rule->SetMediaQueries(std::move(mq_set));
 
   auto selector_array = std::make_unique<css::LynxCSSSelector[]>(1);
@@ -19902,8 +19901,7 @@ TEST_P(FiberElementTest, NewStylingMediaQueryReResolveOnColorSchemeChange) {
   queries.push_back(std::move(media_query));
   auto mq_set = fml::MakeRefCounted<css::MediaQuerySet>(std::move(queries));
 
-  auto condition_rule = fml::MakeRefCounted<css::ConditionRule>(
-      "(prefers-color-scheme: dark)", fragment.get());
+  auto condition_rule = fml::MakeRefCounted<css::ConditionRule>(fragment.get());
   condition_rule->SetMediaQueries(std::move(mq_set));
 
   auto selector_array = std::make_unique<css::LynxCSSSelector[]>(1);

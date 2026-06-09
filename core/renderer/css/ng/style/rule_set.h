@@ -27,6 +27,7 @@ namespace css {
 class ConditionRule;
 class MediaQueryEvaluator;
 class RuleInvalidationSet;
+class SupportsEvaluator;
 
 struct MatchedRule {
   MatchedRule(const RuleData* rule_data, unsigned index)
@@ -53,7 +54,8 @@ class RuleSet {
 
   void MatchStyles(StyleNode* node, unsigned& level,
                    base::Vector<MatchedRule>& output,
-                   const MediaQueryEvaluator* evaluator) const;
+                   const MediaQueryEvaluator* media_query_evaluator,
+                   const SupportsEvaluator* supports_evaluator) const;
 
   void MatchOwnStyles(StyleNode* node, unsigned level,
                       base::Vector<MatchedRule>& output) const;
@@ -94,11 +96,25 @@ class RuleSet {
   // as an O(1) gate to decide whether constructing a MediaQueryEvaluator is
   // worthwhile before invoking MatchStyles.
   bool HasMediaQueryRules() const {
-    if (has_media_query_rules_) return true;
+    return GetConditionRuleFlags() & kHasMediaQuery;
+  }
+
+  bool HasSupportsRules() const {
+    return GetConditionRuleFlags() & kHasSupports;
+  }
+
+  enum ConditionRuleFlags : uint8_t {
+    kNoConditionRules = 0,
+    kHasMediaQuery = 1 << 0,
+    kHasSupports = 1 << 1,
+  };
+
+  uint8_t GetConditionRuleFlags() const {
+    uint8_t flags = condition_rule_flags_;
     for (const auto* dep : deps_) {
-      if (dep->HasMediaQueryRules()) return true;
+      flags |= dep->GetConditionRuleFlags();
     }
-    return false;
+    return flags;
   }
 
  private:
@@ -122,7 +138,7 @@ class RuleSet {
   tasm::SharedCSSFragment* fragment_ = nullptr;
   unsigned rule_count_ = 0;
   bool has_adjacent_sibling_rules_ = false;
-  bool has_media_query_rules_ = false;
+  uint8_t condition_rule_flags_ = kNoConditionRules;
 };
 
 }  // namespace css

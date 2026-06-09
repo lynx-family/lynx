@@ -25,6 +25,7 @@
 namespace lynx {
 namespace css {
 class MediaQueryEvaluator;
+class SupportsEvaluator;
 }  // namespace css
 namespace style {
 class SimpleStyleNode;
@@ -43,9 +44,11 @@ class StyleResolver {
 
   LYNX_EXPORT_FOR_DEVTOOL static MatchedVector<css::MatchedRule>
   GetCSSMatchedRule(AttributeHolder* node, CSSFragment* style_sheet,
-                    const css::MediaQueryEvaluator* evaluator);
+                    const css::MediaQueryEvaluator* media_query_evaluator,
+                    const css::SupportsEvaluator* supports_evaluator);
 
   static bool FragmentsHasMediaQueries(CSSFragment* style_sheet);
+  static uint8_t GetConditionRuleFlags(CSSFragment* style_sheet);
 
   void ResolveStyle(StyleMap& result, CSSFragment* fragment,
                     CSSVariableMap* changed_css_vars = nullptr);

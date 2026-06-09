@@ -5,25 +5,26 @@
 #ifndef CORE_RENDERER_CSS_NG_STYLE_CONDITION_RULE_H_
 #define CORE_RENDERER_CSS_NG_STYLE_CONDITION_RULE_H_
 
-#include <string>
+#include <atomic>
+#include <cstdint>
 #include <utility>
 
 #include "base/include/fml/memory/ref_counted.h"
 #include "core/renderer/css/ng/media_query/media_query_set.h"
 #include "core/renderer/css/ng/style/rule_set.h"
+#include "core/renderer/css/ng/supports/supports_condition.h"
 
 namespace lynx {
 namespace css {
 
+class SupportsEvaluator;
+
 class ConditionRule : public fml::RefCountedThreadSafeStorage {
  public:
-  explicit ConditionRule(std::string condition,
-                         tasm::SharedCSSFragment* fragment)
-      : condition_(std::move(condition)), rule_set_(fragment) {}
+  explicit ConditionRule(tasm::SharedCSSFragment* fragment)
+      : rule_set_(fragment) {}
 
   void ReleaseSelf() const override { delete this; }
-
-  const std::string& Condition() const { return condition_; }
 
   RuleSet& GetRuleSet() { return rule_set_; }
   const RuleSet& GetRuleSet() const { return rule_set_; }
@@ -44,10 +45,34 @@ class ConditionRule : public fml::RefCountedThreadSafeStorage {
     return media_queries_ && !media_queries_->IsEmpty();
   }
 
+  void SetSupportsCondition(
+      fml::RefPtr<const SupportsConditionNode> condition) {
+    supports_condition_ = std::move(condition);
+    supports_condition_result_.store(kSupportsConditionUnknown,
+                                     std::memory_order_relaxed);
+  }
+
+  const fml::RefPtr<const SupportsConditionNode>& SupportsCondition() const {
+    return supports_condition_;
+  }
+
+  bool HasStructuredSupportsRules() const {
+    return supports_condition_ != nullptr;
+  }
+
+  bool MatchesSupportsCondition(
+      const SupportsEvaluator* supports_evaluator) const;
+
  private:
-  std::string condition_;
+  static constexpr int8_t kSupportsConditionUnknown = -1;
+  static constexpr int8_t kSupportsConditionFalse = 0;
+  static constexpr int8_t kSupportsConditionTrue = 1;
+
   RuleSet rule_set_;
   fml::RefPtr<const MediaQuerySet> media_queries_;
+  fml::RefPtr<const SupportsConditionNode> supports_condition_;
+  mutable std::atomic<int8_t> supports_condition_result_{
+      kSupportsConditionUnknown};
 };
 
 }  // namespace css

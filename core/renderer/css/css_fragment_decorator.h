@@ -59,6 +59,7 @@ class CSSFragmentDecorator : public CSSFragment {
   bool HasPseudoRules() override;
   bool HasAdjacentSiblingRules() override;
   bool HasMediaQueryRules() override;
+  uint8_t GetConditionRuleFlags() override;
 
   void MarkFontFacesResolved(bool resolved) override;
 

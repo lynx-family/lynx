@@ -5,6 +5,7 @@
 #include "core/renderer/css/ng/css_ng_utils.h"
 
 #include "base/include/no_destructor.h"
+#include "base/include/string/string_utils.h"
 
 namespace lynx {
 namespace css {
@@ -27,6 +28,34 @@ const std::string& CSSGlobalStarString() {
 const std::u16string& CSSGlobalStarU16String() {
   static const base::NoDestructor<std::u16string> str(u"*");
   return *str;
+}
+
+std::string SimplifyWhiteSpace(const std::string& input) {
+  std::string result;
+  result.reserve(input.size());
+
+  size_t i = 0;
+  size_t len = input.size();
+
+  while (true) {
+    while (i < len && base::IsHTMLSpace(input[i])) {
+      ++i;
+    }
+    while (i < len && !base::IsHTMLSpace(input[i])) {
+      result += input[i++];
+    }
+    if (i < len) {
+      result += ' ';
+    } else {
+      break;
+    }
+  }
+
+  if (!result.empty() && result.back() == ' ') {
+    result.pop_back();
+  }
+
+  return result;
 }
 
 }  // namespace css
