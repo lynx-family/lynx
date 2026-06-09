@@ -91,6 +91,34 @@ TEST(LengthHandler, Process) {
   EXPECT_TRUE(css_value.IsPx());
   EXPECT_EQ(css_value.GetNumber(), 10);
 }
+
+TEST(LengthHandler, TextDecorationPatternLengths) {
+  StyleMap output;
+  CSSParserConfigs configs;
+
+  EXPECT_TRUE(
+      UnitHandler::Process(CSSPropertyID::kPropertyIDXTextDecorationWidth,
+                           lepus::Value("8px"), output, configs));
+  ASSERT_TRUE(output.find(CSSPropertyID::kPropertyIDXTextDecorationWidth) !=
+              output.end());
+  EXPECT_TRUE(output[CSSPropertyID::kPropertyIDXTextDecorationWidth].IsPx());
+  EXPECT_EQ(output[CSSPropertyID::kPropertyIDXTextDecorationWidth].GetNumber(),
+            8);
+
+  EXPECT_TRUE(UnitHandler::Process(CSSPropertyID::kPropertyIDXTextDecorationGap,
+                                   lepus::Value("4px"), output, configs));
+  ASSERT_TRUE(output.find(CSSPropertyID::kPropertyIDXTextDecorationGap) !=
+              output.end());
+  EXPECT_TRUE(output[CSSPropertyID::kPropertyIDXTextDecorationGap].IsPx());
+  EXPECT_EQ(output[CSSPropertyID::kPropertyIDXTextDecorationGap].GetNumber(),
+            4);
+
+  output.clear();
+  EXPECT_FALSE(
+      UnitHandler::Process(CSSPropertyID::kPropertyIDXTextDecorationWidth,
+                           lepus::Value("8px 0.5"), output, configs));
+  EXPECT_TRUE(output.empty());
+}
 }  // namespace test
 
 }  // namespace tasm

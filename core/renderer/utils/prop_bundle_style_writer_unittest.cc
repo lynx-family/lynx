@@ -137,6 +137,40 @@ TEST_F(PropBundleStyleWriterTest, TestWriteColorRadialGradient) {
               static_cast<int>(starlight::PlatformLengthUnit::PERCENTAGE));
 }
 
+TEST_F(PropBundleStyleWriterTest, TestWriteTextDecorationExtendedProperties) {
+  style_.text_attributes_.emplace(0);
+  style_.text_attributes_->text_decoration_thickness = 2.5f;
+  PropBundleStyleWriter::PushStyleToBundle(
+      &new_bundle_, CSSPropertyID::kPropertyIDTextDecorationThickness, &style_);
+  EXPECT_EQ(new_bundle_.props_["text-decoration-thickness"],
+            lepus::Value(2.5f));
+
+  style_.text_attributes_->text_decoration_thickness.reset();
+  PropBundleStyleWriter::PushStyleToBundle(
+      &new_bundle_, CSSPropertyID::kPropertyIDTextDecorationThickness, &style_);
+  EXPECT_TRUE(new_bundle_.props_["text-decoration-thickness"].IsNil());
+
+  style_.text_attributes_->text_decoration_width = 8.f;
+  PropBundleStyleWriter::PushStyleToBundle(
+      &new_bundle_, CSSPropertyID::kPropertyIDXTextDecorationWidth, &style_);
+  EXPECT_EQ(new_bundle_.props_["-x-text-decoration-width"], lepus::Value(8.f));
+
+  style_.text_attributes_->text_decoration_width.reset();
+  PropBundleStyleWriter::PushStyleToBundle(
+      &new_bundle_, CSSPropertyID::kPropertyIDXTextDecorationWidth, &style_);
+  EXPECT_TRUE(new_bundle_.props_["-x-text-decoration-width"].IsNil());
+
+  style_.text_attributes_->text_decoration_gap = 4.f;
+  PropBundleStyleWriter::PushStyleToBundle(
+      &new_bundle_, CSSPropertyID::kPropertyIDXTextDecorationGap, &style_);
+  EXPECT_EQ(new_bundle_.props_["-x-text-decoration-gap"], lepus::Value(4.f));
+
+  style_.text_attributes_->text_decoration_gap.reset();
+  PropBundleStyleWriter::PushStyleToBundle(
+      &new_bundle_, CSSPropertyID::kPropertyIDXTextDecorationGap, &style_);
+  EXPECT_TRUE(new_bundle_.props_["-x-text-decoration-gap"].IsNil());
+}
+
 TEST_F(PropBundleStyleWriterTest, TestStyleWriter) {
   style_.animation_data_.emplace();
   style_.animation_data_->push_back(starlight::AnimationData());

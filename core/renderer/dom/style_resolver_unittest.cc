@@ -2362,6 +2362,44 @@ TEST_F(CSSPatchingTest, NewStylingResolveBaseStyleReturnsResolvedStyle) {
 }
 
 TEST_F(CSSPatchingTest,
+       NewStylingResolveBaseStyleAppliesTextDecorationExtensionValues) {
+  auto page = CreatePageRoot(16.0);
+  auto element = manager->CreateFiberText("text");
+  page->InsertNode(element);
+  element->SetStyle(CSSPropertyID::kPropertyIDTextDecorationThickness,
+                    lepus::Value("2px"));
+  element->SetStyle(CSSPropertyID::kPropertyIDXTextDecorationWidth,
+                    lepus::Value("8px"));
+  element->SetStyle(CSSPropertyID::kPropertyIDXTextDecorationGap,
+                    lepus::Value("4px"));
+
+  StyleMap resolved_style_map;
+  auto style = element->style_resolver_.ResolveBaseStyle(nullptr, nullptr,
+                                                         &resolved_style_map);
+
+  ASSERT_NE(style, nullptr);
+  ExpectPxStyle(resolved_style_map,
+                CSSPropertyID::kPropertyIDTextDecorationThickness, 2);
+  ExpectPxStyle(resolved_style_map,
+                CSSPropertyID::kPropertyIDXTextDecorationWidth, 8);
+  ExpectPxStyle(resolved_style_map,
+                CSSPropertyID::kPropertyIDXTextDecorationGap, 4);
+  const auto& text_attributes = style->GetTextAttributes();
+  ASSERT_TRUE(text_attributes.has_value());
+  ASSERT_TRUE(text_attributes->text_decoration_thickness.has_value());
+  EXPECT_FLOAT_EQ(*text_attributes->text_decoration_thickness, 2.f);
+  ASSERT_TRUE(text_attributes->text_decoration_width.has_value());
+  EXPECT_FLOAT_EQ(*text_attributes->text_decoration_width, 8.f);
+  ASSERT_TRUE(text_attributes->text_decoration_gap.has_value());
+  EXPECT_FLOAT_EQ(*text_attributes->text_decoration_gap, 4.f);
+  EXPECT_TRUE(
+      HasChanged(*style, CSSPropertyID::kPropertyIDTextDecorationThickness));
+  EXPECT_TRUE(
+      HasChanged(*style, CSSPropertyID::kPropertyIDXTextDecorationWidth));
+  EXPECT_TRUE(HasChanged(*style, CSSPropertyID::kPropertyIDXTextDecorationGap));
+}
+
+TEST_F(CSSPatchingTest,
        NewStylingResolveBaseStyleConsumesCommittedAttributeStyles) {
   auto page = CreatePageRoot(16.0);
   auto scroll = manager->CreateFiberScrollView("scroll-view");

@@ -1488,6 +1488,18 @@ std::string ToTextDecorationProperty(const lynx::tasm::CSSValue &value) {
   std::string res = "";
   for (size_t i = 0; i < arr->size(); i++) {
     int decoration = static_cast<int>(arr->get(i).Number());
+    if (decoration ==
+        static_cast<int>(starlight::TextDecorationType::kThickness)) {
+      if (i + 2 >= arr->size()) {
+        return "";
+      }
+      res += " ";
+      res += ToLengthWithUnit(
+          arr->get(i + 1),
+          static_cast<lynx::tasm::CSSValuePattern>(arr->get(i + 2).Number()));
+      i += 2;
+      continue;
+    }
     if (decoration & static_cast<int>(starlight::TextDecorationType::kColor)) {
       uint32_t textDecorationColor =
           static_cast<uint32_t>(arr->get(i + 1).Number());

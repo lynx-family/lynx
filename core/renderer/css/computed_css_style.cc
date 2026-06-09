@@ -3056,6 +3056,7 @@ bool ComputedCSSStyle::SetTextDecoration(const tasm::CSSValue& value,
   };
   uint32_t old_flags = get_flags();
   auto old_color = text_attributes_->text_decoration_color;
+  auto old_thickness = text_attributes_->text_decoration_thickness;
 
   if (reset) {
     text_attributes_->underline_decoration =
@@ -3065,6 +3066,7 @@ bool ComputedCSSStyle::SetTextDecoration(const tasm::CSSValue& value,
     text_attributes_->text_decoration_style =
         static_cast<uint8_t>(TextDecorationType::kSolid);
     text_attributes_->text_decoration_color = DefaultColor::DEFAULT_COLOR;
+    text_attributes_->text_decoration_thickness.reset();
   } else {
     text_attributes_->underline_decoration =
         DefaultComputedStyle::DEFAULT_BOOLEAN;
@@ -3073,9 +3075,30 @@ bool ComputedCSSStyle::SetTextDecoration(const tasm::CSSValue& value,
     text_attributes_->text_decoration_style =
         DefaultComputedStyle::DEFAULT_TEXT_DECORATION_STYLE;
     text_attributes_->text_decoration_color = DefaultColor::DEFAULT_COLOR;
+    text_attributes_->text_decoration_thickness.reset();
     auto result = value.GetArray();
     for (size_t i = 0; i < result->size(); i++) {
       uint32_t decoration = static_cast<uint32_t>(result->get(i).Number());
+      if (decoration == static_cast<uint32_t>(TextDecorationType::kThickness)) {
+        if (i + 2 >= result->size()) {
+          return false;
+        }
+        float thickness = 0.f;
+        const auto pattern =
+            static_cast<tasm::CSSValuePattern>(result->get(i + 2).Number());
+        CSS_HANDLER_FAIL_IF_NOT(
+            CalculateCSSValueToFloat(
+                tasm::CSSValue(result->get(i + 1), pattern), thickness,
+                length_context_, parser_configs_, true) &&
+                thickness >= 0.f,
+            parser_configs_.enable_css_strict_mode, tasm::TYPE_ERROR,
+            tasm::CSSProperty::GetPropertyName(
+                tasm::kPropertyIDTextDecorationThickness)
+                .c_str())
+        text_attributes_->text_decoration_thickness = thickness;
+        i += 2;
+        continue;
+      }
       if (decoration & static_cast<uint32_t>(TextDecorationType::kColor)) {
         text_attributes_->text_decoration_color =
             static_cast<uint32_t>(result->get(i + 1).Number());
@@ -3095,7 +3118,17 @@ bool ComputedCSSStyle::SetTextDecoration(const tasm::CSSValue& value,
   }
   uint32_t new_flags = get_flags();
   auto new_color = text_attributes_->text_decoration_color;
-  return (old_flags != new_flags) || (old_color != new_color);
+  auto new_thickness = text_attributes_->text_decoration_thickness;
+  const bool thickness_changed = old_thickness != new_thickness;
+  if (thickness_changed) {
+    if (reset) {
+      MarkReset(tasm::kPropertyIDTextDecorationThickness);
+    } else {
+      MarkChanged(tasm::kPropertyIDTextDecorationThickness);
+    }
+  }
+  return (old_flags != new_flags) || (old_color != new_color) ||
+         thickness_changed;
 }
 
 bool ComputedCSSStyle::SetTextDecorationColor(const tasm::CSSValue& value,
@@ -3118,6 +3151,70 @@ bool ComputedCSSStyle::SetTextDecorationColor(const tasm::CSSValue& value,
     }
   }
   return old_value_color != text_attributes_->decoration_color;
+}
+
+bool ComputedCSSStyle::SetTextDecorationThickness(const tasm::CSSValue& value,
+                                                  const bool reset) {
+  PrepareOptionalForTextAttributes();
+  auto old_value = text_attributes_->text_decoration_thickness;
+  if (reset) {
+    text_attributes_->text_decoration_thickness.reset();
+  } else {
+    float thickness = 0.f;
+    CSS_HANDLER_FAIL_IF_NOT(
+        CalculateCSSValueToFloat(value, thickness, length_context_,
+                                 parser_configs_, true) &&
+            thickness >= 0.f,
+        parser_configs_.enable_css_strict_mode, tasm::TYPE_ERROR,
+        tasm::CSSProperty::GetPropertyName(
+            tasm::kPropertyIDTextDecorationThickness)
+            .c_str())
+    text_attributes_->text_decoration_thickness = thickness;
+  }
+  return old_value != text_attributes_->text_decoration_thickness;
+}
+
+bool ComputedCSSStyle::SetXTextDecorationWidth(const tasm::CSSValue& value,
+                                               const bool reset) {
+  PrepareOptionalForTextAttributes();
+  auto old_value = text_attributes_->text_decoration_width;
+  if (reset) {
+    text_attributes_->text_decoration_width.reset();
+  } else {
+    float width = 0.f;
+    CSS_HANDLER_FAIL_IF_NOT(
+        CalculateCSSValueToFloat(value, width, length_context_, parser_configs_,
+                                 true) &&
+            width >= 0.f,
+        parser_configs_.enable_css_strict_mode, tasm::TYPE_ERROR,
+        tasm::CSSProperty::GetPropertyName(
+            tasm::kPropertyIDXTextDecorationWidth)
+            .c_str())
+
+    text_attributes_->text_decoration_width = width;
+  }
+  return old_value != text_attributes_->text_decoration_width;
+}
+
+bool ComputedCSSStyle::SetXTextDecorationGap(const tasm::CSSValue& value,
+                                             const bool reset) {
+  PrepareOptionalForTextAttributes();
+  auto old_value = text_attributes_->text_decoration_gap;
+  if (reset) {
+    text_attributes_->text_decoration_gap.reset();
+  } else {
+    float gap = 0.f;
+    CSS_HANDLER_FAIL_IF_NOT(
+        CalculateCSSValueToFloat(value, gap, length_context_, parser_configs_,
+                                 true) &&
+            gap >= 0.f,
+        parser_configs_.enable_css_strict_mode, tasm::TYPE_ERROR,
+        tasm::CSSProperty::GetPropertyName(tasm::kPropertyIDXTextDecorationGap)
+            .c_str())
+
+    text_attributes_->text_decoration_gap = gap;
+  }
+  return old_value != text_attributes_->text_decoration_gap;
 }
 
 bool ComputedCSSStyle::SetZIndex(const tasm::CSSValue& value,
@@ -4358,6 +4455,28 @@ lepus_value ComputedCSSStyle::TextDecorationToLepus() {
   }
 }
 
+lepus_value ComputedCSSStyle::TextDecorationThicknessToLepus() {
+  if (text_attributes_ &&
+      text_attributes_->text_decoration_thickness.has_value()) {
+    return lepus_value(*text_attributes_->text_decoration_thickness);
+  }
+  return lepus_value();
+}
+
+lepus_value ComputedCSSStyle::XTextDecorationWidthToLepus() {
+  if (text_attributes_ && text_attributes_->text_decoration_width.has_value()) {
+    return lepus_value(*text_attributes_->text_decoration_width);
+  }
+  return lepus_value();
+}
+
+lepus_value ComputedCSSStyle::XTextDecorationGapToLepus() {
+  if (text_attributes_ && text_attributes_->text_decoration_gap.has_value()) {
+    return lepus_value(*text_attributes_->text_decoration_gap);
+  }
+  return lepus_value();
+}
+
 lepus_value ComputedCSSStyle::TextDecorationColorToLepus() {
   if (text_attributes_) {
     return lepus_value(text_attributes_->decoration_color.has_value()
@@ -4958,6 +5077,27 @@ void ComputedCSSStyle::InheritNormalPropertiesFrom(
                              from.text_attributes_->text_decoration_color);
         }
         break;
+      case tasm::kPropertyIDTextDecorationThickness:
+        if (from.text_attributes_.has_value()) {
+          auto* attrs = ensure_text_attrs(from.text_attributes_->font_size);
+          copy_flex_optional(attrs->text_decoration_thickness,
+                             from.text_attributes_->text_decoration_thickness);
+        }
+        break;
+      case tasm::kPropertyIDXTextDecorationWidth:
+        if (from.text_attributes_.has_value()) {
+          auto* attrs = ensure_text_attrs(from.text_attributes_->font_size);
+          copy_flex_optional(attrs->text_decoration_width,
+                             from.text_attributes_->text_decoration_width);
+        }
+        break;
+      case tasm::kPropertyIDXTextDecorationGap:
+        if (from.text_attributes_.has_value()) {
+          auto* attrs = ensure_text_attrs(from.text_attributes_->font_size);
+          copy_flex_optional(attrs->text_decoration_gap,
+                             from.text_attributes_->text_decoration_gap);
+        }
+        break;
       case tasm::kPropertyIDTextShadow:
         if (from.text_attributes_.has_value()) {
           auto* attrs = ensure_text_attrs(from.text_attributes_->font_size);
@@ -5322,6 +5462,15 @@ bool ComputedCSSStyle::HasNonDefaultInheritedResolvedValue(
       return text_attributes_.has_value() &&
              text_attributes_->decoration_color.value_or(
                  DefaultColor::DEFAULT_COLOR) != DefaultColor::DEFAULT_COLOR;
+    case tasm::kPropertyIDTextDecorationThickness:
+      return text_attributes_.has_value() &&
+             text_attributes_->text_decoration_thickness.has_value();
+    case tasm::kPropertyIDXTextDecorationWidth:
+      return text_attributes_.has_value() &&
+             text_attributes_->text_decoration_width.has_value();
+    case tasm::kPropertyIDXTextDecorationGap:
+      return text_attributes_.has_value() &&
+             text_attributes_->text_decoration_gap.has_value();
     case tasm::kPropertyIDCaretColor:
       return !caret_color_.empty();
     case tasm::kPropertyIDTextIndent:

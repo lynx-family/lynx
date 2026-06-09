@@ -56,6 +56,58 @@ TEST(TextDecorationHandler, Handler) {
             starlight::TextDecorationType::kDashed);
   EXPECT_EQ((starlight::TextDecorationType)arr3->get(3).Number(),
             starlight::TextDecorationType::kUnderLine);
+
+  output.clear();
+  impl = lepus::Value("underline 2px dashed yellow");
+  ret = UnitHandler::Process(id, impl, output, configs);
+  EXPECT_TRUE(ret);
+  EXPECT_TRUE(output[id].IsArray());
+  auto arr4 = output[id].GetArray();
+  ASSERT_EQ(arr4->size(), 7);
+  EXPECT_EQ((starlight::TextDecorationType)arr4->get(0).Number(),
+            starlight::TextDecorationType::kUnderLine);
+  EXPECT_EQ((starlight::TextDecorationType)arr4->get(1).Number(),
+            starlight::TextDecorationType::kThickness);
+  EXPECT_EQ(arr4->get(2).Number(), 2);
+  EXPECT_EQ((CSSValuePattern)arr4->get(3).Number(), CSSValuePattern::PX);
+  EXPECT_EQ((starlight::TextDecorationType)arr4->get(4).Number(),
+            starlight::TextDecorationType::kDashed);
+  EXPECT_EQ((starlight::TextDecorationType)arr4->get(5).Number(),
+            starlight::TextDecorationType::kColor);
+  EXPECT_EQ(arr4->get(6).Number(), 0xffffff00);  // yellow rgb(255,255,0)
+
+  output.clear();
+  impl = lepus::Value("dashed red underline 4px");
+  ret = UnitHandler::Process(id, impl, output, configs);
+  EXPECT_TRUE(ret);
+  EXPECT_TRUE(output[id].IsArray());
+  auto arr6 = output[id].GetArray();
+  ASSERT_EQ(arr6->size(), 7);
+  EXPECT_EQ((starlight::TextDecorationType)arr6->get(0).Number(),
+            starlight::TextDecorationType::kDashed);
+  EXPECT_EQ((starlight::TextDecorationType)arr6->get(1).Number(),
+            starlight::TextDecorationType::kColor);
+  EXPECT_EQ(arr6->get(2).Number(), 0xffff0000);  // red rgb(255,0,0)
+  EXPECT_EQ((starlight::TextDecorationType)arr6->get(3).Number(),
+            starlight::TextDecorationType::kUnderLine);
+  EXPECT_EQ((starlight::TextDecorationType)arr6->get(4).Number(),
+            starlight::TextDecorationType::kThickness);
+  EXPECT_EQ(arr6->get(5).Number(), 4);
+  EXPECT_EQ((CSSValuePattern)arr6->get(6).Number(), CSSValuePattern::PX);
+
+  output.clear();
+  impl = lepus::Value("none 2px");
+  ret = UnitHandler::Process(id, impl, output, configs);
+  EXPECT_TRUE(ret);
+  EXPECT_TRUE(output[id].IsArray());
+  auto arr5 = output[id].GetArray();
+  ASSERT_EQ(arr5->size(), 1);
+  EXPECT_EQ((starlight::TextDecorationType)arr5->get(0).Number(),
+            starlight::TextDecorationType::kNone);
+
+  output.clear();
+  impl = lepus::Value("underline 1px 2px");
+  EXPECT_FALSE(UnitHandler::Process(id, impl, output, configs));
 }
 
 }  // namespace test
