@@ -10,9 +10,6 @@
 #include <vector>
 
 #include "base/include/sorted_for_each.h"
-#include "base/include/value/array.h"
-#include "core/renderer/css/ng/media_query/media_query_set.h"
-#include "core/renderer/css/ng/parser/media_query_parser.h"
 #include "core/renderer/simple_styling/style_object.h"
 #include "core/renderer/utils/base/tasm_constants.h"
 #include "core/runtime/lepusng/quick_context.h"
@@ -423,17 +420,7 @@ void TemplateBinaryWriter::EncodeCSSStyleRule(
 
 void TemplateBinaryWriter::EncodeCSSConditionRule(
     const encoder::LynxStyleRuleCondition& rule) {
-  if (rule.type == CSSRuleType::kMedia) {
-    auto media_queries =
-        css::MediaQueryParser::ParseMediaQuerySet(rule.condition);
-    // `MediaQueryParser::ParseMediaQuerySet` never returns null, but guard
-    // anyway so future refactors cannot silently write a non-array payload.
-    auto media_value = media_queries ? media_queries->ToLepus()
-                                     : lepus_value(lepus::CArray::Create());
-    EncodeValue(&media_value);
-  } else {
-    EncodeUtf8Str(rule.condition.c_str(), rule.condition.length());
-  }
+  EncodeValue(&rule.condition_value);
   WriteCompactU32(rule.child_rules.size());
   for (const auto& child : rule.child_rules) {
     WriteU8(static_cast<uint8_t>(child->type));

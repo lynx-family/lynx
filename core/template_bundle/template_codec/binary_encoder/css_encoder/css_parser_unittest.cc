@@ -8,6 +8,8 @@
 #include "core/template_bundle/template_codec/binary_encoder/css_encoder/css_parser.h"
 
 #include "core/base/json/json_util.h"
+#include "core/renderer/css/ng/parser/media_query_parser.h"
+#include "core/renderer/css/ng/parser/supports_condition_parser.h"
 #include "core/template_bundle/template_codec/binary_encoder/css_encoder/css_parser_token.h"
 #include "core/template_bundle/template_codec/binary_encoder/css_encoder/css_rule_parser.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
@@ -315,7 +317,10 @@ TEST_F(CSSRuleParserTest, ParseMediaRule) {
 
   auto* media_rule =
       static_cast<encoder::LynxStyleRuleCondition*>(rules[0].get());
-  EXPECT_EQ(media_rule->condition, "(max-width:1250px)");
+  auto expected_media =
+      css::MediaQueryParser::ParseMediaQuerySet("(max-width:1250px)")
+          ->ToLepus();
+  EXPECT_EQ(media_rule->condition_value, expected_media);
   ASSERT_EQ(media_rule->child_rules.size(), 1u);
   EXPECT_EQ(media_rule->child_rules[0]->type, CSSRuleType::kStyle);
 
@@ -348,7 +353,9 @@ TEST_F(CSSRuleParserTest, ParseSupportsRule) {
 
   auto* supports_rule =
       static_cast<encoder::LynxStyleRuleCondition*>(rules[0].get());
-  EXPECT_EQ(supports_rule->condition, "(display:flex)");
+  auto expected_supports =
+      css::SupportsConditionParser::Parse("(display:flex)")->ToLepus();
+  EXPECT_EQ(supports_rule->condition_value, expected_supports);
   EXPECT_EQ(supports_rule->child_rules.size(), 0u);
 }
 
@@ -628,7 +635,9 @@ TEST_F(CSSRuleParserTest, ParseMediaRuleWithMultipleChildRules) {
 
   auto* media_rule =
       static_cast<encoder::LynxStyleRuleCondition*>(rules[0].get());
-  EXPECT_EQ(media_rule->condition, "(min-width:600px)");
+  auto expected_media =
+      css::MediaQueryParser::ParseMediaQuerySet("(min-width:600px)")->ToLepus();
+  EXPECT_EQ(media_rule->condition_value, expected_media);
   ASSERT_EQ(media_rule->child_rules.size(), 2u);
   EXPECT_EQ(media_rule->child_rules[0]->type, CSSRuleType::kStyle);
   EXPECT_EQ(media_rule->child_rules[1]->type, CSSRuleType::kStyle);
@@ -823,7 +832,9 @@ TEST_F(CSSRuleParserTest, ParseMediaRuleWithoutPrelude) {
 
   auto* media_rule =
       static_cast<encoder::LynxStyleRuleCondition*>(rules[0].get());
-  EXPECT_EQ(media_rule->condition, "");
+  auto expected_media =
+      css::MediaQueryParser::ParseMediaQuerySet("")->ToLepus();
+  EXPECT_EQ(media_rule->condition_value, expected_media);
   ASSERT_EQ(media_rule->child_rules.size(), 1u);
 }
 
@@ -845,7 +856,9 @@ TEST_F(CSSRuleParserTest, ParseMediaRuleWithoutRulesField) {
 
   auto* media_rule =
       static_cast<encoder::LynxStyleRuleCondition*>(rules[0].get());
-  EXPECT_EQ(media_rule->condition, "(min-width:600px)");
+  auto expected_media =
+      css::MediaQueryParser::ParseMediaQuerySet("(min-width:600px)")->ToLepus();
+  EXPECT_EQ(media_rule->condition_value, expected_media);
   EXPECT_EQ(media_rule->child_rules.size(), 0u);
 }
 
@@ -890,7 +903,9 @@ TEST_F(CSSRuleParserTest, ParseSupportsRuleWithChildRules) {
 
   auto* supports_rule =
       static_cast<encoder::LynxStyleRuleCondition*>(rules[0].get());
-  EXPECT_EQ(supports_rule->condition, "(display:grid)");
+  auto expected_supports =
+      css::SupportsConditionParser::Parse("(display:grid)")->ToLepus();
+  EXPECT_EQ(supports_rule->condition_value, expected_supports);
   ASSERT_EQ(supports_rule->child_rules.size(), 2u);
   EXPECT_EQ(supports_rule->child_rules[0]->type, CSSRuleType::kStyle);
   EXPECT_EQ(supports_rule->child_rules[1]->type, CSSRuleType::kStyle);
@@ -1666,7 +1681,9 @@ TEST_F(CSSRuleParserTest, ParseLayerBlockWithNestedMediaRule) {
 
   auto* nested_media = static_cast<encoder::LynxStyleRuleCondition*>(
       layer_rule->child_rules[1].get());
-  EXPECT_EQ(nested_media->condition, "(min-width:600px)");
+  auto expected_media =
+      css::MediaQueryParser::ParseMediaQuerySet("(min-width:600px)")->ToLepus();
+  EXPECT_EQ(nested_media->condition_value, expected_media);
   ASSERT_EQ(nested_media->child_rules.size(), 1u);
   EXPECT_EQ(nested_media->child_rules[0]->type, CSSRuleType::kStyle);
 }

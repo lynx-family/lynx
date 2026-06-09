@@ -55,10 +55,8 @@ std::unique_ptr<encoder::SharedCSSFragment> CSSParser::ParseExternalFragment(
   if (compile_options_.enable_css_rule_) {
     CSSRuleParser impl(compile_options_);
     auto parse_result = impl.ParseCSSRules(rule_list, path, {}, 0);
-    for (const auto &d : impl.diagnostics()) {
-      css_diagnostics_.emplace_back(
-          Diagnostic{d.type, d.name, d.line, d.column});
-    }
+    css_diagnostics_.insert(css_diagnostics_.end(), impl.diagnostics().begin(),
+                            impl.diagnostics().end());
     return parse_result;
   }
   CSSParserTokenMap css;
@@ -167,10 +165,8 @@ void CSSParser::ParseCSS(const rapidjson::Value &ttss, const std::string &path,
     CSSRuleParser impl(compile_options_);
     auto parse_result =
         impl.ParseCSSRules(ttss, path, dependent_css_list, fragment_id);
-    for (const auto &d : impl.diagnostics()) {
-      css_diagnostics_.emplace_back(
-          Diagnostic{d.type, d.name, d.line, d.column});
-    }
+    css_diagnostics_.insert(css_diagnostics_.end(), impl.diagnostics().begin(),
+                            impl.diagnostics().end());
     auto *raw_ptr = parse_result.get();
     shared_css_fragments_.push_back(std::move(parse_result));
     fragments_.insert({path, raw_ptr});

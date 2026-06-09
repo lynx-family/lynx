@@ -12,7 +12,9 @@
 #include <vector>
 
 #include "base/trace/native/trace_event.h"
+#include "core/renderer/css/ng/media_query/media_query.h"
 #include "core/renderer/css/ng/media_query/media_query_set.h"
+#include "core/renderer/css/ng/supports/supports_condition.h"
 #include "core/renderer/css/parser/css_parser_configs.h"
 #include "core/runtime/lepus/base_binary_reader.h"
 #include "core/template_bundle/template_codec/binary_decoder/binary_decoder_trace_event_def.h"
@@ -275,9 +277,7 @@ bool LynxBinaryBaseCSSReader::DecodeCSSConditionRule(
   fml::RefPtr<css::ConditionRule> condition_rule;
   ERROR_UNLESS(DecodeConditionRuleData(fragment, parser_config, rule_type,
                                        &condition_rule));
-  if (rule_type == static_cast<uint8_t>(CSSRuleType::kMedia)) {
-    fragment->AddConditionRule(std::move(condition_rule));
-  }
+  fragment->AddConditionRule(std::move(condition_rule));
   return true;
 }
 
@@ -286,16 +286,31 @@ bool LynxBinaryBaseCSSReader::DecodeConditionRuleData(
     uint8_t rule_type, fml::RefPtr<css::ConditionRule>* out_rule) {
   std::string condition;
   fml::RefPtr<const css::MediaQuerySet> media_queries;
+  fml::RefPtr<const css::SupportsConditionNode> supports_condition;
   if (rule_type == static_cast<uint8_t>(CSSRuleType::kMedia)) {
     DECODE_VALUE(media_value);
     media_queries = css::MediaQuerySet::FromLepus(media_value);
+    if (!media_queries) {
+      auto query_set = fml::MakeRefCounted<css::MediaQuerySet>();
+      query_set->Append(fml::MakeRefCounted<css::MediaQuery>(
+          css::MediaQueryRestrictor::kNot,
+          std::string(css::MediaQuery::kTypeAll), nullptr));
+      media_queries = std::move(query_set);
+    }
+  } else if (rule_type == static_cast<uint8_t>(CSSRuleType::kSupports)) {
+    DECODE_VALUE(supports_value);
+    supports_condition = css::SupportsConditionNode::FromLepus(supports_value);
+    if (!supports_condition) {
+      supports_condition =
+          fml::MakeRefCounted<css::SupportsGeneralEnclosedNode>(std::string());
+    }
   } else {
-    ERROR_UNLESS(DecodeUtf8Str(&condition));
+    return false;
   }
   DECODE_COMPACT_U32(child_count);
-  auto condition_rule =
-      fml::MakeRefCounted<css::ConditionRule>(std::move(condition), fragment);
+  auto condition_rule = fml::MakeRefCounted<css::ConditionRule>(fragment);
   condition_rule->SetMediaQueries(std::move(media_queries));
+  condition_rule->SetSupportsCondition(std::move(supports_condition));
   for (size_t i = 0; i < child_count; ++i) {
     DECODE_U8(child_type);
     // Read the payload length so we can skip unknown child rule types.
