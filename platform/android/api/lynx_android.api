@@ -2479,6 +2479,7 @@ public interface com::lynx::tasm::IListNodeInfoFetcher {
 
 public interface com::lynx::tasm::service::ILynxClayService {
   public default Class<? extends IServiceProvider > com.lynx.tasm.service.ILynxClayService.getServiceClass();
+  public default void com.lynx.tasm.service.ILynxClayService.setPreWarmEventReporter(@Nullable PreWarmEventReporter reporter);
 }
 
 public interface com::lynx::tasm::service::ILynxDevToolService {
@@ -8974,6 +8975,10 @@ public interface com::lynx::jsbridge::LynxResourceModule::PrefetchInternalCallba
 
 public interface com::lynx::tasm::service::ILynxResourceService::PreloadMediaCallback {
   public void com.lynx.tasm.service.ILynxResourceService.PreloadMediaCallback.onComplete(int code, String msg);
+}
+
+public interface com::lynx::tasm::service::ILynxClayService::PreWarmEventReporter {
+  public void com.lynx.tasm.service.ILynxClayService.PreWarmEventReporter.reportPreWarm(@NonNull String eventName, @NonNull Map< String, Object > props);
 }
 
 public interface com::lynx::jsbridge::Promise {
