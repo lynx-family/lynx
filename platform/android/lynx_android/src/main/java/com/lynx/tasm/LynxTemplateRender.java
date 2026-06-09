@@ -337,9 +337,9 @@ public class LynxTemplateRender
 
     // try to get engine from LynxViewGroup;
     if (mCacheManager != null && mCacheManager.isEngineCacheEnabled()) {
+      mEnableCacheEngine = true;
       mLynxEngineRef = mCacheManager.getLynxEngine();
       ensureLynxEngine();
-      mEnableCacheEngine = true;
     } else if (mEnableReuseEngine) {
       reuseLynxEngine();
     } else {
@@ -659,7 +659,7 @@ public class LynxTemplateRender
   }
 
   private void setupReusedEngineConfig() {
-    if (!mEnableReuseEngine) {
+    if (!isEnableReuseEngine()) {
       return;
     }
     if (mLynxEngineRef != null) {
@@ -685,7 +685,7 @@ public class LynxTemplateRender
   }
 
   boolean isEnableReuseEngine() {
-    return mEnableReuseEngine;
+    return mEnableReuseEngine || mEnableCacheEngine;
   }
 
   public LynxContext getLynxContext() {
@@ -1310,7 +1310,7 @@ public class LynxTemplateRender
       return;
     }
 
-    if (mLynxViewGroup != null) {
+    if (mLynxViewGroup != null && mLynxViewGroup.getLynxTemplateResourceFetcher() != null) {
       // if we have attached to a LynxViewGroup, use it to fetch template
       loadTemplateWithLynxViewGroup(callback);
     } else if (mLynxContext.getTemplateResourceFetcher() != null) {
@@ -1521,11 +1521,14 @@ public class LynxTemplateRender
       return;
     }
 
-    if (mEnableReuseEngine) {
+    setUrl(baseUrl);
+    if (mEnableReuseEngine || mEnableCacheEngine) {
       if (tryRenderByReuseLynxRender(templateData)) {
         return;
       }
-      mEmbeddedPipelineCounter.incrementAndGet();
+      if (mEnableReuseEngine) {
+        mEmbeddedPipelineCounter.incrementAndGet();
+      }
     }
 
     onTraceEventBegin(TraceEventDef.TEMPLATE_RENDER_RENDER_TEMPLATE_BUNDLE);
@@ -1534,7 +1537,6 @@ public class LynxTemplateRender
     if (mPerformanceController.isEmbeddedMode()) {
       mPerformanceController.markTiming(TimingConstants.LOAD_BUNDLE_START, null);
     }
-    setUrl(baseUrl);
     this.prepareLynxEngineIfNeeded();
     LLog.i(TAG, formatLynxMessage("renderTemplate"));
     if (mNativePtr != 0) {
@@ -3230,7 +3232,7 @@ public class LynxTemplateRender
 
     @Override
     public void onPageConfigDecoded(PageConfig config) {
-      if (mEnableReuseEngine && mLynxEngineRef != null) {
+      if (isEnableReuseEngine() && mLynxEngineRef != null) {
         mLynxEngineRef.setPageConfig(config);
       }
       PageConfig.attachPageConfig(config, mLynxContext, mLynxUIRender);
@@ -3935,9 +3937,10 @@ public class LynxTemplateRender
     if (!mIsDestroyed.compareAndSet(false, true)) {
       return;
     }
+    boolean shouldCacheLynxEngine = shouldCacheLynxEngine();
     unregisterMemoryUsageFetcherIfNeeded();
 
-    if (mLynxUIRender != null) {
+    if (mLynxUIRender != null && !shouldCacheLynxEngine) {
       mLynxUIRender.onDestroyTemplateRenderer();
     }
 
@@ -3949,11 +3952,9 @@ public class LynxTemplateRender
     UIThreadUtils.runOnUiThreadImmediately(
         new DestroyTask(mNativePtr, mNativeLifecycle, this, mNativeFacade));
 
-    if (mEnableCacheEngine) {
-      if (mLynxEngineRef != null && mLynxEngineRef.hasLoaded()) {
-        mCacheManager.setLynxEngine(mLynxEngineRef);
-        mLynxEngineRef.detachFromLynxView();
-      }
+    if (shouldCacheLynxEngine) {
+      mCacheManager.setLynxEngine(mLynxEngineRef);
+      mLynxEngineRef.detachFromLynxView();
     } else if (mEnableReuseEngine && mLynxEngineRef != null
         && (mLynxEngineRef.tryBeReusing() || !mLynxEngineRef.hasLoaded())) {
       UIThreadUtils.runOnUiThreadImmediately(new Runnable() {
@@ -3984,6 +3985,11 @@ public class LynxTemplateRender
     mNativeFacade = null;
     mNativeLifecycle = 0;
     mNativePtr = 0;
+  }
+
+  private boolean shouldCacheLynxEngine() {
+    return mEnableCacheEngine && mCacheManager != null && mLynxEngineRef != null
+        && mLynxEngineRef.hasLoaded();
   }
 
   private static class DestroyTask implements Runnable {
@@ -4116,6 +4122,10 @@ public class LynxTemplateRender
   }
 
   private void tryRegisterLynxEngineReused() {
+    if (mEnableCacheEngine && mLynxEngineRef != null) {
+      mLynxEngineRef.updateLynxEngineState(LynxEngine.LynxEngineState.READY_BE_REUSED);
+      return;
+    }
     if (!mEnableReuseEngine) {
       return;
     }
@@ -4167,7 +4177,7 @@ public class LynxTemplateRender
   }
 
   void detachLynxEngineWrapper() {
-    if (!mEnableReuseEngine) {
+    if (!mEnableReuseEngine && !mEnableCacheEngine) {
       return;
     }
     onTraceEventBegin(TraceEventDef.TEMPLATE_RENDER_DETACH_LYNX_ENGINE);

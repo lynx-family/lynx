@@ -151,11 +151,23 @@ public class LynxEngine {
   public void destroy() {
     updateLynxEngineState(LynxEngineState.DESTROYED);
     LynxEnginePool.getInstance().delete(this);
+    if (mLynxTemplateRender == null || mLynxTemplateRender.get() == null) {
+      destroyLynxUIRenderer(mLynxUIRenderer);
+      mLynxUIRenderer = null;
+    }
     if (mNativePtr != 0) {
       long nativePtr = mNativePtr;
       mNativePtr = 0;
       nativeDestroyEngine(nativePtr);
     }
+  }
+
+  static void destroyLynxUIRenderer(ILynxUIRenderer lynxUIRenderer) {
+    if (lynxUIRenderer == null) {
+      return;
+    }
+    lynxUIRenderer.onDestroyTemplateRenderer();
+    lynxUIRenderer.onDestroy();
   }
 
   private native long nativeCreate();
