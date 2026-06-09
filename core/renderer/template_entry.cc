@@ -20,6 +20,7 @@
 #include "core/runtime/lepusng/quick_context.h"
 #include "core/runtime/profile/lepusng/lepusng_profiler.h"
 #include "core/services/event_report/event_tracker.h"
+#include "core/services/feature_count/feature_counter.h"
 
 #if ENABLE_LEPUSNG_WORKLET
 #include "core/runtime/common/napi/napi_runtime_proxy_quickjs.h"
@@ -425,6 +426,8 @@ void TemplateEntry::SetTemplateAssembler(TemplateAssembler* assembler) {
 lepus::Value TemplateEntry::ElementFromBinary(const std::string& key,
                                               int64_t pid,
                                               ElementManager* manager) {
+  tasm::report::FeatureCounter::Instance()->Count(
+      tasm::report::LynxFeature::CPP_ELEMENT_FROM_BINARY);
   if (reader_) {
     auto result = reader_->GetElementTemplateParseResult(key);
     if (result.first != nullptr && result.first->exist_) {
