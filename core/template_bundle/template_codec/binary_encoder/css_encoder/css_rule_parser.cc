@@ -8,12 +8,17 @@
 #include <utility>
 
 #include "base/include/log/logging.h"
+#include "base/include/value/array.h"
 #include "core/renderer/css/ng/css_ng_utils.h"
+#include "core/renderer/css/ng/media_query/media_query_set.h"
 #include "core/renderer/css/ng/parser/css_parser_token_range.h"
 #include "core/renderer/css/ng/parser/css_parser_token_stream.h"
 #include "core/renderer/css/ng/parser/css_tokenizer.h"
+#include "core/renderer/css/ng/parser/media_query_parser.h"
+#include "core/renderer/css/ng/parser/supports_condition_parser.h"
 #include "core/renderer/css/ng/selector/css_parser_context.h"
 #include "core/renderer/css/ng/selector/css_selector_parser.h"
+#include "core/renderer/css/ng/supports/supports_condition.h"
 #include "core/template_bundle/template_codec/binary_encoder/css_encoder/css_font_face_token.h"
 #include "core/template_bundle/template_codec/binary_encoder/css_encoder/css_keyframes_token.h"
 #include "core/template_bundle/template_codec/binary_encoder/css_encoder/css_parse_token_group.h"
@@ -24,7 +29,7 @@ namespace lynx {
 namespace tasm {
 
 std::unique_ptr<encoder::LynxStyleRule> CSSRuleParser::ParseStyleRule(
-    const rapidjson::Value &rule, const std::string &path) {
+    const rapidjson::Value& rule, const std::string& path) {
   const size_t position = rule_index_counter_++;
   size_t flattened_size = 0;
   std::unique_ptr<css::LynxCSSSelector[]> selector_arr;
@@ -33,7 +38,7 @@ std::unique_ptr<encoder::LynxStyleRule> CSSRuleParser::ParseStyleRule(
   if (!rule.HasMember(SELECTORTEXT)) {
     return nullptr;
   }
-  const auto &selector_text = rule[SELECTORTEXT];
+  const auto& selector_text = rule[SELECTORTEXT];
   if (!selector_text.HasMember("value") || !selector_text["value"].IsString()) {
     return nullptr;
   }
@@ -60,8 +65,8 @@ std::unique_ptr<encoder::LynxStyleRule> CSSRuleParser::ParseStyleRule(
   if (!rule.HasMember(STYLE)) {
     return nullptr;
   }
-  const rapidjson::Value &css_style = rule[STYLE];
-  const rapidjson::Value &style_variables = rule[STYLE_VARIABLES];
+  const rapidjson::Value& css_style = rule[STYLE];
+  const rapidjson::Value& style_variables = rule[STYLE_VARIABLES];
   properties = fml::AdoptRef(new encoder::CSSParseToken(
       css_style, selector, path, style_variables, compile_options_));
 
@@ -70,12 +75,12 @@ std::unique_ptr<encoder::LynxStyleRule> CSSRuleParser::ParseStyleRule(
 }
 
 std::unique_ptr<encoder::LynxStyleRuleCondition>
-CSSRuleParser::ParseConditionRule(const rapidjson::Value &rule,
-                                  const std::string &path) {
+CSSRuleParser::ParseConditionRule(const rapidjson::Value& rule,
+                                  const std::string& path) {
   if (!rule[TYPE].IsString()) {
     return nullptr;
   }
-  const auto &type = rule[TYPE].GetString();
+  const auto& type = rule[TYPE].GetString();
   CSSRuleType rule_type = CSSRuleType::kUnknown;
   if (strcmp(type, "MediaRule") == 0) {
     rule_type = CSSRuleType::kMedia;
@@ -89,21 +94,40 @@ CSSRuleParser::ParseConditionRule(const rapidjson::Value &rule,
   auto condition_rule =
       std::make_unique<encoder::LynxStyleRuleCondition>(rule_type);
 
+  std::string condition_text;
   if (rule.HasMember("prelude")) {
-    const auto &prelude = rule["prelude"];
+    const auto& prelude = rule["prelude"];
     if (prelude.HasMember("value") && prelude["value"].IsString()) {
-      condition_rule->condition = prelude["value"].GetString();
+      condition_text = prelude["value"].GetString();
     }
   }
 
+  if (rule_type == CSSRuleType::kMedia) {
+    auto media_queries =
+        css::MediaQueryParser::ParseMediaQuerySet(condition_text);
+    condition_rule->condition_value = media_queries->ToLepus();
+  } else if (rule_type == CSSRuleType::kSupports) {
+    auto supports_condition =
+        css::SupportsConditionParser::Parse(condition_text);
+    if (!supports_condition) {
+      Diagnostic d{"condition", condition_text};
+      if (rule.HasMember("prelude")) {
+        CSSParser::ExtractLoc(rule["prelude"], "loc", d.line, d.column);
+      }
+      diagnostics_.emplace_back(d);
+      return nullptr;
+    }
+    condition_rule->condition_value = supports_condition->ToLepus();
+  }
+
   if (rule.HasMember("rules") && rule["rules"].IsArray()) {
-    const auto &child_rules = rule["rules"];
+    const auto& child_rules = rule["rules"];
     for (rapidjson::SizeType i = 0; i < child_rules.Size(); i++) {
-      const auto &child = child_rules[i];
+      const auto& child = child_rules[i];
       if (!child.HasMember(TYPE) || !child[TYPE].IsString()) {
         continue;
       }
-      const char *child_type = child[TYPE].GetString();
+      const char* child_type = child[TYPE].GetString();
       if (strcmp(child_type, STYLE_RULE) == 0) {
         auto child_rule = ParseStyleRule(child, path);
         if (child_rule) {
@@ -114,8 +138,11 @@ CSSRuleParser::ParseConditionRule(const rapidjson::Value &rule,
       } else if (CSSFontFaceToken::IsCSSFontFaceToken(child)) {
         condition_rule->child_rules.push_back(ParseFontFaceRule(child, path));
       } else {
-        diagnostics_.emplace_back(
-            Diagnostic{"condition child rule", child_type});
+        Diagnostic d{"condition child rule", child_type};
+        if (child.HasMember("prelude")) {
+          CSSParser::ExtractLoc(child["prelude"], "loc", d.line, d.column);
+        }
+        diagnostics_.emplace_back(d);
       }
     }
   }
@@ -124,8 +151,8 @@ CSSRuleParser::ParseConditionRule(const rapidjson::Value &rule,
 }
 
 std::unique_ptr<encoder::LynxStyleRuleKeyframes>
-CSSRuleParser::ParseKeyframesRule(const rapidjson::Value &rule,
-                                  const std::string &path) {
+CSSRuleParser::ParseKeyframesRule(const rapidjson::Value& rule,
+                                  const std::string& path) {
   auto keyframes_rule = std::make_unique<encoder::LynxStyleRuleKeyframes>();
   keyframes_rule->name =
       encoder::CSSKeyframesToken::GetCSSKeyframesTokenName(rule);
@@ -135,8 +162,8 @@ CSSRuleParser::ParseKeyframesRule(const rapidjson::Value &rule,
 }
 
 std::unique_ptr<encoder::LynxStyleRuleFontFace>
-CSSRuleParser::ParseFontFaceRule(const rapidjson::Value &rule,
-                                 const std::string &path) {
+CSSRuleParser::ParseFontFaceRule(const rapidjson::Value& rule,
+                                 const std::string& path) {
   auto fontface_rule = std::make_unique<encoder::LynxStyleRuleFontFace>();
   fontface_rule->family = CSSFontFaceToken::GetCSSFontFaceTokenKey(rule);
   fontface_rule->properties.emplace_back(
@@ -157,8 +184,8 @@ namespace {
 // the last <ident>. On failure, returns false; the stream position is
 // undefined and the caller should treat the entire <layer-name> as
 // invalid.
-bool ConsumeLayerName(css::CSSParserTokenStream &stream,
-                      std::vector<std::string> &out) {
+bool ConsumeLayerName(css::CSSParserTokenStream& stream,
+                      std::vector<std::string>& out) {
   if (stream.Peek().GetType() != css::kIdentToken) {
     return false;
   }
@@ -182,8 +209,8 @@ bool ConsumeLayerName(css::CSSParserTokenStream &stream,
 }  // namespace
 
 std::vector<std::unique_ptr<encoder::LynxStyleRuleLayer>>
-CSSRuleParser::ParseLayerRule(const rapidjson::Value &rule,
-                              const std::string &path) {
+CSSRuleParser::ParseLayerRule(const rapidjson::Value& rule,
+                              const std::string& path) {
   std::vector<std::unique_ptr<encoder::LynxStyleRuleLayer>> result;
 
   // Producer contract (postcss-based upstream): block form (`@layer foo
@@ -198,7 +225,7 @@ CSSRuleParser::ParseLayerRule(const rapidjson::Value &rule,
 
   std::string prelude_value;
   if (rule.HasMember("prelude")) {
-    const auto &prelude = rule["prelude"];
+    const auto& prelude = rule["prelude"];
     if (prelude.HasMember("value") && prelude["value"].IsString()) {
       prelude_value = prelude["value"].GetString();
     }
@@ -237,7 +264,7 @@ CSSRuleParser::ParseLayerRule(const rapidjson::Value &rule,
       stream.ConsumeWhitespace();
     }
 
-    for (auto &name : names) {
+    for (auto& name : names) {
       const size_t layer_position = layer_position_++;
       auto layer_rule = std::make_unique<encoder::LynxStyleRuleLayer>(
           CSSRuleType::kLayerStatement);
@@ -274,13 +301,13 @@ CSSRuleParser::ParseLayerRule(const rapidjson::Value &rule,
   layer_rule->layer_position = layer_position;
   layer_rule->name = std::move(block_name);
 
-  const auto &child_rules = rule["rules"];
+  const auto& child_rules = rule["rules"];
   for (rapidjson::SizeType i = 0; i < child_rules.Size(); i++) {
-    const auto &child = child_rules[i];
+    const auto& child = child_rules[i];
     if (!child.HasMember(TYPE) || !child[TYPE].IsString()) {
       continue;
     }
-    const char *child_type = child[TYPE].GetString();
+    const char* child_type = child[TYPE].GetString();
     if (strcmp(child_type, STYLE_RULE) == 0) {
       auto child_rule = ParseStyleRule(child, path);
       if (child_rule) {
@@ -288,7 +315,7 @@ CSSRuleParser::ParseLayerRule(const rapidjson::Value &rule,
       }
     } else if (strcmp(child_type, "LayerRule") == 0) {
       auto child_layer_rules = ParseLayerRule(child, path);
-      for (auto &r : child_layer_rules) {
+      for (auto& r : child_layer_rules) {
         layer_rule->child_rules.push_back(std::move(r));
       }
     } else if (strcmp(child_type, "MediaRule") == 0 ||
@@ -311,18 +338,18 @@ CSSRuleParser::ParseLayerRule(const rapidjson::Value &rule,
 }
 
 std::unique_ptr<encoder::SharedCSSFragment> CSSRuleParser::ParseCSSRules(
-    const rapidjson::Value &ttss, const std::string &path,
-    const std::vector<int32_t> &dependent_css_list, int32_t fragment_id) {
+    const rapidjson::Value& ttss, const std::string& path,
+    const std::vector<int32_t>& dependent_css_list, int32_t fragment_id) {
   rule_index_counter_ = 0;
   layer_position_ = 0;
   std::vector<std::unique_ptr<encoder::LynxStyleRuleBase>> rules;
 
   for (rapidjson::SizeType i = 0; i < ttss.Size(); i++) {
-    const auto &rule = ttss[i];
+    const auto& rule = ttss[i];
     if (!rule.HasMember(TYPE) || !rule[TYPE].IsString()) {
       continue;
     }
-    const char *type = rule[TYPE].GetString();
+    const char* type = rule[TYPE].GetString();
 
     if (strcmp(type, STYLE_RULE) == 0) {
       auto style_rule = ParseStyleRule(rule, path);
@@ -337,7 +364,7 @@ std::unique_ptr<encoder::SharedCSSFragment> CSSRuleParser::ParseCSSRules(
       }
     } else if (strcmp(type, "LayerRule") == 0) {
       auto layer_rules = ParseLayerRule(rule, path);
-      for (auto &r : layer_rules) {
+      for (auto& r : layer_rules) {
         rules.push_back(std::move(r));
       }
     } else if (encoder::CSSKeyframesToken::IsCSSKeyframesToken(rule)) {
@@ -345,7 +372,11 @@ std::unique_ptr<encoder::SharedCSSFragment> CSSRuleParser::ParseCSSRules(
     } else if (CSSFontFaceToken::IsCSSFontFaceToken(rule)) {
       rules.push_back(ParseFontFaceRule(rule, path));
     } else {
-      diagnostics_.emplace_back(Diagnostic{"rule", type});
+      Diagnostic d{"rule", type};
+      if (rule.HasMember("prelude")) {
+        CSSParser::ExtractLoc(rule["prelude"], "loc", d.line, d.column);
+      }
+      diagnostics_.emplace_back(d);
     }
   }
 

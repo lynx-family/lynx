@@ -9,6 +9,7 @@
 #include <string>
 #include <vector>
 
+#include "core/template_bundle/template_codec/binary_encoder/css_encoder/css_parser.h"
 #include "core/template_bundle/template_codec/binary_encoder/css_encoder/shared_css_fragment.h"
 #include "core/template_bundle/template_codec/compile_options.h"
 #include "third_party/rapidjson/document.h"
@@ -18,13 +19,7 @@ namespace tasm {
 
 class CSSRuleParser {
  public:
-  struct Diagnostic {
-    std::string type;
-    std::string name;
-    int line = -1;
-    int column = -1;
-  };
-
+  using Diagnostic = CSSParser::Diagnostic;
   explicit CSSRuleParser(const CompileOptions& compile_options)
       : compile_options_(compile_options) {}
 

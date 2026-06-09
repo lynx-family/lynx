@@ -67,20 +67,23 @@ void RuleSet::AddToRuleSet(const std::string& text,
 
 void RuleSet::MatchStyles(StyleNode* node, unsigned& level,
                           base::Vector<MatchedRule>& output,
-                          const MediaQueryEvaluator* evaluator) const {
+                          const MediaQueryEvaluator* media_query_evaluator,
+                          const SupportsEvaluator* supports_evaluator) const {
   for (const auto* dep : deps_) {
-    dep->MatchStyles(node, level, output, evaluator);
+    dep->MatchStyles(node, level, output, media_query_evaluator,
+                     supports_evaluator);
   }
   ++level;
   MatchOwnStyles(node, level, output);
   for (const auto& condition_rule : condition_rules_) {
-    // When no evaluator is provided, preserve the legacy "always match"
-    // behavior so call sites that have not opted into media evaluation keep
-    // working. When an evaluator is provided, skip condition rules whose
-    // MediaQuerySet does not match the current environment; rules without a
-    // structured MediaQuerySet still fall through to MatchOwnStyles.
-    if (evaluator && condition_rule->HasStructuredMediaQuery() &&
-        !evaluator->Eval(condition_rule->MediaQueries().get())) {
+    // Media query evaluation keeps the legacy fallback: without viewport
+    // values, structured media rules still match.
+    if (media_query_evaluator && condition_rule->HasStructuredMediaQuery() &&
+        !media_query_evaluator->Eval(condition_rule->MediaQueries().get())) {
+      continue;
+    }
+    // @supports should fail closed if the evaluator is absent or returns false.
+    if (!condition_rule->MatchesSupportsCondition(supports_evaluator)) {
       continue;
     }
     condition_rule->GetRuleSet().MatchOwnStyles(node, level, output);
@@ -123,7 +126,10 @@ void RuleSet::AddStyleRule(fml::RefPtr<StyleRule> rule) {
 void RuleSet::AddConditionRule(fml::RefPtr<ConditionRule> rule) {
   if (rule == nullptr) return;
   if (rule->HasStructuredMediaQuery()) {
-    has_media_query_rules_ = true;
+    condition_rule_flags_ |= kHasMediaQuery;
+  }
+  if (rule->HasStructuredSupportsRules()) {
+    condition_rule_flags_ |= kHasSupports;
   }
   condition_rules_.emplace_back(std::move(rule));
 }

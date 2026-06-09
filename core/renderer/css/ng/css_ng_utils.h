@@ -82,6 +82,9 @@ inline bool EqualIgnoringASCIICase(const std::string& lfs,
   return ToLower(lfs) == rhs;
 }
 
+// Collapse runs of ASCII whitespace into single spaces and trim edges.
+std::string SimplifyWhiteSpace(const std::string& input);
+
 }  // namespace css
 }  // namespace lynx
 #endif  // CORE_RENDERER_CSS_NG_CSS_NG_UTILS_H_
