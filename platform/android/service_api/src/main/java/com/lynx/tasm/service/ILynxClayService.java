@@ -6,9 +6,15 @@ package com.lynx.tasm.service;
 
 import androidx.annotation.Keep;
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import java.util.Map;
 
 @Keep
 public interface ILynxClayService extends IServiceProvider {
+  interface PreWarmEventReporter {
+    void reportPreWarm(@NonNull String eventName, @NonNull Map<String, Object> props);
+  }
+
   /**
    * Get service class, DO NOT OVERRIDE THIS METHOD
    */
@@ -16,4 +22,6 @@ public interface ILynxClayService extends IServiceProvider {
   default Class<? extends IServiceProvider> getServiceClass() {
     return ILynxClayService.class;
   }
+
+  default void setPreWarmEventReporter(@Nullable PreWarmEventReporter reporter) {}
 }
