@@ -10,6 +10,7 @@
 #include <unordered_map>
 
 #include "core/public/text_layout_impl.h"
+#include "core/renderer/css/css_property_bitset.h"
 
 namespace lynx {
 namespace tasm {
@@ -41,8 +42,10 @@ class TextLayoutTextra : public TextLayoutImpl {
 
  private:
   void ApplyTextStyle(TextElement* element);
+  void ApplyTextStyle(Element* element, const CSSIDBitset& property_bits);
   void ApplyParagraphStyle(TextElement* element);
   void ProcessChildStyleAndProps(Element* child, bool& has_inline_view);
+  void BuildInlineTruncation(Element* element, bool& has_inline_view);
   void HandleInlineImageProps(Element* child);
   void HandleInlineViewProps(Element* child);
   void EnsureParagraphListener(Element* element);
@@ -56,6 +59,7 @@ class TextLayoutTextra : public TextLayoutImpl {
   // since the implementation is created by TextService.
   text::TextLayoutAPI* api_{nullptr};
   text::ParagraphBuilder* paragraph_builder_{nullptr};
+  bool building_inline_truncation_{false};
   std::unordered_map<int32_t, text::Paragraph*> paragraphs_;
   std::unordered_map<int32_t, std::unique_ptr<text::ParagraphListener>>
       paragraph_listeners_;
