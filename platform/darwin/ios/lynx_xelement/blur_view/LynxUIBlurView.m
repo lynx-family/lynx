@@ -208,6 +208,23 @@ LYNX_PROP_SETTER("glass-style", setGlassStyle, NSString*) {
     _shouldUpdateEffect = YES;
   }
 }
+
+LYNX_PROP_SETTER("ios-user-interface-style", setUserInterfaceStyle, NSString*) {
+  UIUserInterfaceStyle style = UIUserInterfaceStyleUnspecified;
+
+  if (!requestReset) {
+    if ([value isEqualToString:@"dark"]) {
+      style = UIUserInterfaceStyleDark;
+    } else if ([value isEqualToString:@"light"]) {
+      style = UIUserInterfaceStyleLight;
+    }
+  }
+
+  if (@available(iOS 13.0, *)) {
+    self.view.overrideUserInterfaceStyle = style;
+  }
+}
+
 #endif
 
 - (void)propsDidUpdate {
