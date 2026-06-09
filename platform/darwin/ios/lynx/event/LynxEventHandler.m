@@ -25,6 +25,11 @@
 
 @property(nonatomic, readwrite) BOOL gestureRecognized;
 
+- (BOOL)isSystemBackGesture:(UIGestureRecognizer*)gesture;
+- (BOOL)shouldInterceptSystemBackGesture:(UIGestureRecognizer*)gesture
+                           withDirection:(enum LynxPanInterceptDirection)direction
+                       andInterceptScope:(enum LynxPanInterceptScope)scope;
+
 @end
 
 #pragma mark - CustomGestureRecognizerDelegate
@@ -841,17 +846,62 @@
          withPlatformGesture:(UIGestureRecognizer*)platformGesture {
   [otherGestures enumerateObjectsUsingBlock:^(LynxWeakProxy* _Nonnull obj, NSUInteger idx,
                                               BOOL* _Nonnull stop) {
-    UIGestureRecognizer* otherGesture = (UIGestureRecognizer*)obj;
+    UIGestureRecognizer* otherGesture = (UIGestureRecognizer*)obj.target;
+    if (otherGesture == nil) {
+      return;
+    }
     enum LynxPanInterceptScope scope =
         [self getPanInterceptScope:_firstPanInterceptDirectionTarget];
-    if ([self isPanGesture:otherGesture
-             withDirection:_firstPanInterceptDirectionTarget.panInterceptDirection] &&
+    enum LynxPanInterceptDirection direction =
+        _firstPanInterceptDirectionTarget.panInterceptDirection;
+    BOOL shouldInterceptPanGesture =
+        [self isPanGesture:otherGesture withDirection:direction] &&
         [self shouldInterceptPanGesture:otherGesture.view
                                withView:((LynxUI*)_firstPanInterceptDirectionTarget).view
-                      andInterceptScope:scope]) {
-      ((UIGestureRecognizer*)obj).state = UIGestureRecognizerStateFailed;
+                      andInterceptScope:scope];
+    BOOL shouldInterceptSystemBackGesture =
+        [self shouldInterceptSystemBackGesture:otherGesture
+                                 withDirection:direction
+                             andInterceptScope:scope] &&
+        [self shouldInterceptPanGesture:otherGesture.view
+                               withView:((LynxUI*)_firstPanInterceptDirectionTarget).view
+                      andInterceptScope:scope];
+    if (shouldInterceptPanGesture || shouldInterceptSystemBackGesture) {
+      otherGesture.state = UIGestureRecognizerStateFailed;
     }
   }];
+}
+
+- (BOOL)isSystemBackGesture:(UIGestureRecognizer*)gesture {
+  UIResponder* responder = gesture.view;
+  while (responder) {
+    UINavigationController* navigationController = nil;
+    if ([responder isKindOfClass:[UINavigationController class]]) {
+      navigationController = (UINavigationController*)responder;
+    } else if ([responder isKindOfClass:[UIViewController class]]) {
+      navigationController = ((UIViewController*)responder).navigationController;
+    }
+    if (navigationController.interactivePopGestureRecognizer == gesture) {
+      return YES;
+    }
+    responder = responder.nextResponder;
+  }
+  return NO;
+}
+
+- (BOOL)shouldInterceptSystemBackGesture:(UIGestureRecognizer*)gesture
+                           withDirection:(enum LynxPanInterceptDirection)direction
+                       andInterceptScope:(enum LynxPanInterceptScope)scope {
+  if (direction != kLynxPanInterceptDirectionHorizontal) {
+    return NO;
+  }
+  BOOL shouldInterceptAncestors = scope == kLynxPanInterceptScopeAncestors ||
+                                  scope == kLynxPanInterceptScopeSelfAndAncestors ||
+                                  scope == kLynxPanInterceptScopeAll;
+  if (!shouldInterceptAncestors) {
+    return NO;
+  }
+  return [self isSystemBackGesture:gesture];
 }
 
 - (BOOL)shouldInterceptPanGesture:(UIView*)other
