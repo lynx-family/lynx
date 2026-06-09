@@ -1,3 +1,6 @@
+## 0.0.12
+- Sync compat_data for `filter` function sub-properties: `blur`, `grayscale`, `brightness`, `contrast`, and `saturate`.
+
 ## 0.0.11
 - Add `lint:compat-keys` script to detect and auto-fix improperly named keys in compat_data.
 - Mark `linear-orientation` property as deprecated in compat_data.
