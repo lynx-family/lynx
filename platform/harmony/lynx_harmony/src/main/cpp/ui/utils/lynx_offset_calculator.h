@@ -9,6 +9,8 @@
 #include <optional>
 #include <string>
 
+#include "platform/harmony/lynx_harmony/src/main/cpp/ui/utils/platform_length.h"
+
 struct OH_Drawing_Path;
 
 namespace lynx {
@@ -35,11 +37,19 @@ class LynxOffsetCalculator {
   // error.
   std::optional<OffsetMotionState> PointAtProgress(
       const std::string& svg_path_string, float progress);
+  std::optional<OffsetMotionState> PointAtDistance(
+      const std::string& svg_path_string, float distance);
+  std::optional<OffsetMotionState> PointAtDistance(
+      const std::string& svg_path_string, const PlatformLength& distance,
+      float density);
 
  private:
   void Reset();
   bool UpdatePathString(const std::string& svg_path_string);
-  std::optional<OffsetMotionState> GetMotionState(float progress) const;
+  std::optional<OffsetMotionState> GetMotionStateAtProgress(
+      float progress) const;
+  std::optional<OffsetMotionState> GetMotionStateAtDistance(
+      float distance) const;
 
   // Cached state for the last successfully parsed path string.
   std::string cached_path_string_;

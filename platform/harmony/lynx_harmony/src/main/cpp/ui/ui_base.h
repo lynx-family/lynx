@@ -36,6 +36,7 @@
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/utils/basic_shape.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/utils/border_radius.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/utils/lynx_offset_calculator.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/ui/utils/platform_length.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/utils/transform.h"
 
 namespace lynx {
@@ -568,6 +569,8 @@ class LYNX_EXPORT UIBase : public std::enable_shared_from_this<UIBase>,
   std::unique_ptr<BasicShape> offset_basic_shape_{nullptr};
   std::unique_ptr<LynxOffsetCalculator> lynx_offset_calculator_{nullptr};
   float offset_distance_{0.f};
+  PlatformLength offset_distance_length_{0.f, PlatformLengthType::kNumber};
+  bool offset_distance_is_legacy_number_{true};
   float offset_rotate_{kOffsetRotateAuto};
   bool is_auto_offset_rotate_{true};
   std::string accessibility_id_;

@@ -513,7 +513,11 @@ class ComputedCSSStyle {
     return offset_path_;
   }
 
-  float GetOffsetDistance() const { return offset_distance_; }
+  const NLength& GetOffsetDistance() const { return offset_distance_; }
+
+  bool IsOffsetDistanceLegacyNumber() const {
+    return offset_distance_is_legacy_number_;
+  }
 
   float GetOffsetRotate() const { return offset_rotate_; }
 
@@ -617,7 +621,9 @@ class ComputedCSSStyle {
   bool origin_has_opacity_{false};
   float opacity_{DefaultComputedStyle::DEFAULT_OPACITY};
 
-  float offset_distance_{DefaultComputedStyle::DEFAULT_OFFSET_DISTANCE};
+  NLength offset_distance_{
+      NLength::MakeUnitNLength(DefaultComputedStyle::DEFAULT_OFFSET_DISTANCE)};
+  bool offset_distance_is_legacy_number_{true};
   float offset_rotate_{DefaultComputedStyle::DEFAULT_OFFSET_ROTATE};
 
   ImageRenderingType image_rendering_ = ImageRenderingType::kAuto;

@@ -20,6 +20,7 @@ import static com.lynx.tasm.behavior.StyleConstants.FILTER_TYPE_GRAYSCALE;
 import static com.lynx.tasm.behavior.StyleConstants.FILTER_TYPE_NONE;
 import static com.lynx.tasm.behavior.StyleConstants.FILTER_TYPE_SATURATE;
 import static com.lynx.tasm.behavior.StyleConstants.PLATFORM_LENGTH_UNIT_NUMBER;
+import static com.lynx.tasm.behavior.StyleConstants.PLATFORM_LENGTH_UNIT_PERCENT;
 import static com.lynx.tasm.behavior.StyleConstants.PLATFORM_PERSPECTIVE_UNIT_DEFAULT;
 import static com.lynx.tasm.behavior.StyleConstants.PLATFORM_PERSPECTIVE_UNIT_NUMBER;
 import static com.lynx.tasm.behavior.StyleConstants.PLATFORM_PERSPECTIVE_UNIT_VH;
@@ -36,6 +37,7 @@ import android.graphics.ColorMatrix;
 import android.graphics.ColorMatrixColorFilter;
 import android.graphics.Matrix;
 import android.graphics.Paint;
+import android.graphics.Path;
 import android.graphics.PointF;
 import android.os.Build;
 import android.text.TextUtils;
@@ -79,6 +81,7 @@ import com.lynx.tasm.behavior.ui.shapes.BasicShape;
 import com.lynx.tasm.behavior.ui.shapes.LynxOffsetCalculator;
 import com.lynx.tasm.behavior.ui.text.AndroidText;
 import com.lynx.tasm.behavior.ui.utils.BackgroundManager;
+import com.lynx.tasm.behavior.ui.utils.PlatformLength;
 import com.lynx.tasm.behavior.ui.utils.TransformRaw;
 import com.lynx.tasm.behavior.ui.utils.ViewHelper;
 import com.lynx.tasm.behavior.ui.view.AndroidView;
@@ -167,6 +170,7 @@ public abstract class LynxUI<T extends View> extends LynxBaseUI implements IProc
   protected ReadableArray mRawOffsetShape;
   protected BasicShape mOffsetPath;
   protected float mOffsetDistance;
+  protected PlatformLength mOffsetDistanceLength;
   protected float mOffsetRotate = OFFSET_ROTATE_AUTO;
   protected boolean mIsAutoOffsetRotate = true;
   protected boolean mOffsetHasChanged = false;
@@ -983,8 +987,10 @@ public abstract class LynxUI<T extends View> extends LynxBaseUI implements IProc
     }
     if (mOffsetHasChanged) {
       if (mOffsetPath != null) {
-        float[] result = LynxOffsetCalculator.pointAtProgress(
-            mOffsetPath.getPath(getWidth(), getHeight()), mOffsetDistance);
+        Path path = mOffsetPath.getPath(getWidth(), getHeight());
+        float[] result = mOffsetDistanceLength == null
+            ? LynxOffsetCalculator.pointAtProgress(path, mOffsetDistance)
+            : LynxOffsetCalculator.pointAtDistance(path, mOffsetDistanceLength);
         if (mIsAutoOffsetRotate) {
           applyOffsetAndRotate(result[0], result[1], result[2]);
         } else {
@@ -1500,9 +1506,48 @@ public abstract class LynxUI<T extends View> extends LynxBaseUI implements IProc
   }
 
   @LynxProp(name = PropsConstants.OFFSET_DISTANCE)
+  public void setOffsetDistance(Dynamic offsetDistance) {
+    if (offsetDistance == null || offsetDistance.isNull()) {
+      setOffsetDistance(0);
+      return;
+    }
+    if (offsetDistance.getType() == ReadableType.Array) {
+      ReadableArray array = offsetDistance.asArray();
+      if (array == null || array.size() < 2) {
+        setOffsetDistance(0);
+        return;
+      }
+      Dynamic distanceValue = array.getDynamic(0);
+      int unit = array.getInt(1);
+      if (distanceValue == null || distanceValue.isNull()
+          || !(distanceValue.getType() == ReadableType.Number
+              || distanceValue.getType() == ReadableType.Int
+              || distanceValue.getType() == ReadableType.Long)
+          || (unit != PLATFORM_LENGTH_UNIT_NUMBER && unit != PLATFORM_LENGTH_UNIT_PERCENT)) {
+        setOffsetDistance(0);
+        return;
+      }
+      PlatformLength length = new PlatformLength(distanceValue, unit);
+      if (mOffsetDistanceLength == null || !mOffsetDistanceLength.equals(length)) {
+        mOffsetDistanceLength = length;
+        mOffsetHasChanged = true;
+      }
+      return;
+    }
+    if (offsetDistance.getType() == ReadableType.Number
+        || offsetDistance.getType() == ReadableType.Int
+        || offsetDistance.getType() == ReadableType.Long) {
+      setOffsetDistance((float) offsetDistance.asDouble());
+    }
+  }
+
   public void setOffsetDistance(float offsetDistance) {
     if (mOffsetDistance != offsetDistance) {
       mOffsetDistance = offsetDistance;
+      mOffsetHasChanged = true;
+    }
+    if (mOffsetDistanceLength != null) {
+      mOffsetDistanceLength = null;
       mOffsetHasChanged = true;
     }
   }

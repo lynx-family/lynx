@@ -20,6 +20,7 @@
 #include "core/renderer/css/css_style_utils.h"
 #include "core/renderer/dom/element.h"
 #include "core/renderer/dom/element_manager.h"
+#include "core/renderer/starlight/style/css_type.h"
 #include "core/renderer/starlight/types/nlength.h"
 #include "gfx/animation/animation_utils.h"
 
@@ -56,9 +57,35 @@ std::optional<gfx::LengthValue> ToLengthValueFromNLength(
   return std::nullopt;
 }
 
+std::optional<gfx::LengthValue> ResolveOffsetDistanceArrayValue(
+    const tasm::CSSValue& value) {
+  if (!value.IsArray()) {
+    return std::nullopt;
+  }
+  auto array = value.GetArray();
+  if (!array || array->size() < 2 || !array->get(0).IsNumber() ||
+      !array->get(1).IsNumber()) {
+    return std::nullopt;
+  }
+  const auto unit =
+      static_cast<starlight::PlatformLengthUnit>(array->get(1).Number());
+  if (unit == starlight::PlatformLengthUnit::NUMBER) {
+    return gfx::LengthValue{static_cast<float>(array->get(0).Number()),
+                            gfx::LengthUnit::kNumber};
+  }
+  if (unit == starlight::PlatformLengthUnit::PERCENTAGE) {
+    return gfx::LengthValue{static_cast<float>(array->get(0).Number() * 100.0f),
+                            gfx::LengthUnit::kPercent};
+  }
+  return std::nullopt;
+}
+
 std::optional<gfx::LengthValue> ResolveLayoutLengthValue(
     tasm::CSSPropertyID id, const tasm::CSSValue& value,
     tasm::Element* element) {
+  if (id == tasm::kPropertyIDOffsetDistance && value.IsArray()) {
+    return ResolveOffsetDistanceArrayValue(value);
+  }
   if (element == nullptr) {
     return std::nullopt;
   }
@@ -80,6 +107,23 @@ std::optional<tasm::CSSValue> MakeNonCalcLengthCSSValue(
     return std::nullopt;
   }
   return tasm::CSSValue(value, css_pattern);
+}
+
+bool IsOffsetDistanceLegacyNumber(const tasm::CSSValue& value) {
+  return value.IsNumber();
+}
+
+tasm::CSSValue MakeOffsetDistanceLengthValue(float value,
+                                             gfx::LengthUnit unit) {
+  auto array = lepus::CArray::Create();
+  if (unit == gfx::LengthUnit::kPercent) {
+    starlight::CSSStyleUtils::AddLengthToArray(
+        array, starlight::NLength::MakePercentageNLength(value));
+  } else {
+    starlight::CSSStyleUtils::AddLengthToArray(
+        array, starlight::NLength::MakeUnitNLength(value));
+  }
+  return tasm::CSSValue(std::move(array));
 }
 
 struct ResolvedLengthComponent {
@@ -527,6 +571,14 @@ bool LayoutKeyframe::SetValue(tasm::CSSPropertyID id,
                               const tasm::CSSValue& value,
                               tasm::Element* element) {
   css_value_ = value;
+  if (id == tasm::kPropertyIDOffsetDistance && value.IsArray()) {
+    if (!ResolveOffsetDistanceArrayValue(value)) {
+      return false;
+    }
+    MarkNonEmpty();
+    ClearResolvedValue();
+    return true;
+  }
   auto keyframe_layout_value = HandleCSSVariableValueIfNeed(id, value, element);
   auto parse_result = starlight::CSSStyleUtils::ToLength(
       keyframe_layout_value, CSSKeyframeManager::GetLengthContext(element),
@@ -576,6 +628,11 @@ tasm::CSSValue KeyframedLayoutAnimationCurve::GetValue(
       keyframe_next, static_cast<tasm::CSSPropertyID>(Type()), element_);
   const auto& start_len = start_result.first;
   const auto& end_len = end_result.first;
+  const bool is_offset_distance =
+      Type() == AnimationCurve::CurveType::OFFSET_DISTANCE;
+  const bool is_offset_distance_legacy_number =
+      is_offset_distance && IsOffsetDistanceLegacyNumber(start_result.second) &&
+      IsOffsetDistanceLegacyNumber(end_result.second);
 
   if (std::fabs(progress - 0.0f) < std::numeric_limits<float>::epsilon()) {
     return start_result.second;
@@ -609,6 +666,12 @@ tasm::CSSValue KeyframedLayoutAnimationCurve::GetValue(
     pattern = tasm::CSSValuePattern::NUMBER;
   }
   float new_result = start_value + (end_value - start_value) * progress;
+  if (is_offset_distance && !is_offset_distance_legacy_number) {
+    return MakeOffsetDistanceLengthValue(
+        new_result, pattern == tasm::CSSValuePattern::PERCENT
+                        ? gfx::LengthUnit::kPercent
+                        : gfx::LengthUnit::kNumber);
+  }
   return tasm::CSSValue(new_result, pattern);
 }
 

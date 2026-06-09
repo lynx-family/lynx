@@ -114,22 +114,48 @@ std::optional<OffsetMotionState> LynxOffsetCalculator::PointAtProgress(
   if (!UpdatePathString(svg_path_string)) {
     return std::nullopt;
   }
-  return GetMotionState(progress);
+  return GetMotionStateAtProgress(progress);
 }
 
-std::optional<OffsetMotionState> LynxOffsetCalculator::GetMotionState(
+std::optional<OffsetMotionState> LynxOffsetCalculator::PointAtDistance(
+    const std::string& svg_path_string, float distance) {
+  if (!UpdatePathString(svg_path_string)) {
+    return std::nullopt;
+  }
+  return GetMotionStateAtDistance(distance);
+}
+
+std::optional<OffsetMotionState> LynxOffsetCalculator::PointAtDistance(
+    const std::string& svg_path_string, const PlatformLength& distance,
+    float density) {
+  if (!UpdatePathString(svg_path_string)) {
+    return std::nullopt;
+  }
+  return GetMotionStateAtDistance(
+      distance.GetValue(cached_path_length_, density));
+}
+
+std::optional<OffsetMotionState> LynxOffsetCalculator::GetMotionStateAtProgress(
     float progress) const {
-  if (!cached_path_) {
+  if (cached_path_length_ <= 0.0f) {
     return std::nullopt;
   }
 
   progress = std::clamp(progress, 0.0f, 1.0f);
+  return GetMotionStateAtDistance(cached_path_length_ * progress);
+}
+
+std::optional<OffsetMotionState> LynxOffsetCalculator::GetMotionStateAtDistance(
+    float distance) const {
+  if (!cached_path_) {
+    return std::nullopt;
+  }
 
   if (cached_path_length_ <= 0.0f) {
     return std::nullopt;
   }
 
-  float distance = cached_path_length_ * progress;
+  distance = std::clamp(distance, 0.0f, cached_path_length_);
 
   OH_Drawing_Point2D position{0.0f, 0.0f};
   OH_Drawing_Point2D tangent{0.0f, 0.0f};

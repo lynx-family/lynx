@@ -3087,6 +3087,8 @@ public class LynxNinePatchImageProcessor : NSObject, <LynxImageProcessor> {
 
 public class LynxOffsetCalculator : NSObject {
   public CGPoint LynxOffsetCalculator::pointAtProgress:onPath:withTangent:(CGFloat progress,[onPath] CGPathRef path,[withTangent] nullable CGFloat *tangent);
+  public CGPoint LynxOffsetCalculator::pointAtDistance:onPath:withTangent:(CGFloat distance,[onPath] CGPathRef path,[withTangent] nullable CGFloat *tangent);
+  public CGFloat LynxOffsetCalculator::pathLength:(CGPathRef path);
 }
 
 public class LynxPageReloadHelper : NSObject, <LynxPageReloadHelperProto> {

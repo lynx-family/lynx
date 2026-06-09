@@ -68,6 +68,81 @@ class KeyframedAnimationCurveTest : public ::testing::Test {
   }
 };
 
+TEST_F(KeyframedAnimationCurveTest, OffsetDistanceKeyframeAcceptsLength) {
+  auto test_element = InitFiberElement();
+  auto frame = LayoutKeyframe::Create(fml::TimeDelta(), nullptr);
+
+  EXPECT_TRUE(frame->SetValue(
+      ::lynx::tasm::kPropertyIDOffsetDistance,
+      ::lynx::tasm::CSSValue(50.0, ::lynx::tasm::CSSValuePattern::PERCENT),
+      test_element.get()));
+  EXPECT_TRUE(frame->SetValue(
+      ::lynx::tasm::kPropertyIDOffsetDistance,
+      ::lynx::tasm::CSSValue(40.0, ::lynx::tasm::CSSValuePattern::PX),
+      test_element.get()));
+}
+
+TEST_F(KeyframedAnimationCurveTest, OffsetDistanceLegacyNumberAnimation) {
+  std::unique_ptr<KeyframedLayoutAnimationCurve> curve(
+      KeyframedLayoutAnimationCurve::Create());
+  curve->type_ = AnimationCurve::CurveType::OFFSET_DISTANCE;
+  auto test_element = InitFiberElement();
+  curve->SetElement(test_element.get());
+
+  auto start_frame = LayoutKeyframe::Create(fml::TimeDelta(), nullptr);
+  EXPECT_TRUE(start_frame->SetValue(
+      ::lynx::tasm::kPropertyIDOffsetDistance,
+      ::lynx::tasm::CSSValue(0.f, ::lynx::tasm::CSSValuePattern::NUMBER),
+      test_element.get()));
+  curve->AddKeyframe(std::move(start_frame));
+
+  auto end_frame =
+      LayoutKeyframe::Create(fml::TimeDelta::FromSecondsF(1.0), nullptr);
+  EXPECT_TRUE(end_frame->SetValue(
+      ::lynx::tasm::kPropertyIDOffsetDistance,
+      ::lynx::tasm::CSSValue(1.f, ::lynx::tasm::CSSValuePattern::NUMBER),
+      test_element.get()));
+  curve->AddKeyframe(std::move(end_frame));
+
+  fml::TimeDelta time = fml::TimeDelta::FromSecondsF(0.5f);
+  auto value = curve->GetValue(time);
+  EXPECT_TRUE(value.IsNumber());
+  EXPECT_FLOAT_EQ(0.5f, value.AsNumber());
+}
+
+TEST_F(KeyframedAnimationCurveTest, OffsetDistanceLengthAnimation) {
+  std::unique_ptr<KeyframedLayoutAnimationCurve> curve(
+      KeyframedLayoutAnimationCurve::Create());
+  curve->type_ = AnimationCurve::CurveType::OFFSET_DISTANCE;
+  auto test_element = InitFiberElement();
+  curve->SetElement(test_element.get());
+
+  auto start_frame = LayoutKeyframe::Create(fml::TimeDelta(), nullptr);
+  EXPECT_TRUE(start_frame->SetValue(
+      ::lynx::tasm::kPropertyIDOffsetDistance,
+      ::lynx::tasm::CSSValue(0.f, ::lynx::tasm::CSSValuePattern::PX),
+      test_element.get()));
+  curve->AddKeyframe(std::move(start_frame));
+
+  auto end_frame =
+      LayoutKeyframe::Create(fml::TimeDelta::FromSecondsF(1.0), nullptr);
+  EXPECT_TRUE(end_frame->SetValue(
+      ::lynx::tasm::kPropertyIDOffsetDistance,
+      ::lynx::tasm::CSSValue(200.f, ::lynx::tasm::CSSValuePattern::PX),
+      test_element.get()));
+  curve->AddKeyframe(std::move(end_frame));
+
+  fml::TimeDelta time = fml::TimeDelta::FromSecondsF(0.5f);
+  auto value = curve->GetValue(time);
+  ASSERT_TRUE(value.IsArray());
+  auto array = value.GetArray();
+  ASSERT_TRUE(array);
+  ASSERT_GE(array->size(), 2U);
+  EXPECT_FLOAT_EQ(100.f, array->get(0).Number());
+  EXPECT_EQ(static_cast<int>(::lynx::starlight::PlatformLengthUnit::NUMBER),
+            static_cast<int>(array->get(1).Number()));
+}
+
 // Tests that a layout animation with two keyframes works as expected.
 TEST_F(KeyframedAnimationCurveTest, TwoLayoutKeyframe) {
   std::unique_ptr<KeyframedLayoutAnimationCurve> curve(

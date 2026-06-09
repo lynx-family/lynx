@@ -314,20 +314,9 @@ static void findTargetPoint(void *info, const CGPathElement *element) {
   }
 }
 
-#pragma mark - Public Methods
++ (PathLengthCache *)pathLengthCacheForPath:(CGPathRef)path {
+  if (!path) return nil;
 
-+ (void)initialize {
-  if (self == [LynxOffsetCalculator class]) {
-    lruPathCache = [[LynxLRUMap alloc] initWithCapacity:kMaxCacheSize];
-  }
-}
-
-+ (CGPoint)pointAtProgress:(CGFloat)progress
-                    onPath:(CGPathRef)path
-               withTangent:(nullable CGFloat *)tangent {
-  if (!path) return CGPointZero;
-
-  progress = MAX(0, MIN(1, progress));
   PathLengthCache *cache = [lruPathCache get:(__bridge id)path];
   if (!cache) {
     cache = [[PathLengthCache alloc] init];
@@ -342,30 +331,69 @@ static void findTargetPoint(void *info, const CGPathElement *element) {
                      100,
                      (__bridge void *)cache,
                      0};
-    if (tangent != nullptr) {
-      info.isAutoRotate = YES;
-    }
     CGPathApply(path, &info, calculatePathLengthFunction);
     cache.totalLength = info.totalLength;
 
     // LRU cache
     [lruPathCache set:(__bridge id)path value:cache];
   }
+  return cache;
+}
+
+#pragma mark - Public Methods
+
++ (void)initialize {
+  if (self == [LynxOffsetCalculator class]) {
+    lruPathCache = [[LynxLRUMap alloc] initWithCapacity:kMaxCacheSize];
+  }
+}
+
++ (CGPoint)pointAtProgress:(CGFloat)progress
+                    onPath:(CGPathRef)path
+               withTangent:(nullable CGFloat *)tangent {
+  if (!path) return CGPointZero;
+
+  progress = MAX(0, MIN(1, progress));
+  PathLengthCache *cache = [self pathLengthCacheForPath:path];
+  return [self pointAtDistance:cache.totalLength * progress
+                        onPath:path
+                   withTangent:tangent
+                         cache:cache];
+}
+
++ (CGPoint)pointAtDistance:(CGFloat)distance
+                    onPath:(CGPathRef)path
+               withTangent:(nullable CGFloat *)tangent {
+  if (!path) return CGPointZero;
+
+  PathLengthCache *cache = [self pathLengthCacheForPath:path];
+  return [self pointAtDistance:distance onPath:path withTangent:tangent cache:cache];
+}
+
++ (CGPoint)pointAtDistance:(CGFloat)distance
+                    onPath:(CGPathRef)path
+               withTangent:(nullable CGFloat *)tangent
+                     cache:(PathLengthCache *)cache {
+  if (!path || !cache) return CGPointZero;
+
+  distance = MAX(0, MIN(cache.totalLength, distance));
   PathInfo info = {
       0, 0, CGPointZero, CGPointZero, CGPointZero, CGPointZero, NO, NO, 100, (__bridge void *)cache,
       0};
   if (tangent != nullptr) {
     info.isAutoRotate = YES;
   }
-  info.totalLength = cache.totalLength;
-  info.targetLength = info.totalLength * progress;
-  info.totalLength = 0;
+  info.targetLength = distance;
 
   CGPathApply(path, &info, findTargetPoint);
   if (tangent != nullptr) {
     *tangent = angleWithPositiveXAxis(info.resultPointTangent);
   }
   return info.resultPoint;
+}
+
++ (CGFloat)pathLength:(CGPathRef)path {
+  return [self pathLengthCacheForPath:path].totalLength;
 }
 
 @end

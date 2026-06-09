@@ -6353,6 +6353,7 @@ public class abstract com::lynx::tasm::behavior::LynxObserverManager :  {
 
 public class com::lynx::tasm::behavior::ui::shapes::LynxOffsetCalculator :  {
   public static float[] com.lynx.tasm.behavior.ui.shapes.LynxOffsetCalculator.pointAtProgress(Path path, float progress);
+  public static float[] com.lynx.tasm.behavior.ui.shapes.LynxOffsetCalculator.pointAtDistance(Path path, PlatformLength distance);
 }
 
 public interface com::lynx::tasm::base::LynxPageLoadListener {
@@ -7206,6 +7207,7 @@ public class abstract com::lynx::tasm::behavior::ui::LynxUI : com.lynx.tasm.beha
   public void com.lynx.tasm.behavior.ui.LynxUI< T extends View >.updatePerspectiveToView();
   public void com.lynx.tasm.behavior.ui.LynxUI< T extends View >.setClipPath(@Nullable ReadableArray basicShape);
   public void com.lynx.tasm.behavior.ui.LynxUI< T extends View >.setOffsetPath(@Nullable ReadableArray basicShape);
+  public void com.lynx.tasm.behavior.ui.LynxUI< T extends View >.setOffsetDistance(Dynamic offsetDistance);
   public void com.lynx.tasm.behavior.ui.LynxUI< T extends View >.setOffsetDistance(float offsetDistance);
   public void com.lynx.tasm.behavior.ui.LynxUI< T extends View >.setOffsetRotate(float offsetRotate);
   public void com.lynx.tasm.behavior.ui.LynxUI< T extends View >.destroy();

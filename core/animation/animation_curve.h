@@ -86,7 +86,8 @@ gfx::AnimationData ToGfxAnimationData(const starlight::AnimationData& data);
       AnimationCurve::CurveType::MARGIN_BOTTOM,                             \
       AnimationCurve::CurveType::BORDER_TOP_WIDTH,                          \
       AnimationCurve::CurveType::BORDER_BOTTOM_WIDTH,                       \
-      AnimationCurve::CurveType::FLEX_BASIS
+      AnimationCurve::CurveType::FLEX_BASIS,                                \
+      AnimationCurve::CurveType::OFFSET_DISTANCE
 
 class AnimationCurve : public gfx::AnimationCurve {
  public:

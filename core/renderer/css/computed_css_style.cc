@@ -738,6 +738,7 @@ void ComputedCSSStyle::CopyFrom(const ComputedCSSStyle& o) {
   origin_has_opacity_ = o.origin_has_opacity_;
   opacity_ = o.opacity_;
   offset_distance_ = o.offset_distance_;
+  offset_distance_is_legacy_number_ = o.offset_distance_is_legacy_number_;
   offset_rotate_ = o.offset_rotate_;
   image_rendering_ = o.image_rendering_;
   app_region_ = o.app_region_;
@@ -767,7 +768,9 @@ void ComputedCSSStyle::Reset() {
   origin_has_opacity_ = false;
   handle_color_ = 0;
   handle_size_ = 0.f;
-  offset_distance_ = DefaultComputedStyle::DEFAULT_OFFSET_DISTANCE;
+  offset_distance_ =
+      NLength::MakeUnitNLength(DefaultComputedStyle::DEFAULT_OFFSET_DISTANCE);
+  offset_distance_is_legacy_number_ = true;
   offset_rotate_ = DefaultComputedStyle::DEFAULT_OFFSET_ROTATE;
   image_rendering_ = ImageRenderingType::kAuto;
   app_region_ = XAppRegionType::kNone;
@@ -3504,10 +3507,47 @@ bool ComputedCSSStyle::SetClipPath(const tasm::CSSValue& value,
 
 bool ComputedCSSStyle::SetOffsetDistance(const tasm::CSSValue& value,
                                          const bool reset) {
-  return CSSStyleUtils::ComputeFloatStyle(
-      value, reset, offset_distance_,
-      DefaultComputedStyle::DEFAULT_OFFSET_DISTANCE,
-      "offset_distance must be a float!", parser_configs_);
+  const NLength old_value = offset_distance_;
+  const bool old_legacy_number = offset_distance_is_legacy_number_;
+  if (reset) {
+    offset_distance_ =
+        NLength::MakeUnitNLength(DefaultComputedStyle::DEFAULT_OFFSET_DISTANCE);
+    offset_distance_is_legacy_number_ = true;
+  } else {
+    if (value.IsNumber()) {
+      float progress = static_cast<float>(value.GetNumber());
+      offset_distance_ =
+          NLength::MakeUnitNLength(std::clamp(progress, 0.0f, 1.0f));
+      offset_distance_is_legacy_number_ = true;
+    } else if (value.IsArray()) {
+      auto array = value.GetArray();
+      if (!array || array->size() < 2 || !array->get(0).IsNumber() ||
+          !array->get(1).IsNumber()) {
+        return false;
+      }
+      const auto unit = static_cast<PlatformLengthUnit>(array->get(1).Number());
+      if (unit == PlatformLengthUnit::NUMBER) {
+        offset_distance_ = NLength::MakeUnitNLength(array->get(0).Number());
+      } else if (unit == PlatformLengthUnit::PERCENTAGE) {
+        offset_distance_ =
+            NLength::MakePercentageNLength(array->get(0).Number() * 100.0f);
+      } else {
+        return false;
+      }
+      offset_distance_is_legacy_number_ = false;
+    } else {
+      auto parse_result =
+          CSSStyleUtils::ToLength(value, length_context_, parser_configs_);
+      // calc() is not supported for offset-distance yet.
+      if (!parse_result.second || parse_result.first.IsCalc()) {
+        return false;
+      }
+      offset_distance_ = std::move(parse_result.first);
+      offset_distance_is_legacy_number_ = false;
+    }
+  }
+  return old_value != offset_distance_ ||
+         old_legacy_number != offset_distance_is_legacy_number_;
 }
 
 bool ComputedCSSStyle::SetOffsetRotate(const tasm::CSSValue& value,
@@ -4600,7 +4640,12 @@ lepus::Value ComputedCSSStyle::OffsetPathToLepus() {
 }
 
 lepus::Value ComputedCSSStyle::OffsetDistanceToLepus() {
-  return lepus::Value(offset_distance_);
+  if (offset_distance_is_legacy_number_) {
+    return lepus::Value(offset_distance_.GetRawValue());
+  }
+  auto array = lepus::CArray::Create();
+  CSSStyleUtils::AddLengthToArray(array, offset_distance_);
+  return lepus::Value(std::move(array));
 }
 
 lepus::Value ComputedCSSStyle::OffsetRotateToLepus() {
@@ -5207,7 +5252,7 @@ ComputedCSSStyle::ExtractCanonicalComputedValue(tasm::CSSPropertyID id) const {
       return CanonicalComputedValue::TransformOrigin(
           transform_origin_ ? *transform_origin_ : TransformOriginData());
     case tasm::kPropertyIDOffsetDistance:
-      return CanonicalComputedValue::Number(offset_distance_);
+      return CanonicalComputedValue::Length(offset_distance_);
     case tasm::kPropertyIDBackgroundPosition: {
       const bool has_background_position =
           background_data_ && background_data_->image_data &&

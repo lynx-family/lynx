@@ -902,7 +902,7 @@ void PropBundleStyleWriter::WriteOffsetPath(
 void PropBundleStyleWriter::WriteOffsetDistance(
     PropBundle* bundle, starlight::ComputedCSSStyle* style) {
   bundle->SetPropsByID(CSSPropertyID::kPropertyIDOffsetDistance,
-                       style->GetOffsetDistance());
+                       pub::ValueImplLepus(style->OffsetDistanceToLepus()));
 }
 
 void PropBundleStyleWriter::WriteOffsetRotate(

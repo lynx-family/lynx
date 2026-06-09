@@ -957,7 +957,8 @@ TEST_F(CSSKeyframeManagerTest, GetLayoutCurveTypeSet) {
                 animation::AnimationCurve::CurveType::BORDER_RIGHT_WIDTH,
                 animation::AnimationCurve::CurveType::BORDER_TOP_WIDTH,
                 animation::AnimationCurve::CurveType::BORDER_BOTTOM_WIDTH,
-                animation::AnimationCurve::CurveType::FLEX_BASIS});
+                animation::AnimationCurve::CurveType::FLEX_BASIS,
+                animation::AnimationCurve::CurveType::OFFSET_DISTANCE});
   EXPECT_EQ(test_set, *base_set);
 }
 

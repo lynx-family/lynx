@@ -149,8 +149,7 @@ bool CSSKeyframeManager::InitCurveAndModelAndKeyframe(
         })) {
       return false;
     }
-  } else if (type == AnimationCurve::CurveType::FLEX_GROW ||
-             type == AnimationCurve::CurveType::OFFSET_DISTANCE) {
+  } else if (type == AnimationCurve::CurveType::FLEX_GROW) {
     if (!has_model) {
       new_curve = KeyframedFloatAnimationCurve::Create();
     }
@@ -879,7 +878,8 @@ tasm::CSSValue CSSKeyframeManager::GetDefaultValue(
     item->emplace_back(0.0f);
     items->emplace_back(std::move(item));
     return tasm::CSSValue(std::move(items));
-  } else if (type == starlight::AnimationPropertyType::kFlexGrow) {
+  } else if (type == starlight::AnimationPropertyType::kFlexGrow ||
+             type == starlight::AnimationPropertyType::kOffsetDistance) {
     return tasm::CSSValue(FloatKeyframe::kDefaultFloatValue,
                           tasm::CSSValuePattern::NUMBER);
   }

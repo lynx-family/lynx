@@ -19,6 +19,12 @@ NS_ASSUME_NONNULL_BEGIN
                     onPath:(CGPathRef)path
                withTangent:(nullable CGFloat *)tangent;
 
++ (CGPoint)pointAtDistance:(CGFloat)distance
+                    onPath:(CGPathRef)path
+               withTangent:(nullable CGFloat *)tangent;
+
++ (CGFloat)pathLength:(CGPathRef)path;
+
 @end
 
 @interface PathLengthCache : NSObject

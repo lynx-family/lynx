@@ -632,6 +632,36 @@ TEST(ComputedCSSStyleTest, InheritHelpersNoOpForEmptyInputs) {
   EXPECT_FALSE(child.text_attributes_.has_value());
 }
 
+TEST(ComputedCSSStyleTest, OffsetDistanceKeepsLengthPercentage) {
+  starlight::ComputedCSSStyle style{1.f, 1.f};
+  CSSValue offset_distance(100.0, CSSValuePattern::PERCENT);
+
+  EXPECT_TRUE(style.SetValue(CSSPropertyID::kPropertyIDOffsetDistance,
+                             offset_distance, false));
+  EXPECT_TRUE(style.GetOffsetDistance().IsPercent());
+  EXPECT_FLOAT_EQ(style.GetOffsetDistance().GetRawValue(), 100.f);
+
+  CSSValue px_offset_distance(40.0, CSSValuePattern::PX);
+  EXPECT_TRUE(style.SetValue(CSSPropertyID::kPropertyIDOffsetDistance,
+                             px_offset_distance, false));
+  EXPECT_TRUE(style.GetOffsetDistance().IsUnit());
+  EXPECT_FLOAT_EQ(style.GetOffsetDistance().GetRawValue(), 40.f);
+
+  CSSValue legacy_progress_min(-1.0, CSSValuePattern::NUMBER);
+  EXPECT_TRUE(style.SetValue(CSSPropertyID::kPropertyIDOffsetDistance,
+                             legacy_progress_min, false));
+  EXPECT_TRUE(style.GetOffsetDistance().IsUnit());
+  EXPECT_FLOAT_EQ(style.GetOffsetDistance().GetRawValue(), 0.f);
+  EXPECT_TRUE(style.IsOffsetDistanceLegacyNumber());
+
+  CSSValue legacy_progress_max(2.0, CSSValuePattern::NUMBER);
+  EXPECT_TRUE(style.SetValue(CSSPropertyID::kPropertyIDOffsetDistance,
+                             legacy_progress_max, false));
+  EXPECT_TRUE(style.GetOffsetDistance().IsUnit());
+  EXPECT_FLOAT_EQ(style.GetOffsetDistance().GetRawValue(), 1.f);
+  EXPECT_TRUE(style.IsOffsetDistanceLegacyNumber());
+}
+
 }  // namespace test
 }  // namespace tasm
 }  // namespace lynx

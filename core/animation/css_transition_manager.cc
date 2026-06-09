@@ -395,6 +395,7 @@ base::flex_optional<tasm::CSSValue> ConvertCanonicalComputedValueForTransition(
     case tasm::kPropertyIDPaddingTop:
     case tasm::kPropertyIDPaddingBottom:
     case tasm::kPropertyIDFlexBasis:
+    case tasm::kPropertyIDOffsetDistance:
       if (value.kind() != Kind::kLength) {
         return {};
       }
@@ -419,7 +420,6 @@ base::flex_optional<tasm::CSSValue> ConvertCanonicalComputedValueForTransition(
       return {};
     case tasm::kPropertyIDOpacity:
     case tasm::kPropertyIDFlexGrow:
-    case tasm::kPropertyIDOffsetDistance:
       if (value.kind() != Kind::kNumber) {
         return {};
       }
@@ -917,8 +917,13 @@ bool CSSTransitionManager::IsValueValid(starlight::AnimationPropertyType type,
       return true;
     }
     case starlight::AnimationPropertyType::kFlexGrow:
-    case starlight::AnimationPropertyType::kOffsetDistance: {
       if (!value.IsNumber() && !value.IsVariable()) {
+        return false;
+      }
+      return true;
+    case starlight::AnimationPropertyType::kOffsetDistance: {
+      if (!value.IsNumber() && !value.IsPercent() && !value.IsVariable() &&
+          !value.IsArray()) {
         return false;
       }
       return true;

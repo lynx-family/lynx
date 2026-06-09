@@ -2844,8 +2844,24 @@ void UIBase::SetOffsetPath(const lepus::Value& value) {
 }
 
 void UIBase::SetOffsetDistance(const lepus::Value& value) {
-  float progress = value.IsNil() ? 0.0f : static_cast<float>(value.Number());
-  offset_distance_ = std::clamp(progress, 0.0f, 1.0f);
+  offset_distance_ = 0.0f;
+  offset_distance_length_ = PlatformLength();
+  offset_distance_is_legacy_number_ = true;
+
+  if (value.IsArray() && value.Array()->size() >= 2) {
+    const auto& array = value.Array();
+    PlatformLengthType type =
+        static_cast<PlatformLengthType>(array->get(1).Number());
+    if (array->get(0).IsNumber() && (type == PlatformLengthType::kNumber ||
+                                     type == PlatformLengthType::kPercentage)) {
+      offset_distance_length_ = PlatformLength(array->get(0), type);
+      offset_distance_is_legacy_number_ = false;
+    }
+  } else if (value.IsNumber()) {
+    offset_distance_ =
+        std::clamp(static_cast<float>(value.Number()), 0.0f, 1.0f);
+  }
+
   dirty_flags_ |= kFlagOffsetChanged;
 }
 
@@ -2899,8 +2915,12 @@ std::optional<transforms::Matrix44> UIBase::GetOffsetMatrix() const {
   if (path_string.empty()) {
     return std::nullopt;
   }
-  auto state_opt =
-      lynx_offset_calculator_->PointAtProgress(path_string, offset_distance_);
+  auto state_opt = offset_distance_is_legacy_number_
+                       ? lynx_offset_calculator_->PointAtProgress(
+                             path_string, offset_distance_)
+                       : lynx_offset_calculator_->PointAtDistance(
+                             path_string, offset_distance_length_,
+                             context_->ScaledDensity());
   if (!state_opt.has_value()) {
     return std::nullopt;
   }

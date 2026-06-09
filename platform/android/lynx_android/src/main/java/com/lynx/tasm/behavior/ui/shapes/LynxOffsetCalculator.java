@@ -6,6 +6,7 @@ package com.lynx.tasm.behavior.ui.shapes;
 
 import android.graphics.Path;
 import android.graphics.PathMeasure;
+import com.lynx.tasm.behavior.ui.utils.PlatformLength;
 import com.lynx.tasm.utils.LRUHashMap;
 import java.util.ArrayList;
 import java.util.List;
@@ -36,8 +37,19 @@ public class LynxOffsetCalculator {
       return new float[] {0, 0, 0};
     }
     progress = Math.max(0, Math.min(1, progress));
+    PathLengthCache cache = getPathLengthCache(path);
+    return pointAtDistance(path, cache, cache.totalLength * progress);
+  }
 
-    // Get or create a cache
+  public static float[] pointAtDistance(Path path, PlatformLength distance) {
+    if (path == null || distance == null) {
+      return new float[] {0, 0, 0};
+    }
+    PathLengthCache cache = getPathLengthCache(path);
+    return pointAtDistance(path, cache, distance.getValue(cache.totalLength));
+  }
+
+  private static PathLengthCache getPathLengthCache(Path path) {
     PathLengthCache cache = lruPathCache.get(path);
     if (cache == null) {
       cache = new PathLengthCache();
@@ -53,9 +65,11 @@ public class LynxOffsetCalculator {
       // LRU cache
       lruPathCache.put(path, cache);
     }
+    return cache;
+  }
 
-    // Calculate target distance
-    float targetDistance = cache.totalLength * progress;
+  private static float[] pointAtDistance(Path path, PathLengthCache cache, float targetDistance) {
+    targetDistance = Math.max(0, Math.min(cache.totalLength, targetDistance));
 
     // Find the path segment where the target point is located
     float accumulatedLength = 0;

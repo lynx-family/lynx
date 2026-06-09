@@ -118,6 +118,8 @@ static const CGFloat OFFSET_ROTATE_AUTO = -1024.f;
 
 @property(nonatomic, nullable, strong) LynxUILastInfo* lastInfo;
 @property(nonatomic, assign) NSInteger stickyScrollerSign;
+@property(nonatomic, nullable, strong) LynxPlatformLength* offsetDistanceLength;
+@property(nonatomic, assign) BOOL offsetDistanceIsLegacyNumber;
 
 - (void)updateNewSticky:(NSArray*)info;
 - (LynxUI*)getStickyScroller;
@@ -235,6 +237,8 @@ static const CGFloat OFFSET_ROTATE_AUTO = -1024.f;
   _animationInfos = nil;
   _offsetRotate = OFFSET_ROTATE_AUTO;
   _isAutoOffsetRotate = YES;
+  _offsetDistanceIsLegacyNumber = YES;
+  _offsetDistanceLength = nil;
 }
 
 - (instancetype)init {
@@ -711,15 +715,19 @@ static const CGFloat OFFSET_ROTATE_AUTO = -1024.f;
       resultPoint = CGPointZero;
       rotateDeg = 0;
     } else {
-      if (_isAutoOffsetRotate) {
-        // offset-rotate is auto
+      CGFloat* tangent = _isAutoOffsetRotate ? &rotateDeg : NULL;
+      if (_offsetDistanceIsLegacyNumber || _offsetDistanceLength == nil) {
         resultPoint = [LynxOffsetCalculator pointAtProgress:_offsetDistance
                                                      onPath:_offsetPathRef
-                                                withTangent:&rotateDeg];
+                                                withTangent:tangent];
       } else {
-        resultPoint = [LynxOffsetCalculator pointAtProgress:_offsetDistance
+        CGFloat pathLength = [LynxOffsetCalculator pathLength:_offsetPathRef];
+        CGFloat distance = [_offsetDistanceLength valueWithParentValue:pathLength];
+        resultPoint = [LynxOffsetCalculator pointAtDistance:distance
                                                      onPath:_offsetPathRef
-                                                withTangent:NULL];
+                                                withTangent:tangent];
+      }
+      if (!_isAutoOffsetRotate) {
         rotateDeg = _offsetRotate * M_PI / 180.0;
       }
     }
@@ -1666,7 +1674,7 @@ LYNX_PROPS_GROUP_DECLARE(
     LYNX_PROP_DECLARE("background-capInsets", setBackgroundCapInsets, NSString*),
     LYNX_PROP_DECLARE("clip-path", setClipPath, NSArray*),
     LYNX_PROP_DECLARE("offset-path", setOffsetPath, NSArray*),
-    LYNX_PROP_DECLARE("offset-distance", setOffsetDistance, CGFloat),
+    LYNX_PROP_DECLARE("offset-distance", setOffsetDistance, NSObject*),
     LYNX_PROP_DECLARE("offset-rotate", setOffsetRotate, CGFloat),
     LYNX_PROP_DECLARE("opacity", setOpacity, CGFloat),
     LYNX_PROP_DECLARE("visibility", setVisibility, LynxVisibilityType),
@@ -4484,13 +4492,43 @@ LYNX_PROP_DEFINE("offset-path", setOffsetPath, NSArray*) {
   };
 }
 
-LYNX_PROP_DEFINE("offset-distance", setOffsetDistance, CGFloat) {
-  if (requestReset) {
-    value = 0;
+LYNX_PROP_DEFINE("offset-distance", setOffsetDistance, NSObject*) {
+  if (requestReset || !value) {
+    _offsetDistance = 0;
+    _offsetDistanceLength = nil;
+    _offsetDistanceIsLegacyNumber = YES;
     _offsetHasChanged = YES;
+    return;
   }
-  if (_offsetDistance != value) {
-    _offsetDistance = value;
+
+  if ([value isKindOfClass:[NSArray class]] && [(NSArray*)value count] >= 2) {
+    NSArray* distanceArray = (NSArray*)value;
+    id distanceValue = [distanceArray objectAtIndex:0];
+    LynxPlatformLengthUnit unit =
+        (LynxPlatformLengthUnit)[LynxConverter toNSUInteger:[distanceArray objectAtIndex:1]];
+    if (![distanceValue isKindOfClass:[NSNumber class]] ||
+        (unit != LynxPlatformLengthUnitNumber && unit != LynxPlatformLengthUnitPercentage)) {
+      _offsetDistance = 0;
+      _offsetDistanceLength = nil;
+      _offsetDistanceIsLegacyNumber = YES;
+      _offsetHasChanged = YES;
+      return;
+    }
+    LynxPlatformLength* length = [[LynxPlatformLength alloc] initWithValue:distanceValue type:unit];
+    if (_offsetDistanceIsLegacyNumber || ![_offsetDistanceLength isEqual:length]) {
+      _offsetDistanceLength = length;
+      _offsetDistanceIsLegacyNumber = NO;
+      _offsetHasChanged = YES;
+    }
+    return;
+  }
+
+  CGFloat distance = [LynxConverter toCGFloat:value];
+  if (_offsetDistance != distance || !_offsetDistanceIsLegacyNumber ||
+      _offsetDistanceLength != nil) {
+    _offsetDistance = distance;
+    _offsetDistanceLength = nil;
+    _offsetDistanceIsLegacyNumber = YES;
     _offsetHasChanged = YES;
   }
 }
