@@ -12,9 +12,12 @@ import android.graphics.PointF
 import android.os.Bundle
 import android.view.MotionEvent
 import android.view.ViewGroup
+import android.widget.EditText
 import androidx.fragment.app.DialogFragment
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentActivity
+import com.lynx.tasm.behavior.event.EventTarget
+import com.lynx.tasm.behavior.ui.LynxUI
 import com.lynx.tasm.utils.ContextUtils
 
 class LynxOverlayDialog(context: Context, private val overlay: LynxOverlayView): Dialog(context, R.style.Overlay) {
@@ -31,6 +34,7 @@ class LynxOverlayDialog(context: Context, private val overlay: LynxOverlayView):
     }
 
     private var touchEventListener: TouchEventListener? = null
+    private var skipNativeDispatchForCurrentGesture = false
 
     var containerPopupTag: String? = null
 
@@ -55,19 +59,50 @@ class LynxOverlayDialog(context: Context, private val overlay: LynxOverlayView):
     // Override dialog's dispatchTouchEvent, if dialog needs to consume,
     // call super.dispatchTouchEvent. Otherwise, call LynxOverlayManager.dispatchTouchEvent.
     override fun dispatchTouchEvent(ev: MotionEvent): Boolean {
-        if (touchEventListener?.dispatchTouchEvent(ev) == true) {
-            innerDispatchTouchEvent(ev)
-            return false
+        if (ev.actionMasked == MotionEvent.ACTION_DOWN) {
+            skipNativeDispatchForCurrentGesture = false
         }
+        try {
+            if (touchEventListener?.dispatchTouchEvent(ev) == true) {
+                innerDispatchTouchEvent(ev)
+                return false
+            }
 
-        if(innerDispatchTouchEvent(ev)) {
-            // If consumed, call super.dispatchTouchEvent rather
-            // than call LynxOverlayManager.dispatchTouchEvent
-            return super.dispatchTouchEvent(ev);
+            val consumedByLynx = innerDispatchTouchEvent(ev)
+            if (!consumedByLynx && skipNativeDispatchForCurrentGesture) {
+                return true
+            }
+            if (consumedByLynx) {
+                if (ev.actionMasked == MotionEvent.ACTION_DOWN) {
+                    skipNativeDispatchForCurrentGesture = shouldSkipNativeDispatchForIgnoreFocus(ev)
+                }
+                if (skipNativeDispatchForCurrentGesture) {
+                    return true
+                }
+                // If consumed, call super.dispatchTouchEvent rather
+                // than call LynxOverlayManager.dispatchTouchEvent
+                return super.dispatchTouchEvent(ev);
+            }
+            return LynxOverlayManager.dispatchTouchEvent(ev, this)
+        } finally {
+            if (ev.actionMasked == MotionEvent.ACTION_UP || ev.actionMasked == MotionEvent.ACTION_CANCEL) {
+                skipNativeDispatchForCurrentGesture = false
+            }
         }
-        return LynxOverlayManager.dispatchTouchEvent(ev, this)
     }
 
+    private fun shouldSkipNativeDispatchForIgnoreFocus(ev: MotionEvent): Boolean {
+        val target = overlay.hitTest(ev.x - overlay.getTransLeft(), ev.y - overlay.getTransTop())
+        return target.ignoreFocus() && !isNativeInputTarget(target)
+    }
+
+    private fun isNativeInputTarget(target: EventTarget): Boolean {
+        var current: EventTarget? = target
+        while (current != null && current !is LynxUI<*>) {
+            current = current.parent()
+        }
+        return current is LynxUI<*> && current.view is EditText
+    }
 
     /**
      * This function is responsible for handling touch events on a view.
