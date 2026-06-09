@@ -54,6 +54,9 @@ Value LynxLepusModule::InvokeMethod(runtime::MTSRuntime* context,
   auto ret = native_module_->InvokeMethod(method_name, std::move(args_array),
                                           count, callback_map);
   if (ret.has_value()) {
+    if (ret.value() == nullptr) {
+      return Value();
+    }
     auto result =
         pub::ValueUtils::ConvertValueToLepusValue(*(ret.value().get()));
     return result;
