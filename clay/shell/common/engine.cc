@@ -384,9 +384,9 @@ void Engine::SetFontFaceCache(const char* font_family, const char* local_path) {
 }
 
 void Engine::UpdateMemoryCacheOptions() {
-  clay::Isolate::Instance().UpdateResourceCacheMaxMemoryLimit(
-      settings_.image_texture_cache_max_limit,
-      settings_.low_end_image_texture_cache_max_limit);
+  // Android/iOS Clay no longer applies image/resource cache memory limits
+  // through this engine hook. Keep the API as a no-op until platform cache
+  // ownership is moved to a lifecycle-safe path.
 }
 
 bool Engine::MarkDrawableImageFrameAvailable(int64_t image_id) {

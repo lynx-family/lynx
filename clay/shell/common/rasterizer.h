@@ -8,6 +8,7 @@
 #ifndef CLAY_SHELL_COMMON_RASTERIZER_H_
 #define CLAY_SHELL_COMMON_RASTERIZER_H_
 
+#include <atomic>
 #include <deque>
 #include <memory>
 #include <optional>
@@ -343,6 +344,7 @@ class Rasterizer final : public Stopwatch::RefreshRateUpdater,
   fml::RefPtr<GPUUnrefQueue> unref_queue_;
   fml::RefPtr<clay::RenderSettings> render_settings_;
   bool last_memory_strategy_ = false;  // true: low memory usage, false: normal
+  std::atomic_bool last_ignore_raster_cache_{false};
   std::mutex frame_mutex_;
   std::unique_ptr<FrameTimingsRecorder> last_recorder_;
   const std::shared_ptr<FixedRefreshRateStopwatch> raster_time_;
