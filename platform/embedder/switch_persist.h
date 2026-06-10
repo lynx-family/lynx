@@ -2,8 +2,8 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#ifndef PLATFORM_EMBEDDER_LYNX_DEVTOOL_SWITCH_PERSIST_H_
-#define PLATFORM_EMBEDDER_LYNX_DEVTOOL_SWITCH_PERSIST_H_
+#ifndef PLATFORM_EMBEDDER_SWITCH_PERSIST_H_
+#define PLATFORM_EMBEDDER_SWITCH_PERSIST_H_
 
 #include <string>
 
@@ -17,4 +17,4 @@ struct SwitchPersist {
 }  // namespace embedder
 }  // namespace lynx
 
-#endif  // PLATFORM_EMBEDDER_LYNX_DEVTOOL_SWITCH_PERSIST_H_
+#endif  // PLATFORM_EMBEDDER_SWITCH_PERSIST_H_

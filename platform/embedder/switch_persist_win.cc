@@ -5,7 +5,7 @@
 #include <Windows.h>
 
 #include "base/include/string/string_conversion_win.h"
-#include "platform/embedder/lynx_devtool/switch_persist.h"
+#include "platform/embedder/switch_persist.h"
 
 constexpr wchar_t regKeyBase[] = L"Software\\Lynx\\DevTool";
 

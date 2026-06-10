@@ -41,7 +41,16 @@ lynx_core_source_set("devtool_settings_embedder") {
   sources = [
     "devtool_settings_embedder.cc",
     "devtool_settings_embedder.h",
+    "switch_persist.h",
   ]
+  if (is_mac) {
+    sources += [ "SwitchPersist.mm" ]
+    frameworks = [ "Foundation.framework" ]
+  } else if (is_win) {
+    sources += [ "switch_persist_win.cc" ]
+  } else {
+    sources += [ "switch_persist.cc" ]
+  }
   deps = [ "../../core/renderer/utils:renderer_utils" ]
 }
 

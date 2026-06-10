@@ -4,7 +4,7 @@
 
 #include <Foundation/Foundation.h>
 
-#include "platform/embedder/lynx_devtool/switch_persist.h"
+#include "platform/embedder/switch_persist.h"
 
 namespace {
 

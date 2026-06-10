@@ -6,7 +6,7 @@
 
 #include "base/include/no_destructor.h"
 #include "core/renderer/utils/lynx_env.h"
-#include "platform/embedder/lynx_devtool/switch_persist.h"
+#include "platform/embedder/switch_persist.h"
 
 namespace lynx {
 namespace embedder {
