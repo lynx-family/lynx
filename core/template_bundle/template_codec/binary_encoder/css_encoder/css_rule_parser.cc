@@ -5,6 +5,7 @@
 #include "core/template_bundle/template_codec/binary_encoder/css_encoder/css_rule_parser.h"
 
 #include <cstring>
+#include <unordered_map>
 #include <utility>
 
 #include "base/include/log/logging.h"
@@ -14,6 +15,7 @@
 #include "core/renderer/css/ng/parser/css_parser_token_range.h"
 #include "core/renderer/css/ng/parser/css_parser_token_stream.h"
 #include "core/renderer/css/ng/parser/css_tokenizer.h"
+#include "core/renderer/css/ng/parser/font_face_parser.h"
 #include "core/renderer/css/ng/parser/media_query_parser.h"
 #include "core/renderer/css/ng/parser/supports_condition_parser.h"
 #include "core/renderer/css/ng/selector/css_parser_context.h"
@@ -27,6 +29,47 @@
 
 namespace lynx {
 namespace tasm {
+namespace {
+
+constexpr const char* kName = "name";
+constexpr const char* kValue = "value";
+
+std::unordered_map<std::string, std::string> ExtractFontFaceDescriptors(
+    const rapidjson::Value& rule) {
+  std::unordered_map<std::string, std::string> descriptors;
+  if (!rule.HasMember(STYLE)) return descriptors;
+
+  const rapidjson::Value& style = rule[STYLE];
+  if (!style.IsArray()) {
+    return descriptors;
+  }
+  for (const auto& attribute : style.GetArray()) {
+    if (!attribute.IsObject() || !attribute.HasMember(kName) ||
+        !attribute[kName].IsString() || !attribute.HasMember(kValue) ||
+        !attribute[kValue].IsString()) {
+      continue;
+    }
+    descriptors[attribute[kName].GetString()] = attribute[kValue].GetString();
+  }
+  return descriptors;
+}
+
+void ExtractFontFaceDiagnosticLoc(const rapidjson::Value& rule,
+                                  CSSRuleParser::Diagnostic& diagnostic) {
+  if (!rule.HasMember(STYLE) || !rule[STYLE].IsArray()) return;
+
+  for (const auto& attribute : rule[STYLE].GetArray()) {
+    if (!attribute.IsObject()) continue;
+    if (attribute.HasMember(kName) && attribute[kName].IsString() &&
+        std::string(attribute[kName].GetString()) == "font-family") {
+      CSSParser::ExtractLoc(attribute, "keyLoc", diagnostic.line,
+                            diagnostic.column);
+      return;
+    }
+  }
+}
+
+}  // namespace
 
 std::unique_ptr<encoder::LynxStyleRule> CSSRuleParser::ParseStyleRule(
     const rapidjson::Value& rule, const std::string& path) {
@@ -136,7 +179,10 @@ CSSRuleParser::ParseConditionRule(const rapidjson::Value& rule,
       } else if (encoder::CSSKeyframesToken::IsCSSKeyframesToken(child)) {
         condition_rule->child_rules.push_back(ParseKeyframesRule(child, path));
       } else if (CSSFontFaceToken::IsCSSFontFaceToken(child)) {
-        condition_rule->child_rules.push_back(ParseFontFaceRule(child, path));
+        auto fontface_rule = ParseFontFaceRule(child);
+        if (fontface_rule) {
+          condition_rule->child_rules.push_back(std::move(fontface_rule));
+        }
       } else {
         Diagnostic d{"condition child rule", child_type};
         if (child.HasMember("prelude")) {
@@ -162,12 +208,18 @@ CSSRuleParser::ParseKeyframesRule(const rapidjson::Value& rule,
 }
 
 std::unique_ptr<encoder::LynxStyleRuleFontFace>
-CSSRuleParser::ParseFontFaceRule(const rapidjson::Value& rule,
-                                 const std::string& path) {
+CSSRuleParser::ParseFontFaceRule(const rapidjson::Value& rule) {
+  auto descriptors = ExtractFontFaceDescriptors(rule);
+  auto parsed_rule = css::FontFaceParser::Parse(descriptors);
+  if (!parsed_rule) {
+    Diagnostic diagnostic{"font-face", descriptors["font-family"]};
+    ExtractFontFaceDiagnosticLoc(rule, diagnostic);
+    diagnostics_.emplace_back(std::move(diagnostic));
+    return nullptr;
+  }
   auto fontface_rule = std::make_unique<encoder::LynxStyleRuleFontFace>();
-  fontface_rule->family = CSSFontFaceToken::GetCSSFontFaceTokenKey(rule);
-  fontface_rule->properties.emplace_back(
-      std::make_shared<CSSFontFaceToken>(rule, path));
+  fontface_rule->family = parsed_rule->Family();
+  fontface_rule->font_face_rule = parsed_rule->ToLepus();
   return fontface_rule;
 }
 
@@ -327,7 +379,10 @@ CSSRuleParser::ParseLayerRule(const rapidjson::Value& rule,
     } else if (encoder::CSSKeyframesToken::IsCSSKeyframesToken(child)) {
       layer_rule->child_rules.push_back(ParseKeyframesRule(child, path));
     } else if (CSSFontFaceToken::IsCSSFontFaceToken(child)) {
-      layer_rule->child_rules.push_back(ParseFontFaceRule(child, path));
+      auto fontface_rule = ParseFontFaceRule(child);
+      if (fontface_rule) {
+        layer_rule->child_rules.push_back(std::move(fontface_rule));
+      }
     } else {
       diagnostics_.emplace_back(Diagnostic{"layer child rule", child_type});
     }
@@ -370,7 +425,10 @@ std::unique_ptr<encoder::SharedCSSFragment> CSSRuleParser::ParseCSSRules(
     } else if (encoder::CSSKeyframesToken::IsCSSKeyframesToken(rule)) {
       rules.push_back(ParseKeyframesRule(rule, path));
     } else if (CSSFontFaceToken::IsCSSFontFaceToken(rule)) {
-      rules.push_back(ParseFontFaceRule(rule, path));
+      auto fontface_rule = ParseFontFaceRule(rule);
+      if (fontface_rule) {
+        rules.push_back(std::move(fontface_rule));
+      }
     } else {
       Diagnostic d{"rule", type};
       if (rule.HasMember("prelude")) {

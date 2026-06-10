@@ -80,7 +80,7 @@ struct LynxStyleRuleFontFace : LynxStyleRuleBase {
   explicit LynxStyleRuleFontFace()
       : LynxStyleRuleBase(tasm::CSSRuleType::kFontFace) {}
   std::string family;
-  std::vector<std::shared_ptr<tasm::CSSFontFaceToken>> properties;
+  lepus::Value font_face_rule;
 };
 
 struct LynxStyleRuleKeyframes : LynxStyleRuleBase {

@@ -108,6 +108,7 @@ unittest_set("css_ng_testset") {
   ]
 
   sources = [
+    "ng/font_face/font_face_rule_test.cc",
     "ng/invalidation/invalidation_set_test.cc",
     "ng/invalidation/rule_invalidation_set_test.cc",
     "ng/matcher/selector_matcher_test.cc",
@@ -115,6 +116,7 @@ unittest_set("css_ng_testset") {
     "ng/media_query/media_query_test.cc",
     "ng/parser/css_parser_token_stream_test.cc",
     "ng/parser/css_tokenizer_test.cc",
+    "ng/parser/font_face_parser_test.cc",
     "ng/parser/media_query_parser_test.cc",
     "ng/parser/supports_condition_parser_test.cc",
     "ng/selector/css_selector_parser_test.cc",
