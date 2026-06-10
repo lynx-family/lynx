@@ -7,13 +7,19 @@
 #import <Lynx/LynxEventEmitter.h>
 #import <Lynx/LynxLog.h>
 #import <Lynx/LynxRootUI.h>
-#import "LynxTemplateData+Converter.h"
+#import <Lynx/LynxTemplateData+Converter.h>
 #import "LynxUIIntersectionObserver.h"
 
 #include <limits>
 
 using namespace lynx::tasm;
 using namespace lynx::lepus;
+
+static constexpr int64_t kCurrentLynxPageOnlyEventID = std::numeric_limits<int64_t>::min();
+
+@interface LynxEventEmitter ()
+- (BOOL)consumeDispatchInCurrentLynxPageOnly:(LynxTouchEvent*)event;
+@end
 
 @implementation LynxEventEmitter {
   LynxEngineProxy* _engineProxy;
@@ -46,12 +52,20 @@ using namespace lynx::lepus;
     _LogE(@"dispatchTouchEvent event: %@ failed since engineProxy is nil", event.eventName);
     return NO;
   }
+  BOOL dispatchInCurrentLynxPageOnly = [self consumeDispatchInCurrentLynxPageOnly:event];
   if ([self onLynxEvent:event]) {
     return YES;
   }
   id<LynxEventTarget> target = (id<LynxEventTarget>)event.eventTarget;
-  if ([target parentLynxPageUI] || [target childrenLynxPageUI]) {
-    if ([target parentLynxPageUI] == nil) {
+  BOOL hasParentLynxPageUI = !dispatchInCurrentLynxPageOnly && [target parentLynxPageUI] != nil;
+  NSMutableDictionary* childrenLynxPageUI = [target childrenLynxPageUI];
+  BOOL hasTargetChildLynxPageUI =
+      childrenLynxPageUI[[NSString stringWithFormat:@"%p", target]] != nil;
+  BOOL shouldDispatchThroughLynxPage = dispatchInCurrentLynxPageOnly
+                                           ? hasTargetChildLynxPageUI
+                                           : hasParentLynxPageUI || childrenLynxPageUI != nil;
+  if (shouldDispatchThroughLynxPage) {
+    if (!hasParentLynxPageUI) {
       eventID_ = (eventID_ + 1) % (std::numeric_limits<int64_t>::max() - 1);
     }
     event.eventID = eventID_;
@@ -60,7 +74,7 @@ using namespace lynx::lepus;
           self);
     [self startEventGenerate:event];
 
-    if ([target childrenLynxPageUI][[NSString stringWithFormat:@"%p", target]] == nil) {
+    if (!hasTargetChildLynxPageUI) {
       [target.rootLynxPageUI startEventCapture:eventID_];
     }
   } else {
@@ -83,13 +97,20 @@ using namespace lynx::lepus;
               event.eventName);
     return;
   }
+  BOOL dispatchInCurrentLynxPageOnly = [self consumeDispatchInCurrentLynxPageOnly:event];
   if ([self onLynxEvent:event]) {
     return;
   }
   id<LynxEventTarget> target = (id<LynxEventTarget>)event.eventTarget;
-  if ([target parentLynxPageUI] || [target childrenLynxPageUI]) {
-    id<LynxEventTarget> target = (id<LynxEventTarget>)event.eventTarget;
-    if ([target parentLynxPageUI] == nil) {
+  BOOL hasParentLynxPageUI = !dispatchInCurrentLynxPageOnly && [target parentLynxPageUI] != nil;
+  NSMutableDictionary* childrenLynxPageUI = [target childrenLynxPageUI];
+  BOOL hasTargetChildLynxPageUI =
+      childrenLynxPageUI[[NSString stringWithFormat:@"%p", target]] != nil;
+  BOOL shouldDispatchThroughLynxPage = dispatchInCurrentLynxPageOnly
+                                           ? hasTargetChildLynxPageUI
+                                           : hasParentLynxPageUI || childrenLynxPageUI != nil;
+  if (shouldDispatchThroughLynxPage) {
+    if (!hasParentLynxPageUI) {
       eventID_ = (eventID_ + 1) % (std::numeric_limits<int64_t>::max() - 1);
     }
     event.eventID = eventID_;
@@ -98,7 +119,7 @@ using namespace lynx::lepus;
           self);
     [self startEventGenerate:event];
 
-    if ([target childrenLynxPageUI][[NSString stringWithFormat:@"%p", target]] == nil) {
+    if (!hasTargetChildLynxPageUI) {
       [target.rootLynxPageUI startEventCapture:eventID_];
     }
   } else {
@@ -202,6 +223,14 @@ using namespace lynx::lepus;
 
 - (void)startEventFire:(BOOL)isStop withEventID:(int64_t)eventID {
   [_engineProxy startEventFire:isStop withEventID:eventID];
+}
+
+- (BOOL)consumeDispatchInCurrentLynxPageOnly:(LynxTouchEvent*)event {
+  if (event.eventID != kCurrentLynxPageOnlyEventID) {
+    return NO;
+  }
+  event.eventID = 0;
+  return YES;
 }
 
 @end
