@@ -343,6 +343,7 @@ class Rasterizer final : public Stopwatch::RefreshRateUpdater,
   fml::RefPtr<GPUUnrefQueue> unref_queue_;
   fml::RefPtr<clay::RenderSettings> render_settings_;
   bool last_memory_strategy_ = false;  // true: low memory usage, false: normal
+  bool last_ignore_raster_cache_ = false;
   std::mutex frame_mutex_;
   std::unique_ptr<FrameTimingsRecorder> last_recorder_;
   const std::shared_ptr<FixedRefreshRateStopwatch> raster_time_;

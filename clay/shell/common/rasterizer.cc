@@ -74,6 +74,7 @@ fml::WeakPtr<Rasterizer> Rasterizer::GetWeakPtr() const {
 
 void Rasterizer::Setup(std::unique_ptr<Surface> surface) {
   surface_ = std::move(surface);
+  last_ignore_raster_cache_ = false;
 
   if (max_cache_bytes_.has_value()) {
     SetResourceCacheMaxBytes(max_cache_bytes_.value(),
@@ -104,11 +105,13 @@ void Rasterizer::Teardown() {
   }
 
   last_layer_tree_.reset();
+  last_ignore_raster_cache_ = false;
 }
 
 void Rasterizer::CleanForRecycle() {
   user_override_resource_cache_bytes_ = false;
   last_layer_tree_.reset();
+  last_ignore_raster_cache_ = false;
   compositor_context_ = std::make_unique<clay::CompositorContext>(*this);
   if (unref_queue_) {
     unref_queue_->Drain();
@@ -426,15 +429,22 @@ RasterStatus Rasterizer::DrawToSurfaceUnsafe(
       compositor_context_->raster_cache().set_needs_build_all_caches(false);
     }
     last_memory_strategy_ = should_low_memory_usage;
+#if defined(OS_ANDROID) || defined(OS_IOS)
+    // Mobile Clay bypasses raster cache intentionally; avoid retaining large
+    // cached display lists on memory-sensitive devices.
+    bool ignore_raster_cache = true;
+#else
     bool ignore_raster_cache =
         should_low_memory_usage || !surface_->EnableRasterCache() ||
         (render_settings_ && render_settings_->IgnoreRasterCache());
+#endif
 
-    if (ignore_raster_cache) {
-      // ignore_raster_cache may be set dynamically by FrontEnd. So clear cache
-      // manually to avoid errors in raster_cache.EndFrame().
+    if (ignore_raster_cache && !last_ignore_raster_cache_) {
+      // Clear cache manually before bypassing it to avoid errors in
+      // raster_cache.EndFrame().
       compositor_context_->raster_cache().Clear();
     }
+    last_ignore_raster_cache_ = ignore_raster_cache;
     {
       ScopedTimingRecorder scoped_raster_timing(frame_timings_recorder,
                                                 FrameTimingKey::kRasterStart,
