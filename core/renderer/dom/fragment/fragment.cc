@@ -44,13 +44,15 @@ void Fragment::CreateLayerIfNeeded(const fml::RefPtr<PropBundle>& init_data) {
 
   const bool tends_to_flatten = element()->TendToFlatten();
   const bool can_flatten_without_platform_renderer =
-      (!element()->is_direct_child_of_compatible_component() &&
-       (element()->is_text() || element()->is_image() ||
-        element()->is_view())) &&
+      (!element()->is_page() &&
+       !element()->is_direct_child_of_compatible_component() &&
+       (element()->is_text() || element()->is_image() || element()->is_view() ||
+        element()->is_component())) &&
       tends_to_flatten;
   if (can_flatten_without_platform_renderer) {
-    // If the fragment is a view, text, or image, and it tends to flatten,
-    // then it does not need to be layerized.
+    // If the fragment is a view, text, image, or component, and it tends to
+    // flatten, then it does not need to be layerized. The page must keep its
+    // platform renderer because it is the root of the PlatformRenderer tree.
     return;
   }
 
