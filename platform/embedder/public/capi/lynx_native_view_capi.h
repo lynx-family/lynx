@@ -102,6 +102,9 @@ typedef void (*lynx_native_view_callback)(lynx_native_view_callback_info_t, int,
                                           lynx_value);
 
 LYNX_CAPI_EXPORT lynx_native_view_t* lynx_native_view_create(void* user_data);
+LYNX_CAPI_EXPORT lynx_native_view_t* lynx_native_view_retain(
+    lynx_native_view_t*);
+LYNX_CAPI_EXPORT void lynx_native_view_release(lynx_native_view_t*);
 LYNX_CAPI_EXPORT void lynx_native_view_bind_on_create(
     lynx_native_view_t*, bool (*)(lynx_native_view_t*, void* user_data));
 LYNX_CAPI_EXPORT void lynx_native_view_bind_on_attach(
@@ -137,6 +140,8 @@ LYNX_CAPI_EXPORT void lynx_native_view_bind_is_surface_enabled(
 LYNX_CAPI_EXPORT void lynx_native_view_bind_surface_buffer_mode(
     lynx_native_view_t*,
     lynx_surface_buffer_mode_t (*)(lynx_native_view_t*, void* user_data));
+LYNX_CAPI_EXPORT lynx_surface_buffer_mode_t
+lynx_native_view_get_surface_buffer_mode(lynx_native_view_t*);
 
 LYNX_CAPI_EXPORT bool lynx_native_view_present_surface(
     lynx_native_view_t*, int width, int height, const float* transform,
