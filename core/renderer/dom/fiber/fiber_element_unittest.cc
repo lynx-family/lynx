@@ -19859,8 +19859,8 @@ TEST_P(FiberElementTest,
 
   manager->GetLynxEnvConfig().UpdateViewport(800, SLMeasureModeDefinite, 600,
                                              SLMeasureModeDefinite);
-  child->UpdateDynamicElementStyle(DynamicCSSStylesManager::kUpdateViewport,
-                                   false);
+  page->UpdateDynamicElementStyle(DynamicCSSStylesManager::kUpdateViewport,
+                                  false);
 
   EXPECT_TRUE(StyleMapHasValue(child->computed_css_style()->GetResolvedValues(),
                                CSSPropertyID::kPropertyIDWidth,
@@ -19940,8 +19940,8 @@ TEST_P(FiberElementTest, NewStylingMediaQueryReResolveOnColorSchemeChange) {
   // Switch to dark color scheme (1)
   manager->GetLynxEnvConfig().SetPreferredColorScheme(
       css::MediaPreferredColorScheme::kDark);
-  child->UpdateDynamicElementStyle(DynamicCSSStylesManager::kUpdateColorScheme,
-                                   false);
+  page->UpdateDynamicElementStyle(DynamicCSSStylesManager::kUpdateColorScheme,
+                                  false);
 
   // Now the media query should match and width should be 200px
   EXPECT_TRUE(StyleMapHasValue(child->computed_css_style()->GetResolvedValues(),

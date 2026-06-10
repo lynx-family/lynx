@@ -4355,11 +4355,12 @@ void FiberElement::UpdateDynamicElementStyleForNewPipeline(
       DynamicCSSStylesManager::kUpdateRem | DynamicCSSStylesManager::kUpdateEm |
       DynamicCSSStylesManager::kUpdateColorScheme;
   bool media_query_env_changed = false;
-  if (!is_wrapper() &&
+  if (is_component() &&
       ((style & kMediaQueryEnvMask) != 0 || (dirty_ & kDirtyFontSize))) {
     auto *fragment = GetRelatedCSSFragment();
     if (StyleResolver::FragmentsHasMediaQueries(fragment)) {
       media_query_env_changed = true;
+      inner_force_update = true;
     }
   }
 
@@ -4461,11 +4462,11 @@ void FiberElement::UpdateDynamicElementStyleRecursively(uint32_t style,
       DynamicCSSStylesManager::kUpdateScreenMetrics |
       DynamicCSSStylesManager::kUpdateRem | DynamicCSSStylesManager::kUpdateEm |
       DynamicCSSStylesManager::kUpdateColorScheme;
-  if (!is_wrapper() &&
+  if (is_component() &&
       ((style & kMediaQueryEnvMask) != 0 || (dirty_ & kDirtyFontSize))) {
     auto *fragment = GetRelatedCSSFragment();
     if (StyleResolver::FragmentsHasMediaQueries(fragment)) {
-      MarkStyleDirty(false);
+      MarkStyleDirty(true);
     }
   }
 
