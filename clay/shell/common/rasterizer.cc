@@ -74,6 +74,7 @@ fml::WeakPtr<Rasterizer> Rasterizer::GetWeakPtr() const {
 
 void Rasterizer::Setup(std::unique_ptr<Surface> surface) {
   surface_ = std::move(surface);
+  last_ignore_raster_cache_.store(false, std::memory_order_relaxed);
 
   if (max_cache_bytes_.has_value()) {
     SetResourceCacheMaxBytes(max_cache_bytes_.value(),
@@ -104,11 +105,13 @@ void Rasterizer::Teardown() {
   }
 
   last_layer_tree_.reset();
+  last_ignore_raster_cache_.store(false, std::memory_order_relaxed);
 }
 
 void Rasterizer::CleanForRecycle() {
   user_override_resource_cache_bytes_ = false;
   last_layer_tree_.reset();
+  last_ignore_raster_cache_.store(false, std::memory_order_relaxed);
   compositor_context_ = std::make_unique<clay::CompositorContext>(*this);
   if (unref_queue_) {
     unref_queue_->Drain();
@@ -440,11 +443,15 @@ RasterStatus Rasterizer::DrawToSurfaceUnsafe(
         should_low_memory_usage || !surface_->EnableRasterCache() ||
         (render_settings_ && render_settings_->IgnoreRasterCache());
 
-    if (ignore_raster_cache) {
-      // ignore_raster_cache may be set dynamically by FrontEnd. So clear cache
-      // manually to avoid errors in raster_cache.EndFrame().
+    bool last_ignore_raster_cache =
+        last_ignore_raster_cache_.load(std::memory_order_relaxed);
+    if (ignore_raster_cache && !last_ignore_raster_cache) {
+      // Clear once when entering bypass mode so stale cache state is not
+      // carried into subsequent frames.
       compositor_context_->raster_cache().Clear();
     }
+    last_ignore_raster_cache_.store(ignore_raster_cache,
+                                    std::memory_order_relaxed);
     frame_timings_recorder.RecordFrameTime(FrameTimingKey::kRasterStart);
     RasterStatus raster_status = compositor_frame->Raster(
         layer_tree, ignore_raster_cache, damage.get(),
