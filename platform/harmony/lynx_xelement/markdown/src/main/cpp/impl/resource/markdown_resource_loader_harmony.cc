@@ -472,7 +472,7 @@ void MarkdownResourceLoaderHarmony::LoadImageResource(
   auto* context = context_.load();
   auto resource_loader = context ? context->GetResourceLoader() : nullptr;
   if (!resource_loader) {
-    DecodeImageResource(drawable, source, source, false);
+    LOGE("markdown image resource loader is unavailable, source: " << source);
     return;
   }
 
@@ -524,9 +524,11 @@ void MarkdownResourceLoaderHarmony::DecodeImageResource(
 void MarkdownResourceLoaderHarmony::OnImageResourceLoaded(
     std::weak_ptr<CanvasImageMarkdownDrawable> drawable,
     const std::string& fallback_source, pub::LynxPathResponse& response) {
-  std::string source = response.Success() && !response.path.empty()
-                           ? response.path
-                           : fallback_source;
+  if (!response.Success() || response.path.empty()) {
+    LOGE("markdown image resource load failed, source: " << fallback_source);
+    return;
+  }
+  std::string source = response.path;
   source = NormalizeDecodeSource(std::move(source));
   DecodeImageResource(drawable, fallback_source, source, IsBase64Image(source));
 }
