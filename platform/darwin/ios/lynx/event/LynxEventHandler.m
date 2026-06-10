@@ -20,10 +20,20 @@
 #import <Lynx/UIView+Lynx.h>
 #import "LynxTouchHandler+Internal.h"
 
+#include <stdint.h>
+
+static const int64_t kCurrentLynxPageOnlyEventID = INT64_MIN;
+
+static BOOL ShouldDispatchTouchEventInCurrentLynxPageOnly(LynxUI* rootUI) {
+  id pageRootUI = rootUI.context.rootUI;
+  return rootUI != nil && pageRootUI != nil && rootUI != pageRootUI;
+}
+
 #pragma mark - LynxEventHandler
 @interface LynxEventHandler ()
 
 @property(nonatomic, readwrite) BOOL gestureRecognized;
+@property(nonatomic, assign) BOOL dispatchTouchEventInCurrentLynxPageOnly;
 
 @end
 
@@ -343,6 +353,8 @@
   if (self) {
     _rootView = rootView;
     _rootUI = rootUI;
+    _dispatchTouchEventInCurrentLynxPageOnly =
+        ShouldDispatchTouchEventInCurrentLynxPageOnly(rootUI);
     _touchRecognizer = [[LynxTouchHandler alloc] initWithEventHandler:self];
     [_rootView addGestureRecognizer:_touchRecognizer];
     _isFragmentLayerRendererOn = isFragmentLayerRenderOn;
@@ -502,6 +514,7 @@
                                    viewPoint:viewPoint];
     event.eventTarget = _touchRecognizer.preTarget;
     event.timestamp = [[NSDate date] timeIntervalSince1970];
+    [self markDispatchInCurrentLynxPageOnlyIfNeeded:event];
     if ([LynxEnv.sharedInstance highlightTouchEnabled]) {
       [_touchRecognizer
           showMessageOnConsole:[NSString
@@ -555,6 +568,7 @@
                                                        viewPoint:viewPoint];
     event.eventTarget = _touchTarget;
     event.timestamp = [[NSDate date] timeIntervalSince1970];
+    [self markDispatchInCurrentLynxPageOnlyIfNeeded:event];
     if (![_eventEmitter dispatchTouchEvent:event]) {
       _longPressPoint = pagePoint;
       self.gestureRecognized = NO;
@@ -586,6 +600,7 @@
                                      viewPoint:viewPoint];
       event.eventTarget = _touchRecognizer.preTarget;
       event.timestamp = [[NSDate date] timeIntervalSince1970];
+      [self markDispatchInCurrentLynxPageOnlyIfNeeded:event];
       if ([LynxEnv.sharedInstance highlightTouchEnabled]) {
         [_touchRecognizer
             showMessageOnConsole:[NSString
@@ -770,6 +785,12 @@
 - (void)removeGestureArenaManager:(NSInteger)index {
   _gestureArenaManager = nil;
   [_touchRecognizer removeGestureArenaManager:index];
+}
+
+- (void)markDispatchInCurrentLynxPageOnlyIfNeeded:(LynxTouchEvent*)event {
+  if (self.dispatchTouchEventInCurrentLynxPageOnly) {
+    event.eventID = kCurrentLynxPageOnlyEventID;
+  }
 }
 
 // should be called when touch target has been found, will not change _touchTarget

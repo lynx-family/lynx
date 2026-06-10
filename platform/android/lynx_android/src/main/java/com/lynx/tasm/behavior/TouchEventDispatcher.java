@@ -107,6 +107,8 @@ public class TouchEventDispatcher {
   private float mTapSlop;
   public static final String mTapSlopDefault = "50px";
   public static final float mTapSlopFloatDefault = 50;
+  // Internal marker consumed by LynxEventEmitter before the event reaches JS.
+  private static final long CURRENT_LYNX_PAGE_ONLY_EVENT_ID = Long.MIN_VALUE;
 
   private boolean mTouchMoved;
   private boolean mTouchMoving;
@@ -129,6 +131,8 @@ public class TouchEventDispatcher {
   private EventTarget mPreTarget;
   private String mPreTargetInlineCSSText;
   private Point mFirstFingerDownPoint;
+  private UIGroup mActiveEventRootUI;
+  private boolean mDispatchInCurrentLynxPageOnly;
   private boolean mIsPlatformGestureActive = false;
   private boolean mPanGestureRecognized = false;
 
@@ -523,7 +527,7 @@ public class TouchEventDispatcher {
       // For better performance, the following code is executed only when the touch position
       // changes. Because the response chain does not change when the touch position does not
       // change, thus, there is no need to exec the following code.
-      EventTarget target = findUI(ev, index, mUIOwner.getRootUI());
+      EventTarget target = findUI(ev, index, getActiveEventRootUI());
       mTouchOutSide = mGestureRecognized
           || (!mActiveClickList.isEmpty() && canRespondTapOrClick(mActiveClickList.getLast()) != -1)
           || mTouchOutSide || eventOutSideActiveList(ev, target);
@@ -642,6 +646,8 @@ public class TouchEventDispatcher {
     mHasMultiTouch = false;
     mActiveUIMap.clear();
     mActiveTargetMap.clear();
+    mActiveEventRootUI = null;
+    mDispatchInCurrentLynxPageOnly = false;
     mPreTarget = mActiveUI;
   }
 
@@ -754,6 +760,7 @@ public class TouchEventDispatcher {
     event.setActiveTargetMap(mActiveTargetMap);
     event.setTarget(mActiveUI);
     event.setTimestamp(mTimestamp);
+    markDispatchInCurrentLynxPageOnly(event);
     if (mGestureArenaManager != null) {
       mGestureArenaManager.dispatchBubbleTouchEvent(eventName, mFirstLynxTouchEvent);
     }
@@ -773,6 +780,7 @@ public class TouchEventDispatcher {
     mFirstLynxTouchEvent.setMotionEvent(ev);
     mFirstLynxTouchEvent.setTarget(mActiveUI);
     mFirstLynxTouchEvent.setTimestamp(mTimestamp);
+    markDispatchInCurrentLynxPageOnly(mFirstLynxTouchEvent);
 
     if (EVENT_TOUCH_START.equals(eventName)) {
       inspectHitTarget();
@@ -1154,13 +1162,17 @@ public class TouchEventDispatcher {
   public boolean onTouchEvent(MotionEvent ev, UIGroup rootUi) {
     mTimestamp = System.currentTimeMillis();
     if (ev.getActionMasked() == MotionEvent.ACTION_DOWN) {
+      mActiveEventRootUI = resolveEventRootUI(rootUi);
+      mDispatchInCurrentLynxPageOnly = shouldDispatchInCurrentLynxPageOnly(rootUi);
       mIsPlatformGestureActive = false;
-      if (!handleFirstTouchDown(ev, rootUi)) {
+      if (!handleFirstTouchDown(ev, mActiveEventRootUI)) {
+        mActiveEventRootUI = null;
+        mDispatchInCurrentLynxPageOnly = false;
         LLog.i(TAG, "hit event through");
         return false;
       }
     } else if (ev.getActionMasked() == MotionEvent.ACTION_POINTER_DOWN) {
-      handleOtherTouchDown(ev, rootUi);
+      handleOtherTouchDown(ev, getActiveEventRootUI());
     } else {
       if (mActiveUI != null && !mActiveUIMap.isEmpty()) {
         if (mActiveUI.eventThrough(mFirstFingerDownPoint.getX(), mFirstFingerDownPoint.getY())) {
@@ -1280,6 +1292,24 @@ public class TouchEventDispatcher {
 
   private EventEmitter eventEmitter() {
     return mUIOwner.getContext().getEventEmitter();
+  }
+
+  private UIGroup resolveEventRootUI(UIGroup rootUi) {
+    return rootUi != null ? rootUi : mUIOwner.getRootUI();
+  }
+
+  private UIGroup getActiveEventRootUI() {
+    return mActiveEventRootUI != null ? mActiveEventRootUI : mUIOwner.getRootUI();
+  }
+
+  private boolean shouldDispatchInCurrentLynxPageOnly(UIGroup rootUi) {
+    return rootUi != null && rootUi != mUIOwner.getRootUI();
+  }
+
+  private void markDispatchInCurrentLynxPageOnly(LynxTouchEvent event) {
+    if (mDispatchInCurrentLynxPageOnly) {
+      event.setEventID(CURRENT_LYNX_PAGE_ONLY_EVENT_ID);
+    }
   }
 
   private EventTarget findUI(MotionEvent ev, int pointerIndex, UIGroup rootUi) {
