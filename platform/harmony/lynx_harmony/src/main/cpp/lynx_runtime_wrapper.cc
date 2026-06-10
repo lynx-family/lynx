@@ -274,7 +274,7 @@ napi_value LynxRuntimeWrapper::NativeCreate(napi_env env,
       base::NapiUtil::ConvertToString(env, args[7]);
 
   // module
-  static constexpr uint32_t kArgsSize = 4;
+  static constexpr uint32_t kArgsSize = 5;
   napi_value module_args[kArgsSize];
   base::NapiUtil::ConvertToArray(env, args[8], module_args, kArgsSize);
   napi_value sendable_module_args[kArgsSize];

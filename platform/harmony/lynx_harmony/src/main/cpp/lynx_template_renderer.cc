@@ -835,7 +835,7 @@ napi_value LynxTemplateRenderer::NativeReset(napi_env env,
   napi_get_value_bool(env, args[14], &enable_js);
 
   // module
-  static constexpr uint32_t kArgsSize = 4;
+  static constexpr uint32_t kArgsSize = 5;
   napi_value module_args[kArgsSize];
   base::NapiUtil::ConvertToArray(env, args[15], module_args, kArgsSize);
   napi_value sendable_module_args[kArgsSize];

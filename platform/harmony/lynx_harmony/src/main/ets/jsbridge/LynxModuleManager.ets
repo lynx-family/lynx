@@ -97,13 +97,16 @@ export class SendableLynxModuleManager {
 }
 
 export function convertModuleArgs(moduleManager: LynxModuleManager | SendableLynxModuleManager) {
+  const values = Array.from(moduleManager.getModulesMap().values());
   return [
     moduleManager,
     moduleManager.getModule,
     Array.from(moduleManager.getModulesMap().keys()),
-    Array.from(moduleManager.getModulesMap().values(),
-      (item) => {
-        return Object.getOwnPropertyNames((item.moduleClass as Function).prototype);
-      })
+    values.map((item) => {
+      return Object.getOwnPropertyNames((item.moduleClass as Function).prototype);
+    }),
+    values.map((item) => {
+      return (item.moduleClass as Record<string, Object>)['syncMethods'] as string[] | undefined;
+    })
   ];
 }

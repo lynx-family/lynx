@@ -10,6 +10,8 @@
 #include <memory>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
+#include <utility>
 #include <vector>
 
 #include "base/include/compiler_specific.h"
@@ -27,7 +29,8 @@ class NativeModuleHarmony : public runtime::LynxNativeModule {
  public:
   NativeModuleHarmony(const std::shared_ptr<PlatformModuleManager>& manager,
                       napi_env env, const std::string& name, bool sendable,
-                      const std::vector<std::string>& methods);
+                      const std::vector<std::string>& methods,
+                      const std::unordered_set<std::string>& sync_methods);
 
   base::expected<std::unique_ptr<pub::Value>, std::string> InvokeMethod(
       const std::string& method_name, std::unique_ptr<pub::Value> args,
@@ -51,6 +54,7 @@ class NativeModuleHarmony : public runtime::LynxNativeModule {
 
   const bool sendable_ = false;
   const std::string module_name_;
+  std::unordered_set<std::string> sync_methods_;
 };
 }  // namespace harmony
 }  // namespace lynx
