@@ -2715,7 +2715,11 @@ public class LynxTemplateRender
             } else {
               templateData = TemplateData.fromString(mJsonData == null ? "" : mJsonData);
             }
-            renderTemplate(template, templateData);
+            LynxLoadMeta.Builder metaBuilder = new LynxLoadMeta.Builder();
+            metaBuilder.setBinaryData(template);
+            metaBuilder.setInitialData(templateData);
+            metaBuilder.setUrl(mUrl);
+            loadTemplate(metaBuilder.build());
           } else {
             // if loading with LynxLoadMeta.
             TimingOption timingOption = TimingOption.createTimingOption(TimingConstants.LOAD_BUNDLE,
