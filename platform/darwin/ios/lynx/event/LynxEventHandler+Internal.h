@@ -6,6 +6,8 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
+@class LynxTouchEvent;
+
 @interface LynxEventHandler ()
 
 - (void)setEnableViewReceiveTouch:(BOOL)enable;
@@ -23,6 +25,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (id<LynxEventTarget>)hitTestInner:(CGPoint)point withEvent:(nullable UIEvent *)event;
 - (NSInteger)checkCanRespondTapOrClick:(id<LynxEventTarget>)ui withSet:(NSSet *)set;
 - (void)removeEventGestures;
+- (void)markDispatchInCurrentLynxPageOnlyIfNeeded:(LynxTouchEvent *)event;
 
 @end
 
