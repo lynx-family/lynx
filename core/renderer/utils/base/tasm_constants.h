@@ -38,6 +38,7 @@ static constexpr const char kElementViewTag[] = "view";
 static constexpr const char kElementComponentTag[] = "component";
 static constexpr const char kElementPageTag[] = "page";
 static constexpr const char kElementImageTag[] = "image";
+static constexpr const char kElementEcomImageTag[] = "ecom-image";
 static constexpr const char kElementTextTag[] = "text";
 static constexpr const char kElementXTextTag[] = "x-text";
 static constexpr const char* kElementRawTextTag = "raw-text";

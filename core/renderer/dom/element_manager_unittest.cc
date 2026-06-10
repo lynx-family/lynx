@@ -367,6 +367,34 @@ TEST_F(ElementManagerTest, CreateFiberElementImage) {
   EXPECT_EQ(node->GetTag(), tag.str());
 
   EXPECT_TRUE(node->is_image());
+
+  base::String raw_tag("custom-image");
+  node = ElementManager::StaticCreateFiberElement(tag_enum, raw_tag);
+
+  EXPECT_EQ(node->GetTag(), tag.str());
+
+  EXPECT_TRUE(node->is_image());
+}
+
+TEST_F(ElementManagerTest, CreateFiberElementEcomImage) {
+  base::String tag("ecom-image");
+  auto node = manager->CreateFiberElement(tag);
+
+  EXPECT_EQ(node->GetTag(), tag.str());
+
+  EXPECT_TRUE(node->is_image());
+
+  node = manager->CreateFiberNode(tag);
+
+  EXPECT_EQ(node->GetTag(), tag.str());
+
+  EXPECT_TRUE(node->is_image());
+
+  node = ElementManager::StaticCreateFiberElement(ELEMENT_OTHER, tag);
+
+  EXPECT_EQ(node->GetTag(), tag.str());
+
+  EXPECT_TRUE(node->is_image());
 }
 
 TEST_F(ElementManagerTest, CreateFiberElementScrollView) {

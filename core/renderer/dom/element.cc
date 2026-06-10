@@ -1577,8 +1577,9 @@ bool Element::ShouldAvoidFlattenForView() {
 }
 
 bool Element::TendToFlatten() {
-  return config_flatten_ && !has_event_listener_ && !has_non_flatten_attrs_ &&
-         !DisableFlattenWithOpacity() &&
+  return config_flatten_ &&
+         (!has_event_listener_ || EnableFragmentLayerRender()) &&
+         !has_non_flatten_attrs_ && !DisableFlattenWithOpacity() &&
          !(has_z_props() && !is_image() && !is_text()) && !is_inline_element_ &&
          !ShouldAvoidFlattenForView() &&
          // Note: sticky item should not be flatten on Android platform.

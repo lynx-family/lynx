@@ -6475,6 +6475,18 @@ TEST_P(FiberElementTest, CheckFlattenRelatedFlags) {
   EXPECT_TRUE(text->TendToFlatten() == true);
 }
 
+TEST_P(FiberElementTest, FragmentLayerRenderFlattenIgnoresEventListenerFlag) {
+  manager->page_options_.SetEmbeddedMode(EmbeddedMode::UNSET);
+  auto view = manager->CreateFiberView();
+  view->has_event_listener_ = true;
+  EXPECT_FALSE(view->TendToFlatten());
+
+  manager->page_options_.SetEmbeddedMode(EmbeddedMode::FRAGMENT_LAYER_RENDER);
+  auto fragment_layer_view = manager->CreateFiberView();
+  fragment_layer_view->has_event_listener_ = true;
+  EXPECT_TRUE(fragment_layer_view->TendToFlatten());
+}
+
 TEST_P(FiberElementTest,
        ResolveSimpleStylesHandlesPendingKeyframeChangesFromStyleRemoval) {
   manager->SetEnableSimpleStyle(true);

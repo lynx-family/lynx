@@ -42,6 +42,7 @@
 #include "core/renderer/trace/renderer_trace_event_def.h"
 #include "core/renderer/ui_wrapper/painting/catalyzer.h"
 #include "core/renderer/ui_wrapper/painting/painting_context.h"
+#include "core/renderer/utils/base/tasm_constants.h"
 #include "core/renderer/utils/lynx_env.h"
 #include "core/services/recorder/recorder_controller.h"
 #include "core/services/timing_handler/timing_constants.h"
@@ -1234,14 +1235,22 @@ fml::RefPtr<FiberElement> ElementManager::CreateFiberElement(
 fml::RefPtr<FiberElement> ElementManager::StaticCreateFiberElement(
     ElementBuiltInTagEnum enum_tag, const base::String &raw_tag) {
   fml::RefPtr<FiberElement> element = nullptr;
-  switch (enum_tag) {
+  // TODO(hexionghui): compatible for cui's fallback ui, remove this when render
+  // by flatten ui not displaylist.
+  ElementBuiltInTagEnum resolved_enum_tag =
+      raw_tag.IsEqual(kElementEcomImageTag) ? ELEMENT_IMAGE : enum_tag;
+  switch (resolved_enum_tag) {
     case ELEMENT_VIEW:
       element = fml::AdoptRef<ViewElement>(new ViewElement(nullptr));
       break;
-    case ELEMENT_IMAGE:
-      element = fml::AdoptRef<ImageElement>(
-          new ImageElement(nullptr, BASE_STATIC_STRING(kElementImageTag)));
+    case ELEMENT_IMAGE: {
+      base::String image_tag = raw_tag.IsEqual(kElementEcomImageTag)
+                                   ? raw_tag
+                                   : BASE_STATIC_STRING(kElementImageTag);
+      element =
+          fml::AdoptRef<ImageElement>(new ImageElement(nullptr, image_tag));
       break;
+    }
     case ELEMENT_INLINE_IMAGE:
       element = fml::AdoptRef<ImageElement>(
           new ImageElement(nullptr, BASE_STATIC_STRING(kElementImageTag)));
@@ -1316,6 +1325,9 @@ fml::RefPtr<FiberElement> ElementManager::StaticCreateFiberElement(
 
 fml::RefPtr<FiberElement> ElementManager::CreateFiberNode(
     const base::String &tag) {
+  if (tag.IsEqual(kElementEcomImageTag)) {
+    return fml::AdoptRef<FiberElement>(new ImageElement(this, tag));
+  }
   auto res = fml::AdoptRef<FiberElement>(new FiberElement(this, tag));
   return res;
 }
@@ -1603,7 +1615,6 @@ void ElementManager::OnPatchFinishForFiber(
 
   if (root() && root()->EnableFragmentLayerRender()) {
     root()->element_container()->FinishTasmOperation(options);
-    root()->element_container()->Flush();
   } else {
     catalyzer_->painting_context()->FinishTasmOperation(options);
   }
@@ -1625,7 +1636,6 @@ void ElementManager::OnPatchFinishForFiber(
     if (root() && root()->EnableFragmentLayerRender()) {
       TRACE_EVENT(LYNX_TRACE_CATEGORY, ELEMENT_MANAGER_REPAINT);
       root()->element_container()->CastToFragment()->Draw();
-      root()->element_container()->Flush();
     }
     if (root() && root()->EnableFragmentLayerRender()) {
       root()->element_container()->FinishLayoutOperation(options);
