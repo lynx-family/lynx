@@ -4,6 +4,7 @@
 
 #include "core/runtime/js/bindings/modules/harmony/native_module_harmony.h"
 
+#include <chrono>
 #include <utility>
 
 #include "base/include/platform/harmony/napi_util.h"
@@ -35,11 +36,13 @@ struct CallbackData {
 NativeModuleHarmony::NativeModuleHarmony(
     const std::shared_ptr<PlatformModuleManager>& manager, napi_env env,
     const std::string& name, bool sendable,
-    const std::vector<std::string>& methods)
+    const std::vector<std::string>& methods,
+    const std::unordered_set<std::string>& sync_methods)
     : platform_manager_(manager),
       main_env_(env),
       sendable_(sendable),
-      module_name_(name) {
+      module_name_(name),
+      sync_methods_(sync_methods) {
   for (const auto& m : methods) {
     methods_.emplace(m, runtime::NativeModuleMethod(m, 0));
   }
@@ -52,7 +55,6 @@ napi_value NativeModuleHarmony::InvokePlatformMethod(
     const std::weak_ptr<Delegate>& delegate,
     const runtime::CallbackMap& callbacks, uint64_t flow_id,
     const std::string& first_arg) {
-  base::NapiHandleScope scope(env);
   napi_value platform_get_module_func =
       platform_manager->JSGetModuleFunc(env, sendable);
   napi_value receiver = platform_manager->JSModuleManager(env, sendable);
@@ -141,12 +143,40 @@ NativeModuleHarmony::InvokeMethod(const std::string& method_name,
               });
   if (sendable_) {
     auto env = base::harmony::GetJSThreadNapiEnv();
+    base::NapiHandleScope scope(env);
     napi_value result = InvokePlatformMethod(
         platform_manager_, module_name_, true, env, lepus_value, method_name,
         delegate_, callbacks, flow_id, first_arg);
     lepus::Value lepus_result =
         base::NapiConvertHelper::ConvertToLepusValue(env, result);
     return std::make_unique<PubLepusValue>(std::move(lepus_result));
+  }
+
+  // Check if this method is declared as sync
+  if (sync_methods_.count(method_name)) {
+    // Sync path: post to UI thread and wait for result
+    LOGI("LynxModuleHarmony module: "
+         << module_name_ << ", sync invoke method: " << method_name);
+    TRACE_EVENT_BEGIN(LYNX_TRACE_CATEGORY_JSB, "SyncJSBWaitUIThread");
+
+    lepus::Value result_value;
+    base::UIThread::GetRunner()->PostSyncTask(
+        [&result_value, manager = platform_manager_, env = main_env_,
+         module_name = module_name_, &lepus_value, &method_name,
+         delegate = delegate_, &callbacks, flow_id, &first_arg]() {
+          base::NapiHandleScope scope(env);
+          napi_value napi_result = InvokePlatformMethod(
+              manager, module_name, false, env, lepus_value, method_name,
+              delegate, callbacks, flow_id, first_arg);
+          result_value =
+              base::NapiConvertHelper::ConvertToLepusValue(env, napi_result);
+        });
+
+    TRACE_EVENT_END(LYNX_TRACE_CATEGORY_JSB);
+    LOGI("LynxModuleHarmony module: "
+         << module_name_ << ", sync invoke method: " << method_name << " done");
+
+    return std::make_unique<PubLepusValue>(std::move(result_value));
   }
 
   base::UIThread::GetRunner()->PostTask(
@@ -156,6 +186,7 @@ NativeModuleHarmony::InvokeMethod(const std::string& method_name,
        first_arg = std::move(first_arg)]() {
         LOGD("LynxModuleHarmony module: " << module_name << ", invoke method: "
                                           << method_name);
+        base::NapiHandleScope scope(env);
         InvokePlatformMethod(manager, module_name, false, env, lepus_argv,
                              method_name, delegate, callbacks, flow_id,
                              first_arg);

@@ -12,8 +12,8 @@ namespace lynx {
 namespace harmony {
 
 ModuleFactoryHarmony::ModuleFactoryHarmony(napi_env env,
-                                           napi_value module_args[4],
-                                           napi_value sendable_module_args[4])
+                                           napi_value module_args[5],
+                                           napi_value sendable_module_args[5])
     : platform_module_manager_(std::make_shared<PlatformModuleManager>(
           env, module_args, sendable_module_args)) {}
 
@@ -23,9 +23,10 @@ std::shared_ptr<runtime::LynxNativeModule> ModuleFactoryHarmony::CreateModule(
 
   auto js_it = platform_module_manager_->JSModuleMap().find(name);
   if (js_it != platform_module_manager_->JSModuleMap().end()) {
+    const auto& info = js_it->second;
     auto local_module = std::make_shared<NativeModuleHarmony>(
         platform_module_manager_, platform_module_manager_->Env(), name,
-        js_it->second.first, js_it->second.second);
+        info.sendable, info.methods, info.sync_methods);
     return local_module;
   }
   return std::shared_ptr<runtime::LynxNativeModule>(nullptr);
