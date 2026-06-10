@@ -294,6 +294,7 @@
   event.activeUIMap = active_target_map_;
   event.eventTarget = _eventHandler.touchTarget;
   event.timestamp = _timestamp;
+  [_eventHandler markDispatchInCurrentLynxPageOnlyIfNeeded:event];
   [_eventHandler.eventEmitter dispatchMultiTouchEvent:event];
 }
 
@@ -349,6 +350,7 @@
                                                      viewPoint:viewPoint];
   event.eventTarget = target;
   event.timestamp = _timestamp;
+  [_eventHandler markDispatchInCurrentLynxPageOnlyIfNeeded:event];
   [_eventHandler.eventEmitter dispatchTouchEvent:event];
 
   if (eventName == LynxEventTouchStart) {
