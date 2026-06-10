@@ -14,19 +14,20 @@ namespace lynx {
 namespace harmony {
 
 PlatformModuleManager::PlatformModuleManager(napi_env env,
-                                             napi_value module_args[4],
-                                             napi_value sendable_module_args[4])
+                                             napi_value module_args[5],
+                                             napi_value sendable_module_args[5])
     : env_(env) {
   napi_create_reference(env, module_args[0], 0, &js_module_manager_);
   napi_create_reference(env, module_args[1], 0, &js_get_module_);
-  AddPlatformModules(module_args[2], module_args[3], false);
+  AddPlatformModules(module_args[2], module_args[3], module_args[4], false);
   napi_value undefined;
   napi_get_undefined(env, &undefined);
   napi_serialize(env_, sendable_module_args[0], undefined, undefined,
                  &sendable_js_module_manager_buffer_);
   napi_serialize(env_, sendable_module_args[1], undefined, undefined,
                  &sendable_js_module_buffer_);
-  AddPlatformModules(sendable_module_args[2], sendable_module_args[3], true);
+  AddPlatformModules(sendable_module_args[2], sendable_module_args[3],
+                     sendable_module_args[4], true);
 }
 
 PlatformModuleManager::~PlatformModuleManager() {
@@ -64,9 +65,11 @@ napi_value PlatformModuleManager::JSGetModuleFunc(napi_env env, bool sendable) {
 
 void PlatformModuleManager::AddPlatformModules(napi_value module_key,
                                                napi_value module_value,
+                                               napi_value sync_methods_value,
                                                bool sendable) {
   DCHECK(base::NapiUtil::IsArray(env_, module_key));
   DCHECK(base::NapiUtil::IsArray(env_, module_value));
+  DCHECK(base::NapiUtil::IsArray(env_, sync_methods_value));
   uint32_t length;
   napi_get_array_length(env_, module_key, &length);
   for (uint32_t i = 0; i < length; i++) {
@@ -74,11 +77,25 @@ void PlatformModuleManager::AddPlatformModules(napi_value module_key,
     napi_get_element(env_, module_key, i, &module);
     napi_value methods;
     napi_get_element(env_, module_value, i, &methods);
+    napi_value sync_methods;
+    napi_get_element(env_, sync_methods_value, i, &sync_methods);
     DCHECK(base::NapiUtil::IsArray(env_, methods));
+
     std::string key = base::NapiUtil::ConvertToShortString(env_, module);
-    std::vector<std::string> value;
-    base::NapiUtil::ConvertToArrayString(env_, methods, value);
-    js_module_map_[key] = std::make_pair(sendable, value);
+    std::vector<std::string> method_names;
+    base::NapiUtil::ConvertToArrayString(env_, methods, method_names);
+
+    auto& info = js_module_map_[key];
+    info.sendable = sendable;
+    info.methods = std::move(method_names);
+    info.sync_methods.clear();
+    if (base::NapiUtil::IsArray(env_, sync_methods)) {
+      std::vector<std::string> sync_method_names;
+      base::NapiUtil::ConvertToArrayString(env_, sync_methods,
+                                           sync_method_names);
+      info.sync_methods.insert(sync_method_names.begin(),
+                               sync_method_names.end());
+    }
   }
 }
 
