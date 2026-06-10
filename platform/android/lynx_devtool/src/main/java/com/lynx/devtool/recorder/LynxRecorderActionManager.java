@@ -1207,7 +1207,10 @@ public class LynxRecorderActionManager {
   private void loadTemplate(JSONObject params) {
     avoidLynxViewBeingNull();
     try {
-      String url = LynxRecorderEnv.getInstance().lynxRecorderUrlPrefix;
+      String url = params.optString("url");
+      if (url.isEmpty()) {
+        url = LynxRecorderEnv.getInstance().lynxRecorderUrlPrefix;
+      }
       if (mGlobalPropsCache != null) {
         mGlobalPropCacheCloned = TemplateData.fromString(mGlobalPropsCache.toString());
         LynxUpdateMeta.Builder metaBuilder = new LynxUpdateMeta.Builder();
@@ -1340,7 +1343,10 @@ public class LynxRecorderActionManager {
   private void loadTemplateBundle(JSONObject params) {
     avoidLynxViewBeingNull();
     try {
-      String url = LynxRecorderEnv.getInstance().lynxRecorderUrlPrefix;
+      String url = params.optString("url");
+      if (url.isEmpty()) {
+        url = LynxRecorderEnv.getInstance().lynxRecorderUrlPrefix;
+      }
       if (mGlobalPropsCache != null) {
         mGlobalPropCacheCloned = TemplateData.fromString(mGlobalPropsCache.toString());
         LynxUpdateMeta.Builder metaBuilder = new LynxUpdateMeta.Builder();
