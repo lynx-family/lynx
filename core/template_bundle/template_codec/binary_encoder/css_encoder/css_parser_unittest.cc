@@ -8,6 +8,7 @@
 #include "core/template_bundle/template_codec/binary_encoder/css_encoder/css_parser.h"
 
 #include "core/base/json/json_util.h"
+#include "core/renderer/css/ng/font_face/font_face_rule.h"
 #include "core/renderer/css/ng/parser/media_query_parser.h"
 #include "core/renderer/css/ng/parser/supports_condition_parser.h"
 #include "core/template_bundle/template_codec/binary_encoder/css_encoder/css_parser_token.h"
@@ -375,6 +376,12 @@ TEST_F(CSSRuleParserTest, ParseFontFaceRule) {
           "value": "url(https://example.com/font.woff2)",
           "keyLoc": { "line": 1, "column": 150 },
           "valLoc": { "line": 1, "column": 221 }
+        },
+        {
+          "name": "font-style",
+          "value": "oblique 10deg 20deg",
+          "keyLoc": { "line": 1, "column": 224 },
+          "valLoc": { "line": 1, "column": 236 }
         }
       ]
     }
@@ -392,7 +399,18 @@ TEST_F(CSSRuleParserTest, ParseFontFaceRule) {
   auto* fontface_rule =
       static_cast<encoder::LynxStyleRuleFontFace*>(rules[0].get());
   EXPECT_EQ(fontface_rule->family, "Bitstream Vera Serif Bold");
-  EXPECT_EQ(fontface_rule->properties.size(), 1u);
+  auto parsed_rule =
+      css::FontFaceRule::FromLepus(fontface_rule->font_face_rule);
+  ASSERT_NE(parsed_rule, nullptr);
+  EXPECT_EQ(parsed_rule->Family(), "Bitstream Vera Serif Bold");
+  ASSERT_EQ(parsed_rule->Sources().size(), 1u);
+  EXPECT_FALSE(parsed_rule->Sources()[0].is_local);
+  EXPECT_EQ(parsed_rule->Sources()[0].uri, "https://example.com/font.woff2");
+  EXPECT_EQ(parsed_rule->WeightMin(), 400);
+  EXPECT_EQ(parsed_rule->WeightMax(), 400);
+  EXPECT_EQ(parsed_rule->StyleKind(), css::FontFaceStyleKind::kOblique);
+  EXPECT_EQ(parsed_rule->ObliqueAngleMin(), 1000);
+  EXPECT_EQ(parsed_rule->ObliqueAngleMax(), 2000);
 }
 
 TEST_F(CSSRuleParserTest, ParseKeyframesRule) {
@@ -1160,7 +1178,7 @@ TEST_F(CSSRuleParserTest, ParseKeyframesRuleWithSingleKeyframe) {
   EXPECT_NE(keyframes_rule->properties, nullptr);
 }
 
-TEST_F(CSSRuleParserTest, ParseFontFaceRuleWithOnlyFamily) {
+TEST_F(CSSRuleParserTest, ParseFontFaceRuleWithoutSrcRejected) {
   const char* json_str = R"json([
     {
       "type": "FontFaceRule",
@@ -1178,13 +1196,10 @@ TEST_F(CSSRuleParserTest, ParseFontFaceRuleWithOnlyFamily) {
 
   ASSERT_NE(fragment, nullptr);
   const auto& rules = fragment->rules();
-  ASSERT_EQ(rules.size(), 1u);
-  EXPECT_EQ(rules[0]->type, CSSRuleType::kFontFace);
-
-  auto* fontface_rule =
-      static_cast<encoder::LynxStyleRuleFontFace*>(rules[0].get());
-  EXPECT_EQ(fontface_rule->family, "MyFont");
-  EXPECT_EQ(fontface_rule->properties.size(), 1u);
+  EXPECT_TRUE(rules.empty());
+  ASSERT_EQ(impl.diagnostics().size(), 1u);
+  EXPECT_EQ(impl.diagnostics()[0].type, "font-face");
+  EXPECT_EQ(impl.diagnostics()[0].name, "MyFont");
 }
 
 TEST_F(CSSRuleParserTest, ParseMixedRulesWithInvalidEntriesFiltered) {
@@ -1214,7 +1229,10 @@ TEST_F(CSSRuleParserTest, ParseMixedRulesWithInvalidEntriesFiltered) {
       "style": [
         { "name": "font-family", "value": "ValidFont",
           "keyLoc": { "line": 5, "column": 1 },
-          "valLoc": { "line": 5, "column": 14 } }
+          "valLoc": { "line": 5, "column": 14 } },
+        { "name": "src", "value": "url(valid.woff2)",
+          "keyLoc": { "line": 5, "column": 20 },
+          "valLoc": { "line": 5, "column": 25 } }
       ]
     }
   ])json";
