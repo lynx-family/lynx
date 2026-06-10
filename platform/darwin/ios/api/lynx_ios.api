@@ -1676,6 +1676,7 @@ public class LynxEventHandler : NSObject {
   public id< LynxEventTarget > LynxEventHandler()::hitTestInner:withEvent:(CGPoint point, [withEvent] nullable UIEvent *event);
   public NSInteger LynxEventHandler()::checkCanRespondTapOrClick:withSet:(id< LynxEventTarget > ui, [withSet] NSSet *set);
   public void LynxEventHandler()::removeEventGestures();
+  public void LynxEventHandler()::markDispatchInCurrentLynxPageOnlyIfNeeded:(LynxTouchEvent *event);
 }
 
 public protocol LynxEventObserver-p :  {

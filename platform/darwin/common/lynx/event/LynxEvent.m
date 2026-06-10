@@ -21,7 +21,7 @@ int32_t const LynxTouchPseudoStateAll = ~0;
     _eventName = name;
     _eventType = type;
     _timestamp = [[NSDate date] timeIntervalSince1970];
-    _eventID = (int64_t)(_timestamp * 1000);
+    _eventID = 0;
   }
   return self;
 }
