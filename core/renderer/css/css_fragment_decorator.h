@@ -84,6 +84,8 @@ class CSSFragmentDecorator : public CSSFragment {
     return HasTouchPseudoToken();
   }
 
+  bool HasIntrinsicStyleSheets() { return intrinsic_style_sheets_ != nullptr; }
+
  private:
   template <typename Func>
   void ForEachAdoptedFragment(Func&& func, bool reverse = false) const;

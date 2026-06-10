@@ -709,7 +709,7 @@ FiberElement::GetParentInheritedProperty() {
 
 CSSFragment *FiberElement::GetRelatedCSSFragment() {
   if (css_id_ != kInvalidCssId) {
-    if (!style_sheet_) {
+    if (style_sheet_ == nullptr || !style_sheet_->HasIntrinsicStyleSheets()) {
       if (!css_style_sheet_manager_ && GetParentComponentElement()) {
         css_style_sheet_manager_ =
             static_cast<ComponentElement *>(GetParentComponentElement())
