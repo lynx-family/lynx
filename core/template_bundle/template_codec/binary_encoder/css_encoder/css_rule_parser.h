@@ -40,7 +40,7 @@ class CSSRuleParser {
       const rapidjson::Value& rule, const std::string& path);
 
   std::unique_ptr<encoder::LynxStyleRuleFontFace> ParseFontFaceRule(
-      const rapidjson::Value& rule, const std::string& path);
+      const rapidjson::Value& rule);
 
   std::vector<std::unique_ptr<encoder::LynxStyleRuleLayer>> ParseLayerRule(
       const rapidjson::Value& rule, const std::string& path);

@@ -12,6 +12,7 @@
 #include <vector>
 
 #include "base/trace/native/trace_event.h"
+#include "core/renderer/css/ng/font_face/font_face_rule.h"
 #include "core/renderer/css/ng/media_query/media_query.h"
 #include "core/renderer/css/ng/media_query/media_query_set.h"
 #include "core/renderer/css/ng/supports/supports_condition.h"
@@ -21,6 +22,37 @@
 
 namespace lynx {
 namespace tasm {
+namespace {
+
+std::string FormatFontSource(const css::FontSource& source) {
+  std::string result = source.is_local ? "local(" : "url(";
+  result.append(source.uri);
+  result.push_back(')');
+  return result;
+}
+
+std::string FormatFontSources(const std::vector<css::FontSource>& sources) {
+  std::string result;
+  for (const auto& source : sources) {
+    if (!result.empty()) {
+      result.append(", ");
+    }
+    result.append(FormatFontSource(source));
+  }
+  return result;
+}
+
+std::shared_ptr<CSSFontFaceRule> CreateLegacyFontFaceRule(
+    const css::FontFaceRule& rule) {
+  auto token = std::make_shared<CSSFontFaceRule>();
+  token->first = rule.Family();
+  token->second["font-family"] = rule.Family();
+  token->second["src"] = FormatFontSources(rule.Sources());
+  return token;
+}
+
+}  // namespace
+
 // static
 bool LynxBinaryBaseCSSReader::EnableCssVariable(const CompileOptions& options) {
   return Config::IsHigherOrEqual(options.target_sdk_version_,
@@ -373,32 +405,29 @@ bool LynxBinaryBaseCSSReader::DecodeCSSFontFaceRule(
   std::string family;
   std::vector<std::shared_ptr<CSSFontFaceRule>> token_list;
   ERROR_UNLESS(DecodeFontFaceRuleData(&family, &token_list));
-  // Use the trimmed font-family from the token (consistent with old path
-  // which derives the key via CSSFontTokenAddAttribute → _innerTrTrim).
-  std::string token_key = token_list.size() > 0 ? token_list[0]->first : "";
-  fragment->fontfaces_.emplace(std::move(token_key), std::move(token_list));
+  auto& rules = fragment->fontfaces_[family];
+  for (auto& token : token_list) {
+    rules.emplace_back(std::move(token));
+  }
   return true;
 }
 
 bool LynxBinaryBaseCSSReader::DecodeFontFaceRuleData(
     std::string* out_family,
     std::vector<std::shared_ptr<CSSFontFaceRule>>* out_tokens) {
-  DECODE_STDSTR(family);
-  std::vector<std::shared_ptr<CSSFontFaceRule>> token_list;
-  if (enable_css_font_face_extension_) {
-    DECODE_COMPACT_U32(token_size);
-    for (size_t i = 0; i < token_size; ++i) {
-      auto token = std::make_shared<CSSFontFaceRule>();
-      ERROR_UNLESS(DecodeCSSFontFaceToken(token.get()));
-      token_list.emplace_back(std::move(token));
-    }
-  } else {
-    auto token = std::make_shared<CSSFontFaceRule>();
-    ERROR_UNLESS(DecodeCSSFontFaceToken(token.get()));
-    token_list.emplace_back(std::move(token));
+  DECODE_VALUE(font_face_value);
+  auto font_face_rule = css::FontFaceRule::FromLepus(font_face_value);
+  if (!font_face_rule) {
+    return false;
   }
-  *out_family = std::move(family);
-  *out_tokens = std::move(token_list);
+
+  auto token = CreateLegacyFontFaceRule(*font_face_rule);
+  if (token->first.empty()) {
+    return false;
+  }
+  *out_family = token->first;
+  out_tokens->clear();
+  out_tokens->emplace_back(std::move(token));
   return true;
 }
 

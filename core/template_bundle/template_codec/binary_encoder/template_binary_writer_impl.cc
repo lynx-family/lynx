@@ -519,13 +519,7 @@ void TemplateBinaryWriter::EncodeCSSKeyframesRule(
 
 void TemplateBinaryWriter::EncodeCSSFontFaceRule(
     const encoder::LynxStyleRuleFontFace& rule) {
-  EncodeUtf8Str(rule.family.c_str(), rule.family.length());
-  if (lynx::tasm::Config::IsHigherOrEqual(compile_options_.target_sdk_version_,
-                                          FEATURE_CSS_FONT_FACE_EXTENSION)) {
-    EncodeCSSFontFaceTokenList(rule.properties);
-  } else {
-    EncodeCSSFontFaceToken(rule.properties[0].get());
-  }
+  EncodeValue(&rule.font_face_rule);
 }
 
 void TemplateBinaryWriter::EncodeSimpleStyleObjects() {
