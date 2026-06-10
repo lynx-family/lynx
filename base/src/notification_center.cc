@@ -17,12 +17,12 @@ namespace {
 class NotificationCenter {
  public:
   void AddObserver(NotificationCallback* listener) {
-    std::scoped_lock<std::mutex> lock(mutex_);
+    std::scoped_lock<std::recursive_mutex> lock(mutex_);
     observers_.push_back(listener);
   }
 
   void RemoveObserver(NotificationCallback* listener) {
-    std::scoped_lock<std::mutex> lock(mutex_);
+    std::scoped_lock<std::recursive_mutex> lock(mutex_);
     auto it = std::find(observers_.begin(), observers_.end(), listener);
     if (it != observers_.end()) {
       observers_.erase(it);
@@ -30,14 +30,21 @@ class NotificationCenter {
   }
 
   void Notify(const std::string& tag, intptr_t data) {
-    std::scoped_lock<std::mutex> lock(mutex_);
-    for (auto* listener : observers_) {
+    std::scoped_lock<std::recursive_mutex> lock(mutex_);
+    auto copied_observers = observers_;
+    for (auto* listener : copied_observers) {
+      // listener may have been removed/destroyed reentrantly during a previous
+      // callback (recursive_mutex allows RemoveObserver in the same thread).
+      if (std::find(observers_.begin(), observers_.end(), listener) ==
+          observers_.end()) {
+        continue;
+      }
       listener->OnNotification(tag, data);
     }
   }
 
  private:
-  std::mutex mutex_;
+  std::recursive_mutex mutex_;
   Vector<NotificationCallback*> observers_;
 };
 
