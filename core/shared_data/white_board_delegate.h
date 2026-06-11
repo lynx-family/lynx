@@ -46,6 +46,12 @@ class WhiteBoardDelegate
 
   lepus::Value GetSessionStorageItem(const std::string& key);
 
+  void SubscribeLepusSessionStorage(const std::string& key, double listener_id,
+                                    lepus::Value closure);
+
+  void UnsubscribeLepusSessionStorage(const std::string& key,
+                                      double listener_id);
+
   void SubscribeJSSessionStorage(const std::string& key, double listener_id,
                                  const runtime::js::ApiCallBack& callback);
 
