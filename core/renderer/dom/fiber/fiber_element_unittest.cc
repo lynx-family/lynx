@@ -11700,7 +11700,7 @@ TEST_P(FiberElementTest, ApplyTemplateAttributesSpecialKeys) {
                     lepus::Value(), 1},
           Attribute{ATTRIBUTE_BINDING_TYPE_DYNAMIC, base::String("id"),
                     lepus::Value(), 2},
-          Attribute{ATTRIBUTE_BINDING_TYPE_DYNAMIC, base::String("cssID"),
+          Attribute{ATTRIBUTE_BINDING_TYPE_DYNAMIC, base::String("css-id"),
                     lepus::Value(), 3},
           Attribute{ATTRIBUTE_BINDING_TYPE_DYNAMIC, base::String("data-test"),
                     lepus::Value(), 4},
@@ -11737,7 +11737,27 @@ TEST_P(FiberElementTest, ApplyTemplateAttributesSpecialKeys) {
   EXPECT_EQ(target->data_model_->attributes().count("class"), 0u);
   EXPECT_EQ(target->data_model_->attributes().count("style"), 0u);
   EXPECT_EQ(target->data_model_->attributes().count("id"), 0u);
-  EXPECT_EQ(target->data_model_->attributes().count("cssID"), 0u);
+  EXPECT_EQ(target->data_model_->attributes().count("css-id"), 0u);
+}
+
+TEST_P(FiberElementTest, ApplyTemplateAttributesLegacyCSSIDAsAttribute) {
+  auto attribute_slots = lepus::CArray::Create();
+  attribute_slots->emplace_back(lepus::Value(456));
+
+  auto target = manager->CreateFiberView();
+  target->SetCSSID(123);
+
+  auto template_attributes = std::make_shared<const TemplateAttributes>(
+      TemplateAttributes{Attribute{ATTRIBUTE_BINDING_TYPE_DYNAMIC,
+                                   base::String("cssID"), lepus::Value(), 0}});
+  target->SetTemplateAttributes(template_attributes);
+
+  TreeResolver::ApplyTemplateAttributesToElement(
+      target.get(), lepus::Value(std::move(attribute_slots)));
+
+  EXPECT_EQ(target->GetCSSID(), 123);
+  ASSERT_EQ(target->data_model_->attributes().count("cssID"), 1u);
+  EXPECT_EQ(target->data_model_->attributes().at("cssID").Number(), 456);
 }
 
 TEST_P(FiberElementTest, ApplyTemplateDataAttributePreservesEmptyValue) {

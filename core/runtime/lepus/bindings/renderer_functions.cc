@@ -3792,6 +3792,15 @@ RENDERER_FUNCTION_CC(FiberRemoveNodeFromElementTemplate) {
         "element slot 0");
     RETURN_UNDEFINED();
   }
+  if (ctx != nullptr) {
+    auto removed_element =
+        child->is_template()
+            ? static_cast<TemplateElement*>(child.get())->GetResolvedRoot()
+            : child;
+    if (removed_element != nullptr) {
+      ON_NODE_REMOVED(removed_element);
+    }
+  }
   template_element->RemoveElementSlotChild(slot_index, child);
   RETURN_UNDEFINED();
 }
