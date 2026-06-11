@@ -36,7 +36,8 @@ void MTSContext::ReportGCTimingEvent(const char* start, const char* end) {
   }
 }
 
-void MTSContext::OnContextGC(std::string mem_info) {
+void MTSContext::OnContextGC(
+    std::unordered_map<std::string, std::string> mem_info) {
   if (runtime_private_) {
     runtime_private_->OnGC(std::move(mem_info));
   }

@@ -404,13 +404,11 @@ int64_t MTSRuntime::GetCurrentHeapSizeBytes() {
   return mts_context_ ? mts_context_->GetCurrentHeapSizeBytes() : 0;
 }
 
-inline constexpr char kRawRuntimeMemoryInfo[] = "raw_memory_info_json_str";
-
-void MTSRuntime::OnGC(std::string mem_info) {
+void MTSRuntime::OnGC(std::unordered_map<std::string, std::string> mem_info) {
   if (!delegate_) {
     return;
   }
-  delegate_->OnRuntimeGC({{kRawRuntimeMemoryInfo, std::move(mem_info)}});
+  delegate_->OnRuntimeGC(std::move(mem_info));
 }
 
 void MTSRuntime::ReportGCTimingEvent(const char* start, const char* end) {

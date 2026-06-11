@@ -82,6 +82,9 @@ constexpr const char kMessageEventTypeUpdateGlobalProps[] =
     "__UpdateGlobalProps";
 constexpr const char kMessageEventTypeRemoveComponents[] = "__RemoveComponents";
 
+constexpr char kRawRuntimeMemoryInfo[] = "raw_memory_info_json_str";
+constexpr char kForceReportMemoryInfo[] = "force_report_memory_info";
+
 /**
  * @name: enableMicrotaskPromisePolyfill
  * @description: Use lynx.queueMicrotask polyfill Promise.

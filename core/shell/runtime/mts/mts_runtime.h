@@ -305,7 +305,7 @@ class MTSRuntime : private MTSContextHolder {
     return mts_context_->EvalBuf(buf, size, ret, file_name);
   }
 
-  void OnGC(std::string mem_info);
+  void OnGC(std::unordered_map<std::string, std::string> mem_info);
   void ReportGCTimingEvent(const char* start, const char* end);
 
  protected:
