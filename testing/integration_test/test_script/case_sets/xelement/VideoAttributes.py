@@ -10,7 +10,7 @@ from case_sets.xelement import video_utils
 config = {
     "type": "custom",
     "path": "automation/video/main",
-    "platform": "android",
+    "platform": ["android", "ios"],
 }
 
 
@@ -100,7 +100,7 @@ def run(test):
     video_utils.click(lynxview, "btn-clear-signals")
     video_utils.click(lynxview, "btn-play")
     video_utils.wait_for_text(test, lynxview, "status-text", "playing")
-    time.sleep(4.2)
+    time.sleep(3.6)
     video_utils.assert_count_at_most(lynxview, "timeupdate", 5)
     video_utils.wait_until(
         test,

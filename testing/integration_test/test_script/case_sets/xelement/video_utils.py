@@ -3,6 +3,7 @@
 # Licensed under the Apache License Version 2.0 that can be found in the
 # LICENSE file in the root directory of this source tree.
 
+import json
 import os
 import re
 import time
@@ -31,7 +32,29 @@ def get_text(lynxview, tag):
 
 
 def click(lynxview, tag):
+    if os.environ.get("platform") == "ios" and _invoke_ios_action(
+            lynxview, tag):
+        return
     lynxview.get_by_test_tag(tag).click()
+
+
+def _invoke_ios_action(lynxview, tag):
+    driver = lynxview.get_lynx_driver()
+    expression = (
+        "typeof globalThis.__videoE2EAction === 'function' && "
+        "globalThis.__videoE2EAction(%s)" % json.dumps(tag)
+    )
+    try:
+        result = driver._debugger.eval(expression, driver.get_session_id())
+    except Exception as e:
+        if hasattr(lynxview, "log"):
+            lynxview.log(
+                EnumLogLevel.WARNING,
+                "iOS action eval failed: tag=%s, expression=%s, error=%s" %
+                (tag, expression, e),
+            )
+        return False
+    return result.get("result", {}).get("value") is True
 
 
 def wait_for_text(test, lynxview, tag, expected, timeout=20):
@@ -83,6 +106,15 @@ def assert_text_not_contains(lynxview, tag, unexpected):
     if unexpected in text:
         raise AssertionError("%s should not contain %s, got %s" %
                              (tag, unexpected, text))
+
+
+def assert_text_occurrences(lynxview, tag, expected, count):
+    text = get_text(lynxview, tag)
+    actual = text.count(expected)
+    if actual != count:
+        raise AssertionError(
+            "%s should contain %s exactly %s times, got %s in %s" %
+            (tag, expected, count, actual, text))
 
 
 def assert_text_order(lynxview, tag, expected_entries):
