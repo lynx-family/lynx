@@ -63,6 +63,20 @@ TEST_F_UI(TextTest, AutoFontSizeStepGranularity) {
   EXPECT_NE(text_shadow_node_->text_style_->font_size, font_size);
 }
 
+TEST_F_UI(TextTest, AutoFontSizeIgnoresInvalidStepGranularity) {
+  MeasureConstraint constraint{4000, MeasureMode::kDefinite, 1000,
+                               MeasureMode::kDefinite};
+  text_shadow_node_->enable_auto_font_size_ = true;
+  text_shadow_node_->auto_font_size_max_size_ = 50;
+  text_shadow_node_->auto_font_size_min_size_ = 30;
+  text_shadow_node_->auto_font_size_step_granularity_ = 0;
+  raw_text_shadow_node_->SetText("Hello");
+
+  text_shadow_node_->Measure(constraint);
+
+  EXPECT_EQ(text_shadow_node_->text_style_->font_size, 42);
+}
+
 TEST_F_UI(TextTest, DISABLED_AutoFontSizePreset) {
   MeasureConstraint constraint{1000, MeasureMode::kDefinite, 100,
                                MeasureMode::kDefinite};
