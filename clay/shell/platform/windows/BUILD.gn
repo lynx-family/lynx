@@ -142,7 +142,6 @@ source_set("flutter_windows_source") {
   }
 
   deps = [
-    ":chromium_cursor_resources",
     ":flutter_windows_utils",
     "../../../../third_party/rapidjson",
     "../../../common/graphics:gl_scoped_binder",
@@ -162,6 +161,10 @@ source_set("flutter_windows_source") {
                                           # LIBCMTD.lib
     "//third_party/angle:libGLESv2_static",
   ]
+
+  if (!is_ttp) {
+    deps += [ ":chromium_cursor_resources" ]
+  }
 
   if (enable_trace != "none") {
     deps += [ "../../../../base/trace/native:trace" ]
