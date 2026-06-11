@@ -968,5 +968,108 @@ TEST_F(DisplayListBuilderTest, LinearGradientOperation) {
   EXPECT_FLOAT_EQ(float_data_data[3], 1.0f);
 }
 
+TEST_F(DisplayListBuilderTest, BoxShadowOperation) {
+  int32_t shadow_box_index = 1;
+  int32_t clip_box_index = 0;
+  uint32_t color = 0xFF000000;
+  float blur_radius = 5.0f;
+  DisplayListBuilder::BoxShadowClipMode clip_mode =
+      DisplayListBuilder::BoxShadowClipMode::kOutset;
+
+  builder_->BoxShadow(shadow_box_index, clip_box_index, color, blur_radius,
+                      clip_mode);
+
+  DisplayList display_list = builder_->Build();
+
+  const int32_t* op_types_data = display_list.GetContentOpTypesData();
+  const int32_t* int_data_data = display_list.GetContentIntData();
+  const float* float_data_data = display_list.GetContentFloatData();
+
+  EXPECT_NE(op_types_data, nullptr);
+  EXPECT_NE(int_data_data, nullptr);
+  EXPECT_NE(float_data_data, nullptr);
+
+  ASSERT_GE(display_list.GetContentOpTypesSize(), 1u);
+  ASSERT_GE(display_list.GetContentIntDataSize(), 6u);
+  ASSERT_GE(display_list.GetContentFloatDataSize(), 1u);
+
+  EXPECT_EQ(op_types_data[0],
+            static_cast<int32_t>(DisplayListOpType::kBoxShadow));
+
+  // int_count = 4 (shadow_box_index, clip_box_index, color, clip_mode)
+  // float_count = 1 (blur_radius)
+  EXPECT_EQ(int_data_data[0], 4);
+  EXPECT_EQ(int_data_data[1], 1);
+  EXPECT_EQ(int_data_data[2], shadow_box_index);
+  EXPECT_EQ(int_data_data[3], clip_box_index);
+  EXPECT_EQ(static_cast<uint32_t>(int_data_data[4]), color);
+  EXPECT_EQ(int_data_data[5], static_cast<int32_t>(clip_mode));
+
+  EXPECT_FLOAT_EQ(float_data_data[0], blur_radius);
+}
+
+TEST_F(DisplayListBuilderTest, BoxShadowInsetOperation) {
+  int32_t shadow_box_index = 2;
+  int32_t clip_box_index = 1;
+  uint32_t color = 0x80FF0000;
+  float blur_radius = 10.0f;
+  DisplayListBuilder::BoxShadowClipMode clip_mode =
+      DisplayListBuilder::BoxShadowClipMode::kInset;
+
+  builder_->BoxShadow(shadow_box_index, clip_box_index, color, blur_radius,
+                      clip_mode);
+
+  DisplayList display_list = builder_->Build();
+
+  const int32_t* op_types_data = display_list.GetContentOpTypesData();
+  const int32_t* int_data_data = display_list.GetContentIntData();
+  const float* float_data_data = display_list.GetContentFloatData();
+
+  EXPECT_NE(op_types_data, nullptr);
+  EXPECT_NE(int_data_data, nullptr);
+  EXPECT_NE(float_data_data, nullptr);
+
+  ASSERT_GE(display_list.GetContentOpTypesSize(), 1u);
+  ASSERT_GE(display_list.GetContentIntDataSize(), 6u);
+  ASSERT_GE(display_list.GetContentFloatDataSize(), 1u);
+
+  EXPECT_EQ(op_types_data[0],
+            static_cast<int32_t>(DisplayListOpType::kBoxShadow));
+
+  EXPECT_EQ(int_data_data[0], 4);
+  EXPECT_EQ(int_data_data[1], 1);
+  EXPECT_EQ(int_data_data[2], shadow_box_index);
+  EXPECT_EQ(int_data_data[3], clip_box_index);
+  EXPECT_EQ(static_cast<uint32_t>(int_data_data[4]), color);
+  EXPECT_EQ(int_data_data[5], static_cast<int32_t>(clip_mode));
+
+  EXPECT_FLOAT_EQ(float_data_data[0], blur_radius);
+}
+
+TEST_F(DisplayListBuilderTest, BoxShadowInMethodChaining) {
+  builder_->Begin(0, PlatformRendererType::kView, 0.0f, 0.0f, 100.0f, 100.0f)
+      .Fill(0xFF00FF00)
+      .BoxShadow(1, 0, 0xFF000000, 5.0f,
+                 DisplayListBuilder::BoxShadowClipMode::kOutset)
+      .End();
+
+  DisplayList display_list = builder_->Build();
+
+  const int32_t* content_op_types_data = display_list.GetContentOpTypesData();
+
+  EXPECT_NE(content_op_types_data, nullptr);
+
+  ASSERT_GE(display_list.GetContentOpTypesSize(), 4u);
+
+  EXPECT_EQ(content_op_types_data[0],
+            static_cast<int32_t>(DisplayListOpType::kBegin));
+  EXPECT_EQ(content_op_types_data[1],
+            static_cast<int32_t>(DisplayListOpType::kFill));
+  EXPECT_EQ(content_op_types_data[2],
+            static_cast<int32_t>(DisplayListOpType::kBoxShadow));
+  EXPECT_EQ(content_op_types_data[3],
+            static_cast<int32_t>(DisplayListOpType::kEnd));
+}
+
 }  // namespace tasm
 }  // namespace lynx

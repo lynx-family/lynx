@@ -139,6 +139,17 @@ DisplayListBuilder& DisplayListBuilder::LinearGradient(
   return *this;
 }
 
+DisplayListBuilder& DisplayListBuilder::BoxShadow(int32_t shadow_box_index,
+                                                  int32_t clip_box_index,
+                                                  uint32_t color,
+                                                  float blur_radius,
+                                                  BoxShadowClipMode clip_mode) {
+  display_list_.AddOperation(DisplayListOpType::kBoxShadow, shadow_box_index,
+                             clip_box_index, static_cast<int32_t>(color),
+                             blur_radius, static_cast<int32_t>(clip_mode));
+  return *this;
+}
+
 DisplayListBuilder& DisplayListBuilder::MarkRootNeedClipBounds() {
   display_list_.MarkRootNeedClipBounds();
   return *this;
