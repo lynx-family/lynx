@@ -5,6 +5,7 @@
 #include "core/renderer/dom/fragment/fragment.h"
 
 #include <algorithm>
+#include <cmath>
 #include <cstddef>
 #include <memory>
 #include <utility>
@@ -639,6 +640,174 @@ void Fragment::DrawBackground(DisplayListBuilder& display_list_builder) {
   }
 }
 
+// W3C CSS Backgrounds and Borders Module Level 3
+// https://drafts.csswg.org/css-backgrounds/#shadow-shape
+// Computes the outset-adjusted border radius dimension:
+//   radius + spread * (1 - (1 - ratio)^3 * (1 - coverage^3))
+// This reduces the effect of spread on corner shape when border-radius is
+// small, ensuring continuity between round and sharp corners.
+//
+// When border-radius < spread (ratio<1), the term (1 - ratio)^3 interpolates
+// between full spread adjustment (ratio=0) and no adjustment (ratio=1).
+// When the corner occupies a small fraction of the element (coverage<1),
+// the term (1 - coverage^3) reduces the spread effect proportionally.
+// When ratio >= 1 (radius exceeds spread) or coverage > 1, the result is
+// simply radius + spread (full adjustment).
+float ComputeOutsetAdjustedRadius(float radius, float spread, float coverage) {
+  if (spread == 0.f) {
+    return radius;
+  }
+  if (spread < 0.f) {
+    return std::max(radius + spread, 0.f);
+  }
+  if (radius > spread || coverage > 1.f) {
+    return radius + spread;
+  }
+  float ratio = radius / spread;
+  float one_minus_ratio = 1.f - ratio;
+  float coverage_cubed = coverage * coverage * coverage;
+  float one_minus_coverage_cubed = 1.f - coverage_cubed;
+  return radius +
+         spread * (1.f - one_minus_ratio * one_minus_ratio * one_minus_ratio *
+                             one_minus_coverage_cubed);
+}
+
+namespace {
+
+// Computes shadow radii per W3C CSS spec:
+// - Inset: radii decrease by spread (floored at zero)
+// - Outset: radii increase by spread, with adjusted-radius formula when
+//   border-radius < spread to preserve corner sharpness.
+RoundedRectangle ComputeShadowBox(const RoundedRectangle& base_box,
+                                  float spread, float offset_x, float offset_y,
+                                  bool is_inset) {
+  RoundedRectangle shadow_box;
+  const auto& rect = base_box.GetRect();
+
+  float left, top, right, bottom;
+  if (is_inset) {
+    // Inset: contract inward by spread
+    left = rect.X() + offset_x + spread;
+    top = rect.Y() + offset_y + spread;
+    right = rect.X() + rect.Width() + offset_x - spread;
+    bottom = rect.Y() + rect.Height() + offset_y - spread;
+  } else {
+    // Outset: expand outward by spread
+    left = rect.X() + offset_x - spread;
+    top = rect.Y() + offset_y - spread;
+    right = rect.X() + rect.Width() + offset_x + spread;
+    bottom = rect.Y() + rect.Height() + offset_y + spread;
+  }
+
+  shadow_box.SetX(left);
+  shadow_box.SetY(top);
+  shadow_box.SetWidth(std::max(right - left, 0.f));
+  shadow_box.SetHeight(std::max(bottom - top, 0.f));
+
+  if (!base_box.HasRadius()) {
+    return shadow_box;
+  }
+
+  float width = rect.Width();
+  float height = rect.Height();
+
+  // Per W3C CSS spec: inset shadows shrink with positive spread and grow with
+  // negative spread; the latter uses the same outset-adjusted formula.
+  auto apply_spread_radius = [&](float rx, float ry) {
+    if (is_inset && spread > 0.f) {
+      return std::make_pair(std::max(rx - spread, 0.f),
+                            std::max(ry - spread, 0.f));
+    }
+    float outset_spread = (is_inset && spread < 0.f) ? -spread : spread;
+    if (width <= 0.f || height <= 0.f) {
+      return std::make_pair(std::max(rx + outset_spread, 0.f),
+                            std::max(ry + outset_spread, 0.f));
+    }
+    float coverage = 2.f * std::min(rx / width, ry / height);
+    if (!std::isfinite(coverage)) {
+      coverage = 2.f;  // force fast-path in ComputeOutsetAdjustedRadius
+    }
+    float adjusted_x = ComputeOutsetAdjustedRadius(rx, outset_spread, coverage);
+    float adjusted_y = ComputeOutsetAdjustedRadius(ry, outset_spread, coverage);
+    return std::make_pair(adjusted_x, adjusted_y);
+  };
+
+  auto [tl_x, tl_y] = apply_spread_radius(base_box.GetRadiusXTopLeft(),
+                                          base_box.GetRadiusYTopLeft());
+  shadow_box.SetRadiusXTopLeft(tl_x);
+  shadow_box.SetRadiusYTopLeft(tl_y);
+
+  auto [tr_x, tr_y] = apply_spread_radius(base_box.GetRadiusXTopRight(),
+                                          base_box.GetRadiusYTopRight());
+  shadow_box.SetRadiusXTopRight(tr_x);
+  shadow_box.SetRadiusYTopRight(tr_y);
+
+  auto [br_x, br_y] = apply_spread_radius(base_box.GetRadiusXBottomRight(),
+                                          base_box.GetRadiusYBottomRight());
+  shadow_box.SetRadiusXBottomRight(br_x);
+  shadow_box.SetRadiusYBottomRight(br_y);
+
+  auto [bl_x, bl_y] = apply_spread_radius(base_box.GetRadiusXBottomLeft(),
+                                          base_box.GetRadiusYBottomLeft());
+  shadow_box.SetRadiusXBottomLeft(bl_x);
+  shadow_box.SetRadiusYBottomLeft(bl_y);
+
+  return shadow_box;
+}
+
+}  // namespace
+
+void Fragment::DrawBoxShadow(DisplayListBuilder& display_list_builder) {
+  const auto& box_shadow_data =
+      element()->computed_css_style()->GetBoxShadowData();
+  if (!box_shadow_data.has_value()) {
+    return;
+  }
+
+  // CSS box-shadow list is specified front-to-back: the first shadow is on
+  // top. To achieve this with painter's algorithm, draw the shadows in reverse
+  // order so the first declared shadow is emitted last.
+  for (auto it = box_shadow_data->rbegin(); it != box_shadow_data->rend();
+       ++it) {
+    const auto& shadow = *it;
+    bool is_inset = shadow.option == starlight::ShadowOption::kInset;
+    DisplayListBuilder::BoxShadowClipMode clip_mode =
+        is_inset ? DisplayListBuilder::BoxShadowClipMode::kInset
+                 : DisplayListBuilder::BoxShadowClipMode::kOutset;
+
+    // Per W3C spec:
+    // - Outset shadows use border-box as base shape
+    // - Inset shadows use padding-box as base shape
+    RoundedRectangle base_box;
+    int32_t clip_box_index;
+    if (is_inset) {
+      base_box = layout_info_.GeneratePaddingRectangle();
+      clip_box_index = DefinePaddingBox(display_list_builder);
+    } else {
+      base_box = layout_info_.GenerateBorderRectangle();
+      clip_box_index = DefineBorderBox(display_list_builder);
+    }
+
+    // Compute shadow geometry (rect + radii) per W3C CSS spec
+    RoundedRectangle shadow_box = ComputeShadowBox(
+        base_box, shadow.spread, shadow.h_offset, shadow.v_offset, is_inset);
+
+    // Skip if spread inverts the rect (inset only)
+    if (is_inset &&
+        (shadow_box.GetWidth() <= 0.f || shadow_box.GetHeight() <= 0.f)) {
+      continue;
+    }
+
+    // Record shadow box to display list
+    int32_t shadow_box_index = -1;
+    display_list_builder.RecordBoxModel(shadow_box, shadow_box_index);
+
+    // Emit BoxShadow operation with pre-computed shadow box
+    display_list_builder.BoxShadow(shadow_box_index, clip_box_index,
+                                   shadow.color, shadow.blur, clip_mode);
+  }
+}
+
 void Fragment::DrawTransform(DisplayListBuilder& display_list_builder) {
   if (!element()->computed_css_style()->TransformChanged()) {
     return;
@@ -940,6 +1109,7 @@ void Fragment::DrawFull(DisplayListBuilder& display_list_builder) {
   }
 
   DrawBackground(display_list_builder);
+  DrawBoxShadow(display_list_builder);
   DrawBorder(display_list_builder);
   DrawClip(display_list_builder);
 

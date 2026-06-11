@@ -23,6 +23,10 @@ struct OpData {
   base::InlineVector<float, 16> float_data;
 };
 
+// NOTE: This enum is serialized into the cross-platform DisplayList protocol.
+// Any addition/renumbering MUST be synchronized with all consumers
+// (C++/Android/iOS/etc.). Consumers MUST tolerate unknown op types by
+// skipping them based on per-op int/float parameter counts.
 enum class DisplayListOpType : int32_t {
   kBegin = 0,
   kEnd = 1,
@@ -35,6 +39,7 @@ enum class DisplayListOpType : int32_t {
   kClipRect = 10,
   kRecordBox = 11,
   kLinearGradient = 12,
+  kBoxShadow = 13,
 };
 
 enum class DisplayListSubtreePropertyOpType : int32_t {

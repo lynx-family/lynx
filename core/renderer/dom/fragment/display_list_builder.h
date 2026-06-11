@@ -78,6 +78,22 @@ class DisplayListBuilder {
                                      int32_t tiling_index, int32_t clip_index,
                                      int32_t repeat_x, int32_t repeat_y);
 
+  // Box-shadow clip mode enumeration
+  // kOutset = 0 (clip to border-box for outside shadows)
+  // kInset = 1 (clip to padding-box for inside shadows)
+  enum class BoxShadowClipMode : int32_t {
+    kOutset = 0,
+    kInset = 1,
+  };
+
+  // Draw box shadow
+  // shadow_box_index: pre-computed shadow box with adjusted rect/radii
+  // clip_box_index: original box for inset clip (padding box for inset, border
+  // box for outset)
+  DisplayListBuilder& BoxShadow(int32_t shadow_box_index,
+                                int32_t clip_box_index, uint32_t color,
+                                float blur_radius, BoxShadowClipMode clip_mode);
+
   DisplayListBuilder& MarkRootNeedClipBounds();
 
   // Build the final display list

@@ -151,23 +151,14 @@ public class BackgroundDrawable extends LayerDrawable<BackgroundLayerManager> {
 
     public static float[] newCenterBorderRadius(
         float[] borderRadius, RectF borderWidth, float mul) {
-      return new float[] {
-          Math.max(borderRadius[0] - borderWidth.left * mul,
-              (borderWidth.left > 0.0f) ? (borderRadius[0] / borderWidth.left) : 0.0f),
-          Math.max(borderRadius[1] - borderWidth.top * mul,
-              (borderWidth.top > 0.0f) ? (borderRadius[1] / borderWidth.top) : 0.0f),
-          Math.max(borderRadius[2] - borderWidth.right * mul,
-              (borderWidth.right > 0.0f) ? (borderRadius[2] / borderWidth.right) : 0.0f),
-          Math.max(borderRadius[3] - borderWidth.top * mul,
-              (borderWidth.top > 0.0f) ? (borderRadius[3] / borderWidth.top) : 0.0f),
-          Math.max(borderRadius[4] - borderWidth.right * mul,
-              (borderWidth.right > 0.0f) ? (borderRadius[4] / borderWidth.right) : 0.0f),
-          Math.max(borderRadius[5] - borderWidth.bottom * mul,
-              (borderWidth.bottom > 0.0f) ? (borderRadius[5] / borderWidth.bottom) : 0.0f),
-          Math.max(borderRadius[6] - borderWidth.left * mul,
-              (borderWidth.left > 0.0f) ? (borderRadius[6] / borderWidth.left) : 0.0f),
-          Math.max(borderRadius[7] - borderWidth.bottom * mul,
-              (borderWidth.bottom > 0.0f) ? (borderRadius[7] / borderWidth.bottom) : 0.0f)};
+      return new float[] {Math.max(borderRadius[0] - borderWidth.left * mul, 0),
+          Math.max(borderRadius[1] - borderWidth.top * mul, 0),
+          Math.max(borderRadius[2] - borderWidth.right * mul, 0),
+          Math.max(borderRadius[3] - borderWidth.top * mul, 0),
+          Math.max(borderRadius[4] - borderWidth.right * mul, 0),
+          Math.max(borderRadius[5] - borderWidth.bottom * mul, 0),
+          Math.max(borderRadius[6] - borderWidth.left * mul, 0),
+          Math.max(borderRadius[7] - borderWidth.bottom * mul, 0)};
     }
 
     public static boolean checkAllCornersWithSameRadius(float[] radius) {

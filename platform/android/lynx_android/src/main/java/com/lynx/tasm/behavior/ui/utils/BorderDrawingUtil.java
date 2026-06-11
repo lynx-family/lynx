@@ -277,8 +277,17 @@ public class BorderDrawingUtil {
           && borderBottomWidth == borderLeftWidth && borderRightWidth == borderLeftWidth);
 
       if (isBorderWidthSame && isBorderColorSame && toDrawBorderUseSameStyle(borderStyles)) {
-        strokeCenterDrawPath(canvas, paint, borderStyles[Spacing.LEFT], Spacing.LEFT,
-            borderColorLeft, borderLeftWidth, borderLeftWidth, outBounds, innerBounds);
+        BorderStyle borderStyle = borderStyles[Spacing.LEFT];
+        // When the outer radius is smaller than half the border width, stroking a
+        // center rounded rect clamps the center radius to 0 and draws square outer
+        // corners, losing the intended outer border radius. Use a fill path that
+        // subtracts the inner box from the outer box instead.
+        if (borderStyle == BorderStyle.SOLID && shouldUseFillBorderPath(outBounds, borderWidths)) {
+          drawRoundedBorderArea(canvas, paint, outBounds, innerBounds, borderColorLeft);
+        } else {
+          strokeCenterDrawPath(canvas, paint, borderStyle, Spacing.LEFT, borderColorLeft,
+              borderLeftWidth, borderLeftWidth, outBounds, innerBounds);
+        }
       }
       // In the case of uneven border widths/colors draw quadrilateral in each
       // direction
@@ -412,6 +421,53 @@ public class BorderDrawingUtil {
     }
 
     canvas.restore();
+  }
+
+  /**
+   * Returns true when stroking a center rounded rect would clamp the center radius to
+   * zero while the outer box still has a non-zero radius. In that case the stroke-only
+   * fast path draws square outer corners and loses the intended border radius.
+   */
+  private static boolean shouldUseFillBorderPath(RoundedRectangle outBounds, int[] borderWidths) {
+    if (!outBounds.hasBorderRadius() || borderWidths == null || borderWidths.length != 4) {
+      return false;
+    }
+    float[] radii = outBounds.getBorderRadii();
+    if (radii == null || radii.length != 8) {
+      return false;
+    }
+    return (radii[0] > 0 && radii[0] <= borderWidths[Spacing.LEFT] * 0.5f)
+        || (radii[1] > 0 && radii[1] <= borderWidths[Spacing.TOP] * 0.5f)
+        || (radii[2] > 0 && radii[2] <= borderWidths[Spacing.RIGHT] * 0.5f)
+        || (radii[3] > 0 && radii[3] <= borderWidths[Spacing.TOP] * 0.5f)
+        || (radii[4] > 0 && radii[4] <= borderWidths[Spacing.RIGHT] * 0.5f)
+        || (radii[5] > 0 && radii[5] <= borderWidths[Spacing.BOTTOM] * 0.5f)
+        || (radii[6] > 0 && radii[6] <= borderWidths[Spacing.LEFT] * 0.5f)
+        || (radii[7] > 0 && radii[7] <= borderWidths[Spacing.BOTTOM] * 0.5f);
+  }
+
+  /**
+   * Draws the border area as the region between the outer rounded rectangle and the
+   * inner rectangle using an even-odd fill path. This preserves the outer radius even
+   * when the inner radius has been clamped to zero by a thick border.
+   */
+  private static void drawRoundedBorderArea(Canvas canvas, Paint paint, RoundedRectangle outBounds,
+      RoundedRectangle innerBounds, int borderColor) {
+    Path path = new Path();
+    path.setFillType(Path.FillType.EVEN_ODD);
+    path.addRoundRect(outBounds.getRectF(), outBounds.getBorderRadii(), Path.Direction.CW);
+
+    if (innerBounds.hasBorderRadius()) {
+      path.addRoundRect(innerBounds.getRectF(), innerBounds.getBorderRadii(), Path.Direction.CCW);
+    } else {
+      path.addRect(innerBounds.getRectF(), Path.Direction.CCW);
+    }
+
+    paint.setStyle(Paint.Style.FILL);
+    paint.setColor(borderColor);
+    paint.setPathEffect(null);
+    paint.setAntiAlias(true);
+    canvas.drawPath(path, paint);
   }
 
   private static void strokeCenterDrawPathMoreLines(Canvas canvas, Paint paint, int borderPosition,
