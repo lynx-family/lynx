@@ -387,6 +387,7 @@ public class UIListContainer extends UISimpleView<ListContainerView>
       mView.addView(childView);
       startFadeInAnimation(childView);
     }
+    mView.layoutRendererChildrenIfNeeded();
     setChildTranslationZ(component);
   }
 

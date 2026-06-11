@@ -9,6 +9,7 @@ import android.os.Build;
 import android.util.DisplayMetrics;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.ViewParent;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import com.lynx.react.bridge.ReadableArray;
@@ -31,6 +32,7 @@ import com.lynx.tasm.behavior.ui.LynxUI;
 import com.lynx.tasm.behavior.ui.PropBundle;
 import com.lynx.tasm.behavior.ui.UIBody;
 import com.lynx.tasm.behavior.ui.image.LynxImageManager;
+import com.lynx.tasm.behavior.ui.list.container.ListContainerView;
 import com.lynx.tasm.behavior.ui.list.container.UIListContainer;
 import com.lynx.tasm.behavior.ui.scroll.AndroidScrollView;
 import com.lynx.tasm.behavior.ui.view.UIComponent;
@@ -356,12 +358,17 @@ public class PlatformRendererContext implements TextMeasurerProvider {
     // For extended platform renderers, we need to create a custom view based on the tag name
     // Currently, we'll create a ContainerRenderer as a fallback, but in the future
     // we should look up the actual class based on the tag name
+    createContainerRenderer(sign, initData);
+  }
+
+  private void createContainerRenderer(int sign, @Nullable PropBundle initData) {
     ContainerRenderer view = new ContainerRenderer(mContext);
     Renderer renderer = view.createRenderer(this, sign);
     renderer.setRenderHost(view);
     view.setRenderer(renderer);
     mViewHolder.put(sign, view);
     view.invalidate();
+    renderer.updateAttributes(initData);
   }
 
   @CalledByNative
@@ -440,6 +447,7 @@ public class PlatformRendererContext implements TextMeasurerProvider {
       return;
     }
     host.getRenderer().setLynxFrame(needClip, left, top, left + width, top + height, dx, dy);
+    layoutListItemRendererHostIfNeeded(host);
 
     LynxUIOwner owner = mContext.getLynxUIOwner();
     if (owner != null && owner.getNode(sign) != null) {
@@ -453,6 +461,17 @@ public class PlatformRendererContext implements TextMeasurerProvider {
 
     host.requestLayoutForRenderer();
     host.getRenderer().invalidate(Renderer.INVALIDATE_PARENT | Renderer.INVALIDATE_DISPLAY_LIST);
+  }
+
+  private void layoutListItemRendererHostIfNeeded(IRendererHost host) {
+    View hostView = host.getView();
+    if (hostView == null || !(hostView.getParent() instanceof View)) {
+      return;
+    }
+    View parentView = (View) hostView.getParent();
+    if (parentView.getParent() instanceof ListContainerView) {
+      ((ListContainerView) parentView.getParent()).layoutRendererChildIfNeeded(hostView);
+    }
   }
 
   @CalledByNative
@@ -573,6 +592,10 @@ public class PlatformRendererContext implements TextMeasurerProvider {
 
   @CalledByNative
   public void insertListItemPaintingNode(int listSign, int childSign) {
+    if (insertListItemRendererHost(listSign, childSign)) {
+      return;
+    }
+
     LynxUIOwner owner = mContext != null ? mContext.getLynxUIOwner() : null;
     if (owner == null) {
       return;
@@ -586,6 +609,10 @@ public class PlatformRendererContext implements TextMeasurerProvider {
 
   @CalledByNative
   public void removeListItemPaintingNode(int listSign, int childSign) {
+    if (removeListItemRendererHost(childSign)) {
+      return;
+    }
+
     LynxUIOwner owner = mContext != null ? mContext.getLynxUIOwner() : null;
     if (owner == null) {
       return;
@@ -595,6 +622,47 @@ public class PlatformRendererContext implements TextMeasurerProvider {
     if (parent instanceof UIListContainer && child instanceof UIComponent) {
       ((UIListContainer) parent).removeView(child);
     }
+  }
+
+  private boolean insertListItemRendererHost(int listSign, int childSign) {
+    IRendererHost parentHost = mViewHolder.get(listSign);
+    IRendererHost childHost = mViewHolder.get(childSign);
+    if (!isCUIListItemHost(childHost)) {
+      return false;
+    }
+    if (parentHost == null || parentHost.getView() == null || childHost.getView() == null) {
+      return true;
+    }
+    View parentView = parentHost.getView();
+    View childView = childHost.getView();
+    if (!(parentView instanceof ViewGroup)) {
+      return true;
+    }
+    ViewGroup parent = (ViewGroup) parentView;
+    if (childView.getParent() == parent) {
+      return true;
+    }
+    ViewParent oldParent = childView.getParent();
+    if (oldParent instanceof ViewGroup) {
+      ((ViewGroup) oldParent).removeView(childView);
+    }
+    parent.addView(childView);
+    return true;
+  }
+
+  private boolean removeListItemRendererHost(int childSign) {
+    IRendererHost childHost = mViewHolder.get(childSign);
+    if (!isCUIListItemHost(childHost)) {
+      return false;
+    }
+    if (childHost.getView() != null && childHost.getView().getParent() instanceof ViewGroup) {
+      ((ViewGroup) childHost.getView().getParent()).removeView(childHost.getView());
+    }
+    return true;
+  }
+
+  private boolean isCUIListItemHost(IRendererHost host) {
+    return host != null && host.getRenderer() != null && host.getRenderer().getUIHost() == null;
   }
 
   @CalledByNative

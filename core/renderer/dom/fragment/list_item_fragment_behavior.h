@@ -16,6 +16,7 @@ class ListItemFragmentBehavior : public FragmentBehavior {
 
   void CreatePlatformRenderer(
       const fml::RefPtr<PropBundle>& attributes) override;
+  void OnUpdateLayout(const LayoutInfoForDraw& layout_result) override;
   PlatformRendererType GetType() const override {
     return PlatformRendererType::kListItem;
   }
