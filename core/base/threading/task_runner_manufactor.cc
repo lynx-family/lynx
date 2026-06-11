@@ -388,6 +388,18 @@ void TaskRunnerManufactor::CreateTASMRunner(
   tasm_task_runner_ = ui_task_runner_;
   return;
 #endif
+  if (!loop) {
+    // Only under ALL_ON_UI and PART_ON_LAYOUT strategies, if the UI TaskRunner
+    // has a delegate set and there is no loop, use the UI task runner directly.
+    if (thread_strategy_ == ALL_ON_UI || thread_strategy_ == PART_ON_LAYOUT) {
+      tasm_task_runner_ = ui_task_runner_;
+      return;
+    }
+    LOGW("CreateTASMRunner got null loop under unexpected strategy ("
+         << thread_strategy_ << "); falling back to UI task runner.");
+    tasm_task_runner_ = ui_task_runner_;
+    return;
+  }
 
   tasm_task_runner_ = fml::MakeRefCounted<fml::TaskRunner>(
       std::move(loop), enable_vsync_aligned_msg_loop);
