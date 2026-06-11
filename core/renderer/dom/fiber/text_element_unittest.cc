@@ -310,6 +310,38 @@ TEST_P(TextElementTest, TestResolveStyleValue) {
   EXPECT_EQ(text->computed_css_style()->GetTextAttributes()->color, 4278190080);
 }
 
+TEST_P(TextElementTest, ResetTextMaxlineClearsLayoutInElementProp) {
+  auto config = std::make_shared<PageConfig>();
+  config->SetEnableFiberArch(true);
+  manager->SetConfig(config);
+  manager->page_options_.embedded_mode_ = static_cast<EmbeddedMode>(
+      static_cast<int32_t>(manager->page_options_.embedded_mode_) |
+      static_cast<int32_t>(EmbeddedMode::LAYOUT_IN_ELEMENT));
+
+  auto page = manager->CreateFiberPage("page", 11);
+
+  auto text = manager->CreateFiberText("text");
+
+  auto raw_text = manager->CreateFiberRawText();
+  raw_text->SetText(lepus::Value("text-content"));
+
+  page->InsertNode(text);
+  text->InsertNode(raw_text);
+
+  text->SetAttribute("text-maxline", lepus::Value(1));
+
+  page->FlushActionsAsRoot();
+  ASSERT_NE(text->text_props_, nullptr);
+  ASSERT_TRUE(text->text_props_->text_max_line.has_value());
+  EXPECT_EQ(*text->text_props_->text_max_line, 1);
+
+  text->ResetAttribute("text-maxline");
+  text->FlushActionsAsRoot();
+
+  ASSERT_NE(text->text_props_, nullptr);
+  EXPECT_FALSE(text->text_props_->text_max_line.has_value());
+}
+
 TEST_P(TextElementTest, TestMeasureCase0) {
   if (enable_parallel_element_flush_strategy > 0) {
     GTEST_SKIP();
