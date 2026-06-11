@@ -25,6 +25,7 @@ void SyncCompositorService::Invalidate(bool is_raster_frame) {
 
 void SyncCompositorService::OnFirstMeaningfulLayout() {
   first_meaningful_layout_ = true;
+  DemandDrawHw(false);
   shell_->OnPostInvalidate(false);
 }
 
