@@ -8,6 +8,7 @@
 #include <vector>
 
 #include "core/public/devtool/lynx_devtool_proxy.h"
+#include "core/renderer/tasm/config.h"
 #include "core/renderer/utils/base/tasm_constants.h"
 #include "devtool/base_devtool/native/public/devtool_status.h"
 #include "devtool/embedder/core/env_embedder.h"
@@ -77,7 +78,9 @@ class DevtoolPlatformImpl : public lynx::devtool::DevToolPlatformFacade {
 
   std::vector<float> GetRectToWindow() const override { return {}; }
 
-  std::string GetLynxVersion() const override { return ""; }
+  std::string GetLynxVersion() const override {
+    return lynx::tasm::Config::GetCurrentLynxVersion();
+  }
 
   void OnReceiveTemplateFragment(const std::string& data, bool eof) override {}
   std::vector<int32_t> GetViewLocationOnScreen() const override { return {}; }

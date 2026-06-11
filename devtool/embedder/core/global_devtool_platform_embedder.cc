@@ -9,6 +9,7 @@
 #if ENABLE_TRACE_PERFETTO || ENABLE_TRACE_SYSTRACE
 #include "base/trace/native/trace_controller.h"
 #endif
+#include "core/renderer/tasm/config.h"
 #include "devtool/lynx_devtool/agent/global_devtool_platform_facade.h"
 
 namespace lynx {
@@ -50,8 +51,7 @@ class GlobalDevtoolPlatformCommon
   }
 
   std::string GetLynxVersion() override {
-    // TODO(suguannan.906): implement GetLynxVersion later
-    return "";
+    return lynx::tasm::Config::GetCurrentLynxVersion();
   }
 };
 
