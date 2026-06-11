@@ -9,8 +9,8 @@ import os
 import sys
 from doxmlparser import index as index_parser
 from doxmlparser import compound as compound_parser
-from metadata_def import BaseObject
-from env_setup import ANDROID_API_PATH, IOS_API_PATH, API_DOC_ANNOTATION, TOOLS_PATH
+from env_setup import ANDROID_API_PATH, IOS_API_PATH
+from api_writer import write_api_metadata
 from .doxygen_config import DoxygenConfig
 from .doxmlparser_etree_compat import patch_doxmlparser_etree
 from . import compounddef_parse
@@ -41,10 +41,10 @@ class DoxygenParser:
         )
         return doxygen_config.execute(self.api_path, self.platform)
 
-    def parse(self) -> list[BaseObject]:
+    def parse(self):
         if not self.generate_xml():
             print("generate xml failed")
-            return []
+            return None
         xml_path = os.path.join(self.api_path, self.platform, "xml", "index.xml")
         root_object = index_parser.parse(xml_path, silence=True, print_warnings=False)
 
@@ -56,13 +56,16 @@ class DoxygenParser:
         return object_list
 
     def dump(self) -> bool:
-        if os.path.exists(self.api_file):
-            os.remove(self.api_file)
-        object_list: list[BaseObject] = self.parse()
-        with open(self.api_file, "at") as f:
-            f.write(API_DOC_ANNOTATION)
-            f.writelines([object.get_api_str() for object in object_list])
-        return True
+        try:
+            object_list = self.parse()
+        except Exception as e:
+            print(f"parse {self.platform} api metadata failed: {e}", file=sys.stderr)
+            print(f"Kept existing API metadata file: {self.api_file}", file=sys.stderr)
+            return False
+        if object_list is None:
+            print(f"Kept existing API metadata file: {self.api_file}", file=sys.stderr)
+            return False
+        return write_api_metadata(self.api_file, object_list, self.platform)
 
     def _parse_compound(self, compound):
         xml_path = os.path.join(
