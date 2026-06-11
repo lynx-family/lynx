@@ -10,6 +10,15 @@ import("//config.gni")
 import("../../../../core/Lynx.gni")
 import("../../../../oliver/oliver.gni")
 
+declare_args() {
+  # Optional Node-API addon static library to link into the macOS Explorer app.
+  explorer_node_api_addon_static_library = ""
+
+  # Optional generated addon_use.h from @lynx-js/weak-node-api Apple packaging.
+  # Including this header retains the addon's static registration symbol.
+  explorer_node_api_addon_use_header = ""
+}
+
 action("build_card_resources") {
   # Use the custom Python script
   script = "build_resources.py"
@@ -60,6 +69,8 @@ mac_app_bundle("lynx_explorer") {
   output_name = "LynxExplorer"
   bundle_identifier_prefix = "com.lynx.Explorer"
   info_plist = "LynxExplorer/Info.plist"
+  inputs = []
+  defines = []
 
   # Depend on the build_card_resources action to ensure resources are built
   deps = [ ":build_card_resources" ]
@@ -68,8 +79,13 @@ mac_app_bundle("lynx_explorer") {
     ".",
     "$root_build_dir/include",
   ]
+  if (explorer_node_api_addon_use_header != "") {
+    include_dirs += [ get_path_info(explorer_node_api_addon_use_header, "dir") ]
+  }
 
   sources = [
+    "../../../cpp/LynxNodeAPI.cc",
+    "../../../cpp/LynxNodeAPI.h",
     "LynxExplorer/AppDelegate.h",
     "LynxExplorer/AppDelegate.mm",
     "LynxExplorer/LynxWindow.h",
@@ -83,13 +99,20 @@ mac_app_bundle("lynx_explorer") {
     "LynxExplorer/main.m",
     "LynxExplorer/module/LynxDemoModule.h",
     "LynxExplorer/module/LynxDemoModule.mm",
+    "LynxExplorer/module/LynxNodeAPIModule.h",
+    "LynxExplorer/module/LynxNodeAPIModule.mm",
     "LynxExplorer/runtime/ExampleLynxRuntimeLifecycleObserver.h",
     "LynxExplorer/runtime/ExampleLynxRuntimeLifecycleObserver.mm",
     "LynxExplorer/service/LynxHttpService.h",
     "LynxExplorer/service/LynxHttpService.mm",
   ]
   if (use_weak_suffix_napi) {
-    defines = [ "USE_WEAK_SUFFIX_NAPI=1" ]
+    defines += [ "USE_WEAK_SUFFIX_NAPI=1" ]
+  }
+  if (explorer_node_api_addon_use_header != "") {
+    defines +=
+        [ "LYNX_NODE_API_ADDON_USE_HEADER=\"" +
+          get_path_info(explorer_node_api_addon_use_header, "file") + "\"" ]
   }
 
   cflags_objc = [
@@ -107,6 +130,11 @@ mac_app_bundle("lynx_explorer") {
   ]
 
   ldflags = [ "-ObjC" ]
+  if (explorer_node_api_addon_static_library != "") {
+    inputs += [ explorer_node_api_addon_static_library ]
+    ldflags +=
+        [ rebase_path(explorer_node_api_addon_static_library, root_build_dir) ]
+  }
 
   frameworks = [
     "CoreData.framework",

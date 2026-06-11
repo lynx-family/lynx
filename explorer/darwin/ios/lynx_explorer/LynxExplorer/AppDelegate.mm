@@ -12,6 +12,33 @@
 #import "LynxInitProcessor.h"
 #import "TasmDispatcher.h"
 
+#if __has_include("addon_use.h")
+#include "addon_use.h"
+#endif
+
+// PrimJS and LynxWeakNodeAPI expose a C bridge for sharing the weak Node-API
+// raw host pointer at app startup.
+extern "C" {
+typedef const void *(*PrimJSWeakNodeApiRawPtrHostProvider)(void);
+void PrimJSInstallWeakNodeApiRawPtrHostProvider(PrimJSWeakNodeApiRawPtrHostProvider provider);
+void SetupWeakNodeApiEnv(void);
+const void *PrimJSGetWeakNodeApiRawPtrHost(void);
+}
+
+static const void *PrimJSProvideWeakNodeApiRawPtrHost(void) {
+  return PrimJSGetWeakNodeApiRawPtrHost();
+}
+
+static void InstallPrimJSWeakNodeApiBridge(void) {
+  static dispatch_once_t onceToken;
+  dispatch_once(&onceToken, ^{
+    // Register PrimJS as the raw host provider before Lynx creates any runtime.
+    PrimJSInstallWeakNodeApiRawPtrHostProvider(PrimJSProvideWeakNodeApiRawPtrHost);
+    // Initialize the weak Node-API side once so later runtimes can reuse it.
+    SetupWeakNodeApiEnv();
+  });
+}
+
 NSString *const LOCAL_URL_PREFIX = @"file://lynx?local://";
 NSString *const HOMEPAGE_URL =
     @"file://lynx?local://homepage.lynx.bundle?fullscreen=true&orientation=portrait";
@@ -24,6 +51,7 @@ NSString *const HOMEPAGE_URL =
 
 - (BOOL)application:(UIApplication *)application
     didFinishLaunchingWithOptions:(NSDictionary *)launchOptions {
+  InstallPrimJSWeakNodeApiBridge();
   [[LynxInitProcessor sharedInstance] setupEnvironment];
 
 #if HAS_SPARKLING

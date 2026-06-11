@@ -14,7 +14,7 @@ import type { BaseEvent, StandardProps } from '@lynx-js/types';
 declare global {
   declare module '*.png?inline';
 
-  declare let NativeModules: {
+  interface NativeModulesMap {
     ExplorerModule: {
       openScan(): void;
       openSchema(url: string): void;
@@ -23,7 +23,20 @@ declare global {
       saveThemePreferences(key: string, value: string): void;
       navigateBack?(): void;
     };
-  };
+    LynxNodeAPI?: {
+      requireNodeAddon(addonName: string): void;
+    };
+  }
+
+  declare let NativeModules: NativeModulesMap;
+
+  interface globalThis {
+    NativeModules?: NativeModulesMap;
+  }
+
+  declare var __lynx_node_addon_exports__:
+    | Record<string, Record<string, (...args: unknown[]) => unknown>>
+    | undefined;
 }
 
 declare module '@lynx-js/types' {

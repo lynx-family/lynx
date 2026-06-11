@@ -5,6 +5,7 @@
 #import "ViewController.h"
 #include <memory>
 #include "explorer/darwin/macos/lynx_explorer/LynxExplorer/fetcher/ExampleGenericResourceFetcher.h"
+#include "explorer/darwin/macos/lynx_explorer/LynxExplorer/module/LynxNodeAPIModule.h"
 #include "explorer/darwin/macos/lynx_explorer/LynxExplorer/runtime/ExampleLynxRuntimeLifecycleObserver.h"
 #include "lynx_env.h"
 #include "lynx_native_view.h"
@@ -17,6 +18,37 @@
 using lynx::pub::LynxValue;
 
 static constexpr int32_t kLynxLocalPrefixLength = 20;
+
+static BOOL IsTruthyQueryValue(NSString *value) {
+  if (value == nil) {
+    return NO;
+  }
+  NSString *lower = value.lowercaseString;
+  return [lower isEqualToString:@"1"] || [lower isEqualToString:@"true"] ||
+         [lower isEqualToString:@"yes"];
+}
+
+static BOOL ShouldEnableNapiAddonForURL(NSString *url) {
+  if (url.length == 0) {
+    return NO;
+  }
+  NSRange queryRange = [url rangeOfString:@".lynx.bundle?"];
+  if (queryRange.location == NSNotFound) {
+    return NO;
+  }
+  NSUInteger queryStart = queryRange.location + queryRange.length;
+  if (queryStart >= url.length) {
+    return NO;
+  }
+  NSString *query = [url substringFromIndex:queryStart];
+  for (NSString *item in [query componentsSeparatedByString:@"&"]) {
+    NSArray<NSString *> *parts = [item componentsSeparatedByString:@"="];
+    if (parts.count >= 2 && [parts[0] isEqualToString:@"enable_napi_addon"]) {
+      return IsTruthyQueryValue(parts[1]);
+    }
+  }
+  return NO;
+}
 
 class FakeView : public lynx::pub::LynxNativeView {
  public:
@@ -256,6 +288,18 @@ std::vector<uint8_t> ConvertNSBinary(NSData *binary) {
 
 - (void)loadLynxView {
   // auto group = std::make_shared<lynx::pub::LynxGroup>("group_name", "group_id");
+  NSString *resolvedUrl = self.url;
+  if (resolvedUrl == nil) {
+    auto args = [NSProcessInfo processInfo].arguments;
+    for (NSUInteger i = 1; args && i < args.count; i++) {
+      if ([args[i] hasPrefix:@"--url="]) {
+        resolvedUrl = [args[i] substringFromIndex:6];
+        break;
+      }
+    }
+  }
+  BOOL enableNapiAddon = ShouldEnableNapiAddonForURL(resolvedUrl);
+  uint64_t tokenId = reinterpret_cast<uint64_t>((__bridge void *)self);
   lynx::pub::LynxView::Builder builder;
   builder.SetScreenSize(self.view.frame.size.width, self.view.frame.size.height, 1.0)
       .SetFrame(0, 0, self.view.frame.size.width, self.view.frame.size.height)
@@ -263,6 +307,9 @@ std::vector<uint8_t> ConvertNSBinary(NSData *binary) {
       // .SetLynxGroup(group)
       .SetGenericResourceFetcher(std::make_shared<lynx::example::ExampleGenericResourceFetcher>())
       .RegisterNativeView<FakeView>("x-fake-view", (__bridge void *)self);
+  if (enableNapiAddon) {
+    builder.RegisterNativeModule("LynxNodeAPI", LynxNodeAPIModuleCreator, (__bridge void *)self);
+  }
 #if ENABLE_TESTBENCH_REPLAY
   if (_isTestBenchReplay) {
     lynx::embedder::TestBenchReplayDataModule::RegisterJSB(
@@ -275,7 +322,8 @@ std::vector<uint8_t> ConvertNSBinary(NSData *binary) {
   _lynxView->RegisterNativeView<FakeView>("x-fake-view-alias", (__bridge void *)self);
   // Example of runtime lifecycle observer.
   _lynxView->RegisterRuntimeLifecycleObserver(
-      std::make_shared<lynx::example::ExampleLynxRuntimeLifecycleObserver>());
+      std::make_shared<lynx::example::ExampleLynxRuntimeLifecycleObserver>(enableNapiAddon ? tokenId
+                                                                                           : 0));
 #if ENABLE_TESTBENCH_REPLAY
   if (_isTestBenchReplay) {
     _testBenchActionManager = std::make_shared<lynx::embedder::TestBenchActionManager>(

@@ -1,4 +1,3 @@
-
 # Building Lynx Explorer for Harmony
 
 This document provides instructions for building the Lynx Explorer Harmony app from source.
@@ -25,6 +24,7 @@ export HARMONY_HOME=/Applications/DevEco-Studio.app/Contents/sdk/
 ```
 
 Also, ensure the `hdc` and `ohpm` tools are in your `PATH`.
+
 - `hdc` is located at `$HARMONY_HOME/default/openharmony/toolchains/hdc`.
 - `ohpm` is located at `/Applications/DevEco-Studio.app/Contents/tools/ohpm/bin`.
 

@@ -274,7 +274,22 @@ public class LynxViewShellActivity extends AppCompatActivity {
       }
     }
 
+    boolean enableNapiAddon = queryMap.getBoolean("enable_napi_addon", false);
+
     LynxView lynxView = builder.build(this);
+    if (enableNapiAddon) {
+      lynxView.addRuntimeLifecycleListener(new com.lynx.jsbridge.RuntimeLifecycleListener() {
+        @Override
+        public void onRuntimeAttach(long napiEnv) {
+          com.lynx.explorer.modules.LynxNodeAPIModule.putEnv(lynxView.getLynxContext(), napiEnv);
+        }
+
+        @Override
+        public void onRuntimeDetach() {
+          com.lynx.explorer.modules.LynxNodeAPIModule.removeEnv(lynxView.getLynxContext());
+        }
+      });
+    }
     lynxView.updateGlobalProps(getGlobalProps(this, queryMap));
     extraTimingInfo.mPrepareTemplateStart = System.currentTimeMillis();
 

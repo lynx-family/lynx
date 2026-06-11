@@ -11,6 +11,8 @@ executable("lynx_explorer") {
   output_name = "lynx_explorer/lynx_explorer"
 
   sources = [
+    "../../cpp/LynxNodeAPI.cc",
+    "../../cpp/LynxNodeAPI.h",
     "dpi_utils_win32.cc",
     "dpi_utils_win32.h",
     "fetcher/example_generic_resource_fetcher.cc",
@@ -24,6 +26,8 @@ executable("lynx_explorer") {
     "main.cc",
     "module/lynx_demo_module.cc",
     "module/lynx_demo_module.h",
+    "module/lynx_node_api_module.cc",
+    "module/lynx_node_api_module.h",
     "runtime/example_lynx_runtime_lifecycle_observer.cc",
     "runtime/example_lynx_runtime_lifecycle_observer.h",
   ]
@@ -99,6 +103,11 @@ action("build_card_resources") {
 
   # Set the output file
   outputs = [ "$target_gen_dir/build_card_resources.stamp" ]
+
+  # Serialize JavaScript workspace installs on Windows. The devtool resource
+  # build and card resource build both touch the pnpm workspace/node_modules;
+  # running them in parallel can fail with EBUSY when pnpm recreates folders.
+  deps = [ ":copy_devtool_resources" ]
 
   # Pass the necessary directories as arguments
   args = [

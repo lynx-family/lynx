@@ -58,7 +58,11 @@ target 'LynxExplorer' do
     'Behavior',
   ]
 
-  pod 'PrimJS', :subspecs => ['quickjs', 'napi']
+  pod 'PrimJS', '3.9.0-alpha.2', :subspecs => ['quickjs', 'napi']
+  pod 'LynxWeakNodeAPI', '0.0.6', :subspecs => ['core', 'primjs_bridge']
+  if ENV['LYNX_NODE_API_ADDON_POD_PATH'] && ENV['LYNX_NODE_API_ADDON_POD_NAME']
+    pod ENV['LYNX_NODE_API_ADDON_POD_NAME'], :path => ENV['LYNX_NODE_API_ADDON_POD_PATH']
+  end
 
   pod 'SDWebImage','5.15.5'
   pod 'SDWebImageWebPCoder', '0.11.0'

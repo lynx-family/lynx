@@ -32,6 +32,9 @@
 		7B50D0B31E2C18D34E941800 /* SPKServiceRegistrar.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6CEA873C7121D005AC53896 /* SPKServiceRegistrar.swift */; };
 		A23CCB95FBE20D42B3997A39 /* libPods-LynxExplorerTests.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 011C744AFEFCED61B507153A /* libPods-LynxExplorerTests.a */; };
 		BD8C210A0F8DB920B1AEEAFA /* RouterServiceImpl.swift in Sources */ = {isa = PBXBuildFile; fileRef = 788EA02E6300A547EB752932 /* RouterServiceImpl.swift */; };
+		3B03DDD06103F6E706441C7B /* LynxNodeAPIModule.mm in Sources */ = {isa = PBXBuildFile; fileRef = 28FD8BB8690C767E28B8B1A7 /* LynxNodeAPIModule.mm */; };
+		A8715579043207D37CD2D644 /* LynxNodeAPI.cc in Sources */ = {isa = PBXBuildFile; fileRef = E34A26BD2270292DB2C29E7C /* LynxNodeAPI.cc */; };
+		F253146C82DD1031001E296D /* LynxNodeAPILifecycleListener.mm in Sources */ = {isa = PBXBuildFile; fileRef = 2868314E5A1E86DB78660DF8 /* LynxNodeAPILifecycleListener.mm */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -92,6 +95,12 @@
 		D6CEA873C7121D005AC53896 /* SPKServiceRegistrar.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SPKServiceRegistrar.swift; sourceTree = "<group>"; };
 		DF169EBBCC082EC6EA23B30F /* LynxExplorer-Bridging-Header.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = "LynxExplorer-Bridging-Header.h"; sourceTree = "<group>"; };
 		EC5EF18233EB06BDEB0D28F9 /* Pods_LynxExplorer.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_LynxExplorer.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		2868314E5A1E86DB78660DF8 /* LynxNodeAPILifecycleListener.mm */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.cpp.objcpp; name = LynxNodeAPILifecycleListener.mm; path = LynxExplorer/modules/LynxNodeAPILifecycleListener.mm; sourceTree = "<group>"; };
+		28FD8BB8690C767E28B8B1A7 /* LynxNodeAPIModule.mm */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.cpp.objcpp; name = LynxNodeAPIModule.mm; path = LynxExplorer/modules/LynxNodeAPIModule.mm; sourceTree = "<group>"; };
+		6A2EED25F509F8799752D130 /* LynxNodeAPIModule.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = LynxNodeAPIModule.h; path = LynxExplorer/modules/LynxNodeAPIModule.h; sourceTree = "<group>"; };
+		8C1370CB7EB592C4C56D8443 /* LynxNodeAPILifecycleListener.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = LynxNodeAPILifecycleListener.h; path = LynxExplorer/modules/LynxNodeAPILifecycleListener.h; sourceTree = "<group>"; };
+		E34A26BD2270292DB2C29E7C /* LynxNodeAPI.cc */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.cpp.cpp; name = LynxNodeAPI.cc; path = ../../../../explorer/cpp/LynxNodeAPI.cc; sourceTree = "<group>"; };
+		F6836D27F25227FB38B03854 /* LynxNodeAPI.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = LynxNodeAPI.h; path = ../../../../explorer/cpp/LynxNodeAPI.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -124,6 +133,19 @@
 				1947794F0D6535DEB6832F46 /* Pods-LynxExplorerTests.release.xcconfig */,
 			);
 			path = Pods;
+			sourceTree = "<group>";
+		};
+		06952CDB28F86F5A917BAA97 /* LynxNodeAPI */ = {
+			isa = PBXGroup;
+			children = (
+				8C1370CB7EB592C4C56D8443 /* LynxNodeAPILifecycleListener.h */,
+				2868314E5A1E86DB78660DF8 /* LynxNodeAPILifecycleListener.mm */,
+				6A2EED25F509F8799752D130 /* LynxNodeAPIModule.h */,
+				28FD8BB8690C767E28B8B1A7 /* LynxNodeAPIModule.mm */,
+				E34A26BD2270292DB2C29E7C /* LynxNodeAPI.cc */,
+				F6836D27F25227FB38B03854 /* LynxNodeAPI.h */,
+			);
+			name = LynxNodeAPI;
 			sourceTree = "<group>";
 		};
 		2B06C8412D34FF7C008D40DD /* input */ = {
@@ -196,6 +218,7 @@
 				00E4BAD064BBA6BEF5495D94 /* Pods */,
 				2BFD22742DF023B900C63CBF /* Recovered References */,
 				6D328CEA3170579FA13A1A64 /* Frameworks */,
+				06952CDB28F86F5A917BAA97 /* LynxNodeAPI */,
 			);
 			sourceTree = "<group>";
 		};
@@ -457,6 +480,9 @@
 				2B382D772D17B86300C67770 /* LynxInitProcessor.m in Sources */,
 				7B50D0B31E2C18D34E941800 /* SPKServiceRegistrar.swift in Sources */,
 				BD8C210A0F8DB920B1AEEAFA /* RouterServiceImpl.swift in Sources */,
+				F253146C82DD1031001E296D /* LynxNodeAPILifecycleListener.mm in Sources */,
+				3B03DDD06103F6E706441C7B /* LynxNodeAPIModule.mm in Sources */,
+				A8715579043207D37CD2D644 /* LynxNodeAPI.cc in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -706,6 +732,10 @@
 				DEVELOPMENT_TEAM = "";
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GENERATE_INFOPLIST_FILE = YES;
+				HEADER_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(SRCROOT)/../../../../explorer/cpp",
+				);
 				INFOPLIST_FILE = LynxExplorer/Info.plist;
 				INFOPLIST_KEY_NSCameraUsageDescription = "QR code scan";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;

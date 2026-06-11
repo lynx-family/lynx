@@ -6,7 +6,6 @@ apply plugin: 'kotlin-android'
 apply plugin: 'kotlin-android-extensions'
 apply plugin: 'kotlin-kapt'
 
-
 android {
     compileSdkVersion rootProject.ext.compileSdkVersion
 
@@ -27,6 +26,16 @@ android {
             // Sparkling's transitive deps can include Kotlin module files that
             // duplicate those produced by Lynx's own modules.
             pickFirst 'META-INF/*.kotlin_module'
+            pickFirst '**/libnapi_adapter.so'
+        }
+
+        // Keep the Explorer-owned CMake target aligned with the repository's
+        // requested ABI list. The Node-API sample addon and napi_adapter
+        // package are prepared per ABI; without this filter AGP
+        // may also build default ABIs such as armeabi-v7a, where the matching
+        // addon/napi_adapter artifacts are not available.
+        ndk {
+            abiFilters(*rootProject.ext.abiList)
         }
     }
 
@@ -78,6 +87,9 @@ android {
     }
 
     sourceSets {
+        main {
+            jniLibs.srcDirs = ["src/main/jniLibs"]
+        }
         asan {
             jni.srcDirs = ["../../core/build/gen"]
         }
@@ -85,6 +97,17 @@ android {
             jni.srcDirs = ["../../core/build/gen"]
         }
 
+    }
+
+    externalNativeBuild {
+        cmake {
+            path "CMakeLists.txt"
+        }
+    }
+}
+tasks.whenTaskAdded { task ->
+    if (task.name == 'preBuild' || task.name.startsWith('externalNativeBuild')) {
+        task.dependsOn ':LynxAndroid:extractJNIFiles'
     }
 }
 

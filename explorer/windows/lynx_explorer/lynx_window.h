@@ -21,7 +21,8 @@ namespace lynx {
 class LynxWindow {
  public:
   LynxWindow(unsigned int x, unsigned int y, unsigned int width,
-             unsigned int height, bool test_bench_replay = false);
+             unsigned int height, bool test_bench_replay = false,
+             bool enable_napi_addon = false);
   ~LynxWindow();
 
   HWND GetWindowHandle() const;
@@ -64,6 +65,7 @@ class LynxWindow {
 
   std::shared_ptr<lynx::pub::LynxView> lynx_view_;
   bool is_test_bench_replay_ = false;
+  bool enable_napi_addon_ = false;
 #if ENABLE_TESTBENCH_REPLAY
   std::shared_ptr<lynx::embedder::TestBenchActionManager>
       test_bench_action_manager_;

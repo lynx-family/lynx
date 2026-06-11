@@ -11,6 +11,10 @@
 #include "explorer/embedder/lynx_explorer/module/lynx_demo_extension_module.h"
 #include "lynx_env.h"
 
+#if defined(LYNX_NODE_API_ADDON_USE_HEADER)
+#include LYNX_NODE_API_ADDON_USE_HEADER
+#endif
+
 @interface AppDelegate ()
 
 @property(strong) IBOutlet NSWindow *window;

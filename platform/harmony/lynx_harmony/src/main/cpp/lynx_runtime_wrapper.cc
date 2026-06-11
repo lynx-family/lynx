@@ -107,7 +107,7 @@ RuntimeLifecycleListenerDelegateHarmony::
       listener_ref_(listener_ref) {}
 
 void RuntimeLifecycleListenerDelegateHarmony::OnRuntimeAttach(void* env_ptr) {
-  base::NapiHandleScope scope(static_cast<napi_env>(env_ptr));
+  base::NapiHandleScope scope(env_);
   napi_value param[1];
   param[0] = base::NapiUtil::CreatePtrArray(
       env_, reinterpret_cast<uintptr_t>(static_cast<napi_env>(env_ptr)));

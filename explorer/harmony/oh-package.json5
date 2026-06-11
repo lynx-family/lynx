@@ -14,7 +14,7 @@
   },
   "version": "0.0.1",
   "dependencies": {
-    "@lynx/primjs": "3.8.0-alpha.6",
+    "@lynx/primjs": "3.9.0-alpha.3",
   },
   "dynamicDependencies": {},
   "parameterFile": "./parameter.json",

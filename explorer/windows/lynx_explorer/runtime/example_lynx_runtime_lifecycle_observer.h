@@ -4,6 +4,8 @@
 #ifndef EXPLORER_WINDOWS_LYNX_EXPLORER_RUNTIME_EXAMPLE_LYNX_RUNTIME_LIFECYCLE_OBSERVER_H_
 #define EXPLORER_WINDOWS_LYNX_EXPLORER_RUNTIME_EXAMPLE_LYNX_RUNTIME_LIFECYCLE_OBSERVER_H_
 
+#include <cstdint>
+
 #include "lynx_runtime_lifecycle_observer.h"
 
 #ifdef USE_WEAK_SUFFIX_NAPI
@@ -15,8 +17,14 @@ namespace example {
 class ExampleLynxRuntimeLifecycleObserver
     : public pub::LynxRuntimeLifecycleObserver {
  public:
+  explicit ExampleLynxRuntimeLifecycleObserver(uint64_t token_id = 0)
+      : token_id_(token_id) {}
+
   void OnRuntimeAttach(napi_env env) override;
   void OnRuntimeDetach() override;
+
+ private:
+  uint64_t token_id_ = 0;
 };
 }  // namespace example
 }  // namespace lynx

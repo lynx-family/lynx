@@ -7,6 +7,7 @@
 #import "Sparkling-umbrella.h"
 #define HAS_SPARKLING 1
 #endif
+#import <Lynx/LynxBackgroundRuntime.h>
 #import <Lynx/LynxEnv.h>
 #import <Lynx/LynxProviderRegistry.h>
 #import <Lynx/LynxView+Identify.h>
@@ -16,6 +17,8 @@
 #import "DemoTemplateResourceFetcher.h"
 #import "LynxExplorer-Swift.h"
 #import "LynxExplorerInput.h"
+#import "LynxNodeAPILifecycleListener.h"
+#import "LynxNodeAPIModule.h"
 #import "LynxSettingManager.h"
 #import "UIHelper.h"
 
@@ -41,10 +44,21 @@ NSString *const kBackButtonImageDark = @"back_dark";
 @property(nonatomic, strong) UIColor *barColor;
 @property(nonatomic, strong) UIView *previousViewControllerView;
 @property(nonatomic, copy) NSString *frontendTheme;
+@property(nonatomic, strong) LynxBackgroundRuntime *backgroundRuntime;
 
 @end
 
 @implementation LynxViewShellViewController
+
+static BOOL IsTruthyParam(id value) {
+  if (!value || value == [NSNull null]) return NO;
+  if ([value isKindOfClass:[NSNumber class]]) return [value boolValue];
+  if ([value isKindOfClass:[NSString class]]) {
+    NSString *s = [(NSString *)value lowercaseString];
+    return [s isEqualToString:@"1"] || [s isEqualToString:@"true"] || [s isEqualToString:@"yes"];
+  }
+  return NO;
+}
 
 - (id)init {
   if (self = [super init]) {
@@ -137,18 +151,35 @@ NSString *const kBackButtonImageDark = @"back_dark";
 #if HAS_SPARKLING
   NSString *containerID = [[NSUUID UUID] UUIDString];
 #endif
+  BOOL enableNapiAddon = IsTruthyParam([self.params valueForKey:@"enable_napi_addon"]);
+  if (enableNapiAddon) {
+    // RuntimeLifecycleListener can only be registered through background runtime for now.
+    // Node-API addon needs a background runtime to receive napi env via lifecycle callback.
+    LynxBackgroundRuntimeOptions *options = [[LynxBackgroundRuntimeOptions alloc] init];
+    options.genericResourceFetcher = [[DemoGenericResourceFetcher alloc] init];
+    options.mediaResourceFetcher = [[DemoMediaResourceFetcher alloc] init];
+    options.templateResourceFetcher = [[DemoTemplateResourceFetcher alloc] init];
+    self.backgroundRuntime = [[LynxBackgroundRuntime alloc] initWithOptions:options];
+    [self.backgroundRuntime
+        addRuntimeLifecycleListener:[[LynxNodeAPILifecycleListener alloc] initWithToken:self]];
+  } else {
+    self.backgroundRuntime = nil;
+  }
+
   LynxView *lynxView = [[LynxView alloc] initWithBuilderBlock:^(LynxViewBuilder *builder) {
     builder.config =
         [[LynxConfig alloc] initWithProvider:[LynxEnv sharedInstance].config.templateProvider];
     builder.screenSize = screenSize;
     builder.fontScale = 1.0;
     builder.fetcher = nil;
+    builder.lynxBackgroundRuntime = self.backgroundRuntime;
     // for homepage only
     [builder.config registerUI:LynxExplorerInput.class withName:@"explorer-input"];
 #if HAS_SPARKLING
     // Register Sparkling spkPipe module with pre-generated containerID
     [SPKServiceRegistrar setupLynxPipeWithConfig:builder.config containerID:containerID];
 #endif
+    [builder.config registerModule:LynxNodeAPIModule.class param:self];
     // Add fetchers
     builder.enableGenericResourceFetcher = true;
     builder.genericResourceFetcher = [[DemoGenericResourceFetcher alloc] init];
