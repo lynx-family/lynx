@@ -1653,6 +1653,9 @@ public class LynxEnv {
   @AnyThread
   public void trimMemory(@MemoryPressureLevel int pressure) {
     TraceEvent.beginSection(TraceEventDef.LYNX_ENV_TRIM_MEMORY);
+    if (pressure == MemoryPressureLevel.CRITICAL) {
+      onLowMemory();
+    }
     MemoryPressureCallbackDispatcher.getInstance().notifyMemoryPressure(pressure);
     TraceEvent.endSection(TraceEventDef.LYNX_ENV_TRIM_MEMORY);
   }
