@@ -1,0 +1,18 @@
+// Copyright 2026 The Lynx Authors. All rights reserved.
+// Licensed under the Apache License Version 2.0 that can be found in the
+// LICENSE file in the root directory of this source tree.
+apply plugin: 'java'
+apply from: '../publish.gradle'
+sourceCompatibility = "1.8"
+targetCompatibility = "1.8"
+
+dependencies {
+    implementation 'androidx.annotation:annotation:1.0.0'
+    implementation 'com.squareup:javapoet:1.11.1'
+    // Provided by the KSP runtime when the processor is executed; compileOnly avoids
+    // pinning consumers to a specific kotlin-stdlib version.
+    compileOnly 'com.google.devtools.ksp:symbol-processing-api:1.6.21-1.0.6'
+    // Annotation definitions (@LynxProp, @LynxBehavior, ...) shared with the javac processor.
+    implementation project(':LynxProcessor')
+    testImplementation 'junit:junit:4.13.2'
+}
