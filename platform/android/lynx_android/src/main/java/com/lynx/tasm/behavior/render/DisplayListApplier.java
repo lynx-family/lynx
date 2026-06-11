@@ -3,14 +3,17 @@
 // LICENSE file in the root directory of this source tree.
 package com.lynx.tasm.behavior.render;
 
+import android.graphics.BlurMaskFilter;
 import android.graphics.Canvas;
 import android.graphics.LinearGradient;
 import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.PointF;
 import android.graphics.RectF;
+import android.graphics.Region;
 import android.graphics.Shader;
 import android.graphics.drawable.Drawable;
+import android.os.Build;
 import android.text.Layout;
 import android.text.Spanned;
 import android.view.View;
@@ -45,6 +48,7 @@ public class DisplayListApplier implements Drawable.Callback {
   private static final int OP_CLIP_RECT = 10;
   private static final int OP_RECORD_BOX = 11;
   private static final int OP_LINEAR_GRADIENT = 12;
+  private static final int OP_BOX_SHADOW = 13;
 
   // Subtree property operation types (matching C++ DisplayListSubtreePropertyOpType)
   static final int SUBTREE_OP_TRANSFORM = 0;
@@ -56,6 +60,7 @@ public class DisplayListApplier implements Drawable.Callback {
 
   // Reusable objects for optimization
   private final Path mReusablePath = new Path();
+  private final Path mReusablePath2 = new Path();
   private final RectF mReusableRectF = new RectF();
   private final float[] mReusableBorderRadii = new float[8];
   private final int[] mReusableBorderColors = new int[4];
@@ -66,6 +71,8 @@ public class DisplayListApplier implements Drawable.Callback {
   private final PointF mReusablePointF4 = new PointF();
   private int[] mReusableGradientColors;
   private float[] mReusableGradientStops;
+  private BlurMaskFilter mReusableBlurMaskFilter;
+  private float mLastBlurRadius = -1.f;
 
   private PlatformRendererContext mContext;
   private int mContentOpIndex;
@@ -495,6 +502,21 @@ public class DisplayListApplier implements Drawable.Callback {
           recordRoundedRectangle(new RoundedRectangle(rectF, borderRadii));
           break;
         }
+        case OP_BOX_SHADOW: {
+          // Box shadow: shadow_box_index (1 int), clip_box_index (1 int),
+          // color (1 int), clip_mode (1 int, BoxShadowClipMode),
+          // blur_radius (1 float). The shadow offset is baked into shadow_box
+          // rect on the C++ side.
+          if (intParamCount >= 4 && floatParamCount >= 1) {
+            int shadowBoxIndex = nextContentInt();
+            int clipBoxIndex = nextContentInt();
+            int color = nextContentInt();
+            int clipMode = nextContentInt(); // 0 = outset, 1 = inset
+            float blurRadius = nextContentFloat();
+            drawBoxShadow(canvas, shadowBoxIndex, clipBoxIndex, color, blurRadius, clipMode);
+          }
+          break;
+        }
         case OP_LINEAR_GRADIENT: {
           int colorCount = nextContentInt();
           if (mReusableGradientColors == null || mReusableGradientColors.length != colorCount) {
@@ -701,6 +723,104 @@ public class DisplayListApplier implements Drawable.Callback {
     BorderBoxes borderBoxes = getNormalizedBorderBoxes(outBoxIndex, innerBoxIndex);
     drawRectangularBorders(
         canvas, paint, borderBoxes.outBox, borderBoxes.innerBox, borderColors, borderStyles);
+  }
+
+  // The shadow offset is baked into shadowBox rect on the C++ side.
+  private void drawBoxShadow(Canvas canvas, int shadowBoxIndex, int clipBoxIndex, int color,
+      float blurRadius, int clipMode) {
+    // Use non-normalized rounded rectangle for shadow box since shadows can extend
+    // outside the host bounds.
+    RoundedRectangle shadowBox = getRoundedRectangle(shadowBoxIndex);
+    if (shadowBox == null) {
+      return;
+    }
+
+    mPaint.reset();
+    mPaint.setAntiAlias(true);
+    mPaint.setColor(color);
+
+    if (blurRadius > 0.5f) {
+      // NOTE: BlurMaskFilter may be ignored on hardware-accelerated canvases.
+      // Consider using software rendering or RenderEffect on API 31+ for reliable blur.
+      if (blurRadius != mLastBlurRadius) {
+        mReusableBlurMaskFilter = new BlurMaskFilter(blurRadius, BlurMaskFilter.Blur.NORMAL);
+        mLastBlurRadius = blurRadius;
+      }
+      mPaint.setMaskFilter(mReusableBlurMaskFilter);
+    }
+
+    mReusablePath.reset();
+    RectF shadowRect = shadowBox.getRectF();
+
+    if (shadowBox.hasBorderRadius()) {
+      mReusablePath.addRoundRect(shadowRect, shadowBox.getBorderRadii(), Path.Direction.CW);
+    } else {
+      mReusablePath.addRect(shadowRect, Path.Direction.CW);
+    }
+
+    if (clipMode == 1) {
+      // Inset shadow: draw a large shape with a hole at shadow box so blur
+      // is centered on the inner rim (shadow box edge), matching iOS behavior.
+      RoundedRectangle clipBox = getNormalizedRoundedRectangle(clipBoxIndex);
+      if (clipBox != null) {
+        int saved = canvas.save();
+        mReusablePath2.reset();
+        RectF clipRect = clipBox.getRectF();
+        if (clipBox.hasBorderRadius()) {
+          mReusablePath2.addRoundRect(clipRect, clipBox.getBorderRadii(), Path.Direction.CW);
+        } else {
+          mReusablePath2.addRect(clipRect, Path.Direction.CW);
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+          canvas.clipPath(mReusablePath2);
+        } else {
+          canvas.clipPath(mReusablePath2, Region.Op.INTERSECT);
+        }
+
+        // Build a large rect with shadow-box hole. BlurMaskFilter will blur
+        // the hole edge (inner rim) rather than the outer border-box edge.
+        mReusablePath2.reset();
+        mReusablePath2.setFillType(Path.FillType.EVEN_ODD);
+        // Large outer rect (inset by blur radius + spread to avoid outer-edge blur
+        // leaking into the visible ring)
+        float outset = Math.max(blurRadius, 1.f) + 100.f;
+        mReusablePath2.addRect(clipRect.left - outset, clipRect.top - outset,
+            clipRect.right + outset, clipRect.bottom + outset, Path.Direction.CW);
+        // Inner hole (shadow box) — must close the path properly for even-odd
+        if (shadowBox.hasBorderRadius()) {
+          mReusablePath2.addRoundRect(shadowRect, shadowBox.getBorderRadii(), Path.Direction.CCW);
+        } else {
+          mReusablePath2.addRect(shadowRect, Path.Direction.CCW);
+        }
+        canvas.drawPath(mReusablePath2, mPaint);
+        canvas.restoreToCount(saved);
+      }
+    } else {
+      // Outset shadow: clip out the border box interior so shadow only
+      // appears outside the element.
+      RoundedRectangle clipBox = getNormalizedRoundedRectangle(clipBoxIndex);
+      if (clipBox != null) {
+        int saved = canvas.save();
+        mReusablePath2.reset();
+        RectF clipRect = clipBox.getRectF();
+        if (clipBox.hasBorderRadius()) {
+          mReusablePath2.addRoundRect(clipRect, clipBox.getBorderRadii(), Path.Direction.CW);
+        } else {
+          mReusablePath2.addRect(clipRect, Path.Direction.CW);
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+          canvas.clipOutPath(mReusablePath2);
+        } else {
+          canvas.clipPath(mReusablePath2, Region.Op.DIFFERENCE);
+        }
+        canvas.drawPath(mReusablePath, mPaint);
+        canvas.restoreToCount(saved);
+      } else {
+        canvas.drawPath(mReusablePath, mPaint);
+      }
+    }
+
+    mPaint.setMaskFilter(null);
   }
 
   // Helper methods for reading content data
