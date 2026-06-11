@@ -3,6 +3,7 @@
 // LICENSE file in the root directory of this source tree.
 #import "LynxOffsetCalculator.h"
 #import <Lynx/LynxLog.h>
+#import <math.h>
 #import "LynxLRUMap.h"
 
 @implementation PathLengthCache
@@ -178,6 +179,7 @@ static void calculatePathLengthFunction(void *info, const CGPathElement *element
       points[0] = element->points[0];
       pathInfo->currentPoint.x = points[0].x;
       pathInfo->currentPoint.y = points[0].y;
+      pathInfo->startPoint = points[0];
       break;
 
     case kCGPathElementAddLineToPoint:
@@ -233,6 +235,7 @@ static void findTargetPoint(void *info, const CGPathElement *element) {
     case kCGPathElementMoveToPoint:
       points[0] = element->points[0];
       pathInfo->currentPoint = points[0];
+      pathInfo->startPoint = points[0];
       break;
 
     case kCGPathElementAddLineToPoint:
@@ -242,7 +245,11 @@ static void findTargetPoint(void *info, const CGPathElement *element) {
       // Uses the cached segment length.
       CGFloat segmentLength = [cache.segmentLengths[pathInfo->currentSegmentIndex] doubleValue];
 
-      if (pathInfo->totalLength + segmentLength >= pathInfo->targetLength) {
+      if (!isfinite(segmentLength) || segmentLength <= 0) {
+        segmentLength = 0;
+      }
+
+      if (segmentLength > 0 && pathInfo->totalLength + segmentLength >= pathInfo->targetLength) {
         CGFloat remainingLength = pathInfo->targetLength - pathInfo->totalLength;
         CGFloat ratio = remainingLength / segmentLength;
 
