@@ -554,6 +554,12 @@ float TextRender::GetMaxFontSize() {
 void TextRender::HandleAutoSize(const MeasureConstraint& constraint,
                                 ShadowLayoutContextMeasure* context) {
   if (measure_node_->enable_auto_font_size_) {
+    if (measure_node_->auto_font_size_preset_sizes_.empty() &&
+        (measure_node_->auto_font_size_step_granularity_ <= 0 ||
+         measure_node_->auto_font_size_max_size_ <
+             measure_node_->auto_font_size_min_size_)) {
+      return;
+    }
     if (!CheckTextFullyDisplayed(constraint, context)) {
       TryShrinkFontSize(constraint, context);
     } else {
