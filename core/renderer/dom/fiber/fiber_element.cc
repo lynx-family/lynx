@@ -3391,8 +3391,8 @@ void FiberElement::FlushProps() {
     if (real_parent) {
       CheckHasInlineContainer(real_parent);
     }
-    AttachLayoutNode(prop_bundle_);
     EnsureSLNode();
+    AttachLayoutNode(prop_bundle_);
 
     // FIXME(linxs): any other case has platform layout nodes??
     is_virtual_ = IsShadowNodeVirtual();
