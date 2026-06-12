@@ -187,9 +187,12 @@ typedef NS_ENUM(NSUInteger, LynxUIRefreshState) {
   self.scrollView = (UIScrollView *)[self findViewWithKind:[UIScrollView class]
                                                   fromView:[self view]
                                               excludeViews:excludeViews];
-  self.scrollView.bounces = YES;
   if (!self.scrollView) {
     return;
+  }
+
+  if (_enableRefresh) {
+    self.scrollView.bounces = YES;
   }
 
   if (!CGRectEqualToRect(self.selfFrame, self.view.frame) || self.scrollView != preScrollView) {
@@ -200,7 +203,6 @@ typedef NS_ENUM(NSUInteger, LynxUIRefreshState) {
 }
 
 - (id<LynxEventTarget>)hitTest:(CGPoint)point withEvent:(UIEvent *)event {
-  self.scrollView.bounces = YES;
   CGPoint hp = [[self view] convertPoint:point toView:self.lynxHeader.view];
   CGPoint pt = [[self view] convertPoint:point toView:self.lynxList.view];
   if ([self.lynxHeader.view pointInside:hp withEvent:event]) {
