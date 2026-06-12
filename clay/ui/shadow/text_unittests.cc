@@ -63,6 +63,95 @@ TEST_F_UI(TextTest, AutoFontSizeStepGranularity) {
   EXPECT_NE(text_shadow_node_->text_style_->font_size, font_size);
 }
 
+TEST_F_UI(TextTest, AutoFontSizeIgnoresInvalidStepGranularity) {
+  MeasureConstraint constraint{4000, MeasureMode::kDefinite, 1000,
+                               MeasureMode::kDefinite};
+  text_shadow_node_->enable_auto_font_size_ = true;
+  text_shadow_node_->auto_font_size_max_size_ = 50;
+  text_shadow_node_->auto_font_size_min_size_ = 30;
+  text_shadow_node_->auto_font_size_step_granularity_ = 0;
+  raw_text_shadow_node_->SetText("Hello");
+
+  text_shadow_node_->Measure(constraint);
+
+  EXPECT_EQ(text_shadow_node_->text_style_->font_size, 42);
+}
+
+TEST_F_UI(TextTest, AutoFontSizeAllowsUnsetMaxSize) {
+  MeasureConstraint constraint{1000, MeasureMode::kDefinite, 100,
+                               MeasureMode::kDefinite};
+  text_shadow_node_->enable_auto_font_size_ = true;
+  text_shadow_node_->auto_font_size_min_size_ = 10;
+  text_shadow_node_->auto_font_size_max_size_ = 0;
+  text_shadow_node_->auto_font_size_step_granularity_ = 1;
+  raw_text_shadow_node_->SetText(
+      "Hello, Compiler NG Hello, Compiler NG Hello, Compiler NG Hello, "
+      "Compiler NG Hello, Compiler NG Hello, Compiler NG ");
+
+  text_shadow_node_->Measure(constraint);
+
+  EXPECT_LT(text_shadow_node_->text_style_->font_size, 42);
+}
+
+TEST_F_UI(TextTest, AutoFontSizeIgnoresUnsetMinSize) {
+  MeasureConstraint constraint{100, MeasureMode::kDefinite, 1,
+                               MeasureMode::kDefinite};
+  text_shadow_node_->enable_auto_font_size_ = true;
+  text_shadow_node_->auto_font_size_min_size_ = 0;
+  text_shadow_node_->auto_font_size_max_size_ = 0;
+  text_shadow_node_->auto_font_size_step_granularity_ = 1;
+  raw_text_shadow_node_->SetText(
+      "Hello, Compiler NG Hello, Compiler NG Hello, Compiler NG Hello, "
+      "Compiler NG Hello, Compiler NG Hello, Compiler NG ");
+
+  text_shadow_node_->Measure(constraint);
+
+  EXPECT_EQ(text_shadow_node_->text_style_->font_size, 42);
+}
+
+TEST_F_UI(TextTest, AutoFontSizeDoesNotShrinkBelowMinSize) {
+  MeasureConstraint constraint{100, MeasureMode::kDefinite, 1,
+                               MeasureMode::kDefinite};
+  text_shadow_node_->enable_auto_font_size_ = true;
+  text_shadow_node_->auto_font_size_min_size_ = 10;
+  text_shadow_node_->auto_font_size_max_size_ = 0;
+  text_shadow_node_->auto_font_size_step_granularity_ = 3;
+  raw_text_shadow_node_->SetText(
+      "Hello, Compiler NG Hello, Compiler NG Hello, Compiler NG Hello, "
+      "Compiler NG Hello, Compiler NG Hello, Compiler NG ");
+
+  text_shadow_node_->Measure(constraint);
+
+  EXPECT_GE(text_shadow_node_->text_style_->font_size, 10);
+}
+
+TEST_F_UI(TextTest, AutoFontSizeIgnoresInlineTruncation) {
+  MeasureConstraint constraint{1000, MeasureMode::kDefinite, 100,
+                               MeasureMode::kDefinite};
+  text_shadow_node_->enable_auto_font_size_ = true;
+  text_shadow_node_->auto_font_size_min_size_ = 10;
+  text_shadow_node_->auto_font_size_max_size_ = 0;
+  text_shadow_node_->auto_font_size_step_granularity_ = 1;
+  text_shadow_node_->SetTextMaxLine(1);
+  raw_text_shadow_node_->SetText(
+      "Hello, Compiler NG Hello, Compiler NG Hello, Compiler NG Hello, "
+      "Compiler NG Hello, Compiler NG Hello, Compiler NG ");
+  auto inline_truncation_node = std::make_unique<InlineTruncationShadowNode>(
+      owner_, std::string("inline-truncation"), -1);
+  auto inline_text_node = std::make_unique<InlineTextShadowNode>(
+      owner_, std::string("inline-text"), -1);
+  auto inline_raw_text_node =
+      std::make_unique<RawTextShadowNode>(owner_, std::string("raw-text"), -1);
+  inline_raw_text_node->SetText("...");
+  inline_text_node->AddChild(inline_raw_text_node.get());
+  inline_truncation_node->AddChild(inline_text_node.get());
+  text_shadow_node_->AddChild(inline_truncation_node.get());
+
+  text_shadow_node_->Measure(constraint);
+
+  EXPECT_EQ(text_shadow_node_->text_style_->font_size, 42);
+}
+
 TEST_F_UI(TextTest, DISABLED_AutoFontSizePreset) {
   MeasureConstraint constraint{1000, MeasureMode::kDefinite, 100,
                                MeasureMode::kDefinite};
