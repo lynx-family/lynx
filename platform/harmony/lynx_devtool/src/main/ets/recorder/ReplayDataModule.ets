@@ -2,12 +2,33 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-import { LynxModule } from '@lynx/lynx';
+import { LLog, LynxModule } from '@lynx/lynx';
+
+const TAG = 'LynxRecorderReplayDataModule';
+
+export type ReplaySharedDataValue = Object | string | number | boolean | null;
+export type ReplaySharedData = Record<string, ReplaySharedDataValue>;
+
+class ReplaySharedDataResult {
+  value: ReplaySharedDataValue = null;
+}
 
 export default class LynxRecorderReplayDataModule extends LynxModule {
+  static syncMethods: string[] = ['getSharedData'];
   static jsbInvokers: Map<string, Object>[] = [];
   static jsbCallbacks: Map<string, Object> = new Map();
   static config: Map<string, Object> = new Map();
+  static sharedData: ReplaySharedData = {};
+
+  public getSharedData(key: string): ReplaySharedDataResult {
+    let value: ReplaySharedDataValue = LynxRecorderReplayDataModule.sharedData[key] ?? null;
+    if (value === null) {
+      LLog.d(TAG, `[replay-shared-data] getSharedData miss | key=${key}`);
+    }
+    let result: ReplaySharedDataResult = new ReplaySharedDataResult();
+    result.value = value;
+    return result;
+  }
 
   public getData(callback: (str: string) => void) {
     let json: Record<string, string> = {};
