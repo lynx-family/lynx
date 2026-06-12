@@ -38,6 +38,7 @@
 #include "core/renderer/dom/fiber/list_element.h"
 #include "core/renderer/dom/fiber/none_element.h"
 #include "core/renderer/dom/fiber/page_element.h"
+#include "core/renderer/dom/fiber/platform_layout_function_wrapper.h"
 #include "core/renderer/dom/fiber/raw_text_element.h"
 #include "core/renderer/dom/fiber/scroll_element.h"
 #include "core/renderer/dom/fiber/template_element.h"
@@ -2739,6 +2740,26 @@ TEST_P(FiberElementTest,
 
   parent->RemoveLayoutNode(child.get());
   EXPECT_FALSE(child->attached_to_layout_parent_);
+}
+
+TEST_P(FiberElementTest,
+       LayoutInElementLevelOrderCustomNodeBindsLayoutObjectDuringFlushProps) {
+  manager->page_options_.embedded_mode_ = static_cast<EmbeddedMode>(
+      static_cast<int32_t>(manager->page_options_.embedded_mode_) |
+      static_cast<int32_t>(EmbeddedMode::LAYOUT_IN_ELEMENT));
+
+  auto page = manager->CreateFiberPage("page", 11);
+  auto child = manager->CreateFiberNode("view");
+  child->layout_node_type_ = LayoutNodeType::CUSTOM;
+  page->InsertNode(child);
+
+  child->MarkParallelFlushFlag(Element::kFlagLevelOrderParallel);
+  auto reduce_task = child->PrepareForCreateOrUpdate();
+  reduce_task();
+
+  ASSERT_NE(child->slnode(), nullptr);
+  ASSERT_NE(child->customized_layout_node_, nullptr);
+  EXPECT_EQ(child->customized_layout_node_->layout_object_, child->slnode());
 }
 
 TEST_P(FiberElementTest, InsertNode) {
