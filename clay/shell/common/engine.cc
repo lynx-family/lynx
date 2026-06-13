@@ -384,7 +384,9 @@ void Engine::SetFontFaceCache(const char* font_family, const char* local_path) {
 }
 
 void Engine::UpdateMemoryCacheOptions() {
-  // Resource cache max memory limit sync is intentionally disabled.
+  clay::Isolate::Instance().UpdateResourceCacheMaxMemoryLimit(
+      settings_.image_texture_cache_max_limit,
+      settings_.low_end_image_texture_cache_max_limit);
 }
 
 bool Engine::MarkDrawableImageFrameAvailable(int64_t image_id) {
