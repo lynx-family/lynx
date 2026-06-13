@@ -12,13 +12,18 @@
 #include <unordered_map>
 #include <unordered_set>
 
+#include "base/include/value/array.h"
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/dom/fiber/image_element.h"
 #include "core/renderer/dom/fiber/text_element.h"
 #include "core/renderer/dom/fiber/view_element.h"
 #include "core/renderer/dom/fragment/display_list_builder.h"
+#include "core/renderer/dom/fragment/event/platform_event_handler.h"
+#include "core/renderer/dom/fragment/event/platform_event_target.h"
+#include "core/renderer/dom/fragment/event/platform_event_target_exposure.h"
 #include "core/renderer/dom/fragment/fragment_behavior.h"
 #include "core/renderer/dom/fragment/image_fragment_behavior.h"
+#include "core/renderer/dom/lynx_get_ui_result.h"
 #include "core/renderer/lynx_env_config.h"
 #include "core/renderer/starlight/types/layout_result.h"
 #include "core/renderer/tasm/react/testing/mock_painting_context.h"
@@ -93,6 +98,9 @@ class TestPlatformRenderer : public PlatformRendererImpl {
  public:
   TestPlatformRenderer(int id, PlatformRendererType type)
       : PlatformRendererImpl(id, type, base::String()) {}
+  TestPlatformRenderer(int id, PlatformRendererType type,
+                       const base::String& tag)
+      : PlatformRendererImpl(id, type, tag) {}
 
  protected:
   void OnUpdateDisplayList(DisplayList display_list) override {
@@ -115,9 +123,10 @@ class TestPlatformRendererFactory : public PlatformRendererFactory {
   }
 
   fml::RefPtr<PlatformRenderer> CreateExtendedRenderer(
-      int id, const base::String&, const fml::RefPtr<PropBundle>&) override {
+      int id, const base::String& tag_name,
+      const fml::RefPtr<PropBundle>&) override {
     return fml::MakeRefCounted<TestPlatformRenderer>(
-        id, PlatformRendererType::kExtended);
+        id, PlatformRendererType::kExtended, tag_name);
   }
 };
 
@@ -128,6 +137,7 @@ class TestNativePaintingCtxPlatformRef : public NativePaintingCtxPlatformRef {
             std::make_unique<TestPlatformRendererFactory>()) {}
 
   void GetPlatformRendererScrollOffset(int32_t sign, float offset[2]) override {
+    scroll_offset_query_counts[sign]++;
     auto it = scroll_offsets.find(sign);
     if (it == scroll_offsets.end()) {
       return;
@@ -140,9 +150,63 @@ class TestNativePaintingCtxPlatformRef : public NativePaintingCtxPlatformRef {
     return scrollable_signs.count(sign) > 0;
   }
 
+  void GetRootViewLocationOnScreen(float location[2]) override {
+    root_view_location_on_screen_query_count++;
+    location[0] = root_view_location_on_screen[0];
+    location[1] = root_view_location_on_screen[1];
+  }
+
+  void GetScreenSize(float size[2]) override {
+    screen_size_query_count++;
+    size[0] = screen_size[0];
+    size[1] = screen_size[1];
+  }
+
+  void MarkEventTargetRootDirtyForTest(int32_t root_id) {
+    MarkEventTargetRootDirty(root_id);
+  }
+
+  void MarkAllEventTargetRootsDirtyForTest() {
+    MarkEventTargetRootDirty(kRootId);
+    for (const auto root_id : GetEventTargetHelper()->GetActiveEventRootIds()) {
+      MarkEventTargetRootDirty(root_id);
+    }
+  }
+
   std::unordered_map<int32_t, std::array<float, 2>> scroll_offsets;
+  std::unordered_map<int32_t, int32_t> scroll_offset_query_counts;
   std::unordered_set<int32_t> scrollable_signs;
+  std::array<float, 2> root_view_location_on_screen{0.f, 0.f};
+  int32_t root_view_location_on_screen_query_count{0};
+  std::array<float, 2> screen_size{1000.f, 1000.f};
+  int32_t screen_size_query_count{0};
 };
+
+lepus::Value GetProperty(const lepus::Value& value, const char* key) {
+  return value.GetProperty(base::String(key));
+}
+
+lepus::Value CreateEventThroughActiveRegionsValue(
+    const std::array<const char*, 4>& region_values) {
+  auto region = lepus::CArray::Create();
+  for (const auto* value : region_values) {
+    region->push_back(lepus::Value(value));
+  }
+  auto regions = lepus::CArray::Create();
+  regions->push_back(lepus::Value(region));
+  return lepus::Value(regions);
+}
+
+lepus::Value CreateNumericEventThroughActiveRegionsValue(
+    const std::array<int32_t, 4>& region_values) {
+  auto region = lepus::CArray::Create();
+  for (const auto value : region_values) {
+    region->push_back(lepus::Value(value));
+  }
+  auto regions = lepus::CArray::Create();
+  regions->push_back(lepus::Value(region));
+  return lepus::Value(regions);
+}
 
 TEST_F(FragmentTest, CreateLayerIfNeededWritesFlattenInitData) {
   auto element = manager->CreateFiberText("text");
@@ -187,8 +251,9 @@ TEST_F(FragmentTest, ReusedEventTargetTreeRefreshesScrollOffsetForHitTest) {
   platform_ref.renderers_.insert_or_assign(1, scroll_renderer);
   platform_ref.scrollable_signs.insert(1);
   platform_ref.scroll_offsets[1] = {0.f, 0.f};
+  platform_ref.MarkEventTargetRootDirtyForTest(kRootId);
 
-  auto root_target = platform_ref.ReconstructEventTargetTreeRecursively();
+  auto root_target = platform_ref.EnsureEventTargetTree(kRootId);
   ASSERT_NE(root_target, nullptr);
 
   float point[2] = {10.f, 40.f};
@@ -197,12 +262,760 @@ TEST_F(FragmentTest, ReusedEventTargetTreeRefreshesScrollOffsetForHitTest) {
   EXPECT_EQ(hit_target->Sign(), 1);
 
   platform_ref.scroll_offsets[1] = {0.f, 30.f};
-  auto reused_root = platform_ref.ReconstructEventTargetTreeRecursively();
+  auto reused_root = platform_ref.EnsureEventTargetTree(kRootId);
 
   EXPECT_EQ(root_target.get(), reused_root.get());
   hit_target = reused_root->HitTest(point);
   ASSERT_NE(hit_target, nullptr);
   EXPECT_EQ(hit_target->Sign(), 2);
+}
+
+TEST_F(FragmentTest, ReconstructEventTargetTreeWithOverlayRoot) {
+  auto root_renderer = fml::MakeRefCounted<TestPlatformRenderer>(
+      kRootId, PlatformRendererType::kPage);
+  DisplayListBuilder root_builder;
+  root_builder
+      .Begin(kRootId, PlatformRendererType::kPage, 0.f, 0.f, 100.f, 100.f)
+      .DrawView(1)
+      .End();
+  root_renderer->UpdateDisplayList(root_builder.Build());
+
+  auto overlay_renderer = fml::MakeRefCounted<TestPlatformRenderer>(
+      1, PlatformRendererType::kExtended, base::String("overlay"));
+  DisplayListBuilder overlay_builder;
+  overlay_builder.Begin(1, PlatformRendererType::kExtended, 0.f, 0.f, 0.f, 0.f)
+      .Begin(2, PlatformRendererType::kView, 0.f, 0.f, 100.f, 100.f)
+      .End()
+      .End();
+  overlay_renderer->UpdateDisplayList(overlay_builder.Build());
+  root_renderer->AddChild(overlay_renderer);
+
+  TestNativePaintingCtxPlatformRef platform_ref;
+  platform_ref.renderers_.insert_or_assign(kRootId, root_renderer);
+  platform_ref.renderers_.insert_or_assign(1, overlay_renderer);
+  platform_ref.MarkAllEventTargetRootsDirtyForTest();
+
+  auto overlay_target = platform_ref.EnsureEventTargetTree(1);
+  EXPECT_EQ(overlay_target, nullptr);
+
+  auto root_target = platform_ref.EnsureEventTargetTree(kRootId);
+  ASSERT_NE(root_target, nullptr);
+  EXPECT_TRUE(root_target->IsRoot());
+  EXPECT_EQ(platform_ref.GetEventTargetHelper()->GetEventTarget(1), nullptr);
+
+  platform_ref.SetPlatformEventRootActive(1, true);
+  overlay_target = platform_ref.EnsureEventTargetTree(1);
+  ASSERT_NE(overlay_target, nullptr);
+  EXPECT_EQ(overlay_target->Sign(), 1);
+  EXPECT_TRUE(overlay_target->IsRoot());
+  EXPECT_EQ(overlay_target->ParentTarget().get(), nullptr);
+
+  auto active_overlay_target =
+      platform_ref.GetEventTargetHelper()->GetEventTarget(1);
+  ASSERT_NE(active_overlay_target, nullptr);
+  EXPECT_EQ(active_overlay_target.get(), overlay_target.get());
+
+  float point[2] = {10.f, 10.f};
+  auto hit_target = overlay_target->HitTest(point);
+  ASSERT_NE(hit_target, nullptr);
+  EXPECT_EQ(hit_target->Sign(), 2);
+  EXPECT_FALSE(hit_target->IsRoot());
+  auto hit_parent = hit_target->ParentTarget();
+  ASSERT_NE(hit_parent, nullptr);
+  EXPECT_EQ(hit_parent.get(), overlay_target.get());
+  EXPECT_EQ(hit_parent->ParentTarget().get(), nullptr);
+
+  platform_ref.GetEventTargetHelper()->event_target_trees_.erase(1);
+  EXPECT_TRUE(platform_ref.EnsureEventTargetTreeForTarget(2));
+  overlay_target = platform_ref.GetEventTargetHelper()->GetEventRootTree(1);
+  ASSERT_NE(overlay_target, nullptr);
+  EXPECT_NE(platform_ref.GetEventTargetHelper()->GetEventTarget(2), nullptr);
+
+  platform_ref.GetEventTargetHelper()->RemoveEventTargetsInEventRoot(1);
+  platform_ref.GetEventTargetHelper()->event_target_trees_.erase(1);
+  EXPECT_EQ(platform_ref.GetEventTargetHelper()->GetEventTarget(2), nullptr);
+  EXPECT_TRUE(platform_ref.EnsureEventTargetTreeForTarget(2));
+  EXPECT_NE(platform_ref.GetEventTargetHelper()->GetEventTarget(2), nullptr);
+  EXPECT_NE(platform_ref.GetEventTargetHelper()->GetEventRootTree(1), nullptr);
+
+  DisplayListBuilder overlay_without_child_builder;
+  overlay_without_child_builder
+      .Begin(1, PlatformRendererType::kExtended, 0.f, 0.f, 0.f, 0.f)
+      .End();
+  overlay_renderer->UpdateDisplayList(overlay_without_child_builder.Build());
+  platform_ref.GetEventTargetHelper()->event_target_trees_.erase(1);
+  ASSERT_NE(platform_ref.GetEventTargetHelper()->GetEventTarget(2), nullptr);
+  ASSERT_NE(platform_ref.EnsureEventTargetTree(1), nullptr);
+  EXPECT_EQ(platform_ref.GetEventTargetHelper()->GetEventTarget(2), nullptr);
+
+  platform_ref.SetPlatformEventRootActive(1, false);
+  EXPECT_EQ(platform_ref.EnsureEventTargetTree(1), nullptr);
+  EXPECT_EQ(platform_ref.GetEventTargetHelper()->GetEventTarget(1), nullptr);
+}
+
+TEST_F(FragmentTest, ReusedOverlayRootOnlyRefreshesOverlayScrollOffset) {
+  auto root_renderer = fml::MakeRefCounted<TestPlatformRenderer>(
+      kRootId, PlatformRendererType::kPage);
+  DisplayListBuilder root_builder;
+  root_builder
+      .Begin(kRootId, PlatformRendererType::kPage, 0.f, 0.f, 100.f, 100.f)
+      .DrawView(1)
+      .DrawView(2)
+      .End();
+  root_renderer->UpdateDisplayList(root_builder.Build());
+
+  auto page_scroll_renderer = fml::MakeRefCounted<TestPlatformRenderer>(
+      1, PlatformRendererType::kScroll);
+  DisplayListBuilder page_scroll_builder;
+  page_scroll_builder
+      .Begin(1, PlatformRendererType::kScroll, 0.f, 0.f, 100.f, 100.f)
+      .End();
+  page_scroll_renderer->UpdateDisplayList(page_scroll_builder.Build());
+  root_renderer->AddChild(page_scroll_renderer);
+
+  auto overlay_renderer = fml::MakeRefCounted<TestPlatformRenderer>(
+      2, PlatformRendererType::kExtended, base::String("overlay"));
+  DisplayListBuilder overlay_builder;
+  overlay_builder
+      .Begin(2, PlatformRendererType::kExtended, 0.f, 0.f, 100.f, 100.f)
+      .Begin(3, PlatformRendererType::kScroll, 0.f, 0.f, 100.f, 100.f)
+      .End()
+      .End();
+  overlay_renderer->UpdateDisplayList(overlay_builder.Build());
+  root_renderer->AddChild(overlay_renderer);
+
+  TestNativePaintingCtxPlatformRef platform_ref;
+  platform_ref.renderers_.insert_or_assign(kRootId, root_renderer);
+  platform_ref.renderers_.insert_or_assign(1, page_scroll_renderer);
+  platform_ref.renderers_.insert_or_assign(2, overlay_renderer);
+  platform_ref.scrollable_signs.insert(1);
+  platform_ref.scrollable_signs.insert(3);
+  platform_ref.MarkAllEventTargetRootsDirtyForTest();
+
+  platform_ref.SetPlatformEventRootActive(2, true);
+  platform_ref.scroll_offset_query_counts.clear();
+
+  auto overlay_target = platform_ref.EnsureEventTargetTree(2);
+  ASSERT_NE(overlay_target, nullptr);
+  EXPECT_EQ(platform_ref.scroll_offset_query_counts[1], 0);
+  EXPECT_EQ(platform_ref.scroll_offset_query_counts[3], 1);
+}
+
+TEST_F(FragmentTest, ReusedPageRootOnlyRefreshesPageRootScrollOffset) {
+  auto root_renderer = fml::MakeRefCounted<TestPlatformRenderer>(
+      kRootId, PlatformRendererType::kPage);
+  DisplayListBuilder root_builder;
+  root_builder
+      .Begin(kRootId, PlatformRendererType::kPage, 0.f, 0.f, 100.f, 100.f)
+      .DrawView(1)
+      .DrawView(2)
+      .End();
+  root_renderer->UpdateDisplayList(root_builder.Build());
+
+  auto page_scroll_renderer = fml::MakeRefCounted<TestPlatformRenderer>(
+      1, PlatformRendererType::kScroll);
+  DisplayListBuilder page_scroll_builder;
+  page_scroll_builder
+      .Begin(1, PlatformRendererType::kScroll, 0.f, 0.f, 100.f, 100.f)
+      .End();
+  page_scroll_renderer->UpdateDisplayList(page_scroll_builder.Build());
+  root_renderer->AddChild(page_scroll_renderer);
+
+  auto overlay_renderer = fml::MakeRefCounted<TestPlatformRenderer>(
+      2, PlatformRendererType::kExtended, base::String("overlay"));
+  DisplayListBuilder overlay_builder;
+  overlay_builder
+      .Begin(2, PlatformRendererType::kExtended, 0.f, 0.f, 100.f, 100.f)
+      .Begin(3, PlatformRendererType::kScroll, 0.f, 0.f, 100.f, 100.f)
+      .End()
+      .End();
+  overlay_renderer->UpdateDisplayList(overlay_builder.Build());
+  root_renderer->AddChild(overlay_renderer);
+
+  TestNativePaintingCtxPlatformRef platform_ref;
+  platform_ref.renderers_.insert_or_assign(kRootId, root_renderer);
+  platform_ref.renderers_.insert_or_assign(1, page_scroll_renderer);
+  platform_ref.renderers_.insert_or_assign(2, overlay_renderer);
+  platform_ref.scrollable_signs.insert(1);
+  platform_ref.scrollable_signs.insert(3);
+  platform_ref.MarkAllEventTargetRootsDirtyForTest();
+
+  platform_ref.SetPlatformEventRootActive(2, true);
+  platform_ref.scroll_offset_query_counts.clear();
+
+  auto root_target = platform_ref.EnsureEventTargetTree(kRootId);
+  ASSERT_NE(root_target, nullptr);
+  EXPECT_EQ(platform_ref.scroll_offset_query_counts[1], 1);
+  EXPECT_EQ(platform_ref.scroll_offset_query_counts[3], 0);
+}
+
+TEST_F(FragmentTest, DirtyOverlayRootOnlyReconstructsOverlayRoot) {
+  auto root_renderer = fml::MakeRefCounted<TestPlatformRenderer>(
+      kRootId, PlatformRendererType::kPage);
+  DisplayListBuilder root_builder;
+  root_builder
+      .Begin(kRootId, PlatformRendererType::kPage, 0.f, 0.f, 100.f, 100.f)
+      .DrawView(1)
+      .DrawView(2)
+      .End();
+  root_renderer->UpdateDisplayList(root_builder.Build());
+
+  auto page_scroll_renderer = fml::MakeRefCounted<TestPlatformRenderer>(
+      1, PlatformRendererType::kScroll);
+  DisplayListBuilder page_scroll_builder;
+  page_scroll_builder
+      .Begin(1, PlatformRendererType::kScroll, 0.f, 0.f, 100.f, 100.f)
+      .End();
+  page_scroll_renderer->UpdateDisplayList(page_scroll_builder.Build());
+  root_renderer->AddChild(page_scroll_renderer);
+
+  auto overlay_renderer = fml::MakeRefCounted<TestPlatformRenderer>(
+      2, PlatformRendererType::kExtended, base::String("overlay"));
+  DisplayListBuilder overlay_builder;
+  overlay_builder
+      .Begin(2, PlatformRendererType::kExtended, 0.f, 0.f, 100.f, 100.f)
+      .Begin(3, PlatformRendererType::kScroll, 0.f, 0.f, 100.f, 100.f)
+      .End()
+      .End();
+  overlay_renderer->UpdateDisplayList(overlay_builder.Build());
+  root_renderer->AddChild(overlay_renderer);
+
+  TestNativePaintingCtxPlatformRef platform_ref;
+  platform_ref.renderers_.insert_or_assign(kRootId, root_renderer);
+  platform_ref.renderers_.insert_or_assign(1, page_scroll_renderer);
+  platform_ref.renderers_.insert_or_assign(2, overlay_renderer);
+  platform_ref.scrollable_signs.insert(1);
+  platform_ref.scrollable_signs.insert(3);
+  platform_ref.MarkAllEventTargetRootsDirtyForTest();
+  platform_ref.SetPlatformEventRootActive(2, true);
+  platform_ref.scroll_offset_query_counts.clear();
+
+  DisplayListBuilder dirty_overlay_builder;
+  dirty_overlay_builder
+      .Begin(2, PlatformRendererType::kExtended, 0.f, 0.f, 100.f, 100.f)
+      .Begin(3, PlatformRendererType::kScroll, 0.f, 0.f, 100.f, 100.f)
+      .End()
+      .Begin(4, PlatformRendererType::kView, 0.f, 0.f, 10.f, 10.f)
+      .End()
+      .End();
+  platform_ref.UpdateDisplayList(2, dirty_overlay_builder.Build());
+
+  auto overlay_target = platform_ref.EnsureEventTargetTree(2);
+  ASSERT_NE(overlay_target, nullptr);
+  EXPECT_EQ(platform_ref.scroll_offset_query_counts[1], 0);
+  EXPECT_EQ(platform_ref.scroll_offset_query_counts[3], 1);
+  EXPECT_NE(platform_ref.GetEventTargetHelper()->GetEventTarget(4), nullptr);
+}
+
+TEST_F(FragmentTest, OverlayRootConvertsToPageRootCoordinates) {
+  auto root_renderer = fml::MakeRefCounted<TestPlatformRenderer>(
+      kRootId, PlatformRendererType::kPage);
+  DisplayListBuilder root_builder;
+  root_builder
+      .Begin(kRootId, PlatformRendererType::kPage, 0.f, 0.f, 200.f, 200.f)
+      .DrawView(1)
+      .End();
+  root_renderer->UpdateDisplayList(root_builder.Build());
+
+  auto overlay_renderer = fml::MakeRefCounted<TestPlatformRenderer>(
+      1, PlatformRendererType::kExtended, base::String("overlay"));
+  DisplayListBuilder overlay_builder;
+  overlay_builder
+      .Begin(1, PlatformRendererType::kExtended, 0.f, 0.f, 100.f, 100.f)
+      .Begin(2, PlatformRendererType::kView, 5.f, 7.f, 40.f, 30.f)
+      .End()
+      .End();
+  overlay_renderer->UpdateDisplayList(overlay_builder.Build());
+  root_renderer->AddChild(overlay_renderer);
+
+  TestNativePaintingCtxPlatformRef platform_ref;
+  platform_ref.renderers_.insert_or_assign(kRootId, root_renderer);
+  platform_ref.renderers_.insert_or_assign(1, overlay_renderer);
+  platform_ref.root_view_location_on_screen = {100.f, 200.f};
+  platform_ref.MarkAllEventTargetRootsDirtyForTest();
+  platform_ref.SetPlatformEventRootOffset(1, 20.f, 30.f);
+  platform_ref.SetPlatformEventRootActive(1, true);
+
+  auto overlay_target = platform_ref.EnsureEventTargetTree(1);
+  ASSERT_NE(overlay_target, nullptr);
+  auto child_target = platform_ref.GetEventTargetHelper()->GetEventTarget(2);
+  ASSERT_NE(child_target, nullptr);
+
+  float root_point[2] = {6.f, 8.f};
+  float target_point[2] = {0.f, 0.f};
+  platform_ref.GetEventTargetHelper()->ConvertPointFromAncestorToDescendant(
+      target_point, overlay_target, child_target, root_point);
+  EXPECT_FLOAT_EQ(target_point[0], 1.f);
+  EXPECT_FLOAT_EQ(target_point[1], 1.f);
+
+  float page_point[2] = {root_point[0], root_point[1]};
+  platform_ref.GetEventTargetHelper()->ConvertPointFromTargetToPageRootTarget(
+      page_point, overlay_target, page_point);
+  EXPECT_FLOAT_EQ(page_point[0], 26.f);
+  EXPECT_FLOAT_EQ(page_point[1], 38.f);
+
+  float client_point[2] = {root_point[0], root_point[1]};
+  platform_ref.GetEventTargetHelper()->ConvertPointFromTargetToScreen(
+      client_point, overlay_target, client_point);
+  EXPECT_FLOAT_EQ(client_point[0], 126.f);
+  EXPECT_FLOAT_EQ(client_point[1], 238.f);
+
+  int32_t callback_code = LynxGetUIResult::UNKNOWN;
+  lepus::Value callback_data;
+  platform_ref.GetEventTargetHelper()->InvokeMethod(
+      2, "boundingClientRect", lepus::Value(),
+      [&callback_code, &callback_data](int32_t code, const lepus::Value& data) {
+        callback_code = code;
+        callback_data = data;
+      });
+  EXPECT_EQ(callback_code, LynxGetUIResult::SUCCESS);
+  EXPECT_FLOAT_EQ(GetProperty(callback_data, "left").Number(), 25.f);
+  EXPECT_FLOAT_EQ(GetProperty(callback_data, "top").Number(), 37.f);
+  EXPECT_FLOAT_EQ(GetProperty(callback_data, "right").Number(), 65.f);
+  EXPECT_FLOAT_EQ(GetProperty(callback_data, "bottom").Number(), 67.f);
+}
+
+TEST_F(FragmentTest, MeaningfulPaintingAreaUsesPageRootCoordinatesForOverlay) {
+  auto root_renderer = fml::MakeRefCounted<TestPlatformRenderer>(
+      kRootId, PlatformRendererType::kPage);
+  DisplayListBuilder root_builder;
+  root_builder
+      .Begin(kRootId, PlatformRendererType::kPage, 0.f, 0.f, 200.f, 200.f)
+      .DrawView(1)
+      .End();
+  root_renderer->UpdateDisplayList(root_builder.Build());
+
+  auto overlay_renderer = fml::MakeRefCounted<TestPlatformRenderer>(
+      1, PlatformRendererType::kExtended, base::String("overlay"));
+  DisplayListBuilder overlay_builder;
+  overlay_builder
+      .Begin(1, PlatformRendererType::kExtended, 0.f, 0.f, 100.f, 100.f)
+      .Begin(2, PlatformRendererType::kText, 5.f, 7.f, 40.f, 30.f)
+      .End()
+      .End();
+  overlay_renderer->UpdateDisplayList(overlay_builder.Build());
+  root_renderer->AddChild(overlay_renderer);
+
+  TestNativePaintingCtxPlatformRef platform_ref;
+  platform_ref.renderers_.insert_or_assign(kRootId, root_renderer);
+  platform_ref.renderers_.insert_or_assign(1, overlay_renderer);
+  platform_ref.MarkAllEventTargetRootsDirtyForTest();
+  platform_ref.SetPlatformEventRootOffset(1, 20.f, 30.f);
+  platform_ref.SetPlatformEventRootActive(1, true);
+
+  platform_ref.GetEventTargetHelper()->event_target_trees_.erase(1);
+  auto records = platform_ref.CollectMeaningfulPaintingAreaRecords();
+
+  bool found_overlay_child = false;
+  for (size_t i = 0; i + 5 < records.size(); i += 6) {
+    if (records[i] != 2) {
+      continue;
+    }
+    found_overlay_child = true;
+    EXPECT_EQ(records[i + 1],
+              static_cast<int32_t>(PlatformRendererType::kText));
+    EXPECT_EQ(records[i + 2], 25);
+    EXPECT_EQ(records[i + 3], 37);
+    EXPECT_EQ(records[i + 4], 40);
+    EXPECT_EQ(records[i + 5], 30);
+  }
+  EXPECT_TRUE(found_overlay_child);
+}
+
+TEST_F(FragmentTest, ExposureCheckCachesScreenSizeUntilInvalidated) {
+  auto root_renderer = fml::MakeRefCounted<TestPlatformRenderer>(
+      kRootId, PlatformRendererType::kPage);
+  DisplayListBuilder root_builder;
+  root_builder
+      .Begin(kRootId, PlatformRendererType::kPage, 0.f, 0.f, 200.f, 200.f)
+      .Begin(1, PlatformRendererType::kView, 0.f, 0.f, 50.f, 50.f)
+      .End()
+      .End();
+  root_renderer->UpdateDisplayList(root_builder.Build());
+
+  TestNativePaintingCtxPlatformRef platform_ref;
+  platform_ref.renderers_.insert_or_assign(kRootId, root_renderer);
+  platform_ref.screen_size = {200.f, 200.f};
+  platform_ref.MarkAllEventTargetRootsDirtyForTest();
+
+  auto root_target = platform_ref.EnsureEventTargetTree(kRootId);
+  ASSERT_NE(root_target, nullptr);
+  auto target = platform_ref.GetEventTargetHelper()->GetEventTarget(1);
+  ASSERT_NE(target, nullptr);
+
+  BASE_STATIC_STRING_DECL(kUniqueId, "unique-id");
+  BASE_STATIC_STRING_DECL(kIsCustomEvent, "is-custom-event");
+  BASE_STATIC_STRING_DECL(kIsGlobalEvent, "is-global-event");
+  BASE_STATIC_STRING_DECL(kInterceptGlobalEvent, "intercept-global-event");
+  auto option = lepus::Dictionary::Create();
+  option->SetValue(kUniqueId, "target-1");
+  option->SetValue(kIsCustomEvent, true);
+  option->SetValue(kIsGlobalEvent, false);
+  option->SetValue(kInterceptGlobalEvent, false);
+  platform_ref.AddPlatformEventTargetToExposure(target, lepus::Value(option));
+  platform_ref.screen_size_query_count = 0;
+
+  platform_ref.event_target_exposure_->DoExposureCheck();
+  platform_ref.event_target_exposure_->DoExposureCheck();
+  EXPECT_EQ(platform_ref.screen_size_query_count, 1);
+
+  platform_ref.SetPlatformEventRootOffset(1, 10.f, 10.f);
+  platform_ref.event_target_exposure_->DoExposureCheck();
+  EXPECT_EQ(platform_ref.screen_size_query_count, 1);
+
+  platform_ref.event_target_exposure_->InvalidateWindowRect();
+  platform_ref.event_target_exposure_->DoExposureCheck();
+  EXPECT_EQ(platform_ref.screen_size_query_count, 2);
+}
+
+TEST_F(FragmentTest, ExposureCheckRefreshesEachEventTreeOnce) {
+  auto root_renderer = fml::MakeRefCounted<TestPlatformRenderer>(
+      kRootId, PlatformRendererType::kPage);
+  DisplayListBuilder root_builder;
+  root_builder
+      .Begin(kRootId, PlatformRendererType::kPage, 0.f, 0.f, 200.f, 200.f)
+      .DrawView(1)
+      .DrawView(2)
+      .End();
+  root_renderer->UpdateDisplayList(root_builder.Build());
+
+  auto page_scroll_renderer = fml::MakeRefCounted<TestPlatformRenderer>(
+      1, PlatformRendererType::kScroll);
+  DisplayListBuilder page_scroll_builder;
+  page_scroll_builder
+      .Begin(1, PlatformRendererType::kScroll, 0.f, 0.f, 100.f, 100.f)
+      .End();
+  page_scroll_renderer->UpdateDisplayList(page_scroll_builder.Build());
+  root_renderer->AddChild(page_scroll_renderer);
+
+  auto overlay_renderer = fml::MakeRefCounted<TestPlatformRenderer>(
+      2, PlatformRendererType::kExtended, base::String("overlay"));
+  DisplayListBuilder overlay_builder;
+  overlay_builder
+      .Begin(2, PlatformRendererType::kExtended, 0.f, 0.f, 100.f, 100.f)
+      .Begin(3, PlatformRendererType::kScroll, 0.f, 0.f, 100.f, 100.f)
+      .End()
+      .End();
+  overlay_renderer->UpdateDisplayList(overlay_builder.Build());
+  root_renderer->AddChild(overlay_renderer);
+
+  TestNativePaintingCtxPlatformRef platform_ref;
+  platform_ref.renderers_.insert_or_assign(kRootId, root_renderer);
+  platform_ref.renderers_.insert_or_assign(1, page_scroll_renderer);
+  platform_ref.renderers_.insert_or_assign(2, overlay_renderer);
+  platform_ref.scrollable_signs.insert(1);
+  platform_ref.scrollable_signs.insert(3);
+  platform_ref.screen_size = {200.f, 200.f};
+  base::Vector<PlatformEventName> event_names;
+  event_names.push_back(PlatformEventName::kUIAppear);
+  platform_ref.UpdatePlatformEventBundle(
+      3, PlatformEventBundle(PlatformEventPropMap(), std::move(event_names)));
+  platform_ref.MarkAllEventTargetRootsDirtyForTest();
+  platform_ref.SetPlatformEventRootActive(2, true);
+  platform_ref.scroll_offset_query_counts.clear();
+
+  platform_ref.event_target_exposure_->DoExposureCheck();
+
+  EXPECT_EQ(platform_ref.scroll_offset_query_counts[1], 1);
+  EXPECT_EQ(platform_ref.scroll_offset_query_counts[3], 1);
+}
+
+TEST_F(FragmentTest, ExposureRebuildRefreshesVisibleTargetRef) {
+  auto root_renderer = fml::MakeRefCounted<TestPlatformRenderer>(
+      kRootId, PlatformRendererType::kPage);
+  DisplayListBuilder root_builder;
+  root_builder
+      .Begin(kRootId, PlatformRendererType::kPage, 0.f, 0.f, 200.f, 200.f)
+      .Begin(1, PlatformRendererType::kView, 0.f, 0.f, 50.f, 50.f)
+      .End()
+      .End();
+  root_renderer->UpdateDisplayList(root_builder.Build());
+
+  TestNativePaintingCtxPlatformRef platform_ref;
+  platform_ref.renderers_.insert_or_assign(kRootId, root_renderer);
+  platform_ref.MarkAllEventTargetRootsDirtyForTest();
+  base::Vector<PlatformEventName> event_names;
+  event_names.push_back(PlatformEventName::kUIAppear);
+  platform_ref.UpdatePlatformEventBundle(
+      1, PlatformEventBundle(PlatformEventPropMap(), std::move(event_names)));
+
+  ASSERT_NE(platform_ref.EnsureEventTargetTree(kRootId), nullptr);
+  auto old_target = platform_ref.GetEventTargetHelper()->GetEventTarget(1);
+  ASSERT_NE(old_target, nullptr);
+
+  auto detail_it =
+      platform_ref.event_target_exposure_->exposure_target_map_.find("1__");
+  ASSERT_NE(detail_it,
+            platform_ref.event_target_exposure_->exposure_target_map_.end());
+  platform_ref.event_target_exposure_->visible_target_before_.insert(
+      detail_it->second);
+
+  DisplayListBuilder updated_root_builder;
+  updated_root_builder
+      .Begin(kRootId, PlatformRendererType::kPage, 0.f, 0.f, 200.f, 200.f)
+      .Begin(1, PlatformRendererType::kView, 0.f, 0.f, 60.f, 60.f)
+      .End()
+      .End();
+  platform_ref.UpdateDisplayList(kRootId, updated_root_builder.Build());
+  ASSERT_NE(platform_ref.EnsureEventTargetTree(kRootId), nullptr);
+
+  auto new_target = platform_ref.GetEventTargetHelper()->GetEventTarget(1);
+  ASSERT_NE(new_target, nullptr);
+  EXPECT_NE(old_target.get(), new_target.get());
+  ASSERT_EQ(platform_ref.event_target_exposure_->visible_target_before_.size(),
+            1u);
+  const auto& rebuilt_visible_detail =
+      *platform_ref.event_target_exposure_->visible_target_before_.begin();
+  EXPECT_EQ(rebuilt_visible_detail.Target().get(), new_target.get());
+
+  platform_ref.event_target_exposure_->ClearExposureTargetMap();
+  platform_ref.event_target_exposure_->DidRebuildExposureTargetMap();
+  ASSERT_EQ(platform_ref.event_target_exposure_->visible_target_before_.size(),
+            1u);
+  const auto& stale_visible_detail =
+      *platform_ref.event_target_exposure_->visible_target_before_.begin();
+  EXPECT_EQ(stale_visible_detail.UniqueId(), "1__");
+  EXPECT_EQ(stale_visible_detail.Target().get(), nullptr);
+}
+
+TEST_F(FragmentTest, PlatformEventTargetEventThroughAndActiveRegions) {
+  auto root_renderer = fml::MakeRefCounted<TestPlatformRenderer>(
+      kRootId, PlatformRendererType::kPage);
+  DisplayListBuilder root_builder;
+  root_builder
+      .Begin(kRootId, PlatformRendererType::kPage, 0.f, 0.f, 100.f, 100.f)
+      .Begin(1, PlatformRendererType::kView, 10.f, 10.f, 80.f, 80.f)
+      .Begin(2, PlatformRendererType::kView, 10.f, 10.f, 40.f, 40.f)
+      .End()
+      .End()
+      .End();
+  root_renderer->UpdateDisplayList(root_builder.Build());
+
+  PlatformEventPropMap parent_props;
+  parent_props.insert_or_assign(PlatformEventPropName::kEventThrough,
+                                lepus::Value(true));
+  PlatformEventPropMap child_props;
+  child_props.insert_or_assign(
+      PlatformEventPropName::kEventThroughActiveRegions,
+      CreateEventThroughActiveRegionsValue({"0px", "0px", "40px", "20px"}));
+
+  TestNativePaintingCtxPlatformRef platform_ref;
+  platform_ref.renderers_.insert_or_assign(kRootId, root_renderer);
+  platform_ref.UpdatePlatformEventBundle(
+      1, PlatformEventBundle(std::move(parent_props),
+                             base::Vector<PlatformEventName>()));
+  platform_ref.UpdatePlatformEventBundle(
+      2, PlatformEventBundle(std::move(child_props),
+                             base::Vector<PlatformEventName>()));
+  platform_ref.MarkAllEventTargetRootsDirtyForTest();
+
+  auto root_target = platform_ref.EnsureEventTargetTree(kRootId);
+  ASSERT_NE(root_target, nullptr);
+
+  float root_point[2] = {25.f, 25.f};
+  auto hit_target = root_target->HitTest(root_point);
+  ASSERT_NE(hit_target, nullptr);
+  EXPECT_EQ(hit_target->Sign(), 2);
+
+  float hit_region_point[2] = {5.f, 5.f};
+  EXPECT_TRUE(hit_target->EventThrough(hit_region_point));
+
+  float outside_region_point[2] = {5.f, 30.f};
+  EXPECT_FALSE(hit_target->EventThrough(outside_region_point));
+
+  int int_event_data[] = {0, 0, 0, 1};
+  float hit_region_event_data[] = {0.f, 25.f, 25.f};
+  EXPECT_FALSE(platform_ref.DispatchPlatformInputEvent(
+      int_event_data, hit_region_event_data, kRootId));
+
+  float outside_region_event_data[] = {0.f, 25.f, 50.f};
+  EXPECT_TRUE(platform_ref.DispatchPlatformInputEvent(
+      int_event_data, outside_region_event_data, kRootId));
+}
+
+TEST_F(FragmentTest, PlatformEventTargetMovePastTapSlopCannotRespondTap) {
+  auto root_renderer = fml::MakeRefCounted<TestPlatformRenderer>(
+      kRootId, PlatformRendererType::kPage);
+  DisplayListBuilder root_builder;
+  root_builder
+      .Begin(kRootId, PlatformRendererType::kPage, 0.f, 0.f, 100.f, 100.f)
+      .Begin(1, PlatformRendererType::kView, 0.f, 0.f, 100.f, 100.f)
+      .End()
+      .End();
+  root_renderer->UpdateDisplayList(root_builder.Build());
+
+  base::Vector<PlatformEventName> event_names;
+  event_names.push_back(PlatformEventName::kClick);
+
+  TestNativePaintingCtxPlatformRef platform_ref;
+  platform_ref.renderers_.insert_or_assign(kRootId, root_renderer);
+  platform_ref.UpdatePlatformEventBundle(
+      1, PlatformEventBundle(PlatformEventPropMap(), std::move(event_names)));
+  platform_ref.MarkAllEventTargetRootsDirtyForTest();
+
+  auto root_target = platform_ref.EnsureEventTargetTree(kRootId);
+  ASSERT_NE(root_target, nullptr);
+
+  int down_event_data[] = {0, 0, 0, 1};
+  float down_pointer_data[] = {0.f, 10.f, 10.f};
+  EXPECT_TRUE(platform_ref.DispatchPlatformInputEvent(
+      down_event_data, down_pointer_data, kRootId));
+  EXPECT_FALSE(platform_ref.event_handler_->first_pointer_moved_);
+
+  int move_event_data[] = {0, 2, 0, 1};
+  float move_pointer_data[] = {0.f, 30.f, 10.f};
+  EXPECT_TRUE(platform_ref.DispatchPlatformInputEvent(
+      move_event_data, move_pointer_data, kRootId));
+
+  EXPECT_TRUE(platform_ref.event_handler_->first_pointer_moved_);
+  EXPECT_FALSE(platform_ref.event_handler_->CanRespondTap(
+      platform_ref.event_handler_->first_target_));
+}
+
+TEST_F(FragmentTest, PlatformEventTargetActiveRegionsRejectNumberValues) {
+  auto root_renderer = fml::MakeRefCounted<TestPlatformRenderer>(
+      kRootId, PlatformRendererType::kPage);
+  DisplayListBuilder root_builder;
+  root_builder
+      .Begin(kRootId, PlatformRendererType::kPage, 0.f, 0.f, 100.f, 100.f)
+      .Begin(1, PlatformRendererType::kView, 0.f, 0.f, 100.f, 100.f)
+      .End()
+      .End();
+  root_renderer->UpdateDisplayList(root_builder.Build());
+
+  PlatformEventPropMap child_props;
+  child_props.insert_or_assign(PlatformEventPropName::kEventThrough,
+                               lepus::Value(true));
+  child_props.insert_or_assign(
+      PlatformEventPropName::kEventThroughActiveRegions,
+      CreateNumericEventThroughActiveRegionsValue({0, 0, 50, 50}));
+
+  TestNativePaintingCtxPlatformRef platform_ref;
+  platform_ref.renderers_.insert_or_assign(kRootId, root_renderer);
+  platform_ref.UpdatePlatformEventBundle(
+      1, PlatformEventBundle(std::move(child_props),
+                             base::Vector<PlatformEventName>()));
+  platform_ref.MarkAllEventTargetRootsDirtyForTest();
+
+  auto root_target = platform_ref.EnsureEventTargetTree(kRootId);
+  ASSERT_NE(root_target, nullptr);
+
+  float point[2] = {75.f, 75.f};
+  auto hit_target = root_target->HitTest(point);
+  ASSERT_NE(hit_target, nullptr);
+  EXPECT_EQ(hit_target->Sign(), 1);
+  EXPECT_TRUE(hit_target->EventThrough(point));
+}
+
+TEST_F(FragmentTest, PlatformEventTargetEventsPassThroughOnlyAffectsSelf) {
+  auto root_renderer = fml::MakeRefCounted<TestPlatformRenderer>(
+      kRootId, PlatformRendererType::kPage);
+  DisplayListBuilder root_builder;
+  root_builder
+      .Begin(kRootId, PlatformRendererType::kPage, 0.f, 0.f, 100.f, 100.f)
+      .DrawView(1)
+      .End();
+  root_renderer->UpdateDisplayList(root_builder.Build());
+
+  auto overlay_renderer = fml::MakeRefCounted<TestPlatformRenderer>(
+      1, PlatformRendererType::kExtended, base::String("overlay"));
+  DisplayListBuilder overlay_builder;
+  overlay_builder
+      .Begin(1, PlatformRendererType::kExtended, 0.f, 0.f, 100.f, 100.f)
+      .Begin(2, PlatformRendererType::kView, 0.f, 0.f, 50.f, 50.f)
+      .End()
+      .End();
+  overlay_renderer->UpdateDisplayList(overlay_builder.Build());
+  root_renderer->AddChild(overlay_renderer);
+
+  PlatformEventPropMap overlay_props;
+  overlay_props.insert_or_assign(PlatformEventPropName::kEventsPassThrough,
+                                 lepus::Value(true));
+
+  TestNativePaintingCtxPlatformRef platform_ref;
+  platform_ref.renderers_.insert_or_assign(kRootId, root_renderer);
+  platform_ref.renderers_.insert_or_assign(1, overlay_renderer);
+  platform_ref.UpdatePlatformEventBundle(
+      1, PlatformEventBundle(std::move(overlay_props),
+                             base::Vector<PlatformEventName>()));
+  platform_ref.MarkAllEventTargetRootsDirtyForTest();
+
+  platform_ref.SetPlatformEventRootActive(1, true);
+  auto overlay_target = platform_ref.EnsureEventTargetTree(1);
+  ASSERT_NE(overlay_target, nullptr);
+
+  float root_area_point[2] = {75.f, 75.f};
+  auto hit_target = overlay_target->HitTest(root_area_point);
+  ASSERT_NE(hit_target, nullptr);
+  EXPECT_EQ(hit_target->Sign(), 1);
+  EXPECT_TRUE(hit_target->EventThrough(root_area_point));
+  int int_event_data[] = {0, 0, 0, 1};
+  float root_area_pointer_data[] = {0.f, root_area_point[0],
+                                    root_area_point[1]};
+  EXPECT_FALSE(platform_ref.DispatchPlatformInputEvent(
+      int_event_data, root_area_pointer_data, 1));
+  EXPECT_EQ(platform_ref.GetPlatformEventHandlerState(),
+            PlatformEventHandler::kStateEventThrough);
+
+  float child_area_point[2] = {10.f, 10.f};
+  hit_target = overlay_target->HitTest(child_area_point);
+  ASSERT_NE(hit_target, nullptr);
+  EXPECT_EQ(hit_target->Sign(), 2);
+  EXPECT_FALSE(hit_target->EventThrough(child_area_point));
+  float child_area_pointer_data[] = {0.f, child_area_point[0],
+                                     child_area_point[1]};
+  EXPECT_TRUE(platform_ref.DispatchPlatformInputEvent(
+      int_event_data, child_area_pointer_data, 1));
+  EXPECT_EQ(platform_ref.GetPlatformEventHandlerState(),
+            PlatformEventHandler::kStateNone);
+}
+
+TEST_F(FragmentTest, EventThroughStopsInheritingAtPageRoot) {
+  auto page_root = fml::MakeRefCounted<PlatformEventTarget>(
+      nullptr, kRootId, kRootId, 0.f, 0.f, 100.f, 100.f);
+  auto child = fml::MakeRefCounted<PlatformEventTarget>(nullptr, kRootId, 1,
+                                                        0.f, 0.f, 20.f, 20.f);
+  page_root->SetEventThrough(LynxEventPropStatus::kEnable);
+  page_root->AddChildTarget(child);
+
+  float point[2] = {10.f, 10.f};
+  EXPECT_FALSE(child->EventThrough(point));
+}
+
+TEST_F(FragmentTest, EventThroughInheritsFromIndependentEventRoot) {
+  constexpr int32_t kOverlayRootId = 42;
+  auto overlay_root = fml::MakeRefCounted<PlatformEventTarget>(
+      nullptr, kOverlayRootId, kOverlayRootId, 0.f, 0.f, 100.f, 100.f);
+  auto child = fml::MakeRefCounted<PlatformEventTarget>(
+      nullptr, kOverlayRootId, 43, 0.f, 0.f, 100.f, 100.f);
+  overlay_root->SetEventThrough(LynxEventPropStatus::kEnable);
+  overlay_root->AddChildTarget(child);
+
+  float point[2] = {10.f, 10.f};
+  EXPECT_TRUE(child->EventThrough(point));
+}
+
+TEST_F(FragmentTest, EventThroughActiveRegionsInheritFromIndependentEventRoot) {
+  constexpr int32_t kOverlayRootId = 42;
+  auto overlay_root = fml::MakeRefCounted<PlatformEventTarget>(
+      nullptr, kOverlayRootId, kOverlayRootId, 0.f, 0.f, 100.f, 100.f);
+  auto child = fml::MakeRefCounted<PlatformEventTarget>(
+      nullptr, kOverlayRootId, 43, 0.f, 0.f, 100.f, 100.f);
+
+  using EventThroughSizeValue = PlatformEventTarget::EventThroughSizeValue;
+  PlatformEventTarget::EventThroughRegion region;
+  region[0] = {EventThroughSizeValue::Type::kDevicePx, 0.f};
+  region[1] = {EventThroughSizeValue::Type::kDevicePx, 0.f};
+  region[2] = {EventThroughSizeValue::Type::kDevicePx, 50.f};
+  region[3] = {EventThroughSizeValue::Type::kDevicePx, 50.f};
+  overlay_root->SetEventThroughActiveRegions({region});
+  overlay_root->AddChildTarget(child);
+
+  float point_inside_active_region[2] = {10.f, 10.f};
+  EXPECT_FALSE(child->EventThrough(point_inside_active_region));
+
+  float point_outside_active_region[2] = {60.f, 60.f};
+  EXPECT_TRUE(child->EventThrough(point_outside_active_region));
 }
 
 TEST_F(FragmentTest, ValidExposureEventPropsBypassEqualCheck) {

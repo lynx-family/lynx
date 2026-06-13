@@ -17,9 +17,12 @@ import com.lynx.tasm.INativeLibraryLoader;
 import com.lynx.tasm.LynxEnv;
 import com.lynx.tasm.behavior.BehaviorRegistry;
 import com.lynx.tasm.behavior.LynxContext;
+import com.lynx.tasm.behavior.LynxUIOwner;
 import com.lynx.tasm.behavior.ui.LynxBaseUI;
+import com.lynx.tasm.behavior.ui.LynxUI;
 import com.lynx.tasm.behavior.ui.PropBundle;
 import com.lynx.tasm.behavior.ui.UIBody;
+import com.lynx.tasm.behavior.ui.view.AndroidView;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.concurrent.atomic.AtomicReference;
@@ -95,6 +98,30 @@ public class PlatformRendererContextTest {
     assertNotNull(mockBodyView.getRenderer());
     assertEquals(2, mockBodyView.getRenderer().getSign());
     assertEquals(mockBodyView, rendererContext.mViewHolder.get(2));
+  }
+
+  @Test
+  public void testCreatePlatformExtendedRendererUsesOverlayTransitionUIHost() {
+    Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
+    AndroidView proxyView = new AndroidView(context);
+    AndroidView overlayView = new AndroidView(context);
+    LynxUIOwner owner = mock(LynxUIOwner.class);
+    LynxUI proxyUI = mock(LynxUI.class);
+    LynxUI overlayUI = mock(LynxUI.class);
+    when(mockLynxContext.getLynxUIOwner()).thenReturn(owner);
+    when(owner.getNode(1)).thenReturn(proxyUI);
+    when(proxyUI.isOverlay()).thenReturn(true);
+    when(proxyUI.getTransitionUI()).thenReturn(overlayUI);
+    when(proxyUI.getView()).thenReturn(proxyView);
+    when(overlayUI.getView()).thenReturn(overlayView);
+
+    rendererContext.createPlatformExtendedRenderer(1, "overlay", null);
+
+    assertSame(overlayView, rendererContext.mViewHolder.get(1));
+    assertNull(proxyView.getRenderer());
+    assertNotNull(overlayView.getRenderer());
+    assertEquals(1, overlayView.getRenderer().getSign());
+    assertSame(overlayUI, overlayView.getRenderer().getUIHost());
   }
 
   @Test

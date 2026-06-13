@@ -6,6 +6,7 @@ package com.lynx.tasm.behavior.render;
 import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
 
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
@@ -24,6 +25,7 @@ import java.util.List;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
@@ -80,6 +82,24 @@ public class NativePaintingContextTest {
     }
   }
 
+  private MotionEvent obtainMotionEvent(int action, int[] pointerIds, float[] xs, float[] ys) {
+    MotionEvent.PointerProperties[] pointerProperties =
+        new MotionEvent.PointerProperties[pointerIds.length];
+    MotionEvent.PointerCoords[] pointerCoords = new MotionEvent.PointerCoords[pointerIds.length];
+    for (int i = 0; i < pointerIds.length; i++) {
+      pointerProperties[i] = new MotionEvent.PointerProperties();
+      pointerProperties[i].id = pointerIds[i];
+      pointerProperties[i].toolType = MotionEvent.TOOL_TYPE_FINGER;
+
+      pointerCoords[i] = new MotionEvent.PointerCoords();
+      pointerCoords[i].x = xs[i];
+      pointerCoords[i].y = ys[i];
+    }
+
+    return MotionEvent.obtain(0L, 0L, action, pointerIds.length, pointerProperties, pointerCoords,
+        0, 0, 1.f, 1.f, 0, 0, 0, 0);
+  }
+
   @Test
   public void testConstructorInitializesNativePtr() {
     assertTrue("Native pointer should be initialized",
@@ -98,6 +118,42 @@ public class NativePaintingContextTest {
     UIBody.UIBodyView newView = mock(UIBody.UIBodyView.class);
     mNativePaintingContext.attachUIBodyView(newView);
     verify(mSpyPlatformContext).setRootView(newView);
+  }
+
+  @Test
+  public void dispatchPlatformMotionEvent_pointerDownAndUpUseActionPointerOnly() {
+    NativePaintingContext spyPaintingContext = spy(mNativePaintingContext);
+    doReturn(true)
+        .when(spyPaintingContext)
+        .nativeDispatchPlatformInputEvent(anyLong(), any(int[].class), any(float[].class));
+
+    int actionIndex = 1;
+    int pointerAction = actionIndex << MotionEvent.ACTION_POINTER_INDEX_SHIFT;
+    MotionEvent pointerDown = obtainMotionEvent(MotionEvent.ACTION_POINTER_DOWN | pointerAction,
+        new int[] {0, 7}, new float[] {10.f, 20.f}, new float[] {11.f, 21.f});
+    MotionEvent pointerUp = obtainMotionEvent(MotionEvent.ACTION_POINTER_UP | pointerAction,
+        new int[] {0, 7}, new float[] {12.f, 22.f}, new float[] {13.f, 23.f});
+
+    assertTrue(spyPaintingContext.dispatchPlatformMotionEvent(pointerDown, 42));
+    assertTrue(spyPaintingContext.dispatchPlatformMotionEvent(pointerUp, 42));
+
+    ArgumentCaptor<int[]> intEventDataCaptor = ArgumentCaptor.forClass(int[].class);
+    ArgumentCaptor<float[]> floatEventDataCaptor = ArgumentCaptor.forClass(float[].class);
+    verify(spyPaintingContext, times(2))
+        .nativeDispatchPlatformInputEvent(
+            anyLong(), intEventDataCaptor.capture(), floatEventDataCaptor.capture());
+
+    assertArrayEquals(new int[] {0, MotionEvent.ACTION_DOWN, pointerDown.getSource(), 1, 42},
+        intEventDataCaptor.getAllValues().get(0));
+    assertArrayEquals(new int[] {0, MotionEvent.ACTION_UP, pointerUp.getSource(), 1, 42},
+        intEventDataCaptor.getAllValues().get(1));
+    assertArrayEquals(
+        new float[] {7.f, 20.f, 21.f}, floatEventDataCaptor.getAllValues().get(0), 0.f);
+    assertArrayEquals(
+        new float[] {7.f, 22.f, 23.f}, floatEventDataCaptor.getAllValues().get(1), 0.f);
+
+    pointerDown.recycle();
+    pointerUp.recycle();
   }
 
   @Test

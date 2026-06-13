@@ -149,7 +149,7 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)init)
          (long)childSign, (long)parentSign, (long)index);
     return;
   }
-  if (index == -1) {
+  if (index == -1 || (NSUInteger)index > [[parentNode children] count]) {
     index = [[parentNode children] count];
   }
   [parentNode insertChild:childNode atIndex:index];
@@ -168,6 +168,12 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)init)
     LLog(@"[Lynx][ShadowNodeOwner] removeNode: %ld fromParent: %ld atIndex: %ld failed, parentNode "
          @"is nil",
          (long)childSign, (long)parentSign, (long)index);
+    return;
+  }
+  NSUInteger childIndex = [[parentNode children] indexOfObject:childNode];
+  if (childIndex != NSNotFound) {
+    index = (NSInteger)childIndex;
+  } else if (index < 0 || (NSUInteger)index >= [[parentNode children] count]) {
     return;
   }
   [parentNode removeChild:childNode atIndex:index];

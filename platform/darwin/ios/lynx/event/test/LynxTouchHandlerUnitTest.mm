@@ -233,6 +233,7 @@
   OCMStub([mockUIContext lynxContext]).andReturn(mockLynxContext);
   OCMStub([mockUIContext rootView]).andReturn(mockRootView);
   OCMStub([mockRootView templateRender]).andReturn(mockTemplateRender);
+  OCMStub([mockEventHandler eventRootSign]).andReturn(123);
 
   // 3. Test Case: isFragmentLayerRenderOn is YES
   __block BOOL stubReturnValue = YES;
@@ -247,6 +248,8 @@
   OCMStub([mockTouch locationInView:OCMArg.any]).andReturn(CGPointMake(10, 20));
   NSSet* touches = [NSSet setWithObject:mockTouch];
   UIEvent* event = OCMClassMock([UIEvent class]);
+  OCMStub([mockTemplateRender DispatchPlatformInputEvent:[OCMArg any] withData:[OCMArg any]])
+      .andReturn(YES);
 
   // Stub inner methods to verify they are NOT called
   OCMStub([touchHandler touchesBeganInner:OCMArg.any withEvent:OCMArg.any]);
@@ -257,6 +260,11 @@
   // Verify touchesBegan
   [touchHandler touchesBegan:touches withEvent:event];
   OCMVerify([mockTemplateRender DispatchPlatformInputEvent:[OCMArg any] withData:[OCMArg any]]);
+  OCMVerify([mockTemplateRender
+      DispatchPlatformInputEvent:[OCMArg checkWithBlock:^BOOL(NSArray* iEventData) {
+        return iEventData.count == 5 && [iEventData[4] integerValue] == 123;
+      }]
+                        withData:[OCMArg any]]);
   OCMVerify(never(), [touchHandler touchesBeganInner:OCMArg.any withEvent:OCMArg.any]);
 
   // Verify touchesMoved
@@ -275,7 +283,13 @@
   OCMVerify([mockTemplateRender DispatchPlatformInputEvent:[OCMArg any] withData:[OCMArg any]]);
   OCMVerify(never(), [touchHandler touchesCancelledInner:OCMArg.any withEvent:OCMArg.any]);
 
-  // 4. Test Case: isFragmentLayerRenderOn is NO
+  // 4. Test Case: platform event is not consumed
+  OCMStub([mockTemplateRender DispatchPlatformInputEvent:[OCMArg any] withData:[OCMArg any]])
+      .andReturn(NO);
+  [touchHandler touchesBegan:touches withEvent:event];
+  OCMVerify([touchHandler touchesBeganInner:touches withEvent:event]);
+
+  // 5. Test Case: isFragmentLayerRenderOn is NO
   stubReturnValue = NO;
 
   // Verify touchesBegan

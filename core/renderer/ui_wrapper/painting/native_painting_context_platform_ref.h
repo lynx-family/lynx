@@ -69,6 +69,8 @@ class NativePaintingCtxPlatformRef
                                   int32_t event_target_root_id);
   bool DispatchPlatformInputEvent(int int_event_data[],
                                   float float_event_data[]);
+  bool IsPlatformEventTargetEventThrough(int32_t event_target_root_id,
+                                         float point_x, float point_y);
   // The current state of PlatformEventHandler is obtained to determine the
   // gesture handling at the platform layer.
   int GetPlatformEventHandlerState();

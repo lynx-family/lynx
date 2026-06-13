@@ -181,6 +181,25 @@ bool NativePaintingCtxPlatformRef::DispatchPlatformInputEvent(
   return DispatchPlatformInputEvent(int_event_data, float_event_data, kRootId);
 }
 
+bool NativePaintingCtxPlatformRef::IsPlatformEventTargetEventThrough(
+    int32_t event_target_root_id, float point_x, float point_y) {
+  auto event_target_tree = EnsureEventTargetTree(event_target_root_id);
+  if (event_target_tree == nullptr) {
+    return false;
+  }
+
+  float root_point[2] = {point_x, point_y};
+  auto hit_target = event_target_tree->HitTest(root_point);
+  if (hit_target == nullptr) {
+    return false;
+  }
+
+  float target_point[2] = {root_point[0], root_point[1]};
+  event_target_helper_->ConvertPointFromAncestorToDescendant(
+      target_point, event_target_tree, hit_target, root_point);
+  return hit_target->EventThrough(target_point);
+}
+
 int NativePaintingCtxPlatformRef::GetPlatformEventHandlerState() {
   return event_handler_->EventHandlerState();
 }

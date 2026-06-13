@@ -13,6 +13,7 @@
 #include "core/renderer/ui_wrapper/painting/ios/painting_context_darwin_utils.h"
 #include "core/renderer/ui_wrapper/painting/ios/platform_renderer_context_darwin.h"
 #include "core/renderer/ui_wrapper/painting/ios/platform_renderer_darwin_factory.h"
+#include "core/renderer/ui_wrapper/painting/platform_renderer_impl.h"
 #include "core/shell/dynamic_ui_operation_queue.h"
 #include "core/value_wrapper/value_wrapper_utils.h"
 
@@ -264,11 +265,20 @@ void NativePaintingCtxDarwin::UpdateContentOffsetForListContainer(int32_t contai
                                                                   bool from_layout) {}
 
 void NativePaintingCtxDarwin::ReconstructEventTargetTreeRecursively() {
-  Enqueue([ref = platform_ref_]() {
+  auto platform_ref = std::static_pointer_cast<NativePaintingCtxPlatformRef>(platform_ref_);
+  if (platform_ref && platform_ref->HasScheduledEventTargetTreeUpdate()) {
+    return;
+  }
+  bool expected = false;
+  if (!event_target_tree_update_enqueued_->compare_exchange_strong(expected, true)) {
+    return;
+  }
+  Enqueue([enqueued = event_target_tree_update_enqueued_, ref = std::move(platform_ref)]() {
     auto darwin_ref = std::static_pointer_cast<NativePaintingCtxPlatformDarwinRef>(ref);
     if (darwin_ref) {
-      darwin_ref->ReconstructEventTargetTreeRecursively();
+      darwin_ref->ScheduleEnsureEventTargetTree(kRootId);
     }
+    enqueued->store(false);
   });
 }
 

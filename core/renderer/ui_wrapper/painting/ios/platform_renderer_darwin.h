@@ -59,7 +59,9 @@ class PlatformRendererDarwin : public PlatformRendererImpl {
   bool InitializeUIOwnerRenderer(const base::String& tag_name,
                                  const fml::RefPtr<PropBundle>& init_data);
   void InitializeRendererForView(UIView<LynxRendererHost>* view, NSDictionary* initial_props = nil);
+  CGRect ResolveLayoutFrame(CGRect frame) const;
   void UpdateUIOwnerLayout(CGRect frame);
+  void NotifyUIOwnerNodeReady();
   bool HasUIOwnerNode(int sign) const;
   void CleanupUIView();
 

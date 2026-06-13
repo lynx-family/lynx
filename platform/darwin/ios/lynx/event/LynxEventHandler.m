@@ -308,6 +308,8 @@ static BOOL ShouldDispatchTouchEventInCurrentLynxPageOnly(LynxUI* rootUI) {
 @end
 
 #pragma mark - LynxEventHandler
+static const NSInteger kLynxFragmentLayerDefaultRootSign = 10;
+
 @implementation LynxEventHandler {
   __weak LynxUIOwner* _uiOwner;
   __weak LynxUI* _rootUI;
@@ -1124,6 +1126,13 @@ static BOOL ShouldDispatchTouchEventInCurrentLynxPageOnly(LynxUI* rootUI) {
 
 - (LynxUIOwner*)uiOwner {
   return _uiOwner;
+}
+
+- (NSInteger)eventRootSign {
+  if (_rootUI == nil) {
+    _rootUI = (LynxUI*)_uiOwner.rootUI;
+  }
+  return _rootUI != nil ? _rootUI.sign : kLynxFragmentLayerDefaultRootSign;
 }
 
 // TODO(songshourui.null): opt me

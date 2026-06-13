@@ -17,6 +17,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
 import com.lynx.tasm.behavior.LynxContext;
 import com.lynx.tasm.behavior.ui.PropBundle;
+import com.lynx.tasm.behavior.ui.view.AndroidView;
 import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -172,6 +173,22 @@ public class ContainerRendererTest {
         "Child measured width should use child LynxFrame width", 45, child.getMeasuredWidth());
     assertEquals(
         "Child measured height should use child LynxFrame height", 50, child.getMeasuredHeight());
+  }
+
+  @Test
+  public void testOnMeasureAndLayout_SkipsRendererHostChildWithoutRenderer() {
+    AndroidView childWithoutRenderer = new AndroidView(realLynxContext);
+    containerRenderer.addView(childWithoutRenderer);
+
+    containerRenderer.measure(View.MeasureSpec.makeMeasureSpec(1000, View.MeasureSpec.EXACTLY),
+        View.MeasureSpec.makeMeasureSpec(1000, View.MeasureSpec.EXACTLY));
+    containerRenderer.onLayout(true, 0, 0, 100, 100);
+
+    assertNull(childWithoutRenderer.getRenderer());
+    assertEquals(0, childWithoutRenderer.getLeft());
+    assertEquals(0, childWithoutRenderer.getTop());
+    assertEquals(0, childWithoutRenderer.getRight());
+    assertEquals(0, childWithoutRenderer.getBottom());
   }
 
   @Test

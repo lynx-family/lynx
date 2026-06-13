@@ -5,6 +5,7 @@
 #ifndef CORE_RENDERER_UI_WRAPPER_PAINTING_IOS_NATIVE_PAINTING_CONTEXT_DARWIN_H_
 #define CORE_RENDERER_UI_WRAPPER_PAINTING_IOS_NATIVE_PAINTING_CONTEXT_DARWIN_H_
 
+#include <atomic>
 #include <memory>
 #include <string>
 #include <vector>
@@ -133,6 +134,8 @@ class NativePaintingCtxDarwin : public PaintingCtxPlatformImpl, public NativePai
   void Enqueue(F &&func);
 
   bool has_first_screen_ = false;
+  std::shared_ptr<std::atomic_bool> event_target_tree_update_enqueued_ =
+      std::make_shared<std::atomic_bool>(false);
   std::shared_ptr<shell::DynamicUIOperationQueue> queue_;
 
   std::unique_ptr<PlatformRendererContextDarwin> context_;

@@ -10,11 +10,13 @@
 #import <Lynx/LynxPropsProcessor.h>
 #import <Lynx/LynxRootUI.h>
 #import <Lynx/LynxSizeValue.h>
+#import <Lynx/LynxTemplateRender+Internal.h>
 #import <Lynx/LynxTouchHandler.h>
 #import <Lynx/LynxUI+Internal.h>
 #import <Lynx/LynxUI+Private.h>
 #import <Lynx/LynxUIKitAPIAdapter.h>
 #import <Lynx/LynxUIMethodProcessor.h>
+#import <Lynx/LynxView+Internal.h>
 #import <Lynx/LynxViewVisibleHelper.h>
 #import <Lynx/UIView+Lynx.h>
 #import <XElement/LynxOverlayContainer.h>
@@ -40,18 +42,31 @@ LYNX_LAZY_REGISTER_SHADOW_NODE("overlay")
                           measureContext:(nullable MeasureContext *)context {
   [self.children enumerateObjectsUsingBlock:^(LynxShadowNode *_Nonnull obj, NSUInteger idx,
                                               BOOL *_Nonnull stop) {
+    CGRect bounds = [LynxUIOverlayShadowNode windowBounds];
+    MeasureParam *childParam;
     if ([obj isKindOfClass:[LynxNativeLayoutNode class]]) {
       // Overlay's frame is always equal to the screen, its child should be measured correctly
-      MeasureParam *childParam = [[MeasureParam alloc]
-          initWithWidth:[LynxUIOverlayShadowNode windowBounds].size.width -
-                        obj.style.computedMarginLeft - obj.style.computedMarginRight
-              WidthMode:LynxMeasureModeDefinite
-                 Height:[LynxUIOverlayShadowNode windowBounds].size.height -
-                        obj.style.computedMarginTop - obj.style.computedMarginBottom
-             HeightMode:LynxMeasureModeDefinite];
+      childParam =
+          [[MeasureParam alloc] initWithWidth:bounds.size.width - obj.style.computedMarginLeft -
+                                              obj.style.computedMarginRight
+                                    WidthMode:LynxMeasureModeDefinite
+                                       Height:bounds.size.height - obj.style.computedMarginTop -
+                                              obj.style.computedMarginBottom
+                                   HeightMode:LynxMeasureModeDefinite];
       LynxNativeLayoutNode *child = (LynxNativeLayoutNode *)obj;
       [child measureWithMeasureParam:childParam MeasureContext:context];
+    } else {
+      childParam = [[MeasureParam alloc] initWithWidth:bounds.size.width
+                                             WidthMode:LynxMeasureModeDefinite
+                                                Height:bounds.size.height
+                                            HeightMode:LynxMeasureModeDefinite];
+      [obj measureWithWidth:childParam.width
+                  widthMode:childParam.widthMode
+                     height:childParam.height
+                 heightMode:childParam.heightMode
+               finalMeasure:context != nil && context.finalMeasure];
     }
+    *stop = YES;
   }];
   // Overlay itself will never take up any space
   return (MeasureResult){CGSizeZero};
@@ -63,10 +78,13 @@ LYNX_LAZY_REGISTER_SHADOW_NODE("overlay")
                                               BOOL *_Nonnull stop) {
     if ([obj isKindOfClass:[LynxNativeLayoutNode class]]) {
       LynxNativeLayoutNode *child = (LynxNativeLayoutNode *)obj;
-      AlignParam *param = [[AlignParam alloc] init];
-      [param SetAlignOffsetWithLeft:0.f Top:0.f];
-      [child alignWithAlignParam:param AlignContext:context];
+      AlignParam *childParam = [[AlignParam alloc] init];
+      [childParam SetAlignOffsetWithLeft:0.f Top:0.f];
+      [child alignWithAlignParam:childParam AlignContext:context];
+    } else {
+      [obj align];
     }
+    *stop = YES;
   }];
 }
 
@@ -111,6 +129,13 @@ typedef NS_ENUM(NSInteger, LynxOverlayTouchEvent) {
 @property(nonatomic, assign) BOOL notAdjustLeftMargin;
 
 @property(nonatomic, assign) BOOL notAdjustTopMargin;
+
+@property(nonatomic, assign) BOOL platformEventRootActive;
+
+@property(nonatomic, assign) BOOL hasPlatformEventRootOffset;
+@property(nonatomic, assign) CGPoint platformEventRootOffset;
+
+- (void)updatePlatformEventRootActiveForFragmentLayer:(BOOL)active;
 
 @end
 
@@ -187,6 +212,7 @@ LYNX_LAZY_REGISTER_UI("overlay")
   }
 
   self.view.hidden = !self.visible;
+  [self updatePlatformEventRootActiveForFragmentLayer:self.visible];
 
   // find nested scroll view
   if (self.nestScrollViewID) {
@@ -456,6 +482,8 @@ LYNX_PROP_SETTER("pointer-events", setPointerEvents, NSInteger) {
 }
 
 - (void)dealloc {
+  [self updatePlatformEventRootActiveForFragmentLayer:NO];
+
   // avoid objc store weak
   if (_customViewController) {
     [[LynxOverlayGlobalManager sharedInstance] destoryOverlayView:self.view
@@ -505,6 +533,35 @@ LYNX_PROP_DEFINE("ios-not-adjust-top-margin", setIosNotAdjustTopMargin, BOOL) {
 
 - (BOOL)isOverlay {
   return YES;
+}
+
+- (void)updatePlatformEventRootActiveForFragmentLayer:(BOOL)active {
+  LynxUIContext *uiContext = self.context.uiOwner.uiContext;
+  if (!uiContext.lynxContext.isFragmentLayerRenderOn) {
+    return;
+  }
+  UIView *rootView = uiContext.rootView;
+  if (![rootView isKindOfClass:LynxView.class]) {
+    return;
+  }
+  if (active) {
+    CGPoint offset = [self.view convertPoint:CGPointZero toView:rootView];
+    if (!self.hasPlatformEventRootOffset ||
+        !CGPointEqualToPoint(self.platformEventRootOffset, offset)) {
+      self.platformEventRootOffset = offset;
+      self.hasPlatformEventRootOffset = YES;
+      [((LynxView *)rootView).templateRender SetPlatformEventRootOffset:self.sign
+                                                                offsetX:offset.x
+                                                                offsetY:offset.y];
+    }
+  } else {
+    self.hasPlatformEventRootOffset = NO;
+  }
+  if (self.platformEventRootActive == active) {
+    return;
+  }
+  self.platformEventRootActive = active;
+  [((LynxView *)rootView).templateRender SetPlatformEventRootActive:self.sign active:active];
 }
 
 @end

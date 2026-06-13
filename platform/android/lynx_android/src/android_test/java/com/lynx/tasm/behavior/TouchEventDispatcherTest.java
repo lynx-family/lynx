@@ -8,6 +8,8 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import android.graphics.Matrix;
 import android.os.SystemClock;
@@ -15,6 +17,7 @@ import android.view.MotionEvent;
 import com.lynx.react.bridge.DynamicFromArray;
 import com.lynx.react.bridge.JavaOnlyArray;
 import com.lynx.react.bridge.ReadableMap;
+import com.lynx.tasm.EmbeddedMode;
 import com.lynx.tasm.LynxEventEmitter;
 import com.lynx.tasm.LynxTemplateRender;
 import com.lynx.tasm.behavior.event.EventTarget;
@@ -486,5 +489,18 @@ public class TouchEventDispatcherTest {
     DynamicFromArray param = new DynamicFromArray(array, 0);
     parentUI.setIgnoreFocus(param);
     assertTrue(childUI.ignoreFocus());
+  }
+
+  @Test
+  public void testDispatchPlatformMotionEventWhenFragmentLayerRenderOn() {
+    MotionEvent ev = MotionEvent.obtain(SystemClock.uptimeMillis(), SystemClock.uptimeMillis(),
+        MotionEvent.ACTION_DOWN, 100, 100, 0);
+    IPaintingContext paintingContext = mock(IPaintingContext.class);
+    mContext.setEmbeddedMode(EmbeddedMode.FRAGMENT_LAYER_RENDER);
+    mOwner.setPaintingContext(paintingContext);
+    when(paintingContext.dispatchPlatformMotionEvent(ev, mRootUI.getSign())).thenReturn(true);
+
+    assertTrue(mDispatcher.onTouchEvent(ev, mRootUI));
+    verify(paintingContext).dispatchPlatformMotionEvent(ev, mRootUI.getSign());
   }
 }

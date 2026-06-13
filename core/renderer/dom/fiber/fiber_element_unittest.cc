@@ -2888,6 +2888,38 @@ TEST_P(FiberElementTest,
   EXPECT_EQ(child->customized_layout_node_->layout_object_, child->slnode());
 }
 
+TEST_P(FiberElementTest,
+       LayoutInElementLevelOrderInlineNodeBindsLayoutObjectDuringFlushProps) {
+  manager->page_options_.embedded_mode_ = static_cast<EmbeddedMode>(
+      static_cast<int32_t>(manager->page_options_.embedded_mode_) |
+      static_cast<int32_t>(EmbeddedMode::LAYOUT_IN_ELEMENT));
+
+  auto page = manager->CreateFiberPage("page", 11);
+  auto parent = manager->CreateFiberNode("view");
+  parent->layout_node_type_ = LayoutNodeType::CUSTOM;
+  page->InsertNode(parent);
+
+  auto child = manager->CreateFiberNode("inline-view");
+  parent->InsertNode(child);
+
+  child->MarkParallelFlushFlag(Element::kFlagLevelOrderParallel);
+  auto reduce_task = child->PrepareForCreateOrUpdate();
+  reduce_task();
+
+  ASSERT_NE(child->slnode(), nullptr);
+  ASSERT_NE(child->customized_layout_node_, nullptr);
+  EXPECT_EQ(child->customized_layout_node_->layout_object_, child->slnode());
+  EXPECT_TRUE(child->HasLayoutInElementPlatformNode());
+
+  auto* platform_layout_context =
+      static_cast<lynx::tasm::test::MockPlatformImpl*>(
+          manager->layout_context());
+  auto props = fml::MakeRefCounted<PropBundleMock>();
+  EXPECT_CALL(*platform_layout_context,
+              UpdateLayoutNode(child->impl_id(), props.get()));
+  child->UpdateLayoutNodeProps(props);
+}
+
 TEST_P(FiberElementTest, InsertNode) {
   auto parent = manager->CreateFiberNode("view");
   EXPECT_EQ(static_cast<int>(parent->GetChildCount()), 0);

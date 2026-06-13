@@ -25,6 +25,14 @@ namespace tasm {
 
 namespace {
 
+bool IsOverlayRendererTag(const base::String& tag) {
+  return tag.IsEqual("overlay") || tag.IsEqual("x-overlay-ng");
+}
+
+bool IsOverlayRenderer(const PlatformRendererDarwin* renderer) {
+  return renderer != nullptr && IsOverlayRendererTag(renderer->GetExtendedRendererTagName());
+}
+
 void LynxCUIApplyLayoutFrame(UIView* view, CGRect layout_frame) {
   if (CATransform3DIsIdentity(view.layer.transform)) {
     view.layer.anchorPoint = CGPointMake(0.5f, 0.5f);
@@ -113,8 +121,12 @@ void PlatformRendererDarwin::OnUpdateDisplayList(DisplayList display_list) {
         CGRect layout_frame =
             CGRectMake(frame[0] + display_list_.GetRenderOffset()[0],
                        frame[1] + display_list_.GetRenderOffset()[1], frame[2], frame[3]);
+        layout_frame = ResolveLayoutFrame(layout_frame);
         UpdateUIOwnerLayout(CGRectMake(frame[0], frame[1], frame[2], frame[3]));
         LynxCUIApplyLayoutFrame(view, layout_frame);
+        if (IsOverlayRenderer(this)) {
+          NotifyUIOwnerNodeReady();
+        }
 
         if ([view conformsToProtocol:@protocol(LUIBodyView)]) {
           ((UIView<LUIBodyView>*)view).intrinsicContentSize = CGSizeMake(frame[2], frame[3]);
@@ -144,6 +156,9 @@ void PlatformRendererDarwin::OnUpdateAttributes(const fml::RefPtr<PropBundle>& a
     }
     UIView<LynxRendererHost>* update_view = GetUIView();
     [[update_view renderer] updateAttributes:props];
+    if (IsOverlayRenderer(this)) {
+      NotifyUIOwnerNodeReady();
+    }
   }
 }
 
@@ -157,6 +172,18 @@ void PlatformRendererDarwin::OnAddChild(PlatformRenderer* child, int /* index */
   auto* child_renderer = static_cast<PlatformRendererDarwin*>(child);
   UIView<LynxRendererHost>* child_view = child_renderer->GetUIView();
   LynxUIOwner* owner = ui_owner_;
+  if (IsOverlayRenderer(child_renderer)) {
+    if (owner != nil && HasUIOwnerNode(GetId()) && child_renderer->HasUIOwnerNode(child->GetId())) {
+      [owner insertNode:child->GetId() toParent:GetId() atIndex:-1];
+    }
+    // Overlay owns its native hierarchy through LynxOverlayGlobalManager. The
+    // rendererhost parent can be a plain host view, so never attach the overlay
+    // view through the normal UIKit subview path.
+    child_renderer->NotifyUIOwnerNodeReady();
+    [[child_view renderer] reattachHostDecorationLayers];
+    return;
+  }
+
   if (owner != nil && HasUIOwnerNode(GetId()) && child_renderer->HasUIOwnerNode(child->GetId())) {
     [owner insertNode:child->GetId() toParent:GetId() atIndex:-1];
     [[child_view renderer] reattachHostDecorationLayers];
@@ -351,6 +378,21 @@ void PlatformRendererDarwin::InitializeRendererForView(UIView<LynxRendererHost>*
   }
 }
 
+CGRect PlatformRendererDarwin::ResolveLayoutFrame(CGRect frame) const {
+  if (!IsOverlayRendererTag(GetExtendedRendererTagName())) {
+    return frame;
+  }
+
+  // Overlay keeps a zero-sized layout box, but its renderer host surface is full-screen.
+  CGSize screen_size = context_ != nullptr ? context_->GetScreenSize() : CGSizeZero;
+  if (screen_size.width <= 0.f || screen_size.height <= 0.f) {
+    screen_size = UIScreen.mainScreen.bounds.size;
+  }
+  frame.origin = CGPointZero;
+  frame.size = screen_size;
+  return frame;
+}
+
 void PlatformRendererDarwin::UpdateUIOwnerLayout(CGRect frame) {
   LynxUIOwner* owner = ui_owner_;
   if (owner == nil || !HasUIOwnerNode(GetId())) {
@@ -366,6 +408,14 @@ void PlatformRendererDarwin::UpdateUIOwnerLayout(CGRect frame) {
            border:ui.border
            margin:ui.margin
            sticky:ui.sticky];
+}
+
+void PlatformRendererDarwin::NotifyUIOwnerNodeReady() {
+  LynxUIOwner* owner = ui_owner_;
+  if (owner == nil || !HasUIOwnerNode(GetId())) {
+    return;
+  }
+  [owner onNodeReady:GetId()];
 }
 
 bool PlatformRendererDarwin::HasUIOwnerNode(int sign) const {

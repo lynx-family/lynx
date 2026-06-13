@@ -8,6 +8,9 @@
 #import <Lynx/LynxRenderer.h>
 #import <Lynx/LynxRendererContext.h>
 #import <Lynx/LynxRendererHost.h>
+#import <Lynx/LynxUI.h>
+#import <Lynx/LynxUIOwner+Private.h>
+#import <Lynx/LynxUIOwner.h>
 #import <OCMock/OCMock.h>
 #import <XCTest/XCTest.h>
 #import <malloc/malloc.h>
@@ -19,6 +22,51 @@
 
 @interface LynxRenderer (Testing)
 - (void)ensureLynxDisplayListApplier;
+@end
+
+@interface LynxRendererUnitTestUIOwner : LynxUIOwner
+@property(nonatomic, strong) LynxUI* parentUI;
+@property(nonatomic, strong) LynxUI* childUI;
+@property(nonatomic, assign) NSInteger parentSign;
+@property(nonatomic, assign) NSInteger childSign;
+@property(nonatomic, assign) NSInteger insertedChildSign;
+@property(nonatomic, assign) NSInteger insertedParentSign;
+@property(nonatomic, assign) NSInteger nodeReadySign;
+@end
+
+@implementation LynxRendererUnitTestUIOwner
+
+- (LynxUI*)findUIBySign:(NSInteger)sign {
+  if (sign == self.parentSign) {
+    return self.parentUI;
+  }
+  if (sign == self.childSign) {
+    return self.childUI;
+  }
+  return nil;
+}
+
+- (Class)getTargetClass:(NSString*)tagName
+                  props:(NSDictionary*)props
+         supportedState:(TagSupportedState*)state {
+  if (state != nullptr) {
+    *state = LynxUnsupportedTag;
+  }
+  return nil;
+}
+
+- (void)insertNode:(NSInteger)childSign toParent:(NSInteger)parentSign atIndex:(NSInteger)index {
+  self.insertedChildSign = childSign;
+  self.insertedParentSign = parentSign;
+}
+
+- (void)onNodeReady:(NSInteger)sign {
+  self.nodeReadySign = sign;
+}
+
+- (void)recycleNode:(NSInteger)sign {
+}
+
 @end
 
 @interface LynxRendererUnitTest : XCTestCase
@@ -234,6 +282,63 @@
   XCTAssertEqualWithAccuracy(view.layer.transform.m22, 0.70710677f, 0.001f);
   XCTAssertEqualWithAccuracy(view.layer.transform.m41, 60.0f, 0.001f);
   XCTAssertEqualWithAccuracy(view.layer.transform.m42, -24.852814f, 0.001f);
+}
+
+- (void)testPlatformRendererDarwinUsesScreenFrameForOverlay {
+  lynx::tasm::PlatformRendererContextDarwin context(nil);
+  lynx::tasm::PlatformRendererDarwin renderer(&context, 17, base::String("overlay"));
+  UIView<LynxRendererHost>* view = renderer.GetUIView();
+  XCTAssertNotNil(view);
+
+  lynx::tasm::DisplayList list;
+  list.AddOperation(lynx::tasm::DisplayListOpType::kBegin, 17,
+                    static_cast<int32_t>(PlatformRendererType::kExtended), 0.0f, 0.0f, 0.0f, 0.0f);
+  list.AddOperation(lynx::tasm::DisplayListOpType::kEnd);
+  renderer.OnUpdateDisplayList(std::move(list));
+
+  XCTAssertTrue(CGPointEqualToPoint(view.frame.origin, CGPointZero));
+  XCTAssertTrue(CGSizeEqualToSize(view.frame.size, UIScreen.mainScreen.bounds.size));
+}
+
+- (void)testPlatformRendererDarwinRefreshesOverlayAfterUIOwnerInsert {
+  LynxRendererUnitTestUIOwner* owner = [[LynxRendererUnitTestUIOwner alloc] init];
+  owner.parentSign = 21;
+  owner.childSign = 22;
+  owner.parentUI = [[LynxUI alloc] init];
+  owner.childUI = [[LynxUI alloc] init];
+
+  lynx::tasm::PlatformRendererContextDarwin context(nil, owner);
+  {
+    lynx::tasm::PlatformRendererDarwin parent(&context, owner.parentSign,
+                                              PlatformRendererType::kView);
+    lynx::tasm::PlatformRendererDarwin overlay(&context, owner.childSign, base::String("overlay"));
+    parent.OnAddChild(&overlay);
+  }
+
+  XCTAssertEqual(owner.insertedChildSign, owner.childSign);
+  XCTAssertEqual(owner.insertedParentSign, owner.parentSign);
+  XCTAssertEqual(owner.nodeReadySign, owner.childSign);
+}
+
+- (void)testPlatformRendererDarwinDoesNotAttachOverlayToPlainRendererHostParent {
+  LynxRendererUnitTestUIOwner* owner = [[LynxRendererUnitTestUIOwner alloc] init];
+  owner.parentSign = 31;
+  owner.childSign = 32;
+  owner.childUI = [[LynxUI alloc] init];
+
+  lynx::tasm::PlatformRendererContextDarwin context(nil, owner);
+  {
+    lynx::tasm::PlatformRendererDarwin parent(&context, owner.parentSign,
+                                              PlatformRendererType::kView);
+    lynx::tasm::PlatformRendererDarwin overlay(&context, owner.childSign, base::String("overlay"));
+    parent.OnAddChild(&overlay);
+
+    XCTAssertNil(overlay.GetUIView().superview);
+  }
+
+  XCTAssertEqual(owner.insertedChildSign, 0);
+  XCTAssertEqual(owner.insertedParentSign, 0);
+  XCTAssertEqual(owner.nodeReadySign, owner.childSign);
 }
 
 - (void)testApplyTransformScale {
