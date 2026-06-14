@@ -14,6 +14,12 @@ static constexpr const char* const
 static constexpr const char* const
     WHITE_BOARD_DELEGATE_GET_SESSION_STORAGE_ITEM = "GetSessionStorageItem";
 static constexpr const char* const
+    WHITE_BOARD_DELEGATE_SUBSCRIBE_LEPUS_SESSION_STORAGE =
+        "SubscribeLepusSessionStorage";
+static constexpr const char* const
+    WHITE_BOARD_DELEGATE_UNSUBSCRIBE_LEPUS_SESSION_STORAGE =
+        "UnsubscribeLepusSessionStorage";
+static constexpr const char* const
     WHITE_BOARD_DELEGATE_SUBSCRIBE_JS_SESSION_STORAGE =
         "SubscribeJSSessionStorage";
 static constexpr const char* const

@@ -59,6 +59,14 @@ export enum ThreadStrategyForRendering {
   MOST_ON_TASM = 1,
 }
 
+/**
+ * Preferred color scheme for media query evaluation (prefers-color-scheme).
+ */
+export enum ColorScheme {
+  LIGHT = 0,
+  DARK = 1,
+}
+
 const TAG = 'LynxView';
 
 export interface LynxViewBuilder {
@@ -82,6 +90,7 @@ export interface LynxViewBuilder {
   enableAirStrictMode?: boolean;
   lynxImageConfig?: LynxImageConfig;
   fontScale?: number;
+  colorScheme?: ColorScheme;
 }
 
 @Builder
@@ -178,6 +187,7 @@ export struct LynxView {
   private keyboardHeightChangeCallback?: (height: number) => void;
   private loadingID: number = 0;
   private fontScale: number = 1.0;
+  private colorScheme: ColorScheme = ColorScheme.LIGHT;
   onCreate: (context: LynxContext) => void = ((context: LynxContext) => {
   });
   onReuse: (context: LynxContext) => boolean = ((context: LynxContext) => {
@@ -217,6 +227,7 @@ export struct LynxView {
     this.enableAirStrictMode = builder.enableAirStrictMode ?? false;
     this.lynxImageConfig = builder.lynxImageConfig;
     this.fontScale = builder.fontScale ?? 1.0;
+    this.colorScheme = builder.colorScheme ?? ColorScheme.LIGHT;
     if (this.hasAppeared) {
       LynxServiceCenter.getService<ILynxTrailService>(LynxServiceType.Trail)?.parseLynxView(this);
       this.reInitTemplateRenderer(this.hasLoadSource());
@@ -355,6 +366,9 @@ export struct LynxView {
     this.context.setRenderer(this.templateRenderer);
     if (this.fontScale != 1.0) {
       this.context.updateFontScale(this.fontScale);
+    }
+    if (this.colorScheme != ColorScheme.LIGHT) {
+      this.context.updateColorScheme(this.colorScheme);
     }
 
     this.nodeController?.updateNode(this.uiRenderer, this.fitContentHeight && !!this.experimentalFixFitContent);
@@ -532,6 +546,10 @@ export struct LynxView {
     }
     if (params.fontScale !== undefined && this.fontScale != params.fontScale) {
       this.fontScale = params.fontScale;
+      couldReuse = false;
+    }
+    if (params.colorScheme !== undefined && this.colorScheme != params.colorScheme) {
+      this.colorScheme = params.colorScheme;
       couldReuse = false;
     }
     if (!couldReuse) {

@@ -166,9 +166,14 @@ void BinaryOperatorInst::SelectType(TypeOp* left_ty, TypeOp* right_ty,
   }
 }
 
-SideEffect BinaryOperatorInst::GetBinarySideEffect(TypeOp* left_ty,
-                                                   TypeOp* right_ty,
-                                                   ValueKind op) {
+// All binary operations in Lepus VM are pure functions of their SSA operands
+// and can safely be marked Idempotent (enabling CSE/DCE). Unlike JavaScript,
+// Lepus does NOT implement ToPrimitive/toString()/valueOf() or prototype chain
+// access for binary ops. Type mismatches are resolved via hardcoded C++
+// conversions (Number() returns 0 for non-numeric, StdString() returns "" for
+// non-string) without any user-observable side effects or heap access.
+// Division/modulo are the exception: they may throw on divide-by-zero.
+SideEffect BinaryOperatorInst::GetBinarySideEffect(ValueKind op) {
   switch (op) {
     case ValueKind::BinaryStrictlyEqualInstKind:
     case ValueKind::BinaryStrictlyNotEqualInstKind:
@@ -177,7 +182,7 @@ SideEffect BinaryOperatorInst::GetBinarySideEffect(TypeOp* left_ty,
     case ValueKind::BinaryLessThanOrEqualInstKind:
     case ValueKind::BinaryGreaterThanInstKind:
     case ValueKind::BinaryGreaterThanOrEqualInstKind:
-      return {};
+      return SideEffect{}.SetIdempotent();
     case ValueKind::BinaryDivInstKind:
     case ValueKind::BinaryModInstKind:
       return SideEffect{}.SetThrow();

@@ -4,9 +4,12 @@
 
 #include "platform/harmony/lynx_xelement/markdown/src/main/cpp/impl/shadow_node/markdown_shadow_node.h"
 
+#include <algorithm>
+#include <cmath>
 #include <limits>
 #include <memory>
 #include <mutex>
+#include <string>
 #include <utility>
 
 #include "base/include/log/logging.h"
@@ -14,6 +17,7 @@
 #include "markdown/view/markdown_view.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/lynx_context.h"
 #include "platform/harmony/lynx_xelement/markdown/src/main/cpp/impl/markdown_view_bundle.h"
+#include "platform/harmony/lynx_xelement/markdown/src/main/cpp/impl/resource/markdown_resource_loader_harmony.h"
 #include "platform/harmony/lynx_xelement/markdown/src/main/cpp/impl/utils/markdown_lepus_value.h"
 
 namespace lynx {
@@ -31,6 +35,17 @@ tttext::LayoutMode ToMarkdownLayoutMode(MeasureMode mode) {
     default:
       return tttext::LayoutMode::kIndefinite;
   }
+}
+
+float ToMarkdownMeasureValue(float value, MeasureMode mode, float density) {
+  if (mode == MeasureMode::Indefinite || !std::isfinite(value)) {
+    return serval::markdown::MeasureSpec::LAYOUT_MAX_SIZE;
+  }
+  if (value <= 0.f) {
+    return 0.f;
+  }
+  return std::min(value * density,
+                  serval::markdown::MeasureSpec::LAYOUT_MAX_SIZE);
 }
 
 serval::markdown::Range ReadRange(const lepus::Value& value) {
@@ -101,6 +116,9 @@ MarkdownShadowNode::EnsureMarkdownView() {
   InitMarkdownEnv(context_);
   markdown_view_ =
       std::make_shared<serval::markdown::NativeServalMarkdownView>();
+  resource_loader_ = std::make_shared<MarkdownResourceLoaderHarmony>(
+      context_, this, markdown_view_.get());
+  markdown_view_->GetMarkdownView()->SetResourceLoader(resource_loader_.get());
   bundle_ = MarkdownViewBundle::Create(markdown_view_);
   return markdown_view_;
 }
@@ -117,6 +135,10 @@ MarkdownShadowNode::getExtraBundle() {
 }
 
 void MarkdownShadowNode::Destroy() {
+  if (markdown_view_ && markdown_view_->GetMarkdownView()) {
+    markdown_view_->GetMarkdownView()->SetResourceLoader(nullptr);
+  }
+  resource_loader_.reset();
   bundle_ = nullptr;
   markdown_view_.reset();
 }
@@ -206,13 +228,18 @@ LayoutResult MarkdownShadowNode::Measure(float width, MeasureMode width_mode,
   if (!view) {
     return {0, 0};
   }
+  const float density = context_ ? context_->ScaledDensity() : 1.f;
+  if (resource_loader_) {
+    resource_loader_->SetMeasureContext(width, width_mode, height, height_mode,
+                                        final_measure, density);
+  }
   serval::markdown::MeasureSpec spec;
-  spec.width_ = width;
+  spec.width_ = ToMarkdownMeasureValue(width, width_mode, density);
   spec.width_mode_ = ToMarkdownLayoutMode(width_mode);
-  spec.height_ = height;
+  spec.height_ = ToMarkdownMeasureValue(height, height_mode, density);
   spec.height_mode_ = ToMarkdownLayoutMode(height_mode);
   auto size = view->Measure(spec);
-  return {size.width_, size.height_};
+  return {size.width_ / density, size.height_ / density};
 }
 
 void MarkdownShadowNode::Align() {

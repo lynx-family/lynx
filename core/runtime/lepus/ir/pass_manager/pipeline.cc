@@ -84,15 +84,27 @@ namespace ir {
 //   Stage F (SM_MIR): generic SSA-based optimizations and late constant
 //   materialization
 //     Passes (exact order):
-//       SimplifyCFG -> LoadNullEliminationPass -> InstCombinePass ->
+//       SimplifyCFG -> InstCombinePass ->
 //       DCE -> CSE -> LoadStoreElimination -> DCE -> LoadStoreElimination ->
-//       SimplifyCFG -> InstCombinePass -> DCE -> SimplifyCFG -> DCE ->
+//       NormalizePhiPass -> CSE -> SimplifyCFG -> InstCombinePass -> CSE ->
+//       DCE -> SimplifyCFG -> DCE -> LoadNullEliminationPass ->
 //       LoadConstRematerializationPass
 //       Requires: SSA validity; CFG/def-use available
 //       Guarantees:
 //         - canonical CFG / instruction shapes for downstream RA
 //         - redundant loads / stores / dead code removed as much as possible
 //         - final SimplifyCFG keeps CFG canonical after late MIR cleanup
+//       Invariant (module-level write analysis cache):
+//         CSE and LSE use IRContext's cached module-level write analysis
+//         (GetNeverWrittenToplevelClosureRegs / GetWrittenUpvalueNames) which
+//         is lazy-computed on first access and never invalidated. This is safe
+//         because all SetToplevelClosureVarInst / SetToplevelVarInst /
+//         SetUpvalueInst instructions are exclusively created in Stage C
+//         (ProcessSpecialMovPass / BytecodeBuilder) and NO pass in Stage F or
+//         later introduces new instances of these write instructions.
+//         If a future pass needs to synthesize such writes (e.g. store
+//         sinking/cloning), it MUST call IRContext::InvalidateWriteAnalysis()
+//         (to be added) before any subsequent CSE/LSE invocation.
 //
 //   Stage G (SM_REG_ALLOC): register allocation
 //     Passes: RegisterAllocationPass -> VerifyCallRegisterPass ->
@@ -147,18 +159,21 @@ static void AddMIRPasses(PassManager& pm) {
   pm.AddNormalizePhiPass();
 
   pm.AddSimplifyCFG();
-  pm.AddLoadNullEliminationPass();
   pm.AddInstCombinePass();
   pm.AddDCE();
   pm.AddCSE();
   pm.AddLoadStoreElimination();
   pm.AddDCE();
   pm.AddLoadStoreElimination();
+  pm.AddNormalizePhiPass();  // Fold all-same Phis exposed by LSE forwarding
+  pm.AddCSE();  // Second CSE pass: catches duplicates exposed by LSE forwarding
   pm.AddSimplifyCFG();
   pm.AddInstCombinePass();
+  pm.AddCSE();  // Third CSE: merge duplicates from InstCombine
   pm.AddDCE();
   pm.AddSimplifyCFG();
   pm.AddDCE();
+  pm.AddLoadNullEliminationPass();
   pm.AddLoadConstRematerializationPass();
 }
 

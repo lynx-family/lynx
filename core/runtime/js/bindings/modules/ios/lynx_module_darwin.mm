@@ -92,6 +92,12 @@ void LynxModuleDarwin::buildLookupMap(NSDictionary<NSString *, NSString *> *look
 LynxModuleDarwin::LynxModuleDarwin(id<LynxModule> instance)
     : LynxModuleDarwin(instance, [[instance class] name]) {}
 
+#if defined(LynxNativeModule)
+#pragma push_macro("LynxNativeModule")
+#undef LynxNativeModule
+#define LYNX_RESTORE_LYNX_NATIVE_MODULE_DARWIN 1
+#endif
+
 LynxModuleDarwin::LynxModuleDarwin(id<LynxModule> instance, NSString *moduleName)
     : LynxNativeModule(std::make_shared<pub::PubValueFactoryDarwin>()),
       instance_(instance),
@@ -104,6 +110,11 @@ LynxModuleDarwin::LynxModuleDarwin(id<LynxModule> instance, NSString *moduleName
   methodAuthBlocks_ = [[NSMutableArray alloc] init];
   methodSessionBlocks_ = [NSMutableArray array];
 }
+
+#if defined(LYNX_RESTORE_LYNX_NATIVE_MODULE_DARWIN)
+#pragma pop_macro("LynxNativeModule")
+#undef LYNX_RESTORE_LYNX_NATIVE_MODULE_DARWIN
+#endif
 
 void LynxModuleDarwin::Destroy() {}
 

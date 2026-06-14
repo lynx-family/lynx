@@ -65,6 +65,7 @@ const configKeys = [
   'enableDispatchCustomEventForUI',
   'enableEndGestureAtLastFingerUp',
   'enableEventHandleRefactor',
+  'enableEventTargetInfoNodeIndex',
   'enableEventThrough',
   'enableExposureUIMargin',
   'enableExposureWhenLayout',

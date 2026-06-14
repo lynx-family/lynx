@@ -124,6 +124,8 @@ class ParagraphBuilder {
   virtual void AddText(const char *text, size_t length) = 0;
   virtual void AddInlineView(std::unique_ptr<InlineView> inline_view) = 0;
   virtual void AddImage(const char *src, size_t length) = 0;
+  virtual void StartInlineTruncation() = 0;
+  virtual void EndInlineTruncation() = 0;
   virtual void SetPlaceHolderStyle(TextPropertyKeyID key, void *value,
                                    size_t length) = 0;
   virtual Paragraph *BuildParagraph() = 0;

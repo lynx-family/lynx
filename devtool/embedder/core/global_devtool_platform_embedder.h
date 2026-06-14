@@ -5,8 +5,11 @@
 #ifndef DEVTOOL_EMBEDDER_CORE_GLOBAL_DEVTOOL_PLATFORM_EMBEDDER_H_
 #define DEVTOOL_EMBEDDER_CORE_GLOBAL_DEVTOOL_PLATFORM_EMBEDDER_H_
 
+#include <cstdint>
 #include <memory>
 #include <string>
+
+#include "base/include/closure.h"
 
 namespace lynx {
 namespace devtool {
@@ -19,6 +22,10 @@ class GlobalDevtoolPlatformEmbedder
 
   static void StartMemoryTracing();
   static void StopMemoryTracing();
+  static void GetAllMemoryUsage(
+      int64_t timeout_ms,
+      base::MoveOnlyClosure<void, const std::string&, const std::string&>
+          callback);
 };
 
 }  // namespace devtool

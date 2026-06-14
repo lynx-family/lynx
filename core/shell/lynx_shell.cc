@@ -1000,6 +1000,11 @@ void LynxShell::UpdateFontScale(float scale) {
   engine_actor_->Act([scale](auto& engine) { engine->UpdateFontScale(scale); });
 }
 
+void LynxShell::UpdateColorScheme(int scheme) {
+  engine_actor_->Act(
+      [scheme](auto& engine) { engine->UpdateColorScheme(scheme); });
+}
+
 void LynxShell::SetFontScale(float scale) {
   engine_actor_->Act([scale](auto& engine) { engine->SetFontScale(scale); });
 }

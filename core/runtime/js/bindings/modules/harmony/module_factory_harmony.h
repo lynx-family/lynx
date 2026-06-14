@@ -24,8 +24,8 @@ namespace harmony {
 
 class ModuleFactoryHarmony : public runtime::NativeModuleFactory {
  public:
-  ModuleFactoryHarmony(napi_env env, napi_value module_args[4],
-                       napi_value sendable_module_args[4]);
+  ModuleFactoryHarmony(napi_env env, napi_value module_args[5],
+                       napi_value sendable_module_args[5]);
 
   std::shared_ptr<runtime::LynxNativeModule> CreateModule(
       const std::string& name) override;

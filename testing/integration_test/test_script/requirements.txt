@@ -10,7 +10,7 @@ h11==0.16.0
     # via wsproto
 idna==3.11
     # via trio
-lynx-e2e-appium==0.0.11
+lynx-e2e-appium==0.0.12
     # via -r testing/integration_test/test_script/requirements.in
 numpy==2.2.6
     # via opencv-python

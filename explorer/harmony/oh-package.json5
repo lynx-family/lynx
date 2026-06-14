@@ -30,6 +30,7 @@
     "@lynx/xelement_markdown": "file:../../platform/harmony/lynx_xelement/markdown",
     "@lynx/xelement_svg": "file:../../platform/harmony/lynx_xelement/svg",
     "@lynx/xelement_webview": "file:../../platform/harmony/lynx_xelement/webview",
+    "@lynx/xelement_video": "file:../../platform/harmony/lynx_xelement/video",
   },
   "modelVersion": "5.0.0"
 }

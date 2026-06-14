@@ -87,6 +87,15 @@ if (clay_enable_tttext) {
   clay_enable_skshaper = false
 }
 
+_is_oliver_ssr = defined(is_oliver_ssr) && is_oliver_ssr
+_is_oliver_node_lynx = defined(is_oliver_node_lynx) && is_oliver_node_lynx
+_is_oliver_tasm = defined(is_oliver_tasm) && is_oliver_tasm
+
+use_clay_lynx_trail_hub_impl =
+    enable_clay && (is_mac || is_win || (is_android && is_headless)) &&
+    !enable_unittests && !_is_oliver_ssr && !_is_oliver_node_lynx &&
+    !_is_oliver_tasm && !is_encoder_ut
+
 # feature_defines_list ---------------------------------------------------------
 
 feature_defines_list = [

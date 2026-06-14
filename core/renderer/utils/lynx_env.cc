@@ -596,6 +596,10 @@ bool LynxEnv::EnableHarmonyGestureInterrupterUserData() {
   return GetBoolEnv(Key::ENABLE_HARMONY_GESTURE_INTERRUPTER_USER_DATA, false);
 }
 
+bool LynxEnv::EnableHarmonyTextCustomEmoji() {
+  return GetBoolEnv(Key::ENABLE_HARMONY_TEXT_CUSTOM_EMOJI, true);
+}
+
 bool LynxEnv::EnableUnifyFixedBehavior() {
   return GetBoolEnv(Key::ENABLE_UNIFY_FIXED_BEHAVIOR, false);
 }
@@ -639,7 +643,8 @@ bool LynxEnv::EnableNativeList() {
 }
 
 bool LynxEnv::FixOldFixedInsertSelfUseRenderParent() {
-  return GetBoolEnv(Key::FIX_OLD_FIXED_INSERT_SELF_USE_RENDER_PARENT, false);
+  // TODO: Remove this setting in the next version.
+  return GetBoolEnv(Key::FIX_OLD_FIXED_INSERT_SELF_USE_RENDER_PARENT, true);
 }
 
 bool LynxEnv::FixFiberReinsertDetachFromOldRenderParent() {
@@ -665,6 +670,10 @@ bool LynxEnv::EnableReadableStreamMemFix() {
 
 bool LynxEnv::EnableElementApiNewRegistration() {
   return GetBoolEnv(Key::ENABLE_ELEMENT_API_NEW_REGISTRATION, false);
+}
+
+bool LynxEnv::EnableElementInvokeUIMethodPendingTask() {
+  return GetBoolEnv(Key::ENABLE_ELEMENT_INVOKE_UI_METHOD_PENDING_TASK, false);
 }
 }  // namespace tasm
 }  // namespace lynx

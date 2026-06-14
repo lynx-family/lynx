@@ -4,10 +4,14 @@
 
 #include "core/runtime/lepus/ir/transformer/mir/cse.h"
 
+#include <set>
+#include <utility>
+
 #include "core/runtime/lepus/ir/analysis/analysis.h"
 #include "core/runtime/lepus/ir/analysis/cfg.h"
 #include "core/runtime/lepus/ir/dialects/mir/mir_instrs.h"
 #include "core/runtime/lepus/ir/instrs.h"
+#include "core/runtime/lepus/ir/ir_context.h"
 #include "core/runtime/lepus/ir/llvh/include/llvh/ADT/DenseMap.h"
 #include "core/runtime/lepus/ir/llvh/include/llvh/ADT/DenseSet.h"
 #include "core/runtime/lepus/ir/llvh/include/llvh/ADT/Hashing.h"
@@ -57,6 +61,20 @@ struct CSEValue {
     // LoadConstInst and GetBuiltinInst are always safe to CSE as they read from
     // read-only pools.
     if (llvh::isa<LoadConstInst>(inst) || llvh::isa<GetBuiltinInst>(inst))
+      return true;
+
+    // Idempotent calls (parseFloat, parseInt, isNaN) are pure: same inputs
+    // produce the same output with no observable side effects.
+    if (auto* call = llvh::dyn_cast<CallInst>(inst)) {
+      if (call->IsIdempotentCall()) return true;
+    }
+
+    // GetToplevelClosureVarInst and GetUpvalueInst can be CSE'd when the
+    // target register/slot is proven never-written across the entire module.
+    // The never-written check is performed in ProcessNode; here we just
+    // allow them as valid hash table keys.
+    if (llvh::isa<GetToplevelClosureVarInst>(inst) ||
+        llvh::isa<GetUpvalueInst>(inst))
       return true;
 
     return inst->GetSideEffect().IsPure() &&
@@ -135,8 +153,13 @@ class StackNode : public DomTreeDFS::StackNode {
 /// tree, eliminating trivially redundant instructions.
 class CSEContext : public DomTreeDFS::Visitor<CSEContext, StackNode> {
  public:
-  CSEContext(const DominanceInfo& dt)
-      : DomTreeDFS::Visitor<CSEContext, StackNode>(dt) {}
+  CSEContext(const DominanceInfo& dt, FuncOp* func,
+             const std::set<uint32_t>& never_written_toplevel_closure_regs,
+             const std::set<uint8_t>& never_written_upvalue_indices)
+      : DomTreeDFS::Visitor<CSEContext, StackNode>(dt),
+        never_written_toplevel_closure_regs_(
+            never_written_toplevel_closure_regs),
+        never_written_upvalue_indices_(never_written_upvalue_indices) {}
 
   bool Run() { return DFS(); }
 
@@ -145,12 +168,18 @@ class CSEContext : public DomTreeDFS::Visitor<CSEContext, StackNode> {
  private:
   friend StackNode;
 
+  const std::set<uint32_t>& never_written_toplevel_closure_regs_;
+  const std::set<uint8_t>& never_written_upvalue_indices_;
+
   /// AvailableValues - This scoped hash table contains the current values of
   /// all of our simple scalar expressions.  As we walk down the domtree, we
   /// look to see if instructions are in this. If so, we replace them with what
   /// we find, otherwise we insert them so that dominated values can succeed in
   /// their lookup.
   ScopedHTType available_values_{};
+
+  /// Check if a never-written load instruction should be CSE'd.
+  bool IsNeverWrittenLoad(Instruction* inst) const;
 };
 
 inline StackNode::StackNode(CSEContext* ctx, const DominanceInfoNode* n)
@@ -160,6 +189,19 @@ inline StackNode::StackNode(CSEContext* ctx, const DominanceInfoNode* n)
 //                             CSE Implementation
 //===----------------------------------------------------------------------===//
 
+bool CSEContext::IsNeverWrittenLoad(Instruction* inst) const {
+  if (auto* get_inst = llvh::dyn_cast<GetToplevelClosureVarInst>(inst)) {
+    auto* reg = llvh::dyn_cast<LiteralUint32>(get_inst->GetClosureReg());
+    return reg &&
+           never_written_toplevel_closure_regs_.count(reg->GetValue()) > 0;
+  }
+  if (auto* get_inst = llvh::dyn_cast<GetUpvalueInst>(inst)) {
+    auto* idx = llvh::dyn_cast<LiteralUint8>(get_inst->GetIndex());
+    return idx && never_written_upvalue_indices_.count(idx->GetValue()) > 0;
+  }
+  return false;
+}
+
 bool CSEContext::ProcessNode(StackNode* stack_node) {
   Block* bb = stack_node->GetNode()->getBlock();
   bool changed = false;
@@ -168,11 +210,53 @@ bool CSEContext::ProcessNode(StackNode* stack_node) {
   // is processed.
   InstructionDestroyer destroyer;
 
+  // Local map for closure/upvalue loads.  Cleared when a non-pure call is
+  // encountered, because C functions may modify toplevel closure variables
+  // at runtime (e.g. via VMContext::UpdateTopLevelVariable).
+  llvh::DenseMap<CSEValue, Value*> available_closure_loads;
+
   // See if any instructions in the block can be eliminated.  If so, do it.  If
   // not, add them to AvailableValues.
   for (auto* inst : bb->InstRange()) {
+    // Non-pure, non-readonly calls invalidate toplevel closure load caches.
+    // Upvalue loads are safe: no C function API can modify upvalue slots.
+    if (auto* call = llvh::dyn_cast<CallInst>(inst)) {
+      if (!call->IsIdempotentCall() && !call->IsReadonlyCall()) {
+        // Only clear toplevel closure loads; upvalue loads are safe since
+        // no C function API can modify upvalue slots.
+        llvh::SmallVector<CSEValue, 4> to_erase;
+        for (auto& kv : available_closure_loads) {
+          if (llvh::isa<GetToplevelClosureVarInst>(kv.second)) {
+            to_erase.push_back(kv.first);
+          }
+        }
+        for (auto& key : to_erase) {
+          available_closure_loads.erase(key);
+        }
+      }
+    }
+
     // If this is not a simple instruction that we can value number, skip it.
     if (!CSEValue::CanHandle(inst)) {
+      continue;
+    }
+
+    // For GetToplevelClosureVarInst / GetUpvalueInst, use the local map
+    // (which is invalidated on non-pure calls) instead of the scoped table.
+    if (llvh::isa<GetToplevelClosureVarInst>(inst) ||
+        llvh::isa<GetUpvalueInst>(inst)) {
+      if (!IsNeverWrittenLoad(inst)) {
+        continue;
+      }
+      auto it = available_closure_loads.find(CSEValue(inst));
+      if (it != available_closure_loads.end()) {
+        inst->ReplaceAllUsesWith(it->second);
+        destroyer.Add(inst);
+        changed = true;
+      } else {
+        available_closure_loads.try_emplace(CSEValue(inst),
+                                            static_cast<Value*>(inst));
+      }
       continue;
     }
 
@@ -193,8 +277,14 @@ bool CSEContext::ProcessNode(StackNode* stack_node) {
 }
 
 bool CSE::RunOnFunction(FuncOp* f) {
+  auto& never_written_toplevel = ir_ctx_->GetNeverWrittenToplevelClosureRegs();
+  auto& written_upvalue_names = ir_ctx_->GetWrittenUpvalueNames();
+  auto never_written_upvalue_indices =
+      ComputeNeverWrittenUpvalueIndices(written_upvalue_names, f);
+
   DominanceInfo dt{f};
-  CSEContext cse_ctx{dt};
+  CSEContext cse_ctx{dt, f, never_written_toplevel,
+                     never_written_upvalue_indices};
   return cse_ctx.Run();
 }
 

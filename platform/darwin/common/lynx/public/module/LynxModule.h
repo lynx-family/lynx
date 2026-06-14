@@ -18,8 +18,8 @@ typedef NSDictionary *_Nullable (^LynxMethodSessionBlock)(NSString *method, NSSt
                                                           NSString *invoke_session,
                                                           NSString *name_space);
 
-#if defined(__OBJC__) && !defined(LynxNativeModuleRegister)
-#define LynxNativeModuleRegister(module_name) class LynxNativeModuleRegisterMarker;
+#if defined(__OBJC__) && !defined(LynxNativeModule)
+#define LynxNativeModule(module_name) class LynxNativeModuleMarker;
 #endif
 
 @protocol LynxModule <NSObject>

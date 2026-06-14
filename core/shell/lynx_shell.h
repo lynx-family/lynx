@@ -198,6 +198,8 @@ class LynxShell {
 
   void UpdateFontScale(float scale);
 
+  void UpdateColorScheme(int scheme);
+
   void SetFontScale(float scale);
 
   void SetPlatformConfig(std::string platform_config_json_string);

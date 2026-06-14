@@ -26,12 +26,22 @@ import { DevToolSettings } from '../devtool_wrapper/DevToolSettings';
 
 const TAG = 'LynxEnv';
 
+export interface LynxEmojiResource {
+  name: string;
+  uri: string | number;
+}
+
+export interface LynxEmojiResourceFetcher {
+  getEmojiResources(): Array<LynxEmojiResource>;
+}
+
 class LynxEnvironment {
   private hasInitLynxDebug: boolean = false;
   private performanceEnable: boolean = false;
   private appInfo?: Map<string, string>;
   private tracingDirPath: string = '';
   private defaultDensityEnabled = false;
+  private commonEmojiPreloadScheduled = false;
   private displayInfo = new DisplayInfo();
   private initialized = false;
 
@@ -175,6 +185,21 @@ class LynxEnvironment {
 
   public getTracingDirPath(): string {
     return this.tracingDirPath;
+  }
+
+  public setEmojiResourceFetcher(fetcher: LynxEmojiResourceFetcher): void {
+    lynx.setEmojiResourceFetcher(fetcher);
+    this.scheduleCommonEmojiPreload();
+  }
+
+  private scheduleCommonEmojiPreload(delayMs: number = 5000): void {
+    if (this.commonEmojiPreloadScheduled) {
+      return;
+    }
+    this.commonEmojiPreloadScheduled = true;
+    setTimeout(() => {
+      lynx.preloadCommonEmojiResources();
+    }, delayMs);
   }
 
   public static setCacheDirPath(cacheDirPath: string) {

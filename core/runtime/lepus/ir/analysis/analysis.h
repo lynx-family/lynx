@@ -5,6 +5,10 @@
 #ifndef CORE_RUNTIME_LEPUS_IR_ANALYSIS_ANALYSIS_H_
 #define CORE_RUNTIME_LEPUS_IR_ANALYSIS_ANALYSIS_H_
 
+#include <cstdint>
+#include <set>
+#include <string>
+
 #include "core/runtime/lepus/ir/analysis/cfg.h"
 #include "core/runtime/lepus/ir/llvh/include/llvh/ADT/SmallVector.h"
 #include "core/runtime/lepus/ir/llvh/include/llvh/Support/RecyclingAllocator.h"
@@ -192,6 +196,37 @@ class Visitor {
 };
 
 }  // namespace DomTreeDFS
+
+/// Results of toplevel closure register write analysis.
+struct ToplevelClosureWriteInfo {
+  /// Registers that are never written anywhere in the module.
+  std::set<uint32_t> never_written_regs;
+  /// Registers that are written somewhere in the module.
+  std::set<uint32_t> written_regs;
+};
+
+/// Scans the entire module to determine which toplevel closure registers
+/// are never written (via SetToplevelClosureVarInst or SetToplevelVarInst
+/// with a valid ClosureVarReg).
+ToplevelClosureWriteInfo ComputeToplevelClosureWriteInfo(ModuleOp* mod);
+
+/// Scans the entire module to collect the names of all upvalue variables
+/// that are written (via SetUpvalueInst) anywhere. This is the expensive
+/// module-level part of ComputeNeverWrittenUpvalueIndices and can be cached
+/// across multiple function-level queries.
+std::set<std::string> ComputeWrittenUpvalueNames(ModuleOp* mod);
+
+/// Scans the entire module to determine which upvalue indices of \p func
+/// correspond to variables that are never written (via SetUpvalueInst)
+/// anywhere in the module.
+std::set<uint8_t> ComputeNeverWrittenUpvalueIndices(ModuleOp* mod,
+                                                    FuncOp* func);
+
+/// Given a pre-computed set of written upvalue names (from
+/// ComputeWrittenUpvalueNames), determine which upvalue indices of \p func
+/// are never written. This avoids re-scanning the module for each function.
+std::set<uint8_t> ComputeNeverWrittenUpvalueIndices(
+    const std::set<std::string>& written_upvalue_names, FuncOp* func);
 
 }  // namespace ir
 }  // namespace lepus

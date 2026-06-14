@@ -6,7 +6,10 @@
 
 #include <algorithm>
 #include <string>
+#include <utility>
 
+#include "core/runtime/lepus/ir/dialects/mir/mir_instrs.h"
+#include "core/runtime/lepus/ir/ir_base.h"
 #include "core/runtime/lepus/ir/value.h"
 
 namespace lynx {
@@ -241,6 +244,101 @@ PostOrderAnalysis2::PostOrderAnalysis2(Region* region) {
 
   AssertEntryIsLast("PostOrderAnalysis2", order_, entry);
 }
+
+ToplevelClosureWriteInfo ComputeToplevelClosureWriteInfo(ModuleOp* mod) {
+  ToplevelClosureWriteInfo info;
+  if (!mod) return info;
+
+  std::set<uint32_t> all_closure_regs;
+  std::set<uint32_t> written_closure_regs;
+
+  for (auto it = mod->begin(); it != mod->end(); ++it) {
+    FuncOp* fn = *it;
+    if (!fn) continue;
+    for (auto& bb : *fn) {
+      for (auto& inst : bb) {
+        if (auto* get_tc = llvh::dyn_cast<GetToplevelClosureVarInst>(&inst)) {
+          auto* reg_lit =
+              llvh::dyn_cast<LiteralUint32>(get_tc->GetClosureReg());
+          if (reg_lit) all_closure_regs.insert(reg_lit->GetValue());
+        } else if (auto* set_tc =
+                       llvh::dyn_cast<SetToplevelClosureVarInst>(&inst)) {
+          auto* reg_lit =
+              llvh::dyn_cast<LiteralUint32>(set_tc->GetClosureReg());
+          if (reg_lit) written_closure_regs.insert(reg_lit->GetValue());
+        } else if (auto* set_tv = llvh::dyn_cast<SetToplevelVarInst>(&inst)) {
+          unsigned closure_reg = set_tv->GetClosureVarReg();
+          if (closure_reg != constants::kInvalidSignedValue) {
+            written_closure_regs.insert(closure_reg);
+          }
+        }
+      }
+    }
+  }
+
+  for (uint32_t reg : all_closure_regs) {
+    if (written_closure_regs.count(reg) == 0) {
+      info.never_written_regs.insert(reg);
+    }
+  }
+  info.written_regs = std::move(written_closure_regs);
+  return info;
+}
+
+std::set<std::string> ComputeWrittenUpvalueNames(ModuleOp* mod) {
+  std::set<std::string> written_upvalue_names;
+  if (!mod) return written_upvalue_names;
+
+  for (auto* fn : *mod) {
+    if (!fn) continue;
+    auto lepus_fn = fn->GetLepusFunction();
+    if (!lepus_fn) continue;
+    for (auto& bb : *fn) {
+      for (auto& inst : bb) {
+        auto* set_uv = llvh::dyn_cast<SetUpvalueInst>(&inst);
+        if (!set_uv) continue;
+        if (LEPUS_UNLIKELY(set_uv->GetFunc() != fn)) {
+          throw ::lynx::lepus::CompileException(
+              "Lepus IR error: SetUpvalueInst::GetFunc() does not match "
+              "containing FuncOp");
+        }
+        auto* idx_lit = llvh::dyn_cast<LiteralUint8>(set_uv->GetIndex());
+        if (!idx_lit) continue;
+        int idx = static_cast<int>(idx_lit->GetValue());
+        if (idx >= 0 && static_cast<size_t>(idx) < lepus_fn->UpvaluesSize()) {
+          auto* uv_info = lepus_fn->GetUpvalue(idx);
+          if (uv_info) written_upvalue_names.insert(uv_info->name_.str());
+        }
+      }
+    }
+  }
+  return written_upvalue_names;
+}
+
+std::set<uint8_t> ComputeNeverWrittenUpvalueIndices(ModuleOp* mod,
+                                                    FuncOp* func) {
+  if (!mod || !func) return {};
+  return ComputeNeverWrittenUpvalueIndices(ComputeWrittenUpvalueNames(mod),
+                                           func);
+}
+
+std::set<uint8_t> ComputeNeverWrittenUpvalueIndices(
+    const std::set<std::string>& written_upvalue_names, FuncOp* func) {
+  std::set<uint8_t> result;
+  if (!func) return result;
+
+  auto lepus_func = func->GetLepusFunction();
+  if (!lepus_func) return result;
+  for (size_t i = 0; i < lepus_func->UpvaluesSize(); ++i) {
+    auto* uv_info = lepus_func->GetUpvalue(static_cast<int>(i));
+    if (!uv_info) continue;
+    if (written_upvalue_names.count(uv_info->name_.str()) == 0) {
+      result.insert(static_cast<uint8_t>(i));
+    }
+  }
+  return result;
+}
+
 }  // namespace ir
 }  // namespace lepus
 }  // namespace lynx

@@ -15,6 +15,7 @@ namespace tasm {
   V("text", ElementBuiltInTagEnum::ELEMENT_TEXT)                   \
   V("raw-text", ElementBuiltInTagEnum::ELEMENT_RAW_TEXT)           \
   V("image", ElementBuiltInTagEnum::ELEMENT_IMAGE)                 \
+  V("ecom-image", ElementBuiltInTagEnum::ELEMENT_IMAGE)            \
   V("scroll-view", ElementBuiltInTagEnum::ELEMENT_SCROLL_VIEW)     \
   V("list", ElementBuiltInTagEnum::ELEMENT_LIST)                   \
   V("component", ElementBuiltInTagEnum::ELEMENT_COMPONENT)         \

@@ -16,8 +16,8 @@
 #import <Lynx/LynxUITarget.h>
 #import <Lynx/UIScrollView+Nested.h>
 
-#if defined(__OBJC__) && !defined(LynxUIRegister)
-#define LynxUIRegister(name) class LynxUIRegisterMarker;
+#if defined(__OBJC__) && !defined(LynxElement)
+#define LynxElement(name) class LynxElementMarker;
 #endif
 
 NS_ASSUME_NONNULL_BEGIN
@@ -160,7 +160,7 @@ typedef void (^LynxNodeReadyBlock)(LynxUI*);
                  border:(UIEdgeInsets)border
     withLayoutAnimation:(BOOL)with;
 
-- (void)updateSticky:(NSArray*)info;
+- (void)updateSticky:(nullable NSArray*)info;
 - (void)checkStickyOnParentScroll:(CGFloat)offsetX withOffsetY:(CGFloat)offsetY;
 
 // layoutDidFinish is called only LayoutRecursively is actually executed

@@ -11,6 +11,7 @@
 #include <utility>
 #include <vector>
 
+#include "base/include/value/base_value.h"
 #include "core/renderer/css/shared_css_fragment.h"
 #include "core/template_bundle/template_codec/binary_encoder/css_encoder/css_font_face_token.h"
 #include "core/template_bundle/template_codec/binary_encoder/css_encoder/css_keyframes_token.h"
@@ -63,7 +64,7 @@ struct LynxStyleRuleGroup : LynxStyleRuleBase {
 struct LynxStyleRuleCondition : LynxStyleRuleGroup {
   explicit LynxStyleRuleCondition(tasm::CSSRuleType t)
       : LynxStyleRuleGroup(t) {}
-  std::string condition;
+  lepus::Value condition_value;
 };
 
 struct LynxStyleRuleLayer : LynxStyleRuleGroup {
@@ -79,7 +80,7 @@ struct LynxStyleRuleFontFace : LynxStyleRuleBase {
   explicit LynxStyleRuleFontFace()
       : LynxStyleRuleBase(tasm::CSSRuleType::kFontFace) {}
   std::string family;
-  std::vector<std::shared_ptr<tasm::CSSFontFaceToken>> properties;
+  lepus::Value font_face_rule;
 };
 
 struct LynxStyleRuleKeyframes : LynxStyleRuleBase {

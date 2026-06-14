@@ -57,6 +57,9 @@ source_set("lynx_adaptor") {
     "../fml:fml",
     "../ui:ui",
   ]
+  if (use_clay_lynx_trail_hub_impl) {
+    public_deps += [ ":lynx_trail_hub_impl_clay" ]
+  }
 
   if (is_win || is_mac) {
     sources += [
@@ -79,4 +82,15 @@ source_set("lynx_adaptor") {
   if (is_mac || is_android || is_ios) {
     defines += [ "TRACE_EVENT_HIDE_MACROS" ]
   }
+}
+
+source_set("lynx_trail_hub_impl_clay") {
+  sources = [
+    "lynx_trail_hub_impl_clay.cc",
+    "lynx_trail_hub_impl_clay.h",
+  ]
+
+  public_configs = [ "../../clay:config" ]
+
+  deps = [ "../../platform/embedder/lynx_service:lynx_service" ]
 }

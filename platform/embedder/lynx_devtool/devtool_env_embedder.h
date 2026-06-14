@@ -7,7 +7,6 @@
 
 #include <string>
 #include <unordered_map>
-#include <vector>
 
 namespace lynx {
 namespace embedder {
@@ -27,19 +26,25 @@ class DevToolEnvEmbedder {
 
   bool IsLogBoxEnabled() const;
 
+  /**
+   * @deprecated DevTool setting callers should use DevToolSettingsEmbedder
+   * typed APIs instead. This string-key API is retained for backward
+   * compatibility.
+   */
   void SetDevToolSwitch(std::string key, bool value);
+
+  /**
+   * @deprecated DevTool setting callers should use DevToolSettingsEmbedder
+   * typed APIs instead. This string-key API is retained for backward
+   * compatibility.
+   */
   bool GetDevToolSwitch(std::string key) const;
 
   void SetAppInfo(const std::string& key, const std::string& value);
   void SetAppInfo(const std::unordered_map<std::string, std::string>& app_info);
 
  private:
-  bool NeedPersist(std::string key);
-
- private:
   std::unordered_map<std::string, std::string> app_infos_;
-  std::unordered_map<std::string, std::vector<bool> >
-      switch_persistent_default_;
 };
 
 }  // namespace embedder

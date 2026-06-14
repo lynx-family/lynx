@@ -12,6 +12,8 @@ namespace devtool {
 InspectorMemoryAgent::InspectorMemoryAgent() {
   functions_map_["Memory.startTracing"] = &InspectorMemoryAgent::StartTracing;
   functions_map_["Memory.stopTracing"] = &InspectorMemoryAgent::StopTracing;
+  functions_map_["Memory.getAllMemoryUsage"] =
+      &InspectorMemoryAgent::GetAllMemoryUsage;
 }
 
 InspectorMemoryAgent::~InspectorMemoryAgent() = default;
@@ -24,6 +26,12 @@ void InspectorMemoryAgent::StartTracing(
 void InspectorMemoryAgent::StopTracing(
     const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
   LynxGlobalDevToolMediator::GetInstance().MemoryStopTracing(sender, message);
+}
+
+void InspectorMemoryAgent::GetAllMemoryUsage(
+    const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
+  LynxGlobalDevToolMediator::GetInstance().MemoryGetAllMemoryUsage(sender,
+                                                                   message);
 }
 
 void InspectorMemoryAgent::CallMethod(

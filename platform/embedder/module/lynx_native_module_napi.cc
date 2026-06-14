@@ -13,6 +13,17 @@
 #include "third_party/weak-node-api/headers/weak_napi_defines.h"
 #endif
 
+namespace lynx {
+namespace binding {
+void ReportRawException(void* raw_env, void* raw_exception);
+}
+}  // namespace lynx
+namespace {
+
+napi_status RunScriptFromFile(napi_env env, const char* script, size_t length,
+                              const char* filename, napi_value* result);
+}  // namespace
+
 // Structure to store instance data information
 struct InstanceDataInfo {
   void* data = nullptr;
@@ -106,6 +117,39 @@ LYNX_EXTERN_C void lynx_napi_get_instance_data(napi_env env, uint64_t key,
   if (it != instance_map.end()) {
     *data = it->second->data;
   }
+}
+
+LYNX_EXTERN_C napi_status lynx_napi_run_script_from_file(napi_env env,
+                                                         const char* script,
+                                                         size_t length,
+                                                         const char* filename,
+                                                         napi_value* result) {
+  if (env == nullptr || script == nullptr) {
+    return napi_invalid_arg;
+  }
+  const char* safe_filename = filename != nullptr ? filename : "";
+  napi_value unused_result = nullptr;
+  napi_value* safe_result = result != nullptr ? result : &unused_result;
+  return RunScriptFromFile(env, script, length, safe_filename, safe_result);
+}
+
+LYNX_EXTERN_C void lynx_napi_report_and_clear_exception(napi_env env) {
+  if (env == nullptr) {
+    return;
+  }
+  bool has_exception = false;
+  napi_status status = napi_is_exception_pending(env, &has_exception);
+  if (status != napi_ok || !has_exception) {
+    return;
+  }
+
+  napi_value exception = nullptr;
+  status = napi_get_and_clear_last_exception(env, &exception);
+  if (status != napi_ok || exception == nullptr) {
+    return;
+  }
+
+  lynx::binding::ReportRawException(env, exception);
 }
 
 namespace lynx {
@@ -306,3 +350,40 @@ std::unique_ptr<pub::Value> LynxNativeModuleNAPI::GetAttributeValue(
 
 }  // namespace embedder
 }  // namespace lynx
+
+// Since the standard napi run_script interface does not support the filename
+// parameter, we need to use the lower-level primjs napi_run_script interface.
+// Since both weak-node-api and primjs napi symbols appear here, and their
+// symbols may be renamed, macros are needed to handle various cases.
+#ifdef USE_WEAK_SUFFIX_NAPI
+#include "third_party/weak-node-api/headers/weak_napi_undefs.h"
+#endif
+#include "third_party/napi/include/js_native_api.h"
+
+namespace {
+#ifdef USE_WEAK_SUFFIX_NAPI
+napi_status_weak RunScriptFromFile(napi_env_weak env, const char* script,
+                                   size_t length, const char* filename,
+                                   napi_value_weak* result) {
+#else
+napi_status RunScriptFromFile(napi_env env, const char* script, size_t length,
+                              const char* filename, napi_value* result) {
+#endif
+#ifdef USE_PRIMJS_NAPI
+  napi_env_primjs env_primjs = reinterpret_cast<napi_env_primjs>(env);
+  napi_value_primjs* result_primjs =
+      reinterpret_cast<napi_value_primjs*>(result);
+#else
+  napi_env env_primjs = reinterpret_cast<napi_env>(env);
+  napi_value* result_primjs = reinterpret_cast<napi_value*>(result);
+#endif
+
+#ifdef USE_WEAK_SUFFIX_NAPI
+  return static_cast<napi_status_weak>(env_primjs->napi_run_script(
+      env_primjs, script, length, filename, result_primjs));
+#else
+  return static_cast<napi_status>(env_primjs->napi_run_script(
+      env_primjs, script, length, filename, result_primjs));
+#endif
+}
+}  // namespace

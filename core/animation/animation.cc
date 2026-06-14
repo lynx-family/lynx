@@ -31,19 +31,38 @@ constexpr int64_t kThirtyMinutesInSeconds = 1800;
 
 namespace lynx {
 namespace animation {
+namespace {
+
+void SuppressSampleSideEffects(KeyframeEffect::KeyframeSampleResult& result) {
+  result.should_send_start_event = false;
+  result.should_send_end_event = false;
+  result.iteration_events_due = 0;
+  result.should_persist_fill_styles = false;
+  result.should_clear_fill_styles = false;
+}
+
+}  // namespace
 
 Animation::Animation(const base::String& name)
     : name_(name), keyframe_effect_(nullptr) {}
 
-void Animation::Play() {
+void Animation::Play(bool play_handles_initial_frame) {
   if (state_ == State::kPlay) {
     return;
   }
   TRACE_EVENT(LYNX_TRACE_CATEGORY, ANIMATION_PLAY);
   LOGI("Lynx Animation start, name is: " << name_.str());
+  State temp_state = state_;
+  if (temp_state == State::kIdle || temp_state == State::kStop) {
+    ResetPauseTiming();
+    ClearSampleHistory();
+  } else {
+    // Resume keeps the last valid sample history, but drops same-timestamp
+    // cache.
+    InvalidateSampleCache();
+  }
   // Since `DoFrame` may reads and modifies state_, the change of state_ must be
   // completed before DoFrame is executed.
-  State temp_state = state_;
   state_ = State::kPlay;
   // The kIdle flag indicates that the animation has just been created and has
   // never been ticked before. Here we need to use dummy time to tick the
@@ -62,13 +81,17 @@ void Animation::Play() {
 
   // TODO(WUJINTIAN): Remove these tricky code and defer the destruction of the
   // animator to the next vsync to solve the aforementioned problem.
-  if (temp_state == State::kIdle) {
+  if (temp_state == State::kIdle && play_handles_initial_frame) {
     DoFrame(GetAnimationDummyStartTime());
     if (animation_delegate_) {
       animation_delegate_->FlushAnimatedStyle();
     }
-  } else {
+  } else if (play_handles_initial_frame || temp_state != State::kIdle) {
     RequestNextFrame();
+  } else {
+    // kIdle with external initial-frame handling is used by the new styling
+    // pipeline. It samples in the current style pass and schedules later ticks
+    // from the outer pipeline after checking for running animations.
   }
 }
 
@@ -78,16 +101,19 @@ void Animation::Pause() {
   if (state_ == State::kPause) {
     return;
   }
+  InvalidateSampleCache();
   state_ = State::kPause;
 }
 
 void Animation::Stop() {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, ANIMATION_STOP);
+  ClearSampleHistory();
   state_ = State::kStop;
 }
 
 void Animation::Destroy(bool need_clear_effect) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, ANIMATION_DESTORY);
+  ClearSampleHistory();
   ClearTransitionPreviousEndValue();
   if (need_clear_effect) {
     keyframe_effect_->ClearEffect();
@@ -137,8 +163,9 @@ bool Animation::Tick(fml::TimePoint& time) {
   // If start_time_ is uninitialized or is a dummy time, we should update it.
   if (start_time_ == fml::TimePoint::Min() ||
       start_time_ == GetAnimationDummyStartTime()) {
+    const bool reset_effect_state = start_time_ == fml::TimePoint::Min();
     start_time_ = time;
-    keyframe_effect_->SetStartTime(time);
+    keyframe_effect_->SetStartTime(time, reset_effect_state);
   }
   return keyframe_effect_->TickKeyframeModel(time).has_finished_all;
 }
@@ -193,16 +220,117 @@ void Animation::DoFrame(fml::TimePoint& frame_time) {
       }
       ClearTransitionPreviousEndValue();
     }
-  }
 
-  if (state_ == State::kPlay) {
-    RequestNextFrame();
-  } else if (state_ == State::kPause) {
-    keyframe_effect_->SetPauseTime(frame_time);
+    if (state_ == State::kPlay) {
+      RequestNextFrame();
+    } else if (state_ == State::kPause) {
+      keyframe_effect_->SetPauseTime(frame_time);
+    }
   }
 }
 
+KeyframeEffect::KeyframeSampleResult Animation::SampleAt(
+    fml::TimePoint& frame_time) {
+  KeyframeEffect::KeyframeSampleResult result;
+  // Invalid time and missing effect produce no sampled style changes.
+  if (frame_time == fml::TimePoint::Min() || !keyframe_effect_) {
+    return result;
+  }
+  if (state_ == State::kStop) {
+    // A just-finished animation may be sampled repeatedly at the same timestamp
+    // in one pipeline pass. Keep style output stable, but do not replay events
+    // or fill side effects.
+    if (has_cached_sample_ && cached_sample_time_ == frame_time) {
+      result = cached_sample_result_;
+      SuppressSampleSideEffects(result);
+    }
+    return result;
+  }
+
+  if (state_ == State::kPause && frame_time == GetAnimationDummyStartTime() &&
+      !has_last_sample_) {
+    // Dummy time is only a style recalculation placeholder. Without a previous
+    // real sample to freeze, it must not initialize pause timing or advance
+    // timeline state.
+    return result;
+  }
+
+  // Resume from pause by excluding the paused interval from active time.
+  if (state_ == State::kPlay && was_paused_) {
+    total_paused_duration_ =
+        total_paused_duration_ + (frame_time - pause_time_);
+    was_paused_ = false;
+  }
+
+  // Convert an unset or dummy start time into the timestamp used for sampling.
+  // Replacing a dummy start time should not restart effect state, because dummy
+  // time only primes the initial style before the first real frame arrives.
+  if (start_time_ == fml::TimePoint::Min() ||
+      start_time_ == GetAnimationDummyStartTime()) {
+    const bool reset_effect_state = start_time_ == fml::TimePoint::Min();
+    start_time_ = frame_time;
+    keyframe_effect_->SetStartTime(frame_time, reset_effect_state);
+  }
+
+  // Resolve the timestamp that should be sampled. Paused animations keep
+  // sampling at pause_time_ so repeated resolves return a frozen style.
+  fml::TimePoint sample_time = frame_time;
+  if (state_ == State::kPause) {
+    // The new styling pipeline may resolve a paused animation with dummy time
+    // during style recalculation. Reuse the last real sample instead of letting
+    // dummy time move the timeline or replay one-shot effects.
+    if (frame_time == GetAnimationDummyStartTime() && has_last_sample_) {
+      pause_time_ = last_sample_time_;
+      was_paused_ = true;
+      keyframe_effect_->SetPauseTime(pause_time_);
+      result = last_sample_result_;
+      SuppressSampleSideEffects(result);
+      has_cached_sample_ = true;
+      cached_sample_time_ = pause_time_;
+      cached_sample_result_ = result;
+      return result;
+    }
+    if (!was_paused_ || pause_time_ == fml::TimePoint::Min()) {
+      pause_time_ = frame_time;
+      was_paused_ = true;
+    }
+    sample_time = pause_time_;
+    keyframe_effect_->SetPauseTime(sample_time);
+  }
+
+  if (has_cached_sample_ && cached_sample_time_ == sample_time) {
+    // Repeated sampling at the same timestamp must not advance timeline state
+    // or re-emit one-shot events. Reuse the sampled styles but clear event
+    // and fill side-effect bits.
+    result = cached_sample_result_;
+    SuppressSampleSideEffects(result);
+    return result;
+  }
+
+  // Perform a fresh sample. The result is saved for repeated sampling at this
+  // timestamp and, while history is kept, for future paused dummy-time
+  // resolves.
+  result = keyframe_effect_->SampleKeyframeModel(sample_time);
+  has_last_sample_ = true;
+  last_sample_time_ = sample_time;
+  last_sample_result_ = result;
+
+  // Keep lifecycle side effects consistent with the sampled state.
+  if (state_ == State::kPause) {
+    keyframe_effect_->SetPauseTime(pause_time_);
+  } else if (keyframe_effect_->CheckHasFinished(sample_time, false)) {
+    Stop();
+    ClearTransitionPreviousEndValue();
+  }
+
+  has_cached_sample_ = true;
+  cached_sample_time_ = sample_time;
+  cached_sample_result_ = result;
+  return result;
+}
+
 void Animation::UpdateAnimationData(starlight::AnimationData& data) {
+  InvalidateSampleCache();
   animation_data_ = data;
   if (keyframe_effect_) {
     keyframe_effect_->UpdateAnimationData(&animation_data_);
@@ -210,15 +338,36 @@ void Animation::UpdateAnimationData(starlight::AnimationData& data) {
 }
 
 void Animation::NotifyElementSizeUpdated() {
+  InvalidateSampleCache();
   if (keyframe_effect_) {
     keyframe_effect_->NotifyElementSizeUpdated();
   }
 }
 
 void Animation::NotifyUnitValuesUpdatedToAnimation(tasm::CSSValuePattern type) {
+  InvalidateSampleCache();
   if (keyframe_effect_) {
     keyframe_effect_->NotifyUnitValuesUpdated(type);
   }
+}
+
+void Animation::ResetPauseTiming() {
+  pause_time_ = fml::TimePoint::Min();
+  total_paused_duration_ = fml::TimeDelta::Zero();
+  was_paused_ = false;
+}
+
+void Animation::InvalidateSampleCache() {
+  has_cached_sample_ = false;
+  cached_sample_time_ = fml::TimePoint::Min();
+  cached_sample_result_ = KeyframeEffect::KeyframeSampleResult();
+}
+
+void Animation::ClearSampleHistory() {
+  InvalidateSampleCache();
+  has_last_sample_ = false;
+  last_sample_time_ = fml::TimePoint::Min();
+  last_sample_result_ = KeyframeEffect::KeyframeSampleResult();
 }
 
 fml::TimePoint& Animation::GetAnimationDummyStartTime() {

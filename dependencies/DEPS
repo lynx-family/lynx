@@ -1,6 +1,10 @@
 import os
 import platform
+import sys
 import zipfile
+sys.path.insert(0, root_dir)
+sys.path.append(os.path.join(root_dir, '..', 'lynx'))
+import dependencies.revision as revision
 
 
 system = platform.system().lower()
@@ -102,7 +106,7 @@ deps = {
     "third_party/xhook": {
         'type': 'git',
         'url': 'https://github.com/iqiyi/xHook.git',
-        'commit': 'e59285034feadfdd4ba9b65e1eea1d381da83ed3',
+        'commit': revision.XHOOK,
         "patches": os.path.join(root_dir, 'patches', 'xhook', '*.patch'),
         "ignore_in_git": True,
     },
@@ -145,7 +149,7 @@ deps = {
     'third_party/gyp': {
         "type": "git",
         "url": "https://chromium.googlesource.com/external/gyp",
-        "commit": "9d09418933ea2f75cc416e5ce38d15f62acd5c9a",
+        "commit": revision.GYP,
         "ignore_in_git": True,
         "condition": system in ['linux', 'darwin', 'windows'],
     },
@@ -192,7 +196,7 @@ deps = {
     'third_party/zlib': {
         'type': 'git',
         'url': 'https://chromium.googlesource.com/chromium/src/third_party/zlib',
-        'commit': 'f5fd0ad2663e239a31184ad4c9919991dda16f46',
+        'commit': revision.ZLIB,
         "patches": os.path.join(root_dir, 'patches', 'zlib', '*.patch'),
         "ignore_in_git": True,
     },
@@ -236,7 +240,7 @@ deps = {
     'third_party/perfetto': {
         'type': 'git',
         'url': 'https://github.com/lynx-family/lynx-trace.git',
-        'commit': 'e1e87aa784b8deee451a095324b9843c684cbd8e',
+        'commit': revision.PERFETTO,
         "patches": [
               os.path.join(root_dir, 'patches', 'perfetto', '*.patch')
          ],
@@ -246,7 +250,7 @@ deps = {
     "third_party/benchmark": {
         'type': 'git',
         'url': 'https://github.com/google/benchmark.git',
-        'commit': 'f91b6b42b1b9854772a90ae9501464a161707d1e',
+        'commit': revision.BENCHMARK,
         "ignore_in_git": True,
     },
     "third_party/quickjs/src": {
@@ -258,14 +262,14 @@ deps = {
     "third_party/debug_router/src": {
         'type': 'git',
         'url': 'https://github.com/lynx-family/debug-router.git',
-        'commit': 'c7325cdbf95691a4e4c9d4b6f4e5eb2ebb525fa4',
+        'commit': revision.DEBUG_ROUTER,
         "ignore_in_git": True,
         "enable_lfs": False,
     },
     "third_party/boringssl/src":{
         "type": "git",
         "url": "https://github.com/google/boringssl.git",
-        "commit": "71147d3763466094df692df97afef42e4ce26a4f",
+        "commit": revision.BORINGSSL,
         "ignore_in_git": True,
     },
     'third_party/nasm': {
@@ -279,14 +283,14 @@ deps = {
     "third_party/httplib": {
         'type': 'git',
         'url': 'https://github.com/yhirose/cpp-httplib.git',
-        'commit': 'ea850cbfa74e2dff228c49bf94542ce5331d73b5',
+        'commit': revision.HTTP_LIB,
         'patches': os.path.join(root_dir, 'patches', 'httplib', '*.patch'),
         "ignore_in_git": True,
     },
     'third_party/modp_b64': {
         'type': 'git',
         'url': 'https://chromium.googlesource.com/chromium/src/third_party/modp_b64',
-        'commit': '50685101d51ef9aabbd60c94f52d9e026d39c509',
+        'commit': revision.MODP_B64,
         "patches": os.path.join(root_dir, 'patches', 'modp_b64', '*.patch'),
         "ignore_in_git": True,
     },

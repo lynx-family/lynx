@@ -22,6 +22,7 @@ namespace tasm {
 namespace harmony {
 
 class MarkdownViewBundle;
+class MarkdownResourceLoaderHarmony;
 
 class MarkdownShadowNode : public ShadowNode, public CustomMeasureFunc {
  public:
@@ -49,6 +50,7 @@ class MarkdownShadowNode : public ShadowNode, public CustomMeasureFunc {
   serval::markdown::MarkdownView* MarkdownView();
 
   std::shared_ptr<serval::markdown::NativeServalMarkdownView> markdown_view_;
+  std::shared_ptr<MarkdownResourceLoaderHarmony> resource_loader_;
   fml::RefPtr<MarkdownViewBundle> bundle_;
 };
 

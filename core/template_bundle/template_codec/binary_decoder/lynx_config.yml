@@ -1686,12 +1686,18 @@ enableGridPlacementShorthands:
   description: Controls whether the CSS parser accepts grid-column and grid-row shorthand syntax. When enabled, grid shorthand handlers parse placement shorthands into style values; when disabled, those shorthand declarations are rejected.
   defaultValue: 'false'
   valueType: bool
+  versionOverrides:
+    - minSDKVersion: LYNX_VERSION_4_1
+      value: 'true'
   author: renzhongyue
   since: '3.9'
 enableFlexBasisZeroPercent:
   description: When enabled, flex-basis defaults to 0% instead of 0 when omitted in flex shorthand, matching web browser behavior.
   defaultValue: 'false'
   valueType: bool
+  versionOverrides:
+    - minSDKVersion: LYNX_VERSION_4_1
+      value: 'true'
   author: renzhongyue
   since: '3.8'
   supportPlatform:
@@ -1755,6 +1761,16 @@ enableMultiTouchParamsCompatible:
     - GETTER
   author: rAY-ooo
   since: '3.2'
+  supportPlatform:
+    - Android
+    - HarmonyOS
+    - iOS
+enableEventTargetInfoNodeIndex:
+  description: Include the element nodeIndex field in event target and currentTarget parameters.
+  defaultValue: 'false'
+  valueType: bool
+  author: hexionghui
+  since: '3.8'
   supportPlatform:
     - Android
     - HarmonyOS
@@ -1964,6 +1980,18 @@ enableElementApiNewRegistration:
   readSettings: true
   author: yangguangzhao
   since: '4.0'
+  supportPlatform:
+    - Android
+    - HarmonyOS
+    - iOS
+  export: false
+enableElementInvokeUIMethodPendingTask:
+  description: Controls whether element `invokeUIMethod` calls wait on the target element pending-invoke queue before being converted into a UI operation. When enabled, runtime appends the invoke task to `Element::AppendPendingInvokeTask` and enqueues it with other UI operations; when disabled, runtime keeps the legacy invoke path.
+  defaultValue: 'false'
+  valueType: bool
+  readSettings: true
+  author: hexionghui
+  since: '4.1'
   supportPlatform:
     - Android
     - HarmonyOS

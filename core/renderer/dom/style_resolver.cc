@@ -24,6 +24,7 @@
 #include "core/renderer/css/ng/matcher/selector_matcher.h"
 #include "core/renderer/css/ng/media_query/media_query_evaluator.h"
 #include "core/renderer/css/ng/media_query/media_values.h"
+#include "core/renderer/css/ng/supports/supports_evaluator.h"
 #include "core/renderer/css/parser/css_string_parser.h"
 #include "core/renderer/css/unit_handler.h"
 #include "core/renderer/dom/element.h"
@@ -850,6 +851,7 @@ std::unique_ptr<css::MediaQueryEvaluator> BuildMediaQueryEvaluator(
                        : env_config.ScreenHeight();
     values = css::MediaValues::WithViewport(width, height,
                                             env_config.DevicePixelRatio());
+    values.SetPreferredColorScheme(env_config.PreferredColorScheme());
     if (Element* root = element_manager->root()) {
       values.SetRootFontSize(root->GetFontSize());
     }
@@ -863,15 +865,18 @@ std::unique_ptr<css::MediaQueryEvaluator> BuildMediaQueryEvaluator(
 }  // namespace
 
 bool StyleResolver::FragmentsHasMediaQueries(CSSFragment* style_sheet) {
-  if (style_sheet && style_sheet->HasMediaQueryRules()) {
-    return true;
-  }
-  return false;
+  return style_sheet && style_sheet->HasMediaQueryRules();
+}
+
+uint8_t StyleResolver::GetConditionRuleFlags(CSSFragment* style_sheet) {
+  if (!style_sheet) return css::RuleSet::kNoConditionRules;
+  return style_sheet->GetConditionRuleFlags();
 }
 
 StyleResolver::MatchedVector<css::MatchedRule> StyleResolver::GetCSSMatchedRule(
     AttributeHolder* node, CSSFragment* style_sheet,
-    const css::MediaQueryEvaluator* evaluator) {
+    const css::MediaQueryEvaluator* media_query_evaluator,
+    const css::SupportsEvaluator* supports_evaluator) {
   MatchedVector<css::MatchedRule> matched_rules;
   unsigned level = 0;
   if (style_sheet) {
@@ -879,14 +884,17 @@ StyleResolver::MatchedVector<css::MatchedRule> StyleResolver::GetCSSMatchedRule(
       AttributeHolder* node;
       unsigned* level;
       MatchedVector<css::MatchedRule>* matched_rules;
-      const css::MediaQueryEvaluator* evaluator;
+      const css::MediaQueryEvaluator* media_query_evaluator;
+      const css::SupportsEvaluator* supports_evaluator;
     };
-    Ctx ctx{node, &level, &matched_rules, evaluator};
+    Ctx ctx{node, &level, &matched_rules, media_query_evaluator,
+            supports_evaluator};
     style_sheet->ForEachRuleSet(
         [](css::RuleSet* rule_set, void* cb_data) {
           auto* c = static_cast<Ctx*>(cb_data);
           rule_set->MatchStyles(c->node, *c->level, *c->matched_rules,
-                                c->evaluator);
+                                c->media_query_evaluator,
+                                c->supports_evaluator);
         },
         &ctx);
   }
@@ -897,11 +905,18 @@ StyleResolver::MatchedVector<css::MatchedRule> StyleResolver::GetCSSMatchedRule(
 
 void StyleResolver::GetCSSStyleNew(AttributeHolder* node,
                                    CSSFragment* style_sheet) {
-  std::unique_ptr<css::MediaQueryEvaluator> evaluator;
-  if (FragmentsHasMediaQueries(style_sheet)) {
-    evaluator = BuildMediaQueryEvaluator(manager(), element());
+  const uint8_t flags = GetConditionRuleFlags(style_sheet);
+  std::unique_ptr<css::MediaQueryEvaluator> media_query_evaluator;
+  if (flags & css::RuleSet::kHasMediaQuery) {
+    media_query_evaluator = BuildMediaQueryEvaluator(manager(), element());
   }
-  auto matched_rules = GetCSSMatchedRule(node, style_sheet, evaluator.get());
+  std::unique_ptr<css::SupportsEvaluator> supports_evaluator;
+  if (flags & css::RuleSet::kHasSupports) {
+    supports_evaluator =
+        std::make_unique<css::SupportsEvaluator>(GetCSSParserConfigs());
+  }
+  auto matched_rules = GetCSSMatchedRule(
+      node, style_sheet, media_query_evaluator.get(), supports_evaluator.get());
 
   for (const auto& matched : matched_rules) {
     if (matched.Data()->Rule()->Token() != nullptr) {
@@ -2386,6 +2401,7 @@ struct BackgroundDiffIds {
   CSSPropertyID size;
   CSSPropertyID origin;
   CSSPropertyID clip;
+  CSSPropertyID composite;
 };
 
 starlight::OutLineData DefaultOutline(
@@ -2535,6 +2551,10 @@ bool StyleResolver::ComputeStyleDiff(
   changed |= MarkIfChanged(new_style, n.field, o.field, ids.field);
     BACKGROUND_IMAGE_FIELDS(MARK_IMAGE_FIELD)
 #undef MARK_IMAGE_FIELD
+    if (ids.composite != kPropertyStart) {
+      changed |=
+          MarkIfChanged(new_style, n.composite, o.composite, ids.composite);
+    }
     return changed;
   };
   auto diff_background = [&](const auto& n, const auto& o,
@@ -2564,7 +2584,8 @@ bool StyleResolver::ComputeStyleDiff(
             n, o,
             {kPropertyIDBackgroundImage, kPropertyIDBackgroundPosition,
              kPropertyIDBackgroundRepeat, kPropertyIDBackgroundSize,
-             kPropertyIDBackgroundOrigin, kPropertyIDBackgroundClip},
+             kPropertyIDBackgroundOrigin, kPropertyIDBackgroundClip,
+             kPropertyStart},
             true);
       });
   changed |= DiffOptionalValue(
@@ -2572,11 +2593,12 @@ bool StyleResolver::ComputeStyleDiff(
       SharedDefaultProvider<starlight::BackgroundData>{},
       SharedDefaultProvider<starlight::BackgroundData>{},
       [&](const auto& n, const auto& o) {
-        return diff_background(n, o,
-                               {kPropertyIDMaskImage, kPropertyIDMaskPosition,
-                                kPropertyIDMaskRepeat, kPropertyIDMaskSize,
-                                kPropertyIDMaskOrigin, kPropertyIDMaskClip},
-                               false);
+        return diff_background(
+            n, o,
+            {kPropertyIDMaskImage, kPropertyIDMaskPosition,
+             kPropertyIDMaskRepeat, kPropertyIDMaskSize, kPropertyIDMaskOrigin,
+             kPropertyIDMaskClip, kPropertyIDMaskComposite},
+            false);
       });
   changed |= DiffOptionalValue(
       new_style.outline_, old_style.outline_,
@@ -2635,6 +2657,15 @@ bool StyleResolver::ComputeStyleDiff(
 
   changed |= MarkIfChanged(new_style, new_style.caret_color_,
                            old_style.caret_color_, kPropertyIDCaretColor);
+  changed |=
+      MarkIfChanged(new_style, new_style.caret_gradient_,
+                    old_style.caret_gradient_, kPropertyIDXCaretGradient);
+  changed |= MarkIfChanged(new_style, new_style.caret_width_,
+                           old_style.caret_width_, kPropertyIDXCaretWidth);
+  changed |= MarkIfChanged(new_style, new_style.caret_height_,
+                           old_style.caret_height_, kPropertyIDXCaretHeight);
+  changed |= MarkIfChanged(new_style, new_style.caret_radius_,
+                           old_style.caret_radius_, kPropertyIDXCaretRadius);
   changed |= DiffOptionalValue(
       new_style.text_attributes_, old_style.text_attributes_,
       [&new_style]() { return DefaultTextAttributes(new_style); },

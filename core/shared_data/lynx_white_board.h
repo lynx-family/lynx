@@ -70,7 +70,7 @@ class WhiteBoard final {
                                   const std::string& key,
                                   WhiteBoardListener listener);
   void RemoveSharedDataListener(const WhiteBoardStorageType& type,
-                                const std::string& key, int32_t listener_id);
+                                const std::string& key, double listener_id);
 
   ~WhiteBoard() = default;
 

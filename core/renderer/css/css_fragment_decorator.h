@@ -59,6 +59,7 @@ class CSSFragmentDecorator : public CSSFragment {
   bool HasPseudoRules() override;
   bool HasAdjacentSiblingRules() override;
   bool HasMediaQueryRules() override;
+  uint8_t GetConditionRuleFlags() override;
 
   void MarkFontFacesResolved(bool resolved) override;
 
@@ -82,6 +83,8 @@ class CSSFragmentDecorator : public CSSFragment {
     }
     return HasTouchPseudoToken();
   }
+
+  bool HasIntrinsicStyleSheets() { return intrinsic_style_sheets_ != nullptr; }
 
  private:
   template <typename Func>

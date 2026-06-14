@@ -10,6 +10,7 @@
 #include <vector>
 
 #include "base/include/closure.h"
+#include "core/base/lynx_export.h"
 #include "core/renderer/starlight/style/css_type.h"
 #include "core/renderer/utils/base/base_def.h"
 
@@ -54,8 +55,9 @@ std::pair<float, float> GetRadialGradientRadius(
     RadialGradientShapeType shape, RadialGradientSizeType shape_size, float cx,
     float cy, float sx, float sy);
 
-bool ParseStyleDeclarationList(const char* content, uint32_t content_length,
-                               DeclarationListConsumeFunction consume_func);
+LYNX_EXPORT_FOR_DEVTOOL bool ParseStyleDeclarationList(
+    const char* content, uint32_t content_length,
+    DeclarationListConsumeFunction consume_func);
 
 ClassList SplitClasses(const char* content, size_t length);
 

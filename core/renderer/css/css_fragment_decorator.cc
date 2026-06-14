@@ -285,12 +285,16 @@ bool CSSFragmentDecorator::HasAdjacentSiblingRules() {
 }
 
 bool CSSFragmentDecorator::HasMediaQueryRules() {
-  if (CSSFragment::HasMediaQueryRules()) {
+  return GetConditionRuleFlags() & css::RuleSet::kHasMediaQuery;
+}
+
+uint8_t CSSFragmentDecorator::GetConditionRuleFlags() {
+  uint8_t flags = CSSFragment::GetConditionRuleFlags();
+  ForEachAdoptedFragment([&flags](CSSFragment& fragment) {
+    flags |= fragment.GetConditionRuleFlags();
     return true;
-  }
-  return HasInAdopted([](CSSFragment& f) {
-    return f.rule_set() && f.rule_set()->HasMediaQueryRules();
   });
+  return flags;
 }
 
 CSSKeyframesToken* CSSFragmentDecorator::GetKeyframesRule(

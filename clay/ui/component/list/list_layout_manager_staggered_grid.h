@@ -56,6 +56,7 @@ class ListLayoutManagerStaggeredGrid : public ListLayoutManager {
                       int item_count) override;
   void OnItemsMoved(BaseListView* list_view, int from, int to,
                     int item_count) override;
+  void InvalidateLayoutCache() override;
 
   int GetSpanCount() const { return span_count_; }
   void SetSpanCount(int span_count);

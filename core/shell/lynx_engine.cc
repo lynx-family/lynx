@@ -196,6 +196,13 @@ void LynxEngine::UpdateFontScale(float scale) {
   }
 }
 
+void LynxEngine::UpdateColorScheme(int scheme) {
+  auto& client = tasm_->page_proxy()->element_manager();
+  if (client != nullptr) {
+    client->UpdateColorScheme(scheme);
+  }
+}
+
 void LynxEngine::SetFontScale(float scale) {
   auto& client = tasm_->page_proxy()->element_manager();
   if (client != nullptr) {

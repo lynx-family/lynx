@@ -19,9 +19,12 @@ import com.lynx.tasm.utils.UIThreadUtils;
 import java.lang.ref.WeakReference;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.HashMap;
 
 public class LynxEventEmitter extends EventEmitter {
   private static final String TAG = "EventEmitter";
+  // Internal marker set by TouchEventDispatcher for overlay-like independent event trees.
+  private static final long CURRENT_LYNX_PAGE_ONLY_EVENT_ID = Long.MIN_VALUE;
   private long mEventID = 0;
 
   // TODO(songshourui.null): LynxEngineProxyWrapper is used to be replaced by test-related classes
@@ -115,6 +118,7 @@ public class LynxEventEmitter extends EventEmitter {
   public void sendTouchEvent(LynxTouchEvent event) {
     String name = event.getName();
     if (mEngineProxy != null && !mInPreLoad) {
+      boolean dispatchInCurrentLynxPageOnly = consumeDispatchInCurrentLynxPageOnly(event);
       if (onLynxEvent(event)) {
         return;
       }
@@ -122,20 +126,29 @@ public class LynxEventEmitter extends EventEmitter {
         mTrack.onTap();
       }
       EventTarget target = (EventTarget) event.getTarget();
-      if (target != null
-          && (target.getParentLynxPageUI() != null || target.getChildrenLynxPageUI() != null)) {
-        if (target.getParentLynxPageUI() == null) {
-          mEventID = (mEventID + 1) % (Long.MAX_VALUE - 1);
-        }
-        event.setEventID(mEventID);
-        target.setEventID(mEventID);
-        LLog.i("LynxEventEmitter",
-            "TouchEventHandler " + event.getName() + " " + event.getEventID() + " " + this);
-        startEventGenerate(event);
-        if (target.getChildrenLynxPageUI() == null
-            || target.getChildrenLynxPageUI().get(String.valueOf(System.identityHashCode(target)))
-                == null) {
-          target.getRootLynxPageUI().startEventCapture(mEventID);
+      if (target != null) {
+        HashMap<String, EventTarget> childrenLynxPageUI = target.getChildrenLynxPageUI();
+        boolean hasParentLynxPageUI =
+            !dispatchInCurrentLynxPageOnly && target.getParentLynxPageUI() != null;
+        boolean hasTargetChildLynxPageUI = childrenLynxPageUI != null
+            && childrenLynxPageUI.get(String.valueOf(System.identityHashCode(target))) != null;
+        boolean shouldDispatchThroughLynxPage = dispatchInCurrentLynxPageOnly
+            ? hasTargetChildLynxPageUI
+            : hasParentLynxPageUI || childrenLynxPageUI != null;
+        if (shouldDispatchThroughLynxPage) {
+          if (!hasParentLynxPageUI) {
+            mEventID = (mEventID + 1) % (Long.MAX_VALUE - 1);
+          }
+          event.setEventID(mEventID);
+          target.setEventID(mEventID);
+          LLog.i("LynxEventEmitter",
+              "TouchEventHandler " + event.getName() + " " + event.getEventID() + " " + this);
+          startEventGenerate(event);
+          if (!hasTargetChildLynxPageUI) {
+            target.getRootLynxPageUI().startEventCapture(mEventID);
+          }
+        } else {
+          mEngineProxy.sendTouchEvent(event);
         }
       } else {
         mEngineProxy.sendTouchEvent(event);
@@ -162,24 +175,34 @@ public class LynxEventEmitter extends EventEmitter {
   @Override
   public void sendMultiTouchEvent(LynxTouchEvent event) {
     if (mEngineProxy != null && !mInPreLoad) {
+      boolean dispatchInCurrentLynxPageOnly = consumeDispatchInCurrentLynxPageOnly(event);
       if (onLynxEvent(event)) {
         return;
       }
       EventTarget target = (EventTarget) event.getTarget();
-      if (target != null
-          && (target.getParentLynxPageUI() != null || target.getChildrenLynxPageUI() != null)) {
-        if (target.getParentLynxPageUI() == null) {
-          mEventID = (mEventID + 1) % (Long.MAX_VALUE - 1);
-        }
-        event.setEventID(mEventID);
-        target.setEventID(mEventID);
-        LLog.i("LynxEventEmitter",
-            "TouchEventHandler " + event.getName() + " " + event.getEventID() + " " + this);
-        startEventGenerate(event);
-        if (target.getChildrenLynxPageUI() == null
-            || target.getChildrenLynxPageUI().get(String.valueOf(System.identityHashCode(target)))
-                == null) {
-          target.getRootLynxPageUI().startEventCapture(mEventID);
+      if (target != null) {
+        HashMap<String, EventTarget> childrenLynxPageUI = target.getChildrenLynxPageUI();
+        boolean hasParentLynxPageUI =
+            !dispatchInCurrentLynxPageOnly && target.getParentLynxPageUI() != null;
+        boolean hasTargetChildLynxPageUI = childrenLynxPageUI != null
+            && childrenLynxPageUI.get(String.valueOf(System.identityHashCode(target))) != null;
+        boolean shouldDispatchThroughLynxPage = dispatchInCurrentLynxPageOnly
+            ? hasTargetChildLynxPageUI
+            : hasParentLynxPageUI || childrenLynxPageUI != null;
+        if (shouldDispatchThroughLynxPage) {
+          if (!hasParentLynxPageUI) {
+            mEventID = (mEventID + 1) % (Long.MAX_VALUE - 1);
+          }
+          event.setEventID(mEventID);
+          target.setEventID(mEventID);
+          LLog.i("LynxEventEmitter",
+              "TouchEventHandler " + event.getName() + " " + event.getEventID() + " " + this);
+          startEventGenerate(event);
+          if (!hasTargetChildLynxPageUI) {
+            target.getRootLynxPageUI().startEventCapture(mEventID);
+          }
+        } else {
+          mEngineProxy.sendMultiTouchEvent(event);
         }
       } else {
         mEngineProxy.sendMultiTouchEvent(event);
@@ -349,5 +372,13 @@ public class LynxEventEmitter extends EventEmitter {
     if (mEngineProxy != null) {
       mEngineProxy.startEventFire(isStop, eventID);
     }
+  }
+
+  private boolean consumeDispatchInCurrentLynxPageOnly(LynxTouchEvent event) {
+    if (event.getEventID() != CURRENT_LYNX_PAGE_ONLY_EVENT_ID) {
+      return false;
+    }
+    event.setEventID(0);
+    return true;
   }
 }

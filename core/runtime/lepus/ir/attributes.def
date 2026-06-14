@@ -57,6 +57,8 @@ DECLARE_BOOL_ATTRIBUTE(FixReg, "is_fix_reg")
 DECLARE_BOOL_ATTRIBUTE(CallFuncMov, "if_call_func_mov")
 DECLARE_BOOL_ATTRIBUTE(DeepCloneCall, "call is lowered to TypeOp_DeepClone")
 DECLARE_BOOL_ATTRIBUTE(ReadonlyCall, "call is known read-only (does not invalidate LSE caches)")
+DECLARE_BOOL_ATTRIBUTE(IdempotentCall, "call is pure/idempotent (eligible for CSE elimination)")
+DECLARE_BOOL_ATTRIBUTE(LocalTableSafeCall, "callee only writes to direct upvalue/closure tables, not parameter-derived or local tables")
 DECLARE_STRING_ATTRIBUTE(BuiltinFuncName, "builtin function name")
 
 #undef UNSIGNED_ATTRIBUTE

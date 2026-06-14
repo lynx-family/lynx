@@ -4,10 +4,11 @@
 
 #include "platform/embedder/lynx_devtool/devtool_env_embedder.h"
 
+#include "base/include/no_destructor.h"
 #include "core/renderer/utils/devtool_lifecycle.h"
 #include "core/renderer/utils/lynx_env.h"
 #include "devtool/embedder/core/debug_bridge_embedder.h"
-#include "platform/embedder/lynx_devtool/switch_persist.h"
+#include "platform/embedder/devtool_settings_embedder.h"
 #include "third_party/debug_router/src/debug_router/common/debug_router.h"
 
 namespace lynx {
@@ -21,46 +22,12 @@ DevToolEnvEmbedder& DevToolEnvEmbedder::GetInstance() {
 DevToolEnvEmbedder::DevToolEnvEmbedder() {
   debugrouter::common::DebugRouter::GetInstance().EnableAllSessions();
   devtool::DebugBridgeEmbedder::GetInstance();
-  /**
-   switch_persistent_default_: a map indicating switches' attributes.
-   key: switch name.
-   value: an array of bool values indicating attributes of current switch.
-      The meaning of each value in array is as follows:
-        whether needs to be persisted
-        default value
-   */
-  switch_persistent_default_ = {
-    {tasm::LynxEnv::kLynxDebugEnabled, {false, true}},
-    {tasm::LynxEnv::kLynxDevToolComponentAttach, {false, true}},
-    {tasm::LynxEnv::kLynxDevToolEnable, {true, false}},
-    {tasm::LynxEnv::kLynxEnableLogBox, {true, true}},
-    {tasm::LynxEnv::kLynxEnableQuickJS, {true, true}},
-    {tasm::LynxEnv::kLynxEnableDomTree, {true, true}},
-    {tasm::LynxEnv::kLynxEnableLongPressMenu, {true, false}},
-    {tasm::LynxEnv::kLynxEnableLaunchRecord, {true, true}},
-#if (OS_WIN || OS_OSX) && JS_ENGINE_TYPE == 0
-    {tasm::LynxEnv::kLynxEnableV8, {true, true}},
-#endif
-  };
-  for (auto& [key, arr] : switch_persistent_default_) {
-    bool value = false;
-    value =
-        arr[0] ? SwitchPersist::GetValueFromPersistent(key, arr[1]) : arr[1];
-    tasm::LynxEnv::GetInstance().SetBoolLocalEnv(key, value);
-  }
+  DevToolSettingsEmbedder::GetInstance().SyncToNative();
 
   auto& lifecycle = lynx::tasm::DevToolLifecycle::GetInstance();
   lifecycle.OnAttached();
   lifecycle.OnEnabled();
   lifecycle.OnInitialized();
-}
-
-bool DevToolEnvEmbedder::NeedPersist(std::string key) {
-  if (switch_persistent_default_.find(key) !=
-      switch_persistent_default_.end()) {
-    return switch_persistent_default_[key][0];
-  }
-  return false;
 }
 
 void DevToolEnvEmbedder::EnableLynxDebug(bool enable) {
@@ -91,20 +58,52 @@ bool DevToolEnvEmbedder::IsDevToolEnabled() const {
 }
 
 void DevToolEnvEmbedder::SetDevToolSwitch(std::string key, bool value) {
-  tasm::LynxEnv::GetInstance().SetBoolLocalEnv(key, value);
-  if (NeedPersist(key)) {
-    SwitchPersist::SetValueToPersistent(key, value);
+  auto& settings = DevToolSettingsEmbedder::GetInstance();
+  if (key == tasm::LynxEnv::kLynxDevToolEnable) {
+    settings.SetDevToolEnabled(value);
+  } else if (key == tasm::LynxEnv::kLynxEnableLogBox) {
+    settings.SetLogBoxEnabled(value);
+  } else if (key == tasm::LynxEnv::kLynxEnableQuickJS) {
+    settings.SetQuickJSDebugEnabled(value);
+  } else if (key == tasm::LynxEnv::kLynxEnableDomTree) {
+    settings.SetDOMTreeEnabled(value);
+  } else if (key == tasm::LynxEnv::kLynxEnableLongPressMenu) {
+    settings.SetLongPressMenuEnabled(value);
+  } else if (key == tasm::LynxEnv::kLynxEnableLaunchRecord) {
+    settings.SetLaunchRecordEnabled(value);
+#if (OS_WIN || OS_OSX) && JS_ENGINE_TYPE == 0
+  } else if (key == tasm::LynxEnv::kLynxEnableV8) {
+    settings.SetV8Enabled(value);
+#endif
+  } else {
+    tasm::LynxEnv::GetInstance().SetBoolLocalEnv(key, value);
   }
 }
 
 bool DevToolEnvEmbedder::GetDevToolSwitch(std::string key) const {
-  // When DevToolEnvEmbedder initialize, all switches in LynxEnv are set with
-  // persistent/default value. So we can directly get switch value from LynxEnv.
+  auto& settings = DevToolSettingsEmbedder::GetInstance();
+  if (key == tasm::LynxEnv::kLynxDevToolEnable) {
+    return settings.IsDevToolEnabled();
+  } else if (key == tasm::LynxEnv::kLynxEnableLogBox) {
+    return settings.IsLogBoxEnabled();
+  } else if (key == tasm::LynxEnv::kLynxEnableQuickJS) {
+    return settings.IsQuickJSDebugEnabled();
+  } else if (key == tasm::LynxEnv::kLynxEnableDomTree) {
+    return settings.IsDOMTreeEnabled();
+  } else if (key == tasm::LynxEnv::kLynxEnableLongPressMenu) {
+    return settings.IsLongPressMenuEnabled();
+  } else if (key == tasm::LynxEnv::kLynxEnableLaunchRecord) {
+    return settings.IsLaunchRecordEnabled();
+#if (OS_WIN || OS_OSX) && JS_ENGINE_TYPE == 0
+  } else if (key == tasm::LynxEnv::kLynxEnableV8) {
+    return settings.IsV8Enabled();
+#endif
+  }
   return tasm::LynxEnv::GetInstance().GetBoolEnv(key, false);
 }
 
 bool DevToolEnvEmbedder::IsLogBoxEnabled() const {
-  return GetDevToolSwitch(tasm::LynxEnv::kLynxEnableLogBox);
+  return DevToolSettingsEmbedder::GetInstance().IsLogBoxEnabled();
 }
 
 void DevToolEnvEmbedder::SetAppInfo(const std::string& key,

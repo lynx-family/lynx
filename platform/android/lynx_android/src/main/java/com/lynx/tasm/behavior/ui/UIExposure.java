@@ -184,6 +184,7 @@ public class UIExposure extends LynxObserverManager {
   private RectF mWindowRect = null;
   // The flag that reflects whether the stopExposure is called.
   private boolean mIsStopExposure;
+  private boolean mEnableExposureDetection;
   private ICallBack mCallback = null;
 
   final private String TAG = "Lynx.UIExposure";
@@ -199,10 +200,18 @@ public class UIExposure extends LynxObserverManager {
     mUiInWindowNow = new HashSet<>();
     mRootBodyRef = new WeakReference<>(null);
     mCallBack = new CallBack(this);
+    mEnableExposureDetection = true;
   }
 
   public void setCallback(ICallBack callback) {
     mCallback = callback;
+  }
+
+  private void setEnableExposureDetection(boolean enable) {
+    mEnableExposureDetection = enable;
+    if (!mEnableExposureDetection) {
+      clear();
+    }
   }
 
   boolean canSendGlobalEvent() {
@@ -467,6 +476,9 @@ public class UIExposure extends LynxObserverManager {
   }
 
   public void stopExposure(HashMap<String, Object> options) {
+    if (!mEnableExposureDetection) {
+      return;
+    }
     if (LynxEnv.inst().isHighlightTouchEnabled()) {
       showMessageOnConsole(TAG + ": stopExposure", LogBoxLogLevel.Info.ordinal());
     }
@@ -481,6 +493,9 @@ public class UIExposure extends LynxObserverManager {
   }
 
   public void resumeExposure() {
+    if (!mEnableExposureDetection) {
+      return;
+    }
     if (LynxEnv.inst().isHighlightTouchEnabled()) {
       showMessageOnConsole(TAG + ": resumeExposure", LogBoxLogLevel.Info.ordinal());
     }
@@ -613,6 +628,9 @@ public class UIExposure extends LynxObserverManager {
   }
   public void addUIToExposedMap(LynxBaseUI ui, @Nullable String uniqueID,
       @Nullable JavaOnlyMap data, @Nullable JavaOnlyMap options) {
+    if (!mEnableExposureDetection) {
+      return;
+    }
     if (uniqueID != null || ui.getExposureID() != null) {
       String key;
       if (uniqueID != null) {
@@ -638,6 +656,9 @@ public class UIExposure extends LynxObserverManager {
   // In MULTI_THREAD mode, the method will be called in other thread, so read mExposureDetailMap in
   // main thread.
   public void removeUIFromExposedMap(LynxBaseUI ui, @Nullable String uniqueID) {
+    if (!mEnableExposureDetection) {
+      return;
+    }
     if (uniqueID != null || ui.getExposureID() != null) {
       String key;
       if (uniqueID != null) {
@@ -668,6 +689,8 @@ public class UIExposure extends LynxObserverManager {
 
   public void setRootUI(UIBody ui) {
     mRootBodyRef = new WeakReference<>(ui);
+    LynxContext context = ui != null ? ui.getLynxContext() : null;
+    setEnableExposureDetection(context == null || !context.isFragmentLayerRenderOn());
   }
 
   private JavaOnlyMap createResult(UIExposureDetail detail) {

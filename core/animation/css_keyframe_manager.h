@@ -49,6 +49,31 @@ const std::unordered_set<tasm::CSSPropertyID>& GetAnimatablePropertyIDSet();
 // Check that is this property a animatable property for new animator.
 bool IsAnimatableProperty(tasm::CSSPropertyID css_id);
 
+struct AnimationSampleForNewPipeline {
+  struct EventRecord {
+    std::shared_ptr<Animation> animation;
+    bool send_start_event{false};
+    bool send_end_event{false};
+    int iteration_events_due{0};
+    bool send_cancel_event{false};
+  };
+
+  tasm::StyleMap property_overrides;
+  tasm::CustomPropertiesMap custom_property_overrides;
+  std::vector<tasm::CSSPropertyID> property_resets;
+  std::vector<base::String> custom_property_resets;
+  bool requires_base_style_rebuild{false};
+
+  bool empty() const {
+    return property_overrides.empty() && custom_property_overrides.empty() &&
+           property_resets.empty() && custom_property_resets.empty() &&
+           !requires_base_style_rebuild;
+  }
+};
+
+using AnimationEventRecordsForNewPipeline =
+    base::InlineVector<AnimationSampleForNewPipeline::EventRecord, 2>;
+
 class CSSKeyframeManager : public AnimationDelegate {
  public:
   static const tasm::CssMeasureContext& GetLengthContext(
@@ -62,6 +87,21 @@ class CSSKeyframeManager : public AnimationDelegate {
 
   void SetAnimationDataAndPlay(
       base::Vector<starlight::AnimationData>& anim_data);
+
+  void SyncAnimationDataForNewPipeline(
+      base::Vector<starlight::AnimationData>& anim_data,
+      bool force_rebuild = false,
+      const tasm::StyleMap* new_base_resolved_styles = nullptr,
+      const tasm::StyleMap* new_underlying_layout_only_styles = nullptr,
+      const tasm::CustomPropertiesMap* new_base_custom_properties = nullptr);
+
+  AnimationSampleForNewPipeline CollectAnimationUpdatesForNewPipeline(
+      fml::TimePoint& time);
+
+  AnimationEventRecordsForNewPipeline
+  TakePendingAnimationEventsForNewPipeline();
+
+  bool NeedsFutureTickForNewPipeline() const;
 
   virtual void TickAllAnimation(fml::TimePoint& time);
 
@@ -88,8 +128,12 @@ class CSSKeyframeManager : public AnimationDelegate {
 
   virtual const tasm::CSSKeyframesContent& GetKeyframesStyleMap(
       const base::String& animation_name);
+  virtual const tasm::CSSKeyframesCustomPropertyContent&
+  GetKeyframesCustomPropertyMap(const base::String& animation_name);
 
   static const tasm::CSSKeyframesContent& GetEmptyKeyframeMap();
+  static const tasm::CSSKeyframesCustomPropertyContent&
+  GetEmptyCustomPropertyKeyframeMap();
 
   static tasm::CSSValue GetDefaultValue(starlight::AnimationPropertyType type);
 
@@ -98,7 +142,23 @@ class CSSKeyframeManager : public AnimationDelegate {
   void NotifyUnitValuesUpdatedToAnimation(tasm::CSSValuePattern);
 
  protected:
-  std::shared_ptr<Animation> CreateAnimation(starlight::AnimationData& data);
+  std::shared_ptr<Animation> CreateAnimation(
+      starlight::AnimationData& data,
+      const tasm::CustomPropertiesMap* base_custom_properties = nullptr);
+
+  void SetAnimationDataAndPlayInternal(
+      base::Vector<starlight::AnimationData>& anim_data, bool force_rebuild,
+      bool play_handles_initial_frame, bool use_new_pipeline_cleanup,
+      const tasm::StyleMap* new_base_resolved_styles = nullptr,
+      const tasm::StyleMap* new_underlying_layout_only_styles = nullptr,
+      const tasm::CustomPropertiesMap* new_base_custom_properties = nullptr);
+
+  void QueueCancelEvent(const std::shared_ptr<Animation>& animation);
+
+  void PrepareAnimationRemoval(
+      const std::shared_ptr<Animation>& animation,
+      const tasm::StyleMap* new_base_resolved_styles,
+      const tasm::StyleMap* new_underlying_layout_only_styles);
 
   base::InlineVector<starlight::AnimationData, 1> animation_data_;
   // The collection of animations running on the current element.
@@ -109,10 +169,16 @@ class CSSKeyframeManager : public AnimationDelegate {
   // The collection of animations that need to update states during the diff.
   base::LinearFlatMap<base::String, std::shared_ptr<Animation>>
       temp_active_animations_map_;
+  tasm::StyleMap pending_property_overrides_;
+  std::vector<tasm::CSSPropertyID> pending_property_resets_;
+  std::vector<base::String> pending_custom_property_resets_;
+  tasm::CustomPropertiesMap persisted_custom_property_fill_styles_;
+  AnimationEventRecordsForNewPipeline pending_event_records_;
 
  private:
-  void MakeKeyframeModel(Animation* animation,
-                         const base::String& animation_name);
+  void MakeKeyframeModel(
+      Animation* animation, const base::String& animation_name,
+      const tasm::CustomPropertiesMap* base_custom_properties = nullptr);
 
  private:
   std::shared_ptr<base::VSyncMonitor> vsync_monitor_{nullptr};

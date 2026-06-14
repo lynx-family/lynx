@@ -160,10 +160,12 @@ bool TextElement::ProcessAttributeForLayoutInElement(const base::String& key,
 
   if (key.IsEqual(kTextMaxlineAttr)) {
     EnsureTextProps();
-    text_props_->text_max_line =
-        !is_reset
-            ? (value.IsNumber() ? value.Number() : std::stoi(value.StdString()))
-            : 1;
+    if (is_reset) {
+      text_props_->text_max_line.reset();
+    } else {
+      text_props_->text_max_line =
+          value.IsNumber() ? value.Number() : std::stoi(value.StdString());
+    }
     MarkLayoutDirty();
     element_container_->InvalidateForRedraw();
     return true;

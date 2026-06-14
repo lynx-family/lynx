@@ -40,6 +40,7 @@
 #include "core/shell/runtime/common/module_delegate_impl.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/base/base_trace_backend.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/lynx_white_board_harmony.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/text/emoji_resource_manager.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_new_image.h"
 
 #if ENABLE_TESTBENCH_REPLAY
@@ -440,6 +441,10 @@ void LynxTemplateRenderer::UpdateFontScale(float font_scale) {
   shell_->UpdateFontScale(font_scale);
 }
 
+void LynxTemplateRenderer::UpdateColorScheme(int scheme) {
+  shell_->UpdateColorScheme(scheme);
+}
+
 void LynxTemplateRenderer::SetEnableBytecode(bool enable,
                                              std::string source_url) {
   shell_->SetEnableBytecode(enable, std::move(source_url));
@@ -600,6 +605,7 @@ napi_value LynxTemplateRenderer::Init(napi_env env, napi_value exports) {
       DECLARE_NAPI_METHOD("getAllTimingInfo", GetAllTimingInfo),
       DECLARE_NAPI_METHOD("getInstanceId", GetInstanceId),
       DECLARE_NAPI_METHOD("updateFontScale", UpdateFontScale),
+      DECLARE_NAPI_METHOD("updateColorScheme", UpdateColorScheme),
       DECLARE_NAPI_METHOD("nativeSetEnableBytecode", NativeSetEnableBytecode),
       DECLARE_NAPI_METHOD("getPageDataByKey", GetPageDataByKey),
       DECLARE_NAPI_METHOD("setupExtensionDelegate", SetupExtensionDelegate),
@@ -628,6 +634,10 @@ napi_value LynxTemplateRenderer::Init(napi_env env, napi_value exports) {
   NAPI_CREATE_FUNCTION(env, exports, "initGlobalEnv", InitGlobalEnv);
   NAPI_CREATE_FUNCTION(env, exports, "registerImageService",
                        RegisterImageService);
+  NAPI_CREATE_FUNCTION(env, exports, "setEmojiResourceFetcher",
+                       SetEmojiResourceFetcher);
+  NAPI_CREATE_FUNCTION(env, exports, "preloadCommonEmojiResources",
+                       PreloadCommonEmojiResources);
   NAPI_CREATE_FUNCTION(env, exports, "getBaseTraceBackend",
                        GetBaseTraceBackend);
   NAPI_CREATE_FUNCTION(env, exports, "setTracingDirPath", SetTracingDirPath);
@@ -719,6 +729,25 @@ napi_value LynxTemplateRenderer::RegisterImageService(napi_env env,
   return nullptr;
 }
 
+napi_value LynxTemplateRenderer::SetEmojiResourceFetcher(
+    napi_env env, napi_callback_info info) {
+  size_t argc = 1;
+  napi_value args[1] = {nullptr};
+  napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+  if (argc >= 1 && args[0]) {
+    tasm::harmony::EmojiResourceManager::GetInstance().SetEmojiResourceFetcher(
+        env, args[0]);
+  }
+  return nullptr;
+}
+
+napi_value LynxTemplateRenderer::PreloadCommonEmojiResources(
+    napi_env env, napi_callback_info info) {
+  tasm::harmony::EmojiResourceManager::GetInstance()
+      .EnsureEmojiResourcesLoaded();
+  return nullptr;
+}
+
 napi_value LynxTemplateRenderer::NativeAttach(napi_env env,
                                               napi_callback_info info) {
   napi_value js_this;
@@ -806,7 +835,7 @@ napi_value LynxTemplateRenderer::NativeReset(napi_env env,
   napi_get_value_bool(env, args[14], &enable_js);
 
   // module
-  static constexpr uint32_t kArgsSize = 4;
+  static constexpr uint32_t kArgsSize = 5;
   napi_value module_args[kArgsSize];
   base::NapiUtil::ConvertToArray(env, args[15], module_args, kArgsSize);
   napi_value sendable_module_args[kArgsSize];
@@ -1549,6 +1578,25 @@ napi_value LynxTemplateRenderer::UpdateFontScale(napi_env env,
     return nullptr;
   }
   obj->UpdateFontScale(scale);
+  return nullptr;
+}
+
+napi_value LynxTemplateRenderer::UpdateColorScheme(napi_env env,
+                                                   napi_callback_info info) {
+  napi_value js_this;
+  size_t argc = 1;
+  napi_value args[1] = {nullptr};
+  napi_get_cb_info(env, info, &argc, args, &js_this, nullptr);
+
+  auto scheme = base::NapiUtil::ConvertToInt32(env, args[0]);
+
+  LynxTemplateRenderer* obj = nullptr;
+  napi_status status =
+      napi_unwrap(env, js_this, reinterpret_cast<void**>(&obj));
+  if (!CheckNapiUnwrapObject(status, obj, "NativeUpdateColorScheme failed")) {
+    return nullptr;
+  }
+  obj->UpdateColorScheme(scheme);
   return nullptr;
 }
 

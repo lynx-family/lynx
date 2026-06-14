@@ -18,6 +18,7 @@ extern "C" {
 #include "core/renderer/utils/lynx_env.h"
 #include "core/runtime/js/jsi/quickjs/quickjs_host_function.h"
 #include "core/runtime/js/jsi/quickjs/quickjs_host_object.h"
+#include "core/runtime/js/runtime_constant.h"
 
 namespace lynx {
 namespace runtime {
@@ -27,7 +28,6 @@ using detail::QuickjsHostObjectProxy;
 
 LEPUSClassID QuickjsRuntimeInstance::s_function_id_ = 0;
 LEPUSClassID QuickjsRuntimeInstance::s_object_id_ = 0;
-inline constexpr char kRawRuntimeMemoryInfo[] = "raw_memory_info_json_str";
 
 QuickjsRuntimeInstance::~QuickjsRuntimeInstance() {
   LOGE("LYNX free quickjs runtime start");

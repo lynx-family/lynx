@@ -19,7 +19,6 @@ namespace performance {
 
 inline constexpr char kRuntimeId[] = "runtimeId";
 inline constexpr char kRuntimeGroupId[] = "groupId";
-inline constexpr char kRawRuntimeMemoryInfo[] = "raw_memory_info_json_str";
 
 // @class MemoryMonitor
 // @brief A class for monitoring memory usage and managing memory records.
@@ -45,13 +44,16 @@ class MemoryMonitor {
   // Overwrites the memory usage and sends a PerformanceEntry.
   // This interface will overwrite the record corresponding to the category in
   // the record, effectively updating the memory usage information.
-  void UpdateMemoryUsage(MemoryRecord&& record);
+  void UpdateMemoryUsage(MemoryRecord&& record, bool force_report = false);
 
   // Overwrites the memory usage and sends a PerformanceEntry.
   // This interface will overwrite the record corresponding to the category in
   // the record, effectively updating the memory usage information.
   void UpdateScriptingEngineMemoryUsage(
       std::unordered_map<std::string, std::string> info);
+
+  // Aggregate data and report memory to sender or trace.
+  void ReportMemory(bool force_report = false);
 
   // Checks if memory monitoring is enabled.
   // Modules can call this before collecting data to avoid unnecessary
@@ -87,7 +89,6 @@ class MemoryMonitor {
   MemoryMonitor& operator=(MemoryMonitor&& other) = delete;
 
  private:
-  void ReportMemory();
   int32_t instance_id_ = report::kUninitializedInstanceId;
   PerformanceEventSender* sender_;
   std::unordered_map<MemoryCategory, MemoryRecord> memory_records_;

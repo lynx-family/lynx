@@ -20,10 +20,6 @@ config("napi_config") {
   if (use_primjs_napi) {
     defines += [ "USE_PRIMJS_NAPI" ]
   }
-
-  if (is_headless && is_android) {
-    defines += [ "NAPI_EXTERN=__attribute__((visibility(\"hidden\")))" ]
-  }
 }
 
 config("private_config") {
@@ -31,8 +27,9 @@ config("private_config") {
     "-Wno-sign-compare",
     "-Wno-unused-function",
   ]
+  defines = []
   if (is_win) {
-    defines = [ "OS_WIN" ]
+    defines += [ "OS_WIN" ]
   }
   if (is_win || is_mac) {
     cflags += [ "-Wno-c99-designator" ]
@@ -45,6 +42,9 @@ config("private_config") {
     "../quickjs/src/src/napi",
     "../quickjs/src/src/napi/common",
   ]
+  if (is_headless && (is_android || is_harmony)) {
+    defines += [ "NAPI_EXTERN=__attribute__((visibility(\"hidden\")))" ]
+  }
 }
 
 source_set("adapter") {

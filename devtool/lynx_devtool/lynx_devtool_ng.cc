@@ -135,6 +135,9 @@ void LynxDevToolNG::RegisterGlobalDomainAgents(
         "Replay", std::make_unique<InspectorTestBenchReplayAgent>());
   } else if (!domain_key.compare(domain_key_prefix + "io")) {
     global_dispatcher.RegisterAgent("IO", std::make_unique<InspectorIOAgent>());
+  } else if (!domain_key.compare(domain_key_prefix + "memory")) {
+    global_dispatcher.RegisterAgent("Memory",
+                                    std::make_unique<InspectorMemoryAgent>());
   } else if (!domain_key.compare(domain_key_prefix + "systeminfo")) {
     global_dispatcher.RegisterAgent("SystemInfo",
                                     std::make_unique<SystemInfoAgent>());
@@ -227,6 +230,8 @@ void LynxDevToolNG::RegisterInstanceDomainAgents(
     RegisterAgent("Replay", std::make_unique<InspectorTestBenchReplayAgent>());
   } else if (!domain_key.compare(domain_key_prefix + "io")) {
     RegisterAgent("IO", std::make_unique<InspectorIOAgent>());
+  } else if (!domain_key.compare(domain_key_prefix + "memory")) {
+    RegisterAgent("Memory", std::make_unique<InspectorMemoryAgent>());
   } else if (!domain_key.compare(domain_key_prefix + "heapprofiler")) {
     RegisterAgent("HeapProfiler", std::make_unique<InspectorHeapProfilerAgent>(
                                       devtool_mediator_));

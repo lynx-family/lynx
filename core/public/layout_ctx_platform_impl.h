@@ -28,6 +28,13 @@ using CSSFontFaceAttrsMap = std::unordered_map<std::string, std::string>;
 
 using CSSFontFaceRule = std::pair<std::string, CSSFontFaceAttrsMap>;
 
+// TODO: using css::FontFaceRule
+// struct CSSFontFaceRule {
+//   std::string first;
+//   CSSFontFaceAttrsMap second;
+//   fml::RefPtr<const css::FontFaceRule> parsed_rule;
+// };
+
 using CSSFontFaceRuleMap =
     std::unordered_map<std::string,
                        std::vector<std::shared_ptr<CSSFontFaceRule>>>;

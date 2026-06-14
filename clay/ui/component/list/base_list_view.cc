@@ -14,6 +14,7 @@
 #include <utility>
 #include <vector>
 
+#include "base/include/float_comparison.h"
 #include "base/include/timer/time_utils.h"
 #include "base/trace/native/trace_event.h"
 #include "clay/fml/logging.h"
@@ -156,6 +157,9 @@ void BaseListView::SetWidth(float width) {
   if (width_ == width) {
     return;
   }
+  if (layout_manager_ && layout_manager_->CanScrollVertically()) {
+    layout_manager_->InvalidateLayoutCache();
+  }
   BaseView::SetWidth(width);
   MarkNeedsLayout();
 }
@@ -164,8 +168,32 @@ void BaseListView::SetHeight(float height) {
   if (height_ == height) {
     return;
   }
+  if (layout_manager_ && layout_manager_->CanScrollHorizontally()) {
+    layout_manager_->InvalidateLayoutCache();
+  }
   BaseView::SetHeight(height);
   MarkNeedsLayout();
+}
+
+void BaseListView::SetPaddings(float padding_left, float padding_top,
+                               float padding_right, float padding_bottom) {
+  bool should_invalidate_layout_cache = false;
+  if (layout_manager_) {
+    if (layout_manager_->CanScrollVertically()) {
+      should_invalidate_layout_cache =
+          !lynx::base::FloatsEqual(Width() - PaddingLeft() - PaddingRight(),
+                                   Width() - padding_left - padding_right);
+    } else {
+      should_invalidate_layout_cache =
+          !lynx::base::FloatsEqual(Height() - PaddingTop() - PaddingBottom(),
+                                   Height() - padding_top - padding_bottom);
+    }
+  }
+  if (should_invalidate_layout_cache) {
+    layout_manager_->InvalidateLayoutCache();
+  }
+  BaseView::SetPaddings(padding_left, padding_top, padding_right,
+                        padding_bottom);
 }
 
 void BaseListView::SetAdapter(ListAdapter* adapter) {
@@ -1010,7 +1038,7 @@ void BaseListView::MarkViewHoldersChanged(
     return false;
   });
   recycler_->MarkViewHoldersChanged(position_start, item_count);
-  if (update_to_position) {
+  if (update_to_position && *update_to_position != position_start) {
     // Update operation from Lynx will have `from` and `to`, so we call move
     // instead of update.
     layout_manager_->OnItemsMoved(this, position_start, *update_to_position,
@@ -1331,6 +1359,16 @@ void BaseListView::SetStickyEnabled(bool enabled) {
     sticky_enabled_ = enabled;
     MarkNeedsLayout();
   }
+}
+
+void BaseListView::OnListItemSizeChanged() {
+  if (ShouldIgnoreLayoutRequest()) {
+    return;
+  }
+  if (layout_manager_) {
+    layout_manager_->InvalidateLayoutCache();
+  }
+  MarkNeedsLayout();
 }
 
 #ifdef ENABLE_ACCESSIBILITY

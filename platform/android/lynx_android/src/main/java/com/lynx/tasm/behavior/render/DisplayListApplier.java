@@ -73,12 +73,12 @@ public class DisplayListApplier implements Drawable.Callback {
   private int mContentFloatIndex;
   private int mFragmentDepth;
 
-  private WeakReference<View> mHostLayer;
+  private WeakReference<IRendererHost> mHostLayer;
 
   private final ArrayList<RoundedRectangle> mRoundedRectangleArray = new ArrayList<>();
 
-  public DisplayListApplier(
-      DisplayList displayList, PlatformRendererContext platformRendererContext, View hostLayer) {
+  public DisplayListApplier(DisplayList displayList,
+      PlatformRendererContext platformRendererContext, IRendererHost hostLayer) {
     mDisplayList = displayList;
     mPaint = new Paint();
     mPaint.setAntiAlias(true);
@@ -122,18 +122,23 @@ public class DisplayListApplier implements Drawable.Callback {
     }
   }
 
-  private View getHostLayer() {
+  private IRendererHost getRendererHost() {
     return mHostLayer.get();
   }
 
+  private View getHostLayer() {
+    IRendererHost host = getRendererHost();
+    return host != null ? host.getView() : null;
+  }
+
   private boolean shouldNormalizeRootGeometry() {
-    View hostLayer = getHostLayer();
-    return mFragmentDepth == 1 && hostLayer != null && hostLayer.getWidth() > 0
-        && hostLayer.getHeight() > 0;
+    IRendererHost hostLayer = getRendererHost();
+    return mFragmentDepth == 1 && hostLayer != null && hostLayer.getRendererHostWidth() > 0
+        && hostLayer.getRendererHostHeight() > 0;
   }
 
   private RectF getHostBoundsRectF(boolean includeScrollOffset) {
-    View hostLayer = getHostLayer();
+    IRendererHost hostLayer = getRendererHost();
     if (hostLayer == null) {
       return new RectF();
     }
@@ -141,10 +146,25 @@ public class DisplayListApplier implements Drawable.Callback {
     float left = 0.f;
     float top = 0.f;
     if (includeScrollOffset && hostLayer instanceof AndroidScrollView) {
-      left = hostLayer.getScrollX();
-      top = hostLayer.getScrollY();
+      left = hostLayer.getRendererHostScrollX();
+      top = hostLayer.getRendererHostScrollY();
     }
-    return new RectF(left, top, left + hostLayer.getWidth(), top + hostLayer.getHeight());
+    return new RectF(left, top, left + hostLayer.getRendererHostWidth(),
+        top + hostLayer.getRendererHostHeight());
+  }
+
+  private boolean shouldIncludeScrollOffsetForHostBounds() {
+    IRendererHost hostLayer = getRendererHost();
+    return hostLayer instanceof AndroidScrollView
+        && !((AndroidScrollView) hostLayer).isHorizontal();
+  }
+
+  private void offsetRectForHostScroll(RectF rect) {
+    IRendererHost hostLayer = getRendererHost();
+    if (hostLayer == null) {
+      return;
+    }
+    rect.offset(hostLayer.getRendererHostScrollX(), hostLayer.getRendererHostScrollY());
   }
 
   private float[] cloneBorderRadii(float[] borderRadii) {
@@ -169,7 +189,9 @@ public class DisplayListApplier implements Drawable.Callback {
     }
 
     RectF normalizedRect = new RectF(roundedRectangle.getRectF());
-    if (!normalizedRect.intersect(getHostBoundsRectF(false))) {
+    if (shouldIncludeScrollOffsetForHostBounds()) {
+      offsetRectForHostScroll(normalizedRect);
+    } else if (!normalizedRect.intersect(getHostBoundsRectF(false))) {
       normalizedRect.setEmpty();
     }
     if (normalizedRect.equals(roundedRectangle.getRectF())) {
@@ -187,8 +209,17 @@ public class DisplayListApplier implements Drawable.Callback {
 
     RectF rawOutRect = outBox.getRectF();
     RectF rawInnerRect = innerBox.getRectF();
-    RectF hostBounds = getHostBoundsRectF(false);
     RectF normalizedOutRect = new RectF(rawOutRect);
+
+    if (shouldIncludeScrollOffsetForHostBounds()) {
+      RectF normalizedInnerRect = new RectF(rawInnerRect);
+      offsetRectForHostScroll(normalizedOutRect);
+      offsetRectForHostScroll(normalizedInnerRect);
+      return new BorderBoxes(createRoundedRectangle(normalizedOutRect, outBox),
+          createRoundedRectangle(normalizedInnerRect, innerBox));
+    }
+
+    RectF hostBounds = getHostBoundsRectF(false);
     if (!normalizedOutRect.intersect(hostBounds)) {
       normalizedOutRect.setEmpty();
     }
@@ -220,9 +251,9 @@ public class DisplayListApplier implements Drawable.Callback {
   }
 
   private void normalizeClipRect(RectF rect) {
-    View hostLayer = getHostLayer();
+    IRendererHost hostLayer = getRendererHost();
     if (hostLayer instanceof AndroidScrollView) {
-      rect.offset(hostLayer.getScrollX(), hostLayer.getScrollY());
+      rect.offset(hostLayer.getRendererHostScrollX(), hostLayer.getRendererHostScrollY());
     }
     if (!shouldNormalizeRootGeometry()) {
       return;
@@ -244,7 +275,7 @@ public class DisplayListApplier implements Drawable.Callback {
       imageManager.updateDrawableBounds(rect.getRect());
     }
     imageManager.updateInnerClipPathForBorderRadius(rect);
-    imageManager.setView(mHostLayer.get());
+    imageManager.setView(getHostLayer());
     imageManager.onDraw(canvas);
   }
 
@@ -697,9 +728,9 @@ public class DisplayListApplier implements Drawable.Callback {
 
   @Override
   public void invalidateDrawable(@NonNull Drawable who) {
-    View hostLayer = mHostLayer.get();
+    IRendererHost hostLayer = getRendererHost();
     if (hostLayer != null) {
-      hostLayer.invalidate();
+      hostLayer.invalidateForRenderer();
     }
   }
 

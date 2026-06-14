@@ -4,9 +4,12 @@
 
 #include "devtool/embedder/core/global_devtool_platform_embedder.h"
 
+#include <utility>
+
 #if ENABLE_TRACE_PERFETTO || ENABLE_TRACE_SYSTRACE
 #include "base/trace/native/trace_controller.h"
 #endif
+#include "core/renderer/tasm/config.h"
 #include "devtool/lynx_devtool/agent/global_devtool_platform_facade.h"
 
 namespace lynx {
@@ -21,6 +24,13 @@ class GlobalDevtoolPlatformCommon
 
   void StopMemoryTracing() override {
     GlobalDevtoolPlatformEmbedder::StopMemoryTracing();
+  }
+
+  void GetAllMemoryUsage(
+      int64_t timeout_ms,
+      GlobalDevToolPlatformFacade::MemoryUsageCallback callback) override {
+    GlobalDevtoolPlatformEmbedder::GetAllMemoryUsage(timeout_ms,
+                                                     std::move(callback));
   }
 
   lynx::trace::TraceController* GetTraceController() override {
@@ -41,14 +51,30 @@ class GlobalDevtoolPlatformCommon
   }
 
   std::string GetLynxVersion() override {
-    // TODO(suguannan.906): implement GetLynxVersion later
-    return "";
+    return lynx::tasm::Config::GetCurrentLynxVersion();
   }
 };
 
 void GlobalDevtoolPlatformEmbedder::StartMemoryTracing() {}
 
 void GlobalDevtoolPlatformEmbedder::StopMemoryTracing() {}
+
+void GlobalDevtoolPlatformEmbedder::GetAllMemoryUsage(
+    int64_t timeout_ms,
+    base::MoveOnlyClosure<void, const std::string&, const std::string&>
+        callback) {
+  (void)timeout_ms;
+  // The generic embedder has no host-specific memory bridge. Keep the CDP
+  // plumbing honest by returning an explicit error until embedders provide
+  // their own memory counters through this static hook.
+  constexpr char kBridgeUnavailable[] =
+      "Memory.getAllMemoryUsage is not available in this Lynx runtime. "
+      "Upgrade the Lynx runtime and DevTool platform integration to a version "
+      "with the global memory bridge.";
+  if (callback) {
+    std::move(callback)("{}", kBridgeUnavailable);
+  }
+}
 
 GlobalDevToolPlatformFacade& GlobalDevToolPlatformFacade::GetInstance() {
   static GlobalDevtoolPlatformCommon instance;

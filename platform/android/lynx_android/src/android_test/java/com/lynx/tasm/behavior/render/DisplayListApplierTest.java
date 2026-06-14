@@ -88,6 +88,7 @@ public class DisplayListApplierTest {
   @Mock private PlatformRendererContext mockPlatformRendererContext;
   @Mock private TextUpdateBundle mockTextUpdateBundle;
   @Mock private android.text.Layout mockTextLayout;
+  @Mock private IRendererHost mockRendererHost;
   @Mock private View mockHostView;
 
   private DisplayListApplier displayListApplier;
@@ -107,7 +108,9 @@ public class DisplayListApplierTest {
     MockitoAnnotations.openMocks(this);
     // Set up PlatformRendererContext to return our mock TextMeasurer
     when(mockPlatformRendererContext.getTextMeasurer()).thenReturn(mockTextMeasurer);
-    displayListApplier = new DisplayListApplier(null, mockPlatformRendererContext, mockHostView);
+    when(mockRendererHost.getView()).thenReturn(mockHostView);
+    displayListApplier =
+        new DisplayListApplier(null, mockPlatformRendererContext, mockRendererHost);
     spyDisplayListApplier = spy(displayListApplier);
     testDisplayList = new DisplayList();
 
@@ -128,7 +131,7 @@ public class DisplayListApplierTest {
   public void testConstructor() {
     when(mockPlatformRendererContext.getTextMeasurer()).thenReturn(mockTextMeasurer);
     DisplayListApplier applier =
-        new DisplayListApplier(testDisplayList, mockPlatformRendererContext, mockHostView);
+        new DisplayListApplier(testDisplayList, mockPlatformRendererContext, mockRendererHost);
     assertNotNull(applier);
   }
 

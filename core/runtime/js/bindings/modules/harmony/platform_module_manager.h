@@ -13,6 +13,7 @@
 #include <mutex>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -25,12 +26,18 @@ namespace harmony {
  */
 class PlatformModuleManager {
  public:
-  PlatformModuleManager(napi_env env, napi_value module_args[4],
-                        napi_value sendable_module_args[4]);
+  PlatformModuleManager(napi_env env, napi_value module_args[5],
+                        napi_value sendable_module_args[5]);
   ~PlatformModuleManager();
 
   napi_value JSModuleManager(napi_env env, bool sendable);
   napi_value JSGetModuleFunc(napi_env env, bool sendable);
+
+  struct ModuleInfo {
+    bool sendable = false;
+    std::vector<std::string> methods;
+    std::unordered_set<std::string> sync_methods;
+  };
 
   const auto& JSModuleMap() { return js_module_map_; }
 
@@ -38,7 +45,7 @@ class PlatformModuleManager {
 
  private:
   void AddPlatformModules(napi_value module_key, napi_value module_value,
-                          bool sendable);
+                          napi_value sync_methods_value, bool sendable);
   static napi_value EnsureSendable(napi_env env, void* buffer, napi_ref& ref);
 
   napi_env env_;
@@ -50,8 +57,7 @@ class PlatformModuleManager {
   void* sendable_js_module_manager_buffer_ = nullptr;
   void* sendable_js_module_buffer_ = nullptr;
 
-  std::unordered_map<std::string, std::pair<bool, std::vector<std::string>>>
-      js_module_map_;
+  std::unordered_map<std::string, ModuleInfo> js_module_map_;
 };
 
 }  // namespace harmony

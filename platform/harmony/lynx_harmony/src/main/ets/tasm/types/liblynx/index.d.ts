@@ -10,6 +10,10 @@ export const initGlobalEnv: (resourceManager: Object) => void;
 
 export const registerImageService: (instance: number[]) => void;
 
+export const setEmojiResourceFetcher: (fetcher: Object) => void;
+
+export const preloadCommonEmojiResources: () => void;
+
 export const getBaseTraceBackend: () => number;
 
 export const setTracingDirPath: (tracingDirPath: string) => void;
@@ -180,6 +184,8 @@ export class LynxTemplateRenderer {
   getInstanceId(): number;
 
   updateFontScale(scale: number): void;
+
+  updateColorScheme(scheme: number): void;
 
   nativeSetEnableBytecode(enableBytecode: boolean, sourceUrl: string): void;
 

@@ -17,8 +17,18 @@ namespace devtool {
  */
 class EnvEmbedder {
  public:
+  /**
+   * @deprecated DevTool setting callers should use platform-specific
+   * DevToolSettings typed APIs instead. This generic string-switch API is
+   * retained for backward compatibility.
+   */
   static void SetSwitch(const std::string& key, bool value);
 
+  /**
+   * @deprecated DevTool setting callers should use platform-specific
+   * DevToolSettings typed APIs instead. This generic string-switch API is
+   * retained for backward compatibility.
+   */
   static bool GetSwitch(const std::string& key);
 };
 

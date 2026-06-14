@@ -2,3 +2,4 @@ packages:
   - 'dom-focus'
   - 'event'
   - 'input_insert_text'
+  - 'video'

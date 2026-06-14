@@ -284,6 +284,49 @@ TEST_F(KeyframeEffectTest, SetPauseTime) {
   }
 }
 
+TEST_F(KeyframeEffectTest, TickCountsSkippedIterationsAndIgnoresRollback) {
+  auto effect = gfx::KeyframeEffect::Create();
+  auto curve = animation::KeyframedOpacityAnimationCurve::Create();
+  auto from_keyframe =
+      animation::OpacityKeyframe::Create(fml::TimeDelta(), nullptr);
+  from_keyframe->SetOpacity(1.0f);
+  curve->AddKeyframe(std::move(from_keyframe));
+  auto to_keyframe = animation::OpacityKeyframe::Create(
+      fml::TimeDelta::FromMilliseconds(1000), nullptr);
+  to_keyframe->SetOpacity(0.0f);
+  curve->AddKeyframe(std::move(to_keyframe));
+  auto model = gfx::KeyframeModel::Create(std::move(curve));
+
+  gfx::AnimationData data;
+  data.duration = 1000;
+  data.delay = 0;
+  data.iteration_count = 4;
+  model->SetAnimationData(&data);
+  effect->AddKeyframeModel(model.get());
+
+  fml::TimePoint start_time =
+      fml::TimePoint::FromEpochDelta(fml::TimeDelta::FromMilliseconds(0));
+  effect->SetStartTime(start_time);
+
+  fml::TimePoint first_iteration =
+      fml::TimePoint::FromEpochDelta(fml::TimeDelta::FromMilliseconds(500));
+  auto initial_result = effect->Tick(first_iteration);
+  EXPECT_EQ(0, initial_result.iteration_events_due);
+  EXPECT_EQ(1u, initial_result.samples.size());
+
+  fml::TimePoint third_iteration =
+      fml::TimePoint::FromEpochDelta(fml::TimeDelta::FromMilliseconds(2500));
+  auto skipped_result = effect->Tick(third_iteration);
+  EXPECT_EQ(2, skipped_result.iteration_events_due);
+  EXPECT_EQ(1u, skipped_result.samples.size());
+
+  fml::TimePoint second_iteration =
+      fml::TimePoint::FromEpochDelta(fml::TimeDelta::FromMilliseconds(1500));
+  auto rollback_result = effect->Tick(second_iteration);
+  EXPECT_EQ(0, rollback_result.iteration_events_due);
+  EXPECT_EQ(1u, rollback_result.samples.size());
+}
+
 TEST_F(KeyframeEffectTest, GetKeyframeModelByCurveType) {
   animation::KeyframeEffect* test_effect = InitTestEffect();
   animation::KeyframeModel* opacity_model =
@@ -304,7 +347,7 @@ TEST_F(KeyframeEffectTest, CheckHasFinished) {
   test_effect->UpdateAnimationData(default_data.get());
   fml::TimePoint start_time =
       fml::TimePoint::FromEpochDelta(fml::TimeDelta::FromSecondsF(1.0));
-  test_effect->SetStartTime(start_time);
+  test_effect->SetStartTime(start_time, true);
 
   fml::TimePoint test_time1 =
       fml::TimePoint::FromEpochDelta(fml::TimeDelta::FromSecondsF(2.0));

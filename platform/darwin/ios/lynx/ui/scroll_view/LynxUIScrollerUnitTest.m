@@ -5,6 +5,7 @@
 #import <Lynx/LynxBounceView.h>
 #import <Lynx/LynxPropsProcessor.h>
 #import <Lynx/LynxUI+Internal.h>
+#import <Lynx/LynxUIContext.h>
 #import <Lynx/LynxUIOwner.h>
 #import <Lynx/LynxUIScroller.h>
 #import <Lynx/LynxUIView.h>
@@ -12,6 +13,14 @@
 #import <objc/runtime.h>
 #import "LynxUI+Gesture.h"
 #import "LynxUIScrollerUnitTestUtils.h"
+
+@interface LynxUIContext (NewStickyScrollerUnitTest)
+- (void)setEnableNewSticky:(BOOL)enable;
+@end
+
+@interface LynxUIScroller (NewStickyUnitTest)
+@property(nonatomic, strong) NSMutableArray<NSNumber *> *stickyChildSignArray;
+@end
 
 @interface LynxUIScrollerUnitTest : XCTestCase
 @end
@@ -267,6 +276,156 @@
 
   [mockContext.mockUI onGestureScrollBy:CGPointMake(10, 10000)];
   XCTAssertFalse([mockContext.mockUI canConsumeGesture:CGPointMake(10, 1)]);
+}
+
+// Focus: Direct add/remove operations deduplicate sticky signs and keep enableSticky in sync with
+// the scroll-view's sticky sign array.
+- (void)testNewStickyChildSignRegistrationIsDeduplicated {
+  LynxUIScroller *scroller = [[LynxUIScroller alloc] init];
+
+  [scroller addStickyChildSign:7];
+  [scroller addStickyChildSign:7];
+
+  [self assertStickyChildSigns:scroller expectedSigns:@[ @7 ]];
+
+  [scroller removeStickyChildSign:7];
+
+  [self assertStickyChildSigns:scroller expectedSigns:@[]];
+}
+
+// Focus: A valid new-sticky payload registers the sticky node sign on the nearest scroll-view, and
+// refreshStickyChildren updates that node by looking it up from the recorded sign array.
+- (void)testNewStickyRegistersWithScrollerAndRefreshesBySign {
+  LynxUIMockContext *mockContext = nil;
+  LynxUIScroller *scroller = [self createScrollerWithSign:0 mockContext:&mockContext];
+  LynxUI *sticky = [self createStickyChildWithSign:1 mockContext:mockContext];
+  [scroller insertChild:sticky atIndex:0];
+
+  [sticky updateSticky:[self createVerticalStickyInfoWithTop:10]];
+  [self assertStickyChildSigns:scroller expectedSigns:@[ @(sticky.sign) ]];
+
+  UIScrollView *scrollView = (UIScrollView *)scroller.view;
+  scrollView.contentOffset = CGPointMake(0, 150);
+  [scroller refreshStickyChildren];
+
+  XCTAssertEqualWithAccuracy(sticky.backgroundManager.postTranslate.y, 60.f, 0.001f);
+}
+
+// Focus: Updating sticky info keeps one recorded sign for the same node, while invalid or nil
+// payloads clear the node from the scroll-view's sticky sign array.
+- (void)testNewStickyUpdatesStickyChildSignsWhenInfoChanges {
+  LynxUIMockContext *mockContext = nil;
+  LynxUIScroller *scroller = [self createScrollerWithSign:0 mockContext:&mockContext];
+  LynxUI *sticky = [self createStickyChildWithSign:1 mockContext:mockContext];
+  [scroller insertChild:sticky atIndex:0];
+
+  [sticky updateSticky:[self createVerticalStickyInfoWithTop:10]];
+  [self assertStickyChildSigns:scroller expectedSigns:@[ @(sticky.sign) ]];
+
+  [sticky updateSticky:[self createVerticalStickyInfoWithTop:20]];
+  [self assertStickyChildSigns:scroller expectedSigns:@[ @(sticky.sign) ]];
+
+  [sticky updateSticky:@[ @0, @20, @0, @0 ]];
+  [self assertStickyChildSigns:scroller expectedSigns:@[]];
+
+  [sticky updateSticky:[self createVerticalStickyInfoWithTop:30]];
+  [self assertStickyChildSigns:scroller expectedSigns:@[ @(sticky.sign) ]];
+
+  [sticky updateSticky:nil];
+  [self assertStickyChildSigns:scroller expectedSigns:@[]];
+}
+
+// Focus: Removing a sticky node unregisters it from the scroll-view sticky sign array, so later
+// sticky refreshes do not process the removed node.
+- (void)testNewStickyUnregistersFromScrollerOnNodeRemoved {
+  LynxUIMockContext *mockContext = nil;
+  LynxUIScroller *scroller = [self createScrollerWithSign:0 mockContext:&mockContext];
+  LynxUI *sticky = [self createStickyChildWithSign:1 mockContext:mockContext];
+  [scroller insertChild:sticky atIndex:0];
+
+  [sticky updateSticky:[self createVerticalStickyInfoWithTop:10]];
+  [self assertStickyChildSigns:scroller expectedSigns:@[ @(sticky.sign) ]];
+
+  UIScrollView *scrollView = (UIScrollView *)scroller.view;
+  scrollView.contentOffset = CGPointMake(0, 150);
+  [scroller refreshStickyChildren];
+  XCTAssertEqualWithAccuracy(sticky.backgroundManager.postTranslate.y, 60.f, 0.001f);
+
+  [sticky onNodeRemoved];
+  [scroller removeChild:sticky atIndex:0];
+  [self assertStickyChildSigns:scroller expectedSigns:@[]];
+
+  scrollView.contentOffset = CGPointMake(0, 200);
+  [scroller refreshStickyChildren];
+  XCTAssertTrue(CGPointEqualToPoint(sticky.backgroundManager.postTranslate, CGPointZero));
+}
+
+// Focus: Moving a sticky node between two scroll-views removes its sign from the old scroll-view
+// and records it on the new scroll-view after sticky info is updated.
+- (void)testNewStickyMovesBetweenScrollersWhenStickyInfoUpdates {
+  LynxUIMockContext *mockContext = nil;
+  LynxUIScroller *firstScroller = [self createScrollerWithSign:1 mockContext:&mockContext];
+  LynxUIScroller *secondScroller = [self createScrollerWithSign:3 mockContext:&mockContext];
+  LynxUI *sticky = [self createStickyChildWithSign:2 mockContext:mockContext];
+  [firstScroller insertChild:sticky atIndex:0];
+
+  [sticky updateSticky:[self createVerticalStickyInfoWithTop:10]];
+  [self assertStickyChildSigns:firstScroller expectedSigns:@[ @(sticky.sign) ]];
+  [self assertStickyChildSigns:secondScroller expectedSigns:@[]];
+
+  [firstScroller removeChild:sticky atIndex:0];
+  [secondScroller insertChild:sticky atIndex:0];
+  [sticky updateSticky:[self createVerticalStickyInfoWithTop:10]];
+
+  [self assertStickyChildSigns:firstScroller expectedSigns:@[]];
+  [self assertStickyChildSigns:secondScroller expectedSigns:@[ @(sticky.sign) ]];
+}
+
+- (LynxUIScroller *)createScrollerWithSign:(NSInteger)sign
+                               mockContext:(LynxUIMockContext **)mockContext {
+  *mockContext = [LynxUIUnitTestUtils updateUIMockContext:*mockContext
+                                                     sign:sign
+                                                      tag:@"scroll-view"
+                                                 eventSet:[NSSet set]
+                                            lepusEventSet:[NSSet set]
+                                                    props:[NSDictionary dictionary]];
+  LynxUIScroller *scroller = (LynxUIScroller *)[(*mockContext).UIOwner findUIBySign:sign];
+  [scroller.context setEnableNewSticky:YES];
+  [scroller updateFrame:CGRectMake(0, 0, 200, 200)
+              withPadding:UIEdgeInsetsZero
+                   border:UIEdgeInsetsZero
+      withLayoutAnimation:NO];
+  [LynxPropsProcessor updateProp:@1 withKey:@"scroll-y" forUI:scroller];
+  [scroller propsDidUpdate];
+  UIScrollView *scrollView = (UIScrollView *)scroller.view;
+  scrollView.contentSize = CGSizeMake(200, 500);
+  return scroller;
+}
+
+- (LynxUI *)createStickyChildWithSign:(NSInteger)sign mockContext:(LynxUIMockContext *)mockContext {
+  [LynxUIUnitTestUtils updateUIMockContext:mockContext
+                                      sign:sign
+                                       tag:@"view"
+                                  eventSet:[NSSet set]
+                             lepusEventSet:[NSSet set]
+                                     props:[NSDictionary dictionary]];
+  LynxUI *sticky = [mockContext.UIOwner findUIBySign:sign];
+  [sticky updateFrame:CGRectMake(0, 100, 50, 40)
+              withPadding:UIEdgeInsetsZero
+                   border:UIEdgeInsetsZero
+      withLayoutAnimation:NO];
+  return sticky;
+}
+
+- (NSArray *)createVerticalStickyInfoWithTop:(CGFloat)top {
+  return @[ @0, @(top), @0, @0, @(-1), @(-1), @0, @100, @0, @0 ];
+}
+
+- (void)assertStickyChildSigns:(LynxUIScroller *)scroller
+                 expectedSigns:(NSArray<NSNumber *> *)expectedSigns {
+  NSArray<NSNumber *> *stickyChildSigns = scroller.stickyChildSignArray ?: @[];
+  XCTAssertEqualObjects(stickyChildSigns, expectedSigns);
+  XCTAssertEqual(scroller.enableSticky, expectedSigns.count != 0);
 }
 
 @end

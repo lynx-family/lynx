@@ -9,6 +9,8 @@ jobs:
     permissions:
       contents: read
       id-token: write
+    outputs:
+      version: ${{ steps.get-version.outputs.version }}
     steps:
       - name: Download Source
         uses: actions/checkout@v4.2.2
@@ -31,7 +33,38 @@ jobs:
         run: |-
           cd $GITHUB_WORKSPACE/lynx
           source tools/envsetup.sh
+      - name: Get Published Version
+        id: get-version
+        run: |
+          VERSION=$(node -p "require('$GITHUB_WORKSPACE/lynx/tools/css_generator/package.json').version")
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+      - name: Check if version already published
+        id: check-published
+        env:
+          VERSION: ${{ steps.get-version.outputs.version }}
+        run: |
+          if npm view @lynx-js/css-defines@"$VERSION" version &>/dev/null; then
+            echo "Version $VERSION already published on npm registry. Skipping publish."
+            echo "already-published=true" >> $GITHUB_OUTPUT
+          else
+            echo "Version $VERSION not found on npm registry. Proceeding to publish."
+            echo "already-published=false" >> $GITHUB_OUTPUT
+          fi
       - name: Publish
+        if: steps.check-published.outputs.already-published != 'true'
         run: |-
           cd $GITHUB_WORKSPACE/lynx/tools/css_generator
           npm publish --access public --provenance
+
+  notify-website:
+    needs: css-defines-publish
+    if: needs.css-defines-publish.outputs.version
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger lynx-website sync
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          repository: lynx-family/lynx-website
+          event-type: bump-css-defines
+          client-payload: '{"version": "${{ needs.css-defines-publish.outputs.version }}"}'

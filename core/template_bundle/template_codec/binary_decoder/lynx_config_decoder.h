@@ -775,12 +775,18 @@ class LynxConfigDecoder final {
         doc[config::kEnableGridPlacementShorthands].IsBool()) {
       page_config->SetEnableGridPlacementShorthands(
           doc[config::kEnableGridPlacementShorthands].GetBool());
+    } else if (lynx::tasm::Config::IsHigherOrEqual(target_sdk_version,
+                                                   LYNX_VERSION_4_1)) {
+      page_config->SetEnableGridPlacementShorthands(true);
     }
 
     if (doc.HasMember(config::kEnableFlexBasisZeroPercent) &&
         doc[config::kEnableFlexBasisZeroPercent].IsBool()) {
       page_config->SetEnableFlexBasisZeroPercent(
           doc[config::kEnableFlexBasisZeroPercent].GetBool());
+    } else if (lynx::tasm::Config::IsHigherOrEqual(target_sdk_version,
+                                                   LYNX_VERSION_4_1)) {
+      page_config->SetEnableFlexBasisZeroPercent(true);
     }
 
     if (doc.HasMember(config::kIncludeFontPadding) &&
@@ -801,6 +807,12 @@ class LynxConfigDecoder final {
     } else {
       page_config->SetEnableMultiTouch(
           LynxEnv::GetInstance().EnableMultiTouch());
+    }
+
+    if (doc.HasMember(config::kEnableEventTargetInfoNodeIndex) &&
+        doc[config::kEnableEventTargetInfoNodeIndex].IsBool()) {
+      page_config->SetEnableEventTargetInfoNodeIndex(
+          doc[config::kEnableEventTargetInfoNodeIndex].GetBool());
     }
 
     if (doc.HasMember(config::kEnableHarmonyVisibleAreaChangeForExposure) &&
@@ -949,6 +961,15 @@ class LynxConfigDecoder final {
     } else {
       page_config->SetEnableElementApiNewRegistration(
           LynxEnv::GetInstance().EnableElementApiNewRegistration());
+    }
+
+    if (doc.HasMember(config::kEnableElementInvokeUIMethodPendingTask) &&
+        doc[config::kEnableElementInvokeUIMethodPendingTask].IsBool()) {
+      page_config->SetEnableElementInvokeUIMethodPendingTask(
+          doc[config::kEnableElementInvokeUIMethodPendingTask].GetBool());
+    } else {
+      page_config->SetEnableElementInvokeUIMethodPendingTask(
+          LynxEnv::GetInstance().EnableElementInvokeUIMethodPendingTask());
     }
   };
 };

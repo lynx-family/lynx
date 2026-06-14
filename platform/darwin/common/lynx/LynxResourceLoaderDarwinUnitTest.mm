@@ -40,6 +40,23 @@
 
 @end
 
+@interface MockBytecodeErrorFetcher : Mock2GenericResourceFetcher
+
+@end
+
+@implementation MockBytecodeErrorFetcher
+
+- (dispatch_block_t)fetchBytecode:(LynxResourceRequest*)request
+                       onComplete:(LynxGenericResourceCompletionBlock)callback {
+  NSError* error = [NSError errorWithDomain:@"LynxResourceLoaderDarwinUnitTest"
+                                       code:-1
+                                   userInfo:nil];
+  callback(nil, error);
+  return nil;
+}
+
+@end
+
 @interface MockDynamicComponentFetcher : NSObject <LynxDynamicComponentFetcher>
 
 @property(nonatomic, assign) BOOL fetchedOnMainThread;
@@ -67,6 +84,29 @@
   }
   NSData* data = [@"unit_test_bundle" dataUsingEncoding:NSUTF8StringEncoding];
   block(data, nil);
+}
+
+@end
+
+@interface MockLynxErrorReceiver : NSObject <LynxErrorReceiverProtocol>
+
+- (instancetype)initWithExpectation:(XCTestExpectation*)expectation;
+
+@end
+
+@implementation MockLynxErrorReceiver {
+  XCTestExpectation* _expectation;
+}
+
+- (instancetype)initWithExpectation:(XCTestExpectation*)expectation {
+  if (self = [super init]) {
+    _expectation = expectation;
+  }
+  return self;
+}
+
+- (void)onErrorOccurred:(LynxError*)error {
+  [_expectation fulfill];
 }
 
 @end
@@ -141,6 +181,27 @@
     XCTAssertTrue(false);
   }
   XCTAssertTrue(future.get().length() > 0);
+}
+
+- (void)testLoadBytecodeFailureDoesNotReportError {
+  XCTestExpectation* onErrorExpectation =
+      [self expectationWithDescription:@"loadBytecode should not report error"];
+  onErrorExpectation.inverted = YES;
+  XCTestExpectation* callbackExpectation =
+      [self expectationWithDescription:@"loadBytecode callback"];
+  MockBytecodeErrorFetcher* genericFetcher = [[MockBytecodeErrorFetcher alloc] init];
+  MockLynxErrorReceiver* errorReceiver =
+      [[MockLynxErrorReceiver alloc] initWithExpectation:onErrorExpectation];
+  auto loader = std::make_shared<lynx::shell::LynxResourceLoaderDarwin>(nil, nil, errorReceiver,
+                                                                        nil, genericFetcher);
+  auto request = lynx::pub::LynxResourceRequest{"bytecode_url",
+                                                lynx::pub::LynxResourceType::kExternalByteCode};
+  loader->LoadBytecode(request, [callbackExpectation](lynx::pub::LynxResourceResponse& response) {
+    XCTAssertFalse(response.Success());
+    [callbackExpectation fulfill];
+  });
+
+  [self waitForExpectations:@[ callbackExpectation, onErrorExpectation ] timeout:1];
 }
 
 - (void)testLoadLazyBundleOffCurrentThreadWhenRequested {

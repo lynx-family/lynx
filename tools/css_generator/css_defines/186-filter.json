@@ -41,7 +41,177 @@
             "version_added": true
           }
         }
-      }
+      },
+      "blur": {
+          "__compat": {
+            "lynx_path": "api/css/properties/filter",
+            "mdn_url": "https://developer.mozilla.org/zh-CN/docs/Web/CSS/filter",
+            "spec_url": [],
+            "status": {
+              "deprecated": false,
+              "experimental": false
+            },
+            "support": {
+              "android": {
+                "version_added": "1.0"
+              },
+              "ios": {
+                "version_added": "1.0"
+              },
+              "harmony": {
+                "version_added": "3.4"
+              },
+              "clay_android": {
+                "version_added": "1.0"
+              },
+              "clay_macos": {
+                "version_added": "1.0"
+              },
+              "clay_windows": {
+                "version_added": "1.0"
+              },
+              "web_lynx": {
+                "version_added": true
+              }
+            }
+          }
+        },
+        "grayscale": {
+          "__compat": {
+            "lynx_path": "api/css/properties/filter",
+            "mdn_url": "https://developer.mozilla.org/zh-CN/docs/Web/CSS/filter",
+            "spec_url": [],
+            "status": {
+              "deprecated": false,
+              "experimental": false
+            },
+            "support": {
+              "android": {
+                "version_added": "1.0"
+              },
+              "ios": {
+                "version_added": "1.0"
+              },
+              "harmony": {
+                "version_added": "3.4"
+              },
+              "clay_android": {
+                "version_added": "1.0"
+              },
+              "clay_macos": {
+                "version_added": "1.0"
+              },
+              "clay_windows": {
+                "version_added": "1.0"
+              },
+              "web_lynx": {
+                "version_added": true
+              }
+            }
+          }
+        },
+        "brightness": {
+          "__compat": {
+            "lynx_path": "api/css/properties/filter",
+            "mdn_url": "https://developer.mozilla.org/zh-CN/docs/Web/CSS/filter",
+            "spec_url": [],
+            "status": {
+              "deprecated": false,
+              "experimental": false
+            },
+            "support": {
+              "android": {
+                "version_added": "3.6"
+              },
+              "ios": {
+                "version_added": "3.6"
+              },
+              "harmony": {
+                "version_added": "3.6"
+              },
+              "clay_android": {
+                "version_added": "3.6"
+              },
+              "clay_macos": {
+                "version_added": "3.6"
+              },
+              "clay_windows": {
+                "version_added": "3.6"
+              },
+              "web_lynx": {
+                "version_added": true
+              }
+            }
+          }
+        },
+        "contrast": {
+          "__compat": {
+            "lynx_path": "api/css/properties/filter",
+            "mdn_url": "https://developer.mozilla.org/zh-CN/docs/Web/CSS/filter",
+            "spec_url": [],
+            "status": {
+              "deprecated": false,
+              "experimental": false
+            },
+            "support": {
+              "android": {
+                "version_added": "3.6"
+              },
+              "ios": {
+                "version_added": "3.6"
+              },
+              "harmony": {
+                "version_added": "3.6"
+              },
+              "clay_android": {
+                "version_added": "3.6"
+              },
+              "clay_macos": {
+                "version_added": "3.6"
+              },
+              "clay_windows": {
+                "version_added": "3.6"
+              },
+              "web_lynx": {
+                "version_added": true
+              }
+            }
+          }
+        },
+        "saturate": {
+          "__compat": {
+            "lynx_path": "api/css/properties/filter",
+            "mdn_url": "https://developer.mozilla.org/zh-CN/docs/Web/CSS/filter",
+            "spec_url": [],
+            "status": {
+              "deprecated": false,
+              "experimental": false
+            },
+            "support": {
+              "android": {
+                "version_added": "3.6"
+              },
+              "ios": {
+                "version_added": "3.6"
+              },
+              "harmony": {
+                "version_added": "3.6"
+              },
+              "clay_android": {
+                "version_added": "3.6"
+              },
+              "clay_macos": {
+                "version_added": "3.6"
+              },
+              "clay_windows": {
+                "version_added": "3.6"
+              },
+              "web_lynx": {
+                "version_added": true
+              }
+            }
+          }
+        }
     }
   }
 }

@@ -106,9 +106,11 @@ TEST_F(LEPUSIRTestInstCombineOp, testInstCombineCmpJmp) {
         tmp_builder.Create<CondBranchInst>(0, cmp_inst, true_bb, false_bb);
     cond_branch_inst->SetSmallJmp(false);
 
-    // for large jmp, we do not combine them
+    // Large jumps are now also combined; ISel's FixOutOfRangeCmpJmpRelocations
+    // handles the fallback when the offset exceeds 8 bits.
     auto* res = CombineCompareAndJmp(&tmp_builder, cond_branch_inst);
-    ASSERT_TRUE(res == nullptr);
+    ASSERT_TRUE(res != nullptr);
+    ASSERT_TRUE(llvh::isa<EqCondBranchInst>(res));
   }
 
   {
@@ -125,9 +127,10 @@ TEST_F(LEPUSIRTestInstCombineOp, testInstCombineCmpJmp) {
         tmp_builder.Create<CondBranchInst>(0, cmp_inst, true_bb, false_bb);
     cond_branch_inst->SetSmallJmp(false);
 
-    // for large jmp, we do not combine them
+    // Large jumps are now also combined.
     auto* res = CombineCompareAndJmp(&tmp_builder, cond_branch_inst);
-    ASSERT_TRUE(res == nullptr);
+    ASSERT_TRUE(res != nullptr);
+    ASSERT_TRUE(llvh::isa<NeqCondBranchInst>(res));
   }
 }
 
@@ -1699,7 +1702,7 @@ TEST_F(LEPUSIRTestInstCombineOp, testCombineSetTableConstStringKey) {
   auto* store = builder.GetLiteralInt32(1);
   store->SetType(TypeOp::CreateInt32(&builder));
   auto* set_table = builder.Create<SetTableInst>(0, obj, key, store);
-  builder.Create<ReturnInst>(0, builder.GetLiteralInt32(0));
+  builder.Create<ReturnInst>(0, obj);
 
   InstCombinePass pass(ir_ctx.get());
   pass.RunOnFunction(func_op);
@@ -1756,7 +1759,7 @@ TEST_F(LEPUSIRTestInstCombineOp,
   auto* store = builder.GetLiteralInt32(1);
   store->SetType(TypeOp::CreateInt32(&builder));
   auto* set_table = builder.Create<SetTableInst>(0, obj, key, store);
-  builder.Create<ReturnInst>(0, builder.GetLiteralInt32(0));
+  builder.Create<ReturnInst>(0, obj);
 
   InstCombinePass pass(ir_ctx.get());
   pass.RunOnFunction(func_op);
@@ -2417,6 +2420,300 @@ TEST_F(LEPUSIRTestInstCombineOp, testSimplifyDoubleUnaryNotOnBooleanProducer) {
   ASSERT_TRUE(folded != nullptr);
   // !!b -> b when b is always boolean.
   EXPECT_EQ(folded, cmp);
+}
+
+TEST_F(LEPUSIRTestInstCombineOp, testDoubleNotInOrChainToCondBranch) {
+  // !!x || y -> CondBranch should fold !!x to x
+  ASSERT_NE(nullptr, mod);
+
+  OpBuilder tmp_builder;
+  tmp_builder.SetModuleOp(mod);
+
+  std::string func_name = "test_double_not_or_chain";
+  FuncOp* func_op;
+  CreateTestFuncOp(func_name, func_op);
+  auto region = func_op->GetSingleRegion();
+  auto block = &region->Front();
+  auto true_bb =
+      tmp_builder.CreateBlock(region, BlockType::BT_INST, {}, "true_bb");
+  auto false_bb =
+      tmp_builder.CreateBlock(region, BlockType::BT_INST, {}, "false_bb");
+
+  tmp_builder.SetInsertionPointToEnd(true_bb);
+  tmp_builder.Create<ReturnInst>(0, tmp_builder.GetLiteralInt32(0));
+  tmp_builder.SetInsertionPointToEnd(false_bb);
+  tmp_builder.Create<ReturnInst>(0, tmp_builder.GetLiteralInt32(1));
+
+  auto lepus_func = lepus::Function::Create();
+  func_op->Init(lepus_func);
+
+  uint32_t x_idx = lepus_func->AddConstNumber(42);
+  uint32_t y_idx = lepus_func->AddConstNumber(99);
+  tmp_builder.SetInsertionPointToEnd(block);
+  auto x =
+      tmp_builder.Create<LoadConstInst>(0, tmp_builder.GetLiteralUint32(x_idx),
+                                        TypeOp::CreateInt64(&tmp_builder));
+  auto y =
+      tmp_builder.Create<LoadConstInst>(0, tmp_builder.GetLiteralUint32(y_idx),
+                                        TypeOp::CreateInt64(&tmp_builder));
+
+  // Build: !!x
+  auto* not1 =
+      tmp_builder.Create<UnaryOperatorInst>(0, x, ValueKind::UnaryNotInstKind);
+  auto* not2 = tmp_builder.Create<UnaryOperatorInst>(
+      0, not1, ValueKind::UnaryNotInstKind);
+
+  // Build: !!x || y
+  auto* or_inst = tmp_builder.Create<BinaryOperatorInst>(
+      0, not2, y, ValueKind::BinaryOrInstKind,
+      TypeOp::CreateAnyType(&tmp_builder));
+
+  // Build: CondBranch(!!x || y, T, F)
+  tmp_builder.Create<CondBranchInst>(0, or_inst, true_bb, false_bb);
+
+  // !!x has one user (or_inst), or_inst has one user (CondBranch)
+  // -> IsInBooleanContext returns true -> fold !!x to x
+  auto* folded = ConstantFold(&tmp_builder, not2);
+  ASSERT_TRUE(folded != nullptr);
+  EXPECT_EQ(folded, x);
+}
+
+TEST_F(LEPUSIRTestInstCombineOp, testDoubleNotInAndChainToCondBranch) {
+  // !!x && y -> CondBranch should fold !!x to x
+  ASSERT_NE(nullptr, mod);
+
+  OpBuilder tmp_builder;
+  tmp_builder.SetModuleOp(mod);
+
+  std::string func_name = "test_double_not_and_chain";
+  FuncOp* func_op;
+  CreateTestFuncOp(func_name, func_op);
+  auto region = func_op->GetSingleRegion();
+  auto block = &region->Front();
+  auto true_bb =
+      tmp_builder.CreateBlock(region, BlockType::BT_INST, {}, "true_bb");
+  auto false_bb =
+      tmp_builder.CreateBlock(region, BlockType::BT_INST, {}, "false_bb");
+
+  tmp_builder.SetInsertionPointToEnd(true_bb);
+  tmp_builder.Create<ReturnInst>(0, tmp_builder.GetLiteralInt32(0));
+  tmp_builder.SetInsertionPointToEnd(false_bb);
+  tmp_builder.Create<ReturnInst>(0, tmp_builder.GetLiteralInt32(1));
+
+  auto lepus_func = lepus::Function::Create();
+  func_op->Init(lepus_func);
+
+  uint32_t x_idx = lepus_func->AddConstNumber(42);
+  uint32_t y_idx = lepus_func->AddConstNumber(99);
+  tmp_builder.SetInsertionPointToEnd(block);
+  auto x =
+      tmp_builder.Create<LoadConstInst>(0, tmp_builder.GetLiteralUint32(x_idx),
+                                        TypeOp::CreateInt64(&tmp_builder));
+  auto y =
+      tmp_builder.Create<LoadConstInst>(0, tmp_builder.GetLiteralUint32(y_idx),
+                                        TypeOp::CreateInt64(&tmp_builder));
+
+  // Build: !!x
+  auto* not1 =
+      tmp_builder.Create<UnaryOperatorInst>(0, x, ValueKind::UnaryNotInstKind);
+  auto* not2 = tmp_builder.Create<UnaryOperatorInst>(
+      0, not1, ValueKind::UnaryNotInstKind);
+
+  // Build: !!x && y
+  auto* and_inst = tmp_builder.Create<BinaryOperatorInst>(
+      0, not2, y, ValueKind::BinaryAndInstKind,
+      TypeOp::CreateAnyType(&tmp_builder));
+
+  // Build: CondBranch(!!x && y, T, F)
+  tmp_builder.Create<CondBranchInst>(0, and_inst, true_bb, false_bb);
+
+  auto* folded = ConstantFold(&tmp_builder, not2);
+  ASSERT_TRUE(folded != nullptr);
+  EXPECT_EQ(folded, x);
+}
+
+TEST_F(LEPUSIRTestInstCombineOp, testDoubleNotInOrNotFoldedWhenMultipleUsers) {
+  // !!x || y where the Or has multiple users -> do NOT fold
+  ASSERT_NE(nullptr, mod);
+
+  OpBuilder tmp_builder;
+  tmp_builder.SetModuleOp(mod);
+
+  std::string func_name = "test_double_not_or_multi_user";
+  FuncOp* func_op;
+  CreateTestFuncOp(func_name, func_op);
+  auto region = func_op->GetSingleRegion();
+  auto block = &region->Front();
+  auto true_bb =
+      tmp_builder.CreateBlock(region, BlockType::BT_INST, {}, "true_bb");
+  auto false_bb =
+      tmp_builder.CreateBlock(region, BlockType::BT_INST, {}, "false_bb");
+
+  tmp_builder.SetInsertionPointToEnd(true_bb);
+  tmp_builder.Create<ReturnInst>(0, tmp_builder.GetLiteralInt32(0));
+  tmp_builder.SetInsertionPointToEnd(false_bb);
+  tmp_builder.Create<ReturnInst>(0, tmp_builder.GetLiteralInt32(1));
+
+  auto lepus_func = lepus::Function::Create();
+  func_op->Init(lepus_func);
+
+  uint32_t x_idx = lepus_func->AddConstNumber(42);
+  uint32_t y_idx = lepus_func->AddConstNumber(99);
+  tmp_builder.SetInsertionPointToEnd(block);
+  auto x =
+      tmp_builder.Create<LoadConstInst>(0, tmp_builder.GetLiteralUint32(x_idx),
+                                        TypeOp::CreateInt64(&tmp_builder));
+  auto y =
+      tmp_builder.Create<LoadConstInst>(0, tmp_builder.GetLiteralUint32(y_idx),
+                                        TypeOp::CreateInt64(&tmp_builder));
+
+  // Build: !!x
+  auto* not1 =
+      tmp_builder.Create<UnaryOperatorInst>(0, x, ValueKind::UnaryNotInstKind);
+  auto* not2 = tmp_builder.Create<UnaryOperatorInst>(
+      0, not1, ValueKind::UnaryNotInstKind);
+
+  // Build: !!x || y — but give Or TWO users (CondBranch + another inst)
+  auto* or_inst = tmp_builder.Create<BinaryOperatorInst>(
+      0, not2, y, ValueKind::BinaryOrInstKind,
+      TypeOp::CreateAnyType(&tmp_builder));
+
+  // First user: CondBranch
+  tmp_builder.Create<CondBranchInst>(0, or_inst, true_bb, false_bb);
+  // Second user: another Not on the Or result (makes Or have 2 users)
+  tmp_builder.Create<UnaryOperatorInst>(0, or_inst,
+                                        ValueKind::UnaryNotInstKind);
+
+  // or_inst has 2 users -> IsInBooleanContext returns false for not2
+  // because the Or does not have a single user
+  auto* folded = ConstantFold(&tmp_builder, not2);
+  EXPECT_EQ(folded, nullptr);
+}
+
+TEST_F(LEPUSIRTestInstCombineOp,
+       testDoubleNotInDeeplyNestedOrChainExceedsMaxDepth) {
+  // !!x || a || b || c || d || e -> CondBranch
+  // The Or chain has depth 5 which exceeds kMaxDepth(4), so !!x should NOT
+  // fold.
+  ASSERT_NE(nullptr, mod);
+
+  OpBuilder tmp_builder;
+  tmp_builder.SetModuleOp(mod);
+
+  std::string func_name = "test_double_not_deep_or_chain";
+  FuncOp* func_op;
+  CreateTestFuncOp(func_name, func_op);
+  auto region = func_op->GetSingleRegion();
+  auto block = &region->Front();
+  auto true_bb =
+      tmp_builder.CreateBlock(region, BlockType::BT_INST, {}, "true_bb");
+  auto false_bb =
+      tmp_builder.CreateBlock(region, BlockType::BT_INST, {}, "false_bb");
+
+  tmp_builder.SetInsertionPointToEnd(true_bb);
+  tmp_builder.Create<ReturnInst>(0, tmp_builder.GetLiteralInt32(0));
+  tmp_builder.SetInsertionPointToEnd(false_bb);
+  tmp_builder.Create<ReturnInst>(0, tmp_builder.GetLiteralInt32(1));
+
+  auto lepus_func = lepus::Function::Create();
+  func_op->Init(lepus_func);
+
+  uint32_t x_idx = lepus_func->AddConstNumber(42);
+  uint32_t a_idx = lepus_func->AddConstNumber(1);
+  uint32_t b_idx = lepus_func->AddConstNumber(2);
+  uint32_t c_idx = lepus_func->AddConstNumber(3);
+  uint32_t d_idx = lepus_func->AddConstNumber(4);
+  uint32_t e_idx = lepus_func->AddConstNumber(5);
+  tmp_builder.SetInsertionPointToEnd(block);
+
+  auto x =
+      tmp_builder.Create<LoadConstInst>(0, tmp_builder.GetLiteralUint32(x_idx),
+                                        TypeOp::CreateInt64(&tmp_builder));
+  auto a =
+      tmp_builder.Create<LoadConstInst>(0, tmp_builder.GetLiteralUint32(a_idx),
+                                        TypeOp::CreateInt64(&tmp_builder));
+  auto b =
+      tmp_builder.Create<LoadConstInst>(0, tmp_builder.GetLiteralUint32(b_idx),
+                                        TypeOp::CreateInt64(&tmp_builder));
+  auto c =
+      tmp_builder.Create<LoadConstInst>(0, tmp_builder.GetLiteralUint32(c_idx),
+                                        TypeOp::CreateInt64(&tmp_builder));
+  auto d =
+      tmp_builder.Create<LoadConstInst>(0, tmp_builder.GetLiteralUint32(d_idx),
+                                        TypeOp::CreateInt64(&tmp_builder));
+  auto e =
+      tmp_builder.Create<LoadConstInst>(0, tmp_builder.GetLiteralUint32(e_idx),
+                                        TypeOp::CreateInt64(&tmp_builder));
+
+  // Build: !!x
+  auto* not1 =
+      tmp_builder.Create<UnaryOperatorInst>(0, x, ValueKind::UnaryNotInstKind);
+  auto* not2 = tmp_builder.Create<UnaryOperatorInst>(
+      0, not1, ValueKind::UnaryNotInstKind);
+
+  // Build chain: ((((!!x || a) || b) || c) || d) || e
+  auto* or1 = tmp_builder.Create<BinaryOperatorInst>(
+      0, not2, a, ValueKind::BinaryOrInstKind,
+      TypeOp::CreateAnyType(&tmp_builder));
+  auto* or2 = tmp_builder.Create<BinaryOperatorInst>(
+      0, or1, b, ValueKind::BinaryOrInstKind,
+      TypeOp::CreateAnyType(&tmp_builder));
+  auto* or3 = tmp_builder.Create<BinaryOperatorInst>(
+      0, or2, c, ValueKind::BinaryOrInstKind,
+      TypeOp::CreateAnyType(&tmp_builder));
+  auto* or4 = tmp_builder.Create<BinaryOperatorInst>(
+      0, or3, d, ValueKind::BinaryOrInstKind,
+      TypeOp::CreateAnyType(&tmp_builder));
+  auto* or5 = tmp_builder.Create<BinaryOperatorInst>(
+      0, or4, e, ValueKind::BinaryOrInstKind,
+      TypeOp::CreateAnyType(&tmp_builder));
+
+  // CondBranch on the outermost Or
+  tmp_builder.Create<CondBranchInst>(0, or5, true_bb, false_bb);
+
+  // Depth from not2: not2->or1(0)->or2(1)->or3(2)->or4(3)->or5(4)->recurse(5)
+  // depth 5 > kMaxDepth(4) -> should NOT fold
+  auto* folded = ConstantFold(&tmp_builder, not2);
+  EXPECT_EQ(folded, nullptr);
+}
+
+TEST_F(LEPUSIRTestInstCombineOp,
+       testDoubleNotNotFoldedWhenNotInBooleanContext) {
+  // !!x consumed by ReturnInst (not CondBranch, not Or/And) -> should NOT fold
+  ASSERT_NE(nullptr, mod);
+
+  OpBuilder tmp_builder;
+  tmp_builder.SetModuleOp(mod);
+
+  std::string func_name = "test_double_not_return_user";
+  FuncOp* func_op;
+  CreateTestFuncOp(func_name, func_op);
+  auto region = func_op->GetSingleRegion();
+  auto block = &region->Front();
+
+  auto lepus_func = lepus::Function::Create();
+  func_op->Init(lepus_func);
+
+  uint32_t x_idx = lepus_func->AddConstNumber(42);
+  tmp_builder.SetInsertionPointToEnd(block);
+
+  auto x =
+      tmp_builder.Create<LoadConstInst>(0, tmp_builder.GetLiteralUint32(x_idx),
+                                        TypeOp::CreateInt64(&tmp_builder));
+
+  // Build: !!x
+  auto* not1 =
+      tmp_builder.Create<UnaryOperatorInst>(0, x, ValueKind::UnaryNotInstKind);
+  auto* not2 = tmp_builder.Create<UnaryOperatorInst>(
+      0, not1, ValueKind::UnaryNotInstKind);
+
+  // !!x consumed by ReturnInst (not a boolean context)
+  tmp_builder.Create<ReturnInst>(0, not2);
+
+  // IsInBooleanContext: user is ReturnInst, not CondBranch or BinaryOr/And
+  // -> returns false -> should NOT fold
+  auto* folded = ConstantFold(&tmp_builder, not2);
+  EXPECT_EQ(folded, nullptr);
 }
 
 }  // namespace ir

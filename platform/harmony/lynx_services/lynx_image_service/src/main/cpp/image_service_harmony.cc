@@ -53,6 +53,7 @@ void ImageServiceHarmony::DecodeImage(
       };
   ImageServiceNode::UpdateImageSource(this, options, info.url,
                                       options->loadSrc);
+  options->animationDecodeMode = ImageKnifePro::AnimationDecodeMode::BATCH_MODE;
   ImageKnifePro::ImageKnife::GetInstance().GetCacheImage(
       options, [callback = std::move(callback)](
                    std::shared_ptr<ImageKnifePro::ImageData> data) mutable {

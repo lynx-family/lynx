@@ -6,7 +6,94 @@
   "version": "3.9",
   "author": "renzhongyue",
   "consumption_status": "layout-only",
-  "desc": "The grid-column CSS shorthand property specifies a grid item's size and location within a grid column by contributing a line, a span, or nothing (automatic) to its grid placement, thereby specifying the inline-start and inline-end edge of its grid area.",
+  "desc": "The `grid-column` CSS shorthand property specifies a grid item's size and location within the grid column by contributing a line, a span, or nothing (automatic) to its grid placement. It is a shorthand for `grid-column-start` and `grid-column-end`.",
   "formal_syntax": "<grid-line> [ / <grid-line> ]?",
-  "is_shorthand": true
+  "is_shorthand": true,
+  "compat_data": {
+    "grid-column": {
+      "__compat": {
+        "lynx_path": "api/css/properties/grid-column",
+        "mdn_url": "https://developer.mozilla.org/zh-CN/docs/Web/CSS/grid-column",
+        "spec_url": [],
+        "status": {
+          "deprecated": false,
+          "experimental": false
+        },
+        "support": {
+          "android": {
+            "version_added": "3.9",
+            "partial_implementation": true,
+            "notes": [
+              "Requires `enableGridPlacementShorthands` to be enabled when `engineVersion < 4.1`; it is automatically enabled when `engineVersion >= 4.1`.",
+              "When disabled and engineVersion < 4.1, the declaration is rejected by the CSS parser.",
+              "Named grid lines (<code>&lt;custom-ident&gt;</code>) are not supported."
+            ]
+          },
+          "ios": {
+            "version_added": "3.9",
+            "partial_implementation": true,
+            "notes": [
+              "Requires `enableGridPlacementShorthands` to be enabled when `engineVersion < 4.1`; it is automatically enabled when `engineVersion >= 4.1`.",
+              "When disabled and engineVersion < 4.1, the declaration is rejected by the CSS parser.",
+              "Named grid lines (<code>&lt;custom-ident&gt;</code>) are not supported."
+            ]
+          },
+          "harmony": {
+            "version_added": "3.9",
+            "partial_implementation": true,
+            "notes": [
+              "Requires `enableGridPlacementShorthands` to be enabled when `engineVersion < 4.1`; it is automatically enabled when `engineVersion >= 4.1`.",
+              "When disabled and engineVersion < 4.1, the declaration is rejected by the CSS parser.",
+              "Named grid lines (<code>&lt;custom-ident&gt;</code>) are not supported."
+            ]
+          },
+          "clay_android": {
+            "version_added": "3.9",
+            "partial_implementation": true,
+            "notes": [
+              "Requires `enableGridPlacementShorthands` to be enabled when `engineVersion < 4.1`; it is automatically enabled when `engineVersion >= 4.1`.",
+              "When disabled and engineVersion < 4.1, the declaration is rejected by the CSS parser.",
+              "Named grid lines (<code>&lt;custom-ident&gt;</code>) are not supported."
+            ]
+          },
+          "clay_ios": {
+            "version_added": "3.9",
+            "partial_implementation": true,
+            "notes": [
+              "Requires `enableGridPlacementShorthands` to be enabled when `engineVersion < 4.1`; it is automatically enabled when `engineVersion >= 4.1`.",
+              "When disabled and engineVersion < 4.1, the declaration is rejected by the CSS parser.",
+              "Named grid lines (<code>&lt;custom-ident&gt;</code>) are not supported."
+            ]
+          },
+          "clay_macos": {
+            "version_added": "3.9",
+            "partial_implementation": true,
+            "notes": [
+              "Requires `enableGridPlacementShorthands` to be enabled when `engineVersion < 4.1`; it is automatically enabled when `engineVersion >= 4.1`.",
+              "When disabled and engineVersion < 4.1, the declaration is rejected by the CSS parser.",
+              "Named grid lines (<code>&lt;custom-ident&gt;</code>) are not supported."
+            ]
+          },
+          "clay_windows": {
+            "version_added": "3.9",
+            "partial_implementation": true,
+            "notes": [
+              "Requires `enableGridPlacementShorthands` to be enabled when `engineVersion < 4.1`; it is automatically enabled when `engineVersion >= 4.1`.",
+              "When disabled and engineVersion < 4.1, the declaration is rejected by the CSS parser.",
+              "Named grid lines (<code>&lt;custom-ident&gt;</code>) are not supported."
+            ]
+          },
+          "web_lynx": {
+            "version_added": true
+          }
+        }
+      }
+    }
+  },
+  "note": [
+    {
+      "literal": "Lynx's `<grid-line>` supports `auto`, `<number>`, and `span <number>`. Named grid lines (`<custom-ident>`) are not supported.",
+      "level": "tip"
+    }
+  ]
 }

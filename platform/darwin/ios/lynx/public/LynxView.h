@@ -251,6 +251,12 @@
 - (void)updateFontScale:(CGFloat)scale;
 
 /**
+ * @brief Update the preferred color scheme for this LynxView.
+ * @param scheme The color scheme value.
+ */
+- (void)updateColorScheme:(LynxColorScheme)scheme;
+
+/**
  * Pause and resume the layout animation of lynxview.
  */
 - (void)pauseRootLayoutAnimation;

@@ -45,6 +45,15 @@ class CSSTransitionManager : public CSSKeyframeManager {
   bool ConsumeCSSProperty(tasm::CSSPropertyID css_id,
                           const tasm::CSSValue& end_value);
 
+  void UpdateTransitionsForNewPipeline(
+      const starlight::ComputedCSSStyle& previous_base_style,
+      const starlight::ComputedCSSStyle& previous_final_style,
+      const starlight::ComputedCSSStyle& new_base_style,
+      const tasm::StyleMap& previous_underlying_layout_only_styles,
+      const tasm::StyleMap& new_underlying_layout_only_styles);
+  AnimationSampleForNewPipeline CollectTransitionUpdatesForNewPipeline(
+      fml::TimePoint& time);
+
   bool NeedsTransition(tasm::CSSPropertyID css_id);
 
   void ClearPreviousEndValue(tasm::CSSPropertyID css_id);
@@ -52,6 +61,17 @@ class CSSTransitionManager : public CSSKeyframeManager {
  private:
   void TryToStopTransitionAnimator(
       starlight::AnimationPropertyType property_type);
+  void TryToStopTransitionAnimatorWithPendingCleanup(
+      starlight::AnimationPropertyType property_type);
+  void PrepareTransitionRemovalCleanup(
+      const std::shared_ptr<Animation>& animation);
+  void SyncTransitionData(const starlight::TransitionData& transition_data,
+                          bool use_legacy_destroy_path);
+  bool UpdateTransitionAnimator(tasm::CSSPropertyID css_id,
+                                starlight::AnimationPropertyType property_type,
+                                tasm::CSSValue start_value,
+                                tasm::CSSValue end_value,
+                                bool play_handles_initial_frame);
   bool IsValueValid(starlight::AnimationPropertyType type,
                     const tasm::CSSValue& value,
                     const tasm::CSSParserConfigs& configs);

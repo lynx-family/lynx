@@ -15,10 +15,10 @@ from env_setup import (
     NODE_PATH,
     API_CONFIG,
     LYNX_ROOT_PATH,
-    API_DOC_ANNOTATION,
     HARMONY_API_PATH,
 )
 import subprocess
+from api_writer import write_api_metadata
 
 PYJSON5_SRC_PATH = os.path.join(
     LYNX_ROOT_PATH,
@@ -96,7 +96,7 @@ class HarmonyParser(Parser):
             return False
         return True
 
-    def parse(self) -> list[BaseObject]:
+    def parse(self):
         self.export_object_dict = self._parse_ets_exports_recursive()
         export_object_list = [
             {"path": path, "exports": exports}
@@ -104,12 +104,10 @@ class HarmonyParser(Parser):
         ]
         object_in_json = json.dumps(export_object_list, indent=2)
 
-        object_list: list[BaseObject] = []
-
-        self.command.append(object_in_json)
+        command = [*self.command, object_in_json]
         try:
             result = subprocess.run(
-                self.command,
+                command,
                 capture_output=True,
                 text=True,
                 check=True,
@@ -118,9 +116,13 @@ class HarmonyParser(Parser):
         except subprocess.CalledProcessError as e:
             print(e.stdout)
             print(f"generate api metadata failed: {e.stderr}", file=sys.stderr)
-            return object_list
+            return None
 
-        data_list = json.loads(result.stdout)
+        try:
+            data_list = json.loads(result.stdout)
+        except json.JSONDecodeError as e:
+            print(f"parse generated api metadata failed: {e}", file=sys.stderr)
+            return None
 
         object_list = [BaseObject(**data) for data in data_list]
         for object in object_list:
@@ -139,15 +141,16 @@ class HarmonyParser(Parser):
         if not self._need_to_parse:
             return True
 
-        if os.path.exists(self.api_file):
-            os.remove(self.api_file)
-
-        object_list: list[BaseObject] = self.parse()
-        with open(self.api_file, "at") as f:
-            f.write(API_DOC_ANNOTATION)
-            f.writelines([object.get_api_str() for object in object_list])
-
-        return True
+        try:
+            object_list = self.parse()
+        except Exception as e:
+            print(f"parse harmony api metadata failed: {e}", file=sys.stderr)
+            print(f"Kept existing API metadata file: {self.api_file}", file=sys.stderr)
+            return False
+        if object_list is None:
+            print(f"Kept existing API metadata file: {self.api_file}", file=sys.stderr)
+            return False
+        return write_api_metadata(self.api_file, object_list, "harmony")
 
     def _clean_exported_item(self, item_str: str) -> str:
         return item_str.split(" as ")[0].strip()

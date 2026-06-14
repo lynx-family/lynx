@@ -19,6 +19,7 @@ typedef enum lynx_service_type_e {
   kServiceTypeHttp = 1,
   kServiceTypeSecurity,
   kServiceTypeEventReporter,
+  kServiceTypeTrail,
 } lynx_service_type_e;
 
 // Retrieves the singleton instance of the Lynx service center.

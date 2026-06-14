@@ -99,6 +99,52 @@ lepus::Value WhiteBoardDelegate::GetSessionStorageItem(const std::string& key) {
   return result;
 }
 
+void WhiteBoardDelegate::SubscribeLepusSessionStorage(const std::string& key,
+                                                      double listener_id,
+                                                      lepus::Value closure) {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY,
+              WHITE_BOARD_DELEGATE_SUBSCRIBE_LEPUS_SESSION_STORAGE,
+              [&key, &listener_id](lynx::perfetto::EventContext ctx) {
+                ctx.event()->add_debug_annotations("key", key);
+                ctx.event()->add_debug_annotations("listener_id",
+                                                   std::to_string(listener_id));
+              });
+  if (!white_board_) {
+    return;
+  }
+
+  auto triggered_callback = [weak_self = weak_from_this(),
+                             closure =
+                                 std::move(closure)](const pub::Value& value) {
+    auto self = weak_self.lock();
+    if (self) {
+      lepus::Value result = pub::ValueUtils::ConvertValueToLepusValue(value);
+      self->CallLepusCallbackWithValue(closure, result);
+    }
+  };
+  auto removed_callback = []() {};
+
+  white_board_->RegisterSharedDataListener(
+      WhiteBoardStorageType::TYPE_LEPUS, key,
+      {listener_id, std::move(triggered_callback),
+       std::move(removed_callback)});
+}
+
+void WhiteBoardDelegate::UnsubscribeLepusSessionStorage(const std::string& key,
+                                                        double listener_id) {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY,
+              WHITE_BOARD_DELEGATE_UNSUBSCRIBE_LEPUS_SESSION_STORAGE,
+              [&key, &listener_id](lynx::perfetto::EventContext ctx) {
+                ctx.event()->add_debug_annotations("key", key);
+                ctx.event()->add_debug_annotations("listener_id",
+                                                   std::to_string(listener_id));
+              });
+  if (white_board_) {
+    white_board_->RemoveSharedDataListener(WhiteBoardStorageType::TYPE_LEPUS,
+                                           key, listener_id);
+  }
+}
+
 void WhiteBoardDelegate::SubscribeJSSessionStorage(
     const std::string& key, double listener_id,
     const runtime::js::ApiCallBack& callback) {

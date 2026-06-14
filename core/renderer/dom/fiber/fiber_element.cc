@@ -709,7 +709,7 @@ FiberElement::GetParentInheritedProperty() {
 
 CSSFragment *FiberElement::GetRelatedCSSFragment() {
   if (css_id_ != kInvalidCssId) {
-    if (!style_sheet_) {
+    if (style_sheet_ == nullptr || !style_sheet_->HasIntrinsicStyleSheets()) {
       if (!css_style_sheet_manager_ && GetParentComponentElement()) {
         css_style_sheet_manager_ =
             static_cast<ComponentElement *>(GetParentComponentElement())
@@ -3391,8 +3391,8 @@ void FiberElement::FlushProps() {
     if (real_parent) {
       CheckHasInlineContainer(real_parent);
     }
-    AttachLayoutNode(prop_bundle_);
     EnsureSLNode();
+    AttachLayoutNode(prop_bundle_);
 
     // FIXME(linxs): any other case has platform layout nodes??
     is_virtual_ = IsShadowNodeVirtual();
@@ -4349,8 +4349,24 @@ void FiberElement::VisitChildren(
 
 void FiberElement::UpdateDynamicElementStyleForNewPipeline(
     uint32_t &style, bool &inner_force_update) {
-  // TODO media-query mark style dirty
-  if ((dynamic_style_flags_ > 0 || inner_force_update) && !is_wrapper()) {
+  constexpr uint32_t kMediaQueryEnvMask =
+      DynamicCSSStylesManager::kUpdateViewport |
+      DynamicCSSStylesManager::kUpdateScreenMetrics |
+      DynamicCSSStylesManager::kUpdateRem | DynamicCSSStylesManager::kUpdateEm |
+      DynamicCSSStylesManager::kUpdateColorScheme;
+  bool media_query_env_changed = false;
+  if (is_component() &&
+      ((style & kMediaQueryEnvMask) != 0 || (dirty_ & kDirtyFontSize))) {
+    auto *fragment = GetRelatedCSSFragment();
+    if (StyleResolver::FragmentsHasMediaQueries(fragment)) {
+      media_query_env_changed = true;
+      inner_force_update = true;
+    }
+  }
+
+  if ((dynamic_style_flags_ > 0 || inner_force_update ||
+       media_query_env_changed) &&
+      !is_wrapper()) {
     NotifyUnitValuesUpdatedToAnimation(style);
     const auto &env_config = element_manager()->GetLynxEnvConfig();
 
@@ -4387,7 +4403,8 @@ void FiberElement::UpdateDynamicElementStyleForNewPipeline(
     }
 
     if (inner_force_update || font_scale_changed || viewport_changed ||
-        screen_matrix_changed || rem_changed || em_changed) {
+        screen_matrix_changed || rem_changed || em_changed ||
+        media_query_env_changed) {
       UpdateLengthContextValueForAllElement(env_config);
 
       NewPipelineResolveRequest request;
@@ -4440,7 +4457,19 @@ void FiberElement::UpdateDynamicElementStyleRecursively(uint32_t style,
     return;
   }
 
-  // TODO media-query mark style dirty
+  constexpr uint32_t kMediaQueryEnvMask =
+      DynamicCSSStylesManager::kUpdateViewport |
+      DynamicCSSStylesManager::kUpdateScreenMetrics |
+      DynamicCSSStylesManager::kUpdateRem | DynamicCSSStylesManager::kUpdateEm |
+      DynamicCSSStylesManager::kUpdateColorScheme;
+  if (is_component() &&
+      ((style & kMediaQueryEnvMask) != 0 || (dirty_ & kDirtyFontSize))) {
+    auto *fragment = GetRelatedCSSFragment();
+    if (StyleResolver::FragmentsHasMediaQueries(fragment)) {
+      MarkStyleDirty(true);
+    }
+  }
+
   if ((dynamic_style_flags_ > 0 || inner_force_update) && !is_wrapper()) {
     // Style could never be "all" here.
     NotifyUnitValuesUpdatedToAnimation(style);

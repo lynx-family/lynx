@@ -4,7 +4,7 @@
 
 export { TemplateData, MetaData, LynxUpdateMeta, LynxUpdateMode } from './tasm/MetaData';
 
-export { LynxNodeController, LynxView, LynxViewBuilder, ThreadStrategyForRendering, MeasureMode } from './tasm/LynxView'
+export { LynxNodeController, LynxView, LynxViewBuilder, ThreadStrategyForRendering, MeasureMode, ColorScheme } from './tasm/LynxView'
 
 export { LynxContext } from './tasm/LynxContext'
 export { SessionStorageCallback } from './tasm/SessionStorage'
@@ -19,7 +19,7 @@ export { HttpStreamingDelegate } from './jsbridge/network/HttpStreamingDelegate'
 
 export { LynxUIMethodConstants } from './tasm/behavior/util/LynxUIMethodConstants'
 
-export { LynxEnv } from './tasm/LynxEnv'
+export { LynxEnv, LynxEmojiResource, LynxEmojiResourceFetcher } from './tasm/LynxEnv'
 
 export {
   LynxResourceProvider

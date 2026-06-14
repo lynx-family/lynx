@@ -43,6 +43,7 @@ describe('Test Config Types', () => {
     expectTypeOf<Config>().toHaveProperty('enableDispatchCustomEventForUI').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('enableEndGestureAtLastFingerUp').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('enableEventHandleRefactor').toEqualTypeOf<boolean | undefined>();
+    expectTypeOf<Config>().toHaveProperty('enableEventTargetInfoNodeIndex').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('enableEventThrough').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('enableExposureUIMargin').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('enableExposureWhenLayout').toEqualTypeOf<boolean | undefined>();

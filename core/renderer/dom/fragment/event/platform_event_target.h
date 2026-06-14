@@ -94,8 +94,9 @@ class PlatformEventTarget
     return platform_renderer_type_;
   }
   bool IsScrollContainer() const { return is_scroll_container_; }
-  float ScrollOffsetX() const { return scroll_offset_x_; }
-  float ScrollOffsetY() const { return scroll_offset_y_; }
+  float ScrollOffsetX();
+  float ScrollOffsetY();
+  void RefreshScrollOffset();
   float OffsetXForCalcPosition() const { return offset_x_for_calc_position_; }
   float OffsetYForCalcPosition() const { return offset_y_for_calc_position_; }
   bool IsVisible() const { return true; }
@@ -218,8 +219,13 @@ class PlatformEventTarget
   void SetPlatformRendererType(PlatformRendererType type) {
     platform_renderer_type_ = type;
   }
+  void SetScrollContainer(bool is_scroll_container) {
+    is_scroll_container_ = is_scroll_container;
+  }
 
  private:
+  void UpdateScrollOffsetIfNeeded();
+
   void GetOrUpdateTargetScreenRect(
       std::unordered_map<int32_t, CommonAncestorRect>& common_ancestor_rect_map,
       const fml::RefPtr<PlatformEventTarget>& target, float out_rect[4],
@@ -233,6 +239,7 @@ class PlatformEventTarget
   float height_{0.f};
   PlatformRendererType platform_renderer_type_{PlatformRendererType::kUnknown};
   bool is_scroll_container_{false};
+  bool scroll_offset_updated_{false};
   float scroll_offset_x_{0.f};
   float scroll_offset_y_{0.f};
   float offset_x_for_calc_position_{0.f};

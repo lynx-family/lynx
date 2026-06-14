@@ -8,14 +8,55 @@
 
 #include "gfx/animation/animation_keyframe_model.h"
 
-#include <algorithm>
-#include <cmath>
-#include <limits>
-
+#include "gfx/animation/animation_timing.h"
 #include "gfx/animation/timing_function.h"
 
 namespace lynx {
 namespace gfx {
+
+namespace {
+
+TimingRunState ToTimingRunState(KeyframeModel::RunState state) {
+  switch (state) {
+    case KeyframeModel::STARTING:
+      return TimingRunState::STARTING;
+    case KeyframeModel::RUNNING:
+      return TimingRunState::RUNNING;
+    case KeyframeModel::PAUSED:
+      return TimingRunState::PAUSED;
+    case KeyframeModel::FINISHED:
+      return TimingRunState::FINISHED;
+  }
+  return TimingRunState::STARTING;
+}
+
+KeyframeModel::RunState ToKeyframeModelRunState(TimingRunState state) {
+  switch (state) {
+    case TimingRunState::STARTING:
+      return KeyframeModel::STARTING;
+    case TimingRunState::RUNNING:
+      return KeyframeModel::RUNNING;
+    case TimingRunState::PAUSED:
+      return KeyframeModel::PAUSED;
+    case TimingRunState::FINISHED:
+      return KeyframeModel::FINISHED;
+  }
+  return KeyframeModel::STARTING;
+}
+
+KeyframeModel::Phase ToKeyframeModelPhase(TimingPhase phase) {
+  switch (phase) {
+    case TimingPhase::BEFORE:
+      return KeyframeModel::Phase::BEFORE;
+    case TimingPhase::ACTIVE:
+      return KeyframeModel::Phase::ACTIVE;
+    case TimingPhase::AFTER:
+      return KeyframeModel::Phase::AFTER;
+  }
+  return KeyframeModel::Phase::AFTER;
+}
+
+}  // namespace
 
 std::unique_ptr<KeyframeModel> KeyframeModel::Create(
     std::unique_ptr<AnimationCurve> curve) {
@@ -36,144 +77,53 @@ void KeyframeModel::SetAnimationData(const AnimationData* data) {
   curve_->set_scaled_duration(animation_data_->duration / 1000.0);
 }
 
+AnimationTimingInput KeyframeModel::CreateTimingInput() const {
+  AnimationTimingInput input;
+  input.animation_data = animation_data_;
+  input.duration = curve_ ? curve_->Duration() : fml::TimeDelta();
+  input.start_time = start_time_;
+  input.pause_time = pause_time_;
+  input.total_paused_duration = total_paused_duration_;
+  input.is_paused = run_state_ == PAUSED;
+  input.run_state = ToTimingRunState(run_state_);
+  input.playback_rate = playback_rate_;
+  return input;
+}
+
 fml::TimeDelta KeyframeModel::GetRepeatDuration() const {
-  if (!animation_data_ || animation_data_->iteration_count == 0 || !curve_) {
-    return fml::TimeDelta::Zero();
-  }
-
-  if (curve_->Duration().ToNanoseconds() >=
-      (static_cast<double>(std::numeric_limits<int64_t>::max()) /
-       static_cast<double>(animation_data_->iteration_count))) {
-    return fml::TimeDelta::Max();
-  }
-
-  return curve_->Duration() *
-         static_cast<double>(animation_data_->iteration_count);
+  return gfx::GetRepeatDuration(animation_data_,
+                                curve_ ? curve_->Duration() : fml::TimeDelta());
 }
 
 KeyframeModel::Phase KeyframeModel::CalculatePhase(
     fml::TimeDelta local_time) const {
-  if (!animation_data_) {
-    return Phase::AFTER;
-  }
-  fml::TimeDelta time_offset =
-      fml::TimeDelta::FromMilliseconds(animation_data_->delay * -1);
-  fml::TimeDelta opposite_time_offset = time_offset == fml::TimeDelta::Min()
-                                            ? fml::TimeDelta::Max()
-                                            : fml::TimeDelta() - time_offset;
-  fml::TimeDelta before_active_boundary_time =
-      std::max(opposite_time_offset, fml::TimeDelta());
-  if (local_time < before_active_boundary_time ||
-      (local_time == before_active_boundary_time && playback_rate_ < 0)) {
-    return Phase::BEFORE;
-  }
-
-  fml::TimeDelta active_duration =
-      GetRepeatDuration() / std::abs(playback_rate_);
-
-  fml::TimeDelta active_after_boundary_time =
-      animation_data_->iteration_count >= 0 &&
-              (opposite_time_offset.ToNanoseconds() <
-               std::numeric_limits<int64_t>::max() -
-                   active_duration.ToNanoseconds())
-          ? std::max(opposite_time_offset + active_duration, fml::TimeDelta())
-          : fml::TimeDelta::Max();
-  if (local_time > active_after_boundary_time ||
-      (local_time == active_after_boundary_time && playback_rate_ > 0)) {
-    return Phase::AFTER;
-  }
-  return Phase::ACTIVE;
+  return ToKeyframeModelPhase(
+      gfx::CalculatePhase(CreateTimingInput(), local_time));
 }
 
 fml::TimeDelta KeyframeModel::ConvertMonotonicTimeToLocalTime(
     fml::TimePoint monotonic_time) const {
-  fml::TimePoint time = (run_state_ == PAUSED) ? pause_time_ : monotonic_time;
-  return time - start_time_ - total_paused_duration_;
+  return gfx::ConvertMonotonicTimeToLocalTime(CreateTimingInput(),
+                                              monotonic_time);
 }
 
 fml::TimeDelta KeyframeModel::CalculateActiveTime(
     fml::TimePoint monotonic_time) const {
-  if (!animation_data_) {
-    return fml::TimeDelta::Min();
-  }
-
-  fml::TimeDelta time_offset =
-      fml::TimeDelta::FromMilliseconds(animation_data_->delay * -1);
-  fml::TimeDelta local_time = ConvertMonotonicTimeToLocalTime(monotonic_time);
-  Phase phase = CalculatePhase(local_time);
-
-  switch (phase) {
-    case Phase::BEFORE:
-      if (animation_data_->fill_mode == AnimationFillModeType::kBackwards ||
-          animation_data_->fill_mode == AnimationFillModeType::kBoth) {
-        return std::max(local_time + time_offset, fml::TimeDelta());
-      }
-      return fml::TimeDelta::Min();
-    case Phase::ACTIVE:
-      return local_time + time_offset;
-    case Phase::AFTER:
-      if (animation_data_->fill_mode == AnimationFillModeType::kForwards ||
-          animation_data_->fill_mode == AnimationFillModeType::kBoth) {
-        fml::TimeDelta active_duration =
-            GetRepeatDuration() / std::abs(playback_rate_);
-        return std::max(std::min(local_time + time_offset, active_duration),
-                        fml::TimeDelta());
-      }
-      return fml::TimeDelta::Min();
-    default:
-      return fml::TimeDelta::Min();
-  }
+  return gfx::CalculateActiveTime(CreateTimingInput(), monotonic_time);
 }
 
 std::tuple<bool, bool> KeyframeModel::UpdateState(
     const fml::TimePoint& monotonic_time) {
-  bool start_event_due = false;
-  bool end_event_due = false;
-  fml::TimeDelta local_time = ConvertMonotonicTimeToLocalTime(monotonic_time);
-  Phase phase = CalculatePhase(local_time);
-  switch (run_state_) {
-    case STARTING:
-      if (phase == Phase::ACTIVE) {
-        SetRunState(RUNNING, monotonic_time);
-        start_event_due = true;
-      } else if (phase == Phase::AFTER) {
-        SetRunState(FINISHED, monotonic_time);
-        start_event_due = true;
-        end_event_due = true;
-      }
-      break;
-    case RUNNING:
-      if (phase == Phase::BEFORE) {
-        SetRunState(STARTING, monotonic_time);
-        end_event_due = true;
-      } else if (phase == Phase::AFTER) {
-        SetRunState(FINISHED, monotonic_time);
-        end_event_due = true;
-      }
-      break;
-    case PAUSED:
-      if (phase == Phase::BEFORE) {
-        SetRunState(STARTING, monotonic_time);
-      } else if (phase == Phase::ACTIVE) {
-        SetRunState(RUNNING, monotonic_time);
-      } else if (phase == Phase::AFTER) {
-        SetRunState(FINISHED, monotonic_time);
-      }
-      break;
-    case FINISHED:
-      if (phase == Phase::BEFORE) {
-        SetRunState(STARTING, monotonic_time);
-      } else if (phase == Phase::ACTIVE) {
-        SetRunState(RUNNING, monotonic_time);
-        start_event_due = true;
-      }
-      break;
+  auto update = gfx::UpdateTimingState(CreateTimingInput(), monotonic_time);
+  auto new_run_state = ToKeyframeModelRunState(update.run_state);
+  if (new_run_state != run_state_) {
+    SetRunState(new_run_state, monotonic_time);
   }
-  return {start_event_due, end_event_due};
+  return {update.start_event_due, update.end_event_due};
 }
 
 bool KeyframeModel::InEffect(fml::TimePoint monotonic_time) const {
-  return CalculateActiveTime(monotonic_time) != fml::TimeDelta::Min();
+  return gfx::IsInEffect(CreateTimingInput(), monotonic_time);
 }
 
 void KeyframeModel::SetRunState(RunState run_state,
@@ -195,62 +145,10 @@ fml::TimeDelta KeyframeModel::TrimTimeToCurrentIteration(
     current_iteration_count = 0;
     return fml::TimeDelta();
   }
-
-  fml::TimeDelta active_time = CalculateActiveTime(monotonic_time);
-
-  fml::TimeDelta start_offset = fml::TimeDelta();
-  if (active_time < fml::TimeDelta()) {
-    return start_offset;
-  }
-  if (!animation_data_->iteration_count) {
-    return fml::TimeDelta();
-  }
-  if (curve_->Duration() <= fml::TimeDelta()) {
-    return fml::TimeDelta();
-  }
-
-  fml::TimeDelta repeated_duration = GetRepeatDuration();
-  fml::TimeDelta active_duration = repeated_duration / std::abs(playback_rate_);
-
-  fml::TimeDelta scaled_active_time;
-  if (playback_rate_ < 0) {
-    scaled_active_time =
-        ((active_time - active_duration) * playback_rate_) + start_offset;
-  } else {
-    scaled_active_time = (active_time * playback_rate_) + start_offset;
-  }
-
-  fml::TimeDelta iteration_time;
-  if (scaled_active_time - start_offset == repeated_duration &&
-      std::fmod(static_cast<double>(animation_data_->iteration_count), 1) ==
-          0) {
-    iteration_time = curve_->Duration();
-  } else {
-    iteration_time = scaled_active_time % curve_->Duration();
-  }
-
-  int iteration;
-  if (scaled_active_time <= fml::TimeDelta()) {
-    iteration = 0;
-  } else if (iteration_time == curve_->Duration()) {
-    iteration =
-        std::ceil(static_cast<double>(animation_data_->iteration_count) - 1);
-  } else {
-    iteration = static_cast<int>(scaled_active_time / curve_->Duration());
-  }
-  current_iteration_count = iteration;
-
-  bool reverse =
-      (animation_data_->direction == AnimationDirectionType::kReverse) ||
-      (animation_data_->direction == AnimationDirectionType::kAlternate &&
-       iteration % 2 == 1) ||
-      (animation_data_->direction ==
-           AnimationDirectionType::kAlternateReverse &&
-       iteration % 2 == 0);
-  if (reverse) {
-    iteration_time = curve_->Duration() - iteration_time;
-  }
-  return iteration_time;
+  auto trimmed = gfx::TrimTimeToCurrentIteration(
+      CreateTimingInput(), monotonic_time, current_iteration_count);
+  current_iteration_count = trimmed.current_iteration_count;
+  return trimmed.time;
 }
 
 void KeyframeModel::EnsureFromAndToKeyframe() {

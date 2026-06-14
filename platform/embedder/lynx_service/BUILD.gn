@@ -18,6 +18,8 @@ lynx_core_source_set("lynx_service") {
     "lynx_security_service_priv.h",
     "lynx_service_center.cc",
     "lynx_service_center_priv.h",
+    "lynx_trail_service.cc",
+    "lynx_trail_service_priv.h",
   ]
   public_configs = [ "../:config" ]
 }

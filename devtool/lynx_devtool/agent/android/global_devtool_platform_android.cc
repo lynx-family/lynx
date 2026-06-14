@@ -6,6 +6,8 @@
 
 #include <sys/system_properties.h>
 
+#include <utility>
+
 #include "core/base/android/jni_helper.h"
 #include "devtool/lynx_devtool/agent/lynx_global_devtool_mediator.h"
 #include "platform/android/lynx_devtool/src/main/jni/gen/GlobalDevToolPlatformAndroidDelegate_jni.h"
@@ -26,6 +28,11 @@ bool RegisterJNIForGlobalDevToolPlatformAndroidDelegate(JNIEnv* env) {
 namespace lynx {
 namespace devtool {
 
+constexpr char kAndroidMemoryUsageBridgeUnavailable[] =
+    "Memory.getAllMemoryUsage is not available in this Android Lynx runtime. "
+    "Upgrade the Lynx runtime and DevTool platform integration to a version "
+    "with the global memory bridge.";
+
 GlobalDevToolPlatformFacade& GlobalDevToolPlatformFacade::GetInstance() {
   static base::NoDestructor<GlobalDevToolPlatformAndroid> instance;
   return *(instance.get());
@@ -39,6 +46,18 @@ void GlobalDevToolPlatformAndroid::StartMemoryTracing() {
 void GlobalDevToolPlatformAndroid::StopMemoryTracing() {
   JNIEnv* env = lynx::base::android::AttachCurrentThread();
   Java_GlobalDevToolPlatformAndroidDelegate_stopMemoryTracing(env);
+}
+
+void GlobalDevToolPlatformAndroid::GetAllMemoryUsage(
+    int64_t timeout_ms, MemoryUsageCallback callback) {
+  (void)timeout_ms;
+  // This CDP method needs the Android-side memory bridge that lands in the
+  // platform integration. Reaching this fallback means the current runtime only
+  // contains the global CDP plumbing, so clients should upgrade the Lynx
+  // runtime and DevTool platform integration to a version with that bridge.
+  if (callback) {
+    std::move(callback)("{}", kAndroidMemoryUsageBridgeUnavailable);
+  }
 }
 
 #if ENABLE_TRACE_PERFETTO || ENABLE_TRACE_SYSTRACE

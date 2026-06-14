@@ -74,6 +74,14 @@ export interface BlurViewProps extends StandardProps {
   'glass-interactive'?: boolean;
 
   /**
+   * The user interface style adopted by `<blur-view>`.
+   * @see {@link https://developer.apple.com/documentation/uikit/uiviewcontroller/overrideuserinterfacestyle?language=objc | Apple Developer Documentation}
+   * @iOS
+   * @since 4.1
+   */
+  'ios-user-interface-style'?: 'dark' | 'light';
+
+  /**
    * A tint color applied to the glass effect.
    * @defaultValue 'transparent'
    * @iOS

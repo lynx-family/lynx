@@ -29,25 +29,46 @@ static bool OptimizeIndirectJump(FuncOp* f);
 static bool OptimizeSingleEntryPhi(FuncOp* f);
 static bool OptCondInstWithSameTrueAndFalseBB(FuncOp* f);
 static bool OptPhiCondBranchJumpThreading(FuncOp* f);
+static bool OptPhiNotCondBranchJumpThreading(FuncOp* f);
+static bool OptCorrelatedBranches(FuncOp* f);
 static bool OptPhiReturnThreading(FuncOp* f);
+static bool OptSameCondJumpThreading(FuncOp* f);
+static bool OptMergeTrivialCondArm(FuncOp* f);
 
 bool SimplifyCFGPass::RunOnModule(ModuleOp* mod) {
   bool changed = false;
 
   llvh::for_each(*mod, [&](FuncOp* f) {
-    bool iter_changed = false;
-    // Keep iterating over deleting unreachable code and removing
-    // trampolines as long as we are making progress.
+    bool func_changed = false;
+    bool outer_changed = false;
     do {
-      iter_changed = OptimizeIndirectJump(f) || OptimizeStaticBranches(f) ||
-                     DeleteUnreachableBlocks(f) || OptimizeSingleEntryPhi(f) ||
-                     OptCondInstWithSameTrueAndFalseBB(f);
+      outer_changed = false;
+      // Inner fixpoint: cheap CFG passes (no dominator tree needed).
+      bool cheap_changed = false;
+      do {
+        cheap_changed = OptimizeIndirectJump(f) || OptimizeStaticBranches(f) ||
+                        DeleteUnreachableBlocks(f) ||
+                        OptimizeSingleEntryPhi(f) ||
+                        OptCondInstWithSameTrueAndFalseBB(f);
 
-      iter_changed = iter_changed || OptPhiCondBranchJumpThreading(f) ||
-                     OptPhiReturnThreading(f);
+        cheap_changed = cheap_changed || OptPhiCondBranchJumpThreading(f) ||
+                        OptPhiNotCondBranchJumpThreading(f) ||
+                        OptPhiReturnThreading(f) || OptSameCondJumpThreading(f);
+        outer_changed |= cheap_changed;
+      } while (cheap_changed);
 
-      changed |= iter_changed;
-    } while (iter_changed);
+      // Expensive pass: correlated branches (builds dominator tree).
+      // Run only after cheap passes converge to minimize DT rebuilds.
+      if (OptCorrelatedBranches(f)) {
+        outer_changed = true;
+      }
+      func_changed |= outer_changed;
+    } while (outer_changed);
+
+    // Run trivial-arm merging once after the fixpoint loop to avoid
+    // repeated application that accumulates register pressure.
+    func_changed |= OptMergeTrivialCondArm(f);
+    changed |= func_changed;
   });
 
   return changed;
@@ -178,15 +199,18 @@ static bool RewriteSuccPhisForThreadedEdge(Block* succ, Block* mid, Block* pred,
     }
 
     if (idx_pred >= 0) {
-      // succ already has pred as a predecessor. Only allow if the incoming
-      // values match; otherwise we'd need two entries from the same block.
+      // pred is already a direct predecessor of succ. Verify values match.
       Value* exist_val = phi->GetEntry(static_cast<unsigned>(idx_pred)).first;
       if (exist_val != new_val) {
         return false;
       }
-      phi->RemoveEntry(static_cast<unsigned>(idx_mid));
+      // Don't remove mid's entry — mid may still be reachable from other
+      // preds. Cleanup at PredEmpty(mid) handles removal when mid becomes
+      // unreachable.
     } else {
-      phi->UpdateEntry(static_cast<unsigned>(idx_mid), new_val, pred);
+      // Add a new entry for pred; keep mid's entry for remaining paths
+      // through mid.
+      phi->AddEntry(new_val, pred);
     }
   }
   return true;
@@ -215,6 +239,55 @@ static bool RedirectTerminatorEdge(Block* pred, Block* from, Block* to) {
     }
     return changed;
   }
+
+  if (auto* eq = llvh::dyn_cast<EqCondBranchInst>(term)) {
+    bool changed = false;
+    if (eq->GetTrueDest() == from) {
+      eq->SetSuccessorImpl(0, to);
+      changed = true;
+    }
+    if (eq->GetFalseDest() == from) {
+      eq->SetSuccessorImpl(1, to);
+      changed = true;
+    }
+    return changed;
+  }
+
+  if (auto* neq = llvh::dyn_cast<NeqCondBranchInst>(term)) {
+    bool changed = false;
+    if (neq->GetTrueDest() == from) {
+      neq->SetSuccessorImpl(0, to);
+      changed = true;
+    }
+    if (neq->GetFalseDest() == from) {
+      neq->SetSuccessorImpl(1, to);
+      changed = true;
+    }
+    return changed;
+  }
+
+  return false;
+}
+
+// Helper: returns true if the value is definitely null or undefined at compile
+// time. Used for jump threading through phi-based branch patterns.
+static bool IsDefinitelyNullOrUndefined(Value* v) {
+  if (!v) return false;
+  if (llvh::isa<LiteralNull>(v) || llvh::isa<LiteralUndefined>(v)) return true;
+  if (llvh::isa<LoadNullOrUndefinedInst>(v)) return true;
+  if (auto* type = v->GetType()) {
+    return type->IsNullOrUndefinedType();
+  }
+  return false;
+}
+
+// Helper: returns true if the value is definitely truthy (non-null object).
+static bool IsDefinitelyTruthy(Value* v) {
+  if (!v) return false;
+  if (llvh::isa<NewTableInst>(v) || llvh::isa<NewArrayInst>(v)) return true;
+  if (auto* type = v->GetType()) {
+    return type->IsTableType();
+  }
   return false;
 }
 
@@ -222,8 +295,9 @@ static bool RedirectTerminatorEdge(Block* pred, Block* from, Block* to) {
 // condition, e.g.
 //   pred: CondBranchInst %c, mid, other
 //   mid:  %p = PhiInst(..., %c, pred, false, x); CondBranchInst %p, T, F
-// If the value of %p on a specific incoming edge is known (literal bool or
-// implied by pred's taken branch), rewrite pred to jump directly to T/F.
+// If the value of %p on a specific incoming edge is known (literal bool,
+// null/undefined as falsy, or object as truthy), rewrite pred to jump
+// directly to T/F.
 static bool OptPhiCondBranchJumpThreading(FuncOp* f) {
   if (!f) return false;
   bool changed = false;
@@ -254,6 +328,27 @@ static bool OptPhiCondBranchJumpThreading(FuncOp* f) {
     if (!true_succ || !false_succ) continue;
     if (IsCatchBlock(true_succ) || IsCatchBlock(false_succ)) continue;
 
+    // Safety: if any phi in mid has a non-phi external user, threading could
+    // break SSA dominance (mid may no longer dominate its successors after a
+    // predecessor is redirected past it).
+    {
+      bool safe_to_thread = true;
+      for (auto& inst : *mid) {
+        if (&inst == cbr_mid) break;
+        for (const auto* user : inst.GetUsers()) {
+          if (auto* user_inst = llvh::dyn_cast<Instruction>(user)) {
+            if (user_inst->GetParent() != mid &&
+                !llvh::isa<PhiInst>(user_inst)) {
+              safe_to_thread = false;
+              break;
+            }
+          }
+        }
+        if (!safe_to_thread) break;
+      }
+      if (!safe_to_thread) continue;
+    }
+
     // Snapshot predecessors because we'll mutate CFG.
     llvh::SmallVector<Block*, 8> predecessors;
     for (auto* pred : Predecessors(mid)) {
@@ -263,12 +358,11 @@ static bool OptPhiCondBranchJumpThreading(FuncOp* f) {
     for (auto* pred : predecessors) {
       if (!pred || IsCatchBlock(pred)) continue;
 
-      // Be conservative: only thread through simple branch terminators.
-      // Eq/NeqCondBranchInst lower to short cmp-jmp bytecodes with 8-bit
-      // offsets, which can overflow if we retarget far-away blocks.
       auto* pred_term = pred->GetTerminator();
       if (!llvh::isa<BranchInst>(pred_term) &&
-          !llvh::isa<CondBranchInst>(pred_term)) {
+          !llvh::isa<CondBranchInst>(pred_term) &&
+          !llvh::isa<EqCondBranchInst>(pred_term) &&
+          !llvh::isa<NeqCondBranchInst>(pred_term)) {
         continue;
       }
 
@@ -283,6 +377,14 @@ static bool OptPhiCondBranchJumpThreading(FuncOp* f) {
       if (auto* lit = llvh::dyn_cast<LiteralBool>(incoming)) {
         known = true;
         cond_value = lit->GetValue();
+      } else if (IsDefinitelyNullOrUndefined(incoming)) {
+        // null/undefined are always falsy: ToBoolean(null) = false
+        known = true;
+        cond_value = false;
+      } else if (IsDefinitelyTruthy(incoming)) {
+        // Objects (tables/arrays) are always truthy
+        known = true;
+        cond_value = true;
       } else if (auto* pred_cbr = llvh::dyn_cast<CondBranchInst>(pred_term)) {
         // If pred branches on the same SSA value and this edge is the taken
         // true/false edge, then the condition is implied on this edge.
@@ -293,6 +395,32 @@ static bool OptPhiCondBranchJumpThreading(FuncOp* f) {
           } else if (pred_cbr->GetFalseDest() == mid) {
             known = true;
             cond_value = false;
+          }
+        }
+      } else if (auto* eq_cbr = llvh::dyn_cast<EqCondBranchInst>(pred_term)) {
+        // EqCondBranch(X, null) true-edge: X == null → X is falsy
+        Value* lhs = eq_cbr->GetLeftHandSide();
+        Value* rhs = eq_cbr->GetRightHandSide();
+        if (incoming == lhs || incoming == rhs) {
+          Value* other = (incoming == lhs) ? rhs : lhs;
+          if (IsDefinitelyNullOrUndefined(other)) {
+            if (eq_cbr->GetTrueDest() == mid) {
+              known = true;
+              cond_value = false;
+            }
+          }
+        }
+      } else if (auto* neq_cbr = llvh::dyn_cast<NeqCondBranchInst>(pred_term)) {
+        // NeqCondBranch(X, null) false-edge: X == null → X is falsy
+        Value* lhs = neq_cbr->GetLeftHandSide();
+        Value* rhs = neq_cbr->GetRightHandSide();
+        if (incoming == lhs || incoming == rhs) {
+          Value* other = (incoming == lhs) ? rhs : lhs;
+          if (IsDefinitelyNullOrUndefined(other)) {
+            if (neq_cbr->GetFalseDest() == mid) {
+              known = true;
+              cond_value = false;
+            }
           }
         }
       }
@@ -324,15 +452,278 @@ static bool OptPhiCondBranchJumpThreading(FuncOp* f) {
       // up successor phi entries and erase it immediately to avoid leaving
       // invalid 0-entry phis around.
       if (PredEmpty(mid)) {
-        RemoveEntryFromPhi(true_succ, mid);
-        if (false_succ != true_succ) {
-          RemoveEntryFromPhi(false_succ, mid);
+        // Safety: only erase mid if no instruction has uses outside of mid.
+        bool has_external_uses = false;
+        for (auto& inst : *mid) {
+          for (const auto* user : inst.GetUsers()) {
+            if (auto* user_inst = llvh::dyn_cast<Instruction>(user)) {
+              if (user_inst->GetParent() != mid) {
+                has_external_uses = true;
+                break;
+              }
+            }
+          }
+          if (has_external_uses) break;
         }
-        mid->EraseFromParent();
+        if (!has_external_uses) {
+          RemoveEntryFromPhi(true_succ, mid);
+          if (false_succ != true_succ) {
+            RemoveEntryFromPhi(false_succ, mid);
+          }
+          mid->EraseFromParent();
+        }
       }
       // CFG changed; let outer iteration and other passes clean up.
       return true;
     }
+  }
+
+  return changed;
+}
+
+// Thread edges through a block that contains phi(s) + Not(phi) + CondBranch.
+// This handles the common template pattern:
+//   merge: %phi = Phi(%null from null_bb, %val from call_bb)
+//          %not = Not(%phi)
+//          CondBranch(%not, create_bb, use_bb)
+// From null_bb: %phi=null, Not(null)=true → thread to create_bb.
+// From call_bb: if %val is truthy, Not(truthy)=false → thread to use_bb.
+static bool OptPhiNotCondBranchJumpThreading(FuncOp* f) {
+  if (!f) return false;
+
+  for (auto& it : *f) {
+    Block* mid = &it;
+    if (IsCatchBlock(mid)) continue;
+
+    auto* cbr_mid = llvh::dyn_cast<CondBranchInst>(mid->GetTerminator());
+    if (!cbr_mid) continue;
+
+    // Check mid block structure: phi(s) + exactly one UnaryNotInst +
+    // CondBranchInst.
+    UnaryOperatorInst* not_inst = nullptr;
+    bool valid_structure = true;
+    for (auto& inst : *mid) {
+      if (&inst == cbr_mid) break;
+      if (llvh::isa<PhiInst>(&inst)) continue;
+      if (inst.GetKind() == ValueKind::UnaryNotInstKind && !not_inst) {
+        not_inst = llvh::cast<UnaryOperatorInst>(&inst);
+        continue;
+      }
+      valid_structure = false;
+      break;
+    }
+    if (!valid_structure || !not_inst) continue;
+
+    // The CondBranch condition must be the Not result.
+    if (cbr_mid->GetCondition() != not_inst) continue;
+
+    // Safety: not_inst must only be used by the CondBranch; otherwise threading
+    // could break SSA if target has non-phi uses of this value.
+    if (!not_inst->HasOneUser()) continue;
+
+    // The Not's operand must be a phi defined in this block.
+    auto* not_operand_phi =
+        llvh::dyn_cast<PhiInst>(not_inst->GetSingleOperand());
+    if (!not_operand_phi || not_operand_phi->GetParent() != mid) continue;
+
+    Block* true_succ = cbr_mid->GetTrueDest();
+    Block* false_succ = cbr_mid->GetFalseDest();
+    if (!true_succ || !false_succ) continue;
+    if (IsCatchBlock(true_succ) || IsCatchBlock(false_succ)) continue;
+
+    // Safety: if any instruction in mid has a non-phi external user, threading
+    // could break SSA dominance (mid may no longer dominate its successors
+    // after a predecessor is redirected past it).
+    {
+      bool safe_to_thread = true;
+      for (auto& inst : *mid) {
+        if (&inst == cbr_mid) break;
+        for (const auto* user : inst.GetUsers()) {
+          if (auto* user_inst = llvh::dyn_cast<Instruction>(user)) {
+            if (user_inst->GetParent() != mid &&
+                !llvh::isa<PhiInst>(user_inst)) {
+              safe_to_thread = false;
+              break;
+            }
+          }
+        }
+        if (!safe_to_thread) break;
+      }
+      if (!safe_to_thread) continue;
+    }
+
+    // Snapshot predecessors because we'll mutate CFG.
+    llvh::SmallVector<Block*, 8> predecessors;
+    for (auto* pred : Predecessors(mid)) {
+      predecessors.push_back(pred);
+    }
+
+    bool changed = false;
+    for (auto* pred : predecessors) {
+      if (!pred || IsCatchBlock(pred)) continue;
+
+      auto* pred_term = pred->GetTerminator();
+      if (!llvh::isa<BranchInst>(pred_term) &&
+          !llvh::isa<CondBranchInst>(pred_term) &&
+          !llvh::isa<EqCondBranchInst>(pred_term) &&
+          !llvh::isa<NeqCondBranchInst>(pred_term)) {
+        continue;
+      }
+
+      Value* incoming = nullptr;
+      if (!GetPhiIncomingValue(not_operand_phi, pred, incoming)) {
+        continue;
+      }
+
+      // Determine if incoming has known truthiness for Not() evaluation.
+      bool known = false;
+      bool cond_value = false;
+
+      if (IsDefinitelyNullOrUndefined(incoming)) {
+        known = true;
+        cond_value = true;  // Not(null/undefined) = true → go to true_succ
+      } else if (IsDefinitelyTruthy(incoming)) {
+        known = true;
+        cond_value = false;  // Not(truthy_object) = false → go to false_succ
+      } else if (auto* lit = llvh::dyn_cast<LiteralBool>(incoming)) {
+        known = true;
+        cond_value = !lit->GetValue();  // Not(bool) = !bool
+      }
+
+      if (!known) continue;
+
+      Block* target = cond_value ? true_succ : false_succ;
+      if (!target) continue;
+
+      // Only thread edges that actually go to mid.
+      if (!SuccContains(pred, mid)) continue;
+
+      // Rewrite successor phis and then redirect pred's terminator edge.
+      if (!RewriteSuccPhisForThreadedEdge(target, mid, pred, mid)) {
+        continue;
+      }
+      if (!RedirectTerminatorEdge(pred, mid, target)) {
+        continue;
+      }
+
+      // Remove pred entry from mid's phi nodes.
+      RemoveEntryFromPhi(mid, pred);
+
+      changed = true;
+    }
+
+    if (changed) {
+      if (PredEmpty(mid)) {
+        // Safety: only erase mid if no instruction in mid has uses outside
+        // of mid itself.  If mid dominated a successor, its Phis/Not could
+        // be used directly by non-Phi instructions there; erasing would
+        // leave dangling references.
+        bool has_external_uses = false;
+        for (auto& inst : *mid) {
+          for (const auto* user : inst.GetUsers()) {
+            if (auto* user_inst = llvh::dyn_cast<Instruction>(user)) {
+              if (user_inst->GetParent() != mid) {
+                has_external_uses = true;
+                break;
+              }
+            }
+          }
+          if (has_external_uses) break;
+        }
+        if (!has_external_uses) {
+          RemoveEntryFromPhi(true_succ, mid);
+          if (false_succ != true_succ) {
+            RemoveEntryFromPhi(false_succ, mid);
+          }
+          mid->EraseFromParent();
+        }
+      }
+      return true;
+    }
+  }
+
+  return false;
+}
+
+// Correlated Branch Elimination: if a CondBranch tests the same condition as a
+// dominating CondBranch, and the current block is only reachable through the
+// true (or false) edge of that dominator, the inner branch result is known and
+// can be folded to an unconditional jump.
+static bool OptCorrelatedBranches(FuncOp* f) {
+  if (!f) return false;
+  DominanceInfo DT(f);
+  bool changed = false;
+
+  // Verify that all predecessors of |edge_dest| are either |dom_bb| itself
+  // or dominated by |edge_dest| (back-edges). If any other predecessor exists,
+  // the CFG has a cross-edge from the opposite branch into |edge_dest|, which
+  // means dominance alone cannot guarantee path exclusivity.
+  auto AllPredecessorsAreExclusive = [&](Block* edge_dest,
+                                         Block* dom_bb) -> bool {
+    for (auto it = PredBegin(edge_dest); it != PredEnd(edge_dest); ++it) {
+      Block* pred = *it;
+      if (pred == dom_bb) continue;
+      if (DT.dominates(edge_dest, pred)) continue;  // back-edge
+      return false;
+    }
+    return true;
+  };
+
+  for (auto& bb : *f) {
+    if (IsCatchBlock(&bb)) continue;
+
+    auto* cbr = llvh::dyn_cast<CondBranchInst>(bb.GetTerminator());
+    if (!cbr) continue;
+
+    Value* cond = cbr->GetCondition();
+
+    // Walk the immediate dominator chain looking for a dominator that also
+    // branches on the same condition value.
+    auto* node = DT.getNode(&bb);
+    if (!node) continue;
+
+    for (auto* i_dom = node->getIDom(); i_dom; i_dom = i_dom->getIDom()) {
+      Block* dom_bb = i_dom->getBlock();
+      if (!dom_bb) break;
+
+      auto* dom_cbr = llvh::dyn_cast<CondBranchInst>(dom_bb->GetTerminator());
+      if (!dom_cbr || dom_cbr->GetCondition() != cond) continue;
+
+      // Check if &bb is reachable exclusively through the true or false edge.
+      Block* dom_true = dom_cbr->GetTrueDest();
+      Block* dom_false = dom_cbr->GetFalseDest();
+      if (dom_true == dom_false) continue;
+
+      if (DT.ProperlyDominates(dom_true, &bb) &&
+          !DT.dominates(dom_true, dom_bb)) {
+        // dom_true must only be entered from dom_bb's true edge (plus
+        // back-edges). A cross-edge from the false sub-graph would invalidate
+        // the condition-value inference — skip this opportunity.
+        if (!AllPredecessorsAreExclusive(dom_true, dom_bb)) {
+          continue;
+        }
+        // cond is known TRUE on this path → fold to true target.
+        ReplaceCondBranchWithDirectBranch(cbr, cbr->GetTrueDest());
+        changed = true;
+        break;
+      }
+      if (DT.ProperlyDominates(dom_false, &bb) &&
+          !DT.dominates(dom_false, dom_bb)) {
+        // dom_false must only be entered from dom_bb's false edge (plus
+        // back-edges). A cross-edge from the true sub-graph would invalidate
+        // the condition-value inference — skip this opportunity.
+        if (!AllPredecessorsAreExclusive(dom_false, dom_bb)) {
+          continue;
+        }
+        // cond is known FALSE on this path → fold to false target.
+        ReplaceCondBranchWithDirectBranch(cbr, cbr->GetFalseDest());
+        changed = true;
+        break;
+      }
+      continue;  // neither edge dominates bb, try higher dominator
+    }
+
+    if (changed) return true;  // CFG invalidated, restart
   }
 
   return changed;
@@ -694,6 +1085,56 @@ bool OptIndirectJmp(Instruction* inst) {
   return false;
 }
 
+// Eliminate trivial re-branch blocks: a block whose only instruction is a
+// CondBranch on a condition that a predecessor already branched on.
+//   pred: CondBranch(C, mid, ...)   →   pred: CondBranch(C, mid_true, ...)
+//   mid:  CondBranch(C, T, F)           (mid becomes unreachable)
+static bool OptSameCondJumpThreading(FuncOp* f) {
+  if (!f) return false;
+  bool changed = false;
+
+  for (auto& it : *f) {
+    Block* mid = &it;
+    if (IsCatchBlock(mid)) continue;
+
+    auto* mid_cbr = llvh::dyn_cast<CondBranchInst>(mid->GetTerminator());
+    if (!mid_cbr) continue;
+    if (mid->Front() != mid_cbr) continue;
+
+    Value* mid_cond = mid_cbr->GetCondition();
+    Block* mid_true = mid_cbr->GetTrueDest();
+    Block* mid_false = mid_cbr->GetFalseDest();
+
+    // Skip if mid branches back to itself (self-loop).
+    if (mid_true == mid || mid_false == mid) continue;
+
+    // Never thread edges into a catch block.
+    if (IsCatchBlock(mid_true) || IsCatchBlock(mid_false)) continue;
+
+    llvh::SmallVector<Block*, 4> predecessors;
+    for (auto* p : Predecessors(mid)) predecessors.push_back(p);
+
+    for (auto* pred : predecessors) {
+      if (!pred || IsCatchBlock(pred)) continue;
+      auto* pred_cbr = llvh::dyn_cast<CondBranchInst>(pred->GetTerminator());
+      if (!pred_cbr || pred_cbr->GetCondition() != mid_cond) continue;
+
+      if (pred_cbr->GetTrueDest() == mid && mid_true != mid) {
+        if (!RewriteSuccPhisForThreadedEdge(mid_true, mid, pred, mid)) continue;
+        pred_cbr->SetTrueDest(mid_true);
+        changed = true;
+      }
+      if (pred_cbr->GetFalseDest() == mid && mid_false != mid) {
+        if (!RewriteSuccPhisForThreadedEdge(mid_false, mid, pred, mid))
+          continue;
+        pred_cbr->SetFalseDest(mid_false);
+        changed = true;
+      }
+    }
+  }
+  return changed;
+}
+
 static bool OptimizeIndirectJump(FuncOp* f) {
   bool changed = false;
   for (auto& it : *f) {
@@ -887,6 +1328,174 @@ bool SimplifyCFGPass::OptimizeStaticBranches(FuncOp* f) {
       break;
     }
   }  // for all blocks.
+
+  return changed;
+}
+
+/// Merge a trivial conditional arm (LoadNull/LoadConst + Branch) into the
+/// predecessor block. This eliminates the trivial block and enables better
+/// block layout in ISel, saving one jump instruction per ternary pattern.
+///
+/// Pattern detected:
+///   pred:      CondBranch(cond, true_bb, trivial_bb)
+///   trivial_bb: v = LoadNull/LoadConst; Branch(join)
+///   join:      phi(..., v/trivial_bb, ...)
+///
+/// Transformed to:
+///   pred:      v = LoadNull/LoadConst; CondBranch(cond, true_bb, join)
+///   join:      phi(..., v/pred, ...)
+///   (trivial_bb removed)
+///
+/// Also handles the symmetric case where true_bb is the trivial arm.
+// Maximum function size for trivial-arm merging. Beyond this threshold,
+// hoisting values extends live ranges enough to cause register pressure.
+
+static bool OptMergeTrivialCondArm(FuncOp* f) {
+  // Only apply to small-to-medium functions. In large functions, hoisting
+  // values before CondBranch extends live ranges enough to cause register
+  // pressure issues (more MOV spills than saved Jmps).
+  auto ExceedsInstLimit = [&]() -> bool {
+    size_t count = 0;
+    for (auto& bb : *f) {
+      for (auto it = bb.InstBegin(); it != bb.InstEnd(); ++it) {
+        if (++count > constants::kMergeTrivialCondArmMaxInsts) return true;
+      }
+    }
+    return false;
+  };
+  if (ExceedsInstLimit()) return false;
+
+  bool changed = false;
+  // Collect blocks to erase after the loop to avoid iterator invalidation
+  // (trivial_bb might be the next node in the intrusive block list).
+  // SAFETY: After we erase the BranchInst from trivial_bb, it has no
+  // terminator. If the outer for-loop encounters it, GetTerminator()
+  // returns nullptr and we `continue`, so it's harmless to iterate over.
+  llvh::SmallVector<Block*, 4> blocks_to_erase;
+
+  for (auto& bb : *f) {
+    auto* term = bb.GetTerminator();
+    if (!term) continue;
+    auto* cbr = llvh::dyn_cast<CondBranchInst>(term);
+    if (!cbr) continue;
+
+    Block* true_bb = cbr->GetTrueDest();
+    Block* false_bb = cbr->GetFalseDest();
+    if (true_bb == false_bb) continue;
+
+    // Try both arms: prefer merging the false arm (more common for ternary).
+    for (int arm = 0; arm < 2; ++arm) {
+      Block* trivial_bb = (arm == 0) ? false_bb : true_bb;
+      Block* other_bb = (arm == 0) ? true_bb : false_bb;
+
+      // trivial_bb must have exactly one predecessor (pred).
+      if (PredCount(trivial_bb) != 1) continue;
+
+      // trivial_bb must not be a catch block.
+      if (IsCatchBlock(trivial_bb)) continue;
+
+      // trivial_bb must have exactly 2 instructions: one value + Branch.
+      // (Use instruction count, not OpList size which includes non-inst ops.)
+      auto it = trivial_bb->InstBegin();
+      auto end = trivial_bb->InstEnd();
+      if (it == end) continue;
+      Instruction* val_inst = *it;
+      ++it;
+      if (it == end) continue;
+      Instruction* branch_inst = *it;
+      ++it;
+      if (it != end) continue;  // More than 2 instructions.
+
+      // The second instruction must be an unconditional branch.
+      auto* br = llvh::dyn_cast<BranchInst>(branch_inst);
+      if (!br) continue;
+
+      Block* join_bb = br->GetBranchDest();
+
+      // The first instruction must be side-effect-free and produce a value.
+      // Accept: LoadNullOrUndefinedInst, LoadConstInst.
+      if (!llvh::isa<LoadNullOrUndefinedInst>(val_inst) &&
+          !llvh::isa<LoadConstInst>(val_inst)) {
+        continue;
+      }
+
+      // join_bb must not be the same as pred or trivial_bb.
+      if (join_bb == &bb || join_bb == trivial_bb) {
+        continue;
+      }
+
+      // Never redirect an edge into a catch block.
+      if (IsCatchBlock(&bb) || IsCatchBlock(other_bb) ||
+          IsCatchBlock(join_bb)) {
+        continue;
+      }
+
+      // Verify that other_bb also branches to join_bb (diamond pattern).
+      // This ensures the phi in join_bb references both arms.
+      {
+        auto* other_term = other_bb->GetTerminator();
+        bool other_reaches_join = false;
+        if (auto* other_br = llvh::dyn_cast<BranchInst>(other_term)) {
+          other_reaches_join = (other_br->GetBranchDest() == join_bb);
+        } else if (auto* other_cbr =
+                       llvh::dyn_cast<CondBranchInst>(other_term)) {
+          other_reaches_join = (other_cbr->GetTrueDest() == join_bb ||
+                                other_cbr->GetFalseDest() == join_bb);
+        }
+        if (!other_reaches_join) continue;
+      }
+
+      // Verify that trivial_bb's value is only used in phi nodes of join_bb.
+      // If it has other users, we can't safely hoist it.
+      bool val_safe = true;
+      for (const auto* user : val_inst->GetUsers()) {
+        auto* phi_user = llvh::dyn_cast<PhiInst>(user);
+        if (!phi_user || phi_user->GetParent() != join_bb) {
+          val_safe = false;
+          break;
+        }
+      }
+      if (!val_safe) continue;
+
+      // All checks passed. Perform the transformation.
+
+      // 1. Move val_inst before the CondBranch in pred.
+      val_inst->MoveBefore(cbr);
+
+      // 2. Update phi nodes in join_bb: replace trivial_bb with pred (&bb).
+      for (auto& inst : *join_bb) {
+        auto* phi = llvh::dyn_cast<PhiInst>(&inst);
+        if (!phi) break;
+        for (unsigned i = 0, e = phi->GetNumEntries(); i < e; i++) {
+          if (phi->GetEntry(i).second == trivial_bb) {
+            phi->ForceUpdateEntry(i, phi->GetEntry(i).first, &bb);
+            break;
+          }
+        }
+      }
+
+      // 3. Redirect the CondBranch edge from trivial_bb to join_bb.
+      if (arm == 0) {
+        cbr->SetFalseDest(join_bb);
+      } else {
+        cbr->SetTrueDest(join_bb);
+      }
+
+      // 4. Remove branch inst now; defer block erasure to avoid
+      //    invalidating the outer block-list iterator.
+      br->EraseFromParent();
+      blocks_to_erase.push_back(trivial_bb);
+
+      changed = true;
+      break;  // Break inner arm loop, continue outer block loop.
+    }
+  }
+
+  // Erase collected trivial blocks after iteration is complete.
+  for (Block* blk : blocks_to_erase) {
+    blk->ReplaceAllUsesWith(nullptr);
+    blk->EraseFromParent();
+  }
 
   return changed;
 }

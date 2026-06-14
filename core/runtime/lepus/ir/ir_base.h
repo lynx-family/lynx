@@ -39,6 +39,8 @@ constexpr uint32_t kLoadStoreEliminationIter = 10;
 constexpr uint32_t kTypePropagationIter = 3;
 constexpr uint32_t kMaxCombineTimes = 8;
 constexpr uint8_t kInstMaxOperands = 3;
+constexpr int kMaxParamTraceVisits = 32;
+constexpr size_t kMergeTrivialCondArmMaxInsts = 100;
 
 // Global Objects
 constexpr const char kGlobalMath[] = "Math";
@@ -129,6 +131,11 @@ constexpr const char kRegExpTest[] = "test";
 
 // Number Methods
 constexpr const char kNumberToFixed[] = "toFixed";
+
+// Compound method names (used for builtin classification in optimizations)
+constexpr const char kObjectFreezeFull[] = "Object.freeze";
+constexpr const char kObjectAssignFull[] = "Object.assign";
+constexpr const char kJSONParseFull[] = "JSON.parse";
 
 // Builtin Functions Helper
 constexpr const char kDeepCloneName[] = "$deepClone";

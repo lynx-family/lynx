@@ -44,6 +44,10 @@ export interface HarmonyStateListener {
   onError: (error: string) => void;
 }
 
+export interface DebugRouterMessageHandler {
+  handle: (params: string) => string;
+}
+
 export class LynxDevToolEnv {
   public static initDevToolEnv(): void;
   public static setSwitch(key: string, value: boolean): void;
@@ -62,6 +66,8 @@ export class DebugRouter {
   public static removeGlobalHandler(handler: HarmonyGlobalHandler): void;
   public static sendDataAsync(type: string, session: number, data: string): void;
   public static addSessionHandler(handler: HarmonySessionHandler): void;
+  public static addMessageHandler(name: string, handler: DebugRouterMessageHandler): void;
+  public static removeMessageHandler(name: string): void;
   public static handleSchema(url: string): boolean;
   public static getAppInfoByKey(key: string): string;
   public static addStateListener(listener: HarmonyStateListener): void;
@@ -257,6 +263,7 @@ export interface LynxViewBuilder {
   enableAirStrictMode?: boolean;
   lynxImageConfig?: LynxImageConfig;
   fontScale?: number;
+  colorScheme?: ColorScheme;
 }
 
 export enum MeasureMode {
@@ -268,6 +275,11 @@ export enum MeasureMode {
 export enum ThreadStrategyForRendering {
   ALL_ON_UI = 0
   MOST_ON_TASM = 1
+}
+
+export enum ColorScheme {
+  LIGHT = 0
+  DARK = 1
 }
 
 export class LynxContext implements IContext {
@@ -303,6 +315,7 @@ export class LynxContext implements IContext {
   public setExtraTiming(extraTiming: LynxExtraTiming): void;
   public putParamsForReportingEvents(params: ReadonlyMap<string, LynxReportEventPropValue>): void;
   updateFontScale(scale: number): void;
+  updateColorScheme(scheme: ColorScheme): void;
   public setContextData(data: Record<string, Object>): void;
   public getContextData(): Record<string, Object> | undefined;
   public setMediaResourceFetcher(mediaResourceFetcher: LynxMediaResourceFetcher): void;
@@ -389,6 +402,15 @@ export class LynxUIMethodConstants {
   public static OPERATION_ERROR: any; = 8
 }
 
+export interface LynxEmojiResource {
+  name: string;
+  uri: string | number;
+}
+
+export interface LynxEmojiResourceFetcher {
+  getEmojiResources(): Array<LynxEmojiResource>;
+}
+
 export const LynxEnv: LynxEnvironment {
   public initialize(context: common.Context): void;
   setAppInfo(appInfo: Map<string, string>): void;
@@ -402,6 +424,7 @@ export const LynxEnv: LynxEnvironment {
   public setQuickjsDebugEnabled(enabled: boolean): void;
   public setTracingDirPath(tracingDirPath: string): void;
   public getTracingDirPath(): string;
+  public setEmojiResourceFetcher(fetcher: LynxEmojiResourceFetcher): void;
   public static setCacheDirPath(cacheDirPath: string): void;
   public isDebugModeEnabled(): boolean;
   public setLogBoxEnabled(enabled: boolean): void;
@@ -1189,6 +1212,7 @@ export enum LynxTrailKey {
   FIX_FIBER_REINSERT_DETACH_FROM_OLD_RENDER_PARENT = 'fix_fiber_reinsert_detach_from_old_render_parent'
   ENABLE_NEW_STYLING_PIPELINE = 'enable_new_styling_pipeline'
   ENABLE_ELEMENT_API_NEW_REGISTRATION = 'enable_element_api_new_registration'
+  ENABLE_ELEMENT_INVOKE_UI_METHOD_PENDING_TASK = 'enable_element_invoke_ui_method_pending_task'
 }
 
 export interface LynxUIRenderer {

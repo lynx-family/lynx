@@ -38,6 +38,7 @@ static constexpr const char kElementViewTag[] = "view";
 static constexpr const char kElementComponentTag[] = "component";
 static constexpr const char kElementPageTag[] = "page";
 static constexpr const char kElementImageTag[] = "image";
+static constexpr const char kElementEcomImageTag[] = "ecom-image";
 static constexpr const char kElementTextTag[] = "text";
 static constexpr const char kElementXTextTag[] = "x-text";
 static constexpr const char* kElementRawTextTag = "raw-text";
@@ -80,6 +81,7 @@ static constexpr const char* kElementParsedStyle = "parsedStyle";
 static constexpr const char* kElementComponentName = "name";
 static constexpr const char* kElementComponentPath = "path";
 static constexpr const char* kElementCSSID = "cssID";
+static constexpr const char* kElementAttrCSSID = "css-id";
 static constexpr const char kDirtyID[] = "dirtyID";
 static constexpr const char kDepth[] = "depth";
 static constexpr const char kCloneResolvedProps[] = "cloneResolvedProps";
@@ -128,6 +130,8 @@ static constexpr const char kPipelineNeedTimestamps[] = "needTimestamps";
 static constexpr const char kPatchOptions[] = "patchOptions";
 static constexpr const char kDirectChildOfCompatibleComponentInitDataKey[] =
     "__lynx_is_direct_child_of_compatible_component";
+static constexpr const char kTendsToFlattenInitDataKey[] =
+    "__lynx_tends_to_flatten";
 
 // Constant string for worklet
 static constexpr const char* kWorklet = "worklet";

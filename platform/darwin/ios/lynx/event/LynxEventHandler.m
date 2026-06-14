@@ -20,10 +20,25 @@
 #import <Lynx/UIView+Lynx.h>
 #import "LynxTouchHandler+Internal.h"
 
+#include <stdint.h>
+
+static const int64_t kCurrentLynxPageOnlyEventID = INT64_MIN;
+
+static BOOL ShouldDispatchTouchEventInCurrentLynxPageOnly(LynxUI* rootUI) {
+  id pageRootUI = rootUI.context.rootUI;
+  return rootUI != nil && pageRootUI != nil && rootUI != pageRootUI;
+}
+
 #pragma mark - LynxEventHandler
 @interface LynxEventHandler ()
 
 @property(nonatomic, readwrite) BOOL gestureRecognized;
+@property(nonatomic, assign) BOOL dispatchTouchEventInCurrentLynxPageOnly;
+
+- (BOOL)isSystemBackGesture:(UIGestureRecognizer*)gesture;
+- (BOOL)shouldInterceptSystemBackGesture:(UIGestureRecognizer*)gesture
+                           withDirection:(enum LynxPanInterceptDirection)direction
+                       andInterceptScope:(enum LynxPanInterceptScope)scope;
 
 @end
 
@@ -343,6 +358,8 @@
   if (self) {
     _rootView = rootView;
     _rootUI = rootUI;
+    _dispatchTouchEventInCurrentLynxPageOnly =
+        ShouldDispatchTouchEventInCurrentLynxPageOnly(rootUI);
     _touchRecognizer = [[LynxTouchHandler alloc] initWithEventHandler:self];
     [_rootView addGestureRecognizer:_touchRecognizer];
     _isFragmentLayerRendererOn = isFragmentLayerRenderOn;
@@ -502,6 +519,7 @@
                                    viewPoint:viewPoint];
     event.eventTarget = _touchRecognizer.preTarget;
     event.timestamp = [[NSDate date] timeIntervalSince1970];
+    [self markDispatchInCurrentLynxPageOnlyIfNeeded:event];
     if ([LynxEnv.sharedInstance highlightTouchEnabled]) {
       [_touchRecognizer
           showMessageOnConsole:[NSString
@@ -555,6 +573,7 @@
                                                        viewPoint:viewPoint];
     event.eventTarget = _touchTarget;
     event.timestamp = [[NSDate date] timeIntervalSince1970];
+    [self markDispatchInCurrentLynxPageOnlyIfNeeded:event];
     if (![_eventEmitter dispatchTouchEvent:event]) {
       _longPressPoint = pagePoint;
       self.gestureRecognized = NO;
@@ -586,6 +605,7 @@
                                      viewPoint:viewPoint];
       event.eventTarget = _touchRecognizer.preTarget;
       event.timestamp = [[NSDate date] timeIntervalSince1970];
+      [self markDispatchInCurrentLynxPageOnlyIfNeeded:event];
       if ([LynxEnv.sharedInstance highlightTouchEnabled]) {
         [_touchRecognizer
             showMessageOnConsole:[NSString
@@ -772,6 +792,12 @@
   [_touchRecognizer removeGestureArenaManager:index];
 }
 
+- (void)markDispatchInCurrentLynxPageOnlyIfNeeded:(LynxTouchEvent*)event {
+  if (self.dispatchTouchEventInCurrentLynxPageOnly) {
+    event.eventID = kCurrentLynxPageOnlyEventID;
+  }
+}
+
 // should be called when touch target has been found, will not change _touchTarget
 - (id<LynxEventTarget>)hitTestInner:(CGPoint)point withEvent:(UIEvent*)event {
   if (_rootUI == nil) {
@@ -841,17 +867,62 @@
          withPlatformGesture:(UIGestureRecognizer*)platformGesture {
   [otherGestures enumerateObjectsUsingBlock:^(LynxWeakProxy* _Nonnull obj, NSUInteger idx,
                                               BOOL* _Nonnull stop) {
-    UIGestureRecognizer* otherGesture = (UIGestureRecognizer*)obj;
+    UIGestureRecognizer* otherGesture = (UIGestureRecognizer*)obj.target;
+    if (otherGesture == nil) {
+      return;
+    }
     enum LynxPanInterceptScope scope =
         [self getPanInterceptScope:_firstPanInterceptDirectionTarget];
-    if ([self isPanGesture:otherGesture
-             withDirection:_firstPanInterceptDirectionTarget.panInterceptDirection] &&
+    enum LynxPanInterceptDirection direction =
+        _firstPanInterceptDirectionTarget.panInterceptDirection;
+    BOOL shouldInterceptPanGesture =
+        [self isPanGesture:otherGesture withDirection:direction] &&
         [self shouldInterceptPanGesture:otherGesture.view
                                withView:((LynxUI*)_firstPanInterceptDirectionTarget).view
-                      andInterceptScope:scope]) {
-      ((UIGestureRecognizer*)obj).state = UIGestureRecognizerStateFailed;
+                      andInterceptScope:scope];
+    BOOL shouldInterceptSystemBackGesture =
+        [self shouldInterceptSystemBackGesture:otherGesture
+                                 withDirection:direction
+                             andInterceptScope:scope] &&
+        [self shouldInterceptPanGesture:otherGesture.view
+                               withView:((LynxUI*)_firstPanInterceptDirectionTarget).view
+                      andInterceptScope:scope];
+    if (shouldInterceptPanGesture || shouldInterceptSystemBackGesture) {
+      otherGesture.state = UIGestureRecognizerStateFailed;
     }
   }];
+}
+
+- (BOOL)isSystemBackGesture:(UIGestureRecognizer*)gesture {
+  UIResponder* responder = gesture.view;
+  while (responder) {
+    UINavigationController* navigationController = nil;
+    if ([responder isKindOfClass:[UINavigationController class]]) {
+      navigationController = (UINavigationController*)responder;
+    } else if ([responder isKindOfClass:[UIViewController class]]) {
+      navigationController = ((UIViewController*)responder).navigationController;
+    }
+    if (navigationController.interactivePopGestureRecognizer == gesture) {
+      return YES;
+    }
+    responder = responder.nextResponder;
+  }
+  return NO;
+}
+
+- (BOOL)shouldInterceptSystemBackGesture:(UIGestureRecognizer*)gesture
+                           withDirection:(enum LynxPanInterceptDirection)direction
+                       andInterceptScope:(enum LynxPanInterceptScope)scope {
+  if (direction != kLynxPanInterceptDirectionHorizontal) {
+    return NO;
+  }
+  BOOL shouldInterceptAncestors = scope == kLynxPanInterceptScopeAncestors ||
+                                  scope == kLynxPanInterceptScopeSelfAndAncestors ||
+                                  scope == kLynxPanInterceptScopeAll;
+  if (!shouldInterceptAncestors) {
+    return NO;
+  }
+  return [self isSystemBackGesture:gesture];
 }
 
 - (BOOL)shouldInterceptPanGesture:(UIView*)other

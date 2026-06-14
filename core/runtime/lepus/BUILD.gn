@@ -135,6 +135,7 @@ unittest_set("lepus_ir_testset") {
     "ir/unittests/transformer/test_lse_closure.cc",
     "ir/unittests/transformer/test_lse_closure_rse.cc",
     "ir/unittests/transformer/test_lse_redundant_store.cc",
+    "ir/unittests/transformer/test_new_opts.cc",
     "ir/unittests/transformer/test_normalize_phi.cc",
     "ir/unittests/transformer/test_opt_indirect_jmp.cc",
     "ir/unittests/transformer/test_toplevel_cse.cc",

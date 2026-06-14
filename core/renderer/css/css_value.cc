@@ -572,6 +572,15 @@ std::string CSSValue::Substitution(
     const CSSValue& css_value, const CustomPropertiesMap& custom_properties,
     const CycleDetector& detector, int max_depth,
     const HandleCustomPropertyFunc& handle_func) {
+  if (css_value.IsVariable() &&
+      !css_value.optionals_.HasValue<VarReferenceField>()) {
+    CSSValue normalized_value(css_value);
+    if (normalized_value.ToVarReference()) {
+      return Substitution(normalized_value, custom_properties, detector,
+                          max_depth, handle_func);
+    }
+  }
+
   if (!css_value.IsVariable() ||
       !css_value.optionals_.HasValue<VarReferenceField>()) {
     return css_value.AsStdString();
@@ -639,6 +648,15 @@ std::string CSSValue::Substitution(
 std::string CSSValue::SubstitutionResolved(
     const CSSValue& css_value, const CustomPropertiesMap& custom_properties,
     const HandleCustomPropertyFunc& handle_func) {
+  if (css_value.IsVariable() &&
+      !css_value.optionals_.HasValue<VarReferenceField>()) {
+    CSSValue normalized_value(css_value);
+    if (normalized_value.ToVarReference()) {
+      return SubstitutionResolved(normalized_value, custom_properties,
+                                  handle_func);
+    }
+  }
+
   if (!css_value.IsVariable() ||
       !css_value.optionals_.HasValue<VarReferenceField>()) {
     return css_value.AsStdString();

@@ -38,6 +38,7 @@
 #include "core/renderer/dom/fiber/list_element.h"
 #include "core/renderer/dom/fiber/none_element.h"
 #include "core/renderer/dom/fiber/page_element.h"
+#include "core/renderer/dom/fiber/platform_layout_function_wrapper.h"
 #include "core/renderer/dom/fiber/raw_text_element.h"
 #include "core/renderer/dom/fiber/scroll_element.h"
 #include "core/renderer/dom/fiber/template_element.h"
@@ -174,6 +175,66 @@ TemplateCallbackValues CreateTemplateCallbackValues(
     let enqueueComponent = () => {};
     let componentAtIndexes = () => {};
   )";
+  lepus::BytecodeGenerator::GenerateBytecode(
+      lepus_runtime->GetMTSContext(), js_source, lepus_runtime->GetSdkVersion(),
+      "");
+  lepus_runtime->Execute(nullptr);
+
+  return TemplateCallbackValues{
+      lepus_runtime, lepus_runtime->GetGlobalData("componentAtIndex"),
+      lepus_runtime->GetGlobalData("enqueueComponent"),
+      lepus_runtime->GetGlobalData("componentAtIndexes")};
+}
+
+TemplateCallbackValues CreateTemplateCallbackValuesReturningSign(
+    TemplateAssembler* template_assembler, int32_t sign) {
+  auto lepus_runtime = runtime::MTSRuntime::CreateContext(
+      runtime::ContextType::LepusNGContextType);
+  lepus_runtime->Initialize();
+  lepus_runtime->SetGlobalData(
+      BASE_STATIC_STRING(tasm::kTemplateAssembler),
+      lepus::Value(
+          static_cast<runtime::MTSRuntime::Delegate*>(template_assembler)));
+  template_assembler->template_entries_[DEFAULT_ENTRY_NAME]->SetVm(
+      lepus_runtime);
+
+  std::string js_source =
+      "let componentAtIndex = () => " + std::to_string(sign) + R"(;
+       let enqueueComponent = () => {};
+       let componentAtIndexes = () => {};
+      )";
+  lepus::BytecodeGenerator::GenerateBytecode(
+      lepus_runtime->GetMTSContext(), js_source, lepus_runtime->GetSdkVersion(),
+      "");
+  lepus_runtime->Execute(nullptr);
+
+  return TemplateCallbackValues{
+      lepus_runtime, lepus_runtime->GetGlobalData("componentAtIndex"),
+      lepus_runtime->GetGlobalData("enqueueComponent"),
+      lepus_runtime->GetGlobalData("componentAtIndexes")};
+}
+
+TemplateCallbackValues CreateTemplateCallbackValuesRecordingEnqueue(
+    TemplateAssembler* template_assembler, int32_t sign) {
+  auto lepus_runtime = runtime::MTSRuntime::CreateContext(
+      runtime::ContextType::LepusNGContextType);
+  lepus_runtime->Initialize();
+  lepus_runtime->SetGlobalData(
+      BASE_STATIC_STRING(tasm::kTemplateAssembler),
+      lepus::Value(
+          static_cast<runtime::MTSRuntime::Delegate*>(template_assembler)));
+  template_assembler->template_entries_[DEFAULT_ENTRY_NAME]->SetVm(
+      lepus_runtime);
+
+  std::string js_source =
+      "let lastEnqueueSign = -1;"
+      "let componentAtIndex = () => " +
+      std::to_string(sign) + R"(;
+       let enqueueComponent = (_list, _listID, sign) => {
+         lastEnqueueSign = sign;
+       };
+       let componentAtIndexes = () => {};
+      )";
   lepus::BytecodeGenerator::GenerateBytecode(
       lepus_runtime->GetMTSContext(), js_source, lepus_runtime->GetSdkVersion(),
       "");
@@ -2679,6 +2740,26 @@ TEST_P(FiberElementTest,
 
   parent->RemoveLayoutNode(child.get());
   EXPECT_FALSE(child->attached_to_layout_parent_);
+}
+
+TEST_P(FiberElementTest,
+       LayoutInElementLevelOrderCustomNodeBindsLayoutObjectDuringFlushProps) {
+  manager->page_options_.embedded_mode_ = static_cast<EmbeddedMode>(
+      static_cast<int32_t>(manager->page_options_.embedded_mode_) |
+      static_cast<int32_t>(EmbeddedMode::LAYOUT_IN_ELEMENT));
+
+  auto page = manager->CreateFiberPage("page", 11);
+  auto child = manager->CreateFiberNode("view");
+  child->layout_node_type_ = LayoutNodeType::CUSTOM;
+  page->InsertNode(child);
+
+  child->MarkParallelFlushFlag(Element::kFlagLevelOrderParallel);
+  auto reduce_task = child->PrepareForCreateOrUpdate();
+  reduce_task();
+
+  ASSERT_NE(child->slnode(), nullptr);
+  ASSERT_NE(child->customized_layout_node_, nullptr);
+  EXPECT_EQ(child->customized_layout_node_->layout_object_, child->slnode());
 }
 
 TEST_P(FiberElementTest, InsertNode) {
@@ -6413,6 +6494,18 @@ TEST_P(FiberElementTest, CheckFlattenRelatedFlags) {
   page->InsertNode(text);
   page->FlushActionsAsRoot();
   EXPECT_TRUE(text->TendToFlatten() == true);
+}
+
+TEST_P(FiberElementTest, FragmentLayerRenderFlattenIgnoresEventListenerFlag) {
+  manager->page_options_.SetEmbeddedMode(EmbeddedMode::UNSET);
+  auto view = manager->CreateFiberView();
+  view->has_event_listener_ = true;
+  EXPECT_FALSE(view->TendToFlatten());
+
+  manager->page_options_.SetEmbeddedMode(EmbeddedMode::FRAGMENT_LAYER_RENDER);
+  auto fragment_layer_view = manager->CreateFiberView();
+  fragment_layer_view->has_event_listener_ = true;
+  EXPECT_TRUE(fragment_layer_view->TendToFlatten());
 }
 
 TEST_P(FiberElementTest,
@@ -11640,7 +11733,7 @@ TEST_P(FiberElementTest, ApplyTemplateAttributesSpecialKeys) {
                     lepus::Value(), 1},
           Attribute{ATTRIBUTE_BINDING_TYPE_DYNAMIC, base::String("id"),
                     lepus::Value(), 2},
-          Attribute{ATTRIBUTE_BINDING_TYPE_DYNAMIC, base::String("cssID"),
+          Attribute{ATTRIBUTE_BINDING_TYPE_DYNAMIC, base::String("css-id"),
                     lepus::Value(), 3},
           Attribute{ATTRIBUTE_BINDING_TYPE_DYNAMIC, base::String("data-test"),
                     lepus::Value(), 4},
@@ -11677,7 +11770,27 @@ TEST_P(FiberElementTest, ApplyTemplateAttributesSpecialKeys) {
   EXPECT_EQ(target->data_model_->attributes().count("class"), 0u);
   EXPECT_EQ(target->data_model_->attributes().count("style"), 0u);
   EXPECT_EQ(target->data_model_->attributes().count("id"), 0u);
-  EXPECT_EQ(target->data_model_->attributes().count("cssID"), 0u);
+  EXPECT_EQ(target->data_model_->attributes().count("css-id"), 0u);
+}
+
+TEST_P(FiberElementTest, ApplyTemplateAttributesLegacyCSSIDAsAttribute) {
+  auto attribute_slots = lepus::CArray::Create();
+  attribute_slots->emplace_back(lepus::Value(456));
+
+  auto target = manager->CreateFiberView();
+  target->SetCSSID(123);
+
+  auto template_attributes = std::make_shared<const TemplateAttributes>(
+      TemplateAttributes{Attribute{ATTRIBUTE_BINDING_TYPE_DYNAMIC,
+                                   base::String("cssID"), lepus::Value(), 0}});
+  target->SetTemplateAttributes(template_attributes);
+
+  TreeResolver::ApplyTemplateAttributesToElement(
+      target.get(), lepus::Value(std::move(attribute_slots)));
+
+  EXPECT_EQ(target->GetCSSID(), 123);
+  ASSERT_EQ(target->data_model_->attributes().count("cssID"), 1u);
+  EXPECT_EQ(target->data_model_->attributes().at("cssID").Number(), 456);
 }
 
 TEST_P(FiberElementTest, ApplyTemplateDataAttributePreservesEmptyValue) {
@@ -11749,6 +11862,120 @@ TEST_P(FiberElementTest, ApplyTemplateAttributesListCallbackKeys) {
   EXPECT_EQ(target->ComponentAtIndex(0, 0, false), list::kInvalidIndex);
   target->ComponentAtIndexes(lepus::CArray::Create(), lepus::CArray::Create());
   target->EnqueueComponent(0);
+}
+
+TEST_P(FiberElementTest, ComponentAtIndexReturnsResolvedTemplateElementRootId) {
+  auto template_item =
+      fml::AdoptRef<TemplateElement>(new TemplateElement(manager));
+  template_item->SetTypedTag(base::String("view"));
+  auto template_root = template_item->GetRoot();
+  ASSERT_NE(template_root, nullptr);
+
+  auto callbacks = CreateTemplateCallbackValuesReturningSign(
+      tasm.get(), template_item->impl_id());
+  auto target = manager->CreateFiberList(
+      tasm.get(), base::String("list"), callbacks.component_at_index,
+      callbacks.enqueue_component, callbacks.component_at_indexes);
+  auto page = manager->CreateFiberPage("page", 11);
+  manager->SetFiberPageElement(page);
+  page->InsertNode(target);
+
+  EXPECT_EQ(target->ComponentAtIndex(0, 1, false), template_root->impl_id());
+}
+
+TEST_P(FiberElementTest, EnqueueComponentMapsResolvedTemplateRootIdToShellId) {
+  auto template_item =
+      fml::AdoptRef<TemplateElement>(new TemplateElement(manager));
+  template_item->SetTypedTag(base::String("view"));
+  auto template_root = template_item->GetRoot();
+  ASSERT_NE(template_root, nullptr);
+
+  auto callbacks = CreateTemplateCallbackValuesRecordingEnqueue(
+      tasm.get(), template_item->impl_id());
+  auto target = manager->CreateFiberList(
+      tasm.get(), base::String("list"), callbacks.component_at_index,
+      callbacks.enqueue_component, callbacks.component_at_indexes);
+  auto page = manager->CreateFiberPage("page", 11);
+  manager->SetFiberPageElement(page);
+  page->InsertNode(target);
+
+  ASSERT_EQ(target->ComponentAtIndex(0, 1, false), template_root->impl_id());
+  target->EnqueueComponent(template_root->impl_id());
+
+  EXPECT_EQ(callbacks.runtime->GetGlobalData("lastEnqueueSign").Number(),
+            template_item->impl_id());
+}
+
+TEST_P(FiberElementTest,
+       ComponentAtIndexKeepsUnresolvedTemplateElementShellId) {
+  auto template_item =
+      fml::AdoptRef<TemplateElement>(new TemplateElement(manager));
+  template_item->SetTypedTag(base::String("view"));
+  ASSERT_EQ(template_item->result_, nullptr);
+
+  auto callbacks = CreateTemplateCallbackValuesReturningSign(
+      tasm.get(), template_item->impl_id());
+  auto target = manager->CreateFiberList(
+      tasm.get(), base::String("list"), callbacks.component_at_index,
+      callbacks.enqueue_component, callbacks.component_at_indexes);
+  auto page = manager->CreateFiberPage("page", 11);
+  manager->SetFiberPageElement(page);
+  page->InsertNode(target);
+
+  EXPECT_EQ(target->ComponentAtIndex(0, 1, false), template_item->impl_id());
+  EXPECT_EQ(template_item->result_, nullptr);
+}
+
+TEST_P(FiberElementTest,
+       OnPatchFinishNormalizesTemplateListItemIdsAfterResolve) {
+  auto page = manager->CreateFiberPage("page", 11);
+  manager->SetFiberPageElement(page);
+
+  auto template_item =
+      fml::AdoptRef<TemplateElement>(new TemplateElement(manager));
+  template_item->SetTypedTag(base::String("view"));
+  auto template_root = template_item->GetRoot();
+  ASSERT_NE(template_root, nullptr);
+
+  auto normal_item = manager->CreateFiberView();
+  auto missing_id = template_root->impl_id() + normal_item->impl_id() + 1000;
+
+  auto options = std::make_shared<PipelineOptions>();
+  options->trigger_layout_ = false;
+  options->list_comp_id_ = template_item->impl_id();
+  options->list_item_ids_ = {template_item->impl_id(), normal_item->impl_id(),
+                             missing_id};
+
+  manager->OnPatchFinish(options, page.get());
+
+  EXPECT_EQ(options->list_comp_id_, template_root->impl_id());
+  ASSERT_EQ(options->list_item_ids_.size(), 3u);
+  EXPECT_EQ(options->list_item_ids_[0], template_root->impl_id());
+  EXPECT_EQ(options->list_item_ids_[1], normal_item->impl_id());
+  EXPECT_EQ(options->list_item_ids_[2], missing_id);
+}
+
+TEST_P(FiberElementTest,
+       OnPatchFinishKeepsUnresolvedTemplateListItemIdsUnchanged) {
+  auto page = manager->CreateFiberPage("page", 11);
+  manager->SetFiberPageElement(page);
+
+  auto template_item =
+      fml::AdoptRef<TemplateElement>(new TemplateElement(manager));
+  template_item->SetTypedTag(base::String("view"));
+  ASSERT_EQ(template_item->result_, nullptr);
+
+  auto options = std::make_shared<PipelineOptions>();
+  options->trigger_layout_ = false;
+  options->list_comp_id_ = template_item->impl_id();
+  options->list_item_ids_ = {template_item->impl_id()};
+
+  manager->OnPatchFinish(options, page.get());
+
+  EXPECT_EQ(options->list_comp_id_, template_item->impl_id());
+  ASSERT_EQ(options->list_item_ids_.size(), 1u);
+  EXPECT_EQ(options->list_item_ids_[0], template_item->impl_id());
+  EXPECT_EQ(template_item->result_, nullptr);
 }
 
 TEST_P(FiberElementTest, ApplyTemplateAttributesIgnoresInvalidListCallbacks) {
@@ -19614,6 +19841,165 @@ TEST_P(FiberElementTest,
   manager->SetEnableParallelElement(false);
   manager->SetEnableLevelOrderTraversing(false);
   EXPECT_FALSE(page->ShouldFallbackToSerialForNewStylingPipeline());
+}
+
+TEST_P(FiberElementTest,
+       NewStylingMediaQueryReResolveOnViewportChangeNoDynamicUnits) {
+  auto config = std::make_shared<PageConfig>();
+  config->SetEnableFiberArch(true);
+  config->SetEnableNewStylingPipeline(true);
+  config->SetEnableStandardCSSSelector(true);
+  manager->SetConfig(config);
+  manager->GetLynxEnvConfig().UpdateViewport(300, SLMeasureModeDefinite, 600,
+                                             SLMeasureModeDefinite);
+
+  CSSParserTokenMap token_map;
+  std::vector<int32_t> dependent_ids;
+  CSSKeyframesTokenMap keyframes;
+  CSSFontFaceRuleMap font_faces;
+  auto fragment = std::make_shared<SharedCSSFragment>(
+      1, dependent_ids, token_map, keyframes, font_faces);
+  fragment->SetEnableCSSSelector();
+
+  auto media_feature = css::MediaFeature(
+      css::MediaFeatureId::kMinWidth, "min-width",
+      css::MediaFeatureOperator::kNone,
+      css::MediaFeatureValue::Dimension(500, css::MediaFeatureUnit::kPixels));
+  auto feature_node =
+      fml::MakeRefCounted<css::MediaQueryFeatureExpNode>(media_feature);
+  auto media_query = fml::MakeRefCounted<css::MediaQuery>(
+      css::MediaQueryRestrictor::kNone, css::MediaQuery::kTypeAll,
+      feature_node);
+  std::vector<fml::RefPtr<const css::MediaQuery>> queries;
+  queries.push_back(std::move(media_query));
+  auto mq_set = fml::MakeRefCounted<css::MediaQuerySet>(std::move(queries));
+
+  auto condition_rule = fml::MakeRefCounted<css::ConditionRule>(fragment.get());
+  condition_rule->SetMediaQueries(std::move(mq_set));
+
+  auto selector_array = std::make_unique<css::LynxCSSSelector[]>(1);
+  selector_array[0].SetValue("foo");
+  selector_array[0].SetMatch(css::LynxCSSSelector::MatchType::kClass);
+  selector_array[0].SetLastInTagHistory(true);
+  selector_array[0].SetLastInSelectorList(true);
+  CSSParserConfigs configs;
+  auto parse_token = fml::MakeRefCounted<CSSParseToken>(configs);
+  parse_token->SetAttribute(kPropertyIDWidth,
+                            CSSValue(100, CSSValuePattern::PX));
+  parse_token->MarkParsed();
+  condition_rule->AddStyleRule(fml::MakeRefCounted<css::StyleRule>(
+      std::move(selector_array), std::move(parse_token)));
+  fragment->AddConditionRule(std::move(condition_rule));
+
+  ASSERT_TRUE(fragment->rule_set()->HasMediaQueryRules());
+
+  auto page = manager->CreateFiberPage("page", 0);
+  manager->SetFiberPageElement(page);
+  page->style_sheet_ = std::make_unique<CSSFragmentDecorator>(fragment.get());
+
+  page->MarkAttached();
+
+  auto child = manager->CreateFiberNode("view");
+  child->parent_component_element_ = page.get();
+  child->SetClasses(ClassList{base::String("foo")});
+  page->InsertNode(child);
+  page->FlushActionsAsRoot();
+
+  EXPECT_EQ(child->dynamic_style_flags_, 0u);
+  EXPECT_FALSE(StyleMapHasValue(
+      child->computed_css_style()->GetResolvedValues(),
+      CSSPropertyID::kPropertyIDWidth, CSSValue(100, CSSValuePattern::PX)));
+
+  manager->GetLynxEnvConfig().UpdateViewport(800, SLMeasureModeDefinite, 600,
+                                             SLMeasureModeDefinite);
+  page->UpdateDynamicElementStyle(DynamicCSSStylesManager::kUpdateViewport,
+                                  false);
+
+  EXPECT_TRUE(StyleMapHasValue(child->computed_css_style()->GetResolvedValues(),
+                               CSSPropertyID::kPropertyIDWidth,
+                               CSSValue(100, CSSValuePattern::PX)));
+}
+
+TEST_P(FiberElementTest, NewStylingMediaQueryReResolveOnColorSchemeChange) {
+  auto config = std::make_shared<PageConfig>();
+  config->SetEnableFiberArch(true);
+  config->SetEnableNewStylingPipeline(true);
+  config->SetEnableStandardCSSSelector(true);
+  manager->SetConfig(config);
+  // Start with light color scheme (0)
+  manager->GetLynxEnvConfig().SetPreferredColorScheme(
+      css::MediaPreferredColorScheme::kLight);
+  manager->GetLynxEnvConfig().UpdateViewport(375, SLMeasureModeDefinite, 812,
+                                             SLMeasureModeDefinite);
+
+  CSSParserTokenMap token_map;
+  std::vector<int32_t> dependent_ids;
+  CSSKeyframesTokenMap keyframes;
+  CSSFontFaceRuleMap font_faces;
+  auto fragment = std::make_shared<SharedCSSFragment>(
+      1, dependent_ids, token_map, keyframes, font_faces);
+  fragment->SetEnableCSSSelector();
+
+  // Build media query: @media (prefers-color-scheme: dark) { .foo { width:
+  // 200px } }
+  auto media_feature = css::MediaFeature(
+      css::MediaFeatureId::kPrefersColorScheme, "prefers-color-scheme",
+      css::MediaFeatureOperator::kNone, css::MediaFeatureValue::Ident("dark"));
+  auto feature_node =
+      fml::MakeRefCounted<css::MediaQueryFeatureExpNode>(media_feature);
+  auto media_query = fml::MakeRefCounted<css::MediaQuery>(
+      css::MediaQueryRestrictor::kNone, css::MediaQuery::kTypeAll,
+      feature_node);
+  std::vector<fml::RefPtr<const css::MediaQuery>> queries;
+  queries.push_back(std::move(media_query));
+  auto mq_set = fml::MakeRefCounted<css::MediaQuerySet>(std::move(queries));
+
+  auto condition_rule = fml::MakeRefCounted<css::ConditionRule>(fragment.get());
+  condition_rule->SetMediaQueries(std::move(mq_set));
+
+  auto selector_array = std::make_unique<css::LynxCSSSelector[]>(1);
+  selector_array[0].SetValue("foo");
+  selector_array[0].SetMatch(css::LynxCSSSelector::MatchType::kClass);
+  selector_array[0].SetLastInTagHistory(true);
+  selector_array[0].SetLastInSelectorList(true);
+  CSSParserConfigs configs;
+  auto parse_token = fml::MakeRefCounted<CSSParseToken>(configs);
+  parse_token->SetAttribute(kPropertyIDWidth,
+                            CSSValue(200, CSSValuePattern::PX));
+  parse_token->MarkParsed();
+  condition_rule->AddStyleRule(fml::MakeRefCounted<css::StyleRule>(
+      std::move(selector_array), std::move(parse_token)));
+  fragment->AddConditionRule(std::move(condition_rule));
+
+  ASSERT_TRUE(fragment->rule_set()->HasMediaQueryRules());
+
+  auto page = manager->CreateFiberPage("page", 0);
+  manager->SetFiberPageElement(page);
+  page->style_sheet_ = std::make_unique<CSSFragmentDecorator>(fragment.get());
+
+  page->MarkAttached();
+
+  auto child = manager->CreateFiberNode("view");
+  child->parent_component_element_ = page.get();
+  child->SetClasses(ClassList{base::String("foo")});
+  page->InsertNode(child);
+  page->FlushActionsAsRoot();
+
+  // Initially light scheme, so media query does not match
+  EXPECT_FALSE(StyleMapHasValue(
+      child->computed_css_style()->GetResolvedValues(),
+      CSSPropertyID::kPropertyIDWidth, CSSValue(200, CSSValuePattern::PX)));
+
+  // Switch to dark color scheme (1)
+  manager->GetLynxEnvConfig().SetPreferredColorScheme(
+      css::MediaPreferredColorScheme::kDark);
+  page->UpdateDynamicElementStyle(DynamicCSSStylesManager::kUpdateColorScheme,
+                                  false);
+
+  // Now the media query should match and width should be 200px
+  EXPECT_TRUE(StyleMapHasValue(child->computed_css_style()->GetResolvedValues(),
+                               CSSPropertyID::kPropertyIDWidth,
+                               CSSValue(200, CSSValuePattern::PX)));
 }
 
 INSTANTIATE_TEST_SUITE_P(FiberElementTestModule, FiberElementTest,

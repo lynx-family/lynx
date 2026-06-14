@@ -619,6 +619,7 @@ public class LynxBaseConfigurator : NSObject {
   public BOOL LynxBaseConfigurator::enableAsyncHydration enableAsyncHydration;
   public BOOL LynxBaseConfigurator::enableMTSModule enableMTSModule;
   public CGFloat LynxBaseConfigurator::fontScale fontScale;
+  public LynxColorScheme LynxBaseConfigurator::colorScheme colorScheme;
   public LynxBooleanOption LynxBaseConfigurator::enableGenericResourceFetcher enableGenericResourceFetcher;
   public id<LynxGenericResourceFetcher> LynxBaseConfigurator::genericResourceFetcher genericResourceFetcher;
   public id<LynxMediaResourceFetcher> LynxBaseConfigurator::mediaResourceFetcher mediaResourceFetcher;
@@ -1675,6 +1676,7 @@ public class LynxEventHandler : NSObject {
   public id< LynxEventTarget > LynxEventHandler()::hitTestInner:withEvent:(CGPoint point, [withEvent] nullable UIEvent *event);
   public NSInteger LynxEventHandler()::checkCanRespondTapOrClick:withSet:(id< LynxEventTarget > ui, [withSet] NSSet *set);
   public void LynxEventHandler()::removeEventGestures();
+  public void LynxEventHandler()::markDispatchInCurrentLynxPageOnlyIfNeeded:(LynxTouchEvent *event);
 }
 
 public protocol LynxEventObserver-p :  {
@@ -3985,6 +3987,7 @@ public protocol LynxTemplateRenderProtocol-p : <NSObject> {
   public void LynxTemplateRenderProtocol-p::updateViewport:(BOOL needLayout);
   public void LynxTemplateRenderProtocol-p::updateScreenMetricsWithWidth:height:(CGFloat width,[height] CGFloat height);
   public void LynxTemplateRenderProtocol-p::updateFontScale:(CGFloat scale);
+  public void LynxTemplateRenderProtocol-p::updateColorScheme:(LynxColorScheme scheme);
   public void LynxTemplateRenderProtocol-p::pauseRootLayoutAnimation();
   public void LynxTemplateRenderProtocol-p::resumeRootLayoutAnimation();
   public void LynxTemplateRenderProtocol-p::restartAnimation();
@@ -4431,7 +4434,7 @@ public class LynxUI : <__covariant V UIView> {
   public nullable V LynxUI::createView();
   public void LynxUI::updateFrame:withPadding:border:margin:withLayoutAnimation:(CGRect frame,[withPadding] UIEdgeInsets padding,[border] UIEdgeInsets border,[margin] UIEdgeInsets margin,[withLayoutAnimation] BOOL with);
   public void LynxUI::updateFrame:withPadding:border:withLayoutAnimation:(CGRect frame,[withPadding] UIEdgeInsets padding,[border] UIEdgeInsets border,[withLayoutAnimation] BOOL with);
-  public void LynxUI::updateSticky:(NSArray *info);
+  public void LynxUI::updateSticky:(nullable NSArray *info);
   public void LynxUI::checkStickyOnParentScroll:withOffsetY:(CGFloat offsetX,[withOffsetY] CGFloat offsetY);
   public void LynxUI::layoutDidFinished();
   public void LynxUI::finishLayoutOperation();
@@ -4785,6 +4788,7 @@ public class LynxUIExposure : NSObject {
   public void LynxUIExposure()::setObserverFrameRateForLynxView:(int32_t rate);
   public void LynxUIExposure()::setEnableCheckExposureOptimize:(BOOL enableCheckExposureOptimize);
   public void LynxUIExposure()::setEnableDisexposureWhenBackground:(BOOL enableDisexposureWhenBackground);
+  public void LynxUIExposure()::setEnableExposureDetection:(BOOL enable);
   public void LynxUIExposure()::exposureHandler:(CADisplayLink *sender);
   public void LynxUIExposure()::sendEvent:eventName:(NSMutableSet< LynxUIExposureDetail * > *uiSet, [eventName] NSString *eventName);
   public void LynxUIExposure()::removeFromRunLoop();
@@ -5447,6 +5451,7 @@ public class LynxView : UIView, <LUIBodyView>, <LynxSecurityTarget>, <LynxRender
   public void LynxView::unSubscribeSessionStorage:withId:(nonnull NSString *key,[withId] double callbackId);
   public void LynxView::updateScreenMetricsWithWidth:height:(CGFloat width,[height] CGFloat height);
   public void LynxView::updateFontScale:(CGFloat scale);
+  public void LynxView::updateColorScheme:(LynxColorScheme scheme);
   public void LynxView::pauseRootLayoutAnimation();
   public void LynxView::resumeRootLayoutAnimation();
   public void LynxView::resetAnimation();
@@ -6600,6 +6605,11 @@ public enum LynxThreadStrategyForRender {
   LynxThreadStrategyForRenderMostOnTASM
   LynxThreadStrategyForRenderPartOnLayout
   LynxThreadStrategyForRenderMultiThreads
+}
+
+public enum LynxColorScheme {
+  LynxColorSchemeLight
+  LynxColorSchemeDark
 }
 
   public typedef NS_OPTIONS(NSInteger, LynxEmbeddedMode);

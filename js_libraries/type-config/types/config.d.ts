@@ -362,6 +362,17 @@ export interface Config {
   enableEventHandleRefactor?: boolean;
 
   /**
+   * Include the element nodeIndex field in event target and currentTarget parameters.
+   *
+   * Supported platform: Android, HarmonyOS, iOS
+   *
+   * Since: LynxSDK 3.8
+   *
+   * @defaultValue false
+   */
+  enableEventTargetInfoNodeIndex?: boolean;
+
+  /**
    * Controls whether touches on the root area can pass through the Lynx page instead of being consumed by Lynx. When enabled, root touch dispatch returns false and overlay or host views underneath can receive the event; when disabled, Lynx keeps normal touch consumption.
    *
    * Supported platform: Android, HarmonyOS, iOS

@@ -6,7 +6,12 @@ export { LynxInspectorOwner } from './LynxInspectorOwner'
 
 export { LynxDebugBridge } from './LynxDebugBridge'
 
-export { HarmonyGlobalHandler, HarmonySessionHandler, HarmonyStateListener } from 'liblynxdevtool.so'
+export {
+  DebugRouterMessageHandler,
+  HarmonyGlobalHandler,
+  HarmonySessionHandler,
+  HarmonyStateListener
+} from 'liblynxdevtool.so'
 
 export { LynxDevToolEnv } from './LynxDevToolEnv'
 

@@ -44,12 +44,13 @@ class Animation : public std::enable_shared_from_this<Animation> {
   enum class State { kIdle = 0, kPlay, kPause, kStop };
   Animation(const base::String& name);
   ~Animation() = default;
-  void Play();
+  void Play(bool play_handles_initial_frame = true);
   void Pause();
   void Stop();
   void Destroy(bool need_clear_effect = true);
 
   void DoFrame(fml::TimePoint& frame_time);
+  KeyframeEffect::KeyframeSampleResult SampleAt(fml::TimePoint& frame_time);
 
   void SendStartEvent();
 
@@ -60,6 +61,11 @@ class Animation : public std::enable_shared_from_this<Animation> {
   void SendIterationEvent();
 
   const base::String& name() { return name_; }
+  const fml::TimePoint& start_time() const { return start_time_; }
+  const fml::TimePoint& pause_time() const { return pause_time_; }
+  const fml::TimeDelta& total_paused_duration() const {
+    return total_paused_duration_;
+  }
 
   void BindDelegate(AnimationDelegate* target);
 
@@ -80,11 +86,24 @@ class Animation : public std::enable_shared_from_this<Animation> {
   void UpdateAnimationData(starlight::AnimationData& data);
 
   starlight::AnimationData* animation_data() { return &animation_data_; }
+  const starlight::AnimationData* animation_data() const {
+    return &animation_data_;
+  }
 
   void SetRawCssId(tasm::CSSPropertyID id) { raw_style_set_.insert(id); }
 
   std::unordered_set<tasm::CSSPropertyID>& GetRawStyleSet() {
     return raw_style_set_;
+  }
+
+  void SetRawCustomProperty(const base::String& name) {
+    raw_custom_property_set_.insert(name);
+  }
+
+  void ClearRawCustomProperties() { raw_custom_property_set_.clear(); }
+
+  std::unordered_set<base::String>& GetRawCustomPropertySet() {
+    return raw_custom_property_set_;
   }
 
   State GetState() const { return state_; }
@@ -110,6 +129,9 @@ class Animation : public std::enable_shared_from_this<Animation> {
   void CreateEventAndSend(const base::String& event);
   bool Tick(fml::TimePoint& time);
   void RequestNextFrame();
+  void ResetPauseTiming();
+  void InvalidateSampleCache();
+  void ClearSampleHistory();
   AnimationDelegate* animation_delegate_{nullptr};
   base::String name_;
   std::unique_ptr<KeyframeEffect> keyframe_effect_;
@@ -119,11 +141,21 @@ class Animation : public std::enable_shared_from_this<Animation> {
   tasm::Element* element_{nullptr};
 
   std::unordered_set<tasm::CSSPropertyID> raw_style_set_{};
+  std::unordered_set<base::String> raw_custom_property_set_{};
 
   State state_{State::kIdle};
 
   bool is_transition_ = false;
   bool need_report_over_time_{true};
+  fml::TimePoint pause_time_{fml::TimePoint::Min()};
+  fml::TimeDelta total_paused_duration_{fml::TimeDelta::Zero()};
+  bool was_paused_{false};
+  bool has_cached_sample_{false};
+  fml::TimePoint cached_sample_time_{fml::TimePoint::Min()};
+  KeyframeEffect::KeyframeSampleResult cached_sample_result_;
+  bool has_last_sample_{false};
+  fml::TimePoint last_sample_time_{fml::TimePoint::Min()};
+  KeyframeEffect::KeyframeSampleResult last_sample_result_;
 };
 
 }  // namespace animation

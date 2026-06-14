@@ -131,6 +131,7 @@ dependencies {
     implementation project(':LynxXElement:Refresh')
     implementation project(':LynxXElement:BlurView')
     implementation project(':LynxXElement:WebView')
+    implementation project(':LynxXElement:Video')
 
     kapt project(':LynxProcessor')
     compileOnly project(':LynxProcessor')

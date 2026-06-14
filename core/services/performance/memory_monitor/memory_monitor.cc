@@ -11,6 +11,7 @@
 
 #include "base/trace/native/trace_event.h"
 #include "core/renderer/utils/lynx_env.h"
+#include "core/runtime/js/runtime_constant.h"
 #include "core/services/trace/service_trace_event_def.h"
 #include "third_party/rapidjson/document.h"
 
@@ -86,7 +87,7 @@ inline MemoryRecord BuildMemoryRecord(
     for (rapidjson::Value::ConstMemberIterator itr = obj.MemberBegin();
          itr != obj.MemberEnd(); ++itr) {
       std::string key = itr->name.GetString();
-      if (key == kRawRuntimeMemoryInfo) {
+      if (key == lynx::runtime::kRawRuntimeMemoryInfo) {
         continue;
       }
       std::string value;
@@ -101,7 +102,7 @@ inline MemoryRecord BuildMemoryRecord(
       } else {
         value = "Unsupported type";
       }
-      record.detail_->emplace(key, std::move(value));
+      record.detail_->emplace(std::move(key), std::move(value));
     }
   }
   return record;
@@ -211,13 +212,14 @@ void MemoryMonitor::DeallocateMemory(MemoryRecord&& record) {
   ReportMemory();
 }
 
-void MemoryMonitor::UpdateMemoryUsage(MemoryRecord&& record) {
+void MemoryMonitor::UpdateMemoryUsage(MemoryRecord&& record,
+                                      bool force_report) {
   if (!Enable()) {
     return;
   }
   auto it = memory_records_.find(record.category_);
   if (it != memory_records_.end()) {
-    if (it->second.size_bytes_ == record.size_bytes_) {
+    if (!force_report && (it->second.size_bytes_ == record.size_bytes_)) {
       // No change in memory usage, no need to report.
       return;
     }
@@ -225,7 +227,7 @@ void MemoryMonitor::UpdateMemoryUsage(MemoryRecord&& record) {
   } else {
     memory_records_.emplace(record.category_, std::move(record));
   }
-  ReportMemory();
+  ReportMemory(force_report);
 }
 
 void MemoryMonitor::UpdateScriptingEngineMemoryUsage(
@@ -233,14 +235,23 @@ void MemoryMonitor::UpdateScriptingEngineMemoryUsage(
   if (!Enable()) {
     return;
   }
-  auto it = info.find(kRawRuntimeMemoryInfo);
+  auto it = info.find(lynx::runtime::kRawRuntimeMemoryInfo);
   if (it == info.end()) {
     return;
   }
 
+  bool force_report = false;
+#if ENABLE_TRACE_PERFETTO
+  auto force_report_it = info.find(runtime::kForceReportMemoryInfo);
+  if (force_report_it != info.end()) {
+    force_report = force_report_it->second == "1";
+    info.erase(force_report_it);
+  }
+#endif
+
   rapidjson::Document doc;
   doc.Parse(it->second);
-  info.erase(kRawRuntimeMemoryInfo);
+  info.erase(lynx::runtime::kRawRuntimeMemoryInfo);
   if (doc.HasParseError() || !doc.IsObject()) {
     return;
   }
@@ -256,10 +267,11 @@ void MemoryMonitor::UpdateScriptingEngineMemoryUsage(
   if (lastElement.IsNull()) {
     return;
   }
-  UpdateMemoryUsage(BuildMemoryRecord(lastElement, std::move(info)));
+  UpdateMemoryUsage(BuildMemoryRecord(lastElement, std::move(info)),
+                    force_report);
 }
 
-void MemoryMonitor::ReportMemory() {
+void MemoryMonitor::ReportMemory(bool force_report) {
   if (sender_ == nullptr) {
     return;
   }
@@ -293,8 +305,9 @@ void MemoryMonitor::ReportMemory() {
   // Throttle reporting: only report if memory change exceeds the threshold.
   static int64_t memory_report_threshold_bytes =
       static_cast<int64_t>(MemoryChangeThresholdMb()) * 1024 * 1024;
-  if (size_bytes > 0 && std::abs(size_bytes - last_reported_size_bytes_) <
-                            memory_report_threshold_bytes) {
+  if (!force_report &&
+      (size_bytes > 0 && std::abs(size_bytes - last_reported_size_bytes_) <
+                             memory_report_threshold_bytes)) {
     return;
   }
   // Update the last reported size for the next check.

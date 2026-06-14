@@ -45,6 +45,7 @@ class BASE_DEVTOOL_EXPORT DevToolMessageDispatcher
   // for handling Non-CDP message
   void RegisterMessageHandler(const std::string& type,
                               std::unique_ptr<DevToolMessageHandler>&& handler);
+  void UnregisterMessageHandler(const std::string& type);
 
   CDPDomainAgentBase* GetAgent(const std::string& agent_name);
 

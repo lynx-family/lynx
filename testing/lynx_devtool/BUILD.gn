@@ -5,6 +5,7 @@
 group("devtool_unit_test") {
   testonly = true
   deps = [
+    "../../devtool/js_inspect/lepus/testing:lepusng_debugger_unittest_exec",
     "../../devtool/lynx_devtool/element:devtool_element_unit_test",
     "../../devtool/lynx_devtool/js_debug:js_debug_unit_test",
     "../../devtool/lynx_devtool/recorder:test_bench_utils_unit_test",

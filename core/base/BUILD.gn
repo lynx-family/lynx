@@ -77,12 +77,18 @@ if (is_android) {
 } else if (is_apple) {
   if (!enable_unittests && !is_oliver_node_lynx && !is_oliver_tasm &&
       (!is_mac || !desktop_enable_embedder_layer)) {
+    import("../../clay/common/config.gni")
+
     base_shared_sources += [
       "darwin/lynx_env_darwin.h",
       "darwin/lynx_env_darwin.mm",
-      "darwin/lynx_trail_hub_impl_darwin.h",
-      "darwin/lynx_trail_hub_impl_darwin.mm",
     ]
+    if (!use_clay_lynx_trail_hub_impl) {
+      base_shared_sources += [
+        "darwin/lynx_trail_hub_impl_darwin.h",
+        "darwin/lynx_trail_hub_impl_darwin.mm",
+      ]
+    }
   }
   if (is_ios) {
     base_shared_sources += [

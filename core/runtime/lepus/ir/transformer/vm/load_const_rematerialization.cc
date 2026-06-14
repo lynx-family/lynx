@@ -31,7 +31,7 @@ namespace ir {
 // cloning them closer to aggregate-building users. The gap threshold controls
 // how far a user may drift away from the current anchor before we decide to
 // insert another rematerialized load in the same block.
-constexpr size_t kConstRematerializationGap = 8;
+constexpr size_t kConstRematerializationGap = 32;
 constexpr size_t kConstRematerializationMinUsers = 4;
 constexpr size_t kConstRematerializationMinSpan = 64;
 

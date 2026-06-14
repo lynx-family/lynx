@@ -266,9 +266,9 @@ TEST_F(LEPUSIRTestLoadStoreEliminationPrecision,
   for (auto* inst : entry->InstRange()) {
     if (inst == get2) found_get2 = true;
   }
-  EXPECT_TRUE(found_get2)
-      << "Redundant load of non-numeric string key should NOT be eliminated "
-         "after numeric store (conservative)";
+  EXPECT_FALSE(found_get2)
+      << "Redundant load of non-numeric string key should be eliminated "
+         "after numeric store (\"foo\" can never alias any number key)";
 }
 
 TEST_F(LEPUSIRTestLoadStoreEliminationPrecision,
@@ -758,51 +758,6 @@ TEST_F(LEPUSIRTestLoadStoreEliminationPrecision, PreciseConstantAliasAnalysis) {
       << "Load from 'bar' should be eliminated as it doesn't alias with 'foo'";
 }
 
-// Test Numeric String vs Number Precise Alias
-TEST_F(LEPUSIRTestLoadStoreEliminationPrecision, NumericStringVsNumberPrecise) {
-  OpBuilder builder;
-  builder.SetModuleOp(mod);
-  builder.SetInsertionPointToEnd(mod->GetFunctionBlock());
-
-  std::string name = "test";
-  auto* func = builder.Create<FuncOp>(0, name);
-  func->Init(lepus_func);
-  auto* entry = builder.CreateBlock(func->GetSingleRegion(), BlockType::BT_INST,
-                                    0, "entry");
-  builder.SetInsertionPointToEnd(entry);
-
-  auto* obj =
-      builder.Create<GetGlobalInst>(0, (Literal*)builder.GetLiteralUint32(0),
-                                    TypeOp::CreateAnyType(&builder));
-
-  // 1. Load from "1"
-  uint32_t one_idx = lepus_func->AddConstString("1");
-  auto* one_str = builder.Create<LoadConstInst>(
-      0, builder.GetLiteralUint32(one_idx), TypeOp::CreateString(&builder));
-  builder.Create<GetTableInst>(0, obj, one_str);
-
-  // 2. Store to number 1
-  auto* one_num = builder.Create<LoadConstInst>(0, builder.GetLiteralInt32(1),
-                                                TypeOp::CreateInt32(&builder));
-  builder.Create<SetTableInst>(0, obj, one_num, builder.GetLiteralInt32(42));
-
-  // 3. Load from "1" again (Alias, should NOT be eliminated by redundancy with
-  // first load, but should be forwarded to 42)
-  auto* get_one_str2 = builder.Create<GetTableInst>(0, obj, one_str);
-
-  builder.Create<ReturnInst>(0, get_one_str2);
-
-  LoadStoreElimination pass(ir_ctx.get());
-  pass.RunOnFunction(func);
-
-  bool found_get_one_str2 = false;
-  for (auto* inst : entry->InstRange()) {
-    if (inst == get_one_str2) found_get_one_str2 = true;
-  }
-  EXPECT_TRUE(found_get_one_str2) << "Load of '1' should NOT be eliminated "
-                                     "after numeric store to 1 (invalidation)";
-}
-
 // Test various integer literal types and their aliasing with strings.
 TEST_F(LEPUSIRTestLoadStoreEliminationPrecision, VariousIntegerTypesAliasing) {
   OpBuilder builder;
@@ -864,6 +819,651 @@ TEST_F(LEPUSIRTestLoadStoreEliminationPrecision, VariousIntegerTypesAliasing) {
                                  "'123' and invalidate previous load";
   EXPECT_TRUE(found_get_str3) << "Uint32 literal 123 should alias with string "
                                  "'123' and invalidate previous load";
+}
+
+// =============================================================================
+// LocalTableSafeCall selective invalidation unit tests
+// =============================================================================
+
+// Test: A table-preserving call preserves GetTableInst-receiver table entries.
+// Scenario: item = data[i]; read item.x; call table_preserving_fn(); read
+// item.x Expected: second read eliminated (receiver is GetTableInst,
+// preserved).
+TEST_F(LEPUSIRTestLoadStoreEliminationPrecision,
+       LocalTableSafeCall_PreservesGetTableReceiver) {
+  OpBuilder builder;
+  builder.SetModuleOp(mod);
+  builder.SetInsertionPointToEnd(mod->GetFunctionBlock());
+
+  std::string name = "test_tp_get_table";
+  auto* func = builder.Create<FuncOp>(0, name);
+  func->Init(lepus_func);
+  auto* entry = builder.CreateBlock(func->GetSingleRegion(), BlockType::BT_INST,
+                                    0, "entry");
+  builder.SetInsertionPointToEnd(entry);
+
+  // Simulate: var data = GetUpvalue(); var item = data[0];
+  auto* data =
+      builder.Create<GetUpvalueInst>(0, func, builder.GetLiteralUint32(0));
+  auto* idx_key = builder.Create<LoadConstInst>(0, builder.GetLiteralInt32(0),
+                                                TypeOp::CreateInt32(&builder));
+  auto* item = builder.Create<GetTableInst>(0, data, idx_key);
+
+  // Read item.x
+  uint32_t x_idx = lepus_func->AddConstString("x");
+  auto* x_key = builder.Create<LoadConstInst>(
+      0, builder.GetLiteralUint32(x_idx), TypeOp::CreateString(&builder));
+  builder.Create<GetTableInst>(0, item, x_key);
+
+  // Call a table-preserving function
+  ArgList args;
+  auto* callee = builder.Create<GetToplevelClosureVarInst>(
+      0, builder.GetLiteralUint32(0), TypeOp::CreateAnyType(&builder));
+  auto* call = builder.Create<CallInst>(0, callee, args);
+  call->SetLocalTableSafeCall(true);
+
+  // Read item.x again — should be eliminated
+  auto* get2 = builder.Create<GetTableInst>(0, item, x_key);
+  builder.Create<ReturnInst>(0, get2);
+
+  LoadStoreElimination pass(ir_ctx.get());
+  pass.RunOnFunction(func);
+
+  bool found_get2 = false;
+  for (auto* inst : entry->InstRange()) {
+    if (inst == get2) found_get2 = true;
+  }
+  EXPECT_FALSE(found_get2)
+      << "Table entry with GetTableInst receiver should be PRESERVED across "
+         "a LocalTableSafeCall, so second load is eliminated";
+}
+
+// Test: A table-preserving call clears GetUpvalueInst-receiver table entries.
+// Scenario: read shared.x (shared via upvalue); call table_preserving_fn();
+//           read shared.x again
+// Expected: second read NOT eliminated (receiver is GetUpvalueInst, cleared).
+TEST_F(LEPUSIRTestLoadStoreEliminationPrecision,
+       LocalTableSafeCall_ClearsUpvalueReceiver) {
+  OpBuilder builder;
+  builder.SetModuleOp(mod);
+  builder.SetInsertionPointToEnd(mod->GetFunctionBlock());
+
+  std::string name = "test_tp_upvalue";
+  auto* func = builder.Create<FuncOp>(0, name);
+  func->Init(lepus_func);
+  auto* entry = builder.CreateBlock(func->GetSingleRegion(), BlockType::BT_INST,
+                                    0, "entry");
+  builder.SetInsertionPointToEnd(entry);
+
+  // var shared = GetUpvalue(0)
+  auto* shared =
+      builder.Create<GetUpvalueInst>(0, func, builder.GetLiteralUint32(0));
+
+  // Read shared.x
+  uint32_t x_idx = lepus_func->AddConstString("x");
+  auto* x_key = builder.Create<LoadConstInst>(
+      0, builder.GetLiteralUint32(x_idx), TypeOp::CreateString(&builder));
+  builder.Create<GetTableInst>(0, shared, x_key);
+
+  // Call a table-preserving function (may write to its own upvalue = shared)
+  ArgList args;
+  auto* callee = builder.Create<GetToplevelClosureVarInst>(
+      0, builder.GetLiteralUint32(0), TypeOp::CreateAnyType(&builder));
+  auto* call = builder.Create<CallInst>(0, callee, args);
+  call->SetLocalTableSafeCall(true);
+
+  // Read shared.x again — should NOT be eliminated
+  auto* get2 = builder.Create<GetTableInst>(0, shared, x_key);
+  builder.Create<ReturnInst>(0, get2);
+
+  LoadStoreElimination pass(ir_ctx.get());
+  pass.RunOnFunction(func);
+
+  bool found_get2 = false;
+  for (auto* inst : entry->InstRange()) {
+    if (inst == get2) found_get2 = true;
+  }
+  EXPECT_TRUE(found_get2)
+      << "Table entry with GetUpvalueInst receiver should be CLEARED by "
+         "LocalTableSafeCall (callee may write to same upvalue table)";
+}
+
+// Test: A table-preserving call preserves NewTableInst-receiver entries.
+// Scenario: var t = {}; t.x = 1; call table_preserving_fn(); read t.x
+// Expected: read eliminated (local allocation cannot escape to callee upvalue).
+TEST_F(LEPUSIRTestLoadStoreEliminationPrecision,
+       LocalTableSafeCall_PreservesLocalAllocation) {
+  OpBuilder builder;
+  builder.SetModuleOp(mod);
+  builder.SetInsertionPointToEnd(mod->GetFunctionBlock());
+
+  std::string name = "test_tp_local";
+  auto* func = builder.Create<FuncOp>(0, name);
+  func->Init(lepus_func);
+  auto* entry = builder.CreateBlock(func->GetSingleRegion(), BlockType::BT_INST,
+                                    0, "entry");
+  builder.SetInsertionPointToEnd(entry);
+
+  // var t = {}
+  auto* t = builder.Create<NewTableInst>(0);
+
+  // t.x = 1
+  uint32_t x_idx = lepus_func->AddConstString("x");
+  auto* x_key = builder.Create<LoadConstInst>(
+      0, builder.GetLiteralUint32(x_idx), TypeOp::CreateString(&builder));
+  auto* val = builder.GetLiteralInt32(1);
+  builder.Create<SetTableInst>(0, t, x_key, val);
+
+  // Call a table-preserving function
+  ArgList args;
+  auto* callee = builder.Create<GetToplevelClosureVarInst>(
+      0, builder.GetLiteralUint32(0), TypeOp::CreateAnyType(&builder));
+  auto* call = builder.Create<CallInst>(0, callee, args);
+  call->SetLocalTableSafeCall(true);
+
+  // Read t.x — should be eliminated (forwarded to val)
+  auto* get_x = builder.Create<GetTableInst>(0, t, x_key);
+  builder.Create<ReturnInst>(0, get_x);
+
+  LoadStoreElimination pass(ir_ctx.get());
+  pass.RunOnFunction(func);
+
+  bool found_get_x = false;
+  for (auto* inst : entry->InstRange()) {
+    if (inst == get_x) found_get_x = true;
+  }
+  EXPECT_FALSE(found_get_x)
+      << "Table entry with NewTableInst receiver should be PRESERVED across "
+         "a LocalTableSafeCall (local alloc cannot be callee's upvalue)";
+}
+
+// Test: A table-preserving call preserves Parameter-receiver entries.
+// Scenario: function f(arg) { read arg.x; call tp_fn(); read arg.x; }
+// Expected: second read eliminated (callee is verified param-safe).
+TEST_F(LEPUSIRTestLoadStoreEliminationPrecision,
+       LocalTableSafeCall_PreservesParameterReceiver) {
+  OpBuilder builder;
+  builder.SetModuleOp(mod);
+  builder.SetInsertionPointToEnd(mod->GetFunctionBlock());
+
+  std::string name = "test_tp_param";
+  auto* func = builder.Create<FuncOp>(0, name);
+  func->Init(lepus_func);
+  auto* entry = builder.CreateBlock(func->GetSingleRegion(), BlockType::BT_INST,
+                                    0, "entry");
+  builder.SetInsertionPointToEnd(entry);
+
+  // arg0
+  auto* arg = func->CreateParam(0);
+
+  // Read arg.x
+  uint32_t x_idx = lepus_func->AddConstString("x");
+  auto* x_key = builder.Create<LoadConstInst>(
+      0, builder.GetLiteralUint32(x_idx), TypeOp::CreateString(&builder));
+  builder.Create<GetTableInst>(0, arg, x_key);
+
+  // Call a table-preserving function
+  ArgList args;
+  auto* callee = builder.Create<GetToplevelClosureVarInst>(
+      0, builder.GetLiteralUint32(0), TypeOp::CreateAnyType(&builder));
+  auto* call = builder.Create<CallInst>(0, callee, args);
+  call->SetLocalTableSafeCall(true);
+
+  // Read arg.x again — should be eliminated
+  auto* get2 = builder.Create<GetTableInst>(0, arg, x_key);
+  builder.Create<ReturnInst>(0, get2);
+
+  LoadStoreElimination pass(ir_ctx.get());
+  pass.RunOnFunction(func);
+
+  bool found_get2 = false;
+  for (auto* inst : entry->InstRange()) {
+    if (inst == get2) found_get2 = true;
+  }
+  EXPECT_FALSE(found_get2)
+      << "Table entry with Parameter receiver should be PRESERVED across "
+         "a LocalTableSafeCall (callee does not write to param-derived)";
+}
+
+// Test: A regular (non-table-preserving, non-readonly) call clears ALL table
+// entries including GetTableInst receivers.
+// This is the baseline behavior confirming our selective invalidation only
+// applies to table-preserving calls.
+TEST_F(LEPUSIRTestLoadStoreEliminationPrecision,
+       RegularCall_ClearsAllTableEntries) {
+  OpBuilder builder;
+  builder.SetModuleOp(mod);
+  builder.SetInsertionPointToEnd(mod->GetFunctionBlock());
+
+  std::string name = "test_regular_call";
+  auto* func = builder.Create<FuncOp>(0, name);
+  func->Init(lepus_func);
+  auto* entry = builder.CreateBlock(func->GetSingleRegion(), BlockType::BT_INST,
+                                    0, "entry");
+  builder.SetInsertionPointToEnd(entry);
+
+  // var data = GetUpvalue(); var item = data[0];
+  auto* data =
+      builder.Create<GetUpvalueInst>(0, func, builder.GetLiteralUint32(0));
+  auto* idx_key = builder.Create<LoadConstInst>(0, builder.GetLiteralInt32(0),
+                                                TypeOp::CreateInt32(&builder));
+  auto* item = builder.Create<GetTableInst>(0, data, idx_key);
+
+  // Read item.x
+  uint32_t x_idx = lepus_func->AddConstString("x");
+  auto* x_key = builder.Create<LoadConstInst>(
+      0, builder.GetLiteralUint32(x_idx), TypeOp::CreateString(&builder));
+  builder.Create<GetTableInst>(0, item, x_key);
+
+  // Regular call (NOT table-preserving, NOT readonly)
+  ArgList args;
+  auto* callee = builder.Create<GetToplevelClosureVarInst>(
+      0, builder.GetLiteralUint32(0), TypeOp::CreateAnyType(&builder));
+  builder.Create<CallInst>(0, callee, args);
+
+  // Read item.x again — should NOT be eliminated (regular call clears all)
+  auto* get2 = builder.Create<GetTableInst>(0, item, x_key);
+  builder.Create<ReturnInst>(0, get2);
+
+  LoadStoreElimination pass(ir_ctx.get());
+  pass.RunOnFunction(func);
+
+  bool found_get2 = false;
+  for (auto* inst : entry->InstRange()) {
+    if (inst == get2) found_get2 = true;
+  }
+  EXPECT_TRUE(found_get2)
+      << "Regular call (not table-preserving) should clear ALL table entries "
+         "including GetTableInst receivers";
+}
+
+// Test: A table-preserving call clears upvalue/toplevel_var caches.
+// Scenario: read upvalue[0]; call table_preserving_fn(); read upvalue[0] again
+// Expected: second read IS eliminated (never-written upvalue cache preserved
+// across LocalTableSafeCall since no SetUpvalueInst exists for this slot).
+TEST_F(LEPUSIRTestLoadStoreEliminationPrecision,
+       LocalTableSafeCall_PreservesUpvalueCache) {
+  OpBuilder builder;
+  builder.SetModuleOp(mod);
+  builder.SetInsertionPointToEnd(mod->GetFunctionBlock());
+
+  std::string name = "test_tp_upvalue_cache";
+  auto* func = builder.Create<FuncOp>(0, name);
+  // Add upvalue info so analysis can determine it's never-written.
+  auto lf = lepus::Function::Create();
+  lf->AddUpvalue("neverWrittenVar", false, 0);
+  func->Init(lf);
+  auto* entry = builder.CreateBlock(func->GetSingleRegion(), BlockType::BT_INST,
+                                    0, "entry");
+  builder.SetInsertionPointToEnd(entry);
+
+  // Read upvalue[0] (using LiteralUint8 to match cache key type)
+  auto* upvalue_idx = builder.GetLiteralUint8(0);
+  builder.Create<GetUpvalueInst>(0, func, upvalue_idx);
+
+  // Call a native renderer function (LocalTableSafeCall)
+  ArgList args;
+  auto* callee = builder.Create<GetToplevelClosureVarInst>(
+      0, builder.GetLiteralUint32(1), TypeOp::CreateAnyType(&builder));
+  auto* call = builder.Create<CallInst>(0, callee, args);
+  call->SetLocalTableSafeCall(true);
+
+  // Read upvalue[0] again — SHOULD be eliminated (never-written upvalue
+  // preserved across LocalTableSafeCall)
+  auto* get2 = builder.Create<GetUpvalueInst>(0, func, upvalue_idx);
+  builder.Create<ReturnInst>(0, get2);
+
+  LoadStoreElimination pass(ir_ctx.get());
+  pass.RunOnFunction(func);
+
+  bool found_get2 = false;
+  for (auto* inst : entry->InstRange()) {
+    if (inst == get2) found_get2 = true;
+  }
+  EXPECT_FALSE(found_get2)
+      << "Upvalue cache should be PRESERVED by LocalTableSafeCall "
+         "(never-written upvalue slot is safe across native calls)";
+}
+
+// Test: A readonly call preserves ALL caches (including upvalue receivers).
+// Contrast with table-preserving call which clears upvalue-receiver entries.
+TEST_F(LEPUSIRTestLoadStoreEliminationPrecision,
+       ReadonlyCall_PreservesAllCachesIncludingUpvalue) {
+  OpBuilder builder;
+  builder.SetModuleOp(mod);
+  builder.SetInsertionPointToEnd(mod->GetFunctionBlock());
+
+  std::string name = "test_readonly";
+  auto* func = builder.Create<FuncOp>(0, name);
+  func->Init(lepus_func);
+  auto* entry = builder.CreateBlock(func->GetSingleRegion(), BlockType::BT_INST,
+                                    0, "entry");
+  builder.SetInsertionPointToEnd(entry);
+
+  // var shared = GetUpvalue(0)
+  auto* shared =
+      builder.Create<GetUpvalueInst>(0, func, builder.GetLiteralUint32(0));
+
+  // Read shared.x
+  uint32_t x_idx = lepus_func->AddConstString("x");
+  auto* x_key = builder.Create<LoadConstInst>(
+      0, builder.GetLiteralUint32(x_idx), TypeOp::CreateString(&builder));
+  builder.Create<GetTableInst>(0, shared, x_key);
+
+  // Call a readonly function (even stronger than table-preserving)
+  ArgList args;
+  auto* callee = builder.Create<GetGlobalInst>(0, builder.GetLiteralUint32(0),
+                                               TypeOp::CreateAnyType(&builder));
+  auto* call = builder.Create<CallInst>(0, callee, args);
+  call->SetReadonlyCall(true);
+
+  // Read shared.x again — should be eliminated (readonly = no side effects)
+  auto* get2 = builder.Create<GetTableInst>(0, shared, x_key);
+  builder.Create<ReturnInst>(0, get2);
+
+  LoadStoreElimination pass(ir_ctx.get());
+  pass.RunOnFunction(func);
+
+  bool found_get2 = false;
+  for (auto* inst : entry->InstRange()) {
+    if (inst == get2) found_get2 = true;
+  }
+  EXPECT_FALSE(found_get2)
+      << "ReadonlyCall should preserve ALL caches including upvalue-receiver "
+         "entries (stronger guarantee than LocalTableSafeCall)";
+}
+
+// Test: A table-preserving call preserves GetTableConstStringKeyInst receiver.
+// This is the most common pattern in real code: obj.prop access.
+TEST_F(LEPUSIRTestLoadStoreEliminationPrecision,
+       LocalTableSafeCall_PreservesConstStringKeyReceiver) {
+  OpBuilder builder;
+  builder.SetModuleOp(mod);
+  builder.SetInsertionPointToEnd(mod->GetFunctionBlock());
+
+  std::string name = "test_tp_const_str";
+  auto* func = builder.Create<FuncOp>(0, name);
+  func->Init(lepus_func);
+  auto* entry = builder.CreateBlock(func->GetSingleRegion(), BlockType::BT_INST,
+                                    0, "entry");
+  builder.SetInsertionPointToEnd(entry);
+
+  // var parent = GetUpvalue(); var item = parent.child (GetTableConstStringKey)
+  auto* parent =
+      builder.Create<GetUpvalueInst>(0, func, builder.GetLiteralUint32(0));
+  uint32_t child_idx = lepus_func->AddConstString("child");
+  auto* item = builder.Create<GetTableConstStringKeyInst>(
+      0, parent, builder.GetLiteralUint32(child_idx),
+      TypeOp::CreateTable(&builder));
+
+  // Read item.height
+  uint32_t h_idx = lepus_func->AddConstString("height");
+  auto* h_key = builder.Create<LoadConstInst>(
+      0, builder.GetLiteralUint32(h_idx), TypeOp::CreateString(&builder));
+  builder.Create<GetTableInst>(0, item, h_key);
+
+  // Call a table-preserving function
+  ArgList args;
+  auto* callee = builder.Create<GetToplevelClosureVarInst>(
+      0, builder.GetLiteralUint32(0), TypeOp::CreateAnyType(&builder));
+  auto* call = builder.Create<CallInst>(0, callee, args);
+  call->SetLocalTableSafeCall(true);
+
+  // Read item.height again — should be eliminated
+  auto* get2 = builder.Create<GetTableInst>(0, item, h_key);
+  builder.Create<ReturnInst>(0, get2);
+
+  LoadStoreElimination pass(ir_ctx.get());
+  pass.RunOnFunction(func);
+
+  bool found_get2 = false;
+  for (auto* inst : entry->InstRange()) {
+    if (inst == get2) found_get2 = true;
+  }
+  EXPECT_FALSE(found_get2)
+      << "Table entry with GetTableConstStringKeyInst receiver should be "
+         "PRESERVED across a LocalTableSafeCall";
+}
+
+// ===========================================================================
+// DSE Soundness: dynamic-key read must prevent dead-store elimination of
+// aliasing const-key stores.
+// ===========================================================================
+// Scenario (JS-like):
+//   obj.x = 1;           // store1 (SetTableConstStringKeyInst)
+//   tmp = obj[dyn_key];  // dynamic read — dyn_key could be "x" at runtime!
+//   obj.x = 2;           // store2 (SetTableConstStringKeyInst)
+//
+// The bug: pending_stores.erase(read_key) only does exact-match lookup.
+// read_key = {obj, param, false} doesn't match {obj, const_idx_x, true}.
+// So the pending store for store1 is never cleared, and DSE later
+// incorrectly removes store1 when store2 arrives.
+//
+// Expected (correct): store1 is NOT eliminated (the read might observe it).
+// Buggy behavior:     store1 IS eliminated (silent miscompilation).
+TEST_F(LEPUSIRTestLoadStoreEliminationPrecision,
+       DSE_DynamicKeyReadPreventsDeadStoreElimination) {
+  OpBuilder builder;
+  builder.SetModuleOp(mod);
+  builder.SetInsertionPointToEnd(mod->GetFunctionBlock());
+
+  std::string name = "test_dse_alias_bug";
+  auto* func = builder.Create<FuncOp>(0, name);
+  func->Init(lepus_func);
+  auto* entry = builder.CreateBlock(func->GetSingleRegion(), BlockType::BT_INST,
+                                    0, "entry");
+  builder.SetInsertionPointToEnd(entry);
+
+  // var obj = {}
+  auto* obj = builder.Create<NewTableInst>(0);
+
+  // obj.x = 1  (SetTableConstStringKeyInst)
+  uint32_t x_idx = lepus_func->AddConstString("x");  // index 0
+  auto* const_idx = builder.GetLiteralUint32(x_idx);
+  auto* val1 = builder.GetLiteralInt32(1);
+  auto* store1 = builder.Create<SetTableConstStringKeyInst>(
+      0, obj, (Literal*)const_idx, val1);
+
+  // tmp = obj[dyn_key]  (GetTableInst with a parameter key — could be "x")
+  auto* dyn_key = func->CreateParam(0);
+  builder.Create<GetTableInst>(0, obj, dyn_key);
+
+  // obj.x = 2  (SetTableConstStringKeyInst — same key as store1)
+  auto* val2 = builder.GetLiteralInt32(2);
+  builder.Create<SetTableConstStringKeyInst>(0, obj, (Literal*)const_idx, val2);
+
+  builder.Create<ReturnInst>(0, obj);
+
+  // Run LSE
+  LoadStoreElimination pass(ir_ctx.get());
+  pass.RunOnFunction(func);
+
+  // store1 must NOT be eliminated — the dynamic read might observe it.
+  bool found_store1 = false;
+  for (auto* inst : entry->InstRange()) {
+    if (inst == store1) found_store1 = true;
+  }
+  EXPECT_TRUE(found_store1)
+      << "BUG: store1 (obj.x = 1) was incorrectly eliminated by DSE. "
+         "A dynamic-key read obj[dyn_key] could alias 'x', so the store "
+         "is observable and must not be removed.";
+}
+
+// ===========================================================================
+// DSE Soundness (reverse direction): const-key read must prevent dead-store
+// elimination of aliasing dynamic-key stores.
+// ===========================================================================
+// Scenario (JS-like):
+//   obj[dyn_key] = 1;  // store1 (SetTableInst, dynamic key)
+//   tmp = obj.x;       // const-key read — if dyn_key == "x", observes store1!
+//   obj[dyn_key] = 2;  // store2 (SetTableInst, same dynamic key)
+//
+// Expected: store1 is NOT eliminated (const-key read might observe it).
+TEST_F(LEPUSIRTestLoadStoreEliminationPrecision,
+       DSE_ConstKeyReadPreventsDeadStoreOfDynamicKeyStore) {
+  OpBuilder builder;
+  builder.SetModuleOp(mod);
+  builder.SetInsertionPointToEnd(mod->GetFunctionBlock());
+
+  std::string name = "test_dse_reverse_alias";
+  auto* func = builder.Create<FuncOp>(0, name);
+  func->Init(lepus_func);
+  auto* entry = builder.CreateBlock(func->GetSingleRegion(), BlockType::BT_INST,
+                                    0, "entry");
+  builder.SetInsertionPointToEnd(entry);
+
+  // var obj = {}
+  auto* obj = builder.Create<NewTableInst>(0);
+
+  // obj[dyn_key] = 1  (SetTableInst with a parameter key)
+  auto* dyn_key = func->CreateParam(0);
+  auto* val1 = builder.GetLiteralInt32(1);
+  auto* store1 = builder.Create<SetTableInst>(0, obj, dyn_key, val1);
+
+  // tmp = obj.x  (GetTableConstStringKeyInst — could observe store1 if dyn_key
+  // == "x")
+  uint32_t x_idx = lepus_func->AddConstString("x");
+  auto* const_idx = builder.GetLiteralUint32(x_idx);
+  builder.Create<GetTableConstStringKeyInst>(0, obj, const_idx, nullptr);
+
+  // obj[dyn_key] = 2  (SetTableInst — same key as store1)
+  auto* val2 = builder.GetLiteralInt32(2);
+  builder.Create<SetTableInst>(0, obj, dyn_key, val2);
+
+  builder.Create<ReturnInst>(0, obj);
+
+  // Run LSE
+  LoadStoreElimination pass(ir_ctx.get());
+  pass.RunOnFunction(func);
+
+  // store1 must NOT be eliminated — the const-key read might observe it.
+  bool found_store1 = false;
+  for (auto* inst : entry->InstRange()) {
+    if (inst == store1) found_store1 = true;
+  }
+  EXPECT_TRUE(found_store1)
+      << "BUG: store1 (obj[dyn_key] = 1) was incorrectly eliminated by DSE. "
+         "A const-key read obj.x could alias dyn_key, so the store "
+         "is observable and must not be removed.";
+}
+
+// ===========================================================================
+// DSE Precision (non-aliasing read): a read with a provably non-aliasing key
+// should NOT prevent dead-store elimination.
+// ===========================================================================
+// Scenario:
+//   obj.x = 1;   // store1
+//   tmp = obj.y;  // read of DIFFERENT const key — cannot alias "x"
+//   obj.x = 2;   // store2 (overwrites store1)
+//
+// Expected: store1 IS eliminated (read of "y" cannot observe "x").
+TEST_F(LEPUSIRTestLoadStoreEliminationPrecision,
+       DSE_NonAliasingConstKeyReadDoesNotPreventDSE) {
+  OpBuilder builder;
+  builder.SetModuleOp(mod);
+  builder.SetInsertionPointToEnd(mod->GetFunctionBlock());
+
+  std::string name = "test_dse_non_aliasing";
+  auto* func = builder.Create<FuncOp>(0, name);
+  func->Init(lepus_func);
+  auto* entry = builder.CreateBlock(func->GetSingleRegion(), BlockType::BT_INST,
+                                    0, "entry");
+  builder.SetInsertionPointToEnd(entry);
+
+  // var obj = {}
+  auto* obj = builder.Create<NewTableInst>(0);
+
+  // obj.x = 1
+  uint32_t x_idx = lepus_func->AddConstString("x");
+  auto* const_idx_x = builder.GetLiteralUint32(x_idx);
+  auto* val1 = builder.GetLiteralInt32(1);
+  auto* store1 = builder.Create<SetTableConstStringKeyInst>(
+      0, obj, (Literal*)const_idx_x, val1);
+
+  // tmp = obj.y  (different key — provably non-aliasing)
+  uint32_t y_idx = lepus_func->AddConstString("y");
+  auto* const_idx_y = builder.GetLiteralUint32(y_idx);
+  builder.Create<GetTableConstStringKeyInst>(0, obj, const_idx_y, nullptr);
+
+  // obj.x = 2  (same key as store1)
+  auto* val2 = builder.GetLiteralInt32(2);
+  builder.Create<SetTableConstStringKeyInst>(0, obj, (Literal*)const_idx_x,
+                                             val2);
+
+  builder.Create<ReturnInst>(0, obj);
+
+  // Run LSE
+  LoadStoreElimination pass(ir_ctx.get());
+  pass.RunOnFunction(func);
+
+  // store1 SHOULD be eliminated — the read of "y" cannot observe "x".
+  bool found_store1 = false;
+  for (auto* inst : entry->InstRange()) {
+    if (inst == store1) found_store1 = true;
+  }
+  EXPECT_FALSE(found_store1)
+      << "Regression: store1 (obj.x = 1) should be eliminated by DSE. "
+         "The intervening read obj.y cannot alias 'x', so DSE is valid.";
+}
+
+// ===========================================================================
+// DSE Precision (different object): a read on a different object should NOT
+// prevent dead-store elimination on the original object.
+// ===========================================================================
+// Scenario:
+//   obj1.x = 1;         // store1
+//   tmp = obj2[dyn_key]; // read on DIFFERENT object
+//   obj1.x = 2;         // store2 (overwrites store1)
+//
+// Expected: store1 IS eliminated (read is on a different object).
+TEST_F(LEPUSIRTestLoadStoreEliminationPrecision,
+       DSE_DifferentObjectReadDoesNotPreventDSE) {
+  OpBuilder builder;
+  builder.SetModuleOp(mod);
+  builder.SetInsertionPointToEnd(mod->GetFunctionBlock());
+
+  std::string name = "test_dse_diff_obj";
+  auto* func = builder.Create<FuncOp>(0, name);
+  func->Init(lepus_func);
+  auto* entry = builder.CreateBlock(func->GetSingleRegion(), BlockType::BT_INST,
+                                    0, "entry");
+  builder.SetInsertionPointToEnd(entry);
+
+  // var obj1 = {}, obj2 = {}
+  auto* obj1 = builder.Create<NewTableInst>(0);
+  auto* obj2 = builder.Create<NewTableInst>(0);
+
+  // obj1.x = 1
+  uint32_t x_idx = lepus_func->AddConstString("x");
+  auto* const_idx_x = builder.GetLiteralUint32(x_idx);
+  auto* val1 = builder.GetLiteralInt32(1);
+  auto* store1 = builder.Create<SetTableConstStringKeyInst>(
+      0, obj1, (Literal*)const_idx_x, val1);
+
+  // tmp = obj2[dyn_key]  (dynamic read on a DIFFERENT object)
+  auto* dyn_key = func->CreateParam(0);
+  builder.Create<GetTableInst>(0, obj2, dyn_key);
+
+  // obj1.x = 2
+  auto* val2 = builder.GetLiteralInt32(2);
+  builder.Create<SetTableConstStringKeyInst>(0, obj1, (Literal*)const_idx_x,
+                                             val2);
+
+  builder.Create<ReturnInst>(0, obj1);
+
+  // Run LSE
+  LoadStoreElimination pass(ir_ctx.get());
+  pass.RunOnFunction(func);
+
+  // store1 SHOULD be eliminated — the read is on obj2, not obj1.
+  bool found_store1 = false;
+  for (auto* inst : entry->InstRange()) {
+    if (inst == store1) found_store1 = true;
+  }
+  EXPECT_FALSE(found_store1)
+      << "Regression: store1 (obj1.x = 1) should be eliminated by DSE. "
+         "The intervening read obj2[dyn_key] is on a different object, "
+         "so it cannot observe obj1.x.";
 }
 
 }  // namespace ir

@@ -9,6 +9,7 @@
 #include "gfx/animation/animation_keyframe_effect.h"
 
 #include "base/include/log/logging.h"
+#include "gfx/animation/animation_timing.h"
 
 namespace lynx {
 namespace gfx {
@@ -100,9 +101,8 @@ KeyframeEffect::TickResult KeyframeEffect::Tick(fml::TimePoint monotonic_time) {
     const int old_iteration_count = current_iteration_count_;
     fml::TimeDelta trimmed = model->TrimTimeToCurrentIteration(
         monotonic_time, current_iteration_count_);
-    if (current_iteration_count_ != old_iteration_count) {
-      ++result.iteration_events_due;
-    }
+    result.iteration_events_due +=
+        CountIterationEventsDue(old_iteration_count, current_iteration_count_);
     result.samples.push_back({model->curve(), trimmed});
   }
   result.has_finished_all = HasFinishedAll();

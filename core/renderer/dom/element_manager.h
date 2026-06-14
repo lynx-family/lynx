@@ -303,6 +303,7 @@ class ElementManager : public ElementContextDelegate,
 
   void UpdateScreenMetrics(float width, float height);
   void UpdateFontScale(float font_scale);
+  void UpdateColorScheme(int scheme);
   void UpdateViewport(float width, SLMeasureMode width_mode_, float height,
                       SLMeasureMode height_mode, bool need_layout);
 
@@ -801,6 +802,10 @@ class ElementManager : public ElementContextDelegate,
     return config_ ? config_->GetEnableMultiTouchParamsCompatible() : false;
   }
 
+  bool GetEnableEventTargetInfoNodeIndex() const {
+    return config_ ? config_->GetEnableEventTargetInfoNodeIndex() : false;
+  }
+
   std::shared_ptr<base::VSyncMonitor> &vsync_monitor() {
     return vsync_monitor_;
   }
@@ -968,6 +973,10 @@ class ElementManager : public ElementContextDelegate,
       const lepus::Value &component_at_index,
       const lepus::Value &enqueue_component,
       const lepus::Value &component_at_indexes);
+  // List layout consumes materialized roots, while Element Template callbacks
+  // track list item state by the TemplateElement shell uid.
+  int32_t ResolveTemplateElementRootIdForList(int32_t id);
+  int32_t ResolveTemplateElementShellIdForList(int32_t id);
 
   /**
    * create None Element, it's just meaningless Node
@@ -1457,6 +1466,7 @@ class ElementManager : public ElementContextDelegate,
 
   base::InlineLinearFlatSet<BaseElementContainer *, 4> dirty_stacking_contexts_;
   base::Vector<CachedTemplateElementTree> cached_template_element_trees_;
+  std::unordered_map<int32_t, int32_t> list_template_root_id_to_shell_id_;
 
   // TODO(yuyang), check this
   // This set holds the unique_id of the already flushed keyframes to ensure

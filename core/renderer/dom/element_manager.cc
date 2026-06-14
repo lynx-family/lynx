@@ -31,6 +31,7 @@
 #include "core/renderer/dom/fiber/page_element.h"
 #include "core/renderer/dom/fiber/raw_text_element.h"
 #include "core/renderer/dom/fiber/scroll_element.h"
+#include "core/renderer/dom/fiber/template_element.h"
 #include "core/renderer/dom/fiber/text_element.h"
 #include "core/renderer/dom/fiber/view_element.h"
 #include "core/renderer/dom/fiber/wrapper_element.h"
@@ -41,6 +42,7 @@
 #include "core/renderer/trace/renderer_trace_event_def.h"
 #include "core/renderer/ui_wrapper/painting/catalyzer.h"
 #include "core/renderer/ui_wrapper/painting/painting_context.h"
+#include "core/renderer/utils/base/tasm_constants.h"
 #include "core/renderer/utils/lynx_env.h"
 #include "core/services/recorder/recorder_controller.h"
 #include "core/services/timing_handler/timing_constants.h"
@@ -729,6 +731,24 @@ void ElementManager::UpdateFontScale(float font_scale) {
   }
 }
 
+void ElementManager::UpdateColorScheme(int scheme) {
+  auto value = static_cast<css::MediaPreferredColorScheme>(scheme);
+  if (value != css::MediaPreferredColorScheme::kLight &&
+      value != css::MediaPreferredColorScheme::kDark) {
+    return;
+  }
+  if (value == GetLynxEnvConfig().PreferredColorScheme()) {
+    return;
+  }
+  GetLynxEnvConfig().SetPreferredColorScheme(value);
+  if (root()) {
+    root()->UpdateDynamicElementStyle(
+        DynamicCSSStylesManager::kUpdateColorScheme, false);
+    auto options = std::make_shared<PipelineOptions>();
+    RequestResolve(options);
+  }
+}
+
 void ElementManager::SetInspectorElementObserver(
     const std::shared_ptr<InspectorElementObserver>
         &inspector_element_observer) {
@@ -1215,14 +1235,22 @@ fml::RefPtr<FiberElement> ElementManager::CreateFiberElement(
 fml::RefPtr<FiberElement> ElementManager::StaticCreateFiberElement(
     ElementBuiltInTagEnum enum_tag, const base::String &raw_tag) {
   fml::RefPtr<FiberElement> element = nullptr;
-  switch (enum_tag) {
+  // TODO(hexionghui): compatible for cui's fallback ui, remove this when render
+  // by flatten ui not displaylist.
+  ElementBuiltInTagEnum resolved_enum_tag =
+      raw_tag.IsEqual(kElementEcomImageTag) ? ELEMENT_IMAGE : enum_tag;
+  switch (resolved_enum_tag) {
     case ELEMENT_VIEW:
       element = fml::AdoptRef<ViewElement>(new ViewElement(nullptr));
       break;
-    case ELEMENT_IMAGE:
-      element = fml::AdoptRef<ImageElement>(
-          new ImageElement(nullptr, BASE_STATIC_STRING(kElementImageTag)));
+    case ELEMENT_IMAGE: {
+      base::String image_tag = raw_tag.IsEqual(kElementEcomImageTag)
+                                   ? raw_tag
+                                   : BASE_STATIC_STRING(kElementImageTag);
+      element =
+          fml::AdoptRef<ImageElement>(new ImageElement(nullptr, image_tag));
       break;
+    }
     case ELEMENT_INLINE_IMAGE:
       element = fml::AdoptRef<ImageElement>(
           new ImageElement(nullptr, BASE_STATIC_STRING(kElementImageTag)));
@@ -1297,6 +1325,9 @@ fml::RefPtr<FiberElement> ElementManager::StaticCreateFiberElement(
 
 fml::RefPtr<FiberElement> ElementManager::CreateFiberNode(
     const base::String &tag) {
+  if (tag.IsEqual(kElementEcomImageTag)) {
+    return fml::AdoptRef<FiberElement>(new ImageElement(this, tag));
+  }
   auto res = fml::AdoptRef<FiberElement>(new FiberElement(this, tag));
   return res;
 }
@@ -1400,6 +1431,45 @@ void ElementManager::TickListIfNeeded(
       list_element->OnListItemBatchFinished(options);
     }
   }
+}
+
+int32_t ElementManager::ResolveTemplateElementRootIdForList(int32_t id) {
+  if (id == 0 || node_manager_ == nullptr) {
+    return id;
+  }
+  auto *element = node_manager_->Get(id);
+  if (element == nullptr || !element->is_template()) {
+    return id;
+  }
+  auto *template_element = static_cast<TemplateElement *>(element);
+  auto root = template_element->GetResolvedRoot();
+  if (root == nullptr) {
+    return id;
+  }
+  list_template_root_id_to_shell_id_[root->impl_id()] = id;
+  return root->impl_id();
+}
+
+int32_t ElementManager::ResolveTemplateElementShellIdForList(int32_t id) {
+  if (id == 0 || node_manager_ == nullptr) {
+    return id;
+  }
+  auto mapping = list_template_root_id_to_shell_id_.find(id);
+  if (mapping == list_template_root_id_to_shell_id_.end()) {
+    return id;
+  }
+  auto *element = node_manager_->Get(mapping->second);
+  if (element == nullptr || !element->is_template()) {
+    list_template_root_id_to_shell_id_.erase(mapping);
+    return id;
+  }
+  auto *template_element = static_cast<TemplateElement *>(element);
+  auto root = template_element->GetResolvedRoot();
+  if (root == nullptr || root->impl_id() != id) {
+    list_template_root_id_to_shell_id_.erase(mapping);
+    return id;
+  }
+  return mapping->second;
 }
 
 void ElementManager::OnPatchFinish(std::shared_ptr<PipelineOptions> &option,
@@ -1526,6 +1596,11 @@ void ElementManager::OnPatchFinishForFiber(
   }
   FirePostMTSRenderTasks();
   element->FlushActionsAsRoot();
+  options->list_comp_id_ =
+      ResolveTemplateElementRootIdForList(options->list_comp_id_);
+  for (auto &list_item_id : options->list_item_ids_) {
+    list_item_id = ResolveTemplateElementRootIdForList(list_item_id);
+  }
 
   BindTimingFlagToPipelineOptions(options);
 
@@ -1540,7 +1615,6 @@ void ElementManager::OnPatchFinishForFiber(
 
   if (root() && root()->EnableFragmentLayerRender()) {
     root()->element_container()->FinishTasmOperation(options);
-    root()->element_container()->Flush();
   } else {
     catalyzer_->painting_context()->FinishTasmOperation(options);
   }
@@ -1562,7 +1636,6 @@ void ElementManager::OnPatchFinishForFiber(
     if (root() && root()->EnableFragmentLayerRender()) {
       TRACE_EVENT(LYNX_TRACE_CATEGORY, ELEMENT_MANAGER_REPAINT);
       root()->element_container()->CastToFragment()->Draw();
-      root()->element_container()->Flush();
     }
     if (root() && root()->EnableFragmentLayerRender()) {
       root()->element_container()->FinishLayoutOperation(options);

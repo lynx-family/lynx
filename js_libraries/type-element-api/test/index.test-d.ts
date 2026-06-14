@@ -52,6 +52,9 @@ describe('Test Element API Types', () => {
 
   it('should have correct global functions available', () => {
     expectTypeOf<typeof __CreatePage>().toBeFunction();
+    expectTypeOf<typeof __CreateComponent>().toBeFunction();
+    expectTypeOf<typeof __CreateComponent>().toBeCallableWith(1, 'component-id', 2, '', 'component-name', 'component/path');
+    expectTypeOf<typeof __CreateComponent>().toBeCallableWith(1, 'component-id', 2, '', 'component-name', 'component/path', {}, { nodeIndex: 42 });
     expectTypeOf<typeof __CreateView>().toBeFunction();
     expectTypeOf<typeof __CreateText>().toBeFunction();
     expectTypeOf<typeof __ElementAnimate>().toBeFunction();

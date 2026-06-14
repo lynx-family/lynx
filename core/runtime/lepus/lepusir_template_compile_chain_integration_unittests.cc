@@ -7,6 +7,7 @@
 #include <utility>
 #include <vector>
 
+#include "base/include/value/array.h"
 #include "base/include/value/base_value.h"
 #include "core/runtime/lepus/builtin.h"
 #include "core/runtime/lepus/bytecode_generator.h"
@@ -250,6 +251,173 @@ var result = g();
     EXPECT_TRUE(res_sdk38_opt_flag_true == c.expected);
     EXPECT_TRUE(res_sdk38_opt_flag_false == res_sdk38_opt_flag_true);
   }
+}
+
+TEST(LEPUS_IR_TEST_OPT_BYTECODE_SWITCH,
+     TemplateCompileChain_DoubleNotOrAndChain_SemanticEq) {
+  struct Case {
+    const char* name;
+    const char* src;
+    lepus::Value expected;
+  };
+
+  // Exercise !!x || !!y and !!x && !!y patterns that the IsInBooleanContext
+  // optimization now folds.
+  static const Case kCases[] = {
+      {
+          "double_not_or_both_truthy",
+          R"(
+var a = 1;
+var b = 2;
+var result = (!!a || !!b) ? 10 : 20;
+)",
+          lepus::Value(10),
+      },
+      {
+          "double_not_or_first_falsy",
+          R"(
+var a = 0;
+var b = 5;
+var result = (!!a || !!b) ? 10 : 20;
+)",
+          lepus::Value(10),
+      },
+      {
+          "double_not_or_both_falsy",
+          R"(
+var a = 0;
+var b = 0;
+var result = (!!a || !!b) ? 10 : 20;
+)",
+          lepus::Value(20),
+      },
+      {
+          "double_not_and_both_truthy",
+          R"(
+var a = 1;
+var b = 2;
+var result = (!!a && !!b) ? 10 : 20;
+)",
+          lepus::Value(10),
+      },
+      {
+          "double_not_and_first_falsy",
+          R"(
+var a = 0;
+var b = 5;
+var result = (!!a && !!b) ? 10 : 20;
+)",
+          lepus::Value(20),
+      },
+      {
+          "double_not_nested_or_and",
+          R"(
+var a = 1;
+var b = 0;
+var c = 3;
+var result = (!!a || !!b) && !!c ? 10 : 20;
+)",
+          lepus::Value(10),
+      },
+  };
+
+  for (const auto& c : kCases) {
+    // opt-off (sdk 2.6)
+    lepus::Value res_off;
+    ASSERT_TRUE(RunEncodeDecodeVmExecuteAndGetGlobal(c.src, false, "2.6",
+                                                     "result", &res_off, false))
+        << "case: " << c.name;
+    EXPECT_TRUE(res_off == c.expected) << "case (off): " << c.name;
+
+    // opt-on (sdk 3.8)
+    lepus::Value res_on;
+    ASSERT_TRUE(RunEncodeDecodeVmExecuteAndGetGlobal(c.src, true, "3.8",
+                                                     "result", &res_on, true))
+        << "case: " << c.name;
+    EXPECT_TRUE(res_on == c.expected) << "case (on): " << c.name;
+
+    // opt-on and opt-off produce same results
+    EXPECT_TRUE(res_off == res_on) << "case (eq): " << c.name;
+  }
+}
+
+// Mock _GetLength: returns array size as int (int32_t), matching the real
+// renderer_functions.cc implementation.
+static lepus::Value GetLengthMock(lepus::MTSContext*, lepus::Value* args,
+                                  int argc) {
+  if (argc < 1 || !args) return lepus::Value(0);
+  if (args[0].IsArray()) {
+    int len = static_cast<int>(args[0].Array()->size());
+    return lepus::Value(len);  // Value(int32_t) → lynx_value_int32
+  }
+  return lepus::Value(0);
+}
+
+static void RegisterGetLengthForTest(runtime::MTSRuntime* ctx) {
+  if (!ctx || !ctx->IsVMContext()) return;
+  if (auto* vm = runtime::MTSRuntime::ToVMContext(ctx)) {
+    lepus::RegisterCFunction(vm, "_GetLength", &GetLengthMock);
+  }
+}
+
+// Regression: _GetLength returns Value_Int32 at runtime. If the IR optimizer
+// incorrectly annotates it as Int64, instruction selection emits
+// TypeOp_GetArrayInt64 which reads val_int64 from a Value_Int32, producing
+// garbage or crashing.
+TEST(LEPUS_IR_TEST_OPT_BYTECODE_SWITCH, GetLengthResultAsArrayIndex_NoCrash) {
+  const char* src = R"(
+var arr = [10, 20, 30];
+var len = _GetLength(arr);
+var result = arr[len - 1];
+)";
+
+  // Encode with opt enabled
+  auto encode_ctx =
+      runtime::MTSRuntime::CreateContext(runtime::ContextType::VMContextType);
+  PrepareVMContext(encode_ctx.get());
+  encode_ctx->SetSdkVersion("3.8");
+  RegisterGetLengthForTest(encode_ctx.get());
+  if (auto* vm = runtime::MTSRuntime::ToVMContext(encode_ctx.get())) {
+    vm->SetOptBytecode(true);
+  }
+
+  lepus::BytecodeGenerator::GenerateBytecode(encode_ctx->GetMTSContext(), src,
+                                             "3.8", "");
+
+  auto writer =
+      ContextBinaryWriterWithStringTableForTest(encode_ctx.get(), "3.8");
+  writer.Encode();
+  std::vector<uint8_t> byte_array = writer.byte_array();
+
+  // Decode and execute
+  auto reader = BaseBinaryReaderForContextBundleTest(
+      std::make_unique<lepus::ByteArrayInputStream>(std::move(byte_array)),
+      "3.8");
+  uint8_t has_string_table = false;
+  ASSERT_TRUE(reader.ReadU8(&has_string_table));
+  if (has_string_table) {
+    ASSERT_TRUE(reader.DeserializeStringSection());
+  }
+  auto bundle =
+      runtime::ContextBundle::Create(runtime::ContextType::VMContextType);
+  ASSERT_NE(nullptr, bundle);
+  ASSERT_TRUE(reader.DecodeContextBundle(bundle.get()));
+
+  auto decode_ctx =
+      runtime::MTSRuntime::CreateContext(runtime::ContextType::VMContextType);
+  PrepareVMContext(decode_ctx.get());
+  decode_ctx->SetSdkVersion("3.8");
+  RegisterGetLengthForTest(decode_ctx.get());
+
+  ASSERT_TRUE(decode_ctx->DeSerialize(*bundle, true, nullptr));
+  ASSERT_TRUE(decode_ctx->Execute(bundle.get()));
+
+  lepus::Value out;
+  ASSERT_TRUE(decode_ctx->GetTopLevelVariableByName(
+      lynx::base::String("result"), &out));
+  // arr[3-1] == arr[2] == 30
+  EXPECT_TRUE(out == lepus::Value(30))
+      << "Expected 30 when using _GetLength result as array index";
 }
 
 }  // namespace tasm
