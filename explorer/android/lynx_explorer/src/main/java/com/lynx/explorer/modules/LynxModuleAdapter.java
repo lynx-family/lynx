@@ -3,6 +3,7 @@
 // LICENSE file in the root directory of this source tree.
 package com.lynx.explorer.modules;
 
+import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -20,6 +21,8 @@ import com.lynx.explorer.shell.TemplateDispatcher;
 import com.lynx.react.bridge.JavaOnlyMap;
 import com.lynx.react.bridge.WritableMap;
 import com.lynx.tasm.LynxEnv;
+import com.lynx.tasm.utils.ContextUtils;
+import java.lang.ref.WeakReference;
 
 public class LynxModuleAdapter {
   private Context mContext;
@@ -36,6 +39,33 @@ public class LynxModuleAdapter {
   private static final int OPEN_SCAN = 1;
   private static final LynxModuleAdapter sInstance = new LynxModuleAdapter();
 
+  private static class ActivityRequest {
+    @Nullable private final WeakReference<Activity> mActivityRef;
+
+    ActivityRequest(Context context) {
+      Activity activity = context != null ? ContextUtils.getActivity(context) : null;
+      mActivityRef = activity != null ? new WeakReference<>(activity) : null;
+    }
+
+    @Nullable
+    Activity getActivity() {
+      Activity activity = mActivityRef != null ? mActivityRef.get() : null;
+      if (activity == null || activity.isFinishing() || activity.isDestroyed()) {
+        return null;
+      }
+      return activity;
+    }
+  }
+
+  private static class OpenSchemaRequest extends ActivityRequest {
+    private final String mUrl;
+
+    OpenSchemaRequest(Context context, String url) {
+      super(context);
+      mUrl = url;
+    }
+  }
+
   public static LynxModuleAdapter getInstance() {
     return sInstance;
   }
@@ -47,10 +77,11 @@ public class LynxModuleAdapter {
       public void handleMessage(Message msg) {
         switch (msg.what) {
           case OPEN_SCAN:
-            startQRScanActivity();
+            startQRScanActivity(((ActivityRequest) msg.obj).getActivity());
             break;
           case OPEN_SCHEMA:
-            startFromUrl((String) msg.obj);
+            OpenSchemaRequest request = (OpenSchemaRequest) msg.obj;
+            startFromUrl(request.getActivity(), request.mUrl);
             break;
           default:
         }
@@ -62,12 +93,23 @@ public class LynxModuleAdapter {
   }
 
   public void openScan() {
-    mHandler.sendEmptyMessage(OPEN_SCAN);
+    openScan(mContext);
+  }
+
+  public void openScan(Context context) {
+    Message msg = Message.obtain();
+    msg.obj = new ActivityRequest(context);
+    msg.what = OPEN_SCAN;
+    mHandler.sendMessage(msg);
   }
 
   public void openSchema(String url) {
+    openSchema(mContext, url);
+  }
+
+  public void openSchema(Context context, String url) {
     Message msg = Message.obtain();
-    msg.obj = url;
+    msg.obj = new OpenSchemaRequest(context, url);
     msg.what = OPEN_SCHEMA;
     mHandler.sendMessage(msg);
   }
@@ -96,19 +138,28 @@ public class LynxModuleAdapter {
     return map;
   }
 
-  private void startQRScanActivity() {
-    Intent intent = new Intent(mContext, QRScanActivity.class);
-    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-    mContext.startActivity(intent);
+  private void startQRScanActivity(@Nullable Activity activity) {
+    Context startContext = getStartContext(activity);
+    Intent intent = new Intent(startContext, QRScanActivity.class);
+    if (!(startContext instanceof Activity)) {
+      intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+    }
+    startContext.startActivity(intent);
   }
 
-  private void startFromUrl(String url) {
-    TemplateDispatcher.dispatchUrl(mContext, url);
+  private void startFromUrl(@Nullable Activity activity, String url) {
+    Context startContext = getStartContext(activity);
+    int flags = startContext instanceof Activity ? 0 : Intent.FLAG_ACTIVITY_NEW_TASK;
+    TemplateDispatcher.dispatchUrl(startContext, url, flags);
   }
 
   private void startFromUrlSingleTop(String url) {
     TemplateDispatcher.dispatchUrl(
         mContext, url, Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
+  }
+
+  private Context getStartContext(@Nullable Activity activity) {
+    return activity != null ? activity : mContext;
   }
 
   public void saveThemePreferences(String theme, String value) {
