@@ -19,12 +19,12 @@ public class ExplorerModule extends LynxModule {
 
   @LynxMethod
   public void openScan() {
-    LynxModuleAdapter.getInstance().openScan();
+    LynxModuleAdapter.getInstance().openScan(mContext);
   }
 
   @LynxMethod
   public void openSchema(String url) {
-    LynxModuleAdapter.getInstance().openSchema(url);
+    LynxModuleAdapter.getInstance().openSchema(mContext, url);
   }
 
   @LynxMethod
@@ -50,7 +50,7 @@ public class ExplorerModule extends LynxModule {
   @Deprecated
   @LynxMethod
   public void openDevtoolSwitchPage() {
-    LynxModuleAdapter.getInstance().openSchema(DEVTOOL_SWITCH_ASSETS);
+    LynxModuleAdapter.getInstance().openSchema(mContext, DEVTOOL_SWITCH_ASSETS);
   }
 
   @LynxMethod
