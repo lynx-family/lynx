@@ -1,3 +1,6 @@
+## 0.0.15
+- Add compat_data and notes for `offset-path` and `offset-rotate` CSS properties.
+
 ## 0.0.14
 - Add formal_syntax and compat_data for `offset-distance` CSS property.
 - Add percentage value support for `offset-distance` CSS property.
