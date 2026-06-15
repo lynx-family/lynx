@@ -144,12 +144,7 @@ devtool_source_set("js_debug") {
     "../../../third_party/rapidjson:rapidjson",
   ]
   if (!is_android || is_headless) {
-    deps += [
-      ":devtool_qjs_bridge",
-
-      # TODO: Remove after splitting internal/OSS lepus_debug targets.
-      "//${lynx_dir}/devtool/js_inspect/lepus:lepus_debug",
-    ]
+    deps += [ ":devtool_qjs_bridge" ]
     if (jsengine_type == "v8") {
       deps += [ ":devtool_v8_bridge" ]
     }
@@ -190,6 +185,7 @@ unittest_set("js_debug_testset") {
     "../:devtool_common_config",
   ]
   sources = [
+    "../../js_inspect/lepus/testing/lepus_inspected_context_provider_unittest.cc",
     "helper/js_debug_helper_unittest.cc",
     "inspector_client_delegate_impl_unittest.cc",
     "java_script_debugger_ng_unittest.cc",
