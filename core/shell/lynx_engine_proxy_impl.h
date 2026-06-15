@@ -36,6 +36,10 @@ class LynxEngineProxyImpl : public LynxEngineProxy {
                        const pub::Value& params,
                        const std::string& params_name) override;
 
+  bool SendCancelableCustomEvent(const std::string& name, int32_t tag,
+                                 const pub::Value& params,
+                                 const std::string& params_name) override;
+
   void SendGestureEvent(int tag, int gesture_id, std::string name,
                         const pub::Value& params) override;
 

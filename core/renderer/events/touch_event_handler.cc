@@ -39,6 +39,14 @@
 namespace lynx {
 namespace tasm {
 
+namespace {
+
+event::DispatchEventResult NotCanceledCustomEventResult() {
+  return {event::EventCancelType::kNotCanceled, false};
+}
+
+}  // namespace
+
 #define EVENT_TOUCH_START "touchstart"
 #define EVENT_TOUCH_MOVE "touchmove"
 #define EVENT_TOUCH_CANCEL "touchcancel"
@@ -365,7 +373,7 @@ void TouchEventHandler::HandleCustomEvent(TemplateAssembler *tasm,
                                           const lepus::Value &params,
                                           const std::string &pname) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, TOUCH_EVENT_HANDLE_CUSTOM_EVENT,
-              [&name, instance_id = tasm->GetInstanceId()](
+              [&name, instance_id = tasm ? tasm->GetInstanceId() : -1](
                   lynx::perfetto::EventContext ctx) {
                 ctx.event()->add_debug_annotations("name", name);
                 ctx.event()->add_debug_annotations(INSTANCE_ID,
@@ -415,6 +423,56 @@ void TouchEventHandler::HandleCustomEvent(TemplateAssembler *tasm,
       }};
   HandleEventOperations(tasm, context, ops);
   return;
+}
+
+event::DispatchEventResult TouchEventHandler::HandleCancelableCustomEvent(
+    TemplateAssembler *tasm, const std::string &name, int tag,
+    const lepus::Value &params, const std::string &pname) {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, TOUCH_EVENT_HANDLE_CUSTOM_EVENT,
+              [&name, instance_id = tasm ? tasm->GetInstanceId() : -1](
+                  lynx::perfetto::EventContext ctx) {
+                ctx.event()->add_debug_annotations("name", name);
+                ctx.event()->add_debug_annotations(INSTANCE_ID,
+                                                   std::to_string(instance_id));
+              });
+  LOGI("SendCancelableCustomEvent event name:" << name << " tag:" << tag);
+
+  if (tasm == nullptr || tasm->page_proxy() == nullptr) {
+    LOGE("HandleCancelableCustomEvent error: tasm or page is null.");
+    return NotCanceledCustomEventResult();
+  }
+
+  if (tasm->EnableEventHandleRefactor()) {
+    auto target = node_manager_->Get(tag);
+    if (!target) {
+      LOGE("HandleCancelableCustomEvent error: the target is null.");
+      return NotCanceledCustomEventResult();
+    }
+    LOGI("HandleCancelableCustomEvent refactor target:"
+         << target->GetUniqueID() << " name:" << name
+         << " has_listener:" << target->HasEventListener(name));
+    int64_t timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(
+                            std::chrono::system_clock::now().time_since_epoch())
+                            .count();
+    auto event =
+        fml::MakeRefCounted<event::CustomEvent>(name, params, pname, timestamp);
+    auto event_ref = event;
+    auto result =
+        event::EventDispatcher::DispatchEvent(*target, std::move(event));
+    LOGI("HandleCancelableCustomEvent result name:"
+         << name << " tag:" << tag
+         << " default_prevented:" << event_ref->default_prevented()
+         << " consumed:" << result.consumed);
+    return {event_ref->default_prevented()
+                ? event::EventCancelType::kCanceledByEventHandler
+                : event::EventCancelType::kNotCanceled,
+            result.consumed};
+  }
+
+  // The legacy HandleEventOperations path only exposes propagation stop bits.
+  // It still dispatches the event, but it is not a valid preventDefault signal.
+  HandleCustomEvent(tasm, name, tag, params, pname);
+  return NotCanceledCustomEventResult();
 }
 
 void TouchEventHandler::HandlePseudoStatusChanged(int32_t id,

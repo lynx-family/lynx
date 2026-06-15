@@ -6,6 +6,8 @@
 #define LYNX_BASE_INCLUDE_FML_PLATFORM_NODE_MESSAGE_LOOP_NODE_H_
 
 #include <fcntl.h>
+
+#include <functional>
 #include <uv.h>
 
 #include "base/include/fml/macros.h"
@@ -23,14 +25,19 @@ class MessageLoopNode : public MessageLoopImpl {
   void Terminate() override;
 
   uv_loop_t* GetUVLoop() { return &uv_loop_; }
+  using UVRunCallback = std::function<int(uv_loop_t*, uv_run_mode)>;
+  void SetUVRunCallback(UVRunCallback callback);
 
  protected:
   void WakeUp(fml::TimePoint time_point) override;
 
  private:
+  int RunUV(uv_run_mode mode);
+
   uv_loop_t uv_loop_{};
   uv_timer_t timer_{};
   uv_async_t async_{};
+  UVRunCallback uv_run_callback_;
 
   bool running_{false};
 

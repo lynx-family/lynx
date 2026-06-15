@@ -2059,6 +2059,29 @@ void TemplateAssembler::SendCustomEvent(const std::string& name, int tag,
   touch_event_handler_->HandleCustomEvent(this, name, tag, params, pname);
 }
 
+bool TemplateAssembler::SendCancelableCustomEvent(const std::string& name,
+                                                  int tag,
+                                                  const lepus::Value& params,
+                                                  const std::string& pname) {
+#if ENABLE_TESTBENCH_RECORDER
+  if (page_proxy()->element_manager()->root()) {
+    tasm::recorder::TemplateAssemblerRecorder::RecordCustomEvent(
+        name, tag, page_proxy()->element_manager()->root()->impl_id(), params,
+        pname, record_id_);
+  }
+#endif
+  if (destroyed()) {
+    LOGI("Lynx SendCancelableCustomEvent failed, destroyed=true"
+         << " this:" << this);
+    return false;
+  }
+  EnsureTouchEventHandler();
+  auto result =
+      touch_event_handler_->HandleCancelableCustomEvent(this, name, tag, params,
+                                                       pname);
+  return result.cancel_type == event::EventCancelType::kCanceledByEventHandler;
+}
+
 void TemplateAssembler::SendAirComponentEvent(const std::string& event_name,
                                               const int component_id,
                                               const lepus::Value& params,

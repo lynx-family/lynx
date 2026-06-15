@@ -75,6 +75,8 @@ class LynxEventDispatcher : public EventDelegate {
 
   void OnSendCustomEvent(int view_id, const std::string& event_name,
                          clay::Value::Map args) override;
+  bool OnSendCancelableCustomEvent(int view_id, const std::string& event_name,
+                                   clay::Value::Map args) override;
   void OnSendGlobalEvent(const std::string& event_name,
                          clay::Value args) override;
 

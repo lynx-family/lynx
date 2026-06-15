@@ -280,6 +280,15 @@ class PageView : public BaseView,
     }
   }
 
+  bool SendCancelableCustomEvent(int id, const char* event_name,
+                                 clay::Value::Map params) {
+    if (!event_delegate_) {
+      return false;
+    }
+    return event_delegate_->OnSendCancelableCustomEvent(id, event_name,
+                                                        std::move(params));
+  }
+
   void AddGlobalExposureEvent(bool exposure,
                               std::unique_ptr<clay::Value::Map> params,
                               BaseView* view);

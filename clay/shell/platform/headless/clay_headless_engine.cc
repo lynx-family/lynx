@@ -61,6 +61,9 @@ bool ClayHeadlessEngine::RunEngine(
     command_line = fml::CommandLineFromArgcArgv(argv.size(), argv.data());
   }
   clay::Settings settings = clay::SettingsFromCommandLine(command_line);
+  if (renderer_config && renderer_config->type == kClayRendererTypeSoftware) {
+    settings.enable_software_rendering = true;
+  }
   if (icu_data_path) {
     settings.icu_data_path = icu_data_path;
   }

@@ -30,13 +30,15 @@ void NapiEnvironment::Attach() {
   attached_ = true;
 
   DCHECK(proxy_);
-  proxy_->Attach();
-  proxy_->SetupLoader();
-  proxy_->SetUncaughtExceptionHandler();
+  proxy_->RunWithRuntimeLock([this]() {
+    proxy_->Attach();
+    proxy_->SetupLoader();
+    proxy_->SetUncaughtExceptionHandler();
 
-  Napi::Env env = proxy_->Env();
-  env.SetInstanceData(kEnvClassID, this, nullptr, nullptr);
-  delegate_->OnAttach(env);
+    Napi::Env env = proxy_->Env();
+    env.SetInstanceData(kEnvClassID, this, nullptr, nullptr);
+    delegate_->OnAttach(env);
+  });
 }
 
 void NapiEnvironment::Detach() {
@@ -44,11 +46,13 @@ void NapiEnvironment::Detach() {
   attached_ = false;
 
   DCHECK(proxy_);
-  Napi::Env env = proxy_->Env();
-  delegate_->OnDetach(env);
-  proxy_->RemoveLoader();
+  proxy_->RunWithRuntimeLock([this]() {
+    Napi::Env env = proxy_->Env();
+    delegate_->OnDetach(env);
+    proxy_->RemoveLoader();
 
-  proxy_->Detach();
+    proxy_->Detach();
+  });
 }
 
 void NapiEnvironment::RegisterModule(const std::string& name,

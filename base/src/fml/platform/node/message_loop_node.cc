@@ -4,6 +4,8 @@
 
 #include "base/include/fml/platform/node/message_loop_node.h"
 
+#include <utility>
+
 namespace lynx {
 namespace fml {
 
@@ -39,13 +41,18 @@ MessageLoopNode::~MessageLoopNode() {
       },
       nullptr);
 
-  uv_run(&uv_loop_, UV_RUN_NOWAIT);
+  RunUV(UV_RUN_NOWAIT);
   uv_loop_close(&uv_loop_);
 }
 
 void MessageLoopNode::Run() {
   running_ = true;
-  uv_run(&uv_loop_, UV_RUN_DEFAULT);
+  while (running_) {
+    int result = RunUV(UV_RUN_ONCE);
+    if (result == 0) {
+      break;
+    }
+  }
   running_ = false;
 }
 
@@ -55,9 +62,20 @@ void MessageLoopNode::Terminate() {
   int stop_res = uv_timer_stop(&timer_);
   uv_close(reinterpret_cast<uv_handle_t*>(&timer_), nullptr);
   uv_close(reinterpret_cast<uv_handle_t*>(&async_), nullptr);
-  uv_run(&uv_loop_, UV_RUN_NOWAIT);
+  RunUV(UV_RUN_NOWAIT);
 
   uv_stop(&uv_loop_);
+}
+
+void MessageLoopNode::SetUVRunCallback(UVRunCallback callback) {
+  uv_run_callback_ = std::move(callback);
+}
+
+int MessageLoopNode::RunUV(uv_run_mode mode) {
+  if (uv_run_callback_) {
+    return uv_run_callback_(&uv_loop_, mode);
+  }
+  return uv_run(&uv_loop_, mode);
 }
 
 void MessageLoopNode::WakeUp(fml::TimePoint time_point) {

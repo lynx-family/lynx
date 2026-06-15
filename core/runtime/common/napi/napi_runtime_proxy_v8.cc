@@ -31,19 +31,49 @@ NapiRuntimeProxyV8::NapiRuntimeProxyV8(
 void NapiRuntimeProxyV8::Attach() {
   auto ctx = context_.lock();
   if (ctx) {
-    ctx->getIsolate()->Enter();
-    v8::HandleScope handle_scope(ctx->getIsolate());
+    auto* isolate = ctx->getIsolate();
+    v8::Locker locker(isolate);
+    isolate->Enter();
+    v8::HandleScope handle_scope(isolate);
     napi_attach_v8(env_, ctx->getContext());
   }
 }
 
 void NapiRuntimeProxyV8::Detach() {
-  NapiRuntimeProxy::Detach();
   auto ctx = context_.lock();
   if (ctx) {
-    ctx->getIsolate()->Exit();
+    auto* isolate = ctx->getIsolate();
+    v8::Locker locker(isolate);
+    NapiRuntimeProxy::Detach();
+    isolate->Exit();
     napi_detach_v8(env_);
+    return;
   }
+  NapiRuntimeProxy::Detach();
+}
+
+void NapiRuntimeProxyV8::RunWithRuntimeLock(
+    const std::function<void()>& callback) {
+  auto ctx = context_.lock();
+  if (!ctx) {
+    callback();
+    return;
+  }
+  v8::Locker locker(ctx->getIsolate());
+  callback();
+}
+
+void NapiRuntimeProxyV8::SetupLoader() {
+  RunWithRuntimeLock([this]() { NapiRuntimeProxy::SetupLoader(); });
+}
+
+void NapiRuntimeProxyV8::RemoveLoader() {
+  RunWithRuntimeLock([this]() { NapiRuntimeProxy::RemoveLoader(); });
+}
+
+void NapiRuntimeProxyV8::SetUncaughtExceptionHandler() {
+  RunWithRuntimeLock(
+      [this]() { NapiRuntimeProxy::SetUncaughtExceptionHandler(); });
 }
 
 std::unique_ptr<NapiRuntimeProxy> NapiRuntimeProxyV8FactoryImpl::Create(

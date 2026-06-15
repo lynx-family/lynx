@@ -6,6 +6,7 @@
 #define CORE_RUNTIME_COMMON_NAPI_NAPI_RUNTIME_PROXY_H_
 
 #include <memory>
+#include <functional>
 #include <string>
 #include <utility>
 
@@ -46,6 +47,9 @@ class LYNX_EXPORT NapiRuntimeProxyInterface {
   virtual Napi::Env Env() = 0;
   virtual void SetJSRuntime(std::shared_ptr<Runtime> runtime) = 0;
   virtual std::weak_ptr<Runtime> GetJSRuntime() = 0;
+  virtual void RunWithRuntimeLock(const std::function<void()>& callback) {
+    callback();
+  }
   virtual void SetupLoader() = 0;
   virtual void RemoveLoader() = 0;
   virtual void SetUncaughtExceptionHandler() = 0;
@@ -69,6 +73,9 @@ class LYNX_EXPORT NapiRuntimeProxy : public NapiRuntimeProxyInterface {
   void MarkSafeNapi() { is_safe_napi_ = true; }
 
   std::weak_ptr<Runtime> GetJSRuntime() override { return js_runtime_; }
+  void RunWithRuntimeLock(const std::function<void()>& callback) override {
+    callback();
+  }
 
   static void SetFactory(NapiRuntimeProxyV8Factory* factory);
   static void SetQuickjsFactory(NapiRuntimeProxyQuickjsFactory* factory);
@@ -108,6 +115,9 @@ class RestrictedNapiRuntimeProxyDecorator : public NapiRuntimeProxyInterface {
   }
   std::weak_ptr<Runtime> GetJSRuntime() override {
     return proxy_->GetJSRuntime();
+  }
+  void RunWithRuntimeLock(const std::function<void()>& callback) override {
+    proxy_->RunWithRuntimeLock(callback);
   }
   void SetupLoader() override;
   void RemoveLoader() override;

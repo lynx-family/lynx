@@ -137,6 +137,10 @@ class LynxEngine {
                        const lepus::Value& params,
                        const std::string& params_name);
 
+  bool SendCancelableCustomEvent(const std::string& name, int32_t tag,
+                                 const lepus::Value& params,
+                                 const std::string& params_name);
+
   void SendTouchEvent(const std::string& name, const tasm::EventInfo& info);
 
   void SendGestureEvent(int tag, int gesture_id, std::string name,

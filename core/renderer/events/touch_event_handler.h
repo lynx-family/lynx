@@ -146,6 +146,9 @@ class TouchEventHandler {
   void HandleCustomEvent(TemplateAssembler *tasm, const std::string &name,
                          int tag, const lepus::Value &params,
                          const std::string &pname);
+  event::DispatchEventResult HandleCancelableCustomEvent(
+      TemplateAssembler *tasm, const std::string &name, int tag,
+      const lepus::Value &params, const std::string &pname);
   void HandlePseudoStatusChanged(int32_t id, PseudoState pre_status,
                                  PseudoState current_status);
   static lepus::Value GetTargetInfo(int32_t impl_id,

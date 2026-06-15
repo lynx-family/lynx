@@ -128,6 +128,20 @@ function invoke<T extends keyof UIMethods>(_param: UIMethods[T]) {}
   });
 
   invoke<'text'>({
+    method: 'setEditableSelectionRange',
+    params: {
+      start: 1,
+      end: 2,
+    },
+    success: (res) => {
+      assertType<{
+        start: number;
+        end: number;
+      }>(res);
+    },
+  });
+
+  invoke<'text'>({
     method: 'getTextBoundingRect',
     params: {
       start: 1,

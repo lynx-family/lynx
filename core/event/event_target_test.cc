@@ -20,6 +20,32 @@ namespace test {
 
 EventTarget* MockEventTarget::GetParentTarget() { return nullptr; }
 
+TEST(EventTest, PreventDefaultOnlyWorksForCancelableEvent) {
+  auto cancelable_event = fml::MakeRefCounted<Event>(
+      "test", Event::EventType::kCustomEvent, Event::Capture::kNo,
+      Event::Bubbles::kNo, Event::Cancelable::kYes,
+      Event::ComposedMode::kComposed, Event::PhaseType::kNone);
+  cancelable_event->prevent_default();
+  EXPECT_TRUE(cancelable_event->default_prevented());
+
+  auto non_cancelable_event = fml::MakeRefCounted<Event>(
+      "test", Event::EventType::kCustomEvent, Event::Capture::kNo,
+      Event::Bubbles::kNo, Event::Cancelable::kNo,
+      Event::ComposedMode::kComposed, Event::PhaseType::kNone);
+  non_cancelable_event->prevent_default();
+  EXPECT_FALSE(non_cancelable_event->default_prevented());
+}
+
+TEST(EventTest, StopPropagationDoesNotPreventDefault) {
+  auto event = fml::MakeRefCounted<Event>(
+      "test", Event::EventType::kCustomEvent, Event::Capture::kNo,
+      Event::Bubbles::kNo, Event::Cancelable::kYes,
+      Event::ComposedMode::kComposed, Event::PhaseType::kNone);
+  event->set_is_stop_propagation(true);
+  event->set_is_stop_immediate_propagation(true);
+  EXPECT_FALSE(event->default_prevented());
+}
+
 TEST_F(EventTargetTest, TestEventTargetTest0) {
   auto map = mock_target_->GetEventListenerMap();
 

@@ -11,6 +11,7 @@
 #include <utility>
 #include <vector>
 
+#include "clay/gfx/geometry/float_rect.h"
 #include "clay/gfx/geometry/float_point.h"
 #include "clay/third_party/txt/src/txt/paragraph.h"
 #include "clay/ui/common/measure_constraint.h"
@@ -35,7 +36,9 @@ namespace clay {
 
 class TextShadowNode;
 struct EditableInlineAtomicDelete;
+struct EditableInlineStreamItem;
 enum class EditableInlineStreamItemType;
+using EditableInlineStream = std::vector<EditableInlineStreamItem>;
 class BaseTextShadowNode;
 class BaseView;
 class RawTextShadowNode;
@@ -114,6 +117,8 @@ class TextView : public WithTypeInfo<TextView, BaseTextView>,
 
   void setTextSelection(const LynxModuleValues& args,
                         const LynxUIMethodCallback& callback);
+  void setEditableSelectionRange(const LynxModuleValues& args,
+                                 const LynxUIMethodCallback& callback);
   void getTextBoundingRect(const LynxModuleValues& args,
                            const LynxUIMethodCallback& callback);
   void getSelectedText(const LynxUIMethodCallback& callback);
@@ -191,6 +196,34 @@ class TextView : public WithTypeInfo<TextView, BaseTextView>,
                             const std::u16string& replacement,
                             size_t selection_offset);
   bool UndoEditableMutation();
+  struct EditableStaticRange {
+    size_t start = 0;
+    size_t end = 0;
+  };
+  struct EditableAtomicEventInfo {
+    std::string type;
+    int id = -1;
+    int view_id = -1;
+    size_t start = 0;
+    size_t end = 0;
+  };
+  struct EditableInputIntent {
+    std::string input_type;
+    std::u16string data;
+    bool has_data = false;
+    bool is_composing = false;
+    size_t selection_base = 0;
+    size_t selection_extent = 0;
+    std::vector<EditableStaticRange> target_ranges;
+    std::vector<EditableAtomicEventInfo> atomic;
+  };
+  EditableInputIntent BuildEditableInputIntent(
+      const std::string& input_type, const std::u16string& data, bool has_data,
+      bool is_composing, size_t selection_base, size_t selection_extent,
+      const std::vector<EditableStaticRange>& target_ranges,
+      const EditableInlineStream& stream);
+  bool DispatchEditableBeforeInput(const EditableInputIntent& intent);
+  void DispatchEditableInput(const EditableInputIntent& intent);
   void PushEditableUndoSnapshot(TextShadowNode* shadow_node);
   void RemoveEditableAtomicViews(
       const std::vector<EditableInlineAtomicDelete>& deletes);
@@ -198,6 +231,7 @@ class TextView : public WithTypeInfo<TextView, BaseTextView>,
   void EndEditableInput();
   void SyncEditableInputStateToPlatform();
   void UpdateEditableCaretRectToPlatform();
+  FloatRect GetEditableCaretRectForOffset(size_t offset);
   void MoveEditableCaretToOffset(size_t offset);
   void RefreshEditableTextView(TextShadowNode* shadow_node);
 #ifndef ENABLE_CLAY_LITE

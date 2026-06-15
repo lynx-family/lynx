@@ -259,6 +259,7 @@ constexpr static const char* kCFunctionDispatchEvent = "__DispatchEvent";
 constexpr static const char* kCFunctionStopPropagation = "__StopPropagation";
 constexpr static const char* kCFunctionStopImmediatePropagation =
     "__StopImmediatePropagation";
+constexpr static const char* kCFunctionPreventDefault = "__PreventDefault";
 // Element Component Info
 constexpr static const char* kCFunctionGetComponentID = "__GetComponentID";
 constexpr static const char* kCFunctionUpdateComponentID =

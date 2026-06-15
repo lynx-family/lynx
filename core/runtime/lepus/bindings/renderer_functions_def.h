@@ -157,6 +157,7 @@
   V(FiberDispatchEvent)                 \
   V(FiberStopPropagation)               \
   V(FiberStopImmediatePropagation)      \
+  V(FiberPreventDefault)                \
   V(SetSourceMapRelease)                \
   V(ReportError)                        \
   V(TriggerLepusBridge)                 \

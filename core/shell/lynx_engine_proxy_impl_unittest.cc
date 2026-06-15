@@ -53,6 +53,11 @@ TEST_F(LynxEngineProxyImplTest, SendCustomEvent) {
                                  "test");
 }
 
+TEST_F(LynxEngineProxyImplTest, SendCancelableCustomEventNullEngine) {
+  EXPECT_FALSE(engine_proxy_->SendCancelableCustomEvent(
+      "test", 0, pub::ValueImplLepus(lepus::Value()), "test"));
+}
+
 TEST_F(LynxEngineProxyImplTest, OnPseudoStatusChanged) {
   engine_proxy_->OnPseudoStatusChanged(0, 0, 0);
 }

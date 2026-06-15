@@ -1223,6 +1223,19 @@ RENDERER_FUNCTION_CC(FiberStopImmediatePropagation) {
   RETURN_UNDEFINED();
 }
 
+RENDERER_FUNCTION_CC(FiberPreventDefault) {
+  // parameter size = 1
+  // [0] RefCounted -> event
+  CHECK_ARGC_GE(FiberPreventDefault, 1);
+  CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(arg0, 0, RefCounted,
+                                        FiberPreventDefault);
+
+  auto event = fml::static_ref_ptr_cast<event::Event>(arg0->RefCounted());
+  event->prevent_default();
+
+  RETURN_UNDEFINED();
+}
+
 /* ContextProxy API BEGIN */
 RENDERER_FUNCTION_CC(RuntimeAddEventListener) {
   CHECK_ARGC_GE(RuntimeAddEventListener, 2);
@@ -4162,9 +4175,9 @@ RENDERER_FUNCTION_CC(FiberAddEvent) {
       is_capture || is_capture_catch, false, false, false,
       is_capture_catch || is_bubble_catch, is_global_bind);
 
-  if (callback->IsEmpty()) {
-    // If callback is undefined, remove event.
-    element->RemoveEvent(name->String(), type->String());
+    if (callback->IsEmpty()) {
+      // If callback is undefined, remove event.
+      element->RemoveEvent(name->String(), type->String());
     if (tasm->EnableEventHandleRefactor()) {
       element->RemoveEventListener(
           name->StdString(),
@@ -4176,11 +4189,18 @@ RENDERER_FUNCTION_CC(FiberAddEvent) {
           std::make_unique<event::ClosureEventListener>(
               [](lepus::Value args) {}, event_options,
               event::ClosureEventListener::ClosureType::kCore));
-    }
-  } else if (callback->IsString()) {
-    element->SetJSEventHandler(name->String(), type->String(),
-                               callback->String());
-    if (tasm->EnableEventHandleRefactor()) {
+      }
+    } else if (callback->IsString()) {
+      if (name->StdString() == "beforeinput" || name->StdString() == "input" ||
+          name->StdString() == "selectionchange") {
+        LOGI("FiberAddEvent register JS event name:"
+             << name->StdString() << " type:" << type->StdString()
+             << " callback:" << callback->StdString()
+             << " refactor:" << tasm->EnableEventHandleRefactor());
+      }
+      element->SetJSEventHandler(name->String(), type->String(),
+                                 callback->String());
+      if (tasm->EnableEventHandleRefactor()) {
       auto handler_name = callback->StdString();
       auto event_name = name->StdString();
       // remove the listener firstly to adapt rebind
@@ -4281,10 +4301,16 @@ RENDERER_FUNCTION_CC(FiberAddEvent) {
                 }
               },
               event_options, event::ClosureEventListener::ClosureType::kJS));
-    }
-  } else if (callback->IsCallable()) {
-    element->SetLepusEventHandler(name->String(), type->String(),
-                                  lepus::Value(), *callback);
+      }
+    } else if (callback->IsCallable()) {
+      if (name->StdString() == "beforeinput" || name->StdString() == "input" ||
+          name->StdString() == "selectionchange") {
+        LOGI("FiberAddEvent register core event name:"
+             << name->StdString() << " type:" << type->StdString()
+             << " refactor:" << tasm->EnableEventHandleRefactor());
+      }
+      element->SetLepusEventHandler(name->String(), type->String(),
+                                    lepus::Value(), *callback);
 #if ENABLE_LEPUSNG_WORKLET
     if (tasm->EnableEventHandleRefactor()) {
       // remove the listener firstly to adapt rebind
@@ -4321,7 +4347,7 @@ RENDERER_FUNCTION_CC(FiberAddEvent) {
                     result = lynx::worklet::LepusElement::FireElementWorklet(
                         component_id, entry_name, tasm, *callback,
                         lepus::Value(), event_detail, task_handler, element_id,
-                        static_cast<EventType>(1));
+                        static_cast<EventType>(1), event);
                     // trigger patch finish when a worklet operation is
                     // completed
                     tasm->page_proxy()->element_manager()->SetNeedsLayout();
@@ -4398,12 +4424,19 @@ RENDERER_FUNCTION_CC(FiberAddEvent) {
                                            lepus::Value(std::move(param_array)),
                                            lepus::Value(std::move(options)));
                   BASE_STATIC_STRING_DECL(kEventResult, "eventReturnResult");
+                  BASE_STATIC_STRING_DECL(kEventDefaultPrevented,
+                                          "eventDefaultPrevented");
                   if (call_result_value.IsObject()) {
                     result = static_cast<EventResult>(
                         call_result_value.GetProperty(kEventResult).Number());
                   }
                   if (event == nullptr) {
                     return;
+                  }
+                  if (call_result_value.IsObject() &&
+                      call_result_value.GetProperty(kEventDefaultPrevented)
+                          .Bool()) {
+                    event->prevent_default();
                   }
                   if (static_cast<int>(result) &
                       static_cast<int>(
@@ -4664,6 +4697,13 @@ RENDERER_FUNCTION_CC(FiberSetEvents) {
         is_capture_catch || is_bubble_catch, is_global_bind);
 
     if (callback.IsString()) {
+      if (name.StdString() == "beforeinput" || name.StdString() == "input" ||
+          name.StdString() == "selectionchange") {
+        LOGI("FiberSetEvents register JS event name:"
+             << name.StdString() << " type:" << type.StdString()
+             << " callback:" << callback.StdString()
+             << " refactor:" << tasm->EnableEventHandleRefactor());
+      }
       element->SetJSEventHandler(name.String(), type.String(),
                                  callback.String());
       if (tasm->EnableEventHandleRefactor()) {
@@ -4768,6 +4808,12 @@ RENDERER_FUNCTION_CC(FiberSetEvents) {
                 event_options, event::ClosureEventListener::ClosureType::kJS));
       }
     } else if (callback.IsCallable()) {
+      if (name.StdString() == "beforeinput" || name.StdString() == "input" ||
+          name.StdString() == "selectionchange") {
+        LOGI("FiberSetEvents register core event name:"
+             << name.StdString() << " type:" << type.StdString()
+             << " refactor:" << tasm->EnableEventHandleRefactor());
+      }
       element->SetLepusEventHandler(name.String(), type.String(),
                                     lepus::Value(), callback);
 #if ENABLE_LEPUSNG_WORKLET
@@ -4806,7 +4852,7 @@ RENDERER_FUNCTION_CC(FiberSetEvents) {
                       result = lynx::worklet::LepusElement::FireElementWorklet(
                           component_id, entry_name, tasm, callback_value,
                           lepus::Value(), event_detail, task_handler,
-                          element_id, static_cast<EventType>(1));
+                          element_id, static_cast<EventType>(1), event);
                       tasm->page_proxy()->element_manager()->SetNeedsLayout();
                       tasm->page_proxy()->element_manager()->RequestResolve(
                           current_option);
@@ -4876,12 +4922,19 @@ RENDERER_FUNCTION_CC(FiberSetEvents) {
                         lepus::Value(std::move(param_array)),
                         lepus::Value(std::move(options)));
                     BASE_STATIC_STRING_DECL(kEventResult, "eventReturnResult");
+                    BASE_STATIC_STRING_DECL(kEventDefaultPrevented,
+                                            "eventDefaultPrevented");
                     if (call_result_value.IsObject()) {
                       result = static_cast<EventResult>(
                           call_result_value.GetProperty(kEventResult).Number());
                     }
                     if (event == nullptr) {
                       return;
+                    }
+                    if (call_result_value.IsObject() &&
+                        call_result_value.GetProperty(kEventDefaultPrevented)
+                            .Bool()) {
+                      event->prevent_default();
                     }
                     if (static_cast<int>(result) &
                         static_cast<int>(

@@ -7,6 +7,7 @@
 #include "base/include/fml/thread.h"
 #include "clay/fml/icu_util.h"
 #include "clay/fml/paths.h"
+#include "clay/public/layout_delegate.h"
 #include "clay/third_party/txt/src/txt/font_collection.h"
 #include "clay/ui/common/isolate.h"
 #include "clay/ui/component/page_view.h"
@@ -38,6 +39,42 @@ constexpr float kHelloWorldSoftWrapHeight = kHelloWorldNoWrapHeight * 4;
 const char* kTestTypefacePath =
     "gen/lynx/clay/third_party/txt/assets/Roboto-Bold.ttf";
 const char* kTestFontFamily = "Roboto";
+
+class RecordingLayoutDelegate : public LayoutDelegate {
+ public:
+  void OnTriggerLayout() override { ++trigger_layout_count; }
+
+  void OnMarkDirty(int32_t id) override {
+    ++mark_dirty_count;
+    last_dirty_id = id;
+  }
+
+  void OnAlignNativeNode(int32_t id, float top, float left) override {
+    ++align_count;
+    last_align_id = id;
+    last_align_top = top;
+    last_align_left = left;
+  }
+
+  ClayMeasureOutput OnMeasureNativeNode(int32_t, float, int, float,
+                                        int) override {
+    return {100.f, 28.f, 0.f};
+  }
+
+  ClayLayoutStyles OnGetLayoutStyles(int32_t id) override {
+    last_style_id = id;
+    return {};
+  }
+
+  int trigger_layout_count = 0;
+  int mark_dirty_count = 0;
+  int32_t last_dirty_id = -1;
+  int align_count = 0;
+  int32_t last_align_id = -1;
+  float last_align_top = 0.f;
+  float last_align_left = 0.f;
+  int32_t last_style_id = -1;
+};
 
 class TextViewTest : public ::testing::Test {
  protected:
@@ -93,10 +130,10 @@ class TextViewTest : public ::testing::Test {
 
   void SetupMultilinesText() { SetupTestText("hello world\nhello world"); }
 
-  TextShadowNode* SetupEditableTextShadow() {
+  TextShadowNode* SetupEditableTextShadow(int id = -1) {
     shadow_node_holder_.clear();
     editable_text_shadow_ =
-        std::make_unique<TextShadowNode>(shadow_owner_.get(), "text", -1);
+        std::make_unique<TextShadowNode>(shadow_owner_.get(), "text", id);
     text_view_->SetEditableTextShadowNodeForTesting(
         editable_text_shadow_.get());
     return editable_text_shadow_.get();
@@ -483,6 +520,84 @@ TEST_F(TextViewTest, ContenteditableInsertionAtAtomicBoundaryKeepsAtomicToken) {
   EXPECT_EQ(stream[1].type,
             EditableInlineStreamItemType::kAtomicInlineImage);
   EXPECT_EQ(stream[1].node, inline_image);
+}
+
+TEST_F(TextViewTest,
+       ContenteditableInsertionBetweenConsecutiveAtomicTokensKeepsOrder) {
+  auto* text_shadow = SetupEditableTextShadow();
+  auto* leading_raw_text = AddRawText(text_shadow, u"A");
+  auto* first_inline_view = MakeShadowNode<InlineViewShadowNode>("inline-view");
+  first_inline_view->EnsureDefaultStyle();
+  auto* inline_image = MakeShadowNode<InlineImageShadowNode>("inline-image");
+  inline_image->EnsureDefaultStyle();
+  auto* second_inline_view = MakeShadowNode<InlineViewShadowNode>("inline-view");
+  second_inline_view->EnsureDefaultStyle();
+  auto* trailing_raw_text = AddRawText(text_shadow, u"B");
+  text_shadow->AddChild(first_inline_view);
+  text_shadow->AddChild(inline_image);
+  text_shadow->AddChild(second_inline_view);
+  text_shadow->RemoveChild(trailing_raw_text);
+  text_shadow->AddChild(trailing_raw_text);
+  text_view_->SetAttribute("contenteditable", clay::Value(true));
+  text_view_->SetEditableCaretOffsetForTesting(2);
+
+  EXPECT_TRUE(text_view_->InsertEditableText(u"X"));
+
+  EXPECT_EQ(leading_raw_text->EditableText(), std::u16string(u"A"));
+  EXPECT_EQ(trailing_raw_text->EditableText(), std::u16string(u"B"));
+  auto stream = text_shadow->BuildEditableInlineStream();
+  ASSERT_EQ(stream.size(), 6u);
+  EXPECT_EQ(stream[0].text, std::u16string(u"A"));
+  EXPECT_EQ(stream[1].type, EditableInlineStreamItemType::kAtomicInlineView);
+  EXPECT_EQ(stream[1].node, first_inline_view);
+  EXPECT_EQ(stream[2].type, EditableInlineStreamItemType::kText);
+  EXPECT_EQ(stream[2].text, std::u16string(u"X"));
+  EXPECT_EQ(stream[3].type, EditableInlineStreamItemType::kAtomicInlineImage);
+  EXPECT_EQ(stream[3].node, inline_image);
+  EXPECT_EQ(stream[4].type, EditableInlineStreamItemType::kAtomicInlineView);
+  EXPECT_EQ(stream[4].node, second_inline_view);
+  EXPECT_EQ(stream[5].text, std::u16string(u"B"));
+
+  KeyEvent meta_down(0, KeyEventType::kDown, 0,
+                     static_cast<uint64_t>(KeyCode::kMeta), false, "");
+  KeyEvent z_down(0, KeyEventType::kDown, 0,
+                  static_cast<uint64_t>(KeyCode::kKeyZ), false, "z");
+  text_view_->OnKeyEvent(&meta_down);
+  EXPECT_TRUE(text_view_->OnKeyEvent(&z_down));
+
+  stream = text_shadow->BuildEditableInlineStream();
+  ASSERT_EQ(stream.size(), 5u);
+  EXPECT_EQ(stream[0].text, std::u16string(u"A"));
+  EXPECT_EQ(stream[1].type, EditableInlineStreamItemType::kAtomicInlineView);
+  EXPECT_EQ(stream[1].node, first_inline_view);
+  EXPECT_EQ(stream[2].type, EditableInlineStreamItemType::kAtomicInlineImage);
+  EXPECT_EQ(stream[2].node, inline_image);
+  EXPECT_EQ(stream[3].type, EditableInlineStreamItemType::kAtomicInlineView);
+  EXPECT_EQ(stream[3].node, second_inline_view);
+  EXPECT_EQ(stream[4].text, std::u16string(u"B"));
+}
+
+TEST_F(TextViewTest, ContenteditableMutationMarksTextShadowDirtyForRelayout) {
+  RecordingLayoutDelegate layout_delegate;
+  shadow_owner_->SetLayoutDelegate(&layout_delegate);
+  auto* text_shadow = SetupEditableTextShadow(42);
+  auto* leading_raw_text = AddRawText(text_shadow, u"A");
+  auto* inline_view = MakeShadowNode<InlineViewShadowNode>("inline-view");
+  inline_view->EnsureDefaultStyle();
+  auto* trailing_raw_text = AddRawText(text_shadow, u"B");
+  text_shadow->AddChild(inline_view);
+  text_shadow->RemoveChild(trailing_raw_text);
+  text_shadow->AddChild(trailing_raw_text);
+  text_view_->SetAttribute("contenteditable", clay::Value(true));
+  text_view_->SetEditableCaretOffsetForTesting(1);
+
+  EXPECT_TRUE(text_view_->InsertEditableText(u"X"));
+
+  EXPECT_EQ(leading_raw_text->EditableText(), std::u16string(u"AX"));
+  EXPECT_EQ(trailing_raw_text->EditableText(), std::u16string(u"B"));
+  EXPECT_GT(layout_delegate.mark_dirty_count, 0);
+  EXPECT_EQ(layout_delegate.last_dirty_id, 42);
+  EXPECT_EQ(layout_delegate.align_count, 0);
 }
 
 TEST_F(TextViewTest, ContenteditableCommandASelectsWholeAtomicInlineStream) {

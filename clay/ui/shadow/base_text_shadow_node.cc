@@ -9,6 +9,7 @@
 #include <codecvt>
 #include <cstdint>
 #include <cstring>
+#include <iterator>
 #include <limits>
 #include <memory>
 #include <string_view>
@@ -102,6 +103,19 @@ bool IsEditableInlineAtomicItem(const EditableInlineStreamItem& item) {
 bool EditableInlineRangeIntersects(const EditableInlineStreamItem& item,
                                    size_t start, size_t end) {
   return end > item.start && start < EditableInlineItemEnd(item);
+}
+
+int EditableInlineShadowChildIndex(BaseTextShadowNode* parent,
+                                   ShadowNode* child) {
+  if (!parent || !child) {
+    return -1;
+  }
+  const auto& children = parent->GetChildren();
+  auto iter = std::find(children.begin(), children.end(), child);
+  if (iter == children.end()) {
+    return -1;
+  }
+  return static_cast<int>(std::distance(children.begin(), iter));
 }
 
 size_t EditableInlineStreamLength(const EditableInlineStream& stream) {
@@ -430,6 +444,61 @@ void BaseTextShadowNode::CreateRawTextNodeIfNeed(
     MarkNeedsUpdate(TextUpdateFlag::kUpdateFlagChildren);
     AddChild(raw_text);
   }
+}
+
+void BaseTextShadowNode::CreateRawTextNodeAtEditableOffset(
+    const std::u16string& text, size_t offset) {
+  if (text.empty() || (!IsTextShadowNode() && !IsInlineTextShadowNode())) {
+    return;
+  }
+
+  BaseTextShadowNode* insertion_parent = this;
+  int insertion_index = static_cast<int>(ChildCount());
+  const auto stream = BuildEditableInlineStream();
+  ShadowNode* previous_node = nullptr;
+
+  for (const auto& item : stream) {
+    if (!item.node) {
+      continue;
+    }
+
+    if (offset <= item.start) {
+      auto* item_parent = item.node->Parent();
+      if (item_parent && item_parent->IsBaseTextShadowNode()) {
+        auto* base_parent = static_cast<BaseTextShadowNode*>(item_parent);
+        auto item_index = EditableInlineShadowChildIndex(base_parent, item.node);
+        if (item_index >= 0) {
+          insertion_parent = base_parent;
+          insertion_index = item_index;
+        }
+      }
+      break;
+    }
+
+    previous_node = item.node;
+  }
+
+  if (stream.empty() || offset > EditableInlineStreamLength(stream)) {
+    previous_node = nullptr;
+  }
+
+  if (previous_node && insertion_parent == this &&
+      insertion_index == static_cast<int>(ChildCount())) {
+    auto* previous_parent = previous_node->Parent();
+    if (previous_parent && previous_parent->IsBaseTextShadowNode()) {
+      auto* base_parent = static_cast<BaseTextShadowNode*>(previous_parent);
+      auto previous_index =
+          EditableInlineShadowChildIndex(base_parent, previous_node);
+      if (previous_index >= 0) {
+        insertion_parent = base_parent;
+        insertion_index = previous_index + 1;
+      }
+    }
+  }
+
+  auto raw_text = new RawTextShadowNode(owner_, "raw-text", -1);
+  raw_text->SetText(text);
+  insertion_parent->AddChild(raw_text, insertion_index);
 }
 
 void BaseTextShadowNode::SetFontSize(float font_size) {

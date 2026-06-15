@@ -289,49 +289,55 @@ napi_status LynxHookedNapiGetGlobal(napi_env env, napi_value *result) {
 // their own injected modules. For the modules loaded by this loader, the
 // abilities of running scripts and getting the global object are disabled.
 void RestrictedNapiRuntimeProxyDecorator::SetupLoader() {
-  auto runtime = GetJSRuntime().lock();
-  Napi::Env env = Env();
-  napi_env raw_env = env;
+  proxy_->RunWithRuntimeLock([this]() {
+    auto runtime = GetJSRuntime().lock();
+    Napi::Env env = Env();
+    napi_env raw_env = env;
 
-  // The napi_run_script and napi_get_global functions of restricted napi_env
-  // are hooked to prevent users from calling napi_run_script and
-  // napi_get_global functions in the lynx module, which could affect the
-  // stability of the lynx script runtime.
-  get_global_func_ = raw_env->napi_get_global;
-  raw_env->napi_run_script = LynxHookedNapiRunScript;
-  raw_env->napi_get_global = LynxHookedNapiGetGlobal;
+    // The napi_run_script and napi_get_global functions of restricted napi_env
+    // are hooked to prevent users from calling napi_run_script and
+    // napi_get_global functions in the lynx module, which could affect the
+    // stability of the lynx script runtime.
+    get_global_func_ = raw_env->napi_get_global;
+    raw_env->napi_run_script = LynxHookedNapiRunScript;
+    raw_env->napi_get_global = LynxHookedNapiGetGlobal;
 
-  if (runtime && raw_env && raw_env->ctx) {
-    Napi::ContextScope context_scope(env);
-    Napi::HandleScope handle_scope(env);
-    loader_ = "napiRestrictedLoader" + std::to_string(runtime->getRuntimeId());
-    LOGI("NAPI Setup Restricted Loader: " << loader_);
-    auto *registry = env.GetInstanceData<RestrictedModuleRegistry>(
-        kRestrictedModuleRegistryKey);
-    if (registry) {
+    if (runtime && raw_env && raw_env->ctx) {
+      Napi::ContextScope context_scope(env);
+      Napi::HandleScope handle_scope(env);
+      loader_ =
+          "napiRestrictedLoader" + std::to_string(runtime->getRuntimeId());
+      LOGI("NAPI Setup Restricted Loader: " << loader_);
+      auto *registry = env.GetInstanceData<RestrictedModuleRegistry>(
+          kRestrictedModuleRegistryKey);
+      if (registry) {
+        return;
+      }
+      registry = new RestrictedModuleRegistry();
+      env.SetInstanceData(kRestrictedModuleRegistryKey, registry);
+
+      Napi::Object exports = Napi::Object::New(env);
+      exports["load"] =
+          Napi::Function::New(env, &LoadRestrictedModule, "load");
+      GetGlobal().Set(loader_.c_str(), exports);
       return;
     }
-    registry = new RestrictedModuleRegistry();
-    env.SetInstanceData(kRestrictedModuleRegistryKey, registry);
-
-    Napi::Object exports = Napi::Object::New(env);
-    exports["load"] = Napi::Function::New(env, &LoadRestrictedModule, "load");
-    GetGlobal().Set(loader_.c_str(), exports);
-    return;
-  }
+  });
 }
 
 void RestrictedNapiRuntimeProxyDecorator::RemoveLoader() {
-  Napi::Env env = Env();
-  napi_env raw_env = env;
-  if (raw_env && raw_env->ctx && !loader_.empty()) {
-    Napi::HandleScope handle_scope(env);
-    Napi::Object global = GetGlobal();
-    if (global.Has(loader_.c_str()).FromMaybe(false)) {
-      LOGI("NAPI Remove Restricted Loader: " << loader_);
-      global.Delete(loader_.c_str());
+  proxy_->RunWithRuntimeLock([this]() {
+    Napi::Env env = Env();
+    napi_env raw_env = env;
+    if (raw_env && raw_env->ctx && !loader_.empty()) {
+      Napi::HandleScope handle_scope(env);
+      Napi::Object global = GetGlobal();
+      if (global.Has(loader_.c_str()).FromMaybe(false)) {
+        LOGI("NAPI Remove Restricted Loader: " << loader_);
+        global.Delete(loader_.c_str());
+      }
     }
-  }
+  });
 }
 
 Napi::Object RestrictedNapiRuntimeProxyDecorator::GetGlobal() {

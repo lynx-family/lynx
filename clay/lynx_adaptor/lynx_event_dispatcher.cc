@@ -305,6 +305,16 @@ void LynxEventDispatcher::OnSendCustomEvent(int view_id,
   engine_proxy_->SendCustomEvent(event_name, view_id, params, "detail");
 }
 
+bool LynxEventDispatcher::OnSendCancelableCustomEvent(
+    int view_id, const std::string& event_name, clay::Value::Map args) {
+  if (!engine_proxy_) {
+    return false;
+  }
+  auto params = lynx::ClayValue(clay::Value{std::move(args)});
+  return engine_proxy_->SendCancelableCustomEvent(event_name, view_id, params,
+                                                  "detail");
+}
+
 void LynxEventDispatcher::OnSendGlobalEvent(const std::string& event_name,
                                             clay::Value args) {
   if (!runtime_proxy_) {

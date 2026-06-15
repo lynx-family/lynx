@@ -132,6 +132,15 @@ class Event : public lepus::RefCounted {
   bool bubbles() const { return bubbles_; }
   void set_bubbles(bool bubbles) { bubbles_ = bubbles; }
   bool cancelable() const { return cancelable_; }
+  bool default_prevented() const { return default_prevented_; }
+  void prevent_default() {
+    if (cancelable()) {
+      default_prevented_ = true;
+    }
+  }
+  void set_default_prevented(bool default_prevented) {
+    default_prevented_ = cancelable() && default_prevented;
+  }
   bool composed() const { return composed_; }
 
   PhaseType event_phase() const { return event_phase_; }
@@ -194,6 +203,7 @@ class Event : public lepus::RefCounted {
 
   bool is_stop_propagation_{false};
   bool is_stop_immediate_propagation_{false};
+  bool default_prevented_{false};
 
   fml::WeakPtr<EventTarget> current_target_;
   fml::WeakPtr<EventTarget> target_;

@@ -68,7 +68,7 @@ struct CompileOptions {
   ArchOption arch_option_ = RADON_ARCH;
 
   // Compile options auto generated start
-                                                                                std::string target_sdk_version_{""};
+                                                                                                        std::string target_sdk_version_{""};
       std::string template_debug_url_{""};
       bool enable_css_external_class_{true};
       bool enable_lepus_ng_{false};
@@ -104,7 +104,7 @@ struct CompileOptions {
       bool enable_opt_lepus_bytecode_{false};
       uint8_t context_type_{0};
       bool enable_keyframe_custom_property_declaration_{false};
-                                                      // Compile options auto generated end
+                                                                      // Compile options auto generated end
 
   // Derived from page config at compile/decode time. Do not serialize it into
   // the template header.

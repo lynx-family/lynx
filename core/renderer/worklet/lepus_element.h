@@ -9,6 +9,7 @@
 #include <string>
 #include <vector>
 
+#include "base/include/fml/memory/ref_ptr.h"
 #include "core/renderer/events/events.h"
 #include "core/renderer/template_assembler.h"
 #include "core/runtime/lepusng/napi/worklet/napi_func_callback.h"
@@ -20,6 +21,10 @@ namespace lynx {
 namespace tasm {
 class Element;
 }  // namespace tasm
+
+namespace event {
+class Event;
+}  // namespace event
 
 namespace worklet {
 class LepusComponent;
@@ -40,7 +45,8 @@ class LepusElement : public ImplBase {
       tasm::TemplateAssembler* tasm, const lepus::Value& func_val,
       const lepus::Value& func_obj, const lepus::Value& value,
       const std::shared_ptr<worklet::LepusApiHandler>& task_handler,
-      int element_id, tasm::EventType type);
+      int element_id, tasm::EventType type,
+      fml::RefPtr<event::Event> event = nullptr);
 
   static std::optional<lepus::Value> TriggerWorkletFunction(
       tasm::TemplateAssembler* tasm, tasm::BaseComponent* component,

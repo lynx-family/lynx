@@ -11,8 +11,10 @@
 #include <cstring>
 #include <limits>
 #include <memory>
+#include <optional>
 #include <sstream>
 #include <string>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -52,6 +54,7 @@ namespace {
 LYNX_UI_METHOD_BEGIN(TextView) {
   LYNX_UI_METHOD(TextView, getTextBoundingRect);
   LYNX_UI_METHOD(TextView, setTextSelection);
+  LYNX_UI_METHOD(TextView, setEditableSelectionRange);
   LYNX_UI_METHOD(TextView, getSelectedText);
 }
 LYNX_UI_METHOD_END(TextView);
@@ -236,6 +239,32 @@ int ClampedInsertIndex(int index, size_t child_count) {
   }
   return static_cast<int>(
       std::min(static_cast<size_t>(index), child_count));
+}
+
+clay::Value::Map CreateEditableRangeMap(size_t start, size_t end) {
+  clay::Value::Map map;
+  map["startOffset"] = clay::Value(static_cast<int64_t>(start));
+  map["endOffset"] = clay::Value(static_cast<int64_t>(end));
+  map["start"] = clay::Value(static_cast<int64_t>(start));
+  map["end"] = clay::Value(static_cast<int64_t>(end));
+  return map;
+}
+
+clay::Value::Map CreateEditableSelectionMap(size_t base, size_t extent) {
+  auto start = std::min(base, extent);
+  auto end = std::max(base, extent);
+  clay::Value::Map map;
+  map["anchorOffset"] = clay::Value(static_cast<int64_t>(base));
+  map["focusOffset"] = clay::Value(static_cast<int64_t>(extent));
+  map["startOffset"] = clay::Value(static_cast<int64_t>(start));
+  map["endOffset"] = clay::Value(static_cast<int64_t>(end));
+  map["isCollapsed"] = clay::Value(base == extent);
+  if (base == extent) {
+    map["direction"] = clay::Value("none");
+  } else {
+    map["direction"] = clay::Value(base < extent ? "forward" : "backward");
+  }
+  return map;
 }
 
 }  // namespace
@@ -477,7 +506,8 @@ void TextView::OnDeleteSurroundingText(int before_length, int after_length) {
     return;
   }
 
-  auto stream_text = GetEditableStreamText(shadow_node);
+  auto stream = shadow_node->BuildEditableInlineStream();
+  auto stream_text = BuildEditableStreamText(stream);
   auto stream_length = stream_text.length();
   auto selection = GetEditableSelectionRange(stream_length);
   CONTENT_EDITABLE_LOG << "delete-surrounding view=" << id()
@@ -487,9 +517,20 @@ void TextView::OnDeleteSurroundingText(int before_length, int after_length) {
                        << selection.second << "] caret="
                        << editable_caret_offset_
                        << " stream_length=" << stream_length;
+  auto input_type =
+      after_length > 0 ? "deleteContentForward" : "deleteContentBackward";
   if (selection.first != selection.second) {
-    ReplaceEditableRange(selection.first, selection.second, u"",
-                         selection.first);
+    auto intent = BuildEditableInputIntent(
+        input_type, u"", false, false, editable_selection_base_offset_,
+        editable_selection_extent_offset_,
+        {{selection.first, selection.second}}, stream);
+    if (DispatchEditableBeforeInput(intent)) {
+      return;
+    }
+    if (ReplaceEditableRange(selection.first, selection.second, u"",
+                             selection.first)) {
+      DispatchEditableInput(intent);
+    }
     return;
   }
 
@@ -505,7 +546,15 @@ void TextView::OnDeleteSurroundingText(int before_length, int after_length) {
   }
   CONTENT_EDITABLE_LOG << "delete-range view=" << id() << " start=" << start
                        << " end=" << end;
-  ReplaceEditableRange(start, end, u"", start);
+  auto intent = BuildEditableInputIntent(
+      input_type, u"", false, false, editable_selection_base_offset_,
+      editable_selection_extent_offset_, {{start, end}}, stream);
+  if (DispatchEditableBeforeInput(intent)) {
+    return;
+  }
+  if (ReplaceEditableRange(start, end, u"", start)) {
+    DispatchEditableInput(intent);
+  }
 }
 
 void TextView::OnPerformAction(KeyboardAction) {}
@@ -536,10 +585,22 @@ bool TextView::InsertEditableText(const std::u16string& text) {
     return false;
   }
 
-  auto selection =
-      GetEditableSelectionRange(GetEditableStreamLength(shadow_node));
-  return ReplaceEditableRange(selection.first, selection.second, text,
-                              selection.first + text.length());
+  auto stream = shadow_node->BuildEditableInlineStream();
+  auto selection = GetEditableSelectionRange(
+      BuildEditableStreamText(stream).length());
+  auto intent = BuildEditableInputIntent(
+      "insertText", text, true, false, editable_selection_base_offset_,
+      editable_selection_extent_offset_, {{selection.first, selection.second}},
+      stream);
+  if (DispatchEditableBeforeInput(intent)) {
+    return false;
+  }
+  if (!ReplaceEditableRange(selection.first, selection.second, text,
+                            selection.first + text.length())) {
+    return false;
+  }
+  DispatchEditableInput(intent);
+  return true;
 }
 
 void TextView::SetEditableTextShadowNodeForTesting(TextShadowNode* node) {
@@ -563,7 +624,8 @@ void TextView::UpdateEditingState(std::string text, TextSelection selection,
     return;
   }
 
-  auto old_text = GetEditableStreamText(shadow_node);
+  auto stream = shadow_node->BuildEditableInlineStream();
+  auto old_text = BuildEditableStreamText(stream);
   auto new_text = UnicodeUtil::Utf8ToUtf16(text);
   auto selection_base = static_cast<size_t>(
       std::clamp(selection.base_offset(), 0, static_cast<int>(new_text.length())));
@@ -618,13 +680,27 @@ void TextView::UpdateEditingState(std::string text, TextSelection selection,
                        << "] new_range=[" << prefix << "," << new_end
                        << "] replacement_len=" << replacement.length()
                        << " selection_offset=" << selection_offset;
-  ReplaceEditableRange(prefix, old_end, replacement, selection_offset);
+  auto input_type = replacement.empty() ? "deleteContentBackward" : "insertText";
+  auto intent = BuildEditableInputIntent(
+      input_type, replacement, !replacement.empty(), false,
+      editable_selection_base_offset_, editable_selection_extent_offset_,
+      {{prefix, old_end}}, stream);
+  if (DispatchEditableBeforeInput(intent)) {
+    syncing_editable_input_state_ = false;
+    SyncEditableInputStateToPlatform();
+    return;
+  }
+  auto did_mutate =
+      ReplaceEditableRange(prefix, old_end, replacement, selection_offset);
   SetEditableSelectionRange(selection_base, selection_extent);
   editable_caret_offset_ =
       std::min(selection_extent, GetEditableStreamLength(shadow_node));
   editable_caret_initialized_ = true;
   UpdateEditableCaretRectToPlatform();
   syncing_editable_input_state_ = false;
+  if (did_mutate) {
+    DispatchEditableInput(intent);
+  }
 }
 
 void TextView::PerformAction() {}
@@ -714,7 +790,30 @@ void TextView::HandleWinCtrlAndMacCommandHotKey(LogicalKeyboardKey key_code) {
     }
     case KeyCode::kKeyZ: {
       if (IsRuntimeContentEditable()) {
-        UndoEditableMutation();
+        auto* shadow_node = GetEditableTextShadowNode();
+        auto stream = shadow_node ? shadow_node->BuildEditableInlineStream()
+                                  : EditableInlineStream();
+        auto intent = BuildEditableInputIntent(
+            "historyUndo", u"", false, false, editable_selection_base_offset_,
+            editable_selection_extent_offset_, {}, stream);
+        if (DispatchEditableBeforeInput(intent)) {
+          break;
+        }
+        if (UndoEditableMutation()) {
+          DispatchEditableInput(intent);
+        }
+      }
+      break;
+    }
+    case KeyCode::kKeyY: {
+      if (IsRuntimeContentEditable()) {
+        auto* shadow_node = GetEditableTextShadowNode();
+        auto stream = shadow_node ? shadow_node->BuildEditableInlineStream()
+                                  : EditableInlineStream();
+        auto intent = BuildEditableInputIntent(
+            "historyRedo", u"", false, false, editable_selection_base_offset_,
+            editable_selection_extent_offset_, {}, stream);
+        DispatchEditableBeforeInput(intent);
       }
       break;
     }
@@ -1041,6 +1140,39 @@ void TextView::setTextSelection(const LynxModuleValues& args,
   }
   result["boxes"] = clay::Value(std::move(box_array));
   result["handles"] = clay::Value(std::move(handle_array));
+  callback(LynxUIMethodResult::kSuccess, clay::Value(std::move(result)));
+}
+
+void TextView::setEditableSelectionRange(
+    const LynxModuleValues& args, const LynxUIMethodCallback& callback) {
+  int start = 0, end = 0;
+  CastNamedLynxModuleArgs({"start", "end"}, args, start, end);
+  if (!IsRuntimeContentEditable()) {
+    callback(LynxUIMethodResult::kParamInvalid, clay::Value());
+    return;
+  }
+
+  auto* shadow_node = GetEditableTextShadowNode();
+  if (!shadow_node) {
+    callback(LynxUIMethodResult::kParamInvalid, clay::Value());
+    return;
+  }
+
+  const auto stream_length = GetEditableStreamLength(shadow_node);
+  const auto selection_start = static_cast<size_t>(
+      std::clamp(start, 0, static_cast<int>(stream_length)));
+  const auto selection_end = static_cast<size_t>(
+      std::clamp(end, 0, static_cast<int>(stream_length)));
+  CONTENT_EDITABLE_LOG << "set-editable-selection view=" << id()
+                       << " requested=" << start << "-" << end
+                       << " clamped=" << selection_start << "-"
+                       << selection_end;
+  SetEditableSelectionRange(selection_start, selection_end);
+  UpdateEditableCaretRectToPlatform();
+
+  clay::Value::Map result;
+  result["start"] = clay::Value(static_cast<int64_t>(selection_start));
+  result["end"] = clay::Value(static_cast<int64_t>(selection_end));
   callback(LynxUIMethodResult::kSuccess, clay::Value(std::move(result)));
 }
 
@@ -1547,7 +1679,7 @@ size_t TextView::GetRenderOffsetForEditableOffset(size_t editable_offset) {
       if (editable_offset <= item.start + item.length) {
         auto render_offset = editable_offset <= item.start ? image->StartGlyph()
                                                            : image->EndGlyph();
-        CONTENT_EDITABLE_LOG << "editable-to-render atomic view=" << id()
+        CONTENT_EDITABLE_LOG << "editable-to-render atomic image view=" << id()
                              << " editable=" << editable_offset
                              << " item_type=" << EditableItemTypeName(item.type)
                              << " item_editable=[" << item.start << ","
@@ -1685,7 +1817,8 @@ bool TextView::ReplaceEditableRange(size_t start, size_t end,
 
   RemoveEditableAtomicViews(result.atomic_deletes);
   if (result.has_pending_text_insertion) {
-    shadow_node->CreateRawTextNodeIfNeed(result.pending_text_insertion);
+    shadow_node->CreateRawTextNodeAtEditableOffset(
+        result.pending_text_insertion, result.pending_text_insertion_offset);
     result.selection_offset = result.pending_text_insertion_offset +
                               result.pending_text_insertion.length();
   }
@@ -1723,6 +1856,136 @@ bool TextView::ReplaceEditableRange(size_t start, size_t end,
     }
   }
   return true;
+}
+
+TextView::EditableInputIntent TextView::BuildEditableInputIntent(
+    const std::string& input_type, const std::u16string& data, bool has_data,
+    bool is_composing, size_t selection_base, size_t selection_extent,
+    const std::vector<EditableStaticRange>& target_ranges,
+    const EditableInlineStream& stream) {
+  EditableInputIntent intent;
+  intent.input_type = input_type;
+  intent.data = data;
+  intent.has_data = has_data;
+  intent.is_composing = is_composing;
+  intent.selection_base = selection_base;
+  intent.selection_extent = selection_extent;
+  intent.target_ranges = target_ranges;
+
+  for (const auto& range : target_ranges) {
+    for (const auto& item : stream) {
+      if (!IsAtomicEditableItem(item.type) || !item.node) {
+        continue;
+      }
+      auto item_end = item.start + item.length;
+      if (range.start >= item_end || range.end <= item.start) {
+        continue;
+      }
+      EditableAtomicEventInfo atomic;
+      atomic.type = EditableItemTypeName(item.type);
+      atomic.id = item.node->id();
+      atomic.view_id = item.node->id();
+      atomic.start = item.start;
+      atomic.end = item_end;
+      intent.atomic.push_back(std::move(atomic));
+    }
+  }
+  return intent;
+}
+
+bool TextView::DispatchEditableBeforeInput(
+    const EditableInputIntent& intent) {
+  CONTENT_EDITABLE_LOG << "beforeinput-dispatch view=" << id()
+                       << " input_type=" << intent.input_type
+                       << " selection=" << intent.selection_base << "-"
+                       << intent.selection_extent
+                       << " range_count=" << intent.target_ranges.size()
+                       << " atomic_count=" << intent.atomic.size();
+  clay::Value::Map map;
+  map["inputType"] = clay::Value(intent.input_type);
+  if (intent.has_data) {
+    map["data"] = clay::Value(lynx::base::U16StringToU8(intent.data));
+  }
+  map["isComposing"] = clay::Value(intent.is_composing);
+  map["selection"] = clay::Value(CreateEditableSelectionMap(
+      intent.selection_base, intent.selection_extent));
+
+  clay::Value::Array ranges;
+  ranges.reserve(intent.target_ranges.size());
+  for (const auto& range : intent.target_ranges) {
+    ranges.emplace_back(
+        clay::Value(CreateEditableRangeMap(range.start, range.end)));
+  }
+  map["targetRanges"] = clay::Value(std::move(ranges));
+
+  if (!intent.atomic.empty()) {
+    clay::Value::Array atomics;
+    atomics.reserve(intent.atomic.size());
+    for (const auto& atomic : intent.atomic) {
+      clay::Value::Map atomic_map;
+      atomic_map["type"] = clay::Value(atomic.type);
+      atomic_map["id"] = clay::Value(atomic.id);
+      atomic_map["viewId"] = clay::Value(atomic.view_id);
+      atomic_map["startOffset"] = clay::Value(static_cast<int64_t>(atomic.start));
+      atomic_map["endOffset"] = clay::Value(static_cast<int64_t>(atomic.end));
+      atomics.emplace_back(clay::Value(std::move(atomic_map)));
+    }
+    map["atomic"] = clay::Value(std::move(atomics));
+  }
+
+  const bool canceled = page_view()->SendCancelableCustomEvent(
+      id(), event_attr::kEventEditBeforeInput, std::move(map));
+  CONTENT_EDITABLE_LOG << "beforeinput-result view=" << id()
+                       << " canceled=" << canceled;
+  return canceled;
+}
+
+void TextView::DispatchEditableInput(const EditableInputIntent& intent) {
+  auto post_intent = intent;
+  auto* shadow_node = GetEditableTextShadowNode();
+  auto stream_length = GetEditableStreamLength(shadow_node);
+  auto selection = GetEditableSelectionRange(stream_length);
+  post_intent.selection_base = editable_selection_base_offset_;
+  post_intent.selection_extent = editable_selection_extent_offset_;
+  if (selection.first == selection.second) {
+    post_intent.selection_base = selection.first;
+    post_intent.selection_extent = selection.second;
+  }
+
+  clay::Value::Map map;
+  map["inputType"] = clay::Value(post_intent.input_type);
+  if (post_intent.has_data) {
+    map["data"] = clay::Value(lynx::base::U16StringToU8(post_intent.data));
+  }
+  map["isComposing"] = clay::Value(post_intent.is_composing);
+  map["selection"] = clay::Value(CreateEditableSelectionMap(
+      post_intent.selection_base, post_intent.selection_extent));
+
+  clay::Value::Array ranges;
+  ranges.reserve(post_intent.target_ranges.size());
+  for (const auto& range : post_intent.target_ranges) {
+    ranges.emplace_back(
+        clay::Value(CreateEditableRangeMap(range.start, range.end)));
+  }
+  map["targetRanges"] = clay::Value(std::move(ranges));
+
+  if (!post_intent.atomic.empty()) {
+    clay::Value::Array atomics;
+    atomics.reserve(post_intent.atomic.size());
+    for (const auto& atomic : post_intent.atomic) {
+      clay::Value::Map atomic_map;
+      atomic_map["type"] = clay::Value(atomic.type);
+      atomic_map["id"] = clay::Value(atomic.id);
+      atomic_map["viewId"] = clay::Value(atomic.view_id);
+      atomic_map["startOffset"] = clay::Value(static_cast<int64_t>(atomic.start));
+      atomic_map["endOffset"] = clay::Value(static_cast<int64_t>(atomic.end));
+      atomics.emplace_back(clay::Value(std::move(atomic_map)));
+    }
+    map["atomic"] = clay::Value(std::move(atomics));
+  }
+
+  page_view()->SendCustomEvent(id(), event_attr::kEventEditInput,
+                               std::move(map));
 }
 
 bool TextView::UndoEditableMutation() {
@@ -1764,6 +2027,28 @@ bool TextView::UndoEditableMutation() {
   for (auto& raw_text : snapshot.raw_texts) {
     if (raw_text.node) {
       raw_text.node->SetText(raw_text.text);
+    }
+  }
+  std::unordered_set<RawTextShadowNode*> snapshot_raw_texts;
+  for (const auto& raw_text : snapshot.raw_texts) {
+    if (raw_text.node) {
+      snapshot_raw_texts.insert(raw_text.node);
+    }
+  }
+  std::vector<RawTextShadowNode*> inserted_raw_texts;
+  for (const auto& item : shadow_node->BuildEditableInlineStream()) {
+    if (item.type != EditableInlineStreamItemType::kText || !item.node ||
+        !item.node->IsRawTextShadowNode()) {
+      continue;
+    }
+    auto* raw_text = static_cast<RawTextShadowNode*>(item.node);
+    if (raw_text->id() < 0 && snapshot_raw_texts.count(raw_text) == 0) {
+      inserted_raw_texts.push_back(raw_text);
+    }
+  }
+  for (auto* raw_text : inserted_raw_texts) {
+    if (auto* parent = raw_text->Parent()) {
+      parent->RemoveChild(raw_text);
     }
   }
   RefreshEditableTextView(shadow_node);
@@ -1909,22 +2194,186 @@ void TextView::SyncEditableInputStateToPlatform() {
 }
 
 void TextView::UpdateEditableCaretRectToPlatform() {
-  if (!text_input_controller_ || !text_input_controller_->ConnectKeyboard()) {
-    return;
-  }
 #ifndef ENABLE_CLAY_LITE
-  auto text_box = GetRenderText()->GetEndTextPositionTopAndBottom();
-  auto rect = text_box.rect;
+  auto rect = GetEditableCaretRectForOffset(editable_caret_offset_);
   if (rect.IsEmpty()) {
     rect = FloatRect(0, 0, 1, 16);
   }
+  if (editable_selection_base_offset_ == editable_selection_extent_offset_) {
+    GetRenderText()->SetCaretRectOverride(rect);
+  } else {
+    GetRenderText()->SetCaretRectOverride(std::nullopt);
+  }
+  if (!text_input_controller_ || !text_input_controller_->ConnectKeyboard()) {
+    return;
+  }
+  CONTENT_EDITABLE_LOG << "sync-caret-rect view=" << id()
+                       << " render_selection=" << selection_end_pos_
+                       << " editable_caret=" << editable_caret_offset_
+                       << " rect=(" << rect.x() << "," << rect.y() << " "
+                       << rect.width() << "x" << rect.height() << ")";
   text_input_controller_->SetCaretRect(rect);
   text_input_controller_->SetComposingRect(rect);
+#else
+  if (!text_input_controller_ || !text_input_controller_->ConnectKeyboard()) {
+    return;
+  }
 #endif
+}
+
+FloatRect TextView::GetEditableCaretRectForOffset(size_t offset) {
+  auto* shadow_node = GetEditableTextShadowNode();
+  auto* render_text = GetRenderText();
+  auto* painter = render_text ? render_text->GetPainter() : nullptr;
+  if (!shadow_node || !painter) {
+    return render_text ? render_text->GetCaretRect() : FloatRect();
+  }
+
+  auto caret_from_rect = [](const FloatRect& rect, bool after) {
+    auto x = after ? rect.MaxX() : rect.x();
+    return FloatRect(x, rect.y(), 1.f, rect.height());
+  };
+  auto y_overlaps = [](const FloatRect& a, const FloatRect& b) {
+    return a.y() <= b.MaxY() && a.MaxY() >= b.y();
+  };
+  auto atomic_rect_for_item = [painter, this](
+                                  const EditableInlineStreamItem& item,
+                                  FloatRect* rect) {
+    int placeholder_id = -1;
+    size_t render_start = 0;
+    size_t render_end = 0;
+    if (item.type == EditableInlineStreamItemType::kAtomicInlineImage &&
+        item.node && item.node->IsInlineImageShadowNode()) {
+      auto* image = static_cast<InlineImageShadowNode*>(item.node);
+      placeholder_id = image->placeholder_index();
+      render_start = image->StartGlyph();
+      render_end = image->EndGlyph();
+    } else if (item.type == EditableInlineStreamItemType::kAtomicInlineView &&
+               item.node && item.node->IsInlineViewShadowNode()) {
+      auto* view = static_cast<InlineViewShadowNode*>(item.node);
+      placeholder_id = view->placeholder_index();
+      render_start = view->StartGlyph();
+      render_end = view->EndGlyph();
+    } else {
+      return false;
+    }
+
+    if (placeholder_id >= 0) {
+      if (auto* paragraph = painter->GetParagraph()) {
+        for (const auto& box : paragraph->GetRectsForPlaceholders()) {
+          if (static_cast<int>(box.placeholder_id) == placeholder_id) {
+            *rect = FloatRect(box.rect);
+            CONTENT_EDITABLE_LOG << "editable-caret atomic-placeholder view="
+                                 << id()
+                                 << " item_type="
+                                 << EditableItemTypeName(item.type)
+                                 << " editable=[" << item.start << ","
+                                 << item.start + item.length
+                                 << "] placeholder_id=" << placeholder_id
+                                 << " rect=(" << rect->x() << ","
+                                 << rect->y() << " " << rect->width() << "x"
+                                 << rect->height() << ")";
+            return true;
+          }
+        }
+      }
+    }
+
+    auto boxes = painter->GetRectsForRange(
+        static_cast<int>(render_start), static_cast<int>(render_end),
+        RectHeightStyle::kTight, RectWidthStyle::kTight);
+    if (boxes.empty()) {
+      return false;
+    }
+    *rect = boxes.front().rect;
+    return true;
+  };
+
+  FloatRect previous_atomic_rect;
+  bool has_previous_atomic_rect = false;
+  for (const auto& item : shadow_node->BuildEditableInlineStream()) {
+    if (offset < item.start) {
+      if (has_previous_atomic_rect) {
+        return caret_from_rect(previous_atomic_rect, true);
+      }
+      break;
+    }
+
+    if (item.type == EditableInlineStreamItemType::kText) {
+      if (offset <= item.start + item.length) {
+        if (offset == item.start && has_previous_atomic_rect) {
+          return caret_from_rect(previous_atomic_rect, true);
+        }
+        if (item.node && item.node->IsRawTextShadowNode()) {
+          auto* raw_text = static_cast<RawTextShadowNode*>(item.node);
+          auto raw_offset = std::min(offset - item.start, item.length);
+          auto render_offset =
+              raw_text->StartGlyph() +
+              raw_text->GetLayoutTextLengthForRawEndIndex(raw_offset);
+          auto rect =
+              render_text->GetCaretRectForOffset(static_cast<int>(render_offset));
+          if (has_previous_atomic_rect && !rect.IsEmpty() &&
+              y_overlaps(rect, previous_atomic_rect) &&
+              rect.x() < previous_atomic_rect.MaxX()) {
+            CONTENT_EDITABLE_LOG << "editable-caret text-after-atomic view="
+                                 << id()
+                                 << " editable=" << offset
+                                 << " item_editable=[" << item.start << ","
+                                 << item.start + item.length
+                                 << "] render=" << render_offset
+                                 << " text_rect=(" << rect.x() << ","
+                                 << rect.y() << " " << rect.width() << "x"
+                                 << rect.height()
+                                 << ") previous_atomic_rect=("
+                                 << previous_atomic_rect.x() << ","
+                                 << previous_atomic_rect.y() << " "
+                                 << previous_atomic_rect.width() << "x"
+                                 << previous_atomic_rect.height() << ")";
+            return caret_from_rect(previous_atomic_rect, true);
+          }
+          return rect;
+        }
+        return render_text->GetCaretRectForOffset(
+            static_cast<int>(GetRenderOffsetForEditableOffset(offset)));
+      }
+      has_previous_atomic_rect = false;
+      continue;
+    }
+
+    FloatRect atomic_rect;
+    auto has_atomic_rect = atomic_rect_for_item(item, &atomic_rect);
+    if (offset <= item.start) {
+      if (offset == item.start && has_previous_atomic_rect) {
+        return caret_from_rect(previous_atomic_rect, true);
+      }
+      if (has_atomic_rect) {
+        return caret_from_rect(atomic_rect, false);
+      }
+      if (has_previous_atomic_rect) {
+        return caret_from_rect(previous_atomic_rect, true);
+      }
+      break;
+    }
+    if (offset <= item.start + item.length) {
+      if (has_atomic_rect) {
+        return caret_from_rect(atomic_rect, true);
+      }
+      break;
+    }
+    previous_atomic_rect = atomic_rect;
+    has_previous_atomic_rect = has_atomic_rect;
+  }
+
+  if (has_previous_atomic_rect) {
+    return caret_from_rect(previous_atomic_rect, true);
+  }
+  return render_text->GetCaretRectForOffset(
+      static_cast<int>(GetRenderOffsetForEditableOffset(offset)));
 }
 
 void TextView::MoveEditableCaretToOffset(size_t offset) {
   auto stream_length = GetEditableStreamLength(GetEditableTextShadowNode());
+  auto previous_offset = editable_caret_offset_;
   editable_caret_offset_ = std::min(offset, stream_length);
   editable_selection_base_offset_ = editable_caret_offset_;
   editable_selection_extent_offset_ = editable_caret_offset_;
@@ -1938,6 +2387,12 @@ void TextView::MoveEditableCaretToOffset(size_t offset) {
   GetRenderText()->SetSelection(
       TextRange(selection_start_pos_, selection_end_pos_));
   applying_editable_selection_to_render_ = false;
+  CONTENT_EDITABLE_LOG << "move-caret view=" << id()
+                       << " from=" << previous_offset
+                       << " requested=" << offset
+                       << " clamped=" << editable_caret_offset_
+                       << " render=" << selection_end_pos_
+                       << " stream_length=" << stream_length;
   UpdateContentEditableCaretBlinking();
 #endif
   SyncEditableInputStateToPlatform();
@@ -1966,6 +2421,7 @@ void TextView::RefreshEditableTextView(TextShadowNode* shadow_node) {
   if (bundle) {
     bundle->UpdateExtraData(this);
   }
+  shadow_node->MarkDirty();
   MarkNeedsLayout();
   Invalidate();
 }

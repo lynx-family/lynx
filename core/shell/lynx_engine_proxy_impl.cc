@@ -73,6 +73,23 @@ void LynxEngineProxyImpl::SendCustomEvent(const std::string& name, int32_t tag,
   });
 }
 
+bool LynxEngineProxyImpl::SendCancelableCustomEvent(
+    const std::string& name, int32_t tag, const pub::Value& params,
+    const std::string& params_name) {
+  if (engine_actor_ == nullptr || engine_actor_->Impl() == nullptr) {
+    LOGE(
+        "LynxEngineProxy::SendCancelableCustomEvent failed since engine_actor_ "
+        "or engine is nullptr");
+    return false;
+  }
+  auto params_value = pub::ValueUtils::ConvertValueToLepusValue(params);
+  return engine_actor_->ActSync(
+      [name, tag, params_value, params_name](auto& engine) {
+        return engine->SendCancelableCustomEvent(name, tag, params_value,
+                                                params_name);
+      });
+}
+
 void LynxEngineProxyImpl::SendGestureEvent(int tag, int gesture_id,
                                            std::string name,
                                            const pub::Value& params) {

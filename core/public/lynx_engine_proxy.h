@@ -35,6 +35,10 @@ class LynxEngineProxy {
                                const pub::Value& params,
                                const std::string& params_name) = 0;
 
+  virtual bool SendCancelableCustomEvent(const std::string& name, int32_t tag,
+                                         const pub::Value& params,
+                                         const std::string& params_name) = 0;
+
   virtual void SendGestureEvent(int tag, int gesture_id, std::string name,
                                 const pub::Value& params) = 0;
 

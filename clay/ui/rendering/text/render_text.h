@@ -57,6 +57,9 @@ class RenderText : public RenderBox {
 
   void PaintSelection(GraphicsContext* context);
   void PaintCaret(GraphicsContext* context);
+  FloatRect GetCaretRect() const;
+  FloatRect GetCaretRectForOffset(int caret_offset) const;
+  void SetCaretRectOverride(std::optional<FloatRect> caret_rect);
 
   std::u16string GetSelectionString() const;
 
@@ -107,8 +110,6 @@ class RenderText : public RenderBox {
   void PaintText(GraphicsContext* graphics_context, const FloatPoint& offset);
   void PaintInlineEmojis(GraphicsContext* graphics_context, double x_offset,
                          double y_offset);
-  FloatRect ComputeCaretRect() const;
-
   struct InlineEmojiRenderInfo {
     fml::RefPtr<GraphicsImage> image;
   };
@@ -116,6 +117,7 @@ class RenderText : public RenderBox {
   SelectionChangedCallback selection_changed_callback_;
   std::unordered_map<int, InlineEmojiRenderInfo> inline_emojis_;
   std::optional<Color> caret_color_;
+  std::optional<FloatRect> caret_rect_override_;
   bool caret_visible_ = false;
 };
 

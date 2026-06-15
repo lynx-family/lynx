@@ -218,9 +218,20 @@ void BTSRuntime::Init(
 #endif
 
   TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS, CREATE_AND_LOAD_APP);
-  app_ = js_executor_->createNativeAppInstance(
-      GetRuntimeId(), delegate_.get(), runtime_delegate_,
-      std::make_unique<runtime::LynxApiHandler>(), page_options_);
+  auto create_app = [this]() {
+    app_ = js_executor_->createNativeAppInstance(
+        GetRuntimeId(), delegate_.get(), runtime_delegate_,
+        std::make_unique<runtime::LynxApiHandler>(), page_options_);
+  };
+#if ENABLE_NAPI_BINDING
+  if (napi_environment_ && napi_environment_->proxy()) {
+    napi_environment_->proxy()->RunWithRuntimeLock(create_app);
+  } else {
+    create_app();
+  }
+#else
+  create_app();
+#endif
 #if ENABLE_TESTBENCH_RECORDER
   app_->SetRecordId(record_id_);
 #endif

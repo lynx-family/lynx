@@ -872,7 +872,7 @@ void RadonNode::SetEventListeners(
                   result = lynx::worklet::LepusElement::FireElementWorklet(
                       component_id, entry_name, tasm, lepus_func, lepus_script,
                       event_detail, task_handler, element_id,
-                      static_cast<EventType>(1));
+                      static_cast<EventType>(1), event);
                   // trigger patch finish when a worklet operation is
                   // completed
                   tasm->page_proxy()->element_manager()->SetNeedsLayout();

@@ -22,6 +22,7 @@
 #include "core/renderer/worklet/lepus_component.h"
 #include "core/renderer/worklet/lepus_gesture.h"
 #include "core/renderer/worklet/lepus_lynx.h"
+#include "core/event/event.h"
 #include "core/runtime/common/napi/napi_environment.h"
 #include "core/runtime/lepus/lepus_error_helper.h"
 #include "core/runtime/lepusng/jsvalue_helper.h"
@@ -51,6 +52,11 @@ constexpr int kStopImmediatePropagationBit = 0x2;
 const uint64_t kLepusEventProtoID =
     reinterpret_cast<uint64_t>(&kLepusEventProtoID);
 
+struct WorkletEventState {
+  int propagation_result{0};
+  fml::RefPtr<event::Event> event;
+};
+
 static_assert(
     kStopPropagationBit ==
             static_cast<int>(tasm::EventResult::kStopPropagationBit) &&
@@ -60,10 +66,31 @@ static_assert(
 
 static LEPUSValue EventAPI_method(LEPUSContext* ctx, LEPUSValueConst this_val,
                                   int argc, LEPUSValueConst* argv, int magic) {
-  int* result =
-      reinterpret_cast<int*>(LEPUS_GetOpaque(this_val, LEPUS_CLASS_OBJECT));
-  *result |= magic;
+  auto* state = reinterpret_cast<WorkletEventState*>(
+      LEPUS_GetOpaque(this_val, LEPUS_CLASS_OBJECT));
+  if (state != nullptr) {
+    state->propagation_result |= magic;
+  }
   return LEPUS_UNDEFINED;
+}
+
+static LEPUSValue PreventDefaultAPI_method(LEPUSContext* ctx,
+                                           LEPUSValue this_val, int,
+                                           LEPUSValue*) {
+  auto* state = reinterpret_cast<WorkletEventState*>(
+      LEPUS_GetOpaque(this_val, LEPUS_CLASS_OBJECT));
+  if (state != nullptr && state->event != nullptr) {
+    state->event->prevent_default();
+  }
+  return LEPUS_UNDEFINED;
+}
+
+static LEPUSValue DefaultPreventedGetter(LEPUSContext* ctx, LEPUSValue this_val,
+                                         int, LEPUSValue*) {
+  auto* state = reinterpret_cast<WorkletEventState*>(
+      LEPUS_GetOpaque(this_val, LEPUS_CLASS_OBJECT));
+  return LEPUS_NewBool(ctx, state != nullptr && state->event != nullptr &&
+                                state->event->default_prevented());
 }
 
 static void AddEventAPI(LEPUSContext* ctx, LEPUSValue val, const char* name,
@@ -75,6 +102,22 @@ static void AddEventAPI(LEPUSContext* ctx, LEPUSValue val, const char* name,
                                LEPUS_PROP_WRITABLE | LEPUS_PROP_CONFIGURABLE);
 }
 
+static void AddPreventDefaultAPI(LEPUSContext* ctx, LEPUSValue val) {
+  LEPUSValue func =
+      LEPUS_NewCFunction(ctx, PreventDefaultAPI_method, "preventDefault", 0);
+  HandleScope func_scope(ctx, &func, HANDLE_TYPE_LEPUS_VALUE);
+  LEPUS_DefinePropertyValueStr(ctx, val, "preventDefault", func,
+                               LEPUS_PROP_WRITABLE | LEPUS_PROP_CONFIGURABLE);
+
+  LEPUSValue getter =
+      LEPUS_NewCFunction(ctx, DefaultPreventedGetter, "get defaultPrevented", 0);
+  HandleScope getter_scope(ctx, &getter, HANDLE_TYPE_LEPUS_VALUE);
+  LEPUSAtom atom = LEPUS_NewAtom(ctx, "defaultPrevented");
+  LEPUS_DefinePropertyGetSet(ctx, val, atom, getter, LEPUS_UNDEFINED,
+                             LEPUS_PROP_CONFIGURABLE);
+  LEPUS_FreeAtom(ctx, atom);
+}
+
 static void SetEventPrototype(Napi::Env& env, LEPUSContext* ctx,
                               LEPUSValue js_value) {
   DCHECK(LEPUS_IsObject(js_value));
@@ -84,6 +127,7 @@ static void SetEventPrototype(Napi::Env& env, LEPUSContext* ctx,
   AddEventAPI(ctx, js_value, "stopPropagation", kStopPropagationBit);
   AddEventAPI(ctx, js_value, "stopImmediatePropagation",
               kStopImmediatePropagationBit);
+  AddPreventDefaultAPI(ctx, js_value);
 }
 
 static void WrapEventTarget(
@@ -155,7 +199,7 @@ tasm::EventResult LepusElement::FireElementWorklet(
     tasm::TemplateAssembler* tasm, const lepus::Value& func_val,
     const lepus::Value& func_obj, const lepus::Value& value,
     const std::shared_ptr<worklet::LepusApiHandler>& task_handler,
-    int element_id, tasm::EventType type) {
+    int element_id, tasm::EventType type, fml::RefPtr<event::Event> event) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, LEPUS_ELEMENT_FIRE_ELEMENT_WORKLET);
   if (tasm == nullptr) {
     return tasm::EventResult::kDefault;
@@ -230,14 +274,16 @@ tasm::EventResult LepusElement::FireElementWorklet(
                   task_handler);
   SetEventPrototype(env, ctx, value_js_value);
 
-  int event_result = 0;
-  LEPUS_SetOpaque(value_js_value, &event_result);
+  WorkletEventState event_state{0, std::move(event)};
+  LEPUS_SetOpaque(value_js_value, &event_state);
 
   LepusElement::CallLepusWithComponentInstance(
       tasm, ctx, func_val_js_value, func_obj_js_value, value_js_value,
       component_obj, std::move(gesture_obj));
 
-  return static_cast<tasm::EventResult>(event_result);
+  auto propagation_result = event_state.propagation_result;
+  LEPUS_SetOpaque(value_js_value, nullptr);
+  return static_cast<tasm::EventResult>(propagation_result);
 }
 
 std::optional<lepus::Value> LepusElement::TriggerWorkletFunction(

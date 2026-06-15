@@ -155,6 +155,8 @@ class BaseTextShadowNode : public ShadowNode {
                     const clay::Value&) override;
   void CreateRawTextNodeIfNeed(std::string text);
   void CreateRawTextNodeIfNeed(const std::u16string& text);
+  void CreateRawTextNodeAtEditableOffset(const std::u16string& text,
+                                         size_t offset);
 
  protected:
  private:

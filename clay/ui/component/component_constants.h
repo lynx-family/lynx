@@ -75,6 +75,7 @@ extern const char* kEventListStickyBottom;
 extern const char* kEventLayoutChange;
 extern const char* kEventMouseLongPress;
 
+extern const char* kEventEditBeforeInput;
 extern const char* kEventEditInput;
 extern const char* kEventEditSelectionChange;
 extern const char* kEventEditConfirm;

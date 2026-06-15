@@ -247,6 +247,38 @@ function selectFirstWord() {
 
 > **Note**: Although `setTextSelection` can work independently, in practice you should enable `text-selection={true}` so the element has selection enabled and the user can also adjust it interactively.
 
+### `setEditableSelectionRange`
+
+Sets the contenteditable selection range by editable stream offsets. This is useful for controlled rich-text editing: after JavaScript handles `beforeinput` and updates the rendered children, call this method to sync the native caret or selection back to the frontend document model.
+
+Signature (type `SetEditableSelectionRangeMethod`):
+
+- `method: 'setEditableSelectionRange'`
+- `params`:
+  - `start: number` – start offset in the editable text stream.
+  - `end: number` – end offset in the editable text stream.
+- `success?: (result) => void`, where:
+  - `result.start: number` – clamped start offset.
+  - `result.end: number` – clamped end offset.
+
+Example:
+
+```tsx
+function moveCaret(offset: number) {
+  lynx
+    .createSelectorQuery()
+    .select('#editable-text')
+    .invoke({
+      method: 'setEditableSelectionRange',
+      params: {
+        start: offset,
+        end: offset,
+      },
+    })
+    .exec()
+}
+```
+
 ### `getTextBoundingRect`
 
 Gets the bounding rectangles for a specific character range.

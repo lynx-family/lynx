@@ -230,6 +230,34 @@ interface SetTextSelectionMethod extends BaseMethod {
 }
 
 /**
+ * Sets the contenteditable selection by editable stream offsets.
+ * @PC
+ */
+interface SetEditableSelectionRangeMethod extends BaseMethod {
+  method: 'setEditableSelectionRange';
+  params: {
+    /**
+     * Start offset in the editable text stream
+     */
+    start: number;
+    /**
+     * End offset in the editable text stream
+     */
+    end: number;
+  };
+  success?: Callback<{
+    /**
+     * Clamped start offset
+     */
+    start: number;
+    /**
+     * Clamped end offset
+     */
+    end: number;
+  }>;
+}
+
+/**
  * Gets the bounding rectangle of the text.
  * @Android
  * @iOS
@@ -273,4 +301,8 @@ interface GetSelectedTextMethod extends BaseMethod {
   }>;
 }
 
-export type TextUIMethods = SetTextSelectionMethod | GetTextBoundingRectMethod | GetSelectedTextMethod;
+export type TextUIMethods =
+  | SetTextSelectionMethod
+  | SetEditableSelectionRangeMethod
+  | GetTextBoundingRectMethod
+  | GetSelectedTextMethod;

@@ -16,6 +16,7 @@
 #include "third_party/node/src/node.h"
 #include "third_party/node/src/node_internals.h"
 #include "uv.h"
+#include "v8.h"
 #include "v8-cppgc.h"
 
 namespace lynx {
@@ -46,13 +47,23 @@ class V8PlatformHelper : public V8PlatformData {
   }
 
   bool is_destory_ = {false};
+  fml::MessageLoopNode* message_loop_ = nullptr;
   uv_loop_t* uv_loop_;
+  std::unique_ptr<v8::Locker> node_loop_locker_;
+  std::unique_ptr<v8::Isolate::Scope> node_loop_isolate_scope_;
 };
 
 void V8PlatformHelper::onDestory() {
   if (is_destory_) {
     return;
   }
+  if (message_loop_) {
+    message_loop_->SetUVRunCallback(nullptr);
+    message_loop_ = nullptr;
+  }
+  node_loop_isolate_scope_.reset();
+  node_loop_locker_.reset();
+  is_destory_ = true;
 }
 
 v8::Isolate* V8PlatformHelper::CreateIsolate() {
@@ -60,13 +71,24 @@ v8::Isolate* V8PlatformHelper::CreateIsolate() {
 
   std::shared_ptr<node::ArrayBufferAllocator> allocator =
       node::ArrayBufferAllocator::Create();
-  return node::NewIsolate(allocator, uv_loop_, GetPlatform());
+  auto* isolate = node::NewIsolate(allocator, uv_loop_, GetPlatform());
+  node_loop_locker_ = std::make_unique<v8::Locker>(isolate);
+  node_loop_isolate_scope_ = std::make_unique<v8::Isolate::Scope>(isolate);
+  if (message_loop_) {
+    message_loop_->SetUVRunCallback(
+        [isolate](uv_loop_t* loop, uv_run_mode mode) {
+          v8::Locker locker(isolate);
+          v8::Isolate::Scope isolate_scope(isolate);
+          return uv_run(loop, mode);
+        });
+  }
+  return isolate;
 }
 
 void V8PlatformHelper::InitUVLoop() {
-  auto* messageloop = reinterpret_cast<fml::MessageLoopNode*>(
+  message_loop_ = reinterpret_cast<fml::MessageLoopNode*>(
       fml::MessageLoop::GetCurrent().GetLoopImpl().get());
-  uv_loop_ = messageloop->GetUVLoop();
+  uv_loop_ = message_loop_->GetUVLoop();
 }
 
 }  // namespace

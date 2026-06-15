@@ -241,7 +241,7 @@ void RenderText::PaintCaret(GraphicsContext* context) {
   if (!caret_visible_ || !IsCollapsed() || select_end_ < 0 || !paragraph_) {
     return;
   }
-  auto caret_rect = ComputeCaretRect();
+  auto caret_rect = GetCaretRect();
   if (caret_rect.IsEmpty()) {
     return;
   }
@@ -250,14 +250,27 @@ void RenderText::PaintCaret(GraphicsContext* context) {
   context->DrawRect(caret_rect, paint);
 }
 
-FloatRect RenderText::ComputeCaretRect() const {
+FloatRect RenderText::GetCaretRect() const {
+  if (caret_rect_override_.has_value()) {
+    return caret_rect_override_.value();
+  }
+  return GetCaretRectForOffset(select_end_);
+}
+
+FloatRect RenderText::GetCaretRectForOffset(int offset) const {
   if (!painter_ || !paragraph_) {
     return FloatRect();
   }
 
-  int caret_offset =
-      std::clamp(select_end_, 0, static_cast<int>(text_.length()));
-  if (!text_.empty() && caret_offset < static_cast<int>(text_.length())) {
+  int text_length = static_cast<int>(text_.length());
+  const auto& metrics = paragraph_->GetLineMetrics();
+  if (!metrics.empty()) {
+    text_length =
+        std::max(text_length, static_cast<int>(metrics.back().end_index));
+  }
+
+  int caret_offset = std::clamp(offset, 0, text_length);
+  if (text_length > 0 && caret_offset < text_length) {
     auto boxes = painter_->GetRectsForRange(caret_offset, caret_offset + 1,
                                             RectHeightStyle::kStrut,
                                             RectWidthStyle::kTight);
@@ -266,10 +279,9 @@ FloatRect RenderText::ComputeCaretRect() const {
       return FloatRect(rect.x(), rect.y(), kCaretWidth, rect.height());
     }
   }
-
-  if (caret_offset > 0) {
+  if (text_length > 0 && caret_offset > 0) {
     auto boxes = painter_->GetRectsForRange(caret_offset - 1, caret_offset,
-                                            RectHeightStyle::kMax,
+                                            RectHeightStyle::kStrut,
                                             RectWidthStyle::kTight);
     if (!boxes.empty()) {
       const auto& rect = boxes.back().rect;
@@ -283,7 +295,6 @@ FloatRect RenderText::ComputeCaretRect() const {
         painter_->GetLineHeightForPosition(std::max(caret_offset - 1, 0));
   }
   if (line_height <= 0) {
-    auto metrics = paragraph_->GetLineMetrics();
     if (!metrics.empty()) {
       line_height = metrics.front().height;
     }
@@ -292,6 +303,11 @@ FloatRect RenderText::ComputeCaretRect() const {
     return FloatRect();
   }
   return FloatRect(0, 0, kCaretWidth, line_height);
+}
+
+void RenderText::SetCaretRectOverride(std::optional<FloatRect> caret_rect) {
+  caret_rect_override_ = caret_rect;
+  MarkNeedsPaint();
 }
 
 std::u16string RenderText::GetSelectionString() const {

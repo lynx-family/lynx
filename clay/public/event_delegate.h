@@ -52,6 +52,12 @@ class EventDelegate {
   virtual void OnDrawEndEvent() = 0;
   virtual void OnSendCustomEvent(int view_id, const std::string& event_name,
                                  clay::Value::Map args) = 0;
+  // Returns true only when JS explicitly calls preventDefault/defaultPrevented.
+  virtual bool OnSendCancelableCustomEvent(int view_id,
+                                           const std::string& event_name,
+                                           clay::Value::Map args) {
+    return false;
+  }
   virtual void OnSendGlobalEvent(const std::string& event_name,
                                  clay::Value args) = 0;
   virtual void OnFirstMeaningfulPaint() = 0;

@@ -67,6 +67,7 @@ const char* kEventListStickyBottom = "stickybottom";
 const char* kEventLayoutChange = "layoutchange";
 const char* kEventMouseLongPress = "mouselongpress";
 
+const char* kEventEditBeforeInput = "beforeinput";
 const char* kEventEditInput = "input";
 const char* kEventEditSelectionChange = "selectionchange";
 const char* kEventEditConfirm = "confirm";

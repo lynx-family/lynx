@@ -6,6 +6,7 @@
 #define CORE_RUNTIME_COMMON_NAPI_NAPI_RUNTIME_PROXY_V8_H_
 
 #include <memory>
+#include <functional>
 
 #include "core/runtime/common/napi/napi_runtime_proxy.h"
 #include "core/runtime/common/napi/napi_runtime_proxy_v8_factory.h"
@@ -25,6 +26,10 @@ class NapiRuntimeProxyV8 : public NapiRuntimeProxy {
 
   void Attach() override;
   void Detach() override;
+  void RunWithRuntimeLock(const std::function<void()>& callback) override;
+  void SetupLoader() override;
+  void RemoveLoader() override;
+  void SetUncaughtExceptionHandler() override;
 
  private:
   // weak_ptr is a workaround for context leak in shared context mode.

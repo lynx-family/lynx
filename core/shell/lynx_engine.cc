@@ -265,6 +265,12 @@ void LynxEngine::SendCustomEvent(const std::string& name, int32_t tag,
   tasm_->SendCustomEvent(name, tag, params, params_name);
 }
 
+bool LynxEngine::SendCancelableCustomEvent(const std::string& name, int32_t tag,
+                                           const lepus::Value& params,
+                                           const std::string& params_name) {
+  return tasm_->SendCancelableCustomEvent(name, tag, params, params_name);
+}
+
 void LynxEngine::SendTouchEvent(const std::string& name,
                                 const tasm::EventInfo& info) {
   tasm_->SendTouchEvent(name, info);
