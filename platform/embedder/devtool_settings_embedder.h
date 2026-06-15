@@ -45,7 +45,6 @@ class DevToolSettingsEmbedder {
  private:
   bool GetPersistedBoolean(const std::string& key, bool default_value) const;
   void SetPersistedBoolean(const std::string& key, bool value);
-  bool GetBooleanForMigration(const std::string& key, bool default_value) const;
   void SyncBooleanToNative(const std::string& key, bool value);
 };
 
