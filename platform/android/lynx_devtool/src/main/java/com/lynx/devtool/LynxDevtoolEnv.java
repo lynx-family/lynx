@@ -17,8 +17,6 @@ import com.lynx.tasm.INativeLibraryLoader;
 import com.lynx.tasm.LynxEnv;
 import com.lynx.tasm.base.LLog;
 import com.lynx.tasm.base.LynxTraceEnv;
-import com.lynx.tasm.service.ILynxDevToolService;
-import com.lynx.tasm.service.LynxServiceCenter;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -104,15 +102,11 @@ public class LynxDevtoolEnv {
   }
 
   private boolean shouldLoadQJSBridge() {
-    ILynxDevToolService devtoolService =
-        LynxServiceCenter.inst().getService(ILynxDevToolService.class);
-    return devtoolService != null && devtoolService.getLoadQJSBridge();
+    return DevToolSettings.inst().bootstrap().shouldLoadQJSBridge();
   }
 
   private boolean shouldLoadV8Bridge() {
-    ILynxDevToolService devtoolService =
-        LynxServiceCenter.inst().getService(ILynxDevToolService.class);
-    return devtoolService != null && devtoolService.getLoadV8Bridge();
+    return DevToolSettings.inst().bootstrap().shouldLoadV8Bridge();
   }
 
   public void loadNativeDevtoolLibrary() {

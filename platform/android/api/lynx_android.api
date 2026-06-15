@@ -1021,6 +1021,18 @@ public class com::lynx::tasm::utils::BlurUtils :  {
   public static void com.lynx.tasm.utils.BlurUtils.iterativeBoxBlur(Bitmap bitmap, int blurRadius);
 }
 
+public class com::lynx::devtoolwrapper::DevToolSettings::BootstrapSettings :  {
+  public boolean com.lynx.devtoolwrapper.DevToolSettings.BootstrapSettings.isLynxDebugEnabled();
+  public void com.lynx.devtoolwrapper.DevToolSettings.BootstrapSettings.setLynxDebugEnabled(boolean enabled);
+  public boolean com.lynx.devtoolwrapper.DevToolSettings.BootstrapSettings.isLogBoxEnabled();
+  public void com.lynx.devtoolwrapper.DevToolSettings.BootstrapSettings.setLogBoxEnabled(boolean enabled);
+  public boolean com.lynx.devtoolwrapper.DevToolSettings.BootstrapSettings.shouldLoadQJSBridge();
+  public void com.lynx.devtoolwrapper.DevToolSettings.BootstrapSettings.setLoadQJSBridge(boolean enabled);
+  public boolean com.lynx.devtoolwrapper.DevToolSettings.BootstrapSettings.shouldLoadV8Bridge();
+  public void com.lynx.devtoolwrapper.DevToolSettings.BootstrapSettings.setLoadV8Bridge(boolean enabled);
+  public void com.lynx.devtoolwrapper.DevToolSettings.BootstrapSettings.applyDevelopmentDefaultsIfUnset();
+}
+
 public class com::lynx::tasm::behavior::ui::utils::BorderDrawingUtil :  {
   public static void com.lynx.tasm.behavior.ui.utils.BorderDrawingUtil.drawBorders(Canvas canvas, Paint paint, RoundedRectangle outBox, RoundedRectangle innerBox, int[] borderColors, @NonNull BorderStyle[] borderStyles);
   public static void com.lynx.tasm.behavior.ui.utils.BorderDrawingUtil.drawRectangularBorders(Canvas canvas, Paint paint, Rect bounds, int[] borderWidths, int[] borderColors, @NonNull BorderStyle[] borderStyles);
@@ -1530,6 +1542,7 @@ public class com::lynx::devtoolwrapper::DevToolSettings :  {
   public static DevToolSettings com.lynx.devtoolwrapper.DevToolSettings.inst();
   public static String com.lynx.devtoolwrapper.DevToolSettings.getCallerBacktrace(String ownerClassName, String matchMethodName, String[] directSkippedClassNames, String[] fallbackSkippedClassNames);
   public static String com.lynx.devtoolwrapper.DevToolSettings.getCallerBacktrace(StackTraceElement[] stackTrace, String ownerClassName, String matchMethodName, String[] directSkippedClassNames, String[] fallbackSkippedClassNames);
+  public BootstrapSettings com.lynx.devtoolwrapper.DevToolSettings.bootstrap();
   public void com.lynx.devtoolwrapper.DevToolSettings.init(Context context);
   public void com.lynx.devtoolwrapper.DevToolSettings.syncToNative();
   public boolean com.lynx.devtoolwrapper.DevToolSettings.isDevToolEnabled();

@@ -15,7 +15,9 @@ import androidx.test.ext.junit.runners.AndroidJUnit4;
 import com.lynx.tasm.LynxEnv;
 import com.lynx.tasm.LynxSubErrorCode;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 import org.junit.Before;
 import org.junit.Test;
@@ -37,6 +39,7 @@ public class DevToolSettingsTest {
 
     mSettings = DevToolSettings.inst();
     mSettings.init(mContext);
+    mSettings.resetNonPersistedSettingsForTesting();
     mSettings.syncToNative();
   }
 
@@ -81,6 +84,58 @@ public class DevToolSettingsTest {
 
     SharedPreferences sp = mContext.getSharedPreferences("lynx_env_config", Context.MODE_PRIVATE);
     assertFalse(sp.getBoolean(DevToolSettings.SP_KEY_ENABLE_LOGBOX, true));
+  }
+
+  @Test
+  public void testBootstrapSettingsAreNotPersisted() {
+    DevToolSettings.BootstrapSettings bootstrapSettings = mSettings.bootstrap();
+    assertFalse(bootstrapSettings.isLynxDebugEnabled());
+    assertFalse(bootstrapSettings.isLogBoxEnabled());
+    assertFalse(bootstrapSettings.shouldLoadQJSBridge());
+    assertFalse(bootstrapSettings.shouldLoadV8Bridge());
+
+    SharedPreferences sp = mContext.getSharedPreferences("lynx_env_config", Context.MODE_PRIVATE);
+    Map<String, ?> before = new HashMap<>(sp.getAll());
+
+    bootstrapSettings.setLynxDebugEnabled(true);
+    bootstrapSettings.setLogBoxEnabled(true);
+    bootstrapSettings.setLoadQJSBridge(true);
+    bootstrapSettings.setLoadV8Bridge(true);
+
+    assertTrue(bootstrapSettings.isLynxDebugEnabled());
+    assertTrue(bootstrapSettings.isLogBoxEnabled());
+    assertTrue(bootstrapSettings.shouldLoadQJSBridge());
+    assertTrue(bootstrapSettings.shouldLoadV8Bridge());
+
+    sp = mContext.getSharedPreferences("lynx_env_config", Context.MODE_PRIVATE);
+    assertEquals(before, sp.getAll());
+  }
+
+  @Test
+  public void testApplyDevelopmentDefaultsIfUnset() {
+    DevToolSettings.BootstrapSettings bootstrapSettings = mSettings.bootstrap();
+    bootstrapSettings.applyDevelopmentDefaultsIfUnset();
+
+    assertTrue(bootstrapSettings.isLynxDebugEnabled());
+    assertTrue(bootstrapSettings.isLogBoxEnabled());
+    assertTrue(bootstrapSettings.shouldLoadQJSBridge());
+    assertTrue(bootstrapSettings.shouldLoadV8Bridge());
+  }
+
+  @Test
+  public void testApplyDevelopmentDefaultsIfUnsetDoesNotOverrideHostSettings() {
+    DevToolSettings.BootstrapSettings bootstrapSettings = mSettings.bootstrap();
+    bootstrapSettings.setLynxDebugEnabled(false);
+    bootstrapSettings.setLogBoxEnabled(false);
+    bootstrapSettings.setLoadQJSBridge(false);
+    bootstrapSettings.setLoadV8Bridge(false);
+
+    bootstrapSettings.applyDevelopmentDefaultsIfUnset();
+
+    assertFalse(bootstrapSettings.isLynxDebugEnabled());
+    assertFalse(bootstrapSettings.isLogBoxEnabled());
+    assertFalse(bootstrapSettings.shouldLoadQJSBridge());
+    assertFalse(bootstrapSettings.shouldLoadV8Bridge());
   }
 
   @Test

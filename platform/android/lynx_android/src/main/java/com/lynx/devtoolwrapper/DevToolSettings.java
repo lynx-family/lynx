@@ -80,6 +80,8 @@ public class DevToolSettings {
   public static final int V8_ON = 1;
   public static final int V8_ALIGN_WITH_PROD = 2;
 
+  private final BootstrapSettings mBootstrapSettings = new BootstrapSettings();
+
   // Member variables to store non-persisted settings
   private volatile boolean mHighlightTouchEnabled = false;
   private volatile boolean mPreviewScreenshotEnabled = true;
@@ -97,6 +99,115 @@ public class DevToolSettings {
   }
 
   private DevToolSettings() {}
+
+  /**
+   * Process-local integration settings that can be configured before {@link LynxEnv#init}.
+   */
+  public BootstrapSettings bootstrap() {
+    return mBootstrapSettings;
+  }
+
+  /**
+   * Host integration settings used before DevTool is initialized.
+   * <p>
+   * These values are process-local, non-persisted, not synced to native, and default to false
+   * unless set explicitly by the host or filled by development defaults.
+   */
+  public static final class BootstrapSettings {
+    private volatile Boolean mLynxDebugEnabled = null;
+    private volatile Boolean mLogBoxEnabled = null;
+    private volatile Boolean mLoadQJSBridge = null;
+    private volatile Boolean mLoadV8Bridge = null;
+
+    private BootstrapSettings() {}
+
+    /**
+     * Bootstrap intent used before the DevTool component is attached.
+     * <p>
+     * This setting is intentionally process-local. It selects the initial desired lifecycle state
+     * and must not overwrite persisted user preferences.
+     */
+    public boolean isLynxDebugEnabled() {
+      return isEnabled(mLynxDebugEnabled);
+    }
+
+    public void setLynxDebugEnabled(boolean enabled) {
+      mLynxDebugEnabled = enabled;
+    }
+
+    /**
+     * Host integration gate for LogBox.
+     * <p>
+     * The effective LogBox state is this bootstrap value AND the persisted LogBox setting AND
+     * DevTool lifecycle state.
+     */
+    public boolean isLogBoxEnabled() {
+      return isEnabled(mLogBoxEnabled);
+    }
+
+    public void setLogBoxEnabled(boolean enabled) {
+      mLogBoxEnabled = enabled;
+    }
+
+    /**
+     * Whether DevTool should load the optional QuickJS bridge native library during
+     * initialization.
+     */
+    public boolean shouldLoadQJSBridge() {
+      return isEnabled(mLoadQJSBridge);
+    }
+
+    public void setLoadQJSBridge(boolean enabled) {
+      mLoadQJSBridge = enabled;
+    }
+
+    /**
+     * Whether DevTool should load the optional V8 bridge native libraries during initialization.
+     */
+    public boolean shouldLoadV8Bridge() {
+      return isEnabled(mLoadV8Bridge);
+    }
+
+    public void setLoadV8Bridge(boolean enabled) {
+      mLoadV8Bridge = enabled;
+    }
+
+    /**
+     * Applies development-friendly debug defaults for values that the host has not configured
+     * explicitly.
+     * <p>
+     * New integrations should set the individual bootstrap settings directly before
+     * {@link LynxEnv#init}.
+     */
+    public void applyDevelopmentDefaultsIfUnset() {
+      // This method is not thread-safe.
+      // This is expected to run during single-threaded bootstrap. If callers need concurrent
+      // bootstrap configuration later, make this set-if-unset block atomic.
+      if (mLynxDebugEnabled == null) {
+        mLynxDebugEnabled = true;
+      }
+      if (mLogBoxEnabled == null) {
+        mLogBoxEnabled = true;
+      }
+      if (mLoadQJSBridge == null) {
+        mLoadQJSBridge = true;
+      }
+      if (mLoadV8Bridge == null) {
+        mLoadV8Bridge = true;
+      }
+    }
+
+    private static boolean isEnabled(Boolean enabled) {
+      return enabled != null && enabled;
+    }
+
+    private void resetForTesting() {
+      mLynxDebugEnabled = null;
+      mLogBoxEnabled = null;
+      mLoadQJSBridge = null;
+      mLoadV8Bridge = null;
+    }
+  }
 
   public void init(Context context) {
     // In order to receive calls to pre-set values before DevTool initializes, e.g.
@@ -199,6 +310,13 @@ public class DevToolSettings {
       return false;
     }
     return true;
+  }
+
+  void resetNonPersistedSettingsForTesting() {
+    mBootstrapSettings.resetForTesting();
+    mHighlightTouchEnabled = false;
+    mPreviewScreenshotEnabled = true;
+    mPerfMetricsEnabled = false;
   }
 
   // TODO(mitchilling): we need explanation of the purpose and usage of each setting in javadoc

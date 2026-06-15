@@ -5,14 +5,12 @@
 package com.lynx.service.devtool
 
 import android.content.Context
-import android.view.ViewGroup
 import androidx.annotation.Keep
-import com.google.auto.service.AutoService
-import com.lynx.tasm.service.IServiceProvider
 import com.lynx.devtool.LynxDevtoolEnv
 import com.lynx.devtool.LynxGlobalDebugBridge
 import com.lynx.devtool.LynxInspectorOwner
 import com.lynx.devtool.logbox.LynxLogBoxWrapper
+import com.lynx.devtoolwrapper.DevToolSettings
 import com.lynx.devtoolwrapper.LynxBaseInspectorController
 import com.lynx.devtoolwrapper.ILynxLogBox
 import com.lynx.devtoolwrapper.LynxDevtool
@@ -39,11 +37,6 @@ class LynxDevToolService : ILynxDevToolService {
 
         operator fun invoke(): ILynxDevToolService = INSTANCE
     }
-
-    private var lynxDebugPresetValue: Boolean = false
-    private var logBoxPresetValue: Boolean = false
-    private var loadQJSBridge: Boolean = false
-    private var loadV8Bridge: Boolean = false
 
     override fun createInspectorOwner(view: LynxView?, debuggable: Boolean): LynxBaseInspectorController? {
         try {
@@ -206,35 +199,43 @@ class LynxDevToolService : ILynxDevToolService {
         }
     }
 
+    @Deprecated("Use DevToolSettings.inst().bootstrap().isLynxDebugEnabled() instead")
     override fun getLynxDebugPresetValue(): Boolean {
-        return lynxDebugPresetValue
+        return DevToolSettings.inst().bootstrap().isLynxDebugEnabled()
     }
 
+    @Deprecated("Use DevToolSettings.inst().bootstrap().setLynxDebugEnabled(value) instead")
     override fun setLynxDebugPresetValue(value: Boolean) {
-        lynxDebugPresetValue = value
+        DevToolSettings.inst().bootstrap().setLynxDebugEnabled(value)
     }
 
+    @Deprecated("Use DevToolSettings.inst().bootstrap().isLogBoxEnabled() instead")
     override fun getLogBoxPresetValue(): Boolean {
-        return logBoxPresetValue
+        return DevToolSettings.inst().bootstrap().isLogBoxEnabled()
     }
 
+    @Deprecated("Use DevToolSettings.inst().bootstrap().setLogBoxEnabled(value) instead")
     override fun setLogBoxPresetValue(value: Boolean) {
-        logBoxPresetValue = value
+        DevToolSettings.inst().bootstrap().setLogBoxEnabled(value)
     }
 
+    @Deprecated("Use DevToolSettings.inst().bootstrap().shouldLoadQJSBridge() instead")
     override fun getLoadQJSBridge(): Boolean {
-        return loadQJSBridge
+        return DevToolSettings.inst().bootstrap().shouldLoadQJSBridge()
     }
 
+    @Deprecated("Use DevToolSettings.inst().bootstrap().setLoadQJSBridge(value) instead")
     override fun setLoadQJSBridge(value: Boolean) {
-        loadQJSBridge = value
+        DevToolSettings.inst().bootstrap().setLoadQJSBridge(value)
     }
 
+    @Deprecated("Use DevToolSettings.inst().bootstrap().shouldLoadV8Bridge() instead")
     override fun getLoadV8Bridge(): Boolean {
-        return loadV8Bridge
+        return DevToolSettings.inst().bootstrap().shouldLoadV8Bridge()
     }
 
+    @Deprecated("Use DevToolSettings.inst().bootstrap().setLoadV8Bridge(value) instead")
     override fun setLoadV8Bridge(value: Boolean) {
-        loadV8Bridge = value
+        DevToolSettings.inst().bootstrap().setLoadV8Bridge(value)
     }
 }

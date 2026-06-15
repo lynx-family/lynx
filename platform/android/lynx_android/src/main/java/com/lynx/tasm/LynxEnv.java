@@ -730,7 +730,7 @@ public class LynxEnv {
    */
   @Deprecated
   public boolean isLynxDebugEnabled() {
-    // Return true only if the DevTool Component is attached and the `lynxDebugPresetValue` is true.
+    // Return true only if the DevTool component is attached and enabled.
     // It avoids unnecessary reflection calls.
     return DevToolLifecycle.getInstance().isEnabled();
   }
@@ -751,7 +751,7 @@ public class LynxEnv {
   /*
    * This method could be called before or after `LynxEnv.init()`
    * In order to make it work as expected in both usages:
-   * - if before, we preset value for later use;
+   * - if before, we store the bootstrap value for later use;
    * - if after, we change the state of `DevToolLifecycle` directly,
    *     and call `initDevtoolEnv()` if the parameter is true.
    */
@@ -759,13 +759,11 @@ public class LynxEnv {
     LLog.i(TAG, enableLynxDebug ? "enable lynx debug" : "disable lynx debug");
     if (!DevToolLifecycle.getInstance().isAttached()) {
       // DevTool is UNAVAILABLE (i.e. before ATTACHED)
-      // We need to take advantage of preset value.
+      // We need to take advantage of the bootstrap value.
       if (enableLynxDebug) {
         reportEnableEvent("enableLynxDebug", "lynxsdk_enable_lynx_debug_event");
       }
-      if (getDevtoolService() != null) {
-        getDevtoolService().setLynxDebugPresetValue(enableLynxDebug);
-      }
+      DevToolSettings.inst().bootstrap().setLynxDebugEnabled(enableLynxDebug);
       // No further action required
       return;
     }
@@ -813,10 +811,10 @@ public class LynxEnv {
     LLog.i(TAG, "attachDevToolComponent: done.");
     /*
      * In some cases, e.g. DevTool working as a plugin,
-     * callers would enable DevTool via presetting before attaching.
-     * So we ought to check the preset value and change to state `ENABLED`.
+     * callers would enable DevTool before attaching.
+     * So we ought to check the bootstrap value and change to state `ENABLED`.
      */
-    if (getDevtoolService().getLynxDebugPresetValue()) {
+    if (DevToolSettings.inst().bootstrap().isLynxDebugEnabled()) {
       DevToolLifecycle.getInstance().onEnabled();
     }
   }
@@ -856,10 +854,10 @@ public class LynxEnv {
   // Returns true only if all the following conditions are met:
   // 1. The DevTool component is attached.
   // 2. The environment flag 'SP_KEY_ENABLE_LOGBOX' is true (defaults to true if not set).
-  // 3. The `logBoxPresetValue` is true (this value can be changed via LynxDevToolService).
+  // 3. The LogBox bootstrap setting is true.
   public boolean isLogBoxEnabled() {
     return isLynxDebugEnabled() && DevToolSettings.inst().isLogBoxEnabled()
-        && (getDevtoolService() != null && getDevtoolService().getLogBoxPresetValue());
+        && DevToolSettings.inst().bootstrap().isLogBoxEnabled();
   }
 
   /**
