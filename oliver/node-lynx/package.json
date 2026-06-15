@@ -1,0 +1,49 @@
+{
+  "name": "@lynx-js/node-lynx",
+  "version": "0.1.0",
+  "description": "Run Lynx bundles in Node.js for screenshots, preview windows, and test automation.",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "node-lynx": "./dist/cli.js"
+  },
+  "scripts": {
+    "build": "run-script-os && pnpm run pack",
+    "build:resources": "node ./scripts/build_resources.js",
+    "build:darwin": "python3 ../build_gn.py --platform darwin --type node-lynx --local true --clean false",
+    "build:linux": "python3 ../build_gn.py --platform linux --type node-lynx --clean false",
+    "build:debug": "run-script-os && pnpm run pack",
+    "build:debug:darwin": "python3 ../build_gn.py --platform darwin --type node-lynx --debug true --local true --clean false",
+    "build:debug:linux": "python3 ../build_gn.py --platform linux --type node-lynx --debug true --clean false",
+    "build:release": "run-script-os && pnpm run pack",
+    "build:release:darwin": "python3 ../build_gn.py --platform darwin --type node-lynx --clean true",
+    "build:release:linux": "python3 ../build_gn.py --platform linux --type node-lynx --clean true",
+    "build:publish:darwin": "python3 ../build_gn.py --platform darwin --type node-lynx --local true --clean true",
+    "build:publish:linux": "python3 ../build_gn.py --platform linux --type node-lynx --clean true",
+    "pack": "pnpm run build:resources && pnpm exec tsc && pnpm pack",
+    "test": "./scripts/test.sh",
+    "test:gallery": "node ./test/render_gallery.js"
+  },
+  "author": "Lynx Authors",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/lynx-family/lynx.git"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "run-script-os": "1.1.6",
+    "typescript": "^5.7.2"
+  },
+  "optionalDependencies": {
+    "@lynx-js/node-lynx-darwin-arm64": "workspace:*",
+    "@lynx-js/node-lynx-linux-x64": "workspace:*"
+  },
+  "files": [
+    "dist",
+    "src",
+    "resources",
+    "README.md",
+    "CHANGELOG.md"
+  ]
+}

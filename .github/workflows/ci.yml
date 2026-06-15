@@ -309,6 +309,26 @@ jobs:
           npm run build:release:darwin
           popd
 
+  node-lynx-linux-test:
+    runs-on: lynx-ubuntu-22.04-large
+    timeout-minutes: 60
+    steps:
+      - name: Download Source
+        uses: actions/checkout@v6
+        with:
+          path: lynx
+      - name: Python Setup
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+      - name: Install Common Dependencies
+        uses: ./lynx/.github/actions/common-deps
+        with:
+          target: clay
+      - name: Run Linux Node Lynx Tests
+        run: |
+          tools/env.sh pnpm --filter @lynx-js/node-lynx run test
+
   tasm-wasm-build:
     needs: [darwin-impact-check]
     if: ${{ needs.darwin-impact-check.outputs.darwin == 'true' }}
@@ -764,7 +784,7 @@ jobs:
           export LANG=en_US.UTF-8
           bundle -v
           bundle config set path .
-          SDKROOT=/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk bundle install 
+          SDKROOT=/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk bundle install
           python3 tools/ios_tools/cocoapods_publish_helper.py --prepare-source --tag $POD_VERSION --version $POD_VERSION --component all
       - name: Publish to Local Pod Source
         run: |-

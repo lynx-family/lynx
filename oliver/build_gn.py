@@ -22,7 +22,7 @@ def gn_clean(root_path):
   if not os.path.exists(output_path):
     return 0
   command =  '%s clean %s' % (gn_path, output_path)
-  result = subprocess.check_call(command, shell=True)
+  result = subprocess.check_call(command, shell=True, cwd=root_path)
   return result
 
 def gen_build_file(platform, arch, debug, root_path, type, sysroot, is_static=False):
@@ -56,13 +56,30 @@ def gen_build_file(platform, arch, debug, root_path, type, sysroot, is_static=Fa
       enable_napi_binding=true \
       enable_lepusng_worklet=true \
       jsengine_type="quickjs"'
+  elif type == 'node-lynx':
+    args += ' build_lepus_compile=false \
+      enable_napi_binding=true \
+      enable_inspector=true \
+      jsengine_type="quickjs" \
+      use_custom_message_loop=false \
+      disable_visibility_hidden=true \
+      is_headless=true \
+      enable_clay=true \
+      enable_clay_standalone=true \
+      enable_software_rendering=true \
+      skia_use_dng_sdk=false \
+      allow_deprecated_api_calls=true'
+    if platform == 'linux':
+      args += ' use_flutter_cxx=true skia_use_fontconfig=false'
+    if platform == 'darwin':
+      args += ' shell_enable_metal=true skia_use_metal=true desktop_enable_embedder_layer=true'
 
   if len(arch) > 0:
     args += " target_cpu=\"%s\"" % (arch)
 
   command = [gn_path, 'gen', output_path, f'--args={args}']
   print(subprocess.list2cmdline(command))
-  result = subprocess.check_call(command)
+  result = subprocess.check_call(command, cwd=root_path)
   return result
 
 def build_by_ninja(root_path, show_log):
@@ -73,7 +90,7 @@ def build_by_ninja(root_path, show_log):
     command = '%s -C %s oliver_group -v' % (ninja_path, output_path)
   else:
     command = '%s -C %s oliver_group' % (ninja_path, output_path)
-  result = subprocess.check_call(command, shell=True)
+  result = subprocess.check_call(command, shell=True, cwd=root_path)
   return result
 
 def build_static_lib_by_ninja(root_path, show_log, type):
@@ -85,7 +102,7 @@ def build_static_lib_by_ninja(root_path, show_log, type):
     command = '%s -C %s %s -v' % (ninja_path, output_path, static_lib_target)
   else:
     command = '%s -C %s %s' % (ninja_path, output_path, static_lib_target)
-  result = subprocess.check_call(command, shell=True)
+  result = subprocess.check_call(command, shell=True, cwd=root_path)
   return result
 
 def get_type_path(type):
@@ -98,6 +115,8 @@ def get_type_path(type):
     type_path = 'lynx-tasm'
   elif type == 'testing':
     type_path = 'lynx-testing'
+  elif type == 'node-lynx':
+    type_path = 'node-lynx'
   return type_path
 
 def get_output_name(type):
@@ -110,6 +129,8 @@ def get_output_name(type):
     output_name = 'lepus.node'
   elif type == 'testing':
     output_name = 'lynx_testing.node'
+  elif type == 'node-lynx':
+    output_name = 'node_lynx.node'
   return output_name
 
 def get_static_lib_output_name(platform):
@@ -304,7 +325,7 @@ def parse_bool(value):
 def parse_args():
   parser = argparse.ArgumentParser()
   parser.add_argument('-p', '--platform', help='Target platform')
-  parser.add_argument('-t', '--type', help='Oliver product type. The type contains values such as ssr, tasm, security, and testing')
+  parser.add_argument('-t', '--type', help='Oliver product type. The type contains values such as ssr, tasm, security, testing, and node-lynx')
   parser.add_argument('--clean', type=parse_bool, default=True, help='run gn clean before build. Default is true')
   parser.add_argument('--debug', type=bool, default=False, help='Build product of debug type')
   parser.add_argument('--local', type=bool, default=False, help='Build for local CPU architecture. Only has effects on the Darwin system')
@@ -327,7 +348,7 @@ def main():
   sysroot = args.sysroot
 
   file_path = os.path.dirname(os.path.abspath(__file__))
-  root_path = os.path.join(file_path, '..')
+  root_path = os.path.abspath(os.path.join(file_path, '..'))
   result = build(platform, is_debug, root_path, is_show_log, type, is_wasm, need_clean, is_local, sysroot, is_static)
   if result != 0:
     return result

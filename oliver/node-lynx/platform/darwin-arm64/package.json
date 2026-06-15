@@ -1,0 +1,17 @@
+{
+  "name": "@lynx-js/node-lynx-darwin-arm64",
+  "version": "0.1.0",
+  "main": "node_lynx.node",
+  "description": "The dependency artifacts of @lynx-js/node-lynx on the Darwin ARM64 platform.",
+  "os": ["darwin"],
+  "cpu": ["arm64"],
+  "scripts": {
+    "pack": "cd ../../ && npm run build:publish:darwin && cp build/darwin/Release/node_lynx.node platform/darwin-arm64/ && cd platform/darwin-arm64 && npm pack",
+    "build:debug": "cd ../../ && npm run build:debug:darwin && cp build/darwin/Debug/node_lynx.node platform/darwin-arm64/ && cd platform/darwin-arm64 && npm pack"
+  },
+  "author": "Lynx Authors",
+  "license": "Apache-2.0",
+  "files": [
+    "node_lynx.node"
+  ]
+}

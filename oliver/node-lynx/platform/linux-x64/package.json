@@ -1,0 +1,16 @@
+{
+  "name": "@lynx-js/node-lynx-linux-x64",
+  "version": "0.1.0",
+  "main": "node_lynx.node",
+  "description": "The dependency artifacts of @lynx-js/node-lynx on the Linux X64 platform.",
+  "os": ["linux"],
+  "cpu": ["x64"],
+  "scripts": {
+    "pack": "cd ../../ && npm run build:publish:linux && cp build/linux/Release/node_lynx.node platform/linux-x64/ && cd platform/linux-x64 && npm pack"
+  },
+  "author": "Lynx Authors",
+  "license": "Apache-2.0",
+  "files": [
+    "node_lynx.node"
+  ]
+}

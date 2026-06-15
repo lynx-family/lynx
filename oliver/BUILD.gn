@@ -73,6 +73,8 @@ group("oliver") {
       } else {
         deps = [ "lynx-tasm:CreateTasmNode" ]
       }
+    } else if (is_oliver_node_lynx) {
+      deps = [ "node-lynx:create_node_lynx" ]
     } else {
       deps = []
     }

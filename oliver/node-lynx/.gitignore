@@ -1,0 +1,7 @@
+build
+dist
+node_modules
+*.tgz
+platform/*/node_lynx.node
+resources/lynx_core.js
+resources/lynx_core_dev.js

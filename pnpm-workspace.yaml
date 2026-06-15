@@ -1,6 +1,8 @@
 packages:
   - '.'
   - 'js_libraries/*'
+  - 'oliver/node-lynx'
+  - 'oliver/node-lynx/platform/*'
   - devtool/base_devtool/js_libraries/logbox-types
   - devtool/base_devtool/js_libraries/logbox
   - devtool/lynx_devtool/resources/devtool-switch

@@ -1,0 +1,123 @@
+# Copyright 2026 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("../../config.gni")
+import("../../oliver/oliver.gni")
+
+if (is_mac) {
+  action("generate_darwin_framework_headers") {
+    script = "scripts/generate_darwin_framework_headers.py"
+    outputs = [ "$target_gen_dir/darwin_framework_headers.stamp" ]
+    args = [
+      "--lynx-root",
+      rebase_path("../..", root_build_dir),
+      "--output",
+      rebase_path("$target_gen_dir/darwin_framework_headers", root_build_dir),
+      "--stamp",
+      rebase_path(outputs[0], root_build_dir),
+    ]
+  }
+
+  source_set("node_lynx_darwin_error_codes") {
+    sources = [
+      "../../core/shell/ios/data_utils.mm",
+      "../../platform/darwin/common/lynx/LynxError.m",
+      "../../platform/darwin/common/lynx/LynxErrorCode.m",
+      "../../platform/darwin/common/lynx/LynxSubErrorCode.m",
+      "../../platform/darwin/common/lynx/base/LynxVersion.m",
+      "native/darwin_resource_constants.m",
+      "native/darwin_stubs.mm",
+      "native/darwin_vsync_fallback.mm",
+    ]
+
+    configs += [
+      "../../platform/darwin:darwin_flag_config",
+      "../../platform/darwin:darwin_include_config",
+    ]
+
+    include_dirs = [ "$target_gen_dir/darwin_framework_headers" ]
+
+    deps = [ ":generate_darwin_framework_headers" ]
+  }
+}
+
+source_set("node_lynx_native") {
+  sources = [ "native/headless_lynx_view_node.cc" ]
+
+  if (!enable_unittests) {
+    sources += [ "../../platform/embedder/lynx_ui_renderer_mock.cc" ]
+  }
+
+  configs += [ "../../oliver:lynx_oliver_config" ]
+
+  include_dirs = [
+    "../..",
+    "../../third_party/debug_router/src",
+  ]
+
+  deps = [
+    "../../base/src:base_group",
+    "../../clay/fml:fml",
+    "../../clay/lynx_adaptor:lynx_adaptor",
+    "../../core/build:build",
+    "../../platform/embedder:embedder",
+    "../../third_party/debug_router/src/debug_router/common:debug_router_source",
+    "../../third_party/jsoncpp:jsoncpp",
+  ]
+
+  defines = [
+    "OS_POSIX=1",
+    "NAPI_VERSION=6",
+  ]
+
+  if (is_mac) {
+    sources += [
+      "../../clay/shell/platform/darwin/macos/framework/Source/KeyCodeMap.g.mm",
+      "native/windowed_lynx_view_mac.mm",
+    ]
+    deps += [ ":node_lynx_darwin_error_codes" ]
+  }
+
+  if (is_linux) {
+    sources += [
+      "../../clay/lynx_adaptor/native_platform_view_mock.cc",
+      "../../core/services/event_report/event_tracker_platform_impl.cc",
+      "../../platform/embedder/resource/js_source_loader_desktop.cc",
+    ]
+  }
+}
+
+oliver_node_lib("create_node_lynx") {
+  output_name = "node_lynx"
+
+  ldflags = []
+  cflags = []
+  libs = [ "dl" ]
+  if (is_mac) {
+    ldflags += [
+      "-Wl,-dead_strip,-undefined,dynamic_lookup",
+      "-framework",
+      "JavaScriptCore",
+      "-framework",
+      "Metal",
+      "-framework",
+      "AppKit",
+      "-framework",
+      "QuartzCore",
+      "-framework",
+      "IOSurface",
+    ]
+    if (!is_debug) {
+      ldflags += [ "-Wl,-x" ]
+    }
+  } else if (is_linux) {
+    ldflags += [
+      "-static-libgcc",
+      "-static-libstdc++",
+    ]
+    libs += [ "epoxy" ]
+  }
+
+  deps = [ ":node_lynx_native" ]
+}
