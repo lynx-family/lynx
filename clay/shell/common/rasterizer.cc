@@ -232,8 +232,10 @@ RasterStatus Rasterizer::DoDraw(
     return RasterStatus::kFailed;
   }
 
+#ifndef ENABLE_SKITY
   PersistentCache* persistent_cache = PersistentCache::GetCacheForProcess();
   persistent_cache->ResetStoredNewShaders();
+#endif  // ENABLE_SKITY
 
   bool need_next_animation_frame = false;
   if (layer_tree->HasAnimations()) {
