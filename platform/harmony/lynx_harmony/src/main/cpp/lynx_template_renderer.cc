@@ -6,6 +6,7 @@
 
 #include <js_native_api.h>
 
+#include <atomic>
 #include <memory>
 #include <utility>
 
@@ -96,6 +97,17 @@ LynxTemplateRenderer::LynxTemplateRenderer(napi_env env, napi_value js_this,
 LynxTemplateRenderer::~LynxTemplateRenderer() {
   LOGI("~TemplateRenderer");
   int32_t instance_id = GetInstanceId();
+  if (weak_flag_) {
+    weak_flag_->renderer.store(nullptr, std::memory_order_release);
+  }
+  {
+    std::lock_guard<std::mutex> lock(inspector_owner_mutex_);
+    inspector_owner_.store(nullptr, std::memory_order_release);
+  }
+  if (auto lynx_context = lynx_context_.lock()) {
+    lynx_context->SetConsoleMessageCallback(nullptr);
+    lynx_context->SetInvokeCDPFromSDKCallback(nullptr);
+  }
   if (resource_loader_) {
     static_cast<LynxResourceLoaderHarmony*>(resource_loader_.get())
         ->DeleteRef();
@@ -106,8 +118,6 @@ LynxTemplateRenderer::~LynxTemplateRenderer() {
   session_storage_callback_refs_.clear();
   napi_delete_reference(env_, template_renderer_ref_);
   tasm::report::EventTracker::ClearCache(instance_id);
-
-  SetInspectorOwner(nullptr);
 }
 
 void LynxTemplateRenderer::SetUpLynxShell(
@@ -124,6 +134,9 @@ void LynxTemplateRenderer::SetUpLynxShell(
     LynxRuntimeWrapper* runtime_wrapper, LynxWhiteBoard* white_board) {
   ui_delegate_ = ui_delegate;
   resource_loader_ = resource_loader;
+  lynx_context_ = static_cast<tasm::harmony::UIDelegateHarmony*>(ui_delegate_)
+                      ->GetLynxContext();
+  SyncInspectorOwnerToLynxContext();
 
   float w = width / display_density_;
   float h = height / display_density_;
@@ -184,10 +197,14 @@ void LynxTemplateRenderer::SetUpLynxShell(
           .build());
   invoker_ptr->SetUITaskRunner(shell_->GetRunners()->GetUITaskRunner());
 
-  if (inspector_owner_ != nullptr) {
-    inspector_owner_->SetUITaskRunner(shell_->GetRunners()->GetUITaskRunner());
-    inspector_owner_->OnTemplateAssemblerCreated(
-        reinterpret_cast<intptr_t>(shell_.get()));
+  {
+    std::lock_guard<std::mutex> lock(inspector_owner_mutex_);
+    auto* inspector_owner = inspector_owner_.load(std::memory_order_acquire);
+    if (inspector_owner != nullptr) {
+      inspector_owner->SetUITaskRunner(shell_->GetRunners()->GetUITaskRunner());
+      inspector_owner->OnTemplateAssemblerCreated(
+          reinterpret_cast<intptr_t>(shell_.get()));
+    }
   }
   engine_proxy_ =
       std::make_shared<shell::LynxEngineProxyImpl>(shell_->GetEngineActor());
@@ -319,9 +336,13 @@ void LynxTemplateRenderer::LoadTemplate(
     const std::shared_ptr<lynx::tasm::PipelineOptions>& pipeline_options,
     const std::shared_ptr<tasm::TemplateData>& template_data,
     bool enable_recycle_template_bundle) {
-  if (inspector_owner_ != nullptr) {
-    inspector_owner_->OnLoadTemplate(url, source, template_data);
-    inspector_owner_->OnLoaded(url);
+  {
+    std::lock_guard<std::mutex> lock(inspector_owner_mutex_);
+    auto* inspector_owner = inspector_owner_.load(std::memory_order_acquire);
+    if (inspector_owner != nullptr) {
+      inspector_owner->OnLoadTemplate(url, source, template_data);
+      inspector_owner->OnLoaded(url);
+    }
   }
   pipeline_options->enable_pre_painting = false;
   pipeline_options->enable_recycle_template_bundle =
@@ -2005,13 +2026,15 @@ void LynxTemplateRenderer::LoadTemplateFromURL(
       req, [weak_flag = weak_flag_->weak_from_this(), url, init_data,
             &pipeline_options](pub::LynxResourceResponse& response) {
         auto flag = weak_flag.lock();
-        if (!flag) {
+        auto* renderer =
+            flag ? flag->renderer.load(std::memory_order_acquire) : nullptr;
+        if (!renderer) {
           return;
         }
         auto data_size = response.data.size();
         LOGI("LoadTemplateFromURL data_size: " << data_size);
-        flag->renderer->LoadTemplate(url, std::move(response.data),
-                                     pipeline_options, init_data, false);
+        renderer->LoadTemplate(url, std::move(response.data), pipeline_options,
+                               init_data, false);
       });
 }
 
@@ -2054,7 +2077,67 @@ void LynxTemplateRenderer::SetupExtensionDelegate(
 
 void LynxTemplateRenderer::SetInspectorOwner(
     devtool::LynxInspectorOwner* owner) {
-  inspector_owner_ = owner;
+  {
+    std::lock_guard<std::mutex> lock(inspector_owner_mutex_);
+    inspector_owner_.store(owner, std::memory_order_release);
+  }
+  SyncInspectorOwnerToLynxContext();
+}
+
+void LynxTemplateRenderer::SyncInspectorOwnerToLynxContext() {
+  std::shared_ptr<tasm::harmony::LynxContext> lynx_context =
+      lynx_context_.lock();
+  if (!lynx_context && ui_delegate_) {
+    lynx_context = static_cast<tasm::harmony::UIDelegateHarmony*>(ui_delegate_)
+                       ->GetLynxContext();
+    lynx_context_ = lynx_context;
+  }
+  if (!lynx_context) {
+    return;
+  }
+  {
+    std::lock_guard<std::mutex> lock(inspector_owner_mutex_);
+    if (inspector_owner_.load(std::memory_order_acquire) == nullptr) {
+      lynx_context->SetConsoleMessageCallback(nullptr);
+      lynx_context->SetInvokeCDPFromSDKCallback(nullptr);
+      return;
+    }
+  }
+  std::weak_ptr<WeakFlag> weak_flag = weak_flag_;
+  lynx_context->SetConsoleMessageCallback(
+      [weak_flag](const std::string& message, int32_t level,
+                  int64_t time_stamp) {
+        auto flag = weak_flag.lock();
+        auto* renderer =
+            flag ? flag->renderer.load(std::memory_order_acquire) : nullptr;
+        if (!renderer) {
+          return;
+        }
+        std::lock_guard<std::mutex> lock(renderer->inspector_owner_mutex_);
+        auto* inspector_owner =
+            renderer->inspector_owner_.load(std::memory_order_acquire);
+        if (!inspector_owner) {
+          return;
+        }
+        inspector_owner->DispatchConsoleMessage(message, level, time_stamp);
+      });
+  lynx_context->SetInvokeCDPFromSDKCallback(
+      [weak_flag](const std::string& cdp_msg,
+                  tasm::harmony::LynxContext::CDPResultCallback callback) {
+        auto flag = weak_flag.lock();
+        auto* renderer =
+            flag ? flag->renderer.load(std::memory_order_acquire) : nullptr;
+        if (!renderer) {
+          return;
+        }
+        std::lock_guard<std::mutex> lock(renderer->inspector_owner_mutex_);
+        auto* inspector_owner =
+            renderer->inspector_owner_.load(std::memory_order_acquire);
+        if (!inspector_owner) {
+          return;
+        }
+        inspector_owner->InvokeCDPFromSDK(cdp_msg, std::move(callback));
+      });
 }
 
 void LynxTemplateRenderer::EmulateTouch(const std::string& event_type, int x,

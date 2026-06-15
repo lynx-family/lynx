@@ -8,9 +8,12 @@
 #include <arkui/native_gesture.h>
 #include <arkui/native_node.h>
 
+#include <atomic>
+#include <cstdint>
 #include <deque>
 #include <limits>
 #include <memory>
+#include <optional>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -172,6 +175,19 @@ class EventDispatcher {
   void TraverseAndUpdateHitTestBehavior(UIBase* node,
                                         bool has_disabled_ancestor);
 
+  void InspectHitTarget(EventTarget* active_target);
+
+  void ApplyHitTargetStyle(std::weak_ptr<EventTarget> active_target,
+                           int active_sign,
+                           const std::string& inline_style_response,
+                           uint64_t sequence);
+
+  bool IsHighlightTouchEnabled() const;
+
+  void ShowMessageOnConsole(const std::string& message, int32_t level) const;
+
+  struct WeakFlag;
+
   UIOwner* ui_owner_{nullptr};
   std::weak_ptr<UIBase> root_target_;
   std::weak_ptr<EventTarget> first_active_target_;
@@ -203,6 +219,11 @@ class EventDispatcher {
   ArkUI_GestureRecognizer* consume_all_pan_gesture_{nullptr};
   ArkUI_GestureRecognizer* velocity_tracker_pan_gesture_{nullptr};
   ArkUI_GestureRecognizer* native_gesture_pan_gesture_{nullptr};
+  std::weak_ptr<EventTarget> pre_target_;
+  std::optional<std::string> pre_target_inline_css_text_;
+  std::atomic<uint64_t> inspect_hit_target_sequence_{0};
+  std::atomic<uint64_t> cdp_request_id_{0};
+  std::shared_ptr<WeakFlag> weak_flag_;
 
   static GestureReceiver long_press_receiver_callback_;
   static GestureReceiver tap_receiver_callback_;

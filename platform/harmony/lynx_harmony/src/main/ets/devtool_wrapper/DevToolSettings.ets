@@ -13,11 +13,13 @@ export class DevToolSettings {
   public static readonly SP_KEY_ENABLE_QUICKJS_CACHE: string = 'enable_quickjs_cache';
   public static readonly SP_KEY_ENABLE_DOM_TREE: string = 'enable_dom_tree';
   public static readonly SP_KEY_ENABLE_LONG_PRESS_MENU: string = 'enable_long_press_menu';
+  public static readonly SP_KEY_ENABLE_HIGHLIGHT_TOUCH: string = 'enable_highlight_touch';
   public static readonly SP_KEY_ENABLE_PREVIEW_SCREEN_SHOT: string = 'enable_preview_screen_shot';
   public static readonly SP_KEY_ENABLE_PIXEL_COPY: string = 'enable_pixel_copy';
   public static readonly SP_KEY_ENABLE_PERF_MONITOR_DEBUG: string = 'enable_perf_monitor_debug';
   public static readonly SP_KEY_ENABLE_IGNORE_ERROR_CSS: string = 'error_code_css';
 
+  private static highlightTouchEnabled: boolean = false;
   private static previewScreenshotEnabled: boolean = true;
   private static perfMonitorDebugEnabled: boolean = true;
 
@@ -141,6 +143,19 @@ export class DevToolSettings {
 
   public static setLongPressMenuEnabled(enabled: boolean): void {
     DevToolSettings.setPersistedBoolean(DevToolSettings.SP_KEY_ENABLE_LONG_PRESS_MENU, enabled);
+  }
+
+  /**
+   * Persistence: false
+   * Sync to native: false
+   * Default: false
+   */
+  public static isHighlightTouchEnabled(): boolean {
+    return DevToolSettings.highlightTouchEnabled;
+  }
+
+  public static setHighlightTouchEnabled(enabled: boolean): void {
+    DevToolSettings.highlightTouchEnabled = enabled;
   }
 
   /**

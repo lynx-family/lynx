@@ -362,6 +362,8 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
   constexpr static const char* const kLynxEnableV8 = "enable_v8";
   constexpr static const char* const kLynxEnableLongPressMenu =
       "enable_long_press_menu";
+  constexpr static const char* const kLynxEnableHighlightTouch =
+      "enable_highlight_touch";
   constexpr static const char* const kLynxEnableTableDeepCheck =
       "enable_table_deep_check";
   constexpr static const char* const kLynxEnableLogBox = "enable_logbox";

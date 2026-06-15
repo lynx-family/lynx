@@ -66,6 +66,16 @@ void InspectorOwnerEmbedder::AttachProxy(devtool::LynxDevToolProxy* proxy) {
   }
 }
 
+void InspectorOwnerEmbedder::DetachProxy() {
+  if (embedder_proxy_ != nullptr) {
+    embedder_proxy_->SetInspectorOwner(nullptr);
+    embedder_proxy_ = nullptr;
+  }
+  if (platform_embedder_) {
+    platform_embedder_->AttachProxy(nullptr);
+  }
+}
+
 void InspectorOwnerEmbedder::InitDevToolNGDelegate() {
   devtoolng_delegate_ = std::make_shared<DevToolNGDelegateEmbedder>();
 }
@@ -187,6 +197,7 @@ std::shared_ptr<tasm::TemplateData> InspectorOwnerEmbedder::getTemplateDate() {
 }
 
 InspectorOwnerEmbedder::~InspectorOwnerEmbedder() {
+  DetachProxy();
   if (devtoolng_delegate_) {
     devtoolng_delegate_->detachFromDebug();
   }
