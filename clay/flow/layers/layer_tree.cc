@@ -187,6 +187,7 @@ void LayerTree::Paint(CompositorContext::ScopedFrame& frame,
       .state_stack                   = state_stack,
       .canvas                        = frame.canvas(),
       .gr_context                    = frame.gr_context(),
+      .sample_count                  = frame.sample_count(),
 #ifndef ENABLE_SKITY
       .dst_color_space               = GetColorSpace(frame.canvas()),
 #endif // ENABLE_SKITY

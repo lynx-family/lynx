@@ -81,24 +81,27 @@ std::unique_ptr<CompositorContext::ScopedFrame> CompositorContext::AcquireFrame(
     clay::GrContext* gr_context, clay::GrCanvas* canvas,
     CompositorState* compositor_state,
     const skity::Matrix& root_surface_transformation,
-    bool instrumentation_enabled, bool surface_supports_readback) {
+    bool instrumentation_enabled, bool surface_supports_readback,
+    uint32_t sample_count) {
   return std::make_unique<ScopedFrame>(
       *this, gr_context, canvas, compositor_state, root_surface_transformation,
-      instrumentation_enabled, surface_supports_readback);
+      instrumentation_enabled, surface_supports_readback, sample_count);
 }
 
 CompositorContext::ScopedFrame::ScopedFrame(
     CompositorContext& context, clay::GrContext* gr_context,
     clay::GrCanvas* canvas, CompositorState* compositor_state,
     const skity::Matrix& root_surface_transformation,
-    bool instrumentation_enabled, bool surface_supports_readback)
+    bool instrumentation_enabled, bool surface_supports_readback,
+    uint32_t sample_count)
     : context_(context),
       compositor_state_(compositor_state),
       gr_context_(gr_context),
       canvas_(canvas),
       root_surface_transformation_(root_surface_transformation),
       instrumentation_enabled_(instrumentation_enabled),
-      surface_supports_readback_(surface_supports_readback) {
+      surface_supports_readback_(surface_supports_readback),
+      sample_count_(sample_count) {
   context_.BeginFrame(*this, instrumentation_enabled_);
 }
 
