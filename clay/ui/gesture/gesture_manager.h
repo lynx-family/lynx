@@ -80,6 +80,8 @@ class GestureManager final : public PixelHelper<kPixelTypeClay>,
   const HitTestResponsiveResult& GetHitTestResponsiveResult() const {
     return hit_test_responsive_result_;
   }
+  bool ShouldInterceptGesture() const;
+  void RefreshHitTestTargetResponsive();
 
   void UpdateCxxFoldViewState(bool has_cxx_foldview, bool cxx_foldview_is_fold,
                               bool cxx_foldview_is_expand);
@@ -99,6 +101,10 @@ class GestureManager final : public PixelHelper<kPixelTypeClay>,
 
   void ResetHitTestTargetResponsive();
   void UpdateHitTestTargetResponsive(int pointer_id, bool is_down);
+  void ResetInterceptGestureStatus(const HitTestResult& hit_test_result);
+  void ResetUnreferencedInterceptGestureStatus(
+      const HitTestResult& hit_test_result, int pointer_id);
+  void ResetAllInterceptGestureStatus();
 
  private:
   float pixel_ratio_ = 1.f;

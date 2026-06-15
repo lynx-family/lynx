@@ -61,6 +61,11 @@ bool GestureManager::HandlePointerEvent(HitTestable* root,
   if (event.type == PointerEvent::EventType::kDownEvent ||
       event.type == PointerEvent::EventType::kSignalEvent ||
       event.type == PointerEvent::EventType::kPanZoomStartEvent) {
+    if ((event.type == PointerEvent::EventType::kDownEvent ||
+         event.type == PointerEvent::EventType::kPanZoomStartEvent) &&
+        hit_tests_.empty()) {
+      ResetAllInterceptGestureStatus();
+    }
     // Due to the possibility of multiple touch events, reset is only performed
     // on the first DownEvent. Since the Tap gesture is recognized after the
     // UpEvent, clean up to retain only the initial DownEvent of the first
@@ -154,8 +159,14 @@ bool GestureManager::HandlePointerEvent(HitTestable* root,
               event, hit_tests_[event.pointer_id]);
         }
       }
+      if (event.type == PointerEvent::EventType::kUpEvent ||
+          event.type == PointerEvent::EventType::kCancel ||
+          event.type == PointerEvent::EventType::kPanZoomEndEvent) {
+        ResetUnreferencedInterceptGestureStatus(iter->second, event.pointer_id);
+      }
       hit_tests_.erase(iter);
       gesture_accepted_map_.erase(event.pointer_id);
+      RefreshHitTestTargetResponsive();
     } else {
       consumed = false;
     }
@@ -330,7 +341,7 @@ void GestureManager::UpdateHitTestTargetResponsive(int pointer_id,
       hit_test_responsive_result_.tappable |=
           target->HasTapGestureRecognizer() || target->HasTapEvent();
       hit_test_responsive_result_.should_block_native_event |=
-          target->ShouldBlockNativeEvent();
+          target->ShouldBlockNativeEvent() || target->ShouldInterceptGesture();
       hit_test_responsive_result_.has_consume_slide_event |=
           target->HasConsumeSlideEventAngles();
       // Considering that longpress callback bound in the node is accomplished
@@ -356,6 +367,108 @@ void GestureManager::UpdateHitTestTargetResponsive(int pointer_id,
           impl.UpdateResponsiveResult(responsive_result);
         });
   }
+}
+
+void GestureManager::RefreshHitTestTargetResponsive() {
+  HitTestResponsiveResult old_value = hit_test_responsive_result_;
+  hit_test_responsive_result_ = HitTestResponsiveResult();
+  hit_test_responsive_result_.has_cxx_fold_view = old_value.has_cxx_fold_view;
+  hit_test_responsive_result_.cxx_foldview_is_fold =
+      old_value.cxx_foldview_is_fold;
+  hit_test_responsive_result_.cxx_foldview_is_expanded =
+      old_value.cxx_foldview_is_expanded;
+
+  for (const auto& [_, hit_test_result] : hit_tests_) {
+    for (auto target : hit_test_result) {
+      if (target) {
+        hit_test_responsive_result_.scrollable_direction =
+            hit_test_responsive_result_.scrollable_direction |
+            target->GetScrollableDirection();
+        hit_test_responsive_result_.tappable |=
+            target->HasTapGestureRecognizer() || target->HasTapEvent();
+        hit_test_responsive_result_.should_block_native_event |=
+            target->ShouldBlockNativeEvent() ||
+            target->ShouldInterceptGesture();
+        hit_test_responsive_result_.has_consume_slide_event |=
+            target->HasConsumeSlideEventAngles();
+        hit_test_responsive_result_.has_longpress_event |=
+            target->HasLongPressEvent();
+      }
+    }
+  }
+
+  for (const auto& [pointer_id, _] : hit_tests_) {
+    const auto it = gesture_accepted_map_.find(pointer_id);
+    if (it != gesture_accepted_map_.end() &&
+        it->second != GestureRecognizerType::kNone) {
+      hit_test_responsive_result_.recognized_gesture_type = it->second;
+      break;
+    }
+  }
+  hit_test_responsive_result_.slide_event_consumed =
+      consume_slide_event_status_ == ConsumeSlideEventStatus::kConsumed;
+  if (gesture_mediate_puppet_ &&
+      hit_test_responsive_result_.value != old_value.value) {
+    gesture_mediate_puppet_.Act(
+        [responsive_result = hit_test_responsive_result_](auto& impl) {
+          impl.UpdateResponsiveResult(responsive_result);
+        });
+  }
+}
+
+bool GestureManager::ShouldInterceptGesture() const {
+  for (const auto& [_, hit_test_result] : hit_tests_) {
+    for (auto target : hit_test_result) {
+      if (target && target->ShouldInterceptGesture()) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+void GestureManager::ResetInterceptGestureStatus(
+    const HitTestResult& hit_test_result) {
+  for (auto target : hit_test_result) {
+    if (target) {
+      target->ResetInterceptGesture();
+    }
+  }
+}
+
+void GestureManager::ResetUnreferencedInterceptGestureStatus(
+    const HitTestResult& hit_test_result, int pointer_id) {
+  for (auto target : hit_test_result) {
+    auto* raw_target = target.get();
+    if (!raw_target) {
+      continue;
+    }
+    bool still_referenced = false;
+    for (const auto& [other_pointer_id, other_hit_test_result] : hit_tests_) {
+      if (other_pointer_id == pointer_id) {
+        continue;
+      }
+      for (auto other_target : other_hit_test_result) {
+        if (other_target.get() == raw_target) {
+          still_referenced = true;
+          break;
+        }
+      }
+      if (still_referenced) {
+        break;
+      }
+    }
+    if (!still_referenced) {
+      raw_target->ResetInterceptGesture();
+    }
+  }
+}
+
+void GestureManager::ResetAllInterceptGestureStatus() {
+  for (const auto& [_, hit_test_result] : hit_tests_) {
+    ResetInterceptGestureStatus(hit_test_result);
+  }
+  RefreshHitTestTargetResponsive();
 }
 
 void GestureManager::SendSyntheticWheelEventWithPhaseEnd(

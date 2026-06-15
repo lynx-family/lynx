@@ -816,8 +816,6 @@ class BaseView : public TypeIdentifiable<BaseView>,
   GestureMap gesture_detector_map_;
   GestureHandlerMap gesture_handler_map_;
   int gesture_arena_member_id_{0};
-  InterceptGestureStatus intercept_gesture_status_{
-      InterceptGestureStatus::Unset};
 };
 
 }  // namespace clay

@@ -12,6 +12,7 @@
 #include "clay/gfx/geometry/float_point.h"
 #include "clay/ui/component/page_view.h"
 #include "clay/ui/event/gesture_event.h"
+#include "clay/ui/gesture/gesture_manager.h"
 #include "clay/ui/gesture_handler/common/gesture_extra_bundle.h"
 #include "clay/ui/gesture_handler/gesture_arena_member.h"
 
@@ -62,7 +63,8 @@ void DefaultGestureHandler::OnHandle(
 
   if (handle_by_simultaneous && extra_bundle != nullptr) {
     if (extra_bundle->IsNeedConsumedSimultaneousGesture()) {
-      if (gesture_arena_member_) {
+      if (gesture_arena_member_ &&
+          !page_view_->gesture_manager()->ShouldInterceptGesture()) {
         gesture_arena_member_->GestureScrollBy(
             extra_bundle->SimultaneousDeltaX(),
             extra_bundle->SimultaneousDeltaY());
@@ -243,7 +245,7 @@ void DefaultGestureHandler::OnUpdate(
     float delta_x, float delta_y, const PointerEvent* pointer_event,
     const std::shared_ptr<GestureExtraBundle>& extra_bundle) {
   auto member = gesture_arena_member_;
-  if (member) {
+  if (member && !page_view_->gesture_manager()->ShouldInterceptGesture()) {
     member->GestureScrollBy(delta_x, delta_y);
   }
   if (extra_bundle != nullptr) {

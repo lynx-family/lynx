@@ -77,6 +77,7 @@ class NestedScrollable : public WithTypeInfo<NestedScrollable, Scrollable>,
   virtual FloatPoint DoScroll(FloatPoint delta, bool by_user_input = true,
                               bool ignore_repaint = false);
 
+  void StopAnimation() override;
   void DoWheelScroll(FloatPoint delta);
 
   NestedScrollable* FindAncestorNestedDraggableView();
@@ -178,6 +179,7 @@ class NestedScrollable : public WithTypeInfo<NestedScrollable, Scrollable>,
 
  private:
   FRIEND_TEST(ScrollViewTest, NestedScrollGestureOnPC);
+  FRIEND_TEST(ScrollViewTest, NestedScrollGestureInterceptionOnPC);
   FRIEND_TEST(ScrollViewTest, ScrollEvent);
   void UpdateTouchSlop();
 
