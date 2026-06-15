@@ -38,6 +38,11 @@ class HitTestTarget {
   virtual bool HasLongPressEvent() const = 0;
 
   virtual bool ShouldBlockNativeEvent() const = 0;
+  bool ShouldInterceptGesture() const { return intercept_gesture_; }
+  void SetInterceptGesture(bool intercept_gesture) {
+    intercept_gesture_ = intercept_gesture;
+  }
+  void ResetInterceptGesture() { intercept_gesture_ = false; }
 
   virtual bool ShouldPassEventToNative() const { return false; }
 
@@ -53,6 +58,9 @@ class HitTestTarget {
 
  protected:
   fml::WeakPtrFactory<HitTestTarget> hit_test_weak_factory_;
+
+ private:
+  bool intercept_gesture_{false};
 };
 
 using HitTestResult = std::list<fml::WeakPtr<HitTestTarget>>;

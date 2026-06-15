@@ -78,6 +78,7 @@ class NestedScrollManager : public DynamicAnimator::AnimationListener {
                              float value, float velocity) override;
 
   void SetScrollStatus(Scrollable::ScrollStatus status);
+  void StopScrollForGestureInterception();
 
   bool IsFlingRunning() const {
     return fling_animator_ && fling_animator_->IsRunning();

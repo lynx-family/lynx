@@ -8,6 +8,7 @@
 #include "clay/ui/component/nested_scroll/nested_scrollable.h"
 #include "clay/ui/component/nested_scroll/raster_fling_manager.h"
 #include "clay/ui/component/page_view.h"
+#include "clay/ui/gesture/gesture_manager.h"
 
 namespace clay {
 
@@ -43,15 +44,18 @@ void NestedScrollManager::DragStart(NestedScrollable* scrollable) {
   source_scrollable_ = scrollable;
   direction_ = source_scrollable_->GetScrollDirection();
   ConstructScrollableChain(scrollable);
-  SetScrollStatus(Scrollable::ScrollStatus::kDragging);
-
   CancelAnimations();
+  SetScrollStatus(Scrollable::ScrollStatus::kDragging);
 }
 
 void NestedScrollManager::DragUpdate(NestedScrollable* source_scrollable,
                                      FloatPoint delta) {
   if (source_scrollable_ != source_scrollable) {
     FML_DCHECK(false) << "source_scrollable is not match";
+    return;
+  }
+  if (page_view_->gesture_manager()->ShouldInterceptGesture()) {
+    StopScrollForGestureInterception();
     return;
   }
 
@@ -65,6 +69,10 @@ void NestedScrollManager::DragEnd(NestedScrollable* source_scrollable,
                                   FloatSize velocity) {
   if (source_scrollable_ != source_scrollable) {
     // FML_DCHECK(false) << "source_scrollable is not match";
+    return;
+  }
+  if (page_view_->gesture_manager()->ShouldInterceptGesture()) {
+    StopScrollForGestureInterception();
     return;
   }
 
@@ -280,6 +288,14 @@ void NestedScrollManager::SetScrollStatus(Scrollable::ScrollStatus status) {
       }
     }
   }
+}
+
+void NestedScrollManager::StopScrollForGestureInterception() {
+  CancelAnimations();
+  if (auto overscroll_view = FindOverscrollView()) {
+    overscroll_view->SetOverscrollOffset(FloatPoint(0, 0));
+  }
+  SetScrollStatus(Scrollable::ScrollStatus::kIdle);
 }
 
 void NestedScrollManager::OnScrollableScroll(NestedScrollable* scrollable) {

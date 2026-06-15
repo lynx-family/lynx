@@ -537,6 +537,17 @@ TEST_F_UI(NestedScrollableTest, ManagerStatusTouchOnFling) {
   EXPECT_EQ(scrollable->GetScrollStatus(), Scrollable::ScrollStatus::kDragging);
 }
 
+TEST_F_UI(NestedScrollableTest, ManagerStatusTouchOnWheelAnimation) {
+  TestScrollable* scrollable = new TestScrollable(page_.get(), 100);
+  page_->AddChild(scrollable);
+
+  scrollable->DoWheelScroll({0, 50});
+  page_->nested_scroll_manager()->DragStart(scrollable);
+  EXPECT_EQ(scrollable->nested_scroll_manager()->GetScrollStatus(),
+            Scrollable::ScrollStatus::kDragging);
+  EXPECT_EQ(scrollable->GetScrollStatus(), Scrollable::ScrollStatus::kDragging);
+}
+
 TEST_F_UI(NestedScrollableTest, ManagerStatusTouchOnBounce) {
   TestScrollable* scrollable = new TestScrollable(page_.get(), 100);
   scrollable->SetOverscrollEnabled(true);
