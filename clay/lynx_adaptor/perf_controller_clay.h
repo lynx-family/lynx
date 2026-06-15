@@ -97,6 +97,9 @@ class PerfControllerClay
     NON_FORCED
   };
 
+  void PostPaintEndOnUIThread(tasm::PipelineID pipeline_id);
+
+  void MarkPaintEndForPipelineIds(std::vector<tasm::PipelineID> pipeline_ids);
   void UpdateEnableFluencyMonitor();
 
   const std::shared_ptr<shell::PerfControllerProxy> perf_controller_proxy_;

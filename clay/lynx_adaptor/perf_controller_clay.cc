@@ -24,6 +24,13 @@ inline constexpr const char* const kHostPlatformSurface = "Clay";
 constexpr int32_t kMinSessionDurationInMs = 200;  // 200ms
 constexpr int32_t kMaxSessionDurationInSec = 10;  // 10s
 constexpr std::string_view kLynxFluencyEvent = "lynxsdk_fluency_event";
+// iOS native renderer posts paintEnd from SetNeedMarkPaintEndTiming. Keep Clay
+// iOS aligned with that timing point; other platforms still report at draw-end.
+#if defined(OS_IOS)
+constexpr bool kPostPaintEndOnSetNeedMarkPaintEndTiming = true;
+#else
+constexpr bool kPostPaintEndOnSetNeedMarkPaintEndTiming = false;
+#endif
 
 uint64_t GenerateSessionID() {
   static uint64_t session_id = 0;
@@ -56,6 +63,11 @@ void PerfControllerClay::SetNeedMarkPaintEndTiming(
   TRACE_EVENT_INSTANT(LYNX_TRACE_CATEGORY, TIMING_SET_NEED_MARK_DRAW_END,
                       "pipeline_id", pipeline_id);
   pipeline_id_list_.push_back(pipeline_id);
+  if constexpr (kPostPaintEndOnSetNeedMarkPaintEndTiming) {
+    // iOS needs draw_end to follow the native renderer's dispatch_async
+    // polyfill timing, so post paintEnd when the timing request is recorded.
+    PostPaintEndOnUIThread(pipeline_id);
+  }
 }
 
 void PerfControllerClay::SetPageConfigProbability(double probability) {
@@ -91,6 +103,22 @@ void PerfControllerClay::SetEnableFluencyMonitor(bool enable) {
   UpdateEnableFluencyMonitor();
 }
 
+void PerfControllerClay::PostPaintEndOnUIThread(tasm::PipelineID pipeline_id) {
+  std::weak_ptr<PerfControllerClay> weak_self = shared_from_this();
+  // Match Darwin non-Clay behavior: each pipeline id owns one posted paintEnd
+  // task instead of being batched with later timing requests.
+  ui_task_runner_->PostTask(
+      [weak_self, pipeline_id = std::move(pipeline_id)]() mutable {
+        auto strong_self = weak_self.lock();
+        if (!strong_self) {
+          return;
+        }
+        std::vector<tasm::PipelineID> pipeline_ids;
+        pipeline_ids.push_back(std::move(pipeline_id));
+        strong_self->MarkPaintEndForPipelineIds(std::move(pipeline_ids));
+      });
+}
+
 void PerfControllerClay::UpdateEnableFluencyMonitor() {
   if (force_fluency_monitor_status_ == ForceFluencyMonitorStatus::FORCED_ON) {
     enable_fluency_monitor_ = true;
@@ -105,13 +133,30 @@ void PerfControllerClay::UpdateEnableFluencyMonitor() {
 void PerfControllerClay::OnPaintEnd() {
   DCHECK(ui_task_runner_->RunsTasksOnCurrentThread());
 
-  if (pipeline_id_list_.empty() || !perf_controller_proxy_) {
+  if constexpr (kPostPaintEndOnSetNeedMarkPaintEndTiming) {
+    // iOS has reported paintEnd from SetNeedMarkPaintEndTiming. Keep draw-end
+    // responsible only for clearing ids retained for Clay frame timing.
+    pipeline_id_list_.clear();
+  } else {
+    // Other Clay platforms keep the original behavior: report paintEnd when
+    // PageView sends the draw-end event.
+    if (pipeline_id_list_.empty() || !perf_controller_proxy_) {
+      return;
+    }
+    std::vector<tasm::PipelineID> pipeline_id_list;
+    pipeline_id_list.swap(pipeline_id_list_);
+    MarkPaintEndForPipelineIds(std::move(pipeline_id_list));
+  }
+}
+
+void PerfControllerClay::MarkPaintEndForPipelineIds(
+    std::vector<tasm::PipelineID> pipeline_id_list) {
+  DCHECK(ui_task_runner_->RunsTasksOnCurrentThread());
+
+  if (pipeline_id_list.empty() || !perf_controller_proxy_) {
     return;
   }
-
   auto timestamp_us = base::CurrentSystemTimeMicroseconds();
-  std::vector<tasm::PipelineID> pipeline_id_list;
-  pipeline_id_list.swap(pipeline_id_list_);
 
   std::weak_ptr<PerfControllerClay> weak_self = shared_from_this();
   perf_controller_proxy_->RunTaskInReportThread(
