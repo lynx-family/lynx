@@ -99,4 +99,15 @@ clay::GrContextPtr EmbedderSurfaceGL::GetMainGrContext() {
   return main_context_;
 }
 
+std::unique_ptr<GLContextResult> EmbedderSurfaceGL::MakeCurrent() {
+  return GLContextMakeCurrent();
+}
+
+#ifdef ENABLE_SKITY
+std::optional<OutputSurface::SkityPrecompileConfig>
+EmbedderSurfaceGL::GetSkityPrecompileConfig() const {
+  return SkityPrecompileConfig{skity::PrecompileColorType::kRGBA, false};
+}
+#endif
+
 }  // namespace clay
