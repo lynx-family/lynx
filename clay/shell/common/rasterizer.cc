@@ -9,6 +9,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdint>
 #include <memory>
 #include <mutex>
 #include <utility>
@@ -36,6 +37,10 @@ namespace clay {
 #ifndef ENABLE_SKITY
 static constexpr std::chrono::milliseconds kSkiaCleanupExpiration(15000);
 #endif  // ENABLE_SKITY
+
+uint32_t GetRasterCacheSampleCount(const Settings& settings) {
+  return settings.msaa_samples > 1 ? settings.msaa_samples : 1;
+}
 
 Rasterizer::Rasterizer(std::shared_ptr<clay::ServiceManager> service_manager)
     : service_manager_(service_manager),
@@ -394,8 +399,8 @@ RasterStatus Rasterizer::DrawToSurfaceUnsafe(
       surface_->GetRootTransformation(),  // root surface transformation
       true,                               // instrumentation enabled
       frame->framebuffer_info()
-          .supports_readback  // surface supports pixel reads
-  );
+          .supports_readback,  // surface supports pixel reads
+      GetRasterCacheSampleCount(platform_const_service_->GetSettings()));
 
   if (compositor_frame) {
     compositor_context_->raster_cache().BeginFrame();
