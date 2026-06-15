@@ -4,6 +4,8 @@
 
 #include "clay/third_party/txt/src/tttext/paragraph_tt_text.h"
 
+#include <algorithm>
+
 #include <textra/layout_drawer.h>
 #include <textra/layout_region.h>
 #include <textra/text_layout.h>
@@ -22,11 +24,22 @@ namespace txt {
 
 class TTShapeRun : public tttext::RunDelegate {
  public:
-  TTShapeRun(const PlaceholderRun& span) {
+  TTShapeRun(const PlaceholderRun& span, const tttext::Style& style) {
     FML_DCHECK(span.baseline == TextBaseline::kAlphabetic);
-    FML_DCHECK(span.alignment == PlaceholderAlignment::kBaseline);
-    ascent_ = -span.height;
-    descent_ = 0;
+    if (span.alignment == PlaceholderAlignment::kMiddle) {
+      float text_size = style.GetTextSize();
+      if (text_size <= 0) {
+        text_size = static_cast<float>(span.height);
+      }
+      const float text_ascent = text_size * 0.75f;
+      const float text_descent = text_size - text_ascent;
+      const float middle = (text_ascent - text_descent) / 2.f;
+      ascent_ = -std::max(0.f, middle + static_cast<float>(span.height) / 2.f);
+      descent_ = std::max(0.f, -middle + static_cast<float>(span.height) / 2.f);
+    } else {
+      ascent_ = -span.height;
+      descent_ = 0;
+    }
     advance_ = span.width;
   }
   float GetAscent() const override { return ascent_; }
@@ -281,7 +294,7 @@ void ParagraphTTText::UpdateForegroundPaint(size_t start,
 void ParagraphTTText::AddPlaceholder(tttext::Style& style,
                                      PlaceholderRun& span,
                                      bool is_float) {
-  auto delegate = std::make_unique<TTShapeRun>(span);
+  auto delegate = std::make_unique<TTShapeRun>(span, style);
   placeholder_pos_.push_back(paragraph_->GetCharCount());
   paragraph_->AddShapeRun(&style, std::move(delegate), is_float);
 }
