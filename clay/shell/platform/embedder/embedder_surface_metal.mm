@@ -25,6 +25,20 @@
 FLUTTER_ASSERT_ARC
 namespace clay {
 
+namespace {
+
+#ifdef ENABLE_SKITY
+constexpr MsaaSampleCount GetSkityMetalMsaaSampleCount() {
+#if defined(OS_OSX)
+  return MsaaSampleCount::kFour;
+#else
+  return MsaaSampleCount::kNone;
+#endif
+}
+#endif  // ENABLE_SKITY
+
+}  // namespace
+
 EmbedderSurfaceMetal::EmbedderSurfaceMetal(EmbedderSurfaceMetalDelegate* delegate)
     : GPUSurfaceMetalDelegate(MTLRenderTargetType::kMTLTexture), delegate_(delegate) {
 #ifndef ENABLE_SKITY
@@ -44,6 +58,14 @@ GPUCAMetalLayerHandle EmbedderSurfaceMetal::GetCAMetalLayer(const skity::Vec2& f
 }
 
 clay::GrContextPtr EmbedderSurfaceMetal::GetMainGrContext() { return main_context_; }
+
+#ifdef ENABLE_SKITY
+std::optional<OutputSurface::SkityPrecompileConfig> EmbedderSurfaceMetal::GetSkityPrecompileConfig()
+    const {
+  return SkityPrecompileConfig{skity::PrecompileColorType::kBGRA,
+                               GetSkityMetalMsaaSampleCount() != MsaaSampleCount::kNone};
+}
+#endif  // ENABLE_SKITY
 
 EmbedderSurfaceMetal::~EmbedderSurfaceMetal() = default;
 
@@ -74,12 +96,7 @@ std::unique_ptr<Surface> EmbedderSurfaceMetal::CreateGPUSurface(clay::GrContext*
   }
   auto surface = std::make_unique<GPUSurfaceMetalSkity>(
       this, context ? std::shared_ptr<clay::GrContext>(context) : main_context_,
-#if defined(OS_OSX)
-      MsaaSampleCount::kFour,
-#else
-      MsaaSampleCount::kNone,
-#endif
-      true);
+      GetSkityMetalMsaaSampleCount(), true);
 
   if (!surface->IsValid()) {
     return nullptr;
