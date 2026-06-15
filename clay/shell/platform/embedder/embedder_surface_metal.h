@@ -53,6 +53,12 @@ class EmbedderSurfaceMetal final : public EmbedderSurface,
   // |OutputSurface|
   clay::GrContextPtr GetMainGrContext() override;
 
+#ifdef ENABLE_SKITY
+  // |OutputSurface|
+  std::optional<SkityPrecompileConfig> GetSkityPrecompileConfig()
+      const override;
+#endif
+
   // |GPUSurfaceMetalDelegate|
   GPUCAMetalLayerHandle GetCAMetalLayer(
       const skity::Vec2& frame_size) const override;
