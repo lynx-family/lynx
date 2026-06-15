@@ -320,6 +320,8 @@ public class UnicodeFontUtils {
           || block == Character.UnicodeBlock.LATIN_EXTENDED_A
           || block == Character.UnicodeBlock.LATIN_EXTENDED_B
           || block == Character.UnicodeBlock.GENERAL_PUNCTUATION
+          || block == Character.UnicodeBlock.CJK_SYMBOLS_AND_PUNCTUATION
+          || block == Character.UnicodeBlock.HALFWIDTH_AND_FULLWIDTH_FORMS
           || block == Character.UnicodeBlock.CURRENCY_SYMBOLS
           || block == Character.UnicodeBlock.MATHEMATICAL_OPERATORS;
     }
