@@ -28,8 +28,6 @@ enum class GestureHandlerType {
   Native,
 };
 
-enum class InterceptGestureStatus { Unset, False, True };
-
 class GestureDetector;
 
 using GestureMap =
