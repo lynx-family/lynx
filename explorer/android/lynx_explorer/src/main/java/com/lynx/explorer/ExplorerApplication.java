@@ -18,11 +18,14 @@ import com.lynx.service.http.LynxHttpService;
 import com.lynx.service.image.LynxImageService;
 import com.lynx.service.log.LynxLogService;
 import com.lynx.tasm.LynxEnv;
+import com.lynx.tasm.base.LLog;
 import com.lynx.tasm.service.ILynxHttpService;
 import com.lynx.tasm.service.ILynxImageService;
 import com.lynx.tasm.service.LynxServiceCenter;
 
 public class ExplorerApplication extends Application {
+  private static final String TAG = "ExplorerApplication";
+
   @Override
   public void onCreate() {
     super.onCreate();
@@ -74,11 +77,11 @@ public class ExplorerApplication extends Application {
       hybridKitClass.getMethod("setHybridConfig", hybridConfigClass, Application.class)
           .invoke(hybridKit, hybridConfig, this);
       hybridKitClass.getMethod("initLynxKit").invoke(hybridKit);
-      android.util.Log.i("ExplorerApplication", "Sparkling HybridKit initialized");
+      LLog.i(TAG, "Sparkling HybridKit initialized");
     } catch (ClassNotFoundException e) {
-      android.util.Log.w("ExplorerApplication", "Sparkling SDK not on classpath, skipping init", e);
+      LLog.w(TAG, "Sparkling SDK not on classpath, skipping init: " + e);
     } catch (Exception e) {
-      android.util.Log.e("ExplorerApplication", "Sparkling init failed", e);
+      LLog.e(TAG, "Sparkling init failed: " + e);
     }
   }
 
