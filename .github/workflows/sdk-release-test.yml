@@ -21,7 +21,7 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - name: Download Source
-        uses: actions/checkout@v4.2.2
+        uses: actions/checkout@v6
         with:
           path: lynx
           ref: ${{ github.event.inputs.commitId || github.ref }}
@@ -29,7 +29,7 @@ jobs:
       - name: Free up disk space
         uses: ./lynx/.github/actions/free-android-disk
       - name: Python Setup
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.13'
       - name: Setup Android environment
@@ -55,13 +55,13 @@ jobs:
       POD_VERSION: '0.0.1-alpha.1'
     steps:
       - name: Download Source
-        uses: actions/checkout@v4.2.2
+        uses: actions/checkout@v6
         with:
           path: lynx
           ref: ${{ github.event.inputs.commitId || github.ref }}
           fetch-depth: 0
       - name: Python Setup
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.13'
       - name: Set up Ruby + specify Bundler version

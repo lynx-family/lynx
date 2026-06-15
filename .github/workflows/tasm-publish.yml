@@ -15,7 +15,7 @@ jobs:
       version_changed: ${{ steps.check.outputs.version_changed }}
     steps:
       - name: Download Source
-        uses: actions/checkout@v4.2.2
+        uses: actions/checkout@v6
         with:
           path: lynx
           fetch-depth: 2 # latest 2 commits
@@ -50,14 +50,14 @@ jobs:
     needs: check-version-change
     steps:
       - name: Download Source
-        uses: actions/checkout@v4.2.2
+        uses: actions/checkout@v6
         with:
           path: lynx
       - name: Python Setup
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.13'
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: 18
       - name: Install Common Dependencies
@@ -74,7 +74,7 @@ jobs:
           npm run build:release:linux
           popd
       - name: Upload Linux Tasm Artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: tasm_linux
           path: lynx/oliver/lynx-tasm/build/linux/Release/lepus.node
@@ -85,14 +85,14 @@ jobs:
     needs: check-version-change
     steps:
       - name: Download Source
-        uses: actions/checkout@v4.2.2
+        uses: actions/checkout@v6
         with:
           path: lynx
       - name: Python Setup
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.13'
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: 18
       - name: Install Common Dependencies
@@ -109,7 +109,7 @@ jobs:
           npm run build:release:darwin
           popd
       - name: Upload Darwin Tasm Artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: tasm_darwin
           path: lynx/oliver/lynx-tasm/build/darwin/Release/lepus.node
@@ -123,14 +123,14 @@ jobs:
     environment: npm
     steps:
       - name: Download Source
-        uses: actions/checkout@v4.2.2
+        uses: actions/checkout@v6
         with:
           path: lynx
       - name: Python Setup
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.13'
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: 24
           registry-url: 'https://registry.npmjs.org'
@@ -148,12 +148,12 @@ jobs:
           npm run build:wasm
           popd
       - name: Download Linux Tasm Artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: tasm_linux
           path: lynx/oliver/lynx-tasm/build/linux/Release
       - name: Download Darwin Tasm Artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: tasm_darwin
           path: lynx/oliver/lynx-tasm/build/darwin/Release

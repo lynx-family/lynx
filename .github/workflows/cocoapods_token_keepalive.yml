@@ -11,7 +11,7 @@ jobs:
       COCOAPODS_TRUNK_TOKEN: ${{ secrets.COCOAPODS_TRUNK_TOKEN }}
     steps:
       - name: Download Source
-        uses: actions/checkout@v4.2.2
+        uses: actions/checkout@v6
         with:
           path: lynx
       - name: Setup Ruby Cache

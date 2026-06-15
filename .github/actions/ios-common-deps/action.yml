@@ -34,7 +34,7 @@ runs:
           ${{ runner.os }}-ruby-${{ steps.get_ruby_version.outputs.VERSION }}
     - name: setup cache action
       if: ${{ inputs.cache-backend == 'github' }}
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       with:
         path: ${{ inputs.path }}/${{ steps.get_ruby_version.outputs.VERSION }}
         key: ${{ runner.os }}-ruby-${{ steps.get_ruby_version.outputs.VERSION }}-${{ hashFiles('lynx/Gemfile.lock') }}

@@ -17,11 +17,11 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Python Setup
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.13'
       - name: Download Source
-        uses: actions/checkout@v4.2.2
+        uses: actions/checkout@v6
         with:
           fetch-depth: 2
           ref: ${{ github.event.pull_request.head.sha }}
@@ -66,7 +66,7 @@ jobs:
     runs-on: lynx-darwin-14-medium
     steps:
       - name: Download Source
-        uses: actions/checkout@v4.2.2
+        uses: actions/checkout@v6
         with:
           path: lynx
       - name: Install Common Dependencies
@@ -82,11 +82,11 @@ jobs:
     timeout-minutes: 60
     steps:
       - name: Download Source
-        uses: actions/checkout@v4.2.2
+        uses: actions/checkout@v6
         with:
           path: lynx
       - name: Python Setup
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.13'
       - name: Install Common Dependencies
@@ -102,11 +102,11 @@ jobs:
     timeout-minutes: 60
     steps:
       - name: Download Source
-        uses: actions/checkout@v4.2.2
+        uses: actions/checkout@v6
         with:
           path: lynx
       - name: Python Setup
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.13'
       - name: Install Common Dependencies
@@ -122,7 +122,7 @@ jobs:
     runs-on: lynx-darwin-14-medium
     steps:
       - name: Download Source
-        uses: actions/checkout@v4.2.2
+        uses: actions/checkout@v6
         with:
           path: lynx
       - name: Install Common Dependencies
@@ -162,7 +162,7 @@ jobs:
     runs-on: lynx-ubuntu-22.04-medium
     steps:
       - name: Download Source
-        uses: actions/checkout@v4.2.2
+        uses: actions/checkout@v6
         with:
           path: lynx
       - name: Set up Ruby
@@ -197,11 +197,11 @@ jobs:
     timeout-minutes: 60
     steps:
       - name: Download Source
-        uses: actions/checkout@v4.2.2
+        uses: actions/checkout@v6
         with:
           path: lynx
       - name: Python Setup
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.13'
       - name: Install Common Dependencies
@@ -219,7 +219,7 @@ jobs:
     runs-on: lynx-darwin-14-medium
     steps:
       - name: Download Source
-        uses: actions/checkout@v4.2.2
+        uses: actions/checkout@v6
         with:
           path: lynx
       - name: Install Common Dependencies
@@ -242,7 +242,7 @@ jobs:
     runs-on: lynx-darwin-14-medium
     steps:
       - name: Download Source
-        uses: actions/checkout@v4.2.2
+        uses: actions/checkout@v6
         with:
           path: lynx
       - name: Install Common Dependencies
@@ -262,11 +262,11 @@ jobs:
     timeout-minutes: 60
     steps:
       - name: Download Source
-        uses: actions/checkout@v4.2.2
+        uses: actions/checkout@v6
         with:
           path: lynx
       - name: Python Setup
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.13'
       - name: Install Common Dependencies
@@ -284,11 +284,11 @@ jobs:
     runs-on: lynx-ubuntu-22.04-physical-medium
     steps:
       - name: Download Source
-        uses: actions/checkout@v4.2.2
+        uses: actions/checkout@v6
         with:
           path: lynx
       - name: Python Setup
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.13'
       - name: Install Common Dependencies
@@ -308,7 +308,7 @@ jobs:
     timeout-minutes: 60
     steps:
       - name: Download Source
-        uses: actions/checkout@v4.2.2
+        uses: actions/checkout@v6
         with:
           path: lynx
       - name: Setup gradle cache
@@ -336,11 +336,11 @@ jobs:
           git config --global http.sslBackend "schannel"
         working-directory: ./
       - name: Download Source
-        uses: actions/checkout@v4.2.2
+        uses: actions/checkout@v6
         with:
           path: lynx
       - name: Python Setup
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.13'
       - name: Install Common Dependencies
@@ -357,11 +357,11 @@ jobs:
     runs-on: lynx-ubuntu-22.04-large
     steps:
       - name: Download Source
-        uses: actions/checkout@v4.2.2
+        uses: actions/checkout@v6
         with:
           path: lynx
       - name: Python Setup
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.13'
       - name: Install Common Dependencies
@@ -397,11 +397,11 @@ jobs:
     runs-on: lynx-ubuntu-22.04-physical-medium
     steps:
       - name: Download Source
-        uses: actions/checkout@v4.2.2
+        uses: actions/checkout@v6
         with:
           path: lynx
       - name: Python Setup
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.13'
       - name: Install Common Dependencies
@@ -414,7 +414,7 @@ jobs:
           pnpm install appium-espresso-driver@4.0.0 -w
           popd
       - name: Setup Java SDK
-        uses: actions/setup-java@v3
+        uses: actions/setup-java@v5
         with:
           java-version: 17
           distribution: 'zulu'
@@ -578,7 +578,7 @@ jobs:
     runs-on: lynx-ubuntu-22.04-large
     steps:
       - name: Download Integeration Demo Source Code
-        uses: actions/checkout@v4.2.2
+        uses: actions/checkout@v6
         with:
           repository: lynx-family/integrating-lynx-demo-projects
           ref: b106f7f21d5221acfed645f4afa9d829a1cc0cc2
@@ -596,11 +596,11 @@ jobs:
           name: android-sdk-release
           path: lynx
       - name: Python Setup
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.13'
       - name: Setup Java SDK
-        uses: actions/setup-java@v3
+        uses: actions/setup-java@v5
         with:
           java-version: 17
           distribution: 'zulu'
@@ -636,7 +636,7 @@ jobs:
         shell: bash
     steps:
       - name: Download Source
-        uses: actions/checkout@v4.2.2
+        uses: actions/checkout@v6
         with:
           path: lynx
       - name: Build Explorer App
@@ -650,7 +650,7 @@ jobs:
         arch: [arm64, x86_64]
     steps:
       - name: Download Source
-        uses: actions/checkout@v4.2.2
+        uses: actions/checkout@v6
         with:
           path: lynx
       - name: Build Explorer App
@@ -673,7 +673,7 @@ jobs:
       POD_VERSION: '0.0.1-alpha.1'
     steps:
       - name: Download Source
-        uses: actions/checkout@v4.2.2
+        uses: actions/checkout@v6
         with:
           fetch-depth: 2
           ref: ${{ github.event.pull_request.head.sha }}
@@ -697,7 +697,7 @@ jobs:
           git config --global user.email "lynx.authors@users.noreply.github.com"
           python3 tools/ios_tools/cocoapods_publish_helper.py --publish_local $LOCAL_POD_NAME --component all
       - name: Download the Demo Project
-        uses: actions/checkout@v4.2.2
+        uses: actions/checkout@v6
         with:
           path: demo
           repository: lynx-family/integrating-lynx-demo-projects
@@ -724,7 +724,7 @@ jobs:
     runs-on: lynx-darwin-14-medium
     steps:
       - name: Download Source
-        uses: actions/checkout@v4.2.2
+        uses: actions/checkout@v6
         with:
           path: lynx
       - name: Install Common Dependencies
@@ -895,7 +895,7 @@ jobs:
     runs-on: lynx-darwin-14-medium
     steps:
       - name: Download Source
-        uses: actions/checkout@v4.2.2
+        uses: actions/checkout@v6
         with:
           path: lynx
       - name: Build Clay Example
@@ -914,7 +914,7 @@ jobs:
         arch: [arm64, x64]
     steps:
       - name: Download Source
-        uses: actions/checkout@v4.2.2
+        uses: actions/checkout@v6
         with:
           path: lynx
       - name: Build macOS Explorer
