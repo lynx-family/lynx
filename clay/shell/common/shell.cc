@@ -117,7 +117,9 @@ void PerformInitializationTasks(Settings& settings) {  // NOLINT
 #endif  // ENABLE_SKITY
   });
 
+#ifndef ENABLE_SKITY
   PersistentCache::SetCacheSkSL(settings.cache_sksl);
+#endif  // ENABLE_SKITY
 }
 
 }  // namespace
@@ -375,8 +377,10 @@ Shell::~Shell() {
   memory_pressure_listener_.reset();
 #endif
 
+#ifndef ENABLE_SKITY
   PersistentCache::GetCacheForProcess()->RemoveWorkerTaskRunner(
       task_runners_.GetIOTaskRunner());
+#endif  // ENABLE_SKITY
 
   fml::AutoResetWaitableEvent ui_latch, platform_latch, io_latch;
 
@@ -565,20 +569,24 @@ bool Shell::Setup(std::unique_ptr<PlatformView> platform_view,
 
   is_setup_ = true;
 
+#ifndef ENABLE_SKITY
   PersistentCache::GetCacheForProcess()->AddWorkerTaskRunner(
       task_runners_.GetIOTaskRunner());
 
   PersistentCache::GetCacheForProcess()->SetIsDumpingSkp(
       settings_.dump_skp_on_shader_compilation);
+#endif  // ENABLE_SKITY
 
 #ifdef ENABLE_NET_LOADER
   clay::NetLoaderManager::Instance().EnsureSetup(
       clay::Isolate::Instance().GetIOTaskRunner(), 10 * 1024 * 1024 /*10mB*/);
 #endif  // ENABLE_NET_LOADER
 
+#ifndef ENABLE_SKITY
   if (settings_.purge_persistent_cache) {
     PersistentCache::GetCacheForProcess()->Purge();
   }
+#endif  // ENABLE_SKITY
 
   return true;
 }
