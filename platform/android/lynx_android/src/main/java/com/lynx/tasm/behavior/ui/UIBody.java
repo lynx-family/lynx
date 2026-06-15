@@ -733,6 +733,16 @@ public class UIBody extends UIGroup<UIBodyView> {
     }
 
     @Override
+    protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
+      if (shouldDrawWithDisplayList()) {
+        // Do not call super here, which will overrides the measured dimension.
+        getRenderer().onMeasure(widthMeasureSpec, heightMeasureSpec);
+      } else {
+        super.onMeasure(widthMeasureSpec, heightMeasureSpec);
+      }
+    }
+
+    @Override
     protected void onDraw(Canvas canvas) {
       super.onDraw(canvas);
       if (shouldDrawWithDisplayList()) {
