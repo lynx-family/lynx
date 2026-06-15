@@ -90,6 +90,7 @@
 #include "skity/include/skity/text/font_manager.hpp"
 #include "skity/recorder/picture_recorder.hpp"
 #include "skity/render/canvas.hpp"
+#include "skity/render/precompile_context.hpp"
 #include "skity/text/font.hpp"
 #include "skity/text/text_blob.hpp"
 #endif  // ENABLE_SKITY
