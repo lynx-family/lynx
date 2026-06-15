@@ -7,6 +7,8 @@
 #include <memory>
 #include <utility>
 
+#include "core/renderer/css/text_attributes.h"
+#include "core/renderer/dom/attribute_holder.h"
 #include "core/renderer/dom/element.h"
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/dom/fiber/fiber_element.h"
@@ -85,38 +87,94 @@ bool PushEventTargetIfNeeded(text::ParagraphBuilder* paragraph_builder,
   return true;
 }
 
+bool IsInlineTruncationElement(Element* element) {
+  if (element == nullptr) {
+    return false;
+  }
+  const auto& tag = element->GetTag();
+  return tag.IsEqual("inline-truncation") || tag.IsEqual("x-inline-truncation");
+}
+
+bool IsInlineTextElement(Element* element) {
+  if (element == nullptr) {
+    return false;
+  }
+  const auto& tag = element->GetTag();
+  return tag.IsEqual("inline-text") || tag.IsEqual("x-inline-text");
+}
+
+CSSIDBitset CreateTextStylePropertyBits(FiberElement* element) {
+  CSSIDBitset property_bits;
+  if (element == nullptr) {
+    return property_bits;
+  }
+  for (const auto& style : element->GetParsedStylesMap()) {
+    property_bits.Set(style.first);
+  }
+  return property_bits;
+}
+
+base::String GetRawTextContent(Element* element) {
+  if (element == nullptr) {
+    return base::String();
+  }
+  auto* data_model = element->data_model();
+  if (data_model == nullptr) {
+    return base::String();
+  }
+  BASE_STATIC_STRING_DECL(kTextAttr, "text");
+  auto& attributes = data_model->attributes();
+  auto it = attributes.find(kTextAttr);
+  if (it == attributes.end()) {
+    return base::String();
+  }
+  return it->second.String();
+}
+
 class TextraInlineView : public text::InlineView {
  public:
   explicit TextraInlineView(Element* child)
       : child_(static_cast<FiberElement*>(child)) {}
   ~TextraInlineView() override = default;
   text::MeasureResult Measure(const text::MeasureParams& params) override {
+    auto* slnode = child_->slnode();
+    if (slnode == nullptr) {
+      return {};
+    }
+
     starlight::Constraints constraints;
     constraints[starlight::kHorizontal] = starlight::OneSideConstraint(
         params.width, static_cast<SLMeasureMode>(params.width_mode));
     constraints[starlight::kVertical] = starlight::OneSideConstraint(
         params.height, static_cast<SLMeasureMode>(params.height_mode));
 
-    FloatSize size =
-        child_->slnode()->UpdateMeasureByPlatform(constraints, true);
+    FloatSize size = slnode->UpdateMeasureByPlatform(constraints, true);
     return {size.width_, size.height_, size.baseline_};
   }
   void Align(float x, float y) override {
-    child_->slnode()->AlignmentByPlatform(y, x);
+    if (truncation_ != nullptr && truncation_->slnode() != nullptr) {
+      truncation_->slnode()->MarkDirty();
+    }
+    auto* slnode = child_->slnode();
+    if (slnode == nullptr) {
+      return;
+    }
+    slnode->AlignmentByPlatform(y, x);
   }
 
   void HideView() override {
-    // FIXME(linxs): need a better way to hide the view
-    starlight::Constraints constraints;
-    constraints[starlight::kHorizontal] =
-        starlight::OneSideConstraint(0, SLMeasureMode::SLMeasureModeDefinite);
-    constraints[starlight::kVertical] =
-        starlight::OneSideConstraint(0, SLMeasureMode::SLMeasureModeDefinite);
-    child_->slnode()->UpdateMeasureByPlatform(constraints, true);
+    auto* slnode = child_->slnode();
+    if (slnode == nullptr) {
+      return;
+    }
+    slnode->LayoutDisplayNone();
   }
 
+  void SetTruncation(FiberElement* truncation) { truncation_ = truncation; }
+
  private:
-  FiberElement* child_;
+  FiberElement* child_{nullptr};
+  FiberElement* truncation_{nullptr};
 };
 
 class TextraParagraphListener : public text::ParagraphListener {
@@ -156,16 +214,26 @@ TextLayoutTextra::~TextLayoutTextra() {
 }
 
 void TextLayoutTextra::ApplyTextStyle(TextElement* text_element) {
-  const CSSIDBitset& property_bits = text_element->property_bits();
+  ApplyTextStyle(static_cast<Element*>(text_element),
+                 text_element->property_bits());
+}
+
+void TextLayoutTextra::ApplyTextStyle(Element* element,
+                                      const CSSIDBitset& property_bits) {
+  if (element == nullptr || paragraph_builder_ == nullptr) {
+    return;
+  }
+  auto* computed_css_style = element->computed_css_style();
+  if (computed_css_style == nullptr) {
+    return;
+  }
 
   // process font-size by default
-  float font_size =
-      static_cast<float>(text_element->computed_css_style()->GetFontSize());
+  float font_size = static_cast<float>(computed_css_style->GetFontSize());
   paragraph_builder_->SetTextStyle(kTextPropFontSize, &(font_size),
                                    sizeof(float));
 
-  auto& text_attributes =
-      text_element->computed_css_style()->GetTextAttributes();
+  auto& text_attributes = computed_css_style->GetTextAttributes();
   if (text_attributes.has_value()) {
     for (CSSPropertyID id : property_bits) {
       switch (id) {
@@ -208,7 +276,7 @@ void TextLayoutTextra::ApplyTextStyle(TextElement* text_element) {
           paragraph_builder_->SetTextStyle(kTextPropFontFamily,
                                            const_cast<char*>(family.c_str()),
                                            family.length());
-          EnsureParagraphListener(text_element);
+          EnsureParagraphListener(element);
           break;
         }
         case kPropertyIDLetterSpacing: {
@@ -301,6 +369,9 @@ void TextLayoutTextra::BuildParagraphRecursively(Element* element,
       paragraph_builder_->AddText(element_content.c_str(),
                                   element_content.length());
     }
+  } else if (IsInlineTextElement(element)) {
+    auto* fiber_element = static_cast<FiberElement*>(element);
+    ApplyTextStyle(element, CreateTextStylePropertyBits(fiber_element));
   }
 
   for (auto* child = element->first_render_child(); child;
@@ -403,6 +474,9 @@ void TextLayoutTextra::HandleInlineImageProps(Element* element) {
 void TextLayoutTextra::HandleInlineViewProps(Element* element) {
   auto* child = static_cast<FiberElement*>(element);
   auto inline_view = std::make_unique<TextraInlineView>(child);
+  if (building_inline_truncation_) {
+    inline_view->SetTruncation(truncation_);
+  }
   const auto& text_attributes =
       child->computed_css_style()->GetTextAttributes();
   if (text_attributes.has_value() &&
@@ -422,11 +496,19 @@ void TextLayoutTextra::HandleInlineViewProps(Element* element) {
 void TextLayoutTextra::ProcessChildStyleAndProps(Element* element,
                                                  bool& has_inline_view) {
   auto* child = static_cast<FiberElement*>(element);
+  if (!building_inline_truncation_ && IsInlineTruncationElement(child)) {
+    BuildInlineTruncation(child, has_inline_view);
+    return;
+  }
+
   if (child->is_raw_text()) {
     RawTextElement* rawText = static_cast<RawTextElement*>(child);
     paragraph_builder_->AddText(rawText->content().c_str(),
                                 rawText->content().length());
-  } else if (child->is_text()) {
+  } else if (child->GetTag().IsEqual(RawTextElement::kRawTextTag)) {
+    auto content = GetRawTextContent(child);
+    paragraph_builder_->AddText(content.c_str(), content.length());
+  } else if (child->is_text() || IsInlineTextElement(child)) {
     // inline text
     paragraph_builder_->PushTextStyle();
     bool pushed_event_target =
@@ -459,6 +541,44 @@ void TextLayoutTextra::ProcessChildStyleAndProps(Element* element,
       ProcessChildStyleAndProps(wrap_child, has_inline_view);
     }
   }
+}
+
+void TextLayoutTextra::BuildInlineTruncation(FiberElement* element,
+                                             bool& has_inline_view) {
+  if (paragraph_builder_ == nullptr || element == nullptr) {
+    return;
+  }
+
+  bool previous_building_inline_truncation = building_inline_truncation_;
+  building_inline_truncation_ = true;
+  truncation_ = element;
+  paragraph_builder_->StartInlineTruncation();
+
+  paragraph_builder_->PushTextStyle();
+  ApplyTextStyle(element, CreateTextStylePropertyBits(element));
+
+  bool pushed_truncation_event_target =
+      PushEventTargetIfNeeded(paragraph_builder_, element);
+
+  bool truncation_has_inline_view = false;
+  for (auto* child = element->first_render_child(); child;
+       child = child->next_render_sibling()) {
+    ProcessChildStyleAndProps(child, truncation_has_inline_view);
+  }
+  has_inline_view = has_inline_view || truncation_has_inline_view;
+  // Inline truncation is virtual in the layout tree; keep it dirty so Fiber
+  // traversal can reach the inline views measured by the truncation paragraph.
+  if (element->slnode() != nullptr) {
+    element->slnode()->MarkDirty();
+  }
+
+  if (pushed_truncation_event_target) {
+    paragraph_builder_->PopEventTarget();
+  }
+  paragraph_builder_->PopTextStyle();
+  paragraph_builder_->EndInlineTruncation();
+  building_inline_truncation_ = previous_building_inline_truncation;
+  truncation_ = nullptr;
 }
 
 LayoutResult TextLayoutTextra::Measure(Element* element, float width,
