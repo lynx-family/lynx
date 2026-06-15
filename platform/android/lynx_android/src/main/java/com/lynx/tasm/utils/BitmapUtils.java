@@ -47,11 +47,11 @@ public class BitmapUtils {
     if (processedBitmap != bitmap) {
       processedBitmap.recycle();
     }
-    return "data:image/jpeg;base64," + Base64.encodeToString(bitmapBytes, Base64.DEFAULT);
+    return "data:image/jpeg;base64," + Base64.encodeToString(bitmapBytes, Base64.NO_WRAP);
   }
 
   public static String bitmapToBase64WithQuality(Bitmap bitmap, int quality) {
-    return bitmapToBase64(bitmap, Bitmap.CompressFormat.JPEG, quality, Base64.DEFAULT);
+    return bitmapToBase64(bitmap, Bitmap.CompressFormat.JPEG, quality, Base64.NO_WRAP);
   }
 
   public static String bitmapToBase64(
