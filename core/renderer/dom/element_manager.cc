@@ -268,38 +268,6 @@ void ElementManager::OnDocumentUpdated() {
   });
 }
 
-void ElementManager::PutCachedTemplateElementTree(
-    const base::String &bundle_url, const base::String &template_key,
-    CachedTemplateElementTree cached_tree) {
-  if (template_key.empty() || cached_tree.generated_.result_ == nullptr) {
-    return;
-  }
-  cached_tree.bundle_url_ = bundle_url;
-  cached_tree.template_key_ = template_key;
-  cached_template_element_trees_.push_back(std::move(cached_tree));
-}
-
-bool ElementManager::TakeCachedTemplateElementTree(
-    const base::String &bundle_url, const base::String &template_key,
-    CachedTemplateElementTree *cached_tree) {
-  if (template_key.empty() || cached_tree == nullptr) {
-    return false;
-  }
-  for (size_t index = cached_template_element_trees_.size(); index > 0;
-       --index) {
-    auto &candidate = cached_template_element_trees_[index - 1];
-    if (!candidate.template_key_.IsEqual(template_key) ||
-        !candidate.bundle_url_.IsEqual(bundle_url)) {
-      continue;
-    }
-    *cached_tree = std::move(candidate);
-    cached_template_element_trees_.erase(
-        cached_template_element_trees_.begin() + index - 1);
-    return true;
-  }
-  return false;
-}
-
 void ElementManager::OnElementManagerWillDestroy() {
   EXEC_EXPR_FOR_INSPECTOR({
     if (inspector_element_observer_ && IsDomTreeEnabled()) {
@@ -1470,6 +1438,80 @@ int32_t ElementManager::ResolveTemplateElementShellIdForList(int32_t id) {
     return id;
   }
   return mapping->second;
+}
+
+void ElementManager::CacheListItemTemplateElementTree(
+    const fml::RefPtr<TemplateElement> &element, const base::String &bundle_url,
+    const base::String &template_key) {
+  if (element == nullptr || template_key.str().empty()) {
+    return;
+  }
+  cached_template_element_trees_[TemplateElementTreeCacheKey{bundle_url,
+                                                             template_key}]
+      .emplace_back(element);
+}
+
+fml::RefPtr<TemplateElement>
+ElementManager::TakeCachedTemplateElementTreeForOwner(TemplateElement *owner) {
+  if (owner == nullptr) {
+    return nullptr;
+  }
+  for (auto bucket_iter = cached_template_element_trees_.begin();
+       bucket_iter != cached_template_element_trees_.end(); ++bucket_iter) {
+    auto &bucket = bucket_iter->second;
+    for (size_t index = bucket.size(); index > 0; --index) {
+      auto iter = bucket.begin() + static_cast<ptrdiff_t>(index - 1);
+      if (iter->get() != owner) {
+        continue;
+      }
+      auto cached = std::move(*iter);
+      bucket.erase(iter);
+      if (bucket.empty()) {
+        cached_template_element_trees_.erase(bucket_iter);
+      }
+      return cached;
+    }
+  }
+  return nullptr;
+}
+
+fml::RefPtr<TemplateElement> ElementManager::TakeCachedTemplateElementTree(
+    TemplateElement *owner, const base::String &bundle_url,
+    const base::String &template_key) {
+  auto cached = TakeCachedTemplateElementTreeForOwner(owner);
+  if (cached != nullptr) {
+    return cached;
+  }
+  return TakeCachedTemplateElementTreeForKey(bundle_url, template_key);
+}
+
+void ElementManager::RemoveCachedTemplateElementTreeForOwner(
+    TemplateElement *owner) {
+  TakeCachedTemplateElementTreeForOwner(owner);
+}
+
+fml::RefPtr<TemplateElement>
+ElementManager::TakeCachedTemplateElementTreeForKey(
+    const base::String &bundle_url, const base::String &template_key) {
+  if (template_key.str().empty()) {
+    return nullptr;
+  }
+  auto bucket_iter = cached_template_element_trees_.find(
+      TemplateElementTreeCacheKey{bundle_url, template_key});
+  if (bucket_iter == cached_template_element_trees_.end()) {
+    return nullptr;
+  }
+  auto &bucket = bucket_iter->second;
+  if (bucket.empty()) {
+    cached_template_element_trees_.erase(bucket_iter);
+    return nullptr;
+  }
+  auto cached = std::move(bucket.back());
+  bucket.pop_back();
+  if (bucket.empty()) {
+    cached_template_element_trees_.erase(bucket_iter);
+  }
+  return cached;
 }
 
 void ElementManager::OnPatchFinish(std::shared_ptr<PipelineOptions> &option,
