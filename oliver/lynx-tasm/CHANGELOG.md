@@ -1,4 +1,7 @@
 # CHANGELOG
+# 0.0.45
+* support lepusng var defs outside to reduce package size when targetSdkVersion greater or equal to 4.1
+
 # 0.0.44
 * enhance lepus ir passes with module-level immutability analysis to eliminate more redundant loads, branches, and movs
 
