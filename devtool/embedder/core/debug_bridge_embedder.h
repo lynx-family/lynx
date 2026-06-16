@@ -7,6 +7,7 @@
 
 #include <functional>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <unordered_map>
 
@@ -19,6 +20,7 @@ namespace lynx {
 namespace devtool {
 
 using DevtoolsOpenCardCallback = std::function<void(const std::string&)>;
+using DevtoolsCloseCardCallback = std::function<void()>;
 
 using DevtoolAgentDispatcher = InspectorOwnerEmbedder;
 
@@ -34,6 +36,7 @@ class DebugBridgeEmbedder
   bool Enable(const std::string& url,
               const std::unordered_map<std::string, std::string>& app_infos);
   void SetOpenCardCallback(DevtoolsOpenCardCallback callback);
+  void SetCloseCardCallback(DevtoolsCloseCardCallback callback);
 
   // debugrouter::common::DebugRouterGlobalHandler
   void OpenCard(const std::string& url) override;
@@ -52,7 +55,9 @@ class DebugBridgeEmbedder
 
   std::shared_ptr<DebugStateListenerEmbedder> debug_state_listener_;
   std::shared_ptr<DevtoolAgentDispatcher> agent_dispatcher_;
+  std::mutex callback_mutex_;
   DevtoolsOpenCardCallback open_card_callback_;
+  DevtoolsCloseCardCallback close_card_callback_;
 };
 
 }  // namespace devtool

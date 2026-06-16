@@ -25,5 +25,10 @@ void DebuggerEmbedder::SetOpenCardCallback(DevtoolsOpenCardCallback callback) {
   DebugBridgeEmbedder::GetInstance().SetOpenCardCallback(callback);
 }
 
+void DebuggerEmbedder::SetCloseCardCallback(
+    DevtoolsCloseCardCallback callback) {
+  DebugBridgeEmbedder::GetInstance().SetCloseCardCallback(callback);
+}
+
 }  // namespace devtool
 }  // namespace lynx

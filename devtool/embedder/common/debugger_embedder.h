@@ -25,6 +25,7 @@ class DebuggerEmbedder {
       const std::unordered_map<std::string, std::string>& options);
 
   static void SetOpenCardCallback(DevtoolsOpenCardCallback callback);
+  static void SetCloseCardCallback(DevtoolsCloseCardCallback callback);
 };
 
 }  // namespace devtool

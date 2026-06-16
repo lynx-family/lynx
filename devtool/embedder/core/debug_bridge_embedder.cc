@@ -4,6 +4,8 @@
 
 #include "devtool/embedder/core/debug_bridge_embedder.h"
 
+#include <utility>
+
 #include "base/include/log/logging.h"
 #include "devtool/embedder/core/env_embedder.h"
 #include "devtool/lynx_devtool/config/devtool_config.h"
@@ -21,7 +23,8 @@ DebugBridgeEmbedder& DebugBridgeEmbedder::GetInstance() {
   return *instance;
 }
 
-DebugBridgeEmbedder::DebugBridgeEmbedder() : open_card_callback_(nullptr) {
+DebugBridgeEmbedder::DebugBridgeEmbedder()
+    : open_card_callback_(nullptr), close_card_callback_(nullptr) {
   debug_state_listener_ = std::make_shared<DebugStateListenerEmbedder>();
   agent_dispatcher_ = std::make_shared<DevtoolAgentDispatcher>();
   Init();
@@ -59,17 +62,41 @@ bool DebugBridgeEmbedder::IsEnabled() {
 
 void DebugBridgeEmbedder::SetOpenCardCallback(
     DevtoolsOpenCardCallback callback) {
-  open_card_callback_ = callback;
+  std::lock_guard<std::mutex> lock(callback_mutex_);
+  open_card_callback_ = std::move(callback);
+}
+
+void DebugBridgeEmbedder::SetCloseCardCallback(
+    DevtoolsCloseCardCallback callback) {
+  std::lock_guard<std::mutex> lock(callback_mutex_);
+  close_card_callback_ = std::move(callback);
 }
 
 void DebugBridgeEmbedder::OpenCard(const std::string& url) {
-  if (open_card_callback_) {
-    open_card_callback_(url);
+  DevtoolsOpenCardCallback callback;
+  {
+    std::lock_guard<std::mutex> lock(callback_mutex_);
+    callback = open_card_callback_;
+  }
+  if (callback) {
+    callback(url);
   }
 }
 
 void DebugBridgeEmbedder::OnMessage(const std::string& message,
                                     const std::string& type) {
+  if (!type.compare("CloseCard")) {
+    DevtoolsCloseCardCallback callback;
+    {
+      std::lock_guard<std::mutex> lock(callback_mutex_);
+      callback = close_card_callback_;
+    }
+    if (callback) {
+      callback();
+    }
+    return;
+  }
+
   Json::Value root;
   Json::Reader reader;
   if (!reader.parse(message, root, false)) {

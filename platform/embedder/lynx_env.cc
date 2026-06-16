@@ -72,6 +72,18 @@ LYNX_EXTERN_C void lynx_env_set_open_card_callback(
 #endif
 }
 
+LYNX_EXTERN_C void lynx_env_set_close_card_callback(
+    lynx_env_close_card_callback callback, void* user_data) {
+#if ENABLE_INSPECTOR
+  if (!callback) {
+    lynx::devtool::DebuggerEmbedder::SetCloseCardCallback(nullptr);
+    return;
+  }
+  lynx::devtool::DebuggerEmbedder::SetCloseCardCallback(
+      [callback, user_data]() { callback(user_data); });
+#endif
+}
+
 LYNX_EXTERN_C void lynx_env_enable_logbox(int enable) {
 #if ENABLE_INSPECTOR
   lynx::embedder::DevToolEnvEmbedder::GetInstance().SetDevToolSwitch(
