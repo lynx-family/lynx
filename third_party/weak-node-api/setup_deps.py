@@ -62,6 +62,17 @@ def main():
                 print(f"  - {item}")
             sys.exit(1)
 
+        weak_napi_headers = ["weak_napi_defines.h", "weak_napi_undefs.h"]
+        shim_dir = os.path.join(target_dir, "shim")
+        os.makedirs(shim_dir, exist_ok=True)
+        for header in weak_napi_headers:
+            src_header = os.path.join(target_dir, "headers", header)
+            dst_header = os.path.join(shim_dir, header)
+            if not os.path.exists(src_header):
+                print(f"Error: weak-node-api header is missing: {src_header}")
+                sys.exit(1)
+            shutil.copy2(src_header, dst_header)
+
         print(f"Successfully copied specific items from {source_dir} to {target_dir}")
     except Exception as e:
         print(f"Error copying items from {source_dir} to {target_dir}: {e}")

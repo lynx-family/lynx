@@ -53,6 +53,7 @@ config("weak_node_api_config") {
   include_dirs = [
     weak_node_api_pkg_root,
     weak_node_api_pkg_root + "/shim",
+    weak_node_api_pkg_root + "/generated",
   ]
   defines = [
     "NAPI_DISABLE_CPP_EXCEPTIONS",

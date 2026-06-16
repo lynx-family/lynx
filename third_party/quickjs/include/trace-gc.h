@@ -2,8 +2,8 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#ifndef SRC_GC_TRACE_GC_H_
-#define SRC_GC_TRACE_GC_H_
+#ifndef THIRD_PARTY_QUICKJS_INCLUDE_TRACE_GC_H_
+#define THIRD_PARTY_QUICKJS_INCLUDE_TRACE_GC_H_
 #include <string>
 #ifdef __cplusplus
 extern "C" {
@@ -57,6 +57,7 @@ class PtrHandles {
   HeapStruct *GetHandles() const { return handles; }
   void SetHeapObjIdx(int idx) { handle_idx = idx; }
   int GetHeapObjIdx() const { return handle_idx; }
+  int GetHandleSize() const { return handle_size; }
 
  private:
   int handle_idx;
@@ -165,4 +166,4 @@ void LEPUS_WriteBarrierNoStore(LEPUSContext *ctx, void *value);
 void LEPUS_HeapObjStoreNoCtx(void *fieldAddr, LEPUSValue value);
 void LEPUS_HeapObjStoreNoCtx(void *fieldAddr, void *value);
 
-#endif  // SRC_GC_TRACE_GC_H_
+#endif  // THIRD_PARTY_QUICKJS_INCLUDE_TRACE_GC_H_
