@@ -316,6 +316,14 @@ bool CustomPropertiesChanged(const starlight::ComputedCSSStyle *old_style,
          OptionalMapNotEqual(old_style->GetCustomProperties(),
                              new_style.GetCustomProperties());
 }
+
+void CollectDirtyNodeForList(int32_t impl_id, PipelineOptions *options) {
+  if (impl_id != options->list_id_) {
+    // Note: We should avoid adding the parent list node to
+    // options->updated_list_elements_ when rendering a list item.
+    options->updated_list_elements_.emplace_back(impl_id);
+  }
+}
 }  // namespace
 
 void FiberElement::NewPipelineStyleMutationPlan::AddUpdate(
@@ -5524,10 +5532,6 @@ void FiberElement::UpdateLayoutInfoRecursively(PipelineOptions *options) {
     }
 
     if (IfNeedsUpdateLayoutInfo()) {
-      if (is_list()) {
-        // TODO(songshourui.null): emplace_back element later
-        options->updated_list_elements_.emplace_back(impl_id());
-      }
       UpdateLayoutInfo();
     }
 
@@ -5537,6 +5541,14 @@ void FiberElement::UpdateLayoutInfoRecursively(PipelineOptions *options) {
   for (auto &child : scoped_children_) {
     static_cast<FiberElement *>(child.get())
         ->UpdateLayoutInfoRecursively(options);
+  }
+
+  // A dirty child can change the list's content layout, so collect dirty list
+  // nodes regardless of whether their own layout info needs to be updated. This
+  // is intentionally post-order so nested lists are collected before their
+  // parent list.
+  if (is_list()) {
+    CollectDirtyNodeForList(impl_id(), options);
   }
 }
 

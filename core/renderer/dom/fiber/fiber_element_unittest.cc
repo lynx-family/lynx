@@ -2617,6 +2617,84 @@ TEST_P(FiberElementTest, TestMarkLayoutDirty) {
 }
 
 TEST_P(FiberElementTest,
+       UpdateLayoutInfoRecursivelyCollectsDirtyListFromDirtyChild) {
+  manager->page_options_.embedded_mode_ = static_cast<EmbeddedMode>(
+      static_cast<int32_t>(manager->page_options_.embedded_mode_) |
+      static_cast<int32_t>(EmbeddedMode::LAYOUT_IN_ELEMENT));
+
+  auto page = manager->CreateFiberPage("page", 11);
+  auto list = manager->CreateFiberList(tasm.get(), "list", lepus::Value(),
+                                       lepus::Value(), lepus::Value());
+  auto child = manager->CreateFiberView();
+  page->InsertNode(list);
+  list->InsertNode(child);
+
+  page->FlushActionsAsRoot();
+  page->Layout(std::make_shared<PipelineOptions>());
+
+  ASSERT_NE(page->sl_node_, nullptr);
+  ASSERT_NE(list->sl_node_, nullptr);
+  ASSERT_NE(child->sl_node_, nullptr);
+  EXPECT_FALSE(page->sl_node_->IsDirty());
+  EXPECT_FALSE(list->sl_node_->IsDirty());
+  EXPECT_FALSE(child->sl_node_->IsDirty());
+
+  child->RequestLayout();
+  EXPECT_TRUE(page->sl_node_->IsDirty());
+  EXPECT_TRUE(list->sl_node_->IsDirty());
+  EXPECT_TRUE(child->sl_node_->IsDirty());
+  EXPECT_FALSE(list->sl_node_->GetHasNewLayout());
+
+  auto options = std::make_shared<PipelineOptions>();
+  page->UpdateLayoutInfoRecursively(options.get());
+
+  EXPECT_EQ(options->updated_list_elements_,
+            (std::vector<int32_t>{list->impl_id()}));
+}
+
+TEST_P(FiberElementTest,
+       UpdateLayoutInfoRecursivelyCollectsNestedDirtyListsChildFirst) {
+  manager->page_options_.embedded_mode_ = static_cast<EmbeddedMode>(
+      static_cast<int32_t>(manager->page_options_.embedded_mode_) |
+      static_cast<int32_t>(EmbeddedMode::LAYOUT_IN_ELEMENT));
+
+  auto page = manager->CreateFiberPage("page", 11);
+  auto parent_list = manager->CreateFiberList(
+      tasm.get(), "list", lepus::Value(), lepus::Value(), lepus::Value());
+  auto child_list = manager->CreateFiberList(tasm.get(), "list", lepus::Value(),
+                                             lepus::Value(), lepus::Value());
+  auto child = manager->CreateFiberView();
+  page->InsertNode(parent_list);
+  parent_list->InsertNode(child_list);
+  child_list->InsertNode(child);
+
+  page->FlushActionsAsRoot();
+  page->Layout(std::make_shared<PipelineOptions>());
+
+  ASSERT_NE(page->sl_node_, nullptr);
+  ASSERT_NE(parent_list->sl_node_, nullptr);
+  ASSERT_NE(child_list->sl_node_, nullptr);
+  ASSERT_NE(child->sl_node_, nullptr);
+  EXPECT_FALSE(parent_list->sl_node_->IsDirty());
+  EXPECT_FALSE(child_list->sl_node_->IsDirty());
+  EXPECT_FALSE(child->sl_node_->IsDirty());
+
+  child->RequestLayout();
+  EXPECT_TRUE(parent_list->sl_node_->IsDirty());
+  EXPECT_TRUE(child_list->sl_node_->IsDirty());
+  EXPECT_TRUE(child->sl_node_->IsDirty());
+  EXPECT_FALSE(parent_list->sl_node_->GetHasNewLayout());
+  EXPECT_FALSE(child_list->sl_node_->GetHasNewLayout());
+
+  auto options = std::make_shared<PipelineOptions>();
+  page->UpdateLayoutInfoRecursively(options.get());
+
+  EXPECT_EQ(
+      options->updated_list_elements_,
+      (std::vector<int32_t>{child_list->impl_id(), parent_list->impl_id()}));
+}
+
+TEST_P(FiberElementTest,
        TestUpdateLayoutNodeAttributeWhenEnableLayoutInElement) {
   manager->page_options_.embedded_mode_ = static_cast<EmbeddedMode>(
       static_cast<int32_t>(manager->page_options_.embedded_mode_) |
