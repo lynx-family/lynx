@@ -1,0 +1,27 @@
+// Copyright 2026 The Lynx Authors. All rights reserved.
+// Licensed under the Apache License Version 2.0 that can be found in the
+// LICENSE file in the root directory of this source tree.
+
+ext.sparklingLynxOwnedArtifacts = [
+        'org.lynxsdk.lynx:lynx'                 : ':LynxAndroid',
+        'org.lynxsdk.lynx:lynx-base'            : ':LynxBase',
+        'org.lynxsdk.lynx:lynx-trace'           : ':LynxTrace',
+        'org.lynxsdk.lynx:lynx-jssdk'           : ':LynxJSSDK',
+        'org.lynxsdk.lynx:service-api'          : ':ServiceAPI',
+        'org.lynxsdk.lynx:lynx-service-log'     : ':lynx_service_log',
+        'org.lynxsdk.lynx:lynx-service-image'   : ':lynx_service_image',
+        'org.lynxsdk.lynx:lynx-service-http'    : ':lynx_service_http',
+        'org.lynxsdk.lynx:lynx-service-devtool' : ':lynx_service_devtool',
+        'org.lynxsdk.lynx:lynx-devtool'         : ':LynxDevtool',
+        'org.lynxsdk.lynx:base-devtool'         : ':BaseDevtool',
+        'org.lynxsdk.lynx:xelement'             : ':LynxXElement',
+        'org.lynxsdk.lynx:xelement-input'       : ':LynxXElement:Input',
+        'org.lynxsdk.lynx:xelement-overlay'     : ':LynxXElement:Overlay',
+        'org.lynxsdk.lynx:xelement-viewpager'   : ':LynxXElement:ViewPager',
+        'org.lynxsdk.lynx:xelement-scroll-coordinator': ':LynxXElement:ScrollCoordinator',
+        'org.lynxsdk.lynx:xelement-svg'         : ':LynxXElement:SVG',
+        'org.lynxsdk.lynx:xelement-markdown'    : ':LynxXElement:Markdown',
+        'org.lynxsdk.lynx:xelement-refresh'     : ':LynxXElement:Refresh',
+        'org.lynxsdk.lynx:xelement-blur-view'   : ':LynxXElement:BlurView',
+        'org.lynxsdk.lynx:xelement-webview'     : ':LynxXElement:WebView',
+]

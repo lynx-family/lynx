@@ -6,6 +6,9 @@ apply plugin: 'kotlin-android'
 apply plugin: 'kotlin-android-extensions'
 apply plugin: 'kotlin-kapt'
 
+apply from: rootProject.file('sparkling-lynx-ownership.gradle')
+apply from: rootProject.file('sparkling-runtime-allowlist.gradle')
+
 android {
     compileSdkVersion rootProject.ext.compileSdkVersion
 
@@ -73,8 +76,19 @@ android {
         checkReleaseBuilds false
     }
 
-    flavorDimensions "lynx"
+    flavorDimensions "sparklingMode", "lynx"
     productFlavors {
+        withSparkling {
+            dimension "sparklingMode"
+            buildConfigField "boolean", "ENABLE_SPARKLING", "true"
+            matchingFallbacks = ["withSparkling"]
+        }
+        withoutSparkling {
+            dimension "sparklingMode"
+            buildConfigField "boolean", "ENABLE_SPARKLING", "false"
+            matchingFallbacks = ["withoutSparkling"]
+            getIsDefault().set(true)
+        }
         asan {
             dimension "lynx"
             matchingFallbacks = ["asan"]
@@ -96,7 +110,9 @@ android {
         noasan {
             jni.srcDirs = ["../../core/build/gen"]
         }
-
+        withSparkling {
+            java.srcDir "../../../node_modules/.pnpm/sparkling-navigation@2.1.0-rc.12/node_modules/sparkling-navigation/android/src/main/java"
+        }
     }
 
     externalNativeBuild {
@@ -112,10 +128,12 @@ tasks.whenTaskAdded { task ->
 }
 
 dependencies {
-    // Sparkling SDK — exclude Lynx Maven artifacts that Sparkling depends on transitively;
-    // this project already includes them as local source modules (:lynx_service_log,
-    // :LynxAndroid, etc.), so without this exclusion R8 sees duplicate class definitions.
-    implementation('com.tiktok.sparkling:sparkling:2.1.0-rc.12') {
+    def sparklingAndroidVersion = project.findProperty('sparklingAndroidVersion') ?: '2.1.0-rc.12'
+
+    // Sparkling is explicit opt-in. The broad Lynx group exclusion is verified by
+    // verifySparklingLynxGraph so released Lynx implementation artifacts cannot
+    // silently enter the enabled runtime graph.
+    withSparklingImplementation("com.tiktok.sparkling:sparkling:${sparklingAndroidVersion}") {
         exclude group: 'org.lynxsdk.lynx'
     }
 
@@ -158,4 +176,369 @@ dependencies {
 
     kapt project(':LynxProcessor')
     compileOnly project(':LynxProcessor')
+
+    androidTestImplementation project(':TestingBase')
+}
+
+tasks.register('assembleNoasanRelease') {
+    group = 'build'
+    description = 'Compatibility task for the legacy noasan release APK.'
+    dependsOn 'assembleWithoutSparklingNoasanRelease'
+
+    doLast {
+        def sourceApk =
+                file("${buildDir}/outputs/apk/withoutSparklingNoasan/release/LynxExplorer-withoutSparkling-noasan-release.apk")
+        if (!sourceApk.exists()) {
+            throw new GradleException("Expected release APK was not generated: ${sourceApk}")
+        }
+
+        copy {
+            from sourceApk
+            into file("${buildDir}/outputs/apk/noasan/release")
+            rename { 'LynxExplorer-noasan-release.apk' }
+        }
+    }
+}
+
+tasks.register('verifySparklingLynxGraph') {
+    group = 'verification'
+    description = 'Verifies Sparkling-enabled Android classpaths use local Lynx source projects.'
+
+    doLast {
+        def allowlist = project.ext.sparklingRuntimeAllowlist
+        def sourceOwnedArtifacts = project.ext.sparklingLynxOwnedArtifacts
+        def runtimeClasspaths = configurations.findAll {
+            it.name.endsWith('RuntimeClasspath') && it.canBeResolved &&
+                    !it.name.toLowerCase().contains('androidtest')
+        }
+        def enabledClasspaths = runtimeClasspaths.findAll {
+            it.name.toLowerCase().contains('withsparkling')
+        }
+        def disabledClasspaths = runtimeClasspaths.findAll {
+            it.name.toLowerCase().contains('withoutsparkling')
+        }
+
+        if (enabledClasspaths.isEmpty()) {
+            throw new GradleException('No Sparkling-enabled runtime classpaths were found.')
+        }
+        if (disabledClasspaths.isEmpty()) {
+            throw new GradleException('No Sparkling-disabled runtime classpaths were found.')
+        }
+
+        def failures = []
+        enabledClasspaths.each { configuration ->
+            def moduleDependencies =
+                    configuration.resolvedConfiguration.lenientConfiguration.allModuleDependencies
+            def projectIds = configuration.incoming.resolutionResult.allComponents.collect {
+                it.id.displayName
+            }
+
+            sourceOwnedArtifacts.each { artifact, projectPath ->
+                if (!projectIds.any { it == "project ${projectPath}" }) {
+                    failures << "${configuration.name}: expected local ${projectPath} for ${artifact}"
+                }
+            }
+
+            moduleDependencies.each { dependency ->
+                if (dependency.moduleGroup == 'org.lynxsdk.lynx') {
+                    def coordinate = "${dependency.moduleGroup}:${dependency.moduleName}"
+                    def expectedVersion = allowlist[coordinate]
+                    if (sourceOwnedArtifacts.containsKey(coordinate)) {
+                        failures << "${configuration.name}: released source-owned artifact ${coordinate}:${dependency.moduleVersion} is present; expected ${sourceOwnedArtifacts[coordinate]}"
+                    } else if (expectedVersion == null) {
+                        failures << "${configuration.name}: unclassified Lynx artifact ${coordinate}:${dependency.moduleVersion}"
+                    } else if (expectedVersion != dependency.moduleVersion) {
+                        failures << "${configuration.name}: ${coordinate} resolved to ${dependency.moduleVersion}, expected ${expectedVersion}"
+                    }
+                }
+            }
+        }
+
+        disabledClasspaths.each { configuration ->
+            def moduleDependencies =
+                    configuration.resolvedConfiguration.lenientConfiguration.allModuleDependencies
+            moduleDependencies.each { dependency ->
+                if (dependency.moduleGroup == 'com.tiktok.sparkling') {
+                    failures << "${configuration.name}: disabled classpath contains ${dependency.moduleGroup}:${dependency.moduleName}:${dependency.moduleVersion}"
+                }
+            }
+        }
+
+        if (!failures.isEmpty()) {
+            throw new GradleException("Sparkling Lynx graph verification failed:\n - " + failures.join('\n - '))
+        }
+
+        println "Sparkling Lynx graph verification passed for ${enabledClasspaths.size()} enabled and ${disabledClasspaths.size()} disabled runtime classpaths."
+    }
+}
+
+def sparklingVerificationVariants = [
+        [
+                name: 'withSparklingNoasanDebug',
+                buildConfigPath: 'withSparklingNoasan/debug/com/lynx/explorer/BuildConfig.java',
+                enabled: true
+        ],
+        [
+                name: 'withSparklingNoasanRelease',
+                buildConfigPath: 'withSparklingNoasan/release/com/lynx/explorer/BuildConfig.java',
+                enabled: true
+        ],
+        [
+                name: 'withoutSparklingNoasanDebug',
+                buildConfigPath: 'withoutSparklingNoasan/debug/com/lynx/explorer/BuildConfig.java',
+                enabled: false
+        ],
+]
+
+tasks.register('verifySparklingAndroidIntegration') {
+    group = 'verification'
+    description = 'Verifies Sparkling manifest and BuildConfig gating for Android Explorer.'
+    dependsOn 'verifySparklingLynxGraph'
+    sparklingVerificationVariants.each { variant ->
+        def taskSuffix = variant.name.capitalize()
+        dependsOn "process${taskSuffix}Manifest"
+        dependsOn "generate${taskSuffix}BuildConfig"
+    }
+
+    doLast {
+        def sparklingActivity = 'com.tiktok.sparkling.SparklingActivity'
+        def failures = []
+        def mainManifest = file('src/main/AndroidManifest.xml')
+        if (!mainManifest.exists()) {
+            failures << "Missing base manifest: ${mainManifest}"
+        } else if (mainManifest.text.contains(sparklingActivity)) {
+            failures << "Base manifest must not declare ${sparklingActivity}"
+        }
+
+        sparklingVerificationVariants.each { variant ->
+            def mergedManifest = [
+                    file("${buildDir}/intermediates/merged_manifests/${variant.name}/AndroidManifest.xml"),
+                    file("${buildDir}/intermediates/merged_manifest/${variant.name}/out/AndroidManifest.xml")
+            ].find { it.exists() }
+            if (mergedManifest == null) {
+                failures << "${variant.name}: merged manifest was not generated"
+            } else {
+                def hasSparklingActivity = mergedManifest.text.contains(sparklingActivity)
+                if (variant.enabled && !hasSparklingActivity) {
+                    failures << "${variant.name}: merged manifest is missing ${sparklingActivity}"
+                }
+                if (!variant.enabled && hasSparklingActivity) {
+                    failures << "${variant.name}: merged manifest unexpectedly contains ${sparklingActivity}"
+                }
+            }
+
+            def buildConfig = file("${buildDir}/generated/source/buildConfig/${variant.buildConfigPath}")
+            if (!buildConfig.exists()) {
+                failures << "${variant.name}: BuildConfig was not generated at ${buildConfig}"
+            } else {
+                def expectedField =
+                        "public static final boolean ENABLE_SPARKLING = ${variant.enabled};"
+                if (!buildConfig.text.contains(expectedField)) {
+                    failures << "${variant.name}: BuildConfig does not contain ${expectedField}"
+                }
+            }
+        }
+
+        if (!failures.isEmpty()) {
+            throw new GradleException("Sparkling Android integration verification failed:\n - " + failures.join('\n - '))
+        }
+
+        println "Sparkling Android integration verification passed for ${sparklingVerificationVariants.size()} variants."
+    }
+}
+
+def sparklingArtifactVerificationVariants = [
+        [
+                name: 'withSparklingNoasanDebug',
+                assembleTask: 'assembleWithSparklingNoasanDebug',
+                apkPath: 'outputs/apk/withSparklingNoasan/debug/LynxExplorer-withSparkling-noasan-debug.apk',
+                enabled: true
+        ],
+        [
+                name: 'withSparklingNoasanRelease',
+                assembleTask: 'assembleWithSparklingNoasanRelease',
+                apkPath: 'outputs/apk/withSparklingNoasan/release/LynxExplorer-withSparkling-noasan-release.apk',
+                enabled: true
+        ],
+        [
+                name: 'legacyNoasanRelease',
+                assembleTask: 'assembleNoasanRelease',
+                apkPath: 'outputs/apk/noasan/release/LynxExplorer-noasan-release.apk',
+                enabled: false
+        ],
+        [
+                name: 'withoutSparklingNoasanDebug',
+                assembleTask: 'assembleWithoutSparklingNoasanDebug',
+                apkPath: 'outputs/apk/withoutSparklingNoasan/debug/LynxExplorer-withoutSparkling-noasan-debug.apk',
+                enabled: false
+        ],
+]
+
+tasks.register('verifySparklingAndroidPackageArtifacts') {
+    group = 'verification'
+    description = 'Verifies assembled Android Explorer APK contents for Sparkling gating.'
+    dependsOn 'verifySparklingAndroidIntegration'
+    sparklingArtifactVerificationVariants.each { variant ->
+        dependsOn variant.assembleTask
+    }
+
+    doLast {
+        def failures = []
+        def requiredArm64Libs = [
+                'lib/arm64-v8a/liblynx.so',
+                'lib/arm64-v8a/liblynxtrace.so',
+                'lib/arm64-v8a/liblynxbase.so',
+                'lib/arm64-v8a/liblynxdevtool.so',
+                'lib/arm64-v8a/liblynx_service_api.so',
+        ]
+        def readEntryNames = { File apk ->
+            def zip = new java.util.zip.ZipFile(apk)
+            try {
+                return zip.entries().toList().collect { it.name }
+            } finally {
+                zip.close()
+            }
+        }
+        def dexContains = { File apk, String needle ->
+            def zip = new java.util.zip.ZipFile(apk)
+            try {
+                return zip.entries().toList().findAll {
+                    it.name ==~ /classes[0-9]*\.dex/
+                }.any { entry ->
+                    zip.getInputStream(entry).withCloseable { input ->
+                        return new String(input.bytes, 'ISO-8859-1').contains(needle)
+                    }
+                }
+            } finally {
+                zip.close()
+            }
+        }
+
+        sparklingArtifactVerificationVariants.each { variant ->
+            def apk = file("${buildDir}/${variant.apkPath}")
+            if (!apk.exists()) {
+                failures << "${variant.name}: APK was not generated at ${apk}"
+                return
+            }
+
+            def entryNames = readEntryNames(apk)
+            requiredArm64Libs.each { lib ->
+                if (!entryNames.contains(lib)) {
+                    failures << "${variant.name}: APK is missing ${lib}"
+                }
+            }
+
+            def hasSparklingKotlinModule = entryNames.any {
+                it == 'META-INF/sparkling_release.kotlin_module' ||
+                        it == 'META-INF/sparkling-method_release.kotlin_module'
+            }
+            def hasSparklingTypeDescriptor =
+                    dexContains(apk, 'Lcom/tiktok/sparkling/SparklingActivity;')
+            def hasSparklingPipe = dexContains(apk, 'spkPipe')
+            def hasSparklingRouterOpen =
+                    dexContains(apk, 'Lcom/tiktok/sparkling/method/router/open/RouterOpenMethod;') &&
+                            dexContains(apk, 'router.open')
+
+            if (variant.enabled) {
+                if (!hasSparklingKotlinModule) {
+                    failures << "${variant.name}: enabled APK is missing Sparkling Kotlin module metadata"
+                }
+                if (!hasSparklingTypeDescriptor) {
+                    failures << "${variant.name}: enabled APK is missing SparklingActivity bytecode descriptor"
+                }
+                if (!hasSparklingPipe) {
+                    failures << "${variant.name}: enabled APK is missing spkPipe bytecode marker"
+                }
+                if (!hasSparklingRouterOpen) {
+                    failures << "${variant.name}: enabled APK is missing sparkling-navigation router.open bytecode"
+                }
+            } else {
+                if (hasSparklingKotlinModule) {
+                    failures << "${variant.name}: disabled APK unexpectedly contains Sparkling Kotlin module metadata"
+                }
+                if (dexContains(apk, 'Lcom/tiktok/sparkling/')) {
+                    failures << "${variant.name}: disabled APK unexpectedly contains Sparkling bytecode descriptors"
+                }
+                if (dexContains(apk, 'Lcom/tiktok/sparkling/method/router/')) {
+                    failures << "${variant.name}: disabled APK unexpectedly contains Sparkling router bytecode descriptors"
+                }
+            }
+        }
+
+        if (!failures.isEmpty()) {
+            throw new GradleException("Sparkling Android package artifact verification failed:\n - " + failures.join('\n - '))
+        }
+
+        println "Sparkling Android package artifact verification passed for ${sparklingArtifactVerificationVariants.size()} APKs."
+    }
+}
+
+def sparklingRuntimeSmokeTestVariants = [
+        [
+                name: 'withSparklingNoasanDebug',
+                assembleTask: 'assembleWithSparklingNoasanDebugAndroidTest',
+                apkPath: 'outputs/apk/androidTest/withSparklingNoasan/debug/LynxExplorer-withSparkling-noasan-debug-androidTest.apk',
+                testDescriptor: 'Lcom/lynx/explorer/SparklingRuntimeSmokeTest;'
+        ],
+        [
+                name: 'withoutSparklingNoasanDebug',
+                assembleTask: 'assembleWithoutSparklingNoasanDebugAndroidTest',
+                apkPath: 'outputs/apk/androidTest/withoutSparklingNoasan/debug/LynxExplorer-withoutSparkling-noasan-debug-androidTest.apk',
+                testDescriptor: 'Lcom/lynx/explorer/SparklingRuntimeSmokeTest;'
+        ],
+]
+
+tasks.register('verifySparklingAndroidRuntimeSmokeTestArtifacts') {
+    group = 'verification'
+    description = 'Verifies Android Sparkling runtime smoke instrumentation APKs are compiled and packaged.'
+    dependsOn 'verifySparklingAndroidPackageArtifacts'
+    sparklingRuntimeSmokeTestVariants.each { variant ->
+        dependsOn variant.assembleTask
+    }
+
+    doLast {
+        def failures = []
+        def dexContains = { File apk, String needle ->
+            def zip = new java.util.zip.ZipFile(apk)
+            try {
+                def found = false
+                zip.entries().toList().findAll {
+                    it.name ==~ /classes[0-9]*\.dex/
+                }.each { entry ->
+                    if (!found) {
+                        def input = zip.getInputStream(entry)
+                        try {
+                            found = new String(input.bytes, 'ISO-8859-1').contains(needle)
+                        } finally {
+                            input.close()
+                        }
+                    }
+                }
+                return found
+            } finally {
+                zip.close()
+            }
+        }
+
+        sparklingRuntimeSmokeTestVariants.each { variant ->
+            def apk = file("${buildDir}/${variant.apkPath}")
+            if (!apk.exists()) {
+                failures << "${variant.name}: Android test APK was not generated at ${apk}"
+            } else if (!dexContains(apk, variant.testDescriptor)) {
+                failures << "${variant.name}: Android test APK is missing ${variant.testDescriptor}"
+            }
+        }
+
+        if (!failures.isEmpty()) {
+            throw new GradleException("Sparkling Android runtime smoke test artifact verification failed:\n - " + failures.join('\n - '))
+        }
+
+        println "Sparkling Android runtime smoke test artifact verification passed for ${sparklingRuntimeSmokeTestVariants.size()} Android test APKs."
+    }
+}
+
+tasks.register('verifySparklingAndroidRefactor') {
+    group = 'verification'
+    description = 'Runs Android Sparkling dependency, manifest, BuildConfig, APK, and runtime smoke test artifact checks.'
+    dependsOn 'verifySparklingAndroidRuntimeSmokeTestArtifacts'
 }

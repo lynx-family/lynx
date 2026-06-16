@@ -376,6 +376,13 @@ public class LynxViewShellActivity extends AppCompatActivity {
       globalProps.put(propsKey, value);
     });
 
+    // Plain Explorer-created LynxView instances do not register Sparkling's
+    // spkPipe module yet, even in withSparkling builds. Keep JS navigation on
+    // the legacy ExplorerModule path until a view is explicitly wired to Sparkling.
+    globalProps.put("sparklingAvailable", false);
+    globalProps.put("sparklingNavigation", false);
+    globalProps.remove("containerID");
+
     return TemplateData.fromMap(globalProps);
   }
 

@@ -29,17 +29,18 @@ public class ExplorerApplication extends Application {
     super.onCreate();
     initLynxService();
     initLynxEnv();
-    initSparkling();
+    if (BuildConfig.ENABLE_SPARKLING) {
+      initSparkling();
+    }
     installLynxJSModule(); // register native module.
     initFresco();
     initLynxRecorder();
   }
 
   private void initSparkling() {
-    // Use reflection so this compiles when only the public Sparkling AAR is available.
+    // Use reflection so disabled builds compile without Sparkling on the classpath.
     // The classes below live under .hybridkit.* (not the top-level package) and HybridKit
     // is a Kotlin object whose methods must be invoked on its INSTANCE field, not statically.
-    // If any lookup fails we log and skip Sparkling integration gracefully.
     try {
       Class<?> hybridKitClass = Class.forName("com.tiktok.sparkling.hybridkit.HybridKit");
       Object hybridKit = hybridKitClass.getField("INSTANCE").get(null);
@@ -75,11 +76,21 @@ public class ExplorerApplication extends Application {
       hybridKitClass.getMethod("setHybridConfig", hybridConfigClass, Application.class)
           .invoke(hybridKit, hybridConfig, this);
       hybridKitClass.getMethod("initLynxKit").invoke(hybridKit);
+      Class<?> sparklingNavigationRegistrar =
+          Class.forName("com.lynx.explorer.sparkling.SparklingNavigationRegistrar");
+      sparklingNavigationRegistrar.getMethod("install", Application.class).invoke(null, this);
       android.util.Log.i("ExplorerApplication", "Sparkling HybridKit initialized");
     } catch (ClassNotFoundException e) {
-      android.util.Log.w("ExplorerApplication", "Sparkling SDK not on classpath, skipping init", e);
+      if (BuildConfig.DEBUG) {
+        throw new IllegalStateException("Sparkling is enabled but SDK classes are missing", e);
+      }
+      android.util.Log.e(
+          "ExplorerApplication", "Sparkling SDK classes missing in enabled build", e);
     } catch (Exception e) {
-      android.util.Log.e("ExplorerApplication", "Sparkling init failed", e);
+      if (BuildConfig.DEBUG) {
+        throw new IllegalStateException("Sparkling init failed", e);
+      }
+      android.util.Log.e("ExplorerApplication", "Sparkling init failed in enabled build", e);
     }
   }
 
