@@ -5,7 +5,6 @@
 #define CORE_RENDERER_DOM_FIBER_TEMPLATE_ELEMENT_H_
 
 #include <memory>
-#include <optional>
 #include <utility>
 
 #include "core/base/thread/once_task.h"
@@ -17,6 +16,18 @@ namespace tasm {
 
 class TemplateAssembler;
 class TemplateEntry;
+
+struct TemplateElementTreeCacheKey {
+  base::String bundle_url;
+  base::String template_key;
+
+  bool operator<(const TemplateElementTreeCacheKey& other) const {
+    if (bundle_url.IsEqual(other.bundle_url)) {
+      return template_key < other.template_key;
+    }
+    return bundle_url < other.bundle_url;
+  }
+};
 
 class TemplateElement : public FiberElement {
  public:
@@ -83,9 +94,10 @@ class TemplateElement : public FiberElement {
     fml::RefPtr<FiberElement> ref_node_;
   };
 
-  struct PreparedCachedTemplateElementTree {
-    GeneratedElementsResult generated_;
-    lepus::Value applied_attribute_slots_;
+  enum class TemplateElementTreeState {
+    kDetached,
+    kInTemplateTree,
+    kInTemplateCache,
   };
 
   TemplateElement(const TemplateElement& element, bool clone_resolved_props)
@@ -115,18 +127,30 @@ class TemplateElement : public FiberElement {
   void MarkInTemplateTreeAndPrepare();
   void MarkInTemplateTreeAndPrepareRecursively();
   void MarkTemplateChildrenInElementSlotsInTree();
-  bool TryPrepareFromCache();
-  void ConsumePreparedCachedTree();
-  bool MoveElementTreeToCacheIfNeeded();
-  void DetachElementSlotChildrenForCacheRecursively();
-  void DetachAndMaybeCacheElementSlotChild(
-      const ElementSlotMountPoint& mount_point,
-      const fml::RefPtr<FiberElement>& child);
-  void ApplyAttributeSlotsFromPrevious(
-      const lepus::Value& previous_attribute_slots);
   void ApplyRootAttributes(const lepus::Value& previous_root_attributes);
   void ApplyInitialElementSlots();
   void ApplyPendingOperations();
+  bool IsInTemplateTree() const {
+    return template_tree_state_ == TemplateElementTreeState::kInTemplateTree;
+  }
+  bool IsInTemplateCache() const {
+    return template_tree_state_ == TemplateElementTreeState::kInTemplateCache;
+  }
+  bool IsActiveMaterialized() const {
+    return result_ != nullptr && !IsInTemplateCache();
+  }
+  bool CanUseListItemTemplateTreeCache() const;
+  bool HasSameTemplateIdentity(const TemplateElement& other) const;
+  bool TryPrepareCachedTemplateTree();
+  bool ActivateCachedTemplateTreeIfNeeded();
+  bool MoveToTemplateTreeCacheIfNeeded();
+  void MarkCachedTemplateTreeInactiveRecursively();
+  void MarkCachedTemplateTreeActiveRecursively();
+  void TransferCachedTemplateTreeFrom(TemplateElement* cached);
+  void ClearCachedTemplateTreeShell();
+  void ReleaseCachedTemplateTreeRecursively();
+  void ReconcileElementSlotsFromCachedTree(
+      const lepus::Value& cached_element_slots);
   void InsertInitialElementSlotChild(const ElementSlotMountPoint& mount_point,
                                      const fml::RefPtr<FiberElement>& child);
   void MountElementSlotChild(const ElementSlotMountPoint& mount_point,
@@ -162,9 +186,10 @@ class TemplateElement : public FiberElement {
   base::Vector<ElementSlotMountPoint> element_slot_targets_;
   base::Vector<PreparedElementSlotInsertion> prepared_element_slot_insertions_;
   base::Vector<PendingOperation> pending_operations_;
-  std::optional<PreparedCachedTemplateElementTree> prepared_cached_tree_;
   base::OnceTaskRefptr<GeneratedElementsResult> async_create_task_{nullptr};
-  bool is_in_template_tree_{false};
+  fml::RefPtr<TemplateElement> prepared_cached_template_tree_{nullptr};
+  TemplateElementTreeState template_tree_state_{
+      TemplateElementTreeState::kDetached};
 };
 
 }  // namespace tasm
