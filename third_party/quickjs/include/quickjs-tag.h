@@ -3,7 +3,9 @@
 // LICENSE file in the root directory of this source tree.
 //
 // clang-format off
-#ifdef DEFTAG
+#ifndef THIRD_PARTY_QUICKJS_INCLUDE_QUICKJS_TAG_H_
+#define THIRD_PARTY_QUICKJS_INCLUDE_QUICKJS_TAG_H_
+
 
 #ifndef deftag
 #define deftag(type, description) DEFTAG(type, description)
@@ -40,11 +42,14 @@ DEFTAG(JSAsyncGeneratorData, "JSAsyncGeneratorData")
 // other
 DEFTAG(LEPUSPropertyEnum, "LEPUSPropertyEnum")
 DEFTAG(JSMapRecord, "JSMapRecord")
-DEFTAG(ValueSlot, "ValueSlot")
-DEFTAG(LEPUSDebuggerInfo, "DebuggerInfo")
 
 DEFTAG(FinalizationRegistryData, "FinalizationRegistryData")
 DEFTAG(WeakRefData, "WeakRefData")
+
+
+DEFTAG(FinalizationRegistryEntry, "FinalizationRegistryEntry")
+DEFTAG(WeakRefRecord, "WeakRefRecord")
+DEFTAG(RelocEntry, "RelocEntry")
 
 // big number
 DEFTAG(JSBigInt, "JSBigInt")
@@ -58,5 +63,24 @@ deftag(JSSymbol, "JSSymbol")
 deftag(JSValueArray, "JSValueArray")
 deftag(JSConstString, "JSConstString")
 deftag(JsonStrArray, "JsonStrArray")
+// array
+deftag(LabelSlotArray, "LabelSlotArray")
+deftag(CallerStrSlotArray, "CallerStrSlotArray")
+deftag(LEPUSPropertyEnumArray, "LEPUSPropertyEnumArray")
+deftag(JSVarRefPtrArray, "JSVarRefPtrArray")
+deftag(JSReqModuleEntryArray, "JSReqModuleEntryArray")
+deftag(JSExportEntryArray, "JSExportEntryArray")
+deftag(JSImportEntryArray, "JSImportEntryArray")
+deftag(JSResolveEntryArray, "JSResolveEntryArray")
+
+deftag(LEPUSBreakpointArray, "LEPUSBreakpointArray")
+deftag(JSPropertyArray, "JSPropertyArray")
+deftag(ValueSlotArray, "ValueSlotArray")
+deftag(AtomArray, "AtomArray")
+
+deftag(JSAsyncGeneratorRequest, "JSAsyncGeneratorRequest")
+deftag(JSAsyncVarRef, "JSAsyncVarRef")
 #undef deftag
 #endif
+
+#endif  // THIRD_PARTY_QUICKJS_INCLUDE_QUICKJS_TAG_H_

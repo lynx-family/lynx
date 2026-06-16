@@ -27,8 +27,12 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#ifndef SRC_INTERPRETER_QUICKJS_INCLUDE_QUICKJS_H_
-#define SRC_INTERPRETER_QUICKJS_INCLUDE_QUICKJS_H_
+#ifndef THIRD_PARTY_QUICKJS_INCLUDE_QUICKJS_H_
+#define THIRD_PARTY_QUICKJS_INCLUDE_QUICKJS_H_
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #include <math.h>
 #include <stdint.h>
@@ -71,6 +75,8 @@ typedef struct LEPUSRuntime LEPUSRuntime;
 typedef struct LEPUSContext LEPUSContext;
 typedef struct LEPUSObject LEPUSObject;
 typedef struct LEPUSClass LEPUSClass;
+typedef struct JSMapRecord JSMapRecord;
+typedef struct JSString JSString;
 typedef uint32_t LEPUSClassID;
 typedef uint32_t JSAtom;
 typedef uint32_t LEPUSAtom;
@@ -97,12 +103,65 @@ typedef struct LEPUSScriptSource LEPUSScriptSource;
 
 enum {
   ALLOC_TAG_WITHOUT_PTR = 1,
-#define DEFTAG(name, str) ALLOC_TAG_##name,
-#include "quickjs-tag.h"
-#undef DEFTAG
+  ALLOC_TAG_LEPUSObject,
+  ALLOC_TAG_LEPUSLepusRef,
+  ALLOC_TAG_JSString,
+  ALLOC_TAG_JSShape,
+  ALLOC_TAG_LEPUSFunctionBytecode,
+  ALLOC_TAG_JSTypedArray,
+  ALLOC_TAG_JSMapState,
+  ALLOC_TAG_JSMapIteratorData,
+  ALLOC_TAG_JSFunctionDef,
+  ALLOC_TAG_JSArrayBuffer,
+  ALLOC_TAG_LEPUSScriptSource,
+  ALLOC_TAG_LEPUSModuleDef,
+  ALLOC_TAG_JSGeneratorData,
+  ALLOC_TAG_JSAsyncFunctionData,
+  ALLOC_TAG_JSVarRef,
+  ALLOC_TAG_JSBoundFunction,
+  ALLOC_TAG_JSCFunctionDataRecord,
+  ALLOC_TAG_JSForInIterator,
+  ALLOC_TAG_JSSeparableString,
+  ALLOC_TAG_JSArrayIteratorData,
+  ALLOC_TAG_JSRegExpStringIteratorData,
+  ALLOC_TAG_JSProxyData,
+  ALLOC_TAG_JSPromiseData,
+  ALLOC_TAG_JSPromiseReactionData,
+  ALLOC_TAG_JSPromiseFunctionData,
+  ALLOC_TAG_JSAsyncFromSyncIteratorData,
+  ALLOC_TAG_JSAsyncGeneratorData,
+  ALLOC_TAG_LEPUSPropertyEnum,
+  ALLOC_TAG_JSMapRecord,
+  ALLOC_TAG_FinalizationRegistryData,
+  ALLOC_TAG_WeakRefData,
+  ALLOC_TAG_FinalizationRegistryEntry,
+  ALLOC_TAG_WeakRefRecord,
+  ALLOC_TAG_RelocEntry,
+  ALLOC_TAG_JSBigInt,
+  ALLOC_TAG_JSOSRWHandler,
+  ALLOC_TAG_JSOSSignalHandler,
+  ALLOC_TAG_JSOSTimer,
+  ALLOC_TAG_JSSTDFile,
+  ALLOC_TAG_JSSymbol,
+  ALLOC_TAG_JSValueArray,
+  ALLOC_TAG_JSConstString,
+  ALLOC_TAG_JsonStrArray,
+  ALLOC_TAG_LabelSlotArray,
+  ALLOC_TAG_CallerStrSlotArray,
+  ALLOC_TAG_LEPUSPropertyEnumArray,
+  ALLOC_TAG_JSVarRefPtrArray,
+  ALLOC_TAG_JSReqModuleEntryArray,
+  ALLOC_TAG_JSExportEntryArray,
+  ALLOC_TAG_JSImportEntryArray,
+  ALLOC_TAG_JSResolveEntryArray,
+  ALLOC_TAG_LEPUSBreakpointArray,
+  ALLOC_TAG_JSPropertyArray,
+  ALLOC_TAG_ValueSlotArray,
+  ALLOC_TAG_AtomArray,
+  ALLOC_TAG_JSAsyncGeneratorRequest,
+  ALLOC_TAG_JSAsyncVarRef,
   ALLOC_TAG_END,
 };
-
 // <Primjs begin>
 typedef enum LEPUSTypedArrayType {
   LEPUS_TYPED_UNKNOW,
@@ -737,6 +796,12 @@ void LEPUS_SetClassProto(LEPUSContext *ctx, LEPUSClassID class_id,
 LEPUSValue LEPUS_GetClassProto(LEPUSContext *ctx, LEPUSClassID class_id);
 int LEPUS_MoveUnhandledRejectionToException(LEPUSContext *ctx);
 size_t LEPUS_GetHeapSize(LEPUSRuntime *rt);
+/* force to trigger memory usage report via callback registered by
+ * LEPUS_SetGCObserver */
+void LEPUS_ReportGCInfo(LEPUSRuntime *rt);
+/* set the threshold for gc info report in bytes and minimum value of 64kb */
+void LEPUS_SetGCInfoThreshold(LEPUSRuntime *rt, size_t gc_threshold_bytes);
+
 /* the following functions are used to select the intrinsic object to
    save memory */
 LEPUSContext *LEPUS_NewContextRaw(LEPUSRuntime *rt);
@@ -779,10 +844,19 @@ QJS_HIDE char *lepus_strdup(LEPUSContext *ctx, const char *str, int alloc_tag);
 QJS_HIDE char *lepus_strndup(LEPUSContext *ctx, const char *s, size_t n,
                              int alloc_tag);
 
-#if LYNX_SIMPLIFY
+/* memory usage support (only available with debugger) */
 typedef struct LEPUSMemoryUsage {
-  int64_t malloc_size, malloc_limit, memory_used_size;
+  int64_t malloc_size, malloc_limit;
   int64_t malloc_count;
+  int64_t memory_used_size;  // In GC mode, it represents the physical memory
+                             // footprint memory pages (the RSS footprint
+                             // obtained by using mincore on the mmap region).
+                             // In RC mode, it represents the memory footprint
+                             // obtained by accumulating objects, strings, etc.,
+                             // instead of using malloc_size.
+  int64_t base_malloc_size;  // Base malloc size besides malloc_size and you
+                             // could consider the total memory usage to be
+                             // malloc_size + base_malloc_size
   int64_t memory_used_count;
   int64_t atom_count, atom_size;
   int64_t str_count, str_size;
@@ -799,8 +873,6 @@ typedef struct LEPUSMemoryUsage {
 void LEPUS_ComputeMemoryUsage(LEPUSRuntime *rt, LEPUSMemoryUsage *s);
 void LEPUS_DumpMemoryUsage(FILE *fp, const LEPUSMemoryUsage *s,
                            LEPUSRuntime *rt);
-
-#endif
 
 /* atom support */
 JSAtom LEPUS_NewAtomLen(LEPUSContext *ctx, const char *str, size_t len);
@@ -996,6 +1068,7 @@ void LEPUS_FreeValueRT(LEPUSRuntime *rt, LEPUSValue v);
 
 bool LEPUS_IsGCMode(LEPUSContext *ctx);
 bool LEPUS_IsGCModeRT(LEPUSRuntime *rt);
+bool LEPUS_IsMarkedLEPUSValue(LEPUSRuntime *rt, LEPUSValue *val);
 
 char *LEPUS_GetGCTimingInfo(LEPUSContext *ctx, bool is_start);
 
@@ -1169,11 +1242,7 @@ void SetNapiScope(LEPUSContext *ctx, void *scope);
 void InitNapiScope(LEPUSContext *ctx);
 void FreeNapiScope(LEPUSContext *ctx);
 
-void LEPUS_VisitLEPUSValue(LEPUSRuntime *rt, LEPUSValue *val, int local_idx);
-
-void AddCurNode(LEPUSRuntime *rt, void *node, int type);
-
-bool CheckValidPtr(void *runtime, void *ptr);
+void *LEPUS_VisitLEPUSValue(LEPUSRuntime *rt, LEPUSValue *val);
 
 void LEPUS_TrigGC(LEPUSRuntime *rt);
 /* trace gc end*/
@@ -1454,78 +1523,80 @@ typedef struct LEPUSCFunctionListEntry {
 #define LEPUS_CFUNC_DEF(name, length, func1)                                 \
   {                                                                          \
     name, LEPUS_PROP_WRITABLE | LEPUS_PROP_CONFIGURABLE, LEPUS_DEF_CFUNC, 0, \
-        .u.func = {                                                          \
-          length,                                                            \
-          LEPUS_CFUNC_generic,                                               \
-          {.generic = func1}                                                 \
+        .u = {                                                               \
+          .func = {length, LEPUS_CFUNC_generic, {.generic = func1}}          \
         }                                                                    \
   }
-#define LEPUS_CFUNC_MAGIC_DEF(name, length, func1, magic)                 \
-  {                                                                       \
-    name, LEPUS_PROP_WRITABLE | LEPUS_PROP_CONFIGURABLE, LEPUS_DEF_CFUNC, \
-        magic, .u.func = {                                                \
-          length,                                                         \
-          LEPUS_CFUNC_generic_magic,                                      \
-          {.generic_magic = func1}                                        \
-        }                                                                 \
+#define LEPUS_CFUNC_MAGIC_DEF(name, length, func1, magic)                    \
+  {                                                                          \
+    name, LEPUS_PROP_WRITABLE | LEPUS_PROP_CONFIGURABLE, LEPUS_DEF_CFUNC,    \
+        magic,                                                               \
+        .u =                                                                 \
+    {.func = {length, LEPUS_CFUNC_generic_magic, {.generic_magic = func1}} } \
   }
 #define LEPUS_CFUNC_SPECIAL_DEF(name, length, cproto, func1)                 \
   {                                                                          \
     name, LEPUS_PROP_WRITABLE | LEPUS_PROP_CONFIGURABLE, LEPUS_DEF_CFUNC, 0, \
-        .u.func = {                                                          \
-          length,                                                            \
-          LEPUS_CFUNC_##cproto,                                              \
-          {.cproto = func1}                                                  \
+        .u = {                                                               \
+          .func = {length, LEPUS_CFUNC_##cproto, {.cproto = func1}}          \
         }                                                                    \
   }
-#define LEPUS_ITERATOR_NEXT_DEF(name, length, func1, magic)               \
+#define LEPUS_ITERATOR_NEXT_DEF(name, length, func1, magic)                  \
+  {                                                                          \
+    name, LEPUS_PROP_WRITABLE | LEPUS_PROP_CONFIGURABLE, LEPUS_DEF_CFUNC,    \
+        magic,                                                               \
+        .u =                                                                 \
+    {.func = {length, LEPUS_CFUNC_iterator_next, {.iterator_next = func1}} } \
+  }
+#define LEPUS_CGETSET_DEF(name, fgetter, fsetter)                        \
+  {                                                                      \
+    name, LEPUS_PROP_CONFIGURABLE, LEPUS_DEF_CGETSET, 0, .u = {          \
+      .getset = {.get = {.getter = fgetter}, .set = {.setter = fsetter}} \
+    }                                                                    \
+  }
+#define LEPUS_CGETSET_MAGIC_DEF(name, fgetter, fsetter, magic)            \
   {                                                                       \
-    name, LEPUS_PROP_WRITABLE | LEPUS_PROP_CONFIGURABLE, LEPUS_DEF_CFUNC, \
-        magic, .u.func = {                                                \
-          length,                                                         \
-          LEPUS_CFUNC_iterator_next,                                      \
-          {.iterator_next = func1}                                        \
-        }                                                                 \
+    name, LEPUS_PROP_CONFIGURABLE, LEPUS_DEF_CGETSET_MAGIC, magic, .u = { \
+      .getset = {.get = {.getter_magic = fgetter},                        \
+                 .set = {.setter_magic = fsetter}}                        \
+    }                                                                     \
   }
-#define LEPUS_CGETSET_DEF(name, fgetter, fsetter)                      \
-  {                                                                    \
-    name, LEPUS_PROP_CONFIGURABLE, LEPUS_DEF_CGETSET, 0,               \
-        .u.getset.get.getter = fgetter, .u.getset.set.setter = fsetter \
+#define LEPUS_PROP_STRING_DEF(name, cstr, prop_flags)               \
+  {                                                                 \
+    name, prop_flags, LEPUS_DEF_PROP_STRING, 0, .u = {.str = cstr } \
   }
-#define LEPUS_CGETSET_MAGIC_DEF(name, fgetter, fsetter, magic)     \
+#define LEPUS_PROP_INT32_DEF(name, val, prop_flags)               \
+  {                                                               \
+    name, prop_flags, LEPUS_DEF_PROP_INT32, 0, .u = {.i32 = val } \
+  }
+#define LEPUS_PROP_INT64_DEF(name, val, prop_flags)               \
+  {                                                               \
+    name, prop_flags, LEPUS_DEF_PROP_INT64, 0, .u = {.i64 = val } \
+  }
+#define LEPUS_PROP_DOUBLE_DEF(name, val, prop_flags)               \
   {                                                                \
-    name, LEPUS_PROP_CONFIGURABLE, LEPUS_DEF_CGETSET_MAGIC, magic, \
-        .u.getset.get.getter_magic = fgetter,                      \
-        .u.getset.set.setter_magic = fsetter                       \
+    name, prop_flags, LEPUS_DEF_PROP_DOUBLE, 0, .u = {.f64 = val } \
   }
-#define LEPUS_PROP_STRING_DEF(name, cstr, prop_flags) \
-  { name, prop_flags, LEPUS_DEF_PROP_STRING, 0, .u.str = cstr }
-#define LEPUS_PROP_INT32_DEF(name, val, prop_flags) \
-  { name, prop_flags, LEPUS_DEF_PROP_INT32, 0, .u.i32 = val }
-#define LEPUS_PROP_INT64_DEF(name, val, prop_flags) \
-  { name, prop_flags, LEPUS_DEF_PROP_INT64, 0, .u.i64 = val }
-#define LEPUS_PROP_DOUBLE_DEF(name, val, prop_flags) \
-  { name, prop_flags, LEPUS_DEF_PROP_DOUBLE, 0, .u.f64 = val }
-#define LEPUS_PROP_UNDEFINED_DEF(name, prop_flags) \
-  { name, prop_flags, LEPUS_DEF_PROP_UNDEFINED, 0, .u.i32 = 0 }
-#define LEPUS_OBJECT_DEF(name, tab, len, prop_flags)                   \
-  {                                                                    \
-    name, prop_flags, LEPUS_DEF_OBJECT, 0, .u.prop_list = { tab, len } \
+#define LEPUS_PROP_UNDEFINED_DEF(name, prop_flags)                  \
+  {                                                                 \
+    name, prop_flags, LEPUS_DEF_PROP_UNDEFINED, 0, .u = {.i32 = 0 } \
+  }
+#define LEPUS_OBJECT_DEF(name, tab, len, prop_flags)                       \
+  {                                                                        \
+    name, prop_flags, LEPUS_DEF_OBJECT, 0, .u = {.prop_list = {tab, len} } \
   }
 #define LEPUS_ALIAS_DEF(name, from)                                          \
   {                                                                          \
     name, LEPUS_PROP_WRITABLE | LEPUS_PROP_CONFIGURABLE, LEPUS_DEF_ALIAS, 0, \
-        .u.alias = {                                                         \
-          from,                                                              \
-          -1                                                                 \
+        .u = {                                                               \
+          .alias = {from, -1}                                                \
         }                                                                    \
   }
 #define LEPUS_ALIAS_BASE_DEF(name, from, base)                               \
   {                                                                          \
     name, LEPUS_PROP_WRITABLE | LEPUS_PROP_CONFIGURABLE, LEPUS_DEF_ALIAS, 0, \
-        .u.alias = {                                                         \
-          from,                                                              \
-          base                                                               \
+        .u = {                                                               \
+          .alias = {from, base}                                              \
         }                                                                    \
   }
 
@@ -1618,18 +1689,33 @@ LEPUSValue LEPUS_NewArrayWithArgs(LEPUSContext *, int32_t, LEPUSValue *);
 const char *LEPUS_GetStringUtf8(LEPUSContext *, const struct JSString *);
 void LEPUS_SetFuncFileName(LEPUSContext *, LEPUSValue, const char *);
 
-void InitLynxTraceEnv(void *(*)(const char *), void (*)(void *));
+void InitLynxTraceEnv(void (*)(const char *, const char *, int64_t,
+                               const char *, const char *, const char *,
+                               const char *),
+                      void (*)(const char *, const char *, int64_t));
 
 void SetObjectCtxCheckStatus(LEPUSContext *ctx, bool enable);
 bool LEPUS_PushObjectCheckTid(LEPUSContext *ctx);
 
 void UpdateOuterObjSize(LEPUSRuntime *rt, int size);
+// Pass -1 for garbage_size when recoverable external memory is unknown.
+void LEPUS_ReportExternalSize(LEPUSRuntime *rt, int64_t total_size,
+                              int64_t garbage_size);
 
 void LEPUS_SetGCObserver(LEPUSRuntime *rt, void *opaque);
 void *LEPUS_GetGCObserver(LEPUSRuntime *rt);
+
+// Returned pointer should be released with js_profile_free_heap_snapshot().
+// If heap profiler or debugger is not enabled, nullptr will be returned.
+const char *js_profile_take_heap_snapshot(LEPUSContext *ctx);
+void js_profile_free_heap_snapshot(const char *snapshot);
 // <Primjs end>
 
 #undef lepus_unlikely
 #undef lepus_force_inline
 
-#endif  // SRC_INTERPRETER_QUICKJS_INCLUDE_QUICKJS_H_
+#ifdef __cplusplus
+}
+#endif
+
+#endif  // THIRD_PARTY_QUICKJS_INCLUDE_QUICKJS_H_

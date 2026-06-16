@@ -16,13 +16,6 @@ extern "C" {
 #ifdef __cplusplus
 }
 #endif
-#ifdef OS_IOS
-#include "gc/allocator.h"
-#include "gc/trace-gc.h"
-#else
-#include "quickjs/include/allocator.h"
-#include "quickjs/include/trace-gc.h"
-#endif
 
 namespace lynx {
 namespace runtime {
