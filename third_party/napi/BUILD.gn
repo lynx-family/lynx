@@ -155,11 +155,21 @@ source_set("weak_node_api_host") {
     "../quickjs/src/src/napi/adapter/weak_napi_host_generator.cc",
     "../quickjs/src/src/napi/adapter/weak_napi_host_injector.cc",
   ]
+
+  if (is_apple) {
+    sources += [ "primjs_weak_node_api_bridge.cc" ]
+  }
+
   public_deps = [
     ":adapter",
     ":env",
   ]
-  include_dirs = [ "include" ]
+  include_dirs = [
+    "include",
+    "../quickjs/src/src/napi/adapter",
+  ]
+
+  configs += [ "../../third_party/weak-node-api:weak_node_api_config" ]
 
   if (use_weak_node_api_source) {
     public_deps += [ "../weak-node-api:weak_node_api_source" ]

@@ -6,21 +6,12 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#ifndef SRC_GC_PERSISTENT_HANDLE_H_
-#define SRC_GC_PERSISTENT_HANDLE_H_
+#ifndef THIRD_PARTY_QUICKJS_INCLUDE_PERSISTENT_HANDLE_H_
+#define THIRD_PARTY_QUICKJS_INCLUDE_PERSISTENT_HANDLE_H_
 extern "C" {
 #include "quickjs.h"
 }
 #include "global-handles.h"
-#ifdef ENABLE_GC_DEBUG_TOOLS
-#define DCHECK2(condition) \
-  if (!(condition)) abort();
-#if defined(ANDROID) || defined(__ANDROID__)
-#include <android/log.h>
-#endif
-#else
-#define DCHECK2(condition) ((void)0)
-#endif
 
 const int kApiSystemPointerSize = sizeof(void*);
 static const int kNodeClassIdOffset = 1 * kApiSystemPointerSize;
@@ -166,7 +157,9 @@ class WASMGCPersistent : public PersistentBase {
     }
   }
 
-  virtual inline ~WASMGCPersistent() { PersistentBase::Reset(rt); }
+  virtual inline ~WASMGCPersistent() {
+    if (rt) PersistentBase::Reset(rt);
+  }
   LEPUSRuntime* GetRT() const { return rt; }
 
  private:
@@ -187,7 +180,7 @@ bool PersistentBase::IsWeak() const {
 }
 
 void PersistentBase::Reset(LEPUSRuntime* runtime) {
-  if (this->IsEmpty() || !runtime) return;
+  if (this->IsEmpty()) return;
   DisposeGlobal(runtime, this->val_);
   val_ = nullptr;
 }
@@ -220,4 +213,4 @@ class QJSValueValueAllocator {
   }
 };
 
-#endif  // SRC_GC_PERSISTENT_HANDLE_H_
+#endif  // THIRD_PARTY_QUICKJS_INCLUDE_PERSISTENT_HANDLE_H_
