@@ -124,6 +124,13 @@ class LepusNGDebugger {
   lepus_inspector::LepusInspectorNGImpl* inspector_;
   std::unordered_map<int, DebugInfoDetail> debug_info_details_map_;
 };
+
+// Fills debug info (filename, line/column, pc2line, source, vardefs) for a
+// single function bytecode from a parsed debug-info JSON entry.  Exposed for
+// unit-test coverage; production callers go through LepusNGDebugger.
+void FillFunctionBytecodeDebugInfo(LEPUSContext* ctx, LEPUSFunctionBytecode* b,
+                                   rapidjson::Value& debug_info);
+
 }  // namespace debug
 }  // namespace lynx
 #endif  // DEVTOOL_JS_INSPECT_LEPUS_LEPUS_INTERNAL_LEPUSNG_LEPUSNG_DEBUGGER_H_

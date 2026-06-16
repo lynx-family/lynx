@@ -15,9 +15,17 @@
 namespace lynx {
 namespace tasm {
 struct LepusDebugInfo;
-}
+}  // namespace tasm
 
 namespace lepus {
+
+// Abbreviated JSON keys for vardef debug-info (to reduce serialized size)
+constexpr char kKeyVarDefs[] = "vd";           // vardefs
+constexpr char kKeyVarDefName[] = "n";         // var def name
+constexpr char kKeyVarDefScopeLevel[] = "sl";  // var def scope_level
+constexpr char kKeyVarDefScopeNext[] = "sn";   // var def scope_next
+constexpr char kKeyVarDefFlags[] = "f";        // var def flags
+
 class QuickContext;
 
 class QuickjsDebugInfoBuilder {
@@ -32,17 +40,20 @@ class QuickjsDebugInfoBuilder {
   }
 
   static std::string BuildJsDebugInfo(LEPUSContext *, LEPUSValue,
-                                      const std::string &, bool);
+                                      const std::string &,
+                                      bool debuginfo_outside,
+                                      bool var_defs_outside = false);
 
   static rapidjson::Value BuildJsDebugInfo(LEPUSContext *ctx, LEPUSValue,
                                            const std::string &,
                                            rapidjson::Document::AllocatorType &,
-                                           bool);
+                                           bool debuginfo_outside,
+                                           bool var_defs_outside = false);
 
  private:
   static rapidjson::Value BuildFunctionInfo(
-      LEPUSContext *, LEPUSFunctionBytecode *, bool,
-      rapidjson::Document::AllocatorType &);
+      LEPUSContext *, LEPUSFunctionBytecode *, bool is_top_level,
+      bool var_defs_outside, rapidjson::Document::AllocatorType &);
   static rapidjson::Value GetFunctionLineAndColInfo(
       LEPUSContext *, const LEPUSFunctionBytecode *,
       rapidjson::Document::AllocatorType &);

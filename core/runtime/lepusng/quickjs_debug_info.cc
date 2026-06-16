@@ -29,7 +29,8 @@ size_t ComputeEndLineNum(const std::string& source) {
 
 rapidjson::Value QuickjsDebugInfoBuilder::BuildJsDebugInfo(
     LEPUSContext* ctx, LEPUSValue top_level_function, const std::string& source,
-    rapidjson::Document::AllocatorType& allocator, bool debuginfo_outside) {
+    rapidjson::Document::AllocatorType& allocator, bool debuginfo_outside,
+    bool var_defs_outside) {
   rapidjson::Value debug_info{rapidjson::kObjectType};
   if (source.size()) {
     debug_info.AddMember(
@@ -51,8 +52,9 @@ rapidjson::Value QuickjsDebugInfoBuilder::BuildJsDebugInfo(
     for (uint32_t i = 0; i < size; ++i) {
       auto* bytecode = function_list[i];
       if (bytecode) {
-        function_info.PushBack(
-            BuildFunctionInfo(ctx, bytecode, i == 0, allocator), allocator);
+        function_info.PushBack(BuildFunctionInfo(ctx, bytecode, i == 0,
+                                                 var_defs_outside, allocator),
+                               allocator);
       }
     }
   }
@@ -63,11 +65,11 @@ rapidjson::Value QuickjsDebugInfoBuilder::BuildJsDebugInfo(
 
 std::string QuickjsDebugInfoBuilder::BuildJsDebugInfo(
     LEPUSContext* ctx, LEPUSValue top_level_function, const std::string& source,
-    bool debuginfo_outside) {
+    bool debuginfo_outside, bool var_defs_outside) {
   rapidjson::Document document;
   auto& allocator = document.GetAllocator();
   auto debug_info = BuildJsDebugInfo(ctx, top_level_function, source, allocator,
-                                     debuginfo_outside);
+                                     debuginfo_outside, var_defs_outside);
 
   rapidjson::StringBuffer debug_info_buffer;
   rapidjson::Writer<rapidjson::StringBuffer> debug_info_writer{
@@ -78,7 +80,7 @@ std::string QuickjsDebugInfoBuilder::BuildJsDebugInfo(
 
 rapidjson::Value QuickjsDebugInfoBuilder::BuildFunctionInfo(
     LEPUSContext* ctx, LEPUSFunctionBytecode* bytecode, bool is_top_level,
-    rapidjson::Document::AllocatorType& allocator) {
+    bool var_defs_outside, rapidjson::Document::AllocatorType& allocator) {
   rapidjson::Value function_info{rapidjson::kObjectType};
   // TODO: @zhangyuping
   // function_id should add 1 with primjs version 2.6
@@ -88,7 +90,7 @@ rapidjson::Value QuickjsDebugInfoBuilder::BuildFunctionInfo(
   // function name
   auto* name = GetFunctionName(ctx, bytecode);
   std::string name_str(name ? name : "");
-  LEPUS_FreeCString(ctx, name);
+  if (name && !LEPUS_IsGCMode(ctx)) LEPUS_FreeCString(ctx, name);
   if (name_str.size()) {
     function_info.AddMember(
         "function_name",
@@ -106,7 +108,7 @@ rapidjson::Value QuickjsDebugInfoBuilder::BuildFunctionInfo(
         "file_name",
         rapidjson::Value(debug_filename, strlen(debug_filename), allocator),
         allocator);
-    LEPUS_FreeCString(ctx, debug_filename);
+    if (!LEPUS_IsGCMode(ctx)) LEPUS_FreeCString(ctx, debug_filename);
   }
 
   // line number
@@ -185,6 +187,33 @@ rapidjson::Value QuickjsDebugInfoBuilder::BuildFunctionInfo(
         rapidjson::Value(source.c_str(), source.size(), allocator), allocator);
   }
 
+  // vardefs (for varinfo outside)
+  if (var_defs_outside) {
+    uint32_t var_defs_count = GetFunctionVarDefCount(bytecode);
+    if (var_defs_count > 0) {
+      rapidjson::Value var_defs_arr{rapidjson::kArrayType};
+      for (uint32_t i = 0; i < var_defs_count; ++i) {
+        rapidjson::Value vd{rapidjson::kObjectType};
+        const char* name = GetFunctionVarDefName(ctx, bytecode, i);
+        std::string name_str(name ? name : "");
+        if (name && !LEPUS_IsGCMode(ctx)) LEPUS_FreeCString(ctx, name);
+        vd.AddMember(
+            kKeyVarDefName,
+            rapidjson::Value(name_str.c_str(), name_str.size(), allocator),
+            allocator);
+        vd.AddMember(kKeyVarDefScopeLevel,
+                     GetFunctionVarDefScopeLevel(bytecode, i), allocator);
+        vd.AddMember(kKeyVarDefScopeNext,
+                     GetFunctionVarDefScopeNext(bytecode, i), allocator);
+        vd.AddMember(kKeyVarDefFlags,
+                     static_cast<int>(GetFunctionVarDefFlags(bytecode, i)),
+                     allocator);
+        var_defs_arr.PushBack(std::move(vd), allocator);
+      }
+      function_info.AddMember(kKeyVarDefs, std::move(var_defs_arr), allocator);
+    }
+  }
+
   return function_info;
 }
 
@@ -211,14 +240,18 @@ void QuickjsDebugInfoBuilder::AddDebugInfo(
     const std::string& filename, const tasm::LepusDebugInfo& debug_info,
     QuickContext* ctx) {
   auto& allocator = document_.GetAllocator();
+  bool debuginfo_outside =
+      tasm::Config::IsHigherOrEqual(ctx->GetSdkVersion(), LYNX_VERSION_2_5) &&
+      ctx->debuginfo_outside();
+  bool var_defs_outside =
+      tasm::Config::IsHigherOrEqual(ctx->GetSdkVersion(), LYNX_VERSION_4_1) &&
+      ctx->debuginfo_outside();
   template_debug_data_.AddMember(
       rapidjson::Value{filename.c_str(), allocator},
       lepus::QuickjsDebugInfoBuilder::BuildJsDebugInfo(
           ctx->context(), debug_info.debug_info_.top_level_function,
-          debug_info.debug_info_.source_code, allocator,
-          tasm::Config::IsHigherOrEqual(ctx->GetSdkVersion(),
-                                        LYNX_VERSION_2_5) &&
-              ctx->debuginfo_outside()),
+          debug_info.debug_info_.source_code, allocator, debuginfo_outside,
+          var_defs_outside),
       allocator);
 }
 

@@ -4,6 +4,10 @@
 
 #include "devtool/js_inspect/lepus/lepus_internal/lepusng/lepusng_debugger.h"
 
+#include <string>
+#include <vector>
+
+#include "core/runtime/lepusng/quickjs_debug_info.h"
 #include "devtool/js_inspect/lepus/lepus_internal/lepusng/lepusng_inspected_context_impl.h"
 #include "devtool/js_inspect/quickjs/quickjs_internal/interface.h"
 
@@ -58,9 +62,8 @@ void LepusNGDebugger::SetDebugInfo(const std::string& filename,
   it->second.filename_parsed_pairs_.emplace_back(filename, false);
 }
 
-static void FillFunctionBytecodeDebugInfo(LEPUSContext* ctx,
-                                          LEPUSFunctionBytecode* b,
-                                          rapidjson::Value& debug_info) {
+void FillFunctionBytecodeDebugInfo(LEPUSContext* ctx, LEPUSFunctionBytecode* b,
+                                   rapidjson::Value& debug_info) {
   uint32_t func_num = debug_info[kKeyFunctionNumber].GetUint();
   uint32_t function_id = GetFunctionDebugId(b);
   uint32_t func_index = 0;
@@ -124,6 +127,37 @@ static void FillFunctionBytecodeDebugInfo(LEPUSContext* ctx,
                            function_source_len);
   } else {
     SetFunctionDebugSource(ctx, b, nullptr, 0);
+  }
+
+  // restore vardefs from debug-info
+  if (func_info.HasMember(lepus::kKeyVarDefs) &&
+      func_info[lepus::kKeyVarDefs].IsArray()) {
+    const auto& var_defs_arr = func_info[lepus::kKeyVarDefs];
+    uint32_t count = var_defs_arr.Size();
+    if (count > 0) {
+      std::vector<const char*> var_names(count);
+      std::vector<std::string> name_storage(count);
+      std::vector<int32_t> scope_levels(count);
+      std::vector<int32_t> scope_next_info(count);
+      std::vector<uint8_t> flags(count);
+      for (uint32_t i = 0; i < count; ++i) {
+        const auto& vd = var_defs_arr[i];
+        if (!vd.IsObject() || !vd.HasMember(lepus::kKeyVarDefName) ||
+            !vd.HasMember(lepus::kKeyVarDefScopeLevel) ||
+            !vd.HasMember(lepus::kKeyVarDefScopeNext) ||
+            !vd.HasMember(lepus::kKeyVarDefFlags)) {
+          return;
+        }
+        name_storage[i] = vd[lepus::kKeyVarDefName].GetString();
+        var_names[i] = name_storage[i].c_str();
+        scope_levels[i] = vd[lepus::kKeyVarDefScopeLevel].GetInt();
+        scope_next_info[i] = vd[lepus::kKeyVarDefScopeNext].GetInt();
+        int flags_val = vd[lepus::kKeyVarDefFlags].GetInt();
+        flags[i] = static_cast<uint8_t>(flags_val & 0xFF);
+      }
+      SetFunctionVarDefs(ctx, b, var_names.data(), scope_levels.data(),
+                         scope_next_info.data(), flags.data(), count);
+    }
   }
 }
 
