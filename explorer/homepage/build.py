@@ -14,6 +14,5 @@ root_dir = os.path.abspath(os.path.join(current_dir, '../../'))
 sys.path.append(root_dir)
 from tools.js_tools.pnpm_helper import run_pnpm_command
 
-# Install dependencies and build
-run_pnpm_command(['pnpm', 'install', '--frozen-lockfile'], os.getcwd())
+# Build the homepage
 run_pnpm_command(['pnpm', 'build'], os.getcwd())
