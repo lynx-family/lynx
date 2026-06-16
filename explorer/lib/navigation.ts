@@ -9,18 +9,38 @@ import {
 } from 'sparkling-navigation';
 import { addRecentUrl } from './recentHistory';
 
-const SPARKLING_PLATFORMS = ['iOS', 'Android'];
+function getGlobalProps(): Record<string, unknown> | undefined {
+  try {
+    return lynx.__globalProps as Record<string, unknown> | undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function hasSparklingPipe(): boolean {
+  try {
+    if (typeof NativeModules === 'undefined') {
+      return false;
+    }
+    const modules = NativeModules as Record<string, unknown>;
+    const spkPipe = modules.spkPipe as { call?: unknown } | undefined;
+    return typeof spkPipe?.call === 'function';
+  } catch {
+    return false;
+  }
+}
 
 /**
  * Returns true if the Sparkling SDK is loaded and the spkPipe module is
  * registered. Used for informational display (e.g. Settings page).
  */
 export function isSparklingAvailable(): boolean {
-  try {
-    return SPARKLING_PLATFORMS.includes(SystemInfo.platform);
-  } catch {
-    return false;
-  }
+  const props = getGlobalProps();
+  const hasNativeSignal =
+    props?.sparklingAvailable === true ||
+    props?.sparklingNavigation === true ||
+    (typeof props?.containerID === 'string' && props.containerID.length > 0);
+  return hasNativeSignal && hasSparklingPipe();
 }
 
 /**
@@ -29,12 +49,8 @@ export function isSparklingAvailable(): boolean {
  * so this returns false unless the native side explicitly sets the flag.
  */
 export function isSparkling(): boolean {
-  try {
-    const props = lynx.__globalProps as Record<string, unknown> | undefined;
-    return props?.sparklingNavigation === true;
-  } catch {
-    return false;
-  }
+  const props = getGlobalProps();
+  return isSparklingAvailable() && props?.sparklingNavigation === true;
 }
 
 const LOCAL_PREFIX = 'file://lynx?local://';
