@@ -1,0 +1,13 @@
+// Copyright 2026 The Lynx Authors. All rights reserved.
+// Licensed under the Apache License Version 2.0 that can be found in the
+// LICENSE file in the root directory of this source tree.
+
+ext.sparklingRuntimeAllowlist = [
+        'org.lynxsdk.lynx:v8so'           : '11.1.277.4',
+        'org.lynxsdk.lynx:primjs'         : '3.8.0-alpha.6',
+        'org.lynxsdk.lynx:primjsWasm'     : '3.8.0-alpha.6',
+        'org.lynxsdk.lynx:debug-router'   : '0.0.20',
+        'org.lynxsdk.lynx:lynxtextra'     : '0.1.1',
+        'org.lynxsdk.lynx:serval_markdown': '0.1.1',
+        'org.lynxsdk.lynx:servalsvg'      : '0.0.2',
+]

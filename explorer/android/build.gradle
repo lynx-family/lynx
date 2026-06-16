@@ -130,42 +130,67 @@ task generateAllGnCmakeTargets {
     // force Gradle to evaluate the child build.gradle files before the parent
     evaluationDependsOnChildren()
 
+    def previousGnConfigTask = null
     rootProject.allprojects { Project project ->
         if(project.tasks.findByName('configGnCompileParas')) {
             println project.name + " has configGnCompileParas task."
-            dependsOn project.configGnCompileParas
+            def gnConfigTask = project.configGnCompileParas
+            if (previousGnConfigTask != null) {
+                gnConfigTask.mustRunAfter previousGnConfigTask
+            }
+            previousGnConfigTask = gnConfigTask
+            dependsOn gnConfigTask
         }
     }
-    exec {
-        workingDir "../../"
-        rootProject.ext.configurePythonExec(delegate, "tools_shared/android_tools/generate_cmake_scripts_from_gn.py")
-        println commandLine
+    doLast {
+        exec {
+            workingDir "../../"
+            rootProject.ext.configurePythonExec(delegate, "tools_shared/android_tools/generate_cmake_scripts_from_gn.py")
+            println commandLine
+        }
+    }
+}
+
+rootProject.allprojects { Project nativeProject ->
+    nativeProject.tasks.matching {
+        it.name.startsWith('generateJsonModel') || it.name.startsWith('externalNativeBuild')
+    }.all { task ->
+        task.dependsOn generateAllGnCmakeTargets
+    }
+    nativeProject.tasks.whenTaskAdded { task ->
+        if (task.name.startsWith('generateJsonModel') || task.name.startsWith('externalNativeBuild')) {
+            task.dependsOn generateAllGnCmakeTargets
+        }
     }
 }
 
 task buildHomePage {
     description "Build home page card."
-    exec {
-        workingDir "../homepage"
-        rootProject.ext.configurePythonExec(delegate, "build.py")
-        println commandLine
-    }
-    copy {
-        from "../homepage/dist/"
-        into "lynx_explorer/src/main/assets"
-        include 'main.lynx.bundle'
-        rename { String fileName ->
-            'homepage.lynx.bundle'
+    doLast {
+        exec {
+            workingDir "../homepage"
+            rootProject.ext.configurePythonExec(delegate, "build.py")
+            println commandLine
+        }
+        copy {
+            from "../homepage/dist/"
+            into "lynx_explorer/src/main/assets"
+            include 'main.lynx.bundle'
+            rename { String fileName ->
+                'homepage.lynx.bundle'
+            }
         }
     }
 }
 
 task buildShowcase {
     description "Build showcase card."
-    exec {
-        workingDir "../showcase"
-        rootProject.ext.configurePythonExec(delegate, "./build_and_copy.py")
-        println commandLine
+    doLast {
+        exec {
+            workingDir "../showcase"
+            rootProject.ext.configurePythonExec(delegate, "./build_and_copy.py")
+            println commandLine
+        }
     }
 }
 
@@ -174,10 +199,12 @@ buildShowcase.onlyIf { build_showcase == 'true' }
 if (buildIntegrationDemo) {
     task buildIntegrationDemo {
         description "Build Integeration Test Demo Card."
-        exec {
-            workingDir "../../testing/integration_test/demo_pages"
-            rootProject.ext.configurePythonExec(delegate, "./build_and_copy.py")
-            println commandLine
+        doLast {
+            exec {
+                workingDir "../../testing/integration_test/demo_pages"
+                rootProject.ext.configurePythonExec(delegate, "./build_and_copy.py")
+                println commandLine
+            }
         }
     }
 }

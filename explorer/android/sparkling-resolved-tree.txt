@@ -1,0 +1,84 @@
+# Android Sparkling resolved runtime tree snapshot
+
+Scope: `:LynxExplorer` `withSparklingNoasanDebugRuntimeClasspath`
+
+Command used:
+
+```
+cd explorer/android
+GRADLE_USER_HOME=$PWD/.gradle-codex ./gradlew --no-daemon :LynxExplorer:dependencies --configuration withSparklingNoasanDebugRuntimeClasspath
+```
+
+This file is a review snapshot for the Sparkling diamond refactor. It records the expected runtime policy, not the full Gradle output.
+
+## Sparkling subtree
+
+```
+\--- com.tiktok.sparkling:sparkling:2.1.0-rc.12
+     +--- androidx.core:core-ktx:1.10.1
+     +--- androidx.appcompat:appcompat:1.6.1
+     +--- androidx.fragment:fragment-ktx:1.5.6
+     +--- com.tiktok.sparkling:sparkling-method:2.1.0-rc.12
+     |    +--- androidx.core:core-ktx:1.10.1
+     |    +--- androidx.appcompat:appcompat:1.6.1
+     |    +--- com.google.code.gson:gson:2.8.9
+     |    \--- org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.8.10
+     \--- org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.8.10
+```
+
+The `com.tiktok.sparkling:sparkling` declaration excludes the `org.lynxsdk.lynx` group. Source-owned Lynx artifacts must therefore be provided by local Gradle projects and verified by `:LynxExplorer:verifySparklingLynxGraph`.
+
+## Local Lynx providers
+
+The enabled runtime classpath must contain these local providers for source-owned Lynx artifacts:
+
+```
+org.lynxsdk.lynx:lynx                  -> project :LynxAndroid
+org.lynxsdk.lynx:lynx-base             -> project :LynxBase
+org.lynxsdk.lynx:lynx-trace            -> project :LynxTrace
+org.lynxsdk.lynx:lynx-jssdk            -> project :LynxJSSDK
+org.lynxsdk.lynx:service-api           -> project :ServiceAPI
+org.lynxsdk.lynx:lynx-service-log      -> project :lynx_service_log
+org.lynxsdk.lynx:lynx-service-image    -> project :lynx_service_image
+org.lynxsdk.lynx:lynx-service-http     -> project :lynx_service_http
+org.lynxsdk.lynx:lynx-service-devtool  -> project :lynx_service_devtool
+org.lynxsdk.lynx:lynx-devtool          -> project :LynxDevtool
+org.lynxsdk.lynx:base-devtool          -> project :BaseDevtool
+org.lynxsdk.lynx:xelement              -> project :LynxXElement
+org.lynxsdk.lynx:xelement-input        -> project :LynxXElement:Input
+org.lynxsdk.lynx:xelement-overlay      -> project :LynxXElement:Overlay
+org.lynxsdk.lynx:xelement-viewpager    -> project :LynxXElement:ViewPager
+org.lynxsdk.lynx:xelement-scroll-coordinator -> project :LynxXElement:ScrollCoordinator
+org.lynxsdk.lynx:xelement-svg          -> project :LynxXElement:SVG
+org.lynxsdk.lynx:xelement-markdown     -> project :LynxXElement:Markdown
+org.lynxsdk.lynx:xelement-refresh      -> project :LynxXElement:Refresh
+org.lynxsdk.lynx:xelement-blur-view    -> project :LynxXElement:BlurView
+org.lynxsdk.lynx:xelement-webview      -> project :LynxXElement:WebView
+```
+
+## Allowed external Lynx runtime artifacts
+
+Only these external `org.lynxsdk.lynx` runtime artifacts are expected after resolution:
+
+```
+org.lynxsdk.lynx:v8so:11.1.277.4
+org.lynxsdk.lynx:primjs:3.8.0-alpha.6
+org.lynxsdk.lynx:primjsWasm:3.8.0-alpha.6
+org.lynxsdk.lynx:debug-router:0.0.20
+org.lynxsdk.lynx:lynxtextra:0.1.1
+org.lynxsdk.lynx:serval_markdown:0.1.1
+org.lynxsdk.lynx:servalsvg:0.0.2
+```
+
+Any released source-owned `org.lynxsdk.lynx` artifact, any unclassified `org.lynxsdk.lynx` artifact, or any allowlisted artifact at a different version must fail `:LynxExplorer:verifySparklingLynxGraph`.
+
+## Disabled variant expectation
+
+`withoutSparklingNoasanDebugRuntimeClasspath` must not contain any `com.tiktok.sparkling` modules. This is covered by `:LynxExplorer:verifySparklingLynxGraph`.
+
+## Reproduce the gate
+
+```
+cd explorer/android
+GRADLE_USER_HOME=$PWD/.gradle-codex ./gradlew --no-daemon :LynxExplorer:verifySparklingAndroidRefactor
+```
