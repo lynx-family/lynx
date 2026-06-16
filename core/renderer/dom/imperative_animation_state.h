@@ -48,6 +48,9 @@ class ImperativeAnimationState {
 
   void ReplayToStyle(starlight::ComputedCSSStyle& computed_style) const;
   CSSIDBitset TakePendingCleanupProperties();
+  bool HasPendingCleanupProperties() const {
+    return pending_cleanup_properties_.HasAny();
+  }
   bool HasRecords() const { return !records_.empty(); }
   bool HasAnimationName(const base::String& animation_name) const;
 

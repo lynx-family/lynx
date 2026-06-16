@@ -271,6 +271,9 @@ class ComputedCSSStyle {
     CSSStyleUtils::PrepareOptional(animation_data_);
     return *animation_data_;
   }
+  const base::Vector<AnimationData>* animation_data_or_null() const {
+    return animation_data_.has_value() ? &(*animation_data_) : nullptr;
+  }
 
   bool HasTransform() const { return transform_raw_.has_value(); }
 
@@ -534,6 +537,10 @@ class ComputedCSSStyle {
   bool IsDirty() { return changed_bitset_.HasAny() || reset_bitset_.HasAny(); }
 
   bool IsClean() { return !IsDirty(); }
+
+  void ClearDirtyBits();
+  // Replaces this style's dirty state with |source|'s dirty state.
+  void CopyDirtyBitsFrom(const ComputedCSSStyle& source);
 
   template <typename Callback>
   void ForEachChangedProperty(const Callback& callback) const {

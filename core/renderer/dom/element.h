@@ -18,6 +18,7 @@
 
 #include "base/include/auto_create_optional.h"
 #include "base/include/closure.h"
+#include "base/include/flex_optional.h"
 #include "base/include/fml/memory/ref_ptr.h"
 #include "base/include/no_destructor.h"
 #include "base/include/value/ref_type.h"
@@ -1004,6 +1005,7 @@ class Element : public lepus::RefCounted,
 
   void SetDataToNativeKeyframeAnimator(bool from_resume = false);
   void SetDataToNativeTransitionAnimator();
+  bool ShouldUseLegacyTransitionInterception() const;
 
   bool ShouldConsumeTransitionStylesInAdvance();
   bool ConsumeTransitionStylesInAdvance(const StyleMap& styles,
@@ -1096,6 +1098,10 @@ class Element : public lepus::RefCounted,
 
   virtual void RequestNextFrame() = 0;
 
+  void SetAnimationSampleTimeForNewPipeline(const fml::TimePoint& sample_time);
+  base::flex_optional<fml::TimePoint> TakeAnimationSampleTimeForNewPipeline();
+  void DispatchAnimationEventsForNewPipeline(
+      const animation::AnimationEventRecordsForNewPipeline& event_records);
   void UpdateFinalStyleMap(const StyleMap& styles);
 
   virtual void OnPatchFinish(std::shared_ptr<PipelineOptions>& option);
@@ -1462,6 +1468,7 @@ class Element : public lepus::RefCounted,
   void ReplayImperativeAnimationsToStyle(
       starlight::ComputedCSSStyle& computed_style) const;
   CSSIDBitset TakePendingImperativeAnimationCleanupProperties();
+  bool HasPendingImperativeAnimationCleanupProperties() const;
   bool HasImperativeAnimations() const;
   void ApplyImperativeAnimationMutation(
       const ImperativeAnimationState::Mutation& mutation);
@@ -1628,6 +1635,7 @@ class Element : public lepus::RefCounted,
   // for animation
   std::unique_ptr<animation::CSSKeyframeManager> css_keyframe_manager_;
   std::unique_ptr<animation::CSSTransitionManager> css_transition_manager_;
+  base::flex_optional<fml::TimePoint> animation_sample_time_for_new_pipeline_;
   // Saves the css style that the all animation applied to the element.
   base::auto_create_optional<StyleMap> final_animator_map_;
   // Save the keyframes of the Animate API.
@@ -1642,6 +1650,10 @@ class Element : public lepus::RefCounted,
   // Using to record some previous element styles which New Animator needs.
   base::LinearFlatMap<tasm::CSSPropertyID, CSSValue> animation_previous_styles_;
 
+  // Tracks the previous underlying target values for transition-relevant
+  // layout-only properties in the new styling pipeline.
+  base::auto_create_optional<StyleMap>
+      committed_underlying_layout_only_styles_for_new_pipeline_;
   // Used to record all layout-related styles of the element only when we
   // enable dump element tree. In the copied element, we will use these styles
   // to initialize the layout node.

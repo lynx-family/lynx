@@ -5,6 +5,7 @@
 #include "core/renderer/dom/fiber/fiber_element.h"
 
 #include <algorithm>
+#include <array>
 #include <deque>
 #include <memory>
 #include <stack>
@@ -12,6 +13,7 @@
 #include <utility>
 #include <vector>
 
+#include "base/include/algorithm.h"
 #include "base/include/compiler_specific.h"
 #include "base/include/path_utils.h"
 #include "base/include/timer/time_utils.h"
@@ -21,6 +23,7 @@
 #include "base/include/value/table.h"
 #include "base/trace/native/trace_defines.h"
 #include "base/trace/native/trace_event.h"
+#include "core/animation/animation.h"
 #include "core/event/event.h"
 #include "core/renderer/css/computed_css_style_css_text_helper.h"
 #include "core/renderer/css/css_color.h"
@@ -29,6 +32,7 @@
 #include "core/renderer/css/css_property_bitset.h"
 #include "core/renderer/css/css_utils.h"
 #include "core/renderer/css/css_value.h"
+#include "core/renderer/css/dynamic_direction_styles_manager.h"
 #include "core/renderer/css/layout_property.h"
 #include "core/renderer/css/parser/css_string_parser.h"
 #include "core/renderer/css/parser/length_handler.h"
@@ -52,6 +56,7 @@
 #include "core/renderer/dom/fragment/fragment.h"
 #include "core/renderer/dom/fragment/list_item_fragment_behavior.h"
 #include "core/renderer/dom/fragment/platform_extended_fragment_behavior.h"
+#include "core/renderer/dom/layout_bundle.h"
 #include "core/renderer/dom/list_component_info.h"
 #include "core/renderer/dom/style_resolver.h"
 #include "core/renderer/dom/vdom/radon/node_select_options.h"
@@ -64,6 +69,8 @@
 #include "core/renderer/simple_styling/style_object.h"
 #include "core/renderer/starlight/layout/layout_object.h"
 #include "core/renderer/starlight/style/default_layout_style.h"
+#include "core/renderer/starlight/types/layout_attribute.h"
+#include "core/renderer/template_assembler.h"
 #include "core/renderer/trace/renderer_trace_event_def.h"
 #include "core/renderer/utils/lynx_env.h"
 #include "core/renderer/utils/prop_bundle_style_writer.h"
@@ -71,6 +78,8 @@
 #include "core/runtime/common/bindings/event/message_event.h"
 #include "core/runtime/js/bindings/java_script_element.h"
 #include "core/runtime/js/runtime_constant.h"
+#include "core/runtime/lepus/json_parser.h"
+#include "core/runtime/lepusng/napi/worklet/napi_func_callback.h"
 #include "core/runtime/mts_context.h"
 
 #if ENABLE_LEPUSNG_WORKLET
@@ -87,6 +96,123 @@ namespace lynx {
 namespace tasm {
 
 namespace {
+template <typename T>
+void PushBackUnique(std::vector<T> &values, const T &value) {
+  if (std::find(values.begin(), values.end(), value) == values.end()) {
+    values.push_back(value);
+  }
+}
+
+template <typename T>
+void EraseValue(std::vector<T> &values, const T &value) {
+  values.erase(std::remove(values.begin(), values.end(), value), values.end());
+}
+
+void MarkLayoutInElementTextMeasurerPropertyIfNeeded(FiberElement *element,
+                                                     CSSPropertyID id) {
+  if (!element->EnableLayoutInElementMode() || !element->is_text() ||
+      !IsTextMeasurerWanted(id)) {
+    return;
+  }
+  static_cast<TextElement *>(element)->property_bits().Set(id);
+}
+
+void MergeAnimationSampleForNewPipeline(
+    animation::AnimationSampleForNewPipeline &target,
+    animation::AnimationSampleForNewPipeline sample) {
+  if (sample.empty()) {
+    return;
+  }
+  if (target.empty()) {
+    target = std::move(sample);
+    return;
+  }
+  for (const auto &[id, value] : sample.property_overrides) {
+    target.property_overrides.insert_or_assign(id, value);
+    EraseValue(target.property_resets, id);
+  }
+  for (const auto &[key, value] : sample.custom_property_overrides) {
+    target.custom_property_overrides.insert_or_assign(key, value);
+    EraseValue(target.custom_property_resets, key);
+  }
+  for (const auto &id : sample.property_resets) {
+    target.property_overrides.erase(id);
+    PushBackUnique(target.property_resets, id);
+  }
+  for (const auto &key : sample.custom_property_resets) {
+    target.custom_property_overrides.erase(key);
+    PushBackUnique(target.custom_property_resets, key);
+  }
+  target.requires_base_style_rebuild |= sample.requires_base_style_rebuild;
+}
+
+void SuppressTransitionSampleForKeyframeOverrides(
+    animation::AnimationSampleForNewPipeline &transition_sample,
+    const animation::AnimationSampleForNewPipeline &keyframe_sample) {
+  // CSS transitions do not contribute a value for a property currently
+  // animated by CSS animations on the same element.
+  for (const auto &entry : keyframe_sample.property_overrides) {
+    const auto &id = entry.first;
+    transition_sample.property_overrides.erase(id);
+    EraseValue(transition_sample.property_resets, id);
+  }
+  for (const auto &entry : keyframe_sample.custom_property_overrides) {
+    const auto &key = entry.first;
+    transition_sample.custom_property_overrides.erase(key);
+    EraseValue(transition_sample.custom_property_resets, key);
+  }
+}
+
+void ApplyAnimationPropertyResetsToResolvedInputs(
+    const starlight::ComputedCSSStyle &base_style,
+    const std::vector<CSSPropertyID> &property_resets,
+    StyleMap &resolved_style_map, CSSIDBitset &variable_dependent_ids) {
+  if (property_resets.empty()) {
+    return;
+  }
+
+  const auto &base_resolved_values = base_style.GetResolvedValues();
+  for (const auto id : property_resets) {
+    auto resolved_iter = resolved_style_map.find(id);
+    if (resolved_iter == resolved_style_map.end()) {
+      variable_dependent_ids.Reset(id);
+      continue;
+    }
+
+    auto base_iter = base_resolved_values.find(id);
+    if (base_iter == base_resolved_values.end() ||
+        base_iter->second != resolved_iter->second) {
+      resolved_style_map.erase(resolved_iter);
+      variable_dependent_ids.Reset(id);
+    }
+  }
+}
+
+animation::AnimationSampleForNewPipeline
+ResolveDirectionAwareKeyframeSampleForNewPipeline(
+    animation::AnimationSampleForNewPipeline sample,
+    starlight::DirectionType direction) {
+  if (sample.property_overrides.empty() && sample.property_resets.empty()) {
+    return sample;
+  }
+
+  StyleMap resolved_property_overrides;
+  resolved_property_overrides.reserve(sample.property_overrides.size());
+  for (const auto &[id, value] : sample.property_overrides) {
+    resolved_property_overrides.insert_or_assign(
+        ResolveDirectionAwareProperty(id, direction), value);
+  }
+  sample.property_overrides = std::move(resolved_property_overrides);
+
+  std::vector<CSSPropertyID> resolved_property_resets;
+  resolved_property_resets.reserve(sample.property_resets.size());
+  for (const auto &id : sample.property_resets) {
+    PushBackUnique(resolved_property_resets,
+                   ResolveDirectionAwareProperty(id, direction));
+  }
+  sample.property_resets = std::move(resolved_property_resets);
+  return sample;
+}
 
 void ApplyEventResult(fml::RefPtr<event::Event> event, EventResult result) {
   if (event == nullptr) {
@@ -114,56 +240,31 @@ FiberElement *ResolveTemplateRootForAction(Element *element) {
   return root != nullptr ? root.get() : fiber_element;
 }
 
-bool ContainsLayoutOnlyStyle(const StyleMap &resolved_style_map) {
-  for (const auto &[id, _] : resolved_style_map) {
-    if (LayoutProperty::IsLayoutOnly(id)) {
-      return true;
-    }
-  }
-  return false;
+bool IsTransitionRelevantLayoutOnlyStyle(CSSPropertyID id) {
+  return LayoutProperty::IsLayoutOnly(id) &&
+         animation::IsAnimatableProperty(id) &&
+         starlight::ComputedCSSStyle::SupportsCanonicalComputedValue(id);
 }
 
-bool DiffPreviousResolvedLayoutOnlyStylesForNewPipeline(
-    const starlight::ComputedCSSStyle &previous_final_style,
-    const StyleMap &resolved_style_map, StyleMap &changed_layout_only_styles,
-    base::InlineVector<CSSPropertyID, 16> &reset_layout_only_ids) {
-  const auto &previous_resolved_values =
-      previous_final_style.GetResolvedValues();
-  changed_layout_only_styles.clear();
-  reset_layout_only_ids.clear();
-
+void ExtractTransitionRelevantLayoutOnlyStyles(
+    const StyleMap &resolved_style_map,
+    StyleMap &transition_relevant_layout_only_styles_for_new_pipeline) {
+  transition_relevant_layout_only_styles_for_new_pipeline.clear();
+  transition_relevant_layout_only_styles_for_new_pipeline.reserve(
+      resolved_style_map.size());
   for (const auto &[id, value] : resolved_style_map) {
-    if (!LayoutProperty::IsLayoutOnly(id)) {
-      continue;
-    }
-
-    auto it = previous_resolved_values.find(id);
-    if (it == previous_resolved_values.end() || it->second != value) {
-      changed_layout_only_styles.insert_or_assign(id, value);
+    if (IsTransitionRelevantLayoutOnlyStyle(id)) {
+      transition_relevant_layout_only_styles_for_new_pipeline.insert_or_assign(
+          id, value);
     }
   }
-
-  for (const auto &[id, _] : previous_resolved_values) {
-    if (!LayoutProperty::IsLayoutOnly(id)) {
-      continue;
-    }
-    if (resolved_style_map.find(id) == resolved_style_map.end()) {
-      reset_layout_only_ids.emplace_back(id);
-    }
-  }
-
-  return !changed_layout_only_styles.empty() || !reset_layout_only_ids.empty();
 }
 
-struct NewPipelineDynamicStyleInputs {
-  StyleMap resolved_style_map;
-  DynamicCSSStylesManager::StyleUpdateFlags inherited_dynamic_flags{0};
-};
-
-NewPipelineDynamicStyleInputs BuildDynamicStyleInputsForNewPipeline(
+FiberElement::NewPipelineDynamicStyleInputs
+BuildDynamicStyleInputsForNewPipeline(
     const FiberElement &element, const starlight::ComputedCSSStyle &final_style,
     const StyleMap &explicit_resolved_style_map) {
-  NewPipelineDynamicStyleInputs result;
+  FiberElement::NewPipelineDynamicStyleInputs result;
   result.resolved_style_map = explicit_resolved_style_map;
 
   if (!element.IsCSSInheritanceEnabled()) {
@@ -187,11 +288,59 @@ NewPipelineDynamicStyleInputs BuildDynamicStyleInputsForNewPipeline(
     }
 
     result.resolved_style_map.insert_or_assign(id, value);
+    result.inherited_dynamic_ids.Set(id);
     result.inherited_dynamic_flags |= value_flags;
   }
   return result;
 }
+
+template <typename MapT>
+bool OptionalMapNotEqual(const MapT *old_map, const MapT *new_map) {
+  if ((old_map == nullptr) != (new_map == nullptr)) {
+    return true;
+  }
+  if (old_map == nullptr) {
+    return false;
+  }
+  return *old_map != *new_map;
+}
+
+bool CustomPropertiesChanged(const starlight::ComputedCSSStyle *old_style,
+                             const starlight::ComputedCSSStyle &new_style) {
+  if (old_style == nullptr) {
+    return new_style.GetRawCustomProperties() != nullptr ||
+           new_style.GetCustomProperties() != nullptr;
+  }
+  return OptionalMapNotEqual(old_style->GetRawCustomProperties(),
+                             new_style.GetRawCustomProperties()) ||
+         OptionalMapNotEqual(old_style->GetCustomProperties(),
+                             new_style.GetCustomProperties());
+}
 }  // namespace
+
+void FiberElement::NewPipelineStyleMutationPlan::AddUpdate(
+    CSSPropertyID id, const CSSValue &value) {
+  update_values.insert_or_assign(id, value);
+  update_ids.Set(id);
+  reset_ids.Reset(id);
+  source_changed = true;
+}
+
+void FiberElement::NewPipelineStyleMutationPlan::AddReset(CSSPropertyID id) {
+  update_values.erase(id);
+  update_ids.Reset(id);
+  reset_ids.Set(id);
+  source_changed = true;
+}
+
+bool FiberElement::NewPipelineStyleMutationPlan::HasOperations() const {
+  return update_ids.HasAny() || reset_ids.HasAny();
+}
+
+bool FiberElement::NewPipelineStyleMutationPlan::NeedsSemanticCommit() const {
+  return source_changed || custom_properties_changed ||
+         font_size_context_changed || root_font_size_context_changed;
+}
 
 event::EventListener::Options FiberElement::GetEventListenerOptions(
     const base::String &type) {
@@ -208,20 +357,259 @@ FiberElement::NewPipelineStyleResolveResult FiberElement::ResolveComputedStyles(
     const starlight::ComputedCSSStyle *previous_final_style,
     double old_font_size, double old_root_font_size) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_RESOLVE_COMPUTED_STYLES);
+  const bool first_render = IsNewlyCreated();
   NewPipelineStyleResolveResult resolve_result;
   resolve_result.previous_final_style = previous_final_style;
   resolve_result.parent_inheritance_style = GetParentComputedCSSStyle();
   if (IsNewlyCreated()) {
     style_resolver_.ResolveBaseStyleInPlace(
         *platform_css_style_, resolve_result.parent_inheritance_style,
-        previous_final_style, &resolve_result.resolved_style_map);
+        previous_final_style, &resolve_result.resolved_style_map,
+        &resolve_result.variable_dependent_ids);
   } else {
     resolve_result.owned_base_style = style_resolver_.ResolveBaseStyle(
         resolve_result.parent_inheritance_style, previous_final_style,
-        &resolve_result.resolved_style_map);
+        &resolve_result.resolved_style_map,
+        &resolve_result.variable_dependent_ids);
+  }
+
+  auto *resolved_base_style = first_render
+                                  ? platform_css_style_.get()
+                                  : resolve_result.owned_base_style.get();
+  const auto *previous_base_style_for_animation = base_css_style_.get();
+  if (previous_base_style_for_animation == nullptr) {
+    previous_base_style_for_animation = previous_final_style;
+  }
+  if (HasAuthorAnimationDataChangedForNewPipeline(
+          *resolved_base_style, previous_base_style_for_animation)) {
+    ClearImperativeAnimationsForStyleAnimationUpdate();
+  } else if (enable_new_animator()) {
+    ReplayImperativeAnimationsToStyle(*resolved_base_style);
+  }
+  const auto new_base_font_size = resolved_base_style->GetFontSize();
+  const auto new_base_root_font_size = resolved_base_style->GetRootFontSize();
+  const bool base_font_size_changed = base::FloatsNotEqual(
+      first_render ? old_font_size : previous_final_style->GetFontSize(),
+      new_base_font_size);
+  const bool base_root_font_size_changed = base::FloatsNotEqual(
+      first_render ? old_root_font_size
+                   : previous_final_style->GetRootFontSize(),
+      new_base_root_font_size);
+  ExtractTransitionRelevantLayoutOnlyStyles(
+      resolve_result.resolved_style_map,
+      resolve_result.underlying_layout_only_styles);
+
+  resolve_result.animation_sample = SampleAnimationOverridesForNewPipeline(
+      *resolved_base_style, base_font_size_changed, base_root_font_size_changed,
+      resolve_result.underlying_layout_only_styles,
+      resolve_result.previous_final_style);
+  const auto sample_analysis =
+      AnalyzeAnimationSampleForNewPipeline(resolve_result.animation_sample);
+  if (sample_analysis.has_style_effects) {
+    if (first_render) {
+      resolve_result.owned_base_style =
+          std::make_unique<starlight::ComputedCSSStyle>(*platform_css_style_);
+      resolve_result.owned_base_style->CopyFrom(*platform_css_style_);
+      resolved_base_style = resolve_result.owned_base_style.get();
+    }
+    resolve_result.owned_final_style =
+        BuildFinalStyleFromAnimationSampleForNewPipeline(
+            *resolved_base_style, resolve_result.parent_inheritance_style,
+            resolve_result.previous_final_style,
+            resolve_result.animation_sample, resolve_result.resolved_style_map,
+            resolve_result.variable_dependent_ids);
   }
   resolve_result.BindResolvedStyles(platform_css_style_.get());
   return resolve_result;
+}
+
+animation::AnimationSampleForNewPipeline
+FiberElement::SampleAnimationOverridesForNewPipeline(
+    starlight::ComputedCSSStyle &new_base_style, bool base_font_size_changed,
+    bool base_root_font_size_changed,
+    const StyleMap &new_underlying_layout_only_styles,
+    const starlight::ComputedCSSStyle *&previous_final_style) {
+  if (!enable_new_animator()) {
+    return {};
+  }
+
+  const auto *previous_base_style = base_css_style_.get();
+  if (previous_base_style == nullptr) {
+    previous_base_style = previous_final_style;
+  }
+  if (previous_base_style == nullptr) {
+    return {};
+  }
+
+  if (css_transition_manager_ == nullptr && new_base_style.HasTransition()) {
+    css_transition_manager_ =
+        std::make_unique<animation::CSSTransitionManager>(this);
+  }
+
+  base::Vector<starlight::AnimationData> *animation_data = nullptr;
+  if (css_keyframe_manager_ != nullptr || new_base_style.HasAnimation()) {
+    animation_data = &new_base_style.animation_data();
+  }
+  if (css_keyframe_manager_ == nullptr && animation_data != nullptr &&
+      !animation_data->empty()) {
+    css_keyframe_manager_ =
+        std::make_unique<animation::CSSKeyframeManager>(this);
+  }
+  const bool force_rebuild_keyframes = has_keyframe_props_changed_;
+  if (css_keyframe_manager_ == nullptr && force_rebuild_keyframes) {
+    has_keyframe_props_changed_ = false;
+  }
+  if (css_transition_manager_ == nullptr && css_keyframe_manager_ == nullptr) {
+    return {};
+  }
+
+  auto sample_time_for_new_pipeline = TakeAnimationSampleTimeForNewPipeline();
+  auto sample_time = sample_time_for_new_pipeline.has_value()
+                         ? *sample_time_for_new_pipeline
+                         : animation::Animation::GetAnimationDummyStartTime();
+  animation::AnimationSampleForNewPipeline animation_sample;
+  std::unique_ptr<starlight::ComputedCSSStyle> committed_style_for_sampling;
+  if (base_font_size_changed || base_root_font_size_changed) {
+    committed_style_for_sampling = std::move(platform_css_style_);
+    platform_css_style_ =
+        std::make_unique<starlight::ComputedCSSStyle>(new_base_style);
+    platform_css_style_->CopyFrom(new_base_style);
+    uint32_t unit_update_mask = 0;
+    if (base_font_size_changed) {
+      unit_update_mask |= DynamicCSSStylesManager::kUpdateEm;
+    }
+    if (base_root_font_size_changed) {
+      unit_update_mask |= DynamicCSSStylesManager::kUpdateRem;
+    }
+    NotifyUnitValuesUpdatedToAnimation(unit_update_mask);
+  }
+
+  if (css_keyframe_manager_ != nullptr) {
+    css_keyframe_manager_->SyncAnimationDataForNewPipeline(
+        *animation_data, force_rebuild_keyframes,
+        &new_base_style.GetResolvedValues(), &new_underlying_layout_only_styles,
+        new_base_style.GetCustomProperties());
+    if (force_rebuild_keyframes) {
+      has_keyframe_props_changed_ = false;
+    }
+    auto keyframe_sample =
+        css_keyframe_manager_->CollectAnimationUpdatesForNewPipeline(
+            sample_time);
+    keyframe_sample = ResolveDirectionAwareKeyframeSampleForNewPipeline(
+        std::move(keyframe_sample), new_base_style.GetDirection());
+    MergeAnimationSampleForNewPipeline(animation_sample,
+                                       std::move(keyframe_sample));
+  }
+
+  if (css_transition_manager_ != nullptr) {
+    const StyleMap empty_underlying_layout_only_styles;
+    const StyleMap *committed_underlying_layout_only_styles =
+        committed_underlying_layout_only_styles_for_new_pipeline_.get();
+    css_transition_manager_->UpdateTransitionsForNewPipeline(
+        *previous_base_style, *previous_final_style, new_base_style,
+        committed_underlying_layout_only_styles != nullptr
+            ? *committed_underlying_layout_only_styles
+            : empty_underlying_layout_only_styles,
+        new_underlying_layout_only_styles);
+    auto transition_sample =
+        css_transition_manager_->CollectTransitionUpdatesForNewPipeline(
+            sample_time);
+    SuppressTransitionSampleForKeyframeOverrides(transition_sample,
+                                                 animation_sample);
+    MergeAnimationSampleForNewPipeline(animation_sample,
+                                       std::move(transition_sample));
+  }
+
+  if (committed_style_for_sampling != nullptr) {
+    previous_final_style = committed_style_for_sampling.get();
+    platform_css_style_ = std::move(committed_style_for_sampling);
+  }
+  return animation_sample;
+}
+
+std::unique_ptr<starlight::ComputedCSSStyle>
+FiberElement::BuildFinalStyleFromAnimationSampleForNewPipeline(
+    const starlight::ComputedCSSStyle &base_style,
+    const starlight::ComputedCSSStyle *parent_style,
+    const starlight::ComputedCSSStyle *previous_final_style,
+    const animation::AnimationSampleForNewPipeline &animation_sample,
+    StyleMap &resolved_style_map, CSSIDBitset &variable_dependent_ids) {
+  const auto sample_analysis =
+      AnalyzeAnimationSampleForNewPipeline(animation_sample);
+  const StyleMap *animated_property_overrides =
+      animation_sample.property_overrides.empty()
+          ? nullptr
+          : &animation_sample.property_overrides;
+  if (!sample_analysis.changes_resolve_context) {
+    ApplyAnimationPropertyResetsToResolvedInputs(
+        base_style, animation_sample.property_resets, resolved_style_map,
+        variable_dependent_ids);
+    return style_resolver_.BuildFinalStyleFromBaseFastPath(
+        base_style, animated_property_overrides, &resolved_style_map,
+        &variable_dependent_ids);
+  }
+
+  const CustomPropertiesMap *animated_custom_properties =
+      animation_sample.custom_property_overrides.empty()
+          ? nullptr
+          : &animation_sample.custom_property_overrides;
+  return style_resolver_.RebuildFinalStyleFromParent(
+      parent_style, previous_final_style, animated_custom_properties,
+      animated_property_overrides, &resolved_style_map,
+      &variable_dependent_ids);
+}
+
+FiberElement::AnimationSampleAnalysisForNewPipeline
+FiberElement::AnalyzeAnimationSampleForNewPipeline(
+    const animation::AnimationSampleForNewPipeline &animation_sample) {
+  AnimationSampleAnalysisForNewPipeline analysis;
+  analysis.has_style_effects =
+      !animation_sample.property_overrides.empty() ||
+      !animation_sample.custom_property_overrides.empty() ||
+      !animation_sample.property_resets.empty() ||
+      !animation_sample.custom_property_resets.empty() ||
+      animation_sample.requires_base_style_rebuild;
+  analysis.has_animated_font_size =
+      animation_sample.property_overrides.find(kPropertyIDFontSize) !=
+          animation_sample.property_overrides.end() ||
+      std::find(animation_sample.property_resets.begin(),
+                animation_sample.property_resets.end(),
+                kPropertyIDFontSize) != animation_sample.property_resets.end();
+  analysis.has_custom_property_effects =
+      !animation_sample.custom_property_overrides.empty() ||
+      !animation_sample.custom_property_resets.empty();
+  analysis.changes_resolve_context =
+      analysis.has_animated_font_size || analysis.has_custom_property_effects ||
+      animation_sample.requires_base_style_rebuild;
+  return analysis;
+}
+
+animation::AnimationEventRecordsForNewPipeline
+FiberElement::TakeAnimationEventsForNewPipeline() {
+  animation::AnimationEventRecordsForNewPipeline event_records;
+  auto append_event_records = [&event_records](auto *manager) {
+    if (manager == nullptr) {
+      return;
+    }
+    auto pending_event_records =
+        manager->TakePendingAnimationEventsForNewPipeline();
+    for (auto &event_record : pending_event_records) {
+      event_records.push_back(std::move(event_record));
+    }
+  };
+  append_event_records(css_keyframe_manager_.get());
+  append_event_records(css_transition_manager_.get());
+  return event_records;
+}
+
+bool FiberElement::NeedsAnimationFrameForNewPipeline() const {
+  if (!enable_new_animator_) {
+    return false;
+  }
+  return (css_keyframe_manager_ != nullptr &&
+          css_keyframe_manager_->NeedsFutureTickForNewPipeline()) ||
+         (css_transition_manager_ != nullptr &&
+          css_transition_manager_->NeedsFutureTickForNewPipeline());
 }
 
 FiberElement::FiberElement(ElementManager *manager, const base::String &tag)
@@ -1418,6 +1806,95 @@ void FiberElement::HandleKeyframePropsChange() {
   has_keyframe_props_changed_ = false;
 }
 
+void FiberElement::FinalizeAnimationPropsChange(bool &need_update) {
+  // Report when enableNewAnimator is the default value.
+  if ((has_transition_props_changed_ || has_keyframe_props_changed_) &&
+      !enable_new_animator()) {
+    report::GlobalFeatureCounter::Count(
+        report::LynxFeature::CPP_ENABLE_NEW_ANIMATOR_DEFAULT,
+        element_manager()->GetInstanceId());
+  }
+  // keyframe props
+  if (has_keyframe_props_changed_) {
+    HandleDelayTask([this]() { HandleKeyframePropsChange(); });
+    if (!enable_new_animator()) {
+      PushToBundle(kPropertyIDAnimation);
+    }
+    need_update = true;
+  }
+
+  if (has_transition_props_changed_) {
+    TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_HANDLE_TRANSITION_PROPS,
+                [this](lynx::perfetto::EventContext ctx) {
+                  UpdateTraceDebugInfo(ctx.event());
+                });
+    if (!enable_new_animator()) {
+      PushToBundle(kPropertyIDTransition);
+    } else {
+      SetDataToNativeTransitionAnimator();
+    }
+    has_transition_props_changed_ = false;
+    need_update = true;
+  }
+}
+
+FiberElement::AnimationPropertyChangeAnalysisForLegacyAnimator
+FiberElement::AnalyzeAnimationPropChangesForLegacyAnimator(
+    const starlight::ComputedCSSStyle &final_style,
+    const starlight::ComputedCSSStyle *previous_final_style,
+    const StyleMap &resolved_style_map) const {
+  AnimationPropertyChangeAnalysisForLegacyAnimator analysis;
+  const bool is_first_render = IsNewlyCreated();
+  auto analyze_property = [&analysis](CSSPropertyID id) {
+    if (CSSProperty::IsTransitionProps(id)) {
+      analysis.has_transition_props_changed = true;
+    }
+    if (CSSProperty::IsKeyframeProps(id)) {
+      analysis.has_keyframe_props_changed = true;
+    }
+  };
+
+  if (is_first_render) {
+    for (const auto &[id, _] : resolved_style_map) {
+      analyze_property(id);
+    }
+  } else {
+    final_style.ForEachChangedProperty(analyze_property);
+    final_style.ForEachResetProperty(analyze_property);
+    // Computed animation/transition data changes are intentionally tracked
+    // outside the generic platform dirty bits. Setting those dirty bits for
+    // the new animator path would make both C++ animator and platform receive
+    // the same animation update. This function is called only from the legacy
+    // animator branch, where FinalizeAnimationPropsChange() owns bundle
+    // writing.
+    if (previous_final_style != nullptr) {
+      const auto *new_animation_data = final_style.animation_data_or_null();
+      const auto *old_animation_data =
+          previous_final_style->animation_data_or_null();
+      if ((new_animation_data == nullptr) != (old_animation_data == nullptr) ||
+          (new_animation_data != nullptr && old_animation_data != nullptr &&
+           *new_animation_data != *old_animation_data)) {
+        analysis.has_keyframe_props_changed = true;
+      }
+      if (final_style.HasTransition() !=
+              previous_final_style->HasTransition() ||
+          (final_style.HasTransition() &&
+           final_style.transition_data() !=
+               previous_final_style->transition_data())) {
+        analysis.has_transition_props_changed = true;
+      }
+    }
+  }
+
+  if (dirty_ & kDirtyCloned) {
+    for (const auto &[id, _] : parsed_styles_map_) {
+      analyze_property(id);
+    }
+  }
+
+  return analysis;
+}
+
 void FiberElement::HandleDelayTask(base::MoveOnlyClosure<void> operation) {
   if (this->is_parallel_flush()) {
     parallel_reduce_tasks_->emplace_back(std::move(operation));
@@ -1475,36 +1952,26 @@ FiberElement::ResolveCSSStylesNewPipelineCore(
   const bool should_resolve =
       (dirty_ & (kDirtyStyle | kDirtyRefreshCSSVariables |
                  kDirtyPropagateInherited | kDirtyFontSize)) ||
-      has_cached_styles_from_attributes || request.force_resolve;
+      has_cached_styles_from_attributes ||
+      HasPendingImperativeAnimationCleanupProperties() || request.force_resolve;
   if (should_resolve) {
     const auto *old_final_style = computed_css_style();
     const auto old_font_size = old_final_style->GetFontSize();
     const auto old_root_font_size = old_final_style->GetRootFontSize();
     bool first_render = (dirty_ & kDirtyCreated) > 0;
+    std::unique_ptr<starlight::ComputedCSSStyle> first_render_baseline;
+    if (first_render) {
+      first_render_baseline =
+          std::make_unique<starlight::ComputedCSSStyle>(*platform_css_style_);
+      first_render_baseline->CopyFrom(*platform_css_style_);
+      first_render_baseline->ClearDirtyBits();
+    }
     auto resolved_styles = ResolveComputedStyles(old_final_style, old_font_size,
                                                  old_root_font_size);
 
     // Resolve pseudo-element styles for the new pipeline.
     style_resolver_.ResolvePseudoElementsForNewPipeline(
         GetRelatedCSSFragment());
-
-    StyleMap changed_layout_only_styles;
-    base::InlineVector<CSSPropertyID, 16> reset_layout_only_ids;
-
-    bool style_changed = false;
-    if (first_render) {
-      style_changed =
-          resolved_styles.final_style->IsDirty() ||
-          ContainsLayoutOnlyStyle(resolved_styles.resolved_style_map);
-    } else {
-      style_changed = style_resolver_.ComputeStyleDiff(
-          *resolved_styles.final_style, *resolved_styles.previous_final_style);
-      style_changed = DiffPreviousResolvedLayoutOnlyStylesForNewPipeline(
-                          *resolved_styles.previous_final_style,
-                          resolved_styles.resolved_style_map,
-                          changed_layout_only_styles, reset_layout_only_ids) ||
-                      style_changed;
-    }
 
     const auto dynamic_style_inputs = BuildDynamicStyleInputsForNewPipeline(
         *this, *resolved_styles.final_style,
@@ -1515,119 +1982,157 @@ FiberElement::ResolveCSSStylesNewPipelineCore(
     const bool dynamic_refresh_needed =
         request.force_platform_update ||
         ((request.dynamic_update_flags & resolved_dynamic_style_flags) != 0);
-    const bool should_commit = style_changed || dynamic_refresh_needed;
+    auto mutation_plan = BuildNewPipelineStyleMutationPlan(
+        resolved_styles, dynamic_style_inputs, request.dynamic_update_flags,
+        first_render, old_font_size, old_root_font_size);
+    const auto &mutation_baseline = first_render
+                                        ? *first_render_baseline
+                                        : *resolved_styles.previous_final_style;
+    const bool has_materialized_dirty_bits =
+        MaterializeNewPipelineStyleMutationPlan(
+            mutation_plan, mutation_baseline, *resolved_styles.final_style);
+
+    AnimationPropertyChangeAnalysisForLegacyAnimator
+        animation_prop_change_analysis_for_legacy_animator;
+    if (!enable_new_animator()) {
+      // Animation/transition props are a special split point for the legacy
+      // animator. Generic ComputedCSSStyle dirty bits are later consumed by
+      // PushStyleToBundle(), so marking animation_data_ or transition_data_
+      // dirty there would make the new animator send duplicate platform
+      // animation props. Detect legacy-only animation changes separately and
+      // use the result only to commit the resolved style before
+      // FinalizeAnimationPropsChange() writes the legacy animation bundle.
+      animation_prop_change_analysis_for_legacy_animator =
+          AnalyzeAnimationPropChangesForLegacyAnimator(
+              *resolved_styles.final_style,
+              resolved_styles.previous_final_style,
+              resolved_styles.resolved_style_map);
+    }
+    const bool legacy_animation_changed =
+        animation_prop_change_analysis_for_legacy_animator
+            .has_transition_props_changed ||
+        animation_prop_change_analysis_for_legacy_animator
+            .has_keyframe_props_changed;
+    const bool should_commit = mutation_plan.NeedsSemanticCommit() ||
+                               dynamic_refresh_needed ||
+                               legacy_animation_changed;
+    const bool needs_element_update =
+        has_materialized_dirty_bits || mutation_plan.HasOperations() ||
+        dynamic_refresh_needed || legacy_animation_changed;
 
     if (!first_render) {
-      auto custom_properties_changed = [old_final_style, &resolved_styles]() {
-        const auto *new_raw_custom_properties =
-            resolved_styles.final_style->GetRawCustomProperties();
-        const auto *old_raw_custom_properties =
-            old_final_style->GetRawCustomProperties();
-        const auto *new_custom_properties =
-            resolved_styles.final_style->GetCustomProperties();
-        const auto *old_custom_properties =
-            old_final_style->GetCustomProperties();
-        return (new_raw_custom_properties == nullptr) !=
-                   (old_raw_custom_properties == nullptr) ||
-               (new_raw_custom_properties != nullptr &&
-                old_raw_custom_properties != nullptr &&
-                *new_raw_custom_properties != *old_raw_custom_properties) ||
-               (new_custom_properties == nullptr) !=
-                   (old_custom_properties == nullptr) ||
-               (new_custom_properties != nullptr &&
-                old_custom_properties != nullptr &&
-                *new_custom_properties != *old_custom_properties);
-      }();
-      const bool font_size_changed = style_resolver_.HasPropertyDiff(
-          *resolved_styles.final_style, kPropertyIDFontSize);
-      const bool root_font_size_changed = base::FloatsNotEqual(
-          old_root_font_size, resolved_styles.final_style->GetRootFontSize());
+      const bool font_size_changed = mutation_plan.font_size_context_changed;
+      const bool root_font_size_changed =
+          mutation_plan.root_font_size_context_changed;
       const bool inherited_dynamic_refresh_needed =
           (request.dynamic_update_flags &
            dynamic_style_inputs.inherited_dynamic_flags) != 0;
-      bool inherited_property_changed = false;
-      resolved_styles.final_style->ForEachChangedProperty(
-          [this, &inherited_property_changed](const auto id) {
-            inherited_property_changed |=
-                id != kPropertyIDFontSize && IsInheritable(id);
-          });
-      resolved_styles.final_style->ForEachResetProperty(
-          [this, &inherited_property_changed](const auto id) {
-            inherited_property_changed |=
-                id != kPropertyIDFontSize && IsInheritable(id);
-          });
-      outcome.force_children = custom_properties_changed || font_size_changed ||
-                               root_font_size_changed ||
+      const bool inherited_property_changed =
+          HasMaterializedInheritedPropertyMutation(
+              *resolved_styles.final_style);
+      outcome.force_children = mutation_plan.custom_properties_changed ||
+                               font_size_changed || root_font_size_changed ||
                                inherited_dynamic_refresh_needed ||
                                inherited_property_changed;
-      if (font_size_changed ||
-          base::FloatsNotEqual(old_font_size,
-                               resolved_styles.final_style->GetFontSize())) {
+      if (font_size_changed) {
         outcome.child_update_flags |= DynamicCSSStylesManager::kUpdateEm;
       }
       if (root_font_size_changed) {
         outcome.child_update_flags |= DynamicCSSStylesManager::kUpdateRem;
       }
 
-      if (custom_properties_changed) {
+      if (mutation_plan.custom_properties_changed) {
         HandleBeforeFlushActionsTask(
             [this]() { RecursivelyMarkCustomPropertiesDirty(); },
-            kFlagGreedyParallel | kFlagLevelOrderParallel);
+            kFlagGreedyParallel);
       }
       if (font_size_changed) {
         HandleBeforeFlushActionsTask(
             [this]() { InvalidateChildrenFontSizeRecursively(); },
-            kFlagGreedyParallel | kFlagLevelOrderParallel);
+            kFlagGreedyParallel);
       }
       if (inherited_property_changed) {
-        InvalidateChildrenInheritedStylesRecursively();
+        HandleBeforeFlushActionsTask(
+            [this]() {
+              MarkDirectChildrenStyleDirtyForInheritedPropertyMutation();
+              InvalidateChildrenInheritedStylesRecursively();
+            },
+            kFlagGreedyParallel);
       }
     }
 
     CSSIDBitset replayed_ids;
     if (should_commit) {
-      outcome.need_update = true;
+      outcome.need_update = needs_element_update;
       resolved_styles.CommitPlatformStyleIfNeeded(platform_css_style_,
                                                   should_commit);
+      if (EnableLayoutInElementMode()) {
+        auto *sl_node = slnode();
+        auto *layout_style = platform_css_style_->GetLayoutComputedStyle();
+        if (sl_node != nullptr && sl_node->GetCSSStyle() != layout_style) {
+          sl_node->SetLayoutStyle(layout_style);
+        }
+      }
+      // Commit font context unconditionally from final computed style.
+      // This ensures layout bundle root_node_font_size is in sync
+      // before any rem/em-sensitive layout styles are replayed.
       CommitFontContext(*platform_css_style_, old_font_size,
                         old_root_font_size);
-      if (style_changed) {
-        ReplayCommitSideEffects(*platform_css_style_,
-                                resolved_styles.resolved_style_map,
-                                &replayed_ids);
+      if (has_materialized_dirty_bits) {
+        ReplayMaterializedStyleSideEffects(*platform_css_style_, &replayed_ids,
+                                           &mutation_plan);
       }
-      if (style_changed && !first_render) {
-        for (const auto id : reset_layout_only_ids) {
-          if (replayed_ids.Has(id)) {
-            continue;
-          }
-          ReplayResetStyleSideEffect(id);
-          replayed_ids.Set(id);
-        }
-
-        for (const auto &[id, value] : changed_layout_only_styles) {
-          if (replayed_ids.Has(id)) {
-            continue;
-          }
-          ReplayChangedStyleSideEffect(id, value);
-          replayed_ids.Set(id);
-        }
+      if (mutation_plan.HasOperations()) {
+        ReplayNewPipelineStyleMutationPlanSideEffects(mutation_plan,
+                                                      &replayed_ids);
       }
       if (dynamic_refresh_needed) {
         ReplayDynamicResolvedStyleSideEffects(
             dynamic_style_inputs.resolved_style_map,
-            request.dynamic_update_flags, replayed_ids);
+            request.dynamic_update_flags, replayed_ids,
+            &mutation_plan.source_style_ids,
+            &dynamic_style_inputs.inherited_dynamic_ids);
       }
     }
+    FlushImperativeAnimationCleanupForNewPipeline(
+        *resolved_styles.final_style, outcome.need_update, &replayed_ids,
+        &mutation_plan.source_style_ids);
 
+    if (!enable_new_animator()) {
+      has_transition_props_changed_ |=
+          animation_prop_change_analysis_for_legacy_animator
+              .has_transition_props_changed;
+      has_keyframe_props_changed_ |=
+          animation_prop_change_analysis_for_legacy_animator
+              .has_keyframe_props_changed;
+      FinalizeAnimationPropsChange(outcome.need_update);
+    }
+
+    if (resolved_styles.underlying_layout_only_styles.empty()) {
+      committed_underlying_layout_only_styles_for_new_pipeline_.reset();
+    } else {
+      *committed_underlying_layout_only_styles_for_new_pipeline_ =
+          std::move(resolved_styles.underlying_layout_only_styles);
+    }
+    DispatchAnimationEventsForNewPipeline(TakeAnimationEventsForNewPipeline());
     resolved_styles.PersistBaseStyle(base_css_style_, should_commit);
     dynamic_style_flags_ = resolved_dynamic_style_flags;
 
     dirty_ &= ~(kDirtyStyle | kDirtyRefreshCSSVariables |
                 kDirtyPropagateInherited | kDirtyFontSize);
 
+    if (NeedsAnimationFrameForNewPipeline()) {
+      RequestNextFrame();
+    }
+
     if (has_cached_styles_from_attributes) {
       ClearCachedStylesFromAttributes();
+    }
+  } else {
+    FinalizeAnimationPropsChange(outcome.need_update);
+    if (platform_css_style_ != nullptr) {
+      FlushImperativeAnimationCleanupForNewPipeline(
+          *platform_css_style_, outcome.need_update, nullptr);
     }
   }
   return outcome;
@@ -1808,7 +2313,7 @@ void FiberElement::ResolveCSSStyles(
     }
     // #3. Review each property to determine whether the reset should be
     // intercepted.
-    if (css_transition_manager_ &&
+    if (ShouldUseLegacyTransitionInterception() && css_transition_manager_ &&
         css_transition_manager_->ConsumeCSSProperty(id, CSSValue())) {
       continue;
     }
@@ -2033,35 +2538,7 @@ void FiberElement::ResolveCSSStyles(
     pending_updated_direction_related_styles_.reset();
   }
 
-  // Report when enableNewAnimator is the default value.
-  if ((has_transition_props_changed_ || has_keyframe_props_changed_) &&
-      !enable_new_animator()) {
-    report::GlobalFeatureCounter::Count(
-        report::LynxFeature::CPP_ENABLE_NEW_ANIMATOR_DEFAULT,
-        element_manager()->GetInstanceId());
-  }
-  // keyframe props
-  if (has_keyframe_props_changed_) {
-    HandleDelayTask([this]() { HandleKeyframePropsChange(); });
-    if (!enable_new_animator()) {
-      PushToBundle(kPropertyIDAnimation);
-    }
-    need_update = true;
-  }
-
-  if (has_transition_props_changed_) {
-    TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_HANDLE_TRANSITION_PROPS,
-                [this](lynx::perfetto::EventContext ctx) {
-                  UpdateTraceDebugInfo(ctx.event());
-                });
-    if (!enable_new_animator()) {
-      PushToBundle(kPropertyIDTransition);
-    } else {
-      SetDataToNativeTransitionAnimator();
-    }
-    has_transition_props_changed_ = false;
-    need_update = true;
-  }
+  FinalizeAnimationPropsChange(need_update);
 }
 
 ParallelFlushReturn FiberElement::PrepareForCreateOrUpdate() {
@@ -2165,9 +2642,23 @@ ParallelFlushReturn FiberElement::PrepareForCreateOrUpdate() {
   return []() {};
 }
 
-void FiberElement::ReplayChangedStyleSideEffect(CSSPropertyID id,
-                                                const CSSValue &value) {
+bool FiberElement::ShouldPreserveLayoutOnlyForInheritedPlatformStyle(
+    CSSPropertyID id, const CSSIDBitset &source_style_ids) {
+  // Legacy inheritance consumes platform text props through InheritValue(),
+  // which avoids the normal non-layout style path that invalidates layout-only.
+  const bool layout_only_relevant = can_be_layout_only_ || is_layout_only_;
+  return layout_only_relevant && IsCSSInheritanceEnabled() &&
+         GetParentComputedCSSStyle() != nullptr && IsInheritable(id) &&
+         starlight::ComputedCSSStyle::IsPlatformInheritableProperty(id) &&
+         !source_style_ids.Has(id);
+}
+
+void FiberElement::ReplayChangedStyleSideEffect(
+    CSSPropertyID id, const CSSValue &value, StyleSideEffectReplayMode mode) {
   CheckDynamicUnit(id, value, false);
+  MarkLayoutInElementTextMeasurerPropertyIfNeeded(this, id);
+  const bool preserve_layout_only =
+      mode == StyleSideEffectReplayMode::kPreserveLayoutOnly;
 
   const bool is_layout_only = LayoutProperty::IsLayoutOnly(id);
   const bool need_layout = is_layout_only || LayoutProperty::IsLayoutWanted(id);
@@ -2188,13 +2679,14 @@ void FiberElement::ReplayChangedStyleSideEffect(CSSPropertyID id,
 
   if (id == kPropertyIDOverflow || id == kPropertyIDOverflowX ||
       id == kPropertyIDOverflowY) {
-    if (!computed_css_style()->IsOverflowXY()) {
+    if (!preserve_layout_only && !computed_css_style()->IsOverflowXY()) {
       has_layout_only_props_ = false;
     }
     return;
   }
 
-  if (!enable_extended_layout_only_opt_ || !IsExtendedLayoutOnlyProps(id)) {
+  if (!preserve_layout_only &&
+      (!enable_extended_layout_only_opt_ || !IsExtendedLayoutOnlyProps(id))) {
     has_layout_only_props_ = false;
   }
   if (CSSProperty::IsTransitionProps(id) || CSSProperty::IsKeyframeProps(id)) {
@@ -2204,10 +2696,14 @@ void FiberElement::ReplayChangedStyleSideEffect(CSSPropertyID id,
   }
 }
 
-void FiberElement::ReplayResetStyleSideEffect(CSSPropertyID id) {
+void FiberElement::ReplayResetStyleSideEffect(CSSPropertyID id,
+                                              StyleSideEffectReplayMode mode) {
+  MarkLayoutInElementTextMeasurerPropertyIfNeeded(this, id);
   if (id == kPropertyIDFontSize) {
     return;
   }
+  const bool preserve_layout_only =
+      mode == StyleSideEffectReplayMode::kPreserveLayoutOnly;
 
   const bool is_layout_only = LayoutProperty::IsLayoutOnly(id);
   const bool need_layout = is_layout_only || LayoutProperty::IsLayoutWanted(id);
@@ -2234,7 +2730,9 @@ void FiberElement::ReplayResetStyleSideEffect(CSSPropertyID id) {
     return;
   }
 
-  has_layout_only_props_ = false;
+  if (!preserve_layout_only) {
+    has_layout_only_props_ = false;
+  }
   if (CSSProperty::IsTransitionProps(id) || CSSProperty::IsKeyframeProps(id)) {
     has_non_flatten_attrs_ = true;
   }
@@ -2257,71 +2755,238 @@ void FiberElement::CommitFontContext(
   UpdateLayoutNodeFontSize(new_font_size, new_root_font_size);
 }
 
-void FiberElement::ReplayCommitSideEffects(
+FiberElement::NewPipelineStyleMutationPlan
+FiberElement::BuildNewPipelineStyleMutationPlan(
+    const NewPipelineStyleResolveResult &resolved_styles,
+    const NewPipelineDynamicStyleInputs &dynamic_inputs,
+    DynamicCSSStylesManager::StyleUpdateFlags requested_dynamic_flags,
+    bool first_render, double old_font_size, double old_root_font_size) const {
+  NewPipelineStyleMutationPlan plan;
+  plan.first_render = first_render;
+  plan.source_style_ids =
+      CSSIDBitset::FromKeys(resolved_styles.resolved_style_map);
+
+  const auto *previous_final_style =
+      first_render ? nullptr : resolved_styles.previous_final_style;
+  const auto &current_values = resolved_styles.final_style->GetResolvedValues();
+  static const StyleMap empty_style_map;
+  const auto &previous_values = previous_final_style != nullptr
+                                    ? previous_final_style->GetResolvedValues()
+                                    : empty_style_map;
+
+  if (previous_values.empty()) {
+    for (const auto &[id, value] : current_values) {
+      plan.AddUpdate(id, value);
+    }
+  } else if (current_values.empty()) {
+    for (const auto &[id, _] : previous_values) {
+      plan.AddReset(id);
+    }
+  } else {
+    std::array<const CSSValue *, kCSSPropertyCount> previous_values_by_id{};
+    for (const auto &[id, value] : previous_values) {
+      DCHECK(CSSProperty::IsPropertyValid(id));
+      previous_values_by_id[static_cast<size_t>(id)] = &value;
+    }
+
+    CSSIDBitset current_value_ids;
+    for (const auto &[id, value] : current_values) {
+      DCHECK(CSSProperty::IsPropertyValid(id));
+      current_value_ids.Set(id);
+      const auto *old_value = previous_values_by_id[static_cast<size_t>(id)];
+      if (old_value == nullptr || *old_value != value) {
+        plan.AddUpdate(id, value);
+      }
+    }
+
+    for (const auto &[id, _] : previous_values) {
+      if (!current_value_ids.Has(id)) {
+        plan.AddReset(id);
+      }
+    }
+  }
+
+  plan.custom_properties_changed = CustomPropertiesChanged(
+      previous_final_style, *resolved_styles.final_style);
+  if (plan.custom_properties_changed) {
+    for (const auto id : resolved_styles.variable_dependent_ids) {
+      auto it = current_values.find(id);
+      auto old_it = previous_values.find(id);
+      if (it != current_values.end() &&
+          (old_it == previous_values.end() || old_it->second != it->second)) {
+        plan.AddUpdate(id, it->second);
+      }
+    }
+  }
+
+  plan.font_size_context_changed = base::FloatsNotEqual(
+      old_font_size, resolved_styles.final_style->GetFontSize());
+  plan.root_font_size_context_changed = base::FloatsNotEqual(
+      old_root_font_size, resolved_styles.final_style->GetRootFontSize());
+
+  auto effective_dynamic_flags = requested_dynamic_flags;
+  if (plan.font_size_context_changed) {
+    effective_dynamic_flags |= DynamicCSSStylesManager::kUpdateEm;
+  }
+  if (plan.root_font_size_context_changed) {
+    effective_dynamic_flags |= DynamicCSSStylesManager::kUpdateRem;
+  }
+
+  if (effective_dynamic_flags != 0) {
+    const auto &css_config = element_manager()->GetDynamicCSSConfigs();
+    for (const auto &[id, value] : dynamic_inputs.resolved_style_map) {
+      const auto value_flags = DynamicCSSStylesManager::GetValueFlags(
+          id, value, css_config.unify_vw_vh_behavior_,
+          element_manager()->FixFilterDynamicUpdateBug());
+      if ((value_flags & effective_dynamic_flags) != 0) {
+        plan.AddUpdate(id, value);
+      }
+    }
+  }
+
+  return plan;
+}
+
+bool FiberElement::MaterializeNewPipelineStyleMutationPlan(
+    const NewPipelineStyleMutationPlan &plan,
+    const starlight::ComputedCSSStyle &baseline_style,
+    starlight::ComputedCSSStyle &final_style) const {
+  const auto &baseline_context = baseline_style.GetMeasureContext();
+  starlight::ComputedCSSStyle replay_style(
+      baseline_context.layouts_unit_per_px_,
+      baseline_context.physical_pixels_per_layout_unit_);
+  replay_style.CopyFrom(baseline_style);
+  replay_style.ClearDirtyBits();
+
+  if (plan.reset_ids.Has(kPropertyIDFontSize)) {
+    replay_style.SetFontSize(final_style.GetFontSize(),
+                             final_style.GetRootFontSize());
+    replay_style.ResetValue(kPropertyIDFontSize);
+  }
+  if (plan.update_ids.Has(kPropertyIDFontSize)) {
+    auto it = plan.update_values.find(kPropertyIDFontSize);
+    if (it != plan.update_values.end()) {
+      replay_style.SetFontSize(final_style.GetFontSize(),
+                               final_style.GetRootFontSize());
+      replay_style.SetValue(kPropertyIDFontSize, it->second);
+    }
+  }
+
+  for (const auto id : plan.reset_ids) {
+    if (id == kPropertyIDFontSize) {
+      continue;
+    }
+    replay_style.ResetValue(id);
+  }
+
+  for (const auto id : plan.update_ids) {
+    if (id == kPropertyIDFontSize) {
+      continue;
+    }
+    auto it = plan.update_values.find(id);
+    if (it != plan.update_values.end()) {
+      replay_style.SetValue(id, it->second);
+    }
+  }
+
+  final_style.CopyDirtyBitsFrom(replay_style);
+  return final_style.IsDirty();
+}
+
+bool FiberElement::HasMaterializedInheritedPropertyMutation(
+    const starlight::ComputedCSSStyle &style) const {
+  const auto &configs = element_manager()->GetDynamicCSSConfigs();
+  const auto &inheritable_props =
+      !configs.custom_inherit_list_.empty()
+          ? configs.custom_inherit_list_
+          : DynamicCSSStylesManager::GetInheritableProps();
+  bool result = false;
+  auto check_property = [&result, &inheritable_props](const auto id) {
+    result |= id != kPropertyIDFontSize &&
+              inheritable_props.find(id) != inheritable_props.end();
+  };
+  style.ForEachChangedProperty(check_property);
+  style.ForEachResetProperty(check_property);
+  return result;
+}
+
+void FiberElement::ReplayMaterializedStyleSideEffects(
     const starlight::ComputedCSSStyle &computed_style,
-    const StyleMap &resolved_style_map, CSSIDBitset *replayed_ids) {
-  TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_REPLAY_COMMIT_SIDE_EFFECTS);
-  const bool is_first_render = IsNewlyCreated();
-  const auto &resolved_values = computed_style.GetResolvedValues();
-  const auto resolved_style_map_end = resolved_style_map.end();
-  const auto resolved_values_end = resolved_values.end();
+    CSSIDBitset *replayed_ids, const NewPipelineStyleMutationPlan *plan) {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY,
+              FIBER_ELEMENT_REPLAY_MATERIALIZED_STYLE_SIDE_EFFECTS);
   auto mark_replayed = [replayed_ids](CSSPropertyID id) {
     if (replayed_ids != nullptr) {
       replayed_ids->Set(id);
     }
   };
-  if (!is_first_render) {
-    computed_style.ForEachResetProperty([&](const auto id) {
-      if (resolved_style_map.find(id) != resolved_style_map_end) {
-        return;
-      }
-      ReplayResetStyleSideEffect(id);
-      mark_replayed(id);
-    });
+  auto replay_mode = [this, plan](CSSPropertyID id) {
+    return plan != nullptr && ShouldPreserveLayoutOnlyForInheritedPlatformStyle(
+                                  id, plan->source_style_ids)
+               ? StyleSideEffectReplayMode::kPreserveLayoutOnly
+               : StyleSideEffectReplayMode::kNormal;
+  };
+
+  computed_style.ForEachResetProperty([&](const auto id) {
+    ReplayResetStyleSideEffect(id, replay_mode(id));
+    mark_replayed(id);
+  });
+
+  const auto &resolved_values = computed_style.GetResolvedValues();
+  computed_style.ForEachChangedProperty([&](const auto id) {
+    if (id == kPropertyIDFontSize) {
+      return;
+    }
+    auto it = resolved_values.find(id);
+    if (it == resolved_values.end()) {
+      return;
+    }
+    ReplayChangedStyleSideEffect(id, it->second, replay_mode(id));
+    mark_replayed(id);
+  });
+}
+
+void FiberElement::ReplayNewPipelineStyleMutationPlanSideEffects(
+    const NewPipelineStyleMutationPlan &plan, CSSIDBitset *replayed_ids) {
+  auto already_replayed = [replayed_ids](CSSPropertyID id) {
+    return replayed_ids != nullptr && replayed_ids->Has(id);
+  };
+  auto mark_replayed = [replayed_ids](CSSPropertyID id) {
+    if (replayed_ids != nullptr) {
+      replayed_ids->Set(id);
+    }
+  };
+
+  for (const auto id : plan.reset_ids) {
+    if (already_replayed(id)) {
+      continue;
+    }
+    const auto mode = ShouldPreserveLayoutOnlyForInheritedPlatformStyle(
+                          id, plan.source_style_ids)
+                          ? StyleSideEffectReplayMode::kPreserveLayoutOnly
+                          : StyleSideEffectReplayMode::kNormal;
+    ReplayResetStyleSideEffect(id, mode);
+    mark_replayed(id);
   }
 
-  if (is_first_render) {
-    CSSIDBitset explicit_style_ids = CSSIDBitset::FromKeys(resolved_style_map);
-    for (const auto &[id, value] : resolved_style_map) {
-      if (id == kPropertyIDFontSize) {
-        continue;
-      }
-      ReplayChangedStyleSideEffect(id, value);
-      mark_replayed(id);
+  for (const auto &[id, value] : plan.update_values) {
+    if (already_replayed(id) || id == kPropertyIDFontSize) {
+      continue;
     }
-    if (IsCSSInheritanceEnabled()) {
-      for (const auto &[id, value] : resolved_values) {
-        if (id == kPropertyIDFontSize || explicit_style_ids.Has(id)) {
-          continue;
-        }
-        ReplayChangedStyleSideEffect(id, value);
-        mark_replayed(id);
-      }
-    }
-  } else {
-    computed_style.ForEachChangedProperty([&](const auto id) {
-      if (id == kPropertyIDFontSize) {
-        return;
-      }
-      auto it = resolved_style_map.find(id);
-      if (it != resolved_style_map_end) {
-        ReplayChangedStyleSideEffect(id, it->second);
-        mark_replayed(id);
-        return;
-      }
-      auto resolved_it = resolved_values.find(id);
-      if (resolved_it != resolved_values_end) {
-        ReplayChangedStyleSideEffect(id, resolved_it->second);
-        mark_replayed(id);
-      }
-    });
+    const auto mode = ShouldPreserveLayoutOnlyForInheritedPlatformStyle(
+                          id, plan.source_style_ids)
+                          ? StyleSideEffectReplayMode::kPreserveLayoutOnly
+                          : StyleSideEffectReplayMode::kNormal;
+    ReplayChangedStyleSideEffect(id, value, mode);
+    mark_replayed(id);
   }
 }
 
 void FiberElement::ReplayDynamicResolvedStyleSideEffects(
     const StyleMap &resolved_style_map,
     DynamicCSSStylesManager::StyleUpdateFlags update_flags,
-    const CSSIDBitset &replayed_ids) {
+    const CSSIDBitset &replayed_ids, const CSSIDBitset *source_style_ids,
+    const CSSIDBitset *inherited_dynamic_ids) {
   if (update_flags == 0) {
     return;
   }
@@ -2338,7 +3003,15 @@ void FiberElement::ReplayDynamicResolvedStyleSideEffects(
     if ((value_flags & update_flags) == 0) {
       continue;
     }
-    ReplayChangedStyleSideEffect(id, value);
+    const bool preserve_layout_only =
+        source_style_ids != nullptr && inherited_dynamic_ids != nullptr &&
+        inherited_dynamic_ids->Has(id) &&
+        ShouldPreserveLayoutOnlyForInheritedPlatformStyle(id,
+                                                          *source_style_ids);
+    ReplayChangedStyleSideEffect(
+        id, value,
+        preserve_layout_only ? StyleSideEffectReplayMode::kPreserveLayoutOnly
+                             : StyleSideEffectReplayMode::kNormal);
   }
 }
 
@@ -2997,7 +3670,8 @@ void FiberElement::ConsumeStyle(const StyleMap &styles,
         }
         // #3. Check every property to determine whether to intercept this
         // update.
-        if (css_transition_manager_ &&
+        if (ShouldUseLegacyTransitionInterception() &&
+            css_transition_manager_ &&
             css_transition_manager_->ConsumeCSSProperty(id, value)) {
           return true;
         }
@@ -3454,6 +4128,15 @@ void FiberElement::RecursivelyMarkCustomPropertiesDirty() {
       fiber_child->MarkStyleDirty(false);
     }
     fiber_child->RecursivelyMarkCustomPropertiesDirty();
+  }
+}
+
+void FiberElement::MarkDirectChildrenStyleDirtyForInheritedPropertyMutation() {
+  for (const auto &child : scoped_children_) {
+    auto *fiber_child = static_cast<FiberElement *>(child.get());
+    if (!fiber_child->is_raw_text()) {
+      fiber_child->MarkStyleDirty(false);
+    }
   }
 }
 
@@ -4150,7 +4833,7 @@ bool FiberElement::TryResolveLogicStyleAndSaveDirectionRelatedStyle(
   auto res = ConvertRtlCSSPropertyID(id);
   if (res.first) {
     // Consume and record transition style first before RTL mode.
-    if (css_transition_manager_ &&
+    if (ShouldUseLegacyTransitionInterception() && css_transition_manager_ &&
         css_transition_manager_->ConsumeCSSProperty(id, value)) {
       return true;
     }
@@ -4517,7 +5200,8 @@ void FiberElement::UpdateDynamicElementStyleRecursively(uint32_t style,
               return true;
             }
 
-            if (css_transition_manager_) {
+            if (ShouldUseLegacyTransitionInterception() &&
+                css_transition_manager_) {
               if (IsFiberArch()) {
                 const bool skip_transition =
                     element_manager_ &&

@@ -12,6 +12,7 @@ fiber_shared_sources = [
   "component_element.h",
   "fiber_element.cc",
   "fiber_element.h",
+  "fiber_element_imperative_animation.cc",
   "fiber_node_info.cc",
   "fiber_node_info.h",
   "for_element.cc",

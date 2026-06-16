@@ -14,6 +14,7 @@
 #include "core/renderer/css/ng/parser/css_tokenizer.h"
 #include "core/renderer/css/ng/selector/css_parser_context.h"
 #include "core/renderer/css/ng/selector/css_selector_parser.h"
+#include "core/renderer/css/parser/css_string_parser.h"
 #include "core/renderer/css/shared_css_fragment.h"
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/dom/fiber/component_element.h"
@@ -37,6 +38,13 @@ static constexpr float kDefaultLayoutsUnitPerPx = 1.f;
 static constexpr double kDefaultPhysicalPixelsPerLayoutUnit = 1.f;
 
 using namespace css;
+
+static CSSValue ParseVariableValue(const char* raw_value,
+                                   const CSSParserConfigs& configs) {
+  lepus::Value value(raw_value);
+  CSSStringParser parser = CSSStringParser::FromLepusString(value, configs);
+  return parser.ParseVariable();
+}
 
 // Mock implementation of SimpleStyleNode for testing
 class MockSimpleStyleNode : public lynx::style::SimpleStyleNode {
@@ -1872,6 +1880,39 @@ TEST_F(CSSPatchingTest,
 }
 
 TEST_F(CSSPatchingTest,
+       NewStylingAnalyzeMatchedResultClearsVariableDependentIds) {
+  auto element = manager->CreateFiberView();
+  StyleMap matched_styles;
+  matched_styles.insert_or_assign(
+      CSSPropertyID::kPropertyIDWidth,
+      ParseVariableValue("var(--width)", manager->GetCSSParserConfigs()));
+  CSSVariableMap matched_variables;
+  matched_variables.insert_or_assign(base::String("--width"),
+                                     base::String("24px"));
+  StyleResolver::matched_style_map.push_back(&matched_styles);
+  StyleResolver::matched_variable_map.push_back(&matched_variables);
+
+  starlight::ComputedCSSStyle style(*manager->platform_computed_css());
+  StyleMap result;
+  CSSIDBitset variable_dependent_ids;
+  variable_dependent_ids.Set(CSSPropertyID::kPropertyIDHeight);
+
+  element->style_resolver_.AnalyzeMatchedResult(
+      style, result, 0, nullptr, nullptr, &variable_dependent_ids);
+
+  const bool still_has_stale_id =
+      variable_dependent_ids.Has(CSSPropertyID::kPropertyIDHeight);
+  const bool has_current_var_id =
+      variable_dependent_ids.Has(CSSPropertyID::kPropertyIDWidth);
+  StyleResolver::matched_style_map.clear();
+  StyleResolver::matched_variable_map.clear();
+
+  ExpectPxStyle(result, CSSPropertyID::kPropertyIDWidth, 24);
+  EXPECT_FALSE(still_has_stale_id);
+  EXPECT_TRUE(has_current_var_id);
+}
+
+TEST_F(CSSPatchingTest,
        NewStylingCollectStaticStyleInputsCollectsEachInputSource) {
   lynx::base::AutoReset<bool> css_inline_config(
       &(manager->GetConfig()->css_configs_.enable_css_inline_variables_), true);
@@ -1912,6 +1953,28 @@ TEST_F(CSSPatchingTest,
   StyleResolver::matched_style_map.clear();
   StyleResolver::matched_important_style_map.clear();
   StyleResolver::matched_variable_map.clear();
+}
+
+TEST_F(CSSPatchingTest,
+       NewStylingSelectorExtremeParsedStylesCollectsCommittedAttributeStyles) {
+  auto element = manager->CreateFiberScrollView("scroll-view");
+  element->CacheStyleFromAttributes(CSSPropertyID::kPropertyIDHeight,
+                                    CSSValue(33, CSSValuePattern::PX));
+
+  StyleMap parsed_style_map;
+  parsed_style_map.insert_or_assign(CSSPropertyID::kPropertyIDWidth,
+                                    CSSValue(48, CSSValuePattern::PX));
+  ParsedStyles parsed_styles{std::move(parsed_style_map), CSSVariableMap{}};
+  lepus::Value config = lepus::Value(lepus::Dictionary::Create());
+  config.SetProperty("selectorParsedStyles", lepus::Value(true));
+  element->SetParsedStyles(parsed_styles, config);
+
+  starlight::ComputedCSSStyle style(*manager->platform_computed_css());
+  StyleResolver::NewPipelineCollectedStyleInputs inputs;
+  element->style_resolver_.CollectStaticStyleInputs(style, inputs, 0);
+
+  ExpectPxStyle(inputs.matched_styles, CSSPropertyID::kPropertyIDWidth, 48);
+  ExpectPxStyle(inputs.attribute_styles, CSSPropertyID::kPropertyIDHeight, 33);
 }
 
 TEST_F(CSSPatchingTest,
@@ -2032,9 +2095,12 @@ TEST_F(CSSPatchingTest,
   source.insert_or_assign(CSSPropertyID::kPropertyIDTop, var_value);
 
   StyleMap result;
-  element->style_resolver_.ResolveSpecifiedStyleMap(style, source, result);
+  CSSIDBitset variable_dependent_ids;
+  element->style_resolver_.ResolveSpecifiedStyleMap(style, source, result,
+                                                    &variable_dependent_ids);
 
   ExpectPxStyle(result, CSSPropertyID::kPropertyIDTop, 32);
+  EXPECT_TRUE(variable_dependent_ids.Has(CSSPropertyID::kPropertyIDTop));
 }
 
 TEST_F(CSSPatchingTest,
@@ -2145,7 +2211,7 @@ TEST_F(CSSPatchingTest,
 }
 
 TEST_F(CSSPatchingTest,
-       NewStylingApplyResolvedStyleMapMarksDefaultPlatformInputDirty) {
+       NewStylingApplyResolvedStyleMapDoesNotMaterializeDefaultInputDirty) {
   auto page = CreatePageRoot(16.0);
   auto element = manager->CreateFiberView();
   page->InsertNode(element);
@@ -2157,7 +2223,7 @@ TEST_F(CSSPatchingTest,
 
   element->style_resolver_.ApplyResolvedStyleMap(style, style_map);
 
-  EXPECT_TRUE(style.GetChangedBitset().Has(CSSPropertyID::kPropertyIDOpacity));
+  EXPECT_FALSE(style.GetChangedBitset().Has(CSSPropertyID::kPropertyIDOpacity));
   ExpectNumberStyle(style.GetResolvedValues(),
                     CSSPropertyID::kPropertyIDOpacity, 1.0);
 }
@@ -2399,221 +2465,88 @@ TEST_F(CSSPatchingTest,
   EXPECT_TRUE(placeholder_it->second->style_map_.contains(kPropertyIDColor));
 }
 
-TEST_F(CSSPatchingTest, NewStylingComputeStyleDiffIgnoresEqualCopiedData) {
+TEST_F(CSSPatchingTest,
+       NewStylingLegacyAnimatorDetectsAnimationAndTransitionDataChanges) {
   auto page = CreatePageRoot(16.0);
   auto element = manager->CreateFiberView();
   page->InsertNode(element);
+  element->ResetAllDirtyBits();
 
   starlight::ComputedCSSStyle old_style(*manager->platform_computed_css());
-  old_style.SetValue(CSSPropertyID::kPropertyIDWidth,
-                     CSSValue(20, CSSValuePattern::PX), false);
+  old_style.animation_data().emplace_back();
+  old_style.animation_data()[0].name = base::String("move");
+  old_style.animation_data()[0].duration = 2000;
+  old_style.transition_data().durations.emplace_back(1000);
   old_style.ClearChanged();
   old_style.ClearReset();
 
   starlight::ComputedCSSStyle new_style(*manager->platform_computed_css());
   new_style.CopyFrom(old_style);
+  new_style.animation_data().clear();
+  new_style.animation_data().emplace_back();
+  new_style.animation_data()[0].name = base::String("move");
+  new_style.animation_data()[0].duration = 2300;
+  new_style.animation_data().emplace_back();
+  new_style.animation_data()[1].name = base::String("color");
+  new_style.animation_data()[1].duration = 1000;
+  new_style.animation_data().emplace_back();
+  new_style.animation_data()[2].name = base::String("opacity");
+  new_style.animation_data()[2].duration = 700;
+  new_style.transition_data().durations.clear();
+  new_style.transition_data().durations.emplace_back(1300);
   new_style.ClearChanged();
   new_style.ClearReset();
 
-  EXPECT_FALSE(element->style_resolver_.ComputeStyleDiff(new_style, old_style));
   EXPECT_FALSE(new_style.IsDirty());
+  EXPECT_FALSE(HasChanged(new_style, CSSPropertyID::kPropertyIDAnimation));
+  EXPECT_FALSE(HasChanged(new_style, CSSPropertyID::kPropertyIDTransition));
+
+  auto analysis = element->AnalyzeAnimationPropChangesForLegacyAnimator(
+      new_style, &old_style, {});
+  EXPECT_TRUE(analysis.has_keyframe_props_changed);
+  EXPECT_TRUE(analysis.has_transition_props_changed);
 }
 
 TEST_F(CSSPatchingTest,
-       NewStylingComputeStyleDiffMarksLayoutVisualTextAndPlaceholderChanges) {
+       NewStylingNewAnimatorDoesNotWriteAnimationOrTransitionToPropBundle) {
+  manager->enable_new_styling_pipeline_ = true;
   auto page = CreatePageRoot(16.0);
   auto element = manager->CreateFiberView();
+  element->enable_new_animator_ = true;
   page->InsertNode(element);
 
-  starlight::ComputedCSSStyle old_style(*manager->platform_computed_css());
-  starlight::ComputedCSSStyle new_style(*manager->platform_computed_css());
-  new_style.CopyFrom(old_style);
-  new_style.SetValue(CSSPropertyID::kPropertyIDWidth,
-                     CSSValue(20, CSSValuePattern::PX), false);
-  new_style.SetValue(CSSPropertyID::kPropertyIDOpacity,
-                     CSSValue(0.5, CSSValuePattern::NUMBER), false);
-  new_style.SetValue(
-      CSSPropertyID::kPropertyIDColor,
-      CSSValue(static_cast<uint32_t>(0xff0000ff), CSSValuePattern::NUMBER),
-      false);
-  new_style.SetValue(CSSPropertyID::kPropertyIDXPlaceholderFontSize,
-                     CSSValue(18, CSSValuePattern::PX), false);
-  new_style.SetCustomProperty(base::String("--accent"),
-                              CSSValue::MakePlainString("red"));
-  new_style.FinalizeCustomProperties();
-  new_style.ClearChanged();
-  new_style.ClearReset();
+  element->SetStyle(CSSPropertyID::kPropertyIDAnimation,
+                    lepus::Value("move 2000ms linear 0ms 1 normal both"));
+  element->SetStyle(CSSPropertyID::kPropertyIDTransition,
+                    lepus::Value("opacity 1000ms linear 0ms"));
+  element->SetStyle(CSSPropertyID::kPropertyIDZIndex, lepus::Value("1"));
+  page->FlushActionsAsRoot();
 
-  EXPECT_TRUE(element->style_resolver_.ComputeStyleDiff(new_style, old_style));
-  EXPECT_TRUE(HasChanged(new_style, CSSPropertyID::kPropertyIDWidth));
-  EXPECT_TRUE(HasChanged(new_style, CSSPropertyID::kPropertyIDOpacity));
-  EXPECT_TRUE(HasChanged(new_style, CSSPropertyID::kPropertyIDColor));
-  EXPECT_TRUE(
-      HasChanged(new_style, CSSPropertyID::kPropertyIDXPlaceholderFontSize));
-}
+  element->SetStyle(CSSPropertyID::kPropertyIDAnimation,
+                    lepus::Value("move 2300ms linear 0ms 1 normal both, "
+                                 "color 1000ms linear 0ms 1 normal both, "
+                                 "opacity 700ms linear 0ms 1 normal both"));
+  element->SetStyle(CSSPropertyID::kPropertyIDTransition,
+                    lepus::Value("opacity 1300ms linear 0ms"));
+  element->SetStyle(CSSPropertyID::kPropertyIDZIndex, lepus::Value("2"));
+  page->FlushActionsAsRoot();
 
-TEST_F(CSSPatchingTest, NewStylingComputeStyleDiffMarksMaskCompositeChanges) {
-  auto page = CreatePageRoot(16.0);
-  auto element = manager->CreateFiberView();
-  page->InsertNode(element);
-
-  starlight::ComputedCSSStyle old_style(*manager->platform_computed_css());
-  starlight::ComputedCSSStyle new_style(*manager->platform_computed_css());
-  new_style.CopyFrom(old_style);
-  new_style.mask_data_.emplace();
-  new_style.mask_data_->image_data.emplace();
-  new_style.mask_data_->image_data->composite.emplace_back(
-      starlight::MaskCompositeType::kSubtract);
-  new_style.ClearChanged();
-  new_style.ClearReset();
-
-  EXPECT_TRUE(element->style_resolver_.ComputeStyleDiff(new_style, old_style));
-  EXPECT_TRUE(HasChanged(new_style, CSSPropertyID::kPropertyIDMaskComposite));
-
-  starlight::ComputedCSSStyle reset_old_style(
-      *manager->platform_computed_css());
-  reset_old_style.mask_data_.emplace();
-  reset_old_style.mask_data_->image_data.emplace();
-  reset_old_style.mask_data_->image_data->composite.emplace_back(
-      starlight::MaskCompositeType::kSubtract);
-  reset_old_style.ClearChanged();
-  reset_old_style.ClearReset();
-
-  starlight::ComputedCSSStyle reset_new_style(
-      *manager->platform_computed_css());
-  reset_new_style.CopyFrom(reset_old_style);
-  reset_new_style.mask_data_->image_data->composite.clear();
-  reset_new_style.ClearChanged();
-  reset_new_style.ClearReset();
-
-  EXPECT_TRUE(element->style_resolver_.ComputeStyleDiff(reset_new_style,
-                                                        reset_old_style));
-  EXPECT_TRUE(
-      HasChanged(reset_new_style, CSSPropertyID::kPropertyIDMaskComposite));
-}
-
-TEST_F(CSSPatchingTest, NewStylingComputeStyleDiffMarksCaretExtensionChanges) {
-  auto page = CreatePageRoot(16.0);
-  auto element = manager->CreateFiberView();
-  page->InsertNode(element);
-
-  starlight::ComputedCSSStyle old_style(*manager->platform_computed_css());
-  starlight::ComputedCSSStyle new_style(*manager->platform_computed_css());
-  new_style.CopyFrom(old_style);
-  new_style.caret_gradient_ = base::String("linear-gradient(red, blue)");
-  new_style.caret_width_ = 2.f;
-  new_style.caret_height_ = 16.f;
-  new_style.caret_radius_ = 1.f;
-  new_style.ClearChanged();
-  new_style.ClearReset();
-
-  EXPECT_TRUE(element->style_resolver_.ComputeStyleDiff(new_style, old_style));
-  EXPECT_TRUE(HasChanged(new_style, CSSPropertyID::kPropertyIDXCaretGradient));
-  EXPECT_TRUE(HasChanged(new_style, CSSPropertyID::kPropertyIDXCaretWidth));
-  EXPECT_TRUE(HasChanged(new_style, CSSPropertyID::kPropertyIDXCaretHeight));
-  EXPECT_TRUE(HasChanged(new_style, CSSPropertyID::kPropertyIDXCaretRadius));
-
-  starlight::ComputedCSSStyle reset_old_style(
-      *manager->platform_computed_css());
-  reset_old_style.caret_gradient_ = base::String("linear-gradient(red, blue)");
-  reset_old_style.caret_width_ = 2.f;
-  reset_old_style.caret_height_ = 16.f;
-  reset_old_style.caret_radius_ = 1.f;
-  reset_old_style.ClearChanged();
-  reset_old_style.ClearReset();
-
-  starlight::ComputedCSSStyle reset_new_style(
-      *manager->platform_computed_css());
-  reset_new_style.CopyFrom(reset_old_style);
-  reset_new_style.caret_gradient_ = base::String("none");
-  reset_new_style.caret_width_ = starlight::DefaultComputedStyle::DEFAULT_FLOAT;
-  reset_new_style.caret_height_ =
-      starlight::DefaultComputedStyle::DEFAULT_FLOAT;
-  reset_new_style.caret_radius_ =
-      starlight::DefaultComputedStyle::DEFAULT_FLOAT;
-  reset_new_style.ClearChanged();
-  reset_new_style.ClearReset();
-
-  EXPECT_TRUE(element->style_resolver_.ComputeStyleDiff(reset_new_style,
-                                                        reset_old_style));
-  EXPECT_TRUE(
-      HasChanged(reset_new_style, CSSPropertyID::kPropertyIDXCaretGradient));
-  EXPECT_TRUE(
-      HasChanged(reset_new_style, CSSPropertyID::kPropertyIDXCaretWidth));
-  EXPECT_TRUE(
-      HasChanged(reset_new_style, CSSPropertyID::kPropertyIDXCaretHeight));
-  EXPECT_TRUE(
-      HasChanged(reset_new_style, CSSPropertyID::kPropertyIDXCaretRadius));
-}
-
-TEST_F(CSSPatchingTest,
-       NewStylingHasInheritedPropertyDiffUsesDefaultInheritList) {
-  auto page = CreatePageRoot(16.0);
-  auto element = manager->CreateFiberView();
-  page->InsertNode(element);
-
-  const auto& configs = manager->GetDynamicCSSConfigs();
-
-  starlight::ComputedCSSStyle layout_only_style(
-      *manager->platform_computed_css());
-  layout_only_style.MarkChanged(CSSPropertyID::kPropertyIDWidth);
-  EXPECT_FALSE(element->style_resolver_.HasInheritedPropertyDiff(
-      layout_only_style, configs));
-
-  starlight::ComputedCSSStyle inherited_changed_style(
-      *manager->platform_computed_css());
-  inherited_changed_style.MarkChanged(CSSPropertyID::kPropertyIDColor);
-  EXPECT_TRUE(element->style_resolver_.HasInheritedPropertyDiff(
-      inherited_changed_style, configs));
-
-  starlight::ComputedCSSStyle inherited_reset_style(
-      *manager->platform_computed_css());
-  inherited_reset_style.MarkReset(CSSPropertyID::kPropertyIDFontSize);
-  EXPECT_TRUE(element->style_resolver_.HasInheritedPropertyDiff(
-      inherited_reset_style, configs));
-}
-
-TEST_F(CSSPatchingTest,
-       NewStylingHasInheritedPropertyDiffUsesCustomInheritList) {
-  auto page = CreatePageRoot(16.0);
-  auto element = manager->CreateFiberView();
-  page->InsertNode(element);
-
-  DynamicCSSConfigs custom_configs;
-  custom_configs.custom_inherit_list_.insert(CSSPropertyID::kPropertyIDWidth);
-
-  starlight::ComputedCSSStyle default_inherited_style(
-      *manager->platform_computed_css());
-  default_inherited_style.MarkChanged(CSSPropertyID::kPropertyIDColor);
-  EXPECT_FALSE(element->style_resolver_.HasInheritedPropertyDiff(
-      default_inherited_style, custom_configs));
-
-  starlight::ComputedCSSStyle custom_inherited_style(
-      *manager->platform_computed_css());
-  custom_inherited_style.MarkChanged(CSSPropertyID::kPropertyIDWidth);
-  EXPECT_TRUE(element->style_resolver_.HasInheritedPropertyDiff(
-      custom_inherited_style, custom_configs));
-}
-
-TEST_F(CSSPatchingTest,
-       NewStylingHasInheritedPropertyDiffCatchesDefaultResetDiff) {
-  auto page = CreatePageRoot(16.0);
-  auto element = manager->CreateFiberView();
-  page->InsertNode(element);
-
-  starlight::ComputedCSSStyle old_style(*manager->platform_computed_css());
-  old_style.SetValue(
-      CSSPropertyID::kPropertyIDColor,
-      CSSValue(static_cast<uint32_t>(0xffff0000), CSSValuePattern::NUMBER),
-      false);
-  old_style.ClearChanged();
-  old_style.ClearReset();
-
-  starlight::ComputedCSSStyle new_style(*manager->platform_computed_css());
-  EXPECT_TRUE(element->style_resolver_.ComputeStyleDiff(new_style, old_style));
-  EXPECT_TRUE(HasChanged(new_style, CSSPropertyID::kPropertyIDColor));
-  EXPECT_TRUE(element->style_resolver_.HasInheritedPropertyDiff(
-      new_style, manager->GetDynamicCSSConfigs()));
+  auto* painting_context =
+      static_cast<MockPaintingContext*>(manager->painting_context()->impl());
+  auto painting_node_iter =
+      painting_context->node_map_.find(element->impl_id());
+  ASSERT_NE(painting_node_iter, painting_context->node_map_.end());
+  const auto& props = painting_node_iter->second->props_;
+  auto z_index_it = props.find(
+      CSSProperty::GetPropertyNameCStr(CSSPropertyID::kPropertyIDZIndex));
+  ASSERT_NE(z_index_it, props.end());
+  EXPECT_EQ(z_index_it->second.Number(), 2);
+  EXPECT_EQ(props.find(CSSProperty::GetPropertyNameCStr(
+                CSSPropertyID::kPropertyIDAnimation)),
+            props.end());
+  EXPECT_EQ(props.find(CSSProperty::GetPropertyNameCStr(
+                CSSPropertyID::kPropertyIDTransition)),
+            props.end());
 }
 
 TEST_F(CSSPatchingTest,
@@ -2642,6 +2575,30 @@ TEST_F(CSSPatchingTest,
   ExpectPxStyle(final_style->GetResolvedValues(),
                 CSSPropertyID::kPropertyIDWidth, 44);
   ExpectPxStyle(resolved_style_map, CSSPropertyID::kPropertyIDWidth, 44);
+}
+
+TEST_F(
+    CSSPatchingTest,
+    NewStylingBuildFinalStyleFromBaseFastPathTracksVariableDependenciesWithoutResolvedMap) {
+  auto page = CreatePageRoot(16.0);
+  auto element = manager->CreateFiberView();
+  page->InsertNode(element);
+
+  starlight::ComputedCSSStyle base_style(*manager->platform_computed_css());
+  base_style.SetFontSize(16.0, 16.0);
+
+  StyleMap sampled_property_overrides;
+  sampled_property_overrides.insert_or_assign(
+      CSSPropertyID::kPropertyIDWidth,
+      ParseVariableValue("var(--width)", manager->GetCSSParserConfigs()));
+
+  CSSIDBitset variable_dependent_ids;
+  auto final_style = element->style_resolver_.BuildFinalStyleFromBaseFastPath(
+      base_style, &sampled_property_overrides, nullptr,
+      &variable_dependent_ids);
+
+  ASSERT_NE(final_style, nullptr);
+  EXPECT_TRUE(variable_dependent_ids.Has(CSSPropertyID::kPropertyIDWidth));
 }
 
 TEST_F(CSSPatchingTest,

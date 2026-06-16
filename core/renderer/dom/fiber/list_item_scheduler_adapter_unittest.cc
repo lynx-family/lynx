@@ -564,6 +564,74 @@ TEST_P(ListItemSchedulerAdapterTest,
               list::BatchRenderStrategy::kBatchRender);
 }
 
+TEST_P(ListItemSchedulerAdapterTest,
+       NewStylingDowngradesAsyncBatchRenderStrategyFromPipelineConfig) {
+  auto config = std::make_shared<PageConfig>();
+  config->SetPipelineSchedulerConfig(
+      kEnableParallelElementMask | kEnableListBatchRenderMask |
+      kEnableListBatchRenderAsyncResolvePropertyMask |
+      kEnableListBatchRenderAsyncResolveTreeMask);
+  config->SetEnableFiberArch(true);
+  config->SetEnableNewStylingPipeline(true);
+  manager->SetConfig(config);
+  manager->SetEnableParallelElement(true);
+
+  auto page = manager->CreateFiberPage("page", 10);
+  auto list = CreateListElement();
+
+  EXPECT_EQ(list::BatchRenderStrategy::kBatchRender,
+            list->batch_render_strategy_);
+  EXPECT_FALSE(list->NeedAsyncResolveListItem());
+}
+
+TEST_P(ListItemSchedulerAdapterTest,
+       NewStylingDowngradesAsyncBatchRenderStrategyFromAttribute) {
+  auto config = std::make_shared<PageConfig>();
+  config->SetPipelineSchedulerConfig(kEnableListBatchRenderMask);
+  config->SetEnableFiberArch(true);
+  config->SetEnableNewStylingPipeline(true);
+  manager->SetConfig(config);
+  manager->SetEnableParallelElement(true);
+
+  auto page = manager->CreateFiberPage("page", 10);
+  auto list = CreateListElement();
+
+  list->SetAttribute(list::kExperimentalBatchRenderStrategy, lepus::Value(3));
+  list->PrepareForCreateOrUpdate();
+
+  EXPECT_EQ(list::BatchRenderStrategy::kBatchRender,
+            list->batch_render_strategy_);
+  EXPECT_FALSE(list->NeedAsyncResolveListItem());
+}
+
+TEST_P(ListItemSchedulerAdapterTest,
+       NewStylingBatchRenderDoesNotCreateListItemScheduler) {
+  auto config = std::make_shared<PageConfig>();
+  config->SetPipelineSchedulerConfig(
+      kEnableParallelElementMask | kEnableListBatchRenderMask |
+      kEnableListBatchRenderAsyncResolvePropertyMask |
+      kEnableListBatchRenderAsyncResolveTreeMask);
+  config->SetEnableFiberArch(true);
+  config->SetEnableNewStylingPipeline(true);
+  manager->SetConfig(config);
+  manager->SetEnableParallelElement(true);
+
+  auto page = manager->CreateFiberPage("page", 10);
+  auto list = CreateListElement();
+  list->SetAttribute(list::kExperimentalBatchRenderStrategy, lepus::Value(3));
+  page->InsertNode(list);
+  auto options = std::make_shared<PipelineOptions>();
+  manager->OnPatchFinish(options);
+  auto wrapper = manager->CreateFiberWrapperElement();
+
+  list->InsertNode(wrapper);
+  manager->OnPatchFinish(options);
+
+  EXPECT_FALSE(list->NeedAsyncResolveListItem());
+  EXPECT_EQ(nullptr, wrapper->scheduler_adapter_);
+  EXPECT_FALSE(wrapper->element_context_delegate_->IsListItemElementContext());
+}
+
 TEST_P(ListItemSchedulerAdapterTest, TestListBatchRenderStrategyIllegalValue) {
   auto config = std::make_shared<PageConfig>();
   config->SetPipelineSchedulerConfig(kEnableListBatchRenderMask);

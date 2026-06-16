@@ -210,6 +210,8 @@ Element::Element(const Element& element, bool clone_resolved_props)
       record_parent_font_size_(element.record_parent_font_size_),
       global_bind_target_set_(element.global_bind_target_set_),
       animation_previous_styles_(element.animation_previous_styles_),
+      committed_underlying_layout_only_styles_for_new_pipeline_(
+          element.committed_underlying_layout_only_styles_for_new_pipeline_),
       template_attributes_(element.template_attributes_) {
   if (element.base_css_style() != nullptr) {
     base_css_style_ = std::make_unique<starlight::ComputedCSSStyle>(
@@ -458,7 +460,6 @@ void Element::SetStyleInternal(CSSPropertyID css_id,
         css_info->set_string_value(CSSProperty::GetPropertyNameCStr(css_id));
       });
   CheckDynamicUnit(css_id, value, false);
-
   // font-size has be handled, just ignore it.
   if (css_id == kPropertyIDFontSize) {
     return;
@@ -697,7 +698,7 @@ void Element::ResetStyle(const base::Vector<CSSPropertyID>& css_names) {
     }
     // #3. Review each property to determine whether the reset should be
     // intercepted.
-    if (css_transition_manager_ &&
+    if (ShouldUseLegacyTransitionInterception() && css_transition_manager_ &&
         css_transition_manager_->ConsumeCSSProperty(css_id, CSSValue())) {
       continue;
     }
@@ -2074,6 +2075,18 @@ bool Element::TickAllAnimation(fml::TimePoint& frame_time,
                                std::shared_ptr<PipelineOptions>& options) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, ELEMENT_TICK_ALL_ANIMATION);
 
+  if (element_manager_->EnableNewStylingPipeline() && enable_new_animator_) {
+    RequireFlush();
+    SetAnimationSampleTimeForNewPipeline(frame_time);
+    MarkStyleDirty();
+    options->resolve_requested = true;
+    options->target_node = this->impl_id();
+    return true;
+  }
+  if (element_manager_->EnableNewStylingPipeline() && !enable_new_animator_) {
+    return false;
+  }
+
   if (css_transition_manager_ != nullptr) {
     css_transition_manager_->TickAllAnimation(frame_time);
   }
@@ -2094,6 +2107,40 @@ bool Element::TickAllAnimation(fml::TimePoint& frame_time,
     }
   }
   return need_layout;
+}
+
+void Element::SetAnimationSampleTimeForNewPipeline(
+    const fml::TimePoint& sample_time) {
+  animation_sample_time_for_new_pipeline_ = sample_time;
+}
+
+base::flex_optional<fml::TimePoint>
+Element::TakeAnimationSampleTimeForNewPipeline() {
+  auto sample_time = std::move(animation_sample_time_for_new_pipeline_);
+  animation_sample_time_for_new_pipeline_ = std::nullopt;
+  return sample_time;
+}
+
+void Element::DispatchAnimationEventsForNewPipeline(
+    const animation::AnimationEventRecordsForNewPipeline& event_records) {
+  for (const auto& event_record : event_records) {
+    auto animation = event_record.animation;
+    if (animation == nullptr) {
+      continue;
+    }
+    if (event_record.send_cancel_event) {
+      animation->SendCancelEvent();
+    }
+    if (event_record.send_start_event) {
+      animation->SendStartEvent();
+    }
+    for (int i = 0; i < event_record.iteration_events_due; ++i) {
+      animation->SendIterationEvent();
+    }
+    if (event_record.send_end_event) {
+      animation->SendEndEvent();
+    }
+  }
 }
 
 void Element::UpdateFinalStyleMap(const StyleMap& styles) {
@@ -2199,7 +2246,12 @@ void Element::DispatchBundleToPaintingNode(fml::RefPtr<PropBundle> bundle) {
 }
 
 bool Element::ShouldConsumeTransitionStylesInAdvance() {
-  return (enable_new_animator() && HasPaintingNode());
+  return (ShouldUseLegacyTransitionInterception() && HasPaintingNode());
+}
+
+bool Element::ShouldUseLegacyTransitionInterception() const {
+  return enable_new_animator_ && element_manager_ != nullptr &&
+         !element_manager_->EnableNewStylingPipeline();
 }
 
 // Since the previous element styles cannot be accessed in element, we
@@ -2208,7 +2260,7 @@ bool Element::ShouldConsumeTransitionStylesInAdvance() {
 // properties can be accessed through ComputedCSSStyle.
 void Element::RecordElementPreviousStyle(CSSPropertyID css_id,
                                          const tasm::CSSValue& value) {
-  if (!enable_new_animator()) {
+  if (!ShouldUseLegacyTransitionInterception()) {
     return;
   }
   if (animation::IsAnimatableProperty(css_id)) {
@@ -2217,7 +2269,7 @@ void Element::RecordElementPreviousStyle(CSSPropertyID css_id,
 }
 
 void Element::ResetElementPreviousStyle(CSSPropertyID css_id) {
-  if (!enable_new_animator()) {
+  if (!ShouldUseLegacyTransitionInterception()) {
     return;
   }
   if (animation::IsAnimatableProperty(css_id)) {
@@ -2227,6 +2279,9 @@ void Element::ResetElementPreviousStyle(CSSPropertyID css_id) {
 
 std::optional<CSSValue> Element::GetElementPreviousStyle(
     tasm::CSSPropertyID css_id) {
+  if (!ShouldUseLegacyTransitionInterception()) {
+    return std::optional<CSSValue>();
+  }
   auto iter = animation_previous_styles_.find(css_id);
   if (iter == animation_previous_styles_.end()) {
     return std::optional<CSSValue>();

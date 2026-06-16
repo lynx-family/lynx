@@ -218,7 +218,8 @@ class ListElement : public FiberElement, public tasm::ListNode {
   void SetListOrientation(starlight::LinearOrientationType orientation);
   list::BatchRenderStrategy
   ResolveBatchRenderStrategyFromPipelineSchedulerConfig(
-      uint64_t pipeline_scheduler_config, bool enable_parallel_element);
+      uint64_t pipeline_scheduler_config, bool enable_parallel_element,
+      bool enable_new_styling_pipeline);
 
  private:
   bool continuous_resolve_tree_{false};

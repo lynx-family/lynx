@@ -43,6 +43,20 @@ void SetTemplateCallbackAttribute(lepus::Value* target,
   target->CopyWeakValue(value);
 }
 
+bool IsAsyncListBatchRenderStrategy(list::BatchRenderStrategy strategy) {
+  return strategy == list::BatchRenderStrategy::kAsyncResolveProperty ||
+         strategy ==
+             list::BatchRenderStrategy::kAsyncResolvePropertyAndElementTree;
+}
+
+list::BatchRenderStrategy NormalizeBatchRenderStrategyForNewStylingPipeline(
+    list::BatchRenderStrategy strategy, bool enable_new_styling_pipeline) {
+  if (enable_new_styling_pipeline && IsAsyncListBatchRenderStrategy(strategy)) {
+    return list::BatchRenderStrategy::kBatchRender;
+  }
+  return strategy;
+}
+
 }  // namespace
 
 ListElement::ListElement(ElementManager* manager, const base::String& tag,
@@ -61,7 +75,8 @@ ListElement::ListElement(ElementManager* manager, const base::String& tag,
   batch_render_strategy_ =
       ResolveBatchRenderStrategyFromPipelineSchedulerConfig(
           manager->GetConfig()->GetPipelineSchedulerConfig(),
-          manager->GetEnableParallelElement());
+          manager->GetEnableParallelElement(),
+          manager->EnableNewStylingPipeline());
 }
 
 ListNode* ListElement::GetListNode() {
@@ -521,6 +536,11 @@ ParallelFlushReturn ListElement::PrepareForCreateOrUpdate() {
         }
       }
     }
+    // New styling serializes or uses level-order traversal instead of the old
+    // async list-item resolve path. Keep batch render, but disable async
+    // property/tree resolve so layout node creation stays ordered with inserts.
+    batch_render_strategy_ = NormalizeBatchRenderStrategyForNewStylingPipeline(
+        batch_render_strategy_, element_manager()->EnableNewStylingPipeline());
     // Flush to platform ui and list container once time.
     bool enable_batch_render =
         batch_render_strategy_ > list::BatchRenderStrategy::kDefault;
@@ -789,7 +809,8 @@ void ListElement::AttachToElementManager(
   batch_render_strategy_ =
       ResolveBatchRenderStrategyFromPipelineSchedulerConfig(
           manager->GetConfig()->GetPipelineSchedulerConfig(),
-          manager->GetEnableParallelElement());
+          manager->GetEnableParallelElement(),
+          manager->EnableNewStylingPipeline());
   if (UseDecoupledList()) {
     list_mediator_->OnAttachToElementManager();
   } else if (UseInternalList()) {
@@ -883,7 +904,8 @@ void ListElementSSRHelper::OnEnqueueComponent(int32_t sign) {
 
 list::BatchRenderStrategy
 ListElement::ResolveBatchRenderStrategyFromPipelineSchedulerConfig(
-    uint64_t pipeline_scheduler_config, bool enable_parallel_element) {
+    uint64_t pipeline_scheduler_config, bool enable_parallel_element,
+    bool enable_new_styling_pipeline) {
   bool enable_batch_render =
       (pipeline_scheduler_config & kEnableListBatchRenderMask) > 0;
   bool enable_batch_render_async_resolve_property =
@@ -906,11 +928,15 @@ ListElement::ResolveBatchRenderStrategyFromPipelineSchedulerConfig(
 
   if (enable_batch_render_async_resolve_tree &&
       enable_batch_render_async_resolve_property) {
-    return list::BatchRenderStrategy::kAsyncResolvePropertyAndElementTree;
+    return NormalizeBatchRenderStrategyForNewStylingPipeline(
+        list::BatchRenderStrategy::kAsyncResolvePropertyAndElementTree,
+        enable_new_styling_pipeline);
   }
 
   if (enable_batch_render_async_resolve_property) {
-    return list::BatchRenderStrategy::kAsyncResolveProperty;
+    return NormalizeBatchRenderStrategyForNewStylingPipeline(
+        list::BatchRenderStrategy::kAsyncResolveProperty,
+        enable_new_styling_pipeline);
   }
 
   return list::BatchRenderStrategy::kBatchRender;

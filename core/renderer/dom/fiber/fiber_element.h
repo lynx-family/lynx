@@ -314,6 +314,7 @@ class FiberElement : public Element {
   // if child's related css variable is updated, invalidate child's style.
   void RecursivelyMarkChildrenCSSVariableDirty(
       const lepus::Value& css_variable_updated);
+  void MarkDirectChildrenStyleDirtyForInheritedPropertyMutation();
 
   /**
    * @brief Recursively marks all scoped children as style-dirty when custom
@@ -394,13 +395,22 @@ class FiberElement : public Element {
 
   void HandleKeyframePropsChange();
 
+  enum class StyleSideEffectReplayMode {
+    kNormal,
+    kPreserveLayoutOnly,
+  };
+
   /**
    * @brief Replays the side effects of a single changed style property.
    * @param id The CSS property that changed.
    * @param value The new computed value.
    */
-  void ReplayChangedStyleSideEffect(CSSPropertyID id, const CSSValue& value);
-  void ReplayResetStyleSideEffect(CSSPropertyID id);
+  void ReplayChangedStyleSideEffect(
+      CSSPropertyID id, const CSSValue& value,
+      StyleSideEffectReplayMode mode = StyleSideEffectReplayMode::kNormal);
+  void ReplayResetStyleSideEffect(
+      CSSPropertyID id,
+      StyleSideEffectReplayMode mode = StyleSideEffectReplayMode::kNormal);
 
   /**
    * @brief Commits font-size and root-font-size changes after style resolution.
@@ -410,41 +420,134 @@ class FiberElement : public Element {
    */
   void CommitFontContext(const starlight::ComputedCSSStyle& computed_style,
                          double old_font_size, double old_root_font_size);
+  void FinalizeAnimationPropsChange(bool& need_update);
+  struct AnimationPropertyChangeAnalysisForLegacyAnimator {
+    bool has_transition_props_changed{false};
+    bool has_keyframe_props_changed{false};
+  };
+  AnimationPropertyChangeAnalysisForLegacyAnimator
+  AnalyzeAnimationPropChangesForLegacyAnimator(
+      const starlight::ComputedCSSStyle& final_style,
+      const starlight::ComputedCSSStyle* previous_final_style,
+      const StyleMap& resolved_style_map) const;
+  struct AnimationSampleAnalysisForNewPipeline {
+    bool has_style_effects{false};
+    bool has_animated_font_size{false};
+    bool has_custom_property_effects{false};
+    bool changes_resolve_context{false};
+  };
 
-  /**
-   * @brief Result of resolving computed styles in the new pipeline.
-   */
+  // Inputs that tell the new-pipeline resolve pass why it is being run and
+  // which external style contexts must be refreshed.
   struct NewPipelineResolveRequest {
+    // Run the resolve path even when the element has no style dirty bit.
     bool force_resolve{false};
+    // Force platform side-effect replay after resolve, even if no dynamic
+    // dependency flag matches the element's resolved styles.
     bool force_platform_update{false};
+    // Dynamic style contexts that changed in this flush, such as viewport,
+    // screen metrics, rem, or em.
     DynamicCSSStylesManager::StyleUpdateFlags dynamic_update_flags{0};
   };
 
+  // Return summary from ResolveCSSStylesNewPipelineCore() to the outer flush
+  // flow. Unlike NewPipelineStyleResolveResult, this does not carry resolved
+  // style snapshots or ownership. It only reports what the caller should do
+  // after the element has resolved and optionally committed its style.
   struct NewPipelineResolveOutcome {
+    // Whether this element needs a platform node update/layout request.
     bool need_update{false};
+    // Whether descendants must be resolved because this element changed a
+    // context they depend on, such as inherited styles, variables, or font
+    // units.
     bool force_children{false};
+    // Dynamic dependency flags found in this element's resolved styles.
     DynamicCSSStylesManager::StyleUpdateFlags dynamic_style_flags{0};
+    // Dynamic dependency flags that descendants should refresh because of this
+    // element's context change.
     DynamicCSSStylesManager::StyleUpdateFlags child_update_flags{0};
   };
 
+  // Dynamic-style replay inputs collected from the resolved final style.
+  // They let dynamic context updates replay affected properties without
+  // rebuilding the full cascade for every element.
+  struct NewPipelineDynamicStyleInputs {
+    // Properties that should participate in dynamic-unit replay. Starts with
+    // explicit resolved styles from this pass and may be extended with
+    // inherited dynamic-unit values from the final ComputedCSSStyle.
+    StyleMap resolved_style_map;
+    // Subset of resolved_style_map that came only from inheritance, not from
+    // explicit matched/inline/attribute/animation sources on this element.
+    CSSIDBitset inherited_dynamic_ids;
+    // Union of dynamic dependency flags for inherited_dynamic_ids.
+    DynamicCSSStylesManager::StyleUpdateFlags inherited_dynamic_flags{0};
+  };
+
+  // Diff plan for committing and replaying one new-pipeline style resolve
+  // result. It is built from the old final style, the new final style, and the
+  // explicit resolved source map.
+  struct NewPipelineStyleMutationPlan {
+    // New resolved values for properties that changed or need dynamic replay.
+    StyleMap update_values;
+    // Property ids present in update_values.
+    CSSIDBitset update_ids;
+    // Properties that existed in the previous final style but disappeared from
+    // the new final style.
+    CSSIDBitset reset_ids;
+    // Properties explicitly produced by this resolve pass. Replay uses this to
+    // distinguish explicit styles from inherited platform values, especially
+    // for layout-only inherited-property preservation.
+    CSSIDBitset source_style_ids;
+    // Whether the plan was built for the element's first render.
+    bool first_render{false};
+    // True when AddUpdate/AddReset recorded a normal resolved-value diff.
+    bool source_changed{false};
+    // True when the raw/resolved custom-property maps changed.
+    bool custom_properties_changed{false};
+    // True when this element's font-size context changed.
+    bool font_size_context_changed{false};
+    // True when this element's root-font-size context changed.
+    bool root_font_size_context_changed{false};
+
+    void AddUpdate(CSSPropertyID id, const CSSValue& value);
+    void AddReset(CSSPropertyID id);
+    bool HasOperations() const;
+    bool NeedsSemanticCommit() const;
+  };
+
+  // Detailed internal result from ResolveComputedStyles(). It carries the
+  // resolved base/final style views, source maps, variable dependency data, and
+  // transient owned snapshots needed by ResolveCSSStylesNewPipelineCore() to
+  // build mutation plans, commit style, and replay side effects. The outer
+  // flush flow receives only NewPipelineResolveOutcome.
   struct NewPipelineStyleResolveResult {
-    // final_style and base_style are the semantic results that downstream
-    // logic should read after ResolveComputedStyles() returns. They are raw
-    // pointers on purpose: they may alias owned_final_style,
-    // owned_base_style, or the element's existing platform_css_style_ when no
-    // newly owned snapshot is needed.
+    // Explicit resolved source properties from this resolve pass.
     StyleMap resolved_style_map;
     // TODO(zhouzhitao): get rid of underlying_layout_only_styles if
     // layout_in_element is fully rolled out
+
+    // Layout-only source properties needed by transition sampling while
+    // layout-in-element is not universally enabled.
     StyleMap underlying_layout_only_styles;
+    // Properties in resolved_style_map whose values depend on var().
+    CSSIDBitset variable_dependent_ids;
+    // Animation overrides/resets sampled against the newly resolved base style.
+    animation::AnimationSampleForNewPipeline animation_sample;
+    // Parent style used for inheritance and animation-triggered rebuilds.
     const starlight::ComputedCSSStyle* parent_inheritance_style{nullptr};
+    // Final style committed by the previous resolve, used as the diff baseline.
     const starlight::ComputedCSSStyle* previous_final_style{nullptr};
+    // Semantic style after animation effects. Downstream logic should read this
+    // after ResolveComputedStyles() returns. It may alias owned_final_style,
+    // owned_base_style, or the element's platform_css_style_.
     starlight::ComputedCSSStyle* final_style{nullptr};
+    // Semantic style before animation effects. It may alias owned_base_style or
+    // final_style when no separate base snapshot is needed.
     starlight::ComputedCSSStyle* base_style{nullptr};
     // owned_* carry the transient storage backing those semantic views until
     // the caller decides whether this resolution pass actually commits. They
     // cannot be replaced by final_style/base_style because commit-time code
-    // needs move ownership into platform_css_style_ / base_css_style_, while
+    // needs to move ownership into platform_css_style_ / base_css_style_, while
     // final_style/base_style may also alias existing external storage.
     // Owns the resolved unanimated base snapshot when it cannot stay in
     // base_css_style_ / platform_css_style_ directly during resolution.
@@ -505,6 +608,32 @@ class FiberElement : public Element {
     }
   };
 
+  animation::AnimationSampleForNewPipeline
+  SampleAnimationOverridesForNewPipeline(
+      starlight::ComputedCSSStyle& new_base_style, bool base_font_size_changed,
+      bool base_root_font_size_changed,
+      const StyleMap& new_underlying_layout_only_styles,
+      const starlight::ComputedCSSStyle*& previous_final_style);
+  bool HasAuthorAnimationDataChangedForNewPipeline(
+      const starlight::ComputedCSSStyle& new_base_style,
+      const starlight::ComputedCSSStyle* previous_base_style) const;
+  void FlushImperativeAnimationCleanupForNewPipeline(
+      starlight::ComputedCSSStyle& cleanup_style, bool& need_update,
+      CSSIDBitset* replayed_ids, const CSSIDBitset* source_style_ids = nullptr);
+  std::unique_ptr<starlight::ComputedCSSStyle>
+  BuildFinalStyleFromAnimationSampleForNewPipeline(
+      const starlight::ComputedCSSStyle& base_style,
+      const starlight::ComputedCSSStyle* parent_style,
+      const starlight::ComputedCSSStyle* previous_final_style,
+      const animation::AnimationSampleForNewPipeline& animation_sample,
+      StyleMap& resolved_style_map, CSSIDBitset& variable_dependent_ids);
+  static AnimationSampleAnalysisForNewPipeline
+  AnalyzeAnimationSampleForNewPipeline(
+      const animation::AnimationSampleForNewPipeline& animation_sample);
+  animation::AnimationEventRecordsForNewPipeline
+  TakeAnimationEventsForNewPipeline();
+  bool NeedsAnimationFrameForNewPipeline() const;
+
   /**
    * @brief Resolves the base computed style by collecting matched rules,
    * inline styles, and attribute styles.
@@ -517,20 +646,31 @@ class FiberElement : public Element {
       const starlight::ComputedCSSStyle* previous_final_style,
       double old_font_size, double old_root_font_size);
 
-  /**
-   * @brief Replays all commit side effects after style resolution.
-   * @param computed_style The final computed style.
-   * @param resolved_style_map The fully resolved style map.
-   */
-  void ReplayCommitSideEffects(
+  void ReplayMaterializedStyleSideEffects(
       const starlight::ComputedCSSStyle& computed_style,
-      const StyleMap& resolved_style_map, CSSIDBitset* replayed_ids = nullptr);
+      CSSIDBitset* replayed_ids = nullptr,
+      const NewPipelineStyleMutationPlan* plan = nullptr);
   void ReplayDynamicResolvedStyleSideEffects(
       const StyleMap& resolved_style_map,
       DynamicCSSStylesManager::StyleUpdateFlags update_flags,
-      const CSSIDBitset& replayed_ids);
+      const CSSIDBitset& replayed_ids,
+      const CSSIDBitset* source_style_ids = nullptr,
+      const CSSIDBitset* inherited_dynamic_ids = nullptr);
   DynamicCSSStylesManager::StyleUpdateFlags CollectDynamicFlagsForNewPipeline(
       const StyleMap& resolved_style_map) const;
+  NewPipelineStyleMutationPlan BuildNewPipelineStyleMutationPlan(
+      const NewPipelineStyleResolveResult& resolved_styles,
+      const NewPipelineDynamicStyleInputs& dynamic_inputs,
+      DynamicCSSStylesManager::StyleUpdateFlags requested_dynamic_flags,
+      bool first_render, double old_font_size, double old_root_font_size) const;
+  bool MaterializeNewPipelineStyleMutationPlan(
+      const NewPipelineStyleMutationPlan& plan,
+      const starlight::ComputedCSSStyle& baseline_style,
+      starlight::ComputedCSSStyle& final_style) const;
+  bool HasMaterializedInheritedPropertyMutation(
+      const starlight::ComputedCSSStyle& style) const;
+  void ReplayNewPipelineStyleMutationPlanSideEffects(
+      const NewPipelineStyleMutationPlan& plan, CSSIDBitset* replayed_ids);
   NewPipelineResolveOutcome ResolveCSSStylesNewPipelineCore(
       const NewPipelineResolveRequest& request);
 
@@ -676,6 +816,9 @@ class FiberElement : public Element {
   friend class WrapperElement;
   friend class ComponentElement;
   friend class BlockElement;
+
+  bool ShouldPreserveLayoutOnlyForInheritedPlatformStyle(
+      CSSPropertyID id, const CSSIDBitset& source_style_ids);
 
   static event::EventListener::Options GetEventListenerOptions(
       const base::String& type);
