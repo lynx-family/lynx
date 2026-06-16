@@ -109,10 +109,7 @@ action("build_card_resources") {
 }
 
 copy("copy_dll") {
-  sources = [
-    "$root_build_dir/lynx.dll",
-    "$root_build_dir/lynx.dll.lib",
-  ]
+  sources = [ "$root_build_dir/lynx.dll" ]
   deps = [ "../../../clay/shell/platform/windows:flutter_windows_source" ]
   outputs = [ "$root_build_dir/lynx_explorer/{{source_file_part}}" ]
   public_deps = [ "../../../platform/windows:windows" ]
