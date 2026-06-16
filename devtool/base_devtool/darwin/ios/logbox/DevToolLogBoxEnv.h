@@ -4,7 +4,11 @@
 #ifndef DEVTOOL_BASE_DEVTOOL_DARWIN_IOS_LOGBOX_DEVTOOLLOGBOXENV_H_
 #define DEVTOOL_BASE_DEVTOOL_DARWIN_IOS_LOGBOX_DEVTOOLLOGBOXENV_H_
 
+#if OS_OSX
+#import "devtool/base_devtool/darwin/common/utils/DevToolFileLoadUtils.h"
+#else
 #import "DevToolFileLoadUtils.h"
+#endif
 
 typedef void (^LoadErrorParserBlock)(DevToolFileLoadCallback _Nonnull completion);
 

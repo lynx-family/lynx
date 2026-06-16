@@ -3,8 +3,8 @@
 // LICENSE file in the root directory of this source tree.
 
 #if OS_OSX
+#import "DevToolToast.h"
 #import <AppKit/AppKit.h>
-#import <Lynx/DevToolToast.h>
 #else
 #import <BaseDevTool/DevToolToast.h>
 #import <Lynx/LynxUIKitAPIAdapter.h>

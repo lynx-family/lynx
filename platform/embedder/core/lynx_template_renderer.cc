@@ -514,6 +514,14 @@ const lepus::Value LynxTemplateRenderer::GetAllTimingInfo() const {
   return shell_->GetAllTimingInfo();
 }
 
+std::unordered_map<std::string, std::string>
+LynxTemplateRenderer::GetAllJsSource() const {
+  if (shell_ == nullptr) {
+    return {};
+  }
+  return shell_->GetAllJsSource();
+}
+
 // TBD: LynxEmbedderProxy
 void LynxTemplateRenderer::ReloadTemplate(
     const std::string& url, const std::vector<uint8_t>& source,

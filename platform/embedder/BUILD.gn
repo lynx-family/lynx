@@ -109,6 +109,9 @@ lynx_core_source_set("embedder") {
   if (is_headless) {
     deps += [ "./windowless:windowless" ]
   }
+  if (enable_inspector) {
+    deps += [ "./lynx_devtool:lynx_devtool_logbox" ]
+  }
 
   public_configs = [
     ":public_api",

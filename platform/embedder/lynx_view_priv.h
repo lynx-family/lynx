@@ -16,6 +16,9 @@
 #include "platform/embedder/public/capi/lynx_view_capi.h"
 #include "platform/embedder/public/capi/lynx_vsync_monitor_capi.h"
 #include "platform/embedder/public/lynx_event_simulation_proxy.h"
+#if ENABLE_INSPECTOR
+#include "platform/embedder/lynx_devtool/logbox/lynx_logbox_wrapper_embedder.h"
+#endif
 
 struct lynx_view_t {
   std::unique_ptr<lynx::pub::LynxEventSimulationProxy> event_simulation_proxy =
@@ -23,6 +26,10 @@ struct lynx_view_t {
   std::unique_ptr<lynx::embedder::LynxTemplateRenderer> lynx_template_renderer =
       nullptr;
   std::unique_ptr<lynx::embedder::LynxViewClients> lynx_view_clients = nullptr;
+#if ENABLE_INSPECTOR
+  std::unique_ptr<lynx::embedder::LynxLogBoxWrapperEmbedder>
+      lynx_logbox_wrapper = nullptr;
+#endif
 #if ENABLE_NAPI_BINDING
   std::shared_ptr<lynx::embedder::LynxModuleManagerNAPI> lynx_module_manager =
       nullptr;

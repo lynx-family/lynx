@@ -31,3 +31,31 @@ devtool_source_set("lynx_devtool") {
   ]
   public_configs = [ ":lynx_devtool_config" ]
 }
+
+devtool_source_set("lynx_devtool_logbox") {
+  sources = [
+    "logbox/logbox_resource_provider.h",
+    "logbox/lynx_logbox_bridge.h",
+    "logbox/lynx_logbox_wrapper_embedder.cc",
+    "logbox/lynx_logbox_wrapper_embedder.h",
+  ]
+
+  deps = []
+  if (!enable_unittests) {
+    if (is_mac && !is_oliver_node_lynx) {
+      sources += [
+        "../../darwin/macos/lynx_devtool/lynx_logbox_bridge_darwin.h",
+        "../../darwin/macos/lynx_devtool/lynx_logbox_bridge_darwin.mm",
+      ]
+      deps += [ "../../../devtool/base_devtool/darwin/ios:logbox_source" ]
+    } else if (is_win) {
+      sources += [ "../../windows/lynx_devtool/lynx_logbox_bridge_win.cc" ]
+      deps += [ "../../../devtool/base_devtool/logbox:logbox" ]
+    } else {
+      sources += [ "logbox/lynx_logbox_bridge_mock.cc" ]
+    }
+  } else {
+    sources += [ "logbox/lynx_logbox_bridge_mock.cc" ]
+  }
+  public_configs = [ ":lynx_devtool_config" ]
+}

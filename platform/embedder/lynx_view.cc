@@ -15,10 +15,40 @@
 #include "platform/embedder/lynx_service/lynx_service_center_priv.h"
 #include "platform/embedder/lynx_update_meta_priv.h"
 #include "platform/embedder/lynx_view_builder_priv.h"
+#if ENABLE_INSPECTOR
+#include "platform/embedder/lynx_devtool/devtool_env_embedder.h"
+#endif
 #include "platform/embedder/lynx_view_priv.h"
 #include "platform/embedder/lynx_vsync_monitor_priv.h"
 #include "platform/embedder/module/global_module_registry.h"
 #include "platform/embedder/resource/lynx_resource_loader_embedder.h"
+
+#if ENABLE_INSPECTOR
+namespace {
+
+void SetupLogBoxWrapper(lynx_view_t* view, NativeWindow parent) {
+  auto& devtool_env = lynx::embedder::DevToolEnvEmbedder::GetInstance();
+  if (!devtool_env.IsLynxDebugEnabled() || !devtool_env.IsLogBoxEnabled()) {
+    return;
+  }
+
+  view->lynx_logbox_wrapper =
+      std::make_unique<lynx::embedder::LynxLogBoxWrapperEmbedder>(
+          view->lynx_ui_renderer->GetNativeWindow(),
+          view->lynx_template_renderer.get());
+  if (!view->lynx_logbox_wrapper->HasBridge()) {
+    view->lynx_logbox_wrapper.reset();
+    return;
+  }
+
+  view->lynx_template_renderer->AddClient(view->lynx_logbox_wrapper.get());
+  if (parent != nullptr) {
+    view->lynx_logbox_wrapper->OnHostViewAttached();
+  }
+}
+
+}  // namespace
+#endif
 
 LYNX_EXTERN_C lynx_view_t* lynx_view_create(lynx_view_builder_t* builder,
                                             void* user_data) {
@@ -118,6 +148,9 @@ LYNX_EXTERN_C lynx_view_t* lynx_view_create(lynx_view_builder_t* builder,
       std::make_unique<lynx::embedder::LynxViewClients>(view);
   view->lynx_ui_renderer->AddClient(view->lynx_view_clients.get());
   view->lynx_template_renderer->AddClient(view->lynx_view_clients.get());
+#if ENABLE_INSPECTOR
+  SetupLogBoxWrapper(view, builder->parent);
+#endif
   view->lynx_template_renderer->SetTemplateVerification(
       [](uint8_t* content, size_t length, const std::string url,
          const char** error_msg) {
@@ -220,6 +253,11 @@ LYNX_EXTERN_C void lynx_view_update_data(lynx_view_t* view,
 LYNX_EXTERN_C void lynx_view_reload_template(
     lynx_view_t* view, lynx_template_data_t* data,
     lynx_template_data_t* global_props) {
+#if ENABLE_INSPECTOR
+  if (view->lynx_logbox_wrapper) {
+    view->lynx_logbox_wrapper->OnReload();
+  }
+#endif
   view->lynx_template_renderer->ReloadTemplate(
       data->template_data, nullptr,
       (global_props && global_props->template_data)
@@ -261,6 +299,11 @@ LYNX_EXTERN_C void lynx_view_set_font_scale(lynx_view_t* view,
 LYNX_EXTERN_C void lynx_view_set_parent(lynx_view_t* view,
                                         NativeWindow parent) {
   view->lynx_ui_renderer->SetParent(parent);
+#if ENABLE_INSPECTOR
+  if (view->lynx_logbox_wrapper) {
+    view->lynx_logbox_wrapper->OnHostViewAttached();
+  }
+#endif
 }
 
 LYNX_EXTERN_C NativeWindow lynx_view_get_native_window(lynx_view_t* view) {
@@ -327,6 +370,13 @@ LYNX_EXTERN_C void lynx_view_release(lynx_view_t* view) {
   view->lynx_module_manager->Detach();
   view->lynx_module_manager.reset();
   view->extension_factory_->OnLynxViewDestroy();
+#endif
+#if ENABLE_INSPECTOR
+  if (view->lynx_logbox_wrapper) {
+    view->lynx_logbox_wrapper->OnDestroy();
+    view->lynx_template_renderer->RemoveClient(view->lynx_logbox_wrapper.get());
+    view->lynx_logbox_wrapper.reset();
+  }
 #endif
   // Destroy template renderer and ui renderer.
   view->lynx_template_renderer.reset();

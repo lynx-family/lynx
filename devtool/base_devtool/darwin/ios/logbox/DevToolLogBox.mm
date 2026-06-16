@@ -5,8 +5,8 @@
 #import "DevToolLogBox.h"
 
 #if OS_OSX
-#import <Lynx/DevToolDownloader.h>
-#import <Lynx/DevToolToast.h>
+#import "devtool/base_devtool/darwin/common/utils/DevToolDownloader.h"
+#import "devtool/base_devtool/darwin/common/utils/DevToolToast.h"
 #else
 #import <BaseDevtool/DevToolDownloader.h>
 #import <BaseDevtool/DevToolToast.h>
