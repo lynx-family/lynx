@@ -141,6 +141,7 @@ class EventDispatcher {
   bool ShouldInterceptGesture();
 
   EventTarget* FindTarget(float point[2]);
+  EventTarget* FindTarget(float point[2], bool skip_overlay_content);
 
   bool CanRespondTap(EventTarget* active_target);
 
@@ -148,6 +149,8 @@ class EventDispatcher {
                       float page_point[2]);
 
   void GetPagePoint(float page_point[2], float node_point[2]);
+  void GetEventPagePoint(float page_point[2], const ArkUI_UIInputEvent* event,
+                         size_t index, float point_scale = 1.f);
 
   void AddTargetTouchMap(lepus::Value& target_touch_map,
                          const ArkUI_UIInputEvent* event);
@@ -175,6 +178,29 @@ class EventDispatcher {
   void TraverseAndUpdateHitTestBehavior(UIBase* node,
                                         bool has_disabled_ancestor);
 
+  struct OverlayGestures {
+    ArkUI_GestureRecognizer* long_press{nullptr};
+    ArkUI_GestureRecognizer* tap{nullptr};
+    ArkUI_GestureRecognizer* block_outer_pan{nullptr};
+    ArkUI_GestureRecognizer* consume_horizontal_pan{nullptr};
+    ArkUI_GestureRecognizer* consume_vertical_pan{nullptr};
+    ArkUI_GestureRecognizer* consume_up_pan{nullptr};
+    ArkUI_GestureRecognizer* consume_right_pan{nullptr};
+    ArkUI_GestureRecognizer* consume_down_pan{nullptr};
+    ArkUI_GestureRecognizer* consume_left_pan{nullptr};
+    ArkUI_GestureRecognizer* consume_all_pan{nullptr};
+    ArkUI_GestureRecognizer* velocity_tracker_pan{nullptr};
+    ArkUI_GestureRecognizer* native_pan{nullptr};
+  };
+
+  void EnsureOverlayGestures();
+  void AddOverlayGesturesToRoot(UIBase* root);
+  void RemoveOverlayGesturesFromRoot(ArkUI_NodeHandle root_node);
+  void DisposeOverlayGestures();
+  bool IsOverlayGesture(ArkUI_GestureRecognizer* gesture) const;
+  ArkUI_GestureInterruptResult GetOverlayGestureInterruptResult(
+      ArkUI_GestureRecognizer* gesture);
+
   void InspectHitTarget(EventTarget* active_target);
 
   void ApplyHitTargetStyle(std::weak_ptr<EventTarget> active_target,
@@ -201,6 +227,8 @@ class EventDispatcher {
   bool first_touch_moved_{false};
   bool first_touch_outside_{false};
   bool from_overlay_{false};
+  bool overlay_touch_consumed_{false};
+  bool overlay_touch_through_{false};
   long long time_stamp_{0};
   bool enable_multi_touch_{false};
   unsigned int tap_slop_{5};
@@ -209,6 +237,7 @@ class EventDispatcher {
   float first_finger_down_point_[2]{0.f};
   ArkUI_GestureRecognizer* long_press_gesture_{nullptr};
   ArkUI_GestureRecognizer* tap_gesture_{nullptr};
+  OverlayGestures overlay_gestures_;
   ArkUI_GestureRecognizer* block_outer_pan_gesture_{nullptr};
   ArkUI_GestureRecognizer* consume_horizontal_pan_gesture_{nullptr};
   ArkUI_GestureRecognizer* consume_vertical_pan_gesture_{nullptr};

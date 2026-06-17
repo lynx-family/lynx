@@ -7,6 +7,7 @@
 
 #include <native_drawing/drawing_types.h>
 
+#include <array>
 #include <memory>
 #include <utility>
 #include <vector>
@@ -40,6 +41,7 @@ class BoxShadowLayer {
   void UpdateShadowDrawer(float left, float top, float width, float height,
                           BorderRadius* radius, float scale_density);
   bool HasShadow();
+  std::array<float, 4> GetOutset(float scale_density) const;
   void ClearShadowDrawStruct();
   ~BoxShadowLayer();
 

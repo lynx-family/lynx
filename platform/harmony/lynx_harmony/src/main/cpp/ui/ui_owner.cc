@@ -803,9 +803,14 @@ napi_value UIOwner::CanConsumeTouchEvent(napi_env env,
   napi_get_value_double(env, argv[1], &temp_value);
   point[1] = static_cast<float>(temp_value);
 
+  float input_point[2] = {point[0], point[1]};
+  bool can_consume = owner->CanConsumeTouchEvent(point);
+  LOGI("HarmonyOverlayTouchDebug UIOwner::CanConsumeTouchEvent input_x: "
+       << input_point[0] << ", input_y: " << input_point[1]
+       << ", converted_x: " << point[0] << ", converted_y: " << point[1]
+       << ", can_consume: " << can_consume);
   napi_value consumed_touch_event;
-  napi_get_boolean(env, owner->CanConsumeTouchEvent(point),
-                   &consumed_touch_event);
+  napi_get_boolean(env, can_consume, &consumed_touch_event);
   return consumed_touch_event;
 }
 
