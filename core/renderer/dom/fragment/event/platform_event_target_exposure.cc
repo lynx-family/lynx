@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <iterator>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -20,7 +21,6 @@
 #include "core/renderer/ui_wrapper/painting/native_painting_context_platform_ref.h"
 
 namespace lynx::tasm {
-
 PlatformEventTargetExposure::ExposureTargetDetail::ExposureTargetDetail(
     const fml::RefPtr<PlatformEventTarget>& target, std::string unique_id,
     bool is_custom_event, bool is_global_event, bool intercept_global_event)
@@ -117,26 +117,125 @@ void PlatformEventTargetExposure::RemoveExposureTarget(
   }
 }
 
+void PlatformEventTargetExposure::RemoveExposureTargetsInEventRoot(
+    int32_t root_id) {
+  if (exposure_target_map_.empty()) {
+    return;
+  }
+  std::set<ExposureTargetDetail> removed_visible_targets;
+  std::vector<std::string> removed_unique_ids;
+  for (const auto& it : exposure_target_map_) {
+    const auto& detail = it.second;
+    const auto& target = detail.Target();
+    if (target == nullptr || target->RootId() != root_id) {
+      continue;
+    }
+    removed_unique_ids.push_back(it.first);
+    if (visible_target_before_.find(detail) != visible_target_before_.end()) {
+      removed_visible_targets.insert(detail);
+    }
+  }
+
+  SendEvent(removed_visible_targets, "disexposure");
+  for (const auto& detail : removed_visible_targets) {
+    visible_target_before_.erase(detail);
+  }
+  for (const auto& unique_id : removed_unique_ids) {
+    auto it = exposure_target_map_.find(unique_id);
+    if (it == exposure_target_map_.end()) {
+      continue;
+    }
+    RemoveCommonAncestorRectMap(it->second.Target().get());
+    exposure_target_map_.erase(it);
+  }
+  if (exposure_target_map_.empty()) {
+    StopExposureCheck(lepus::Value());
+  }
+}
+
+void PlatformEventTargetExposure::ClearExposureTargetsInEventRoot(
+    int32_t root_id) {
+  resume_exposure_check_after_rebuild_ =
+      exposure_check_enabled_ || exposure_check_task_pending_;
+  rebuilding_exposure_target_map_ = true;
+  if (exposure_target_map_.empty()) {
+    return;
+  }
+  std::vector<std::string> removed_unique_ids;
+  for (const auto& it : exposure_target_map_) {
+    const auto& target = it.second.Target();
+    if (target != nullptr && target->RootId() == root_id) {
+      removed_unique_ids.push_back(it.first);
+    }
+  }
+  for (const auto& unique_id : removed_unique_ids) {
+    auto it = exposure_target_map_.find(unique_id);
+    if (it == exposure_target_map_.end()) {
+      continue;
+    }
+    RemoveCommonAncestorRectMap(it->second.Target().get());
+    exposure_target_map_.erase(it);
+  }
+  if (exposure_target_map_.empty()) {
+    common_ancestor_rect_map_.clear();
+    InvalidateWindowRect();
+  }
+}
+
 void PlatformEventTargetExposure::ClearExposureTargetMap() {
   exposure_target_map_.clear();
+  visible_target_before_.clear();
   common_ancestor_rect_map_.clear();
+  exposure_check_enabled_ = false;
+  exposure_check_task_pending_ = false;
+  rebuilding_exposure_target_map_ = false;
+  resume_exposure_check_after_rebuild_ = false;
+  ++exposure_check_generation_;
+  InvalidateWindowRect();
+}
+
+void PlatformEventTargetExposure::DidRebuildExposureTargetMap() {
+  rebuilding_exposure_target_map_ = false;
+  InvalidateWindowRect();
+  RefreshVisibleTargetRefs();
+  if (exposure_target_map_.empty()) {
+    if (!exposure_check_task_pending_) {
+      exposure_check_enabled_ = false;
+    }
+    resume_exposure_check_after_rebuild_ = false;
+    return;
+  }
+  if (resume_exposure_check_after_rebuild_) {
+    StartExposureCheck();
+  }
+  resume_exposure_check_after_rebuild_ = false;
+}
+
+void PlatformEventTargetExposure::InvalidateWindowRect() {
+  window_rect_valid_ = false;
 }
 
 void PlatformEventTargetExposure::StartExposureCheck() {
-  if (scheduled_exposure_check_) {
-    ScheduleNextExposureCheck();
+  exposure_check_enabled_ = true;
+  if (exposure_target_map_.empty()) {
+    if (rebuilding_exposure_target_map_) {
+      resume_exposure_check_after_rebuild_ = true;
+    }
     return;
   }
-  scheduled_exposure_check_ = true;
   ScheduleNextExposureCheck();
 }
 
 void PlatformEventTargetExposure::StopExposureCheck(
     const lepus::Value& options) {
-  if (!scheduled_exposure_check_) {
+  if (!exposure_check_enabled_ && !exposure_check_task_pending_) {
     return;
   }
-  scheduled_exposure_check_ = false;
+  exposure_check_enabled_ = false;
+  exposure_check_task_pending_ = false;
+  rebuilding_exposure_target_map_ = false;
+  resume_exposure_check_after_rebuild_ = false;
+  ++exposure_check_generation_;
   bool send_event = true;
   if (options.IsObject()) {
     BASE_STATIC_STRING_DECL(kSendEvent, "sendEvent");
@@ -150,7 +249,7 @@ void PlatformEventTargetExposure::StopExposureCheck(
     visible_target_before_.clear();
   }
   common_ancestor_rect_map_.clear();
-  window_rect_valid_ = false;
+  InvalidateWindowRect();
 }
 
 void PlatformEventTargetExposure::AddCommonAncestorRectMap(
@@ -200,16 +299,92 @@ void PlatformEventTargetExposure::ResetCommonAncestorRectMap() {
   }
 }
 
-void PlatformEventTargetExposure::ScheduleNextExposureCheck() {
-  if (!scheduled_exposure_check_ || !task_runner_ ||
-      exposure_target_map_.empty()) {
+void PlatformEventTargetExposure::UpdateWindowRectIfNeeded(
+    PlatformEventTargetHelper* helper) {
+  if (helper == nullptr) {
+    return;
+  }
+  float size[2] = {0.f, 0.f};
+  helper->GetScreenSize(size);
+  window_rect_[0] = 0.f;
+  window_rect_[1] = 0.f;
+  window_rect_[2] = size[0];
+  window_rect_[3] = size[1];
+  window_rect_valid_ = true;
+}
+
+void PlatformEventTargetExposure::RefreshVisibleTargetRefs() {
+  if (visible_target_before_.empty()) {
     return;
   }
 
+  std::set<ExposureTargetDetail> refreshed_visible_targets;
+  for (const auto& detail : visible_target_before_) {
+    auto it = exposure_target_map_.find(detail.UniqueId());
+    if (it != exposure_target_map_.end()) {
+      refreshed_visible_targets.insert(it->second);
+    } else {
+      // Keep the old target so the next diff can emit uidisappear.
+      refreshed_visible_targets.insert(detail);
+    }
+  }
+  visible_target_before_ = std::move(refreshed_visible_targets);
+}
+
+bool PlatformEventTargetExposure::GetTreeRootOriginOnScreen(
+    const fml::RefPtr<PlatformEventTarget>& target,
+    const float root_view_origin_on_screen[2],
+    float tree_root_origin_on_screen[2]) const {
+  tree_root_origin_on_screen[0] = root_view_origin_on_screen[0];
+  tree_root_origin_on_screen[1] = root_view_origin_on_screen[1];
+  if (target == nullptr || platform_ref_ == nullptr) {
+    return false;
+  }
+
+  auto* helper = platform_ref_->GetEventTargetHelper();
+  if (helper == nullptr) {
+    return false;
+  }
+  float tree_root_offset[2] = {0.f, 0.f};
+  if (!helper->GetTreeRootOffsetToPageRootTarget(target, tree_root_offset)) {
+    return false;
+  }
+  tree_root_origin_on_screen[0] += tree_root_offset[0];
+  tree_root_origin_on_screen[1] += tree_root_offset[1];
+  return true;
+}
+
+void PlatformEventTargetExposure::ScheduleNextExposureCheck() {
+  if (!exposure_check_enabled_ || exposure_check_task_pending_) {
+    return;
+  }
+  if (!task_runner_) {
+    exposure_check_enabled_ = false;
+    return;
+  }
+  if (exposure_target_map_.empty() && !rebuilding_exposure_target_map_) {
+    exposure_check_enabled_ = false;
+    return;
+  }
+
+  exposure_check_task_pending_ = true;
+  auto generation = exposure_check_generation_;
   task_runner_->PostDelayedTask(
-      [weak_this = weak_from_this()]() {
+      [weak_this = weak_from_this(), generation]() {
         auto self = weak_this.lock();
-        if (!self || !self->scheduled_exposure_check_) {
+        if (!self || generation != self->exposure_check_generation_) {
+          return;
+        }
+        self->exposure_check_task_pending_ = false;
+        if (!self->exposure_check_enabled_) {
+          return;
+        }
+        if (self->exposure_target_map_.empty()) {
+          if (self->rebuilding_exposure_target_map_) {
+            self->ScheduleNextExposureCheck();
+          } else {
+            self->exposure_check_enabled_ = false;
+          }
           return;
         }
         self->DoExposureCheck();
@@ -222,9 +397,7 @@ void PlatformEventTargetExposure::DoExposureCheck() {
   if (exposure_target_map_.empty()) {
     return;
   }
-  bool did_reconstruct = false;
-  auto root =
-      platform_ref_->ReconstructEventTargetTreeRecursively(&did_reconstruct);
+  auto root = platform_ref_->EnsureEventTargetTree(kRootId);
   if (!root) {
     if (!visible_target_before_.empty()) {
       SendEvent(visible_target_before_, "disexposure");
@@ -235,6 +408,25 @@ void PlatformEventTargetExposure::DoExposureCheck() {
 
   TRACE_EVENT(LYNX_TRACE_CATEGORY, EXPOSURE_DO_EXPOSURE_CHECK);
   auto* helper = platform_ref_->GetEventTargetHelper();
+  std::unordered_set<int32_t> refreshed_root_ids;
+  refreshed_root_ids.insert(kRootId);
+  std::vector<int32_t> active_root_ids;
+  for (const auto root_id : helper->GetActiveEventRootIds()) {
+    active_root_ids.push_back(root_id);
+  }
+  for (const auto root_id : active_root_ids) {
+    if (helper->GetEventRootTree(root_id) == nullptr ||
+        platform_ref_->IsEventTargetRootDirty(root_id)) {
+      platform_ref_->EnsureEventTargetTree(root_id);
+      refreshed_root_ids.insert(root_id);
+    }
+  }
+  for (const auto& it : helper->GetEventRootTrees()) {
+    if (refreshed_root_ids.count(it.first) > 0) {
+      continue;
+    }
+    helper->RefreshScrollOffsets(it.second);
+  }
   float root_view_origin_on_screen[2] = {0, 0};
   helper->GetRootViewLocationOnScreen(root_view_origin_on_screen);
 
@@ -243,22 +435,17 @@ void PlatformEventTargetExposure::DoExposureCheck() {
   std::set<ExposureTargetDetail> disappear_target_set;
 
   ResetCommonAncestorRectMap();
-  if (did_reconstruct || !window_rect_valid_) {
-    float size[2] = {0};
-    helper->GetScreenSize(size);
-    window_rect_[0] = 0;
-    window_rect_[1] = 0;
-    window_rect_[2] = size[0];
-    window_rect_[3] = size[1];
-    window_rect_valid_ = true;
-  }
+  UpdateWindowRectIfNeeded(helper);
 
   for (const auto& it : exposure_target_map_) {
     const auto& detail = it.second;
     const auto& target = detail.Target();
-    if (target && target->IsVisibleForExposure(common_ancestor_rect_map_,
-                                               root_view_origin_on_screen,
-                                               window_rect_)) {
+    float tree_root_origin_on_screen[2] = {0, 0};
+    if (GetTreeRootOriginOnScreen(target, root_view_origin_on_screen,
+                                  tree_root_origin_on_screen) &&
+        target->IsVisibleForExposure(common_ancestor_rect_map_,
+                                     tree_root_origin_on_screen,
+                                     window_rect_)) {
       visible_target_now.insert(detail);
     }
   }

@@ -24,6 +24,7 @@ class PlatformLayoutFunctionWrapper {
   static FloatSize MeasureCallback(void* context,
                                    const starlight::Constraints& constraints,
                                    bool final_measure);
+  static void AlignmentCallback(void* context);
 
   void SetMeasureFunc(std::unique_ptr<MeasureFunc> measure_func);
   void UpdateLayoutNodeProps(const fml::RefPtr<PropBundle>& props);
