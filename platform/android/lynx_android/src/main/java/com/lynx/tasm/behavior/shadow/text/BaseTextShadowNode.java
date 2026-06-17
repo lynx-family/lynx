@@ -884,9 +884,12 @@ public class BaseTextShadowNode extends ShadowNode {
     } else {
       StringBuilder fontVariationSettingsStr = new StringBuilder();
       for (int i = 0; i < fontVariationSettings.size() / 2; i++) {
+        if (i > 0) {
+          fontVariationSettingsStr.append(",");
+        }
         String tag = fontVariationSettings.getString(i * 2);
         double value = fontVariationSettings.getDouble(i * 2 + 1);
-        fontVariationSettingsStr.append("'").append(tag).append("' ").append(value).append(",");
+        fontVariationSettingsStr.append("'").append(tag).append("' ").append(value);
       }
       mTextAttributes.setFontVariationSettings(fontVariationSettingsStr.toString());
     }
@@ -901,9 +904,12 @@ public class BaseTextShadowNode extends ShadowNode {
     } else {
       StringBuilder fontFeatureSettingsStr = new StringBuilder();
       for (int i = 0; i < fontFeatureSettings.size() / 2; i++) {
+        if (i > 0) {
+          fontFeatureSettingsStr.append(",");
+        }
         String tag = fontFeatureSettings.getString(i * 2);
         int value = fontFeatureSettings.getInt(i * 2 + 1);
-        fontFeatureSettingsStr.append("'").append(tag).append("' ").append(value).append(",");
+        fontFeatureSettingsStr.append("'").append(tag).append("' ").append(value);
       }
       mTextAttributes.setFontFeatureSettings(fontFeatureSettingsStr.toString());
     }

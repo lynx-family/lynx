@@ -8,6 +8,7 @@ import static org.mockito.Mockito.mock;
 import android.graphics.Typeface;
 import android.text.Layout;
 import com.lynx.react.bridge.DynamicFromMap;
+import com.lynx.react.bridge.JavaOnlyArray;
 import com.lynx.react.bridge.JavaOnlyMap;
 import com.lynx.tasm.behavior.LayoutNodeManager;
 import com.lynx.tasm.behavior.StyleConstants;
@@ -89,6 +90,32 @@ public class TextShadowNodeTest {
         StyleConstants.FONTWEIGHT_700, textShadowNode.getTextAttributes().getFontWeight());
     Assert.assertEquals(
         Typeface.BOLD_ITALIC, textShadowNode.getTextAttributes().getTypefaceStyle());
+  }
+
+  @Test
+  public void testFontVariationSettingsHasNoTrailingComma() {
+    textShadowNode.setFontVariationSettings(JavaOnlyArray.of("wdth", 700));
+
+    Assert.assertEquals(
+        "'wdth' 700.0", textShadowNode.getTextAttributes().getFontVariationSettings());
+  }
+
+  @Test
+  public void testFontVariationSettingsWithOpticalSizingUsesCommaSeparator() {
+    textShadowNode.setFontVariationSettings(JavaOnlyArray.of("wdth", 700));
+    textShadowNode.getTextAttributes().setFontSize(14.0f);
+    textShadowNode.setFontFeatureSettings(StyleConstants.FONTOPTICALSIZING_AUTO);
+
+    Assert.assertEquals(
+        "'wdth' 700.0,'opsz' 14.0", textShadowNode.getTextAttributes().getFontVariationSettings());
+  }
+
+  @Test
+  public void testFontFeatureSettingsHasNoTrailingComma() {
+    textShadowNode.setFontFeatureSettings(JavaOnlyArray.of("hlig", 1, "kern", 0));
+
+    Assert.assertEquals(
+        "'hlig' 1,'kern' 0", textShadowNode.getTextAttributes().getFontFeatureSettings());
   }
 
   @Test
