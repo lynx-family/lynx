@@ -74,6 +74,7 @@ class TextFragmentBehaviorTest : public ::testing::Test {
 };
 
 TEST_F(TextFragmentBehaviorTest, DispatchLayoutEventContainsSizeAndLineData) {
+  auto page = manager_->CreateFiberPage("page", 11);
   auto element = manager_->CreateFiberText("text");
   auto* text_element = static_cast<TextElement*>(element.get());
 
@@ -88,6 +89,9 @@ TEST_F(TextFragmentBehaviorTest, DispatchLayoutEventContainsSizeAndLineData) {
 
   auto listener = std::make_shared<RecordingEventListener>();
   ASSERT_TRUE(element->AddEventListener("layout", listener));
+
+  page->InsertNode(element);
+  page->FlushActionsAsRoot();
 
   Fragment fragment(element.get());
   fragment.SetBehavior(std::make_unique<TextFragmentBehavior>(&fragment));
