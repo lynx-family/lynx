@@ -166,11 +166,7 @@
   if ([inspectorClass conformsToProtocol:@protocol(LynxBaseInspectorOwnerNG)] &&
       [inspectorClass conformsToProtocol:@protocol(LynxBaseInspectorController)]) {
     lynx::tasm::DevToolLifecycle::GetInstance().OnAttached();
-    // Although there is no such thing as "preset" on iOS,
-    // `lynxDebugPresetValue` is actually working as a default value set from service.
-    // We still need to check it and apply.
-    // TODO(mitchilling): rename `lynxDebugPresetValue` to solve ambiguity.
-    if ([LynxService(LynxServiceDevToolProtocol) lynxDebugPresetValue]) {
+    if ([DevToolSettings sharedInstance].bootstrap.lynxDebugEnabled) {
       lynx::tasm::DevToolLifecycle::GetInstance().OnEnabled();
     }
   }
@@ -299,10 +295,10 @@
 // Returns true only if all the following conditions are met:
 // 1. The DevTool component is attached.
 // 2. logBoxEnabled in setting is true.
-// 3. The `logBoxPresetValue` is true (this value can be changed via LynxDevToolService).
+// 3. The bootstrap LogBox default is true.
 - (BOOL)logBoxEnabled {
   return [self lynxDebugEnabled] && [DevToolSettings sharedInstance].logBoxEnabled &&
-         [LynxService(LynxServiceDevToolProtocol) logBoxPresetValue];
+         [DevToolSettings sharedInstance].bootstrap.logBoxEnabled;
 }
 
 // This interface is used by TestBench and is only used to debug.

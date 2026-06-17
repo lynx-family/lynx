@@ -61,6 +61,7 @@ static NSString *const kDevToolSettingsTestActivatedCDPDomainsKey = @"activated_
   XCTAssertFalse([settings isCSSErrorIgnored]);
   XCTAssertTrue([[settings ignoredErrorTypes] count] == 0);
   XCTAssertTrue([[settings enabledCDPDomains] count] == 0);
+  XCTAssertNotNil(settings.bootstrap);
 }
 
 - (void)testPersistence {
@@ -78,6 +79,36 @@ static NSString *const kDevToolSettingsTestActivatedCDPDomainsKey = @"activated_
   NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
   XCTAssertTrue([defaults boolForKey:SP_KEY_ENABLE_DEVTOOL]);
   XCTAssertFalse([defaults boolForKey:SP_KEY_ENABLE_LOGBOX]);
+}
+
+- (void)testBootstrapDefaultValues {
+  DevToolBootstrapSettings *bootstrap = [[DevToolBootstrapSettings alloc] init];
+
+  XCTAssertFalse(bootstrap.lynxDebugEnabled);
+  XCTAssertFalse(bootstrap.logBoxEnabled);
+}
+
+- (void)testBootstrapSettingsAreNotPersisted {
+  DevToolBootstrapSettings *bootstrap = [[DevToolBootstrapSettings alloc] init];
+  NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+  NSDictionary *before = [defaults dictionaryRepresentation];
+
+  bootstrap.lynxDebugEnabled = YES;
+  bootstrap.logBoxEnabled = YES;
+
+  XCTAssertTrue(bootstrap.lynxDebugEnabled);
+  XCTAssertTrue(bootstrap.logBoxEnabled);
+  XCTAssertEqualObjects(before, [defaults dictionaryRepresentation]);
+}
+
+- (void)testBootstrapDevelopmentDefaultsFillOnlyUnset {
+  DevToolBootstrapSettings *bootstrap = [[DevToolBootstrapSettings alloc] init];
+  bootstrap.logBoxEnabled = NO;
+
+  [bootstrap applyDevelopmentDefaultsIfUnset];
+
+  XCTAssertTrue(bootstrap.lynxDebugEnabled);
+  XCTAssertFalse(bootstrap.logBoxEnabled);
 }
 
 - (void)testIgnoreErrorCSSPersistence {

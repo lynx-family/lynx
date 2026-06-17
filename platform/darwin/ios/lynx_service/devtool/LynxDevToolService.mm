@@ -2,6 +2,7 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+#import <Lynx/DevToolSettings.h>
 #import <Lynx/LynxService.h>
 #import <LynxService/LynxDevToolService.h>
 #import <objc/message.h>
@@ -11,13 +12,20 @@
 
 #pragma mark - LynxServiceDevToolProtocol
 
-- (instancetype)init {
-  self = [super init];
-  if (self) {
-    _lynxDebugPresetValue = NO;
-    _logBoxPresetValue = NO;
-  }
-  return self;
+- (BOOL)lynxDebugPresetValue {
+  return [DevToolSettings sharedInstance].bootstrap.lynxDebugEnabled;
+}
+
+- (void)setLynxDebugPresetValue:(BOOL)lynxDebugPresetValue {
+  [DevToolSettings sharedInstance].bootstrap.lynxDebugEnabled = lynxDebugPresetValue;
+}
+
+- (BOOL)logBoxPresetValue {
+  return [DevToolSettings sharedInstance].bootstrap.logBoxEnabled;
+}
+
+- (void)setLogBoxPresetValue:(BOOL)logBoxPresetValue {
+  [DevToolSettings sharedInstance].bootstrap.logBoxEnabled = logBoxPresetValue;
 }
 
 - (id<LynxBaseInspectorController>)createInspectorOwnerWithLynxView:(LynxView *)lynxView

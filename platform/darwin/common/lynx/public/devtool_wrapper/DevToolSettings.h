@@ -30,6 +30,18 @@ static NSString *const SP_KEY_ENABLE_CDP_DOMAIN_PAGE = @"enable_cdp_domain_page"
 static NSString *const SP_KEY_ENABLE_CDP_DOMAIN_RUNTIME = @"enable_cdp_domain_runtime";
 
 /**
+ * Process-local integration settings that can be configured before `LynxEnv` initialization.
+ */
+@interface DevToolBootstrapSettings : NSObject
+
+@property(nonatomic, assign, getter=isLynxDebugEnabled) BOOL lynxDebugEnabled;
+@property(nonatomic, assign, getter=isLogBoxEnabled) BOOL logBoxEnabled;
+
+- (void)applyDevelopmentDefaultsIfUnset;
+
+@end
+
+/**
  * A centralized manager for DevTool user preferences and settings.
  * Handles persistence via NSUserDefaults and synchronizes values with the native C++ layer.
  *
@@ -43,6 +55,8 @@ static NSString *const SP_KEY_ENABLE_CDP_DOMAIN_RUNTIME = @"enable_cdp_domain_ru
 @interface DevToolSettings : NSObject
 
 + (instancetype)sharedInstance;
+
+@property(nonatomic, strong, readonly) DevToolBootstrapSettings *bootstrap;
 
 // Switch properties
 @property(nonatomic, assign) BOOL devToolEnabled;

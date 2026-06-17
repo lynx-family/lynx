@@ -16,9 +16,44 @@
 @interface DevToolSettings ()
 
 @property(nonatomic, strong) NSUserDefaults *defaults;
+@property(nonatomic, strong, readwrite) DevToolBootstrapSettings *bootstrap;
 
 + (NSArray<NSNumber *> *)buildReportedBacktraceAddresses;
 + (NSString *)buildBacktraceAddressSummary;
+
+@end
+
+@implementation DevToolBootstrapSettings {
+  NSNumber *_lynxDebugEnabled;
+  NSNumber *_logBoxEnabled;
+}
+
+- (BOOL)isLynxDebugEnabled {
+  return _lynxDebugEnabled != nil ? _lynxDebugEnabled.boolValue : NO;
+}
+
+- (void)setLynxDebugEnabled:(BOOL)lynxDebugEnabled {
+  _lynxDebugEnabled = @(lynxDebugEnabled);
+}
+
+- (BOOL)isLogBoxEnabled {
+  return _logBoxEnabled != nil ? _logBoxEnabled.boolValue : NO;
+}
+
+- (void)setLogBoxEnabled:(BOOL)logBoxEnabled {
+  _logBoxEnabled = @(logBoxEnabled);
+}
+
+- (void)applyDevelopmentDefaultsIfUnset {
+  // This is expected to run during single-threaded bootstrap. If callers need concurrent
+  // bootstrap configuration later, make this set-if-unset block atomic.
+  if (_lynxDebugEnabled == nil) {
+    _lynxDebugEnabled = @YES;
+  }
+  if (_logBoxEnabled == nil) {
+    _logBoxEnabled = @YES;
+  }
+}
 
 @end
 
@@ -114,6 +149,7 @@ static const NSUInteger kMaxReportedBacktraceFrames = 10;
   self = [super init];
   if (self) {
     _defaults = [NSUserDefaults standardUserDefaults];
+    _bootstrap = [[DevToolBootstrapSettings alloc] init];
 
     // Initialize default values for non-persisted settings
     _highlightTouchEnabled = NO;
