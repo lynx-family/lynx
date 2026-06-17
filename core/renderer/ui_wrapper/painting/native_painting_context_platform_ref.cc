@@ -9,6 +9,7 @@
 #include <utility>
 #include <vector>
 
+#include "base/include/fml/time/time_delta.h"
 #include "base/trace/native/trace_event.h"
 #include "core/base/threading/task_runner_manufactor.h"
 #include "core/event/event.h"
@@ -27,14 +28,18 @@ namespace {
 
 int32_t ToInt(float value) { return static_cast<int32_t>(value); }
 
+constexpr int64_t kEventTargetTreeUpdateIntervalMs = 50;
+constexpr int32_t kUnknownEventTargetRootId = -1;
+
 }  // namespace
 
 NativePaintingCtxPlatformRef::NativePaintingCtxPlatformRef(
     std::unique_ptr<PlatformRendererFactory> view_factory)
-    : view_factory_(std::move(view_factory)) {
+    : view_factory_(std::move(view_factory)),
+      event_target_task_runner_(base::UIThread::GetRunner()) {
   // TODO(hexionghui): The task runner should be obtained from the shell.
   event_target_exposure_ = std::make_shared<PlatformEventTargetExposure>(
-      this, base::UIThread::GetRunner());
+      this, event_target_task_runner_);
 }
 
 void NativePaintingCtxPlatformRef::CreatePlatformRenderer(
@@ -58,7 +63,7 @@ void NativePaintingCtxPlatformRef::UpdateDisplayList(
     return;
   }
 
-  need_reconstruct_event_target_tree_ = true;
+  MarkEventTargetTreeDirty(id);
   const auto &layer = it->second;
   // Rebuild the sublayers according to the new SubLayers in the display list
   // with MyersDiff. And generate actual addChild and removeChild actions for
@@ -81,6 +86,12 @@ void NativePaintingCtxPlatformRef::RemovePaintingNode(int parent, int child,
 
 void NativePaintingCtxPlatformRef::DestroyPaintingNode(int parent, int child,
                                                        int index) {
+  MarkEventTargetTreeDirty(parent);
+  if (event_target_helper_->IsActiveEventRoot(child)) {
+    event_target_exposure_->RemoveExposureTargetsInEventRoot(child);
+    event_target_helper_->RemoveActiveEventRoot(child);
+    ClearEventTargetRootDirty(child);
+  }
   if (auto it_child = renderers_.find(child); it_child != renderers_.end()) {
     it_child->second->RemoveFromParent();
     renderers_.erase(child);
@@ -155,13 +166,19 @@ void NativePaintingCtxPlatformRef::SetLynxEngineActorForPlatformContextRef(
 }
 
 bool NativePaintingCtxPlatformRef::DispatchPlatformInputEvent(
-    int int_event_data[], float float_event_data[]) {
-  auto event_target_tree = ReconstructEventTargetTreeRecursively();
+    int int_event_data[], float float_event_data[],
+    int32_t event_target_root_id) {
+  auto event_target_tree = EnsureEventTargetTree(event_target_root_id);
   if (event_target_tree == nullptr) {
     return false;
   }
   return event_handler_->OnInputEvent(event_target_tree, int_event_data,
                                       float_event_data);
+}
+
+bool NativePaintingCtxPlatformRef::DispatchPlatformInputEvent(
+    int int_event_data[], float float_event_data[]) {
+  return DispatchPlatformInputEvent(int_event_data, float_event_data, kRootId);
 }
 
 int NativePaintingCtxPlatformRef::GetPlatformEventHandlerState() {
@@ -204,9 +221,11 @@ void NativePaintingCtxPlatformRef::UpdatePlatformEventBundle(
   // ApplyEventBundle needs to be executed actively for the PlatformEventTarget.
   if (bundle.Empty()) {
     platform_event_bundles_.erase(id);
+    MarkEventTargetTreeDirty(id);
     return;
   }
   platform_event_bundles_.insert_or_assign(id, std::move(bundle));
+  MarkEventTargetTreeDirty(id);
 }
 
 const PlatformEventBundle *NativePaintingCtxPlatformRef::GetPlatformEventBundle(
@@ -218,48 +237,161 @@ const PlatformEventBundle *NativePaintingCtxPlatformRef::GetPlatformEventBundle(
   return &it->second;
 }
 
-fml::RefPtr<PlatformEventTarget>
-NativePaintingCtxPlatformRef::ReconstructEventTargetTreeRecursively() {
-  return ReconstructEventTargetTreeRecursively(nullptr);
+int32_t NativePaintingCtxPlatformRef::GetEventTargetRootIdForRenderer(
+    int32_t renderer_id) {
+  if (renderer_id == kRootId ||
+      event_target_helper_->IsActiveEventRoot(renderer_id)) {
+    return renderer_id;
+  }
+  auto target = event_target_helper_->GetEventTarget(renderer_id);
+  if (target != nullptr) {
+    return target->RootId();
+  }
+  return kUnknownEventTargetRootId;
+}
+
+bool NativePaintingCtxPlatformRef::IsEventTargetRootDirty(
+    int32_t root_id) const {
+  return dirty_event_root_ids_.count(root_id) > 0;
+}
+
+void NativePaintingCtxPlatformRef::MarkEventTargetTreeDirty(
+    int32_t renderer_id) {
+  const int32_t root_id = GetEventTargetRootIdForRenderer(renderer_id);
+  if (root_id != kUnknownEventTargetRootId) {
+    MarkEventTargetRootDirty(root_id);
+    return;
+  }
+
+  MarkEventTargetRootDirty(kRootId);
+  for (const auto active_root_id :
+       event_target_helper_->GetActiveEventRootIds()) {
+    MarkEventTargetRootDirty(active_root_id);
+  }
+}
+
+void NativePaintingCtxPlatformRef::MarkEventTargetRootDirty(int32_t root_id) {
+  if (root_id != kRootId && !event_target_helper_->IsActiveEventRoot(root_id)) {
+    root_id = kRootId;
+  }
+  dirty_event_root_ids_.insert(root_id);
+}
+
+void NativePaintingCtxPlatformRef::ClearEventTargetRootDirty(int32_t root_id) {
+  dirty_event_root_ids_.erase(root_id);
+}
+
+void NativePaintingCtxPlatformRef::ScheduleEnsureEventTargetTree(
+    int32_t root_id) {
+  if (scheduled_event_target_tree_update_.exchange(true)) {
+    return;
+  }
+
+  auto weak_this = weak_from_this();
+  if (weak_this.expired() || !event_target_task_runner_) {
+    scheduled_event_target_tree_update_.store(false);
+    EnsureEventTargetTree(root_id);
+    return;
+  }
+
+  event_target_task_runner_->PostDelayedTask(
+      [weak_this, root_id]() {
+        auto self = weak_this.lock();
+        if (!self) {
+          return;
+        }
+        self->scheduled_event_target_tree_update_.store(false);
+        self->EnsureEventTargetTree(root_id);
+      },
+      fml::TimeDelta::FromMilliseconds(kEventTargetTreeUpdateIntervalMs));
 }
 
 fml::RefPtr<PlatformEventTarget>
-NativePaintingCtxPlatformRef::ReconstructEventTargetTreeRecursively(
-    bool *did_reconstruct) {
-  auto page_renderer = renderers_.find(kRootId);
-  if (page_renderer == renderers_.end() || page_renderer->second == nullptr) {
-    if (did_reconstruct != nullptr) {
-      *did_reconstruct = false;
-    }
+NativePaintingCtxPlatformRef::EnsureEventTargetTree(int32_t root_id) {
+  if (root_id != kRootId && !event_target_helper_->IsActiveEventRoot(root_id)) {
     return nullptr;
   }
-  auto event_target_tree = event_target_helper_->GetRootEventTarget();
-  if (need_reconstruct_event_target_tree_ == false &&
-      event_target_tree != nullptr) {
-    event_target_helper_->RefreshScrollOffsets();
-    if (did_reconstruct != nullptr) {
-      *did_reconstruct = false;
-    }
-    return event_target_tree;
+
+  auto page_renderer = renderers_.find(kRootId);
+  if (page_renderer == renderers_.end() || page_renderer->second == nullptr) {
+    return nullptr;
   }
-  need_reconstruct_event_target_tree_ = false;
-  if (did_reconstruct != nullptr) {
-    *did_reconstruct = true;
+
+  auto requested_tree = event_target_helper_->GetEventRootTree(root_id);
+  if (requested_tree == nullptr || IsEventTargetRootDirty(root_id)) {
+    return ReconstructEventTargetTreeForRoot(root_id);
   }
+  event_target_helper_->RefreshScrollOffsets(requested_tree);
+  return requested_tree;
+}
+
+fml::RefPtr<PlatformEventTarget>
+NativePaintingCtxPlatformRef::ReconstructEventTargetTreeRecursively() {
+  return EnsureEventTargetTree(kRootId);
+}
+
+fml::RefPtr<PlatformEventTarget>
+NativePaintingCtxPlatformRef::ReconstructEventTargetTreeForRoot(
+    int32_t root_id) {
+  auto renderer_it = renderers_.find(root_id);
+  if (renderer_it == renderers_.end() || renderer_it->second == nullptr) {
+    ClearEventTargetRootDirty(root_id);
+    return nullptr;
+  }
+
   TRACE_EVENT(LYNX_TRACE_CATEGORY,
               NATIVE_PAINTING_CONTEXT_RECONSTRUCT_EVENT_TARGET_TREE);
-  auto target = event_target_helper_->ReconstructEventTargetTreeRecursively(
-      fml::static_ref_ptr_cast<PlatformRendererImpl>(page_renderer->second));
-  if (target != nullptr) {
-    event_target_helper_->RefreshScrollOffsets();
+  event_target_exposure_->ClearExposureTargetsInEventRoot(root_id);
+  auto tree = event_target_helper_->ReconstructEventTargetTreeRecursively(
+      fml::static_ref_ptr_cast<PlatformRendererImpl>(renderer_it->second));
+  ClearEventTargetRootDirty(root_id);
+  event_target_helper_->RefreshScrollOffsets(tree);
+  event_target_exposure_->InvalidateWindowRect();
+  event_target_exposure_->DidRebuildExposureTargetMap();
+  return tree;
+}
+
+bool NativePaintingCtxPlatformRef::EnsureEventTargetTreeForTarget(
+    int32_t target_id) {
+  if (EnsureEventTargetTree(kRootId) == nullptr) {
+    return false;
   }
-  return target;
+  auto target = event_target_helper_->GetEventTarget(target_id);
+  if (target != nullptr) {
+    const auto root_id = target->RootId();
+    if (event_target_helper_->GetEventRootTree(root_id) == nullptr ||
+        IsEventTargetRootDirty(root_id)) {
+      EnsureEventTargetTree(root_id);
+    }
+    target = event_target_helper_->GetEventTarget(target_id);
+    if (target != nullptr &&
+        event_target_helper_->GetEventRootTree(target->RootId()) != nullptr) {
+      return true;
+    }
+  }
+  for (auto root_id : event_target_helper_->GetActiveEventRootIds()) {
+    EnsureEventTargetTree(root_id);
+    if (event_target_helper_->GetEventTarget(target_id) != nullptr) {
+      return true;
+    }
+  }
+  return event_target_helper_->GetEventTarget(target_id) != nullptr;
 }
 
 std::vector<int32_t>
 NativePaintingCtxPlatformRef::CollectMeaningfulPaintingAreaRecords() {
-  if (ReconstructEventTargetTreeRecursively() == nullptr) {
+  if (EnsureEventTargetTree(kRootId) == nullptr) {
     return {};
+  }
+  std::vector<int32_t> active_root_ids;
+  for (const auto root_id : event_target_helper_->GetActiveEventRootIds()) {
+    active_root_ids.push_back(root_id);
+  }
+  for (const auto root_id : active_root_ids) {
+    EnsureEventTargetTree(root_id);
+  }
+  for (const auto &it : event_target_helper_->GetEventRootTrees()) {
+    event_target_helper_->RefreshScrollOffsets(it.second);
   }
 
   std::vector<int32_t> flattened;
@@ -285,7 +417,11 @@ NativePaintingCtxPlatformRef::CollectMeaningfulPaintingAreaRecords() {
     }
 
     float rect[4] = {0.f, 0.f, target->Width(), target->Height()};
-    event_target_helper_->ConvertRectFromTargetToRootTarget(rect, target, rect);
+    if (event_target_helper_->GetEventRootTree(target->RootId()) == nullptr) {
+      continue;
+    }
+    event_target_helper_->ConvertRectFromTargetToPageRootTarget(rect, target,
+                                                                rect);
     int32_t x = ToInt(rect[0]);
     int32_t y = ToInt(rect[1]);
     int32_t width = ToInt(rect[2] - rect[0]);
@@ -322,8 +458,31 @@ void NativePaintingCtxPlatformRef::RemovePlatformEventTargetFromExposure(
   event_target_exposure_->RemoveExposureTarget(target, detail);
 }
 
-void NativePaintingCtxPlatformRef::ClearExposureTargetMap() {
-  event_target_exposure_->ClearExposureTargetMap();
+void NativePaintingCtxPlatformRef::SetPlatformEventRootActive(int32_t root_id,
+                                                              bool active) {
+  if (root_id == kRootId) {
+    return;
+  }
+  if (active) {
+    event_target_helper_->AddActiveEventRoot(root_id);
+    MarkEventTargetRootDirty(root_id);
+    EnsureEventTargetTree(root_id);
+    return;
+  }
+
+  event_target_exposure_->RemoveExposureTargetsInEventRoot(root_id);
+  event_target_helper_->RemoveActiveEventRoot(root_id);
+  ClearEventTargetRootDirty(root_id);
+}
+
+void NativePaintingCtxPlatformRef::SetPlatformEventRootOffset(int32_t root_id,
+                                                              float offset_x,
+                                                              float offset_y) {
+  if (root_id == kRootId) {
+    return;
+  }
+  event_target_helper_->SetEventRootOffsetToPageRoot(root_id, offset_x,
+                                                     offset_y);
 }
 
 void NativePaintingCtxPlatformRef::StopExposure(const lepus::Value &options) {
@@ -361,9 +520,9 @@ void NativePaintingCtxPlatformRef::InvokeUIMethod(
                 callback(code, PubLepusValue(data));
               });
         };
-    if (ReconstructEventTargetTreeRecursively() == nullptr) {
+    if (!EnsureEventTargetTreeForTarget(id)) {
       cb(LynxGetUIResult::UNKNOWN,
-         lepus::Value("failed to reconstruct event target tree"));
+         lepus::Value("failed to ensure event target tree"));
       return;
     }
     event_target_helper_->InvokeMethod(id, method, params, std::move(cb));
@@ -400,6 +559,10 @@ void NativePaintingCtxPlatformRef::InvokePlatformRendererUIMethod(
 void NativePaintingCtxPlatformRef::Destroy() {
   renderers_.clear();
   platform_event_bundles_.clear();
+  scheduled_event_target_tree_update_.store(false);
+  dirty_event_root_ids_.clear();
+  event_target_helper_->ClearActiveEventRoots();
+  event_target_helper_->ClearEventTargets();
   if (event_target_exposure_) {
     event_target_exposure_->ClearExposureTargetMap();
   }

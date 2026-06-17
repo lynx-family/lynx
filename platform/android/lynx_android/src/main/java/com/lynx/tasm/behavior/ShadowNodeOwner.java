@@ -110,6 +110,11 @@ public class ShadowNodeOwner extends LayoutContext {
     if (parentNode == null) {
       return;
     }
+    ShadowNode childNode = mShadowNodeRegistry.getNode(childSignature);
+    int childIndex = childNode != null ? parentNode.indexOf(childNode) : -1;
+    if (childIndex >= 0) {
+      index = childIndex;
+    }
     try {
       parentNode.removeChildAt(index);
     } catch (ArrayIndexOutOfBoundsException e) {
@@ -123,7 +128,10 @@ public class ShadowNodeOwner extends LayoutContext {
   public void insertNode(int parentSignature, int childSignature, int index) {
     ShadowNode parentNode = mShadowNodeRegistry.getNode(parentSignature);
     ShadowNode childNode = mShadowNodeRegistry.getNode(childSignature);
-    if (index == -1) {
+    if (parentNode == null || childNode == null) {
+      return;
+    }
+    if (index == -1 || index > parentNode.getChildCount()) {
       index = parentNode.getChildCount();
     }
     try {

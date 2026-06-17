@@ -249,7 +249,64 @@ LynxPseudoStatus PlatformEventTarget::GetPseudoStatus() const {
 
 bool PlatformEventTarget::TouchPseudoPropagation() const { return true; }
 
-bool PlatformEventTarget::EventThrough(float point[2]) const { return false; }
+bool PlatformEventTarget::EventThrough(float point[2]) const {
+  return EventThroughInternal(point, true);
+}
+
+bool PlatformEventTarget::EventThroughInternal(
+    float point[2], bool include_events_pass_through) const {
+  bool is_event_through = false;
+  if (event_through_ == LynxEventPropStatus::kEnable) {
+    is_event_through = true;
+  } else if (event_through_ == LynxEventPropStatus::kDisable) {
+    is_event_through = false;
+  } else {
+    auto parent = ParentTarget();
+    if (parent != nullptr && parent.get() != this && !parent->IsPageRoot()) {
+      float parent_point[2] = {point[0], point[1]};
+      if (target_helper_ != nullptr) {
+        auto self = fml::RefPtr<PlatformEventTarget>(
+            const_cast<PlatformEventTarget*>(this));
+        target_helper_->ConvertPointFromDescendantToAncestor(parent_point, self,
+                                                             parent, point);
+      }
+      is_event_through = parent->EventThroughInternal(parent_point, false);
+    }
+  }
+
+  if (!event_through_active_regions_.empty()) {
+    is_event_through = HitEventThroughActiveRegions(point) ? is_event_through
+                                                           : !is_event_through;
+  }
+
+  if (include_events_pass_through &&
+      events_pass_through_ == LynxEventPropStatus::kEnable) {
+    return true;
+  }
+  return is_event_through;
+}
+
+bool PlatformEventTarget::HitEventThroughActiveRegions(float point[2]) const {
+  for (const auto& region : event_through_active_regions_) {
+    const float left = ConvertEventThroughSizeValue(region[0], true);
+    const float top = ConvertEventThroughSizeValue(region[1], false);
+    const float right = left + ConvertEventThroughSizeValue(region[2], true);
+    const float bottom = top + ConvertEventThroughSizeValue(region[3], false);
+    if (point[0] >= left && point[0] < right && point[1] >= top &&
+        point[1] < bottom) {
+      return true;
+    }
+  }
+  return false;
+}
+
+float PlatformEventTarget::ConvertEventThroughSizeValue(
+    const EventThroughSizeValue& value, bool is_horizontal) const {
+  if (value.type == EventThroughSizeValue::Type::kPercentage) {
+    return value.value * (is_horizontal ? Width() : Height());
+  }
+  return value.value;
+}
 
 bool PlatformEventTarget::IgnoreFocus() const { return false; }
 
