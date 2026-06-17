@@ -11,11 +11,20 @@
 
 namespace lynx::tasm {
 
+namespace {
+
+bool IsOverlayTag(const base::String& tag) {
+  return tag.IsEquals("overlay") || tag.IsEquals("x-overlay-ng");
+}
+
+}  // namespace
+
 PlatformRendererImpl::PlatformRendererImpl(int id, PlatformRendererType type,
                                            const base::String& tag)
     : id_(id), type_(type), tag_name_(tag), opacity_{} {
   is_platform_extended_renderer_ =
       (type_ == PlatformRendererType::kUnknown && !tag_name_.empty());
+  is_overlay_ = IsOverlayTag(tag_name_);
 }
 
 base::String PlatformRendererImpl::GetExtendedRendererTagName() const {

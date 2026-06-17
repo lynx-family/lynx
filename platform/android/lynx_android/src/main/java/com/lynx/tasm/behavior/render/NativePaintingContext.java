@@ -86,23 +86,58 @@ public class NativePaintingContext implements IPaintingContext {
   }
 
   @Override
-  public boolean dispatchPlatformMotionEvent(MotionEvent ev) {
+  public boolean dispatchPlatformMotionEvent(MotionEvent ev, int rootSign) {
     if (mNativePtr == 0 || mDestroyed) {
       return false;
     }
 
-    int pointerCount = ev.getPointerCount();
-    // iEventData: [event_type, action_type, event_source, pointer_count, ...]
-    int[] iEventData = {0, ev.getActionMasked(), ev.getSource(), pointerCount};
+    int actionMasked = ev.getActionMasked();
+    int actionType = getPlatformActionType(actionMasked);
+    // Pointer down/up MotionEvents contain all active pointers, while native down/up
+    // handlers mutate state for every pointer in the payload.
+    boolean dispatchActionPointerOnly = isActionPointerEvent(actionMasked);
+    int pointerCount = dispatchActionPointerOnly ? 1 : ev.getPointerCount();
+    // iEventData: [event_type, action_type, event_source, pointer_count, root_sign, ...]
+    int[] iEventData = {0, actionType, ev.getSource(), pointerCount, rootSign};
     // fEventData: [pointer_id, pointer_x, pointer_y, ...]
     float[] fEventData = new float[pointerCount * 3];
     for (int i = 0; i < pointerCount; i++) {
+      int pointerIndex = dispatchActionPointerOnly ? ev.getActionIndex() : i;
       int base = i * 3;
-      fEventData[base] = ev.getPointerId(i);
-      fEventData[base + 1] = ev.getX(i);
-      fEventData[base + 2] = ev.getY(i);
+      fEventData[base] = ev.getPointerId(pointerIndex);
+      fEventData[base + 1] = ev.getX(pointerIndex);
+      fEventData[base + 2] = ev.getY(pointerIndex);
     }
     return nativeDispatchPlatformInputEvent(mNativePtr, iEventData, fEventData);
+  }
+
+  private static int getPlatformActionType(int actionMasked) {
+    if (actionMasked == MotionEvent.ACTION_POINTER_DOWN) {
+      return MotionEvent.ACTION_DOWN;
+    }
+    if (actionMasked == MotionEvent.ACTION_POINTER_UP) {
+      return MotionEvent.ACTION_UP;
+    }
+    return actionMasked;
+  }
+
+  private static boolean isActionPointerEvent(int actionMasked) {
+    return actionMasked == MotionEvent.ACTION_POINTER_DOWN
+        || actionMasked == MotionEvent.ACTION_POINTER_UP;
+  }
+
+  public void setPlatformEventRootActive(int rootSign, boolean active) {
+    if (mNativePtr == 0 || mDestroyed) {
+      return;
+    }
+    nativeSetPlatformEventRootActive(mNativePtr, rootSign, active);
+  }
+
+  public void setPlatformEventRootOffset(int rootSign, float offsetX, float offsetY) {
+    if (mNativePtr == 0 || mDestroyed) {
+      return;
+    }
+    nativeSetPlatformEventRootOffset(mNativePtr, rootSign, offsetX, offsetY);
   }
 
   @Override
@@ -129,6 +164,11 @@ public class NativePaintingContext implements IPaintingContext {
 
   native boolean nativeDispatchPlatformInputEvent(
       long nativePtr, int[] iEventData, float[] fEventData);
+
+  native void nativeSetPlatformEventRootActive(long nativePtr, int rootSign, boolean active);
+
+  native void nativeSetPlatformEventRootOffset(
+      long nativePtr, int rootSign, float offsetX, float offsetY);
 
   native int nativeGetPlatformEventHandlerState(long nativePtr);
 

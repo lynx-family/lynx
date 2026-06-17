@@ -59,6 +59,12 @@ open class LynxUIOverlay(context: LynxContext, params: Any?): UIGroup<AndroidVie
 
     override fun createView(context: Context): AndroidView {
         return object : AndroidView(context){
+            override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+                setMeasuredDimension(0, 0)
+            }
+
+            override fun onLayout(changed: Boolean, l: Int, t: Int, r: Int, b: Int) {}
+
             override fun onVisibilityChanged(changedView: View, visibility: Int) {
                 if (visibility == View.GONE || visibility == View.INVISIBLE) {
                     onDetach()

@@ -23,6 +23,12 @@ namespace tasm {
 namespace test {
 class MockPlatformImpl : public LayoutCtxPlatformImpl {
  public:
+  struct LayoutNodeOperation {
+    int parent;
+    int child;
+    int index;
+  };
+
   MockPlatformImpl() {}
   virtual ~MockPlatformImpl() override {}
   void SetLayoutNodeManager(LayoutNodeManager* layout_node_manager) override{};
@@ -43,8 +49,12 @@ class MockPlatformImpl : public LayoutCtxPlatformImpl {
     }
     return result;
   };
-  void InsertLayoutNode(int parent, int child, int index) override {}
-  void RemoveLayoutNode(int parent, int child, int index) override {}
+  void InsertLayoutNode(int parent, int child, int index) override {
+    inserted_layout_nodes.push_back({parent, child, index});
+  }
+  void RemoveLayoutNode(int parent, int child, int index) override {
+    removed_layout_nodes.push_back({parent, child, index});
+  }
   void DestroyLayoutNodes(const std::unordered_set<int>& ids) override {}
   void ScheduleLayout() override {}
   void OnLayoutBefore(int id) override { before_ids.push_back(id); }
@@ -57,6 +67,8 @@ class MockPlatformImpl : public LayoutCtxPlatformImpl {
   MOCK_METHOD(void, UpdateLayoutNode, (int, PropBundle*), (override));
 
   std::vector<int32_t> before_ids;
+  std::vector<LayoutNodeOperation> inserted_layout_nodes;
+  std::vector<LayoutNodeOperation> removed_layout_nodes;
 };
 }  // namespace test
 }  // namespace tasm
