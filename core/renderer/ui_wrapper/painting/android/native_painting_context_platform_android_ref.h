@@ -6,6 +6,7 @@
 #define CORE_RENDERER_UI_WRAPPER_PAINTING_ANDROID_NATIVE_PAINTING_CONTEXT_PLATFORM_ANDROID_REF_H_
 
 #include <memory>
+#include <string>
 
 #include "core/renderer/ui_wrapper/painting/android/platform_renderer_android.h"
 #include "core/renderer/ui_wrapper/painting/native_painting_context_platform_ref.h"
@@ -25,6 +26,10 @@ class NativePaintingCtxAndroidRef : public NativePaintingCtxPlatformRef {
   void GetScreenSize(float size[2]) override;
   void GetPlatformRendererScrollOffset(int32_t sign, float offset[2]) override;
   bool IsPlatformRendererScrollable(int32_t sign) override;
+  void InvokePlatformRendererUIMethod(
+      int32_t id, const std::string& method, const lepus::Value& params,
+      base::MoveOnlyClosure<void, int32_t, const pub::Value&> callback)
+      override;
 };
 
 }  // namespace tasm

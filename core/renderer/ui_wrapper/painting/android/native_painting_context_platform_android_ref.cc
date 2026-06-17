@@ -4,6 +4,7 @@
 
 #include "core/renderer/ui_wrapper/painting/android/native_painting_context_platform_android_ref.h"
 
+#include <string>
 #include <utility>
 
 namespace lynx {
@@ -95,6 +96,25 @@ bool NativePaintingCtxAndroidRef::IsPlatformRendererScrollable(int32_t sign) {
     return false;
   }
   return context->IsRendererHostScrollable(sign);
+}
+
+void NativePaintingCtxAndroidRef::InvokePlatformRendererUIMethod(
+    int32_t id, const std::string& method, const lepus::Value& params,
+    base::MoveOnlyClosure<void, int32_t, const pub::Value&> callback) {
+  auto* factory =
+      static_cast<PlatformRendererAndroidFactory*>(view_factory_.get());
+  if (factory == nullptr) {
+    NativePaintingCtxPlatformRef::InvokePlatformRendererUIMethod(
+        id, method, params, std::move(callback));
+    return;
+  }
+  auto* context = factory->GetContext();
+  if (context == nullptr) {
+    NativePaintingCtxPlatformRef::InvokePlatformRendererUIMethod(
+        id, method, params, std::move(callback));
+    return;
+  }
+  context->InvokeUIMethod(id, method, params, std::move(callback));
 }
 
 }  // namespace tasm

@@ -102,6 +102,10 @@ std::vector<fml::WeakPtr<EventTarget>>& Event::event_path() {
 }
 
 DispatchEventResult Event::DispatchEvent(EventDispatcher& dispatcher) {
+  if (event_path_.size() == 0) {
+    LOGE("Event::DispatchEvent error: the event path is empty.")
+    return {EventCancelType::kCanceledBeforeDispatch, false};
+  }
   return dispatcher.Dispatch();
 }
 
