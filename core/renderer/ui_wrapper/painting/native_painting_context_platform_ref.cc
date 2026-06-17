@@ -20,6 +20,7 @@
 #include "core/renderer/utils/value_utils.h"
 #include "core/shell/lynx_engine.h"
 #include "core/shell/lynx_shell.h"
+#include "core/value_wrapper/value_wrapper_utils.h"
 
 namespace lynx::tasm {
 namespace {
@@ -345,21 +346,21 @@ void NativePaintingCtxPlatformRef::UpdateAttributes(
 void NativePaintingCtxPlatformRef::InvokeUIMethod(
     int32_t id, const std::string &method, const lepus::Value &params,
     base::MoveOnlyClosure<void, int32_t, const pub::Value &> callback) {
-  base::MoveOnlyClosure<void, int32_t, const lepus::Value &> cb =
-      [engine_actor = engine_actor_, callback = std::move(callback)](
-          int32_t code, const lepus::Value &data) mutable {
-        if (engine_actor == nullptr) {
-          return;
-        }
-        lepus::Value data_copy = data;
-        engine_actor->Act([callback = std::move(callback), code,
-                           data = std::move(data_copy)](auto &engine) mutable {
-          callback(code, PubLepusValue(data));
-        });
-      };
-
   // Invoke ui method on the event target.
   if (method == "boundingClientRect") {
+    base::MoveOnlyClosure<void, int32_t, const lepus::Value &> cb =
+        [engine_actor = engine_actor_, callback = std::move(callback)](
+            int32_t code, const lepus::Value &data) mutable {
+          if (engine_actor == nullptr) {
+            return;
+          }
+          lepus::Value data_copy = data;
+          engine_actor->Act(
+              [callback = std::move(callback), code,
+               data = std::move(data_copy)](auto &engine) mutable {
+                callback(code, PubLepusValue(data));
+              });
+        };
     if (ReconstructEventTargetTreeRecursively() == nullptr) {
       cb(LynxGetUIResult::UNKNOWN,
          lepus::Value("failed to reconstruct event target tree"));
@@ -369,8 +370,30 @@ void NativePaintingCtxPlatformRef::InvokeUIMethod(
   }
   // Invoke ui method on the platform renderer.
   else {
-    cb(LynxGetUIResult::UNKNOWN,
-       lepus::Value("method not supported: " + method));
+    base::MoveOnlyClosure<void, int32_t, const pub::Value &> cb =
+        [engine_actor = engine_actor_, callback = std::move(callback)](
+            int32_t code, const pub::Value &data) mutable {
+          if (engine_actor == nullptr) {
+            return;
+          }
+          lepus::Value data_copy =
+              pub::ValueUtils::ConvertValueToLepusValue(data);
+          engine_actor->Act(
+              [callback = std::move(callback), code,
+               data = std::move(data_copy)](auto &engine) mutable {
+                callback(code, PubLepusValue(data));
+              });
+        };
+    InvokePlatformRendererUIMethod(id, method, params, std::move(cb));
+  }
+}
+
+void NativePaintingCtxPlatformRef::InvokePlatformRendererUIMethod(
+    int32_t id, const std::string &method, const lepus::Value &params,
+    base::MoveOnlyClosure<void, int32_t, const pub::Value &> callback) {
+  if (callback) {
+    callback(LynxGetUIResult::UNKNOWN,
+             PubLepusValue(lepus::Value("method not supported: " + method)));
   }
 }
 

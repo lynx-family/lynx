@@ -11,6 +11,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import com.lynx.react.bridge.JavaOnlyArray;
 import com.lynx.react.bridge.ReadableArray;
 import com.lynx.react.bridge.ReadableMap;
 import com.lynx.react.bridge.mapbuffer.ReadableCompactArrayBuffer;
@@ -19,6 +20,7 @@ import com.lynx.tasm.base.LLog;
 import com.lynx.tasm.behavior.Behavior;
 import com.lynx.tasm.behavior.BehaviorRegistry;
 import com.lynx.tasm.behavior.LynxContext;
+import com.lynx.tasm.behavior.LynxUIMethodConstants;
 import com.lynx.tasm.behavior.LynxUIOwner;
 import com.lynx.tasm.behavior.StylesDiffMap;
 import com.lynx.tasm.behavior.shadow.ShadowNode;
@@ -34,6 +36,7 @@ import com.lynx.tasm.behavior.ui.image.LynxImageManager;
 import com.lynx.tasm.behavior.ui.list.container.UIListContainer;
 import com.lynx.tasm.behavior.ui.scroll.AndroidScrollView;
 import com.lynx.tasm.behavior.ui.view.UIComponent;
+import com.lynx.tasm.behavior.utils.LynxUIMethodsExecutor;
 import com.lynx.tasm.event.EventsListener;
 import com.lynx.tasm.gesture.detector.GestureDetector;
 import com.lynx.tasm.service.ILynxTextService.Page;
@@ -157,6 +160,59 @@ public class PlatformRendererContext implements TextMeasurerProvider {
     Renderer renderer = host != null ? host.getRenderer() : null;
     LynxBaseUI uiHost = renderer != null ? renderer.getUIHost() : null;
     return uiHost != null && uiHost.isScrollable();
+  }
+
+  @CalledByNative
+  private void invokeUIMethod(
+      int sign, String method, ReadableMap params, long nativePtr, int callbackId) {
+    UIThreadUtils.runOnUiThreadImmediately(new Runnable() {
+      private void cb(Object... args) {
+        if (mDestroyed || mNativePtr == 0 || nativePtr == 0 || callbackId < 0) {
+          return;
+        }
+        if (args == null || args.length == 0) {
+          nativeInvokeUIMethodCallback(
+              nativePtr, callbackId, LynxUIMethodConstants.SUCCESS, new JavaOnlyArray());
+          return;
+        }
+        if (args[0] instanceof Number) {
+          int code = ((Number) args[0]).intValue();
+          Object[] data = new Object[args.length - 1];
+          if (args.length > 1) {
+            System.arraycopy(args, 1, data, 0, args.length - 1);
+          }
+          nativeInvokeUIMethodCallback(nativePtr, callbackId, code, JavaOnlyArray.of(data));
+          return;
+        }
+        nativeInvokeUIMethodCallback(
+            nativePtr, callbackId, LynxUIMethodConstants.SUCCESS, JavaOnlyArray.of(args));
+      }
+
+      @Override
+      public void run() {
+        if (mDestroyed || mNativePtr == 0) {
+          return;
+        }
+        LynxBaseUI ui = findUIMethodTarget(sign);
+        if (ui != null) {
+          LynxUIMethodsExecutor.invokeMethod(ui, method, params,
+              (Object... args) -> UIThreadUtils.runOnUiThreadImmediately(() -> cb(args)));
+        } else {
+          cb(LynxUIMethodConstants.NO_UI_FOR_NODE, "node does not have a LynxUI");
+        }
+      }
+    });
+  }
+
+  private LynxBaseUI findUIMethodTarget(int sign) {
+    LynxUIOwner owner = mContext != null ? mContext.getLynxUIOwner() : null;
+    LynxBaseUI ui = owner != null ? owner.getNode(sign) : null;
+    if (ui != null) {
+      return ui;
+    }
+    IRendererHost host = mViewHolder.get(sign);
+    Renderer renderer = host != null ? host.getRenderer() : null;
+    return renderer != null ? renderer.getUIHost() : null;
   }
 
   PointF convertPointInViewToScreen(int sign, PointF point) {
@@ -396,11 +452,11 @@ public class PlatformRendererContext implements TextMeasurerProvider {
 
   @CalledByNative
   public void insertPlatformRenderer(int parent, int child, int index) {
-    LynxUIOwner owner = mContext.getLynxUIOwner();
-    if (owner != null && owner.getNode(parent) != null && owner.getNode(child) != null) {
-      owner.insert(parent, child, index);
-      return;
-    }
+    // LynxUIOwner owner = mContext.getLynxUIOwner();
+    // if (owner != null && owner.getNode(parent) != null && owner.getNode(child) != null) {
+    //   owner.insert(parent, child, index);
+    //   return;
+    // }
 
     IRendererHost hParent = mViewHolder.get(parent);
     IRendererHost hChild = mViewHolder.get(child);
@@ -630,18 +686,18 @@ public class PlatformRendererContext implements TextMeasurerProvider {
 
   @CalledByNative
   public void removePlatformRendererFromParent(int sign) {
-    LynxUIOwner owner = mContext.getLynxUIOwner();
-    if (owner != null && owner.getNode(sign) != null) {
-      LynxBaseUI child = owner.getNode(sign);
-      if (child.getParent() instanceof LynxBaseUI) {
-        LynxBaseUI parent = (LynxBaseUI) child.getParent();
-        if (parent == null) {
-          return;
-        }
-        owner.remove(parent.getSign(), child.getSign());
-        return;
-      }
-    }
+    // LynxUIOwner owner = mContext.getLynxUIOwner();
+    // if (owner != null && owner.getNode(sign) != null) {
+    //   LynxBaseUI child = owner.getNode(sign);
+    //   if (child.getParent() instanceof LynxBaseUI) {
+    //     LynxBaseUI parent = (LynxBaseUI) child.getParent();
+    //     if (parent == null) {
+    //       return;
+    //     }
+    //     owner.remove(parent.getSign(), child.getSign());
+    //     return;
+    //   }
+    // }
 
     IRendererHost host = mViewHolder.get(sign);
     if (host != null) {
@@ -726,6 +782,9 @@ public class PlatformRendererContext implements TextMeasurerProvider {
       long nativePtr, int id, int[] ops, int[] iArgv, float[] fArgv);
 
   native void nativeDestroy(long nativePtr);
+
+  private native void nativeInvokeUIMethodCallback(
+      long nativePtr, int callbackId, int code, Object params);
 
   public void destroy() {
     if (mDestroyed) {
