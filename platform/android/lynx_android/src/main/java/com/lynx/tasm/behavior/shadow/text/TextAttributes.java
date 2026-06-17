@@ -617,12 +617,15 @@ public class TextAttributes {
       return mFontVariationSettings;
     }
     StringBuilder fontVariationSettingsStr = new StringBuilder();
-    if (mFontVariationSettings != null) {
+    if (!TextUtils.isEmpty(mFontVariationSettings)) {
       fontVariationSettingsStr.append(mFontVariationSettings);
+      fontVariationSettingsStr.append(",");
     }
-
-    String base = (mFontVariationSettings != null ? mFontVariationSettings : "");
-    return base + "'" + FONT_OPTICAL_SIZING_TAG + "' " + mFontSize;
+    fontVariationSettingsStr.append("'")
+        .append(FONT_OPTICAL_SIZING_TAG)
+        .append("' ")
+        .append(mFontSize);
+    return fontVariationSettingsStr.toString();
   }
 
   public void setFontFeatureSettings(String settings) {
