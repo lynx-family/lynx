@@ -66,6 +66,8 @@ class LynxOverlayView(context: LynxContext, val proxy: LynxUIOverlay) : UIGroup<
     private var mShouldOffsetBoundingRect = true
     private var mEnableOverlayMoved = false
     private var mEnableOverlayTouch = false
+    private var mDialogDismissCleaned = true
+    private var mPlatformEventRootActive = false
     private var mVelocityTracker: VelocityTracker? = null
     private var mLastX = 0.0f
     private var mLastY = 0.0f
@@ -84,6 +86,7 @@ class LynxOverlayView(context: LynxContext, val proxy: LynxUIOverlay) : UIGroup<
     }
 
     private val mOffsetDescendantRectToLynxView = intArrayOf(Int.MIN_VALUE, Int.MIN_VALUE)
+    private val mSyncedPlatformEventRootOffset = intArrayOf(Int.MIN_VALUE, Int.MIN_VALUE)
 
     private var mEventDispatcher : TouchEventDispatcher? = null
 
@@ -604,6 +607,51 @@ class LynxOverlayView(context: LynxContext, val proxy: LynxUIOverlay) : UIGroup<
         sendEventWithoutParam(EVENT_REQUEST_CLOSE)
     }
 
+    private fun setPlatformEventRootActive(active: Boolean) {
+        if (active) {
+            syncPlatformEventRootOffset()
+        } else {
+            mSyncedPlatformEventRootOffset[0] = Int.MIN_VALUE
+            mSyncedPlatformEventRootOffset[1] = Int.MIN_VALUE
+        }
+        lynxContext.setPlatformEventRootActive(sign, active)
+        mPlatformEventRootActive = active
+    }
+
+    private fun cleanupDialogDismiss(sendDismissEvent: Boolean) {
+        if (mDialogDismissCleaned) {
+            return
+        }
+        mDialogDismissCleaned = true
+        if (mPlatformEventRootActive) {
+            setPlatformEventRootActive(false)
+        }
+        if (sendDismissEvent) {
+            sendEventWithoutParam(EVENT_DISMISS)
+        }
+        LynxOverlayManager.removeGlobalId(mId)
+        val observer = if (mObserver?.isAlive == true) {
+            mObserver
+        } else {
+            mOverlayContainer.viewTreeObserver?.takeIf { it.isAlive }
+        }
+        observer?.let {
+            mGlobalLayoutListener?.let { listener ->
+                it.removeOnGlobalLayoutListener(listener)
+            }
+            mScrollChangedListener?.let { listener ->
+                it.removeOnScrollChangedListener(listener)
+            }
+            mDrawListener?.let { listener ->
+                it.removeOnDrawListener(listener)
+            }
+        }
+        mObserver = null
+        mGlobalLayoutListener = null
+        mScrollChangedListener = null
+        mDrawListener = null
+    }
+
     private fun show() {
         val activity = ContextUtils.getActivity(lynxContext)
         if (mLazyInitContext) {
@@ -615,7 +663,21 @@ class LynxOverlayView(context: LynxContext, val proxy: LynxUIOverlay) : UIGroup<
                     mId = LynxOverlayManager.addGlobalId(mDialog)
                     val errorCode = mDialog.checkContextErrorCode(activity)
                     if (errorCode >= 0) {
+                        mDialogDismissCleaned = false
+                        mDialog.setOnDismissListener {
+                            if (!mVisible) {
+                                cleanupDialogDismiss(true)
+                            }
+                        }
+                        mDialog.setOnCancelListener {
+                            if (!mVisible) {
+                                cleanupDialogDismiss(true)
+                            }
+                        }
                         mDialog.show()
+                        if (mDialog.isShowing) {
+                            setPlatformEventRootActive(true)
+                        }
                     }
                     sendShowOverlayEvent(errorCode, activity)
                     mObserver = mOverlayContainer?.viewTreeObserver
@@ -651,12 +713,8 @@ class LynxOverlayView(context: LynxContext, val proxy: LynxUIOverlay) : UIGroup<
     private fun hide() {
         if (mDialog.isShowing) {
             try {
+                cleanupDialogDismiss(true)
                 mDialog.dismiss()
-                sendEventWithoutParam(EVENT_DISMISS)
-                LynxOverlayManager.removeGlobalId(mId)
-                mObserver?.removeOnGlobalLayoutListener(mGlobalLayoutListener)
-                mObserver?.removeOnScrollChangedListener(mScrollChangedListener)
-                mObserver?.removeOnDrawListener(mDrawListener)
             } catch (e: WindowManager.BadTokenException) {
                 LLog.w(TAG, e.toString())
             } catch (e: RuntimeException) {
@@ -744,11 +802,8 @@ class LynxOverlayView(context: LynxContext, val proxy: LynxUIOverlay) : UIGroup<
     override fun destroy() {
         if (mDialog.isShowing) {
             try {
+                cleanupDialogDismiss(false)
                 mDialog.dismiss()
-                LynxOverlayManager.removeGlobalId(mId)
-                mObserver?.removeOnGlobalLayoutListener(mGlobalLayoutListener)
-                mObserver?.removeOnScrollChangedListener(mScrollChangedListener)
-                mObserver?.removeOnDrawListener(mDrawListener)
             } catch (e: WindowManager.BadTokenException) {
                 LLog.w(TAG, e.toString())
             } catch (e: RuntimeException) {
@@ -785,9 +840,38 @@ class LynxOverlayView(context: LynxContext, val proxy: LynxUIOverlay) : UIGroup<
         mOffsetDescendantRectToLynxView[1] = overlayViewLocation[1] - uiBodyViewLocation[1]
     }
 
+    private fun syncPlatformEventRootOffset() {
+        if (mShouldOffsetBoundingRect) {
+            updateOffsetDescendantRectToLynxView()
+        }
+        val offsetX = if (mOffsetDescendantRectToLynxView[0] == Int.MIN_VALUE) {
+            0
+        } else {
+            mOffsetDescendantRectToLynxView[0]
+        }
+        val offsetY = if (mOffsetDescendantRectToLynxView[1] == Int.MIN_VALUE) {
+            0
+        } else {
+            mOffsetDescendantRectToLynxView[1]
+        }
+        if (mSyncedPlatformEventRootOffset[0] == offsetX &&
+            mSyncedPlatformEventRootOffset[1] == offsetY) {
+            return
+        }
+        mSyncedPlatformEventRootOffset[0] = offsetX
+        mSyncedPlatformEventRootOffset[1] = offsetY
+        lynxContext.setPlatformEventRootOffset(
+            sign,
+            offsetX.toFloat(),
+            offsetY.toFloat()
+        )
+    }
+
     override fun layout() {
         super.layout()
-        if (mShouldOffsetBoundingRect) {
+        if (mShouldOffsetBoundingRect && mDialog.isShowing) {
+            syncPlatformEventRootOffset()
+        } else if (mShouldOffsetBoundingRect) {
             updateOffsetDescendantRectToLynxView()
         }
     }

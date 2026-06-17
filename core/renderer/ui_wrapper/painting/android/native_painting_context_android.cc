@@ -19,6 +19,7 @@
 #include "core/renderer/ui_wrapper/painting/android/native_painting_context_platform_android_ref.h"
 #include "core/renderer/ui_wrapper/painting/android/platform_renderer_android.h"
 #include "core/renderer/ui_wrapper/painting/android/platform_renderer_context.h"
+#include "core/renderer/ui_wrapper/painting/platform_renderer_impl.h"
 #include "core/shell/lynx_shell.h"
 #include "core/value_wrapper/value_wrapper_utils.h"
 #include "platform/android/lynx_android/src/main/jni/gen/NativePaintingContext_jni.h"
@@ -71,28 +72,66 @@ jboolean DispatchPlatformInputEvent(JNIEnv *env, jobject /*jcaller*/,
   lynx::tasm::NativePaintingCtxAndroid *context =
       reinterpret_cast<lynx::tasm::NativePaintingCtxAndroid *>(nativePtr);
 
+  jsize i_event_data_size = env->GetArrayLength(iEventData);
   jint *i_event_data = env->GetIntArrayElements(iEventData, JNI_FALSE);
   if (i_event_data == nullptr) {
-    env->ReleaseIntArrayElements(iEventData, i_event_data, 0);
     return JNI_FALSE;
   }
   jfloat *f_event_data = env->GetFloatArrayElements(fEventData, JNI_FALSE);
   if (f_event_data == nullptr) {
-    env->ReleaseFloatArrayElements(fEventData, f_event_data, 0);
+    env->ReleaseIntArrayElements(iEventData, i_event_data, 0);
     return JNI_FALSE;
   }
   auto platform_ref =
       std::static_pointer_cast<lynx::tasm::NativePaintingCtxAndroidRef>(
           context->GetPlatformRef());
   if (platform_ref == nullptr) {
+    env->ReleaseIntArrayElements(iEventData, i_event_data, 0);
+    env->ReleaseFloatArrayElements(fEventData, f_event_data, 0);
     return JNI_FALSE;
   }
 
-  auto res =
-      platform_ref->DispatchPlatformInputEvent(i_event_data, f_event_data);
+  int32_t event_target_root_id = kRootId;
+  if (i_event_data_size > 4) {
+    event_target_root_id = i_event_data[4];
+  }
+  auto res = platform_ref->DispatchPlatformInputEvent(
+      i_event_data, f_event_data, event_target_root_id);
   env->ReleaseIntArrayElements(iEventData, i_event_data, 0);
   env->ReleaseFloatArrayElements(fEventData, f_event_data, 0);
   return res;
+}
+
+void SetPlatformEventRootActive(JNIEnv *env, jobject /*jcaller*/,
+                                jlong nativePtr, jint rootSign,
+                                jboolean active) {
+  if (nativePtr == 0) {
+    return;
+  }
+  auto *context =
+      reinterpret_cast<lynx::tasm::NativePaintingCtxAndroid *>(nativePtr);
+  auto platform_ref =
+      std::static_pointer_cast<lynx::tasm::NativePaintingCtxAndroidRef>(
+          context->GetPlatformRef());
+  if (platform_ref) {
+    platform_ref->SetPlatformEventRootActive(rootSign, active == JNI_TRUE);
+  }
+}
+
+void SetPlatformEventRootOffset(JNIEnv *env, jobject /*jcaller*/,
+                                jlong nativePtr, jint rootSign, jfloat offsetX,
+                                jfloat offsetY) {
+  if (nativePtr == 0) {
+    return;
+  }
+  auto *context =
+      reinterpret_cast<lynx::tasm::NativePaintingCtxAndroid *>(nativePtr);
+  auto platform_ref =
+      std::static_pointer_cast<lynx::tasm::NativePaintingCtxAndroidRef>(
+          context->GetPlatformRef());
+  if (platform_ref) {
+    platform_ref->SetPlatformEventRootOffset(rootSign, offsetX, offsetY);
+  }
 }
 
 jintArray GetMeaningfulPaintingAreaRecords(JNIEnv *env, jobject /*jcaller*/,
@@ -430,12 +469,24 @@ void NativePaintingCtxAndroid::UpdatePlatformEventBundle(
 }
 
 void NativePaintingCtxAndroid::ReconstructEventTargetTreeRecursively() {
-  Enqueue([ref = platform_ref_]() mutable {
+  auto platform_ref =
+      std::static_pointer_cast<NativePaintingCtxPlatformRef>(platform_ref_);
+  if (platform_ref && platform_ref->HasScheduledEventTargetTreeUpdate()) {
+    return;
+  }
+  bool expected = false;
+  if (!event_target_tree_update_enqueued_->compare_exchange_strong(expected,
+                                                                   true)) {
+    return;
+  }
+  Enqueue([enqueued = event_target_tree_update_enqueued_,
+           ref = std::move(platform_ref)]() mutable {
     auto android_ref =
         std::static_pointer_cast<NativePaintingCtxAndroidRef>(ref);
     if (android_ref) {
-      android_ref->ReconstructEventTargetTreeRecursively();
+      android_ref->ScheduleEnsureEventTargetTree(kRootId);
     }
+    enqueued->store(false);
   });
 }
 

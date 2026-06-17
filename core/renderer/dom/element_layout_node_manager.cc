@@ -8,6 +8,8 @@
 
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/dom/fiber/fiber_element.h"
+#include "core/renderer/starlight/layout/layout_object.h"
+#include "core/renderer/starlight/types/layout_constraints.h"
 
 namespace lynx {
 namespace tasm {
@@ -75,11 +77,29 @@ float ElementLayoutNodeManager::GetMarginBottom(int32_t id) { return 0; }
 LayoutResult ElementLayoutNodeManager::UpdateMeasureByPlatform(
     int32_t id, float width, int32_t width_mode, float height,
     int32_t height_mode, bool final_measure) {
-  return LayoutResult();
+  auto* element = GetFiberElement(id);
+  if (element == nullptr || element->slnode() == nullptr) {
+    return LayoutResult();
+  }
+
+  starlight::Constraints constraints;
+  constraints[starlight::kHorizontal] = starlight::OneSideConstraint(
+      width, static_cast<SLMeasureMode>(width_mode));
+  constraints[starlight::kVertical] = starlight::OneSideConstraint(
+      height, static_cast<SLMeasureMode>(height_mode));
+  FloatSize result =
+      element->slnode()->UpdateMeasureByPlatform(constraints, final_measure);
+  return LayoutResult(result.width_, result.height_, result.baseline_);
 }
 
 void ElementLayoutNodeManager::AlignmentByPlatform(int32_t id, float offset_top,
-                                                   float offset_left) {}
+                                                   float offset_left) {
+  auto* element = GetFiberElement(id);
+  if (element == nullptr || element->slnode() == nullptr) {
+    return;
+  }
+  element->slnode()->AlignmentByPlatform(offset_top, offset_left);
+}
 
 void ElementLayoutNodeManager::DestroyLayoutNode(int32_t id) {
   destroyed_layout_node_ids_.insert(id);

@@ -130,6 +130,7 @@ public class LynxUIOwner {
   private boolean mHasTouchPseudo;
 
   private TextMeasurer mTextMeasurer;
+  private IPaintingContext mPaintingContext;
 
   public LynxUIOwner(
       LynxContext context, BehaviorRegistry behaviorRegistry, @Nullable UIBodyView body) {
@@ -1410,6 +1411,14 @@ public class LynxUIOwner {
 
   public LynxContext getContext() {
     return mContext;
+  }
+
+  void setPaintingContext(IPaintingContext paintingContext) {
+    mPaintingContext = paintingContext;
+  }
+
+  IPaintingContext getPaintingContext() {
+    return mPaintingContext;
   }
 
   public void reset() {

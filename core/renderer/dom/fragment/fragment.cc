@@ -859,6 +859,12 @@ void Fragment::DrawOpacity(DisplayListBuilder& display_list_builder) {
 }
 
 void Fragment::DrawClip(DisplayListBuilder& display_list_builder) {
+  if (element()->IsOverlay()) {
+    // Overlay keeps a zero-sized layout box while its content is measured
+    // against the screen, so clipping by the overlay box hides the content.
+    return;
+  }
+
   // If the element is overflowed, do not need draw clip.
   if (element()->computed_css_style()->IsOverflowXY()) {
     return;

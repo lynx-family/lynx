@@ -66,6 +66,7 @@ public class PlatformRendererContext implements TextMeasurerProvider {
 
   public static final class PlatformEventHandlerState {
     public static final int kNone = 0;
+    public static final int kEventThrough = 1;
   }
 
   WeakReference<UIBody.UIBodyView> mRootView = null;
@@ -387,16 +388,11 @@ public class PlatformRendererContext implements TextMeasurerProvider {
       owner.createView(
           sign, tagName, initialProps, null, eventListeners, isFlatten, sign, gestureDetectors);
       LynxBaseUI createdUI = owner.getNode(sign);
-      IRendererHost host = null;
-      if (createdUI instanceof IRendererHost) {
-        host = (IRendererHost) createdUI;
-      } else if (createdUI instanceof LynxUI
-          && ((LynxUI) createdUI).getView() instanceof IRendererHost) {
-        host = (IRendererHost) ((LynxUI) createdUI).getView();
-      }
+      LynxBaseUI rendererHostUI = resolveRendererHostUI(createdUI);
+      IRendererHost host = resolveRendererHost(rendererHostUI);
       if (host != null) {
         Renderer renderer = host.createRenderer(this, sign);
-        renderer.setUIHost(createdUI);
+        renderer.setUIHost(rendererHostUI);
         renderer.setRenderHost(host);
         host.setRenderer(renderer);
         mViewHolder.put(sign, host);
@@ -418,6 +414,28 @@ public class PlatformRendererContext implements TextMeasurerProvider {
     view.setRenderer(renderer);
     mViewHolder.put(sign, view);
     view.invalidate();
+  }
+
+  @Nullable
+  private LynxBaseUI resolveRendererHostUI(@Nullable LynxBaseUI ui) {
+    if (ui instanceof LynxUI && ui.isOverlay()) {
+      LynxUI transitionUI = ((LynxUI) ui).getTransitionUI();
+      if (transitionUI != null) {
+        return transitionUI;
+      }
+    }
+    return ui;
+  }
+
+  @Nullable
+  private IRendererHost resolveRendererHost(@Nullable LynxBaseUI ui) {
+    if (ui instanceof IRendererHost) {
+      return (IRendererHost) ui;
+    }
+    if (ui instanceof LynxUI && ((LynxUI) ui).getView() instanceof IRendererHost) {
+      return (IRendererHost) ((LynxUI) ui).getView();
+    }
+    return null;
   }
 
   @CalledByNative

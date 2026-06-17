@@ -94,6 +94,10 @@ starlight::DirectionValue<float> ConvertToDirectionValue(
 
   return starlight::DirectionValue<float>(result_values);
 }
+
+bool IsOverlayTag(const base::String& tag) {
+  return tag.IsEquals("overlay") || tag.IsEquals("x-overlay-ng");
+}
 }  // namespace
 
 #define FOREACH_EXTENDED_LAYOUT_ONLY_PROPERTY(V) \
@@ -115,6 +119,7 @@ InspectorAttribute::~InspectorAttribute() {
 Element::Element(const base::String& tag, ElementManager* manager,
                  uint32_t node_index)
     : tag_(tag),
+      is_overlay_(IsOverlayTag(tag)),
       id_(manager ? manager->GenerateElementID() : -1),
       node_index_(node_index),
       element_manager_(manager) {
@@ -170,6 +175,7 @@ Element::~Element() = default;
 // that need to be copied.
 Element::Element(const Element& element, bool clone_resolved_props)
     : tag_(element.tag_),
+      is_overlay_(element.is_overlay_),
       id_(element.id_),
       node_index_(element.node_index_),
       arch_type_(element.arch_type_),
@@ -739,7 +745,13 @@ void Element::ResetAttribute(const base::String& key) {
     if (auto name = PlatformEventPropNameFromString(key.str());
         name != PlatformEventPropName::kUnknown) {
       if (auto fragment = fragment_impl()) {
-        fragment->SetEventProp(name, lepus::Value(0));
+        if (name == PlatformEventPropName::kEventThrough ||
+            name == PlatformEventPropName::kEventThroughActiveRegions ||
+            name == PlatformEventPropName::kEventsPassThrough) {
+          fragment->SetEventProp(name, lepus::Value());
+        } else {
+          fragment->SetEventProp(name, lepus::Value(0));
+        }
       }
     }
   }
