@@ -117,38 +117,55 @@ jobject ConvertToJavaPerfTiming(
 }  // namespace
 
 void NativeFacadeAndroid::OnDataUpdated() {
-  Java_NativeFacade_onDataUpdated(AttachCurrentThread(), jni_object_.Get());
+  ScopedLocalJavaRef<jobject> local_ref(jni_object_);
+  if (local_ref.IsNull()) return;
+  JNIEnv* env = AttachCurrentThread();
+  Java_NativeFacade_onDataUpdated(env, local_ref.Get());
 }
 
 void NativeFacadeAndroid::OnPageChanged(bool is_first_screen) {
-  Java_NativeFacade_onPageChanged(AttachCurrentThread(), jni_object_.Get(),
-                                  is_first_screen);
+  ScopedLocalJavaRef<jobject> local_ref(jni_object_);
+  if (local_ref.IsNull()) return;
+  JNIEnv* env = AttachCurrentThread();
+  Java_NativeFacade_onPageChanged(env, local_ref.Get(), is_first_screen);
 }
 
 void NativeFacadeAndroid::OnTasmFinishByNative() {
-  Java_NativeFacade_onTASMFinishedByNative(AttachCurrentThread(),
-                                           jni_object_.Get());
+  ScopedLocalJavaRef<jobject> local_ref(jni_object_);
+  if (local_ref.IsNull()) return;
+  JNIEnv* env = AttachCurrentThread();
+  Java_NativeFacade_onTASMFinishedByNative(env, local_ref.Get());
 }
 
 void NativeFacadeAndroid::OnTemplateLoaded(const std::string& url) {
-  Java_NativeFacade_dispatchOnLoaded(AttachCurrentThread(), jni_object_.Get());
+  ScopedLocalJavaRef<jobject> local_ref(jni_object_);
+  if (local_ref.IsNull()) return;
+  JNIEnv* env = AttachCurrentThread();
+  Java_NativeFacade_dispatchOnLoaded(env, local_ref.Get());
 }
 
 void NativeFacadeAndroid::OnSSRHydrateFinished(const std::string& url) {
-  Java_NativeFacade_onSSRHydrateFinished(AttachCurrentThread(),
-                                         jni_object_.Get());
+  ScopedLocalJavaRef<jobject> local_ref(jni_object_);
+  if (local_ref.IsNull()) return;
+  JNIEnv* env = AttachCurrentThread();
+  Java_NativeFacade_onSSRHydrateFinished(env, local_ref.Get());
 }
 
 void NativeFacadeAndroid::OnRuntimeReady() {
-  Java_NativeFacade_onRuntimeReady(AttachCurrentThread(), jni_object_.Get());
+  ScopedLocalJavaRef<jobject> local_ref(jni_object_);
+  if (local_ref.IsNull()) return;
+  JNIEnv* env = AttachCurrentThread();
+  Java_NativeFacade_onRuntimeReady(env, local_ref.Get());
 }
 
 void NativeFacadeAndroid::ReportError(const base::LynxError& error) {
+  ScopedLocalJavaRef<jobject> local_ref(jni_object_);
+  if (local_ref.IsNull()) return;
   JNIEnv* env = AttachCurrentThread();
   base::android::LynxErrorAndroid error_android(
       error.error_code_, error.error_message_, error.fix_suggestion_,
       error.error_level_, error.custom_info_, error.is_logbox_only_);
-  Java_NativeFacade_reportError(env, jni_object_.Get(),
+  Java_NativeFacade_reportError(env, local_ref.Get(),
                                 error_android.jni_object());
 }
 
@@ -156,23 +173,30 @@ void NativeFacadeAndroid::ReportError(const base::LynxError& error) {
 void NativeFacadeAndroid::OnModuleMethodInvoked(const std::string& module,
                                                 const std::string& method,
                                                 int32_t code) {
+  ScopedLocalJavaRef<jobject> local_ref(jni_object_);
+  if (local_ref.IsNull()) return;
   JNIEnv* env = AttachCurrentThread();
   auto j_module = JNIConvertHelper::ConvertToJNIStringUTF(env, module);
   auto j_method = JNIConvertHelper::ConvertToJNIStringUTF(env, method);
   Java_NativeFacade_onModuleFunctionInvoked(
-      env, jni_object_.Get(), j_module.Get(), j_method.Get(), code);
+      env, local_ref.Get(), j_module.Get(), j_method.Get(), code);
 }
 
 void NativeFacadeAndroid::OnTimingSetup(const lepus::Value& timing_info) {
+  ScopedLocalJavaRef<jobject> local_ref(jni_object_);
+  if (local_ref.IsNull()) return;
+  JNIEnv* env = AttachCurrentThread();
   auto j_timing_map = lynx::tasm::android::ValueConverterAndroid::
       ConvertLepusToJavaOnlyMapForTiming(timing_info);
-  Java_NativeFacade_onTimingSetup(AttachCurrentThread(), jni_object_.Get(),
+  Java_NativeFacade_onTimingSetup(env, local_ref.Get(),
                                   j_timing_map.jni_object());
 }
 
 void NativeFacadeAndroid::OnTimingUpdate(const lepus::Value& timing_info,
                                          const lepus::Value& update_timing,
                                          const std::string& update_flag) {
+  ScopedLocalJavaRef<jobject> local_ref(jni_object_);
+  if (local_ref.IsNull()) return;
   JNIEnv* env = AttachCurrentThread();
   auto j_timing_map = lynx::tasm::android::ValueConverterAndroid::
       ConvertLepusToJavaOnlyMapForTiming(timing_info);
@@ -181,72 +205,84 @@ void NativeFacadeAndroid::OnTimingUpdate(const lepus::Value& timing_info,
   auto j_update_flag =
       JNIConvertHelper::ConvertToJNIStringUTF(env, update_flag);
   Java_NativeFacade_onTimingUpdate(
-      env, jni_object_.Get(), j_timing_map.jni_object(),
+      env, local_ref.Get(), j_timing_map.jni_object(),
       j_update_timing_map.jni_object(), j_update_flag.Get());
 }
 
 void NativeFacadeAndroid::OnDynamicComponentPerfReady(
     const lepus::Value& perf_info) {
-  auto env = AttachCurrentThread();
+  ScopedLocalJavaRef<jobject> local_ref(jni_object_);
+  if (local_ref.IsNull()) return;
+  JNIEnv* env = AttachCurrentThread();
   auto perf =
       lynx::tasm::android::ValueConverterAndroid::ConvertLepusToJavaOnlyMap(
           perf_info);
-  Java_NativeFacade_onDynamicComponentPerfReady(env, jni_object_.Get(),
+  Java_NativeFacade_onDynamicComponentPerfReady(env, local_ref.Get(),
                                                 perf.jni_object());
 }
 
 void NativeFacadeAndroid::OnConfigUpdated(const Value& data) {
-  if (data.IsTable() && data.Table()->size() > 0) {
-    JNIEnv* env = AttachCurrentThread();
-    for (const auto& prop : *(data.Table())) {
-      if (!prop.first.IsEqual(tasm::CARD_CONFIG_THEME) ||
-          !prop.second.IsTable()) {
-        continue;
-      }
-      auto type =
-          JNIConvertHelper::ConvertToJNIStringUTF(env, prop.first.str());
-      auto hash_map = ConvertLepusValueToJavaHashMap(env, prop.second);
-      Java_NativeFacade_onConfigUpdatedByJS(env, jni_object_.Get(), type.Get(),
-                                            hash_map.Get());
+  if (!data.IsTable() || data.Table()->size() == 0) {
+    return;
+  }
+  ScopedLocalJavaRef<jobject> local_ref(jni_object_);
+  if (local_ref.IsNull()) return;
+  JNIEnv* env = AttachCurrentThread();
+  for (const auto& prop : *(data.Table())) {
+    if (!prop.first.IsEqual(tasm::CARD_CONFIG_THEME) ||
+        !prop.second.IsTable()) {
+      continue;
     }
+    auto type = JNIConvertHelper::ConvertToJNIStringUTF(env, prop.first.str());
+    auto hash_map = ConvertLepusValueToJavaHashMap(env, prop.second);
+    Java_NativeFacade_onConfigUpdatedByJS(env, local_ref.Get(), type.Get(),
+                                          hash_map.Get());
   }
 }
 
 void NativeFacadeAndroid::OnUpdateDataWithoutChange() {
-  Java_NativeFacade_onUpdateDataWithoutChange(AttachCurrentThread(),
-                                              jni_object_.Get());
+  ScopedLocalJavaRef<jobject> local_ref(jni_object_);
+  if (local_ref.IsNull()) return;
+  JNIEnv* env = AttachCurrentThread();
+  Java_NativeFacade_onUpdateDataWithoutChange(env, local_ref.Get());
 }
 
 void NativeFacadeAndroid::TriggerLepusMethodAsync(
     const std::string& method_name, const lepus::Value& argus) {
   lepus::Value processed_args =
       ssr::FormatEventArgsForAndroid(method_name, argus);
-  if (processed_args.IsTable() && processed_args.Table()->size() > 0) {
-    JNIEnv* env = base::android::AttachCurrentThread();
-    JavaOnlyMap jni_hashmap =
-        tasm::android::ValueConverterAndroid::ConvertLepusToJavaOnlyMap(
-            processed_args);
-    auto java_method =
-        JNIConvertHelper::ConvertToJNIStringUTF(env, method_name);
-    Java_NativeFacade_triggerLepusBridgeAsync(
-        env, jni_object_.Get(), java_method.Get(), jni_hashmap.jni_object());
+  if (!processed_args.IsTable() || processed_args.Table()->size() == 0) {
+    return;
   }
+  ScopedLocalJavaRef<jobject> local_ref(jni_object_);
+  if (local_ref.IsNull()) return;
+  JNIEnv* env = base::android::AttachCurrentThread();
+  JavaOnlyMap jni_hashmap =
+      tasm::android::ValueConverterAndroid::ConvertLepusToJavaOnlyMap(
+          processed_args);
+  auto java_method = JNIConvertHelper::ConvertToJNIStringUTF(env, method_name);
+  Java_NativeFacade_triggerLepusBridgeAsync(
+      env, local_ref.Get(), java_method.Get(), jni_hashmap.jni_object());
 }
 
 void NativeFacadeAndroid::InvokeUIMethod(const tasm::LynxGetUIResult& ui_result,
                                          const std::string& method,
                                          fml::RefPtr<tasm::PropBundle> params,
                                          runtime::js::ApiCallBack callback) {
+  ScopedLocalJavaRef<jobject> local_ref(jni_object_);
+  if (local_ref.IsNull()) return;
   JNIEnv* env = base::android::AttachCurrentThread();
   auto method_string = JNIConvertHelper::ConvertToJNIStringUTF(env, method);
   lynx::tasm::LynxGetUIResultAndroid result_android(ui_result);
   Java_NativeFacade_InvokeUIMethod(
-      env, jni_object_.Get(), result_android.jni_object(), method_string.Get(),
+      env, local_ref.Get(), result_android.jni_object(), method_string.Get(),
       static_cast<tasm::PropBundleAndroid*>(params.get())->GetProps().Get(),
       callback.id());
 }
 
 void NativeFacadeAndroid::FlushJSBTiming(runtime::js::NativeModuleInfo timing) {
+  ScopedLocalJavaRef<jobject> local_ref(jni_object_);
+  if (local_ref.IsNull()) return;
   JNIEnv* env = base::android::AttachCurrentThread();
   JavaOnlyMap map;
   JavaOnlyMap info_map;
@@ -285,26 +321,30 @@ void NativeFacadeAndroid::FlushJSBTiming(runtime::js::NativeModuleInfo timing) {
                      timing.jsb_callback_call_start_);
   perf_map.PushInt64("jsb_callback_call_end", timing.jsb_callback_call_end_);
 
-  Java_NativeFacade_flushJSBTiming(env, jni_object_.Get(), map.jni_object());
+  Java_NativeFacade_flushJSBTiming(env, local_ref.Get(), map.jni_object());
 }
 
 void NativeFacadeAndroid::OnTemplateBundleReady(
     tasm::LynxTemplateBundle bundle) {
+  ScopedLocalJavaRef<jobject> local_ref(jni_object_);
+  if (local_ref.IsNull()) return;
   JNIEnv* env = AttachCurrentThread();
   auto j_template_bundle =
       tasm::ConstructJTemplateBundleFromNative(std::move(bundle));
-  Java_NativeFacade_onTemplateBundleReady(env, jni_object_.Get(),
+  Java_NativeFacade_onTemplateBundleReady(env, local_ref.Get(),
                                           j_template_bundle.Get());
 }
 
 void NativeFacadeAndroid::OnReceiveMessageEvent(
     fml::RefPtr<runtime::MessageEvent> event) {
   if (event->IsSendingToDevTool()) {
+    ScopedLocalJavaRef<jobject> local_ref(jni_object_);
+    if (local_ref.IsNull()) return;
     JNIEnv* env = AttachCurrentThread();
     auto event_map =
         tasm::android::EventConverterAndroid::ConvertMessageEventToJavaOnlyMap(
             *event);
-    Java_NativeFacade_onReceiveMessageEvent(env, jni_object_.Get(),
+    Java_NativeFacade_onReceiveMessageEvent(env, local_ref.Get(),
                                             event_map.jni_object());
   } else {
     // TODO(songshourui.null): impl this after UIContext is supported.
@@ -313,47 +353,59 @@ void NativeFacadeAndroid::OnReceiveMessageEvent(
 
 void NativeFacadeAndroid::OnEventCapture(long target_id, bool is_catch,
                                          int64_t event_id) {
+  ScopedLocalJavaRef<jobject> local_ref(jni_object_);
+  if (local_ref.IsNull()) return;
   JNIEnv* env = AttachCurrentThread();
-  Java_NativeFacade_onEventCapture(env, jni_object_.Get(), target_id, is_catch,
+  Java_NativeFacade_onEventCapture(env, local_ref.Get(), target_id, is_catch,
                                    event_id);
 }
 
 void NativeFacadeAndroid::OnEventBubble(long target_id, bool is_catch,
                                         int64_t event_id) {
+  ScopedLocalJavaRef<jobject> local_ref(jni_object_);
+  if (local_ref.IsNull()) return;
   JNIEnv* env = AttachCurrentThread();
-  Java_NativeFacade_onEventBubble(env, jni_object_.Get(), target_id, is_catch,
+  Java_NativeFacade_onEventBubble(env, local_ref.Get(), target_id, is_catch,
                                   event_id);
 }
 
 void NativeFacadeAndroid::OnEventFire(long target_id, bool is_stop,
                                       int64_t event_id) {
+  ScopedLocalJavaRef<jobject> local_ref(jni_object_);
+  if (local_ref.IsNull()) return;
   JNIEnv* env = AttachCurrentThread();
-  Java_NativeFacade_onEventFire(env, jni_object_.Get(), target_id, is_stop,
+  Java_NativeFacade_onEventFire(env, local_ref.Get(), target_id, is_stop,
                                 event_id);
 }
 
 void NativeFacadeAndroid::OnLynxEvent(const lepus::Value& event_detail) {
+  ScopedLocalJavaRef<jobject> local_ref(jni_object_);
+  if (local_ref.IsNull()) return;
   JNIEnv* env = AttachCurrentThread();
   auto event =
       lynx::tasm::android::ValueConverterAndroid::ConvertLepusToJavaOnlyMap(
           event_detail);
-  Java_NativeFacade_onLynxEvent(env, jni_object_.Get(), event.jni_object());
+  Java_NativeFacade_onLynxEvent(env, local_ref.Get(), event.jni_object());
 }
 
 void NativeFacadeAndroid::StartRecording(const lepus::Value& value) {
-  auto env = AttachCurrentThread();
+  ScopedLocalJavaRef<jobject> local_ref(jni_object_);
+  if (local_ref.IsNull()) return;
+  JNIEnv* env = AttachCurrentThread();
   auto params =
       lynx::tasm::android::ValueConverterAndroid::ConvertLepusToJavaOnlyMap(
           value);
-  Java_NativeFacade_startRecording(env, jni_object_.Get(), params.jni_object());
+  Java_NativeFacade_startRecording(env, local_ref.Get(), params.jni_object());
 }
 
 void NativeFacadeAndroid::StopRecording(const lepus::Value& value) {
-  auto env = AttachCurrentThread();
+  ScopedLocalJavaRef<jobject> local_ref(jni_object_);
+  if (local_ref.IsNull()) return;
+  JNIEnv* env = AttachCurrentThread();
   auto params =
       lynx::tasm::android::ValueConverterAndroid::ConvertLepusToJavaOnlyMap(
           value);
-  Java_NativeFacade_stopRecording(env, jni_object_.Get(), params.jni_object());
+  Java_NativeFacade_stopRecording(env, local_ref.Get(), params.jni_object());
 }
 
 }  // namespace shell
