@@ -520,6 +520,9 @@ LYNX_REGISTER_UI("image")
   if (self.autoSize && (self.frame.size.width <= 0 || self.frame.size.height <= 0)) {
     return YES;
   }
+  if (_resizeMode == UIViewContentModeCenter) {
+    return NO;
+  }
   //  When an image has neither padding nor irregular corner radii, use UIView's corner radius
   //  directly, this delivers better performance.
   return UIEdgeInsetsEqualToEdgeInsets(self.backgroundManager.borderWidth, UIEdgeInsetsZero) &&
@@ -744,7 +747,7 @@ UIEdgeInsets LynxRoundInsetsToPixel(UIEdgeInsets edgeInsets) {
         UIEdgeInsetsEqualToEdgeInsets(self.backgroundManager.borderWidth, UIEdgeInsetsZero) &&
         UIEdgeInsetsEqualToEdgeInsets(self.padding, UIEdgeInsetsZero) &&
         !LynxHasBorderRadii(self.backgroundManager.borderRadius);
-    if (!hasNoBorderRadii) {
+    if (!hasNoBorderRadii || _resizeMode == UIViewContentModeCenter) {
       // FIXME(linxs): is it necessary to process radius like this?
       [processors addObject:[[LynxBorderRadiusImageProcessor alloc]
                                 initWithDrawParameter:self.drawParameter]];
@@ -1877,10 +1880,11 @@ LYNX_UI_METHOD(stopAnimation) {
     borderBounds = CGRectMake(borderWidth.left + padding.left, borderWidth.top + padding.top,
                               initialBoundsWidth, initialBoundsHeight);
   } else {  // "center"
-    borderBounds = CGRectMake(
-        borderWidth.left + padding.left + initialBoundsWidth / 2 - param.image.size.width / 2,
-        borderWidth.top + padding.top + initialBoundsHeight / 2 - param.image.size.height / 2,
-        param.image.size.width, param.image.size.height);
+    CGSize sourceSize = [LynxUIImage sourcePixelSizeForImage:param.image];
+    borderBounds =
+        CGRectMake(borderWidth.left + padding.left + initialBoundsWidth / 2 - sourceSize.width / 2,
+                   borderWidth.top + padding.top + initialBoundsHeight / 2 - sourceSize.height / 2,
+                   sourceSize.width, sourceSize.height);
   }
 
   LynxBorderRadii radius = borderRadius;
@@ -2024,6 +2028,14 @@ LYNX_UI_METHOD(stopAnimation) {
 
 + (BOOL)isAnimatedImage:(UIImage*)image {
   return [[LynxImageLoader imageService] isAnimatedImage:image] || (image.images != nil);
+}
+
++ (CGSize)sourcePixelSizeForImage:(UIImage*)image {
+  CGImageRef cgImage = image.CGImage;
+  if (cgImage) {
+    return CGSizeMake(CGImageGetWidth(cgImage), CGImageGetHeight(cgImage));
+  }
+  return CGSizeMake(image.size.width * image.scale, image.size.height * image.scale);
 }
 
 @end
