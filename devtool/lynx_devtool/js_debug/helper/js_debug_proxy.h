@@ -7,9 +7,8 @@
 
 #include <memory>
 
-#include "core/runtime/mts_context.h"
-
 namespace lynx {
+
 namespace runtime {
 namespace profile {
 class RuntimeProfiler;
@@ -40,7 +39,7 @@ class JSDebugProxy {
     return nullptr;
   }
   virtual std::unique_ptr<lepus::LepusInspectorManager>
-  CreateLepusInspectorManager(runtime::ContextType context_type) {
+  CreateLepusInspectorManager() {
     return nullptr;
   }
 

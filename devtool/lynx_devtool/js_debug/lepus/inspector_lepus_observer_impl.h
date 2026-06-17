@@ -21,8 +21,8 @@ class InspectorLepusObserverImpl : public lepus::InspectorLepusObserver {
       const std::shared_ptr<InspectorLepusDebuggerImpl>& debugger);
   ~InspectorLepusObserverImpl() override = default;
 
-  std::unique_ptr<lepus::LepusInspectorManager> CreateLepusInspectorManager(
-      runtime::ContextType context_type) override;
+  std::unique_ptr<lepus::LepusInspectorManager> CreateLepusInspectorManager()
+      override;
   bool ShouldFetchDebugInfo() override {
     return DevToolConfig::ShouldFetchDebugInfo(true);
   }

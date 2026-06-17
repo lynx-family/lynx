@@ -16,10 +16,6 @@ inspector_shared_sources = [
   "style_sheet.h",
 ]
 
-if (!disable_rts_ng) {
-  inspector_shared_sources += [ "rts_inspector_manager.h" ]
-}
-
 lynx_core_source_set("inspector") {
   sources = inspector_shared_sources
   public_deps = [ "../../third_party/rapidjson" ]
