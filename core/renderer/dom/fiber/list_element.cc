@@ -770,6 +770,15 @@ void ListElement::ResetEventHandlers() {
 
 bool ListElement::ResolveStyleValue(CSSPropertyID id, const CSSValue& value) {
   bool ret = Element::ResolveStyleValue(id, value);
+  ResolveListAxisGapStyle(id);
+  return ret;
+}
+
+void ListElement::ReplayElementSpecificStyleSideEffect(CSSPropertyID id) {
+  ResolveListAxisGapStyle(id);
+}
+
+void ListElement::ResolveListAxisGapStyle(CSSPropertyID id) {
   switch (id) {
     case CSSPropertyID::kPropertyIDListMainAxisGap: {
       float main_axis_gap =
@@ -794,7 +803,6 @@ bool ListElement::ResolveStyleValue(CSSPropertyID id, const CSSValue& value) {
     default:
       break;
   }
-  return ret;
 }
 
 void ListElement::SetupFragmentBehavior(Fragment* fragment) {

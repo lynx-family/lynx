@@ -2685,6 +2685,8 @@ void FiberElement::ReplayChangedStyleSideEffect(
     return;
   }
 
+  ReplayElementSpecificStyleSideEffect(id);
+
   if (id == kPropertyIDOverflow || id == kPropertyIDOverflowX ||
       id == kPropertyIDOverflowY) {
     if (!preserve_layout_only && !computed_css_style()->IsOverflowXY()) {
@@ -2737,6 +2739,8 @@ void FiberElement::ReplayResetStyleSideEffect(CSSPropertyID id,
   if (is_layout_only) {
     return;
   }
+
+  ReplayElementSpecificStyleSideEffect(id);
 
   if (!preserve_layout_only) {
     has_layout_only_props_ = false;

@@ -207,6 +207,7 @@ class ListElement : public FiberElement, public tasm::ListNode {
   void CacheCommittedStyleFromAttributes(CSSPropertyID id,
                                          const lepus::Value& value) override;
   void RemoveCommittedStyleFromAttributes(CSSPropertyID id) override;
+  void ReplayElementSpecificStyleSideEffect(CSSPropertyID id) override;
 
  private:
   void ResolveEnableNativeList();
@@ -216,6 +217,7 @@ class ListElement : public FiberElement, public tasm::ListNode {
   bool UseDecoupledList() const;
   bool UseInternalList() const;
   void SetListOrientation(starlight::LinearOrientationType orientation);
+  void ResolveListAxisGapStyle(CSSPropertyID id);
   list::BatchRenderStrategy
   ResolveBatchRenderStrategyFromPipelineSchedulerConfig(
       uint64_t pipeline_scheduler_config, bool enable_parallel_element,
