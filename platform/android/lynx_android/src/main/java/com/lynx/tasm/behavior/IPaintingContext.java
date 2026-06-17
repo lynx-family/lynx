@@ -20,7 +20,7 @@ public interface IPaintingContext {
 
   void setLynxEngineActorForPlatformContextRef(long ptr);
 
-  boolean dispatchPlatformMotionEvent(MotionEvent ev);
+  boolean dispatchPlatformMotionEvent(MotionEvent ev, int rootSign);
 
   int getPlatformEventHandlerState();
 }

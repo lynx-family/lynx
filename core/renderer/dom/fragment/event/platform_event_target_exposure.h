@@ -80,7 +80,13 @@ class PlatformEventTargetExposure
                          const lepus::Value& option);
   void RemoveExposureTarget(const fml::RefPtr<PlatformEventTarget>& target,
                             const lepus::Value& option);
+  // Remove targets in an event root and send disexposure for visible targets.
+  void RemoveExposureTargetsInEventRoot(int32_t root_id);
+  // Clear cached targets in an event root before rebuilding it.
+  void ClearExposureTargetsInEventRoot(int32_t root_id);
   void ClearExposureTargetMap();
+  void DidRebuildExposureTargetMap();
+  void InvalidateWindowRect();
   void StartExposureCheck();
   void StopExposureCheck(const lepus::Value& options = lepus::Value());
 
@@ -88,6 +94,11 @@ class PlatformEventTargetExposure
   void AddCommonAncestorRectMap(PlatformEventTarget* target);
   void RemoveCommonAncestorRectMap(PlatformEventTarget* target);
   void ResetCommonAncestorRectMap();
+  void UpdateWindowRectIfNeeded(PlatformEventTargetHelper* helper);
+  void RefreshVisibleTargetRefs();
+  bool GetTreeRootOriginOnScreen(const fml::RefPtr<PlatformEventTarget>& target,
+                                 const float root_view_origin_on_screen[2],
+                                 float tree_root_origin_on_screen[2]) const;
   void ScheduleNextExposureCheck();
   void DoExposureCheck();
   void SendEvent(const std::set<ExposureTargetDetail>& targets,
@@ -102,7 +113,13 @@ class PlatformEventTargetExposure
   float window_rect_[4] = {0, 0, 0, 0};
   bool window_rect_valid_{false};
   int interval_ms_{50};
-  bool scheduled_exposure_check_{false};
+  // A posted delayed task cannot be cancelled, so keep scheduling intent,
+  // pending task state, and stop generation separate.
+  bool exposure_check_enabled_{false};
+  bool exposure_check_task_pending_{false};
+  bool rebuilding_exposure_target_map_{false};
+  bool resume_exposure_check_after_rebuild_{false};
+  uint32_t exposure_check_generation_{0};
 };
 
 }  // namespace lynx::tasm

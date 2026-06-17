@@ -24,6 +24,11 @@ class NativePaintingCtxPlatformRef;
 
 class PlatformEventHandler {
  public:
+  enum EventHandlerState {
+    kStateNone = 0,
+    kStateEventThrough = 1,
+  };
+
   class PlatformEventTargetDetail {
    public:
     PlatformEventTargetDetail(fml::RefPtr<PlatformEventTarget> target,
@@ -95,7 +100,7 @@ class PlatformEventHandler {
   NativePaintingCtxPlatformRef* platform_ref_{nullptr};
 
   // state
-  int event_handler_state_{0};
+  int event_handler_state_{kStateNone};
   fml::RefPtr<PlatformEventTarget> target_tree_{nullptr};
   fml::RefPtr<PlatformEventTarget> first_target_{nullptr};
   fml::RefPtr<PlatformEventTarget> focused_target_{nullptr};

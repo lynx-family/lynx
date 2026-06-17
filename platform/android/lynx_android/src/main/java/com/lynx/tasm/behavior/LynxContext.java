@@ -30,6 +30,7 @@ import com.lynx.tasm.base.LLog;
 import com.lynx.tasm.base.LynxConsumer;
 import com.lynx.tasm.base.TraceEvent;
 import com.lynx.tasm.base.trace.TraceEventDef;
+import com.lynx.tasm.behavior.render.NativePaintingContext;
 import com.lynx.tasm.behavior.shadow.ShadowNode;
 import com.lynx.tasm.behavior.ui.LynxBaseUI;
 import com.lynx.tasm.behavior.ui.LynxFlattenUI;
@@ -966,6 +967,22 @@ public abstract class LynxContext extends LynxBaseContext implements ExceptionHa
 
   public LynxUIOwner getLynxUIOwner() {
     return mLynxUIOwner.get();
+  }
+
+  public void setPlatformEventRootActive(int rootSign, boolean active) {
+    LynxUIOwner owner = mLynxUIOwner.get();
+    if (owner != null && owner.getPaintingContext() instanceof NativePaintingContext) {
+      ((NativePaintingContext) owner.getPaintingContext())
+          .setPlatformEventRootActive(rootSign, active);
+    }
+  }
+
+  public void setPlatformEventRootOffset(int rootSign, float offsetX, float offsetY) {
+    LynxUIOwner owner = mLynxUIOwner.get();
+    if (owner != null && owner.getPaintingContext() instanceof NativePaintingContext) {
+      ((NativePaintingContext) owner.getPaintingContext())
+          .setPlatformEventRootOffset(rootSign, offsetX, offsetY);
+    }
   }
 
   public LynxBaseUI findLynxUIByName(@NonNull String name) {

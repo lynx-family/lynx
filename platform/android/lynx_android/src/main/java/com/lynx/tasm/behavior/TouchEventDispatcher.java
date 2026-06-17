@@ -1159,7 +1159,30 @@ public class TouchEventDispatcher {
     return false;
   }
 
+  private IPaintingContext getPlatformEventPaintingContext() {
+    if (mUIOwner == null) {
+      return null;
+    }
+    LynxContext context = mUIOwner.getContext();
+    if (context == null || !context.isFragmentLayerRenderOn()) {
+      return null;
+    }
+    return mUIOwner.getPaintingContext();
+  }
+
+  private int getPlatformEventRootSign(UIGroup rootUi) {
+    if (rootUi != null) {
+      return rootUi.getSign();
+    }
+    return mUIOwner != null ? mUIOwner.getRootSign() : -1;
+  }
+
   public boolean onTouchEvent(MotionEvent ev, UIGroup rootUi) {
+    IPaintingContext paintingContext = getPlatformEventPaintingContext();
+    if (paintingContext != null) {
+      return paintingContext.dispatchPlatformMotionEvent(ev, getPlatformEventRootSign(rootUi));
+    }
+
     mTimestamp = System.currentTimeMillis();
     if (ev.getActionMasked() == MotionEvent.ACTION_DOWN) {
       mActiveEventRootUI = resolveEventRootUI(rootUi);
