@@ -4,7 +4,6 @@
 
 package com.lynx.xelement.overlay
 
-import com.lynx.tasm.behavior.LynxShadowNode
 import com.lynx.tasm.behavior.shadow.*
 import com.lynx.tasm.utils.DisplayMetricsHolder
 
@@ -25,10 +24,10 @@ open class LynxUIOverlayShadowNode : ShadowNode(), CustomMeasureFunc {
           mHeightMode = MeasureMode.EXACTLY
         }
         firstChild.measureNativeNode(context, childParam)
-        return MeasureResult(0.0f,0.0f)
+        return MeasureResult(0.0f, 0.0f)
       }
     }
-    return MeasureResult(0.0f,0.0f)
+    return MeasureResult(0.0f, 0.0f)
   }
 
   override fun align(param: AlignParam?, context: AlignContext?) {

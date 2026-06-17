@@ -47,6 +47,7 @@ bool PlatformEventHandler::OnInputEvent(
     fml::RefPtr<PlatformEventTarget> target_tree, int int_event_data[],
     float float_event_data[]) {
   target_tree_ = target_tree;
+  event_handler_state_ = kStateNone;
   // int_event_data: [event_type, action_type, event_source, pointer_count, ...]
   int event_type = int_event_data[0];
   switch (event_type) {
@@ -84,11 +85,13 @@ bool PlatformEventHandler::OnInputEvent(
   }
   if (EventThrough()) {
     LOGI("PlatformEventHandler::OnInputEvent EventThrough")
+    event_handler_state_ = kStateEventThrough;
     return false;
   }
 
   // TODO(hexionghui): forward event to gesture.
 
+  event_handler_state_ = kStateNone;
   return true;
 }
 
@@ -101,10 +104,13 @@ void PlatformEventHandler::OnGestureEvent(const std::string& name,
         name);
     return;
   }
-  float page_point[2] = {event.PointerX()[0], event.PointerY()[0]};
-  float target_point[2] = {page_point[0], page_point[1]};
-  GetTargetPoint(first_target_, target_point, page_point);
-  float client_point[2] = {page_point[0], page_point[1]};
+  float root_point[2] = {event.PointerX()[0], event.PointerY()[0]};
+  float target_point[2] = {root_point[0], root_point[1]};
+  GetTargetPoint(first_target_, target_point, root_point);
+  float page_point[2] = {root_point[0], root_point[1]};
+  platform_ref_->GetEventTargetHelper()->ConvertPointFromTargetToPageRootTarget(
+      page_point, target_tree_, page_point);
+  float client_point[2] = {root_point[0], root_point[1]};
   platform_ref_->GetEventTargetHelper()->ConvertPointFromTargetToScreen(
       client_point, target_tree_, client_point);
   auto gesture_event = fml::MakeRefCounted<event::TouchEvent>(
@@ -147,7 +153,10 @@ bool PlatformEventHandler::EventThrough() {
   if (!first_target_) {
     return false;
   }
-  return first_target_->EventThrough(first_pointer_down_point_);
+  float target_point[2] = {first_pointer_down_point_[0],
+                           first_pointer_down_point_[1]};
+  GetTargetPoint(first_target_, target_point, first_pointer_down_point_);
+  return first_target_->EventThrough(target_point);
 }
 
 int PlatformEventHandler::EventHandlerState() { return event_handler_state_; }
@@ -441,6 +450,9 @@ bool PlatformEventHandler::CanRespondTap(
   if (!target) {
     return false;
   }
+  if (first_pointer_moved_ || first_pointer_outside_) {
+    return false;
+  }
   if (HasScrollContainerScrolledForTap()) {
     return false;
   }
@@ -532,8 +544,7 @@ bool PlatformEventHandler::IsPointerMoveOutside(
 void PlatformEventHandler::GetTargetPoint(
     fml::RefPtr<PlatformEventTarget> target, float target_point[2],
     float page_point[2]) {
-  auto root_target =
-      platform_ref_->GetEventTargetHelper()->GetRootEventTarget();
+  auto root_target = target_tree_;
   if (!root_target) {
     return;
   }
@@ -555,10 +566,14 @@ void PlatformEventHandler::AddTargetPointerMap(lepus::Value& target_pointer_map,
       }
 
       std::string target_sign = std::to_string(target->Sign());
-      float page_point[2] = {event.PointerX()[i], event.PointerY()[i]};
-      float target_point[2] = {page_point[0], page_point[1]};
-      GetTargetPoint(target, target_point, page_point);
-      float client_point[2] = {page_point[0], page_point[1]};
+      float root_point[2] = {event.PointerX()[i], event.PointerY()[i]};
+      float target_point[2] = {root_point[0], root_point[1]};
+      GetTargetPoint(target, target_point, root_point);
+      float page_point[2] = {root_point[0], root_point[1]};
+      platform_ref_->GetEventTargetHelper()
+          ->ConvertPointFromTargetToPageRootTarget(page_point, target_tree_,
+                                                   page_point);
+      float client_point[2] = {root_point[0], root_point[1]};
       platform_ref_->GetEventTargetHelper()->ConvertPointFromTargetToScreen(
           client_point, target_tree_, client_point);
 
