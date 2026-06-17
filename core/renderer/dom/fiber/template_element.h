@@ -108,6 +108,7 @@ class TemplateElement : public FiberElement {
         bundle_url_(element.bundle_url_),
         typed_tag_(element.typed_tag_),
         root_attributes_(element.root_attributes_),
+        root_attributes_generation_(element.root_attributes_generation_),
         attribute_slots_(element.attribute_slots_),
         element_slots_(element.element_slots_),
         options_(element.options_),
@@ -119,9 +120,13 @@ class TemplateElement : public FiberElement {
   base::OnceTaskRefptr<GeneratedElementsResult>
   CreateAsyncCreateElementTreeTask(TemplateEntry* entry);
   void ResolveGeneratedElements();
-  void InitGeneratedElementTree();
+  void InitGeneratedElementTree(const lepus::Value& prepared_root_attributes,
+                                uint32_t prepared_root_attributes_generation);
   void ApplyAttributeSlotToTarget(uint32_t slot_index,
                                   const lepus::Value& previous_attribute_slots);
+  void ApplyInitialRootEventAttributes(
+      const lepus::Value& prepared_root_attributes,
+      uint32_t prepared_root_attributes_generation);
   void InitTypedRoot();
   bool IsPageTemplate() const;
   void MarkInTemplateTreeAndPrepare();
@@ -176,12 +181,14 @@ class TemplateElement : public FiberElement {
   base::String bundle_url_;
   base::String typed_tag_;
   lepus::Value root_attributes_;
+  uint32_t root_attributes_generation_{0};
   lepus::Value attribute_slots_;
   lepus::Value element_slots_;
   lepus::Value options_;
   lepus::Value uid_;
   fml::RefPtr<FiberElement> result_{nullptr};
   base::Vector<fml::RefPtr<FiberElement>> attribute_slot_targets_;
+  base::Vector<fml::RefPtr<FiberElement>> event_attribute_slot_targets_;
   base::Vector<fml::RefPtr<FiberElement>> static_event_targets_;
   base::Vector<ElementSlotMountPoint> element_slot_targets_;
   base::Vector<PreparedElementSlotInsertion> prepared_element_slot_insertions_;

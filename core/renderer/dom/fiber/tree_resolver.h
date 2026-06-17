@@ -82,6 +82,10 @@ class TreeResolver {
   static void ApplyTemplateAttributesToElement(
       FiberElement* element, const lepus::Value& previous_attribute_slots,
       const lepus::Value& attribute_slots);
+  static void ApplyTemplateNonEventAttributesToElement(
+      FiberElement* element, const lepus::Value& attribute_slots);
+  static void ApplyTemplateEventAttributesToElement(
+      FiberElement* element, const lepus::Value& attribute_slots);
   static void ApplyStaticTemplateEventAttributesToElement(
       FiberElement* element);
 

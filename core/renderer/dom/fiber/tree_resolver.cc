@@ -49,6 +49,12 @@ constexpr std::string_view kDataAttributePrefix = "data-";
 // through to normal attribute handling.
 constexpr std::string_view kMainThreadEventPrefix = "main-thread:";
 
+enum class TemplateAttributeApplyMode {
+  kAll,
+  kNonEventOnly,
+  kEventOnly,
+};
+
 bool StartsWith(std::string_view value, std::string_view prefix) {
   return value.size() >= prefix.size() &&
          value.compare(0, prefix.size(), prefix) == 0;
@@ -275,11 +281,19 @@ bool RemoveTemplateDataAttribute(FiberElement* element,
 }
 
 void ApplyTemplateAttributeValue(FiberElement* element, const base::String& key,
-                                 const lepus::Value& value) {
-  if (ApplySpecialTemplateAttribute(element, key, value)) {
+                                 const lepus::Value& value,
+                                 TemplateAttributeApplyMode mode) {
+  if (IsTemplateEventAttribute(key)) {
+    if (mode == TemplateAttributeApplyMode::kNonEventOnly) {
+      return;
+    }
+    ApplyTemplateEventAttribute(element, key, value);
     return;
   }
-  if (ApplyTemplateEventAttribute(element, key, value)) {
+  if (mode == TemplateAttributeApplyMode::kEventOnly) {
+    return;
+  }
+  if (ApplySpecialTemplateAttribute(element, key, value)) {
     return;
   }
   if (ApplyTemplateListCallbackAttribute(element, key, value)) {
@@ -292,14 +306,16 @@ void ApplyTemplateAttributeValue(FiberElement* element, const base::String& key,
 }
 
 void ApplyTemplateSpreadAttributes(FiberElement* element,
-                                   const lepus::Value& value) {
+                                   const lepus::Value& value,
+                                   TemplateAttributeApplyMode mode) {
   if (element == nullptr || !value.IsObject()) {
     return;
   }
 
-  tasm::ForEachLepusValue(value, [element](const auto& key, const auto& item) {
-    ApplyTemplateAttributeValue(element, key.String(), item);
-  });
+  tasm::ForEachLepusValue(
+      value, [element, mode](const auto& key, const auto& item) {
+        ApplyTemplateAttributeValue(element, key.String(), item, mode);
+      });
 }
 
 lepus::Value ResolveAttributeSlotValue(const lepus::Value& attribute_slots,
@@ -335,20 +351,23 @@ void ClearPreviousTemplateSpreadAttributes(
           // Re-apply previous spread keys with an empty value to clear keys
           // that disappeared from the current spread object. data-* is handled
           // above because __AddDataset preserves empty values.
-          ApplyTemplateAttributeValue(element, key.String(), lepus::Value());
+          ApplyTemplateAttributeValue(element, key.String(), lepus::Value(),
+                                      TemplateAttributeApplyMode::kAll);
         });
   }
 }
 
 void ApplyTemplateAttributesToElementInternal(
     FiberElement* element, const lepus::Value* previous_attribute_slots,
-    const lepus::Value& attribute_slots) {
+    const lepus::Value& attribute_slots, TemplateAttributeApplyMode mode) {
   if (element == nullptr || !element->HasTemplateAttributes()) {
     return;
   }
 
   const auto& template_attributes = element->template_attributes();
   const bool rebuild_static_attributes = previous_attribute_slots != nullptr;
+  DCHECK(!rebuild_static_attributes ||
+         mode == TemplateAttributeApplyMode::kAll);
   if (rebuild_static_attributes) {
     ClearPreviousTemplateSpreadAttributes(element, *template_attributes,
                                           *previous_attribute_slots);
@@ -357,21 +376,21 @@ void ApplyTemplateAttributesToElementInternal(
   for (const auto& attr : *template_attributes) {
     if (attr.type_ == ATTRIBUTE_BINDING_TYPE_SPREAD) {
       ApplyTemplateSpreadAttributes(
-          element,
-          ResolveAttributeSlotValue(attribute_slots, attr.slot_index_));
+          element, ResolveAttributeSlotValue(attribute_slots, attr.slot_index_),
+          mode);
       has_applied_spread = true;
       continue;
     }
     if (attr.type_ == ATTRIBUTE_BINDING_TYPE_STATIC) {
       if (has_applied_spread || rebuild_static_attributes) {
-        ApplyTemplateAttributeValue(element, attr.key_, attr.value_);
+        ApplyTemplateAttributeValue(element, attr.key_, attr.value_, mode);
       }
       continue;
     }
     if (attr.type_ == ATTRIBUTE_BINDING_TYPE_DYNAMIC) {
       ApplyTemplateAttributeValue(
           element, attr.key_,
-          ResolveAttributeSlotValue(attribute_slots, attr.slot_index_));
+          ResolveAttributeSlotValue(attribute_slots, attr.slot_index_), mode);
       continue;
     }
   }
@@ -381,14 +400,30 @@ void ApplyTemplateAttributesToElementInternal(
 
 void TreeResolver::ApplyTemplateAttributesToElement(
     FiberElement* element, const lepus::Value& attribute_slots) {
-  ApplyTemplateAttributesToElementInternal(element, nullptr, attribute_slots);
+  ApplyTemplateAttributesToElementInternal(element, nullptr, attribute_slots,
+                                           TemplateAttributeApplyMode::kAll);
 }
 
 void TreeResolver::ApplyTemplateAttributesToElement(
     FiberElement* element, const lepus::Value& previous_attribute_slots,
     const lepus::Value& attribute_slots) {
   ApplyTemplateAttributesToElementInternal(element, &previous_attribute_slots,
-                                           attribute_slots);
+                                           attribute_slots,
+                                           TemplateAttributeApplyMode::kAll);
+}
+
+void TreeResolver::ApplyTemplateNonEventAttributesToElement(
+    FiberElement* element, const lepus::Value& attribute_slots) {
+  ApplyTemplateAttributesToElementInternal(
+      element, nullptr, attribute_slots,
+      TemplateAttributeApplyMode::kNonEventOnly);
+}
+
+void TreeResolver::ApplyTemplateEventAttributesToElement(
+    FiberElement* element, const lepus::Value& attribute_slots) {
+  ApplyTemplateAttributesToElementInternal(
+      element, nullptr, attribute_slots,
+      TemplateAttributeApplyMode::kEventOnly);
 }
 
 void TreeResolver::ApplyStaticTemplateEventAttributesToElement(
@@ -826,7 +861,8 @@ fml::RefPtr<FiberElement> TreeResolver::FromElementInfo(
         if (generated != nullptr && IsTemplateEventAttribute(attr.key_)) {
           has_static_template_event = true;
         }
-        ApplyTemplateAttributeValue(res.get(), attr.key_, attr.value_);
+        ApplyTemplateAttributeValue(res.get(), attr.key_, attr.value_,
+                                    TemplateAttributeApplyMode::kAll);
         continue;
       }
       if (generated != nullptr &&
@@ -836,6 +872,11 @@ fml::RefPtr<FiberElement> TreeResolver::FromElementInfo(
         // re-application will happen in a later flush-oriented patch.
         RegisterSlotTarget(&generated->attribute_slot_targets_,
                            static_cast<int32_t>(attr.slot_index_), res);
+        if (attr.type_ == ATTRIBUTE_BINDING_TYPE_SPREAD ||
+            IsTemplateEventAttribute(attr.key_)) {
+          RegisterSlotTarget(&generated->event_attribute_slot_targets_,
+                             static_cast<int32_t>(attr.slot_index_), res);
+        }
       }
     }
     if (has_static_template_event) {
