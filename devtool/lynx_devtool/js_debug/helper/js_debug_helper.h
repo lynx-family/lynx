@@ -5,7 +5,6 @@
 #ifndef DEVTOOL_LYNX_DEVTOOL_JS_DEBUG_HELPER_JS_DEBUG_HELPER_H_
 #define DEVTOOL_LYNX_DEVTOOL_JS_DEBUG_HELPER_JS_DEBUG_HELPER_H_
 
-#include <functional>
 #include <memory>
 #include <string>
 
@@ -42,12 +41,7 @@ class JSDebugHelper {
 
   std::unique_ptr<runtime::js::RuntimeInspectorManager>
   CreateRuntimeInspectorManager(const std::string& vm_type);
-  std::unique_ptr<lepus::LepusInspectorManager> CreateLepusInspectorManager(
-      runtime::ContextType context_type);
-  void SetRTSInspectorManagerCreator(
-      std::function<std::unique_ptr<lepus::LepusInspectorManager>()> creator) {
-    rts_inspector_manager_creator_ = std::move(creator);
-  }
+  std::unique_ptr<lepus::LepusInspectorManager> CreateLepusInspectorManager();
 
   void RegisterNapiRuntimeProxy();
   std::shared_ptr<runtime::js::Runtime> MakeRuntime(const std::string& vm_type);
@@ -68,8 +62,6 @@ class JSDebugHelper {
   std::unique_ptr<JSDebugProxy> v8_proxy_;
   std::unique_ptr<JSDebugProxy> quickjs_proxy_;
   std::unique_ptr<JSDebugProxy> lepus_proxy_;
-  std::function<std::unique_ptr<lepus::LepusInspectorManager>()>
-      rts_inspector_manager_creator_;
 };
 
 }  // namespace devtool

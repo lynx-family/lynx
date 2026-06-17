@@ -10,9 +10,7 @@ namespace lynx {
 namespace devtool {
 
 std::unique_ptr<lepus::LepusInspectorManager>
-JSDebugProxyLepus::CreateLepusInspectorManager(
-    runtime::ContextType context_type) {
-  (void)context_type;
+JSDebugProxyLepus::CreateLepusInspectorManager() {
   return std::make_unique<lepus::LepusInspectorManagerImpl>();
 }
 

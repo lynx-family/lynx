@@ -17,8 +17,8 @@ class JSDebugProxyLepus : public JSDebugProxy {
   JSDebugProxyLepus() = default;
   ~JSDebugProxyLepus() override = default;
 
-  std::unique_ptr<lepus::LepusInspectorManager> CreateLepusInspectorManager(
-      runtime::ContextType context_type) override;
+  std::unique_ptr<lepus::LepusInspectorManager> CreateLepusInspectorManager()
+      override;
 };
 
 }  // namespace devtool

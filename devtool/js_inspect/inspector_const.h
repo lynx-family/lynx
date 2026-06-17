@@ -50,7 +50,6 @@ constexpr char kKeyEngineQuickjs[] = "PrimJS";
 constexpr char kKeyEngineJSC[] = "JSC";
 constexpr char kKeyEngineJSVM[] = "JSVM";
 constexpr char kKeyEngineLepus[] = "Lepus";
-constexpr char kKeyEngineRTS[] = "RTS";
 
 // Methods
 constexpr char kMethodDebuggerEnable[] = "Debugger.enable";

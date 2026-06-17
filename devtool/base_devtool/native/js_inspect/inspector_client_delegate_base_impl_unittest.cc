@@ -23,8 +23,6 @@ class InspectorClientDelegateBaseImplTest : public ::testing::Test {
         std::make_shared<MockInspectorClientDelegateBaseImpl>(kKeyEngineV8);
     qjs_delegate_ = std::make_shared<MockInspectorClientDelegateBaseImpl>(
         kKeyEngineQuickjs);
-    rts_delegate_ =
-        std::make_shared<MockInspectorClientDelegateBaseImpl>(kKeyEngineRTS);
     lepus_delegate_ =
         std::make_shared<MockInspectorClientDelegateBaseImpl>(kKeyEngineLepus);
   }
@@ -33,7 +31,6 @@ class InspectorClientDelegateBaseImplTest : public ::testing::Test {
   std::vector<double> repeating_timer_test_;
   std::shared_ptr<MockInspectorClientDelegateBaseImpl> v8_delegate_;
   std::shared_ptr<MockInspectorClientDelegateBaseImpl> qjs_delegate_;
-  std::shared_ptr<MockInspectorClientDelegateBaseImpl> rts_delegate_;
   std::shared_ptr<MockInspectorClientDelegateBaseImpl> lepus_delegate_;
 };
 
@@ -116,27 +113,22 @@ TEST_F(InspectorClientDelegateBaseImplTest, AddEngineTypeParam) {
 
   rapidjson::Document json_mes;
   v8_delegate_->ParseStrToJson(json_mes, original_message);
-  EXPECT_TRUE(v8_delegate_->AddEngineTypeParam(json_mes));
+  v8_delegate_->AddEngineTypeParam(json_mes);
   EXPECT_EQ(base::ToJson(json_mes), v8_message);
 
   json_mes.RemoveAllMembers();
   qjs_delegate_->ParseStrToJson(json_mes, original_message);
-  EXPECT_TRUE(qjs_delegate_->AddEngineTypeParam(json_mes));
+  qjs_delegate_->AddEngineTypeParam(json_mes);
   EXPECT_EQ(base::ToJson(json_mes), qjs_message);
 
   json_mes.RemoveAllMembers();
-  rts_delegate_->ParseStrToJson(json_mes, original_message);
-  EXPECT_FALSE(rts_delegate_->AddEngineTypeParam(json_mes));
-  EXPECT_EQ(base::ToJson(json_mes), original_message);
-
-  json_mes.RemoveAllMembers();
   lepus_delegate_->ParseStrToJson(json_mes, original_message);
-  EXPECT_FALSE(lepus_delegate_->AddEngineTypeParam(json_mes));
+  lepus_delegate_->AddEngineTypeParam(json_mes);
   EXPECT_EQ(base::ToJson(json_mes), original_message);
 
   json_mes.RemoveAllMembers();
   v8_delegate_->ParseStrToJson(json_mes, error_message);
-  EXPECT_FALSE(v8_delegate_->AddEngineTypeParam(json_mes));
+  v8_delegate_->AddEngineTypeParam(json_mes);
   EXPECT_EQ(base::ToJson(json_mes), error_message);
 }
 
