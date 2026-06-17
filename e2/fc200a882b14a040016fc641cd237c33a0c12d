@@ -1,0 +1,16 @@
+.github/workflows/ci.yml
+  h_2d311966cf4a5e 10-13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e2fc200a882b14a040016fc641cd237c33a0c12d",
+  "prompts": {},
+  "humans": {
+    "h_2d311966cf4a5e": {
+      "author": "fenghao <38210394+deanjingshui@users.noreply.github.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}
