@@ -5,10 +5,13 @@
 #ifndef CORE_RENDERER_UI_WRAPPER_PAINTING_NATIVE_PAINTING_CONTEXT_PLATFORM_REF_H_
 #define CORE_RENDERER_UI_WRAPPER_PAINTING_NATIVE_PAINTING_CONTEXT_PLATFORM_REF_H_
 
+#include <atomic>
 #include <memory>
 #include <string>
+#include <unordered_set>
 #include <vector>
 
+#include "base/include/fml/task_runner.h"
 #include "base/include/value/base_string.h"
 #include "base/include/vector.h"
 #include "core/public/painting_ctx_platform_impl.h"
@@ -34,7 +37,9 @@ namespace tasm {
 class DisplayList;
 class PlatformEventTargetExposure;
 
-class NativePaintingCtxPlatformRef : public PaintingCtxPlatformRef {
+class NativePaintingCtxPlatformRef
+    : public PaintingCtxPlatformRef,
+      public std::enable_shared_from_this<NativePaintingCtxPlatformRef> {
  public:
   explicit NativePaintingCtxPlatformRef(
       std::unique_ptr<PlatformRendererFactory> view_factory);
@@ -60,6 +65,9 @@ class NativePaintingCtxPlatformRef : public PaintingCtxPlatformRef {
   // The event data from the platform layer is forwarded to PlatformEventHandler
   // for subsequent event processing.
   bool DispatchPlatformInputEvent(int int_event_data[],
+                                  float float_event_data[],
+                                  int32_t event_target_root_id);
+  bool DispatchPlatformInputEvent(int int_event_data[],
                                   float float_event_data[]);
   // The current state of PlatformEventHandler is obtained to determine the
   // gesture handling at the platform layer.
@@ -77,11 +85,16 @@ class NativePaintingCtxPlatformRef : public PaintingCtxPlatformRef {
   void UpdatePlatformEventBundle(int32_t id, PlatformEventBundle bundle);
   // Get the platform event bundle of the target element.
   const PlatformEventBundle *GetPlatformEventBundle(int32_t id) const;
-  // Reconstruct the event target tree recursively.
+  // Ensure the event target tree for the given root is available. It rebuilds
+  // only when the cached tree is missing or dirty, and refreshes scroll
+  // offsets.
+  fml::RefPtr<PlatformEventTarget> EnsureEventTargetTree(int32_t root_id);
+  void ScheduleEnsureEventTargetTree(int32_t root_id);
+  bool HasScheduledEventTargetTreeUpdate() const {
+    return scheduled_event_target_tree_update_.load();
+  }
   fml::RefPtr<PlatformEventTarget> ReconstructEventTargetTreeRecursively();
-  // did_reconstruct is set to true if the event target tree is reconstructed.
-  fml::RefPtr<PlatformEventTarget> ReconstructEventTargetTreeRecursively(
-      bool *did_reconstruct);
+  bool IsEventTargetRootDirty(int32_t root_id) const;
   std::vector<int32_t> CollectMeaningfulPaintingAreaRecords();
   // Add the target element to the exposure target map.
   void AddPlatformEventTargetToExposure(
@@ -91,8 +104,9 @@ class NativePaintingCtxPlatformRef : public PaintingCtxPlatformRef {
   void RemovePlatformEventTargetFromExposure(
       const fml::RefPtr<PlatformEventTarget> &target,
       const lepus::Value &option);
-  // Clear the exposure target map.
-  void ClearExposureTargetMap();
+  void SetPlatformEventRootActive(int32_t root_id, bool active);
+  void SetPlatformEventRootOffset(int32_t root_id, float offset_x,
+                                  float offset_y);
   void StopExposure(const lepus::Value &options);
   void ResumeExposure();
   // Invoke the method of the ui element.
@@ -121,6 +135,13 @@ class NativePaintingCtxPlatformRef : public PaintingCtxPlatformRef {
 
   void RebuildSubLayers(const fml::RefPtr<PlatformRenderer> &renderer,
                         const base::InlineVector<int, 16> &new_children);
+  bool EnsureEventTargetTreeForTarget(int32_t target_id);
+  int32_t GetEventTargetRootIdForRenderer(int32_t renderer_id);
+  void MarkEventTargetTreeDirty(int32_t renderer_id);
+  void MarkEventTargetRootDirty(int32_t root_id);
+  void ClearEventTargetRootDirty(int32_t root_id);
+  fml::RefPtr<PlatformEventTarget> ReconstructEventTargetTreeForRoot(
+      int32_t root_id);
 
   std::unique_ptr<PlatformRendererFactory> view_factory_;
   base::InlineOrderedFlatMap<int32_t, fml::RefPtr<PlatformRenderer>, 64>
@@ -132,10 +153,12 @@ class NativePaintingCtxPlatformRef : public PaintingCtxPlatformRef {
       std::make_unique<PlatformEventEmitter>(this);
   std::unique_ptr<PlatformEventTargetHelper> event_target_helper_ =
       std::make_unique<PlatformEventTargetHelper>(this);
+  fml::RefPtr<fml::TaskRunner> event_target_task_runner_;
   std::shared_ptr<PlatformEventTargetExposure> event_target_exposure_;
   base::InlineOrderedFlatMap<int32_t, PlatformEventBundle, 64>
       platform_event_bundles_;
-  bool need_reconstruct_event_target_tree_{false};
+  std::atomic_bool scheduled_event_target_tree_update_{false};
+  std::unordered_set<int32_t> dirty_event_root_ids_;
 };
 
 }  // namespace tasm

@@ -185,6 +185,7 @@ public class LynxUIRenderer implements ILynxUIRenderer {
               mLynxUIOwner.getRootUI().getBodyView(), context, behaviorRegistry)
           : new PaintingContext(mLynxUIOwner, threadStrategy.id());
     }
+    mLynxUIOwner.setPaintingContext(mPaintingContext);
     if (mShadowNodeOwner == null) {
       mShadowNodeOwner = new ShadowNodeOwner(context, behaviorRegistry, layoutTick);
     }
@@ -269,6 +270,9 @@ public class LynxUIRenderer implements ILynxUIRenderer {
     if (mPaintingContext != null) {
       mPaintingContext.destroy();
       mPaintingContext = null;
+    }
+    if (mLynxUIOwner != null) {
+      mLynxUIOwner.setPaintingContext(null);
     }
     if (mNativeUIDelegatePtr != 0) {
       nativeDestroyUIDelegate(mNativeUIDelegatePtr);
@@ -376,10 +380,6 @@ public class LynxUIRenderer implements ILynxUIRenderer {
 
   @Override
   public boolean onTouchEvent(MotionEvent ev, UIGroup rootUi) {
-    LynxContext context = mLynxContext.get();
-    if (context != null && context.isFragmentLayerRenderOn() && mPaintingContext != null) {
-      return mPaintingContext.dispatchPlatformMotionEvent(ev);
-    }
     EnsureEventDispatcher();
     return (mEventDispatcher != null) && mEventDispatcher.onTouchEvent(ev, rootUi);
   }
