@@ -13,6 +13,13 @@ typedef struct lynx_native_view_ lynx_native_view_t;
 // Opaque platform native graphics handle. On Darwin this is IOSurfaceRef.
 // On Windows this is a D3D shared HANDLE for the active graphics backend,
 // not a texture/device pointer.
+//
+// The handle exposes the producer-facing backing store. Pixel row order and
+// texture coordinates are defined by the active embedder backend, so row 0 is
+// not always the visual top edge. For macOS IOSurface-backed desktop surfaces,
+// Lynx samples with the backend's vertical texture transform; producers that
+// draw directly into the IOSurface should keep the platform texture orientation
+// and adjust their own drawing transform when needed.
 typedef struct lynx_surface_ lynx_surface_handle_t;
 
 typedef enum lynx_native_event_type {
@@ -143,10 +150,18 @@ LYNX_CAPI_EXPORT void lynx_native_view_bind_surface_buffer_mode(
 LYNX_CAPI_EXPORT lynx_surface_buffer_mode_t
 lynx_native_view_get_surface_buffer_mode(lynx_native_view_t*);
 
+// Presents an external surface. transform maps the producer's texture
+// coordinates to Lynx's visual coordinates when Lynx samples the surface. Use
+// it for backend/origin differences, such as Y-flip, instead of treating native
+// buffer row 0 as the visual top row.
 LYNX_CAPI_EXPORT bool lynx_native_view_present_surface(
     lynx_native_view_t*, int width, int height, const float* transform,
     lynx_surface_handle_t* handle);
 // Returns a platform native graphics handle for the latest back buffer.
+// The returned handle remains owned by Lynx. Write into it using the platform
+// native texture/backing orientation, then publish it with
+// lynx_native_view_swap_back().
+//
 // Windows callers should import the returned D3D shared HANDLE with the
 // graphics API/device that matches the active Windows backend.
 LYNX_CAPI_EXPORT lynx_surface_handle_t* lynx_native_view_acquire_surface(
