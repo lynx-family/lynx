@@ -11,18 +11,51 @@
 
 namespace lynx {
 namespace event {
+namespace {
+
+template <typename Callback>
+void ForEachObjectProperty(const lepus::Value& value, Callback callback) {
+  if (value.IsJSValue()) {
+    value.IteratorJSValue(
+        [&callback](const lepus::Value& key, const lepus::Value& value) {
+          callback(key, value);
+        });
+    return;
+  }
+
+  if (!value.IsTable()) {
+    return;
+  }
+  auto table = value.Table();
+  table->for_each([&callback](const auto& key, const auto& value) {
+    callback(lepus::Value(key), value);
+  });
+}
+
+}  // namespace
 
 CustomEvent::CustomEvent(const std::string& event_name,
                          const lepus::Value& event_param,
                          const std::string& param_name, int64_t time_stamp,
                          Capture capture, Bubbles bubbles,
                          Cancelable cancelable, ComposedMode composed_mode,
-                         PhaseType phase_type)
+                         PhaseType phase_type,
+                         bool enable_legacy_frontend_event_param)
     : Event(event_name, time_stamp, EventType::kCustomEvent, capture, bubbles,
             cancelable, composed_mode, phase_type),
       event_param_(event_param),
-      param_name_(param_name) {
+      param_name_(param_name),
+      enable_legacy_frontend_event_param_(enable_legacy_frontend_event_param) {
   event_type_ = EventType::kCustomEvent;
+}
+
+void CustomEvent::HandleEventBaseDetail(bool is_core_event) {
+  if (ShouldUseLegacyFrontendEventParam() && !event_param_.IsObject()) {
+    detail_ = event_param_;
+    return;
+  }
+  Event::HandleEventBaseDetail(is_core_event);
+  ApplyLegacyFrontendEventParam();
 }
 
 void CustomEvent::HandleEventCustomDetail() {
@@ -45,9 +78,27 @@ void CustomEvent::HandleEventCustomDetail() {
   time_stamp_ = time_stamp;
   dict->SetValue(kTimestamp, time_stamp);
   dict->SetValue(param_name_, event_param_);
-  if (param_name_ == "params") {
+  if (param_name_ == "params" && !from_frontend_) {
     BASE_STATIC_STRING_DECL(kDetail, "detail");
     dict->SetValue(kDetail, event_param_);
+  }
+}
+
+bool CustomEvent::ShouldUseLegacyFrontendEventParam() const {
+  return enable_legacy_frontend_event_param_ && from_frontend_;
+}
+
+void CustomEvent::ApplyLegacyFrontendEventParam() {
+  if (!ShouldUseLegacyFrontendEventParam()) {
+    return;
+  }
+  if (event_param_.IsObject()) {
+    ForEachObjectProperty(event_param_, [this](const lepus::Value& key,
+                                               const lepus::Value& value) {
+      detail_.Table()->SetValue(key.String(), value);
+    });
+  } else {
+    detail_ = event_param_;
   }
 }
 

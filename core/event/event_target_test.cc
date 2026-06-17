@@ -451,6 +451,62 @@ TEST_F(EventTargetTest, TestEventTargetDispatchNoCaptureBubbleEvent) {
             1);
 }
 
+TEST_F(EventTargetTest, CustomEventParamsDetailOnlyForNativeEvent) {
+  auto params = lepus::Dictionary::Create();
+  params->SetValue("foo", "bar");
+
+  auto native_event = fml::MakeRefCounted<CustomEvent>(
+      "custom", lepus::Value(params), "params");
+  native_event->HandleEventCustomDetail();
+  ASSERT_TRUE(native_event->detail().IsTable());
+  EXPECT_TRUE(native_event->detail().Table()->GetValue("detail").IsObject());
+
+  auto frontend_event = fml::MakeRefCounted<CustomEvent>(
+      "custom", lepus::Value(params), "params");
+  frontend_event->set_from_frontend(true);
+  frontend_event->HandleEventCustomDetail();
+  ASSERT_TRUE(frontend_event->detail().IsTable());
+  EXPECT_TRUE(frontend_event->detail().Table()->GetValue("detail").IsNil());
+}
+
+TEST_F(EventTargetTest, LegacyFrontendCustomEventObjectParam) {
+  auto params = lepus::Dictionary::Create();
+  params->SetValue("type", "legacy");
+  params->SetValue("timestamp", 123);
+  params->SetValue("detail", "legacy_detail");
+  params->SetValue("foo", "bar");
+
+  auto event = fml::MakeRefCounted<CustomEvent>(
+      "custom", lepus::Value(params), "detail", 0, Event::Capture::kNo,
+      Event::Bubbles::kNo, Event::Cancelable::kYes,
+      Event::ComposedMode::kScoped, Event::PhaseType::kNone, true);
+  event->set_from_frontend(true);
+  event->HandleEventCustomDetail();
+  event->HandleEventBaseDetail();
+
+  ASSERT_TRUE(event->detail().IsTable());
+  EXPECT_EQ(event->detail().Table()->GetValue("type").StdString(), "legacy");
+  EXPECT_EQ(static_cast<int32_t>(
+                event->detail().Table()->GetValue("timestamp").Number()),
+            123);
+  EXPECT_EQ(event->detail().Table()->GetValue("detail").StdString(),
+            "legacy_detail");
+  EXPECT_EQ(event->detail().Table()->GetValue("foo").StdString(), "bar");
+}
+
+TEST_F(EventTargetTest, LegacyFrontendCustomEventNonObjectParam) {
+  auto event = fml::MakeRefCounted<CustomEvent>(
+      "custom", lepus::Value("legacy"), "detail", 0, Event::Capture::kNo,
+      Event::Bubbles::kNo, Event::Cancelable::kYes,
+      Event::ComposedMode::kScoped, Event::PhaseType::kNone, true);
+  event->set_from_frontend(true);
+  event->HandleEventCustomDetail();
+  event->HandleEventBaseDetail();
+
+  ASSERT_TRUE(event->detail().IsString());
+  EXPECT_EQ(event->detail().StdString(), "legacy");
+}
+
 }  // namespace test
 }  // namespace event
 }  // namespace lynx

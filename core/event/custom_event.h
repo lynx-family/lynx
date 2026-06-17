@@ -19,13 +19,19 @@ class CustomEvent : public Event {
               Capture capture = Capture::kNo, Bubbles bubbles = Bubbles::kNo,
               Cancelable cancelable = Cancelable::kYes,
               ComposedMode composed_mode = ComposedMode::kScoped,
-              PhaseType phase_type = PhaseType::kNone);
+              PhaseType phase_type = PhaseType::kNone,
+              bool enable_legacy_frontend_event_param = false);
 
+  void HandleEventBaseDetail(bool is_core_event = false) override;
   void HandleEventCustomDetail() override;
 
  private:
+  bool ShouldUseLegacyFrontendEventParam() const;
+  void ApplyLegacyFrontendEventParam();
+
   lepus::Value event_param_{lepus::Dictionary::Create()};
   std::string param_name_{""};
+  bool enable_legacy_frontend_event_param_{false};
 };
 
 }  // namespace event
