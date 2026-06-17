@@ -774,6 +774,11 @@ class FiberElement : public Element {
  protected:
   FiberElement(const FiberElement& element, bool clone_resolved_props);
 
+  // Hook for subclasses to replay element-specific derived style state.
+  // Callers should go through ReplayChangedStyleSideEffect() or
+  // ReplayResetStyleSideEffect() so FiberElement preserves replay bookkeeping.
+  virtual void ReplayElementSpecificStyleSideEffect(CSSPropertyID id) {}
+
   void ConsumeStyleInternal(
       const StyleMap& styles, const StyleMap* inherit_styles,
       std::function<bool(CSSPropertyID, const tasm::CSSValue&)> should_skip)
