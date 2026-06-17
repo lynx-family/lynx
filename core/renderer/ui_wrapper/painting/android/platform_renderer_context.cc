@@ -12,15 +12,36 @@
 
 #include "base/include/platform/android/jni_convert_helper.h"
 #include "core/event/event.h"
+#include "core/renderer/dom/lynx_get_ui_result.h"
 #include "core/renderer/ui_wrapper/common/android/platform_extra_bundle_android.h"
 #include "core/renderer/ui_wrapper/painting/android/platform_renderer_android.h"
+#include "core/renderer/utils/android/value_converter_android.h"
 #include "core/shell/lynx_engine.h"
+#include "core/value_wrapper/value_impl_lepus.h"
 #include "platform/android/lynx_android/src/main/jni/gen/PlatformRendererContext_jni.h"
 #include "platform/android/lynx_android/src/main/jni/gen/PlatformRendererContext_register_jni.h"
 
 jlong CreateEmbeddedViewContext(JNIEnv* env, jobject jcaller, jobject jThis) {
   return reinterpret_cast<jlong>(
       new lynx::tasm::PlatformRendererContext(env, jThis));
+}
+
+void InvokeUIMethodCallback(JNIEnv* env, jobject /*jcaller*/, jlong nativePtr,
+                            jint callback, jint code, jobject params) {
+  if (nativePtr == 0) {
+    return;
+  }
+  lynx::lepus::Value data;
+  if (params != nullptr) {
+    auto params_array =
+        lynx::tasm::android::ValueConverterAndroid::ConvertJavaOnlyArrayToLepus(
+            env, params);
+    if (params_array.IsArrayOrJSArray() && params_array.Array()->size() > 0) {
+      data = params_array.Array()->get(0);
+    }
+  }
+  reinterpret_cast<lynx::tasm::PlatformRendererContext*>(nativePtr)
+      ->InvokeUIMethodCallback(callback, code, data);
 }
 
 namespace lynx {
@@ -331,6 +352,45 @@ bool PlatformRendererContext::IsRendererHostScrollable(int32_t sign) {
       env, local_ref.Get(), sign);
 }
 
+void PlatformRendererContext::InvokeUIMethod(
+    int32_t id, const std::string& method, const lepus::Value& params,
+    base::MoveOnlyClosure<void, int32_t, const pub::Value&> callback) {
+  base::android::ScopedLocalJavaRef<jobject> local_ref(java_ref_);
+  if (local_ref.IsNull()) {
+    if (callback) {
+      callback(LynxGetUIResult::UNKNOWN,
+               PubLepusValue(lepus::Value("PlatformRendererContext is null")));
+    }
+    return;
+  }
+
+  JNIEnv* env = base::android::AttachCurrentThread();
+  const auto j_method =
+      base::android::JNIConvertHelper::ConvertToJNIStringUTF(env, method);
+  auto j_params =
+      tasm::android::ValueConverterAndroid::ConvertLepusToJavaOnlyMap(params);
+
+  const int32_t callback_id = ++invoke_ui_method_callback_id_;
+  invoke_ui_method_callbacks_.emplace(callback_id, std::move(callback));
+  Java_PlatformRendererContext_invokeUIMethod(
+      env, local_ref.Get(), id, j_method.Get(), j_params.jni_object(),
+      reinterpret_cast<jlong>(this), callback_id);
+}
+
+void PlatformRendererContext::InvokeUIMethodCallback(int32_t callback_id,
+                                                     int32_t code,
+                                                     const lepus::Value& data) {
+  auto iter = invoke_ui_method_callbacks_.find(callback_id);
+  if (iter == invoke_ui_method_callbacks_.end()) {
+    return;
+  }
+  auto callback = std::move(iter->second);
+  invoke_ui_method_callbacks_.erase(iter);
+  if (callback) {
+    callback(code, PubLepusValue(data));
+  }
+}
+
 void PlatformRendererContext::UpdatePlatformRendererSubtreeProperties(
     int32_t id, const SubtreeProperty* properties, size_t count) {
   base::android::ScopedLocalJavaRef<jobject> local_ref(java_ref_);
@@ -370,6 +430,7 @@ void PlatformRendererContext::UpdatePlatformRendererExtraData(
 void PlatformRendererContext::Destroy() {
   java_ref_.Reset(nullptr, nullptr);
   renderer_registry_.clear();
+  invoke_ui_method_callbacks_.clear();
 }
 
 }  // namespace tasm

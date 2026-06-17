@@ -7,15 +7,21 @@
 
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
+#include "base/include/closure.h"
 #include "base/include/fml/memory/ref_ptr.h"
 #include "base/include/platform/android/scoped_java_ref.h"
 #include "base/include/vector.h"
 #include "core/public/platform_renderer_type.h"
+#include "core/public/pub_value.h"
 #include "core/renderer/ui_wrapper/painting/android/native_painting_context_android.h"
 
 namespace lynx {
+namespace lepus {
+class Value;
+}
 namespace event {
 class Event;
 }
@@ -88,11 +94,20 @@ class PlatformRendererContext {
   std::vector<float> GetScreenSize();
   std::vector<float> GetRendererHostScrollOffset(int32_t sign);
   bool IsRendererHostScrollable(int32_t sign);
+  void InvokeUIMethod(
+      int32_t id, const std::string& method, const lepus::Value& params,
+      base::MoveOnlyClosure<void, int32_t, const pub::Value&> callback);
+  void InvokeUIMethodCallback(int32_t callback_id, int32_t code,
+                              const lepus::Value& data);
 
  private:
   base::android::ScopedWeakGlobalJavaRef<jobject> java_ref_;
   base::InlineOrderedFlatMap<int32_t, PlatformRendererAndroid*, 64>
       renderer_registry_;
+  std::unordered_map<int32_t,
+                     base::MoveOnlyClosure<void, int32_t, const pub::Value&>>
+      invoke_ui_method_callbacks_;
+  int32_t invoke_ui_method_callback_id_{0};
 };
 
 }  // namespace tasm
