@@ -934,9 +934,8 @@ public class TextHelper {
       return false;
     }
 
-    // On Honor devices running Android 15, calling setFontVariationSettings on a non-main thread
-    // may cause a crash in Minikin.
-    return Build.VERSION.SDK_INT != 35 || UIThreadUtils.isOnUiThread() || !DeviceUtils.isHonor();
+    // On Honor devices running Android 15, setFontVariationSettings may crash in Minikin.
+    return Build.VERSION.SDK_INT != 35 || !DeviceUtils.isHonor();
   }
 
   private static int getStyleWeight(int weight) {
