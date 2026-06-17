@@ -24,6 +24,7 @@
 #include "core/renderer/css/computed_css_style_css_text_helper.h"
 #include "core/renderer/css/css_color.h"
 #include "core/renderer/css/css_decoder.h"
+#include "core/renderer/css/css_style_utils.h"
 #include "core/renderer/css/css_value.h"
 #include "core/renderer/css/ng/parser/css_parser_token_range.h"
 #include "core/renderer/css/ng/parser/css_tokenizer.h"
@@ -87,6 +88,25 @@ style::DynamicStyleObjectRef MakeDynamicStyleObjectRef(StyleMap style_map) {
   }
   return style::DynamicStyleObjectRef(
       new style::DynamicStyleObject(std::move(style_map)));
+}
+
+fml::TimePoint TimePointFromMs(int64_t ms) {
+  return fml::TimePoint::FromTicks(ms * 1000 * 1000);
+}
+
+void UpdateLeftKeyframesForTest(Element* element, const base::String& name,
+                                const char* from, const char* to) {
+  auto keyframes = lepus::Dictionary::Create();
+  auto from_frame = lepus::Dictionary::Create();
+  from_frame->SetValue("left", lepus::Value(from));
+  keyframes->SetValue("0", lepus::Value(from_frame));
+  auto to_frame = lepus::Dictionary::Create();
+  to_frame->SetValue("left", lepus::Value(to));
+  keyframes->SetValue("100", lepus::Value(to_frame));
+
+  CSSParserConfigs configs;
+  starlight::CSSStyleUtils::UpdateCSSKeyframes(
+      *element->keyframes_map_, name, lepus::Value(keyframes), configs);
 }
 
 bool StyleMapHasValue(const StyleMap& style_map, CSSPropertyID id,
@@ -20356,6 +20376,43 @@ TEST_P(FiberElementTest,
       CSSProperty::GetPropertyNameCStr(CSSPropertyID::kPropertyIDOpacity));
   ASSERT_NE(opacity_it, props.end());
   EXPECT_NEAR(opacity_it->second.Number(), 0.2, 1e-6);
+}
+
+TEST_P(FiberElementTest,
+       NewStylingForwardsKeyframeFillPersistsAfterLaterResolve) {
+  manager->enable_new_styling_pipeline_ = true;
+  auto page = manager->CreateFiberPage("page", 11);
+  manager->SetFiberPageElement(page);
+  auto element = manager->CreateFiberView();
+  element->enable_new_animator_ = true;
+  UpdateLeftKeyframesForTest(element.get(), base::String("move"), "0px",
+                             "200px");
+  element->SetRawInlineStyles(
+      "left: 0px; animation: move 1000ms linear forwards;");
+  page->InsertNode(element);
+
+  page->FlushActionsAsRoot();
+  EXPECT_TRUE(StyleMapHasValue(
+      element->computed_css_style()->GetResolvedValues(),
+      CSSPropertyID::kPropertyIDLeft, CSSValue(0, CSSValuePattern::PX)));
+
+  auto resolve_at = [&](int64_t ms) {
+    element->SetAnimationSampleTimeForNewPipeline(TimePointFromMs(ms));
+    FiberElement::NewPipelineResolveRequest request;
+    request.force_resolve = true;
+    return element->ResolveCSSStylesNewPipelineCore(request);
+  };
+
+  resolve_at(1000);
+  resolve_at(2000);
+  EXPECT_TRUE(StyleMapHasValue(
+      element->computed_css_style()->GetResolvedValues(),
+      CSSPropertyID::kPropertyIDLeft, CSSValue(200, CSSValuePattern::PX)));
+
+  resolve_at(2016);
+  EXPECT_TRUE(StyleMapHasValue(
+      element->computed_css_style()->GetResolvedValues(),
+      CSSPropertyID::kPropertyIDLeft, CSSValue(200, CSSValuePattern::PX)));
 }
 
 TEST_P(FiberElementTest,

@@ -155,10 +155,17 @@ class CSSKeyframeManager : public AnimationDelegate {
 
   void QueueCancelEvent(const std::shared_ptr<Animation>& animation);
 
+  void ClearAnimationEffects(
+      const std::shared_ptr<Animation>& animation,
+      const tasm::StyleMap* new_base_resolved_styles,
+      const tasm::StyleMap* new_underlying_layout_only_styles);
+
   void PrepareAnimationRemoval(
       const std::shared_ptr<Animation>& animation,
       const tasm::StyleMap* new_base_resolved_styles,
       const tasm::StyleMap* new_underlying_layout_only_styles);
+
+  void ClearPersistedFillStyle(const std::shared_ptr<Animation>& animation);
 
   base::InlineVector<starlight::AnimationData, 1> animation_data_;
   // The collection of animations running on the current element.
@@ -172,6 +179,7 @@ class CSSKeyframeManager : public AnimationDelegate {
   tasm::StyleMap pending_property_overrides_;
   std::vector<tasm::CSSPropertyID> pending_property_resets_;
   std::vector<base::String> pending_custom_property_resets_;
+  tasm::StyleMap persisted_property_fill_styles_;
   tasm::CustomPropertiesMap persisted_custom_property_fill_styles_;
   AnimationEventRecordsForNewPipeline pending_event_records_;
 
