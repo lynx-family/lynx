@@ -633,7 +633,7 @@ FiberElement::FiberElement(ElementManager *manager, const base::String &tag,
   InitLayoutBundle();
   SetAttributeHolder(fml::MakeRefCounted<AttributeHolder>(this));
 
-  if (tag.IsEquals("x-overlay-ng") || tag.IsEquals("overlay")) {
+  if (IsOverlay()) {
     can_has_layout_only_children_ = false;
   }
 
@@ -3562,6 +3562,13 @@ void FiberElement::HandleRemoveChildAction(FiberElement *child) {
     return;
   }
 
+  int layout_in_element_platform_index = -1;
+  if (EnableLayoutInElementMode() && customized_layout_node_ &&
+      child->HasLayoutInElementPlatformNode()) {
+    layout_in_element_platform_index =
+        GetLayoutInElementPlatformChildIndex(child);
+  }
+
   RestoreLayoutNode(child);
   if (!child->is_wrapper() && !child->attached_to_layout_parent_ &&
       !child->IsFixedNewOrUnified()) {
@@ -3585,7 +3592,7 @@ void FiberElement::HandleRemoveChildAction(FiberElement *child) {
     }
     TreeResolver::RemoveFromParentForWrapperChild(parent, child);
   } else {
-    RemoveLayoutNode(child);
+    RemoveLayoutNode(child, layout_in_element_platform_index);
   }
 
   element_container()->RemoveElementContainerAccordingToElement(child, false);
@@ -4164,6 +4171,30 @@ void FiberElement::EnsureSLNode() {
   }
 }
 
+bool FiberElement::HasLayoutInElementPlatformNode() {
+  return EnableLayoutInElementMode() && customized_layout_node_;
+}
+
+int FiberElement::GetLayoutInElementPlatformChildIndex(FiberElement *child) {
+  if (child == nullptr || child->render_parent() == nullptr) {
+    return -1;
+  }
+  int index = 0;
+  auto *render_parent = static_cast<FiberElement *>(child->render_parent());
+  for (auto *current =
+           static_cast<FiberElement *>(render_parent->first_render_child());
+       current != nullptr;
+       current = static_cast<FiberElement *>(current->next_render_sibling())) {
+    if (current == child) {
+      return index;
+    }
+    if (current->HasLayoutInElementPlatformNode()) {
+      ++index;
+    }
+  }
+  return -1;
+}
+
 void FiberElement::SetMeasureFunc(std::unique_ptr<MeasureFunc> measure_func) {
   if (customized_layout_node_ != nullptr) {
     customized_layout_node_->SetMeasureFunc(std::move(measure_func));
@@ -4200,11 +4231,22 @@ void FiberElement::MarkLayoutDirty() {
 
 void FiberElement::AttachLayoutNode(const fml::RefPtr<PropBundle> &props) {
   if (EnableLayoutInElementMode()) {
-    if (IsShadowNodeCustom()) {
+    const bool is_custom = IsShadowNodeCustom();
+    if (is_custom) {
+      // Custom shadow nodes register their measure function during
+      // CreateLayoutNode, so the wrapper must exist before that callback.
       customized_layout_node_ =
           std::make_unique<PlatformLayoutFunctionWrapper>(*this, props);
-      element_manager()->layout_context()->CreateLayoutNode(id_, tag_.str(),
-                                                            props.get(), false);
+      element_manager()->layout_context()->CreateLayoutNode(
+          id_, tag_.str(), props.get(), allow_layoutnode_inline_);
+    } else if (allow_layoutnode_inline_) {
+      const int node_type =
+          element_manager()->layout_context()->CreateLayoutNode(
+              id_, tag_.str(), props.get(), allow_layoutnode_inline_);
+      if (node_type & LayoutNodeType::INLINE) {
+        customized_layout_node_ =
+            std::make_unique<PlatformLayoutFunctionWrapper>(*this, props);
+      }
     }
     return;
   }
@@ -4511,6 +4553,14 @@ void FiberElement::InsertLayoutNode(FiberElement *child, FiberElement *ref) {
       container->sl_node_->InsertChildBefore(
           child->sl_node_.get(), ref_node ? ref_node->sl_node_.get() : nullptr);
       container->MarkLayoutDirtyLite();
+      if (container->customized_layout_node_ &&
+          child->HasLayoutInElementPlatformNode()) {
+        int index = container->GetLayoutInElementPlatformChildIndex(child);
+        if (index >= 0) {
+          element_manager()->layout_context()->InsertLayoutNode(
+              container->impl_id(), child->impl_id(), index);
+        }
+      }
       inserted = true;
     }
     child->attached_to_layout_parent_ = inserted || child->is_virtual();
@@ -4530,10 +4580,18 @@ void FiberElement::InsertLayoutNode(FiberElement *child, FiberElement *ref) {
   child->attached_to_layout_parent_ = true;
 }
 
-void FiberElement::RemoveLayoutNode(FiberElement *child) {
+void FiberElement::RemoveLayoutNode(FiberElement *child,
+                                    int layout_in_element_platform_index) {
   if (EnableLayoutInElementMode()) {
     if (auto *child_layout_node = child->slnode();
         child_layout_node && child_layout_node->parent()) {
+      if (customized_layout_node_ && child->HasLayoutInElementPlatformNode()) {
+        int index = layout_in_element_platform_index >= 0
+                        ? layout_in_element_platform_index
+                        : GetLayoutInElementPlatformChildIndex(child);
+        element_manager()->layout_context()->RemoveLayoutNode(
+            impl_id(), child->impl_id(), index);
+      }
       // FIXME: this->sl_node_ is accidentally not the parent of
       // child->sl_node_->parent_. Should try to figure out why it happens.
       if (child_layout_node->parent() != sl_node_.get()) {

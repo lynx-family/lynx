@@ -3147,7 +3147,7 @@ public interface com::lynx::tasm::behavior::IPaintingContext {
   public int com.lynx.tasm.behavior.IPaintingContext.getTargetWidth(int sign);
   public int com.lynx.tasm.behavior.IPaintingContext.getTargetHeight(int sign);
   public void com.lynx.tasm.behavior.IPaintingContext.setLynxEngineActorForPlatformContextRef(long ptr);
-  public boolean com.lynx.tasm.behavior.IPaintingContext.dispatchPlatformMotionEvent(MotionEvent ev);
+  public boolean com.lynx.tasm.behavior.IPaintingContext.dispatchPlatformMotionEvent(MotionEvent ev, int rootSign);
   public int com.lynx.tasm.behavior.IPaintingContext.getPlatformEventHandlerState();
 }
 
@@ -4890,6 +4890,8 @@ public class abstract com::lynx::tasm::behavior::LynxContext : com.lynx.tasm.beh
   public void com.lynx.tasm.behavior.LynxContext.setLynxUIOwner(LynxUIOwner owner);
   public UIExposure com.lynx.tasm.behavior.LynxContext.getExposure();
   public LynxUIOwner com.lynx.tasm.behavior.LynxContext.getLynxUIOwner();
+  public void com.lynx.tasm.behavior.LynxContext.setPlatformEventRootActive(int rootSign, boolean active);
+  public void com.lynx.tasm.behavior.LynxContext.setPlatformEventRootOffset(int rootSign, float offsetX, float offsetY);
   public LynxBaseUI com.lynx.tasm.behavior.LynxContext.findLynxUIByName(@NonNull String name);
   public UIBody com.lynx.tasm.behavior.LynxContext.getUIBody();
   public void com.lynx.tasm.behavior.LynxContext.setUIBody(UIBody mUIBody);
@@ -8173,7 +8175,9 @@ public class com::lynx::tasm::behavior::render::NativePaintingContext : com.lynx
   public int com.lynx.tasm.behavior.render.NativePaintingContext.getTargetHeight(int sign);
   public void com.lynx.tasm.behavior.render.NativePaintingContext.attachUIBodyView(UIBody.UIBodyView view);
   public void com.lynx.tasm.behavior.render.NativePaintingContext.setLynxEngineActorForPlatformContextRef(long ptr);
-  public boolean com.lynx.tasm.behavior.render.NativePaintingContext.dispatchPlatformMotionEvent(MotionEvent ev);
+  public boolean com.lynx.tasm.behavior.render.NativePaintingContext.dispatchPlatformMotionEvent(MotionEvent ev, int rootSign);
+  public void com.lynx.tasm.behavior.render.NativePaintingContext.setPlatformEventRootActive(int rootSign, boolean active);
+  public void com.lynx.tasm.behavior.render.NativePaintingContext.setPlatformEventRootOffset(int rootSign, float offsetX, float offsetY);
   public int com.lynx.tasm.behavior.render.NativePaintingContext.getPlatformEventHandlerState();
   public List< MeaningfulPaintingArea > com.lynx.tasm.behavior.render.NativePaintingContext.getMeaningfulPaintingAreas();
 }
@@ -8542,7 +8546,7 @@ public class com::lynx::tasm::behavior::PaintingContext : com.lynx.tasm.behavior
   public int com.lynx.tasm.behavior.PaintingContext.getTargetWidth(int sign);
   public int com.lynx.tasm.behavior.PaintingContext.getTargetHeight(int sign);
   public void com.lynx.tasm.behavior.PaintingContext.setLynxEngineActorForPlatformContextRef(long ptr);
-  public boolean com.lynx.tasm.behavior.PaintingContext.dispatchPlatformMotionEvent(MotionEvent ev);
+  public boolean com.lynx.tasm.behavior.PaintingContext.dispatchPlatformMotionEvent(MotionEvent ev, int rootSign);
   public int com.lynx.tasm.behavior.PaintingContext.getPlatformEventHandlerState();
   public void com.lynx.tasm.behavior.PaintingContext.rebuildViewTree();
   public void com.lynx.tasm.behavior.PaintingContext.updateLayout(int sign, float x, float y, float width, float height, float paddingLeft, float paddingTop, float paddingRight, float paddingBottom, float marginLeft, float marginTop, float marginRight, float marginBottom, float borderLeftWidth, float borderTopWidth, float borderRightWidth, float borderBottomWidth, float[] bounds, float[] sticky, float maxHeight, int nodeIndex);
@@ -8732,6 +8736,7 @@ public class abstract com::lynx::tasm::PlatformCallBack :  {
 
 public class com::lynx::tasm::behavior::render::PlatformRendererContext::PlatformEventHandlerState :  {
   public final int com.lynx.tasm.behavior.render.PlatformRendererContext.PlatformEventHandlerState.kNone kNone;
+  public final int com.lynx.tasm.behavior.render.PlatformRendererContext.PlatformEventHandlerState.kEventThrough kEventThrough;
 }
 
 public class com::lynx::tasm::behavior::PlatformExtraBundleHolder :  {

@@ -65,6 +65,7 @@
 #include "core/shell/lynx_ui_operation_queue.h"
 #include "core/shell/runtime/mts/mts_runtime.h"
 #include "core/shell/tasm_operation_queue.h"
+#include "core/shell/testing/mock_layout_platform.h"
 #include "core/shell/testing/mock_tasm_delegate.h"
 #include "core/template_bundle/template_codec/binary_encoder/css_encoder/shared_css_fragment.h"
 #include "core/template_bundle/template_codec/generator/ttml_holder.h"
@@ -2850,6 +2851,45 @@ TEST_P(FiberElementTest,
 
   parent->RemoveLayoutNode(child.get());
   EXPECT_FALSE(child->attached_to_layout_parent_);
+}
+
+TEST_P(FiberElementTest,
+       LayoutInElement_RemoveCustomChildUsesPreviousPlatformIndex) {
+  manager->page_options_.embedded_mode_ = static_cast<EmbeddedMode>(
+      static_cast<int32_t>(manager->page_options_.embedded_mode_) |
+      static_cast<int32_t>(EmbeddedMode::LAYOUT_IN_ELEMENT));
+  auto* layout_platform = static_cast<lynx::tasm::test::MockPlatformImpl*>(
+      manager->layout_context());
+
+  auto page = manager->CreateFiberPage("page", 11);
+  auto parent = manager->CreateFiberNode("text");
+  auto first = manager->CreateFiberNode("text");
+  auto common = manager->CreateFiberNode("view");
+  auto removed = manager->CreateFiberNode("text");
+  auto last = manager->CreateFiberNode("text");
+
+  page->InsertNode(parent);
+  parent->InsertNode(first);
+  parent->InsertNode(common);
+  parent->InsertNode(removed);
+  parent->InsertNode(last);
+  page->FlushActionsAsRoot();
+
+  ASSERT_NE(parent->customized_layout_node_, nullptr);
+  ASSERT_NE(first->customized_layout_node_, nullptr);
+  ASSERT_EQ(common->customized_layout_node_, nullptr);
+  ASSERT_NE(removed->customized_layout_node_, nullptr);
+  ASSERT_NE(last->customized_layout_node_, nullptr);
+
+  layout_platform->removed_layout_nodes.clear();
+  parent->RemoveNode(removed);
+  page->FlushActionsAsRoot();
+
+  ASSERT_EQ(layout_platform->removed_layout_nodes.size(), 1U);
+  const auto& op = layout_platform->removed_layout_nodes[0];
+  EXPECT_EQ(op.parent, parent->impl_id());
+  EXPECT_EQ(op.child, removed->impl_id());
+  EXPECT_EQ(op.index, 1);
 }
 
 TEST_P(FiberElementTest,

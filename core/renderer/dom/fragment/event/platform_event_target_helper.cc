@@ -4,10 +4,15 @@
 
 #include "core/renderer/dom/fragment/event/platform_event_target_helper.h"
 
+#include <cstring>
 #include <stack>
+#include <string_view>
 #include <unordered_map>
+#include <utility>
+#include <vector>
 
 #include "base/include/float_comparison.h"
+#include "base/include/value/array.h"
 #include "core/renderer/dom/lynx_get_ui_result.h"
 #include "core/renderer/ui_wrapper/painting/native_painting_context_platform_ref.h"
 #include "core/renderer/ui_wrapper/painting/platform_renderer_impl.h"
@@ -23,6 +28,18 @@ struct PlatformEventPropNameHash {
 
 using EventPropValueSetter = void (*)(PlatformEventTarget*,
                                       const lepus::Value&);
+
+bool IsOverlayRenderer(const fml::RefPtr<PlatformRendererImpl>& renderer) {
+  return renderer != nullptr && renderer->IsOverlay();
+}
+
+void CopyPoint(float res[2], const float point[2]) {
+  std::memmove(res, point, sizeof(float) * 2);
+}
+
+void CopyRect(float res[4], const float rect[4]) {
+  std::memmove(res, rect, sizeof(float) * 4);
+}
 
 void SetUserInteractionEnabled(PlatformEventTarget* target,
                                const lepus::Value& value) {
@@ -85,6 +102,112 @@ void SetEnableExposureUIClip(PlatformEventTarget* target,
   target->SetEnableExposureUIClip(base::IsZero(EventPropValueToFloat(value))
                                       ? LynxEventPropStatus::kDisable
                                       : LynxEventPropStatus::kEnable);
+}
+
+LynxEventPropStatus EventPropValueToStatus(const lepus::Value& value) {
+  if (value.IsNil() || value.IsUndefined()) {
+    return LynxEventPropStatus::kUndefined;
+  }
+  if (value.IsString()) {
+    const auto& string_value = value.StdString();
+    if (string_value == "true") {
+      return LynxEventPropStatus::kEnable;
+    }
+    if (string_value == "false") {
+      return LynxEventPropStatus::kDisable;
+    }
+  }
+  return base::IsZero(EventPropValueToFloat(value))
+             ? LynxEventPropStatus::kDisable
+             : LynxEventPropStatus::kEnable;
+}
+
+void SetEventThrough(PlatformEventTarget* target, const lepus::Value& value) {
+  target->SetEventThrough(EventPropValueToStatus(value));
+}
+
+bool ParseEventThroughSizeValue(
+    const lepus::Value& value,
+    PlatformEventTarget::EventThroughSizeValue* result) {
+  if (result == nullptr) {
+    return false;
+  }
+  if (!value.IsString()) {
+    return false;
+  }
+
+  const std::string string_value = value.StdString();
+  const std::string_view string_view = string_value;
+  if (string_view.size() >= 2 &&
+      string_view.rfind("px") == string_view.size() - 2) {
+    int32_t number = 0;
+    if (!ParseIntStrict(string_view.substr(0, string_view.size() - 2),
+                        &number)) {
+      return false;
+    }
+    result->type = PlatformEventTarget::EventThroughSizeValue::Type::kDevicePx;
+    result->value = static_cast<float>(number);
+    return true;
+  }
+  if (!string_view.empty() &&
+      string_view.rfind("%") == string_view.size() - 1) {
+    int32_t number = 0;
+    if (!ParseIntStrict(string_view.substr(0, string_view.size() - 1),
+                        &number)) {
+      return false;
+    }
+    result->type =
+        PlatformEventTarget::EventThroughSizeValue::Type::kPercentage;
+    result->value = static_cast<float>(number) / 100.f;
+    return true;
+  }
+  return false;
+}
+
+void ParseEventThroughRegions(
+    const lepus::Value& value,
+    std::vector<PlatformEventTarget::EventThroughRegion>* regions) {
+  if (regions == nullptr || !value.IsArray()) {
+    return;
+  }
+
+  auto array = value.Array();
+  if (!array) {
+    return;
+  }
+  for (size_t i = 0; i < array->size(); ++i) {
+    const auto& region_value = array->get(i);
+    if (!region_value.IsArray()) {
+      continue;
+    }
+    auto region_array = region_value.Array();
+    if (!region_array || region_array->size() != 4) {
+      continue;
+    }
+    PlatformEventTarget::EventThroughRegion region;
+    bool valid_region = true;
+    for (size_t j = 0; j < region.size(); ++j) {
+      if (!ParseEventThroughSizeValue(region_array->get(j), &region[j])) {
+        valid_region = false;
+        break;
+      }
+    }
+    if (valid_region) {
+      regions->push_back(region);
+    }
+  }
+}
+
+void SetEventThroughActiveRegions(PlatformEventTarget* target,
+                                  const lepus::Value& value) {
+  std::vector<PlatformEventTarget::EventThroughRegion> regions;
+  ParseEventThroughRegions(value, &regions);
+  target->SetEventThroughActiveRegions(std::move(regions));
+}
+
+void SetEventsPassThrough(PlatformEventTarget* target,
+                          const lepus::Value& value) {
+  target->SetEventsPassThrough(EventPropValueToStatus(value));
 }
 
 void SetIDSelector(PlatformEventTarget* target, const lepus::Value& value) {
@@ -151,6 +274,10 @@ GetEventPropSetterMap() {
           {PlatformEventPropName::kExposureId, &SetExposureId},
           {PlatformEventPropName::kExposureScene, &SetExposureScene},
           {PlatformEventPropName::kDataset, &SetDataset},
+          {PlatformEventPropName::kEventThrough, &SetEventThrough},
+          {PlatformEventPropName::kEventThroughActiveRegions,
+           &SetEventThroughActiveRegions},
+          {PlatformEventPropName::kEventsPassThrough, &SetEventsPassThrough},
       };
   return map;
 }
@@ -217,7 +344,7 @@ void PlatformEventTargetHelper::UpdateExposureTargetRegistration(
 
 fml::RefPtr<PlatformEventTarget>
 PlatformEventTargetHelper::GetRootEventTarget() {
-  return event_target_tree_;
+  return GetEventRootTree(kRootId);
 }
 
 fml::RefPtr<PlatformEventTarget> PlatformEventTargetHelper::GetEventTarget(
@@ -229,7 +356,95 @@ fml::RefPtr<PlatformEventTarget> PlatformEventTargetHelper::GetEventTarget(
 }
 
 void PlatformEventTargetHelper::RefreshScrollOffsets() {
-  RefreshScrollOffsetsRecursively(event_target_tree_);
+  RefreshScrollOffsets(GetRootEventTarget());
+}
+
+void PlatformEventTargetHelper::RefreshScrollOffsets(
+    const fml::RefPtr<PlatformEventTarget>& root) {
+  RefreshScrollOffsetsRecursively(root);
+}
+
+void PlatformEventTargetHelper::ClearEventTargets() {
+  event_targets_.clear();
+  event_target_trees_.clear();
+}
+
+void PlatformEventTargetHelper::RemoveEventTargetsInEventRoot(int32_t root_id) {
+  std::vector<int32_t> removed_signs;
+  for (const auto& it : event_targets_) {
+    const auto& target = it.second;
+    if (target != nullptr && target->RootId() == root_id) {
+      removed_signs.push_back(it.first);
+    }
+  }
+  for (auto sign : removed_signs) {
+    event_targets_.erase(sign);
+  }
+}
+
+bool PlatformEventTargetHelper::IsActiveEventRoot(int32_t root_id) const {
+  return active_event_root_ids_.count(root_id) > 0;
+}
+
+void PlatformEventTargetHelper::AddActiveEventRoot(int32_t root_id) {
+  if (root_id == kRootId) {
+    return;
+  }
+  active_event_root_ids_.insert(root_id);
+}
+
+fml::RefPtr<PlatformEventTarget>
+PlatformEventTargetHelper::RemoveActiveEventRoot(int32_t root_id) {
+  if (root_id == kRootId) {
+    return nullptr;
+  }
+  active_event_root_ids_.erase(root_id);
+  RemoveEventRootOffsetToPageRoot(root_id);
+  auto tree = GetEventRootTree(root_id);
+  RemoveEventTargetsInEventRoot(root_id);
+  event_target_trees_.erase(root_id);
+  return tree;
+}
+
+void PlatformEventTargetHelper::ClearActiveEventRoots() {
+  for (const auto root_id : active_event_root_ids_) {
+    RemoveEventTargetsInEventRoot(root_id);
+    event_target_trees_.erase(root_id);
+  }
+  active_event_root_ids_.clear();
+  event_root_offsets_to_page_root_.clear();
+}
+
+bool PlatformEventTargetHelper::SetEventRootOffsetToPageRoot(int32_t root_id,
+                                                             float offset_x,
+                                                             float offset_y) {
+  if (root_id == kRootId) {
+    return false;
+  }
+  if (auto it = event_root_offsets_to_page_root_.find(root_id);
+      it != event_root_offsets_to_page_root_.end() &&
+      it->second[0] == offset_x && it->second[1] == offset_y) {
+    return false;
+  }
+  event_root_offsets_to_page_root_.insert_or_assign(
+      root_id, std::array<float, 2>{offset_x, offset_y});
+  return true;
+}
+
+void PlatformEventTargetHelper::RemoveEventRootOffsetToPageRoot(
+    int32_t root_id) {
+  event_root_offsets_to_page_root_.erase(root_id);
+}
+
+fml::RefPtr<PlatformEventTarget> PlatformEventTargetHelper::GetEventRootTree(
+    int32_t root_id) const {
+  auto tree_it = event_target_trees_.find(root_id);
+  return tree_it == event_target_trees_.end() ? nullptr : tree_it->second;
+}
+
+void PlatformEventTargetHelper::SetEventRootTree(
+    int32_t root_id, const fml::RefPtr<PlatformEventTarget>& root) {
+  event_target_trees_.insert_or_assign(root_id, root);
 }
 
 void PlatformEventTargetHelper::RefreshScrollOffsetsRecursively(
@@ -260,6 +475,22 @@ bool PlatformEventTargetHelper::IsScrollContainer(PlatformRendererType type,
 fml::RefPtr<PlatformEventTarget>
 PlatformEventTargetHelper::ReconstructEventTargetTreeRecursively(
     fml::RefPtr<PlatformRendererImpl> page_renderer) {
+  if (page_renderer == nullptr) {
+    return nullptr;
+  }
+  auto root_id = page_renderer->GetId();
+  RemoveEventTargetsInEventRoot(root_id);
+  event_target_trees_.erase(root_id);
+  auto root = ReconstructEventTargetTreeRecursively(page_renderer, root_id);
+  if (root != nullptr) {
+    SetEventRootTree(root_id, root);
+  }
+  return root;
+}
+
+fml::RefPtr<PlatformEventTarget>
+PlatformEventTargetHelper::ReconstructEventTargetTreeRecursively(
+    fml::RefPtr<PlatformRendererImpl> page_renderer, int32_t tree_root_id) {
   if (page_renderer == nullptr) {
     return nullptr;
   }
@@ -303,15 +534,9 @@ PlatformEventTargetHelper::ReconstructEventTargetTreeRecursively(
           height = float_data[float_data_idx++];
         }
         auto event_target = fml::MakeRefCounted<PlatformEventTarget>(
-            this, sign, left, top, width, height);
+            this, tree_root_id, sign, left, top, width, height);
         event_target->SetPlatformRendererType(type);
         event_target->SetScrollContainer(IsScrollContainer(type, sign));
-        // the root event target.
-        if (sign == kRootId) {
-          event_target_tree_ = event_target;
-          event_targets_.clear();
-          platform_ref_->ClearExposureTargetMap();
-        }
         ApplyEventBundle(event_target,
                          platform_ref_->GetPlatformEventBundle(sign));
         event_targets_[sign] = event_target;
@@ -326,8 +551,12 @@ PlatformEventTargetHelper::ReconstructEventTargetTreeRecursively(
         if (child_renderer_idx < child_renderer_size) {
           auto child_renderer = fml::static_ref_ptr_cast<PlatformRendererImpl>(
               children_renderer[child_renderer_idx++]);
-          auto child_target =
-              ReconstructEventTargetTreeRecursively(child_renderer);
+          if (child_renderer->GetId() != tree_root_id &&
+              IsOverlayRenderer(child_renderer)) {
+            break;
+          }
+          auto child_target = ReconstructEventTargetTreeRecursively(
+              child_renderer, tree_root_id);
           if (target_stack.empty() || child_target == nullptr) {
             break;
           }
@@ -373,11 +602,20 @@ bool PlatformEventTargetHelper::TargetIsParentOfAnotherTarget(
   return false;
 }
 
+fml::RefPtr<PlatformEventTarget> PlatformEventTargetHelper::GetTreeRoot(
+    const fml::RefPtr<PlatformEventTarget>& target) {
+  if (target == nullptr) {
+    return nullptr;
+  }
+  const auto root_id = target->RootId();
+  return GetEventRootTree(root_id);
+}
+
 void PlatformEventTargetHelper::ConvertPointFromAncestorToDescendant(
     float res[2], const fml::RefPtr<PlatformEventTarget>& ancestor,
     const fml::RefPtr<PlatformEventTarget>& descendant, float point[2]) {
   if (!descendant || !ancestor || descendant == ancestor) {
-    memcpy(res, point, sizeof(float) * 2);
+    CopyPoint(res, point);
     return;
   }
 
@@ -389,7 +627,7 @@ void PlatformEventTargetHelper::ConvertPointFromAncestorToDescendant(
     current_target = current_target->ParentTarget();
   }
 
-  memcpy(res, point, sizeof(float) * 2);
+  CopyPoint(res, point);
   int size = static_cast<int>(target_chain.size());
   for (int i = size - 1; i >= 0; --i) {
     current_target = target_chain[i];
@@ -408,11 +646,11 @@ void PlatformEventTargetHelper::ConvertPointFromDescendantToAncestor(
     float res[2], const fml::RefPtr<PlatformEventTarget>& descendant,
     const fml::RefPtr<PlatformEventTarget>& ancestor, float point[2]) {
   if (!descendant || !ancestor || descendant == ancestor) {
-    memcpy(res, point, sizeof(float) * 2);
+    CopyPoint(res, point);
     return;
   }
 
-  memcpy(res, point, sizeof(float) * 2);
+  CopyPoint(res, point);
   // TODO(hexionghui): add transform support for descendant.
 
   auto current_descendant = descendant;
@@ -434,7 +672,7 @@ void PlatformEventTargetHelper::ConvertPointFromDescendantToAncestor(
 void PlatformEventTargetHelper::ConvertPointFromTargetToAnotherTarget(
     float res[2], const fml::RefPtr<PlatformEventTarget>& target,
     const fml::RefPtr<PlatformEventTarget>& another, float point[2]) {
-  memcpy(res, point, sizeof(float) * 2);
+  CopyPoint(res, point);
   if (!target || !another || target == another) {
     return;
   }
@@ -444,7 +682,7 @@ void PlatformEventTargetHelper::ConvertPointFromTargetToAnotherTarget(
   } else if (TargetIsParentOfAnotherTarget(another, target)) {
     ConvertPointFromDescendantToAncestor(res, target, another, point);
   } else {
-    fml::RefPtr<PlatformEventTarget> root = event_target_tree_;
+    fml::RefPtr<PlatformEventTarget> root = GetTreeRoot(target);
     if (!root) {
       return;
     }
@@ -457,35 +695,67 @@ void PlatformEventTargetHelper::ConvertPointFromTargetToAnotherTarget(
 void PlatformEventTargetHelper::ConvertPointFromTargetToRootTarget(
     float res[2], const fml::RefPtr<PlatformEventTarget>& target,
     float point[2]) {
-  fml::RefPtr<PlatformEventTarget> root = event_target_tree_;
+  fml::RefPtr<PlatformEventTarget> root = GetTreeRoot(target);
   if (!root || !target || target == root) {
-    memcpy(res, point, sizeof(float) * 2);
+    CopyPoint(res, point);
     return;
   }
   ConvertPointFromDescendantToAncestor(res, target, root, point);
 }
 
+bool PlatformEventTargetHelper::GetTreeRootOffsetToPageRootTarget(
+    const fml::RefPtr<PlatformEventTarget>& target, float offset[2]) {
+  offset[0] = 0.f;
+  offset[1] = 0.f;
+  auto root = GetTreeRoot(target);
+  if (!root || !target) {
+    return false;
+  }
+  if (root->RootId() == kRootId) {
+    return true;
+  }
+  if (const auto offset_it =
+          event_root_offsets_to_page_root_.find(root->RootId());
+      offset_it != event_root_offsets_to_page_root_.end()) {
+    offset[0] = offset_it->second[0];
+    offset[1] = offset_it->second[1];
+    return true;
+  }
+  offset[0] = root->Left() - root->OffsetXForCalcPosition();
+  offset[1] = root->Top() - root->OffsetYForCalcPosition();
+  return true;
+}
+
+void PlatformEventTargetHelper::ConvertPointFromTargetToPageRootTarget(
+    float res[2], const fml::RefPtr<PlatformEventTarget>& target,
+    float point[2]) {
+  ConvertPointFromTargetToRootTarget(res, target, point);
+  float offset[2] = {0.f, 0.f};
+  if (GetTreeRootOffsetToPageRootTarget(target, offset)) {
+    OffsetPoint(res, offset);
+  }
+}
+
 void PlatformEventTargetHelper::ConvertPointFromTargetToScreen(
     float res[2], const fml::RefPtr<PlatformEventTarget>& target,
     float point[2]) {
-  fml::RefPtr<PlatformEventTarget> root = event_target_tree_;
+  fml::RefPtr<PlatformEventTarget> root = GetTreeRoot(target);
   if (!root || !target) {
-    memcpy(res, point, sizeof(float) * 2);
+    CopyPoint(res, point);
     return;
   }
-  ConvertPointFromTargetToRootTarget(res, target, point);
+  ConvertPointFromTargetToPageRootTarget(res, target, point);
 
   float origin[2] = {0, 0};
   GetRootViewLocationOnScreen(origin);
-  res[0] += origin[0];
-  res[1] += origin[1];
+  OffsetPoint(res, origin);
 }
 
 void PlatformEventTargetHelper::ConvertRectFromAncestorToDescendant(
     float res[4], const fml::RefPtr<PlatformEventTarget>& ancestor,
     const fml::RefPtr<PlatformEventTarget>& descendant, float rect[4]) {
   if (!descendant || !ancestor || descendant == ancestor) {
-    memcpy(res, rect, sizeof(float) * 4);
+    CopyRect(res, rect);
     return;
   }
 
@@ -525,7 +795,7 @@ void PlatformEventTargetHelper::ConvertRectFromDescendantToAncestor(
     float res[4], const fml::RefPtr<PlatformEventTarget>& descendant,
     const fml::RefPtr<PlatformEventTarget>& ancestor, float rect[4]) {
   if (!descendant || !ancestor || descendant == ancestor) {
-    memcpy(res, rect, sizeof(float) * 4);
+    CopyRect(res, rect);
     return;
   }
 
@@ -564,7 +834,7 @@ void PlatformEventTargetHelper::ConvertRectFromDescendantToAncestor(
 void PlatformEventTargetHelper::ConvertRectFromTargetToAnotherTarget(
     float res[4], const fml::RefPtr<PlatformEventTarget>& target,
     const fml::RefPtr<PlatformEventTarget>& another, float rect[4]) {
-  memcpy(res, rect, sizeof(float) * 4);
+  CopyRect(res, rect);
   if (!target || !another || target == another) {
     return;
   }
@@ -574,7 +844,7 @@ void PlatformEventTargetHelper::ConvertRectFromTargetToAnotherTarget(
   } else if (TargetIsParentOfAnotherTarget(another, target)) {
     ConvertRectFromDescendantToAncestor(res, target, another, rect);
   } else {
-    fml::RefPtr<PlatformEventTarget> root = event_target_tree_;
+    fml::RefPtr<PlatformEventTarget> root = GetTreeRoot(target);
     if (!root) {
       return;
     }
@@ -587,23 +857,33 @@ void PlatformEventTargetHelper::ConvertRectFromTargetToAnotherTarget(
 void PlatformEventTargetHelper::ConvertRectFromTargetToRootTarget(
     float res[4], const fml::RefPtr<PlatformEventTarget>& target,
     float rect[4]) {
-  fml::RefPtr<PlatformEventTarget> root = event_target_tree_;
+  fml::RefPtr<PlatformEventTarget> root = GetTreeRoot(target);
   if (!root) {
-    memcpy(res, rect, sizeof(float) * 4);
+    CopyRect(res, rect);
     return;
   }
   ConvertRectFromDescendantToAncestor(res, target, root, rect);
 }
 
+void PlatformEventTargetHelper::ConvertRectFromTargetToPageRootTarget(
+    float res[4], const fml::RefPtr<PlatformEventTarget>& target,
+    float rect[4]) {
+  ConvertRectFromTargetToRootTarget(res, target, rect);
+  float offset[2] = {0.f, 0.f};
+  if (GetTreeRootOffsetToPageRootTarget(target, offset)) {
+    OffsetRect(res, offset);
+  }
+}
+
 void PlatformEventTargetHelper::ConvertRectFromTargetToScreen(
     float res[4], const fml::RefPtr<PlatformEventTarget>& target,
     float rect[4]) {
-  fml::RefPtr<PlatformEventTarget> root = event_target_tree_;
+  fml::RefPtr<PlatformEventTarget> root = GetTreeRoot(target);
   if (!root) {
-    memcpy(res, rect, sizeof(float) * 4);
+    CopyRect(res, rect);
     return;
   }
-  ConvertRectFromDescendantToAncestor(res, target, root, rect);
+  ConvertRectFromTargetToPageRootTarget(res, target, rect);
 
   float origin[2] = {0, 0};
   GetRootViewLocationOnScreen(origin);
@@ -626,7 +906,14 @@ bool PlatformEventTargetHelper::CheckViewportIntersectWithRatio(
          base::FloatsLargerOrEqual(intersect_ratio, ratio);
 }
 
-void PlatformEventTargetHelper::OffsetRect(float rect[4], float offset[2]) {
+void PlatformEventTargetHelper::OffsetPoint(float point[2],
+                                            const float offset[2]) {
+  point[0] += offset[0];
+  point[1] += offset[1];
+}
+
+void PlatformEventTargetHelper::OffsetRect(float rect[4],
+                                           const float offset[2]) {
   rect[0] += offset[0];
   rect[1] += offset[1];
   rect[2] += offset[0];
@@ -653,7 +940,7 @@ void PlatformEventTargetHelper::InvokeMethod(
     if (auto it = event_targets_.find(id); it != event_targets_.end()) {
       auto event_target = it->second;
       float result[4] = {0, 0, event_target->Width(), event_target->Height()};
-      ConvertRectFromTargetToRootTarget(result, event_target, result);
+      ConvertRectFromTargetToPageRootTarget(result, event_target, result);
 
       BASE_STATIC_STRING_DECL(kId, "id");
       BASE_STATIC_STRING_DECL(kDataset, "dataset");
