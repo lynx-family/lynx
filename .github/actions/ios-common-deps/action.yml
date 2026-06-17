@@ -26,7 +26,7 @@ runs:
 
     - name: setup ruby cache action
       if: ${{ inputs.cache-backend == 'lynx-infra' }}
-      uses: lynx-infra/cache@5c6160a6a4c7fca80a2f3057bb9dfc9513fcb732
+      uses: lynx-infra/cache@1f4c655e363ee8910dce6ee0fe9ab3289d676add
       with:
         path: ${{ inputs.path }}/${{ steps.get_ruby_version.outputs.VERSION }}
         key: ${{ runner.os }}-ruby-${{ steps.get_ruby_version.outputs.VERSION }}-${{ hashFiles('lynx/Gemfile.lock') }}

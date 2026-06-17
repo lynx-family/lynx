@@ -65,7 +65,7 @@ runs:
 
     - name: Setup cache action
       if: ${{ inputs.cache-backend == 'lynx-infra' }}
-      uses: lynx-infra/cache@5c6160a6a4c7fca80a2f3057bb9dfc9513fcb732
+      uses: lynx-infra/cache@1f4c655e363ee8910dce6ee0fe9ab3289d676add
       with:
         path: ${{ steps.hab-cache-dir.outputs.HABITAT_CACHE_DIR }}
         key: hab${{ inputs.cache-key-prefix }}-${{ runner.os }}-${{ steps.hab.outputs.HABITAT_TARGETS }}-${{ steps.hab.outputs.HABITAT_DEPS_FILE_DIGEST }}
@@ -83,7 +83,7 @@ runs:
 
     - name: Python Requirements Cache
       if: ${{ inputs.cache-backend == 'lynx-infra' }}
-      uses: lynx-infra/cache@5c6160a6a4c7fca80a2f3057bb9dfc9513fcb732
+      uses: lynx-infra/cache@1f4c655e363ee8910dce6ee0fe9ab3289d676add
       with:
         path: ${{ steps.pip.outputs.PIP_CACHE_DIR }}
         key: pip${{ inputs.cache-key-prefix }}-${{ runner.os }}-${{ hashFiles('lynx/tools/vpython_tools/requirements.txt', 'lynx/testing/integration_test/test_script/requirements.txt') }}
@@ -92,7 +92,7 @@ runs:
 
     - name: Cache pnpm Dependencies
       if: ${{ inputs.cache-backend == 'lynx-infra' && inputs.cache-key-prefix == '' }}
-      uses: lynx-infra/cache@5c6160a6a4c7fca80a2f3057bb9dfc9513fcb732
+      uses: lynx-infra/cache@1f4c655e363ee8910dce6ee0fe9ab3289d676add
       with:
         # set pnpm store path to a specific value since we can't get it via `pnpm store path` before pnpm is setup.
         path: ${{ steps.npm-cache-dir.outputs.NPM_CACHE_DIR }}
