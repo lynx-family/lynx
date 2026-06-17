@@ -293,7 +293,12 @@ void CSSKeyframeManager::SetAnimationDataAndPlayInternal(
       if (animation->second->GetState() == Animation::State::kStop &&
           HasNoSampleableKeyframes(animation->second,
                                    has_custom_property_keyframes)) {
-        animation->second->Destroy();
+        if (use_new_pipeline_cleanup) {
+          PrepareAnimationRemoval(animation->second, new_base_resolved_styles,
+                                  new_underlying_layout_only_styles);
+        } else {
+          animation->second->Destroy();
+        }
         auto recreated_animation =
             CreateAnimation(data, new_base_custom_properties);
         if (recreated_animation != nullptr) {
@@ -303,6 +308,11 @@ void CSSKeyframeManager::SetAnimationDataAndPlayInternal(
         continue;
       }
       if (animation->second->get_animation_data() != data) {
+        if (use_new_pipeline_cleanup &&
+            animation->second->GetState() == Animation::State::kStop) {
+          ClearAnimationEffects(animation->second, new_base_resolved_styles,
+                                new_underlying_layout_only_styles);
+        }
         animation->second->UpdateAnimationData(data);
         temp_active_animations_map_[data.name] = animation->second;
       } else {
@@ -362,6 +372,7 @@ CSSKeyframeManager::CollectAnimationUpdatesForNewPipeline(
   if (animations_map_.empty() && pending_property_overrides_.empty() &&
       pending_property_resets_.empty() &&
       pending_custom_property_resets_.empty() &&
+      persisted_property_fill_styles_.empty() &&
       persisted_custom_property_fill_styles_.empty()) {
     return {};
   }
@@ -392,6 +403,12 @@ CSSKeyframeManager::CollectAnimationUpdatesForNewPipeline(
           std::move(pending_custom_property_resets_);
       sample_ref.requires_base_style_rebuild = true;
       pending_custom_property_resets_.clear();
+    }
+    if (!persisted_property_fill_styles_.empty()) {
+      auto& sample_ref = ensure_sample();
+      for (const auto& [key, value] : persisted_property_fill_styles_) {
+        sample_ref.property_overrides.insert_or_assign(key, value);
+      }
     }
     if (!persisted_custom_property_fill_styles_.empty()) {
       auto& sample_ref = ensure_sample();
@@ -460,9 +477,14 @@ CSSKeyframeManager::CollectAnimationUpdatesForNewPipeline(
         event_record.iteration_events_due = sample_result.iteration_events_due;
         pending_event_records_.push_back(std::move(event_record));
       }
-      if (sample_result.should_persist_fill_styles && element_ != nullptr &&
+      if (sample_result.should_persist_fill_styles &&
           !sample_result.styles.empty()) {
-        element_->PersistAnimationFillStyles(sample_result.styles);
+        if (element_ != nullptr) {
+          element_->PersistAnimationFillStyles(sample_result.styles);
+        }
+        for (const auto& [key, value] : sample_result.styles) {
+          persisted_property_fill_styles_.insert_or_assign(key, value);
+        }
       }
       if (sample_result.should_persist_fill_styles &&
           !custom_property_overrides.empty()) {
@@ -472,6 +494,7 @@ CSSKeyframeManager::CollectAnimationUpdatesForNewPipeline(
       }
       if (sample_result.should_clear_fill_styles) {
         for (const auto& key : animation->GetRawStyleSet()) {
+          persisted_property_fill_styles_.erase(key);
           if (element_ != nullptr) {
             element_->ClearPersistedAnimationFillStyle(key);
           }
@@ -527,11 +550,17 @@ void CSSKeyframeManager::QueueCancelEvent(
   pending_event_records_.push_back(std::move(event_record));
 }
 
-void CSSKeyframeManager::PrepareAnimationRemoval(
+void CSSKeyframeManager::ClearAnimationEffects(
     const std::shared_ptr<Animation>& animation,
     const tasm::StyleMap* new_base_resolved_styles,
     const tasm::StyleMap* new_underlying_layout_only_styles) {
-  if (animation == nullptr || element_ == nullptr) {
+  if (animation == nullptr) {
+    return;
+  }
+
+  ClearPersistedFillStyle(animation);
+
+  if (element_ == nullptr) {
     return;
   }
 
@@ -572,15 +601,35 @@ void CSSKeyframeManager::PrepareAnimationRemoval(
   }
 
   for (const auto& key : animation->GetRawCustomPropertySet()) {
-    persisted_custom_property_fill_styles_.erase(key);
     if (std::find(pending_custom_property_resets_.begin(),
                   pending_custom_property_resets_.end(),
                   key) == pending_custom_property_resets_.end()) {
       pending_custom_property_resets_.push_back(key);
     }
   }
+}
 
+void CSSKeyframeManager::PrepareAnimationRemoval(
+    const std::shared_ptr<Animation>& animation,
+    const tasm::StyleMap* new_base_resolved_styles,
+    const tasm::StyleMap* new_underlying_layout_only_styles) {
+  ClearAnimationEffects(animation, new_base_resolved_styles,
+                        new_underlying_layout_only_styles);
   QueueCancelEvent(animation);
+}
+
+void CSSKeyframeManager::ClearPersistedFillStyle(
+    const std::shared_ptr<Animation>& animation) {
+  if (animation == nullptr) {
+    return;
+  }
+
+  for (const auto& key : animation->GetRawStyleSet()) {
+    persisted_property_fill_styles_.erase(key);
+  }
+  for (const auto& key : animation->GetRawCustomPropertySet()) {
+    persisted_custom_property_fill_styles_.erase(key);
+  }
 }
 
 bool CSSKeyframeManager::NeedsFutureTickForNewPipeline() const {
