@@ -160,15 +160,7 @@ class TextraInlineView : public text::InlineView {
     child_->slnode()->AlignmentByPlatform(y, x);
   }
 
-  void HideView() override {
-    // FIXME(linxs): need a better way to hide the view
-    starlight::Constraints constraints;
-    constraints[starlight::kHorizontal] =
-        starlight::OneSideConstraint(0, SLMeasureMode::SLMeasureModeDefinite);
-    constraints[starlight::kVertical] =
-        starlight::OneSideConstraint(0, SLMeasureMode::SLMeasureModeDefinite);
-    child_->slnode()->UpdateMeasureByPlatform(constraints, true);
-  }
+  void HideView() override { child_->slnode()->LayoutDisplayNone(); }
 
  private:
   FiberElement* child_;
