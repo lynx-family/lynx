@@ -19596,11 +19596,10 @@ TEST_P(FiberElementTest, PrepareAndGenerateChildrenActionsUsesHasZIndex) {
   SUCCEED();
 }
 
-// Helper: create a SharedCSSFragment with CSS selector support and add a rule.
-// The rule text should be a valid CSS selector (e.g. ".a + .b").
-static std::shared_ptr<SharedCSSFragment> MakeFragmentWithRule(
+static std::shared_ptr<SharedCSSFragment> MakeFragmentWithInvalidationRule(
     const std::string& selector_text) {
   auto fragment = std::make_shared<SharedCSSFragment>();
+  fragment->SetEnableCSSInvalidation();
   fragment->SetEnableCSSSelector();
 
   css::CSSParserContext context;
@@ -19618,141 +19617,325 @@ static std::shared_ptr<SharedCSSFragment> MakeFragmentWithRule(
   return fragment;
 }
 
-// Verify that removing a child marks its next sibling as style-dirty when
-// adjacent sibling rules (+ combinator) exist.
-TEST_P(FiberElementTest, RemoveNode_InvalidatesNextSibling_WithAdjacentRules) {
-  auto fragment = MakeFragmentWithRule(".a + .b");
+TEST_P(FiberElementTest, SiblingInvalidation_AdjacentClassCombinator) {
+  auto config = std::make_shared<PageConfig>();
+  config->SetEnableFiberArch(true);
+  config->SetEnableStandardCSSSelector(true);
+  manager->SetConfig(config);
 
+  auto fragment = MakeFragmentWithInvalidationRule(".a + .b");
   auto page = manager->CreateFiberPage("page", 11);
   page->style_sheet_ = std::make_unique<CSSFragmentDecorator>(fragment.get());
 
-  auto child1 = manager->CreateFiberNode("view");
-  child1->parent_component_element_ = page.get();
-  page->InsertNode(child1);
+  auto first = manager->CreateFiberNode("view");
+  first->parent_component_element_ = page.get();
+  page->InsertNode(first);
+  first->SetClass("a");
 
-  auto child2 = manager->CreateFiberNode("view");
-  child2->parent_component_element_ = page.get();
-  page->InsertNode(child2);
-
-  auto child3 = manager->CreateFiberNode("view");
-  child3->parent_component_element_ = page.get();
-  page->InsertNode(child3);
+  auto second = manager->CreateFiberNode("view");
+  second->parent_component_element_ = page.get();
+  page->InsertNode(second);
+  second->SetClass("b");
 
   page->FlushActionsAsRoot();
+  EXPECT_FALSE(second->StyleDirty());
 
-  // Sanity: child3 should not be style-dirty after flush.
-  EXPECT_FALSE(child3->StyleDirty());
+  ClassList old_classes = first->classes();
+  ClassList new_classes{base::String("c")};
+  first->OnClassChanged(old_classes, new_classes);
+  first->SetClasses(std::move(new_classes));
 
-  // Remove child2 — child3 (the next sibling of the removed node) should
-  // become style-dirty because adjacent sibling rules exist.
-  page->RemoveNode(child2);
-  EXPECT_TRUE(child3->StyleDirty());
+  EXPECT_FALSE(second->StyleDirty());
+  first->FlushActions();
+  EXPECT_TRUE(second->StyleDirty());
 }
 
-// Verify that removing a child does NOT mark the next sibling as style-dirty
-// when no adjacent sibling rules exist.
+TEST_P(FiberElementTest, SiblingInvalidation_SubsequentClassCombinator) {
+  auto config = std::make_shared<PageConfig>();
+  config->SetEnableFiberArch(true);
+  config->SetEnableStandardCSSSelector(true);
+  manager->SetConfig(config);
+
+  auto fragment = MakeFragmentWithInvalidationRule(".a ~ .b");
+  auto page = manager->CreateFiberPage("page", 11);
+  page->style_sheet_ = std::make_unique<CSSFragmentDecorator>(fragment.get());
+
+  auto first = manager->CreateFiberNode("view");
+  first->parent_component_element_ = page.get();
+  page->InsertNode(first);
+  first->SetClass("a");
+
+  auto middle = manager->CreateFiberNode("view");
+  middle->parent_component_element_ = page.get();
+  page->InsertNode(middle);
+  middle->SetClass("x");
+
+  auto later = manager->CreateFiberNode("view");
+  later->parent_component_element_ = page.get();
+  page->InsertNode(later);
+  later->SetClass("b");
+
+  page->FlushActionsAsRoot();
+  EXPECT_FALSE(later->StyleDirty());
+  EXPECT_FALSE(middle->StyleDirty());
+
+  ClassList old_classes = first->classes();
+  ClassList new_classes{base::String("c")};
+  first->OnClassChanged(old_classes, new_classes);
+  first->SetClasses(std::move(new_classes));
+
+  EXPECT_FALSE(later->StyleDirty());
+  first->FlushActions();
+  EXPECT_TRUE(later->StyleDirty());
+  EXPECT_FALSE(middle->StyleDirty());
+}
+
+TEST_P(FiberElementTest, SiblingInvalidation_SubsequentIdCombinator) {
+  auto config = std::make_shared<PageConfig>();
+  config->SetEnableFiberArch(true);
+  config->SetEnableStandardCSSSelector(true);
+  manager->SetConfig(config);
+
+  auto fragment = MakeFragmentWithInvalidationRule("#a ~ .b");
+  auto page = manager->CreateFiberPage("page", 11);
+  page->style_sheet_ = std::make_unique<CSSFragmentDecorator>(fragment.get());
+
+  auto first = manager->CreateFiberNode("view");
+  first->parent_component_element_ = page.get();
+  page->InsertNode(first);
+  first->SetIdSelector("a");
+
+  auto later = manager->CreateFiberNode("view");
+  later->parent_component_element_ = page.get();
+  page->InsertNode(later);
+  later->SetClass("b");
+
+  page->FlushActionsAsRoot();
+  EXPECT_FALSE(later->StyleDirty());
+
+  first->SetIdSelector("c");
+
+  EXPECT_FALSE(later->StyleDirty());
+  first->FlushActions();
+  EXPECT_TRUE(later->StyleDirty());
+}
+
+TEST_P(FiberElementTest, SiblingInvalidation_AdjacentPseudoCombinator) {
+  auto config = std::make_shared<PageConfig>();
+  config->SetEnableFiberArch(true);
+  config->SetEnableStandardCSSSelector(true);
+  manager->SetConfig(config);
+
+  // Enable unified pixel pipeline so RequestResolve defers to the pipeline
+  // context instead of calling OnPatchFinish synchronously.
+  tasm->pipeline_context_manager_->SetEnableUnifiedPixelPipeline(true);
+
+  auto fragment = MakeFragmentWithInvalidationRule(":hover + .b");
+  auto page = manager->CreateFiberPage("page", 11);
+  page->style_sheet_ = std::make_unique<CSSFragmentDecorator>(fragment.get());
+
+  auto first = manager->CreateFiberNode("view");
+  first->parent_component_element_ = page.get();
+  page->InsertNode(first);
+
+  auto second = manager->CreateFiberNode("view");
+  second->parent_component_element_ = page.get();
+  page->InsertNode(second);
+  second->SetClass("b");
+  page->FlushActionsAsRoot();
+  EXPECT_FALSE(second->StyleDirty());
+
+  // Create a pipeline context so OnPseudoStatusChanged picks up unified
+  // pipeline options and RequestResolve defers instead of flushing.
+  auto options = std::make_shared<PipelineOptions>();
+  options->enable_unified_pixel_pipeline = true;
+  tasm->CreateAndUpdateCurrentPipelineContext(options);
+
+  first->OnPseudoStatusChanged(kPseudoStateNone, kPseudoStateHover);
+
+  EXPECT_TRUE(second->StyleDirty());
+  first->FlushActions();
+  EXPECT_TRUE(second->StyleDirty());
+}
 TEST_P(FiberElementTest,
-       RemoveNode_DoesNotInvalidateNextSibling_WithoutAdjacentRules) {
-  auto fragment = MakeFragmentWithRule(".a .b");
+       SiblingInvalidation_AdjacentStopsAtFirstMatchingSibling) {
+  auto config = std::make_shared<PageConfig>();
+  config->SetEnableFiberArch(true);
+  config->SetEnableStandardCSSSelector(true);
+  manager->SetConfig(config);
 
+  auto fragment = MakeFragmentWithInvalidationRule(".a + .b");
   auto page = manager->CreateFiberPage("page", 11);
   page->style_sheet_ = std::make_unique<CSSFragmentDecorator>(fragment.get());
 
-  auto child1 = manager->CreateFiberNode("view");
-  child1->parent_component_element_ = page.get();
-  page->InsertNode(child1);
+  auto first = manager->CreateFiberNode("view");
+  first->parent_component_element_ = page.get();
+  page->InsertNode(first);
+  first->SetClass("a");
 
-  auto child2 = manager->CreateFiberNode("view");
-  child2->parent_component_element_ = page.get();
-  page->InsertNode(child2);
+  auto second = manager->CreateFiberNode("view");
+  second->parent_component_element_ = page.get();
+  page->InsertNode(second);
+  second->SetClass("b");
 
-  auto child3 = manager->CreateFiberNode("view");
-  child3->parent_component_element_ = page.get();
-  page->InsertNode(child3);
+  auto third = manager->CreateFiberNode("view");
+  third->parent_component_element_ = page.get();
+  page->InsertNode(third);
+  third->SetClass("b");
 
   page->FlushActionsAsRoot();
+  EXPECT_FALSE(second->StyleDirty());
+  EXPECT_FALSE(third->StyleDirty());
 
-  EXPECT_FALSE(child3->StyleDirty());
+  ClassList old_classes = first->classes();
+  ClassList new_classes{base::String("c")};
+  first->OnClassChanged(old_classes, new_classes);
+  first->SetClasses(std::move(new_classes));
 
-  // Remove child2 — child3 should NOT become style-dirty because there are
-  // no adjacent sibling rules.
-  page->RemoveNode(child2);
-  EXPECT_FALSE(child3->StyleDirty());
+  EXPECT_FALSE(second->StyleDirty());
+  EXPECT_FALSE(third->StyleDirty());
+  first->FlushActions();
+  EXPECT_TRUE(second->StyleDirty());
+  EXPECT_FALSE(third->StyleDirty());
+}
+TEST_P(FiberElementTest, SiblingInvalidation_AdjacentPseudoHoverOut) {
+  auto config = std::make_shared<PageConfig>();
+  config->SetEnableFiberArch(true);
+  config->SetEnableStandardCSSSelector(true);
+  manager->SetConfig(config);
+
+  // Enable unified pixel pipeline so RequestResolve defers to the pipeline
+  // context instead of calling OnPatchFinish synchronously.
+  tasm->pipeline_context_manager_->SetEnableUnifiedPixelPipeline(true);
+
+  auto fragment = MakeFragmentWithInvalidationRule(":hover + .b");
+  auto page = manager->CreateFiberPage("page", 11);
+  page->style_sheet_ = std::make_unique<CSSFragmentDecorator>(fragment.get());
+
+  auto first = manager->CreateFiberNode("view");
+  first->parent_component_element_ = page.get();
+  page->InsertNode(first);
+
+  auto second = manager->CreateFiberNode("view");
+  second->parent_component_element_ = page.get();
+  page->InsertNode(second);
+  second->SetClass("b");
+
+  page->FlushActionsAsRoot();
+  EXPECT_FALSE(second->StyleDirty());
+
+  // Create a pipeline context so OnPseudoStatusChanged picks up unified
+  // pipeline options and RequestResolve defers instead of flushing.
+  auto options = std::make_shared<PipelineOptions>();
+  options->enable_unified_pixel_pipeline = true;
+  tasm->CreateAndUpdateCurrentPipelineContext(options);
+
+  first->OnPseudoStatusChanged(kPseudoStateNone, kPseudoStateHover);
+  EXPECT_TRUE(second->StyleDirty());
+
+  first->FlushActions();
+  page->FlushActionsAsRoot();
+  EXPECT_FALSE(second->StyleDirty());
+
+  // Create a fresh pipeline context for the hover-out change.
+  options = std::make_shared<PipelineOptions>();
+  options->enable_unified_pixel_pipeline = true;
+  tasm->CreateAndUpdateCurrentPipelineContext(options);
+
+  first->OnPseudoStatusChanged(kPseudoStateHover, kPseudoStateNone);
+  EXPECT_TRUE(second->StyleDirty());
 }
 
-// Verify that inserting a node before a ref_node marks ref_node as style-dirty
-// when adjacent sibling rules exist.
 TEST_P(FiberElementTest,
-       InsertNodeBefore_InvalidatesRefNode_WithAdjacentRules) {
-  auto fragment = MakeFragmentWithRule(".a + .b");
+       SiblingInvalidation_DisabledSelectorPath_DoesNotInvalidate) {
+  auto config = std::make_shared<PageConfig>();
+  config->SetEnableFiberArch(true);
+  // Intentionally leave standard CSS selector disabled.
+  manager->SetConfig(config);
 
+  auto fragment = MakeFragmentWithInvalidationRule(".a + .b");
   auto page = manager->CreateFiberPage("page", 11);
   page->style_sheet_ = std::make_unique<CSSFragmentDecorator>(fragment.get());
 
-  auto child1 = manager->CreateFiberNode("view");
-  child1->parent_component_element_ = page.get();
-  page->InsertNode(child1);
+  auto first = manager->CreateFiberNode("view");
+  first->parent_component_element_ = page.get();
+  page->InsertNode(first);
+  first->SetClass("a");
 
-  auto child2 = manager->CreateFiberNode("view");
-  child2->parent_component_element_ = page.get();
-  page->InsertNode(child2);
+  auto second = manager->CreateFiberNode("view");
+  second->parent_component_element_ = page.get();
+  page->InsertNode(second);
+  second->SetClass("b");
 
   page->FlushActionsAsRoot();
+  EXPECT_FALSE(second->StyleDirty());
 
-  EXPECT_FALSE(child2->StyleDirty());
+  ClassList old_classes = first->classes();
+  ClassList new_classes{base::String("c")};
+  first->OnClassChanged(old_classes, new_classes);
+  first->SetClasses(std::move(new_classes));
 
-  // Insert a new node before child2 — child2 (the ref_node) should become
-  // style-dirty because adjacent sibling rules exist.
-  auto new_child = manager->CreateFiberNode("view");
-  new_child->parent_component_element_ = page.get();
-  page->InsertNodeBefore(new_child, child2);
-  EXPECT_TRUE(child2->StyleDirty());
+  EXPECT_FALSE(second->StyleDirty());
+  first->FlushActions();
+  EXPECT_FALSE(second->StyleDirty());
 }
 
-// Verify that inserting a node before a ref_node does NOT mark ref_node as
-// style-dirty when no adjacent sibling rules exist.
-TEST_P(FiberElementTest,
-       InsertNodeBefore_DoesNotInvalidateRefNode_WithoutAdjacentRules) {
-  auto fragment = MakeFragmentWithRule(".a > .b");
+TEST_P(FiberElementTest, SiblingInvalidation_NoSiblingRule_DoesNotInvalidate) {
+  auto config = std::make_shared<PageConfig>();
+  config->SetEnableFiberArch(true);
+  config->SetEnableStandardCSSSelector(true);
+  manager->SetConfig(config);
 
+  auto fragment = MakeFragmentWithInvalidationRule(".a .b");
   auto page = manager->CreateFiberPage("page", 11);
   page->style_sheet_ = std::make_unique<CSSFragmentDecorator>(fragment.get());
 
-  auto child1 = manager->CreateFiberNode("view");
-  child1->parent_component_element_ = page.get();
-  page->InsertNode(child1);
+  auto first = manager->CreateFiberNode("view");
+  first->parent_component_element_ = page.get();
+  page->InsertNode(first);
+  first->SetClass("a");
 
-  auto child2 = manager->CreateFiberNode("view");
-  child2->parent_component_element_ = page.get();
-  page->InsertNode(child2);
+  auto second = manager->CreateFiberNode("view");
+  second->parent_component_element_ = page.get();
+  page->InsertNode(second);
+  second->SetClass("b");
 
   page->FlushActionsAsRoot();
+  EXPECT_FALSE(second->StyleDirty());
 
-  EXPECT_FALSE(child2->StyleDirty());
+  ClassList old_classes = first->classes();
+  ClassList new_classes{base::String("c")};
+  first->OnClassChanged(old_classes, new_classes);
+  first->SetClasses(std::move(new_classes));
 
-  // Insert a new node before child2 — child2 should NOT become style-dirty
-  // because no adjacent sibling rules exist.
-  auto new_child = manager->CreateFiberNode("view");
-  new_child->parent_component_element_ = page.get();
-  page->InsertNodeBefore(new_child, child2);
-  EXPECT_FALSE(child2->StyleDirty());
+  EXPECT_FALSE(second->StyleDirty());
+  first->FlushActions();
+  EXPECT_FALSE(second->StyleDirty());
 }
 
-// Verify that removing the last child does not crash (no next sibling).
-TEST_P(FiberElementTest, RemoveNode_LastChild_NoCrash) {
-  auto fragment = MakeFragmentWithRule(".a + .b");
+TEST_P(FiberElementTest, SiblingInvalidation_NoCrashWhenNoNextSibling) {
+  auto config = std::make_shared<PageConfig>();
+  config->SetEnableFiberArch(true);
+  config->SetEnableStandardCSSSelector(true);
+  manager->SetConfig(config);
 
+  auto fragment = MakeFragmentWithInvalidationRule(".a + .b");
   auto page = manager->CreateFiberPage("page", 11);
   page->style_sheet_ = std::make_unique<CSSFragmentDecorator>(fragment.get());
 
-  auto child1 = manager->CreateFiberNode("view");
-  child1->parent_component_element_ = page.get();
-  page->InsertNode(child1);
+  auto first = manager->CreateFiberNode("view");
+  first->parent_component_element_ = page.get();
+  page->InsertNode(first);
+  first->SetClass("a");
 
   page->FlushActionsAsRoot();
 
-  // Remove the only child — should not crash even with adjacent rules.
-  page->RemoveNode(child1);
+  ClassList old_classes = first->classes();
+  ClassList new_classes{base::String("c")};
+  first->OnClassChanged(old_classes, new_classes);
+  first->SetClasses(std::move(new_classes));
+
+  first->FlushActions();
   SUCCEED();
 }
 

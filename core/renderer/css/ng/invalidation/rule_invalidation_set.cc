@@ -14,11 +14,16 @@
 namespace lynx {
 namespace css {
 
+static inline bool IsSiblingRelation(LynxCSSSelector::RelationType relation) {
+  return relation == LynxCSSSelector::kDirectAdjacent ||
+         relation == LynxCSSSelector::kIndirectAdjacent;
+}
+
 static inline bool SupportedRelation(LynxCSSSelector::RelationType relation) {
   return relation == LynxCSSSelector::kSubSelector ||
          relation == LynxCSSSelector::kDescendant ||
          relation == LynxCSSSelector::kChild ||
-         relation == LynxCSSSelector::kUAShadow;
+         relation == LynxCSSSelector::kUAShadow || IsSiblingRelation(relation);
 }
 
 InvalidationSet& RuleInvalidationSet::GetInvalidationSet(
@@ -118,10 +123,19 @@ void RuleInvalidationSet::UpdateInvalidationSets(
   }
 
   const LynxCSSSelector* next_compound = last_in_compound->TagHistory();
-  // For example, '.a .b', only support descendants
   if (next_compound && SupportedRelation(last_in_compound->Relation())) {
-    // Add next_compound in *_invalidation_sets_
-    AddSelectorToInvalidationSets(*next_compound, feature);
+    if (IsSiblingRelation(last_in_compound->Relation())) {
+      // For sibling combinators we only record the immediate left-hand
+      // compound. Tag-name-only subjects are not supported, and we do not
+      // recurse into further ancestors.
+      if (!feature.classes.empty() || !feature.ids.empty()) {
+        AddSiblingToInvalidationSets(
+            *next_compound, feature,
+            last_in_compound->Relation() == LynxCSSSelector::kDirectAdjacent);
+      }
+    } else {
+      AddSelectorToInvalidationSets(*next_compound, feature);
+    }
   }
 
   if (!next_compound) {
@@ -232,7 +246,12 @@ void RuleInvalidationSet::AddSelectorToInvalidationSets(
   // selector.
   const LynxCSSSelector* compound = &selector;
   while (compound) {
-    // NOTE: We only support descendants
+    // Sibling combinators are handled separately in UpdateInvalidationSets.
+    // We do not support mixing descendant traversal with sibling combinators
+    // (e.g. .a + .b .c).
+    if (IsSiblingRelation(compound->Relation())) {
+      return;
+    }
     if (!SupportedRelation(compound->Relation())) {
       return;
     }
@@ -243,6 +262,65 @@ void RuleInvalidationSet::AddSelectorToInvalidationSets(
     DCHECK(last_in_compound);
     compound = last_in_compound->TagHistory();
   }
+}
+
+void RuleInvalidationSet::AddSiblingToInvalidationSets(
+    const LynxCSSSelector& compound,
+    const InvalidationSetFeature& sibling_feature, bool direct_adjacent) {
+  // Walk through the immediate left-hand compound and add a sibling
+  // invalidation set for each class/id/pseudo simple selector. Stop at the
+  // first non-sub-selector relation because only a single compound is handled
+  // on the left-hand side of +/~.
+  const LynxCSSSelector* simple_selector = &compound;
+  for (; simple_selector; simple_selector = simple_selector->TagHistory()) {
+    AddSiblingSetForSimpleSelector(*simple_selector, sibling_feature,
+                                   direct_adjacent);
+    if (simple_selector->Relation() != LynxCSSSelector::kSubSelector) {
+      break;
+    }
+  }
+}
+
+void RuleInvalidationSet::AddSiblingSetForSimpleSelector(
+    const LynxCSSSelector& simple_selector,
+    const InvalidationSetFeature& sibling_feature, bool direct_adjacent) {
+  if (auto* sibling_sets =
+          GetSiblingInvalidationSetForSimpleSelector(simple_selector)) {
+    sibling_sets->push_back(
+        CreateSiblingInvalidationSet(sibling_feature, direct_adjacent));
+  }
+}
+
+base::Vector<SiblingInvalidationSetPtr>*
+RuleInvalidationSet::GetSiblingInvalidationSetForSimpleSelector(
+    const LynxCSSSelector& selector) {
+  if (selector.Match() == LynxCSSSelector::kClass) {
+    return &sibling_class_invalidation_sets_[selector.Value()];
+  }
+  if (selector.Match() == LynxCSSSelector::kId) {
+    return &sibling_id_invalidation_sets_[selector.Value()];
+  }
+  if (selector.Match() == LynxCSSSelector::kPseudoClass) {
+    switch (selector.GetPseudoType()) {
+      case LynxCSSSelector::kPseudoHover:
+      case LynxCSSSelector::kPseudoFocus:
+      case LynxCSSSelector::kPseudoActive:
+        return &sibling_pseudo_invalidation_sets_[selector.GetPseudoType()];
+      default:
+        break;
+    }
+  }
+  return nullptr;
+}
+
+SiblingInvalidationSetPtr RuleInvalidationSet::CreateSiblingInvalidationSet(
+    const InvalidationSetFeature& sibling_feature, bool direct_adjacent) {
+  SiblingInvalidationSetPtr sibling_set = SiblingInvalidationSet::Create();
+  AddFeatureToInvalidationSet(*sibling_set, sibling_feature);
+  if (direct_adjacent) {
+    sibling_set->SetDirectAdjacentOnly();
+  }
+  return sibling_set;
 }
 
 void RuleInvalidationSet::AddSelector(const LynxCSSSelector& selector) {
@@ -281,34 +359,73 @@ void RuleInvalidationSet::Merge(const RuleInvalidationSet& other) {
     auto key = static_cast<LynxCSSSelector::PseudoType>(entry.first);
     CombineInvalidationSet(pseudo_invalidation_sets_, key, entry.second.get());
   }
+
+  // Sibling invalidation sets are kept per selector subject, so merge by
+  // appending the vectors. Because 'other' is const we clone each set by
+  // combining its contents into a fresh SiblingInvalidationSet.
+  for (const auto& entry : other.sibling_class_invalidation_sets_) {
+    auto& target = sibling_class_invalidation_sets_[entry.first];
+    for (const auto& sibling_set : entry.second) {
+      SiblingInvalidationSetPtr clone = SiblingInvalidationSet::Create();
+      clone->Combine(*sibling_set);
+      target.push_back(std::move(clone));
+    }
+  }
+  for (const auto& entry : other.sibling_id_invalidation_sets_) {
+    auto& target = sibling_id_invalidation_sets_[entry.first];
+    for (const auto& sibling_set : entry.second) {
+      SiblingInvalidationSetPtr clone = SiblingInvalidationSet::Create();
+      clone->Combine(*sibling_set);
+      target.push_back(std::move(clone));
+    }
+  }
+  for (const auto& entry : other.sibling_pseudo_invalidation_sets_) {
+    auto& target = sibling_pseudo_invalidation_sets_[entry.first];
+    for (const auto& sibling_set : entry.second) {
+      SiblingInvalidationSetPtr clone = SiblingInvalidationSet::Create();
+      clone->Combine(*sibling_set);
+      target.push_back(std::move(clone));
+    }
+  }
 }
 
 void RuleInvalidationSet::Clear() {
   class_invalidation_sets_.clear();
   id_invalidation_sets_.clear();
   pseudo_invalidation_sets_.clear();
+
+  sibling_class_invalidation_sets_.clear();
+  sibling_id_invalidation_sets_.clear();
+  sibling_pseudo_invalidation_sets_.clear();
 }
 
-#define COLLECT_INVALIDATION_SETS(field, name, key_type)                  \
+#define COLLECT_INVALIDATION_SETS(field, sibling_field, name, key_type)   \
   void RuleInvalidationSet::Collect##name(                                \
       InvalidationLists& invalidation_lists, const key_type& key) const { \
     auto it = field.find(key);                                            \
-    if (it == field.end()) {                                              \
-      return;                                                             \
+    if (it != field.end() && it->second->IsAlive()) {                     \
+      DescendantInvalidationSet* descendants =                            \
+          static_cast<DescendantInvalidationSet*>(it->second.get());      \
+      if (descendants) {                                                  \
+        invalidation_lists.descendants.push_back(descendants);            \
+      }                                                                   \
     }                                                                     \
-    if (!it->second->IsAlive()) {                                         \
-      return;                                                             \
-    }                                                                     \
-    DescendantInvalidationSet* descendants =                              \
-        static_cast<DescendantInvalidationSet*>(it->second.get());        \
-    if (descendants) {                                                    \
-      invalidation_lists.descendants.push_back(descendants);              \
+    auto sibling_it = sibling_field.find(key);                            \
+    if (sibling_it != sibling_field.end()) {                              \
+      for (const auto& sibling_set : sibling_it->second) {                \
+        if (sibling_set->IsAlive()) {                                     \
+          invalidation_lists.siblings.push_back(sibling_set.get());       \
+        }                                                                 \
+      }                                                                   \
     }                                                                     \
   }
 
-COLLECT_INVALIDATION_SETS(id_invalidation_sets_, Id, std::string)
-COLLECT_INVALIDATION_SETS(class_invalidation_sets_, Class, std::string)
-COLLECT_INVALIDATION_SETS(pseudo_invalidation_sets_, PseudoClass,
+COLLECT_INVALIDATION_SETS(id_invalidation_sets_, sibling_id_invalidation_sets_,
+                          Id, std::string)
+COLLECT_INVALIDATION_SETS(class_invalidation_sets_,
+                          sibling_class_invalidation_sets_, Class, std::string)
+COLLECT_INVALIDATION_SETS(pseudo_invalidation_sets_,
+                          sibling_pseudo_invalidation_sets_, PseudoClass,
                           LynxCSSSelector::PseudoType)
 #undef COLLECT_INVALIDATION_SETS
 

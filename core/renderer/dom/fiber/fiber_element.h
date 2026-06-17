@@ -858,6 +858,7 @@ class FiberElement : public Element {
   bool CheckHasInvalidationForClass(const ClassList& old_classes,
                                     const ClassList& new_classes);
   void InvalidateChildren(css::InvalidationSet* invalidation_set);
+  void InvalidateSiblings(const css::InvalidationSet* invalidation_set);
   void VisitChildren(const base::MoveOnlyClosure<void, FiberElement*>& visitor);
 
   PseudoElement* CreatePseudoElementIfNeed(PseudoState state);

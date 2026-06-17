@@ -44,7 +44,8 @@ namespace css {
 InvalidationSet::InvalidationSet(InvalidationType type)
     : type_(static_cast<unsigned>(type)),
       invalidates_self_(false),
-      is_alive_(true) {}
+      is_alive_(true),
+      direct_adjacent_only_(false) {}
 
 bool InvalidationSet::InvalidatesElement(
     const tasm::AttributeHolder& element) const {
@@ -90,6 +91,7 @@ void InvalidationSet::Combine(const InvalidationSet& other) {
       return;
     }
   }
+  direct_adjacent_only_ = direct_adjacent_only_ && other.direct_adjacent_only_;
 
   // No longer bother combining data structures, since the whole subtree is
   // deemed invalid.

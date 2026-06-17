@@ -50,13 +50,15 @@ namespace css {
 
 enum class InvalidationType {
   kInvalidateDescendants,
+  kInvalidateSiblings,
 };
 
 class InvalidationSet;
 class DescendantInvalidationSet;
+class SiblingInvalidationSet;
 
-// Tracks data to determine which descendants in a DOM subtree need to have
-// style recalculated.
+// Tracks data to determine which descendants or siblings in a DOM subtree need
+// to have style recalculated.
 //
 // Some example invalidation sets:
 //
@@ -93,6 +95,9 @@ class InvalidationSet {
   bool IsDescendantInvalidationSet() const {
     return GetType() == InvalidationType::kInvalidateDescendants;
   }
+  bool IsSiblingInvalidationSet() const {
+    return GetType() == InvalidationType::kInvalidateSiblings;
+  }
 
   bool InvalidatesElement(const tasm::AttributeHolder&) const;
 
@@ -104,6 +109,9 @@ class InvalidationSet {
   bool WholeSubtreeInvalid() const { return whole_subtree_invalid_; }
   void SetInvalidatesSelf() { invalidates_self_ = true; }
   bool InvalidatesSelf() const { return invalidates_self_; }
+
+  bool IsDirectAdjacentOnly() const { return direct_adjacent_only_; }
+  void SetDirectAdjacentOnly() { direct_adjacent_only_ = true; }
 
   bool IsEmpty() const { return HasEmptyBackings(); }
 
@@ -288,6 +296,9 @@ class InvalidationSet {
 
   // If true, the instance is alive and can be used.
   unsigned is_alive_ : 1;
+
+  // If true, only the direct adjacent sibling is invalidated by this set.
+  unsigned direct_adjacent_only_ : 1;
   friend class RuleInvalidationSetTest;
 };
 
@@ -295,6 +306,8 @@ using InvalidationSetPtr =
     std::unique_ptr<InvalidationSet, InvalidationSet::Deleter>;
 using DescendantInvalidationSetPtr =
     std::unique_ptr<DescendantInvalidationSet, InvalidationSet::Deleter>;
+using SiblingInvalidationSetPtr =
+    std::unique_ptr<SiblingInvalidationSet, InvalidationSet::Deleter>;
 
 class DescendantInvalidationSet : public InvalidationSet {
  public:
@@ -306,10 +319,21 @@ class DescendantInvalidationSet : public InvalidationSet {
       : InvalidationSet(InvalidationType::kInvalidateDescendants) {}
 };
 
+class SiblingInvalidationSet : public InvalidationSet {
+ public:
+  static SiblingInvalidationSetPtr Create() {
+    return SiblingInvalidationSetPtr(new SiblingInvalidationSet());
+  }
+
+  SiblingInvalidationSet()
+      : InvalidationSet(InvalidationType::kInvalidateSiblings) {}
+};
+
 using InvalidationSetVector = base::Vector<InvalidationSet*>;
 
 struct InvalidationLists {
   InvalidationSetVector descendants;
+  InvalidationSetVector siblings;
 };
 
 template <typename InvalidationSet::BackingType type>
@@ -390,6 +414,9 @@ inline void InvalidationSet::Deleter::operator()(InvalidationSet* set) {
   }
   if (set->IsDescendantInvalidationSet()) {
     delete static_cast<DescendantInvalidationSet*>(set);
+  } else {
+    DCHECK(set->IsSiblingInvalidationSet());
+    delete static_cast<SiblingInvalidationSet*>(set);
   }
 }
 

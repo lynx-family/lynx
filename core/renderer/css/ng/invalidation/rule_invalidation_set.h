@@ -6,7 +6,6 @@
 
 #include <string>
 #include <unordered_map>
-#include <vector>
 
 #include "core/renderer/css/ng/invalidation/invalidation_set.h"
 #include "core/renderer/css/ng/invalidation/invalidation_set_feature.h"
@@ -44,6 +43,16 @@ class RuleInvalidationSet {
   using PseudoTypeInvalidationSetMap =
       std::unordered_map<LynxCSSSelector::PseudoType, InvalidationSetPtr>;
 
+  // Sibling invalidation sets are stored separately from descendant/self sets
+  // because each left-hand feature may need to invalidate multiple right-hand
+  // subjects (e.g. .a + .b, .a + .c). They are keyed by the same
+  // class/id/pseudo types as the descendant maps.
+  using SiblingInvalidationSetMap =
+      std::unordered_map<std::string, base::Vector<SiblingInvalidationSetPtr>>;
+  using SiblingPseudoTypeInvalidationSetMap =
+      std::unordered_map<LynxCSSSelector::PseudoType,
+                         base::Vector<SiblingInvalidationSetPtr>>;
+
   void UpdateInvalidationSets(const LynxCSSSelector&, InvalidationSetFeature&,
                               PositionType);
 
@@ -61,6 +70,17 @@ class RuleInvalidationSet {
   void AddSimpleSelectorToInvalidationSets(
       const LynxCSSSelector& simple_selector,
       InvalidationSetFeature& descendant_feature);
+
+  void AddSiblingToInvalidationSets(
+      const LynxCSSSelector&, const InvalidationSetFeature& sibling_feature,
+      bool direct_adjacent);
+  void AddSiblingSetForSimpleSelector(
+      const LynxCSSSelector&, const InvalidationSetFeature& sibling_feature,
+      bool direct_adjacent);
+  base::Vector<SiblingInvalidationSetPtr>*
+  GetSiblingInvalidationSetForSimpleSelector(const LynxCSSSelector&);
+  SiblingInvalidationSetPtr CreateSiblingInvalidationSet(
+      const InvalidationSetFeature& sibling_feature, bool direct_adjacent);
 
   static InvalidationSet& GetInvalidationSet(
       PositionType position, InvalidationSetPtr& invalidation_set);
@@ -81,6 +101,10 @@ class RuleInvalidationSet {
   InvalidationSetMap class_invalidation_sets_;
   InvalidationSetMap id_invalidation_sets_;
   PseudoTypeInvalidationSetMap pseudo_invalidation_sets_;
+
+  SiblingInvalidationSetMap sibling_class_invalidation_sets_;
+  SiblingInvalidationSetMap sibling_id_invalidation_sets_;
+  SiblingPseudoTypeInvalidationSetMap sibling_pseudo_invalidation_sets_;
 
   friend class RuleInvalidationSetTest;
 };
