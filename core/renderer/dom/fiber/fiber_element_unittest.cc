@@ -17385,6 +17385,44 @@ TEST_P(FiberElementTest, TestGetParentFontSize) {
   EXPECT_EQ(view4->GetParentFontSize(), 10);
 }
 
+TEST_P(FiberElementTest, UnifiedPipelineFiberFlushMergesResolveTargets) {
+  tasm->pipeline_context_manager_->SetEnableUnifiedPixelPipeline(true);
+  auto options = std::make_shared<PipelineOptions>();
+  ASSERT_NE(tasm->CreateAndUpdateCurrentPipelineContext(options), nullptr);
+
+  auto lepus_ctx = runtime::MTSRuntime::CreateContext(
+      runtime::ContextType::LepusNGContextType);
+  ASSERT_TRUE(lepus_ctx);
+  lepus_ctx->Initialize();
+  lepus_ctx->SetGlobalData(
+      BASE_STATIC_STRING(tasm::kTemplateAssembler),
+      lepus::Value(static_cast<runtime::MTSRuntime::Delegate*>(tasm.get())));
+  auto* mts_ctx = runtime::MTSRuntime::ToQuickContext(lepus_ctx.get());
+  ASSERT_TRUE(mts_ctx);
+
+  auto page = manager->CreateFiberPage("page", 11);
+  manager->SetFiberPageElement(page);
+  auto parent = manager->CreateFiberView();
+  auto first_child = manager->CreateFiberView();
+  auto second_child = manager->CreateFiberView();
+  page->InsertNode(parent);
+  parent->InsertNode(first_child);
+  parent->InsertNode(second_child);
+
+  lepus::Value first_args[] = {lepus::Value(first_child)};
+  RendererFunctions::FiberFlushElementTree(
+      mts_ctx, first_args, static_cast<int>(std::size(first_args)));
+  EXPECT_TRUE(options->resolve_requested);
+  EXPECT_EQ(options->target_node, first_child->impl_id());
+
+  lepus::Value second_args[] = {lepus::Value(second_child)};
+  RendererFunctions::FiberFlushElementTree(
+      mts_ctx, second_args, static_cast<int>(std::size(second_args)));
+
+  EXPECT_TRUE(options->resolve_requested);
+  EXPECT_EQ(options->target_node, parent->impl_id());
+}
+
 TEST_P(FiberElementTest, TestTransitionInResetMapAndUpdateMap) {
   StyleMap indexAttributes;
   CSSParserConfigs configs;

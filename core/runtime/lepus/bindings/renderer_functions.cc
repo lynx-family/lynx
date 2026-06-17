@@ -166,6 +166,44 @@ TemplateElement* GetTemplateElementFromValue(const lepus::Value& value) {
   return static_cast<TemplateElement*>(element.get());
 }
 
+// Multiple FiberFlushElementTree calls may share the same PipelineOptions in
+// unified pixel pipeline. Merge their resolve targets to the nearest common
+// ancestor so earlier dirty subtrees are not lost by later target overwrites.
+// Returning kInvalidTargetNodeId makes ResolveStyle fall back to root.
+int32_t MergeResolveTarget(TemplateAssembler* tasm,
+                           int32_t previous_target_node,
+                           FiberElement* incoming_target) {
+  if (previous_target_node == PipelineOptions::kInvalidTargetNodeId ||
+      incoming_target == nullptr) {
+    return PipelineOptions::kInvalidTargetNodeId;
+  }
+
+  auto* page_proxy = tasm != nullptr ? tasm->page_proxy() : nullptr;
+  if (page_proxy == nullptr || page_proxy->element_manager() == nullptr) {
+    return PipelineOptions::kInvalidTargetNodeId;
+  }
+
+  auto* previous_target =
+      page_proxy->element_manager()->node_manager()->Get(previous_target_node);
+  if (previous_target == nullptr) {
+    return PipelineOptions::kInvalidTargetNodeId;
+  }
+
+  std::unordered_set<int32_t> previous_ancestors;
+  for (auto* node = previous_target; node != nullptr; node = node->parent()) {
+    previous_ancestors.insert(node->impl_id());
+  }
+
+  for (Element* node = incoming_target; node != nullptr;
+       node = node->parent()) {
+    if (previous_ancestors.find(node->impl_id()) != previous_ancestors.end()) {
+      return node->impl_id();
+    }
+  }
+
+  return PipelineOptions::kInvalidTargetNodeId;
+}
+
 }  // namespace
 
 #define LEPUS_MTS_CONTEXT() ctx
@@ -5205,10 +5243,17 @@ RENDERER_FUNCTION_CC(FiberFlushElementTree) {
   // behaviours. After `RunPixelPipeline` is unified, we may remove the
   // redundant logic here.
   if (current_option->enable_unified_pixel_pipeline) {
+    const int32_t incoming_target_node =
+        element ? element->impl_id() : PipelineOptions::kInvalidTargetNodeId;
+    // kInvalidTargetNodeId can mean either no target yet or an existing root
+    // resolve request. Use resolve_requested to distinguish these states.
+    const bool had_resolve_request = current_option->resolve_requested;
     current_option->resolve_requested = true;
     current_option->target_node =
-        element ? element->impl_id() : PipelineOptions::kInvalidTargetNodeId;
-    current_option->need_trigger_data_updated_ = trigger_data_updated;
+        had_resolve_request
+            ? MergeResolveTarget(self, current_option->target_node, element)
+            : incoming_target_node;
+    current_option->need_trigger_data_updated_ |= trigger_data_updated;
   } else {
     self->page_proxy()->element_manager()->OnPatchFinish(current_option,
                                                          element);
