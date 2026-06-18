@@ -37,6 +37,7 @@ source_set("logbox_impl") {
     libs = [ "WebView2LoaderStatic.lib" ]
     include_dirs = [ "//third_party/webview2/Microsoft.Web.WebView2.1.0.902.49/build/native/include" ]
     lib_dirs = [ "//third_party/webview2/Microsoft.Web.WebView2.1.0.902.49/build/native/$target_cpu" ]
+    deps += [ "//third_party/httplib:httplib" ]
   }
   if (is_debug) {
     defines = [ "DEBUG_FRONTEND" ]

@@ -7,9 +7,9 @@
 #include "core/base/json/json_util.h"
 #include "core/base/threading/task_runner_manufactor.h"
 #include "core/build/gen/lynx_sub_error_code.h"
-#include "core/platform/clay/shell/net/net_helper.h"
 #include "devtool/base_devtool/logbox/logbox_manager.h"
 #include "devtool/lynx_devtool/agent/inspector_util.h"
+#include "third_party/httplib/httplib.h"
 #include "third_party/modp_b64/modp_b64.h"
 
 using LynxError = lynx::base::LynxError;
@@ -23,6 +23,53 @@ std::string GetFileNameFromPath(const std::string& path) {
   }
   return path;
 }
+
+#if !defined(DISABLE_LOGBOX_BASE)
+void SplitUrl(const std::string& url, std::string& scheme_host_port,
+              std::string& path) {
+  size_t protocol_end = url.find("://");
+  size_t pos = protocol_end == std::string::npos ? 0 : protocol_end + 3;
+
+  // The httplib target enables OpenSSL support, so keep the scheme for the
+  // universal Client(scheme_host_port) constructor to select HTTP or HTTPS.
+  size_t path_start = url.find('/', pos);
+  if (path_start != std::string::npos) {
+    scheme_host_port = url.substr(0, path_start);
+    path = url.substr(path_start);
+  } else {
+    scheme_host_port = url;
+    path = "/";
+  }
+}
+
+std::string DownloadWithHttplib(const std::string& url) {
+  std::string scheme_host_port;
+  std::string path;
+  SplitUrl(url, scheme_host_port, path);
+  if (scheme_host_port.empty()) {
+    LOGE("LogBox download source map failed: empty host");
+    return "";
+  }
+
+  constexpr int kTimeoutSeconds = 5;
+  httplib::Client client(scheme_host_port);
+  client.set_max_timeout(kTimeoutSeconds * 1000);
+  client.set_connection_timeout(kTimeoutSeconds);
+  client.set_read_timeout(kTimeoutSeconds);
+
+  auto res = client.Get(path.c_str());
+  if (res == nullptr) {
+    LOGE("LogBox download source map failed: null response");
+    return "";
+  }
+  if (res->status < 200 || res->status >= 300) {
+    LOGE("LogBox download source map failed, status: "
+         << res->status << ", reason: " << res->reason);
+    return "";
+  }
+  return res->body;
+}
+#endif
 }  // namespace
 
 namespace lynx {
@@ -207,13 +254,14 @@ void LogBoxDialogBase::GetResource(const rapidjson::Value& params,
 
 void LogBoxDialogBase::Download(const std::string& url, int32_t callback_id) {
 #if !defined(DISABLE_LOGBOX_BASE)
-  lynx::NetHelper* net_helper = lynx::NetHelper::GetInstance();
-  net_helper->AsyncRequest(
-      url, [wk = weak_from_this(), callback_id](const std::string& data) {
+  lynx::base::TaskRunnerManufactor::PostTaskToConcurrentLoop(
+      [wk = weak_from_this(), url, callback_id]() {
+        std::string data = DownloadWithHttplib(url);
         if (auto sp = wk.lock()) {
           sp->OnDownloadCompleted(data, callback_id);
         }
-      });
+      },
+      lynx::base::ConcurrentTaskType::NORMAL_PRIORITY);
 #endif
 }
 
