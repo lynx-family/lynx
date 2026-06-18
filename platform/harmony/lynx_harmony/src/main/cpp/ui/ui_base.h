@@ -569,6 +569,7 @@ class LYNX_EXPORT UIBase : public std::enable_shared_from_this<UIBase>,
   std::unique_ptr<LynxOffsetCalculator> lynx_offset_calculator_{nullptr};
   float offset_distance_{0.f};
   float offset_rotate_{kOffsetRotateAuto};
+  float offset_rotate_angle_{0.f};
   bool is_auto_offset_rotate_{true};
   std::string accessibility_id_;
   std::string accessibility_label_;

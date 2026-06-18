@@ -32,6 +32,17 @@ namespace lynx {
 namespace tasm {
 
 namespace {
+constexpr float kOffsetRotateAutoWithAngleBase = -1000000.f;
+constexpr float kOffsetRotateAutoWithAngleRange = 360.f;
+
+float NormalizeOffsetRotateAngle(float angle) {
+  float normalized = std::fmod(angle, kOffsetRotateAutoWithAngleRange);
+  if (normalized < 0.f) {
+    normalized += kOffsetRotateAutoWithAngleRange;
+  }
+  return normalized;
+}
+
 void ConvertPositionEnumToValue(unsigned int type, float &value,
                                 uint32_t &pattern) {
   switch (type) {
@@ -109,6 +120,19 @@ bool TokenTextEquals(const Token &token, const char *keyword) {
   return true;
 }
 
+float EncodeAutoOffsetRotate(float angle) {
+  // Keep encoded auto-rotate angles in one 360-degree window so the sentinel
+  // range does not grow with values like reverse 720deg.
+  float normalized = NormalizeOffsetRotateAngle(angle);
+
+  // Plain `auto` already has a legacy sentinel value. Reuse it for auto 0deg.
+  if (base::FloatsEqual(normalized, 0.f)) {
+    return ANGLE_AUTO;
+  }
+  // Encode `auto <angle>` as a reserved negative float range while preserving
+  // the existing single-float offset-rotate pipeline.
+  return kOffsetRotateAutoWithAngleBase - normalized;
+}
 }  // namespace
 
 bool CSSStringParser::AtEnd() {
@@ -666,14 +690,47 @@ lepus::Value CSSStringParser::ParseOffsetDistance() {
 
 lepus::Value CSSStringParser::ParseOffsetRotate() {
   Advance();
-  Token angle_token;
-  if (ConsumeAndSave(TokenType::AUTO, angle_token)) {
-    return lepus::Value(ANGLE_AUTO);
-  } else if (AngleValue(angle_token) && angle_token.type == TokenType::DEG) {
-    return lepus::Value(TokenToAngleValue(angle_token));
-  } else {
+
+  bool has_follow_path_keyword = false;
+  bool has_angle = false;
+  bool follows_path = false;
+  float angle = 0.f;
+
+  while (!AtEnd()) {
+    Token token;
+    if (ConsumeAndSave(TokenType::AUTO, token)) {
+      if (has_follow_path_keyword) {
+        return lepus::Value();
+      }
+      has_follow_path_keyword = true;
+      follows_path = true;
+      continue;
+    }
+    if (ConsumeAndSave(TokenType::REVERSE, token)) {
+      if (has_follow_path_keyword) {
+        return lepus::Value();
+      }
+      has_follow_path_keyword = true;
+      follows_path = true;
+      angle += 180.f;
+      continue;
+    }
+    if (AngleValue(token)) {
+      if (has_angle) {
+        return lepus::Value();
+      }
+      has_angle = true;
+      angle += TokenToAngleValue(token);
+      continue;
+    }
     return lepus::Value();
   }
+
+  if (follows_path) {
+    return lepus::Value(EncodeAutoOffsetRotate(angle));
+  }
+  return has_angle ? lepus::Value(NormalizeOffsetRotateAngle(angle))
+                   : lepus::Value();
 }
 
 bool CSSStringParser::BasicShape() {

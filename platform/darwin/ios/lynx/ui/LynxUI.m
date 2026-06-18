@@ -68,6 +68,17 @@ short const OVERFLOW_XY_VAL = 0x03;
 short const OVERFLOW_HIDDEN_VAL = 0x00;
 static const NSInteger INVALID_STICKY_SIGN = -1;
 static const CGFloat OFFSET_ROTATE_AUTO = -1024.f;
+static const CGFloat OFFSET_ROTATE_AUTO_WITH_ANGLE_BASE = -1000000.f;
+static const CGFloat OFFSET_ROTATE_AUTO_WITH_ANGLE_RANGE = 360.f;
+
+static BOOL LynxIsEncodedAutoOffsetRotate(CGFloat rotate) {
+  return rotate <= OFFSET_ROTATE_AUTO_WITH_ANGLE_BASE &&
+         rotate > OFFSET_ROTATE_AUTO_WITH_ANGLE_BASE - OFFSET_ROTATE_AUTO_WITH_ANGLE_RANGE;
+}
+
+static CGFloat LynxDecodeAutoOffsetRotateAngle(CGFloat rotate) {
+  return LynxIsEncodedAutoOffsetRotate(rotate) ? OFFSET_ROTATE_AUTO_WITH_ANGLE_BASE - rotate : 0.f;
+}
 
 #define IS_ZERO(num) (fabs(num) < 0.0000000001)
 
@@ -112,6 +123,7 @@ static const CGFloat OFFSET_ROTATE_AUTO = -1024.f;
 @property(nonatomic, assign) BOOL accessibilityAutoScroll;
 @property(nonatomic, strong) NSArray* accessibilityBeingExclusiveFocusedNodes;
 @property(nonatomic, assign) NSInteger gestureArenaMemberId;
+@property(nonatomic) CGFloat offsetRotateAngle;
 
 // accessibility
 @property(nonatomic, nullable, strong) NSString* lynxAccessibilityStatus;
@@ -719,6 +731,7 @@ static const CGFloat OFFSET_ROTATE_AUTO = -1024.f;
         resultPoint = [LynxOffsetCalculator pointAtProgress:_offsetDistance
                                                      onPath:offsetPathRef
                                                 withTangent:&rotateDeg];
+        rotateDeg += _offsetRotateAngle * M_PI / 180.0;
       } else {
         resultPoint = [LynxOffsetCalculator pointAtProgress:_offsetDistance
                                                      onPath:offsetPathRef
@@ -4497,7 +4510,14 @@ LYNX_PROP_DEFINE("offset-rotate", setOffsetRotate, CGFloat) {
   if (requestReset) {
     value = OFFSET_ROTATE_AUTO;
   }
-  _isAutoOffsetRotate = value == OFFSET_ROTATE_AUTO;
+  _isAutoOffsetRotate = value == OFFSET_ROTATE_AUTO || LynxIsEncodedAutoOffsetRotate(value);
+  if (value == OFFSET_ROTATE_AUTO) {
+    _offsetRotateAngle = 0.f;
+  } else if (LynxIsEncodedAutoOffsetRotate(value)) {
+    _offsetRotateAngle = LynxDecodeAutoOffsetRotateAngle(value);
+  } else {
+    _offsetRotateAngle = 0.f;
+  }
   if (_offsetRotate != value) {
     _offsetRotate = value;
     _offsetHasChanged = YES;

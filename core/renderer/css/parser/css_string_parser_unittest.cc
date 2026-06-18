@@ -29,6 +29,7 @@ namespace tasm {
 namespace test {
 
 TEST(CSSStringParser, offset_rotate_value) {
+  constexpr float kEncodedAutoRotateBase = -1000000.f;
   CSSParserConfigs configs;
   {
     std::string raw = "auto";
@@ -48,7 +49,71 @@ TEST(CSSStringParser, offset_rotate_value) {
     auto deg_value = result.Number();
     EXPECT_FLOAT_EQ(deg_value, 45.0);
 
+    raw = "0.25turn";
+    parser = CSSStringParser{raw.c_str(), static_cast<uint32_t>(raw.size()),
+                             configs};
+    result = parser.ParseOffsetRotate();
+    EXPECT_TRUE(result.IsNumber());
+    EXPECT_FLOAT_EQ(result.Number(), 90.0);
+
+    raw = "-90deg";
+    parser = CSSStringParser{raw.c_str(), static_cast<uint32_t>(raw.size()),
+                             configs};
+    result = parser.ParseOffsetRotate();
+    EXPECT_TRUE(result.IsNumber());
+    EXPECT_FLOAT_EQ(result.Number(), 270.0);
+
+    raw = "450deg";
+    parser = CSSStringParser{raw.c_str(), static_cast<uint32_t>(raw.size()),
+                             configs};
+    result = parser.ParseOffsetRotate();
+    EXPECT_TRUE(result.IsNumber());
+    EXPECT_FLOAT_EQ(result.Number(), 90.0);
+
+    raw = "-1000000deg";
+    parser = CSSStringParser{raw.c_str(), static_cast<uint32_t>(raw.size()),
+                             configs};
+    result = parser.ParseOffsetRotate();
+    EXPECT_TRUE(result.IsNumber());
+    EXPECT_FLOAT_EQ(result.Number(), 80.0);
+    EXPECT_FALSE(result.Number() <= kEncodedAutoRotateBase &&
+                 result.Number() > kEncodedAutoRotateBase - 360.0);
+
+    raw = "reverse";
+    parser = CSSStringParser{raw.c_str(), static_cast<uint32_t>(raw.size()),
+                             configs};
+    result = parser.ParseOffsetRotate();
+    EXPECT_TRUE(result.IsNumber());
+    EXPECT_FLOAT_EQ(result.Number(), kEncodedAutoRotateBase - 180.0);
+
+    raw = "auto 45deg";
+    parser = CSSStringParser{raw.c_str(), static_cast<uint32_t>(raw.size()),
+                             configs};
+    result = parser.ParseOffsetRotate();
+    EXPECT_TRUE(result.IsNumber());
+    EXPECT_FLOAT_EQ(result.Number(), kEncodedAutoRotateBase - 45.0);
+
+    raw = "45deg auto";
+    parser = CSSStringParser{raw.c_str(), static_cast<uint32_t>(raw.size()),
+                             configs};
+    result = parser.ParseOffsetRotate();
+    EXPECT_TRUE(result.IsNumber());
+    EXPECT_FLOAT_EQ(result.Number(), kEncodedAutoRotateBase - 45.0);
+
+    raw = "reverse 45deg";
+    parser = CSSStringParser{raw.c_str(), static_cast<uint32_t>(raw.size()),
+                             configs};
+    result = parser.ParseOffsetRotate();
+    EXPECT_TRUE(result.IsNumber());
+    EXPECT_FLOAT_EQ(result.Number(), kEncodedAutoRotateBase - 225.0);
+
     raw = "100%";
+    parser = CSSStringParser{raw.c_str(), static_cast<uint32_t>(raw.size()),
+                             configs};
+    result = parser.ParseOffsetRotate();
+    EXPECT_TRUE(result.IsEmpty());
+
+    raw = "auto reverse";
     parser = CSSStringParser{raw.c_str(), static_cast<uint32_t>(raw.size()),
                              configs};
     result = parser.ParseOffsetRotate();
