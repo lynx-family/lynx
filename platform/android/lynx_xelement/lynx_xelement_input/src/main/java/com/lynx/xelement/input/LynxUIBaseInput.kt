@@ -87,6 +87,7 @@ open class LynxUIBaseInput(context: LynxContext, params: Any?) : LynxUI<LynxEdit
     private var mAvoidKeyboardSpacingInLynxView:Float = 0.0f
     private var mWasFocused = false
     private var mAvoidKeyboardDist: Float = 0.0f
+    private var mKeyboardEventObserverAdded = false
     protected var mConfirmEnter: Boolean = false
     protected var mHoldKeyboard: Boolean = false
     var readonlyInputFilter = object: InputFilter {
@@ -142,6 +143,7 @@ open class LynxUIBaseInput(context: LynxContext, params: Any?) : LynxUI<LynxEdit
                 mWasFocused = !hasFocus
                 // Make sure keyboard is displayed while being focused
                 if (hasFocus && !mUseCustomKeyboard) {
+                    ensureKeyboardEventStarted()
                     showSoftInput()
                 }
                 lynxContext.eventEmitter.sendCustomEvent(
@@ -233,14 +235,20 @@ open class LynxUIBaseInput(context: LynxContext, params: Any?) : LynxUI<LynxEdit
             }
 
         }
-        mContext.lynxView?.let {
-          it.keyboardEvent.start()
-          it.keyboardEvent.addKeyboardEventObserver(this)
-        }
         editText.hint = ""
         // If context is application, the focusableInTouchMode in default style may be false
         editText.isFocusableInTouchMode = true
         return  editText
+    }
+
+    private fun ensureKeyboardEventStarted() {
+      mContext.lynxView?.let {
+        if (!mKeyboardEventObserverAdded) {
+          it.keyboardEvent.addKeyboardEventObserver(this)
+          mKeyboardEventObserverAdded = true
+        }
+        it.keyboardEvent.start()
+      }
     }
 
     @LynxProp(name = "placeholder")
@@ -557,6 +565,9 @@ open class LynxUIBaseInput(context: LynxContext, params: Any?) : LynxUI<LynxEdit
                         currentSoftInputModeExpectState or mSoftInputModeStateStash
                     context.window.setSoftInputMode(newSoftInputMode)
                     mView.showSoftInputOnFocus = true
+                    if (mView.isFocused) {
+                      ensureKeyboardEventStarted()
+                    }
                 }
             }
         }
@@ -712,6 +723,9 @@ open class LynxUIBaseInput(context: LynxContext, params: Any?) : LynxUI<LynxEdit
     override fun onFocusChanged(hasFocus: Boolean, isFocusTransition: Boolean) {
         if (!isFocusTransition ) {
             if (hasFocus) {
+                if (!mUseCustomKeyboard) {
+                    ensureKeyboardEventStarted()
+                }
                 mView.requestFocus()
                 if (!mUseCustomKeyboard) {
                     // Double check in onFocusChangeListener
@@ -803,6 +817,9 @@ open class LynxUIBaseInput(context: LynxContext, params: Any?) : LynxUI<LynxEdit
     }
   
     private fun doFocus(callback: Callback?) {
+      if (!mUseCustomKeyboard) {
+        ensureKeyboardEventStarted()
+      }
       if (mView.requestFocus()) {
         if (mUseCustomKeyboard) {
           hideSoftInput()
@@ -941,4 +958,3 @@ open class LynxUIBaseInput(context: LynxContext, params: Any?) : LynxUI<LynxEdit
     }
   }
 }
-
