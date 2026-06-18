@@ -298,7 +298,7 @@ jobs:
       - name: Install Common Dependencies
         uses: ./lynx/.github/actions/common-deps
       - name: Setup gradle cache
-        uses: lynx-infra/cache@5c6160a6a4c7fca80a2f3057bb9dfc9513fcb732
+        uses: lynx-infra/cache@1f4c655e363ee8910dce6ee0fe9ab3289d676add
         with:
           path: ~/.gradle/caches/modules-2
           key: gradle-android-unittests-check
@@ -316,7 +316,7 @@ jobs:
         with:
           path: lynx
       - name: Setup gradle cache
-        uses: lynx-infra/cache@5c6160a6a4c7fca80a2f3057bb9dfc9513fcb732
+        uses: lynx-infra/cache@1f4c655e363ee8910dce6ee0fe9ab3289d676add
         with:
           path: ~/.gradle/caches/modules-2
           key: gradle-android-explorer-build
@@ -373,7 +373,7 @@ jobs:
         with:
           cache-backend: 'lynx-infra'
       - name: Setup gradle cache
-        uses: lynx-infra/cache@5c6160a6a4c7fca80a2f3057bb9dfc9513fcb732
+        uses: lynx-infra/cache@1f4c655e363ee8910dce6ee0fe9ab3289d676add
         with:
           path: ~/.gradle/caches/modules-2
           key: gradle-android-sdk-release
@@ -386,7 +386,7 @@ jobs:
           cd $GITHUB_WORKSPACE/lynx/platform/android
           ./gradlew zipAllArtifacts
       - name: upload zip artifact
-        uses: lynx-infra/upload-artifact@332ec52e99f7cbf1fbbdc9bcc09280d49147d092
+        uses: lynx-infra/upload-artifact@8aa7faa3c4aab11163cbf44dc63bcf6631843d06
         continue-on-error: true
         with:
           name: android-sdk-release
@@ -423,7 +423,7 @@ jobs:
           java-version: 17
           distribution: 'zulu'
       - name: Gradle Wrapper Cache
-        uses: lynx-infra/cache@5c6160a6a4c7fca80a2f3057bb9dfc9513fcb732
+        uses: lynx-infra/cache@1f4c655e363ee8910dce6ee0fe9ab3289d676add
         with:
           path: ~/.gradle/wrapper/dists
           key: gradle-8.7-${{ runner.os }}
@@ -456,7 +456,7 @@ jobs:
           done
           $ANDROID_HOME/platform-tools/adb devices
       - name: Download Explorer APK
-        uses: lynx-infra/download-artifact@79d9914484f933089c2840552cf439bac85debad
+        uses: lynx-infra/download-artifact@a13122c2950a84c6602810cae8f131268a73b2df
         with:
           name: android-lynx-explorer
           path: lynx/explorer/android/lynx_explorer/build_temp
@@ -570,7 +570,7 @@ jobs:
         id: collect_resource
       - name: Upload Generated Resource Files
         if: always() && steps.collect_resource.outputs.ZIP_RESOURCES == 'success'
-        uses: lynx-infra/upload-artifact@332ec52e99f7cbf1fbbdc9bcc09280d49147d092
+        uses: lynx-infra/upload-artifact@8aa7faa3c4aab11163cbf44dc63bcf6631843d06
         continue-on-error: true
         with:
           name: android-e2e-resources
@@ -595,7 +595,7 @@ jobs:
           git fetch origin 12858f5a4f51454057f738f0b1d2bb001986dc91
           git cherry-pick 12858f5a4f51454057f738f0b1d2bb001986dc91
       - name: Download Lynx SDK Artifacts
-        uses: lynx-infra/download-artifact@79d9914484f933089c2840552cf439bac85debad
+        uses: lynx-infra/download-artifact@a13122c2950a84c6602810cae8f131268a73b2df
         with:
           name: android-sdk-release
           path: lynx
@@ -609,12 +609,12 @@ jobs:
           java-version: 17
           distribution: 'zulu'
       - name: Gradle Wrapper Cache
-        uses: lynx-infra/cache@5c6160a6a4c7fca80a2f3057bb9dfc9513fcb732
+        uses: lynx-infra/cache@1f4c655e363ee8910dce6ee0fe9ab3289d676add
         with:
           path: ~/.gradle/wrapper/dists
           key: gradle-wrapper-${{ runner.os }}
       - name: Setup cache action
-        uses: lynx-infra/cache@5c6160a6a4c7fca80a2f3057bb9dfc9513fcb732
+        uses: lynx-infra/cache@1f4c655e363ee8910dce6ee0fe9ab3289d676add
         with:
           path: ~/.gradle/caches/modules-2
           key: gradle-integration-deps-${{ runner.os }}
@@ -663,7 +663,7 @@ jobs:
           build-arch: ${{ matrix.arch }}
           build-params: '--integration-test'
       - name: upload artifact
-        uses: lynx-infra/upload-artifact@332ec52e99f7cbf1fbbdc9bcc09280d49147d092
+        uses: lynx-infra/upload-artifact@8aa7faa3c4aab11163cbf44dc63bcf6631843d06
         continue-on-error: true
         with:
           name: ios-explorer-build-${{ matrix.arch }}
@@ -781,7 +781,7 @@ jobs:
         env:
           npm_config_store_dir: ~/.local/share/pnpm/store
       - name: Download Explorer App
-        uses: lynx-infra/download-artifact@79d9914484f933089c2840552cf439bac85debad
+        uses: lynx-infra/download-artifact@a13122c2950a84c6602810cae8f131268a73b2df
         with:
           name: ios-explorer-build-arm64
           path: lynx/explorer/darwin/ios/lynx_explorer/build_temp
@@ -888,7 +888,7 @@ jobs:
         id: collect_resource
       - name: Upload Generated Resource Files
         if: always() && steps.collect_resource.outputs.ZIP_RESOURCES == 'success'
-        uses: lynx-infra/upload-artifact@332ec52e99f7cbf1fbbdc9bcc09280d49147d092
+        uses: lynx-infra/upload-artifact@8aa7faa3c4aab11163cbf44dc63bcf6631843d06
         continue-on-error: true
         with:
           name: ios-e2e-resources
@@ -905,7 +905,7 @@ jobs:
       - name: Build Clay Example
         uses: ./lynx/.github/actions/clay-macos-build
       - name: upload artifact
-        uses: lynx-infra/upload-artifact@332ec52e99f7cbf1fbbdc9bcc09280d49147d092
+        uses: lynx-infra/upload-artifact@8aa7faa3c4aab11163cbf44dc63bcf6631843d06
         with:
           name: clay_glfw
           path: '${{ github.workspace }}/lynx/out/Default/clay_glfw'
@@ -926,7 +926,7 @@ jobs:
         with:
           build-arch: ${{ matrix.arch }}
       - name: upload artifact
-        uses: lynx-infra/upload-artifact@332ec52e99f7cbf1fbbdc9bcc09280d49147d092
+        uses: lynx-infra/upload-artifact@8aa7faa3c4aab11163cbf44dc63bcf6631843d06
         with:
           name: macos-explorer-build-${{ matrix.arch }}
           path: '${{ github.workspace }}/lynx/LynxExplorer-macos-${{ matrix.arch }}.app.tar.gz'
