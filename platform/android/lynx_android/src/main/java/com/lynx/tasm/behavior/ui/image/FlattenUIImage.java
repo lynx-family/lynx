@@ -19,6 +19,7 @@ import com.lynx.tasm.behavior.ui.UIParams;
 import com.lynx.tasm.behavior.ui.ViewInfo;
 import com.lynx.tasm.behavior.ui.utils.BackgroundDrawable;
 import com.lynx.tasm.event.EventsListener;
+import java.util.HashMap;
 import java.util.Map;
 
 public class FlattenUIImage extends LynxFlattenUI {
@@ -48,6 +49,27 @@ public class FlattenUIImage extends LynxFlattenUI {
       return MeaningfulContentStatus.PRESENTED;
     }
     return MeaningfulContentStatus.PENDING;
+  }
+
+  @Override
+  public long getMemoryUsageBytes() {
+    long size = super.getMemoryUsageBytes();
+    if (mLynxImageManager == null) {
+      return size;
+    }
+    return mLynxImageManager.getBitmapMemorySizeBytes() + size;
+  }
+
+  @Override
+  public Map<String, String> getMemoryUsageDetail() {
+    long size = getMemoryUsageBytes();
+    String url = mLynxImageManager != null ? mLynxImageManager.getSrc() : null;
+    if (size == 0 || url == null || url.isEmpty() || url.startsWith("data:image")) {
+      return null;
+    }
+    HashMap<String, String> detail = new HashMap<>();
+    detail.put(url, String.valueOf(size));
+    return detail;
   }
 
   @Override
