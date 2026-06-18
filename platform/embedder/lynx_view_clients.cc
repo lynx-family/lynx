@@ -4,17 +4,35 @@
 
 #include "platform/embedder/lynx_view_clients.h"
 
+#include <algorithm>
 #include <memory>
 #include <vector>
 
 #include "core/runtime/lepus/json_parser.h"
+#include "platform/embedder/logbox_embedder.h"
 #include "platform/embedder/lynx_view_priv.h"
 
 namespace lynx {
 namespace embedder {
 
 LynxViewClients::LynxViewClients(lynx_view_t* lynx_view)
-    : lynx_view_(lynx_view) {}
+    : lynx_view_(lynx_view) {
+  logbox_ = LogBoxEmbedder::Create(
+      [lynx_view]() -> void* {
+        if (!lynx_view || !lynx_view->lynx_ui_renderer) {
+          return nullptr;
+        }
+        return lynx_view->lynx_ui_renderer->GetNativeWindow();
+      },
+      [lynx_view]() -> std::unordered_map<std::string, std::string> {
+        if (!lynx_view || !lynx_view->lynx_template_renderer) {
+          return {};
+        }
+        return lynx_view->lynx_template_renderer->GetAllJsSource();
+      });
+}
+
+LynxViewClients::~LynxViewClients() = default;
 
 void LynxViewClients::AddClient(lynx_view_client_t* client) {
   if (std::find(clients_.begin(), clients_.end(), client) == clients_.end()) {
@@ -78,6 +96,13 @@ void LynxViewClients::OnErrorOccurred(
     const std::string& fix_suggestion,
     const std::unordered_map<std::string, std::string>& custom_info,
     bool is_logbox_only) {
+  if (logbox_) {
+    logbox_->OnErrorOccurred(level, error_code, message, fix_suggestion,
+                             custom_info, is_logbox_only);
+  }
+  if (is_logbox_only) {
+    return;
+  }
   for (auto* client : clients_) {
     if (client->on_received_error) {
       client->on_received_error(client, error_code, message.c_str());
@@ -91,6 +116,9 @@ void LynxViewClients::OnThemeUpdatedByJs(
 void LynxViewClients::OnLoadTemplate(
     const std::string& url, const std::vector<uint8_t>& source,
     const std::shared_ptr<tasm::TemplateData>& data) {
+  if (logbox_) {
+    logbox_->OnLoadTemplate(url);
+  }
   for (auto* client : clients_) {
     if (client->on_page_start) {
       client->on_page_start(client, url.c_str());
@@ -130,6 +158,9 @@ void LynxViewClients::OnReloadTemplate(
 void LynxViewClients::OnLoadTemplateBundle(
     const std::string& url, const tasm::LynxTemplateBundle& template_bundle,
     const std::shared_ptr<tasm::TemplateData>& data) {
+  if (logbox_) {
+    logbox_->OnLoadTemplate(url);
+  }
   for (auto* client : clients_) {
     if (client->on_page_start) {
       client->on_page_start(client, url.c_str());

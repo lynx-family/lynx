@@ -16,6 +16,9 @@ devtool_source_set("lynx_devtool") {
     "devtool_env_embedder.h",
     "env_embedder.cc",
   ]
+  if (is_win) {
+    sources += [ "logbox_embedder_win.cc" ]
+  }
 
   deps = [
     "../:devtool_settings_embedder",
@@ -29,5 +32,8 @@ devtool_source_set("lynx_devtool") {
     "../../../third_party/jsoncpp:jsoncpp",
     "//third_party/modp_b64:modp_b64",
   ]
+  if (is_win) {
+    deps += [ "../../../devtool/base_devtool/logbox:logbox" ]
+  }
   public_configs = [ ":lynx_devtool_config" ]
 }
