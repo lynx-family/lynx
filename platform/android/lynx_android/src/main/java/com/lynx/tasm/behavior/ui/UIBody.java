@@ -306,6 +306,11 @@ public class UIBody extends UIGroup<UIBodyView> {
   }
 
   @Override
+  protected void updateNewSticky(float[] sticky) {
+    // Do Nothing on UIBody
+  }
+
+  @Override
   protected void createViewAsync() {}
 
   @Override

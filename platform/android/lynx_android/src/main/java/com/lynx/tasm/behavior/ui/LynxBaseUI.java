@@ -2955,7 +2955,7 @@ public abstract class LynxBaseUI
     }
   }
 
-  private void updateNewSticky(float[] sticky) {
+  protected void updateNewSticky(float[] sticky) {
     if (sticky == null || sticky.length < 10) {
       // sticky item is not sticky item or has illegal, need to reset sticky translate in LynxUI.
       removeSelfFromStickyScrollerIfNeeded();

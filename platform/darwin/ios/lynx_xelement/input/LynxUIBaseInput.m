@@ -14,6 +14,7 @@
 #import <Lynx/LynxColorUtils.h>
 #import <Lynx/LynxShadowNodeOwner.h>
 #import <Lynx/LynxKeyboardEventDispatcher.h>
+#import <Lynx/LynxContext+Internal.h>
 #import <XElement/LynxTextKeyListener.h>
 #import <XElement/LynxDigitKeyListener.h>
 #import <XElement/LynxDialerKeyListener.h>
@@ -31,11 +32,17 @@
 @property (nonatomic, strong) id<LynxKeyListener> keyListener;
 @property (nonatomic, assign) BOOL avoidKeyboardInLynxView;
 @property (nonatomic, assign) CGFloat avoidKeyboardSpacingInLynxView;
-@property (nonatomic, assign) CGFloat keyboardHeight;
-@property (nonatomic, assign) CGFloat avoidKeyboardDist;
-@property (nonatomic, assign) BOOL wasFocused;
 @property (nonatomic, assign) BOOL enableHoldKeyboard;
 @end
+
+static const NSTimeInterval kLynxInputKeyboardDefaultAnimationDuration = 0.3;
+
+@interface LynxContext (LynxInputKeyboardAvoidDispatcher)
+
+@property(nonatomic, weak, readonly) LynxKeyboardEventDispatcher *keyboardEventDispatcher;
+
+@end
+
 
 @implementation LynxUIBaseInput
 
@@ -75,64 +82,43 @@
   [context.lynxContext addKeyboardEventObserver:self];
 }
 
-- (CGFloat)handleAvoidKeyboard:(BOOL)keyboardDisplayed {
-  if (self.avoidKeyboardInLynxView) {
-    if (keyboardDisplayed) {
-      if (self.view.isFirstResponder) {
-        CGRect rectInRoot = [self.view convertRect:self.view.bounds toView:nil];
-        CGFloat bottomToScreen = UIScreen.mainScreen.bounds.size.height - CGRectGetMaxY(rectInRoot);
-        CGFloat gap = self.keyboardHeight - bottomToScreen + self.avoidKeyboardSpacingInLynxView;
-        if (self.avoidKeyboardDist == 0) {
-          if (gap > 0) {
-            CGRect targetFrame = self.context.rootView.frame;
-            targetFrame.origin.y -= gap;
-            [UIView animateWithDuration:0.3 animations:^{
-              [self.context.rootView setFrame:targetFrame];
-            }];
-            return gap;
-          }
-        } else {
-          CGRect targetFrame = self.context.rootView.frame;
-          targetFrame.origin.y -= gap;
-          [UIView animateWithDuration:0.3 animations:^{
-            [self.context.rootView setFrame:targetFrame];
-          }];
-          return gap;
-        }
-      }
-    } else {
-      if (self.avoidKeyboardDist != 0) {
-        CGRect targetFrame = self.context.rootView.frame;
-        targetFrame.origin.y += self.avoidKeyboardDist;
-        [UIView animateWithDuration:0.3 animations:^{
-          [self.context.rootView setFrame:targetFrame];
-        }];
-      }
-    }
-  }
-  return 0;
+- (void)keyboardWillShow:(CGFloat)keyboardHeight {
+  [self keyboardWillShow:keyboardHeight
+       animationDuration:kLynxInputKeyboardDefaultAnimationDuration
+          animationCurve:UIViewAnimationCurveEaseInOut];
 }
 
-- (void)keyboardWillShow:(CGFloat)keyboardHeight {
+- (void)keyboardWillShow:(CGFloat)keyboardHeight
+       animationDuration:(NSTimeInterval)duration
+          animationCurve:(UIViewAnimationCurve)curve {
   if (self.view.isFirstResponder) {
-    self.wasFocused = NO;
-    self.keyboardHeight = keyboardHeight;
-    self.avoidKeyboardDist = [self handleAvoidKeyboard:YES];
+    [self.context.lynxContext.keyboardEventDispatcher keyboardWillShowForOwner:self
+                                                                 rootView:self.context.rootView
+                                                                inputView:self.view
+                                                            avoidKeyboard:self.avoidKeyboardInLynxView
+                                                                  spacing:self.avoidKeyboardSpacingInLynxView
+                                                                   height:keyboardHeight
+                                                                 duration:duration
+                                                                    curve:curve];
     [self emitEvent:@"keyboardheightchange" detail:@{@"height" : @(keyboardHeight)}];
   }
 }
 
 - (void)keyboardWillHide {
-  // Match the hide callback with the input that actually owned the previous
-  // avoid-keyboard offset instead of the new first responder during focus handoff.
-  // Retain self cause that `inputViewDidEndEditing` is triggered after `keyboardWillHide`
-  dispatch_async(dispatch_get_main_queue(), ^{
-    if (self.wasFocused) {
-      self.wasFocused = NO;
-      self.avoidKeyboardDist = [self handleAvoidKeyboard:NO];
-      [self emitEvent:@"keyboardheightchange" detail:@{@"height" : @(0)}];
-    }
-  });
+  [self keyboardWillHideWithAnimationDuration:kLynxInputKeyboardDefaultAnimationDuration
+                               animationCurve:UIViewAnimationCurveEaseInOut];
+}
+
+- (void)keyboardWillHideWithAnimationDuration:(NSTimeInterval)duration
+                               animationCurve:(UIViewAnimationCurve)curve {
+  __weak typeof(self) weakSelf = self;
+  [self.context.lynxContext.keyboardEventDispatcher keyboardWillHideForOwner:self
+                                                              duration:duration
+                                                                 curve:curve
+                                                       finalHideBlock:^{
+                                                         [weakSelf emitEvent:@"keyboardheightchange"
+                                                                       detail:@{@"height" : @(0)}];
+                                                       }];
 }
 
 - (void)onFontFaceLoad {
@@ -414,11 +400,23 @@ LYNX_PROP_SETTER("hold-keyboard", setHoldKeyboard, BOOL) {
   if (_placeholderFont) {
     self.placeholderAttrs[NSFontAttributeName] = _placeholderFont;;
   }
+
+  if (self.avoidKeyboardInLynxView) {
+    [self.context.lynxContext.keyboardEventDispatcher avoidKeyboardPropsDidChangeForOwner:self
+                                                                               rootView:self.context.rootView
+                                                                              inputView:self.view
+                                                                          avoidKeyboard:self.avoidKeyboardInLynxView
+                                                                                spacing:self.avoidKeyboardSpacingInLynxView];
+  }
 }
 
 - (void)layoutDidFinished {
   [super layoutDidFinished];
-  self.avoidKeyboardDist += [self handleAvoidKeyboard:YES];
+  [self.context.lynxContext.keyboardEventDispatcher inputDidLayoutForOwner:self
+                                                            rootView:self.context.rootView
+                                                           inputView:self.view
+                                                       avoidKeyboard:self.avoidKeyboardInLynxView
+                                                             spacing:self.avoidKeyboardSpacingInLynxView];
 }
 
 - (BOOL)shouldHitTest:(CGPoint)point withEvent:(nullable UIEvent*)event {
@@ -701,7 +699,11 @@ LYNX_UI_METHOD(setSelectionRange) {
 
 
 - (void)inputViewDidBeginEditing:(id<UITextInput>)input {
-  self.wasFocused = NO;
+  [self.context.lynxContext.keyboardEventDispatcher inputDidBeginEditingForOwner:self
+                                                                  rootView:self.context.rootView
+                                                                 inputView:self.view
+                                                             avoidKeyboard:self.avoidKeyboardInLynxView
+                                                                   spacing:self.avoidKeyboardSpacingInLynxView];
   [self emitEvent:@"focus" detail:@{
     @"value" : [self getText]
   }];
@@ -711,7 +713,12 @@ LYNX_UI_METHOD(setSelectionRange) {
 }
 
 - (void)inputViewDidEndEditing:(id<UITextInput>)input {
-  self.wasFocused = YES;
+  __weak typeof(self) weakSelf = self;
+  [self.context.lynxContext.keyboardEventDispatcher inputDidEndEditingForOwner:self
+                                                          finalHideBlock:^{
+                                                            [weakSelf emitEvent:@"keyboardheightchange"
+                                                                          detail:@{@"height" : @(0)}];
+                                                          }];
   [self emitEvent:@"blur" detail:@{
     @"value" : [self getText]
   }];

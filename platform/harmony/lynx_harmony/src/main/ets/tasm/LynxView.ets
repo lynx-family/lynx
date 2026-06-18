@@ -18,7 +18,7 @@ import { LynxPipelineInfo, LynxPipelineOrigin, LynxViewClient } from './LynxView
 import { CAPIView } from './behavior/CAPIView';
 import { LynxError } from './LynxError';
 import { LynxSubErrorCode } from './gen/LynxSubErrorCode';
-import { BuilderNode, FrameNode, NodeController, Size, UIContext, window } from '@kit.ArkUI';
+import { BuilderNode, curves, FrameNode, NodeController, Size, UIContext, window } from '@kit.ArkUI';
 import { TraceCategory, TraceEvent } from '../base/TraceEvent';
 import { TraceEventDef } from '../base/TraceEventDef';
 import { PerformanceController } from './performance/PerformanceController';
@@ -68,6 +68,8 @@ export enum ColorScheme {
 }
 
 const TAG = 'LynxView';
+const DEFAULT_KEYBOARD_AVOID_ANIMATION_DURATION = 300;
+const KEYBOARD_ANIMATION_CURVE_PARAM_SIZE = 4;
 
 export interface LynxViewBuilder {
   genericResourceFetcher?: LynxGenericResourceFetcher;
@@ -185,6 +187,10 @@ export struct LynxView {
   private currentWindow?: window.Window;
   private enableLogBox: boolean = false;
   private keyboardHeightChangeCallback?: (height: number) => void;
+  private keyboardWillShowCallback?: (keyboardInfo: window.KeyboardInfo) => void;
+  private keyboardWillHideCallback?: (keyboardInfo: window.KeyboardInfo) => void;
+  private pendingKeyboardAnimationOption?: AnimateParam;
+  private activeKeyboardAnimationOption?: AnimateParam;
   private loadingID: number = 0;
   private fontScale: number = 1.0;
   private colorScheme: ColorScheme = ColorScheme.LIGHT;
@@ -397,15 +403,41 @@ export struct LynxView {
       this.keyboardHeightChangeCallback = (height: number) => {
         const keyBoardHeight = Math.floor(px2vp(height));
         this.sendGlobalEvent('keyboardstatuschanged', [height !== 0 ? 'on' : 'off', keyBoardHeight, keyBoardHeight]);
-        this.uiRenderer?.keyboardStatusChanged(height !== 0 ? keyBoardHeight + 1 : 0)
+        this.activeKeyboardAnimationOption =
+          this.pendingKeyboardAnimationOption ?? this.getDefaultKeyboardAnimationOption();
+        this.pendingKeyboardAnimationOption = undefined;
+        try {
+          this.uiRenderer?.keyboardStatusChanged(height !== 0 ? keyBoardHeight + 1 : 0)
+        } finally {
+          this.activeKeyboardAnimationOption = undefined;
+        }
       };
       this.currentWindow.on('keyboardHeightChange', this.keyboardHeightChangeCallback);
-      this.uiRenderer?.setAvoidKeyboardListener((translateY: number) => {
-        this.getUIContext()?.animateTo({
-          duration: 300,
-          curve: Curve.EaseOut,
-        }, () => {
-          this.translateY += translateY;
+      this.keyboardWillShowCallback = (keyboardInfo: window.KeyboardInfo) => {
+        this.pendingKeyboardAnimationOption = this.getKeyboardAnimationOption(keyboardInfo);
+      };
+      this.keyboardWillHideCallback = (keyboardInfo: window.KeyboardInfo) => {
+        this.pendingKeyboardAnimationOption = this.getKeyboardAnimationOption(keyboardInfo);
+      };
+      try {
+        this.currentWindow.on('keyboardWillShow', this.keyboardWillShowCallback);
+      } catch (e) {
+        this.keyboardWillShowCallback = undefined;
+        LLog.d(TAG, `Failed to add the keyboardWillShow listener. Code: ${e.code}, message: ${e.message}`);
+      }
+      try {
+        this.currentWindow.on('keyboardWillHide', this.keyboardWillHideCallback);
+      } catch (e) {
+        this.keyboardWillHideCallback = undefined;
+        LLog.d(TAG, `Failed to add the keyboardWillHide listener. Code: ${e.code}, message: ${e.message}`);
+      }
+      this.uiRenderer?.setAvoidKeyboardListener((translateY: number, isKeyboardTransition: boolean) => {
+        const animationOption =
+          isKeyboardTransition
+            ? this.activeKeyboardAnimationOption ?? this.getDefaultKeyboardAnimationOption()
+            : this.getDefaultKeyboardAnimationOption();
+        this.getUIContext()?.animateTo(animationOption, () => {
+          this.translateY = translateY;
         })
       })
     }).catch((err: BusinessError) => {
@@ -432,13 +464,67 @@ export struct LynxView {
     } catch (e) {
       LLog.e(TAG, `Failed to remove the keyboardHeightChange listener. Code: ${e.code}, message: ${e.message}`);
     }
+    try {
+      if (this.keyboardWillShowCallback !== undefined) {
+        this.currentWindow?.off('keyboardWillShow', this.keyboardWillShowCallback);
+      }
+    } catch (e) {
+      LLog.e(TAG, `Failed to remove the keyboardWillShow listener. Code: ${e.code}, message: ${e.message}`);
+    }
+    try {
+      if (this.keyboardWillHideCallback !== undefined) {
+        this.currentWindow?.off('keyboardWillHide', this.keyboardWillHideCallback);
+      }
+    } catch (e) {
+      LLog.e(TAG, `Failed to remove the keyboardWillHide listener. Code: ${e.code}, message: ${e.message}`);
+    }
     this.keyboardHeightChangeCallback = undefined;
+    this.keyboardWillShowCallback = undefined;
+    this.keyboardWillHideCallback = undefined;
+    this.pendingKeyboardAnimationOption = undefined;
+    this.activeKeyboardAnimationOption = undefined;
     let extensionService: ILynxExtensionService | undefined =
       LynxServiceCenter.getService<ILynxExtensionService>(LynxServiceType.Extension);
     if (!this.enableAirStrictMode && extensionService != undefined) {
       extensionService.onLynxViewDestroy(this.context);
     }
     this.context.aboutToDisappear();
+  }
+
+  private getDefaultKeyboardAnimationOption(): AnimateParam {
+    return {
+      duration: DEFAULT_KEYBOARD_AVOID_ANIMATION_DURATION,
+      curve: Curve.EaseOut,
+    };
+  }
+
+  private getKeyboardAnimationOption(keyboardInfo: window.KeyboardInfo): AnimateParam {
+    if (keyboardInfo.animated === false) {
+      return {
+        duration: 0,
+        curve: Curve.Linear,
+      };
+    }
+    if (keyboardInfo.config === undefined) {
+      return this.getDefaultKeyboardAnimationOption();
+    }
+    return {
+      duration: keyboardInfo.config.duration ?? DEFAULT_KEYBOARD_AVOID_ANIMATION_DURATION,
+      curve: this.getKeyboardAnimationCurve(keyboardInfo.config),
+    };
+  }
+
+  private getKeyboardAnimationCurve(config: window.WindowAnimationConfig): Curve | ICurve {
+    if (config.param !== undefined && config.param.length === KEYBOARD_ANIMATION_CURVE_PARAM_SIZE) {
+      if (config.curve === window.WindowAnimationCurve.INTERPOLATION_SPRING) {
+        return curves.interpolatingSpring(config.param[0], config.param[1], config.param[2], config.param[3]);
+      }
+      return curves.cubicBezierCurve(config.param[0], config.param[1], config.param[2], config.param[3]);
+    }
+    if (config.curve === window.WindowAnimationCurve.LINEAR) {
+      return Curve.Linear;
+    }
+    return Curve.EaseOut;
   }
 
   private setupLogBox() {
