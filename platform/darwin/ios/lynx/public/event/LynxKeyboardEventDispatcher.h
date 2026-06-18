@@ -21,7 +21,34 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (instancetype)initWithContext:(LynxContext *)context;
 - (void)addKeyboardEventObserver:(id<LynxKeyboardEventObserver>)observer;
-
+- (void)inputDidBeginEditingForOwner:(id)owner
+                            rootView:(UIView *)rootView
+                           inputView:(UIView *)inputView
+                       avoidKeyboard:(BOOL)avoidKeyboard
+                             spacing:(CGFloat)spacing;
+- (void)inputDidEndEditingForOwner:(id)owner finalHideBlock:(dispatch_block_t)block;
+- (void)inputDidLayoutForOwner:(id)owner
+                      rootView:(UIView *)rootView
+                     inputView:(UIView *)inputView
+                 avoidKeyboard:(BOOL)avoidKeyboard
+                       spacing:(CGFloat)spacing;
+- (void)avoidKeyboardPropsDidChangeForOwner:(id)owner
+                                   rootView:(UIView *)rootView
+                                  inputView:(UIView *)inputView
+                              avoidKeyboard:(BOOL)avoidKeyboard
+                                    spacing:(CGFloat)spacing;
+- (void)keyboardWillShowForOwner:(id)owner
+                        rootView:(UIView *)rootView
+                       inputView:(UIView *)inputView
+                   avoidKeyboard:(BOOL)avoidKeyboard
+                         spacing:(CGFloat)spacing
+                          height:(CGFloat)height
+                        duration:(NSTimeInterval)duration
+                           curve:(UIViewAnimationCurve)curve;
+- (void)keyboardWillHideForOwner:(id)owner
+                        duration:(NSTimeInterval)duration
+                           curve:(UIViewAnimationCurve)curve
+                  finalHideBlock:(dispatch_block_t)block;
 @end
 
 NS_ASSUME_NONNULL_END

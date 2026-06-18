@@ -16,7 +16,7 @@ export interface LynxUIRenderer {
 
   keyboardStatusChanged(height: number): void;
 
-  setAvoidKeyboardListener(avoidKeyboardListener: (translateY: number) => void): void;
+  setAvoidKeyboardListener(avoidKeyboardListener: (translateY: number, isKeyboardTransition: boolean) => void): void;
 
   onEnterForeground(): void;
 
