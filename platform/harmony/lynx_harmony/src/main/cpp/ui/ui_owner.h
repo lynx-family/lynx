@@ -175,6 +175,16 @@ class UIOwner {
   void PostDrawEndTimingFrameCallback(
       const tasm::PipelineID& pipeline_id) const;
   void OnAvoidKeyboardCallback(float translate_y) const;
+  void KeyboardAvoidingInputDidFocus(UIBase* owner, bool avoid_keyboard,
+                                     float spacing);
+  void KeyboardAvoidingInputDidBlur(UIBase* owner, bool is_focus_transition);
+  void KeyboardAvoidingInputDidLayout(UIBase* owner, bool avoid_keyboard,
+                                      float spacing);
+  void AvoidKeyboardPropsDidChangeForOwner(UIBase* owner, bool avoid_keyboard,
+                                           float spacing);
+  void KeyboardWillShowForOwner(UIBase* owner, float keyboard_height,
+                                bool avoid_keyboard, float spacing);
+  bool KeyboardWillHideForOwner(UIBase* owner);
 
   void OnEnterForeground();
   void OnEnterBackground();
@@ -216,8 +226,16 @@ class UIOwner {
   void UpdateComponentIdMap(UIBase* ui, PropBundleHarmony* painting_data);
   void InitLynxImageConfig(bool enable_image_load_callback,
                            bool enable_redirect_url);
+  void SaveKeyboardAvoidingTarget(UIBase* owner, bool avoid_keyboard,
+                                  float spacing);
+  void UpdateKeyboardAvoidDistance();
+  void ApplyKeyboardAvoidDistance(float target_distance);
+  float CalculateKeyboardAvoidDistance(UIBase* owner);
+  float GetKeyboardAvoidingScreenBottom();
+  void ResetKeyboardAvoidingTargetIfNeeded(int32_t sign);
 
   int GetJSNodeType(int sign, const std::string& tag) const;
+  static constexpr int32_t kInvalidKeyboardAvoidingSign = -2;
   std::unordered_map<int32_t, std::shared_ptr<UIBase>> ui_holder_;
   std::unordered_set<int32_t> accessibility_exclusive_;
   std::unordered_map<std::string, int32_t> component_map_;
@@ -254,6 +272,14 @@ class UIOwner {
 
   std::shared_ptr<GestureArenaManager> gesture_arena_manager_{nullptr};
   std::unique_ptr<LynxImageConfig> image_config_{nullptr};
+  int32_t keyboard_avoiding_active_owner_{kInvalidKeyboardAvoidingSign};
+  int32_t keyboard_avoiding_last_event_owner_{kInvalidKeyboardAvoidingSign};
+  float keyboard_height_{0.f};
+  float keyboard_avoiding_screen_bottom_{0.f};
+  float current_avoid_distance_{0.f};
+  bool is_keyboard_transition_{false};
+  bool avoid_keyboard_{false};
+  float avoid_keyboard_spacing_{0.f};
 };
 
 }  // namespace harmony

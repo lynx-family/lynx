@@ -2423,6 +2423,12 @@ public protocol LynxJSBTimingListener-p : <NSObject> {
 public class LynxKeyboardEventDispatcher : NSObject {
   public instancetype LynxKeyboardEventDispatcher::initWithContext:(LynxContext *context);
   public void LynxKeyboardEventDispatcher::addKeyboardEventObserver:(id< LynxKeyboardEventObserver > observer);
+  public void LynxKeyboardEventDispatcher::inputDidBeginEditingForOwner:rootView:inputView:avoidKeyboard:spacing:(id owner,[rootView] UIView *rootView,[inputView] UIView *inputView,[avoidKeyboard] BOOL avoidKeyboard,[spacing] CGFloat spacing);
+  public void LynxKeyboardEventDispatcher::inputDidEndEditingForOwner:finalHideBlock:(id owner,[finalHideBlock] dispatch_block_t block);
+  public void LynxKeyboardEventDispatcher::inputDidLayoutForOwner:rootView:inputView:avoidKeyboard:spacing:(id owner,[rootView] UIView *rootView,[inputView] UIView *inputView,[avoidKeyboard] BOOL avoidKeyboard,[spacing] CGFloat spacing);
+  public void LynxKeyboardEventDispatcher::avoidKeyboardPropsDidChangeForOwner:rootView:inputView:avoidKeyboard:spacing:(id owner,[rootView] UIView *rootView,[inputView] UIView *inputView,[avoidKeyboard] BOOL avoidKeyboard,[spacing] CGFloat spacing);
+  public void LynxKeyboardEventDispatcher::keyboardWillShowForOwner:rootView:inputView:avoidKeyboard:spacing:height:duration:curve:(id owner,[rootView] UIView *rootView,[inputView] UIView *inputView,[avoidKeyboard] BOOL avoidKeyboard,[spacing] CGFloat spacing,[height] CGFloat height,[duration] NSTimeInterval duration,[curve] UIViewAnimationCurve curve);
+  public void LynxKeyboardEventDispatcher::keyboardWillHideForOwner:duration:curve:finalHideBlock:(id owner,[duration] NSTimeInterval duration,[curve] UIViewAnimationCurve curve,[finalHideBlock] dispatch_block_t block);
 }
 
 public protocol LynxKeyboardEventObserver-p : <NSObject> {

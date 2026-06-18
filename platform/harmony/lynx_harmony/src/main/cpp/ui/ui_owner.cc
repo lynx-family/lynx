@@ -6,6 +6,8 @@
 
 #include <arkui/native_node_napi.h>
 
+#include <algorithm>
+#include <cmath>
 #include <memory>
 #include <string>
 #include <utility>
@@ -30,6 +32,7 @@
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_root.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_scroll.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_text.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/ui/utils/lynx_ui_helper.h"
 
 namespace lynx {
 namespace tasm {
@@ -239,6 +242,7 @@ void UIOwner::DestroySubTree(UIBase* root) {
   root->OnDestroy();
   root->RemoveFromParent();
   AddOrRemoveUIFromExclusiveSet(root->Sign(), false);
+  ResetKeyboardAvoidingTargetIfNeeded(root->Sign());
   keyboard_event_observers_.erase(root->Sign());
   if (root->NeedWindowStateChangeEvent()) {
     window_state_listeners_.erase(root);
@@ -446,6 +450,171 @@ UIBase* UIOwner::FindUIBySign(int sign) const {
   return nullptr;
 }
 
+void UIOwner::SaveKeyboardAvoidingTarget(UIBase* owner, bool avoid_keyboard,
+                                         float spacing) {
+  if (!owner) {
+    return;
+  }
+  keyboard_avoiding_active_owner_ = owner->Sign();
+  keyboard_avoiding_last_event_owner_ = owner->Sign();
+  avoid_keyboard_ = avoid_keyboard;
+  avoid_keyboard_spacing_ = spacing;
+}
+
+void UIOwner::KeyboardAvoidingInputDidFocus(UIBase* owner, bool avoid_keyboard,
+                                            float spacing) {
+  if (owner && owner->Sign() == keyboard_avoiding_active_owner_ &&
+      avoid_keyboard == avoid_keyboard_ &&
+      std::fabs(spacing - avoid_keyboard_spacing_) < 0.5f) {
+    return;
+  }
+  SaveKeyboardAvoidingTarget(owner, avoid_keyboard, spacing);
+  UpdateKeyboardAvoidDistance();
+}
+
+void UIOwner::KeyboardAvoidingInputDidBlur(UIBase* owner,
+                                           bool is_focus_transition) {
+  if (!owner) {
+    return;
+  }
+  if (owner->Sign() == keyboard_avoiding_active_owner_) {
+    keyboard_avoiding_last_event_owner_ = owner->Sign();
+    if (!is_focus_transition && keyboard_height_ <= 0.f) {
+      keyboard_avoiding_active_owner_ = kInvalidKeyboardAvoidingSign;
+      ApplyKeyboardAvoidDistance(0.f);
+    }
+  }
+}
+
+void UIOwner::KeyboardAvoidingInputDidLayout(UIBase* owner, bool avoid_keyboard,
+                                             float spacing) {
+  if (!owner || owner->Sign() != keyboard_avoiding_active_owner_) {
+    return;
+  }
+  SaveKeyboardAvoidingTarget(owner, avoid_keyboard, spacing);
+  UpdateKeyboardAvoidDistance();
+}
+
+void UIOwner::AvoidKeyboardPropsDidChangeForOwner(UIBase* owner,
+                                                  bool avoid_keyboard,
+                                                  float spacing) {
+  if (!owner || owner->Sign() != keyboard_avoiding_active_owner_) {
+    return;
+  }
+  SaveKeyboardAvoidingTarget(owner, avoid_keyboard, spacing);
+  UpdateKeyboardAvoidDistance();
+}
+
+void UIOwner::KeyboardWillShowForOwner(UIBase* owner, float keyboard_height,
+                                       bool avoid_keyboard, float spacing) {
+  if (!owner) {
+    return;
+  }
+  keyboard_height_ = keyboard_height;
+  SaveKeyboardAvoidingTarget(owner, avoid_keyboard, spacing);
+  UpdateKeyboardAvoidDistance();
+}
+
+bool UIOwner::KeyboardWillHideForOwner(UIBase* owner) {
+  if (!owner) {
+    return false;
+  }
+  int32_t sign = owner->Sign();
+  if (sign != keyboard_avoiding_active_owner_ &&
+      sign != keyboard_avoiding_last_event_owner_) {
+    return false;
+  }
+  keyboard_height_ = 0.f;
+  keyboard_avoiding_active_owner_ = kInvalidKeyboardAvoidingSign;
+  keyboard_avoiding_last_event_owner_ = kInvalidKeyboardAvoidingSign;
+  ApplyKeyboardAvoidDistance(0.f);
+  return true;
+}
+
+void UIOwner::UpdateKeyboardAvoidDistance() {
+  UIBase* active_owner = FindUIBySign(keyboard_avoiding_active_owner_);
+  if (!active_owner) {
+    keyboard_avoiding_active_owner_ = kInvalidKeyboardAvoidingSign;
+    ApplyKeyboardAvoidDistance(0.f);
+    return;
+  }
+  ApplyKeyboardAvoidDistance(CalculateKeyboardAvoidDistance(active_owner));
+}
+
+void UIOwner::ApplyKeyboardAvoidDistance(float target_distance) {
+  float distance = std::max(0.f, target_distance);
+  if (std::fabs(distance - current_avoid_distance_) < 0.5f) {
+    if (distance == 0.f && current_avoid_distance_ != 0.f) {
+      current_avoid_distance_ = distance;
+      OnAvoidKeyboardCallback(0.f);
+      return;
+    }
+    current_avoid_distance_ = distance;
+    return;
+  }
+  current_avoid_distance_ = distance;
+  OnAvoidKeyboardCallback(-current_avoid_distance_);
+}
+
+float UIOwner::CalculateKeyboardAvoidDistance(UIBase* owner) {
+  if (!owner || !avoid_keyboard_ || !context_) {
+    return 0.f;
+  }
+  float screen_bottom = GetKeyboardAvoidingScreenBottom();
+  if (keyboard_height_ <= 0.f) {
+    return 0.f;
+  }
+  float rect[4] = {0.f, 0.f, owner->width_, owner->height_};
+  LynxUIHelper::ConvertRectFromUIToScreen(rect, owner, rect);
+  float input_bottom_before_avoid = rect[3] + current_avoid_distance_;
+  float bottom_to_screen = screen_bottom - input_bottom_before_avoid;
+  return std::max(
+      0.f, keyboard_height_ - bottom_to_screen + avoid_keyboard_spacing_);
+}
+
+float UIOwner::GetKeyboardAvoidingScreenBottom() {
+  if (!context_) {
+    return 0.f;
+  }
+  float screen_bottom = 0.f;
+  UIRoot* root = context_->Root();
+  if (root && root->height_ > 0.f) {
+    ArkUI_IntOffset root_offset;
+    OH_ArkUI_NodeUtils_GetLayoutPositionInScreen(root->GetProxyNode(),
+                                                 &root_offset);
+    screen_bottom =
+        root_offset.y / root->GetContext()->ScaledDensity() + root->height_;
+  }
+  if (screen_bottom <= 0.f) {
+    float screen_size[2] = {0.f, 0.f};
+    context_->ScreenSize(screen_size);
+    screen_bottom = screen_size[1];
+  }
+  if (screen_bottom <= 0.f) {
+    return keyboard_avoiding_screen_bottom_;
+  }
+  if (keyboard_height_ <= 0.f) {
+    keyboard_avoiding_screen_bottom_ = screen_bottom;
+  } else if (keyboard_avoiding_screen_bottom_ <= 0.f ||
+             screen_bottom > keyboard_avoiding_screen_bottom_) {
+    keyboard_avoiding_screen_bottom_ = screen_bottom;
+  }
+  return keyboard_avoiding_screen_bottom_ > 0.f
+             ? keyboard_avoiding_screen_bottom_
+             : screen_bottom;
+}
+
+void UIOwner::ResetKeyboardAvoidingTargetIfNeeded(int32_t sign) {
+  if (sign != keyboard_avoiding_active_owner_ &&
+      sign != keyboard_avoiding_last_event_owner_) {
+    return;
+  }
+  keyboard_avoiding_active_owner_ = kInvalidKeyboardAvoidingSign;
+  keyboard_avoiding_last_event_owner_ = kInvalidKeyboardAvoidingSign;
+  keyboard_height_ = 0.f;
+  ApplyKeyboardAvoidDistance(0.f);
+}
+
 UIBase* UIOwner::FindUIByIdSelector(const std::string& id_selector) const {
   if (id_selector.empty()) {
     return nullptr;
@@ -544,6 +713,11 @@ napi_value UIOwner::Destroy(napi_env env, napi_callback_info info) {
   obj->layout_changed_nodes_.clear();
   obj->keyboard_event_observers_.clear();
   obj->window_state_listeners_.clear();
+  obj->keyboard_avoiding_active_owner_ = kInvalidKeyboardAvoidingSign;
+  obj->keyboard_avoiding_last_event_owner_ = kInvalidKeyboardAvoidingSign;
+  obj->keyboard_height_ = 0.f;
+  obj->keyboard_avoiding_screen_bottom_ = 0.f;
+  obj->current_avoid_distance_ = 0.f;
   obj->root_ = nullptr;
   napi_delete_reference(env, obj->js_create_);
   napi_delete_reference(env, obj->js_create_node_content_);
@@ -1075,6 +1249,8 @@ napi_value UIOwner::KeyboardStatusChanged(napi_env env,
 
   bool is_show = height > 0;
 
+  bool previous_keyboard_transition = obj->is_keyboard_transition_;
+  obj->is_keyboard_transition_ = true;
   for (const auto& observer : obj->keyboard_event_observers_) {
     const auto ui = observer.second.lock();
     if (ui != nullptr) {
@@ -1085,6 +1261,7 @@ napi_value UIOwner::KeyboardStatusChanged(napi_env env,
       }
     }
   }
+  obj->is_keyboard_transition_ = previous_keyboard_transition;
   return nullptr;
 }
 
@@ -1252,12 +1429,14 @@ void UIOwner::OnAvoidKeyboardCallback(float translate_y) const {
     return;
   }
 
-  size_t argc = 1;
+  size_t argc = 2;
   /**
-   * 0 - sign float
+   * 0 - translate y
+   * 1 - whether this callback is driven by a keyboard transition
    */
   napi_value argv[argc];
-  napi_create_int32(env_, translate_y, &argv[0]);
+  napi_create_double(env_, translate_y, &argv[0]);
+  napi_get_boolean(env_, is_keyboard_transition_, &argv[1]);
 
   napi_value result;
   napi_call_function(env_, js_recv, callback, argc, argv, &result);

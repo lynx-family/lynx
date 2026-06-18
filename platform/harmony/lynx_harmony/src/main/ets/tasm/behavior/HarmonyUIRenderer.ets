@@ -116,7 +116,7 @@ export class HarmonyUIRenderer implements LynxUIRenderer {
     this.uiOwner.keyboardStatusChanged(height);
   }
 
-  setAvoidKeyboardListener(avoidKeyboardListener?: (translateY: number) => void): void {
+  setAvoidKeyboardListener(avoidKeyboardListener?: (translateY: number, isKeyboardTransition: boolean) => void): void {
     this.uiOwner.setAvoidKeyboardListener(avoidKeyboardListener);
   }
 
@@ -128,5 +128,4 @@ export class HarmonyUIRenderer implements LynxUIRenderer {
     this.uiOwner.onEnterBackground();
   }
 }
-
 

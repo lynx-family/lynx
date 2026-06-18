@@ -3392,6 +3392,12 @@ public class com::lynx::tasm::behavior::KeyboardEvent :  {
   public Rect com.lynx.tasm.behavior.KeyboardEvent.getDisplayFrame();
   public int com.lynx.tasm.behavior.KeyboardEvent.getEventViewHeight();
   public void com.lynx.tasm.behavior.KeyboardEvent.addKeyboardEventObserver(KeyboardEventObserver observer);
+  public void com.lynx.tasm.behavior.KeyboardEvent.avoidKeyboardPropsDidChangeForOwner(Object owner, View inputView, View lynxView, boolean avoidKeyboard, float spacing);
+  public void com.lynx.tasm.behavior.KeyboardEvent.inputDidBeginEditingForOwner(Object owner, View inputView, View lynxView, boolean avoidKeyboard, float spacing);
+  public void com.lynx.tasm.behavior.KeyboardEvent.inputDidEndEditingForOwner(Object owner);
+  public void com.lynx.tasm.behavior.KeyboardEvent.inputDidLayoutForOwner(Object owner, View inputView, View lynxView, boolean avoidKeyboard, float spacing);
+  public void com.lynx.tasm.behavior.KeyboardEvent.keyboardWillShowForOwner(Object owner, View inputView, View lynxView, boolean avoidKeyboard, float spacing, int keyboardHeight);
+  public void com.lynx.tasm.behavior.KeyboardEvent.keyboardWillHideForOwner(Object owner, Runnable finalHideBlock);
 }
 
 public interface com::lynx::tasm::behavior::KeyboardEvent::KeyboardEventObserver {
