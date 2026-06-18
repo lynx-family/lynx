@@ -105,6 +105,10 @@
                                                     userInfo:dict];
 }
 
+- (void)updateNewSticky:(NSArray *)info {
+  // Do nonthing on page
+}
+
 - (BOOL)eventThrough:(CGPoint)point {
   BOOL isEventThrough = [super eventThrough:point];
   if (!isEventThrough) {

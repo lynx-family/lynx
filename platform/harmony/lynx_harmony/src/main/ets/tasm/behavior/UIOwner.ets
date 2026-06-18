@@ -21,7 +21,7 @@ export class UIOwner {
   private perfController: PerformanceController;
   private readonly id: string;
   protected fluencyTraceHelper?: FluencyTraceHelper;
-  private avoidKeyboardListener?: (translateY: number) => void;
+  private avoidKeyboardListener?: (translateY: number, isKeyboardTransition: boolean) => void;
   lynxContext: LynxContext;
   private clients?: LynxViewClient[];
 
@@ -127,12 +127,12 @@ export class UIOwner {
     this.native.keyboardStatusChanged(height);
   }
 
-  setAvoidKeyboardListener(avoidKeyboardListener?: (translateY: number) => void):void {
+  setAvoidKeyboardListener(avoidKeyboardListener?: (translateY: number, isKeyboardTransition: boolean) => void):void {
     this.avoidKeyboardListener = avoidKeyboardListener;
   }
 
-  onAvoidKeyboardCallback(translateY: number) {
-    this.avoidKeyboardListener?.(translateY)
+  onAvoidKeyboardCallback(translateY: number, isKeyboardTransition: boolean) {
+    this.avoidKeyboardListener?.(translateY, isKeyboardTransition)
   }
 
   canConsumeTouchEvent(x: number, y: number): boolean {

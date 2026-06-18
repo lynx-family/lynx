@@ -36,8 +36,6 @@ class UIBaseInput : public UIView {
   bool hold_keyboard_{false};
   bool avoid_keyboard_in_lynx_view_{false};
   float avoid_keyboard_spacing_in_lynx_view_{0.0};
-  float keyboard_height_{0.0};
-  float avoid_keyboard_dist_{0.0};
   bool show_soft_input_on_focus_{true};
   bool keyboard_event_observer_registered_{false};
 
@@ -55,7 +53,6 @@ class UIBaseInput : public UIView {
 
   ArkUI_NodeHandle input_node_{nullptr};
   ArkUI_NodeHandle custom_keyboard_{nullptr};
-  bool was_focused_{false};
 
   virtual ArkUI_NodeAttributeType GetTextAttributeType() const {
     return static_cast<ArkUI_NodeAttributeType>(-1);
@@ -115,7 +112,6 @@ class UIBaseInput : public UIView {
       const lepus::Value& args, base::MoveOnlyClosure<void, int32_t, const lepus::Value&> callback);
   int32_t MeasureTextHeight(float font_size, float max_width, int font_weight, int font_style,
                             int line_spacing, std::string font_family, std::string value);
-  float HandleAvoidKeyboard(bool keyboard_displayed);
   static std::unordered_map<std::string, UIMethod> input_base_ui_method_map_;
 };
 }  // namespace harmony

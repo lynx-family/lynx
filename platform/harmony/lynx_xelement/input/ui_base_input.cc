@@ -15,7 +15,6 @@
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/dom/lynx_get_ui_result.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/base/node_manager.h"
-#include "platform/harmony/lynx_harmony/src/main/cpp/ui/utils/lynx_ui_helper.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/utils/lynx_unit_utils.h"
 #include "platform/harmony/lynx_xelement/input/input_shadow_node.h"
 namespace lynx {
@@ -130,6 +129,8 @@ void UIBaseInput::UpdateLayout(float left, float top, float width, float height,
       this->computed_height_ = computed_height;
     }
   });
+  context_->GetUIOwner()->KeyboardAvoidingInputDidLayout(
+      this, avoid_keyboard_in_lynx_view_, avoid_keyboard_spacing_in_lynx_view_);
 }
 
 void UIBaseInput::OnPropUpdate(const std::string& name,
@@ -258,6 +259,9 @@ void UIBaseInput::OnPropUpdate(const std::string& name,
         static_cast<uint32_t>(!value.Bool()));
   } else if (name == "avoid-keyboard") {
     avoid_keyboard_in_lynx_view_ = value.Bool();
+    context_->GetUIOwner()->AvoidKeyboardPropsDidChangeForOwner(
+        this, avoid_keyboard_in_lynx_view_,
+        avoid_keyboard_spacing_in_lynx_view_);
   } else if (name == "avoid-keyboard-spacing") {
     if (value.IsString()) {
       float screen_size[2] = {0};
@@ -269,6 +273,9 @@ void UIBaseInput::OnPropUpdate(const std::string& name,
     } else if (value.IsNumber()) {
       avoid_keyboard_spacing_in_lynx_view_ = static_cast<float>(value.Number());
     }
+    context_->GetUIOwner()->AvoidKeyboardPropsDidChangeForOwner(
+        this, avoid_keyboard_in_lynx_view_,
+        avoid_keyboard_spacing_in_lynx_view_);
   } else if (name == "hold-keyboard") {
     hold_keyboard_ = value.Bool();
   }
@@ -281,7 +288,9 @@ void UIBaseInput::OnNodeReady() {
   bool focused = NodeManager::Instance().GetAttribute<int>(
                      input_node_, NODE_FOCUS_STATUS) == 1;
   if (focused) {
-    avoid_keyboard_dist_ += HandleAvoidKeyboard(true);
+    context_->GetUIOwner()->KeyboardAvoidingInputDidFocus(
+        this, avoid_keyboard_in_lynx_view_,
+        avoid_keyboard_spacing_in_lynx_view_);
   }
 }
 
@@ -411,9 +420,13 @@ void UIBaseInput::OnNodeEvent(ArkUI_NodeEvent* event) {
   if (type == NODE_EVENT_ON_APPEAR) {
   } else if (type == NODE_EVENT_ON_AREA_CHANGE) {
   } else if (type == NODE_ON_FOCUS) {
+    context_->GetUIOwner()->KeyboardAvoidingInputDidFocus(
+        this, avoid_keyboard_in_lynx_view_,
+        avoid_keyboard_spacing_in_lynx_view_);
     SendFocusEvent();
     context_->SetFocusedTarget(weak_from_this());
   } else if (type == NODE_ON_BLUR) {
+    context_->GetUIOwner()->KeyboardAvoidingInputDidBlur(this, false);
     SendBlurEvent();
     context_->UnsetFocusedTarget(weak_from_this());
   } else if (type == GetOnWillInsertEventType() ||
@@ -426,14 +439,19 @@ void UIBaseInput::OnNodeEvent(ArkUI_NodeEvent* event) {
 }
 
 void UIBaseInput::OnFocusChange(bool has_focus, bool is_focus_transition) {
-  if (!has_focus) {
+  if (has_focus) {
+    context_->GetUIOwner()->KeyboardAvoidingInputDidFocus(
+        this, avoid_keyboard_in_lynx_view_,
+        avoid_keyboard_spacing_in_lynx_view_);
+  } else {
+    context_->GetUIOwner()->KeyboardAvoidingInputDidBlur(this,
+                                                         is_focus_transition);
     if (!is_focus_transition) {
       if (!hold_keyboard_) {
         NodeManager::Instance().SetAttributeWithNumberValue(
             input_node_, GetEditingAttributeType(), 0);
         NodeManager::Instance().SetAttributeWithNumberValue(
             input_node_, NODE_FOCUS_STATUS, 0);
-        was_focused_ = true;
       }
     }
   }
@@ -667,6 +685,7 @@ void UIBaseInput::Focus(
 void UIBaseInput::Blur(
     const lepus::Value& args,
     base::MoveOnlyClosure<void, int32_t, const lepus::Value&> callback) {
+  context_->GetUIOwner()->KeyboardAvoidingInputDidBlur(this, false);
   NodeManager::Instance().SetAttributeWithNumberValue(
       input_node_, GetEditingAttributeType(), 0);
   NodeManager::Instance().SetAttributeWithNumberValue(input_node_,
@@ -739,50 +758,19 @@ void UIBaseInput::SetSelectionRange(
   callback(LynxGetUIResult::PARAM_INVALID, lepus::Value(ret));
 }
 
-float UIBaseInput::HandleAvoidKeyboard(bool keyboard_displayed) {
-  if (avoid_keyboard_in_lynx_view_) {
-    if (keyboard_displayed) {
-      float rect_in_root[4] = {0, 0, 0, 0};
-      float self_rect[4] = {0, 0, width_, height_};
-      LynxUIHelper::ConvertRectFromUIToScreen(rect_in_root, this, self_rect);
-      float screen_size[2] = {0};
-      context_->ScreenSize(screen_size);
-      float bottom_to_screen = screen_size[1] - rect_in_root[3];
-      float gap = keyboard_height_ - bottom_to_screen +
-                  avoid_keyboard_spacing_in_lynx_view_;
-      if (avoid_keyboard_dist_ == 0) {
-        if (gap > 0) {
-          context_->GetUIOwner()->OnAvoidKeyboardCallback(-gap);
-          return gap;
-        }
-      } else {
-        context_->GetUIOwner()->OnAvoidKeyboardCallback(-gap);
-        return gap;
-      }
-
-    } else {
-      if (avoid_keyboard_dist_ != 0) {
-        context_->GetUIOwner()->OnAvoidKeyboardCallback(avoid_keyboard_dist_);
-      }
-    }
-  }
-  return 0.f;
-}
-
 void UIBaseInput::OnKeyboardWillShow(float height) {
   bool focused = NodeManager::Instance().GetAttribute<int>(
                      input_node_, NODE_FOCUS_STATUS) == 1;
   if (focused) {
-    keyboard_height_ = height;
-    avoid_keyboard_dist_ = HandleAvoidKeyboard(true);
+    context_->GetUIOwner()->KeyboardWillShowForOwner(
+        this, height, avoid_keyboard_in_lynx_view_,
+        avoid_keyboard_spacing_in_lynx_view_);
     SendKeyboardHeightChangedEvent(height);
   }
 }
 
 void UIBaseInput::OnKeyboardWillHide() {
-  if (was_focused_) {
-    was_focused_ = false;
-    avoid_keyboard_dist_ = HandleAvoidKeyboard(false);
+  if (context_->GetUIOwner()->KeyboardWillHideForOwner(this)) {
     SendKeyboardHeightChangedEvent(0);
   }
 }

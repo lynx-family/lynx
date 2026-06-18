@@ -8,7 +8,6 @@ import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Context
 import android.graphics.Color
-import android.graphics.RectF
 import android.graphics.Typeface
 import android.os.Build
 import android.text.Editable
@@ -23,7 +22,6 @@ import android.text.style.AbsoluteSizeSpan
 import android.util.TypedValue
 import android.view.Gravity
 import android.view.View
-import android.view.ViewGroup
 import android.view.WindowManager
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
@@ -44,7 +42,6 @@ import com.lynx.tasm.behavior.shadow.text.FontFamilySpan
 import com.lynx.tasm.behavior.shadow.text.TypefaceCache
 import com.lynx.tasm.behavior.ui.LynxBaseUI
 import com.lynx.tasm.behavior.ui.LynxUI
-import com.lynx.tasm.behavior.ui.utils.LynxUIHelper
 import com.lynx.tasm.event.LynxDetailEvent
 import com.lynx.tasm.fontface.FontFaceManager
 import com.lynx.tasm.utils.ColorUtils
@@ -69,6 +66,7 @@ open class LynxUIBaseInput(context: LynxContext, params: Any?) : LynxUI<LynxEdit
         const val TYPE_TEL:String = "tel"
         const val TYPE_EMAIL:String = "email"
     }
+    private var mIsSettingInputType: Boolean = false
     private var mReadonly:Boolean = false;
     private var mFontWeight: Int = 400
     private var mPlaceholderFontWeight: Int = UNDEFINED_INT
@@ -83,10 +81,7 @@ open class LynxUIBaseInput(context: LynxContext, params: Any?) : LynxUI<LynxEdit
     private var mPlaceholderFontColor: Int = ColorUtils.parse("#3c433c4c")
     private var mInputFilterRegex: String? = null
     private var mAvoidKeyboardInLynxView = false
-    private var mKeyboardHeight:Int = 0
     private var mAvoidKeyboardSpacingInLynxView:Float = 0.0f
-    private var mWasFocused = false
-    private var mAvoidKeyboardDist: Float = 0.0f
     protected var mConfirmEnter: Boolean = false
     protected var mHoldKeyboard: Boolean = false
     var readonlyInputFilter = object: InputFilter {
@@ -139,7 +134,6 @@ open class LynxUIBaseInput(context: LynxContext, params: Any?) : LynxUI<LynxEdit
         mFontSize = UnitUtils.toPxWithDisplayMetrics("14px", 0f, 0f, 0f, 0f, mContext?.screenMetrics)
         val editText = LynxEditTextView(context!!).apply {
             onFocusChangeListener =  View.OnFocusChangeListener { _: View?, hasFocus ->
-                mWasFocused = !hasFocus
                 // Make sure keyboard is displayed while being focused
                 if (hasFocus && !mUseCustomKeyboard) {
                     showSoftInput()
@@ -191,6 +185,7 @@ open class LynxUIBaseInput(context: LynxContext, params: Any?) : LynxUI<LynxEdit
                 }
 
                 override fun afterTextChanged(s: Editable?) {
+                    if (mIsSettingInputType) return
                     afterTextDidChanged(s)
                     if (mView != null) {
                       s?.let {
@@ -462,11 +457,13 @@ open class LynxUIBaseInput(context: LynxContext, params: Any?) : LynxUI<LynxEdit
     @LynxProp(name = "confirm-type")
     fun setConfirmType(value: String?) {
       if (isTextArea()) {
+        mIsSettingInputType = true
         // can not apply both confirm-type and type on textarea
         mView.isSingleLine = false
         mView.inputType = InputType.TYPE_CLASS_TEXT
         mView.setHorizontallyScrolling(false)
         mView.maxLines = mView.maxLines
+        mIsSettingInputType = false
       }
         when(value ?: "done") {
             "next" -> mView.imeOptions = EditorInfo.IME_ACTION_NEXT
@@ -480,6 +477,7 @@ open class LynxUIBaseInput(context: LynxContext, params: Any?) : LynxUI<LynxEdit
     @LynxProp(name = "type")
     fun setInputType(value: String?) {
             val imeOptions = mView.imeOptions;
+            mIsSettingInputType = true
             when (value ?: "text") {
                 LynxUIBaseInput.TYPE_NUMBER ->  mView.inputType = InputType.TYPE_CLASS_NUMBER
                 LynxUIBaseInput.TYPE_TEXT -> mView.inputType = InputType.TYPE_CLASS_TEXT
@@ -500,6 +498,7 @@ open class LynxUIBaseInput(context: LynxContext, params: Any?) : LynxUI<LynxEdit
                 mView.isSingleLine = false
                 mView.imeOptions = imeOptions
             }
+            mIsSettingInputType = false
     }
 
     @LynxProp(name = "maxlength")
@@ -590,6 +589,17 @@ open class LynxUIBaseInput(context: LynxContext, params: Any?) : LynxUI<LynxEdit
         super.afterPropsUpdated(props)
         setFont()
         setPlaceholderFont()
+        mContext.lynxView?.let {
+          if (mAvoidKeyboardInLynxView) {
+            it.keyboardEvent.avoidKeyboardPropsDidChangeForOwner(
+                this,
+                mView,
+                it,
+                mAvoidKeyboardInLynxView,
+                mAvoidKeyboardSpacingInLynxView
+            )
+          }
+        }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P && !mLineSpacing.equals(-1f) ) {
 //            TODO(xiamengfei.moonface): Impl line height with custom Span.
             val fontHeight: Int = mView.paint.getFontMetricsInt(null)
@@ -603,7 +613,15 @@ open class LynxUIBaseInput(context: LynxContext, params: Any?) : LynxUI<LynxEdit
         mView.width = width
         mView.height = height
         mView.setPadding(mPaddingLeft, mPaddingTop, mPaddingRight, mPaddingBottom)
-        mAvoidKeyboardDist += handleAvoidKeyboard(mView.isFocused)
+        mContext.lynxView?.let {
+            it.keyboardEvent.inputDidLayoutForOwner(
+                this,
+                mView,
+                it,
+                mAvoidKeyboardInLynxView,
+                mAvoidKeyboardSpacingInLynxView
+            )
+        }
     }
 
     protected open fun setFont() {
@@ -719,7 +737,6 @@ open class LynxUIBaseInput(context: LynxContext, params: Any?) : LynxUI<LynxEdit
                 }
             } else {
               if (!mHoldKeyboard) {
-                mWasFocused = true
                 mView.clearFocus()
                 hideSoftInput()
               }
@@ -872,73 +889,44 @@ open class LynxUIBaseInput(context: LynxContext, params: Any?) : LynxUI<LynxEdit
     }
   
     open fun isTextArea(): Boolean {
-      return false;
+        return false;
     }
-  
-  private fun handleAvoidKeyboard(keyboardDisplayed: Boolean) : Float {
-    if (!mAvoidKeyboardInLynxView || mContext.lynxView == null) {
-      return 0.0f
-    }
-    if (keyboardDisplayed) {
-      if (mView.isFocused) {
-        var rectInRoot = LynxUIHelper.convertRectFromUIToScreen(
-          this, RectF(0f, 0f, getWidth().toFloat(), getHeight().toFloat())
-        )
-        val decorView = ContextUtils.getActivity(mContext)?.window?.decorView
-        val viewWithoutStatusBar = (decorView as ViewGroup).getChildAt(0)
-        val screenHeight = decorView.height
-        val statusBarHeight = if (viewWithoutStatusBar != null) (screenHeight - viewWithoutStatusBar.height)  else 0
-        val bottomToScreen = screenHeight - statusBarHeight - rectInRoot.bottom + mContext.lynxView.translationY
 
-        val gap = mKeyboardHeight - bottomToScreen + mAvoidKeyboardSpacingInLynxView
-        if (this.mAvoidKeyboardDist == 0F) {
-          if (gap > 0) {
-            mContext.lynxView.animate().translationY(-gap).setDuration(300).start()
-            return gap;
-          }
-        } else {
-          mContext.lynxView.animate().translationY(-gap).setDuration(300).start()
+    override fun keyboardWillShow(keyboardHeight: Int) {
+        if (mView.isFocused) {
+            mContext.lynxView?.let {
+                it.keyboardEvent.keyboardWillShowForOwner(
+                    this,
+                    mView,
+                    it,
+                    mAvoidKeyboardInLynxView,
+                    mAvoidKeyboardSpacingInLynxView,
+                    keyboardHeight
+                )
+            }
+            lynxContext.eventEmitter.sendCustomEvent(
+                LynxDetailEvent(
+                    sign,
+                    "keyboardheightchange"
+                ).apply {
+                    addDetail("height", keyboardHeight)
+                })
         }
-      }
-    } else {
-      if (mWasFocused) {
-        mWasFocused = false
-        if (mAvoidKeyboardDist != 0F) {
-          mContext.lynxView.animate().translationY(0F).setDuration(300).start()
+    }
+
+    override fun keyboardWillHide() {
+        mView.post {
+            mContext.lynxView?.let {
+                it.keyboardEvent.keyboardWillHideForOwner(this, Runnable {
+                    lynxContext.eventEmitter.sendCustomEvent(
+                        LynxDetailEvent(
+                            sign,
+                            "keyboardheightchange"
+                        ).apply {
+                            addDetail("height", 0)
+                        })
+                })
+            }
         }
-      }
     }
-    return 0.0f
-  }
-
-  override fun keyboardWillShow(keyboardHeight: Int) {
-    if (mView.isFocused) {
-      mWasFocused = false
-      mKeyboardHeight = keyboardHeight
-      mAvoidKeyboardDist = handleAvoidKeyboard(true)
-      lynxContext.eventEmitter.sendCustomEvent(
-        LynxDetailEvent(
-          sign,
-          "keyboardheightchange"
-        ).apply {
-          addDetail("height", keyboardHeight)
-        })
-    }
-  }
-
-  override fun keyboardWillHide() {
-    mView.post {
-      // Match the hide callback with the input that owned the previous keyboard state during focus handoff.
-      if (mWasFocused) {
-        mAvoidKeyboardDist = handleAvoidKeyboard(false)
-        lynxContext.eventEmitter.sendCustomEvent(
-          LynxDetailEvent(
-            sign,
-            "keyboardheightchange"
-          ).apply {
-            addDetail("height", 0)
-          })
-      }
-    }
-  }
 }
