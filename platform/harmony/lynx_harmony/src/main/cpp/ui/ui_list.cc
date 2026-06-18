@@ -816,7 +816,18 @@ void UIList::HandleScrollStopEvent() {
 }
 
 void UIList::SendScrollEndEvent() {
-  CustomEvent event{Sign(), list::kScrollEnd, "detail", lepus_value("")};
+  auto offset = GetScrollOffset();
+  auto param = lepus::Dictionary::Create();
+  param->SetValue(list::kDeltaX, 0);
+  param->SetValue(list::kDeltaY, 0);
+  param->SetValue(list::kScrollLeft, offset.first);
+  param->SetValue(list::kScrollTop, offset.second);
+  param->SetValue(list::kScrollWidth, is_horizontal_ ? content_width_ : width_);
+  param->SetValue(list::kScrollHeight,
+                  is_horizontal_ ? height_ : content_height_);
+  param->SetValue(list::kListWidth, width_);
+  param->SetValue(list::kListHeight, height_);
+  CustomEvent event{Sign(), list::kScrollEnd, "detail", lepus_value(param)};
   context_->SendEvent(event);
 }
 
