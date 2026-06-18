@@ -1,0 +1,20 @@
+# Files matching these patterns are considered safe to skip Darwin jobs for PRs.
+# Keep this list conservative: shared source, dependency, build, and CI changes
+# should not be added here unless they are known not to affect Darwin.
+*.md
+docs/*
+agents/*
+.github/ISSUE_TEMPLATE/*
+.github/PULL_REQUEST_TEMPLATE*
+android/*
+platform/android/*
+explorer/android/*
+.github/actions/android-*
+harmony/*
+platform/harmony/*
+explorer/harmony/*
+.github/actions/harmony-*
+windows/*
+platform/windows/*
+explorer/windows/*
+.github/actions/windows-*
