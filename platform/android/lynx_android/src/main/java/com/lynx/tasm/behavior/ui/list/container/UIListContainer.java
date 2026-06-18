@@ -1130,11 +1130,9 @@ public class UIListContainer extends UISimpleView<ListContainerView>
     if (mEnableScrollStateChangeEvent) {
       LynxDetailEvent event =
           new LynxDetailEvent(getSign(), LynxScrollEvent.EVENT_SCROLL_STATE_CHANGE);
-
       if (mEnableNeedVisibleItemInfo) {
         event.addDetail("attachedCells", visibleCellsInfo());
       }
-
       event.addDetail("state", state);
       mContext.getEventEmitter().sendCustomEvent(event);
     }
@@ -1142,8 +1140,12 @@ public class UIListContainer extends UISimpleView<ListContainerView>
 
   public void sendCustomEvent(int l, int t, int oldl, int oldt, String type) {
     LynxScrollEvent event = LynxScrollEvent.createScrollEvent(getSign(), type);
-    event.setScrollParams(
-        l, t, mView.getMeasuredHeight(), mView.getMeasuredWidth(), l - oldl, t - oldt);
+    event.setScrollParams(l, t, mView.mMeasuredHeight, mView.mMeasuredWidth, l - oldl, t - oldt);
+    event.addDetail("listWidth", PixelUtils.pxToDip(getWidth()));
+    event.addDetail("listHeight", PixelUtils.pxToDip(getHeight()));
+    if (isRtl() && !mIsVertical) {
+      event.addDetail("scrollLeft", PixelUtils.pxToDip(mView.contentOffsetXRTL(l)));
+    }
     if (getLynxContext() != null) {
       getLynxContext().getEventEmitter().sendCustomEvent(event);
     }

@@ -459,7 +459,7 @@ public class ListContainerView extends NestedScrollContainerView
     mShouldBlockScrollByListContainer = false;
   }
 
-  private int contentOffsetXRTL(float originLeft) {
+  int contentOffsetXRTL(float originLeft) {
     return (int) Math.max(mMeasuredWidth - originLeft - mUiListContainer.getWidth(), 0);
   }
 

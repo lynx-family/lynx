@@ -691,20 +691,12 @@ LYNX_PROP_SETTER("experimental-update-sticky-for-diff", setUpdateStickyForDiff, 
   if (self.currentScrollState == scrollState) {
     return;
   }
-  NSMutableDictionary *detail = [[NSMutableDictionary alloc] init];
-  detail[@"state"] = @(scrollState);
-  if (self.enableNeedVisibleItemInfo) {
-    NSArray *attachedCellsArray = [self visibleCellsInfo];
-    detail[@"attachedCells"] = attachedCellsArray;
-  }
 
   switch (scrollState) {
     case LynxListScrollStateIdle: {
       if (!self.isInAutoScroll && !self.isInScrollToPosition) {
-        [self.scrollEventManager sendScrollEvent:LynxEventScrollStateChange
-                                      scrollView:self.view
-                                          detail:detail];
-        [self.scrollEventManager sendScrollEvent:LynxEventScrollEnd scrollView:self.view];
+        [self sendScrollStateChangeEvent:scrollState];
+        [self sendScrollEndEvent];
       }
       [self postFluencyEventWithInfo:[self infoWithScrollView:self.view
                                                      selector:@selector
@@ -712,9 +704,7 @@ LYNX_PROP_SETTER("experimental-update-sticky-for-diff", setUpdateStickyForDiff, 
       break;
     }
     case LynxListScrollStateFling: {
-      [self.scrollEventManager sendScrollEvent:LynxEventScrollStateChange
-                                    scrollView:self.view
-                                        detail:detail];
+      [self sendScrollStateChangeEvent:scrollState];
       LynxScrollInfo *info = [self infoWithScrollView:self.view
                                              selector:@selector(scrollerDidEndDragging:
                                                                         willDecelerate:)];
@@ -722,12 +712,8 @@ LYNX_PROP_SETTER("experimental-update-sticky-for-diff", setUpdateStickyForDiff, 
       [self postFluencyEventWithInfo:info];
       break;
     }
-
     case LynxListScrollStateDragging: {
-      [self.scrollEventManager sendScrollEvent:LynxEventScrollStateChange
-                                    scrollView:self.view
-                                        detail:detail];
-
+      [self sendScrollStateChangeEvent:scrollState];
       [self
           postFluencyEventWithInfo:[self infoWithScrollView:self.view
                                                    selector:@selector(scrollerWillBeginDragging:)]];
@@ -735,9 +721,7 @@ LYNX_PROP_SETTER("experimental-update-sticky-for-diff", setUpdateStickyForDiff, 
       break;
     }
     case LynxListScrollStateScrollAnimation: {
-      [self.scrollEventManager sendScrollEvent:LynxEventScrollStateChange
-                                    scrollView:self.view
-                                        detail:detail];
+      [self sendScrollStateChangeEvent:scrollState];
       [self
           postFluencyEventWithInfo:[self infoWithScrollView:self.view
                                                    selector:@selector(scrollerWillBeginDragging:)]];
@@ -1097,8 +1081,7 @@ LYNX_UI_METHOD(autoScroll) {
                            __strong __typeof(weakSelf) strongSelf = weakSelf;
                            if (strongSelf) {
                              if (completed) {
-                               [strongSelf.scrollEventManager sendScrollEvent:LynxEventScrollEnd
-                                                                   scrollView:strongSelf.view];
+                               [strongSelf sendScrollEndEvent];
                              }
                            }
                            return strongSelf.view.scrollEnabled;
@@ -1311,7 +1294,7 @@ LYNX_UI_METHOD(scrollToPosition) {
           kLynxListContainerInvalidScrollEstimatedOffset;
       [self setScrollState:LynxListScrollStateIdle];
       // Send extra scrollend event in non smooth mode
-      [self.scrollEventManager sendScrollEvent:LynxEventScrollEnd scrollView:self.view];
+      [self sendScrollEndEvent];
     }
   }
 }
@@ -1743,6 +1726,31 @@ LYNX_UI_METHOD(getVisibleCells) {
 - (CGFloat)contentOffsetXRTL:(CGFloat)contentOffsetX {
   // Caltulate RTL contentOffset
   return MAX(self.view.contentSize.width - contentOffsetX - self.view.frame.size.width, 0.f);
+}
+
+- (void)sendScrollEndEvent {
+  NSMutableDictionary *detail = [[NSMutableDictionary alloc] init];
+  detail[@"listWidth"] = @(CGRectGetWidth(self.view.frame));
+  detail[@"listHeight"] = @(CGRectGetHeight(self.view.frame));
+  if (self.isRtl && !self.verticalOrientation) {
+    detail[@"scrollLeft"] = @([self clampToValidScrollEdge:NO]);
+  }
+  [self.scrollEventManager sendScrollEvent:LynxEventScrollEnd scrollView:self.view detail:detail];
+}
+
+- (void)sendScrollStateChangeEvent:(LynxListScrollState)scrollState {
+  NSMutableDictionary *detail = [[NSMutableDictionary alloc] init];
+  detail[@"state"] = @(scrollState);
+  if (self.enableNeedVisibleItemInfo) {
+    NSArray *attachedCellsArray = [self visibleCellsInfo];
+    detail[@"attachedCells"] = attachedCellsArray;
+  }
+  if (self.isRtl && !self.verticalOrientation) {
+    detail[@"scrollLeft"] = @([self clampToValidScrollEdge:NO]);
+  }
+  [self.scrollEventManager sendScrollEvent:LynxEventScrollStateChange
+                                scrollView:self.view
+                                    detail:detail];
 }
 
 - (id<LynxEventTarget>)findHitTestTarget:(CGPoint)point withEvent:(UIEvent *)event {
