@@ -102,7 +102,11 @@ class UIImage : public UIBase {
   LynxImageEffectProcessor::CommonViewParams GenerateCommonViewParams();
   void HandleImageWithProcessor(const std::string& url, bool is_base64,
                                 std::vector<LynxImageEffectProcessor> processors);
-  void LoadImageFromURL(bool placeholder = false);
+  // Synchronously calls ArkTS functions (e.g., GetResourceLoader), which may
+  // destroy `this`. Returns true if the instance remains valid, or false if
+  // destroyed. Callers must abort immediately if false is returned to prevent
+  // UAF.
+  bool LoadImageFromURL(bool placeholder = false);
   void SetImageSrcFromPath(const std::string& url, bool placeholder = false);
   void CreateImageLoadInfo(int32_t err_code, const std::string& err_msg);
   void LoadImageWithTransform(const std::string& url, bool placeholder);

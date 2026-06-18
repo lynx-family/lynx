@@ -321,7 +321,7 @@ void UIImage::LoadImageWithTransform(const std::string& url, bool placeholder) {
   }
 }
 
-void UIImage::LoadImageFromURL(bool placeholder) {
+bool UIImage::LoadImageFromURL(bool placeholder) {
   const std::string& url = placeholder ? place_holder_ : src_;
   bool is_base64 = base::BeginsWith(url, image::kBase64Scheme);
   bool is_local = base::BeginsWith(url, image::kLocalScheme) ||
@@ -333,20 +333,30 @@ void UIImage::LoadImageFromURL(bool placeholder) {
     } else {
       SetImageSrcAttribute(url, is_base64);
     }
-    return;
+    return true;
   }
 
   if (SkipRedirection()) {
     LoadImageWithTransform(url, placeholder);
-    return;
+    return true;
   }
 
   auto resource_loader = context_->GetResourceLoader();
   if (!resource_loader) {
-    return;
+    return true;
   }
+  // Guard against synchronous destruction. During the synchronous call to the
+  // ArkTS function ShouldRedirectUrl, an UpdateMetaData operation might be
+  // inserted, causing the current UIImage instance to be destroyed.
+  auto weak_self = weak_from_this();
   auto request = pub::LynxResourceRequest{url, pub::LynxResourceType::kImage};
   std::string redirect_url = resource_loader->ShouldRedirectUrl(request);
+  if (weak_self.expired()) {
+    LOGE(
+        "UIImage was destroyed during the synchronous ArkTS call to "
+        "ShouldRedirectUrl");
+    return false;
+  }
   if (redirect_url != url) {
     if (placeholder) {
       SetImageSrcFromPath(redirect_url, true);
@@ -356,12 +366,15 @@ void UIImage::LoadImageFromURL(bool placeholder) {
   } else {
     LoadImageWithTransform(url, placeholder);
   }
+  return true;
 }
 
 void UIImage::OnNodeReady() {
   UIBase::OnNodeReady();
   if ((dirty_flags_ & image::kFlagPlaceholderChanged) != 0) {
-    LoadImageFromURL(true);
+    if (!LoadImageFromURL(true)) {
+      return;
+    }
   }
   if ((dirty_flags_ &
        (image::kFlagSrcChanged | image::kFlagDropShadowChanged |
@@ -369,7 +382,9 @@ void UIImage::OnNodeReady() {
     if (!defer_src_invalidation_) {
       NodeManager::Instance().ResetAttribute(Node(), NODE_IMAGE_SRC);
     }
-    LoadImageFromURL();
+    if (!LoadImageFromURL()) {
+      return;
+    }
   }
   if ((dirty_flags_ & image::kFlagImageRenderingChanged) != 0) {
     if (rendering_type_ == starlight::ImageRenderingType::kPixelated) {

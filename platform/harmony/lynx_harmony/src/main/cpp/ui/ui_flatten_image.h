@@ -134,7 +134,11 @@ class UIFlattenImage : public UIBase,
   void HandleImageWithProcessor(
       const std::string& url, bool is_base64,
       std::vector<LynxImageEffectProcessor> processors, bool is_src);
-  void LoadImageFromURL(bool is_src);
+  // Synchronously calls ArkTS functions (e.g., GetResourceLoader), which may
+  // destroy `this`. Returns true if the instance remains valid, or false if
+  // destroyed. Callers must abort immediately if false is returned to prevent
+  // UAF.
+  bool LoadImageFromURL(bool is_src);
   bool hasAnimationEvent();
   void Render(OH_Drawing_Canvas* canvas) const;
   void CreateImageLoadInfo(int32_t err_code, const std::string& err_msg);
