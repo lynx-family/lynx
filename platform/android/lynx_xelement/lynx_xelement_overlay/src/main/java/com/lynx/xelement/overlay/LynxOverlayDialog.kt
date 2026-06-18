@@ -16,6 +16,7 @@ import android.widget.EditText
 import androidx.fragment.app.DialogFragment
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentActivity
+import androidx.fragment.app.FragmentManager
 import com.lynx.tasm.behavior.event.EventTarget
 import com.lynx.tasm.behavior.ui.LynxUI
 import com.lynx.tasm.utils.ContextUtils
@@ -208,37 +209,59 @@ class LynxOverlayDialog(context: Context, private val overlay: LynxOverlayView):
     }
 
 
-    private fun findFragmentByTagRecursive(fragmentManager: androidx.fragment.app.FragmentManager, tag: String?, point: PointF): androidx.fragment.app.Fragment? {
-      val reverseFragments = fragmentManager.fragments.reversed()
-      for (childFragment in reverseFragments) {
-        if (childFragment.isAdded) {
-          val location = IntArray(2)
-          childFragment.view?.getLocationOnScreen(location)
-          val fragmentX = location[0].toFloat()
-          val fragmentY = location[1].toFloat()
-          val fragmentWidth = childFragment.view?.width?.toFloat() ?: 0f
-          val fragmentHeight = childFragment.view?.height?.toFloat() ?: 0f
-          if (point.x >= fragmentX && point.x <= ((fragmentX + fragmentWidth)) &&
-            point.y >= fragmentY && point.y <= ((fragmentY + fragmentHeight))
-          ) {
-            return childFragment
-          }
+    /**
+     * Find the fragment that should receive the pass-through touch event.
+     *
+     * Adapted for single-Activity apps: the target container may be nested several levels
+     * deep as a child fragment, so the whole fragment tree is walked instead of only the
+     * top level. A fragment is returned only when its [Fragment.getTag] matches [tag] - a
+     * tag match is required, not merely whether [point] falls inside the fragment - so that
+     * unrelated sibling fragments under the finger cannot swallow the event.
+     *
+     * Fragments are visited top-most first (reversed order) and depth-first (children before
+     * their parent), so the inner-most, visually upper container wins when regions overlap.
+     */
+    private fun findFragmentByTagRecursive(
+        fragmentManager: FragmentManager,
+        tag: String?,
+        point: PointF
+    ): Fragment? {
+        if (tag.isNullOrEmpty()) {
+            return null
         }
-      }
-      
-      val fragment = fragmentManager.findFragmentByTag(tag)
-        if (fragment != null) {
-            return fragment
-        }
-        for (childFragment in reverseFragments) {
-            if (childFragment.isAdded) {
-                val found = findFragmentByTagRecursive(childFragment.childFragmentManager, tag, point)
-                if (found != null) {
-                    return found
-                }
+        for (fragment in fragmentManager.fragments.reversed()) {
+            if (!fragment.isAdded) {
+                continue
+            }
+            // Search nested child fragments first so the inner-most match is preferred.
+            findFragmentByTagRecursive(fragment.childFragmentManager, tag, point)?.let {
+                return it
+            }
+            if (fragment.tag == tag && isPointInsideFragment(fragment, point)) {
+                return fragment
             }
         }
         return null
+    }
+
+    /**
+     * Whether [point] (in screen coordinates) falls inside [fragment]'s view bounds.
+     *
+     * A [DialogFragment] renders in its own window, so the on-screen location of its content
+     * view is unreliable; for it we rely on the tag match alone and let the dialog hit-test
+     * the event itself once it is dispatched.
+     */
+    private fun isPointInsideFragment(fragment: Fragment, point: PointF): Boolean {
+        if (fragment is DialogFragment) {
+            return true
+        }
+        val view = fragment.view ?: return false
+        val location = IntArray(2)
+        view.getLocationOnScreen(location)
+        val left = location[0].toFloat()
+        val top = location[1].toFloat()
+        return point.x >= left && point.x <= left + view.width &&
+            point.y >= top && point.y <= top + view.height
     }
 
     private fun getStatusBarHeight(context: Context): Int {
