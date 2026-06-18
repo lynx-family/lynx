@@ -22,6 +22,7 @@ import com.lynx.react.bridge.Callback;
 import com.lynx.react.bridge.Dynamic;
 import com.lynx.react.bridge.ReadableMap;
 import com.lynx.react.bridge.ReadableMapKeySetIterator;
+import com.lynx.tasm.LynxEnv;
 import com.lynx.tasm.LynxError;
 import com.lynx.tasm.base.LLog;
 import com.lynx.tasm.base.TraceEvent;
@@ -32,6 +33,7 @@ import com.lynx.tasm.behavior.PropsConstants;
 import com.lynx.tasm.behavior.render.RoundedRectangle;
 import com.lynx.tasm.behavior.shadow.ShadowNode;
 import com.lynx.tasm.behavior.ui.LynxBaseUI;
+import com.lynx.tasm.behavior.ui.LynxFlattenUI;
 import com.lynx.tasm.behavior.ui.ViewInfo;
 import com.lynx.tasm.behavior.ui.utils.BackgroundDrawable;
 import com.lynx.tasm.core.LynxThreadPool;
@@ -41,6 +43,7 @@ import com.lynx.tasm.group.ILynxViewRuntimeCacheManager;
 import com.lynx.tasm.image.AutoSizeImage;
 import com.lynx.tasm.image.ImageContent;
 import com.lynx.tasm.image.ImageErrorCodeUtils;
+import com.lynx.tasm.image.ImageEventHelper;
 import com.lynx.tasm.image.ImageUtils;
 import com.lynx.tasm.image.LynxImageConfig;
 import com.lynx.tasm.image.LynxImageMediaFetcherProxy;
@@ -186,6 +189,8 @@ public class LynxImageManager implements Drawable.Callback {
 
   private int mImageHeight;
 
+  private long mBitmapMemorySizeBytes;
+
   private ShadowNode mAutoSizeShadowNode = null;
 
   private boolean mNeedRetryAutoSize;
@@ -224,6 +229,13 @@ public class LynxImageManager implements Drawable.Callback {
   public static final String EVENT_LOAD = "load";
 
   public static final String EVENT_ERROR = "error";
+
+  private static final String HTTP_PREFIX = "http";
+
+  private static final int IMAGE_ORIGIN_UNKNOWN = -1;
+
+  private static final int IMAGE_ORIGIN_MEMORY_BITMAP = 5;
+
   private ColorFilter mColorFilter = null;
 
   private ImageRequestInfo mPreImageRequestInfo = null;
@@ -240,11 +252,17 @@ public class LynxImageManager implements Drawable.Callback {
 
   private boolean mEnableReportInfo = false;
 
+  private boolean mEnableImageEventReport = false;
+
   private float mImageSRScale = 0;
 
   private boolean mCacheKeyPathOnly = false;
 
   private @Nullable Rect mRegionToDecode;
+
+  private long mStartTimeStamp = 0;
+
+  private long mFinishTimeStamp = 0;
 
   private static class ImageRequestHandle implements ImageLoadListener {
     private final ImageLoadListener mSrcLoadListenerImpl;
@@ -353,6 +371,7 @@ public class LynxImageManager implements Drawable.Callback {
       }
       mImageWidth = imageInfo.getWidth();
       mImageHeight = imageInfo.getHeight();
+      mBitmapMemorySizeBytes = calculateBitmapMemorySizeBytes();
       ILynxViewRuntimeCacheManager cacheManager = mContext.getRuntimeCacheManager();
       if (cacheManager != null) {
         cacheManager.setBitmapSizeCache(requestInfo.getUrl(), mImageWidth, mImageHeight);
@@ -363,6 +382,7 @@ public class LynxImageManager implements Drawable.Callback {
       }
       configureBounds(mImageDrawable);
       onImageLoadSuccess(mImageWidth, mImageHeight);
+      reportImageSuccess(imageInfo);
       invalidate();
     }
 
@@ -381,6 +401,7 @@ public class LynxImageManager implements Drawable.Callback {
           categoryCode, "Android LynxImageManager loading image failed", "", LynxError.LEVEL_ERROR);
       lynxError.setRootCause(error);
       onImageLoadError(lynxError, categoryCode, errorCode);
+      reportImageFailure(errorCode, error);
     }
 
     @Override
@@ -454,6 +475,7 @@ public class LynxImageManager implements Drawable.Callback {
         mCustomParams.putAll(imageConfig.getImageCustomParam());
       }
     }
+    mEnableImageEventReport = LynxEnv.inst().enableImageEventReport();
   }
 
   // region setProps
@@ -482,6 +504,10 @@ public class LynxImageManager implements Drawable.Callback {
       mSrc = src;
       dirtyFlags |= SRC_CHANGED;
     }
+  }
+
+  String getSrc() {
+    return mSrc;
   }
 
   public void setPlaceholder(String placeholder) {
@@ -959,6 +985,7 @@ public class LynxImageManager implements Drawable.Callback {
         mCurImageRequest = null;
         mImageWidth = 0;
         mImageHeight = 0;
+        mBitmapMemorySizeBytes = 0;
       } else {
         mPreImageRequestInfo = mCurImageRequest;
       }
@@ -1057,6 +1084,7 @@ public class LynxImageManager implements Drawable.Callback {
     ImageRequestInfo requestInfo = createImageRequest(width, height, mSrc);
     if (requestInfo != null) {
       mCurImageRequest = requestInfo;
+      mStartTimeStamp = System.currentTimeMillis();
       mImageLoader.fetchImage(requestInfo, mSrcLoadListener, animationListener, mContext);
     }
   }
@@ -1083,6 +1111,9 @@ public class LynxImageManager implements Drawable.Callback {
     releaseDrawable(mPlaceholderDrawable);
     mCurImageRequest = null;
     mCurPlaceholderRequest = null;
+    mImageWidth = 0;
+    mImageHeight = 0;
+    mBitmapMemorySizeBytes = 0;
 
     if (mImageDrawable != null) {
       mImageDrawable.releaseImageSource();
@@ -1357,14 +1388,15 @@ public class LynxImageManager implements Drawable.Callback {
         }
         event.addDetail(key, value);
       }
-      int memoryCost = ImageUtils.getSizeInByteForBitmap(mImageWidth, mImageHeight,
-          mBitmapConfig == null ? Bitmap.Config.ARGB_8888 : mBitmapConfig);
       event.addDetail("src", mSrc);
       event.addDetail("width", mImageWidth);
       event.addDetail("height", mImageHeight);
       event.addDetail("view_width", mViewWidth);
       event.addDetail("view_height", mViewHeight);
-      event.addDetail("memoryCost", memoryCost);
+      event.addDetail("memoryCost", mBitmapMemorySizeBytes);
+      event.addDetail("load_start", mStartTimeStamp);
+      event.addDetail("load_finish", mFinishTimeStamp);
+      event.addDetail("cost", mFinishTimeStamp - mStartTimeStamp);
 
       mContext.getEventEmitter().sendCustomEvent(event);
     }
@@ -1395,6 +1427,70 @@ public class LynxImageManager implements Drawable.Callback {
     }
   }
 
+  private void reportImageSuccess(ImageInfo imageInfo) {
+    mFinishTimeStamp = System.currentTimeMillis();
+    JSONObject info = getSizeInfo(imageInfo.isAnim());
+    int memoryCost = (int) mBitmapMemorySizeBytes;
+    boolean hitMemoryCache = imageInfo.getOrigin() == IMAGE_ORIGIN_MEMORY_BITMAP;
+    monitorReporter(
+        mSrc, true, hitMemoryCache, mStartTimeStamp, mFinishTimeStamp, memoryCost, info);
+    reportImageInfo(mSrc, true, hitMemoryCache, mStartTimeStamp, mFinishTimeStamp, 0, memoryCost);
+    reportImageEvent(mSrc, 0, hitMemoryCache, imageInfo.getOrigin(), mStartTimeStamp,
+        mFinishTimeStamp, isFlattenUI(), mImageWidth, mImageHeight);
+  }
+
+  private void reportImageFailure(int errorCode, @Nullable String errorMessage) {
+    mFinishTimeStamp = System.currentTimeMillis();
+    monitorReporter(mSrc, false, false, mStartTimeStamp, mFinishTimeStamp, 0, null);
+    reportImageInfo(mSrc, false, false, mStartTimeStamp, mFinishTimeStamp, errorCode, 0);
+    reportImageEvent(mSrc, errorCode, false, IMAGE_ORIGIN_UNKNOWN, mStartTimeStamp,
+        mFinishTimeStamp, isFlattenUI(), 0, 0);
+  }
+
+  private void monitorReporter(String url, boolean isSuccess, boolean hitCache, long startTimeStamp,
+      long finishTimeStamp, int memoryCost, JSONObject info) {
+    if (mEnableImageEventReport) {
+      ImageEventHelper.monitorReporter(
+          mContext, url, isSuccess, hitCache, startTimeStamp, finishTimeStamp, memoryCost, info);
+    }
+  }
+
+  private void reportImageInfo(String url, boolean isSuccess, boolean hitCache, long startTimeStamp,
+      long finishTimeStamp, int errorCode, int memoryCost) {
+    if (mEnableImageEventReport) {
+      ImageEventHelper.reportImageInfo(mContext, url, isSuccess, hitCache, startTimeStamp,
+          finishTimeStamp, memoryCost, errorCode);
+    }
+  }
+
+  private void reportImageEvent(String url, int errorCode, boolean hitMemoryCache, int imageOrigin,
+      long startTimeStamp, long finishTimeStamp, boolean isFlattenUI, int width, int height) {
+    if (mEnableImageEventReport && url != null && url.startsWith(HTTP_PREFIX)) {
+      ImageEventHelper.reportImageEvent(mContext, url, errorCode, hitMemoryCache, imageOrigin,
+          startTimeStamp, finishTimeStamp, isFlattenUI, width, height, mCustomParams);
+    }
+  }
+
+  private JSONObject getSizeInfo(boolean isAnim) {
+    try {
+      JSONObject info = new JSONObject();
+      info.put("viewWidth", mViewWidth);
+      info.put("viewHeight", mViewHeight);
+      info.put("width", mImageWidth);
+      info.put("height", mImageHeight);
+      info.put("config", mBitmapConfig == null ? Bitmap.Config.ARGB_8888 : mBitmapConfig);
+      info.put("isFlattenAnim", isAnim && isFlattenUI() ? 1 : 0);
+      return info;
+    } catch (JSONException e) {
+      LLog.e(TAG, "getSizeInfo error: " + e.getMessage());
+    }
+    return null;
+  }
+
+  private boolean isFlattenUI() {
+    return mUI instanceof LynxFlattenUI;
+  }
+
   public void setBorderRadius(float[] borderRadius, boolean radiusSizeChanged) {
     if (mBorderRadius == null || radiusSizeChanged) {
       dirtyFlags |= BORDER_RADIUS_CHANGED;
@@ -1404,6 +1500,26 @@ public class LynxImageManager implements Drawable.Callback {
 
   public Drawable getSrcImageDrawable() {
     return mImageDrawable;
+  }
+
+  long getBitmapMemorySizeBytes() {
+    if (mImageDrawable == null) {
+      return 0;
+    }
+    return mBitmapMemorySizeBytes;
+  }
+
+  private long calculateBitmapMemorySizeBytes() {
+    if (mImageWidth <= 0 || mImageHeight <= 0) {
+      return 0;
+    }
+    try {
+      return ImageUtils.getSizeInByteForBitmap(mImageWidth, mImageHeight,
+          mBitmapConfig == null ? Bitmap.Config.ARGB_8888 : mBitmapConfig);
+    } catch (UnsupportedOperationException e) {
+      LLog.w(TAG, "Unsupported bitmap config when reporting image memory usage: " + mBitmapConfig);
+      return 0;
+    }
   }
 
   public Boolean getHasContent() {

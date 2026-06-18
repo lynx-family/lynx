@@ -1929,6 +1929,8 @@ public class com::lynx::tasm::behavior::ui::image::FlattenUIImage : com.lynx.tas
   public com.lynx.tasm.behavior.ui.image.FlattenUIImage.FlattenUIImage(LynxContext context);
   public com.lynx.tasm.behavior.ui.image.FlattenUIImage.FlattenUIImage(LynxContext context, Object params);
   public MeaningfulContentStatus com.lynx.tasm.behavior.ui.image.FlattenUIImage.getMeaningfulContentStatus();
+  public long com.lynx.tasm.behavior.ui.image.FlattenUIImage.getMemoryUsageBytes();
+  public Map< String, String > com.lynx.tasm.behavior.ui.image.FlattenUIImage.getMemoryUsageDetail();
   public void com.lynx.tasm.behavior.ui.image.FlattenUIImage.pauseAnimation(ReadableMap params, com.lynx.react.bridge.Callback callback);
   public void com.lynx.tasm.behavior.ui.image.FlattenUIImage.resumeAnimation(ReadableMap params, com.lynx.react.bridge.Callback callback);
   public void com.lynx.tasm.behavior.ui.image.FlattenUIImage.stopAnimation(ReadableMap params, com.lynx.react.bridge.Callback callback);
@@ -2890,11 +2892,21 @@ public class com::lynx::tasm::image::ImageErrorCodeUtils :  {
   public static int com.lynx.tasm.image.ImageErrorCodeUtils.checkImageExceptionCategory(int errorCode);
 }
 
+public class com::lynx::tasm::image::ImageEventHelper :  {
+  public static void com.lynx.tasm.image.ImageEventHelper.monitorReporterV2(final LynxContext context, final int sign, final String url, final boolean isSuccess, final boolean hitCache, final long startTimeStamp, final long getImageTimeStamp, final int memoryCost, final JSONObject info);
+  public static void com.lynx.tasm.image.ImageEventHelper.monitorReporter(final LynxContext context, final String url, final boolean isSuccess, final boolean hitCache, final long startTimeStamp, final long getImageTimeStamp, final int memoryCost, final JSONObject info);
+  public static JSONObject com.lynx.tasm.image.ImageEventHelper.getReportData(LynxContext context, String url, boolean isSuccess, boolean hitCache, long startTimeStamp, long fetchDuration, long completeDuration, long finishTimeStamp, int memoryCost, JSONObject info);
+  public static void com.lynx.tasm.image.ImageEventHelper.reportImageInfo(final LynxContext context, final String url, final boolean isSuccess, final boolean hitCache, final long startTimeStamp, final long finishTimeStamp, final int memoryCost, final int errorCode);
+  public static void com.lynx.tasm.image.ImageEventHelper.reportImageEvent(final LynxContext context, final String url, final int errorCode, final boolean hitMemoryCache, final int imageOrigin, final long startTimeStamp, final long finishTimeStamp, final boolean isFlattenUI, final int width, final int height, Map< String, String > customParams);
+}
+
 public class com::lynx::tasm::image::model::ImageInfo :  {
   public com.lynx.tasm.image.model.ImageInfo.ImageInfo(int width, int height, boolean isAnim);
+  public com.lynx.tasm.image.model.ImageInfo.ImageInfo(int width, int height, boolean isAnim, int origin);
   public int com.lynx.tasm.image.model.ImageInfo.getWidth();
   public int com.lynx.tasm.image.model.ImageInfo.getHeight();
   public boolean com.lynx.tasm.image.model.ImageInfo.isAnim();
+  public int com.lynx.tasm.image.model.ImageInfo.getOrigin();
 }
 
 public interface com::lynx::tasm::behavior::ImageInterceptor {
@@ -11164,6 +11176,8 @@ public class com::lynx::tasm::behavior::ui::image::UIImage : com.lynx.tasm.behav
   public com.lynx.tasm.behavior.ui.image.UIImage.UIImage(LynxContext context);
   public com.lynx.tasm.behavior.ui.image.UIImage.UIImage(LynxContext context, Object params);
   public MeaningfulContentStatus com.lynx.tasm.behavior.ui.image.UIImage.getMeaningfulContentStatus();
+  public long com.lynx.tasm.behavior.ui.image.UIImage.getMemoryUsageBytes();
+  public Map< String, String > com.lynx.tasm.behavior.ui.image.UIImage.getMemoryUsageDetail();
   public void com.lynx.tasm.behavior.ui.image.UIImage.pauseAnimation(ReadableMap params, com.lynx.react.bridge.Callback callback);
   public void com.lynx.tasm.behavior.ui.image.UIImage.resumeAnimation(ReadableMap params, com.lynx.react.bridge.Callback callback);
   public void com.lynx.tasm.behavior.ui.image.UIImage.stopAnimation(ReadableMap params, com.lynx.react.bridge.Callback callback);
