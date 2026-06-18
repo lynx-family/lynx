@@ -263,8 +263,7 @@ public class LynxTemplateRender
 
   private boolean mForceLayoutOnBackgroundThread =
       LynxEnv.inst().shouldForceLayoutOnBackgroundThread();
-  private boolean mEnableSkipUpdateViewportOnInitWhenMeasureSpecEmpty =
-      LynxEnv.inst().enableSkipUpdateViewportOnInitWhenMeasureSpecEmpty();
+  private boolean mEnableSkipUpdateViewportOnInitWhenMeasureSpecEmpty;
 
   private boolean mEnableJSRuntime;
 
@@ -461,6 +460,9 @@ public class LynxTemplateRender
     mLynxContext.setUIBodyView(mBodyView);
     mLynxContext.setForceDarkAllowed(mLynxViewConfigProvider.getForceDarkAllowed());
     mLynxContext.setContextData(mLynxViewConfigProvider.getContextData());
+    mEnableSkipUpdateViewportOnInitWhenMeasureSpecEmpty = getBooleanFromLynxViewConfig(
+        LynxEnvKey.ENABLE_SKIP_UPDATE_VIEWPORT_ON_INIT_WHEN_MEASURE_SPEC_EMPTY,
+        LynxEnv.inst().enableSkipUpdateViewportOnInitWhenMeasureSpecEmpty());
     if (mLynxViewBuilder.mImageCustomParam != null) {
       mLynxContext.setImageCustomParam(mLynxViewBuilder.mImageCustomParam);
     }
@@ -2371,6 +2373,24 @@ public class LynxTemplateRender
   private boolean isThreadStrategySupportVsyncAlignedFlush() {
     return mThreadStrategyForRendering == ThreadStrategyForRendering.ALL_ON_UI
         || mThreadStrategyForRendering == ThreadStrategyForRendering.PART_ON_LAYOUT;
+  }
+
+  private boolean getBooleanFromLynxViewConfig(LynxEnvKey key, boolean defaultValue) {
+    if (mOriginLynxViewConfig == null) {
+      return defaultValue;
+    }
+    String value = mOriginLynxViewConfig.get(key.getDescription());
+    if (TextUtils.isEmpty(value)) {
+      return defaultValue;
+    }
+    String normalizedValue = value.trim();
+    if ("1".equals(normalizedValue) || "true".equalsIgnoreCase(normalizedValue)) {
+      return true;
+    }
+    if ("0".equals(normalizedValue) || "false".equalsIgnoreCase(normalizedValue)) {
+      return false;
+    }
+    return defaultValue;
   }
 
   public void updateViewport(int widthMeasureSpec, int heightMeasureSpec) {
