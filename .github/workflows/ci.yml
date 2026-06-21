@@ -16,6 +16,71 @@ defaults:
     working-directory: lynx
 
 jobs:
+  darwin-impact-check:
+    runs-on: lynx-ubuntu-22.04-medium
+    outputs:
+      darwin: ${{ steps.filter.outputs.darwin }}
+    steps:
+      - name: Download Source
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          path: lynx
+      - name: Check whether Darwin jobs are affected
+        id: filter
+        run: |
+          set -e
+
+          if [ "${{ github.event_name }}" != "pull_request" ]; then
+            echo "darwin=true" >> "$GITHUB_OUTPUT"
+            echo "Non-PR event; run Darwin jobs."
+            exit 0
+          fi
+
+          base="${{ github.event.pull_request.base.sha }}"
+          head="${{ github.event.pull_request.head.sha }}"
+
+          if [ -z "$base" ] || echo "$base" | grep -Eq '^0+$'; then
+            echo "darwin=true" >> "$GITHUB_OUTPUT"
+            echo "Unable to determine a stable base commit; run Darwin jobs."
+            exit 0
+          fi
+
+          merge_base="$(git merge-base "$base" "$head" || true)"
+          if [ -z "$merge_base" ]; then
+            echo "darwin=true" >> "$GITHUB_OUTPUT"
+            echo "Unable to determine merge-base; run Darwin jobs."
+            exit 0
+          fi
+
+          git diff --name-only "$merge_base" "$head" > changed_files.txt
+          cat changed_files.txt
+
+          is_darwin_unaffected_path() {
+            local file="$1"
+            local pattern
+            while IFS= read -r pattern || [ -n "$pattern" ]; do
+              [ -z "$pattern" ] && continue
+              case "$pattern" in \#*) continue ;; esac
+              case "$file" in
+                $pattern) return 0 ;;
+              esac
+            done < .github/ci/darwin-unaffected-paths.txt
+            return 1
+          }
+
+          darwin=false
+          while IFS= read -r file; do
+            [ -z "$file" ] && continue
+            if ! is_darwin_unaffected_path "$file"; then
+              darwin=true
+              break
+            fi
+          done < changed_files.txt
+
+          echo "darwin=$darwin" >> "$GITHUB_OUTPUT"
+          echo "Darwin jobs affected: $darwin"
+
   static-check:
     runs-on: lynx-ubuntu-22.04-medium
     timeout-minutes: 30
@@ -66,6 +131,8 @@ jobs:
           python3 tools_shared/git_lynx.py check --checkers gn-relative-path-check
 
   darwin-native-unittests-check:
+    needs: [darwin-impact-check]
+    if: ${{ needs.darwin-impact-check.outputs.darwin == 'true' }}
     timeout-minutes: 60
     runs-on: lynx-darwin-15.6.1-medium
     steps:
@@ -122,6 +189,8 @@ jobs:
           tools/rtf/rtf native-ut run --names devtool
 
   ios-unittests-check:
+    needs: [darwin-impact-check]
+    if: ${{ needs.darwin-impact-check.outputs.darwin == 'true' }}
     timeout-minutes: 60
     runs-on: lynx-darwin-15.6.1-medium
     steps:
@@ -216,6 +285,8 @@ jobs:
           popd
 
   tasm-darwin-build:
+    needs: [darwin-impact-check]
+    if: ${{ needs.darwin-impact-check.outputs.darwin == 'true' }}
     timeout-minutes: 60
     runs-on: lynx-darwin-15.6.1-medium
     steps:
@@ -239,6 +310,8 @@ jobs:
           popd
 
   tasm-wasm-build:
+    needs: [darwin-impact-check]
+    if: ${{ needs.darwin-impact-check.outputs.darwin == 'true' }}
     timeout-minutes: 60
     runs-on: lynx-darwin-15.6.1-medium
     steps:
@@ -644,6 +717,8 @@ jobs:
         uses: ./lynx/.github/actions/harmony-explorer-build
 
   ios-explorer-build:
+    needs: [darwin-impact-check]
+    if: ${{ needs.darwin-impact-check.outputs.darwin == 'true' }}
     timeout-minutes: 60
     runs-on: lynx-darwin-15.6.1-medium
     strategy:
@@ -667,6 +742,8 @@ jobs:
           path: '${{ github.workspace }}/lynx/LynxExplorer-${{ matrix.arch }}.app.tar.gz'
 
   ios-integration-test:
+    needs: [darwin-impact-check]
+    if: ${{ needs.darwin-impact-check.outputs.darwin == 'true' }}
     timeout-minutes: 15
     runs-on: lynx-darwin-15.6.1-medium
     env:
@@ -716,7 +793,8 @@ jobs:
 
   ios-e2e-test:
     timeout-minutes: 60
-    needs: [ios-explorer-build]
+    needs: [darwin-impact-check, ios-explorer-build]
+    if: ${{ needs.darwin-impact-check.outputs.darwin == 'true' }}
     env:
       APPIUM_TEST_SERVER_PORT: 4723
       APPIUM_TEST_SERVER_HOST: 127.0.0.1
@@ -886,6 +964,8 @@ jobs:
           path: '${{ github.workspace }}/lynx/testing/integration_test/test_script/screenshots.zip'
 
   clay-macos-build:
+    needs: [darwin-impact-check]
+    if: ${{ needs.darwin-impact-check.outputs.darwin == 'true' }}
     timeout-minutes: 60
     runs-on: lynx-darwin-15.6.1-medium
     steps:
@@ -902,6 +982,8 @@ jobs:
           path: '${{ github.workspace }}/lynx/out/Default/clay_glfw'
 
   macos-explorer-build:
+    needs: [darwin-impact-check]
+    if: ${{ needs.darwin-impact-check.outputs.darwin == 'true' }}
     timeout-minutes: 60
     runs-on: lynx-darwin-15.6.1-medium
     strategy:
