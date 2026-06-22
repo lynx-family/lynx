@@ -74,6 +74,14 @@
 @end
 #endif
 
+static void LynxClaySetup() {
+  Class clayViewProviderClass = NSClassFromString(@"ClayViewProvider");
+  SEL selector = NSSelectorFromString(@"onLynxEnvSetup");
+  if ([clayViewProviderClass respondsToSelector:selector]) {
+    reinterpret_cast<void (*)(id, SEL)>(objc_msgSend)(clayViewProviderClass, selector);
+  }
+}
+
 @implementation LynxEnv {
   std::unique_ptr<fml::SharedMutex> external_env_mutex_;
 }
@@ -118,6 +126,7 @@
     lynx::tasm::Config::InitializeVersion([[UIDevice currentDevice].systemVersion UTF8String]);
 #endif
     [LynxService(LynxServiceExtensionProtocol) onLynxEnvSetup];
+    LynxClaySetup();
   }
   _LogI(@"LynxEnv: init success");
   return self;
