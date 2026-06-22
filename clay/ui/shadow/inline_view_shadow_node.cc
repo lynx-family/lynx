@@ -23,7 +23,7 @@ void InlineViewShadowNode::PreLayout(PreLayoutContext* context) {
 
 void InlineViewShadowNode::TextLayout(LayoutContext* context) {
   if (GetEndIndex() == 0) {
-    placeholder_index_ = -1;
+    ResetTextLayout();
     return;
   }
   TextParagraphBuilder* builder =
@@ -38,6 +38,12 @@ void InlineViewShadowNode::TextLayout(LayoutContext* context) {
   placeholder_index_ =
       static_cast<LayoutContextText*>(context)->AddPlaceholder(placeholder);
   builder->Pop();
+}
+
+void InlineViewShadowNode::ResetTextLayout() {
+  placeholder_index_ = -1;
+  start_glyph_ = 0;
+  end_glyph_ = 0;
 }
 
 MeasureResult InlineViewShadowNode::MeasureNativeNode(
