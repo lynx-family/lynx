@@ -24,4 +24,6 @@
 
 - (void)updatePlatformExtraBundle:(id)data;
 
+- (void)onRebuildSubRenderers;
+
 @end

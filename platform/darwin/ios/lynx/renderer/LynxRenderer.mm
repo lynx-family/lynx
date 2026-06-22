@@ -79,6 +79,14 @@
   [_applier syncHostDecorationLayers];
 }
 
+- (void)onRebuildSubRenderers {
+  if (_applier == nil) {
+    return;
+  }
+
+  [_applier onRebuildSubRenderers];
+}
+
 - (void)syncHostDecorationLayers {
   if (_applier == nil) {
     return;
