@@ -24,8 +24,6 @@
 #include "core/renderer/css/css_value.h"
 #include "core/renderer/dom/attribute_holder.h"
 #include "core/renderer/dom/element.h"
-#include "core/renderer/dom/element_context_delegate.h"
-#include "core/renderer/dom/element_context_task_queue.h"
 #include "core/renderer/dom/fiber/list_item_scheduler_adapter.h"
 #include "core/renderer/dom/fiber/pseudo_element.h"
 #include "core/renderer/dom/layout_bundle.h"
@@ -744,7 +742,6 @@ class FiberElement : public Element {
   void PrepareOrUpdatePseudoElement(PseudoState state, StyleMap& style_map);
 
   void CreateListItemScheduler(list::BatchRenderStrategy batch_render_strategy,
-                               ElementContextDelegate* parent_context,
                                bool continuous_resolve_tree);
 
   void RecursivelyMarkRenderRootElement(FiberElement* render_root);

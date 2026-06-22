@@ -35,8 +35,6 @@
 #include "core/renderer/css/shared_css_fragment.h"
 #include "core/renderer/dom/element.h"
 #include "core/renderer/dom/element_container.h"
-#include "core/renderer/dom/element_context_delegate.h"
-#include "core/renderer/dom/element_context_task_queue.h"
 #include "core/renderer/dom/element_vsync_proxy.h"
 #include "core/renderer/dom/fiber/page_element.h"
 #include "core/renderer/dom/fiber/template_element.h"
@@ -184,8 +182,7 @@ class ComponentManager {
   std::unordered_map<std::string, Element *> component_map_;
 };
 
-class ElementManager : public ElementContextDelegate,
-                       public LayoutScheduler::LayoutSchedulerImpl {
+class ElementManager : public LayoutScheduler::LayoutSchedulerImpl {
  public:
   class Delegate {
    public:
@@ -1168,9 +1165,6 @@ class ElementManager : public ElementContextDelegate,
       int32_t element_id,
       std::shared_ptr<PipelineOptions> &pipeline_options) const;
 
-  void LegacyHandleLayoutTask(FiberElement *target,
-                              base::MoveOnlyClosure<void> operation);
-
   void SetLayoutTick(
       base::MoveOnlyClosure<void, const std::shared_ptr<PipelineOptions>>
           tick) {
@@ -1185,10 +1179,6 @@ class ElementManager : public ElementContextDelegate,
 
   void MarkLayoutDirtyAndRequestLayout(
       int32_t id, const std::shared_ptr<PipelineOptions> &options);
-
-  inline bool GetEnableBatchLayoutTaskWithSyncLayout() {
-    return config_ ? config_->GetEnableBatchLayoutTaskWithSyncLayout() : false;
-  }
 
   bool FixNewAnimatorFlushBug() const { return fix_new_animator_flush_bug_; }
   bool FixRadonInlineConvertBug() const {

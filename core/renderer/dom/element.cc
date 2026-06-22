@@ -27,7 +27,6 @@
 #include "core/renderer/css/layout_property.h"
 #include "core/renderer/css/parser/length_handler.h"
 #include "core/renderer/css/unit_handler.h"
-#include "core/renderer/dom/element_context_delegate.h"
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/dom/element_manager_delegate.h"
 #include "core/renderer/dom/element_property.h"

@@ -928,9 +928,6 @@ static const int kVirtual = 1 << 2;
     if ([[self replayConfig] enableUnifyFixedBehavior]) {
       [nativeConfig setObject:@YES forKey:@"enableUnifyFixedBehavior"];
     }
-    if ([[self replayConfig] enableBatchLayoutTaskWithSyncLayout]) {
-      [nativeConfig setObject:@YES forKey:@"enableBatchLayoutTaskWithSyncLayout"];
-    }
     [loadMeta.lynxViewConfig setObject:[self convertNSDictToJsonString:nativeConfig]
                                 forKey:@"platform_config"];
     loadMeta.binaryData = _source;

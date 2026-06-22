@@ -129,8 +129,7 @@ ElementManager::ElementManager(
     const PageOptions &page_options, int32_t instance_id,
     const std::shared_ptr<base::VSyncMonitor> &vsync_monitor,
     std::unique_ptr<lynx::tasm::LayoutCtxPlatformImpl> platform_layout_context)
-    : ElementContextDelegate(nullptr, nullptr),
-      node_manager_(new NodeManager),
+    : node_manager_(new NodeManager),
       component_manager_(new ComponentManager),
       catalyzer_(
           std::make_unique<Catalyzer>(std::make_unique<PaintingContext>(
@@ -152,8 +151,6 @@ ElementManager::ElementManager(
   task_runner_ = std::make_shared<tasm::TasmWorkerTaskRunner>();
   enable_new_animator_fiber_ = LynxEnv::GetInstance().EnableNewAnimatorFiber();
   enable_new_animator_radon_ = false;
-  element_context_task_queue_ = std::make_unique<ElementContextTaskQueue>(
-      [this]() { return GetParallelWithSyncLayout(); });
   // TODO(songshourui.null): The following temporary configs are being
   // introduced with the responsive bugfix to avoid breaks. These configs will
   // be removed after verifying the bugfix online.
@@ -1802,30 +1799,6 @@ void ElementManager::SetEnableOptPushStyleToBundle(TernaryBool value) {
     enable_opt_push_style_to_bundle_ = LynxEnv::GetInstance().GetBoolEnv(
         lynx::tasm::LynxEnv::Key::OPT_PUSH_STYLE_TO_BUNDLE, true);
   }
-}
-
-void ElementManager::LegacyHandleLayoutTask(
-    FiberElement *target, base::MoveOnlyClosure<void> operation) {
-  // Dispatch operation according to batch rendering state
-  auto *parent = target;
-  if (parent->GetRenderRootElement() != nullptr &&
-      static_cast<FiberElement *>(parent->GetRenderRootElement())
-          ->GetSchedulerAdapter() &&
-      static_cast<FiberElement *>(parent->GetRenderRootElement())
-          ->GetSchedulerAdapter()
-          ->IsBatchResolvingTree()) {
-    static_cast<FiberElement *>(parent->GetRenderRootElement())
-        ->GetSchedulerAdapter()
-        ->resolve_element_tree_queue()
-        .emplace_back(std::move(operation));
-    return;
-  }
-  if (this->GetParallelWithSyncLayout() &&
-      target->ShouldProcessParallelTasks()) {
-    target->EnqueueReduceTask(std::move(operation));
-    return;
-  }
-  operation();
 }
 
 bool ElementManager::CSSFragmentParsingOnTASMWorkerMTSRender() {

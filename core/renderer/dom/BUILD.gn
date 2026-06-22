@@ -88,7 +88,6 @@ unittest_set("dom_testset") {
     "../utils/base/tasm_worker_task_runner_unittest.cc",
     "attribute_holder_unittest.cc",
     "element_container_unittest.cc",
-    "element_context_delegate_unittest.cc",
     "element_manager_unittest.cc",
     "element_tree_serializer_unittest.cc",
     "element_unittest.cc",

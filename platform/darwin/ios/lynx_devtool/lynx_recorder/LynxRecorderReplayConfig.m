@@ -55,11 +55,6 @@
                                                    forKey:@"enable_unify_fixed_behavior"
                                              defaultValue:NO];
 
-    _enableBatchLayoutTaskWithSyncLayout = [LynxRecorderURLAnalyzer
-        getQueryBooleanParameter:baseURL
-                          forKey:@"enable_batch_layout_task_with_sync_layout"
-                    defaultValue:NO];
-
     NSString* threadModeStr = [LynxRecorderURLAnalyzer getQueryStringParameter:baseURL
                                                                         forKey:@"thread_mode"];
     if (threadModeStr != nil) {

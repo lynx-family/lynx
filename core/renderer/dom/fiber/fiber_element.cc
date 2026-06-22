@@ -641,8 +641,6 @@ FiberElement::FiberElement(ElementManager *manager, const base::String &tag,
     return;
   }
 
-  element_context_delegate_ = manager;
-
   // Set font scale and font size if needed.
   const auto &env_config = manager->GetLynxEnvConfig();
 
@@ -713,7 +711,6 @@ FiberElement::FiberElement(const FiberElement &element,
     config_ = lepus::Value::ShallowCopy(element.config()).Table();
   }
 
-  element_context_delegate_ = element.element_context_delegate_;
   // TODO(wujintian): Clone animation-related objects.
 }
 
@@ -1007,8 +1004,6 @@ void FiberElement::AttachToElementManager(
     // in new selector, mark style dirty while Created.
     MarkDirty(kDirtyStyle);
   }
-
-  element_context_delegate_ = manager;
 }
 
 void FiberElement::OnNodeAdded(FiberElement *child) {
@@ -1068,12 +1063,6 @@ FiberElement::~FiberElement() {
       });
     }
     element_manager()->node_manager()->Erase(id_);
-    // If FiberElement to be destroyed is the root of its ElementContext, need
-    // to remove corresponding ElementContext from tree
-    if (element_context_delegate_ &&
-        element_context_delegate_->GetElementContextRoot() == this) {
-      element_context_delegate_->RemoveSelf();
-    }
   }
 }
 
@@ -3075,9 +3064,6 @@ void FiberElement::FlushActionsAsRoot() {
   element_manager()->SetCurrentEngineThreadId(std::this_thread::get_id());
   ParallelFlushAsRoot();
   FlushActions();
-  if (element_manager()->GetEnableBatchLayoutTaskWithSyncLayout()) {
-    element_context_delegate_->FlushEnqueuedTasks();
-  }
 }
 
 void FiberElement::FlushSelf() {
@@ -4308,11 +4294,20 @@ void FiberElement::CheckHasInlineContainer(Element *parent) {
 }
 
 void FiberElement::EnqueueLayoutTask(base::MoveOnlyClosure<void> operation) {
-  if (element_manager()->GetEnableBatchLayoutTaskWithSyncLayout()) {
-    element_context_delegate_->EnqueueTask(std::move(operation));
-  } else {
-    element_manager()->LegacyHandleLayoutTask(this, std::move(operation));
+  auto *render_root = static_cast<FiberElement *>(GetRenderRootElement());
+  if (render_root && render_root->GetSchedulerAdapter() &&
+      render_root->GetSchedulerAdapter()->IsBatchResolvingTree()) {
+    render_root->GetSchedulerAdapter()
+        ->resolve_element_tree_queue()
+        .emplace_back(std::move(operation));
+    return;
   }
+  if (element_manager()->GetParallelWithSyncLayout() &&
+      ShouldProcessParallelTasks()) {
+    EnqueueReduceTask(std::move(operation));
+    return;
+  }
+  operation();
 }
 
 void FiberElement::RequestLayout() {
@@ -5282,9 +5277,6 @@ void FiberElement::UpdateDynamicElementStyleRecursively(uint32_t style,
 void FiberElement::UpdateDynamicElementStyle(uint32_t style,
                                              bool force_update) {
   UpdateDynamicElementStyleRecursively(style, force_update);
-  if (element_manager()->GetEnableBatchLayoutTaskWithSyncLayout()) {
-    element_context_delegate_->FlushEnqueuedTasks();
-  }
 }
 
 void FiberElement::ResetSheetRecursively(
@@ -5328,9 +5320,6 @@ PseudoElement *FiberElement::CreatePseudoElementIfNeed(PseudoState state) {
 
 void FiberElement::RecursivelyMarkRenderRootElement(FiberElement *render_root) {
   render_root_element_ = render_root;
-  if (render_root) {
-    element_context_delegate_ = render_root->element_context_delegate_;
-  }
   for (const auto &child : scoped_children_) {
     auto *fiber_child = static_cast<FiberElement *>(child.get());
     if (!fiber_child->is_list_item()) {
@@ -5407,68 +5396,31 @@ void FiberElement::UpdateLengthContextValueForAllElement(
 // TODO: Move this method out of fiber_element when a more general render root
 // is introduced.
 void FiberElement::AsyncResolveSubtreeProperty() {
-  if (element_manager()->GetEnableBatchLayoutTaskWithSyncLayout()) {
-    if (element_manager()->GetEnableParallelElement() &&
-        ((dirty_ & ~kDirtyTree) != 0) && element_context_delegate_ &&
-        element_context_delegate_->IsListItemElementContext()) {
-      element_manager()->GetTasmWorkerTaskRunner()->PostTask([this]() mutable {
-        auto list_item_context_ptr =
-            static_cast<ListItemSchedulerAdapter *>(element_context_delegate_);
-        list_item_context_ptr->ResolveSubtreeProperty();
+  if (element_manager()->GetEnableParallelElement() &&
+      ((dirty_ & ~kDirtyTree) != 0) && scheduler_adapter_.get()) {
+    element_manager()->GetTasmWorkerTaskRunner()->PostTask([this]() mutable {
+      scheduler_adapter_->ResolveSubtreeProperty();
 
-        std::promise<ParallelFlushReturn> promise;
-        std::future<ParallelFlushReturn> future = promise.get_future();
-        auto task_info_ptr =
-            fml::MakeRefCounted<base::OnceTask<ParallelFlushReturn>>(
-                [promise = std::move(promise),
-                 context_ptr = list_item_context_ptr]() mutable {
-                  promise.set_value(
-                      context_ptr->GenerateReduceTaskForResolveProperty());
-                },
-                std::move(future));
-        element_manager()->ParallelTasks().emplace_back(
-            std::move(task_info_ptr));
-      });
-    }
-  } else {
-    // TODO(ZHOUZHITAO): remove this branch once
-    // ENABLE_BATCH_LAYOUT_TASK_WITH_SYNC_LAYOUT is fully rolled out
-    if (element_manager()->GetEnableParallelElement() &&
-        ((dirty_ & ~kDirtyTree) != 0) && scheduler_adapter_.get()) {
-      element_manager()->GetTasmWorkerTaskRunner()->PostTask([this]() mutable {
-        scheduler_adapter_->ResolveSubtreeProperty();
-
-        std::promise<ParallelFlushReturn> promise;
-        std::future<ParallelFlushReturn> future = promise.get_future();
-        auto task_info_ptr =
-            fml::MakeRefCounted<base::OnceTask<ParallelFlushReturn>>(
-                [promise = std::move(promise),
-                 scheduler = scheduler_adapter_.get()]() mutable {
-                  promise.set_value(
-                      scheduler->GenerateReduceTaskForResolveProperty());
-                },
-                std::move(future));
-        element_manager()->ParallelTasks().emplace_back(
-            std::move(task_info_ptr));
-      });
-    }
+      std::promise<ParallelFlushReturn> promise;
+      std::future<ParallelFlushReturn> future = promise.get_future();
+      auto task_info_ptr =
+          fml::MakeRefCounted<base::OnceTask<ParallelFlushReturn>>(
+              [promise = std::move(promise),
+               scheduler = scheduler_adapter_.get()]() mutable {
+                promise.set_value(
+                    scheduler->GenerateReduceTaskForResolveProperty());
+              },
+              std::move(future));
+      element_manager()->ParallelTasks().emplace_back(std::move(task_info_ptr));
+    });
   }
 }
 
 void FiberElement::CreateListItemScheduler(
     list::BatchRenderStrategy batch_render_strategy,
-    ElementContextDelegate *parent_context, bool continuous_resolve_tree) {
-  if (element_manager()->GetEnableBatchLayoutTaskWithSyncLayout()) {
-    std::shared_ptr<ElementContextDelegate> element_context_delegate_ptr =
-        std::make_shared<ListItemSchedulerAdapter>(this, batch_render_strategy,
-                                                   parent_context,
-                                                   continuous_resolve_tree);
-    element_context_delegate_ = element_context_delegate_ptr.get();
-    parent_context->OnChildElementContextAdded(element_context_delegate_ptr);
-  } else {
-    scheduler_adapter_ = std::make_unique<ListItemSchedulerAdapter>(
-        this, batch_render_strategy, parent_context, continuous_resolve_tree);
-  }
+    bool continuous_resolve_tree) {
+  scheduler_adapter_ = std::make_unique<ListItemSchedulerAdapter>(
+      this, batch_render_strategy, continuous_resolve_tree);
 }
 
 void FiberElement::DispatchAsyncResolveSubtreeProperty() {

@@ -1859,18 +1859,6 @@ enableTransformedTouchPosition:
   supportPlatform:
     - Android
     - HarmonyOS
-enableBatchLayoutTaskWithSyncLayout:
-  description: Controls whether Fiber elements batch layout tasks and flush them together during sync layout. When enabled, layout work is enqueued on the element context delegate and flushed at sync-layout boundaries; when disabled, layout tasks run immediately. When omitted, it falls back to settings or native config.
-  defaultValue: 'false'
-  valueType: bool
-  readSettings: true
-  readNative: true
-  author: usczz
-  since: '3.7'
-  supportPlatform:
-    - Android
-    - HarmonyOS
-    - iOS
 enableiOSAnimationLayerForExposure:
   description: Controls whether iOS exposure position calculations include animation-layer geometry instead of only the base view frame. When enabled, exposure detection measures visibility using animation-layer positions; when disabled, it uses the normal layer position.
   defaultValue: 'false'

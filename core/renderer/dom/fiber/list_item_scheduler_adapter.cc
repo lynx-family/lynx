@@ -16,19 +16,10 @@ namespace tasm {
 
 ListItemSchedulerAdapter::ListItemSchedulerAdapter(
     FiberElement* sub_root, list::BatchRenderStrategy batch_render_strategy,
-    ElementContextDelegate* parent_context, bool continuous_resolve_tree)
-    : ElementContextDelegate(parent_context, sub_root),
-      render_root_(sub_root),
+    bool continuous_resolve_tree)
+    : render_root_(sub_root),
       batch_render_strategy_(batch_render_strategy),
-      continuous_resolve_tree_(continuous_resolve_tree) {
-  element_context_task_queue_ =
-      std::make_unique<ElementContextTaskQueue>([this]() {
-        return (render_root_ && render_root_->element_manager())
-                   ? render_root_->element_manager()
-                         ->GetParallelWithSyncLayout()
-                   : false;
-      });
-}
+      continuous_resolve_tree_(continuous_resolve_tree) {}
 
 void ListItemSchedulerAdapter::ResolveSubtreeProperty() {
   std::deque<FiberElement*> queue;
@@ -143,10 +134,6 @@ void ListItemSchedulerAdapter::ResolveElementTree(
       // reduce tasks.
       render_root_->FlushActions();
     }
-    if (render_root_->element_manager()
-            ->GetEnableBatchLayoutTaskWithSyncLayout()) {
-      FlushEnqueuedTasks();
-    }
   }
 }
 
@@ -156,11 +143,6 @@ ListItemSchedulerAdapter::GenerateReduceTaskForResolveElementTree() {
     if (batch_render_strategy_ ==
         list::BatchRenderStrategy::kAsyncResolvePropertyAndElementTree) {
       ConsumeResolveElementTreeReduceTasks();
-    }
-
-    if (render_root_->element_manager()
-            ->GetEnableBatchLayoutTaskWithSyncLayout()) {
-      FlushEnqueuedTasks();
     }
   });
 }

@@ -880,15 +880,6 @@ class LynxConfigDecoder final {
           doc[config::kEnableTransformedTouchPosition].GetBool());
     }
 
-    if (doc.HasMember(config::kEnableBatchLayoutTaskWithSyncLayout) &&
-        doc[config::kEnableBatchLayoutTaskWithSyncLayout].IsBool()) {
-      page_config->SetEnableBatchLayoutTaskWithSyncLayout(
-          doc[config::kEnableBatchLayoutTaskWithSyncLayout].GetBool());
-    } else {
-      page_config->SetEnableBatchLayoutTaskWithSyncLayout(
-          LynxEnv::GetInstance().EnableBatchLayoutTaskWithSyncLayout());
-    }
-
     if (doc.HasMember(config::kEnableiOSAnimationLayerForExposure) &&
         doc[config::kEnableiOSAnimationLayerForExposure].IsBool()) {
       page_config->SetEnableiOSAnimationLayerForExposure(

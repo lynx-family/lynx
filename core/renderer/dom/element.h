@@ -72,7 +72,6 @@ class CSSParseToken;
 struct LayoutBundle;
 class PseudoElement;
 class ListItemSchedulerAdapter;
-class ElementContextDelegate;
 class PlatformLayoutFunctionWrapper;
 
 using ElementChildrenArray =
@@ -1764,8 +1763,6 @@ class Element : public lepus::RefCounted,
   std::unique_ptr<style::StyleObject*, style::StyleObjectArrayDeleter>
       last_style_objects_{nullptr};
   style::DynamicStyleObjectRef dynamic_simple_object_{nullptr};
-
-  ElementContextDelegate* element_context_delegate_{nullptr};
 
   std::unique_ptr<SLNode> sl_node_{nullptr};
 

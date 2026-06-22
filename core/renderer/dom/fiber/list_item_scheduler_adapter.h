@@ -9,21 +9,17 @@
 #include <memory>
 
 #include "base/include/closure.h"
-#include "base/include/concurrent_queue.h"
 #include "core/base/thread/once_task.h"
-#include "core/renderer/dom/element_context_delegate.h"
-#include "core/renderer/dom/element_context_task_queue.h"
 #include "core/renderer/ui_component/list/list_types.h"
 
 namespace lynx {
 namespace tasm {
 class FiberElement;
 
-class ListItemSchedulerAdapter : public ElementContextDelegate {
+class ListItemSchedulerAdapter {
  public:
   ListItemSchedulerAdapter(FiberElement* sub_root,
                            list::BatchRenderStrategy batch_render_strategy,
-                           ElementContextDelegate* parent_context,
                            bool continuous_resolve_tree);
 
   std::list<base::OnceTaskRefptr<base::closure>>& resolve_property_queue() {
@@ -48,8 +44,6 @@ class ListItemSchedulerAdapter : public ElementContextDelegate {
                               parallel_resolve_element_tree_queue);
 
   bool IsBatchResolvingTree() { return batch_resolving_tree_; }
-
-  bool IsListItemElementContext() override { return true; }
 
  private:
   FiberElement* render_root_;

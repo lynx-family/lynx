@@ -1955,9 +1955,6 @@ TEST_P(FiberElementTest, TestCheckDynamicUnit7) {
 }
 
 TEST_P(FiberElementTest, TestUpdateLayoutNodeByBundle00) {
-  if (enable_batch_layout_operation) {
-    GTEST_SKIP();
-  }
   auto view = manager->CreateFiberPage("0", 0);
   view->InitLayoutBundle();
   EXPECT_NE(view->layout_bundle_, nullptr);
@@ -1972,27 +1969,6 @@ TEST_P(FiberElementTest, TestUpdateLayoutNodeByBundle00) {
   EXPECT_EQ(!view->parallel_reduce_tasks_->empty(),
             manager->GetParallelWithSyncLayout());
   view->parallel_reduce_tasks_->clear();
-}
-
-TEST_P(FiberElementTest, TestUpdateLayoutNodeByBundle01) {
-  if (!enable_batch_layout_operation) {
-    GTEST_SKIP();
-  }
-  auto view = manager->CreateFiberPage("0", 0);
-  view->InitLayoutBundle();
-  EXPECT_NE(view->layout_bundle_, nullptr);
-  view->UpdateLayoutNodeByBundle();
-  EXPECT_EQ(view->layout_bundle_, nullptr);
-
-  view->parallel_flush_ = true;
-  view->InitLayoutBundle();
-  EXPECT_NE(view->layout_bundle_, nullptr);
-  view->UpdateLayoutNodeByBundle();
-  EXPECT_EQ(view->layout_bundle_, nullptr);
-  EXPECT_EQ(!(manager->element_context_task_queue_->task_queue_.Empty()),
-            manager->GetParallelWithSyncLayout());
-  EXPECT_TRUE(view->parallel_reduce_tasks_->empty());
-  manager->element_context_task_queue_->task_queue_.ReversePopAll();
 }
 
 TEST_P(FiberElementTest, TestUpdateDynamicElementStyle00) {

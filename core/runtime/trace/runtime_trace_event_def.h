@@ -1232,18 +1232,6 @@ inline constexpr const char* const FIBER_ON_CLEAN_UP = "FiberOnCleanUp";
 inline constexpr const char* const FIBER_GET_COMPUTED_STYLE_BY_KEY =
     "FiberGetComputedStyleByKey";
 /**
- * @trace_description: Flush enqueued tasks in element context delegate.
- */
-inline constexpr const char* const
-    ELEMENT_CONTEXT_DELEGATE_FLUSH_ENQUEUED_TASKS =
-        "ElementContextDelegate::FlushEnqueuedTasks";
-/**
- * @trace_description: Enqueue a task into element context delegate for later
- * execution.
- */
-inline constexpr const char* const ELEMENT_CONTEXT_DELEGATE_ENQUEUE_TASK =
-    "ElementContextDelegate::EnqueueTask";
-/**
  * @trace_description: Record source map release information for debugging.
  */
 inline constexpr const char* const SET_SOURCE_MAP_RELEASE =

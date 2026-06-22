@@ -501,10 +501,6 @@ bool LynxEnv::EnableAnimationInfoReport() {
   return enable_animation_info_report;
 }
 
-bool LynxEnv::EnableBatchLayoutTaskWithSyncLayout() {
-  return GetBoolEnv(Key::ENABLE_BATCH_LAYOUT_TASK_WITH_SYNC_LAYOUT, false);
-}
-
 bool LynxEnv::EnableJSVMRuntime() {
   return GetBoolEnv(Key::ENABLE_JSVM_RUNTIME, false) ||
          GetBoolEnv(Key::ENABLE_JSVM_RUNTIME, false, EnvType::LOCAL);
