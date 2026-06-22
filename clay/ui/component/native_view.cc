@@ -9,6 +9,7 @@
 #include <utility>
 
 #include "base/include/fml/macros.h"
+#include "base/trace/native/trace_event.h"
 #include "clay/common/graphics/drawable_image.h"
 #include "clay/common/graphics/shared_image_external_texture.h"
 #include "clay/gfx/shared_image/shared_image_sink.h"
@@ -18,12 +19,15 @@
 #include "clay/ui/lynx_module/lynx_ui_method_registrar.h"
 #include "clay/ui/rendering/render_external_content.h"
 #include "clay/ui/shadow/shadow_node.h"
+#include "core/base/trace/trace_event_def.h"
 
 namespace clay {
 
 NativeView::NativeView(int id, std::string tag, PageView* page_view)
     : WithTypeInfo(id, std::move(tag),
                    std::make_unique<RenderExternalContent>(), page_view) {
+  TRACE_EVENT("clay", CLAY_NATIVE_VIEW_CONSTRUCTOR, "id", id, "tag",
+              GetName().c_str());
   if (page_view != nullptr && page_view->GetViewContext() != nullptr) {
     composition_preference_ =
         page_view->GetViewContext()->GetNativeViewCompositionPreference(
