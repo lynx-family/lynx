@@ -234,9 +234,12 @@ using namespace lynx::tasm;
           } else {
             [_view insertSubview:imageView aboveSubview:refView];
           }
-          [_contentImageViews addObject:imageView];
 
-          view_index++;
+          [self insertLayer:imageView.layer forOp:op];
+
+          refView = imageView;
+
+          [_contentImageViews addObject:imageView];
         }
         break;
       }
@@ -521,6 +524,13 @@ using namespace lynx::tasm;
   }
 
   [CATransaction commit];
+}
+
+- (void)onRebuildSubRenderers {
+  for (UIImageView *imageView in _contentImageViews) {
+    [imageView removeFromSuperview];
+  }
+  [_contentImageViews removeAllObjects];
 }
 
 - (void)applyRectToLayer:(CALayer *)layer withBoxIndex:(int32_t)index {
