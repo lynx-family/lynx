@@ -137,6 +137,11 @@ void TextView::PushInlineViewIndex(int id, int placeholder_id) {
   inline_views_index_.emplace(id, placeholder_id);
 }
 
+void TextView::ClearInlineIndexes() {
+  inline_images_index_.clear();
+  inline_views_index_.clear();
+}
+
 void TextView::SetInlineEmojiInfo(
     std::vector<InlineEmojiInfo> inline_emoji_info) {
   GetRenderText()->SetInlineEmojiInfo(std::move(inline_emoji_info));
@@ -529,6 +534,9 @@ BaseView* TextView::GetViewAtPosition(const FloatPoint& point_by_paragraph,
     for (auto view_index : inline_views_index_) {
       if (view_index.second == index) {
         auto view = page_view_->FindViewByViewId(view_index.first);
+        if (!view) {
+          return nullptr;
+        }
         FloatPoint relative_position;
         auto top_view = view->GetTopViewToAcceptEvent(
             point_by_page, &relative_position, platform_try_hit_id);
