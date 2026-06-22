@@ -9,6 +9,7 @@
 #include <unordered_map>
 #include <utility>
 
+#include "base/trace/native/trace_event.h"
 #include "clay/lynx_adaptor/base_def.h"
 #include "clay/lynx_adaptor/clay_value.h"
 #include "clay/lynx_adaptor/platform_extra_bundle_clay.h"
@@ -19,6 +20,7 @@
 #include "clay/ui/component/list/lynx_list_data.h"
 #include "clay/ui/lynx_module/type_utils.h"
 #include "clay/ui/shadow/text_render.h"
+#include "core/base/trace/trace_event_def.h"
 #include "core/renderer/css/css_property_id.h"
 
 namespace lynx {
@@ -202,8 +204,11 @@ void PaintingContextClay::CreatePaintingNode(
     int id, const std::string& tag,
     const fml::RefPtr<PropBundle>& painting_data, bool flatten,
     bool create_node_async, uint32_t node_index) {
-  auto task = [view_context = view_context_, id, tag, painting_data,
-               flatten]() mutable {
+  auto task = [view_context = view_context_, id, tag, painting_data, flatten,
+               create_node_async, node_index]() mutable {
+    TRACE_EVENT("clay", CLAY_PAINTING_CONTEXT_CREATE_PAINTING_NODE, "id", id,
+                "tag", tag.c_str(), "flatten", flatten, "create_node_async",
+                create_node_async, "node_index", node_index);
     std::string tag_name = tag;
     auto* pda = painting_data.get();
 

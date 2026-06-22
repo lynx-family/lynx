@@ -11,10 +11,19 @@ ui_platform_sources = [
   "keyboard_bridge.h",
   "keyboard_types.h",
   "native_view_service.h",
-  "native_view_tag_sync.cc",
-  "native_view_tag_sync.h",
+  "native_view_tags.h",
   "text_emoji_provider.h",
 ]
+
+if (is_android) {
+  # Exactly one InternalPlatformViewTags() implementation should be linked.
+  ui_platform_sources += [ "native_view_tags_android.cc" ]
+} else if (is_ios) {
+  # Exactly one InternalPlatformViewTags() implementation should be linked.
+  ui_platform_sources += [ "native_view_tags.cc" ]
+} else {
+  ui_platform_sources += [ "native_view_tags_empty.cc" ]
+}
 
 if (!is_android && !is_ios) {
   ui_platform_sources += [ "text_emoji_provider.cc" ]
