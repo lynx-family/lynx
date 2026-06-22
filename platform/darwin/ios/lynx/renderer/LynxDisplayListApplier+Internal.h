@@ -23,6 +23,8 @@
 
 - (void)syncHostDecorationLayers;
 
+- (void)onRebuildSubRenderers;
+
 - (void)reset;
 
 @end
