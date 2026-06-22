@@ -893,6 +893,7 @@ bool PageView::DispatchPointerEvent(std::vector<PointerEvent> events) {
         ConvertFrom<kPixelTypePhysical>(event.scroll_delta_y);
   }
 
+  MarkTapSuppressedPointersForFlingStop(events);
   bool consumed = gesture_manager_->HandlePointerEvents(this, events);
 #if defined(ENABLE_MOUSE_TRACKING)
   mouse_region_manager_->HandleEvents(this, events);
@@ -903,8 +904,11 @@ bool PageView::DispatchPointerEvent(std::vector<PointerEvent> events) {
     // if not consumed by clay elements, it should not be consumed by lynx as
     // well.
     ReportTopViewRawEvents(events);
-    isolated_gesture_detector_.DispatchPointerEvent(
-        events, gesture_manager_->GetHitTestResponsiveResult());
+    auto isolated_events = FilterTapSuppressedPointerEvents(events);
+    if (!isolated_events.empty()) {
+      isolated_gesture_detector_.DispatchPointerEvent(
+          isolated_events, gesture_manager_->GetHitTestResponsiveResult());
+    }
   } else {
 #if defined(ENABLE_MOUSE_TRACKING)
     for (PointerEvent& event : events) {
@@ -914,6 +918,7 @@ bool PageView::DispatchPointerEvent(std::vector<PointerEvent> events) {
     }
 #endif
   }
+  ClearTapSuppressedPointersForEndedEvents(events);
 
   if (render_settings_) {
     render_settings_->SetIsTouching(true);
@@ -932,6 +937,57 @@ bool PageView::DispatchPointerEvent(std::vector<PointerEvent> events) {
     }
   }
   return consumed;
+}
+
+bool PageView::HasActiveFling() const {
+  return active_fling_count_ > 0 || nested_scroll_manager_->GetScrollStatus() ==
+                                        Scrollable::ScrollStatus::kFling;
+}
+
+void PageView::MarkTapSuppressedPointersForFlingStop(
+    const std::vector<PointerEvent>& events) {
+  if (!HasActiveFling()) {
+    return;
+  }
+  for (const auto& event : events) {
+    if (event.type == PointerEvent::EventType::kDownEvent &&
+        (event.device == PointerEvent::DeviceType::kTouch ||
+         event.device == PointerEvent::DeviceType::kStylus ||
+         event.device == PointerEvent::DeviceType::kInvertedStylus)) {
+      fling_stop_tap_suppressed_pointer_ids_.insert(event.pointer_id);
+    }
+  }
+}
+
+std::vector<PointerEvent> PageView::FilterTapSuppressedPointerEvents(
+    const std::vector<PointerEvent>& events) {
+  std::vector<PointerEvent> filtered_events;
+  filtered_events.reserve(events.size());
+  for (const auto& event : events) {
+    if (fling_stop_tap_suppressed_pointer_ids_.find(event.pointer_id) ==
+        fling_stop_tap_suppressed_pointer_ids_.end()) {
+      filtered_events.push_back(event);
+    }
+  }
+  return filtered_events;
+}
+
+void PageView::ClearTapSuppressedPointersForEndedEvents(
+    const std::vector<PointerEvent>& events) {
+  for (const auto& event : events) {
+    if (event.type == PointerEvent::EventType::kUpEvent ||
+        event.type == PointerEvent::EventType::kCancel) {
+      fling_stop_tap_suppressed_pointer_ids_.erase(event.pointer_id);
+    }
+  }
+}
+
+void PageView::OnFlingStart() { active_fling_count_++; }
+
+void PageView::OnFlingEnd() {
+  if (active_fling_count_ > 0) {
+    active_fling_count_--;
+  }
 }
 
 void PageView::DispatchEnterForeground() {
@@ -1747,6 +1803,8 @@ void PageView::ResetPageView(bool recycle) {
   animation_handler_->ClearCallbacks();
   SetupAnimationCallback();
   touch_view_map_.clear();
+  fling_stop_tap_suppressed_pointer_ids_.clear();
+  active_fling_count_ = 0;
   frame_builder_ = std::make_unique<FrameBuilder>(
       skity::Vec2{static_cast<int32_t>(metrics_.physical_width),
                   static_cast<int32_t>(metrics_.physical_height)},

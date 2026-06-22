@@ -9,6 +9,7 @@
 #include <memory>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -465,8 +466,8 @@ class PageView : public BaseView,
 
   void OnPlatformPerformInputAction(int client_id);
 
-  virtual void OnFlingStart() {}
-  virtual void OnFlingEnd() {}
+  virtual void OnFlingStart();
+  virtual void OnFlingEnd();
 
   void RegisterUploadTask(OneShotCallback<>&& task, int image_id) override;
 
@@ -525,6 +526,13 @@ class PageView : public BaseView,
   void PlatformHideSoftInput() override;
 
   void SetupIsolatedGestures();
+  bool HasActiveFling() const;
+  void MarkTapSuppressedPointersForFlingStop(
+      const std::vector<PointerEvent>& events);
+  std::vector<PointerEvent> FilterTapSuppressedPointerEvents(
+      const std::vector<PointerEvent>& events);
+  void ClearTapSuppressedPointersForEndedEvents(
+      const std::vector<PointerEvent>& events);
   // Report the deepest leaf view in the position to lynx.
   void ReportTopViewRawEvents(const std::vector<PointerEvent>& events);
   // Report pointer event with specified type
@@ -608,6 +616,8 @@ class PageView : public BaseView,
   // view, regardless of whether the touch point remains within the view's
   // boundaries.
   std::unordered_map<int, int> touch_view_map_;
+  std::unordered_set<int> fling_stop_tap_suppressed_pointer_ids_;
+  int active_fling_count_ = 0;
 
   std::unique_ptr<GapWorker> gap_worker_;
 
