@@ -175,17 +175,6 @@ inline bool IsLynxTemplateAssets(const std::string &url) {
          base::BeginsWith(url, std::string(kLynxTemplateAssetsScheme) + ":");
 }
 
-/**
- * Check if the given url indicates a app-service.js of a dynamic component.
- * @param url the url to check
- * @return true if the given url indicates a app-service.js of a dynamic
- * component.
- */
-inline bool IsDynamicComponentServiceJS(const std::string &url) {
-  return lynx::base::BeginsWith(url, kDynamicComponentJSPrefix) &&
-         lynx::base::EndsWith(url, kAppServiceJSName);
-}
-
 }  // namespace runtime
 }  // namespace lynx
 
