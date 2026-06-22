@@ -146,7 +146,7 @@ void NativePaintingCtxPlatformRef::RebuildSubLayers(
     int child_id = new_children[insert_pos];
     auto child_it = renderers_.find(child_id);
     if (child_it != renderers_.end()) {
-      renderer->AddChild(child_it->second);
+      renderer->AddChild(child_it->second, insert_pos);
     }
   }
 }

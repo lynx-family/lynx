@@ -97,6 +97,8 @@ public class Renderer {
   }
 
   public void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
+    // TODO(linxs): Rename this to performMeasureChildren and remove the unused measure
+    // spec parameters, since this method only measures renderer host children.
     if (mRenderHost == null) {
       return;
     }
@@ -124,6 +126,8 @@ public class Renderer {
   }
 
   public void onLayout(boolean changed, int l, int t, int r, int b) {
+    // TODO(linxs): Rename this to performLayoutChildren, since this method only lays out
+    // renderer host children.
     if (mRenderHost == null) {
       return;
     }

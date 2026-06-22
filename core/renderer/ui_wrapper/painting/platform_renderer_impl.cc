@@ -62,7 +62,8 @@ void PlatformRendererImpl::UpdateAttributes(
   OnUpdateAttributes(attributes, tends_to_flatten);
 }
 
-void PlatformRendererImpl::AddChild(fml::RefPtr<PlatformRenderer> child) {
+void PlatformRendererImpl::AddChild(fml::RefPtr<PlatformRenderer> child,
+                                    int index) {
   if (!child) {
     return;
   }
@@ -73,14 +74,22 @@ void PlatformRendererImpl::AddChild(fml::RefPtr<PlatformRenderer> child) {
     child_impl->RemoveFromParent();
   }
 
+  const bool should_append =
+      index < 0 || static_cast<size_t>(index) >= children_.size();
+  const int insert_index = should_append ? -1 : index;
+
   // Set parent relationship
   child_impl->parent_ = this;
 
   // Call platform-specific implementation
-  OnAddChild(child.get());
+  OnAddChild(child.get(), insert_index);
 
   // Add to children list
-  children_.push_back(std::move(child));
+  if (should_append) {
+    children_.push_back(std::move(child));
+  } else {
+    children_.insert(children_.begin() + index, std::move(child));
+  }
 }
 
 void PlatformRendererImpl::RemoveFromParent() {

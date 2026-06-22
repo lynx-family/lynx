@@ -101,7 +101,7 @@ class TestPlatformRenderer : public PlatformRendererImpl {
     }
   }
   void OnUpdateAttributes(const fml::RefPtr<PropBundle>&, bool) override {}
-  void OnAddChild(PlatformRenderer*) override {}
+  void OnAddChild(PlatformRenderer*, int) override {}
   void OnRemoveFromParent() override {}
   void OnUpdateSubtreeProperties(const DisplayList&) override {}
 };
