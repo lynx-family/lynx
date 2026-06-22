@@ -213,7 +213,6 @@ class MTSRuntime : private MTSContextHolder {
   void AddReporterCustomInfo(
       const std::unordered_map<std::string, std::string>& info);
 
-  // virtual void CleanClosuresInCycleReference() {}
   void OnReload();
 
   void InitInspector(

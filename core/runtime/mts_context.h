@@ -126,7 +126,6 @@ class MTSContext {
   // only for lepusNG
   virtual void SetGCThreshold(int64_t threshold){};
 
-  // virtual void CleanClosuresInCycleReference() {}
   virtual void OnReload() {}
 
   // 暂时保留，但是对于rts 不提供类似接口
