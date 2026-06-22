@@ -43,7 +43,7 @@ class PlatformRendererImpl : public PlatformRenderer {
   const DisplayList& GetDisplayList() const { return display_list_; }
 
   void RemoveFromParent() override;
-  void AddChild(fml::RefPtr<PlatformRenderer> child) override;
+  void AddChild(fml::RefPtr<PlatformRenderer> child, int index = -1) override;
 
   const ChildVecT& Children() const override { return children_; }
 
@@ -69,7 +69,7 @@ class PlatformRendererImpl : public PlatformRenderer {
   virtual void OnUpdateDisplayList(DisplayList display_list) = 0;
   virtual void OnUpdateAttributes(const fml::RefPtr<PropBundle>& attributes,
                                   bool tends_to_flatten) = 0;
-  virtual void OnAddChild(PlatformRenderer* child) = 0;
+  virtual void OnAddChild(PlatformRenderer* child, int index) = 0;
   virtual void OnRemoveFromParent() = 0;
   virtual void OnUpdateSubtreeProperties(
       const DisplayList& subtree_properties) = 0;
