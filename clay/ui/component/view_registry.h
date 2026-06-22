@@ -114,6 +114,7 @@ class ViewRegistry {
                                const std::string& tag_name);
 
   int32_t GetTagInfo(const std::string& tag_name);
+  int32_t GetTagInfo(const std::string& tag_name, PageView* page_view);
 
   bool HasView(const std::string& tag_name) const;
 

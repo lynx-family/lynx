@@ -12,6 +12,7 @@
 #include <utility>
 
 #include "base/include/string/string_number_convert.h"
+#include "base/trace/native/trace_event.h"
 #include "clay/gfx/geometry/float_rect.h"
 #include "clay/gfx/geometry/sticky_info.h"
 #include "clay/ui/common/attribute_utils.h"
@@ -33,12 +34,14 @@
 
 #include "clay/public/value.h"
 #include "clay/ui/component/view_registry.h"
+#include "clay/ui/platform/native_view_tags.h"
 #include "clay/ui/rendering/render_object.h"
 #include "clay/ui/resource/font_collection.h"
 #include "clay/ui/shadow/inline_view_shadow_node.h"
 #include "clay/ui/shadow/native_view_shadow_node.h"
 #include "clay/ui/shadow/shadow_node.h"
 #include "clay/ui/shadow/text_shadow_node.h"
+#include "core/base/trace/trace_event_def.h"
 #define DEBUG_KEYFRAMES 0
 
 #define DEBUG_CLAY_CTX 0
@@ -61,14 +64,10 @@
 
 namespace clay {
 
-static bool ForceUseXElement(const std::string& tag) {
-#ifdef OS_IOS
-  // Let iOS xelement text input registrations override Clay C++ entries.
-  return tag == "input" || tag == "x-input" || tag == "x-input-ng" ||
-         tag == "textarea" || tag == "x-textarea" || tag == "x-textarea-ng";
-#else
-  return false;
-#endif
+static bool IsInternalPlatformViewTag(const std::string& tag) {
+  // Let internal platform-view registrations override Clay C++ entries.
+  const auto& tags = InternalPlatformViewTags();
+  return tags.find(tag) != tags.end();
 }
 
 ViewContext::ViewContext(PageView* root, ShadowNodeOwner* shadow_node_owner)
@@ -123,6 +122,8 @@ int ViewContext::IndexOf(int id) const {
 }
 
 bool ViewContext::CreateView(int id, const std::string& tag_name) {
+  TRACE_EVENT("clay", CLAY_VIEW_CONTEXT_CREATE_VIEW, "id", id, "tag",
+              tag_name.c_str());
   CTX_LOG << "CreateView id:" << id << " tag:" << tag_name;
   FML_DCHECK(id != -1);
 
@@ -148,6 +149,8 @@ bool ViewContext::CreateView(int id, const std::string& tag_name) {
 }
 
 void ViewContext::AddView(int id, int parent_id, int index) {
+  TRACE_EVENT("clay", CLAY_VIEW_CONTEXT_ADD_VIEW, "id", id, "parent_id",
+              parent_id);
   CTX_LOG << "AddView id:" << id << " parent id:" << parent_id
           << " index: " << index;
 
@@ -302,6 +305,8 @@ void ViewContext::ResetPageView() {
 
 ShadowNode* ViewContext::CreateShadowNode(int id, const std::string& tag_name,
                                           bool allow_inline) {
+  TRACE_EVENT("clay", CLAY_VIEW_CONTEXT_CREATE_SHADOW_NODE, "id", id, "tag",
+              tag_name.c_str());
   CTX_LOG << "CreateLayoutNode id:" << id << " tag:" << tag_name;
 
   auto node = ViewRegistry::GetInstance()->CreateShadowNode(
@@ -319,7 +324,7 @@ ShadowNode* ViewContext::CreateShadowNode(int id, const std::string& tag_name,
 }
 
 int32_t ViewContext::GetTagInfo(const std::string& tag_name) {
-  return ViewRegistry::GetInstance()->GetTagInfo(tag_name);
+  return ViewRegistry::GetInstance()->GetTagInfo(tag_name, page_view_);
 }
 
 void ViewContext::AddShadowNode(int id, int parent_id, int index) {
@@ -1044,10 +1049,15 @@ void ViewContext::SetScrollFluencyMonitorDelegate(
 void ViewContext::SyncNativeViewTags(
     std::unordered_set<std::string> tags,
     std::unordered_set<std::string> bootstrap_tags) {
+  TRACE_EVENT("clay", CLAY_VIEW_CONTEXT_SYNC_NATIVE_VIEW_TAGS, "tag_count",
+              static_cast<int64_t>(tags.size()), "bootstrap_tag_count",
+              static_cast<int64_t>(bootstrap_tags.size()));
   for (const auto& tag : tags) {
+    if (IsInternalPlatformViewTag(tag)) {
+      continue;
+    }
     if (ViewRegistry::GetInstance()->HasView(tag) &&
-        bootstrap_tags.find(tag) == bootstrap_tags.end() &&
-        !ForceUseXElement(tag)) {
+        bootstrap_tags.find(tag) == bootstrap_tags.end()) {
       continue;
     }
     ViewRegistry::GetInstance()->RegisterView(
