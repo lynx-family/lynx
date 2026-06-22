@@ -150,9 +150,6 @@ public class AndroidView extends ViewGroup
   @Override
   protected void onLayout(boolean changed, int l, int t, int r, int b) {
     if (mRenderer != null) {
-      if (mRenderer.getUIHost() != null) {
-        mRenderer.getUIHost().measure();
-      }
       mRenderer.onLayout(changed, l, t, r, b);
     }
 
@@ -166,8 +163,16 @@ public class AndroidView extends ViewGroup
 
   @Override
   protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
-    setMeasuredDimension(
-        MeasureSpec.getSize(widthMeasureSpec), MeasureSpec.getSize(heightMeasureSpec));
+    if (mRenderer != null) {
+      Rect frame = mRenderer.getLynxFrame();
+      setMeasuredDimension(frame.width(), frame.height());
+      mRenderer.onMeasure(widthMeasureSpec, heightMeasureSpec);
+    } else {
+      // If renderer is null, we should still set measured dimension to avoid IllegalStateException
+      // from ViewGroup.
+      setMeasuredDimension(
+          MeasureSpec.getSize(widthMeasureSpec), MeasureSpec.getSize(heightMeasureSpec));
+    }
 
     if (!getRootView().isLayoutRequested() && mDrawChildHook != null) {
       // it means this onMeasure is not from rootview's performTraversals, it may be triggered from
