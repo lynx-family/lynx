@@ -408,7 +408,7 @@ void TextRender::BuildTextLayout(const MeasureConstraint& constraint,
 
   const bool force_rebuild = update_flag_ != TextUpdateFlag::kUpdateFlagNone;
   const bool should_layout =
-      force_rebuild || prev_layout_width_ != layout_width;
+      force_rebuild || !cache_paragraph_ || prev_layout_width_ != layout_width;
 
   if (force_rebuild) {
     measure_node_->PreLayout(nullptr);

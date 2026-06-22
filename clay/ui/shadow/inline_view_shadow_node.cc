@@ -40,6 +40,12 @@ void InlineViewShadowNode::TextLayout(LayoutContext* context) {
   builder->Pop();
 }
 
+void InlineViewShadowNode::ResetTextLayout() {
+  placeholder_index_ = -1;
+  start_glyph_ = 0;
+  end_glyph_ = 0;
+}
+
 MeasureResult InlineViewShadowNode::MeasureNativeNode(
     const MeasureConstraint& constraint) {
   return owner_->MeasureNativeNode(this, constraint);

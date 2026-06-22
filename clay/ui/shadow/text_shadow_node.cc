@@ -63,6 +63,10 @@ void TextShadowNode::OnLayout(float width, TextMeasureMode width_mode,
                               const std::array<float, 4>& borders) {
   BaseTextShadowNode::OnLayout(width, width_mode, height, height_mode, paddings,
                                borders);
+  if (width == 0.f && height == 0.f) {
+    AlignInlineViewsToOrigin();
+    return;
+  }
   auto paragraph = text_render_->GetCacheParagraph();
   if (!paragraph) {
     return;
