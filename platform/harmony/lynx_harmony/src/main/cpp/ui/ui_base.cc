@@ -233,6 +233,9 @@ void UIBase::ConsumeGesture(int gesture_id, const lepus::Value& params) {
 }
 
 UIBase::~UIBase() {
+  // Reset animations before ArkUI node teardown. Animator cancellation may
+  // synchronously invoke callbacks that update the node.
+  keyframe_manager_.reset();
   if (!node_) {
     return;
   }
