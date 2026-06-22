@@ -3,6 +3,7 @@
 # Licensed under the Apache License Version 2.0 that can be found in the
 # LICENSE file in the root directory of this source tree.
 
+import os
 import time
 
 from case_sets.xelement import video_utils
@@ -23,14 +24,18 @@ def assert_failed_callback(lynxview, method, msg=None):
 def assert_bridge_failed_callback(lynxview, method, code):
     video_utils.assert_text_contains(lynxview, "callback-log",
                                      "%s_fail" % method)
-    video_utils.assert_text_contains(lynxview, "callback-log",
-                                     '"code":%s' % code)
+    if os.environ.get("platform") == "ios":
+        video_utils.assert_text_contains(lynxview, "callback-log",
+                                         "method '%s' not found" % method)
+    else:
+        video_utils.assert_text_contains(lynxview, "callback-log",
+                                         '"code":%s' % code)
 
 
 config = {
     "type": "custom",
     "path": "automation/video/main",
-    "platform": "android",
+    "platform": ["android", "ios"],
 }
 
 
@@ -96,11 +101,31 @@ def run(test):
                                   "pause_fail", timeout=10)
     assert_failed_callback(lynxview, "pause",
                            "request canceled by src change")
+    time.sleep(1)
+    video_utils.assert_text_occurrences(lynxview, "callback-log",
+                                        "pause_fail", 1)
+    video_utils.assert_text_not_contains(lynxview, "callback-log",
+                                         "pause_ok")
     video_utils.click(lynxview, "btn-clear-signals")
     video_utils.click(lynxview, "btn-stop")
     video_utils.wait_for_text(test, lynxview, "status-text", "stopped")
     video_utils.wait_for_contains(test, lynxview, "callback-log",
                                   "stop_ok")
+
+    video_utils.click(lynxview, "btn-src-primary")
+    video_utils.wait_for_text(test, lynxview, "status-text", "ready",
+                              timeout=20)
+    video_utils.click(lynxview, "btn-clear-signals")
+    video_utils.click(lynxview, "btn-seek-then-src-empty")
+    video_utils.wait_for_contains(test, lynxview, "callback-log",
+                                  "seek_fail", timeout=10)
+    assert_failed_callback(lynxview, "seek",
+                           "request canceled by src change")
+    time.sleep(1)
+    video_utils.assert_text_occurrences(lynxview, "callback-log",
+                                        "seek_fail", 1)
+    video_utils.assert_text_not_contains(lynxview, "callback-log",
+                                         "seek_ok")
 
     test.start_step("--------Test5: Seek failure callbacks;-------")
     video_utils.click(lynxview, "btn-src-primary")
@@ -128,6 +153,21 @@ def run(test):
                                   "seek_fail")
     assert_failed_callback(lynxview, "seek",
                            "position param must be a number")
+    video_utils.click(lynxview, "btn-clear-signals")
+    video_utils.click(lynxview, "btn-seek-nan-position")
+    video_utils.wait_for_contains(test, lynxview, "callback-log",
+                                  "seek_fail")
+    assert_failed_callback(lynxview, "seek", "position out of range")
+    video_utils.click(lynxview, "btn-clear-signals")
+    video_utils.click(lynxview, "btn-seek-infinite-position")
+    video_utils.wait_for_contains(test, lynxview, "callback-log",
+                                  "seek_fail")
+    assert_failed_callback(lynxview, "seek", "position out of range")
+    video_utils.click(lynxview, "btn-clear-signals")
+    video_utils.click(lynxview, "btn-seek-huge-position")
+    video_utils.wait_for_contains(test, lynxview, "callback-log",
+                                  "seek_fail")
+    assert_failed_callback(lynxview, "seek", "position out of range")
 
     test.start_step(
         "--------Test6: Null params and unknown method callbacks;-------")

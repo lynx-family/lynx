@@ -27,6 +27,7 @@ android {
         buildConfigField("Boolean","enable_lite_production", enable_lite_production)
         buildConfigField("Boolean","enable_lite",enable_lite)
         buildConfigField("Boolean","enable_packrel",enable_packrel)
+        buildConfigField("Boolean","enable_lepusng_worklet",enable_lepusng_worklet)
 
         multiDexEnabled true
 
@@ -284,6 +285,7 @@ task configGnCompileParas {
             // enable 16 kb by default
             gnBuildArgs_list.put("enable_16kb_align", "true")
             gnBuildArgs_list.put("enable_packrel", "\"$enable_packrel\"")
+            gnBuildArgs_list.put("enable_lepusng_worklet", "\"$enable_lepusng_worklet\"")
             if (buildType == "release") {
                 gnBuildArgs_list.put("is_debug", "false")
                 gnBuildArgs_list.put("enable_replay_release", "\"$enable_replay_release\"")
@@ -332,10 +334,10 @@ dependencies {
     androidTestImplementation "com.google.auto.service:auto-service-annotations:1.0-rc5"
     androidTestAnnotationProcessor "com.google.auto.service:auto-service:1.0-rc5"
 
-    implementation 'org.lynxsdk.lynx:primjs:3.8.0-alpha.6'
-    extractJNI 'org.lynxsdk.lynx:primjs:3.8.0-alpha.6'
-    implementation 'org.lynxsdk.lynx:primjsWasm:3.8.0-alpha.6'
-    extractJNI 'org.lynxsdk.lynx:primjsWasm:3.8.0-alpha.6'
+    implementation 'org.lynxsdk.lynx:primjs:3.9.0-alpha.1'
+    extractJNI 'org.lynxsdk.lynx:primjs:3.9.0-alpha.1'
+    implementation 'org.lynxsdk.lynx:primjsWasm:3.9.0-alpha.1'
+    extractJNI 'org.lynxsdk.lynx:primjsWasm:3.9.0-alpha.1'
     extractJNI 'org.lynxsdk.lynx:v8so:11.1.277.4'
 
     api project(':LynxJSSDK')

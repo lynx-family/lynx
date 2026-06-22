@@ -2,11 +2,25 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+#import <UIKit/UIKit.h>
 #import <XCTest/XCTest.h>
 #import "LynxCustomGestureRecognizer.h"
 
 @interface LynxCustomGestureRecognizerUnitTest : XCTestCase
 
+@end
+
+@interface TestLynxCustomGestureRecognizer : LynxCustomGestureRecognizer
+@property(nonatomic, assign) UIGestureRecognizerState testState;
+@end
+
+@implementation TestLynxCustomGestureRecognizer
+- (UIGestureRecognizerState)state {
+  return self.testState;
+}
+- (void)setState:(UIGestureRecognizerState)state {
+  self.testState = state;
+}
 @end
 
 @implementation LynxCustomGestureRecognizerUnitTest
@@ -31,14 +45,16 @@
 }
 
 - (void)testBeginGesture {
-  LynxCustomGestureRecognizer *gestureRecognizer = [[LynxCustomGestureRecognizer alloc] init];
+  TestLynxCustomGestureRecognizer *gestureRecognizer =
+      [[TestLynxCustomGestureRecognizer alloc] init];
   [gestureRecognizer beginGesture];
   XCTAssertEqual(gestureRecognizer.state, UIGestureRecognizerStateBegan,
                  @"Gesture state should be Began");
 }
 
 - (void)testChangeGesture {
-  LynxCustomGestureRecognizer *gestureRecognizer = [[LynxCustomGestureRecognizer alloc] init];
+  TestLynxCustomGestureRecognizer *gestureRecognizer =
+      [[TestLynxCustomGestureRecognizer alloc] init];
   [gestureRecognizer beginGesture];
   [gestureRecognizer changeGesture];
   XCTAssertEqual(gestureRecognizer.state, UIGestureRecognizerStateChanged,
@@ -46,14 +62,18 @@
 }
 
 - (void)testEndGesture {
-  LynxCustomGestureRecognizer *gestureRecognizer = [[LynxCustomGestureRecognizer alloc] init];
+  TestLynxCustomGestureRecognizer *gestureRecognizer =
+      [[TestLynxCustomGestureRecognizer alloc] init];
+  [gestureRecognizer beginGesture];
   [gestureRecognizer endGesture];
   XCTAssertEqual(gestureRecognizer.state, UIGestureRecognizerStateEnded,
                  @"Gesture state should be Ended");
 }
 
 - (void)testFailGesture {
-  LynxCustomGestureRecognizer *gestureRecognizer = [[LynxCustomGestureRecognizer alloc] init];
+  TestLynxCustomGestureRecognizer *gestureRecognizer =
+      [[TestLynxCustomGestureRecognizer alloc] init];
+  [gestureRecognizer beginGesture];
   [gestureRecognizer failGesture];
   XCTAssertEqual(gestureRecognizer.state, UIGestureRecognizerStateFailed,
                  @"Gesture state should be Failed");

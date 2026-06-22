@@ -259,6 +259,79 @@ export function VideoDemo() {
     }, 0);
   };
 
+  const seekThenSelectSource = (label: string, url: string) => {
+    clearSignals();
+    setTimeout(() => {
+      invokeMethod('seek', { position: 2 });
+      setSrcLabel(label);
+      setSrc(url);
+      setStatus(label === 'empty' ? 'empty' : 'loading');
+      setCurrentTime(0);
+      setDuration(0);
+      setFirstFrameDuration(0);
+    }, 0);
+  };
+
+  const automationActions: Record<string, () => void> = {
+    'btn-clear-signals': clearSignals,
+    'btn-play': () => invokeMethod('play'),
+    'btn-play-null-params': () => invokeMethod('play', null),
+    'btn-pause': () => invokeMethod('pause'),
+    'btn-stop': () => invokeMethod('stop'),
+    'btn-seek-start': () => invokeMethod('seek', { position: 0 }),
+    'btn-seek': () => invokeMethod('seek', { position: 2 }),
+    'btn-seek-near-end': () => invokeMethod('seek', { position: 9.5 }),
+    'btn-seek-out-of-range': () => invokeMethod('seek', { position: 99 }),
+    'btn-seek-missing-position': () => invokeMethod('seek'),
+    'btn-seek-null-params': () => invokeMethod('seek', null),
+    'btn-seek-string-position': () => invokeMethod('seek', { position: 'bad' }),
+    'btn-seek-nan-position': () =>
+      invokeMethod('seek', { position: Number.NaN }),
+    'btn-seek-infinite-position': () =>
+      invokeMethod('seek', { position: Number.POSITIVE_INFINITY }),
+    'btn-seek-huge-position': () =>
+      invokeMethod('seek', { position: Number.MAX_VALUE }),
+    'btn-src-primary': () => selectSource('primary', PRIMARY_VIDEO_URL),
+    'btn-src-secondary': () => selectSource('secondary', SECONDARY_VIDEO_URL),
+    'btn-src-invalid': () => selectSource('invalid', INVALID_VIDEO_URL),
+    'btn-src-empty': () => selectSource('empty', ''),
+    'btn-play-then-src-empty': () => playThenSelectSource('empty', ''),
+    'btn-play-pause-then-src-empty': () =>
+      playPauseThenSelectSource('empty', ''),
+    'btn-seek-then-src-empty': () => seekThenSelectSource('empty', ''),
+    'btn-loop-on': () => setLoop(true),
+    'btn-loop-off': () => setLoop(false),
+    'btn-muted-on': () => setMuted(true),
+    'btn-muted-off': () => setMuted(false),
+    'btn-volume-low': () => setVolume(0.3),
+    'btn-volume-high': () => setVolume(1),
+    'btn-speed-half': () => setSpeed(0.5),
+    'btn-speed-normal': () => setSpeed(1),
+    'btn-speed-double': () => setSpeed(2),
+    'btn-object-contain': () => setObjectFit('contain'),
+    'btn-object-cover': () => setObjectFit('cover'),
+    'btn-object-fill': () => setObjectFit('fill'),
+    'btn-timeupdate-slow': () => setTimeUpdateInterval(1),
+    'btn-timeupdate-zero': () => setTimeUpdateInterval(0),
+    'btn-timeupdate-fast': () => setTimeUpdateInterval(0.001),
+    'btn-mode-queue': () => setMode('queue'),
+    'btn-mode-direct': () => setMode('direct'),
+    'btn-mode-latest': () => setMode('latest'),
+    'btn-burst-play-stop': () => invokeBurst([['play'], ['stop']]),
+    'btn-burst-play-pause-stop': () =>
+      invokeBurst([['play'], ['pause'], ['stop']]),
+    'btn-method-unknown': () => invokeMethod('unknownVideoMethod'),
+  };
+
+  (globalThis as any).__videoE2EAction = (tag: string) => {
+    const action = automationActions[tag];
+    if (!action) {
+      return false;
+    }
+    action();
+    return true;
+  };
+
   const attrState =
     `src=${srcLabel};loop=${loop};volume=${volume.toFixed(1)};` +
     `muted=${muted};speed=${speed.toFixed(1)};fit=${objectFit};` +
@@ -411,6 +484,29 @@ export function VideoDemo() {
         >
           <text>Seek Text</text>
         </view>
+        <view
+          lynx-test-tag="btn-seek-nan-position"
+          className="button"
+          bindtap={() => invokeMethod('seek', { position: Number.NaN })}
+        >
+          <text>Seek NaN</text>
+        </view>
+        <view
+          lynx-test-tag="btn-seek-infinite-position"
+          className="button"
+          bindtap={() =>
+            invokeMethod('seek', { position: Number.POSITIVE_INFINITY })
+          }
+        >
+          <text>Seek Inf</text>
+        </view>
+        <view
+          lynx-test-tag="btn-seek-huge-position"
+          className="button"
+          bindtap={() => invokeMethod('seek', { position: Number.MAX_VALUE })}
+        >
+          <text>Seek Huge</text>
+        </view>
       </view>
 
       <view className="controls">
@@ -455,6 +551,13 @@ export function VideoDemo() {
           bindtap={() => playPauseThenSelectSource('empty', '')}
         >
           <text>Play Pause Empty</text>
+        </view>
+        <view
+          lynx-test-tag="btn-seek-then-src-empty"
+          className="button"
+          bindtap={() => seekThenSelectSource('empty', '')}
+        >
+          <text>Seek Empty</text>
         </view>
       </view>
 

@@ -48,6 +48,7 @@ class InspectorOwnerEmbedder
   void Init(devtool::LynxDevToolProxy* proxy,
             const std::shared_ptr<LynxInspectorOwner>& shared_self) override;
   void AttachProxy(devtool::LynxDevToolProxy* proxy);
+  void DetachProxy();
   void InitDevToolNGDelegate();
   void DispatchDocumentUpdated();
   void DispatchScreencastVisibilityChanged(bool status);
@@ -60,7 +61,7 @@ class InspectorOwnerEmbedder
 
   void SendResponse(const std::string& response);
   void DispatchConsoleMessage(const std::string& message, int32_t level,
-                              int64_t time_stamp);
+                              int64_t time_stamp) override;
   void StopCasting();
   void ContinueCasting();
   void PauseCasting();

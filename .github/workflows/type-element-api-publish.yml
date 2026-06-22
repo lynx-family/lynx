@@ -15,11 +15,11 @@ jobs:
       version_changed: ${{ steps.check.outputs.version_changed }}
     steps:
       - name: Download Source
-        uses: actions/checkout@v4.2.2
+        uses: actions/checkout@v6
         with:
           path: lynx
           fetch-depth: 1 # latest 1 commit
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: 24
           registry-url: 'https://registry.npmjs.org'
@@ -55,11 +55,11 @@ jobs:
       id-token: write
     steps:
       - name: Download Source
-        uses: actions/checkout@v4.2.2
+        uses: actions/checkout@v6
         with:
           path: lynx
           fetch-depth: 1 # latest 1 commit
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: 24
           registry-url: 'https://registry.npmjs.org'

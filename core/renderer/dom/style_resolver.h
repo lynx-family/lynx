@@ -65,7 +65,8 @@ class StyleResolver {
   std::unique_ptr<starlight::ComputedCSSStyle> ResolveBaseStyle(
       const starlight::ComputedCSSStyle* parent_style,
       const starlight::ComputedCSSStyle* previous_computed_style,
-      StyleMap* resolved_style_map = nullptr);
+      StyleMap* resolved_style_map = nullptr,
+      CSSIDBitset* variable_dependent_ids = nullptr);
 
   /**
    * @brief In-place variant of ResolveBaseStyle.
@@ -79,7 +80,8 @@ class StyleResolver {
       starlight::ComputedCSSStyle& style,
       const starlight::ComputedCSSStyle* parent_style,
       const starlight::ComputedCSSStyle* previous_computed_style,
-      StyleMap* resolved_style_map = nullptr);
+      StyleMap* resolved_style_map = nullptr,
+      CSSIDBitset* variable_dependent_ids = nullptr);
 
   /**
    * @brief Rebuilds the final computed style from parent style, incorporating
@@ -98,7 +100,8 @@ class StyleResolver {
       const starlight::ComputedCSSStyle* previous_style,
       const CustomPropertiesMap* sampled_custom_property_overrides,
       const StyleMap* sampled_property_overrides,
-      StyleMap* resolved_style_map = nullptr);
+      StyleMap* resolved_style_map = nullptr,
+      CSSIDBitset* variable_dependent_ids = nullptr);
 
   /**
    * @brief Fast-path final style construction when the base style is known
@@ -111,22 +114,8 @@ class StyleResolver {
   std::unique_ptr<starlight::ComputedCSSStyle> BuildFinalStyleFromBaseFastPath(
       const starlight::ComputedCSSStyle& base_style,
       const StyleMap* sampled_property_overrides,
-      StyleMap* resolved_style_map = nullptr);
-
-  /**
-   * @brief Computes the property-level diff between two styles.
-   * @param new_style The newly resolved style (mutated to record diffs).
-   * @param old_style The previously committed style to compare against.
-   * @return true if any property changed.
-   */
-  bool ComputeStyleDiff(starlight::ComputedCSSStyle& new_style,
-                        const starlight::ComputedCSSStyle& old_style);
-
-  bool HasPropertyDiff(const starlight::ComputedCSSStyle& style,
-                       CSSPropertyID id) const;
-
-  bool HasInheritedPropertyDiff(const starlight::ComputedCSSStyle& style,
-                                const DynamicCSSConfigs& configs) const;
+      StyleMap* resolved_style_map = nullptr,
+      CSSIDBitset* variable_dependent_ids = nullptr);
 
   void HandleCSSVariables(StyleMap& styles);
 
@@ -134,6 +123,12 @@ class StyleResolver {
 
   /**
    * @brief Resolves pseudo-element styles for the new styling pipeline.
+   *
+   * This is the new-pipeline counterpart to HandlePseudoElement(). It iterates
+   * over an extensible registry of supported pseudo-element types and resolves
+   * each applicable one using the existing ResolvePseudoElement() machinery.
+   *
+   * The legacy HandlePseudoElement() is left untouched.
    */
   void ResolvePseudoElementsForNewPipeline(CSSFragment* fragment);
 
@@ -272,12 +267,14 @@ class StyleResolver {
   // Parse matched_variable_map and inline style to custom properties in
   // ComputedStyle. Shorthand to longhand also happened in this step. Output:
   // style map with highest priority style and custom_properties in
-  // ComputedCSSStyle is updated.
+  // ComputedCSSStyle is updated. variable_dependent_ids is reset and filled
+  // with dependencies from this analysis only.
   void AnalyzeMatchedResult(
       starlight::ComputedCSSStyle& new_style, StyleMap& result,
       size_t base_reserving_size,
       const CustomPropertiesMap* custom_property_overrides = nullptr,
-      const StyleMap* property_overrides = nullptr);
+      const StyleMap* property_overrides = nullptr,
+      CSSIDBitset* variable_dependent_ids = nullptr);
 
   /**
    * @brief Collects all static (non-animated) style inputs for resolution.
@@ -315,7 +312,8 @@ class StyleResolver {
   void ResolveCollectedStyleInputs(
       const starlight::ComputedCSSStyle& new_style,
       NewPipelineCollectedStyleInputs& inputs, StyleMap& result,
-      const StyleMap* property_overrides = nullptr);
+      const StyleMap* property_overrides = nullptr,
+      CSSIDBitset* variable_dependent_ids = nullptr);
 
   /**
    * @brief Collects specified styles from matched CSS rules.
@@ -370,14 +368,16 @@ class StyleResolver {
    * @param result Output style map with resolved concrete values.
    */
   void ResolveSpecifiedStyleMap(const starlight::ComputedCSSStyle& new_style,
-                                StyleMap& source, StyleMap& result);
+                                StyleMap& source, StyleMap& result,
+                                CSSIDBitset* variable_dependent_ids = nullptr);
 
   // Step 3.2: Cascading-Affecting Properties, apply direction to computed
   // style, may retrigger AnalyzeMatchedResult if direction is inconsist
   void ApplyCascadingAffectingProperties(
       starlight::ComputedCSSStyle& style, StyleMap& style_map,
       const CustomPropertiesMap* custom_property_overrides = nullptr,
-      const StyleMap* property_overrides = nullptr);
+      const StyleMap* property_overrides = nullptr,
+      CSSIDBitset* variable_dependent_ids = nullptr);
 
   // Step 3.3: High-priority Properties, font-size
   void ApplyHighPriorityProperties(starlight::ComputedCSSStyle& style,
@@ -390,7 +390,8 @@ class StyleResolver {
   void ApplyResolvedStyleMap(
       starlight::ComputedCSSStyle& style, StyleMap& style_map,
       const CustomPropertiesMap* custom_property_overrides = nullptr,
-      const StyleMap* property_overrides = nullptr);
+      const StyleMap* property_overrides = nullptr,
+      CSSIDBitset* variable_dependent_ids = nullptr);
 
   std::unique_ptr<starlight::ComputedCSSStyle> CreateInitialComputedStyle(
       const starlight::ComputedCSSStyle* parent_style,

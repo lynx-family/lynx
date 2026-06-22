@@ -121,6 +121,13 @@ CSSIDBitset Element::TakePendingImperativeAnimationCleanupProperties() {
   return imperative_animation_state_.TakePendingCleanupProperties();
 }
 
+bool Element::HasPendingImperativeAnimationCleanupProperties() const {
+  if (!ShouldTrackImperativeAnimationsForNewPipeline()) {
+    return false;
+  }
+  return imperative_animation_state_.HasPendingCleanupProperties();
+}
+
 bool Element::HasImperativeAnimations() const {
   if (!ShouldTrackImperativeAnimationsForNewPipeline()) {
     return false;

@@ -9,6 +9,7 @@
 #define CLAY_FLOW_LAYERS_LAYER_H_
 
 #include <algorithm>
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <unordered_set>
@@ -125,6 +126,7 @@ struct PaintContext {
 
   clay::GrCanvas* canvas;
   clay::GrContext* gr_context;
+  uint32_t sample_count = 1;
 #ifndef ENABLE_SKITY
   SkColorSpace* dst_color_space;
 #endif  // ENABLE_SKITY

@@ -4,6 +4,8 @@
 
 #include "core/shell/harmony/tasm_platform_invoker_harmony.h"
 
+#include <atomic>
+
 #include "platform/harmony/lynx_harmony/src/main/cpp/lynx_template_renderer.h"
 
 namespace lynx {
@@ -14,10 +16,12 @@ void TasmPlatformInvokerHarmony::OnPageConfigDecoded(
   fml::TaskRunner::RunNowOrPostTask(
       ui_task_runner_, [weak_flag = weak_flag_, config]() {
         auto flag = weak_flag.lock();
-        if (!flag) {
+        auto* renderer =
+            flag ? flag->renderer.load(std::memory_order_acquire) : nullptr;
+        if (!renderer) {
           return;
         }
-        flag->renderer->OnPageConfigDecoded(config);
+        renderer->OnPageConfigDecoded(config);
       });
 }
 
@@ -32,10 +36,12 @@ lepus::Value TasmPlatformInvokerHarmony::TriggerLepusMethod(
   ui_task_runner_->PostSyncTask(
       [weak_flag = weak_flag_, method_name, args, &ret]() {
         auto flag = weak_flag.lock();
-        if (!flag) {
+        auto* renderer =
+            flag ? flag->renderer.load(std::memory_order_acquire) : nullptr;
+        if (!renderer) {
           return;
         }
-        ret = flag->renderer->TriggerLepusMethod(method_name, args);
+        ret = renderer->TriggerLepusMethod(method_name, args);
       });
   return ret;
 }
@@ -45,10 +51,12 @@ void TasmPlatformInvokerHarmony::TriggerLepusMethodAsync(
   fml::TaskRunner::RunNowOrPostTask(
       ui_task_runner_, [weak_flag = weak_flag_, method_name, args]() {
         auto flag = weak_flag.lock();
-        if (!flag) {
+        auto* renderer =
+            flag ? flag->renderer.load(std::memory_order_acquire) : nullptr;
+        if (!renderer) {
           return;
         }
-        flag->renderer->TriggerLepusMethodAsync(method_name, args);
+        renderer->TriggerLepusMethodAsync(method_name, args);
       });
 }
 

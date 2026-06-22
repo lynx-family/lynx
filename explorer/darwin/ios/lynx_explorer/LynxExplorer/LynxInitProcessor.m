@@ -3,6 +3,7 @@
 // LICENSE file in the root directory of this source tree.
 
 #import "LynxInitProcessor.h"
+#import <Lynx/DevToolSettings.h>
 #import <Lynx/LynxConfig.h>
 #import <Lynx/LynxEnv.h>
 #import <Lynx/LynxService.h>
@@ -30,11 +31,8 @@ static LynxInitProcessor *_instance = nil;
 }
 
 - (void)setupLynxEnv {
+  [[DevToolSettings sharedInstance].bootstrap applyDevelopmentDefaultsIfUnset];
   LynxEnv *env = [LynxEnv sharedInstance];
-
-  // set devtool preset values
-  [env setLynxDebugEnabled:YES];
-  [LynxService(LynxServiceDevToolProtocol) setLogBoxPresetValue:YES];
 
   // enable debugging for all sessions
   [LynxService(LynxServiceDevToolProtocol) enableAllSessions];

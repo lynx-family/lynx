@@ -25,6 +25,19 @@ Contains the native Windows apps that integrated Lynx. See [Windows Build Guide]
 ### darwin/macos/
 Contains the native macOS apps that integrated Lynx. See [macOS Build Guide](darwin/macos/README.md) for instructions.
 
+## Node-API Addons
+
+Lynx provides an experimental capability for exposing Node-API addons to Lynx pages. The open-source Explorer apps include a sample module named `LynxNodeAPIModule` to demonstrate how a host app can expose this capability to Lynx pages. Apple platforms prefer static integration; other platforms in Explorer continue to demonstrate dynamic addon binaries.
+
+For the experimental capability model, SDK prerequisites, the `LynxNodeAPIModule` sample entry points, and addon authoring guidance, see [Lynx Node-API Addons](docs/lynx-node-api.md).
+
+Packaging and IDE/build integration remain platform-specific. See:
+- Android: [Android Build Guide](android/README.md)
+- iOS: [iOS Build Guide](darwin/ios/README.md)
+- Harmony: [Harmony Build Guide](harmony/README.md)
+- Windows: [Windows Build Guide](windows/README.md)
+- macOS: [macOS Build Guide](darwin/macos/README.md)
+
 ## Developing the Bundled Lynx Projects
 
 If you already have a built Lynx Explorer app (or any other Lynx-integrated environment), you can focus on developing the Lynx screens that run inside it. There are currently two screens: 

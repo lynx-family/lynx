@@ -5,6 +5,8 @@
 #import <Foundation/Foundation.h>
 #import <Lynx/LynxMemoryListener.h>
 
+typedef void (^LynxMemoryUsageResultCallback)(NSString* resultJson, NSString* errorMessage);
+
 @interface LynxMemoryController : NSObject <LynxMemoryReporter>
 
 + (instancetype)shareInstance;
@@ -14,5 +16,8 @@
 - (void)startMemoryTracing;
 
 - (void)stopMemoryTracing;
+
+- (void)queryAllMemoryUsageWithTimeoutMs:(int64_t)timeoutMs
+                                callback:(LynxMemoryUsageResultCallback)callback;
 
 @end

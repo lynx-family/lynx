@@ -7,6 +7,9 @@
 #include <memory>
 #include <utility>
 
+#include "clay/flow/embedded_views.h"
+#include "clay/fml/logging.h"
+
 namespace clay {
 
 ExternalViewLayer::ExternalViewLayer(const clay::ElementId& element_id,
@@ -24,11 +27,12 @@ void ExternalViewLayer::Preroll(PrerollContext* context) {
   set_subtree_has_platform_view(true);
   MutatorsStack mutators;
   context->state_stack.fill(&mutators);
-  std::unique_ptr<OverlayViewParams> params =
-      std::make_unique<OverlayViewParams>(
-          skity::Rect::MakeWH(size_.x, size_.y));
-  context->compositor_state->PrerollOverlayView(element_id_.view_id(),
-                                                std::move(params));
+  std::unique_ptr<EmbeddedViewParams> params =
+      std::make_unique<EmbeddedViewParams>(
+          context->state_stack.transform_4x4(), size_, mutators,
+          EmbeddedViewPresentationKind::kOverlayLayer);
+  context->compositor_state->PrerollCompositeEmbeddedView(element_id_.view_id(),
+                                                          std::move(params));
 }
 
 void ExternalViewLayer::Paint(clay::PaintContext& context) const {
@@ -38,7 +42,8 @@ void ExternalViewLayer::Paint(clay::PaintContext& context) const {
   }
   auto previous_canvas = context.canvas;
   clay::GrCanvas* canvas =
-      context.compositor_state->CompositeOverlayView(element_id_.view_id());
+      context.compositor_state->CompositeEmbeddedView(element_id_.view_id());
+  FML_DCHECK(canvas != nullptr);
   context.canvas = canvas;
   context.state_stack.set_delegate(context.canvas);
   PaintChildren(context);

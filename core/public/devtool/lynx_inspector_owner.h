@@ -5,6 +5,7 @@
 #ifndef CORE_PUBLIC_DEVTOOL_LYNX_INSPECTOR_OWNER_H_
 #define CORE_PUBLIC_DEVTOOL_LYNX_INSPECTOR_OWNER_H_
 
+#include <cstdint>
 #include <functional>
 #include <memory>
 #include <string>
@@ -51,6 +52,7 @@ class LynxInspectorOwner {
   virtual std::shared_ptr<lynx::runtime::js::InspectorRuntimeObserverNG>
   OnBackgroundRuntimeCreated(const std::string& group_thread_name) = 0;
   virtual void OnReceiveMessageEvent(const Json::Value& event) = 0;
+  virtual void DispatchConsoleMessage(const std::string&, int32_t, int64_t) {}
 };
 
 }  // namespace devtool

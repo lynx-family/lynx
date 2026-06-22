@@ -18,7 +18,6 @@ source_set("flow") {
     "animation/scroll_offset_animation.h",
     "compositor/compositor_state.cc",
     "compositor/compositor_state.h",
-    "compositor/overlay_views.h",
     "compositor_context.cc",
     "compositor_context.h",
     "diff_context.cc",
@@ -101,14 +100,14 @@ source_set("flow") {
     "services/animation_event_service.h",
     "stopwatch.cc",
     "stopwatch.h",
-    "view_slicer.cc",
-    "view_slicer.h",
 
     # "resource_holder.h",
     "surface.cc",
     "surface.h",
     "surface_frame.cc",
     "surface_frame.h",
+    "view_slicer.cc",
+    "view_slicer.h",
   ]
 
   public_configs = [ "../:config" ]
@@ -193,6 +192,9 @@ if (enable_unittests) {
       "animation/scroll_offset_animation_unittests.cc",
       "compositor/compositor_state_unittests.cc",
       "diff_context_unittests.cc",
+
+      # "layers/display_list_layer_unittests.cc",
+      "drawable_image_unittests.cc",
       "embedded_view_params_unittests.cc",
       "flow_run_all_unittests.cc",
       "flow_test_utils.cc",
@@ -206,12 +208,6 @@ if (enable_unittests) {
       "layers/clip_rrect_layer_unittests.cc",
       "layers/color_filter_layer_unittests.cc",
       "layers/container_layer_unittests.cc",
-      "matrix_clip_tracker_unittests.cc",
-      "stopwatch_unittests.cc",
-      "view_slicer_unittests.cc",
-
-      # "layers/display_list_layer_unittests.cc",
-      "drawable_image_unittests.cc",
       "layers/drawable_image_layer_unittests.cc",
       "layers/image_filter_layer_unittests.cc",
       "layers/layer_state_stack_unittests.cc",
@@ -219,6 +215,9 @@ if (enable_unittests) {
       "layers/offscreen_surface_unittests.cc",
       "layers/opacity_layer_unittests.cc",
       "layers/performance_overlay_layer_unittests.cc",
+      "matrix_clip_tracker_unittests.cc",
+      "stopwatch_unittests.cc",
+      "view_slicer_unittests.cc",
 
       #"layers/physical_shape_layer_unittests.cc",
       "layers/platform_view_layer_unittests.cc",

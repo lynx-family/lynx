@@ -9,11 +9,14 @@
 #include <vector>
 
 #include "clay/common/service/service.h"
+#include "clay/flow/embedded_views.h"
 #include "clay/flow/surface_frame.h"
+#include "clay/flow/view_slicer.h"
 #include "clay/shell/common/output_surface.h"
-#include "skity/geometry/rect.hpp"
 
 namespace clay {
+
+class PlatformOverlay;
 
 class PlatformOverlay {
  public:
@@ -21,14 +24,12 @@ class PlatformOverlay {
 
   virtual fml::RefPtr<OutputSurface> GetOutputSurface() const = 0;
 
-  virtual void OnSurfaceUpdated() {}
-};
+  // Called from the raster thread before acquiring the overlay SurfaceFrame.
+  // Implementations must be thread-safe and MUST NOT touch UI-thread-affine
+  // objects directly. Post work to the platform thread if needed.
+  virtual void PrepareSurface(const OverlayData& overlay_data) {}
 
-struct OverlayData {
-  skity::Rect rect;
-  int64_t view_id;
-  int64_t overlay_id;
-  std::shared_ptr<PlatformOverlay> overlay;
+  virtual void OnSurfaceUpdated() {}
 };
 
 // PlatformOverlayService is a service that can create platform overlay.

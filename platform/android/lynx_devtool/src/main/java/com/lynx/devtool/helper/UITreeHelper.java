@@ -116,7 +116,8 @@ public class UITreeHelper {
     map.put("tagName", ui.getTagName());
     map.put("nodeIndex", ui.getNodeIndex());
     map.put("props", ui.getProps().toJSONObject());
-    map.put("label", ui.getAccessibilityLabel());
+    map.put(
+        "label", ui.getAccessibilityLabel() == null ? "" : ui.getAccessibilityLabel().toString());
     map.put("frame",
         new JSONArray(
             Arrays.asList(ui.getOriginLeft(), ui.getOriginTop(), ui.getWidth(), ui.getHeight())));

@@ -2826,6 +2826,10 @@ void BaseView::HandleEvent(const PointerEvent& event) {
   } else if (event.type == PointerEvent::EventType::kMoveEvent ||
              event.type == PointerEvent::EventType::kPanZoomUpdateEvent) {
     if (can_draggable_) {
+      if (page_view_->gesture_manager()->ShouldInterceptGesture()) {
+        can_draggable_ = false;
+        return;
+      }
       float pixel_tolerance = FromLogical(8);
       float pixel_distance =
           (event.position - event_draggable_.position).distance();
@@ -3313,8 +3317,8 @@ void BaseView::SetGestureDetectorState(int gesture_id, int state) {
 void BaseView::ConsumeGesture(int gesture_id, const Value& params) {
   if (!params.IsMap()) return;
   const Value::Map& map = params.GetMap();
-  bool inner = false;
-  bool consume = false;
+  bool inner = true;
+  bool consume = true;
   if (map.find("inner") != map.end()) {
     inner = map.at("inner").GetBool();
   }
@@ -3324,8 +3328,8 @@ void BaseView::ConsumeGesture(int gesture_id, const Value& params) {
   if (inner) {
     enable_builtin_gesture_recognizer_ = consume;
   } else {
-    intercept_gesture_status_ =
-        consume ? InterceptGestureStatus::True : InterceptGestureStatus::False;
+    SetInterceptGesture(consume);
+    page_view_->gesture_manager()->RefreshHitTestTargetResponsive();
   }
 }
 

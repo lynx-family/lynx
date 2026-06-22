@@ -7,7 +7,7 @@ deps = {
     "./tools_shared": {
         "type": "git",
         "url": "https://github.com/lynx-family/tools-shared.git",
-        "commit": "a1f5807a5e89b52d4c015a946371bd29730a31c8",
+        "commit": "bdea62f7b500026aab237b271abc7eff279a5c2d",
         "ignore_in_git": True,
     },
     'buildtools/checkstyle/checkstyle.jar':{

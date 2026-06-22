@@ -19,6 +19,7 @@ weak_node_api_public_headers = [
   "${weak_node_api_pkg_root}/headers/node_api.h",
   "${weak_node_api_pkg_root}/headers/weak_napi_defines.h",
   "${weak_node_api_pkg_root}/headers/weak_napi_undefs.h",
+  "${weak_node_api_pkg_root}/shim/shim_weak_napi.h",
   "${weak_node_api_pkg_root}/generated/NodeApiHost.hpp",
   "${weak_node_api_pkg_root}/generated/weak_node_api.hpp",
 ]

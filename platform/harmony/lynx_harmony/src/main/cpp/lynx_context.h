@@ -8,7 +8,9 @@
 #include <arkui/native_node.h>
 #include <multimedia/image_framework/image/image_source_native.h>
 
+#include <functional>
 #include <memory>
+#include <mutex>
 #include <shared_mutex>
 #include <string>
 #include <unordered_map>
@@ -58,6 +60,12 @@ class GestureArenaManager;
 
 class LynxContext {
  public:
+  using ConsoleMessageCallback =
+      std::function<void(const std::string&, int32_t, int64_t)>;
+  using CDPResultCallback = std::function<void(const std::string&)>;
+  using InvokeCDPFromSDKCallback =
+      std::function<void(const std::string&, CDPResultCallback)>;
+
   LynxContext(ShadowNodeOwner* node_owner, UIOwner* ui_owner, napi_env env)
       : node_owner_{node_owner}, ui_owner_{ui_owner}, env_(env) {}
 
@@ -134,6 +142,15 @@ class LynxContext {
   void HandleGestureEvent(const GestureEvent& custom_event) const;
 
   void SendGlobalEvent(lepus::Value params) const;
+
+  void SetConsoleMessageCallback(ConsoleMessageCallback callback);
+
+  void ShowMessageOnConsole(const std::string& message, int32_t level) const;
+
+  void SetInvokeCDPFromSDKCallback(InvokeCDPFromSDKCallback callback);
+
+  void InvokeCDPFromSDK(const std::string& cdp_msg,
+                        CDPResultCallback callback) const;
 
   void SetEnableEventThrough(bool enable_event_through);
 
@@ -345,8 +362,12 @@ class LynxContext {
 
   mutable std::shared_mutex node_owner_shared_mutex_;
   mutable std::shared_mutex embedder_shared_mutex_;
+  mutable std::mutex console_message_callback_mutex_;
+  mutable std::mutex invoke_cdp_from_sdk_callback_mutex_;
 
   std::shared_ptr<PubLynxContextDelegate> delegate_{nullptr};
+  ConsoleMessageCallback console_message_callback_;
+  InvokeCDPFromSDKCallback invoke_cdp_from_sdk_callback_;
   pub::LynxExtensionDelegate* extension_delegate_{nullptr};
   napi_env env_;
 

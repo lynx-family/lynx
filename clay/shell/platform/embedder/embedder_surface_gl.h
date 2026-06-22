@@ -41,6 +41,15 @@ class EmbedderSurfaceGL final : public EmbedderSurface,
   // |GPUSurfaceGLDelegate|
   std::unique_ptr<GLContextResult> GLContextMakeCurrent() override;
 
+  // |OutputSurface|
+  std::unique_ptr<GLContextResult> MakeCurrent() override;
+
+#ifdef ENABLE_SKITY
+  // |OutputSurface|
+  std::optional<SkityPrecompileConfig> GetSkityPrecompileConfig()
+      const override;
+#endif
+
   // |GPUSurfaceGLDelegate|
   bool GLContextClearCurrent() override;
 

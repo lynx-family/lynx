@@ -8,10 +8,15 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
+typedef void (^GlobalDevToolMemoryUsageCallback)(NSString* _Nullable resultJson,
+                                                 NSString* _Nullable errorMessage);
+
 @interface GlobalDevToolPlatformDarwinDelegate : NSObject
 
 + (void)startMemoryTracing;
 + (void)stopMemoryTracing;
++ (void)queryAllMemoryUsageWithTimeoutMs:(int64_t)timeoutMs
+                                callback:(GlobalDevToolMemoryUsageCallback)callback;
 
 + (intptr_t)getTraceController;
 + (intptr_t)getFPSTracePlugin;

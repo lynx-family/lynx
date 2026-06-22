@@ -27,13 +27,15 @@
         "LynxBackgroundRuntimeUnitTest\/testGenericResourceLoader",
         "LynxBackgroundRuntimeUnitTest\/testSessionStorage",
         "LynxBackgroundRuntimeUnitTest\/testSessionStorageAfterAttach",
+        "LynxMemoryUsageCollectorUnitTest\/testCollectorReturnsEmptyCompletedResultAsynchronouslyWithoutFetchers",
         "LynxResourceLoaderDarwinUnitTest\/testReportErrorToBackground",
         "LynxResourceLoaderDarwinUnitTest\/testReportErrorToLynxView",
         "LynxTemplateBundleUnitTest\/testCreateTemplateBundleWithOption",
         "LynxTemplateBundleUnitTest\/testDynamicComponentTemplateBundle",
         "LynxTemplateBundleUnitTest\/testGetExtraInfo",
         "LynxTemplateBundleUnitTest\/testTemplateBundleLepus",
-        "LynxTemplateBundleUnitTest\/testTemplateBundleLepusNG"
+        "LynxTemplateBundleUnitTest\/testTemplateBundleLepusNG",
+        "LynxViewClientUnitTest\/testDispatchViewDidStartLoadingCalledOnceForTemplateBundle"
       ],
       "target" : {
         "containerPath" : "container:Pods\/Lynx.xcodeproj",

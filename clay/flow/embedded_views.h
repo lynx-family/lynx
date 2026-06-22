@@ -249,21 +249,44 @@ class MutatorsStack {
   std::vector<std::shared_ptr<Mutator>> vector_;
 };  // MutatorsStack
 
+// Defines the presentation kind of an embedded view.
+// - kPlatformView: Presented as a standard platform view.
+// - kOverlayLayer: Presented using overlay layering.
+enum class EmbeddedViewPresentationKind {
+  kPlatformView,
+  kOverlayLayer,
+};
+
 class EmbeddedViewParams {
  public:
   EmbeddedViewParams() = default;
+  virtual ~EmbeddedViewParams() = default;
+
+  explicit EmbeddedViewParams(EmbeddedViewPresentationKind presentation_kind)
+      : presentation_kind_(presentation_kind) {}
 
   EmbeddedViewParams(skity::Matrix matrix, skity::Vec2 size_points,
-                     MutatorsStack mutators_stack)
+                     MutatorsStack mutators_stack,
+                     EmbeddedViewPresentationKind presentation_kind =
+                         EmbeddedViewPresentationKind::kPlatformView)
       : matrix_(matrix),
         size_points_(size_points),
-        mutators_stack_(mutators_stack) {
+        mutators_stack_(mutators_stack),
+        presentation_kind_(presentation_kind) {
     clay::GrPath path;
     skity::Rect starting_rect =
         skity::Rect::MakeWH(size_points.x, size_points.y);
     PATH_ADD_RECT(path, starting_rect);
     PATH_TRANSFORM(path, matrix);
     RECT_ASSIGN(final_bounding_rect_, PATH_GET_BOUNDS(path));
+  }
+
+  bool NeedsOverlayLayer() const {
+    return presentation_kind_ == EmbeddedViewPresentationKind::kOverlayLayer;
+  }
+
+  bool NeedsPlatformViewComposite() const {
+    return presentation_kind_ == EmbeddedViewPresentationKind::kPlatformView;
   }
 
   // The transformation Matrix corresponding to the sum of all the
@@ -287,7 +310,8 @@ class EmbeddedViewParams {
   }
 
   bool operator==(const EmbeddedViewParams& other) const {
-    return size_points_ == other.size_points_ &&
+    return presentation_kind_ == other.presentation_kind_ &&
+           size_points_ == other.size_points_ &&
            mutators_stack_ == other.mutators_stack_ &&
            final_bounding_rect_ == other.final_bounding_rect_ &&
            matrix_ == other.matrix_;
@@ -298,6 +322,8 @@ class EmbeddedViewParams {
   skity::Vec2 size_points_;
   MutatorsStack mutators_stack_;
   skity::Rect final_bounding_rect_;
+  EmbeddedViewPresentationKind presentation_kind_ =
+      EmbeddedViewPresentationKind::kPlatformView;
 };
 
 // The |PlatformViewLayer| calls |CompositeEmbeddedView| in its |Paint|

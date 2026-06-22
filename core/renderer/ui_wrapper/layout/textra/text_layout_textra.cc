@@ -233,6 +233,13 @@ void TextLayoutTextra::ApplyTextStyle(Element* element,
   paragraph_builder_->SetTextStyle(kTextPropFontSize, &(font_size),
                                    sizeof(float));
 
+  const auto& background_data = computed_css_style->GetBackgroundData();
+  if (background_data) {
+    int color = static_cast<int>(background_data->color);
+    paragraph_builder_->SetTextStyle(kTextPropBackGroundColor, &(color),
+                                     sizeof(int));
+  }
+
   auto& text_attributes = computed_css_style->GetTextAttributes();
   if (text_attributes.has_value()) {
     for (CSSPropertyID id : property_bits) {
@@ -255,10 +262,6 @@ void TextLayoutTextra::ApplyTextStyle(Element* element,
             paragraph_builder_->SetTextStyle(kTextPropColor, &(color),
                                              sizeof(int));
           }
-          break;
-        }
-        case kPropertyIDBackgroundColor: {
-          // TODO: background color
           break;
         }
         case kPropertyIDTextShadow: {

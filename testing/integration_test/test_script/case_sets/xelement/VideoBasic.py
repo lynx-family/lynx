@@ -10,7 +10,7 @@ from case_sets.xelement import video_utils
 config = {
     "type": "custom",
     "path": "automation/video/main",
-    "platform": "android",
+    "platform": ["android", "ios"],
 }
 
 

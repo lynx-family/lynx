@@ -192,6 +192,7 @@ class CSSStringParser final {
   // <basic-shape>
   lepus::Value ParseShapePath();
 
+  lepus::Value ParseOffsetDistance();
   lepus::Value ParseOffsetRotate();
 
   CSSValue ParseLength();

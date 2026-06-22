@@ -105,7 +105,7 @@ def get_out_dir(args, abi):
     return out_dir
 
 def run_gn(args, gn_out_dir, abi):
-    gn_args = f'target_os="harmony" jsengine_type="quickjs" is_debug={str(args.debug).lower()} target_cpu="{get_cpu_type(abi)}" harmony_sdk_version="default" use_primjs_napi=true build_lepus_compile=false enable_primjs_prebuilt_lib=true enable_inspector=true enable_harmony_shared=true'
+    gn_args = f'target_os="harmony" jsengine_type="quickjs" is_debug={str(args.debug).lower()} target_cpu="{get_cpu_type(abi)}" harmony_sdk_version="default" use_primjs_napi=true build_lepus_compile=false enable_primjs_prebuilt_lib=true enable_inspector=true enable_harmony_shared=true enable_lepusng_worklet=true enable_napi_binding=true'
     if args.dev:
         gn_args += ' enable_testbench_replay=true enable_testbench_recorder=true enable_trace="perfetto"'
     cmd = f'gn gen {gn_out_dir} --args=\'{gn_args}\' --export-compile-commands'

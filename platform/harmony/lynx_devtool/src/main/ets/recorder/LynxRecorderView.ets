@@ -19,7 +19,7 @@ import {
   LynxExtraTiming,
   LynxUIRendererCreator
 } from '@lynx/lynx';
-import LynxRecorderReplayDataModule from './ReplayDataModule';
+import LynxRecorderReplayDataModule, { ReplaySharedData, ReplaySharedDataValue } from './ReplayDataModule';
 import { LoadTemplateParams, SendGlobalEventParams, SetGlobalPropsParams, UpdateViewPortParams } from './DataType';
 import { util } from '@kit.ArkTS';
 import LynxRecorderEnv from './LynxRecorderEnv';
@@ -45,6 +45,10 @@ export default struct LynxRecorderView {
   @State ready: boolean = false;
   private localLynxContext: LynxContext | undefined;
   private extraTiming: LynxExtraTiming = new LynxExtraTiming();
+
+  private isReplaySharedData(value: Object | string | number | boolean | null | undefined): boolean {
+    return value !== null && value !== undefined && typeof value === 'object' && !Array.isArray(value);
+  }
 
   private download() {
     let httpRequest = http.createHttp();
@@ -97,6 +101,7 @@ export default struct LynxRecorderView {
     if (LynxRecorderReplayDataModule.jsbCallbacks) {
       LynxRecorderReplayDataModule.jsbCallbacks = new Map();
     }
+    LynxRecorderReplayDataModule.sharedData = {};
     if (this.jsbModule) {
       this.jsbModule.clear()
     }
@@ -108,9 +113,16 @@ export default struct LynxRecorderView {
 
   private registerJSBModule() {
     let recordData: Map<string, object> = JSON.parse(this.data);
+    let rawSharedData: ReplaySharedData | ReplaySharedDataValue =
+      (recordData['SharedData'] as ReplaySharedData | ReplaySharedDataValue | undefined) ?? {};
     LynxRecorderReplayDataModule.jsbInvokers = recordData['Invoked Method Data'];
     LynxRecorderReplayDataModule.jsbCallbacks = recordData['Callback'];
     LynxRecorderReplayDataModule.config = recordData['Config'];
+    LynxRecorderReplayDataModule.sharedData = this.isReplaySharedData(rawSharedData)
+      ? rawSharedData as ReplaySharedData
+      : {};
+    LLog.i(TAG,
+      `[replay-shared-data] registerJSBModule | keys=${JSON.stringify(Object.keys(LynxRecorderReplayDataModule.sharedData))}`);
     this.jsbModule.set('LynxRecorderReplayDataModule', {
       moduleClass: LynxRecorderReplayDataModule
     });

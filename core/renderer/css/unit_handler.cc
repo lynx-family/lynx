@@ -56,6 +56,7 @@
 #include "core/renderer/css/parser/mask_composite_handler.h"
 #include "core/renderer/css/parser/mask_shorthand_handler.h"
 #include "core/renderer/css/parser/number_handler.h"
+#include "core/renderer/css/parser/offset_distance_handler.h"
 #include "core/renderer/css/parser/offset_rotate_handler.h"
 #include "core/renderer/css/parser/relative_align_handler.h"
 #include "core/renderer/css/parser/shadow_handler.h"
@@ -249,6 +250,7 @@ UnitHandler::UnitHandler() {
   AutoFontSizeLineRangesHandler::Register(interceptors_);
   AutoFontSizePresetSizesHandler::Register(interceptors_);
   GapHandler::Register(interceptors_);
+  OffsetDistanceHandler::Register(interceptors_);
   OffsetRotateHandler::Register(interceptors_);
   FontVariationSettingsHandler::Register(interceptors_);
   FontFeatureSettingsHandler::Register(interceptors_);

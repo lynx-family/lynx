@@ -573,8 +573,20 @@ static const int kVirtual = 1 << 2;
 
   CGFloat preferredLayoutHeight = [params[@"preferredLayoutHeight"] floatValue];
   CGFloat preferredLayoutWidth = [params[@"preferredLayoutWidth"] floatValue];
-  CGFloat preferredMaxLayoutHeight = [params[@"preferredMaxLayoutHeight"] floatValue];
-  CGFloat preferredMaxLayoutWidth = [params[@"preferredMaxLayoutWidth"] floatValue];
+  id preferredMaxLayoutHeightValue = params[@"preferredMaxLayoutHeight"];
+  id preferredMaxLayoutWidthValue = params[@"preferredMaxLayoutWidth"];
+  BOOL hasPreferredMaxLayoutHeight =
+      [preferredMaxLayoutHeightValue respondsToSelector:@selector(floatValue)];
+  BOOL hasPreferredMaxLayoutWidth =
+      [preferredMaxLayoutWidthValue respondsToSelector:@selector(floatValue)];
+  CGFloat preferredMaxLayoutHeight = 0.0f;
+  CGFloat preferredMaxLayoutWidth = 0.0f;
+  if (hasPreferredMaxLayoutHeight) {
+    preferredMaxLayoutHeight = [preferredMaxLayoutHeightValue floatValue];
+  }
+  if (hasPreferredMaxLayoutWidth) {
+    preferredMaxLayoutWidth = [preferredMaxLayoutWidthValue floatValue];
+  }
 
   LynxViewSizeMode widthMode = [self getViewSizeMode:[params[@"layoutWidthMode"] intValue]];
   LynxViewSizeMode heightMode = [self getViewSizeMode:[params[@"layoutHeightMode"] intValue]];
@@ -585,15 +597,25 @@ static const int kVirtual = 1 << 2;
     CGFloat record_screen_height = [_config[@"screenHeight"] floatValue];
     if (record_screen_height != 0 && record_screen_width != 0) {
       preferredLayoutWidth = (preferredLayoutWidth / record_screen_width) * (SCREEN_WIDTH);
-      preferredMaxLayoutWidth = (preferredMaxLayoutWidth / record_screen_width) * (SCREEN_WIDTH);
+      if (hasPreferredMaxLayoutWidth) {
+        preferredMaxLayoutWidth = (preferredMaxLayoutWidth / record_screen_width) * (SCREEN_WIDTH);
+      }
       preferredLayoutHeight = (preferredLayoutHeight / record_screen_height) * (SCREEN_HEIGHT);
-      preferredMaxLayoutHeight =
-          (preferredMaxLayoutHeight / record_screen_height) * (SCREEN_HEIGHT);
+      if (hasPreferredMaxLayoutHeight) {
+        preferredMaxLayoutHeight =
+            (preferredMaxLayoutHeight / record_screen_height) * (SCREEN_HEIGHT);
+      }
     }
   }
 
   __weak __typeof(self) weakSelf = self;
   if (_lynxView == nil) {
+    if (!hasPreferredMaxLayoutWidth && widthMode == LynxViewSizeModeMax) {
+      preferredMaxLayoutWidth = preferredLayoutWidth;
+    }
+    if (!hasPreferredMaxLayoutHeight && heightMode == LynxViewSizeModeMax) {
+      preferredMaxLayoutHeight = preferredLayoutHeight;
+    }
     _lynxView = [[LynxView alloc] initWithBuilderBlock:^(LynxViewBuilder* builder) {
       __strong __typeof(weakSelf) strongSelf = weakSelf;
       builder.config =
@@ -644,8 +666,12 @@ static const int kVirtual = 1 << 2;
     _lynxView.layoutHeightMode = heightMode;
     _lynxView.preferredLayoutWidth = preferredLayoutWidth;
     _lynxView.preferredLayoutHeight = preferredLayoutHeight;
-    _lynxView.preferredMaxLayoutHeight = preferredMaxLayoutHeight;
-    _lynxView.preferredMaxLayoutWidth = preferredMaxLayoutWidth;
+    if (hasPreferredMaxLayoutHeight || heightMode == LynxViewSizeModeMax) {
+      _lynxView.preferredMaxLayoutHeight = preferredMaxLayoutHeight;
+    }
+    if (hasPreferredMaxLayoutWidth || widthMode == LynxViewSizeModeMax) {
+      _lynxView.preferredMaxLayoutWidth = preferredMaxLayoutWidth;
+    }
     [_parentUI addSubview:_lynxView];
     _threadStrategyData = nil;
     _client = [[LynxRecorderViewClient alloc] init];
@@ -670,6 +696,16 @@ static const int kVirtual = 1 << 2;
       preferredLayoutHeight = _screenSize.height;
     }
 
+    if (hasPreferredMaxLayoutWidth) {
+      _lynxView.preferredMaxLayoutWidth = preferredMaxLayoutWidth;
+    } else if (widthMode == LynxViewSizeModeMax) {
+      _lynxView.preferredMaxLayoutWidth = preferredLayoutWidth;
+    }
+    if (hasPreferredMaxLayoutHeight) {
+      _lynxView.preferredMaxLayoutHeight = preferredMaxLayoutHeight;
+    } else if (heightMode == LynxViewSizeModeMax) {
+      _lynxView.preferredMaxLayoutHeight = preferredLayoutHeight;
+    }
     [_lynxView updateViewportWithPreferredLayoutWidth:preferredLayoutWidth
                                 preferredLayoutHeight:preferredLayoutHeight];
   }

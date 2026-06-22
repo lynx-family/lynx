@@ -24,6 +24,7 @@
 #include "core/renderer/css/computed_css_style_css_text_helper.h"
 #include "core/renderer/css/css_color.h"
 #include "core/renderer/css/css_decoder.h"
+#include "core/renderer/css/css_style_utils.h"
 #include "core/renderer/css/css_value.h"
 #include "core/renderer/css/ng/parser/css_parser_token_range.h"
 #include "core/renderer/css/ng/parser/css_tokenizer.h"
@@ -54,6 +55,7 @@
 #include "core/renderer/tasm/react/testing/mock_painting_context.h"
 #include "core/renderer/ui_wrapper/common/testing/prop_bundle_mock.h"
 #include "core/renderer/utils/test/text_utils_mock.h"
+#include "core/runtime/js/bindings/java_script_element.h"
 #include "core/runtime/lepus/bindings/renderer_functions.h"
 #include "core/runtime/lepus/bytecode_generator.h"
 #include "core/runtime/lepus/js_object.h"
@@ -88,6 +90,25 @@ style::DynamicStyleObjectRef MakeDynamicStyleObjectRef(StyleMap style_map) {
       new style::DynamicStyleObject(std::move(style_map)));
 }
 
+fml::TimePoint TimePointFromMs(int64_t ms) {
+  return fml::TimePoint::FromTicks(ms * 1000 * 1000);
+}
+
+void UpdateLeftKeyframesForTest(Element* element, const base::String& name,
+                                const char* from, const char* to) {
+  auto keyframes = lepus::Dictionary::Create();
+  auto from_frame = lepus::Dictionary::Create();
+  from_frame->SetValue("left", lepus::Value(from));
+  keyframes->SetValue("0", lepus::Value(from_frame));
+  auto to_frame = lepus::Dictionary::Create();
+  to_frame->SetValue("left", lepus::Value(to));
+  keyframes->SetValue("100", lepus::Value(to_frame));
+
+  CSSParserConfigs configs;
+  starlight::CSSStyleUtils::UpdateCSSKeyframes(
+      *element->keyframes_map_, name, lepus::Value(keyframes), configs);
+}
+
 bool StyleMapHasValue(const StyleMap& style_map, CSSPropertyID id,
                       const CSSValue& value) {
   auto it = style_map.find(id);
@@ -105,6 +126,17 @@ bool LayoutBundleHasStyle(const std::unique_ptr<LayoutBundle>& layout_bundle,
     }
   }
   return false;
+}
+
+std::map<std::string, lepus::Value>* PaintingPropsFor(ElementManager* manager,
+                                                      FiberElement* element) {
+  auto* painting_context = static_cast<FiberMockPaintingContext*>(
+      manager->painting_context()->impl());
+  auto node_it = painting_context->node_map_.find(element->impl_id());
+  if (node_it == painting_context->node_map_.end()) {
+    return nullptr;
+  }
+  return &node_it->second->props_;
 }
 
 class RecordingInspectorElementObserver final
@@ -2602,6 +2634,84 @@ TEST_P(FiberElementTest, TestMarkLayoutDirty) {
   EXPECT_TRUE(parent->sl_node_->is_dirty_);
   EXPECT_TRUE(element->sl_node_->is_dirty_);
   EXPECT_TRUE(element0->sl_node_->is_dirty_);
+}
+
+TEST_P(FiberElementTest,
+       UpdateLayoutInfoRecursivelyCollectsDirtyListFromDirtyChild) {
+  manager->page_options_.embedded_mode_ = static_cast<EmbeddedMode>(
+      static_cast<int32_t>(manager->page_options_.embedded_mode_) |
+      static_cast<int32_t>(EmbeddedMode::LAYOUT_IN_ELEMENT));
+
+  auto page = manager->CreateFiberPage("page", 11);
+  auto list = manager->CreateFiberList(tasm.get(), "list", lepus::Value(),
+                                       lepus::Value(), lepus::Value());
+  auto child = manager->CreateFiberView();
+  page->InsertNode(list);
+  list->InsertNode(child);
+
+  page->FlushActionsAsRoot();
+  page->Layout(std::make_shared<PipelineOptions>());
+
+  ASSERT_NE(page->sl_node_, nullptr);
+  ASSERT_NE(list->sl_node_, nullptr);
+  ASSERT_NE(child->sl_node_, nullptr);
+  EXPECT_FALSE(page->sl_node_->IsDirty());
+  EXPECT_FALSE(list->sl_node_->IsDirty());
+  EXPECT_FALSE(child->sl_node_->IsDirty());
+
+  child->RequestLayout();
+  EXPECT_TRUE(page->sl_node_->IsDirty());
+  EXPECT_TRUE(list->sl_node_->IsDirty());
+  EXPECT_TRUE(child->sl_node_->IsDirty());
+  EXPECT_FALSE(list->sl_node_->GetHasNewLayout());
+
+  auto options = std::make_shared<PipelineOptions>();
+  page->UpdateLayoutInfoRecursively(options.get());
+
+  EXPECT_EQ(options->updated_list_elements_,
+            (std::vector<int32_t>{list->impl_id()}));
+}
+
+TEST_P(FiberElementTest,
+       UpdateLayoutInfoRecursivelyCollectsNestedDirtyListsChildFirst) {
+  manager->page_options_.embedded_mode_ = static_cast<EmbeddedMode>(
+      static_cast<int32_t>(manager->page_options_.embedded_mode_) |
+      static_cast<int32_t>(EmbeddedMode::LAYOUT_IN_ELEMENT));
+
+  auto page = manager->CreateFiberPage("page", 11);
+  auto parent_list = manager->CreateFiberList(
+      tasm.get(), "list", lepus::Value(), lepus::Value(), lepus::Value());
+  auto child_list = manager->CreateFiberList(tasm.get(), "list", lepus::Value(),
+                                             lepus::Value(), lepus::Value());
+  auto child = manager->CreateFiberView();
+  page->InsertNode(parent_list);
+  parent_list->InsertNode(child_list);
+  child_list->InsertNode(child);
+
+  page->FlushActionsAsRoot();
+  page->Layout(std::make_shared<PipelineOptions>());
+
+  ASSERT_NE(page->sl_node_, nullptr);
+  ASSERT_NE(parent_list->sl_node_, nullptr);
+  ASSERT_NE(child_list->sl_node_, nullptr);
+  ASSERT_NE(child->sl_node_, nullptr);
+  EXPECT_FALSE(parent_list->sl_node_->IsDirty());
+  EXPECT_FALSE(child_list->sl_node_->IsDirty());
+  EXPECT_FALSE(child->sl_node_->IsDirty());
+
+  child->RequestLayout();
+  EXPECT_TRUE(parent_list->sl_node_->IsDirty());
+  EXPECT_TRUE(child_list->sl_node_->IsDirty());
+  EXPECT_TRUE(child->sl_node_->IsDirty());
+  EXPECT_FALSE(parent_list->sl_node_->GetHasNewLayout());
+  EXPECT_FALSE(child_list->sl_node_->GetHasNewLayout());
+
+  auto options = std::make_shared<PipelineOptions>();
+  page->UpdateLayoutInfoRecursively(options.get());
+
+  EXPECT_EQ(
+      options->updated_list_elements_,
+      (std::vector<int32_t>{child_list->impl_id(), parent_list->impl_id()}));
 }
 
 TEST_P(FiberElementTest,
@@ -10288,7 +10398,7 @@ TEST_P(FiberElementTest, CreateElementTemplateDoesNotPrepareBeforeTree) {
   ASSERT_NE(created_element, nullptr);
   ASSERT_TRUE(created_element->is_template());
   auto* created_template = static_cast<TemplateElement*>(created_element.get());
-  EXPECT_FALSE(created_template->is_in_template_tree_);
+  EXPECT_FALSE(created_template->IsInTemplateTree());
   EXPECT_EQ(created_template->async_create_task_, nullptr);
 }
 
@@ -10306,8 +10416,8 @@ TEST_P(FiberElementTest, PageTemplateElementSlotsPrepareChildrenRecursively) {
   typed_parent_slots->emplace_back(lepus::Value(typed_parent_slot_children));
   typed_parent->SetElementSlots(lepus::Value(typed_parent_slots));
 
-  EXPECT_FALSE(typed_parent->is_in_template_tree_);
-  EXPECT_FALSE(compiled_child->is_in_template_tree_);
+  EXPECT_FALSE(typed_parent->IsInTemplateTree());
+  EXPECT_FALSE(compiled_child->IsInTemplateTree());
   EXPECT_EQ(compiled_child->async_create_task_, nullptr);
 
   auto page = fml::AdoptRef<TemplateElement>(new TemplateElement(manager));
@@ -10318,9 +10428,9 @@ TEST_P(FiberElementTest, PageTemplateElementSlotsPrepareChildrenRecursively) {
   page_slots->emplace_back(lepus::Value(page_slot_children));
   page->SetElementSlots(lepus::Value(page_slots));
 
-  EXPECT_TRUE(page->is_in_template_tree_);
-  EXPECT_TRUE(typed_parent->is_in_template_tree_);
-  EXPECT_TRUE(compiled_child->is_in_template_tree_);
+  EXPECT_TRUE(page->IsInTemplateTree());
+  EXPECT_TRUE(typed_parent->IsInTemplateTree());
+  EXPECT_TRUE(compiled_child->IsInTemplateTree());
   EXPECT_EQ(page->async_create_task_, nullptr);
   EXPECT_EQ(typed_parent->async_create_task_, nullptr);
   EXPECT_NE(compiled_child->async_create_task_, nullptr);
@@ -10458,8 +10568,8 @@ TEST_P(FiberElementTest, NonPageTemplateElementSlotsDoNotPrepareBeforeTree) {
   typed_parent->SetTypedTag(base::String("list"));
   typed_parent->SetElementSlots(lepus::Value(element_slots));
 
-  EXPECT_FALSE(typed_parent->is_in_template_tree_);
-  EXPECT_FALSE(compiled_child->is_in_template_tree_);
+  EXPECT_FALSE(typed_parent->IsInTemplateTree());
+  EXPECT_FALSE(compiled_child->IsInTemplateTree());
   EXPECT_EQ(compiled_child->async_create_task_, nullptr);
 }
 
@@ -10479,20 +10589,20 @@ TEST_P(FiberElementTest, InsertElementSlotChildMarksChildInTreeBeforeResolve) {
   auto parent = fml::AdoptRef<TemplateElement>(new TemplateElement(manager));
   parent->SetTypedTag(base::String("page"));
   parent->SetElementSlots(lepus::Value(lepus::CArray::Create()));
-  ASSERT_TRUE(parent->is_in_template_tree_);
+  ASSERT_TRUE(parent->IsInTemplateTree());
 
   parent->InsertElementSlotChild(0, child, nullptr);
 
   EXPECT_EQ(parent->result_, nullptr);
   ASSERT_EQ(parent->pending_operations_.size(), 1u);
-  EXPECT_TRUE(child->is_in_template_tree_);
-  EXPECT_TRUE(grandchild->is_in_template_tree_);
+  EXPECT_TRUE(child->IsInTemplateTree());
+  EXPECT_TRUE(grandchild->IsInTemplateTree());
   EXPECT_EQ(child->async_create_task_, nullptr);
   EXPECT_NE(grandchild->async_create_task_, nullptr);
 
   parent->RemoveElementSlotChild(0, child);
-  EXPECT_TRUE(child->is_in_template_tree_);
-  EXPECT_TRUE(grandchild->is_in_template_tree_);
+  EXPECT_TRUE(child->IsInTemplateTree());
+  EXPECT_TRUE(grandchild->IsInTemplateTree());
 }
 
 TEST_P(FiberElementTest, TypedTemplateElementAppliesRootAttributesAsSpread) {
@@ -10940,561 +11050,6 @@ TEST_P(FiberElementTest, ElementTemplateDynamicAPIsUpdateMaterializedTargets) {
   EXPECT_EQ(slot_parent->children()[1].get(), sentinel.get());
 }
 
-TEST_P(FiberElementTest, ElementTemplateStaticCacheReusesCompiledTree) {
-  auto parent = fml::AdoptRef<TemplateElement>(new TemplateElement(manager));
-  parent->SetTemplateKey(base::String("parent_template"));
-  parent->result_ = manager->CreateFiberView();
-
-  auto child = fml::AdoptRef<TemplateElement>(new TemplateElement(manager));
-  child->SetTemplateKey(base::String("item_template"));
-  child->SetBundleUrl(base::String("item_bundle.js"));
-  auto child_root = manager->CreateFiberView();
-  child->result_ = child_root;
-
-  auto slot_parent = manager->CreateFiberView();
-  auto slot_sentinel = manager->CreateFiberView();
-  slot_parent->InsertNode(child_root);
-  slot_parent->InsertNode(slot_sentinel);
-  parent->element_slot_targets_.push_back(
-      ElementSlotMountPoint{slot_parent, slot_sentinel});
-
-  auto slot_children = lepus::CArray::Create();
-  slot_children->emplace_back(lepus::Value(child));
-  auto element_slots = lepus::CArray::Create();
-  element_slots->emplace_back(lepus::Value(slot_children));
-  parent->SetElementSlots(lepus::Value(element_slots));
-
-  parent->RemoveElementSlotChild(0, child);
-
-  EXPECT_EQ(child->result_, nullptr);
-  ASSERT_EQ(slot_parent->children().size(), 1u);
-  EXPECT_EQ(slot_parent->children()[0].get(), slot_sentinel.get());
-
-  auto fresh_child =
-      fml::AdoptRef<TemplateElement>(new TemplateElement(manager));
-  fresh_child->SetTemplateKey(base::String("item_template"));
-  fresh_child->SetBundleUrl(base::String("item_bundle.js"));
-
-  EXPECT_EQ(fresh_child->GetRoot().get(), child_root.get());
-  EXPECT_TRUE(manager->cached_template_element_trees_.empty());
-}
-
-TEST_P(FiberElementTest,
-       AttributeSlotsCopyOnlyWhenConstForMaterializedUpdates) {
-  auto root = fml::AdoptRef<TemplateElement>(new TemplateElement(manager));
-  root->SetTemplateKey(base::String("root_template"));
-  root->result_ = manager->CreateFiberView();
-
-  auto attribute_slots = lepus::CArray::Create();
-  attribute_slots->emplace_back(lepus::Value("old_value"));
-  root->SetAttributeSlots(lepus::Value(attribute_slots));
-  auto* original_attribute_slots = root->attribute_slots_.Array().get();
-  ASSERT_NE(original_attribute_slots, nullptr);
-  ASSERT_FALSE(root->attribute_slots_.Array()->IsConst());
-
-  auto target = manager->CreateFiberView();
-  auto template_attributes =
-      std::make_shared<const TemplateAttributes>(TemplateAttributes{
-          Attribute{ATTRIBUTE_BINDING_TYPE_DYNAMIC, base::String("data-test"),
-                    lepus::Value(), 0}});
-  target->SetTemplateAttributes(template_attributes);
-  target->AddDataset("test", lepus::Value("old_value"));
-  root->attribute_slot_targets_.push_back(target);
-
-  EXPECT_EQ(root->Serialize()
-                .GetProperty("attributeSlots")
-                .GetProperty(0)
-                .StdString(),
-            "old_value");
-
-  lepus::Value set_attribute_args[] = {lepus::Value(root), lepus::Value(0),
-                                       lepus::Value("new_value")};
-  RendererFunctions::FiberSetAttributeOfElementTemplate(nullptr,
-                                                        set_attribute_args, 3);
-
-  auto* test_data = DatasetValue(target.get(), "test");
-  ASSERT_NE(test_data, nullptr);
-  EXPECT_EQ(test_data->StdString(), "new_value");
-  EXPECT_EQ(root->attribute_slots_.Array().get(), original_attribute_slots);
-  EXPECT_FALSE(root->attribute_slots_.Array()->IsConst());
-
-  ASSERT_TRUE(root->attribute_slots_.MarkConst());
-  auto* const_attribute_slots = root->attribute_slots_.Array().get();
-  lepus::Value set_const_attribute_args[] = {
-      lepus::Value(root), lepus::Value(0), lepus::Value("const_new_value")};
-  RendererFunctions::FiberSetAttributeOfElementTemplate(
-      nullptr, set_const_attribute_args, 3);
-
-  test_data = DatasetValue(target.get(), "test");
-  ASSERT_NE(test_data, nullptr);
-  EXPECT_EQ(test_data->StdString(), "const_new_value");
-  EXPECT_NE(root->attribute_slots_.Array().get(), const_attribute_slots);
-  EXPECT_FALSE(root->attribute_slots_.Array()->IsConst());
-  EXPECT_EQ(root->Serialize()
-                .GetProperty("attributeSlots")
-                .GetProperty(0)
-                .StdString(),
-            "const_new_value");
-}
-
-TEST_P(FiberElementTest, SerializeCompiledTemplateDoesNotFreezeAttributeSlots) {
-  auto root = fml::AdoptRef<TemplateElement>(new TemplateElement(manager));
-  root->SetTemplateKey(base::String("root_template"));
-  root->result_ = manager->CreateFiberView();
-
-  auto attribute_slots = lepus::CArray::Create();
-  attribute_slots->emplace_back(lepus::Value("old_value"));
-  root->SetAttributeSlots(lepus::Value(attribute_slots));
-
-  auto target = manager->CreateFiberView();
-  auto template_attributes =
-      std::make_shared<const TemplateAttributes>(TemplateAttributes{
-          Attribute{ATTRIBUTE_BINDING_TYPE_DYNAMIC, base::String("data-test"),
-                    lepus::Value(), 0}});
-  target->SetTemplateAttributes(template_attributes);
-  target->AddDataset("test", lepus::Value("old_value"));
-  root->attribute_slot_targets_.push_back(target);
-
-  auto serialized = root->Serialize();
-  auto serialized_copy = lepus::Value::ShallowCopy(serialized);
-  EXPECT_EQ(
-      serialized_copy.GetProperty("attributeSlots").GetProperty(0).StdString(),
-      "old_value");
-  EXPECT_TRUE(root->attribute_slots_.Array()->IsConst());
-
-  lepus::Value set_attribute_args[] = {lepus::Value(root), lepus::Value(0),
-                                       lepus::Value("new_value")};
-  RendererFunctions::FiberSetAttributeOfElementTemplate(nullptr,
-                                                        set_attribute_args, 3);
-
-  auto* test_data = DatasetValue(target.get(), "test");
-  ASSERT_NE(test_data, nullptr);
-  EXPECT_EQ(test_data->StdString(), "new_value");
-  EXPECT_FALSE(root->attribute_slots_.Array()->IsConst());
-  EXPECT_EQ(root->Serialize()
-                .GetProperty("attributeSlots")
-                .GetProperty(0)
-                .StdString(),
-            "new_value");
-}
-
-TEST_P(FiberElementTest, ConstElementSlotsRemainMutableForMaterializedUpdates) {
-  auto root = fml::AdoptRef<TemplateElement>(new TemplateElement(manager));
-  root->SetTemplateKey(base::String("root_template"));
-  root->result_ = manager->CreateFiberView();
-
-  auto first = fml::AdoptRef<TemplateElement>(new TemplateElement(manager));
-  first->SetTemplateKey(base::String("first_template"));
-  auto second = fml::AdoptRef<TemplateElement>(new TemplateElement(manager));
-  second->SetTemplateKey(base::String("second_template"));
-  auto third = fml::AdoptRef<TemplateElement>(new TemplateElement(manager));
-  third->SetTemplateKey(base::String("third_template"));
-
-  auto slot_parent = manager->CreateFiberView();
-  auto sentinel = manager->CreateFiberView();
-  slot_parent->InsertNode(first);
-  slot_parent->InsertNode(sentinel);
-  root->element_slot_targets_.push_back(
-      ElementSlotMountPoint{slot_parent, sentinel});
-
-  auto slot_children = lepus::CArray::Create();
-  slot_children->emplace_back(lepus::Value(first));
-  auto element_slots = lepus::CArray::Create();
-  element_slots->emplace_back(lepus::Value(slot_children));
-  auto* original_element_slots = element_slots.get();
-  auto* original_slot_children = slot_children.get();
-  root->SetElementSlots(lepus::Value(element_slots));
-
-  lepus::Value insert_args[] = {lepus::Value(root), lepus::Value(0),
-                                lepus::Value(second)};
-  RendererFunctions::FiberInsertNodeToElementTemplate(nullptr, insert_args, 3);
-  EXPECT_EQ(root->element_slots_.Array().get(), original_element_slots);
-  EXPECT_EQ(root->element_slots_.GetProperty(0).Array().get(),
-            original_slot_children);
-
-  auto serialized_slot_children =
-      root->Serialize().GetProperty("elementSlots").GetProperty(0);
-  ASSERT_TRUE(serialized_slot_children.IsArrayOrJSArray());
-  ASSERT_EQ(serialized_slot_children.GetLength(), 2);
-  EXPECT_EQ(serialized_slot_children.GetProperty(0)
-                .GetProperty("templateKey")
-                .StdString(),
-            "first_template");
-  EXPECT_EQ(serialized_slot_children.GetProperty(1)
-                .GetProperty("templateKey")
-                .StdString(),
-            "second_template");
-
-  ASSERT_TRUE(root->element_slots_.MarkConst());
-  auto* const_element_slots = root->element_slots_.Array().get();
-  auto* const_slot_children = root->element_slots_.GetProperty(0).Array().get();
-  lepus::Value insert_const_args[] = {lepus::Value(root), lepus::Value(0),
-                                      lepus::Value(third)};
-  RendererFunctions::FiberInsertNodeToElementTemplate(nullptr,
-                                                      insert_const_args, 3);
-  EXPECT_NE(root->element_slots_.Array().get(), const_element_slots);
-  EXPECT_NE(root->element_slots_.GetProperty(0).Array().get(),
-            const_slot_children);
-  EXPECT_FALSE(root->element_slots_.Array()->IsConst());
-  EXPECT_FALSE(root->element_slots_.GetProperty(0).Array()->IsConst());
-
-  lepus::Value remove_args[] = {lepus::Value(root), lepus::Value(0),
-                                lepus::Value(first)};
-  RendererFunctions::FiberRemoveNodeFromElementTemplate(nullptr, remove_args,
-                                                        3);
-
-  serialized_slot_children =
-      root->Serialize().GetProperty("elementSlots").GetProperty(0);
-  ASSERT_TRUE(serialized_slot_children.IsArrayOrJSArray());
-  ASSERT_EQ(serialized_slot_children.GetLength(), 2);
-  EXPECT_EQ(serialized_slot_children.GetProperty(0)
-                .GetProperty("templateKey")
-                .StdString(),
-            "second_template");
-  EXPECT_EQ(serialized_slot_children.GetProperty(1)
-                .GetProperty("templateKey")
-                .StdString(),
-            "third_template");
-}
-
-TEST_P(FiberElementTest,
-       ElementTemplateCacheReusesCompiledTreeAndReplaysState) {
-  auto parent = fml::AdoptRef<TemplateElement>(new TemplateElement(manager));
-  parent->SetTemplateKey(base::String("parent_template"));
-  parent->result_ = manager->CreateFiberView();
-
-  auto child = fml::AdoptRef<TemplateElement>(new TemplateElement(manager));
-  child->SetTemplateKey(base::String("item_template"));
-  child->SetBundleUrl(base::String("item_bundle.js"));
-
-  auto child_root = manager->CreateFiberView();
-  auto attr_target = manager->CreateFiberView();
-  auto template_attributes =
-      std::make_shared<const TemplateAttributes>(TemplateAttributes{
-          Attribute{ATTRIBUTE_BINDING_TYPE_DYNAMIC, base::String("data-test"),
-                    lepus::Value(), 0}});
-  attr_target->SetTemplateAttributes(template_attributes);
-  attr_target->AddDataset("test", lepus::Value("old_value"));
-  child_root->InsertNode(attr_target);
-
-  auto slot_parent = manager->CreateFiberView();
-  auto slot_sentinel = manager->CreateFiberView();
-  auto stale_slot_child = manager->CreateFiberView();
-  slot_parent->InsertNode(stale_slot_child);
-  slot_parent->InsertNode(slot_sentinel);
-  child_root->InsertNode(slot_parent);
-
-  auto child_attribute_slots = lepus::CArray::Create();
-  child_attribute_slots->emplace_back(lepus::Value("old_value"));
-  child->SetAttributeSlots(lepus::Value(child_attribute_slots));
-  auto child_slot_children = lepus::CArray::Create();
-  child_slot_children->emplace_back(lepus::Value(stale_slot_child));
-  auto child_element_slots = lepus::CArray::Create();
-  child_element_slots->emplace_back(lepus::Value(child_slot_children));
-  child->SetElementSlots(lepus::Value(child_element_slots));
-  child->result_ = child_root;
-  child->attribute_slot_targets_.push_back(attr_target);
-  child->element_slot_targets_.push_back(
-      ElementSlotMountPoint{slot_parent, slot_sentinel});
-
-  auto parent_slot_parent = manager->CreateFiberView();
-  auto parent_slot_sentinel = manager->CreateFiberView();
-  parent_slot_parent->InsertNode(child_root);
-  parent_slot_parent->InsertNode(parent_slot_sentinel);
-  parent->element_slot_targets_.push_back(
-      ElementSlotMountPoint{parent_slot_parent, parent_slot_sentinel});
-  auto parent_slot_children = lepus::CArray::Create();
-  parent_slot_children->emplace_back(lepus::Value(child));
-  auto parent_element_slots = lepus::CArray::Create();
-  parent_element_slots->emplace_back(lepus::Value(parent_slot_children));
-  parent->SetElementSlots(lepus::Value(parent_element_slots));
-
-  parent->RemoveElementSlotChild(0, child);
-
-  EXPECT_EQ(child->result_, nullptr);
-  ASSERT_EQ(parent_slot_parent->children().size(), 1u);
-  EXPECT_EQ(parent_slot_parent->children()[0].get(),
-            parent_slot_sentinel.get());
-  ASSERT_EQ(slot_parent->children().size(), 1u);
-  EXPECT_EQ(slot_parent->children()[0].get(), slot_sentinel.get());
-  EXPECT_EQ(stale_slot_child->parent(), nullptr);
-
-  auto fresh_slot_child = manager->CreateFiberView();
-  auto fresh_child =
-      fml::AdoptRef<TemplateElement>(new TemplateElement(manager));
-  fresh_child->SetTemplateKey(base::String("item_template"));
-  fresh_child->SetBundleUrl(base::String("item_bundle.js"));
-  auto fresh_attribute_slots = lepus::CArray::Create();
-  fresh_attribute_slots->emplace_back(lepus::Value("new_value"));
-  fresh_child->SetAttributeSlots(lepus::Value(fresh_attribute_slots));
-  auto fresh_slot_children = lepus::CArray::Create();
-  fresh_slot_children->emplace_back(lepus::Value(fresh_slot_child));
-  auto fresh_element_slots = lepus::CArray::Create();
-  fresh_element_slots->emplace_back(lepus::Value(fresh_slot_children));
-  fresh_child->SetElementSlots(lepus::Value(fresh_element_slots));
-
-  auto resolved = fresh_child->GetRoot();
-
-  EXPECT_EQ(resolved.get(), child_root.get());
-  auto* test_data = DatasetValue(attr_target.get(), "test");
-  ASSERT_NE(test_data, nullptr);
-  EXPECT_EQ(test_data->StdString(), "new_value");
-  ASSERT_EQ(slot_parent->children().size(), 2u);
-  EXPECT_EQ(slot_parent->children()[0].get(), fresh_slot_child.get());
-  EXPECT_EQ(slot_parent->children()[1].get(), slot_sentinel.get());
-}
-
-TEST_P(FiberElementTest,
-       ElementTemplateCachePrepareConsumesCacheWithoutResolving) {
-  auto parent = fml::AdoptRef<TemplateElement>(new TemplateElement(manager));
-  parent->SetTemplateKey(base::String("parent_template"));
-  parent->result_ = manager->CreateFiberView();
-
-  auto child = fml::AdoptRef<TemplateElement>(new TemplateElement(manager));
-  child->SetTemplateKey(base::String("item_template"));
-  child->SetBundleUrl(base::String("item_bundle.js"));
-  auto child_root = manager->CreateFiberView();
-  auto parent_slot_parent = manager->CreateFiberView();
-  auto parent_slot_sentinel = manager->CreateFiberView();
-  parent_slot_parent->InsertNode(child_root);
-  parent_slot_parent->InsertNode(parent_slot_sentinel);
-  parent->element_slot_targets_.push_back(
-      ElementSlotMountPoint{parent_slot_parent, parent_slot_sentinel});
-  child->result_ = child_root;
-
-  auto parent_slot_children = lepus::CArray::Create();
-  parent_slot_children->emplace_back(lepus::Value(child));
-  auto parent_element_slots = lepus::CArray::Create();
-  parent_element_slots->emplace_back(lepus::Value(parent_slot_children));
-  parent->SetElementSlots(lepus::Value(parent_element_slots));
-  parent->RemoveElementSlotChild(0, child);
-
-  ASSERT_FALSE(manager->cached_template_element_trees_.empty());
-
-  auto fresh_child =
-      fml::AdoptRef<TemplateElement>(new TemplateElement(manager));
-  fresh_child->SetTemplateKey(base::String("item_template"));
-  fresh_child->SetBundleUrl(base::String("item_bundle.js"));
-
-  fresh_child->PrepareAsyncCreateElementTree();
-
-  EXPECT_EQ(fresh_child->async_create_task_, nullptr);
-  EXPECT_EQ(fresh_child->result_, nullptr);
-  EXPECT_TRUE(manager->cached_template_element_trees_.empty());
-
-  EXPECT_EQ(fresh_child->GetRoot().get(), child_root.get());
-}
-
-TEST_P(FiberElementTest,
-       ElementTemplatePreparedCacheCanReturnToPoolBeforeResolve) {
-  auto parent = fml::AdoptRef<TemplateElement>(new TemplateElement(manager));
-  parent->SetTemplateKey(base::String("parent_template"));
-  parent->result_ = manager->CreateFiberView();
-
-  auto child = fml::AdoptRef<TemplateElement>(new TemplateElement(manager));
-  child->SetTemplateKey(base::String("item_template"));
-  child->SetBundleUrl(base::String("item_bundle.js"));
-  auto child_root = manager->CreateFiberView();
-  auto parent_slot_parent = manager->CreateFiberView();
-  auto parent_slot_sentinel = manager->CreateFiberView();
-  parent_slot_parent->InsertNode(child_root);
-  parent_slot_parent->InsertNode(parent_slot_sentinel);
-  parent->element_slot_targets_.push_back(
-      ElementSlotMountPoint{parent_slot_parent, parent_slot_sentinel});
-  child->result_ = child_root;
-
-  auto parent_slot_children = lepus::CArray::Create();
-  parent_slot_children->emplace_back(lepus::Value(child));
-  auto parent_element_slots = lepus::CArray::Create();
-  parent_element_slots->emplace_back(lepus::Value(parent_slot_children));
-  parent->SetElementSlots(lepus::Value(parent_element_slots));
-  parent->RemoveElementSlotChild(0, child);
-
-  auto prepared_child =
-      fml::AdoptRef<TemplateElement>(new TemplateElement(manager));
-  prepared_child->SetTemplateKey(base::String("item_template"));
-  prepared_child->SetBundleUrl(base::String("item_bundle.js"));
-  prepared_child->PrepareAsyncCreateElementTree();
-  ASSERT_TRUE(manager->cached_template_element_trees_.empty());
-
-  auto second_parent =
-      fml::AdoptRef<TemplateElement>(new TemplateElement(manager));
-  second_parent->SetTemplateKey(base::String("second_parent_template"));
-  second_parent->result_ = manager->CreateFiberView();
-  auto second_slot_parent = manager->CreateFiberView();
-  auto second_slot_sentinel = manager->CreateFiberView();
-  second_slot_parent->InsertNode(prepared_child);
-  second_slot_parent->InsertNode(second_slot_sentinel);
-  second_parent->element_slot_targets_.push_back(
-      ElementSlotMountPoint{second_slot_parent, second_slot_sentinel});
-  auto second_slot_children = lepus::CArray::Create();
-  second_slot_children->emplace_back(lepus::Value(prepared_child));
-  auto second_element_slots = lepus::CArray::Create();
-  second_element_slots->emplace_back(lepus::Value(second_slot_children));
-  second_parent->SetElementSlots(lepus::Value(second_element_slots));
-
-  second_parent->RemoveElementSlotChild(0, prepared_child);
-
-  ASSERT_FALSE(manager->cached_template_element_trees_.empty());
-  auto fresh_child =
-      fml::AdoptRef<TemplateElement>(new TemplateElement(manager));
-  fresh_child->SetTemplateKey(base::String("item_template"));
-  fresh_child->SetBundleUrl(base::String("item_bundle.js"));
-  EXPECT_EQ(fresh_child->GetRoot().get(), child_root.get());
-}
-
-TEST_P(FiberElementTest,
-       ElementTemplateDynamicInsertPreparesFromCacheWithoutAsyncTask) {
-  auto cache_parent =
-      fml::AdoptRef<TemplateElement>(new TemplateElement(manager));
-  cache_parent->SetTemplateKey(base::String("cache_parent_template"));
-  cache_parent->result_ = manager->CreateFiberView();
-
-  auto cached_child =
-      fml::AdoptRef<TemplateElement>(new TemplateElement(manager));
-  cached_child->SetTemplateKey(base::String("item_template"));
-  cached_child->SetBundleUrl(base::String("item_bundle.js"));
-  auto cached_root = manager->CreateFiberView();
-  cached_child->result_ = cached_root;
-  auto cache_slot_parent = manager->CreateFiberView();
-  auto cache_slot_sentinel = manager->CreateFiberView();
-  cache_slot_parent->InsertNode(cached_root);
-  cache_slot_parent->InsertNode(cache_slot_sentinel);
-  cache_parent->element_slot_targets_.push_back(
-      ElementSlotMountPoint{cache_slot_parent, cache_slot_sentinel});
-  auto cache_slot_children = lepus::CArray::Create();
-  cache_slot_children->emplace_back(lepus::Value(cached_child));
-  auto cache_element_slots = lepus::CArray::Create();
-  cache_element_slots->emplace_back(lepus::Value(cache_slot_children));
-  cache_parent->SetElementSlots(lepus::Value(cache_element_slots));
-  cache_parent->RemoveElementSlotChild(0, cached_child);
-
-  auto list_template =
-      fml::AdoptRef<TemplateElement>(new TemplateElement(manager));
-  list_template->SetTypedTag(base::String("list"));
-  list_template->result_ = manager->CreateFiberView();
-  list_template->is_in_template_tree_ = true;
-  auto list_slot_parent = manager->CreateFiberView();
-  auto list_slot_sentinel = manager->CreateFiberView();
-  list_slot_parent->InsertNode(list_slot_sentinel);
-  auto page = manager->CreateFiberPage("page", 11);
-  page->InsertNode(list_slot_parent);
-  list_template->element_slot_targets_.push_back(
-      ElementSlotMountPoint{list_slot_parent, list_slot_sentinel});
-
-  auto fresh_child =
-      fml::AdoptRef<TemplateElement>(new TemplateElement(manager));
-  fresh_child->SetTemplateKey(base::String("item_template"));
-  fresh_child->SetBundleUrl(base::String("item_bundle.js"));
-
-  list_template->InsertElementSlotChild(0, fresh_child, nullptr);
-
-  EXPECT_EQ(fresh_child->async_create_task_, nullptr);
-  EXPECT_EQ(fresh_child->result_, nullptr);
-  EXPECT_TRUE(manager->cached_template_element_trees_.empty());
-  ASSERT_EQ(list_slot_parent->children().size(), 2u);
-  EXPECT_EQ(list_slot_parent->children()[0].get(), fresh_child.get());
-  EXPECT_EQ(list_slot_parent->children()[1].get(), list_slot_sentinel.get());
-
-  list_slot_parent->PrepareChildren();
-
-  ASSERT_EQ(list_slot_parent->children().size(), 2u);
-  EXPECT_EQ(list_slot_parent->children()[0].get(), cached_root.get());
-  EXPECT_EQ(list_slot_parent->children()[1].get(), list_slot_sentinel.get());
-}
-
-TEST_P(FiberElementTest, ElementTemplateCacheDetachesSlotChildrenRecursively) {
-  auto parent = fml::AdoptRef<TemplateElement>(new TemplateElement(manager));
-  parent->SetTemplateKey(base::String("parent_template"));
-  parent->result_ = manager->CreateFiberView();
-
-  auto child = fml::AdoptRef<TemplateElement>(new TemplateElement(manager));
-  child->SetTemplateKey(base::String("child_template"));
-  auto child_root = manager->CreateFiberView();
-  auto child_slot_parent = manager->CreateFiberView();
-  auto child_slot_sentinel = manager->CreateFiberView();
-  child_root->InsertNode(child_slot_parent);
-  child->result_ = child_root;
-  child->element_slot_targets_.push_back(
-      ElementSlotMountPoint{child_slot_parent, child_slot_sentinel});
-
-  auto grandchild =
-      fml::AdoptRef<TemplateElement>(new TemplateElement(manager));
-  grandchild->SetTemplateKey(base::String("grandchild_template"));
-  auto grandchild_root = manager->CreateFiberView();
-  grandchild->result_ = grandchild_root;
-  child_slot_parent->InsertNode(grandchild_root);
-  child_slot_parent->InsertNode(child_slot_sentinel);
-
-  auto child_slot_children = lepus::CArray::Create();
-  child_slot_children->emplace_back(lepus::Value(grandchild));
-  auto child_element_slots = lepus::CArray::Create();
-  child_element_slots->emplace_back(lepus::Value(child_slot_children));
-  child->SetElementSlots(lepus::Value(child_element_slots));
-
-  auto parent_slot_parent = manager->CreateFiberView();
-  auto parent_slot_sentinel = manager->CreateFiberView();
-  parent_slot_parent->InsertNode(child_root);
-  parent_slot_parent->InsertNode(parent_slot_sentinel);
-  parent->element_slot_targets_.push_back(
-      ElementSlotMountPoint{parent_slot_parent, parent_slot_sentinel});
-  auto parent_slot_children = lepus::CArray::Create();
-  parent_slot_children->emplace_back(lepus::Value(child));
-  auto parent_element_slots = lepus::CArray::Create();
-  parent_element_slots->emplace_back(lepus::Value(parent_slot_children));
-  parent->SetElementSlots(lepus::Value(parent_element_slots));
-
-  parent->RemoveElementSlotChild(0, child);
-
-  EXPECT_EQ(child->result_, nullptr);
-  EXPECT_EQ(grandchild->result_, nullptr);
-  ASSERT_EQ(child_slot_parent->children().size(), 1u);
-  EXPECT_EQ(child_slot_parent->children()[0].get(), child_slot_sentinel.get());
-
-  auto fresh_grandchild =
-      fml::AdoptRef<TemplateElement>(new TemplateElement(manager));
-  fresh_grandchild->SetTemplateKey(base::String("grandchild_template"));
-  EXPECT_EQ(fresh_grandchild->GetRoot().get(), grandchild_root.get());
-
-  auto fresh_child =
-      fml::AdoptRef<TemplateElement>(new TemplateElement(manager));
-  fresh_child->SetTemplateKey(base::String("child_template"));
-  EXPECT_EQ(fresh_child->GetRoot().get(), child_root.get());
-}
-
-TEST_P(FiberElementTest, TypedTemplateElementIsUnmountedButNotCached) {
-  auto parent = fml::AdoptRef<TemplateElement>(new TemplateElement(manager));
-  parent->SetTemplateKey(base::String("parent_template"));
-  parent->result_ = manager->CreateFiberView();
-
-  auto typed_child =
-      fml::AdoptRef<TemplateElement>(new TemplateElement(manager));
-  typed_child->SetTypedTag(base::String("view"));
-  auto typed_root = manager->CreateFiberView();
-  typed_child->result_ = typed_root;
-
-  auto parent_slot_parent = manager->CreateFiberView();
-  auto parent_slot_sentinel = manager->CreateFiberView();
-  parent_slot_parent->InsertNode(typed_root);
-  parent_slot_parent->InsertNode(parent_slot_sentinel);
-  parent->element_slot_targets_.push_back(
-      ElementSlotMountPoint{parent_slot_parent, parent_slot_sentinel});
-  auto parent_slot_children = lepus::CArray::Create();
-  parent_slot_children->emplace_back(lepus::Value(typed_child));
-  auto parent_element_slots = lepus::CArray::Create();
-  parent_element_slots->emplace_back(lepus::Value(parent_slot_children));
-  parent->SetElementSlots(lepus::Value(parent_element_slots));
-
-  parent->RemoveElementSlotChild(0, typed_child);
-
-  EXPECT_EQ(typed_child->result_.get(), typed_root.get());
-  EXPECT_EQ(typed_root->parent(), nullptr);
-  EXPECT_TRUE(manager->cached_template_element_trees_.empty());
-  ASSERT_EQ(parent_slot_parent->children().size(), 1u);
-  EXPECT_EQ(parent_slot_parent->children()[0].get(),
-            parent_slot_sentinel.get());
-}
-
 TEST_P(FiberElementTest, ElementTemplateInsertElementSlotChildKeepsOtherSlots) {
   auto root = fml::AdoptRef<TemplateElement>(new TemplateElement(manager));
   root->SetTemplateKey(base::String("root_template"));
@@ -11651,6 +11206,188 @@ TEST_P(FiberElementTest, ElementTemplateDynamicAPIsConsumePendingOpsOnGetRoot) {
   ASSERT_EQ(slot_parent->children().size(), 2u);
   EXPECT_EQ(slot_parent->children()[0].get(), second.get());
   EXPECT_EQ(slot_parent->children()[1].get(), sentinel.get());
+}
+
+TEST_P(FiberElementTest,
+       ListItemTemplateElementGraphCacheTransfersMaterializedTree) {
+  auto parent = fml::AdoptRef<TemplateElement>(new TemplateElement(manager));
+  parent->SetTemplateKey(base::String("parent_template"));
+  parent->result_ = manager->CreateFiberView();
+
+  auto parent_slot_parent = manager->CreateFiberView();
+  auto parent_sentinel = manager->CreateFiberView();
+  parent->element_slot_targets_.push_back(
+      ElementSlotMountPoint{parent_slot_parent, parent_sentinel});
+
+  auto old_item = fml::AdoptRef<TemplateElement>(new TemplateElement(manager));
+  old_item->SetTemplateKey(base::String("item_template"));
+  old_item->SetBundleUrl(base::String("bundle.js"));
+  old_item->MarkAsListItem();
+  auto old_item_root = manager->CreateFiberView();
+  old_item->result_ = old_item_root;
+
+  auto old_child = fml::AdoptRef<TemplateElement>(new TemplateElement(manager));
+  old_child->SetTemplateKey(base::String("child_template"));
+  old_child->SetBundleUrl(base::String("bundle.js"));
+  auto old_child_root = manager->CreateFiberView();
+  old_child->result_ = old_child_root;
+
+  auto old_stale_child =
+      fml::AdoptRef<TemplateElement>(new TemplateElement(manager));
+  old_stale_child->SetTemplateKey(base::String("stale_template"));
+  old_stale_child->SetBundleUrl(base::String("bundle.js"));
+  auto old_stale_root = manager->CreateFiberView();
+  old_stale_child->result_ = old_stale_root;
+
+  auto item_slot_parent = manager->CreateFiberView();
+  auto item_sentinel = manager->CreateFiberView();
+  item_slot_parent->InsertNode(old_child_root);
+  item_slot_parent->InsertNode(old_stale_root);
+  item_slot_parent->InsertNode(item_sentinel);
+  old_item->element_slot_targets_.push_back(
+      ElementSlotMountPoint{item_slot_parent, item_sentinel});
+
+  auto old_item_slot_children = lepus::CArray::Create();
+  old_item_slot_children->emplace_back(lepus::Value(old_child));
+  old_item_slot_children->emplace_back(lepus::Value(old_stale_child));
+  auto old_item_slots = lepus::CArray::Create();
+  old_item_slots->emplace_back(lepus::Value(old_item_slot_children));
+  old_item->SetElementSlots(lepus::Value(old_item_slots));
+
+  parent_slot_parent->InsertNode(old_item_root);
+  parent_slot_parent->InsertNode(parent_sentinel);
+  auto parent_slot_children = lepus::CArray::Create();
+  parent_slot_children->emplace_back(lepus::Value(old_item));
+  auto parent_slots = lepus::CArray::Create();
+  parent_slots->emplace_back(lepus::Value(parent_slot_children));
+  parent->SetElementSlots(lepus::Value(parent_slots));
+
+  parent->RemoveElementSlotChild(0, old_item);
+  EXPECT_EQ(old_item_root->parent(), nullptr);
+
+  auto new_item = fml::AdoptRef<TemplateElement>(new TemplateElement(manager));
+  new_item->SetTemplateKey(base::String("item_template"));
+  new_item->SetBundleUrl(base::String("bundle.js"));
+  new_item->MarkAsListItem();
+
+  auto new_child = fml::AdoptRef<TemplateElement>(new TemplateElement(manager));
+  new_child->SetTemplateKey(base::String("child_template"));
+  new_child->SetBundleUrl(base::String("bundle.js"));
+
+  auto new_item_slot_children = lepus::CArray::Create();
+  new_item_slot_children->emplace_back(lepus::Value(new_child));
+  auto new_item_slots = lepus::CArray::Create();
+  new_item_slots->emplace_back(lepus::Value(new_item_slot_children));
+  new_item->SetElementSlots(lepus::Value(new_item_slots));
+
+  auto resolved = new_item->GetRoot();
+
+  ASSERT_NE(resolved, nullptr);
+  EXPECT_EQ(resolved.get(), old_item_root.get());
+  EXPECT_EQ(new_item->result_.get(), old_item_root.get());
+  EXPECT_EQ(old_item->result_, nullptr);
+  EXPECT_EQ(new_child->result_.get(), old_child_root.get());
+  EXPECT_EQ(old_child->result_, nullptr);
+  EXPECT_EQ(old_stale_child->result_, nullptr);
+  EXPECT_EQ(old_stale_root->parent(), nullptr);
+  ASSERT_EQ(item_slot_parent->children().size(), 2u);
+  EXPECT_EQ(item_slot_parent->children()[0].get(), old_child_root.get());
+  EXPECT_EQ(item_slot_parent->children()[1].get(), item_sentinel.get());
+}
+
+TEST_P(FiberElementTest,
+       ListItemTemplateElementGraphCacheOwnerReclaimAppliesPendingOps) {
+  auto parent = fml::AdoptRef<TemplateElement>(new TemplateElement(manager));
+  parent->SetTemplateKey(base::String("parent_template"));
+  parent->result_ = manager->CreateFiberView();
+
+  auto parent_slot_parent = manager->CreateFiberView();
+  auto parent_sentinel = manager->CreateFiberView();
+  parent_slot_parent->InsertNode(parent_sentinel);
+  parent->element_slot_targets_.push_back(
+      ElementSlotMountPoint{parent_slot_parent, parent_sentinel});
+
+  auto item = fml::AdoptRef<TemplateElement>(new TemplateElement(manager));
+  item->SetTemplateKey(base::String("item_template"));
+  item->SetBundleUrl(base::String("bundle.js"));
+  item->MarkAsListItem();
+  item->result_ = manager->CreateFiberView();
+
+  auto attribute_slots = lepus::CArray::Create();
+  attribute_slots->emplace_back(lepus::Value("old_value"));
+  item->SetAttributeSlots(lepus::Value(attribute_slots));
+
+  auto target = manager->CreateFiberView();
+  auto template_attributes =
+      std::make_shared<const TemplateAttributes>(TemplateAttributes{
+          Attribute{ATTRIBUTE_BINDING_TYPE_DYNAMIC, base::String("data-test"),
+                    lepus::Value(), 0}});
+  target->SetTemplateAttributes(template_attributes);
+  target->AddDataset("test", lepus::Value("old_value"));
+  item->attribute_slot_targets_.push_back(target);
+  item->result_->InsertNode(target);
+
+  auto child = fml::AdoptRef<TemplateElement>(new TemplateElement(manager));
+  child->SetTemplateKey(base::String("child_template"));
+  child->SetBundleUrl(base::String("bundle.js"));
+  child->result_ = manager->CreateFiberView();
+
+  auto child_attribute_slots = lepus::CArray::Create();
+  child_attribute_slots->emplace_back(lepus::Value("old_child_value"));
+  child->SetAttributeSlots(lepus::Value(child_attribute_slots));
+
+  auto child_target = manager->CreateFiberView();
+  child_target->SetTemplateAttributes(template_attributes);
+  child_target->AddDataset("test", lepus::Value("old_child_value"));
+  child->attribute_slot_targets_.push_back(child_target);
+  child->result_->InsertNode(child_target);
+
+  auto item_slot_children = lepus::CArray::Create();
+  item_slot_children->emplace_back(lepus::Value(child));
+  auto item_slots = lepus::CArray::Create();
+  item_slots->emplace_back(lepus::Value(item_slot_children));
+  item->SetElementSlots(lepus::Value(item_slots));
+
+  parent_slot_parent->InsertNodeBefore(item->result_, parent_sentinel);
+  auto parent_slot_children = lepus::CArray::Create();
+  parent_slot_children->emplace_back(lepus::Value(item));
+  auto parent_slots = lepus::CArray::Create();
+  parent_slots->emplace_back(lepus::Value(parent_slot_children));
+  parent->SetElementSlots(lepus::Value(parent_slots));
+
+  parent->RemoveElementSlotChild(0, item);
+  ASSERT_TRUE(item->IsInTemplateCache());
+  ASSERT_TRUE(child->IsInTemplateCache());
+  EXPECT_EQ(item->result_->parent(), nullptr);
+
+  item->SetAttributeSlot(0, lepus::Value("new_value"));
+  child->SetAttributeSlot(0, lepus::Value("new_child_value"));
+  auto* test_data_before_reclaim = DatasetValue(target.get(), "test");
+  ASSERT_NE(test_data_before_reclaim, nullptr);
+  EXPECT_EQ(test_data_before_reclaim->StdString(), "old_value");
+  auto* child_test_data_before_reclaim =
+      DatasetValue(child_target.get(), "test");
+  ASSERT_NE(child_test_data_before_reclaim, nullptr);
+  EXPECT_EQ(child_test_data_before_reclaim->StdString(), "old_child_value");
+  ASSERT_EQ(item->pending_operations_.size(), 1u);
+  ASSERT_EQ(child->pending_operations_.size(), 1u);
+
+  parent->InsertElementSlotChild(0, item, nullptr);
+
+  EXPECT_FALSE(item->IsInTemplateCache());
+  EXPECT_FALSE(child->IsInTemplateCache());
+  EXPECT_TRUE(item->pending_operations_.empty());
+  EXPECT_TRUE(child->pending_operations_.empty());
+  auto* test_data_after_reclaim = DatasetValue(target.get(), "test");
+  ASSERT_NE(test_data_after_reclaim, nullptr);
+  EXPECT_EQ(test_data_after_reclaim->StdString(), "new_value");
+  auto* child_test_data_after_reclaim =
+      DatasetValue(child_target.get(), "test");
+  ASSERT_NE(child_test_data_after_reclaim, nullptr);
+  EXPECT_EQ(child_test_data_after_reclaim->StdString(), "new_child_value");
+  ASSERT_EQ(parent_slot_parent->children().size(), 2u);
+  EXPECT_EQ(parent_slot_parent->children()[0].get(), item->result_.get());
+  EXPECT_EQ(parent_slot_parent->children()[1].get(), parent_sentinel.get());
 }
 
 TEST_P(FiberElementTest, ElementTemplateStaticEventsSyncAfterAttach) {
@@ -17721,6 +17458,181 @@ TEST_P(FiberElementTest, TestTransitionInResetMapAndUpdateMap) {
   EXPECT_TRUE(fiber_element->has_transition_props_);
 }
 
+TEST_P(FiberElementTest,
+       NewStylingKeyframeOverrideSuppressesSamePropertyTransitionReset) {
+  auto page = manager->CreateFiberPage("page", 11);
+  auto fiber_element = manager->CreateFiberView();
+  fiber_element->enable_new_animator_ = true;
+  fiber_element->parent_component_element_ = page.get();
+  page->InsertNode(fiber_element);
+
+  fiber_element->base_css_style_ =
+      std::make_unique<starlight::ComputedCSSStyle>(
+          *fiber_element->platform_css_style_);
+  fiber_element->base_css_style_->CopyFrom(*fiber_element->platform_css_style_);
+  starlight::ComputedCSSStyle new_base_style(
+      *fiber_element->platform_css_style_);
+  new_base_style.CopyFrom(*fiber_element->platform_css_style_);
+  const starlight::ComputedCSSStyle* previous_final_style =
+      fiber_element->platform_css_style_.get();
+
+  fiber_element->css_keyframe_manager_ =
+      std::make_unique<animation::CSSKeyframeManager>(fiber_element.get());
+  fiber_element->css_transition_manager_ =
+      std::make_unique<animation::CSSTransitionManager>(fiber_element.get());
+
+  const CSSValue keyframe_opacity(lepus::Value(0.4), CSSValuePattern::NUMBER);
+  fiber_element->css_keyframe_manager_
+      ->pending_property_overrides_[CSSPropertyID::kPropertyIDOpacity] =
+      keyframe_opacity;
+  fiber_element->css_transition_manager_->pending_property_resets_.push_back(
+      CSSPropertyID::kPropertyIDOpacity);
+
+  const StyleMap new_underlying_layout_only_styles;
+  auto sample = fiber_element->SampleAnimationOverridesForNewPipeline(
+      new_base_style, false, false, new_underlying_layout_only_styles,
+      previous_final_style);
+
+  EXPECT_TRUE(StyleMapHasValue(sample.property_overrides,
+                               CSSPropertyID::kPropertyIDOpacity,
+                               keyframe_opacity));
+  EXPECT_TRUE(sample.property_resets.empty());
+}
+
+TEST_P(FiberElementTest,
+       NewStylingKeyframeOverrideSuppressesSamePropertyTransitionOverride) {
+  auto page = manager->CreateFiberPage("page", 11);
+  auto fiber_element = manager->CreateFiberView();
+  fiber_element->enable_new_animator_ = true;
+  fiber_element->parent_component_element_ = page.get();
+  page->InsertNode(fiber_element);
+
+  fiber_element->base_css_style_ =
+      std::make_unique<starlight::ComputedCSSStyle>(
+          *fiber_element->platform_css_style_);
+  fiber_element->base_css_style_->CopyFrom(*fiber_element->platform_css_style_);
+  starlight::ComputedCSSStyle new_base_style(
+      *fiber_element->platform_css_style_);
+  new_base_style.CopyFrom(*fiber_element->platform_css_style_);
+  const starlight::ComputedCSSStyle* previous_final_style =
+      fiber_element->platform_css_style_.get();
+
+  fiber_element->css_keyframe_manager_ =
+      std::make_unique<animation::CSSKeyframeManager>(fiber_element.get());
+  fiber_element->css_transition_manager_ =
+      std::make_unique<animation::CSSTransitionManager>(fiber_element.get());
+
+  const CSSValue keyframe_opacity(lepus::Value(0.4), CSSValuePattern::NUMBER);
+  const CSSValue transition_opacity(lepus::Value(0.8), CSSValuePattern::NUMBER);
+  fiber_element->css_keyframe_manager_
+      ->pending_property_overrides_[CSSPropertyID::kPropertyIDOpacity] =
+      keyframe_opacity;
+  fiber_element->css_transition_manager_
+      ->pending_property_overrides_[CSSPropertyID::kPropertyIDOpacity] =
+      transition_opacity;
+
+  const StyleMap new_underlying_layout_only_styles;
+  auto sample = fiber_element->SampleAnimationOverridesForNewPipeline(
+      new_base_style, false, false, new_underlying_layout_only_styles,
+      previous_final_style);
+
+  EXPECT_TRUE(StyleMapHasValue(sample.property_overrides,
+                               CSSPropertyID::kPropertyIDOpacity,
+                               keyframe_opacity));
+  EXPECT_TRUE(sample.property_resets.empty());
+}
+
+TEST_P(FiberElementTest,
+       NewStylingKeyframePropChangeConsumedAfterKeyframeSync) {
+  auto page = manager->CreateFiberPage("page", 11);
+  auto fiber_element = manager->CreateFiberView();
+  fiber_element->enable_new_animator_ = true;
+  fiber_element->parent_component_element_ = page.get();
+  page->InsertNode(fiber_element);
+
+  fiber_element->base_css_style_ =
+      std::make_unique<starlight::ComputedCSSStyle>(
+          *fiber_element->platform_css_style_);
+  fiber_element->base_css_style_->CopyFrom(*fiber_element->platform_css_style_);
+  starlight::ComputedCSSStyle new_base_style(
+      *fiber_element->platform_css_style_);
+  new_base_style.CopyFrom(*fiber_element->platform_css_style_);
+  const starlight::ComputedCSSStyle* previous_final_style =
+      fiber_element->platform_css_style_.get();
+
+  fiber_element->css_keyframe_manager_ =
+      std::make_unique<animation::CSSKeyframeManager>(fiber_element.get());
+  fiber_element->has_keyframe_props_changed_ = true;
+
+  const StyleMap new_underlying_layout_only_styles;
+  fiber_element->SampleAnimationOverridesForNewPipeline(
+      new_base_style, false, false, new_underlying_layout_only_styles,
+      previous_final_style);
+
+  EXPECT_FALSE(fiber_element->has_keyframe_props_changed_);
+}
+
+TEST_P(FiberElementTest,
+       NewStylingKeyframePropChangeConsumedWhenNoKeyframeManagerNeeded) {
+  auto page = manager->CreateFiberPage("page", 11);
+  auto fiber_element = manager->CreateFiberView();
+  fiber_element->enable_new_animator_ = true;
+  fiber_element->parent_component_element_ = page.get();
+  page->InsertNode(fiber_element);
+
+  fiber_element->base_css_style_ =
+      std::make_unique<starlight::ComputedCSSStyle>(
+          *fiber_element->platform_css_style_);
+  fiber_element->base_css_style_->CopyFrom(*fiber_element->platform_css_style_);
+  starlight::ComputedCSSStyle new_base_style(
+      *fiber_element->platform_css_style_);
+  new_base_style.CopyFrom(*fiber_element->platform_css_style_);
+  const starlight::ComputedCSSStyle* previous_final_style =
+      fiber_element->platform_css_style_.get();
+
+  fiber_element->has_keyframe_props_changed_ = true;
+
+  const StyleMap new_underlying_layout_only_styles;
+  fiber_element->SampleAnimationOverridesForNewPipeline(
+      new_base_style, false, false, new_underlying_layout_only_styles,
+      previous_final_style);
+
+  EXPECT_FALSE(fiber_element->has_keyframe_props_changed_);
+}
+
+TEST_P(FiberElementTest, NewStylingNewAnimatorTickRequestsTargetedResolve) {
+  manager->enable_new_styling_pipeline_ = true;
+  auto element = manager->CreateFiberView();
+  element->enable_new_animator_ = true;
+  auto options = std::make_shared<PipelineOptions>();
+  auto frame_time = fml::TimePoint::FromTicks(123);
+
+  EXPECT_TRUE(element->TickAllAnimation(frame_time, options));
+
+  EXPECT_TRUE(element->StyleDirty());
+  EXPECT_TRUE(options->resolve_requested);
+  EXPECT_EQ(options->target_node, element->impl_id());
+  auto sample_time = element->TakeAnimationSampleTimeForNewPipeline();
+  ASSERT_TRUE(sample_time.has_value());
+  EXPECT_EQ(*sample_time, frame_time);
+  EXPECT_FALSE(element->TakeAnimationSampleTimeForNewPipeline().has_value());
+}
+
+TEST_P(FiberElementTest,
+       NewStylingLegacyAnimatorTickDoesNotRequestTargetedResolve) {
+  manager->enable_new_styling_pipeline_ = true;
+  auto element = manager->CreateFiberView();
+  element->enable_new_animator_ = false;
+  auto options = std::make_shared<PipelineOptions>();
+  auto frame_time = fml::TimePoint::FromTicks(123);
+
+  EXPECT_FALSE(element->TickAllAnimation(frame_time, options));
+
+  EXPECT_FALSE(options->resolve_requested);
+  EXPECT_EQ(options->target_node, PipelineOptions::kInvalidTargetNodeId);
+  EXPECT_FALSE(element->TakeAnimationSampleTimeForNewPipeline().has_value());
+}
+
 TEST_P(FiberElementTest, TestRemoveVirtualParentCase) {
   // page
   auto page = manager->CreateFiberPage("page", 11);
@@ -19510,6 +19422,403 @@ TEST_P(FiberElementTest,
                                CSSValue(56, CSSValuePattern::PX)));
 }
 
+TEST_P(FiberElementTest, NewStylingExtremeParsedStylesResolveAndMaterialize) {
+  manager->enable_new_styling_pipeline_ = true;
+  auto page = manager->CreateFiberPage("page", 11);
+  manager->SetFiberPageElement(page);
+  auto element = manager->CreateFiberView();
+  element->SetRawInlineStyles("width: 12px;");
+
+  StyleMap parsed_styles;
+  parsed_styles.insert_or_assign(CSSPropertyID::kPropertyIDWidth,
+                                 CSSValue(48, CSSValuePattern::PX));
+  parsed_styles.insert_or_assign(CSSPropertyID::kPropertyIDOpacity,
+                                 CSSValue(0.5, CSSValuePattern::NUMBER));
+  element->SetParsedStyles(std::move(parsed_styles), CSSVariableMap{});
+  page->InsertNode(element);
+
+  page->FlushActionsAsRoot();
+  platform_impl_->Flush();
+
+  const auto& resolved_values =
+      element->computed_css_style()->GetResolvedValues();
+  EXPECT_TRUE(StyleMapHasValue(resolved_values, CSSPropertyID::kPropertyIDWidth,
+                               CSSValue(48, CSSValuePattern::PX)));
+  EXPECT_FALSE(StyleMapHasValue(resolved_values,
+                                CSSPropertyID::kPropertyIDWidth,
+                                CSSValue(12, CSSValuePattern::PX)));
+  EXPECT_TRUE(StyleMapHasValue(resolved_values,
+                               CSSPropertyID::kPropertyIDOpacity,
+                               CSSValue(0.5, CSSValuePattern::NUMBER)));
+
+  const auto* props = PaintingPropsFor(manager, element.get());
+  ASSERT_NE(props, nullptr);
+  auto opacity_it = props->find(
+      CSSProperty::GetPropertyNameCStr(CSSPropertyID::kPropertyIDOpacity));
+  ASSERT_NE(opacity_it, props->end());
+  EXPECT_DOUBLE_EQ(opacity_it->second.Number(), 0.5);
+}
+
+TEST_P(FiberElementTest, NewStylingSelectorExtremeParsedStylesMergeInline) {
+  manager->enable_new_styling_pipeline_ = true;
+  auto page = manager->CreateFiberPage("page", 11);
+  manager->SetFiberPageElement(page);
+  auto element = manager->CreateFiberView();
+  element->SetRawInlineStyles("width: 72px;");
+
+  StyleMap parsed_style_map;
+  parsed_style_map.insert_or_assign(CSSPropertyID::kPropertyIDWidth,
+                                    CSSValue(48, CSSValuePattern::PX));
+  parsed_style_map.insert_or_assign(CSSPropertyID::kPropertyIDOpacity,
+                                    CSSValue(0.5, CSSValuePattern::NUMBER));
+  ParsedStyles parsed_styles{std::move(parsed_style_map), CSSVariableMap{}};
+  lepus::Value config = lepus::Value(lepus::Dictionary::Create());
+  config.SetProperty("selectorParsedStyles", lepus::Value(true));
+  element->SetParsedStyles(parsed_styles, config);
+  page->InsertNode(element);
+
+  page->FlushActionsAsRoot();
+  platform_impl_->Flush();
+
+  const auto& resolved_values =
+      element->computed_css_style()->GetResolvedValues();
+  EXPECT_TRUE(StyleMapHasValue(resolved_values, CSSPropertyID::kPropertyIDWidth,
+                               CSSValue(72, CSSValuePattern::PX)));
+  EXPECT_TRUE(StyleMapHasValue(resolved_values,
+                               CSSPropertyID::kPropertyIDOpacity,
+                               CSSValue(0.5, CSSValuePattern::NUMBER)));
+}
+
+TEST_P(FiberElementTest,
+       NewStylingFirstRenderDefaultEqualOpacityDoesNotPushPlatformProp) {
+  manager->enable_new_styling_pipeline_ = true;
+  auto page = manager->CreateFiberPage("page", 11);
+  manager->SetFiberPageElement(page);
+  auto element = manager->CreateFiberView();
+  element->SetStyle(CSSPropertyID::kPropertyIDOpacity, lepus::Value(1.0));
+  page->InsertNode(element);
+
+  page->FlushActionsAsRoot();
+  platform_impl_->Flush();
+
+  const auto* props = PaintingPropsFor(manager, element.get());
+  ASSERT_NE(props, nullptr);
+  EXPECT_EQ(props->find(CSSProperty::GetPropertyNameCStr(
+                CSSPropertyID::kPropertyIDOpacity)),
+            props->end());
+  EXPECT_TRUE(
+      StyleMapHasValue(element->computed_css_style()->GetResolvedValues(),
+                       CSSPropertyID::kPropertyIDOpacity,
+                       CSSValue(1.0, CSSValuePattern::NUMBER)));
+}
+
+TEST_P(FiberElementTest,
+       NewStylingFirstRenderChangedOpacityPushesPlatformProp) {
+  manager->enable_new_styling_pipeline_ = true;
+  auto page = manager->CreateFiberPage("page", 11);
+  manager->SetFiberPageElement(page);
+  auto element = manager->CreateFiberView();
+  element->SetStyle(CSSPropertyID::kPropertyIDOpacity, lepus::Value(0.5));
+  page->InsertNode(element);
+
+  page->FlushActionsAsRoot();
+  platform_impl_->Flush();
+
+  const auto* props = PaintingPropsFor(manager, element.get());
+  ASSERT_NE(props, nullptr);
+  auto opacity_it = props->find(
+      CSSProperty::GetPropertyNameCStr(CSSPropertyID::kPropertyIDOpacity));
+  ASSERT_NE(opacity_it, props->end());
+  EXPECT_DOUBLE_EQ(opacity_it->second.Number(), 0.5);
+}
+
+TEST_P(FiberElementTest,
+       NewStylingCustomPropertyChangeReplaysDependentOpacity) {
+  manager->enable_new_styling_pipeline_ = true;
+  lynx::base::AutoReset<bool> css_inline_config(
+      &(manager->GetConfig()->css_configs_.enable_css_inline_variables_), true);
+  auto page = manager->CreateFiberPage("page", 11);
+  manager->SetFiberPageElement(page);
+  auto element = manager->CreateFiberView();
+  element->SetRawInlineStyles("--o: 0.5; opacity: var(--o);");
+  page->InsertNode(element);
+  page->FlushActionsAsRoot();
+  platform_impl_->Flush();
+
+  auto* props = PaintingPropsFor(manager, element.get());
+  ASSERT_NE(props, nullptr);
+  props->clear();
+  element->SetRawInlineStyles("--o: 0.7; opacity: var(--o);");
+  page->FlushActionsAsRoot();
+  platform_impl_->Flush();
+
+  auto opacity_it = props->find(
+      CSSProperty::GetPropertyNameCStr(CSSPropertyID::kPropertyIDOpacity));
+  ASSERT_NE(opacity_it, props->end());
+  EXPECT_NEAR(opacity_it->second.Number(), 0.7, 1e-6);
+}
+
+TEST_P(FiberElementTest,
+       NewStylingCustomPropertyEqualResolvedValueDoesNotPushPlatformProp) {
+  manager->enable_new_styling_pipeline_ = true;
+  lynx::base::AutoReset<bool> css_inline_config(
+      &(manager->GetConfig()->css_configs_.enable_css_inline_variables_), true);
+  auto page = manager->CreateFiberPage("page", 11);
+  manager->SetFiberPageElement(page);
+  auto element = manager->CreateFiberView();
+  element->SetRawInlineStyles("--o: 0.5; opacity: var(--o);");
+  page->InsertNode(element);
+  page->FlushActionsAsRoot();
+  platform_impl_->Flush();
+
+  auto* props = PaintingPropsFor(manager, element.get());
+  ASSERT_NE(props, nullptr);
+  props->clear();
+  element->SetRawInlineStyles("--unused: 1; --o: 0.5; opacity: var(--o);");
+  page->FlushActionsAsRoot();
+  platform_impl_->Flush();
+
+  EXPECT_EQ(props->find(CSSProperty::GetPropertyNameCStr(
+                CSSPropertyID::kPropertyIDOpacity)),
+            props->end());
+}
+
+TEST_P(FiberElementTest,
+       NewStylingFontSizeChangeReplaysEmDependentLayoutStyle) {
+  manager->enable_new_styling_pipeline_ = true;
+  auto page = manager->CreateFiberPage("page", 11);
+  manager->SetFiberPageElement(page);
+  auto element = manager->CreateFiberView();
+  element->SetRawInlineStyles("font-size: 10px; width: 2em;");
+  page->InsertNode(element);
+  page->FlushActionsAsRoot();
+
+  element->layout_bundle_.reset();
+  element->SetRawInlineStyles("font-size: 20px; width: 2em;");
+  FiberElement::NewPipelineResolveRequest request;
+  auto outcome = element->ResolveCSSStylesNewPipelineCore(request);
+
+  EXPECT_TRUE(outcome.need_update);
+  EXPECT_TRUE(LayoutBundleHasStyle(element->layout_bundle_,
+                                   CSSPropertyID::kPropertyIDWidth,
+                                   CSSValue(2, CSSValuePattern::EM)));
+}
+
+TEST_P(FiberElementTest,
+       NewStylingStyleMutationPlanDiffsResolvedValuesSemantically) {
+  auto element = manager->CreateFiberView();
+
+  starlight::ComputedCSSStyle previous(*manager->platform_computed_css());
+  previous.CopyFrom(*manager->platform_computed_css());
+  const CSSValue old_width(10, CSSValuePattern::NUMBER);
+  const CSSValue old_height(20, CSSValuePattern::NUMBER);
+  const CSSValue opacity(0.5, CSSValuePattern::NUMBER);
+  previous.SetValue(CSSPropertyID::kPropertyIDWidth, old_width);
+  previous.SetValue(CSSPropertyID::kPropertyIDHeight, old_height);
+  previous.SetValue(CSSPropertyID::kPropertyIDOpacity, opacity);
+  previous.ClearDirtyBits();
+
+  starlight::ComputedCSSStyle current(*manager->platform_computed_css());
+  current.CopyFrom(*manager->platform_computed_css());
+  const CSSValue new_width(15, CSSValuePattern::NUMBER);
+  const CSSValue new_top(5, CSSValuePattern::NUMBER);
+  current.SetValue(CSSPropertyID::kPropertyIDWidth, new_width);
+  current.SetValue(CSSPropertyID::kPropertyIDTop, new_top);
+  current.SetValue(CSSPropertyID::kPropertyIDOpacity, opacity);
+  current.ClearDirtyBits();
+
+  FiberElement::NewPipelineStyleResolveResult resolved_styles;
+  resolved_styles.previous_final_style = &previous;
+  resolved_styles.final_style = &current;
+  resolved_styles.resolved_style_map.insert_or_assign(
+      CSSPropertyID::kPropertyIDWidth, new_width);
+  resolved_styles.resolved_style_map.insert_or_assign(
+      CSSPropertyID::kPropertyIDTop, new_top);
+  resolved_styles.resolved_style_map.insert_or_assign(
+      CSSPropertyID::kPropertyIDOpacity, opacity);
+
+  FiberElement::NewPipelineDynamicStyleInputs dynamic_inputs;
+  auto plan = element->BuildNewPipelineStyleMutationPlan(
+      resolved_styles, dynamic_inputs, 0, false, current.GetFontSize(),
+      current.GetRootFontSize());
+
+  EXPECT_TRUE(StyleMapHasValue(plan.update_values,
+                               CSSPropertyID::kPropertyIDWidth, new_width));
+  EXPECT_TRUE(StyleMapHasValue(plan.update_values,
+                               CSSPropertyID::kPropertyIDTop, new_top));
+  EXPECT_FALSE(plan.update_ids.Has(CSSPropertyID::kPropertyIDOpacity));
+  EXPECT_TRUE(plan.reset_ids.Has(CSSPropertyID::kPropertyIDHeight));
+  EXPECT_FALSE(plan.reset_ids.Has(CSSPropertyID::kPropertyIDOpacity));
+  EXPECT_FALSE(plan.font_size_context_changed);
+  EXPECT_FALSE(plan.root_font_size_context_changed);
+}
+
+TEST_P(FiberElementTest,
+       NewStylingMaterializationUsesSemanticBaselineForNoOpUpdates) {
+  auto element = manager->CreateFiberView();
+
+  const CSSValue opacity(0.2, CSSValuePattern::NUMBER);
+  starlight::ComputedCSSStyle baseline(*manager->platform_computed_css());
+  baseline.CopyFrom(*manager->platform_computed_css());
+  baseline.SetValue(CSSPropertyID::kPropertyIDOpacity, opacity);
+  baseline.ClearDirtyBits();
+
+  starlight::ComputedCSSStyle final_style(*manager->platform_computed_css());
+  final_style.CopyFrom(baseline);
+  final_style.ClearDirtyBits();
+
+  FiberElement::NewPipelineStyleMutationPlan plan;
+  plan.AddUpdate(CSSPropertyID::kPropertyIDOpacity, opacity);
+
+  EXPECT_FALSE(element->MaterializeNewPipelineStyleMutationPlan(plan, baseline,
+                                                                final_style));
+  EXPECT_FALSE(final_style.OpacityChanged());
+  EXPECT_TRUE(final_style.IsClean());
+}
+
+TEST_P(FiberElementTest,
+       NewStylingAnimationResetOnlyFastPathClearsResolvedInputs) {
+  auto page = manager->CreateFiberPage("page", 11);
+  manager->SetFiberPageElement(page);
+  auto element = manager->CreateFiberView();
+  page->InsertNode(element);
+
+  starlight::ComputedCSSStyle base_style(*manager->platform_computed_css());
+  base_style.CopyFrom(*manager->platform_computed_css());
+  StyleMap resolved_style_map;
+  resolved_style_map.insert_or_assign(CSSPropertyID::kPropertyIDOpacity,
+                                      CSSValue(0.8, CSSValuePattern::NUMBER));
+  CSSIDBitset variable_dependent_ids;
+  variable_dependent_ids.Set(CSSPropertyID::kPropertyIDOpacity);
+
+  animation::AnimationSampleForNewPipeline animation_sample;
+  animation_sample.property_resets.push_back(CSSPropertyID::kPropertyIDOpacity);
+
+  auto final_style = element->BuildFinalStyleFromAnimationSampleForNewPipeline(
+      base_style, nullptr, &base_style, animation_sample, resolved_style_map,
+      variable_dependent_ids);
+
+  ASSERT_NE(final_style, nullptr);
+  EXPECT_EQ(
+      final_style->GetResolvedValues().find(CSSPropertyID::kPropertyIDOpacity),
+      final_style->GetResolvedValues().end());
+  EXPECT_EQ(resolved_style_map.find(CSSPropertyID::kPropertyIDOpacity),
+            resolved_style_map.end());
+  EXPECT_FALSE(variable_dependent_ids.Has(CSSPropertyID::kPropertyIDOpacity));
+}
+
+TEST_P(FiberElementTest,
+       NewStylingLayoutInElementRebindsSLNodeStyleAfterPlatformCommit) {
+  manager->enable_new_styling_pipeline_ = true;
+  manager->page_options_.embedded_mode_ = static_cast<EmbeddedMode>(
+      static_cast<int32_t>(manager->page_options_.embedded_mode_) |
+      static_cast<int32_t>(EmbeddedMode::LAYOUT_IN_ELEMENT));
+
+  auto page = manager->CreateFiberPage("page", 11);
+  manager->SetFiberPageElement(page);
+  auto element = manager->CreateFiberView();
+  element->SetRawInlineStyles("width: 10px; height: 10px;");
+  page->InsertNode(element);
+  page->FlushActionsAsRoot();
+
+  ASSERT_NE(element->slnode(), nullptr);
+  auto* old_layout_style =
+      element->computed_css_style()->GetLayoutComputedStyle();
+  ASSERT_EQ(element->slnode()->GetCSSStyle(), old_layout_style);
+
+  FiberElement::NewPipelineResolveRequest request;
+  request.force_resolve = true;
+  request.force_platform_update = true;
+  auto outcome = element->ResolveCSSStylesNewPipelineCore(request);
+
+  auto* new_layout_style =
+      element->computed_css_style()->GetLayoutComputedStyle();
+  EXPECT_TRUE(outcome.need_update);
+  EXPECT_NE(new_layout_style, old_layout_style);
+  EXPECT_EQ(element->slnode()->GetCSSStyle(), new_layout_style);
+
+  page->Layout(std::make_shared<PipelineOptions>());
+}
+
+TEST_P(FiberElementTest, NewStylingTextFontSizePushesPlatformProp) {
+  manager->enable_new_styling_pipeline_ = true;
+  auto page = manager->CreateFiberPage("page", 11);
+  manager->SetFiberPageElement(page);
+  auto text = manager->CreateFiberText("text");
+  text->SetRawInlineStyles("font-size: 20px;");
+  auto raw_text = manager->CreateFiberRawText();
+  raw_text->SetText(lepus::Value("text-content"));
+  page->InsertNode(text);
+  text->InsertNode(raw_text);
+
+  page->FlushActionsAsRoot();
+  platform_impl_->Flush();
+
+  const auto* props = PaintingPropsFor(manager, text.get());
+  ASSERT_NE(props, nullptr);
+  auto font_size_it = props->find(
+      CSSProperty::GetPropertyNameCStr(CSSPropertyID::kPropertyIDFontSize));
+  ASSERT_NE(font_size_it, props->end());
+  EXPECT_EQ(font_size_it->second, lepus::Value(20.0));
+}
+
+TEST_P(FiberElementTest, NewStylingInheritedTextFontSizePushesPlatformProp) {
+  manager->enable_new_styling_pipeline_ = true;
+  auto config = std::make_shared<PageConfig>();
+  config->SetEnableFiberArch(true);
+  config->SetEnableCSSInheritance(true);
+  std::unordered_set<CSSPropertyID> list = {kPropertyIDFontSize};
+  config->SetCustomCSSInheritList(std::move(list));
+  manager->SetConfig(config);
+  auto page = manager->CreateFiberPage("page", 11);
+  manager->SetFiberPageElement(page);
+  auto parent = manager->CreateFiberView();
+  parent->SetRawInlineStyles("font-size: 28px;");
+  auto text = manager->CreateFiberText("text");
+  auto raw_text = manager->CreateFiberRawText();
+  raw_text->SetText(lepus::Value("text-content"));
+  page->InsertNode(parent);
+  parent->InsertNode(text);
+  text->InsertNode(raw_text);
+
+  page->FlushActionsAsRoot();
+  platform_impl_->Flush();
+
+  const auto* props = PaintingPropsFor(manager, text.get());
+  ASSERT_NE(props, nullptr);
+  auto font_size_it = props->find(
+      CSSProperty::GetPropertyNameCStr(CSSPropertyID::kPropertyIDFontSize));
+  ASSERT_NE(font_size_it, props->end());
+  EXPECT_EQ(font_size_it->second, lepus::Value(28.0));
+}
+
+TEST_P(FiberElementTest, NewStylingOverflowResetPushesPlatformReset) {
+  manager->enable_new_styling_pipeline_ = true;
+  auto page = manager->CreateFiberPage("page", 11);
+  manager->SetFiberPageElement(page);
+  auto element = manager->CreateFiberView();
+  element->computed_css_style()->SetOverflowDefaultVisible(false);
+  element->SetStyle(CSSPropertyID::kPropertyIDBackgroundColor,
+                    lepus::Value("#000000"));
+  element->SetStyle(CSSPropertyID::kPropertyIDOverflow,
+                    lepus::Value("visible"));
+  page->InsertNode(element);
+  page->FlushActionsAsRoot();
+  platform_impl_->Flush();
+
+  auto* props = PaintingPropsFor(manager, element.get());
+  ASSERT_NE(props, nullptr);
+  props->clear();
+  element->SetStyle(CSSPropertyID::kPropertyIDOverflow, lepus::Value());
+  page->FlushActionsAsRoot();
+  platform_impl_->Flush();
+
+  auto overflow_it = props->find(
+      CSSProperty::GetPropertyNameCStr(CSSPropertyID::kPropertyIDOverflow));
+  ASSERT_NE(overflow_it, props->end());
+  EXPECT_TRUE(overflow_it->second.IsEmpty());
+}
+
 TEST_P(FiberElementTest,
        NewStylingReplaySingleChangedAndResetStyleSideEffects) {
   auto element = manager->CreateFiberView();
@@ -19549,22 +19858,19 @@ TEST_P(FiberElementTest,
 }
 
 TEST_P(FiberElementTest,
-       NewStylingReplayCommitSideEffectsIncludesInheritedFirstRenderValues) {
+       NewStylingReplayMaterializedStyleSideEffectsUsesResolvedDirtyValues) {
   manager->config_->SetEnableCSSInheritance(true);
   auto element = manager->CreateFiberView();
-  element->dirty_ = Element::kDirtyCreated;
 
   starlight::ComputedCSSStyle computed_style(*manager->platform_computed_css());
   computed_style.SetResolvedValue(CSSPropertyID::kPropertyIDWidth,
                                   CSSValue(32, CSSValuePattern::PX));
   computed_style.SetResolvedValue(CSSPropertyID::kPropertyIDDirection,
                                   CSSValue(starlight::DirectionType::kRtl));
+  computed_style.MarkChanged(CSSPropertyID::kPropertyIDWidth);
+  computed_style.MarkChanged(CSSPropertyID::kPropertyIDDirection);
 
-  StyleMap resolved_style_map;
-  resolved_style_map.insert_or_assign(CSSPropertyID::kPropertyIDWidth,
-                                      CSSValue(32, CSSValuePattern::PX));
-
-  element->ReplayCommitSideEffects(computed_style, resolved_style_map);
+  element->ReplayMaterializedStyleSideEffects(computed_style);
 
   EXPECT_TRUE(LayoutBundleHasStyle(element->layout_bundle_,
                                    CSSPropertyID::kPropertyIDWidth,
@@ -19575,25 +19881,24 @@ TEST_P(FiberElementTest,
 }
 
 TEST_P(FiberElementTest,
-       NewStylingReplayCommitSideEffectsUsesResolvedValuesAndResetsOnUpdate) {
+       NewStylingReplayMaterializedStyleSideEffectsResetsAndSkipsFontSize) {
   auto element = manager->CreateFiberView();
   element->ResetAllDirtyBits();
 
   starlight::ComputedCSSStyle computed_style(*manager->platform_computed_css());
+  computed_style.SetResolvedValue(CSSPropertyID::kPropertyIDWidth,
+                                  CSSValue(44, CSSValuePattern::PX));
   computed_style.SetResolvedValue(CSSPropertyID::kPropertyIDDirection,
                                   CSSValue(starlight::DirectionType::kRtl));
+  computed_style.SetResolvedValue(CSSPropertyID::kPropertyIDFontSize,
+                                  CSSValue(20, CSSValuePattern::NUMBER));
   computed_style.MarkChanged(CSSPropertyID::kPropertyIDWidth);
   computed_style.MarkChanged(CSSPropertyID::kPropertyIDDirection);
+  computed_style.MarkChanged(CSSPropertyID::kPropertyIDFontSize);
   computed_style.MarkReset(CSSPropertyID::kPropertyIDHeight);
   computed_style.MarkReset(CSSPropertyID::kPropertyIDPaddingTop);
 
-  StyleMap resolved_style_map;
-  resolved_style_map.insert_or_assign(CSSPropertyID::kPropertyIDWidth,
-                                      CSSValue(44, CSSValuePattern::PX));
-  resolved_style_map.insert_or_assign(CSSPropertyID::kPropertyIDPaddingTop,
-                                      CSSValue(8, CSSValuePattern::PX));
-
-  element->ReplayCommitSideEffects(computed_style, resolved_style_map);
+  element->ReplayMaterializedStyleSideEffects(computed_style);
 
   EXPECT_TRUE(LayoutBundleHasStyle(element->layout_bundle_,
                                    CSSPropertyID::kPropertyIDWidth,
@@ -19603,8 +19908,216 @@ TEST_P(FiberElementTest,
                                    CSSValue(starlight::DirectionType::kRtl)));
   EXPECT_TRUE(LayoutBundleHasResetStyle(element->layout_bundle_,
                                         CSSPropertyID::kPropertyIDHeight));
-  EXPECT_FALSE(LayoutBundleHasResetStyle(element->layout_bundle_,
-                                         CSSPropertyID::kPropertyIDPaddingTop));
+  EXPECT_TRUE(LayoutBundleHasResetStyle(element->layout_bundle_,
+                                        CSSPropertyID::kPropertyIDPaddingTop));
+  EXPECT_FALSE(LayoutBundleHasStyle(element->layout_bundle_,
+                                    CSSPropertyID::kPropertyIDFontSize,
+                                    CSSValue(20, CSSValuePattern::NUMBER)));
+}
+
+TEST_P(FiberElementTest,
+       NewStylingImperativeAnimationCleanupPushesCleanupSnapshotValue) {
+  manager->enable_new_styling_pipeline_ = true;
+  auto element = manager->CreateFiberView();
+  element->platform_css_style_->SetValue(CSSPropertyID::kPropertyIDOpacity,
+                                         CSSValue(0.2, CSSValuePattern::NUMBER),
+                                         false);
+
+  starlight::ComputedCSSStyle cleanup_style(*manager->platform_computed_css());
+  cleanup_style.SetValue(CSSPropertyID::kPropertyIDOpacity,
+                         CSSValue(0.8, CSSValuePattern::NUMBER), false);
+  element->imperative_animation_state_.pending_cleanup_properties_.Set(
+      CSSPropertyID::kPropertyIDOpacity);
+
+  bool need_update = false;
+  element->FlushImperativeAnimationCleanupForNewPipeline(cleanup_style,
+                                                         need_update, nullptr);
+
+  EXPECT_TRUE(need_update);
+  auto* prop_bundle = static_cast<PropBundleMock*>(element->prop_bundle_.get());
+  ASSERT_NE(prop_bundle, nullptr);
+  const auto& props = prop_bundle->GetPropsMap();
+  auto opacity_it = props.find(
+      CSSProperty::GetPropertyNameCStr(CSSPropertyID::kPropertyIDOpacity));
+  ASSERT_NE(opacity_it, props.end());
+  EXPECT_NEAR(opacity_it->second.Number(), 0.8, 1e-6);
+}
+
+TEST_P(FiberElementTest,
+       NewStylingImperativeAnimationCleanupUsesFinalAnimatedStyle) {
+  manager->enable_new_styling_pipeline_ = true;
+  auto page = manager->CreateFiberPage("page", 11);
+  manager->SetFiberPageElement(page);
+  auto element = manager->CreateFiberView();
+  element->enable_new_animator_ = true;
+  page->InsertNode(element);
+  page->FlushActionsAsRoot();
+
+  element->platform_css_style_->SetValue(CSSPropertyID::kPropertyIDOpacity,
+                                         CSSValue(0.8, CSSValuePattern::NUMBER),
+                                         false);
+  element->platform_css_style_->ClearDirtyBits();
+  element->SetRawInlineStyles("opacity: 0.2;");
+  element->css_keyframe_manager_ =
+      std::make_unique<animation::CSSKeyframeManager>(element.get());
+  element->css_keyframe_manager_
+      ->pending_property_overrides_[CSSPropertyID::kPropertyIDOpacity] =
+      CSSValue(0.8, CSSValuePattern::NUMBER);
+  element->imperative_animation_state_.pending_cleanup_properties_.Set(
+      CSSPropertyID::kPropertyIDOpacity);
+
+  FiberElement::NewPipelineResolveRequest request;
+  request.force_resolve = true;
+  auto outcome = element->ResolveCSSStylesNewPipelineCore(request);
+
+  EXPECT_TRUE(outcome.need_update);
+  auto* prop_bundle = static_cast<PropBundleMock*>(element->prop_bundle_.get());
+  ASSERT_NE(prop_bundle, nullptr);
+  const auto& props = prop_bundle->GetPropsMap();
+  auto opacity_it = props.find(
+      CSSProperty::GetPropertyNameCStr(CSSPropertyID::kPropertyIDOpacity));
+  ASSERT_NE(opacity_it, props.end());
+  EXPECT_NEAR(opacity_it->second.Number(), 0.8, 1e-6);
+}
+
+TEST_P(
+    FiberElementTest,
+    NewStylingImperativeAnimationCleanupPreservesInheritedPlatformLayoutOnly) {
+  manager->enable_new_styling_pipeline_ = true;
+  manager->config_->SetEnableCSSInheritance(true);
+
+  auto page = manager->CreateFiberPage("page", 11);
+  manager->SetFiberPageElement(page);
+  auto parent = manager->CreateFiberView();
+  parent->MarkCanBeLayoutOnly(false);
+  parent->SetStyle(CSSPropertyID::kPropertyIDLineHeight, lepus::Value("30px"));
+  auto wrapper = manager->CreateFiberView();
+  wrapper->computed_css_style()->SetOverflowDefaultVisible(true);
+  auto child = manager->CreateFiberView();
+  child->MarkCanBeLayoutOnly(false);
+
+  wrapper->InsertNode(child);
+  parent->InsertNode(wrapper);
+  page->InsertNode(parent);
+  page->FlushActionsAsRoot();
+
+  EXPECT_TRUE(wrapper->has_layout_only_props_);
+  EXPECT_TRUE(wrapper->CanBeLayoutOnly());
+  EXPECT_TRUE(wrapper->is_layout_only_);
+
+  wrapper->imperative_animation_state_.pending_cleanup_properties_.Set(
+      CSSPropertyID::kPropertyIDLineHeight);
+
+  FiberElement::NewPipelineResolveRequest request;
+  request.force_resolve = true;
+  auto outcome = wrapper->ResolveCSSStylesNewPipelineCore(request);
+
+  EXPECT_TRUE(outcome.need_update);
+  EXPECT_TRUE(wrapper->has_layout_only_props_);
+  EXPECT_TRUE(wrapper->CanBeLayoutOnly());
+}
+
+TEST_P(FiberElementTest,
+       NewStylingImperativeAnimationFinishResolvesCleanupStyle) {
+  manager->enable_new_styling_pipeline_ = true;
+  auto page = manager->CreateFiberPage("page", 11);
+  manager->SetFiberPageElement(page);
+  auto element = manager->CreateFiberView();
+  element->enable_new_animator_ = true;
+  page->InsertNode(element);
+
+  element->SetRawInlineStyles("opacity: 0.2;");
+  page->FlushActionsAsRoot();
+
+  auto start_args = lepus::CArray::Create();
+  start_args->set(
+      0, lepus::Value(static_cast<int32_t>(
+             runtime::js::JavaScriptElement::AnimationOperation::START)));
+  start_args->set(1, lepus::Value("fade"));
+  auto keyframes = lepus::Dictionary::Create();
+  auto from_keyframe = lepus::Dictionary::Create();
+  from_keyframe->SetValue("opacity", lepus::Value("0.2"));
+  keyframes->SetValue("0%", lepus::Value(std::move(from_keyframe)));
+  auto to_keyframe = lepus::Dictionary::Create();
+  to_keyframe->SetValue("opacity", lepus::Value("0.8"));
+  keyframes->SetValue("100%", lepus::Value(std::move(to_keyframe)));
+  start_args->set(2, lepus::Value(std::move(keyframes)));
+  auto animation_data = lepus::Dictionary::Create();
+  animation_data->SetValue("name", lepus::Value("fade"));
+  animation_data->SetValue("duration", lepus::Value(2000));
+  animation_data->SetValue("fill", lepus::Value("none"));
+  animation_data->SetValue("play-state", lepus::Value("running"));
+  start_args->set(3, lepus::Value(std::move(animation_data)));
+  auto pipeline_option = std::make_shared<PipelineOptions>();
+  element->AnimateV2(lepus::Value(start_args), pipeline_option);
+
+  page->FlushActionsAsRoot();
+  element->platform_css_style_->SetValue(CSSPropertyID::kPropertyIDOpacity,
+                                         CSSValue(0.8, CSSValuePattern::NUMBER),
+                                         false);
+  element->platform_css_style_->ClearDirtyBits();
+  element->prop_bundle_ = nullptr;
+  element->ResetAllDirtyBits();
+
+  auto finish_args = lepus::CArray::Create();
+  finish_args->set(
+      0, lepus::Value(static_cast<int32_t>(
+             runtime::js::JavaScriptElement::AnimationOperation::FINISH)));
+  finish_args->set(1, lepus::Value("fade"));
+  auto finish_pipeline_option = std::make_shared<PipelineOptions>();
+  finish_pipeline_option->enable_unified_pixel_pipeline = true;
+  element->AnimateV2(lepus::Value(finish_args), finish_pipeline_option);
+  EXPECT_TRUE(finish_pipeline_option->resolve_requested);
+  EXPECT_EQ(finish_pipeline_option->target_node, element->impl_id());
+
+  auto reduce_task = element->PrepareForCreateOrUpdate();
+  reduce_task();
+
+  auto* prop_bundle =
+      static_cast<PropBundleMock*>(element->pre_prop_bundle_.get());
+  ASSERT_NE(prop_bundle, nullptr);
+  const auto& props = prop_bundle->GetPropsMap();
+  auto opacity_it = props.find(
+      CSSProperty::GetPropertyNameCStr(CSSPropertyID::kPropertyIDOpacity));
+  ASSERT_NE(opacity_it, props.end());
+  EXPECT_NEAR(opacity_it->second.Number(), 0.2, 1e-6);
+}
+
+TEST_P(FiberElementTest,
+       NewStylingForwardsKeyframeFillPersistsAfterLaterResolve) {
+  manager->enable_new_styling_pipeline_ = true;
+  auto page = manager->CreateFiberPage("page", 11);
+  manager->SetFiberPageElement(page);
+  auto element = manager->CreateFiberView();
+  element->enable_new_animator_ = true;
+  UpdateLeftKeyframesForTest(element.get(), base::String("move"), "0px",
+                             "200px");
+  element->SetRawInlineStyles(
+      "left: 0px; animation: move 1000ms linear forwards;");
+  page->InsertNode(element);
+
+  page->FlushActionsAsRoot();
+  EXPECT_TRUE(StyleMapHasValue(
+      element->computed_css_style()->GetResolvedValues(),
+      CSSPropertyID::kPropertyIDLeft, CSSValue(0, CSSValuePattern::PX)));
+
+  auto resolve_at = [&](int64_t ms) {
+    element->SetAnimationSampleTimeForNewPipeline(TimePointFromMs(ms));
+    FiberElement::NewPipelineResolveRequest request;
+    request.force_resolve = true;
+    return element->ResolveCSSStylesNewPipelineCore(request);
+  };
+
+  resolve_at(1000);
+  resolve_at(2000);
+  EXPECT_TRUE(StyleMapHasValue(
+      element->computed_css_style()->GetResolvedValues(),
+      CSSPropertyID::kPropertyIDLeft, CSSValue(200, CSSValuePattern::PX)));
+
+  resolve_at(2016);
+  EXPECT_TRUE(StyleMapHasValue(
+      element->computed_css_style()->GetResolvedValues(),
+      CSSPropertyID::kPropertyIDLeft, CSSValue(200, CSSValuePattern::PX)));
 }
 
 TEST_P(FiberElementTest,
@@ -19626,6 +20139,21 @@ TEST_P(FiberElementTest,
   EXPECT_TRUE(need_update);
   EXPECT_TRUE(LayoutBundleHasResetStyle(element->layout_bundle_,
                                         CSSPropertyID::kPropertyIDWidth));
+}
+
+TEST_P(FiberElementTest, NewStylingEmptyUnderlyingLayoutOnlyStylesStayUnset) {
+  manager->enable_new_styling_pipeline_ = true;
+  auto page = manager->CreateFiberPage("page", 11);
+  manager->SetFiberPageElement(page);
+  auto element = manager->CreateFiberView();
+  element->SetStyle(CSSPropertyID::kPropertyIDOpacity, lepus::Value(0.5));
+  page->InsertNode(element);
+
+  page->FlushActionsAsRoot();
+
+  EXPECT_FALSE(
+      element->committed_underlying_layout_only_styles_for_new_pipeline_
+          .has_value());
 }
 
 TEST_P(FiberElementTest,
@@ -19717,6 +20245,143 @@ TEST_P(FiberElementTest,
               DynamicCSSStylesManager::kUpdateViewport);
   EXPECT_FALSE(child->dynamic_style_flags_ &
                DynamicCSSStylesManager::kUpdateViewport);
+}
+
+TEST_P(FiberElementTest,
+       NewStylingInheritedPlatformTextPropKeepsLayoutOnlyView) {
+  manager->enable_new_styling_pipeline_ = true;
+  manager->config_->SetEnableCSSInheritance(true);
+
+  auto page = manager->CreateFiberPage("page", 11);
+  manager->SetFiberPageElement(page);
+  auto parent = manager->CreateFiberView();
+  parent->MarkCanBeLayoutOnly(false);
+  parent->SetStyle(CSSPropertyID::kPropertyIDLineHeight, lepus::Value("30px"));
+  auto wrapper = manager->CreateFiberView();
+  wrapper->computed_css_style()->SetOverflowDefaultVisible(true);
+  auto child = manager->CreateFiberView();
+  child->MarkCanBeLayoutOnly(false);
+
+  wrapper->InsertNode(child);
+  parent->InsertNode(wrapper);
+  page->InsertNode(parent);
+  page->FlushActionsAsRoot();
+
+  EXPECT_TRUE(StyleMapHasValue(
+      wrapper->computed_css_style()->GetResolvedValues(),
+      CSSPropertyID::kPropertyIDLineHeight, CSSValue(30, CSSValuePattern::PX)));
+  EXPECT_TRUE(wrapper->has_layout_only_props_);
+  EXPECT_TRUE(wrapper->CanBeLayoutOnly());
+  EXPECT_TRUE(wrapper->is_layout_only_);
+}
+
+TEST_P(FiberElementTest,
+       NewStylingExplicitPlatformTextPropStillBreaksLayoutOnlyView) {
+  manager->enable_new_styling_pipeline_ = true;
+  manager->config_->SetEnableCSSInheritance(true);
+
+  auto page = manager->CreateFiberPage("page", 11);
+  manager->SetFiberPageElement(page);
+  auto parent = manager->CreateFiberView();
+  parent->MarkCanBeLayoutOnly(false);
+  parent->SetStyle(CSSPropertyID::kPropertyIDLineHeight, lepus::Value("30px"));
+  auto wrapper = manager->CreateFiberView();
+  wrapper->computed_css_style()->SetOverflowDefaultVisible(true);
+  wrapper->SetStyle(CSSPropertyID::kPropertyIDLineHeight, lepus::Value("24px"));
+  auto child = manager->CreateFiberView();
+  child->MarkCanBeLayoutOnly(false);
+
+  wrapper->InsertNode(child);
+  parent->InsertNode(wrapper);
+  page->InsertNode(parent);
+  page->FlushActionsAsRoot();
+
+  EXPECT_FALSE(wrapper->has_layout_only_props_);
+  EXPECT_FALSE(wrapper->CanBeLayoutOnly());
+  EXPECT_FALSE(wrapper->is_layout_only_);
+}
+
+TEST_P(FiberElementTest,
+       NewStylingResolvedSourceMapSeparatesInheritedLineHeight) {
+  manager->enable_new_styling_pipeline_ = true;
+  manager->config_->SetEnableCSSInheritance(true);
+
+  auto page = manager->CreateFiberPage("page", 11);
+  manager->SetFiberPageElement(page);
+  auto parent = manager->CreateFiberView();
+  parent->SetStyle(CSSPropertyID::kPropertyIDLineHeight, lepus::Value("30px"));
+  page->InsertNode(parent);
+  page->FlushActionsAsRoot();
+
+  auto inherited_child = manager->CreateFiberView();
+  parent->InsertNode(inherited_child);
+  const auto* inherited_previous_style = inherited_child->computed_css_style();
+  auto inherited_result = inherited_child->ResolveComputedStyles(
+      inherited_previous_style, inherited_previous_style->GetFontSize(),
+      inherited_previous_style->GetRootFontSize());
+
+  EXPECT_TRUE(StyleMapHasValue(
+      inherited_result.final_style->GetResolvedValues(),
+      CSSPropertyID::kPropertyIDLineHeight, CSSValue(30, CSSValuePattern::PX)));
+  EXPECT_FALSE(StyleMapHasValue(inherited_result.resolved_style_map,
+                                CSSPropertyID::kPropertyIDLineHeight,
+                                CSSValue(30, CSSValuePattern::PX)));
+
+  auto explicit_child = manager->CreateFiberView();
+  explicit_child->SetStyle(CSSPropertyID::kPropertyIDLineHeight,
+                           lepus::Value("24px"));
+  parent->InsertNode(explicit_child);
+  const auto* explicit_previous_style = explicit_child->computed_css_style();
+  auto explicit_result = explicit_child->ResolveComputedStyles(
+      explicit_previous_style, explicit_previous_style->GetFontSize(),
+      explicit_previous_style->GetRootFontSize());
+
+  EXPECT_TRUE(StyleMapHasValue(explicit_result.final_style->GetResolvedValues(),
+                               CSSPropertyID::kPropertyIDLineHeight,
+                               CSSValue(24, CSSValuePattern::PX)));
+  EXPECT_TRUE(StyleMapHasValue(explicit_result.resolved_style_map,
+                               CSSPropertyID::kPropertyIDLineHeight,
+                               CSSValue(24, CSSValuePattern::PX)));
+}
+
+TEST_P(
+    FiberElementTest,
+    NewStylingInheritedDynamicPlatformTextPropKeepsLayoutOnlyOnViewportRefresh) {
+  manager->enable_new_styling_pipeline_ = true;
+  manager->config_->SetEnableCSSInheritance(true);
+  manager->UpdateViewport(100, SLMeasureModeDefinite, 600,
+                          SLMeasureModeDefinite, false);
+
+  auto page = manager->CreateFiberPage("page", 11);
+  manager->SetFiberPageElement(page);
+  auto parent = manager->CreateFiberView();
+  parent->MarkCanBeLayoutOnly(false);
+  parent->SetStyle(CSSPropertyID::kPropertyIDLineHeight, lepus::Value("10vw"));
+  auto wrapper = manager->CreateFiberView();
+  wrapper->computed_css_style()->SetOverflowDefaultVisible(true);
+  auto child = manager->CreateFiberView();
+  child->MarkCanBeLayoutOnly(false);
+
+  wrapper->InsertNode(child);
+  parent->InsertNode(wrapper);
+  page->InsertNode(parent);
+  page->FlushActionsAsRoot();
+
+  EXPECT_TRUE(wrapper->has_layout_only_props_);
+  EXPECT_TRUE(wrapper->CanBeLayoutOnly());
+  EXPECT_TRUE(wrapper->is_layout_only_);
+
+  manager->UpdateViewport(200, SLMeasureModeDefinite, 600,
+                          SLMeasureModeDefinite, false);
+  FiberElement::NewPipelineResolveRequest request;
+  request.force_resolve = true;
+  request.dynamic_update_flags = DynamicCSSStylesManager::kUpdateViewport;
+  auto outcome = wrapper->ResolveCSSStylesNewPipelineCore(request);
+
+  EXPECT_TRUE(outcome.need_update);
+  EXPECT_TRUE(wrapper->has_layout_only_props_);
+  EXPECT_TRUE(wrapper->CanBeLayoutOnly());
+  EXPECT_TRUE(wrapper->is_layout_only_);
 }
 
 TEST_P(FiberElementTest,
@@ -19824,6 +20489,222 @@ TEST_P(FiberElementTest,
   EXPECT_TRUE(outcome.need_update);
   EXPECT_TRUE(outcome.force_children);
   EXPECT_TRUE(outcome.child_update_flags & DynamicCSSStylesManager::kUpdateEm);
+}
+
+TEST_P(FiberElementTest,
+       NewStylingInheritedMutationMarksChildStyleDirtyWithFontSizeChange) {
+  manager->enable_new_styling_pipeline_ = true;
+  manager->config_->SetEnableCSSInheritance(true);
+  auto page = manager->CreateFiberPage("page", 11);
+  manager->SetFiberPageElement(page);
+  auto parent = manager->CreateFiberView();
+  auto child = manager->CreateFiberView();
+  parent->InsertNode(child);
+  page->InsertNode(parent);
+  page->FlushActionsAsRoot();
+
+  ASSERT_FALSE(child->StyleDirty());
+  ASSERT_FALSE(child->dirty_ & FiberElement::kDirtyFontSize);
+  ASSERT_FALSE(child->dirty_ & FiberElement::kDirtyPropagateInherited);
+
+  parent->SetStyle(CSSPropertyID::kPropertyIDFontSize, lepus::Value("20px"));
+  parent->SetStyle(CSSPropertyID::kPropertyIDColor, lepus::Value("blue"));
+
+  FiberElement::NewPipelineResolveRequest request;
+  auto outcome = parent->ResolveCSSStylesNewPipelineCore(request);
+
+  EXPECT_TRUE(outcome.force_children);
+  EXPECT_TRUE(outcome.child_update_flags & DynamicCSSStylesManager::kUpdateEm);
+  EXPECT_TRUE(child->dirty_ & FiberElement::kDirtyFontSize);
+  EXPECT_TRUE(child->dirty_ & FiberElement::kDirtyPropagateInherited);
+  EXPECT_TRUE(child->StyleDirty());
+}
+
+TEST_P(FiberElementTest,
+       NewStylingInheritedMutationDefersChildDirtyInGreedyParallelFlush) {
+  manager->enable_new_styling_pipeline_ = true;
+  manager->config_->SetEnableCSSInheritance(true);
+  auto page = manager->CreateFiberPage("page", 11);
+  manager->SetFiberPageElement(page);
+  auto parent = manager->CreateFiberView();
+  auto child = manager->CreateFiberView();
+  parent->InsertNode(child);
+  page->InsertNode(parent);
+  page->FlushActionsAsRoot();
+
+  ASSERT_FALSE(child->StyleDirty());
+  ASSERT_FALSE(child->dirty_ & FiberElement::kDirtyPropagateInherited);
+
+  parent->MarkParallelFlushFlag(Element::kFlagGreedyParallel);
+  parent->SetStyle(CSSPropertyID::kPropertyIDColor, lepus::Value("blue"));
+
+  FiberElement::NewPipelineResolveRequest request;
+  auto outcome = parent->ResolveCSSStylesNewPipelineCore(request);
+
+  EXPECT_TRUE(outcome.force_children);
+  ASSERT_TRUE(parent->parallel_before_flush_action_tasks_.has_value());
+  EXPECT_FALSE(child->StyleDirty());
+  EXPECT_FALSE(child->dirty_ & FiberElement::kDirtyPropagateInherited);
+
+  for (const auto& task : *parent->parallel_before_flush_action_tasks_) {
+    task();
+  }
+
+  EXPECT_TRUE(child->StyleDirty());
+  EXPECT_TRUE(child->dirty_ & FiberElement::kDirtyPropagateInherited);
+}
+
+TEST_P(FiberElementTest,
+       NewStylingInheritedMutationTraversesChildInLevelOrderParallelFlush) {
+  manager->enable_new_styling_pipeline_ = true;
+  manager->config_->SetEnableCSSInheritance(true);
+  auto page = manager->CreateFiberPage("page", 11);
+  manager->SetFiberPageElement(page);
+  auto parent = manager->CreateFiberView();
+  auto child = manager->CreateFiberView();
+  parent->InsertNode(child);
+  page->InsertNode(parent);
+  page->FlushActionsAsRoot();
+
+  ASSERT_FALSE(child->StyleDirty());
+  ASSERT_FALSE(child->dirty_ & FiberElement::kDirtyPropagateInherited);
+
+  parent->MarkParallelFlushFlag(Element::kFlagLevelOrderParallel);
+  parent->SetStyle(CSSPropertyID::kPropertyIDColor, lepus::Value("blue"));
+
+  FiberElement::NewPipelineResolveRequest request;
+  auto outcome = parent->ResolveCSSStylesNewPipelineCore(request);
+
+  EXPECT_TRUE(outcome.force_children);
+  EXPECT_FALSE(parent->parallel_before_flush_action_tasks_.has_value());
+  EXPECT_TRUE(child->StyleDirty());
+  EXPECT_TRUE(child->dirty_ & FiberElement::kDirtyPropagateInherited);
+}
+
+TEST_P(FiberElementTest,
+       NewStylingFontSizeMutationDefersChildDirtyInGreedyParallelFlush) {
+  manager->enable_new_styling_pipeline_ = true;
+  auto page = manager->CreateFiberPage("page", 11);
+  manager->SetFiberPageElement(page);
+  auto parent = manager->CreateFiberView();
+  auto child = manager->CreateFiberView();
+  parent->InsertNode(child);
+  page->InsertNode(parent);
+  page->FlushActionsAsRoot();
+
+  ASSERT_FALSE(child->dirty_ & FiberElement::kDirtyFontSize);
+
+  parent->MarkParallelFlushFlag(Element::kFlagGreedyParallel);
+  parent->SetStyle(CSSPropertyID::kPropertyIDFontSize, lepus::Value("20px"));
+
+  FiberElement::NewPipelineResolveRequest request;
+  auto outcome = parent->ResolveCSSStylesNewPipelineCore(request);
+
+  EXPECT_TRUE(outcome.force_children);
+  EXPECT_TRUE(outcome.child_update_flags & DynamicCSSStylesManager::kUpdateEm);
+  ASSERT_TRUE(parent->parallel_before_flush_action_tasks_.has_value());
+  EXPECT_FALSE(child->dirty_ & FiberElement::kDirtyFontSize);
+
+  for (const auto& task : *parent->parallel_before_flush_action_tasks_) {
+    task();
+  }
+
+  EXPECT_TRUE(child->dirty_ & FiberElement::kDirtyFontSize);
+}
+
+TEST_P(FiberElementTest,
+       NewStylingFontSizeMutationTraversesChildInLevelOrderParallelFlush) {
+  manager->enable_new_styling_pipeline_ = true;
+  auto page = manager->CreateFiberPage("page", 11);
+  manager->SetFiberPageElement(page);
+  auto parent = manager->CreateFiberView();
+  auto child = manager->CreateFiberView();
+  parent->InsertNode(child);
+  page->InsertNode(parent);
+  page->FlushActionsAsRoot();
+
+  ASSERT_FALSE(child->dirty_ & FiberElement::kDirtyFontSize);
+
+  parent->MarkParallelFlushFlag(Element::kFlagLevelOrderParallel);
+  parent->SetStyle(CSSPropertyID::kPropertyIDFontSize, lepus::Value("20px"));
+
+  FiberElement::NewPipelineResolveRequest request;
+  auto outcome = parent->ResolveCSSStylesNewPipelineCore(request);
+
+  EXPECT_TRUE(outcome.force_children);
+  EXPECT_TRUE(outcome.child_update_flags & DynamicCSSStylesManager::kUpdateEm);
+  EXPECT_FALSE(parent->parallel_before_flush_action_tasks_.has_value());
+  EXPECT_TRUE(child->dirty_ & FiberElement::kDirtyFontSize);
+}
+
+TEST_P(FiberElementTest,
+       NewStylingCustomPropertyMutationDefersChildDirtyInGreedyParallelFlush) {
+  lynx::base::AutoReset<bool> css_inline_config(
+      &(manager->GetConfig()->css_configs_.enable_css_inline_variables_), true);
+
+  manager->enable_new_styling_pipeline_ = true;
+  auto page = manager->CreateFiberPage("page", 11);
+  manager->SetFiberPageElement(page);
+  auto parent = manager->CreateFiberView();
+  auto child = manager->CreateFiberView();
+  auto grandchild = manager->CreateFiberView();
+  child->InsertNode(grandchild);
+  parent->InsertNode(child);
+  page->InsertNode(parent);
+  page->FlushActionsAsRoot();
+
+  ASSERT_FALSE(child->StyleDirty());
+  ASSERT_FALSE(grandchild->StyleDirty());
+
+  parent->MarkParallelFlushFlag(Element::kFlagGreedyParallel);
+  parent->SetRawInlineStyles("--theme-color: blue;");
+
+  FiberElement::NewPipelineResolveRequest request;
+  auto outcome = parent->ResolveCSSStylesNewPipelineCore(request);
+
+  EXPECT_TRUE(outcome.force_children);
+  ASSERT_TRUE(parent->parallel_before_flush_action_tasks_.has_value());
+  EXPECT_FALSE(child->StyleDirty());
+  EXPECT_FALSE(grandchild->StyleDirty());
+
+  for (const auto& task : *parent->parallel_before_flush_action_tasks_) {
+    task();
+  }
+
+  EXPECT_TRUE(child->StyleDirty());
+  EXPECT_TRUE(grandchild->StyleDirty());
+}
+
+TEST_P(
+    FiberElementTest,
+    NewStylingCustomPropertyMutationTraversesChildInLevelOrderParallelFlush) {
+  lynx::base::AutoReset<bool> css_inline_config(
+      &(manager->GetConfig()->css_configs_.enable_css_inline_variables_), true);
+
+  manager->enable_new_styling_pipeline_ = true;
+  auto page = manager->CreateFiberPage("page", 11);
+  manager->SetFiberPageElement(page);
+  auto parent = manager->CreateFiberView();
+  auto child = manager->CreateFiberView();
+  auto grandchild = manager->CreateFiberView();
+  child->InsertNode(grandchild);
+  parent->InsertNode(child);
+  page->InsertNode(parent);
+  page->FlushActionsAsRoot();
+
+  ASSERT_FALSE(child->StyleDirty());
+  ASSERT_FALSE(grandchild->StyleDirty());
+
+  parent->MarkParallelFlushFlag(Element::kFlagLevelOrderParallel);
+  parent->SetRawInlineStyles("--theme-color: blue;");
+
+  FiberElement::NewPipelineResolveRequest request;
+  auto outcome = parent->ResolveCSSStylesNewPipelineCore(request);
+
+  EXPECT_TRUE(outcome.force_children);
+  EXPECT_FALSE(parent->parallel_before_flush_action_tasks_.has_value());
+  EXPECT_TRUE(child->StyleDirty());
+  EXPECT_TRUE(grandchild->StyleDirty());
 }
 
 TEST_P(FiberElementTest,

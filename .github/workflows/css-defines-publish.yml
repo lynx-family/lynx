@@ -13,19 +13,19 @@ jobs:
       version: ${{ steps.get-version.outputs.version }}
     steps:
       - name: Download Source
-        uses: actions/checkout@v4.2.2
+        uses: actions/checkout@v6
         with:
           path: lynx
       - name: Python Setup
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.13'
       - name: Install SSH Key
-        uses: kielabokkie/ssh-key-and-known-hosts-action@v1
+        uses: kielabokkie/ssh-key-and-known-hosts-action@v1.4.1
         with:
           ssh-private-key: ${{ secrets.PRIVATE_SSH_KEY }}
           ssh-host: github.com
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: 24
           registry-url: 'https://registry.npmjs.org'

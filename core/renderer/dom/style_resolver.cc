@@ -5,14 +5,11 @@
 #include "core/renderer/dom/style_resolver.h"
 
 #include <array>
-#include <cstring>
-#include <type_traits>
 #include <utility>
 #include <vector>
 
 #include "base/include/algorithm.h"
 #include "base/include/log/logging.h"
-#include "base/include/no_destructor.h"
 #include "base/trace/native/trace_event.h"
 #include "core/renderer/css/css_property.h"
 #include "core/renderer/css/css_property_bitset.h"
@@ -126,30 +123,6 @@ void ReplayInheritedStyleSideEffects(Element* element,
 
     style.SetValue(id, value);
     if (is_first_render) {
-      style.MarkChanged(id);
-    }
-  }
-}
-
-bool ShouldMaterializePlatformStyle(Element* element, CSSPropertyID id) {
-  if (!element->ShouldWritePropertyToComputedStyle(id)) {
-    return false;
-  }
-  if (LayoutProperty::IsLayoutOnly(id) || CSSProperty::IsTransitionProps(id) ||
-      CSSProperty::IsKeyframeProps(id)) {
-    return false;
-  }
-  return starlight::ComputedCSSStyle::IsPlatformProperty(id);
-}
-
-void MarkResolvedInputDirtyForPlatformMaterialization(
-    Element* element, starlight::ComputedCSSStyle& style,
-    const StyleMap& resolved_style_map) {
-  if (element == nullptr || !element->IsNewlyCreated()) {
-    return;
-  }
-  for (const auto& [id, _] : resolved_style_map) {
-    if (ShouldMaterializePlatformStyle(element, id)) {
       style.MarkChanged(id);
     }
   }
@@ -1583,7 +1556,7 @@ void StyleResolver::ResolveBaseStyleInPlace(
     starlight::ComputedCSSStyle& style,
     const starlight::ComputedCSSStyle* parent_style,
     const starlight::ComputedCSSStyle* previous_computed_style,
-    StyleMap* resolved_style_map) {
+    StyleMap* resolved_style_map, CSSIDBitset* variable_dependent_ids) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, STYLE_RESOLVER_RESOLVE_BASE_STYLE);
   auto* current_element = element();
   PrepareInitialComputedStyle(style, parent_style, previous_computed_style);
@@ -1592,9 +1565,11 @@ void StyleResolver::ResolveBaseStyleInPlace(
   CollectMatchedRules(style_sheet);
 
   StyleMap style_map;
-  AnalyzeMatchedResult(style, style_map, current_element->CountInlineStyles());
+  AnalyzeMatchedResult(style, style_map, current_element->CountInlineStyles(),
+                       nullptr, nullptr, variable_dependent_ids);
 
-  ApplyResolvedStyleMap(style, style_map);
+  ApplyResolvedStyleMap(style, style_map, nullptr, nullptr,
+                        variable_dependent_ids);
 
   if (resolved_style_map != nullptr) {
     *resolved_style_map = std::move(style_map);
@@ -1604,7 +1579,7 @@ void StyleResolver::ResolveBaseStyleInPlace(
 std::unique_ptr<starlight::ComputedCSSStyle> StyleResolver::ResolveBaseStyle(
     const starlight::ComputedCSSStyle* parent_style,
     const starlight::ComputedCSSStyle* previous_computed_style,
-    StyleMap* resolved_style_map) {
+    StyleMap* resolved_style_map, CSSIDBitset* variable_dependent_ids) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, STYLE_RESOLVER_RESOLVE_BASE_STYLE);
   auto* current_element = element();
   auto style =
@@ -1614,9 +1589,11 @@ std::unique_ptr<starlight::ComputedCSSStyle> StyleResolver::ResolveBaseStyle(
   CollectMatchedRules(style_sheet);
 
   StyleMap style_map;
-  AnalyzeMatchedResult(*style, style_map, current_element->CountInlineStyles());
+  AnalyzeMatchedResult(*style, style_map, current_element->CountInlineStyles(),
+                       nullptr, nullptr, variable_dependent_ids);
 
-  ApplyResolvedStyleMap(*style, style_map);
+  ApplyResolvedStyleMap(*style, style_map, nullptr, nullptr,
+                        variable_dependent_ids);
 
   if (resolved_style_map != nullptr) {
     *resolved_style_map = std::move(style_map);
@@ -1629,7 +1606,8 @@ StyleResolver::RebuildFinalStyleFromParent(
     const starlight::ComputedCSSStyle* parent_style,
     const starlight::ComputedCSSStyle* previous_style,
     const CustomPropertiesMap* sampled_custom_property_overrides,
-    const StyleMap* sampled_property_overrides, StyleMap* resolved_style_map) {
+    const StyleMap* sampled_property_overrides, StyleMap* resolved_style_map,
+    CSSIDBitset* variable_dependent_ids) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY,
               STYLE_RESOLVER_REBUILD_FINAL_STYLE_FROM_PARENT);
   auto* current_element = element();
@@ -1641,10 +1619,10 @@ StyleResolver::RebuildFinalStyleFromParent(
   StyleMap style_map;
   AnalyzeMatchedResult(*style, style_map, current_element->CountInlineStyles(),
                        sampled_custom_property_overrides,
-                       sampled_property_overrides);
+                       sampled_property_overrides, variable_dependent_ids);
 
   ApplyResolvedStyleMap(*style, style_map, sampled_custom_property_overrides,
-                        sampled_property_overrides);
+                        sampled_property_overrides, variable_dependent_ids);
 
   if (resolved_style_map != nullptr) {
     *resolved_style_map = std::move(style_map);
@@ -1656,7 +1634,8 @@ StyleResolver::RebuildFinalStyleFromParent(
 std::unique_ptr<starlight::ComputedCSSStyle>
 StyleResolver::BuildFinalStyleFromBaseFastPath(
     const starlight::ComputedCSSStyle& base_style,
-    const StyleMap* sampled_property_overrides, StyleMap* resolved_style_map) {
+    const StyleMap* sampled_property_overrides, StyleMap* resolved_style_map,
+    CSSIDBitset* variable_dependent_ids) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY,
               STYLE_RESOLVER_BUILD_FINAL_STYLE_FROM_BASE_FAST_PATH);
   auto style = CreateInitialComputedStyle(nullptr, &base_style);
@@ -1670,8 +1649,13 @@ StyleResolver::BuildFinalStyleFromBaseFastPath(
   if (resolved_style_map != nullptr) {
     resolved_style_map->reserve(resolved_style_map->size() +
                                 sampled_property_overrides->size());
-    for (const auto& [key, value] : *sampled_property_overrides) {
+  }
+  for (const auto& [key, value] : *sampled_property_overrides) {
+    if (resolved_style_map != nullptr) {
       resolved_style_map->insert_or_assign(key, value);
+    }
+    if (value.IsVariable() && variable_dependent_ids != nullptr) {
+      variable_dependent_ids->Set(key);
     }
   }
 
@@ -1753,15 +1737,19 @@ void StyleResolver::AnalyzeMatchedResult(
     starlight::ComputedCSSStyle& new_style, StyleMap& result,
     size_t base_reserving_size,
     const CustomPropertiesMap* custom_property_overrides,
-    const StyleMap* property_overrides) {
+    const StyleMap* property_overrides, CSSIDBitset* variable_dependent_ids) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, STYLE_RESOLVER_ANALYZE_MATCHED_RESULT);
   result.clear();
+  if (variable_dependent_ids != nullptr) {
+    variable_dependent_ids->Reset();
+  }
 
   NewPipelineCollectedStyleInputs inputs;
   CollectStaticStyleInputs(new_style, inputs, base_reserving_size);
   FinalizeCustomProperties(new_style, inputs, custom_property_overrides,
                            property_overrides);
-  ResolveCollectedStyleInputs(new_style, inputs, result, property_overrides);
+  ResolveCollectedStyleInputs(new_style, inputs, result, property_overrides,
+                              variable_dependent_ids);
 }
 
 void StyleResolver::CollectStaticStyleInputs(
@@ -1770,6 +1758,27 @@ void StyleResolver::CollectStaticStyleInputs(
   TRACE_EVENT(LYNX_TRACE_CATEGORY, STYLE_RESOLVER_COLLECT_STATIC_STYLE_INPUTS);
   auto* current_element = element();
   current_element->ProcessFullRawInlineStyle(nullptr);
+
+  if (current_element->has_extreme_parsed_styles_) {
+    auto& extreme_styles = *current_element->extreme_parsed_styles_;
+    inputs.matched_styles.reserve(extreme_styles.size());
+    for (const auto& [key, value] : extreme_styles) {
+      InsertStyleWithLogicalPropertyResolved(current_element, new_style, key,
+                                             value, inputs.matched_styles);
+    }
+    if (!current_element->only_selector_extreme_parsed_styles_) {
+      CollectHolderCustomProperties(new_style);
+      return;
+    }
+    CollectInlineSpecifiedStyles(new_style, inputs.inline_styles, false);
+    CollectInlineSpecifiedStyles(new_style, inputs.inline_important_styles,
+                                 true);
+    CollectAttributeSpecifiedStyles(new_style, inputs.attribute_styles);
+    CollectInlineCustomProperties(new_style);
+    CollectHolderCustomProperties(new_style);
+    return;
+  }
+
   CollectMatchedSpecifiedStyles(new_style, inputs.matched_styles,
                                 base_reserving_size, matched_style_map);
   CollectMatchedSpecifiedStyles(new_style, inputs.matched_important_styles, 0,
@@ -1811,7 +1820,7 @@ void StyleResolver::FinalizeCustomProperties(
 void StyleResolver::ResolveCollectedStyleInputs(
     const starlight::ComputedCSSStyle& new_style,
     NewPipelineCollectedStyleInputs& inputs, StyleMap& result,
-    const StyleMap* property_overrides) {
+    const StyleMap* property_overrides, CSSIDBitset* variable_dependent_ids) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY,
               STYLE_RESOLVER_RESOLVE_COLLECTED_STYLE_INPUTS);
   result.reserve(
@@ -1819,14 +1828,22 @@ void StyleResolver::ResolveCollectedStyleInputs(
       inputs.matched_important_styles.size() +
       inputs.inline_important_styles.size() + inputs.attribute_styles.size() +
       (property_overrides != nullptr ? property_overrides->size() : 0));
-  ResolveSpecifiedStyleMap(new_style, inputs.matched_styles, result);
-  ResolveSpecifiedStyleMap(new_style, inputs.inline_styles, result);
-  ResolveSpecifiedStyleMap(new_style, inputs.matched_important_styles, result);
-  ResolveSpecifiedStyleMap(new_style, inputs.inline_important_styles, result);
-  ResolveSpecifiedStyleMap(new_style, inputs.attribute_styles, result);
+  ResolveSpecifiedStyleMap(new_style, inputs.matched_styles, result,
+                           variable_dependent_ids);
+  ResolveSpecifiedStyleMap(new_style, inputs.inline_styles, result,
+                           variable_dependent_ids);
+  ResolveSpecifiedStyleMap(new_style, inputs.matched_important_styles, result,
+                           variable_dependent_ids);
+  ResolveSpecifiedStyleMap(new_style, inputs.inline_important_styles, result,
+                           variable_dependent_ids);
+  ResolveSpecifiedStyleMap(new_style, inputs.attribute_styles, result,
+                           variable_dependent_ids);
   if (property_overrides != nullptr) {
     for (const auto& [key, value] : *property_overrides) {
       result.insert_or_assign(key, value);
+      if (value.IsVariable() && variable_dependent_ids != nullptr) {
+        variable_dependent_ids->Set(key);
+      }
     }
   }
 }
@@ -1979,7 +1996,7 @@ void StyleResolver::CollectHolderCustomProperties(
 
 void StyleResolver::ResolveSpecifiedStyleMap(
     const starlight::ComputedCSSStyle& new_style, StyleMap& source,
-    StyleMap& result) {
+    StyleMap& result, CSSIDBitset* variable_dependent_ids) {
   static const CustomPropertiesMap empty_custom_properties;
   const auto* custom_properties = new_style.GetCustomProperties();
   if (custom_properties == nullptr) {
@@ -2003,15 +2020,23 @@ void StyleResolver::ResolveSpecifiedStyleMap(
       continue;
     }
 
-    handler.ResolveCSSVariables(id, value, result, custom_properties, configs,
+    StyleMap resolved_variable_values;
+    handler.ResolveCSSVariables(id, value, resolved_variable_values,
+                                custom_properties, configs,
                                 handle_custom_property_func);
+    for (auto& [resolved_id, resolved_value] : resolved_variable_values) {
+      result.insert_or_assign(resolved_id, std::move(resolved_value));
+      if (variable_dependent_ids != nullptr) {
+        variable_dependent_ids->Set(resolved_id);
+      }
+    }
   }
 }
 
 void StyleResolver::ApplyCascadingAffectingProperties(
     starlight::ComputedCSSStyle& style, StyleMap& map,
     const CustomPropertiesMap* custom_property_overrides,
-    const StyleMap* property_overrides) {
+    const StyleMap* property_overrides, CSSIDBitset* variable_dependent_ids) {
   auto* current_element = element();
   const bool has_matched_rules = !matched_style_map.empty() ||
                                  !matched_variable_map.empty() ||
@@ -2019,7 +2044,8 @@ void StyleResolver::ApplyCascadingAffectingProperties(
   const auto& important_inline_styles =
       current_element->GetCurrentRawImportantInlineStyles();
   const bool has_reanalyzable_inputs =
-      has_matched_rules || current_element->CountInlineStyles() > 0 ||
+      has_matched_rules || current_element->has_extreme_parsed_styles_ ||
+      current_element->CountInlineStyles() > 0 ||
       (important_inline_styles.has_value() &&
        !important_inline_styles->empty());
   auto it = map.find(kPropertyIDDirection);
@@ -2034,7 +2060,8 @@ void StyleResolver::ApplyCascadingAffectingProperties(
                               it->second);
       if (has_reanalyzable_inputs) {
         AnalyzeMatchedResult(style, map, current_element->CountInlineStyles(),
-                             custom_property_overrides, property_overrides);
+                             custom_property_overrides, property_overrides,
+                             variable_dependent_ids);
       }
     }
   }
@@ -2072,7 +2099,7 @@ void StyleResolver::ApplyStandardProperties(starlight::ComputedCSSStyle& style,
 void StyleResolver::ApplyResolvedStyleMap(
     starlight::ComputedCSSStyle& style, StyleMap& style_map,
     const CustomPropertiesMap* custom_property_overrides,
-    const StyleMap* property_overrides) {
+    const StyleMap* property_overrides, CSSIDBitset* variable_dependent_ids) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, STYLE_RESOLVER_APPLY_RESOLVED_STYLE_MAP);
   auto* current_element = element();
   if (style_map.empty()) {
@@ -2081,750 +2108,10 @@ void StyleResolver::ApplyResolvedStyleMap(
     return;
   }
   ApplyCascadingAffectingProperties(style, style_map, custom_property_overrides,
-                                    property_overrides);
+                                    property_overrides, variable_dependent_ids);
   ReplayInheritedStyleSideEffects(current_element, style, style_map);
   ApplyHighPriorityProperties(style, style_map);
   ApplyStandardProperties(style, style_map);
-  MarkResolvedInputDirtyForPlatformMaterialization(current_element, style,
-                                                   style_map);
-}
-
-namespace {
-template <typename OptionalT>
-bool OptionalNotEqual(const OptionalT& a, const OptionalT& b) {
-  if (a.has_value() != b.has_value()) {
-    return true;
-  }
-  if (!a.has_value()) {
-    return false;
-  }
-  return !(*a == *b);
-}
-
-template <typename ValueT>
-const ValueT& SharedDefaultValue() {
-  static const base::NoDestructor<ValueT> value;
-  return *value;
-}
-
-template <typename ValueT>
-struct SharedDefaultProvider {
-  const ValueT& operator()() const { return SharedDefaultValue<ValueT>(); }
-};
-
-template <typename OptionalT, typename NewDefaultProvider,
-          typename OldDefaultProvider, typename DiffFn, typename MaterializeFn>
-bool DiffOptionalValueImpl(OptionalT* mutable_new_value,
-                           const OptionalT& new_value,
-                           const OptionalT& old_value,
-                           NewDefaultProvider&& new_default_provider,
-                           OldDefaultProvider&& old_default_provider,
-                           DiffFn&& diff_fn,
-                           MaterializeFn&& materialize_new_value) {
-  const bool has_new_value = new_value.has_value();
-  const bool has_old_value = old_value.has_value();
-  if (!has_new_value && !has_old_value) {
-    return false;
-  }
-
-  if (has_new_value && has_old_value) {
-    if (*new_value == *old_value) {
-      return false;
-    }
-    return diff_fn(*new_value, *old_value);
-  }
-
-  if (has_new_value) {
-    const auto& effective_old = old_default_provider();
-    if (*new_value == effective_old) {
-      return false;
-    }
-    return diff_fn(*new_value, effective_old);
-  }
-
-  const auto& effective_new = new_default_provider();
-  if (effective_new == *old_value) {
-    return false;
-  }
-  if (mutable_new_value != nullptr) {
-    materialize_new_value(*mutable_new_value, effective_new);
-    return diff_fn(**mutable_new_value, *old_value);
-  }
-  return diff_fn(effective_new, *old_value);
-}
-
-template <typename OptionalT, typename NewDefaultProvider,
-          typename OldDefaultProvider, typename DiffFn>
-bool DiffOptionalValue(const OptionalT& new_value, const OptionalT& old_value,
-                       NewDefaultProvider&& new_default_provider,
-                       OldDefaultProvider&& old_default_provider,
-                       DiffFn&& diff_fn) {
-  return DiffOptionalValueImpl(
-      static_cast<OptionalT*>(nullptr), new_value, old_value,
-      std::forward<NewDefaultProvider>(new_default_provider),
-      std::forward<OldDefaultProvider>(old_default_provider),
-      std::forward<DiffFn>(diff_fn), [](auto&, const auto&) {});
-}
-
-template <typename OptionalT, typename NewDefaultProvider,
-          typename OldDefaultProvider, typename DiffFn, typename MaterializeFn>
-bool DiffOptionalValue(OptionalT& new_value, const OptionalT& old_value,
-                       NewDefaultProvider&& new_default_provider,
-                       OldDefaultProvider&& old_default_provider,
-                       DiffFn&& diff_fn, MaterializeFn&& materialize_new) {
-  return DiffOptionalValueImpl(
-      &new_value, new_value, old_value,
-      std::forward<NewDefaultProvider>(new_default_provider),
-      std::forward<OldDefaultProvider>(old_default_provider),
-      std::forward<DiffFn>(diff_fn),
-      std::forward<MaterializeFn>(materialize_new));
-}
-
-inline bool MarkScalarIfChanged(starlight::ComputedCSSStyle& style,
-                                const void* new_val, const void* old_val,
-                                size_t size, CSSPropertyID id) {
-  if (memcmp(new_val, old_val, size) != 0) {
-    style.MarkChanged(id);
-    return true;
-  }
-  return false;
-}
-
-template <typename T>
-bool MarkIfChanged(starlight::ComputedCSSStyle& style, const T& new_val,
-                   const T& old_val, CSSPropertyID id) {
-  if constexpr (std::is_trivially_copyable<T>::value) {
-    return MarkScalarIfChanged(style, &new_val, &old_val, sizeof(T), id);
-  } else {
-    if (new_val != old_val) {
-      style.MarkChanged(id);
-      return true;
-    }
-    return false;
-  }
-}
-
-bool MarkChangedIf(starlight::ComputedCSSStyle& style, bool is_changed,
-                   CSSPropertyID id) {
-  if (is_changed) {
-    style.MarkChanged(id);
-    return true;
-  }
-  return false;
-}
-
-template <typename T>
-bool PtrValuesDiffer(const T* a, const T* b) {
-  if (a == b) return false;
-  if (!a || !b) return true;
-  return *a != *b;
-}
-
-template <typename T>
-bool RefPtrValueEqual(const T& lhs, const T& rhs) {
-  if (lhs == rhs) return true;
-  return lhs && rhs && *lhs == *rhs;
-}
-
-template <typename T, typename MemberType>
-bool MarkFieldIfChanged(starlight::ComputedCSSStyle& style, const T& n,
-                        const T& o, MemberType T::*member, CSSPropertyID id) {
-  return MarkIfChanged(style, n.*member, o.*member, id);
-}
-
-struct DiffAndMarkFn {
-  starlight::ComputedCSSStyle& style;
-  CSSPropertyID id;
-  template <typename U>
-  bool operator()(const U& nv, const U& ov) const {
-    if (nv == ov) return false;
-    style.MarkChanged(id);
-    return true;
-  }
-};
-
-template <typename T, typename NewDP, typename OldDP>
-bool DiffOptionalAndMark(starlight::ComputedCSSStyle& style, const T& n,
-                         const T& o, NewDP&& ndp, OldDP&& odp,
-                         CSSPropertyID id) {
-  return DiffOptionalValue(n, o, std::forward<NewDP>(ndp),
-                           std::forward<OldDP>(odp), DiffAndMarkFn{style, id});
-}
-
-#define BOX_DIFF_FIELDS(V)                                 \
-  V(starlight::BoxData, width_, kPropertyIDWidth)          \
-  V(starlight::BoxData, height_, kPropertyIDHeight)        \
-  V(starlight::BoxData, min_width_, kPropertyIDMinWidth)   \
-  V(starlight::BoxData, max_width_, kPropertyIDMaxWidth)   \
-  V(starlight::BoxData, min_height_, kPropertyIDMinHeight) \
-  V(starlight::BoxData, max_height_, kPropertyIDMaxHeight) \
-  V(starlight::BoxData, aspect_ratio_, kPropertyIDAspectRatio)
-
-#define FLEX_DIFF_FIELDS(V)                                           \
-  V(starlight::FlexData, flex_direction_, kPropertyIDFlexDirection)   \
-  V(starlight::FlexData, flex_wrap_, kPropertyIDFlexWrap)             \
-  V(starlight::FlexData, justify_content_, kPropertyIDJustifyContent) \
-  V(starlight::FlexData, align_items_, kPropertyIDAlignItems)         \
-  V(starlight::FlexData, align_self_, kPropertyIDAlignSelf)           \
-  V(starlight::FlexData, align_content_, kPropertyIDAlignContent)     \
-  V(starlight::FlexData, flex_grow_, kPropertyIDFlexGrow)             \
-  V(starlight::FlexData, flex_shrink_, kPropertyIDFlexShrink)         \
-  V(starlight::FlexData, flex_basis_, kPropertyIDFlexBasis)           \
-  V(starlight::FlexData, order_, kPropertyIDOrder)
-
-#define GRID_SINGLE_DIFF_FIELDS(V)                                       \
-  V(starlight::GridData, grid_column_gap_, kPropertyIDColumnGap)         \
-  V(starlight::GridData, grid_row_gap_, kPropertyIDRowGap)               \
-  V(starlight::GridData, grid_auto_flow_, kPropertyIDGridAutoFlow)       \
-  V(starlight::GridData, justify_self_, kPropertyIDJustifySelf)          \
-  V(starlight::GridData, justify_items_, kPropertyIDJustifyItems)        \
-  V(starlight::GridData, grid_column_start_, kPropertyIDGridColumnStart) \
-  V(starlight::GridData, grid_column_end_, kPropertyIDGridColumnEnd)     \
-  V(starlight::GridData, grid_row_start_, kPropertyIDGridRowStart)       \
-  V(starlight::GridData, grid_row_end_, kPropertyIDGridRowEnd)           \
-  V(starlight::GridData, grid_column_span_, kPropertyIDGridColumnSpan)   \
-  V(starlight::GridData, grid_row_span_, kPropertyIDGridRowSpan)
-
-#define LINEAR_DIFF_FIELDS(V)                                                 \
-  V(starlight::LinearData, linear_orientation_, kPropertyIDLinearOrientation) \
-  V(starlight::LinearData, linear_layout_gravity_,                            \
-    kPropertyIDLinearLayoutGravity)                                           \
-  V(starlight::LinearData, linear_gravity_, kPropertyIDLinearGravity)         \
-  V(starlight::LinearData, linear_cross_gravity_,                             \
-    kPropertyIDLinearCrossGravity)                                            \
-  V(starlight::LinearData, linear_weight_sum_, kPropertyIDLinearWeightSum)    \
-  V(starlight::LinearData, linear_weight_, kPropertyIDLinearWeight)           \
-  V(starlight::LinearData, list_main_axis_gap_, kPropertyIDListMainAxisGap)   \
-  V(starlight::LinearData, list_cross_axis_gap_, kPropertyIDListCrossAxisGap)
-
-#define RELATIVE_DIFF_FIELDS(V)                                                \
-  V(starlight::RelativeData, relative_id_, kPropertyIDRelativeId)              \
-  V(starlight::RelativeData, relative_align_top_, kPropertyIDRelativeAlignTop) \
-  V(starlight::RelativeData, relative_align_right_,                            \
-    kPropertyIDRelativeAlignRight)                                             \
-  V(starlight::RelativeData, relative_align_bottom_,                           \
-    kPropertyIDRelativeAlignBottom)                                            \
-  V(starlight::RelativeData, relative_align_left_,                             \
-    kPropertyIDRelativeAlignLeft)                                              \
-  V(starlight::RelativeData, relative_top_of_, kPropertyIDRelativeTopOf)       \
-  V(starlight::RelativeData, relative_right_of_, kPropertyIDRelativeRightOf)   \
-  V(starlight::RelativeData, relative_bottom_of_, kPropertyIDRelativeBottomOf) \
-  V(starlight::RelativeData, relative_left_of_, kPropertyIDRelativeLeftOf)     \
-  V(starlight::RelativeData, relative_layout_once_,                            \
-    kPropertyIDRelativeLayoutOnce)                                             \
-  V(starlight::RelativeData, relative_center_, kPropertyIDRelativeCenter)
-
-#define SURROUND_DIFF_FIELDS(V)                                         \
-  V(starlight::SurroundData, margin_left_, kPropertyIDMarginLeft)       \
-  V(starlight::SurroundData, margin_right_, kPropertyIDMarginRight)     \
-  V(starlight::SurroundData, margin_top_, kPropertyIDMarginTop)         \
-  V(starlight::SurroundData, margin_bottom_, kPropertyIDMarginBottom)   \
-  V(starlight::SurroundData, padding_left_, kPropertyIDPaddingLeft)     \
-  V(starlight::SurroundData, padding_right_, kPropertyIDPaddingRight)   \
-  V(starlight::SurroundData, padding_top_, kPropertyIDPaddingTop)       \
-  V(starlight::SurroundData, padding_bottom_, kPropertyIDPaddingBottom) \
-  V(starlight::SurroundData, left_, kPropertyIDLeft)                    \
-  V(starlight::SurroundData, right_, kPropertyIDRight)                  \
-  V(starlight::SurroundData, top_, kPropertyIDTop)                      \
-  V(starlight::SurroundData, bottom_, kPropertyIDBottom)
-
-#define BORDER_DIFF_FIELDS(V)                                           \
-  V(starlight::BordersData, width_left, kPropertyIDBorderLeftWidth)     \
-  V(starlight::BordersData, width_right, kPropertyIDBorderRightWidth)   \
-  V(starlight::BordersData, width_top, kPropertyIDBorderTopWidth)       \
-  V(starlight::BordersData, width_bottom, kPropertyIDBorderBottomWidth) \
-  V(starlight::BordersData, color_left, kPropertyIDBorderLeftColor)     \
-  V(starlight::BordersData, color_right, kPropertyIDBorderRightColor)   \
-  V(starlight::BordersData, color_top, kPropertyIDBorderTopColor)       \
-  V(starlight::BordersData, color_bottom, kPropertyIDBorderBottomColor) \
-  V(starlight::BordersData, style_left, kPropertyIDBorderLeftStyle)     \
-  V(starlight::BordersData, style_right, kPropertyIDBorderRightStyle)   \
-  V(starlight::BordersData, style_top, kPropertyIDBorderTopStyle)       \
-  V(starlight::BordersData, style_bottom, kPropertyIDBorderBottomStyle)
-
-#define BACKGROUND_IMAGE_FIELDS(V) \
-  V(position) V(repeat) V(size) V(origin) V(clip)
-
-#define VISUAL_SCALAR_DIFF_FIELDS(V)             \
-  V(clip_path_, kPropertyIDClipPath)             \
-  V(offset_path_, kPropertyIDOffsetPath)         \
-  V(z_index_, kPropertyIDZIndex)                 \
-  V(opacity_, kPropertyIDOpacity)                \
-  V(offset_distance_, kPropertyIDOffsetDistance) \
-  V(offset_rotate_, kPropertyIDOffsetRotate)     \
-  V(handle_color_, kPropertyIDXHandleColor)      \
-  V(handle_size_, kPropertyIDXHandleSize)        \
-  V(image_rendering_, kPropertyIDImageRendering) \
-  V(app_region_, kPropertyIDXAppRegion)          \
-  V(visibility_, kPropertyIDVisibility)          \
-  V(pointer_events_, kPropertyIDPointerEvents)
-
-#define TEXT_DIFF_FIELDS(V)                                              \
-  V(starlight::TextAttributes, font_size, kPropertyIDFontSize)           \
-  V(starlight::TextAttributes, font_weight, kPropertyIDFontWeight)       \
-  V(starlight::TextAttributes, font_style, kPropertyIDFontStyle)         \
-  V(starlight::TextAttributes, font_family, kPropertyIDFontFamily)       \
-  V(starlight::TextAttributes, text_align, kPropertyIDTextAlign)         \
-  V(starlight::TextAttributes, white_space, kPropertyIDWhiteSpace)       \
-  V(starlight::TextAttributes, text_overflow, kPropertyIDTextOverflow)   \
-  V(starlight::TextAttributes, word_break, kPropertyIDWordBreak)         \
-  V(starlight::TextAttributes, line_spacing, kPropertyIDLineSpacing)     \
-  V(starlight::TextAttributes, letter_spacing, kPropertyIDLetterSpacing) \
-  V(starlight::TextAttributes, text_indent, kPropertyIDTextIndent)       \
-  V(starlight::TextAttributes, hyphens, kPropertyIDHyphens)              \
-  V(starlight::TextAttributes, font_optical_sizing,                      \
-    kPropertyIDFontOpticalSizing)
-
-#define PLACEHOLDER_TEXT_DIFF_FIELDS(V)                                        \
-  V(starlight::TextAttributes, font_family, kPropertyIDXPlaceholderFontFamily) \
-  V(starlight::TextAttributes, font_size, kPropertyIDXPlaceholderFontSize)     \
-  V(starlight::TextAttributes, font_weight, kPropertyIDXPlaceholderFontWeight) \
-  V(starlight::TextAttributes, font_style, kPropertyIDXPlaceholderFontStyle)
-
-bool DiffTextAttributesColor(starlight::ComputedCSSStyle& style,
-                             const starlight::TextAttributes& n,
-                             const starlight::TextAttributes& o,
-                             CSSPropertyID color_id) {
-  if (n.color.value_or(starlight::DefaultColor::DEFAULT_TEXT_COLOR) !=
-          o.color.value_or(starlight::DefaultColor::DEFAULT_TEXT_COLOR) ||
-      n.text_gradient != o.text_gradient) {
-    style.MarkChanged(color_id);
-    return true;
-  }
-  return false;
-}
-
-struct BackgroundDiffIds {
-  CSSPropertyID image;
-  CSSPropertyID position;
-  CSSPropertyID repeat;
-  CSSPropertyID size;
-  CSSPropertyID origin;
-  CSSPropertyID clip;
-  CSSPropertyID composite;
-};
-
-starlight::OutLineData DefaultOutline(
-    const starlight::ComputedCSSStyle& style) {
-  starlight::OutLineData d;
-  d.style = style.GetCssAlignLegacyWithW3c()
-                ? starlight::DefaultLayoutStyle::W3C_DEFAULT_BORDER_STYLE
-                : starlight::DefaultLayoutStyle::SL_DEFAULT_BORDER_STYLE;
-  return d;
-}
-
-starlight::TextAttributes DefaultTextAttributes(
-    const starlight::ComputedCSSStyle& style) {
-  return starlight::TextAttributes(
-      DEFAULT_FONT_SIZE_DP * style.GetMeasureContext().layouts_unit_per_px_);
-}
-}  // namespace
-
-bool StyleResolver::ComputeStyleDiff(
-    starlight::ComputedCSSStyle& new_style,
-    const starlight::ComputedCSSStyle& old_style) {
-  TRACE_EVENT(LYNX_TRACE_CATEGORY, STYLE_RESOLVER_COMPUTE_STYLE_DIFF);
-  bool changed = false;
-
-#define MARK_PTR_FIELD(type, field, id) \
-  changed |= MarkFieldIfChanged(new_style, *n, *o, &type::field, id);
-  if (auto *n = new_style.layout_computed_style_.box_data_.Get(),
-      *o = old_style.layout_computed_style_.box_data_.Get();
-      n != o) {
-    BOX_DIFF_FIELDS(MARK_PTR_FIELD)
-  }
-  if (auto *n = new_style.layout_computed_style_.flex_data_.Get(),
-      *o = old_style.layout_computed_style_.flex_data_.Get();
-      n != o) {
-    FLEX_DIFF_FIELDS(MARK_PTR_FIELD)
-  }
-  if (auto *n = new_style.layout_computed_style_.grid_data_.Get(),
-      *o = old_style.layout_computed_style_.grid_data_.Get();
-      n != o) {
-    changed |= MarkChangedIf(
-        new_style,
-        n->grid_template_columns_min_track_sizing_function_ !=
-                o->grid_template_columns_min_track_sizing_function_ ||
-            n->grid_template_columns_max_track_sizing_function_ !=
-                o->grid_template_columns_max_track_sizing_function_,
-        kPropertyIDGridTemplateColumns);
-    changed |= MarkChangedIf(
-        new_style,
-        n->grid_template_rows_min_track_sizing_function_ !=
-                o->grid_template_rows_min_track_sizing_function_ ||
-            n->grid_template_rows_max_track_sizing_function_ !=
-                o->grid_template_rows_max_track_sizing_function_,
-        kPropertyIDGridTemplateRows);
-    changed |=
-        MarkChangedIf(new_style,
-                      n->grid_auto_columns_min_track_sizing_function_ !=
-                              o->grid_auto_columns_min_track_sizing_function_ ||
-                          n->grid_auto_columns_max_track_sizing_function_ !=
-                              o->grid_auto_columns_max_track_sizing_function_,
-                      kPropertyIDGridAutoColumns);
-    changed |=
-        MarkChangedIf(new_style,
-                      n->grid_auto_rows_min_track_sizing_function_ !=
-                              o->grid_auto_rows_min_track_sizing_function_ ||
-                          n->grid_auto_rows_max_track_sizing_function_ !=
-                              o->grid_auto_rows_max_track_sizing_function_,
-                      kPropertyIDGridAutoRows);
-    GRID_SINGLE_DIFF_FIELDS(MARK_PTR_FIELD)
-  }
-  if (auto *n = new_style.layout_computed_style_.linear_data_.Get(),
-      *o = old_style.layout_computed_style_.linear_data_.Get();
-      n != o) {
-    LINEAR_DIFF_FIELDS(MARK_PTR_FIELD)
-  }
-  if (auto *n = new_style.layout_computed_style_.relative_data_.Get(),
-      *o = old_style.layout_computed_style_.relative_data_.Get();
-      n != o) {
-    RELATIVE_DIFF_FIELDS(MARK_PTR_FIELD)
-  }
-#undef MARK_PTR_FIELD
-
-#define MARK_REF_FIELD(type, field, id) \
-  changed |= MarkFieldIfChanged(new_style, n, o, &type::field, id);
-  {
-    const auto& n = new_style.layout_computed_style_.surround_data_;
-    const auto& o = old_style.layout_computed_style_.surround_data_;
-    SURROUND_DIFF_FIELDS(MARK_REF_FIELD)
-    const bool new_w3c =
-        n.border_data_ ? n.border_data_->css_align_with_legacy_w3c_ : false;
-    const bool old_w3c =
-        o.border_data_ ? o.border_data_->css_align_with_legacy_w3c_ : false;
-    const bool new_has = n.border_data_.has_value();
-    const bool old_has = o.border_data_.has_value();
-    changed |= DiffOptionalValue(
-        n.border_data_, o.border_data_,
-        [new_has, new_w3c, old_w3c]() {
-          return starlight::BordersData(new_has ? new_w3c : old_w3c);
-        },
-        [old_has, old_w3c, new_w3c]() {
-          return starlight::BordersData(old_has ? old_w3c : new_w3c);
-        },
-        [&](const auto& n, const auto& o) {
-          bool changed = false;
-          BORDER_DIFF_FIELDS(MARK_REF_FIELD)
-          changed |=
-              MarkChangedIf(new_style,
-                            n.radius_x_top_left != o.radius_x_top_left ||
-                                n.radius_y_top_left != o.radius_y_top_left,
-                            kPropertyIDBorderTopLeftRadius);
-          changed |=
-              MarkChangedIf(new_style,
-                            n.radius_x_top_right != o.radius_x_top_right ||
-                                n.radius_y_top_right != o.radius_y_top_right,
-                            kPropertyIDBorderTopRightRadius);
-          changed |= MarkChangedIf(
-              new_style,
-              n.radius_x_bottom_right != o.radius_x_bottom_right ||
-                  n.radius_y_bottom_right != o.radius_y_bottom_right,
-              kPropertyIDBorderBottomRightRadius);
-          changed |= MarkChangedIf(
-              new_style,
-              n.radius_x_bottom_left != o.radius_x_bottom_left ||
-                  n.radius_y_bottom_left != o.radius_y_bottom_left,
-              kPropertyIDBorderBottomLeftRadius);
-          return changed;
-        });
-  }
-#undef MARK_REF_FIELD
-
-  const auto& new_layout = new_style.layout_computed_style_;
-  const auto& old_layout = old_style.layout_computed_style_;
-  changed |= MarkIfChanged(new_style, new_layout.position_,
-                           old_layout.position_, kPropertyIDPosition);
-  changed |= MarkIfChanged(new_style, new_layout.display_, old_layout.display_,
-                           kPropertyIDDisplay);
-  changed |= MarkIfChanged(new_style, new_layout.box_sizing_,
-                           old_layout.box_sizing_, kPropertyIDBoxSizing);
-  changed |= MarkIfChanged(new_style, new_layout.direction_,
-                           old_layout.direction_, kPropertyIDDirection);
-
-  auto diff_image = [&](const auto& n, const auto& o,
-                        const BackgroundDiffIds& ids) {
-    bool changed = MarkChangedIf(
-        new_style, n.image_count != o.image_count || n.image != o.image,
-        ids.image);
-#define MARK_IMAGE_FIELD(field) \
-  changed |= MarkIfChanged(new_style, n.field, o.field, ids.field);
-    BACKGROUND_IMAGE_FIELDS(MARK_IMAGE_FIELD)
-#undef MARK_IMAGE_FIELD
-    if (ids.composite != kPropertyStart) {
-      changed |=
-          MarkIfChanged(new_style, n.composite, o.composite, ids.composite);
-    }
-    return changed;
-  };
-  auto diff_background = [&](const auto& n, const auto& o,
-                             const BackgroundDiffIds& ids, bool has_color) {
-    bool changed = false;
-    if (has_color) {
-      changed |=
-          MarkFieldIfChanged(new_style, n, o, &starlight::BackgroundData::color,
-                             kPropertyIDBackgroundColor);
-    }
-    changed |= DiffOptionalValue(
-        n.image_data, o.image_data,
-        SharedDefaultProvider<starlight::BackgroundData::BackgroundImageData>{},
-        SharedDefaultProvider<starlight::BackgroundData::BackgroundImageData>{},
-        [&](const auto& ni, const auto& oi) {
-          return diff_image(ni, oi, ids);
-        });
-    if (has_color && changed) new_style.MarkChanged(kPropertyIDBackground);
-    return changed;
-  };
-  changed |= DiffOptionalValue(
-      new_style.background_data_, old_style.background_data_,
-      SharedDefaultProvider<starlight::BackgroundData>{},
-      SharedDefaultProvider<starlight::BackgroundData>{},
-      [&](const auto& n, const auto& o) {
-        return diff_background(
-            n, o,
-            {kPropertyIDBackgroundImage, kPropertyIDBackgroundPosition,
-             kPropertyIDBackgroundRepeat, kPropertyIDBackgroundSize,
-             kPropertyIDBackgroundOrigin, kPropertyIDBackgroundClip,
-             kPropertyStart},
-            true);
-      });
-  changed |= DiffOptionalValue(
-      new_style.mask_data_, old_style.mask_data_,
-      SharedDefaultProvider<starlight::BackgroundData>{},
-      SharedDefaultProvider<starlight::BackgroundData>{},
-      [&](const auto& n, const auto& o) {
-        return diff_background(
-            n, o,
-            {kPropertyIDMaskImage, kPropertyIDMaskPosition,
-             kPropertyIDMaskRepeat, kPropertyIDMaskSize, kPropertyIDMaskOrigin,
-             kPropertyIDMaskClip, kPropertyIDMaskComposite},
-            false);
-      });
-  changed |= DiffOptionalValue(
-      new_style.outline_, old_style.outline_,
-      [&new_style]() { return DefaultOutline(new_style); },
-      [&old_style]() { return DefaultOutline(old_style); },
-      [&](const auto& n, const auto& o) {
-        bool changed = false;
-        changed |=
-            MarkFieldIfChanged(new_style, n, o, &starlight::OutLineData::color,
-                               kPropertyIDOutlineColor);
-        changed |=
-            MarkFieldIfChanged(new_style, n, o, &starlight::OutLineData::style,
-                               kPropertyIDOutlineStyle);
-        changed |=
-            MarkFieldIfChanged(new_style, n, o, &starlight::OutLineData::width,
-                               kPropertyIDOutlineWidth);
-        return changed;
-      },
-      [](auto& outline, const auto& effective_new) {
-        outline.emplace(effective_new);
-      });
-  changed |= DiffOptionalAndMark(
-      new_style, new_style.box_shadow_, old_style.box_shadow_,
-      SharedDefaultProvider<base::InlineVector<starlight::ShadowData, 1>>{},
-      SharedDefaultProvider<base::InlineVector<starlight::ShadowData, 1>>{},
-      kPropertyIDBoxShadow);
-  changed |= DiffOptionalAndMark(
-      new_style, new_style.transform_raw_, old_style.transform_raw_,
-      SharedDefaultProvider<
-          base::InlineVector<starlight::TransformRawData, 1>>{},
-      SharedDefaultProvider<
-          base::InlineVector<starlight::TransformRawData, 1>>{},
-      kPropertyIDTransform);
-  changed |= DiffOptionalAndMark(
-      new_style, new_style.transform_origin_, old_style.transform_origin_,
-      SharedDefaultProvider<starlight::TransformOriginData>{},
-      SharedDefaultProvider<starlight::TransformOriginData>{},
-      kPropertyIDTransformOrigin);
-  changed |= DiffOptionalAndMark(
-      new_style, new_style.perspective_data_, old_style.perspective_data_,
-      SharedDefaultProvider<starlight::PerspectiveData>{},
-      SharedDefaultProvider<starlight::PerspectiveData>{},
-      kPropertyIDPerspective);
-  changed |= DiffOptionalAndMark(
-      new_style, new_style.filter_, old_style.filter_,
-      SharedDefaultProvider<starlight::FilterData>{},
-      SharedDefaultProvider<starlight::FilterData>{}, kPropertyIDFilter);
-  if (OptionalNotEqual(new_style.cursor_, old_style.cursor_)) {
-    new_style.MarkChanged(kPropertyIDCursor);
-    changed = true;
-  }
-#define MARK_VISUAL_SCALAR(field, id) \
-  changed |= MarkIfChanged(new_style, new_style.field, old_style.field, id);
-  VISUAL_SCALAR_DIFF_FIELDS(MARK_VISUAL_SCALAR)
-#undef MARK_VISUAL_SCALAR
-
-  changed |= MarkIfChanged(new_style, new_style.caret_color_,
-                           old_style.caret_color_, kPropertyIDCaretColor);
-  changed |=
-      MarkIfChanged(new_style, new_style.caret_gradient_,
-                    old_style.caret_gradient_, kPropertyIDXCaretGradient);
-  changed |= MarkIfChanged(new_style, new_style.caret_width_,
-                           old_style.caret_width_, kPropertyIDXCaretWidth);
-  changed |= MarkIfChanged(new_style, new_style.caret_height_,
-                           old_style.caret_height_, kPropertyIDXCaretHeight);
-  changed |= MarkIfChanged(new_style, new_style.caret_radius_,
-                           old_style.caret_radius_, kPropertyIDXCaretRadius);
-  changed |= DiffOptionalValue(
-      new_style.text_attributes_, old_style.text_attributes_,
-      [&new_style]() { return DefaultTextAttributes(new_style); },
-      [&old_style]() { return DefaultTextAttributes(old_style); },
-      [&](const auto& n, const auto& o) {
-        bool changed = false;
-        changed |= DiffTextAttributesColor(new_style, n, o, kPropertyIDColor);
-#define MARK_TEXT_FIELD(type, field, id) \
-  changed |= MarkFieldIfChanged(new_style, n, o, &type::field, id);
-        TEXT_DIFF_FIELDS(MARK_TEXT_FIELD)
-#undef MARK_TEXT_FIELD
-        changed |=
-            MarkChangedIf(new_style,
-                          n.computed_line_height != o.computed_line_height ||
-                              n.line_height_factor != o.line_height_factor,
-                          kPropertyIDLineHeight);
-        if (n.underline_decoration != o.underline_decoration ||
-            n.line_through_decoration != o.line_through_decoration ||
-            n.text_decoration_style != o.text_decoration_style ||
-            n.text_decoration_color.value_or(
-                starlight::DefaultColor::DEFAULT_COLOR) !=
-                o.text_decoration_color.value_or(
-                    starlight::DefaultColor::DEFAULT_COLOR)) {
-          new_style.MarkChanged(kPropertyIDTextDecoration);
-          new_style.MarkChanged(kPropertyIDTextDecorationColor);
-          changed = true;
-        }
-        if (n.decoration_color.value_or(
-                starlight::DefaultColor::DEFAULT_COLOR) !=
-            o.decoration_color.value_or(
-                starlight::DefaultColor::DEFAULT_COLOR)) {
-          new_style.MarkChanged(kPropertyIDTextDecorationColor);
-          changed = true;
-        }
-        changed |= DiffOptionalAndMark(
-            new_style, n.text_shadow, o.text_shadow,
-            SharedDefaultProvider<
-                base::InlineVector<starlight::ShadowData, 1>>{},
-            SharedDefaultProvider<
-                base::InlineVector<starlight::ShadowData, 1>>{},
-            kPropertyIDTextShadow);
-        if (n.vertical_align != o.vertical_align ||
-            base::FloatsNotEqual(n.vertical_align_length,
-                                 o.vertical_align_length)) {
-          new_style.MarkChanged(kPropertyIDVerticalAlign);
-          changed = true;
-        }
-        const bool stroke_width_changed =
-            n.text_stroke_width != o.text_stroke_width;
-        const bool stroke_color_changed =
-            n.text_stroke_color.value_or(
-                starlight::DefaultColor::DEFAULT_COLOR) !=
-            o.text_stroke_color.value_or(
-                starlight::DefaultColor::DEFAULT_COLOR);
-        if (stroke_width_changed || stroke_color_changed) {
-          new_style.MarkChanged(kPropertyIDTextStroke);
-          changed = true;
-        }
-        if (stroke_width_changed) {
-          new_style.MarkChanged(kPropertyIDTextStrokeWidth);
-          changed = true;
-        }
-        if (stroke_color_changed) {
-          new_style.MarkChanged(kPropertyIDTextStrokeColor);
-          changed = true;
-        }
-        if (!RefPtrValueEqual(n.font_variation_settings,
-                              o.font_variation_settings)) {
-          new_style.MarkChanged(kPropertyIDFontVariationSettings);
-          changed = true;
-        }
-        if (!RefPtrValueEqual(n.font_feature_settings,
-                              o.font_feature_settings)) {
-          new_style.MarkChanged(kPropertyIDFontFeatureSettings);
-          changed = true;
-        }
-        if (n.is_auto_font_size != o.is_auto_font_size ||
-            base::FloatsNotEqual(n.auto_font_size_min_size,
-                                 o.auto_font_size_min_size) ||
-            base::FloatsNotEqual(n.auto_font_size_max_size,
-                                 o.auto_font_size_max_size) ||
-            base::FloatsNotEqual(n.auto_font_size_step_granularity,
-                                 o.auto_font_size_step_granularity)) {
-          new_style.MarkChanged(kPropertyIDXAutoFontSize);
-          changed = true;
-        }
-        changed |= DiffOptionalAndMark(
-            new_style, n.auto_font_size_preset_sizes,
-            o.auto_font_size_preset_sizes,
-            SharedDefaultProvider<base::InlineVector<float, 6>>{},
-            SharedDefaultProvider<base::InlineVector<float, 6>>{},
-            kPropertyIDXAutoFontSizePresetSizes);
-        changed |= DiffOptionalAndMark(
-            new_style, n.auto_font_size_line_ranges,
-            o.auto_font_size_line_ranges,
-            SharedDefaultProvider<
-                std::vector<starlight::AutoFontSizeLineRange>>{},
-            SharedDefaultProvider<
-                std::vector<starlight::AutoFontSizeLineRange>>{},
-            kPropertyIDXAutoFontSizeLineRanges);
-        return changed;
-      });
-  changed |= DiffOptionalValue(
-      new_style.placeholder_text_attributes_,
-      old_style.placeholder_text_attributes_,
-      [&new_style]() { return DefaultTextAttributes(new_style); },
-      [&old_style]() { return DefaultTextAttributes(old_style); },
-      [&](const auto& n, const auto& o) {
-        bool changed = false;
-        changed |= DiffTextAttributesColor(new_style, n, o,
-                                           kPropertyIDXPlaceholderColor);
-#define MARK_PLACEHOLDER_FIELD(type, field, id) \
-  changed |= MarkFieldIfChanged(new_style, n, o, &type::field, id);
-        PLACEHOLDER_TEXT_DIFF_FIELDS(MARK_PLACEHOLDER_FIELD)
-#undef MARK_PLACEHOLDER_FIELD
-        return changed;
-      });
-  changed |= MarkIfChanged(new_style, new_style.overflow_, old_style.overflow_,
-                           kPropertyIDOverflow);
-  changed |= MarkIfChanged(new_style, new_style.overflow_x_,
-                           old_style.overflow_x_, kPropertyIDOverflowX);
-  changed |= MarkIfChanged(new_style, new_style.overflow_y_,
-                           old_style.overflow_y_, kPropertyIDOverflowY);
-  changed |= PtrValuesDiffer(new_style.GetRawCustomProperties(),
-                             old_style.GetRawCustomProperties()) ||
-             PtrValuesDiffer(new_style.GetCustomProperties(),
-                             old_style.GetCustomProperties());
-  return changed;
-}
-#undef BOX_DIFF_FIELDS
-#undef FLEX_DIFF_FIELDS
-#undef GRID_SINGLE_DIFF_FIELDS
-#undef LINEAR_DIFF_FIELDS
-#undef RELATIVE_DIFF_FIELDS
-#undef SURROUND_DIFF_FIELDS
-#undef BORDER_DIFF_FIELDS
-#undef BACKGROUND_IMAGE_FIELDS
-#undef VISUAL_SCALAR_DIFF_FIELDS
-#undef TEXT_DIFF_FIELDS
-#undef PLACEHOLDER_TEXT_DIFF_FIELDS
-
-bool StyleResolver::HasPropertyDiff(const starlight::ComputedCSSStyle& style,
-                                    CSSPropertyID id) const {
-  return style.changed_bitset_.Has(id) || style.reset_bitset_.Has(id);
-}
-
-bool StyleResolver::HasInheritedPropertyDiff(
-    const starlight::ComputedCSSStyle& style,
-    const DynamicCSSConfigs& configs) const {
-  const auto& inheritable_props =
-      !configs.custom_inherit_list_.empty()
-          ? configs.custom_inherit_list_
-          : DynamicCSSStylesManager::GetInheritableProps();
-  for (const auto id : inheritable_props) {
-    if (HasPropertyDiff(style, id)) {
-      return true;
-    }
-  }
-  return false;
 }
 }  // namespace tasm
 }  // namespace lynx

@@ -16,8 +16,6 @@ runs:
   steps:
     - name: Install Common Dependencies
       uses: ./lynx/.github/actions/common-deps
-    - name: Setup Ruby Cache
-      uses: ./lynx/.github/actions/ios-common-deps
     - name: Install iOS Dependencies
       uses: nick-fields/retry@v2
       with:

@@ -73,6 +73,22 @@ constexpr uint32_t kFlagOffsetChanged = 1 << 16;
 static constexpr float kCameraDistanceNormalizationMultiplier = 2.236068;
 static constexpr int kDrawBehindVersion = 20;
 static constexpr size_t kImageBufferMargin = 2048;
+static constexpr float kOffsetRotateAutoWithAngleBase = -1000000.0f;
+static constexpr float kOffsetRotateAutoWithAngleRange = 360.0f;
+
+namespace {
+bool IsEncodedAutoOffsetRotate(float rotate) {
+  return rotate <= kOffsetRotateAutoWithAngleBase &&
+         rotate >
+             kOffsetRotateAutoWithAngleBase - kOffsetRotateAutoWithAngleRange;
+}
+
+float DecodeAutoOffsetRotateAngle(float rotate) {
+  return IsEncodedAutoOffsetRotate(rotate)
+             ? kOffsetRotateAutoWithAngleBase - rotate
+             : 0.f;
+}
+}  // namespace
 
 std::unordered_map<std::string, UIBase::PropSetter> UIBase::prop_setters_ = {
     {"idSelector", &UIBase::SetIdSelector},
@@ -2853,14 +2869,21 @@ void UIBase::SetOffsetRotate(const lepus::Value& value) {
   if (value.IsNil()) {
     offset_rotate_ = kOffsetRotateAuto;
     is_auto_offset_rotate_ = true;
+    offset_rotate_angle_ = 0.f;
   } else {
     float rotate = static_cast<float>(value.Number());
     if (base::FloatsEqual(rotate, kOffsetRotateAuto)) {
       offset_rotate_ = kOffsetRotateAuto;
       is_auto_offset_rotate_ = true;
+      offset_rotate_angle_ = 0.f;
+    } else if (IsEncodedAutoOffsetRotate(rotate)) {
+      offset_rotate_ = rotate;
+      is_auto_offset_rotate_ = true;
+      offset_rotate_angle_ = DecodeAutoOffsetRotateAngle(rotate);
     } else {
       offset_rotate_ = rotate;
       is_auto_offset_rotate_ = false;
+      offset_rotate_angle_ = 0.f;
     }
   }
   dirty_flags_ |= kFlagOffsetChanged;
@@ -2908,7 +2931,8 @@ std::optional<transforms::Matrix44> UIBase::GetOffsetMatrix() const {
   const auto& state = *state_opt;
   // state.deg is the tangent angle relative to the +X axis, which matches CSS
   // offset-rotate:auto.
-  float rotate = is_auto_offset_rotate_ ? state.deg : offset_rotate_;
+  float rotate = is_auto_offset_rotate_ ? state.deg + offset_rotate_angle_
+                                        : offset_rotate_;
   if (is_auto_offset_rotate_) {
     rotate = std::fmod(rotate, 360.0f);
     if (rotate < 0.0f) {

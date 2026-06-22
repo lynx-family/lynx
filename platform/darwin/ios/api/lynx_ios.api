@@ -67,6 +67,12 @@ public class CustomizedMessage : NSObject {
   public int CustomizedMessage::mark mark;
 }
 
+public class DevToolBootstrapSettings : NSObject {
+  public BOOL DevToolBootstrapSettings::lynxDebugEnabled lynxDebugEnabled;
+  public BOOL DevToolBootstrapSettings::logBoxEnabled logBoxEnabled;
+  public void DevToolBootstrapSettings::applyDevelopmentDefaultsIfUnset();
+}
+
 public class DevToolOverlayDelegate : NSObject {
   public instancetype DevToolOverlayDelegate::sharedInstance();
   public NSArray< NSNumber * > * DevToolOverlayDelegate::getAllVisibleOverlaySign();
@@ -74,6 +80,7 @@ public class DevToolOverlayDelegate : NSObject {
 }
 
 public class DevToolSettings : NSObject {
+  public DevToolBootstrapSettings* DevToolSettings::bootstrap bootstrap;
   public BOOL DevToolSettings::devToolEnabled devToolEnabled;
   public BOOL DevToolSettings::logBoxEnabled logBoxEnabled;
   public BOOL DevToolSettings::launchRecordEnabled launchRecordEnabled;
@@ -3504,8 +3511,8 @@ public protocol LynxServiceContainerProtocol-p : <NSObject> {
 }
 
 public protocol LynxServiceDevToolProtocol-p : <LynxServiceProtocol> {
-  public BOOL LynxServiceDevToolProtocol-p::lynxDebugPresetValue lynxDebugPresetValue;
-  public BOOL LynxServiceDevToolProtocol-p::logBoxPresetValue logBoxPresetValue;
+  public BOOL lynxDebugPresetValue LynxServiceDevToolProtocol-p::__attribute__((deprecated("Use [DevToolSettings sharedInstance].bootstrap.lynxDebugEnabled")));
+  public BOOL logBoxPresetValue LynxServiceDevToolProtocol-p::__attribute__((deprecated("Use [DevToolSettings sharedInstance].bootstrap.logBoxEnabled")));
   public id< LynxBaseInspectorController > LynxServiceDevToolProtocol-p::createInspectorOwnerWithLynxView:debuggable:(LynxView *lynxView,[debuggable] BOOL debuggable);
   public id< LynxLogBoxProtocol > LynxServiceDevToolProtocol-p::createLogBoxWithLynxView:(LynxView *lynxView);
   public Class< LynxContextModule > LynxServiceDevToolProtocol-p::devtoolSetModuleClass();

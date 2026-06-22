@@ -68,6 +68,14 @@ LynxDevToolSetModule::LynxDevToolSetModule() {
       runtime::NativeModuleMethod("switchLongPressMenu", 1),
       reinterpret_cast<runtime::LynxNativeModule::NativeModuleInvocation>(
           &LynxDevToolSetModule::SwitchLongPressMenu));
+  RegisterMethod(
+      runtime::NativeModuleMethod("isHighlightTouchEnabled", 0),
+      reinterpret_cast<runtime::LynxNativeModule::NativeModuleInvocation>(
+          &LynxDevToolSetModule::IsHighlightTouchEnabled));
+  RegisterMethod(
+      runtime::NativeModuleMethod("switchHighlightTouch", 1),
+      reinterpret_cast<runtime::LynxNativeModule::NativeModuleInvocation>(
+          &LynxDevToolSetModule::SwitchHighlightTouch));
 }
 
 base::expected<std::unique_ptr<pub::Value>, std::string>
@@ -167,6 +175,25 @@ std::unique_ptr<pub::Value> LynxDevToolSetModule::IsLongPressMenuEnabled(
 std::unique_ptr<pub::Value> LynxDevToolSetModule::SwitchLongPressMenu(
     std::unique_ptr<pub::Value> args, const runtime::CallbackMap &callbacks) {
   return SetSwitch(std::move(args), tasm::LynxEnv::kLynxEnableLongPressMenu);
+}
+
+std::unique_ptr<pub::Value> LynxDevToolSetModule::IsHighlightTouchEnabled(
+    std::unique_ptr<pub::Value> args, const runtime::CallbackMap &callbacks) {
+  bool lynx_debug_enabled = tasm::DevToolLifecycle::GetInstance().IsEnabled();
+  // TODO(mitchilling): remove this value merge after lifecycle implemented on
+  // all platforms
+  lynx_debug_enabled |=
+      EnvEmbedder::GetSwitch(tasm::LynxEnv::kLynxDebugEnabled);
+  bool highlight_touch_enabled =
+      EnvEmbedder::GetSwitch(tasm::LynxEnv::kLynxEnableHighlightTouch);
+  lepus::Value lepus_value =
+      lepus::Value(highlight_touch_enabled && lynx_debug_enabled);
+  return std::make_unique<PubLepusValue>(std::move(lepus_value));
+}
+
+std::unique_ptr<pub::Value> LynxDevToolSetModule::SwitchHighlightTouch(
+    std::unique_ptr<pub::Value> args, const runtime::CallbackMap &callbacks) {
+  return SetSwitch(std::move(args), tasm::LynxEnv::kLynxEnableHighlightTouch);
 }
 
 std::unique_ptr<pub::Value> LynxDevToolSetModule::GetSwitch(

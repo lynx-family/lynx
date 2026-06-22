@@ -59,9 +59,9 @@ public class QueryMapUtils {
     if (url.startsWith("file://lynx?local://automation/")) {
       url = url.substring("file://lynx?".length());
     }
-    if (url.contains("?")) {
-      String queryString = url.split("\\?")[1];
-      return queryString;
+    int queryStart = url.lastIndexOf("?");
+    if (queryStart >= 0 && queryStart + 1 < url.length()) {
+      return url.substring(queryStart + 1);
     } else {
       return null;
     }
@@ -79,7 +79,7 @@ public class QueryMapUtils {
       return defaultValue;
     }
     try {
-      return Boolean.parseBoolean(val);
+      return "1".equals(val) || Boolean.parseBoolean(val);
     } catch (Throwable e) {
       Log.e(TAG, "The query value cannot be converted to a boolean type.");
       return defaultValue;

@@ -1272,6 +1272,8 @@ export class DevToolSettings {
   public static setDOMTreeEnabled(enabled: boolean): void;
   public static isLongPressMenuEnabled(): boolean;
   public static setLongPressMenuEnabled(enabled: boolean): void;
+  public static isHighlightTouchEnabled(): boolean;
+  public static setHighlightTouchEnabled(enabled: boolean): void;
   public static isPreviewScreenshotEnabled(): boolean;
   public static setPreviewScreenshotEnabled(enabled: boolean): void;
   public static isPixelCopyEnabled(): boolean;
@@ -1288,6 +1290,7 @@ export class DevToolSettings {
   public static readonly SP_KEY_ENABLE_QUICKJS_CACHE: string; = 'enable_quickjs_cache'
   public static readonly SP_KEY_ENABLE_DOM_TREE: string; = 'enable_dom_tree'
   public static readonly SP_KEY_ENABLE_LONG_PRESS_MENU: string; = 'enable_long_press_menu'
+  public static readonly SP_KEY_ENABLE_HIGHLIGHT_TOUCH: string; = 'enable_highlight_touch'
   public static readonly SP_KEY_ENABLE_PREVIEW_SCREEN_SHOT: string; = 'enable_preview_screen_shot'
   public static readonly SP_KEY_ENABLE_PIXEL_COPY: string; = 'enable_pixel_copy'
   public static readonly SP_KEY_ENABLE_PERF_MONITOR_DEBUG: string; = 'enable_perf_monitor_debug'

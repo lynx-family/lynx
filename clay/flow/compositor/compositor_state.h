@@ -10,7 +10,6 @@
 #include <vector>
 
 #include "clay/common/service/service_manager.h"
-#include "clay/flow/compositor/overlay_views.h"
 #include "clay/flow/embedded_views.h"
 #include "clay/gfx/rendering_backend.h"
 
@@ -24,13 +23,7 @@ class CompositorState {
 
   void PrerollCompositeEmbeddedView(int view_id,
                                     std::unique_ptr<EmbeddedViewParams> params);
-
   clay::GrCanvas* CompositeEmbeddedView(int view_id);
-
-  void PrerollOverlayView(int view_id,
-                          std::unique_ptr<OverlayViewParams> params);
-
-  clay::GrCanvas* CompositeOverlayView(int view_id);
 
   void PushFilterToVisitedPlatformViews(
       const std::shared_ptr<const clay::ImageFilter>& filter,
@@ -52,8 +45,8 @@ class CompositorState {
  private:
   skity::Vec2 frame_size_;
 
-  // The order of composition. Each entry contains a unique id for the platform
-  // view or overlay view.
+  // The order of composition. Each entry contains a unique id for a composited
+  // entry.
   std::vector<int64_t> composition_order_;
 
   // The |EmbedderViewSlice| implementation keyed off the platform view id,
@@ -61,17 +54,9 @@ class CompositorState {
   // the end of the last leaf node in the layer tree.
   std::unordered_map<int64_t, std::unique_ptr<EmbedderViewSlice>> slices_;
 
-  // The params for a platform view, which contains the size, position and
-  // mutation stack.
+  // The params for a composited entry, including size, position, mutation
+  // stack, and presentation kind.
   std::unordered_map<int64_t, std::unique_ptr<EmbeddedViewParams>> view_params_;
-
-  // slices for overlay views
-  std::unordered_map<int64_t, std::unique_ptr<EmbedderViewSlice>>
-      overlay_slices_;
-
-  // The params for a overlay view, which contains the bounds rect.
-  std::unordered_map<int64_t, std::unique_ptr<OverlayViewParams>>
-      overlay_view_params_;
 };
 
 }  // namespace clay

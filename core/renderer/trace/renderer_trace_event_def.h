@@ -383,18 +383,14 @@ inline constexpr const char* const
  */
 inline constexpr const char* const STYLE_RESOLVER_APPLY_RESOLVED_STYLE_MAP =
     "StyleResolver::ApplyResolvedStyleMap";
-/**
- * @trace_description: Compute the difference between old and new styles.
- */
-inline constexpr const char* const STYLE_RESOLVER_COMPUTE_STYLE_DIFF =
-    "StyleResolver::ComputeStyleDiff";
 
 /**
- * @trace_description: Replay commit side effects for changed and reset
+ * @trace_description: Replay side effects for materialized changed and reset
  *     style properties in the new styling pipeline.
  */
-inline constexpr const char* const FIBER_ELEMENT_REPLAY_COMMIT_SIDE_EFFECTS =
-    "FiberElement::ReplayCommitSideEffects";
+inline constexpr const char* const
+    FIBER_ELEMENT_REPLAY_MATERIALIZED_STYLE_SIDE_EFFECTS =
+        "FiberElement::ReplayMaterializedStyleSideEffects";
 
 /**
  * @trace_description: Resolve final style as ComputedCSSStyle in the

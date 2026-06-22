@@ -758,6 +758,16 @@ void ComputedCSSStyle::CopyFrom(const ComputedCSSStyle& o) {
   reset_bitset_ = o.reset_bitset_;
 }
 
+void ComputedCSSStyle::ClearDirtyBits() {
+  ClearChanged();
+  ClearReset();
+}
+
+void ComputedCSSStyle::CopyDirtyBitsFrom(const ComputedCSSStyle& source) {
+  changed_bitset_ = source.changed_bitset_;
+  reset_bitset_ = source.reset_bitset_;
+}
+
 void ComputedCSSStyle::Reset() {
   layout_computed_style_.Reset();
 

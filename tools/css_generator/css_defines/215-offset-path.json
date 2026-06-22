@@ -3,9 +3,185 @@
   "id": 215,
   "type": "complex",
   "default_value": "",
-  "version": "3.2",
+  "version": "3.3",
   "author": "wangyifei.20010605",
   "consumption_status": "skip",
-  "desc": "",
-  "is_shorthand": false
+  "desc": "The `offset-path` CSS property specifies the motion path for an element to follow.",
+  "is_shorthand": false,
+  "formal_syntax": "circle() | ellipse() | path() | inset()",
+  "compat_data": {
+    "offset-path": {
+      "__compat": {
+        "lynx_path": "api/css/properties/offset-path",
+        "mdn_url": "https://developer.mozilla.org/en-US/docs/Web/CSS/offset-path",
+        "spec_url": [],
+        "status": {
+          "deprecated": false,
+          "experimental": false
+        },
+        "support": {
+          "android": {
+            "version_added": "3.3"
+          },
+          "ios": {
+            "version_added": "3.3"
+          },
+          "harmony": {
+            "version_added": "3.8"
+          },
+          "clay_android": {
+            "version_added": false
+          },
+          "clay_ios": {
+            "version_added": false
+          },
+          "clay_macos": {
+            "version_added": false
+          },
+          "clay_windows": {
+            "version_added": false
+          },
+          "web_lynx": {
+            "version_added": true
+          }
+        }
+      },
+      "circle()": {
+        "__compat": {
+          "status": {
+            "deprecated": false,
+            "experimental": false
+          },
+          "support": {
+            "android": {
+              "version_added": "3.3"
+            },
+            "ios": {
+              "version_added": "3.3"
+            },
+            "harmony": {
+              "version_added": "3.8"
+            },
+            "clay_android": {
+              "version_added": false
+            },
+            "clay_ios": {
+              "version_added": false
+            },
+            "clay_macos": {
+              "version_added": false
+            },
+            "clay_windows": {
+              "version_added": false
+            },
+            "web_lynx": {
+              "version_added": true
+            }
+          }
+        }
+      },
+      "inset()": {
+        "__compat": {
+          "status": {
+            "deprecated": false,
+            "experimental": false
+          },
+          "support": {
+            "android": {
+              "version_added": "3.3"
+            },
+            "ios": {
+              "version_added": "3.3"
+            },
+            "harmony": {
+              "version_added": "3.8"
+            },
+            "clay_android": {
+              "version_added": false
+            },
+            "clay_ios": {
+              "version_added": false
+            },
+            "clay_macos": {
+              "version_added": false
+            },
+            "clay_windows": {
+              "version_added": false
+            },
+            "web_lynx": {
+              "version_added": true
+            }
+          }
+        }
+      },
+      "ellipse()": {
+        "__compat": {
+          "status": {
+            "deprecated": false,
+            "experimental": false
+          },
+          "support": {
+            "android": {
+              "version_added": "3.3"
+            },
+            "ios": {
+              "version_added": false
+            },
+            "harmony": {
+              "version_added": "3.8"
+            },
+            "clay_android": {
+              "version_added": false
+            },
+            "clay_ios": {
+              "version_added": false
+            },
+            "clay_macos": {
+              "version_added": false
+            },
+            "clay_windows": {
+              "version_added": false
+            },
+            "web_lynx": {
+              "version_added": true
+            }
+          }
+        }
+      },
+      "path()": {
+        "__compat": {
+          "status": {
+            "deprecated": false,
+            "experimental": false
+          },
+          "support": {
+            "android": {
+              "version_added": "3.3"
+            },
+            "ios": {
+              "version_added": "3.3"
+            },
+            "harmony": {
+              "version_added": "3.8"
+            },
+            "clay_android": {
+              "version_added": false
+            },
+            "clay_ios": {
+              "version_added": false
+            },
+            "clay_macos": {
+              "version_added": false
+            },
+            "clay_windows": {
+              "version_added": false
+            },
+            "web_lynx": {
+              "version_added": true
+            }
+          }
+        }
+      }
+    }
+  }
 }

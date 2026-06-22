@@ -7,6 +7,17 @@
 #include "base/trace/native/trace_event.h"
 
 namespace clay {
+namespace {
+bool NeedsPlatformViewComposite(
+    int64_t view_id,
+    const std::unordered_map<int64_t, std::unique_ptr<EmbeddedViewParams>>&
+        compositor_params) {
+  auto it = compositor_params.find(view_id);
+  return it != compositor_params.end() && it->second != nullptr &&
+         it->second->NeedsPlatformViewComposite();
+}
+
+}  // namespace
 
 void PresenterService::Present(PresentFrame& frame) {
   TRACE_EVENT("clay", "PresenterService::Present");
@@ -31,7 +42,9 @@ void PresenterService::Present(PresentFrame& frame) {
         *embedded_params == *current_composition_param) {
       continue;
     }
-    CompositePlatformView(view_id, *embedded_params);
+    if (embedded_params->NeedsPlatformViewComposite()) {
+      CompositePlatformView(view_id, *embedded_params);
+    }
     current_composition_param = std::move(embedded_params);
   }
 
@@ -81,7 +94,9 @@ void PresenterService::RemoveUnusedLayers(
 
   for (const auto& [view_id, _] : current_composition_params_) {
     if (composition_order_set.count(view_id) == 0) {
-      HidePlatformView(view_id);
+      if (NeedsPlatformViewComposite(view_id, current_composition_params_)) {
+        HidePlatformView(view_id);
+      }
     }
   }
 }
@@ -91,7 +106,9 @@ void PresenterService::BringLayersIntoView(
     const std::unordered_map<int64_t, OverlayData>& overlays) {
   // TODO(haoyoufeng.aji) optimize unnecessary BringToFront
   for (int64_t view_id : composite_order) {
-    BringPlatformViewToFront(view_id);
+    if (NeedsPlatformViewComposite(view_id, current_composition_params_)) {
+      BringPlatformViewToFront(view_id);
+    }
     if (auto it = overlays.find(view_id); it != overlays.end()) {
       BringOverlayToFront(*it->second.overlay);
     }

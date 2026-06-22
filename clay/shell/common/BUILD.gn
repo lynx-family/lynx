@@ -110,7 +110,7 @@ source_set("common") {
     frameworks = [ "QuartzCore.framework" ]
   }
 
-  if (!(is_android || is_ios) || is_headless) {
+  if (!(is_android || is_ios || is_win) || (!is_win && is_headless)) {
     sources += [
       "services/compositor/platform_overlay_service_fallback.cc",
       "services/compositor/presenter_service_fallback.cc",

@@ -115,6 +115,10 @@ class NativePaintingCtxPlatformRef : public PaintingCtxPlatformRef {
   bool IsNativePaintingCtxPlatformRef() override { return true; }
 
  protected:
+  virtual void InvokePlatformRendererUIMethod(
+      int32_t id, const std::string &method, const lepus::Value &params,
+      base::MoveOnlyClosure<void, int32_t, const pub::Value &> callback);
+
   void RebuildSubLayers(const fml::RefPtr<PlatformRenderer> &renderer,
                         const base::InlineVector<int, 16> &new_children);
 

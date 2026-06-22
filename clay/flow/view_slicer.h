@@ -13,17 +13,28 @@
 #include <vector>
 
 #include "clay/flow/embedded_views.h"
+#include "skity/geometry/rect.hpp"
 
 namespace clay {
 
+class PlatformOverlay;
+
+struct OverlayData {
+  skity::Rect rect;
+  int64_t view_id;
+  int64_t overlay_id;
+  std::shared_ptr<PlatformOverlay> overlay = nullptr;
+};
+
 /// @brief Compute the required overlay layers and clip the view slices
 ///        according to the size and position of the platform views.
-std::unordered_map<int64_t, skity::Rect> SliceViews(
+std::vector<OverlayData> SliceViews(
     clay::GrCanvas* background_canvas,
     const std::vector<int64_t>& composition_order,
     const std::unordered_map<int64_t, std::unique_ptr<EmbedderViewSlice>>&
         slices,
-    const std::unordered_map<int64_t, skity::Rect>& view_rects);
+    const std::unordered_map<int64_t, std::unique_ptr<EmbeddedViewParams>>&
+        view_params);
 
 }  // namespace clay
 

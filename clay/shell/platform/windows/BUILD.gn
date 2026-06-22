@@ -50,6 +50,31 @@ source_set("flutter_windows_utils") {
   configs += [ "../../../../clay:config" ]
 }
 
+source_set("flutter_windows_overlay_plugins") {
+  sources = [
+    "platform_overlay_service_win.cc",
+    "platform_overlay_service_win.h",
+    "presenter_service_win.cc",
+    "presenter_service_win.h",
+  ]
+
+  deps = [
+    ":flutter_windows_utils",
+    "../../../common/graphics",
+    "../../../fml:fml",
+    "../../../gfx/shared_image",
+    "../../common:common",
+    "../embedder:embedder",
+    "//third_party/angle:libEGL_static",
+    "//third_party/angle:libGLESv2_static",
+  ]
+
+  configs += [
+    ":relative_angle_headers",
+    "../../../../clay:config",
+  ]
+}
+
 source_set("flutter_windows_source") {
   # Common Windows sources.
   sources = [
@@ -89,6 +114,12 @@ source_set("flutter_windows_source") {
     "keyboard_manager.h",
     "keyboard_utils.cc",
     "keyboard_utils.h",
+    "overlay_view_controller.cc",
+    "overlay_view_controller.h",
+    "overlay_view_manager_service.cc",
+    "overlay_view_manager_service.h",
+    "overlay_windows_view.cc",
+    "overlay_windows_view.h",
     "platform_handler.cc",
     "platform_handler.h",
     "sequential_id_generator.cc",
@@ -143,6 +174,7 @@ source_set("flutter_windows_source") {
 
   deps = [
     ":chromium_cursor_resources",
+    ":flutter_windows_overlay_plugins",
     ":flutter_windows_utils",
     "../../../../third_party/rapidjson",
     "../../../common/graphics:gl_scoped_binder",

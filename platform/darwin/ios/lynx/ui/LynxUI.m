@@ -53,6 +53,7 @@
 #import <Lynx/LynxView.h>
 #import <Lynx/UIView+Lynx.h>
 #import <malloc/malloc.h>
+#import <math.h>
 #import "LBSCoreGraphicsPathParser.h"
 #import "LynxFeatureCounter.h"
 #import "LynxFilterUtil.h"
@@ -67,6 +68,17 @@ short const OVERFLOW_XY_VAL = 0x03;
 short const OVERFLOW_HIDDEN_VAL = 0x00;
 static const NSInteger INVALID_STICKY_SIGN = -1;
 static const CGFloat OFFSET_ROTATE_AUTO = -1024.f;
+static const CGFloat OFFSET_ROTATE_AUTO_WITH_ANGLE_BASE = -1000000.f;
+static const CGFloat OFFSET_ROTATE_AUTO_WITH_ANGLE_RANGE = 360.f;
+
+static BOOL LynxIsEncodedAutoOffsetRotate(CGFloat rotate) {
+  return rotate <= OFFSET_ROTATE_AUTO_WITH_ANGLE_BASE &&
+         rotate > OFFSET_ROTATE_AUTO_WITH_ANGLE_BASE - OFFSET_ROTATE_AUTO_WITH_ANGLE_RANGE;
+}
+
+static CGFloat LynxDecodeAutoOffsetRotateAngle(CGFloat rotate) {
+  return LynxIsEncodedAutoOffsetRotate(rotate) ? OFFSET_ROTATE_AUTO_WITH_ANGLE_BASE - rotate : 0.f;
+}
 
 #define IS_ZERO(num) (fabs(num) < 0.0000000001)
 
@@ -111,6 +123,7 @@ static const CGFloat OFFSET_ROTATE_AUTO = -1024.f;
 @property(nonatomic, assign) BOOL accessibilityAutoScroll;
 @property(nonatomic, strong) NSArray* accessibilityBeingExclusiveFocusedNodes;
 @property(nonatomic, assign) NSInteger gestureArenaMemberId;
+@property(nonatomic) CGFloat offsetRotateAngle;
 
 // accessibility
 @property(nonatomic, nullable, strong) NSString* lynxAccessibilityStatus;
@@ -698,7 +711,7 @@ static const CGFloat OFFSET_ROTATE_AUTO = -1024.f;
     [self applyTransform];
     // A transform update overwrites the layer transform, so reapply the
     // existing offset effect to keep offset-rotate/position composed.
-    if (_offsetPathRef != nil) {
+    if (_offsetPath != nil) {
       _offsetHasChanged = YES;
     }
   }
@@ -706,7 +719,9 @@ static const CGFloat OFFSET_ROTATE_AUTO = -1024.f;
   if (_offsetHasChanged) {
     CGFloat rotateDeg = _offsetRotate;
     CGPoint resultPoint = CGPointZero;
-    if (_offsetPathRef == nil) {
+    UIBezierPath* offsetPath = [_offsetPath pathWithFrameSize:self.frameSize];
+    CGPathRef offsetPathRef = offsetPath.CGPath;
+    if (offsetPathRef == nil) {
       // When offset-path is not exist, offset will not apply.
       resultPoint = CGPointZero;
       rotateDeg = 0;
@@ -714,17 +729,19 @@ static const CGFloat OFFSET_ROTATE_AUTO = -1024.f;
       if (_isAutoOffsetRotate) {
         // offset-rotate is auto
         resultPoint = [LynxOffsetCalculator pointAtProgress:_offsetDistance
-                                                     onPath:_offsetPathRef
+                                                     onPath:offsetPathRef
                                                 withTangent:&rotateDeg];
+        rotateDeg += _offsetRotateAngle * M_PI / 180.0;
       } else {
         resultPoint = [LynxOffsetCalculator pointAtProgress:_offsetDistance
-                                                     onPath:_offsetPathRef
+                                                     onPath:offsetPathRef
                                                 withTangent:NULL];
         rotateDeg = _offsetRotate * M_PI / 180.0;
       }
     }
-    [self applyOffset:resultPoint andRotate:rotateDeg];
-    _offsetHasChanged = NO;
+    if ([self applyOffset:resultPoint andRotate:rotateDeg]) {
+      _offsetHasChanged = NO;
+    }
   }
   // 3. Apply transition
   if (_transitionAnimationManager) {
@@ -4449,7 +4466,6 @@ LYNX_PROP_DEFINE("clip-path", setClipPath, NSArray*) {
 LYNX_PROP_DEFINE("offset-path", setOffsetPath, NSArray*) {
   if (requestReset || !value || [value count] < 1) {
     _offsetPath = nil;
-    _offsetPathRef = nil;
     _offsetHasChanged = YES;
     return;
   }
@@ -4464,23 +4480,18 @@ LYNX_PROP_DEFINE("offset-path", setOffsetPath, NSArray*) {
       if ([value count] != 2) {
         // Native parse error occurss. Reset the path.
         _offsetPath = nil;
-        _offsetPathRef = nil;
         break;
       }
       id data = [value objectAtIndex:1];
       if (![data isKindOfClass:[NSString class]]) {
         _offsetPath = nil;
-        _offsetPathRef = nil;
         break;
       }
       _offsetPath = LBSCreateBasicShapeFromPathData((NSString*)data);
-      const char* cData = [(NSString*)data UTF8String];
-      _offsetPathRef = LBSCreatePathFromData(cData);
       break;
     }
     default:
       _offsetPath = nil;
-      _offsetPathRef = nil;
   };
 }
 
@@ -4499,7 +4510,14 @@ LYNX_PROP_DEFINE("offset-rotate", setOffsetRotate, CGFloat) {
   if (requestReset) {
     value = OFFSET_ROTATE_AUTO;
   }
-  _isAutoOffsetRotate = value == OFFSET_ROTATE_AUTO;
+  _isAutoOffsetRotate = value == OFFSET_ROTATE_AUTO || LynxIsEncodedAutoOffsetRotate(value);
+  if (value == OFFSET_ROTATE_AUTO) {
+    _offsetRotateAngle = 0.f;
+  } else if (LynxIsEncodedAutoOffsetRotate(value)) {
+    _offsetRotateAngle = LynxDecodeAutoOffsetRotateAngle(value);
+  } else {
+    _offsetRotateAngle = 0.f;
+  }
   if (_offsetRotate != value) {
     _offsetRotate = value;
     _offsetHasChanged = YES;
@@ -4656,7 +4674,10 @@ LYNX_PROP_DEFINE("hit-slop", setHitSlop, NSObject*) {
   }
 }
 
-- (void)applyOffset:(CGPoint)resultPoint andRotate:(CGFloat)rotateDeg {
+- (BOOL)applyOffset:(CGPoint)resultPoint andRotate:(CGFloat)rotateDeg {
+  if (!isfinite(resultPoint.x) || !isfinite(resultPoint.y) || !isfinite(rotateDeg)) {
+    return NO;
+  }
   [self prepareLastInfo];
   CATransform3D baseTransform = self.view.layer.transform;
   if (_lastInfo.hasOffsetEffect) {
@@ -4683,6 +4704,7 @@ LYNX_PROP_DEFINE("hit-slop", setHitSlop, NSObject*) {
   _lastInfo.baseTransform = baseTransform;
   _lastInfo.offsetEffectTransform = offsetEffectTransform;
   _lastInfo.hasOffsetEffect = YES;
+  return YES;
 }
 
 #pragma mark - Detach/Attach Layer Management

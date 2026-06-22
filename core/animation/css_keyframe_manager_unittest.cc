@@ -133,6 +133,21 @@ class CSSKeyframeManagerTest : public ::testing::Test {
         *element->keyframes_map_, name, lepus::Value(keyframes), configs);
   }
 
+  void UpdateLeftKeyframes(tasm::Element* element, const base::String& name,
+                           const char* from, const char* to) {
+    auto keyframes = lepus::Dictionary::Create();
+    auto from_frame = lepus::Dictionary::Create();
+    from_frame->SetValue("left", lepus::Value(from));
+    keyframes->SetValue("0", lepus::Value(from_frame));
+    auto to_frame = lepus::Dictionary::Create();
+    to_frame->SetValue("left", lepus::Value(to));
+    keyframes->SetValue("100", lepus::Value(to_frame));
+
+    lynx::tasm::CSSParserConfigs configs;
+    starlight::CSSStyleUtils::UpdateCSSKeyframes(
+        *element->keyframes_map_, name, lepus::Value(keyframes), configs);
+  }
+
   void UpdateWidthKeyframesWithDirectInheritedVariable(
       tasm::Element* element, const base::String& name) {
     auto keyframes = lepus::Dictionary::Create();
@@ -213,6 +228,10 @@ class CSSKeyframeManagerTest : public ::testing::Test {
     auto iter = sample.custom_property_overrides.find(name);
     return iter == sample.custom_property_overrides.end() ? nullptr
                                                           : &iter->second;
+  }
+
+  fml::TimePoint TimePointFromMs(int64_t ms) {
+    return fml::TimePoint::FromTicks(ms * 1000 * 1000);
   }
 };
 
@@ -797,6 +816,118 @@ TEST_F(CSSKeyframeManagerTest,
   auto repeated_events =
       test_manager->TakePendingAnimationEventsForNewPipeline();
   EXPECT_TRUE(repeated_events.empty());
+}
+
+TEST_F(CSSKeyframeManagerTest,
+       ForwardsFillPersistsAfterStoppedAnimationLaterResolve) {
+  auto test_element = InitElement();
+  UpdateLeftKeyframes(test_element.get(), base::String("move"), "0px", "200px");
+  auto test_manager = InitTestKeyframeManager(test_element.get());
+  base::Vector<starlight::AnimationData> animation_data;
+  animation_data.emplace_back(InitAnimationData(
+      base::String("move"), 1000, 0, starlight::TimingFunctionData(), 1,
+      starlight::AnimationFillModeType::kForwards,
+      starlight::AnimationDirectionType::kNormal,
+      starlight::AnimationPlayStateType::kRunning));
+  test_manager->SyncAnimationDataForNewPipeline(animation_data);
+
+  auto start_time = TimePointFromMs(1000);
+  test_manager->CollectAnimationUpdatesForNewPipeline(start_time);
+  test_manager->TakePendingAnimationEventsForNewPipeline();
+
+  auto end_time = TimePointFromMs(2000);
+  auto end_sample =
+      test_manager->CollectAnimationUpdatesForNewPipeline(end_time);
+  const auto* end_left = FindSampledStyle(end_sample, tasm::kPropertyIDLeft);
+  ASSERT_NE(nullptr, end_left);
+  EXPECT_EQ(*end_left, tasm::CSSValue(200, tasm::CSSValuePattern::PX));
+  auto end_events = test_manager->TakePendingAnimationEventsForNewPipeline();
+  ASSERT_EQ(1U, end_events.size());
+  EXPECT_TRUE(end_events[0].send_end_event);
+  ASSERT_TRUE(test_manager->animations_map().count(base::String("move")));
+  EXPECT_EQ(animation::Animation::State::kStop,
+            test_manager->animations_map()[base::String("move")]->GetState());
+
+  auto later_time = TimePointFromMs(2016);
+  auto later_sample =
+      test_manager->CollectAnimationUpdatesForNewPipeline(later_time);
+  const auto* later_left =
+      FindSampledStyle(later_sample, tasm::kPropertyIDLeft);
+  ASSERT_NE(nullptr, later_left);
+  EXPECT_EQ(*later_left, tasm::CSSValue(200, tasm::CSSValuePattern::PX));
+  auto later_events = test_manager->TakePendingAnimationEventsForNewPipeline();
+  EXPECT_TRUE(later_events.empty());
+}
+
+TEST_F(CSSKeyframeManagerTest,
+       CancelledRestartedForwardsAnimationPersistsSecondFinish) {
+  auto test_element = InitElement();
+  test_element->SetStyle(tasm::kPropertyIDLeft, lepus::Value("0px"));
+  UpdateLeftKeyframes(test_element.get(), base::String("move"), "0px", "200px");
+  auto test_manager = InitTestKeyframeManager(test_element.get());
+  base::Vector<starlight::AnimationData> animation_data;
+  animation_data.emplace_back(InitAnimationData(
+      base::String("move"), 1000, 0, starlight::TimingFunctionData(), 1,
+      starlight::AnimationFillModeType::kForwards,
+      starlight::AnimationDirectionType::kNormal,
+      starlight::AnimationPlayStateType::kRunning));
+  test_manager->SyncAnimationDataForNewPipeline(animation_data);
+
+  auto start_time = TimePointFromMs(1000);
+  test_manager->CollectAnimationUpdatesForNewPipeline(start_time);
+  test_manager->TakePendingAnimationEventsForNewPipeline();
+
+  auto mid_time = TimePointFromMs(1500);
+  auto mid_sample =
+      test_manager->CollectAnimationUpdatesForNewPipeline(mid_time);
+  const auto* mid_left = FindSampledStyle(mid_sample, tasm::kPropertyIDLeft);
+  ASSERT_NE(nullptr, mid_left);
+
+  base::Vector<starlight::AnimationData> empty_animation_data;
+  test_manager->SyncAnimationDataForNewPipeline(empty_animation_data);
+  auto cleanup_sample =
+      test_manager->CollectAnimationUpdatesForNewPipeline(mid_time);
+  const auto* cleanup_left =
+      FindSampledStyle(cleanup_sample, tasm::kPropertyIDLeft);
+  auto cleanup_reset_iter =
+      std::find(cleanup_sample.property_resets.begin(),
+                cleanup_sample.property_resets.end(), tasm::kPropertyIDLeft);
+  EXPECT_TRUE(cleanup_left != nullptr ||
+              cleanup_reset_iter != cleanup_sample.property_resets.end());
+  if (cleanup_left != nullptr) {
+    EXPECT_EQ(*cleanup_left, tasm::CSSValue(0, tasm::CSSValuePattern::PX));
+    EXPECT_EQ(cleanup_reset_iter, cleanup_sample.property_resets.end());
+  }
+  auto cancel_events = test_manager->TakePendingAnimationEventsForNewPipeline();
+  ASSERT_EQ(1U, cancel_events.size());
+  EXPECT_TRUE(cancel_events[0].send_cancel_event);
+
+  test_manager->SyncAnimationDataForNewPipeline(animation_data);
+  auto restart_time = TimePointFromMs(3000);
+  test_manager->CollectAnimationUpdatesForNewPipeline(restart_time);
+  test_manager->TakePendingAnimationEventsForNewPipeline();
+
+  auto second_end_time = TimePointFromMs(4000);
+  auto second_end_sample =
+      test_manager->CollectAnimationUpdatesForNewPipeline(second_end_time);
+  const auto* second_end_left =
+      FindSampledStyle(second_end_sample, tasm::kPropertyIDLeft);
+  ASSERT_NE(nullptr, second_end_left);
+  EXPECT_EQ(*second_end_left, tasm::CSSValue(200, tasm::CSSValuePattern::PX));
+  auto second_end_events =
+      test_manager->TakePendingAnimationEventsForNewPipeline();
+  ASSERT_EQ(1U, second_end_events.size());
+  EXPECT_TRUE(second_end_events[0].send_end_event);
+
+  auto later_time = TimePointFromMs(4016);
+  auto later_sample =
+      test_manager->CollectAnimationUpdatesForNewPipeline(later_time);
+  const auto* later_left =
+      FindSampledStyle(later_sample, tasm::kPropertyIDLeft);
+  ASSERT_NE(nullptr, later_left);
+  EXPECT_EQ(*later_left, tasm::CSSValue(200, tasm::CSSValuePattern::PX));
+  auto later_events = test_manager->TakePendingAnimationEventsForNewPipeline();
+  EXPECT_TRUE(later_events.empty());
 }
 
 TEST_F(CSSKeyframeManagerTest,

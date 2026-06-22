@@ -7,6 +7,7 @@
 #include <cstdint>
 #include <cstring>
 #include <limits>
+#include <memory>
 #include <string>
 #include <utility>
 #include <vector>
@@ -16,16 +17,16 @@
 #include "clay/gfx/shared_image/fence_sync.h"
 #include "clay/gfx/shared_image/shared_image_backing.h"
 #include "clay/gfx/shared_image/shared_image_sink.h"
-#include "clay/gfx/skity_to_skia_utils.h"
 #include "clay/shell/platform/embedder/embedder_struct_macros.h"
 #include "clay/shell/platform/headless/clay_headless_engine.h"
+#ifndef ENABLE_SKITY
+#include "third_party/skia/include/core/SkImageInfo.h"
+#endif
 
 namespace clay {
 
-// Skity depends on OpenGL ES 3.0, but the host environment may only provide
-// OpenGL ES 2.0. When Skity is enabled, use raw OpenGL ES 2.0 APIs to blit the
-// result to the screen.
-#ifdef ENABLE_SKITY
+// The host environment may only provide OpenGL ES 2.0, so use raw GL APIs to
+// blit the shared-image CPU readback to the host framebuffer.
 namespace {
 
 // GL Type Definitions
@@ -62,7 +63,7 @@ constexpr GLenum GL_TEXTURE_MAG_FILTER = 0x2800;
 constexpr GLenum GL_TEXTURE_WRAP_S = 0x2802;
 constexpr GLenum GL_TEXTURE_WRAP_T = 0x2803;
 
-constexpr GLenum GL_LINEAR = 0x2601;
+constexpr GLenum GL_NEAREST = 0x2600;
 constexpr GLenum GL_CLAMP_TO_EDGE = 0x812F;
 
 constexpr GLenum GL_RGBA = 0x1908;
@@ -82,12 +83,51 @@ constexpr GLenum GL_TEXTURE_BINDING_2D = 0x8069;
 constexpr GLenum GL_FRAMEBUFFER_BINDING = 0x8CA6;
 constexpr GLenum GL_ARRAY_BUFFER_BINDING = 0x8894;
 constexpr GLenum GL_VERTEX_ARRAY_BINDING = 0x85B5;
+constexpr GLenum GL_VERTEX_ATTRIB_ARRAY_ENABLED = 0x8622;
+constexpr GLenum GL_VERTEX_ATTRIB_ARRAY_SIZE = 0x8623;
+constexpr GLenum GL_VERTEX_ATTRIB_ARRAY_STRIDE = 0x8624;
+constexpr GLenum GL_VERTEX_ATTRIB_ARRAY_TYPE = 0x8625;
+constexpr GLenum GL_VERTEX_ATTRIB_ARRAY_POINTER = 0x8645;
+constexpr GLenum GL_VERTEX_ATTRIB_ARRAY_NORMALIZED = 0x886A;
+constexpr GLenum GL_VERTEX_ATTRIB_ARRAY_BUFFER_BINDING = 0x889F;
 constexpr GLenum GL_UNPACK_ALIGNMENT = 0x0CF5;
 constexpr GLenum GL_VIEWPORT = 0x0BA2;
+constexpr GLenum GL_COLOR_CLEAR_VALUE = 0x0C22;
+constexpr GLenum GL_COLOR_WRITEMASK = 0x0C23;
+constexpr GLenum GL_BLEND = 0x0BE2;
+constexpr GLenum GL_DEPTH_TEST = 0x0B71;
+constexpr GLenum GL_STENCIL_TEST = 0x0B90;
+constexpr GLenum GL_SCISSOR_TEST = 0x0C11;
 
 // For glClear
 constexpr GLenum GL_COLOR_BUFFER_BIT = 0x00004000;
-constexpr GLenum GL_DEPTH_BUFFER_BIT = 0x00000100;
+
+struct HostGLReadbackPixmap {
+  uint32_t width = 0;
+  uint32_t height = 0;
+  size_t row_bytes = 0;
+  const void* pixels = nullptr;
+};
+
+struct VertexAttribState {
+  GLint enabled = GL_FALSE;
+  GLint size = 4;
+  GLint stride = 0;
+  GLint type = GL_FLOAT;
+  GLint normalized = GL_FALSE;
+  GLint buffer_binding = 0;
+  void* pointer = nullptr;
+};
+
+constexpr size_t kRGBABytesPerPixel = 4;
+
+bool CheckedMulSize(size_t lhs, size_t rhs, size_t* result) {
+  if (lhs != 0 && rhs > std::numeric_limits<size_t>::max() / lhs) {
+    return false;
+  }
+  *result = lhs * rhs;
+  return true;
+}
 
 template <typename Fn>
 Fn ResolveGLFunction(const GPUSurfaceGLDelegate::GLProcResolver& resolver,
@@ -96,10 +136,10 @@ Fn ResolveGLFunction(const GPUSurfaceGLDelegate::GLProcResolver& resolver,
 }
 
 constexpr char kCpuBlitVertexShaderSource[] = R"(
-    precision mediump float;
-    attribute vec2 aPosition;
-    attribute vec2 aTexCoord;
-    varying vec2 vTexCoord;
+    precision highp float;
+    attribute highp vec2 aPosition;
+    attribute mediump vec2 aTexCoord;
+    varying mediump vec2 vTexCoord;
     void main() {
       gl_Position = vec4(aPosition, 0.0, 1.0);
       vTexCoord = aTexCoord;
@@ -111,13 +151,27 @@ constexpr GLuint kAttribLocationPosition = 0;
 constexpr GLuint kAttribLocationTexCoord = 1;
 
 constexpr char kCpuBlitFragmentShaderSource[] = R"(
+#ifdef GL_FRAGMENT_PRECISION_HIGH
+    precision highp float;
+#else
     precision mediump float;
-    varying vec2 vTexCoord;
+#endif
+    varying mediump vec2 vTexCoord;
     uniform sampler2D uTexture;
+    uniform bool uRepeatTexCoord;
     void main() {
-      gl_FragColor = texture2D(uTexture, vTexCoord).bgra;
+      vec2 texCoord = vTexCoord;
+      if (uRepeatTexCoord) {
+        texCoord = fract(texCoord);
+      }
+      gl_FragColor = texture2D(uTexture, texCoord).bgra;
     }
 )";
+
+constexpr GLfloat kFullscreenTrianglePositions[] = {
+    -1.0f, -1.0f, 1.0f, -1.0f, -1.0f, 1.0f,
+    -1.0f, 1.0f,  1.0f, -1.0f, 1.0f,  1.0f,
+};
 
 }  // namespace
 
@@ -126,9 +180,30 @@ class HostGLRenderer {
   explicit HostGLRenderer(GPUSurfaceGLDelegate::GLProcResolver resolver)
       : resolver_(std::move(resolver)) {}
 
-  bool Draw(const skity::Pixmap& pixmap, const skity::Matrix& transformation,
-            GLuint framebuffer) {
+  bool Draw(const HostGLReadbackPixmap& pixmap,
+            const skity::Matrix& transformation, GLuint framebuffer) {
     if (!Initialize()) {
+      return false;
+    }
+    if (!pixmap.pixels || pixmap.width == 0 || pixmap.height == 0) {
+      FML_LOG(ERROR) << "Invalid HostGLRenderer pixmap";
+      return false;
+    }
+    size_t packed_row_bytes = 0;
+    if (!CheckedMulSize(static_cast<size_t>(pixmap.width), kRGBABytesPerPixel,
+                        &packed_row_bytes)) {
+      FML_LOG(ERROR) << "HostGLRenderer pixmap row bytes overflow";
+      return false;
+    }
+    if (pixmap.row_bytes < packed_row_bytes) {
+      FML_LOG(ERROR) << "HostGLRenderer pixmap row bytes too small: "
+                     << pixmap.row_bytes << " < " << packed_row_bytes;
+      return false;
+    }
+    size_t packed_pixels_size = 0;
+    if (!CheckedMulSize(packed_row_bytes, static_cast<size_t>(pixmap.height),
+                        &packed_pixels_size)) {
+      FML_LOG(ERROR) << "HostGLRenderer pixmap buffer size overflow";
       return false;
     }
 
@@ -140,6 +215,14 @@ class HostGLRenderer {
     GLint previous_array_buffer = 0;
     GLint previous_unpack_alignment = 4;
     GLint previous_viewport[4] = {0, 0, 0, 0};
+    GLfloat previous_clear_color[4] = {0.0f, 0.0f, 0.0f, 0.0f};
+    GLboolean previous_color_mask[4] = {GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE};
+    GLboolean previous_blend = gl_is_enabled_(GL_BLEND);
+    GLboolean previous_depth_test = gl_is_enabled_(GL_DEPTH_TEST);
+    GLboolean previous_stencil_test = gl_is_enabled_(GL_STENCIL_TEST);
+    GLboolean previous_scissor_test = gl_is_enabled_(GL_SCISSOR_TEST);
+    VertexAttribState previous_position_attrib;
+    VertexAttribState previous_tex_coord_attrib;
 
     gl_get_integerv_(GL_CURRENT_PROGRAM, &previous_program);
     gl_get_integerv_(GL_ACTIVE_TEXTURE, &previous_active_texture);
@@ -150,46 +233,68 @@ class HostGLRenderer {
     gl_get_integerv_(GL_ARRAY_BUFFER_BINDING, &previous_array_buffer);
     gl_get_integerv_(GL_UNPACK_ALIGNMENT, &previous_unpack_alignment);
     gl_get_integerv_(GL_VIEWPORT, previous_viewport);
+    gl_get_float_v_(GL_COLOR_CLEAR_VALUE, previous_clear_color);
+    gl_get_boolean_v_(GL_COLOR_WRITEMASK, previous_color_mask);
+    gl_active_texture_(GL_TEXTURE0);
     gl_get_integerv_(GL_TEXTURE_BINDING_2D, &previous_texture0_binding);
+    if (!supports_vertex_array_object_) {
+      SaveVertexAttrib(kAttribLocationPosition, &previous_position_attrib);
+      SaveVertexAttrib(kAttribLocationTexCoord, &previous_tex_coord_attrib);
+    }
 
     gl_bind_framebuffer_(GL_FRAMEBUFFER, framebuffer);
-    gl_viewport_(0, 0, static_cast<GLsizei>(pixmap.Width()),
-                 static_cast<GLsizei>(pixmap.Height()));
+    gl_viewport_(0, 0, static_cast<GLsizei>(pixmap.width),
+                 static_cast<GLsizei>(pixmap.height));
+    gl_disable_(GL_SCISSOR_TEST);
+    gl_disable_(GL_BLEND);
+    gl_disable_(GL_DEPTH_TEST);
+    gl_disable_(GL_STENCIL_TEST);
+    gl_color_mask_(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
     gl_clear_color_(0.0f, 0.0f, 0.0f, 0.0f);
     gl_clear_(GL_COLOR_BUFFER_BIT);
 
     gl_use_program_(program_);
-    gl_active_texture_(GL_TEXTURE0);
     gl_bind_texture_(GL_TEXTURE_2D, texture_);
+    const bool repeat_tex_coord = !transformation.IsIdentity();
+    if (repeat_tex_coord_dirty_ ||
+        repeat_tex_coord_enabled_ != repeat_tex_coord) {
+      gl_uniform_1_i_(repeat_tex_coord_location_, repeat_tex_coord ? 1 : 0);
+      repeat_tex_coord_enabled_ = repeat_tex_coord;
+      repeat_tex_coord_dirty_ = false;
+    }
     if (supports_vertex_array_object_) {
       gl_bind_vertex_array_(vertex_array_);
     }
     gl_pixel_store_i_(GL_UNPACK_ALIGNMENT, 1);
 
-    const void* pixels = pixmap.Addr();
-    std::vector<uint8_t> contiguous_pixels;
-    size_t packed_row_bytes = static_cast<size_t>(pixmap.Width()) * 4;
-    if (pixmap.RowBytes() != packed_row_bytes) {
-      contiguous_pixels.resize(packed_row_bytes * pixmap.Height());
-      for (uint32_t row = 0; row < pixmap.Height(); ++row) {
-        std::memcpy(contiguous_pixels.data() + row * packed_row_bytes,
-                    static_cast<const uint8_t*>(pixmap.Addr()) +
-                        row * pixmap.RowBytes(),
-                    packed_row_bytes);
+    const void* pixels = pixmap.pixels;
+    if (pixmap.row_bytes != packed_row_bytes) {
+      packed_pixels_.resize(packed_pixels_size);
+      for (uint32_t row = 0; row < pixmap.height; ++row) {
+        std::memcpy(
+            packed_pixels_.data() + row * packed_row_bytes,
+            static_cast<const uint8_t*>(pixmap.pixels) + row * pixmap.row_bytes,
+            packed_row_bytes);
       }
-      pixels = contiguous_pixels.data();
+      pixels = packed_pixels_.data();
     }
 
-    gl_tex_image_2d_(GL_TEXTURE_2D, 0, GL_RGBA,
-                     static_cast<GLsizei>(pixmap.Width()),
-                     static_cast<GLsizei>(pixmap.Height()), 0, GL_RGBA,
-                     GL_UNSIGNED_BYTE, pixels);
+    if (texture_width_ != pixmap.width || texture_height_ != pixmap.height) {
+      gl_tex_image_2d_(GL_TEXTURE_2D, 0, GL_RGBA,
+                       static_cast<GLsizei>(pixmap.width),
+                       static_cast<GLsizei>(pixmap.height), 0, GL_RGBA,
+                       GL_UNSIGNED_BYTE, pixels);
+      texture_width_ = pixmap.width;
+      texture_height_ = pixmap.height;
+    } else {
+      gl_tex_sub_image_2d_(GL_TEXTURE_2D, 0, 0, 0,
+                           static_cast<GLsizei>(pixmap.width),
+                           static_cast<GLsizei>(pixmap.height), GL_RGBA,
+                           GL_UNSIGNED_BYTE, pixels);
+    }
 
-    const GLfloat positions[] = {
-        -1.0f, -1.0f, 1.0f, -1.0f, -1.0f, 1.0f,
-        -1.0f, 1.0f,  1.0f, -1.0f, 1.0f,  1.0f,
-    };
-
+    // GL uploads the first CPU row to low-v texels, matching the old Skia
+    // path's canvas Y-flip without an extra texcoord flip here.
     skity::Matrix uv_transform = transformation;
     skity::Vec2 src[4] = {
         {0.f, 0.f},
@@ -206,8 +311,6 @@ class HostGLRenderer {
     };
 
     gl_bind_buffer_(GL_ARRAY_BUFFER, position_buffer_);
-    gl_buffer_data_(GL_ARRAY_BUFFER, sizeof(positions), positions,
-                    GL_STATIC_DRAW);
     gl_enable_vertex_attrib_array_(kAttribLocationPosition);
     gl_vertex_attrib_pointer_(kAttribLocationPosition, 2, GL_FLOAT, GL_FALSE, 0,
                               nullptr);
@@ -226,6 +329,9 @@ class HostGLRenderer {
                          static_cast<GLuint>(previous_framebuffer));
     if (supports_vertex_array_object_) {
       gl_bind_vertex_array_(static_cast<GLuint>(previous_vertex_array));
+    } else {
+      RestoreVertexAttrib(kAttribLocationPosition, previous_position_attrib);
+      RestoreVertexAttrib(kAttribLocationTexCoord, previous_tex_coord_attrib);
     }
     gl_bind_buffer_(GL_ARRAY_BUFFER,
                     static_cast<GLuint>(previous_array_buffer));
@@ -236,6 +342,14 @@ class HostGLRenderer {
     gl_pixel_store_i_(GL_UNPACK_ALIGNMENT, previous_unpack_alignment);
     gl_viewport_(previous_viewport[0], previous_viewport[1],
                  previous_viewport[2], previous_viewport[3]);
+    gl_clear_color_(previous_clear_color[0], previous_clear_color[1],
+                    previous_clear_color[2], previous_clear_color[3]);
+    gl_color_mask_(previous_color_mask[0], previous_color_mask[1],
+                   previous_color_mask[2], previous_color_mask[3]);
+    RestoreCapability(GL_BLEND, previous_blend);
+    RestoreCapability(GL_DEPTH_TEST, previous_depth_test);
+    RestoreCapability(GL_STENCIL_TEST, previous_stencil_test);
+    RestoreCapability(GL_SCISSOR_TEST, previous_scissor_test);
     return true;
   }
 
@@ -256,6 +370,11 @@ class HostGLRenderer {
       gl_delete_textures_(1, &texture_);
       texture_ = 0;
     }
+    texture_width_ = 0;
+    texture_height_ = 0;
+    repeat_tex_coord_enabled_ = false;
+    repeat_tex_coord_dirty_ = true;
+    packed_pixels_.clear();
     if (program_ != 0) {
       gl_delete_program_(program_);
       program_ = 0;
@@ -285,6 +404,8 @@ class HostGLRenderer {
   using GLTexParameteriProc = void (*)(GLenum, GLenum, GLint);
   using GLTexImage2DProc = void (*)(GLenum, GLint, GLint, GLsizei, GLsizei,
                                     GLint, GLenum, GLenum, const void*);
+  using GLTexSubImage2DProc = void (*)(GLenum, GLint, GLint, GLint, GLsizei,
+                                       GLsizei, GLenum, GLenum, const void*);
   using GLGenBuffersProc = void (*)(GLsizei, GLuint*);
   using GLDeleteBuffersProc = void (*)(GLsizei, const GLuint*);
   using GLBufferDataProc = void (*)(GLenum, GLsizeiptr, const void*, GLenum);
@@ -298,7 +419,15 @@ class HostGLRenderer {
   using GLVertexAttribPointerProc = void (*)(GLuint, GLint, GLenum, GLboolean,
                                              GLsizei, const void*);
   using GLDrawArraysProc = void (*)(GLenum, GLint, GLsizei);
+  using GLGetVertexAttribivProc = void (*)(GLuint, GLenum, GLint*);
+  using GLGetVertexAttribPointervProc = void (*)(GLuint, GLenum, void**);
   using GLGetIntegervProc = void (*)(GLenum, GLint*);
+  using GLGetBooleanvProc = void (*)(GLenum, GLboolean*);
+  using GLGetFloatvProc = void (*)(GLenum, GLfloat*);
+  using GLIsEnabledProc = GLboolean (*)(GLenum);
+  using GLEnableProc = void (*)(GLenum);
+  using GLDisableProc = void (*)(GLenum);
+  using GLColorMaskProc = void (*)(GLboolean, GLboolean, GLboolean, GLboolean);
   using GLBindBufferProc = void (*)(GLenum, GLuint);
   using GLPixelStoreiProc = void (*)(GLenum, GLint);
   using GLClearProc = void (*)(GLbitfield);
@@ -354,6 +483,8 @@ class HostGLRenderer {
         ResolveGLFunction<GLTexParameteriProc>(resolver_, "glTexParameteri");
     gl_tex_image_2d_ =
         ResolveGLFunction<GLTexImage2DProc>(resolver_, "glTexImage2D");
+    gl_tex_sub_image_2d_ =
+        ResolveGLFunction<GLTexSubImage2DProc>(resolver_, "glTexSubImage2D");
     gl_gen_buffers_ =
         ResolveGLFunction<GLGenBuffersProc>(resolver_, "glGenBuffers");
     gl_delete_buffers_ =
@@ -391,8 +522,23 @@ class HostGLRenderer {
         resolver_, "glVertexAttribPointer");
     gl_draw_arrays_ =
         ResolveGLFunction<GLDrawArraysProc>(resolver_, "glDrawArrays");
+    gl_get_vertex_attrib_iv_ = ResolveGLFunction<GLGetVertexAttribivProc>(
+        resolver_, "glGetVertexAttribiv");
+    gl_get_vertex_attrib_pointer_v_ =
+        ResolveGLFunction<GLGetVertexAttribPointervProc>(
+            resolver_, "glGetVertexAttribPointerv");
     gl_get_integerv_ =
         ResolveGLFunction<GLGetIntegervProc>(resolver_, "glGetIntegerv");
+    gl_get_boolean_v_ =
+        ResolveGLFunction<GLGetBooleanvProc>(resolver_, "glGetBooleanv");
+    gl_get_float_v_ =
+        ResolveGLFunction<GLGetFloatvProc>(resolver_, "glGetFloatv");
+    gl_is_enabled_ =
+        ResolveGLFunction<GLIsEnabledProc>(resolver_, "glIsEnabled");
+    gl_enable_ = ResolveGLFunction<GLEnableProc>(resolver_, "glEnable");
+    gl_disable_ = ResolveGLFunction<GLDisableProc>(resolver_, "glDisable");
+    gl_color_mask_ =
+        ResolveGLFunction<GLColorMaskProc>(resolver_, "glColorMask");
     gl_bind_buffer_ =
         ResolveGLFunction<GLBindBufferProc>(resolver_, "glBindBuffer");
     gl_pixel_store_i_ =
@@ -407,12 +553,16 @@ class HostGLRenderer {
         !gl_delete_program_ || !gl_use_program_ || !gl_get_uniform_location_ ||
         !gl_uniform_1_i_ || !gl_bind_attrib_location_ || !gl_gen_textures_ ||
         !gl_delete_textures_ || !gl_active_texture_ || !gl_bind_texture_ ||
-        !gl_tex_parameter_i_ || !gl_tex_image_2d_ || !gl_gen_buffers_ ||
-        !gl_delete_buffers_ || !gl_buffer_data_ || !gl_bind_framebuffer_ ||
-        !gl_viewport_ || !gl_enable_vertex_attrib_array_ ||
-        !gl_disable_vertex_attrib_array_ || !gl_vertex_attrib_pointer_ ||
-        !gl_draw_arrays_ || !gl_get_integerv_ || !gl_bind_buffer_ ||
-        !gl_pixel_store_i_ || !gl_clear_ || !gl_clear_color_) {
+        !gl_tex_parameter_i_ || !gl_tex_image_2d_ || !gl_tex_sub_image_2d_ ||
+        !gl_gen_buffers_ || !gl_delete_buffers_ || !gl_buffer_data_ ||
+        !gl_bind_framebuffer_ || !gl_viewport_ ||
+        !gl_enable_vertex_attrib_array_ || !gl_disable_vertex_attrib_array_ ||
+        !gl_vertex_attrib_pointer_ || !gl_draw_arrays_ ||
+        !gl_get_vertex_attrib_iv_ || !gl_get_vertex_attrib_pointer_v_ ||
+        !gl_get_integerv_ || !gl_bind_buffer_ || !gl_get_boolean_v_ ||
+        !gl_get_float_v_ || !gl_is_enabled_ || !gl_enable_ || !gl_disable_ ||
+        !gl_color_mask_ || !gl_pixel_store_i_ || !gl_clear_ ||
+        !gl_clear_color_) {
       FML_LOG(ERROR) << "Failed to resolve GL functions for HostGLRenderer";
       return false;
     }
@@ -424,7 +574,9 @@ class HostGLRenderer {
     }
 
     GLint sampler_location = gl_get_uniform_location_(program_, "uTexture");
-    if (sampler_location < 0) {
+    repeat_tex_coord_location_ =
+        gl_get_uniform_location_(program_, "uRepeatTexCoord");
+    if (sampler_location < 0 || repeat_tex_coord_location_ < 0) {
       FML_LOG(ERROR) << "Failed to query HostGLRenderer shader locations";
       Destroy();
       return false;
@@ -452,11 +604,13 @@ class HostGLRenderer {
     GLint previous_active_texture = 0;
     GLint previous_texture0_binding = 0;
     GLint previous_vertex_array = 0;
+    GLint previous_array_buffer = 0;
     gl_get_integerv_(GL_CURRENT_PROGRAM, &previous_program);
     gl_get_integerv_(GL_ACTIVE_TEXTURE, &previous_active_texture);
     if (supports_vertex_array_object_) {
       gl_get_integerv_(GL_VERTEX_ARRAY_BINDING, &previous_vertex_array);
     }
+    gl_get_integerv_(GL_ARRAY_BUFFER_BINDING, &previous_array_buffer);
     gl_active_texture_(GL_TEXTURE0);
     gl_get_integerv_(GL_TEXTURE_BINDING_2D, &previous_texture0_binding);
 
@@ -464,15 +618,23 @@ class HostGLRenderer {
     if (supports_vertex_array_object_) {
       gl_bind_vertex_array_(vertex_array_);
     }
+    gl_bind_buffer_(GL_ARRAY_BUFFER, position_buffer_);
+    gl_buffer_data_(GL_ARRAY_BUFFER, sizeof(kFullscreenTrianglePositions),
+                    kFullscreenTrianglePositions, GL_STATIC_DRAW);
     gl_bind_texture_(GL_TEXTURE_2D, texture_);
-    gl_tex_parameter_i_(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    gl_tex_parameter_i_(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    gl_tex_parameter_i_(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    gl_tex_parameter_i_(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     gl_tex_parameter_i_(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     gl_tex_parameter_i_(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     gl_uniform_1_i_(sampler_location, 0);
+    gl_uniform_1_i_(repeat_tex_coord_location_, 0);
+    repeat_tex_coord_enabled_ = false;
+    repeat_tex_coord_dirty_ = false;
     if (supports_vertex_array_object_) {
       gl_bind_vertex_array_(static_cast<GLuint>(previous_vertex_array));
     }
+    gl_bind_buffer_(GL_ARRAY_BUFFER,
+                    static_cast<GLuint>(previous_array_buffer));
     gl_bind_texture_(GL_TEXTURE_2D,
                      static_cast<GLuint>(previous_texture0_binding));
     gl_active_texture_(static_cast<GLenum>(previous_active_texture));
@@ -480,6 +642,41 @@ class HostGLRenderer {
 
     initialized_ = true;
     return true;
+  }
+
+  void RestoreCapability(GLenum capability, GLboolean enabled) {
+    if (enabled) {
+      gl_enable_(capability);
+    } else {
+      gl_disable_(capability);
+    }
+  }
+
+  void SaveVertexAttrib(GLuint index, VertexAttribState* state) {
+    gl_get_vertex_attrib_iv_(index, GL_VERTEX_ATTRIB_ARRAY_ENABLED,
+                             &state->enabled);
+    gl_get_vertex_attrib_iv_(index, GL_VERTEX_ATTRIB_ARRAY_SIZE, &state->size);
+    gl_get_vertex_attrib_iv_(index, GL_VERTEX_ATTRIB_ARRAY_STRIDE,
+                             &state->stride);
+    gl_get_vertex_attrib_iv_(index, GL_VERTEX_ATTRIB_ARRAY_TYPE, &state->type);
+    gl_get_vertex_attrib_iv_(index, GL_VERTEX_ATTRIB_ARRAY_NORMALIZED,
+                             &state->normalized);
+    gl_get_vertex_attrib_iv_(index, GL_VERTEX_ATTRIB_ARRAY_BUFFER_BINDING,
+                             &state->buffer_binding);
+    gl_get_vertex_attrib_pointer_v_(index, GL_VERTEX_ATTRIB_ARRAY_POINTER,
+                                    &state->pointer);
+  }
+
+  void RestoreVertexAttrib(GLuint index, const VertexAttribState& state) {
+    gl_bind_buffer_(GL_ARRAY_BUFFER, static_cast<GLuint>(state.buffer_binding));
+    gl_vertex_attrib_pointer_(
+        index, state.size, static_cast<GLenum>(state.type),
+        static_cast<GLboolean>(state.normalized), state.stride, state.pointer);
+    if (state.enabled) {
+      gl_enable_vertex_attrib_array_(index);
+    } else {
+      gl_disable_vertex_attrib_array_(index);
+    }
   }
 
   GLuint CompileShader(GLenum type, const char* source) {
@@ -550,6 +747,12 @@ class HostGLRenderer {
   GLuint vertex_array_ = 0;
   GLuint position_buffer_ = 0;
   GLuint tex_coord_buffer_ = 0;
+  uint32_t texture_width_ = 0;
+  uint32_t texture_height_ = 0;
+  GLint repeat_tex_coord_location_ = -1;
+  bool repeat_tex_coord_enabled_ = false;
+  bool repeat_tex_coord_dirty_ = true;
+  std::vector<uint8_t> packed_pixels_;
   bool supports_vertex_array_object_ = false;
 
   GLCreateShaderProc gl_create_shader_ = nullptr;
@@ -572,6 +775,7 @@ class HostGLRenderer {
   GLBindTextureProc gl_bind_texture_ = nullptr;
   GLTexParameteriProc gl_tex_parameter_i_ = nullptr;
   GLTexImage2DProc gl_tex_image_2d_ = nullptr;
+  GLTexSubImage2DProc gl_tex_sub_image_2d_ = nullptr;
   GLGenBuffersProc gl_gen_buffers_ = nullptr;
   GLDeleteBuffersProc gl_delete_buffers_ = nullptr;
   GLBufferDataProc gl_buffer_data_ = nullptr;
@@ -584,13 +788,20 @@ class HostGLRenderer {
   GLDisableVertexAttribArrayProc gl_disable_vertex_attrib_array_ = nullptr;
   GLVertexAttribPointerProc gl_vertex_attrib_pointer_ = nullptr;
   GLDrawArraysProc gl_draw_arrays_ = nullptr;
+  GLGetVertexAttribivProc gl_get_vertex_attrib_iv_ = nullptr;
+  GLGetVertexAttribPointervProc gl_get_vertex_attrib_pointer_v_ = nullptr;
   GLGetIntegervProc gl_get_integerv_ = nullptr;
+  GLGetBooleanvProc gl_get_boolean_v_ = nullptr;
+  GLGetFloatvProc gl_get_float_v_ = nullptr;
+  GLIsEnabledProc gl_is_enabled_ = nullptr;
+  GLEnableProc gl_enable_ = nullptr;
+  GLDisableProc gl_disable_ = nullptr;
+  GLColorMaskProc gl_color_mask_ = nullptr;
   GLBindBufferProc gl_bind_buffer_ = nullptr;
   GLPixelStoreiProc gl_pixel_store_i_ = nullptr;
   GLClearProc gl_clear_ = nullptr;
   GLClearColorProc gl_clear_color_ = nullptr;
 };
-#endif
 
 std::unique_ptr<ClayHeadlessRenderer> ClayHeadlessRenderer::CreateHostGL(
     ClayHeadlessEngine* engine, const ClayOpenGLRendererConfig& config) {
@@ -648,15 +859,10 @@ ClayHeadlessRendererSharedImageHostGL::ClayHeadlessRendererSharedImageHostGL(
     ClaySharedImageSinkBufferMode buffer_mode)
     : ClayHeadlessRenderer(engine),
       host_gl_thread_("clay.headless.host-gl"),
+      draw_tasks_enabled_(std::make_shared<std::atomic_bool>(true)),
       config_(renderer_config) {
   FML_LOG(ERROR) << "Starting Clay in [Host GL+SharedImage] mode. "
                     "Maybe slow in large views";
-
-  host_gl_thread_.GetTaskRunner()->PostTask([&] {
-#ifndef ENABLE_SKITY
-    host_gl_surface_ = std::make_unique<GPUSurfaceGLSkia>(this, true);
-#endif
-  });
 
   ClayHeadlessRendererConfig hardware_config;
 
@@ -685,10 +891,20 @@ ClayHeadlessRendererSharedImageHostGL::ClayHeadlessRendererSharedImageHostGL(
   shared_image_sink_ = fml::RefPtr<clay::SharedImageSink>(
       reinterpret_cast<clay::SharedImageSink*>(sink_ref));
 
-  shared_image_sink_->SetFrameAvailableCallback([this] {
-    // The callback is triggered in Clay Raster thread
-    host_gl_thread_.GetTaskRunner()->PostTask([this] { Draw(); });
-  });
+  shared_image_sink_->SetFrameAvailableCallback(
+      [host_gl_task_runner = host_gl_thread_.GetTaskRunner(),
+       draw_tasks_enabled = draw_tasks_enabled_, this] {
+        if (!draw_tasks_enabled->load()) {
+          return;
+        }
+        // The callback is triggered in Clay Raster thread
+        host_gl_task_runner->PostTask([draw_tasks_enabled, this] {
+          if (!draw_tasks_enabled->load()) {
+            return;
+          }
+          Draw();
+        });
+      });
 
   hardware_config.hardware.struct_size = sizeof(hardware_config.hardware);
   hardware_config.hardware.sink_ref = sink_ref;
@@ -727,36 +943,53 @@ ClayHeadlessRendererSharedImageHostGL::GetEngineRenderer() {
 
 ClayHeadlessRendererSharedImageHostGL::
     ~ClayHeadlessRendererSharedImageHostGL() {
+  draw_tasks_enabled_->store(false);
   {
     std::lock_guard<std::mutex> lock(shared_image_sink_mutex_);
     // shared_image_sink internally keeps ref to D3D device and mutex,
     // which means it should be reset before destroy renderer
-    shared_image_sink_->SetFrameAvailableCallback(nullptr);
+    if (shared_image_sink_) {
+      shared_image_sink_->SetFrameAvailableCallback(nullptr);
+    }
     shared_image_sink_ = nullptr;
   }
   renderer_.reset();
-  fml::AutoResetWaitableEvent latch;
-  host_gl_thread_.GetTaskRunner()->PostTask([&] {
-#ifdef ENABLE_SKITY
-    if (host_gl_renderer_) {
-      auto context_switch = GLContextMakeCurrent();
-      if (context_switch && context_switch->GetResult()) {
-        host_gl_renderer_->Destroy();
-      }
-      host_gl_renderer_.reset();
-      GLContextClearCurrent();
-    }
-#endif
-#ifndef ENABLE_SKITY
-    host_gl_surface_.reset();
-#endif
-    latch.Signal();
-  });
-  latch.Wait();
+  DestroyHostGLRendererSync();
 }
 
 void ClayHeadlessRendererSharedImageHostGL::CleanupGPUResources() {
-  renderer_->CleanupGPUResources();
+  if (renderer_) {
+    renderer_->CleanupGPUResources();
+  }
+  DestroyHostGLRendererSync();
+}
+
+void ClayHeadlessRendererSharedImageHostGL::DestroyHostGLRendererSync() {
+  auto task_runner = host_gl_thread_.GetTaskRunner();
+  if (!task_runner) {
+    FML_LOG(ERROR) << "No host GL task runner for HostGLRenderer destruction";
+    return;
+  }
+  if (task_runner->RunsTasksOnCurrentThread()) {
+    DestroyHostGLRendererOnHostThread();
+    return;
+  }
+  task_runner->PostSyncTask([this] { DestroyHostGLRendererOnHostThread(); });
+}
+
+void ClayHeadlessRendererSharedImageHostGL::
+    DestroyHostGLRendererOnHostThread() {
+  if (!host_gl_renderer_) {
+    return;
+  }
+  auto context_switch = GLContextMakeCurrent();
+  if (context_switch && context_switch->GetResult()) {
+    host_gl_renderer_->Destroy();
+    GLContextClearCurrent();
+  } else {
+    FML_LOG(ERROR) << "Failed to make current while destroying HostGLRenderer";
+  }
+  host_gl_renderer_.reset();
 }
 
 // |GPUSurfaceGLDelegate|
@@ -809,19 +1042,13 @@ void ClayHeadlessRendererSharedImageHostGL::Draw() {
   if (!shared_image_sink_) {
     return;
   }
-#ifndef ENABLE_SKITY
-  if (!host_gl_surface_) {
-    return;
-  }
-#endif
 
-#ifdef ENABLE_SKITY
   skity::Matrix transformation;
-  std::shared_ptr<skity::Pixmap> pixmap;
-#else
-  SkMatrix transformation;
-  SkBitmap bitmap;
+  std::unique_ptr<clay::SharedImageReadbackPixmap> readback_pixmap;
+#ifndef ENABLE_SKITY
+  std::vector<uint8_t> readback_pixels;
 #endif
+  HostGLReadbackPixmap host_pixmap;
   {
     fml::RefPtr<clay::SharedImageBacking> backing =
         shared_image_sink_->UpdateFront(nullptr);
@@ -855,49 +1082,47 @@ void ClayHeadlessRendererSharedImageHostGL::Draw() {
       }
     }
 
-#ifndef ENABLE_SKITY
-    // Currently, kNative8888 equals BGRA8888
-    auto image_info = SkImageInfo::Make(
-        SkISize::Make(backing->GetSize().x, backing->GetSize().y),
-        kBGRA_8888_SkColorType, kPremul_SkAlphaType);
-    if (!bitmap.tryAllocPixels(image_info, 0)) {
-      FML_LOG(ERROR) << "Failed to allocate bitmap pixels";
-      return;
-    }
-    SkPixmap pixmap;
-    if (!bitmap.peekPixels(&pixmap)) {
-      FML_LOG(ERROR) << "Failed to peek bitmap pixels";
-      return;
-    }
-#endif
-
     {
       TRACE_EVENT("clay", "SharedImageBacking::ReadbackToMemory");
-#ifdef ENABLE_SKITY
-      pixmap = std::make_shared<skity::Pixmap>(
-          backing->GetSize().x, backing->GetSize().y,
-          skity::AlphaType::kUnpremul_AlphaType, skity::ColorType::kBGRA);
-      if (!backing->ReadbackToMemory(pixmap.get(), 1)) {
+      const uint32_t width = static_cast<uint32_t>(backing->GetSize().x);
+      const uint32_t height = static_cast<uint32_t>(backing->GetSize().y);
+#ifndef ENABLE_SKITY
+      size_t row_bytes = 0;
+      size_t readback_pixels_size = 0;
+      if (!CheckedMulSize(static_cast<size_t>(width), kRGBABytesPerPixel,
+                          &row_bytes) ||
+          !CheckedMulSize(row_bytes, static_cast<size_t>(height),
+                          &readback_pixels_size)) {
+        FML_LOG(ERROR) << "SharedImage readback pixmap size overflow";
+        return;
+      }
+      readback_pixels.resize(readback_pixels_size);
+      auto image_info =
+          SkImageInfo::Make(SkISize::Make(static_cast<int32_t>(width),
+                                          static_cast<int32_t>(height)),
+                            kBGRA_8888_SkColorType, kPremul_SkAlphaType);
+      readback_pixmap = std::make_unique<clay::SharedImageReadbackPixmap>(
+          image_info, readback_pixels.data(), row_bytes);
+#else
+      readback_pixmap = std::make_unique<clay::SharedImageReadbackPixmap>(
+          width, height, skity::AlphaType::kUnpremul_AlphaType,
+          skity::ColorType::kBGRA);
+#endif
+      if (!backing->ReadbackToMemory(readback_pixmap.get(), 1)) {
         FML_LOG(ERROR) << "Failed to ReadbackToMemory";
         return;
       }
       transformation = backing->GetTransformation();
-#else
-      if (!backing->ReadbackToMemory(&pixmap, 1)) {
-        FML_LOG(ERROR) << "Failed to ReadbackToMemory";
-        return;
-      }
-
-      bitmap.setImmutable();
-
-      transformation =
-          clay::ConvertSkityMatrixToSkMatrix(backing->GetTransformation());
-#endif
+      host_pixmap = {
+          .width = width,
+          .height = height,
+          .row_bytes = SharedImagePixmapRowBytes(*readback_pixmap),
+          .pixels = SharedImagePixmapWritableAddr(*readback_pixmap),
+      };
     }
   }
 
-#ifdef ENABLE_SKITY
-  if (!pixmap) {
+  if (!host_pixmap.pixels) {
     FML_LOG(ERROR) << "No pixmap for Host GL CPU blit";
     return;
   }
@@ -907,6 +1132,15 @@ void ClayHeadlessRendererSharedImageHostGL::Draw() {
     FML_LOG(ERROR) << "Failed to make current for Host GL CPU blit";
     return;
   }
+  struct AutoClearCurrent {
+    explicit AutoClearCurrent(ClayHeadlessRendererSharedImageHostGL& renderer)
+        : renderer_(renderer) {}
+
+    ~AutoClearCurrent() { renderer_.GLContextClearCurrent(); }
+
+    ClayHeadlessRendererSharedImageHostGL& renderer_;
+  };
+  AutoClearCurrent auto_clear_current(*this);
 
   if (!host_gl_renderer_) {
     GLProcResolver proc_resolver = GetGLProcResolver();
@@ -918,7 +1152,7 @@ void ClayHeadlessRendererSharedImageHostGL::Draw() {
         std::make_unique<HostGLRenderer>(std::move(proc_resolver));
   }
 
-  GLFrameInfo frame_info = {pixmap->Width(), pixmap->Height()};
+  GLFrameInfo frame_info = {host_pixmap.width, host_pixmap.height};
   const GLFBOInfo fbo_info = GLContextFBO(frame_info);
   if (fbo_info.fbo_id < 0 ||
       fbo_info.fbo_id >
@@ -929,7 +1163,7 @@ void ClayHeadlessRendererSharedImageHostGL::Draw() {
   }
   const GLuint target_fbo = static_cast<GLuint>(fbo_info.fbo_id);
 
-  if (!host_gl_renderer_->Draw(*pixmap, transformation, target_fbo)) {
+  if (!host_gl_renderer_->Draw(host_pixmap, transformation, target_fbo)) {
     FML_LOG(ERROR) << "Failed to draw Host GL CPU blit";
     return;
   }
@@ -938,50 +1172,6 @@ void ClayHeadlessRendererSharedImageHostGL::Draw() {
           {target_fbo, std::nullopt, std::nullopt, std::nullopt})) {
     FML_LOG(ERROR) << "Failed to present Host GL CPU blit";
   }
-  return;
-#else
-  std::unique_ptr<SurfaceFrame> frame = host_gl_surface_->AcquireFrame(
-      {bitmap.dimensions().fWidth, bitmap.dimensions().fHeight});
-
-  if (!frame) {
-    FML_LOG(ERROR) << "Failed to AcquireFrame";
-    return;
-  }
-
-  SkCanvas* canvas = frame->GetCanvas();
-  canvas->clear(SK_ColorTRANSPARENT);
-
-  SkAutoCanvasRestore autoRestore(canvas, true);
-
-  sk_sp<SkImage> sk_image = bitmap.asImage();
-
-  SkIRect bounds = sk_image->bounds();
-
-  // The incoming texture is vertically flipped, so we flip it
-  // back.
-  // Maybe it's better to use SurfaceOrigin in AdoptTexture,
-  // but on Electron this method doesn't work.
-  SkMatrix flip_y_mat =
-      SkMatrix::MakeAll(1, 0, 0, 0, -1, bounds.height(), 0, 0, 1);
-
-  canvas->concat(flip_y_mat);
-
-  if (!transformation.isIdentity()) {
-    sk_sp<SkShader> shader =
-        sk_image->makeShader(SkTileMode::kRepeat, SkTileMode::kRepeat,
-                             SkSamplingOptions(), transformation);
-
-    SkPaint paintWithShader;
-    paintWithShader.setShader(shader);
-    canvas->drawRect(SkRect::Make(sk_image->bounds()), paintWithShader);
-  } else {
-    canvas->drawImage(sk_image, 0, 0, SkSamplingOptions());
-  }
-  frame->Submit();
-
-  host_gl_surface_->GetContext()->performDeferredCleanup(
-      std::chrono::milliseconds(0));
-#endif
 }
 
 }  // namespace clay

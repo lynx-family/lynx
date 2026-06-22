@@ -7,12 +7,16 @@
 #include <deviceinfo.h>
 #include <dlfcn.h>
 
+#include <atomic>
 #include <memory>
 #include <utility>
 
 #include "base/include/float_comparison.h"
+#include "base/include/fml/task_runner.h"
 #include "core/base/harmony/harmony_function_loader.h"
+#include "core/renderer/utils/devtool_lifecycle.h"
 #include "core/renderer/utils/lynx_env.h"
+#include "core/runtime/common/lynx_console_helper.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/event/event_emitter.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/event/touch_event.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/gesture/arena/gesture_arena_manager.h"
@@ -21,10 +25,123 @@
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_root.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/utils/lynx_ui_helper.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/utils/lynx_unit_utils.h"
+#include "third_party/rapidjson/document.h"
+#include "third_party/rapidjson/error/en.h"
+#include "third_party/rapidjson/stringbuffer.h"
+#include "third_party/rapidjson/writer.h"
 
 namespace lynx {
 namespace tasm {
 namespace harmony {
+
+namespace {
+
+constexpr const char* kHitTargetStyle =
+    "background-color:#9CC4E6;border-width:2px;border-color:red;";
+
+uint64_t NextRequestId(std::atomic<uint64_t>& request_id) {
+  return request_id.fetch_add(1, std::memory_order_relaxed) + 1;
+}
+
+std::string AppendHitTargetStyle(std::string css_text) {
+  if (!css_text.empty() && css_text.back() != ';') {
+    css_text.push_back(';');
+  }
+  css_text += kHitTargetStyle;
+  return css_text;
+}
+
+std::string BuildSetAttributesAsTextMessage(int node_id,
+                                            const std::string& css_text,
+                                            uint64_t message_id) {
+  rapidjson::StringBuffer buffer;
+  rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
+  writer.StartObject();
+  writer.Key("id");
+  writer.Uint64(message_id);
+  writer.Key("method");
+  writer.String("DOM.setAttributesAsText");
+  writer.Key("params");
+  writer.StartObject();
+  writer.Key("nodeId");
+  writer.Int(node_id);
+  writer.Key("text");
+  std::string style_text = "style=\"" + css_text + "\"";
+  writer.String(style_text.c_str(),
+                static_cast<rapidjson::SizeType>(style_text.size()));
+  writer.Key("name");
+  writer.String("style");
+  writer.EndObject();
+  writer.EndObject();
+  return buffer.GetString();
+}
+
+std::string BuildGetInlineStylesForNodeMessage(int node_id,
+                                               uint64_t message_id) {
+  rapidjson::StringBuffer buffer;
+  rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
+  writer.StartObject();
+  writer.Key("id");
+  writer.Uint64(message_id);
+  writer.Key("method");
+  writer.String("CSS.getInlineStylesForNode");
+  writer.Key("params");
+  writer.StartObject();
+  writer.Key("nodeId");
+  writer.Int(node_id);
+  writer.EndObject();
+  writer.EndObject();
+  return buffer.GetString();
+}
+
+bool FindCssText(const rapidjson::Value& value, std::string& css_text) {
+  if (value.IsObject()) {
+    auto iter = value.FindMember("cssText");
+    if (iter != value.MemberEnd() && iter->value.IsString()) {
+      css_text.assign(iter->value.GetString(), iter->value.GetStringLength());
+      return true;
+    }
+    for (auto member = value.MemberBegin(); member != value.MemberEnd();
+         ++member) {
+      if (FindCssText(member->value, css_text)) {
+        return true;
+      }
+    }
+  } else if (value.IsArray()) {
+    for (auto iter = value.Begin(); iter != value.End(); ++iter) {
+      if (FindCssText(*iter, css_text)) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+std::optional<std::string> ExtractInlineCSSText(const std::string& response) {
+  rapidjson::Document document;
+  document.Parse(response.c_str());
+  if (document.HasParseError()) {
+    LOGE("ExtractInlineCSSText parse error: "
+         << rapidjson::GetParseError_En(document.GetParseError())
+         << ", offset: " << document.GetErrorOffset()
+         << ", response: " << response.substr(0, 512));
+    return std::nullopt;
+  }
+  std::string css_text;
+  if (!FindCssText(document, css_text)) {
+    LOGW("ExtractInlineCSSText cssText not found, response: "
+         << response.substr(0, 512));
+    return std::nullopt;
+  }
+  return css_text;
+}
+
+}  // namespace
+
+struct EventDispatcher::WeakFlag {
+  explicit WeakFlag(EventDispatcher* dispatcher) : dispatcher(dispatcher) {}
+  std::atomic<EventDispatcher*> dispatcher;
+};
 
 static void* GetGestureInterrupterGetUserDataFunc() {
   if (OH_GetSdkApiVersion() < kGestureInterrupterUserDataSupportVersion) {
@@ -178,7 +295,8 @@ void EventDispatcher::EventTargetDetail::SetPrePoint(float pre_point[2]) {
   pre_point_[1] = pre_point[1];
 }
 
-EventDispatcher::EventDispatcher(UIOwner* ui_owner) : ui_owner_(ui_owner) {
+EventDispatcher::EventDispatcher(UIOwner* ui_owner)
+    : ui_owner_(ui_owner), weak_flag_(std::make_shared<WeakFlag>(this)) {
   NodeManager::Instance().SetEventDispatcher(this);
   velocity_tracker_pan_gesture_ =
       NodeManager::Instance().CreatePanGesture(1, GESTURE_DIRECTION_ALL, 0);
@@ -206,6 +324,9 @@ EventDispatcher::EventDispatcher(UIOwner* ui_owner) : ui_owner_(ui_owner) {
 }
 
 EventDispatcher::~EventDispatcher() {
+  if (weak_flag_) {
+    weak_flag_->dispatcher.store(nullptr, std::memory_order_release);
+  }
   NodeManager::Instance().SetEventDispatcher(nullptr);
   if (long_press_gesture_) {
     NodeManager::Instance().DisposeGesture(long_press_gesture_);
@@ -327,7 +448,11 @@ void EventDispatcher::InitTouchEnv(const ArkUI_UIInputEvent* event) {
     }
     LOGI("EventDispatcher InitTouchEnv hit target: "
          << best_hittest_target->Sign())
+    ShowMessageOnConsole("EventDispatcher: hit the target with sign = " +
+                             std::to_string(best_hittest_target->Sign()),
+                         runtime::CONSOLE_LOG_INFO);
     if (IsPrimaryInput(event, OH_ArkUI_PointerEvent_GetPointerId(event, i))) {
+      InspectHitTarget(best_hittest_target);
       first_finger_down_point_[0] = 0;
       first_finger_down_point_[1] = 0;
       first_active_target_ = best_hittest_target->WeakTarget();
@@ -842,6 +967,11 @@ void EventDispatcher::EventDispatcher::OnTouchEvent(
     float active_y = OH_ArkUI_PointerEvent_GetY(event);
     LOGI("EventDispatcher OnTouchEvent down x:" << active_x
                                                 << ", y:" << active_y)
+    ShowMessageOnConsole(
+        "EventDispatcher: receive touch for lynx " + ui_owner_->Id() +
+            ", touch: " + std::to_string(UI_TOUCH_EVENT_ACTION_DOWN) + " x: " +
+            std::to_string(active_x) + " y: " + std::to_string(active_y),
+        runtime::CONSOLE_LOG_INFO);
     from_overlay_ = from_overlay;
     root_target_ = root->weak_from_this();
     HandleTouchDown(event);
@@ -858,11 +988,27 @@ void EventDispatcher::EventDispatcher::OnTouchEvent(
       }
       case UI_TOUCH_EVENT_ACTION_UP: {
         event_name = TouchEvent::UP;
+        float active_x = OH_ArkUI_PointerEvent_GetX(event);
+        float active_y = OH_ArkUI_PointerEvent_GetY(event);
+        ShowMessageOnConsole(
+            "EventDispatcher: receive touch for lynx " + ui_owner_->Id() +
+                ", touch: " + std::to_string(UI_TOUCH_EVENT_ACTION_UP) +
+                " x: " + std::to_string(active_x) +
+                " y: " + std::to_string(active_y),
+            runtime::CONSOLE_LOG_INFO);
         HandleTouchUp(event);
         break;
       }
       case UI_TOUCH_EVENT_ACTION_CANCEL: {
         event_name = TouchEvent::CANCEL;
+        float active_x = OH_ArkUI_PointerEvent_GetX(event);
+        float active_y = OH_ArkUI_PointerEvent_GetY(event);
+        ShowMessageOnConsole(
+            "EventDispatcher: receive touch for lynx " + ui_owner_->Id() +
+                ", touch: " + std::to_string(UI_TOUCH_EVENT_ACTION_CANCEL) +
+                " x: " + std::to_string(active_x) +
+                " y: " + std::to_string(active_y),
+            runtime::CONSOLE_LOG_INFO);
         HandleTouchCancel(event);
         break;
       }
@@ -946,11 +1092,19 @@ void EventDispatcher::OnTapEvent(const ArkUI_UIInputEvent* event) {
                              : false;
   if (first_active_target_.expired() || first_touch_moved_ ||
       !can_respond_tap) {
+    ShowMessageOnConsole("EventDispatcher: tap failed due to [target] " +
+                             std::to_string(first_active_target_.expired()) +
+                             ", [move] " + std::to_string(first_touch_moved_) +
+                             ", [gesture] " + std::to_string(!can_respond_tap),
+                         runtime::CONSOLE_LOG_WARNING);
     LOGI("EventDispatcher OnTapEvent tap failed: "
          << first_active_target_.expired() << ", " << first_touch_moved_ << ", "
          << can_respond_tap)
     return;
   }
+  ShowMessageOnConsole("EventDispatcher: fire tap for target " +
+                           std::to_string(first_active_target_.lock()->Sign()),
+                       runtime::CONSOLE_LOG_INFO);
   DispatchSingleTouchEvent(TouchEvent::TAP, event);
 }
 
@@ -1118,6 +1272,91 @@ void EventDispatcher::TraverseAndUpdateHitTestBehavior(
   for (UIBase* child : node->Children()) {
     TraverseAndUpdateHitTestBehavior(child, should_disable);
   }
+}
+
+bool EventDispatcher::IsHighlightTouchEnabled() const {
+  bool lynx_debug_enabled =
+      tasm::DevToolLifecycle::GetInstance().IsEnabled() ||
+      LynxEnv::GetInstance().GetBoolEnv(LynxEnv::kLynxDebugEnabled, false);
+  return lynx_debug_enabled && LynxEnv::GetInstance().GetBoolEnv(
+                                   LynxEnv::kLynxEnableHighlightTouch, false);
+}
+
+void EventDispatcher::InspectHitTarget(EventTarget* active_target) {
+  if (!IsHighlightTouchEnabled() || !active_target || !ui_owner_ ||
+      !ui_owner_->Context()) {
+    return;
+  }
+  auto* context = ui_owner_->Context();
+  if (auto pre_target = pre_target_.lock();
+      pre_target && pre_target_inline_css_text_) {
+    context->InvokeCDPFromSDK(
+        BuildSetAttributesAsTextMessage(pre_target->Sign(),
+                                        *pre_target_inline_css_text_,
+                                        NextRequestId(cdp_request_id_)),
+        [](const std::string&) {});
+    pre_target_.reset();
+    pre_target_inline_css_text_.reset();
+  }
+
+  auto active_target_weak = active_target->WeakTarget();
+  int active_sign = active_target->Sign();
+  uint64_t sequence =
+      inspect_hit_target_sequence_.fetch_add(1, std::memory_order_relaxed) + 1;
+  std::weak_ptr<WeakFlag> weak_flag = weak_flag_;
+  auto ui_task_runner = context->GetUITaskRunner();
+  context->InvokeCDPFromSDK(
+      BuildGetInlineStylesForNodeMessage(active_sign,
+                                         NextRequestId(cdp_request_id_)),
+      [weak_flag, ui_task_runner, active_target_weak, active_sign,
+       sequence](const std::string& result) {
+        if (!ui_task_runner) {
+          return;
+        }
+        fml::TaskRunner::RunNowOrPostTask(
+            ui_task_runner,
+            [weak_flag, active_target_weak, active_sign, result, sequence]() {
+              auto flag = weak_flag.lock();
+              auto* dispatcher =
+                  flag ? flag->dispatcher.load(std::memory_order_acquire)
+                       : nullptr;
+              if (!dispatcher) {
+                return;
+              }
+              dispatcher->ApplyHitTargetStyle(active_target_weak, active_sign,
+                                              result, sequence);
+            });
+      });
+}
+
+void EventDispatcher::ApplyHitTargetStyle(
+    std::weak_ptr<EventTarget> active_target, int active_sign,
+    const std::string& inline_style_response, uint64_t sequence) {
+  if (sequence !=
+          inspect_hit_target_sequence_.load(std::memory_order_relaxed) ||
+      !ui_owner_ || !ui_owner_->Context()) {
+    return;
+  }
+  auto css_text = ExtractInlineCSSText(inline_style_response);
+  if (!css_text) {
+    return;
+  }
+  pre_target_inline_css_text_ = *css_text;
+  pre_target_ = std::move(active_target);
+  std::string highlight_css_text =
+      AppendHitTargetStyle(*pre_target_inline_css_text_);
+  ui_owner_->Context()->InvokeCDPFromSDK(
+      BuildSetAttributesAsTextMessage(active_sign, highlight_css_text,
+                                      NextRequestId(cdp_request_id_)),
+      [](const std::string&) {});
+}
+
+void EventDispatcher::ShowMessageOnConsole(const std::string& message,
+                                           int32_t level) const {
+  if (!IsHighlightTouchEnabled() || !ui_owner_ || !ui_owner_->Context()) {
+    return;
+  }
+  ui_owner_->Context()->ShowMessageOnConsole(message, level);
 }
 
 }  // namespace harmony

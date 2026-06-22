@@ -55,6 +55,10 @@ class LynxDevToolSetModule : public runtime::LynxNativeModule {
       std::unique_ptr<pub::Value> args, const runtime::CallbackMap &callbacks);
   std::unique_ptr<pub::Value> SwitchLongPressMenu(
       std::unique_ptr<pub::Value> args, const runtime::CallbackMap &callbacks);
+  std::unique_ptr<pub::Value> IsHighlightTouchEnabled(
+      std::unique_ptr<pub::Value> args, const runtime::CallbackMap &callbacks);
+  std::unique_ptr<pub::Value> SwitchHighlightTouch(
+      std::unique_ptr<pub::Value> args, const runtime::CallbackMap &callbacks);
 
   void Destroy() override;
 

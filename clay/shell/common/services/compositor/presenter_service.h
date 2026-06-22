@@ -46,10 +46,10 @@ class PresenterService
   virtual void DisposeOverlay(PlatformOverlay &overlay) = 0;
 
   virtual void CompositePlatformView(int64_t id,
-                                     const EmbeddedViewParams &params) = 0;
-  virtual void BringPlatformViewToFront(int64_t id) = 0;
-  virtual void DisposePlatformView(int64_t id) = 0;
-  virtual void HidePlatformView(int64_t id) = 0;
+                                     const EmbeddedViewParams &params) {}
+  virtual void BringPlatformViewToFront(int64_t id) {}
+  virtual void DisposePlatformView(int64_t id) {}
+  virtual void HidePlatformView(int64_t id) {}
 
   std::vector<int64_t> GetPlatformViewsToDispose(
       const std::vector<int64_t> &composition_order);

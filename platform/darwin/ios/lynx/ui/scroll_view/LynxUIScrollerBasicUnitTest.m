@@ -204,12 +204,12 @@
   XCTAssert(scroller.view.contentOffset.x > 0);
 
   [LynxUIMethodProcessor invokeMethod:@"autoScroll"
-                           withParams:@{@"start" : @YES, @"rate" : @1000}
+                           withParams:@{@"start" : @YES, @"rate" : @2000}
                            withResult:callBack
                                 forUI:scroller];
   XCTestExpectation *expectationReachEnd =
       [self expectationWithDescription:@"Testing auto scroll hit the border and stop"];
-  dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 1 * NSEC_PER_SEC), dispatch_get_main_queue(), ^{
+  dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 2 * NSEC_PER_SEC), dispatch_get_main_queue(), ^{
     [expectationReachEnd fulfill];
   });
   [self waitForExpectations:@[ expectationReachEnd ] timeout:3];
@@ -255,12 +255,12 @@
   XCTAssert(scroller.view.contentOffset.y > 0);
 
   [LynxUIMethodProcessor invokeMethod:@"autoScroll"
-                           withParams:@{@"start" : @YES, @"rate" : @1000}
+                           withParams:@{@"start" : @YES, @"rate" : @2000}
                            withResult:callBack
                                 forUI:scroller];
   XCTestExpectation *expectationReachEnd =
       [self expectationWithDescription:@"Testing auto scroll hit the border and stop"];
-  dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 1 * NSEC_PER_SEC), dispatch_get_main_queue(), ^{
+  dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 2 * NSEC_PER_SEC), dispatch_get_main_queue(), ^{
     [expectationReachEnd fulfill];
   });
   [self waitForExpectations:@[ expectationReachEnd ] timeout:3];

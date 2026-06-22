@@ -5,7 +5,6 @@
 package com.lynx.tasm.service;
 
 import android.content.Context;
-import android.view.ViewGroup;
 import androidx.annotation.Keep;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -57,19 +56,19 @@ public interface ILynxDevToolService extends IServiceProvider {
    */
   void enableAllSessions();
 
-  // Preset boolean values indicating whether certain features are enabled by default.
+  // Deprecated compatibility accessors for DevTool bootstrap settings.
   //
   // Note:
   // - These methods can be called before `LynxEnv` initialization.
   // - Calling `setLynxDebugPresetValue(true)` does not initialize `LynxDevToolEnv`. If `LynxEnv`
   // has already been initialized and you need to initialize `LynxDevToolEnv`, please call
   // `LynxEnv.inst().enableLynxDebug(true)`.
-  boolean getLynxDebugPresetValue();
-  void setLynxDebugPresetValue(boolean value);
-  boolean getLogBoxPresetValue();
-  void setLogBoxPresetValue(boolean value);
-  boolean getLoadQJSBridge();
-  void setLoadQJSBridge(boolean value);
-  boolean getLoadV8Bridge();
-  void setLoadV8Bridge(boolean value);
+  @Deprecated boolean getLynxDebugPresetValue();
+  @Deprecated void setLynxDebugPresetValue(boolean value);
+  @Deprecated boolean getLogBoxPresetValue();
+  @Deprecated void setLogBoxPresetValue(boolean value);
+  @Deprecated boolean getLoadQJSBridge();
+  @Deprecated void setLoadQJSBridge(boolean value);
+  @Deprecated boolean getLoadV8Bridge();
+  @Deprecated void setLoadV8Bridge(boolean value);
 }

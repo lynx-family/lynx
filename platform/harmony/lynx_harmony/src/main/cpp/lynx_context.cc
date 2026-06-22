@@ -4,6 +4,8 @@
 
 #include "platform/harmony/lynx_harmony/src/main/cpp/lynx_context.h"
 
+#include <chrono>
+#include <mutex>
 #include <utility>
 
 #include "base/include/closure.h"
@@ -215,6 +217,46 @@ void LynxContext::SendGlobalEvent(lepus::Value params) const {
     return;
   }
   CallJSFunction("GlobalEventEmitter", "emit", std::move(params));
+}
+
+void LynxContext::SetConsoleMessageCallback(ConsoleMessageCallback callback) {
+  std::lock_guard<std::mutex> guard(console_message_callback_mutex_);
+  console_message_callback_ = std::move(callback);
+}
+
+void LynxContext::ShowMessageOnConsole(const std::string& message,
+                                       int32_t level) const {
+  ConsoleMessageCallback callback;
+  {
+    std::lock_guard<std::mutex> guard(console_message_callback_mutex_);
+    callback = console_message_callback_;
+  }
+  if (!callback) {
+    return;
+  }
+  auto time_stamp = std::chrono::duration_cast<std::chrono::milliseconds>(
+                        std::chrono::system_clock::now().time_since_epoch())
+                        .count();
+  callback(message, level, time_stamp);
+}
+
+void LynxContext::SetInvokeCDPFromSDKCallback(
+    InvokeCDPFromSDKCallback callback) {
+  std::lock_guard<std::mutex> guard(invoke_cdp_from_sdk_callback_mutex_);
+  invoke_cdp_from_sdk_callback_ = std::move(callback);
+}
+
+void LynxContext::InvokeCDPFromSDK(const std::string& cdp_msg,
+                                   CDPResultCallback callback) const {
+  InvokeCDPFromSDKCallback cdp_callback;
+  {
+    std::lock_guard<std::mutex> guard(invoke_cdp_from_sdk_callback_mutex_);
+    cdp_callback = invoke_cdp_from_sdk_callback_;
+  }
+  if (!cdp_callback) {
+    return;
+  }
+  cdp_callback(cdp_msg, std::move(callback));
 }
 
 void LynxContext::SetEnableEventThrough(bool enable_event_through) {

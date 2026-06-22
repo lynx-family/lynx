@@ -7,7 +7,9 @@
 
 #include <node_api.h>
 
+#include <atomic>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -45,6 +47,9 @@ namespace tasm {
 class LynxTemplateBundle;
 class TemplateData;
 class PageConfig;
+namespace harmony {
+class LynxContext;
+}  // namespace harmony
 }  // namespace tasm
 
 namespace harmony {
@@ -229,10 +234,12 @@ class LynxTemplateRenderer : public devtool::LynxDevToolProxy {
   struct WeakFlag : public std::enable_shared_from_this<WeakFlag> {
     explicit WeakFlag(LynxTemplateRenderer* template_renderer)
         : renderer(template_renderer) {}
-    LynxTemplateRenderer* renderer;
+    std::atomic<LynxTemplateRenderer*> renderer;
   };
 
  private:
+  void SyncInspectorOwnerToLynxContext();
+
   void MergeGlobalProps(lepus::Value global_props);
   void SetupExtensionDelegate(pub::LynxExtensionDelegate* delegate);
   std::vector<uint8_t> LoadJSSource(const std::string& url);
@@ -250,10 +257,12 @@ class LynxTemplateRenderer : public devtool::LynxDevToolProxy {
   std::shared_ptr<shell::LynxLayoutProxy> layout_proxy_;
   std::shared_ptr<shell::PerfControllerProxy> perf_controller_proxy_;
   std::shared_ptr<shell::LynxShell> shell_;
-  tasm::UIDelegate* ui_delegate_;
+  tasm::UIDelegate* ui_delegate_{nullptr};
   std::shared_ptr<LynxResourceLoaderHarmony> resource_loader_;
+  std::weak_ptr<tasm::harmony::LynxContext> lynx_context_;
   std::shared_ptr<WeakFlag> weak_flag_;
-  devtool::LynxInspectorOwner* inspector_owner_ = nullptr;
+  std::mutex inspector_owner_mutex_;
+  std::atomic<devtool::LynxInspectorOwner*> inspector_owner_{nullptr};
   std::unordered_map<int32_t, napi_ref> session_storage_callback_refs_;
 };
 

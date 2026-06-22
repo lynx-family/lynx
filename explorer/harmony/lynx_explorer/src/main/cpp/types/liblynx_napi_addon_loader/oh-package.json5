@@ -1,0 +1,6 @@
+{
+  "name": "liblynx_napi_addon_loader.so",
+  "types": "./index.d.ts",
+  "version": "1.0.0",
+  "description": "lynx node api addon loader"
+}

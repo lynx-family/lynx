@@ -853,4 +853,43 @@ public class DisplayListApplierTest {
     verify(mockCanvas).clipPath(any(android.graphics.Path.class));
     verify(mockCanvas).restore();
   }
+
+  /**
+   * Tests OP_BOX_SHADOW operation processing.
+   * Verifies that the applier reads the updated BoxShadow parameter layout
+   * (4 ints and 1 float, without offset_x/offset_y) and draws the shadow.
+   *
+   * <p>Test Data Layout:
+   * <pre>
+   * ops = {0, 11, 11, 13, 1}        // OP_BEGIN, RECORD_BOX, RECORD_BOX, OP_BOX_SHADOW, OP_END
+   * iArgv = {2,4,0,VIEW_TYPE, 0,4, 0,4, 4,1,0,1,0xFF000000,0, 0,0}
+   * fArgv = {0f,0f,100f,100f, 5f,5f,110f,110f, 0f,0f,100f,100f, 5f}
+   * </pre>
+   */
+  @Test
+  public void testOpBoxShadow() {
+    testDisplayList.ops =
+        new int[] {0, 11, 11, 13, 1}; // OP_BEGIN, RECORD_BOX, RECORD_BOX, OP_BOX_SHADOW, OP_END
+    testDisplayList.iArgv = new int[] {
+        2, 4, 0, VIEW_TYPE, // OP_BEGIN: 2 int, 4 float
+        0, 4, // OP_RECORD_BOX (shadow box): 0 int, 4 float
+        0, 4, // OP_RECORD_BOX (clip box): 0 int, 4 float
+        4, 1, 0, 1, 0xFF000000, 0, // OP_BOX_SHADOW: 4 int, 1 float
+        0, 0 // OP_END
+    };
+    testDisplayList.fArgv = new float[] {
+        0f, 0f, 100f, 100f, // OP_BEGIN bounds
+        5f, 5f, 110f, 110f, // shadow box
+        0f, 0f, 100f, 100f, // clip box
+        5f // blur radius
+    };
+
+    displayListApplier.setDisplayList(testDisplayList);
+    displayListApplier.drawTillNextView(mockCanvas);
+
+    verify(mockCanvas, times(2)).save();
+    verify(mockCanvas).drawPath(any(android.graphics.Path.class), any(Paint.class));
+    verify(mockCanvas).restoreToCount(anyInt());
+    verify(mockCanvas).restore();
+  }
 }

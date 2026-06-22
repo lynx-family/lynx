@@ -2,10 +2,53 @@
   "name": "offset-rotate",
   "id": 216,
   "type": "complex",
-  "default_value": "",
-  "version": "3.2",
+  "default_value": "auto",
+  "version": "3.3",
   "author": "wangyifei.20010605",
   "consumption_status": "skip",
-  "desc": "",
-  "is_shorthand": false
+  "desc": "The `offset-rotate` CSS property defines the orientation of an element as it is positioned along an offset path.",
+  "is_shorthand": false,
+  "formal_syntax": "[ auto | reverse ] || <angle>",
+  "compat_data": {
+    "offset-rotate": {
+      "__compat": {
+        "lynx_path": "api/css/properties/offset-rotate",
+        "mdn_url": "https://developer.mozilla.org/en-US/docs/Web/CSS/offset-rotate",
+        "spec_url": [],
+        "status": {
+          "deprecated": false,
+          "experimental": false
+        },
+        "support": {
+          "android": {
+            "version_added": "3.3",
+            "notes": "Lynx supports `[ auto | reverse ] || <angle>` syntax, such as `auto 90deg` and `reverse`, since Lynx 4.1."
+          },
+          "ios": {
+            "version_added": "3.3",
+            "notes": "Lynx supports `[ auto | reverse ] || <angle>` syntax, such as `auto 90deg` and `reverse`, since Lynx 4.1."
+          },
+          "harmony": {
+            "version_added": "3.8",
+            "notes": "Lynx supports `[ auto | reverse ] || <angle>` syntax, such as `auto 90deg` and `reverse`, since Lynx 4.1."
+          },
+          "clay_android": {
+            "version_added": false
+          },
+          "clay_ios": {
+            "version_added": false
+          },
+          "clay_macos": {
+            "version_added": false
+          },
+          "clay_windows": {
+            "version_added": false
+          },
+          "web_lynx": {
+            "version_added": true
+          }
+        }
+      }
+    }
+  }
 }

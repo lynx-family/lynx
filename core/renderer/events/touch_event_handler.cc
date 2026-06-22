@@ -674,7 +674,9 @@ void TouchEventHandler::HandleTriggerComponentEvent(
         static_cast<event::Event::Capture>(capture_phase),
         static_cast<event::Event::Bubbles>(bubbles),
         event::Event::Cancelable::kYes,
-        static_cast<event::Event::ComposedMode>(composed));
+        static_cast<event::Event::ComposedMode>(composed),
+        event::Event::PhaseType::kNone,
+        base::Version(version_) < base::Version(LYNX_VERSION_1_6));
     event->set_from_frontend(true);
     event::EventDispatcher::DispatchEvent(*component_element, std::move(event));
     return;

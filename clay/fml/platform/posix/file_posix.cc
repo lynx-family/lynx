@@ -177,9 +177,13 @@ bool UnlinkFile(const fml::UniqueFD& base_directory, const char* path) {
 }
 
 bool FileExists(const fml::UniqueFD& base_directory, const char* path) {
+#if !OS_MAC
+  // On macOS, fml::UniqueFD{AT_FDCWD} cannot be checked with is_valid() when
+  // used as base_directory.
   if (!base_directory.is_valid()) {
     return false;
   }
+#endif
 
   return ::faccessat(base_directory.get(), path, F_OK, 0) == 0;
 }

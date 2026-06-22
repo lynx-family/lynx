@@ -5,19 +5,15 @@
 #ifndef CLAY_SHELL_PLATFORM_HEADLESS_GL_CLAY_HEADLESS_RENDERER_HOST_GL_H_
 #define CLAY_SHELL_PLATFORM_HEADLESS_GL_CLAY_HEADLESS_RENDERER_HOST_GL_H_
 
+#include <atomic>
 #include <memory>
 
 #include "base/include/fml/thread.h"
-#ifndef ENABLE_SKITY
-#include "clay/shell/gpu/gpu_surface_gl_skia.h"
-#endif
 #include "clay/shell/platform/headless/gl/clay_headless_renderer_gl.h"
 
 namespace clay {
 class SharedImageSink;
-#ifdef ENABLE_SKITY
 class HostGLRenderer;
-#endif
 }  // namespace clay
 
 namespace clay {
@@ -43,10 +39,10 @@ class ClayHeadlessRendererHostGL final : public ClayHeadlessRendererGL {
 };
 
 // In this mode, we create a "fake" render thread
-// which create skia environment from host gl.
+// which blits shared image CPU readback with host GL.
 // The render thread takes the front buffer of shared_image_sink_,
 // calling `ReadbackToMemory` to get the pixel data,
-// and draw the pixel data to SkSurface in host gl.
+// and draws the pixel data to the host framebuffer with raw GL.
 class ClayHeadlessRendererSharedImageHostGL final
     : public ClayHeadlessRenderer,
       public GPUSurfaceGLDelegate {
@@ -94,13 +90,20 @@ class ClayHeadlessRendererSharedImageHostGL final
 
  private:
   void Draw();
+  // Synchronously destroys |host_gl_renderer_| on |host_gl_thread_|.
+  //
+  // Thread/Blocking semantics:
+  // - May block the calling thread until destruction completes.
+  // - Must be called before |host_gl_thread_| starts shutting down.
+  // - If already on |host_gl_thread_|, destruction runs inline to avoid
+  //   self-wait deadlock.
+  // - Otherwise this posts to |host_gl_thread_| and waits for completion.
+  void DestroyHostGLRendererSync();
+  void DestroyHostGLRendererOnHostThread();
 
   fml::Thread host_gl_thread_;
-#ifdef ENABLE_SKITY
+  std::shared_ptr<std::atomic_bool> draw_tasks_enabled_;
   std::unique_ptr<HostGLRenderer> host_gl_renderer_;
-#else
-  std::unique_ptr<GPUSurfaceGLSkia> host_gl_surface_;
-#endif
   fml::RefPtr<clay::SharedImageSink> shared_image_sink_;
   std::mutex shared_image_sink_mutex_;
   std::unique_ptr<ClayHeadlessRenderer> renderer_;

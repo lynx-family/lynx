@@ -37,7 +37,7 @@ void DevToolSettingsEmbedder::SyncToNative() {
  * Default: false
  */
 bool DevToolSettingsEmbedder::IsDevToolEnabled() const {
-  return GetBooleanForMigration(tasm::LynxEnv::kLynxDevToolEnable, false);
+  return GetPersistedBoolean(tasm::LynxEnv::kLynxDevToolEnable, false);
 }
 
 void DevToolSettingsEmbedder::SetDevToolEnabled(bool enabled) {
@@ -51,7 +51,7 @@ void DevToolSettingsEmbedder::SetDevToolEnabled(bool enabled) {
  * Default: true
  */
 bool DevToolSettingsEmbedder::IsLogBoxEnabled() const {
-  return GetBooleanForMigration(tasm::LynxEnv::kLynxEnableLogBox, true);
+  return GetPersistedBoolean(tasm::LynxEnv::kLynxEnableLogBox, true);
 }
 
 void DevToolSettingsEmbedder::SetLogBoxEnabled(bool enabled) {
@@ -65,7 +65,7 @@ void DevToolSettingsEmbedder::SetLogBoxEnabled(bool enabled) {
  * Default: true
  */
 bool DevToolSettingsEmbedder::IsQuickJSDebugEnabled() const {
-  return GetBooleanForMigration(tasm::LynxEnv::kLynxEnableQuickJS, true);
+  return GetPersistedBoolean(tasm::LynxEnv::kLynxEnableQuickJS, true);
 }
 
 void DevToolSettingsEmbedder::SetQuickJSDebugEnabled(bool enabled) {
@@ -79,7 +79,7 @@ void DevToolSettingsEmbedder::SetQuickJSDebugEnabled(bool enabled) {
  * Default: true
  */
 bool DevToolSettingsEmbedder::IsDOMTreeEnabled() const {
-  return GetBooleanForMigration(tasm::LynxEnv::kLynxEnableDomTree, true);
+  return GetPersistedBoolean(tasm::LynxEnv::kLynxEnableDomTree, true);
 }
 
 void DevToolSettingsEmbedder::SetDOMTreeEnabled(bool enabled) {
@@ -93,7 +93,7 @@ void DevToolSettingsEmbedder::SetDOMTreeEnabled(bool enabled) {
  * Default: false
  */
 bool DevToolSettingsEmbedder::IsLongPressMenuEnabled() const {
-  return GetBooleanForMigration(tasm::LynxEnv::kLynxEnableLongPressMenu, false);
+  return GetPersistedBoolean(tasm::LynxEnv::kLynxEnableLongPressMenu, false);
 }
 
 void DevToolSettingsEmbedder::SetLongPressMenuEnabled(bool enabled) {
@@ -107,7 +107,7 @@ void DevToolSettingsEmbedder::SetLongPressMenuEnabled(bool enabled) {
  * Default: true
  */
 bool DevToolSettingsEmbedder::IsLaunchRecordEnabled() const {
-  return GetBooleanForMigration(tasm::LynxEnv::kLynxEnableLaunchRecord, true);
+  return GetPersistedBoolean(tasm::LynxEnv::kLynxEnableLaunchRecord, true);
 }
 
 void DevToolSettingsEmbedder::SetLaunchRecordEnabled(bool enabled) {
@@ -122,7 +122,7 @@ void DevToolSettingsEmbedder::SetLaunchRecordEnabled(bool enabled) {
  * Default: true
  */
 bool DevToolSettingsEmbedder::IsV8Enabled() const {
-  return GetBooleanForMigration(tasm::LynxEnv::kLynxEnableV8, true);
+  return GetPersistedBoolean(tasm::LynxEnv::kLynxEnableV8, true);
 }
 
 void DevToolSettingsEmbedder::SetV8Enabled(bool enabled) {
@@ -139,32 +139,6 @@ bool DevToolSettingsEmbedder::GetPersistedBoolean(const std::string& key,
 void DevToolSettingsEmbedder::SetPersistedBoolean(const std::string& key,
                                                   bool value) {
   SwitchPersist::SetValueToPersistent(key, value);
-}
-
-bool DevToolSettingsEmbedder::GetBooleanForMigration(const std::string& key,
-                                                     bool default_value) const {
-  // TODO(mitchilling): Replace this helper with Settings-owned cached values.
-  // Today these getters read native env first if the key already exists because
-  // NodeLynx/Linux still has a stub SwitchPersist: after
-  // setDevtoolSwitch("enable_devtool", true), reading persistence would return
-  // the default false and DevTool would not be created. This keeps the old
-  // SetBoolLocalEnv/GetBoolEnv read-after-write behavior during rollout without
-  // doing persistence IO on every getter call after native env is synced.
-  //
-  // Final cleanup:
-  // 1. Add member variables for each setting in DevToolSettingsEmbedder.
-  // 2. Initialize those members once from SwitchPersist with each setting's
-  //    documented default value.
-  // 3. Make getters return only those member variables.
-  // 4. Make setters update the member variable, persist it, and sync it to
-  //    native env.
-  // 5. Then remove native-first reads; native env should become only a sync
-  //    target, not a Settings data source.
-  auto& env = tasm::LynxEnv::GetInstance();
-  if (env.ContainKey(key)) {
-    return env.GetBoolEnv(key, default_value);
-  }
-  return GetPersistedBoolean(key, default_value);
 }
 
 void DevToolSettingsEmbedder::SyncBooleanToNative(const std::string& key,

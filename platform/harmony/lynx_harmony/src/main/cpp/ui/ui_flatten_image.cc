@@ -273,33 +273,44 @@ void UIFlattenImage::LoadImageWithTransform(const std::string& url,
   }
 }
 
-void UIFlattenImage::LoadImageFromURL(bool is_src) {
+bool UIFlattenImage::LoadImageFromURL(bool is_src) {
   const std::string& url = is_src ? src_ : place_holder_;
   bool is_base64 = base::BeginsWith(url, image::kBase64Scheme);
   bool is_local = base::BeginsWith(url, image::kLocalScheme) ||
                   base::BeginsWith(url, image::kResourceScheme);
   if (is_base64 || is_local) {
     SetImageAttribute(url, is_base64, is_src);
-    return;
+    return true;
   }
 
   if (SkipRedirection()) {
     LoadImageWithTransform(url, is_src);
-    return;
+    return true;
   }
 
   auto resource_loader = context_->GetResourceLoader();
   if (!resource_loader) {
-    return;
+    return true;
   }
+  // Guard against synchronous destruction. During the synchronous call to the
+  // ArkTS function ShouldRedirectUrl, an UpdateMetaData operation might be
+  // inserted, causing the current UIImage instance to be destroyed.
+  auto weak_self = weak_from_this();
   auto request = pub::LynxResourceRequest{url, pub::LynxResourceType::kImage};
   std::string redirect_url = resource_loader->ShouldRedirectUrl(request);
+  if (weak_self.expired()) {
+    LOGE(
+        "UIImage was destroyed during the synchronous ArkTS call to "
+        "ShouldRedirectUrl");
+    return false;
+  }
   if (redirect_url != url) {
     // local resource
     SetImageAttribute(redirect_url, false, is_src);
   } else {
     LoadImageWithTransform(url, is_src);
   }
+  return true;
 }
 
 bool UIFlattenImage::hasAnimationEvent() {
@@ -352,7 +363,9 @@ void UIFlattenImage::OnNodeReady() {
     }
   }
   if ((dirty_flags_ & image::kFlagPlaceholderChanged) != 0) {
-    LoadImageFromURL(false);
+    if (!LoadImageFromURL(false)) {
+      return;
+    }
   }
   if ((dirty_flags_ &
        (image::kFlagSrcChanged | image::kFlagDropShadowChanged |
@@ -360,7 +373,9 @@ void UIFlattenImage::OnNodeReady() {
     if (!defer_src_invalidation_) {
       src_image_drawable_->ResetContent();
     }
-    LoadImageFromURL(true);
+    if (!LoadImageFromURL(true)) {
+      return;
+    }
   }
   dirty_flags_ = 0;
 }

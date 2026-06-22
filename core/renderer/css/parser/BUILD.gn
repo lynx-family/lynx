@@ -46,6 +46,7 @@ unittest_set("css_parser_testset") {
     "list_gap_handler_unittest.cc",
     "mask_composite_handler_unittest.cc",
     "number_handler_unittest.cc",
+    "offset_distance_handler_unittest.cc",
     "shadow_handler_unittest.cc",
     "string_handler_unittest.cc",
     "text_decoration_handler_unittest.cc",

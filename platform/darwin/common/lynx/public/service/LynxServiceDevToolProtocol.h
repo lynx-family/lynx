@@ -23,15 +23,12 @@ typedef void (^LynxOpenCardCallback)(NSString *);
 
 @required
 
-// Preset boolean values indicating whether certain features are enabled by default.
-//
-// Note:
-// - Services are registered during `LynxEnv` initialization, so these values should only be set
-// after `LynxEnv` has been initialized.
-// - Setting `lynxDebugPresetValue` to `YES` does not initialize `LynxDevToolEnv`. If you need to
-// initialize `LynxDevToolEnv`, please call `[[LynxEnv sharedInstance] setLynxDebugEnabled: YES]`.
-@property(nonatomic, readwrite) BOOL lynxDebugPresetValue;
-@property(nonatomic, readwrite) BOOL logBoxPresetValue;
+// Deprecated compatibility APIs for bootstrap defaults.
+// Use [DevToolSettings sharedInstance].bootstrap instead.
+@property(nonatomic, readwrite) BOOL lynxDebugPresetValue
+    __attribute__((deprecated("Use [DevToolSettings sharedInstance].bootstrap.lynxDebugEnabled")));
+@property(nonatomic, readwrite) BOOL logBoxPresetValue
+    __attribute__((deprecated("Use [DevToolSettings sharedInstance].bootstrap.logBoxEnabled")));
 
 - (id<LynxBaseInspectorController>)createInspectorOwnerWithLynxView:(LynxView *)lynxView
                                                          debuggable:(BOOL)debuggable;

@@ -11,19 +11,20 @@
 
 #include "base/trace/native/trace_event.h"
 #include "clay/flow/embedded_views.h"
-#include "clay/fml/logging.h"
 #include "clay/gfx/rendering_backend.h"
 
 namespace clay {
 
-std::unordered_map<int64_t, skity::Rect> SliceViews(
+std::vector<OverlayData> SliceViews(
     clay::GrCanvas* background_canvas,
     const std::vector<int64_t>& composition_order,
     const std::unordered_map<int64_t, std::unique_ptr<EmbedderViewSlice>>&
         slices,
-    const std::unordered_map<int64_t, skity::Rect>& view_rects) {
+    const std::unordered_map<int64_t, std::unique_ptr<EmbeddedViewParams>>&
+        view_params) {
   TRACE_EVENT("clay", "SliceViews");
-  std::unordered_map<int64_t, skity::Rect> overlay_layers;
+  std::vector<OverlayData> overlay_layers;
+  int64_t overlay_id = 0;
 
   auto current_frame_view_count = composition_order.size();
 
@@ -41,75 +42,92 @@ std::unordered_map<int64_t, skity::Rect> SliceViews(
 
     slice->end_recording();
 
+    EmbeddedViewParams* params = nullptr;
+    if (view_params.find(view_id) != view_params.end()) {
+      params = view_params.at(view_id).get();
+    }
+    if (params == nullptr) {
+      continue;
+    }
+
     skity::Rect full_joined_rect = skity::Rect::MakeEmpty();
-
-    // Determinate if Flutter UI intersects with any of the previous
-    // platform views stacked by z position.
-    //
-    // This is done by querying the r-tree that holds the records for the
-    // picture recorder corresponding to the flow layers added after a platform
-    // view layer.
-    for (int j = i; j >= 0; j--) {
-      int64_t current_view_id = composition_order[j];
-      auto maybe_rect = view_rects.find(current_view_id);
-      FML_DCHECK(maybe_rect != view_rects.end());
-      if (maybe_rect == view_rects.end()) {
-        continue;
-      }
-
-      skity::Rect current_view_rect = maybe_rect->second;
-      skity::Rect rounded_in_platform_view_rect = current_view_rect;
-      rounded_in_platform_view_rect.RoundIn();
-
-      // Each rect corresponds to a native view that renders Flutter UI.
-      std::list<skity::Rect> intersection_rects =
-          slice->searchNonOverlappingDrawnRects(current_view_rect);
-
-      // Ignore intersections of single width/height on the edge of the platform
-      // view.
-      // This is to address the following performance issue when interleaving
-      // adjacent platform views and layers: Since we `roundOut` both platform
-      // view rects and the layer rects, as long as the coordinate is
-      // fractional, there will be an intersection of a single pixel width (or
-      // height) after rounding out, even if they do not intersect before
-      // rounding out. We have to round out both platform view rect and the
-      // layer rect. Rounding in platform view rect will result in missing pixel
-      // on the intersection edge. Rounding in layer rect will result in missing
-      // pixel on the edge of the layer on top of the platform view.
-      for (auto it = intersection_rects.begin(); it != intersection_rects.end();
-           /*no-op*/) {
-        // If intersection_rect does not intersect with the *rounded in*
-        // platform view rect, then the intersection must be a single pixel
-        // width (or height) on edge.
-        if (!skity::Rect::Intersect(*it, rounded_in_platform_view_rect)) {
-          it = intersection_rects.erase(it);
-        } else {
-          ++it;
-        }
-      }
-
-      // Limit the number of native views, so it doesn't grow forever.
+    if (params->NeedsOverlayLayer()) {
+      full_joined_rect = params->finalBoundingRect();
+    } else {
+      // Determinate if Flutter UI intersects with any of the previous
+      // platform views stacked by z position.
       //
-      // In this case, the rects are merged into a single one that is the union
-      // of all the rects.
-      skity::Rect partial_joined_rect = skity::Rect::MakeEmpty();
-      for (const skity::Rect& rect : intersection_rects) {
-        partial_joined_rect.Join(rect);
-      }
+      // This is done by querying the r-tree that holds the records for the
+      // picture recorder corresponding to the flow layers added after a
+      // platform view layer.
+      for (int j = i; j >= 0; j--) {
+        int64_t current_view_id = composition_order[j];
+        EmbeddedViewParams* current_view_params = nullptr;
+        if (view_params.find(current_view_id) != view_params.end()) {
+          current_view_params = view_params.at(current_view_id).get();
+        }
+        if (current_view_params == nullptr ||
+            current_view_params->NeedsOverlayLayer()) {
+          continue;
+        }
 
-      current_view_rect.RoundOut();
-      // Get the intersection rect with the `current_view_rect`,
-      if (partial_joined_rect.Intersect(current_view_rect)) {
-        // Join the `partial_joined_rect` into `full_joined_rect` to get the
-        // rect above the current `slice`, only if it intersects the indicated
-        // view. This should always be the case because we just deleted any
-        // rects that don't intersect the "rounded-in" view, so they must
-        // all intersect the "rounded-out" view (or the partial join could
-        // be empty in which case this would be a NOP). Either way, the
-        // penalty for not checking the return value of the intersect method
-        // would be to join a non-overlapping rectangle into the overlay
-        // bounds - if the above implementation ever changes - so we check it.
-        full_joined_rect.Join(partial_joined_rect);
+        skity::Rect current_view_rect =
+            current_view_params->finalBoundingRect();
+        skity::Rect rounded_in_platform_view_rect = current_view_rect;
+        rounded_in_platform_view_rect.RoundIn();
+
+        // Each rect corresponds to a native view that renders Flutter UI.
+        std::list<skity::Rect> intersection_rects;
+        intersection_rects =
+            slice->searchNonOverlappingDrawnRects(current_view_rect);
+
+        // Ignore intersections of single width/height on the edge of the
+        // platform view. This is to address the following performance issue
+        // when interleaving adjacent platform views and layers: Since we
+        // `roundOut` both platform view rects and the layer rects, as long as
+        // the coordinate is fractional, there will be an intersection of a
+        // single pixel width (or height) after rounding out, even if they do
+        // not intersect before rounding out. We have to round out both platform
+        // view rect and the layer rect. Rounding in platform view rect will
+        // result in missing pixel on the intersection edge. Rounding in layer
+        // rect will result in missing pixel on the edge of the layer on top of
+        // the platform view.
+        for (auto it = intersection_rects.begin();
+             it != intersection_rects.end();
+             /*no-op*/) {
+          // If intersection_rect does not intersect with the *rounded in*
+          // platform view rect, then the intersection must be a single pixel
+          // width (or height) on edge.
+          if (!skity::Rect::Intersect(*it, rounded_in_platform_view_rect)) {
+            it = intersection_rects.erase(it);
+          } else {
+            ++it;
+          }
+        }
+
+        // Limit the number of native views, so it doesn't grow forever.
+        //
+        // In this case, the rects are merged into a single one that is the
+        // union of all the rects.
+        skity::Rect partial_joined_rect = skity::Rect::MakeEmpty();
+        for (const skity::Rect& rect : intersection_rects) {
+          partial_joined_rect.Join(rect);
+        }
+
+        current_view_rect.RoundOut();
+        // Get the intersection rect with the `current_view_rect`,
+        if (partial_joined_rect.Intersect(current_view_rect)) {
+          // Join the `partial_joined_rect` into `full_joined_rect` to get the
+          // rect above the current `slice`, only if it intersects the indicated
+          // view. This should always be the case because we just deleted any
+          // rects that don't intersect the "rounded-in" view, so they must
+          // all intersect the "rounded-out" view (or the partial join could
+          // be empty in which case this would be a NOP). Either way, the
+          // penalty for not checking the return value of the intersect method
+          // would be to join a non-overlapping rectangle into the overlay
+          // bounds - if the above implementation ever changes - so we check it.
+          full_joined_rect.Join(partial_joined_rect);
+        }
       }
     }
 
@@ -121,7 +139,11 @@ std::unordered_map<int64_t, skity::Rect> SliceViews(
       //
       // For example, {0.3, 0.5, 3.1, 4.7} becomes {0, 0, 4, 5}.
       full_joined_rect.RoundOut();
-      overlay_layers.insert({view_id, full_joined_rect});
+      overlay_layers.push_back(OverlayData{
+          .rect = full_joined_rect,
+          .view_id = view_id,
+          .overlay_id = overlay_id++,
+      });
 
       // Clip the background canvas, so it doesn't contain any of the pixels
       // drawn on the overlay layer.

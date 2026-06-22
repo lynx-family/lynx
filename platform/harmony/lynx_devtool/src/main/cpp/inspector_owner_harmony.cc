@@ -222,6 +222,7 @@ InspectorOwnerHarmony::InspectorOwnerHarmony(napi_env env, napi_value js_ref,
 }
 
 InspectorOwnerHarmony::~InspectorOwnerHarmony() {
+  owner_->DetachProxy();
   napi_delete_reference(env_, ref_);
   owner_->Destroy();
 }

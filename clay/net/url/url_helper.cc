@@ -5,6 +5,7 @@
 #include "clay/net/url/url_helper.h"
 
 #include "base/include/string/string_utils.h"
+#include "clay/fml/file.h"
 
 namespace clay {
 
@@ -43,6 +44,9 @@ UriSchemeType ParseUriScheme(std::string_view uri) {
   Component scheme;
 
   if (!ExtractScheme(uri.data(), uri.size(), &scheme)) {
+    if (fml::IsFile(uri.data())) {
+      return UriSchemeType::kLocalFile;
+    }
     return UriSchemeType::kInvalid;
   }
   std::string scheme_str(uri.data() + scheme.begin, scheme.len);

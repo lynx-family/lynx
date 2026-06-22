@@ -12,6 +12,7 @@ This document provides instructions for building the Lynx Explorer iOS app from 
 The following dependencies are needed:
 
 - Xcode(>=15.0)
+- Cocoapods(>=1.11.3)
 - Python library
 
 We recommend using [Homebrew](https://brew.sh/) to install the dependencies.
@@ -76,10 +77,3 @@ By default, the project doesn't configure the "Team" for signing. If you want to
 3. Update the "Bundle Identifier" from `com.lynx.LynxExplorer` to a unique identifier like `com.<your-name>.LynxExplorer`. This step ensures the identifier is unique and available for your use.
 4. Enable the "Automatically manage signing" option to allow Xcode to handle the app signing process automatically.
 
-### Handle Error when Installing Ruby Gems
-
-When running `./bundle_install.sh` command, if you encounter the following problems: *Bundler::GemNotFound: Your bundle is lock to xxx, but that version could not be found in any of the sources listed in Gemfile...* You can try running the following commands to fix the problem:
-```
-SDKROOT=/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk bundle install
-./bundle_install.sh
-```

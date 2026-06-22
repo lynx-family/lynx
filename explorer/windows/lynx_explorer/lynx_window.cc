@@ -5,6 +5,7 @@
 #include "explorer/windows/lynx_explorer/lynx_window.h"
 
 #include <algorithm>
+#include <cctype>
 #include <cmath>
 #include <cstdint>
 #include <cstring>
@@ -17,6 +18,7 @@
 #include "explorer/windows/lynx_explorer/fetcher/example_generic_resource_fetcher.h"
 #include "explorer/windows/lynx_explorer/httplib/httplib_client.h"
 #include "explorer/windows/lynx_explorer/lynx_window_manager.h"
+#include "explorer/windows/lynx_explorer/module/lynx_node_api_module.h"
 #include "explorer/windows/lynx_explorer/runtime/example_lynx_runtime_lifecycle_observer.h"
 #include "platform/embedder/public/lynx_native_view.h"
 
@@ -116,6 +118,32 @@ std::pair<unsigned int, unsigned int> GetInitialWindowSizeForUrl(
   height = parse_dimension("height", height);
   return {width, height};
 }
+
+bool HasTruthyQueryParam(const std::string &url, const std::string &key) {
+  const std::string bundle_query_separator = ".lynx.bundle?";
+  auto query_pos = url.find(bundle_query_separator);
+  if (query_pos == std::string::npos) {
+    return false;
+  }
+
+  std::string query =
+      url.substr(query_pos + bundle_query_separator.length(), url.size());
+  const std::string key_with_equal = key + "=";
+  auto key_pos = query.find(key_with_equal);
+  while (key_pos != std::string::npos && key_pos != 0 &&
+         query[key_pos - 1] != '&') {
+    key_pos = query.find(key_with_equal, key_pos + 1);
+  }
+  if (key_pos == std::string::npos) {
+    return false;
+  }
+  auto value_start = key_pos + key_with_equal.length();
+  auto value_end = query.find('&', value_start);
+  auto value = query.substr(value_start, value_end - value_start);
+  std::transform(value.begin(), value.end(), value.begin(),
+                 [](unsigned char ch) { return std::tolower(ch); });
+  return value == "1" || value == "true" || value == "yes";
+}
 }  // namespace
 
 class FakeView : public lynx::pub::LynxNativeView {
@@ -151,8 +179,9 @@ class FakeView : public lynx::pub::LynxNativeView {
 
 LynxWindow::LynxWindow(unsigned int origin_x, unsigned int origin_y,
                        unsigned int width, unsigned int height,
-                       bool test_bench_replay)
-    : is_test_bench_replay_(test_bench_replay) {
+                       bool test_bench_replay, bool enable_napi_addon)
+    : is_test_bench_replay_(test_bench_replay),
+      enable_napi_addon_(enable_napi_addon) {
   auto *window_class = RegisterWindowClass();
   const POINT target_point = {static_cast<LONG>(origin_x),
                               static_cast<LONG>(origin_y)};
@@ -179,6 +208,9 @@ LynxWindow::LynxWindow(unsigned int origin_x, unsigned int origin_y,
       .SetGenericResourceFetcher(
           std::make_shared<lynx::example::ExampleGenericResourceFetcher>())
       .RegisterNativeView<FakeView>("x-fake-view", this);
+  if (enable_napi_addon_) {
+    builder.RegisterNativeModule("LynxNodeAPI", LynxNodeAPIModuleCreator, this);
+  }
 #if ENABLE_TESTBENCH_REPLAY
   if (is_test_bench_replay_) {
     lynx::embedder::TestBenchReplayDataModule::RegisterJSB(
@@ -191,7 +223,8 @@ LynxWindow::LynxWindow(unsigned int origin_x, unsigned int origin_y,
   lynx_view_ = builder.Build();
   // Example of runtime lifecycle observer.
   lynx_view_->RegisterRuntimeLifecycleObserver(
-      std::make_shared<lynx::example::ExampleLynxRuntimeLifecycleObserver>());
+      std::make_shared<lynx::example::ExampleLynxRuntimeLifecycleObserver>(
+          enable_napi_addon_ ? reinterpret_cast<uint64_t>(this) : 0));
   child_content_ = reinterpret_cast<HWND>(lynx_view_->GetNativeWindow());
   SetFocus(child_content_);
 
@@ -331,8 +364,10 @@ LynxWindow::MessageHandler(HWND hwnd, UINT const message, WPARAM const wparam,
       }
 #endif
       auto [width, height] = GetInitialWindowSizeForUrl(*url_ptr);
-      auto *window =
-          new lynx::LynxWindow(0, 0, width, height, is_test_bench_replay);
+      bool enable_napi_addon =
+          HasTruthyQueryParam(*url_ptr, "enable_napi_addon");
+      auto *window = new lynx::LynxWindow(
+          0, 0, width, height, is_test_bench_replay, enable_napi_addon);
       window->SetQuitOnClose(false);
       window->LoadTemplate(*url_ptr);
       delete url_ptr;

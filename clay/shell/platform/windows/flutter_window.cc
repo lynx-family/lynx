@@ -203,7 +203,7 @@ WindowsRenderTarget FlutterWindow::GetRenderTarget() {
   return WindowsRenderTarget(GetWindowHandle());
 }
 
-PlatformWindow FlutterWindow::GetPlatformWindow() { return GetWindowHandle(); }
+HWND FlutterWindow::GetWindowHandle() { return Window::GetWindowHandle(); }
 
 float FlutterWindow::GetDpiScale() {
   return static_cast<float>(GetCurrentDPI()) / static_cast<float>(base_dpi);
