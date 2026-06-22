@@ -395,7 +395,7 @@ void TextRender::BuildTextLayout(const MeasureConstraint& constraint,
 
   const bool force_rebuild = update_flag_ != TextUpdateFlag::kUpdateFlagNone;
   const bool should_layout =
-      force_rebuild || prev_layout_width_ != layout_width;
+      force_rebuild || !cache_paragraph_ || prev_layout_width_ != layout_width;
 
   if (force_rebuild) {
     measure_node_->PreLayout(nullptr);
@@ -850,16 +850,33 @@ void TextRender::HandleInlineTruncation(const MeasureConstraint& constraint,
               first_box_top);
         };
 
+        constexpr size_t kMaxInlineTruncationRebuildAttempts = 32;
         size_t visible_glyph_num = max_visible_glyph_num;
+        size_t rebuild_attempts = 0;
         // Line breaking can change non-monotonically as text is removed, so
-        // back off from the original cut point and keep the closest fit.
+        // try nearby cut points first. If the line needs a large backoff,
+        // bound rebuild work by falling back to the target line start.
         bool found_fit = false;
-        while (true) {
+        while (rebuild_attempts++ < kMaxInlineTruncationRebuildAttempts) {
           found_fit = rebuild_with_visible_glyph_num(visible_glyph_num);
           if (found_fit || visible_glyph_num == 0) {
             break;
           }
           --visible_glyph_num;
+        }
+        if (!found_fit && visible_glyph_num > 0) {
+          const size_t line_start_glyph_num =
+              target_visible_line_index < line_metrics.size()
+                  ? line_metrics[target_visible_line_index].start_index
+                  : 0;
+          if (line_start_glyph_num < visible_glyph_num) {
+            visible_glyph_num = line_start_glyph_num;
+            found_fit = rebuild_with_visible_glyph_num(visible_glyph_num);
+          }
+        }
+        if (!found_fit && visible_glyph_num > 0) {
+          visible_glyph_num = 0;
+          rebuild_with_visible_glyph_num(visible_glyph_num);
         }
         truncation_node->UpdateTruncatedSize(truncation_size.width(),
                                              truncation_size.height());
