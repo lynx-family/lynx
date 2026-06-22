@@ -704,14 +704,6 @@ bool V8Runtime::isHostFunction(const Function& obj) const {
   return res.IsJust() && res.ToChecked();
 }
 
-// HostFunctionType& V8Runtime::getHostFunction(
-//  const Function& obj) {
-// We know that isHostFunction(obj) is true here, so its safe to proceed
-//  auto proxy = static_cast<V8HostFunctionProxy*>(
-//      JSObjectGetPrivate(V8Helper::objectRef(obj)));
-// return proxy->getHostFunction();
-// return nullptr;
-//}
 Function V8Runtime::createFunctionFromHostFunction(const PropNameID& name,
                                                    unsigned int paramCount,
                                                    HostFunctionType func) {

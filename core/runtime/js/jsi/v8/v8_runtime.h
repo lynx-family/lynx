@@ -178,7 +178,6 @@ class V8Runtime : public Runtime {
  private:
   std::shared_ptr<V8IsolateInstance> isolate_wrapper_;
   std::shared_ptr<V8ContextWrapper> context_;
-  // v8::Persistent<v8::Context> ctx_; // TODO remove
   std::string description_;
   std::atomic<bool> ctxInvalid_;
 
