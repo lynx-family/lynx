@@ -82,8 +82,16 @@ source_set("flutter_framework_source") {
     "../common:common",
     "../common:framework_shared",
     "../graphics:graphics",
-    "//third_party/skia",
   ]
+
+  if (!enable_skity) {
+    deps += [ "//third_party/skia" ]
+  } else {
+    deps += [
+      "../../common/desktop/codec",
+      "//clay/shell/platform/common/desktop/svg",
+    ]
+  }
 
   public_configs = [ "../../../../../clay:config" ]
 

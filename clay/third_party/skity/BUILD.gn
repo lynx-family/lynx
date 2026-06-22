@@ -1,0 +1,101 @@
+# Copyright 2025 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+# Run the generator during gn gen so the produced gni files can be imported.
+exec_script("../../tools/skity_build_gni.py",
+            [
+              "--build-dir",
+              rebase_path("$root_out_dir/skity_build", root_build_dir),
+              "--skity-root",
+              rebase_path("//third_party/skity", root_build_dir),
+              "--build-type",
+              "Release",
+              "--generate-gni",
+            ],
+            "string")
+
+import("//third_party/skity/pugixml-static.gni")
+import("//third_party/skity/skity-codec.gni")
+
+# Target that uses the installed skity library
+# Only import in the default toolchain to avoid circular dependencies
+import("//third_party/skity/skity.gni")
+import("//third_party/skity/wgsl-cross.gni")
+config("skity_config") {
+  include_dirs = [
+    "//third_party/libpng",
+    "//third_party/libjpeg-turbo",
+  ]
+  include_dirs += skity_include_dirs
+  include_dirs += skity_codec_include_dirs
+  include_dirs += wgsl_cross_include_dirs
+  include_dirs += pugixml_static_include_dirs
+
+  libs = []
+  libs += wgsl_cross_link_libs
+  libs += pugixml_static_link_libs
+
+  defines = [
+    "PUGIXML_NO_EXCEPTIONS",
+    "FREETYPE_STATIC_LIB",
+  ]
+  defines += skity_compile_definitions
+  defines += skity_codec_compile_definitions
+  defines += wgsl_cross_compile_definitions
+  defines += pugixml_static_compile_definitions
+
+  cflags = [
+    "-Wno-error=mismatched-tags",
+    "-Wno-mismatched-tags",
+    "-Wno-pessimizing-move",
+    "-Wno-unused-private-field",
+    "-Wno-newline-eof",
+    "-Wno-sign-compare",
+    "-Wno-unused-function",
+    "-Wno-unguarded-availability-new",
+    "-Wno-unused-variable",
+  ]
+
+  cflags += skity_compile_options
+  cflags += skity_codec_compile_options
+  cflags += wgsl_cross_compile_options
+  cflags += pugixml_static_compile_options
+
+  cflags_objcc = [
+    "-Wno-error=mismatched-tags",
+    "-Wno-mismatched-tags",
+    "-Wno-pessimizing-move",
+    "-Wno-unused-private-field",
+    "-Wno-newline-eof",
+    "-Wno-sign-compare",
+    "-Wno-unused-function",
+    "-Wno-unguarded-availability-new",
+  ]
+
+  if (is_mac) {
+    cflags -= [ "-fno-exceptions" ]
+    defines += [ "SKITY_PLATFORM_MACOS" ]
+  }
+  if (is_win) {
+    cflags -= [ "/EHs-c-" ]
+    defines += [ "SKITY_PLATFORM_WIN" ]
+  }
+}
+
+source_set("skity_lib") {
+  sources = []
+  sources += skity_sources
+  sources += wgsl_cross_sources
+  sources += pugixml_static_sources
+  sources += skity_codec_sources
+
+  deps = [
+    "//third_party/libjpeg-turbo:turbojpeg",
+    "//third_party/libpng",
+    "//third_party/libwebp",
+    "//third_party/zlib",
+  ]
+
+  public_configs = [ ":skity_config" ]
+}

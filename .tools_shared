@@ -84,6 +84,7 @@ checker-config:
       - "//tools/idl_parser"
       - "//out/"
       - "//tools_shared"
+      - "//clay"
 
   header-path-checker:
     processed-file-dirs:

@@ -72,7 +72,7 @@ deps = {
     },
     'third_party/harfbuzz': {
         'type': 'git',
-        'url': 'https://flutter.googlesource.com/third_party/harfbuzz.git',
+        'url': 'https://github.com/harfbuzz/harfbuzz.git',
         'commit': revision.HARFBUZZ,
         "patches": [
             os.path.join(root_dir, 'patches', 'harfbuzz', '*.patch')
@@ -254,5 +254,21 @@ deps = {
         'url': f"https://lf-lynx.tiktok-cdns.com/obj/lynx-artifacts-oss-sg/clay/roboto-bold.ttf.zip",
         "ignore_in_git": True,
         "decompress": True,
+    },
+    "third_party/skity": {
+        "type": "solution",
+        "url": "https://github.com/lynx-family/skity.git",
+        "commit": revision.SKITY,
+        "deps_file": "hab/DEPS",
+        "ignore_in_git": True,
+        "enable_lfs": False,
+    },
+    "third_party/textlayout": {
+        "type": "git",
+        "url": "https://github.com/lynx-family/lynx-textra.git",
+        "commit": revision.TEXTRA,
+        "deps_file": "DEPS",
+        "ignore_in_git": True,
+        "enable_lfs": False,
     },
 }

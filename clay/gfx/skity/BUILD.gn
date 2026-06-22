@@ -29,5 +29,9 @@ source_set("skity") {
 
   if (!enable_skity) {
     public_deps += [ "//third_party/skia" ]
+  } else {
+    if (is_win || is_mac) {
+      public_deps += [ "//clay/third_party/skity:skity_lib" ]
+    }
   }
 }
