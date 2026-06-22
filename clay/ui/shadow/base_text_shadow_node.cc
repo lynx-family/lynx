@@ -657,6 +657,18 @@ void BaseTextShadowNode::AlignNativeNode(txt::Paragraph* paragraph) {
   }
 }
 
+void BaseTextShadowNode::AlignInlineViewsToOrigin() {
+  for (auto* child : children_) {
+    if (child->IsInlineViewShadowNode()) {
+      auto* inline_view_shadow_node = static_cast<InlineViewShadowNode*>(child);
+      inline_view_shadow_node->ResetTextLayout();
+      inline_view_shadow_node->AlignNativeNode(0.f, 0.f);
+    } else if (child->IsBaseTextShadowNode()) {
+      static_cast<BaseTextShadowNode*>(child)->AlignInlineViewsToOrigin();
+    }
+  }
+}
+
 void BaseTextShadowNode::CollectMaxLineHeight(float& line_height,
                                               float& font_size) {
   if (line_height_.has_value() && *line_height_ > line_height) {
