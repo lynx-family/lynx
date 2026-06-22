@@ -12,6 +12,8 @@ lynx_dom_core_sources = [
   "element_layout_node_manager.cc",
   "element_layout_node_manager.h",
   "element_manager.cc",
+  "lynx_element_query.cc",
+  "lynx_element_query.h",
 ]
 
 if (!enable_unittests) {

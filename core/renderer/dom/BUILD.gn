@@ -105,6 +105,7 @@ unittest_set("dom_testset") {
     "fragment/fragment_unittest.cc",
     "fragment/text_fragment_behavior_unittest.cc",
     "imperative_animation_state_unittest.cc",
+    "lynx_element_query_unittest.cc",
     "testing/fiber_element_test.cc",
     "testing/fiber_element_test.h",
     "testing/fiber_mock_painting_context.cc",

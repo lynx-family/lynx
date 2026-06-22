@@ -5,10 +5,12 @@
 #ifndef CORE_SHELL_LYNX_ENGINE_PROXY_IMPL_H_
 #define CORE_SHELL_LYNX_ENGINE_PROXY_IMPL_H_
 
+#include <functional>
 #include <list>
 #include <memory>
 #include <string>
 
+#include "base/include/value/base_value.h"
 #include "core/public/lynx_engine_proxy.h"
 #include "core/shell/lynx_actor_specialization.h"
 #include "core/shell/lynx_engine.h"
@@ -85,6 +87,9 @@ class LynxEngineProxyImpl : public LynxEngineProxy {
   void OnFirstMeaningfulPaint() override;
 
   void TriggerLayout() override;
+
+  void QueryLynxElement(int32_t sign, int32_t query_type, std::string argument,
+                        std::function<void(lepus::Value)> callback);
 
  protected:
   std::shared_ptr<shell::LynxActor<shell::LynxEngine>> engine_actor_;

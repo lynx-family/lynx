@@ -5,7 +5,13 @@
 #include "core/shell/lynx_engine_proxy_impl.h"
 
 #include <utility>
+#include <vector>
 
+#include "base/include/value/array.h"
+#include "base/include/value/base_string.h"
+#include "base/include/value/table.h"
+#include "core/renderer/dom/lynx_element_query.h"
+#include "core/shell/lynx_element_query_type.h"
 #include "core/value_wrapper/value_impl_lepus.h"
 
 namespace lynx {
@@ -370,6 +376,97 @@ void LynxEngineProxyImpl::TriggerLayout() {
   engine_actor_->Act([](auto& engine) {
     auto pipeline_option = std::make_shared<tasm::PipelineOptions>();
     engine->GetTasm()->TriggerLayout(pipeline_option);
+  });
+}
+
+void LynxEngineProxyImpl::QueryLynxElement(
+    int32_t sign, int32_t query_type, std::string argument,
+    std::function<void(lepus::Value)> callback) {
+  if (engine_actor_ == nullptr) {
+    LOGE("QueryLynxElement failed since engine_actor_ is nullptr");
+    if (callback) {
+      callback(lepus::Value());
+    }
+    return;
+  }
+  engine_actor_->Act([sign, query_type, argument = std::move(argument),
+                      callback = std::move(callback)](auto& engine) mutable {
+    lepus::Value result;
+    auto* tasm = engine->GetTasm();
+    auto* manager =
+        tasm == nullptr ? nullptr : tasm->page_proxy()->element_manager().get();
+    if (manager == nullptr) {
+      if (callback) {
+        callback(result);
+      }
+      return;
+    }
+
+    switch (static_cast<LynxElementQueryType>(query_type)) {
+      case LynxElementQueryType::kRootSign:
+        result = lepus::Value(tasm::LynxElementQuery::GetRootSign(manager));
+        break;
+      case LynxElementQueryType::kIsAlive:
+        result = lepus::Value(tasm::LynxElementQuery::IsAlive(manager, sign));
+        break;
+      case LynxElementQueryType::kIdentity: {
+        tasm::LynxElementIdentity identity;
+        if (tasm::LynxElementQuery::GetIdentity(manager, sign, identity)) {
+          auto table = lepus::Dictionary::Create();
+          table->SetValue(BASE_STATIC_STRING(tasm::LynxElementQuery::kSignKey),
+                          identity.sign);
+          table->SetValue(
+              BASE_STATIC_STRING(tasm::LynxElementQuery::kTagNameKey),
+              identity.tag);
+          table->SetValue(BASE_STATIC_STRING(tasm::LynxElementQuery::kIdKey),
+                          identity.id);
+          result = lepus::Value(table);
+        }
+        break;
+      }
+      case LynxElementQueryType::kParentSign:
+        result =
+            lepus::Value(tasm::LynxElementQuery::GetParentSign(manager, sign));
+        break;
+      case LynxElementQueryType::kChildrenSigns: {
+        std::vector<int32_t> signs;
+        if (!tasm::LynxElementQuery::GetChildrenSigns(manager, sign, signs)) {
+          break;
+        }
+        auto array = lepus::CArray::Create();
+        for (int32_t child_sign : signs) {
+          array->emplace_back(child_sign);
+        }
+        result = lepus::Value(array);
+        break;
+      }
+      case LynxElementQueryType::kFindById:
+        result = lepus::Value(tasm::LynxElementQuery::FindById(
+            manager, sign, std::move(argument)));
+        break;
+      case LynxElementQueryType::kDataset:
+        result = tasm::LynxElementQuery::GetDataset(manager, sign);
+        break;
+      case LynxElementQueryType::kAttributes:
+        result = tasm::LynxElementQuery::GetAttributes(manager, sign);
+        break;
+      case LynxElementQueryType::kAttribute:
+        result = tasm::LynxElementQuery::GetAttribute(manager, sign,
+                                                      std::move(argument));
+        break;
+      case LynxElementQueryType::kJSONString:
+        result =
+            lepus::Value(tasm::LynxElementQuery::ToJSONString(manager, sign));
+        break;
+      case LynxElementQueryType::kPositionInfo:
+        result = tasm::LynxElementQuery::GetPositionInfoValue(manager, sign);
+        break;
+      default:
+        break;
+    }
+    if (callback) {
+      callback(result);
+    }
   });
 }
 
