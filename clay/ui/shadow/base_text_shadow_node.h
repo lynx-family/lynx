@@ -80,6 +80,8 @@ class BaseTextShadowNode : public ShadowNode {
 
   void AlignNativeNode(txt::Paragraph* paragraph);
 
+  void AlignInlineViewsToOrigin();
+
   // Used for calculate skia paragraph line_height multiplier.
   // Retrieve the maximum line height and font size.
   void CollectMaxLineHeight(float& line_height, float& font_size);
