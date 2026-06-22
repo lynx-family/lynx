@@ -2,6 +2,7 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+/** @type {string[]} */
 const compilerOptionsKeys = [
   {% for option in options %}
   {% if not export or (export and option.export)%}
@@ -10,6 +11,7 @@ const compilerOptionsKeys = [
   {% endfor %}
 ]
 
+/** @type {string[]} */
 const configKeys = [
   {% for config in configs %}
   {% if not export or (export and config.export)%}
@@ -22,4 +24,3 @@ module.exports = {
   compilerOptionsKeys,
   configKeys,
 }
-

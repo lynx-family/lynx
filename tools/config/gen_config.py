@@ -26,6 +26,9 @@ from pathlib import Path
 
 
 def _construct_config_object(key: str, value: dict) -> Config:
+    # Only an explicit YAML boolean `export: true` opts a config into the
+    # open-source npm/docs surface. Internal render paths pass export=False.
+    export_to_open_source = value.get("export") is True
     return Config(
         name=key,
         desc=value.get("description", "NA"),
@@ -44,7 +47,7 @@ def _construct_config_object(key: str, value: dict) -> Config:
         bind_member_to=value.get("bindMemberTo", ""),
         read_settings=value.get("readSettings", False),
         read_native=value.get("readNative", False),
-        export=value.get("export", True),
+        export=export_to_open_source,
     )
 
 
