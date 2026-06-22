@@ -5,10 +5,12 @@
 #include <memory>
 #include <string>
 
+#include "clay/public/layout_delegate.h"
 #include "clay/ui/common/measure_constraint.h"
 #include "clay/ui/component/text/raw_text_view.h"
 #include "clay/ui/shadow/inline_text_shadow_node.h"
 #include "clay/ui/shadow/inline_truncation_shadow_node.h"
+#include "clay/ui/shadow/inline_view_shadow_node.h"
 #include "clay/ui/shadow/raw_text_shadow_node.h"
 #include "clay/ui/shadow/shadow_node_owner.h"
 #include "clay/ui/shadow/text_shadow_node.h"
@@ -16,6 +18,39 @@
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 namespace clay {
+class TestLayoutDelegate : public LayoutDelegate {
+ public:
+  void OnTriggerLayout() override {}
+  void OnMarkDirty(int32_t) override {}
+  void OnAlignNativeNode(int32_t id, float top, float left) override {
+    align_count++;
+    last_aligned_id = id;
+    last_top = top;
+    last_left = left;
+  }
+  ClayMeasureOutput OnMeasureNativeNode(int32_t, float, int, float,
+                                        int) override {
+    return {measure_width, measure_height, 0.f};
+  }
+  ClayLayoutStyles OnGetLayoutStyles(int32_t) override {
+    return ClayLayoutStyles();
+  }
+
+  void ResetAlignState() {
+    align_count = 0;
+    last_aligned_id = 0;
+    last_top = -1.f;
+    last_left = -1.f;
+  }
+
+  float measure_width = 0.f;
+  float measure_height = 0.f;
+  int align_count = 0;
+  int32_t last_aligned_id = 0;
+  float last_top = -1.f;
+  float last_left = -1.f;
+};
+
 class TextTest : public UITest {
  protected:
   void UISetUp() override {
@@ -203,6 +238,81 @@ TEST_F_UI(TextTest, VerticalAlign) {
   text_shadow_node_->Measure(constraint);
   auto baseline_shift = inline_text_shadow_node_->text_style_->baseline_shift;
   EXPECT_EQ(baseline_shift, 20);
+}
+
+TEST_F_UI(TextTest, AlignInlineViewsToOriginResetsInlineViewState) {
+  TestLayoutDelegate delegate;
+  owner_->SetLayoutDelegate(&delegate);
+  auto inline_view_node =
+      std::make_unique<InlineViewShadowNode>(owner_, std::string("view"), 7);
+  inline_view_node->SetEndIndex(0);
+  inline_text_shadow_node_->AddChild(inline_view_node.get());
+
+  inline_text_shadow_node_->AlignInlineViewsToOrigin();
+
+  EXPECT_EQ(delegate.align_count, 1);
+  EXPECT_EQ(delegate.last_aligned_id, 7);
+  EXPECT_EQ(delegate.last_top, 0.f);
+  EXPECT_EQ(delegate.last_left, 0.f);
+  EXPECT_EQ(inline_view_node->placeholder_index(), -1);
+  EXPECT_EQ(inline_view_node->StartGlyph(), 0u);
+  EXPECT_EQ(inline_view_node->EndGlyph(), 0u);
+  owner_->SetLayoutDelegate(nullptr);
+}
+
+TEST_F_UI(TextTest, HiddenTextLayoutAlignsInlineViewToOrigin) {
+  TestLayoutDelegate delegate;
+  owner_->SetLayoutDelegate(&delegate);
+  auto inline_view_node =
+      std::make_unique<InlineViewShadowNode>(owner_, std::string("view"), 7);
+  inline_text_shadow_node_->AddChild(inline_view_node.get());
+
+  text_shadow_node_->OnLayout(0.f, TextMeasureMode::kDefinite, 0.f,
+                              TextMeasureMode::kDefinite, {0.f, 0.f, 0.f, 0.f},
+                              {0.f, 0.f, 0.f, 0.f});
+
+  EXPECT_EQ(delegate.align_count, 1);
+  EXPECT_EQ(delegate.last_aligned_id, 7);
+  EXPECT_EQ(delegate.last_top, 0.f);
+  EXPECT_EQ(delegate.last_left, 0.f);
+  EXPECT_EQ(inline_view_node->placeholder_index(), -1);
+  EXPECT_EQ(inline_view_node->StartGlyph(), 0u);
+  EXPECT_EQ(inline_view_node->EndGlyph(), 0u);
+  owner_->SetLayoutDelegate(nullptr);
+}
+
+TEST_F_UI(TextTest, RebuildsInlineViewLayoutAfterHiddenToggle) {
+  TestLayoutDelegate delegate;
+  delegate.measure_width = 10.f;
+  delegate.measure_height = 8.f;
+  owner_->SetLayoutDelegate(&delegate);
+  raw_text_shadow_node_->SetText("+25");
+  auto inline_view_node =
+      std::make_unique<InlineViewShadowNode>(owner_, std::string("view"), 7);
+  inline_view_node->EnsureDefaultStyle();
+  inline_text_shadow_node_->AddChild(inline_view_node.get());
+
+  MeasureConstraint constraint{100.f, MeasureMode::kDefinite, 100.f,
+                               MeasureMode::kDefinite};
+  auto result = text_shadow_node_->Measure(constraint);
+  text_shadow_node_->OnLayout(result.width, TextMeasureMode::kDefinite,
+                              result.height, TextMeasureMode::kDefinite,
+                              {0.f, 0.f, 0.f, 0.f}, {0.f, 0.f, 0.f, 0.f});
+  text_shadow_node_->OnLayout(0.f, TextMeasureMode::kDefinite, 0.f,
+                              TextMeasureMode::kDefinite, {0.f, 0.f, 0.f, 0.f},
+                              {0.f, 0.f, 0.f, 0.f});
+  EXPECT_EQ(delegate.last_aligned_id, 7);
+  EXPECT_EQ(delegate.last_top, 0.f);
+  EXPECT_EQ(delegate.last_left, 0.f);
+
+  delegate.ResetAlignState();
+  text_shadow_node_->Measure(constraint);
+  text_shadow_node_->Align();
+
+  EXPECT_EQ(delegate.align_count, 1);
+  EXPECT_EQ(delegate.last_aligned_id, 7);
+  EXPECT_GT(delegate.last_left, 0.f);
+  owner_->SetLayoutDelegate(nullptr);
 }
 
 }  // namespace clay
