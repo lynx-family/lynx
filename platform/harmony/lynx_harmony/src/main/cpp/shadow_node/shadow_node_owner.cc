@@ -29,7 +29,9 @@ void LayoutVSyncProxy::ScheduleLayout() {
         [weak_this = weak_from_this()](int64_t, int64_t) -> void {
           auto strong_this = weak_this.lock();
           if (strong_this) {
-            strong_this->trigger_layout_callback_();
+            if (strong_this->trigger_layout_callback_) {
+              strong_this->trigger_layout_callback_();
+            }
             strong_this->layout_scheduled_ = false;
           }
         });
@@ -565,12 +567,7 @@ const std::shared_ptr<LayoutVSyncProxy>&
 ShadowNodeOwner::GetLayoutVSyncProxy() {
   if (!vsync_proxy_) {
     const auto& layout_task_runner = GetLayoutTaskRunner();
-    if (layout_task_runner) {
-      layout_task_runner->PostSyncTask(
-          [this]() { vsync_proxy_ = std::make_shared<LayoutVSyncProxy>(); });
-    } else {
-      vsync_proxy_ = std::make_shared<LayoutVSyncProxy>();
-    }
+    vsync_proxy_ = std::make_shared<LayoutVSyncProxy>(layout_task_runner);
   }
 
   return vsync_proxy_;

@@ -30,9 +30,14 @@ class LynxContext;
 
 class LayoutVSyncProxy : public std::enable_shared_from_this<LayoutVSyncProxy> {
  public:
-  LayoutVSyncProxy() {
+  explicit LayoutVSyncProxy(
+      const fml::RefPtr<fml::TaskRunner>& layout_task_runner = nullptr) {
     vsync_monitor_ = base::VSyncMonitor::Create();
-    vsync_monitor_->BindToCurrentThread();
+    if (layout_task_runner) {
+      vsync_monitor_->BindTaskRunner(layout_task_runner);
+    } else {
+      vsync_monitor_->BindToCurrentThread();
+    }
     vsync_monitor_->Init();
   }
   void ScheduleLayout();
