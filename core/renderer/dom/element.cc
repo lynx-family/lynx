@@ -1609,7 +1609,7 @@ bool Element::TendToFlatten() {
          // Nodes with non-visible overflow may become flattenable again once
          // clip is scoped to rendering content instead of the host view
          // subtree.
-         && computed_css_style()->IsOverflowXY();
+         && (!is_view() || computed_css_style()->IsOverflowXY());
 #endif
   ;
 }

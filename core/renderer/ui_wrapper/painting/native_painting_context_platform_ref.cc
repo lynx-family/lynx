@@ -123,6 +123,8 @@ void NativePaintingCtxPlatformRef::RebuildSubLayers(
     return existing_child->GetId() == new_child_id;
   };
 
+  renderer->OnRebuildSubRenderers();
+
   // Perform diff
   auto diff_result = myers_diff::MyersDiffWithoutUpdate(
       existing_children.begin(), existing_children.end(), new_children.begin(),

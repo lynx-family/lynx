@@ -1390,6 +1390,7 @@ public class LynxDisplayListApplier : NSObject {
   public void LynxDisplayListApplier::detachHostDecorationLayers();
   public void LynxDisplayListApplier::reattachHostDecorationLayers();
   public void LynxDisplayListApplier::syncHostDecorationLayers();
+  public void LynxDisplayListApplier::onRebuildSubRenderers();
   public void LynxDisplayListApplier::reset();
 }
 
@@ -3299,6 +3300,7 @@ public class LynxRenderer : NSObject {
   public LynxRendererContext * LynxRenderer::context();
   public void LynxRenderer::updateAttributes:(NSDictionary *props);
   public void LynxRenderer::updatePlatformExtraBundle:(id data);
+  public void LynxRenderer::onRebuildSubRenderers();
   public void LynxRenderer()::updateDisplayList:(lynx::tasm::DisplayList *list);
   public lynx::tasm::DisplayList * LynxRenderer()::getDisplayList();
   public void LynxRenderer()::detachHostDecorationLayers();

@@ -34,6 +34,8 @@ class PlatformRenderer : public fml::RefCountedThreadSafeStorage {
   virtual void AddChild(fml::RefPtr<PlatformRenderer> child,
                         int index = -1) = 0;
 
+  virtual void OnRebuildSubRenderers() {}
+
   // Remove this renderer from its parent
   virtual void RemoveFromParent() = 0;
 
