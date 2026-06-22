@@ -196,7 +196,6 @@ export abstract class LynxNodeController extends NodeController {
   aboutToReuse(params: Record<string, ESObject>): void;
   aboutToRecycle(): void;
   sendGlobalEvent(name: string, params: Object[]): void;
-  getLynxElementRoot(callback: (result: LynxElement | null) => void): void;
   override onMeasureSize(selfLayoutInfo: GeometryInfo, children: Measurable[], constraint: ConstraintSizeOptions): void;
   override onPlaceChildren(selfLayoutInfo: GeometryInfo, children: Layoutable[], constraint: ConstraintSizeOptions): void;
   reload(): void;
@@ -293,6 +292,7 @@ export class LynxContext implements IContext {
   setRenderer(renderer: LynxTemplateRenderer): void;
   setLynxView(lynxView: LynxView): void;
   sendGlobalEvent(name: string, params: Object[]): void;
+  getLynxElementRoot(callback: LynxElementCallback<LynxElement | null>): void;
   public callJSFunction(moduleName: string, method: string, params: Object[]): void;
   public initWithBuilder(builder: LynxViewBuilder): void;
   public setSessionStorageItem(key: string, value: TemplateData): void;
@@ -340,6 +340,38 @@ export class LynxContext implements IContext {
 }
 
 export type SessionStorageCallback = (value: Object | undefined) => void {
+}
+
+export class LynxElement {
+  constructor(owner: LynxElementOwner, sign: number);
+  findNodeById(id: string, callback: LynxElementCallback<LynxElement | null>): void;
+  findNodeByFilter(filter: LynxElementFilter | null, callback: LynxElementCallback<LynxElement | null>): void;
+  findNodesByFilter(filter: LynxElementFilter | null, callback: LynxElementCallback<readonly LynxElement[]>): void;
+  getStatus(callback: LynxElementCallback<LynxElementStatus>): void;
+  getSign(callback: LynxElementCallback<number>): void;
+  getTagName(callback: LynxElementCallback<string | null>): void;
+  getId(callback: LynxElementCallback<string | null>): void;
+  getParent(callback: LynxElementCallback<LynxElement | null>): void;
+  getChildren(callback: LynxElementCallback<readonly LynxElement[]>): void;
+  getChildCount(callback: LynxElementCallback<number>): void;
+  getRoot(callback: LynxElementCallback<LynxElement | null>): void;
+  getPositionInfo(callback: LynxElementCallback<LynxRecord | null>): void;
+  getDataset(callback: LynxElementCallback<LynxRecord>): void;
+  getAttribute(name: string, callback: LynxElementCallback<LynxValue | null>): void;
+  getAttributes(callback: LynxElementCallback<LynxRecord>): void;
+  toJSONString(callback: LynxElementCallback<string | null>): void;
+}
+
+export type LynxElementStatus = 'alive' | 'detached' {
+}
+
+export type LynxValue = null | boolean | number | string | Object | Array<LynxValue> {
+}
+
+export type LynxElementCallback<T> = (result: T) => void {
+}
+
+export type LynxElementFilter = (node: LynxElement) => boolean {
 }
 
 export class LynxModule {
@@ -593,10 +625,6 @@ export class UIGroup extends UIBase {
   getContentSize(content: lynx.NativeContent): [number, number];
   children: lynx.NativeContent[]; = []
   hasCustomLayout: boolean; = true
-}
-
-export class LynxElement {
-  toJSONString(callback: (result: string | null) => void): void;
 }
 
 export class ShadowNodeOwner {
@@ -1133,6 +1161,7 @@ export interface IContext {
   sendCustomEvent(name: string, id: number, params: Object, paramName: string): void;
   findJSShadowNodeBySign(sign: number): Object | undefined;
   sendGlobalEvent(name: string, params: Object[]): void;
+  getLynxElementRoot(callback: LynxElementCallback<LynxElement | null>): void;
   measureNativeNode(sign: number, width: number, widthMode: number, height: number, heightMode: number, finalMeasure: boolean): [number, number, number] | undefined;
   alignNativeNode(sign: number, left: number, top: number): void;
   getGenericResourceFetcher(): LynxGenericResourceFetcher | undefined;

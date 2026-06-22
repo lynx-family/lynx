@@ -15,11 +15,11 @@ import { TemplateBundle } from './TemplateBundle';
 import { TemplateData } from './MetaData';
 import { SessionStorageCallback } from './SessionStorage';
 import { LynxDevTool } from '../devtool_wrapper/LynxDevTool';
-import { LynxElement, LynxElementImpl } from './LynxElement';
 import { PerformanceController } from './performance/PerformanceController';
 import { convertModuleArgs, LynxModuleManager, SendableLynxModuleManager } from '../jsbridge/LynxModuleManager';
 import { LynxLepusModule } from '../lepus/LynxLepusModule';
 import { LLog } from '../base/LLog';
+import { LynxElement, LynxElementCallback, LynxElementOwner } from './LynxElement';
 
 const TAG = 'LynxTemplateRenderer';
 
@@ -227,24 +227,15 @@ export class LynxTemplateRenderer extends lynx.LynxTemplateRenderer {
     return this.hasDestroyed;
   }
 
-  /**
-   * Obtains the root LynxElement for this renderer.
-   */
-  getLynxElementRoot(callback: (result: LynxElement | null) => void): void {
-    if (typeof callback !== 'function') {
-      return;
-    }
-    if (this.hasDestroyed) {
-      callback(null);
-      return;
-    }
-    this.nativeGetLynxElementRoot((sign: number) => {
-      callback(sign !== 0 ? new LynxElementImpl(this, sign) : null);
-    });
-  }
-
   setPlatformConfig(config: string) {
     this.nativeSetPlatformConfig(config);
+  }
+
+  getLynxElementRoot(callback?: LynxElementCallback<LynxElement | null>): void {
+    if (!callback) {
+      return;
+    }
+    new LynxElementOwner(this).getRoot(callback);
   }
 
   setSessionStorageItem(key: string, value: TemplateData): void {

@@ -2,6 +2,7 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 import { LynxGenericResourceFetcher, LynxMediaResourceFetcher, NativeContent } from "../Index";
+import { LynxElement, LynxElementCallback } from './LynxElement';
 
 export interface IContext {
   setContextData(data?: Record<string, Object>): void;
@@ -13,6 +14,8 @@ export interface IContext {
   findJSShadowNodeBySign(sign: number): Object | undefined;
 
   sendGlobalEvent(name: string, params: Object[]): void;
+
+  getLynxElementRoot(callback?: LynxElementCallback<LynxElement | null>): void;
 
   measureNativeNode(sign: number,
     width: number,
@@ -33,4 +36,3 @@ export interface IContext {
 
   updateRootTarget(content: NativeContent): void;
 }
-
