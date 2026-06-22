@@ -284,24 +284,6 @@ Value Console::LogWithLevel(Runtime* rt, const int level, const Value* args,
   return Value::undefined();
 }
 
-std::string Console::LogObject(Runtime* rt, const Value* value) {
-  Scope scope(*rt);
-
-  std::string msg;
-  msg = LogObject_(rt, value);
-  LOGE(msg);
-  return msg;
-}
-
-std::string Console::LogObject(Runtime* rt, const Object* obj) {
-  Scope scope(*rt);
-
-  Value vv(*rt, *obj);
-  std::string msg = LogObject_(rt, &vv);
-  LOGE(msg);
-  return msg;
-}
-
 std::string Console::LogObject_(Runtime* rt, const Value* value) {
   Object global = rt->global();
   auto log_depth = global.getProperty(*rt, "__LOG_DEPTH__");

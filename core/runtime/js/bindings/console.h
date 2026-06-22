@@ -24,18 +24,10 @@ class Console : public HostObject {
  public:
   Console(std::shared_ptr<ConsoleMessagePostMan> post_man, bool debuggable);
 
-  // void RegFunctionToJs(Runtime& rt, Object& jsbridge);
-
   virtual Value get(Runtime*, const PropNameID& name) override;
   virtual void set(Runtime*, const PropNameID& name,
                    const Value& value) override;
   virtual std::vector<PropNameID> getPropertyNames(Runtime& rt) override;
-
-  // for debug
-  static std::string LogObject(Runtime* rt,
-                               // const int level,
-                               const Value* value);
-  static std::string LogObject(Runtime* rt, const Object* obj);
 
  private:
   void Init();
