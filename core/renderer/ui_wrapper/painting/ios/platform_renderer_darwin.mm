@@ -147,7 +147,9 @@ void PlatformRendererDarwin::OnUpdateAttributes(const fml::RefPtr<PropBundle>& a
   }
 }
 
-void PlatformRendererDarwin::OnAddChild(PlatformRenderer* child) {
+void PlatformRendererDarwin::OnAddChild(PlatformRenderer* child, int /* index */) {
+  // TODO(linxs): Support indexed insertion on iOS after mapping the
+  // platform renderer child index to the corresponding UIOwner/UIView child index.
   if (child == nullptr) {
     return;
   }
