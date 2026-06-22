@@ -30,6 +30,8 @@ class InlineViewShadowNode : public ShadowNode {
 
   int placeholder_index() const { return placeholder_index_; }
 
+  void ResetTextLayout();
+
   void SetBaselineOffset(double baseline_offset) override {
     baseline_offset_ = baseline_offset;
   }
