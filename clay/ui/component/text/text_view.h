@@ -38,6 +38,7 @@ class TextView : public WithTypeInfo<TextView, BaseTextView>,
   ~TextView() override;
 
   void SetAttribute(const char* attr, const clay::Value& value) override;
+  void ClearInlineIndexes();
   void PushInlineImageIndex(int id, int placeholder_id);
   void PushInlineViewIndex(int id, int placeholder_id);
   void SetInlineEmojiInfo(std::vector<InlineEmojiInfo> inline_emoji_info);
