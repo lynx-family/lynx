@@ -245,9 +245,6 @@ Value AppProxy::get(Runtime* rt, const PropNameID& name) {
               timeout = static_cast<long>(timeout_opt->getNumber());
             }
           }
-          if (count > 2 && args[2].isObject()) {
-            auto timeout = args[2].getObject(rt).getProperty(rt, "timeout");
-          }
           auto* native_app = native_app_.Lock();
           if (!native_app || native_app->IsDestroying()) {
             return Value::undefined();
