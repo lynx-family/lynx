@@ -19,6 +19,8 @@ class ViewContext;
 
 class NativeViewServiceDesktop final : public NativeViewService {
  public:
+  bool HasNativeView(const std::string& tag) override;
+
   std::unique_ptr<NativeViewPlugin> CreateNativeViewPlugin(
       int id, NativeView* view_ptr) override;
 

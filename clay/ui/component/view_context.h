@@ -293,7 +293,10 @@ class ViewContext : public std::enable_shared_from_this<ViewContext> {
     return clay::kPixelTypeFramework == clay::kPixelTypeLogical;
   }
 
-  // Sync native view tags. Should be called before the view tree is created.
+  // Sync explicit native view tags. This is kept for bootstrap/embedder APIs
+  // that intentionally register NativeView entries into the C++ ViewRegistry.
+  // Android/iOS dynamic wrapped platform views should be discovered through
+  // NativeViewService::HasNativeView instead of using this sync path.
   // Tags in `tags` are registered as NativeView entries when not already
   // present. Tags in `bootstrap_tags` always override any existing ViewRegistry
   // entry and stay reserved for the platform-view path.

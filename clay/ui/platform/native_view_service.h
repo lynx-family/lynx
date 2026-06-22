@@ -81,6 +81,8 @@ class NativeViewService : public Service<NativeViewService, Owner::kPlatform> {
  public:
   static std::shared_ptr<NativeViewService> Create();
 
+  virtual bool HasNativeView(const std::string& tag) { return false; }
+
   virtual std::unique_ptr<NativeViewPlugin> CreateNativeViewPlugin(
       int id, NativeView* view_ptr) = 0;
 };

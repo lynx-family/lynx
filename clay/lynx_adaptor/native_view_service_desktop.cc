@@ -216,6 +216,10 @@ NativeViewServiceDesktop::CreateNativeViewPlugin(int id, NativeView* view_ptr) {
   return nullptr;
 }
 
+bool NativeViewServiceDesktop::HasNativeView(const std::string& tag) {
+  return view_factories.find(tag) != view_factories.end();
+}
+
 // static
 void NativeViewServiceDesktop::SetViewFactories(
     ViewContext* view_context,
