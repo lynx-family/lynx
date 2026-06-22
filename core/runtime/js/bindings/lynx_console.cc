@@ -17,11 +17,6 @@
 #include "core/runtime/common/lynx_console_helper.h"
 #include "core/runtime/js/bindings/console.h"
 #include "core/runtime/js/utils.h"
-#include "third_party/rapidjson/document.h"
-#include "third_party/rapidjson/error/en.h"
-#include "third_party/rapidjson/reader.h"
-#include "third_party/rapidjson/stringbuffer.h"
-#include "third_party/rapidjson/writer.h"
 
 namespace lynx {
 namespace runtime {
@@ -69,25 +64,6 @@ void Console::Init() {
                size_t count) {
           return Assert(&rt, runtime::CONSOLE_LOG_ERROR, args, count,
                         ConsoleAssert);
-        });
-  };
-
-  methods_map_["test"] = [](Runtime* rt) {
-    return Function::createFromHostFunction(
-        *rt, PropNameID::forAscii(*rt, "test"), 0,
-        [](Runtime& rt, const Value& thisVal, const Value* args,
-           size_t count) -> base::expected<Value, JSINativeException> {
-          rapidjson::StringBuffer s;
-          rapidjson::Writer<rapidjson::StringBuffer> writer(s);
-          writer.StartObject();
-          writer.Key("errMsg");
-          writer.String("ok");
-          writer.Key("path");
-          writer.String("page/component/index");
-          writer.EndObject();
-
-          return Value(String::createFromUtf8(rt, s.GetString()));
-          //  return LogWithLevel(&rt, logging::LOG_WARNING, args, count);
         });
   };
 
