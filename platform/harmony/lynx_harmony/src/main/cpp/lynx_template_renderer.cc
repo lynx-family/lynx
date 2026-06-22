@@ -676,6 +676,7 @@ napi_value LynxTemplateRenderer::Init(napi_env env, napi_value exports) {
   napi_property_descriptor properties[] = {
       DECLARE_NAPI_METHOD("nativeAttach", NativeAttach),
       DECLARE_NAPI_METHOD("nativeDetach", NativeDetach),
+      DECLARE_NAPI_METHOD("nativeQueryLynxElement", NativeQueryLynxElement),
       DECLARE_NAPI_METHOD("nativeReset", NativeReset),
       DECLARE_NAPI_METHOD("updateGlobalProps", UpdateGlobalProps),
       DECLARE_NAPI_METHOD("updateMetaData", UpdateMetaData),
@@ -717,9 +718,6 @@ napi_value LynxTemplateRenderer::Init(napi_env env, napi_value exports) {
                           SubscribeSessionStorage),
       DECLARE_NAPI_METHOD("nativeUnsubscribeSessionStorage",
                           UnsubscribeSessionStorage),
-      DECLARE_NAPI_METHOD("nativeGetLynxElementRoot", GetLynxElementRoot),
-      DECLARE_NAPI_METHOD("nativeLynxElementToJSONString",
-                          LynxElementToJSONString),
       DECLARE_NAPI_METHOD("nativeGetAllJsSource", GetAllJsSource),
       DECLARE_NAPI_METHOD("nativeGetAllJsSourceAsync", GetAllJsSourceAsync),
       DECLARE_NAPI_METHOD("invokeLepusCallback", InvokeLepusCallback),
@@ -1235,6 +1233,85 @@ napi_value LynxTemplateRenderer::NativeDetach(napi_env env,
     return nullptr;
   }
   delete renderer;
+  return nullptr;
+}
+
+napi_value LynxTemplateRenderer::NativeQueryLynxElement(
+    napi_env env, napi_callback_info info) {
+  napi_value js_this;
+  size_t argc = 4;
+  napi_value args[4] = {nullptr};
+  napi_get_cb_info(env, info, &argc, args, &js_this, nullptr);
+
+  if (argc < 4 || args[3] == nullptr) {
+    return nullptr;
+  }
+  napi_valuetype callback_type;
+  napi_typeof(env, args[3], &callback_type);
+  if (callback_type != napi_function) {
+    return nullptr;
+  }
+
+  napi_ref callback_ref = nullptr;
+  napi_status status = napi_create_reference(env, args[3], 1, &callback_ref);
+  if (status != napi_ok || callback_ref == nullptr) {
+    return nullptr;
+  }
+  auto invoke_callback = [env, callback_ref](lepus::Value value) mutable {
+    base::NapiHandleScope scope(env);
+    napi_value callback = nullptr;
+    napi_get_reference_value(env, callback_ref, &callback);
+    if (callback != nullptr) {
+      napi_value js_this = nullptr;
+      napi_get_undefined(env, &js_this);
+      napi_value result = base::NapiConvertHelper::CreateNapiValue(env, value);
+      napi_call_function(env, js_this, callback, 1, &result, nullptr);
+    }
+    napi_delete_reference(env, callback_ref);
+  };
+
+  LynxTemplateRenderer* obj = nullptr;
+  status = napi_unwrap(env, js_this, reinterpret_cast<void**>(&obj));
+  if (!CheckNapiUnwrapObject(status, obj, "NativeQueryLynxElement failed")) {
+    invoke_callback(lepus::Value());
+    return nullptr;
+  }
+
+  int32_t sign = argc > 0 ? base::NapiUtil::ConvertToInt32(env, args[0]) : 0;
+  int32_t query_type =
+      argc > 1 ? base::NapiUtil::ConvertToInt32(env, args[1]) : 0;
+  std::string argument;
+  if (argc > 2 && args[2] != nullptr) {
+    napi_valuetype argument_type;
+    napi_typeof(env, args[2], &argument_type);
+    if (argument_type == napi_string) {
+      argument = base::NapiUtil::ConvertToString(env, args[2]);
+    }
+  }
+
+  auto ui_task_runner =
+      obj->shell_ ? obj->shell_->GetRunners()->GetUITaskRunner() : nullptr;
+  auto finish_with_value = [invoke_callback,
+                            ui_task_runner](lepus::Value value) mutable {
+    auto post_callback = [invoke_callback, value = std::move(value)]() mutable {
+      invoke_callback(std::move(value));
+    };
+    if (ui_task_runner) {
+      fml::TaskRunner::RunNowOrPostTask(ui_task_runner,
+                                        std::move(post_callback));
+    } else {
+      post_callback();
+    }
+  };
+
+  if (!obj->shell_ || obj->shell_->IsDestroyed() || !obj->engine_proxy_) {
+    finish_with_value(lepus::Value());
+    return nullptr;
+  }
+
+  std::static_pointer_cast<shell::LynxEngineProxyImpl>(obj->engine_proxy_)
+      ->QueryLynxElement(sign, query_type, std::move(argument),
+                         std::move(finish_with_value));
   return nullptr;
 }
 
@@ -2060,72 +2137,6 @@ napi_value LynxTemplateRenderer::UnsubscribeSessionStorage(
     napi_delete_reference(env, it->second);
     obj->session_storage_callback_refs_.erase(it);
   }
-  return nullptr;
-}
-
-napi_value LynxTemplateRenderer::GetLynxElementRoot(napi_env env,
-                                                    napi_callback_info info) {
-  napi_value js_this = nullptr;
-  size_t argc = 1;
-  napi_value args[1] = {nullptr};
-  napi_get_cb_info(env, info, &argc, args, &js_this, nullptr);
-
-  if (argc < 1 || !IsNapiFunction(env, args[0])) {
-    return nullptr;
-  }
-
-  auto callback =
-      std::make_unique<shell::PlatformCallBackHarmony>(env, args[0]);
-
-  LynxTemplateRenderer* obj = nullptr;
-  napi_status status =
-      napi_unwrap(env, js_this, reinterpret_cast<void**>(&obj));
-  if (!CheckNapiUnwrapObject(status, obj, "GetLynxElementRoot failed")) {
-    callback->InvokeWithValue(lepus::Value(tasm::kInvalidImplId));
-    return nullptr;
-  }
-
-  if (!obj->shell_ || obj->shell_->IsDestroyed()) {
-    callback->InvokeWithValue(lepus::Value(tasm::kInvalidImplId));
-    return nullptr;
-  }
-
-  obj->shell_->GetLynxElementRootSignAsync(std::move(callback));
-  return nullptr;
-}
-
-napi_value LynxTemplateRenderer::LynxElementToJSONString(
-    napi_env env, napi_callback_info info) {
-  napi_value js_this = nullptr;
-  size_t argc = 2;
-  napi_value args[2] = {nullptr};
-  napi_get_cb_info(env, info, &argc, args, &js_this, nullptr);
-
-  if (argc < 2 || !IsNapiFunction(env, args[1])) {
-    return nullptr;
-  }
-
-  int32_t sign = tasm::kInvalidImplId;
-  napi_get_value_int32(env, args[0], &sign);
-
-  auto callback =
-      std::make_unique<shell::PlatformCallBackHarmony>(env, args[1]);
-
-  LynxTemplateRenderer* obj = nullptr;
-  napi_status status =
-      napi_unwrap(env, js_this, reinterpret_cast<void**>(&obj));
-  if (!CheckNapiUnwrapObject(status, obj, "LynxElementToJSONString failed")) {
-    callback->InvokeWithValue(lepus::Value(""));
-    return nullptr;
-  }
-
-  if (sign == tasm::kInvalidImplId || !obj->shell_ ||
-      obj->shell_->IsDestroyed()) {
-    callback->InvokeWithValue(lepus::Value(""));
-    return nullptr;
-  }
-
-  obj->shell_->GetLynxElementTreeAsJSONStringAsync(sign, std::move(callback));
   return nullptr;
 }
 

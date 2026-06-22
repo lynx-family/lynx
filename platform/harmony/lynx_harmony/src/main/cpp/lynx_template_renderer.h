@@ -179,6 +179,8 @@ class LynxTemplateRenderer : public devtool::LynxDevToolProxy {
   static napi_value NativeAttach(napi_env env, napi_callback_info info);
   static napi_value NativeDetach(napi_env env, napi_callback_info info);
   static napi_value NativeReset(napi_env env, napi_callback_info info);
+  static napi_value NativeQueryLynxElement(napi_env env,
+                                           napi_callback_info info);
   static napi_value SetTracingDirPath(napi_env env, napi_callback_info info);
   static napi_value SetCacheDirPath(napi_env env, napi_callback_info info);
   static napi_value TraceEventBegin(napi_env env, napi_callback_info info);
@@ -234,10 +236,6 @@ class LynxTemplateRenderer : public devtool::LynxDevToolProxy {
                                             napi_callback_info info);
   static napi_value UnsubscribeSessionStorage(napi_env env,
                                               napi_callback_info info);
-  static napi_value GetLynxElementRoot(napi_env env, napi_callback_info info);
-  static napi_value LynxElementToJSONString(napi_env env,
-                                            napi_callback_info info);
-
   static napi_value GetAllJsSource(napi_env env, napi_callback_info info);
   static napi_value GetAllJsSourceAsync(napi_env env, napi_callback_info info);
   static napi_value InvokeLepusCallback(napi_env env, napi_callback_info info);

@@ -32,6 +32,7 @@ import { LynxBaseInspectorOwner } from '../devtool_wrapper/LynxBaseInspectorOwne
 import { NativeContent } from '../Index';
 import { LynxImageConfig } from './image/LynxImageConfig';
 import { SessionStorageCallback } from './SessionStorage';
+import { LynxElement, LynxElementCallback } from './LynxElement';
 
 const TAG = 'LynxContext'
 const INVALID_SESSION_STORAGE_LISTENER_ID = -1;
@@ -109,6 +110,22 @@ export class LynxContext implements IContext {
    */
   sendGlobalEvent(name: string, params: Object[]) {
     this.lynxView?.sendGlobalEvent(name, params);
+  }
+
+  /**
+   * Obtains the root LynxElement for the current LynxView.
+   * @apidoc
+   * @param callback Receives the root LynxElement, or null if no root is available.
+   */
+  getLynxElementRoot(callback?: LynxElementCallback<LynxElement | null>): void {
+    if (!callback) {
+      return;
+    }
+    if (!this.renderer || this.renderer.isDestroyed()) {
+      callback(null);
+      return;
+    }
+    this.renderer.getLynxElementRoot(callback);
   }
 
   public callJSFunction(moduleName: string, method: string, params: Object[]) {

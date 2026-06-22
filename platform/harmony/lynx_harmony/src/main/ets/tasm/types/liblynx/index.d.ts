@@ -136,6 +136,9 @@ export class LynxTemplateRenderer {
 
   nativeDetach(): void;
 
+  nativeQueryLynxElement(sign: number, queryType: number, argument: string | null,
+    callback: (result: Object | string | number | boolean | null) => void): void;
+
   loadTemplate(url: string, buffer: ArrayBuffer, processor?: string, templateData?: Object, readOnly?: boolean,
     enableRecycleTemplateBundle?: boolean, timingOption?: Object): void;
 
@@ -220,16 +223,6 @@ export class LynxTemplateRenderer {
   nativeSubscribeSessionStorage(key: string, callback: Function): number;
 
   nativeUnsubscribeSessionStorage(key: string, listenerId: number): void;
-
-  /**
-   * Obtains the root LynxElement.
-   */
-  nativeGetLynxElementRoot(callback: (result: number) => void): void;
-
-  nativeLynxElementToJSONString(
-    sign: number,
-    callback: (result: string | null) => void
-  ): void;
 
   invokeLepusCallback(id: number, entryName: string, args: Object): void;
 }

@@ -9,6 +9,8 @@ export { LynxNodeController, LynxView, LynxViewBuilder, ThreadStrategyForRenderi
 export { LynxContext } from './tasm/LynxContext'
 export { SessionStorageCallback } from './tasm/SessionStorage'
 
+export { LynxElement, LynxElementCallback, LynxElementFilter, LynxElementStatus, LynxValue } from './tasm/LynxElement'
+
 export { LynxModule, ModuleClassWrapper, SendableLynxModule, SendableModuleClassWrapper } from './jsbridge/LynxModule'
 
 export { LynxHttpRequest } from './jsbridge/network/LynxHttpRequest'
@@ -52,10 +54,6 @@ export {
 export {
   UIGroup
 } from './tasm/behavior/ui/UIGroup'
-
-export {
-  LynxElement
-} from './tasm/LynxElement'
 
 export { NativeContent,
   UIOwner as NativeUIOwner,
