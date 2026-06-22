@@ -147,9 +147,16 @@ void PlatformRendererDarwin::OnUpdateAttributes(const fml::RefPtr<PropBundle>& a
   }
 }
 
-void PlatformRendererDarwin::OnAddChild(PlatformRenderer* child, int /* index */) {
-  // TODO(linxs): Support indexed insertion on iOS after mapping the
-  // platform renderer child index to the corresponding UIOwner/UIView child index.
+void PlatformRendererDarwin::OnRebuildSubRenderers() {
+  UIView<LynxRendererHost>* view = GetUIView();
+  if (view == nil) {
+    return;
+  }
+
+  [[view renderer] onRebuildSubRenderers];
+}
+
+void PlatformRendererDarwin::OnAddChild(PlatformRenderer* child, int index) {
   if (child == nullptr) {
     return;
   }
@@ -158,7 +165,7 @@ void PlatformRendererDarwin::OnAddChild(PlatformRenderer* child, int /* index */
   UIView<LynxRendererHost>* child_view = child_renderer->GetUIView();
   LynxUIOwner* owner = ui_owner_;
   if (owner != nil && HasUIOwnerNode(GetId()) && child_renderer->HasUIOwnerNode(child->GetId())) {
-    [owner insertNode:child->GetId() toParent:GetId() atIndex:-1];
+    [owner insertNode:child->GetId() toParent:GetId() atIndex:index];
     [[child_view renderer] reattachHostDecorationLayers];
     return;
   }
@@ -171,7 +178,12 @@ void PlatformRendererDarwin::OnAddChild(PlatformRenderer* child, int /* index */
   if (child_view == nil) {
     return;
   }
-  [view addSubview:child_view];
+
+  if (index < 0) {
+    [view addSubview:child_view];
+  } else {
+    [view insertSubview:child_view atIndex:index];
+  }
   [[child_view renderer] reattachHostDecorationLayers];
 }
 
