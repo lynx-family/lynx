@@ -31,7 +31,8 @@ class PlatformRenderer : public fml::RefCountedThreadSafeStorage {
   virtual void UpdateAttributes(const fml::RefPtr<PropBundle>& attributes,
                                 bool tends_to_flatten) = 0;
   // Add a child renderer
-  virtual void AddChild(fml::RefPtr<PlatformRenderer> child) = 0;
+  virtual void AddChild(fml::RefPtr<PlatformRenderer> child,
+                        int index = -1) = 0;
 
   // Remove this renderer from its parent
   virtual void RemoveFromParent() = 0;

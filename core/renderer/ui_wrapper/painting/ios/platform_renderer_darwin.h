@@ -44,7 +44,7 @@ class PlatformRendererDarwin : public PlatformRendererImpl {
   void OnUpdateDisplayList(DisplayList display_list) override;
   void OnUpdateAttributes(const fml::RefPtr<PropBundle>& attributes,
                           bool tends_to_flatten) override;
-  void OnAddChild(PlatformRenderer* child) override;
+  void OnAddChild(PlatformRenderer* child, int index) override;
   void OnRemoveFromParent() override;
   void OnUpdateSubtreeProperties(const DisplayList& subtree_properties) override;
   void UpdatePlatformExtraBundle(id platform_extra_bundle);

@@ -70,10 +70,10 @@ void PlatformRendererAndroid::OnUpdateDisplayList(DisplayList display_list) {
   }
 }
 
-void PlatformRendererAndroid::OnAddChild(PlatformRenderer* child) {
+void PlatformRendererAndroid::OnAddChild(PlatformRenderer* child, int index) {
   if (context_ && child) {
     context_->InsertPlatformRenderer(PlatformRendererImpl::GetId(),
-                                     child->GetId(), -1);
+                                     child->GetId(), index);
   }
 }
 
