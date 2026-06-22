@@ -15,6 +15,7 @@ TextUpdateBundle::~TextUpdateBundle() {}
 void TextUpdateBundle::UpdateExtraData(BaseView* view) {
   if (view && view->Is<TextView>() && paragraph_) {
     auto text_view = static_cast<TextView*>(view);
+    text_view->ClearInlineIndexes();
     for (auto info : info_) {
       auto info_view = text_view->page_view()->FindViewByViewId(info.id);
       auto parent_view =
