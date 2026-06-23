@@ -14,13 +14,25 @@ namespace shell {
 class PlatformCallBackAndroid : public PlatformCallBack {
  public:
   PlatformCallBackAndroid(JNIEnv* env, jobject jni_object)
-      : jni_object_(env, jni_object){};
+      : jni_object_(env, jni_object) {}
   ~PlatformCallBackAndroid() override = default;
 
   void InvokeWithValue(const lepus::Value& value) override;
 
  private:
   lynx::base::android::ScopedWeakGlobalJavaRef<jobject> jni_object_;
+};
+
+class PlatformCallBackStrongRefAndroid : public PlatformCallBack {
+ public:
+  PlatformCallBackStrongRefAndroid(JNIEnv* env, jobject jni_object)
+      : jni_object_(env, jni_object) {}
+  ~PlatformCallBackStrongRefAndroid() override = default;
+
+  void InvokeWithValue(const lepus::Value& value) override;
+
+ private:
+  lynx::base::android::ScopedGlobalJavaRef<jobject> jni_object_;
 };
 }  // namespace shell
 }  // namespace lynx
