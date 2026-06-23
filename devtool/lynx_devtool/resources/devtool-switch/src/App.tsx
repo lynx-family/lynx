@@ -14,15 +14,62 @@ import { CurrentJSEngine } from './sections/CurrentJSEngine';
 import { FSPScreenshot } from './sections/FSPScreenshot';
 
 export default function App() {
+  const safeArea = getSafeArea();
+  const horizontalSafeArea = safeArea.left + safeArea.right;
+
   return (
     <view className="container" style="height:100%;width:100%">
       <scroll-view scroll-y style="height:100%;width:100%">
-        <Header />
-        <LynxDebug experimental={true} />
-        <CurrentJSEngine />
+        <view
+          style={{
+            marginLeft: `${safeArea.left}px`,
+            marginRight: `${safeArea.right}px`,
+            width: `calc(100% - ${horizontalSafeArea}px)`,
+            paddingBottom: `${safeArea.bottom}px`,
+          }}
+        >
+          <Header />
+          <LynxDebug experimental={true} />
+          <CurrentJSEngine />
+        </view>
       </scroll-view>
     </view>
   );
+}
+
+function getSafeArea() {
+  const globalProps = lynx.__globalProps || {};
+  const screenWidth = Number(globalProps.screenWidth || 0);
+  const screenHeight = Number(globalProps.screenHeight || 0);
+  const isPortrait =
+    screenWidth > 0 && screenHeight > 0 ? screenHeight >= screenWidth : true;
+  const isIOS = SystemInfo.platform === 'iOS';
+  const isNotchScreen =
+    globalProps.isNotchScreen ||
+    (globalProps.safeAreaTop || 0) > 20 ||
+    (globalProps.safeAreaBottom || 0) > 0 ||
+    (globalProps.safeAreaLeft || 0) > 0 ||
+    (globalProps.safeAreaRight || 0) > 0;
+  const landscapeSideFallback = isIOS && isNotchScreen ? 54 : 0;
+
+  return {
+    top: Math.max(
+      globalProps.safeAreaTop || 0,
+      isPortrait && isNotchScreen ? 54 : 0
+    ),
+    bottom: Math.max(
+      globalProps.safeAreaBottom || 0,
+      isPortrait && isNotchScreen ? 34 : 0
+    ),
+    left: Math.max(
+      globalProps.safeAreaLeft || 0,
+      isPortrait ? 0 : landscapeSideFallback
+    ),
+    right: Math.max(
+      globalProps.safeAreaRight || 0,
+      isPortrait ? 0 : landscapeSideFallback
+    ),
+  };
 }
 
 interface Props {

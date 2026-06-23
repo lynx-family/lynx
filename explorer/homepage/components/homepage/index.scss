@@ -2,7 +2,7 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-@import "../shared";
+@import '../shared';
 
 .logo {
   display: flex;
@@ -13,7 +13,7 @@
 .home-title__dark {
   @include title;
   margin-left: 6px;
-  color: var(--title-dark)
+  color: var(--title-dark);
 }
 
 .home-title__light {
@@ -37,28 +37,28 @@
 .input-card-url__light {
   @include box;
   flex-direction: column;
-  height: 24%;
-  justify-content: center;
-  margin-bottom: 3%;
+  height: 148px;
+  justify-content: flex-start;
+  margin-bottom: 12px;
   background: var(--box-light);
 }
 
 .input-card-url__dark {
   @include box;
   flex-direction: column;
-  height: 24%;
-  justify-content: center;
-  margin-bottom: 3%;
+  height: 148px;
+  justify-content: flex-start;
+  margin-bottom: 12px;
   background: var(--box-dark);
 }
 
 .input-box__light {
   display: flex;
   align-items: flex-start;
-  margin: 0% 5% 5% 5%;
+  margin: 0px 5% 8px 5%;
   border-width: 0px 0px 1px;
   border-color: #0000001a;
-  height: 20%;
+  height: 30px;
   width: 90%;
   color: var(--text-light);
 }
@@ -66,10 +66,10 @@
 .input-box__dark {
   display: flex;
   align-items: flex-start;
-  margin: 0% 5% 5% 5%;
+  margin: 0px 5% 8px 5%;
   border-width: 0px 0px 1px;
   border-color: #ffffff1a;
-  height: 20%;
+  height: 30px;
   width: 90%;
   color: var(--text-dark);
 }
@@ -77,25 +77,27 @@
 .bold-text__light {
   font-size: 14px;
   font-weight: 500;
-  height: 20%;
-  margin: 5%;
+  line-height: 20px;
+  height: 20px;
+  margin: 12px 5% 8px 5%;
 }
 
 .bold-text__dark {
   font-size: 14px;
   font-weight: 500;
-  height: 20%;
-  margin: 5%;
-  color: var(--text-dark)
+  line-height: 20px;
+  height: 20px;
+  margin: 12px 5% 8px 5%;
+  color: var(--text-dark);
 }
 
 @mixin connect-button {
   display: flex;
   align-items: center;
   justify-content: center;
-  margin: 1% 5% 5% 5%;
+  margin: 0px 5% 10px 5%;
   border-radius: 8px;
-  height: 28%;
+  height: 42px;
   width: 90%;
 }
 
@@ -113,7 +115,7 @@
   @include box;
   margin-top: 0px;
   margin-bottom: 0px;
-  height: 8%;
+  height: 52px;
   background: var(--box-light);
 }
 
@@ -121,7 +123,7 @@
   @include box;
   margin-top: 0px;
   margin-bottom: 0px;
-  height: 8%;
+  height: 52px;
   background: var(--box-dark);
 }
 

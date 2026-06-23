@@ -2,27 +2,27 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-@import "../shared";
+@import '../shared';
 
 .theme__dark {
   @include box;
   flex-direction: column;
-  margin-bottom: 3%;
-  height: 18%;
+  margin-bottom: 12px;
+  height: 132px;
   background: var(--box-dark);
 }
 
 .theme__light {
   @include box;
   flex-direction: column;
-  margin-bottom: 3%;
-  height: 18%;
+  margin-bottom: 12px;
+  height: 132px;
   background: var(--box-light);
 }
 
 .option-item {
   display: flex;
-  height: 33%;
+  height: 44px;
 }
 
 .option-icon {
@@ -86,14 +86,14 @@
 
 .devtool__light {
   @include box;
-  height: 8%;
+  height: 48px;
   justify-content: center;
   background: var(--box-light);
 }
 
 .devtool__dark {
   @include box;
-  height: 8%;
+  height: 48px;
   justify-content: center;
   background: var(--box-dark);
 }
@@ -101,20 +101,34 @@
 .info-section__light {
   @include box;
   flex-direction: column;
-  padding: 4% 0;
+  margin-bottom: 16px;
+  padding: 8px 0;
   background: var(--box-light);
 }
 
 .info-section__dark {
   @include box;
   flex-direction: column;
-  padding: 4% 0;
+  margin-bottom: 16px;
+  padding: 8px 0;
   background: var(--box-dark);
 }
 
 .info-row {
   display: flex;
   height: 40px;
+}
+
+.settings-columns {
+  display: flex;
+  flex-direction: row;
+  width: 100%;
+}
+
+.settings-column {
+  display: flex;
+  flex-direction: column;
+  width: 50%;
 }
 
 .info-value__light {

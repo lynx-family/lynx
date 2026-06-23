@@ -87,6 +87,10 @@ export default function HomePage(props: HomePageProps) {
   }
 
   const navigatorHeight = 48 + safeArea.bottom;
+  const horizontalSafeArea = safeArea.left + safeArea.right;
+  const isDesktop =
+    lynx.__globalProps.platform === 'macos' ||
+    lynx.__globalProps.platform === 'windows';
 
   return (
     <scroll-view
@@ -95,115 +99,120 @@ export default function HomePage(props: HomePageProps) {
       style={{ height: `calc(100% - ${navigatorHeight}px)` }}
     >
       <view
-        className="page-header"
-        style={{ marginTop: `${Math.max(safeArea.top, 10)}px` }}
-      >
-        <image src={getIcon('Explorer')} className="logo" mode="aspectFit" />
-        <text className={withTheme('home-title')}>Lynx Explorer</text>
-        <view className="scan">
-          {(() => {
-            if (SystemInfo.platform === 'iOS') {
-              return <></>;
-            }
-            return (
-              <image
-                src={getIcon('Scan')}
-                className="scan-icon"
-                bindtap={openScan}
-                accessibility-element={true}
-                accessibility-label="Open Scan"
-                accessibility-traits="button"
-              />
-            );
-          })()}
-        </view>
-      </view>
-
-      <view
-        className={withTheme('input-card-url')}
+        className="safe-area-content"
         style={{
-          height:
-            lynx.__globalProps.platform === 'macos' ||
-            lynx.__globalProps.platform === 'windows'
-              ? '40%'
-              : '28%',
+          marginLeft: `${safeArea.left}px`,
+          marginRight: `${safeArea.right}px`,
+          width: `calc(100% - ${horizontalSafeArea}px)`,
         }}
       >
-        <text className={withTheme('bold-text')}>Bundle URL</text>
-        <input
-          className={withTheme('input-box')}
-          bindinput={handleInput}
-          placeholder="Enter Bundle URL"
-          text-color={getTextColor()}
-        />
         <view
-          className={withTheme('connect-button')}
-          bindtap={openSchemaHandler}
-          accessibility-element={true}
-          accessibility-label="Open Schema"
-          accessibility-traits="button"
+          className="page-header"
+          style={{ marginTop: `${Math.max(safeArea.top, 10)}px` }}
         >
-          <text
-            style="line-height: 22px; color: #ffffff; font-size: 16px"
-            accessibility-element={false}
+          <image src={getIcon('Explorer')} className="logo" mode="aspectFit" />
+          <text className={withTheme('home-title')}>Lynx Explorer</text>
+          <view className="scan">
+            {(() => {
+              if (SystemInfo.platform === 'iOS') {
+                return <></>;
+              }
+              return (
+                <image
+                  src={getIcon('Scan')}
+                  className="scan-icon"
+                  bindtap={openScan}
+                  accessibility-element={true}
+                  accessibility-label="Open Scan"
+                  accessibility-traits="button"
+                />
+              );
+            })()}
+          </view>
+        </view>
+
+        <view
+          className={withTheme('input-card-url')}
+          style={{
+            height: isDesktop ? '40%' : '148px',
+          }}
+        >
+          <text className={withTheme('bold-text')}>Bundle URL</text>
+          <input
+            className={withTheme('input-box')}
+            bindinput={handleInput}
+            placeholder="Enter Bundle URL"
+            text-color={getTextColor()}
+          />
+          <view
+            className={withTheme('connect-button')}
+            bindtap={openSchemaHandler}
+            accessibility-element={true}
+            accessibility-label="Open Schema"
+            accessibility-traits="button"
           >
-            Go
-          </text>
-        </view>
-      </view>
-
-      <view
-        className={withTheme('showcase')}
-        bindtap={openShowcasePage}
-        accessibility-element={true}
-        accessibility-label="Open Show Cases"
-        accessibility-traits="button"
-      >
-        <image src={ShowcaseIcon} className="showcase-icon" />
-        <text className={withTheme('text')} accessibility-element={false}>
-          Showcase
-        </text>
-        <view style="margin: auto 5% auto auto; justify-content: center">
-          <image src={getIcon('Forward')} className="forward-icon" />
-        </view>
-      </view>
-
-      {recentUrls.length > 0 && (
-        <view className={withTheme('recent-panel')}>
-          <view className="recent-header">
-            <text className={withTheme('recent-title')}>Recently Opened</text>
             <text
-              className={withTheme('recent-clear')}
-              bindtap={handleClearRecent}
-              accessibility-element={true}
-              accessibility-label="Clear recent history"
-              accessibility-traits="button"
+              style="line-height: 22px; color: #ffffff; font-size: 16px"
+              accessibility-element={false}
             >
-              Clear
+              Go
             </text>
           </view>
-          {recentUrls.map((url) => (
-            <view
-              key={url}
-              className={withTheme('recent-item')}
-              bindtap={() => handleOpenRecent(url)}
-              accessibility-element={true}
-              accessibility-label={`Open ${url}`}
-              accessibility-traits="button"
-            >
-              <text
-                className={withTheme('recent-url')}
-                accessibility-element={false}
-              >
-                {url}
-              </text>
-              <view style="margin: auto 5% auto auto; justify-content: center">
-                <image src={getIcon('Forward')} className="forward-icon" />
-              </view>
-            </view>
-          ))}
         </view>
-      )}
+
+        <view
+          className={withTheme('showcase')}
+          bindtap={openShowcasePage}
+          accessibility-element={true}
+          accessibility-label="Open Show Cases"
+          accessibility-traits="button"
+        >
+          <image src={ShowcaseIcon} className="showcase-icon" />
+          <text className={withTheme('text')} accessibility-element={false}>
+            Showcase
+          </text>
+          <view style="margin: auto 5% auto auto; justify-content: center">
+            <image src={getIcon('Forward')} className="forward-icon" />
+          </view>
+        </view>
+
+        {recentUrls.length > 0 && (
+          <view className={withTheme('recent-panel')}>
+            <view className="recent-header">
+              <text className={withTheme('recent-title')}>Recently Opened</text>
+              <text
+                className={withTheme('recent-clear')}
+                bindtap={handleClearRecent}
+                accessibility-element={true}
+                accessibility-label="Clear recent history"
+                accessibility-traits="button"
+              >
+                Clear
+              </text>
+            </view>
+            {recentUrls.map((url) => (
+              <view
+                key={url}
+                className={withTheme('recent-item')}
+                bindtap={() => handleOpenRecent(url)}
+                accessibility-element={true}
+                accessibility-label={`Open ${url}`}
+                accessibility-traits="button"
+              >
+                <text
+                  className={withTheme('recent-url')}
+                  accessibility-element={false}
+                >
+                  {url}
+                </text>
+                <view style="margin: auto 5% auto auto; justify-content: center">
+                  <image src={getIcon('Forward')} className="forward-icon" />
+                </view>
+              </view>
+            ))}
+          </view>
+        )}
+      </view>
     </scroll-view>
   );
 }

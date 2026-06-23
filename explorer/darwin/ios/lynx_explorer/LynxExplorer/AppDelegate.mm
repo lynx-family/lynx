@@ -40,8 +40,7 @@ static void InstallPrimJSWeakNodeApiBridge(void) {
 }
 
 NSString *const LOCAL_URL_PREFIX = @"file://lynx?local://";
-NSString *const HOMEPAGE_URL =
-    @"file://lynx?local://homepage.lynx.bundle?fullscreen=true&orientation=portrait";
+NSString *const HOMEPAGE_URL = @"file://lynx?local://homepage.lynx.bundle?fullscreen=true";
 
 @interface AppDelegate ()
 

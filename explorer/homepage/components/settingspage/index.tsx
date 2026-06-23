@@ -60,29 +60,42 @@ export default function SettingsPage(props: SettingsPageProps) {
   }
 
   const navigatorHeight = 48 + safeArea.bottom;
+  const horizontalSafeArea = safeArea.left + safeArea.right;
+  const screenWidth = Number(lynx.__globalProps.screenWidth || 0);
+  const screenHeight = Number(lynx.__globalProps.screenHeight || 0);
+  const isLandscape =
+    screenWidth > 0 && screenHeight > 0 && screenWidth > screenHeight;
+  const labelStyle = 'margin: 0px 5% 0px 5%; height: 20px';
+  const labelWithGapStyle = `margin: ${
+    isLandscape ? 8 : 16
+  }px 5% 0px 5%; height: ${isLandscape ? 20 : 24}px`;
+  const optionItemStyle = { height: isLandscape ? '34px' : '44px' };
+  const themeStyle = { height: isLandscape ? '102px' : '132px' };
+  const rowCardStyle = { height: isLandscape ? '38px' : '48px' };
+  const renderCardStyle = {
+    height: isLandscape ? '38px' : '48px',
+    justifyContent: 'center',
+  };
+  const infoSectionStyle = {
+    marginBottom: isLandscape ? '0px' : '16px',
+    padding: isLandscape ? '4px 0' : '8px 0',
+  };
+  const infoRowStyle = { height: isLandscape ? '32px' : '40px' };
 
-  return (
-    <view
-      clip-radius="true"
-      className={withTheme('page')}
-      style={{ height: `calc(100% - ${navigatorHeight}px)` }}
-    >
+  const renderThemeSection = () => (
+    <>
       <view
-        className="page-header"
-        style={{ marginTop: `${Math.max(safeArea.top, 10)}px` }}
+        style={isLandscape ? labelStyle : 'margin: 0px 5% 0px 5%; height: 24px'}
       >
-        <text className={withTheme('title')}>Settings</text>
-      </view>
-
-      <view style="margin: 0px 5% 0px 5%; height: 5%">
         <text className={withTheme('sub-title')}>Theme</text>
       </view>
-      <view className={withTheme('theme')}>
+      <view className={withTheme('theme')} style={themeStyle}>
         {THEMES.map((theme) => {
           return (
             <view
               key={theme}
               className="option-item"
+              style={optionItemStyle}
               bindtap={() => setPreference(theme)}
               accessibility-element={true}
               accessibility-label={`Set Theme ${theme}`}
@@ -110,12 +123,17 @@ export default function SettingsPage(props: SettingsPageProps) {
           );
         })}
       </view>
+    </>
+  );
 
-      <view style="margin: 3% 5% 0px 5%; height: 5%">
+  const renderDevToolSection = () => (
+    <>
+      <view style={labelWithGapStyle}>
         <text className={withTheme('sub-title')}>DevTool</text>
       </view>
       <view
         className={withTheme('devtool')}
+        style={rowCardStyle}
         bindtap={openDevtoolSwitchPage}
         accessibility-element={true}
         accessibility-label="Lynx DevTool Switches"
@@ -128,16 +146,18 @@ export default function SettingsPage(props: SettingsPageProps) {
           <image src={getIcon('Forward')} className="forward-icon" />
         </view>
       </view>
+    </>
+  );
 
-      <view style="margin: 3% 5% 0px 5%; height: 5%">
+  const renderStrategySection = () => (
+    <>
+      <view style={isLandscape ? labelStyle : labelWithGapStyle}>
         <text className={withTheme('sub-title')}>Render Strategy</text>
       </view>
-      <view
-        className={withTheme('theme')}
-        style="height: 8%;justify-content:center"
-      >
+      <view className={withTheme('theme')} style={renderCardStyle}>
         <view
           className="option-item"
+          style={optionItemStyle}
           bindtap={() => {
             NativeModules.ExplorerModule.setThreadMode(
               !listAsyncRender ? 1 : 0
@@ -166,18 +186,22 @@ export default function SettingsPage(props: SettingsPageProps) {
           </view>
         </view>
       </view>
+    </>
+  );
 
-      <view style="margin: 3% 5% 0px 5%; height: 5%">
+  const renderSystemInfoSection = () => (
+    <>
+      <view style={labelWithGapStyle}>
         <text className={withTheme('sub-title')}>System Info</text>
       </view>
-      <view className={withTheme('info-section')}>
-        <view className="info-row">
+      <view className={withTheme('info-section')} style={infoSectionStyle}>
+        <view className="info-row" style={infoRowStyle}>
           <text className={withTheme('text')}>Lynx Engine</text>
           <text className={withTheme('info-value')}>
             {SystemInfo.engineVersion}
           </text>
         </view>
-        <view className="info-row">
+        <view className="info-row" style={infoRowStyle}>
           <text className={withTheme('text')}>Sparkling</text>
           <text
             className={`${withTheme('info-value')} ${
@@ -188,6 +212,52 @@ export default function SettingsPage(props: SettingsPageProps) {
           </text>
         </view>
       </view>
-    </view>
+    </>
+  );
+
+  return (
+    <scroll-view
+      scroll-y
+      clip-radius="true"
+      className={withTheme('page')}
+      style={{ height: `calc(100% - ${navigatorHeight}px)` }}
+    >
+      <view
+        className="safe-area-content"
+        style={{
+          marginLeft: `${safeArea.left}px`,
+          marginRight: `${safeArea.right}px`,
+          width: `calc(100% - ${horizontalSafeArea}px)`,
+        }}
+      >
+        <view
+          className="page-header"
+          style={{ marginTop: `${Math.max(safeArea.top, 10)}px` }}
+        >
+          <text className={withTheme('title')}>Settings</text>
+        </view>
+
+        {isLandscape ? (
+          <view className="settings-columns">
+            <view className="settings-column">
+              {renderThemeSection()}
+              {renderDevToolSection()}
+            </view>
+            <view className="settings-column">
+              {renderStrategySection()}
+              {renderSystemInfoSection()}
+            </view>
+          </view>
+        ) : (
+          <>
+            {renderThemeSection()}
+            {renderDevToolSection()}
+            {renderStrategySection()}
+            {renderSystemInfoSection()}
+          </>
+        )}
+        <view style={{ height: `${navigatorHeight}px` }} />
+      </view>
+    </scroll-view>
   );
 }

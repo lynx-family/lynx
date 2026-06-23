@@ -64,10 +64,16 @@
 
 .page-header {
   display: flex;
+  align-items: center;
   margin-left: 5%;
-  padding-top: 4%;
+  margin-bottom: 6px;
   width: 90%;
-  height: 10%;
+  height: 40px;
+}
+
+.safe-area-content {
+  display: flex;
+  flex-direction: column;
 }
 
 .title__dark {

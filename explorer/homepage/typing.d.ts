@@ -45,8 +45,12 @@ declare module '@lynx-js/types' {
     frontendTheme?: string;
     theme: string;
     isNotchScreen: boolean;
+    screenHeight?: number;
+    screenWidth?: number;
     safeAreaTop?: number;
     safeAreaBottom?: number;
+    safeAreaLeft?: number;
+    safeAreaRight?: number;
   }
 
   interface IntrinsicElements extends Lynx.IntrinsicElements {

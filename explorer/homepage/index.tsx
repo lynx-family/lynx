@@ -10,7 +10,9 @@ import Navigator from '@components/navigator';
 import SettingsPage from '@components/settingspage';
 
 export default function Explorer() {
-  const [page, setPage] = useState<'home' | 'settings'>('home');
+  const initialPage =
+    lynx.__globalProps.initialPage === 'settings' ? 'settings' : 'home';
+  const [page, setPage] = useState<'home' | 'settings'>(initialPage);
 
   return (
     <AppContextProvider>

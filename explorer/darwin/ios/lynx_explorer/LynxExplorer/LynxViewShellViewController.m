@@ -45,6 +45,13 @@ NSString *const kBackButtonImageDark = @"back_dark";
 @property(nonatomic, strong) UIView *previousViewControllerView;
 @property(nonatomic, copy) NSString *frontendTheme;
 @property(nonatomic, strong) LynxBackgroundRuntime *backgroundRuntime;
+@property(nonatomic, strong) LynxView *lynxView;
+@property(nonatomic, strong) UIView *statusView;
+@property(nonatomic, strong) UIView *barView;
+@property(nonatomic, strong) UILabel *titleLabel;
+@property(nonatomic, assign) CGSize currentScreenMetricsSize;
+@property(nonatomic, assign) CGSize currentViewportSize;
+@property(nonatomic, assign) UIEdgeInsets currentSafeAreaInsets;
 
 @end
 
@@ -58,6 +65,120 @@ static BOOL IsTruthyParam(id value) {
     return [s isEqualToString:@"1"] || [s isEqualToString:@"true"] || [s isEqualToString:@"yes"];
   }
   return NO;
+}
+
+- (BOOL)hasExplicitViewportSize {
+  return [self.params.allKeys containsObject:@"height"] &&
+         [self.params.allKeys containsObject:@"width"];
+}
+
+- (CGSize)screenSizeForCurrentBounds {
+  if ([self hasExplicitViewportSize]) {
+    NSNumber *width = [self.params objectForKey:@"width"];    // Physical pixel
+    NSNumber *height = [self.params objectForKey:@"height"];  // Physical pixel
+    CGFloat realScale = [[UIScreen mainScreen] scale];
+    return CGSizeMake([width intValue] / realScale, [height intValue] / realScale);
+  }
+  return self.view.bounds.size;
+}
+
+- (CGFloat)statusBarHeight {
+  CGFloat statusBarHeight = [UIApplication sharedApplication].statusBarFrame.size.height;
+  if (statusBarHeight > 0) {
+    return statusBarHeight;
+  }
+  return [self statusBarHeightForCurrentLayout];
+}
+
+- (CGFloat)statusBarHeightForCurrentLayout {
+  if (@available(iOS 13.0, *)) {
+    UIWindowScene *windowScene =
+        self.view.window.windowScene ?: UIApplication.sharedApplication.keyWindow.windowScene;
+    CGFloat statusBarHeight = windowScene.statusBarManager.statusBarFrame.size.height;
+    if (statusBarHeight > 0) {
+      return statusBarHeight;
+    }
+  }
+  CGFloat statusBarHeight = [UIApplication sharedApplication].statusBarFrame.size.height;
+  if (statusBarHeight > 0) {
+    return statusBarHeight;
+  }
+  return [self isNotchScreen] ? 44 : 20;
+}
+
+- (UIEdgeInsets)safeAreaInsetsForCurrentLayout {
+  if (@available(iOS 11.0, *)) {
+    UIEdgeInsets safeAreaInsets = self.view.safeAreaInsets;
+    if (!UIEdgeInsetsEqualToEdgeInsets(safeAreaInsets, UIEdgeInsetsZero)) {
+      return safeAreaInsets;
+    }
+    UIWindow *window = self.view.window ?: UIApplication.sharedApplication.keyWindow;
+    if (window) {
+      safeAreaInsets = window.safeAreaInsets;
+      if (!UIEdgeInsetsEqualToEdgeInsets(safeAreaInsets, UIEdgeInsetsZero)) {
+        return safeAreaInsets;
+      }
+    }
+  }
+  return UIEdgeInsetsMake([self statusBarHeightForCurrentLayout], 0, [self isNotchScreen] ? 34 : 0,
+                          0);
+}
+
+- (CGFloat)navigationBarHeight {
+  return self.navigationController.navigationBar.frame.size.height;
+}
+
+- (CGRect)lynxViewFrameForScreenSize:(CGSize)screenSize {
+  CGFloat y = 0;
+  CGFloat height = screenSize.height;
+  if (!self.fullScreen) {
+    CGFloat statusBarHeight = [self statusBarHeight];
+    y += statusBarHeight;
+    height -= statusBarHeight;
+    if (!self.hiddenNav) {
+      CGFloat navigationBarHeight = [self navigationBarHeight];
+      y += navigationBarHeight;
+      height -= navigationBarHeight;
+    }
+  }
+  return CGRectMake(0, y, screenSize.width, MAX(height, 0));
+}
+
+- (void)layoutNavigationForScreenSize:(CGSize)screenSize {
+  CGFloat statusH = [self statusBarHeight];
+  CGFloat navH = [self navigationBarHeight];
+
+  self.statusView.frame = CGRectMake(0, 0, screenSize.width, statusH);
+  self.barView.frame = CGRectMake(0, statusH, screenSize.width, navH);
+  self.titleLabel.frame = CGRectMake(navH, 0, MAX(screenSize.width - 2 * navH, 0), navH);
+}
+
+- (void)updateLynxViewLayoutIfNeeded {
+  if (!self.lynxView) {
+    return;
+  }
+
+  CGSize screenSize = [self screenSizeForCurrentBounds];
+  CGRect lynxViewFrame = [self lynxViewFrameForScreenSize:screenSize];
+  CGSize viewportSize = lynxViewFrame.size;
+  UIEdgeInsets safeAreaInsets = [self safeAreaInsetsForCurrentLayout];
+
+  [self layoutNavigationForScreenSize:screenSize];
+  self.lynxView.frame = lynxViewFrame;
+
+  if (CGSizeEqualToSize(self.currentScreenMetricsSize, screenSize) &&
+      CGSizeEqualToSize(self.currentViewportSize, viewportSize) &&
+      UIEdgeInsetsEqualToEdgeInsets(self.currentSafeAreaInsets, safeAreaInsets)) {
+    return;
+  }
+
+  self.currentScreenMetricsSize = screenSize;
+  self.currentViewportSize = viewportSize;
+  self.currentSafeAreaInsets = safeAreaInsets;
+  [self.lynxView updateScreenMetricsWithWidth:screenSize.width height:screenSize.height];
+  [self.lynxView updateViewportWithPreferredLayoutWidth:viewportSize.width
+                                  preferredLayoutHeight:viewportSize.height];
+  [self.lynxView updateGlobalPropsWithTemplateData:[self getGlobalPropsForScreenSize:screenSize]];
 }
 
 - (id)init {
@@ -130,21 +251,34 @@ static BOOL IsTruthyParam(id value) {
   return globalProps;
 }
 
-- (void)loadLynxViewWithUrl:(NSString *)url templateData:(NSData *)data {
-  CGRect screenFrame = self.view.frame;
-  CGRect statusRect = [[UIApplication sharedApplication] statusBarFrame];
-  CGRect navRect = self.navigationController.navigationBar.frame;
+- (LynxTemplateData *)getGlobalPropsForScreenSize:(CGSize)screenSize {
+  LynxTemplateData *globalProps = [self getGlobalPropsFromParams];
+  [globalProps updateBool:[self isNotchScreen] forKey:@"isNotchScreen"];
+  [globalProps updateDouble:screenSize.height forKey:@"screenHeight"];
+  [globalProps updateDouble:screenSize.width forKey:@"screenWidth"];
+  UIEdgeInsets safeAreaInsets = [self safeAreaInsetsForCurrentLayout];
+  [globalProps updateDouble:safeAreaInsets.top forKey:@"safeAreaTop"];
+  [globalProps updateDouble:safeAreaInsets.bottom forKey:@"safeAreaBottom"];
+  [globalProps updateDouble:safeAreaInsets.left forKey:@"safeAreaLeft"];
+  [globalProps updateDouble:safeAreaInsets.right forKey:@"safeAreaRight"];
 
-  // Specify LynxView width and height according to the query parameters.
-  CGSize screenSize = CGSizeZero;
-  if ([[_params allKeys] containsObject:@"height"] && [[_params allKeys] containsObject:@"width"]) {
-    NSNumber *width = [_params objectForKey:@"width"];    // Physical pixel
-    NSNumber *height = [_params objectForKey:@"height"];  // Physical pixel
-    CGFloat realScale = [[UIScreen mainScreen] scale];
-    screenSize = CGSizeMake([width intValue] / realScale, [height intValue] / realScale);
-  } else {
-    screenSize = screenFrame.size;
+  NSString *theme = @"Light";
+  if ([UIScreen mainScreen].traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) {
+    theme = @"Dark";
   }
+  [globalProps updateObject:theme forKey:@"theme"];
+  [globalProps updateObject:self.frontendTheme forKey:@"frontendTheme"];
+
+  NSString *preferredTheme = [self getStorageItem:@"preferredTheme"];
+  if (preferredTheme) {
+    [globalProps updateObject:preferredTheme forKey:@"preferredTheme"];
+  }
+  return globalProps;
+}
+
+- (void)loadLynxViewWithUrl:(NSString *)url templateData:(NSData *)data {
+  CGSize screenSize = [self screenSizeForCurrentBounds];
+  CGRect lynxViewFrame = [self lynxViewFrameForScreenSize:screenSize];
   LynxThreadStrategyForRender threadStrategy =
       [LynxSettingManager sharedDataHandler].threadStrategy;
 
@@ -190,55 +324,21 @@ static BOOL IsTruthyParam(id value) {
 #if HAS_SPARKLING
   lynxView.containerID = containerID;
 #endif
-  lynxView.preferredLayoutWidth = screenSize.width;
+  lynxView.preferredLayoutWidth = lynxViewFrame.size.width;
   [lynxView setExtraTiming:extraTiming];
 #if HAS_SPARKLING
   // Connect Sparkling MethodPipe execution engine to this LynxView
   [SPKServiceRegistrar connectPipeTo:lynxView];
 #endif
 
-  if (self.fullScreen) {
-    lynxView.preferredLayoutHeight = screenSize.height;
-  } else if (self.hiddenNav) {
-    lynxView.preferredLayoutHeight = screenSize.height - statusRect.size.height;
-  } else {
-    lynxView.preferredLayoutHeight =
-        screenSize.height - statusRect.size.height - navRect.size.height;
-  }
+  lynxView.preferredLayoutHeight = lynxViewFrame.size.height;
   lynxView.layoutWidthMode = LynxViewSizeModeExact;
   lynxView.layoutHeightMode = LynxViewSizeModeExact;
+  lynxView.enableAutoLayout = YES;
   [self.view addSubview:lynxView];
+  self.lynxView = lynxView;
 
-  CGRect screenRect = [[UIScreen mainScreen] bounds];
-  CGFloat screenWidth = screenRect.size.width;
-  CGFloat screenHeight = screenRect.size.height;
-  LynxTemplateData *globalProps = [self getGlobalPropsFromParams];
-  [globalProps updateBool:[self isNotchScreen] forKey:@"isNotchScreen"];
-  [globalProps updateDouble:screenHeight forKey:@"screenHeight"];
-  [globalProps updateDouble:screenWidth forKey:@"screenWidth"];
-  if (@available(iOS 11.0, *)) {
-    UIWindow *window = UIApplication.sharedApplication.keyWindow;
-    UIEdgeInsets safeAreaInsets = window.safeAreaInsets;
-    [globalProps updateDouble:safeAreaInsets.top forKey:@"safeAreaTop"];
-    [globalProps updateDouble:safeAreaInsets.bottom forKey:@"safeAreaBottom"];
-  } else {
-    [globalProps updateDouble:0 forKey:@"safeAreaTop"];
-    [globalProps updateDouble:0 forKey:@"safeAreaBottom"];
-  }
-  NSString *theme = @"Light";
-  if ([UIScreen mainScreen].traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) {
-    theme = @"Dark";
-  }
-  [globalProps updateObject:theme forKey:@"theme"];
-  [globalProps updateObject:self.frontendTheme forKey:@"frontendTheme"];
-
-  // Add the preferred theme from user defaults
-  NSString *preferredTheme = [self getStorageItem:@"preferredTheme"];
-  if (preferredTheme) {
-    [globalProps updateObject:preferredTheme forKey:@"preferredTheme"];
-  }
-
-  [lynxView updateGlobalPropsWithTemplateData:globalProps];
+  [lynxView updateGlobalPropsWithTemplateData:[self getGlobalPropsForScreenSize:screenSize]];
 
   LynxTemplateData *initData =
       [[LynxTemplateData alloc] initWithDictionary:@{@"mockData" : @"Hello Lynx Explorer"}];
@@ -248,20 +348,7 @@ static BOOL IsTruthyParam(id value) {
     [lynxView loadTemplateFromURL:url initData:initData];
   }
   [lynxView triggerLayout];
-
-  CGRect lynxViewFrame;
-  if (self.fullScreen) {
-    lynxViewFrame =
-        CGRectMake(0, 0, lynxView.intrinsicContentSize.width, lynxView.intrinsicContentSize.height);
-  } else if (self.hiddenNav) {
-    lynxViewFrame = CGRectMake(0, statusRect.size.height, lynxView.intrinsicContentSize.width,
-                               lynxView.intrinsicContentSize.height);
-  } else {
-    lynxViewFrame =
-        CGRectMake(0, statusRect.size.height + navRect.size.height,
-                   lynxView.intrinsicContentSize.width, lynxView.intrinsicContentSize.height);
-  }
-  lynxView.frame = lynxViewFrame;
+  [self updateLynxViewLayoutIfNeeded];
 }
 
 - (void)parseParameters {
@@ -323,6 +410,7 @@ static BOOL IsTruthyParam(id value) {
   UIView *statusView = [[UIView alloc] initWithFrame:CGRectMake(0, 0, screenSize.width, statusH)];
   statusView.backgroundColor = self.barColor;
   [self.view addSubview:statusView];
+  self.statusView = statusView;
 
   if (self.hiddenNav) {
     return;
@@ -330,6 +418,7 @@ static BOOL IsTruthyParam(id value) {
   // create custom navigation bar
   UIView *barView = [[UIView alloc] initWithFrame:CGRectMake(0, statusH, screenSize.width, navH)];
   barView.backgroundColor = self.barColor;
+  self.barView = barView;
 
   UIButton *goBackButton = [[UIButton alloc] initWithFrame:CGRectMake(0, 0, navH, navH)];
   UIImage *backImage = [self scaleImage:[UIImage imageNamed:self.backButtonImageName]
@@ -343,6 +432,7 @@ static BOOL IsTruthyParam(id value) {
   titleLabel.text = self.navTitle;
   titleLabel.textColor = self.titleColor;
   titleLabel.textAlignment = NSTextAlignmentCenter;
+  self.titleLabel = titleLabel;
 
   [barView addSubview:goBackButton];
   [barView addSubview:titleLabel];
@@ -350,7 +440,7 @@ static BOOL IsTruthyParam(id value) {
 }
 
 - (BOOL)shouldAutorotate {
-  return NO;
+  return YES;
 }
 
 - (UIInterfaceOrientationMask)supportedInterfaceOrientations {
@@ -362,12 +452,17 @@ static BOOL IsTruthyParam(id value) {
       return UIInterfaceOrientationMaskLandscape;
     }
   }
-  return UIInterfaceOrientationMaskAllButUpsideDown;
+  return UIInterfaceOrientationMaskAll;
 }
 
 - (void)viewWillLayoutSubviews {
   [super viewWillLayoutSubviews];
   [self setNavigationStatus];
+}
+
+- (void)viewDidLayoutSubviews {
+  [super viewDidLayoutSubviews];
+  [self updateLynxViewLayoutIfNeeded];
 }
 
 - (void)setNavigationStatus {
@@ -462,7 +557,8 @@ static BOOL IsTruthyParam(id value) {
   if (@available(iOS 11.0, *)) {
     UIWindow *window = UIApplication.sharedApplication.keyWindow;
     UIEdgeInsets safeAreaInsets = window.safeAreaInsets;
-    return safeAreaInsets.top > 20;
+    return safeAreaInsets.top > 20 || safeAreaInsets.bottom > 0 || safeAreaInsets.left > 0 ||
+           safeAreaInsets.right > 0;
   }
 
   return NO;

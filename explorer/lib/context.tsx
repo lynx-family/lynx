@@ -2,7 +2,7 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-import { createContext, useContext, useState } from '@lynx-js/react';
+import { createContext, useContext, useEffect, useState } from '@lynx-js/react';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -25,6 +25,8 @@ export interface ThemeContext {
 export interface SafeAreaContext {
   top: number;
   bottom: number;
+  left: number;
+  right: number;
 }
 
 interface AppContextValue {
@@ -79,10 +81,57 @@ export function AppContextProvider(props: { children: any }) {
       ? `${className}__dark`
       : `${className} ${className}__light`;
 
-  const safeArea: SafeAreaContext = {
-    top: lynx.__globalProps.safeAreaTop || 0,
-    bottom: lynx.__globalProps.safeAreaBottom || 0,
+  const getSafeArea = (): SafeAreaContext => {
+    const screenWidth = Number(lynx.__globalProps.screenWidth || 0);
+    const screenHeight = Number(lynx.__globalProps.screenHeight || 0);
+    const isPortrait =
+      screenWidth > 0 && screenHeight > 0 ? screenHeight >= screenWidth : true;
+    const isIOS = SystemInfo.platform === 'iOS';
+    const isNotchScreen =
+      lynx.__globalProps.isNotchScreen ||
+      (lynx.__globalProps.safeAreaTop || 0) > 20 ||
+      (lynx.__globalProps.safeAreaBottom || 0) > 0 ||
+      (lynx.__globalProps.safeAreaLeft || 0) > 0 ||
+      (lynx.__globalProps.safeAreaRight || 0) > 0;
+    const portraitTopFallback = isNotchScreen ? 54 : 20;
+    const portraitBottomFallback = isNotchScreen ? 34 : 0;
+    const landscapeSideFallback = isIOS ? 54 : 0;
+    return {
+      top: Math.max(
+        lynx.__globalProps.safeAreaTop || 0,
+        isPortrait ? portraitTopFallback : 0
+      ),
+      bottom: Math.max(
+        lynx.__globalProps.safeAreaBottom || 0,
+        isPortrait ? portraitBottomFallback : 0
+      ),
+      left: Math.max(
+        lynx.__globalProps.safeAreaLeft || 0,
+        isPortrait ? 0 : landscapeSideFallback
+      ),
+      right: Math.max(
+        lynx.__globalProps.safeAreaRight || 0,
+        isPortrait ? 0 : landscapeSideFallback
+      ),
+    };
   };
+  const [safeArea, setSafeArea] = useState<SafeAreaContext>(getSafeArea);
+
+  useEffect(() => {
+    const syncSafeArea = (data?: Record<string, unknown>) => {
+      Object.assign(lynx.__globalProps, data || {});
+      setSafeArea(getSafeArea());
+    };
+    const listener = (event: { data?: Record<string, unknown> }) => {
+      syncSafeArea(event.data);
+    };
+    const coreContext = lynx.getCoreContext();
+    coreContext.addEventListener('__NotifyGlobalPropsUpdated', listener);
+    syncSafeArea();
+    return () => {
+      coreContext.removeEventListener('__NotifyGlobalPropsUpdated', listener);
+    };
+  }, []);
 
   return (
     <AppContext.Provider
