@@ -119,6 +119,7 @@ class TextElement : public FiberElement {
       : FiberElement(element, clone_resolved_props) {}
 
   void SetupFragmentBehavior(Fragment* fragment) override;
+  void ReplayElementSpecificStyleSideEffect(CSSPropertyID id) override;
 
  private:
   void ResolveAndFlushFontFaces(const base::String& font_family);

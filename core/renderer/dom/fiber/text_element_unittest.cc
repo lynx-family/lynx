@@ -872,6 +872,69 @@ TEST_P(TextElementTest,
   EXPECT_TRUE(wrapper->HasFontFacesResolved());
 }
 
+TEST_P(TextElementTest, NewStylingReplayFontFamilyFlushesFontFaces) {
+  auto config = std::make_shared<PageConfig>();
+  config->SetEnableFiberArch(true);
+  config->SetEnableNewStylingPipeline(true);
+  manager->SetConfig(config);
+
+  auto page = manager->CreateFiberPage("page", 11);
+  auto text = manager->CreateFiberText("text");
+  page->InsertNode(text);
+
+  CSSFontFaceRuleMap adopted_fontfaces;
+  auto font_rule = std::make_shared<CSSFontFaceRule>(
+      "custom-font", CSSFontFaceAttrsMap{{"src", "url(custom-font.woff2)"}});
+  adopted_fontfaces["custom-font"].push_back(font_rule);
+
+  auto adopted_fragment = std::make_unique<SharedCSSFragment>(
+      -1, std::vector<int32_t>{}, CSSParserTokenMap{}, CSSKeyframesTokenMap{},
+      std::move(adopted_fontfaces));
+
+  auto wrapper =
+      fml::AdoptRef(new SharedCSSFragmentWrapper(std::move(adopted_fragment)));
+  manager->AdoptStyleSheet(wrapper);
+
+  ASSERT_FALSE(wrapper->HasFontFacesResolved());
+
+  auto font_family = CSSValue::MakePlainString("custom-font");
+  text->computed_css_style()->SetResolvedValue(kPropertyIDFontFamily,
+                                               font_family);
+  text->ReplayChangedStyleSideEffect(kPropertyIDFontFamily, font_family);
+
+  EXPECT_TRUE(wrapper->HasFontFacesResolved());
+}
+
+TEST_P(TextElementTest, NewStylingResetFontFamilyDoesNotFlushFontFaces) {
+  auto config = std::make_shared<PageConfig>();
+  config->SetEnableFiberArch(true);
+  config->SetEnableNewStylingPipeline(true);
+  manager->SetConfig(config);
+
+  auto page = manager->CreateFiberPage("page", 11);
+  auto text = manager->CreateFiberText("text");
+  page->InsertNode(text);
+
+  CSSFontFaceRuleMap adopted_fontfaces;
+  auto font_rule = std::make_shared<CSSFontFaceRule>(
+      "custom-font", CSSFontFaceAttrsMap{{"src", "url(custom-font.woff2)"}});
+  adopted_fontfaces["custom-font"].push_back(font_rule);
+
+  auto adopted_fragment = std::make_unique<SharedCSSFragment>(
+      -1, std::vector<int32_t>{}, CSSParserTokenMap{}, CSSKeyframesTokenMap{},
+      std::move(adopted_fontfaces));
+
+  auto wrapper =
+      fml::AdoptRef(new SharedCSSFragmentWrapper(std::move(adopted_fragment)));
+  manager->AdoptStyleSheet(wrapper);
+
+  ASSERT_FALSE(wrapper->HasFontFacesResolved());
+
+  text->ReplayResetStyleSideEffect(kPropertyIDFontFamily);
+
+  EXPECT_FALSE(wrapper->HasFontFacesResolved());
+}
+
 }  // namespace testing
 }  // namespace tasm
 }  // namespace lynx

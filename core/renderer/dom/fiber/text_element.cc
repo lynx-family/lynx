@@ -205,6 +205,30 @@ void TextElement::ConvertToInlineElement() {
   FiberElement::ConvertToInlineElement();
 }
 
+void TextElement::ReplayElementSpecificStyleSideEffect(CSSPropertyID id) {
+  if (id != kPropertyIDFontFamily) {
+    return;
+  }
+
+  const auto& resolved_values = computed_css_style()->GetResolvedValues();
+  auto it = resolved_values.find(kPropertyIDFontFamily);
+  if (it == resolved_values.end()) {
+    return;
+  }
+
+  auto font_family = it->second.AsString();
+  if (font_family.empty()) {
+    return;
+  }
+
+  if (!EnableLayoutInElementMode()) {
+    EnqueueLayoutTask(
+        [this, font_family]() { ResolveAndFlushFontFaces(font_family); });
+  } else {
+    ResolveAndFlushFontFaces(font_family);
+  }
+}
+
 void TextElement::ResolveAndFlushFontFaces(const base::String& font_family) {
   auto* fragment = GetRelatedCSSFragment();
   if (fragment) {
