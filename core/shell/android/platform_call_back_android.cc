@@ -24,6 +24,20 @@ using lynx::base::android::ScopedLocalJavaRef;
 
 namespace lynx {
 namespace shell {
+namespace {
+
+void InvokeJavaPlatformCallBack(JNIEnv *env, jobject callback,
+                                const lepus::Value &value) {
+  tasm::LepusEncoder encoder;
+  auto encoded_data = encoder.EncodeMessage(value);
+  if (!encoded_data.empty()) {
+    Java_PlatformCallBack_onDataBack(
+        env, callback,
+        env->NewDirectByteBuffer(encoded_data.data(), encoded_data.size()));
+  }
+}
+
+}  // namespace
 
 void PlatformCallBackAndroid::InvokeWithValue(const lepus::Value &value) {
   JNIEnv *env = AttachCurrentThread();
@@ -31,13 +45,16 @@ void PlatformCallBackAndroid::InvokeWithValue(const lepus::Value &value) {
   if (local_ref.IsNull()) {
     return;
   }
-  tasm::LepusEncoder encoder;
-  auto encoded_data = encoder.EncodeMessage(value);
-  if (!encoded_data.empty()) {
-    Java_PlatformCallBack_onDataBack(
-        env, local_ref.Get(),
-        env->NewDirectByteBuffer(encoded_data.data(), encoded_data.size()));
+  InvokeJavaPlatformCallBack(env, local_ref.Get(), value);
+}
+
+void PlatformCallBackStrongRefAndroid::InvokeWithValue(
+    const lepus::Value &value) {
+  JNIEnv *env = AttachCurrentThread();
+  if (jni_object_.IsNull()) {
+    return;
   }
+  InvokeJavaPlatformCallBack(env, jni_object_.Get(), value);
 }
 }  // namespace shell
 }  // namespace lynx
