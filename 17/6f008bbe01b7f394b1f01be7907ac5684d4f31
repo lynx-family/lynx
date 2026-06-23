@@ -1,0 +1,16 @@
+lynx/platform/harmony/lynx_harmony/src/main/ets/tasm/LynxTemplateRenderer.ets
+  h_4d36f4d76420fe 94
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "176f008bbe01b7f394b1f01be7907ac5684d4f31",
+  "prompts": {},
+  "humans": {
+    "h_4d36f4d76420fe": {
+      "author": "yangguangzhao <yangguangzhao.solace@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}
