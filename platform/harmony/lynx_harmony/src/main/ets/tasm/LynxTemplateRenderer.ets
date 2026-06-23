@@ -88,12 +88,12 @@ export class LynxTemplateRenderer extends lynx.LynxTemplateRenderer {
   }
 
   aboutToDisappear() {
-    this.nativeDetach();
-    this.hasDestroyed = true;
-    this.clients.forEach(client => client.onDestroy());
     if (this.lynxView) {
       this.lynxDevTool?.destroy(this.lynxView);
     }
+    this.nativeDetach();
+    this.hasDestroyed = true;
+    this.clients.forEach(client => client.onDestroy());
     this.lynxView = undefined;
   }
 
