@@ -1655,6 +1655,25 @@ public class LynxView extends UIBodyView implements ILynxSecurityTarget {
     return mLynxTemplateRender.getLynxRootUI();
   }
 
+  /**
+   * @apidoc
+   *
+   * @brief Obtains the root LynxElement for this LynxView.
+   * @param callback Receives the root LynxElement, or null if no root is available.
+   */
+  public void getLynxElementRoot(@NonNull LynxElement.Callback<LynxElement> callback) {
+    if (callback == null) {
+      return;
+    }
+    UIThreadUtils.runOnUiThread(() -> {
+      if (mLynxTemplateRender == null) {
+        callback.onResult(null);
+        return;
+      }
+      mLynxTemplateRender.getLynxElementRoot(callback);
+    });
+  }
+
   @UiThread
   public void syncFlush() {
     if (mLynxTemplateRender != null) {
