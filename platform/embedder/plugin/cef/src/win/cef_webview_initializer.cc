@@ -7,6 +7,8 @@
 #include "include/wrapper/cef_message_router.h"
 #include "platform/embedder/plugin/cef/include/cef_extension_module_creator.h"
 
+extern "C" void cef_extension_module_force_link_registration();
+
 namespace {
 class CEFWebviewApp : public CefApp,
                       public CefBrowserProcessHandler,
@@ -91,6 +93,8 @@ class CEFWebviewApp : public CefApp,
 }  // namespace
 
 LYNX_EXTERN_C bool cef_extension_module_initialize() {
+  cef_extension_module_force_link_registration();
+
   CefMainArgs main_args(::GetModuleHandle(nullptr));
   int exit_code = CefExecuteProcess(main_args, new CEFWebviewApp, nullptr);
   if (exit_code >= 0) {

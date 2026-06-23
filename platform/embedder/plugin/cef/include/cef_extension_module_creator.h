@@ -6,13 +6,9 @@
 #define PLATFORM_EMBEDDER_PLUGIN_CEF_INCLUDE_CEF_EXTENSION_MODULE_CREATOR_H_
 
 #include "platform/embedder/public/capi/lynx_export.h"
-#include "platform/embedder/public/lynx_extension_module.h"
 
 LYNX_EXTERN_C_BEGIN
 LYNX_CAPI_EXPORT bool cef_extension_module_initialize();
-
-LYNX_CAPI_EXPORT lynx_extension_module_t*
-cef_extension_module_create_extension_module(void* opaque);
 LYNX_EXTERN_C_END
 
 #endif  // PLATFORM_EMBEDDER_PLUGIN_CEF_INCLUDE_CEF_EXTENSION_MODULE_CREATOR_H_
