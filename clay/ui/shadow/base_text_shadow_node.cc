@@ -622,12 +622,19 @@ void BaseTextShadowNode::AlignNativeNode(txt::Paragraph* paragraph) {
   for (auto* child : children_) {
     if (child->IsInlineViewShadowNode()) {
       auto* inline_view_shadow_node = static_cast<InlineViewShadowNode*>(child);
+      if (child->GetEndIndex() == 0) {
+        // Hidden inline views still need alignment so their child layout does
+        // not retain a stale text placeholder offset.
+        inline_view_shadow_node->ResetTextLayout();
+        inline_view_shadow_node->AlignNativeNode(0.f, 0.f);
+        continue;
+      }
       auto text_box =
           paragraph->GetRectsForRange(inline_view_shadow_node->StartGlyph(),
                                       inline_view_shadow_node->EndGlyph(),
                                       txt::Paragraph::RectHeightStyle::kTight,
                                       txt::Paragraph::RectWidthStyle::kTight);
-      if (child->GetEndIndex() > 0 && text_box.size() > 0) {
+      if (text_box.size() > 0) {
         // When sets text-overflow: ellipsis, when the view and ellipsis
         // are adjacent, the textbox will return two values ​​(a box of
         // the image and a box of ellipsis, which may be a bug of skia).
@@ -650,9 +657,22 @@ void BaseTextShadowNode::AlignNativeNode(txt::Paragraph* paragraph) {
         }
       } else {
         inline_view_shadow_node->SetEndIndex(0);
+        inline_view_shadow_node->ResetTextLayout();
+        inline_view_shadow_node->AlignNativeNode(0.f, 0.f);
       }
     } else {
       static_cast<BaseTextShadowNode*>(child)->AlignNativeNode(paragraph);
+    }
+  }
+}
+
+void BaseTextShadowNode::AlignInlineViewsToOrigin() {
+  for (auto* child : children_) {
+    if (child->IsInlineViewShadowNode()) {
+      auto* inline_view_shadow_node = static_cast<InlineViewShadowNode*>(child);
+      inline_view_shadow_node->AlignNativeNode(0.f, 0.f);
+    } else if (child->IsBaseTextShadowNode()) {
+      static_cast<BaseTextShadowNode*>(child)->AlignInlineViewsToOrigin();
     }
   }
 }
