@@ -32,6 +32,7 @@ import { ViewPagerItemProps, ViewPagerProps, ViewPagerUIMethods } from './viewpa
 import { BlurViewProps } from './blur-view';
 import { WebviewProps, WebviewUIMethods } from './webview';
 import { MarkdownProps, MarkdownUIMethods } from './markdown';
+import { VideoProps, VideoUIMethods } from './video';
 
 
 export interface UIMethods {
@@ -46,6 +47,7 @@ export interface UIMethods {
   'viewpager': ViewPagerUIMethods;
   'webview': WebviewUIMethods;
   'markdown': MarkdownUIMethods;
+  'video': VideoUIMethods;
 }
 
 type LynxComponentProps = ComponentProps;
@@ -84,6 +86,7 @@ export interface IntrinsicElements {
   'blur-view': BlurViewProps;
   'webview': WebviewProps;
   'markdown': MarkdownProps;
+  'video': VideoProps;
 }
 
 declare module 'react' {
@@ -122,6 +125,7 @@ declare module 'react' {
       'blur-view': BlurViewProps;
       'webview': WebviewProps;
       'markdown': MarkdownProps;
+      'video': VideoProps;
     }
   }
 }

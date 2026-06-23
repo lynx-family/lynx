@@ -21,6 +21,7 @@ export * from './viewpager';
 export * from './blur-view';
 export * from './webview';
 export * from './markdown';
+export * from './video';
 export * from './element';
 export * from './methods';
 export * from './attributes';
