@@ -6,6 +6,7 @@
 # -*- coding: utf-8 -*-
 
 import argparse
+from concurrent.futures import ThreadPoolExecutor
 import os
 import sys
 from api_dump import (
@@ -14,6 +15,28 @@ from api_dump import (
 )
 from env_setup import guarantee_generated_files
 from api_doc import generate_website_api_doc
+
+
+def _update_platform_api_metadata(platform):
+    return update_api_metadata(
+        os.path.dirname(os.path.abspath(__file__)),
+        platform,
+    )
+
+
+def _update_api_metadata_for_platforms(platforms):
+    if len(platforms) == 1:
+        return {platforms[0]: _update_platform_api_metadata(platforms[0])}
+
+    results = {}
+    with ThreadPoolExecutor(max_workers=len(platforms)) as executor:
+        future_by_platform = {
+            platform: executor.submit(_update_platform_api_metadata, platform)
+            for platform in platforms
+        }
+        for platform, future in future_by_platform.items():
+            results[platform] = future.result()
+    return results
 
 
 def main():
@@ -53,26 +76,17 @@ def main():
     ios_result = True
     android_result = True
     harmony_result = True
+    all_platforms = ["ios", "android", "harmony"]
 
     # Handle update operation
     if args.update:
         # Ensure generated files are up-to-date
         guarantee_generated_files()
-        # iOS platform update
-        if args.platform == "all" or args.platform == "ios":
-            ios_result = update_api_metadata(
-                os.path.dirname(os.path.abspath(__file__)), "ios"
-            )
-        # Android platform update
-        if args.platform == "all" or args.platform == "android":
-            android_result = update_api_metadata(
-                os.path.dirname(os.path.abspath(__file__)), "android"
-            )
-        # Harmony platform update
-        if args.platform == "all" or args.platform == "harmony":
-            harmony_result = update_api_metadata(
-                os.path.dirname(os.path.abspath(__file__)), "harmony"
-            )
+        platforms = all_platforms if args.platform == "all" else [args.platform]
+        platform_results = _update_api_metadata_for_platforms(platforms)
+        ios_result = platform_results.get("ios", ios_result)
+        android_result = platform_results.get("android", android_result)
+        harmony_result = platform_results.get("harmony", harmony_result)
         sys.exit(0 if (ios_result and android_result and harmony_result) else 1)
 
     # Handle doc operation
