@@ -253,14 +253,23 @@ LYNX_PROP_SETTER("text-align", setTextAlign, LynxTextAlignType) {
 
 LYNX_PROP_SETTER("direction", setLynxDirection, LynxDirectionType) {
   if (value == LynxDirectionNormal) {
-      self.inputAttrs[NSWritingDirectionAttributeName] = @[[NSNumber numberWithInt:NSWritingDirectionNatural|NSWritingDirectionEmbedding]];
-      self.placeholderAttrs[NSWritingDirectionAttributeName] = @[[NSNumber numberWithInt:NSWritingDirectionNatural|NSWritingDirectionEmbedding]];
+    self.inputAttrs[NSWritingDirectionAttributeName] = @[[NSNumber numberWithInt:NSWritingDirectionNatural|NSWritingDirectionEmbedding]];
+    self.placeholderAttrs[NSWritingDirectionAttributeName] = @[[NSNumber numberWithInt:NSWritingDirectionNatural|NSWritingDirectionEmbedding]];
+    if (@available(iOS 9.0, *)) {
+      self.view.semanticContentAttribute = UISemanticContentAttributeUnspecified;
+    }
   } else if (value == LynxDirectionLtr) {
     self.inputAttrs[NSWritingDirectionAttributeName] = @[[NSNumber numberWithInt:NSWritingDirectionLeftToRight|NSWritingDirectionEmbedding]];
     self.placeholderAttrs[NSWritingDirectionAttributeName] = @[[NSNumber numberWithInt:NSWritingDirectionLeftToRight|NSWritingDirectionEmbedding]];
+    if (@available(iOS 9.0, *)) {
+      self.view.semanticContentAttribute = UISemanticContentAttributeForceLeftToRight;
+    }
   } else if (value == LynxDirectionRtl) {
     self.inputAttrs[NSWritingDirectionAttributeName] = @[[NSNumber numberWithInt:NSWritingDirectionRightToLeft|NSWritingDirectionEmbedding]];
     self.placeholderAttrs[NSWritingDirectionAttributeName] = @[[NSNumber numberWithInt:NSWritingDirectionRightToLeft|NSWritingDirectionEmbedding]];
+    if (@available(iOS 9.0, *)) {
+      self.view.semanticContentAttribute = UISemanticContentAttributeForceRightToLeft;
+    }
   }
 }
 
