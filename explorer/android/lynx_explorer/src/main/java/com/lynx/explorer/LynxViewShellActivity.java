@@ -54,7 +54,7 @@ public class LynxViewShellActivity extends AppCompatActivity {
   private static final String URL_PREFIX = "file://lynx?local://";
   private static final String TAG = "LynxViewShellActivity";
   private static final String HOME_PAGE_URL =
-      "file://lynx?local://homepage.lynx.bundle?fullscreen=true&orientation=portrait";
+      "file://lynx?local://homepage.lynx.bundle?fullscreen=true";
   private static final String DEFAULT_TOP_BAR_COLOR = "#F0F2F5";
   private static final String DEFAULT_TOP_BAR_TITLE_COLOR = "#000000";
   private static final String DEFAULT_TOP_BAR_BACK_BUTTON_STYLE = "light";
