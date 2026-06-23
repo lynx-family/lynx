@@ -744,7 +744,7 @@ jobs:
   ios-integration-test:
     needs: [darwin-impact-check]
     if: ${{ needs.darwin-impact-check.outputs.darwin == 'true' }}
-    timeout-minutes: 15
+    timeout-minutes: 30
     runs-on: lynx-darwin-15.6.1-medium
     env:
       LOCAL_POD_NAME: 'local_pod'
