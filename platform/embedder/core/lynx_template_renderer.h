@@ -222,6 +222,7 @@ class LynxTemplateRenderer : public devtool::LynxDevToolProxy {
   void SetTiming(uint64_t us_timestamp, std::string timing_key,
                  std::string pipeline_id) const;
   const lepus::Value GetAllTimingInfo() const;
+  std::unordered_map<std::string, std::string> GetAllJsSource() const;
 
   // LynxEmbedderProxy
   void ReloadTemplate(const std::string& url,

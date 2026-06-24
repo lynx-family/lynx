@@ -58,6 +58,8 @@ lynx_core_source_set("embedder") {
   sources = [
     "frame_timing_listener_impl.cc",
     "frame_timing_listener_impl.h",
+    "logbox_embedder.cc",
+    "logbox_embedder.h",
     "lynx_env.cc",
     "lynx_group.cc",
     "lynx_group_priv.h",

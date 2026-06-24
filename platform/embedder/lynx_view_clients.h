@@ -18,10 +18,12 @@ struct lynx_view_t;
 
 namespace lynx {
 namespace embedder {
+class LogBoxEmbedder;
+
 class LynxViewClients : public TemplateRendererClient {
  public:
   explicit LynxViewClients(lynx_view_t* lynx_view);
-  virtual ~LynxViewClients() = default;
+  virtual ~LynxViewClients();
 
   void AddClient(lynx_view_client_t* client);
   void RemoveClient(lynx_view_client_t* client);
@@ -70,6 +72,7 @@ class LynxViewClients : public TemplateRendererClient {
  private:
   lynx_view_t* lynx_view_;
   std::list<lynx_view_client_t*> clients_;
+  std::unique_ptr<LogBoxEmbedder> logbox_;
 };
 }  // namespace embedder
 }  // namespace lynx

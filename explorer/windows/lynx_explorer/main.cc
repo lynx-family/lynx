@@ -7,12 +7,16 @@
 #include "explorer/windows/lynx_explorer/lynx_window_manager.h"
 #include "explorer/windows/lynx_explorer/module/lynx_demo_module.h"
 #include "lynx_env.h"
+#include "platform/embedder/devtool_settings_embedder.h"
 
 int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
                       _In_ wchar_t* command_line, _In_ int show_command) {
-  auto& lynx_env = lynx::pub::LynxEnv::GetInstance();
-  lynx_env.SetDevtoolEnabled(true);
+  auto& devtool_settings =
+      lynx::embedder::DevToolSettingsEmbedder::GetInstance();
+  devtool_settings.SetDevToolEnabled(true);
+  devtool_settings.SetLogBoxEnabled(true);
 
+  auto& lynx_env = lynx::pub::LynxEnv::GetInstance();
   lynx_env.RegisterNativeModule("ExplorerModule", ExplorerModuleCreator,
                                 nullptr);
 
