@@ -10,6 +10,7 @@
 #include "clay/gfx/geometry/float_point.h"
 #include "clay/gfx/geometry/float_rect.h"
 #include "clay/gfx/geometry/float_size.h"
+#include "clay/gfx/style/color.h"
 #include "clay/ui/component/base_view.h"
 #include "clay/ui/gesture/drag_gesture_recognizer.h"
 #include "clay/ui/painter/text_painter.h"
@@ -17,6 +18,8 @@
 namespace clay {
 
 enum TextSelectionHandleType { kLeft, kRight };
+
+constexpr float kSelectionHandleRadius = 6.f;
 
 class SelectionHandleView : public WithTypeInfo<SelectionHandleView, BaseView> {
  public:
@@ -28,6 +31,8 @@ class SelectionHandleView : public WithTypeInfo<SelectionHandleView, BaseView> {
   TextSelectionHandleType GetHandleType() { return type_; }
 
   FloatSize GetHandleSize(double text_line_height);
+  void SetSelectionHandleColor(Color selection_handle_color);
+  void SetSelectionHandleSize(float selection_handle_size);
 
   using HandleBarFunctionListener = std::function<void(
       const FloatPoint& position, SelectionHandleView* view)>;
