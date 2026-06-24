@@ -76,7 +76,8 @@
   UIGraphicsEndImageContext();
   if (scaledImage == nil) return;
   NSData* data = UIImageJPEGRepresentation(scaledImage, _defaultScreenshotQuality / 100.0);
-  NSString* snapshot = [data base64EncodedStringWithOptions:0];
+  NSString* snapshot =
+      [data base64EncodedStringWithOptions:NSDataBase64Encoding64CharacterLineLength];
   [self onTakeSnapShot:snapshot];
 }
 #elif OS_OSX
@@ -114,7 +115,7 @@
       dictionaryWithObject:[NSNumber numberWithFloat:_defaultScreenshotQuality / 100.0]
                     forKey:NSImageCompressionFactor];
   NSData* data = [bits representationUsingType:NSJPEGFileType properties:imageProps];
-  NSString* str = [data base64EncodedStringWithOptions:0];
+  NSString* str = [data base64EncodedStringWithOptions:NSDataBase64Encoding64CharacterLineLength];
   CGImageRelease(cgImage);
   return str;
 }
