@@ -1,0 +1,46 @@
+lynx/platform/harmony/oh-package.json5
+  h_aeff19c41d4423 11
+platform/android/gradle.properties
+  h_aeff19c41d4423 103-104
+relax/demo/ios/RelaxDemo/Podfile
+  h_aeff19c41d4423 99
+example/android/gradle.properties
+  h_aeff19c41d4423 105-107
+third_party/ios_deps/source_list
+  h_aeff19c41d4423 56,108
+dependencies/DEPS.macos
+  h_aeff19c41d4423 38
+lynx/build_overrides/darwin.gni
+  h_aeff19c41d4423 89
+example/darwin/ios/lynx_binary_package/bundle_install.sh
+  h_aeff19c41d4423 43
+lynx/explorer/darwin/ios/lynx_explorer/Podfile
+  h_aeff19c41d4423 61
+lynx/explorer/harmony/oh-package.json5
+  h_aeff19c41d4423 17
+lynx/dependencies/DEPS
+  h_aeff19c41d4423 259
+platform/harmony/oh-package.json5
+  h_aeff19c41d4423 32
+lynx/platform/android/lynx_android/build.gradle
+  h_aeff19c41d4423 337-340
+relax/demo/ios/RelaxDemo/Podfile.seer
+  h_aeff19c41d4423 64
+dependencies/DEPS.harmony
+  h_aeff19c41d4423 19
+dependencies/revision.py
+  h_aeff19c41d4423 21
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "cc45e4e094380f50074e67177c35cf32c336699e",
+  "prompts": {},
+  "humans": {
+    "h_aeff19c41d4423": {
+      "author": "yuyang.1024 <yuyang.1024@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}
