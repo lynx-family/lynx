@@ -72,7 +72,7 @@ LynxUIRendererWin::LynxUIRendererWin(lynx_view_builder_t* builder)
   clay::FlutterProjectBundle project_bundle(properties);
   // Take ownership of the engine, starting it if necessary.
   engine_ = std::make_unique<clay::FlutterWindowsEngine>(project_bundle);
-
+  engine_->SetView(flutter_view_.get());
   flutter_view_->SetEngine(engine_.get());
   flutter_view_->CreateRenderSurface();
   if (!flutter_view_->GetEngine()->running()) {
