@@ -370,6 +370,14 @@ void LynxTemplateRenderer::LoadTemplateBundle(
     const std::shared_ptr<lynx::tasm::PipelineOptions>& pipeline_options,
     const std::shared_ptr<lynx::tasm::TemplateData>& template_data,
     bool enable_dump_element_tree) {
+  {
+    std::lock_guard<std::mutex> lock(inspector_owner_mutex_);
+    auto* inspector_owner = inspector_owner_.load(std::memory_order_acquire);
+    if (inspector_owner != nullptr) {
+      LOGI("LoadTemplateBundle, inspector_owner_ is not null, do OnLoaded");
+      inspector_owner->OnLoaded(url);
+    }
+  }
   pipeline_options->enable_pre_painting = false;
   pipeline_options->enable_dump_element_tree = enable_dump_element_tree;
   shell_->LoadTemplateBundle(url, bundle, pipeline_options, template_data);

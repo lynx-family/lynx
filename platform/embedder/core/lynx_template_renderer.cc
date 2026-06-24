@@ -259,6 +259,11 @@ void LynxTemplateRenderer::LoadTemplateBundle(
     client->OnLoadTemplateBundle(url, template_bundle, init_data);
   }
 
+  if (inspector_owner_) {
+    LOGI("LoadTemplateBundle, inspector_owner_ is not null");
+    inspector_owner_->OnLoaded(url);
+  }
+
   std::shared_ptr<tasm::PipelineOptions> options = nullptr;
   if (!pipeline_options) {
     options = std::make_shared<tasm::PipelineOptions>();
