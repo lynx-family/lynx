@@ -338,6 +338,10 @@ void LynxTemplateRenderer::LoadTemplateBundle(
     const std::shared_ptr<lynx::tasm::PipelineOptions>& pipeline_options,
     const std::shared_ptr<lynx::tasm::TemplateData>& template_data,
     bool enable_dump_element_tree) {
+  if (inspector_owner_ != nullptr) {
+    LOGI("LoadTemplateBundle, inspector_owner_ is not null, do OnLoaded");
+    inspector_owner_->OnLoaded(url);
+  }
   pipeline_options->enable_pre_painting = false;
   pipeline_options->enable_dump_element_tree = enable_dump_element_tree;
   shell_->LoadTemplateBundle(url, bundle, pipeline_options, template_data);
