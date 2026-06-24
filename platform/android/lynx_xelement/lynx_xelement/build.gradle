@@ -45,6 +45,7 @@ dependencies {
     implementation project(':LynxXElement:BlurView')
     implementation project(':LynxXElement:WebView')
     implementation project(':LynxXElement:Video')
+    implementation project(':LynxXElement:AnimaX')
     implementation 'io.github.scwang90:refresh-layout-kernel:3.0.0-alpha'
     compileOnly project(":LynxAndroid")
     compileOnly project(":LynxProcessor")

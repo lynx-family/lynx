@@ -1,0 +1,31 @@
+# Copyright 2025 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+animax_lynx_public_headers = [
+  "LynxAnimaXContainerView.h",
+  "LynxUIAnimaX.h",
+  "ability/LynxAnimaXAbility.h",
+  "loader/LynxAnimaXImageDecoderServiceImpl.h",
+  "loader/LynxAnimaXResourceFactoryServiceImpl.h",
+  "loader/LynxAnimaXResourceFetcherLoader.h",
+  "monitor/LynxAnimaXMonitorServiceImpl.h",
+  "setter/LynxAnimaXPropsPrioritySetter.h",
+]
+
+animax_lynx_sources = [
+  "LynxAnimaXContainerView.mm",
+  "LynxUIAnimaX.mm",
+  "ability/LynxAnimaXAbility.mm",
+  "loader/LynxAnimaXImageDecoderServiceImpl.mm",
+  "loader/LynxAnimaXResourceFactoryServiceImpl.mm",
+  "loader/LynxAnimaXResourceFetcherLoader.mm",
+  "monitor/LynxAnimaXMonitorServiceImpl.mm",
+  "setter/LynxAnimaXPropsPrioritySetter.mm",
+]
+
+animax_lynx_sources += animax_lynx_public_headers
+
+subspec_target("lynx_animax") {
+  public_header_files = animax_lynx_public_headers
+  sources = animax_lynx_sources
+}
