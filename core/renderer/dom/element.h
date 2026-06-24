@@ -665,7 +665,8 @@ class Element : public lepus::RefCounted,
   }
 
   inline bool ShouldResolveStyle() {
-    return !IsAsyncResolveResolving() && ((dirty_ & ~kDirtyTree) != 0);
+    return !IsAsyncResolveResolving() &&
+           ((dirty_ & ~(kDirtyTree | kDirtyReAttachContainer)) != 0);
   }
 
   inline void EnqueueReduceTask(base::MoveOnlyClosure<void> operation) {

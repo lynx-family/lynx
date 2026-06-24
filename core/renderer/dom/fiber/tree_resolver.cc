@@ -945,6 +945,9 @@ fml::RefPtr<FiberElement> TreeResolver::FromElementInfo(
 // TODO(ZHOUZHITA0): Merge with greedy threaded element resolution later
 void TreeResolver::TraverseDom(FiberElement* root, uint32_t work_unit_size) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, TREE_RESOLVER_TRAVERSE_DOM);
+  if (!root->flush_required()) {
+    return;
+  }
   std::list<FiberElement*> discovered;
   discovered.emplace_back(root);
   root->ApplyFunctionRecursive([](FiberElement* element) {
@@ -982,7 +985,8 @@ std::list<ParallelFlushReturn> TreeResolver::StyleTrees(
       target->UpdateResolveStatus(FiberElement::AsyncResolveStatus::kResolving);
       target->MarkParallelFlushFlag(FiberElement::kFlagLevelOrderParallel);
       resolve_returns.emplace_back(target->PrepareForCreateOrUpdate());
-      DCHECK((target->dirty() & ~FiberElement::kDirtyTree) == 0);
+      DCHECK((target->dirty() & ~(FiberElement::kDirtyTree |
+                                  FiberElement::kDirtyReAttachContainer)) == 0);
     }
 
     target->InvalidateChildrenIfNeeded();
@@ -991,7 +995,9 @@ std::list<ParallelFlushReturn> TreeResolver::StyleTrees(
       if (target->NeedPropagateInheritedDirtyFlag(true)) {
         fiber_child->MarkDirtyLite(FiberElement::kDirtyPropagateInherited);
       }
-      discovered.emplace_back(fiber_child);
+      if (fiber_child->flush_required()) {
+        discovered.emplace_back(fiber_child);
+      }
     }
 
     node_remaining_at_current_depth--;

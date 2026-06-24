@@ -127,7 +127,7 @@ class FiberElementTest : public ::testing::TestWithParam<std::tuple<int, int>> {
                                   int32_t count = 1);
 
  protected:
-  std::tuple<bool, int> current_parameter_;
+  std::tuple<int, int> current_parameter_;
   int32_t thread_strategy;
   int32_t enable_parallel_element_flush_strategy;
 };
