@@ -1,0 +1,14 @@
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "703473d874e06a0948e443411d67d8aa2c251669",
+  "prompts": {},
+  "humans": {
+    "h_dc1658ba751399": {
+      "author": "tangyongjie <tangyongjie@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}
