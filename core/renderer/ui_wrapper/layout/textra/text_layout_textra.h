@@ -60,6 +60,7 @@ class TextLayoutTextra : public TextLayoutImpl {
   text::TextLayoutAPI* api_{nullptr};
   text::ParagraphBuilder* paragraph_builder_{nullptr};
   bool building_inline_truncation_{false};
+  Element* truncation_{nullptr};
   std::unordered_map<int32_t, text::Paragraph*> paragraphs_;
   std::unordered_map<int32_t, std::unique_ptr<text::ParagraphListener>>
       paragraph_listeners_;
