@@ -1,0 +1,18 @@
+animax/animax/src/layer/text_content_data_source.cc
+  h_012c876e070b77 7-9,12,16-34,53,62-64,94-154
+animax/animax/src/layer/textra/text_content_layout_context.cc
+  h_012c876e070b77 7,38-57,59-76,92-96,159,162-163,165-167,170-171
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ff8fabdf9ccd1b021fb3f3aaad12650f7df47205",
+  "prompts": {},
+  "humans": {
+    "h_012c876e070b77": {
+      "author": "caitan <caitan.5523@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

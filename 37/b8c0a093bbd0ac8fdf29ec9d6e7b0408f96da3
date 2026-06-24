@@ -1,0 +1,11 @@
+.cq/workflows/periodic-tasks.yml
+  s_c925634b1584f3::t_5df9ea6c0996eb 672
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "37b8c0a093bbd0ac8fdf29ec9d6e7b0408f96da3",
+  "prompts": {},
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}
