@@ -20289,6 +20289,7 @@ TEST_P(FiberElementTest,
   EXPECT_TRUE(need_update);
   EXPECT_TRUE(LayoutBundleHasResetStyle(element->layout_bundle_,
                                         CSSPropertyID::kPropertyIDWidth));
+  EXPECT_FALSE(element->computed_css_style()->IsDirty());
 }
 
 TEST_P(FiberElementTest, NewStylingEmptyUnderlyingLayoutOnlyStylesStayUnset) {
@@ -20395,6 +20396,139 @@ TEST_P(FiberElementTest,
               DynamicCSSStylesManager::kUpdateViewport);
   EXPECT_FALSE(child->dynamic_style_flags_ &
                DynamicCSSStylesManager::kUpdateViewport);
+}
+
+TEST_P(FiberElementTest,
+       NewStylingDynamicLayoutOnlyRefreshDoesNotMaterializePlatformDirtyBits) {
+  manager->enable_new_styling_pipeline_ = true;
+  manager->UpdateViewport(100, SLMeasureModeDefinite, 600,
+                          SLMeasureModeDefinite, false);
+
+  auto page = manager->CreateFiberPage("page", 11);
+  manager->SetFiberPageElement(page);
+  auto view = manager->CreateFiberView();
+  view->SetStyle(CSSPropertyID::kPropertyIDWidth, lepus::Value("10vw"));
+  page->InsertNode(view);
+  page->FlushActionsAsRoot();
+
+  view->layout_bundle_.reset();
+  manager->UpdateViewport(200, SLMeasureModeDefinite, 600,
+                          SLMeasureModeDefinite, false);
+  view->UpdateLengthContextValueForAllElement(manager->GetLynxEnvConfig());
+
+  FiberElement::NewPipelineResolveRequest request;
+  request.force_resolve = true;
+  request.dynamic_update_flags = DynamicCSSStylesManager::kUpdateViewport;
+  auto outcome = view->ResolveCSSStylesNewPipelineCore(request);
+
+  EXPECT_TRUE(outcome.need_update);
+  EXPECT_TRUE(LayoutBundleHasStyle(view->layout_bundle_,
+                                   CSSPropertyID::kPropertyIDWidth,
+                                   CSSValue(10, CSSValuePattern::VW)));
+  EXPECT_FALSE(view->computed_css_style()->IsDirty());
+}
+
+TEST_P(FiberElementTest,
+       NewStylingDynamicLayoutOnlyRefreshDoesNotCreatePropBundle) {
+  manager->enable_new_styling_pipeline_ = true;
+  manager->UpdateViewport(100, SLMeasureModeDefinite, 600,
+                          SLMeasureModeDefinite, false);
+
+  auto page = manager->CreateFiberPage("page", 11);
+  manager->SetFiberPageElement(page);
+  auto view = manager->CreateFiberView();
+  view->SetStyle(CSSPropertyID::kPropertyIDWidth, lepus::Value("10vw"));
+  page->InsertNode(view);
+  page->FlushActionsAsRoot();
+
+  page->pre_prop_bundle_ = nullptr;
+  view->pre_prop_bundle_ = nullptr;
+  tasm_mediator.captured_ids_.clear();
+  tasm_mediator.captured_bundles_.clear();
+
+  manager->UpdateViewport(200, SLMeasureModeDefinite, 600,
+                          SLMeasureModeDefinite, false);
+  page->UpdateDynamicElementStyle(DynamicCSSStylesManager::kUpdateViewport,
+                                  false);
+
+  EXPECT_FALSE(view->pre_prop_bundle_);
+  EXPECT_TRUE(HasCaptureSignWithStyleKeyAndValue(
+      view->impl_id(), CSSPropertyID::kPropertyIDWidth,
+      CSSValue(10, CSSValuePattern::VW)));
+}
+
+TEST_P(FiberElementTest,
+       NewStylingLayoutOnlyUpdateInLayoutInElementCreatesPropBundle) {
+  manager->enable_new_styling_pipeline_ = true;
+  manager->page_options_.embedded_mode_ = static_cast<EmbeddedMode>(
+      static_cast<int32_t>(manager->page_options_.embedded_mode_) |
+      static_cast<int32_t>(EmbeddedMode::LAYOUT_IN_ELEMENT));
+
+  auto page = manager->CreateFiberPage("page", 11);
+  manager->SetFiberPageElement(page);
+  auto view = manager->CreateFiberView();
+  view->MarkCanBeLayoutOnly(false);
+  view->SetStyle(CSSPropertyID::kPropertyIDWidth, lepus::Value("10px"));
+  page->InsertNode(view);
+  page->FlushActionsAsRoot();
+
+  ASSERT_FALSE(view->IsLayoutOnly());
+  view->pre_prop_bundle_ = nullptr;
+
+  view->SetStyle(CSSPropertyID::kPropertyIDWidth, lepus::Value("20px"));
+  page->FlushActionsAsRoot();
+
+  EXPECT_TRUE(view->pre_prop_bundle_);
+}
+
+TEST_P(FiberElementTest,
+       NewStylingLayoutOnlyFlattenChangeStillUpdatesPaintingNode) {
+  manager->enable_new_styling_pipeline_ = true;
+  manager->config_->SetEnableNewSticky(true);
+  manager->page_options_.embedded_mode_ = static_cast<EmbeddedMode>(
+      static_cast<int32_t>(manager->page_options_.embedded_mode_) |
+      static_cast<int32_t>(EmbeddedMode::LAYOUT_IN_ELEMENT));
+
+  auto page = manager->CreateFiberPage("page", 11);
+  manager->SetFiberPageElement(page);
+  auto view = manager->CreateFiberView();
+  view->MarkCanBeLayoutOnly(false);
+  page->InsertNode(view);
+  page->FlushActionsAsRoot();
+
+  ASSERT_FALSE(view->IsLayoutOnly());
+  ASSERT_TRUE(view->TendToFlatten());
+  view->pre_prop_bundle_ = nullptr;
+
+  view->SetStyle(CSSPropertyID::kPropertyIDPosition, lepus::Value("sticky"));
+  page->FlushActionsAsRoot();
+
+  EXPECT_FALSE(view->TendToFlatten());
+  EXPECT_TRUE(view->pre_prop_bundle_);
+}
+
+TEST_P(FiberElementTest,
+       NewStylingDynamicWritableRefreshStillMaterializesPropBundle) {
+  manager->enable_new_styling_pipeline_ = true;
+  manager->UpdateViewport(100, SLMeasureModeDefinite, 600,
+                          SLMeasureModeDefinite, false);
+
+  auto page = manager->CreateFiberPage("page", 11);
+  manager->SetFiberPageElement(page);
+  auto view = manager->CreateFiberView();
+  view->SetStyle(CSSPropertyID::kPropertyIDBackgroundSize,
+                 lepus::Value("100vw 100vh"));
+  page->InsertNode(view);
+  page->FlushActionsAsRoot();
+
+  view->pre_prop_bundle_ = nullptr;
+
+  manager->UpdateViewport(200, SLMeasureModeDefinite, 600,
+                          SLMeasureModeDefinite, false);
+  page->UpdateDynamicElementStyle(DynamicCSSStylesManager::kUpdateViewport,
+                                  false);
+
+  EXPECT_TRUE(view->pre_prop_bundle_);
 }
 
 TEST_P(FiberElementTest,
@@ -20622,6 +20756,41 @@ TEST_P(FiberElementTest, NewStylingSideApisReadCommittedInheritedStyle) {
                                          *inherited_color),
             CSSDecoder::CSSValueToString(CSSPropertyID::kPropertyIDColor,
                                          *updated_color));
+}
+
+TEST_P(FiberElementTest,
+       NewStylingCustomInheritedLayoutOnlyUpdateRefreshesChildStyle) {
+  manager->enable_new_styling_pipeline_ = true;
+  manager->config_->SetEnableCSSInheritance(true);
+  manager->config_->css_configs_.custom_inherit_list_.insert(
+      CSSPropertyID::kPropertyIDWidth);
+
+  auto page = manager->CreateFiberPage("page", 11);
+  manager->SetFiberPageElement(page);
+  auto parent = manager->CreateFiberView();
+  auto child = manager->CreateFiberView();
+
+  parent->SetStyle(CSSPropertyID::kPropertyIDWidth, lepus::Value("10px"));
+  parent->InsertNode(child);
+  page->InsertNode(parent);
+  page->FlushActionsAsRoot();
+
+  auto first_child_width =
+      child->GetElementStyle(CSSPropertyID::kPropertyIDWidth);
+  ASSERT_TRUE(first_child_width.has_value());
+  EXPECT_EQ(CSSDecoder::CSSValueToString(CSSPropertyID::kPropertyIDWidth,
+                                         *first_child_width),
+            "10px");
+
+  parent->SetStyle(CSSPropertyID::kPropertyIDWidth, lepus::Value("20px"));
+  page->FlushActionsAsRoot();
+
+  auto updated_child_width =
+      child->GetElementStyle(CSSPropertyID::kPropertyIDWidth);
+  ASSERT_TRUE(updated_child_width.has_value());
+  EXPECT_EQ(CSSDecoder::CSSValueToString(CSSPropertyID::kPropertyIDWidth,
+                                         *updated_child_width),
+            "20px");
 }
 
 TEST_P(FiberElementTest,

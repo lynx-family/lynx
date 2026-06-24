@@ -665,8 +665,8 @@ class FiberElement : public Element {
       const NewPipelineStyleMutationPlan& plan,
       const starlight::ComputedCSSStyle& baseline_style,
       starlight::ComputedCSSStyle& final_style) const;
-  bool HasMaterializedInheritedPropertyMutation(
-      const starlight::ComputedCSSStyle& style) const;
+  bool HasInheritedPropertyMutation(
+      const NewPipelineStyleMutationPlan& plan) const;
   void ReplayNewPipelineStyleMutationPlanSideEffects(
       const NewPipelineStyleMutationPlan& plan, CSSIDBitset* replayed_ids);
   NewPipelineResolveOutcome ResolveCSSStylesNewPipelineCore(

@@ -2025,8 +2025,7 @@ FiberElement::ResolveCSSStylesNewPipelineCore(
           (request.dynamic_update_flags &
            dynamic_style_inputs.inherited_dynamic_flags) != 0;
       const bool inherited_property_changed =
-          HasMaterializedInheritedPropertyMutation(
-              *resolved_styles.final_style);
+          HasInheritedPropertyMutation(mutation_plan);
       outcome.force_children = mutation_plan.custom_properties_changed ||
                                font_size_changed || root_font_size_changed ||
                                inherited_dynamic_refresh_needed ||
@@ -2852,6 +2851,14 @@ bool FiberElement::MaterializeNewPipelineStyleMutationPlan(
     const NewPipelineStyleMutationPlan &plan,
     const starlight::ComputedCSSStyle &baseline_style,
     starlight::ComputedCSSStyle &final_style) const {
+  auto should_materialize_dirty_bit = [this](CSSPropertyID id) {
+    // Layout-only changes are replayed to layout bundles from the mutation
+    // plan. Generic style dirty bits are consumed by the platform prop bundle.
+    // In layout-in-element mode, the legacy pipeline also wrote supported
+    // layout-only properties through ComputedCSSStyle, which could create an
+    // empty prop bundle and drive UpdatePaintingNode().
+    return !LayoutProperty::IsLayoutOnly(id) || EnableLayoutInElementMode();
+  };
   const auto &baseline_context = baseline_style.GetMeasureContext();
   starlight::ComputedCSSStyle replay_style(
       baseline_context.layouts_unit_per_px_,
@@ -2874,14 +2881,14 @@ bool FiberElement::MaterializeNewPipelineStyleMutationPlan(
   }
 
   for (const auto id : plan.reset_ids) {
-    if (id == kPropertyIDFontSize) {
+    if (id == kPropertyIDFontSize || !should_materialize_dirty_bit(id)) {
       continue;
     }
     replay_style.ResetValue(id);
   }
 
   for (const auto id : plan.update_ids) {
-    if (id == kPropertyIDFontSize) {
+    if (id == kPropertyIDFontSize || !should_materialize_dirty_bit(id)) {
       continue;
     }
     auto it = plan.update_values.find(id);
@@ -2894,8 +2901,8 @@ bool FiberElement::MaterializeNewPipelineStyleMutationPlan(
   return final_style.IsDirty();
 }
 
-bool FiberElement::HasMaterializedInheritedPropertyMutation(
-    const starlight::ComputedCSSStyle &style) const {
+bool FiberElement::HasInheritedPropertyMutation(
+    const NewPipelineStyleMutationPlan &plan) const {
   const auto &configs = element_manager()->GetDynamicCSSConfigs();
   const auto &inheritable_props =
       !configs.custom_inherit_list_.empty()
@@ -2906,8 +2913,12 @@ bool FiberElement::HasMaterializedInheritedPropertyMutation(
     result |= id != kPropertyIDFontSize &&
               inheritable_props.find(id) != inheritable_props.end();
   };
-  style.ForEachChangedProperty(check_property);
-  style.ForEachResetProperty(check_property);
+  for (const auto id : plan.update_ids) {
+    check_property(id);
+  }
+  for (const auto id : plan.reset_ids) {
+    check_property(id);
+  }
   return result;
 }
 
