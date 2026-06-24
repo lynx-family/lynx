@@ -752,24 +752,28 @@ export struct LynxView {
     LynxEventReporter.onEvent(LynxEventReporter.LYNX_SDK_OPEN_PAGE_EVENT, instanceId);
   }
 
+  private createLoadBundleTimingOption(): TimingOption {
+    let timingOption: TimingOption = new TimingOption(TimingConstants.LOAD_BUNDLE);
+    let loadBundleStartTimestamp = Date.now();
+    timingOption.setTiming(TimingConstants.PIPELINE_START, loadBundleStartTimestamp);
+    timingOption.setTiming(TimingConstants.LOAD_BUNDLE_START, loadBundleStartTimestamp);
+    return timingOption;
+  }
+
   loadTemplate() {
     if (!this.templateRenderer) {
       LLog.e(TAG, 'loadTemplate skipped, templateRenderer does not exist.');
       return;
     }
-    let timingOption: TimingOption = new TimingOption(TimingConstants.LOAD_BUNDLE);
-    let loadBundleStartTimestamp = Date.now();
-    timingOption.setTiming(TimingConstants.PIPELINE_START, loadBundleStartTimestamp);
-    timingOption.setTiming(TimingConstants.LOAD_BUNDLE_START, loadBundleStartTimestamp);
     if (this.templateBundle) {
       LLog.i(TAG, `start loadTemplate(capi=${!this.uiRendererCreator}) with bundle`);
-      this.loadTemplateInternal(timingOption, this.templateBundle, undefined);
+      this.loadTemplateInternal(this.createLoadBundleTimingOption(), this.templateBundle, undefined);
       return;
     }
 
     if (this.buffer) {
       LLog.i(TAG, `start loadTemplate(capi=${!this.uiRendererCreator}}) with buffer`);
-      this.verifyAndLoad(timingOption, this.buffer);
+      this.verifyAndLoad(this.createLoadBundleTimingOption(), this.buffer);
       return;
     }
 
@@ -820,7 +824,7 @@ export struct LynxView {
         this.reportLynxError(lynxError);
         return;
       }
-      this.verifyAndLoad(timingOption, res.binary);
+      this.verifyAndLoad(this.createLoadBundleTimingOption(), res.binary);
     });
   }
 
