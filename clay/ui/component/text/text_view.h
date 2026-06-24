@@ -26,6 +26,7 @@
 #include "clay/ui/gesture/long_press_gesture_recognizer.h"
 #include "clay/ui/gesture/multi_tap_gesture_recognizer.h"
 #include "clay/ui/rendering/text/render_text.h"
+#include "third_party/googletest/googletest/include/gtest/gtest_prod.h"  // nogncheck
 
 namespace clay {
 
@@ -116,6 +117,8 @@ class TextView : public WithTypeInfo<TextView, BaseTextView>,
   void HideSelectionPopup();
   void ShowSelectionHandle(bool show_start_handle = true,
                            bool show_end_handle = true);
+  void SetSelectionHandleColor(Color selection_handle_color);
+  void SetSelectionHandleSize(float selection_handle_size);
   void HideSelectionHandle();
   void UpdateSelectionHandle(FloatPoint point,
                              SelectionHandleView* handle_bar = nullptr);
@@ -135,6 +138,15 @@ class TextView : public WithTypeInfo<TextView, BaseTextView>,
   void OnViewPostionUpdate(FloatPoint scroll_offset) override;
 
  private:
+  FRIEND_TEST(TextSelectionTest, SetSelectionHandleSizeRebuildsVisibleHandles);
+  FRIEND_TEST(TextSelectionTest,
+              SetTextSelectionKeepsHandlesAtVisualSelectionEnds);
+  FRIEND_TEST(TextSelectionTest, SetTextSelectionHidesVisualStartHandle);
+  FRIEND_TEST(TextSelectionTest,
+              SetAttributeUpdatesVisibleSelectionHandleColors);
+
+  void UpdateSelectionHandleLayout(SelectionHandleView* handle);
+
   BaseView* GetTopViewToAcceptEvent(const FloatPoint& position,
                                     FloatPoint* relative_position,
                                     int platform_try_hit_id = -1) override;
@@ -158,6 +170,8 @@ class TextView : public WithTypeInfo<TextView, BaseTextView>,
   int selection_start_pos_ = -1;
   int selection_end_pos_ = -1;
   FloatPoint scroll_offset_;
+  Color selection_handle_color_ = Color::kTransparent();
+  float selection_handle_size_ = 0;
 #endif
 
   bool custom_text_selection_ = false;

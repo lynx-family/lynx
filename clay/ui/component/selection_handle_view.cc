@@ -17,7 +17,6 @@
 
 namespace clay {
 
-constexpr float kSelectionHandleRadius = 6;
 constexpr float kSelectionHandleOverlap = 1.5;
 constexpr float kHalfStrokeWidth = 1.0;
 
@@ -42,6 +41,20 @@ SelectionHandleView::SelectionHandleView(PageView* page_view,
 SelectionHandleView::~SelectionHandleView() {
   RemoveGestureRecognizer(drag_recognizer_);
   drag_recognizer_ = nullptr;
+}
+
+void SelectionHandleView::SetSelectionHandleSize(float selection_handle_size) {
+  selection_handle_radius_ =
+      FromLogical(selection_handle_size <= 0 ? kSelectionHandleRadius
+                                             : selection_handle_size / 2);
+}
+
+void SelectionHandleView::SetSelectionHandleColor(
+    Color selection_handle_color) {
+  const auto color = selection_handle_color.Alpha() == 0
+                         ? Color::kBlue()
+                         : selection_handle_color;
+  render_object()->SetBackgroundColor(color);
 }
 
 FloatSize SelectionHandleView::GetHandleSize(double text_line_height) {
@@ -114,7 +127,6 @@ void SelectionHandleView::BuildSelectionHandle(float line_height,
   // Common setup for both handle types
   origin_top_ = Top();
   origin_left_ = Left();
-  render_object()->SetBackgroundColor(Color::kBlue());
 
   // Set fixed dimensions for the handle
   SetWidth(2 * selection_handle_radius_);

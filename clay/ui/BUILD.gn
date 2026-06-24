@@ -173,6 +173,8 @@ if (enable_unittests) {
       "component/overlay_view_unittests.cc",
       "component/page_view_unittests.cc",
       "component/scroll_view_unittests.cc",
+      "component/selection_handle_view_unittests.cc",
+      "component/text/text_selection_unittests.cc",
       "compositing/frame_builder_unittests.cc",
       "compositing/pending_container_layer_unittests.cc",
       "compositing/pending_layer_unittests.cc",

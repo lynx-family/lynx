@@ -136,6 +136,12 @@ void TextView::SetAttribute(const char* attr, const clay::Value& value) {
     custom_context_menu_ = attribute_utils::GetBool(value);
   } else if (kw == KeywordID::kCustomTextSelection) {
     custom_text_selection_ = attribute_utils::GetBool(value);
+  } else if (kw == KeywordID::kSelectionHandleColor) {
+    SetSelectionHandleColor(value.IsString()
+                                ? attribute_utils::GetColor(value)
+                                : Color(attribute_utils::GetUint(value, 0)));
+  } else if (kw == KeywordID::kSelectionHandleSize) {
+    SetSelectionHandleSize(attribute_utils::GetNum(value));
   } else if (kw == KeywordID::kColor) {
     if (value.IsUint()) {
       SetColor(Color(attribute_utils::GetUint(value, 0xff000000)));
@@ -432,21 +438,28 @@ void TextView::setTextSelection(const LynxModuleValues& args,
   }
   clay::Value::Array handle_array(2);
   if (!line_rects.empty()) {
+    float handle_radius = kSelectionHandleRadius;
+#ifndef ENABLE_CLAY_LITE
+    if (selection_handle_size_ > 0) {
+      handle_radius = selection_handle_size_ / 2;
+    }
+#endif
     auto start_handle_x =
         page_view()->ConvertTo<kPixelTypeLogical>(line_rects.front().left()) -
-        -1;
+        1;
     auto start_handle_y =
-        page_view()->ConvertTo<kPixelTypeLogical>(line_rects.front().top()) - 6;
+        page_view()->ConvertTo<kPixelTypeLogical>(line_rects.front().top()) -
+        handle_radius;
     auto end_handle_x =
-        page_view()->ConvertTo<kPixelTypeLogical>(line_rects.front().right()) +
+        page_view()->ConvertTo<kPixelTypeLogical>(line_rects.back().right()) +
         1;
     auto end_handle_y =
-        page_view()->ConvertTo<kPixelTypeLogical>(line_rects.front().bottom()) +
-        6;
-    handle_array[0] =
-        clay::Value(CreateHandleMap(start_handle_x, start_handle_y, 6));
+        page_view()->ConvertTo<kPixelTypeLogical>(line_rects.back().bottom()) +
+        handle_radius;
+    handle_array[0] = clay::Value(
+        CreateHandleMap(start_handle_x, start_handle_y, handle_radius));
     handle_array[1] =
-        clay::Value(CreateHandleMap(end_handle_x, end_handle_y, 6));
+        clay::Value(CreateHandleMap(end_handle_x, end_handle_y, handle_radius));
   } else {
     handle_array[0] = clay::Value();
     handle_array[1] = clay::Value();
@@ -739,6 +752,23 @@ FloatRect TextView::GetDisplayRect() {
   return result;
 }
 
+void TextView::UpdateSelectionHandleLayout(SelectionHandleView* handle) {
+#ifndef ENABLE_CLAY_LITE
+  FML_DCHECK(handle);
+  auto text_box = handle->GetHandleType() == TextSelectionHandleType::kLeft
+                      ? GetRenderText()->GetLeftTextBox()
+                      : GetRenderText()->GetRightTextBox();
+  auto stroke_width = page_view()->ConvertFrom<kPixelTypeLogical>(2);
+  auto handle_x = handle->GetHandleType() == TextSelectionHandleType::kLeft
+                      ? text_box.GetLeft()
+                      : text_box.GetRight();
+  auto offset =
+      FloatPoint(handle_x + scroll_offset_.x() + stroke_width,
+                 text_box.GetTop() + scroll_offset_.y() + stroke_width);
+  handle->BuildSelectionHandle(text_box.rect.height(), offset);
+#endif
+}
+
 void TextView::ShowSelectionHandle(bool show_start_handle,
                                    bool show_end_handle) {
 #ifndef ENABLE_CLAY_LITE
@@ -750,6 +780,8 @@ void TextView::ShowSelectionHandle(bool show_start_handle,
   if (!start_selection_handle_ && show_start_handle) {
     start_selection_handle_ =
         new SelectionHandleView(page_view(), TextSelectionHandleType::kLeft);
+    start_selection_handle_->SetSelectionHandleColor(selection_handle_color_);
+    start_selection_handle_->SetSelectionHandleSize(selection_handle_size_);
     start_selection_handle_->SetHandleMove(
         [this](const FloatPoint& position, SelectionHandleView* view) {
           UpdateSelectionHandle(position, view);
@@ -757,16 +789,13 @@ void TextView::ShowSelectionHandle(bool show_start_handle,
             ShowSelectionPopup();
           }
         });
-    auto text_box = GetRenderText()->GetStartTextPositionTopAndBottom();
-    auto offset =
-        FloatPoint(text_box.GetLeft() + scroll_offset_.x() + stroke_width,
-                   text_box.GetTop() + scroll_offset_.y() + stroke_width);
-    start_selection_handle_->BuildSelectionHandle(text_box.rect.height(),
-                                                  offset);
+    UpdateSelectionHandleLayout(start_selection_handle_);
   }
   if (!end_selection_handle_ && show_end_handle) {
     end_selection_handle_ =
         new SelectionHandleView(page_view(), TextSelectionHandleType::kRight);
+    end_selection_handle_->SetSelectionHandleColor(selection_handle_color_);
+    end_selection_handle_->SetSelectionHandleSize(selection_handle_size_);
     end_selection_handle_->SetHandleMove(
         [this](const FloatPoint& position, SelectionHandleView* view) {
           UpdateSelectionHandle(position, view);
@@ -774,23 +803,26 @@ void TextView::ShowSelectionHandle(bool show_start_handle,
             ShowSelectionPopup();
           }
         });
-    auto text_box = GetRenderText()->GetEndTextPositionTopAndBottom();
-    auto offset =
-        FloatPoint(text_box.GetRight() + scroll_offset_.x() + stroke_width,
-                   text_box.GetTop() + scroll_offset_.y() + stroke_width);
-    end_selection_handle_->BuildSelectionHandle(text_box.rect.height(), offset);
+    UpdateSelectionHandleLayout(end_selection_handle_);
+  }
+  if (!start_selection_handle_ && !end_selection_handle_) {
+    return;
   }
   if (!selection_handle_container_) {
     selection_handle_container_ =
         new OverlayView(-1, "handle_container", page_view());
-    selection_handle_container_->SetOverflow(CSSProperty::OVERFLOW_HIDDEN);
+    selection_handle_container_->SetOverflow(CSSProperty::OVERFLOW_XY);
     page_view()->AddChild(selection_handle_container_);
     auto display_rect = GetDisplayRect();
     selection_handle_container_->SetBound(
         display_rect.left() - stroke_width, display_rect.top() - stroke_width,
         display_rect.width() + 2 * stroke_width,
         display_rect.height() + 2 * stroke_width);
+  }
+  if (start_selection_handle_) {
     selection_handle_container_->AddChild(start_selection_handle_);
+  }
+  if (end_selection_handle_) {
     selection_handle_container_->AddChild(end_selection_handle_);
   }
 #endif
@@ -802,7 +834,6 @@ void TextView::UpdateSelectionHandle(FloatPoint point,
   if (!handle_bar) {
     ShowSelectionHandle();
   }
-  auto stroke_width = page_view()->ConvertFrom<kPixelTypeLogical>(2);
   auto render_text = GetRenderText();
   auto handle_point = BoundsRelativeTo(this).location();
   float delta =
@@ -824,52 +855,57 @@ void TextView::UpdateSelectionHandle(FloatPoint point,
   TextBox end_box = GetRenderText()->GetEndTextPositionTopAndBottom();
   BringIntoView(&end_box);
 
-  FloatPoint left_offset;
-  FloatPoint right_offset;
   if (selection_end_pos_ > selection_start_pos_) {
-    auto left_box = render_text->GetLeftTextBox();
-    auto right_box = render_text->GetRightTextBox();
-    left_offset =
-        FloatPoint(left_box.GetLeft() + scroll_offset_.x() + stroke_width,
-                   left_box.GetTop() + scroll_offset_.y() + stroke_width);
-    right_offset =
-        FloatPoint(right_box.GetRight() + scroll_offset_.x() + stroke_width,
-                   right_box.GetTop() + scroll_offset_.y() + stroke_width);
     handle_bar->SetHandleType(TextSelectionHandleType::kRight);
-    handle_bar->BuildSelectionHandle(right_box.rect.height(), right_offset);
+    UpdateSelectionHandleLayout(handle_bar);
     if (handle_bar == start_selection_handle_ && end_selection_handle_) {
       end_selection_handle_->SetHandleType(TextSelectionHandleType::kLeft);
-      end_selection_handle_->BuildSelectionHandle(left_box.rect.height(),
-                                                  left_offset);
+      UpdateSelectionHandleLayout(end_selection_handle_);
     } else if (handle_bar == end_selection_handle_ && start_selection_handle_) {
       start_selection_handle_->SetHandleType(TextSelectionHandleType::kLeft);
-      start_selection_handle_->BuildSelectionHandle(left_box.rect.height(),
-                                                    left_offset);
+      UpdateSelectionHandleLayout(start_selection_handle_);
     }
 
   } else if (selection_end_pos_ < selection_start_pos_) {
-    auto left_box = render_text->GetLeftTextBox();
-    auto right_box = render_text->GetRightTextBox();
-    left_offset =
-        FloatPoint(left_box.GetLeft() + scroll_offset_.x() + stroke_width,
-                   left_box.GetTop() + scroll_offset_.y() + stroke_width);
-    right_offset =
-        FloatPoint(right_box.GetRight() + scroll_offset_.x() + stroke_width,
-                   right_box.GetTop() + scroll_offset_.y() + stroke_width);
     handle_bar->SetHandleType(TextSelectionHandleType::kLeft);
-    handle_bar->BuildSelectionHandle(left_box.rect.height(), left_offset);
+    UpdateSelectionHandleLayout(handle_bar);
     if (handle_bar == start_selection_handle_ && end_selection_handle_) {
       end_selection_handle_->SetHandleType(TextSelectionHandleType::kRight);
-      end_selection_handle_->BuildSelectionHandle(right_box.rect.height(),
-                                                  right_offset);
+      UpdateSelectionHandleLayout(end_selection_handle_);
     } else if (handle_bar == end_selection_handle_ && start_selection_handle_) {
       start_selection_handle_->SetHandleType(TextSelectionHandleType::kRight);
-      start_selection_handle_->BuildSelectionHandle(right_box.rect.height(),
-                                                    right_offset);
+      UpdateSelectionHandleLayout(start_selection_handle_);
     }
   } else {
     HideSelectionHandle();
     HideSelectionPopup();
+  }
+#endif
+}
+
+void TextView::SetSelectionHandleSize(float selection_handle_size) {
+#ifndef ENABLE_CLAY_LITE
+  selection_handle_size_ =
+      selection_handle_size <= 0 ? 0 : selection_handle_size;
+  if (start_selection_handle_) {
+    start_selection_handle_->SetSelectionHandleSize(selection_handle_size_);
+    UpdateSelectionHandleLayout(start_selection_handle_);
+  }
+  if (end_selection_handle_) {
+    end_selection_handle_->SetSelectionHandleSize(selection_handle_size_);
+    UpdateSelectionHandleLayout(end_selection_handle_);
+  }
+#endif
+}
+
+void TextView::SetSelectionHandleColor(Color selection_handle_color) {
+#ifndef ENABLE_CLAY_LITE
+  selection_handle_color_ = selection_handle_color;
+  if (start_selection_handle_) {
+    start_selection_handle_->SetSelectionHandleColor(selection_handle_color_);
+  }
+  if (end_selection_handle_) {
+    end_selection_handle_->SetSelectionHandleColor(selection_handle_color_);
   }
 #endif
 }

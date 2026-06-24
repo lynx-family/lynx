@@ -129,8 +129,9 @@ InternalTextView* SelectionPopupView::CreateTextViewByText(
   text_view->SetX(left);
   text_view->SetY(top);
   text_view->SetText(text);
-  text_view->SetFontSize(FromLogical(kDefaultFontSize));
-  text_view->SetLineHeight(FromLogical(kDefaultLineHeight));
+  const auto font_size = FromLogical(kDefaultFontSize);
+  text_view->SetFontSize(font_size);
+  text_view->SetLineHeight(FromLogical(kDefaultLineHeight) / font_size);
   if (index == MenuIndex::kLeft) {
     text_view->SetPaddings(
         FromLogical(kDefaultLeftPadding), FromLogical(kDefaultTopPadding),
