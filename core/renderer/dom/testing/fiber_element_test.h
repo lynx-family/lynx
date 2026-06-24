@@ -146,7 +146,7 @@ class FiberElementTest
                                   int32_t count = 1);
 
  protected:
-  std::tuple<bool, int, bool> current_parameter_;
+  std::tuple<int, int, bool> current_parameter_;
   int32_t thread_strategy;
   int32_t enable_parallel_element_flush_strategy;
   bool enable_batch_layout_operation;
