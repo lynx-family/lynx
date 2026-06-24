@@ -52,6 +52,7 @@ podspec_target("XElement_podspec") {
   }
 
   deps = [
+    ":AnimaX",
     ":Behavior",
     ":BlurView",
     ":Input",
@@ -63,6 +64,37 @@ podspec_target("XElement_podspec") {
     ":Video",
     ":ViewPager",
     ":WebView",
+  ]
+}
+
+subspec_target("AnimaX") {
+  deps = [
+    ":Common",
+    ":SkityBackend",
+  ]
+}
+
+subspec_target("Common") {
+  pod_target_xcconfig = {
+    HEADER_SEARCH_PATHS = [
+      "//",
+      "//PODS_ROOT/AnimaX",
+    ]
+  }
+  flatten_deps = [ "animax:lynx_animax" ]
+  dependency = [
+    "AnimaX/Core",
+    "AnimaX/Framework",
+    "AnimaX/Textra",
+    "SSZipArchive",
+  ]
+  dependency += lynx_dependency
+}
+
+subspec_target("SkityBackend") {
+  dependency = [
+    "AnimaX/RenderBackend/Skity",
+    "XElement/AnimaX/Common",
   ]
 }
 
