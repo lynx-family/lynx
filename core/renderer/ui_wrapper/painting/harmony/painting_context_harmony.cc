@@ -9,6 +9,8 @@
 #include <utility>
 #include <vector>
 
+#include "core/renderer/ui_wrapper/layout/harmony/text_layout_harmony.h"
+#include "core/renderer/ui_wrapper/layout/harmony/text_layout_manager_harmony.h"
 #include "core/shell/dynamic_ui_operation_queue.h"
 #include "core/value_wrapper/value_impl_lepus.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/text/utils/text_utils.h"
@@ -182,8 +184,16 @@ void PaintingContextHarmonyRef::SetKeyframes(PropBundleHarmony* prop_bundle) {
   ui_owner_->SetKeyframes(prop_bundle);
 }
 
-PaintingContextHarmony::PaintingContextHarmony(harmony::UIOwner* ui_owner) {
+PaintingContextHarmony::PaintingContextHarmony(
+    harmony::UIOwner* ui_owner, harmony::ShadowNodeOwner* node_owner) {
   platform_ref_ = std::make_shared<PaintingContextHarmonyRef>(ui_owner);
+  auto* context = ui_owner != nullptr ? ui_owner->Context() : nullptr;
+  if (context != nullptr && context->IsLayoutInElementModeOn()) {
+    text_layout_manager_ =
+        std::make_unique<TextLayoutManagerHarmony>(node_owner);
+    text_layout_impl_ =
+        std::make_unique<TextLayoutHarmony>(text_layout_manager_.get());
+  }
 }
 
 PaintingContextHarmony::~PaintingContextHarmony() = default;

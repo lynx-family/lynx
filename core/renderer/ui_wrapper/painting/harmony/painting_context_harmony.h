@@ -17,6 +17,11 @@
 namespace lynx {
 namespace tasm {
 class LynxTemplateBundle;
+class TextLayoutManagerHarmony;
+
+namespace harmony {
+class ShadowNodeOwner;
+}  // namespace harmony
 
 class PaintingContextHarmonyRef : public PaintingCtxPlatformRef {
  public:
@@ -81,7 +86,8 @@ class PaintingContextHarmonyRef : public PaintingCtxPlatformRef {
 
 class PaintingContextHarmony : public PaintingCtxPlatformImpl {
  public:
-  explicit PaintingContextHarmony(harmony::UIOwner* ui_owner);
+  PaintingContextHarmony(harmony::UIOwner* ui_owner,
+                         harmony::ShadowNodeOwner* node_owner);
   ~PaintingContextHarmony() override;
   void CreatePaintingNode(int id, const std::string& tag,
                           const fml::RefPtr<PropBundle>& painting_data,
@@ -154,6 +160,7 @@ class PaintingContextHarmony : public PaintingCtxPlatformImpl {
 
  private:
   std::shared_ptr<shell::DynamicUIOperationQueue> queue_;
+  std::unique_ptr<TextLayoutManagerHarmony> text_layout_manager_;
   void Enqueue(shell::UIOperation&& op);
 };
 

@@ -279,6 +279,10 @@ void UIText::OnPropUpdate(const std::string& name, const lepus::Value& value) {
 void UIText::OnNodeReady() {
   UIBase::OnNodeReady();
 
+  if (context_ != nullptr && context_->IsLayoutInElementModeOn()) {
+    UpdateExtraData(context_->GetTextLayout(Sign()));
+  }
+
   UpdateSelectionGestureState();
 }
 

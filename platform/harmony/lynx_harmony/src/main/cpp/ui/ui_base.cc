@@ -36,6 +36,7 @@
 #include "platform/harmony/lynx_harmony/src/main/cpp/gesture/arena/gesture_arena_manager.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/gesture/handler/base_gesture_handler.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/lynx_context.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/renderer/lynx_renderer.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/base/node_manager.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_frame.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_owner.h"
@@ -235,6 +236,7 @@ void UIBase::ConsumeGesture(int gesture_id, const lepus::Value& params) {
 }
 
 UIBase::~UIBase() {
+  renderer_.reset();
   // Reset animations before ArkUI node teardown. Animator cancellation may
   // synchronously invoke callbacks that update the node.
   keyframe_manager_.reset();
@@ -418,6 +420,9 @@ void UIBase::FrameDidChanged() {
                                                         left_, top_);
   }
   UpdateDrawNodeFrame();
+  if (renderer_) {
+    renderer_->UpdateBounds(width_, height_);
+  }
 }
 
 void UIBase::Destroy() {
@@ -1268,24 +1273,24 @@ void UIBase::RequestLayout() {
 }
 
 void UIBase::Invalidate() {
+  if (renderer_) {
+    renderer_->InvalidateRenderNodes();
+  }
   if (draw_node_) {
     NodeManager::Instance().Invalidate(draw_node_);
   }
-  if (node_type_ == ARKUI_NODE_CUSTOM) {
+  if (node_type_ == ARKUI_NODE_CUSTOM || (CanDrawBehind() && renderer_)) {
     NodeManager::Instance().Invalidate(node_);
   }
 }
 
 void UIBase::OnDraw(OH_Drawing_Canvas* canvas, ArkUI_NodeHandle node) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, UIBASE_ON_DRAW);
-  if (!background_drawable_) {
-    return;
-  }
   // The draw function in the UIBase might be triggered by receivers from two
   // different nodes, so drawing is only required when the node returned in
   // the event matches.
   bool need_draw = draw_node_ ? node == draw_node_ : node == Node();
-  if (need_draw) {
+  if (need_draw && background_drawable_) {
     if (draw_node_ && ShouldDrawOverlayShadowWithDrawNode()) {
       auto outset = GetOverlayShadowOutset();
       OH_Drawing_CanvasSave(canvas);
@@ -1293,19 +1298,59 @@ void UIBase::OnDraw(OH_Drawing_Canvas* canvas, ArkUI_NodeHandle node) {
                                  outset[1] * context_->ScaledDensity());
       background_drawable_->Render(canvas);
       OH_Drawing_CanvasRestore(canvas);
-      return;
+    } else {
+      background_drawable_->Render(canvas);
     }
-    background_drawable_->Render(canvas);
+  }
+  if (need_draw && !CanDrawBehind() && renderer_) {
+    renderer_->Draw(canvas, weak_from_this().lock());
   }
 }
 
 void UIBase::OnDrawBehind(OH_Drawing_Canvas* canvas, ArkUI_NodeHandle node) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, UIBASE_ON_DRAW_BEHIND);
-  if (draw_node_ && ShouldDrawOverlayShadowWithDrawNode()) {
+  if (!(draw_node_ && ShouldDrawOverlayShadowWithDrawNode()) &&
+      background_drawable_) {
+    background_drawable_->Render(canvas);
+  }
+  if (renderer_) {
+    renderer_->Draw(canvas, weak_from_this().lock());
+  }
+}
+
+void UIBase::AttachFragmentLayerRenderer(
+    std::shared_ptr<LynxRendererContext> context, int32_t sign) {
+  renderer_ = std::make_unique<LynxRenderer>(std::move(context), sign);
+  renderer_->UpdateBounds(width_, height_);
+  if (!CanDrawBehind() && node_type_ != ARKUI_NODE_CUSTOM) {
+    InitDrawNode();
+  }
+  Invalidate();
+}
+
+void UIBase::DetachFragmentLayerRenderer() {
+  renderer_.reset();
+  Invalidate();
+}
+
+void UIBase::UpdateFragmentLayerDisplayList(DisplayList display_list) {
+  if (!renderer_) {
     return;
   }
-  if (background_drawable_) {
-    background_drawable_->Render(canvas);
+  renderer_->UpdateDisplayList(std::move(display_list),
+                               weak_from_this().lock());
+  Invalidate();
+}
+
+void UIBase::OnAttachedToFragmentLayerTree() {
+  if (renderer_ && !CanDrawBehind() && node_type_ != ARKUI_NODE_CUSTOM) {
+    InitDrawNode();
+  }
+}
+
+void UIBase::OnFragmentLayerChildrenChanged() {
+  if (renderer_) {
+    renderer_->UpdateRenderNodeOrder(weak_from_this().lock());
   }
 }
 
@@ -2145,6 +2190,9 @@ void UIBase::ScrollIntoView(
 }
 
 bool UIBase::NeedDrawNode() {
+  if (renderer_ && !CanDrawBehind() && node_type_ != ARKUI_NODE_CUSTOM) {
+    return true;
+  }
   if (!background_drawable_) {
     return false;
   }

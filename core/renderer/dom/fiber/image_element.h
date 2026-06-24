@@ -83,6 +83,18 @@ inline int32_t ImageElement::GetImageNodeInfo<OSType::kIOS>() const {
   return kCommonBuiltInNodeInfo;
 }
 
+template <>
+inline int32_t ImageElement::GetImageNodeInfo<OSType::kHarmony>() const {
+  if (has_auto_size_) {
+    return kCustomBuiltInNodeInfo;
+  }
+  // Layout-in-Element still uses the regular UI tree, so inline images need a
+  // platform node. Fragment Layer renders them as part of the display list.
+  return is_inline_element() && EnableFragmentLayerRender()
+             ? kVirtualBuiltInNodeInfo
+             : kCommonBuiltInNodeInfo;
+}
+
 }  // namespace tasm
 }  // namespace lynx
 

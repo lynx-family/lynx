@@ -35,6 +35,16 @@ struct InlineEmojiInfo {
   float height{0.f};
 };
 
+// Final visible placeholder bounds in the paragraph's physical-pixel space.
+struct InlinePlaceholderLayout {
+  int32_t sign{-1};
+  bool is_image{false};
+  float left{0.f};
+  float top{0.f};
+  float width{0.f};
+  float height{0.f};
+};
+
 class TextBoxHarmony {
  public:
   explicit TextBoxHarmony(OH_Drawing_TextBox* text_box) : text_box_(text_box) {}
@@ -219,6 +229,17 @@ class ParagraphHarmony : public fml::RefCountedThreadSafeStorage {
     return placeholder_signs_;
   }
 
+  void ClearInlinePlaceholderLayouts() { inline_placeholder_layouts_.clear(); }
+
+  void AddInlinePlaceholderLayout(InlinePlaceholderLayout layout) {
+    inline_placeholder_layouts_.emplace_back(std::move(layout));
+  }
+
+  const std::vector<InlinePlaceholderLayout>& GetInlinePlaceholderLayouts()
+      const {
+    return inline_placeholder_layouts_;
+  }
+
   void GenerateEventRect(std::shared_ptr<TextEventTarget>& event_target) const {
     std::stack<std::shared_ptr<TextEventTarget>> target_stack;
     target_stack.push(event_target);
@@ -285,6 +306,7 @@ class ParagraphHarmony : public fml::RefCountedThreadSafeStorage {
   float translate_left_offset_{0.f};
   std::list<std::shared_ptr<TextEventTarget>> event_target_roots_;
   std::vector<int32_t> placeholder_signs_;
+  std::vector<InlinePlaceholderLayout> inline_placeholder_layouts_;
   std::vector<InlineEmojiInfo> inline_emojis_;
   bool has_generate_event_rects_{false};
   std::optional<std::list<fml::RefPtr<ShaderEffect>>> effects_;

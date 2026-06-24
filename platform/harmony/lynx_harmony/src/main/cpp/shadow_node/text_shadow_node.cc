@@ -283,6 +283,10 @@ float TextShadowNode::CalcTextTranslateOffset(float layout_max_width,
 }
 
 void TextShadowNode::Align() {
+  if (paragraph_ == nullptr) {
+    return;
+  }
+  paragraph_->ClearInlinePlaceholderLayouts();
   auto rects = paragraph_->GetRectsForPlaceholders();
   size_t count = rects.GetCount();
   std::stack<const ShadowNode*> to_align;
@@ -314,6 +318,13 @@ void TextShadowNode::Align() {
               break;
             }
           }
+          paragraph_->AddInlinePlaceholderLayout(
+              {.sign = placeholder_node->Signature(),
+               .is_image = placeholder_node->IsInlineImage(),
+               .left = dx,
+               .top = dy,
+               .width = rects.GetRight(index) - rects.GetLeft(index),
+               .height = rects.GetBottom(index) - rects.GetTop(index)});
           node->AlignTo(dx, dy);
         }
       }

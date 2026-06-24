@@ -8,14 +8,19 @@ export class TimingConstants {
   public static readonly CREATE_LYNX_START = 'createLynxStart';
   public static readonly CREATE_LYNX_END = 'createLynxEnd';
   public static readonly PIPELINE_START = "pipelineStart";
+  public static readonly PIPELINE_END = "pipelineEnd";
   public static readonly LOAD_BUNDLE_START = "loadBundleStart";
+  public static readonly LOAD_BUNDLE_END = "loadBundleEnd";
   public static readonly RELOAD_BUNDLE_START = "reloadBundleStart";
+  public static readonly UPDATE_DATA_START = "updateDataStart";
+  public static readonly PAINT_END = "paintEnd";
   public static readonly VERIFY_TASM_START = "verifyTasmStart";
   public static readonly VERIFY_TASM_END = "verifyTasmEnd";
   public static readonly FFI_START = "ffiStart";
   // PipelineOrigin
   public static readonly LOAD_BUNDLE = "loadBundle";
   public static readonly RELOAD_BUNDLE_FROM_NATIVE = "reloadBundleFromNative";
+  public static readonly UPDATE_TRIGGERED_BY_NATIVE = "updateTriggeredByNative";
   // Performance API Key
   public static readonly PIPELINE_ORIGIN = "pipelineOrigin";
   public static readonly TIMESTAMP_MAP = "timestampMap";

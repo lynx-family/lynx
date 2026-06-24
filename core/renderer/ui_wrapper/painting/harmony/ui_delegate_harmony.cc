@@ -22,6 +22,7 @@
 #include "core/renderer/css/parser/css_parser_configs.h"
 #include "core/renderer/css/parser/css_string_parser.h"
 #include "core/renderer/ui_wrapper/layout/harmony/layout_context_harmony.h"
+#include "core/renderer/ui_wrapper/painting/harmony/native_painting_context_harmony.h"
 #include "core/renderer/ui_wrapper/painting/harmony/painting_context_harmony.h"
 #include "core/shell/harmony/embedder_platform_harmony.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/event/event_target.h"
@@ -227,7 +228,11 @@ static void GetAllPropertyAndValues(
 
 std::unique_ptr<PaintingCtxPlatformImpl>
 UIDelegateHarmony::CreatePaintingContext() {
-  return std::make_unique<PaintingContextHarmony>(ui_owner_);
+  auto lynx_context = lynx_context_.lock();
+  if (lynx_context != nullptr && lynx_context->IsFragmentLayerRenderOn()) {
+    return std::make_unique<NativePaintingCtxHarmony>(ui_owner_, node_owner_);
+  }
+  return std::make_unique<PaintingContextHarmony>(ui_owner_, node_owner_);
 }
 
 std::unique_ptr<LayoutCtxPlatformImpl>
@@ -267,8 +272,13 @@ void UIDelegateHarmony::OnLynxCreate(
   lynx_context->OnLynxCreate(
       list_engine_proxy, engine_proxy, runtime_proxy, perf_controller_proxy,
       event_tracker_proxy, resource_loader, ui_task_runner, layout_task_runner);
-  node_owner_->SetTriggerLayoutCallback(
-      [layout_proxy]() { layout_proxy->TriggerLayout(); });
+  if (is_embedded_mode) {
+    node_owner_->SetTriggerLayoutCallback(
+        [engine_proxy]() { engine_proxy->TriggerLayout(); });
+  } else {
+    node_owner_->SetTriggerLayoutCallback(
+        [layout_proxy]() { layout_proxy->TriggerLayout(); });
+  }
 }
 
 void UIDelegateHarmony::OnUpdateScreenMetrics(float width, float height,
