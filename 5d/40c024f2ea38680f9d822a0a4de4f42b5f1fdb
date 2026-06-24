@@ -1,0 +1,44 @@
+testing/lynx-platform-tests/test_script/lynxlib/test_runner/plugins/consistency_diff_plugin.py
+  h_dc1658ba751399 1-79
+.cq/pipelines/clay-vs-native-android-e2e-core-test.yml
+  h_dc1658ba751399 43
+.cq/pipelines/clay-vs-native-ios-e2e-core-test.yml
+  h_dc1658ba751399 47
+.cq/pipelines/clay-vs-native-android-e2e-css-test.yml
+  h_dc1658ba751399 34
+.cq/pipelines/macos-vs-ios-e2e-component-test.yml
+  h_dc1658ba751399 39
+.cq/pipelines/clay-vs-native-android-e2e-component-test.yml
+  h_dc1658ba751399 41
+testing/lynx-platform-tests/test_script/lynxlib/test_runner/plugins/pc_mobile_diff_plugin.py
+  h_dc1658ba751399 7,13-16
+.cq/pipelines/clay-vs-native-ios-e2e-css-test.yml
+  h_dc1658ba751399 35
+testing/tools/consistency_check_e2e_tools/consistency_check_e2e_reporter.py
+  s_a1afbb04e782d4::t_7c81b41196d933 423
+  s_31c330828b2bc8::t_97a459bde8722f 424
+  s_31c330828b2bc8::t_4bd234afb2bc57 326-340
+  s_2baac4ac3156d3::t_9fa174b1890cd6 81
+  s_31c330828b2bc8::t_5b8cded8fc8984 75,77,79,83-86,103-105,107-110
+  s_31c330828b2bc8::t_ef236ce8bb1c93 422
+  s_20dbb6f182453e::t_332c0c7d3ad75c 425
+  s_31c330828b2bc8::t_2b7a67f4db6bbe 152-154,164
+  h_dc1658ba751399 76,80,82,378-387
+  s_31c330828b2bc8::t_ab00aeab9daa6f 186,191,200
+  s_31c330828b2bc8::t_17ebf736b77e38 296-297
+  s_436bda2cad300e::t_8a52a4c5748393 188-190,192-197
+.cq/pipelines/macos-vs-ios-e2e-core-test.yml
+  h_dc1658ba751399 31
+.cq/pipelines/clay-vs-native-ios-e2e-component-test.yml
+  h_dc1658ba751399 38
+.cq/pipelines/macos-vs-ios-e2e-css-test.yml
+  h_dc1658ba751399 33
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "5d40c024f2ea38680f9d822a0a4de4f42b5f1fdb",
+  "prompts": {},
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}
