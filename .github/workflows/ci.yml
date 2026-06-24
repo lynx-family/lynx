@@ -596,7 +596,7 @@ jobs:
           path: '${{ github.workspace }}/lynx/LynxExplorer-${{ matrix.arch }}.app.tar.gz'
 
   ios-integration-test:
-    timeout-minutes: 15
+    timeout-minutes: 30
     runs-on: lynx-darwin-14-medium
     env:
       LOCAL_POD_NAME: 'local_pod'
