@@ -5,7 +5,9 @@ package com.lynx.animax.util;
 
 import androidx.annotation.Keep;
 import com.lynx.animax.UIAnimaX;
+import com.lynx.animax.loader.LynxAnimaXImageService;
 import com.lynx.animax.service.AnimaXServiceCenter;
+import com.lynx.animax.service.IAnimaXImageService;
 import com.lynx.animax.service.IAnimaXSettingService;
 import com.lynx.animax.service.ServiceScope;
 import com.lynx.animax.setting.LynxAnimaXSettingService;
@@ -63,6 +65,10 @@ public class LynxAnimaX {
 
     // Lynx AnimaX initialization
     if (!mHasLibInit) {
+      if (!AnimaX.inst().loadLibrary("animax_napi")) {
+        return;
+      }
+
       createGlobalServices();
 
       mHasLibInit = true;
@@ -91,5 +97,7 @@ public class LynxAnimaX {
   private void createGlobalServices() {
     AnimaXServiceCenter.inst().registerService(
         mScope, IAnimaXSettingService.class, new LynxAnimaXSettingService());
+    AnimaXServiceCenter.inst().registerService(
+        mScope, IAnimaXImageService.class, new LynxAnimaXImageService());
   }
 }

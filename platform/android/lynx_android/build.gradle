@@ -28,6 +28,7 @@ android {
         buildConfigField("Boolean","enable_lite",enable_lite)
         buildConfigField("Boolean","enable_packrel",enable_packrel)
         buildConfigField("Boolean","enable_lepusng_worklet",enable_lepusng_worklet)
+        buildConfigField("Boolean","enable_napi_binding",enable_napi_binding)
 
         multiDexEnabled true
 
@@ -282,6 +283,7 @@ task configGnCompileParas {
             gnBuildArgs_list.put("enable_16kb_align", "true")
             gnBuildArgs_list.put("enable_packrel", "\"$enable_packrel\"")
             gnBuildArgs_list.put("enable_lepusng_worklet", "\"$enable_lepusng_worklet\"")
+            gnBuildArgs_list.put("enable_napi_binding", "\"$enable_napi_binding\"")
             if (buildType == "release") {
                 gnBuildArgs_list.put("is_debug", "false")
                 gnBuildArgs_list.put("enable_replay_release", "\"$enable_replay_release\"")

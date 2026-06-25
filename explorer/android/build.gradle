@@ -111,6 +111,55 @@ ext.writeGnArgs = { String gnArgs ->
     }
 }
 
+// Temporary compatibility workaround for Explorer debug builds.
+//
+// Explorer builds LynxBase from source, while some SDK dependencies are built
+// against the published release lynxbase.so. A few public LynxBase headers
+// currently expose declarations whose layout depends on the NDEBUG macro. If the
+// generated source-built CMake targets miss NDEBUG, the resulting lynxbase.so can
+// disagree with SDK objects compiled with release headers and crash at runtime.
+// Inject NDEBUG into every generated GN-to-CMake CMakeLists file until those
+// public headers are made independent of NDEBUG.
+def injectNDebugToGeneratedGnCMake = {
+    File lynxRootDir = rootProject.file("../..")
+    File gnToCMakeDir = new File(lynxRootDir, "out/gn_to_cmake")
+    if (!gnToCMakeDir.exists()) {
+        return
+    }
+
+    Set<File> cmakeFiles = new LinkedHashSet<>()
+    fileTree(gnToCMakeDir).matching {
+        include "**/cmake_targets/*"
+    }.files.each { File targetMarker ->
+        String cmakeTarget = targetMarker.getText("UTF-8").trim()
+        if (cmakeTarget.startsWith("//") && cmakeTarget.contains(":")) {
+            String targetDir = cmakeTarget.substring(2, cmakeTarget.indexOf(":"))
+            File cmakeImplDir = new File(lynxRootDir, "${targetDir}/CMakeLists_impl")
+            if (cmakeImplDir.exists()) {
+                fileTree(cmakeImplDir).matching {
+                    include "**/CMakeLists.txt"
+                }.files.each { File cmakeFile ->
+                    cmakeFiles.add(cmakeFile)
+                }
+            }
+        }
+    }
+
+    String ndebugDefinition = "add_definitions(-DNDEBUG)"
+    int injectedCount = 0
+    cmakeFiles.each { File cmakeFile ->
+        String text = cmakeFile.getText("UTF-8")
+        if (!text.contains(ndebugDefinition) && text.contains("enable_language(ASM)")) {
+            cmakeFile.write(text.replace(
+                    "enable_language(ASM)",
+                    "enable_language(ASM)\n\n# Temporary Explorer workaround: keep source-built LynxBase ABI aligned with release SDK headers.\n${ndebugDefinition}"),
+                    "UTF-8")
+            injectedCount++
+        }
+    }
+    println "Injected NDEBUG into ${injectedCount} generated GN CMakeLists files."
+}
+
 if (buildLynxDebugSo) {
     // force Gradle to evaluate the child build.gradle files before the parent
     evaluationDependsOnChildren()
@@ -156,6 +205,7 @@ task generateAllGnCmakeTargets {
             rootProject.ext.configurePythonExec(delegate, "tools_shared/android_tools/generate_cmake_scripts_from_gn.py")
             println commandLine
         }
+        injectNDebugToGeneratedGnCMake()
     }
 }
 

@@ -4,10 +4,14 @@
 
 ext.sparklingRuntimeAllowlist = [
         'org.lynxsdk.lynx:v8so'           : '11.1.277.4',
-        'org.lynxsdk.lynx:primjs'         : '3.8.0-alpha.6',
-        'org.lynxsdk.lynx:primjsWasm'     : '3.8.0-alpha.6',
+        'org.lynxsdk.lynx:primjs'         : '4.0.1-alpha.3',
+        'org.lynxsdk.lynx:primjsWasm'     : '4.0.1-alpha.3',
         'org.lynxsdk.lynx:debug-router'   : '0.0.20',
-        'org.lynxsdk.lynx:lynxtextra'     : '0.1.1',
+        'org.lynxsdk.lynx:lynxtextra'     : '0.1.5',
         'org.lynxsdk.lynx:serval_markdown': '0.1.1',
         'org.lynxsdk.lynx:servalsvg'      : '0.0.2',
+        'org.lynxsdk.lynx:skity-native'   : '1.1.0-alpha.3',
+        'org.lynxsdk.lynx:animax-sdk'     : '1.0.1-alpha.12',
+        'org.lynxsdk.lynx:animax-napi'    : '1.0.1-alpha.12',
+        'org.lynxsdk.lynx:animax-textra'  : '1.0.1-alpha.12',
 ]
