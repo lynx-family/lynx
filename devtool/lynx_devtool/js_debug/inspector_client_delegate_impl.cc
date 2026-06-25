@@ -4,7 +4,6 @@
 
 #include "devtool/lynx_devtool/js_debug/inspector_client_delegate_impl.h"
 
-#include "base/include/log/logging.h"
 #include "devtool/lynx_devtool/agent/lynx_devtool_mediator.h"
 #include "devtool/lynx_devtool/js_debug/js/inspector_java_script_debugger_impl.h"
 #include "devtool/lynx_devtool/tracing/devtool_trace_event_def.h"
@@ -20,7 +19,7 @@ InspectorClientDelegateProvider::GetInstance() {
 
 std::shared_ptr<InspectorClientDelegateImpl>
 InspectorClientDelegateProvider::GetDelegate(const std::string& vm_type) {
-  if (vm_type == kKeyEngineLepus) {
+  if (vm_type == kKeyEngineLepus || vm_type == kKeyEngineRTS) {
     return std::make_shared<InspectorClientDelegateImpl>(vm_type);
   }
   if (delegates_.find(vm_type) == delegates_.end()) {

@@ -7,11 +7,29 @@
 
 #include "devtool/lynx_devtool/js_debug/inspector_client_delegate_impl.h"
 
+#include "devtool/lynx_devtool/js_debug/java_script_debugger_ng.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 namespace lynx {
 namespace devtool {
 namespace testing {
+
+class JavaScriptDebuggerNGMock : public JavaScriptDebuggerNG {
+ public:
+  explicit JavaScriptDebuggerNGMock(
+      const std::shared_ptr<LynxDevToolMediator>& devtool_mediator)
+      : JavaScriptDebuggerNG(devtool_mediator) {}
+  ~JavaScriptDebuggerNGMock() override = default;
+
+  void DispatchMessage(const std::string& message,
+                       const std::string& session_id = "") override {
+    dispatch_message_buf_.push(message);
+  }
+  void RunOnTargetThread(base::closure&& closure,
+                         bool run_now = true) override {}
+
+  std::queue<std::string> dispatch_message_buf_;
+};
 
 class InspectorClientDelegateImplTest : public ::testing::Test {
  public:
@@ -47,6 +65,7 @@ TEST_F(InspectorClientDelegateImplTest, GetDelegate) {
   EXPECT_EQ(qjs_delegate_, new_qjs_delegate);
   EXPECT_NE(lepus_delegate_, new_lepus_delegate);
 }
+
 }  // namespace testing
 }  // namespace devtool
 }  // namespace lynx

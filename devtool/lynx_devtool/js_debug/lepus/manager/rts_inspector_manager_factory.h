@@ -5,7 +5,17 @@
 #ifndef DEVTOOL_LYNX_DEVTOOL_JS_DEBUG_LEPUS_MANAGER_RTS_INSPECTOR_MANAGER_FACTORY_H_
 #define DEVTOOL_LYNX_DEVTOOL_JS_DEBUG_LEPUS_MANAGER_RTS_INSPECTOR_MANAGER_FACTORY_H_
 
+namespace lynx {
+namespace devtool {
+class JSDebugHelper;
+}  // namespace devtool
+}  // namespace lynx
+
 extern "C" {
+
+__attribute__((visibility("default"))) void
+LynxRegisterRTSInspectorManagerFactoryImpl(
+    lynx::devtool::JSDebugHelper* helper);
 
 void LynxRegisterRTSInspectorManagerFactory(void);
 
