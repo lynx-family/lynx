@@ -1,0 +1,21 @@
+lynx/platform/android/lynx_android/src/main/java/com/lynx/tasm/behavior/KeyboardEvent.java
+  s_e3d3900f47d8ee::t_f9ba6708f63def 683-685
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "55f83b23c3080263f93928d15e289758cb339d9e",
+  "prompts": {},
+  "sessions": {
+    "s_e3d3900f47d8ee": {
+      "agent_id": {
+        "tool": "trae-cue",
+        "id": "ai_tab-icr-64cd5c9b-d753-4a45-aa04-160c0f34c21a",
+        "model": "default"
+      },
+      "human_author": "mooface <xiamengfei.moonface@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}
