@@ -57,7 +57,7 @@ target(lynx_devtool_type, "lynx_devtool") {
 
   lib_dirs = [ primjs_native_lib_dir ]
   if (defined(enable_rts_runtime) && enable_rts_runtime) {
-    lib_dirs += [ "../../../third_party/rts/harmony" ]
+    lib_dirs += [ "//third_party/rts/harmony" ]
   }
   libs = [
     "ace_napi.z",
@@ -66,10 +66,18 @@ target(lynx_devtool_type, "lynx_devtool") {
     "native_vsync",
     "ohpreferences",
   ]
-  if (defined(enable_rts_runtime) && enable_rts_runtime) {
-    libs += [
-      "rvm",
-      "rvm_devtool",
+}
+
+if (defined(enable_rts_runtime) && enable_rts_runtime && is_debug) {
+  shared_library("rts_debug_loader") {
+    output_name = "lynxdevtool_rts_debug"
+
+    sources = [ "../../../devtool/lynx_devtool/js_debug/lepus/manager/rts_inspector_manager_factory_stub.cc" ]
+
+    lib_dirs = [
+      primjs_native_lib_dir,
+      "//third_party/rts/harmony",
     ]
+    libs = [ "rvm" ]
   }
 }

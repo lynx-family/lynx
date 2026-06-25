@@ -19,6 +19,17 @@ devtool_common_js_debug_sources = [
   "java_script_debugger_ng.h",
 ]
 
+if (is_android || is_harmony) {
+  devtool_common_js_debug_sources +=
+      [ "helper/js_debug_helper_android_harmony.cc" ]
+} else {
+  if (is_win) {
+    devtool_common_js_debug_sources += [ "helper/js_debug_helper_default.cc" ]
+  } else {
+    devtool_common_js_debug_sources += [ "helper/js_debug_helper_posix.cc" ]
+  }
+}
+
 devtool_js_debug_sources = [
   "js/console_message_postman_impl.cc",
   "js/console_message_postman_impl.h",
@@ -95,6 +106,7 @@ devtool_source_set("devtool_common_js_debug") {
   deps = [
     "../../../base/src:base_log_headers",
     "../../../third_party/rapidjson:rapidjson",
+    "../../js_inspect:inspector_const",
   ]
 }
 
@@ -119,6 +131,9 @@ devtool_source_set("rts_inspector_manager_factory") {
     "lepus/manager/rts_inspector_manager_factory.h",
     "lepus/manager/rts_inspector_manager_factory_stub.cc",
   ]
+  if (is_ios) {
+    sources += [ "lepus/manager/rts_inspector_manager_factory_stub_ios.cc" ]
+  }
 }
 
 devtool_source_set("rts_inspector_manager_factory_stub") {
@@ -126,6 +141,9 @@ devtool_source_set("rts_inspector_manager_factory_stub") {
     "lepus/manager/rts_inspector_manager_factory.h",
     "lepus/manager/rts_inspector_manager_factory_stub.cc",
   ]
+  if (is_ios) {
+    sources += [ "lepus/manager/rts_inspector_manager_factory_stub_ios.cc" ]
+  }
 }
 
 devtool_source_set("devtool_lepus_debug") {
@@ -254,6 +272,27 @@ if (is_android) {
       ":devtool_qjs_bridge",
       "../../../core/build:build",
     ]
+  }
+
+  if (defined(enable_rts_runtime) && enable_rts_runtime &&
+      !disable_rts_devtool && target_cpu != "x86") {
+    cmake_target("lynxdevtool_rts_debug") {
+      is_only_sub_cmake = true
+      cmake_version = "3.4.1"
+      target_type = "shared_library"
+      output_name = "lynxdevtool_rts_debug"
+      if (target_exclude_patterns != []) {
+        output_name = "lynxdevtool_rts_debug_stub"
+      }
+      deps = [ ":rts_inspector_manager_factory_stub" ]
+
+      configs = [
+        "../../../platform/android/lynx_devtool:devtool_common_defines",
+        "../../../platform/android/lynx_devtool:devtool_flag_config",
+        "../../../platform/android/lynx_devtool:devtool_ldflag_config",
+        "../../../platform/android:16kb_page",
+      ]
+    }
   }
 
   cmake_target("lynxdevtool_v8_bridge") {

@@ -79,7 +79,8 @@ class DevToolMessageHandlerIos : public DevToolMessageHandler {
     session_id_ = 0;
     // Anchor the RTS inspector factory in iOS static frameworks so its pure
     // C++ registration object is not dropped by the linker.
-    LynxRegisterRTSInspectorManagerFactory();
+    auto* anchor = &LynxRegisterRTSInspectorManagerFactoryImpl;
+    (void)anchor;
     devtool_ng_ = std::make_shared<lynx::devtool::LynxDevToolNG>(static_cast<bool>(debuggable));
   }
   return self;

@@ -15,8 +15,10 @@
 #include "platform/harmony/lynx_devtool/src/main/cpp/inspector_owner_harmony.h"
 
 EXTERN_C_START static napi_value Init(napi_env env, napi_value exports) {
-  // Anchor the RTS inspector factory when the Harmony devtool NAPI module is
-  // loaded so the pure C++ registration object is not stripped by the linker.
+  // Keep the exported RTS factory entry available when the Harmony devtool
+  // NAPI module is loaded. On Harmony this resolves to the stub target, while
+  // the real RTS inspector factory is registered lazily from
+  // liblynxdevtool_rts_debug.so.
   LynxRegisterRTSInspectorManagerFactory();
   lynx::devtool::DebugBridgeHarmony::Init(env, exports);
   lynx::devtool::InspectorOwnerHarmony::Init(env, exports);
@@ -34,7 +36,7 @@ static napi_module lynx_devtool_module = {
     .nm_filename = nullptr,
     .nm_register_func = Init,
     .nm_modname = "lynxdevtool",
-    .nm_priv = ((void *)0),
+    .nm_priv = ((void*)0),
     .reserved = {0},
 };
 

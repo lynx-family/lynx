@@ -12,6 +12,10 @@ group("LynxDevtool") {
     "../../../devtool/lynx_devtool/js_debug:lynxdevtool_qjs_bridge",
     "../../../devtool/lynx_devtool/js_debug:lynxdevtool_v8_bridge",
   ]
+  if (defined(enable_rts_runtime) && enable_rts_runtime &&
+      !disable_rts_devtool && target_cpu != "x86") {
+    deps += [ "../../../devtool/lynx_devtool/js_debug:lynxdevtool_rts_debug" ]
+  }
 }
 
 cmake_target("lynxdevtool") {
@@ -43,6 +47,11 @@ cmake_target("lynxdevtool") {
     "../../../devtool/lynx_devtool/js_debug:lynxdevtool_qjs_bridge",
     "../../../devtool/lynx_devtool/js_debug:lynxdevtool_v8_bridge",
   ]
+  if (defined(enable_rts_runtime) && enable_rts_runtime &&
+      !disable_rts_devtool && target_cpu != "x86") {
+    sub_cmake_target +=
+        [ "../../../devtool/lynx_devtool/js_debug:lynxdevtool_rts_debug" ]
+  }
 }
 
 group("lynxdevtool_lib") {

@@ -7,6 +7,7 @@
 
 #include <functional>
 #include <memory>
+#include <mutex>
 #include <string>
 
 #include "base/include/base_export.h"
@@ -44,10 +45,8 @@ class JSDebugHelper {
   CreateRuntimeInspectorManager(const std::string& vm_type);
   std::unique_ptr<lepus::LepusInspectorManager> CreateLepusInspectorManager(
       runtime::ContextType context_type);
-  void SetRTSInspectorManagerCreator(
-      std::function<std::unique_ptr<lepus::LepusInspectorManager>()> creator) {
-    rts_inspector_manager_creator_ = std::move(creator);
-  }
+  BASE_EXPORT void SetRTSInspectorManagerCreator(
+      std::function<std::unique_ptr<lepus::LepusInspectorManager>()> creator);
 
   void RegisterNapiRuntimeProxy();
   std::unique_ptr<runtime::js::Runtime> MakeRuntime(const std::string& vm_type);
@@ -64,10 +63,22 @@ class JSDebugHelper {
 
  private:
   JSDebugHelper() = default;
+  void EnsureRTSInspectorManagerCreatorRegistered();
+  void RegisterRTSInspectorManagerCreatorByPlatform();
+
+  enum class RTSCreatorRegistrationState {
+    kUninitialized,
+    kLoading,
+    kRegistered,
+  };
 
   std::unique_ptr<JSDebugProxy> v8_proxy_;
   std::unique_ptr<JSDebugProxy> quickjs_proxy_;
   std::unique_ptr<JSDebugProxy> lepus_proxy_;
+  std::mutex rts_inspector_manager_creator_mutex_;
+  RTSCreatorRegistrationState
+      rts_inspector_manager_creator_registration_state_ =
+          RTSCreatorRegistrationState::kUninitialized;
   std::function<std::unique_ptr<lepus::LepusInspectorManager>()>
       rts_inspector_manager_creator_;
 };

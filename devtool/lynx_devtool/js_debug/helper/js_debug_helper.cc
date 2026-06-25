@@ -4,6 +4,9 @@
 
 #include "devtool/lynx_devtool/js_debug/helper/js_debug_helper.h"
 
+#include <mutex>
+
+#include "base/include/log/logging.h"
 #include "core/runtime/mts_context.h"
 #include "devtool/js_inspect/inspector_const.h"
 
@@ -13,6 +16,52 @@ namespace devtool {
 JSDebugHelper* JSDebugHelper::GetInstance() {
   static JSDebugHelper instance_;
   return &instance_;
+}
+
+void JSDebugHelper::EnsureRTSInspectorManagerCreatorRegistered() {
+  bool should_attempt_registration = false;
+  {
+    std::lock_guard<std::mutex> lock(rts_inspector_manager_creator_mutex_);
+    if (rts_inspector_manager_creator_) {
+      rts_inspector_manager_creator_registration_state_ =
+          RTSCreatorRegistrationState::kRegistered;
+      return;
+    }
+    if (rts_inspector_manager_creator_registration_state_ ==
+        RTSCreatorRegistrationState::kLoading) {
+      return;
+    }
+    rts_inspector_manager_creator_registration_state_ =
+        RTSCreatorRegistrationState::kLoading;
+    should_attempt_registration = true;
+  }
+  if (!should_attempt_registration) {
+    return;
+  }
+  RegisterRTSInspectorManagerCreatorByPlatform();
+  {
+    std::lock_guard<std::mutex> lock(rts_inspector_manager_creator_mutex_);
+    if (rts_inspector_manager_creator_) {
+      rts_inspector_manager_creator_registration_state_ =
+          RTSCreatorRegistrationState::kRegistered;
+    } else {
+      rts_inspector_manager_creator_registration_state_ =
+          RTSCreatorRegistrationState::kUninitialized;
+    }
+  }
+}
+
+void JSDebugHelper::SetRTSInspectorManagerCreator(
+    std::function<std::unique_ptr<lepus::LepusInspectorManager>()> creator) {
+  std::lock_guard<std::mutex> lock(rts_inspector_manager_creator_mutex_);
+  rts_inspector_manager_creator_ = std::move(creator);
+  if (rts_inspector_manager_creator_) {
+    rts_inspector_manager_creator_registration_state_ =
+        RTSCreatorRegistrationState::kRegistered;
+  } else {
+    rts_inspector_manager_creator_registration_state_ =
+        RTSCreatorRegistrationState::kUninitialized;
+  }
 }
 
 std::unique_ptr<runtime::js::RuntimeInspectorManager>
@@ -38,9 +87,16 @@ JSDebugHelper::CreateRuntimeInspectorManager(const std::string& vm_type) {
 
 std::unique_ptr<lepus::LepusInspectorManager>
 JSDebugHelper::CreateLepusInspectorManager(runtime::ContextType context_type) {
-  if (context_type == runtime::ContextType::RTSContextType &&
-      rts_inspector_manager_creator_) {
-    return rts_inspector_manager_creator_();
+  if (context_type == runtime::ContextType::RTSContextType) {
+    std::function<std::unique_ptr<lepus::LepusInspectorManager>()> creator;
+    EnsureRTSInspectorManagerCreatorRegistered();
+    {
+      std::lock_guard<std::mutex> lock(rts_inspector_manager_creator_mutex_);
+      creator = rts_inspector_manager_creator_;
+    }
+    if (creator) {
+      return creator();
+    }
   }
   if (lepus_proxy_ == nullptr) {
     LOGW("js debug: lepus_proxy_ is not set");
