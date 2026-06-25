@@ -179,9 +179,12 @@ public class Renderer {
     }
     mDisplayListApplier.drawTillNextView(canvas);
     canvas.save();
-    if (child instanceof ContainerRenderer) {
-      canvas.translate(-((ContainerRenderer) child).getRenderer().getRenderOffset().x,
-          -((ContainerRenderer) child).getRenderer().getRenderOffset().y);
+    if (child instanceof IRendererHost) {
+      IRendererHost childHost = (IRendererHost) child;
+      Renderer childRenderer = childHost.getRenderer();
+      if (childRenderer != null) {
+        canvas.translate(-childRenderer.getRenderOffset().x, -childRenderer.getRenderOffset().y);
+      }
     }
   }
 
