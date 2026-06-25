@@ -1226,15 +1226,24 @@ public class LynxTemplateRender
    * @param templateData
    */
   public void renderTemplateUrl(@NonNull String templateUrl, final TemplateData templateData) {
-    renderTemplateUrlInternal(templateUrl, new InnerLoadedCallback(templateUrl, templateData));
+    LynxLoadMeta.Builder metaBuilder = new LynxLoadMeta.Builder();
+    metaBuilder.setUrl(templateUrl);
+    metaBuilder.setInitialData(templateData);
+    loadTemplate(metaBuilder.build());
   }
 
   public void renderTemplateUrl(@NonNull String templateUrl, final String jsonData) {
-    renderTemplateUrlInternal(templateUrl, new InnerLoadedCallback(templateUrl, jsonData));
+    LynxLoadMeta.Builder metaBuilder = new LynxLoadMeta.Builder();
+    metaBuilder.setUrl(templateUrl);
+    metaBuilder.setInitialData(TemplateData.fromString(jsonData));
+    loadTemplate(metaBuilder.build());
   }
 
   public void renderTemplateUrl(@NonNull String templateUrl, final Map<String, Object> data) {
-    renderTemplateUrlInternal(templateUrl, new InnerLoadedCallback(templateUrl, data));
+    LynxLoadMeta.Builder metaBuilder = new LynxLoadMeta.Builder();
+    metaBuilder.setUrl(templateUrl);
+    metaBuilder.setInitialData(TemplateData.fromMap(data));
+    loadTemplate(metaBuilder.build());
   }
 
   public void renderSSRUrl(@NonNull String ssrUrl, final Map<String, Object> injectedData) {
@@ -1379,7 +1388,6 @@ public class LynxTemplateRender
     onTraceEventBegin("LynxTemplateRender.renderTemplate");
     if (templateUrl != null) {
       String[] urls = processUrl(templateUrl);
-      setUrl(urls[0]);
 
       if (mDevTool != null) {
         TemplateData initialData =
@@ -1590,46 +1598,11 @@ public class LynxTemplateRender
   @RestrictTo(RestrictTo.Scope.LIBRARY)
   public void renderTemplateBundle(
       final TemplateBundle bundle, final TemplateData templateData, String baseUrl) {
-    if (mHasDestroy) {
-      return;
-    }
-    if (mDevTool != null) {
-      mDevTool.onLoadFromBundle(bundle, templateData, baseUrl);
-    }
-
-    if ((!mAsyncRender || reload) && !UIThreadUtils.isOnUiThread()) {
-      UIThreadUtils.runOnUiThread(new Runnable() {
-        @Override
-        public void run() {
-          renderTemplateBundle(bundle, templateData, baseUrl);
-        }
-      });
-      return;
-    }
-
-    setUrl(baseUrl);
-    if (mEnableReuseEngine || mEnableCacheEngine) {
-      if (tryRenderByReuseLynxRender(templateData)) {
-        return;
-      }
-      if (mEnableReuseEngine) {
-        mEmbeddedPipelineCounter.incrementAndGet();
-      }
-    }
-
-    onTraceEventBegin(TraceEventDef.TEMPLATE_RENDER_RENDER_TEMPLATE_BUNDLE);
-    TimingOption timingOption = TimingOption.createTimingOption(TimingConstants.LOAD_BUNDLE,
-        TimingConstants.LOAD_BUNDLE_START, mPerformanceController.isEmbeddedMode());
-    if (mPerformanceController.isEmbeddedMode()) {
-      mPerformanceController.markTiming(TimingConstants.LOAD_BUNDLE_START, null);
-    }
-    this.prepareLynxEngineIfNeeded();
-    LLog.i(TAG, formatLynxMessage("renderTemplate"));
-    if (mNativePtr != 0) {
-      loadTemplateBundle(bundle, baseUrl, templateData, false, 0, new TASMCallback(), timingOption);
-    }
-    postRenderOrUpdateData(templateData);
-    onTraceEventEnd(TraceEventDef.TEMPLATE_RENDER_RENDER_TEMPLATE_BUNDLE);
+    LynxLoadMeta.Builder metaBuilder = new LynxLoadMeta.Builder();
+    metaBuilder.setTemplateBundle(bundle);
+    metaBuilder.setInitialData(templateData);
+    metaBuilder.setUrl(baseUrl);
+    loadTemplate(metaBuilder.build());
   }
 
   /**
