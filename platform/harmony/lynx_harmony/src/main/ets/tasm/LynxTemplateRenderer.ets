@@ -197,6 +197,10 @@ export class LynxTemplateRenderer extends lynx.LynxTemplateRenderer {
     super.updateScreenMetrics(this.displayInfo.screenWidth, this.displayInfo.screenHeight, LynxEnv.getDensity());
   }
 
+  setWindowInfo(windowId: number, windowLeft: number, windowTop: number): void {
+    this.nativeSetWindowInfo(windowId, windowLeft, windowTop);
+  }
+
   override updateScreenMetrics(width: number, height: number) {
     LLog.i(TAG, `updateScreenMetrics, w: ${width}, h: ${height}`);
     if (width != this.displayInfo.screenWidth || height != this.displayInfo.screenHeight) {

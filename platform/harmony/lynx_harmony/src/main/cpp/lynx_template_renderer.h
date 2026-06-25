@@ -84,6 +84,8 @@ class LynxTemplateRenderer : public devtool::LynxDevToolProxy {
   void OnEnterForeground();
   void OnEnterBackground();
   void UpdateScreenMetrics(float width, float height, float display_density);
+  void SetWindowInfo(int32_t window_id, int32_t window_left_px,
+                     int32_t window_top_px);
   void UpdateGlobalProps(lepus::Value value);
   lepus::Value GetAllTimingInfo() const;
   int32_t GetInstanceId() const;
@@ -192,6 +194,7 @@ class LynxTemplateRenderer : public devtool::LynxDevToolProxy {
   static napi_value LoadTemplateBundle(napi_env env, napi_callback_info info);
   static napi_value UpdateViewport(napi_env env, napi_callback_info info);
   static napi_value UpdateScreenMetrics(napi_env env, napi_callback_info info);
+  static napi_value NativeSetWindowInfo(napi_env env, napi_callback_info info);
   static napi_value CallJSFunction(napi_env env, napi_callback_info info);
   static napi_value TriggerEventBus(napi_env env, napi_callback_info info);
   static napi_value CallJSApiCallbackWithValue(napi_env env,
@@ -244,7 +247,9 @@ class LynxTemplateRenderer : public devtool::LynxDevToolProxy {
   };
 
  private:
+  std::shared_ptr<tasm::harmony::LynxContext> GetHarmonyLynxContext();
   void SyncInspectorOwnerToLynxContext();
+  void SyncWindowInfoToLynxContext();
 
   void MergeGlobalProps(lepus::Value global_props);
   void SetupExtensionDelegate(pub::LynxExtensionDelegate* delegate);
@@ -264,6 +269,10 @@ class LynxTemplateRenderer : public devtool::LynxDevToolProxy {
   std::shared_ptr<shell::PerfControllerProxy> perf_controller_proxy_;
   std::shared_ptr<shell::LynxShell> shell_;
   tasm::UIDelegate* ui_delegate_{nullptr};
+  bool is_host_renderer_{true};
+  int32_t window_id_{-1};
+  int32_t window_left_px_{0};
+  int32_t window_top_px_{0};
   std::shared_ptr<LynxResourceLoaderHarmony> resource_loader_;
   std::weak_ptr<tasm::harmony::LynxContext> lynx_context_;
   std::shared_ptr<WeakFlag> weak_flag_;

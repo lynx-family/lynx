@@ -134,9 +134,14 @@ void LynxTemplateRenderer::SetUpLynxShell(
     LynxRuntimeWrapper* runtime_wrapper, LynxWhiteBoard* white_board) {
   ui_delegate_ = ui_delegate;
   resource_loader_ = resource_loader;
-  lynx_context_ = static_cast<tasm::harmony::UIDelegateHarmony*>(ui_delegate_)
-                      ->GetLynxContext();
-  SyncInspectorOwnerToLynxContext();
+  is_host_renderer_ = is_host_renderer;
+  if (is_host_renderer_) {
+    lynx_context_ = GetHarmonyLynxContext();
+    SyncInspectorOwnerToLynxContext();
+    SyncWindowInfoToLynxContext();
+  } else {
+    lynx_context_.reset();
+  }
 
   float w = width / display_density_;
   float h = height / display_density_;
@@ -300,6 +305,15 @@ void LynxTemplateRenderer::UpdateScreenMetrics(float width, float height,
   shell_->UpdateScreenMetrics(width, height, pixel_ratio);
 }
 
+void LynxTemplateRenderer::SetWindowInfo(int32_t window_id,
+                                         int32_t window_left_px,
+                                         int32_t window_top_px) {
+  window_id_ = window_id;
+  window_left_px_ = window_left_px;
+  window_top_px_ = window_top_px;
+  SyncWindowInfoToLynxContext();
+}
+
 void LynxTemplateRenderer::MergeGlobalProps(lepus::Value global_props) {
   if (!global_props.IsTable()) {
     return;
@@ -354,9 +368,7 @@ void LynxTemplateRenderer::ReloadTemplate(
     const std::shared_ptr<tasm::TemplateData>& data,
     const std::shared_ptr<lynx::tasm::PipelineOptions>& pipeline_options,
     lepus::Value global_props) {
-  auto lynx_context =
-      static_cast<tasm::harmony::UIDelegateHarmony*>(ui_delegate_)
-          ->GetLynxContext();
+  auto lynx_context = GetHarmonyLynxContext();
   if (lynx_context && lynx_context->EnableExposureWhenReload()) {
     lynx_context->StopExposure(lepus::Value());
     lynx_context->ResumeExposure();
@@ -654,6 +666,7 @@ napi_value LynxTemplateRenderer::Init(napi_env env, napi_value exports) {
       DECLARE_NAPI_METHOD("loadTemplateBundle", LoadTemplateBundle),
       DECLARE_NAPI_METHOD("updateViewport", UpdateViewport),
       DECLARE_NAPI_METHOD("updateScreenMetrics", UpdateScreenMetrics),
+      DECLARE_NAPI_METHOD("nativeSetWindowInfo", NativeSetWindowInfo),
       DECLARE_NAPI_METHOD("triggerEventBus", TriggerEventBus),
       DECLARE_NAPI_METHOD("shouldSendEventToMainThread",
                           ShouldSendEventToMainThread),
@@ -1119,6 +1132,27 @@ napi_value LynxTemplateRenderer::UpdateScreenMetrics(napi_env env,
     return nullptr;
   }
   obj->UpdateScreenMetrics(width, height, scale);
+  return nullptr;
+}
+
+napi_value LynxTemplateRenderer::NativeSetWindowInfo(napi_env env,
+                                                     napi_callback_info info) {
+  napi_value js_this;
+  size_t argc = 3;
+  napi_value args[3] = {nullptr};
+  napi_get_cb_info(env, info, &argc, args, &js_this, nullptr);
+
+  int32_t window_id = base::NapiUtil::ConvertToInt32(env, args[0]);
+  int32_t window_left_px = base::NapiUtil::ConvertToInt32(env, args[1]);
+  int32_t window_top_px = base::NapiUtil::ConvertToInt32(env, args[2]);
+
+  LynxTemplateRenderer* obj = nullptr;
+  napi_status status =
+      napi_unwrap(env, js_this, reinterpret_cast<void**>(&obj));
+  if (!CheckNapiUnwrapObject(status, obj, "NativeSetWindowInfo failed")) {
+    return nullptr;
+  }
+  obj->SetWindowInfo(window_id, window_left_px, window_top_px);
   return nullptr;
 }
 
@@ -2164,9 +2198,22 @@ void LynxTemplateRenderer::SetInspectorOwner(
   SyncInspectorOwnerToLynxContext();
 }
 
+std::shared_ptr<tasm::harmony::LynxContext>
+LynxTemplateRenderer::GetHarmonyLynxContext() {
+  if (!is_host_renderer_ || !ui_delegate_) {
+    return nullptr;
+  }
+  auto lynx_context = lynx_context_.lock();
+  if (!lynx_context) {
+    lynx_context = static_cast<tasm::harmony::UIDelegateHarmony*>(ui_delegate_)
+                       ->GetLynxContext();
+    lynx_context_ = lynx_context;
+  }
+  return lynx_context;
+}
+
 void LynxTemplateRenderer::SyncInspectorOwnerToLynxContext() {
-  std::shared_ptr<tasm::harmony::LynxContext> lynx_context =
-      lynx_context_.lock();
+  auto lynx_context = GetHarmonyLynxContext();
   if (!lynx_context) {
     return;
   }
@@ -2215,10 +2262,24 @@ void LynxTemplateRenderer::SyncInspectorOwnerToLynxContext() {
       });
 }
 
+void LynxTemplateRenderer::SyncWindowInfoToLynxContext() {
+  auto lynx_context = GetHarmonyLynxContext();
+  if (!lynx_context) {
+    return;
+  }
+  lynx_context->SetWindowInfo(window_id_, window_left_px_, window_top_px_);
+}
+
 void LynxTemplateRenderer::EmulateTouch(const std::string& event_type, int x,
                                         int y, const std::string& button,
                                         float delta_x, float delta_y,
-                                        int modifiers, int click_count) {}
+                                        int modifiers, int click_count) {
+  if (!ui_delegate_) {
+    return;
+  }
+  ui_delegate_->EmulateTouch(event_type, x, y, button, delta_x, delta_y,
+                             modifiers, click_count);
+}
 
 void LynxTemplateRenderer::DispatchMessageEvent(const Json::Value& message) {}
 

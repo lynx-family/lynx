@@ -88,6 +88,9 @@ class EventDispatcher {
 
   void OnTouchEvent(const ArkUI_UIInputEvent* event, UIBase* root,
                     bool from_overlay = false);
+  void EmulateTouch(const std::string& event_type, int x, int y,
+                    const std::string& button, float delta_x, float delta_y,
+                    int modifiers, int click_count);
 
   LYNX_EXPORT void GetEventPointOffset(float point_offset[2]) const;
 
@@ -127,9 +130,21 @@ class EventDispatcher {
  private:
   enum class ChildLynxPageEventType { kTouch, kClick, kTap, kLongPress };
 
+  struct EmulatedTouchPoint {
+    float page_point[2] = {0.f, 0.f};
+    float client_point[2] = {0.f, 0.f};
+    int pointer_id = 0;
+  };
+
   void InitTouchEnv(const ArkUI_UIInputEvent* event);
 
   void ResetTouchEnv(const ArkUI_UIInputEvent* event);
+
+  EmulatedTouchPoint CreateEmulatedTouchPoint(int x, int y);
+
+  void InitTouchEnv(const EmulatedTouchPoint& point);
+
+  void ResetTouchEnv(const EmulatedTouchPoint& point);
 
   void InitClickEnv();
 
@@ -142,6 +157,16 @@ class EventDispatcher {
   void OnTouchUp(const ArkUI_UIInputEvent* event);
 
   void OnTouchCancel(const ArkUI_UIInputEvent* event);
+
+  void OnTouchDown(const EmulatedTouchPoint& point);
+
+  void OnTouchMove(const EmulatedTouchPoint& point);
+
+  void OnTouchUp(const EmulatedTouchPoint& point);
+
+  void OnTapEvent(const EmulatedTouchPoint& point);
+
+  void OnClickEvent(const EmulatedTouchPoint& point);
 
   bool ShouldInterceptGesture();
 
@@ -158,6 +183,15 @@ class EventDispatcher {
                          const ArkUI_UIInputEvent* event);
 
   void MarkDispatchInCurrentLynxPageOnly(TouchEvent& touch_event) const;
+
+  void AddTargetTouchMap(lepus::Value& target_touch_map,
+                         const EmulatedTouchPoint& point);
+
+  void DispatchSingleTouchEvent(const std::string& name,
+                                const EmulatedTouchPoint& point);
+
+  void DispatchMultiTouchEvent(const std::string& name,
+                               const lepus::Value& target_touch_map);
 
   void UpdateFocusedTarget();
 

@@ -383,6 +383,18 @@ export struct LynxView {
       this.setupExtensionModules();
     }
     this.templateRenderer.initScreenMetrics();
+    this.syncWindowInfoToNative(this.currentWindow);
+  }
+
+  private syncWindowInfoToNative(win: window.Window | undefined): void {
+    if (!win || !this.templateRenderer) {
+      return;
+    }
+    const properties = win.getWindowProperties();
+    this.templateRenderer.setWindowInfo(
+      properties.id,
+      Math.round(properties.windowRect.left),
+      Math.round(properties.windowRect.top));
   }
 
   aboutToAppear() {
@@ -401,6 +413,7 @@ export struct LynxView {
     }
     (this.windowStage ? this.windowStage.getMainWindow() : window.getLastWindow(getContext(this))).then((win) => {
       this.currentWindow = win;
+      this.syncWindowInfoToNative(win);
       this.keyboardHeightChangeCallback = (height: number) => {
         const keyBoardHeight = Math.floor(px2vp(height));
         this.sendGlobalEvent('keyboardstatuschanged', [height !== 0 ? 'on' : 'off', keyBoardHeight, keyBoardHeight]);

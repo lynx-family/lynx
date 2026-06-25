@@ -119,6 +119,9 @@ class UIOwner {
   void NotifyUIScroll();
   void OnTouchEvent(const ArkUI_UIInputEvent* event, UIBase* root,
                     bool from_overlay = false);
+  void EmulateTouch(const std::string& event_type, int x, int y,
+                    const std::string& button, float delta_x, float delta_y,
+                    int modifiers, int click_count);
   bool EventThrough();
   bool ShouldBlockNativeEvent();
   void SetFocusedTarget(const std::weak_ptr<EventTarget>& focused_target);

@@ -12,6 +12,7 @@
 
 #include "base/include/platform/harmony/napi_util.h"
 #include "core/public/ui_delegate.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/devtool/harmony_emulated_touch_dispatcher.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/lynx_context.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/module/module_factory_capi.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/shadow_node/shadow_node_owner.h"
@@ -76,6 +77,9 @@ class UIDelegateHarmony : public UIDelegate {
   std::string GetUINodeInfo(int id) override;
   int SetUIStyle(int id, const std::string& name,
                  const std::string& content) override;
+  void EmulateTouch(const std::string& event_type, int x, int y,
+                    const std::string& button, float delta_x, float delta_y,
+                    int modifiers, int click_count) override;
 
   float ScreenWidth() { return screen_width_; }
   float ScreenHeight() { return screen_height_; }
@@ -98,6 +102,7 @@ class UIDelegateHarmony : public UIDelegate {
   ShadowNodeOwner* node_owner_;
   std::weak_ptr<LynxContext> lynx_context_;
   std::unique_ptr<lynx::harmony::ModuleFactoryCAPI> module_factory_;
+  HarmonyEmulatedTouchDispatcher emulated_touch_dispatcher_;
   shell::EmbedderPlatformHarmony* platform_ = nullptr;
 
   float screen_width_ = 0.f;
