@@ -426,18 +426,10 @@ RasterStatus Rasterizer::DrawToSurfaceUnsafe(
       }
     }
 
-    bool should_low_memory_usage = false;
-    if (render_settings_ && render_settings_->ShouldLowMemoryUsage()) {
-      should_low_memory_usage = true;
-    }
-    if (last_memory_strategy_ && !should_low_memory_usage) {
-      compositor_context_->raster_cache().set_needs_build_all_caches(true);
-    } else {
-      compositor_context_->raster_cache().set_needs_build_all_caches(false);
-    }
-    last_memory_strategy_ = should_low_memory_usage;
+    last_memory_strategy_ =
+        render_settings_ && render_settings_->ShouldLowMemoryUsage();
     bool ignore_raster_cache =
-        should_low_memory_usage || !surface_->EnableRasterCache() ||
+        last_memory_strategy_ || !surface_->EnableRasterCache() ||
         (render_settings_ && render_settings_->IgnoreRasterCache());
 
     bool last_ignore_raster_cache =

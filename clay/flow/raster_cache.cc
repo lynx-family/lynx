@@ -233,7 +233,6 @@ RasterCache::CacheInfo RasterCache::MarkSeen(const RasterCacheKeyID& id,
   RasterCacheKey key = RasterCacheKey(id, matrix);
   Entry& entry = cache_[key];
   entry.encountered_this_frame = true;
-  entry.visible_this_frame = visible;
   if (visible || entry.accesses_since_visible > 0) {
     entry.accesses_since_visible++;
   }
@@ -331,20 +330,6 @@ void RasterCache::EvictUnusedCacheEntries() {
 void RasterCache::EndFrame() {
   UpdateMetrics();
   TraceStatsToTimeline();
-}
-
-void RasterCache::ClearRasterCacheInfo(std::vector<intptr_t>* cache_address) {
-  for (auto address : *cache_address) {
-    auto iter = raster_cache_infos_.begin();
-    while (iter != raster_cache_infos_.end()) {
-      if (iter->cache_address == static_cast<int64_t>(address)) {
-        iter = raster_cache_infos_.erase(iter);
-      } else {
-        iter++;
-      }
-    }
-  }
-  cache_address->clear();
 }
 
 void RasterCache::Clear() {

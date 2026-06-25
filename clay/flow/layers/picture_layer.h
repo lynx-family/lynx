@@ -26,8 +26,6 @@ class Layer;
 
 class PictureLayer : public Layer {
  public:
-  static constexpr size_t kMaxBytesToCompare = 10000;
-
 #ifndef ENABLE_SKITY
   PictureLayer(const skity::Vec2& offset,
                clay::GPUObject<clay::PictureSkia> picture, bool is_complex,

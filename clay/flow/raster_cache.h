@@ -8,17 +8,14 @@
 #ifndef CLAY_FLOW_RASTER_CACHE_H_
 #define CLAY_FLOW_RASTER_CACHE_H_
 
+#include <cstddef>
 #include <cstdint>
+#include <functional>
 #include <memory>
-#include <optional>
-#include <unordered_map>
 #include <vector>
 
 #include "base/include/fml/macros.h"
-#include "base/include/fml/memory/weak_ptr.h"
-#include "base/trace/native/trace_event.h"
 #include "clay/common/graphics/graphic_meminfo.h"
-#include "clay/flow/layers/picture_complexity.h"
 #include "clay/flow/raster_cache_key.h"
 #include "clay/flow/raster_cache_util.h"
 #include "clay/gfx/rendering_backend.h"
@@ -252,19 +249,12 @@ class RasterCache {
       const RasterCacheKeyID& id, const Context& raster_cache_context,
       const std::function<void(clay::GrCanvas*)>& render_function) const;
 
-  void set_needs_build_all_caches(bool needs_build_all_caches) {
-    needs_build_all_caches_ = needs_build_all_caches;
-  }
-
   bool RasterCacheInfoChanged();
   std::vector<RasterCacheInfo>* GetRasterCacheInfo();
-
-  void ClearRasterCacheInfo(std::vector<intptr_t>* cache_address);
 
  private:
   struct Entry {
     bool encountered_this_frame = false;
-    bool visible_this_frame = false;
     size_t accesses_since_visible = 0;
     std::unique_ptr<RasterCacheResult> image;
   };
@@ -273,8 +263,6 @@ class RasterCache {
 
   RasterCacheMetrics& GetMetricsForKind(RasterCacheKeyKind kind);
 
-  std::vector<intptr_t> sweep_cache_address_;
-
   const size_t access_threshold_;
   const size_t display_list_cache_limit_per_frame_;
   mutable size_t display_list_cached_this_frame_ = 0;
@@ -282,7 +270,6 @@ class RasterCache {
   RasterCacheMetrics picture_metrics_;
   mutable RasterCacheKey::Map<Entry> cache_;
   bool checkerboard_images_;
-  bool needs_build_all_caches_ = false;
   std::vector<RasterCacheInfo> raster_cache_infos_;
   std::vector<clay::GrImage*> pre_raster_cache_images_;
 

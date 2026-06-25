@@ -7,13 +7,9 @@
 
 #include "clay/flow/layers/picture_raster_cache_item.h"
 
-#include <optional>
-#include <utility>
-
 #include "clay/flow/layers/layer.h"
+#include "clay/flow/layers/picture_complexity.h"
 #include "clay/flow/raster_cache.h"
-#include "clay/flow/raster_cache_item.h"
-#include "clay/flow/raster_cache_key.h"
 #include "clay/flow/raster_cache_util.h"
 
 namespace clay {
@@ -27,6 +23,12 @@ static bool IsPictureWorthRasterizing(
     bool will_change, bool is_complex,
     PictureComplexityCalculator* complexity_calculator,
     skity::Vec2 frame_size) {
+  if (picture == nullptr) {
+    // No point in deciding whether the display list is worth rasterizing if it
+    // cannot be rasterized at all.
+    return false;
+  }
+
   if (will_change) {
     // If the display list is going to change in the future, there is no point
     // in doing to extra work to rasterize.
@@ -41,7 +43,7 @@ static bool IsPictureWorthRasterizing(
   auto width = bounds.Width();
   auto height = bounds.Height();
 
-  if (picture == nullptr || !RasterCacheUtil::CanRasterizeRect(bounds)) {
+  if (!RasterCacheUtil::CanRasterizeRect(bounds)) {
     // No point in deciding whether the display list is worth rasterizing if it
     // cannot be rasterized at all.
     return false;
@@ -161,8 +163,9 @@ void PictureRasterCacheItem::PrerollFinalize(PrerollContext* context,
 #else
   skity::Rect bounds = picture_->GetBounds();
 #endif
-  bounds.Offset(offset_.x, offset_.y);
-  bool visible = !context->state_stack.content_culled(bounds);
+  skity::Rect visible_bounds = bounds;
+  visible_bounds.Offset(offset_.x, offset_.y);
+  bool visible = !context->state_stack.content_culled(visible_bounds);
   auto cache_info = raster_cache->MarkSeen(key_id_, matrix, visible);
   if (!visible ||
       cache_info.accesses_since_visible <= raster_cache->access_threshold()) {
@@ -217,8 +220,6 @@ bool PictureRasterCacheItem::TryToPrepareRasterCache(
 #else
   skity::Rect bounds = picture_->GetBounds();
 #endif  // ENABLE_SKITY
-
-  bounds.Offset(offset_.x, offset_.y);
   RasterCache::Context r_context = {
       // clang-format off
       .gr_context         = context.gr_context,

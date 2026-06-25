@@ -9,9 +9,7 @@
 #define CLAY_FLOW_LAYERS_PICTURE_RASTER_CACHE_ITEM_H_
 
 #include <memory>
-#include <optional>
 
-#include "clay/flow/embedded_views.h"
 #include "clay/flow/raster_cache_item.h"
 #include "clay/gfx/rendering_backend.h"
 
@@ -53,10 +51,6 @@ class PictureRasterCacheItem : public RasterCacheItem {
 
   bool TryToPrepareRasterCache(const PaintContext& context,
                                bool parent_cached = false) const override;
-
-  void ModifyMatrix(skity::Vec2 offset) const {
-    matrix_ = matrix_.PreTranslate(offset.x, offset.y);
-  }
 
 #ifndef ENABLE_SKITY
   const SkPicture* picture() const { return picture_; }

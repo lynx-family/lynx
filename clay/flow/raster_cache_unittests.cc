@@ -5,9 +5,12 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+#include <functional>
+
 #include "clay/flow/layers/container_layer.h"
 #include "clay/flow/layers/image_filter_layer.h"
 #include "clay/flow/layers/layer_tree.h"
+#include "clay/flow/layers/picture_complexity.h"
 #include "clay/flow/layers/picture_layer.h"
 #include "clay/flow/layers/transform_layer.h"
 #include "clay/flow/raster_cache.h"
@@ -23,11 +26,46 @@
 #include "third_party/skia/include/core/SkPaint.h"
 #include "third_party/skia/include/core/SkPicture.h"
 #include "third_party/skia/include/core/SkPictureRecorder.h"
+#include "third_party/skia/include/core/SkSurface.h"
 
 namespace clay {
 namespace testing {
 
 using clay::GPUObject;
+
+static int RasterizedDifferenceInPixels(
+    const std::function<void(SkCanvas*)>& actual_draw_function,
+    const std::function<void(SkCanvas*)>& expected_draw_function,
+    const SkSize& canvas_size) {
+  sk_sp<SkSurface> actual_surface =
+      SkSurface::MakeRasterN32Premul(canvas_size.width(), canvas_size.height());
+  sk_sp<SkSurface> expected_surface =
+      SkSurface::MakeRasterN32Premul(canvas_size.width(), canvas_size.height());
+
+  actual_surface->getCanvas()->drawColor(SK_ColorWHITE);
+  expected_surface->getCanvas()->drawColor(SK_ColorWHITE);
+
+  actual_draw_function(actual_surface->getCanvas());
+  expected_draw_function(expected_surface->getCanvas());
+
+  SkPixmap actual_pixels;
+  EXPECT_TRUE(actual_surface->peekPixels(&actual_pixels));
+
+  SkPixmap expected_pixels;
+  EXPECT_TRUE(expected_surface->peekPixels(&expected_pixels));
+
+  int different_pixels = 0;
+  for (int y = 0; y < canvas_size.height(); y++) {
+    const uint32_t* actual_row = actual_pixels.addr32(0, y);
+    const uint32_t* expected_row = expected_pixels.addr32(0, y);
+    for (int x = 0; x < canvas_size.width(); x++) {
+      if (actual_row[x] != expected_row[x]) {
+        different_pixels++;
+      }
+    }
+  }
+  return different_pixels;
+}
 
 TEST(RasterCache, SimpleInitialization) {
   clay::RasterCache cache;
@@ -143,6 +181,71 @@ TEST(RasterCache, ThresholdIsRespectedForDisplayList) {
   ASSERT_TRUE(RasterCacheItemPrerollAndTryToRasterCache(
       display_list_item, preroll_context, paint_context, matrix));
   ASSERT_TRUE(display_list_item.Draw(paint_context, &dummy_canvas, &paint));
+}
+
+TEST(RasterCache, DisplayListOffsetDoesNotShiftCachedContentsTwice) {
+  size_t threshold = 1;
+  clay::RasterCache cache(threshold);
+
+  skity::Matrix matrix = skity::Matrix();
+  skity::Vec2 offset = {10, 20};
+  auto display_list = GetSamplePicture();
+
+  SkCanvas dummy_canvas(1000, 1000);
+  SkPaint paint;
+
+  LayerStateStack preroll_state_stack;
+  preroll_state_stack.set_preroll_delegate(kGiantRect, matrix);
+  LayerStateStack paint_state_stack;
+  preroll_state_stack.set_delegate(&dummy_canvas);
+
+  FixedRefreshRateStopwatch raster_time;
+  FixedRefreshRateStopwatch ui_time;
+  PrerollContextHolder preroll_context_holder = GetSamplePrerollContextHolder(
+      preroll_state_stack, &cache, &raster_time, &ui_time);
+  PaintContextHolder paint_context_holder = GetSamplePaintContextHolder(
+      paint_state_stack, &cache, &raster_time, &ui_time);
+  auto& preroll_context = preroll_context_holder.preroll_context;
+  auto& paint_context = paint_context_holder.paint_context;
+
+  PictureRasterCacheItem display_list_item(display_list.get(), offset, true,
+                                           false);
+
+  cache.BeginFrame();
+  ASSERT_FALSE(RasterCacheItemPrerollAndTryToRasterCache(
+      display_list_item, preroll_context, paint_context, matrix));
+  cache.EndFrame();
+
+  cache.BeginFrame();
+  ASSERT_TRUE(RasterCacheItemPrerollAndTryToRasterCache(
+      display_list_item, preroll_context, paint_context, matrix));
+  dummy_canvas.clear(SK_ColorTRANSPARENT);
+  dummy_canvas.setMatrix(SkMatrix::Translate(offset.x, offset.y));
+  ASSERT_TRUE(display_list_item.Draw(paint_context, &dummy_canvas, &paint));
+  EXPECT_EQ(
+      RasterizedDifferenceInPixels(
+          [&](SkCanvas* canvas) {
+            canvas->setMatrix(SkMatrix::Translate(offset.x, offset.y));
+            ASSERT_TRUE(display_list_item.Draw(paint_context, canvas, &paint));
+          },
+          [&](SkCanvas* canvas) {
+            canvas->translate(offset.x, offset.y);
+            display_list->playback(canvas);
+          },
+          SkSize::Make(200, 200)),
+      0);
+  cache.EndFrame();
+
+  cache.BeginFrame();
+  RasterCacheItemPreroll(display_list_item, preroll_context, matrix);
+  cache.EvictUnusedCacheEntries();
+  ASSERT_EQ(cache.GetPictureCachedEntriesCount(), 1u);
+  ASSERT_TRUE(
+      RasterCacheItemTryToRasterCache(display_list_item, paint_context));
+  dummy_canvas.clear(SK_ColorTRANSPARENT);
+  dummy_canvas.setMatrix(SkMatrix::Translate(offset.x, offset.y));
+  ASSERT_TRUE(display_list_item.Draw(paint_context, &dummy_canvas, &paint));
+  cache.EndFrame();
 }
 
 TEST(RasterCache, SetCheckboardCacheImages) {
