@@ -24,6 +24,7 @@ import { TraceEventDef } from '../base/TraceEventDef';
 import { PerformanceController } from './performance/PerformanceController';
 import { TimingOption } from './performance/timing/TimingOption';
 import { TimingConstants } from './performance/timing/TimingConstants';
+import { LynxExtraTiming } from './performance/timing/LynxExtraTiming';
 import { LynxUIRenderer } from './LynxUIRenderer';
 import { LynxGenericResourceFetcher } from '../provider/LynxGenericResourceFetcher';
 import { LynxMediaResourceFetcher } from '../provider/LynxMediaResourceFetcher';
@@ -788,6 +789,7 @@ export struct LynxView {
     let req = new LynxResourceRequest(requestUrl, LynxResourceType.LYNX_RESOURCE_TYPE_TEMPLATE);
     LLog.i(TAG, `start loadTemplate(capi=${!this.uiRendererCreator}}): ${requestUrl}`);
     let blockLoadingID = this.loadingID;
+    this.perfController?.markTiming(LynxExtraTiming.PREPARE_TEMPLATE_START, '');
     templateProvider.fetchTemplate(req, (err: BusinessError, res: TemplateProviderResult) => {
       // If the url has been changed, ignore this response.
       // It will happen in case of reused LynxView.
@@ -800,6 +802,7 @@ export struct LynxView {
         LLog.w(TAG, 'url dismissed, maybe changed, ignore this response.');
         return;
       }
+      this.perfController?.markTiming(LynxExtraTiming.PREPARE_TEMPLATE_END, '');
       if (err) {
         const errorString = 'loadTemplate error: ' + JSON.stringify(err);
         LLog.e(TAG, errorString);
