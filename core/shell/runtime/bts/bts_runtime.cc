@@ -899,8 +899,8 @@ void BTSRuntime::EvaluateScript(const std::string& url, std::string script,
 void BTSRuntime::OnScriptLoaded(const std::string& url, std::string script,
                                 std::string error,
                                 runtime::js::ApiCallBack callback) {
-  QueueOrExecTask([this, url, script = std::move(script),
-                   error = std::move(error), callback]() mutable {
+  QueueOrExecAppTask([this, url, script = std::move(script),
+                      error = std::move(error), callback]() mutable {
     app_->OnScriptLoaded(url, std::move(script), std::move(error), callback);
   });
 }
