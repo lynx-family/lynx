@@ -145,6 +145,8 @@ export class LynxTemplateRenderer {
 
   updateScreenMetrics(width: number, height: number, scale: number): void;
 
+  nativeSetWindowInfo(windowId: number, windowLeft: number, windowTop: number): void;
+
   updateGlobalProps(props?: Object | string): void;
 
   updateMetaData(processor?: string, data?: Object | string, readonly?: boolean, props?: Object | string,

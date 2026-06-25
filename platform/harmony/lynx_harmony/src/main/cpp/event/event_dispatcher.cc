@@ -8,6 +8,8 @@
 #include <dlfcn.h>
 
 #include <atomic>
+#include <chrono>
+#include <cmath>
 #include <limits>
 #include <memory>
 #include <utility>
@@ -487,6 +489,55 @@ void EventDispatcher::ResetTouchEnv(const ArkUI_UIInputEvent* event) {
   has_touch_moved_ = false;
 }
 
+EventDispatcher::EmulatedTouchPoint EventDispatcher::CreateEmulatedTouchPoint(
+    int x, int y) {
+  EmulatedTouchPoint point;
+  float scaled_density = ui_owner_->Context()->ScaledDensity();
+  if (base::FloatsLargerOrEqual(0.f, scaled_density)) {
+    scaled_density = 1.f;
+  }
+  point.page_point[0] = static_cast<float>(x) / scaled_density;
+  point.page_point[1] = static_cast<float>(y) / scaled_density;
+  point.client_point[0] = point.page_point[0];
+  point.client_point[1] = point.page_point[1];
+  return point;
+}
+
+void EventDispatcher::InitTouchEnv(const EmulatedTouchPoint& point) {
+  if (root_target_.expired()) {
+    if (auto* root = ui_owner_->Root()) {
+      root_target_ = root->weak_from_this();
+    }
+  }
+  float page_point[2] = {point.page_point[0], point.page_point[1]};
+  EventTarget* best_hittest_target = FindTarget(page_point);
+  if (best_hittest_target == nullptr) {
+    return;
+  }
+  LOGI("EventDispatcher InitTouchEnv synthetic hit target: "
+       << best_hittest_target->Sign())
+  first_finger_down_point_[0] = 0;
+  first_finger_down_point_[1] = 0;
+  first_active_target_ = best_hittest_target->WeakTarget();
+  UIBase* root = root_target_.expired()
+                     ? nullptr
+                     : static_cast<UIBase*>(root_target_.lock().get());
+  UIBase* target_ui =
+      best_hittest_target->HasUI()
+          ? static_cast<UIBase*>(best_hittest_target)
+          : static_cast<UIBase*>(best_hittest_target->FirstUITarget());
+  LynxUIHelper::ConvertPointFromAncestorToDescendant(
+      first_finger_down_point_, root, target_ui, page_point);
+  active_target_finger_map_.insert_or_assign(
+      point.pointer_id,
+      EventTargetDetail(best_hittest_target->WeakTarget(), page_point));
+}
+
+void EventDispatcher::ResetTouchEnv(const EmulatedTouchPoint& point) {
+  active_target_finger_map_.erase(point.pointer_id);
+  has_touch_moved_ = false;
+}
+
 void EventDispatcher::InitClickEnv() {
   click_target_chain_.clear();
   if (first_active_target_.expired()) {
@@ -636,6 +687,105 @@ void EventDispatcher::OnTouchCancel(const ArkUI_UIInputEvent* event) {
   }
 }
 
+void EventDispatcher::OnTouchDown(const EmulatedTouchPoint& point) {
+  first_touch_moved_ = false;
+  first_touch_outside_ = false;
+  gesture_recognized_target_set_.clear();
+  event_target_chain_.clear();
+  InitClickEnv();
+  if (!enable_multi_touch_) {
+    DispatchSingleTouchEvent(TouchEvent::START, point);
+  }
+  ActivePseudoStatus();
+  ui_owner_->SetActiveUIToGestureArenaAtDownEvent(first_active_target_);
+}
+
+void EventDispatcher::OnTouchMove(const EmulatedTouchPoint& point) {
+  bool first_touch_changed = false;
+  float pre_page_point[2] = {0.f};
+  float page_point[2] = {point.page_point[0], point.page_point[1]};
+  if (auto touch_target = active_target_finger_map_.find(point.pointer_id);
+      touch_target != active_target_finger_map_.end()) {
+    touch_target->second.GetPrePoint(pre_page_point);
+    if (base::FloatsNotEqual(page_point[0], pre_page_point[0]) ||
+        base::FloatsNotEqual(page_point[1], pre_page_point[1])) {
+      first_touch_changed = true;
+      has_touch_moved_ = true;
+      touch_target->second.SetPrePoint(page_point);
+      if (!first_touch_moved_) {
+        float down_page_point[2] = {0.f};
+        touch_target->second.GetDownPoint(down_page_point);
+        const float dx = page_point[0] - down_page_point[0];
+        const float dy = page_point[1] - down_page_point[1];
+        if (base::FloatsLarger(dx * dx + dy * dy,
+                               static_cast<float>(tap_slop_ * tap_slop_))) {
+          first_touch_moved_ = true;
+        }
+      }
+    }
+  }
+
+  if (first_touch_changed) {
+    if (!click_target_chain_.empty()) {
+      auto active_target = FindTarget(page_point);
+      auto click_target = click_target_chain_.front();
+      first_touch_outside_ =
+          first_touch_outside_ || IsTouchMoveOutside(active_target) ||
+          !CanRespondTap(!click_target.expired() ? click_target.lock().get()
+                                                 : nullptr);
+    }
+    if (first_touch_moved_ ||
+        !CanRespondTap(!first_active_target_.expired()
+                           ? first_active_target_.lock().get()
+                           : nullptr)) {
+      DeactivatePseudoStatus(PseudoStatus::kActive);
+    }
+  }
+}
+
+void EventDispatcher::OnTouchUp(const EmulatedTouchPoint& point) {
+  if (!enable_multi_touch_) {
+    DispatchSingleTouchEvent(TouchEvent::UP, point);
+  }
+  OnTapEvent(point);
+  OnClickEvent(point);
+  ResetClickEnv();
+  UpdateFocusedTarget();
+  DeactivatePseudoStatus(PseudoStatus::kAll);
+}
+
+void EventDispatcher::OnTapEvent(const EmulatedTouchPoint& point) {
+  bool can_respond_tap = !first_active_target_.expired()
+                             ? CanRespondTap(first_active_target_.lock().get())
+                             : false;
+  if (first_active_target_.expired() || first_touch_moved_ ||
+      !can_respond_tap) {
+    LOGI("EventDispatcher OnTapEvent synthetic tap failed: "
+         << first_active_target_.expired() << ", " << first_touch_moved_ << ", "
+         << can_respond_tap)
+    return;
+  }
+  DispatchSingleTouchEvent(TouchEvent::TAP, point);
+}
+
+void EventDispatcher::OnClickEvent(const EmulatedTouchPoint& point) {
+  if (click_target_chain_.empty()) {
+    return;
+  }
+  auto first_click_target = click_target_chain_.front();
+  bool can_respond_tap = !first_click_target.expired()
+                             ? CanRespondTap(first_click_target.lock().get())
+                             : false;
+  if (first_click_target.expired() || first_touch_outside_ ||
+      !can_respond_tap) {
+    LOGI("EventDispatcher OnClickEvent synthetic click failed: "
+         << first_click_target.expired() << ", " << first_touch_outside_ << ", "
+         << can_respond_tap);
+    return;
+  }
+  DispatchSingleTouchEvent(TouchEvent::CLICK, point);
+}
+
 EventTarget* EventDispatcher::FindTarget(float point[2]) {
   if (root_target_.expired()) {
     return nullptr;
@@ -765,6 +915,41 @@ void EventDispatcher::MarkDispatchInCurrentLynxPageOnly(
     TouchEvent& touch_event) const {
   if (dispatch_touch_event_in_current_lynx_page_only_) {
     touch_event.SetEventID(kCurrentLynxPageOnlyEventID);
+  }
+}
+
+void EventDispatcher::AddTargetTouchMap(lepus::Value& target_touch_map,
+                                        const EmulatedTouchPoint& point) {
+  auto dict = target_touch_map.Table();
+  if (auto touch_target = active_target_finger_map_.find(point.pointer_id);
+      touch_target != active_target_finger_map_.end()) {
+    auto active_target = touch_target->second.ActiveTarget().lock().get();
+    if (!active_target) {
+      return;
+    }
+
+    std::string target_sign = std::to_string(active_target->Sign());
+    float page_point[2] = {point.page_point[0], point.page_point[1]};
+    float target_point[2] = {page_point[0], page_point[1]};
+    GetTargetPoint(active_target, target_point, page_point);
+    float client_point[2] = {point.client_point[0], point.client_point[1]};
+
+    auto touch = lepus::CArray::Create();
+    touch->emplace_back(point.pointer_id);
+    touch->emplace_back(client_point[0]);
+    touch->emplace_back(client_point[1]);
+    touch->emplace_back(page_point[0]);
+    touch->emplace_back(page_point[1]);
+    touch->emplace_back(target_point[0]);
+    touch->emplace_back(target_point[1]);
+
+    if (auto it = dict->find(target_sign); it != dict->end()) {
+      it->second.Array()->emplace_back(std::move(touch));
+    } else {
+      auto array = lepus::CArray::Create();
+      array->emplace_back(std::move(touch));
+      dict->SetValue(target_sign, std::move(array));
+    }
   }
 }
 
@@ -1230,6 +1415,84 @@ void EventDispatcher::OnTouchEvent(const ArkUI_UIInputEvent* event,
   DispatchTouchEventToGestureArena(event_name, event);
 }
 
+void EventDispatcher::EmulateTouch(const std::string& event_type, int x, int y,
+                                   const std::string& button, float delta_x,
+                                   float delta_y, int modifiers,
+                                   int click_count) {
+  (void)button;
+  (void)delta_x;
+  (void)delta_y;
+  (void)modifiers;
+  (void)click_count;
+  if (ui_owner_->Destroyed()) {
+    return;
+  }
+  time_stamp_ = std::chrono::duration_cast<std::chrono::milliseconds>(
+                    std::chrono::system_clock::now().time_since_epoch())
+                    .count();
+  NodeManager::Instance().SetEventDispatcher(this);
+  from_overlay_ = false;
+  if (auto* root = ui_owner_->Root()) {
+    root_target_ = root->weak_from_this();
+  }
+
+  EmulatedTouchPoint point = CreateEmulatedTouchPoint(x, y);
+  if (event_type == "mousePressed") {
+    ResetClickEnv();
+    DeactivatePseudoStatus(PseudoStatus::kAll);
+    active_target_finger_map_.clear();
+    first_active_target_.reset();
+    has_touch_moved_ = false;
+    InitTouchEnv(point);
+    if (EventThrough()) {
+      ResetTouchEnv(point);
+      first_active_target_.reset();
+      return;
+    }
+    if (!first_active_target_.expired()) {
+      if (enable_multi_touch_) {
+        auto target_touch_map = lepus::Value(lepus::Dictionary::Create());
+        AddTargetTouchMap(target_touch_map, point);
+        DispatchMultiTouchEvent(TouchEvent::START, target_touch_map);
+      }
+      OnTouchDown(point);
+    }
+  } else if (event_type == "mouseMoved") {
+    if (first_active_target_.expired() || active_target_finger_map_.empty() ||
+        EventThrough()) {
+      return;
+    }
+    OnTouchMove(point);
+    if (has_touch_moved_) {
+      if (enable_multi_touch_) {
+        auto target_touch_map = lepus::Value(lepus::Dictionary::Create());
+        AddTargetTouchMap(target_touch_map, point);
+        DispatchMultiTouchEvent(TouchEvent::MOVE, target_touch_map);
+      } else {
+        DispatchSingleTouchEvent(TouchEvent::MOVE, point);
+      }
+    }
+  } else if (event_type == "mouseReleased") {
+    if (first_active_target_.expired() || active_target_finger_map_.empty()) {
+      return;
+    }
+    if (EventThrough()) {
+      ResetClickEnv();
+      DeactivatePseudoStatus(PseudoStatus::kAll);
+      ResetTouchEnv(point);
+      first_active_target_.reset();
+      return;
+    }
+    if (enable_multi_touch_) {
+      auto target_touch_map = lepus::Value(lepus::Dictionary::Create());
+      AddTargetTouchMap(target_touch_map, point);
+      DispatchMultiTouchEvent(TouchEvent::UP, target_touch_map);
+    }
+    OnTouchUp(point);
+    ResetTouchEnv(point);
+  }
+}
+
 void EventDispatcher::DispatchSingleTouchEvent(
     const std::string& name, const ArkUI_UIInputEvent* event) {
   if (first_active_target_.expired()) {
@@ -1265,9 +1528,36 @@ void EventDispatcher::DispatchSingleTouchEvent(
   last_touch_event_ = std::make_shared<TouchEvent>(touch_event);
 }
 
+void EventDispatcher::DispatchSingleTouchEvent(
+    const std::string& name, const EmulatedTouchPoint& point) {
+  if (first_active_target_.expired()) {
+    return;
+  }
+
+  auto active_target = first_active_target_.lock().get();
+  TouchEvent touch_event(active_target->Sign(), name);
+  touch_event.SetTimeStamp(time_stamp_);
+  float page_point[2] = {point.page_point[0], point.page_point[1]};
+  float target_point[2] = {page_point[0], page_point[1]};
+  GetTargetPoint(active_target, target_point, page_point);
+  float client_point[2] = {point.client_point[0], point.client_point[1]};
+  touch_event.SetTargetPoint(target_point);
+  touch_event.SetPagePoint(page_point);
+  touch_event.SetClientPoint(client_point);
+  MarkDispatchInCurrentLynxPageOnly(touch_event);
+  ui_owner_->SendEvent(touch_event);
+  last_touch_event_ = std::make_shared<TouchEvent>(touch_event);
+}
+
 void EventDispatcher::DispatchMultiTouchEvent(
     const std::string& name, const lepus::Value& target_touch_map,
     const ArkUI_UIInputEvent* event) {
+  (void)event;
+  DispatchMultiTouchEvent(name, target_touch_map);
+}
+
+void EventDispatcher::DispatchMultiTouchEvent(
+    const std::string& name, const lepus::Value& target_touch_map) {
   TouchEvent touch_event(name, target_touch_map);
   touch_event.SetTimeStamp(time_stamp_);
   touch_event.SetTarget(first_active_target_);

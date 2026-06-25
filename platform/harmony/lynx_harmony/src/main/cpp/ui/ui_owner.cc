@@ -1052,6 +1052,13 @@ void UIOwner::OnTouchEvent(const ArkUI_UIInputEvent* event, UIBase* root,
   event_dispatcher_->OnTouchEvent(event, root, from_overlay);
 }
 
+void UIOwner::EmulateTouch(const std::string& event_type, int x, int y,
+                           const std::string& button, float delta_x,
+                           float delta_y, int modifiers, int click_count) {
+  event_dispatcher_->EmulateTouch(event_type, x, y, button, delta_x, delta_y,
+                                  modifiers, click_count);
+}
+
 bool UIOwner::EventThrough() { return event_dispatcher_->EventThrough(); }
 
 bool UIOwner::ShouldBlockNativeEvent() {

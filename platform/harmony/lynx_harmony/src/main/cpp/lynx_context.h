@@ -116,6 +116,18 @@ class LynxContext {
 
   ArkUI_ContextHandle ArkUIContext() const { return ark_ui_context_; }
 
+  void SetWindowInfo(int32_t window_id, int32_t window_left_px,
+                     int32_t window_top_px) {
+    window_id_ = window_id;
+    window_left_px_ = window_left_px;
+    window_top_px_ = window_top_px;
+  }
+
+  bool HasWindowInfo() const { return window_id_ >= 0; }
+  int32_t WindowId() const { return window_id_; }
+  int32_t WindowLeftPx() const { return window_left_px_; }
+  int32_t WindowTopPx() const { return window_top_px_; }
+
   void SetEnableHarmonyNewOverlay(bool enable_new_overlay);
 
   bool GetEnableHarmonyNewOverlay() { return enable_harmony_new_overlay_; }
@@ -361,6 +373,9 @@ class LynxContext {
   UIOwner* ui_owner_;
   fluency::harmony::FluencyTraceHelperHarmony fluency_trace_helper_;
   ArkUI_ContextHandle ark_ui_context_{nullptr};
+  int32_t window_id_{-1};
+  int32_t window_left_px_{0};
+  int32_t window_top_px_{0};
   std::unordered_map<std::string, NodeInfo> dynamic_node_info_map_;
   bool enable_text_overflow_{false};
   bool enable_new_sticky_{false};
