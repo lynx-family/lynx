@@ -15,6 +15,8 @@ declare_args() {
   oliver_disable_internal_log = false
 }
 
+is_oliver_template_compression = false
+
 if (oliver_type == "ssr") {
   is_oliver_ssr = true
   is_oliver_tasm = false
@@ -39,6 +41,13 @@ if (oliver_type == "ssr") {
   is_oliver_security = false
   is_oliver_node_lynx = true
   is_nodejs = true
+} else if (oliver_type == "template-compression") {
+  is_oliver_ssr = false
+  is_oliver_tasm = false
+  is_oliver_security = false
+  is_oliver_node_lynx = false
+  is_oliver_template_compression = true
+  is_nodejs = true
 } else {
   is_oliver_ssr = false
   is_oliver_tasm = false
@@ -47,8 +56,8 @@ if (oliver_type == "ssr") {
   is_nodejs = false
 }
 
-is_oliver =
-    is_oliver_ssr || is_oliver_tasm || is_oliver_security || is_oliver_node_lynx
+is_oliver = is_oliver_ssr || is_oliver_tasm || is_oliver_security ||
+            is_oliver_node_lynx || is_oliver_template_compression
 
 template("oliver_node_lib") {
   assert(defined(invoker.output_name),
