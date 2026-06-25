@@ -24,4 +24,5 @@ ext.sparklingLynxOwnedArtifacts = [
         'org.lynxsdk.lynx:xelement-refresh'     : ':LynxXElement:Refresh',
         'org.lynxsdk.lynx:xelement-blur-view'   : ':LynxXElement:BlurView',
         'org.lynxsdk.lynx:xelement-webview'     : ':LynxXElement:WebView',
+        'org.lynxsdk.lynx:xelement-animax'      : ':LynxXElement:AnimaX',
 ]

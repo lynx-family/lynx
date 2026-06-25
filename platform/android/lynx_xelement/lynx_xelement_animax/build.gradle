@@ -45,5 +45,19 @@ dependencies {
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
     implementation 'androidx.appcompat:appcompat:1.0.0'
 
-    compileOnly "org.lynxsdk.lynx:animax-sdk:1.0.0"
+    def animaxVersion = "1.0.1-alpha.12"
+    implementation("org.lynxsdk.lynx:animax-sdk:${animaxVersion}") {
+        exclude group: 'org.lynxsdk.lynx', module: 'lynx-base'
+        exclude group: 'org.lynxsdk.lynx', module: 'lynx-trace'
+    }
+    implementation("org.lynxsdk.lynx:animax-napi:${animaxVersion}") {
+        exclude group: 'org.lynxsdk.lynx', module: 'animax-sdk'
+        exclude group: 'org.lynxsdk.lynx', module: 'lynx-base'
+        exclude group: 'org.lynxsdk.lynx', module: 'lynx-trace'
+    }
+    implementation("org.lynxsdk.lynx:animax-textra:${animaxVersion}") {
+        exclude group: 'org.lynxsdk.lynx', module: 'animax-sdk'
+        exclude group: 'org.lynxsdk.lynx', module: 'lynx-base'
+        exclude group: 'org.lynxsdk.lynx', module: 'lynx-trace'
+    }
 }

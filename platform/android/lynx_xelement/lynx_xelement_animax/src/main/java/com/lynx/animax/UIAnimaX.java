@@ -27,6 +27,7 @@ import com.lynx.animax.ui.AnimaXView;
 import com.lynx.animax.ui.IAnimaXView;
 import com.lynx.animax.util.AnimaXLog;
 import com.lynx.animax.util.DeviceUtil;
+import com.lynx.animax.util.LynxAnimaX;
 import com.lynx.animax.util.UIPropertyUtil;
 import com.lynx.react.bridge.Callback;
 import com.lynx.react.bridge.JavaOnlyMap;
@@ -150,6 +151,7 @@ public class UIAnimaX extends LynxUI<View> implements ForegroundListener {
       return new View(context);
     }
     LynxContext lynxContext = (LynxContext) context;
+    LynxAnimaX.inst().init();
     mAbility = new LynxAbility(this, lynxContext);
     return new AnimaXContainerView(context);
   }
