@@ -1508,6 +1508,7 @@ public class LynxEnv : NSObject {
   public BOOL LynxEnv::enableImageEventReport();
   public BOOL LynxEnv::enableImageAsyncLayout();
   public BOOL LynxEnv::enableImageCancelRequest();
+  public BOOL LynxEnv::enableImagePlaceholderResetFix();
   public BOOL LynxEnv::enableImageCIGaussianBlur();
   public BOOL LynxEnv::getUseNewImage();
   public BOOL LynxEnv::enableGenericResourceFetcher();
@@ -6398,6 +6399,7 @@ public enum LynxEnvKey {
   LynxEnvFSPEnable
   LynxEnvFSPConfigJsonString
   LynxEnvSetupCanvasSurfaceEarlier
+  LynxEnvEnableImagePlaceholderResetFix
   LynxEnvKeyEndMark
 }
 

@@ -150,6 +150,8 @@ typedef NS_ENUM(NSInteger, LynxMemoryPressureLevel) {
 
 - (BOOL)enableImageCancelRequest;
 
+- (BOOL)enableImagePlaceholderResetFix;
+
 - (BOOL)enableImageCIGaussianBlur;
 
 - (BOOL)getUseNewImage;
