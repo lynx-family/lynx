@@ -21,6 +21,9 @@ class PlatformExtendedFragmentBehavior : public FragmentBehavior {
 
   void CreatePlatformRenderer(
       const fml::RefPtr<PropBundle>& attributes) override;
+  void CreatePlatformRenderer(
+      const fml::RefPtr<PropBundle>& attributes,
+      const PlatformRendererInitConfig& init_config) override;
   PlatformRendererType GetType() const override {
     return PlatformRendererType::kExtended;
   }

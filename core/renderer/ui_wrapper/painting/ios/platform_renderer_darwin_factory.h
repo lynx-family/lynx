@@ -23,11 +23,15 @@ class PlatformRendererDarwinFactory : public PlatformRendererFactory {
 
   fml::RefPtr<PlatformRenderer> CreateRenderer(
       int id, PlatformRendererType type,
-      const fml::RefPtr<PropBundle>& init_data) override;
+      const fml::RefPtr<PropBundle>& init_data,
+      const PlatformRendererInitConfig& init_config =
+          PlatformRendererInitConfig()) override;
 
   fml::RefPtr<PlatformRenderer> CreateExtendedRenderer(
       int id, const base::String& tag_name,
-      const fml::RefPtr<PropBundle>& init_data) override;
+      const fml::RefPtr<PropBundle>& init_data,
+      const PlatformRendererInitConfig& init_config =
+          PlatformRendererInitConfig()) override;
 
  private:
   PlatformRendererContextDarwin* context_;

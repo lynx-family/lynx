@@ -420,8 +420,9 @@
     NSArray* touchArray = [touches allObjects];
     NSInteger eventSource = ((UITouch*)touchArray.firstObject).type;
     NSUInteger pointerCount = touches.count;
-    // iEventData: [event_type, action_type, event_source, pointer_count, ...]
-    NSArray* iEventData = @[ @0, @(actionType), @(eventSource), @(pointerCount) ];
+    NSInteger eventRootSign = [_eventHandler eventRootSign];
+    // iEventData: [event_type, action_type, event_source, pointer_count, event_root_sign, ...]
+    NSArray* iEventData = @[ @0, @(actionType), @(eventSource), @(pointerCount), @(eventRootSign) ];
     // fEventData: [pointer_id, pointer_x, pointer_y, ...]
     NSMutableArray* fEventData = [NSMutableArray arrayWithCapacity:pointerCount * 3];
     for (NSUInteger i = 0; i < pointerCount; i++) {

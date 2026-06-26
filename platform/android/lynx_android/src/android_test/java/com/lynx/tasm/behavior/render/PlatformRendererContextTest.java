@@ -107,7 +107,7 @@ public class PlatformRendererContextTest {
     rendererContext.mViewHolder.put(1, parentHost);
     rendererContext.mViewHolder.put(2, childHost);
 
-    rendererContext.insertPlatformRenderer(1, 2, -1);
+    rendererContext.insertPlatformRenderer(1, 2, -1, false);
     verify(mockParentView).addView(mockChildView);
   }
 
@@ -121,7 +121,7 @@ public class PlatformRendererContextTest {
     rendererContext.mViewHolder.put(1, parentHost);
     rendererContext.mViewHolder.put(2, childHost);
 
-    rendererContext.insertPlatformRenderer(1, 2, 3);
+    rendererContext.insertPlatformRenderer(1, 2, 3, false);
     verify(mockParentView).addView(mockChildView, 3);
   }
 
@@ -267,7 +267,7 @@ public class PlatformRendererContextTest {
     IRendererHost childHost = createHost(child);
     rendererContext.mViewHolder.put(1, childHost);
 
-    rendererContext.removePlatformRendererFromParent(1);
+    rendererContext.removePlatformRendererFromParent(-1, 1, false);
     assertEquals(0, parent.getChildCount());
     assertNull(child.getParent());
   }

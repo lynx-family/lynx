@@ -265,6 +265,113 @@ TEST_P(FiberElementTest,
   EXPECT_EQ(fixed_container->parent(), page_container);
 }
 
+TEST_P(FiberElementTest, LayoutInElementMeasuresNewFixedNode) {
+  manager->page_options_.embedded_mode_ = static_cast<EmbeddedMode>(
+      static_cast<int32_t>(manager->page_options_.embedded_mode_) |
+      static_cast<int32_t>(EmbeddedMode::LAYOUT_IN_ELEMENT));
+  manager->config_->layout_configs_.enable_fixed_new_ = true;
+
+  auto page = manager->CreateFiberPage("page", 11);
+  manager->UpdateViewport(kWidth, SLMeasureModeDefinite, kHeight,
+                          SLMeasureModeDefinite, false);
+
+  auto parent = manager->CreateFiberNode("view");
+  parent->SetStyle(CSSPropertyID::kPropertyIDWidth, lepus::Value("100px"));
+  parent->SetStyle(CSSPropertyID::kPropertyIDHeight, lepus::Value("100px"));
+  page->InsertNode(parent);
+
+  auto fixed_child = manager->CreateFiberNode("view");
+  fixed_child->SetStyle(CSSPropertyID::kPropertyIDPosition,
+                        lepus::Value("fixed"));
+  fixed_child->SetStyle(CSSPropertyID::kPropertyIDWidth, lepus::Value("20px"));
+  fixed_child->SetStyle(CSSPropertyID::kPropertyIDHeight, lepus::Value("30px"));
+  parent->InsertNode(fixed_child);
+
+  page->FlushActionsAsRoot();
+  ASSERT_NE(fixed_child->slnode(), nullptr);
+  EXPECT_EQ(1U, manager->GetFixedNodeSet()->count(fixed_child->slnode()));
+
+  page->Layout(std::make_shared<PipelineOptions>());
+
+  const auto& result = fixed_child->slnode()->GetLayoutResult();
+  EXPECT_FLOAT_EQ(20.f, result.size_.width_);
+  EXPECT_FLOAT_EQ(30.f, result.size_.height_);
+}
+
+TEST_P(FiberElementTest, LayoutInElementUpdatesNewFixedNodeSet) {
+  manager->page_options_.embedded_mode_ = static_cast<EmbeddedMode>(
+      static_cast<int32_t>(manager->page_options_.embedded_mode_) |
+      static_cast<int32_t>(EmbeddedMode::LAYOUT_IN_ELEMENT));
+  manager->config_->layout_configs_.enable_fixed_new_ = true;
+
+  auto page = manager->CreateFiberPage("page", 11);
+  manager->UpdateViewport(kWidth, SLMeasureModeDefinite, kHeight,
+                          SLMeasureModeDefinite, false);
+
+  auto parent = manager->CreateFiberNode("view");
+  page->InsertNode(parent);
+
+  auto fixed_child = manager->CreateFiberNode("view");
+  fixed_child->SetStyle(CSSPropertyID::kPropertyIDPosition,
+                        lepus::Value("fixed"));
+  parent->InsertNode(fixed_child);
+
+  page->FlushActionsAsRoot();
+  ASSERT_NE(fixed_child->slnode(), nullptr);
+  EXPECT_EQ(1U, manager->GetFixedNodeSet()->count(fixed_child->slnode()));
+
+  fixed_child->SetStyle(CSSPropertyID::kPropertyIDPosition, lepus::Value());
+  page->FlushActionsAsRoot();
+  EXPECT_EQ(0U, manager->GetFixedNodeSet()->count(fixed_child->slnode()));
+
+  fixed_child->SetStyle(CSSPropertyID::kPropertyIDPosition,
+                        lepus::Value("fixed"));
+  page->FlushActionsAsRoot();
+  EXPECT_EQ(1U, manager->GetFixedNodeSet()->count(fixed_child->slnode()));
+
+  parent->RemoveNode(fixed_child, false);
+  page->FlushActionsAsRoot();
+  EXPECT_EQ(0U, manager->GetFixedNodeSet()->count(fixed_child->slnode()));
+}
+
+TEST_P(FiberElementTest, LayoutInElementUpdatesNewFixedNodeSetOnSubtreeMove) {
+  manager->page_options_.embedded_mode_ = static_cast<EmbeddedMode>(
+      static_cast<int32_t>(manager->page_options_.embedded_mode_) |
+      static_cast<int32_t>(EmbeddedMode::LAYOUT_IN_ELEMENT));
+  manager->config_->layout_configs_.enable_fixed_new_ = true;
+
+  auto page = manager->CreateFiberPage("page", 11);
+  manager->UpdateViewport(kWidth, SLMeasureModeDefinite, kHeight,
+                          SLMeasureModeDefinite, false);
+
+  auto host_a = manager->CreateFiberNode("view");
+  auto host_b = manager->CreateFiberNode("view");
+  page->InsertNode(host_a);
+  page->InsertNode(host_b);
+
+  auto subtree_root = manager->CreateFiberNode("view");
+  auto logical_parent = manager->CreateFiberNode("view");
+  auto fixed_child = manager->CreateFiberNode("view");
+  fixed_child->SetStyle(CSSPropertyID::kPropertyIDPosition,
+                        lepus::Value("fixed"));
+
+  host_a->InsertNode(subtree_root);
+  subtree_root->InsertNode(logical_parent);
+  logical_parent->InsertNode(fixed_child);
+
+  page->FlushActionsAsRoot();
+  ASSERT_NE(fixed_child->slnode(), nullptr);
+  EXPECT_EQ(1U, manager->GetFixedNodeSet()->count(fixed_child->slnode()));
+
+  host_a->RemoveNode(subtree_root, false);
+  page->FlushActionsAsRoot();
+  EXPECT_EQ(0U, manager->GetFixedNodeSet()->count(fixed_child->slnode()));
+
+  host_b->InsertNode(subtree_root);
+  page->FlushActionsAsRoot();
+  EXPECT_EQ(1U, manager->GetFixedNodeSet()->count(fixed_child->slnode()));
+}
+
 }  // namespace testing
 }  // namespace tasm
 }  // namespace lynx

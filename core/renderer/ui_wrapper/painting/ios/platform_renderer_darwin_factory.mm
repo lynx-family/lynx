@@ -15,16 +15,19 @@ PlatformRendererDarwinFactory::PlatformRendererDarwinFactory(PlatformRendererCon
     : context_(context) {}
 
 fml::RefPtr<PlatformRenderer> PlatformRendererDarwinFactory::CreateRenderer(
-    int id, PlatformRendererType type, const fml::RefPtr<PropBundle>& init_data) {
+    int id, PlatformRendererType type, const fml::RefPtr<PropBundle>& init_data,
+    const PlatformRendererInitConfig& init_config) {
   if (type == PlatformRendererType::kPage) {
     return fml::MakeRefCounted<PlatformRendererRootDarwin>(context_, id, type);
   }
-  return fml::MakeRefCounted<PlatformRendererDarwin>(context_, id, type, init_data);
+  return fml::MakeRefCounted<PlatformRendererDarwin>(context_, id, type, init_data, init_config);
 }
 
 fml::RefPtr<PlatformRenderer> PlatformRendererDarwinFactory::CreateExtendedRenderer(
-    int id, const base::String& tag_name, const fml::RefPtr<PropBundle>& init_data) {
-  return fml::MakeRefCounted<PlatformRendererDarwin>(context_, id, tag_name, init_data);
+    int id, const base::String& tag_name, const fml::RefPtr<PropBundle>& init_data,
+    const PlatformRendererInitConfig& init_config) {
+  return fml::MakeRefCounted<PlatformRendererDarwin>(context_, id, tag_name, init_data,
+                                                     init_config);
 }
 
 }  // namespace tasm

@@ -78,7 +78,9 @@ class RecordingFragmentBehavior : public FragmentBehavior {
       : FragmentBehavior(fragment) {}
 
   void CreatePlatformRenderer(
-      const fml::RefPtr<PropBundle>& attributes) override {
+      const fml::RefPtr<PropBundle>& attributes,
+      const PlatformRendererInitConfig& init_config) override {
+    init_config_ = init_config;
     attributes_ = attributes;
   }
 
@@ -86,6 +88,7 @@ class RecordingFragmentBehavior : public FragmentBehavior {
     return PlatformRendererType::kText;
   }
 
+  PlatformRendererInitConfig init_config_;
   fml::RefPtr<PropBundle> attributes_;
 };
 
@@ -99,21 +102,22 @@ class TestPlatformRenderer : public PlatformRendererImpl {
     display_list_ = std::move(display_list);
   }
   void OnUpdateAttributes(const fml::RefPtr<PropBundle>&, bool) override {}
-  void OnAddChild(PlatformRenderer*, int) override {}
-  void OnRemoveFromParent() override {}
+  void OnAddChild(PlatformRenderer*, int, bool) override {}
+  void OnRemoveFromParent(bool) override {}
   void OnUpdateSubtreeProperties(const DisplayList&) override {}
 };
 
 class TestPlatformRendererFactory : public PlatformRendererFactory {
  public:
   fml::RefPtr<PlatformRenderer> CreateRenderer(
-      int id, PlatformRendererType type,
-      const fml::RefPtr<PropBundle>&) override {
+      int id, PlatformRendererType type, const fml::RefPtr<PropBundle>&,
+      const PlatformRendererInitConfig&) override {
     return fml::MakeRefCounted<TestPlatformRenderer>(id, type);
   }
 
   fml::RefPtr<PlatformRenderer> CreateExtendedRenderer(
-      int id, const base::String&, const fml::RefPtr<PropBundle>&) override {
+      int id, const base::String&, const fml::RefPtr<PropBundle>&,
+      const PlatformRendererInitConfig&) override {
     return fml::MakeRefCounted<TestPlatformRenderer>(
         id, PlatformRendererType::kExtended);
   }
@@ -155,16 +159,19 @@ class TestNativePaintingContext : public NativePaintingContext {
       const std::shared_ptr<PipelineOptions>& options) override {}
   void CreatePlatformRenderer(
       int id, PlatformRendererType type,
-      const fml::RefPtr<PropBundle>& init_data) override {
+      const fml::RefPtr<PropBundle>& init_data,
+      const PlatformRendererInitConfig& init_config) override {
     if (ref_) {
-      ref_->CreatePlatformRenderer(id, type, init_data);
+      ref_->CreatePlatformRenderer(id, type, init_data, init_config);
     }
   }
   void CreatePlatformExtendedRenderer(
       int id, const base::String& tag_name,
-      const fml::RefPtr<PropBundle>& init_data) override {
+      const fml::RefPtr<PropBundle>& init_data,
+      const PlatformRendererInitConfig& init_config) override {
     if (ref_) {
-      ref_->CreatePlatformExtendedRenderer(id, tag_name, init_data);
+      ref_->CreatePlatformExtendedRenderer(id, tag_name, init_data,
+                                           init_config);
     }
   }
   void UpdateDisplayList(int id, DisplayList list) override {
@@ -262,7 +269,44 @@ TEST_F(FragmentTest, CreateLayerIfNeededWritesFlattenInitData) {
   auto* props = static_cast<PropBundleMock*>(behavior_ptr->attributes_.get());
   ASSERT_TRUE(props->Contains(kTendsToFlattenInitDataKey));
   EXPECT_TRUE(props->GetPropsMap().at(kTendsToFlattenInitDataKey).Bool());
-  EXPECT_TRUE(props->Contains(kDirectChildOfCompatibleComponentInitDataKey));
+  EXPECT_EQ(behavior_ptr->init_config_.fragment_parent_id, -1);
+  EXPECT_TRUE(
+      behavior_ptr->init_config_.is_direct_child_of_compatible_component);
+}
+
+TEST_F(FragmentTest, UpdatePaintingNodeUsesCurrentFlattenStateForLayer) {
+  auto parent_element = manager->CreateFiberPage("0", 0);
+  Fragment parent_fragment(parent_element.get());
+
+  auto element = manager->CreateFiberView();
+  Fragment fragment(element.get());
+  parent_fragment.AddChildBefore(&fragment, nullptr);
+  auto behavior = std::make_unique<RecordingFragmentBehavior>(&fragment);
+  auto* behavior_ptr = behavior.get();
+  fragment.SetBehavior(std::move(behavior));
+
+  ASSERT_TRUE(element->TendToFlatten());
+  ASSERT_FALSE(fragment.CreateLayerIfNeeded(nullptr));
+  ASSERT_FALSE(fragment.has_platform_renderer_);
+
+  parent_fragment.ResetDirtyState(BaseElementContainer::kNeedRedraw);
+  fragment.ResetDirtyState(BaseElementContainer::kNeedRedraw);
+  element->has_non_flatten_attrs_ = true;
+
+  auto painting_data = PropBundleMock::CreateForMock();
+  painting_data->SetProps(
+      CSSProperty::GetPropertyNameCStr(CSSPropertyID::kPropertyIDTransform),
+      "translateX(1px)");
+  fragment.UpdatePaintingNode(true, painting_data);
+
+  EXPECT_TRUE(fragment.has_platform_renderer_);
+  EXPECT_TRUE(parent_fragment.NeedRedraw());
+  EXPECT_TRUE(fragment.NeedRedraw());
+  ASSERT_TRUE(behavior_ptr->attributes_);
+  EXPECT_TRUE(behavior_ptr->attributes_->Contains(
+      CSSProperty::GetPropertyNameCStr(CSSPropertyID::kPropertyIDTransform)));
+  auto* props = static_cast<PropBundleMock*>(behavior_ptr->attributes_.get());
+  EXPECT_FALSE(props->GetPropsMap().at(kTendsToFlattenInitDataKey).Bool());
 }
 
 TEST_F(FragmentTest, ReusedEventTargetTreeRefreshesScrollOffsetForHitTest) {

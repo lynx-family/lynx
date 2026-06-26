@@ -640,6 +640,9 @@ class FiberElement : public Element {
       std::function<bool(CSSPropertyID, const tasm::CSSValue&)> should_skip)
       override;
 
+  void SetStyleInternal(CSSPropertyID id, const tasm::CSSValue& value) override;
+  bool ResetCSSValue(CSSPropertyID id) override;
+
   void ProcessFullRawInlineStyle(CSSVariableMap* changed_css_vars) override;
 
   bool ConsumeAllAttributes();
@@ -739,6 +742,9 @@ class FiberElement : public Element {
   void UpdateLayoutInfo();
 
   void MarkLayoutDirtyLite() override;
+
+  void UpdateFixedNodeSet();
+  void UpdateFixedNodeSetRecursively(bool is_insert);
 
   void EnsureSLNode();
   bool HasLayoutInElementPlatformNode();

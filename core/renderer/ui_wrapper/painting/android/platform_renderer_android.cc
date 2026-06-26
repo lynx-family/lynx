@@ -10,38 +10,34 @@
 #include "core/renderer/ui_wrapper/common/android/platform_extra_bundle_android.h"
 #include "core/renderer/ui_wrapper/common/android/prop_bundle_android.h"
 #include "core/renderer/ui_wrapper/common/native_prop_bundle.h"
-#include "core/renderer/utils/base/tasm_constants.h"
 
 namespace lynx::tasm {
-
-namespace {
-
-bool IsDirectChildOfCompatibleComponentFromInitData(
-    const fml::RefPtr<PropBundle>& init_data) {
-  return init_data != nullptr &&
-         init_data->Contains(kDirectChildOfCompatibleComponentInitDataKey);
-}
-
-}  // namespace
 
 PlatformRendererAndroid::~PlatformRendererAndroid() { CleanupAndroidView(); }
 
 PlatformRendererAndroid::PlatformRendererAndroid(
     PlatformRendererContext* context, int id, PlatformRendererType type,
-    const fml::RefPtr<PropBundle>& init_data)
-    : PlatformRendererAndroid(context, id, type, base::String(), init_data) {}
+    const fml::RefPtr<PropBundle>& init_data,
+    const PlatformRendererInitConfig& init_config)
+    : PlatformRendererAndroid(context, id, type, base::String(), init_data,
+                              init_config) {}
 
 PlatformRendererAndroid::PlatformRendererAndroid(
     PlatformRendererContext* context, int id, const base::String& tag_name,
-    const fml::RefPtr<PropBundle>& init_data)
+    const fml::RefPtr<PropBundle>& init_data,
+    const PlatformRendererInitConfig& init_config)
     : PlatformRendererAndroid(context, id, PlatformRendererType::kUnknown,
-                              tag_name, init_data) {}
+                              tag_name, init_data, init_config) {}
 
 PlatformRendererAndroid::PlatformRendererAndroid(
     PlatformRendererContext* context, int id, PlatformRendererType type,
-    const base::String& tag_name, const fml::RefPtr<PropBundle>& init_data)
+    const base::String& tag_name, const fml::RefPtr<PropBundle>& init_data,
+    const PlatformRendererInitConfig& init_config)
     : PlatformRendererImpl(id, type, tag_name), context_(context) {
-  if (ShouldCreatePlatformExtendedRenderer(init_data)) {
+  SetDirectChildOfCompatibleComponent(
+      init_config.is_direct_child_of_compatible_component);
+  SetFragmentParentId(init_config.fragment_parent_id);
+  if (ShouldCreatePlatformExtendedRenderer(init_config)) {
     is_platform_extended_renderer_ = true;
   }
   InitializeAndroidView(init_data);
@@ -70,16 +66,21 @@ void PlatformRendererAndroid::OnUpdateDisplayList(DisplayList display_list) {
   }
 }
 
-void PlatformRendererAndroid::OnAddChild(PlatformRenderer* child, int index) {
+void PlatformRendererAndroid::OnAddChild(PlatformRenderer* child, int index,
+                                         bool should_update_ui_owner) {
   if (context_ && child) {
     context_->InsertPlatformRenderer(PlatformRendererImpl::GetId(),
-                                     child->GetId(), index);
+                                     child->GetId(), index,
+                                     should_update_ui_owner);
   }
 }
 
-void PlatformRendererAndroid::OnRemoveFromParent() {
+void PlatformRendererAndroid::OnRemoveFromParent(bool should_update_ui_owner) {
   if (context_) {
-    context_->RemovePlatformRenderer(PlatformRendererImpl::GetId());
+    const auto* parent = GetParent();
+    context_->RemovePlatformRenderer(parent != nullptr ? parent->GetId() : -1,
+                                     PlatformRendererImpl::GetId(),
+                                     should_update_ui_owner);
   }
 }
 
@@ -116,8 +117,8 @@ void PlatformRendererAndroid::InitializeAndroidView(
 }
 
 bool PlatformRendererAndroid::ShouldCreatePlatformExtendedRenderer(
-    const fml::RefPtr<PropBundle>& init_data) const {
-  if (IsDirectChildOfCompatibleComponentFromInitData(init_data)) {
+    const PlatformRendererInitConfig& init_config) const {
+  if (init_config.is_direct_child_of_compatible_component) {
     return true;
   }
   if (type_ == PlatformRendererType::kText ||
@@ -139,18 +140,19 @@ void PlatformRendererAndroid::CleanupAndroidView() {
 }
 
 fml::RefPtr<PlatformRenderer> PlatformRendererAndroidFactory::CreateRenderer(
-    int id, PlatformRendererType type,
-    const fml::RefPtr<PropBundle>& init_data) {
+    int id, PlatformRendererType type, const fml::RefPtr<PropBundle>& init_data,
+    const PlatformRendererInitConfig& init_config) {
   return fml::MakeRefCounted<PlatformRendererAndroid>(context_, id, type,
-                                                      init_data);
+                                                      init_data, init_config);
 }
 
 fml::RefPtr<PlatformRenderer>
 PlatformRendererAndroidFactory::CreateExtendedRenderer(
     int id, const base::String& tag_name,
-    const fml::RefPtr<PropBundle>& init_data) {
+    const fml::RefPtr<PropBundle>& init_data,
+    const PlatformRendererInitConfig& init_config) {
   return fml::MakeRefCounted<PlatformRendererAndroid>(context_, id, tag_name,
-                                                      init_data);
+                                                      init_data, init_config);
 }
 
 void PlatformRendererAndroid::OnUpdateAttributes(

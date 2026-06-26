@@ -43,17 +43,18 @@ NativePaintingCtxPlatformRef::NativePaintingCtxPlatformRef(
 }
 
 void NativePaintingCtxPlatformRef::CreatePlatformRenderer(
-    int id, PlatformRendererType type,
-    const fml::RefPtr<PropBundle> &init_data) {
+    int id, PlatformRendererType type, const fml::RefPtr<PropBundle> &init_data,
+    const PlatformRendererInitConfig &init_config) {
   renderers_.insert_or_assign(
-      id, view_factory_->CreateRenderer(id, type, init_data));
+      id, view_factory_->CreateRenderer(id, type, init_data, init_config));
 }
 
 void NativePaintingCtxPlatformRef::CreatePlatformExtendedRenderer(
     int id, const base::String &tag_name,
-    const fml::RefPtr<PropBundle> &init_data) {
-  renderers_.insert_or_assign(
-      id, view_factory_->CreateExtendedRenderer(id, tag_name, init_data));
+    const fml::RefPtr<PropBundle> &init_data,
+    const PlatformRendererInitConfig &init_config) {
+  renderers_.insert_or_assign(id, view_factory_->CreateExtendedRenderer(
+                                      id, tag_name, init_data, init_config));
 }
 
 void NativePaintingCtxPlatformRef::UpdateDisplayList(
@@ -178,9 +179,23 @@ bool NativePaintingCtxPlatformRef::DispatchPlatformInputEvent(
                                       float_event_data);
 }
 
-bool NativePaintingCtxPlatformRef::DispatchPlatformInputEvent(
-    int int_event_data[], float float_event_data[]) {
-  return DispatchPlatformInputEvent(int_event_data, float_event_data, kRootId);
+bool NativePaintingCtxPlatformRef::IsPlatformEventTargetEventThrough(
+    int32_t event_target_root_id, float point_x, float point_y) {
+  auto event_target_tree = EnsureEventTargetTree(event_target_root_id);
+  if (event_target_tree == nullptr) {
+    return false;
+  }
+
+  float root_point[2] = {point_x, point_y};
+  auto hit_target = event_target_tree->HitTest(root_point);
+  if (hit_target == nullptr) {
+    return false;
+  }
+
+  float target_point[2] = {root_point[0], root_point[1]};
+  event_target_helper_->ConvertPointFromAncestorToDescendant(
+      target_point, event_target_tree, hit_target, root_point);
+  return hit_target->EventThrough(target_point);
 }
 
 int NativePaintingCtxPlatformRef::GetPlatformEventHandlerState() {
@@ -502,6 +517,27 @@ void NativePaintingCtxPlatformRef::UpdateAttributes(
     return;
   }
   it->second->UpdateAttributes(attributes, tend_to_flatten);
+}
+
+void NativePaintingCtxPlatformRef::UpdateNodeReadyPatching(
+    std::vector<int32_t> ready_ids, std::vector<int32_t> remove_ids) {
+  (void)remove_ids;
+  if (ready_ids.empty()) {
+    return;
+  }
+
+  TRACE_EVENT(LYNX_TRACE_CATEGORY,
+              UI_OPERATION_QUEUE_UPDATE_NODE_READY_PATCHING);
+  std::vector<int32_t> platform_ready_ids;
+  platform_ready_ids.reserve(ready_ids.size());
+  for (const auto id : ready_ids) {
+    if (renderers_.find(id) != renderers_.end()) {
+      platform_ready_ids.emplace_back(id);
+    }
+  }
+  if (!platform_ready_ids.empty()) {
+    NotifyNodeReady(platform_ready_ids);
+  }
 }
 
 void NativePaintingCtxPlatformRef::InvokeUIMethod(

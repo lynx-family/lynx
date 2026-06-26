@@ -29,4 +29,14 @@ void FragmentBehavior::CreatePlatformRenderer(
                                             attributes);
 }
 
+void FragmentBehavior::CreatePlatformRenderer(
+    const fml::RefPtr<PropBundle>& attributes,
+    const PlatformRendererInitConfig& init_config) {
+  if (!painting_context_ || !fragment_) {
+    return;
+  }
+  painting_context_->CreatePlatformRenderer(fragment_->id(), GetType(),
+                                            attributes, init_config);
+}
+
 }  // namespace lynx::tasm

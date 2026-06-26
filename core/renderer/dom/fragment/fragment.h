@@ -62,9 +62,9 @@ class Fragment : public BaseElementContainer {
 
   void UpdateLayout(float left, float top,
                     bool transition_view = false) override;
-  void UpdateLayoutWithoutChange() override{};
+  void UpdateLayoutWithoutChange() override;
 
-  void TransitionToNativeView(fml::RefPtr<PropBundle> prop_bundle) override{};
+  void TransitionToNativeView(fml::RefPtr<PropBundle> prop_bundle) override {}
   void StyleChanged() override;
   void UpdateZIndexList() override;
 
@@ -81,12 +81,13 @@ class Fragment : public BaseElementContainer {
                                            bool is_init_scroll_offset,
                                            bool from_layout) override;
   void OnFirstScreen() override;
+  void OnNodeReady() override;
   void FinishTasmOperation(
       const std::shared_ptr<PipelineOptions>& options) override;
   void FinishLayoutOperation(
       const std::shared_ptr<PipelineOptions>& options) override;
 
-  void CreateLayerIfNeeded(const fml::RefPtr<PropBundle>& init_data);
+  bool CreateLayerIfNeeded(const fml::RefPtr<PropBundle>& init_data);
   void HandleAttributes(const fml::RefPtr<PropBundle>& painting_data) const;
 
   void UpdateLayout(LayoutResultForRendering layout_result_for_rendering);
@@ -159,6 +160,10 @@ class Fragment : public BaseElementContainer {
   // children, etc. Called by OnDraw when NeedRedraw() is true.
   void DrawFull(DisplayListBuilder& display_list_builder);
 
+  bool ShouldNotifyNodeReady() const;
+  void MarkNodeReadyIfNeeded();
+  void FlushPendingNodeReadyIfNeeded();
+
   void ReinsertDescendantsToCorrectParent();
 
   void RemoveDescendantsFromCurrentParent();
@@ -172,6 +177,7 @@ class Fragment : public BaseElementContainer {
   void DispatchUpdateDisplayList();
 
   bool has_platform_renderer_{false};
+  bool pending_node_ready_{false};
 
   // If the fragment has positon fixed or z-index != 0, store the fragment from
   // element parent using this pointer. Which means if the
