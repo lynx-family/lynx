@@ -132,6 +132,10 @@ static CGFloat LynxDecodeAutoOffsetRotateAngle(CGFloat rotate) {
 @property(nonatomic, nullable, strong) LynxUILastInfo* lastInfo;
 @property(nonatomic, assign) NSInteger stickyScrollerSign;
 
+- (Class)iosPanInterceptViewClass;
+- (Class)iosPanInterceptGestureClass;
+- (NSInteger)iosPanInterceptViewTag;
+- (BOOL)hasIosPanInterceptViewTag;
 - (void)updateNewSticky:(NSArray*)info;
 - (LynxUI*)getStickyScroller;
 - (void)removeSelfFromStickyScrollerIfNeeded;
@@ -167,6 +171,10 @@ static CGFloat LynxDecodeAutoOffsetRotateAngle(CGFloat rotate) {
   enum LynxPointerEventsValue _pointerEvents;
   enum LynxPanInterceptDirection _panInterceptDirection;
   enum LynxPanInterceptScope _panInterceptScope;
+  Class _iosPanInterceptViewClass;
+  Class _iosPanInterceptGestureClass;
+  NSInteger _iosPanInterceptViewTag;
+  BOOL _hasIosPanInterceptViewTag;
   enum LynxPropStatus _enableExposureUIMargin;
   NSDictionary<NSString*, LynxEventSpec*>* _eventSet;
   NSDictionary<NSNumber*, LynxBaseGestureHandler*>* _gestureHandlers;
@@ -226,6 +234,10 @@ static CGFloat LynxDecodeAutoOffsetRotateAngle(CGFloat rotate) {
   _pointerEvents = kLynxPointerEventsValueUnset;
   _panInterceptDirection = kLynxPanInterceptDirectionNone;
   _panInterceptScope = kLynxPanInterceptScopeNone;
+  _iosPanInterceptViewClass = Nil;
+  _iosPanInterceptGestureClass = Nil;
+  _iosPanInterceptViewTag = 0;
+  _hasIosPanInterceptViewTag = NO;
   // touch slop's default value is 8 the same as Android.
   _touchSlop = 8;
   _onResponseChain = NO;
@@ -1773,7 +1785,10 @@ LYNX_PROPS_GROUP_DECLARE(
     LYNX_PROP_DECLARE("image-rendering", setImageRendering, NSInteger),
     LYNX_PROP_DECLARE("pointer-events", setPointerEvents, NSInteger),
     LYNX_PROP_DECLARE("pan-intercept-direction", setPanInterceptDirection, NSInteger),
-    LYNX_PROP_DECLARE("pan-intercept-scope", setPanInterceptScope, NSInteger))
+    LYNX_PROP_DECLARE("pan-intercept-scope", setPanInterceptScope, NSInteger),
+    LYNX_PROP_DECLARE("ios-pan-intercept-view-class", setIosPanInterceptViewClass, NSString*),
+    LYNX_PROP_DECLARE("ios-pan-intercept-gesture-class", setIosPanInterceptGestureClass, NSString*),
+    LYNX_PROP_DECLARE("ios-pan-intercept-view-tag", setIosPanInterceptViewTag, NSInteger))
 
 #pragma mark - Transform
 
@@ -3338,6 +3353,52 @@ LYNX_PROP_DEFINE("pan-intercept-scope", setPanInterceptScope, NSInteger) {
 - (enum LynxPanInterceptScope)panInterceptScope {
   LYNX_ASSERT_ON_MAIN_THREAD;
   return _panInterceptScope;
+}
+
+LYNX_PROP_DEFINE("ios-pan-intercept-view-class", setIosPanInterceptViewClass, NSString*) {
+  if (requestReset) {
+    _iosPanInterceptViewClass = Nil;
+    return;
+  }
+  _iosPanInterceptViewClass = value.length > 0 ? NSClassFromString(value) : Nil;
+}
+
+- (Class)iosPanInterceptViewClass {
+  LYNX_ASSERT_ON_MAIN_THREAD;
+  return _iosPanInterceptViewClass;
+}
+
+LYNX_PROP_DEFINE("ios-pan-intercept-gesture-class", setIosPanInterceptGestureClass, NSString*) {
+  if (requestReset) {
+    _iosPanInterceptGestureClass = Nil;
+    return;
+  }
+  _iosPanInterceptGestureClass = value.length > 0 ? NSClassFromString(value) : Nil;
+}
+
+- (Class)iosPanInterceptGestureClass {
+  LYNX_ASSERT_ON_MAIN_THREAD;
+  return _iosPanInterceptGestureClass;
+}
+
+LYNX_PROP_DEFINE("ios-pan-intercept-view-tag", setIosPanInterceptViewTag, NSInteger) {
+  if (requestReset) {
+    _iosPanInterceptViewTag = 0;
+    _hasIosPanInterceptViewTag = NO;
+    return;
+  }
+  _iosPanInterceptViewTag = value;
+  _hasIosPanInterceptViewTag = YES;
+}
+
+- (NSInteger)iosPanInterceptViewTag {
+  LYNX_ASSERT_ON_MAIN_THREAD;
+  return _iosPanInterceptViewTag;
+}
+
+- (BOOL)hasIosPanInterceptViewTag {
+  LYNX_ASSERT_ON_MAIN_THREAD;
+  return _hasIosPanInterceptViewTag;
 }
 
 - (BOOL)blockNativeEvent:(UIGestureRecognizer*)gestureRecognizer {

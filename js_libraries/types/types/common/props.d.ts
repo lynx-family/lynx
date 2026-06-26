@@ -172,6 +172,48 @@ export interface StandardProps extends LynxEventProps {
    */
   'ios-platform-accessibility-id'?: string;
 
+  /**
+   * Direction used to start pan gesture interception. 0 means horizontal, and 1 means vertical.
+   * @defaultValue undefined
+   * @Android
+   * @iOS
+   * @since 4.1
+   */
+  'pan-intercept-direction'?: 0 | 1;
+
+  /**
+   * Scope used to decide which external gesture views can be intercepted. 0 means self, 1 means ancestors, 2 means descendants, 3 means self and ancestors, 4 means self and descendants, and 5 means all.
+   * @defaultValue undefined
+   * @Android
+   * @iOS
+   * @since 4.1
+   */
+  'pan-intercept-scope'?: 0 | 1 | 2 | 3 | 4 | 5;
+
+  /**
+   * UIGestureRecognizer's class name, used with `ios-pan-intercept-view-class` and `ios-pan-intercept-view-tag` to identify an external gesture that should be intercepted by pan-intercept.
+   * @defaultValue undefined
+   * @iOS
+   * @since 4.1
+   */
+  'ios-pan-intercept-gesture-class'?: string;
+
+  /**
+   * UIView's class name, used with `ios-pan-intercept-gesture-class` and `ios-pan-intercept-view-tag` to identify the view bound to an external gesture that should be intercepted by pan-intercept.
+   * @defaultValue undefined
+   * @iOS
+   * @since 4.1
+   */
+  'ios-pan-intercept-view-class'?: string;
+
+  /**
+   * UIView's tag, used with `ios-pan-intercept-gesture-class` and `ios-pan-intercept-view-class` to identify the view bound to an external gesture that should be intercepted by pan-intercept.
+   * @defaultValue undefined
+   * @iOS
+   * @since 4.1
+   */
+  'ios-pan-intercept-view-tag'?: number;
+
   /** 
    * Control whether the component can receive focus
    * @defaultValue false

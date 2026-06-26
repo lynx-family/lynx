@@ -1,5 +1,8 @@
 # CHANGELOG
 
+## 4.1.1
+- Add `pan-intercept-direction`, `pan-intercept-scope`, `pan-intercept-gesture-class`, `pan-intercept-view-class` and `pan-intercept-view-tag` properties.
+
 ## 4.1.0
 - Introduce experimental `<video>` element types.
 
