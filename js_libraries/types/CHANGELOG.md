@@ -1,5 +1,8 @@
 # CHANGELOG
 
+## 4.0.1
+- Add `pan-intercept-direction`, `pan-intercept-scope`, `pan-intercept-gesture-class`, `pan-intercept-view-class` and `pan-intercept-view-tag` properties.
+
 ## 4.0.0
 - Introduce `<blur-view>`.
 - Add missing `lynx.loadScript<T>(sectionName, { bundleName }): T` declaration on `CommonLynx`. The platform API has existed since LynxSDK 3.7; this is a types-only fix.
