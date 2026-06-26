@@ -96,9 +96,7 @@ class TestPlatformRenderer : public PlatformRendererImpl {
 
  protected:
   void OnUpdateDisplayList(DisplayList display_list) override {
-    if (display_list.HasContent()) {
-      display_list_ = std::move(display_list);
-    }
+    display_list_ = std::move(display_list);
   }
   void OnUpdateAttributes(const fml::RefPtr<PropBundle>&, bool) override {}
   void OnAddChild(PlatformRenderer*, int) override {}
@@ -142,6 +140,111 @@ class TestNativePaintingCtxPlatformRef : public NativePaintingCtxPlatformRef {
 
   std::unordered_map<int32_t, std::array<float, 2>> scroll_offsets;
   std::unordered_set<int32_t> scrollable_signs;
+};
+
+// Adapter that exposes the NativePaintingContext interface expected by
+// Fragment::Draw() and forwards to a TestNativePaintingCtxPlatformRef.
+class TestNativePaintingContext : public NativePaintingContext {
+ public:
+  void SetPlatformRef(TestNativePaintingCtxPlatformRef* ref) { ref_ = ref; }
+
+  void OnFirstScreen() override {}
+  void FinishTasmOperation(
+      const std::shared_ptr<PipelineOptions>& options) override {}
+  void FinishLayoutOperation(
+      const std::shared_ptr<PipelineOptions>& options) override {}
+  void CreatePlatformRenderer(
+      int id, PlatformRendererType type,
+      const fml::RefPtr<PropBundle>& init_data) override {
+    if (ref_) {
+      ref_->CreatePlatformRenderer(id, type, init_data);
+    }
+  }
+  void CreatePlatformExtendedRenderer(
+      int id, const base::String& tag_name,
+      const fml::RefPtr<PropBundle>& init_data) override {
+    if (ref_) {
+      ref_->CreatePlatformExtendedRenderer(id, tag_name, init_data);
+    }
+  }
+  void UpdateDisplayList(int id, DisplayList list) override {
+    if (ref_) {
+      ref_->UpdateDisplayList(id, std::move(list));
+    }
+  }
+  void CreateImage(int id, base::String src, float width, float height,
+                   int32_t event_mask = 0) override {}
+  void UpdateTextBundle(int id, intptr_t bundle) override {}
+  void DestroyTextBundle(int id) override {}
+  void InsertListItemPaintingNode(int32_t list_id, int32_t child_id) override {}
+  void RemoveListItemPaintingNode(int32_t list_id, int32_t child_id) override {}
+  void UpdateContentOffsetForListContainer(int32_t container_id,
+                                           float content_size, float delta_x,
+                                           float delta_y,
+                                           bool is_init_scroll_offset,
+                                           bool from_layout) override {}
+  void ReconstructEventTargetTreeRecursively() override {
+    if (ref_) {
+      ref_->ReconstructEventTargetTreeRecursively();
+    }
+  }
+  void UpdatePlatformEventBundle(int id, PlatformEventBundle bundle) override {
+    if (ref_) {
+      ref_->UpdatePlatformEventBundle(id, std::move(bundle));
+    }
+  }
+
+ private:
+  TestNativePaintingCtxPlatformRef* ref_ = nullptr;
+};
+
+// A MockPaintingContext whose platform ref is a real
+// NativePaintingCtxPlatformRef so that Fragment::Draw() can exercise
+// UpdateDisplayList / event-target reconstruction paths.
+class NativeMockPaintingContext : public MockPaintingContext,
+                                  public TestNativePaintingContext {
+ public:
+  NativeMockPaintingContext() {
+    auto ref = std::make_shared<TestNativePaintingCtxPlatformRef>();
+    platform_ref_ = ref;
+    SetPlatformRef(ref.get());
+  }
+
+  NativePaintingContext* CastToNativeCtx() override { return this; }
+
+  TestNativePaintingCtxPlatformRef* GetNativePlatformRef() {
+    return static_cast<TestNativePaintingCtxPlatformRef*>(platform_ref_.get());
+  }
+};
+
+class FragmentDrawTest : public ::testing::Test {
+ public:
+  FragmentDrawTest() {}
+  ~FragmentDrawTest() override {}
+
+  void SetUp() override {
+    LynxEnvConfig lynx_env_config(kConfigWidth, kConfigHeight,
+                                  kDefaultLayoutsUnitPerPx,
+                                  kDefaultPhysicalPixelsPerLayoutUnit);
+    tasm_mediator = std::make_shared<
+        ::testing::NiceMock<lynx::tasm::test::MockTasmDelegate>>();
+    manager = std::make_unique<lynx::tasm::ElementManager>(
+        std::make_unique<NativeMockPaintingContext>(), tasm_mediator.get(),
+        lynx_env_config);
+    auto config = std::make_shared<PageConfig>();
+    manager->page_options_.embedded_mode_ = static_cast<EmbeddedMode>(
+        static_cast<int32_t>(manager->page_options_.embedded_mode_) |
+        static_cast<int32_t>(EmbeddedMode::FRAGMENT_LAYER_RENDER));
+    manager->page_options_.embedded_mode_ = static_cast<EmbeddedMode>(
+        static_cast<int32_t>(manager->page_options_.embedded_mode_) |
+        static_cast<int32_t>(EmbeddedMode::LAYOUT_IN_ELEMENT));
+    config->SetEnableZIndex(true);
+    config->SetEnableFiberArch(true);
+    manager->SetConfig(config);
+  }
+
+  std::unique_ptr<lynx::tasm::ElementManager> manager;
+  std::shared_ptr<::testing::NiceMock<test::MockTasmDelegate>> tasm_mediator;
 };
 
 TEST_F(FragmentTest, CreateLayerIfNeededWritesFlattenInitData) {
@@ -1048,6 +1151,67 @@ TEST_F(FragmentTest, OutsetShadowWithZeroSizeElement) {
   DisplayList list = builder.Build();
   // Should produce at least one op without crash
   EXPECT_GE(list.GetContentOpTypesSize(), 1u);
+}
+
+TEST_F(FragmentDrawTest,
+       DisplayNoneEmitsEmptyDisplayListAndReconstructsExposure) {
+  auto page = manager->CreateFiberPage("0", 0);
+  ASSERT_NE(page, nullptr);
+  page->FlushActionsAsRoot();
+  ASSERT_TRUE(page->HasElementContainer());
+
+  auto* fragment = static_cast<Fragment*>(page->element_container());
+  ASSERT_NE(fragment, nullptr);
+
+  // Ensure the page fragment has a behavior and a backing platform renderer.
+  page->SetupFragmentBehavior(fragment);
+  auto* native_ctx = static_cast<NativeMockPaintingContext*>(
+                         fragment->painting_context()->impl())
+                         ->GetNativePlatformRef();
+  ASSERT_NE(native_ctx, nullptr);
+  native_ctx->CreatePlatformRenderer(fragment->id(),
+                                     PlatformRendererType::kPage, nullptr);
+  fragment->has_platform_renderer_ = true;
+
+  starlight::LayoutResultForRendering layout;
+  layout.border_ = starlight::DirectionValue<float>({0.f, 0.f, 0.f, 0.f});
+  layout.padding_ = starlight::DirectionValue<float>({0.f, 0.f, 0.f, 0.f});
+  layout.size_ = FloatSize(100.f, 60.f);
+  fragment->UpdateLayout(layout);
+
+  // Give the page a background so the visible draw produces more than
+  // Begin/End.
+  page->computed_css_style()->background_data_ = starlight::BackgroundData();
+  page->computed_css_style()->background_data_->color = 0xFF00FF00;
+
+  auto renderer_it = native_ctx->renderers_.find(fragment->id());
+  ASSERT_NE(renderer_it, native_ctx->renderers_.end());
+  auto* renderer =
+      static_cast<TestPlatformRenderer*>(renderer_it->second.get());
+
+  // When visible, Draw() produces a display list with background content.
+  page->display_none_ = false;
+  fragment->Draw();
+  EXPECT_TRUE(renderer->display_list_.HasContent());
+  const size_t visible_op_count =
+      renderer->display_list_.GetContentOpTypesSize();
+  EXPECT_GT(visible_op_count, 2u);
+
+  // When display_none becomes true, Draw() must still send a display list that
+  // contains only this node's Begin/End so the platform layer clears stale
+  // content / sublayers / event-target state instead of keeping the previous
+  // frame. It must also still run ReconstructEventTargetTreeForExposure for the
+  // root.
+  page->display_none_ = true;
+  manager->MarkNeedReconstructEventTargetTreeForExposure();
+  fragment->Draw();
+  EXPECT_FALSE(manager->NeedReconstructEventTargetTreeForExposure());
+  EXPECT_TRUE(renderer->display_list_.HasContent());
+  EXPECT_EQ(renderer->display_list_.GetContentOpTypesSize(), 2u);
+  const int32_t* ops = renderer->display_list_.GetContentOpTypesData();
+  ASSERT_NE(ops, nullptr);
+  EXPECT_EQ(ops[0], static_cast<int32_t>(DisplayListOpType::kBegin));
+  EXPECT_EQ(ops[1], static_cast<int32_t>(DisplayListOpType::kEnd));
 }
 
 }  // namespace tasm
