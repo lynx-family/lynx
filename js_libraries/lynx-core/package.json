@@ -46,7 +46,6 @@
     "regenerator-runtime": "0.13.7",
     "@lynx-js/types": "workspace:*",
     "@lynx-js/runtime-shared": "workspace:*",
-    "@lynx-js/ios-polyfill": "workspace:*",
     "@lynx-js/ios-polyfill-promise": "workspace:*"
   }
 }
