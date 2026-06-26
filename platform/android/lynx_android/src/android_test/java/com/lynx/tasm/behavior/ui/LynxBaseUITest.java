@@ -5,6 +5,7 @@
 package com.lynx.tasm.behavior.ui;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import android.graphics.Matrix;
@@ -61,5 +62,17 @@ public class LynxBaseUITest {
     UIView ui = new UIView(mContext);
 
     assertTrue(ui.nativeInteractionEnabled);
+  }
+
+  @Test
+  public void displayNoneAffectsVisibility() {
+    LynxBaseUI ui = new UIView(mContext);
+    assertTrue(ui.getVisibility());
+
+    ui.setDisplayNone(true);
+    assertFalse(ui.getVisibility());
+
+    ui.setDisplayNone(false);
+    assertTrue(ui.getVisibility());
   }
 }
