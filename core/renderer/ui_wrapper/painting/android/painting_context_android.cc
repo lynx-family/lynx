@@ -695,7 +695,8 @@ void PaintingContextAndroid::DestroyPaintingNode(int parent, int child,
 void PaintingContextAndroid::UpdateLayout(
     int id, float x, float y, float width, float height, const float* paddings,
     const float* margins, const float* borders, const float* bounds,
-    const float* sticky, float max_height, uint32_t node_index) {
+    const float* sticky, float max_height, uint32_t node_index,
+    bool /*display_none*/) {
   patching_ids_.emplace_back(id);
   patching_node_index_.emplace_back(node_index);
   if (bounds != nullptr) {

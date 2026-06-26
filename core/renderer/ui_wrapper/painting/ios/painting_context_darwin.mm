@@ -426,8 +426,8 @@ void PaintingContextDarwin::UpdatePaintingNode(int id, bool tend_to_flatten,
 void PaintingContextDarwin::UpdateLayout(int sign, float x, float y, float width, float height,
                                          const float* paddings, const float* margins,
                                          const float* borders, const float* flatten_bounds,
-                                         const float* sticky, float max_height,
-                                         uint32_t node_index) {
+                                         const float* sticky, float max_height, uint32_t node_index,
+                                         bool /*display_none*/) {
   // top left bottom right for UIEdgeInset
 #define UI_EDGE_INSETS(array) \
   array != nullptr ? UIEdgeInsetsMake(array[1], array[0], array[3], array[2]) : UIEdgeInsetsZero
