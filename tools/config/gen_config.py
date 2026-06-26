@@ -424,6 +424,7 @@ def main():
     arg_parser = argparse.ArgumentParser()
     arg_parser.add_argument("--gen-lynx-config", default=True, action="store_true")
     arg_parser.add_argument("--gen-config-types", action="store_true")
+    arg_parser.add_argument("--all", default=False, action="store_true")
 
     subparsers = arg_parser.add_subparsers(dest="command")
     doc_parser = subparsers.add_parser("gen-config-doc")
@@ -439,6 +440,7 @@ def main():
     if args.gen_lynx_config:
         # gen lynx config
         gen_lynx_config(configs, options)
+    if args.all or args.gen_config_types:
         # gen lynx types npm
         gen_types(configs, options)
 
