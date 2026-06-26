@@ -296,7 +296,8 @@ void PaintingContextClay::UpdateLayout(int tag, float x, float y, float width,
                                        const float* margins,
                                        const float* borders,
                                        const float* bounds, const float* sticky,
-                                       float max_height, uint32_t node_index) {
+                                       float max_height, uint32_t node_index,
+                                       bool /*display_none*/) {
   const std::array<float, 4> paddings_copy = {paddings[0], paddings[1],
                                               paddings[2], paddings[3]};
   const std::array<float, 4> margins_copy = {margins[0], margins[1], margins[2],
