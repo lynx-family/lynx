@@ -37,7 +37,7 @@ open class LynxUIInput(context: LynxContext, params:Any?) : LynxUIBaseInput(cont
                         if (!mConfirmEnter) {
                           blur(null, null);
                           }
-                        !mConfirmEnter
+                        !mConfirmEnter || mHoldKeyboard
                     } else {
                         false
                     }
