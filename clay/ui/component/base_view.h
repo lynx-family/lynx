@@ -788,7 +788,6 @@ class BaseView : public TypeIdentifiable<BaseView>,
   std::optional<OffsetPathData> offset_path_data_;
   bool delay_destroy_ = false;
   std::unique_ptr<BaseViewAnimationMutator> animation_mutator_;
-  bool enable_builtin_gesture_recognizer_{true};
 
  private:
   template <typename... Args>

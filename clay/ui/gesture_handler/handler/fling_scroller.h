@@ -60,6 +60,7 @@ class FlingScroller : public std::enable_shared_from_this<FlingScroller>,
   FlingCallback callback_;
   float velocity_x_;
   float velocity_y_;
+  bool stopping_{false};
 };
 
 }  // namespace clay

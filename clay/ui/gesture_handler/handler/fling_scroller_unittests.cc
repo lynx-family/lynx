@@ -55,6 +55,30 @@ TEST_F(FlingScrollerTest, Stop_SetsIdle) {
   EXPECT_TRUE(scroller.IsIdle());
 }
 
+TEST_F(FlingScrollerTest, StopFromCallback_DoesNotDispatchFlingAgain) {
+  AnimationHandler animation_handler;
+  FlingScroller scroller(&animation_handler);
+
+  int fling_callback_count = 0;
+  bool stopped = false;
+  scroller.Start(1000, 0, [&](uint8_t state, float, float) {
+    if (state != static_cast<uint8_t>(FlingScroller::FlingState::FLING)) {
+      return;
+    }
+    ++fling_callback_count;
+    if (!stopped) {
+      stopped = true;
+      scroller.Stop();
+    }
+  });
+
+  animation_handler.DoAnimationFrame(0);
+  animation_handler.DoAnimationFrame(16);
+
+  EXPECT_EQ(fling_callback_count, 1);
+  EXPECT_TRUE(scroller.IsIdle());
+}
+
 TEST_F(FlingScrollerTest, AnimationEnd_InvokesIdleCallback) {
   AnimationHandler animation_handler;
   FlingScroller scroller(&animation_handler);

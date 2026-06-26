@@ -54,6 +54,37 @@ TEST_F(DefaultGestureHandlerTest, HandleConfigMap_TapSlopApplied) {
   EXPECT_EQ(dispatcher->GetGestureRecognizedTargetSet().count(1), 1u);
 }
 
+TEST_F(DefaultGestureHandlerTest, OnHandle_MoveDoesNotScrollWhenNotConsumed) {
+  auto runner = TestTaskRunner::Create();
+  auto page_view = MakeTestPageView(0, runner);
+  auto* dispatcher = page_view->GetGestureHandlerDispatcher();
+  ASSERT_NE(dispatcher, nullptr);
+
+  TestGestureArenaMember member(1);
+  member.SetShouldConsume(false);
+
+  Value::Map config_map;
+  config_map.emplace("tapSlop", Value(1));
+  Value config(std::move(config_map));
+  auto detector =
+      MakeDetector(1, GestureHandlerType::Default, {}, {}, std::move(config));
+  DefaultGestureHandler handler(1, page_view.get(), detector,
+                                member.GetWeakPtr());
+
+  PointerEvent down =
+      MakePointerEvent(PointerEvent::EventType::kDownEvent, {0, 0}, 1);
+  PointerEvent move =
+      MakePointerEvent(PointerEvent::EventType::kMoveEvent, {3, 0}, 2);
+  auto bundle = std::make_shared<GestureExtraBundle>();
+
+  handler.HandleMotionEvent(&down, 0, 0, false, bundle);
+  handler.HandleMotionEvent(&move, 0, 0, false, bundle);
+
+  EXPECT_TRUE(member.TakeScrollCalls().empty());
+  EXPECT_EQ(dispatcher->GetGestureRecognizedTargetSet().count(1), 0u);
+  EXPECT_EQ(handler.GetGestureStatus(), GestureConstants::LYNX_STATE_FAIL);
+}
+
 TEST_F(DefaultGestureHandlerTest, OnHandle_Down_SetsBegin_EmitsOnBeginOnce) {
   auto runner = TestTaskRunner::Create();
   auto page_view = MakeTestPageView(0, runner);
@@ -145,6 +176,29 @@ TEST_F(DefaultGestureHandlerTest,
   ASSERT_EQ(calls.size(), 1u);
   EXPECT_EQ(calls[0].first, 7);
   EXPECT_EQ(calls[0].second, -9);
+}
+
+TEST_F(DefaultGestureHandlerTest,
+       OnHandle_SimultaneousConsumptionSkipsScrollWhenNotConsumed) {
+  auto runner = TestTaskRunner::Create();
+  auto page_view = MakeTestPageView(0, runner);
+  TestGestureArenaMember member(1);
+  member.SetShouldConsume(false);
+
+  auto detector = MakeDetector(1, GestureHandlerType::Default, {});
+  DefaultGestureHandler handler(1, page_view.get(), detector,
+                                member.GetWeakPtr());
+
+  PointerEvent move =
+      MakePointerEvent(PointerEvent::EventType::kMoveEvent, {1, 1}, 2);
+  auto bundle = std::make_shared<GestureExtraBundle>();
+  bundle->SetIsNeedConsumedSimultaneousGesture(true);
+  bundle->SetSimultaneousDeltaX(7);
+  bundle->SetSimultaneousDeltaY(-9);
+
+  handler.HandleMotionEvent(&move, 0, 0, true, bundle);
+
+  EXPECT_TRUE(member.TakeScrollCalls().empty());
 }
 
 TEST_F(DefaultGestureHandlerTest, OnHandle_ShouldFail_WhenMemberCannotConsume) {

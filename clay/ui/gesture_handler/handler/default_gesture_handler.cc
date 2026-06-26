@@ -64,6 +64,7 @@ void DefaultGestureHandler::OnHandle(
   if (handle_by_simultaneous && extra_bundle != nullptr) {
     if (extra_bundle->IsNeedConsumedSimultaneousGesture()) {
       if (gesture_arena_member_ &&
+          gesture_arena_member_->ShouldConsumeGesture() &&
           !page_view_->gesture_manager()->ShouldInterceptGesture()) {
         gesture_arena_member_->GestureScrollBy(
             extra_bundle->SimultaneousDeltaX(),
@@ -170,6 +171,9 @@ bool DefaultGestureHandler::ShouldFail(
   if (!member) {
     return true;
   }
+  if (!member->ShouldConsumeGesture()) {
+    return true;
+  }
 
   if (extra_bundle != nullptr) {
     if (extra_bundle->GestureDirection() ==
@@ -245,7 +249,10 @@ void DefaultGestureHandler::OnUpdate(
     float delta_x, float delta_y, const PointerEvent* pointer_event,
     const std::shared_ptr<GestureExtraBundle>& extra_bundle) {
   auto member = gesture_arena_member_;
-  if (member && !page_view_->gesture_manager()->ShouldInterceptGesture()) {
+  bool should_consume =
+      member && member->ShouldConsumeGesture() &&
+      !page_view_->gesture_manager()->ShouldInterceptGesture();
+  if (should_consume) {
     member->GestureScrollBy(delta_x, delta_y);
   }
   if (extra_bundle != nullptr) {
@@ -254,8 +261,8 @@ void DefaultGestureHandler::OnUpdate(
     extra_bundle->SetSimultaneousDeltaY(delta_y);
   }
 
-  if (std::abs(static_cast<int>(delta_x)) > tap_slop_ ||
-      std::abs(static_cast<int>(delta_y)) > tap_slop_) {
+  if (should_consume && (std::abs(static_cast<int>(delta_x)) > tap_slop_ ||
+                         std::abs(static_cast<int>(delta_y)) > tap_slop_)) {
     if (page_view_) {
       page_view_->OnGestureRecognizedWithSign(sign_);
     }

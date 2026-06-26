@@ -656,6 +656,26 @@ TEST_F_UI(NestedScrollableTest, ManagerStatusTouchOnBounce) {
   EXPECT_EQ(scrollable->GetScrollStatus(), Scrollable::ScrollStatus::kDragging);
 }
 
+TEST_F_UI(NestedScrollableTest, MismatchBlockedSourceStopsCurrentDrag) {
+  TestScrollable* active = new TestScrollable(page_.get(), 100);
+  page_->AddChild(active);
+  TestScrollable* blocked = new TestScrollable(page_.get(), 100);
+  page_->AddChild(blocked);
+
+  page_->nested_scroll_manager()->DragStart(active);
+  EXPECT_EQ(active->nested_scroll_manager()->GetScrollStatus(),
+            Scrollable::ScrollStatus::kDragging);
+  EXPECT_EQ(active->GetScrollStatus(), Scrollable::ScrollStatus::kDragging);
+
+  blocked->ConsumeGesture(
+      0, Value{{"inner", Value(true)}, {"consume", Value(false)}});
+  page_->nested_scroll_manager()->DragUpdate(blocked, {0, 50});
+  EXPECT_EQ(active->nested_scroll_manager()->GetScrollStatus(),
+            Scrollable::ScrollStatus::kIdle);
+  EXPECT_EQ(active->GetScrollStatus(), Scrollable::ScrollStatus::kIdle);
+  EXPECT_EQ(blocked->scroll_offset_, 0);
+}
+
 TEST_F_UI(NestedScrollableTest, ScrollableStatusDrag) {
   TestScrollable* outer = new TestScrollable(page_.get(), 100);
   page_->AddChild(outer);
