@@ -101,6 +101,38 @@ let a;
   <view ios-platform-accessibility-id="test-id" />;
   assertType<string | undefined>(a as IntrinsicElements['view']['ios-platform-accessibility-id']);
 
+  // Pan intercept props
+  <view pan-intercept-direction={0} />;
+  <view pan-intercept-direction={1} />;
+  assertType<0 | 1 | undefined>(a as IntrinsicElements['view']['pan-intercept-direction']);
+  // @ts-expect-error: pan-intercept-direction only accepts 0 or 1
+  <view pan-intercept-direction={2} />;
+
+  <view pan-intercept-scope={0} />;
+  <view pan-intercept-scope={1} />;
+  <view pan-intercept-scope={2} />;
+  <view pan-intercept-scope={3} />;
+  <view pan-intercept-scope={4} />;
+  <view pan-intercept-scope={5} />;
+  assertType<0 | 1 | 2 | 3 | 4 | 5 | undefined>(a as IntrinsicElements['view']['pan-intercept-scope']);
+  // @ts-expect-error: pan-intercept-scope only accepts 0, 1, 2, 3, 4, or 5
+  <view pan-intercept-scope={6} />;
+
+  <view ios-pan-intercept-gesture-class="UIPanGestureRecognizer" />;
+  assertType<string | undefined>(a as IntrinsicElements['view']['ios-pan-intercept-gesture-class']);
+  // @ts-expect-error: ios-pan-intercept-gesture-class only accepts string
+  <view ios-pan-intercept-gesture-class={1} />;
+
+  <view ios-pan-intercept-view-class="UIView" />;
+  assertType<string | undefined>(a as IntrinsicElements['view']['ios-pan-intercept-view-class']);
+  // @ts-expect-error: ios-pan-intercept-view-class only accepts string
+  <view ios-pan-intercept-view-class={1} />;
+
+  <view ios-pan-intercept-view-tag={1001} />;
+  assertType<number | undefined>(a as IntrinsicElements['view']['ios-pan-intercept-view-tag']);
+  // @ts-expect-error: ios-pan-intercept-view-tag only accepts number
+  <view ios-pan-intercept-view-tag="1001" />;
+
   // Focus props
   <view focusable={true} />;
   assertType<boolean | undefined>(a as IntrinsicElements['view']['focusable']);
