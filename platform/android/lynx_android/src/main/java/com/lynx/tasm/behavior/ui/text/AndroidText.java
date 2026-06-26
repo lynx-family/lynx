@@ -101,6 +101,7 @@ public class AndroidText extends AndroidView implements ActionMode.Callback {
   private boolean mShouldResponseMove = false;
   private boolean mIsShowStartHandle = true;
   private boolean mIsShowEndHandle = true;
+  private boolean mDisplayNone = false;
   private final ArrayList<RectF> mTextServiceSelectionBoxes = new ArrayList<>();
   private int mTextServiceSelectionStart = -1;
   private int mTextServiceSelectionEnd = -1;
@@ -149,6 +150,10 @@ public class AndroidText extends AndroidView implements ActionMode.Callback {
     mTextSelectionHandleColor = DEFAULT_TEXT_HANDLE_COLOR;
     mHandleSize = mDefaultHandlePlatformLength =
         Math.round(((LynxContext) context).getScreenMetrics().density * DEFAULT_TEXT_HANDLE_SIZE);
+  }
+
+  public void setDisplayNone(boolean displayNone) {
+    mDisplayNone = displayNone;
   }
 
   public void setTextBundle(TextUpdateBundle bundle) {
@@ -288,6 +293,9 @@ public class AndroidText extends AndroidView implements ActionMode.Callback {
   @Keep
   @Override
   protected void onDraw(Canvas canvas) {
+    if (mDisplayNone) {
+      return;
+    }
     if (super.getRenderer() != null) {
       super.getRenderer().onDraw(canvas);
       if (mTextraPage != null) {
@@ -334,6 +342,9 @@ public class AndroidText extends AndroidView implements ActionMode.Callback {
 
   @Override
   public void dispatchDraw(Canvas canvas) {
+    if (mDisplayNone) {
+      return;
+    }
     super.dispatchDraw(canvas);
     if (mTextraPage != null) {
       drawTextServiceSelectHandle(canvas);

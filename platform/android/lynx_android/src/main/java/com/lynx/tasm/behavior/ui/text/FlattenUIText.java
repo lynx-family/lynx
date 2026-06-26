@@ -186,6 +186,10 @@ public class FlattenUIText extends LynxFlattenUI implements IUIText {
   @Override
   public void onDraw(final Canvas canvas) {
     TraceEvent.beginSection(TraceEventDef.FLATTEN_UI_TEXT_DRAW);
+    if (!getVisibility()) {
+      TraceEvent.endSection(TraceEventDef.FLATTEN_UI_TEXT_DRAW);
+      return;
+    }
     super.onDraw(canvas);
     if (isDetachedWithView()) {
       TraceEvent.endSection(TraceEventDef.FLATTEN_UI_TEXT_DRAW);

@@ -199,6 +199,7 @@ class PaintingContextAndroid : public PaintingCtxPlatformImpl {
     HAS_BOUND,
     HAS_STICKY,
     MAX_HEIGHT,
+    DISPLAY_NONE,
     SIZE
   };
 
@@ -220,7 +221,7 @@ class PaintingContextAndroid : public PaintingCtxPlatformImpl {
       const base::android::ScopedGlobalJavaRef<jobject>& runnable_ref,
       JNIEnv* env);
 
-  static_assert(static_cast<size_t>(IntValueIndex::SIZE) == 19,
+  static_assert(static_cast<size_t>(IntValueIndex::SIZE) == 20,
                 "size has changed, make sure stay in sync with platform");
 
   std::vector<int> patching_ids_;

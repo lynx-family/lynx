@@ -70,7 +70,8 @@ class IntValueIndex {
   public static final int HAS_BOUND = 16;
   public static final int HAS_STICKY = 17;
   public static final int MAX_HEIGHT = 18;
-  public static final int SIZE = 19;
+  public static final int DISPLAY_NONE = 19;
+  public static final int SIZE = 20;
 }
 
 class UIOperationType {
@@ -359,7 +360,7 @@ public final class PaintingContext implements IPaintingContext {
       float paddingTop, float paddingRight, float paddingBottom, float marginLeft, float marginTop,
       float marginRight, float marginBottom, float borderLeftWidth, float borderTopWidth,
       float borderRightWidth, float borderBottomWidth, float[] bounds, float[] sticky,
-      float maxHeight, int nodeIndex) {
+      float maxHeight, int nodeIndex, boolean displayNone) {
     setLayoutData(sign, (int) x, (int) y, (int) width, (int) height, (int) paddingLeft,
         (int) paddingTop, (int) paddingRight, (int) paddingBottom, (int) marginLeft,
         (int) marginTop, (int) marginRight, (int) marginBottom, (int) borderLeftWidth,
@@ -367,7 +368,7 @@ public final class PaintingContext implements IPaintingContext {
         bounds != null
             ? new Rect((int) bounds[0], (int) bounds[1], (int) bounds[2], (int) bounds[3])
             : null,
-        sticky, maxHeight, nodeIndex);
+        sticky, maxHeight, nodeIndex, displayNone);
   }
 
   /**
@@ -957,18 +958,19 @@ public final class PaintingContext implements IPaintingContext {
       int paddingTop, int paddingRight, int paddingBottom, int marginLeft, int marginTop,
       int marginRight, int marginBottom, int borderLeftWidth, int borderTopWidth,
       int borderRightWidth, int borderBottomWidth, Rect bounds, float[] sticky, float maxHeight,
-      int nodeIndex) {
+      int nodeIndex, boolean displayNone) {
     recordUpdateLayout(sign, x, y, width, height, paddingLeft, paddingTop, paddingRight,
         paddingBottom, marginLeft, marginTop, marginRight, marginBottom, borderLeftWidth,
         borderTopWidth, borderRightWidth, borderBottomWidth, bounds, sticky, maxHeight);
     mUIOwner.updateLayout(sign, x, y, width, height, paddingLeft, paddingTop, paddingRight,
         paddingBottom, marginLeft, marginTop, marginRight, marginBottom, borderLeftWidth,
-        borderTopWidth, borderRightWidth, borderBottomWidth, bounds, sticky, maxHeight, nodeIndex);
+        borderTopWidth, borderRightWidth, borderBottomWidth, bounds, sticky, maxHeight, nodeIndex,
+        displayNone);
   }
 
   /*
    * The int array represents the rect(4), paddings(4), margins(4), borders(4), has_bound,
-   * has_sticky and max_height for the layout info.
+   * has_sticky, max_height and display_none for the layout info.
    * The float array allows for variable lengths.
    */
   @CalledByNative
@@ -1002,7 +1004,8 @@ public final class PaintingContext implements IPaintingContext {
           ints[i * size + IntValueIndex.MARGIN_BOTTOM], ints[i * size + IntValueIndex.BORDER_LEFT],
           ints[i * size + IntValueIndex.BORDER_TOP], ints[i * size + IntValueIndex.BORDER_RIGHT],
           ints[i * size + IntValueIndex.BORDER_BOTTOM], rect, sticky,
-          ints[i * size + IntValueIndex.MAX_HEIGHT], nodeIndex[i]);
+          ints[i * size + IntValueIndex.MAX_HEIGHT], nodeIndex[i],
+          ints[i * size + IntValueIndex.DISPLAY_NONE] != 0);
     }
   }
 
