@@ -1151,6 +1151,10 @@ void Fragment::ReconstructEventTargetTreeForExposure() const {
 }
 
 void Fragment::Draw() {
+  if (element()->display_none()) {
+    return;
+  }
+
   // XXX: Maybe this part could run parallely with parent displayList
   // generation. The shared totally different context.
 
