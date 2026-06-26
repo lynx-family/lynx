@@ -92,10 +92,10 @@ class PaintingContext {
                            const float* paddings, const float* margins,
                            const float* borders, const float* bounds,
                            const float* sticky, float max_height,
-                           uint32_t node_index) {
+                           uint32_t node_index, bool display_none) {
     platform_impl_->UpdateLayout(tag, x, y, width, height, paddings, margins,
                                  borders, bounds, sticky, max_height,
-                                 node_index);
+                                 node_index, display_none);
   }
 
   inline void RecordInitialLynxUITreeForReplay(
