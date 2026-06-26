@@ -43,7 +43,7 @@ class LayoutMediator : public tasm::LayoutContext::Delegate,
                       const std::array<float, 4> &margins,
                       const std::array<float, 4> &borders,
                       const std::array<float, 4> *sticky_positions,
-                      float max_height) override;
+                      float max_height, bool display_none) override;
   void OnLayoutAfter(const std::shared_ptr<tasm::PipelineOptions> &option,
                      std::unique_ptr<tasm::PlatformExtraBundleHolder> holder,
                      bool has_layout) override;
