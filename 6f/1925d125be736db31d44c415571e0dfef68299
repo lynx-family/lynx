@@ -1,0 +1,111 @@
+tools/bits_package/harmony_pc/clay_cloud_build_lynx_harmony.sh
+  s_de408ccf19cb82::t_f316920b8a8127 111
+  s_d0728154e17e16::t_5600a16c9cbd52 118
+tools/bits_package/windows/clay_cloud_build_lynx_win.bat
+  s_34df8973b6a5f7::t_61c57c1273fc73 218
+  h_c7499b019d31b1 238 gitai:{"mixed_line_ranges":[{"Single":238}],"operations":[]}
+tools/bits_package/macos/electron_build.sh
+  s_ce0484cd15a77f::t_b28aa2d078783d 306
+  s_dc68cd8109a8b3::t_ffd152587917c8 312
+tools/bits_package/macos/clay_cloud_build_lynx_macos.sh
+  s_88ce646d28048f::t_dac8a5b05e220f 306
+  s_0ab7a103cc69f2::t_a01f017bdf1f63 299
+tools/bits_package/windows/electron_build.bat
+  s_1516484458dcca::t_f7990bdd3d1e57 350
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "6f1925d125be736db31d44c415571e0dfef68299",
+  "prompts": {},
+  "humans": {
+    "h_c7499b019d31b1": {
+      "author": "chenyouhui.duke <chenyouhui.duke@bytedance.com>"
+    }
+  },
+  "sessions": {
+    "s_0ab7a103cc69f2": {
+      "agent_id": {
+        "tool": "trae-cue",
+        "id": "ai_tab-icr-ae2b717a-f5e3-446e-b337-b9fdda797b91",
+        "model": "default"
+      },
+      "human_author": "chenyouhui.duke <chenyouhui.duke@bytedance.com>"
+    },
+    "s_1516484458dcca": {
+      "agent_id": {
+        "tool": "trae-cue",
+        "id": "ai_tab-icr-1fbe33e1-df50-4115-bc79-cd94be20f4b9",
+        "model": "default"
+      },
+      "human_author": "chenyouhui.duke <chenyouhui.duke@bytedance.com>"
+    },
+    "s_34df8973b6a5f7": {
+      "agent_id": {
+        "tool": "trae-cue",
+        "id": "ai_tab-icr-44f14662-4f65-418d-90cb-5144c347b16e",
+        "model": "default"
+      },
+      "human_author": "chenyouhui.duke <chenyouhui.duke@bytedance.com>"
+    },
+    "s_88ce646d28048f": {
+      "agent_id": {
+        "tool": "trae-cue",
+        "id": "ai_tab-icr-a92b06ba-a84b-48af-afe1-fb5377ec87ca",
+        "model": "default"
+      },
+      "human_author": "chenyouhui.duke <chenyouhui.duke@bytedance.com>"
+    },
+    "s_ce0484cd15a77f": {
+      "agent_id": {
+        "tool": "trae-cue",
+        "id": "ai_tab-icr-784d4409-fe98-47b5-a5bc-b2c787ea6aa7",
+        "model": "default"
+      },
+      "human_author": "chenyouhui.duke <chenyouhui.duke@bytedance.com>"
+    },
+    "s_d0728154e17e16": {
+      "agent_id": {
+        "tool": "trae-cue",
+        "id": "ai_tab-icr-8ecae723-893b-4ebb-91e0-c94613b358da",
+        "model": "default"
+      },
+      "human_author": "chenyouhui.duke <chenyouhui.duke@bytedance.com>"
+    },
+    "s_dc68cd8109a8b3": {
+      "agent_id": {
+        "tool": "trae-cue",
+        "id": "ai_tab-icr-8aabb76b-4911-4da8-9feb-96d3d6174142",
+        "model": "default"
+      },
+      "human_author": "chenyouhui.duke <chenyouhui.duke@bytedance.com>"
+    },
+    "s_de408ccf19cb82": {
+      "agent_id": {
+        "tool": "trae-cue",
+        "id": "ai_tab-icr-6b7fc1d7-4633-402f-a356-f9495cec94a9",
+        "model": "default"
+      },
+      "human_author": "chenyouhui.duke <chenyouhui.duke@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {
+    "tools/bits_package/windows/clay_cloud_build_lynx_win.bat": [
+      {
+        "hash": "h_c7499b019d31b1",
+        "line_ranges": [
+          {
+            "Single": 238
+          }
+        ],
+        "mixed_line_ranges": [
+          {
+            "Single": 238
+          }
+        ],
+        "operations": []
+      }
+    ]
+  },
+  "remote_transcripts": {}
+}
