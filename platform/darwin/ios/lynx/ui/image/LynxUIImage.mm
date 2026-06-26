@@ -253,6 +253,7 @@ typedef NS_ENUM(NSInteger, LynxImagePlayState) {
 @property(nonatomic, assign) BOOL enableImageEventReport;
 @property(nonatomic, assign) BOOL enableImageAsyncLayout;
 @property(nonatomic, assign) BOOL enableImageCancelRequest;
+@property(nonatomic, assign) BOOL enableImagePlaceholderResetFix;
 @property(nonatomic, assign) BOOL enableGenericFetcher;
 @property(nonatomic, assign) BOOL enableFetchUIImage;
 @property(nonatomic, strong) NSDictionary* additional_custom_info;
@@ -265,6 +266,7 @@ typedef NS_ENUM(NSInteger, LynxImagePlayState) {
 @property(nonatomic, assign) LynxImagePlayState playState;
 @property(nonatomic, assign) BOOL keepAnimPlayState;
 @property(nonatomic, assign) CGRect regionToDecode;
+@property(nonatomic, assign) BOOL imageFromSrc;
 @end
 
 @implementation LynxUIImage {
@@ -295,12 +297,14 @@ LYNX_REGISTER_UI("image")
   _enableImageEventReport = [LynxEnv.sharedInstance enableImageEventReport];
   _enableImageAsyncLayout = [LynxEnv.sharedInstance enableImageAsyncLayout];
   _enableImageCancelRequest = [LynxEnv.sharedInstance enableImageCancelRequest];
+  _enableImagePlaceholderResetFix = [LynxEnv.sharedInstance enableImagePlaceholderResetFix];
   _frameCacheAutomatically = LynxBooleanOptionUnset;
   _superResolutionScale = 0.0;
   _enableReportInfo = false;
   _playState = LynxImagePlayStateDefault;
   _keepAnimPlayState = NO;
   _regionToDecode = CGRectNull;
+  _imageFromSrc = NO;
 }
 
 - (void)dealloc {
@@ -442,6 +446,7 @@ LYNX_REGISTER_UI("image")
     }
     if (image == nil) {
       [strongSelf setImageToView:image];
+      strongSelf.imageFromSrc = NO;
       return;
     }
     if (strongSelf.enableFadeIn && [strongSelf shouldUseNewImage] && !requestURL.fromMemoryCache) {
@@ -482,6 +487,7 @@ LYNX_REGISTER_UI("image")
 
     if (strongSelf.loopCount <= 0) {
       [strongSelf setImageToView:image];
+      strongSelf.imageFromSrc = requestURL && requestURL.type == LynxImageRequestSrc;
       if (image.images != nil && [image.images count] > 1) {
         strongSelf.view.animationDuration = image.duration;
         if (strongSelf.autoPlay) {
@@ -501,6 +507,7 @@ LYNX_REGISTER_UI("image")
       [[LynxImageLoader imageService] handleAnimatedImage:image
                                                      view:strongSelf.view
                                                 loopCount:strongSelf.loopCount];
+      strongSelf.imageFromSrc = requestURL && requestURL.type == LynxImageRequestSrc;
     }
   };
   if ([NSThread isMainThread]) {
@@ -803,7 +810,9 @@ UIEdgeInsets LynxRoundInsetsToPixel(UIEdgeInsets edgeInsets) {
     if (!errorDetail) {
       requestUrl.imageSize = image.size;
       requestUrl.isSuccess = 1;
-      if (requestUrl.type == LynxImageRequestPlaceholder && strongSelf.image) {
+      if (requestUrl.type == LynxImageRequestPlaceholder &&
+          (strongSelf.image ||
+           (strongSelf.enableImagePlaceholderResetFix && strongSelf.imageFromSrc))) {
         return;
       }
       requestUrl.memoryCost =
@@ -1245,6 +1254,7 @@ UIEdgeInsets LynxRoundInsetsToPixel(UIEdgeInsets edgeInsets) {
 
     LynxUIImage* image = (LynxUIImage*)ui;
     image.view.image = nil;
+    image.imageFromSrc = NO;
     if (![[LynxImageLoader imageService] checkImageType:image.view]) {
       image.view.animationImages = nil;
     }
@@ -1273,6 +1283,7 @@ LYNX_PROP_SETTER("src", setSrc, NSString*) {
   [self markAsDirty];
   if (requestReset || value == nil) {
     self.image = nil;
+    self.imageFromSrc = NO;
     [self resetImage];
     _src = nil;
     return;
@@ -1285,6 +1296,7 @@ LYNX_PROP_SETTER("src", setSrc, NSString*) {
     _src.type = LynxImageRequestSrc;
   }
   if (!newURL || ![newURL.absoluteString isEqualToString:_src.url.absoluteString]) {
+    self.imageFromSrc = NO;
     self.image = nil;
     if (!_deferSrcInvalidation) {
       [self resetImage];
@@ -1302,8 +1314,12 @@ LYNX_PROP_SETTER("src", setSrc, NSString*) {
 LYNX_PROP_SETTER("placeholder", setPlaceholder, NSString*) {
   [self markAsDirty];
   if (requestReset || value == nil) {
-    self.image = nil;
-    [self resetImage];
+    if (self.enableImagePlaceholderResetFix && self.imageFromSrc) {
+      // Keep the current src image when only placeholder is reset.
+    } else {
+      self.image = nil;
+      [self resetImage];
+    }
     _placeholder = nil;
     return;
   }
@@ -1314,9 +1330,13 @@ LYNX_PROP_SETTER("placeholder", setPlaceholder, NSString*) {
     _placeholder.type = LynxImageRequestPlaceholder;
   }
   if (!newURL || ![newURL.absoluteString isEqualToString:_placeholder.url.absoluteString]) {
-    self.image = nil;
-    if (!_deferSrcInvalidation) {
-      [self resetImage];
+    if (self.enableImagePlaceholderResetFix && self.imageFromSrc) {
+      // Keep the current src image when only placeholder changes.
+    } else {
+      self.image = nil;
+      if (!_deferSrcInvalidation) {
+        [self resetImage];
+      }
     }
     _placeholder.imageSize = CGSizeZero;
     _placeholder.url = newURL;

@@ -573,6 +573,16 @@ static void LynxClaySetup() {
   return enableImageCancelRequest;
 }
 
+- (BOOL)enableImagePlaceholderResetFix {
+  static dispatch_once_t onceToken;
+  static BOOL enableImagePlaceholderResetFix = YES;
+  dispatch_once(&onceToken, ^{
+    enableImagePlaceholderResetFix = [self boolFromExternalEnv:LynxEnvEnableImagePlaceholderResetFix
+                                                  defaultValue:YES];
+  });
+  return enableImagePlaceholderResetFix;
+}
+
 - (BOOL)enableImageCIGaussianBlur {
   static dispatch_once_t onceToken;
   static BOOL enableCIGaussianBlur = NO;
@@ -784,6 +794,7 @@ static void LynxClaySetup() {
     @(LynxEnvEnableImageEventReport) : @"enable_image_event_report",
     @(LynxEnvEnableImageAsyncLayout) : @"enable_image_async_layout",
     @(LynxEnvEnableImageCancelRequest) : @"enable_image_cancel_request",
+    @(LynxEnvEnableImagePlaceholderResetFix) : @"enable_image_placeholder_reset_fix",
     @(LynxEnvEnableImageCIGaussianBlur) : @"enable_image_ci_gaussian_blur",
     @(LynxEnvEnableGenericResourceFetcher) : @"enable_generic_resource_fetcher",
     @(LynxEnvEnableAnimationSyncTimeOpt) : @"enable_animation_sync_time_opt",
