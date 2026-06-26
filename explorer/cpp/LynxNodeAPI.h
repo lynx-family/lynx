@@ -23,8 +23,6 @@ class LynxNodeAPI {
 
   void PutEnvByToken(uint64_t token_id, void* napi_env_ptr);
   void RemoveEnvByToken(uint64_t token_id);
-  void RegisterStaticNodeAddon(const std::string& addon_name,
-                               void* register_func);
   void RequireNodeAddonByToken(uint64_t token_id,
                                const std::string& addon_name);
   void RequireNodeAddon(void* napi_env_ptr, const std::string& addon_name);
@@ -45,10 +43,7 @@ class LynxNodeAPI {
   std::mutex env_mutex_;
   std::unordered_map<uint64_t, void*> tokenEnvMap_;
   std::unordered_map<std::string, NodeAddon> nodeAddons_;
-  std::unordered_map<std::string, void*> staticNodeAddons_;
 };
-
-void RegisterStaticNodeAddon(const char* addon_name, void* register_func);
 
 }  // namespace explorer
 }  // namespace lynx

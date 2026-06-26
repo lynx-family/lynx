@@ -44,6 +44,8 @@
 namespace lynx {
 namespace explorer {
 
+extern "C" bool napi_find_module_weak(const char* name, napi_module* out);
+
 namespace {
 
 #if defined(__ANDROID__) || defined(__OHOS__) || defined(_WIN32)
@@ -154,23 +156,6 @@ void LynxNodeAPI::RemoveEnvByToken(uint64_t token_id) {
   tokenEnvMap_.erase(token_id);
 }
 
-void LynxNodeAPI::RegisterStaticNodeAddon(const std::string& addon_name,
-                                          void* register_func) {
-  std::lock_guard<std::mutex> lock(env_mutex_);
-  if (addon_name.empty() || register_func == nullptr) {
-    return;
-  }
-  staticNodeAddons_[addon_name] = register_func;
-  nodeAddons_.erase(addon_name);
-}
-
-void RegisterStaticNodeAddon(const char* addon_name, void* register_func) {
-  if (addon_name == nullptr || register_func == nullptr) {
-    return;
-  }
-  LynxNodeAPI::GetInstance().RegisterStaticNodeAddon(addon_name, register_func);
-}
-
 void LynxNodeAPI::RequireNodeAddonByToken(uint64_t token_id,
                                           const std::string& addon_name) {
   void* env_ptr = nullptr;
@@ -265,19 +250,21 @@ void LynxNodeAPI::RequireNodeAddon(void* napi_env_ptr,
 bool LynxNodeAPI::LoadNodeAddon(NodeAddon& addon,
                                 const std::string& libraryName) const {
 #if defined(__APPLE__)
-  auto it = staticNodeAddons_.find(libraryName);
-  if (it == staticNodeAddons_.end() || it->second == nullptr) {
+  napi_module module = {};
+  if (!napi_find_module_weak(libraryName.c_str(), &module) ||
+      module.nm_register_func == nullptr) {
     std::fprintf(
         stderr,
         "Failed to find statically linked Node Addon '%s'. Ensure it is "
-        "linked into the app so its constructor can register itself before "
+        "linked into the app so its constructor can call "
+        "napi_module_register before "
         "calling requireNodeAddon.\n",
         libraryName.c_str());
     return false;
   }
   addon.moduleHandle = nullptr;
   addon.generatedName = libraryName;
-  addon.init = it->second;
+  addon.init = reinterpret_cast<void*>(module.nm_register_func);
   return true;
 #elif defined(_WIN32) || defined(__ANDROID__) || defined(__OHOS__)
 #if defined(_WIN32)
