@@ -5,6 +5,7 @@
 package com.lynx.tasm.behavior.ui;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
@@ -54,6 +55,18 @@ public class LynxBaseUITest {
       e.printStackTrace();
       assertEquals(1, 0, 0);
     }
+  }
+
+  @Test
+  public void displayNoneAffectsVisibility() {
+    LynxBaseUI ui = new UIView(mContext);
+    assertTrue(ui.getVisibility());
+
+    ui.setDisplayNone(true);
+    assertFalse(ui.getVisibility());
+
+    ui.setDisplayNone(false);
+    assertTrue(ui.getVisibility());
   }
 
   @Test

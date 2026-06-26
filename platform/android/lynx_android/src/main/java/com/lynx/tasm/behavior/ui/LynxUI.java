@@ -1066,7 +1066,7 @@ public abstract class LynxUI<T extends View> extends LynxBaseUI implements IProc
 
   @Override
   public boolean getVisibility() {
-    return mSetVisibleByCSS;
+    return mSetVisibleByCSS && super.getVisibility();
   }
 
   @Override

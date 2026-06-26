@@ -100,8 +100,8 @@ class PaintingContextAndroid : public PaintingCtxPlatformImpl {
   void UpdateLayout(int tag, float x, float y, float width, float height,
                     const float* paddings, const float* margins,
                     const float* borders, const float* bounds,
-                    const float* sticky, float max_height,
-                    uint32_t node_index) override;
+                    const float* sticky, float max_height, uint32_t node_index,
+                    bool display_none) override;
   void RecordInitialLynxUITreeForReplay(
       std::vector<InitialLynxUITreeNodeForReplay> nodes) override;
   void UpdatePlatformExtraBundle(int32_t id,
@@ -199,6 +199,7 @@ class PaintingContextAndroid : public PaintingCtxPlatformImpl {
     HAS_BOUND,
     HAS_STICKY,
     MAX_HEIGHT,
+    DISPLAY_NONE,
     SIZE
   };
 
@@ -220,7 +221,7 @@ class PaintingContextAndroid : public PaintingCtxPlatformImpl {
       const base::android::ScopedGlobalJavaRef<jobject>& runnable_ref,
       JNIEnv* env);
 
-  static_assert(static_cast<size_t>(IntValueIndex::SIZE) == 19,
+  static_assert(static_cast<size_t>(IntValueIndex::SIZE) == 20,
                 "size has changed, make sure stay in sync with platform");
 
   std::vector<int> patching_ids_;

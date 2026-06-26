@@ -57,7 +57,7 @@ class PaintingContextHarmonyRef : public PaintingCtxPlatformRef {
   void UpdateLayout(int tag, float x, float y, float width, float height,
                     const float* paddings, const float* margins,
                     const float* borders, const float* sticky, float max_height,
-                    uint32_t node_index);
+                    uint32_t node_index, bool display_none);
   void OnLayoutFinish(int32_t list_comp_id, int64_t operation_id);
   void StopExposure(const lepus::Value& options);
   void ResumeExposure();
@@ -90,8 +90,8 @@ class PaintingContextHarmony : public PaintingCtxPlatformImpl {
   void UpdateLayout(int tag, float x, float y, float width, float height,
                     const float* paddings, const float* margins,
                     const float* borders, const float* bounds,
-                    const float* sticky, float max_height,
-                    uint32_t node_index) override;
+                    const float* sticky, float max_height, uint32_t node_index,
+                    bool display_none) override;
   void SetKeyframes(fml::RefPtr<PropBundle> keyframes_data) override;
   void Flush() override;
   void HandleValidate(int tag) override;
