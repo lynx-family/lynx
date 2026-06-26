@@ -5601,6 +5601,7 @@ void FiberElement::UpdateLayoutInfo() {
   borders_[1] = layout_result.border_[starlight::kTop];
   borders_[2] = layout_result.border_[starlight::kRight];
   borders_[3] = layout_result.border_[starlight::kBottom];
+  display_none_ = sl_node_->GetShouldDisplayNone();
 
   if (IsShadowNodeCustom()) {
     element_manager_->layout_context()->OnLayout(id_, left_, top_, width_,
