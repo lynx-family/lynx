@@ -11,7 +11,11 @@
 #include "third_party/rapidjson/document.h"
 #define private public
 #include "core/services/recorder/template_assembler_recorder.h"
+#include "core/services/recorder/testbench_base_recorder.h"
 #undef private
+
+#include <condition_variable>
+#include <mutex>
 
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
@@ -306,6 +310,75 @@ TEST(TemplateAssemblerRecorder, CreateJSONFromRequireTemplate) {
   EXPECT_TRUE(result.GetObject().MemberCount() == 2);
   EXPECT_STREQ(result["url"].GetString(), url.c_str());
   EXPECT_TRUE(result["sync_tag"].GetBool());
+}
+
+void WaitRecorderThread(fml::Thread& thread) {
+  std::condition_variable condition;
+  std::mutex local_mutex;
+  std::unique_lock<std::mutex> lock(local_mutex);
+  thread.GetTaskRunner()->PostTask([&condition, &local_mutex]() {
+    std::unique_lock<std::mutex> lock(local_mutex);
+    condition.notify_one();
+  });
+  condition.wait(lock);
+}
+
+TEST(TemplateAssemblerRecorder, RecordExternalScriptAsLoadComponent) {
+  TestBenchBaseRecorder& recorder = TestBenchBaseRecorder::GetInstance();
+  int64_t record_id = 42;
+  recorder.is_recording_ = true;
+  recorder.CreateRecordedFile(record_id);
+
+  const std::string url = "/doubao-apps-api.template.js";
+  const std::string content = "external-template-js-content";
+  TemplateAssemblerRecorder::RecordExternalScriptAsLoadComponent(url, content,
+                                                                 record_id);
+  WaitRecorderThread(recorder.thread_);
+
+  rapidjson::Value& action_list =
+      recorder.GetRecordedFile(record_id)[kActionList];
+  ASSERT_TRUE(action_list.IsArray());
+  ASSERT_EQ(action_list.Size(), 1u);
+  const rapidjson::Value& action = action_list[0];
+  EXPECT_STREQ(action[kFunctionName].GetString(),
+               kFuncLoadComponentWithCallback);
+  const rapidjson::Value& params = action[kParams];
+  EXPECT_STREQ(params[kParamUrl].GetString(), url.c_str());
+  EXPECT_FALSE(params[kSyncTag].GetBool());
+  EXPECT_EQ(params[kCallbackId].GetInt(), -1);
+  ASSERT_TRUE(params[kParamSource].IsString());
+  EXPECT_GT(params[kParamSource].GetStringLength(), 0u);
+
+  // TestBenchBaseRecorder is a singleton shared across tests, so clean up the
+  // record written here to avoid leaking state into other test cases.
+  recorder.RemoveRecord(record_id);
+  WaitRecorderThread(recorder.thread_);
+}
+
+TEST(TemplateAssemblerRecorder,
+     RecordExternalScriptAsLoadComponentSkipsDuplicateUrl) {
+  TestBenchBaseRecorder& recorder = TestBenchBaseRecorder::GetInstance();
+  int64_t record_id = 43;
+  recorder.is_recording_ = true;
+  recorder.CreateRecordedFile(record_id);
+
+  const std::string url = "/doubao-apps-framework.template.js";
+  const std::string content = "external-template-js-content";
+  TemplateAssemblerRecorder::RecordExternalScriptAsLoadComponent(url, content,
+                                                                 record_id);
+  TemplateAssemblerRecorder::RecordExternalScriptAsLoadComponent(url, content,
+                                                                 record_id);
+  WaitRecorderThread(recorder.thread_);
+
+  rapidjson::Value& action_list =
+      recorder.GetRecordedFile(record_id)[kActionList];
+  ASSERT_TRUE(action_list.IsArray());
+  EXPECT_EQ(action_list.Size(), 1u);
+
+  // TestBenchBaseRecorder is a singleton shared across tests, so clean up the
+  // record written here to avoid leaking state into other test cases.
+  recorder.RemoveRecord(record_id);
+  WaitRecorderThread(recorder.thread_);
 }
 
 TEST(TemplateAssemblerRecorder, CreateJSONFromLoadComponentWithCallback) {

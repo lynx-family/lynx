@@ -64,6 +64,13 @@ class TemplateAssemblerRecorder {
                                               std::vector<uint8_t>& source,
                                               bool sync, int32_t callback_id,
                                               int64_t record_id);
+  // Dual-write external JS (e.g. /doubao-apps-api.template.js) into the
+  // Action List as a LoadComponentWithCallback action so replay can serve
+  // them from the recording without going to the network. Duplicate loads
+  // of the same url are skipped within one recording session.
+  static void RecordExternalScriptAsLoadComponent(const std::string& url,
+                                                  const std::string& content,
+                                                  int64_t record_id);
   static void RecordSwitchEngineFromUIThread(bool attach, int64_t record_id);
 
  private:

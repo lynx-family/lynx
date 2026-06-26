@@ -15,6 +15,7 @@
 #include "core/shared_data/white_board_delegate.h"
 #include "core/shell/common/shell_trace_event_def.h"
 #if ENABLE_TESTBENCH_RECORDER
+#include "core/services/recorder/template_assembler_recorder.h"
 #include "core/services/recorder/testbench_base_recorder.h"
 #endif
 
@@ -116,6 +117,11 @@ runtime::js::JsContent BTSRuntimeMediator::GetJSContentFromExternal(
 #if ENABLE_TESTBENCH_RECORDER
   tasm::recorder::TestBenchBaseRecorder::GetInstance().RecordScripts(
       name.c_str(), external_resource_content.c_str(), record_id_);
+  if (type == runtime::js::JsContent::Type::SOURCE) {
+    tasm::recorder::TemplateAssemblerRecorder::
+        RecordExternalScriptAsLoadComponent(name, external_resource_content,
+                                            record_id_);
+  }
   return {std::move(external_resource_content), type};
 #else
   return {std::move(external_resource_content), type};

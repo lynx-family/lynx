@@ -511,6 +511,20 @@ void TemplateAssemblerRecorder::RecordLoadComponentWithCallback(
       kFuncLoadComponentWithCallback, params_val, record_id);
 }
 
+void TemplateAssemblerRecorder::RecordExternalScriptAsLoadComponent(
+    const std::string& url, const std::string& content, int64_t record_id) {
+  if (!TestBenchBaseRecorder::GetInstance().IsRecordingProcess() ||
+      url.empty() || content.empty()) {
+    return;
+  }
+  if (!TestBenchBaseRecorder::GetInstance().TryRecordExternalScriptUrl(
+          record_id, url)) {
+    return;
+  }
+  std::vector<uint8_t> source(content.begin(), content.end());
+  RecordLoadComponentWithCallback(url, source, false, -1, record_id);
+}
+
 RecordRequireTemplateScope::RecordRequireTemplateScope(TemplateAssembler* tasm,
                                                        const std::string& url,
                                                        int64_t record_id)

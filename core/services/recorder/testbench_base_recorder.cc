@@ -430,6 +430,12 @@ void TestBenchBaseRecorder::RecordDebugInfo(int64_t record_id,
   thread_.GetTaskRunner()->PostTask(std::move(record_debug_info_task));
 }
 
+bool TestBenchBaseRecorder::TryRecordExternalScriptUrl(int64_t record_id,
+                                                       const std::string& url) {
+  std::lock_guard<std::mutex> lock(recorded_external_script_urls_mutex_);
+  return recorded_external_script_urls_[record_id].insert(url).second;
+}
+
 void TestBenchBaseRecorder::RecordScripts(const char* url, const char* source,
                                           int64_t record_id) {
   auto record_scripts_task = [this, url = std::string(url),
@@ -577,6 +583,10 @@ void TestBenchBaseRecorder::Clear() {
   url_map_.clear();
   session_ids_.clear();
   resource_table_.SetNull();
+  {
+    std::lock_guard<std::mutex> lock(recorded_external_script_urls_mutex_);
+    recorded_external_script_urls_.clear();
+  }
   GetAllocator().Clear();
 }
 

@@ -7,8 +7,10 @@
 
 #include <map>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 #include "base/include/closure.h"
@@ -45,6 +47,10 @@ class TestBenchBaseRecorder {
 
   void RecordScripts(const char* url, const char* source, int64_t record_id);
 
+  // Returns false if this external script url was already recorded for
+  // record_id in the current recording session.
+  bool TryRecordExternalScriptUrl(int64_t record_id, const std::string& url);
+
   rapidjson::Document::AllocatorType& GetAllocator();
   void SetRecorderPath(const std::string& path);
   void SetScreenSize(int64_t record_id, float screen_width,
@@ -79,6 +85,9 @@ class TestBenchBaseRecorder {
   std::unordered_map<int64_t, rapidjson::Value> replay_config_map_;
   std::unordered_map<int64_t, std::string> url_map_;
   std::unordered_map<int64_t, int64_t> session_ids_;
+  std::mutex recorded_external_script_urls_mutex_;
+  std::unordered_map<int64_t, std::unordered_set<std::string>>
+      recorded_external_script_urls_;
   fml::Thread thread_;
   void RecordActionKernel(const char* function_name, rapidjson::Value params,
                           int64_t record_id,
