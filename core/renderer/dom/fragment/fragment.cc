@@ -1088,7 +1088,7 @@ void Fragment::OnDraw(DisplayListBuilder& display_list_builder) {
 }
 
 void Fragment::DrawFull(DisplayListBuilder& display_list_builder) {
-  if (element()->IsShadowNodeVirtual()) {
+  if (element()->IsShadowNodeVirtual() || element()->display_none()) {
     // No contents to be rendered for virtual shadow nodes.
     return;
   }
@@ -1161,9 +1161,24 @@ void Fragment::Draw() {
     builder.Reserve(draw_node_capacity_);
   }
 
-  OnDraw(builder);
+  if (!element()->display_none()) {
+    OnDraw(builder);
 
-  CheckRootIfNeedClipBounds(builder);
+    CheckRootIfNeedClipBounds(builder);
+  } else {
+    // display:none: still emit a display list containing only this node's
+    // Begin/End so the platform layer receives an update and clears any stale
+    // content / sublayers / event-target state instead of keeping the previous
+    // frame.
+    builder.Begin(id(),
+                  behavior_ == nullptr ? PlatformRendererType::kUnknown
+                                       : behavior_->GetType(),
+                  layout_info_.layout_result.offset_.X(),
+                  layout_info_.layout_result.offset_.Y(),
+                  layout_info_.layout_result.size_.width_,
+                  layout_info_.layout_result.size_.height_);
+    builder.End();
+  }
 
   painting_context()->impl()->CastToNativeCtx()->UpdateDisplayList(
       id(), builder.Build());
