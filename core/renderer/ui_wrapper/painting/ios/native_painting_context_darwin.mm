@@ -253,15 +253,32 @@ void NativePaintingCtxDarwin::DestroyTextBundle(int id) {
   });
 }
 
-void NativePaintingCtxDarwin::InsertListItemPaintingNode(int32_t list_id, int32_t child_id) {}
+void NativePaintingCtxDarwin::InsertListItemPaintingNode(int32_t list_id, int32_t child_id) {
+  Enqueue([ref = platform_ref_, list_id, child_id]() {
+    std::static_pointer_cast<NativePaintingCtxPlatformDarwinRef>(ref)->InsertListItemPaintingNode(
+        list_id, child_id);
+  });
+}
 
-void NativePaintingCtxDarwin::RemoveListItemPaintingNode(int32_t list_id, int32_t child_id) {}
+void NativePaintingCtxDarwin::RemoveListItemPaintingNode(int32_t list_id, int32_t child_id) {
+  Enqueue([ref = platform_ref_, list_id, child_id]() {
+    std::static_pointer_cast<NativePaintingCtxPlatformDarwinRef>(ref)->RemoveListItemPaintingNode(
+        list_id, child_id);
+  });
+}
 
 void NativePaintingCtxDarwin::UpdateContentOffsetForListContainer(int32_t container_id,
                                                                   float content_size, float delta_x,
                                                                   float delta_y,
                                                                   bool is_init_scroll_offset,
-                                                                  bool from_layout) {}
+                                                                  bool from_layout) {
+  Enqueue([ref = platform_ref_, container_id, content_size, delta_x, delta_y, is_init_scroll_offset,
+           from_layout]() {
+    std::static_pointer_cast<NativePaintingCtxPlatformDarwinRef>(ref)
+        ->UpdateContentOffsetForListContainer(container_id, content_size, delta_x, delta_y,
+                                              is_init_scroll_offset, from_layout);
+  });
+}
 
 void NativePaintingCtxDarwin::ReconstructEventTargetTreeRecursively() {
   Enqueue([ref = platform_ref_]() {

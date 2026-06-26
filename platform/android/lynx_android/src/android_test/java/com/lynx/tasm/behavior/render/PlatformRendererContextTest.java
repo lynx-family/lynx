@@ -17,9 +17,12 @@ import com.lynx.tasm.INativeLibraryLoader;
 import com.lynx.tasm.LynxEnv;
 import com.lynx.tasm.behavior.BehaviorRegistry;
 import com.lynx.tasm.behavior.LynxContext;
+import com.lynx.tasm.behavior.LynxUIOwner;
 import com.lynx.tasm.behavior.ui.LynxBaseUI;
+import com.lynx.tasm.behavior.ui.LynxUI;
 import com.lynx.tasm.behavior.ui.PropBundle;
 import com.lynx.tasm.behavior.ui.UIBody;
+import com.lynx.tasm.behavior.ui.view.AndroidView;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.concurrent.atomic.AtomicReference;
@@ -123,6 +126,51 @@ public class PlatformRendererContextTest {
 
     rendererContext.insertPlatformRenderer(1, 2, 3);
     verify(mockParentView).addView(mockChildView, 3);
+  }
+
+  @Test
+  public void testCreateListItemExtendedRendererUsesUIOwnerHost() {
+    LynxUIOwner owner = mock(LynxUIOwner.class);
+    LynxUI createdUI = mock(LynxUI.class);
+    AndroidView host = mock(AndroidView.class);
+    Renderer renderer = new Renderer(rendererContext, 10);
+    when(mockLynxContext.getLynxUIOwner()).thenReturn(owner);
+    when(owner.getNode(10)).thenReturn(createdUI);
+    when(createdUI.getView()).thenReturn(host);
+    when(host.getView()).thenReturn(host);
+    when(host.createRenderer(any(PlatformRendererContext.class), eq(10))).thenReturn(renderer);
+
+    rendererContext.createPlatformExtendedRenderer(10, "list-item", null);
+
+    assertSame(host, rendererContext.mViewHolder.get(10));
+    assertSame(createdUI, renderer.getUIHost());
+    verify(owner).createView(
+        anyInt(), eq("list-item"), any(), any(), any(), anyBoolean(), anyInt(), any());
+    verify(owner, never()).cleanupCreatedView(anyInt(), eq("list-item"), any());
+  }
+
+  @Test
+  public void testListItemPaintingNodeUsesRendererHostAttachPath() {
+    Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
+    FrameLayout listView = new FrameLayout(context);
+    FrameLayout childView = new FrameLayout(context);
+    Renderer listRenderer = new Renderer(rendererContext, 1);
+    Renderer childRenderer = new Renderer(rendererContext, 2);
+    IRendererHost listHost = createHost(listView, listRenderer);
+    IRendererHost childHost = createHost(childView, childRenderer);
+    listRenderer.setRenderHost(listHost);
+    childRenderer.setRenderHost(childHost);
+    rendererContext.mViewHolder.put(1, listHost);
+    rendererContext.mViewHolder.put(2, childHost);
+
+    rendererContext.insertListItemPaintingNode(1, 2);
+    assertSame(listView, childView.getParent());
+
+    rendererContext.insertListItemPaintingNode(1, 2);
+    assertEquals(1, listView.getChildCount());
+
+    rendererContext.removeListItemPaintingNode(1, 2);
+    assertNull(childView.getParent());
   }
 
   @Test

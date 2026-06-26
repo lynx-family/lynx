@@ -270,6 +270,9 @@ void ListChildrenHelper::HandleLayoutOrScrollResult(
     last_binding_children_.erase(item_holder);
     return false;
   });
+  // Update new children before inserting them into the platform list. Some
+  // platform hosts position children from the renderer frame during insertion.
+  ForEachChild(new_added_children, update_handler);
   // Handle insert.
   ForEachChild(new_added_children, insert_handler);
   // Handle recycle.
@@ -278,7 +281,13 @@ void ListChildrenHelper::HandleLayoutOrScrollResult(
   last_binding_children_.clear();
   last_binding_children_.insert(new_binding_children.begin(),
                                 new_binding_children.end());
-  ForEachChild(last_binding_children_, update_handler);
+  ForEachChild(last_binding_children_, [&new_added_children, &update_handler](
+                                           ItemHolder* item_holder) {
+    if (new_added_children.find(item_holder) != new_added_children.end()) {
+      return false;
+    }
+    return update_handler(item_holder);
+  });
 }
 
 ItemHolder* ListChildrenHelper::GetFirstChildFrom(

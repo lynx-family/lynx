@@ -1396,6 +1396,16 @@ void Fragment::UpdateLayout(float left, float top, bool transition_view) {
   layout_info_.layout_result.offset_.SetX(left);
   layout_info_.layout_result.offset_.SetY(top);
   UpdateRenderOffsetRecursively(0, 0, this);
+  if (has_platform_renderer_) {
+    painting_context()->UpdateLayout(
+        id(), left, top, element()->width(), element()->height(),
+        element()->paddings().data(), element()->margins().data(),
+        element()->borders().data(), nullptr, nullptr, element()->max_height(),
+        element()->NodeIndex());
+    if (NeedRedraw()) {
+      Draw();
+    }
+  }
 }
 
 void Fragment::CheckRootIfNeedClipBounds(

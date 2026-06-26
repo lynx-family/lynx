@@ -14,11 +14,14 @@
 
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/dom/fiber/image_element.h"
+#include "core/renderer/dom/fiber/list_element.h"
 #include "core/renderer/dom/fiber/text_element.h"
 #include "core/renderer/dom/fiber/view_element.h"
 #include "core/renderer/dom/fragment/display_list_builder.h"
 #include "core/renderer/dom/fragment/fragment_behavior.h"
 #include "core/renderer/dom/fragment/image_fragment_behavior.h"
+#include "core/renderer/dom/fragment/list_fragment_behavior.h"
+#include "core/renderer/dom/fragment/list_item_fragment_behavior.h"
 #include "core/renderer/lynx_env_config.h"
 #include "core/renderer/starlight/types/layout_result.h"
 #include "core/renderer/tasm/react/testing/mock_painting_context.h"
@@ -144,6 +147,95 @@ class TestNativePaintingCtxPlatformRef : public NativePaintingCtxPlatformRef {
   std::unordered_set<int32_t> scrollable_signs;
 };
 
+class TestNativePaintingContext : public NativePaintingContext {
+ public:
+  explicit TestNativePaintingContext(
+      std::shared_ptr<TestNativePaintingCtxPlatformRef> platform_ref)
+      : platform_ref_(std::move(platform_ref)) {}
+
+  void OnFirstScreen() override {}
+  void FinishTasmOperation(
+      const std::shared_ptr<PipelineOptions>& options) override {}
+  void FinishLayoutOperation(
+      const std::shared_ptr<PipelineOptions>& options) override {}
+  void CreatePlatformRenderer(
+      int id, PlatformRendererType type,
+      const fml::RefPtr<PropBundle>& init_data) override {
+    platform_ref_->CreatePlatformRenderer(id, type, init_data);
+  }
+  void CreatePlatformExtendedRenderer(
+      int id, const base::String& tag_name,
+      const fml::RefPtr<PropBundle>& init_data) override {
+    platform_ref_->CreatePlatformExtendedRenderer(id, tag_name, init_data);
+  }
+  void UpdateDisplayList(int id, DisplayList list) override {
+    platform_ref_->UpdateDisplayList(id, std::move(list));
+  }
+  void CreateImage(int id, base::String src, float width, float height,
+                   int32_t event_mask = 0) override {}
+  void UpdateTextBundle(int id, intptr_t bundle) override {}
+  void DestroyTextBundle(int id) override {}
+  void InsertListItemPaintingNode(int32_t list_id, int32_t child_id) override {
+    platform_ref_->InsertListItemPaintingNode(list_id, child_id);
+  }
+  void RemoveListItemPaintingNode(int32_t list_id, int32_t child_id) override {
+    platform_ref_->RemoveListItemPaintingNode(list_id, child_id);
+  }
+  void UpdateContentOffsetForListContainer(int32_t container_id,
+                                           float content_size, float delta_x,
+                                           float delta_y,
+                                           bool is_init_scroll_offset,
+                                           bool from_layout) override {
+    platform_ref_->UpdateContentOffsetForListContainer(
+        container_id, content_size, delta_x, delta_y, is_init_scroll_offset,
+        from_layout);
+  }
+  void ReconstructEventTargetTreeRecursively() override {}
+  void UpdatePlatformEventBundle(int id, PlatformEventBundle bundle) override {
+    platform_ref_->UpdatePlatformEventBundle(id, std::move(bundle));
+  }
+
+ private:
+  std::shared_ptr<TestNativePaintingCtxPlatformRef> platform_ref_;
+};
+
+class TestNativeMockPaintingContext : public MockPaintingContext {
+ public:
+  explicit TestNativeMockPaintingContext(
+      std::shared_ptr<TestNativePaintingCtxPlatformRef> platform_ref)
+      : native_ctx_(platform_ref) {
+    platform_ref_ = std::move(platform_ref);
+  }
+
+  NativePaintingContext* CastToNativeCtx() override { return &native_ctx_; }
+
+ private:
+  TestNativePaintingContext native_ctx_;
+};
+
+std::unique_ptr<ElementManager> CreateElementManagerWithNativeCtx(
+    test::MockTasmDelegate* tasm_delegate,
+    std::shared_ptr<TestNativePaintingCtxPlatformRef> platform_ref) {
+  LynxEnvConfig lynx_env_config(kConfigWidth, kConfigHeight,
+                                kDefaultLayoutsUnitPerPx,
+                                kDefaultPhysicalPixelsPerLayoutUnit);
+  auto manager = std::make_unique<ElementManager>(
+      std::make_unique<TestNativeMockPaintingContext>(std::move(platform_ref)),
+      tasm_delegate, lynx_env_config);
+  auto config = std::make_shared<PageConfig>();
+  config->SetEnableZIndex(true);
+  config->SetEnableFiberArch(true);
+  manager->SetConfig(config);
+  return manager;
+}
+
+bool ConfigureCUIList(ListElement* list) {
+  list->SetAttribute("custom-list-name", lepus::Value("list-container"));
+  list->ResolveEnableNativeList();
+  list->ResolvePlatformNodeTag();
+  return list->DisableListPlatformImplementation();
+}
+
 TEST_F(FragmentTest, CreateLayerIfNeededWritesFlattenInitData) {
   auto element = manager->CreateFiberText("text");
   element->MarkAsDirectChildOfCompatibleComponent(true);
@@ -160,6 +252,48 @@ TEST_F(FragmentTest, CreateLayerIfNeededWritesFlattenInitData) {
   ASSERT_TRUE(props->Contains(kTendsToFlattenInitDataKey));
   EXPECT_TRUE(props->GetPropsMap().at(kTendsToFlattenInitDataKey).Bool());
   EXPECT_TRUE(props->Contains(kDirectChildOfCompatibleComponentInitDataKey));
+}
+
+TEST_F(FragmentTest, CUIListCreatesTypedListRenderer) {
+  auto platform_ref = std::make_shared<TestNativePaintingCtxPlatformRef>();
+  auto manager =
+      CreateElementManagerWithNativeCtx(tasm_mediator.get(), platform_ref);
+  auto list = manager->CreateFiberList(nullptr, "list", lepus::Value(),
+                                       lepus::Value(), lepus::Value());
+  ASSERT_TRUE(ConfigureCUIList(list.get()));
+
+  Fragment fragment(list.get());
+  fragment.SetBehavior(std::make_unique<ListFragmentBehavior>(&fragment));
+
+  fragment.CreateLayerIfNeeded(nullptr);
+
+  auto* renderer = static_cast<TestPlatformRenderer*>(
+      platform_ref->renderers_.at(fragment.id()).get());
+  EXPECT_EQ(renderer->GetPlatformRendererType(), PlatformRendererType::kList);
+  EXPECT_FALSE(renderer->IsPlatformExtendedRenderer());
+}
+
+TEST_F(FragmentTest, CUIListItemCreatesTypedListItemRenderer) {
+  auto platform_ref = std::make_shared<TestNativePaintingCtxPlatformRef>();
+  auto manager =
+      CreateElementManagerWithNativeCtx(tasm_mediator.get(), platform_ref);
+  auto list = manager->CreateFiberList(nullptr, "list", lepus::Value(),
+                                       lepus::Value(), lepus::Value());
+  ASSERT_TRUE(ConfigureCUIList(list.get()));
+  auto list_item = manager->CreateFiberView();
+  list->InsertNode(list_item);
+  ASSERT_TRUE(list_item->is_list_item());
+
+  Fragment fragment(list_item.get());
+  fragment.SetBehavior(std::make_unique<ListItemFragmentBehavior>(&fragment));
+
+  fragment.CreateLayerIfNeeded(nullptr);
+
+  auto* renderer = static_cast<TestPlatformRenderer*>(
+      platform_ref->renderers_.at(fragment.id()).get());
+  EXPECT_EQ(renderer->GetPlatformRendererType(),
+            PlatformRendererType::kListItem);
+  EXPECT_FALSE(renderer->IsPlatformExtendedRenderer());
 }
 
 TEST_F(FragmentTest, ReusedEventTargetTreeRefreshesScrollOffsetForHitTest) {

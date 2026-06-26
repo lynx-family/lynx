@@ -12,10 +12,31 @@
 #import <XCTest/XCTest.h>
 #import <malloc/malloc.h>
 #include <objc/runtime.h>
+#include <memory>
 #include <utility>
 #include "core/renderer/dom/fragment/display_list.h"
+#include "core/renderer/ui_wrapper/painting/ios/native_painting_context_platform_darwin_ref.h"
 #include "core/renderer/ui_wrapper/painting/ios/platform_renderer_context_darwin.h"
 #include "core/renderer/ui_wrapper/painting/ios/platform_renderer_darwin.h"
+#include "core/renderer/ui_wrapper/painting/ios/platform_renderer_darwin_factory.h"
+
+namespace {
+
+class TestNativePaintingCtxPlatformDarwinRef
+    : public lynx::tasm::NativePaintingCtxPlatformDarwinRef {
+ public:
+  using NativePaintingCtxPlatformDarwinRef::NativePaintingCtxPlatformDarwinRef;
+
+  lynx::tasm::PlatformRendererDarwin* GetDarwinRenderer(int32_t sign) {
+    auto it = renderers_.find(sign);
+    if (it == renderers_.end()) {
+      return nullptr;
+    }
+    return static_cast<lynx::tasm::PlatformRendererDarwin*>(it->second.get());
+  }
+};
+
+}  // namespace
 
 @interface LynxRenderer (Testing)
 - (void)ensureLynxDisplayListApplier;
@@ -234,6 +255,29 @@
   XCTAssertEqualWithAccuracy(view.layer.transform.m22, 0.70710677f, 0.001f);
   XCTAssertEqualWithAccuracy(view.layer.transform.m41, 60.0f, 0.001f);
   XCTAssertEqualWithAccuracy(view.layer.transform.m42, -24.852814f, 0.001f);
+}
+
+- (void)testNativePaintingPlatformRefAttachesListItemRendererHost {
+  lynx::tasm::PlatformRendererContextDarwin context(nil);
+  TestNativePaintingCtxPlatformDarwinRef ref(
+      std::make_unique<lynx::tasm::PlatformRendererDarwinFactory>(&context));
+  ref.CreatePlatformRenderer(1, PlatformRendererType::kList, fml::RefPtr<lynx::tasm::PropBundle>());
+  ref.CreatePlatformRenderer(2, PlatformRendererType::kListItem,
+                             fml::RefPtr<lynx::tasm::PropBundle>());
+
+  UIView<LynxRendererHost>* listView = ref.GetDarwinRenderer(1)->GetUIView();
+  UIView<LynxRendererHost>* childView = ref.GetDarwinRenderer(2)->GetUIView();
+  XCTAssertNotNil(listView);
+  XCTAssertNotNil(childView);
+
+  ref.InsertListItemPaintingNode(1, 2);
+  XCTAssertEqual(childView.superview, listView);
+
+  ref.InsertListItemPaintingNode(1, 2);
+  XCTAssertEqual(listView.subviews.count, 1U);
+
+  ref.RemoveListItemPaintingNode(1, 2);
+  XCTAssertNil(childView.superview);
 }
 
 - (void)testApplyTransformScale {

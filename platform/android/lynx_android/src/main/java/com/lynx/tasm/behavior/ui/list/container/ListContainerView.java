@@ -38,7 +38,7 @@ public class ListContainerView extends NestedScrollContainerView
     }
   }
   private static final String TAG = "ListContainerView";
-  private static final boolean DEBUG = true;
+  private static final boolean DEBUG = false;
   private UIListContainer mUiListContainer;
   private CustomLinearLayout mCustomLinearLayout;
   // Whether to consume gestures
@@ -278,6 +278,8 @@ public class ListContainerView extends NestedScrollContainerView
     }
     mCustomLinearLayout.setOrientation(LinearLayout.VERTICAL);
     mCustomLinearLayout.setWillNotDraw(true);
+    mCustomLinearLayout.setClipChildren(false);
+    mCustomLinearLayout.setClipToPadding(false);
     mCustomLinearLayout.setFocusableInTouchMode(true);
   }
 
@@ -525,14 +527,39 @@ public class ListContainerView extends NestedScrollContainerView
 
     super.onLayout(changed, l, t, r, b);
 
-    if (mRenderer != null && mCustomLinearLayout != null) {
-      for (int i = 0; i < mCustomLinearLayout.getChildCount(); i++) {
-        View child = mCustomLinearLayout.getChildAt(i);
-        if (child instanceof IRendererHost) {
-          Rect childFrame = ((IRendererHost) child).getRenderer().getLynxFrame();
-          child.layout(childFrame.left, childFrame.top, childFrame.right, childFrame.bottom);
-        }
-      }
+    layoutRendererChildrenIfNeeded();
+  }
+
+  public void layoutRendererChildIfNeeded(View child) {
+    if (mRenderer == null || !(child instanceof IRendererHost)) {
+      return;
+    }
+    Renderer childRenderer = ((IRendererHost) child).getRenderer();
+    if (childRenderer == null) {
+      return;
+    }
+    Rect childFrame = childRenderer.getLynxFrame();
+    if (mIsVertical && childFrame.bottom > mMeasuredHeight) {
+      setMeasuredSize(mMeasuredWidth,
+          Math.max(childFrame.bottom, mUiListContainer != null ? mUiListContainer.getHeight() : 0));
+    } else if (!mIsVertical && childFrame.right > mMeasuredWidth) {
+      setMeasuredSize(
+          Math.max(childFrame.right, mUiListContainer != null ? mUiListContainer.getWidth() : 0),
+          mMeasuredHeight);
+    }
+    int childWidth = childFrame.width();
+    int childHeight = childFrame.height();
+    child.measure(MeasureSpec.makeMeasureSpec(childWidth, MeasureSpec.EXACTLY),
+        MeasureSpec.makeMeasureSpec(childHeight, MeasureSpec.EXACTLY));
+    child.layout(childFrame.left, childFrame.top, childFrame.right, childFrame.bottom);
+  }
+
+  void layoutRendererChildrenIfNeeded() {
+    if (mRenderer == null || mCustomLinearLayout == null) {
+      return;
+    }
+    for (int i = 0; i < mCustomLinearLayout.getChildCount(); i++) {
+      layoutRendererChildIfNeeded(mCustomLinearLayout.getChildAt(i));
     }
   }
 
@@ -669,6 +696,7 @@ public class ListContainerView extends NestedScrollContainerView
         super.removeView(mCustomLinearLayout);
       } else {
         mCustomLinearLayout.removeView(view);
+        layoutRendererChildrenIfNeeded();
       }
     }
   }
@@ -677,6 +705,7 @@ public class ListContainerView extends NestedScrollContainerView
   public void removeViewAt(int index) {
     if (mCustomLinearLayout != null) {
       mCustomLinearLayout.removeViewAt(index);
+      layoutRendererChildrenIfNeeded();
     }
   }
 
@@ -684,6 +713,7 @@ public class ListContainerView extends NestedScrollContainerView
   public void removeAllViews() {
     if (mCustomLinearLayout != null) {
       mCustomLinearLayout.removeAllViews();
+      layoutRendererChildrenIfNeeded();
     }
   }
 

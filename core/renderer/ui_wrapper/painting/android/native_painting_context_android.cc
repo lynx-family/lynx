@@ -4,6 +4,7 @@
 
 #include "core/renderer/ui_wrapper/painting/android/native_painting_context_android.h"
 
+#include <array>
 #include <memory>
 #include <string>
 #include <utility>
@@ -293,7 +294,18 @@ void NativePaintingCtxAndroid::CreatePlatformExtendedRenderer(
 void NativePaintingCtxAndroid::UpdateLayout(
     int tag, float x, float y, float width, float height, const float *paddings,
     const float *margins, const float *borders, const float *bounds,
-    const float *sticky, float max_height, uint32_t node_index) {}
+    const float *sticky, float max_height, uint32_t node_index) {
+  if (!view_manager_) {
+    return;
+  }
+  Enqueue([view_manager = view_manager_.get(), tag,
+           need_clip = bounds != nullptr,
+           frame = std::array<float, 4>{x, y, width, height},
+           render_offset = std::array<float, 2>{0.f, 0.f}]() {
+    view_manager->UpdatePlatformRendererFrame(tag, need_clip, frame.data(),
+                                              render_offset.data());
+  });
+}
 
 void NativePaintingCtxAndroid::UpdatePlatformExtraBundle(
     int32_t id, PlatformExtraBundle *bundle) {

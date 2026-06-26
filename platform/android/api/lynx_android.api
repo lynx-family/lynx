@@ -3636,6 +3636,7 @@ public class com::lynx::tasm::behavior::ui::list::container::ListContainerView :
   public boolean com.lynx.tasm.behavior.ui.list.container.ListContainerView.canScrollVertically(int direction);
   public boolean com.lynx.tasm.behavior.ui.list.container.ListContainerView.canScrollHorizontally(int direction);
   public void com.lynx.tasm.behavior.ui.list.container.ListContainerView.bindDrawChildHook(IDrawChildHook hook);
+  public void com.lynx.tasm.behavior.ui.list.container.ListContainerView.layoutRendererChildIfNeeded(View child);
   public void com.lynx.tasm.behavior.ui.list.container.ListContainerView.setOrientation(int orientation);
   public void com.lynx.tasm.behavior.ui.list.container.ListContainerView.addView(View child);
   public void com.lynx.tasm.behavior.ui.list.container.ListContainerView.addView(View child, int index);
