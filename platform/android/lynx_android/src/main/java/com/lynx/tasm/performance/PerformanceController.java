@@ -286,7 +286,8 @@ public class PerformanceController implements IMemoryMonitor, ITimingCollector {
   public void markPaintEndTimingIfNeeded() {
     if (isEmbeddedMode()) {
       ensureEmbeddedCollectorInitialized();
-      if (mEmbeddedTimingCollector.hasEmitTimingEvent()) {
+      if (mEmbeddedTimingCollector.hasEmitLoadBundleEvent()
+          && !mEmbeddedTimingCollector.hasPendingUpdateEvent()) {
         return;
       }
       long usTimestamp = currentSystemTimeMicroseconds();

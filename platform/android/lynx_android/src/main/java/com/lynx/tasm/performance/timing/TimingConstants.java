@@ -7,6 +7,7 @@ public class TimingConstants {
   // Performance Timing Key
   public static final String PIPELINE_START = "pipelineStart";
   public static final String LOAD_BUNDLE_START = "loadBundleStart";
+  public static final String UPDATE_DATA_START = "updateDataStart";
   public static final String RELOAD_BUNDLE_START = "reloadBundleStart";
   public static final String VERIFY_TASM_START = "verifyTasmStart";
   public static final String VERIFY_TASM_END = "verifyTasmEnd";
@@ -22,6 +23,7 @@ public class TimingConstants {
   // PipelineOrigin
   public static final String LOAD_BUNDLE = "loadBundle";
   public static final String RELOAD_BUNDLE_FROM_NATIVE = "reloadBundleFromNative";
+  public static final String UPDATE_TRIGGERED_BY_NATIVE = "updateTriggeredByNative";
   // Performance API Key
   public static final String PIPELINE_ORIGIN = "pipelineOrigin";
   public static final String TIMESTAMP_MAP = "timestampMap";

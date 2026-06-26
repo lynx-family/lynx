@@ -1852,7 +1852,10 @@ public class LynxTemplateRender
       return;
     }
     onTraceEventBegin(TraceEventDef.TEMPLATE_RENDER_UPDATE_META_DATE);
-
+    if (context.isEmbeddedModeOn()) {
+      mPerformanceController.markTiming(
+          com.lynx.tasm.performance.timing.TimingConstants.UPDATE_DATA_START, "");
+    }
     TemplateData data = meta.getUpdatedData();
     if (mLynxContext != null && mLogicExecutor != null && data != null) {
       data.setEnableJSData(false);
