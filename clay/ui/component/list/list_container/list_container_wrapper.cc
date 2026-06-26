@@ -13,6 +13,7 @@
 #include <utility>
 #include <vector>
 
+#include "base/include/float_comparison.h"
 #include "clay/fml/logging.h"
 #include "clay/ui/common/attribute_utils.h"
 #include "clay/ui/component/base_view.h"
@@ -134,12 +135,28 @@ void ListContainerWrapper::scrollToPosition(
 
 void ListContainerWrapper::autoScroll(const LynxModuleValues& args,
                                       const LynxUIMethodCallback& callback) {
-  float rate = 0.f;
+  if (!args.HasKey("rate") && callback) {
+    callback(LynxUIMethodResult::kParamInvalid,
+             clay::Value("rate is required for autoScroll"));
+    return;
+  }
+
   bool start = false;
-  bool auto_stop = true;  // TODO: supported in ScrollView
-  CastNamedLynxModuleArgs({"rate", "start", "autoStop"}, args, rate, start,
-                          auto_stop);
-  GetListContainerView()->AutoScroll(start, FromLogical(rate));
+  bool auto_stop = true;
+  CastNamedLynxModuleArgs({"start", "autoStop"}, args, start, auto_stop);
+
+  float rate = 0.f;
+  attribute_utils::Length rate_with_unit;
+  if (attribute_utils::TryGetLength(args.Get("rate"), rate_with_unit)) {
+    rate = attribute_utils::ToPxWithDisplayMetrics(rate_with_unit, page_view());
+    if (lynx::base::FloatsEqual(rate, 0.f) && callback) {
+      callback(LynxUIMethodResult::kParamInvalid,
+               clay::Value("rate is required for not equal to 0"));
+      return;
+    }
+  }
+
+  GetListContainerView()->AutoScroll(start, rate);
   if (callback) {
     callback(LynxUIMethodResult::kSuccess, clay::Value());
   }
