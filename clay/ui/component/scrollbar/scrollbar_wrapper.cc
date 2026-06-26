@@ -98,6 +98,42 @@ void ScrollbarWrapper::SetAttribute(const char* attr_c,
   }
 }
 
+void ScrollbarWrapper::ConsumeGesture(int gesture_id, const Value& params) {
+  BaseView::ConsumeGesture(gesture_id, params);
+  if (!params.IsMap()) {
+    return;
+  }
+  const Value::Map& map = params.GetMap();
+  auto inner_iter = map.find("inner");
+  if (inner_iter == map.end() || inner_iter->second.GetBool()) {
+    view_->ConsumeGesture(gesture_id, params);
+  }
+}
+
+std::vector<float> ScrollbarWrapper::GestureScrollBy(float delta_x,
+                                                     float delta_y) {
+  if (!ShouldConsumeGesture()) {
+    return {0, 0, delta_x, delta_y};
+  }
+  return view_->GestureScrollBy(delta_x, delta_y);
+}
+
+bool ScrollbarWrapper::CanConsumeGesture(float delta_x, float delta_y) {
+  return view_->CanConsumeGesture(delta_x, delta_y);
+}
+
+float ScrollbarWrapper::ScrollX() { return view_->ScrollX(); }
+
+int8_t ScrollbarWrapper::GetScrollContainerDirection() {
+  return view_->GetScrollContainerDirection();
+}
+
+bool ScrollbarWrapper::IsAtBorder(bool is_start) {
+  return view_->IsAtBorder(is_start);
+}
+
+float ScrollbarWrapper::ScrollY() { return view_->ScrollY(); }
+
 void ScrollbarWrapper::SetWidth(float width) {
   BaseView::SetWidth(width);
   view_->SetWidth(width);

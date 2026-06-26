@@ -28,6 +28,13 @@ class ScrollbarWrapper : public BaseView, public ScrollbarView::Delegate {
   void RemoveChild(BaseView* child) override;
 
   void SetAttribute(const char* attr_c, const clay::Value& value) override;
+  void ConsumeGesture(int gesture_id, const Value& params) override;
+  std::vector<float> GestureScrollBy(float delta_x, float delta_y) override;
+  bool CanConsumeGesture(float delta_x, float delta_y) override;
+  float ScrollX() override;
+  int8_t GetScrollContainerDirection() override;
+  bool IsAtBorder(bool is_start) override;
+  float ScrollY() override;
 
   // Redirect the following settings to scroll view.
   void SetWidth(float width) override;

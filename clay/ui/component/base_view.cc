@@ -3330,7 +3330,7 @@ void BaseView::ConsumeGesture(int gesture_id, const Value& params) {
     consume = map.at("consume").GetBool();
   }
   if (inner) {
-    enable_builtin_gesture_recognizer_ = consume;
+    SetShouldConsumeGesture(consume);
   } else {
     SetInterceptGesture(consume);
     page_view_->gesture_manager()->RefreshHitTestTargetResponsive();

@@ -145,6 +145,9 @@ class TestGestureArenaMember : public GestureArenaMember {
   }
 
   void SetCanConsume(bool can_consume) { can_consume_ = can_consume; }
+  void SetShouldConsume(bool should_consume) {
+    SetShouldConsumeGesture(should_consume);
+  }
   void SetScrollContainerDirection(int8_t direction) {
     scroll_container_direction_ = direction;
   }

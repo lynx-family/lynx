@@ -1471,8 +1471,13 @@ void BaseListView::PrintChildren() {
 }
 
 std::vector<float> BaseListView::GestureScrollBy(float delta_x, float delta_y) {
-  FloatPoint unconsumed_offset = DoScroll({delta_x, delta_y}, false);
   std::vector<float> res(4, 0);
+  if (!ShouldConsumeGesture()) {
+    res[2] = delta_x;
+    res[3] = delta_y;
+    return res;
+  }
+  FloatPoint unconsumed_offset = DoScroll({delta_x, delta_y}, false);
   bool is_horizontal = (scroll_orientation_ == ScrollDirection::kHorizontal);
   res[0] = is_horizontal ? unconsumed_offset.x() : 0;
   res[1] = is_horizontal ? 0 : unconsumed_offset.y();

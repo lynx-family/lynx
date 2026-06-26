@@ -11,6 +11,7 @@
 #include "clay/ui/component/scroll_wrapper.h"
 #include "clay/ui/component/view.h"
 #include "clay/ui/event/gesture_event.h"
+#include "clay/ui/gesture_handler/gesture_detector.h"
 #include "clay/ui/rendering/render_scroll.h"
 #include "clay/ui/testing/ui_test.h"
 
@@ -136,6 +137,159 @@ TEST_F_UI(ScrollViewTest, NestedScrollGestureInterceptionOnPC) {
   outer_offset = outer_view_->GetScrollOffset();
   EXPECT_EQ(50.0, inner_offset.x());
   EXPECT_EQ(100.0, outer_offset.y());
+}
+
+TEST_F_UI(ScrollViewTest, ConsumeGestureBlocksTouchScroll) {
+  outer_view_->SetBound(0, 0, 100, 100);
+  box_view_->SetBound(0, 0, 100, 500);
+  outer_view_->OnLayoutUpdated();
+
+  GestureMap gesture_detector_map;
+  gesture_detector_map.emplace(
+      1, std::make_shared<GestureDetector>(
+             1, GestureHandlerType::Native, std::vector<std::string>{},
+             std::unordered_map<std::string, std::vector<uint32_t>>{}));
+  outer_view_->SetGestureDetectorMap(gesture_detector_map);
+
+  outer_view_->ConsumeGesture(
+      1, Value{{"inner", Value(true)}, {"consume", Value(false)}});
+  DispatchDragEvent({50, 50}, {50, -100}, false);
+  EXPECT_EQ(0.0, outer_view_->GetScrollOffset().y());
+
+  outer_view_->ConsumeGesture(
+      1, Value{{"inner", Value(true)}, {"consume", Value(true)}});
+  DispatchDragEvent({50, 50}, {50, -100}, false);
+  EXPECT_GT(outer_view_->GetScrollOffset().y(), 0.0);
+}
+
+TEST_F_UI(ScrollViewTest, ConsumeGestureBlocksGestureScrollBy) {
+  outer_view_->SetBound(0, 0, 100, 100);
+  box_view_->SetBound(0, 0, 100, 500);
+  outer_view_->OnLayoutUpdated();
+
+  outer_view_->ConsumeGesture(
+      0, Value{{"inner", Value(true)}, {"consume", Value(false)}});
+  auto result = outer_view_->GestureScrollBy(0, 100);
+  EXPECT_EQ(0.0, outer_view_->GetScrollOffset().y());
+  EXPECT_EQ(0.0, result[0]);
+  EXPECT_EQ(0.0, result[1]);
+  EXPECT_EQ(0.0, result[2]);
+  EXPECT_EQ(100.0, result[3]);
+
+  outer_view_->ConsumeGesture(
+      0, Value{{"inner", Value(true)}, {"consume", Value(true)}});
+  result = outer_view_->GestureScrollBy(0, 100);
+  EXPECT_GT(outer_view_->GetScrollOffset().y(), 0.0);
+  EXPECT_EQ(0.0, result[3]);
+}
+
+TEST_F_UI(ScrollViewTest, ConsumeGestureBlocksMouseWheelScroll) {
+  outer_view_->SetBound(0, 0, 100, 100);
+  box_view_->SetBound(0, 0, 100, 500);
+  outer_view_->OnLayoutUpdated();
+  outer_view_->HandleEvent(PointerEvent(PointerEvent::EventType::kSignalEvent));
+
+  outer_view_->ConsumeGesture(
+      0, Value{{"inner", Value(true)}, {"consume", Value(false)}});
+  DispatchTouchPadEvent({50, 50}, {0, 100}, 5);
+  DoAnimation(1000);
+  EXPECT_EQ(0.0, outer_view_->GetScrollOffset().y());
+
+  outer_view_->ConsumeGesture(
+      0, Value{{"inner", Value(true)}, {"consume", Value(true)}});
+  DispatchTouchPadEvent({50, 50}, {0, 100}, 5);
+  DoAnimation(1000);
+  EXPECT_GT(outer_view_->GetScrollOffset().y(), 0.0);
+}
+
+TEST_F_UI(ScrollViewTest, WrapperConsumeGestureBlocksTrackpadDrag) {
+  auto scroll_wrapper = std::make_unique<ScrollWrapper>(
+      -1, ScrollDirection::kVertical, page_.get());
+  ScrollView* scroll_view = scroll_wrapper->GetScrollView();
+  scroll_wrapper->SetBound(0, 0, 100, 100);
+  scroll_view->SetTouchSlop(-1);
+  page_->AddChild(scroll_wrapper.get());
+
+  auto content_view = std::make_unique<View>(-1, page_.get());
+  content_view->SetBound(0, 0, 100, 500);
+  scroll_wrapper->AddChild(content_view.get());
+  scroll_view->OnLayoutUpdated();
+
+  scroll_wrapper->ConsumeGesture(
+      0, Value{{"inner", Value(true)}, {"consume", Value(false)}});
+
+  auto down = CreatePointer(0, PointerEvent::EventType::kDownEvent, {50, 50});
+  down.device = PointerEvent::DeviceType::kTrackpad;
+  page_->DispatchPointerEvent({down});
+
+  auto move =
+      CreatePointer(0, PointerEvent::EventType::kMoveEvent, {50, 0}, {0, -50});
+  move.device = PointerEvent::DeviceType::kTrackpad;
+  page_->DispatchPointerEvent({move});
+
+  auto up = CreatePointer(0, PointerEvent::EventType::kUpEvent, {50, 0});
+  up.device = PointerEvent::DeviceType::kTrackpad;
+  page_->DispatchPointerEvent({up});
+
+  EXPECT_EQ(0.0, scroll_view->GetScrollOffset().y());
+
+  scroll_wrapper->ConsumeGesture(
+      0, Value{{"inner", Value(true)}, {"consume", Value(true)}});
+
+  down = CreatePointer(0, PointerEvent::EventType::kDownEvent, {50, 50});
+  down.device = PointerEvent::DeviceType::kTrackpad;
+  page_->DispatchPointerEvent({down});
+
+  move =
+      CreatePointer(0, PointerEvent::EventType::kMoveEvent, {50, 0}, {0, -50});
+  move.device = PointerEvent::DeviceType::kTrackpad;
+  page_->DispatchPointerEvent({move});
+
+  up = CreatePointer(0, PointerEvent::EventType::kUpEvent, {50, 0});
+  up.device = PointerEvent::DeviceType::kTrackpad;
+  page_->DispatchPointerEvent({up});
+
+  EXPECT_GT(scroll_view->GetScrollOffset().y(), 0.0);
+}
+
+TEST_F_UI(ScrollViewTest, WrapperConsumeGestureResumeTrackpadDrag) {
+  auto scroll_wrapper = std::make_unique<ScrollWrapper>(
+      -1, ScrollDirection::kVertical, page_.get());
+  ScrollView* scroll_view = scroll_wrapper->GetScrollView();
+  scroll_wrapper->SetBound(0, 0, 100, 100);
+  scroll_view->SetTouchSlop(-1);
+  page_->AddChild(scroll_wrapper.get());
+
+  auto content_view = std::make_unique<View>(-1, page_.get());
+  content_view->SetBound(0, 0, 100, 500);
+  scroll_wrapper->AddChild(content_view.get());
+  scroll_view->OnLayoutUpdated();
+
+  scroll_wrapper->ConsumeGesture(
+      0, Value{{"inner", Value(true)}, {"consume", Value(false)}});
+
+  auto down = CreatePointer(0, PointerEvent::EventType::kDownEvent, {50, 80});
+  down.device = PointerEvent::DeviceType::kTrackpad;
+  page_->DispatchPointerEvent({down});
+
+  auto move =
+      CreatePointer(0, PointerEvent::EventType::kMoveEvent, {50, 40}, {0, -40});
+  move.device = PointerEvent::DeviceType::kTrackpad;
+  page_->DispatchPointerEvent({move});
+  EXPECT_EQ(0.0, scroll_view->GetScrollOffset().y());
+
+  scroll_wrapper->ConsumeGesture(
+      0, Value{{"inner", Value(true)}, {"consume", Value(true)}});
+
+  move =
+      CreatePointer(0, PointerEvent::EventType::kMoveEvent, {50, 0}, {0, -40});
+  move.device = PointerEvent::DeviceType::kTrackpad;
+  page_->DispatchPointerEvent({move});
+  EXPECT_GT(scroll_view->GetScrollOffset().y(), 0.0);
+
+  auto up = CreatePointer(0, PointerEvent::EventType::kUpEvent, {50, 0});
+  up.device = PointerEvent::DeviceType::kTrackpad;
+  page_->DispatchPointerEvent({up});
 }
 
 TEST_F_UI(ScrollViewTest, ScrollIntoView) {

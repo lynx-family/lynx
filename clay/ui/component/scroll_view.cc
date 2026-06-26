@@ -980,6 +980,11 @@ FloatPoint ScrollView::DoScroll(FloatPoint delta, bool by_user_input,
 
 std::vector<float> ScrollView::GestureScrollBy(float delta_x, float delta_y) {
   std::vector<float> res(4, 0);
+  if (!ShouldConsumeGesture()) {
+    res[2] = delta_x;
+    res[3] = delta_y;
+    return res;
+  }
   FloatPoint prev_scroll_offset = scroll_offset_;
   bool is_horizontal = scroll_direction_ == ScrollDirection::kHorizontal;
   ScrollWithDelta(false, is_horizontal ? delta_x : delta_y);

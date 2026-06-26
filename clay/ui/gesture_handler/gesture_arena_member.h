@@ -31,6 +31,11 @@ class GestureArenaMember {
    */
   virtual bool CanConsumeGesture(float delta_x, float delta_y) = 0;
 
+  bool ShouldConsumeGesture() const { return should_consume_gesture_; }
+  void SetShouldConsumeGesture(bool should_consume_gesture) {
+    should_consume_gesture_ = should_consume_gesture;
+  }
+
   /**
    * Get sign of lynx ui
    * @return
@@ -84,6 +89,9 @@ class GestureArenaMember {
    * @see GestureDetector key — GestureDetector type value — gesture handler
    */
   virtual const GestureHandlerMap& GetGestureHandlers() = 0;
+
+ private:
+  bool should_consume_gesture_ = true;
 };
 
 struct GestureArenaMemberCompare {
