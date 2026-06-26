@@ -10,14 +10,40 @@
 #import <Lynx/LynxTransformRaw.h>
 #import <Lynx/LynxUIContext.h>
 #import <Lynx/LynxUIView.h>
+#import <Lynx/LynxWeakProxy.h>
 
 @interface LynxUI ()
 @property(nonatomic, weak) LynxUIContext* context;
+- (Class)iosPanInterceptViewClass;
+- (Class)iosPanInterceptGestureClass;
+- (NSInteger)iosPanInterceptViewTag;
+- (BOOL)hasIosPanInterceptViewTag;
 @end
 
 @interface LynxUIContext ()
 @property(nonatomic, weak) LynxEventHandler* eventHandler;
 @end
+
+@interface LynxPanInterceptUnitTestGesture : UIGestureRecognizer
+@property(nonatomic, assign) UIGestureRecognizerState testState;
+@end
+
+@implementation LynxPanInterceptUnitTestGesture
+- (UIGestureRecognizerState)state {
+  return self.testState;
+}
+- (void)setState:(UIGestureRecognizerState)state {
+  self.testState = state;
+}
+@end
+
+@interface LynxPanInterceptUnitTestView : UIView
+@end
+
+@implementation LynxPanInterceptUnitTestView
+@end
+
+static const NSInteger kLynxPanInterceptUnitTestViewTag = 1001;
 
 @implementation LynxEventHanderUnitTest {
   LynxEventHandler* _handler;
@@ -147,6 +173,99 @@
 
   [handlerOn attachContainerView:mockView2];
   OCMVerify([mockView2 addGestureRecognizer:[OCMArg isKindOfClass:[LynxTouchHandler class]]]);
+}
+
+- (LynxUIView*)configuredPanInterceptTargetUIWithViewTag:(BOOL)hasViewTag {
+  LynxUIView* targetUI = [[LynxUIView alloc] initWithView:[UIView new]];
+  [LynxPropsProcessor updateProp:@(kLynxPanInterceptDirectionHorizontal)
+                         withKey:@"pan-intercept-direction"
+                           forUI:targetUI];
+  [LynxPropsProcessor updateProp:@(kLynxPanInterceptScopeAll)
+                         withKey:@"pan-intercept-scope"
+                           forUI:targetUI];
+  [LynxPropsProcessor updateProp:NSStringFromClass([LynxPanInterceptUnitTestGesture class])
+                         withKey:@"ios-pan-intercept-gesture-class"
+                           forUI:targetUI];
+  [LynxPropsProcessor updateProp:NSStringFromClass([LynxPanInterceptUnitTestView class])
+                         withKey:@"ios-pan-intercept-view-class"
+                           forUI:targetUI];
+  if (hasViewTag) {
+    [LynxPropsProcessor updateProp:@(kLynxPanInterceptUnitTestViewTag)
+                           withKey:@"ios-pan-intercept-view-tag"
+                             forUI:targetUI];
+  }
+  XCTAssertEqual(targetUI.iosPanInterceptGestureClass, [LynxPanInterceptUnitTestGesture class]);
+  XCTAssertEqual(targetUI.iosPanInterceptViewClass, [LynxPanInterceptUnitTestView class]);
+  XCTAssertEqual(targetUI.hasIosPanInterceptViewTag, hasViewTag);
+  if (hasViewTag) {
+    XCTAssertEqual(targetUI.iosPanInterceptViewTag, kLynxPanInterceptUnitTestViewTag);
+  }
+  [_handler setValue:targetUI forKey:@"_firstPanInterceptDirectionTarget"];
+  return targetUI;
+}
+
+- (LynxUIView*)configuredPanInterceptTargetUI {
+  return [self configuredPanInterceptTargetUIWithViewTag:YES];
+}
+
+- (void)testInterceptPanGestureWithConfiguredGestureViewClassAndTag {
+  LynxUIView* targetUI = [self configuredPanInterceptTargetUI];
+  XCTAssertNotNil(targetUI);
+
+  LynxPanInterceptUnitTestView* otherView = [[LynxPanInterceptUnitTestView alloc] init];
+  otherView.tag = kLynxPanInterceptUnitTestViewTag;
+  LynxPanInterceptUnitTestGesture* otherGesture = [[LynxPanInterceptUnitTestGesture alloc] init];
+  [otherView addGestureRecognizer:otherGesture];
+
+  [_handler interceptPanGestures:@[ [LynxWeakProxy proxyWithTarget:otherGesture] ]
+             withPlatformGesture:nil];
+
+  XCTAssertEqual(otherGesture.state, UIGestureRecognizerStateFailed);
+}
+
+- (void)testConfiguredPanInterceptRequiresViewClassMatch {
+  LynxUIView* targetUI = [self configuredPanInterceptTargetUI];
+  XCTAssertNotNil(targetUI);
+
+  UIView* otherView = [[UIView alloc] init];
+  otherView.tag = kLynxPanInterceptUnitTestViewTag;
+  LynxPanInterceptUnitTestGesture* otherGesture = [[LynxPanInterceptUnitTestGesture alloc] init];
+  [otherView addGestureRecognizer:otherGesture];
+
+  [_handler interceptPanGestures:@[ [LynxWeakProxy proxyWithTarget:otherGesture] ]
+             withPlatformGesture:nil];
+
+  XCTAssertEqual(otherGesture.state, UIGestureRecognizerStatePossible);
+}
+
+- (void)testConfiguredPanInterceptRequiresViewTagMatch {
+  LynxUIView* targetUI = [self configuredPanInterceptTargetUI];
+  XCTAssertNotNil(targetUI);
+
+  LynxPanInterceptUnitTestView* otherView = [[LynxPanInterceptUnitTestView alloc] init];
+  otherView.tag = kLynxPanInterceptUnitTestViewTag + 1;
+  LynxPanInterceptUnitTestGesture* otherGesture = [[LynxPanInterceptUnitTestGesture alloc] init];
+  [otherView addGestureRecognizer:otherGesture];
+
+  [_handler interceptPanGestures:@[ [LynxWeakProxy proxyWithTarget:otherGesture] ]
+             withPlatformGesture:nil];
+
+  XCTAssertEqual(otherGesture.state, UIGestureRecognizerStatePossible);
+}
+
+- (void)testConfiguredPanInterceptRequiresViewTagProperty {
+  LynxUIView* targetUI = [self configuredPanInterceptTargetUIWithViewTag:NO];
+  XCTAssertNotNil(targetUI);
+
+  LynxPanInterceptUnitTestView* otherView = [[LynxPanInterceptUnitTestView alloc] init];
+  otherView.tag = 0;
+  LynxPanInterceptUnitTestGesture* otherGesture = [[LynxPanInterceptUnitTestGesture alloc] init];
+  [otherView addGestureRecognizer:otherGesture];
+
+  [_handler interceptPanGestures:@[ [LynxWeakProxy proxyWithTarget:otherGesture] ]
+             withPlatformGesture:nil];
+
+  XCTAssertEqual(otherGesture.state, UIGestureRecognizerStatePossible);
 }
 
 @end
