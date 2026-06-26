@@ -4,6 +4,8 @@
 
 #include "core/renderer/dom/testing/fiber_element_test.h"
 
+#include "core/shell/testing/mock_layout_platform.h"
+
 namespace lynx {
 namespace tasm {
 namespace testing {
@@ -16,7 +18,7 @@ void FiberElementTest::SetUp() {
   auto unique_manager = std::make_unique<lynx::tasm::ElementManager>(
       std::make_unique<FiberMockPaintingContext>(), &tasm_mediator,
       lynx_env_config, PageOptions(), tasm::report::kUnknownInstanceId,
-      vsync_monitor_);
+      vsync_monitor_, std::make_unique<lynx::tasm::test::MockPlatformImpl>());
   manager = unique_manager.get();
   platform_impl_ = static_cast<FiberMockPaintingContext*>(
       manager->painting_context()->platform_impl_.get());

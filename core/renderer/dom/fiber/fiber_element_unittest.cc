@@ -1534,6 +1534,143 @@ TEST_P(FiberElementTest, TestMarkLayoutDirty) {
   EXPECT_TRUE(element0->sl_node_->is_dirty_);
 }
 
+TEST_P(FiberElementTest,
+       TestUpdateLayoutNodeAttributeWhenEnableLayoutInElement) {
+  manager->page_options_.embedded_mode_ = static_cast<EmbeddedMode>(
+      static_cast<int32_t>(manager->page_options_.embedded_mode_) |
+      static_cast<int32_t>(EmbeddedMode::LAYOUT_IN_ELEMENT));
+  manager->enable_native_list_ = true;
+  tasm->layout_scheduler_ = std::make_unique<LayoutScheduler>(manager);
+  manager->UpdateViewport(100, SLMeasureModeDefinite, 600,
+                          SLMeasureModeDefinite, false);
+
+  auto default_entry = std::make_shared<TemplateEntry>();
+  tasm->template_entries_[DEFAULT_ENTRY_NAME] = default_entry;
+
+  auto ctx = std::make_shared<lepus::QuickContext>();
+  tasm->template_entries_[DEFAULT_ENTRY_NAME]->SetVm(ctx);
+
+  std::string js_source = R"(
+    let count = 0;
+    let callback = ()=> { 
+      count = count + 1;
+    }
+  )";
+
+  lepus::BytecodeGenerator::GenerateBytecode(ctx.get(), js_source,
+                                             ctx->GetSdkVersion(), "");
+  ctx->Execute();
+
+  auto callback = ctx->GetGlobalData("callback");
+
+  auto page = manager->CreateFiberPage("page", 11);
+
+  auto scroll = manager->CreateFiberElement("scroll-view");
+  scroll->SetAttribute("scroll-x", lepus::Value(true));
+  page->InsertNode(scroll);
+
+  auto list = manager->CreateFiberElement("list");
+  list->SetAttribute("column-count", lepus::Value(2));
+  list->SetAttribute("list-type", lepus::Value("waterfall"));
+  static_cast<ListElement*>(list.get())
+      ->UpdateCallbacks(callback, callback, callback);
+  static_cast<ListElement*>(list.get())->tasm_ = tasm.get();
+
+  list->SetStyle(CSSPropertyID::kPropertyIDWidth, lepus::Value("1000px"));
+  list->SetStyle(CSSPropertyID::kPropertyIDHeight, lepus::Value("1000px"));
+
+  lepus::Value single_action = lepus::LEPUSValueHelper::CreateObject(nullptr);
+  single_action.SetProperty("item-key", lepus::Value("a"));
+  single_action.SetProperty("position", lepus::Value(0));
+  single_action.SetProperty("type", lepus::Value("__snapshot_a94a8_test_37"));
+
+  lepus::Value insert_actions = lepus::LEPUSValueHelper::CreateArray(nullptr);
+  insert_actions.SetProperty(0, single_action);
+
+  lepus::Value single_info = lepus::LEPUSValueHelper::CreateObject(nullptr);
+  single_info.SetProperty("insertAction", insert_actions);
+
+  list->SetAttribute("update-list-info", single_info);
+  page->InsertNode(list);
+
+  auto list_item = manager->CreateFiberElement("list-item");
+  list_item->SetAttribute("full-span", lepus::Value(true));
+  list->InsertNode(list_item);
+
+  auto options = std::make_shared<PipelineOptions>();
+  manager->OnPatchFinish(options);
+
+  EXPECT_TRUE(*(scroll->sl_node_->attr_map().scroll_));
+  EXPECT_EQ(*(list->sl_node_->attr_map().column_count_), 2);
+  EXPECT_EQ(*(list_item->sl_node_->attr_map().list_comp_type_),
+            static_cast<int>(ListComponentInfo::Type::LIST_ROW));
+
+  auto count = ctx->GetGlobalData("count");
+  EXPECT_EQ(count, lepus::Value(1));
+}
+
+TEST_P(FiberElementTest,
+       LayoutInElement_InsertNonVirtualChildUnderVirtualParent) {
+  manager->page_options_.embedded_mode_ = static_cast<EmbeddedMode>(
+      static_cast<int32_t>(manager->page_options_.embedded_mode_) |
+      static_cast<int32_t>(EmbeddedMode::LAYOUT_IN_ELEMENT));
+
+  auto page = manager->CreateFiberPage("page", 11);
+  auto virtual_parent = manager->CreateFiberNode("inline-text");
+  page->InsertNode(virtual_parent);
+
+  auto child = manager->CreateFiberNode("view");
+  virtual_parent->InsertNode(child);
+
+  page->FlushActionsAsRoot();
+
+  EXPECT_TRUE(virtual_parent->is_virtual_);
+  EXPECT_EQ(child->render_parent(), virtual_parent.get());
+  EXPECT_TRUE(child->attached_to_layout_parent_);
+  ASSERT_NE(page->slnode(), nullptr);
+  ASSERT_NE(child->slnode(), nullptr);
+  EXPECT_EQ(child->slnode()->parent(), page->slnode());
+}
+
+TEST_P(FiberElementTest, LayoutInElement_RemoveVirtualChildResetsAttachedFlag) {
+  manager->page_options_.embedded_mode_ = static_cast<EmbeddedMode>(
+      static_cast<int32_t>(manager->page_options_.embedded_mode_) |
+      static_cast<int32_t>(EmbeddedMode::LAYOUT_IN_ELEMENT));
+
+  auto page = manager->CreateFiberPage("page", 11);
+  auto virtual_child = manager->CreateFiberNode("inline-text");
+  page->InsertNode(virtual_child);
+
+  page->FlushActionsAsRoot();
+  EXPECT_TRUE(virtual_child->is_virtual_);
+  EXPECT_TRUE(virtual_child->attached_to_layout_parent_);
+
+  page->RemoveNode(virtual_child);
+  page->FlushActionsAsRoot();
+  EXPECT_FALSE(virtual_child->attached_to_layout_parent_);
+}
+
+TEST_P(FiberElementTest,
+       LayoutInElement_RemoveLayoutNodeResetsStateWithoutLayoutParent) {
+  manager->page_options_.embedded_mode_ = static_cast<EmbeddedMode>(
+      static_cast<int32_t>(manager->page_options_.embedded_mode_) |
+      static_cast<int32_t>(EmbeddedMode::LAYOUT_IN_ELEMENT));
+
+  auto page = manager->CreateFiberPage("page", 11);
+  auto parent = manager->CreateFiberNode("view");
+  page->InsertNode(parent);
+  page->FlushActionsAsRoot();
+
+  auto child = manager->CreateFiberNode("view");
+  child->EnsureSLNode();
+  child->attached_to_layout_parent_ = true;
+  ASSERT_NE(child->slnode(), nullptr);
+  EXPECT_EQ(child->slnode()->parent(), nullptr);
+
+  parent->RemoveLayoutNode(child.get());
+  EXPECT_FALSE(child->attached_to_layout_parent_);
+}
+
 TEST_P(FiberElementTest, InsertNode) {
   auto parent = manager->CreateFiberNode("view");
   EXPECT_EQ(static_cast<int>(parent->GetChildCount()), 0);
