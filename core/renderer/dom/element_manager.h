@@ -794,6 +794,19 @@ class ElementManager : public ElementContextDelegate,
     return config_ && config_->GetEnableUnifyFixedBehavior();
   }
 
+  void UpdateFixedNodeSet(SLNode *node, bool is_insert) {
+    if (node == nullptr) {
+      return;
+    }
+    if (is_insert) {
+      fixed_node_set_.insert(node);
+    } else {
+      fixed_node_set_.erase(node);
+    }
+  }
+
+  const SLNodeSet *GetFixedNodeSet() const { return &fixed_node_set_; }
+
   bool GetEnableReloadLifecycle() const {
     return config_ ? config_->GetEnableReloadLifecycle() : false;
   }
@@ -1521,6 +1534,8 @@ class ElementManager : public ElementContextDelegate,
  public:
   // fixed node attached to the page node.
   std::list<tasm::ElementContainer *> fixed_node_list_;
+
+  SLNodeSet fixed_node_set_;
 
   // member for embedded mode
   Viewport viewport_;

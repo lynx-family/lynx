@@ -24,19 +24,22 @@ class PlatformRendererDarwin : public PlatformRendererImpl {
  public:
   explicit PlatformRendererDarwin(PlatformRendererContextDarwin* context, int id,
                                   PlatformRendererType type);
-  explicit PlatformRendererDarwin(PlatformRendererContextDarwin* context, int id,
-                                  PlatformRendererType type,
-                                  const fml::RefPtr<PropBundle>& init_data);
+  explicit PlatformRendererDarwin(
+      PlatformRendererContextDarwin* context, int id, PlatformRendererType type,
+      const fml::RefPtr<PropBundle>& init_data,
+      const PlatformRendererInitConfig& init_config = PlatformRendererInitConfig());
   explicit PlatformRendererDarwin(PlatformRendererContextDarwin* context, int id,
                                   const base::String& tag_name);
-  explicit PlatformRendererDarwin(PlatformRendererContextDarwin* context, int id,
-                                  const base::String& tag_name,
-                                  const fml::RefPtr<PropBundle>& init_data);
+  explicit PlatformRendererDarwin(
+      PlatformRendererContextDarwin* context, int id, const base::String& tag_name,
+      const fml::RefPtr<PropBundle>& init_data,
+      const PlatformRendererInitConfig& init_config = PlatformRendererInitConfig());
   explicit PlatformRendererDarwin(PlatformRendererContextDarwin* context, int id,
                                   PlatformRendererType type, const base::String& tag_name);
-  explicit PlatformRendererDarwin(PlatformRendererContextDarwin* context, int id,
-                                  PlatformRendererType type, const base::String& tag_name,
-                                  const fml::RefPtr<PropBundle>& init_data);
+  explicit PlatformRendererDarwin(
+      PlatformRendererContextDarwin* context, int id, PlatformRendererType type,
+      const base::String& tag_name, const fml::RefPtr<PropBundle>& init_data,
+      const PlatformRendererInitConfig& init_config = PlatformRendererInitConfig());
 
   ~PlatformRendererDarwin() override;
 
@@ -45,8 +48,8 @@ class PlatformRendererDarwin : public PlatformRendererImpl {
   void OnUpdateAttributes(const fml::RefPtr<PropBundle>& attributes,
                           bool tends_to_flatten) override;
   void OnRebuildSubRenderers() override;
-  void OnAddChild(PlatformRenderer* child, int index) override;
-  void OnRemoveFromParent() override;
+  void OnAddChild(PlatformRenderer* child, int index, bool should_update_ui_owner) override;
+  void OnRemoveFromParent(bool should_update_ui_owner) override;
   void OnUpdateSubtreeProperties(const DisplayList& subtree_properties) override;
   void UpdatePlatformExtraBundle(id platform_extra_bundle);
 
@@ -56,10 +59,11 @@ class PlatformRendererDarwin : public PlatformRendererImpl {
   virtual UIView<LynxRendererHost>* GetUIView() { return _view; }
 
  private:
-  bool ShouldCreatePlatformExtendedRenderer(const fml::RefPtr<PropBundle>& init_data) const;
+  bool ShouldCreatePlatformExtendedRenderer(const PlatformRendererInitConfig& init_config) const;
   bool InitializeUIOwnerRenderer(const base::String& tag_name,
                                  const fml::RefPtr<PropBundle>& init_data);
   void InitializeRendererForView(UIView<LynxRendererHost>* view, NSDictionary* initial_props = nil);
+  CGRect ResolveLayoutFrame(CGRect frame) const;
   void UpdateUIOwnerLayout(CGRect frame);
   bool HasUIOwnerNode(int sign) const;
   void CleanupUIView();

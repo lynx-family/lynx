@@ -36,11 +36,11 @@ Fragment* Fragment::fragment_parent() const {
   return static_cast<Fragment*>(parent());
 }
 
-void Fragment::CreateLayerIfNeeded(const fml::RefPtr<PropBundle>& init_data) {
+bool Fragment::CreateLayerIfNeeded(const fml::RefPtr<PropBundle>& init_data) {
   if (element()->is_wrapper() || has_platform_renderer_) {
     // If the fragment has a platform renderer, it means that the fragment
     // is already layerized.
-    return;
+    return false;
   }
 
   const bool tends_to_flatten = element()->TendToFlatten();
@@ -54,13 +54,13 @@ void Fragment::CreateLayerIfNeeded(const fml::RefPtr<PropBundle>& init_data) {
     // If the fragment is a view, text, image, or component, and it tends to
     // flatten, then it does not need to be layerized. The page must keep its
     // platform renderer because it is the root of the PlatformRenderer tree.
-    return;
+    return false;
   }
 
   if (element()->IsShadowNodeVirtual()) {
     // If the fragment is a virtual shadow node, then it does not need to be
     // layerized.
-    return;
+    return false;
   }
 
   if (behavior_ == nullptr) {
@@ -68,10 +68,17 @@ void Fragment::CreateLayerIfNeeded(const fml::RefPtr<PropBundle>& init_data) {
     // layerized.
     LOGE("Fragment " << element()->GetTag().str()
                      << " does not have a behavior.");
-    return;
+    return false;
   }
 
   // TODO(zhongyr): abstract one behavior for layerize.
+  Element* element_parent = element()->parent();
+  PlatformRendererInitConfig init_config;
+  init_config.fragment_parent_id =
+      element_parent != nullptr ? element_parent->impl_id() : -1;
+  init_config.is_direct_child_of_compatible_component =
+      element()->is_direct_child_of_compatible_component();
+
   fml::RefPtr<PropBundle> actual_init_data = init_data;
   auto ensure_actual_init_data = [&actual_init_data, this]() {
     if (actual_init_data == nullptr) {
@@ -89,14 +96,9 @@ void Fragment::CreateLayerIfNeeded(const fml::RefPtr<PropBundle>& init_data) {
   if (ensure_actual_init_data()) {
     actual_init_data->SetProps(kTendsToFlattenInitDataKey, tends_to_flatten);
   }
-  if (element()->is_direct_child_of_compatible_component()) {
-    if (ensure_actual_init_data()) {
-      actual_init_data->SetProps(kDirectChildOfCompatibleComponentInitDataKey,
-                                 true);
-    }
-  }
-  behavior_->CreatePlatformRenderer(actual_init_data);
+  behavior_->CreatePlatformRenderer(actual_init_data, init_config);
   has_platform_renderer_ = true;
+  return true;
 }
 
 void Fragment::UpdatePlatformExtraBundle(PlatformExtraBundle* bundle) {
@@ -289,6 +291,13 @@ void Fragment::UpdatePaintingNode(
     painting_context()->UpdatePaintingNode(id(), tend_to_flatten,
                                            painting_data);
   }
+  if (CreateLayerIfNeeded(painting_data)) {
+    if (parent()) {
+      parent()->InvalidateForRedraw();
+    }
+    InvalidateForRedraw();
+  }
+  MarkNodeReadyIfNeeded();
 }
 
 void Fragment::InsertListItemPaintingNode(int32_t child_id) {
@@ -317,6 +326,15 @@ void Fragment::OnFirstScreen() {
   painting_context()->impl()->CastToNativeCtx()->OnFirstScreen();
 }
 
+void Fragment::OnNodeReady() {
+  if (!ShouldNotifyNodeReady()) {
+    pending_node_ready_ = false;
+    return;
+  }
+  pending_node_ready_ = false;
+  painting_context()->OnNodeReady(id());
+}
+
 void Fragment::FinishTasmOperation(
     const std::shared_ptr<PipelineOptions>& options) {
   painting_context()->impl()->CastToNativeCtx()->FinishTasmOperation(options);
@@ -332,6 +350,7 @@ void Fragment::UpdateLayout(
   InvalidateForRedraw();
   layout_info_.layout_result = std::move(layout_result_for_rendering);
   UpdateBorderRadiusAccordingToLayoutInfo();
+  MarkNodeReadyIfNeeded();
 }
 
 void Fragment::SetBehavior(std::unique_ptr<FragmentBehavior> behavior) {
@@ -1128,6 +1147,25 @@ void Fragment::DrawFull(DisplayListBuilder& display_list_builder) {
   display_list_builder.End();
 }
 
+bool Fragment::ShouldNotifyNodeReady() const {
+  return has_platform_renderer_ && behavior_ != nullptr &&
+         (behavior_->GetType() == PlatformRendererType::kExtended ||
+          element()->is_direct_child_of_compatible_component());
+}
+
+void Fragment::MarkNodeReadyIfNeeded() {
+  if (ShouldNotifyNodeReady()) {
+    pending_node_ready_ = true;
+  }
+}
+
+void Fragment::FlushPendingNodeReadyIfNeeded() {
+  if (!pending_node_ready_) {
+    return;
+  }
+  OnNodeReady();
+}
+
 void Fragment::DrawChildren(DisplayListBuilder& display_list_builder) {
   for (const auto& child : children_) {
     child->Draw(display_list_builder);
@@ -1413,6 +1451,13 @@ void Fragment::UpdateLayout(float left, float top, bool transition_view) {
   UpdateRenderOffsetRecursively(0, 0, this);
 }
 
+void Fragment::UpdateLayoutWithoutChange() {
+  FlushPendingNodeReadyIfNeeded();
+  for (auto* child : children_) {
+    child->UpdateLayoutWithoutChange();
+  }
+}
+
 void Fragment::CheckRootIfNeedClipBounds(
     DisplayListBuilder& display_list_builder) {
   if (element()->computed_css_style()->IsOverflowHidden()) {
@@ -1466,6 +1511,9 @@ void Fragment::UpdateRenderOffsetRecursively(float left, float top,
   float child_offset_x = left + layout_info_.layout_result.offset_.X();
   float child_offset_y = top + layout_info_.layout_result.offset_.Y();
   if (has_platform_renderer_) {
+    if (render_offset_[0] != left || render_offset_[1] != top) {
+      MarkNodeReadyIfNeeded();
+    }
     render_offset_[0] = left;
     render_offset_[1] = top;
 
@@ -1480,6 +1528,7 @@ void Fragment::UpdateRenderOffsetRecursively(float left, float top,
   if (behavior_) {
     behavior_->OnUpdateLayout(layout_info_);
   }
+  FlushPendingNodeReadyIfNeeded();
 
   for (auto* child : children_) {
     child->UpdateRenderOffsetRecursively(child_offset_x, child_offset_y,

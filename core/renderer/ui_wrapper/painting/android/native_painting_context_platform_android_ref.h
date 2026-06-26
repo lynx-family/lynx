@@ -7,6 +7,7 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
 #include "core/renderer/ui_wrapper/painting/android/platform_renderer_android.h"
 #include "core/renderer/ui_wrapper/painting/native_painting_context_platform_ref.h"
@@ -30,6 +31,9 @@ class NativePaintingCtxAndroidRef : public NativePaintingCtxPlatformRef {
       int32_t id, const std::string& method, const lepus::Value& params,
       base::MoveOnlyClosure<void, int32_t, const pub::Value&> callback)
       override;
+
+ protected:
+  void NotifyNodeReady(const std::vector<int32_t>& signs) override;
 };
 
 }  // namespace tasm

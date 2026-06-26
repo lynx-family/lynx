@@ -76,6 +76,9 @@ class FragmentBehavior {
 
   virtual void CreatePlatformRenderer(
       const fml::RefPtr<PropBundle>& attributes);
+  virtual void CreatePlatformRenderer(
+      const fml::RefPtr<PropBundle>& attributes,
+      const PlatformRendererInitConfig& init_config);
   // TODO(zhongyr): TO be implemented for basic <view>.
   virtual void OnAttributeUpdate(const fml::RefPtr<PropBundle>& attributes){};
 

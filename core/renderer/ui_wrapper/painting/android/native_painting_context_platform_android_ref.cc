@@ -117,5 +117,19 @@ void NativePaintingCtxAndroidRef::InvokePlatformRendererUIMethod(
   context->InvokeUIMethod(id, method, params, std::move(callback));
 }
 
+void NativePaintingCtxAndroidRef::NotifyNodeReady(
+    const std::vector<int32_t>& signs) {
+  auto* factory =
+      static_cast<PlatformRendererAndroidFactory*>(view_factory_.get());
+  if (factory == nullptr) {
+    return;
+  }
+  auto* context = factory->GetContext();
+  if (context == nullptr) {
+    return;
+  }
+  context->OnNodeReady(signs);
+}
+
 }  // namespace tasm
 }  // namespace lynx

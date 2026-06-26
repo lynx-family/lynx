@@ -5,6 +5,8 @@
 #ifndef CORE_RENDERER_UI_WRAPPER_PAINTING_PLATFORM_RENDERER_H_
 #define CORE_RENDERER_UI_WRAPPER_PAINTING_PLATFORM_RENDERER_H_
 
+#include <cstdint>
+
 #include "base/include/fml/memory/ref_counted.h"
 #include "base/include/fml/memory/ref_ptr.h"
 #include "base/include/vector.h"
@@ -17,6 +19,13 @@ namespace lynx::tasm {
 class DisplayList;
 class PropBundle;
 class PlatformExtraBundle;
+
+// Initialization metadata consumed only by the C++ PlatformRenderer creation
+// path. Platform-specific props should still be passed through PropBundle.
+struct PlatformRendererInitConfig {
+  int32_t fragment_parent_id = -1;
+  bool is_direct_child_of_compatible_component = false;
+};
 
 // Abstract base class for platform-specific UI rendering operations.
 // Provides a common interface for cross-platform UI element management.
@@ -59,11 +68,15 @@ class PlatformRendererFactory {
   // Create a new platform renderer with the given ID
   virtual fml::RefPtr<PlatformRenderer> CreateRenderer(
       int id, PlatformRendererType type,
-      const fml::RefPtr<PropBundle>& init_data) = 0;
+      const fml::RefPtr<PropBundle>& init_data,
+      const PlatformRendererInitConfig& init_config =
+          PlatformRendererInitConfig()) = 0;
 
   virtual fml::RefPtr<PlatformRenderer> CreateExtendedRenderer(
       int id, const base::String& tag_name,
-      const fml::RefPtr<PropBundle>& init_data) = 0;
+      const fml::RefPtr<PropBundle>& init_data,
+      const PlatformRendererInitConfig& init_config =
+          PlatformRendererInitConfig()) = 0;
 };
 
 }  // namespace lynx::tasm

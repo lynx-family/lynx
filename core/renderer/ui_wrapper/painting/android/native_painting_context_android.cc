@@ -283,10 +283,12 @@ void NativePaintingCtxAndroid::ResumeExposure() {
 
 void NativePaintingCtxAndroid::CreatePlatformExtendedRenderer(
     int id, const base::String &tag_name,
-    const fml::RefPtr<PropBundle> &init_data) {
-  Enqueue([ref = platform_ref_, id, tag_name, data_ref = init_data]() {
+    const fml::RefPtr<PropBundle> &init_data,
+    const PlatformRendererInitConfig &init_config) {
+  Enqueue([ref = platform_ref_, id, tag_name, init_config = init_config,
+           data_ref = init_data]() {
     std::static_pointer_cast<NativePaintingCtxAndroidRef>(ref)
-        ->CreatePlatformExtendedRenderer(id, tag_name, data_ref);
+        ->CreatePlatformExtendedRenderer(id, tag_name, data_ref, init_config);
   });
 }
 
@@ -422,11 +424,12 @@ bool NativePaintingCtxAndroid::IsFlatten(
 bool NativePaintingCtxAndroid::NeedAnimationProps() { return false; }
 
 void NativePaintingCtxAndroid::CreatePlatformRenderer(
-    int id, PlatformRendererType type,
-    const fml::RefPtr<PropBundle> &init_data) {
-  Enqueue([ref = platform_ref_, id, type, data_ref = init_data]() {
+    int id, PlatformRendererType type, const fml::RefPtr<PropBundle> &init_data,
+    const PlatformRendererInitConfig &init_config) {
+  Enqueue([ref = platform_ref_, id, type, init_config = init_config,
+           data_ref = init_data]() {
     std::static_pointer_cast<NativePaintingCtxAndroidRef>(ref)
-        ->CreatePlatformRenderer(id, type, data_ref);
+        ->CreatePlatformRenderer(id, type, data_ref, init_config);
   });
 }
 

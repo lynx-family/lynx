@@ -158,7 +158,9 @@ void PageElement::Layout(const std::shared_ptr<PipelineOptions>& options) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, PAGE_ELEMENT_LAYOUT);
   DispatchLayoutBeforeRecursively();
 
-  sl_node_->ReLayout();
+  sl_node_->ReLayout(sl_node_->GetEnableFixedNew()
+                         ? element_manager()->GetFixedNodeSet()
+                         : nullptr);
 
   element_container()->AppendOptionsForTiming(options);
 

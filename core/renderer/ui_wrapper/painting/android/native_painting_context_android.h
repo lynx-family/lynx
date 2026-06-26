@@ -100,12 +100,15 @@ class NativePaintingCtxAndroid : public PaintingCtxPlatformImpl,
 
 #pragma region NativePaintingContext
 
-  void CreatePlatformRenderer(
-      int id, PlatformRendererType type,
-      const fml::RefPtr<PropBundle> &init_data) override;
+  void CreatePlatformRenderer(int id, PlatformRendererType type,
+                              const fml::RefPtr<PropBundle> &init_data,
+                              const PlatformRendererInitConfig &init_config =
+                                  PlatformRendererInitConfig()) override;
   void CreatePlatformExtendedRenderer(
       int id, const base::String &tag_name,
-      const fml::RefPtr<PropBundle> &init_data) override;
+      const fml::RefPtr<PropBundle> &init_data,
+      const PlatformRendererInitConfig &init_config =
+          PlatformRendererInitConfig()) override;
 
   void UpdateDisplayList(int id, DisplayList display_list) override;
 
