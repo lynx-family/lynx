@@ -6592,6 +6592,7 @@ public enum ELynxConsumer {
   public FOUNDATION_EXPORT NSInteger const ECLynxComponentListChildComponentNotExist ECLynxComponentListChildComponentNotExist;
   public FOUNDATION_EXPORT NSInteger const ECLynxComponentListUnsupportedThreadStrategy ECLynxComponentListUnsupportedThreadStrategy;
   public FOUNDATION_EXPORT NSInteger const ECLynxComponentListDuplicateItemKey ECLynxComponentListDuplicateItemKey;
+  public FOUNDATION_EXPORT NSInteger const ECLynxComponentListInvalidMethodArg ECLynxComponentListInvalidMethodArg;
   public FOUNDATION_EXPORT NSInteger const ECLynxComponentImageUnsupportedProp ECLynxComponentImageUnsupportedProp;
   public FOUNDATION_EXPORT NSInteger const ECLynxComponentCustom ECLynxComponentCustom;
   public FOUNDATION_EXPORT NSInteger const ECLynxExceptionPlatform ECLynxExceptionPlatform;

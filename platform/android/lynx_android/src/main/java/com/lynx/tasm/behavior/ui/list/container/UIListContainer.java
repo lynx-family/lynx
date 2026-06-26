@@ -99,6 +99,7 @@ public class UIListContainer extends UISimpleView<ListContainerView>
   private final HashMap<String, UIComponent> mStickyBottomItemMap = new HashMap<>();
   private Callback mScrollToCallback = null;
   private boolean mEnableInsertPlatformViewOperation = false;
+  private boolean mHasWarnedAutoScrollStartDefaultChange = false;
   private int mScrollingEstimatedOffset = INVALID_SCROLL_ESTIMATED_OFFSET;
 
   private ListContainerProxy mListContainerProxy = null;
@@ -1088,8 +1089,15 @@ public class UIListContainer extends UISimpleView<ListContainerView>
         }
       };
     }
+    if (!params.hasKey("start") && !mHasWarnedAutoScrollStartDefaultChange) {
+      mHasWarnedAutoScrollStartDefaultChange = true;
+      getLynxContext().handleLynxError(new LynxError(
+          LynxSubErrorCode.E_COMPONENT_LIST_INVALID_METHOD_ARG,
+          "The default value of start in autoScroll is changed from true to false on Android platform in Lynx SDK version 4.1. If you need to keep the behavior before Lynx SDK version 4.1, set start to true explicitly.",
+          "", LynxError.LEVEL_WARN));
+    }
     mAutoScroller.setAutoScrollParams(
-        params.getBoolean("start", true), params.getBoolean("autoStop", true));
+        params.getBoolean("start", false), params.getBoolean("autoStop", true));
     mAutoScroller.execute(params.getString("rate", ""), getLynxContext());
   }
 

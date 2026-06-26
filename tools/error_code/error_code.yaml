@@ -673,6 +673,10 @@ sections:
             low-code: 8
             description: 'Error for duplicate list item-key.'
             fix-suggestion: 'Please check the legality of the item-key.'
+          - name: InvalidMethodArg
+            low-code: 9
+            description: 'There is an invalid parameter set in this method'
+            fix-suggestion: 'For parameter usage, please check documentation of list component.'
       - name: Image
         description: 'Error from Image component'
         mid-code: 3
