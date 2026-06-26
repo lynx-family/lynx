@@ -1670,6 +1670,7 @@ public class LynxEventHandler : NSObject {
   public void LynxEventHandler::removeGestureArenaManager:(NSInteger index);
   public id< LynxEventTarget > LynxEventHandler::touchTarget();
   public LynxUIOwner * LynxEventHandler::uiOwner();
+  public NSInteger LynxEventHandler::eventRootSign();
   public void LynxEventHandler()::setEnableViewReceiveTouch:(BOOL enable);
   public void LynxEventHandler()::setEnableSimultaneousTap:(BOOL enable);
   public void LynxEventHandler()::setDisableLongpressAfterScroll:(bool value);
@@ -3910,7 +3911,10 @@ public class LynxTemplateRender : NSObject, <LynxTemplateRenderProtocol>, <Templ
   public void LynxTemplateRender()::updateFrame:(CGRect frame);
   public LynxViewBuilderBlock LynxTemplateRender()::getLynxViewBuilderBlock();
   public void LynxTemplateRender()::detachLynxEngine();
-  public void LynxTemplateRender()::DispatchPlatformInputEvent:withData:(NSArray *iEventData, [withData] NSArray *fEventData);
+  public BOOL LynxTemplateRender()::DispatchPlatformInputEvent:withData:(NSArray *iEventData, [withData] NSArray *fEventData);
+  public void LynxTemplateRender()::SetPlatformEventRootActive:active:(NSInteger rootSign, [active] BOOL active);
+  public void LynxTemplateRender()::SetPlatformEventRootOffset:offsetX:offsetY:(NSInteger rootSign, [offsetX] CGFloat offsetX, [offsetY] CGFloat offsetY);
+  public BOOL LynxTemplateRender()::IsPlatformEventTargetEventThrough:point:(NSInteger rootSign, [point] CGPoint point);
   public int LynxTemplateRender()::GetPlatformEventHandlerState();
   public lynx::runtime::js::ModuleFactoryDarwin * LynxTemplateRender()::getModuleFactory();
   public LynxLifecycleDispatcher * LynxTemplateRender()::getLifecycleDispatcher();

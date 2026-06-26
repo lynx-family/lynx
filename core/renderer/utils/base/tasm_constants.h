@@ -128,8 +128,6 @@ static constexpr const char kPipelineID[] = "pipelineID";
 static constexpr const char kPipelineOrigin[] = "pipelineOrigin";
 static constexpr const char kPipelineNeedTimestamps[] = "needTimestamps";
 static constexpr const char kPatchOptions[] = "patchOptions";
-static constexpr const char kDirectChildOfCompatibleComponentInitDataKey[] =
-    "__lynx_is_direct_child_of_compatible_component";
 static constexpr const char kTendsToFlattenInitDataKey[] =
     "__lynx_tends_to_flatten";
 

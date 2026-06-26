@@ -88,6 +88,8 @@ NS_ASSUME_NONNULL_BEGIN
 - (id<LynxEventTarget>)touchTarget;
 
 - (LynxUIOwner *)uiOwner;
+
+- (NSInteger)eventRootSign;
 @end
 
 NS_ASSUME_NONNULL_END

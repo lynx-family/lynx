@@ -40,9 +40,11 @@ class PlatformRendererContext {
   void CreatePlatformExtendedRenderer(int32_t id, const base::String& tag_name,
                                       jobject init_data);
 
-  void InsertPlatformRenderer(int32_t parent, int32_t child, int32_t index);
+  void InsertPlatformRenderer(int32_t parent, int32_t child, int32_t index,
+                              bool should_update_ui_owner);
 
-  void RemovePlatformRenderer(int32_t target);
+  void RemovePlatformRenderer(int32_t parent, int32_t target,
+                              bool should_update_ui_owner);
 
   void DestroyPlatformRenderer(int32_t target);
 
@@ -87,6 +89,8 @@ class PlatformRendererContext {
 
   void FinishLayoutOperation(int32_t component_id, int64_t operation_id,
                              bool is_first_screen);
+
+  void OnNodeReady(const std::vector<int32_t>& ids);
 
   int32_t GetTagInfo(const std::string& tag_name);
 

@@ -14,16 +14,22 @@ namespace lynx::tasm {
 // Android-specific implementation of PlatformRenderer
 class PlatformRendererAndroid : public PlatformRendererImpl {
  public:
-  explicit PlatformRendererAndroid(PlatformRendererContext* context, int id,
-                                   PlatformRendererType type,
-                                   const fml::RefPtr<PropBundle>& init_data);
-  explicit PlatformRendererAndroid(PlatformRendererContext* context, int id,
-                                   const base::String& tag_name,
-                                   const fml::RefPtr<PropBundle>& init_data);
+  explicit PlatformRendererAndroid(
+      PlatformRendererContext* context, int id, PlatformRendererType type,
+      const fml::RefPtr<PropBundle>& init_data,
+      const PlatformRendererInitConfig& init_config =
+          PlatformRendererInitConfig());
+  explicit PlatformRendererAndroid(
+      PlatformRendererContext* context, int id, const base::String& tag_name,
+      const fml::RefPtr<PropBundle>& init_data,
+      const PlatformRendererInitConfig& init_config =
+          PlatformRendererInitConfig());
   PlatformRendererAndroid(PlatformRendererContext* context, int id,
                           PlatformRendererType type,
                           const base::String& tag_name,
-                          const fml::RefPtr<PropBundle>& init_data);
+                          const fml::RefPtr<PropBundle>& init_data,
+                          const PlatformRendererInitConfig& init_config =
+                              PlatformRendererInitConfig());
   ~PlatformRendererAndroid() override;
 
  protected:
@@ -31,8 +37,9 @@ class PlatformRendererAndroid : public PlatformRendererImpl {
   void OnUpdateDisplayList(DisplayList display_list) override;
   void OnUpdateAttributes(const fml::RefPtr<PropBundle>& attributes,
                           bool tends_to_flatten) override;
-  void OnAddChild(PlatformRenderer* child, int index) override;
-  void OnRemoveFromParent() override;
+  void OnAddChild(PlatformRenderer* child, int index,
+                  bool should_update_ui_owner) override;
+  void OnRemoveFromParent(bool should_update_ui_owner) override;
   void OnUpdateSubtreeProperties(
       const DisplayList& subtree_properties) override;
 
@@ -43,7 +50,7 @@ class PlatformRendererAndroid : public PlatformRendererImpl {
   // Initialize the Android view
   void InitializeAndroidView(const fml::RefPtr<PropBundle>& init_data);
   bool ShouldCreatePlatformExtendedRenderer(
-      const fml::RefPtr<PropBundle>& init_data) const;
+      const PlatformRendererInitConfig& init_config) const;
 
   // Clean up Android resources
   void CleanupAndroidView();
@@ -62,11 +69,15 @@ class PlatformRendererAndroidFactory : public PlatformRendererFactory {
 
   fml::RefPtr<PlatformRenderer> CreateRenderer(
       int id, PlatformRendererType type,
-      const fml::RefPtr<PropBundle>& init_data) override;
+      const fml::RefPtr<PropBundle>& init_data,
+      const PlatformRendererInitConfig& init_config =
+          PlatformRendererInitConfig()) override;
 
   fml::RefPtr<PlatformRenderer> CreateExtendedRenderer(
       int id, const base::String& tag_name,
-      const fml::RefPtr<PropBundle>& init_data) override;
+      const fml::RefPtr<PropBundle>& init_data,
+      const PlatformRendererInitConfig& init_config =
+          PlatformRendererInitConfig()) override;
 
  private:
   PlatformRendererContext* context_;

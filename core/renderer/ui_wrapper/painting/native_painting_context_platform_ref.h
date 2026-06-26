@@ -48,9 +48,14 @@ class NativePaintingCtxPlatformRef
   void Destroy();
 
   void CreatePlatformRenderer(int id, PlatformRendererType type,
-                              const fml::RefPtr<PropBundle> &init_data);
-  void CreatePlatformExtendedRenderer(int id, const base::String &tag_name,
-                                      const fml::RefPtr<PropBundle> &init_data);
+                              const fml::RefPtr<PropBundle> &init_data,
+                              const PlatformRendererInitConfig &init_config =
+                                  PlatformRendererInitConfig());
+  void CreatePlatformExtendedRenderer(
+      int id, const base::String &tag_name,
+      const fml::RefPtr<PropBundle> &init_data,
+      const PlatformRendererInitConfig &init_config =
+          PlatformRendererInitConfig());
   void UpdateDisplayList(int id, DisplayList &&display_list);
 
   void RemovePaintingNode(int parent, int child, int index,
@@ -58,6 +63,8 @@ class NativePaintingCtxPlatformRef
   void DestroyPaintingNode(int parent, int child, int index) override;
   void UpdateAttributes(int id, const fml::RefPtr<PropBundle> &attributes,
                         bool tend_to_flatten);
+  void UpdateNodeReadyPatching(std::vector<int32_t> ready_ids,
+                               std::vector<int32_t> remove_ids) override;
 
   // Set the engine actor for the painting context ref.
   void SetLynxEngineActorForPlatformContextRef(
@@ -67,8 +74,10 @@ class NativePaintingCtxPlatformRef
   bool DispatchPlatformInputEvent(int int_event_data[],
                                   float float_event_data[],
                                   int32_t event_target_root_id);
-  bool DispatchPlatformInputEvent(int int_event_data[],
-                                  float float_event_data[]);
+  // Hit-tests inside the given platform event root and returns whether the hit
+  // target lets the event pass through.
+  bool IsPlatformEventTargetEventThrough(int32_t event_target_root_id,
+                                         float point_x, float point_y);
   // The current state of PlatformEventHandler is obtained to determine the
   // gesture handling at the platform layer.
   int GetPlatformEventHandlerState();
@@ -129,6 +138,8 @@ class NativePaintingCtxPlatformRef
   bool IsNativePaintingCtxPlatformRef() override { return true; }
 
  protected:
+  virtual void NotifyNodeReady(const std::vector<int32_t> &) {}
+
   virtual void InvokePlatformRendererUIMethod(
       int32_t id, const std::string &method, const lepus::Value &params,
       base::MoveOnlyClosure<void, int32_t, const pub::Value &> callback);

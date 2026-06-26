@@ -7,6 +7,8 @@
 #include "core/renderer/ui_wrapper/painting/ios/platform_renderer_context_darwin.h"
 #include "core/renderer/ui_wrapper/painting/ios/platform_renderer_darwin.h"
 
+#import <Lynx/LynxUIOwner.h>
+
 namespace lynx {
 namespace tasm {
 
@@ -65,6 +67,27 @@ void NativePaintingCtxPlatformDarwinRef::UpdatePlatformRendererExtraBundle(
   if (auto it = renderers_.find(sign); it != renderers_.end()) {
     auto* renderer = static_cast<PlatformRendererDarwin*>(it->second.get());
     renderer->UpdatePlatformExtraBundle(platform_extra_bundle);
+  }
+}
+
+void NativePaintingCtxPlatformDarwinRef::NotifyNodeReady(const std::vector<int32_t>& signs) {
+  auto* factory = static_cast<PlatformRendererDarwinFactory*>(view_factory_.get());
+  if (factory == nullptr) {
+    return;
+  }
+  auto* context = factory->GetContext();
+  if (context == nullptr) {
+    return;
+  }
+  LynxUIOwner* owner = context->GetUIOwner();
+  if (owner == nil) {
+    return;
+  }
+  for (const auto sign : signs) {
+    if ([owner findUIBySign:sign] == nil) {
+      continue;
+    }
+    [owner onNodeReady:sign];
   }
 }
 

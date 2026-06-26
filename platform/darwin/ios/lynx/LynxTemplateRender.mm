@@ -75,6 +75,7 @@
 #include "core/renderer/ui_wrapper/layout/ios/layout_context_darwin.h"
 #include "core/renderer/ui_wrapper/painting/ios/native_painting_context_platform_darwin_ref.h"
 #include "core/renderer/ui_wrapper/painting/ios/painting_context_darwin.h"
+#include "core/renderer/ui_wrapper/painting/platform_renderer_impl.h"
 #include "core/renderer/utils/base/base_def.h"
 #include "core/renderer/utils/darwin/event_converter_darwin.h"
 #include "core/resource/lazy_bundle/lazy_bundle_loader.h"
@@ -1377,25 +1378,25 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
   _paintingCtxPlatformRef.get();
 }
 
-- (void)DispatchPlatformInputEvent:(NSArray*)iEventData withData:(NSArray*)fEventData {
+- (BOOL)DispatchPlatformInputEvent:(NSArray*)iEventData withData:(NSArray*)fEventData {
   if (shell_->IsDestroyed()) {
-    return;
+    return NO;
   }
 
-  NSUInteger count = iEventData.count;
-  int* int_event_data = (int*)malloc(count * sizeof(int));
+  NSUInteger int_event_data_count = iEventData.count;
+  int* int_event_data = (int*)malloc(int_event_data_count * sizeof(int));
   if (int_event_data == NULL) {
-    return;
+    return NO;
   }
   [iEventData enumerateObjectsUsingBlock:^(id _Nonnull obj, NSUInteger idx, BOOL* _Nonnull stop) {
     int_event_data[idx] = [obj intValue];
   }];
 
-  count = fEventData.count;
-  float* float_event_data = (float*)malloc(count * sizeof(float));
+  NSUInteger float_event_data_count = fEventData.count;
+  float* float_event_data = (float*)malloc(float_event_data_count * sizeof(float));
   if (float_event_data == NULL) {
     free(int_event_data);
-    return;
+    return NO;
   }
   [fEventData enumerateObjectsUsingBlock:^(id _Nonnull obj, NSUInteger idx, BOOL* _Nonnull stop) {
     float_event_data[idx] = [obj floatValue];
@@ -1403,12 +1404,47 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
 
   auto* platform_ref =
       static_cast<lynx::tasm::NativePaintingCtxPlatformDarwinRef*>(_paintingCtxPlatformRef.get());
+  BOOL consumed = NO;
   if (platform_ref) {
-    platform_ref->DispatchPlatformInputEvent(int_event_data, float_event_data);
+    int32_t event_target_root_id = kRootId;
+    if (int_event_data_count > 4) {
+      event_target_root_id = int_event_data[4];
+    }
+    consumed = platform_ref->DispatchPlatformInputEvent(int_event_data, float_event_data,
+                                                        event_target_root_id);
   }
 
   free(int_event_data);
   free(float_event_data);
+  return consumed;
+}
+
+- (void)SetPlatformEventRootActive:(NSInteger)rootSign active:(BOOL)active {
+  auto* platform_ref =
+      static_cast<lynx::tasm::NativePaintingCtxPlatformDarwinRef*>(_paintingCtxPlatformRef.get());
+  if (platform_ref) {
+    platform_ref->SetPlatformEventRootActive(static_cast<int32_t>(rootSign), active);
+  }
+}
+
+- (void)SetPlatformEventRootOffset:(NSInteger)rootSign
+                           offsetX:(CGFloat)offsetX
+                           offsetY:(CGFloat)offsetY {
+  auto* platform_ref =
+      static_cast<lynx::tasm::NativePaintingCtxPlatformDarwinRef*>(_paintingCtxPlatformRef.get());
+  if (platform_ref) {
+    platform_ref->SetPlatformEventRootOffset(static_cast<int32_t>(rootSign), offsetX, offsetY);
+  }
+}
+
+- (BOOL)IsPlatformEventTargetEventThrough:(NSInteger)rootSign point:(CGPoint)point {
+  auto* platform_ref =
+      static_cast<lynx::tasm::NativePaintingCtxPlatformDarwinRef*>(_paintingCtxPlatformRef.get());
+  if (platform_ref) {
+    return platform_ref->IsPlatformEventTargetEventThrough(static_cast<int32_t>(rootSign), point.x,
+                                                           point.y);
+  }
+  return NO;
 }
 
 - (int)GetPlatformEventHandlerState {

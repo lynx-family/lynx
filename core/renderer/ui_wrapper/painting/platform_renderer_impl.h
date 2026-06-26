@@ -60,17 +60,39 @@ class PlatformRendererImpl : public PlatformRenderer {
   bool IsPlatformExtendedRenderer() const {
     return is_platform_extended_renderer_;
   }
+  // Marks a renderer that is created for the direct child of a compatible
+  // component. These renderers are backed by UIOwner even when their type would
+  // normally use the plain renderer-host path.
+  void SetDirectChildOfCompatibleComponent(bool value) {
+    is_direct_child_of_compatible_component_ = value;
+  }
+
+  // Records the parent in the element tree. The fragment tree may reparent
+  // nodes for z-index/fixed handling, but UIOwner relations should only follow
+  // the original element parent.
+  void SetFragmentParentId(int32_t fragment_parent_id) {
+    fragment_parent_id_ = fragment_parent_id;
+  }
 
  private:
   void UpdateSubtreeProperty(const DisplayList& display_list);
+
+  // Whether the parent-child edge should also be mirrored through UIOwner.
+  // Only direct element-parent relations between UIOwner-backed renderers
+  // should update UIOwner; other renderer-host relations are managed as native
+  // views.
+  bool ShouldUpdateUIOwnerForChild(const PlatformRendererImpl& child) const;
 
  protected:
   // Platform-specific operations to be implemented by derived classes
   virtual void OnUpdateDisplayList(DisplayList display_list) = 0;
   virtual void OnUpdateAttributes(const fml::RefPtr<PropBundle>& attributes,
                                   bool tends_to_flatten) = 0;
-  virtual void OnAddChild(PlatformRenderer* child, int index) = 0;
-  virtual void OnRemoveFromParent() = 0;
+  // `should_update_ui_owner` is true when the platform implementation should
+  // update the UIOwner tree instead of directly mutating renderer-host views.
+  virtual void OnAddChild(PlatformRenderer* child, int index,
+                          bool should_update_ui_owner) = 0;
+  virtual void OnRemoveFromParent(bool should_update_ui_owner) = 0;
   virtual void OnUpdateSubtreeProperties(
       const DisplayList& subtree_properties) = 0;
 
@@ -89,6 +111,10 @@ class PlatformRendererImpl : public PlatformRenderer {
   DisplayList display_list_;
   ChildVecT children_;
   bool is_platform_extended_renderer_ = false;
+  bool is_direct_child_of_compatible_component_ = false;
+  // True when the current parent edge is mirrored through UIOwner.
+  bool is_ui_owner_child_ = false;
+  int32_t fragment_parent_id_ = -1;
   bool is_overlay_ = false;
 };
 

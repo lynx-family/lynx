@@ -8794,7 +8794,6 @@ public class com::lynx::tasm::behavior::render::PlatformRendererContext : com.ly
   public int com.lynx.tasm.behavior.render.PlatformRendererContext.getTagInfo(String tagName);
   public void com.lynx.tasm.behavior.render.PlatformRendererContext.createPlatformExtendedRenderer(int sign, String tagName, PropBundle initData);
   public void com.lynx.tasm.behavior.render.PlatformRendererContext.destroyPlatformRenderer(int sign);
-  public void com.lynx.tasm.behavior.render.PlatformRendererContext.insertPlatformRenderer(int parent, int child, int index);
   public void com.lynx.tasm.behavior.render.PlatformRendererContext.invalidatePlatformRenderer(int sign);
   public void com.lynx.tasm.behavior.render.PlatformRendererContext.updatePlatformRendererFrame(int sign, boolean needClip, int left, int top, int width, int height, int dx, int dy);
   public void com.lynx.tasm.behavior.render.PlatformRendererContext.updatePlatformRendererAttributes(int sign, PropBundle propBundle);
@@ -8809,7 +8808,7 @@ public class com::lynx::tasm::behavior::render::PlatformRendererContext : com.ly
   public void com.lynx.tasm.behavior.render.PlatformRendererContext.removeListItemPaintingNode(int listSign, int childSign);
   public void com.lynx.tasm.behavior.render.PlatformRendererContext.updateContentOffsetForListContainer(int listSign, float contentSize, float deltaX, float deltaY, boolean isInitScrollOffset, boolean fromLayout);
   public void com.lynx.tasm.behavior.render.PlatformRendererContext.finishLayoutOperation(int componentId, long operationId, boolean isFirstScreen);
-  public void com.lynx.tasm.behavior.render.PlatformRendererContext.removePlatformRendererFromParent(int sign);
+  public void com.lynx.tasm.behavior.render.PlatformRendererContext.onNodeReadyBatch(int[] signs);
   public void com.lynx.tasm.behavior.render.PlatformRendererContext.getDisplayList(int id, DisplayList displayList);
   public TextLayout com.lynx.tasm.behavior.render.PlatformRendererContext.getTextLayout();
   public float[] com.lynx.tasm.behavior.render.PlatformRendererContext.measureText(int sign, float width, int widthMode, float height, int heightMode, float[] inlineViewLayoutResult);
