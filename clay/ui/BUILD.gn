@@ -86,6 +86,10 @@ source_set("ui") {
     "../shell/platform/common:common_cpp_input",
   ]
 
+  if (is_win || is_mac) {
+    deps += [ "//third_party/zlib" ]
+  }
+
   public_deps = [
     "../fml:fml",
     "../net:net",
