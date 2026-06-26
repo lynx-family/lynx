@@ -141,7 +141,8 @@ class PaintingCtxPlatformImpl {
                             float height, const float* paddings,
                             const float* margins, const float* borders,
                             const float* bounds, const float* sticky,
-                            float max_height, uint32_t node_index) = 0;
+                            float max_height, uint32_t node_index,
+                            bool display_none) = 0;
   virtual void RecordInitialLynxUITreeForReplay(
       std::vector<InitialLynxUITreeNodeForReplay> nodes) {}
   virtual void UpdatePlatformExtraBundle(int32_t id,

@@ -85,8 +85,8 @@ class PaintingContextDarwin : public PaintingCtxPlatformImpl {
   void UpdateLayout(int sign, float x, float y, float width, float height,
                     const float* paddings, const float* margins,
                     const float* borders, const float* flatten_bounds,
-                    const float* sticky, float max_height,
-                    uint32_t node_index) override;
+                    const float* sticky, float max_height, uint32_t node_index,
+                    bool display_none) override;
   std::unique_ptr<pub::Value> GetTextInfo(const std::string& content,
                                           const pub::Value& info) override;
   void StopExposure(const pub::Value& options) override;

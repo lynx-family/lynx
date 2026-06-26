@@ -52,8 +52,8 @@ class NativePaintingCtxAndroid : public PaintingCtxPlatformImpl,
   void UpdateLayout(int tag, float x, float y, float width, float height,
                     const float *paddings, const float *margins,
                     const float *borders, const float *bounds,
-                    const float *sticky, float max_height,
-                    uint32_t node_index) override;
+                    const float *sticky, float max_height, uint32_t node_index,
+                    bool display_none) override;
 
   void UpdatePlatformExtraBundle(int32_t id,
                                  PlatformExtraBundle *bundle) override;
