@@ -153,6 +153,9 @@ lynx_core_source_set("base") {
     if (is_win) {
       libs += [ "user32.lib" ]
     }
+    if (is_harmony) {
+      libs += [ "qos" ]
+    }
 
     if (is_headless) {
       defines = [ "ENABLE_HEADLESS" ]
