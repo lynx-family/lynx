@@ -9,7 +9,6 @@
 #include "core/renderer/ui_wrapper/common/ios/prop_bundle_darwin.h"
 #include "core/renderer/ui_wrapper/common/native_prop_bundle.h"
 #include "core/renderer/ui_wrapper/painting/ios/platform_renderer_context_darwin.h"
-#include "core/renderer/utils/base/tasm_constants.h"
 
 #import <Lynx/LUIBodyView.h>
 #import <Lynx/LynxComponentRegistry.h>
@@ -24,6 +23,10 @@ namespace lynx {
 namespace tasm {
 
 namespace {
+
+bool IsOverlayRendererTag(const base::String& tag) {
+  return tag.IsEqual("overlay") || tag.IsEqual("x-overlay-ng");
+}
 
 void LynxCUIApplyLayoutFrame(UIView* view, CGRect layout_frame) {
   if (CATransform3DIsIdentity(view.layer.transform)) {
@@ -64,8 +67,9 @@ PlatformRendererDarwin::PlatformRendererDarwin(PlatformRendererContextDarwin* co
 
 PlatformRendererDarwin::PlatformRendererDarwin(PlatformRendererContextDarwin* context, int id,
                                                PlatformRendererType type,
-                                               const fml::RefPtr<PropBundle>& init_data)
-    : PlatformRendererDarwin(context, id, type, base::String(), init_data) {}
+                                               const fml::RefPtr<PropBundle>& init_data,
+                                               const PlatformRendererInitConfig& init_config)
+    : PlatformRendererDarwin(context, id, type, base::String(), init_data, init_config) {}
 
 PlatformRendererDarwin::PlatformRendererDarwin(PlatformRendererContextDarwin* context, int id,
                                                const base::String& tag_name)
@@ -73,8 +77,10 @@ PlatformRendererDarwin::PlatformRendererDarwin(PlatformRendererContextDarwin* co
 
 PlatformRendererDarwin::PlatformRendererDarwin(PlatformRendererContextDarwin* context, int id,
                                                const base::String& tag_name,
-                                               const fml::RefPtr<PropBundle>& init_data)
-    : PlatformRendererDarwin(context, id, PlatformRendererType::kUnknown, tag_name, init_data) {}
+                                               const fml::RefPtr<PropBundle>& init_data,
+                                               const PlatformRendererInitConfig& init_config)
+    : PlatformRendererDarwin(context, id, PlatformRendererType::kUnknown, tag_name, init_data,
+                             init_config) {}
 
 PlatformRendererDarwin::PlatformRendererDarwin(PlatformRendererContextDarwin* context, int id,
                                                PlatformRendererType type,
@@ -84,11 +90,14 @@ PlatformRendererDarwin::PlatformRendererDarwin(PlatformRendererContextDarwin* co
 PlatformRendererDarwin::PlatformRendererDarwin(PlatformRendererContextDarwin* context, int id,
                                                PlatformRendererType type,
                                                const base::String& tag_name,
-                                               const fml::RefPtr<PropBundle>& init_data)
+                                               const fml::RefPtr<PropBundle>& init_data,
+                                               const PlatformRendererInitConfig& init_config)
     : PlatformRendererImpl(id, type, tag_name),
       context_(context),
       ui_owner_(context != nullptr ? context->GetUIOwner() : nil) {
-  if (ShouldCreatePlatformExtendedRenderer(init_data)) {
+  SetDirectChildOfCompatibleComponent(init_config.is_direct_child_of_compatible_component);
+  SetFragmentParentId(init_config.fragment_parent_id);
+  if (ShouldCreatePlatformExtendedRenderer(init_config)) {
     is_platform_extended_renderer_ = true;
   }
   InitializeUIView(init_data);
@@ -113,6 +122,7 @@ void PlatformRendererDarwin::OnUpdateDisplayList(DisplayList display_list) {
         CGRect layout_frame =
             CGRectMake(frame[0] + display_list_.GetRenderOffset()[0],
                        frame[1] + display_list_.GetRenderOffset()[1], frame[2], frame[3]);
+        layout_frame = ResolveLayoutFrame(layout_frame);
         UpdateUIOwnerLayout(CGRectMake(frame[0], frame[1], frame[2], frame[3]));
         LynxCUIApplyLayoutFrame(view, layout_frame);
 
@@ -156,7 +166,10 @@ void PlatformRendererDarwin::OnRebuildSubRenderers() {
   [[view renderer] onRebuildSubRenderers];
 }
 
-void PlatformRendererDarwin::OnAddChild(PlatformRenderer* child, int index) {
+void PlatformRendererDarwin::OnAddChild(PlatformRenderer* child, int index,
+                                        bool should_update_ui_owner) {
+  // TODO(linxs): Support indexed insertion on iOS after mapping the
+  // platform renderer child index to the corresponding UIOwner/UIView child index.
   if (child == nullptr) {
     return;
   }
@@ -164,8 +177,17 @@ void PlatformRendererDarwin::OnAddChild(PlatformRenderer* child, int index) {
   auto* child_renderer = static_cast<PlatformRendererDarwin*>(child);
   UIView<LynxRendererHost>* child_view = child_renderer->GetUIView();
   LynxUIOwner* owner = ui_owner_;
-  if (owner != nil && HasUIOwnerNode(GetId()) && child_renderer->HasUIOwnerNode(child->GetId())) {
+  if (should_update_ui_owner && owner != nil && HasUIOwnerNode(GetId()) &&
+      child_renderer->HasUIOwnerNode(child->GetId())) {
     [owner insertNode:child->GetId() toParent:GetId() atIndex:index];
+    [[child_view renderer] reattachHostDecorationLayers];
+    return;
+  }
+
+  if (child_renderer->IsOverlay()) {
+    // Overlay owns its native hierarchy through LynxOverlayGlobalManager. The
+    // rendererhost parent can be a plain host view, so never attach the overlay
+    // view through the normal UIKit subview path.
     [[child_view renderer] reattachHostDecorationLayers];
     return;
   }
@@ -187,12 +209,16 @@ void PlatformRendererDarwin::OnAddChild(PlatformRenderer* child, int index) {
   [[child_view renderer] reattachHostDecorationLayers];
 }
 
-void PlatformRendererDarwin::OnRemoveFromParent() {
+void PlatformRendererDarwin::OnRemoveFromParent(bool should_update_ui_owner) {
   LynxUIOwner* owner = ui_owner_;
-  if (ShouldDetachThroughUIOwner(owner, GetId())) {
+  if (should_update_ui_owner && ShouldDetachThroughUIOwner(owner, GetId())) {
     [owner detachNode:GetId()];
     UIView<LynxRendererHost>* detach_view = GetUIView();
     [[detach_view renderer] detachHostDecorationLayers];
+    return;
+  }
+
+  if (!should_update_ui_owner && IsOverlay()) {
     return;
   }
 
@@ -284,8 +310,8 @@ void PlatformRendererDarwin::InitializeUIView(const fml::RefPtr<PropBundle>& ini
 }
 
 bool PlatformRendererDarwin::ShouldCreatePlatformExtendedRenderer(
-    const fml::RefPtr<PropBundle>& init_data) const {
-  if (init_data != nullptr && init_data->Contains(kDirectChildOfCompatibleComponentInitDataKey)) {
+    const PlatformRendererInitConfig& init_config) const {
+  if (init_config.is_direct_child_of_compatible_component) {
     return true;
   }
   if (type_ == PlatformRendererType::kText || type_ == PlatformRendererType::kImage ||
@@ -361,6 +387,21 @@ void PlatformRendererDarwin::InitializeRendererForView(UIView<LynxRendererHost>*
   if (initial_props != nil) {
     [renderer updateAttributes:initial_props];
   }
+}
+
+CGRect PlatformRendererDarwin::ResolveLayoutFrame(CGRect frame) const {
+  if (!IsOverlayRendererTag(GetExtendedRendererTagName())) {
+    return frame;
+  }
+
+  // Overlay keeps a zero-sized layout box, but its renderer host surface is full-screen.
+  CGSize screen_size = context_ != nullptr ? context_->GetScreenSize() : CGSizeZero;
+  if (screen_size.width <= 0.f || screen_size.height <= 0.f) {
+    screen_size = UIScreen.mainScreen.bounds.size;
+  }
+  frame.origin = CGPointZero;
+  frame.size = screen_size;
+  return frame;
 }
 
 void PlatformRendererDarwin::UpdateUIOwnerLayout(CGRect frame) {

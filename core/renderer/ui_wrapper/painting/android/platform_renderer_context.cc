@@ -75,26 +75,26 @@ void PlatformRendererContext::CreatePlatformExtendedRenderer(
       env, local_ref.Get(), id, j_tag_name.Get(), init_data);
 }
 
-void PlatformRendererContext::InsertPlatformRenderer(int32_t parent,
-                                                     int32_t child,
-                                                     int32_t index) {
+void PlatformRendererContext::InsertPlatformRenderer(
+    int32_t parent, int32_t child, int32_t index, bool should_update_ui_owner) {
   base::android::ScopedLocalJavaRef<jobject> local_ref(java_ref_);
   if (local_ref.IsNull()) {
     return;
   }
   JNIEnv* env = base::android::AttachCurrentThread();
-  Java_PlatformRendererContext_insertPlatformRenderer(env, local_ref.Get(),
-                                                      parent, child, index);
+  Java_PlatformRendererContext_insertPlatformRenderer(
+      env, local_ref.Get(), parent, child, index, should_update_ui_owner);
 }
 
-void PlatformRendererContext::RemovePlatformRenderer(int32_t target) {
+void PlatformRendererContext::RemovePlatformRenderer(
+    int32_t parent, int32_t target, bool should_update_ui_owner) {
   base::android::ScopedLocalJavaRef<jobject> local_ref(java_ref_);
   if (local_ref.IsNull()) {
     return;
   }
   JNIEnv* env = base::android::AttachCurrentThread();
   Java_PlatformRendererContext_removePlatformRendererFromParent(
-      env, local_ref.Get(), target);
+      env, local_ref.Get(), parent, target, should_update_ui_owner);
 }
 
 void PlatformRendererContext::DestroyPlatformRenderer(int32_t target) {
@@ -210,6 +210,27 @@ void PlatformRendererContext::FinishLayoutOperation(int32_t component_id,
   Java_PlatformRendererContext_finishLayoutOperation(
       env, local_ref.Get(), component_id, static_cast<jlong>(operation_id),
       is_first_screen);
+}
+
+void PlatformRendererContext::OnNodeReady(const std::vector<int32_t>& ids) {
+  if (ids.empty()) {
+    return;
+  }
+  base::android::ScopedLocalJavaRef<jobject> local_ref(java_ref_);
+  if (local_ref.IsNull()) {
+    return;
+  }
+  JNIEnv* env = base::android::AttachCurrentThread();
+  const auto size = static_cast<jsize>(ids.size());
+  base::android::ScopedLocalJavaRef<jintArray> node_ready_ids(
+      env, env->NewIntArray(size));
+  if (node_ready_ids.IsNull()) {
+    return;
+  }
+  std::vector<jint> java_ids(ids.begin(), ids.end());
+  env->SetIntArrayRegion(node_ready_ids.Get(), 0, size, java_ids.data());
+  Java_PlatformRendererContext_onNodeReadyBatch(env, local_ref.Get(),
+                                                node_ready_ids.Get());
 }
 
 PlatformRendererAndroid* PlatformRendererContext::GetPlatformRenderer(

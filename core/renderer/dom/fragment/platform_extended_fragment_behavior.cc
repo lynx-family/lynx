@@ -16,10 +16,16 @@ PlatformExtendedFragmentBehavior::PlatformExtendedFragmentBehavior(
 
 void PlatformExtendedFragmentBehavior::CreatePlatformRenderer(
     const fml::RefPtr<PropBundle>& attributes) {
+  CreatePlatformRenderer(attributes, PlatformRendererInitConfig());
+}
+
+void PlatformExtendedFragmentBehavior::CreatePlatformRenderer(
+    const fml::RefPtr<PropBundle>& attributes,
+    const PlatformRendererInitConfig& init_config) {
   if (painting_context_ && fragment_) {
     // Create platform renderer with extended type for custom components
-    painting_context_->CreatePlatformExtendedRenderer(fragment_->id(),
-                                                      tag_name_, attributes);
+    painting_context_->CreatePlatformExtendedRenderer(
+        fragment_->id(), tag_name_, attributes, init_config);
   }
 }
 

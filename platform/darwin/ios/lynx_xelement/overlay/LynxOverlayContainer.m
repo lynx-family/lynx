@@ -4,6 +4,8 @@
 
 #import <Lynx/LynxContext.h>
 #import <Lynx/LynxEventHandler+Internal.h>
+#import <Lynx/LynxTemplateRender+Internal.h>
+#import <Lynx/LynxView+Internal.h>
 #import <XElement/LynxOverlayContainer.h>
 
 @interface LynxOverlaySimultaneouslyGestureRecognizer
@@ -166,34 +168,49 @@
  */
 - (UIView *)hitTest:(CGPoint)point withEvent:(UIEvent *)event {
   [self ensureEventHandler];
+  LynxUI *rootUI = self.uiDelegate.overlayRootUI;
   UIView *view = [super hitTest:point withEvent:event];
   if (!view) {
     return nil;
   }
-  if ([self.uiDelegate eventPassed:point] && view == self) {
+  BOOL eventPassed = [self.uiDelegate eventPassed:point];
+  if (eventPassed && view == self) {
     return nil;
-  } else {
-    // find touchTarget via lynx event system
-    id<LynxEventTarget> touchTarget = [self.eventHandler hitTest:point withEvent:event];
-
-    // handle focus
-    [self.eventHandler handleFocus:touchTarget
-                            onView:view
-                     withContainer:self
-                          andPoint:point
-                          andEvent:event];
-
-    // check if touchTarget can be event through
-    CGPoint targetPoint = point;
-    if ([touchTarget isKindOfClass:[LynxUI class]]) {
-      targetPoint = [self convertPoint:point toView:((LynxUI *)touchTarget).view];
-    }
-    if ([touchTarget eventThrough:targetPoint]) {
-      return [self.uiDelegate eventPassed:point] ? nil : self;
-    } else {
-      return view ?: ([self.uiDelegate eventPassed:point] ? nil : self);
-    }
   }
+
+  if (rootUI.context.lynxContext.isFragmentLayerRenderOn) {
+    UIView *rootView = rootUI.context.rootView;
+    if (![rootView isKindOfClass:LynxView.class]) {
+      return view;
+    }
+    LynxTemplateRender *templateRender = ((LynxView *)rootView).templateRender;
+    BOOL platformEventThrough =
+        [templateRender IsPlatformEventTargetEventThrough:[self.uiDelegate getSign] point:point];
+    if (platformEventThrough) {
+      return nil;
+    }
+    return view;
+  }
+
+  // find touchTarget via lynx event system
+  id<LynxEventTarget> touchTarget = [self.eventHandler hitTest:point withEvent:event];
+
+  // handle focus
+  [self.eventHandler handleFocus:touchTarget
+                          onView:view
+                   withContainer:self
+                        andPoint:point
+                        andEvent:event];
+
+  // check if touchTarget can be event through
+  CGPoint targetPoint = point;
+  if ([touchTarget isKindOfClass:[LynxUI class]]) {
+    targetPoint = [self convertPoint:point toView:((LynxUI *)touchTarget).view];
+  }
+  if ([touchTarget eventThrough:targetPoint]) {
+    return eventPassed ? nil : self;
+  }
+  return view ?: (eventPassed ? nil : self);
 }
 
 /**

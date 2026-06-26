@@ -8,6 +8,7 @@
 #import <Lynx/LynxPerformanceController.h>
 
 #include <memory>
+#include <vector>
 
 #include "core/renderer/ui_wrapper/painting/ios/platform_renderer_darwin_factory.h"
 #include "core/renderer/ui_wrapper/painting/native_painting_context_platform_ref.h"
@@ -34,6 +35,9 @@ class NativePaintingCtxPlatformDarwinRef : public NativePaintingCtxPlatformRef {
   }
 
   void UpdatePlatformRendererExtraBundle(int32_t sign, id platform_extra_bundle);
+
+ protected:
+  void NotifyNodeReady(const std::vector<int32_t>& signs) override;
 
  private:
   __weak LynxPerformanceController* perf_controller_;

@@ -1047,6 +1047,7 @@ FiberElement::~FiberElement() {
     element_manager_->EraseGlobalBindElementId(global_bind_event_map(),
                                                impl_id());
     element_manager()->NotifyElementDestroy(this);
+    UpdateFixedNodeSetRecursively(false);
     DestroyPlatformNode();
     if (!EnableLayoutInElementMode()) {
       EnqueueLayoutTask([manager = element_manager(), id = impl_id()]() {
@@ -2659,7 +2660,11 @@ void FiberElement::ReplayChangedStyleSideEffect(
   const bool is_layout_only = LayoutProperty::IsLayoutOnly(id);
   const bool need_layout = is_layout_only || LayoutProperty::IsLayoutWanted(id);
   if (need_layout) {
+    const bool was_fixed = is_fixed_;
     CheckFixedSticky(id, value);
+    if (id == kPropertyIDPosition && was_fixed != is_fixed_) {
+      UpdateFixedNodeSet();
+    }
     UpdateLayoutNodeStyle(id, value);
     if (element_manager()->GetEnableDumpElementTree()) {
       (*layout_styles_)[id] = value;
@@ -2717,11 +2722,15 @@ void FiberElement::ReplayResetStyleSideEffect(CSSPropertyID id,
   }
 
   if (id == kPropertyIDPosition) {
-    if (is_fixed_) {
+    const bool was_fixed = is_fixed_;
+    if (was_fixed) {
       fixed_changed_ = true;
     }
     is_sticky_ = false;
     is_fixed_ = false;
+    if (was_fixed) {
+      UpdateFixedNodeSet();
+    }
   }
 
   if (is_layout_only) {
@@ -3797,6 +3806,23 @@ void FiberElement::ConsumeStyleInternal(
   consume_func(styles, false);
 }
 
+void FiberElement::SetStyleInternal(CSSPropertyID id, const CSSValue &value) {
+  const bool was_fixed = is_fixed_;
+  Element::SetStyleInternal(id, value);
+  if (id == kPropertyIDPosition && was_fixed != is_fixed_) {
+    UpdateFixedNodeSet();
+  }
+}
+
+bool FiberElement::ResetCSSValue(CSSPropertyID id) {
+  const bool was_fixed = is_fixed_;
+  bool processed = Element::ResetCSSValue(id);
+  if (id == kPropertyIDPosition && was_fixed != is_fixed_) {
+    UpdateFixedNodeSet();
+  }
+  return processed;
+}
+
 bool FiberElement::ConsumeAllAttributes() {
   bool need_update = false;
   if (dirty_ & kDirtyAttr) {
@@ -4153,6 +4179,30 @@ void FiberElement::MarkDirectChildrenStyleDirtyForInheritedPropertyMutation() {
     if (!fiber_child->is_raw_text()) {
       fiber_child->MarkStyleDirty(false);
     }
+  }
+}
+
+void FiberElement::UpdateFixedNodeSet() {
+  if (!EnableLayoutInElementMode() || !IsFixedNewOrUnifiedEnabled() ||
+      sl_node_ == nullptr) {
+    return;
+  }
+  if (is_fixed_ && !attached_to_layout_parent_ && !is_page()) {
+    return;
+  }
+  element_manager()->UpdateFixedNodeSet(sl_node_.get(), is_fixed_);
+}
+
+void FiberElement::UpdateFixedNodeSetRecursively(bool is_insert) {
+  if (!EnableLayoutInElementMode() || !IsFixedNewOrUnifiedEnabled()) {
+    return;
+  }
+  if (sl_node_ != nullptr && is_fixed_) {
+    element_manager()->UpdateFixedNodeSet(sl_node_.get(), is_insert);
+  }
+  for (auto &child : scoped_children_) {
+    static_cast<FiberElement *>(child.get())
+        ->UpdateFixedNodeSetRecursively(is_insert);
   }
 }
 
@@ -4558,6 +4608,7 @@ void FiberElement::InsertLayoutNode(FiberElement *child, FiberElement *ref) {
       }
       container->sl_node_->InsertChildBefore(
           child->sl_node_.get(), ref_node ? ref_node->sl_node_.get() : nullptr);
+      child->UpdateFixedNodeSetRecursively(true);
       container->MarkLayoutDirtyLite();
       if (container->customized_layout_node_ &&
           child->HasLayoutInElementPlatformNode()) {
@@ -4591,6 +4642,7 @@ void FiberElement::RemoveLayoutNode(FiberElement *child,
   if (EnableLayoutInElementMode()) {
     if (auto *child_layout_node = child->slnode();
         child_layout_node && child_layout_node->parent()) {
+      child->UpdateFixedNodeSetRecursively(false);
       if (customized_layout_node_ && child->HasLayoutInElementPlatformNode()) {
         int index = layout_in_element_platform_index >= 0
                         ? layout_in_element_platform_index

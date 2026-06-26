@@ -51,6 +51,13 @@ base::String PlatformRendererImpl::GetExtendedRendererTagName() const {
   }
 }
 
+bool PlatformRendererImpl::ShouldUpdateUIOwnerForChild(
+    const PlatformRendererImpl& child) const {
+  return child.fragment_parent_id_ == id_ && is_platform_extended_renderer_ &&
+         (child.is_platform_extended_renderer_ ||
+          child.is_direct_child_of_compatible_component_);
+}
+
 void PlatformRendererImpl::UpdateDisplayList(DisplayList display_list) {
   // Call platform-specific implementation
   UpdateSubtreeProperty(display_list);
@@ -77,12 +84,14 @@ void PlatformRendererImpl::AddChild(fml::RefPtr<PlatformRenderer> child,
   const bool should_append =
       index < 0 || static_cast<size_t>(index) >= children_.size();
   const int insert_index = should_append ? -1 : index;
+  const bool should_update_ui_owner = ShouldUpdateUIOwnerForChild(*child_impl);
 
   // Set parent relationship
   child_impl->parent_ = this;
+  child_impl->is_ui_owner_child_ = should_update_ui_owner;
 
   // Call platform-specific implementation
-  OnAddChild(child.get(), insert_index);
+  OnAddChild(child.get(), insert_index, should_update_ui_owner);
 
   // Add to children list
   if (should_append) {
@@ -97,11 +106,14 @@ void PlatformRendererImpl::RemoveFromParent() {
     return;
   }
 
+  PlatformRendererImpl* parent = parent_;
+  const bool should_update_ui_owner = is_ui_owner_child_;
+
   // Call platform-specific implementation
-  OnRemoveFromParent();
+  OnRemoveFromParent(should_update_ui_owner);
 
   // Remove from parent's children list
-  auto& siblings = parent_->children_;
+  auto& siblings = parent->children_;
   auto it = std::find_if(siblings.begin(), siblings.end(),
                          [this](const fml::RefPtr<PlatformRenderer>& child) {
                            return child.get() == this;
@@ -113,6 +125,7 @@ void PlatformRendererImpl::RemoveFromParent() {
 
   // Clear parent relationship
   parent_ = nullptr;
+  is_ui_owner_child_ = false;
 }
 
 void PlatformRendererImpl::ReleaseSelf() const { delete this; }

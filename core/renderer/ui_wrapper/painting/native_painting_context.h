@@ -10,6 +10,7 @@
 #include "base/include/value/base_string.h"
 #include "core/public/painting_ctx_platform_impl.h"
 #include "core/public/platform_renderer_type.h"
+#include "core/renderer/ui_wrapper/painting/platform_renderer.h"
 
 namespace lynx::tasm {
 class DisplayList;
@@ -25,10 +26,14 @@ class NativePaintingContext {
       const std::shared_ptr<PipelineOptions>& options) = 0;
   virtual void CreatePlatformRenderer(
       int id, PlatformRendererType type,
-      const fml::RefPtr<PropBundle>& init_data) = 0;
+      const fml::RefPtr<PropBundle>& init_data,
+      const PlatformRendererInitConfig& init_config =
+          PlatformRendererInitConfig()) = 0;
   virtual void CreatePlatformExtendedRenderer(
       int id, const base::String& tag_name,
-      const fml::RefPtr<PropBundle>& init_data) = 0;
+      const fml::RefPtr<PropBundle>& init_data,
+      const PlatformRendererInitConfig& init_config =
+          PlatformRendererInitConfig()) = 0;
   virtual void UpdateDisplayList(int id, DisplayList list) = 0;
   virtual void CreateImage(int id, base::String src, float width, float height,
                            int32_t event_mask = 0) = 0;

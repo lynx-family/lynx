@@ -469,12 +469,17 @@ public class PlatformRendererContext implements TextMeasurerProvider {
   }
 
   @CalledByNative
-  public void insertPlatformRenderer(int parent, int child, int index) {
-    // LynxUIOwner owner = mContext.getLynxUIOwner();
-    // if (owner != null && owner.getNode(parent) != null && owner.getNode(child) != null) {
-    //   owner.insert(parent, child, index);
-    //   return;
-    // }
+  void insertPlatformRenderer(int parent, int child, int index, boolean shouldUpdateUIOwner) {
+    LynxUIOwner owner = mContext.getLynxUIOwner();
+    LynxBaseUI parentUI = owner != null ? owner.getNode(parent) : null;
+    LynxBaseUI childUI = owner != null ? owner.getNode(child) : null;
+    if (shouldUpdateUIOwner && parentUI != null && childUI != null) {
+      owner.insert(parent, child, index);
+      return;
+    }
+    if (!shouldUpdateUIOwner && childUI != null && childUI.isOverlay()) {
+      return;
+    }
 
     IRendererHost hParent = mViewHolder.get(parent);
     IRendererHost hChild = mViewHolder.get(child);
@@ -694,6 +699,23 @@ public class PlatformRendererContext implements TextMeasurerProvider {
   }
 
   @CalledByNative
+  public void onNodeReadyBatch(int[] signs) {
+    if (signs == null) {
+      return;
+    }
+    LynxUIOwner owner = mContext != null ? mContext.getLynxUIOwner() : null;
+    if (owner == null) {
+      return;
+    }
+    for (int sign : signs) {
+      if (owner.getNode(sign) == null) {
+        continue;
+      }
+      owner.onNodeReady(sign);
+    }
+  }
+
+  @CalledByNative
   private void finishTasmOperation(long operationId) {
     LynxUIOwner owner = mContext != null ? mContext.getLynxUIOwner() : null;
     if (owner == null) {
@@ -703,19 +725,17 @@ public class PlatformRendererContext implements TextMeasurerProvider {
   }
 
   @CalledByNative
-  public void removePlatformRendererFromParent(int sign) {
-    // LynxUIOwner owner = mContext.getLynxUIOwner();
-    // if (owner != null && owner.getNode(sign) != null) {
-    //   LynxBaseUI child = owner.getNode(sign);
-    //   if (child.getParent() instanceof LynxBaseUI) {
-    //     LynxBaseUI parent = (LynxBaseUI) child.getParent();
-    //     if (parent == null) {
-    //       return;
-    //     }
-    //     owner.remove(parent.getSign(), child.getSign());
-    //     return;
-    //   }
-    // }
+  void removePlatformRendererFromParent(int parent, int sign, boolean shouldUpdateUIOwner) {
+    LynxUIOwner owner = mContext.getLynxUIOwner();
+    LynxBaseUI parentUI = owner != null ? owner.getNode(parent) : null;
+    LynxBaseUI childUI = owner != null ? owner.getNode(sign) : null;
+    if (shouldUpdateUIOwner && parentUI != null && childUI != null) {
+      owner.remove(parent, sign);
+      return;
+    }
+    if (!shouldUpdateUIOwner && childUI != null && childUI.isOverlay()) {
+      return;
+    }
 
     IRendererHost host = mViewHolder.get(sign);
     if (host != null) {
