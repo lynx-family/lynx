@@ -696,7 +696,7 @@ void PaintingContextAndroid::UpdateLayout(
     int id, float x, float y, float width, float height, const float* paddings,
     const float* margins, const float* borders, const float* bounds,
     const float* sticky, float max_height, uint32_t node_index,
-    bool /*display_none*/) {
+    bool display_none) {
   patching_ids_.emplace_back(id);
   patching_node_index_.emplace_back(node_index);
   if (bounds != nullptr) {
@@ -710,15 +710,26 @@ void PaintingContextAndroid::UpdateLayout(
   }
   patching_ints_.emplace_back(
       std::array<int, static_cast<size_t>(IntValueIndex::SIZE)>{
-          static_cast<int>(round(x)), static_cast<int>(round(y)),
-          static_cast<int>(round(width)), static_cast<int>(round(height)),
-          static_cast<int>(paddings[0]), static_cast<int>(paddings[1]),
-          static_cast<int>(paddings[2]), static_cast<int>(paddings[3]),
-          static_cast<int>(margins[0]), static_cast<int>(margins[1]),
-          static_cast<int>(margins[2]), static_cast<int>(margins[3]),
-          static_cast<int>(borders[0]), static_cast<int>(borders[1]),
-          static_cast<int>(borders[2]), static_cast<int>(borders[3]),
-          bounds != nullptr, sticky != nullptr, static_cast<int>(max_height)});
+          static_cast<int>(round(x)),
+          static_cast<int>(round(y)),
+          static_cast<int>(round(width)),
+          static_cast<int>(round(height)),
+          static_cast<int>(paddings[0]),
+          static_cast<int>(paddings[1]),
+          static_cast<int>(paddings[2]),
+          static_cast<int>(paddings[3]),
+          static_cast<int>(margins[0]),
+          static_cast<int>(margins[1]),
+          static_cast<int>(margins[2]),
+          static_cast<int>(margins[3]),
+          static_cast<int>(borders[0]),
+          static_cast<int>(borders[1]),
+          static_cast<int>(borders[2]),
+          static_cast<int>(borders[3]),
+          bounds != nullptr,
+          sticky != nullptr,
+          static_cast<int>(max_height),
+          static_cast<int>(display_none)});
 }
 
 void PaintingContextAndroid::RecordInitialLynxUITreeForReplay(

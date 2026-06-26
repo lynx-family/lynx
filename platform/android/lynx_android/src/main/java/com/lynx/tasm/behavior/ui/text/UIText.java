@@ -45,6 +45,7 @@ public class UIText extends UIGroup<AndroidText> implements IUIText {
   private Map<Integer, BaseGestureHandler> mGestureHandlers;
   private TextUpdateBundle mTextUpdateBundle;
   private Page mTextraPage;
+  private boolean mDisplayNone = false;
 
   @Deprecated
   public UIText(Context context) {
@@ -135,11 +136,23 @@ public class UIText extends UIGroup<AndroidText> implements IUIText {
   @Override
   public void didEnsureCreateView() {
     super.didEnsureCreateView();
+    if (mView != null) {
+      mView.setDisplayNone(mDisplayNone);
+    }
     if (mTextraPage != null) {
       mView.setTextBundle(mTextraPage);
       updateSelectionChangeBinding();
     } else if (mTextUpdateBundle != null) {
       mView.setTextBundle(mTextUpdateBundle);
+    }
+  }
+
+  @Override
+  public void setDisplayNone(boolean displayNone) {
+    super.setDisplayNone(displayNone);
+    mDisplayNone = displayNone;
+    if (mView != null) {
+      mView.setDisplayNone(displayNone);
     }
   }
 
