@@ -4,6 +4,10 @@
 package com.lynx.tasm.behavior.ui.text;
 
 import static org.junit.Assert.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.verify;
 
 import android.graphics.Canvas;
 import android.graphics.PointF;
@@ -239,5 +243,22 @@ public class AndroidTextTest {
 
     mAndroidText.getTextBoundingBoxes(0, 4);
     assertEquals(2, page.getSelectionRectsCallCount());
+  }
+
+  @Test
+  public void testDisplayNoneSkipsDraw() {
+    Layout layoutSpy = spy(mAndroidText.mTextLayout);
+    TextUpdateBundle textUpdateBundle =
+        new TextUpdateBundle(layoutSpy, false, new HashSet<>(), false);
+    textUpdateBundle.setTextTranslateOffset(new PointF());
+    mAndroidText.setTextBundle(textUpdateBundle);
+
+    mAndroidText.setDisplayNone(true);
+    mAndroidText.onDraw(new Canvas());
+    verify(layoutSpy, never()).draw(any(Canvas.class));
+
+    mAndroidText.setDisplayNone(false);
+    mAndroidText.onDraw(new Canvas());
+    verify(layoutSpy).draw(any(Canvas.class));
   }
 }

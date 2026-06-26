@@ -424,6 +424,20 @@ public class LynxUIOwner {
     }
   }
 
+  public void updateLayout(int tag, int x, int y, int width, int height, int paddingLeft,
+      int paddingTop, int paddingRight, int paddingBottom, int marginLeft, int marginTop,
+      int marginRight, int marginBottom, int borderLeftWidth, int borderTopWidth,
+      int borderRightWidth, int borderBottomWidth, final Rect bound, float[] sticky,
+      float maxHeight, int nodeIndex, boolean displayNone) {
+    LynxBaseUI ui = mUIHolder.get(tag);
+    if (ui != null) {
+      ui.setDisplayNone(displayNone);
+    }
+    updateLayout(tag, x, y, width, height, paddingLeft, paddingTop, paddingRight, paddingBottom,
+        marginLeft, marginTop, marginRight, marginBottom, borderLeftWidth, borderTopWidth,
+        borderRightWidth, borderBottomWidth, bound, sticky, maxHeight, nodeIndex);
+  }
+
   private float[] normalizeStickyInfo(float[] sticky) {
     // Non-sticky nodes keep the existing null payload.
     // Or legacy callers, such as the UIProxy path, already pass four fields.

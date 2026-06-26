@@ -305,6 +305,7 @@ public class com::lynx::tasm::behavior::ui::scroll::AndroidScrollView : com.lynx
 
 public class com::lynx::tasm::behavior::ui::text::AndroidText : com.lynx.tasm.behavior.ui.view.AndroidView, ActionMode.Callback {
   public com.lynx.tasm.behavior.ui.text.AndroidText.AndroidText(Context context);
+  public void com.lynx.tasm.behavior.ui.text.AndroidText.setDisplayNone(boolean displayNone);
   public void com.lynx.tasm.behavior.ui.text.AndroidText.setTextBundle(TextUpdateBundle bundle);
   public void com.lynx.tasm.behavior.ui.text.AndroidText.setTextBundle(Page page);
   public CharSequence com.lynx.tasm.behavior.ui.text.AndroidText.getOriginText();
@@ -4571,6 +4572,7 @@ public class abstract com::lynx::tasm::behavior::ui::LynxBaseUI : com.lynx.tasm.
   public Map< String, String > com.lynx.tasm.behavior.ui.LynxBaseUI.getMemoryUsageDetail();
   public boolean com.lynx.tasm.behavior.ui.LynxBaseUI.getVisibility();
   public boolean com.lynx.tasm.behavior.ui.LynxBaseUI.isVisible();
+  public void com.lynx.tasm.behavior.ui.LynxBaseUI.setDisplayNone(boolean displayNone);
   public void com.lynx.tasm.behavior.ui.LynxBaseUI.initialize();
   public void com.lynx.tasm.behavior.ui.LynxBaseUI.destroy();
   public LynxBackground com.lynx.tasm.behavior.ui.LynxBaseUI.getLynxBackground();
@@ -7302,6 +7304,7 @@ public class com::lynx::tasm::behavior::LynxUIOwner :  {
   public void com.lynx.tasm.behavior.LynxUIOwner.rebuildViewTree();
   public MeaningfulContentSnapshot com.lynx.tasm.behavior.LynxUIOwner.getMeaningfulPaintingAreas();
   public void com.lynx.tasm.behavior.LynxUIOwner.updateLayout(int tag, int x, int y, int width, int height, int paddingLeft, int paddingTop, int paddingRight, int paddingBottom, int marginLeft, int marginTop, int marginRight, int marginBottom, int borderLeftWidth, int borderTopWidth, int borderRightWidth, int borderBottomWidth, final Rect bound, float[] sticky, float maxHeight, int nodeIndex);
+  public void com.lynx.tasm.behavior.LynxUIOwner.updateLayout(int tag, int x, int y, int width, int height, int paddingLeft, int paddingTop, int paddingRight, int paddingBottom, int marginLeft, int marginTop, int marginRight, int marginBottom, int borderLeftWidth, int borderTopWidth, int borderRightWidth, int borderBottomWidth, final Rect bound, float[] sticky, float maxHeight, int nodeIndex, boolean displayNone);
   public void com.lynx.tasm.behavior.LynxUIOwner.setFirstLayout();
   public void com.lynx.tasm.behavior.LynxUIOwner.onNodeReady(int tag);
   public void com.lynx.tasm.behavior.LynxUIOwner.onNodeReload(int tag);
@@ -8555,7 +8558,7 @@ public class com::lynx::tasm::behavior::PaintingContext : com.lynx.tasm.behavior
   public boolean com.lynx.tasm.behavior.PaintingContext.dispatchPlatformMotionEvent(MotionEvent ev, int rootSign);
   public int com.lynx.tasm.behavior.PaintingContext.getPlatformEventHandlerState();
   public void com.lynx.tasm.behavior.PaintingContext.rebuildViewTree();
-  public void com.lynx.tasm.behavior.PaintingContext.updateLayout(int sign, float x, float y, float width, float height, float paddingLeft, float paddingTop, float paddingRight, float paddingBottom, float marginLeft, float marginTop, float marginRight, float marginBottom, float borderLeftWidth, float borderTopWidth, float borderRightWidth, float borderBottomWidth, float[] bounds, float[] sticky, float maxHeight, int nodeIndex);
+  public void com.lynx.tasm.behavior.PaintingContext.updateLayout(int sign, float x, float y, float width, float height, float paddingLeft, float paddingTop, float paddingRight, float paddingBottom, float marginLeft, float marginTop, float marginRight, float marginBottom, float borderLeftWidth, float borderTopWidth, float borderRightWidth, float borderBottomWidth, float[] bounds, float[] sticky, float maxHeight, int nodeIndex, boolean displayNone);
   public void com.lynx.tasm.behavior.PaintingContext.updateProps(int sign, boolean tendToFlatten, PropBundle bundle, ReadableMapBuffer styles);
   public Object com.lynx.tasm.behavior.PaintingContext.createNode(final int sign, String tagName, final PropBundle bundle, ReadableMapBuffer initialStyles, final boolean isFlatten, int nodeIndex);
   public void com.lynx.tasm.behavior.PaintingContext.createPaintingNodeSync(int sign, String tagName, PropBundle bundle, ReadableMapBuffer initialStyles, boolean isFlatten, int nodeIndex);
@@ -11586,6 +11589,7 @@ public class com::lynx::tasm::behavior::ui::text::UIText : com::lynx::tasm::beha
   public EventTarget com.lynx.tasm.behavior.ui.text.UIText.hitTest(float x, float y, boolean ignoreUserInteraction);
   public void com.lynx.tasm.behavior.ui.text.UIText.updateExtraData(Object data);
   public void com.lynx.tasm.behavior.ui.text.UIText.didEnsureCreateView();
+  public void com.lynx.tasm.behavior.ui.text.UIText.setDisplayNone(boolean displayNone);
   public void com.lynx.tasm.behavior.ui.text.UIText.setEvents(Map< String, EventsListener > events);
   public void com.lynx.tasm.behavior.ui.text.UIText.onNodeReady();
   public CharSequence com.lynx.tasm.behavior.ui.text.UIText.getOriginText();
