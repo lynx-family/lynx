@@ -136,7 +136,7 @@ void PaintingContextHarmonyRef::ConsumeGesture(int64_t id, int32_t gesture_id,
 void PaintingContextHarmonyRef::UpdateLayout(
     int tag, float x, float y, float width, float height, const float* paddings,
     const float* margins, const float* borders, const float* sticky,
-    float max_height, uint32_t node_index) {
+    float max_height, uint32_t node_index, bool /*display_none*/) {
   ui_owner_->UpdateLayout(tag, x, y, width, height, paddings, margins, sticky,
                           max_height, node_index);
 }
@@ -222,7 +222,8 @@ void PaintingContextHarmony::UpdatePaintingNode(
 void PaintingContextHarmony::UpdateLayout(
     int tag, float x, float y, float width, float height, const float* paddings,
     const float* margins, const float* borders, const float* bounds,
-    const float* sticky, float max_height, uint32_t node_index) {
+    const float* sticky, float max_height, uint32_t node_index,
+    bool display_none) {
 #define MAKE_UNIQUE_COPY(src, size)                      \
   std::unique_ptr<float[]> src##_copy{nullptr};          \
   if (src) {                                             \
@@ -242,12 +243,13 @@ void PaintingContextHarmony::UpdateLayout(
   Enqueue([platform_ref = platform_ref_, tag, x, y, width, height,
            paddings = std::move(paddings_copy),
            margins = std::move(margins_copy), borders = std::move(borders_copy),
-           sticky = std::move(sticky_copy), max_height, node_index] {
+           sticky = std::move(sticky_copy), max_height, node_index,
+           display_none] {
     auto harmony_ref =
         std::static_pointer_cast<PaintingContextHarmonyRef>(platform_ref);
     harmony_ref->UpdateLayout(tag, x, y, width, height, paddings.get(),
                               margins.get(), borders.get(), sticky.get(),
-                              max_height, node_index);
+                              max_height, node_index, display_none);
   });
 }
 

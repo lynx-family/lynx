@@ -28,7 +28,7 @@
                width:(CGFloat)width
               height:(CGFloat)height {
   painting_context_->UpdateLayout((int)sign, left, top, width, height, nullptr, nullptr, nullptr,
-                                  nullptr, nullptr, 0, lynx::tasm::kInvalidNodeIndex);
+                                  nullptr, nullptr, 0, lynx::tasm::kInvalidNodeIndex, false);
 }
 
 - (void)finishLayoutOperation {
