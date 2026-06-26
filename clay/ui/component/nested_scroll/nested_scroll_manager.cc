@@ -31,6 +31,9 @@ void NestedScrollManager::CancelAnimations() {
 
 void NestedScrollManager::DragStart(NestedScrollable* scrollable) {
   FML_DCHECK(scrollable && scrollable->Is<NestedScrollable>());
+  if (!scrollable->ShouldConsumeGesture()) {
+    return;
+  }
 
   // We reset the touch slop for all scrollables before creating the new
   // scrollable chain.
@@ -51,7 +54,18 @@ void NestedScrollManager::DragStart(NestedScrollable* scrollable) {
 void NestedScrollManager::DragUpdate(NestedScrollable* source_scrollable,
                                      FloatPoint delta) {
   if (source_scrollable_ != source_scrollable) {
-    FML_DCHECK(false) << "source_scrollable is not match";
+    if (!source_scrollable->ShouldConsumeGesture() ||
+        page_view_->gesture_manager()->ShouldInterceptGesture()) {
+      StopScrollForGestureInterception();
+      return;
+    }
+    DragStart(source_scrollable);
+    if (source_scrollable_ != source_scrollable) {
+      return;
+    }
+  }
+  if (!source_scrollable->ShouldConsumeGesture()) {
+    StopScrollForGestureInterception();
     return;
   }
   if (page_view_->gesture_manager()->ShouldInterceptGesture()) {
@@ -69,6 +83,10 @@ void NestedScrollManager::DragEnd(NestedScrollable* source_scrollable,
                                   FloatSize velocity) {
   if (source_scrollable_ != source_scrollable) {
     // FML_DCHECK(false) << "source_scrollable is not match";
+    return;
+  }
+  if (!source_scrollable->ShouldConsumeGesture()) {
+    StopScrollForGestureInterception();
     return;
   }
   if (page_view_->gesture_manager()->ShouldInterceptGesture()) {
@@ -138,7 +156,7 @@ std::tuple<FloatPoint, NestedScrollable*> NestedScrollManager::DispatchScroll(
   for (auto it = scrollable_chain_.rbegin(); it != scrollable_chain_.rend();
        it++) {
     auto scrollable = it->get();
-    if (scrollable->IsScrollEnabled() &&
+    if (scrollable->IsScrollEnabled() && scrollable->ShouldConsumeGesture() &&
         scrollable->CaptureScroll(unconsumed)) {
       auto old_unconsumed = unconsumed;
       unconsumed = scrollable->DoScroll(unconsumed);

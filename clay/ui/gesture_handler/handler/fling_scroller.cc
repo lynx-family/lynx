@@ -52,6 +52,9 @@ void FlingScroller::OnAnimationCancel(Animator& animation) {
 void FlingScroller::OnAnimationRepeat(Animator& animation) {}
 
 void FlingScroller::OnAnimationUpdate(ValueAnimator& animation) {
+  if (stopping_) {
+    return;
+  }
   if (last_time_ == 0) {
     last_time_ = fml::TimePoint::Now().ToEpochDelta().ToMilliseconds();
     return;
@@ -75,6 +78,7 @@ void FlingScroller::Start(float velocity_x, float velocity_y,
   callback_ = callback;
   velocity_x_ = velocity_x;
   velocity_y_ = velocity_y;
+  current_fling_state_ = static_cast<uint8_t>(FlingState::FLING);
   animator_->Start();
 }
 
@@ -83,10 +87,15 @@ bool FlingScroller::IsIdle() {
 }
 
 void FlingScroller::Stop() {
-  if (animator_) {
-    animator_->End();
+  if (stopping_) {
+    return;
   }
+  stopping_ = true;
   current_fling_state_ = static_cast<uint8_t>(FlingState::IDLE);
+  if (animator_) {
+    animator_->Cancel();
+  }
+  stopping_ = false;
 }
 
 }  // namespace clay

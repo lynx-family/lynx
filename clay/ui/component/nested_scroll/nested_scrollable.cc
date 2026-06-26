@@ -120,8 +120,9 @@ std::tuple<FloatPoint, NestedScrollable*> NestedScrollable::HandleNestedScroll(
   // We only enter the overscroll state when dragging. Otherwise, the scroll
   // is triggered by fling animation. In that case, we should not do
   // overscroll here, and it will be handled by a bounce animator instead.
-  bool current_can_overscroll =
-      is_dragging && IsScrollEnabled() && IsOverscrollEnabled(is_forward);
+  bool current_can_overscroll = is_dragging && IsScrollEnabled() &&
+                                ShouldConsumeGesture() &&
+                                IsOverscrollEnabled(is_forward);
   auto handle_parent = [&] {
     if (auto parent_scrollable =
             nested_scroll_manager()->FindOuterScrollable(this)) {
@@ -140,7 +141,7 @@ std::tuple<FloatPoint, NestedScrollable*> NestedScrollable::HandleNestedScroll(
       return result;
     }
   }
-  if (IsScrollEnabled()) {
+  if (IsScrollEnabled() && ShouldConsumeGesture()) {
     auto old_unconsumed = unconsumed;
     unconsumed = DoScroll(unconsumed);
     if (unconsumed != old_unconsumed) {
@@ -469,6 +470,10 @@ void NestedScrollable::OnAnimationCancel(Animator& animation) {
 }
 
 void NestedScrollable::OnAnimationUpdate(ValueAnimator& animation) {
+  if (!ShouldConsumeGesture()) {
+    wheel_animator_->Cancel();
+    return;
+  }
   float fraction = wheel_animator_->GetAnimatedFraction();
   float scroll_delta = MaximumDimension(target_scroll_delta_) * fraction;
   auto delta = target_scroll_delta_.x()
@@ -516,6 +521,17 @@ void NestedScrollable::DispatchMouseWheelEvent(const PointerEvent& event) {
     }
     return;
   }
+  if (!s->ShouldConsumeGesture()) {
+    s->StopAnimation();
+    s->SetScrollStatus(ScrollStatus::kIdle);
+    const bool should_end_signal = handle_signal_event_;
+    signal_scroll_started_ = false;
+    handle_signal_event_ = false;
+    if (should_end_signal) {
+      page_view()->gesture_manager()->EndMouseWheelTransactionByForce();
+    }
+    return;
+  }
   FloatPoint delta = {event.scroll_delta_x, event.scroll_delta_y};
   if (event.is_precise_scroll) {
     s->DoScroll(delta);
@@ -536,9 +552,6 @@ void NestedScrollable::DispatchMouseWheelEvent(const PointerEvent& event) {
 
 bool NestedScrollable::IsPointerAllowed(
     const GestureRecognizer& gesture_recognizer, const PointerEvent& event) {
-  if (GestureArenaMemberId() > 0 && !enable_builtin_gesture_recognizer_) {
-    return false;
-  }
   return event.device == PointerEvent::DeviceType::kTouch ||
          event.device == PointerEvent::DeviceType::kTrackpad
 #if defined(ENABLE_HEADLESS)
