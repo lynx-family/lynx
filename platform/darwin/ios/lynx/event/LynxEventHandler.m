@@ -29,6 +29,25 @@ static BOOL ShouldDispatchTouchEventInCurrentLynxPageOnly(LynxUI* rootUI) {
   return rootUI != nil && pageRootUI != nil && rootUI != pageRootUI;
 }
 
+static BOOL LynxGestureMatchesPanInterceptClasses(UIGestureRecognizer* gesture, Class gestureClass,
+                                                  Class viewClass, BOOL hasViewTag,
+                                                  NSInteger viewTag) {
+  if (gesture == nil || gesture.view == nil || gestureClass == Nil || viewClass == Nil) {
+    return NO;
+  }
+  return [gesture isKindOfClass:gestureClass] && [gesture.view isKindOfClass:viewClass] &&
+         hasViewTag && gesture.view.tag == viewTag;
+}
+
+@interface LynxUI (PanInterceptClass)
+
+- (Class)iosPanInterceptViewClass;
+- (Class)iosPanInterceptGestureClass;
+- (NSInteger)iosPanInterceptViewTag;
+- (BOOL)hasIosPanInterceptViewTag;
+
+@end
+
 #pragma mark - LynxEventHandler
 @interface LynxEventHandler ()
 
@@ -875,19 +894,24 @@ static BOOL ShouldDispatchTouchEventInCurrentLynxPageOnly(LynxUI* rootUI) {
         [self getPanInterceptScope:_firstPanInterceptDirectionTarget];
     enum LynxPanInterceptDirection direction =
         _firstPanInterceptDirectionTarget.panInterceptDirection;
-    BOOL shouldInterceptPanGesture =
-        [self isPanGesture:otherGesture withDirection:direction] &&
-        [self shouldInterceptPanGesture:otherGesture.view
-                               withView:((LynxUI*)_firstPanInterceptDirectionTarget).view
-                      andInterceptScope:scope];
+    LynxUI* panInterceptTarget = (LynxUI*)_firstPanInterceptDirectionTarget;
+    BOOL shouldInterceptByScope = [self shouldInterceptPanGesture:otherGesture.view
+                                                         withView:panInterceptTarget.view
+                                                andInterceptScope:scope];
+    BOOL shouldInterceptPanGesture = shouldInterceptByScope && [self isPanGesture:otherGesture
+                                                                    withDirection:direction];
     BOOL shouldInterceptSystemBackGesture =
-        [self shouldInterceptSystemBackGesture:otherGesture
-                                 withDirection:direction
-                             andInterceptScope:scope] &&
-        [self shouldInterceptPanGesture:otherGesture.view
-                               withView:((LynxUI*)_firstPanInterceptDirectionTarget).view
-                      andInterceptScope:scope];
-    if (shouldInterceptPanGesture || shouldInterceptSystemBackGesture) {
+        shouldInterceptByScope && [self shouldInterceptSystemBackGesture:otherGesture
+                                                           withDirection:direction
+                                                       andInterceptScope:scope];
+    BOOL shouldInterceptConfiguredGesture =
+        shouldInterceptByScope && LynxGestureMatchesPanInterceptClasses(
+                                      otherGesture, panInterceptTarget.iosPanInterceptGestureClass,
+                                      panInterceptTarget.iosPanInterceptViewClass,
+                                      panInterceptTarget.hasIosPanInterceptViewTag,
+                                      panInterceptTarget.iosPanInterceptViewTag);
+    if (shouldInterceptPanGesture || shouldInterceptSystemBackGesture ||
+        shouldInterceptConfiguredGesture) {
       otherGesture.state = UIGestureRecognizerStateFailed;
     }
   }];
