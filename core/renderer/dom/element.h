@@ -718,7 +718,7 @@ class Element : public lepus::RefCounted,
                     const std::array<float, 4>& margins,
                     const std::array<float, 4>& borders,
                     const std::array<float, 4>* sticky_positions,
-                    float max_height);
+                    float max_height, bool display_none = false);
   // Used to update child element's left and top value from list element. The
   // another overloaded function is used to update layout info from starlight,
   // but if the element is list's child, the left and top's value are always 0.
@@ -878,6 +878,7 @@ class Element : public lepus::RefCounted,
   float height() { return height_; }
   float top() { return top_; }
   float left() { return left_; }
+  bool display_none() { return display_none_; }
 
   bool enable_new_animator() { return enable_new_animator_; }
 
@@ -1543,6 +1544,7 @@ class Element : public lepus::RefCounted,
 
   bool subtree_need_update_{false};
   bool frame_changed_{false};
+  bool display_none_{false};
   // Determine by Catalyzer
   bool is_layout_only_{false};
 
