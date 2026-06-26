@@ -28,7 +28,7 @@ public class MaskDrawable extends LayerDrawable<MaskLayerManager> {
   }
 
   public void drawMask(Canvas canvas) {
-    if (mLayerManager.hasImageLayers()) {
+    if (mLayerManager.hasImageLayers() && !getBounds().isEmpty()) {
       RectF borderRect = new RectF(getBounds());
       RectF paddingRect = new RectF(mPaddingBox);
       RectF contentRect = new RectF(mContentBox);

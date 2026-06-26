@@ -216,7 +216,7 @@ public class UIView extends UISimpleView<AndroidView> {
   @Override
   public void afterDraw(Canvas canvas) {
     super.afterDraw(canvas);
-    if (getMaskDrawable() != null) {
+    if (getMaskDrawable() != null && getWidth() > 0 && getHeight() > 0) {
       getMaskDrawable().setBounds(0, 0, getWidth(), getHeight());
       getMaskDrawable().draw(canvas);
     }
