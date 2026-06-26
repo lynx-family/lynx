@@ -31,6 +31,8 @@ import com.lynx.tasm.behavior.ui.utils.Spacing;
 import com.lynx.tasm.service.ILynxTextService.Page;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.Stack;
 
 public class DisplayListApplier implements Drawable.Callback {
@@ -57,6 +59,8 @@ public class DisplayListApplier implements Drawable.Callback {
   private DisplayList mDisplayList;
   private TextMeasurer mTextMeasurer;
   private Paint mPaint;
+  private Set<Integer> mTextResourceRefs = new HashSet<>();
+  private Set<Integer> mImageResourceRefs = new HashSet<>();
 
   // Reusable objects for optimization
   private final Path mReusablePath = new Path();
@@ -93,6 +97,8 @@ public class DisplayListApplier implements Drawable.Callback {
     mTextMeasurer = platformRendererContext.getTextMeasurer();
     mContext = platformRendererContext;
     mHostLayer = new WeakReference<>(hostLayer);
+    mTextResourceRefs = collectResourceRefs(displayList, OP_TEXT);
+    mImageResourceRefs = collectResourceRefs(displayList, OP_IMAGE);
 
     // The drawing position on Android is affected by the frame layout and the
     // frame in OP_BEGIN togather. For a indepent layer, its position is already
@@ -294,7 +300,8 @@ public class DisplayListApplier implements Drawable.Callback {
     if (mTextMeasurer == null) {
       return;
     }
-    TextUpdateBundle textBundle = (TextUpdateBundle) mTextMeasurer.takeTextLayout(textId);
+    TextUpdateBundle textBundle =
+        (TextUpdateBundle) mTextMeasurer.takeTextLayout(mContext.getTextLayoutSign(textId));
     if (textBundle == null) {
       return;
     }
@@ -842,8 +849,67 @@ public class DisplayListApplier implements Drawable.Callback {
     if (displayList != null && displayList.fArgv != null && displayList.fArgv.length >= 2) {
       displayList.fArgv[0] = displayList.fArgv[1] = 0.f;
     }
+    updateResourceRefs(displayList);
     mDisplayList = displayList;
     reset();
+  }
+
+  private void updateResourceRefs(DisplayList displayList) {
+    Set<Integer> newTextResourceRefs = collectResourceRefs(displayList, OP_TEXT);
+    Set<Integer> newImageResourceRefs = collectResourceRefs(displayList, OP_IMAGE);
+    releaseResourceRefsExcept(newTextResourceRefs, newImageResourceRefs);
+    mTextResourceRefs = newTextResourceRefs;
+    mImageResourceRefs = newImageResourceRefs;
+  }
+
+  void releaseAllResources() {
+    releaseResourceRefsExcept(new HashSet<>(), new HashSet<>());
+    mTextResourceRefs.clear();
+    mImageResourceRefs.clear();
+  }
+
+  private void releaseResourceRefsExcept(
+      Set<Integer> newTextResourceRefs, Set<Integer> newImageResourceRefs) {
+    if (mContext != null) {
+      for (Integer textResourceId : mTextResourceRefs) {
+        if (!newTextResourceRefs.contains(textResourceId)) {
+          mContext.releaseTextResource(textResourceId);
+        }
+      }
+      for (Integer imageResourceId : mImageResourceRefs) {
+        if (!newImageResourceRefs.contains(imageResourceId)) {
+          mContext.releaseImageResource(imageResourceId);
+        }
+      }
+    }
+  }
+
+  private Set<Integer> collectResourceRefs(DisplayList displayList, int targetOp) {
+    Set<Integer> resourceRefs = new HashSet<>();
+    if (displayList == null || displayList.ops == null || displayList.iArgv == null) {
+      return resourceRefs;
+    }
+
+    int intIndex = 0;
+    int floatIndex = 0;
+    for (int op : displayList.ops) {
+      if (intIndex + 2 > displayList.iArgv.length) {
+        break;
+      }
+      int intParamCount = displayList.iArgv[intIndex++];
+      int floatParamCount = displayList.iArgv[intIndex++];
+      int paramsStart = intIndex;
+      if (op == targetOp && intParamCount >= 1 && paramsStart < displayList.iArgv.length) {
+        resourceRefs.add(displayList.iArgv[paramsStart]);
+      }
+      intIndex += Math.max(intParamCount, 0);
+      floatIndex += Math.max(floatParamCount, 0);
+      if (intIndex > displayList.iArgv.length
+          || (displayList.fArgv != null && floatIndex > displayList.fArgv.length)) {
+        break;
+      }
+    }
+    return resourceRefs;
   }
 
   @Override

@@ -25,6 +25,8 @@ class TextFragmentBehavior : public FragmentBehavior {
 
  private:
   intptr_t text_bundle_{0};
+  intptr_t last_text_bundle_{0};
+  int32_t text_resource_id_{kInvalidPlatformResourceId};
   void DispatchLayoutEvent(const LayoutInfoForDraw& layout_result);
 };
 }  // namespace lynx::tasm

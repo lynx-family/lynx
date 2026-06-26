@@ -173,6 +173,36 @@ constexpr int32_t kViewType = static_cast<int32_t>(PlatformRendererType::kView);
   // Verify no crash
 }
 
+- (void)testApplyDisplayListReleasesUnusedTextAndImageResources {
+  id mockUIView = OCMClassMock([LynxMockView class]);
+  id mockLayer = OCMClassMock([CALayer class]);
+  id mockContext = OCMClassMock([LynxRendererContext class]);
+  [[[mockUIView stub] andReturn:mockLayer] layer];
+
+  LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:mockUIView
+                                                                      andContext:mockContext];
+
+  DisplayList list1;
+  list1.AddOperation(DisplayListOpType::kRecordBox, 0.0f, 0.0f, 10.0f, 10.0f);
+  list1.AddOperation(DisplayListOpType::kText, 101, 0);
+  list1.AddOperation(DisplayListOpType::kImage, 202, 0);
+  [applier applyDisplayList:&list1];
+
+  [[mockContext expect] releaseTextResource:101];
+  [[mockContext expect] releaseImageManager:202];
+  DisplayList list2;
+  list2.AddOperation(DisplayListOpType::kRecordBox, 0.0f, 0.0f, 10.0f, 10.0f);
+  list2.AddOperation(DisplayListOpType::kText, 303, 0);
+  list2.AddOperation(DisplayListOpType::kImage, 404, 0);
+  [applier applyDisplayList:&list2];
+  [mockContext verify];
+
+  [[mockContext expect] releaseTextResource:303];
+  [[mockContext expect] releaseImageManager:404];
+  [applier applyDisplayList:nullptr];
+  [mockContext verify];
+}
+
 - (void)testDrawViewWithIntCountNotOne {
   id mockUIView = OCMClassMock([LynxMockView class]);
   id mockSubView = OCMClassMock([UIView class]);

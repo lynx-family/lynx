@@ -110,9 +110,11 @@ void PlatformRendererContext::DestroyPlatformRenderer(int32_t target) {
   UnregisterPlatformRenderer(target);
 }
 
-void PlatformRendererContext::CreateImage(int32_t id, base::String src,
-                                          float width, float height,
-                                          int32_t event_mask) {
+void PlatformRendererContext::CreateImageResource(int32_t resource_id,
+                                                  int32_t owner_id,
+                                                  base::String src, float width,
+                                                  float height,
+                                                  int32_t event_mask) {
   base::android::ScopedLocalJavaRef<jobject> local_ref(java_ref_);
   if (local_ref.IsNull()) {
     return;
@@ -121,37 +123,41 @@ void PlatformRendererContext::CreateImage(int32_t id, base::String src,
   auto j_src =
       base::android::JNIConvertHelper::ConvertToJNIStringUTF(env, src.c_str());
   Java_PlatformRendererContext_createImage(
-      env, local_ref.Get(), id, j_src.Get(), static_cast<int>(width),
-      static_cast<int>(height), static_cast<int>(event_mask));
+      env, local_ref.Get(), resource_id, owner_id, j_src.Get(),
+      static_cast<int>(width), static_cast<int>(height),
+      static_cast<int>(event_mask));
 }
 
-void PlatformRendererContext::DestroyImage(int32_t id) {
+void PlatformRendererContext::DestroyImageResource(int32_t resource_id) {
   base::android::ScopedLocalJavaRef<jobject> local_ref(java_ref_);
   if (local_ref.IsNull()) {
     return;
   }
   JNIEnv* env = base::android::AttachCurrentThread();
-  Java_PlatformRendererContext_destroyImage(env, local_ref.Get(), id);
+  Java_PlatformRendererContext_destroyImage(env, local_ref.Get(), resource_id);
 }
 
-void PlatformRendererContext::UpdateTextBundle(int32_t id,
-                                               intptr_t text_bundle) {
+void PlatformRendererContext::CreateTextResource(int32_t resource_id,
+                                                 int32_t owner_id,
+                                                 intptr_t text_bundle) {
   base::android::ScopedLocalJavaRef<jobject> local_ref(java_ref_);
   if (local_ref.IsNull()) {
     return;
   }
   JNIEnv* env = base::android::AttachCurrentThread();
   Java_PlatformRendererContext_updateTextBundle(
-      env, local_ref.Get(), id, static_cast<jlong>(text_bundle));
+      env, local_ref.Get(), resource_id, owner_id,
+      static_cast<jlong>(text_bundle));
 }
 
-void PlatformRendererContext::DestroyTextBundle(int32_t id) {
+void PlatformRendererContext::DestroyTextResource(int32_t resource_id) {
   base::android::ScopedLocalJavaRef<jobject> local_ref(java_ref_);
   if (local_ref.IsNull()) {
     return;
   }
   JNIEnv* env = base::android::AttachCurrentThread();
-  Java_PlatformRendererContext_destroyTextBundle(env, local_ref.Get(), id);
+  Java_PlatformRendererContext_destroyTextBundle(env, local_ref.Get(),
+                                                 resource_id);
 }
 
 void PlatformRendererContext::InsertListItemPaintingNode(int32_t list_sign,

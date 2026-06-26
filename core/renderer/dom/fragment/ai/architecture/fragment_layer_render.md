@@ -96,6 +96,12 @@ struct OpData {
 | kRecordBox | 11 | Record Box Model (border/padding/content) |
 | kLinearGradient | 12 | Draw linear gradient |
 
+For `kText` and `kImage`, the first integer argument is a platform paint
+resource id returned by `NativePaintingContext`, not the Fragment/node id. The
+Fragment id remains the owner id for events and lifecycle bookkeeping, while the
+display list references the concrete text/image resource for the current content
+snapshot.
+
 #### Subtree Property Types (DisplayListSubtreePropertyOpType)
 
 | Type | Value | Description |
@@ -348,14 +354,14 @@ The iOS platform parses DisplayList through **direct memory access**. The C++ la
         break;
       }
       case DisplayListOpType::kText: {
-        auto text_id = [self nextContentInt];
+        auto text_id = [self nextContentInt]; // platform text resource id
         auto box_index = [self nextContentInt];
         // Get TextRenderer from LynxRendererContext to create LynxTextLayer
         LynxTextLayer *layer = [[LynxTextLayer alloc] initWithLynxTextRenderer:...];
         break;
       }
       case DisplayListOpType::kImage: {
-        auto image_id = [self nextContentInt];
+        auto image_id = [self nextContentInt]; // platform image resource id
         auto box_index = [self nextContentInt];
         // Create UIImageView and load image through LynxImageManager
         UIImageView *imageView = [self createImageView];

@@ -108,6 +108,8 @@ public class DisplayListApplierTest {
     MockitoAnnotations.openMocks(this);
     // Set up PlatformRendererContext to return our mock TextMeasurer
     when(mockPlatformRendererContext.getTextMeasurer()).thenReturn(mockTextMeasurer);
+    when(mockPlatformRendererContext.getTextLayoutSign(anyInt()))
+        .thenAnswer(invocation -> invocation.getArgument(0));
     when(mockRendererHost.getView()).thenReturn(mockHostView);
     displayListApplier =
         new DisplayListApplier(null, mockPlatformRendererContext, mockRendererHost);
@@ -573,6 +575,28 @@ public class DisplayListApplierTest {
    *   <li>Canvas.restore() is called for OP_END</li>
    * </ul>
    */
+  @Test
+  public void testSetDisplayListReleasesUnusedTextAndImageResources() {
+    DisplayList listWithResources = new DisplayList();
+    listWithResources.ops = new int[] {6, 7}; // OP_TEXT, OP_IMAGE
+    listWithResources.iArgv = new int[] {
+        2, 0, 101, -1, // OP_TEXT: resource id, box index
+        2, 0, 202, -1 // OP_IMAGE: resource id, box index
+    };
+    listWithResources.fArgv = new float[] {};
+
+    DisplayList emptyList = new DisplayList();
+    emptyList.ops = new int[] {};
+    emptyList.iArgv = new int[] {};
+    emptyList.fArgv = new float[] {};
+
+    displayListApplier.setDisplayList(listWithResources);
+    displayListApplier.setDisplayList(emptyList);
+
+    verify(mockPlatformRendererContext).releaseTextResource(101);
+    verify(mockPlatformRendererContext).releaseImageResource(202);
+  }
+
   @Test
   public void testOpBorderUniform() {
     testDisplayList.ops =

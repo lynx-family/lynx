@@ -31,6 +31,7 @@ class ImageFragmentBehavior : public FragmentBehavior {
   int32_t ComputeEventMask() const;
 
   base::String image_url_;
+  int32_t image_resource_id_{kInvalidPlatformResourceId};
   // Cached event mask - computed lazily on first use, then never changes.
   mutable int32_t event_mask_{-1};  // -1 means not yet computed
 };

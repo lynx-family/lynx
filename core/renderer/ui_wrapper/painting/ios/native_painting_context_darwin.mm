@@ -234,23 +234,17 @@ void NativePaintingCtxDarwin::UpdateDisplayList(int id, DisplayList display_list
   });
 }
 
-void NativePaintingCtxDarwin::UpdateTextBundle(int id, intptr_t bundle) {
-  Enqueue([ref = platform_ref_, id, bundle]() {
+int32_t NativePaintingCtxDarwin::CreateTextResource(int owner_id, intptr_t bundle) {
+  int32_t resource_id = NextPlatformResourceId();
+  Enqueue([ref = platform_ref_, resource_id, owner_id, bundle]() {
     auto darwin_ref = std::static_pointer_cast<NativePaintingCtxPlatformDarwinRef>(ref);
     if (darwin_ref) {
-      [darwin_ref->GetRendererContext() updateTextBundle:id
-                                              withBundle:reinterpret_cast<void *>(bundle)];
+      [darwin_ref->GetRendererContext() createTextResource:resource_id
+                                                   ownerID:owner_id
+                                                withBundle:reinterpret_cast<void *>(bundle)];
     }
   });
-}
-
-void NativePaintingCtxDarwin::DestroyTextBundle(int id) {
-  Enqueue([ref = platform_ref_, id]() {
-    auto darwin_ref = std::static_pointer_cast<NativePaintingCtxPlatformDarwinRef>(ref);
-    if (darwin_ref) {
-      [darwin_ref->GetRendererContext() destroyTextBundle:id];
-    }
-  });
+  return resource_id;
 }
 
 void NativePaintingCtxDarwin::InsertListItemPaintingNode(int32_t list_id, int32_t child_id) {}
@@ -281,16 +275,19 @@ void NativePaintingCtxDarwin::UpdatePlatformEventBundle(int32_t id, PlatformEven
   });
 }
 
-void NativePaintingCtxDarwin::CreateImage(int id, base::String src, float width, float height,
-                                          int32_t event_mask) {
+int32_t NativePaintingCtxDarwin::CreateImageResource(int owner_id, base::String src, float width,
+                                                     float height, int32_t event_mask) {
+  int32_t resource_id = NextPlatformResourceId();
   LynxURL *sourceUrl = [[LynxURL alloc] init];
   sourceUrl.url = [[NSURL alloc] initWithString:[[NSString alloc] initWithUTF8String:src.c_str()]];
   sourceUrl.imageSize = CGSizeMake(width, height);
 
-  [context_->GetRendererContext() createImageManager:id
+  [context_->GetRendererContext() createImageManager:resource_id
+                                             ownerID:owner_id
                                        withSourceURL:sourceUrl
                                    andPlaceholderURL:nil
                                            eventMask:event_mask];
+  return resource_id;
 }
 
 template <typename F>

@@ -15,15 +15,18 @@
 @property(nonatomic, strong) LynxTextRenderManager *textRenderManager;
 
 - (void)createImageManager:(int32_t)imageManagerID
+                   ownerID:(int32_t)ownerID
              withSourceURL:(LynxURL *)sourceURL
          andPlaceholderURL:(LynxURL *)placeholderURL
                  eventMask:(int32_t)eventMask;
 
-- (LynxImageManager *)takeImageManager:(int32_t)imageManagerID;
+- (LynxImageManager *)getImageManager:(int32_t)imageManagerID;
 
-- (void)updateTextBundle:(int32_t)textID withBundle:(void *)bundle;
+- (void)releaseImageManager:(int32_t)imageManagerID;
 
-- (void)destroyTextBundle:(int32_t)textID;
+- (void)createTextResource:(int32_t)textID ownerID:(int32_t)ownerID withBundle:(void *)bundle;
+
+- (void)releaseTextResource:(int32_t)textID;
 
 - (void *)getTextBundle:(int32_t)textID;
 

@@ -117,12 +117,10 @@ class NativePaintingCtxAndroid : public PaintingCtxPlatformImpl,
   void UpdatePlatformEventBundle(int32_t id,
                                  PlatformEventBundle bundle) override;
 
-  void CreateImage(int id, base::String src, float width, float height,
-                   int32_t event_mask = 0) override;
+  int32_t CreateImageResource(int owner_id, base::String src, float width,
+                              float height, int32_t event_mask = 0) override;
 
-  void UpdateTextBundle(int id, intptr_t bundle) override;
-
-  void DestroyTextBundle(int id) override;
+  int32_t CreateTextResource(int owner_id, intptr_t bundle) override;
 
   void InsertListItemPaintingNode(int32_t list_id, int32_t child_id) override;
 

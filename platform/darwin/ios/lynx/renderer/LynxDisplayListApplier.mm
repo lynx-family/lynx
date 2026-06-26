@@ -13,18 +13,57 @@
 #import "LynxDisplayListApplier+Internal.h"
 #import "LynxTextraLayer.h"
 
+#include <algorithm>
 #include <stack>
+#include <unordered_set>
 #include "base/include/vector.h"
 #include "core/renderer/dom/fragment/rounded_rectangle.h"
 
 using namespace lynx;
 using namespace lynx::tasm;
 
+namespace {
+
+std::unordered_set<int32_t> CollectResourceRefs(DisplayList *list, DisplayListOpType target_op) {
+  std::unordered_set<int32_t> refs;
+  if (list == nullptr || list->GetContentOpTypesData() == nullptr ||
+      list->GetContentIntData() == nullptr) {
+    return refs;
+  }
+
+  const int32_t *ops = list->GetContentOpTypesData();
+  const int32_t *ints = list->GetContentIntData();
+  size_t int_index = 0;
+  size_t float_index = 0;
+  for (size_t op_index = 0; op_index < list->GetContentOpTypesSize(); ++op_index) {
+    if (int_index + 2 > list->GetContentIntDataSize()) {
+      break;
+    }
+    int32_t int_count = ints[int_index++];
+    int32_t float_count = ints[int_index++];
+    size_t params_start = int_index;
+    if (static_cast<DisplayListOpType>(ops[op_index]) == target_op && int_count >= 1 &&
+        params_start < list->GetContentIntDataSize()) {
+      refs.insert(ints[params_start]);
+    }
+    int_index += std::max(int_count, 0);
+    float_index += std::max(float_count, 0);
+    if (int_index > list->GetContentIntDataSize() ||
+        float_index > list->GetContentFloatDataSize()) {
+      break;
+    }
+  }
+  return refs;
+}
+
+}  // namespace
+
 @interface LynxDisplayListApplier ()
 
 - (void)insertHostDecorationLayer:(CALayer *)layer;
 - (void)insertLayer:(CALayer *)layer forOp:(DisplayListOpType)op;
 - (BOOL)shouldInsertAsHostDecorationForOp:(DisplayListOpType)op;
+- (void)releaseCurrentResourceRefs;
 - (void)applyRoundedRect:(const RoundedRectangle &)box toLayer:(CALayer *)layer;
 - (CGRect)rectForRoundedRectangle:(const RoundedRectangle &)rect applyingOffsets:(BOOL)applyOffsets;
 - (CALayer *)createLinearGradientLayerWithAngle:(float)angle
@@ -68,6 +107,8 @@ using namespace lynx::tasm;
   NSMutableArray<UIImageView *> *_contentImageViews;
   NSMutableArray<CALayer *> *_contentLayers;
   NSMutableArray<CALayer *> *_hostDecorationLayers;
+  std::unordered_set<int32_t> text_resource_refs_;
+  std::unordered_set<int32_t> image_resource_refs_;
 }
 
 - (instancetype)initWithView:(UIView<LynxRendererHost> *)view
@@ -91,6 +132,22 @@ using namespace lynx::tasm;
     _hostDecorationLayers = [NSMutableArray new];
   }
   return self;
+}
+
+- (void)dealloc {
+  [self releaseCurrentResourceRefs];
+}
+
+- (void)releaseCurrentResourceRefs {
+  for (int32_t textID : text_resource_refs_) {
+    [_renderer_context releaseTextResource:textID];
+  }
+  for (int32_t imageID : image_resource_refs_) {
+    [_renderer_context releaseImageManager:imageID];
+  }
+  text_resource_refs_.clear();
+  image_resource_refs_.clear();
+  [_imageManagers removeAllObjects];
 }
 
 - (int32_t)nextContentInt {
@@ -218,6 +275,9 @@ using namespace lynx::tasm;
           auto image_id = [self nextContentInt];
           [[maybe_unused]] auto box_index = [self nextContentInt];
           LynxImageManager *imageManager = [self imageManagerForID:image_id];
+          if (imageManager == nil) {
+            break;
+          }
 
           UIImageView *imageView = [self createImageView];
 
@@ -426,12 +486,31 @@ using namespace lynx::tasm;
 
 - (void)applyDisplayList:(lynx::tasm::DisplayList *)list {
   if (list == nullptr) {
+    [self releaseCurrentResourceRefs];
+    [self reset];
+    list_ = nullptr;
     return;
   }
 
   if (_view == nil) {
     return;
   }
+
+  std::unordered_set<int32_t> newTextRefs = CollectResourceRefs(list, DisplayListOpType::kText);
+  std::unordered_set<int32_t> newImageRefs = CollectResourceRefs(list, DisplayListOpType::kImage);
+  for (int32_t textID : text_resource_refs_) {
+    if (newTextRefs.find(textID) == newTextRefs.end()) {
+      [_renderer_context releaseTextResource:textID];
+    }
+  }
+  for (int32_t imageID : image_resource_refs_) {
+    if (newImageRefs.find(imageID) == newImageRefs.end()) {
+      [_imageManagers removeObjectForKey:@(imageID)];
+      [_renderer_context releaseImageManager:imageID];
+    }
+  }
+  text_resource_refs_ = std::move(newTextRefs);
+  image_resource_refs_ = std::move(newImageRefs);
 
   [self reset];
 
@@ -715,7 +794,7 @@ using namespace lynx::tasm;
   }
   LynxImageManager *imageManager = _imageManagers[@(imageManagerID)];
   if (imageManager == nil) {
-    imageManager = [_renderer_context takeImageManager:imageManagerID];
+    imageManager = [_renderer_context getImageManager:imageManagerID];
     if (imageManager != nil) {
       _imageManagers[@(imageManagerID)] = imageManager;
     }

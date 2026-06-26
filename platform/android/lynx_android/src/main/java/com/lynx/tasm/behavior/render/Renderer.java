@@ -216,7 +216,12 @@ public class Renderer {
 
   public void updateAttributes(PropBundle props) {}
   public void updateExtraData(Object extraData) {}
-  public void onDestroy() {}
+  public void onDestroy() {
+    if (mDisplayListApplier != null) {
+      mDisplayListApplier.releaseAllResources();
+      mDisplayListApplier = null;
+    }
+  }
 
   public void applySubtreeProperties(java.nio.ByteBuffer buffer, int count) {
     IRendererHost rendererHost = getRendererHost();

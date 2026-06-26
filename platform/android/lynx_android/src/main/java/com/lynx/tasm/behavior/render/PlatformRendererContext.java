@@ -80,6 +80,10 @@ public class PlatformRendererContext implements TextMeasurerProvider {
   private boolean mDestroyed = false;
 
   private ConcurrentHashMap<Integer, Object> mExtraDatas = new ConcurrentHashMap<>();
+  private ConcurrentHashMap<Integer, LynxImageManager> mImageResources = new ConcurrentHashMap<>();
+  private ConcurrentHashMap<Integer, Integer> mOwnerImageResources = new ConcurrentHashMap<>();
+  private ConcurrentHashMap<Integer, Integer> mOwnerTextResources = new ConcurrentHashMap<>();
+  private ConcurrentHashMap<Integer, Integer> mTextResourceOwners = new ConcurrentHashMap<>();
 
   // TextMeasurer instance for text measurement functionality
   private TextMeasurer mTextMeasurer = null;
@@ -587,7 +591,18 @@ public class PlatformRendererContext implements TextMeasurerProvider {
   }
 
   public LynxImageManager getImage(int sign) {
-    UIBody.UIBodyView rootView = mRootView.get();
+    LynxImageManager imageManager = mImageResources.get(sign);
+    if (imageManager != null) {
+      return imageManager;
+    }
+    Integer resourceId = mOwnerImageResources.get(sign);
+    if (resourceId != null) {
+      imageManager = mImageResources.get(resourceId);
+      if (imageManager != null) {
+        return imageManager;
+      }
+    }
+    UIBody.UIBodyView rootView = mRootView != null ? mRootView.get() : null;
     if (rootView != null) {
       return rootView.peekImageAccordingToNodeIndex(sign);
     }
@@ -595,54 +610,94 @@ public class PlatformRendererContext implements TextMeasurerProvider {
   }
 
   @CalledByNative
-  public void createImage(int sign, String src, int width, int height, int eventMask) {
-    // Create Image managed by LynxImageManager and register to UIBodyView
+  public void createImage(
+      int resourceId, int ownerSign, String src, int width, int height, int eventMask) {
     LynxImageManager imageManager = new LynxImageManager(mContext);
-    imageManager.setFallbackSign(sign);
+    imageManager.setFallbackSign(ownerSign);
     imageManager.setEventMask(eventMask);
     imageManager.setSrc(src);
     imageManager.onLayoutUpdated(width, height, 0, 0, 0, 0);
-    UIBody.UIBodyView rootView = mRootView.get();
-    if (rootView != null) {
-      rootView.registerImageAccordingToNodeIndex(sign, imageManager);
-    }
+    mImageResources.put(resourceId, imageManager);
+    mOwnerImageResources.put(ownerSign, resourceId);
     imageManager.onNodeReady();
   }
 
   @CalledByNative
-  public void destroyImage(int sign) {
-    // Remove and release the image source from UIBodyView
-    UIBody.UIBodyView rootView = mRootView.get();
-    if (rootView != null) {
-      rootView.obtainImageAccordingToNodeIndex(sign);
+  public void destroyImage(int resourceId) {
+    releaseImageResource(resourceId);
+  }
+
+  void releaseImageResource(int resourceId) {
+    LynxImageManager imageManager = mImageResources.remove(resourceId);
+    if (imageManager == null) {
+      return;
+    }
+    imageManager.destroy();
+    Integer ownerSignToRemove = null;
+    for (Map.Entry<Integer, Integer> entry : mOwnerImageResources.entrySet()) {
+      if (entry.getValue() == resourceId) {
+        ownerSignToRemove = entry.getKey();
+        break;
+      }
+    }
+    if (ownerSignToRemove != null) {
+      mOwnerImageResources.remove(ownerSignToRemove);
     }
   }
 
   Page getTextBundle(int sign) {
-    return (Page) mExtraDatas.get(sign);
+    Object page = mExtraDatas.get(sign);
+    if (page instanceof Page) {
+      return (Page) page;
+    }
+    Integer resourceId = mOwnerTextResources.get(sign);
+    if (resourceId == null) {
+      return null;
+    }
+    page = mExtraDatas.get(resourceId);
+    return page instanceof Page ? (Page) page : null;
   }
 
   @CalledByNative
-  public void updateTextBundle(int sign, long textBundle) {
-    // Update the text layout bundle for the specified sign
+  public void updateTextBundle(int resourceId, int ownerSign, long textBundle) {
+    mTextResourceOwners.put(resourceId, ownerSign);
+    mOwnerTextResources.put(ownerSign, resourceId);
+    if (mContext == null || !mContext.isTextServiceModeOn()) {
+      return;
+    }
     Page page = mContext.getTextService().createPage(textBundle);
     if (page != null) {
-      mExtraDatas.put(sign, page);
+      mExtraDatas.put(resourceId, page);
     }
   }
 
   @CalledByNative
-  public void destroyTextBundle(final int sign) {
-    // Destroy the text layout bundle for the specified sign
+  public void destroyTextBundle(final int resourceId) {
+    releaseTextResource(resourceId);
+  }
+
+  void releaseTextResource(final int resourceId) {
     UIThreadUtils.runOnUiThread(new Runnable() {
       @Override
       public void run() {
-        Page page = (Page) mExtraDatas.remove(sign);
+        Integer ownerSign = mTextResourceOwners.remove(resourceId);
+        if (ownerSign != null) {
+          Integer ownerResourceId = mOwnerTextResources.get(ownerSign);
+          if (ownerResourceId != null && ownerResourceId == resourceId) {
+            mOwnerTextResources.remove(ownerSign);
+          }
+        }
+        Page page = (Page) mExtraDatas.remove(resourceId);
         if (page != null) {
           page.destroy();
         }
       }
     });
+  }
+
+  int getTextLayoutSign(int textResourceId) {
+    Integer ownerSign = mTextResourceOwners.get(textResourceId);
+    return ownerSign != null ? ownerSign : textResourceId;
   }
 
   @CalledByNative
@@ -822,10 +877,17 @@ public class PlatformRendererContext implements TextMeasurerProvider {
       }
     }
     mExtraDatas.clear();
+    for (LynxImageManager imageManager : mImageResources.values()) {
+      imageManager.destroy();
+    }
+    mImageResources.clear();
+    mOwnerImageResources.clear();
+    mOwnerTextResources.clear();
+    mTextResourceOwners.clear();
 
     mTextMeasurer = null;
     mTextLayout = null;
-    UIBody.UIBodyView root = mRootView.get();
+    UIBody.UIBodyView root = mRootView != null ? mRootView.get() : null;
     if (root != null) {
       root.clearNodeIndexImageMap();
     }

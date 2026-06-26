@@ -5,6 +5,7 @@
 #ifndef CORE_RENDERER_UI_WRAPPER_PAINTING_NATIVE_PAINTING_CONTEXT_H_
 #define CORE_RENDERER_UI_WRAPPER_PAINTING_NATIVE_PAINTING_CONTEXT_H_
 
+#include <cstdint>
 #include <memory>
 
 #include "base/include/value/base_string.h"
@@ -14,6 +15,9 @@
 namespace lynx::tasm {
 class DisplayList;
 class PlatformEventBundle;
+
+constexpr int32_t kInvalidPlatformResourceId = -1;
+
 class NativePaintingContext {
  public:
   NativePaintingContext() = default;
@@ -30,10 +34,10 @@ class NativePaintingContext {
       int id, const base::String& tag_name,
       const fml::RefPtr<PropBundle>& init_data) = 0;
   virtual void UpdateDisplayList(int id, DisplayList list) = 0;
-  virtual void CreateImage(int id, base::String src, float width, float height,
-                           int32_t event_mask = 0) = 0;
-  virtual void UpdateTextBundle(int id, intptr_t bundle) = 0;
-  virtual void DestroyTextBundle(int id) = 0;
+  virtual int32_t CreateImageResource(int owner_id, base::String src,
+                                      float width, float height,
+                                      int32_t event_mask = 0) = 0;
+  virtual int32_t CreateTextResource(int owner_id, intptr_t bundle) = 0;
   virtual void InsertListItemPaintingNode(int32_t list_id,
                                           int32_t child_id) = 0;
   virtual void RemoveListItemPaintingNode(int32_t list_id,
@@ -46,6 +50,12 @@ class NativePaintingContext {
   virtual void ReconstructEventTargetTreeRecursively() = 0;
   virtual void UpdatePlatformEventBundle(int id,
                                          PlatformEventBundle bundle) = 0;
+
+ protected:
+  int32_t NextPlatformResourceId() { return next_platform_resource_id_++; }
+
+ private:
+  int32_t next_platform_resource_id_{1};
 };
 
 }  // namespace lynx::tasm

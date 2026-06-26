@@ -29,10 +29,12 @@ class Fragment;
 // Fragments are destroyed. This creates a use-after-free if subclasses try to
 // access painting_context_ in their destructors.
 //
-// CORRECT APPROACH: Override OnElementDestroying() to release all platform
-// resources (native views, text bundles, etc.). This method is called by
-// Fragment::Destroy() while ElementManager and PaintingContext are still alive
-// and all pointers remain valid.
+// CORRECT APPROACH: Override OnElementDestroying() to release platform
+// resources owned directly by this behavior. Display-list paint resources such
+// as Text and Image are released by the platform display-list consumer after
+// the active display list stops referencing their resource ids. This method is
+// called by Fragment::Destroy() while ElementManager and PaintingContext are
+// still alive and all pointers remain valid.
 //
 // Example:
 //   class MyBehavior : public FragmentBehavior {
@@ -56,10 +58,11 @@ class FragmentBehavior {
 
   // Called by Fragment::Destroy() when the element is being destroyed.
   //
-  // This is the ONLY safe place to release platform resources (native views,
-  // text bundles, image resources, etc.). At this point, ElementManager and
-  // PaintingContext are still alive, so painting_context_ and fragment_
-  // pointers remain valid.
+  // This is the ONLY safe place to release directly-owned platform resources.
+  // Display-list paint resources are released by the platform display-list
+  // consumer after their resource ids disappear from the active display list.
+  // At this point, ElementManager and PaintingContext are still alive, so
+  // painting_context_ and fragment_ pointers remain valid.
   //
   // DO NOT wait until the destructor to clean up resources - by then the
   // PaintingContext may have already been destroyed, causing use-after-free

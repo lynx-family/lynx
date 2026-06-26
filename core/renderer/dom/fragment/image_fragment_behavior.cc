@@ -42,7 +42,7 @@ void ImageFragmentBehavior::OnUpdateLayout(
     if (event_mask_ < 0) {
       event_mask_ = ComputeEventMask();
     }
-    painting_context_->CreateImage(
+    image_resource_id_ = painting_context_->CreateImageResource(
         fragment_->id(), image_url_, layout_info.GetContentBoxWidth(),
         layout_info.GetContentBoxHeight(), event_mask_);
     fragment_->InvalidateForRedraw();
@@ -50,8 +50,11 @@ void ImageFragmentBehavior::OnUpdateLayout(
 }
 
 void ImageFragmentBehavior::OnDraw(DisplayListBuilder& display_list_builder) {
+  if (image_resource_id_ == kInvalidPlatformResourceId) {
+    return;
+  }
   display_list_builder.DrawImage(
-      fragment()->id(), fragment()->DefineContentBox(display_list_builder));
+      image_resource_id_, fragment()->DefineContentBox(display_list_builder));
 }
 
 }  // namespace lynx::tasm

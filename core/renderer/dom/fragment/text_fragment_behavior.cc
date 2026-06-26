@@ -28,11 +28,9 @@ TextFragmentBehavior::TextFragmentBehavior(Fragment* fragment)
     : FragmentBehavior(fragment) {}
 
 void TextFragmentBehavior::OnElementDestroying() {
-  // Release platform resources while element is still accessible
-  if (painting_context_ && text_bundle_ != 0) {
-    painting_context_->DestroyTextBundle(fragment_->id());
-    text_bundle_ = 0;
-  }
+  text_bundle_ = 0;
+  last_text_bundle_ = 0;
+  text_resource_id_ = kInvalidPlatformResourceId;
 }
 
 void TextFragmentBehavior::CreatePlatformRenderer(
@@ -45,8 +43,14 @@ void TextFragmentBehavior::CreatePlatformRenderer(
 
 void TextFragmentBehavior::OnUpdateLayout(
     const LayoutInfoForDraw& layout_result) {
-  if (painting_context_ && fragment_) {
-    painting_context_->UpdateTextBundle(fragment_->id(), text_bundle_);
+  if (painting_context_ && fragment_ && text_bundle_ != last_text_bundle_) {
+    last_text_bundle_ = text_bundle_;
+    if (text_bundle_ == 0) {
+      text_resource_id_ = kInvalidPlatformResourceId;
+    } else {
+      text_resource_id_ =
+          painting_context_->CreateTextResource(fragment_->id(), text_bundle_);
+    }
   }
   DispatchLayoutEvent(layout_result);
 }
@@ -58,7 +62,9 @@ void TextFragmentBehavior::OnDraw(DisplayListBuilder& builder) {
                 layout_info.layout_result.padding_[starlight::Direction::kTop],
                 layout_info.layout_result.size_.width_,
                 layout_info.layout_result.size_.height_);
-  builder.DrawText(fragment_->id(), fragment_->DefineBorderBox(builder));
+  if (text_resource_id_ != kInvalidPlatformResourceId) {
+    builder.DrawText(text_resource_id_, fragment_->DefineBorderBox(builder));
+  }
   builder.End();
 }
 

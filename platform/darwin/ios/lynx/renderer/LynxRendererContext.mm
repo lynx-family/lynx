@@ -22,69 +22,94 @@ void DestroyTextBundlePointer(void *bundle) {
 
 @implementation LynxRendererContext {
   NSMutableDictionary<NSNumber *, LynxImageManager *> *_imageManagers;
+  NSMutableDictionary<NSNumber *, NSNumber *> *_ownerImageResources;
+  NSMutableDictionary<NSNumber *, NSNumber *> *_imageResourceOwners;
   NSMutableDictionary<NSNumber *, NSValue *> *_textBundles;
+  NSMutableDictionary<NSNumber *, NSNumber *> *_ownerTextResources;
+  NSMutableDictionary<NSNumber *, NSNumber *> *_textResourceOwners;
 }
 
 - (instancetype)init {
   self = [super init];
   if (self) {
     _imageManagers = [NSMutableDictionary new];
+    _ownerImageResources = [NSMutableDictionary new];
+    _imageResourceOwners = [NSMutableDictionary new];
     _textBundles = [NSMutableDictionary new];
+    _ownerTextResources = [NSMutableDictionary new];
+    _textResourceOwners = [NSMutableDictionary new];
   }
   return self;
 }
 
 - (void)dealloc {
+  for (LynxImageManager *imageManager in _imageManagers.objectEnumerator) {
+    [imageManager reset];
+  }
   for (NSValue *value in _textBundles.objectEnumerator) {
     DestroyTextBundlePointer([value pointerValue]);
   }
 }
 
 - (void)createImageManager:(int32_t)imageManagerID
+                   ownerID:(int32_t)ownerID
              withSourceURL:(LynxURL *)sourceURL
          andPlaceholderURL:(LynxURL *)placeholderURL
                  eventMask:(int32_t)eventMask {
   LynxImageManager *imageManager = [[LynxImageManager alloc] initWithContext:_uiContext];
-  [imageManager setSign:imageManagerID];
+  [imageManager setSign:ownerID];
   [imageManager setEventMask:eventMask];
   [imageManager requestImage:sourceURL withType:LynxImageRequestSrc];
   [imageManager requestImage:sourceURL withType:LynxImageRequestPlaceholder];
   @synchronized(self) {
     _imageManagers[@(imageManagerID)] = imageManager;
+    _imageResourceOwners[@(imageManagerID)] = @(ownerID);
+    _ownerImageResources[@(ownerID)] = @(imageManagerID);
   }
 }
 
-- (LynxImageManager *)takeImageManager:(int32_t)imageManagerID {
+- (LynxImageManager *)getImageManager:(int32_t)imageManagerID {
   LynxImageManager *imageManager = nil;
   @synchronized(self) {
     imageManager = _imageManagers[@(imageManagerID)];
-    [_imageManagers removeObjectForKey:@(imageManagerID)];
   }
   return imageManager;
 }
 
-- (void)updateTextBundle:(int32_t)textID withBundle:(void *)bundle {
-  void *previousBundle = nullptr;
+- (void)releaseImageManager:(int32_t)imageManagerID {
   @synchronized(self) {
-    NSValue *previousValue = _textBundles[@(textID)];
-    if (previousValue != nil) {
-      previousBundle = [previousValue pointerValue];
+    NSNumber *key = @(imageManagerID);
+    NSNumber *ownerID = _imageResourceOwners[key];
+    if (ownerID != nil && [_ownerImageResources[ownerID] isEqualToNumber:key]) {
+      [_ownerImageResources removeObjectForKey:ownerID];
     }
-    if (previousBundle == bundle) {
-      return;
-    }
-    _textBundles[@(textID)] = [NSValue valueWithPointer:bundle];
+    [_imageManagers[key] reset];
+    [_imageResourceOwners removeObjectForKey:key];
+    [_imageManagers removeObjectForKey:key];
   }
-  DestroyTextBundlePointer(previousBundle);
 }
 
-- (void)destroyTextBundle:(int32_t)textID {
+- (void)createTextResource:(int32_t)textID ownerID:(int32_t)ownerID withBundle:(void *)bundle {
+  @synchronized(self) {
+    _textResourceOwners[@(textID)] = @(ownerID);
+    _ownerTextResources[@(ownerID)] = @(textID);
+    _textBundles[@(textID)] = [NSValue valueWithPointer:bundle];
+  }
+}
+
+- (void)releaseTextResource:(int32_t)textID {
   void *bundle = nullptr;
   @synchronized(self) {
-    NSValue *value = _textBundles[@(textID)];
-    if (value) {
+    NSNumber *key = @(textID);
+    NSNumber *ownerID = _textResourceOwners[key];
+    if (ownerID != nil && [_ownerTextResources[ownerID] isEqualToNumber:key]) {
+      [_ownerTextResources removeObjectForKey:ownerID];
+    }
+    [_textResourceOwners removeObjectForKey:key];
+    NSValue *value = _textBundles[key];
+    if (value != nil) {
       bundle = [value pointerValue];
-      [_textBundles removeObjectForKey:@(textID)];
+      [_textBundles removeObjectForKey:key];
     }
   }
   DestroyTextBundlePointer(bundle);
@@ -93,7 +118,12 @@ void DestroyTextBundlePointer(void *bundle) {
 - (void *)getTextBundle:(int32_t)textID {
   void *bundle = nullptr;
   @synchronized(self) {
-    NSValue *value = _textBundles[@(textID)];
+    NSNumber *key = @(textID);
+    NSValue *value = _textBundles[key];
+    if (value == nil) {
+      NSNumber *resourceID = _ownerTextResources[key];
+      value = resourceID != nil ? _textBundles[resourceID] : nil;
+    }
     if (value) {
       bundle = [value pointerValue];
     }

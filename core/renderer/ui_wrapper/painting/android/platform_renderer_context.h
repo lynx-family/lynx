@@ -65,13 +65,15 @@ class PlatformRendererContext {
   // Register/unregister PlatformRendererAndroid instances
   void RegisterPlatformRenderer(int32_t id, PlatformRendererAndroid* renderer);
   void UnregisterPlatformRenderer(int32_t id);
-  void CreateImage(int32_t id, base::String src, float width, float height,
-                   int32_t event_mask = 0);
-  void DestroyImage(int32_t id);
+  void CreateImageResource(int32_t resource_id, int32_t owner_id,
+                           base::String src, float width, float height,
+                           int32_t event_mask = 0);
+  void DestroyImageResource(int32_t resource_id);
 
-  void UpdateTextBundle(int32_t id, intptr_t text_bundle);
+  void CreateTextResource(int32_t resource_id, int32_t owner_id,
+                          intptr_t text_bundle);
 
-  void DestroyTextBundle(int32_t id);
+  void DestroyTextResource(int32_t resource_id);
 
   void InsertListItemPaintingNode(int32_t list_sign, int32_t child_sign);
 

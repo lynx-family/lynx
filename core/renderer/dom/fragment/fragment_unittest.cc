@@ -742,6 +742,9 @@ TEST_F(FragmentTest, TestUpdateLayoutAndDefineBoxAndDrawImage) {
   EXPECT_EQ(fragment.DefinePaddingBox(builder), 1);
   EXPECT_EQ(fragment.DefineContentBox(builder), 2);
 
+  auto* image_behavior =
+      static_cast<ImageFragmentBehavior*>(fragment.behavior_.get());
+  image_behavior->image_resource_id_ = 123;
   fragment.behavior_->OnDraw(builder);
 
   DisplayList list = builder.Build();
@@ -810,6 +813,8 @@ TEST_F(FragmentTest, TestUpdateLayoutAndDefineBoxAndDrawImage) {
   EXPECT_EQ(ops[3], static_cast<int32_t>(DisplayListOpType::kImage));
   EXPECT_EQ(ints[6], 2);
   EXPECT_EQ(ints[7], 0);
+  EXPECT_EQ(ints[8], 123);
+  EXPECT_EQ(ints[9], 2);
 }
 
 TEST_F(FragmentTest, TestCheckRootIfNeedClipBounds) {

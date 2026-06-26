@@ -52,7 +52,7 @@ class NativePaintingCtxDarwin : public PaintingCtxPlatformImpl, public NativePai
   void SetKeyframes(fml::RefPtr<PropBundle> keyframes_data) override {}
 
   // NativePaintingContextDarwin do not need impl this interface.
-  virtual void HandleValidate(int tag) override{};
+  virtual void HandleValidate(int tag) override {}
 
   std::unique_ptr<pub::Value> GetTextInfo(const std::string &content,
                                           const pub::Value &info) override;
@@ -107,9 +107,7 @@ class NativePaintingCtxDarwin : public PaintingCtxPlatformImpl, public NativePai
 
   void UpdateDisplayList(int id, DisplayList display_list) override;
 
-  void UpdateTextBundle(int id, intptr_t bundle) override;
-
-  void DestroyTextBundle(int id) override;
+  int32_t CreateTextResource(int owner_id, intptr_t bundle) override;
 
   void InsertListItemPaintingNode(int32_t list_id, int32_t child_id) override;
 
@@ -123,8 +121,8 @@ class NativePaintingCtxDarwin : public PaintingCtxPlatformImpl, public NativePai
 
   void UpdatePlatformEventBundle(int32_t id, PlatformEventBundle bundle) override;
 
-  void CreateImage(int id, base::String src, float width, float height,
-                   int32_t event_mask = 0) override;
+  int32_t CreateImageResource(int owner_id, base::String src, float width, float height,
+                              int32_t event_mask = 0) override;
 
 #pragma endregion  // NativePaintingContext
 

@@ -490,24 +490,25 @@ void NativePaintingCtxAndroid::ReconstructEventTargetTreeRecursively() {
   });
 }
 
-void NativePaintingCtxAndroid::CreateImage(int id, base::String src,
-                                           float width, float height,
-                                           int32_t event_mask) {
+int32_t NativePaintingCtxAndroid::CreateImageResource(int owner_id,
+                                                      base::String src,
+                                                      float width, float height,
+                                                      int32_t event_mask) {
+  int32_t resource_id = NextPlatformResourceId();
   if (view_manager_) {
-    view_manager_->CreateImage(id, src, width, height, event_mask);
+    view_manager_->CreateImageResource(resource_id, owner_id, src, width,
+                                       height, event_mask);
   }
+  return resource_id;
 }
 
-void NativePaintingCtxAndroid::UpdateTextBundle(int id, intptr_t bundle) {
+int32_t NativePaintingCtxAndroid::CreateTextResource(int owner_id,
+                                                     intptr_t bundle) {
+  int32_t resource_id = NextPlatformResourceId();
   if (view_manager_) {
-    view_manager_->UpdateTextBundle(id, bundle);
+    view_manager_->CreateTextResource(resource_id, owner_id, bundle);
   }
-}
-
-void NativePaintingCtxAndroid::DestroyTextBundle(int id) {
-  if (view_manager_) {
-    view_manager_->DestroyTextBundle(id);
-  }
+  return resource_id;
 }
 
 void NativePaintingCtxAndroid::InsertListItemPaintingNode(int32_t list_id,
