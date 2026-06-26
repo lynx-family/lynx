@@ -942,9 +942,11 @@ void LayoutContext::UpdateLayoutInfo(LayoutNode* node) {
     }
   }
 
+  bool display_none = sl_node->GetShouldDisplayNone();
   delegate_->OnLayoutUpdate(
       node->id(), left, top, width, height, paddings, margins, borders,
-      sticky_positions, sl_node->GetCSSStyle()->GetMaxHeight().GetRawValue());
+      sticky_positions, sl_node->GetCSSStyle()->GetMaxHeight().GetRawValue(),
+      display_none);
 
   if (node->slnode()->GetSLMeasureFunc()) {
     // Dispatch OnLayoutAfter to those nodes that have custom measure

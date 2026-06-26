@@ -23,7 +23,7 @@ class DelegateEmptyImpl : public LayoutContext::Delegate {
                               const std::array<float, 4>& margins,
                               const std::array<float, 4>& borders,
                               const std::array<float, 4>* sticky_positions,
-                              float max_height) override {}
+                              float max_height, bool display_none) override {}
   virtual void OnLayoutAfter(const std::shared_ptr<PipelineOptions>& options,
                              std::unique_ptr<PlatformExtraBundleHolder> holder,
                              bool has_layout) override {}
