@@ -108,6 +108,13 @@ export interface InputProps extends Omit<StandardProps, 'bindfocus' | 'bindblur'
    */
   placeholder?: string
   /**
+   * Initial input content. Only applies on the first render and does not trigger `bindinput`.
+   * @Android
+   * @iOS
+   * @Harmony
+   */
+  'default-value'?: string;
+  /**
    * The type of confirm button
    * @defaultValue 'send'
    * @Android

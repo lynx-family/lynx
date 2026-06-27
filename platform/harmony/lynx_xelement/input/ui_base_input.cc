@@ -160,6 +160,21 @@ void UIBaseInput::OnPropUpdate(const std::string& name,
     }
   } else if (name == "readonly") {
     readonly_ = value.Bool();
+  } else if (name == "default-value") {
+    if (default_value_consumed_) {
+      return;
+    }
+    if (value.IsNil() || value.IsString()) {
+      const std::string text = value.IsString() ? value.StdString() : "";
+      const std::string current_text =
+          NodeManager::Instance().GetAttribute<std::string>(
+              input_node_, GetTextAttributeType());
+      if (current_text == text) {
+        return;
+      }
+      pending_default_value_ = text;
+      SetTextValue(text);
+    }
   } else if (name == "text-align") {
     int32_t align = static_cast<int32_t>(value.Number());
     if (align == 0 || align == 3) {  // left && start
@@ -285,6 +300,7 @@ void UIBaseInput::OnNodeReady() {
   UIView::OnNodeReady();
   SetupFont();
   SetupPlaceholderFont();
+  default_value_consumed_ = true;
   bool focused = NodeManager::Instance().GetAttribute<int>(
                      input_node_, NODE_FOCUS_STATUS) == 1;
   if (focused) {
@@ -700,9 +716,7 @@ void UIBaseInput::SetValue(
     if (params->Contains("value")) {
       const auto& value = params->GetValue("value");
       if (value.IsString()) {
-        auto item = (ArkUI_AttributeItem){.string = std::move(value.CString())};
-        NodeManager::Instance().SetAttribute(input_node_,
-                                             GetTextAttributeType(), &item);
+        SetTextValue(value.StdString());
         callback(LynxGetUIResult::SUCCESS, lepus::Value());
         return;
       }
@@ -711,6 +725,23 @@ void UIBaseInput::SetValue(
   const auto ret = lepus::Dictionary::Create();
   ret->SetValue("err", "value is not assigned");
   callback(LynxGetUIResult::PARAM_INVALID, lepus::Value(ret));
+}
+
+void UIBaseInput::SetTextValue(const std::string& value) {
+  ArkUI_AttributeItem item = {.string = value.c_str()};
+  NodeManager::Instance().SetAttribute(input_node_, GetTextAttributeType(),
+                                       &item);
+}
+
+bool UIBaseInput::ShouldSuppressInputEvent() {
+  if (!pending_default_value_.has_value()) {
+    return false;
+  }
+  const std::string pending_default_value = *pending_default_value_;
+  pending_default_value_.reset();
+  const std::string value = NodeManager::Instance().GetAttribute<std::string>(
+      input_node_, GetTextAttributeType());
+  return value == pending_default_value;
 }
 
 void UIBaseInput::GetValue(

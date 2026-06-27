@@ -117,10 +117,7 @@ LYNX_UI_METHOD(setValue) {
   NSString *value = params[@"value"];
   NSInteger cursor = [(params[@"cursor"] ? : @(-1)) integerValue];
   
-  if (![self inputView:self.view checkInputValidity:value]) {
-  } else {
-    [self.view setText:value];
-  }
+  [self setTextValue:value];
   
   if (cursor >= 0) {
     UITextPosition* beginning = self.view.beginningOfDocument;
