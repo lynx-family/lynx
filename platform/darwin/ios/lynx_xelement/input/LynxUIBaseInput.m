@@ -33,6 +33,8 @@
 @property (nonatomic, assign) BOOL avoidKeyboardInLynxView;
 @property (nonatomic, assign) CGFloat avoidKeyboardSpacingInLynxView;
 @property (nonatomic, assign) BOOL enableHoldKeyboard;
+@property (nonatomic, assign) BOOL shouldSuppressInputEvent;
+@property (nonatomic, assign) BOOL defaultValueConsumed;
 @end
 
 static const NSTimeInterval kLynxInputKeyboardDefaultAnimationDuration = 0.3;
@@ -347,6 +349,22 @@ LYNX_PROP_SETTER("placeholder", setPlaceholder, NSString *) {
   self.placeholder = value;
 }
 
+LYNX_PROP_SETTER("default-value", setDefaultValue, NSString *) {
+  if (self.defaultValueConsumed) {
+    return;
+  }
+  NSString *text = (requestReset || value == nil) ? @"" : value;
+  if ([[self getText] isEqualToString:text]) {
+    return;
+  }
+
+  self.shouldSuppressInputEvent = YES;
+  if ([self setTextValue:text]) {
+    [self didApplyDefaultValueFromProp];
+  }
+  self.shouldSuppressInputEvent = NO;
+}
+
 LYNX_PROP_SETTER("confirm-enter", setConfirmEnter, BOOL) {
   self.confirmEnter = value;
 }
@@ -408,6 +426,11 @@ LYNX_PROP_SETTER("hold-keyboard", setHoldKeyboard, BOOL) {
                                                                           avoidKeyboard:self.avoidKeyboardInLynxView
                                                                                 spacing:self.avoidKeyboardSpacingInLynxView];
   }
+}
+
+- (void)onNodeReady {
+  [super onNodeReady];
+  self.defaultValueConsumed = YES;
 }
 
 - (void)layoutDidFinished {
@@ -525,6 +548,9 @@ LYNX_UI_METHOD(setSelectionRange) {
   if (![self inputView:input checkInputValidity:[self getText]]) {
     return NO;
   }
+  if (self.shouldSuppressInputEvent) {
+    return YES;
+  }
   
   [self sendInputEvent];
   
@@ -532,6 +558,9 @@ LYNX_UI_METHOD(setSelectionRange) {
 }
 
 - (void)sendInputEvent {
+  if (self.shouldSuppressInputEvent) {
+    return;
+  }
   if (!self.sendComposingInputEvent) {
     NSString *curValue = [self getText];
     if (![curValue isEqualToString:self.preValue]) {
@@ -645,6 +674,10 @@ LYNX_UI_METHOD(setSelectionRange) {
   // Override by subclass to change text internal
 }
 
+- (void)didApplyDefaultValueFromProp {
+  // Override by subclass to refresh view-specific state after programmatic default value updates.
+}
+
 - (BOOL)inputView:(id<UITextInput>)input checkInputValidity:(NSString *)source {
   NSString *dest = source;
   dest = [self filterStringByRegex:source];
@@ -656,6 +689,15 @@ LYNX_UI_METHOD(setSelectionRange) {
     return NO;
   }
   
+  return YES;
+}
+
+- (BOOL)setTextValue:(NSString * _Nullable)value {
+  NSString *text = value ? : @"";
+  if (![self inputView:self.view checkInputValidity:text]) {
+    return NO;
+  }
+  [(id)self.view setText:text];
   return YES;
 }
 

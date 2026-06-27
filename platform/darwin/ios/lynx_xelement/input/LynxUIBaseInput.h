@@ -72,6 +72,10 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (void)sendInputEvent;
 
+- (BOOL)setTextValue:(nullable NSString *)value;
+
+- (void)didApplyDefaultValueFromProp;
+
 - (void)setCollapsedSelectionForInput:(id<UITextInput>)input offset:(NSInteger)offset;
 
 - (BOOL)handleOverflowReplacementForInput:(id<UITextInput>)input
