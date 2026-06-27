@@ -106,6 +106,7 @@ LYNX_PROP_SETTER("show-soft-input-on-focus", setShowSoftInputOnFocus, BOOL) {
     }
     _placeholderView.typingAttributes = self.placeholderAttrs;
     _placeholderView.text = self.placeholder;
+    _placeholderView.hidden = self.view.text.length != 0;
   } else {
     [_placeholderView removeFromSuperview];
     _placeholderView = nil;
@@ -126,10 +127,7 @@ LYNX_UI_METHOD(setValue) {
   NSString *value = params[@"value"];
   NSInteger cursor = [(params[@"cursor"] ? : @(-1)) integerValue];
   
-  if (![self inputView:self.view checkInputValidity:value]) {
-  } else {
-    [self.view setText:value];
-  }
+  [self setTextValue:value];
   
   if (cursor >= 0) {
     UITextPosition* beginning = self.view.beginningOfDocument;
@@ -152,6 +150,10 @@ LYNX_UI_METHOD(setValue) {
 
 - (NSString *)getText {
   return self.view.attributedText.string ? : (self.view.text ? : @"");
+}
+
+- (void)didApplyDefaultValueFromProp {
+  self.lastValue = [self getText];
 }
 
 - (NSAttributedString *)getAttributedString {

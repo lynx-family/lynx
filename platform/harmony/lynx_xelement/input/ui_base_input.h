@@ -5,6 +5,7 @@
 #ifndef PLATFORM_HARMONY_LYNX_XELEMENT_INPUT_UI_BASE_INPUT_H_
 #define PLATFORM_HARMONY_LYNX_XELEMENT_INPUT_UI_BASE_INPUT_H_
 
+#include <optional>
 #include <string>
 #include <unordered_map>
 
@@ -32,6 +33,7 @@ class UIBaseInput : public UIView {
   void SendFocusEvent() const;
   void SendBlurEvent() const;
   void SendKeyboardHeightChangedEvent(float height) const;
+  bool ShouldSuppressInputEvent();
   bool readonly_{false};
   bool hold_keyboard_{false};
   bool avoid_keyboard_in_lynx_view_{false};
@@ -40,6 +42,8 @@ class UIBaseInput : public UIView {
   float avoid_keyboard_dist_{0.0};
   bool show_soft_input_on_focus_{true};
   bool keyboard_event_observer_registered_{false};
+  bool default_value_consumed_{false};
+  std::optional<std::string> pending_default_value_;
 
   float computed_height_{INPUT_UNDEFINED_FLOAT};
   float max_height_{INPUT_UNDEFINED_FLOAT};
@@ -116,6 +120,7 @@ class UIBaseInput : public UIView {
   int32_t MeasureTextHeight(float font_size, float max_width, int font_weight, int font_style,
                             int line_spacing, std::string font_family, std::string value);
   float HandleAvoidKeyboard(bool keyboard_displayed);
+  void SetTextValue(const std::string& value);
   static std::unordered_map<std::string, UIMethod> input_base_ui_method_map_;
 };
 }  // namespace harmony

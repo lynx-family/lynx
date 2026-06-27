@@ -187,7 +187,9 @@ void UITextArea::OnNodeEvent(ArkUI_NodeEvent* event) {
                                                           NODE_FOCUS_STATUS, 1);
     }
   } else if (type == NODE_TEXT_AREA_ON_CHANGE) {
-    SendInputEvent();
+    if (!ShouldSuppressInputEvent()) {
+      SendInputEvent();
+    }
     const int32_t line = NodeManager::Instance().GetAttribute<int32_t>(
         input_node_, NODE_TEXT_AREA_CONTENT_LINE_COUNT);
     if (line != current_lines_) {
