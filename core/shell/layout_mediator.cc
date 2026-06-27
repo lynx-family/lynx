@@ -32,7 +32,8 @@ void LayoutMediator::OnLayoutUpdate(
     int tag, float x, float y, float width, float height,
     const std::array<float, 4> &paddings, const std::array<float, 4> &margins,
     const std::array<float, 4> &borders,
-    const std::array<float, 4> *sticky_positions, float max_height) {
+    const std::array<float, 4> *sticky_positions, float max_height,
+    bool display_none) {
   std::array<float, 4> sticky_positions_clone;
   bool has_sticky = false;
   if (sticky_positions) {
@@ -43,15 +44,17 @@ void LayoutMediator::OnLayoutUpdate(
   if (node_manager_ != nullptr) {
     operation_queue_->EnqueueOperation(
         [node_manager = node_manager_, tag, x, y, width, height, paddings,
-         margins, borders, sticky_positions_clone, has_sticky, max_height]() {
+         margins, borders, sticky_positions_clone, has_sticky, max_height,
+         display_none]() {
           auto *node = node_manager->Get(tag);
           if (node != nullptr) {
             if (has_sticky) {
               node->UpdateLayout(x, y, width, height, paddings, margins,
-                                 borders, &sticky_positions_clone, max_height);
+                                 borders, &sticky_positions_clone, max_height,
+                                 display_none);
             } else {
               node->UpdateLayout(x, y, width, height, paddings, margins,
-                                 borders, nullptr, max_height);
+                                 borders, nullptr, max_height, display_none);
             }
           } else {
             LOGE(

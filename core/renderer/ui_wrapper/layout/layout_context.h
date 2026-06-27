@@ -60,7 +60,7 @@ class LayoutContext : public std::enable_shared_from_this<LayoutContext>,
                                 const std::array<float, 4>& margins,
                                 const std::array<float, 4>& borders,
                                 const std::array<float, 4>* sticky_positions,
-                                float max_height) = 0;
+                                float max_height, bool display_none) = 0;
     void OnLayoutAfter(const std::shared_ptr<PipelineOptions>& options) {
       OnLayoutAfter(options, nullptr, false);
     };
