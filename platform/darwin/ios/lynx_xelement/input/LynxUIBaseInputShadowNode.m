@@ -32,6 +32,7 @@
 @property (nonatomic, strong) NSMutableDictionary *inputAttrs;
 @property (nonatomic, strong) NSMutableDictionary *placeholderAttrs;
 @property (nonatomic, strong) NSMutableParagraphStyle *inputParagraphStyle;
+@property (nonatomic, assign) BOOL defaultValueConsumed;
 
 @end
 
@@ -239,8 +240,16 @@ LYNX_PROP_SETTER("placeholder", setPlaceholder, NSString *) {
   self.placeholder = value;
 }
 
+LYNX_PROP_SETTER("default-value", setDefaultValue, NSString *) {
+  if (self.defaultValueConsumed) {
+    return;
+  }
+  self.value = (requestReset || value == nil) ? @"" : value;
+}
+
 - (void)propsDidUpdate {
   [super propsDidUpdate];
+  self.defaultValueConsumed = YES;
   [self setNeedsLayout];
 }
 

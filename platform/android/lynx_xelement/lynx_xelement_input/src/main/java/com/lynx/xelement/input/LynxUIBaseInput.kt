@@ -88,6 +88,8 @@ open class LynxUIBaseInput(context: LynxContext, params: Any?) : LynxUI<LynxEdit
     private var mWasFocused = false
     private var mAvoidKeyboardDist: Float = 0.0f
     private var mKeyboardEventObserverAdded = false
+    private var mShouldSuppressInputEvent = false
+    private var mDefaultValueConsumed = false
     protected var mConfirmEnter: Boolean = false
     protected var mHoldKeyboard: Boolean = false
     var readonlyInputFilter = object: InputFilter {
@@ -99,7 +101,8 @@ open class LynxUIBaseInput(context: LynxContext, params: Any?) : LynxUI<LynxEdit
         dstart: Int,
         dend: Int
       ): CharSequence? {
-        if (mReadonly) {
+        // readonly should block user edits, but not framework-originated default value updates.
+        if (mReadonly && !mShouldSuppressInputEvent) {
           return dest?.subSequence(dstart, dend)
         } else {
           return null
@@ -194,6 +197,9 @@ open class LynxUIBaseInput(context: LynxContext, params: Any?) : LynxUI<LynxEdit
 
                 override fun afterTextChanged(s: Editable?) {
                     afterTextDidChanged(s)
+                    if (mShouldSuppressInputEvent) {
+                      return
+                    }
                     if (mView != null) {
                       s?.let {
                         lynxContext.eventEmitter.sendCustomEvent(LynxDetailEvent(
@@ -254,6 +260,35 @@ open class LynxUIBaseInput(context: LynxContext, params: Any?) : LynxUI<LynxEdit
     @LynxProp(name = "placeholder")
     fun setPlaceholder(value: String?) {
         mPlaceholder = value
+    }
+
+    @LynxProp(name = "default-value")
+    fun setDefaultValue(value: String?) {
+        if (mDefaultValueConsumed) {
+            return
+        }
+        val text = value ?: ""
+        if (mView.text?.toString() == text) {
+            return
+        }
+        mShouldSuppressInputEvent = true
+        replaceText(text)
+        mShouldSuppressInputEvent = false
+    }
+
+    private fun replaceText(text: String?) {
+        val safeText = text ?: ""
+        val editable = mView.text
+        if (editable == null) {
+            mView.setText(safeText)
+        } else {
+            editable.replace(0, editable.length, safeText)
+        }
+    }
+
+    override fun onNodeReady() {
+        super.onNodeReady()
+        mDefaultValueConsumed = true
     }
     
     @LynxProp(name = "confirm-enter")
@@ -750,11 +785,7 @@ open class LynxUIBaseInput(context: LynxContext, params: Any?) : LynxUI<LynxEdit
 
         val text = if (params.hasKey("value")) params.getString("value") else ""
         val cursor = if (params.hasKey("cursor")) params.getInt("cursor") else - 1
-        if (mView.text == null) {
-            mView.setText(text)
-        } else {
-            mView.text!!.replace(0, mView.text!!.length, text)
-        }
+        replaceText(text)
         if (cursor != -1) {
             mView.setSelection(cursor)
         }
