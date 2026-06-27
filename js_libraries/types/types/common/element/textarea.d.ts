@@ -109,6 +109,13 @@ export interface TextAreaProps extends Omit<StandardProps, 'bindfocus' | 'bindbl
    */
   placeholder?: string
   /**
+   * Initial textarea content. Only applies on the first render and does not trigger `bindinput`.
+   * @Android
+   * @iOS
+   * @Harmony
+   */
+  'default-value'?: string;
+  /**
    * The type of confirm button
    * @defaultValue 'done'
    * @iOS

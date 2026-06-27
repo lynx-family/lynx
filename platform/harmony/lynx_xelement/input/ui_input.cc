@@ -162,7 +162,7 @@ void UIInput::OnNodeEvent(ArkUI_NodeEvent* event) {
       NodeManager::Instance().SetAttributeWithNumberValue(input_node_,
                                                           NODE_FOCUS_STATUS, 1);
     }
-  } else if (type == NODE_TEXT_INPUT_ON_CHANGE) {
+  } else if (type == NODE_TEXT_INPUT_ON_CHANGE && !ShouldSuppressInputEvent()) {
     SendInputEvent();
   } else if (type == NODE_TEXT_INPUT_ON_TEXT_SELECTION_CHANGE) {
     auto* component_event = OH_ArkUI_NodeEvent_GetNodeComponentEvent(event);
