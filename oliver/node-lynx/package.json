@@ -21,6 +21,7 @@
     "build:publish:darwin": "python3 ../build_gn.py --platform darwin --type node-lynx --local true --clean true",
     "build:publish:linux": "python3 ../build_gn.py --platform linux --type node-lynx --clean true",
     "pack": "pnpm run build:resources && pnpm exec tsc && pnpm pack",
+    "publish:npm": "node ./scripts/publish.js",
     "test": "./scripts/test.sh",
     "test:gallery": "node ./test/render_gallery.js"
   },
@@ -43,6 +44,7 @@
     "dist",
     "src",
     "resources",
+    "skills",
     "README.md",
     "CHANGELOG.md"
   ]
