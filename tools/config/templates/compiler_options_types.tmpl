@@ -20,7 +20,7 @@ export enum CompilerOptionAirMode {
 {% endif %}
 export interface CompilerOptions {
 {% for option in options %}
-{% if not export or (export and option.export)%}
+{% if not option.deprecated and (not export or (export and option.export))%}
   /**
    {% if option.desc %}
    * {{ option.desc }}
@@ -37,9 +37,6 @@ export interface CompilerOptions {
    {% if option.js_default_value %}
    * @defaultValue {{ option.js_default_value }}
    *
-   {% endif %}
-   {% if option.deprecated %}
-   * @deprecated {{ option.deprecated }}
    {% endif %}
    */
   {{ option.name }}?: {{ option.js_value_type }}

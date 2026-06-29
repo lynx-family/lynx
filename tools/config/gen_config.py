@@ -102,6 +102,16 @@ def _validate_export_version(items: list[Config]) -> list[Config]:
     return items_copy
 
 
+def _active_items(items: list[Config]) -> list[Config]:
+    return [item for item in items if not item.deprecated]
+
+
+def _active_export_items(items: list[Config]) -> list[Config]:
+    return _validate_export_version(
+        [item for item in _active_items(items) if item.export]
+    )
+
+
 def render_code_content(
     template_path: Path,
     output_path: Path,
@@ -274,8 +284,9 @@ def _prepare_config_doc(configs: list[Config]):
 def gen_config_doc(
     configs: list[Config], internal_path: Path = None, external_path: Path = None
 ):
-    _prepare_config_doc(configs)
-    export_configs = _validate_export_version(configs)
+    active_configs = _active_items(configs)
+    _prepare_config_doc(active_configs)
+    export_configs = _active_export_items(configs)
     _prepare_config_doc(export_configs)
     config_doc_tmpl_path = JINJA_TEMPLATES_PATH / "lynx_config_doc.tmpl"
     if internal_path and internal_path.exists():
@@ -310,7 +321,7 @@ def gen_config_doc(
     render_code_content(
         config_doc_tmpl_path,
         internal_doc_path,
-        sort_by_deprecated_and_alphabetical(configs),
+        sort_by_deprecated_and_alphabetical(active_configs),
         None,
         export=False,
     )
@@ -381,8 +392,8 @@ def _gen_test_files(configs: list[Config], export_configs: list[Config], options
         render_code_content(
             test_js_tmpl_path,
             test_js_path,
-            sort_by_deprecated_and_alphabetical(export_configs),
-            sort_by_deprecated_and_alphabetical(export_options),
+            sort_by_deprecated_and_alphabetical(configs),
+            sort_by_deprecated_and_alphabetical(options),
             export=False
         )
 
@@ -392,8 +403,8 @@ def _gen_test_files(configs: list[Config], export_configs: list[Config], options
         render_code_content(
             test_types_tmpl_path,
             test_types_path,
-            sort_by_deprecated_and_alphabetical(export_configs),
-            sort_by_deprecated_and_alphabetical(export_options),
+            sort_by_deprecated_and_alphabetical(configs),
+            sort_by_deprecated_and_alphabetical(options),
             export=False
         )
 
@@ -408,16 +419,18 @@ def gen_lynx_config(configs: list[Config], options: list[Config]):
 
 
 def gen_types(configs: list[Config], options: list[Config]):
-    export_configs = _validate_export_version(configs)
-    export_options = _validate_export_version(options)
+    active_configs = _active_items(configs)
+    active_options = _active_items(options)
+    export_configs = _active_export_items(configs)
+    export_options = _active_export_items(options)
     # gen config types
-    _gen_config_types(configs, export_configs)
+    _gen_config_types(active_configs, export_configs)
     # gen compile options types
-    _gen_compile_options_types(options, export_options)
+    _gen_compile_options_types(active_options, export_options)
     # gen config keys
-    _gen_config_keys(configs, export_configs, options, export_options)
+    _gen_config_keys(active_configs, export_configs, active_options, export_options)
     # gen test files
-    _gen_test_files(configs, export_configs, options, export_options)
+    _gen_test_files(active_configs, export_configs, active_options, export_options)
     # format generated files with prettier
     prettier_format(JS_LIBRARIES_CONFIG_PATH)
     prettier_format(OLIVER_CONFIG_PATH)

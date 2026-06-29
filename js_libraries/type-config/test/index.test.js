@@ -18,26 +18,36 @@ describe('type-config index', () => {
     expect(compilerOptionsKeys).toEqual([]);
   });
   it('should have correct configKeys', () => {
-    expect(configKeys.length).toBe(18);
+    expect(configKeys.length).toBe(28);
     expect(configKeys).toEqual([
       'disableLongpressAfterScroll',
       'enableA11y',
       'enableAccessibilityElement',
       'enableCSSInheritance',
+      'enableCSSInlineVariables',
+      'enableCSSRule',
       'enableEndGestureAtLastFingerUp',
+      'enableEventThrough',
+      'enableFetchAPIStandardStreaming',
+      'enableFlexBasisZeroPercent',
+      'enableGridPlacementShorthands',
       'enableJsBindingApiThrowException',
       'enableListNewArchitecture',
+      'enableMultiTouch',
       'enableNativeList',
-      'enableNewClipMode',
       'enableNewGesture',
       'enableNewIntersectionObserver',
       'enableNewTransformOrigin',
-      'enableReduceInitDataCopy',
-      'enableRemoveComponentExtraData',
+      'enableSimultaneousTap',
       'enableTextOverflow',
-      'enableTextRefactor',
+      'enableTransformedTouchPosition',
+      'fontScaleEffectiveOnlyOnSp',
+      'includeFontPadding',
       'keyboardCallbackPassRelativeHeight',
+      'longPressDuration',
       'removeDescendantSelectorScope',
+      'tapSlop',
+      'unifyVWVHBehavior',
     ]);
   });
 });

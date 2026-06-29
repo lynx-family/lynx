@@ -10,7 +10,7 @@
 
 export interface Config {
 {% for config in configs %}
-{% if not export or (export and config.export)%}
+{% if not config.deprecated and (not export or (export and config.export))%}
   /**
    {% if config.desc %}
    * {{ config.desc }}
@@ -27,13 +27,9 @@ export interface Config {
    {% if config.js_default_value %}
    * @defaultValue {{ config.js_default_value }}
    {% endif %}
-   {% if config.deprecated %}
-   * @deprecated {{ config.deprecated }}
-   {% endif %}
    */
   {{ config.name }}?: {{ config.js_value_type }}
 
 {% endif %}
 {% endfor %}
 }
-

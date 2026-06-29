@@ -5,7 +5,7 @@
 /** @type {string[]} */
 const compilerOptionsKeys = [
   {% for option in options %}
-  {% if not export or (export and option.export)%}
+  {% if not option.deprecated and (not export or (export and option.export))%}
   '{{option.name}}',
   {% endif %}
   {% endfor %}
@@ -14,7 +14,7 @@ const compilerOptionsKeys = [
 /** @type {string[]} */
 const configKeys = [
   {% for config in configs %}
-  {% if not export or (export and config.export)%}
+  {% if not config.deprecated and (not export or (export and config.export))%}
   '{{config.name}}',
   {% endif %}
   {% endfor %}

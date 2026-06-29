@@ -14,20 +14,20 @@ describe('type-config index', () => {
     expect(configKeys).toBeDefined();
   });
   it('should have correct compilerOptionsKeys', () => {
-    expect(compilerOptionsKeys.length).toBe({{ options | selectattr('export') | list | length if export else options | length }});
+    expect(compilerOptionsKeys.length).toBe({{ options | rejectattr('deprecated') | selectattr('export') | list | length if export else options | rejectattr('deprecated') | list | length }});
     expect(compilerOptionsKeys).toEqual([
       {% for option in options %}
-      {% if not export or (export and option.export)%}
+      {% if not option.deprecated and (not export or (export and option.export))%}
       '{{option.name}}',
       {% endif %}
       {% endfor %}
     ])
   })
   it('should have correct configKeys', () => {
-    expect(configKeys.length).toBe({{ configs | selectattr('export') | list | length if export else configs | length }});
+    expect(configKeys.length).toBe({{ configs | rejectattr('deprecated') | selectattr('export') | list | length if export else configs | rejectattr('deprecated') | list | length }});
     expect(configKeys).toEqual([
       {% for config in configs %}
-      {% if not export or (export and config.export)%}
+      {% if not config.deprecated and (not export or (export and config.export))%}
       '{{config.name}}',
       {% endif %}
       {% endfor %}

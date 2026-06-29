@@ -15,7 +15,7 @@ describe('Test Config Types', () => {
   it('should have correct Config type', () => {
     expectTypeOf<Config>().toBeObject();
     {% for config in configs %}
-    {% if not export or (export and config.export)%}
+    {% if not config.deprecated and (not export or (export and config.export))%}
     expectTypeOf<Config>().toHaveProperty('{{ config.name }}').toEqualTypeOf<{{ config.js_value_type }} | undefined>();
     {% endif %}
     {% endfor %}
@@ -26,7 +26,7 @@ describe('Test Compile Options Types', () => {
   it('should have correct types', () => {
     expectTypeOf<CompilerOptions>().toBeObject();
     {% for option in options %}
-    {% if not export or (export and option.export)%}
+    {% if not option.deprecated and (not export or (export and option.export))%}
     expectTypeOf<CompilerOptions>().toHaveProperty('{{ option.name }}').toEqualTypeOf<{{ option.js_value_type }} | undefined>();
     {% endif %}
     {% endfor %}
