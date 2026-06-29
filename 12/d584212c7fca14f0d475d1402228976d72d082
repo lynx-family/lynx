@@ -1,0 +1,38 @@
+platform/android/package.gradle
+  s_c9da953da61e2b::t_2c735a2793fa45 11-24,154,170
+  s_c9da953da61e2b::t_985832aacc7c67 25-41,43,47,50,113-121,130
+  s_c9da953da61e2b::t_17f65c2e8fa7f7 42,44-46,131
+  h_7a1e47632c7d77 48,123-124
+  s_c9da953da61e2b::t_da1ccc7346b664 49
+  s_c9da953da61e2b::t_693f4a965068e6 112
+  s_c9da953da61e2b::t_11a92a0ca52830 132
+platform/android/publish.gradle
+  s_c9da953da61e2b::t_11b1717b27641d 30-34,284
+  h_7a1e47632c7d77 274,281
+.github/workflows/publish-release.yml
+  s_c9da953da61e2b::t_bb0f4c6f82540c 272,274
+  h_7a1e47632c7d77 273
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "12d584212c7fca14f0d475d1402228976d72d082",
+  "prompts": {},
+  "humans": {
+    "h_7a1e47632c7d77": {
+      "author": "gaohanqing <gaohanqing@bytedance.com>"
+    }
+  },
+  "sessions": {
+    "s_c9da953da61e2b": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a3fcf05c2d0de2884449bc3",
+        "model": "gpt-5.4__dev"
+      },
+      "human_author": "gaohanqing <gaohanqing@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}
