@@ -20,6 +20,14 @@ namespace lynx {
 namespace tasm {
 namespace harmony {
 
+namespace {
+
+constexpr const char* kIntersectionObserverEventName = "onIntersectionObserver";
+constexpr const char* kIntersectionObserverGlobalEventFlag =
+    "__enableGlobalEvent";
+
+}  // namespace
+
 UIIntersectionObserverTarget::UIIntersectionObserverEntry::
     UIIntersectionObserverEntry(std::string target_id_selector,
                                 float intersection_rect[4],
@@ -142,9 +150,10 @@ UIIntersectionObserver::UIIntersectionObserver(
   if (options.IsObject()) {
     float initial_intersection_ratio = 0.f;
     std::vector<float> intersection_ratio_thresholds;
+    bool should_send_global_event = false;
     tasm::ForEachLepusValue(
-        options, [&initial_intersection_ratio, &intersection_ratio_thresholds](
-                     const auto& key, const auto& val) {
+        options, [&initial_intersection_ratio, &intersection_ratio_thresholds,
+                  &should_send_global_event](const auto& key, const auto& val) {
           if (key.StdString() == "initialRatio") {
             initial_intersection_ratio = val.Number();
           } else if (key.StdString() == "thresholds") {
@@ -161,6 +170,8 @@ UIIntersectionObserver::UIIntersectionObserver(
                     }
                   });
             }
+          } else if (key.StdString() == kIntersectionObserverGlobalEventFlag) {
+            should_send_global_event = val.IsBool() && val.Bool();
           }
         });
     if (intersection_ratio_thresholds.size() == 0) {
@@ -172,6 +183,7 @@ UIIntersectionObserver::UIIntersectionObserver(
             ? initial_intersection_ratio
             : 0.f;
     intersection_ratio_thresholds_ = std::move(intersection_ratio_thresholds);
+    should_send_global_event_ = should_send_global_event;
   }
 }
 
@@ -355,9 +367,14 @@ void UIIntersectionObserver::CheckIntersectionWithTarget(
   }
   target->SetUIIntersectionObserverEntry(std::move(new_entry));
   if (trigger_js_callback) {
-    intersection_observer_manager_->CallJSIntersectionObserver(
-        intersection_observer_id_, target->JSCallbackID(),
-        target->IntersectionEntry()->IntersectionParams());
+    auto params = target->IntersectionEntry()->IntersectionParams();
+    if (should_send_global_event_) {
+      intersection_observer_manager_->SendIntersectionObserverGlobalEvent(
+          intersection_observer_id_, target->JSCallbackID(), std::move(params));
+    } else {
+      intersection_observer_manager_->CallJSIntersectionObserver(
+          intersection_observer_id_, target->JSCallbackID(), std::move(params));
+    }
   }
 }
 
@@ -533,6 +550,26 @@ void UIIntersectionObserverManager::CallJSIntersectionObserver(
     int32_t observer_id, int32_t callback_id, lepus::Value params) const {
   ui_owner_->Context()->CallJSIntersectionObserver(observer_id, callback_id,
                                                    std::move(params));
+}
+
+void UIIntersectionObserverManager::SendIntersectionObserverGlobalEvent(
+    int32_t observer_id, int32_t callback_id, lepus::Value params) const {
+  if (!ui_owner_ || !ui_owner_->Context()) {
+    return;
+  }
+
+  auto event = lepus::Dictionary::Create();
+  event->SetValue("observerId", observer_id);
+  event->SetValue("callbackId", callback_id);
+  event->SetValue("payload", std::move(params));
+
+  auto event_params = lepus::CArray::Create();
+  event_params->emplace_back(lepus::Value(std::move(event)));
+
+  auto global_event_params = lepus::CArray::Create();
+  global_event_params->emplace_back(kIntersectionObserverEventName);
+  global_event_params->emplace_back(std::move(event_params));
+  ui_owner_->SendGlobalEvent(lepus::Value(std::move(global_event_params)));
 }
 
 void UIIntersectionObserverManager::ScreenSize(float size[2]) {
