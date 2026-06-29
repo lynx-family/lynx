@@ -5,6 +5,9 @@
 #ifndef CORE_RENDERER_UI_WRAPPER_PAINTING_ANDROID_PLATFORM_RENDERER_ANDROID_H_
 #define CORE_RENDERER_UI_WRAPPER_PAINTING_ANDROID_PLATFORM_RENDERER_ANDROID_H_
 
+#include <cstddef>
+#include <cstdint>
+
 #include "core/renderer/dom/fragment/display_list.h"
 #include "core/renderer/ui_wrapper/painting/android/platform_renderer_context.h"
 #include "core/renderer/ui_wrapper/painting/platform_renderer_impl.h"
@@ -26,6 +29,9 @@ class PlatformRendererAndroid : public PlatformRendererImpl {
                           const fml::RefPtr<PropBundle>& init_data);
   ~PlatformRendererAndroid() override;
 
+  const uint8_t* GetSerializedContentItemsData();
+  size_t GetSerializedContentItemsSize();
+
  protected:
   // PlatformRendererImpl interface
   void OnUpdateDisplayList(DisplayList display_list) override;
@@ -44,11 +50,13 @@ class PlatformRendererAndroid : public PlatformRendererImpl {
   void InitializeAndroidView(const fml::RefPtr<PropBundle>& init_data);
   bool ShouldCreatePlatformExtendedRenderer(
       const fml::RefPtr<PropBundle>& init_data) const;
+  void SerializeContentItemsIfNeeded();
 
   // Clean up Android resources
   void CleanupAndroidView();
 
-  // Get the display list
+  base::Vector<uint8_t> serialized_content_items_;
+  bool serialized_content_items_dirty_{true};
 };
 
 // Android-specific factory
