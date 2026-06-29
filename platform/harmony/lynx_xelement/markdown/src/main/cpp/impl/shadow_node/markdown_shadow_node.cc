@@ -116,6 +116,7 @@ MarkdownShadowNode::EnsureMarkdownView() {
   InitMarkdownEnv(context_);
   markdown_view_ =
       std::make_shared<serval::markdown::NativeServalMarkdownView>();
+  markdown_view_->SetRequestMeasureCallback([this]() { MarkDirty(); });
   resource_loader_ = std::make_shared<MarkdownResourceLoaderHarmony>(
       context_, this, markdown_view_.get());
   markdown_view_->GetMarkdownView()->SetResourceLoader(resource_loader_.get());

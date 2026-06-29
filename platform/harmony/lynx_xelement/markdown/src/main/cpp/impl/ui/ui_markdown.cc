@@ -4,6 +4,7 @@
 
 #include "platform/harmony/lynx_xelement/markdown/src/main/cpp/impl/ui/ui_markdown.h"
 
+#include <algorithm>
 #include <mutex>
 #include <utility>
 
@@ -116,8 +117,18 @@ void UIMarkdown::UpdateLayout(float left, float top, float width, float height,
   if (!markdown_view_) {
     return;
   }
-  markdown_view_->SetWidth(width);
-  markdown_view_->SetHeight(height);
+  // The custom view should be sized to the content box, not the border box.
+  // Otherwise ArkUI remeasures it with a width that includes padding/border,
+  // which differs from the shadow node's content constraint and causes the
+  // MarkdownViewMeasurer to re-layout on every animation step.
+  const float content_width =
+      std::max(0.f, width - padding_left_ - padding_right_ -
+                        GetBorderLeftWidth() - GetBorderRightWidth());
+  const float content_height =
+      std::max(0.f, height - padding_top_ - padding_bottom_ -
+                        GetBorderTopWidth() - GetBorderBottomWidth());
+  markdown_view_->SetWidth(content_width);
+  markdown_view_->SetHeight(content_height);
   markdown_view_->Layout(0, 0);
 }
 
