@@ -32,7 +32,6 @@ import com.lynx.tasm.behavior.LynxContext;
 import com.lynx.tasm.behavior.LynxUIRenderer;
 import com.lynx.tasm.behavior.event.EventTarget;
 import com.lynx.tasm.behavior.render.ContainerRenderer;
-import com.lynx.tasm.behavior.render.DisplayList;
 import com.lynx.tasm.behavior.render.DisplayListApplier;
 import com.lynx.tasm.behavior.render.IRendererHost;
 import com.lynx.tasm.behavior.render.PlatformRendererContext;
