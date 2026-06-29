@@ -27,6 +27,13 @@ def getAARPath(buildPath, boolean isDev = false) {
     return fileTree.files[0]
 }
 
+def getPublishRepositoryBaseDir = {
+    rootProject.file("${rootProject.buildDir}/release")
+}
+def getPublishRepositoryVersionDir = { String version ->
+    rootProject.file("${rootProject.buildDir}/release/${version}")
+}
+
 boolean isJavaModule() {
     boolean result = ((project.plugins.hasPlugin('java-library')
             || project.plugins.hasPlugin('java'))
@@ -264,14 +271,14 @@ afterEvaluate {
             }
             repositories {
                 maven {
-                    url = "$project.buildDir/release"
+                    url = getPublishRepositoryBaseDir()
                 }
             }
         }
     }
     tasks.withType(PublishToMavenRepository) { task ->
         task.doFirst {
-            repository.url = "$project.buildDir/release/${publication.version}"
+            repository.url = getPublishRepositoryVersionDir(publication.version.toString())
         }
     }
 }

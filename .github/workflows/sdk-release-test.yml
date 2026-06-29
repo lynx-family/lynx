@@ -45,7 +45,9 @@ jobs:
       - name: Collect and zip artifacts
         run: |
           cd $GITHUB_WORKSPACE/lynx/platform/android
-          ./gradlew zipAllArtifacts
+          ./gradlew zipArtifacts -Pversion=0.0.1-alpha.1
+          ./gradlew zipDevArtifacts -Pversion=0.0.1-alpha.1-dev
+          ./gradlew getArtifactList -Pversion=0.0.1-alpha.1
 
   ios-sdk-release-test:
     timeout-minutes: 15
