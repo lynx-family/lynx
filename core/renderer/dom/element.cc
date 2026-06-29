@@ -400,7 +400,7 @@ void Element::UpdateLayout(float left, float top, float width, float height,
                            const std::array<float, 4>& margins,
                            const std::array<float, 4>& borders,
                            const std::array<float, 4>* sticky_positions,
-                           float max_height) {
+                           float max_height, bool display_none) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, ELEMENT_UPDATE_LAYOUT);
   // TODO: only leaf node need to update border padding
   frame_changed_ = true;
@@ -411,6 +411,7 @@ void Element::UpdateLayout(float left, float top, float width, float height,
   paddings_ = paddings;
   margins_ = margins;
   borders_ = borders;
+  display_none_ = display_none;
   UpdateStickyPosition(sticky_positions);
   MarkSubtreeNeedUpdate();
   NotifyElementSizeUpdated();

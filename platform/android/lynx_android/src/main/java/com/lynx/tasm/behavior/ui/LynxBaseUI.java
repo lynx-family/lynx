@@ -231,6 +231,8 @@ public abstract class LynxBaseUI
   @NonNull private final Point mLastSize;
   // used to prevent redundant calls to onLayoutUpdated
   private boolean mSkipLayoutUpdated = false;
+  // whether this UI is display:none from the layout result
+  private boolean mDisplayNone = false;
 
   @StyleConstants.OverflowType protected int mOverflow = 0;
   // indicates if need to clip children to radius
@@ -573,11 +575,15 @@ public abstract class LynxBaseUI
   }
 
   public boolean getVisibility() {
-    return true;
+    return !mDisplayNone;
   }
 
   public boolean isVisible() {
     return true;
+  }
+
+  public void setDisplayNone(boolean displayNone) {
+    mDisplayNone = displayNone;
   }
 
   public void initialize() {}
