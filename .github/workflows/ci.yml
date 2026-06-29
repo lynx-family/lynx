@@ -129,6 +129,10 @@ jobs:
         run: |
           source tools/envsetup.sh
           python3 tools_shared/git_lynx.py check --checkers gn-relative-path-check
+      - name: Run harmony-trail-key check
+        run: |
+          source tools/envsetup.sh
+          python3 tools_shared/git_lynx.py check --checkers harmony-trail-key
 
   darwin-native-unittests-check:
     needs: [darwin-impact-check]
