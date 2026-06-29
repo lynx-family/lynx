@@ -37,9 +37,10 @@ std::optional<runtime::js::JsBundle> JsBundleHolderImpl::GetJSBundleFromBT(
   return bundle;
 }
 
-lepus::Value JsBundleHolderImpl::GetCustomSectionFromBT(
-    const std::string& url) {
-  return proxy_.GetCustomSection(url);
+lepus::Value JsBundleHolderImpl::GetCustomSectionByKey(const std::string& url,
+                                                       const std::string& key) {
+  auto bundle = proxy_.FindTemplateBundle(url);
+  return bundle ? bundle->GetCustomSection(key) : lepus::Value();
 }
 
 bool JsBundleHolderImpl::IsRequesting(const std::string& url) {

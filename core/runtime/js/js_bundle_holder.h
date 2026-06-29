@@ -23,7 +23,8 @@ class JsBundleHolder {
 
   virtual std::optional<JsBundle> GetJSBundleFromBT(const std::string& url) = 0;
 
-  virtual lepus::Value GetCustomSectionFromBT(const std::string& url) = 0;
+  virtual lepus::Value GetCustomSectionByKey(const std::string& url,
+                                             const std::string& key) = 0;
 };
 }  // namespace js
 }  // namespace runtime

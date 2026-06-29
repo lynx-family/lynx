@@ -16,6 +16,7 @@
 #include "base/include/fml/synchronization/shared_mutex.h"
 #include "base/include/value/base_value.h"
 #include "core/runtime/js/js_bundle_holder.h"
+#include "core/template_bundle/lynx_template_bundle.h"
 
 namespace lynx {
 namespace tasm {
@@ -33,7 +34,8 @@ class JsBundleHolderImpl : public runtime::js::JsBundleHolder {
     BundleProxy() = default;
     virtual ~BundleProxy() = default;
 
-    virtual lepus::Value GetCustomSection(const std::string& url) = 0;
+    virtual std::optional<LynxTemplateBundle> FindTemplateBundle(
+        const std::string& url) = 0;
   };
 
   JsBundleHolderImpl(BundleProxy& proxy) : proxy_(proxy){};
@@ -42,7 +44,8 @@ class JsBundleHolderImpl : public runtime::js::JsBundleHolder {
   std::optional<runtime::js::JsBundle> GetJSBundleFromBT(
       const std::string& url) override;
 
-  lepus::Value GetCustomSectionFromBT(const std::string& url) override;
+  lepus::Value GetCustomSectionByKey(const std::string& url,
+                                     const std::string& key) override;
 
   void InsertJSBundle(const std::string& url,
                       const runtime::js::JsBundle& js_bundle);

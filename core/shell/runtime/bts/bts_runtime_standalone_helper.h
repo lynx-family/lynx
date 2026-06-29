@@ -6,6 +6,7 @@
 #define CORE_SHELL_RUNTIME_BTS_BTS_RUNTIME_STANDALONE_HELPER_H_
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -36,12 +37,12 @@ class BTSRuntimeStandalone {
         : lazy_bundle_loader_(lazy_bundle_loader) {}
     ~StandaloneBundleProxy() override = default;
 
-    lepus::Value GetCustomSection(const std::string& url) override {
+    std::optional<tasm::LynxTemplateBundle> FindTemplateBundle(
+        const std::string& url) override {
       if (!lazy_bundle_loader_) {
-        return lepus::Value();
+        return std::nullopt;
       }
-      auto bundle = lazy_bundle_loader_->GetTemplateBundle(url);
-      return bundle ? bundle->GetCustomSections() : lepus::Value();
+      return lazy_bundle_loader_->GetTemplateBundle(url);
     }
 
    private:

@@ -59,7 +59,8 @@ std::optional<LynxTemplateBundle> TemplateEntryHolder::FindTemplateBundle(
     return preload_bundle_iter->second;
   }
 
-  return component_loader_->GetTemplateBundle(entry_name);
+  return component_loader_ ? component_loader_->GetTemplateBundle(entry_name)
+                           : std::nullopt;
 }
 
 void TemplateEntryHolder::ForEachEntry(
@@ -111,14 +112,6 @@ std::optional<LynxTemplateBundle> TemplateEntryHolder::GetPreloadTemplateBundle(
     preload_template_bundles_.erase(iter);
   }
   return bundle;
-}
-
-lepus::Value TemplateEntryHolder::GetCustomSection(const std::string& url) {
-  auto bundle = component_loader_->GetTemplateBundle(url);
-  if (bundle) {
-    return bundle->GetCustomSections();
-  }
-  return lepus::Value();
 }
 
 void TemplateEntryHolder::SetEnableQueryComponentSync(bool enable) {

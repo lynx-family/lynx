@@ -41,7 +41,7 @@ class TemplateEntryHolder : public JsBundleHolderImpl::BundleProxy {
       const std::string& entry_name);
 
   std::optional<LynxTemplateBundle> FindTemplateBundle(
-      const std::string& entry_name);
+      const std::string& entry_name) override;
 
   /**
    * insert bundle for preloading lazy bundle
@@ -53,8 +53,6 @@ class TemplateEntryHolder : public JsBundleHolderImpl::BundleProxy {
       const std::shared_ptr<LazyBundleLoader>& loader);
 
   std::shared_ptr<runtime::js::JsBundleHolder> GetJsBundleHolder() const;
-
-  lepus::Value GetCustomSection(const std::string& url) override;
 
  protected:
   std::unique_ptr<JsBundleHolderImpl::RequestScope> CreateRequestScope(
