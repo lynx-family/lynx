@@ -14,8 +14,8 @@
 #include <utility>
 #include <vector>
 
-#include "clay/fml/logging.h"
 #include "base/trace/native/trace_event.h"
+#include "clay/fml/logging.h"
 #include "txt/platform.h"
 #include "txt/text_style.h"
 
@@ -89,7 +89,7 @@ tttext::FontmgrCollection FontCollection::GetIFontCollection() {
 
   assert(default_font_manager_ != nullptr);
   if (default_font_manager_ != nullptr) {
-#if OS_IOS
+#if OS_IOS || OS_MAC
     collection.SetDefaultFontManager(
         std::make_shared<tttext::SkityFontManagerCoreText>());
 #else
@@ -98,7 +98,7 @@ tttext::FontmgrCollection FontCollection::GetIFontCollection() {
 #endif
   }
   if (asset_font_manager_ != nullptr) {
-#if OS_IOS
+#if OS_IOS || OS_MAC
     collection.SetAssetFontManager(
         std::make_shared<tttext::SkityFontManagerCoreText>(
             asset_font_manager_));
