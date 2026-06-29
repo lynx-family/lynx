@@ -32,6 +32,7 @@ public class LynxIntersectionObserver {
   private float mInitialRatio;
   private boolean mObserveAll; // TODO: not support now
   private boolean mRelativeToScreen;
+  private boolean mShouldSendGlobalEvent;
 
   private ArrayList<LynxUIObservationTarget> mObservationTargets;
   private boolean mIsCustomEventObserver;
@@ -61,6 +62,7 @@ public class LynxIntersectionObserver {
 
     mInitialRatio = (float) options.getDouble("initialRatio", 0.f);
     mObserveAll = options.getBoolean("observeAll", false);
+    mShouldSendGlobalEvent = options.getBoolean("__enableGlobalEvent", false);
 
     mObservationTargets = new ArrayList<>();
     mIsCustomEventObserver = false;
@@ -251,6 +253,9 @@ public class LynxIntersectionObserver {
     if (needNotifyJS) {
       if (mIsCustomEventObserver) {
         manager.sendIntersectionObserverEvent(mAttachedUI.getSign(), entry.toDictionary());
+      } else if (mShouldSendGlobalEvent) {
+        manager.sendIntersectionObserverGlobalEvent(
+            mObserverId, jsCallbackId, entry.toDictionary());
       } else {
         // notify js
         manager.callIntersectionObserver(mObserverId, jsCallbackId, entry.toDictionary());
