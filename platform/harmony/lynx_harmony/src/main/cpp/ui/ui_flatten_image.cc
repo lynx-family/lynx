@@ -219,20 +219,12 @@ void UIFlattenImage::UpdateAutoSize(const lepus::Value& value) {
 }
 
 void UIFlattenImage::UpdateBlurRadius(const lepus::Value& value) {
-  dirty_flags_ |= image::kFlagBlurRadiusChanged;
   CSSStringParser parser = CSSStringParser::FromLepusString(value, {});
   CSSValue radius;
   parser.ParseLengthTo(radius);
-  if (radius.IsEmpty()) {
-    blur_radius_ = 0.f;
-    effect_flags_ &= ~image::kFlagEffectBlur;
-    return;
-  }
-  blur_radius_ = radius.AsNumber() * context_->ScaledDensity();
-  if (blur_radius_ > 0.f) {
-    effect_flags_ |= image::kFlagEffectBlur;
-  } else {
-    effect_flags_ &= ~image::kFlagEffectBlur;
+  if (!radius.IsEmpty()) {
+    NodeManager::Instance().SetAttributeWithNumberValue(
+        Node(), NODE_BLUR, radius.AsNumber() * context_->ScaledDensity());
   }
 }
 
@@ -367,9 +359,8 @@ void UIFlattenImage::OnNodeReady() {
       return;
     }
   }
-  if ((dirty_flags_ &
-       (image::kFlagSrcChanged | image::kFlagDropShadowChanged |
-        image::kFlagCapInsetsChanged | image::kFlagBlurRadiusChanged)) != 0) {
+  if ((dirty_flags_ & (image::kFlagSrcChanged | image::kFlagDropShadowChanged |
+                       image::kFlagCapInsetsChanged)) != 0) {
     if (!defer_src_invalidation_) {
       src_image_drawable_->ResetContent();
     }
@@ -390,32 +381,28 @@ void UIFlattenImage::UpdatePlaceholder(const lepus::Value& value) {
 
 void UIFlattenImage::SetImageAttribute(const std::string& value, bool is_base64,
                                        bool is_src) {
-  std::vector<LynxImageEffectProcessor> processors;
-  if (is_src && effect_flags_ != 0) {
-    if ((effect_flags_ & image::kFlagEffectCapInsets) &&
-        cap_insets_.size() == 4) {
-      LynxImageEffectProcessor::CapInsetParams cap_insets_params{
-          cap_insets_[3], cap_insets_[0],   cap_insets_[1],
-          cap_insets_[2], cap_inset_scale_, GenerateCommonViewParams(),
-      };
-      processors.emplace_back(LynxImageEffectProcessor::ImageEffect::kCapInsets,
-                              cap_insets_params);
-    }
-    if (effect_flags_ & image::kFlagEffectDropShadow) {
-      LynxImageEffectProcessor::DropShadowParams shadow_params{
-          shadow_radius_, shadow_color_, shadow_offset_x_, shadow_offset_y_,
-          GenerateCommonViewParams()};
-      processors.emplace_back(
-          LynxImageEffectProcessor::ImageEffect::kDropShadow, shadow_params);
-    }
-    if ((effect_flags_ & image::kFlagEffectBlur) && blur_radius_ > 0) {
-      LynxImageEffectProcessor::BlurParams blur_params{
-          blur_radius_, GenerateCommonViewParams()};
-      processors.emplace_back(LynxImageEffectProcessor::ImageEffect::kBlur,
-                              blur_params);
+  LynxImageEffectProcessor::EffectParams params{};
+  LynxImageEffectProcessor::ImageEffect effect =
+      LynxImageEffectProcessor::ImageEffect::kNone;
+  if (is_src) {
+    effect = effect_type_;
+    if (effect_type_ != LynxImageEffectProcessor::ImageEffect::kNone) {
+      if (effect_type_ == LynxImageEffectProcessor::ImageEffect::kCapInsets) {
+        LynxImageEffectProcessor::CapInsetParams cap_insets_params{
+            cap_insets_[3], cap_insets_[0],   cap_insets_[1],
+            cap_insets_[2], cap_inset_scale_, GenerateCommonViewParams(),
+        };
+        params = cap_insets_params;
+      } else if (effect_type_ ==
+                 LynxImageEffectProcessor::ImageEffect::kDropShadow) {
+        LynxImageEffectProcessor::DropShadowParams shadow_params{
+            shadow_radius_, shadow_color_, shadow_offset_x_, shadow_offset_y_,
+            GenerateCommonViewParams()};
+        params = shadow_params;
+      }
     }
   }
-  HandleImageWithProcessor(value, is_base64, std::move(processors), is_src);
+  HandleImageWithProcessor(value, is_base64, effect, params, is_src);
 }
 
 void UIFlattenImage::SetEvents(const std::vector<lepus::Value>& events) {
@@ -501,9 +488,9 @@ void UIFlattenImage::UpdateCapInsets(const lepus::Value& value) {
     }
   }
   if (cap_insets_.size() == 4) {
-    effect_flags_ |= image::kFlagEffectCapInsets;
+    effect_type_ = LynxImageEffectProcessor::ImageEffect::kCapInsets;
   } else {
-    effect_flags_ &= ~image::kFlagEffectCapInsets;
+    effect_type_ = LynxImageEffectProcessor::ImageEffect::kNone;
   }
 }
 
@@ -558,11 +545,11 @@ void UIFlattenImage::UpdateDropShadow(const lepus::Value& value) {
       CSSColor hex_color;
       CSSColor::Parse(drop_shadow_str[3], hex_color);
       shadow_color_ = hex_color.Cast();
-      effect_flags_ |= image::kFlagEffectDropShadow;
+      effect_type_ = LynxImageEffectProcessor::ImageEffect::kDropShadow;
       return;
     }
   }
-  effect_flags_ &= ~image::kFlagEffectDropShadow;
+  effect_type_ = LynxImageEffectProcessor::ImageEffect::kNone;
 }
 
 LynxImageEffectProcessor::CommonViewParams
@@ -578,7 +565,8 @@ UIFlattenImage::GenerateCommonViewParams() {
 
 void UIFlattenImage::HandleImageWithProcessor(
     const std::string& url, bool is_base64,
-    std::vector<LynxImageEffectProcessor> processors, bool is_src) {
+    LynxImageEffectProcessor::ImageEffect effect_type,
+    const LynxImageEffectProcessor::EffectParams& params, bool is_src) {
   LynxImageHelper::DecodeImageAsync(
       context_->GetNapiEnv(), url, is_base64,
       [is_src,
@@ -606,7 +594,7 @@ void UIFlattenImage::HandleImageWithProcessor(
               std::move(response.data));
         }
       },
-      std::move(processors));
+      LynxImageEffectProcessor(effect_type, params));
 }
 
 void UIFlattenImage::OnDraw(OH_Drawing_Canvas* canvas, ArkUI_NodeHandle node) {
