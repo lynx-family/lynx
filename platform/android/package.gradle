@@ -8,6 +8,46 @@ buildscript {
     }
 }
 
+def getPublishRepositoryVersionDir = { String version ->
+    file("$rootProject.buildDir/release/${version}")
+}
+
+def getModulePublishDir = { Project subproject, String version ->
+    def artifactGroup = subproject.findProperty("ARTIFACT_GROUP")
+    def artifactName = subproject.findProperty("ARTIFACT_NAME")
+    if (!artifactGroup || !artifactName) {
+        throw new GradleException("Missing ARTIFACT_GROUP or ARTIFACT_NAME for ${subproject.path}")
+    }
+    def groupPath = artifactGroup.replace('.', '/')
+    file("${getPublishRepositoryVersionDir(version)}/${groupPath}/${artifactName}/${version}")
+}
+
+def hasDevPublishModules = {
+    rootProject.subprojects.any { subproject ->
+        subproject.plugins.hasPlugin("maven-publish") &&
+                subproject.plugins.hasPlugin('com.android.library') &&
+                subproject.android.productFlavors.any { it.name == "dev" }
+    }
+}
+
+def zipPublishedRepository = { String version, File zipFile ->
+    def artifactPath = getPublishRepositoryVersionDir(version)
+    if (!artifactPath.exists()) {
+        throw new GradleException("No published artifacts found in ${artifactPath}. Please publish artifacts before zipping.")
+    }
+    ant.zip(destfile: zipFile, basedir: artifactPath)
+    return zipFile.absolutePath
+}
+
+def collectArtifactList = { String version ->
+    def artifacts = []
+    def artifactZip = file("${project.buildDir}/lynx-android-sdk-${version}.zip")
+    if (artifactZip.exists()) {
+        artifacts.add(artifactZip.absolutePath)
+    }
+    return artifacts
+}
+
 task assembleAllModulesRelease {
     rootProject.afterEvaluate {
         rootProject.subprojects.each { subproject ->
@@ -66,31 +106,30 @@ task publishAllModulesDevRelease {
     }
 }
 
-def artifactList = []
-
 task zipArtifacts {
     doLast {
         def version = findProperty("version")
-        def artifactPath
-        rootProject.subprojects.each { subproject ->
-            if(subproject.plugins.hasPlugin("maven-publish")) {
-                ant.zip(destfile: file("${project.buildDir}/${subproject.ARTIFACT_NAME}-${version}.zip"),
-                        basedir: "${subproject.buildDir}/release/${version}")
-                artifactList.add("${project.buildDir}/${subproject.ARTIFACT_NAME}-${version}.zip")
-                if(subproject.plugins.hasPlugin('com.android.library') && subproject.android.productFlavors.any { it.name == "dev" }) {
-                    def devVersion = "${version}-dev"
-                    ant.zip(destfile: file("${project.buildDir}/${subproject.ARTIFACT_NAME}-${devVersion}.zip"),
-                            basedir: "${subproject.buildDir}/release/${devVersion}")
-                    artifactList.add("${project.buildDir}/${subproject.ARTIFACT_NAME}-${devVersion}.zip")
-                }
-            }
+        def zipFile = file("${project.buildDir}/lynx-android-sdk-${version}.zip")
+        zipPublishedRepository(version, zipFile)
+    }
+}
+
+task zipDevArtifacts {
+    doLast {
+        def version = findProperty("version")
+        if (!hasDevPublishModules()) {
+            throw new GradleException("No dev publishable modules found.")
         }
+        def zipFile = file("${project.buildDir}/lynx-android-sdk-${version}.zip")
+        zipPublishedRepository(version, zipFile)
     }
 }
 
 task getArtifactList {
-    dependsOn(zipArtifacts)
     doLast {
+        def version = findProperty("version")
+        def artifactList = collectArtifactList(version)
+        artifactList.addAll(collectArtifactList("${version}-dev"))
         println "artifactInfo: ${artifactList}"
         def json = new groovy.json.JsonBuilder(artifactList).toString()
         File file = new File("${project.buildDir}/artifact-list")
@@ -111,8 +150,8 @@ task zipAllArtifacts {
 
         rootProject.subprojects.each { subproject ->
             if(subproject.plugins.hasPlugin("maven-publish")) {
-                def artifactPath = "${subproject.buildDir}/release"
                 def version = findProperty("version")
+                def artifactPath = getModulePublishDir(subproject, version)
                 def zipPath = file("${project.buildDir}/${subproject.ARTIFACT_NAME}-${version}.zip")
                 ant.zip(destfile: zipPath, basedir: artifactPath)
                 copy {
