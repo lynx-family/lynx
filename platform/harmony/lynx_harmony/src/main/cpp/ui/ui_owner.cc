@@ -12,6 +12,7 @@
 #include <string>
 #include <utility>
 
+#include "base/include/float_comparison.h"
 #include "base/include/platform/harmony/napi_util.h"
 #include "base/trace/native/trace_event.h"
 #include "core/base/harmony/harmony_trace_event_def.h"
@@ -300,6 +301,8 @@ void UIOwner::OnLayoutFinish(int32_t component_id, int64_t operation_id) {
   }
   layout_changed_nodes_.clear();
 
+  NotifyIntrinsicContentSizeChangedIfNeeded();
+
   // For `<list>`
   if (operation_id == 0) {
     return;
@@ -317,6 +320,47 @@ void UIOwner::OnLayoutFinish(int32_t component_id, int64_t operation_id) {
     UIBase* child = child_iterator->second.get();
     list_view->OnLayoutFinish(child, operation_id);
   }
+}
+
+void UIOwner::NotifyIntrinsicContentSizeChangedIfNeeded() {
+  if (destroyed_ || !env_ || !js_this_ || !root_) {
+    return;
+  }
+
+  float width = root_->width_;
+  float height = root_->height_;
+  if (base::FloatsEqual(width, last_intrinsic_content_width_) &&
+      base::FloatsEqual(height, last_intrinsic_content_height_)) {
+    return;
+  }
+
+  base::NapiHandleScope scope(env_);
+  napi_value js_recv = base::NapiUtil::GetReferenceNapiValue(env_, js_this_);
+  if (!js_recv) {
+    return;
+  }
+
+  napi_value callback;
+  if (napi_get_named_property(env_, js_recv,
+                              "notifyIntrinsicContentSizeChanged",
+                              &callback) != napi_ok) {
+    return;
+  }
+  napi_valuetype type;
+  if (napi_typeof(env_, callback, &type) != napi_ok || type != napi_function) {
+    return;
+  }
+
+  last_intrinsic_content_width_ = width;
+  last_intrinsic_content_height_ = height;
+
+  size_t argc = 2;
+  napi_value argv[argc];
+  napi_create_double(env_, width, &argv[0]);
+  napi_create_double(env_, height, &argv[1]);
+
+  napi_value result;
+  napi_call_function(env_, js_recv, callback, argc, argv, &result);
 }
 
 void UIOwner::UpdateContentOffsetForListContainer(int32_t list_sign,
@@ -718,6 +762,8 @@ napi_value UIOwner::Destroy(napi_env env, napi_callback_info info) {
   obj->keyboard_height_ = 0.f;
   obj->keyboard_avoiding_screen_bottom_ = 0.f;
   obj->current_avoid_distance_ = 0.f;
+  obj->last_intrinsic_content_width_ = 0.f;
+  obj->last_intrinsic_content_height_ = 0.f;
   obj->root_ = nullptr;
   napi_delete_reference(env, obj->js_create_);
   napi_delete_reference(env, obj->js_create_node_content_);
