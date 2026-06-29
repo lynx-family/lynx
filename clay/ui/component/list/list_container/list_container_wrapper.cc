@@ -135,9 +135,11 @@ void ListContainerWrapper::scrollToPosition(
 
 void ListContainerWrapper::autoScroll(const LynxModuleValues& args,
                                       const LynxUIMethodCallback& callback) {
-  if (!args.HasKey("rate") && callback) {
-    callback(LynxUIMethodResult::kParamInvalid,
-             clay::Value("rate is required for autoScroll"));
+  if (!args.HasKey("rate")) {
+    if (callback) {
+      callback(LynxUIMethodResult::kParamInvalid,
+               clay::Value("rate is required for autoScroll"));
+    }
     return;
   }
 
@@ -147,13 +149,20 @@ void ListContainerWrapper::autoScroll(const LynxModuleValues& args,
 
   float rate = 0.f;
   attribute_utils::Length rate_with_unit;
-  if (attribute_utils::TryGetLength(args.Get("rate"), rate_with_unit)) {
-    rate = attribute_utils::ToPxWithDisplayMetrics(rate_with_unit, page_view());
-    if (lynx::base::FloatsEqual(rate, 0.f) && callback) {
+  if (!attribute_utils::TryGetLength(args.Get("rate"), rate_with_unit)) {
+    if (callback) {
       callback(LynxUIMethodResult::kParamInvalid,
-               clay::Value("rate is required for not equal to 0"));
-      return;
+               clay::Value("rate is invalid for autoScroll"));
     }
+    return;
+  }
+  rate = attribute_utils::ToPxWithDisplayMetrics(rate_with_unit, page_view());
+  if (isnan(rate) || isinf(rate) || lynx::base::FloatsEqual(rate, 0.f)) {
+    if (callback) {
+      callback(LynxUIMethodResult::kParamInvalid,
+               clay::Value("rate is invalid or equal to 0 for autoScroll"));
+    }
+    return;
   }
 
   GetListContainerView()->AutoScroll(start, rate);
