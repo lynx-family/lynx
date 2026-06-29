@@ -319,20 +319,12 @@ void UINewImage::UpdateAutoSize(const lepus::Value& value) {
 }
 
 void UINewImage::UpdateBlurRadius(const lepus::Value& value) {
-  dirty_flags_ |= image::kFlagEffectChanged;
   CSSStringParser parser = CSSStringParser::FromLepusString(value, {});
   CSSValue radius;
   parser.ParseLengthTo(radius);
-  if (radius.IsEmpty()) {
-    blur_radius_ = 0.f;
-    effect_flags_ &= ~image::kFlagEffectBlur;
-    return;
-  }
-  blur_radius_ = radius.AsNumber() * context_->ScaledDensity();
-  if (blur_radius_ > 0.f) {
-    effect_flags_ |= image::kFlagEffectBlur;
-  } else {
-    effect_flags_ &= ~image::kFlagEffectBlur;
+  if (!radius.IsEmpty()) {
+    NodeManager::Instance().SetAttributeWithNumberValue(
+        Node(), NODE_BLUR, radius.AsNumber() * context_->ScaledDensity());
   }
 }
 
@@ -407,14 +399,10 @@ void UINewImage::LoadImageWithTransform(const std::string& url,
 }
 
 bool UINewImage::LoadImage() {
-  const bool need_layout_size_for_effect =
-      (effect_flags_ &
-       (image::kFlagEffectCapInsets | image::kFlagEffectDropShadow)) != 0;
   // When using a processor, the view size is used as the cache key.
   // Requests can be deferred until the size is available to avoid the processor
   // returning an empty pixelmap.
-  if (need_layout_size_for_effect && (width_ <= 0 || height_ <= 0) &&
-      !auto_size_) {
+  if (effect_flags_ != 0 && (width_ <= 0 || height_ <= 0) && !auto_size_) {
     LOGE("LoadImage empty size, src: " << src_);
     return true;
   }
@@ -483,8 +471,7 @@ void UINewImage::OnNodeReady() {
                                          &item);
   }
   if ((dirty_flags_ & image::kFlagPaddingChanged) != 0) {
-    if ((effect_flags_ &
-         (image::kFlagEffectCapInsets | image::kFlagEffectDropShadow)) == 0) {
+    if (effect_flags_ == 0) {
       NodeManager::Instance().SetAttributeWithNumberValue(
           Node(), NODE_PADDING, padding_top_, padding_right_, padding_bottom_,
           padding_left_);
@@ -589,12 +576,6 @@ void UINewImage::LoadImageFromService(const std::string& url,
         GenerateCommonViewParams()};
     processors.emplace_back(std::make_unique<LynxImageEffectProcessor>(
         ImageEffect::kDropShadow, shadow_params));
-  }
-  if ((effect_flags_ & image::kFlagEffectBlur) && blur_radius_ > 0) {
-    LynxImageEffectProcessor::BlurParams blur_params{
-        blur_radius_, GenerateCommonViewParams()};
-    processors.emplace_back(std::make_unique<LynxImageEffectProcessor>(
-        ImageEffect::kBlur, blur_params));
   }
   info.downsampling = downsampling_ && !auto_size_;
   info.mode = ConvertMode(mode_);

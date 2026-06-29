@@ -68,7 +68,6 @@ class UINewImage : public UIBase,
   float shadow_offset_x_{0.f};
   float shadow_offset_y_{0.f};
   float shadow_radius_{0.f};
-  float blur_radius_{0.f};
   float image_padding_left_{0.f};
   float image_padding_top_{0.f};
   float image_padding_right_{0.f};
