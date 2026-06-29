@@ -2095,11 +2095,6 @@ void LynxTemplateRenderer::SetInspectorOwner(
 void LynxTemplateRenderer::SyncInspectorOwnerToLynxContext() {
   std::shared_ptr<tasm::harmony::LynxContext> lynx_context =
       lynx_context_.lock();
-  if (!lynx_context && ui_delegate_) {
-    lynx_context = static_cast<tasm::harmony::UIDelegateHarmony*>(ui_delegate_)
-                       ->GetLynxContext();
-    lynx_context_ = lynx_context;
-  }
   if (!lynx_context) {
     return;
   }
