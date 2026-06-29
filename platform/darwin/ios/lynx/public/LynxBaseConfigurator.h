@@ -27,6 +27,11 @@
   id<LynxGenericResourceFetcher> _genericResourceFetcher;
   id<LynxMediaResourceFetcher> _mediaResourceFetcher;
   id<LynxTemplateResourceFetcher> _templateResourceFetcher;
+
+  BOOL _hasGroupSet;
+  BOOL _hasBackgroundJsRuntimeTypeSet;
+  BOOL _hasEnableBytecodeSet;
+  BOOL _hasBytecodeUrlSet;
 }
 
 @property(nonatomic, nullable) LynxConfig* config;

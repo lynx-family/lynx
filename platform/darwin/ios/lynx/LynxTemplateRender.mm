@@ -56,6 +56,10 @@
 #import "LynxViewGroup+Internal.h"
 #import "PaintingContextProxy.h"
 
+@interface LynxViewBuilder (RuntimeOptions)
+- (LynxBackgroundRuntimeOptions*)effectiveLynxRuntimeOptions;
+@end
+
 #include <functional>
 #include <memory>
 #include <utility>
@@ -180,9 +184,9 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
     }
     /// Runtime Options
     _runtime = builder.lynxBackgroundRuntime;
-    // Avoid unexpected changes
-    _runtimeOptions =
-        [[LynxBackgroundRuntimeOptions alloc] initWithOptions:builder.lynxBackgroundRuntimeOptions];
+    // Avoid unexpected changes. Builder-explicit runtime options take priority over
+    // LynxViewGroup's options; if neither is set, the default values are used.
+    _runtimeOptions = [builder effectiveLynxRuntimeOptions];
     _group = builder.group;
     if (_runtime) {
       if (![_runtime attachToLynxView]) {
@@ -2740,7 +2744,14 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
     builder.lynxBackgroundRuntimeOptions =
         [[LynxBackgroundRuntimeOptions alloc] initWithOptions:self->_runtimeOptions];
     builder.group = self->_group;
-    [builder.lynxBackgroundRuntimeOptions merge:self->_builder.lynxBackgroundRuntimeOptions];
+
+    // effectiveLynxRuntimeOptions relies on _has*Set flags to decide whether builder
+    // values should override LynxViewGroup values. Replacing lynxBackgroundRuntimeOptions
+    // directly does not set those flags, so re-sync them via public setters here.
+    builder.backgroundJsRuntimeType = builder.lynxBackgroundRuntimeOptions.backgroundJsRuntimeType;
+    builder.enableBytecode = builder.lynxBackgroundRuntimeOptions.enableBytecode;
+    builder.bytecodeUrl = builder.lynxBackgroundRuntimeOptions.bytecodeUrl;
+
     [builder setThreadStrategyForRender:self->_threadStrategyForRendering];
     builder.enableUnifiedPipeline = self->_enableUnifiedPipeline;
   };

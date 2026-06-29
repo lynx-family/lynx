@@ -8,11 +8,12 @@
 #import <Lynx/LynxLazyRegister.h>
 #import <Lynx/LynxLog.h>
 #import <Lynx/LynxTraceEvent.h>
+#import <Lynx/LynxUIRenderer.h>
 #import <Lynx/LynxViewBuilder+Internal.h>
 #import <Lynx/LynxViewBuilder.h>
 #import <Lynx/LynxViewGroup.h>
+#import "LynxBaseConfigurator+Internal.h"
 #import "LynxTraceEventDef.h"
-#import "LynxUIRenderer.h"
 #import "LynxUIRendererCreator.h"
 
 @implementation LynxViewBuilder
@@ -300,6 +301,58 @@
     return _lynxViewGroup.enableFetchUIImage;
   }
   return [super enableFetchUIImage];
+}
+
+// Private helper used by LynxTemplateRender to resolve the final runtime options.
+- (LynxBackgroundRuntimeOptions *)effectiveLynxRuntimeOptions {
+  LynxBackgroundRuntimeOptions *baseOptions = _lynxViewGroup.lynxBackgroundRuntimeOptions;
+  if (!baseOptions) {
+    baseOptions = [super lynxBackgroundRuntimeOptions];
+  }
+  LynxBackgroundRuntimeOptions *result =
+      [[LynxBackgroundRuntimeOptions alloc] initWithOptions:baseOptions];
+
+  if (_hasGroupSet) {
+    result.group = [super group];
+  }
+  if (_hasBackgroundJsRuntimeTypeSet) {
+    result.backgroundJsRuntimeType = [super backgroundJsRuntimeType];
+  }
+  if (_hasEnableBytecodeSet) {
+    result.enableBytecode = [super enableBytecode];
+  }
+  if (_hasBytecodeUrlSet) {
+    result.bytecodeUrl = [super bytecodeUrl];
+  }
+  if (_genericResourceFetcher) {
+    result.genericResourceFetcher = _genericResourceFetcher;
+  }
+  if (_mediaResourceFetcher) {
+    result.mediaResourceFetcher = _mediaResourceFetcher;
+  }
+  if (_templateResourceFetcher) {
+    result.templateResourceFetcher = _templateResourceFetcher;
+  }
+
+  // Merge providers and module wrappers registered directly on the builder.
+  LynxBackgroundRuntimeOptions *builderOptions = [super lynxBackgroundRuntimeOptions];
+  for (NSString *name in builderOptions.providers) {
+    [result addLynxResourceProvider:name provider:builderOptions.providers[name]];
+  }
+  [[result moduleWrappers] addEntriesFromDictionary:[builderOptions moduleWrappers]];
+
+  // Carry over builder-explicit runtime options that are not exposed as builder properties.
+  if (builderOptions.globalProps) {
+    result.globalProps = builderOptions.globalProps;
+  }
+  if (builderOptions.presetData) {
+    result.presetData = builderOptions.presetData;
+  }
+  if (builderOptions.pendingCoreJsLoad) {
+    result.pendingCoreJsLoad = YES;
+  }
+
+  return result;
 }
 
 @end

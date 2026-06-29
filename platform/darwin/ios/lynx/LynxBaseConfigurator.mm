@@ -7,9 +7,9 @@
 #import <Lynx/LynxLazyRegister.h>
 #import <Lynx/LynxLog.h>
 #import <Lynx/LynxTraceEvent.h>
+#import <Lynx/LynxUIRenderer.h>
 #import "LynxBaseConfigurator+Internal.h"
 #import "LynxTraceEventDef.h"
-#import "LynxUIRenderer.h"
 #import "LynxUIRendererCreator.h"
 
 @implementation LynxBaseConfigurator {
@@ -134,6 +134,7 @@
   return self.lynxBackgroundRuntimeOptions.group;
 }
 - (void)setGroup:(LynxGroup*)group {
+  _hasGroupSet = YES;
   [self.lynxBackgroundRuntimeOptions setGroup:group];
 }
 
@@ -143,6 +144,7 @@
 }
 
 - (void)setBackgroundJsRuntimeType:(LynxBackgroundJsRuntimeType)type {
+  _hasBackgroundJsRuntimeTypeSet = YES;
   [self.lynxBackgroundRuntimeOptions setBackgroundJsRuntimeType:type];
 }
 
@@ -152,6 +154,7 @@
 }
 
 - (void)setEnableBytecode:(BOOL)enableBytecode {
+  _hasEnableBytecodeSet = YES;
   [self.lynxBackgroundRuntimeOptions setEnableBytecode:enableBytecode];
 }
 
@@ -160,6 +163,7 @@
   return self.lynxBackgroundRuntimeOptions.bytecodeUrl;
 }
 - (void)setBytecodeUrl:(NSString*)bytecodeUrl {
+  _hasBytecodeUrlSet = YES;
   [self.lynxBackgroundRuntimeOptions setBytecodeUrl:bytecodeUrl];
 }
 
