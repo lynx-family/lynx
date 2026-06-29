@@ -1,0 +1,133 @@
+name: node_lynx_publish
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'The npm tag to publish with.'
+        required: false
+        default: 'latest'
+
+jobs:
+  node-lynx-linux-build:
+    runs-on: lynx-ubuntu-22.04-large
+    timeout-minutes: 60
+    steps:
+      - name: Download Source
+        uses: actions/checkout@v6
+        with:
+          path: lynx
+      - name: Python Setup
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+      - name: Install Common Dependencies
+        uses: ./lynx/.github/actions/common-deps
+        with:
+          cache-backend: github
+          target: clay
+      - name: Build Linux Node Lynx
+        run: |-
+          cd $GITHUB_WORKSPACE/lynx
+          tools/env.sh pnpm --filter @lynx-js/node-lynx run build:publish:linux
+          cp oliver/node-lynx/build/linux/Release/node_lynx.node oliver/node-lynx/platform/linux-x64/node_lynx.node
+      - name: Test Linux Node Lynx
+        run: |-
+          cd $GITHUB_WORKSPACE/lynx
+          tools/env.sh pnpm --filter @lynx-js/node-lynx run test
+      - name: Upload Linux Node Lynx Artifact
+        uses: actions/upload-artifact@v5
+        with:
+          name: node-lynx-linux-x64
+          path: lynx/oliver/node-lynx/platform/linux-x64/node_lynx.node
+          if-no-files-found: error
+
+  node-lynx-darwin-build:
+    runs-on: lynx-darwin-15.6.1-medium
+    timeout-minutes: 60
+    steps:
+      - name: Download Source
+        uses: actions/checkout@v6
+        with:
+          path: lynx
+      - name: Python Setup
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+      - name: Install Common Dependencies
+        uses: ./lynx/.github/actions/common-deps
+        with:
+          cache-backend: github
+          target: clay
+      - name: Build Darwin Node Lynx
+        run: |-
+          cd $GITHUB_WORKSPACE/lynx
+          if [ "$(uname -m)" != "arm64" ]; then
+            echo "node-lynx publish currently expects an arm64 Darwin runner." >&2
+            exit 1
+          fi
+          tools/env.sh pnpm --filter @lynx-js/node-lynx run build:publish:darwin
+          cp oliver/node-lynx/build/darwin/Release/node_lynx.node oliver/node-lynx/platform/darwin-arm64/node_lynx.node
+      - name: Test Darwin Node Lynx
+        run: |-
+          cd $GITHUB_WORKSPACE/lynx
+          tools/env.sh pnpm --filter @lynx-js/node-lynx run test
+      - name: Upload Darwin Node Lynx Artifact
+        uses: actions/upload-artifact@v5
+        with:
+          name: node-lynx-darwin-arm64
+          path: lynx/oliver/node-lynx/platform/darwin-arm64/node_lynx.node
+          if-no-files-found: error
+
+  node-lynx-publish:
+    needs:
+      - node-lynx-linux-build
+      - node-lynx-darwin-build
+    runs-on: ubuntu-latest
+    environment: npm
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Download Source
+        uses: actions/checkout@v6
+        with:
+          path: lynx
+      - name: Python Setup
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          registry-url: 'https://registry.npmjs.org'
+      - name: Install Common Dependencies
+        uses: ./lynx/.github/actions/common-deps
+        with:
+          cache-backend: github
+      - name: Download Linux Node Lynx Artifact
+        uses: actions/download-artifact@v5
+        with:
+          name: node-lynx-linux-x64
+          path: lynx/oliver/node-lynx/platform/linux-x64
+      - name: Download Darwin Node Lynx Artifact
+        uses: actions/download-artifact@v5
+        with:
+          name: node-lynx-darwin-arm64
+          path: lynx/oliver/node-lynx/platform/darwin-arm64
+      - name: Build Node Lynx Package
+        run: |-
+          cd $GITHUB_WORKSPACE/lynx
+          source tools/envsetup.sh
+          pnpm --filter @lynx-js/node-lynx run build:resources
+          pnpm --filter @lynx-js/node-lynx exec tsc
+      - name: Publish Node Lynx
+        run: |-
+          cd $GITHUB_WORKSPACE/lynx/oliver/node-lynx
+          node scripts/publish.js --skip-build --tag "${{ github.event.inputs.tag }}"
