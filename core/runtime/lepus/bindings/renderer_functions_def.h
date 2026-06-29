@@ -201,6 +201,8 @@
   V(GetCustomSectionSync)               \
   V(SetSessionStorageItem)              \
   V(GetSessionStorageItem)              \
+  V(SubscribeSessionStorage)            \
+  V(UnsubscribeSessionStorage)          \
   V(StopExposure)                       \
   V(ResumeExposure)                     \
   V(FiberAsyncResolveElement)           \
