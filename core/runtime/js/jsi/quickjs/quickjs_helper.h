@@ -7,14 +7,7 @@
 
 #include "base/include/log/logging.h"
 #include "core/runtime/js/jsi/jsi.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 #include "quickjs/include/quickjs.h"
-#ifdef __cplusplus
-}
-#endif
 #ifdef OS_IOS
 #include "persistent-handle.h"
 #else

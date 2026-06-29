@@ -13,23 +13,12 @@
 #include "core/runtime/common/js_error_reporter.h"
 #include "core/runtime/mts_context.h"
 #include "core/runtime/profile/runtime_profiler.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 #include "quickjs/include/quickjs.h"
-#ifdef __cplusplus
-}
-#endif
 #ifdef OS_IOS
+#include "gc/trace-gc.h"
 #include "persistent-handle.h"
 #else
 #include "quickjs/include/persistent-handle.h"
-#endif
-
-#ifdef OS_IOS
-#include "gc/trace-gc.h"
-#else
 #include "quickjs/include/trace-gc.h"
 #endif
 

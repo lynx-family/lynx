@@ -14,16 +14,9 @@
 #include "core/template_bundle/template_codec/binary_encoder/encoder.h"
 #include "core/template_bundle/template_codec/generator/ttml_holder.h"
 #include "core/template_bundle/template_codec/template_binary.h"
-#include "third_party/rapidjson/document.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 #include "devtool/js_inspect/quickjs/quickjs_internal/interface.h"
 #include "quickjs/include/quickjs.h"
-#ifdef __cplusplus
-}
-#endif
+#include "third_party/rapidjson/document.h"
 
 namespace lynx {
 namespace lepus {

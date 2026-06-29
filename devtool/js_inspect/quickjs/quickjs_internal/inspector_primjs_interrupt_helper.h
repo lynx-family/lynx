@@ -9,14 +9,7 @@
 #include <vector>
 
 #include "base/include/closure.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 #include "quickjs/include/quickjs.h"
-#ifdef __cplusplus
-}
-#endif
 
 namespace lynx {
 namespace devtool {

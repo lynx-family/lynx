@@ -11,15 +11,8 @@
 #include <vector>
 
 #include "core/shell/runtime/mts/mts_runtime.h"
-#include "third_party/rapidjson/document.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 #include "quickjs/include/quickjs.h"
-#ifdef __cplusplus
-}
-#endif
+#include "third_party/rapidjson/document.h"
 
 namespace lepus_inspector {
 class LepusNGInspectedContextImpl;

@@ -10,6 +10,7 @@
 #include "core/runtime/common/napi/napi_runtime_proxy.h"
 #include "core/runtime/common/napi/napi_runtime_proxy_quickjs.h"
 #include "core/runtime/common/napi/shim/shim_napi_env_quickjs.h"
+#include "quickjs/include/quickjs.h"
 #include "third_party/binding/gen_test/jsbridge/bindings/gen_test/napi_test_context.h"
 #include "third_party/binding/gen_test/jsbridge/bindings/gen_test/napi_test_element.h"
 #include "third_party/binding/gen_test/test_async_object.h"
@@ -19,14 +20,6 @@
 #include "third_party/binding/napi/shim/shim_napi_env.h"
 #include "third_party/binding/napi/shim/shim_napi_runtime.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif  // __cplusplus
-#include "quickjs/include/quickjs.h"
-#ifdef __cplusplus
-}
-#endif  // __cplusplus
 
 namespace lynx {
 namespace runtime {

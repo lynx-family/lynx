@@ -8,13 +8,7 @@
 #include <memory>
 #include <string>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
 #include "quickjs/include/quickjs.h"
-#ifdef __cplusplus
-}
-#endif
 
 namespace quickjs_inspector {
 class QJSInspectorSession {

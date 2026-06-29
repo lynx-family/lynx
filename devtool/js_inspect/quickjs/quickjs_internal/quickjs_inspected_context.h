@@ -8,15 +8,8 @@
 #include <memory>
 #include <string>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-#include "quickjs/include/quickjs.h"
-#ifdef __cplusplus
-}
-#endif
-
 #include "devtool/js_inspect/quickjs/quickjs_internal/quickjs_debugger_ng.h"
+#include "quickjs/include/quickjs.h"
 
 namespace quickjs_inspector {
 

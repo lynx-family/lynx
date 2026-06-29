@@ -4,30 +4,21 @@
 
 #ifndef CORE_RUNTIME_LEPUSNG_JSVALUE_HELPER_H_
 #define CORE_RUNTIME_LEPUSNG_JSVALUE_HELPER_H_
-#include <ostream>
-#include <string>
-
-#ifdef OS_IOS
-#include "gc/trace-gc.h"
-#else
-#include "quickjs/include/trace-gc.h"
-#endif
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-#include "quickjs/include/quickjs.h"
-#ifdef __cplusplus
-}
-#endif
-
 #include <functional>
 #include <memory>
+#include <ostream>
+#include <string>
 
 #include "base/include/compiler_specific.h"
 #include "base/include/value/array.h"
 #include "base/include/value/base_value.h"
 #include "base/include/value/table.h"
+#include "quickjs/include/quickjs.h"
+#ifdef OS_IOS
+#include "gc/trace-gc.h"
+#else
+#include "quickjs/include/trace-gc.h"
+#endif
 
 #define ENABLE_PRINT_VALUE 1
 

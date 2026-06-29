@@ -14,6 +14,7 @@
 #include "core/renderer/css/unit_handler.h"
 #include "core/renderer/tasm/config.h"
 #include "core/runtime/lepus/bindings/renderer.h"
+#include "core/runtime/lepus/bytecode_generator.h"
 #include "core/runtime/lepus/exception.h"
 #include "core/runtime/lepus/json_parser.h"
 #include "core/runtime/lepus/vm_context.h"
@@ -31,22 +32,15 @@
 #include "core/template_bundle/template_codec/generator/template_parser.h"
 #include "core/template_bundle/template_codec/generator/template_scope.h"
 #include "core/template_bundle/template_codec/ttml_constant.h"
-#include "third_party/rapidjson/document.h"
-#include "third_party/rapidjson/stringbuffer.h"
-#include "third_party/rapidjson/writer.h"
-#ifdef __cplusplus
-extern "C" {
-#endif
 #include "quickjs/include/quickjs.h"
-#ifdef __cplusplus
-}
-#endif
-#include "core/runtime/lepus/bytecode_generator.h"
 #ifdef OS_IOS
 #include "trace-gc.h"
 #else
 #include "quickjs/include/trace-gc.h"
 #endif
+#include "third_party/rapidjson/document.h"
+#include "third_party/rapidjson/stringbuffer.h"
+#include "third_party/rapidjson/writer.h"
 
 namespace lynx {
 namespace tasm {

@@ -4,11 +4,12 @@
 // Lynx Authors. All rights reserved.
 #ifndef DEVTOOL_JS_INSPECT_QUICKJS_QUICKJS_INTERNAL_INTERFACE_H_
 #define DEVTOOL_JS_INSPECT_QUICKJS_QUICKJS_INTERNAL_INTERFACE_H_
+
+#include "quickjs/include/quickjs.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include "quickjs/include/quickjs.h"
 
 typedef struct LEPUSFunctionBytecode LEPUSFunctionBytecode;
 // quickjs debugger initialize, initialize LEPUSDebuggerInfo

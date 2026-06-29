@@ -15,15 +15,10 @@
 
 #include "core/build/gen/lynx_sub_error_code.h"
 #include "core/runtime/js/jsi/quickjs/quickjs_runtime.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-#include "quickjs/include/quickjs-libc.h"
 #include "quickjs/include/quickjs.h"
-#ifdef __cplusplus
+extern "C" {
+#include "quickjs/include/quickjs-libc.h"
 }
-#endif
 #ifdef OS_IOS
 #include "gc/trace-gc.h"
 #else

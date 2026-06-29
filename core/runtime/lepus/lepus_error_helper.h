@@ -6,13 +6,7 @@
 
 #include <string>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
 #include "quickjs/include/quickjs.h"
-#ifdef __cplusplus
-}
-#endif
 
 namespace lynx {
 namespace lepus {

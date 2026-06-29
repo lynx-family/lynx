@@ -28,11 +28,6 @@
 #include "core/runtime/profile/runtime_profiler_manager.h"
 #include "core/runtime/trace/runtime_trace_event_def.h"
 #include "quickjs/include/quickjs.h"
-#ifdef OS_IOS
-#include "gc/trace-gc.h"
-#else
-#include "quickjs/include/trace-gc.h"
-#endif
 
 namespace lynx {
 namespace lepus {

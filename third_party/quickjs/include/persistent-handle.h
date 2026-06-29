@@ -8,10 +8,8 @@
 
 #ifndef THIRD_PARTY_QUICKJS_INCLUDE_PERSISTENT_HANDLE_H_
 #define THIRD_PARTY_QUICKJS_INCLUDE_PERSISTENT_HANDLE_H_
-extern "C" {
-#include "quickjs.h"
-}
 #include "global-handles.h"
+#include "quickjs.h"
 
 const int kApiSystemPointerSize = sizeof(void*);
 static const int kNodeClassIdOffset = 1 * kApiSystemPointerSize;

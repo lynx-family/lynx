@@ -12,14 +12,13 @@
 #include "core/runtime/js/bytecode/quickjs/bytecode/quickjs_bytecode.h"
 #include "core/runtime/js/jsi/jsi.h"
 #include "core/template_bundle/template_codec/version.h"
-extern "C" {
 #include "quickjs/include/quickjs.h"
-}
 #ifdef OS_IOS
 #include "persistent-handle.h"
 #else
 #include "quickjs/include/persistent-handle.h"
 #endif
+
 namespace lynx {
 namespace runtime {
 namespace js {

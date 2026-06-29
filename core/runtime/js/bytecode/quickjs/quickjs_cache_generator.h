@@ -10,10 +10,7 @@
 #include <utility>
 
 #include "core/runtime/js/bytecode/cache_generator.h"
-
-extern "C" {
 #include "quickjs/include/quickjs.h"
-}
 
 namespace lynx {
 namespace runtime {

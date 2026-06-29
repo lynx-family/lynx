@@ -8,14 +8,7 @@
 
 #include "base/include/compiler_specific.h"
 #include "core/runtime/js/jsi/quickjs/quickjs_runtime.h"
-
-#ifdef __cplusplus
-extern "C" {
 #include "quickjs/include/quickjs.h"
-#endif
-#ifdef __cplusplus
-}
-#endif
 
 namespace lynx {
 namespace runtime {

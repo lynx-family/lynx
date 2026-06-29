@@ -7,18 +7,11 @@
 // Copyright 2024 The Lynx Authors. All rights reserved.
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
-#ifndef SRC_NAPI_QUICKJS_NAPI_ENV_QUICKJS_H_
-#define SRC_NAPI_QUICKJS_NAPI_ENV_QUICKJS_H_
-
-#ifdef __cplusplus
-extern "C" {
-#endif  // __cplusplus
-#include "quickjs/include/quickjs.h"
-#ifdef __cplusplus
-}
-#endif  // __cplusplus
+#ifndef THIRD_PARTY_NAPI_INCLUDE_NAPI_ENV_QUICKJS_H_
+#define THIRD_PARTY_NAPI_INCLUDE_NAPI_ENV_QUICKJS_H_
 
 #include "js_native_api.h"
+#include "quickjs/include/quickjs.h"
 #ifdef USE_PRIMJS_NAPI
 #include "primjs_napi_defines.h"
 #endif
@@ -44,4 +37,4 @@ EXTERN_C_END
 #ifdef USE_PRIMJS_NAPI
 #include "primjs_napi_undefs.h"
 #endif
-#endif  // SRC_NAPI_QUICKJS_NAPI_ENV_QUICKJS_H_
+#endif  // THIRD_PARTY_NAPI_INCLUDE_NAPI_ENV_QUICKJS_H_

@@ -9,9 +9,8 @@
 #include "core/runtime/js/jsi/args_converter.h"
 #include "core/runtime/js/jsi/quickjs/quickjs_helper.h"
 #include "core/runtime/js/jsi/quickjs/quickjs_runtime.h"
-extern "C" {
 #include "quickjs/include/quickjs.h"
-};
+
 namespace lynx {
 namespace runtime {
 namespace js {

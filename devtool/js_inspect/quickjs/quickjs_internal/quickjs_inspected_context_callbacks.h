@@ -5,14 +5,9 @@
 #ifndef DEVTOOL_JS_INSPECT_QUICKJS_QUICKJS_INTERNAL_QUICKJS_INSPECTED_CONTEXT_CALLBACKS_H_
 #define DEVTOOL_JS_INSPECT_QUICKJS_QUICKJS_INTERNAL_QUICKJS_INSPECTED_CONTEXT_CALLBACKS_H_
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-#include "quickjs/include/quickjs.h"
-#ifdef __cplusplus
-}
-#endif
 #include <vector>
+
+#include "quickjs/include/quickjs.h"
 
 namespace quickjs_inspector {
 

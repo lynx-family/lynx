@@ -10,18 +10,11 @@
 #include "core/runtime/lepusng/napi/test/napi_test_context.h"
 #include "core/runtime/lepusng/napi/test/napi_test_element.h"
 #include "core/runtime/lepusng/napi/test/test_module.h"
+#include "quickjs/include/quickjs.h"
 #include "third_party/binding/napi/shim/shim_napi.h"
 #include "third_party/binding/napi/shim/shim_napi_env.h"
 #include "third_party/binding/napi/shim/shim_napi_runtime.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif  // __cplusplus
-#include "quickjs/include/quickjs.h"
-#ifdef __cplusplus
-}
-#endif  // __cplusplus
 
 namespace lynx {
 namespace runtime {

@@ -17,14 +17,7 @@
 #include "third_party/binding/napi/shim/shim_napi_env.h"
 #include "third_party/binding/napi/shim/shim_napi_runtime.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif  // __cplusplus
 #include "third_party/quickjs/include/quickjs.h"
-#ifdef __cplusplus
-}
-#endif  // __cplusplus
 
 namespace lynx {
 namespace binding {

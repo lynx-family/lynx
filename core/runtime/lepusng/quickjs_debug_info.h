@@ -8,9 +8,7 @@
 #include <string>
 #include <utility>
 
-extern "C" {
 #include "quickjs/include/quickjs.h"
-}
 #include "third_party/rapidjson/document.h"
 #include "third_party/rapidjson/rapidjson.h"
 

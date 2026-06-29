@@ -26,13 +26,7 @@
 #include "core/runtime/js/bytecode/js_cache_tracker.h"
 #include "core/runtime/js/runtime_constant.h"
 #include "core/runtime/trace/runtime_trace_event_def.h"
-#ifdef __cplusplus
-extern "C" {
-#endif
 #include "quickjs/include/quickjs.h"
-#ifdef __cplusplus
-}
-#endif
 
 #if defined(OS_ANDROID)
 #include "core/base/android/android_jni.h"

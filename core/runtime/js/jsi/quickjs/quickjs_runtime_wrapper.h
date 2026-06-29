@@ -5,13 +5,6 @@
 #ifndef CORE_RUNTIME_JS_JSI_QUICKJS_QUICKJS_RUNTIME_WRAPPER_H_
 #define CORE_RUNTIME_JS_JSI_QUICKJS_QUICKJS_RUNTIME_WRAPPER_H_
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-#include "quickjs/include/quickjs.h"
-#ifdef __cplusplus
-}
-#endif
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -21,6 +14,7 @@ extern "C" {
 #include "base/include/no_destructor.h"
 #include "base/include/vector.h"
 #include "core/runtime/js/jsi/jsi.h"
+#include "quickjs/include/quickjs.h"
 #ifdef OS_IOS
 #include "gc/trace-gc.h"
 #else

@@ -12,20 +12,13 @@
 
 #include <iostream>
 
-#include "third_party/googletest/googletest/include/gtest/gtest.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 #include "quickjs/include/quickjs.h"
-#ifdef __cplusplus
-}
-#endif
 #ifdef OS_IOS
 #include "trace-gc.h"
 #else
 #include "quickjs/include/trace-gc.h"
 #endif
+#include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 namespace lynx {
 namespace runtime {

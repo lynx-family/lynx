@@ -4,21 +4,14 @@
 
 #include "core/value_wrapper/napi/value_impl_napi_primjs.h"
 
+#include <cstring>
+
 #include "core/runtime/common/napi/napi_environment.h"
 #include "core/runtime/common/napi/napi_runtime_proxy.h"
 #include "core/runtime/common/napi/napi_runtime_proxy_quickjs.h"
 #include "core/value_wrapper/value_impl_lepus.h"
-#include "third_party/googletest/googletest/include/gtest/gtest.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif  // __cplusplus
-#include <cstring>
-
 #include "quickjs/include/quickjs.h"
-#ifdef __cplusplus
-}
-#endif  // __cplusplus
+#include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 namespace lynx {
 namespace pub {

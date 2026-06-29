@@ -28,19 +28,10 @@
 #include "core/services/event_report/event_tracker.h"
 #include "core/services/performance/memory_monitor/memory_monitor.h"
 #include "core/services/watch_dog/watch_dog.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 #include "quickjs/include/quickjs.h"
-#ifdef __cplusplus
-}
-#endif
 #ifdef OS_IOS
 #include "gc/trace-gc.h"
 #else
-#include <cstring>
-
 #include "quickjs/include/trace-gc.h"
 #endif
 

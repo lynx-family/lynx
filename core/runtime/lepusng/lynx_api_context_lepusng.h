@@ -14,11 +14,12 @@ extern "C" {
 #endif
 
 #include "base/include/value/lynx_value_types.h"
-#include "quickjs/include/quickjs.h"
 
 #ifdef __cplusplus
 }
 #endif
+
+#include "quickjs/include/quickjs.h"
 
 struct lynx_api_context__lepusng {
   lynx_api_context__lepusng(lynx_api_env env, LEPUSContext* ctx)

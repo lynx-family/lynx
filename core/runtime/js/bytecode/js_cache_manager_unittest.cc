@@ -15,14 +15,8 @@
 #include "core/runtime/js/bytecode/cache_generator.h"
 #include "core/runtime/js/bytecode/js_cache_tracker.h"
 #include "core/runtime/js/bytecode/js_cache_tracker_unittest.h"
-#include "third_party/googletest/googletest/include/gtest/gtest.h"
-#ifdef __cplusplus
-extern "C" {
-#endif
 #include "quickjs/include/quickjs.h"
-#ifdef __cplusplus
-}
-#endif
+#include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 namespace lynx {
 namespace runtime {
