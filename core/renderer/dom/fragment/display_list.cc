@@ -13,22 +13,19 @@ namespace lynx {
 namespace tasm {
 
 void DisplayList::Reserve(int32_t capacity) {
-  constexpr static const int32_t kPreAllocatedCapacityForOps = 10;
-  constexpr static const int32_t kPreAllocatedCapacityForIntData = 20;
-  constexpr static const int32_t kPreAllocatedCapacityForFloatData = 20;
+  constexpr static const int32_t kPreAllocatedCapacityForItems = 10;
+  constexpr static const int32_t kPreAllocatedCapacityForData = 64;
 
-  OpData& op_data = *content_data_;
-  op_data.ops.reserve(capacity * kPreAllocatedCapacityForOps);
-  op_data.int_data.reserve(capacity * kPreAllocatedCapacityForIntData);
-  op_data.float_data.reserve(capacity * kPreAllocatedCapacityForFloatData);
+  content_items_->reserve(capacity * kPreAllocatedCapacityForItems);
+  content_data_->reserve(capacity * kPreAllocatedCapacityForData);
 }
 
 void DisplayList::Clear() {
+  if (content_items_.has_value()) {
+    content_items_->clear();
+  }
   if (content_data_.has_value()) {
-    content_data_->ops.clear();
-    content_data_->int_data.clear();
-    content_data_->float_data.clear();
-    content_data_.reset();
+    content_data_->clear();
   }
   ClearSubtreeProperties();
 }
@@ -40,49 +37,48 @@ void DisplayList::ClearSubtreeProperties() {
   }
 }
 
+void DisplayList::AppendItem(const DisplayListItem& item) {
+  content_items_->push_back(item);
+}
+
 void DisplayList::AddLinearGradient(float angle,
                                     const base::Vector<uint32_t>& colors,
                                     const base::Vector<float>& stops,
                                     int32_t tiling_index, int32_t clip_index,
                                     int32_t repeat_x, int32_t repeat_y) {
-  OpData& op_data = *content_data_;
-  op_data.ops.push_back(
-      static_cast<int32_t>(DisplayListOpType::kLinearGradient));
+  DisplayListItem item;
+  item.type = DisplayListOpType::kLinearGradient;
 
-  int32_t color_count = static_cast<int32_t>(colors.size());
-  int32_t stop_count = static_cast<int32_t>(stops.size());
+  uint32_t color_count = static_cast<uint32_t>(colors.size());
+  uint32_t stop_count = static_cast<uint32_t>(stops.size());
 
-  // int_data layout: [int_count, float_count, color_count, colors...,
-  // stop_count, tiling_index, clip_index, repeat_x, repeat_y]
-  // float_data layout: [angle, stops...]
+  // Append colors and stops to the trailing data region
+  uint32_t color_offset = 0;
+  uint32_t stop_offset = 0;
 
-  int32_t int_count = 1 /* color count */ + color_count /* colors */ +
-                      1 /* stop count */ +
-                      4 /* tiling, clip, repeat-x, repeat-y */;
-  int32_t float_count = 1 /* angle */ + stop_count /* stops */;
-
-  // Pre-calculate and reserve space to avoid multiple reallocations
-  op_data.int_data.reserve(op_data.int_data.size() + 2 /* iArgc and fArgc */ +
-                           int_count);
-  op_data.int_data.push_back(int_count);
-  op_data.int_data.push_back(float_count);
-
-  op_data.int_data.push_back(color_count);
   if (color_count > 0) {
-    op_data.int_data.append(colors.data(), colors.size() * sizeof(uint32_t));
+    color_offset = static_cast<uint32_t>(content_data_->size());
+    content_data_->append(reinterpret_cast<const uint8_t*>(colors.data()),
+                          colors.size() * sizeof(uint32_t));
   }
-  op_data.int_data.push_back(stop_count);
-  op_data.int_data.push_back(tiling_index);
-  op_data.int_data.push_back(clip_index);
-  op_data.int_data.push_back(repeat_x);
-  op_data.int_data.push_back(repeat_y);
 
-  // Pre-calculate and reserve space for float_data
-  op_data.float_data.reserve(op_data.float_data.size() + float_count);
-  op_data.float_data.push_back(angle);
   if (stop_count > 0) {
-    op_data.float_data.append(stops.data(), stops.size() * sizeof(float));
+    stop_offset = static_cast<uint32_t>(content_data_->size());
+    content_data_->append(reinterpret_cast<const uint8_t*>(stops.data()),
+                          stops.size() * sizeof(float));
   }
+
+  item.payload.linear_gradient.color_count_offset = color_offset;
+  item.payload.linear_gradient.color_count = color_count;
+  item.payload.linear_gradient.stop_count_offset = stop_offset;
+  item.payload.linear_gradient.stop_count = stop_count;
+  item.payload.linear_gradient.tiling_index = tiling_index;
+  item.payload.linear_gradient.clip_index = clip_index;
+  item.payload.linear_gradient.repeat_x = repeat_x;
+  item.payload.linear_gradient.repeat_y = repeat_y;
+  item.payload.linear_gradient.angle = angle;
+
+  content_items_->push_back(item);
 }
 
 }  // namespace tasm
