@@ -1,0 +1,20 @@
+.cq/pipelines/nodelynx-darwin-build.yml
+  h_4d36f4d76420fe 26
+oliver/node-lynx/package.json
+  h_4d36f4d76420fe 15-16,18-19,21-22
+oliver/node-lynx/scripts/test.sh
+  h_4d36f4d76420fe 31
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "9356fe968a6462ef3b1eb7c83a3ef85e84068e5f",
+  "prompts": {},
+  "humans": {
+    "h_4d36f4d76420fe": {
+      "author": "yangguangzhao <yangguangzhao.solace@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}
