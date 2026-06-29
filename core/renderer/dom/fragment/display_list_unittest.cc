@@ -8,6 +8,8 @@
 #include <utility>
 #include <vector>
 
+#include "core/public/platform_renderer_type.h"
+#include "core/renderer/dom/fragment/display_list_reader.h"
 #include "third_party/googletest/googlemock/include/gmock/gmock.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
@@ -24,470 +26,390 @@ class DisplayListTest : public ::testing::Test {
 };
 
 TEST_F(DisplayListTest, EmptyDisplayList) {
-  EXPECT_EQ(display_list_->GetContentOpTypesSize(), 0u);
-  EXPECT_EQ(display_list_->GetContentIntDataSize(), 0u);
-  EXPECT_EQ(display_list_->GetContentFloatDataSize(), 0u);
+  EXPECT_EQ(display_list_->GetContentItemsSize(), 0u);
+  EXPECT_EQ(display_list_->GetContentDataSize(), 0u);
   EXPECT_EQ(display_list_->GetSubtreePropertiesSize(), 0u);
 }
 
-TEST_F(DisplayListTest, AddSingleOperation) {
-  display_list_->AddOperation(DisplayListOpType::kFill,
-                              static_cast<int32_t>(0xFF0000FF));
+TEST_F(DisplayListTest, AddSingleItem) {
+  DisplayListItem item;
+  item.type = DisplayListOpType::kFill;
+  item.payload.fill.color = 0xFF0000FF;
+  item.payload.fill.clip_index = -1;
+  display_list_->AppendItem(item);
 
-  // single operation, content_int_data_.size() == 3, content_float_data_.size()
-  // == 0
-  EXPECT_EQ(display_list_->GetContentOpTypesSize(), 1u);
+  EXPECT_EQ(display_list_->GetContentItemsSize(), 1u);
+  EXPECT_EQ(display_list_->GetContentDataSize(), 0u);
 
-  // [int_count, float_count, int_data...]
-  // [1, 0, 0xFF0000FF]
-  EXPECT_EQ(display_list_->GetContentIntDataSize(), 3u);
-  // No float parameters, so content_float_data_ should be empty
-  EXPECT_EQ(display_list_->GetContentFloatDataSize(), 0u);
-
-  const int32_t* op_types_data = display_list_->GetContentOpTypesData();
-  const int32_t* int_data_data = display_list_->GetContentIntData();
-
-  EXPECT_NE(op_types_data, nullptr);
-  EXPECT_NE(int_data_data, nullptr);
-
-  EXPECT_EQ(op_types_data[0], static_cast<int32_t>(DisplayListOpType::kFill));
-  // First int data is int_count (1), second is float_count (0), followed by
-  // actual data
-  EXPECT_EQ(int_data_data[0], 1);  // int_count
-  EXPECT_EQ(int_data_data[1], 0);  // float_count
-  EXPECT_EQ(int_data_data[2],
-            static_cast<int32_t>(0xFF0000FF));  // actual data
+  DisplayListReader reader(*display_list_);
+  EXPECT_TRUE(reader.HasNext());
+  const auto& read_item = reader.Next();
+  EXPECT_EQ(read_item.type, DisplayListOpType::kFill);
+  EXPECT_EQ(read_item.payload.fill.color, 0xFF0000FF);
+  EXPECT_EQ(read_item.payload.fill.clip_index, -1);
+  EXPECT_FALSE(reader.HasNext());
 }
 
-TEST_F(DisplayListTest, AddOperationWithFloatData) {
-  display_list_->AddOperation(DisplayListOpType::kDrawView, 123, 3.14f);
+TEST_F(DisplayListTest, AddMultipleItems) {
+  DisplayListItem item1;
+  item1.type = DisplayListOpType::kBegin;
+  item1.payload.begin.id = 1;
+  item1.payload.begin.type = static_cast<int32_t>(PlatformRendererType::kView);
+  item1.payload.begin.x = 10.0f;
+  item1.payload.begin.y = 20.0f;
+  item1.payload.begin.w = 100.0f;
+  item1.payload.begin.h = 200.0f;
+  display_list_->AppendItem(item1);
 
-  const int32_t* op_types_data = display_list_->GetContentOpTypesData();
-  const int32_t* int_data_data = display_list_->GetContentIntData();
-  const float* float_data_data = display_list_->GetContentFloatData();
+  DisplayListItem item2;
+  item2.type = DisplayListOpType::kFill;
+  item2.payload.fill.color = 0xFF00FF00;
+  item2.payload.fill.clip_index = 0;
+  display_list_->AppendItem(item2);
 
-  EXPECT_NE(op_types_data, nullptr);
-  EXPECT_NE(int_data_data, nullptr);
-  EXPECT_NE(float_data_data, nullptr);
+  DisplayListItem item3;
+  item3.type = DisplayListOpType::kEnd;
+  display_list_->AppendItem(item3);
 
-  EXPECT_EQ(op_types_data[0],
-            static_cast<int32_t>(DisplayListOpType::kDrawView));
+  EXPECT_EQ(display_list_->GetContentItemsSize(), 3u);
 
-  // Int data: [int_count, float_count, int_data...]
-  EXPECT_EQ(int_data_data[0], 1);  // int_count
-  EXPECT_EQ(int_data_data[1],
-            1);                      // float_count (stored in int_data)
-  EXPECT_EQ(int_data_data[2], 123);  // actual int data
+  DisplayListReader reader(*display_list_);
+  EXPECT_TRUE(reader.HasNext());
+  const auto& read1 = reader.Next();
+  EXPECT_EQ(read1.type, DisplayListOpType::kBegin);
+  EXPECT_EQ(read1.payload.begin.id, 1);
+  EXPECT_EQ(read1.payload.begin.type,
+            static_cast<int32_t>(PlatformRendererType::kView));
+  EXPECT_FLOAT_EQ(read1.payload.begin.x, 10.0f);
+  EXPECT_FLOAT_EQ(read1.payload.begin.y, 20.0f);
+  EXPECT_FLOAT_EQ(read1.payload.begin.w, 100.0f);
+  EXPECT_FLOAT_EQ(read1.payload.begin.h, 200.0f);
 
-  // Float data: [actual float data]
-  EXPECT_EQ(display_list_->GetContentFloatDataSize(), 1u);  // 1 float parameter
-  EXPECT_FLOAT_EQ(float_data_data[0], 3.14f);               // actual data
-}
+  EXPECT_TRUE(reader.HasNext());
+  const auto& read2 = reader.Next();
+  EXPECT_EQ(read2.type, DisplayListOpType::kFill);
+  EXPECT_EQ(read2.payload.fill.color, 0xFF00FF00);
+  EXPECT_EQ(read2.payload.fill.clip_index, 0);
 
-TEST_F(DisplayListTest, AddOperationWithMixedParams) {
-  // Test AddOperation with both int and float parameters (equivalent to old
-  // AddOperationWithData)
-  display_list_->AddOperation(DisplayListOpType::kBegin, 1, 2, 3,
-                              4,                        // int params
-                              1.1f, 2.2f, 3.3f, 4.4f);  // float params
+  EXPECT_TRUE(reader.HasNext());
+  const auto& read3 = reader.Next();
+  EXPECT_EQ(read3.type, DisplayListOpType::kEnd);
 
-  EXPECT_EQ(display_list_->GetContentOpTypesSize(), 1u);
-  EXPECT_EQ(display_list_->GetContentIntDataSize(), 6u);  // 2 counts + 4 params
-  EXPECT_EQ(display_list_->GetContentFloatDataSize(), 4u);  // 4 float params
-
-  const int32_t* op_types_data = display_list_->GetContentOpTypesData();
-  const int32_t* int_data_data = display_list_->GetContentIntData();
-  const float* float_data_data = display_list_->GetContentFloatData();
-
-  EXPECT_NE(op_types_data, nullptr);
-  EXPECT_NE(int_data_data, nullptr);
-  EXPECT_NE(float_data_data, nullptr);
-
-  EXPECT_EQ(op_types_data[0], static_cast<int32_t>(DisplayListOpType::kBegin));
-  EXPECT_EQ(int_data_data[0], 4);  // int_count
-  EXPECT_EQ(int_data_data[1], 4);  // float_count
-
-  // Check parameter data - int params start at index 2
-  EXPECT_EQ(int_data_data[2], 1);
-  EXPECT_EQ(int_data_data[3], 2);
-  EXPECT_EQ(int_data_data[4], 3);
-  EXPECT_EQ(int_data_data[5], 4);
-
-  // Float params start at index 0
-  EXPECT_FLOAT_EQ(float_data_data[0], 1.1f);
-  EXPECT_FLOAT_EQ(float_data_data[1], 2.2f);
-  EXPECT_FLOAT_EQ(float_data_data[2], 3.3f);
-  EXPECT_FLOAT_EQ(float_data_data[3], 4.4f);
-}
-
-TEST_F(DisplayListTest, AddMultipleOperations) {
-  display_list_->AddOperation(DisplayListOpType::kBegin, 0);
-  display_list_->AddOperation(DisplayListOpType::kFill,
-                              static_cast<int32_t>(0xFF0000FF));
-  display_list_->AddOperation(DisplayListOpType::kEnd, 0);
-
-  EXPECT_EQ(display_list_->GetContentOpTypesSize(), 3u);
-  EXPECT_EQ(display_list_->GetContentIntDataSize(),
-            9u);  // 3 elements per operation (int_count, float_count, param)
-  EXPECT_EQ(display_list_->GetContentFloatDataSize(),
-            0u);  // No float parameters
-
-  const int32_t* op_types_data = display_list_->GetContentOpTypesData();
-  EXPECT_NE(op_types_data, nullptr);
-
-  EXPECT_EQ(op_types_data[0], static_cast<int32_t>(DisplayListOpType::kBegin));
-  EXPECT_EQ(op_types_data[1], static_cast<int32_t>(DisplayListOpType::kFill));
-  EXPECT_EQ(op_types_data[2], static_cast<int32_t>(DisplayListOpType::kEnd));
+  EXPECT_FALSE(reader.HasNext());
 }
 
 TEST_F(DisplayListTest, ClearDisplayList) {
-  display_list_->AddOperation(DisplayListOpType::kFill,
-                              static_cast<int32_t>(0xFF0000FF));
-  display_list_->AddOperation(DisplayListOpType::kDrawView, 123);
+  DisplayListItem item;
+  item.type = DisplayListOpType::kFill;
+  item.payload.fill.color = 0xFF0000FF;
+  item.payload.fill.clip_index = -1;
+  display_list_->AppendItem(item);
 
-  SubtreeProperty transform_prop;
-  transform_prop.type = DisplayListSubtreePropertyOpType::kTransform;
-  memset(transform_prop.data.transform, 0,
-         sizeof(transform_prop.data.transform));
-  display_list_->AddSubtreeProperty(transform_prop);
-
-  SubtreeProperty opacity_prop;
-  opacity_prop.type = DisplayListSubtreePropertyOpType::kOpacity;
-  opacity_prop.data.opacity = 0.5f;
-  display_list_->AddSubtreeProperty(opacity_prop);
+  EXPECT_EQ(display_list_->GetContentItemsSize(), 1u);
 
   display_list_->Clear();
 
-  EXPECT_EQ(display_list_->GetContentOpTypesSize(), 0u);
-  EXPECT_EQ(display_list_->GetContentIntDataSize(), 0u);
-  EXPECT_EQ(display_list_->GetContentFloatDataSize(), 0u);
-  EXPECT_EQ(display_list_->GetSubtreePropertiesSize(), 0u);
+  EXPECT_EQ(display_list_->GetContentItemsSize(), 0u);
+  EXPECT_EQ(display_list_->GetContentDataSize(), 0u);
 }
 
-TEST_F(DisplayListTest, DirectArrayAccess) {
-  display_list_->AddOperation(DisplayListOpType::kFill,
-                              static_cast<int32_t>(0xFF0000FF));
-  display_list_->AddOperation(DisplayListOpType::kDrawView, 123);
+TEST_F(DisplayListTest, AddLinearGradient) {
+  base::Vector<uint32_t> colors;
+  colors.push_back(0xFFFF0000);
+  colors.push_back(0xFF00FF00);
+  colors.push_back(0xFF0000FF);
 
-  const int32_t* op_types_data = display_list_->GetContentOpTypesData();
-  const int32_t* int_data_data = display_list_->GetContentIntData();
+  base::Vector<float> stops;
+  stops.push_back(0.0f);
+  stops.push_back(0.5f);
+  stops.push_back(1.0f);
 
-  EXPECT_NE(op_types_data, nullptr);
-  EXPECT_NE(int_data_data, nullptr);
+  display_list_->AddLinearGradient(45.0f, colors, stops, 0, 1, 1, 1);
 
-  EXPECT_EQ(op_types_data[0], static_cast<int32_t>(DisplayListOpType::kFill));
-  EXPECT_EQ(op_types_data[1],
-            static_cast<int32_t>(DisplayListOpType::kDrawView));
+  EXPECT_EQ(display_list_->GetContentItemsSize(), 1u);
+  EXPECT_EQ(display_list_->GetContentDataSize(),
+            colors.size() * sizeof(uint32_t) + stops.size() * sizeof(float));
 
-  // Int data layout: [int_count1, float_count1, param1, int_count2,
-  // float_count2, param2]
-  EXPECT_EQ(int_data_data[0], 1);  // int_count for first operation
-  EXPECT_EQ(int_data_data[1], 0);  // float_count for first operation
-  EXPECT_EQ(int_data_data[2], static_cast<int32_t>(0xFF0000FF));  // first param
-  EXPECT_EQ(int_data_data[3], 1);    // int_count for second operation
-  EXPECT_EQ(int_data_data[4], 0);    // float_count for second operation
-  EXPECT_EQ(int_data_data[5], 123);  // second param
+  DisplayListReader reader(*display_list_);
+  EXPECT_TRUE(reader.HasNext());
+  const auto& item = reader.Next();
+  EXPECT_EQ(item.type, DisplayListOpType::kLinearGradient);
+  EXPECT_EQ(item.payload.linear_gradient.color_count, 3u);
+  EXPECT_EQ(item.payload.linear_gradient.stop_count, 3u);
+  EXPECT_FLOAT_EQ(item.payload.linear_gradient.angle, 45.0f);
+  EXPECT_EQ(item.payload.linear_gradient.tiling_index, 0);
+  EXPECT_EQ(item.payload.linear_gradient.clip_index, 1);
+  EXPECT_EQ(item.payload.linear_gradient.repeat_x, 1);
+  EXPECT_EQ(item.payload.linear_gradient.repeat_y, 1);
 
-  // No float parameters, so content_float_data_ should be empty
-  EXPECT_EQ(display_list_->GetContentFloatDataSize(), 0u);
+  const uint32_t* read_colors = reader.Colors(item);
+  ASSERT_NE(read_colors, nullptr);
+  EXPECT_EQ(read_colors[0], 0xFFFF0000);
+  EXPECT_EQ(read_colors[1], 0xFF00FF00);
+  EXPECT_EQ(read_colors[2], 0xFF0000FF);
+
+  const float* read_stops = reader.Stops(item);
+  ASSERT_NE(read_stops, nullptr);
+  EXPECT_FLOAT_EQ(read_stops[0], 0.0f);
+  EXPECT_FLOAT_EQ(read_stops[1], 0.5f);
+  EXPECT_FLOAT_EQ(read_stops[2], 1.0f);
+}
+
+TEST_F(DisplayListTest, AddLinearGradientEmpty) {
+  base::Vector<uint32_t> colors;
+  base::Vector<float> stops;
+
+  display_list_->AddLinearGradient(0.0f, colors, stops, -1, -1, 0, 0);
+
+  EXPECT_EQ(display_list_->GetContentItemsSize(), 1u);
+  EXPECT_EQ(display_list_->GetContentDataSize(), 0u);
+
+  DisplayListReader reader(*display_list_);
+  EXPECT_TRUE(reader.HasNext());
+  const auto& item = reader.Next();
+  EXPECT_EQ(item.type, DisplayListOpType::kLinearGradient);
+  EXPECT_EQ(item.payload.linear_gradient.color_count, 0u);
+  EXPECT_EQ(item.payload.linear_gradient.stop_count, 0u);
+  EXPECT_EQ(reader.Colors(item), nullptr);
+  EXPECT_EQ(reader.Stops(item), nullptr);
 }
 
 TEST_F(DisplayListTest, MoveSemantics) {
-  display_list_->AddOperation(DisplayListOpType::kFill,
-                              static_cast<int32_t>(0xFF0000FF));
-  display_list_->AddOperation(DisplayListOpType::kDrawView, 123);
+  DisplayListItem item;
+  item.type = DisplayListOpType::kFill;
+  item.payload.fill.color = 0xFF0000FF;
+  item.payload.fill.clip_index = -1;
+  display_list_->AppendItem(item);
 
   DisplayList moved_list = std::move(*display_list_);
 
-  const int32_t* moved_op_types_data = moved_list.GetContentOpTypesData();
-  EXPECT_NE(moved_op_types_data, nullptr);
-  EXPECT_EQ(moved_op_types_data[0],
-            static_cast<int32_t>(DisplayListOpType::kFill));
-  EXPECT_EQ(moved_op_types_data[1],
-            static_cast<int32_t>(DisplayListOpType::kDrawView));
-}
-
-TEST_F(DisplayListTest, LargeDataOperations) {
-  const size_t kLargeSize = 1000;
-
-  for (size_t i = 0; i < kLargeSize; ++i) {
-    display_list_->AddOperation(DisplayListOpType::kFill,
-                                static_cast<int32_t>(i));
-  }
-
-  EXPECT_EQ(display_list_->GetContentOpTypesSize(), kLargeSize);
-  EXPECT_EQ(display_list_->GetContentIntDataSize(),
-            kLargeSize *
-                3);  // 3 elements per operation (int_count, float_count, param)
-  EXPECT_EQ(display_list_->GetContentFloatDataSize(),
-            0u);  // No float parameters
-
-  // Verify some data points
-  const int32_t* op_types_data = display_list_->GetContentOpTypesData();
-  const int32_t* int_data_data = display_list_->GetContentIntData();
-  EXPECT_NE(op_types_data, nullptr);
-  EXPECT_NE(int_data_data, nullptr);
-
-  EXPECT_EQ(op_types_data[0], static_cast<int32_t>(DisplayListOpType::kFill));
-  EXPECT_EQ(int_data_data[0], 1);  // int_count for first operation
-  EXPECT_EQ(int_data_data[1], 0);  // float_count for first operation
-  EXPECT_EQ(int_data_data[2], 0);  // first parameter
-  EXPECT_EQ(int_data_data[(kLargeSize - 1) * 3],
-            1);  // int_count for last operation
-  EXPECT_EQ(int_data_data[(kLargeSize - 1) * 3 + 1],
-            0);  // float_count for last operation
-  EXPECT_EQ(int_data_data[(kLargeSize - 1) * 3 + 2],
-            static_cast<int32_t>(kLargeSize - 1));  // last parameter
-}
-
-TEST_F(DisplayListTest, MixedOperationTypes) {
-  display_list_->AddOperation(DisplayListOpType::kBegin, 0);
-
-  SubtreeProperty transform_prop;
-  transform_prop.type = DisplayListSubtreePropertyOpType::kTransform;
-  memset(transform_prop.data.transform, 0,
-         sizeof(transform_prop.data.transform));
-  display_list_->AddSubtreeProperty(transform_prop);
-
-  display_list_->AddOperation(DisplayListOpType::kText, 2, 0.0f);
-  display_list_->AddOperation(DisplayListOpType::kImage, 3, 0.0f);
-  display_list_->AddOperation(DisplayListOpType::kCustom, 4, 0.0f);
-  display_list_->AddOperation(DisplayListOpType::kEnd, 5);
-
-  // Content operations: kBegin, kText, kImage, kCustom, kEnd (5 operations)
-  EXPECT_EQ(display_list_->GetContentOpTypesSize(), 5u);
-  // Subtree property operations: kTransform (1 operation)
-  EXPECT_EQ(display_list_->GetSubtreePropertiesSize(), 1u);
-
-  // Verify content operations are correctly stored
-  const int32_t* content_op_types_data = display_list_->GetContentOpTypesData();
-  EXPECT_NE(content_op_types_data, nullptr);
-  EXPECT_EQ(content_op_types_data[0],
-            static_cast<int32_t>(DisplayListOpType::kBegin));
-  EXPECT_EQ(content_op_types_data[1],
-            static_cast<int32_t>(DisplayListOpType::kText));
-  EXPECT_EQ(content_op_types_data[2],
-            static_cast<int32_t>(DisplayListOpType::kImage));
-  EXPECT_EQ(content_op_types_data[3],
-            static_cast<int32_t>(DisplayListOpType::kCustom));
-  EXPECT_EQ(content_op_types_data[4],
-            static_cast<int32_t>(DisplayListOpType::kEnd));
-
-  // Verify subtree property operations are correctly stored
-  const SubtreeProperty* subtree_properties_data =
-      display_list_->GetSubtreePropertiesData();
-  EXPECT_NE(subtree_properties_data, nullptr);
-  EXPECT_EQ(subtree_properties_data[0].type,
-            DisplayListSubtreePropertyOpType::kTransform);
+  EXPECT_EQ(moved_list.GetContentItemsSize(), 1u);
+  EXPECT_EQ(display_list_->GetContentItemsSize(), 0u);
 }
 
 TEST_F(DisplayListTest, SubtreePropertySeparation) {
-  // Add content operations
-  display_list_->AddOperation(DisplayListOpType::kBegin, 0);
-  display_list_->AddOperation(DisplayListOpType::kFill,
-                              static_cast<int32_t>(0xFF0000FF));
-  display_list_->AddOperation(DisplayListOpType::kEnd, 0);
-
-  // Add subtree property operations
-  SubtreeProperty transform_prop;
-  transform_prop.type = DisplayListSubtreePropertyOpType::kTransform;
+  SubtreeProperty prop;
+  prop.type = DisplayListSubtreePropertyOpType::kTransform;
   for (int i = 0; i < 16; ++i) {
-    transform_prop.data.transform[i] = static_cast<float>(i + 1);
+    prop.data.transform[i] = static_cast<float>(i);
   }
-  display_list_->AddSubtreeProperty(transform_prop);
-
-  EXPECT_EQ(display_list_->GetContentOpTypesSize(), 3u);
-  EXPECT_EQ(display_list_->GetSubtreePropertiesSize(), 1u);
-
-  // Verify content operations
-  const int32_t* content_op_types_data = display_list_->GetContentOpTypesData();
-  EXPECT_NE(content_op_types_data, nullptr);
-  EXPECT_EQ(content_op_types_data[0],
-            static_cast<int32_t>(DisplayListOpType::kBegin));
-  EXPECT_EQ(content_op_types_data[1],
-            static_cast<int32_t>(DisplayListOpType::kFill));
-  EXPECT_EQ(content_op_types_data[2],
-            static_cast<int32_t>(DisplayListOpType::kEnd));
-
-  // Verify subtree property operations
-  const SubtreeProperty* subtree_properties_data =
-      display_list_->GetSubtreePropertiesData();
-  EXPECT_NE(subtree_properties_data, nullptr);
-  EXPECT_EQ(subtree_properties_data[0].type,
-            DisplayListSubtreePropertyOpType::kTransform);
-
-  // Verify transform matrix values
-  for (int i = 0; i < 16; ++i) {
-    EXPECT_FLOAT_EQ(subtree_properties_data[0].data.transform[i],
-                    static_cast<float>(i + 1));
-  }
-
-  // Test fast update of subtree properties by clearing and re-adding
-  display_list_->ClearSubtreeProperties();
-
-  SubtreeProperty new_transform_prop;
-  new_transform_prop.type = DisplayListSubtreePropertyOpType::kTransform;
-  for (int i = 0; i < 16; ++i) {
-    new_transform_prop.data.transform[i] = static_cast<float>(i + 1);
-  }
-  display_list_->AddSubtreeProperty(new_transform_prop);
+  display_list_->AddSubtreeProperty(prop);
 
   EXPECT_EQ(display_list_->GetSubtreePropertiesSize(), 1u);
-  const SubtreeProperty* new_subtree_properties_data =
-      display_list_->GetSubtreePropertiesData();
-  EXPECT_NE(new_subtree_properties_data, nullptr);
-  EXPECT_EQ(new_subtree_properties_data[0].type,
-            DisplayListSubtreePropertyOpType::kTransform);
+  EXPECT_EQ(display_list_->GetContentItemsSize(), 0u);
 
-  // Verify new transform matrix values
+  const SubtreeProperty* data = display_list_->GetSubtreePropertiesData();
+  ASSERT_NE(data, nullptr);
+  EXPECT_EQ(data[0].type, DisplayListSubtreePropertyOpType::kTransform);
   for (int i = 0; i < 16; ++i) {
-    EXPECT_FLOAT_EQ(new_subtree_properties_data[0].data.transform[i],
-                    static_cast<float>(i + 1));
+    EXPECT_FLOAT_EQ(data[0].data.transform[i], static_cast<float>(i));
   }
-
-  // Content operations should remain unchanged
-  EXPECT_EQ(display_list_->GetContentOpTypesSize(), 3u);
 }
 
 TEST_F(DisplayListTest, ClearSubtreeProperties) {
-  // Add mixed operations
-  display_list_->AddOperation(DisplayListOpType::kBegin, 0);
-
-  SubtreeProperty transform_prop;
-  transform_prop.type = DisplayListSubtreePropertyOpType::kTransform;
-  memset(transform_prop.data.transform, 0,
-         sizeof(transform_prop.data.transform));
-  display_list_->AddSubtreeProperty(transform_prop);
-
-  display_list_->AddOperation(DisplayListOpType::kEnd, 0);
+  SubtreeProperty prop;
+  prop.type = DisplayListSubtreePropertyOpType::kOpacity;
+  prop.data.opacity = 0.5f;
+  display_list_->AddSubtreeProperty(prop);
 
   EXPECT_EQ(display_list_->GetSubtreePropertiesSize(), 1u);
 
-  // Clear only subtree properties
   display_list_->ClearSubtreeProperties();
 
-  EXPECT_EQ(display_list_->GetContentOpTypesSize(), 2u);
   EXPECT_EQ(display_list_->GetSubtreePropertiesSize(), 0u);
-
-  // Verify content operations are preserved
-  const int32_t* content_op_types_data = display_list_->GetContentOpTypesData();
-  EXPECT_NE(content_op_types_data, nullptr);
-  EXPECT_EQ(content_op_types_data[0],
-            static_cast<int32_t>(DisplayListOpType::kBegin));
-  EXPECT_EQ(content_op_types_data[1],
-            static_cast<int32_t>(DisplayListOpType::kEnd));
+  EXPECT_EQ(display_list_->GetSubtreePropertiesData(), nullptr);
 }
 
-TEST_F(DisplayListTest, TemplateCategorySelection) {
-  // Test explicit template category specification
-  display_list_->AddOperation(DisplayListOpType::kFill,
-                              static_cast<int32_t>(0xFF0000FF));
+TEST_F(DisplayListTest, DisplayListItemABICompliance) {
+  // Verify ABI invariants that cross-platform consumers depend on
+  static_assert(sizeof(DisplayListItem) == 56,
+                "DisplayListItem size must be 56 bytes");
+  static_assert(offsetof(DisplayListItem, type) == 0,
+                "type field must be at offset 0");
+  static_assert(offsetof(DisplayListItem, payload) == 4,
+                "payload union must be at offset 4");
+  static_assert(std::is_standard_layout<DisplayListItem>::value,
+                "DisplayListItem must be standard layout");
+  static_assert(std::is_trivially_copyable<DisplayListItem>::value,
+                "DisplayListItem must be trivially copyable");
 
-  SubtreeProperty transform_prop;
-  transform_prop.type = DisplayListSubtreePropertyOpType::kTransform;
-  for (int i = 0; i < 16; ++i) {
-    transform_prop.data.transform[i] = static_cast<float>(i + 1);
-  }
-  display_list_->AddSubtreeProperty(transform_prop);
-
-  display_list_->AddOperation(DisplayListOpType::kDrawView, 123);
-
-  EXPECT_EQ(display_list_->GetContentOpTypesSize(), 2u);
-  EXPECT_EQ(display_list_->GetSubtreePropertiesSize(), 1u);
-
-  // Verify content operations
-  const int32_t* content_op_types_data = display_list_->GetContentOpTypesData();
-  EXPECT_NE(content_op_types_data, nullptr);
-  EXPECT_EQ(content_op_types_data[0],
-            static_cast<int32_t>(DisplayListOpType::kFill));
-  EXPECT_EQ(content_op_types_data[1],
-            static_cast<int32_t>(DisplayListOpType::kDrawView));
-
-  // Verify subtree property operations
-  const SubtreeProperty* subtree_properties_data =
-      display_list_->GetSubtreePropertiesData();
-  EXPECT_NE(subtree_properties_data, nullptr);
-  EXPECT_EQ(subtree_properties_data[0].type,
-            DisplayListSubtreePropertyOpType::kTransform);
-
-  // Verify data integrity
-  const int32_t* content_int_data = display_list_->GetContentIntData();
-  EXPECT_NE(content_int_data, nullptr);
-
-  EXPECT_EQ(content_int_data[0], 1);  // int_count for Fill
-  EXPECT_EQ(content_int_data[1], 0);  // float_count for Fill
-  EXPECT_EQ(content_int_data[2],
-            static_cast<int32_t>(0xFF0000FF));  // color param
-
-  EXPECT_EQ(content_int_data[3], 1);    // int_count for DrawView
-  EXPECT_EQ(content_int_data[4], 0);    // float_count for DrawView
-  EXPECT_EQ(content_int_data[5], 123);  // view_id param
-
-  // Verify transform matrix values
-  for (int i = 0; i < 16; ++i) {
-    EXPECT_FLOAT_EQ(subtree_properties_data[0].data.transform[i],
-                    static_cast<float>(i + 1));
-  }
+  // SUCCEED if all static_asserts pass
+  SUCCEED();
 }
 
-TEST_F(DisplayListTest, TestMarkRootNeedClipBounds) {
+TEST_F(DisplayListTest, DisplayListReaderRoundTrip) {
+  // Build a display list with all op types
+  DisplayListItem begin;
+  begin.type = DisplayListOpType::kBegin;
+  begin.payload.begin.id = 42;
+  begin.payload.begin.type = static_cast<int32_t>(PlatformRendererType::kView);
+  begin.payload.begin.x = 10.0f;
+  begin.payload.begin.y = 20.0f;
+  begin.payload.begin.w = 100.0f;
+  begin.payload.begin.h = 200.0f;
+  display_list_->AppendItem(begin);
+
+  DisplayListItem fill;
+  fill.type = DisplayListOpType::kFill;
+  fill.payload.fill.color = 0xFF00FF00;
+  fill.payload.fill.clip_index = 0;
+  display_list_->AppendItem(fill);
+
+  DisplayListItem draw_view;
+  draw_view.type = DisplayListOpType::kDrawView;
+  draw_view.payload.draw_view.view_id = 99;
+  display_list_->AppendItem(draw_view);
+
+  DisplayListItem text;
+  text.type = DisplayListOpType::kText;
+  text.payload.text.text_id = 101;
+  text.payload.text.box_index = 1;
+  display_list_->AppendItem(text);
+
+  DisplayListItem image;
+  image.type = DisplayListOpType::kImage;
+  image.payload.image.image_id = 202;
+  image.payload.image.box_index = 2;
+  display_list_->AppendItem(image);
+
+  DisplayListItem border;
+  border.type = DisplayListOpType::kBorder;
+  border.payload.border.out_index = 0;
+  border.payload.border.inner_index = 1;
+  border.payload.border.colors[0] = 0xFFFF0000;
+  border.payload.border.colors[1] = 0xFF00FF00;
+  border.payload.border.colors[2] = 0xFF0000FF;
+  border.payload.border.colors[3] = 0xFFFFFF00;
+  border.payload.border.styles[0] = 1;
+  border.payload.border.styles[1] = 1;
+  border.payload.border.styles[2] = 1;
+  border.payload.border.styles[3] = 1;
+  display_list_->AppendItem(border);
+
+  DisplayListItem clip;
+  clip.type = DisplayListOpType::kClipRect;
+  clip.payload.clip_rect.x = 0.0f;
+  clip.payload.clip_rect.y = 0.0f;
+  clip.payload.clip_rect.w = 50.0f;
+  clip.payload.clip_rect.h = 50.0f;
+  clip.payload.clip_rect.has_radii = 1;
+  clip.payload.clip_rect.radii[0] = 5.0f;
+  clip.payload.clip_rect.radii[1] = 5.0f;
+  clip.payload.clip_rect.radii[2] = 5.0f;
+  clip.payload.clip_rect.radii[3] = 5.0f;
+  clip.payload.clip_rect.radii[4] = 5.0f;
+  clip.payload.clip_rect.radii[5] = 5.0f;
+  clip.payload.clip_rect.radii[6] = 5.0f;
+  clip.payload.clip_rect.radii[7] = 5.0f;
+  display_list_->AppendItem(clip);
+
+  DisplayListItem record;
+  record.type = DisplayListOpType::kRecordBox;
+  record.payload.record_box.x = 0.0f;
+  record.payload.record_box.y = 0.0f;
+  record.payload.record_box.w = 100.0f;
+  record.payload.record_box.h = 100.0f;
+  record.payload.record_box.has_radii = 0;
+  display_list_->AppendItem(record);
+
+  DisplayListItem box_shadow;
+  box_shadow.type = DisplayListOpType::kBoxShadow;
+  box_shadow.payload.box_shadow.shadow_box_index = 0;
+  box_shadow.payload.box_shadow.clip_box_index = 1;
+  box_shadow.payload.box_shadow.color = 0x80000000;
+  box_shadow.payload.box_shadow.blur_radius = 10.0f;
+  box_shadow.payload.box_shadow.clip_mode = 0;
+  display_list_->AppendItem(box_shadow);
+
+  DisplayListItem end;
+  end.type = DisplayListOpType::kEnd;
+  display_list_->AppendItem(end);
+
+  // Verify with reader
+  DisplayListReader reader(*display_list_);
+  EXPECT_EQ(reader.Remaining(), 10u);
+
+  const auto& r1 = reader.Next();
+  EXPECT_EQ(r1.type, DisplayListOpType::kBegin);
+  EXPECT_EQ(r1.payload.begin.id, 42);
+
+  const auto& r2 = reader.Next();
+  EXPECT_EQ(r2.type, DisplayListOpType::kFill);
+  EXPECT_EQ(r2.payload.fill.color, 0xFF00FF00);
+
+  const auto& r3 = reader.Next();
+  EXPECT_EQ(r3.type, DisplayListOpType::kDrawView);
+  EXPECT_EQ(r3.payload.draw_view.view_id, 99);
+
+  const auto& r4 = reader.Next();
+  EXPECT_EQ(r4.type, DisplayListOpType::kText);
+  EXPECT_EQ(r4.payload.text.text_id, 101);
+  EXPECT_EQ(r4.payload.text.box_index, 1);
+
+  const auto& r5 = reader.Next();
+  EXPECT_EQ(r5.type, DisplayListOpType::kImage);
+  EXPECT_EQ(r5.payload.image.image_id, 202);
+  EXPECT_EQ(r5.payload.image.box_index, 2);
+
+  const auto& r6 = reader.Next();
+  EXPECT_EQ(r6.type, DisplayListOpType::kBorder);
+  EXPECT_EQ(r6.payload.border.out_index, 0);
+  EXPECT_EQ(r6.payload.border.inner_index, 1);
+  EXPECT_EQ(r6.payload.border.colors[0], 0xFFFF0000);
+  EXPECT_EQ(r6.payload.border.styles[0], 1);
+
+  const auto& r7 = reader.Next();
+  EXPECT_EQ(r7.type, DisplayListOpType::kClipRect);
+  EXPECT_EQ(r7.payload.clip_rect.has_radii, 1u);
+  EXPECT_FLOAT_EQ(r7.payload.clip_rect.radii[0], 5.0f);
+
+  const auto& r8 = reader.Next();
+  EXPECT_EQ(r8.type, DisplayListOpType::kRecordBox);
+  EXPECT_EQ(r8.payload.record_box.has_radii, 0u);
+  EXPECT_FLOAT_EQ(r8.payload.record_box.w, 100.0f);
+
+  const auto& r9 = reader.Next();
+  EXPECT_EQ(r9.type, DisplayListOpType::kBoxShadow);
+  EXPECT_EQ(r9.payload.box_shadow.shadow_box_index, 0);
+  EXPECT_EQ(r9.payload.box_shadow.clip_box_index, 1);
+  EXPECT_EQ(r9.payload.box_shadow.color, 0x80000000);
+  EXPECT_FLOAT_EQ(r9.payload.box_shadow.blur_radius, 10.0f);
+  EXPECT_EQ(r9.payload.box_shadow.clip_mode, 0);
+
+  const auto& r10 = reader.Next();
+  EXPECT_EQ(r10.type, DisplayListOpType::kEnd);
+
+  EXPECT_FALSE(reader.HasNext());
+}
+
+TEST_F(DisplayListTest, ReserveAndClear) {
+  display_list_->Reserve(100);
+  EXPECT_EQ(display_list_->GetContentItemsSize(), 0u);
+
+  DisplayListItem item;
+  item.type = DisplayListOpType::kFill;
+  item.payload.fill.color = 0xFF0000FF;
+  item.payload.fill.clip_index = -1;
+  display_list_->AppendItem(item);
+
+  EXPECT_EQ(display_list_->GetContentItemsSize(), 1u);
+
+  display_list_->Clear();
+  EXPECT_EQ(display_list_->GetContentItemsSize(), 0u);
+  EXPECT_EQ(display_list_->GetContentDataSize(), 0u);
+}
+
+TEST_F(DisplayListTest, MarkRootNeedClipBounds) {
   EXPECT_FALSE(display_list_->RootNeedClipBounds());
-
   display_list_->MarkRootNeedClipBounds();
-
   EXPECT_TRUE(display_list_->RootNeedClipBounds());
 }
 
-TEST_F(DisplayListTest, AddOpacitySubtreeProperty) {
-  // Add opacity property
-  SubtreeProperty opacity_prop;
-  opacity_prop.type = DisplayListSubtreePropertyOpType::kOpacity;
-  opacity_prop.data.opacity = 0.75f;
-  display_list_->AddSubtreeProperty(opacity_prop);
-
-  EXPECT_EQ(display_list_->GetSubtreePropertiesSize(), 1u);
-
-  const SubtreeProperty* subtree_properties_data =
-      display_list_->GetSubtreePropertiesData();
-  EXPECT_NE(subtree_properties_data, nullptr);
-  EXPECT_EQ(subtree_properties_data[0].type,
-            DisplayListSubtreePropertyOpType::kOpacity);
-  EXPECT_FLOAT_EQ(subtree_properties_data[0].data.opacity, 0.75f);
-}
-
-TEST_F(DisplayListTest, AddMultipleSubtreeProperties) {
-  // Add transform property
-  SubtreeProperty transform_prop;
-  transform_prop.type = DisplayListSubtreePropertyOpType::kTransform;
-  for (int i = 0; i < 16; ++i) {
-    transform_prop.data.transform[i] = static_cast<float>(i);
-  }
-  display_list_->AddSubtreeProperty(transform_prop);
-
-  // Add opacity property
-  SubtreeProperty opacity_prop;
-  opacity_prop.type = DisplayListSubtreePropertyOpType::kOpacity;
-  opacity_prop.data.opacity = 0.5f;
-  display_list_->AddSubtreeProperty(opacity_prop);
-
-  EXPECT_EQ(display_list_->GetSubtreePropertiesSize(), 2u);
-
-  const SubtreeProperty* subtree_properties_data =
-      display_list_->GetSubtreePropertiesData();
-  EXPECT_NE(subtree_properties_data, nullptr);
-
-  // Verify first property (transform)
-  EXPECT_EQ(subtree_properties_data[0].type,
-            DisplayListSubtreePropertyOpType::kTransform);
-  for (int i = 0; i < 16; ++i) {
-    EXPECT_FLOAT_EQ(subtree_properties_data[0].data.transform[i],
-                    static_cast<float>(i));
-  }
-
-  // Verify second property (opacity)
-  EXPECT_EQ(subtree_properties_data[1].type,
-            DisplayListSubtreePropertyOpType::kOpacity);
-  EXPECT_FLOAT_EQ(subtree_properties_data[1].data.opacity, 0.5f);
+TEST_F(DisplayListTest, RenderOffset) {
+  DisplayList list(5.0f, 10.0f);
+  const float* offset = list.GetRenderOffset();
+  EXPECT_FLOAT_EQ(offset[0], 5.0f);
+  EXPECT_FLOAT_EQ(offset[1], 10.0f);
 }
 
 }  // namespace tasm

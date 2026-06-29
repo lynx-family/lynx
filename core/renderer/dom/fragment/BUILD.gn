@@ -56,6 +56,8 @@ lynx_core_source_set("display_list") {
     "display_list.h",
     "display_list_builder.cc",
     "display_list_builder.h",
+    "display_list_reader.cc",
+    "display_list_reader.h",
     "layout_info.cc",
     "layout_info.h",
     "rounded_rectangle.h",
