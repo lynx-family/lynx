@@ -269,7 +269,9 @@ jobs:
         run: |-
           cd $GITHUB_WORKSPACE/lynx
           pushd platform/android
-          ./gradlew zipArtifacts -Pversion=${{ needs.get-version.outputs.version }} getArtifactList
+          ./gradlew zipArtifacts -Pversion=${{ needs.get-version.outputs.version }}
+          ./gradlew zipDevArtifacts -Pversion=${{ needs.get-version.outputs.version }}-dev
+          ./gradlew getArtifactList -Pversion=${{ needs.get-version.outputs.version }}
           popd
           pushd platform/android/build
           artifact_list=$(<artifact-list)
