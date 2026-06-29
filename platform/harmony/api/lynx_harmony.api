@@ -691,6 +691,7 @@ export abstract class LynxViewClient implements IPerformanceObserver {
   public onReceivedError(error: LynxError): void;
   public onDestroy(): void;
   public onUpdateDataWithoutChange(): void;
+  public onIntrinsicContentSizeChange(width: number, height: number): void;
   public onTemplateBundleReady(bundle: TemplateBundle): void;
   public onPerformanceEvent(entry: PerformanceEntry): void;
   public onResourceLoaded(result: LynxResourceLoadInfo): void;

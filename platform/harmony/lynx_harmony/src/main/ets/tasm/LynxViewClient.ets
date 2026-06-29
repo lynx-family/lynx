@@ -155,6 +155,15 @@ export abstract class LynxViewClient implements IPerformanceObserver {
   }
 
   /**
+   * Called when the intrinsic content size of LynxView changes.
+   * @apidoc
+   * @param width The intrinsic content width.
+   * @param height The intrinsic content height.
+   */
+  public onIntrinsicContentSizeChange(width: number, height: number): void {
+  }
+
+  /**
    * Provide a reusable TemplateBundle after template is decode.
    * @apidoc
    * @note This callback is disabled by default, and you can enable it through the

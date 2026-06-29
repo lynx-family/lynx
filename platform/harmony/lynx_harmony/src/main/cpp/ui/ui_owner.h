@@ -223,6 +223,7 @@ class UIOwner {
   void MarkHasUIOperations(UIBase* ui);
   void MarkHasUIOperationsBottomUp(UIBase* ui);
   void RequestLayout();
+  void NotifyIntrinsicContentSizeChangedIfNeeded();
   void UpdateComponentIdMap(UIBase* ui, PropBundleHarmony* painting_data);
   void InitLynxImageConfig(bool enable_image_load_callback,
                            bool enable_redirect_url);
@@ -269,6 +270,8 @@ class UIOwner {
   std::string id_;
 
   bool destroyed_ = false;
+  float last_intrinsic_content_width_{0.f};
+  float last_intrinsic_content_height_{0.f};
 
   std::shared_ptr<GestureArenaManager> gesture_arena_manager_{nullptr};
   std::unique_ptr<LynxImageConfig> image_config_{nullptr};
