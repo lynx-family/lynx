@@ -52,17 +52,15 @@ PlatformRendererAndroid::PlatformRendererAndroid(
 }
 
 void PlatformRendererAndroid::OnUpdateDisplayList(DisplayList display_list) {
-  if (display_list.HasContent()) {
+  if (display_list.GetContentItemsSize() > 0) {
     display_list_ = std::move(display_list);
 
-    constexpr int kFrameValueCount = 4;
-    if (context_ && display_list_.GetContentFloatData() &&
-        display_list_.GetContentFloatDataSize() >= kFrameValueCount) {
-      float frame[4];
-      // The first four float values in the display list are the frame of the
-      // layer's OP_BEGIN.
-      memcpy(frame, display_list_.GetContentFloatData(), 4 * sizeof(float));
-
+    const auto* items = reinterpret_cast<const DisplayListItem*>(
+        display_list_.GetContentItemsData());
+    if (items != nullptr && items->type == DisplayListOpType::kBegin &&
+        context_ != nullptr) {
+      const float frame[4] = {items->payload.begin.x, items->payload.begin.y,
+                              items->payload.begin.w, items->payload.begin.h};
       context_->UpdatePlatformRendererFrame(
           PlatformRendererImpl::GetId(), display_list_.RootNeedClipBounds(),
           frame, display_list_.GetRenderOffset());
