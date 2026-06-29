@@ -141,12 +141,23 @@ bool SharedImageSinkAccessor::SwapBack() {
     return false;
   }
   std::unique_ptr<FenceSync> fence = back_repr_->ProduceFence();
+  back_repr_ = nullptr;
   if (!sink_->SwapBack(std::move(fence))) {
     return false;
   }
-  back_repr_ = nullptr;
   return true;
 }
+
+bool SharedImageSinkAccessor::CancelBack() {
+  if (!back_repr_) {
+    return false;
+  }
+  const bool result = back_repr_->EndWrite();
+  back_repr_ = nullptr;
+  return result;
+}
+
+void SharedImageSinkAccessor::AbandonBack() { back_repr_ = nullptr; }
 
 fml::RefPtr<SharedImageRepresentation>
 SharedImageSinkAccessor::GetRepresentation(SharedImageBacking* backing) {
