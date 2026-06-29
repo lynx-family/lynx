@@ -615,6 +615,9 @@ RENDERER_FUNCTION_CC(SetSessionStorageItem) {
   CONVERT_ARG_AND_CHECK(arg0, 0, String, SetSessionStorageItem);
   CONVERT_ARG_AND_CHECK(arg1, 1, Object, SetSessionStorageItem);
   auto* tasm = GET_TASM_POINTER();
+  if (tasm == nullptr) {
+    RETURN_UNDEFINED();
+  }
   auto white_board_delegate = tasm->GetWhiteBoardDelegate();
   if (white_board_delegate) {
     white_board_delegate->SetSessionStorageItem(arg0->StdString(),
@@ -627,9 +630,45 @@ RENDERER_FUNCTION_CC(GetSessionStorageItem) {
   CHECK_ARGC_EQ(GetSessionStorageItem, 1);
   CONVERT_ARG_AND_CHECK(arg0, 0, String, GetSessionStorageItem);
   auto* tasm = GET_TASM_POINTER();
+  if (tasm == nullptr) {
+    RETURN_UNDEFINED();
+  }
   auto white_board_delegate = tasm->GetWhiteBoardDelegate();
   if (white_board_delegate) {
     return white_board_delegate->GetSessionStorageItem(arg0->StdString());
+  }
+  RETURN_UNDEFINED();
+}
+
+RENDERER_FUNCTION_CC(SubscribeSessionStorage) {
+  CHECK_ARGC_EQ(SubscribeSessionStorage, 3);
+  CONVERT_ARG_AND_CHECK(arg0, 0, String, SubscribeSessionStorage);
+  CONVERT_ARG_AND_CHECK(arg1, 1, Number, SubscribeSessionStorage);
+  CONVERT_ARG_AND_CHECK(arg2, 2, Callable, SubscribeSessionStorage);
+  auto* tasm = GET_TASM_POINTER();
+  if (tasm == nullptr) {
+    RETURN_UNDEFINED();
+  }
+  auto white_board_delegate = tasm->GetWhiteBoardDelegate();
+  if (white_board_delegate) {
+    white_board_delegate->SubscribeLepusSessionStorage(arg0->StdString(),
+                                                       arg1->Number(), *arg2);
+  }
+  RETURN_UNDEFINED();
+}
+
+RENDERER_FUNCTION_CC(UnsubscribeSessionStorage) {
+  CHECK_ARGC_EQ(UnsubscribeSessionStorage, 2);
+  CONVERT_ARG_AND_CHECK(arg0, 0, String, UnsubscribeSessionStorage);
+  CONVERT_ARG_AND_CHECK(arg1, 1, Number, UnsubscribeSessionStorage);
+  auto* tasm = GET_TASM_POINTER();
+  if (tasm == nullptr) {
+    RETURN_UNDEFINED();
+  }
+  auto white_board_delegate = tasm->GetWhiteBoardDelegate();
+  if (white_board_delegate) {
+    white_board_delegate->UnsubscribeLepusSessionStorage(arg0->StdString(),
+                                                         arg1->Number());
   }
   RETURN_UNDEFINED();
 }
