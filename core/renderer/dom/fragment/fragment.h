@@ -9,6 +9,7 @@
 #include "core/renderer/dom/base_element_container.h"
 #include "core/renderer/dom/fragment/box_model_recorder.h"
 #include "core/renderer/dom/fragment/display_list_builder.h"
+#include "core/renderer/dom/fragment/event/platform_event_bundle.h"
 #include "core/renderer/dom/fragment/fragment_behavior.h"
 #include "core/renderer/dom/fragment/layout_info.h"
 
