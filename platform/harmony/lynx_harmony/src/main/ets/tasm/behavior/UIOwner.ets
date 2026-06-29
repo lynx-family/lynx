@@ -47,6 +47,12 @@ export class UIOwner {
     this.clients?.forEach(client => client.onResourceLoaded(result));
   }
 
+  notifyIntrinsicContentSizeChanged(width: number, height: number) {
+    this.lynxContext.getLynxViewClient()?.forEach(client => {
+      client.onIntrinsicContentSizeChange(width, height);
+    });
+  }
+
   startFluencyTrace(sign: number, scene: string, tag: string, instanceId: number, probability: number) {
     if (!this.fluencyTraceHelper) {
       this.fluencyTraceHelper = new FluencyTraceHelper();
