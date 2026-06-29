@@ -380,13 +380,13 @@ jobs:
       - name: Collect and zip artifacts
         run: |
           cd $GITHUB_WORKSPACE/lynx/platform/android
-          ./gradlew zipAllArtifacts
+          ./gradlew zipArtifacts -Pversion=0.0.1-alpha.1
       - name: upload zip artifact
         uses: lynx-infra/upload-artifact@332ec52e99f7cbf1fbbdc9bcc09280d49147d092
         continue-on-error: true
         with:
           name: android-sdk-release
-          path: '${{ github.workspace }}/lynx/platform/android/build/artifacts-collection.zip'
+          path: '${{ github.workspace }}/lynx/platform/android/build/lynx-android-sdk-0.0.1-alpha.1.zip'
 
   android-e2e-test:
     timeout-minutes: 60
@@ -582,15 +582,15 @@ jobs:
         uses: actions/checkout@v4.2.2
         with:
           repository: lynx-family/integrating-lynx-demo-projects
-          ref: b106f7f21d5221acfed645f4afa9d829a1cc0cc2
+          ref: eedde50f700c0f7b2693c79b73c0d1b918d4f53f
           path: lynx
       - name: Cherry Pick Commit To Build With Local AAR
         run: |
           echo "GITHUB_WORKSPACE: $GITHUB_WORKSPACE"
           git config user.name "GitHub Actions"
           git config user.email "actions@github.com"
-          git fetch origin 12858f5a4f51454057f738f0b1d2bb001986dc91
-          git cherry-pick 12858f5a4f51454057f738f0b1d2bb001986dc91
+          git fetch origin 10e19c5c9dbbadc9960c1677dac6884a8a3f63c9
+          git cherry-pick 10e19c5c9dbbadc9960c1677dac6884a8a3f63c9
       - name: Download Lynx SDK Artifacts
         uses: lynx-infra/download-artifact@79d9914484f933089c2840552cf439bac85debad
         with:
@@ -620,8 +620,7 @@ jobs:
         run: |
           set -e
           pushd android/JavaEmptyProject/
-          python3 shell/prepare_package_with_local_aar.py $GITHUB_WORKSPACE/lynx/artifacts-collection.zip 0.0.1-alpha.1
-          ./gradlew publishAllZips
+          python3 shell/prepare_package_with_local_aar.py $GITHUB_WORKSPACE/lynx/lynx-android-sdk-0.0.1-alpha.1.zip 0.0.1-alpha.1
           ./gradlew :app:assembleDebug
           popd
 
