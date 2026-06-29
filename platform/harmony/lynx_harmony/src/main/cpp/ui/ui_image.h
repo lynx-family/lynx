@@ -59,7 +59,6 @@ class UIImage : public UIBase {
   float shadow_offset_x_{0.f};
   float shadow_offset_y_{0.f};
   float shadow_radius_{0.f};
-  float blur_radius_{0.f};
   float image_padding_left_{0.f};
   float image_padding_top_{0.f};
   float image_padding_right_{0.f};
@@ -75,11 +74,11 @@ class UIImage : public UIBase {
   uint64_t event_flags_{0};
   static std::unordered_map<std::string, void (UIImage::*)(const lepus::Value& value)>
       prop_setters_;
+  LynxImageEffectProcessor::ImageEffect effect_type_{LynxImageEffectProcessor::ImageEffect::kNone};
   uint64_t load_start_{0};
   uint64_t load_finish_{0};
   bool enable_image_load_callback_{false};
   bool enable_redirect_url_{false};
-  uint8_t effect_flags_{0};
 
   ArkUI_ObjectFit ConvertMode(const std::string& mode);
   void UpdateImageMode(const lepus::Value& value);
@@ -101,7 +100,8 @@ class UIImage : public UIBase {
   void HandleImagePlaceholderResponse(pub::LynxPathResponse& response);
   LynxImageEffectProcessor::CommonViewParams GenerateCommonViewParams();
   void HandleImageWithProcessor(const std::string& url, bool is_base64,
-                                std::vector<LynxImageEffectProcessor> processors);
+                                LynxImageEffectProcessor::ImageEffect effect_type,
+                                const LynxImageEffectProcessor::EffectParams& params);
   // Synchronously calls ArkTS functions (e.g., GetResourceLoader), which may
   // destroy `this`. Returns true if the instance remains valid, or false if
   // destroyed. Callers must abort immediately if false is returned to prevent

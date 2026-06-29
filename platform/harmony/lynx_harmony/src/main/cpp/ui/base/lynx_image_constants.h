@@ -59,7 +59,6 @@ inline constexpr uint32_t kFlagPaddingChanged = 1 << 6;
 inline constexpr uint32_t kFlagFrameSizeChanged = 1 << 7;
 inline constexpr uint32_t kFlagModeChanged = 1 << 8;
 inline constexpr uint32_t kFlagEffectChanged = 1 << 9;
-inline constexpr uint32_t kFlagBlurRadiusChanged = 1 << 10;
 
 // event flag
 inline constexpr uint32_t kFlagImageLoadEvent = 1;
@@ -74,7 +73,6 @@ inline constexpr uint32_t kFlagImageAnimationEvent =
 // effect flag
 inline constexpr uint8_t kFlagEffectDropShadow = 1;
 inline constexpr uint8_t kFlagEffectCapInsets = 1 << 1;
-inline constexpr uint8_t kFlagEffectBlur = 1 << 2;
 
 }  // namespace image
 }  // namespace harmony

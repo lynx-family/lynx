@@ -28,14 +28,14 @@ namespace harmony {
 void LynxImageHelper::DecodeImageAsync(
     napi_env env, const std::string& url, bool is_base64,
     base::MoveOnlyClosure<void, ImageResponse&> callback,
-    std::vector<LynxImageEffectProcessor> processors) {
+    LynxImageEffectProcessor params) {
   base::NapiHandleScope scope(env);
   auto context = new CallbackContext;
   context->env = env;
   context->url = url;
   context->callback = std::move(callback);
   context->is_base64 = is_base64;
-  context->processors = std::move(processors);
+  context->params = std::move(params);
   napi_value work_name;
   napi_create_string_utf8(env, "LynxImageHelper::DecodeImageAsync",
                           NAPI_AUTO_LENGTH, &work_name);
@@ -44,7 +44,7 @@ void LynxImageHelper::DecodeImageAsync(
       [](napi_env env, void* data) {
         CallbackContext* context = reinterpret_cast<CallbackContext*>(data);
         context->response = LynxImageHelper::DecodeImageSync(
-            context->url, context->is_base64, context->processors);
+            context->url, context->is_base64, context->params);
       },
       [](napi_env env, napi_status status, void* data) {
         CallbackContext* context = reinterpret_cast<CallbackContext*>(data);
@@ -58,7 +58,7 @@ void LynxImageHelper::DecodeImageAsync(
 
 LynxImageHelper::ImageResponse LynxImageHelper::DecodeImageSync(
     const std::string& url, bool is_base64,
-    const std::vector<LynxImageEffectProcessor>& processors) {
+    const LynxImageEffectProcessor& params) {
   OH_ImageSourceNative* image_source_native = nullptr;
   Image_ErrorCode code = IMAGE_SUCCESS;
   TRACE_EVENT(LYNX_TRACE_CATEGORY, IMAGE_HELPER_DECODE_IMAGE_SYNC, "url", url,
@@ -119,7 +119,7 @@ LynxImageHelper::ImageResponse LynxImageHelper::DecodeImageSync(
     response.err_code = code;
     return response;
   }
-  DecodeImageFromImageSource(image_source_native, response, processors);
+  DecodeImageFromImageSource(image_source_native, response, params);
   OH_ImageSourceNative_Release(image_source_native);
   return response;
 }
@@ -154,7 +154,7 @@ std::string LynxImageHelper::GetRedirectUrl(
 
 void LynxImageHelper::DecodeImageFromImageSource(
     OH_ImageSourceNative* image_source, ImageResponse& response,
-    const std::vector<LynxImageEffectProcessor>& processors) {
+    const LynxImageEffectProcessor& params) {
   OH_DecodingOptions* options;
   OH_DecodingOptions_Create(&options);
   OH_DecodingOptions_SetPixelFormat(options, PIXEL_FORMAT_RGBA_8888);
@@ -183,17 +183,12 @@ void LynxImageHelper::DecodeImageFromImageSource(
     return;
   }
   response.frame_count = frameCount;
-  if (!processors.empty() && frameCount == 1) {
-    for (const auto& processor : processors) {
-      if (processor.GetEffectType() ==
-          LynxImageEffectProcessor::ImageEffect::kNone) {
-        continue;
-      }
-      OH_PixelmapNative* new_pixel_map = processor.Process(pixel_map);
-      if (new_pixel_map) {
-        OH_PixelmapNative_Release(pixel_map);
-        pixel_map = new_pixel_map;
-      }
+  if (params.GetEffectType() != LynxImageEffectProcessor::ImageEffect::kNone &&
+      frameCount == 1) {
+    OH_PixelmapNative* new_pixel_map = params.Process(pixel_map);
+    if (new_pixel_map) {
+      OH_PixelmapNative_Release(pixel_map);
+      pixel_map = new_pixel_map;
     }
   }
   std::vector<std::unique_ptr<LynxPixelMap>> data;

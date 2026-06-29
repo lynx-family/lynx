@@ -16,8 +16,6 @@
 #include <native_drawing/drawing_round_rect.h>
 #include <native_drawing/drawing_sampling_options.h>
 
-#include "platform/harmony/lynx_harmony/src/main/cpp/ui/utils/lynx_image_blur_utils.h"
-
 namespace lynx {
 namespace tasm {
 namespace harmony {
@@ -33,9 +31,6 @@ std::string LynxImageEffectProcessor::Info() const {
   } else if (effect_ == ImageEffect::kCapInsets) {
     const auto& cap_insets_params = std::get<CapInsetParams>(params_);
     return cap_insets_params.ToString();
-  } else if (effect_ == ImageEffect::kBlur) {
-    const auto& blur_params = std::get<BlurParams>(params_);
-    return blur_params.ToString();
   } else {
     return {};
   }
@@ -50,18 +45,9 @@ OH_PixelmapNative* LynxImageEffectProcessor::CustomProcessor(
   } else if (effect == ImageEffect::kCapInsets) {
     const auto& cap_insets_params = std::get<CapInsetParams>(params);
     return ApplyCapInsetsToBitmap(cap_insets_params, pixel_map);
-  } else if (effect == ImageEffect::kBlur) {
-    const auto& blur_params = std::get<BlurParams>(params);
-    return ApplyBlurToBitmap(blur_params, pixel_map);
   } else {
     return nullptr;
   }
-}
-
-OH_PixelmapNative* LynxImageEffectProcessor::ApplyBlurToBitmap(
-    const LynxImageEffectProcessor::BlurParams& params,
-    OH_PixelmapNative* pixel_map) const {
-  return LynxImageBlurUtils::ApplyBlurToBitmap(pixel_map, params.radius);
 }
 
 OH_PixelmapNative* LynxImageEffectProcessor::ApplyDropShadowToBitmap(
