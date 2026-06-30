@@ -3316,7 +3316,7 @@ public class LynxRendererContext : NSObject {
   public LynxUIContext* LynxRendererContext::uiContext uiContext;
   public LynxTextRenderManager* LynxRendererContext::textRenderManager textRenderManager;
   public void LynxRendererContext::createImageManager:withSourceURL:andPlaceholderURL:eventMask:(int32_t imageManagerID,[withSourceURL] LynxURL *sourceURL,[andPlaceholderURL] LynxURL *placeholderURL,[eventMask] int32_t eventMask);
-  public LynxImageManager * LynxRendererContext::takeImageManager:(int32_t imageManagerID);
+  public LynxImageManager * LynxRendererContext::imageManagerForID:(int32_t imageManagerID);
   public void LynxRendererContext::updateTextBundle:withBundle:(int32_t textID,[withBundle] void *bundle);
   public void LynxRendererContext::destroyTextBundle:(int32_t textID);
   public void * LynxRendererContext::getTextBundle:(int32_t textID);

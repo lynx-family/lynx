@@ -19,7 +19,7 @@
          andPlaceholderURL:(LynxURL *)placeholderURL
                  eventMask:(int32_t)eventMask;
 
-- (LynxImageManager *)takeImageManager:(int32_t)imageManagerID;
+- (LynxImageManager *)imageManagerForID:(int32_t)imageManagerID;
 
 - (void)updateTextBundle:(int32_t)textID withBundle:(void *)bundle;
 
