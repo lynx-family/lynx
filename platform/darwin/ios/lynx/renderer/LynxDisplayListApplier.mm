@@ -64,7 +64,6 @@ using namespace lynx::tasm;
   CALayer *_refLayer;
   CALayer *_hostDecorationRefLayer;
 
-  NSMutableDictionary<NSNumber *, LynxImageManager *> *_imageManagers;
   NSMutableArray<UIImageView *> *_contentImageViews;
   NSMutableArray<CALayer *> *_contentLayers;
   NSMutableArray<CALayer *> *_hostDecorationLayers;
@@ -710,17 +709,7 @@ using namespace lynx::tasm;
 }
 
 - (LynxImageManager *)imageManagerForID:(int32_t)imageManagerID {
-  if (_imageManagers == nil) {
-    _imageManagers = [NSMutableDictionary new];
-  }
-  LynxImageManager *imageManager = _imageManagers[@(imageManagerID)];
-  if (imageManager == nil) {
-    imageManager = [_renderer_context takeImageManager:imageManagerID];
-    if (imageManager != nil) {
-      _imageManagers[@(imageManagerID)] = imageManager;
-    }
-  }
-  return imageManager;
+  return [_renderer_context imageManagerForID:imageManagerID];
 }
 
 #pragma mark - Border Helpers
