@@ -50,15 +50,16 @@ void DestroyTextBundlePointer(void *bundle) {
   [imageManager requestImage:sourceURL withType:LynxImageRequestSrc];
   [imageManager requestImage:sourceURL withType:LynxImageRequestPlaceholder];
   @synchronized(self) {
+    // TODO(songshourui.null): Reset or destroy the previous manager when the same image id is
+    // replaced, so any pending request cannot update stale targets after ownership is finalized.
     _imageManagers[@(imageManagerID)] = imageManager;
   }
 }
 
-- (LynxImageManager *)takeImageManager:(int32_t)imageManagerID {
+- (LynxImageManager *)imageManagerForID:(int32_t)imageManagerID {
   LynxImageManager *imageManager = nil;
   @synchronized(self) {
     imageManager = _imageManagers[@(imageManagerID)];
-    [_imageManagers removeObjectForKey:@(imageManagerID)];
   }
   return imageManager;
 }
