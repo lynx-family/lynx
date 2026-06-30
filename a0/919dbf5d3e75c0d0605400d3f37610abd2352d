@@ -1,0 +1,90 @@
+platform/android/publish.gradle
+  s_c9da953da61e2b::t_b994843971b931 36-44,283-291,298-305 gitai:{"mixed_line_ranges":[],"operations":[{"operation_id":"6a43d762c2d0de288444aef0","tool_type":"agent","tool_id":"apply_patch","line_ranges":[{"Range":[36,44]},{"Range":[283,291]},{"Range":[298,305]}]}]}
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a0919dbf5d3e75c0d0605400d3f37610abd2352d",
+  "prompts": {},
+  "sessions": {
+    "s_c9da953da61e2b": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a3fcf05c2d0de2884449bc3",
+        "model": "gpt-5.4__dev"
+      },
+      "human_author": "gaohanqing <gaohanqing@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {
+    "platform/android/publish.gradle": [
+      {
+        "hash": "s_c9da953da61e2b::t_b994843971b931",
+        "line_ranges": [
+          {
+            "Range": [
+              36,
+              44
+            ]
+          },
+          {
+            "Range": [
+              283,
+              291
+            ]
+          },
+          {
+            "Range": [
+              298,
+              305
+            ]
+          }
+        ],
+        "mixed_line_ranges": [],
+        "operations": [
+          {
+            "operation_id": "6a43d762c2d0de288444aef0",
+            "tool_type": "agent",
+            "tool_id": "apply_patch",
+            "line_ranges": [
+              {
+                "Range": [
+                  36,
+                  44
+                ]
+              },
+              {
+                "Range": [
+                  283,
+                  291
+                ]
+              },
+              {
+                "Range": [
+                  298,
+                  305
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "remote_transcripts": {
+    "s_c9da953da61e2b": {
+      "tool": "trae",
+      "conversation_id": "6a3fcf05c2d0de2884449bc3",
+      "session_id": "6a3fcf05c2d0de2884449bc3",
+      "status": "remote_only",
+      "message": "Remote transcript resolution is not implemented yet for TRAE prompts."
+    },
+    "s_c9da953da61e2b::t_b994843971b931": {
+      "tool": "trae",
+      "conversation_id": "6a3fcf05c2d0de2884449bc3",
+      "session_id": "6a3fcf05c2d0de2884449bc3",
+      "status": "remote_only",
+      "message": "Remote transcript resolution is not implemented yet for TRAE prompts."
+    }
+  }
+}
