@@ -389,6 +389,9 @@ void TouchEventHandler::HandleCustomEvent(TemplateAssembler *tasm,
                             .count();
     auto event =
         fml::MakeRefCounted<event::CustomEvent>(name, params, pname, timestamp);
+    if (base::Version(version_) < base::Version(LYNX_VERSION_2_1)) {
+      event->set_enable_legacy_native_event_param(true);
+    }
     event::EventDispatcher::DispatchEvent(*target, std::move(event));
     return;
   }
@@ -678,6 +681,11 @@ void TouchEventHandler::HandleTriggerComponentEvent(
         event::Event::PhaseType::kNone,
         base::Version(version_) < base::Version(LYNX_VERSION_1_6));
     event->set_from_frontend(true);
+    auto page_config = tasm->GetPageConfig();
+    if (page_config) {
+      event->set_enable_frontend_custom_event_bubble_compatible(
+          page_config->GetEnableFrontendCustomEventBubbleCompatible());
+    }
     event::EventDispatcher::DispatchEvent(*component_element, std::move(event));
     return;
   }

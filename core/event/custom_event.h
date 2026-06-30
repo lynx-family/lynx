@@ -24,14 +24,20 @@ class CustomEvent : public Event {
 
   void HandleEventBaseDetail(bool is_core_event = false) override;
   void HandleEventCustomDetail() override;
+  void set_enable_legacy_native_event_param(bool enable) {
+    enable_legacy_native_event_param_ = enable;
+  }
 
  private:
   bool ShouldUseLegacyFrontendEventParam() const;
   void ApplyLegacyFrontendEventParam();
+  bool ShouldUseLegacyNativeEventParam() const;
+  void ApplyLegacyNativeEventParam();
 
   lepus::Value event_param_{lepus::Dictionary::Create()};
   std::string param_name_{""};
   bool enable_legacy_frontend_event_param_{false};
+  bool enable_legacy_native_event_param_{false};
 };
 
 }  // namespace event

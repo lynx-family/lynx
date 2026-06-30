@@ -461,6 +461,17 @@ export interface Config {
   enableFrameNativeData?: boolean;
 
   /**
+   * Controls whether refactored frontend custom events keep the legacy non-bubbling component-event behavior where the first ancestor bubble listener can still receive the event when the target has no bubble listener. When enabled, runtime preserves that compatibility path; when disabled, non-bubbling frontend custom events only dispatch on the target.
+   *
+   * Supported platform: Android, HarmonyOS, iOS
+   *
+   * Since: LynxSDK 4.1
+   *
+   * @defaultValue true
+   */
+  enableFrontendCustomEventBubbleCompatible?: boolean;
+
+  /**
    * Controls whether the CSS parser accepts grid-column and grid-row shorthand syntax. When enabled, grid shorthand handlers parse placement shorthands into style values; when disabled, those shorthand declarations are rejected.
    *
    * Supported platform: Android, iOS, HarmonyOS
