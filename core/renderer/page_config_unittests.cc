@@ -107,6 +107,21 @@ TEST(PageConfigTest, EnableEventTargetInfoNodeIndex) {
   EXPECT_TRUE(page_config->GetEnableEventTargetInfoNodeIndex());
 }
 
+TEST(PageConfigTest, EnableFrontendCustomEventBubbleCompatible) {
+  std::shared_ptr<PageConfig> default_config = std::make_shared<PageConfig>();
+  EXPECT_TRUE(default_config->GetEnableFrontendCustomEventBubbleCompatible());
+
+  rapidjson::Document explicit_false_doc;
+  explicit_false_doc.Parse(
+      "{\n  \"enableFrontendCustomEventBubbleCompatible\" : false\n}");
+  std::shared_ptr<PageConfig> explicit_false_config =
+      std::make_shared<PageConfig>();
+  LynxConfigDecoder::DecodePageConfig(explicit_false_config, explicit_false_doc,
+                                      "");
+  EXPECT_FALSE(
+      explicit_false_config->GetEnableFrontendCustomEventBubbleCompatible());
+}
+
 TEST(PageConfigTest, EnableElementInvokeUIMethodPendingTask) {
   auto& env = LynxEnv::GetInstance();
   env.external_env_map_.erase(

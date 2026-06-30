@@ -55,6 +55,7 @@ void CustomEvent::HandleEventBaseDetail(bool is_core_event) {
     return;
   }
   Event::HandleEventBaseDetail(is_core_event);
+  ApplyLegacyNativeEventParam();
   ApplyLegacyFrontendEventParam();
 }
 
@@ -88,6 +89,10 @@ bool CustomEvent::ShouldUseLegacyFrontendEventParam() const {
   return enable_legacy_frontend_event_param_ && from_frontend_;
 }
 
+bool CustomEvent::ShouldUseLegacyNativeEventParam() const {
+  return enable_legacy_native_event_param_ && !from_frontend_;
+}
+
 void CustomEvent::ApplyLegacyFrontendEventParam() {
   if (!ShouldUseLegacyFrontendEventParam()) {
     return;
@@ -99,6 +104,30 @@ void CustomEvent::ApplyLegacyFrontendEventParam() {
     });
   } else {
     detail_ = event_param_;
+  }
+}
+
+void CustomEvent::ApplyLegacyNativeEventParam() {
+  if (!ShouldUseLegacyNativeEventParam() || !detail_.IsTable()) {
+    return;
+  }
+
+  BASE_STATIC_STRING_DECL(kId, "id");
+  BASE_STATIC_STRING_DECL(kDataset, "dataset");
+  BASE_STATIC_STRING_DECL(kTarget, "target");
+  BASE_STATIC_STRING_DECL(kCurrentTarget, "currentTarget");
+
+  auto dict = detail_.Table();
+  auto target = dict->GetValue(kTarget);
+  if (target.IsTable()) {
+    target.Table()->SetValue(param_name_, event_param_);
+    dict->SetValue(kId, target.Table()->GetValue(kId));
+    dict->SetValue(kDataset, target.Table()->GetValue(kDataset));
+  }
+
+  auto current_target = dict->GetValue(kCurrentTarget);
+  if (current_target.IsTable()) {
+    current_target.Table()->SetValue(param_name_, event_param_);
   }
 }
 

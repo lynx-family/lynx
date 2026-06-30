@@ -1749,8 +1749,18 @@ enableEventTargetInfoNodeIndex:
   description: Controls whether event payloads include `nodeIndex` on `target` and `currentTarget`. When enabled, touch and element event serialization adds the element node index; when disabled, those event fields are omitted.
   defaultValue: 'false'
   valueType: bool
-  author: hexionghui
+  author: rAY-ooo
   since: '3.8'
+  supportPlatform:
+    - Android
+    - HarmonyOS
+    - iOS
+enableFrontendCustomEventBubbleCompatible:
+  description: Controls whether refactored frontend custom events keep the legacy non-bubbling component-event behavior where the first ancestor bubble listener can still receive the event when the target has no bubble listener. When enabled, runtime preserves that compatibility path; when disabled, non-bubbling frontend custom events only dispatch on the target.
+  defaultValue: 'true'
+  valueType: bool
+  author: rAY-ooo
+  since: '4.1'
   supportPlatform:
     - Android
     - HarmonyOS

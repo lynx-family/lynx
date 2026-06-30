@@ -815,6 +815,12 @@ class LynxConfigDecoder final {
           doc[config::kEnableEventTargetInfoNodeIndex].GetBool());
     }
 
+    if (doc.HasMember(config::kEnableFrontendCustomEventBubbleCompatible) &&
+        doc[config::kEnableFrontendCustomEventBubbleCompatible].IsBool()) {
+      page_config->SetEnableFrontendCustomEventBubbleCompatible(
+          doc[config::kEnableFrontendCustomEventBubbleCompatible].GetBool());
+    }
+
     if (doc.HasMember(config::kEnableHarmonyVisibleAreaChangeForExposure) &&
         doc[config::kEnableHarmonyVisibleAreaChangeForExposure].IsBool()) {
       page_config->SetEnableHarmonyVisibleAreaChangeForExposure(

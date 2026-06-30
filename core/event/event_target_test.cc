@@ -9,6 +9,7 @@
 #include "core/event/event_target_test.h"
 
 #include "core/event/custom_event.h"
+#include "core/event/event_dispatcher.h"
 #include "core/event/event_listener_map.h"
 #include "core/event/event_listener_test.h"
 #include "core/event/touch_event.h"
@@ -18,7 +19,21 @@ namespace lynx {
 namespace event {
 namespace test {
 
-EventTarget* MockEventTarget::GetParentTarget() { return nullptr; }
+EventTarget* MockEventTarget::GetParentTarget() { return parent_; }
+
+namespace {
+
+lepus::Value CreateEventTargetInfo(const std::string& id,
+                                   const std::string& dataset_value) {
+  auto dict = lepus::Dictionary::Create();
+  auto dataset = lepus::Dictionary::Create();
+  dataset->SetValue("scene", dataset_value);
+  dict->SetValue("id", id);
+  dict->SetValue("dataset", std::move(dataset));
+  return lepus::Value(std::move(dict));
+}
+
+}  // namespace
 
 TEST_F(EventTargetTest, TestEventTargetTest0) {
   auto map = mock_target_->GetEventListenerMap();
@@ -451,6 +466,92 @@ TEST_F(EventTargetTest, TestEventTargetDispatchNoCaptureBubbleEvent) {
             1);
 }
 
+TEST_F(EventTargetTest,
+       FrontendCustomEventBubbleCompatibleDispatchesFirstAncestorOnly) {
+  auto parent = std::make_unique<MockEventTarget>();
+  auto grandparent = std::make_unique<MockEventTarget>();
+  mock_target_->SetParentTarget(parent.get());
+  parent->SetParentTarget(grandparent.get());
+
+  auto target_capture_options = EventListener::Options(
+      true /* capture */, false, false, false, false, false);
+  auto target_capture_listener = std::make_shared<MockEventListener>(
+      EventListener::Type::kJSClosureEventListener, "target_capture", "custom",
+      "0", mock_target_.get(), target_capture_options);
+  mock_target_->AddEventListener("custom", target_capture_listener);
+
+  auto parent_listener = std::make_shared<MockEventListener>(
+      EventListener::Type::kJSClosureEventListener, "parent");
+  parent->AddEventListener("custom", parent_listener);
+  auto grandparent_listener = std::make_shared<MockEventListener>(
+      EventListener::Type::kJSClosureEventListener, "grandparent");
+  grandparent->AddEventListener("custom", grandparent_listener);
+
+  auto event = fml::MakeRefCounted<CustomEvent>(
+      "custom", lepus::Value(), "detail", 0, Event::Capture::kYes,
+      Event::Bubbles::kNo, Event::Cancelable::kYes,
+      Event::ComposedMode::kComposed, Event::PhaseType::kNone);
+  event->set_from_frontend(true);
+  event->set_enable_frontend_custom_event_bubble_compatible(true);
+
+  auto result = EventDispatcher::DispatchEvent(*mock_target_, event);
+
+  EXPECT_EQ(result.cancel_type, EventCancelType::kNotCanceled);
+  EXPECT_TRUE(result.consumed);
+  EXPECT_EQ(target_capture_listener->GetCount(), 1);
+  EXPECT_EQ(parent_listener->GetCount(), 1);
+  EXPECT_EQ(grandparent_listener->GetCount(), 0);
+}
+
+TEST_F(EventTargetTest,
+       FrontendCustomEventBubbleCompatibleSkipsTargetWithBubble) {
+  auto parent = std::make_unique<MockEventTarget>();
+  mock_target_->SetParentTarget(parent.get());
+
+  auto target_listener = std::make_shared<MockEventListener>(
+      EventListener::Type::kJSClosureEventListener, "target");
+  mock_target_->AddEventListener("custom", target_listener);
+  auto parent_listener = std::make_shared<MockEventListener>(
+      EventListener::Type::kJSClosureEventListener, "parent");
+  parent->AddEventListener("custom", parent_listener);
+
+  auto event = fml::MakeRefCounted<CustomEvent>(
+      "custom", lepus::Value(), "detail", 0, Event::Capture::kNo,
+      Event::Bubbles::kNo, Event::Cancelable::kYes,
+      Event::ComposedMode::kComposed, Event::PhaseType::kNone);
+  event->set_from_frontend(true);
+  event->set_enable_frontend_custom_event_bubble_compatible(true);
+
+  auto result = EventDispatcher::DispatchEvent(*mock_target_, event);
+
+  EXPECT_EQ(result.cancel_type, EventCancelType::kNotCanceled);
+  EXPECT_TRUE(result.consumed);
+  EXPECT_EQ(target_listener->GetCount(), 1);
+  EXPECT_EQ(parent_listener->GetCount(), 0);
+}
+
+TEST_F(EventTargetTest, FrontendCustomEventBubbleCompatibleDisabled) {
+  auto parent = std::make_unique<MockEventTarget>();
+  mock_target_->SetParentTarget(parent.get());
+
+  auto parent_listener = std::make_shared<MockEventListener>(
+      EventListener::Type::kJSClosureEventListener, "parent");
+  parent->AddEventListener("custom", parent_listener);
+
+  auto event = fml::MakeRefCounted<CustomEvent>(
+      "custom", lepus::Value(), "detail", 0, Event::Capture::kNo,
+      Event::Bubbles::kNo, Event::Cancelable::kYes,
+      Event::ComposedMode::kComposed, Event::PhaseType::kNone);
+  event->set_from_frontend(true);
+  event->set_enable_frontend_custom_event_bubble_compatible(false);
+
+  auto result = EventDispatcher::DispatchEvent(*mock_target_, event);
+
+  EXPECT_EQ(result.cancel_type, EventCancelType::kNotCanceled);
+  EXPECT_FALSE(result.consumed);
+  EXPECT_EQ(parent_listener->GetCount(), 0);
+}
+
 TEST_F(EventTargetTest, CustomEventParamsDetailOnlyForNativeEvent) {
   auto params = lepus::Dictionary::Create();
   params->SetValue("foo", "bar");
@@ -467,6 +568,43 @@ TEST_F(EventTargetTest, CustomEventParamsDetailOnlyForNativeEvent) {
   frontend_event->HandleEventCustomDetail();
   ASSERT_TRUE(frontend_event->detail().IsTable());
   EXPECT_TRUE(frontend_event->detail().Table()->GetValue("detail").IsNil());
+}
+
+TEST_F(EventTargetTest, LegacyNativeCustomEventParam) {
+  auto params = lepus::Dictionary::Create();
+  params->SetValue("foo", "bar");
+  mock_target_->SetEventTargetInfo(CreateEventTargetInfo("target", "dataset"));
+
+  auto event = fml::MakeRefCounted<CustomEvent>("custom", lepus::Value(params),
+                                                "params");
+  event->set_enable_legacy_native_event_param(true);
+  event->set_target(mock_target_->GetWeakTarget());
+  event->HandleEventCustomDetail();
+  event->set_current_target(mock_target_->GetWeakTarget());
+  event->HandleEventBaseDetail();
+
+  ASSERT_TRUE(event->detail().IsTable());
+  auto detail = event->detail().Table();
+  EXPECT_EQ(detail->GetValue("id").StdString(), "target");
+  ASSERT_TRUE(detail->GetValue("dataset").IsTable());
+  EXPECT_EQ(detail->GetValue("dataset").Table()->GetValue("scene").StdString(),
+            "dataset");
+  ASSERT_TRUE(detail->GetValue("target").IsTable());
+  ASSERT_TRUE(detail->GetValue("currentTarget").IsTable());
+  EXPECT_EQ(detail->GetValue("target")
+                .Table()
+                ->GetValue("params")
+                .Table()
+                ->GetValue("foo")
+                .StdString(),
+            "bar");
+  EXPECT_EQ(detail->GetValue("currentTarget")
+                .Table()
+                ->GetValue("params")
+                .Table()
+                ->GetValue("foo")
+                .StdString(),
+            "bar");
 }
 
 TEST_F(EventTargetTest, LegacyFrontendCustomEventObjectParam) {
