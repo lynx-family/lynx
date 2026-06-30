@@ -191,6 +191,8 @@ export class LynxTemplateRenderer {
 
   getPageDataByKey(keys: string[]): Object;
 
+  getPageDataByKeyAsync(keys: string[], callback: (data: Object | null) => void): void;
+
   setupExtensionDelegate(ptr: number[]): void;
 
   onEnterForeground(): void;

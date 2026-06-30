@@ -1173,6 +1173,21 @@ const lepus::Value LynxShell::GetPageDataByKey(std::vector<std::string> keys) {
   });
 }
 
+void LynxShell::GetPageDataByKeyAsync(
+    std::vector<std::string> keys, std::unique_ptr<PlatformCallBack> callback) {
+  if (!callback) {
+    return;
+  }
+  if (IsDestroyed() || engine_actor_ == nullptr) {
+    callback->InvokeWithValue(lepus::Value());
+    return;
+  }
+  engine_actor_->Act([keys = std::move(keys),
+                      callback = std::move(callback)](auto& engine) mutable {
+    callback->InvokeWithValue(engine->GetPageDataByKey(std::move(keys)));
+  });
+}
+
 // TODO(heshan): change this method to be private
 tasm::ListNode* LynxShell::GetListNode(int32_t tag) {
   // ensure on engine thread
