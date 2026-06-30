@@ -242,6 +242,8 @@ class LynxShell {
   std::unique_ptr<lepus_value> GetCurrentData();
 
   const lepus::Value GetPageDataByKey(std::vector<std::string> keys);
+  void GetPageDataByKeyAsync(std::vector<std::string> keys,
+                             std::unique_ptr<PlatformCallBack> callback);
 
   tasm::ListNode* GetListNode(int32_t tag);
 
