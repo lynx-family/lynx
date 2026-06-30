@@ -42,6 +42,7 @@ class HeadlessAngleSurfaceManager {
   HeadlessAngleSurfaceManager();
 
   bool TryInitializeD3D11Device();
+  bool EnsureInitialized();
   bool Initialize();
   void CleanUp();
 
@@ -60,7 +61,9 @@ class HeadlessAngleSurfaceManager {
   // Pbuffer surface to make current
   EGLSurface egl_surface_ = EGL_NO_SURFACE;
 
-  bool initialize_succeeded_;
+  bool initialize_attempted_ = false;
+
+  bool initialize_succeeded_ = false;
 
   Microsoft::WRL::ComPtr<ID3D11Device> resolved_device_;
 
