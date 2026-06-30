@@ -1,0 +1,28 @@
+.github/workflows/sdk-release-test.yml
+  s_19b434f6a6bbaa::t_e8faf6a5c21ee2 49
+  s_b03dea3d204268::t_fa70bddf9dd698 48
+  s_11d28c3fdcb00c::t_ad5fc3a89fdc61 50
+platform/android/package.gradle
+  s_c9da953da61e2b::t_2c735a2793fa45 11-24,170
+  s_c9da953da61e2b::t_da1ccc7346b664 49
+  s_c9da953da61e2b::t_17f65c2e8fa7f7 42,44-46,131
+  s_c9da953da61e2b::t_83edd3cba2f762 154
+  s_c9da953da61e2b::t_693f4a965068e6 112
+  h_7a1e47632c7d77 48,123-124
+  s_c9da953da61e2b::t_11a92a0ca52830 132
+  s_c9da953da61e2b::t_985832aacc7c67 25-41,43,47,50,113-121,130
+.github/workflows/ci.yml
+  h_7a1e47632c7d77 585,592-593
+  s_c9da953da61e2b::t_c80571c42d91d8 383,389,623
+platform/android/publish.gradle
+  h_7a1e47632c7d77 274,281
+  s_c9da953da61e2b::t_11b1717b27641d 30-34,284
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "03d07abc40b0c66a704c45e7defd41f14d500225",
+  "prompts": {},
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}
