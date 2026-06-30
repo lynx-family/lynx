@@ -69,6 +69,7 @@ public class ScreenCastHelper {
     if (mScreencastEnabled) {
       if (mPaused) {
         ScreenCapturer.getInstance().clearScreenshotBitmapDataCache();
+        ScreenCapturer.getInstance().resetStateToReady();
         mPaused = false;
         DevToolPlatformAndroidDelegate platformDelegate = mPlatformDelegate.get();
         if (platformDelegate != null) {

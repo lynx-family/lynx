@@ -5,7 +5,6 @@ package com.lynx.devtool.helper;
 
 import android.graphics.Bitmap;
 import android.graphics.Matrix;
-import android.os.HandlerThread;
 import android.util.DisplayMetrics;
 import android.view.Choreographer;
 import android.view.View;
@@ -19,7 +18,7 @@ import com.lynx.tasm.utils.DisplayMetricsHolder;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class ScreenCapturer extends FrameCapturer {
   private static class ScreenRequest {
@@ -50,6 +49,27 @@ public class ScreenCapturer extends FrameCapturer {
   private static final int CARD_PREVIEW_MAX_WIDTH = 400;
   private static final int CARD_PREVIEW_MAX_HEIGHT = 800;
 
+  /**
+   * Screencast capture state machine:
+   *
+   *   STATE_READY ──(CAS in triggerNextCapture)──► STATE_CAPTURING
+   *       ▲                                            │
+   *       │                                            ├─(encode success + send)──► STATE_SENT
+   *       │                                            │                                │
+   *       │                                            └─(encode fail / skip / null)─┐  │
+   *       │                                                                          ▼  │(ACK)
+   *       └────────────(Choreographer doFrame)──────── STATE_ACKED ◄─────────────────────┘
+   *
+   * Only one in-flight capture is allowed at a time. The CAS on STATE_READY→STATE_CAPTURING
+   * guarantees this atomically. Encode failures (including OOM) transition to STATE_ACKED
+   * instead of staying in CAPTURING, preventing the infinite-capture loop that occurred
+   * when mScreenshotBitmapDataCache remained null.
+   */
+  private static final int STATE_CAPTURING = 0;
+  private static final int STATE_SENT = 1;
+  private static final int STATE_ACKED = 2;
+  private static final int STATE_READY = 3;
+
   private IDevToolDelegate mDevToolDelegate = null;
 
   // Delay for 1500ms to allow time for rendering remote resources
@@ -59,12 +79,7 @@ public class ScreenCapturer extends FrameCapturer {
   private final ScreenMetadata mScreenMetadata;
   private boolean mIsEnabled;
   private ScreenshotListener mScreenshotListener;
-  // mAckReceived is true that represents we can capture screen now.
-  // when we send screen data to remote, we need reset its value(i.e. false)
-  private final AtomicBoolean mAckReceived;
-  // mIsDirty represents current frame whether need capture or not
-  // when devtool has captured screen, we need reset its value(i.e. false)
-  protected AtomicBoolean mIsDirty;
+  private final AtomicInteger mState;
   private Choreographer.FrameCallback mResetDirtyCallBack;
 
   private volatile long mScreenshotOnMainThreadTime = 0;
@@ -89,8 +104,7 @@ public class ScreenCapturer extends FrameCapturer {
     mScreenMetadata = new ScreenMetadata();
     mIsEnabled = false;
     mScreenshotListener = null;
-    mAckReceived = new AtomicBoolean(false);
-    mIsDirty = new AtomicBoolean(false);
+    mState = new AtomicInteger(STATE_READY);
     mFrameChangeListener = new FrameChangeListener() {
       @Override
       public void onFrameChanged() {
@@ -100,7 +114,7 @@ public class ScreenCapturer extends FrameCapturer {
     mResetDirtyCallBack = new Choreographer.FrameCallback() {
       @Override
       public void doFrame(long frameTimeNanos) {
-        mIsDirty.set(true);
+        mState.compareAndSet(STATE_ACKED, STATE_READY);
         Choreographer.getInstance().postFrameCallback(mResetDirtyCallBack);
       }
     };
@@ -118,9 +132,9 @@ public class ScreenCapturer extends FrameCapturer {
     mScreenRequest.mScreenshotMode = screenShotMode;
     mScreenshotListener = listener;
     mIsEnabled = true;
+    mState.set(STATE_READY);
     addResetDirtyStatusCallBack();
     startFrameViewTrace();
-    // manually trigger first screenshot
     triggerNextCapture();
   }
 
@@ -142,14 +156,17 @@ public class ScreenCapturer extends FrameCapturer {
       return;
     }
 
-    if (mScreenshotBitmapDataCache == null || (mAckReceived.get() && mIsDirty.get())) {
+    if (mState.compareAndSet(STATE_READY, STATE_CAPTURING)) {
       screenshot();
     }
   }
 
   public void onAckReceived() {
-    mAckReceived.set(true);
-    triggerNextCapture();
+    mState.compareAndSet(STATE_SENT, STATE_ACKED);
+  }
+
+  public void resetStateToReady() {
+    mState.set(STATE_READY);
   }
 
   public ScreenMetadata getScreenMetadata() {
@@ -172,13 +189,21 @@ public class ScreenCapturer extends FrameCapturer {
     executorService.submit(new Runnable() {
       @Override
       public void run() {
-        if (bitmap != null) {
-          String screenshotData = getScreenshotDataFromBitmap(bitmap, false);
-          if (screenshotData == null || screenshotData.equals(mScreenshotBitmapDataCache)) {
-            return;
+        try {
+          if (bitmap != null) {
+            String screenshotData = getScreenshotDataFromBitmap(bitmap, false);
+            if (screenshotData == null || screenshotData.equals(mScreenshotBitmapDataCache)) {
+              mState.compareAndSet(STATE_CAPTURING, STATE_ACKED);
+              return;
+            }
+            mScreenshotBitmapDataCache = screenshotData;
+            onNewScreenshotBitmapData(mScreenshotBitmapDataCache);
+          } else {
+            mState.compareAndSet(STATE_CAPTURING, STATE_ACKED);
           }
-          mScreenshotBitmapDataCache = screenshotData;
-          onNewScreenshotBitmapData(mScreenshotBitmapDataCache);
+        } catch (Throwable e) {
+          LLog.e(TAG, "onScreenshotBitmapReady encode failed: " + e.getMessage());
+          mState.compareAndSet(STATE_CAPTURING, STATE_ACKED);
         }
       }
     });
@@ -186,7 +211,7 @@ public class ScreenCapturer extends FrameCapturer {
 
   @Override
   protected void onNewScreenshotBitmapData(String data) {
-    mAckReceived.set(false);
+    mState.set(STATE_SENT);
     if (mScreenshotListener != null) {
       if (mScreenshotOnMainThreadTime == 0) {
         LLog.e(TAG, "onNewScreenshotBitmapData: screenshotMainTime == 0");
@@ -196,8 +221,12 @@ public class ScreenCapturer extends FrameCapturer {
   }
 
   @Override
+  protected void onScreenshotSkipped() {
+    mState.compareAndSet(STATE_CAPTURING, STATE_READY);
+  }
+
+  @Override
   protected void onScreenshotActionStart() {
-    mIsDirty.set(false);
     mScreenshotStartTime = System.nanoTime();
     mScreenshotOnMainThreadTime = 0;
   }
@@ -215,6 +244,8 @@ public class ScreenCapturer extends FrameCapturer {
   protected void screenshot(final View view, ScreenshotBitmapHandler handler) {
     if (mDevToolDelegate != null) {
       mDevToolDelegate.takeScreenshot(handler, mScreenRequest.mScreenshotMode);
+    } else {
+      mState.compareAndSet(STATE_CAPTURING, STATE_ACKED);
     }
     onScreenshotActionEnd();
   }
