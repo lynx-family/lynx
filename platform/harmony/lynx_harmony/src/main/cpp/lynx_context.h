@@ -212,6 +212,7 @@ class LynxContext {
                          bool is_custom_event = false);
 
   void RemoveUIFromExposedMap(UIBase* ui, std::string unique_id = "");
+  void RefreshUIInExposedMap(UIBase* ui, std::string unique_id = "");
 
   void TriggerExposureCheck();
 

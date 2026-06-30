@@ -947,20 +947,31 @@ void UIBase::OnNodeReady() {
 
   dirty_flags_ = 0;
 
+  if (exposure_event_updated_) {
+    context_->AddUIToExposedMap(this);
+    exposure_event_updated_ = false;
+  }
+
   if (!new_exposure_props_.empty()) {
+    bool should_update_exposure_key =
+        new_exposure_props_.find("exposure-id") != new_exposure_props_.end() ||
+        new_exposure_props_.find("exposure-scene") != new_exposure_props_.end();
     if (old_exposure_props_.empty()) {
       context_->AddUIToExposedMap(this);
     } else {
-      if (new_exposure_props_.find("exposure-id") !=
-              new_exposure_props_.end() ||
-          new_exposure_props_.find("exposure-scene") !=
-              new_exposure_props_.end()) {
-        context_->AddUIToExposedMap(this);
-        context_->RemoveUIFromExposedMap(this);
+      if (should_update_exposure_key) {
+        if (ExposureUIKey("") == ExposureUIKey("", false)) {
+          context_->RefreshUIInExposedMap(this);
+        } else {
+          context_->AddUIToExposedMap(this);
+          context_->RemoveUIFromExposedMap(this);
+        }
       }
       context_->TriggerExposureCheck();
     }
-    old_exposure_props_ = std::move(new_exposure_props_);
+    for (auto& it : new_exposure_props_) {
+      old_exposure_props_[it.first] = std::move(it.second);
+    }
     new_exposure_props_.clear();
   }
 }
@@ -1921,8 +1932,7 @@ void UIBase::SetEvents(const std::vector<lepus::Value>& events) {
       has_disappear_event_ = name == "uidisappear";
     }
     if (has_appear_event_ || has_disappear_event_) {
-      context_->AddUIToExposedMap(this, std::to_string(sign_), lepus::Value(),
-                                  true);
+      exposure_event_updated_ = true;
     }
     if (!has_layout_change_event_ && name == "layoutchange") {
       has_layout_change_event_ = true;
@@ -2430,16 +2440,21 @@ void UIBase::GestureRecognized() {
 
 std::string UIBase::ExposureUIKey(const std::string& unique_id,
                                   bool is_add) const {
-  const auto& exposure_props =
-      is_add ? new_exposure_props_ : old_exposure_props_;
   std::string exposure_scene, exposure_id;
-  if (auto it = exposure_props.find("exposure-scene");
-      it != exposure_props.end()) {
-    exposure_scene = it->second.StdString();
-  }
-  if (auto it = exposure_props.find("exposure-id");
-      it != exposure_props.end()) {
-    exposure_id = it->second.StdString();
+  auto update_exposure_key = [&exposure_scene,
+                              &exposure_id](const auto& exposure_props) {
+    if (auto it = exposure_props.find("exposure-scene");
+        it != exposure_props.end()) {
+      exposure_scene = it->second.StdString();
+    }
+    if (auto it = exposure_props.find("exposure-id");
+        it != exposure_props.end()) {
+      exposure_id = it->second.StdString();
+    }
+  };
+  update_exposure_key(old_exposure_props_);
+  if (is_add) {
+    update_exposure_key(new_exposure_props_);
   }
   if (!unique_id.empty()) {
     return unique_id + "_" + exposure_scene + "_" + exposure_id;

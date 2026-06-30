@@ -104,6 +104,7 @@ class UIOwner {
   void AddUIToExposedMap(UIBase* ui, std::string unique_id,
                          lepus::Value extra_data, bool is_custom_event);
   void RemoveUIFromExposedMap(UIBase* ui, std::string unique_id);
+  void RefreshUIInExposedMap(UIBase* ui, std::string unique_id);
   void TriggerExposureCheck();
   void StopExposure(const lepus::Value& options);
   void ResumeExposure();

@@ -73,6 +73,10 @@ void UIObserver::RemoveUIFromExposedMap(UIBase* ui, std::string unique_id) {
   ui_exposure_->RemoveUIFromExposedMap(ui, std::move(unique_id));
 }
 
+void UIObserver::RefreshUIInExposedMap(UIBase* ui, std::string unique_id) {
+  ui_exposure_->RefreshUIInExposedMap(ui, std::move(unique_id));
+}
+
 void UIObserver::TriggerExposureCheck() { ui_exposure_->ExecExposureCheck(); }
 
 void UIObserver::StopExposure(const lepus::Value& options) {

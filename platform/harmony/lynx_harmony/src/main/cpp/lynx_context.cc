@@ -6,6 +6,7 @@
 
 #include <chrono>
 #include <mutex>
+#include <string>
 #include <utility>
 
 #include "base/include/closure.h"
@@ -418,7 +419,15 @@ void LynxContext::ScrollStopped(int32_t tag) {
 void LynxContext::AddUIToExposedMap(UIBase* ui, std::string unique_id,
                                     lepus::Value extra_data,
                                     bool is_custom_event) {
-  if (!ui_owner_ || (unique_id.empty() && ui->ExposureID().empty())) {
+  if (!ui_owner_) {
+    return;
+  }
+  if (unique_id.empty() && !is_custom_event &&
+      (ui->HasAppearEvent() || ui->HasDisappearEvent())) {
+    ui_owner_->AddUIToExposedMap(ui, std::to_string(ui->Sign()), lepus::Value(),
+                                 true);
+  }
+  if (unique_id.empty() && ui->ExposureID().empty()) {
     return;
   }
   ui_owner_->AddUIToExposedMap(ui, std::move(unique_id), std::move(extra_data),
@@ -426,10 +435,29 @@ void LynxContext::AddUIToExposedMap(UIBase* ui, std::string unique_id,
 }
 
 void LynxContext::RemoveUIFromExposedMap(UIBase* ui, std::string unique_id) {
-  if (!ui_owner_ || (unique_id.empty() && ui->ExposureID().empty())) {
+  if (!ui_owner_) {
+    return;
+  }
+  if (unique_id.empty() && (ui->HasAppearEvent() || ui->HasDisappearEvent())) {
+    ui_owner_->RemoveUIFromExposedMap(ui, std::to_string(ui->Sign()));
+  }
+  if (unique_id.empty() && ui->ExposureID().empty()) {
     return;
   }
   ui_owner_->RemoveUIFromExposedMap(ui, std::move(unique_id));
+}
+
+void LynxContext::RefreshUIInExposedMap(UIBase* ui, std::string unique_id) {
+  if (!ui_owner_) {
+    return;
+  }
+  if (unique_id.empty() && (ui->HasAppearEvent() || ui->HasDisappearEvent())) {
+    ui_owner_->RefreshUIInExposedMap(ui, std::to_string(ui->Sign()));
+  }
+  if (unique_id.empty() && ui->ExposureID().empty()) {
+    return;
+  }
+  ui_owner_->RefreshUIInExposedMap(ui, std::move(unique_id));
 }
 
 void LynxContext::TriggerExposureCheck() {

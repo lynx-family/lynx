@@ -554,6 +554,7 @@ class LYNX_EXPORT UIBase : public std::enable_shared_from_this<UIBase>,
   std::unordered_map<std::string, lepus::Value> new_exposure_props_;
   bool has_appear_event_{false};
   bool has_disappear_event_{false};
+  bool exposure_event_updated_{false};
   std::optional<TransformOrigin> transform_origin_ = std::nullopt;
   bool has_layout_change_event_{false};
   float translation_z_{.0f};

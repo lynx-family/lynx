@@ -3307,7 +3307,6 @@ public abstract class LynxBaseUI
   // on the response chain.
   @Override
   public EventTarget hitTest(float x, float y, boolean ignoreUserInteraction) {
-    Log.d("hxh-debug", "hitTest x: " + x + " y: " + y);
     float originX = x, originY = y;
     ArrayList<EventTarget> siblingTargets = new ArrayList<>();
     LynxBaseUI target = null;

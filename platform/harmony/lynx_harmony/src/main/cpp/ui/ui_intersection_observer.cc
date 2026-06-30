@@ -313,8 +313,8 @@ void UIIntersectionObserver::ParseUIMargin(const lepus::Value& options) {
   }
   ref_rect_[0] -= ui_margin_left_;
   ref_rect_[1] -= ui_margin_top_;
-  ref_rect_[2] -= ui_margin_right_;
-  ref_rect_[3] -= ui_margin_bottom_;
+  ref_rect_[2] += ui_margin_right_;
+  ref_rect_[3] += ui_margin_bottom_;
 }
 
 float UIIntersectionObserver::GetUIMarginVP(const lepus::Value& value) {
