@@ -1,0 +1,35 @@
+name: build android sdk snapshot
+
+description: build android sdk and publish snapshot aar to maven snapshots repository
+
+inputs:
+  version:
+    description: The snapshot version of the sdk to publish
+    required: true
+  abiList:
+    description: The abi list of the sdk to publish
+    required: false
+    default: 'armeabi-v7a'
+
+runs:
+  using: composite
+  steps:
+    - name: Build artifact
+      shell: bash
+      run: |-
+        cd $GITHUB_WORKSPACE/lynx
+        source tools/envsetup.sh
+        publish_version="${{ inputs.version }}"
+        if [[ "$publish_version" != *-SNAPSHOT ]]; then
+          echo "Snapshot action requires a version ending with -SNAPSHOT"
+          exit 1
+        fi
+        dev_publish_version="${publish_version%-SNAPSHOT}-dev-SNAPSHOT"
+        pushd platform/android
+        ./gradlew assembleAllModulesRelease -Penable_trace=none -PabiList=${{ inputs.abiList }} -PbuildLynxDebugSo --no-daemon
+        ./gradlew assembleAllModulesDevRelease -Penable_trace=perfetto -PabiList=${{ inputs.abiList }} --no-daemon
+        ./gradlew publishAllModules \
+          -Pversion="$publish_version"
+        ./gradlew publishAllModulesDevRelease \
+          -Pversion="$dev_publish_version"
+        popd

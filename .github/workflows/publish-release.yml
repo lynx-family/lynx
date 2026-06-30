@@ -43,6 +43,7 @@ jobs:
       version: ${{ steps.resolve_version.outputs.VERSION }}
       ios_storage_type: ${{ steps.resolve_version.outputs.IOS_STORAGE_TYPE }}
       checkout_ref: ${{ steps.resolve_checkout_ref.outputs.CHECKOUT_REF }}
+      release_mode: ${{ steps.resolve_release_mode.outputs.RELEASE_MODE }}
     steps:
       - name: Validate manual inputs
         if: ${{ github.event_name == 'workflow_dispatch' }}
@@ -237,6 +238,7 @@ jobs:
   android-sdk-release:
     runs-on: ubuntu-22.04
     needs: get-version
+    if: ${{ needs.get-version.outputs.release_mode == 'tag_release' }}
     timeout-minutes: 240
     steps:
       - name: Download Source
@@ -283,6 +285,41 @@ jobs:
         with:
           portal_api_token: ${{ secrets.PORTAL_API_TOKEN }}
           artifact_path_list: ${{ steps.build_artifact.outputs.artifact_list }}
+
+  android-sdk-snapshot-release:
+    runs-on: lynx-ubuntu-22.04-large
+    needs: get-version
+    if: ${{ needs.get-version.outputs.release_mode != 'tag_release' }}
+    timeout-minutes: 240
+    steps:
+      - name: Download Source
+        uses: actions/checkout@v6
+        with:
+          path: lynx
+          ref: ${{ needs.get-version.outputs.checkout_ref }}
+          fetch-depth: 0
+      - name: Python Setup
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+      - name: Install Common Dependencies
+        uses: ./lynx/.github/actions/common-deps
+        with:
+          cache-backend: 'github'
+      - name: Resolve Android publish version
+        id: resolve_android_publish_version
+        run: |-
+          version="${{ needs.get-version.outputs.version }}"
+          version="${version}-SNAPSHOT"
+          echo "ANDROID_PUBLISH_VERSION=$version" >> "$GITHUB_OUTPUT"
+      - name: Android SDK Snapshot Release
+        uses: ./lynx/.github/actions/android-sdk-snapshot-release
+        env:
+          CENTRAL_TOKEN_USERNAME: ${{ secrets.MAVEN_CENTRAL_TOKEN_USERNAME }}
+          CENTRAL_TOKEN_PASSWORD: ${{ secrets.MAVEN_CENTRAL_TOKEN_PASSWORD }}
+        with:
+          version: ${{ steps.resolve_android_publish_version.outputs.ANDROID_PUBLISH_VERSION }}
+          abiList: 'armeabi-v7a,x86,x86_64,arm64-v8a'
 
   ios-sdk-publish:
     timeout-minutes: 60

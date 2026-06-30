@@ -33,6 +33,15 @@ def getPublishRepositoryBaseDir = {
 def getPublishRepositoryVersionDir = { String version ->
     rootProject.file("${rootProject.buildDir}/release/${version}")
 }
+def isSnapshotVersion = { String version ->
+    version != null && version.endsWith("-SNAPSHOT")
+}
+def getCentralTokenUsername = {
+    findProperty("centralTokenUsername") ?: System.getenv("CENTRAL_TOKEN_USERNAME")
+}
+def getCentralTokenPassword = {
+    findProperty("centralTokenPassword") ?: System.getenv("CENTRAL_TOKEN_PASSWORD")
+}
 
 boolean isJavaModule() {
     boolean result = ((project.plugins.hasPlugin('java-library')
@@ -271,14 +280,29 @@ afterEvaluate {
             }
             repositories {
                 maven {
-                    url = getPublishRepositoryBaseDir()
+                    if (isSnapshotVersion(baseVersion)) {
+                        url = uri("https://central.sonatype.com/repository/maven-snapshots/")
+                        credentials {
+                            username = getCentralTokenUsername()
+                            password = getCentralTokenPassword()
+                        }
+                    } else {
+                        url = getPublishRepositoryBaseDir()
+                    }
                 }
             }
         }
     }
     tasks.withType(PublishToMavenRepository) { task ->
         task.doFirst {
-            repository.url = getPublishRepositoryVersionDir(publication.version.toString())
+            if (isSnapshotVersion(publication.version.toString())) {
+                if (!repository.credentials.username || !repository.credentials.password) {
+                    throw new GradleException("Snapshot publishing requires centralTokenUsername/centralTokenPassword or CENTRAL_TOKEN_USERNAME/CENTRAL_TOKEN_PASSWORD")
+                }
+                repository.url = uri("https://central.sonatype.com/repository/maven-snapshots/")
+            } else {
+                repository.url = getPublishRepositoryVersionDir(publication.version.toString())
+            }
         }
     }
 }

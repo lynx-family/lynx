@@ -27,7 +27,7 @@ runs:
         cd $GITHUB_WORKSPACE/lynx
         source tools/envsetup.sh
         pushd explorer/android
-        ./gradlew :LynxExplorer:assembleNoasanRelease -Penable_trace=perfetto -PabiList=${{ inputs.abi-list }} -no-daemon ${{ inputs.build-params }}
+        ./gradlew :LynxExplorer:assembleNoasanRelease -Penable_trace=perfetto -PabiList=${{ inputs.abi-list }} --no-daemon ${{ inputs.build-params }}
         popd
     - name: upload artifact
       uses: lynx-infra/upload-artifact@332ec52e99f7cbf1fbbdc9bcc09280d49147d092
