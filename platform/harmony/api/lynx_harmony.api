@@ -329,6 +329,7 @@ export class LynxContext implements IContext {
   public canConsumeTouchEvent(x: number, y: number): boolean;
   public updateRootTarget(content: NativeContent): void;
   public getPageDataByKey(keys: string[]): void;
+  public getPageDataByKeyAsync(keys: string[], callback: (data: Object | null) => void): void;
   public setExtensionModule(module: LynxExtensionModule): void;
   public getExtensionModule(): LynxExtensionModule | undefined;
   public getBaseInspectorOwner(): LynxBaseInspectorOwner | null;

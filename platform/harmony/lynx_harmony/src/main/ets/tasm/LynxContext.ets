@@ -411,6 +411,16 @@ export class LynxContext implements IContext {
     return this.renderer?.getPageDataByKey(keys);
   }
 
+  /**
+   * Get page data by an array of keys asynchronously.
+   *
+   * Prefer this method when reading page data from lifecycle callbacks.
+   *
+   */
+  public getPageDataByKeyAsync(keys: string[], callback: (data: Object | null) => void): void {
+    this.renderer?.getPageDataByKeyAsync(keys, callback);
+  }
+
   public setExtensionModule(module?: LynxExtensionModule) {
     this.extensionModule = module;
   }

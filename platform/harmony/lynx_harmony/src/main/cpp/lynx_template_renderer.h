@@ -212,6 +212,8 @@ class LynxTemplateRenderer : public devtool::LynxDevToolProxy {
   static napi_value NativeSetEnableBytecode(napi_env env,
                                             napi_callback_info info);
   static napi_value GetPageDataByKey(napi_env env, napi_callback_info info);
+  static napi_value GetPageDataByKeyAsync(napi_env env,
+                                          napi_callback_info info);
   static napi_value SetupExtensionDelegate(napi_env env,
                                            napi_callback_info info);
   static napi_value OnEnterForeground(napi_env env, napi_callback_info info);

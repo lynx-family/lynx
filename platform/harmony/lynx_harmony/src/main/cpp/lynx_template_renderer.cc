@@ -637,6 +637,7 @@ napi_value LynxTemplateRenderer::Init(napi_env env, napi_value exports) {
       DECLARE_NAPI_METHOD("updateColorScheme", UpdateColorScheme),
       DECLARE_NAPI_METHOD("nativeSetEnableBytecode", NativeSetEnableBytecode),
       DECLARE_NAPI_METHOD("getPageDataByKey", GetPageDataByKey),
+      DECLARE_NAPI_METHOD("getPageDataByKeyAsync", GetPageDataByKeyAsync),
       DECLARE_NAPI_METHOD("setupExtensionDelegate", SetupExtensionDelegate),
       DECLARE_NAPI_METHOD("onEnterForeground", OnEnterForeground),
       DECLARE_NAPI_METHOD("onEnterBackground", OnEnterBackground),
@@ -1671,6 +1672,38 @@ napi_value LynxTemplateRenderer::GetPageDataByKey(napi_env env,
       env, obj->GetPageDataByKey(std::move(keys)));
 
   return result;
+}
+
+napi_value LynxTemplateRenderer::GetPageDataByKeyAsync(
+    napi_env env, napi_callback_info info) {
+  napi_value js_this = nullptr;
+  size_t argc = 2;
+  napi_value args[2] = {nullptr};
+  napi_get_cb_info(env, info, &argc, args, &js_this, nullptr);
+
+  if (argc < 2 || !IsNapiFunction(env, args[1])) {
+    return nullptr;
+  }
+
+  std::vector<std::string> keys;
+  base::NapiUtil::ConvertToArrayString(env, args[0], keys);
+  auto callback =
+      std::make_unique<shell::PlatformCallBackHarmony>(env, args[1]);
+
+  LynxTemplateRenderer* obj = nullptr;
+  napi_status status =
+      napi_unwrap(env, js_this, reinterpret_cast<void**>(&obj));
+  if (!CheckNapiUnwrapObject(status, obj, "GetPageDataByKeyAsync failed")) {
+    callback->InvokeWithValue(lepus::Value());
+    return nullptr;
+  }
+
+  if (!obj->shell_ || obj->shell_->IsDestroyed()) {
+    callback->InvokeWithValue(lepus::Value());
+    return nullptr;
+  }
+  obj->shell_->GetPageDataByKeyAsync(std::move(keys), std::move(callback));
+  return nullptr;
 }
 
 napi_value LynxTemplateRenderer::SetupExtensionDelegate(
