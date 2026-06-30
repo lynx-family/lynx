@@ -6,6 +6,7 @@
 
 namespace lynx {
 namespace trace {
+
 uint64_t GetFlowId() { return 0; }
 uint64_t GetTraceTimeNs() { return 0; }
 void TraceEventImplementation(const char* category_name, const char* name,
@@ -24,6 +25,7 @@ void TraceEventImplementation(const char* category_name,
                               const uint64_t& counter,
                               const FuncType& callback) {}
 bool TraceEventCategoryEnabled(const char* category) { return false; }
+bool TraceEventRuntimeEnabled() { return false; }
 void TraceRuntimeProfile(const std::string& runtime_profile,
                          const uint64_t track_id, const int32_t profile_id) {}
 

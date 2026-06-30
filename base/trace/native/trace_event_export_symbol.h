@@ -22,5 +22,7 @@ TRACE_EXPORT void TraceEventEndEx(const char *category, const char *event_name,
 
 TRACE_EXPORT void TraceCounterEx(const char *category, const char *name,
                                  uint64_t counter, bool incremental);
+
+TRACE_EXPORT bool TraceEventRuntimeEnabled();
 }
 #endif  // BASE_TRACE_NATIVE_TRACE_EVENT_EXPORT_SYMBOL_H_

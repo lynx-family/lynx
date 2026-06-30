@@ -48,7 +48,6 @@ public class TraceController {
   private static final String CATEGORIES_EXTRA = "categories";
   private static final String FILE_EXTRA = "file";
   private static final String BUFFER_SIZE_EXTRA = "buffer";
-  private static final String NATIVE_ONLY_EXTRA = "nativeOnly";
   private static final String ENABLE_COMPRESS = "enableCompress";
   private static final String TAG = "Lynx startup trace";
   private static final int DEFAULT_BUFFER_SIZE = 40960; // kb
@@ -61,8 +60,6 @@ public class TraceController {
   private static boolean mTracingStarted = false;
   private long mNativeTraceController = 0;
   private int tracingSession = -1;
-  // Control Whether Record Java Trace or Not
-  private static boolean sNativeTracingOnly = false;
   private static boolean isTraceEnvInit = false;
   private String traceFilePath;
 
@@ -88,10 +85,6 @@ public class TraceController {
 
   public interface CompleteCallback {
     void onComplete(String traceFile);
-  }
-
-  public static boolean isNativeTracingOnly() {
-    return sNativeTracingOnly;
   }
 
   public static TraceController getInstance() {
@@ -290,8 +283,6 @@ public class TraceController {
         String filename = intent.getStringExtra(FILE_EXTRA);
         int bufferSize = intent.getIntExtra(BUFFER_SIZE_EXTRA, DEFAULT_BUFFER_SIZE);
 
-        boolean isNativeOnly = intent.getBooleanExtra(NATIVE_ONLY_EXTRA, false);
-        sNativeTracingOnly = isNativeOnly;
         boolean enableCompress = intent.getBooleanExtra(ENABLE_COMPRESS, false);
 
         if (filename == null) {
@@ -304,7 +295,6 @@ public class TraceController {
         Toast.makeText(context, logMessage, Toast.LENGTH_SHORT).show();
         Log.i(TAG, logMessage);
       } else if (intent.getAction().endsWith(ACTION_STOP)) {
-        sNativeTracingOnly = false;
         stopTracing();
         Toast.makeText(context, "Trace stopped", Toast.LENGTH_SHORT).show();
         Log.i(TAG, "Trace stopped");

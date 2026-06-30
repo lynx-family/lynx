@@ -62,6 +62,7 @@ TRACE_EXPORT void TraceEventImplementation(
     const uint64_t& timestamp, const uint64_t& counter,
     const FuncType& callback);
 TRACE_EXPORT bool TraceEventCategoryEnabled(const char* category);
+TRACE_EXPORT bool TraceEventRuntimeEnabled();
 TRACE_EXPORT void TraceRuntimeProfile(const std::string& runtime_profile,
                                       const uint64_t track_id,
                                       const int32_t profile_id);

@@ -21,6 +21,8 @@
 
 #include <utility>
 
+#include "base/include/compiler_specific.h"
+
 // ================
 // Quickstart guide
 // ================
@@ -112,37 +114,62 @@ using TraceEvent = lynx::perfetto::TrackEvent;
 #define INTERNAL_TRACE_EVENT_UID2(a, b) INTERNAL_TRACE_EVENT_UID3(a, b)
 #define INTERNAL_TRACE_EVENT_UID(name) INTERNAL_TRACE_EVENT_UID2(name, __LINE__)
 
-#define TRACE_EVENT(category, name, ...)                                      \
-  struct INTERNAL_TRACE_EVENT_UID(ScopedEvent) {                              \
-    struct EventFinalizer {                                                   \
-      /* The parameter is an implementation detail. It allows the          */ \
-      /* anonymous struct to use aggregate initialization to invoke the    */ \
-      /* lambda (which emits the BEGIN event and returns an integer)       */ \
-      /* with the proper reference capture for any                         */ \
-      /* TrackEventArgumentFunction in |__VA_ARGS__|. This is required so  */ \
-      /* that the scoped event is exactly ONE line and can't escape the    */ \
-      /* scope if used in a single line if statement.                      */ \
-      EventFinalizer(...) {}                                                  \
-      ~EventFinalizer() { TRACE_EVENT_END(category); }                        \
-    } finalizer;                                                              \
-  } INTERNAL_TRACE_EVENT_UID(scoped_event) {                                  \
-    [&]() {                                                                   \
-      TRACE_EVENT_BEGIN(category, name, ##__VA_ARGS__);                       \
-      return 0;                                                               \
-    }()                                                                       \
+#define INTERNAL_TRACE_EVENT_BEGIN(category, name, ...) \
+  lynx::trace::TraceEventBegin(category, DecayStringType(name), ##__VA_ARGS__)
+#define INTERNAL_TRACE_EVENT_END(category, ...) \
+  lynx::trace::TraceEventEnd(category, ##__VA_ARGS__)
+#define INTERNAL_TRACE_EVENT_RUNTIME_ENABLED() \
+  UNLIKELY(lynx::trace::TraceEventRuntimeEnabled())
+
+#define TRACE_EVENT(category, name, ...)                         \
+  struct INTERNAL_TRACE_EVENT_UID(ScopedEvent) {                 \
+    struct EventFinalizer {                                      \
+      EventFinalizer(...) {}                                     \
+      ~EventFinalizer() {                                        \
+        if (INTERNAL_TRACE_EVENT_RUNTIME_ENABLED()) {            \
+          INTERNAL_TRACE_EVENT_END(category);                    \
+        }                                                        \
+      }                                                          \
+    } finalizer;                                                 \
+  } INTERNAL_TRACE_EVENT_UID(scoped_event) {                     \
+    [&]() {                                                      \
+      if (!INTERNAL_TRACE_EVENT_RUNTIME_ENABLED()) {             \
+        return 0;                                                \
+      }                                                          \
+      INTERNAL_TRACE_EVENT_BEGIN(category, name, ##__VA_ARGS__); \
+      return 0;                                                  \
+    }()                                                          \
   }
 
-#define TRACE_EVENT_BEGIN(category, name, ...) \
-  lynx::trace::TraceEventBegin(category, DecayStringType(name), ##__VA_ARGS__)
-#define TRACE_EVENT_END(category, ...) \
-  lynx::trace::TraceEventEnd(category, ##__VA_ARGS__)
-#define TRACE_EVENT_INSTANT(category, name, ...) \
-  lynx::trace::TraceEventInstant(category, DecayStringType(name), ##__VA_ARGS__)
+#define TRACE_EVENT_BEGIN(category, name, ...)                   \
+  do {                                                           \
+    if (INTERNAL_TRACE_EVENT_RUNTIME_ENABLED()) {                \
+      INTERNAL_TRACE_EVENT_BEGIN(category, name, ##__VA_ARGS__); \
+    }                                                            \
+  } while (false)
+#define TRACE_EVENT_END(category, ...)                   \
+  do {                                                   \
+    if (INTERNAL_TRACE_EVENT_RUNTIME_ENABLED()) {        \
+      INTERNAL_TRACE_EVENT_END(category, ##__VA_ARGS__); \
+    }                                                    \
+  } while (false)
+#define TRACE_EVENT_INSTANT(category, name, ...)                      \
+  do {                                                                \
+    if (INTERNAL_TRACE_EVENT_RUNTIME_ENABLED()) {                     \
+      lynx::trace::TraceEventInstant(category, DecayStringType(name), \
+                                     ##__VA_ARGS__);                  \
+    }                                                                 \
+  } while (false)
 #define TRACE_EVENT_CATEGORY_ENABLED(category) \
-  lynx::trace::TraceEventCategoryEnabled(category)
-#define TRACE_COUNTER(category, track, ...)                                \
-  lynx::trace::TraceCounter(category, lynx::perfetto::CounterTrack(track), \
-                            ##__VA_ARGS__)
+  (INTERNAL_TRACE_EVENT_RUNTIME_ENABLED() &&   \
+   lynx::trace::TraceEventCategoryEnabled(category))
+#define TRACE_COUNTER(category, track, ...)                                    \
+  do {                                                                         \
+    if (INTERNAL_TRACE_EVENT_RUNTIME_ENABLED()) {                              \
+      lynx::trace::TraceCounter(category, lynx::perfetto::CounterTrack(track), \
+                                ##__VA_ARGS__);                                \
+    }                                                                          \
+  } while (false)
 #define TRACE_FLOW_ID() lynx::trace::GetFlowId()
 #define TRACE_TIME_NS() lynx::trace::GetTraceTimeNs()
 #elif ENABLE_TRACE_SYSTRACE  // ENABLE_TRACE_SYSTRACE

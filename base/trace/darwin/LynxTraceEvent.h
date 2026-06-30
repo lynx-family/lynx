@@ -7,21 +7,41 @@
 
 #import "LynxTraceEventWrapper.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+BOOL LynxTraceRuntimeEnabled(void);
+
+#ifdef __cplusplus
+}
+#endif
+
 #if ENABLE_TRACE_PERFETTO
+#define LYNX_TRACE_IF_RUNTIME_ENABLED(statement)          \
+  do {                                                    \
+    if (__builtin_expect(LynxTraceRuntimeEnabled(), 0)) { \
+      statement;                                          \
+    }                                                     \
+  } while (0);
+
 #define LYNX_TRACE_SECTION_WITH_INFO(category, name, info) \
-  [LynxTraceEvent beginSection:category withName:name debugInfo:info];
+  LYNX_TRACE_IF_RUNTIME_ENABLED([LynxTraceEvent beginSection:category withName:name debugInfo:info])
 
-#define LYNX_TRACE_SECTION(category, name) [LynxTraceEvent beginSection:category withName:name];
-
-#define LYNX_TRACE_END_SECTION(category) [LynxTraceEvent endSection:category];
+#define LYNX_TRACE_SECTION(category, name) \
+  LYNX_TRACE_IF_RUNTIME_ENABLED([LynxTraceEvent beginSection:category withName:name])
 
 #define LYNX_TRACE_END_SECTION_WITH_NAME(category, name) \
-  [LynxTraceEvent endSection:category withName:name]
+  LYNX_TRACE_IF_RUNTIME_ENABLED([LynxTraceEvent endSection:category withName:name])
 
-#define LYNX_TRACE_INSTANT(category, name) [LynxTraceEvent instant:(category) withName:(name)];
+#define LYNX_TRACE_END_SECTION(category) \
+  LYNX_TRACE_IF_RUNTIME_ENABLED([LynxTraceEvent endSection:category])
+
+#define LYNX_TRACE_INSTANT(category, name) \
+  LYNX_TRACE_IF_RUNTIME_ENABLED([LynxTraceEvent instant:(category) withName:(name)])
 
 #define LYNX_TRACE_INSTANT_WITH_DEBUG_INFO(category, name, info) \
-  [LynxTraceEvent instant:(category) withName:(name)debugInfo:(info)];
+  LYNX_TRACE_IF_RUNTIME_ENABLED([LynxTraceEvent instant:(category) withName:(name)debugInfo:(info)])
 #else
 
 #define LYNX_TRACE_SECTION_WITH_INFO(category, name, debugInfo)
@@ -37,6 +57,8 @@
 @interface LynxTraceEvent : NSObject
 
 + (NSString *)getRandomColor;
+
++ (BOOL)traceRuntimeEnabled;
 
 + (void)beginSection:(NSString *)category
             withName:(NSString *)name

@@ -7,6 +7,7 @@
         _ZN4lynx5trace9GetFlowIdEv;
         _ZN4lynx5trace14GetTraceTimeNsEv;
         _ZN4lynx5trace25TraceEventCategoryEnabledEPKc;
+        _ZN4lynx5trace24TraceEventRuntimeEnabledEv;
         _ZN4lynx5trace15TraceController8InstanceEv;
         _ZN4lynx5trace19TraceRuntimeProfileERKNSt6__ndk112basic_stringIcNS1_11char_traitsIcEENS1_9allocatorIcEEEE?i;
         _ZN4lynx8perfetto10TrackEvent12add_flow_idsE?;
@@ -34,6 +35,7 @@
         TraceCounterEx;
         TraceEventBeginEx;
         TraceEventEndEx;
+        TraceEventRuntimeEnabled;
         JNI_OnLoad;
         _ZN4lynx5trace15TraceEventBeginEPKc;
         _ZN4lynx5trace13TraceEventEndEPKc?;
