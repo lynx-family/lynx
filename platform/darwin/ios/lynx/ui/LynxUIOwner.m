@@ -793,12 +793,14 @@ extern NSString* const kDefaultComponentID;
     index = parent.children.count;
   }
 #if ENABLE_TRACE_PERFETTO
-  // stringByAppendingFormat is not suitable for the situation which may be executed frequently
-  NSString* p2c =
-      [[parent.tagName stringByAppendingString:@"->"] stringByAppendingString:child.tagName ?: @""];
-  [LynxTraceEvent beginSection:LYNX_TRACE_CATEGORY_WRAPPER
-                      withName:[[UI_OWNER_INSERT_NODE stringByAppendingString:@"parent->child:"]
-                                   stringByAppendingString:p2c ?: @""]];
+  LYNX_TRACE_IF_RUNTIME_ENABLED({
+    // stringByAppendingFormat is not suitable for the situation which may be executed frequently
+    NSString* p2c = [[parent.tagName stringByAppendingString:@"->"]
+        stringByAppendingString:child.tagName ?: @""];
+    [LynxTraceEvent beginSection:LYNX_TRACE_CATEGORY_WRAPPER
+                        withName:[[UI_OWNER_INSERT_NODE stringByAppendingString:@"parent->child:"]
+                                     stringByAppendingString:p2c ?: @""]];
+  })
 #endif
   if (_enableDetailLog && [parent isEqual:_rootUI]) {
     LLogInfo(@"LynxUIOwner insert node %p to rootUI %p", child, parent);

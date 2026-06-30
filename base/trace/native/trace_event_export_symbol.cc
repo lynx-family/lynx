@@ -60,4 +60,12 @@ void TraceCounterEx(const char *category, const char *name, uint64_t counter,
           incremental),
       counter);
 }
+
+bool TraceEventRuntimeEnabled() {
+#if ENABLE_TRACE_PERFETTO
+  return lynx::trace::TraceEventRuntimeEnabled();
+#else
+  return false;
+#endif
+}
 }

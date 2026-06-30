@@ -27,9 +27,11 @@ using BaseTraceBeginSectionFunc =
 using BaseTraceEndSectionFunc = void (*)(const char* category_group,
                                          const char* section_name,
                                          int64_t trace_id);
+using BaseTraceRuntimeEnabledFunc = bool (*)();
 
 static BaseTraceBeginSectionFunc trace_begin_section_func = nullptr;
 static BaseTraceEndSectionFunc trace_end_section_func = nullptr;
+static BaseTraceRuntimeEnabledFunc trace_runtime_enabled_func = nullptr;
 
 bool GetDefaultTraceBackend() {
   void* lib = dlopen("liblynxtrace.so", RTLD_LOCAL | RTLD_LAZY);
@@ -42,8 +44,12 @@ bool GetDefaultTraceBackend() {
       dlsym(lib, "TraceEventBeginEx"));
   trace_end_section_func =
       reinterpret_cast<BaseTraceEndSectionFunc>(dlsym(lib, "TraceEventEndEx"));
-  if (!trace_begin_section_func || !trace_end_section_func) {
-    LOGE("TraceEventBeginEx TraceEventEndEx not found");
+  trace_runtime_enabled_func = reinterpret_cast<BaseTraceRuntimeEnabledFunc>(
+      dlsym(lib, "TraceEventRuntimeEnabled"));
+  if (!trace_begin_section_func || !trace_end_section_func ||
+      !trace_runtime_enabled_func) {
+    LOGE(
+        "TraceEventBeginEx TraceEventEndEx TraceEventRuntimeEnabled not found");
     return false;
   }
   return true;
@@ -51,6 +57,9 @@ bool GetDefaultTraceBackend() {
 
 void TraceBackend(const char* category, const char* name,
                   BaseTraceEventType phase) {
+  if (!trace_runtime_enabled_func()) {
+    return;
+  }
   switch (phase) {
     case BaseTraceEventType::TYPE_SLICE_BEGIN:
       trace_begin_section_func(category, name, -1, nullptr, nullptr, nullptr,

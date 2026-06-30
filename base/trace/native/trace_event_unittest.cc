@@ -103,5 +103,32 @@ TEST_F(TraceEventTest, TraceEventMacrosTest) {
   printf("TraceEventTest finish!\n");
 }
 
+#if ENABLE_TRACE_PERFETTO
+TEST_F(TraceEventTest, TraceEventArgumentsAreLazyWhenTracingStopped) {
+  ASSERT_FALSE(TraceEventRuntimeEnabled());
+
+  int evaluated_args = 0;
+  auto expensive_arg = [&evaluated_args]() {
+    ++evaluated_args;
+    return "value";
+  };
+
+  TRACE_EVENT("TraceTest", "TraceEventDisabled", "testKey", expensive_arg());
+  TRACE_EVENT_BEGIN("TraceTest", "TraceEventBeginDisabled", "testKey",
+                    expensive_arg());
+  TRACE_EVENT_END("TraceTest", "testKey", expensive_arg());
+  TRACE_EVENT_INSTANT("TraceTest", "TraceEventInstantDisabled", "testKey",
+                      expensive_arg());
+  TRACE_COUNTER("TraceTest", lynx::perfetto::CounterTrack("counter_tracker"), 4,
+                [&expensive_arg](lynx::perfetto::EventContext ctx) {
+                  auto* debug = ctx.event()->add_debug_annotations();
+                  debug->set_name("testKey");
+                  debug->set_string_value(expensive_arg());
+                });
+
+  EXPECT_EQ(0, evaluated_args);
+}
+#endif
+
 }  // namespace trace
 }  // namespace lynx

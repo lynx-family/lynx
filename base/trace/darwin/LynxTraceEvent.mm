@@ -6,7 +6,19 @@
 
 #include "base/trace/native/trace_event.h"
 
+extern "C" BOOL LynxTraceRuntimeEnabled(void) {
+#if ENABLE_TRACE_PERFETTO
+  return lynx::trace::TraceEventRuntimeEnabled();
+#else
+  return NO;
+#endif
+}
+
 @implementation LynxTraceEvent
+
++ (BOOL)traceRuntimeEnabled {
+  return LynxTraceRuntimeEnabled();
+}
 
 + (NSString *)getRandomColor {
   NSMutableString *result = [NSMutableString stringWithCapacity:7];
@@ -20,6 +32,9 @@
 + (void)beginSection:(NSString *)category
             withName:(NSString *)name
            debugInfo:(NSDictionary *)keyValues {
+  if (!LynxTraceRuntimeEnabled()) {
+    return;
+  }
   TRACE_EVENT_BEGIN([category UTF8String], nullptr, [&](lynx::perfetto::EventContext ctx) {
     auto event = ctx.event();
     event->set_name([name UTF8String]);
@@ -33,18 +48,27 @@
 }
 
 + (void)beginSection:(NSString *)category withName:(NSString *)name {
+  if (!LynxTraceRuntimeEnabled()) {
+    return;
+  }
   TRACE_EVENT_BEGIN([category UTF8String], nullptr, [&](lynx::perfetto::EventContext ctx) {
     ctx.event()->set_name([name UTF8String]);
   });
 }
 
 + (void)endSection:(NSString *)category {
+  if (!LynxTraceRuntimeEnabled()) {
+    return;
+  }
   TRACE_EVENT_END([category UTF8String]);
 }
 
 + (void)endSection:(NSString *)category
           withName:(NSString *)name
          debugInfo:(NSDictionary *)keyValues {
+  if (!LynxTraceRuntimeEnabled()) {
+    return;
+  }
   TRACE_EVENT_END([category UTF8String], [&](lynx::perfetto::EventContext ctx) {
     auto event = ctx.event();
     event->set_name([name UTF8String]);
@@ -58,16 +82,25 @@
 }
 
 + (void)endSection:(NSString *)category withName:(NSString *)name {
+  if (!LynxTraceRuntimeEnabled()) {
+    return;
+  }
   TRACE_EVENT_END([category UTF8String], [&](lynx::perfetto::EventContext ctx) {
     ctx.event()->set_name([name UTF8String]);
   });
 }
 
 + (void)instant:(NSString *)category withName:(NSString *)name {
+  if (!LynxTraceRuntimeEnabled()) {
+    return;
+  }
   [self instant:category withName:name withColor:[self getRandomColor]];
 }
 
 + (void)instant:(NSString *)category withName:(NSString *)name withColor:(NSString *)color {
+  if (!LynxTraceRuntimeEnabled()) {
+    return;
+  }
   TRACE_EVENT_INSTANT([category UTF8String], nullptr, [&](lynx::perfetto::EventContext ctx) {
     ctx.event()->set_name([name UTF8String]);
     auto *debug = ctx.event()->add_debug_annotations();
@@ -77,6 +110,9 @@
 }
 
 + (void)instant:(NSString *)category withName:(NSString *)name debugInfo:(NSDictionary *)keyValues {
+  if (!LynxTraceRuntimeEnabled()) {
+    return;
+  }
   TRACE_EVENT_INSTANT([category UTF8String], nullptr, [&](lynx::perfetto::EventContext ctx) {
     auto event = ctx.event();
     event->set_name([name UTF8String]);
@@ -90,11 +126,18 @@
 }
 
 + (void)counter:(NSString *)category withName:(NSString *)name withCounterValue:(uint64_t)value {
+  if (!LynxTraceRuntimeEnabled()) {
+    return;
+  }
   TRACE_COUNTER([category UTF8String], lynx::perfetto::CounterTrack([name UTF8String]), value);
 }
 
 + (BOOL)categoryEnabled:(NSString *)category {
-  return YES;
+#if ENABLE_TRACE_PERFETTO
+  return LynxTraceRuntimeEnabled() && lynx::trace::TraceEventCategoryEnabled([category UTF8String]);
+#else
+  return NO;
+#endif
 }
 
 + (void)instant:(NSString *)category withName:(NSString *)name withTimestamp:(int64_t)timestamp {

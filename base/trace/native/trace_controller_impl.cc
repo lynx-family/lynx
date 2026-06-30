@@ -20,6 +20,7 @@
 
 #include <fcntl.h>
 
+#include <atomic>
 #include <cstring>
 #include <ctime>
 #include <fstream>
@@ -45,6 +46,10 @@ using TrackEvent_Type = ::perfetto::protos::pbzero::TrackEvent_Type;
 namespace lynx {
 
 namespace trace {
+
+namespace {
+std::atomic<bool> g_trace_event_runtime_enabled{false};
+}  // namespace
 
 // Implementations of the definition of the
 // "base/trace/native/trace_event_utils_perfetto.h"
@@ -203,6 +208,10 @@ bool TraceEventCategoryEnabled(const char* category) {
       ::perfetto::DynamicCategory(category));
 }
 
+bool TraceEventRuntimeEnabled() {
+  return g_trace_event_runtime_enabled.load(std::memory_order_relaxed);
+}
+
 void TraceRuntimeProfile(const std::string& runtime_profile,
                          const uint64_t track_id, const int32_t profile_id) {
   static uint64_t size = 100 * 1024;  // 100kb
@@ -316,6 +325,7 @@ int TraceControllerImpl::StartTracing(
   }
 #endif
   session.session_impl->StartBlocking();
+  g_trace_event_runtime_enabled.store(true, std::memory_order_relaxed);
 
   // plugin
   for (auto& trace_plugin_pair : trace_plugins_) {
@@ -359,6 +369,7 @@ bool TraceControllerImpl::StopTracing(int session_id) {
   session->session_impl->StopBlocking();
   session->started = false;
   is_tracing_started_ = false;
+  g_trace_event_runtime_enabled.store(false, std::memory_order_relaxed);
 #ifdef OS_ANDROID
   if (delegate_) {
     delegate_->SetIsTracingStarted(false);
