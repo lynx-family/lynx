@@ -59,23 +59,30 @@ HeadlessAngleSurfaceManager::HeadlessAngleSurfaceManager()
     : egl_config_(nullptr),
       egl_display_(EGL_NO_DISPLAY),
       egl_context_(EGL_NO_CONTEXT),
-      egl_device_(nullptr) {
-  initialize_succeeded_ = Initialize();
-}
+      egl_device_(nullptr) {}
 
 HeadlessAngleSurfaceManager::~HeadlessAngleSurfaceManager() { CleanUp(); }
 
 bool HeadlessAngleSurfaceManager::MakeCurrent() {
+  if (!EnsureInitialized()) {
+    return false;
+  }
   return (eglMakeCurrent(egl_display_, egl_surface_, egl_surface_,
                          egl_context_) == EGL_TRUE);
 }
 
 bool HeadlessAngleSurfaceManager::ClearContext() {
+  if (!initialize_succeeded_) {
+    return true;
+  }
   return (eglMakeCurrent(egl_display_, EGL_NO_SURFACE, EGL_NO_SURFACE,
                          EGL_NO_CONTEXT) == EGL_TRUE);
 }
 
 Microsoft::WRL::ComPtr<ID3D11Device> HeadlessAngleSurfaceManager::GetDevice() {
+  if (!EnsureInitialized()) {
+    return nullptr;
+  }
   if (resolved_device_) {
     return resolved_device_;
   }
@@ -156,6 +163,19 @@ bool HeadlessAngleSurfaceManager::TryInitializeD3D11Device() {
   FML_LOG(ERROR) << "HeadlessAngleSurfaceManager::TryInitializeD3D11Device "
                     "success.";
   return true;
+}
+
+bool HeadlessAngleSurfaceManager::EnsureInitialized() {
+  if (initialize_attempted_) {
+    return initialize_succeeded_;
+  }
+
+  initialize_attempted_ = true;
+  initialize_succeeded_ = Initialize();
+  if (!initialize_succeeded_) {
+    CleanUp();
+  }
+  return initialize_succeeded_;
 }
 
 bool HeadlessAngleSurfaceManager::Initialize() {
