@@ -3,7 +3,6 @@
 // LICENSE file in the root directory of this source tree.
 
 #include "core/resource/lynx_resource_loader_darwin.h"
-
 #import <Lynx/LynxEnv.h>
 #import <Lynx/LynxError.h>
 #import <Lynx/LynxLog.h>
@@ -219,7 +218,7 @@ bool LynxResourceLoaderDarwin::FetchTemplateByProvider(const std::string& url,
 }
 
 bool LynxResourceLoaderDarwin::FetchTemplateByFetcherWrapper(const std::string& url,
-                                                             CopyableClosure callback) {
+                                                             CopyableClosure callback, bool sync) {
   // use fetcher_wrapper to fetch template.
   __block volatile BOOL invoked = NO;
   __block NSObject* object = [[NSObject alloc] init];
@@ -248,7 +247,7 @@ bool LynxResourceLoaderDarwin::FetchTemplateByFetcherWrapper(const std::string& 
                                    .err_msg = [errMsg UTF8String]};
     callback(resp);
   };
-  return [_fetcher_wrapper fetchResource:nsUrl withLoadedBlock:fetcherBlock];
+  return [_fetcher_wrapper fetchResource:nsUrl withLoadedBlock:fetcherBlock sync:sync];
 }
 
 void LynxResourceLoaderDarwin::LoadResourceInternal(
@@ -257,28 +256,6 @@ void LynxResourceLoaderDarwin::LoadResourceInternal(
   TRACE_EVENT(LYNX_TRACE_CATEGORY, LOAD_RESOURCE, [&request](lynx::perfetto::EventContext ctx) {
     ctx.event()->add_debug_annotations("url", request.url);
   });
-
-  auto copyable_callback = fml::MakeCopyable(std::move(callback));
-  if (!request.request_in_current_thread) {
-    auto request_copy = request;
-    auto weak_self = weak_from_this();
-    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-      auto self = std::static_pointer_cast<LynxResourceLoaderDarwin>(weak_self.lock());
-      if (!self) {
-        pub::LynxResourceResponse resp{.err_code = -1, .err_msg = "Resource loader is destroyed."};
-        copyable_callback(resp);
-        return;
-      }
-      self->LoadResourceInternalSync(request_copy, copyable_callback);
-    });
-    return;
-  }
-
-  LoadResourceInternalSync(request, copyable_callback);
-}
-
-void LynxResourceLoaderDarwin::LoadResourceInternalSync(const pub::LynxResourceRequest& request,
-                                                        CopyableClosure callback) {
   // fetch Assets
   if (request.type == pub::LynxResourceType::kAssets) {
     NSData* data = LoadJSSource(request.url);
@@ -289,26 +266,28 @@ void LynxResourceLoaderDarwin::LoadResourceInternalSync(const pub::LynxResourceR
 
   // fetch ExternalJS
   if (request.type == pub::LynxResourceType::kExternalJs) {
+    auto copyable_callback = fml::MakeCopyable(std::move(callback));
     // 1. try to use LynxGenericResourceFetcher
-    if (FetchResourceByGenericFetcher(request.url, LynxResourceTypeExternalJS, callback)) {
+    if (FetchResourceByGenericFetcher(request.url, LynxResourceTypeExternalJS, copyable_callback)) {
       return;
     }
     // 2. try to use external js provider
-    if (FetchScriptByProvider(request.url, callback)) {
+    if (FetchScriptByProvider(request.url, copyable_callback)) {
       return;
     }
     // invoke callback directly if no provider or fetcher set;
     pub::LynxResourceResponse resp{.err_code = -1, .err_msg = "No available provider or fetcher."};
-    callback(resp);
+    copyable_callback(resp);
     return;
   }
 
   if (request.type == pub::LynxResourceType::kLazyBundle) {
+    auto copyable_callback = fml::MakeCopyable(std::move(callback));
     std::string url_copy = request.url;
     base::MoveOnlyClosure<void, pub::LynxResourceResponse&> callback_wrapper =
         ^(pub::LynxResourceResponse& response) {
           VerifyLynxTemplateResource(url_copy, response, pub::LynxResourceType::kLazyBundle);
-          callback(response);
+          copyable_callback(response);
         };
     auto copyable_wrapper_callback = fml::MakeCopyable(std::move(callback_wrapper));
     // 1. try to use LynxTemplateResourceFetcher
@@ -318,7 +297,8 @@ void LynxResourceLoaderDarwin::LoadResourceInternalSync(const pub::LynxResourceR
     }
 
     // 2. try to use LynxExternalResourceFetcherWrapper
-    if (FetchTemplateByFetcherWrapper(request.url, copyable_wrapper_callback)) {
+    if (FetchTemplateByFetcherWrapper(request.url, copyable_wrapper_callback,
+                                      request.request_in_current_thread)) {
       return;
     }
     // 3. try to use LynxResourceProvider
@@ -333,11 +313,12 @@ void LynxResourceLoaderDarwin::LoadResourceInternalSync(const pub::LynxResourceR
   }
 
   if (request.type == pub::LynxResourceType::kFrame) {
+    auto copyable_callback = fml::MakeCopyable(std::move(callback));
     std::string url_copy = request.url;
     base::MoveOnlyClosure<void, pub::LynxResourceResponse&> callback_wrapper =
         ^(pub::LynxResourceResponse& response) {
           VerifyLynxTemplateResource(url_copy, response, pub::LynxResourceType::kFrame);
-          callback(response);
+          copyable_callback(response);
         };
     auto copyable_wrapper_callback = fml::MakeCopyable(std::move(callback_wrapper));
     // 1. try to use LynxTemplateResourceFetcher

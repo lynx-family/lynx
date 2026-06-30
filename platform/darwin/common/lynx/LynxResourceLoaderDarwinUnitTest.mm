@@ -226,36 +226,6 @@
   XCTAssertTrue(response_size > 0);
 }
 
-- (void)testOffThreadLoadKeepsLoaderAliveUntilQueuedWorkCompletes {
-  MockDynamicComponentFetcher* fetcher = [[MockDynamicComponentFetcher alloc] init];
-  fetcher.waitForContinueSignal = YES;
-  auto loader =
-      std::make_shared<lynx::shell::LynxResourceLoaderDarwin>(nil, fetcher, nil, nil, nil);
-  std::weak_ptr<lynx::shell::LynxResourceLoaderDarwin> weak_loader = loader;
-  auto request = lynx::pub::LynxResourceRequest{"unit_test_url",
-                                                lynx::pub::LynxResourceType::kLazyBundle, false};
-
-  std::promise<size_t> promise;
-  std::future<size_t> future = promise.get_future();
-  loader->LoadResource(
-      request, [promise = std::move(promise)](lynx::pub::LynxResourceResponse& response) mutable {
-        promise.set_value(response.data.size());
-      });
-
-  XCTAssertEqual(dispatch_semaphore_wait(fetcher.fetchStartedSemaphore,
-                                         dispatch_time(DISPATCH_TIME_NOW, NSEC_PER_SEC)),
-                 0);
-
-  loader.reset();
-  XCTAssertFalse(weak_loader.expired());
-
-  dispatch_semaphore_signal(fetcher.continueSemaphore);
-
-  XCTAssertEqual(future.wait_for(std::chrono::seconds(2)), std::future_status::ready);
-  XCTAssertTrue(future.get() > 0);
-  XCTAssertTrue(weak_loader.expired());
-}
-
 - (void)testReportErrorToLynxView {
   // create a LynxView and LynxViewClient
   _onErrorExpectation = [self expectationWithDescription:@"onReceiveError"];
