@@ -102,12 +102,15 @@ void UIExposure::UnregisterExposureCheckCallBack() {
 void UIExposure::AddUIToExposedMap(UIBase* ui, std::string unique_id,
                                    lepus::Value extra_data,
                                    bool is_custom_event) {
-  AddCommonAncestorUI(ui);
-  const auto& key = ui->ExposureUIKey(unique_id);
+  const auto key = ui->ExposureUIKey(unique_id);
+  const bool was_empty = exposed_ui_map_.empty();
+  if (exposed_ui_map_.find(key) == exposed_ui_map_.end()) {
+    AddCommonAncestorUI(ui);
+  }
   exposed_ui_map_[key] = UIExposureDetail(
       ui->Sign(), std::move(unique_id), ui->ExposureID(), ui->ExposureScene(),
       std::move(extra_data), ui->Dataset(), is_custom_event);
-  if (exposed_ui_map_.size() == 1) {
+  if (was_empty) {
     RegisterExposureCheckCallBack();
   }
 }
@@ -116,11 +119,27 @@ void UIExposure::RemoveUIFromExposedMap(UIBase* ui, std::string unique_id) {
   if (exposed_ui_map_.empty()) {
     return;
   }
+  const auto key = ui->ExposureUIKey(unique_id, false);
+  if (exposed_ui_map_.find(key) == exposed_ui_map_.end()) {
+    return;
+  }
   RemoveCommonAncestorUI(ui);
-  exposed_ui_map_.erase(ui->ExposureUIKey(std::move(unique_id), false));
+  exposed_ui_map_.erase(key);
+  force_refresh_exposure_keys_.erase(key);
   if (exposed_ui_map_.empty()) {
     UnregisterExposureCheckCallBack();
   }
+}
+
+void UIExposure::RefreshUIInExposedMap(UIBase* ui, std::string unique_id) {
+  if (exposed_ui_map_.empty()) {
+    return;
+  }
+  const auto key = ui->ExposureUIKey(unique_id);
+  if (exposed_ui_map_.find(key) == exposed_ui_map_.end()) {
+    return;
+  }
+  force_refresh_exposure_keys_.insert(key);
 }
 
 void UIExposure::StopExposure(const lepus::Value& options) {
@@ -138,6 +157,7 @@ void UIExposure::StopExposure(const lepus::Value& options) {
     SendEvent(ui_visible_before_, "disexposure");
     ui_visible_before_.clear();
   }
+  force_refresh_exposure_keys_.clear();
 }
 
 void UIExposure::ResumeExposure() { RegisterExposureCheckCallBack(); }
@@ -176,6 +196,19 @@ void UIExposure::ExecExposureCheck() {
       ui_visible_before_.begin(), ui_visible_before_.end(),
       ui_visible_now.begin(), ui_visible_now.end(),
       std::inserter(disappear_ui_set, disappear_ui_set.begin()));
+  for (const auto& key : force_refresh_exposure_keys_) {
+    auto it = exposed_ui_map_.find(key);
+    if (it == exposed_ui_map_.end()) {
+      continue;
+    }
+    const auto& detail = it->second;
+    if (ui_visible_before_.find(detail) != ui_visible_before_.end() &&
+        ui_visible_now.find(detail) != ui_visible_now.end()) {
+      disappear_ui_set.insert(detail);
+      appear_ui_set.insert(detail);
+    }
+  }
+  force_refresh_exposure_keys_.clear();
   ui_visible_before_ = std::move(ui_visible_now);
   ui_visible_now.clear();
 

@@ -9,6 +9,7 @@
 #include <set>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 
 #include "core/value_wrapper/value_impl_lepus.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/utils/ui_observer_callback.h"
@@ -61,6 +62,7 @@ class UIExposure : public UIObserverCallback,
   void AddUIToExposedMap(UIBase* ui, std::string unique_id,
                          lepus::Value extra_data, bool is_custom_event);
   void RemoveUIFromExposedMap(UIBase* ui, std::string unique_id);
+  void RefreshUIInExposedMap(UIBase* ui, std::string unique_id);
   void StopExposure(const lepus::Value& options);
   void ResumeExposure();
   void SetObserverFrameRate(const lepus::Value& options);
@@ -80,6 +82,7 @@ class UIExposure : public UIObserverCallback,
   UIOwner* ui_owner_{nullptr};
   UIObserver* ui_observer_{nullptr};
   std::unordered_map<std::string, UIExposureDetail> exposed_ui_map_;
+  std::unordered_set<std::string> force_refresh_exposure_keys_;
   std::unordered_map<int, CommonAncestorUIRect> common_ancestor_ui_rect_map_;
   std::set<UIExposureDetail> ui_visible_before_;
   int time_interval_for_exposure_check_{50};
