@@ -1,0 +1,16 @@
+example/android/lynx_example/src/main/java/com/lynx/react/uiapp/shell/LynxShellClient.java
+  h_4d36f4d76420fe 241-244,248,253-271,275,290-306
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "0d45f163c626209f1d184d1e876981c3408a3ec9",
+  "prompts": {},
+  "humans": {
+    "h_4d36f4d76420fe": {
+      "author": "yangguangzhao <yangguangzhao.solace@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}
