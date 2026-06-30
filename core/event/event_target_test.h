@@ -16,10 +16,25 @@ namespace test {
 
 class MockEventTarget : public EventTarget {
  public:
-  MockEventTarget() = default;
+  MockEventTarget() : weak_factory_(this) {}
   virtual ~MockEventTarget() override = default;
 
   virtual EventTarget* GetParentTarget() override;
+  fml::WeakPtr<EventTarget> GetWeakTarget() override {
+    return weak_factory_.GetWeakPtr();
+  }
+  lepus::Value GetEventTargetInfo(bool = false) override {
+    return lepus::Value::Clone(event_target_info_);
+  }
+  void SetParentTarget(EventTarget* parent) { parent_ = parent; }
+  void SetEventTargetInfo(const lepus::Value& info) {
+    event_target_info_ = info;
+  }
+
+ private:
+  EventTarget* parent_{nullptr};
+  lepus::Value event_target_info_{lepus::Dictionary::Create()};
+  fml::WeakPtrFactory<EventTarget> weak_factory_;
 };
 
 class EventTargetTest : public ::testing::Test {

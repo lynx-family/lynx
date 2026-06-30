@@ -46,7 +46,7 @@ describe('type-config index', () => {
     ]);
   });
   it('should have correct configKeys', () => {
-    expect(configKeys.length).toBe(139);
+    expect(configKeys.length).toBe(140);
     expect(configKeys).toEqual([
       'absoluteInContentBound',
       'alignMouseEventWithW3C',
@@ -89,6 +89,7 @@ describe('type-config index', () => {
       'enableFixedNew',
       'enableFlexBasisZeroPercent',
       'enableFrameNativeData',
+      'enableFrontendCustomEventBubbleCompatible',
       'enableGridPlacementShorthands',
       'enableHarmonyNewOverlay',
       'enableHarmonyVisibleAreaChangeForExposure',

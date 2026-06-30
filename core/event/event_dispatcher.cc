@@ -42,6 +42,34 @@
 
 namespace lynx {
 namespace event {
+namespace {
+
+bool ShouldDispatchFrontendCustomEventBubbleCompatible(
+    const fml::RefPtr<Event>& event) {
+  return event && event->enable_frontend_custom_event_bubble_compatible() &&
+         event->from_frontend() &&
+         event->event_type() == Event::EventType::kCustomEvent &&
+         !event->bubbles();
+}
+
+bool HasBubbleEventListener(EventTarget& target, Event& event) {
+  auto* listeners = target.GetEventListenerMap()->Find(event.type());
+  if (listeners == nullptr) {
+    return false;
+  }
+  for (const auto& listener : *listeners) {
+    if (!listener || listener->removed()) {
+      continue;
+    }
+    const auto& options = listener->GetOptions();
+    if (!options.IsCapture() && !options.IsGlobal()) {
+      return true;
+    }
+  }
+  return false;
+}
+
+}  // namespace
 
 DispatchEventResult EventDispatcher::DispatchEvent(EventTarget& target,
                                                    fml::RefPtr<Event> event) {
@@ -105,6 +133,9 @@ DispatchEventResult EventDispatcher::Dispatch() {
   }
 
   // at target
+  bool should_dispatch_frontend_custom_event_bubble_compatible =
+      ShouldDispatchFrontendCustomEventBubbleCompatible(event_) &&
+      !HasBubbleEventListener(*target_, *event_);
   {
     event_->set_event_phase(Event::PhaseType::kAtTarget);
     event_->set_current_target(target_->GetWeakTarget());
@@ -112,6 +143,30 @@ DispatchEventResult EventDispatcher::Dispatch() {
     consumed |= result.consumed;
     if (result.IsCanceled()) {
       return result;
+    }
+  }
+
+  if (should_dispatch_frontend_custom_event_bubble_compatible) {
+    for (auto& item : path) {
+      if (!item) {
+        LOGE(
+            "EventDispatcher::Dispatch frontend custom event bubble compat "
+            "error: the target of event path is null.")
+        continue;
+      }
+      if (event_->target() == item) {
+        continue;
+      }
+      event_->set_event_phase(Event::PhaseType::kBubblingPhase);
+      event_->set_current_target(item);
+      auto result = item->DispatchEvent(event_);
+      consumed |= result.consumed;
+      if (result.IsCanceled()) {
+        return result;
+      }
+      if (result.consumed) {
+        break;
+      }
     }
   }
 

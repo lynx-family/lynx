@@ -74,6 +74,7 @@ const configKeys = [
   'enableFixedNew',
   'enableFlexBasisZeroPercent',
   'enableFrameNativeData',
+  'enableFrontendCustomEventBubbleCompatible',
   'enableGridPlacementShorthands',
   'enableHarmonyNewOverlay',
   'enableHarmonyVisibleAreaChangeForExposure',
