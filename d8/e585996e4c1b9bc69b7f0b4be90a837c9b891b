@@ -1,0 +1,16 @@
+dependencies/DEPS.lynxtron
+  h_c7499b019d31b1 1115,1121,1127
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d8e585996e4c1b9bc69b7f0b4be90a837c9b891b",
+  "prompts": {},
+  "humans": {
+    "h_c7499b019d31b1": {
+      "author": "chenyouhui.duke <chenyouhui.duke@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}
