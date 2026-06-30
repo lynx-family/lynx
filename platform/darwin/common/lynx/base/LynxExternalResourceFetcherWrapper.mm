@@ -23,14 +23,20 @@
   return self;
 }
 
-- (BOOL)fetchResource:(NSString*)url withLoadedBlock:(LoadedBlock)callback {
+- (BOOL)fetchResource:(NSString*)url withLoadedBlock:(LoadedBlock)callback sync:(BOOL)sync {
   if (!_component_fetcher) {
     // false if component fetcher not set;
     return false;
   }
   TRACE_EVENT(LYNX_TRACE_CATEGORY, DYNAMIC_COMPONENT_FETCHER_LOAD_COMPONENT, "url",
               [url UTF8String]);
-  [_component_fetcher loadDynamicComponent:url withLoadedBlock:callback];
+  if (!sync) {
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^() {
+      [self->_component_fetcher loadDynamicComponent:url withLoadedBlock:callback];
+    });
+  } else {
+    [_component_fetcher loadDynamicComponent:url withLoadedBlock:callback];
+  }
   return true;
 }
 
