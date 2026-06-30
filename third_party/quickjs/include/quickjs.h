@@ -773,6 +773,9 @@ void PrepareQJSDebuggerForSharedContext(LEPUSContext *ctx, void **funcs,
 LEPUSRuntime *LEPUS_NewRuntime(void);
 LEPUSRuntime *LEPUS_NewRuntimeWithMode(uint32_t mode);
 /* info lifetime must exceed that of rt */
+/* Enable or disable LepusNG bytecode size optimizations.
+   Only effective when is_lepusng is also true. Default: enabled. */
+void LEPUS_SetOptLepusNGPackageSize(LEPUSRuntime *rt, int enable);
 void LEPUS_SetRuntimeInfo(LEPUSRuntime *rt, const char *info);
 void LEPUS_SetMemoryLimit(LEPUSRuntime *rt, size_t limit);
 void LEPUS_SetGCThreshold(LEPUSRuntime *rt, size_t gc_threshold);
