@@ -91,6 +91,7 @@ lynx_core_source_set("cpp") {
     "module/module_factory_capi.h",
     "module/native_module_capi.cc",
     "module/native_module_capi.h",
+    "public/lynx_runtime_lifecycle_c_api.h",
     "public/pub_lynx_context.cc",
     "public/pub_lynx_context.h",
     "public/pub_lynx_resource_loader_harmony.cc",
