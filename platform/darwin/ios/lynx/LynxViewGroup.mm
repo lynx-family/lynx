@@ -3,12 +3,14 @@
 // LICENSE file in the root directory of this source tree.
 
 #import <Lynx/LynxConfig+internal.h>
+#import <Lynx/LynxEmbeddedModule.h>
 #import <Lynx/LynxLog.h>
 #import <Lynx/LynxLogicExecutor.h>
 #import <Lynx/LynxService.h>
 #import <Lynx/LynxView+Internal.h>
 #import <Lynx/LynxView.h>
 #import <Lynx/LynxViewGroup.h>
+#import <Lynx/LynxWeakProxy.h>
 #import <pthread.h>
 #include <atomic>
 
@@ -220,6 +222,9 @@
   id<LynxServiceModuleProtocol> moduleService = LynxService(LynxServiceModuleProtocol);
   if ([moduleService respondsToSelector:@selector(initLynxViewGroup:)]) {
     [moduleService initLynxViewGroup:self];
+  }
+  if (_logicExecutor == nil) {
+    [self registerModule:LynxEmbeddedModule.class param:[LynxWeakProxy proxyWithTarget:self]];
   }
 }
 
