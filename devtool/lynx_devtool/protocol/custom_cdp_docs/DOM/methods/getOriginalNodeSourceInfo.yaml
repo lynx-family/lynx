@@ -1,0 +1,47 @@
+summary: Returns the source info associated with a DevTool node id.
+parameters:
+  - name: nodeId
+    type: integer
+    description: DevTool node id to resolve in the current Lynx element tree.
+returns:
+  - name: nodeId
+    type: integer
+    optional: true
+    description: DevTool node id of the resolved element node.
+  - name: tag
+    type: string
+    optional: true
+    description: Runtime element tag name such as view, text, image, or wrapper.
+  - name: nodeIndex
+    type: integer
+    optional: true
+    description: Raw node index stored on the resolved element node.
+  - name: debugMetadataUrl
+    type: string
+    optional: true
+    description: Debug metadata URL of the template bundle that owns the element node. Empty when the owning bundle does not expose debug metadata.
+  - name: lazyBundleUrl
+    type: string|null
+    optional: true
+    description: Lazy bundle URL when the node belongs to a lazy bundle. The field is null for nodes from the main template.
+events: []
+notes:
+  - Dispatches through LynxDevToolMediator to InspectorTasmExecutor on the TASM thread.
+  - Runtime-generated wrapper nodes can be identified by tag set to wrapper.
+  - The response result is an empty object when no element is found for params.nodeId.
+  - If the mediator has no TASM task runner, the current handler does not send an explicit CDP response.
+examples:
+  - title: Read source info for an element node
+    request:
+      id: 1
+      method: DOM.getOriginalNodeSourceInfo
+      params:
+        nodeId: 42
+    response:
+      id: 1
+      result:
+        nodeId: 42
+        tag: view
+        nodeIndex: 7
+        debugMetadataUrl: https://example.com/main.debug-metadata.json
+        lazyBundleUrl: null

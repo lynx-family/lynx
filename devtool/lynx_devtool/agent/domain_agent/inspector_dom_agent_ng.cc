@@ -51,6 +51,8 @@ InspectorDOMAgentNG::InspectorDOMAgentNG(
   functions_map_["DOM.focus"] = &InspectorDOMAgentNG::Focus;
   functions_map_["DOM.getOriginalNodeIndex"] =
       &InspectorDOMAgentNG::GetOriginalNodeIndex;
+  functions_map_["DOM.getOriginalNodeSourceInfo"] =
+      &InspectorDOMAgentNG::GetOriginalNodeSourceInfo;
 }
 
 InspectorDOMAgentNG::~InspectorDOMAgentNG() = default;
@@ -198,6 +200,11 @@ void InspectorDOMAgentNG::Focus(const std::shared_ptr<MessageSender>& sender,
 void InspectorDOMAgentNG::GetOriginalNodeIndex(
     const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
   devtool_mediator_->GetOriginalNodeIndex(sender, message);
+}
+
+void InspectorDOMAgentNG::GetOriginalNodeSourceInfo(
+    const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
+  devtool_mediator_->GetOriginalNodeSourceInfo(sender, message);
 }
 
 void InspectorDOMAgentNG::CallMethod(

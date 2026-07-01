@@ -154,6 +154,10 @@ domains:
         origin: lynx-extension
         since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_dom_agent_ng.cc
+      - name: getOriginalNodeSourceInfo
+        origin: lynx-extension
+        since: '4.3'
+        source: devtool/lynx_devtool/agent/domain_agent/inspector_dom_agent_ng.cc
       - name: getOuterHTML
         origin: standard
         since: '4.1'

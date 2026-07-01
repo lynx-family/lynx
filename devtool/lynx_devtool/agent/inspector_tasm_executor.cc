@@ -1717,6 +1717,42 @@ void InspectorTasmExecutor::GetOriginalNodeIndex(
   sender->SendMessage("CDP", response);
 }
 
+void InspectorTasmExecutor::GetOriginalNodeSourceInfo(
+    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
+    const Json::Value& message) {
+  Json::Value response(Json::ValueType::objectValue);
+  Json::Value content(Json::ValueType::objectValue);
+
+  Json::Value params = message["params"];
+  size_t node_id = static_cast<size_t>(params["nodeId"].asInt64());
+
+  Element* element = GetElementById(static_cast<int>(node_id));
+  if (element != nullptr) {
+    std::string entry_name = element->ParentComponentEntryName();
+    std::string debug_metadata_url;
+    if (tasm_ != nullptr) {
+      auto bundle = tasm_->FindTemplateBundle(entry_name);
+      if (bundle) {
+        const auto& page_config = bundle->GetPageConfig();
+        if (page_config) {
+          debug_metadata_url = page_config->GetDebugMetadataUrl();
+        }
+      }
+    }
+
+    content["nodeId"] = ElementInspector::NodeId(element);
+    content["tag"] = ElementInspector::LocalName(element);
+    content["nodeIndex"] = element->NodeIndex();
+    content["debugMetadataUrl"] = debug_metadata_url;
+    content["lazyBundleUrl"] = entry_name == tasm::DEFAULT_ENTRY_NAME
+                                   ? Json::Value(Json::nullValue)
+                                   : Json::Value(entry_name);
+  }
+  response["id"] = message["id"].asInt64();
+  response["result"] = content;
+  sender->SendMessage("CDP", response);
+}
+
 void InspectorTasmExecutor::ScrollIntoViewIfNeeded(
     const std::shared_ptr<lynx::devtool::MessageSender>& sender,
     const Json::Value& message) {

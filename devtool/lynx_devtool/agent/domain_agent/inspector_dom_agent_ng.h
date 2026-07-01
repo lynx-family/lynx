@@ -88,6 +88,8 @@ class InspectorDOMAgentNG : public CDPDomainAgentBase {
              const Json::Value& message);
   void GetOriginalNodeIndex(const std::shared_ptr<MessageSender>& sender,
                             const Json::Value& message);
+  void GetOriginalNodeSourceInfo(const std::shared_ptr<MessageSender>& sender,
+                                 const Json::Value& message);
 
   std::unordered_map<uint64_t, std::vector<int>> search_results_;
   std::map<std::string, DOMAgentMethod> functions_map_;

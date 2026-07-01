@@ -13,6 +13,7 @@
 #include <unordered_map>
 
 #include "base/include/closure.h"
+#include "core/base/lynx_export.h"
 #include "core/renderer/js_bundle_holder_impl.h"
 #include "core/renderer/template_entry.h"
 #include "core/resource/lazy_bundle/bundle_resource_info.h"
@@ -40,7 +41,7 @@ class TemplateEntryHolder : public JsBundleHolderImpl::BundleProxy {
   std::shared_ptr<TemplateEntry> FindTemplateEntry(
       const std::string& entry_name);
 
-  std::optional<LynxTemplateBundle> FindTemplateBundle(
+  LYNX_EXPORT_FOR_DEVTOOL std::optional<LynxTemplateBundle> FindTemplateBundle(
       const std::string& entry_name) override;
 
   /**
