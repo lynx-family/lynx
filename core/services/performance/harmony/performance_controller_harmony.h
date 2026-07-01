@@ -56,8 +56,10 @@ class PerformanceControllerHarmonyJSWrapper
   friend class PerformanceControllerHarmony;
 
   napi_ref js_impl_strong_ref_{nullptr};
+  napi_ref js_native_ref_{nullptr};
   napi_ref js_on_performance_event_func_ref_{nullptr};
   napi_env env_{nullptr};
+  bool destroyed_{false};
   std::weak_ptr<shell::LynxActor<PerformanceController>> actor_;
 };
 
