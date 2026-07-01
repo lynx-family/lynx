@@ -7,16 +7,26 @@
 
 #include "core/renderer/dom/fragment/display_list_builder.h"
 
-#include <vector>
+#include <cstring>
 
 #include "core/renderer/dom/fragment/display_list_reader.h"
 #include "core/renderer/starlight/style/borders_data.h"
 #include "core/style/transform/matrix44.h"
-#include "third_party/googletest/googlemock/include/gmock/gmock.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 namespace lynx {
 namespace tasm {
+
+namespace {
+
+template <typename T>
+T ReadField(const uint8_t* data, size_t offset) {
+  T value;
+  std::memcpy(&value, data + offset, sizeof(T));
+  return value;
+}
+
+}  // namespace
 
 class DisplayListBuilderTest : public ::testing::Test {
  protected:
@@ -525,24 +535,34 @@ TEST_F(DisplayListBuilderTest, MoveSemantics) {
   EXPECT_EQ(display_list.GetContentItemsSize(), 1u);
 }
 
-TEST_F(DisplayListBuilderTest, DisplayListItemABI) {
-  // Verify ABI invariants that cross-platform consumers depend on
-  static_assert(sizeof(DisplayListItem) == 56,
-                "DisplayListItem size must be 56 bytes");
-  static_assert(offsetof(DisplayListItem, type) == 0,
-                "type field must be at offset 0");
-  static_assert(offsetof(DisplayListItem, payload.begin.id) == 4,
-                "begin.id must be at offset 4");
-  static_assert(offsetof(DisplayListItem, payload.fill.color) == 4,
-                "fill.color must be at offset 4");
-  static_assert(offsetof(DisplayListItem, payload.linear_gradient.angle) == 36,
-                "linear_gradient.angle must be at offset 36");
-  static_assert(std::is_standard_layout<DisplayListItem>::value,
-                "DisplayListItem must be standard layout");
-  static_assert(std::is_trivially_copyable<DisplayListItem>::value,
-                "DisplayListItem must be trivially copyable");
+TEST_F(DisplayListBuilderTest, SerializedContentItemsBuffer) {
+  builder_->Begin(7, PlatformRendererType::kView, 10.0f, 20.0f, 100.0f, 200.0f)
+      .Fill(0xFF00FF00, 3)
+      .End();
 
-  SUCCEED();
+  DisplayList display_list = builder_->Build();
+  const uint8_t* data = display_list.GetSerializedContentItemsData();
+  ASSERT_NE(data, nullptr);
+  EXPECT_EQ(display_list.GetSerializedContentItemsSize(),
+            static_cast<size_t>(kDisplayListItemBufferHeaderSize +
+                                3 * kSerializedDisplayListItemSize));
+  EXPECT_EQ(ReadField<int32_t>(data, 0), kSerializedDisplayListItemSize);
+
+  const size_t begin_offset = kDisplayListItemBufferHeaderSize;
+  EXPECT_EQ(ReadField<int32_t>(data, begin_offset),
+            static_cast<int32_t>(DisplayListOpType::kBegin));
+  EXPECT_EQ(ReadField<int32_t>(data, begin_offset + 4), 7);
+  EXPECT_FLOAT_EQ(ReadField<float>(data, begin_offset + 12), 10.0f);
+
+  const size_t fill_offset = begin_offset + kSerializedDisplayListItemSize;
+  EXPECT_EQ(ReadField<int32_t>(data, fill_offset),
+            static_cast<int32_t>(DisplayListOpType::kFill));
+  EXPECT_EQ(ReadField<uint32_t>(data, fill_offset + 4), 0xFF00FF00u);
+  EXPECT_EQ(ReadField<int32_t>(data, fill_offset + 8), 3);
+
+  const size_t end_offset = fill_offset + kSerializedDisplayListItemSize;
+  EXPECT_EQ(ReadField<int32_t>(data, end_offset),
+            static_cast<int32_t>(DisplayListOpType::kEnd));
 }
 
 }  // namespace tasm

@@ -15,6 +15,9 @@
 namespace lynx {
 namespace tasm {
 
+constexpr int32_t kDisplayListItemBufferHeaderSize = sizeof(int32_t);
+constexpr int32_t kSerializedDisplayListItemSize = 56;
+
 struct OpData {
   base::InlineVector<int32_t, 8> ops;
   base::InlineVector<int32_t, 16> int_data;
@@ -170,134 +173,6 @@ typedef struct DisplayListItem {
     } box_shadow;
   } payload;
 } DisplayListItem;
-
-// ABI locking: static_asserts for every field that cross-platform consumers
-// read
-static_assert(sizeof(DisplayListItem) == 56,
-              "DisplayListItem size must be 56 bytes");
-static_assert(offsetof(DisplayListItem, type) == 0,
-              "type field must be at offset 0");
-static_assert(offsetof(DisplayListItem, payload) == 4,
-              "payload union must be at offset 4");
-
-// Begin payload offsets
-static_assert(offsetof(DisplayListItem, payload.begin.id) == 4,
-              "begin.id must be at offset 4");
-static_assert(offsetof(DisplayListItem, payload.begin.type) == 8,
-              "begin.type must be at offset 8");
-static_assert(offsetof(DisplayListItem, payload.begin.x) == 12,
-              "begin.x must be at offset 12");
-static_assert(offsetof(DisplayListItem, payload.begin.y) == 16,
-              "begin.y must be at offset 16");
-static_assert(offsetof(DisplayListItem, payload.begin.w) == 20,
-              "begin.w must be at offset 20");
-static_assert(offsetof(DisplayListItem, payload.begin.h) == 24,
-              "begin.h must be at offset 24");
-
-// Fill payload offsets
-static_assert(offsetof(DisplayListItem, payload.fill.color) == 4,
-              "fill.color must be at offset 4");
-static_assert(offsetof(DisplayListItem, payload.fill.clip_index) == 8,
-              "fill.clip_index must be at offset 8");
-
-// DrawView payload offsets
-static_assert(offsetof(DisplayListItem, payload.draw_view.view_id) == 4,
-              "draw_view.view_id must be at offset 4");
-
-// Text payload offsets
-static_assert(offsetof(DisplayListItem, payload.text.text_id) == 4,
-              "text.text_id must be at offset 4");
-static_assert(offsetof(DisplayListItem, payload.text.box_index) == 8,
-              "text.box_index must be at offset 8");
-
-// Image payload offsets
-static_assert(offsetof(DisplayListItem, payload.image.image_id) == 4,
-              "image.image_id must be at offset 4");
-static_assert(offsetof(DisplayListItem, payload.image.box_index) == 8,
-              "image.box_index must be at offset 8");
-
-// Border payload offsets
-static_assert(offsetof(DisplayListItem, payload.border.out_index) == 4,
-              "border.out_index must be at offset 4");
-static_assert(offsetof(DisplayListItem, payload.border.inner_index) == 8,
-              "border.inner_index must be at offset 8");
-static_assert(offsetof(DisplayListItem, payload.border.colors) == 12,
-              "border.colors must be at offset 12");
-static_assert(offsetof(DisplayListItem, payload.border.styles) == 28,
-              "border.styles must be at offset 28");
-
-// RecordBox payload offsets
-static_assert(offsetof(DisplayListItem, payload.record_box.x) == 4,
-              "record_box.x must be at offset 4");
-static_assert(offsetof(DisplayListItem, payload.record_box.y) == 8,
-              "record_box.y must be at offset 8");
-static_assert(offsetof(DisplayListItem, payload.record_box.w) == 12,
-              "record_box.w must be at offset 12");
-static_assert(offsetof(DisplayListItem, payload.record_box.h) == 16,
-              "record_box.h must be at offset 16");
-static_assert(offsetof(DisplayListItem, payload.record_box.radii) == 20,
-              "record_box.radii must be at offset 20");
-static_assert(offsetof(DisplayListItem, payload.record_box.has_radii) == 52,
-              "record_box.has_radii must be at offset 52");
-
-// ClipRect payload offsets
-static_assert(offsetof(DisplayListItem, payload.clip_rect.x) == 4,
-              "clip_rect.x must be at offset 4");
-static_assert(offsetof(DisplayListItem, payload.clip_rect.y) == 8,
-              "clip_rect.y must be at offset 8");
-static_assert(offsetof(DisplayListItem, payload.clip_rect.w) == 12,
-              "clip_rect.w must be at offset 12");
-static_assert(offsetof(DisplayListItem, payload.clip_rect.h) == 16,
-              "clip_rect.h must be at offset 16");
-static_assert(offsetof(DisplayListItem, payload.clip_rect.radii) == 20,
-              "clip_rect.radii must be at offset 20");
-static_assert(offsetof(DisplayListItem, payload.clip_rect.has_radii) == 52,
-              "clip_rect.has_radii must be at offset 52");
-
-// LinearGradient payload offsets
-static_assert(offsetof(DisplayListItem,
-                       payload.linear_gradient.color_count_offset) == 4,
-              "linear_gradient.color_count_offset must be at offset 4");
-static_assert(offsetof(DisplayListItem, payload.linear_gradient.color_count) ==
-                  8,
-              "linear_gradient.color_count must be at offset 8");
-static_assert(offsetof(DisplayListItem,
-                       payload.linear_gradient.stop_count_offset) == 12,
-              "linear_gradient.stop_count_offset must be at offset 12");
-static_assert(offsetof(DisplayListItem, payload.linear_gradient.stop_count) ==
-                  16,
-              "linear_gradient.stop_count must be at offset 16");
-static_assert(offsetof(DisplayListItem, payload.linear_gradient.tiling_index) ==
-                  20,
-              "linear_gradient.tiling_index must be at offset 20");
-static_assert(offsetof(DisplayListItem, payload.linear_gradient.clip_index) ==
-                  24,
-              "linear_gradient.clip_index must be at offset 24");
-static_assert(offsetof(DisplayListItem, payload.linear_gradient.repeat_x) == 28,
-              "linear_gradient.repeat_x must be at offset 28");
-static_assert(offsetof(DisplayListItem, payload.linear_gradient.repeat_y) == 32,
-              "linear_gradient.repeat_y must be at offset 32");
-static_assert(offsetof(DisplayListItem, payload.linear_gradient.angle) == 36,
-              "linear_gradient.angle must be at offset 36");
-
-// BoxShadow payload offsets
-static_assert(offsetof(DisplayListItem, payload.box_shadow.shadow_box_index) ==
-                  4,
-              "box_shadow.shadow_box_index must be at offset 4");
-static_assert(offsetof(DisplayListItem, payload.box_shadow.clip_box_index) == 8,
-              "box_shadow.clip_box_index must be at offset 8");
-static_assert(offsetof(DisplayListItem, payload.box_shadow.color) == 12,
-              "box_shadow.color must be at offset 12");
-static_assert(offsetof(DisplayListItem, payload.box_shadow.blur_radius) == 16,
-              "box_shadow.blur_radius must be at offset 16");
-static_assert(offsetof(DisplayListItem, payload.box_shadow.clip_mode) == 20,
-              "box_shadow.clip_mode must be at offset 20");
-
-static_assert(std::is_standard_layout<DisplayListItem>::value,
-              "DisplayListItem must be standard layout for JNI");
-static_assert(
-    std::is_trivially_copyable<DisplayListItem>::value,
-    "DisplayListItem must be trivially copyable for DirectByteBuffer");
 }  // extern "C"
 
 class DisplayList {
@@ -325,50 +200,21 @@ class DisplayList {
   size_t GetContentItemsSize() const {
     return content_items_.has_value() ? content_items_->size() : 0;
   }
+  const uint8_t* GetSerializedContentItemsData() const {
+    return serialized_content_items_.has_value()
+               ? serialized_content_items_->data()
+               : nullptr;
+  }
+  size_t GetSerializedContentItemsSize() const {
+    return serialized_content_items_.has_value()
+               ? serialized_content_items_->size()
+               : 0;
+  }
   const uint8_t* GetContentData() const {
     return content_data_.has_value() ? content_data_->data() : nullptr;
   }
   size_t GetContentDataSize() const {
     return content_data_.has_value() ? content_data_->size() : 0;
-  }
-
-  const int32_t* GetContentOpTypesData() const {
-    return legacy_content_data_.has_value() ? legacy_content_data_->ops.data()
-                                            : nullptr;
-  }
-  const int32_t* GetContentIntData() const {
-    return legacy_content_data_.has_value()
-               ? legacy_content_data_->int_data.data()
-               : nullptr;
-  }
-  const float* GetContentFloatData() const {
-    return legacy_content_data_.has_value()
-               ? legacy_content_data_->float_data.data()
-               : nullptr;
-  }
-  size_t GetContentOpTypesSize() const {
-    return legacy_content_data_.has_value() ? legacy_content_data_->ops.size()
-                                            : 0;
-  }
-  bool HasContent() const { return GetContentOpTypesSize() != 0; }
-  size_t GetContentIntDataSize() const {
-    return legacy_content_data_.has_value()
-               ? legacy_content_data_->int_data.size()
-               : 0;
-  }
-  size_t GetContentFloatDataSize() const {
-    return legacy_content_data_.has_value()
-               ? legacy_content_data_->float_data.size()
-               : 0;
-  }
-  int32_t GetOpAtIndex(size_t index) const {
-    return legacy_content_data_->ops[index];
-  }
-  int32_t GetIntAtIndex(size_t index) const {
-    return legacy_content_data_->int_data[index];
-  }
-  float GetFloatAtIndex(size_t index) const {
-    return legacy_content_data_->float_data[index];
   }
 
   const float* GetRenderOffset() const { return render_offset_; }
@@ -395,11 +241,6 @@ class DisplayList {
                          int32_t clip_index, int32_t repeat_x,
                          int32_t repeat_y);
 
-  template <typename... Args>
-  auto AddOperation(DisplayListOpType type, Args... args) {
-    AddOperationToData(legacy_content_data_, type, args...);
-  }
-
   void AppendItem(const DisplayListItem& item);
 
   void AddSubLayer(int id) { sub_layers_.emplace_back(id); }
@@ -410,18 +251,16 @@ class DisplayList {
   }
 
  private:
-  template <typename OpType, typename... Args>
-  void AddOperationToData(base::auto_create_optional<OpData>& data_store,
-                          OpType type, Args... args);
+  static void SerializeItem(const DisplayListItem& item,
+                            base::Vector<uint8_t>& buffer);
 
   // Content operations (stable during animations) - lazy allocated
   base::auto_create_optional<base::InlineVector<DisplayListItem, 8>>
       content_items_;
+  base::auto_create_optional<base::Vector<uint8_t>> serialized_content_items_;
 
   // Trailing variable-length data region for gradient colors/stops
   base::auto_create_optional<base::Vector<uint8_t>> content_data_;
-
-  base::auto_create_optional<OpData> legacy_content_data_;
 
   // Subtree-influencing group properties (frequently updated during animations)
   // These operations affect the entire subtree and only apply to owner layers -
@@ -437,41 +276,6 @@ class DisplayList {
 
   bool root_need_clip_bounds_{false};
 };
-
-template <typename OpType, typename... Args>
-void DisplayList::AddOperationToData(
-    base::auto_create_optional<OpData>& data_store, OpType type, Args... args) {
-  static_assert((... && (std::is_same_v<std::decay_t<Args>, int32_t> ||
-                         std::is_same_v<std::decay_t<Args>, float>)),
-                "AddOperation only accepts int32_t and float parameters");
-
-  OpData* op_data = &(*data_store);
-
-  op_data->ops.push_back(static_cast<int32_t>(type));
-
-  if constexpr (sizeof...(Args) == 0) {
-    op_data->int_data.push_back(0);
-    op_data->int_data.push_back(0);
-  } else {
-    constexpr size_t int_count =
-        (... + (std::is_same_v<std::decay_t<Args>, int32_t> ? 1 : 0));
-    constexpr size_t float_count =
-        (... + (std::is_same_v<std::decay_t<Args>, float> ? 1 : 0));
-
-    op_data->int_data.reserve(op_data->int_data.size() + 2 + int_count);
-    if constexpr (float_count > 0) {
-      op_data->float_data.reserve(op_data->float_data.size() + float_count);
-    }
-
-    op_data->int_data.push_back(static_cast<int32_t>(int_count));
-    op_data->int_data.push_back(static_cast<int32_t>(float_count));
-
-    ((std::is_same_v<std::decay_t<Args>, int32_t>
-          ? op_data->int_data.push_back(static_cast<int32_t>(args))
-          : op_data->float_data.push_back(static_cast<float>(args))),
-     ...);
-  }
-}
 
 }  // namespace tasm
 }  // namespace lynx

@@ -4,17 +4,32 @@
 
 #include "core/renderer/dom/fragment/display_list.h"
 
+#include <cstring>
 #include <memory>
 #include <utility>
-#include <vector>
 
 #include "core/public/platform_renderer_type.h"
 #include "core/renderer/dom/fragment/display_list_reader.h"
-#include "third_party/googletest/googlemock/include/gmock/gmock.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 namespace lynx {
 namespace tasm {
+
+namespace {
+
+template <typename T>
+T ReadField(const uint8_t* data, size_t offset) {
+  T value;
+  std::memcpy(&value, data + offset, sizeof(T));
+  return value;
+}
+
+size_t SerializedItemOffset(size_t index) {
+  return kDisplayListItemBufferHeaderSize +
+         index * kSerializedDisplayListItemSize;
+}
+
+}  // namespace
 
 class DisplayListTest : public ::testing::Test {
  protected:
@@ -220,21 +235,172 @@ TEST_F(DisplayListTest, ClearSubtreeProperties) {
   EXPECT_EQ(display_list_->GetSubtreePropertiesData(), nullptr);
 }
 
-TEST_F(DisplayListTest, DisplayListItemABICompliance) {
-  // Verify ABI invariants that cross-platform consumers depend on
-  static_assert(sizeof(DisplayListItem) == 56,
-                "DisplayListItem size must be 56 bytes");
-  static_assert(offsetof(DisplayListItem, type) == 0,
-                "type field must be at offset 0");
-  static_assert(offsetof(DisplayListItem, payload) == 4,
-                "payload union must be at offset 4");
-  static_assert(std::is_standard_layout<DisplayListItem>::value,
-                "DisplayListItem must be standard layout");
-  static_assert(std::is_trivially_copyable<DisplayListItem>::value,
-                "DisplayListItem must be trivially copyable");
+TEST_F(DisplayListTest, SerializedContentItemsBuffer) {
+  DisplayListItem begin{};
+  begin.type = DisplayListOpType::kBegin;
+  begin.payload.begin.id = 42;
+  begin.payload.begin.type = static_cast<int32_t>(PlatformRendererType::kView);
+  begin.payload.begin.x = 10.0f;
+  begin.payload.begin.y = 20.0f;
+  begin.payload.begin.w = 100.0f;
+  begin.payload.begin.h = 200.0f;
+  display_list_->AppendItem(begin);
 
-  // SUCCEED if all static_asserts pass
-  SUCCEED();
+  DisplayListItem fill{};
+  fill.type = DisplayListOpType::kFill;
+  fill.payload.fill.color = 0xFF00FF00;
+  fill.payload.fill.clip_index = 0;
+  display_list_->AppendItem(fill);
+
+  DisplayListItem draw_view{};
+  draw_view.type = DisplayListOpType::kDrawView;
+  draw_view.payload.draw_view.view_id = 99;
+  display_list_->AppendItem(draw_view);
+
+  DisplayListItem text{};
+  text.type = DisplayListOpType::kText;
+  text.payload.text.text_id = 101;
+  text.payload.text.box_index = 1;
+  display_list_->AppendItem(text);
+
+  DisplayListItem image{};
+  image.type = DisplayListOpType::kImage;
+  image.payload.image.image_id = 202;
+  image.payload.image.box_index = 2;
+  display_list_->AppendItem(image);
+
+  DisplayListItem border{};
+  border.type = DisplayListOpType::kBorder;
+  border.payload.border.out_index = 3;
+  border.payload.border.inner_index = 4;
+  border.payload.border.colors[0] = 0xFFFF0000;
+  border.payload.border.colors[1] = 0xFF00FF00;
+  border.payload.border.colors[2] = 0xFF0000FF;
+  border.payload.border.colors[3] = 0xFFFFFF00;
+  border.payload.border.styles[0] = 1;
+  border.payload.border.styles[1] = 2;
+  border.payload.border.styles[2] = 3;
+  border.payload.border.styles[3] = 4;
+  display_list_->AppendItem(border);
+
+  DisplayListItem clip{};
+  clip.type = DisplayListOpType::kClipRect;
+  clip.payload.clip_rect.x = 1.0f;
+  clip.payload.clip_rect.y = 2.0f;
+  clip.payload.clip_rect.w = 3.0f;
+  clip.payload.clip_rect.h = 4.0f;
+  for (int i = 0; i < 8; ++i) {
+    clip.payload.clip_rect.radii[i] = static_cast<float>(i + 1);
+  }
+  clip.payload.clip_rect.has_radii = 1;
+  display_list_->AppendItem(clip);
+
+  DisplayListItem record{};
+  record.type = DisplayListOpType::kRecordBox;
+  record.payload.record_box.x = 5.0f;
+  record.payload.record_box.y = 6.0f;
+  record.payload.record_box.w = 7.0f;
+  record.payload.record_box.h = 8.0f;
+  for (int i = 0; i < 8; ++i) {
+    record.payload.record_box.radii[i] = static_cast<float>(i + 9);
+  }
+  record.payload.record_box.has_radii = 1;
+  display_list_->AppendItem(record);
+
+  base::Vector<uint32_t> colors;
+  colors.push_back(0xFF111111);
+  colors.push_back(0xFF222222);
+  base::Vector<float> stops;
+  stops.push_back(0.25f);
+  stops.push_back(0.75f);
+  display_list_->AddLinearGradient(45.0f, colors, stops, 8, 9, 1, 0);
+
+  DisplayListItem box_shadow{};
+  box_shadow.type = DisplayListOpType::kBoxShadow;
+  box_shadow.payload.box_shadow.shadow_box_index = 10;
+  box_shadow.payload.box_shadow.clip_box_index = 11;
+  box_shadow.payload.box_shadow.color = 0x80000000;
+  box_shadow.payload.box_shadow.blur_radius = 12.0f;
+  box_shadow.payload.box_shadow.clip_mode = 1;
+  display_list_->AppendItem(box_shadow);
+
+  DisplayListItem end{};
+  end.type = DisplayListOpType::kEnd;
+  display_list_->AppendItem(end);
+
+  const uint8_t* data = display_list_->GetSerializedContentItemsData();
+  ASSERT_NE(data, nullptr);
+  EXPECT_EQ(display_list_->GetSerializedContentItemsSize(),
+            static_cast<size_t>(kDisplayListItemBufferHeaderSize +
+                                11 * kSerializedDisplayListItemSize));
+  EXPECT_EQ(ReadField<int32_t>(data, 0), kSerializedDisplayListItemSize);
+
+  const size_t begin_offset = SerializedItemOffset(0);
+  EXPECT_EQ(ReadField<int32_t>(data, begin_offset),
+            static_cast<int32_t>(DisplayListOpType::kBegin));
+  EXPECT_EQ(ReadField<int32_t>(data, begin_offset + 4), 42);
+  EXPECT_FLOAT_EQ(ReadField<float>(data, begin_offset + 12), 10.0f);
+  EXPECT_FLOAT_EQ(ReadField<float>(data, begin_offset + 24), 200.0f);
+
+  const size_t fill_offset = SerializedItemOffset(1);
+  EXPECT_EQ(ReadField<int32_t>(data, fill_offset),
+            static_cast<int32_t>(DisplayListOpType::kFill));
+  EXPECT_EQ(ReadField<uint32_t>(data, fill_offset + 4), 0xFF00FF00u);
+  EXPECT_EQ(ReadField<int32_t>(data, fill_offset + 8), 0);
+
+  const size_t draw_view_offset = SerializedItemOffset(2);
+  EXPECT_EQ(ReadField<int32_t>(data, draw_view_offset + 4), 99);
+
+  const size_t text_offset = SerializedItemOffset(3);
+  EXPECT_EQ(ReadField<int32_t>(data, text_offset + 4), 101);
+  EXPECT_EQ(ReadField<int32_t>(data, text_offset + 8), 1);
+
+  const size_t image_offset = SerializedItemOffset(4);
+  EXPECT_EQ(ReadField<int32_t>(data, image_offset + 4), 202);
+  EXPECT_EQ(ReadField<int32_t>(data, image_offset + 8), 2);
+
+  const size_t border_offset = SerializedItemOffset(5);
+  EXPECT_EQ(ReadField<int32_t>(data, border_offset + 4), 3);
+  EXPECT_EQ(ReadField<int32_t>(data, border_offset + 8), 4);
+  EXPECT_EQ(ReadField<uint32_t>(data, border_offset + 12), 0xFFFF0000u);
+  EXPECT_EQ(ReadField<uint32_t>(data, border_offset + 24), 0xFFFFFF00u);
+  EXPECT_EQ(ReadField<int32_t>(data, border_offset + 28), 1);
+  EXPECT_EQ(ReadField<int32_t>(data, border_offset + 40), 4);
+
+  const size_t clip_offset = SerializedItemOffset(6);
+  EXPECT_FLOAT_EQ(ReadField<float>(data, clip_offset + 4), 1.0f);
+  EXPECT_FLOAT_EQ(ReadField<float>(data, clip_offset + 16), 4.0f);
+  EXPECT_FLOAT_EQ(ReadField<float>(data, clip_offset + 48), 8.0f);
+  EXPECT_EQ(ReadField<uint32_t>(data, clip_offset + 52), 1u);
+
+  const size_t record_offset = SerializedItemOffset(7);
+  EXPECT_FLOAT_EQ(ReadField<float>(data, record_offset + 4), 5.0f);
+  EXPECT_FLOAT_EQ(ReadField<float>(data, record_offset + 16), 8.0f);
+  EXPECT_FLOAT_EQ(ReadField<float>(data, record_offset + 48), 16.0f);
+  EXPECT_EQ(ReadField<uint32_t>(data, record_offset + 52), 1u);
+
+  const size_t gradient_offset = SerializedItemOffset(8);
+  EXPECT_EQ(ReadField<uint32_t>(data, gradient_offset + 4), 0u);
+  EXPECT_EQ(ReadField<uint32_t>(data, gradient_offset + 8), 2u);
+  EXPECT_EQ(ReadField<uint32_t>(data, gradient_offset + 12),
+            2 * sizeof(uint32_t));
+  EXPECT_EQ(ReadField<uint32_t>(data, gradient_offset + 16), 2u);
+  EXPECT_EQ(ReadField<int32_t>(data, gradient_offset + 20), 8);
+  EXPECT_EQ(ReadField<int32_t>(data, gradient_offset + 24), 9);
+  EXPECT_EQ(ReadField<int32_t>(data, gradient_offset + 28), 1);
+  EXPECT_EQ(ReadField<int32_t>(data, gradient_offset + 32), 0);
+  EXPECT_FLOAT_EQ(ReadField<float>(data, gradient_offset + 36), 45.0f);
+
+  const size_t box_shadow_offset = SerializedItemOffset(9);
+  EXPECT_EQ(ReadField<int32_t>(data, box_shadow_offset + 4), 10);
+  EXPECT_EQ(ReadField<int32_t>(data, box_shadow_offset + 8), 11);
+  EXPECT_EQ(ReadField<uint32_t>(data, box_shadow_offset + 12), 0x80000000u);
+  EXPECT_FLOAT_EQ(ReadField<float>(data, box_shadow_offset + 16), 12.0f);
+  EXPECT_EQ(ReadField<int32_t>(data, box_shadow_offset + 20), 1);
+
+  const size_t end_offset = SerializedItemOffset(10);
+  EXPECT_EQ(ReadField<int32_t>(data, end_offset),
+            static_cast<int32_t>(DisplayListOpType::kEnd));
 }
 
 TEST_F(DisplayListTest, DisplayListReaderRoundTrip) {
@@ -396,6 +562,7 @@ TEST_F(DisplayListTest, ReserveAndClear) {
 
   display_list_->Clear();
   EXPECT_EQ(display_list_->GetContentItemsSize(), 0u);
+  EXPECT_EQ(display_list_->GetSerializedContentItemsSize(), 0u);
   EXPECT_EQ(display_list_->GetContentDataSize(), 0u);
 }
 

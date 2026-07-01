@@ -13,6 +13,7 @@
 
 #include "base/include/float_comparison.h"
 #include "base/include/value/array.h"
+#include "core/renderer/dom/fragment/display_list_reader.h"
 #include "core/renderer/dom/lynx_get_ui_result.h"
 #include "core/renderer/ui_wrapper/painting/native_painting_context_platform_ref.h"
 #include "core/renderer/ui_wrapper/painting/platform_renderer_impl.h"
@@ -498,41 +499,27 @@ PlatformEventTargetHelper::ReconstructEventTargetTreeRecursively(
   auto children_renderer = page_renderer->Children();
   size_t child_renderer_idx = 0, child_renderer_size = children_renderer.size();
   const auto& display_list = page_renderer->GetDisplayList();
-  auto ops = display_list.GetContentOpTypesData();
-  auto int_data = display_list.GetContentIntData();
-  auto float_data = display_list.GetContentFloatData();
-  size_t ops_size = display_list.GetContentOpTypesSize();
-  size_t ops_idx = 0, int_data_idx = 0, float_data_idx = 0;
 
-  if (ops == nullptr) {
+  if (display_list.GetContentItemsSize() == 0) {
     return nullptr;
   }
 
   // the top of the stack is always the parent event target.
   std::stack<fml::RefPtr<PlatformEventTarget>> target_stack;
   fml::RefPtr<PlatformEventTarget> root_event_target = nullptr;
-  while (ops_idx < ops_size) {
-    int op = ops[ops_idx++];
-    int int_param_cnt = int_data[int_data_idx++];
-    int float_param_cnt = int_data[int_data_idx++];
-    size_t int_param_end = int_data_idx + int_param_cnt;
-    size_t float_param_end = float_data_idx + float_param_cnt;
-    switch (op) {
+
+  DisplayListReader reader(display_list);
+  while (reader.HasNext()) {
+    const auto& item = reader.Next();
+    switch (item.type) {
       // crate the event target.
-      case static_cast<int>(DisplayListOpType::kBegin): {
-        int sign = 0;
-        auto type = PlatformRendererType::kUnknown;
-        float left = 0.f, top = 0.f, width = 0.f, height = 0.f;
-        if (int_param_cnt >= 2) {
-          sign = int_data[int_data_idx++];
-          type = static_cast<PlatformRendererType>(int_data[int_data_idx++]);
-        }
-        if (float_param_cnt == 4) {
-          left = float_data[float_data_idx++];
-          top = float_data[float_data_idx++];
-          width = float_data[float_data_idx++];
-          height = float_data[float_data_idx++];
-        }
+      case DisplayListOpType::kBegin: {
+        int sign = item.payload.begin.id;
+        auto type = static_cast<PlatformRendererType>(item.payload.begin.type);
+        float left = item.payload.begin.x;
+        float top = item.payload.begin.y;
+        float width = item.payload.begin.w;
+        float height = item.payload.begin.h;
         auto event_target = fml::MakeRefCounted<PlatformEventTarget>(
             this, tree_root_id, sign, left, top, width, height);
         event_target->SetPlatformRendererType(type);
@@ -547,7 +534,7 @@ PlatformEventTargetHelper::ReconstructEventTargetTreeRecursively(
         break;
       }
       // create the sub event target tree.
-      case static_cast<int>(DisplayListOpType::kDrawView): {
+      case DisplayListOpType::kDrawView: {
         if (child_renderer_idx < child_renderer_size) {
           auto child_renderer = fml::static_ref_ptr_cast<PlatformRendererImpl>(
               children_renderer[child_renderer_idx++]);
@@ -566,7 +553,7 @@ PlatformEventTargetHelper::ReconstructEventTargetTreeRecursively(
         break;
       }
       // connect the child event target to the parent event target.
-      case static_cast<int>(DisplayListOpType::kEnd): {
+      case DisplayListOpType::kEnd: {
         auto child_target = target_stack.top();
         target_stack.pop();
         if (!target_stack.empty()) {
@@ -578,8 +565,6 @@ PlatformEventTargetHelper::ReconstructEventTargetTreeRecursively(
       default:
         break;
     }
-    int_data_idx = int_param_end;
-    float_data_idx = float_param_end;
   }
 
   return root_event_target;
