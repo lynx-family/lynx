@@ -63,9 +63,11 @@ class NativeView : public WithTypeInfo<NativeView, BaseView>,
  private:
   void OnDestroy() override;
   void FocusHasChanged(bool focused, bool is_leaf) override;
+  void Invalidate() override;
   void ResignFirstResponder();
 
   void ApplyUpdateChanged();
+  void BindExternalTexture(fml::RefPtr<SharedImageSink> image_sink);
 #if OS_IOS
   bool ShouldDeferFocusAttribute(const char* attr) const;
   void CancelPendingPlatformFocus();

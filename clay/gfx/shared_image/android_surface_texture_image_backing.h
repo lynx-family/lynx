@@ -10,6 +10,9 @@
 #include <GLES/gl.h>
 #include <android/hardware_buffer.h>
 
+#include <memory>
+#include <mutex>
+
 #include "base/include/platform/android/scoped_java_ref.h"
 #include "clay/gfx/shared_image/shared_image_backing.h"
 #include "clay/public/clay.h"
@@ -55,8 +58,20 @@ class SurfaceTextureImageBacking final : public SharedImageBackingUnmanaged {
   void DetachGLContext();
 
  private:
+  struct FrameCallbackState {
+    std::mutex mutex;
+    fml::closure callback;
+    bool has_pending_frame = false;
+    bool is_valid = true;
+  };
+
+  static void TriggerFrameCallback(
+      const std::shared_ptr<FrameCallbackState>& state);
+
   fml::RefPtr<SurfaceTexture> surface_texture_;
   GLuint texture_ = 0;
+  bool uses_internal_frame_listener_ = false;
+  std::shared_ptr<FrameCallbackState> frame_callback_state_;
 };
 
 }  // namespace clay

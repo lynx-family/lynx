@@ -51,6 +51,7 @@ class NativeViewPlugin : public ActorObject<Owner::kPlatform> {
   // Triggered by C++ node-ready patching (end-of-layout flush), not Android
   // View#layout.
   virtual void OnNodeReady() {}
+  virtual void Invalidate() {}
   virtual MeasureResult Measure(const MeasureConstraint& constraint) = 0;
 
   virtual void UpdatePaddings(float padding_left, float padding_top,
