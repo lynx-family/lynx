@@ -1,3 +1,6 @@
+## 0.0.17
+- Add compat_data for `box-shadow` animations and the `transition-property: box-shadow` keyword.
+
 ## 0.0.16
 - Add `text-decoration-thickness`, `-x-text-decoration-width`, and `-x-text-decoration-gap` CSS properties.
 

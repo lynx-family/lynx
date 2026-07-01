@@ -350,6 +350,7 @@ enum class TokenType {
   PADDING,              // padding
   MARGIN,               // margin
   FILTER,               // filter
+  BOX_SHADOW,           // box-shadow
   OFFSET_DISTANCE,      // offset-distance
   BACKGROUND_POSITION,  // background-position
   TRANSFORM_ORIGIN,     // transform-origin

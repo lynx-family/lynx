@@ -63,6 +63,10 @@ KeyframeCallbacks MakeKeyframeCallbacks(FilterKeyframe* keyframe) {
   return {keyframe, nullptr, NotifyUnitValuesUpdated<FilterKeyframe>};
 }
 
+KeyframeCallbacks MakeKeyframeCallbacks(BoxShadowKeyframe* keyframe) {
+  return {keyframe, nullptr, NotifyUnitValuesUpdated<BoxShadowKeyframe>};
+}
+
 KeyframeCallbacks MakeKeyframeCallbacks(BackgroundPositionKeyframe* keyframe) {
   return {keyframe, nullptr,
           NotifyUnitValuesUpdated<BackgroundPositionKeyframe>};

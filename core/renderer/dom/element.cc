@@ -3236,7 +3236,7 @@ bool Element::NeedFullFlushPath(CSSPropertyID id, const CSSValue& value) {
          LayoutProperty::IsLayoutWanted(id) ||
          starlight::CSSStyleUtils::IsLayoutRelatedTransform(id, value) ||
          id == kPropertyIDColor || id == kPropertyIDFilter ||
-         id == kPropertyIDBackgroundPosition;
+         id == kPropertyIDBoxShadow || id == kPropertyIDBackgroundPosition;
 }
 
 void Element::OnPatchFinish(std::shared_ptr<PipelineOptions>& option) {

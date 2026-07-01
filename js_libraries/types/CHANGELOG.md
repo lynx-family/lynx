@@ -1,5 +1,8 @@
 # CHANGELOG
 
+## 4.2.0
+- Add `box-shadow` to `transition-property` typings.
+
 ## 4.1.2
 - Add `maxSnapCount` to the `item-snap` property for `<list>`.
 

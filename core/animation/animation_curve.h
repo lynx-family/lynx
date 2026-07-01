@@ -40,6 +40,7 @@ class FloatAnimationCurve;
 class FilterAnimationCurve;
 class LayoutKeyframe;
 class FilterKeyframe;
+class BoxShadowKeyframe;
 class BackgroundPositionKeyframe;
 class TransformOriginKeyframe;
 class TransformKeyframe;
@@ -56,6 +57,7 @@ struct KeyframeCallbacks {
 KeyframeCallbacks MakeKeyframeCallbacks(gfx::Keyframe* keyframe);
 KeyframeCallbacks MakeKeyframeCallbacks(LayoutKeyframe* keyframe);
 KeyframeCallbacks MakeKeyframeCallbacks(FilterKeyframe* keyframe);
+KeyframeCallbacks MakeKeyframeCallbacks(BoxShadowKeyframe* keyframe);
 KeyframeCallbacks MakeKeyframeCallbacks(BackgroundPositionKeyframe* keyframe);
 KeyframeCallbacks MakeKeyframeCallbacks(TransformOriginKeyframe* keyframe);
 KeyframeCallbacks MakeKeyframeCallbacks(TransformKeyframe* keyframe);
@@ -129,6 +131,7 @@ class AnimationCurve : public gfx::AnimationCurve {
     BACKGROUND_POSITION = tasm::kPropertyIDBackgroundPosition,
     TRANSFORM_ORIGIN = tasm::kPropertyIDTransformOrigin,
     VISIBILITY = tasm::kPropertyIDVisibility,
+    BOX_SHADOW = tasm::kPropertyIDBoxShadow,
   };
 
   virtual ~AnimationCurve() = default;

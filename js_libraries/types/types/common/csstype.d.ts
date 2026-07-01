@@ -81,6 +81,7 @@ export type CSSProperties = Modify<
       | 'right'
       | 'bottom'
       | 'transform'
+      | 'box-shadow'
       | 'all'
       | (string & {});
     transitionTimingFunction?: 'linear' | 'ease-in' | 'ease-out' | 'ease-in-ease-out' | 'ease' | 'ease-in-out' | 'square-bezier' | 'cubic-bezier' | (string & {});

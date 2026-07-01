@@ -170,6 +170,16 @@ bool CSSKeyframeManager::InitCurveAndModelAndKeyframe(
         })) {
       return false;
     }
+  } else if (type == AnimationCurve::CurveType::BOX_SHADOW) {
+    if (!has_model) {
+      new_curve = KeyframedBoxShadowAnimationCurve::Create();
+    }
+    if (!init_keyframe([&]() {
+          return BoxShadowKeyframe::Create(fml::TimeDelta::FromSecondsF(offset),
+                                           std::move(timing_function));
+        })) {
+      return false;
+    }
   } else if (type == AnimationCurve::CurveType::TRANSFORM) {
     if (!has_model) {
       new_curve = KeyframedTransformAnimationCurve::Create();
@@ -931,6 +941,8 @@ tasm::CSSValue CSSKeyframeManager::GetDefaultValue(
   } else if (type == starlight::AnimationPropertyType::kFlexGrow) {
     return tasm::CSSValue(FloatKeyframe::kDefaultFloatValue,
                           tasm::CSSValuePattern::NUMBER);
+  } else if (type == starlight::AnimationPropertyType::kBoxShadow) {
+    return tasm::CSSValue(lepus::CArray::Create());
   }
   return tasm::CSSValue();
 }

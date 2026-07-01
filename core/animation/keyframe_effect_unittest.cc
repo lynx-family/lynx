@@ -3,8 +3,11 @@
 // LICENSE file in the root directory of this source tree.
 #include "core/animation/keyframe_effect.h"
 
+#include <cstdint>
 #include <memory>
 
+#include "base/include/value/array.h"
+#include "base/include/value/table.h"
 #include "core/animation/css_keyframe_manager.h"
 #include "core/animation/keyframe_effect.h"
 #include "core/animation/keyframe_model.h"
@@ -29,6 +32,43 @@ static constexpr int32_t kWidth = 1080;
 static constexpr int32_t kHeight = 1920;
 static constexpr float kDefaultLayoutsUnitPerPx = 1.f;
 static constexpr double kDefaultPhysicalPixelsPerLayoutUnit = 1.f;
+
+namespace {
+
+lepus::Value MakeBoxShadowLength(float value) {
+  auto array = lepus::CArray::Create();
+  array->emplace_back(value);
+  array->emplace_back(static_cast<int>(CSSValuePattern::NUMBER));
+  return lepus::Value(std::move(array));
+}
+
+CSSValue MakeBoxShadowValue(float h_offset, float v_offset, float blur,
+                            float spread, uint32_t color) {
+  auto group = lepus::CArray::Create();
+  auto shadow = lepus::Dictionary::Create();
+  shadow->SetValue("enable", true);
+  shadow->SetValue("h_offset", MakeBoxShadowLength(h_offset));
+  shadow->SetValue("v_offset", MakeBoxShadowLength(v_offset));
+  shadow->SetValue("blur", MakeBoxShadowLength(blur));
+  shadow->SetValue("spread", MakeBoxShadowLength(spread));
+  shadow->SetValue("option", static_cast<int>(starlight::ShadowOption::kNone));
+  shadow->SetValue("color", color);
+  group->emplace_back(lepus::Value(std::move(shadow)));
+  return CSSValue(std::move(group));
+}
+
+float GetBoxShadowLength(const CSSValue& value, const char* key) {
+  auto shadow = value.GetArray()->get(0).Table();
+  auto length = shadow->GetValue(key).Array();
+  return length->get(0).Number();
+}
+
+uint32_t GetBoxShadowColor(const CSSValue& value) {
+  auto shadow = value.GetArray()->get(0).Table();
+  return static_cast<uint32_t>(shadow->GetValue("color").Number());
+}
+
+}  // namespace
 
 class KeyframeEffectTest : public ::testing::Test {
  public:
@@ -325,6 +365,63 @@ TEST_F(KeyframeEffectTest, TickCountsSkippedIterationsAndIgnoresRollback) {
   auto rollback_result = effect->Tick(second_iteration);
   EXPECT_EQ(0, rollback_result.iteration_events_due);
   EXPECT_EQ(1u, rollback_result.samples.size());
+}
+
+TEST_F(KeyframeEffectTest, TickSamplesBoxShadowAnimationCurve) {
+  auto effect = gfx::KeyframeEffect::Create();
+  auto curve = animation::KeyframedBoxShadowAnimationCurve::Create();
+  curve->type_ = animation::AnimationCurve::CurveType::BOX_SHADOW;
+  element_ = manager->CreateFiberElement("view");
+  curve->SetElement(element_.get());
+
+  auto from_keyframe =
+      animation::BoxShadowKeyframe::Create(fml::TimeDelta(), nullptr);
+  from_keyframe->SetBoxShadow(
+      MakeBoxShadowValue(0.f, 0.f, 0.f, 0.f, 0x80000000));
+  curve->AddKeyframe(std::move(from_keyframe));
+
+  auto to_keyframe = animation::BoxShadowKeyframe::Create(
+      fml::TimeDelta::FromMilliseconds(1000), nullptr);
+  to_keyframe->SetBoxShadow(
+      MakeBoxShadowValue(20.f, 10.f, 16.f, 4.f, 0x80000000));
+  curve->AddKeyframe(std::move(to_keyframe));
+
+  auto model = gfx::KeyframeModel::Create(std::move(curve));
+  gfx::AnimationData data;
+  data.duration = 1000;
+  data.delay = 0;
+  data.iteration_count = 1;
+  model->SetAnimationData(&data);
+  effect->AddKeyframeModel(model.get());
+
+  fml::TimePoint start_time =
+      fml::TimePoint::FromEpochDelta(fml::TimeDelta::FromMilliseconds(0));
+  effect->SetStartTime(start_time);
+
+  auto tick_result = effect->Tick(
+      fml::TimePoint::FromEpochDelta(fml::TimeDelta::FromMilliseconds(500)));
+
+  ASSERT_TRUE(tick_result.active_time.has_value());
+  EXPECT_EQ(fml::TimeDelta::FromMilliseconds(500), *tick_result.active_time);
+  ASSERT_EQ(1u, tick_result.samples.size());
+  EXPECT_EQ(fml::TimeDelta::FromMilliseconds(500),
+            tick_result.samples[0].trimmed_time);
+
+  auto* sampled_curve =
+      static_cast<animation::AnimationCurve*>(tick_result.samples[0].curve);
+  ASSERT_NE(nullptr, sampled_curve);
+  EXPECT_EQ(animation::AnimationCurve::CurveType::BOX_SHADOW,
+            sampled_curve->Type());
+
+  fml::TimeDelta sample_time = tick_result.samples[0].trimmed_time;
+  auto sampled_value = sampled_curve->GetValue(sample_time);
+  ASSERT_TRUE(sampled_value.IsArray());
+  ASSERT_EQ(1u, sampled_value.GetArray()->size());
+  EXPECT_FLOAT_EQ(10.f, GetBoxShadowLength(sampled_value, "h_offset"));
+  EXPECT_FLOAT_EQ(5.f, GetBoxShadowLength(sampled_value, "v_offset"));
+  EXPECT_FLOAT_EQ(8.f, GetBoxShadowLength(sampled_value, "blur"));
+  EXPECT_FLOAT_EQ(2.f, GetBoxShadowLength(sampled_value, "spread"));
+  EXPECT_EQ(0x80000000u, GetBoxShadowColor(sampled_value));
 }
 
 TEST_F(KeyframeEffectTest, GetKeyframeModelByCurveType) {

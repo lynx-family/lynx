@@ -2712,6 +2712,8 @@ starlight::AnimationPropertyType CSSStringParser::TokenToTransitionType(
       return starlight::AnimationPropertyType::kPadding;
     case TokenType::FILTER:
       return starlight::AnimationPropertyType::kFilter;
+    case TokenType::BOX_SHADOW:
+      return starlight::AnimationPropertyType::kBoxShadow;
     case TokenType::OFFSET_DISTANCE:
       return starlight::AnimationPropertyType::kOffsetDistance;
     case TokenType::BACKGROUND_POSITION:
