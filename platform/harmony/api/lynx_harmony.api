@@ -1347,18 +1347,13 @@ export class LynxBackgroundRuntime extends lynx.LynxRuntimeWrapper {
   getSessionStorageItem(key: string, callback: SessionStorageCallback): void;
   subscribeSessionStorage(key: string, callback: SessionStorageCallback): number;
   unsubscribeSessionStorage(key: string, listenerId: number): void;
-  addRuntimeLifecycleListener(listener: RuntimeLifecycleListener): void;
+  getNativePtr(): bigint;
   getLastScriptUrl(): string | undefined;
   moduleFactory(): LynxModuleManager;
   runtimeOptions(): LynxBackgroundRuntimeOptions;
   genericResourceFetcher(): LynxGenericResourceFetcher;
   mediaResourceFetcher(): LynxMediaResourceFetcher;
   templateResourceFetcher(): LynxTemplateResourceFetcher;
-}
-
-export interface RuntimeLifecycleListener {
-  onRuntimeAttach(napiEnv: number[]): void;
-  onRuntimeDetach(): void;
 }
 
 export interface LynxImageConfig {
