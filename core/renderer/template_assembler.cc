@@ -2210,12 +2210,11 @@ void TemplateAssembler::UpdateMetaData(
   // one for updateData -> UpdateTemplate).
   if (template_loaded_ && global_props_changed && data_changed &&
       EnableFiberArch()) {
-    TemplateData data = ProcessTemplateData(template_data, false);
-
     auto engine_context_proxy =
         GetContextProxy(runtime::ContextProxy::Type::kEngine);
     if (engine_context_proxy &&
         engine_context_proxy->HasEventListener(kUpdateMetaData)) {
+      TemplateData data = ProcessTemplateData(template_data, false);
       auto& context = FindEntry(DEFAULT_ENTRY_NAME)->GetVm();
       if (context != nullptr) {
         lepus::Value options = update_page_option.ToLepusValue();
