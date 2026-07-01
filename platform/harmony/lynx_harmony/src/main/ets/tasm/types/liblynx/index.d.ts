@@ -394,7 +394,7 @@ export class LynxRuntimeWrapper {
     jsGroupThreadName: string, useQuickjs: boolean, enableJSGroupThread: boolean, preloadJSPaths: string[], enableBytecode: boolean,
     bytecodeSourceUrl: string, moduleManagerArgs: Object[],
     sendableModuleManagerArgs: Object[], processor?: string, data?: Object | string, readonly?: boolean,
-    props?: Object | string): void;
+    props?: Object | string): bigint;
 
   protected nativeEvaluateScript(url: string, sources: string): void;
 
@@ -403,8 +403,6 @@ export class LynxRuntimeWrapper {
   protected nativeTransitionToFullRuntime(): void;
 
   protected nativeCallJSFunction(module: string, method: string, params: Object[]): void;
-
-  protected nativeAddRuntimeLifecycleListener(listener: Object);
 
   protected nativeSetSessionStorageItem(key: string, data?: Object | string): void;
 
