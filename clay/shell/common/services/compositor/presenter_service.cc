@@ -5,11 +5,14 @@
 #include "clay/shell/common/services/compositor/presenter_service.h"
 
 #include "base/trace/native/trace_event.h"
+#include "clay/fml/logging.h"
 
 namespace clay {
 
 void PresenterService::Present(PresentFrame& frame) {
   TRACE_EVENT("clay", "PresenterService::Present");
+  FML_LOG(INFO) << "PresenterService::Present";
+
   OnBeforePresent();
 
   for (const auto& [cb, info] : frame.submit_infos) {

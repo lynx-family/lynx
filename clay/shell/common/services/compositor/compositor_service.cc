@@ -15,6 +15,7 @@
 #include "base/trace/native/trace_event.h"
 #include "clay/flow/surface.h"
 #include "clay/flow/view_slicer.h"
+#include "clay/fml/logging.h"
 #include "clay/shell/common/rasterizer.h"
 #include "clay/shell/common/services/compositor/platform_overlay_service.h"
 
@@ -28,6 +29,7 @@ bool CompositorService::SubmitFrame(
     clay::GrContext* context, std::unique_ptr<SurfaceFrame> background_frame,
     std::unique_ptr<CompositorState> compositor_state) {
   TRACE_EVENT("clay", "CompositorService::SubmitFrame");
+  FML_LOG(INFO) << "CompositorService::SubmitFrame";
 
   if (compositor_state->GetCompositionOrder().empty() &&
       !had_hybrid_composited_) {

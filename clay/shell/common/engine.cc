@@ -13,6 +13,7 @@
 #include "clay/common/graphics/shared_image_external_texture.h"
 #include "clay/flow/frame_timings.h"
 #include "clay/flow/layers/layer_tree.h"
+#include "clay/fml/logging.h"
 #include "clay/shell/common/services/initialize_service.h"
 #include "clay/shell/common/services/ui_frame_service.h"
 #include "clay/shell/common/services/vsync_waiter_service.h"
@@ -33,6 +34,11 @@ Engine::Engine(std::shared_ptr<clay::ServiceManager> service_manager,
       settings_(std::move(settings)),
       delegate_(delegate),
       weak_factory_(this) {
+  FML_LOG(INFO) << "start Clay Engine::Engine"
+                << ", enable_software_rendering: "
+                << settings_.enable_software_rendering
+                << " enable_performance_overlay: "
+                << settings_.enable_performance_overlay;
   Puppet<Owner::kUI, InitializeService> initialize_service =
       service_manager->GetService<InitializeService>();
   ui_frame_service_ = service_manager->GetService<UIFrameService>();
@@ -81,6 +87,9 @@ std::unique_ptr<Engine> Engine::Spawn(
 
 bool Engine::BeginFrame(std::unique_ptr<FrameTimingsRecorder> recorder) {
   TRACE_EVENT("clay", "Engine::BeginFrame");
+  FML_LOG(INFO) << "start Clay Engine::BeginFrame"
+                << ", pending_layout: " << pending_layout_
+                << " page_view: " << page_view_.get();
   if (view_context_ && view_context_->GetFrameObserver()) {
     view_context_->GetFrameObserver()->OnBeginFrame();
   }
@@ -90,7 +99,8 @@ bool Engine::BeginFrame(std::unique_ptr<FrameTimingsRecorder> recorder) {
     pending_layout_ = false;
   }
   if (page_view_) {
-    return page_view_->BeginFrame(std::move(recorder));
+    bool result = page_view_->BeginFrame(std::move(recorder));
+    return result;
   }
   return false;
 }
@@ -104,13 +114,18 @@ void Engine::ScheduleLayout() {
 
 void Engine::OnPlatformViewCreated() { page_view_->OnPlatformViewCreated(); }
 
-void Engine::OnOutputSurfaceCreated() { page_view_->OnOutputSurfaceCreated(); }
+void Engine::OnOutputSurfaceCreated() {
+  FML_LOG(INFO) << "start Clay Engine::OnOutputSurfaceCreated";
+  page_view_->OnOutputSurfaceCreated();
+}
 
 void Engine::OnOutputSurfaceCreateFailed() {
+  FML_LOG(INFO) << "start Clay Engine::OnOutputSurfaceCreateFailed";
   page_view_->OnOutputSurfaceCreateFailed();
 }
 
 void Engine::OnOutputSurfaceDestroyed() {
+  FML_LOG(INFO) << "start Clay Engine::OnOutputSurfaceDestroyed";
   page_view_->OnOutputSurfaceDestroyed();
   // It's not enough to release graphic resources of view tree under PageView,
   // because some views may not attached when surface destroyed.
@@ -132,6 +147,10 @@ void Engine::CleanForRecycle() {
 }
 
 void Engine::SetViewportMetrics(const ViewportMetrics& metrics) {
+  FML_LOG(INFO) << "start Clay Engine::SetViewportMetrics"
+                << ", physical_width: " << metrics.physical_width
+                << " physical_height: " << metrics.physical_height
+                << " device_pixel_ratio: " << metrics.device_pixel_ratio;
   page_view_->SetViewportMetrics(metrics);
 #if defined(OS_MAC) || defined(OS_WIN) || defined(OS_LINUX) || \
     defined(ENABLE_HEADLESS)
@@ -317,15 +336,26 @@ void Engine::OnFirstMeaningfulLayout() {
 bool Engine::Raster(std::unique_ptr<clay::LayerTree> layer_tree,
                     std::unique_ptr<clay::FrameTimingsRecorder> recorder,
                     bool force) {
+  FML_LOG(INFO) << "start Clay Engine::Raster"
+                << ", layer_tree: " << layer_tree.get() << " force: " << force;
   // Ensure frame dimensions are sane.
   if (layer_tree &&
       ((layer_tree->frame_size().x == 0 && layer_tree->frame_size().y == 0) ||
        layer_tree->device_pixel_ratio() <= 0.0f)) {
+    FML_LOG(INFO) << "start Clay Engine::Raster drops invalid layer_tree"
+                  << ", width: " << layer_tree->frame_size().x
+                  << " height: " << layer_tree->frame_size().y
+                  << " dpr: " << layer_tree->device_pixel_ratio();
     layer_tree.reset();
   }
   if (!layer_tree) {
+    FML_LOG(INFO) << "start Clay Engine::Raster CommitWithNoUpdates";
     raster_frame_service_.Act([](auto& impl) { impl.CommitWithNoUpdates(); });
   } else {
+    FML_LOG(INFO) << "start Clay Engine::Raster commit layer_tree"
+                  << ", width: " << layer_tree->frame_size().x
+                  << " height: " << layer_tree->frame_size().y
+                  << " dpr: " << layer_tree->device_pixel_ratio();
     if (!recorder) {
       recorder = std::make_unique<FrameTimingsRecorder>();
       const fml::TimePoint placeholder_time = fml::TimePoint::Now();

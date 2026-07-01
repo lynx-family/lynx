@@ -23,6 +23,7 @@
 #include "clay/flow/compositor_context.h"
 #include "clay/flow/frame_timings.h"
 #include "clay/fml/base64.h"
+#include "clay/fml/logging.h"
 #include "clay/gfx/rendering_backend.h"
 #include "clay/shell/common/serialization_callbacks.h"
 #include "clay/ui/common/frame_timing_collector.h"
@@ -73,6 +74,7 @@ fml::WeakPtr<Rasterizer> Rasterizer::GetWeakPtr() const {
 }
 
 void Rasterizer::Setup(std::unique_ptr<Surface> surface) {
+  FML_LOG(INFO) << "start Clay Rasterizer::Setup, surface: " << surface.get();
   surface_ = std::move(surface);
   last_ignore_raster_cache_.store(false, std::memory_order_relaxed);
 
@@ -88,6 +90,8 @@ void Rasterizer::Setup(std::unique_ptr<Surface> surface) {
 }
 
 void Rasterizer::Teardown() {
+  FML_LOG(INFO) << "start Clay Rasterizer::Teardown, surface: "
+                << surface_.get();
   if (surface_) {
     auto context_switch = surface_->MakeRenderContextCurrent();
     if (context_switch->GetResult()) {
@@ -174,6 +178,9 @@ RasterStatus Rasterizer::Draw(std::shared_ptr<LayerTree> layer_tree,
                               LayerTreeDiscardCallback discard_callback,
                               bool report_instrumentation) {
   TRACE_EVENT("clay", "GPURasterizer::Draw");
+  FML_LOG(INFO) << "start Clay Rasterizer::Draw"
+                << ", layer_tree: " << layer_tree.get()
+                << " report_instrumentation: " << report_instrumentation;
   fml::ScopedCleanupClosure instrumentation;
   if (report_instrumentation) {
     instrumentation.SetClosure([this] {
@@ -223,9 +230,17 @@ RasterStatus Rasterizer::DoDraw(
   FML_DCHECK(service_manager_->GetTaskRunners()
                  ->SelectTaskRunner<clay::Owner::kRaster>()
                  ->RunsTasksOnCurrentThread());
+  FML_LOG(INFO) << "start Clay Rasterizer::DoDraw"
+                << ", layer_tree: " << layer_tree.get()
+                << " surface: " << surface_.get();
   if (!layer_tree || !surface_) {
     return RasterStatus::kFailed;
   }
+  FML_LOG(INFO) << "start Clay Rasterizer::DoDraw layer_tree"
+                << ", width: " << layer_tree->frame_size().x
+                << " height: " << layer_tree->frame_size().y
+                << " dpr: " << layer_tree->device_pixel_ratio()
+                << " has_animations: " << layer_tree->HasAnimations();
 
 #ifndef ENABLE_SKITY
   PersistentCache* persistent_cache = PersistentCache::GetCacheForProcess();
@@ -242,6 +257,8 @@ RasterStatus Rasterizer::DoDraw(
 
   RasterStatus raster_status =
       DrawToSurface(*frame_timings_recorder, *layer_tree);
+  FML_LOG(INFO) << "start Clay Rasterizer::DoDraw DrawToSurface status: "
+                << static_cast<int>(raster_status);
 
   // In order to release the `SkiaGPUObject`s held by the `LayerTree`s in time.
   fml::ScopedCleanupClosure unref_queue_drain([unref_queue = unref_queue_] {
