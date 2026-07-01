@@ -33,7 +33,7 @@ import { ExampleGenericResourceFetcher } from '../provider/ExampleGenericResourc
 import { ExampleMediaResourceFetcher } from '../provider/ExampleMediaResourceFetcher';
 import { ExampleTemplateResourceFetcher } from '../provider/ExampleTemplateResourceFetcher';
 import { ExplorerModule } from '../module/ExplorerModule';
-import { LynxNodeAPIModule, LynxNodeAPILifecycleListener, LynxNodeAPIToken } from '../module/LynxNodeAPIModule';
+import { LynxNodeAPIModule, LynxNodeAPIToken } from '../module/LynxNodeAPIModule';
 
 const TAG = 'LynxPage'
 const TEST_DENSITY = 2;
@@ -136,7 +136,6 @@ struct Lynx {
     options.lynxGroup = group;
     this.backgroundRuntime = new LynxBackgroundRuntime(options, this.genericFetcher,
       this.mediaFetcher, this.templateFetcher, this.modules, this.sendableModules, this.metaData);
-    this.backgroundRuntime.addRuntimeLifecycleListener(new LynxNodeAPILifecycleListener(this.nodeAPIToken));
   }
 
   build() {
