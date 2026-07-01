@@ -114,6 +114,7 @@ class LynxDevToolMediator
   DECLARE_DEVTOOL_METHOD(GetSearchResults);
   DECLARE_DEVTOOL_METHOD(DiscardSearchResults);
   DECLARE_DEVTOOL_METHOD(GetOriginalNodeIndex);
+  DECLARE_DEVTOOL_METHOD(GetOriginalNodeSourceInfo);
   DECLARE_DEVTOOL_METHOD(ScrollIntoViewIfNeeded);
   DECLARE_DEVTOOL_METHOD(DOM_Focus);
   DECLARE_DEVTOOL_METHOD(DOMEnableDomTree);

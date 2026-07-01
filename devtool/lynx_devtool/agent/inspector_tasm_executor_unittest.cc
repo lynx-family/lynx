@@ -15,6 +15,7 @@
 #include <initializer_list>
 #include <memory>
 #include <string>
+#include <tuple>
 #include <utility>
 #include <vector>
 
@@ -33,9 +34,12 @@
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/dom/fiber/component_element.h"
 #include "core/renderer/dom/fiber/page_element.h"
+#include "core/renderer/dom/fiber/wrapper_element.h"
 #include "core/renderer/dom/vdom/radon/radon_component.h"
 #include "core/renderer/tasm/react/testing/mock_painting_context.h"
+#include "core/renderer/template_assembler.h"
 #include "core/shell/testing/mock_tasm_delegate.h"
+#include "core/template_bundle/template_codec/binary_decoder/page_config.h"
 #include "devtool/base_devtool/native/public/devtool_status.h"
 #include "devtool/base_devtool/native/test/message_sender_mock.h"
 #include "devtool/base_devtool/native/test/mock_receiver.h"
@@ -376,6 +380,28 @@ class InspectorTasmExecutorTest : public ::testing::Test {
         devtool::MockReceiver::GetInstance().received_message_.second,
         message));
     return message;
+  }
+
+  std::unique_ptr<lynx::tasm::TemplateAssembler> CreateTemplateAssembler() {
+    lynx::tasm::LynxEnvConfig lynx_env_config(
+        kWidth, kHeight, kDefaultLayoutsUnitPerPx,
+        kDefaultPhysicalPixelsPerLayoutUnit);
+    auto manager = std::make_unique<lynx::tasm::ElementManager>(
+        std::make_unique<lynx::tasm::MockPaintingContext>(),
+        tasm_mediator_.get(), lynx_env_config);
+    return std::make_unique<lynx::tasm::TemplateAssembler>(
+        *tasm_mediator_.get(), std::move(manager), tasm_mediator_.get(), 0);
+  }
+
+  void InsertTemplateEntry(lynx::tasm::TemplateAssembler* tasm,
+                           const std::string& entry_name,
+                           const std::string& debug_metadata_url) {
+    auto entry = std::make_shared<lynx::tasm::TemplateEntry>();
+    entry->template_bundle_.page_configs_ =
+        std::make_shared<lynx::tasm::PageConfig>();
+    entry->template_bundle_.page_configs_->SetDebugMetadataUrl(
+        debug_metadata_url);
+    tasm->template_entries_[entry_name] = entry;
   }
 
  private:
@@ -974,6 +1000,123 @@ TEST_F(InspectorTasmExecutorTest,
   EXPECT_EQ(computed_style[static_cast<Json::ArrayIndex>(border_index)]["value"]
                 .asString(),
             "4px");
+}
+
+TEST_F(InspectorTasmExecutorTest, GetOriginalNodeSourceInfoCase) {
+  auto tasm = CreateTemplateAssembler();
+  InsertTemplateEntry(tasm.get(), lynx::tasm::DEFAULT_ENTRY_NAME,
+                      "https://example.com/page-debug-metadata.json");
+  element_executor_->tasm_ = tasm.get();
+
+  auto element = manager_->CreateFiberElement("view");
+  lynx::devtool::ElementInspector::InitForInspector(
+      std::make_tuple(element.get()));
+  element->SetNodeIndex(42);
+  element_executor_->element_root_ = element.get();
+
+  Json::Value message;
+  message["id"] = 21;
+  message["params"]["nodeId"] =
+      lynx::devtool::ElementInspector::NodeId(element.get());
+
+  element_executor_->GetOriginalNodeSourceInfo(message_sender_, message);
+
+  Json::Value response = ReceivedMessage();
+  EXPECT_EQ(response["id"].asInt(), 21);
+  EXPECT_EQ(response["result"]["nodeId"].asInt(),
+            lynx::devtool::ElementInspector::NodeId(element.get()));
+  EXPECT_EQ(response["result"]["tag"].asString(), "view");
+  EXPECT_EQ(response["result"]["nodeIndex"].asUInt(), 42U);
+  EXPECT_EQ(response["result"]["debugMetadataUrl"].asString(),
+            "https://example.com/page-debug-metadata.json");
+  EXPECT_TRUE(response["result"]["lazyBundleUrl"].isNull());
+}
+
+TEST_F(InspectorTasmExecutorTest,
+       GetOriginalNodeSourceInfoReturnsWrapperTagCase) {
+  auto tasm = CreateTemplateAssembler();
+  InsertTemplateEntry(tasm.get(), lynx::tasm::DEFAULT_ENTRY_NAME,
+                      "https://example.com/page-debug-metadata.json");
+  element_executor_->tasm_ = tasm.get();
+
+  auto wrapper = manager_->CreateFiberWrapperElement();
+  lynx::devtool::ElementInspector::InitForInspector(
+      std::make_tuple(wrapper.get()));
+  element_executor_->element_root_ = wrapper.get();
+
+  Json::Value message;
+  message["id"] = 22;
+  message["params"]["nodeId"] =
+      lynx::devtool::ElementInspector::NodeId(wrapper.get());
+
+  element_executor_->GetOriginalNodeSourceInfo(message_sender_, message);
+
+  Json::Value response = ReceivedMessage();
+  EXPECT_EQ(response["id"].asInt(), 22);
+  EXPECT_EQ(response["result"]["tag"].asString(), "wrapper");
+  EXPECT_EQ(response["result"]["debugMetadataUrl"].asString(),
+            "https://example.com/page-debug-metadata.json");
+  EXPECT_TRUE(response["result"]["lazyBundleUrl"].isNull());
+}
+
+TEST_F(InspectorTasmExecutorTest,
+       GetOriginalNodeSourceInfoUsesLazyBundleUrlCase) {
+  constexpr const char kLazyBundleUrl[] =
+      "https://example.com/lazy-card.template.js";
+  auto tasm = CreateTemplateAssembler();
+  InsertTemplateEntry(tasm.get(), lynx::tasm::DEFAULT_ENTRY_NAME,
+                      "https://example.com/page-debug-metadata.json");
+  InsertTemplateEntry(tasm.get(), kLazyBundleUrl,
+                      "https://example.com/component-debug-metadata.json");
+  element_executor_->tasm_ = tasm.get();
+
+  auto page = manager_->CreateFiberPage("page", 0);
+  auto component = manager_->CreateFiberComponent(
+      "component-id", 0, kLazyBundleUrl, "Component", "/component");
+  page->InsertNode(component);
+  auto child = manager_->CreateFiberElement("text");
+  lynx::devtool::ElementInspector::InitForInspector(
+      std::make_tuple(child.get()));
+  child->SetParentComponentUniqueIdForFiber(
+      static_cast<int64_t>(component->impl_id()));
+  component->InsertNode(child);
+  page->FlushActionsAsRoot();
+  child->SetNodeIndex(24);
+  element_executor_->element_root_ = child.get();
+
+  Json::Value message;
+  message["id"] = 23;
+  message["params"]["nodeId"] =
+      lynx::devtool::ElementInspector::NodeId(child.get());
+
+  element_executor_->GetOriginalNodeSourceInfo(message_sender_, message);
+
+  Json::Value response = ReceivedMessage();
+  EXPECT_EQ(response["id"].asInt(), 23);
+  EXPECT_EQ(response["result"]["tag"].asString(), "text");
+  EXPECT_EQ(response["result"]["nodeIndex"].asUInt(), 24U);
+  EXPECT_EQ(response["result"]["debugMetadataUrl"].asString(),
+            "https://example.com/component-debug-metadata.json");
+  EXPECT_EQ(response["result"]["lazyBundleUrl"].asString(), kLazyBundleUrl);
+}
+
+TEST_F(InspectorTasmExecutorTest,
+       GetOriginalNodeSourceInfoMissingNodeReturnsEmptyResultCase) {
+  auto element = manager_->CreateFiberElement("view");
+  lynx::devtool::ElementInspector::InitForInspector(
+      std::make_tuple(element.get()));
+  element_executor_->element_root_ = element.get();
+
+  Json::Value message;
+  message["id"] = 24;
+  message["params"]["nodeId"] = 99999;
+
+  element_executor_->GetOriginalNodeSourceInfo(message_sender_, message);
+
+  Json::Value response = ReceivedMessage();
+  EXPECT_EQ(response["id"].asInt(), 24);
+  EXPECT_TRUE(response["error"].isNull());
+  EXPECT_TRUE(response["result"].empty());
 }
 
 TEST_F(InspectorTasmExecutorTest, SendLayerTreeDidChangeEventCase) {
