@@ -14,7 +14,6 @@ import { LynxMediaResourceFetcher } from '../provider/LynxMediaResourceFetcher';
 import { LynxTemplateResourceFetcher } from '../provider/LynxTemplateResourceFetcher';
 import { ModuleClassWrapper, SendableModuleClassWrapper } from '../jsbridge/LynxModule';
 import { LLog, LynxEnv, MetaData, TemplateBundle } from '../Index';
-import { RuntimeLifecycleListener } from '../jsbridge/RuntimeLifecycleListener';
 import { TemplateData } from './MetaData';
 import { SessionStorageCallback } from './SessionStorage';
 
@@ -35,6 +34,7 @@ export class LynxBackgroundRuntime extends lynx.LynxRuntimeWrapper {
   private moduleManager: LynxModuleManager = new LynxModuleManager(undefined);
   private sendableModuleManager: SendableLynxModuleManager = new SendableLynxModuleManager();
   private lastScriptUrl?: string;
+  private nativePtr: bigint = BigInt(0);
 
   constructor(backgroundRuntimeOptions: LynxBackgroundRuntimeOptions, genericResourceFetcher : LynxGenericResourceFetcher | undefined,
     mediaResourceFetcher: LynxMediaResourceFetcher | undefined,
@@ -49,7 +49,7 @@ export class LynxBackgroundRuntime extends lynx.LynxRuntimeWrapper {
     sendableModules?.forEach((v, k) => {
       this.sendableModuleManager.registerModule(k, v);
     });
-    this.nativeCreate(this.providers,  this.backgroundRuntimeOptions.getGroupID(),
+    this.nativePtr = this.nativeCreate(this.providers,  this.backgroundRuntimeOptions.getGroupID(),
       this.backgroundRuntimeOptions.getJSGroupThreadName(),
       this.backgroundRuntimeOptions.useQuickJSEngine(),
       this.backgroundRuntimeOptions.enableJSGroupThread(),
@@ -157,8 +157,8 @@ export class LynxBackgroundRuntime extends lynx.LynxRuntimeWrapper {
     this.nativeUnsubscribeSessionStorage(key, listenerId);
   }
 
-  addRuntimeLifecycleListener(listener: RuntimeLifecycleListener) {
-    this.nativeAddRuntimeLifecycleListener(listener);
+  getNativePtr(): bigint {
+    return this.nativePtr;
   }
 
   getLastScriptUrl(): string | undefined {

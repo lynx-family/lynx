@@ -6,6 +6,7 @@
 
 #include <js_native_api.h>
 
+#include <cstdint>
 #include <memory>
 #include <utility>
 
@@ -100,25 +101,23 @@ void NativeRuntimeFacadeHarmony::OnEvaluateJavaScriptEnd(
 
 // RuntimeLifecycleListenerDelegateHarmony
 RuntimeLifecycleListenerDelegateHarmony::
-    RuntimeLifecycleListenerDelegateHarmony(napi_env env, napi_ref listener_ref)
+    RuntimeLifecycleListenerDelegateHarmony(
+        LynxRuntimeLifecycleListener* listener)
     : RuntimeLifecycleListenerDelegate(
           RuntimeLifecycleListenerDelegate::DelegateType::PART),
-      env_(env),
-      listener_ref_(listener_ref) {}
+      listener_(listener) {}
 
 void RuntimeLifecycleListenerDelegateHarmony::OnRuntimeAttach(void* env_ptr) {
-  base::NapiHandleScope scope(static_cast<napi_env>(env_ptr));
-  napi_value param[1];
-  param[0] = base::NapiUtil::CreatePtrArray(
-      env_, reinterpret_cast<uintptr_t>(static_cast<napi_env>(env_ptr)));
-  base::NapiUtil::AsyncInvokeJsMethod(env_, listener_ref_, "onRuntimeAttach", 1,
-                                      param);
+  if (listener_ && listener_->on_runtime_attach) {
+    listener_->on_runtime_attach(listener_->user_data, env_ptr);
+  }
 }
 
 void RuntimeLifecycleListenerDelegateHarmony::OnRuntimeDetach() {
-  base::NapiHandleScope scope(env_);
-  base::NapiUtil::AsyncInvokeJsMethod(env_, listener_ref_, "onRuntimeDetach", 0,
-                                      nullptr);
+  if (listener_ && listener_->on_runtime_detach) {
+    listener_->on_runtime_detach(listener_->user_data);
+    listener_ = nullptr;
+  }
 }
 
 // LynxRuntimeWrapper
@@ -197,10 +196,22 @@ void LynxRuntimeWrapper::SetAttached(bool is_attached) {
   is_attached_ = is_attached;
 }
 
-void LynxRuntimeWrapper::AddRuntimeLifecycleListener(napi_env env,
-                                                     napi_ref ref) {
-  runtime_proxy_->AddLifecycleListener(
-      std::make_unique<RuntimeLifecycleListenerDelegateHarmony>(env, ref));
+void LynxRuntimeWrapper::AddLifecycleListener(
+    std::unique_ptr<runtime::RuntimeLifecycleListenerDelegate> delegate) {
+  if (!delegate) {
+    LOGE("AddLifecycleListener failed: delegate is null");
+    return;
+  }
+  if (delegate->Type() !=
+      runtime::RuntimeLifecycleListenerDelegate::DelegateType::PART) {
+    LOGE("AddLifecycleListener failed: only PART delegate is supported");
+    return;
+  }
+  if (!runtime_proxy_) {
+    LOGE("AddLifecycleListener failed: runtime proxy is null");
+    return;
+  }
+  runtime_proxy_->AddLifecycleListener(std::move(delegate));
 }
 
 napi_value LynxRuntimeWrapper::Init(napi_env env, napi_value exports) {
@@ -214,8 +225,6 @@ napi_value LynxRuntimeWrapper::Init(napi_env env, napi_value exports) {
       DECLARE_NAPI_FUNCTION("nativeTransitionToFullRuntime",
                             NativeTransitionToFullRuntime),
       DECLARE_NAPI_FUNCTION("nativeCallJSFunction", NativeCallJSFunction),
-      DECLARE_NAPI_FUNCTION("nativeAddRuntimeLifecycleListener",
-                            NativeAddRuntimeLifecycleListener),
       DECLARE_NAPI_FUNCTION("nativeSetSessionStorageItem",
                             NativeSetSessionStorageItem),
       DECLARE_NAPI_FUNCTION("nativeGetSessionStorageItem",
@@ -308,7 +317,10 @@ napi_value LynxRuntimeWrapper::NativeCreate(napi_env env,
 
   NAPI_THROW_IF_FAILED_NULL(env, status,
                             "NativeCreate failed due to napi_wrap failed!");
-  return nullptr;
+  napi_value wrapper_ptr = nullptr;
+  napi_create_bigint_uint64(env, reinterpret_cast<uintptr_t>(wrapper),
+                            &wrapper_ptr);
+  return wrapper_ptr;
 }
 
 napi_value LynxRuntimeWrapper::NativeEvaluateScript(napi_env env,
@@ -394,26 +406,6 @@ napi_value LynxRuntimeWrapper::NativeCallJSFunction(napi_env env,
     return nullptr;
   }
   obj->runtime_proxy_->CallJSFunction(module_id, method, std::move(params));
-  return nullptr;
-}
-
-napi_value LynxRuntimeWrapper::NativeAddRuntimeLifecycleListener(
-    napi_env env, napi_callback_info info) {
-  napi_value js_this;
-  size_t argc = 1;
-  napi_value args[1] = {nullptr};
-  napi_get_cb_info(env, info, &argc, args, &js_this, nullptr);
-
-  napi_ref listener_ref;
-  napi_create_reference(env, args[0], 0, &listener_ref);
-
-  LynxRuntimeWrapper* obj = nullptr;
-  napi_status status =
-      napi_unwrap(env, js_this, reinterpret_cast<void**>(&obj));
-  if (!CheckNapiUnwrapObject(status, obj, "CallJSFunction failed")) {
-    return nullptr;
-  }
-  obj->AddRuntimeLifecycleListener(env, listener_ref);
   return nullptr;
 }
 
@@ -585,3 +577,25 @@ napi_value LynxRuntimeWrapper::NativeUnsubscribeSessionStorage(
 
 }  // namespace harmony
 }  // namespace lynx
+
+extern "C" LYNX_RUNTIME_C_API void LynxRuntimeWrapperAddLifecycleListener(
+    uint64_t wrapper, LynxRuntimeLifecycleListener* listener) {
+  if (!wrapper) {
+    LOGE("LynxRuntimeWrapperAddLifecycleListener failed: wrapper is null");
+    return;
+  }
+  if (!listener) {
+    LOGE("LynxRuntimeWrapperAddLifecycleListener failed: listener is null");
+    return;
+  }
+  if (listener->size != static_cast<int32_t>(sizeof(*listener))) {
+    LOGE("LynxRuntimeWrapperAddLifecycleListener failed: listener size "
+         << listener->size << " does not match ABI size " << sizeof(*listener));
+    return;
+  }
+  reinterpret_cast<lynx::harmony::LynxRuntimeWrapper*>(wrapper)
+      ->AddLifecycleListener(
+          std::make_unique<
+              lynx::harmony::RuntimeLifecycleListenerDelegateHarmony>(
+              listener));
+}

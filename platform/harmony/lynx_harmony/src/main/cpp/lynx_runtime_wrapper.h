@@ -7,6 +7,7 @@
 
 #include <node_api.h>
 
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -14,6 +15,7 @@
 
 #include "base/include/lynx_actor.h"
 #include "base/include/value/base_value.h"
+#include "core/base/lynx_export.h"
 #include "core/public/devtool/lynx_devtool_proxy.h"
 #include "core/public/devtool/lynx_inspector_owner.h"
 #include "core/public/lynx_extension_delegate.h"
@@ -23,9 +25,11 @@
 #include "core/resource/lynx_resource_loader_harmony.h"
 #include "core/runtime/js/bindings/modules/harmony/module_factory_harmony.h"
 #include "core/runtime/js/bindings/modules/lynx_module_manager.h"
+#include "core/runtime/js/runtime_lifecycle_listener_delegate.h"
 #include "core/shell/native_facade_empty_implementation.h"
 #include "core/shell/runtime/bts/bts_runtime_standalone_helper.h"
 #include "core/shell/runtime/bts/lynx_bts_runtime_proxy_impl.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/public/lynx_runtime_lifecycle_c_api.h"
 #include "third_party/napi/include/napi.h"
 
 namespace lynx {
@@ -50,8 +54,8 @@ class NativeRuntimeFacadeHarmony : public shell::NativeFacadeEmptyImpl {
 class RuntimeLifecycleListenerDelegateHarmony
     : public runtime::RuntimeLifecycleListenerDelegate {
  public:
-  explicit RuntimeLifecycleListenerDelegateHarmony(napi_env env,
-                                                   napi_ref listener_ref);
+  explicit RuntimeLifecycleListenerDelegateHarmony(
+      LynxRuntimeLifecycleListener* listener);
   ~RuntimeLifecycleListenerDelegateHarmony() override = default;
   void OnRuntimeCreate(
       std::shared_ptr<runtime::IVSyncObserver> observer) override {}
@@ -62,8 +66,7 @@ class RuntimeLifecycleListenerDelegateHarmony
   void OnRuntimeDetach() override;
 
  private:
-  napi_env env_;
-  napi_ref listener_ref_;
+  LynxRuntimeLifecycleListener* listener_{nullptr};
 };
 
 class LynxRuntimeWrapper : public devtool::LynxDevToolProxy {
@@ -132,7 +135,8 @@ class LynxRuntimeWrapper : public devtool::LynxDevToolProxy {
   }
 
   void SetAttached(bool is_attached);
-  void AddRuntimeLifecycleListener(napi_env env, napi_ref ref);
+  void AddLifecycleListener(
+      std::unique_ptr<runtime::RuntimeLifecycleListenerDelegate> delegate);
 
   static napi_value Init(napi_env env, napi_value exports);
   static napi_value New(napi_env env, napi_callback_info info);
@@ -143,8 +147,6 @@ class LynxRuntimeWrapper : public devtool::LynxDevToolProxy {
   static napi_value NativeTransitionToFullRuntime(napi_env env,
                                                   napi_callback_info info);
   static napi_value NativeCallJSFunction(napi_env env, napi_callback_info info);
-  static napi_value NativeAddRuntimeLifecycleListener(napi_env env,
-                                                      napi_callback_info info);
   static napi_value NativeSetSessionStorageItem(napi_env env,
                                                 napi_callback_info info);
   static napi_value NativeGetSessionStorageItem(napi_env env,
