@@ -33,6 +33,11 @@ class PictureMetalComplexityCalculator : public PictureComplexityCalculator {
   }
 #else
   unsigned int Compute(skity::DisplayList* display_list) override {
+    if (!display_list->HasColorFilter() && !display_list->HasMaskFilter() &&
+        !display_list->HasImageFilter() && !display_list->HasSaveLayer()) {
+      return 0u;
+    }
+
     MetalHelper helper(ceiling_);
     display_list->Draw(&helper);
     return helper.ComplexityScore();
@@ -41,7 +46,11 @@ class PictureMetalComplexityCalculator : public PictureComplexityCalculator {
 
   bool ShouldBeCached(unsigned int complexity_score) override {
     // Set cache threshold at 1ms
+#ifndef ENABLE_SKITY
     return complexity_score > 200000u;
+#else
+    return complexity_score >= kSkityFilterCacheScore;
+#endif
   }
 
   void SetComplexityCeiling(unsigned int ceiling) override {
@@ -89,10 +98,13 @@ class PictureMetalComplexityCalculator : public PictureComplexityCalculator {
   class MetalHelper : public ComplexityCalculatorHelperSkity {
    public:
     MetalHelper(unsigned int ceiling)
-        : ComplexityCalculatorHelperSkity(ceiling),
-          save_layer_count_(0),
-          draw_text_blob_count_(0) {}
+        : ComplexityCalculatorHelperSkity(ceiling), save_layer_count_(0u) {}
 
+    void OnDrawGlyphs(uint32_t count, const skity::GlyphID glyphs[],
+                      const float position_x[], const float position_y[],
+                      const skity::Font& font,
+                      const skity::Paint& paint) override;
+    void OnDrawPaint(skity::Paint const& paint) override;
     void OnDrawLine(float x0, float y0, float x1, float y1,
                     skity::Paint const& paint) override;
     void OnDrawCircle(float cx, float cy, float radius,
@@ -118,13 +130,14 @@ class PictureMetalComplexityCalculator : public PictureComplexityCalculator {
 
    private:
     unsigned int save_layer_count_;
-    unsigned int draw_text_blob_count_;
   };
 #endif  // ENABLE_SKITY
 
   PictureMetalComplexityCalculator()
       : ceiling_(std::numeric_limits<unsigned int>::max()) {}
   static PictureMetalComplexityCalculator* instance_;
+  static constexpr unsigned int kSkityFilterCacheScore = 200000u;
+  static constexpr unsigned int kSkitySaveLayerComplexityScore = 100000u;
 
   unsigned int ceiling_;
 };

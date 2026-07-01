@@ -494,326 +494,73 @@ void PictureMetalComplexityCalculator::MetalHelper::ImageRect(
 
 unsigned int
 PictureMetalComplexityCalculator::MetalHelper::BatchedComplexity() {
-  // Calculate the impact of saveLayer.
-  unsigned int save_layer_complexity;
-  if (save_layer_count_ == 0) {
-    save_layer_complexity = 0;
-  } else {
-    // saveLayer seems to have two trends; if the count is < 200,
-    // then the individual cost of a saveLayer is higher than if
-    // the count is > 200.
-    //
-    // However, the trend is strange and we should gather more data to
-    // get a better idea of how to represent the trend. That being said, it's
-    // very unlikely we'll ever hit a DisplayList with 200+ saveLayer calls
-    // in it, so we will calculate based on the more reasonably anticipated
-    // range of less than 200, with the trend line more weighted towards the
-    // lower end of that range (as the data itself doesn't present as a straight
-    // line). Further, we will easily hit our cache thresholds with such a
-    // large number of saveLayer calls.
-    //
-    // m = 1/2
-    // c = 1
-    save_layer_complexity = (save_layer_count_ + 2) * 100000;
+  if (save_layer_count_ > std::numeric_limits<unsigned int>::max() /
+                              kSkitySaveLayerComplexityScore) {
+    return std::numeric_limits<unsigned int>::max();
   }
+  return save_layer_count_ * kSkitySaveLayerComplexityScore;
+}
 
-  unsigned int draw_text_blob_complexity;
-  if (draw_text_blob_count_ == 0) {
-    draw_text_blob_complexity = 0;
-  } else {
-    // m = 1/240
-    // c = 0.75
-    draw_text_blob_complexity = (draw_text_blob_count_ + 180) * 2500 / 3;
-  }
+void PictureMetalComplexityCalculator::MetalHelper::OnDrawGlyphs(
+    uint32_t count, const skity::GlyphID glyphs[], const float position_x[],
+    const float position_y[], const skity::Font& font,
+    const skity::Paint& paint) {
+  AccumulateFilterComplexity(paint, kSkityFilterCacheScore);
+}
 
-  return save_layer_complexity + draw_text_blob_complexity;
+void PictureMetalComplexityCalculator::MetalHelper::OnDrawPaint(
+    skity::Paint const& paint) {
+  AccumulateFilterComplexity(paint, kSkityFilterCacheScore);
 }
 
 void PictureMetalComplexityCalculator::MetalHelper::OnDrawLine(
     float x0, float y0, float x1, float y1, skity::Paint const& paint) {
-  if (IsComplex()) {
-    return;
-  }
-  // The curve here may be log-linear, although it doesn't really match up that
-  // well. To avoid costly computations, try and do a best fit of the data onto
-  // a linear graph as a very rough first order approximation.
-
-  float non_hairline_penalty = 1.0f;
-  float aa_penalty = 1.0f;
-
-  if (!IsHairline(paint)) {
-    non_hairline_penalty = 1.15f;
-  }
-  if (IsAntiAliased(paint)) {
-    aa_penalty = 1.4f;
-  }
-
-  // Use an approximation for the distance to avoid floating point or
-  // sqrt() calls.
-  float distance = abs(x0 - x1) + abs(y0 - y1);
-
-  // The baseline complexity is for a hairline stroke with no AA.
-  // m = 1/45
-  // c = 5
-  unsigned int complexity =
-      ((distance + 225) * 4 / 9) * non_hairline_penalty * aa_penalty;
-
-  AccumulateComplexity(complexity);
+  AccumulateFilterComplexity(paint, kSkityFilterCacheScore);
 }
 
 void PictureMetalComplexityCalculator::MetalHelper::OnDrawCircle(
     float cx, float cy, float radius, skity::Paint const& paint) {
-  if (IsComplex()) {
-    return;
-  }
-
-  unsigned int complexity;
-
-  // There is also a kStrokeAndFill_Style that Skia exposes, but we do not
-  // currently use it anywhere in Flutter.
-  if (Style(paint) == skity::Paint::Style::kFill_Style) {
-    // We can ignore pi here.
-    unsigned int area = radius * radius;
-    // m = 1/1300
-    // c = 5
-    complexity = (area + 6500) * 2 / 65;
-
-    // Penalty of around 5% when AA is disabled.
-    if (!IsAntiAliased(paint)) {
-      complexity *= 1.05f;
-    }
-  } else {
-    // Hairline vs non-hairline has no significant performance difference.
-    if (IsAntiAliased(paint)) {
-      // m = 1/7
-      // c = 7
-      complexity = (radius + 49) * 40 / 7;
-    } else {
-      // m = 1/16
-      // c = 8
-      complexity = (radius + 128) * 5 / 2;
-    }
-  }
-
-  AccumulateComplexity(complexity);
+  AccumulateFilterComplexity(paint, kSkityFilterCacheScore);
 }
 
 void PictureMetalComplexityCalculator::MetalHelper::OnDrawOval(
     skity::Rect const& oval, skity::Paint const& paint) {
-  if (IsComplex()) {
-    return;
-  }
-  // DrawOval scales very roughly linearly with the bounding box width/height
-  // (not area) for stroked styles without AA.
-  //
-  // Filled styles and stroked styles with AA scale linearly with the bounding
-  // box area.
-  unsigned int area = oval.Width() * oval.Height();
-
-  unsigned int complexity;
-
-  // There is also a kStrokeAndFill_Style that Skia exposes, but we do not
-  // currently use it anywhere in Flutter.
-  if (Style(paint) == skity::Paint::Style::kFill_Style) {
-    // With filled styles, there is no significant AA penalty.
-    // m = 1/16000
-    // c = 0
-    complexity = area / 80;
-  } else {
-    if (IsAntiAliased(paint)) {
-      // m = 1/7500
-      // c = 0
-      complexity = area * 2 / 75;
-    } else {
-      // Take the average of the width and height.
-      unsigned int length = (oval.Width() + oval.Height()) / 2;
-
-      // m = 1/80
-      // c = 0
-      complexity = length * 5 / 2;
-    }
-  }
-
-  AccumulateComplexity(complexity);
+  AccumulateFilterComplexity(paint, kSkityFilterCacheScore);
 }
 
 void PictureMetalComplexityCalculator::MetalHelper::OnDrawRect(
     skity::Rect const& rect, skity::Paint const& paint) {
-  if (IsComplex()) {
-    return;
-  }
-
-  unsigned int complexity;
-
-  // If stroked, cost scales linearly with the rectangle width/height.
-  // If filled, it scales with the area.
-  //
-  // Hairline stroke vs non hairline has no real penalty at smaller lengths,
-  // but it increases at larger lengths. There isn't enough data to get a good
-  // idea of the penalty at lengths > 1000px.
-  //
-  // There is also a kStrokeAndFill_Style that Skia exposes, but we do not
-  // currently use it anywhere in Flutter.
-  if (Style(paint) == skity::Paint::Style::kFill_Style) {
-    // No real difference for AA with filled styles.
-    unsigned int area = rect.Width() * rect.Height();
-
-    // m = 1/9000
-    // c = 0
-    complexity = area / 225;
-  } else {
-    // Take the average of the width and height.
-    unsigned int length = (rect.Width() + rect.Height()) / 2;
-
-    // There is a penalty for AA being *disabled*.
-    if (IsAntiAliased(paint)) {
-      // m = 1/65
-      // c = 0
-      complexity = length * 8 / 13;
-    } else {
-      // m = 1/35
-      // c = 0
-      complexity = length * 8 / 7;
-    }
-  }
-
-  AccumulateComplexity(complexity);
+  AccumulateFilterComplexity(paint, kSkityFilterCacheScore);
 }
 
 void PictureMetalComplexityCalculator::MetalHelper::OnDrawRRect(
     skity::RRect const& rrect, skity::Paint const& paint) {
-  if (IsComplex()) {
-    return;
-  }
-  // RRects scale linearly with the area of the bounding rect.
-  unsigned int area = rrect.Width() * rrect.Height();
-
-  // Drawing RRects is split into two performance tiers; an expensive
-  // one and a less expensive one. Both scale linearly with area.
-  //
-  // Expensive: All filled style, symmetric w/AA.
-  bool expensive = (Style(paint) == skity::Paint::Style::kFill_Style) ||
-                   ((rrect.GetType() == skity::RRect::Type::kSimple) &&
-                    IsAntiAliased(paint));
-
-  unsigned int complexity;
-
-  // These values were worked out by creating a straight line graph (y=mx+c)
-  // approximately matching the measured data, normalising the data so that
-  // 0.0005ms resulted in a score of 100 then simplifying down the formula.
-  if (expensive) {
-    // m = 1/25000
-    // c = 2
-    // An area of 7000px^2 ~= baseline timing of 0.0005ms.
-    complexity = (area + 10500) / 175;
-  } else {
-    // m = 1/7000
-    // c = 1.5
-    // An area of 16000px^2 ~= baseline timing of 0.0005ms.
-    complexity = (area + 50000) / 625;
-  }
-
-  AccumulateComplexity(complexity);
+  AccumulateFilterComplexity(paint, kSkityFilterCacheScore);
 }
 
 void PictureMetalComplexityCalculator::MetalHelper::OnDrawPath(
     skity::Path const& path, skity::Paint const& paint) {
-  if (IsComplex()) {
-    return;
-  }
-  // There is negligible effect on the performance for hairline vs. non-hairline
-  // stroke widths.
-  //
-  // The data for filled styles is currently suspicious, so for now we are going
-  // to assign scores based on stroked styles.
-
-  unsigned int line_verb_cost, quad_verb_cost, conic_verb_cost, cubic_verb_cost;
-
-  if (IsAntiAliased(paint)) {
-    line_verb_cost = 75;
-    quad_verb_cost = 100;
-    conic_verb_cost = 160;
-    cubic_verb_cost = 210;
-  } else {
-    line_verb_cost = 67;
-    quad_verb_cost = 80;
-    conic_verb_cost = 140;
-    cubic_verb_cost = 210;
-  }
-
-  // There seems to be a fixed cost of around 1ms for calling drawPath.
-  unsigned int complexity =
-      200000 + CalculatePathComplexity(path, line_verb_cost, quad_verb_cost,
-                                       conic_verb_cost, cubic_verb_cost);
-
-  AccumulateComplexity(complexity);
+  AccumulateFilterComplexity(paint, kSkityFilterCacheScore);
 }
 
 void PictureMetalComplexityCalculator::MetalHelper::OnSaveLayer(
     const skity::Rect& bounds, const skity::Paint& paint) {
-  if (IsComplex()) {
-    return;
-  }
-
+  AccumulateFilterComplexity(paint, kSkityFilterCacheScore);
   save_layer_count_++;
 }
 
 void PictureMetalComplexityCalculator::MetalHelper::OnDrawBlob(
     const skity::TextBlob* blob, float x, float y, skity::Paint const& paint) {
-  if (IsComplex()) {
-    return;
-  }
-
-  // DrawTextBlob has a high fixed cost, but if we call it multiple times
-  // per frame, that fixed cost is greatly reduced per subsequent call. This
-  // is likely because there is batching being done in SkCanvas.
-
-  // Increment draw_text_blob_count_ and calculate the cost at the end.
-  draw_text_blob_count_++;
+  AccumulateFilterComplexity(paint, kSkityFilterCacheScore);
 }
 
 void PictureMetalComplexityCalculator::MetalHelper::OnDrawImageRect(
     std::shared_ptr<skity::Image> image, const skity::Rect& src,
     const skity::Rect& dst, const skity::SamplingOptions& sampling,
     skity::Paint const* paint) {
-  if (IsComplex()) {
-    return;
+  if (paint) {
+    AccumulateFilterComplexity(*paint, kSkityFilterCacheScore);
   }
-  // Two main groups here - texture-backed and non-texture-backed images.
-  //
-  // Within each group, they all perform within a few % of each other *except*
-  // when we have a strict constraint and anti-aliasing enabled.
-  size_t width = image->Width();
-  size_t height = image->Height();
-  unsigned int area = width * height;
-
-  // These values were worked out by creating a straight line graph (y=mx+c)
-  // approximately matching the measured data, normalising the data so that
-  // 0.0005ms resulted in a score of 100 then simplifying down the formula.
-  unsigned int complexity;
-  bool texture_backed = image->IsTextureBackend();
-  if (texture_backed) {
-    // Baseline for texture-backed SkImages.
-    // m = 1/23000
-    // c = 2.3
-    complexity = (area + 52900) * 2 / 115;
-    if (paint && IsAntiAliased(*paint)) {
-      // There's about a 30% performance penalty from the baseline.
-      complexity *= 1.3f;
-    }
-  } else {
-    if (paint && IsAntiAliased(*paint)) {
-      // m = 1/12200
-      // c = 2.75
-      complexity = (area + 33550) * 2 / 61;
-    } else {
-      // m = 1/14500
-      // c = 2.5
-      complexity = (area + 36250) * 4 / 145;
-    }
-  }
-
-  AccumulateComplexity(complexity);
 }
 
 #endif  // ENABLE_SKITY

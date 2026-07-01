@@ -172,6 +172,10 @@ if (enable_unittests) {
       "testing/picture_test_utils.h",
     ]
 
+    if (enable_skity) {
+      sources += [ "testing/picture_complexity_skity_unittests.cc" ]
+    }
+
     public_deps = [
       "../testing:skia",
       "//third_party/googletest:gtest",
