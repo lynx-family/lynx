@@ -7,6 +7,8 @@
 #include <GLES2/gl2.h>
 #include <GLES2/gl2ext.h>
 
+#include <utility>
+
 #include "base/include/platform/android/jni_convert_helper.h"
 #include "clay/common/graphics/gl/scoped_texture_binder.h"
 #include "clay/fml/logging.h"
@@ -24,9 +26,32 @@ SurfaceTextureImageBacking::SurfaceTextureImageBacking(
           gfx_handle.has_value()
               ? SurfaceTexture::Retain(
                     reinterpret_cast<jobject>(gfx_handle.value()), false)
-              : SurfaceTexture::Create()) {}
+              : SurfaceTexture::Create()),
+      uses_internal_frame_listener_(!gfx_handle.has_value()),
+      frame_callback_state_(std::make_shared<FrameCallbackState>()) {
+  if (uses_internal_frame_listener_) {
+    // The first SurfaceTexture frame may arrive before the drawable image
+    // callback is registered. Cache that signal and replay it on registration.
+    std::weak_ptr<FrameCallbackState> weak_state = frame_callback_state_;
+    surface_texture_->SetFrameAvailableCallback([weak_state]() {
+      if (auto state = weak_state.lock()) {
+        SurfaceTextureImageBacking::TriggerFrameCallback(state);
+      }
+    });
+  }
+}
 
 SurfaceTextureImageBacking::~SurfaceTextureImageBacking() {
+  if (uses_internal_frame_listener_) {
+    auto state = std::move(frame_callback_state_);
+    if (state) {
+      std::lock_guard<std::mutex> l(state->mutex);
+      state->is_valid = false;
+      state->callback = nullptr;
+      state->has_pending_frame = false;
+    }
+    surface_texture_->SetFrameAvailableCallback(nullptr);
+  }
   if (texture_ != 0) {
     FML_LOG(ERROR) << "Texture not detached, maybe leaked!";
   }
@@ -139,7 +164,27 @@ void SurfaceTextureImageBacking::SetTransformation(const skity::Matrix& mat) {
 /// `SharedImageBackingUnmanaged`
 void SurfaceTextureImageBacking::SetFrameAvailableCallback(
     const fml::closure& callback) {
-  surface_texture_->SetFrameAvailableCallback(callback);
+  if (!uses_internal_frame_listener_) {
+    surface_texture_->SetFrameAvailableCallback(callback);
+    return;
+  }
+
+  fml::closure pending_callback;
+  {
+    std::lock_guard<std::mutex> l(frame_callback_state_->mutex);
+    if (!frame_callback_state_->is_valid) {
+      return;
+    }
+    frame_callback_state_->callback = callback;
+    if (frame_callback_state_->callback &&
+        frame_callback_state_->has_pending_frame) {
+      pending_callback = frame_callback_state_->callback;
+      frame_callback_state_->has_pending_frame = false;
+    }
+  }
+  if (pending_callback) {
+    pending_callback();
+  }
 }
 
 bool SurfaceTextureImageBacking::UpdateFront() {
@@ -195,6 +240,23 @@ void SurfaceTextureImageBacking::DetachGLContext() {
     glDeleteTextures(1, &texture_);
     texture_ = 0;
   }
+}
+
+void SurfaceTextureImageBacking::TriggerFrameCallback(
+    const std::shared_ptr<FrameCallbackState>& state) {
+  fml::closure callback;
+  {
+    std::lock_guard<std::mutex> l(state->mutex);
+    if (!state->is_valid) {
+      return;
+    }
+    if (!state->callback) {
+      state->has_pending_frame = true;
+      return;
+    }
+    callback = state->callback;
+  }
+  callback();
 }
 
 }  // namespace clay

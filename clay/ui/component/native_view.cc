@@ -57,14 +57,7 @@ NativeView::NativeView(int id, std::string tag, PageView* page_view)
           auto content =
               static_cast<RenderExternalContent*>(weak_self->render_object());
           if (image_sink) {
-            auto texture =
-                std::make_shared<SharedImageExternalTexture>(image_sink);
-            weak_self->page_view()->RegisterDrawableImage(texture);
-            weak_self->tex_id_ = texture->Id();
-            content->SetDrawableImageId(*weak_self->tex_id_);
-            content->SetFitMode(DrawableImage::FitMode::kClipToBounds);
-            content->SetRenderMode(
-                RenderExternalContent::RenderMode::kExternalTexture);
+            weak_self->BindExternalTexture(image_sink);
           } else if (support_hybrid_composition) {
             content->SetViewId(weak_self->id());
           }
@@ -73,6 +66,22 @@ NativeView::NativeView(int id, std::string tag, PageView* page_view)
         }
       });
   SetFocusable(true);
+}
+
+void NativeView::BindExternalTexture(fml::RefPtr<SharedImageSink> image_sink) {
+  if (!image_sink || tex_id_.has_value()) {
+    return;
+  }
+  auto texture = std::make_shared<SharedImageExternalTexture>(image_sink);
+  page_view()->RegisterDrawableImage(texture);
+  tex_id_ = texture->Id();
+  auto content = static_cast<RenderExternalContent*>(render_object());
+  content->SetDrawableImageId(*tex_id_);
+  content->SetFitMode(DrawableImage::FitMode::kClipToBounds);
+  content->SetRenderMode(RenderExternalContent::RenderMode::kExternalTexture);
+  // Ensure a UI commit creates the DrawableImageLayer even if the first texture
+  // frame arrived before the current layer tree contained this drawable image.
+  MarkDirty();
 }
 
 bool NativeView::ShouldIgnoreForTouchHitTest(int platform_try_hit_id) const {
@@ -105,6 +114,11 @@ void NativeView::FocusHasChanged(bool focused, bool is_leaf) {
     plugin.OnFocusChanged(focused, is_leaf);
   });
   BaseView::FocusHasChanged(focused, is_leaf);
+}
+
+void NativeView::Invalidate() {
+  BaseView::Invalidate();
+  native_view_plugin_.Act([](auto& plugin) { plugin.Invalidate(); });
 }
 
 void NativeView::SendMotionEvent(const PointerEvent& point_event,
@@ -185,17 +199,7 @@ void NativeView::DidUpdateAttributes() {
         if (weak_self && !weak_self->tex_id_.has_value()) {
           fml::RefPtr<SharedImageSink> image_sink = plugin.GetSharedImageSink();
           if (image_sink) {
-            auto texture =
-                std::make_shared<SharedImageExternalTexture>(image_sink);
-            weak_self->page_view()->RegisterDrawableImage(texture);
-            weak_self->tex_id_ = texture->Id();
-
-            auto content =
-                static_cast<RenderExternalContent*>(weak_self->render_object());
-            content->SetDrawableImageId(*weak_self->tex_id_);
-            content->SetFitMode(DrawableImage::FitMode::kClipToBounds);
-            content->SetRenderMode(
-                RenderExternalContent::RenderMode::kExternalTexture);
+            weak_self->BindExternalTexture(image_sink);
           }
         }
       });
