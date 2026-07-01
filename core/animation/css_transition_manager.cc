@@ -7,8 +7,10 @@
 #include <utility>
 
 #include "base/include/float_comparison.h"
+#include "base/include/value/table.h"
 #include "core/animation/animation_trace_event_def.h"
 #include "core/animation/keyframed_animation_curve.h"
+#include "core/renderer/css/css_property.h"
 #include "core/renderer/css/css_style_utils.h"
 #include "core/renderer/css/layout_property.h"
 #include "core/renderer/dom/element.h"
@@ -476,6 +478,18 @@ base::flex_optional<tasm::CSSValue> ConvertCanonicalComputedValueForTransition(
       }
       return ConvertComputedFilterForTransition(*filter);
     }
+    case tasm::kPropertyIDBoxShadow: {
+      if (value.kind() != Kind::kBoxShadow) {
+        return {};
+      }
+      const auto* box_shadow =
+          std::get_if<starlight::CanonicalComputedValue::kBoxShadowIndex>(
+              &value.storage());
+      if (box_shadow == nullptr) {
+        return {};
+      }
+      return BuildBoxShadowCSSValue(*box_shadow);
+    }
     case tasm::kPropertyIDBackgroundPosition: {
       if (value.kind() != Kind::kBackgroundPosition) {
         return {};
@@ -934,24 +948,10 @@ bool CSSTransitionManager::IsValueValid(starlight::AnimationPropertyType type,
       }
       return true;
     }
-    case starlight::AnimationPropertyType::kTransform: {
-      if (!value.IsArray() && !value.IsVariable()) {
-        return false;
-      }
-      return true;
-    }
-    case starlight::AnimationPropertyType::kFilter: {
-      if (!value.IsArray() && !value.IsVariable()) {
-        return false;
-      }
-      return true;
-    }
-    case starlight::AnimationPropertyType::kBackgroundPosition: {
-      if (!value.IsArray() && !value.IsVariable()) {
-        return false;
-      }
-      return true;
-    }
+    case starlight::AnimationPropertyType::kTransform:
+    case starlight::AnimationPropertyType::kFilter:
+    case starlight::AnimationPropertyType::kBoxShadow:
+    case starlight::AnimationPropertyType::kBackgroundPosition:
     case starlight::AnimationPropertyType::kTransformOrigin: {
       if (!value.IsArray() && !value.IsVariable()) {
         return false;

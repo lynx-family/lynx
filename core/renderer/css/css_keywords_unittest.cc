@@ -276,6 +276,7 @@ TEST(CSSKeywords, TokenTypeCheck) {
       {"visibility", TokenType::VISIBILITY},
       {"transform", TokenType::TRANSFORM},
       {"transform-origin", TokenType::TRANSFORM_ORIGIN},
+      {"box-shadow", TokenType::BOX_SHADOW},
       {"all", TokenType::ALL},
       {"max-width", TokenType::MAX_WIDTH},
       {"max-height", TokenType::MAX_HEIGHT},

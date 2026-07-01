@@ -13,13 +13,13 @@
 #include <optional>
 #include <unordered_set>
 #include <utility>
-#include <vector>
 
 #include "base/include/fml/time/time_delta.h"
+#include "base/include/vector.h"
 #include "core/animation/animation_curve.h"
 #include "core/renderer/css/css_property.h"
+#include "core/style/shadow_data.h"
 #include "gfx/animation/animation_keyframe.h"
-#include "gfx/animation/animation_utils.h"
 #include "gfx/animation/timing_function.h"
 
 namespace lynx {
@@ -34,6 +34,9 @@ tasm::CSSValue GetStyleInElement(tasm::CSSPropertyID id,
 tasm::CSSValue HandleCSSVariableValueIfNeed(tasm::CSSPropertyID id,
                                             const tasm::CSSValue& value,
                                             tasm::Element* element);
+
+tasm::CSSValue BuildBoxShadowCSSValue(
+    const base::Vector<starlight::ShadowData>& shadows);
 
 const std::unordered_set<AnimationCurve::CurveType>& GetOnXAxisCurveTypeSet();
 
@@ -207,6 +210,63 @@ class KeyframedFilterAnimationCurve : public FilterAnimationCurve {
  public:
   static std::unique_ptr<KeyframedFilterAnimationCurve> Create();
   ~KeyframedFilterAnimationCurve() override = default;
+
+  tasm::CSSValue GetValue(fml::TimeDelta& t) const override;
+};
+
+//====BoxShadow keyframe ====
+class BoxShadowKeyframe : public gfx::Keyframe {
+ public:
+  using ShadowList = base::InlineVector<starlight::ShadowData, 1>;
+
+  static tasm::CSSValue GetBoxShadowKeyframeValue(BoxShadowKeyframe* keyframe,
+                                                  tasm::CSSPropertyID id,
+                                                  tasm::Element* element);
+
+  static std::unique_ptr<BoxShadowKeyframe> Create(
+      fml::TimeDelta time,
+      std::unique_ptr<gfx::TimingFunction> timing_function);
+  ~BoxShadowKeyframe() override = default;
+
+  const tasm::CSSValue& GetBoxShadow() const { return box_shadow_; }
+  bool HasResolvedValue() const { return has_resolved_value_; }
+  const ShadowList& ResolvedValue() const { return resolved_value_; }
+
+  void SetBoxShadow(const tasm::CSSValue& box_shadow) {
+    box_shadow_ = box_shadow;
+    ClearResolvedValue();
+    MarkNonEmpty();
+  }
+
+  bool SetValue(tasm::CSSPropertyID id, const tasm::CSSValue& value,
+                tasm::Element* element);
+
+  void NotifyUnitValuesUpdated(uint32_t css_value_pattern);
+
+  BoxShadowKeyframe(fml::TimeDelta time,
+                    std::unique_ptr<gfx::TimingFunction> timing_function);
+
+  void SetResolvedValue(ShadowList value) {
+    resolved_value_ = std::move(value);
+    has_resolved_value_ = true;
+    MarkNonEmpty();
+  }
+
+  void ClearResolvedValue() { has_resolved_value_ = false; }
+
+ private:
+  tasm::CSSValue box_shadow_;
+  bool has_resolved_value_{false};
+  ShadowList resolved_value_;
+};
+
+class KeyframedBoxShadowAnimationCurve : public AnimationCurve {
+ public:
+  static std::unique_ptr<KeyframedBoxShadowAnimationCurve> Create();
+  ~KeyframedBoxShadowAnimationCurve() override = default;
+
+  std::unique_ptr<gfx::Keyframe> MakeEmptyKeyframe(
+      const fml::TimeDelta& offset) override;
 
   tasm::CSSValue GetValue(fml::TimeDelta& t) const override;
 };

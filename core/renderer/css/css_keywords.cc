@@ -215,7 +215,7 @@ inline unsigned int CSSKeywordsHash::hash(const char *str, size_t len) {
 const struct TokenValue *CSSKeywordsHash::GetTokenValue(const char *str,
                                                         size_t len) {
   enum {
-    TOTAL_KEYWORDS = 320,
+    TOTAL_KEYWORDS = 321,
     MIN_WORD_LENGTH = 1,
     MAX_WORD_LENGTH = 20,
     MIN_HASH_VALUE = 2,
@@ -867,7 +867,9 @@ const struct TokenValue *CSSKeywordsHash::GetTokenValue(const char *str,
 #line 223 "css_keywords.tmpl"
       {"peachpuff", TokenType::PEACHPUFF},
 #line 304 "css_keywords.tmpl"
-      {"flex-grow", TokenType::FLEX_GROW}};
+      {"flex-grow", TokenType::FLEX_GROW},
+#line 310 "css_keywords.tmpl"
+      {"box-shadow", TokenType::BOX_SHADOW}};
 #if (defined __GNUC__ && __GNUC__ + (__GNUC_MINOR__ >= 6) > 4) || \
     (defined __clang__ && __clang_major__ >= 3)
 #pragma GCC diagnostic pop
@@ -969,7 +971,7 @@ const struct TokenValue *CSSKeywordsHash::GetTokenValue(const char *str,
       -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
       -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
       -1,  -1,  -1,  -1,  -1,  314, -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
-      -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
+      -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  320, -1,  -1,  -1,
       -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
       -1,  -1,  -1,  -1,  315, -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
       -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
@@ -1001,7 +1003,7 @@ const struct TokenValue *CSSKeywordsHash::GetTokenValue(const char *str,
   }
   return nullptr;
 }
-#line 342 "css_keywords.tmpl"
+#line 343 "css_keywords.tmpl"
 
 const struct TokenValue *GetTokenValue(const char *str, unsigned len) {
   return CSSKeywordsHash::GetTokenValue(str, len);

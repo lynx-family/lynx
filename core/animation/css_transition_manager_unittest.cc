@@ -6,9 +6,12 @@
 
 #include "core/animation/css_transition_manager.h"
 
+#include <cstdint>
 #include <initializer_list>
 #include <memory>
 
+#include "base/include/value/array.h"
+#include "base/include/value/table.h"
 #include "core/animation/animation.h"
 #include "core/animation/keyframe_effect.h"
 #include "core/animation/keyframe_model.h"
@@ -46,6 +49,39 @@ CssMeasureContext MakeTransitionMeasureContext(
   return CssMeasureContext(kWidth, layouts_unit_per_px,
                            kDefaultPhysicalPixelsPerLayoutUnit, 16.f, 16.f,
                            starlight::LayoutUnit(), starlight::LayoutUnit());
+}
+
+lepus::Value MakeBoxShadowLength(float value) {
+  auto array = lepus::CArray::Create();
+  array->emplace_back(value);
+  array->emplace_back(static_cast<int>(CSSValuePattern::NUMBER));
+  return lepus::Value(std::move(array));
+}
+
+tasm::CSSValue MakeBoxShadowValue(float h_offset, float v_offset, float blur,
+                                  float spread, uint32_t color) {
+  auto group = lepus::CArray::Create();
+  auto shadow = lepus::Dictionary::Create();
+  shadow->SetValue("enable", true);
+  shadow->SetValue("h_offset", MakeBoxShadowLength(h_offset));
+  shadow->SetValue("v_offset", MakeBoxShadowLength(v_offset));
+  shadow->SetValue("blur", MakeBoxShadowLength(blur));
+  shadow->SetValue("spread", MakeBoxShadowLength(spread));
+  shadow->SetValue("option", static_cast<int>(starlight::ShadowOption::kNone));
+  shadow->SetValue("color", color);
+  group->emplace_back(lepus::Value(std::move(shadow)));
+  return tasm::CSSValue(std::move(group));
+}
+
+float GetBoxShadowLength(const tasm::CSSValue& value, const char* key) {
+  auto shadow = value.GetArray()->get(0).Table();
+  auto length = shadow->GetValue(key).Array();
+  return length->get(0).Number();
+}
+
+uint32_t GetBoxShadowColor(const tasm::CSSValue& value) {
+  auto shadow = value.GetArray()->get(0).Table();
+  return static_cast<uint32_t>(shadow->GetValue("color").Number());
 }
 
 }  // namespace
@@ -334,6 +370,56 @@ TEST_F(CSSTransitionManagerTest, ConvertsCanonicalFilterForTransition) {
   EXPECT_EQ(round_trip_style.GetFilterData()->amount.GetType(),
             starlight::NLengthType::kNLengthUnit);
   EXPECT_FLOAT_EQ(round_trip_style.GetFilterData()->amount.GetRawValue(), 20.f);
+}
+
+TEST_F(CSSTransitionManagerTest,
+       NewPipelineCreatesBoxShadowTransitionKeyframes) {
+  auto test_element = InitElement();
+  auto test_manager = InitTestTransitionManager(test_element.get());
+
+  starlight::ComputedCSSStyle previous_base_style{1.f, 1.f};
+  starlight::ComputedCSSStyle previous_final_style{1.f, 1.f};
+  starlight::ComputedCSSStyle new_base_style{1.f, 1.f};
+  SetTransitionProperties(new_base_style,
+                          {starlight::AnimationPropertyType::kBoxShadow});
+
+  ASSERT_TRUE(previous_base_style.SetValue(
+      tasm::kPropertyIDBoxShadow,
+      MakeBoxShadowValue(0.f, 0.f, 0.f, 0.f, 0x80000000)));
+  ASSERT_TRUE(previous_final_style.SetValue(
+      tasm::kPropertyIDBoxShadow,
+      MakeBoxShadowValue(4.f, 2.f, 6.f, 1.f, 0x80000000)));
+  ASSERT_TRUE(new_base_style.SetValue(
+      tasm::kPropertyIDBoxShadow,
+      MakeBoxShadowValue(16.f, 12.f, 20.f, 4.f, 0x80000000)));
+
+  tasm::StyleMap empty_layout_only_styles;
+  test_manager->UpdateTransitionsForNewPipeline(
+      previous_base_style, previous_final_style, new_base_style,
+      empty_layout_only_styles, empty_layout_only_styles);
+
+  const base::String transition_name("box-shadow");
+  EXPECT_TRUE(test_manager->animations_map().count(transition_name));
+
+  const auto* start = FindTransitionKeyframeValue(
+      test_manager.get(), transition_name, 0.f, tasm::kPropertyIDBoxShadow);
+  ASSERT_NE(nullptr, start);
+  ASSERT_TRUE(start->IsArray());
+  EXPECT_FLOAT_EQ(4.f, GetBoxShadowLength(*start, "h_offset"));
+  EXPECT_FLOAT_EQ(2.f, GetBoxShadowLength(*start, "v_offset"));
+  EXPECT_FLOAT_EQ(6.f, GetBoxShadowLength(*start, "blur"));
+  EXPECT_FLOAT_EQ(1.f, GetBoxShadowLength(*start, "spread"));
+  EXPECT_EQ(0x80000000u, GetBoxShadowColor(*start));
+
+  const auto* end = FindTransitionKeyframeValue(
+      test_manager.get(), transition_name, 1.f, tasm::kPropertyIDBoxShadow);
+  ASSERT_NE(nullptr, end);
+  ASSERT_TRUE(end->IsArray());
+  EXPECT_FLOAT_EQ(16.f, GetBoxShadowLength(*end, "h_offset"));
+  EXPECT_FLOAT_EQ(12.f, GetBoxShadowLength(*end, "v_offset"));
+  EXPECT_FLOAT_EQ(20.f, GetBoxShadowLength(*end, "blur"));
+  EXPECT_FLOAT_EQ(4.f, GetBoxShadowLength(*end, "spread"));
+  EXPECT_EQ(0x80000000u, GetBoxShadowColor(*end));
 }
 
 TEST_F(CSSTransitionManagerTest, ConvertsCanonicalVisibilityEnumForTransition) {

@@ -88,14 +88,17 @@ struct CanonicalComputedValue {
     kFilter,
     kBackgroundPosition,
     kTransformOrigin,
+    kBoxShadow,
     kTextGradient,
   };
 
   using TransformValue = base::InlineVector<TransformRawData, 1>;
   using BackgroundPositionValue = base::InlineVector<NLength, 1>;
-  using Storage = std::variant<float, uint32_t, NLength, TransformValue,
-                               FilterData, BackgroundPositionValue,
-                               TransformOriginData, int32_t, lepus::Value>;
+  using BoxShadowValue = base::InlineVector<ShadowData, 1>;
+  using Storage =
+      std::variant<float, uint32_t, NLength, TransformValue, FilterData,
+                   BackgroundPositionValue, TransformOriginData, BoxShadowValue,
+                   int32_t, lepus::Value>;
 
   static constexpr std::size_t kFloatIndex = 0;
   static constexpr std::size_t kColorIndex = 1;
@@ -104,8 +107,9 @@ struct CanonicalComputedValue {
   static constexpr std::size_t kFilterIndex = 4;
   static constexpr std::size_t kBackgroundPositionIndex = 5;
   static constexpr std::size_t kTransformOriginIndex = 6;
-  static constexpr std::size_t kEnumIndex = 7;
-  static constexpr std::size_t kTextGradientIndex = 8;
+  static constexpr std::size_t kBoxShadowIndex = 7;
+  static constexpr std::size_t kEnumIndex = 8;
+  static constexpr std::size_t kTextGradientIndex = 9;
 
   static CanonicalComputedValue Number(float value) {
     return CanonicalComputedValue(Kind::kNumber, value);
@@ -143,6 +147,10 @@ struct CanonicalComputedValue {
   static CanonicalComputedValue TransformOrigin(
       const TransformOriginData& value) {
     return CanonicalComputedValue(Kind::kTransformOrigin, value);
+  }
+
+  static CanonicalComputedValue BoxShadow(const BoxShadowValue& value) {
+    return CanonicalComputedValue(Kind::kBoxShadow, value);
   }
 
   static CanonicalComputedValue TextGradient(const lepus::Value& value) {

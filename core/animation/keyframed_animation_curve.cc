@@ -8,12 +8,14 @@
 
 #include "core/animation/keyframed_animation_curve.h"
 
+#include <algorithm>
 #include <cmath>
 #include <limits>
 #include <optional>
 
 #include "base/include/float_comparison.h"
 #include "base/include/log/logging.h"
+#include "base/include/value/table.h"
 #include "base/trace/native/trace_event.h"
 #include "core/animation/animation_trace_event_def.h"
 #include "core/animation/css_keyframe_manager.h"
@@ -100,6 +102,8 @@ struct RawVec2Value {
   lepus::Value y_value;
 };
 
+using BoxShadowList = BoxShadowKeyframe::ShadowList;
+
 enum class PositionAxis : uint8_t {
   kX,
   kY,
@@ -112,6 +116,10 @@ enum class Vec2CSSValueEncoding : uint8_t {
 
 std::optional<gfx::UnitTag> ToUnitTagFromCSSValuePattern(
     tasm::CSSValuePattern css_pattern);
+
+tasm::CSSValue MakeBoxShadowNoneCSSValue() {
+  return tasm::CSSValue(lepus::CArray::Create());
+}
 
 std::optional<ResolvedLengthComponent> ResolveLengthComponent(
     const lepus::Value& value, tasm::CSSValuePattern pattern,
@@ -226,6 +234,130 @@ std::optional<gfx::FilterValue> GetResolvedFilterValue(
     keyframe->SetResolvedValue(*resolved);
   }
   return resolved;
+}
+
+bool ResolveBoxShadowValue(const tasm::CSSValue& box_shadow,
+                           tasm::Element* element, BoxShadowList& output) {
+  if (element == nullptr || element->computed_css_style() == nullptr ||
+      !box_shadow.IsArray()) {
+    return false;
+  }
+
+  base::InlineVector<starlight::ShadowData, 1> old_value;
+  old_value.emplace_back();
+  old_value[0].h_offset = std::numeric_limits<float>::quiet_NaN();
+  base::flex_optional<base::InlineVector<starlight::ShadowData, 1>> shadows =
+      old_value;
+  auto* style = element->computed_css_style();
+  if (!starlight::CSSStyleUtils::ComputeShadowStyle(
+          box_shadow, false, shadows, style->GetMeasureContext(),
+          style->GetCSSParserConfigs())) {
+    return false;
+  }
+
+  output.clear();
+  if (!shadows) {
+    return true;
+  }
+
+  output.reserve(shadows->size());
+  for (const auto& shadow : *shadows) {
+    output.emplace_back(shadow);
+  }
+  return true;
+}
+
+const BoxShadowList* GetResolvedBoxShadowValue(BoxShadowKeyframe* keyframe,
+                                               const tasm::CSSValue& box_shadow,
+                                               tasm::Element* element,
+                                               BoxShadowList& scratch) {
+  if (!keyframe->IsEmpty() && keyframe->HasResolvedValue()) {
+    return &keyframe->ResolvedValue();
+  }
+  if (!ResolveBoxShadowValue(box_shadow, element, scratch)) {
+    return nullptr;
+  }
+  if (!keyframe->IsEmpty()) {
+    keyframe->SetResolvedValue(std::move(scratch));
+    return &keyframe->ResolvedValue();
+  }
+  return &scratch;
+}
+
+starlight::ShadowData MakeIdentityShadow(starlight::ShadowOption option) {
+  starlight::ShadowData shadow;
+  shadow.option = option;
+  return shadow;
+}
+
+bool InterpolateShadowList(const BoxShadowList& start, const BoxShadowList& end,
+                           double progress,
+                           gfx::ColorInterpolation color_interp,
+                           BoxShadowList& output) {
+  const size_t shadow_count = std::max(start.size(), end.size());
+  output.clear();
+  output.reserve(shadow_count);
+  for (size_t i = 0; i < shadow_count; ++i) {
+    const bool has_start = i < start.size();
+    const bool has_end = i < end.size();
+    starlight::ShadowData start_shadow =
+        has_start ? start[i] : MakeIdentityShadow(end[i].option);
+    starlight::ShadowData end_shadow =
+        has_end ? end[i] : MakeIdentityShadow(start[i].option);
+    if (start_shadow.option != end_shadow.option) {
+      output.clear();
+      return false;
+    }
+
+    starlight::ShadowData interpolated;
+    interpolated.h_offset = static_cast<float>(gfx::InterpolateNumber(
+        start_shadow.h_offset, end_shadow.h_offset, progress));
+    interpolated.v_offset = static_cast<float>(gfx::InterpolateNumber(
+        start_shadow.v_offset, end_shadow.v_offset, progress));
+    interpolated.blur = static_cast<float>(
+        gfx::InterpolateNumber(start_shadow.blur, end_shadow.blur, progress));
+    interpolated.spread = static_cast<float>(gfx::InterpolateNumber(
+        start_shadow.spread, end_shadow.spread, progress));
+    interpolated.color = gfx::InterpolateColorARGB32(
+        start_shadow.color, end_shadow.color, progress, color_interp);
+    interpolated.option = start_shadow.option;
+    output.emplace_back(interpolated);
+  }
+  return true;
+}
+
+gfx::ColorInterpolation ToColorInterpolationMode(
+    starlight::XAnimationColorInterpolationType interpolation_type) {
+  if (interpolation_type ==
+      starlight::XAnimationColorInterpolationType::kLinearRGB) {
+    return gfx::ColorInterpolation::kLinearRGB;
+  }
+  if (interpolation_type ==
+      starlight::XAnimationColorInterpolationType::kSRGB) {
+    return gfx::ColorInterpolation::kSRGB;
+  }
+#if OS_IOS
+  return gfx::ColorInterpolation::kLinearRGB;
+#else
+  return gfx::ColorInterpolation::kSRGB;
+#endif
+}
+
+gfx::ColorInterpolation GetBoxShadowColorInterpolationMode(
+    tasm::Element* element) {
+  auto interpolation_type = starlight::XAnimationColorInterpolationType::kAuto;
+  if (element != nullptr && element->computed_css_style() != nullptr) {
+    interpolation_type =
+        element->computed_css_style()->new_animator_interpolation();
+  }
+  return ToColorInterpolationMode(interpolation_type);
+}
+
+lepus::Value BuildBoxShadowLengthValue(float value) {
+  auto array = lepus::CArray::Create();
+  array->emplace_back(value);
+  array->emplace_back(static_cast<int>(tasm::CSSValuePattern::NUMBER));
+  return lepus::Value(std::move(array));
 }
 
 std::pair<tasm::CSSValuePattern, lepus::Value>
@@ -413,6 +545,31 @@ tasm::CSSValue InterpolateVec2CSSValue(
 }
 
 }  // namespace
+
+tasm::CSSValue BuildBoxShadowCSSValue(
+    const base::Vector<starlight::ShadowData>& shadows) {
+  auto group = lepus::CArray::Create();
+  group->reserve(shadows.size());
+  BASE_STATIC_STRING_DECL(kEnable, "enable");
+  BASE_STATIC_STRING_DECL(kHOffset, "h_offset");
+  BASE_STATIC_STRING_DECL(kVOffset, "v_offset");
+  BASE_STATIC_STRING_DECL(kBlur, "blur");
+  BASE_STATIC_STRING_DECL(kSpread, "spread");
+  BASE_STATIC_STRING_DECL(kOption, "option");
+  BASE_STATIC_STRING_DECL(kColor, "color");
+  for (const auto& shadow : shadows) {
+    auto dict = lepus::Dictionary::Create();
+    dict->SetValue(kEnable, true);
+    dict->SetValue(kHOffset, BuildBoxShadowLengthValue(shadow.h_offset));
+    dict->SetValue(kVOffset, BuildBoxShadowLengthValue(shadow.v_offset));
+    dict->SetValue(kBlur, BuildBoxShadowLengthValue(shadow.blur));
+    dict->SetValue(kSpread, BuildBoxShadowLengthValue(shadow.spread));
+    dict->SetValue(kOption, static_cast<int>(shadow.option));
+    dict->SetValue(kColor, shadow.color);
+    group->emplace_back(std::move(dict));
+  }
+  return tasm::CSSValue(std::move(group));
+}
 
 tasm::CSSValue GetStyleInElement(tasm::CSSPropertyID id,
                                  tasm::Element* element) {
@@ -769,23 +926,10 @@ tasm::CSSValue KeyframedColorAnimationCurve::GetValue(fml::TimeDelta& t) const {
   uint32_t end_color = ColorKeyframe::GetColorKeyframeValue(
       keyframe_next, static_cast<tasm::CSSPropertyID>(Type()), element_);
 
-  gfx::ColorInterpolation mode = gfx::ColorInterpolation::kAuto;
-  if (interpolate_type_ == starlight::XAnimationColorInterpolationType::kAuto) {
-#if OS_IOS
-    mode = gfx::ColorInterpolation::kLinearRGB;
-#else
-    mode = gfx::ColorInterpolation::kSRGB;
-#endif
-  } else if (interpolate_type_ ==
-             starlight::XAnimationColorInterpolationType::kLinearRGB) {
-    mode = gfx::ColorInterpolation::kLinearRGB;
-  } else {
-    mode = gfx::ColorInterpolation::kSRGB;
-  }
-
   uint32_t result_value = gfx::InterpolateColorARGB32(
       static_cast<gfx::ColorARGB32>(start_color),
-      static_cast<gfx::ColorARGB32>(end_color), progress, mode);
+      static_cast<gfx::ColorARGB32>(end_color), progress,
+      ToColorInterpolationMode(interpolate_type_));
   return tasm::CSSValue(result_value, tasm::CSSValuePattern::NUMBER);
 }
 //====== ColorValueAnimator end =======
@@ -972,6 +1116,106 @@ tasm::CSSValue KeyframedFilterAnimationCurve::GetValue(
 }
 
 //====== FilterValueAnimator end =======
+
+//====== BoxShadowValueAnimator begin =======
+
+std::unique_ptr<BoxShadowKeyframe> BoxShadowKeyframe::Create(
+    fml::TimeDelta time, std::unique_ptr<gfx::TimingFunction> timing_function) {
+  return std::make_unique<BoxShadowKeyframe>(time, std::move(timing_function));
+}
+
+BoxShadowKeyframe::BoxShadowKeyframe(
+    fml::TimeDelta time, std::unique_ptr<gfx::TimingFunction> timing_function)
+    : gfx::Keyframe(time, std::move(timing_function)) {}
+
+tasm::CSSValue BoxShadowKeyframe::GetBoxShadowKeyframeValue(
+    BoxShadowKeyframe* keyframe, tasm::CSSPropertyID id,
+    tasm::Element* element) {
+  if (keyframe && !keyframe->IsEmpty()) {
+    return keyframe->GetBoxShadow();
+  }
+  auto box_shadow = GetStyleInElement(id, element);
+  if (!box_shadow.IsArray()) {
+    return MakeBoxShadowNoneCSSValue();
+  }
+  return box_shadow;
+}
+
+bool BoxShadowKeyframe::SetValue(tasm::CSSPropertyID id,
+                                 const tasm::CSSValue& value,
+                                 tasm::Element* element) {
+  auto keyframe_box_shadow_value =
+      HandleCSSVariableValueIfNeed(id, value, element);
+  if (!keyframe_box_shadow_value.IsArray()) {
+    return false;
+  }
+  SetBoxShadow(keyframe_box_shadow_value);
+  return true;
+}
+
+void BoxShadowKeyframe::NotifyUnitValuesUpdated(uint32_t) {
+  ClearResolvedValue();
+}
+
+std::unique_ptr<KeyframedBoxShadowAnimationCurve>
+KeyframedBoxShadowAnimationCurve::Create() {
+  return std::make_unique<KeyframedBoxShadowAnimationCurve>();
+}
+
+std::unique_ptr<gfx::Keyframe>
+KeyframedBoxShadowAnimationCurve::MakeEmptyKeyframe(
+    const fml::TimeDelta& offset) {
+  return BoxShadowKeyframe::Create(offset, nullptr);
+}
+
+tasm::CSSValue KeyframedBoxShadowAnimationCurve::GetValue(
+    fml::TimeDelta& t) const {
+  auto sampling = gfx::ComputeKeyframedProgress(keyframes_, timing_function(),
+                                                scaled_duration(), t);
+  if (!sampling.valid) {
+    return MakeBoxShadowNoneCSSValue();
+  }
+  t = sampling.effective_time;
+  size_t i = sampling.index;
+  double progress = sampling.progress;
+
+  auto* keyframe = static_cast<BoxShadowKeyframe*>(keyframes_[i].get());
+  auto* keyframe_next =
+      static_cast<BoxShadowKeyframe*>(keyframes_[i + 1].get());
+
+  tasm::CSSValue start_box_shadow =
+      BoxShadowKeyframe::GetBoxShadowKeyframeValue(
+          keyframe, tasm::kPropertyIDBoxShadow, element_);
+  tasm::CSSValue end_box_shadow = BoxShadowKeyframe::GetBoxShadowKeyframeValue(
+      keyframe_next, tasm::kPropertyIDBoxShadow, element_);
+
+  if (base::FloatsEqual(static_cast<float>(progress), 0.0f)) {
+    return start_box_shadow;
+  }
+  if (base::FloatsEqual(static_cast<float>(progress), 1.0f)) {
+    return end_box_shadow;
+  }
+
+  BoxShadowList start_scratch;
+  BoxShadowList end_scratch;
+  const auto* start_value = GetResolvedBoxShadowValue(
+      keyframe, start_box_shadow, element_, start_scratch);
+  const auto* end_value = GetResolvedBoxShadowValue(
+      keyframe_next, end_box_shadow, element_, end_scratch);
+  if (start_value == nullptr || end_value == nullptr) {
+    return start_box_shadow;
+  }
+
+  BoxShadowList output;
+  if (!InterpolateShadowList(*start_value, *end_value, progress,
+                             GetBoxShadowColorInterpolationMode(element_),
+                             output)) {
+    return progress < 0.5 ? start_box_shadow : end_box_shadow;
+  }
+  return BuildBoxShadowCSSValue(output);
+}
+
+//====== BoxShadowValueAnimator end =======
 
 //====== BackgroundPositionAnimator begin =======
 

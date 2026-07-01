@@ -21,6 +21,7 @@
     "right",
     "bottom",
     "transform",
+    "box-shadow",
     "all"
   ],
   "desc": "The transition-property CSS property sets the CSS properties to which a transition effect should be applied.",
@@ -59,6 +60,43 @@
           },
           "web_lynx": {
             "version_added": true
+          }
+        }
+      },
+      "box-shadow": {
+        "__compat": {
+          "status": {
+            "deprecated": false,
+            "experimental": false
+          },
+          "support": {
+            "android": {
+              "notes": "The new animator supports <code>transition-property: box-shadow</code> since Lynx 4.2.",
+              "version_added": "4.2"
+            },
+            "ios": {
+              "notes": "The new animator supports <code>transition-property: box-shadow</code> since Lynx 4.2.",
+              "version_added": "4.2"
+            },
+            "harmony": {
+              "notes": "The new animator supports <code>transition-property: box-shadow</code> since Lynx 4.2.",
+              "version_added": "4.2"
+            },
+            "clay_android": {
+              "version_added": "4.2"
+            },
+            "clay_ios": {
+              "version_added": "4.2"
+            },
+            "clay_macos": {
+              "version_added": "4.2"
+            },
+            "clay_windows": {
+              "version_added": "4.2"
+            },
+            "web_lynx": {
+              "version_added": true
+            }
           }
         }
       }

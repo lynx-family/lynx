@@ -108,6 +108,11 @@ bool CanonicalComputedValue::operator==(
       const auto* rhs_value = std::get_if<kTransformOriginIndex>(&rhs.storage_);
       return lhs != nullptr && rhs_value != nullptr && *lhs == *rhs_value;
     }
+    case Kind::kBoxShadow: {
+      const auto* lhs = std::get_if<kBoxShadowIndex>(&storage_);
+      const auto* rhs_value = std::get_if<kBoxShadowIndex>(&rhs.storage_);
+      return lhs != nullptr && rhs_value != nullptr && *lhs == *rhs_value;
+    }
     case Kind::kTextGradient: {
       const auto* lhs = std::get_if<kTextGradientIndex>(&storage_);
       const auto* rhs_value = std::get_if<kTextGradientIndex>(&rhs.storage_);
@@ -5225,6 +5230,7 @@ bool ComputedCSSStyle::SupportsCanonicalComputedValue(tasm::CSSPropertyID id) {
     case tasm::kPropertyIDFlexGrow:
     case tasm::kPropertyIDFlexBasis:
     case tasm::kPropertyIDFilter:
+    case tasm::kPropertyIDBoxShadow:
     case tasm::kPropertyIDTransform:
     case tasm::kPropertyIDTransformOrigin:
     case tasm::kPropertyIDOffsetDistance:
@@ -5347,6 +5353,12 @@ ComputedCSSStyle::ExtractCanonicalComputedValue(tasm::CSSPropertyID id) const {
           layout_computed_style_.GetFlexBasis());
     case tasm::kPropertyIDFilter:
       return CanonicalComputedValue::Filter(filter_ ? *filter_ : FilterData());
+    case tasm::kPropertyIDBoxShadow:
+      if (box_shadow_) {
+        return CanonicalComputedValue::BoxShadow(*box_shadow_);
+      }
+      return CanonicalComputedValue::BoxShadow(
+          CanonicalComputedValue::BoxShadowValue());
     case tasm::kPropertyIDTransform:
       if (transform_raw_) {
         return CanonicalComputedValue::Transform(*transform_raw_);

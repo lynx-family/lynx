@@ -20,12 +20,15 @@
         },
         "support": {
           "android": {
+            "notes": "The new animator supports <code>box-shadow</code> keyframe and transition animations since Lynx 4.2.",
             "version_added": "1.0"
           },
           "ios": {
+            "notes": "The new animator supports <code>box-shadow</code> keyframe and transition animations since Lynx 4.2.",
             "version_added": "1.0"
           },
           "harmony": {
+            "notes": "The new animator supports <code>box-shadow</code> keyframe and transition animations since Lynx 4.2.",
             "version_added": "3.4"
           },
           "clay_android": {
