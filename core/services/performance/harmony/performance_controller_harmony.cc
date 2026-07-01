@@ -70,6 +70,7 @@ napi_value PerformanceControllerHarmonyJSWrapper::Constructor(
                           &perf_controller->js_on_performance_event_func_ref_);
   }
   // as `js_this.native = perf_controller`
+  napi_create_reference(env, js_this, 0, &perf_controller->js_native_ref_);
   napi_wrap(
       env, js_this, perf_controller, [](napi_env, void* data, void*) {},
       nullptr, nullptr);
@@ -90,8 +91,9 @@ napi_value PerformanceControllerHarmonyJSWrapper::SetTiming(
   napi_value js_this;
   napi_get_cb_info(env, info, &argc, argv, &js_this, nullptr);
   PerformanceControllerHarmonyJSWrapper* js_wrapper = nullptr;
-  napi_unwrap(env, js_this, reinterpret_cast<void**>(&js_wrapper));
-  if (!js_wrapper) {
+  napi_status status =
+      napi_unwrap(env, js_this, reinterpret_cast<void**>(&js_wrapper));
+  if (status != napi_ok || !js_wrapper || js_wrapper->destroyed_) {
     return nullptr;
   }
   // 0 - timestamp: number
@@ -139,8 +141,9 @@ napi_value PerformanceControllerHarmonyJSWrapper::MarkTiming(
   napi_value js_this;
   napi_get_cb_info(env, info, &argc, argv, &js_this, nullptr);
   PerformanceControllerHarmonyJSWrapper* js_wrapper = nullptr;
-  napi_unwrap(env, js_this, reinterpret_cast<void**>(&js_wrapper));
-  if (!js_wrapper) {
+  napi_status status =
+      napi_unwrap(env, js_this, reinterpret_cast<void**>(&js_wrapper));
+  if (status != napi_ok || !js_wrapper || js_wrapper->destroyed_) {
     return nullptr;
   }
   // 0 - timingKey: string
@@ -206,31 +209,38 @@ napi_value PerformanceControllerHarmonyJSWrapper::Destroy(
   // remove js_this
   napi_status status =
       napi_remove_wrap(env, js_this, reinterpret_cast<void**>(&js_wrapper));
+  if (status != napi_ok || !js_wrapper) {
+    return nullptr;
+  }
   if (js_wrapper) {
     js_wrapper->Destroy();
     js_wrapper = nullptr;
   }
-  NAPI_THROW_IF_FAILED_NULL(
-      env, status,
-      "PerformanceControllerHarmonyJSWrapper napi_remove_wrap failed!");
   return nullptr;
 }
 
 // Run on UI Thread
 void PerformanceControllerHarmonyJSWrapper::Destroy() {
+  if (destroyed_) {
+    return;
+  }
+  destroyed_ = true;
+  actor_.reset();
   if (!env_) {
     return;
   }
   LOGI("PerformanceControllerHarmonyJSWrapper::Destroy(), this:" << this);
   base::NapiHandleScope scope(env_);
-  if (js_impl_strong_ref_) {
-    // get js_this of PerformanceController
-    napi_value js_object =
-        base::NapiUtil::GetReferenceNapiValue(env_, js_impl_strong_ref_);
-    if (js_object) {
-      // as `js_this.native = null`
-      napi_remove_wrap(env_, js_object, nullptr);
+  if (js_native_ref_) {
+    napi_value js_native =
+        base::NapiUtil::GetReferenceNapiValue(env_, js_native_ref_);
+    if (js_native) {
+      napi_remove_wrap(env_, js_native, nullptr);
     }
+    napi_delete_reference(env_, js_native_ref_);
+    js_native_ref_ = nullptr;
+  }
+  if (js_impl_strong_ref_) {
     // remove js_this of PerformanceController
     napi_delete_reference(env_, js_impl_strong_ref_);
     js_impl_strong_ref_ = nullptr;
