@@ -10,6 +10,9 @@
       "runtimeOnly": {
         "sources": []
       }
+    },
+    "nativeLib": {
+      "headerPath": "include"
     }
   },
   "buildOptionSet": [
