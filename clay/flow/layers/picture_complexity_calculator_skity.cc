@@ -14,17 +14,32 @@ PictureComplexityCalculatorSkity::GetInstance() {
   return &instance;
 }
 
-bool SkityReplayHelper::IsPaintComplex(const skity::Paint& paint) const {
+bool SkityReplayHelper::HasPaintFilter(const skity::Paint& paint) const {
   return paint.GetColorFilter() != nullptr ||
-         paint.GetMaskFilter() != nullptr ||
-         paint.GetImageFilter() != nullptr || paint.GetShader() != nullptr ||
-         paint.GetPathEffect() != nullptr;
+         paint.GetMaskFilter() != nullptr || paint.GetImageFilter() != nullptr;
 }
 
-void SkityReplayHelper::CheckPaint(const skity::Paint& paint) {
-  if (!is_complex_ && IsPaintComplex(paint)) {
-    is_complex_ = true;
+void SkityReplayHelper::CheckPaintFilter(const skity::Paint& paint) {
+  if (!has_filter_ && HasPaintFilter(paint)) {
+    has_filter_ = true;
   }
+}
+
+unsigned int SkityReplayHelper::SaveLayerComplexityScore() const {
+  if (save_layer_count_ >
+      std::numeric_limits<unsigned int>::max() /
+          PictureComplexityCalculatorSkity::kSaveLayerComplexityScore) {
+    return std::numeric_limits<unsigned int>::max();
+  }
+  return save_layer_count_ *
+         PictureComplexityCalculatorSkity::kSaveLayerComplexityScore;
+}
+
+unsigned int SkityReplayHelper::ComplexityScore() const {
+  if (has_filter_) {
+    return PictureComplexityCalculatorSkity::kFilterCacheScore;
+  }
+  return SaveLayerComplexityScore();
 }
 
 void SkityReplayHelper::OnDrawGlyphs(uint32_t count,
@@ -33,51 +48,52 @@ void SkityReplayHelper::OnDrawGlyphs(uint32_t count,
                                      const float position_y[],
                                      const skity::Font& font,
                                      const skity::Paint& paint) {
-  CheckPaint(paint);
+  CheckPaintFilter(paint);
 }
 
 void SkityReplayHelper::OnDrawPaint(skity::Paint const& paint) {
-  CheckPaint(paint);
+  CheckPaintFilter(paint);
 }
 
 void SkityReplayHelper::OnDrawLine(float x0, float y0, float x1, float y1,
                                    skity::Paint const& paint) {
-  CheckPaint(paint);
+  CheckPaintFilter(paint);
 }
 
 void SkityReplayHelper::OnDrawCircle(float cx, float cy, float radius,
                                      skity::Paint const& paint) {
-  CheckPaint(paint);
+  CheckPaintFilter(paint);
 }
 
 void SkityReplayHelper::OnDrawOval(skity::Rect const& oval,
                                    skity::Paint const& paint) {
-  CheckPaint(paint);
+  CheckPaintFilter(paint);
 }
 
 void SkityReplayHelper::OnDrawRect(skity::Rect const& rect,
                                    skity::Paint const& paint) {
-  CheckPaint(paint);
+  CheckPaintFilter(paint);
 }
 
 void SkityReplayHelper::OnDrawRRect(skity::RRect const& rrect,
                                     skity::Paint const& paint) {
-  CheckPaint(paint);
+  CheckPaintFilter(paint);
 }
 
 void SkityReplayHelper::OnDrawPath(skity::Path const& path,
                                    skity::Paint const& paint) {
-  CheckPaint(paint);
+  CheckPaintFilter(paint);
 }
 
 void SkityReplayHelper::OnSaveLayer(const skity::Rect& bounds,
                                     const skity::Paint& paint) {
-  CheckPaint(paint);
+  CheckPaintFilter(paint);
+  save_layer_count_++;
 }
 
 void SkityReplayHelper::OnDrawBlob(const skity::TextBlob* blob, float x,
                                    float y, skity::Paint const& paint) {
-  CheckPaint(paint);
+  CheckPaintFilter(paint);
 }
 
 void SkityReplayHelper::OnDrawImageRect(std::shared_ptr<skity::Image> image,
@@ -86,7 +102,7 @@ void SkityReplayHelper::OnDrawImageRect(std::shared_ptr<skity::Image> image,
                                         const skity::SamplingOptions& sampling,
                                         skity::Paint const* paint) {
   if (paint) {
-    CheckPaint(*paint);
+    CheckPaintFilter(*paint);
   }
 }
 

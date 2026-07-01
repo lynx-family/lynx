@@ -50,7 +50,10 @@ class PictureNaiveComplexityCalculator : public PictureComplexityCalculator {
   }
 #else
   unsigned int Compute(skity::DisplayList* picture) override {
-    return picture->OpCount();
+    return picture->HasColorFilter() || picture->HasMaskFilter() ||
+                   picture->HasImageFilter() || picture->HasSaveLayer()
+               ? 200u
+               : 0u;
   }
 #endif  // ENABLE_SKITY
 
@@ -58,9 +61,7 @@ class PictureNaiveComplexityCalculator : public PictureComplexityCalculator {
 #ifndef ENABLE_SKITY
     return complexity_score > 5u;
 #else
-    // TODO(feiyue.1998): Maybe there is a better threshold than 200.
-    // Now it is set 200 so that simple displaylist will not be cached.
-    return complexity_score > 200u;
+    return complexity_score >= 200u;
 #endif  // ENABLE_SKITY
   }
 

@@ -109,15 +109,10 @@ std::unique_ptr<PictureRasterCacheItem> PictureRasterCacheItem::Make(
 void PictureRasterCacheItem::PrerollSetup(PrerollContext* context,
                                           const skity::Matrix& matrix) {
   cache_state_ = CacheState::kNone;
-#ifndef ENABLE_SKITY
   PictureComplexityCalculator* complexity_calculator =
       context->gr_context ? PictureComplexityCalculator::GetForBackend(
-                                context->gr_context->backend())
+                                CONTEXT_GET_BACKEND(context->gr_context))
                           : PictureComplexityCalculator::GetForSoftware();
-#else
-  PictureComplexityCalculator* complexity_calculator =
-      PictureComplexityCalculator::GetForSoftware();
-#endif  // ENABLE_SKITY
 
   auto frame_size = context->compositor_state
                         ? context->compositor_state->GetFrameSize()

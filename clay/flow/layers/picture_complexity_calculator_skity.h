@@ -5,6 +5,7 @@
 #ifndef CLAY_FLOW_LAYERS_PICTURE_COMPLEXITY_CALCULATOR_SKITY_H_
 #define CLAY_FLOW_LAYERS_PICTURE_COMPLEXITY_CALCULATOR_SKITY_H_
 
+#include <limits>
 #include <memory>
 
 #include "clay/flow/layers/picture_complexity.h"
@@ -60,28 +61,35 @@ class PictureComplexityCalculatorSkity : public PictureComplexityCalculator {
                          const skity::SamplingOptions& sampling,
                          skity::Paint const* paint) override;
 
-    bool IsComplex() const { return is_complex_; }
+    unsigned int ComplexityScore() const;
 
    private:
-    bool IsPaintComplex(const skity::Paint& paint) const;
-    void CheckPaint(const skity::Paint& paint);
+    bool HasPaintFilter(const skity::Paint& paint) const;
+    void CheckPaintFilter(const skity::Paint& paint);
+    unsigned int SaveLayerComplexityScore() const;
 
-    bool is_complex_ = false;
+    bool has_filter_ = false;
+    unsigned int save_layer_count_ = 0u;
   };
 
   unsigned int Compute(skity::DisplayList* display_list) override {
-    auto op_count = display_list->OpCount();
+    if (!display_list->HasColorFilter() && !display_list->HasMaskFilter() &&
+        !display_list->HasImageFilter() && !display_list->HasSaveLayer()) {
+      return 0u;
+    }
+
     SkityReplayHelper helper;
     display_list->Draw(&helper);
-    return helper.IsComplex() ? kDefaultCacheThreshold : op_count;
+    return helper.ComplexityScore();
   }
 
   bool ShouldBeCached(unsigned int complexity_score) override {
-    return complexity_score >= kDefaultCacheThreshold;
+    return complexity_score >= kFilterCacheScore;
   }
 
  private:
-  const unsigned int kDefaultCacheThreshold = 200u;
+  static constexpr unsigned int kFilterCacheScore = 200u;
+  static constexpr unsigned int kSaveLayerComplexityScore = 100u;
 };
 
 }  // namespace clay

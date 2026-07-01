@@ -111,6 +111,20 @@ class ComplexityCalculatorHelperSkity : public skity::Canvas {
     return paint.GetStyle();
   }
 
+  inline bool HasPaintFilter(const skity::Paint& paint) {
+    return paint.GetColorFilter() != nullptr ||
+           paint.GetMaskFilter() != nullptr ||
+           paint.GetImageFilter() != nullptr;
+  }
+
+  inline void AccumulateFilterComplexity(const skity::Paint& paint,
+                                         unsigned int complexity) {
+    if (IsComplex() || !HasPaintFilter(paint)) {
+      return;
+    }
+    AccumulateComplexity(complexity);
+  }
+
   inline bool IsComplex() { return is_complex_; }
   inline unsigned int Ceiling() { return ceiling_; }
   inline unsigned int CurrentComplexityScore() { return complexity_score_; }

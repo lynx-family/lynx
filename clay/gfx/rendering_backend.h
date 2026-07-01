@@ -145,6 +145,7 @@ using GrPicturePtr = sk_sp<SkPicture>;
 
 // FUNCTIONS
 // GrContext
+#define CONTEXT_GET_BACKEND(context) context->backend()
 
 // GrSurface
 #define SURFACE_GET_CANVAS(surface, clear) surface->getCanvas()
@@ -388,6 +389,7 @@ using GrPicturePtr = std::shared_ptr<skity::DisplayList>;
 
 // FUNCTIONS
 // GrContext
+#define CONTEXT_GET_BACKEND(context) context->GetBackendType()
 
 // GrSurface
 #define SURFACE_GET_CANVAS(surface, clear) surface->LockCanvas(clear)
