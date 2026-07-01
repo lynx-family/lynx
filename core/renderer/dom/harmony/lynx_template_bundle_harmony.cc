@@ -137,6 +137,7 @@ napi_value LynxTemplateBundleHarmony::ParseTemplate(napi_env env,
     return error_value;
   }
 
+  template_bundle.PrepareVMByConfigs();
   bundle->SetBundle(std::move(template_bundle));
   napi_create_string_utf8(env, "", 0, &error_value);
 
@@ -200,6 +201,7 @@ napi_value LynxTemplateBundleHarmony::AsyncParseTemplate(
           std::move(context->template_buffer), "");
       context->decode_success = context->error_msg.empty();
       if (context->decode_success) {
+        template_bundle.PrepareVMByConfigs();
         context->bundle_result = std::move(template_bundle);
       }
     }
