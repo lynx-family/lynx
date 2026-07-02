@@ -84,6 +84,7 @@ public class PageConfig {
   private static final String KEY_ENABLE_NEW_STICKY = "enableNewSticky";
   private static final String KEY_ENABLE_DISPATCH_CUSTOM_EVENT_FOR_UI =
       "enableDispatchCustomEventForUI";
+  private static final String KEY_ENABLE_NATIVE_INTERACTION = "enableNativeInteraction";
   private static final String KEY_SYNC_X_ELEMENT_REGISTRY = "syncXElementRegistry";
 
   private boolean autoExpose = true;
@@ -145,6 +146,7 @@ public class PageConfig {
   private boolean mEnableTransformedTouchPosition = false;
   private boolean mEnableNewSticky = false;
   private boolean mEnableDispatchCustomEventForUI = false;
+  private boolean mEnableNativeInteraction = false;
   private boolean mSyncXElementRegistry = false;
 
   public PageConfig(ReadableMap map) {
@@ -382,6 +384,10 @@ public class PageConfig {
 
       if (map.hasKey(KEY_ENABLE_DISPATCH_CUSTOM_EVENT_FOR_UI)) {
         mEnableDispatchCustomEventForUI = map.getBoolean(KEY_ENABLE_DISPATCH_CUSTOM_EVENT_FOR_UI);
+      }
+
+      if (map.hasKey(KEY_ENABLE_NATIVE_INTERACTION)) {
+        mEnableNativeInteraction = map.getBoolean(KEY_ENABLE_NATIVE_INTERACTION);
       }
 
       if (map.hasKey(KEY_SYNC_X_ELEMENT_REGISTRY)) {
@@ -624,6 +630,10 @@ public class PageConfig {
 
   public boolean getEnableDispatchCustomEventForUI() {
     return mEnableDispatchCustomEventForUI;
+  }
+
+  public boolean getEnableNativeInteraction() {
+    return mEnableNativeInteraction;
   }
 
   public boolean getSyncXElementRegistry() {

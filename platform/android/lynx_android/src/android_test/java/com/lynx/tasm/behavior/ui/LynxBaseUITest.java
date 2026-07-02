@@ -5,9 +5,12 @@
 package com.lynx.tasm.behavior.ui;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 import android.graphics.Matrix;
 import android.graphics.Rect;
+import com.lynx.react.bridge.JavaOnlyMap;
+import com.lynx.tasm.PageConfig;
 import com.lynx.tasm.behavior.LynxContext;
 import com.lynx.tasm.behavior.ui.view.UIView;
 import com.lynx.testing.base.TestingUtils;
@@ -26,6 +29,12 @@ public class LynxBaseUITest {
   @After
   public void tearDown() throws Exception {}
 
+  private void setEnableNativeInteraction(boolean enable) {
+    JavaOnlyMap pageConfig = new JavaOnlyMap();
+    pageConfig.putBoolean("enableNativeInteraction", enable);
+    mContext.onPageConfigDecoded(new PageConfig(pageConfig));
+  }
+
   @Test
   public void getTargetPoint() throws NoSuchFieldException, IllegalAccessException {
     try {
@@ -43,5 +52,14 @@ public class LynxBaseUITest {
       e.printStackTrace();
       assertEquals(1, 0, 0);
     }
+  }
+
+  @Test
+  public void nativeInteractionDefaultsToPageConfigWhenPropUnset() {
+    setEnableNativeInteraction(true);
+
+    UIView ui = new UIView(mContext);
+
+    assertTrue(ui.nativeInteractionEnabled);
   }
 }

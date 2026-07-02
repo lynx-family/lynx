@@ -648,6 +648,17 @@ export interface Config {
   enableMultiTouchParamsCompatible?: boolean;
 
   /**
+   * Controls the default native-interaction-enabled status used by platform views when the element does not explicitly set that prop. When enabled, platform-side interaction defaults to on for elements whose prop remains unset; when disabled, platforms keep their existing default handling until the prop is explicitly provided.
+   *
+   * Supported platform: Android, HarmonyOS, iOS
+   *
+   * Since: LynxSDK 3.9
+   *
+   * @defaultValue false
+   */
+  enableNativeInteraction?: boolean;
+
+  /**
    * Controls whether list rendering prefers the native C++ list implementation instead of the older platform list path. When enabled, list elements resolve to native-list mode in shell or page config; when disabled, runtime keeps the legacy platform implementation. When unset, native config can still decide the flag.
    *
    * Supported platform: Android, HarmonyOS, iOS

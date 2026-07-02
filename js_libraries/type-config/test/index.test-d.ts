@@ -69,6 +69,7 @@ describe('Test Config Types', () => {
     expectTypeOf<Config>().toHaveProperty('enableMTSPreExecute').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('enableMultiTouch').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('enableMultiTouchParamsCompatible').toEqualTypeOf<boolean | undefined>();
+    expectTypeOf<Config>().toHaveProperty('enableNativeInteraction').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('enableNativeList').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('enableNewAnimator').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('enableNewClipMode').toEqualTypeOf<boolean | undefined>();
