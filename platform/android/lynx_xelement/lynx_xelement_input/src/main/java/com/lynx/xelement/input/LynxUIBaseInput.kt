@@ -220,13 +220,16 @@ open class LynxUIBaseInput(context: LynxContext, params: Any?) : LynxUI<LynxEdit
 
             onSelectionChangeListener = object : LynxEditTextView.OnSelectionChangeListener {
                 override fun onSelectionChange(selStart: Int, selEnd: Int) {
-                      lynxContext.eventEmitter.sendCustomEvent(
+                    if (mShouldSuppressInputEvent) {
+                        return
+                    }
+                    lynxContext.eventEmitter.sendCustomEvent(
                         LynxDetailEvent(
-                          sign,
-                          "selection"
+                            sign,
+                            "selection"
                         ).apply {
-                          addDetail("selectionStart", selStart)
-                          addDetail("selectionEnd", selEnd)
+                            addDetail("selectionStart", selStart)
+                            addDetail("selectionEnd", selEnd)
                         })
                 }
             }
