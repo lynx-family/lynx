@@ -144,12 +144,9 @@ void ExternalResourceLoader::LoadLazyBundle(
           return;
         }
 
-        // use LazyBundleLoader::CallBackInfo to handle error code and
-        // error message
-        std::optional<std::string> error =
-            response.Success()
-                ? std::nullopt
-                : std::optional<std::string>(std::move(response.err_msg));
+        // Use LazyBundleLoader::CallBackInfo to handle status code and message.
+        auto status = tasm::LazyBundleLoader::CallBackInfo::CreateStatusInfo(
+            response.err_code, std::move(response.err_msg));
 
         std::optional<tasm::LynxTemplateBundle> bundle = std::nullopt;
         if (response.bundle != nullptr) {
@@ -162,7 +159,7 @@ void ExternalResourceLoader::LoadLazyBundle(
             tasm::LazyBundleLoader::CallBackInfo{std::move(url),
                                                  std::move(response.data),
                                                  std::move(bundle),
-                                                 error,
+                                                 std::move(status),
                                                  true,
                                                  callback_id,
                                                  std::move(component_ids)};

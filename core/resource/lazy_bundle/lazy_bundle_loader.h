@@ -36,32 +36,49 @@ class LazyBundleLoader : public std::enable_shared_from_this<LazyBundleLoader> {
 
  public:
   struct CallBackInfo {
+    struct StatusInfo {
+      StatusInfo() = delete;
+      StatusInfo(int32_t status_code, std::string status_message)
+          : code(status_code), message(std::move(status_message)) {}
+
+      int32_t code;
+      std::string message;
+    };
+
+    static std::optional<StatusInfo> CreateStatusInfo(int32_t code,
+                                                      std::string message) {
+      if (code == error::E_SUCCESS) {
+        return std::nullopt;
+      }
+      return StatusInfo{code, std::move(message)};
+    }
+
     CallBackInfo(std::string url, std::vector<uint8_t> data,
                  const std::optional<LynxTemplateBundle>& component_bundle,
-                 const std::optional<std::string>& error,
+                 std::optional<StatusInfo> status,
                  RadonLazyComponent* component, int instance_id)
         : component_url(std::move(url)),
           data(std::move(data)),
           component(component),
           instance_id_(instance_id),
           bundle(component_bundle) {
-      HandleError(error);
+      HandleStatus(std::move(status));
     }
 
     // for preload
     CallBackInfo(std::string url, std::vector<uint8_t> data,
                  const std::optional<LynxTemplateBundle>& component_bundle,
-                 const std::optional<std::string>& error)
+                 std::optional<StatusInfo> status)
         : component_url(std::move(url)),
           data(std::move(data)),
           bundle(component_bundle) {
-      HandleError(error);
+      HandleStatus(std::move(status));
     }
 
     // for js
     CallBackInfo(std::string url, std::vector<uint8_t> data,
                  const std::optional<LynxTemplateBundle>& component_bundle,
-                 const std::optional<std::string>& error, bool sync,
+                 std::optional<StatusInfo> status, bool sync,
                  int32_t callback_id, std::vector<std::string> component_ids)
         : component_url(std::move(url)),
           data(std::move(data)),
@@ -69,7 +86,7 @@ class LazyBundleLoader : public std::enable_shared_from_this<LazyBundleLoader> {
           bundle(component_bundle),
           callback_id(callback_id),
           component_ids(std::move(component_ids)) {
-      HandleError(error);
+      HandleStatus(std::move(status));
     }
 
     CallBackInfo(const CallBackInfo&) = delete;
@@ -98,7 +115,7 @@ class LazyBundleLoader : public std::enable_shared_from_this<LazyBundleLoader> {
     lazy_bundle::LynxLazyBundleRequest request;
 
    private:
-    void HandleError(const std::optional<std::string>& error);
+    void HandleStatus(std::optional<StatusInfo> status);
   };
 
   class RequireScope {
