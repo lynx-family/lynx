@@ -3061,6 +3061,10 @@ void BaseView::SetVisible(bool visible) {
   render_object()->SetVisible(visible);
 }
 
+void BaseView::SetDisplayNone(bool display_none) {
+  render_object()->SetDisplayNone(display_none);
+}
+
 bool BaseView::Visible() const { return render_object()->Visible(); }
 
 bool BaseView::IsVisibleForAnimationTick() {
