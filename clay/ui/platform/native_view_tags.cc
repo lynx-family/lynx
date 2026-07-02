@@ -12,8 +12,8 @@ const std::unordered_set<std::string>& InternalPlatformViewTags() {
   // intentionally leaves that tag to the Clay C++ VideoEngineView so it uses
   // VideoPlayerServiceDarwin and VideoEngine.mm instead of XElement.
   static const std::unordered_set<std::string> tags = {
-      "map-view",   "input-view", "textarea-view", "input",         "x-input",
-      "x-input-ng", "textarea",   "x-textarea",    "x-textarea-ng",
+      "x-map-ng", "map-view",   "input-view", "textarea-view", "input",
+      "x-input",  "x-input-ng", "textarea",   "x-textarea",    "x-textarea-ng",
   };
   return tags;
 }
@@ -22,6 +22,15 @@ const std::unordered_set<std::string>& InternalPlatformViewShadowNodeTags() {
   static const std::unordered_set<std::string> tags = {
       "map-view",   "input-view", "textarea-view", "input",         "x-input",
       "x-input-ng", "textarea",   "x-textarea",    "x-textarea-ng",
+  };
+  return tags;
+}
+
+const std::unordered_set<std::string>&
+InternalPlatformViewWithoutShadowNodeTags() {
+  static const std::unordered_set<std::string> tags = {
+      "x-map-ng",
+      "x-map-marker-ng",
   };
   return tags;
 }

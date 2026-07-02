@@ -1294,6 +1294,15 @@ public enum com::lynx::tasm::behavior::ClayRenderMode {
   public com.lynx.tasm.behavior.ClayRenderMode.DELEGATE DELEGATE;
 }
 
+public interface com::lynx::tasm::behavior::ClaySnapshotCallback {
+  public void com.lynx.tasm.behavior.ClaySnapshotCallback.onSuccess(@NonNull Bitmap bitmap);
+  public void com.lynx.tasm.behavior.ClaySnapshotCallback.onError();
+}
+
+public interface com::lynx::tasm::behavior::ClaySnapshotProvider {
+  public void com.lynx.tasm.behavior.ClaySnapshotProvider.requestRasterSnapshot(@NonNull LynxBaseUI ui, @NonNull ClaySnapshotCallback callback);
+}
+
 public class com::lynx::tasm::base::CleanupReference : PhantomReference< Object > {
   public com.lynx.tasm.base.CleanupReference.CleanupReference(Object obj, Runnable cleanupTask, boolean cleanupOnUiThread);
   public void com.lynx.tasm.base.CleanupReference.cleanupNow();
@@ -2720,6 +2729,7 @@ public interface com::lynx::tasm::behavior::ui::ILynxUIMeaningfulContent {
 }
 
 public interface com::lynx::tasm::behavior::ILynxUIRenderer {
+  public default RenderType com.lynx.tasm.behavior.ILynxUIRenderer.getRenderType();
   public void com.lynx.tasm.behavior.ILynxUIRenderer.onInitBodyView(UIBodyView bodyView, Context context, LynxGroup group);
   public void com.lynx.tasm.behavior.ILynxUIRenderer.onInitLynxTemplateRender(LynxContext context, BehaviorRegistry behaviorRegistry, @Nullable UIBodyView body, @Nullable LynxBooleanOption longTaskMonitorEnabled);
   public void com.lynx.tasm.behavior.ILynxUIRenderer.onCreateTemplateRenderer(LynxContext context, LynxPageLoadListener pageLoadListener, ThreadStrategyForRendering threadStrategy, BehaviorRegistry behaviorRegistry, LayoutTick layoutTick);
@@ -4821,6 +4831,8 @@ public class abstract com::lynx::tasm::behavior::LynxContext : com.lynx.tasm.beh
   public String com.lynx.tasm.behavior.LynxContext.getTapSlop();
   public void com.lynx.tasm.behavior.LynxContext.setLynxFrameViewProvider(LynxFrameViewProvider provider);
   public LynxFrameViewProvider com.lynx.tasm.behavior.LynxContext.getLynxFrameViewProvider();
+  public void com.lynx.tasm.behavior.LynxContext.setClaySnapshotProvider(@Nullable ClaySnapshotProvider provider);
+  public ClaySnapshotProvider com.lynx.tasm.behavior.LynxContext.getClaySnapshotProvider();
   public void com.lynx.tasm.behavior.LynxContext.setRuntimeCacheManager(ILynxViewRuntimeCacheManager cacheManager);
   public ILynxViewRuntimeCacheManager com.lynx.tasm.behavior.LynxContext.getRuntimeCacheManager();
   public ILynxTextService com.lynx.tasm.behavior.LynxContext.getTextService();
@@ -9616,6 +9628,11 @@ public class com::lynx::tasm::rendernode::compat::RenderNodeImpl : com.lynx.tasm
 }
 
 public interface com::lynx::tasm::LynxTemplateRender::RenderPhaseName {
+}
+
+public enum com::lynx::tasm::behavior::ILynxUIRenderer::RenderType {
+  public com.lynx.tasm.behavior.ILynxUIRenderer.RenderType.LYNX_UI LYNX_UI;
+  public com.lynx.tasm.behavior.ILynxUIRenderer.RenderType.CLAY CLAY;
 }
 
 public interface com::lynx::tasm::provider::LynxResRequest::ReqMethod {

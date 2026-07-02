@@ -16,6 +16,12 @@ const std::unordered_set<std::string>& InternalPlatformViewShadowNodeTags() {
   return tags;
 }
 
+const std::unordered_set<std::string>&
+InternalPlatformViewWithoutShadowNodeTags() {
+  static const std::unordered_set<std::string> tags;
+  return tags;
+}
+
 bool ShouldCreateFallbackNativeViewDirectly() { return false; }
 
 }  // namespace clay
