@@ -38,6 +38,12 @@ public class LynxBaseUITest {
     mContext.onPageConfigDecoded(new PageConfig(pageConfig));
   }
 
+  private void setEnableNativeInteraction(boolean enable) {
+    JavaOnlyMap pageConfig = new JavaOnlyMap();
+    pageConfig.putBoolean("enableNativeInteraction", enable);
+    mContext.onPageConfigDecoded(new PageConfig(pageConfig));
+  }
+
   @Test
   public void getTargetPoint() throws NoSuchFieldException, IllegalAccessException {
     try {
@@ -135,5 +141,14 @@ public class LynxBaseUITest {
     sticky.updateSticky(null);
     assertNull(sticky.mSticky);
     assertEquals(0.f, sticky.getView().getTranslationY(), 0.f);
+  }
+
+  @Test
+  public void nativeInteractionDefaultsToPageConfigWhenPropUnset() {
+    setEnableNativeInteraction(true);
+
+    UIView ui = new UIView(mContext);
+
+    assertTrue(ui.nativeInteractionEnabled);
   }
 }

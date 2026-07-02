@@ -1933,6 +1933,16 @@ enableDispatchCustomEventForUI:
   supportPlatform:
     - iOS
     - Android
+enableNativeInteraction:
+  description: Controls the default native-interaction-enabled status used by platform views when the element does not explicitly set that prop. When enabled, platform-side interaction defaults to on for elements whose prop remains unset; when disabled, platforms keep their existing default handling until the prop is explicitly provided.
+  defaultValue: 'false'
+  valueType: bool
+  author: moonface
+  since: '3.9'
+  supportPlatform:
+    - Android
+    - HarmonyOS
+    - iOS
 enableFrameNativeData:
   description: Controls whether `<frame>` data and global-props are transferred through native lepus value pointers instead of the legacy platform map path. When enabled, Android and iOS consume the native pointer to build TemplateData; when disabled, frame data and global props continue to be delivered as platform maps.
   defaultValue: 'false'

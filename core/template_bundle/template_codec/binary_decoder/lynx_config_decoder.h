@@ -936,6 +936,12 @@ class LynxConfigDecoder final {
           doc[config::kEnableDispatchCustomEventForUI].GetBool());
     }
 
+    if (doc.HasMember(config::kEnableNativeInteraction) &&
+        doc[config::kEnableNativeInteraction].IsBool()) {
+      page_config->SetEnableNativeInteraction(
+          doc[config::kEnableNativeInteraction].GetBool());
+    }
+
     if (doc.HasMember(config::kEnableFrameNativeData) &&
         doc[config::kEnableFrameNativeData].IsBool()) {
       page_config->SetEnableFrameNativeData(
