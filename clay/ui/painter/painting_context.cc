@@ -289,6 +289,12 @@ void PaintingContext::CompositeChild(RenderObject* child,
     RepaintCompositedChild(child, graphics_context_.GetUnrefQueue(), this);
   }
   FML_DCHECK(child->GetLayer());
+  if (!child->ShouldBuildIntoLayerTree()) {
+    if (child->GetLayer()) {
+      child->GetLayer()->Remove();
+    }
+    return;
+  }
   // Overlay will to add root layer to keep absolute position in page rather
   // add to parent's layer.
   if (!child->IsOverlay()) {

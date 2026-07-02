@@ -30,7 +30,15 @@ NS_ASSUME_NONNULL_BEGIN
 @class LynxGlobalObserver;
 @class LynxContext;
 @class LynxShadowNode;
+@class LynxUI;
+@class UIImage;
 @protocol LUIErrorHandling;
+
+typedef void (^LynxClaySnapshotCompletion)(UIImage* _Nullable image);
+
+@protocol LynxClaySnapshotProvider <NSObject>
+- (void)requestRasterSnapshotForUI:(LynxUI*)ui completion:(LynxClaySnapshotCompletion)completion;
+@end
 
 @interface LynxUIContext : NSObject
 @property(nonatomic, weak, nullable, readwrite) LynxContext* lynxContext;
@@ -66,6 +74,8 @@ NS_ASSUME_NONNULL_BEGIN
 
 // LynxFrameViewProvider support
 @property(nonatomic, strong, nullable) id<LynxFrameViewProvider> lynxFrameViewProvider;
+
+@property(nonatomic, strong, nullable) id<LynxClaySnapshotProvider> claySnapshotProvider;
 
 @property(nonatomic, strong, nullable) LynxImageConfig* imageConfig;
 
