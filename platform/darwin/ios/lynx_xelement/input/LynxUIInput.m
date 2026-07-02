@@ -10,6 +10,13 @@
 #import <Lynx/LynxConverter+UI.h>
 #import <Lynx/LynxColorUtils.h>
 
+@interface LynxUIBaseInput (LynxDefaultValueInputEventSuppression)
+// Reuse the default-value input suppression flag owned by LynxUIBaseInput.m.
+// The flag stays private; this local declaration only makes the existing
+// getter visible to the selection callback in this file.
+- (BOOL)shouldSuppressInputEvent;
+@end
+
 @interface LynxTextFieldLite : UITextField
 
 @property(nonatomic, assign) UIEdgeInsets padding;
@@ -161,6 +168,9 @@ LYNX_UI_METHOD(setValue) {
 }
 
 - (void)textFieldDidChangeSelection:(UITextField *)textField {
+  if ([self shouldSuppressInputEvent]) {
+    return;
+  }
   [self emitEvent:@"selection" detail:@{
     @"selectionStart": @(self.view.selectedTextRange ? [self.view offsetFromPosition:self.view.beginningOfDocument toPosition:self.view.selectedTextRange.start] : -1),
     @"selectionEnd": @(self.view.selectedTextRange ? [self.view offsetFromPosition:self.view.beginningOfDocument toPosition:self.view.selectedTextRange.end] : -1),
