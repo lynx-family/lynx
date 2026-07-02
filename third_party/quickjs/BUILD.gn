@@ -41,6 +41,9 @@ config("quickjs_private_config") {
     "LYNX_DEV",
     "CONFIG_VERSION=\"2019-09-10\"",
   ]
+  if (enable_lepusng_bytecode_opt) {
+    defines += [ "ENABLE_LEPUSNG_BYTECODE_OPT" ]
+  }
   if (is_win) {
     defines += [
       "ALLOCATE_WINDOWS",

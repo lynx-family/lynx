@@ -102,6 +102,7 @@ struct CompileOptions {
   bool enable_async_lepus_chunk_decode_{false};
   bool enable_simple_styling_{false};
   bool enable_opt_lepus_bytecode_{false};
+  bool enable_opt_lepusng_bytecode_{false};
   uint8_t context_type_{0};
   bool enable_keyframe_custom_property_declaration_{false};
   // Compile options auto generated end
