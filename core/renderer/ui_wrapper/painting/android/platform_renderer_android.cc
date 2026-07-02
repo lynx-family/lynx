@@ -4,6 +4,8 @@
 
 #include "core/renderer/ui_wrapper/painting/android/platform_renderer_android.h"
 
+#include <cstdint>
+#include <cstring>
 #include <utility>
 
 #include "core/renderer/dom/fragment/display_list.h"
@@ -16,10 +18,188 @@ namespace lynx::tasm {
 
 namespace {
 
+constexpr int32_t kDisplayListItemBufferHeaderSize = sizeof(int32_t);
+constexpr int32_t kSerializedDisplayListItemSize = 56;
+constexpr int32_t kBeginIdOffset = 4;
+constexpr int32_t kBeginTypeOffset = 8;
+constexpr int32_t kBeginXOffset = 12;
+constexpr int32_t kBeginYOffset = 16;
+constexpr int32_t kBeginWOffset = 20;
+constexpr int32_t kBeginHOffset = 24;
+constexpr int32_t kFillColorOffset = 4;
+constexpr int32_t kFillClipIndexOffset = 8;
+constexpr int32_t kDrawViewIdOffset = 4;
+constexpr int32_t kTextIdOffset = 4;
+constexpr int32_t kTextBoxIndexOffset = 8;
+constexpr int32_t kImageIdOffset = 4;
+constexpr int32_t kImageBoxIndexOffset = 8;
+constexpr int32_t kBorderOutIndexOffset = 4;
+constexpr int32_t kBorderInnerIndexOffset = 8;
+constexpr int32_t kBorderColorsOffset = 12;
+constexpr int32_t kBorderStylesOffset = 28;
+constexpr int32_t kRecordBoxXOffset = 4;
+constexpr int32_t kRecordBoxYOffset = 8;
+constexpr int32_t kRecordBoxWOffset = 12;
+constexpr int32_t kRecordBoxHOffset = 16;
+constexpr int32_t kRecordBoxRadiiOffset = 20;
+constexpr int32_t kRecordBoxHasRadiiOffset = 52;
+constexpr int32_t kClipRectXOffset = 4;
+constexpr int32_t kClipRectYOffset = 8;
+constexpr int32_t kClipRectWOffset = 12;
+constexpr int32_t kClipRectHOffset = 16;
+constexpr int32_t kClipRectRadiiOffset = 20;
+constexpr int32_t kClipRectHasRadiiOffset = 52;
+constexpr int32_t kGradientColorCountOffsetOffset = 4;
+constexpr int32_t kGradientColorCountOffset = 8;
+constexpr int32_t kGradientStopCountOffsetOffset = 12;
+constexpr int32_t kGradientStopCountOffset = 16;
+constexpr int32_t kGradientTilingIndexOffset = 20;
+constexpr int32_t kGradientClipIndexOffset = 24;
+constexpr int32_t kGradientRepeatXOffset = 28;
+constexpr int32_t kGradientRepeatYOffset = 32;
+constexpr int32_t kGradientAngleOffset = 36;
+constexpr int32_t kBoxShadowShadowBoxIndexOffset = 4;
+constexpr int32_t kBoxShadowClipBoxIndexOffset = 8;
+constexpr int32_t kBoxShadowColorOffset = 12;
+constexpr int32_t kBoxShadowBlurRadiusOffset = 16;
+constexpr int32_t kBoxShadowClipModeOffset = 20;
+
+template <typename T>
+void WriteField(base::Vector<uint8_t>& buffer, size_t offset, T value) {
+  static_assert(sizeof(T) == sizeof(int32_t),
+                "DisplayList serialized fields are 32-bit values");
+  std::memcpy(buffer.data() + offset, &value, sizeof(T));
+}
+
 bool IsDirectChildOfCompatibleComponentFromInitData(
     const fml::RefPtr<PropBundle>& init_data) {
   return init_data != nullptr &&
          init_data->Contains(kDirectChildOfCompatibleComponentInitDataKey);
+}
+
+void SerializeContentItem(const DisplayListItem& item,
+                          base::Vector<uint8_t>& buffer) {
+  if (buffer.empty()) {
+    buffer.resize<true>(kDisplayListItemBufferHeaderSize);
+    WriteField(buffer, 0, kSerializedDisplayListItemSize);
+  }
+
+  const size_t item_offset = buffer.size();
+  buffer.resize<true>(item_offset + kSerializedDisplayListItemSize);
+  WriteField(buffer, item_offset, static_cast<int32_t>(item.type));
+
+  switch (item.type) {
+    case DisplayListOpType::kBegin:
+      WriteField(buffer, item_offset + kBeginIdOffset, item.payload.begin.id);
+      WriteField(buffer, item_offset + kBeginTypeOffset,
+                 item.payload.begin.type);
+      WriteField(buffer, item_offset + kBeginXOffset, item.payload.begin.x);
+      WriteField(buffer, item_offset + kBeginYOffset, item.payload.begin.y);
+      WriteField(buffer, item_offset + kBeginWOffset, item.payload.begin.w);
+      WriteField(buffer, item_offset + kBeginHOffset, item.payload.begin.h);
+      break;
+    case DisplayListOpType::kFill:
+      WriteField(buffer, item_offset + kFillColorOffset,
+                 item.payload.fill.color);
+      WriteField(buffer, item_offset + kFillClipIndexOffset,
+                 item.payload.fill.clip_index);
+      break;
+    case DisplayListOpType::kDrawView:
+      WriteField(buffer, item_offset + kDrawViewIdOffset,
+                 item.payload.draw_view.view_id);
+      break;
+    case DisplayListOpType::kText:
+      WriteField(buffer, item_offset + kTextIdOffset,
+                 item.payload.text.text_id);
+      WriteField(buffer, item_offset + kTextBoxIndexOffset,
+                 item.payload.text.box_index);
+      break;
+    case DisplayListOpType::kImage:
+      WriteField(buffer, item_offset + kImageIdOffset,
+                 item.payload.image.image_id);
+      WriteField(buffer, item_offset + kImageBoxIndexOffset,
+                 item.payload.image.box_index);
+      break;
+    case DisplayListOpType::kBorder:
+      WriteField(buffer, item_offset + kBorderOutIndexOffset,
+                 item.payload.border.out_index);
+      WriteField(buffer, item_offset + kBorderInnerIndexOffset,
+                 item.payload.border.inner_index);
+      for (int i = 0; i < 4; ++i) {
+        WriteField(buffer, item_offset + kBorderColorsOffset + i * 4,
+                   item.payload.border.colors[i]);
+        WriteField(buffer, item_offset + kBorderStylesOffset + i * 4,
+                   item.payload.border.styles[i]);
+      }
+      break;
+    case DisplayListOpType::kClipRect:
+      WriteField(buffer, item_offset + kClipRectXOffset,
+                 item.payload.clip_rect.x);
+      WriteField(buffer, item_offset + kClipRectYOffset,
+                 item.payload.clip_rect.y);
+      WriteField(buffer, item_offset + kClipRectWOffset,
+                 item.payload.clip_rect.w);
+      WriteField(buffer, item_offset + kClipRectHOffset,
+                 item.payload.clip_rect.h);
+      for (int i = 0; i < 8; ++i) {
+        WriteField(buffer, item_offset + kClipRectRadiiOffset + i * 4,
+                   item.payload.clip_rect.radii[i]);
+      }
+      WriteField(buffer, item_offset + kClipRectHasRadiiOffset,
+                 item.payload.clip_rect.has_radii);
+      break;
+    case DisplayListOpType::kRecordBox:
+      WriteField(buffer, item_offset + kRecordBoxXOffset,
+                 item.payload.record_box.x);
+      WriteField(buffer, item_offset + kRecordBoxYOffset,
+                 item.payload.record_box.y);
+      WriteField(buffer, item_offset + kRecordBoxWOffset,
+                 item.payload.record_box.w);
+      WriteField(buffer, item_offset + kRecordBoxHOffset,
+                 item.payload.record_box.h);
+      for (int i = 0; i < 8; ++i) {
+        WriteField(buffer, item_offset + kRecordBoxRadiiOffset + i * 4,
+                   item.payload.record_box.radii[i]);
+      }
+      WriteField(buffer, item_offset + kRecordBoxHasRadiiOffset,
+                 item.payload.record_box.has_radii);
+      break;
+    case DisplayListOpType::kLinearGradient:
+      WriteField(buffer, item_offset + kGradientColorCountOffsetOffset,
+                 item.payload.linear_gradient.color_count_offset);
+      WriteField(buffer, item_offset + kGradientColorCountOffset,
+                 item.payload.linear_gradient.color_count);
+      WriteField(buffer, item_offset + kGradientStopCountOffsetOffset,
+                 item.payload.linear_gradient.stop_count_offset);
+      WriteField(buffer, item_offset + kGradientStopCountOffset,
+                 item.payload.linear_gradient.stop_count);
+      WriteField(buffer, item_offset + kGradientTilingIndexOffset,
+                 item.payload.linear_gradient.tiling_index);
+      WriteField(buffer, item_offset + kGradientClipIndexOffset,
+                 item.payload.linear_gradient.clip_index);
+      WriteField(buffer, item_offset + kGradientRepeatXOffset,
+                 item.payload.linear_gradient.repeat_x);
+      WriteField(buffer, item_offset + kGradientRepeatYOffset,
+                 item.payload.linear_gradient.repeat_y);
+      WriteField(buffer, item_offset + kGradientAngleOffset,
+                 item.payload.linear_gradient.angle);
+      break;
+    case DisplayListOpType::kBoxShadow:
+      WriteField(buffer, item_offset + kBoxShadowShadowBoxIndexOffset,
+                 item.payload.box_shadow.shadow_box_index);
+      WriteField(buffer, item_offset + kBoxShadowClipBoxIndexOffset,
+                 item.payload.box_shadow.clip_box_index);
+      WriteField(buffer, item_offset + kBoxShadowColorOffset,
+                 item.payload.box_shadow.color);
+      WriteField(buffer, item_offset + kBoxShadowBlurRadiusOffset,
+                 item.payload.box_shadow.blur_radius);
+      WriteField(buffer, item_offset + kBoxShadowClipModeOffset,
+                 item.payload.box_shadow.clip_mode);
+      break;
+    case DisplayListOpType::kEnd:
+    case DisplayListOpType::kCustom:
+      break;
+  }
 }
 
 }  // namespace
@@ -52,22 +232,54 @@ PlatformRendererAndroid::PlatformRendererAndroid(
 }
 
 void PlatformRendererAndroid::OnUpdateDisplayList(DisplayList display_list) {
-  if (display_list.HasContent()) {
+  if (display_list.GetContentItemsSize() > 0) {
     display_list_ = std::move(display_list);
+    serialized_content_items_.clear();
+    serialized_content_items_dirty_ = true;
 
-    constexpr int kFrameValueCount = 4;
-    if (context_ && display_list_.GetContentFloatData() &&
-        display_list_.GetContentFloatDataSize() >= kFrameValueCount) {
-      float frame[4];
-      // The first four float values in the display list are the frame of the
-      // layer's OP_BEGIN.
-      memcpy(frame, display_list_.GetContentFloatData(), 4 * sizeof(float));
-
+    const auto* items = reinterpret_cast<const DisplayListItem*>(
+        display_list_.GetContentItemsData());
+    if (items != nullptr && items->type == DisplayListOpType::kBegin &&
+        context_ != nullptr) {
+      const float frame[4] = {items->payload.begin.x, items->payload.begin.y,
+                              items->payload.begin.w, items->payload.begin.h};
       context_->UpdatePlatformRendererFrame(
           PlatformRendererImpl::GetId(), display_list_.RootNeedClipBounds(),
           frame, display_list_.GetRenderOffset());
     }
   }
+}
+
+const uint8_t* PlatformRendererAndroid::GetSerializedContentItemsData() {
+  SerializeContentItemsIfNeeded();
+  return serialized_content_items_.empty() ? nullptr
+                                           : serialized_content_items_.data();
+}
+
+size_t PlatformRendererAndroid::GetSerializedContentItemsSize() {
+  SerializeContentItemsIfNeeded();
+  return serialized_content_items_.size();
+}
+
+void PlatformRendererAndroid::SerializeContentItemsIfNeeded() {
+  if (!serialized_content_items_dirty_) {
+    return;
+  }
+  serialized_content_items_.clear();
+
+  const DisplayList& display_list = GetDisplayList();
+  const size_t content_items_size = display_list.GetContentItemsSize();
+  const auto* items = reinterpret_cast<const DisplayListItem*>(
+      display_list.GetContentItemsData());
+  if (items != nullptr && content_items_size > 0) {
+    serialized_content_items_.reserve(kDisplayListItemBufferHeaderSize +
+                                      content_items_size *
+                                          kSerializedDisplayListItemSize);
+    for (size_t i = 0; i < content_items_size; ++i) {
+      SerializeContentItem(items[i], serialized_content_items_);
+    }
+  }
+  serialized_content_items_dirty_ = false;
 }
 
 void PlatformRendererAndroid::OnAddChild(PlatformRenderer* child, int index) {
