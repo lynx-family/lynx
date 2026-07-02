@@ -9,7 +9,6 @@
 #include <string>
 
 #include "platform/harmony/lynx_harmony/src/main/cpp/text/emoji_resource_manager.h"
-#include "platform/harmony/lynx_harmony/src/main/cpp/text/utils/unicode_decode_utils.h"
 namespace lynx {
 namespace tasm {
 namespace harmony {

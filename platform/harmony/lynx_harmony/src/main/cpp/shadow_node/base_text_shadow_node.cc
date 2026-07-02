@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "base/include/string/quickjs_dtoa.h"
+#include "base/include/string/unicode_decode_utils.h"
 #include "base/trace/native/trace_event.h"
 #include "core/base/harmony/harmony_trace_event_def.h"
 #include "core/base/harmony/props_constant.h"
@@ -17,7 +18,6 @@
 #include "platform/harmony/lynx_harmony/src/main/cpp/font/font_face_manager.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/lynx_context.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/shadow_node/raw_text_shadow_node.h"
-#include "platform/harmony/lynx_harmony/src/main/cpp/text/utils/unicode_decode_utils.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/background/background_conic_gradient_layer.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/background/background_linear_gradient_layer.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/background/background_radial_gradient_layer.h"
@@ -396,13 +396,14 @@ void BaseTextShadowNode::UpdateWordBreakType(
 void BaseTextShadowNode::AddTextToBuilder(ParagraphBuilderHarmony& builder,
                                           const std::string& text) {
   if (!text.empty()) {
-    auto property = UnicodeDecodeProperty::kDefault;
+    auto property = base::UnicodeDecodeProperty::kDefault;
     if (word_break_ == starlight::WordBreakType::kBreakAll) {
-      property = UnicodeDecodeProperty::kInsertZeroWidthChar;
+      property = base::UnicodeDecodeProperty::kInsertZeroWidthChar;
     } else if (word_break_ == starlight::WordBreakType::kKeepAll) {
-      property = UnicodeDecodeProperty::kCjkInsertWordJoiner;
+      property = base::UnicodeDecodeProperty::kCjkInsertWordJoiner;
     }
-    const auto converted_text = UnicodeDecodeUtils::Decode(text_, property);
+    const auto converted_text =
+        base::UnicodeDecodeUtils::Decode(text_, property);
     builder.AddText(converted_text.c_str());
   }
 }
