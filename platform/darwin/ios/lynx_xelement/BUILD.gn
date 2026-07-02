@@ -157,6 +157,9 @@ subspec_target("ViewPager") {
 
 subspec_target("SVG") {
   sources = [
+    "svg/LynxSVGRenderer.h",
+    "svg/LynxSVGRenderer.mm",
+    "svg/LynxSVGRendererHost.m",
     "svg/LynxSVGView.h",
     "svg/LynxSVGView.m",
     "svg/LynxUISVG.h",
