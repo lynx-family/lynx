@@ -44,32 +44,77 @@ export abstract class LynxTemplateResourceFetcher implements LynxResourceProvide
    */
   abstract fetchSSRData(request: LynxResourceRequest, callback: AsyncCallback<ArrayBuffer>);
 
+  private buildFetchAndVerifyError(code: number, message: string): BusinessError<string> {
+    return { code: code, data: message, message: message } as BusinessError<string>;
+  }
+
+  private stringifyFetchError(error: ESObject): string {
+    if (!error) {
+      return "fetch template failed";
+    }
+    if (typeof error.data === 'string' && error.data.length > 0) {
+      return error.data;
+    }
+    if (typeof error.message === 'string' && error.message.length > 0) {
+      return error.message;
+    }
+    try {
+      return JSON.stringify(error);
+    } catch (e) {
+      return `${error}`;
+    }
+  }
+
   private fetchTemplateAndVerify(request: LynxResourceRequest,
     callback: AsyncCallback<TemplateProviderResult, string>) {
     let fetchCallback: AsyncCallback<TemplateProviderResult> =
       (fetchError: BusinessError, fetchResult: TemplateProviderResult) => {
-        let fetchAndVerifyError: BusinessError<string> =
-          { code: LynxSubErrorCode.E_SUCCESS, data: "" } as BusinessError<string>;
-        if (fetchResult.binary) {
-          let securityService = LynxServiceCenter.getService<ILynxSecurityService>(LynxServiceType.Security);
-          let securityResult: SecurityResult = { verified: true };
-          if (securityService != undefined) {
-            securityResult =
-              securityService.verifyTASM(fetchResult.binary, request.url, LynxTasmType.TYPE_DYNAMIC_COMPONENT,
-                undefined);
+        try {
+          let fetchAndVerifyError: BusinessError<string> =
+            this.buildFetchAndVerifyError(LynxSubErrorCode.E_SUCCESS, "");
+          if (fetchError) {
+            let errorCode = fetchError.code > 0 ? fetchError.code : LynxSubErrorCode.E_APP_BUNDLE_LOAD_BAD_RESPONSE;
+            let errorMessage = this.stringifyFetchError(fetchError as ESObject);
+            fetchAndVerifyError = this.buildFetchAndVerifyError(errorCode, errorMessage);
+            callback(fetchAndVerifyError, fetchResult ?? ({} as TemplateProviderResult));
+            return;
           }
-          if (!securityResult.verified) {
-            LLog.e(TAG, `verify template failed, errMsg: ${securityResult.errMsg}`);
-            fetchAndVerifyError.code = LynxSubErrorCode.E_APP_BUNDLE_VERIFY_INVALID_SIGNATURE;
-            fetchAndVerifyError.data = securityResult.errMsg;
+
+          if (fetchResult?.binary && fetchResult.binary.byteLength > 0) {
+            let securityService = LynxServiceCenter.getService<ILynxSecurityService>(LynxServiceType.Security);
+            let securityResult: SecurityResult = { verified: true };
+            if (securityService != undefined) {
+              securityResult =
+                securityService.verifyTASM(fetchResult.binary, request.url, LynxTasmType.TYPE_DYNAMIC_COMPONENT,
+                  undefined);
+            }
+            if (!securityResult.verified) {
+              let errorMessage = securityResult.errMsg ?? "Signature check failed for template binary";
+              LLog.e(TAG, `verify template failed, errMsg: ${errorMessage}`);
+              fetchAndVerifyError =
+                this.buildFetchAndVerifyError(LynxSubErrorCode.E_APP_BUNDLE_VERIFY_INVALID_SIGNATURE, errorMessage);
+            }
+          } else {
+            const errorMessage = "fetch binary is undefined";
+            LLog.e(TAG, `fetch template failed, ${errorMessage}`);
+            fetchAndVerifyError =
+              this.buildFetchAndVerifyError(LynxSubErrorCode.E_APP_BUNDLE_LOAD_BAD_RESPONSE, errorMessage);
           }
-        } else {
-          LLog.e(TAG, "fetch template failed, the binary is undefined");
-          fetchAndVerifyError.code = LynxSubErrorCode.E_APP_BUNDLE_LOAD_BAD_RESPONSE;
-          fetchAndVerifyError.data = "fetch binary is undefined";
+          callback(fetchAndVerifyError, fetchResult ?? ({} as TemplateProviderResult));
+        } catch (e) {
+          let errorMessage = this.stringifyFetchError(e as ESObject);
+          LLog.e(TAG, `fetch template failed, errMsg: ${errorMessage}`);
+          callback(this.buildFetchAndVerifyError(LynxSubErrorCode.E_APP_BUNDLE_LOAD_BAD_RESPONSE, errorMessage),
+            fetchResult ?? ({} as TemplateProviderResult));
         }
-        callback(fetchAndVerifyError, fetchResult);
       }
-    this.fetchTemplate(request, fetchCallback);
+    try {
+      this.fetchTemplate(request, fetchCallback);
+    } catch (e) {
+      let errorMessage = this.stringifyFetchError(e as ESObject);
+      LLog.e(TAG, `fetch template failed, errMsg: ${errorMessage}`);
+      callback(this.buildFetchAndVerifyError(LynxSubErrorCode.E_APP_BUNDLE_LOAD_BAD_RESPONSE, errorMessage),
+        {} as TemplateProviderResult);
+    }
   }
 }

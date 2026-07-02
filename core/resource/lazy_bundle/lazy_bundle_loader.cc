@@ -22,6 +22,7 @@ namespace {
 constexpr char kFormatErrorMessageBegin[] =
     "Load lazy bundle failed, the error message is: ";
 constexpr char kEmptyBinaryErrorMessage[] = "template binary is empty";
+constexpr char kUnknownResourceErrorMessage[] = "resource request failed";
 
 std::string ConstructErrorMessage(const std::string& error_info) {
   return kFormatErrorMessageBegin + error_info;
@@ -47,11 +48,14 @@ void DecodeBundle(LazyBundleLoader::CallBackInfo& callback_info, bool is_card) {
 }
 }  // namespace
 
-void LazyBundleLoader::CallBackInfo::HandleError(
-    const std::optional<std::string>& error) {
-  if (error) {
-    error_code = error::E_LAZY_BUNDLE_LOAD_BAD_RESPONSE;
-    error_msg = ConstructErrorMessage(*error);
+void LazyBundleLoader::CallBackInfo::HandleStatus(
+    std::optional<StatusInfo> status) {
+  if (status) {
+    error_code = status->code > 0 ? status->code
+                                  : error::E_LAZY_BUNDLE_LOAD_BAD_RESPONSE;
+    error_msg = ConstructErrorMessage(status->message.empty()
+                                          ? kUnknownResourceErrorMessage
+                                          : status->message);
   } else if (bundle == std::nullopt && data.empty()) {
     // TODO(nihao.royal): add a new error_code for null bundle.
     error_code = error::E_LAZY_BUNDLE_LOAD_EMPTY_FILE;
@@ -193,17 +197,15 @@ void LazyBundleLoader::RequireTemplate(RadonLazyComponent* lazy_bundle,
         if (!self) {
           return;
         }
-        std::optional<std::string> err_msg = std::nullopt;
-        if (!response.Success()) {
-          err_msg = std::move(response.err_msg);
-        }
+        auto status = LazyBundleLoader::CallBackInfo::CreateStatusInfo(
+            response.err_code, std::move(response.err_msg));
         std::optional<LynxTemplateBundle> bundle = std::nullopt;
         if (response.bundle != nullptr) {
           bundle = *static_cast<LynxTemplateBundle*>(response.bundle);
         }
         self->DidLoadComponent(LazyBundleLoader::CallBackInfo{
             std::move(url), std::move(response.data), std::move(bundle),
-            err_msg, lazy_bundle, instance_id});
+            std::move(status), lazy_bundle, instance_id});
       });
 }
 
@@ -249,17 +251,15 @@ void LazyBundleLoader::FetchBundle(
         if (!self) {
           return;
         }
-        std::optional<std::string> err_msg = std::nullopt;
-        if (!response.Success()) {
-          err_msg = std::move(response.err_msg);
-        }
+        auto status = LazyBundleLoader::CallBackInfo::CreateStatusInfo(
+            response.err_code, std::move(response.err_msg));
         std::optional<LynxTemplateBundle> bundle = std::nullopt;
         if (response.bundle != nullptr) {
           bundle = *static_cast<LynxTemplateBundle*>(response.bundle);
         }
         auto callback_info = LazyBundleLoader::CallBackInfo{
             bundle_request.url, std::move(response.data), std::move(bundle),
-            std::move(err_msg)};
+            std::move(status)};
         callback_info.request = std::move(bundle_request);
         self->DidFetchBundle(std::move(callback_info));
       });

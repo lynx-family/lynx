@@ -70,6 +70,42 @@ TEST(LazyBundleLoaderTest, LoadFrameBundleUsesCache) {
   EXPECT_TRUE(loader->requiring_urls_.empty());
 }
 
+TEST(LazyBundleLoaderTest, CallBackInfoPreservesVerifyErrorCode) {
+  auto status_info = LazyBundleLoader::CallBackInfo::CreateStatusInfo(
+      error::E_APP_BUNDLE_VERIFY_INVALID_SIGNATURE, "invalid signature");
+
+  LazyBundleLoader::CallBackInfo callback_info("lynx", {}, std::nullopt,
+                                               std::move(status_info));
+
+  EXPECT_EQ(error::E_APP_BUNDLE_VERIFY_INVALID_SIGNATURE,
+            callback_info.error_code);
+  EXPECT_NE(std::string::npos,
+            callback_info.error_msg.find("invalid signature"));
+}
+
+TEST(LazyBundleLoaderTest, CallBackInfoPreservesBadResponseErrorCode) {
+  auto status_info = LazyBundleLoader::CallBackInfo::CreateStatusInfo(
+      error::E_APP_BUNDLE_LOAD_BAD_RESPONSE, "fetch binary is undefined");
+
+  LazyBundleLoader::CallBackInfo callback_info("lynx", {}, std::nullopt,
+                                               std::move(status_info));
+
+  EXPECT_EQ(error::E_APP_BUNDLE_LOAD_BAD_RESPONSE, callback_info.error_code);
+  EXPECT_NE(std::string::npos,
+            callback_info.error_msg.find("fetch binary is undefined"));
+}
+
+TEST(LazyBundleLoaderTest, CallBackInfoMapsLocalErrorCode) {
+  auto status_info =
+      LazyBundleLoader::CallBackInfo::CreateStatusInfo(-1, "error response");
+
+  LazyBundleLoader::CallBackInfo callback_info("lynx", {}, std::nullopt,
+                                               std::move(status_info));
+
+  EXPECT_EQ(error::E_LAZY_BUNDLE_LOAD_BAD_RESPONSE, callback_info.error_code);
+  EXPECT_NE(std::string::npos, callback_info.error_msg.find("error response"));
+}
+
 TEST(LazyBundleTest, GetLazyBundleEntry) {
   constexpr int32_t kInstanceId = 1;
   auto option = LazyBundleLifecycleOption("lynx", kInstanceId, true);

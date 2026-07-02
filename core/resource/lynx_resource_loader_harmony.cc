@@ -25,6 +25,37 @@ namespace {
 
 constexpr int32_t LocalErrorCode = -1;
 static constexpr const char* LocalErrorMsg = "Get provider error";
+static constexpr const char* TemplateFetchErrorMsg = "fetch template failed";
+static constexpr const char* TemplateFetchEmptyBinaryMsg =
+    "fetch binary is undefined";
+
+bool GetNamedProperty(napi_env env, napi_value object, const char* name,
+                      napi_value* property) {
+  if (object == nullptr) {
+    return false;
+  }
+  napi_valuetype object_type;
+  if (napi_typeof(env, object, &object_type) != napi_ok ||
+      object_type != napi_object) {
+    return false;
+  }
+  return napi_get_named_property(env, object, name, property) == napi_ok &&
+         *property != nullptr;
+}
+
+std::string GetNamedPropertyAsString(napi_env env, napi_value object,
+                                     const char* name) {
+  napi_value property = nullptr;
+  if (!GetNamedProperty(env, object, name, &property)) {
+    return "";
+  }
+  napi_valuetype property_type;
+  if (napi_typeof(env, property, &property_type) != napi_ok ||
+      property_type == napi_undefined || property_type == napi_null) {
+    return "";
+  }
+  return lynx::base::NapiUtil::ConvertToString(env, property);
+}
 
 bool ReadFileToMemory(const char* file_path,
                       std::unique_ptr<uint8_t[]>& data_ptr, size_t& data_size) {
@@ -500,27 +531,37 @@ LynxResourceLoaderHarmony::CallbackHandler::HandleTemplateRequestCallback(
 
   pub::LynxResourceResponse response;
   response.timing = std::move(callback_handler->timing_);
-  napi_value code_value;
-  napi_get_named_property(env, argv[0], "code", &code_value);
-  int32_t err_code = base::NapiUtil::ConvertToInt32(env, code_value);
+  napi_value code_value = nullptr;
+  int32_t err_code = lynx::error::E_SUCCESS;
+  if (GetNamedProperty(env, argv[0], "code", &code_value)) {
+    err_code = base::NapiUtil::ConvertToInt32(env, code_value);
+  }
 
   if (err_code != lynx::error::E_SUCCESS) {
-    napi_value message_value;
-    napi_get_named_property(env, argv[0], "data", &message_value);
-    std::string err_msg = base::NapiUtil::ConvertToString(env, message_value);
-    if (err_code == lynx::error::E_APP_BUNDLE_VERIFY_INVALID_SIGNATURE) {
-      response.err_code = err_code;
-      response.err_msg = std::move(err_msg);
-    } else {
-      response.err_code = -1;
-      response.err_msg = "error response";
+    std::string err_msg = GetNamedPropertyAsString(env, argv[0], "data");
+    if (err_msg.empty()) {
+      err_msg = GetNamedPropertyAsString(env, argv[0], "message");
     }
+    response.err_code = err_code > 0 ? err_code : LocalErrorCode;
+    response.err_msg =
+        err_msg.empty() ? TemplateFetchErrorMsg : std::move(err_msg);
     response.timing.response_trigger_callback = base::CurrentTimeMicroseconds();
     callback_handler->callback_(response);
   } else {
     napi_value result_binary = nullptr;
-    napi_get_named_property(env, argv[1], "binary", &result_binary);
-    base::NapiUtil::ConvertToArrayBuffer(env, result_binary, response.data);
+    if (!GetNamedProperty(env, argv[1], "binary", &result_binary) ||
+        !base::NapiUtil::IsArrayBuffer(env, result_binary) ||
+        !base::NapiUtil::ConvertToArrayBuffer(env, result_binary,
+                                              response.data) ||
+        response.data.empty()) {
+      response.err_code = lynx::error::E_APP_BUNDLE_LOAD_BAD_RESPONSE;
+      response.err_msg = TemplateFetchEmptyBinaryMsg;
+      response.timing.response_trigger_callback =
+          base::CurrentTimeMicroseconds();
+      callback_handler->callback_(response);
+      delete callback_handler;
+      return js_this;
+    }
     response.timing.response_trigger_callback = base::CurrentTimeMicroseconds();
     callback_handler->callback_(response);
     LynxInfoReporterHelper::GetInstance().ReportTemplateInfo(
