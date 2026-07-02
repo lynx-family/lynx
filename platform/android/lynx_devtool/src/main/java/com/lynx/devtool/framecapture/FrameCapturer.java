@@ -21,8 +21,11 @@ public abstract class FrameCapturer {
   protected int mScreenshotQuality = 70;
   // Maximum number of pixels of a picture, default is 256000 pixels
   protected long mMaxScreenshotAreaSize = 256000;
-  // Maximum screenshot interval(TimeUnit microsecond), default is 32000 us
-  protected int mScreenshotInterval = 32000;
+  // This interval defines the minimum cadence for continuous screencast capture attempts,
+  // not the display vsync interval or capture/encode cost. Bound it to 1 fps so static
+  // pages or fast-acked dynamic pages cannot trigger multiple captures/sends within the
+  // same second.
+  protected int mScreenshotInterval = 1000000;
   protected WeakReference<View> mView;
   protected long mLastScreenshotTime;
   protected volatile String mScreenshotBitmapDataCache;
