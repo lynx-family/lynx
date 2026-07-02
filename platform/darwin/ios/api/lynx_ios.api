@@ -3303,6 +3303,7 @@ public class LynxRenderer : NSObject {
   public void LynxRenderer::updateAttributes:(NSDictionary *props);
   public void LynxRenderer::updatePlatformExtraBundle:(id data);
   public void LynxRenderer::onRebuildSubRenderers();
+  public void LynxRenderer::onSetFrame:(CGRect frame);
   public void LynxRenderer()::updateDisplayList:(lynx::tasm::DisplayList *list);
   public lynx::tasm::DisplayList * LynxRenderer()::getDisplayList();
   public void LynxRenderer()::detachHostDecorationLayers();
