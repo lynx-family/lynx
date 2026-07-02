@@ -173,6 +173,7 @@ public abstract class LynxContext extends LynxBaseContext implements ExceptionHa
   private String tapSlop = TouchEventDispatcher.mTapSlopDefault;
 
   private LynxFrameViewProvider mLynxFrameViewProvider;
+  @Nullable private ClaySnapshotProvider mClaySnapshotProvider;
   private final LynxFrameRecorder.FrameCallback mFrameCallback = new ContextFrameCallback(this);
 
   public LynxContext(Context base, DisplayMetrics screenMetrics) {
@@ -320,6 +321,15 @@ public abstract class LynxContext extends LynxBaseContext implements ExceptionHa
   @RestrictTo(RestrictTo.Scope.LIBRARY)
   public LynxFrameViewProvider getLynxFrameViewProvider() {
     return this.mLynxFrameViewProvider;
+  }
+
+  public void setClaySnapshotProvider(@Nullable ClaySnapshotProvider provider) {
+    this.mClaySnapshotProvider = provider;
+  }
+
+  @Nullable
+  public ClaySnapshotProvider getClaySnapshotProvider() {
+    return this.mClaySnapshotProvider;
   }
 
   /**

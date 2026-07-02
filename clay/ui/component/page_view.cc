@@ -5,6 +5,7 @@
 #include "clay/ui/component/page_view.h"
 
 #include <algorithm>
+#include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <functional>
@@ -1848,20 +1849,26 @@ void PageView::MoveWindow() {
 void PageView::MakeRasterSnapshot(
     BaseView* target, bool compress_jpeg, float scale,
     std::function<void(GrDataPtr, int32_t, int32_t)> callback) {
+  if (!target) {
+    callback(nullptr, 0, 0);
+    return;
+  }
   if (!render_delegate_) {
     callback(nullptr, 0, 0);
     return;
   }
-  if (target->render_object()->NeedsPaint() ||
-      target->render_object()->NeedsEffect()) {
+  auto* render_object = target->render_object();
+  if (!render_object) {
+    callback(nullptr, 0, 0);
+    return;
+  }
+  if (render_object->NeedsPaint() || render_object->NeedsEffect()) {
     // Needs to repaint first if the RenderObject has been marked dirty.
     render_delegate_->ForceBeginFrame();
   }
-  FML_DCHECK(!(target->render_object()->NeedsPaint() ||
-               target->render_object()->NeedsEffect()));
-  FML_DCHECK(target->render_object()->IsRepaintBoundary());
-  auto* layer =
-      static_cast<PendingOffsetLayer*>(target->render_object()->GetLayer());
+  FML_DCHECK(!(render_object->NeedsPaint() || render_object->NeedsEffect()));
+  FML_DCHECK(render_object->IsRepaintBoundary());
+  auto* layer = static_cast<PendingOffsetLayer*>(render_object->GetLayer());
   if (!layer) {
     callback(nullptr, 0, 0);
     return;
@@ -1875,6 +1882,16 @@ void PageView::MakeRasterSnapshot(
       ConvertTo<kPixelTypePhysical>(target->Width()) * scale);
   int32_t height = static_cast<int32_t>(
       ConvertTo<kPixelTypePhysical>(target->Height()) * scale);
+  const bool should_build_into_layer_tree =
+      render_object->ShouldBuildIntoLayerTree();
+  const int32_t callback_width =
+      !should_build_into_layer_tree
+          ? std::max(1, static_cast<int32_t>(std::ceil(target->Width())))
+          : width;
+  const int32_t callback_height =
+      !should_build_into_layer_tree
+          ? std::max(1, static_cast<int32_t>(std::ceil(target->Height())))
+          : height;
   // Create a temporary FrameBuilder to generate the layer tree.
   std::unique_ptr<FrameBuilder> frame_builder = std::make_unique<FrameBuilder>(
       skity::Vec2{width, height}, metrics_.device_pixel_ratio, unref_queue_);
@@ -1899,7 +1916,8 @@ void PageView::MakeRasterSnapshot(
   // Make raster snapshot with the subtree, resulting in a CPU-backed DlImage.
   render_delegate_->MakeRasterSnapshot(
       std::move(layer_tree),
-      [compress_jpeg, callback](fml::RefPtr<PaintImage> paint_image) {
+      [compress_jpeg, callback, callback_width,
+       callback_height](fml::RefPtr<PaintImage> paint_image) {
         // The callback should run on IO thread.
         auto image = paint_image ? paint_image->gr_image() : nullptr;
         if (!image) {
@@ -1920,7 +1938,7 @@ void PageView::MakeRasterSnapshot(
           SkPngEncoder::Options options;
           gr_data = SkPngEncoder::Encode(nullptr, image.get(), options);
         }
-        callback(gr_data, image->width(), image->height());
+        callback(gr_data, callback_width, callback_height);
 #else
         FML_DCHECK(!image->IsTextureBackend());
         GrDataPtr gr_data = nullptr;
@@ -1933,7 +1951,7 @@ void PageView::MakeRasterSnapshot(
           callback(nullptr, 0, 0);
         } else {
           gr_data = codec->Encode(image->GetPixmap()->get());
-          callback(gr_data, image->Width(), image->Height());
+          callback(gr_data, callback_width, callback_height);
         }
 #endif  // ENABLE_SKITY
       });
