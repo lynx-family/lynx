@@ -53,7 +53,8 @@ class MTSContextHolder {
   std::unique_ptr<MTSContext> mts_context_;
 };
 
-class MTSRuntime : private MTSContextHolder {
+class MTSRuntime : private MTSContextHolder,
+                   public std::enable_shared_from_this<MTSRuntime> {
  public:
   class Delegate {
    public:

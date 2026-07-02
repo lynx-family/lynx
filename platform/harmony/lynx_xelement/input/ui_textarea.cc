@@ -187,7 +187,7 @@ void UITextArea::OnNodeEvent(ArkUI_NodeEvent* event) {
                                                           NODE_FOCUS_STATUS, 1);
     }
   } else if (type == NODE_TEXT_AREA_ON_CHANGE) {
-    if (!ShouldSuppressInputEvent()) {
+    if (!ShouldSuppressDefaultValueEvent()) {
       SendInputEvent();
     }
     const int32_t line = NodeManager::Instance().GetAttribute<int32_t>(
@@ -201,6 +201,9 @@ void UITextArea::OnNodeEvent(ArkUI_NodeEvent* event) {
     }
 
   } else if (type == NODE_TEXT_AREA_ON_TEXT_SELECTION_CHANGE) {
+    if (ShouldSuppressDefaultValueEvent()) {
+      return;
+    }
     auto* component_event = OH_ArkUI_NodeEvent_GetNodeComponentEvent(event);
     SendSelectionChangeEvent(component_event->data[0].i32,
                              component_event->data[1].i32);
