@@ -4,9 +4,12 @@
 
 #include "core/renderer/ui_wrapper/layout/android/text_layout_android.h"
 
+#include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
+#include "base/include/string/unicode_decode_utils.h"
 #include "core/base/android/android_jni.h"
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/dom/fiber/image_element.h"
@@ -27,6 +30,55 @@ bool RegisterJNIForTextLayout(JNIEnv* env) { return RegisterNativesImpl(env); }
 
 namespace lynx {
 namespace tasm {
+namespace {
+
+base::UnicodeDecodeProperty WordBreakToDecodeProperty(
+    starlight::WordBreakType word_break) {
+  switch (word_break) {
+    case starlight::WordBreakType::kBreakAll:
+      return base::UnicodeDecodeProperty::kInsertZeroWidthChar;
+    case starlight::WordBreakType::kKeepAll:
+      return base::UnicodeDecodeProperty::kCjkInsertWordJoiner;
+    default:
+      return base::UnicodeDecodeProperty::kDefault;
+  }
+}
+
+base::UnicodeDecodeProperty DecodePropertyForTextElement(TextElement* element) {
+  if (element == nullptr) {
+    return base::UnicodeDecodeProperty::kDefault;
+  }
+  const auto& text_attributes =
+      element->computed_css_style()->GetTextAttributes();
+  if (!text_attributes.has_value()) {
+    return base::UnicodeDecodeProperty::kDefault;
+  }
+  return WordBreakToDecodeProperty(text_attributes->word_break);
+}
+
+TextElement* FindParentTextElement(FiberElement* child) {
+  for (Element* parent = child->parent(); parent != nullptr;
+       parent = parent->parent()) {
+    if (parent->is_text()) {
+      return static_cast<TextElement*>(parent);
+    }
+  }
+  return nullptr;
+}
+
+void AppendDecodedTextContent(std::string_view text, std::string& output,
+                              size_t& current_length, bool use_utf16,
+                              base::UnicodeDecodeProperty decode_property) {
+  std::string decoded_text =
+      base::UnicodeDecodeUtils::Decode(text, decode_property);
+  output += decoded_text;
+  current_length += use_utf16 ? GetUtf16SizeFromUtf8(decoded_text.c_str(),
+                                                     decoded_text.length())
+                              : decoded_text.length();
+}
+
+}  // namespace
+
 TextLayoutAndroid::TextLayoutAndroid(JNIEnv* env, jobject text_layout)
     : text_layout_(env, text_layout) {}
 
@@ -220,10 +272,11 @@ void TextLayoutAndroid::BuildTextPropsBuffer(
     bool use_utf16, PropArrayAndroid* props, bool* has_inline_view) {
   size_t start = current_length;
   base::String& content = element->content();
+  const auto decode_property = DecodePropertyForTextElement(element);
   if (!content.empty()) {
-    output += content.str();
-    current_length +=
-        use_utf16 ? element->content_utf16_length() : content.length();
+    AppendDecodedTextContent(
+        std::string_view(content.c_str(), content.length()), output,
+        current_length, use_utf16, decode_property);
   }
 
   auto* child = element->first_render_child();
@@ -246,9 +299,10 @@ void TextLayoutAndroid::ProcessChildProps(
     auto* raw_text_child = static_cast<RawTextElement*>(child);
     const auto& raw_content = raw_text_child->content();
     if (!raw_content.empty()) {
-      output += raw_content.str();
-      current_length += use_utf16 ? raw_text_child->content_utf16_length()
-                                  : raw_content.length();
+      AppendDecodedTextContent(
+          std::string_view(raw_content.c_str(), raw_content.length()), output,
+          current_length, use_utf16,
+          DecodePropertyForTextElement(FindParentTextElement(child)));
     }
   } else if (child->is_text()) {
     // inline text

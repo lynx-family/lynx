@@ -2,13 +2,15 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#ifndef PLATFORM_HARMONY_LYNX_HARMONY_SRC_MAIN_CPP_TEXT_UTILS_UNICODE_DECODE_UTILS_H_
-#define PLATFORM_HARMONY_LYNX_HARMONY_SRC_MAIN_CPP_TEXT_UTILS_UNICODE_DECODE_UTILS_H_
+#ifndef BASE_INCLUDE_STRING_UNICODE_DECODE_UTILS_H_
+#define BASE_INCLUDE_STRING_UNICODE_DECODE_UTILS_H_
 #include <cstdint>
 #include <string>
 #include <string_view>
 
-namespace lynx::tasm::harmony {
+#include "base/include/base_export.h"
+
+namespace lynx::base {
 enum class UnicodeDecodeProperty : uint8_t {
   kDefault,
   kInsertZeroWidthChar,
@@ -17,7 +19,7 @@ enum class UnicodeDecodeProperty : uint8_t {
 
 class UnicodeDecodeUtils {
  public:
-  static std::string Decode(
+  BASE_EXPORT static std::string Decode(
       std::string_view input_string,
       UnicodeDecodeProperty property = UnicodeDecodeProperty::kDefault);
 
@@ -43,5 +45,5 @@ class UnicodeDecodeUtils {
   static void ProcessInsertChar(std::string* output_ptr,
                                 UnicodeDecodeProperty property);
 };
-}  // namespace lynx::tasm::harmony
-#endif  // PLATFORM_HARMONY_LYNX_HARMONY_SRC_MAIN_CPP_TEXT_UTILS_UNICODE_DECODE_UTILS_H_
+}  // namespace lynx::base
+#endif  // BASE_INCLUDE_STRING_UNICODE_DECODE_UTILS_H_

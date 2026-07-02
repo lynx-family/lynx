@@ -396,6 +396,7 @@ lynx_base_source_set("string_utils") {
               "string/quickjs_dtoa.c",
               "string/string_number_convert.cc",
               "string/string_utils.cc",
+              "string/unicode_decode_utils.cc",
             ]
 }
 

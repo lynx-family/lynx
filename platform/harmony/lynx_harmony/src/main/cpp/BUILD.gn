@@ -140,8 +140,6 @@ lynx_core_source_set("cpp") {
     "text/text_event_target.h",
     "text/utils/text_utils.cc",
     "text/utils/text_utils.h",
-    "text/utils/unicode_decode_utils.cc",
-    "text/utils/unicode_decode_utils.h",
     "ui/background/background_conic_gradient_layer.cc",
     "ui/background/background_conic_gradient_layer.h",
     "ui/background/background_drawable.cc",
@@ -258,6 +256,7 @@ lynx_core_source_set("cpp") {
 
   deps = [
     ":static_task_napi_bridge",
+    "../../../../../../base/src:base_group",
     "../../../../../../base/src:base_values",
   ]
 

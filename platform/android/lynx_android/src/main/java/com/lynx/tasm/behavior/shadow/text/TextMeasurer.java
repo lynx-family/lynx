@@ -37,7 +37,6 @@ import com.lynx.tasm.behavior.ui.image.InlineImageSpan;
 import com.lynx.tasm.behavior.ui.image.LynxImageManager;
 import com.lynx.tasm.behavior.ui.text.AbsInlineImageSpan;
 import com.lynx.tasm.behavior.ui.utils.LynxBackground;
-import com.lynx.tasm.behavior.utils.UnicodeFontUtils;
 import com.lynx.tasm.fontface.FontFaceManager;
 import com.lynx.tasm.utils.DeviceUtils;
 import com.lynx.tasm.utils.PixelUtils;
@@ -123,7 +122,6 @@ public class TextMeasurer {
     int[] margins = null;
 
     InlineImageProps inlineImageProps = null;
-    int mWordBreakStyle = StyleConstants.WORDBREAK_NORMAL;
     boolean isSetVerticalAlign = false;
     ArrayList<AbsBaselineShiftCalculatorSpan> baselineShiftCalculatorSpans = new ArrayList<>();
     float maxFontSize = Math.round(PixelUtils.dipToPx(14, mContext.getScreenMetrics().density));
@@ -163,14 +161,7 @@ public class TextMeasurer {
           textAttributes =
               ensureTextAttributes(textAttributes); // by default, we need a para textAttributes...
 
-          // TODO(linxs): it's better to move the decode logic to C++ size
-          int wordBreakStyle = UnicodeFontUtils.DECODE_DEFAULT;
-          if (mWordBreakStyle == StyleConstants.WORDBREAK_BREAKALL) {
-            wordBreakStyle = UnicodeFontUtils.DECODE_INSERT_ZERO_WIDTH_CHAR;
-          } else if (mWordBreakStyle == StyleConstants.WORDBREAK_KEEPALL) {
-            wordBreakStyle = UnicodeFontUtils.DECODE_CJK_INSERT_WORD_JOINER;
-          }
-          String decodedText = UnicodeFontUtils.decode(text, wordBreakStyle);
+          String decodedText = text;
           spannableString.append(decodedText);
 
           buildStyledSpanIfNeeded(

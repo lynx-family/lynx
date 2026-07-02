@@ -5,9 +5,12 @@
 #include "core/renderer/ui_wrapper/layout/textra/text_layout_textra.h"
 
 #include <memory>
+#include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
+#include "base/include/string/unicode_decode_utils.h"
 #include "core/renderer/css/text_attributes.h"
 #include "core/renderer/dom/attribute_holder.h"
 #include "core/renderer/dom/element.h"
@@ -146,6 +149,11 @@ base::String GetRawTextContent(Element* element) {
     return base::String();
   }
   return it->second.String();
+}
+
+std::string DecodeTextContent(const base::String& text) {
+  return base::UnicodeDecodeUtils::Decode(
+      std::string_view(text.c_str(), text.length()));
 }
 
 class TextraInlineView : public text::InlineView {
@@ -431,8 +439,9 @@ void TextLayoutTextra::BuildParagraphRecursively(Element* element,
     ApplyTextStyle(text_element);
     auto element_content = text_element->content();
     if (!element_content.empty()) {
-      paragraph_builder_->AddText(element_content.c_str(),
-                                  element_content.length());
+      std::string decoded_content = DecodeTextContent(element_content);
+      paragraph_builder_->AddText(decoded_content.c_str(),
+                                  decoded_content.length());
     }
   } else if (IsInlineTextElement(element)) {
     auto* fiber_element = static_cast<FiberElement*>(element);
@@ -568,11 +577,14 @@ void TextLayoutTextra::ProcessChildStyleAndProps(Element* element,
 
   if (child->is_raw_text()) {
     RawTextElement* rawText = static_cast<RawTextElement*>(child);
-    paragraph_builder_->AddText(rawText->content().c_str(),
-                                rawText->content().length());
+    std::string decoded_content = DecodeTextContent(rawText->content());
+    paragraph_builder_->AddText(decoded_content.c_str(),
+                                decoded_content.length());
   } else if (child->GetTag().IsEqual(RawTextElement::kRawTextTag)) {
     auto content = GetRawTextContent(child);
-    paragraph_builder_->AddText(content.c_str(), content.length());
+    std::string decoded_content = DecodeTextContent(content);
+    paragraph_builder_->AddText(decoded_content.c_str(),
+                                decoded_content.length());
   } else if (child->is_text() || IsInlineTextElement(child)) {
     // inline text
     paragraph_builder_->PushTextStyle();
