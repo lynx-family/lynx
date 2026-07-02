@@ -283,28 +283,24 @@ public class ContainerRendererTest {
 
   @Test
   public void testOnDraw_InitializesDisplayListApplier() {
-    // Setup mock DisplayList
-    DisplayList mockDisplayList = mock(DisplayList.class);
-    mockDisplayList.ops = new int[] {};
-    mockDisplayList.iArgv = new int[] {};
-    mockDisplayList.fArgv = new float[] {};
+    // Setup a minimal ByteBuffer display list (BEGIN + END)
+    DisplayList displayList = new DisplayList();
+    displayList.ops = new int[] {0, 1};
+    displayList.iArgv = new int[] {2, 4, 0, 0, 0, 0};
+    displayList.fArgv = new float[] {0f, 0f, 100f, 100f};
 
-    // Mock PlatformRendererContext to return our DisplayList
-    doAnswer(invocation -> {
-      DisplayList list = invocation.getArgument(1);
-      list.ops = mockDisplayList.ops;
-      list.iArgv = mockDisplayList.iArgv;
-      list.fArgv = mockDisplayList.fArgv;
-      return null;
-    })
-        .when(mockPlatformRendererContext)
-        .getDisplayList(eq(TEST_SIGN), any(DisplayList.class));
+    // Mock PlatformRendererContext to return the ByteBuffer
+    when(mockPlatformRendererContext.getDisplayListItemsBuffer(TEST_SIGN))
+        .thenReturn(displayList.toItemsBuffer());
+    when(mockPlatformRendererContext.getDisplayListDataBuffer(TEST_SIGN))
+        .thenReturn(displayList.toDataBuffer());
 
     // Call onDraw
     containerRenderer.onDraw(mockCanvas);
 
-    // Verify DisplayList was retrieved
-    verify(mockPlatformRendererContext).getDisplayList(eq(TEST_SIGN), any(DisplayList.class));
+    // Verify ByteBuffer display list was retrieved
+    verify(mockPlatformRendererContext).getDisplayListItemsBuffer(TEST_SIGN);
+    verify(mockPlatformRendererContext).getDisplayListDataBuffer(TEST_SIGN);
   }
 
   @Test
@@ -314,15 +310,10 @@ public class ContainerRendererTest {
     emptyDisplayList.iArgv = new int[] {};
     emptyDisplayList.fArgv = new float[] {};
 
-    doAnswer(invocation -> {
-      DisplayList list = invocation.getArgument(1);
-      list.ops = emptyDisplayList.ops;
-      list.iArgv = emptyDisplayList.iArgv;
-      list.fArgv = emptyDisplayList.fArgv;
-      return null;
-    })
-        .when(mockPlatformRendererContext)
-        .getDisplayList(eq(TEST_SIGN), any(DisplayList.class));
+    when(mockPlatformRendererContext.getDisplayListItemsBuffer(TEST_SIGN))
+        .thenReturn(emptyDisplayList.toItemsBuffer());
+    when(mockPlatformRendererContext.getDisplayListDataBuffer(TEST_SIGN))
+        .thenReturn(emptyDisplayList.toDataBuffer());
 
     containerRenderer.onDraw(mockCanvas);
 
@@ -342,47 +333,37 @@ public class ContainerRendererTest {
   public void testOnDraw_UpdatesExistingDisplayListApplier() {
     // First call to initialize DisplayListApplier
     DisplayList initialDisplayList = new DisplayList();
-    initialDisplayList.ops = new int[] {1, 2, 3};
-    initialDisplayList.iArgv = new int[] {4, 5, 6};
-    initialDisplayList.fArgv = new float[] {7.0f, 8.0f, 9.0f};
+    initialDisplayList.ops = new int[] {0, 1};
+    initialDisplayList.iArgv = new int[] {2, 4, 0, 0, 0, 0};
+    initialDisplayList.fArgv = new float[] {0f, 0f, 100f, 100f};
 
-    doAnswer(invocation -> {
-      DisplayList list = invocation.getArgument(1);
-      list.ops = initialDisplayList.ops.clone();
-      list.iArgv = initialDisplayList.iArgv.clone();
-      list.fArgv = initialDisplayList.fArgv.clone();
-      return null;
-    })
-        .when(mockPlatformRendererContext)
-        .getDisplayList(eq(TEST_SIGN), any(DisplayList.class));
+    when(mockPlatformRendererContext.getDisplayListItemsBuffer(TEST_SIGN))
+        .thenReturn(initialDisplayList.toItemsBuffer());
+    when(mockPlatformRendererContext.getDisplayListDataBuffer(TEST_SIGN))
+        .thenReturn(initialDisplayList.toDataBuffer());
 
     // First onDraw call
     containerRenderer.onDraw(mockCanvas);
 
     // Update DisplayList
     DisplayList updatedDisplayList = new DisplayList();
-    updatedDisplayList.ops = new int[] {10, 11, 12};
-    updatedDisplayList.iArgv = new int[] {13, 14, 15};
-    updatedDisplayList.fArgv = new float[] {16.0f, 17.0f, 18.0f};
+    updatedDisplayList.ops = new int[] {0, 1};
+    updatedDisplayList.iArgv = new int[] {2, 4, 0, 0, 0, 0};
+    updatedDisplayList.fArgv = new float[] {0f, 0f, 200f, 200f};
 
-    doAnswer(invocation -> {
-      DisplayList list = invocation.getArgument(1);
-      list.ops = updatedDisplayList.ops.clone();
-      list.iArgv = updatedDisplayList.iArgv.clone();
-      list.fArgv = updatedDisplayList.fArgv.clone();
-      return null;
-    })
-        .when(mockPlatformRendererContext)
-        .getDisplayList(eq(TEST_SIGN), any(DisplayList.class));
+    when(mockPlatformRendererContext.getDisplayListItemsBuffer(TEST_SIGN))
+        .thenReturn(updatedDisplayList.toItemsBuffer());
+    when(mockPlatformRendererContext.getDisplayListDataBuffer(TEST_SIGN))
+        .thenReturn(updatedDisplayList.toDataBuffer());
 
     containerRenderer.getRenderer().invalidate(Renderer.INVALIDATE_DISPLAY_LIST);
 
     // Second onDraw call
     containerRenderer.onDraw(mockCanvas);
 
-    // Verify DisplayList was retrieved twice
-    verify(mockPlatformRendererContext, times(2))
-        .getDisplayList(eq(TEST_SIGN), any(DisplayList.class));
+    // Verify ByteBuffer display list was retrieved twice
+    verify(mockPlatformRendererContext, times(2)).getDisplayListItemsBuffer(TEST_SIGN);
+    verify(mockPlatformRendererContext, times(2)).getDisplayListDataBuffer(TEST_SIGN);
   }
 
   @Test

@@ -3,9 +3,6 @@
 // LICENSE file in the root directory of this source tree.
 package com.lynx.tasm.behavior.render;
 
-import static com.lynx.tasm.behavior.render.DisplayListApplier.SUBTREE_OP_OPACITY;
-import static com.lynx.tasm.behavior.render.DisplayListApplier.SUBTREE_OP_TRANSFORM;
-
 import android.graphics.Canvas;
 import android.graphics.Matrix;
 import android.graphics.Point;
@@ -26,13 +23,16 @@ public class Renderer {
   private static final int SUBTREE_PROPERTY_SIZE = 68; // 4 + 64 = 68 bytes
   private static final int TYPE_OFFSET = 0;
   private static final int DATA_OFFSET = 4;
+  private static final int SUBTREE_OP_TRANSFORM = 0;
+  private static final int SUBTREE_OP_OPACITY = 1;
 
   private final Rect mLynxFrame = new Rect();
   private final Point mRenderOffset = new Point();
   private final int mSign;
   private final PlatformRendererContext mPlatformRendererContext;
   private DisplayListApplier mDisplayListApplier = null;
-  private final DisplayList mDisplayList = new DisplayList();
+  private java.nio.ByteBuffer mDisplayListItemsBuffer = null;
+  private java.nio.ByteBuffer mDisplayListDataBuffer = null;
   private IRendererHost mRenderHost;
   private LynxBaseUI mUIHost;
 
@@ -154,17 +154,17 @@ public class Renderer {
 
   public void onDraw(Canvas canvas) {
     if (mRepaintType == REPAINT_TYPE_GET_DISPLAY_LIST_AND_DRAW) {
-      mPlatformRendererContext.getDisplayList(mSign, mDisplayList);
+      mDisplayListItemsBuffer = mPlatformRendererContext.getDisplayListItemsBuffer(mSign);
+      mDisplayListDataBuffer = mPlatformRendererContext.getDisplayListDataBuffer(mSign);
     }
     if (mDisplayListApplier == null) {
-      mDisplayListApplier =
-          new DisplayListApplier(mDisplayList, mPlatformRendererContext, mRenderHost);
+      mDisplayListApplier = new DisplayListApplier(
+          mDisplayListItemsBuffer, mDisplayListDataBuffer, mPlatformRendererContext, mRenderHost);
     } else {
-      mDisplayListApplier.setDisplayList(mDisplayList);
+      mDisplayListApplier.setBuffer(mDisplayListItemsBuffer, mDisplayListDataBuffer);
     }
     mRepaintType = REPAINT_TYPE_DRAW_ONLY;
   }
-
   public void beforeDrawHost(Canvas canvas) {
     if (mDisplayListApplier == null) {
       return;
