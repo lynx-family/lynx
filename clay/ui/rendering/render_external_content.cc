@@ -23,6 +23,11 @@ void RenderExternalContent::Paint(PaintingContext& context,
                                   const FloatPoint& offset) {
   RenderBox::Paint(context, offset);
 
+  if (!ShouldBuildIntoLayerTree()) {
+    PaintChildren(context, offset);
+    return;
+  }
+
   bool draw_external_image =
       drawable_image_id_.has_value() && drawable_image_id_.value() > -1;
   bool draw_punch_hole =
