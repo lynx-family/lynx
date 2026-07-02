@@ -115,6 +115,7 @@ void PlatformRendererDarwin::OnUpdateDisplayList(DisplayList display_list) {
                        frame[1] + display_list_.GetRenderOffset()[1], frame[2], frame[3]);
         UpdateUIOwnerLayout(CGRectMake(frame[0], frame[1], frame[2], frame[3]));
         LynxCUIApplyLayoutFrame(view, layout_frame);
+        [[view renderer] onSetFrame:layout_frame];
 
         if ([view conformsToProtocol:@protocol(LUIBodyView)]) {
           ((UIView<LUIBodyView>*)view).intrinsicContentSize = CGSizeMake(frame[2], frame[3]);
