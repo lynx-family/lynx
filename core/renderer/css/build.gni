@@ -204,7 +204,7 @@ lynx_css_core_sources = [
   "unit_handler.h",
 ]
 
-if (!enable_unittests) {
+if (!enable_unittests && !enable_inspector) {
   lynx_css_core_sources += [ "ng/selector/lynx_css_selector_empty.cc" ]
 }
 
@@ -256,6 +256,7 @@ lynx_css_parser_sources = [
   "ng/parser/css_parser_token_stream.cc",
   "ng/parser/css_tokenizer.cc",
   "ng/parser/css_tokenizer.h",
+  "ng/parser/css_tokenizer_codepoints.cc",
   "ng/parser/css_tokenizer_input_stream.cc",
   "ng/parser/css_tokenizer_input_stream.h",
   "ng/parser/font_face_parser.cc",
@@ -286,7 +287,10 @@ lynx_css_extra_sources = [
   "css_fragment_decorator.h",
   "css_variable_handler.cc",
   "css_variable_handler.h",
-  "ng/selector/lynx_css_selector_empty.cc",
 ]
+
+if (!enable_unittests && !enable_inspector) {
+  lynx_css_extra_sources += [ "ng/selector/lynx_css_selector_empty.cc" ]
+}
 
 lynx_css_extra_sources_path = get_path_info(lynx_css_extra_sources, "abspath")

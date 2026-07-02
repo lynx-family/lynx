@@ -400,6 +400,11 @@ class ElementManager : public LayoutScheduler::LayoutSchedulerImpl {
   /**
    * DevTool Related.
    */
+  void OnCSSMediaQueryResultChangedForInspector();
+
+  /**
+   * DevTool Related.
+   */
   void OnComponentUselessUpdate(const std::string &component_name,
                                 const lepus::Value &properties);
 
@@ -1290,7 +1295,8 @@ class ElementManager : public LayoutScheduler::LayoutSchedulerImpl {
   }
 
   // used for unified pipeline;
-  void RequestResolve(std::shared_ptr<PipelineOptions> &pipeline_options);
+  LYNX_EXPORT_FOR_DEVTOOL void RequestResolve(
+      std::shared_ptr<PipelineOptions> &pipeline_options);
 
   bool SetViewportSizeToRootNode();
 

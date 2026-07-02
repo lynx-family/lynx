@@ -53,6 +53,8 @@ struct InspectorStyleSheet {
   std::string style_name_;
   std::string origin_;
   std::string css_text_;
+  std::string media_text_;
+  Range media_range_;
   std::unordered_multimap<std::string, CSSPropertyDetail> css_properties_;
   std::unordered_map<std::string, CSSPropertyDetail> shorthand_entries_;
   std::vector<std::string> property_order_;

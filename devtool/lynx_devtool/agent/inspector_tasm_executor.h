@@ -56,7 +56,8 @@ class InspectorTasmExecutor
   enum class CssCdpEvent {
     STYLE_SHEET_ADDED,
     STYLE_SHEET_REMOVED,
-    STYLE_SHEET_CHANGED
+    STYLE_SHEET_CHANGED,
+    MEDIA_QUERY_RESULT_CHANGED
   };
   void SendDOMEventMsg(const DomCdpEvent& event_name, int nodeId,
                        const std::string& name, int parentNodeId);
@@ -74,6 +75,7 @@ class InspectorTasmExecutor
   void OnSetNativeProps(lynx::tasm::Element* ptr, const std::string& name,
                         const std::string& value, bool is_style);
   void OnCSSStyleSheetAdded(lynx::tasm::Element* ptr);
+  void OnCSSMediaQueryResultChanged();
 
  public:
   void SendWhiteBoardEvent(const Json::Value& msg);
@@ -134,6 +136,8 @@ class InspectorTasmExecutor
   DECLARE_DEVTOOL_METHOD(StartRuleUsageTracking)
   DECLARE_DEVTOOL_METHOD(UpdateRuleUsageTracking)
   DECLARE_DEVTOOL_METHOD(StopRuleUsageTracking)
+  DECLARE_DEVTOOL_METHOD(GetMediaQueries)
+  DECLARE_DEVTOOL_METHOD(SetMediaText)
 
   // overlay
   DECLARE_DEVTOOL_METHOD(HighlightNode)

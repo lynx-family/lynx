@@ -13,6 +13,7 @@
 #include "base/include/compiler_specific.h"
 #include "base/include/log/logging.h"
 #include "base/include/string/string_utils.h"
+#include "core/base/lynx_export.h"
 
 namespace lynx {
 namespace css {
@@ -52,10 +53,10 @@ constexpr LChar kEndOfFileMarker = 0;
 
 // https://html.spec.whatwg.org/C/#parse-error-unexpected-null-character
 constexpr UChar kReplacementCharacter = 0xFFFD;
-const std::string& CSSGlobalEmptyString();
-const std::u16string& CSSGlobalEmptyU16String();
-const std::string& CSSGlobalStarString();
-const std::u16string& CSSGlobalStarU16String();
+LYNX_EXPORT_FOR_DEVTOOL const std::string& CSSGlobalEmptyString();
+LYNX_EXPORT_FOR_DEVTOOL const std::u16string& CSSGlobalEmptyU16String();
+LYNX_EXPORT_FOR_DEVTOOL const std::string& CSSGlobalStarString();
+LYNX_EXPORT_FOR_DEVTOOL const std::u16string& CSSGlobalStarU16String();
 
 template <class T>
 inline T ToLower(const T& input) {
@@ -83,7 +84,8 @@ inline bool EqualIgnoringASCIICase(const std::string& lfs,
 }
 
 // Collapse runs of ASCII whitespace into single spaces and trim edges.
-std::string SimplifyWhiteSpace(const std::string& input);
+LYNX_EXPORT_FOR_DEVTOOL std::string SimplifyWhiteSpace(
+    const std::string& input);
 
 }  // namespace css
 }  // namespace lynx

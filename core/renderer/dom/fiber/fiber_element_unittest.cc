@@ -154,6 +154,9 @@ class RecordingInspectorElementObserver final
                                 const lepus::Value& properties) override {}
   void OnSetNativeProps(Element* ptr, const std::string& name,
                         const std::string& value, bool is_style) override {}
+  void OnCSSMediaQueryResultChanged() override {
+    ++media_query_result_changed_count;
+  }
 
   std::map<lynx::devtool::DevToolFunction,
            std::function<void(const base::any&)>>
@@ -171,6 +174,7 @@ class RecordingInspectorElementObserver final
   }
 
   std::vector<Element*> added_nodes;
+  int media_query_result_changed_count = 0;
 };
 
 bool LayoutBundleHasResetStyle(
@@ -10527,6 +10531,33 @@ TEST_P(FiberElementTest, CreateTypedPageTemplateNotifiesInspectorRoot) {
   EXPECT_EQ(observer->added_nodes[0], manager->root());
   EXPECT_NE(observer->added_nodes[0], page_template.get());
   EXPECT_TRUE(observer->added_nodes[0]->is_page());
+}
+
+TEST_P(FiberElementTest,
+       MediaQueryResultChangedNotifiesInspectorOnEnvironmentChanges) {
+  auto observer = std::make_shared<RecordingInspectorElementObserver>();
+  manager->SetInspectorElementObserver(observer);
+  manager->dom_tree_enabled_ = true;
+
+  auto page = manager->CreateFiberPage("page", 0);
+  manager->SetFiberPageElement(page);
+  manager->GetLynxEnvConfig().SetPreferredColorScheme(
+      css::MediaPreferredColorScheme::kLight);
+
+  manager->UpdateScreenMetrics(100.0f, 300.0f);
+  EXPECT_EQ(observer->media_query_result_changed_count, 1);
+
+  manager->UpdateViewport(100, SLMeasureModeDefinite, 600,
+                          SLMeasureModeDefinite, false);
+  EXPECT_EQ(observer->media_query_result_changed_count, 2);
+
+  manager->UpdateColorScheme(
+      static_cast<int>(css::MediaPreferredColorScheme::kDark));
+  EXPECT_EQ(observer->media_query_result_changed_count, 3);
+
+  manager->dom_tree_enabled_ = false;
+  manager->UpdateScreenMetrics(200.0f, 400.0f);
+  EXPECT_EQ(observer->media_query_result_changed_count, 3);
 }
 
 TEST_P(FiberElementTest, InsertTypedPageTemplateChildBeforeAutomaticFlush) {

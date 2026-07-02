@@ -14,9 +14,12 @@
 #include "core/inspector/style_sheet.h"
 #include "core/renderer/css/css_decoder.h"
 #include "core/renderer/css/css_property.h"
+#include "core/renderer/css/ng/media_query/media_query_evaluator.h"
+#include "core/renderer/css/ng/style/condition_rule.h"
 #include "core/renderer/dom/fiber/component_element.h"
 #include "core/renderer/dom/fiber/fiber_element.h"
 #include "core/renderer/dom/selector/fiber_element_selector.h"
+#include "core/renderer/dom/style_resolver.h"
 #include "core/renderer/dom/vdom/radon/node_select_options.h"
 #include "core/renderer/dom/vdom/radon/node_selector.h"
 #include "core/renderer/dom/vdom/radon/radon_base.h"
@@ -634,9 +637,64 @@ ElementInspector::GetMatchedStyleSheet(Element* element) {
   CHECK_NULL_AND_LOG_RETURN_VALUE(inspector_attribute,
                                   "inspector_attribute is null", res);
 
+  // Build the same media-query environment used by style resolution, so
+  // DevTool only reports @media rules that are active for the current node.
+  std::unique_ptr<css::MediaQueryEvaluator> media_evaluator;
+  if (style_sheet->HasMediaQueryRules()) {
+    auto* mgr = element->element_manager();
+    if (mgr) {
+      media_evaluator =
+          lynx::tasm::StyleResolver::BuildMediaQueryEvaluator(mgr, element);
+    }
+  }
+
+  // Map matched rule tokens back to the active @media text that owns them.
+  // This lets the CDP CSSRule response fill rule.media for the Styles panel.
+  struct MediaInfo {
+    std::string text;
+    Range range;
+  };
+  std::unordered_map<lynx::tasm::CSSParseToken*, MediaInfo> token_media_map;
+  if (media_evaluator) {
+    struct Ctx {
+      lynx::tasm::AttributeHolder* attribute_holder;
+      const css::MediaQueryEvaluator* media_evaluator;
+      std::unordered_map<lynx::tasm::CSSParseToken*, MediaInfo>*
+          token_media_map;
+      int media_index;
+    };
+    Ctx ctx{attribute_holder, media_evaluator.get(), &token_media_map, 0};
+    style_sheet->ForEachRuleSet(
+        [](css::RuleSet* rs, void* cb_data) {
+          auto* c = static_cast<Ctx*>(cb_data);
+          if (!rs) return;
+          rs->ForEachConditionRule([c](const css::ConditionRule& rule) {
+            if (!rule.HasStructuredMediaQuery()) return;
+            const int media_index = c->media_index++;
+            if (!c->media_evaluator->Eval(rule.MediaQueries().get())) {
+              return;
+            }
+            const std::string media_text = rule.MediaQueries()->Serialize();
+            Range media_range{media_index, media_index, 0,
+                              static_cast<int>(media_text.length())};
+            unsigned inner_level = 0;
+            base::Vector<css::MatchedRule> inner_matched;
+            rule.GetRuleSet().MatchOwnStyles(c->attribute_holder, inner_level,
+                                             inner_matched);
+            for (const auto& inner : inner_matched) {
+              auto token = inner.Data()->Rule()->Token();
+              if (token) {
+                (*c->token_media_map)[token.get()] = {media_text, media_range};
+              }
+            }
+          });
+        },
+        &ctx);
+  }
+
   auto* style_root = inspector_attribute->style_root_;
   auto matched_rules = lynx::tasm::StyleResolver::GetCSSMatchedRule(
-      attribute_holder, style_sheet, nullptr, nullptr);
+      attribute_holder, style_sheet, media_evaluator.get(), nullptr);
   for (const auto& matched : matched_rules) {
     auto matched_token = matched.Data()->Rule()->Token();
     if (matched_token != nullptr) {
@@ -656,6 +714,11 @@ ElementInspector::GetMatchedStyleSheet(Element* element) {
               }
               RecordStyleSheetSourceToken(style_root, field, matched_token);
             }
+            if (auto media_it = token_media_map.find(matched_token.get());
+                media_it != token_media_map.end()) {
+              field.media_text_ = media_it->second.text;
+              field.media_range_ = media_it->second.range;
+            }
             res.push_back(field);
             break;
           }
@@ -671,6 +734,11 @@ ElementInspector::GetMatchedStyleSheet(Element* element) {
             if (ShouldRecordStyleSheetSourceToken(element)) {
               RecordStyleSheetSourceToken(style_root, style_sheet,
                                           matched_token);
+            }
+            if (auto media_it = token_media_map.find(matched_token.get());
+                media_it != token_media_map.end()) {
+              style_sheet.media_text_ = media_it->second.text;
+              style_sheet.media_range_ = media_it->second.range;
             }
             res.push_back(style_sheet);
             inspector_attribute->style_sheet_map_.insert({name, style_sheet});

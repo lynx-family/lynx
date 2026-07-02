@@ -303,6 +303,14 @@ void ElementManager::OnCSSStyleSheetAddedForInspector(Element *element) {
   });
 }
 
+void ElementManager::OnCSSMediaQueryResultChangedForInspector() {
+  EXEC_EXPR_FOR_INSPECTOR({
+    if (inspector_element_observer_ && IsDomTreeEnabled()) {
+      inspector_element_observer_->OnCSSMediaQueryResultChanged();
+    }
+  });
+}
+
 void ElementManager::OnComponentUselessUpdate(const std::string &component_name,
                                               const lepus::Value &properties) {
   EXEC_EXPR_FOR_INSPECTOR({
@@ -681,6 +689,8 @@ void ElementManager::UpdateScreenMetrics(float width, float height) {
     root()->UpdateDynamicElementStyle(
         DynamicCSSStylesManager::kUpdateScreenMetrics, false);
   }
+
+  OnCSSMediaQueryResultChangedForInspector();
 }
 
 void ElementManager::UpdateFontScale(float font_scale) {
@@ -710,6 +720,8 @@ void ElementManager::UpdateColorScheme(int scheme) {
     auto options = std::make_shared<PipelineOptions>();
     RequestResolve(options);
   }
+
+  OnCSSMediaQueryResultChangedForInspector();
 }
 
 void ElementManager::SetInspectorElementObserver(
@@ -805,6 +817,7 @@ void ElementManager::OnUpdateViewport(float width, int width_mode, float height,
   if (!IsLayoutInElementModeOn()) {
     delegate_->OnUpdateViewport(width, width_mode, height, height_mode,
                                 need_layout);
+    OnCSSMediaQueryResultChangedForInspector();
     return;
   }
 
@@ -818,6 +831,8 @@ void ElementManager::OnUpdateViewport(float width, int width_mode, float height,
       need_layout_ = true;
     }
   }
+
+  OnCSSMediaQueryResultChangedForInspector();
 }
 
 /**

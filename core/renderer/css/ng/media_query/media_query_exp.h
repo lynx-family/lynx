@@ -15,12 +15,14 @@
 #include <utility>
 
 #include "base/include/fml/memory/ref_counted.h"
+#include "core/base/lynx_export.h"
 #include "core/renderer/css/ng/media_query/media_feature.h"
 
 namespace lynx {
 namespace css {
 
-class MediaQueryExpNode : public fml::RefCountedThreadSafeStorage {
+class LYNX_EXPORT_FOR_DEVTOOL MediaQueryExpNode
+    : public fml::RefCountedThreadSafeStorage {
  public:
   // Values are assigned explicit stable numbers because they are serialized
   // into the template binary (via ToLepus). Existing values MUST NOT be
@@ -61,7 +63,8 @@ class MediaQueryExpNode : public fml::RefCountedThreadSafeStorage {
 };
 
 // Leaf: a single `(feature <op> value)` assertion.
-class MediaQueryFeatureExpNode final : public MediaQueryExpNode {
+class LYNX_EXPORT_FOR_DEVTOOL MediaQueryFeatureExpNode final
+    : public MediaQueryExpNode {
  public:
   explicit MediaQueryFeatureExpNode(MediaFeature feature)
       : MediaQueryExpNode(Type::kFeature), feature_(std::move(feature)) {}
@@ -76,7 +79,8 @@ class MediaQueryFeatureExpNode final : public MediaQueryExpNode {
 };
 
 // Parenthesized grouping node: `( inner )`.
-class MediaQueryNestedExpNode final : public MediaQueryExpNode {
+class LYNX_EXPORT_FOR_DEVTOOL MediaQueryNestedExpNode final
+    : public MediaQueryExpNode {
  public:
   explicit MediaQueryNestedExpNode(fml::RefPtr<const MediaQueryExpNode> inner)
       : MediaQueryExpNode(Type::kNested), inner_(std::move(inner)) {}
@@ -91,7 +95,8 @@ class MediaQueryNestedExpNode final : public MediaQueryExpNode {
 };
 
 // `not ( operand )`.
-class MediaQueryNotExpNode final : public MediaQueryExpNode {
+class LYNX_EXPORT_FOR_DEVTOOL MediaQueryNotExpNode final
+    : public MediaQueryExpNode {
  public:
   explicit MediaQueryNotExpNode(fml::RefPtr<const MediaQueryExpNode> operand)
       : MediaQueryExpNode(Type::kNot), operand_(std::move(operand)) {}
@@ -110,7 +115,8 @@ class MediaQueryNotExpNode final : public MediaQueryExpNode {
 // Binary combinator base for `and` / `or`. Kept as a concrete shared class
 // because the only thing that differs between them is the connective token
 // and the `Type` tag.
-class MediaQueryCompoundExpNode : public MediaQueryExpNode {
+class LYNX_EXPORT_FOR_DEVTOOL MediaQueryCompoundExpNode
+    : public MediaQueryExpNode {
  public:
   MediaQueryCompoundExpNode(Type type,
                             fml::RefPtr<const MediaQueryExpNode> left,
@@ -130,7 +136,8 @@ class MediaQueryCompoundExpNode : public MediaQueryExpNode {
   fml::RefPtr<const MediaQueryExpNode> right_;
 };
 
-class MediaQueryAndExpNode final : public MediaQueryCompoundExpNode {
+class LYNX_EXPORT_FOR_DEVTOOL MediaQueryAndExpNode final
+    : public MediaQueryCompoundExpNode {
  public:
   MediaQueryAndExpNode(fml::RefPtr<const MediaQueryExpNode> left,
                        fml::RefPtr<const MediaQueryExpNode> right)
@@ -141,7 +148,8 @@ class MediaQueryAndExpNode final : public MediaQueryCompoundExpNode {
   lepus_value ToLepus() const override;
 };
 
-class MediaQueryOrExpNode final : public MediaQueryCompoundExpNode {
+class LYNX_EXPORT_FOR_DEVTOOL MediaQueryOrExpNode final
+    : public MediaQueryCompoundExpNode {
  public:
   MediaQueryOrExpNode(fml::RefPtr<const MediaQueryExpNode> left,
                       fml::RefPtr<const MediaQueryExpNode> right)

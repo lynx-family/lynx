@@ -11,16 +11,32 @@
 
 #include <cstddef>
 #include <future>
+#include <initializer_list>
 #include <memory>
 #include <string>
+#include <utility>
+#include <vector>
 
+#include "core/renderer/css/css_fragment_decorator.h"
+#include "core/renderer/css/css_parser_token.h"
+#include "core/renderer/css/ng/parser/css_parser_token_range.h"
+#include "core/renderer/css/ng/parser/css_tokenizer.h"
+#include "core/renderer/css/ng/parser/media_query_parser.h"
+#include "core/renderer/css/ng/selector/css_parser_context.h"
+#include "core/renderer/css/ng/selector/css_selector_parser.h"
+#include "core/renderer/css/ng/style/condition_rule.h"
+#include "core/renderer/css/ng/style/style_rule.h"
+#include "core/renderer/css/shared_css_fragment.h"
 #include "core/renderer/dom/element.h"
 #include "core/renderer/dom/element_manager.h"
+#include "core/renderer/dom/fiber/component_element.h"
+#include "core/renderer/dom/fiber/page_element.h"
 #include "core/renderer/dom/vdom/radon/radon_component.h"
 #include "core/renderer/tasm/react/testing/mock_painting_context.h"
 #include "core/shell/testing/mock_tasm_delegate.h"
 #include "devtool/base_devtool/native/test/message_sender_mock.h"
 #include "devtool/base_devtool/native/test/mock_receiver.h"
+#include "devtool/lynx_devtool/agent/inspector_util.h"
 #include "devtool/lynx_devtool/agent/lynx_devtool_mediator.h"
 #include "devtool/lynx_devtool/element/element_inspector.h"
 #include "devtool/testing/mock/devtool_platform_facade_mock.h"
@@ -35,6 +51,158 @@ static constexpr int32_t kWidth = 1080;
 static constexpr int32_t kHeight = 1920;
 static constexpr float kDefaultLayoutsUnitPerPx = 1.f;
 static constexpr double kDefaultPhysicalPixelsPerLayoutUnit = 1.f;
+
+class RecordingMessageSender : public devtool::MessageSender {
+ public:
+  void SendMessage(const std::string& type, const Json::Value& msg) override {
+    json_messages_.emplace_back(type, msg);
+  }
+
+  void SendMessage(const std::string& type, const std::string& msg) override {
+    string_messages_.emplace_back(type, msg);
+  }
+
+  std::vector<std::pair<std::string, Json::Value>> json_messages_;
+  std::vector<std::pair<std::string, std::string>> string_messages_;
+};
+
+std::unique_ptr<css::LynxCSSSelector[]> CreateSelectorArray(
+    const std::string& selector) {
+  css::CSSParserContext context;
+  css::CSSTokenizer tokenizer(selector);
+  auto parser_tokens = tokenizer.TokenizeToEOF();
+  css::CSSParserTokenRange range(parser_tokens);
+  auto selector_vector = css::CSSSelectorParser::ParseSelector(range, &context);
+  size_t flattened_size =
+      css::CSSSelectorParser::FlattenedSize(selector_vector);
+  auto selector_arr = std::make_unique<css::LynxCSSSelector[]>(flattened_size);
+  css::CSSSelectorParser::AdoptSelectorVector(
+      selector_vector, selector_arr.get(), flattened_size);
+  return selector_arr;
+}
+
+fml::RefPtr<tasm::CSSParseToken> CreateParseToken(
+    const std::string& selector, tasm::CSSPropertyID property_id,
+    const std::string& value) {
+  tasm::CSSParserConfigs parser_configs;
+  auto token = fml::MakeRefCounted<tasm::CSSParseToken>(parser_configs);
+  token->raw_attributes_[property_id] =
+      tasm::CSSValue::MakePlainString(value.c_str());
+  auto sheet = std::make_shared<tasm::CSSSheet>(selector);
+  token->sheets().emplace_back(sheet);
+  return token;
+}
+
+struct MediaRuleForTest {
+  std::string selector;
+  tasm::CSSPropertyID property_id;
+  std::string value;
+  std::string media_text;
+};
+
+std::shared_ptr<tasm::SharedCSSFragment> CreateMediaCSSFragment(
+    std::initializer_list<MediaRuleForTest> rules) {
+  tasm::CSSParserTokenMap token_map;
+  std::vector<fml::RefPtr<tasm::CSSParseToken>> tokens;
+  tokens.reserve(rules.size());
+
+  for (const auto& rule : rules) {
+    auto token = CreateParseToken(rule.selector, rule.property_id, rule.value);
+    token_map.insert(std::make_pair(rule.selector, token));
+    tokens.push_back(std::move(token));
+  }
+
+  const std::vector<int32_t> dependent_ids;
+  tasm::CSSKeyframesTokenMap keyframes;
+  tasm::CSSFontFaceRuleMap font_faces;
+  auto fragment = std::make_shared<tasm::SharedCSSFragment>(
+      1, dependent_ids, token_map, keyframes, font_faces);
+  fragment->SetEnableCSSSelector();
+
+  size_t index = 0;
+  for (const auto& rule : rules) {
+    auto condition_rule =
+        fml::MakeRefCounted<css::ConditionRule>(fragment.get());
+    condition_rule->SetMediaQueries(
+        css::MediaQueryParser::ParseMediaQuerySet(rule.media_text));
+    condition_rule->AddStyleRule(fml::MakeRefCounted<css::StyleRule>(
+        CreateSelectorArray(rule.selector), tokens[index++]));
+    fragment->AddConditionRule(std::move(condition_rule));
+  }
+
+  return fragment;
+}
+
+struct MediaQueryTestDom {
+  fml::RefPtr<tasm::PageElement> page;
+  fml::RefPtr<tasm::ComponentElement> component;
+  fml::RefPtr<tasm::FiberElement> element;
+  tasm::Element* style_value = nullptr;
+  std::shared_ptr<tasm::SharedCSSFragment> fragment;
+};
+
+std::string FirstMediaText(tasm::SharedCSSFragment* fragment) {
+  std::string media_text;
+  fragment->rule_set()->ForEachConditionRule(
+      [&media_text](const css::ConditionRule& rule) {
+        if (media_text.empty() && rule.HasStructuredMediaQuery()) {
+          media_text = rule.MediaQueries()->Serialize();
+        }
+      });
+  return media_text;
+}
+
+void CreateStyleValueElement(tasm::ElementManager* manager,
+                             tasm::Element* component, MediaQueryTestDom& dom) {
+  auto style_value_ref = manager->CreateFiberElement("stylevalue");
+  dom.style_value = style_value_ref.get();
+  devtool::ElementInspector::InitForInspector(std::make_tuple(dom.style_value));
+  devtool::ElementInspector::InitStyleValueElement(
+      std::make_tuple(dom.style_value, component));
+  devtool::ElementInspector::SetStyleRoot(
+      std::make_tuple(dom.style_value, dom.style_value));
+  dom.style_value->set_parent(component);
+  style_value_ref.AbandonRef();
+}
+
+MediaQueryTestDom BuildMediaQueryTestDom(
+    tasm::ElementManager* manager,
+    std::initializer_list<MediaRuleForTest> rules) {
+  MediaQueryTestDom dom;
+  dom.fragment = CreateMediaCSSFragment(rules);
+  dom.page = manager->CreateFiberPage("page", 0);
+  manager->SetFiberPageElement(dom.page);
+  devtool::ElementInspector::InitForInspector(std::make_tuple(dom.page.get()));
+
+  dom.component = manager->CreateFiberComponent(
+      lynx::base::String("21"), 100, lynx::base::String("__Card__"),
+      lynx::base::String("TestComp"),
+      lynx::base::String("/index/components/TestComp"));
+  dom.component->style_sheet_ =
+      std::make_unique<tasm::CSSFragmentDecorator>(dom.fragment.get());
+  devtool::ElementInspector::InitForInspector(
+      std::make_tuple(dom.component.get()));
+  dom.page->InsertNode(dom.component);
+
+  dom.element = manager->CreateFiberElement("view");
+  dom.element->SetParentComponentUniqueIdForFiber(
+      static_cast<int64_t>(dom.component->impl_id()));
+  for (const auto& rule : rules) {
+    if (!rule.selector.empty() && rule.selector[0] == '.') {
+      const std::string class_name = rule.selector.substr(1);
+      dom.element->data_model()->SetClass(class_name.c_str());
+    }
+  }
+  devtool::ElementInspector::InitForInspector(
+      std::make_tuple(dom.element.get()));
+  CreateStyleValueElement(manager, dom.component.get(), dom);
+  devtool::ElementInspector::SetStyleValueElement(
+      std::make_tuple(dom.element.get(), dom.style_value));
+  devtool::ElementInspector::SetStyleRoot(
+      std::make_tuple(dom.element.get(), dom.style_value));
+  dom.component->InsertNode(dom.element);
+  return dom;
+}
 
 class InspectorTasmExecutorTest : public ::testing::Test {
  public:
@@ -118,6 +286,200 @@ TEST_F(InspectorTasmExecutorTest, LayerTreeDisableCase) {
   EXPECT_TRUE(is_valid_json);
   EXPECT_EQ(res["id"], 6);
   EXPECT_FALSE(element_executor_->layer_tree_enabled_);
+}
+
+TEST_F(InspectorTasmExecutorTest, GetMediaQueriesReturnsMediaRules) {
+  auto dom = BuildMediaQueryTestDom(
+      manager_.get(),
+      {{".active-media", tasm::CSSPropertyID::kPropertyIDWidth, "10px",
+        "(min-width: 1000px)"},
+       {".inactive-media", tasm::CSSPropertyID::kPropertyIDHeight, "20px",
+        "(max-width: 10px)"}});
+
+  element_executor_->element_root_ = dom.element.get();
+
+  auto response_sender = std::make_shared<RecordingMessageSender>();
+  Json::Value message(Json::ValueType::objectValue);
+  message["id"] = 101;
+  element_executor_->GetMediaQueries(response_sender, message);
+
+  ASSERT_EQ(response_sender->json_messages_.size(), 1U);
+  const Json::Value& response = response_sender->json_messages_[0].second;
+  EXPECT_EQ(response["id"].asInt(), 101);
+  ASSERT_TRUE(response["result"]["medias"].isArray());
+  const Json::Value& medias = response["result"]["medias"];
+  ASSERT_EQ(medias.size(), 2U);
+  EXPECT_EQ(medias[0]["text"].asString(), "(min-width: 1000px)");
+  EXPECT_EQ(medias[0]["source"].asString(), "mediaRule");
+  EXPECT_EQ(medias[0]["styleSheetId"].asString(),
+            std::to_string(devtool::ElementInspector::NodeId(dom.style_value)));
+  EXPECT_EQ(medias[0]["range"]["startLine"].asInt(), 0);
+  EXPECT_EQ(medias[0]["range"]["endLine"].asInt(), 0);
+  EXPECT_EQ(medias[0]["range"]["startColumn"].asInt(), 0);
+  EXPECT_EQ(medias[0]["range"]["endColumn"].asInt(),
+            static_cast<int>(std::string("(min-width: 1000px)").length()));
+  EXPECT_EQ(medias[1]["text"].asString(), "(max-width: 10px)");
+  EXPECT_EQ(medias[1]["range"]["startLine"].asInt(), 1);
+}
+
+TEST_F(InspectorTasmExecutorTest, SetMediaTextUpdatesRuleCacheAndSendsEvents) {
+  auto dom = BuildMediaQueryTestDom(
+      manager_.get(), {{".active-media", tasm::CSSPropertyID::kPropertyIDWidth,
+                        "10px", "(min-width: 1000px)"}});
+  element_executor_->element_root_ = dom.element.get();
+
+  auto matched_styles =
+      devtool::ElementInspector::GetMatchedStyleSheet(dom.element.get());
+  ASSERT_EQ(matched_styles.size(), 1U);
+  EXPECT_EQ(matched_styles[0].media_text_, "(min-width: 1000px)");
+
+  auto event_sender = std::make_shared<RecordingMessageSender>();
+  devtools_ng_->message_sender_ = event_sender;
+  auto response_sender = std::make_shared<RecordingMessageSender>();
+
+  Json::Value message(Json::ValueType::objectValue);
+  message["id"] = 102;
+  message["params"]["styleSheetId"] =
+      std::to_string(devtool::ElementInspector::NodeId(dom.style_value));
+  message["params"]["range"]["startLine"] = 0;
+  message["params"]["range"]["startColumn"] = 0;
+  message["params"]["range"]["endLine"] = 0;
+  message["params"]["range"]["endColumn"] =
+      static_cast<int>(std::string("(min-width: 1000px)").length());
+  message["params"]["text"] = "@media (min-width: 100px)";
+
+  element_executor_->SetMediaText(response_sender, message);
+
+  ASSERT_EQ(response_sender->json_messages_.size(), 1U);
+  const Json::Value& response = response_sender->json_messages_[0].second;
+  EXPECT_EQ(response["id"].asInt(), 102);
+  EXPECT_TRUE(response["error"].isNull());
+  EXPECT_EQ(response["result"]["media"]["text"].asString(),
+            "(min-width: 100px)");
+  EXPECT_EQ(FirstMediaText(dom.fragment.get()), "(min-width: 100px)");
+
+  auto updated_sheet = devtool::ElementInspector::GetStyleSheetByName(
+      dom.element.get(), ".active-media");
+  ASSERT_FALSE(updated_sheet.empty);
+  EXPECT_EQ(updated_sheet.media_text_, "(min-width: 100px)");
+  EXPECT_EQ(updated_sheet.media_range_.start_line_, 0);
+  EXPECT_EQ(updated_sheet.media_range_.end_column_,
+            static_cast<int>(std::string("(min-width: 100px)").length()));
+
+  ASSERT_EQ(event_sender->json_messages_.size(), 2U);
+  EXPECT_EQ(event_sender->json_messages_[0].second["method"].asString(),
+            "CSS.mediaQueryResultChanged");
+  EXPECT_EQ(event_sender->json_messages_[1].second["method"].asString(),
+            "CSS.styleSheetChanged");
+  EXPECT_EQ(event_sender->json_messages_[1]
+                .second["params"]["styleSheetId"]
+                .asString(),
+            std::to_string(devtool::ElementInspector::NodeId(dom.style_value)));
+}
+
+TEST_F(InspectorTasmExecutorTest,
+       SetMediaTextKeepsOtherStyleSheetCacheWithSameMediaIndex) {
+  auto dom = BuildMediaQueryTestDom(
+      manager_.get(), {{".active-media", tasm::CSSPropertyID::kPropertyIDWidth,
+                        "10px", "(min-width: 1000px)"}});
+  element_executor_->element_root_ = dom.element.get();
+
+  auto matched_styles =
+      devtool::ElementInspector::GetMatchedStyleSheet(dom.element.get());
+  ASSERT_EQ(matched_styles.size(), 1U);
+
+  const std::string target_style_sheet_id =
+      std::to_string(devtool::ElementInspector::NodeId(dom.style_value));
+  const std::string foreign_style_sheet_id = "foreign-style-sheet";
+  const std::string foreign_media_text = "(max-width: 1px)";
+  auto foreign_style_sheet = matched_styles[0];
+  foreign_style_sheet.style_sheet_id_ = foreign_style_sheet_id;
+  foreign_style_sheet.style_name_ = ".foreign-media";
+  foreign_style_sheet.media_text_ = foreign_media_text;
+  foreign_style_sheet.media_range_ = {
+      0, 0, 0, static_cast<int>(foreign_media_text.length())};
+
+  auto& style_sheet_map =
+      devtool::ElementInspector::GetStyleSheetMap(dom.style_value);
+  style_sheet_map.insert(
+      {foreign_style_sheet.style_name_, foreign_style_sheet});
+
+  auto response_sender = std::make_shared<RecordingMessageSender>();
+  Json::Value message(Json::ValueType::objectValue);
+  message["id"] = 105;
+  message["params"]["styleSheetId"] = target_style_sheet_id;
+  message["params"]["range"]["startLine"] = 0;
+  message["params"]["range"]["startColumn"] = 0;
+  message["params"]["range"]["endLine"] = 0;
+  message["params"]["range"]["endColumn"] =
+      static_cast<int>(std::string("(min-width: 1000px)").length());
+  message["params"]["text"] = "@media (min-width: 100px)";
+
+  element_executor_->SetMediaText(response_sender, message);
+
+  ASSERT_EQ(response_sender->json_messages_.size(), 1U);
+  const Json::Value& response = response_sender->json_messages_[0].second;
+  EXPECT_EQ(response["id"].asInt(), 105);
+  EXPECT_TRUE(response["error"].isNull());
+  EXPECT_EQ(FirstMediaText(dom.fragment.get()), "(min-width: 100px)");
+
+  auto updated_sheet = devtool::ElementInspector::GetStyleSheetByName(
+      dom.element.get(), ".active-media");
+  ASSERT_FALSE(updated_sheet.empty);
+  EXPECT_EQ(updated_sheet.style_sheet_id_, target_style_sheet_id);
+  EXPECT_EQ(updated_sheet.media_text_, "(min-width: 100px)");
+  EXPECT_EQ(updated_sheet.media_range_.start_line_, 0);
+
+  bool found_foreign_style_sheet = false;
+  for (const auto& item : style_sheet_map) {
+    const auto& style_sheet = item.second;
+    if (style_sheet.style_sheet_id_ != foreign_style_sheet_id) {
+      continue;
+    }
+    found_foreign_style_sheet = true;
+    EXPECT_EQ(style_sheet.media_text_, foreign_media_text);
+    EXPECT_EQ(style_sheet.media_range_.start_line_, 0);
+    EXPECT_EQ(style_sheet.media_range_.end_column_,
+              static_cast<int>(foreign_media_text.length()));
+  }
+  EXPECT_TRUE(found_foreign_style_sheet);
+}
+
+TEST_F(InspectorTasmExecutorTest, SetMediaTextReportsErrors) {
+  auto dom = BuildMediaQueryTestDom(
+      manager_.get(), {{".active-media", tasm::CSSPropertyID::kPropertyIDWidth,
+                        "10px", "(min-width: 1000px)"}});
+  element_executor_->element_root_ = dom.element.get();
+
+  auto response_sender = std::make_shared<RecordingMessageSender>();
+  Json::Value invalid_message(Json::ValueType::objectValue);
+  invalid_message["id"] = 103;
+  invalid_message["params"]["styleSheetId"] = "";
+  invalid_message["params"]["text"] = "(min-width: 100px)";
+  element_executor_->SetMediaText(response_sender, invalid_message);
+
+  ASSERT_EQ(response_sender->json_messages_.size(), 1U);
+  EXPECT_EQ(response_sender->json_messages_[0].second["error"]["code"].asInt(),
+            devtool::kInvalidParams);
+
+  response_sender->json_messages_.clear();
+  Json::Value not_found_message(Json::ValueType::objectValue);
+  not_found_message["id"] = 104;
+  not_found_message["params"]["styleSheetId"] =
+      std::to_string(devtool::ElementInspector::NodeId(dom.style_value));
+  not_found_message["params"]["range"]["startLine"] = 99;
+  not_found_message["params"]["range"]["startColumn"] = 0;
+  not_found_message["params"]["range"]["endLine"] = 99;
+  not_found_message["params"]["range"]["endColumn"] = 10;
+  not_found_message["params"]["text"] = "(min-width: 100px)";
+  element_executor_->SetMediaText(response_sender, not_found_message);
+
+  ASSERT_EQ(response_sender->json_messages_.size(), 1U);
+  EXPECT_EQ(response_sender->json_messages_[0].second["error"]["code"].asInt(),
+            devtool::kServerError);
+  EXPECT_EQ(
+      response_sender->json_messages_[0].second["error"]["message"].asString(),
+      "Media rule not found");
 }
 
 TEST_F(InspectorTasmExecutorTest, GetComputedStyleOfNodeStyleOrderCase) {

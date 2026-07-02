@@ -14,12 +14,14 @@
 #include <vector>
 
 #include "base/include/fml/memory/ref_counted.h"
+#include "core/base/lynx_export.h"
 #include "core/renderer/css/ng/media_query/media_query.h"
 
 namespace lynx {
 namespace css {
 
-class MediaQuerySet : public fml::RefCountedThreadSafeStorage {
+class LYNX_EXPORT_FOR_DEVTOOL MediaQuerySet
+    : public fml::RefCountedThreadSafeStorage {
  public:
   MediaQuerySet() = default;
   explicit MediaQuerySet(std::vector<fml::RefPtr<const MediaQuery>> queries)

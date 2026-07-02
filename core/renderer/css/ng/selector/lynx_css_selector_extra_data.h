@@ -10,12 +10,14 @@
 #include <string>
 #include <vector>
 
+#include "core/base/lynx_export.h"
+
 namespace lynx {
 namespace css {
 
 class LynxCSSSelectorList;
 
-struct LynxCSSSelectorExtraData {
+struct LYNX_EXPORT_FOR_DEVTOOL LynxCSSSelectorExtraData {
   enum class AttributeMatchType : int {
     kCaseSensitive,
     kCaseInsensitive,

@@ -99,7 +99,8 @@ class CSSTokenizer {
   const std::u16string& RegisterString(const std::u16string&);
 
   using CodePoint = CSSParserToken (CSSTokenizer::*)(UChar);
-  static const CodePoint kCodePoints[];
+  static constexpr unsigned kCodePointsNumber = 128;
+  static const CodePoint kCodePoints[kCodePointsNumber];
 
   CSSTokenizerInputStream input_;
   std::vector<CSSParserTokenType> block_stack_;

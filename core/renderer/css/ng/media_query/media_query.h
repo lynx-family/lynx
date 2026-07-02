@@ -18,6 +18,7 @@
 #include <utility>
 
 #include "base/include/fml/memory/ref_counted.h"
+#include "core/base/lynx_export.h"
 #include "core/renderer/css/ng/media_query/media_query_exp.h"
 
 namespace lynx {
@@ -34,7 +35,8 @@ enum class MediaQueryRestrictor : uint8_t {
   kNot = 2,
 };
 
-class MediaQuery : public fml::RefCountedThreadSafeStorage {
+class LYNX_EXPORT_FOR_DEVTOOL MediaQuery
+    : public fml::RefCountedThreadSafeStorage {
  public:
   // Well-known media types. We only model the ones CSS still keeps
   // first-class; everything else can be carried in `type_name_` verbatim.

@@ -764,6 +764,8 @@ subspec_target("zlib") {
 }
 
 subspec_target("amoeba") {
+  sources =
+      [ "../../../../core/renderer/css/ng/selector/lynx_css_selector_impl.cc" ]
   deps = [
     "../../../../core/renderer/css",
     "../../../../core/renderer/simple_styling",
