@@ -894,6 +894,10 @@ public class LynxCallStackUtil : NSObject {
 public class LynxCardManager : LynxBaseCardManager {
 }
 
+public protocol LynxClaySnapshotProvider-p : <NSObject> {
+  public void LynxClaySnapshotProvider-p::requestRasterSnapshotForUI:completion:(LynxUI *ui,[completion] LynxClaySnapshotCompletion completion);
+}
+
 public class LynxCollectionDataSource : NSObject, <UICollectionViewDataSource> {
   public BOOL LynxCollectionDataSource::ignoreLoadCell ignoreLoadCell;
   public instancetype LynxCollectionDataSource::initWithLynxUICollection:(LynxUICollection *collection);
@@ -4703,6 +4707,7 @@ public class LynxUIContext : NSObject {
   public id<LynxTemplateResourceFetcher> LynxUIContext::templateResourceFetcher templateResourceFetcher;
   public BOOL LynxUIContext::enableFetchUIImage enableFetchUIImage;
   public id<LynxFrameViewProvider> LynxUIContext::lynxFrameViewProvider lynxFrameViewProvider;
+  public id<LynxClaySnapshotProvider> LynxUIContext::claySnapshotProvider claySnapshotProvider;
   public LynxImageConfig* LynxUIContext::imageConfig imageConfig;
   public BOOL LynxUIContext::defaultOverflowVisible defaultOverflowVisible;
   public BOOL LynxUIContext::defaultImplicitAnimation defaultImplicitAnimation;
@@ -7284,6 +7289,8 @@ public enum LynxPropStatus {
 
   typedef struct TransOffset TransOffset
   typedef void(^ LynxNodeReadyBlock) (LynxUI *)
+
+  typedef void(^ LynxClaySnapshotCompletion) (UIImage *_Nullable image)
 
 public enum NestedScrollMode {
   NestedScrollModeSelfOnly

@@ -27,6 +27,15 @@ import com.lynx.tasm.behavior.ui.UIBody.UIBodyView;
 import com.lynx.tasm.behavior.ui.UIGroup;
 
 public interface ILynxUIRenderer {
+  enum RenderType {
+    LYNX_UI,
+    CLAY,
+  }
+
+  default RenderType getRenderType() {
+    return RenderType.LYNX_UI;
+  }
+
   void onInitBodyView(UIBodyView bodyView, Context context, LynxGroup group);
 
   void onInitLynxTemplateRender(LynxContext context, BehaviorRegistry behaviorRegistry,
