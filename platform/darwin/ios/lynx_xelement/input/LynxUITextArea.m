@@ -11,6 +11,13 @@ static NSInteger gTextareaLightTag = 23333;
 static CGFloat kLynxTextAreaEpsilonThreshold = 1.0f;
 static NSInteger kLynxTextAreaOutOfMaxlines = -1;
 
+@interface LynxUIBaseInput (LynxDefaultValueInputEventSuppression)
+// Reuse the default-value input suppression flag owned by LynxUIBaseInput.m.
+// The flag stays private; this local declaration only makes the existing
+// getter visible to the selection callback in this file.
+- (BOOL)shouldSuppressInputEvent;
+@end
+
 @implementation LynxUITextAreaShadowNode
 
 @end
@@ -296,6 +303,9 @@ LYNX_UI_METHOD(setValue) {
 }
 
 - (void)textViewDidChangeSelection:(UITextView *)textView {
+  if ([self shouldSuppressInputEvent]) {
+    return;
+  }
   [self emitEvent:@"selection" detail:@{
     @"selectionStart": @(self.view.selectedTextRange ? [self.view offsetFromPosition:self.view.beginningOfDocument toPosition:self.view.selectedTextRange.start] : -1),
     @"selectionEnd": @(self.view.selectedTextRange  ? [self.view offsetFromPosition:self.view.beginningOfDocument toPosition:self.view.selectedTextRange.end] : -1),
