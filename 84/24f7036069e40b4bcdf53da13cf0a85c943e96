@@ -1,0 +1,37 @@
+lynx/core/runtime/js/runtime_manager.cc
+  s_53fc2fbb588a38::t_7105b20e09efec 643-651,657-660
+  s_53fc2fbb588a38::t_e5ef19f90a4be3 193-199,296-306,385-398,624-642,652-656
+lynx/base/trace/native/trace_controller_impl.cc
+  s_53fc2fbb588a38::t_ffd59dbd7873a7 120,125-127
+  h_aeff19c41d4423 529-537
+  s_53fc2fbb588a38::t_f713ac4e00f333 89-91,210-212
+  s_53fc2fbb588a38::t_c1532df3db94b7 59,119,124,187,213
+  s_53fc2fbb588a38::t_67a0d9d32e8762 94-103,121-123,158-186,202-209
+  s_53fc2fbb588a38::t_7aa6946b33868a 582
+lynx/core/runtime/js/runtime_manager.h
+  s_53fc2fbb588a38::t_6485693d243cfb 7
+  s_53fc2fbb588a38::t_bea506a48413a4 9
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8424f7036069e40b4bcdf53da13cf0a85c943e96",
+  "prompts": {},
+  "humans": {
+    "h_aeff19c41d4423": {
+      "author": "yuyang.1024 <yuyang.1024@bytedance.com>"
+    }
+  },
+  "sessions": {
+    "s_53fc2fbb588a38": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a16620f3bf261486506bb0e",
+        "model": "gpt-5.5__dev"
+      },
+      "human_author": null
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

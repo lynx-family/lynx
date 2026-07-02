@@ -1,0 +1,16 @@
+platform/darwin/macos/exported_symbols.sym
+  h_c7499b019d31b1 96
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "07c577138c8ff8f324bf8f704bf27c8c69b2d743",
+  "prompts": {},
+  "humans": {
+    "h_c7499b019d31b1": {
+      "author": "chenyouhui.duke <chenyouhui.duke@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}
