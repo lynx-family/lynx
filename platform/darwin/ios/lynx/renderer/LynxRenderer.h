@@ -26,4 +26,6 @@
 
 - (void)onRebuildSubRenderers;
 
+- (void)onSetFrame:(CGRect)frame;
+
 @end
