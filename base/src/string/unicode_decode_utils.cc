@@ -2,21 +2,21 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#include "platform/harmony/lynx_harmony/src/main/cpp/text/utils/unicode_decode_utils.h"
+#include "base/include/string/unicode_decode_utils.h"
 
 #include <cstring>
 #include <utility>
 
 #include "base/include/string/string_number_convert.h"
 
-namespace lynx::tasm::harmony {
+namespace lynx::base {
 
 std::string UnicodeDecodeUtils::Decode(const std::string_view input_string,
                                        const UnicodeDecodeProperty property) {
   std::string output;
   const auto length = input_string.length();
   output.reserve(length);
-  for (int i = 0; i < length; i++) {
+  for (std::string_view::size_type i = 0; i < length; i++) {
     if (const auto c = input_string[i]; c == '&') {
       if (const auto end_pos = input_string.find(';', i);
           end_pos != std::string_view::npos) {
@@ -28,12 +28,12 @@ std::string UnicodeDecodeUtils::Decode(const std::string_view input_string,
             // hex, max length = 6
             std::string hex_string(input_string.data() + i + 3,
                                    end_pos - i - 3);
-            success = base::StringToInt(hex_string, &unicode, 16);
+            success = StringToInt(hex_string, &unicode, 16);
           } else if (end_pos < i + 2 + 7) {
             // decimal, max length = 7
             std::string decimal_string(input_string.data() + i + 2,
                                        end_pos - i - 2);
-            success = base::StringToInt(decimal_string, &unicode, 10);
+            success = StringToInt(decimal_string, &unicode, 10);
           }
           if (char unicode_buffer[5];
               success && unicode <= 0x10ffff && unicode >= 0 &&
@@ -172,7 +172,7 @@ uint32_t UnicodeDecodeUtils::ConvertU8ToU32Char(const char* char_start,
   if (char_len > length) {
     return -1;
   }
-  for (uint32_t j = 1; j < char_len; ++j) {
+  for (int j = 1; j < char_len; ++j) {
     nxt = char_start[j];
     if ((nxt & 0xC0u) != 0x80) {
       return -1;
@@ -238,4 +238,4 @@ void UnicodeDecodeUtils::ProcessInsertChar(
   }
 }
 
-}  // namespace lynx::tasm::harmony
+}  // namespace lynx::base

@@ -3,8 +3,11 @@
 // LICENSE file in the root directory of this source tree.
 
 #include "core/renderer/ui_wrapper/layout/ios/text_layout_darwin.h"
+#include <string>
+#include <string_view>
 #include <vector>
 
+#include "base/include/string/unicode_decode_utils.h"
 #include "core/renderer/css/text_attributes.h"
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/dom/fiber/fiber_element.h"
@@ -41,6 +44,12 @@ NSArray<NSArray<NSNumber*>*>* AutoFontSizeLineRangesToNSArray(
     ]];
   }
   return result;
+}
+
+NSString* DecodeTextContentToNSString(const base::String& text) {
+  std::string decoded_text =
+      base::UnicodeDecodeUtils::Decode(std::string_view(text.c_str(), text.length()));
+  return [NSString stringWithUTF8String:decoded_text.c_str()];
 }
 
 }  // namespace
@@ -212,7 +221,7 @@ void TextLayoutDarwin::GenerateAttributedString(
     TextElement* text_element = static_cast<TextElement*>(element);
     auto element_content = text_element->content();
     if (!element_content.empty()) {
-      NSString* content = [NSString stringWithUTF8String:element_content.c_str()];
+      NSString* content = DecodeTextContentToNSString(element_content);
       NSAttributedString* str = [[NSAttributedString alloc] initWithString:content
                                                                 attributes:baseAttributes];
       [attributedString appendAttributedString:str];
@@ -230,7 +239,7 @@ void TextLayoutDarwin::ProcessChildAttribute(
     Boolean* hasViewOrImage) {
   if (child->is_raw_text()) {
     RawTextElement* rawText = static_cast<RawTextElement*>(child);
-    NSString* content = [NSString stringWithUTF8String:rawText->content().c_str()];
+    NSString* content = DecodeTextContentToNSString(rawText->content());
     NSAttributedString* str = [[NSAttributedString alloc] initWithString:content
                                                               attributes:baseAttributes];
     [attributedString appendAttributedString:str];

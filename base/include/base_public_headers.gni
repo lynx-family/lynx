@@ -177,6 +177,7 @@ string_utils_public_headers_list = [
   "string/quickjs_dtoa.h",
   "string/string_number_convert.h",
   "string/string_utils.h",
+  "string/unicode_decode_utils.h",
 ]
 string_utils_public_headers = rebase_path(string_utils_public_headers_list)
 

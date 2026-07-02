@@ -7,8 +7,11 @@
 
 #include "core/renderer/dom/testing/fiber_mock_text_layout.h"
 
+#include <string>
+#include <string_view>
 #include <utility>
 
+#include "base/include/string/unicode_decode_utils.h"
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/dom/fiber/fiber_element.h"
 #include "core/renderer/dom/fiber/image_element.h"
@@ -20,6 +23,19 @@
 namespace lynx {
 namespace tasm {
 namespace testing {
+namespace {
+
+void AppendDecodedTextContent(std::string_view text, std::string& output,
+                              size_t& current_length, bool use_utf16) {
+  std::string decoded_text = base::UnicodeDecodeUtils::Decode(text);
+  output += decoded_text;
+  current_length += use_utf16 ? GetUtf16SizeFromUtf8(decoded_text.c_str(),
+                                                     decoded_text.length())
+                              : decoded_text.length();
+}
+
+}  // namespace
+
 TextLayoutMock::TextLayoutMock() {}
 
 TextLayoutMock::~TextLayoutMock() {}
@@ -55,9 +71,9 @@ void TextLayoutMock::BuildTextPropsBuffer(TextElement* element,
   size_t start = current_length;
   base::String& content = element->content();
   if (!content.empty()) {
-    output += content.str();
-    current_length +=
-        use_utf16 ? element->content_utf16_length() : content.length();
+    AppendDecodedTextContent(
+        std::string_view(content.c_str(), content.length()), output,
+        current_length, use_utf16);
   }
 
   auto* child = element->first_render_child();
@@ -81,9 +97,9 @@ void TextLayoutMock::ProcessChildProps(FiberElement* child, std::string& output,
     auto* raw_text_child = static_cast<RawTextElement*>(child);
     const auto& raw_content = raw_text_child->content();
     if (!raw_content.empty()) {
-      output += raw_content.str();
-      current_length += use_utf16 ? raw_text_child->content_utf16_length()
-                                  : raw_content.length();
+      AppendDecodedTextContent(
+          std::string_view(raw_content.c_str(), raw_content.length()), output,
+          current_length, use_utf16);
     }
   } else if (child->is_text()) {
     // inline text
