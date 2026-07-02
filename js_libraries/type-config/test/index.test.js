@@ -46,7 +46,7 @@ describe('type-config index', () => {
     ]);
   });
   it('should have correct configKeys', () => {
-    expect(configKeys.length).toBe(140);
+    expect(configKeys.length).toBe(141);
     expect(configKeys).toEqual([
       'absoluteInContentBound',
       'alignMouseEventWithW3C',
@@ -106,6 +106,7 @@ describe('type-config index', () => {
       'enableMTSPreExecute',
       'enableMultiTouch',
       'enableMultiTouchParamsCompatible',
+      'enableNativeInteraction',
       'enableNativeList',
       'enableNewAnimator',
       'enableNewClipMode',

@@ -91,6 +91,7 @@ const configKeys = [
   'enableMTSPreExecute',
   'enableMultiTouch',
   'enableMultiTouchParamsCompatible',
+  'enableNativeInteraction',
   'enableNativeList',
   'enableNewAnimator',
   'enableNewClipMode',

@@ -510,6 +510,7 @@ public abstract class LynxBaseUI
   protected LynxBaseUI(final LynxContext context, Object param) {
     mContext = context;
     mParam = param;
+    nativeInteractionEnabled = context.getEnableNativeInteraction();
     mLynxBackground = new LynxBackground(context);
     mLynxBackground.setDrawableCallback(mDrawableCallback);
     mFontSize = PixelUtils.dipToPx(14, context.getScreenMetrics().density);
@@ -1512,8 +1513,8 @@ public abstract class LynxBaseUI
     if (id == null || id.isEmpty()) {
       id = null;
       mExposureID = id;
-      String errMsg =
-          "setExposureID(Dynamic exposureID) failed, since it is not number/string, or it is empty string";
+      String errMsg = "setExposureID(Dynamic exposureID) failed, since it is not number/string, or "
+          + "it is empty string";
       LLog.e("LynxBaseUI", errMsg);
       LLog.DTHROW(new RuntimeException(errMsg));
     } else {
@@ -3259,7 +3260,8 @@ public abstract class LynxBaseUI
     if (isFlatten()) {
       if (mDrawParent == null) {
         LLog.e(TAG,
-            "mDrawParent of flattenUI is null, which causes the value getLocationOnScreen returns is not the correct coordinates relative to the screen!");
+            "mDrawParent of flattenUI is null, which causes the value getLocationOnScreen returns "
+                + "is not the correct coordinates relative to the screen!");
         return point;
       }
       view = ((LynxUI) mDrawParent).getView();
