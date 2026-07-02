@@ -12,6 +12,8 @@ namespace clay {
 
 const std::unordered_set<std::string>& InternalPlatformViewTags();
 const std::unordered_set<std::string>& InternalPlatformViewShadowNodeTags();
+const std::unordered_set<std::string>&
+InternalPlatformViewWithoutShadowNodeTags();
 bool ShouldCreateFallbackNativeViewDirectly();
 
 }  // namespace clay

@@ -396,6 +396,12 @@ class RenderObject : public AbstractNode {
            HasClipOrOverflowClip() || HasBlur() || HasColorFilter() ||
            HasClipPath() || HasBackgroundClipText() || HasMask();
   }
+  void SetShouldBuildIntoLayerTree(bool should_build_into_layer_tree) {
+    should_build_into_layer_tree_ = should_build_into_layer_tree;
+  }
+  bool ShouldBuildIntoLayerTree() const {
+    return should_build_into_layer_tree_;
+  }
 
   bool CanApplyAA() const;
 
@@ -553,6 +559,9 @@ class RenderObject : public AbstractNode {
 
   // Whether this render object repaints separately from its parent.
   bool repaint_boundary_ = false;
+  // Whether this render object should be attached to the normal frame layer
+  // tree.
+  bool should_build_into_layer_tree_ = true;
   // Whether this render object's paint information is dirty.
   bool needs_paint_ = true;
   // Whether this render object's paint effect is updated, if needs_paint_ is

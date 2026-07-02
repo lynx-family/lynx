@@ -55,6 +55,11 @@ bool HasInternalPlatformViewShadowNode(const std::string& tag_name) {
   return tags.find(tag_name) != tags.end();
 }
 
+bool IsInternalPlatformViewWithoutShadowNodeTag(const std::string& tag_name) {
+  const auto& tags = InternalPlatformViewWithoutShadowNodeTags();
+  return tags.find(tag_name) != tags.end();
+}
+
 ShadowNode* CreateNativeViewShadowNode(int32_t id, ShadowNodeOwner* owner,
                                        const std::string& tag_name) {
   return GetShadowNodeCreator<NativeViewShadowNode>()(id, owner, tag_name);
@@ -134,6 +139,9 @@ ShadowNode* ViewRegistry::CreateShadowNode(int32_t id, ShadowNodeOwner* owner,
                                            const std::string& tag_name) {
   TRACE_EVENT("clay", CLAY_VIEW_REGISTRY_CREATE_SHADOW_NODE, "id", id, "tag",
               tag_name.c_str());
+  if (IsInternalPlatformViewWithoutShadowNodeTag(tag_name)) {
+    return nullptr;
+  }
   if (HasInternalPlatformViewShadowNode(tag_name)) {
     return CreateNativeViewShadowNode(id, owner, tag_name);
   }
@@ -158,6 +166,9 @@ int32_t ViewRegistry::GetTagInfo(const std::string& tag_name,
   const int32_t kTagInfoCustom = 1 << 2;
   // result can also store is_virtual information when it is needed.
   int32_t result = 0;
+  if (IsInternalPlatformViewWithoutShadowNodeTag(tag_name)) {
+    return result;
+  }
   if (HasInternalPlatformViewShadowNode(tag_name)) {
     return result | kTagInfoCustom;
   }
