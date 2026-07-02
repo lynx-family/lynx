@@ -13,7 +13,11 @@
   if (self) {
     self.uiView = nil;
     self.snapshotCache = nil;
-    self.snapshotInterval = 32000;
+    // This interval defines the minimum cadence for continuous screencast capture attempts,
+    // not the display vsync interval or capture/encode cost. Bound it to 1 fps so static
+    // pages or fast-acked dynamic pages cannot trigger multiple captures/sends within the
+    // same second.
+    self.snapshotInterval = 1000000;
     self.lastScreenshotTime = 0;
     self.observer = nil;
     self.hasSnapshotTask = NO;
