@@ -67,8 +67,9 @@ HRESULT CreateSafeD3D11Device(
   HRESULT hr = E_FAIL;
   Microsoft::WRL::ComPtr<IDXGIAdapter1> adapter;
 
-  D3D_FEATURE_LEVEL feature_levels[] = {D3D_FEATURE_LEVEL_11_1,
-                                        D3D_FEATURE_LEVEL_11_0};
+  D3D_FEATURE_LEVEL feature_levels[] = {
+      D3D_FEATURE_LEVEL_11_1, D3D_FEATURE_LEVEL_11_0, D3D_FEATURE_LEVEL_10_1,
+      D3D_FEATURE_LEVEL_10_0};
 #if USE_DISCRETE_GPU
   // Try to use high-performance discrete GPU
   if (SUCCEEDED(GetHighPerformanceAdapter(&adapter))) {

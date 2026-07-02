@@ -155,6 +155,16 @@ bool CreateD3D9TextureSharedHandle(IDirect3DDevice9* device, D3DFORMAT format,
 bool OpenD3D9SharedHandle(IDirect3DDevice9* device, D3DFORMAT format,
                           skity::Vec2 size, HANDLE shared_handle,
                           IDirect3DTexture9** out_texture) {
+  IDirect3DDevice9* checked = nullptr;
+  HRESULT qr = device->QueryInterface(IID_IDirect3DDevice9,
+                                      reinterpret_cast<void**>(&checked));
+  if (SUCCEEDED(qr) && checked) {
+    checked->Release();
+  } else {
+    FML_LOG(ERROR) << "Invalid device pointer !";
+    return false;
+  }
+
   HRESULT hr =
       device->CreateTexture(size.x, size.y, 1, D3DUSAGE_RENDERTARGET, format,
                             D3DPOOL_DEFAULT, out_texture, &shared_handle);
