@@ -12,7 +12,11 @@ namespace lynx {
 namespace devtool {
 
 namespace {
-constexpr int64_t SCREENSHOT_INTERVAL = 500;  // milliseconds
+// This interval defines the minimum cadence for continuous screencast capture
+// attempts, not the display vsync interval or capture/encode cost. Bound it to
+// 1 fps so static pages or fast-acked dynamic pages cannot trigger multiple
+// captures/sends within the same second.
+constexpr int64_t SCREENSHOT_INTERVAL = 1000;  // milliseconds
 }  // namespace
 
 ScreenshotTimerTriggerEmbedder::ScreenshotTimerTriggerEmbedder(
