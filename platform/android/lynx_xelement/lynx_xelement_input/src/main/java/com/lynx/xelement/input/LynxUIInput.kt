@@ -17,14 +17,20 @@ import com.lynx.tasm.behavior.StylesDiffMap
 open class LynxUIInput(context: LynxContext, params:Any?) : LynxUIBaseInput(context, params) {
   
   constructor(context: LynxContext) : this(context, null)
+
+    protected open fun isSingleLineConfiguredByTheme(): Boolean {
+        return false
+    }
   
     override fun createView(context: Context?): LynxEditTextView{
         val editText = super.createView(context)
-        editText.setLines(1)
-        editText.isSingleLine = true
+        if (!isSingleLineConfiguredByTheme()) {
+            editText.setLines(1)
+            editText.isSingleLine = true
+            editText.setHorizontallyScrolling(true)
+            editText.ellipsize = TruncateAt.END
+        }
         editText.gravity = Gravity.CENTER_VERTICAL
-        editText.setHorizontallyScrolling(true)
-        editText.ellipsize = TruncateAt.END
         editText.setPadding(0, 0, 0, 0)
         editText.apply {
             setOnEditorActionListener { _, actionId, _ ->
