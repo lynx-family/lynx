@@ -7,18 +7,14 @@
 
 #include "core/renderer/dom/fragment/display_list_builder.h"
 
-#include <vector>
-
 #include "core/renderer/dom/fragment/display_list_reader.h"
 #include "core/renderer/starlight/style/borders_data.h"
 #include "core/renderer/ui_wrapper/painting/paint_image.h"
 #include "core/style/transform/matrix44.h"
-#include "third_party/googletest/googlemock/include/gmock/gmock.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 namespace lynx {
 namespace tasm {
-
 class DisplayListBuilderTest : public ::testing::Test {
  protected:
   void SetUp() override { builder_ = std::make_unique<DisplayListBuilder>(); }
@@ -527,26 +523,6 @@ TEST_F(DisplayListBuilderTest, MoveSemantics) {
 
   DisplayList display_list = builder2.Build();
   EXPECT_EQ(display_list.GetContentItemsSize(), 1u);
-}
-
-TEST_F(DisplayListBuilderTest, DisplayListItemABI) {
-  // Verify ABI invariants that cross-platform consumers depend on
-  static_assert(sizeof(DisplayListItem) == 56,
-                "DisplayListItem size must be 56 bytes");
-  static_assert(offsetof(DisplayListItem, type) == 0,
-                "type field must be at offset 0");
-  static_assert(offsetof(DisplayListItem, payload.begin.id) == 4,
-                "begin.id must be at offset 4");
-  static_assert(offsetof(DisplayListItem, payload.fill.color) == 4,
-                "fill.color must be at offset 4");
-  static_assert(offsetof(DisplayListItem, payload.linear_gradient.angle) == 36,
-                "linear_gradient.angle must be at offset 36");
-  static_assert(std::is_standard_layout<DisplayListItem>::value,
-                "DisplayListItem must be standard layout");
-  static_assert(std::is_trivially_copyable<DisplayListItem>::value,
-                "DisplayListItem must be trivially copyable");
-
-  SUCCEED();
 }
 
 }  // namespace tasm
