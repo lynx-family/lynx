@@ -88,6 +88,7 @@ constexpr const char* kEnableLepusChunkAsyncDecode =
     "enableLepusChunkAsyncDecode";
 constexpr const char* kContextType = "contextType";
 constexpr const char* kEnableOptLepusBytecode = "enableOptLepusBytecode";
+constexpr const char* kEnableOptLepusNGBytecode = "enableOptLepusNGBytecode";
 constexpr const char* kLepusNullPropAsUndefined = "lepusNullPropAsUndef";
 
 #define GET_VALUE_FROM_JSON(Doc, Key, Type, Var)   \
@@ -773,6 +774,10 @@ EncoderOptions MetaFactory::GetEncoderOptions(rapidjson::Document& document) {
   GET_VALUE_FROM_JSON(options, kEnableOptLepusBytecode, Bool,
                       enable_opt_lepus_bytecode);
 
+  bool enable_opt_lepusng_bytecode = false;
+  GET_VALUE_FROM_JSON(options, kEnableOptLepusNGBytecode, Bool,
+                      enable_opt_lepusng_bytecode);
+
   CompileOptions compile_options{
       enable_css_parser,
       encoder_options.compile_options_.enable_trial_options_,
@@ -817,6 +822,7 @@ EncoderOptions MetaFactory::GetEncoderOptions(rapidjson::Document& document) {
       enable_async_lepus_chunk,
       enable_simple_styling,
       enable_opt_lepus_bytecode,
+      enable_opt_lepusng_bytecode,
       context_type};
 
   // Set compile_options_

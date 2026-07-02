@@ -209,6 +209,13 @@ compilerOptions:
     defaultValue: 'false'
     valueType: boolean
     since: '3.8'
+  enableOptLepusNGBytecode:
+    description: Controls whether the encoder enables LepusNG bytecode size optimization. When enabled, LEPUS_SetOptLepusNGPackageSize is called with true; when disabled (default), it is called with false.
+    defaultValue: 'false'
+    valueType: boolean
+    since: '4.1'
+    nameAs:
+      member: enable_opt_lepusng_bytecode
   bundleModuleMode:
     description: Carries the compile-time bundle module mode string into template metadata and page config for JS runtime startup. When set, MetaFactory serializes the mode and runtime forwards it to `loadApp`; when empty, runtime uses its default module-mode handling.
     defaultValue: ''
