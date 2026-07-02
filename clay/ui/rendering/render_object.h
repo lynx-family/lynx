@@ -254,8 +254,13 @@ class RenderObject : public AbstractNode {
 
   bool IsPainting() const { return painting_; }
   void SetVisible(bool visible);
-  bool Visible() const { return visible_; }
+  // display:none will mark the view's layout as 0x0.
+  // However, text and other shadow nodes have their own layout.
+  // So we add display_none_ to check if the view should be visible.
+  bool Visible() const { return visible_ && !display_none_; }
   bool IsActualVisible();
+
+  void SetDisplayNone(bool display_none);
 
   void SetShadow(const Shadow& shadow);
   void SetShadows(std::vector<Shadow>&& shadows);
@@ -555,6 +560,7 @@ class RenderObject : public AbstractNode {
   bool needs_effect_ = false;
 
   bool visible_ = true;
+  bool display_none_ = false;
 
   bool painting_ = false;
 

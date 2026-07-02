@@ -381,6 +381,7 @@ class BaseView : public TypeIdentifiable<BaseView>,
   }
 
   void SetVisible(bool visible);
+  void SetDisplayNone(bool display_none);
   bool Visible() const;
   bool IsVisibleForAnimationTick();
 
