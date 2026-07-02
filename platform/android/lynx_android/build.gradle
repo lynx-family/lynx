@@ -208,12 +208,6 @@ android {
     }
 }
 
-repositories {
-    flatDir {
-        dirs 'libs'
-    }
-}
-
 // Use to remove designated useless dir in resources process period
 final List<String> exclusions = []
 tasks.create("excludeTask") {
@@ -338,9 +332,9 @@ dependencies {
     androidTestAnnotationProcessor "com.google.auto.service:auto-service:1.0-rc5"
 
     implementation 'org.lynxsdk.lynx:primjs:4.0.1-alpha.4'
-    extractJNI 'org.lynxsdk.lynx:primjs:4.0.1-alpha.4'
+    extractJNI 'org.lynxsdk.lynx:primjs:4.0.1-alpha.4@aar'
     implementation 'org.lynxsdk.lynx:primjsWasm:4.0.1-alpha.4'
-    extractJNI 'org.lynxsdk.lynx:primjsWasm:4.0.1-alpha.4'
+    extractJNI 'org.lynxsdk.lynx:primjsWasm:4.0.1-alpha.4@aar'
     extractJNI 'org.lynxsdk.lynx:v8so:11.1.277.4'
 
     api project(':LynxJSSDK')

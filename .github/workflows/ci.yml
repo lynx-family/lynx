@@ -675,15 +675,15 @@ jobs:
         uses: actions/checkout@v6
         with:
           repository: lynx-family/integrating-lynx-demo-projects
-          ref: eedde50f700c0f7b2693c79b73c0d1b918d4f53f
+          ref: f8230ca6aa1c9e629e30272971d0c03450b13e8e
           path: lynx
       - name: Cherry Pick Commit To Build With Local AAR
         run: |
           echo "GITHUB_WORKSPACE: $GITHUB_WORKSPACE"
           git config user.name "GitHub Actions"
           git config user.email "actions@github.com"
-          git fetch origin 10e19c5c9dbbadc9960c1677dac6884a8a3f63c9
-          git cherry-pick 10e19c5c9dbbadc9960c1677dac6884a8a3f63c9
+          git fetch origin d6a90706cc0bfde92d887d666c0139cc62554ee5
+          git cherry-pick d6a90706cc0bfde92d887d666c0139cc62554ee5
       - name: Download Lynx SDK Artifacts
         uses: lynx-infra/download-artifact@79d9914484f933089c2840552cf439bac85debad
         with:

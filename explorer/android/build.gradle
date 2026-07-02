@@ -50,6 +50,12 @@ apply from: file("../../tools/android_tools/gradle/python_env.gradle")
 
 allprojects {
     repositories {
+        maven {
+            url = uri("https://central.sonatype.com/repository/maven-snapshots/")
+            content {
+                includeGroup("org.lynxsdk.lynx")
+            }
+        }
         mavenCentral()
         google()
     }
