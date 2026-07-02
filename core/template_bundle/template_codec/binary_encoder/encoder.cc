@@ -174,6 +174,10 @@ std::shared_ptr<lynx::runtime::MTSRuntime> GetVMContent(
     lynx::lepus::QuickContext* quick_ctx =
         lynx::runtime::MTSRuntime::ToQuickContext(vm_context.get());
 
+    LEPUS_SetOptLepusNGPackageSize(
+        LEPUS_GetRuntime(quick_ctx->context()),
+        encoder_options.compile_options_.enable_opt_lepusng_bytecode_ ? 1 : 0);
+
     if (encoder_options.compile_options_.lepusng_debuginfo_outside_) {
       quick_ctx->set_debuginfo_outside(true);
       SetDebugInfoOutside(quick_ctx->context(), true);
