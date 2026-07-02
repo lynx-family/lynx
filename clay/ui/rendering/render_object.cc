@@ -215,6 +215,15 @@ void RenderObject::SetVisible(bool visible) {
   MarkSubtreeDirty();
 }
 
+void RenderObject::SetDisplayNone(bool display_none) {
+  if (display_none == display_none_) {
+    return;
+  }
+
+  display_none_ = display_none;
+  MarkSubtreeDirty();
+}
+
 void RenderObject::SetShadow(const Shadow& shadow) {
   if (!shadows_.has_value()) {
     shadows_ = std::make_optional<std::vector<Shadow>>();

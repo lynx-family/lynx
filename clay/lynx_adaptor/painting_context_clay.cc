@@ -17,6 +17,7 @@
 #include "clay/lynx_adaptor/value_converter.h"
 #include "clay/public/value.h"
 #include "clay/ui/common/value_utils.h"
+#include "clay/ui/component/base_view.h"
 #include "clay/ui/component/list/lynx_list_data.h"
 #include "clay/ui/lynx_module/type_utils.h"
 #include "clay/ui/shadow/text_render.h"
@@ -297,7 +298,7 @@ void PaintingContextClay::UpdateLayout(int tag, float x, float y, float width,
                                        const float* borders,
                                        const float* bounds, const float* sticky,
                                        float max_height, uint32_t node_index,
-                                       bool /*display_none*/) {
+                                       bool display_none) {
   const std::array<float, 4> paddings_copy = {paddings[0], paddings[1],
                                               paddings[2], paddings[3]};
   const std::array<float, 4> margins_copy = {margins[0], margins[1], margins[2],
@@ -308,7 +309,8 @@ void PaintingContextClay::UpdateLayout(int tag, float x, float y, float width,
           ? std::array<float, 4>{sticky[0], sticky[1], sticky[2], sticky[3]}
           : std::array<float, 4>{0, 0, 0, 0};
   auto task = [view_context = view_context_, tag, x, y, width, height,
-               paddings_copy, margins_copy, sticky_copy, has_sticky]() {
+               paddings_copy, margins_copy, sticky_copy, has_sticky,
+               display_none]() {
     // Set margins, bounds, paddings.
     // Margins should be earlier then bounds because of it may be used during
     // bounds setting.
@@ -321,6 +323,9 @@ void PaintingContextClay::UpdateLayout(int tag, float x, float y, float width,
                               MaybeRoundLayoutMetric(paddings_copy[1]),
                               MaybeRoundLayoutMetric(paddings_copy[2]),
                               MaybeRoundLayoutMetric(paddings_copy[3]));
+    if (auto* view = view_context->FindViewByViewId(tag)) {
+      view->SetDisplayNone(display_none);
+    }
     view_context->UpdateSticky(tag, has_sticky ? sticky_copy.data() : nullptr);
   };
   if (ui_operation_queue_ref_) {
