@@ -87,6 +87,9 @@
   [_applier onRebuildSubRenderers];
 }
 
+- (void)onSetFrame:(CGRect)frame {
+}
+
 - (void)syncHostDecorationLayers {
   if (_applier == nil) {
     return;
