@@ -1,0 +1,156 @@
+.cq/pipelines/clay-vs-native-e2e-test-reporter.yml
+  h_dc1658ba751399 64-67
+testing/lynx-platform-tests/test_script/lynxlib/test_runner/plugins/pc_mobile_diff_plugin.py
+  h_dc1658ba751399 108,115-117,119-122,154
+  s_46ce12af985a52::t_001158b39bafb8 123 gitai:{"mixed_line_ranges":[],"operations":[{"operation_id":"6a38e19a4a7197882da6a6c7","tool_type":"agent","tool_id":"SearchReplace","line_ranges":[{"Single":123}]}]}
+testing/lynx-platform-tests/test_script/lynxlib/test_runner/plugins/clay_native_diff_plugin.py
+  s_921ca4e059ad27::t_ff4a2d43eaaa77 127
+  s_00314b6e0c228a::t_3f18bd037f0c0a 120
+  s_61cb291a8cf0d3::t_90f4d17f79a595 123-126
+  s_d79f303e863e55::t_abd37619be215f 121-122
+  h_dc1658ba751399 5,158
+testing/tools/consistency_check_e2e_tools/consistency_check_e2e_reporter.py
+  h_dc1658ba751399 378-387
+  s_31c330828b2bc8::t_5b8cded8fc8984 75-77,79-86,103-105,107-110
+  s_31c330828b2bc8::t_17ebf736b77e38 296-297
+  s_a1afbb04e782d4::t_7c81b41196d933 423
+  s_20dbb6f182453e::t_332c0c7d3ad75c 425
+  s_31c330828b2bc8::t_2b7a67f4db6bbe 152-154,164
+  s_31c330828b2bc8::t_ab00aeab9daa6f 186,191,200
+  s_436bda2cad300e::t_8a52a4c5748393 188-190,192-197
+  s_31c330828b2bc8::t_4bd234afb2bc57 326-340
+  s_31c330828b2bc8::t_97a459bde8722f 424
+  s_31c330828b2bc8::t_ef236ce8bb1c93 422
+testing/tools/consistency_check_e2e_tools/html_reporter_template.py
+  s_436bda2cad300e::t_79283aa4fc4907 223-229,231-235
+  s_436bda2cad300e::t_27fe31c6fc4b6c 230
+  s_436bda2cad300e::t_b9abe72013e235 122
+.cq/pipelines/pc-vs-mobile-e2e-test-reporter.yml
+  h_dc1658ba751399 52-55
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "bfedfe4f181a114031fb26cb8b3b32a28775f386",
+  "prompts": {},
+  "humans": {
+    "h_dc1658ba751399": {
+      "author": "tangyongjie <tangyongjie@bytedance.com>"
+    }
+  },
+  "sessions": {
+    "s_00314b6e0c228a": {
+      "agent_id": {
+        "tool": "trae-cue",
+        "id": "ai_tab-icr-0925b5db-b755-426d-9ab3-d95f72836d99",
+        "model": "default"
+      },
+      "human_author": "tangyongjie <tangyongjie@bytedance.com>"
+    },
+    "s_20dbb6f182453e": {
+      "agent_id": {
+        "tool": "trae-cue",
+        "id": "ai_tab-icr-9589e6cd-8526-48ea-a7a3-2a0d018ac9be",
+        "model": "default"
+      },
+      "human_author": "tangyongjie <tangyongjie@bytedance.com>"
+    },
+    "s_31c330828b2bc8": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a33a5284a7197882da6a5fc",
+        "model": "gemini-3.1-pro__dev"
+      },
+      "human_author": "tangyongjie <tangyongjie@bytedance.com>"
+    },
+    "s_436bda2cad300e": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a338b6f4a7197882da6a4dc",
+        "model": "gemini-3.1-pro__dev"
+      },
+      "human_author": "tangyongjie <tangyongjie@bytedance.com>"
+    },
+    "s_46ce12af985a52": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a38e1824a7197882da6a6ba",
+        "model": "gemini-3.1-pro__dev"
+      },
+      "human_author": null
+    },
+    "s_61cb291a8cf0d3": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a33994d4a7197882da6a57b",
+        "model": "gemini-3.1-pro__dev"
+      },
+      "human_author": "tangyongjie <tangyongjie@bytedance.com>"
+    },
+    "s_921ca4e059ad27": {
+      "agent_id": {
+        "tool": "trae-cue",
+        "id": "ai_tab-icr-84a3651e-4bd0-4b4c-b2a3-54e976cf7698",
+        "model": "default"
+      },
+      "human_author": null
+    },
+    "s_a1afbb04e782d4": {
+      "agent_id": {
+        "tool": "trae-cue",
+        "id": "ai_tab-icr-d4203a66-e1f8-496a-ab75-77b94326f1f3",
+        "model": "default"
+      },
+      "human_author": "tangyongjie <tangyongjie@bytedance.com>"
+    },
+    "s_d79f303e863e55": {
+      "agent_id": {
+        "tool": "trae-cue",
+        "id": "ai_tab-icr-bfa78cdb-9ad4-419b-8b7b-2ceb0c719264",
+        "model": "default"
+      },
+      "human_author": "tangyongjie <tangyongjie@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {
+    "testing/lynx-platform-tests/test_script/lynxlib/test_runner/plugins/pc_mobile_diff_plugin.py": [
+      {
+        "hash": "s_46ce12af985a52::t_001158b39bafb8",
+        "line_ranges": [
+          {
+            "Single": 123
+          }
+        ],
+        "mixed_line_ranges": [],
+        "operations": [
+          {
+            "operation_id": "6a38e19a4a7197882da6a6c7",
+            "tool_type": "agent",
+            "tool_id": "SearchReplace",
+            "line_ranges": [
+              {
+                "Single": 123
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "remote_transcripts": {
+    "s_46ce12af985a52": {
+      "tool": "trae",
+      "conversation_id": "6a38e1824a7197882da6a6ba",
+      "session_id": "6a38e1824a7197882da6a6ba",
+      "status": "remote_only",
+      "message": "Remote transcript resolution is not implemented yet for TRAE prompts."
+    },
+    "s_46ce12af985a52::t_001158b39bafb8": {
+      "tool": "trae",
+      "conversation_id": "6a38e1824a7197882da6a6ba",
+      "session_id": "6a38e1824a7197882da6a6ba",
+      "status": "remote_only",
+      "message": "Remote transcript resolution is not implemented yet for TRAE prompts."
+    }
+  }
+}
