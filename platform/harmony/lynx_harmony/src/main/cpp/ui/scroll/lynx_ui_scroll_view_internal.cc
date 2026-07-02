@@ -206,6 +206,9 @@ void LynxUIScrollViewInternal::FinishLayoutOperation() {
     content_size[1] +=
         child->height_ + child->margin_top_ + child->margin_bottom_;
   }
+  if (scroll_view_->Vertical()) {
+    content_size[1] += scroll_content_height_extra_;
+  }
   scroll_view_->SetScrollContentSize(content_size);
   FlushFirstRenderOperations();
   UpdateScrollPosition();
@@ -219,6 +222,40 @@ float LynxUIScrollViewInternal::ScrollX() {
 
 float LynxUIScrollViewInternal::ScrollY() {
   return scroll_view_->GetScrollOffsetVertically();
+}
+
+bool LynxUIScrollViewInternal::IsVerticalScrollView() {
+  return scroll_view_ != nullptr && scroll_view_->Vertical();
+}
+
+float LynxUIScrollViewInternal::ScrollContentHeight() const {
+  return scroll_view_ == nullptr
+             ? 0.f
+             : scroll_view_->GetScrollContentSizeVertically();
+}
+
+void LynxUIScrollViewInternal::SetScrollContentHeight(float height) {
+  if (scroll_view_ == nullptr || !scroll_view_->Vertical()) {
+    return;
+  }
+  float content_size[2] = {0.f, std::max(0.f, height)};
+  scroll_view_->SetScrollContentSize(content_size);
+}
+
+void LynxUIScrollViewInternal::SetScrollContentHeightExtra(float extra) {
+  scroll_content_height_extra_ = std::max(0.f, extra);
+}
+
+void LynxUIScrollViewInternal::ScrollToVerticalOffset(float offset,
+                                                      bool smooth) {
+  if (scroll_view_ == nullptr || !scroll_view_->Vertical()) {
+    return;
+  }
+  if (smooth) {
+    scroll_view_->AnimatedScrollToVertically(offset);
+  } else {
+    scroll_view_->ScrollToVertically(offset);
+  }
 }
 
 void LynxUIScrollViewInternal::FlushFirstRenderOperations() {
@@ -255,6 +292,18 @@ void LynxUIScrollViewInternal::SendScrollEvent(const char* name,
   CustomEvent scroll_event{Sign(), name, "detail",
                            lepus_value(scroll_event_detail)};
   context_->SendEvent(scroll_event);
+}
+
+void LynxUIScrollViewInternal::SetScrollX(const lepus::Value& value) {
+  if (value.IsBool()) {
+    scroll_view_->SetVertical(!value.Bool());
+  }
+}
+
+void LynxUIScrollViewInternal::SetScrollY(const lepus::Value& value) {
+  if (value.IsBool()) {
+    scroll_view_->SetVertical(value.Bool());
+  }
 }
 
 void LynxUIScrollViewInternal::SetScrollOrientation(const lepus::Value& value) {

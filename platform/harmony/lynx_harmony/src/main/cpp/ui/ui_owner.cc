@@ -8,6 +8,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
 #include <memory>
 #include <string>
 #include <utility>
@@ -499,6 +500,15 @@ void UIOwner::SaveKeyboardAvoidingTarget(UIBase* owner, bool avoid_keyboard,
   if (!owner) {
     return;
   }
+  keyboard_avoiding_targets_[owner->Sign()] = {avoid_keyboard, spacing};
+}
+
+void UIOwner::ActivateKeyboardAvoidingTarget(UIBase* owner, bool avoid_keyboard,
+                                             float spacing) {
+  if (!owner) {
+    return;
+  }
+  SaveKeyboardAvoidingTarget(owner, avoid_keyboard, spacing);
   keyboard_avoiding_active_owner_ = owner->Sign();
   keyboard_avoiding_last_event_owner_ = owner->Sign();
   avoid_keyboard_ = avoid_keyboard;
@@ -507,12 +517,15 @@ void UIOwner::SaveKeyboardAvoidingTarget(UIBase* owner, bool avoid_keyboard,
 
 void UIOwner::KeyboardAvoidingInputDidFocus(UIBase* owner, bool avoid_keyboard,
                                             float spacing) {
+  if (keyboard_height_ <= 0.f) {
+    GetKeyboardAvoidingScreenBottom();
+  }
   if (owner && owner->Sign() == keyboard_avoiding_active_owner_ &&
       avoid_keyboard == avoid_keyboard_ &&
       std::fabs(spacing - avoid_keyboard_spacing_) < 0.5f) {
     return;
   }
-  SaveKeyboardAvoidingTarget(owner, avoid_keyboard, spacing);
+  ActivateKeyboardAvoidingTarget(owner, avoid_keyboard, spacing);
   UpdateKeyboardAvoidDistance();
 }
 
@@ -525,6 +538,7 @@ void UIOwner::KeyboardAvoidingInputDidBlur(UIBase* owner,
     keyboard_avoiding_last_event_owner_ = owner->Sign();
     if (!is_focus_transition && keyboard_height_ <= 0.f) {
       keyboard_avoiding_active_owner_ = kInvalidKeyboardAvoidingSign;
+      ClearKeyboardAvoidingScrollView();
       ApplyKeyboardAvoidDistance(0.f);
     }
   }
@@ -532,20 +546,28 @@ void UIOwner::KeyboardAvoidingInputDidBlur(UIBase* owner,
 
 void UIOwner::KeyboardAvoidingInputDidLayout(UIBase* owner, bool avoid_keyboard,
                                              float spacing) {
-  if (!owner || owner->Sign() != keyboard_avoiding_active_owner_) {
+  if (!owner) {
     return;
   }
   SaveKeyboardAvoidingTarget(owner, avoid_keyboard, spacing);
+  if (owner->Sign() != keyboard_avoiding_active_owner_) {
+    return;
+  }
+  ActivateKeyboardAvoidingTarget(owner, avoid_keyboard, spacing);
   UpdateKeyboardAvoidDistance();
 }
 
 void UIOwner::AvoidKeyboardPropsDidChangeForOwner(UIBase* owner,
                                                   bool avoid_keyboard,
                                                   float spacing) {
-  if (!owner || owner->Sign() != keyboard_avoiding_active_owner_) {
+  if (!owner) {
     return;
   }
   SaveKeyboardAvoidingTarget(owner, avoid_keyboard, spacing);
+  if (owner->Sign() != keyboard_avoiding_active_owner_) {
+    return;
+  }
+  ActivateKeyboardAvoidingTarget(owner, avoid_keyboard, spacing);
   UpdateKeyboardAvoidDistance();
 }
 
@@ -555,7 +577,7 @@ void UIOwner::KeyboardWillShowForOwner(UIBase* owner, float keyboard_height,
     return;
   }
   keyboard_height_ = keyboard_height;
-  SaveKeyboardAvoidingTarget(owner, avoid_keyboard, spacing);
+  ActivateKeyboardAvoidingTarget(owner, avoid_keyboard, spacing);
   UpdateKeyboardAvoidDistance();
 }
 
@@ -569,8 +591,10 @@ bool UIOwner::KeyboardWillHideForOwner(UIBase* owner) {
     return false;
   }
   keyboard_height_ = 0.f;
+  keyboard_top_ = 0.f;
   keyboard_avoiding_active_owner_ = kInvalidKeyboardAvoidingSign;
   keyboard_avoiding_last_event_owner_ = kInvalidKeyboardAvoidingSign;
+  ClearKeyboardAvoidingScrollView();
   ApplyKeyboardAvoidDistance(0.f);
   return true;
 }
@@ -579,9 +603,19 @@ void UIOwner::UpdateKeyboardAvoidDistance() {
   UIBase* active_owner = FindUIBySign(keyboard_avoiding_active_owner_);
   if (!active_owner) {
     keyboard_avoiding_active_owner_ = kInvalidKeyboardAvoidingSign;
+    ClearKeyboardAvoidingScrollView();
     ApplyKeyboardAvoidDistance(0.f);
     return;
   }
+  if (!avoid_keyboard_) {
+    ClearKeyboardAvoidingScrollView();
+    ApplyKeyboardAvoidDistance(0.f);
+    return;
+  }
+  if (ApplyScrollViewAvoidDistance(active_owner)) {
+    return;
+  }
+  ClearKeyboardAvoidingScrollView();
   ApplyKeyboardAvoidDistance(CalculateKeyboardAvoidDistance(active_owner));
 }
 
@@ -600,20 +634,284 @@ void UIOwner::ApplyKeyboardAvoidDistance(float target_distance) {
   OnAvoidKeyboardCallback(-current_avoid_distance_);
 }
 
+bool UIOwner::ApplyScrollViewAvoidDistance(UIBase* owner) {
+  UIBase* scroll_ui = KeyboardAvoidingScrollUIForOwner(owner);
+  if (!scroll_ui) {
+    return false;
+  }
+  if (keyboard_avoiding_scroll_ui_ != kInvalidKeyboardAvoidingSign &&
+      keyboard_avoiding_scroll_ui_ != scroll_ui->Sign()) {
+    ClearKeyboardAvoidingScrollView();
+  }
+  keyboard_avoiding_scroll_ui_ = scroll_ui->Sign();
+  ApplyKeyboardAvoidDistance(0.f);
+
+  if (keyboard_height_ <= 0.f || scroll_ui->height_ <= 0.f) {
+    return true;
+  }
+
+  float base_content_height =
+      KeyboardAvoidingBaseContentHeightForScrollUI(scroll_ui);
+  float min_offset_y = 0.f;
+  float current_offset_y = scroll_ui->ScrollY();
+  float viewport_height = std::max(0.f, scroll_ui->height_);
+  float raw_max_offset_y_without_extra = base_content_height - viewport_height;
+  float max_offset_y_without_extra =
+      std::max(min_offset_y, raw_max_offset_y_without_extra);
+
+  float visible_height = viewport_height;
+  float scroll_rect[4] = {0.f, 0.f, scroll_ui->width_, scroll_ui->height_};
+  LynxUIHelper::ConvertRectFromUIToScreen(scroll_rect, scroll_ui, scroll_rect);
+  float keyboard_top = GetKeyboardAvoidingKeyboardTop();
+  visible_height = std::min(visible_height, keyboard_top - scroll_rect[1]);
+  visible_height = std::max(0.f, visible_height);
+
+  float input_bottom_y =
+      InputBottomInScrollViewContent(owner, scroll_ui, current_offset_y);
+  float desired_offset_y =
+      input_bottom_y + avoid_keyboard_spacing_ - visible_height;
+  UIBase* lowest_target = LowestKeyboardAvoidingTargetInScrollUI(scroll_ui);
+  float lowest_spacing = avoid_keyboard_spacing_;
+  if (!lowest_target) {
+    lowest_target = owner;
+  } else if (auto it = keyboard_avoiding_targets_.find(lowest_target->Sign());
+             it != keyboard_avoiding_targets_.end()) {
+    lowest_spacing = it->second.spacing;
+  }
+  float lowest_input_bottom_y = InputBottomInScrollViewContent(
+      lowest_target, scroll_ui, current_offset_y);
+  float lowest_desired_offset_y =
+      lowest_input_bottom_y + lowest_spacing - visible_height;
+  float required_extra = 0.f;
+  if (lowest_desired_offset_y > max_offset_y_without_extra) {
+    required_extra = std::max(0.f, std::ceil(lowest_desired_offset_y -
+                                             raw_max_offset_y_without_extra));
+  }
+  SetKeyboardAvoidingContentHeightExtraForScrollUI(scroll_ui, required_extra);
+
+  float max_offset_y =
+      std::max(min_offset_y, raw_max_offset_y_without_extra + required_extra);
+  float target_offset_y = std::min(
+      std::max(std::ceil(desired_offset_y), min_offset_y), max_offset_y);
+  if (std::fabs(target_offset_y - current_offset_y) < 0.5f) {
+    return true;
+  }
+  bool smooth = keyboard_height_ > 0.f;
+  bool needs_scroll_after_content_layout =
+      required_extra > 0.f && target_offset_y > max_offset_y_without_extra;
+  if (smooth && needs_scroll_after_content_layout) {
+    ScrollKeyboardAvoidingScrollViewToAfterContentLayout(
+        scroll_ui, owner->Sign(), target_offset_y, smooth);
+    return true;
+  }
+  ScrollKeyboardAvoidingScrollViewTo(scroll_ui, target_offset_y, smooth);
+  if (needs_scroll_after_content_layout) {
+    ScrollKeyboardAvoidingScrollViewToAfterContentLayout(
+        scroll_ui, owner->Sign(), target_offset_y, smooth);
+  }
+  return true;
+}
+
+UIBase* UIOwner::KeyboardAvoidingScrollUIForOwner(UIBase* owner) {
+  UIBase* ui = owner == nullptr ? nullptr : owner->Parent();
+  while (ui) {
+    if (ui->IsVerticalScrollView()) {
+      return ui;
+    }
+    ui = ui->Parent();
+  }
+  return nullptr;
+}
+
+bool UIOwner::IsTargetInScrollUI(UIBase* target, UIBase* scroll_ui) {
+  if (!target || !scroll_ui) {
+    return false;
+  }
+  UIBase* ui = target->Parent();
+  while (ui) {
+    if (ui == scroll_ui) {
+      return true;
+    }
+    if (ui->IsVerticalScrollView()) {
+      return false;
+    }
+    ui = ui->Parent();
+  }
+  return false;
+}
+
+UIBase* UIOwner::LowestKeyboardAvoidingTargetInScrollUI(UIBase* scroll_ui) {
+  UIBase* lowest_target = nullptr;
+  float lowest_input_bottom = -std::numeric_limits<float>::max();
+  float current_offset_y = scroll_ui ? scroll_ui->ScrollY() : 0.f;
+  for (const auto& target_entry : keyboard_avoiding_targets_) {
+    UIBase* target_ui = FindUIBySign(target_entry.first);
+    if (!target_ui || !target_entry.second.avoid_keyboard ||
+        !IsTargetInScrollUI(target_ui, scroll_ui)) {
+      continue;
+    }
+    float input_bottom =
+        InputBottomInScrollViewContent(target_ui, scroll_ui, current_offset_y);
+    if (input_bottom > lowest_input_bottom) {
+      lowest_input_bottom = input_bottom;
+      lowest_target = target_ui;
+    }
+  }
+  return lowest_target;
+}
+
+float UIOwner::InputBottomInScrollViewContent(UIBase* input, UIBase* scroll_ui,
+                                              float current_offset_y) {
+  if (!input || !scroll_ui) {
+    return 0.f;
+  }
+  float input_rect[4] = {0.f, 0.f, input->width_, input->height_};
+  LynxUIHelper::ConvertRectFromUIToScreen(input_rect, input, input_rect);
+  float scroll_rect[4] = {0.f, 0.f, scroll_ui->width_, scroll_ui->height_};
+  LynxUIHelper::ConvertRectFromUIToScreen(scroll_rect, scroll_ui, scroll_rect);
+  return input_rect[3] - scroll_rect[1] + current_offset_y;
+}
+
+float UIOwner::KeyboardAvoidingBaseContentHeightForScrollUI(UIBase* scroll_ui) {
+  if (keyboard_avoiding_scroll_has_content_state_) {
+    return std::max(0.f, keyboard_avoiding_scroll_base_content_height_);
+  }
+  float current_content_height =
+      scroll_ui == nullptr ? 0.f
+                           : std::max(0.f, scroll_ui->ScrollContentHeight());
+  keyboard_avoiding_scroll_base_content_height_ = current_content_height;
+  keyboard_avoiding_scroll_has_content_state_ = true;
+  return current_content_height;
+}
+
+void UIOwner::SetKeyboardAvoidingContentHeightExtraForScrollUI(
+    UIBase* scroll_ui, float extra) {
+  if (!scroll_ui) {
+    return;
+  }
+  float base_content_height =
+      KeyboardAvoidingBaseContentHeightForScrollUI(scroll_ui);
+  float content_height_extra = std::max(0.f, extra);
+  keyboard_avoiding_scroll_content_height_extra_ = content_height_extra;
+  if (content_height_extra > 0.f) {
+    scroll_ui->SetScrollContentHeightExtra(content_height_extra);
+    SetKeyboardAvoidingContentHeightForScrollUI(
+        scroll_ui, base_content_height + content_height_extra);
+  } else {
+    ClearKeyboardAvoidingContentHeightForScrollUI(scroll_ui);
+  }
+  keyboard_avoiding_scroll_base_content_height_ = base_content_height;
+  keyboard_avoiding_scroll_has_content_state_ = true;
+}
+
+void UIOwner::SetKeyboardAvoidingContentHeightForScrollUI(
+    UIBase* scroll_ui, float content_height) {
+  if (!scroll_ui) {
+    return;
+  }
+  float offset_y = scroll_ui->ScrollY();
+  float target_content_height = std::max(0.f, content_height);
+  float max_offset_y =
+      std::max(0.f, target_content_height - std::max(0.f, scroll_ui->height_));
+  float target_offset_y = std::min(std::max(offset_y, 0.f), max_offset_y);
+  scroll_ui->SetScrollContentHeight(target_content_height);
+  scroll_ui->ScrollToVerticalOffset(target_offset_y, false);
+}
+
+void UIOwner::ClearKeyboardAvoidingContentHeightForScrollUI(UIBase* scroll_ui) {
+  if (!scroll_ui || !keyboard_avoiding_scroll_has_content_state_) {
+    return;
+  }
+  scroll_ui->SetScrollContentHeightExtra(0.f);
+  SetKeyboardAvoidingContentHeightForScrollUI(
+      scroll_ui, keyboard_avoiding_scroll_base_content_height_);
+}
+
+void UIOwner::ResetKeyboardAvoidingScrollContentState() {
+  keyboard_avoiding_scroll_has_content_state_ = false;
+  keyboard_avoiding_scroll_base_content_height_ = 0.f;
+  keyboard_avoiding_scroll_content_height_extra_ = 0.f;
+}
+
+void UIOwner::ClearKeyboardAvoidingScrollView() {
+  UIBase* scroll_ui = FindUIBySign(keyboard_avoiding_scroll_ui_);
+  keyboard_avoiding_scroll_ui_ = kInvalidKeyboardAvoidingSign;
+  if (!scroll_ui) {
+    ResetKeyboardAvoidingScrollContentState();
+    return;
+  }
+  SetKeyboardAvoidingContentHeightExtraForScrollUI(scroll_ui, 0.f);
+  ResetKeyboardAvoidingScrollContentState();
+}
+
+void UIOwner::ReapplyKeyboardAvoidingContentHeightForScrollUI(
+    UIBase* scroll_ui) {
+  if (!scroll_ui || !keyboard_avoiding_scroll_has_content_state_ ||
+      keyboard_avoiding_scroll_content_height_extra_ <= 0.f) {
+    return;
+  }
+  SetKeyboardAvoidingContentHeightForScrollUI(
+      scroll_ui, keyboard_avoiding_scroll_base_content_height_ +
+                     keyboard_avoiding_scroll_content_height_extra_);
+}
+
+void UIOwner::ScrollKeyboardAvoidingScrollViewTo(UIBase* scroll_ui,
+                                                 float offset_y, bool smooth) {
+  if (!scroll_ui) {
+    return;
+  }
+  ReapplyKeyboardAvoidingContentHeightForScrollUI(scroll_ui);
+  scroll_ui->ScrollToVerticalOffset(offset_y, smooth);
+}
+
+void UIOwner::ScrollKeyboardAvoidingScrollViewToAfterContentLayout(
+    UIBase* scroll_ui, int32_t target_sign, float offset_y, bool smooth) {
+  if (!scroll_ui || !context_) {
+    return;
+  }
+  int32_t scroll_sign = scroll_ui->Sign();
+  const auto& monitor = context_->VSyncMonitor();
+  if (!monitor) {
+    ScrollKeyboardAvoidingScrollViewTo(scroll_ui, offset_y, smooth);
+    return;
+  }
+  monitor->ScheduleVSyncSecondaryCallback(
+      reinterpret_cast<intptr_t>(this),
+      [this, scroll_sign, target_sign, offset_y, smooth](int64_t, int64_t) {
+        if (destroyed_) {
+          return;
+        }
+        UIBase* scroll_ui = FindUIBySign(scroll_sign);
+        if (!IsKeyboardAvoidingScrollRequestCurrent(scroll_ui, target_sign)) {
+          return;
+        }
+        ReapplyKeyboardAvoidingContentHeightForScrollUI(scroll_ui);
+        if (std::fabs(offset_y - scroll_ui->ScrollY()) >= 0.5f) {
+          ScrollKeyboardAvoidingScrollViewTo(scroll_ui, offset_y, smooth);
+        }
+      });
+}
+
+bool UIOwner::IsKeyboardAvoidingScrollRequestCurrent(UIBase* scroll_ui,
+                                                     int32_t target_sign) {
+  return scroll_ui != nullptr &&
+         keyboard_avoiding_scroll_ui_ == scroll_ui->Sign() &&
+         keyboard_avoiding_active_owner_ == target_sign;
+}
+
 float UIOwner::CalculateKeyboardAvoidDistance(UIBase* owner) {
   if (!owner || !avoid_keyboard_ || !context_) {
     return 0.f;
   }
-  float screen_bottom = GetKeyboardAvoidingScreenBottom();
   if (keyboard_height_ <= 0.f) {
     return 0.f;
   }
   float rect[4] = {0.f, 0.f, owner->width_, owner->height_};
   LynxUIHelper::ConvertRectFromUIToScreen(rect, owner, rect);
   float input_bottom_before_avoid = rect[3] + current_avoid_distance_;
-  float bottom_to_screen = screen_bottom - input_bottom_before_avoid;
-  return std::max(
-      0.f, keyboard_height_ - bottom_to_screen + avoid_keyboard_spacing_);
+  return std::max(0.f, input_bottom_before_avoid -
+                           GetKeyboardAvoidingKeyboardTop() +
+                           avoid_keyboard_spacing_);
 }
 
 float UIOwner::GetKeyboardAvoidingScreenBottom() {
@@ -629,26 +927,40 @@ float UIOwner::GetKeyboardAvoidingScreenBottom() {
     screen_bottom =
         root_offset.y / root->GetContext()->ScaledDensity() + root->height_;
   }
-  if (screen_bottom <= 0.f) {
-    float screen_size[2] = {0.f, 0.f};
-    context_->ScreenSize(screen_size);
-    screen_bottom = screen_size[1];
-  }
-  if (screen_bottom <= 0.f) {
+  float screen_size[2] = {0.f, 0.f};
+  context_->ScreenSize(screen_size);
+  screen_bottom = std::max(screen_bottom, screen_size[1]);
+  if (keyboard_height_ <= 0.f) {
+    if (screen_bottom > 0.f) {
+      keyboard_avoiding_screen_bottom_ = screen_bottom;
+    }
     return keyboard_avoiding_screen_bottom_;
   }
-  if (keyboard_height_ <= 0.f) {
-    keyboard_avoiding_screen_bottom_ = screen_bottom;
-  } else if (keyboard_avoiding_screen_bottom_ <= 0.f ||
-             screen_bottom > keyboard_avoiding_screen_bottom_) {
-    keyboard_avoiding_screen_bottom_ = screen_bottom;
+  if (keyboard_avoiding_screen_bottom_ > 0.f) {
+    if (screen_bottom > keyboard_avoiding_screen_bottom_) {
+      keyboard_avoiding_screen_bottom_ = screen_bottom;
+    }
+    return keyboard_avoiding_screen_bottom_;
   }
-  return keyboard_avoiding_screen_bottom_ > 0.f
-             ? keyboard_avoiding_screen_bottom_
-             : screen_bottom;
+  if (screen_bottom > 0.f) {
+    keyboard_avoiding_screen_bottom_ = screen_bottom;
+    return screen_bottom;
+  }
+  return keyboard_avoiding_screen_bottom_;
+}
+
+float UIOwner::GetKeyboardAvoidingKeyboardTop() {
+  if (keyboard_top_ > 0.f) {
+    return keyboard_top_;
+  }
+  return GetKeyboardAvoidingScreenBottom() - keyboard_height_;
 }
 
 void UIOwner::ResetKeyboardAvoidingTargetIfNeeded(int32_t sign) {
+  keyboard_avoiding_targets_.erase(sign);
+  if (sign == keyboard_avoiding_scroll_ui_) {
+    ClearKeyboardAvoidingScrollView();
+  }
   if (sign != keyboard_avoiding_active_owner_ &&
       sign != keyboard_avoiding_last_event_owner_) {
     return;
@@ -656,6 +968,8 @@ void UIOwner::ResetKeyboardAvoidingTargetIfNeeded(int32_t sign) {
   keyboard_avoiding_active_owner_ = kInvalidKeyboardAvoidingSign;
   keyboard_avoiding_last_event_owner_ = kInvalidKeyboardAvoidingSign;
   keyboard_height_ = 0.f;
+  keyboard_top_ = 0.f;
+  ClearKeyboardAvoidingScrollView();
   ApplyKeyboardAvoidDistance(0.f);
 }
 
@@ -756,12 +1070,15 @@ napi_value UIOwner::Destroy(napi_env env, napi_callback_info info) {
   obj->ui_holder_.clear();
   obj->layout_changed_nodes_.clear();
   obj->keyboard_event_observers_.clear();
+  obj->keyboard_avoiding_targets_.clear();
   obj->window_state_listeners_.clear();
   obj->keyboard_avoiding_active_owner_ = kInvalidKeyboardAvoidingSign;
   obj->keyboard_avoiding_last_event_owner_ = kInvalidKeyboardAvoidingSign;
+  obj->keyboard_avoiding_scroll_ui_ = kInvalidKeyboardAvoidingSign;
   obj->keyboard_height_ = 0.f;
   obj->keyboard_avoiding_screen_bottom_ = 0.f;
   obj->current_avoid_distance_ = 0.f;
+  obj->ResetKeyboardAvoidingScrollContentState();
   obj->last_intrinsic_content_width_ = 0.f;
   obj->last_intrinsic_content_height_ = 0.f;
   obj->root_ = nullptr;
@@ -1281,11 +1598,21 @@ napi_value UIOwner::RequestLayout(napi_env env, napi_callback_info info) {
 napi_value UIOwner::KeyboardStatusChanged(napi_env env,
                                           napi_callback_info info) {
   napi_value js_this;
-  size_t argc = 1;
-  napi_value args[1] = {nullptr};
+  size_t argc = 2;
+  napi_value args[2] = {nullptr};
   napi_get_cb_info(env, info, &argc, args, &js_this, nullptr);
 
-  auto height = base::NapiUtil::ConvertToFloat(env, args[0]);
+  auto height = argc > 0 ? base::NapiUtil::ConvertToFloat(env, args[0]) : 0.f;
+  float keyboard_top = 0.f;
+  bool has_keyboard_top = false;
+  if (argc > 1 && args[1] != nullptr) {
+    napi_valuetype value_type = napi_undefined;
+    napi_typeof(env, args[1], &value_type);
+    if (value_type == napi_number) {
+      keyboard_top = base::NapiUtil::ConvertToFloat(env, args[1]);
+      has_keyboard_top = keyboard_top > 0.f;
+    }
+  }
 
   UIOwner* obj = nullptr;
   napi_unwrap(env, js_this, reinterpret_cast<void**>(&obj));
@@ -1294,7 +1621,13 @@ napi_value UIOwner::KeyboardStatusChanged(napi_env env,
   }
 
   bool is_show = height > 0;
-
+  if (is_show) {
+    if (has_keyboard_top) {
+      obj->keyboard_top_ = keyboard_top;
+    }
+  } else {
+    obj->keyboard_top_ = 0.f;
+  }
   bool previous_keyboard_transition = obj->is_keyboard_transition_;
   obj->is_keyboard_transition_ = true;
   for (const auto& observer : obj->keyboard_event_observers_) {

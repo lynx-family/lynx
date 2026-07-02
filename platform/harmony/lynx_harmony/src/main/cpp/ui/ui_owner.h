@@ -229,19 +229,51 @@ class UIOwner {
                            bool enable_redirect_url);
   void SaveKeyboardAvoidingTarget(UIBase* owner, bool avoid_keyboard,
                                   float spacing);
+  void ActivateKeyboardAvoidingTarget(UIBase* owner, bool avoid_keyboard,
+                                      float spacing);
   void UpdateKeyboardAvoidDistance();
   void ApplyKeyboardAvoidDistance(float target_distance);
+  bool ApplyScrollViewAvoidDistance(UIBase* owner);
+  UIBase* KeyboardAvoidingScrollUIForOwner(UIBase* owner);
+  bool IsTargetInScrollUI(UIBase* target, UIBase* scroll_ui);
+  UIBase* LowestKeyboardAvoidingTargetInScrollUI(UIBase* scroll_ui);
+  float InputBottomInScrollViewContent(UIBase* input, UIBase* scroll_ui,
+                                       float current_offset_y);
+  float KeyboardAvoidingBaseContentHeightForScrollUI(UIBase* scroll_ui);
+  void SetKeyboardAvoidingContentHeightExtraForScrollUI(UIBase* scroll_ui,
+                                                        float extra);
+  void SetKeyboardAvoidingContentHeightForScrollUI(UIBase* scroll_ui,
+                                                   float content_height);
+  void ClearKeyboardAvoidingContentHeightForScrollUI(UIBase* scroll_ui);
+  void ResetKeyboardAvoidingScrollContentState();
+  void ClearKeyboardAvoidingScrollView();
+  void ReapplyKeyboardAvoidingContentHeightForScrollUI(UIBase* scroll_ui);
+  void ScrollKeyboardAvoidingScrollViewTo(UIBase* scroll_ui, float offset_y,
+                                          bool smooth);
+  void ScrollKeyboardAvoidingScrollViewToAfterContentLayout(UIBase* scroll_ui,
+                                                            int32_t target_sign,
+                                                            float offset_y,
+                                                            bool smooth);
+  bool IsKeyboardAvoidingScrollRequestCurrent(UIBase* scroll_ui,
+                                              int32_t target_sign);
   float CalculateKeyboardAvoidDistance(UIBase* owner);
   float GetKeyboardAvoidingScreenBottom();
+  float GetKeyboardAvoidingKeyboardTop();
   void ResetKeyboardAvoidingTargetIfNeeded(int32_t sign);
 
   int GetJSNodeType(int sign, const std::string& tag) const;
   static constexpr int32_t kInvalidKeyboardAvoidingSign = -2;
+  struct KeyboardAvoidingTarget {
+    bool avoid_keyboard{false};
+    float spacing{0.f};
+  };
   std::unordered_map<int32_t, std::shared_ptr<UIBase>> ui_holder_;
   std::unordered_set<int32_t> accessibility_exclusive_;
   std::unordered_map<std::string, int32_t> component_map_;
   std::unordered_map<int32_t, std::weak_ptr<UIBase>> layout_changed_nodes_;
   std::unordered_map<int32_t, std::weak_ptr<UIBase>> keyboard_event_observers_;
+  std::unordered_map<int32_t, KeyboardAvoidingTarget>
+      keyboard_avoiding_targets_;
   std::unordered_set<UIBase*> window_state_listeners_;
 
   napi_env env_{nullptr};
@@ -277,9 +309,14 @@ class UIOwner {
   std::unique_ptr<LynxImageConfig> image_config_{nullptr};
   int32_t keyboard_avoiding_active_owner_{kInvalidKeyboardAvoidingSign};
   int32_t keyboard_avoiding_last_event_owner_{kInvalidKeyboardAvoidingSign};
+  int32_t keyboard_avoiding_scroll_ui_{kInvalidKeyboardAvoidingSign};
   float keyboard_height_{0.f};
+  float keyboard_top_{0.f};
   float keyboard_avoiding_screen_bottom_{0.f};
   float current_avoid_distance_{0.f};
+  float keyboard_avoiding_scroll_base_content_height_{0.f};
+  float keyboard_avoiding_scroll_content_height_extra_{0.f};
+  bool keyboard_avoiding_scroll_has_content_state_{false};
   bool is_keyboard_transition_{false};
   bool avoid_keyboard_{false};
   float avoid_keyboard_spacing_{0.f};

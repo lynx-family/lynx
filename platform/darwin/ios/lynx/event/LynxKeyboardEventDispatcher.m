@@ -2,8 +2,13 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+#import <Lynx/LynxBaseScrollView+Auto.h>
+#import <Lynx/LynxBaseScrollView.h>
 #import <Lynx/LynxKeyboardEventDispatcher.h>
 #include <Lynx/LynxLog.h>
+#import <Lynx/LynxUI.h>
+#import <Lynx/LynxUIScrollViewInternal.h>
+#import <Lynx/LynxUIScroller.h>
 #import <Lynx/LynxWeakProxy.h>
 #import <UIKit/UIKit.h>
 #include <math.h>
@@ -22,13 +27,31 @@ static const CGFloat kLynxKeyboardAvoidEpsilon = 0.5;
 
 @end
 
+@interface LynxUI (LynxKeyboardAvoidingTraversal)
+- (NSArray<LynxUI *> *)children;
+@end
+
+@interface LynxKeyboardAvoidingTargetInfo : NSObject
+@property(nonatomic, assign) BOOL avoidKeyboard;
+@property(nonatomic, assign) CGFloat spacing;
+@end
+
+@implementation LynxKeyboardAvoidingTargetInfo
+@end
+
 @interface LynxKeyboardAvoidingContext : NSObject
 
 @property(nonatomic, weak) id activeOwner;
 @property(nonatomic, weak) id lastEventOwner;
 @property(nonatomic, weak) UIView *rootView;
 @property(nonatomic, weak) UIView *inputView;
+@property(nonatomic, weak) LynxUI *keyboardAvoidingScrollUI;
+@property(nonatomic, strong)
+    NSMapTable<id, LynxKeyboardAvoidingTargetInfo *> *keyboardAvoidingTargets;
 @property(nonatomic, copy) dispatch_block_t finalHideBlock;
+@property(nonatomic, assign) CGFloat keyboardAvoidingScrollBaseContentHeight;
+@property(nonatomic, assign) CGFloat keyboardAvoidingScrollContentHeightExtra;
+@property(nonatomic, assign) CGFloat keyboardAvoidingScrollAppliedContentHeight;
 @property(nonatomic, assign) CGFloat spacing;
 @property(nonatomic, assign) CGFloat keyboardHeight;
 @property(nonatomic, assign) CGFloat currentAvoidDistance;
@@ -74,6 +97,24 @@ static const CGFloat kLynxKeyboardAvoidEpsilon = 0.5;
 - (void)updateAnimationWithDuration:(NSTimeInterval)duration curve:(UIViewAnimationCurve)curve;
 - (void)updateAvoidDistance;
 - (void)applyAvoidDistance:(CGFloat)targetDistance;
+- (void)applyRootAvoidDistance:(CGFloat)targetDistance;
+- (BOOL)applyScrollViewAvoidDistance:(CGFloat)targetDistance;
+- (LynxUI *)keyboardAvoidingScrollUIForActiveOwner;
+- (LynxUI *)keyboardAvoidingScrollUIForOwner:(id)owner;
+- (BOOL)isVerticalKeyboardAvoidingScrollUI:(LynxUI *)ui;
+- (UIScrollView *)scrollViewForKeyboardAvoidingScrollUI:(LynxUI *)scrollUI;
+- (LynxUI *)lowestKeyboardAvoidingInputUIInScrollUI:(LynxUI *)scrollUI
+                                         scrollView:(UIScrollView *)scrollView;
+- (void)saveKeyboardAvoidingTargetForOwner:(id)owner
+                             avoidKeyboard:(BOOL)avoidKeyboard
+                                   spacing:(CGFloat)spacing;
+- (LynxKeyboardAvoidingTargetInfo *)keyboardAvoidingTargetInfoForOwner:(id)owner;
+- (CGFloat)keyboardAvoidingBaseContentHeightForScrollView:(UIScrollView *)scrollView;
+- (void)setKeyboardAvoidingContentHeight:(CGFloat)height forScrollView:(UIScrollView *)scrollView;
+- (void)setKeyboardAvoidingContentHeightExtra:(CGFloat)extra
+                                forScrollView:(UIScrollView *)scrollView;
+- (void)resetKeyboardAvoidingScrollContentState;
+- (void)clearKeyboardAvoidingScrollView;
 
 @end
 
@@ -83,6 +124,7 @@ static const CGFloat kLynxKeyboardAvoidEpsilon = 0.5;
   if (self = [super init]) {
     _animationDuration = kLynxKeyboardDefaultAnimationDuration;
     _animationCurve = UIViewAnimationCurveEaseInOut;
+    _keyboardAvoidingTargets = [NSMapTable weakToStrongObjectsMapTable];
   }
   return self;
 }
@@ -107,6 +149,15 @@ static const CGFloat kLynxKeyboardAvoidEpsilon = 0.5;
   if (owner == self.activeOwner) {
     self.lastEventOwner = owner;
     self.finalHideBlock = finalHideBlock;
+    dispatch_async(dispatch_get_main_queue(), ^{
+      if (owner != self.activeOwner) {
+        return;
+      }
+      if (self.inputView != nil && self.inputView.isFirstResponder) {
+        return;
+      }
+      [self clearKeyboardAvoidingScrollView];
+    });
   }
 }
 
@@ -115,6 +166,7 @@ static const CGFloat kLynxKeyboardAvoidEpsilon = 0.5;
                      inputView:(UIView *)inputView
                  avoidKeyboard:(BOOL)avoidKeyboard
                        spacing:(CGFloat)spacing {
+  [self saveKeyboardAvoidingTargetForOwner:owner avoidKeyboard:avoidKeyboard spacing:spacing];
   if (owner == self.activeOwner && inputView.isFirstResponder &&
       (self.keyboardVisible || self.keyboardHeight > 0)) {
     [self updateActiveOwner:owner
@@ -131,6 +183,7 @@ static const CGFloat kLynxKeyboardAvoidEpsilon = 0.5;
                                   inputView:(UIView *)inputView
                               avoidKeyboard:(BOOL)avoidKeyboard
                                     spacing:(CGFloat)spacing {
+  [self saveKeyboardAvoidingTargetForOwner:owner avoidKeyboard:avoidKeyboard spacing:spacing];
   if (owner == self.activeOwner && inputView.isFirstResponder &&
       (self.keyboardVisible || self.keyboardHeight > 0)) {
     [self updateActiveOwner:owner
@@ -186,7 +239,8 @@ static const CGFloat kLynxKeyboardAvoidEpsilon = 0.5;
     dispatch_block_t block = self.finalHideBlock;
     self.keyboardVisible = NO;
     self.keyboardHeight = 0;
-    [self applyAvoidDistance:0];
+    [self clearKeyboardAvoidingScrollView];
+    [self applyRootAvoidDistance:0];
     if (block != nil) {
       block();
     }
@@ -202,6 +256,13 @@ static const CGFloat kLynxKeyboardAvoidEpsilon = 0.5;
                 inputView:(UIView *)inputView
             avoidKeyboard:(BOOL)avoidKeyboard
                   spacing:(CGFloat)spacing {
+  [self saveKeyboardAvoidingTargetForOwner:owner avoidKeyboard:avoidKeyboard spacing:spacing];
+  if (owner != self.activeOwner) {
+    LynxUI *newScrollUI = avoidKeyboard ? [self keyboardAvoidingScrollUIForOwner:owner] : nil;
+    if (self.keyboardAvoidingScrollUI != nil && self.keyboardAvoidingScrollUI != newScrollUI) {
+      [self clearKeyboardAvoidingScrollView];
+    }
+  }
   self.activeOwner = owner;
   self.rootView = rootView;
   self.inputView = inputView;
@@ -231,6 +292,252 @@ static const CGFloat kLynxKeyboardAvoidEpsilon = 0.5;
 }
 
 - (void)applyAvoidDistance:(CGFloat)targetDistance {
+  if (!self.avoidKeyboard) {
+    [self clearKeyboardAvoidingScrollView];
+    [self applyRootAvoidDistance:0];
+    return;
+  }
+  if ([self applyScrollViewAvoidDistance:targetDistance]) {
+    return;
+  }
+  [self clearKeyboardAvoidingScrollView];
+  [self applyRootAvoidDistance:targetDistance];
+}
+
+- (LynxUI *)keyboardAvoidingScrollUIForActiveOwner {
+  return [self keyboardAvoidingScrollUIForOwner:self.activeOwner];
+}
+
+- (LynxUI *)keyboardAvoidingScrollUIForOwner:(id)owner {
+  if (![owner isKindOfClass:LynxUI.class]) {
+    return nil;
+  }
+  LynxUI *ui = [(LynxUI *)owner getParent];
+  while (ui != nil) {
+    if ([self isVerticalKeyboardAvoidingScrollUI:ui]) {
+      return ui;
+    }
+    ui = [ui getParent];
+  }
+  return nil;
+}
+
+- (BOOL)isVerticalKeyboardAvoidingScrollUI:(LynxUI *)ui {
+  if ([ui isKindOfClass:LynxUIScroller.class]) {
+    return ((LynxUIScroller *)ui).enableScrollY;
+  }
+  if ([ui isKindOfClass:LynxUIScrollViewInternal.class]) {
+    UIView *view = ui.view;
+    return [view isKindOfClass:LynxBaseScrollView.class] && ((LynxBaseScrollView *)view).vertical;
+  }
+  return NO;
+}
+
+- (UIScrollView *)scrollViewForKeyboardAvoidingScrollUI:(LynxUI *)scrollUI {
+  UIView *view = scrollUI.view;
+  return [view isKindOfClass:UIScrollView.class] ? (UIScrollView *)view : nil;
+}
+
+- (LynxUI *)lowestKeyboardAvoidingInputUIInScrollUI:(LynxUI *)scrollUI
+                                         scrollView:(UIScrollView *)scrollView {
+  LynxUI *lowestInputUI = nil;
+  CGFloat lowestInputBottom = -CGFLOAT_MAX;
+  NSMutableArray<LynxUI *> *pendingUIs = [NSMutableArray arrayWithObject:scrollUI];
+  while (pendingUIs.count > 0) {
+    LynxUI *ui = pendingUIs.lastObject;
+    [pendingUIs removeLastObject];
+    if (ui != scrollUI && [self isVerticalKeyboardAvoidingScrollUI:ui]) {
+      continue;
+    }
+
+    UIView *view = ui.view;
+    LynxKeyboardAvoidingTargetInfo *targetInfo = [self keyboardAvoidingTargetInfoForOwner:ui];
+    if (view != nil && targetInfo.avoidKeyboard &&
+        [view conformsToProtocol:@protocol(UITextInput)]) {
+      CGRect inputRectInScrollView = [view convertRect:view.bounds toView:scrollView];
+      CGFloat inputBottom = CGRectGetMaxY(inputRectInScrollView);
+      if (inputBottom > lowestInputBottom) {
+        lowestInputBottom = inputBottom;
+        lowestInputUI = ui;
+      }
+    }
+
+    for (LynxUI *child in ui.children) {
+      [pendingUIs addObject:child];
+    }
+  }
+  return lowestInputUI;
+}
+
+- (void)saveKeyboardAvoidingTargetForOwner:(id)owner
+                             avoidKeyboard:(BOOL)avoidKeyboard
+                                   spacing:(CGFloat)spacing {
+  if (owner == nil) {
+    return;
+  }
+  LynxKeyboardAvoidingTargetInfo *targetInfo = [[LynxKeyboardAvoidingTargetInfo alloc] init];
+  targetInfo.avoidKeyboard = avoidKeyboard;
+  targetInfo.spacing = spacing;
+  [self.keyboardAvoidingTargets setObject:targetInfo forKey:owner];
+}
+
+- (LynxKeyboardAvoidingTargetInfo *)keyboardAvoidingTargetInfoForOwner:(id)owner {
+  if (owner == nil) {
+    return nil;
+  }
+  return [self.keyboardAvoidingTargets objectForKey:owner];
+}
+
+- (CGFloat)keyboardAvoidingBaseContentHeightForScrollView:(UIScrollView *)scrollView {
+  if (scrollView == nil) {
+    return 0;
+  }
+  CGFloat currentHeight = MAX(0, scrollView.contentSize.height);
+  if (self.keyboardAvoidingScrollContentHeightExtra > 0 &&
+      fabs(currentHeight - self.keyboardAvoidingScrollAppliedContentHeight) <
+          kLynxKeyboardAvoidEpsilon) {
+    return MAX(0, self.keyboardAvoidingScrollBaseContentHeight);
+  }
+  self.keyboardAvoidingScrollBaseContentHeight = currentHeight;
+  self.keyboardAvoidingScrollContentHeightExtra = 0;
+  self.keyboardAvoidingScrollAppliedContentHeight = currentHeight;
+  return currentHeight;
+}
+
+- (void)setKeyboardAvoidingContentHeight:(CGFloat)height forScrollView:(UIScrollView *)scrollView {
+  if (scrollView == nil) {
+    return;
+  }
+  CGSize contentSize = scrollView.contentSize;
+  contentSize.height = MAX(0, height);
+  if (fabs(scrollView.contentSize.height - contentSize.height) < kLynxKeyboardAvoidEpsilon) {
+    return;
+  }
+  if ([scrollView isKindOfClass:LynxBaseScrollView.class]) {
+    [(LynxBaseScrollView *)scrollView setScrollContentSize:contentSize];
+  } else {
+    scrollView.contentSize = contentSize;
+  }
+}
+
+- (void)setKeyboardAvoidingContentHeightExtra:(CGFloat)extra
+                                forScrollView:(UIScrollView *)scrollView {
+  if (scrollView == nil) {
+    return;
+  }
+  CGFloat baseContentHeight = [self keyboardAvoidingBaseContentHeightForScrollView:scrollView];
+  CGFloat contentHeightExtra = MAX(0, extra);
+  CGFloat appliedContentHeight = baseContentHeight + contentHeightExtra;
+  [self setKeyboardAvoidingContentHeight:appliedContentHeight forScrollView:scrollView];
+  self.keyboardAvoidingScrollBaseContentHeight = baseContentHeight;
+  self.keyboardAvoidingScrollContentHeightExtra = contentHeightExtra;
+  self.keyboardAvoidingScrollAppliedContentHeight = appliedContentHeight;
+}
+
+- (void)resetKeyboardAvoidingScrollContentState {
+  self.keyboardAvoidingScrollBaseContentHeight = 0;
+  self.keyboardAvoidingScrollContentHeightExtra = 0;
+  self.keyboardAvoidingScrollAppliedContentHeight = 0;
+}
+
+- (void)clearKeyboardAvoidingScrollView {
+  LynxUI *scrollUI = self.keyboardAvoidingScrollUI;
+  self.keyboardAvoidingScrollUI = nil;
+  if (scrollUI == nil) {
+    [self resetKeyboardAvoidingScrollContentState];
+    return;
+  }
+  UIScrollView *scrollView = [self scrollViewForKeyboardAvoidingScrollUI:scrollUI];
+  if (scrollView == nil) {
+    [self resetKeyboardAvoidingScrollContentState];
+    return;
+  }
+  [self setKeyboardAvoidingContentHeightExtra:0 forScrollView:scrollView];
+  [self resetKeyboardAvoidingScrollContentState];
+  CGFloat minOffsetY = -scrollView.contentInset.top;
+  CGFloat maxOffsetY =
+      MAX(minOffsetY, scrollView.contentSize.height - scrollView.bounds.size.height +
+                          scrollView.contentInset.bottom);
+  CGPoint offset = scrollView.contentOffset;
+  offset.y = MIN(MAX(offset.y, minOffsetY), maxOffsetY);
+  if (fabs(offset.y - scrollView.contentOffset.y) >= kLynxKeyboardAvoidEpsilon) {
+    [scrollView setContentOffset:offset animated:NO];
+  }
+}
+
+- (BOOL)applyScrollViewAvoidDistance:(CGFloat)targetDistance {
+  (void)targetDistance;
+  LynxUI *scrollUI = [self keyboardAvoidingScrollUIForActiveOwner];
+  if (scrollUI == nil) {
+    return NO;
+  }
+  if (self.keyboardAvoidingScrollUI != nil && self.keyboardAvoidingScrollUI != scrollUI) {
+    [self clearKeyboardAvoidingScrollView];
+  }
+  self.keyboardAvoidingScrollUI = scrollUI;
+  [self applyRootAvoidDistance:0];
+
+  UIScrollView *scrollView = [self scrollViewForKeyboardAvoidingScrollUI:scrollUI];
+  if (scrollView == nil || scrollView.bounds.size.height <= 0) {
+    return YES;
+  }
+
+  CGFloat baseContentHeight = [self keyboardAvoidingBaseContentHeightForScrollView:scrollView];
+  CGFloat minOffsetY = -scrollView.contentInset.top;
+  CGFloat rawMaxOffsetYWithoutExtra =
+      baseContentHeight - scrollView.bounds.size.height + scrollView.contentInset.bottom;
+  CGFloat maxOffsetYWithoutExtra = MAX(minOffsetY, rawMaxOffsetYWithoutExtra);
+  CGFloat currentOffsetY = scrollView.contentOffset.y;
+  CGRect inputRectInScrollView = [self.inputView convertRect:self.inputView.bounds
+                                                      toView:scrollView];
+  CGFloat visibleHeight = scrollView.bounds.size.height - scrollView.contentInset.bottom;
+  if (self.keyboardHeight > 0 && scrollView.window != nil) {
+    CGRect scrollViewRectInScreen = [scrollView convertRect:scrollView.bounds toView:nil];
+    CGFloat keyboardTop = UIScreen.mainScreen.bounds.size.height - self.keyboardHeight;
+    visibleHeight = MIN(visibleHeight, keyboardTop - CGRectGetMinY(scrollViewRectInScreen));
+  }
+  CGFloat desiredOffsetY =
+      CGRectGetMaxY(inputRectInScrollView) + self.spacing - MAX(0, visibleHeight);
+
+  LynxUI *lowestInputUI = [self lowestKeyboardAvoidingInputUIInScrollUI:scrollUI
+                                                             scrollView:scrollView];
+  UIView *lowestInputView = lowestInputUI.view;
+  CGFloat lowestSpacing = self.spacing;
+  LynxKeyboardAvoidingTargetInfo *lowestTargetInfo =
+      [self keyboardAvoidingTargetInfoForOwner:lowestInputUI];
+  if (lowestTargetInfo != nil) {
+    lowestSpacing = lowestTargetInfo.spacing;
+  }
+  if (lowestInputView == nil) {
+    lowestInputView = self.inputView;
+  }
+  CGRect lowestInputRectInScrollView = [lowestInputView convertRect:lowestInputView.bounds
+                                                             toView:scrollView];
+  CGFloat lowestDesiredOffsetY =
+      CGRectGetMaxY(lowestInputRectInScrollView) + lowestSpacing - MAX(0, visibleHeight);
+  CGFloat requiredExtra = 0;
+  if (lowestDesiredOffsetY > maxOffsetYWithoutExtra) {
+    requiredExtra = MAX(0, lowestDesiredOffsetY - rawMaxOffsetYWithoutExtra);
+  }
+  [self setKeyboardAvoidingContentHeightExtra:requiredExtra forScrollView:scrollView];
+
+  CGFloat maxOffsetY = MAX(minOffsetY, rawMaxOffsetYWithoutExtra + requiredExtra);
+  CGFloat targetOffsetY = MIN(MAX(desiredOffsetY, minOffsetY), maxOffsetY);
+  if (fabs(targetOffsetY - currentOffsetY) < kLynxKeyboardAvoidEpsilon) {
+    return YES;
+  }
+
+  CGPoint targetOffset = scrollView.contentOffset;
+  targetOffset.y = targetOffsetY;
+  if (self.animationDuration <= 0) {
+    [scrollView setContentOffset:targetOffset animated:NO];
+    return YES;
+  }
+  [scrollView setContentOffset:targetOffset animated:YES];
+  return YES;
+}
+
+- (void)applyRootAvoidDistance:(CGFloat)targetDistance {
   UIView *rootView = self.rootView;
   if (rootView == nil) {
     self.currentAvoidDistance = targetDistance;

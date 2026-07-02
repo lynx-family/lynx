@@ -76,6 +76,10 @@ public class LynxBaseScrollViewScrolling extends FrameLayout implements LynxBase
     }
   }
 
+  public int getScrollContentSizeVertically() {
+    return mContentSize[1];
+  }
+
   @Override
   public void scrollByUnlimited(int[] delta) {
     if (mIsVertical) {

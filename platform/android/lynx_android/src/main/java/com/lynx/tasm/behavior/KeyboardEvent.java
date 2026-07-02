@@ -21,7 +21,13 @@ import androidx.appcompat.widget.LinearLayoutCompat;
 import androidx.recyclerview.widget.OrientationHelper;
 import com.lynx.react.bridge.JavaOnlyArray;
 import com.lynx.tasm.base.LLog;
+import com.lynx.tasm.behavior.ui.LynxBaseUI;
+import com.lynx.tasm.behavior.ui.LynxUI;
 import com.lynx.tasm.behavior.ui.UIBody;
+import com.lynx.tasm.behavior.ui.scroll.AndroidScrollView;
+import com.lynx.tasm.behavior.ui.scroll.LynxUIScrollViewInternal;
+import com.lynx.tasm.behavior.ui.scroll.UIScrollView;
+import com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollView;
 import com.lynx.tasm.core.LynxThreadPool;
 import com.lynx.tasm.event.LynxKeyboardEvent;
 import com.lynx.tasm.utils.ContextUtils;
@@ -216,7 +222,7 @@ public class KeyboardEvent {
     if (mKeyboardMonitor == null) {
       mKeyboardMonitor = new KeyboardMonitor(activity);
     }
-    mKeyboardAvoidingContext.start(activity.getWindow().getDecorView());
+    mKeyboardAvoidingContext.start(resolveKeyboardAvoidingFocusRootView(activity));
 
     mListener = new ViewTreeObserver.OnGlobalLayoutListener() {
       @Override
@@ -229,6 +235,16 @@ public class KeyboardEvent {
     mKeyboardMonitor.addOnGlobalLayoutListener(mListener);
     mKeyboardMonitor.start();
     isStartedInUIThread = true;
+  }
+
+  private View resolveKeyboardAvoidingFocusRootView(Activity activity) {
+    if (mLynxContext != null && mLynxContext.getUIBody() != null) {
+      UIBody.UIBodyView bodyView = mLynxContext.getUIBody().getBodyView();
+      if (bodyView != null) {
+        return bodyView;
+      }
+    }
+    return activity.getWindow().getDecorView();
   }
 
   public synchronized void stop() {
@@ -372,6 +388,13 @@ public class KeyboardEvent {
         new WeakReference<KeyboardAvoidTarget>(null);
     private Runnable mPendingKeyboardFallbackRunnable;
     private View mPendingKeyboardFallbackView;
+    private WeakReference<LynxBaseUI> mKeyboardAvoidingScrollUI =
+        new WeakReference<LynxBaseUI>(null);
+    private boolean mKeyboardAvoidingScrollHasContentState = false;
+    private int mKeyboardAvoidingScrollBaseContentHeight = 0;
+    private int mKeyboardAvoidingScrollContentHeightExtra = 0;
+    private WeakReference<LynxBaseUI> mKeyboardAvoidingSmoothScrollUI =
+        new WeakReference<LynxBaseUI>(null);
 
     void start(View focusRootView) {
       if (focusRootView == null) {
@@ -430,10 +453,20 @@ public class KeyboardEvent {
     void inputDidEndEditing(Object owner) {
       KeyboardAvoidTarget activeTarget = getActiveTarget();
       if (activeTarget != null && activeTarget.matchesOwner(owner)) {
+        View inputView = activeTarget.getInputView();
         setActiveTarget(null);
         setLastEventOwner(owner);
         if (mKeyboardHeight <= 0) {
           resetAvoidDistance();
+        } else if (inputView != null) {
+          inputView.post(new Runnable() {
+            @Override
+            public void run() {
+              if (getActiveTarget() == null && findCurrentFocusedTarget() == null) {
+                clearKeyboardAvoidingScrollView();
+              }
+            }
+          });
         }
       } else {
         setLastEventOwner(owner);
@@ -462,6 +495,9 @@ public class KeyboardEvent {
           setActiveTarget(target);
           setLastEventOwner(target.getOwner());
           prepareInsetsKeyboardTransition(KEYBOARD_TRANSITION_SHOW, keyboardHeight, target);
+          if (shouldApplyKeyboardWillShowHeightForScrollTarget(target, keyboardHeight)) {
+            applyAvoidDistance(target, keyboardHeight, currentRootWindowInsets(), true);
+          }
         } else {
           mKeyboardHeight = keyboardHeight;
           activateTarget(target);
@@ -544,9 +580,513 @@ public class KeyboardEvent {
         resetAvoidDistance(animated);
         return;
       }
-      View lynxView = target.getLynxView();
-      float avoidDistance = calculateAvoidDistance(target, mKeyboardHeight);
-      applyAvoidDistance(lynxView, avoidDistance, animated);
+      WindowInsets insets = currentRootWindowInsets();
+      int keyboardHeight = keyboardHeightForAvoidDistance(insets);
+      applyAvoidDistance(target, keyboardHeight, insets, animated);
+    }
+
+    private void applyAvoidDistance(
+        KeyboardAvoidTarget target, int keyboardHeight, WindowInsets insets, boolean animated) {
+      if (target == null || !target.isValid()) {
+        setActiveTarget(null);
+        resetAvoidDistance(animated);
+        return;
+      }
+      if (!target.shouldAvoidKeyboard()) {
+        clearKeyboardAvoidingScrollView();
+        applyRootAvoidDistance(target.getLynxView(), 0f, animated);
+        return;
+      }
+      if (applyScrollViewAvoidDistance(target, keyboardHeight, insets, animated)) {
+        return;
+      }
+      clearKeyboardAvoidingScrollView();
+      float avoidDistance = calculateAvoidDistance(target, keyboardHeight, insets);
+      applyRootAvoidDistance(target.getLynxView(), avoidDistance, animated);
+    }
+
+    private boolean applyScrollViewAvoidDistance(
+        KeyboardAvoidTarget target, int keyboardHeight, WindowInsets insets, boolean animated) {
+      LynxBaseUI scrollUI = keyboardAvoidingScrollUIForTarget(target);
+      if (scrollUI == null) {
+        return false;
+      }
+      LynxBaseUI currentScrollUI = mKeyboardAvoidingScrollUI.get();
+      if (currentScrollUI != null && currentScrollUI != scrollUI) {
+        clearKeyboardAvoidingScrollView();
+      }
+      mKeyboardAvoidingScrollUI = new WeakReference<LynxBaseUI>(scrollUI);
+      int effectiveKeyboardHeight = keyboardHeightForScrollViewAvoidDistance(keyboardHeight);
+      applyRootAvoidDistance(target.getLynxView(), 0f, animated);
+
+      View inputView = target.getInputView();
+      View scrollView = keyboardAvoidingScrollViewForScrollUI(scrollUI);
+      if (inputView == null || scrollView == null || scrollView.getHeight() <= 0) {
+        return true;
+      }
+      if (effectiveKeyboardHeight <= 0) {
+        return true;
+      }
+
+      int baseContentHeight = keyboardAvoidingBaseContentHeightForScrollUI(scrollUI);
+      int minOffsetY = 0;
+      int currentOffsetY = keyboardAvoidingScrollOffsetYForScrollUI(scrollUI);
+      int viewportHeight = keyboardAvoidingViewportHeightForScrollView(scrollView);
+      int rawMaxOffsetYWithoutExtra = baseContentHeight - viewportHeight;
+      int maxOffsetYWithoutExtra = Math.max(minOffsetY, rawMaxOffsetYWithoutExtra);
+      float visibleHeight = scrollView.getHeight();
+      WindowInsets effectiveInsets =
+          shouldUseKeyboardWillShowHeightForScrollViewAvoidDistance() ? null : insets;
+      int availableBottomOnScreen =
+          keyboardAvailableBottomOnScreen(effectiveKeyboardHeight, effectiveInsets);
+      if (effectiveKeyboardHeight > 0 && availableBottomOnScreen >= 0) {
+        int[] scrollLocation = new int[2];
+        scrollView.getLocationOnScreen(scrollLocation);
+        visibleHeight = Math.min(visibleHeight, availableBottomOnScreen - scrollLocation[1]);
+      }
+      visibleHeight = Math.max(0f, visibleHeight);
+
+      float inputBottomY = inputBottomInScrollViewContent(inputView, scrollView, currentOffsetY);
+      float desiredOffsetY = inputBottomY + target.getSpacing() - visibleHeight;
+      KeyboardAvoidTarget lowestTarget = lowestKeyboardAvoidingTargetInScrollUI(scrollUI);
+      if (lowestTarget == null) {
+        lowestTarget = target;
+      }
+      float lowestInputBottomY =
+          inputBottomInScrollViewContent(lowestTarget.getInputView(), scrollView, currentOffsetY);
+      float lowestDesiredOffsetY = lowestInputBottomY + lowestTarget.getSpacing() - visibleHeight;
+      int requiredExtra = 0;
+      if (lowestDesiredOffsetY > maxOffsetYWithoutExtra) {
+        requiredExtra =
+            Math.max(0, (int) Math.ceil(lowestDesiredOffsetY - rawMaxOffsetYWithoutExtra));
+      }
+      setKeyboardAvoidingContentHeightExtraForScrollUI(scrollUI, requiredExtra);
+
+      int maxOffsetY = Math.max(minOffsetY, rawMaxOffsetYWithoutExtra + requiredExtra);
+      int targetOffsetY =
+          Math.min(Math.max((int) Math.ceil(desiredOffsetY), minOffsetY), maxOffsetY);
+      if (Math.abs(targetOffsetY - currentOffsetY) < 1) {
+        return true;
+      }
+      boolean needsScrollAfterContentLayout =
+          requiredExtra > 0 && targetOffsetY > maxOffsetYWithoutExtra;
+      if (!animated && shouldKeepKeyboardAvoidingSmoothScroll(scrollUI)) {
+        return true;
+      }
+      if (animated && needsScrollAfterContentLayout) {
+        scrollKeyboardAvoidingScrollViewToAfterContentLayout(scrollUI, target, targetOffsetY, true);
+        return true;
+      }
+      scrollKeyboardAvoidingScrollViewTo(scrollUI, targetOffsetY, animated);
+      if (needsScrollAfterContentLayout) {
+        scrollKeyboardAvoidingScrollViewToAfterContentLayout(
+            scrollUI, target, targetOffsetY, animated);
+      }
+      return true;
+    }
+
+    private boolean shouldApplyKeyboardWillShowHeightForScrollTarget(
+        KeyboardAvoidTarget target, int keyboardHeight) {
+      return target != null && target.shouldAvoidKeyboard() && keyboardHeight > 0
+          && keyboardAvoidingScrollUIForTarget(target) != null;
+    }
+
+    private int keyboardHeightForScrollViewAvoidDistance(int keyboardHeight) {
+      int effectiveKeyboardHeight = keyboardHeight;
+      if (shouldUseKeyboardWillShowHeightForScrollViewAvoidDistance()) {
+        effectiveKeyboardHeight = Math.max(effectiveKeyboardHeight, mPendingKeyboardHeight);
+      }
+      return effectiveKeyboardHeight;
+    }
+
+    private boolean shouldUseKeyboardWillShowHeightForScrollViewAvoidDistance() {
+      return mPendingKeyboardTransition == KEYBOARD_TRANSITION_SHOW && mPendingKeyboardHeight > 0;
+    }
+
+    private boolean shouldKeepKeyboardAvoidingSmoothScroll(LynxBaseUI scrollUI) {
+      return shouldUseKeyboardWillShowHeightForScrollViewAvoidDistance()
+          && mKeyboardAvoidingSmoothScrollUI.get() == scrollUI;
+    }
+
+    private LynxBaseUI keyboardAvoidingScrollUIForTarget(KeyboardAvoidTarget target) {
+      return target == null ? null : keyboardAvoidingScrollUIForOwner(target.getOwner());
+    }
+
+    private LynxBaseUI keyboardAvoidingScrollUIForOwner(Object owner) {
+      if (!(owner instanceof LynxBaseUI)) {
+        return null;
+      }
+      LynxBaseUI ui = ((LynxBaseUI) owner).getParentBaseUI();
+      while (ui != null) {
+        if (isVerticalKeyboardAvoidingScrollUI(ui)) {
+          return ui;
+        }
+        ui = ui.getParentBaseUI();
+      }
+      return null;
+    }
+
+    private boolean isVerticalKeyboardAvoidingScrollUI(LynxBaseUI ui) {
+      if (ui instanceof UIScrollView) {
+        AndroidScrollView scrollView = ((UIScrollView) ui).getView();
+        return scrollView != null && !scrollView.isHorizontal();
+      }
+      if (ui instanceof LynxUIScrollViewInternal) {
+        LynxBaseScrollView scrollView = ((LynxUIScrollViewInternal) ui).getView();
+        return scrollView != null && scrollView.isVertical();
+      }
+      return false;
+    }
+
+    private View keyboardAvoidingScrollViewForScrollUI(LynxBaseUI scrollUI) {
+      if (scrollUI instanceof LynxUI) {
+        return ((LynxUI<?>) scrollUI).getView();
+      }
+      return null;
+    }
+
+    private KeyboardAvoidTarget lowestKeyboardAvoidingTargetInScrollUI(LynxBaseUI scrollUI) {
+      KeyboardAvoidTarget lowestTarget = null;
+      float lowestInputBottom = -Float.MAX_VALUE;
+      int currentOffsetY = keyboardAvoidingScrollOffsetYForScrollUI(scrollUI);
+      View scrollView = keyboardAvoidingScrollViewForScrollUI(scrollUI);
+      if (scrollUI == null || scrollView == null) {
+        return null;
+      }
+      for (KeyboardAvoidTarget target : mTargets.values()) {
+        if (target == null || !target.isValid() || !target.shouldAvoidKeyboard()
+            || !isTargetInScrollUI(target, scrollUI)) {
+          continue;
+        }
+        float inputBottom =
+            inputBottomInScrollViewContent(target.getInputView(), scrollView, currentOffsetY);
+        if (inputBottom > lowestInputBottom) {
+          lowestInputBottom = inputBottom;
+          lowestTarget = target;
+        }
+      }
+      return lowestTarget;
+    }
+
+    private boolean isTargetInScrollUI(KeyboardAvoidTarget target, LynxBaseUI scrollUI) {
+      Object owner = target.getOwner();
+      if (!(owner instanceof LynxBaseUI) || scrollUI == null) {
+        return false;
+      }
+      LynxBaseUI ui = ((LynxBaseUI) owner).getParentBaseUI();
+      while (ui != null) {
+        if (ui == scrollUI) {
+          return true;
+        }
+        if (isVerticalKeyboardAvoidingScrollUI(ui)) {
+          return false;
+        }
+        ui = ui.getParentBaseUI();
+      }
+      return false;
+    }
+
+    private float inputBottomInScrollViewContent(
+        View inputView, View scrollView, int scrollOffsetY) {
+      int[] inputLocation = new int[2];
+      int[] scrollLocation = new int[2];
+      inputView.getLocationOnScreen(inputLocation);
+      scrollView.getLocationOnScreen(scrollLocation);
+      return inputLocation[1] - scrollLocation[1] + inputView.getHeight() + scrollOffsetY;
+    }
+
+    private int keyboardAvailableBottomOnScreen(int keyboardHeight, WindowInsets insets) {
+      Activity activity = ContextUtils.getActivity(mLynxContext);
+      if (activity == null || activity.getWindow() == null) {
+        return -1;
+      }
+      View decorView = activity.getWindow().getDecorView();
+      if (decorView == null || decorView.getHeight() <= 0) {
+        return -1;
+      }
+      boolean preferVisibleFrame =
+          Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && activity.isInMultiWindowMode();
+      int availableBottomInHost =
+          getKeyboardAvailableBottomInHost(decorView, keyboardHeight, insets, preferVisibleFrame);
+      if (availableBottomInHost >= 0) {
+        int[] decorLocation = new int[2];
+        decorView.getLocationOnScreen(decorLocation);
+        return decorLocation[1] + availableBottomInHost;
+      }
+      if (keyboardHeight <= 0) {
+        return -1;
+      }
+      return getKeyboardAvoidingScreenBottom(decorView) - keyboardHeight;
+    }
+
+    private void clearKeyboardAvoidingScrollView() {
+      LynxBaseUI scrollUI = mKeyboardAvoidingScrollUI.get();
+      mKeyboardAvoidingScrollUI = new WeakReference<LynxBaseUI>(null);
+      clearKeyboardAvoidingSmoothScroll();
+      if (scrollUI == null) {
+        resetKeyboardAvoidingScrollContentState();
+        return;
+      }
+      setKeyboardAvoidingContentHeightExtraForScrollUI(scrollUI, 0);
+      resetKeyboardAvoidingScrollContentState();
+    }
+
+    private int keyboardAvoidingBaseContentHeightForScrollUI(LynxBaseUI scrollUI) {
+      if (mKeyboardAvoidingScrollHasContentState) {
+        return Math.max(0, mKeyboardAvoidingScrollBaseContentHeight);
+      }
+      int currentContentHeight = Math.max(0, keyboardAvoidingContentHeightForScrollUI(scrollUI));
+      mKeyboardAvoidingScrollBaseContentHeight = currentContentHeight;
+      mKeyboardAvoidingScrollHasContentState = true;
+      return currentContentHeight;
+    }
+
+    private void setKeyboardAvoidingContentHeightExtraForScrollUI(LynxBaseUI scrollUI, int extra) {
+      int baseContentHeight = keyboardAvoidingBaseContentHeightForScrollUI(scrollUI);
+      int contentHeightExtra = Math.max(0, extra);
+      int appliedContentHeight = baseContentHeight + contentHeightExtra;
+      mKeyboardAvoidingScrollContentHeightExtra = contentHeightExtra;
+      if (contentHeightExtra > 0) {
+        setKeyboardAvoidingContentHeightForScrollUI(scrollUI, appliedContentHeight);
+      } else {
+        clearKeyboardAvoidingContentHeightForScrollUI(scrollUI);
+      }
+      mKeyboardAvoidingScrollBaseContentHeight = baseContentHeight;
+      mKeyboardAvoidingScrollHasContentState = true;
+    }
+
+    private void resetKeyboardAvoidingScrollContentState() {
+      mKeyboardAvoidingScrollHasContentState = false;
+      mKeyboardAvoidingScrollBaseContentHeight = 0;
+      mKeyboardAvoidingScrollContentHeightExtra = 0;
+    }
+
+    private void clearKeyboardAvoidingSmoothScroll() {
+      mKeyboardAvoidingSmoothScrollUI = new WeakReference<LynxBaseUI>(null);
+    }
+
+    private void markKeyboardAvoidingSmoothScroll(LynxBaseUI scrollUI) {
+      mKeyboardAvoidingSmoothScrollUI = new WeakReference<LynxBaseUI>(scrollUI);
+    }
+
+    private int keyboardAvoidingContentHeightForScrollUI(LynxBaseUI scrollUI) {
+      if (scrollUI instanceof UIScrollView) {
+        AndroidScrollView scrollView = ((UIScrollView) scrollUI).getView();
+        return scrollView == null ? 0 : Math.max(0, scrollView.getContentHeight());
+      }
+      if (scrollUI instanceof LynxUIScrollViewInternal) {
+        LynxBaseScrollView scrollView = ((LynxUIScrollViewInternal) scrollUI).getView();
+        return scrollView == null ? 0 : Math.max(0, scrollView.getScrollContentSizeVertically());
+      }
+      return 0;
+    }
+
+    private void setKeyboardAvoidingContentHeightForScrollUI(
+        LynxBaseUI scrollUI, int contentHeight) {
+      int targetContentHeight = Math.max(0, contentHeight);
+      if (scrollUI instanceof UIScrollView) {
+        AndroidScrollView scrollView = ((UIScrollView) scrollUI).getView();
+        if (scrollView == null) {
+          return;
+        }
+        int scrollX = scrollView.getRealScrollX();
+        int scrollY = scrollView.getRealScrollY();
+        scrollView.setKeyboardAvoidingContentHeightExtra(mKeyboardAvoidingScrollContentHeightExtra);
+        if (scrollView.getContentHeight() != targetContentHeight) {
+          scrollView.setMeasuredSize(scrollView.getContentWidth(), targetContentHeight);
+        }
+        restoreKeyboardAvoidingScrollOffset(scrollView, scrollX, scrollY);
+      } else if (scrollUI instanceof LynxUIScrollViewInternal) {
+        LynxBaseScrollView scrollView = ((LynxUIScrollViewInternal) scrollUI).getView();
+        if (scrollView == null
+            || scrollView.getScrollContentSizeVertically() == targetContentHeight) {
+          return;
+        }
+        int offsetX = scrollView.getScrollOffsetHorizontally();
+        int offsetY = scrollView.getScrollOffsetVertically();
+        scrollView.setScrollContentSizeVertically(targetContentHeight);
+        restoreKeyboardAvoidingScrollOffset(scrollView, offsetX, offsetY);
+      }
+    }
+
+    private void clearKeyboardAvoidingContentHeightForScrollUI(LynxBaseUI scrollUI) {
+      if (!mKeyboardAvoidingScrollHasContentState) {
+        return;
+      }
+      int baseContentHeight = Math.max(0, mKeyboardAvoidingScrollBaseContentHeight);
+      if (scrollUI instanceof UIScrollView) {
+        AndroidScrollView scrollView = ((UIScrollView) scrollUI).getView();
+        if (scrollView == null) {
+          return;
+        }
+        int scrollX = scrollView.getRealScrollX();
+        int scrollY = scrollView.getRealScrollY();
+        scrollView.setKeyboardAvoidingContentHeightExtra(0);
+        scrollView.setMeasuredSize(scrollView.getContentWidth(), baseContentHeight);
+        restoreKeyboardAvoidingScrollOffset(scrollView, scrollX, scrollY);
+      } else {
+        setKeyboardAvoidingContentHeightForScrollUI(scrollUI, baseContentHeight);
+      }
+    }
+
+    private void reapplyKeyboardAvoidingContentHeightForScrollUI(LynxBaseUI scrollUI) {
+      if (!mKeyboardAvoidingScrollHasContentState
+          || mKeyboardAvoidingScrollContentHeightExtra <= 0) {
+        return;
+      }
+      setKeyboardAvoidingContentHeightForScrollUI(scrollUI,
+          mKeyboardAvoidingScrollBaseContentHeight + mKeyboardAvoidingScrollContentHeightExtra);
+    }
+
+    private int keyboardAvoidingViewportHeightForScrollView(View scrollView) {
+      return scrollView == null ? 0 : Math.max(0, scrollView.getHeight());
+    }
+
+    private int keyboardAvoidingScrollOffsetYForScrollUI(LynxBaseUI scrollUI) {
+      if (scrollUI instanceof UIScrollView) {
+        AndroidScrollView scrollView = ((UIScrollView) scrollUI).getView();
+        return scrollView == null ? 0 : scrollView.getRealScrollY();
+      }
+      if (scrollUI instanceof LynxUIScrollViewInternal) {
+        LynxBaseScrollView scrollView = ((LynxUIScrollViewInternal) scrollUI).getView();
+        return scrollView == null ? 0 : scrollView.getScrollOffsetVertically();
+      }
+      return 0;
+    }
+
+    private void scrollKeyboardAvoidingScrollViewTo(
+        LynxBaseUI scrollUI, int offsetY, boolean animated) {
+      if (animated) {
+        markKeyboardAvoidingSmoothScroll(scrollUI);
+      } else if (!shouldKeepKeyboardAvoidingSmoothScroll(scrollUI)) {
+        clearKeyboardAvoidingSmoothScroll();
+      }
+      reapplyKeyboardAvoidingContentHeightForScrollUI(scrollUI);
+      if (scrollUI instanceof UIScrollView) {
+        AndroidScrollView scrollView = ((UIScrollView) scrollUI).getView();
+        if (scrollView != null) {
+          scrollKeyboardAvoidingAndroidScrollViewTo(scrollView, offsetY, animated);
+        }
+      } else if (scrollUI instanceof LynxUIScrollViewInternal) {
+        LynxBaseScrollView scrollView = ((LynxUIScrollViewInternal) scrollUI).getView();
+        if (scrollView != null) {
+          int[] target = {scrollView.getScrollOffsetHorizontally(), offsetY};
+          if (animated) {
+            scrollView.animatedScrollTo(target, null);
+          } else {
+            scrollView.scrollTo(target);
+          }
+        }
+      }
+    }
+
+    private void scrollKeyboardAvoidingAndroidScrollViewTo(
+        AndroidScrollView scrollView, int offsetY, boolean animated) {
+      if (scrollView == null) {
+        return;
+      }
+      int scrollX = scrollView.getRealScrollX();
+      int startY = scrollView.getRealScrollY();
+      if (Math.abs(offsetY - startY) < 1) {
+        return;
+      }
+      scrollView.setScrollTo(scrollX, offsetY, animated);
+    }
+
+    private void setKeyboardAvoidingAndroidScrollOffset(
+        AndroidScrollView scrollView, int scrollX, int scrollY) {
+      if (scrollView == null) {
+        return;
+      }
+      scrollView.setScrollTo(scrollX, scrollY, false);
+    }
+
+    private void restoreKeyboardAvoidingScrollOffset(
+        AndroidScrollView scrollView, int scrollX, int scrollY) {
+      if (scrollView == null) {
+        return;
+      }
+      if (scrollView.getRealScrollX() != scrollX || scrollView.getRealScrollY() != scrollY) {
+        setKeyboardAvoidingAndroidScrollOffset(scrollView, scrollX, scrollY);
+      }
+    }
+
+    private void restoreKeyboardAvoidingScrollOffset(
+        LynxBaseScrollView scrollView, int offsetX, int offsetY) {
+      if (scrollView == null) {
+        return;
+      }
+      if (scrollView.getScrollOffsetHorizontally() != offsetX
+          || scrollView.getScrollOffsetVertically() != offsetY) {
+        scrollView.scrollToUnlimited(new int[] {offsetX, offsetY});
+      }
+    }
+
+    private void scrollKeyboardAvoidingScrollViewToAfterContentLayout(final LynxBaseUI scrollUI,
+        final KeyboardAvoidTarget target, final int offsetY, final boolean animated) {
+      final View scrollView = keyboardAvoidingScrollViewForScrollUI(scrollUI);
+      if (scrollView == null) {
+        return;
+      }
+      ViewTreeObserver observer = scrollView.getViewTreeObserver();
+      if (observer == null || !observer.isAlive()) {
+        scrollKeyboardAvoidingScrollViewTo(scrollUI, offsetY, animated);
+        return;
+      }
+      if (animated) {
+        markKeyboardAvoidingSmoothScroll(scrollUI);
+      }
+      observer.addOnPreDrawListener(new ViewTreeObserver.OnPreDrawListener() {
+        @Override
+        public boolean onPreDraw() {
+          ViewTreeObserver currentObserver = scrollView.getViewTreeObserver();
+          if (currentObserver.isAlive()) {
+            currentObserver.removeOnPreDrawListener(this);
+          }
+          if (!isKeyboardAvoidingScrollRequestCurrent(scrollUI, target)) {
+            return true;
+          }
+          reapplyKeyboardAvoidingContentHeightForScrollUI(scrollUI);
+          int currentOffsetY = keyboardAvoidingScrollOffsetYForScrollUI(scrollUI);
+          if (Math.abs(offsetY - currentOffsetY) >= 1) {
+            scrollKeyboardAvoidingScrollViewTo(scrollUI, offsetY, animated);
+          }
+          return true;
+        }
+      });
+      scrollView.invalidate();
+    }
+
+    private boolean isKeyboardAvoidingScrollRequestCurrent(
+        LynxBaseUI scrollUI, KeyboardAvoidTarget target) {
+      if (scrollUI == null || target == null || mKeyboardAvoidingScrollUI.get() != scrollUI) {
+        return false;
+      }
+      KeyboardAvoidTarget activeTarget = getActiveTarget();
+      return activeTarget != null && activeTarget.matchesOwner(target.getOwner());
+    }
+
+    private WindowInsets currentRootWindowInsets() {
+      if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
+        return null;
+      }
+      View hostView = mInsetsAnimationHostView;
+      if (hostView == null) {
+        hostView = resolveInsetsAnimationHostView();
+      }
+      return hostView == null ? null : hostView.getRootWindowInsets();
+    }
+
+    private int keyboardHeightForAvoidDistance(WindowInsets insets) {
+      int keyboardHeight = mKeyboardHeight;
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && insets != null) {
+        int insetsKeyboardHeight = getKeyboardHeightFromInsets(insets);
+        if (insetsKeyboardHeight > 0) {
+          keyboardHeight = insetsKeyboardHeight;
+          mKeyboardHeight = keyboardHeight;
+        }
+      }
+      return keyboardHeight;
     }
 
     private float calculateAvoidDistance(KeyboardAvoidTarget target, int keyboardHeight) {
@@ -669,11 +1209,11 @@ public class KeyboardEvent {
       return decorLocation[1] + decorView.getHeight();
     }
 
-    private void applyAvoidDistance(View lynxView, float avoidDistance) {
-      applyAvoidDistance(lynxView, avoidDistance, shouldAnimateAvoidDistance());
+    private void applyRootAvoidDistance(View lynxView, float avoidDistance) {
+      applyRootAvoidDistance(lynxView, avoidDistance, shouldAnimateAvoidDistance());
     }
 
-    private void applyAvoidDistance(View lynxView, float avoidDistance, boolean animated) {
+    private void applyRootAvoidDistance(View lynxView, float avoidDistance, boolean animated) {
       float targetAvoidDistance = Math.max(0f, avoidDistance);
       if (lynxView == null) {
         mCurrentAvoidDistance = targetAvoidDistance;
@@ -714,7 +1254,8 @@ public class KeyboardEvent {
         lynxView = mLastLynxView.get();
       }
       if (lynxView != null || mCurrentAvoidDistance != 0f) {
-        applyAvoidDistance(lynxView, 0f, animated);
+        clearKeyboardAvoidingScrollView();
+        applyRootAvoidDistance(lynxView, 0f, animated);
       }
     }
 
@@ -842,8 +1383,7 @@ public class KeyboardEvent {
         return true;
       }
       mKeyboardHeight = keyboardHeight;
-      float avoidDistance = calculateAvoidDistance(target, keyboardHeight, insets);
-      applyAvoidDistance(target.getLynxView(), avoidDistance, false);
+      applyAvoidDistance(target, keyboardHeight, insets, false);
       return true;
     }
 
@@ -857,6 +1397,7 @@ public class KeyboardEvent {
     }
 
     private void applyImeInsetsAvoidDistanceWithoutActiveTarget(int keyboardHeight) {
+      clearKeyboardAvoidingScrollView();
       View lynxView = mLastLynxView.get();
       if (lynxView == null) {
         mKeyboardHeight = keyboardHeight;
@@ -868,7 +1409,7 @@ public class KeyboardEvent {
             mAvoidDistanceBeforeImeAnimation * keyboardHeight / mKeyboardHeightBeforeImeAnimation;
       }
       mKeyboardHeight = keyboardHeight;
-      applyAvoidDistance(lynxView, avoidDistance, false);
+      applyRootAvoidDistance(lynxView, avoidDistance, false);
     }
 
     private void prepareInsetsKeyboardTransition(

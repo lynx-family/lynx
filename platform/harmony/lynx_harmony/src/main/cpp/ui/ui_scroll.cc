@@ -250,6 +250,9 @@ void UIScroll::OnMeasure(ArkUI_LayoutConstraint* layout_constraint) {
       }
     }
   }
+  if (!IsHorizontal()) {
+    content_height += scroll_content_height_extra_;
+  }
 
   if (start_bounce_view_ != nullptr) {
     auto node = start_bounce_view_->DrawNode();

@@ -270,6 +270,8 @@ public class com::lynx::tasm::behavior::ui::scroll::AndroidScrollView : com.lynx
   public void com.lynx.tasm.behavior.ui.scroll.AndroidScrollView.applyOverflowClipState(int overflow, boolean enableOverflowHiddenPaddingVisible);
   public int com.lynx.tasm.behavior.ui.scroll.AndroidScrollView.getContentWidth();
   public int com.lynx.tasm.behavior.ui.scroll.AndroidScrollView.getContentHeight();
+  public int com.lynx.tasm.behavior.ui.scroll.AndroidScrollView.getKeyboardAvoidingContentHeightExtra();
+  public void com.lynx.tasm.behavior.ui.scroll.AndroidScrollView.setKeyboardAvoidingContentHeightExtra(int extra);
   public boolean com.lynx.tasm.behavior.ui.scroll.AndroidScrollView.dispatchTouchEvent(MotionEvent ev);
   public boolean com.lynx.tasm.behavior.ui.scroll.AndroidScrollView.onInterceptTouchEvent(MotionEvent ev);
   public boolean com.lynx.tasm.behavior.ui.scroll.AndroidScrollView.dispatchNestedScroll(int dxConsumed, int dyConsumed, int dxUnconsumed, int dyUnconsumed, int[] offsetInWindow);
@@ -4271,6 +4273,7 @@ public class com::lynx::tasm::behavior::ui::scroll::base::LynxBaseScrollViewScro
   public void com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewScrolling.stopScrolling();
   public int[] com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewScrolling.getScrollOffset();
   public void com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewScrolling.setScrollContentSize(int[] contentSize);
+  public int com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewScrolling.getScrollContentSizeVertically();
   public void com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewScrolling.scrollByUnlimited(int[] delta);
   public void com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewScrolling.scrollBy(int[] delta);
   public void com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewScrolling.scrollToUnlimited(int[] offset);
