@@ -363,6 +363,8 @@ bool UIImage::LoadImageFromURL(bool placeholder) {
 
 void UIImage::OnNodeReady() {
   UIBase::OnNodeReady();
+  LynxContext* context = context_;
+  int sign = Sign();
   if ((dirty_flags_ & image::kFlagPlaceholderChanged) != 0) {
     if (!LoadImageFromURL(true)) {
       return;
@@ -376,6 +378,10 @@ void UIImage::OnNodeReady() {
     if (!LoadImageFromURL()) {
       return;
     }
+  }
+  if (context == nullptr || context->FindUIBySign(sign) == nullptr) {
+    LOGE("UIImage image was destroyed");
+    return;
   }
   if ((dirty_flags_ & image::kFlagImageRenderingChanged) != 0) {
     if (rendering_type_ == starlight::ImageRenderingType::kPixelated) {

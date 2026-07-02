@@ -431,6 +431,8 @@ bool UINewImage::LoadImage() {
 
 void UINewImage::OnNodeReady() {
   UIBase::OnNodeReady();
+  LynxContext* context = context_;
+  int sign = Sign();
   if (!init_listener_) {
     std::weak_ptr weak_self = std::static_pointer_cast<ImageLoadListener>(
         std::static_pointer_cast<UINewImage>(shared_from_this()));
@@ -448,6 +450,10 @@ void UINewImage::OnNodeReady() {
     if (!LoadImage()) {
       return;
     }
+  }
+  if (context == nullptr || context->FindUIBySign(sign) == nullptr) {
+    LOGE("UINewImage image was destroyed");
+    return;
   }
   if ((dirty_flags_ & image::kFlagImageRenderingChanged) != 0) {
     if (rendering_type_ == starlight::ImageRenderingType::kPixelated) {
