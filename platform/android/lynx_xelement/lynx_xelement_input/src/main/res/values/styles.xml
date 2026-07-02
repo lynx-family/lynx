@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Mirrors LynxUIInput's runtime no-background single-line setup for
+         x-input-ng. Keeping these attributes in the construction theme avoids
+         default drawable creation and duplicate TextView text/selection
+         reconfiguration without changing the effective style. -->
+    <style name="LynxSingleLineInputEditTextTheme">
+        <item name="editTextBackground">@null</item>
+        <item name="editTextStyle">@style/LynxSingleLineInputEditTextStyle</item>
+        <item name="android:editTextStyle">@style/LynxSingleLineInputEditTextStyle</item>
+    </style>
+
+    <style name="LynxSingleLineInputEditTextStyle" parent="@style/Widget.AppCompat.EditText">
+        <item name="android:background">@null</item>
+        <item name="android:singleLine">true</item>
+        <item name="android:lines">1</item>
+        <item name="android:scrollHorizontally">true</item>
+        <item name="android:ellipsize">end</item>
+    </style>
+</resources>

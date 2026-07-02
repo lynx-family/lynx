@@ -171,8 +171,9 @@ void UIBaseInput::OnPropUpdate(const std::string& name,
       if (current_text == text) {
         return;
       }
-      pending_default_value_ = text;
+      should_suppress_default_value_events_ = true;
       SetTextValue(text);
+      ScheduleClearDefaultValueEventSuppression();
     }
   } else if (name == "text-align") {
     int32_t align = static_cast<int32_t>(value.Number());
@@ -714,15 +715,23 @@ void UIBaseInput::SetTextValue(const std::string& value) {
                                        &item);
 }
 
-bool UIBaseInput::ShouldSuppressInputEvent() {
-  if (!pending_default_value_.has_value()) {
-    return false;
+bool UIBaseInput::ShouldSuppressDefaultValueEvent() const {
+  return should_suppress_default_value_events_;
+}
+
+void UIBaseInput::ScheduleClearDefaultValueEventSuppression() {
+  if (!context_ || !context_->GetUITaskRunner()) {
+    should_suppress_default_value_events_ = false;
+    return;
   }
-  const std::string pending_default_value = *pending_default_value_;
-  pending_default_value_.reset();
-  const std::string value = NodeManager::Instance().GetAttribute<std::string>(
-      input_node_, GetTextAttributeType());
-  return value == pending_default_value;
+  context_->PostTaskOnUIThread([weak_self = weak_from_this()] {
+    auto self = weak_self.lock();
+    if (!self) {
+      return;
+    }
+    auto input = std::static_pointer_cast<UIBaseInput>(self);
+    input->should_suppress_default_value_events_ = false;
+  });
 }
 
 void UIBaseInput::GetValue(
