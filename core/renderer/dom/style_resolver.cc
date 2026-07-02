@@ -809,34 +809,6 @@ static bool CompareRules(const css::MatchedRule& matched_rule1,
   return matched_rule1.Position() < matched_rule2.Position();
 }
 
-namespace {
-
-std::unique_ptr<css::MediaQueryEvaluator> BuildMediaQueryEvaluator(
-    ElementManager* element_manager, Element* owning_element) {
-  css::MediaValues values;
-  if (element_manager) {
-    const auto& env_config = element_manager->GetLynxEnvConfig();
-    float width = env_config.ViewportWidth().IsDefinite()
-                      ? env_config.ViewportWidth().ToFloat()
-                      : env_config.ScreenWidth();
-    float height = env_config.ViewportHeight().IsDefinite()
-                       ? env_config.ViewportHeight().ToFloat()
-                       : env_config.ScreenHeight();
-    values = css::MediaValues::WithViewport(width, height,
-                                            env_config.DevicePixelRatio());
-    values.SetPreferredColorScheme(env_config.PreferredColorScheme());
-    if (Element* root = element_manager->root()) {
-      values.SetRootFontSize(root->GetFontSize());
-    }
-  }
-  if (owning_element) {
-    values.SetFontSize(owning_element->GetFontSize());
-  }
-  return std::make_unique<css::MediaQueryEvaluator>(values);
-}
-
-}  // namespace
-
 bool StyleResolver::FragmentsHasMediaQueries(CSSFragment* style_sheet) {
   return style_sheet && style_sheet->HasMediaQueryRules();
 }
@@ -874,6 +846,31 @@ StyleResolver::MatchedVector<css::MatchedRule> StyleResolver::GetCSSMatchedRule(
 
   base::InsertionSort(matched_rules.data(), matched_rules.size(), CompareRules);
   return matched_rules;
+}
+
+std::unique_ptr<css::MediaQueryEvaluator>
+StyleResolver::BuildMediaQueryEvaluator(ElementManager* element_manager,
+                                        Element* owning_element) {
+  css::MediaValues values;
+  if (element_manager) {
+    const auto& env_config = element_manager->GetLynxEnvConfig();
+    float width = env_config.ViewportWidth().IsDefinite()
+                      ? env_config.ViewportWidth().ToFloat()
+                      : env_config.ScreenWidth();
+    float height = env_config.ViewportHeight().IsDefinite()
+                       ? env_config.ViewportHeight().ToFloat()
+                       : env_config.ScreenHeight();
+    values = css::MediaValues::WithViewport(width, height,
+                                            env_config.DevicePixelRatio());
+    values.SetPreferredColorScheme(env_config.PreferredColorScheme());
+    if (Element* root = element_manager->root()) {
+      values.SetRootFontSize(root->GetFontSize());
+    }
+  }
+  if (owning_element) {
+    values.SetFontSize(owning_element->GetFontSize());
+  }
+  return std::make_unique<css::MediaQueryEvaluator>(values);
 }
 
 void StyleResolver::GetCSSStyleNew(AttributeHolder* node,

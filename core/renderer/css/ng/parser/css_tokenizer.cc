@@ -12,12 +12,6 @@
 
 namespace lynx {
 namespace css {
-#include "core/renderer/css/ng/parser/css_tokenizer_codepoints.cc"
-}
-}  // namespace lynx
-
-namespace lynx {
-namespace css {
 CSSTokenizer::CSSTokenizer(const std::string& string)
     : CSSTokenizer(ustring_helper::from_string(string)) {}
 
@@ -289,7 +283,7 @@ CSSParserToken CSSTokenizer::NextToken() {
   CodePoint code_point_func = nullptr;
 
   if (base::IsASCII(cc)) {
-    DCHECK(cc < codePointsNumber);
+    DCHECK(cc < kCodePointsNumber);
     code_point_func = kCodePoints[cc];
   } else {
     code_point_func = &CSSTokenizer::NameStart;

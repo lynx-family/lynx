@@ -14,29 +14,30 @@ class InspectorElementObserverImpl
     : public lynx::tasm::InspectorElementObserver {
  public:
   InspectorElementObserverImpl(
-      const std::shared_ptr<InspectorTasmExecutor> &element_executor);
+      const std::shared_ptr<InspectorTasmExecutor>& element_executor);
   virtual ~InspectorElementObserverImpl() = default;
 
  public:
   virtual void OnDocumentUpdated() override;
 
-  virtual void OnElementNodeAdded(lynx::tasm::Element *ptr) override;
-  virtual void OnElementNodeRemoved(lynx::tasm::Element *ptr) override;
-  virtual void OnCharacterDataModified(lynx::tasm::Element *ptr) override;
-  virtual void OnElementDataModelSet(lynx::tasm::Element *ptr) override;
+  virtual void OnElementNodeAdded(lynx::tasm::Element* ptr) override;
+  virtual void OnElementNodeRemoved(lynx::tasm::Element* ptr) override;
+  virtual void OnCharacterDataModified(lynx::tasm::Element* ptr) override;
+  virtual void OnElementDataModelSet(lynx::tasm::Element* ptr) override;
   virtual void OnElementManagerWillDestroy() override;
-  virtual void OnSetNativeProps(lynx::tasm::Element *ptr,
-                                const std::string &name,
-                                const std::string &value,
+  virtual void OnSetNativeProps(lynx::tasm::Element* ptr,
+                                const std::string& name,
+                                const std::string& value,
                                 bool is_style) override;
 
-  virtual void OnCSSStyleSheetAdded(lynx::tasm::Element *ptr) override;
+  virtual void OnCSSStyleSheetAdded(lynx::tasm::Element* ptr) override;
+  virtual void OnCSSMediaQueryResultChanged() override;
   virtual void OnComponentUselessUpdate(
-      const std::string &component_name,
-      const lynx::lepus::Value &properties) override;
+      const std::string& component_name,
+      const lynx::lepus::Value& properties) override;
 
   virtual std::map<lynx::devtool::DevToolFunction,
-                   std::function<void(const base::any &)>>
+                   std::function<void(const base::any&)>>
   GetDevToolFunction() override;
 
  private:

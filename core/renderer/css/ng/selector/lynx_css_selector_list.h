@@ -72,7 +72,7 @@ namespace css {
 // but not as part of a LynxCSSSelectorList (see its class comments).
 // It reuses many of the exposed static member functions from
 // LynxCSSSelectorList to provide a subset of its API.
-class LynxCSSSelectorList {
+class LYNX_EXPORT_FOR_DEVTOOL LynxCSSSelectorList {
  public:
   LynxCSSSelectorList() = default;
 

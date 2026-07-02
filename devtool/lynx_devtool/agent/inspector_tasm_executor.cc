@@ -5,11 +5,21 @@
 #include "devtool/lynx_devtool/agent/inspector_tasm_executor.h"
 
 #include <algorithm>
+#include <queue>
+#include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 #include "base/include/log/logging.h"
+#include "core/public/pipeline_option.h"
 #include "core/renderer/css/css_decoder.h"
+#include "core/renderer/css/css_fragment.h"
 #include "core/renderer/css/css_property.h"
+#include "core/renderer/css/dynamic_css_styles_manager.h"
+#include "core/renderer/css/ng/parser/media_query_parser.h"
+#include "core/renderer/css/ng/style/condition_rule.h"
+#include "core/renderer/css/ng/style/rule_set.h"
+#include "core/renderer/dom/element_manager.h"
 #include "core/services/replay/replay_controller.h"
 #include "devtool/base_devtool/native/public/devtool_status.h"
 #include "devtool/lynx_devtool/agent/inspector_util.h"
@@ -32,6 +42,70 @@ namespace devtool {
       sender->SendMessage("CDP", response);                                  \
     }                                                                        \
   } while (0)
+
+namespace {
+
+std::string TrimMediaText(const std::string& text) {
+  const size_t start = text.find_first_not_of(" \t\n\r\f\v");
+  if (start == std::string::npos) {
+    return "";
+  }
+  const size_t end = text.find_last_not_of(" \t\n\r\f\v");
+  return text.substr(start, end - start + 1);
+}
+
+std::string NormalizeMediaTextForParser(const std::string& text) {
+  std::string normalized = TrimMediaText(text);
+  constexpr char kMediaAtRule[] = "@media";
+  if (normalized.rfind(kMediaAtRule, 0) == 0) {
+    normalized = TrimMediaText(normalized.substr(sizeof(kMediaAtRule) - 1));
+  }
+  return normalized;
+}
+
+Json::Value BuildMediaRange(int media_index, const std::string& media_text) {
+  Json::Value range(Json::ValueType::objectValue);
+  range["startLine"] = media_index;
+  range["startColumn"] = 0;
+  range["endLine"] = media_index;
+  range["endColumn"] = static_cast<int>(media_text.length());
+  return range;
+}
+
+Json::Value BuildMediaObject(const std::string& media_text,
+                             const std::string& style_sheet_id,
+                             int media_index) {
+  Json::Value media(Json::ValueType::objectValue);
+  media["text"] = media_text;
+  media["source"] = "mediaRule";
+  media["range"] = BuildMediaRange(media_index, media_text);
+  if (!style_sheet_id.empty()) {
+    media["styleSheetId"] = style_sheet_id;
+  }
+  return media;
+}
+
+void SyncCachedMediaInfo(lynx::tasm::Element* style_root,
+                         const std::string& style_sheet_id, int media_index,
+                         const std::string& media_text) {
+  if (!style_root || style_sheet_id.empty() || media_index < 0) {
+    return;
+  }
+  Range media_range{media_index, media_index, 0,
+                    static_cast<int>(media_text.length())};
+  auto& style_sheet_map = ElementInspector::GetStyleSheetMap(style_root);
+  for (auto& item : style_sheet_map) {
+    auto& style_sheet = item.second;
+    if (style_sheet.style_sheet_id_ == style_sheet_id &&
+        !style_sheet.media_text_.empty() &&
+        style_sheet.media_range_.start_line_ == media_index) {
+      style_sheet.media_text_ = media_text;
+      style_sheet.media_range_ = media_range;
+    }
+  }
+}
+
+}  // namespace
 
 InspectorTasmExecutor::InspectorTasmExecutor(
     const std::shared_ptr<LynxDevToolMediator>& devtool_mediator, int view_id)
@@ -1140,6 +1214,8 @@ void InspectorTasmExecutor::SendCSSEventMsg(const CssCdpEvent& event_name,
   } else if (event_name == CssCdpEvent::STYLE_SHEET_CHANGED) {
     msg["method"] = "CSS.styleSheetChanged";
     msg["params"]["styleSheetId"] = style_sheet_id;
+  } else if (event_name == CssCdpEvent::MEDIA_QUERY_RESULT_CHANGED) {
+    msg["method"] = "CSS.mediaQueryResultChanged";
   } else {
     msg["method"] = "ERROR method";
   }
@@ -1148,6 +1224,10 @@ void InspectorTasmExecutor::SendCSSEventMsg(const CssCdpEvent& event_name,
 
 void InspectorTasmExecutor::OnCSSStyleSheetAdded(lynx::tasm::Element* ptr) {
   SendCSSEventMsg(CssCdpEvent::STYLE_SHEET_ADDED, "", ptr);
+}
+
+void InspectorTasmExecutor::OnCSSMediaQueryResultChanged() {
+  SendCSSEventMsg(CssCdpEvent::MEDIA_QUERY_RESULT_CHANGED, "", nullptr);
 }
 
 void InspectorTasmExecutor::SendWhiteBoardEvent(const Json::Value& msg) {
@@ -1490,6 +1570,206 @@ void InspectorTasmExecutor::StopRuleUsageTracking(
 
   css_used_selector_.clear();
   rule_usage_tracking_ = false;
+}
+
+void InspectorTasmExecutor::GetMediaQueries(
+    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
+    const Json::Value& message) {
+  Json::Value response(Json::ValueType::objectValue);
+  Json::Value result(Json::ValueType::objectValue);
+  Json::Value medias(Json::ValueType::arrayValue);
+  std::unordered_set<const css::RuleSet*> visited_rule_sets;
+  std::unordered_set<const css::ConditionRule*> visited_condition_rules;
+  std::unordered_map<std::string, int> media_indices;
+
+  Element* root = element_root_;
+  CHECK_NULL_AND_LOG_RETURN(root, "root is null");
+  std::queue<Element*> inspect_node_queue;
+  inspect_node_queue.push(root);
+  while (!inspect_node_queue.empty()) {
+    Element* element = inspect_node_queue.front();
+    inspect_node_queue.pop();
+    if (!element) continue;
+    for (Element* child : element->GetChildren()) {
+      inspect_node_queue.push(child);
+    }
+
+    tasm::CSSFragment* fragment = element->GetRelatedCSSFragment();
+    if (!fragment) continue;
+    Element* style_value = ElementInspector::StyleValueElement(element);
+    std::string style_sheet_id;
+    if (style_value) {
+      style_sheet_id = std::to_string(ElementInspector::NodeId(style_value));
+    }
+    struct Ctx {
+      Json::Value* medias;
+      std::unordered_set<const css::RuleSet*>* visited_rule_sets;
+      std::unordered_set<const css::ConditionRule*>* visited_condition_rules;
+      const std::string* style_sheet_id;
+      std::unordered_map<std::string, int>* media_indices;
+    };
+    Ctx ctx{&medias, &visited_rule_sets, &visited_condition_rules,
+            &style_sheet_id, &media_indices};
+    fragment->ForEachRuleSet(
+        [](css::RuleSet* rs, void* cb_data) {
+          auto* c = static_cast<Ctx*>(cb_data);
+          if (!rs || !rs->HasMediaQueryRules()) return;
+          if (!c->visited_rule_sets->insert(rs).second) return;
+          auto condition_rule_visitor = [c](const auto& condition_rule) {
+            if (!condition_rule.HasStructuredMediaQuery()) return;
+            if (!c->visited_condition_rules->insert(&condition_rule).second) {
+              return;
+            }
+            const auto& query_set = condition_rule.MediaQueries();
+            int& media_index = (*c->media_indices)[*c->style_sheet_id];
+            Json::Value media = BuildMediaObject(
+                query_set->Serialize(), *c->style_sheet_id, media_index);
+            c->medias->append(media);
+            ++media_index;
+          };
+          rs->ForEachConditionRule(condition_rule_visitor);
+        },
+        &ctx);
+  }
+
+  result["medias"] = medias;
+  response["result"] = result;
+  response["id"] = message["id"].asInt64();
+  sender->SendMessage("CDP", response);
+}
+
+void InspectorTasmExecutor::SetMediaText(
+    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
+    const Json::Value& message) {
+  Json::Value response(Json::ValueType::objectValue);
+  Json::Value result(Json::ValueType::objectValue);
+  Json::Value params = message["params"];
+  const std::string target_style_sheet_id = params["styleSheetId"].asString();
+  const Json::Value range =
+      params.get("range", Json::Value(Json::ValueType::objectValue));
+  const bool has_valid_range = range.isObject() && range.isMember("startLine");
+  const int target_media_index = range["startLine"].asInt();
+  const std::string media_text =
+      NormalizeMediaTextForParser(params["text"].asString());
+
+  auto parsed_query_set = css::MediaQueryParser::ParseMediaQuerySet(media_text);
+  fml::RefPtr<const css::MediaQuerySet> new_query_set = parsed_query_set;
+
+  Element* root = element_root_;
+  if (!root || target_style_sheet_id.empty() || !has_valid_range ||
+      target_media_index < 0) {
+    Json::Value error(Json::ValueType::objectValue);
+    error["code"] = kInvalidParams;
+    error["message"] = "Invalid media query location";
+    response["error"] = error;
+    response["id"] = message["id"].asInt64();
+    sender->SendMessage("CDP", response);
+    return;
+  }
+
+  Json::Value updated_media(Json::ValueType::objectValue);
+  bool updated = false;
+  Element* target_style_root = nullptr;
+  std::unordered_map<std::string, int> media_indices;
+  std::unordered_set<const css::RuleSet*> visited_rule_sets;
+  std::unordered_set<const css::ConditionRule*> visited_condition_rules;
+  std::queue<Element*> inspect_node_queue;
+  inspect_node_queue.push(root);
+  while (!inspect_node_queue.empty() && !updated) {
+    Element* element = inspect_node_queue.front();
+    inspect_node_queue.pop();
+    if (!element) continue;
+    for (Element* child : element->GetChildren()) {
+      inspect_node_queue.push(child);
+    }
+
+    tasm::CSSFragment* fragment = element->GetRelatedCSSFragment();
+    if (!fragment) continue;
+    Element* style_value = ElementInspector::StyleValueElement(element);
+    std::string style_sheet_id;
+    if (style_value) {
+      style_sheet_id = std::to_string(ElementInspector::NodeId(style_value));
+    }
+    if (style_sheet_id != target_style_sheet_id) {
+      continue;
+    }
+    target_style_root = style_value;
+
+    struct Ctx {
+      const std::string* target_style_sheet_id;
+      const fml::RefPtr<const css::MediaQuerySet>* new_query_set;
+      Json::Value* updated_media;
+      bool* updated;
+      std::unordered_map<std::string, int>* media_indices;
+      int target_media_index;
+      std::unordered_set<const css::RuleSet*>* visited_rule_sets;
+      std::unordered_set<const css::ConditionRule*>* visited_condition_rules;
+      const std::string* style_sheet_id;
+    };
+    Ctx ctx{&target_style_sheet_id, &new_query_set,
+            &updated_media,         &updated,
+            &media_indices,         target_media_index,
+            &visited_rule_sets,     &visited_condition_rules,
+            &style_sheet_id};
+    fragment->ForEachRuleSet(
+        [](css::RuleSet* rs, void* cb_data) {
+          auto* c = static_cast<Ctx*>(cb_data);
+          if (*c->updated || !rs || !rs->HasMediaQueryRules()) return;
+          if (!c->visited_rule_sets->insert(rs).second) return;
+          auto condition_rule_visitor = [c](const auto& condition_rule) {
+            if (*c->updated || !condition_rule.HasStructuredMediaQuery()) {
+              return;
+            }
+            if (!c->visited_condition_rules->insert(&condition_rule).second) {
+              return;
+            }
+            int& media_index = (*c->media_indices)[*c->style_sheet_id];
+            const int current_media_index = media_index++;
+            if (current_media_index != c->target_media_index) {
+              return;
+            }
+
+            auto& mutable_condition_rule =
+                const_cast<css::ConditionRule&>(condition_rule);
+            mutable_condition_rule.SetMediaQueries(*c->new_query_set);
+            *c->updated_media =
+                BuildMediaObject((*c->new_query_set)->Serialize(),
+                                 *c->style_sheet_id, current_media_index);
+            *c->updated = true;
+          };
+          rs->ForEachConditionRule(condition_rule_visitor);
+        },
+        &ctx);
+  }
+
+  if (!updated) {
+    Json::Value error(Json::ValueType::objectValue);
+    error["code"] = kServerError;
+    error["message"] = "Media rule not found";
+    response["error"] = error;
+    response["id"] = message["id"].asInt64();
+    sender->SendMessage("CDP", response);
+    return;
+  }
+
+  root->UpdateDynamicElementStyle(
+      tasm::DynamicCSSStylesManager::kAllStyleUpdate, true);
+  SyncCachedMediaInfo(target_style_root, target_style_sheet_id,
+                      target_media_index, updated_media["text"].asString());
+  if (auto* element_manager = root->element_manager()) {
+    auto options = std::make_shared<lynx::tasm::PipelineOptions>();
+    element_manager->RequestResolve(options);
+  }
+
+  SendCSSEventMsg(CssCdpEvent::MEDIA_QUERY_RESULT_CHANGED, "", nullptr);
+  if (!target_style_sheet_id.empty()) {
+    SendCSSEventMsg(CssCdpEvent::STYLE_SHEET_CHANGED, target_style_sheet_id,
+                    nullptr);
+  }
+  result["media"] = updated_media;
+  response["result"] = result;
+  response["id"] = message["id"].asInt64();
+  sender->SendMessage("CDP", response);
 }
 
 // CSS protocol end

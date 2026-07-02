@@ -41,6 +41,8 @@ InspectorCSSAgentNG::InspectorCSSAgentNG(
       &InspectorCSSAgentNG::UpdateRuleUsageTracking;
   functions_map_["CSS.stopRuleUsageTracking"] =
       &InspectorCSSAgentNG::StopRuleUsageTracking;
+  functions_map_["CSS.getMediaQueries"] = &InspectorCSSAgentNG::GetMediaQueries;
+  functions_map_["CSS.setMediaText"] = &InspectorCSSAgentNG::SetMediaText;
 }
 
 InspectorCSSAgentNG::~InspectorCSSAgentNG() = default;
@@ -129,6 +131,16 @@ void InspectorCSSAgentNG::UpdateRuleUsageTracking(
 void InspectorCSSAgentNG::StopRuleUsageTracking(
     const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
   devtool_mediator_->StopRuleUsageTracking(sender, message);
+}
+
+void InspectorCSSAgentNG::GetMediaQueries(
+    const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
+  devtool_mediator_->GetMediaQueries(sender, message);
+}
+
+void InspectorCSSAgentNG::SetMediaText(
+    const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
+  devtool_mediator_->SetMediaText(sender, message);
 }
 
 }  // namespace devtool

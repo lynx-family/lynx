@@ -14,6 +14,7 @@
 
 #include <string>
 
+#include "core/base/lynx_export.h"
 #include "core/renderer/css/ng/media_query/media_feature.h"
 #include "core/renderer/css/ng/media_query/media_query.h"
 #include "core/renderer/css/ng/media_query/media_query_exp.h"
@@ -23,7 +24,7 @@
 namespace lynx {
 namespace css {
 
-class MediaQueryEvaluator {
+class LYNX_EXPORT_FOR_DEVTOOL MediaQueryEvaluator {
  public:
   MediaQueryEvaluator() = default;
   explicit MediaQueryEvaluator(const MediaValues& values) : values_(values) {}

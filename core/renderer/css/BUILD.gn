@@ -35,7 +35,7 @@ lynx_core_source_set("css") {
     "../../renderer/starlight:starlight",
   ]
 
-  if (enable_unittests) {
+  if (enable_unittests || enable_inspector) {
     public_deps += [
       ":css_parser",
       "../../../third_party/double-conversion:double_conversion",
@@ -55,6 +55,7 @@ lynx_core_source_set("css_decoder") {
 
 lynx_core_source_set("css_parser") {
   sources = lynx_css_parser_sources_path
+  public_deps = [ "../../../third_party/double-conversion:double_conversion" ]
 }
 
 unittest_set("css_test_testset") {

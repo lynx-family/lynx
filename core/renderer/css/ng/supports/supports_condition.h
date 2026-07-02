@@ -10,6 +10,7 @@
 #include <utility>
 
 #include "base/include/fml/memory/ref_counted.h"
+#include "core/base/lynx_export.h"
 
 namespace lynx {
 
@@ -20,7 +21,8 @@ using lepus_value = lepus::Value;
 
 namespace css {
 
-class SupportsConditionNode : public fml::RefCountedThreadSafeStorage {
+class LYNX_EXPORT_FOR_DEVTOOL SupportsConditionNode
+    : public fml::RefCountedThreadSafeStorage {
  public:
   // Stable numbering for serialization. Append-only.
   enum class Type : uint8_t {
@@ -51,7 +53,8 @@ class SupportsConditionNode : public fml::RefCountedThreadSafeStorage {
   Type type_;
 };
 
-class SupportsDeclNode final : public SupportsConditionNode {
+class LYNX_EXPORT_FOR_DEVTOOL SupportsDeclNode final
+    : public SupportsConditionNode {
  public:
   SupportsDeclNode(std::string property, std::string value, bool important)
       : SupportsConditionNode(Type::kDeclaration),
@@ -72,7 +75,8 @@ class SupportsDeclNode final : public SupportsConditionNode {
   bool important_ = false;
 };
 
-class SupportsEngineVersionNode final : public SupportsConditionNode {
+class LYNX_EXPORT_FOR_DEVTOOL SupportsEngineVersionNode final
+    : public SupportsConditionNode {
  public:
   static constexpr uint16_t kVersionMax = 0xFFFF;
 
@@ -104,7 +108,8 @@ class SupportsEngineVersionNode final : public SupportsConditionNode {
   uint32_t end_;
 };
 
-class SupportsFunctionNode final : public SupportsConditionNode {
+class LYNX_EXPORT_FOR_DEVTOOL SupportsFunctionNode final
+    : public SupportsConditionNode {
  public:
   SupportsFunctionNode(std::string name, std::string raw_args)
       : SupportsConditionNode(Type::kFunction),
@@ -122,7 +127,8 @@ class SupportsFunctionNode final : public SupportsConditionNode {
   std::string raw_args_;
 };
 
-class SupportsGeneralEnclosedNode final : public SupportsConditionNode {
+class LYNX_EXPORT_FOR_DEVTOOL SupportsGeneralEnclosedNode final
+    : public SupportsConditionNode {
  public:
   explicit SupportsGeneralEnclosedNode(std::string raw)
       : SupportsConditionNode(Type::kGeneralEnclosed), raw_(std::move(raw)) {}
@@ -136,7 +142,8 @@ class SupportsGeneralEnclosedNode final : public SupportsConditionNode {
   std::string raw_;
 };
 
-class SupportsUnaryNode final : public SupportsConditionNode {
+class LYNX_EXPORT_FOR_DEVTOOL SupportsUnaryNode final
+    : public SupportsConditionNode {
  public:
   SupportsUnaryNode(Type type, fml::RefPtr<const SupportsConditionNode> operand)
       : SupportsConditionNode(type), operand_(std::move(operand)) {}
@@ -152,7 +159,8 @@ class SupportsUnaryNode final : public SupportsConditionNode {
   fml::RefPtr<const SupportsConditionNode> operand_;
 };
 
-class SupportsBinaryNode final : public SupportsConditionNode {
+class LYNX_EXPORT_FOR_DEVTOOL SupportsBinaryNode final
+    : public SupportsConditionNode {
  public:
   SupportsBinaryNode(Type type, fml::RefPtr<const SupportsConditionNode> left,
                      fml::RefPtr<const SupportsConditionNode> right)

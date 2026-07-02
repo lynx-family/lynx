@@ -32,6 +32,7 @@ class SimpleStyleNode;
 class StyleObject;
 }  // namespace style
 namespace tasm {
+class Element;
 class FiberElement;
 class ElementManager;
 
@@ -46,6 +47,10 @@ class StyleResolver {
   GetCSSMatchedRule(AttributeHolder* node, CSSFragment* style_sheet,
                     const css::MediaQueryEvaluator* media_query_evaluator,
                     const css::SupportsEvaluator* supports_evaluator);
+
+  LYNX_EXPORT_FOR_DEVTOOL static std::unique_ptr<css::MediaQueryEvaluator>
+  BuildMediaQueryEvaluator(ElementManager* element_manager,
+                           Element* owning_element);
 
   static bool FragmentsHasMediaQueries(CSSFragment* style_sheet);
   static uint8_t GetConditionRuleFlags(CSSFragment* style_sheet);

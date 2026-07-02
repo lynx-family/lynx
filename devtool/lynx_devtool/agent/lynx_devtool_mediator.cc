@@ -672,6 +672,28 @@ void LynxDevToolMediator::StopRuleUsageTracking(
   }
 }
 
+void LynxDevToolMediator::GetMediaQueries(
+    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
+    const Json::Value& message) {
+  if (tasm_task_runner_) {
+    RunOnTaskRunner(tasm_task_runner_,
+                    [element_executor = element_executor_, sender, message]() {
+                      element_executor->GetMediaQueries(sender, message);
+                    });
+  }
+}
+
+void LynxDevToolMediator::SetMediaText(
+    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
+    const Json::Value& message) {
+  if (tasm_task_runner_) {
+    RunOnTaskRunner(tasm_task_runner_,
+                    [element_executor = element_executor_, sender, message]() {
+                      element_executor->SetMediaText(sender, message);
+                    });
+  }
+}
+
 void LynxDevToolMediator::HighlightNode(
     const std::shared_ptr<lynx::devtool::MessageSender>& sender,
     const Json::Value& message) {

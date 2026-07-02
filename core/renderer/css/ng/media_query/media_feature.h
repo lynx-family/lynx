@@ -13,6 +13,8 @@
 #include <string>
 #include <utility>
 
+#include "core/base/lynx_export.h"
+
 namespace lynx {
 
 namespace lepus {
@@ -131,7 +133,8 @@ enum class MediaFeatureId : uint8_t {
 // Map a lowercased feature name to its enum id. Returns kUnknown for
 // unrecognized names. For unknown features the evaluator falls back to
 // matching by the Name() string.
-MediaFeatureId ResolveMediaFeatureId(const std::string& name);
+LYNX_EXPORT_FOR_DEVTOOL MediaFeatureId
+ResolveMediaFeatureId(const std::string& name);
 
 // Returns true if `unit` names a length suffix (px, em, %, vw, ...).
 inline bool IsLengthUnit(MediaFeatureUnit unit) {
@@ -147,7 +150,7 @@ inline bool IsResolutionUnit(MediaFeatureUnit unit) {
 // Value carrier for a media feature. A top-level type tag disambiguates the
 // payload, and a secondary `MediaFeatureUnit` identifies the concrete unit
 // for `kDimension` values.
-class MediaFeatureValue {
+class LYNX_EXPORT_FOR_DEVTOOL MediaFeatureValue {
  public:
   MediaFeatureValue() = default;
 
@@ -232,7 +235,7 @@ class MediaFeatureValue {
 // A single media feature assertion. Media Queries Level 4 also allows the
 // "range" form `(100px < width < 500px)`; we model this with an optional
 // `right_` bound instead of splitting the node into two comparisons.
-class MediaFeature {
+class LYNX_EXPORT_FOR_DEVTOOL MediaFeature {
  public:
   MediaFeature() = default;
 

@@ -85,6 +85,14 @@ void InspectorElementObserverImpl::OnCSSStyleSheetAdded(
   element_executor->OnCSSStyleSheetAdded(ptr);
 }
 
+void InspectorElementObserverImpl::OnCSSMediaQueryResultChanged() {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY_DEVTOOL,
+              ELEMENT_OBSERVER_ON_CSS_MEDIA_QUERY_RESULT_CHANGED);
+  auto element_executor = element_executor_wp_.lock();
+  CHECK_NULL_AND_LOG_RETURN(element_executor, "element_executor is null");
+  element_executor->OnCSSMediaQueryResultChanged();
+}
+
 void InspectorElementObserverImpl::OnComponentUselessUpdate(
     const std::string &component_name, const lynx::lepus::Value &properties) {}
 

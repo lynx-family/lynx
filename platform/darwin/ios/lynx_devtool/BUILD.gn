@@ -243,11 +243,17 @@ subspec_target("Native") {
     "../../../../devtool/lynx_devtool/recorder",
     "../../../../devtool/lynx_devtool/shared_data",
   ]
+  flatten_deps = []
   if (!enable_unittests) {
-    deps += [ "../../../../core/renderer/css:css_decoder" ]
+    deps += [
+      "../../../../core/renderer/css:css_decoder",
+      "../../../../core/renderer/css:css_parser",
+    ]
+    flatten_deps +=
+        [ "../../../../third_party/double-conversion:DoubleConversion" ]
   }
   if (use_flatten_deps) {
-    flatten_deps = [
+    flatten_deps += [
       ":Trace",
       ":js_debug",
     ]

@@ -133,6 +133,8 @@ class LynxDevToolMediator
   DECLARE_DEVTOOL_METHOD(StartRuleUsageTracking);
   DECLARE_DEVTOOL_METHOD(UpdateRuleUsageTracking);
   DECLARE_DEVTOOL_METHOD(StopRuleUsageTracking);
+  DECLARE_DEVTOOL_METHOD(GetMediaQueries);
+  DECLARE_DEVTOOL_METHOD(SetMediaText);
 
   // Performance domain -> ui executor
   DECLARE_DEVTOOL_METHOD(PerformanceEnable)

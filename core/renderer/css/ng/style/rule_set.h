@@ -12,6 +12,7 @@
 
 #include "base/include/fml/memory/ref_counted.h"
 #include "base/include/vector.h"
+#include "core/base/lynx_export.h"
 #include "core/renderer/css/ng/style/rule_data.h"
 #include "core/renderer/css/style_node.h"
 
@@ -57,8 +58,8 @@ class RuleSet {
                    const MediaQueryEvaluator* media_query_evaluator,
                    const SupportsEvaluator* supports_evaluator) const;
 
-  void MatchOwnStyles(StyleNode* node, unsigned level,
-                      base::Vector<MatchedRule>& output) const;
+  LYNX_EXPORT_FOR_DEVTOOL void MatchOwnStyles(
+      StyleNode* node, unsigned level, base::Vector<MatchedRule>& output) const;
 
   void AddToRuleSet(const std::string& text,
                     const fml::RefPtr<tasm::CSSParseToken>& token);
@@ -115,6 +116,18 @@ class RuleSet {
       flags |= dep->GetConditionRuleFlags();
     }
     return flags;
+  }
+
+  template <typename ForEachConditionalRuleVisitor>
+  void ForEachConditionRule(ForEachConditionalRuleVisitor&& visitor) const {
+    for (const auto* dep : deps_) {
+      dep->ForEachConditionRule(visitor);
+    }
+    for (const auto& rule : condition_rules_) {
+      if (rule) {
+        visitor(*rule);
+      }
+    }
   }
 
  private:

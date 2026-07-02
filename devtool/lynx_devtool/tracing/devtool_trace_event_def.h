@@ -27,6 +27,9 @@ inline constexpr const char* const ELEMENT_OBSERVER_ON_SET_NATIVE_PROPS =
     "OnSetNativeProps";
 inline constexpr const char* const ELEMENT_OBSERVER_ON_CSS_STYLE_SHEET_ADDED =
     "OnCSSStyleSheetAdded";
+inline constexpr const char* const
+    ELEMENT_OBSERVER_ON_CSS_MEDIA_QUERY_RESULT_CHANGED =
+        "OnCSSMediaQueryResultChanged";
 
 inline constexpr const char* const LYNX_ENGINE_VERSION = "LynxEngineVersion";
 inline constexpr const char* const FRAME_TRACE_SERVICE_STARTED_IN_BROWSER =

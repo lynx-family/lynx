@@ -158,6 +158,66 @@ TEST(HelperUtilTest, MergeCSSStyleTEST) {
   EXPECT_EQ(res1, res2);
 }
 
+TEST(HelperUtilTest, MergeCSSStyleSerializesMediaRule) {
+  lynx::devtool::InspectorStyleSheet style_sheet;
+  style_sheet.empty = false;
+  style_sheet.origin_ = "regular";
+  style_sheet.style_sheet_id_ = "12";
+  style_sheet.style_name_ = ".card";
+  style_sheet.css_text_ = "width:10px;";
+  style_sheet.style_name_range_ = {1, 1, 0, 5};
+  style_sheet.style_value_range_ = {1, 1, 6, 17};
+  style_sheet.media_text_ = "(min-width: 1000px)";
+  style_sheet.media_range_ = {0, 0, 0, 19};
+  style_sheet.property_order_.push_back("width");
+  style_sheet.css_properties_.insert({"width",
+                                      {"width",
+                                       "10px",
+                                       "width:10px;",
+                                       false,
+                                       false,
+                                       false,
+                                       false,
+                                       true,
+                                       {1, 1, 6, 17}}});
+
+  Json::Value result(Json::ValueType::arrayValue);
+  lynx::devtool::MergeCSSStyle(result, style_sheet, true);
+
+  ASSERT_TRUE(result.isArray());
+  ASSERT_EQ(result.size(), 1U);
+  const Json::Value& media = result[0]["rule"]["media"];
+  ASSERT_TRUE(media.isArray());
+  ASSERT_EQ(media.size(), 1U);
+  EXPECT_EQ(media[0]["text"].asString(), "(min-width: 1000px)");
+  EXPECT_EQ(media[0]["source"].asString(), "mediaRule");
+  EXPECT_EQ(media[0]["styleSheetId"].asString(), "12");
+  EXPECT_EQ(media[0]["range"]["startLine"].asInt(), 0);
+  EXPECT_EQ(media[0]["range"]["endLine"].asInt(), 0);
+  EXPECT_EQ(media[0]["range"]["startColumn"].asInt(), 0);
+  EXPECT_EQ(media[0]["range"]["endColumn"].asInt(), 19);
+}
+
+TEST(HelperUtilTest, StyleTextParserPreservesMediaInfo) {
+  lynx::devtool::InspectorStyleSheet pre_style;
+  pre_style.empty = false;
+  pre_style.origin_ = "regular";
+  pre_style.style_sheet_id_ = "12";
+  pre_style.style_name_ = ".card";
+  pre_style.style_name_range_ = {1, 1, 0, 5};
+  pre_style.media_text_ = "(min-width: 1000px)";
+  pre_style.media_range_ = {0, 0, 0, 19};
+
+  auto parsed = lynx::devtool::StyleTextParser<lynx::tasm::Element*>(
+      nullptr, "width:20px", pre_style);
+
+  EXPECT_EQ(parsed.media_text_, "(min-width: 1000px)");
+  EXPECT_EQ(parsed.media_range_.start_line_, 0);
+  EXPECT_EQ(parsed.media_range_.end_line_, 0);
+  EXPECT_EQ(parsed.media_range_.start_column_, 0);
+  EXPECT_EQ(parsed.media_range_.end_column_, 19);
+}
+
 TEST(HelperUtilTest, ReplaceDefaultComputedStyleTest) {
   std::unordered_map<std::string, std::string> dict1, dict2;
   std::unordered_multimap<std::string, lynx::devtool::CSSPropertyDetail>

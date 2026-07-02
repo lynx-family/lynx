@@ -30,7 +30,7 @@ enum PseudoId : uint8_t {
   kPseudoIdSelection,
 };
 
-class LynxCSSSelector {
+class LYNX_EXPORT_FOR_DEVTOOL LynxCSSSelector {
  public:
   using AttributeMatchType = LynxCSSSelectorExtraData::AttributeMatchType;
 

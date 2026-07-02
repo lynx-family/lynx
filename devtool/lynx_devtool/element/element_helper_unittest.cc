@@ -8,6 +8,8 @@
 #include "devtool/lynx_devtool/element/element_helper.h"
 
 #include <algorithm>
+#include <initializer_list>
+#include <vector>
 
 #include "base/include/auto_reset.h"
 #include "core/base/threading/task_runner_manufactor.h"
@@ -16,8 +18,11 @@
 #include "core/renderer/css/css_parser_token.h"
 #include "core/renderer/css/ng/parser/css_parser_token_range.h"
 #include "core/renderer/css/ng/parser/css_tokenizer.h"
+#include "core/renderer/css/ng/parser/media_query_parser.h"
 #include "core/renderer/css/ng/selector/css_parser_context.h"
 #include "core/renderer/css/ng/selector/css_selector_parser.h"
+#include "core/renderer/css/ng/style/condition_rule.h"
+#include "core/renderer/css/ng/style/style_rule.h"
 #include "core/renderer/css/parser/css_string_parser.h"
 #include "core/renderer/css/shared_css_fragment.h"
 #include "core/renderer/dom/element.h"
@@ -45,13 +50,36 @@ lynx::tasm::CSSValue ParseVariableValue(const char* raw_value) {
   return parser.ParseVariable();
 }
 
-std::shared_ptr<lynx::tasm::SharedCSSFragment> CreateSelectorCSSFragment(
-    const std::string& selector, lynx::tasm::CSSPropertyID property_id,
-    const std::string& value) {
+std::unique_ptr<lynx::css::LynxCSSSelector[]> CreateSelectorArray(
+    const std::string& selector) {
+  lynx::css::CSSParserContext context;
+  lynx::css::CSSTokenizer tokenizer(selector);
+  auto parser_tokens = tokenizer.TokenizeToEOF();
+  lynx::css::CSSParserTokenRange range(parser_tokens);
+  auto selector_vector =
+      lynx::css::CSSSelectorParser::ParseSelector(range, &context);
+  size_t flattened_size =
+      lynx::css::CSSSelectorParser::FlattenedSize(selector_vector);
+  auto selector_arr =
+      std::make_unique<lynx::css::LynxCSSSelector[]>(flattened_size);
+  lynx::css::CSSSelectorParser::AdoptSelectorVector(
+      selector_vector, selector_arr.get(), flattened_size);
+  return selector_arr;
+}
+
+fml::RefPtr<lynx::tasm::CSSParseToken> CreateParseToken(
+    lynx::tasm::CSSPropertyID property_id, const std::string& value) {
   lynx::tasm::CSSParserConfigs parser_configs;
   auto token = fml::MakeRefCounted<lynx::tasm::CSSParseToken>(parser_configs);
   token->raw_attributes_[property_id] =
       lynx::tasm::CSSValue::MakePlainString(value.c_str());
+  return token;
+}
+
+std::shared_ptr<lynx::tasm::SharedCSSFragment> CreateSelectorCSSFragment(
+    const std::string& selector, lynx::tasm::CSSPropertyID property_id,
+    const std::string& value) {
+  auto token = CreateParseToken(property_id, value);
 
   auto sheet = std::make_shared<lynx::tasm::CSSSheet>(selector);
   token->sheets().emplace_back(sheet);
@@ -66,19 +94,49 @@ std::shared_ptr<lynx::tasm::SharedCSSFragment> CreateSelectorCSSFragment(
       1, dependent_ids, token_map, keyframes, font_faces);
   fragment->SetEnableCSSSelector();
 
-  lynx::css::CSSParserContext context;
-  lynx::css::CSSTokenizer tokenizer(selector);
-  auto parser_tokens = tokenizer.TokenizeToEOF();
-  lynx::css::CSSParserTokenRange range(parser_tokens);
-  auto selector_vector =
-      lynx::css::CSSSelectorParser::ParseSelector(range, &context);
-  size_t flattened_size =
-      lynx::css::CSSSelectorParser::FlattenedSize(selector_vector);
-  auto selector_arr =
-      std::make_unique<lynx::css::LynxCSSSelector[]>(flattened_size);
-  lynx::css::CSSSelectorParser::AdoptSelectorVector(
-      selector_vector, selector_arr.get(), flattened_size);
-  fragment->AddStyleRule(std::move(selector_arr), token);
+  fragment->AddStyleRule(CreateSelectorArray(selector), token);
+
+  return fragment;
+}
+
+struct MediaRuleForTest {
+  std::string selector;
+  lynx::tasm::CSSPropertyID property_id;
+  std::string value;
+  std::string media_text;
+};
+
+std::shared_ptr<lynx::tasm::SharedCSSFragment> CreateMediaCSSFragment(
+    std::initializer_list<MediaRuleForTest> rules) {
+  lynx::tasm::CSSParserTokenMap token_map;
+  std::vector<fml::RefPtr<lynx::tasm::CSSParseToken>> tokens;
+  tokens.reserve(rules.size());
+
+  for (const auto& rule : rules) {
+    auto token = CreateParseToken(rule.property_id, rule.value);
+    auto sheet = std::make_shared<lynx::tasm::CSSSheet>(rule.selector);
+    token->sheets().emplace_back(sheet);
+    token_map.insert(std::make_pair(rule.selector, token));
+    tokens.push_back(std::move(token));
+  }
+
+  const std::vector<int32_t> dependent_ids;
+  lynx::tasm::CSSKeyframesTokenMap keyframes;
+  lynx::tasm::CSSFontFaceRuleMap font_faces;
+  auto fragment = std::make_shared<lynx::tasm::SharedCSSFragment>(
+      1, dependent_ids, token_map, keyframes, font_faces);
+  fragment->SetEnableCSSSelector();
+
+  size_t index = 0;
+  for (const auto& rule : rules) {
+    auto condition_rule =
+        fml::MakeRefCounted<lynx::css::ConditionRule>(fragment.get());
+    condition_rule->SetMediaQueries(
+        lynx::css::MediaQueryParser::ParseMediaQuerySet(rule.media_text));
+    condition_rule->AddStyleRule(fml::MakeRefCounted<lynx::css::StyleRule>(
+        CreateSelectorArray(rule.selector), tokens[index++]));
+    fragment->AddConditionRule(std::move(condition_rule));
+  }
 
   return fragment;
 }
@@ -135,6 +193,8 @@ TEST_F(ElementHelperTest, StyleTextParserTest) {
   style_sheet.css_text_ = ".label_text";
   style_sheet.css_properties_ = css_properties;
   style_sheet.style_value_range_ = {81, 10, 12, 10};
+  style_sheet.media_text_ = "(min-width: 1000px)";
+  style_sheet.media_range_ = {2, 2, 0, 19};
 
   auto element = manager->CreateFiberElement("view");
 
@@ -159,6 +219,13 @@ TEST_F(ElementHelperTest, StyleTextParserTest) {
       EXPECT_EQ(it.second.text_, "height:10px;");
     }
   }
+  auto parsed = lynx::devtool::StyleTextParser(
+      element.get(), "width:10px;height:10px", style_sheet);
+  EXPECT_EQ(parsed.media_text_, "(min-width: 1000px)");
+  EXPECT_EQ(parsed.media_range_.start_line_, 2);
+  EXPECT_EQ(parsed.media_range_.end_line_, 2);
+  EXPECT_EQ(parsed.media_range_.start_column_, 0);
+  EXPECT_EQ(parsed.media_range_.end_column_, 19);
 }
 
 TEST_F(ElementHelperTest, GetDocumentBodyFromNodeTest) {
@@ -565,6 +632,70 @@ TEST_F(ElementHelperTest, GetMatchedStylesForNodeTest) {
   Json::Value json_value2;
   reader.parse(expectedStyles, json_value2);
   EXPECT_EQ(res, json_value2);
+}
+
+TEST_F(ElementHelperTest, GetMatchedStylesForNodeReportsActiveMediaRules) {
+  manager->enable_new_styling_pipeline_ = true;
+
+  auto page = manager->CreateFiberPage("page", 0);
+  lynx::devtool::ElementInspector::InitForInspector(
+      std::make_tuple(page.get()));
+
+  auto fragment = CreateMediaCSSFragment({
+      {".active-media", lynx::tasm::CSSPropertyID::kPropertyIDWidth, "10px",
+       "(min-width: 1000px)"},
+      {".inactive-media", lynx::tasm::CSSPropertyID::kPropertyIDHeight, "20px",
+       "(max-width: 10px)"},
+  });
+
+  lynx::base::String component_id("21");
+  lynx::base::String entry_name("__Card__");
+  lynx::base::String component_name("TestComp");
+  lynx::base::String path("/index/components/TestComp");
+  auto component = manager->CreateFiberComponent(component_id, 100, entry_name,
+                                                 component_name, path);
+  component->style_sheet_ =
+      std::make_unique<lynx::tasm::CSSFragmentDecorator>(fragment.get());
+  lynx::devtool::ElementInspector::InitForInspector(
+      std::make_tuple(component.get()));
+  page->InsertNode(component);
+
+  auto styled_element = manager->CreateFiberElement("view");
+  styled_element->SetParentComponentUniqueIdForFiber(
+      static_cast<int64_t>(component->impl_id()));
+  styled_element->data_model()->SetClass("active-media");
+  styled_element->data_model()->SetClass("inactive-media");
+  lynx::devtool::ElementInspector::InitForInspector(
+      std::make_tuple(styled_element.get()));
+  component->InsertNode(styled_element);
+
+  auto style_root = manager->CreateFiberElement("stylevalue");
+  lynx::devtool::ElementInspector::InitForInspector(
+      std::make_tuple(style_root.get()));
+  lynx::devtool::ElementInspector::SetStyleRoot(
+      std::make_tuple(style_root.get(), style_root.get()));
+  lynx::devtool::ElementInspector::SetStyleRoot(
+      std::make_tuple(styled_element.get(), style_root.get()));
+
+  Json::Value matched = lynx::devtool::ElementHelper::GetMatchedStylesForNode(
+      styled_element.get());
+
+  ASSERT_TRUE(matched["matchedCSSRules"].isArray());
+  ASSERT_EQ(matched["matchedCSSRules"].size(), 1U);
+  const Json::Value& rule = matched["matchedCSSRules"][0]["rule"];
+  EXPECT_EQ(rule["selectorList"]["text"].asString(), ".active-media");
+  ASSERT_TRUE(rule["media"].isArray());
+  ASSERT_EQ(rule["media"].size(), 1U);
+  EXPECT_EQ(rule["media"][0]["text"].asString(), "(min-width: 1000px)");
+  EXPECT_EQ(rule["media"][0]["source"].asString(), "mediaRule");
+  EXPECT_EQ(rule["media"][0]["styleSheetId"].asString(),
+            std::to_string(
+                lynx::devtool::ElementInspector::NodeId(style_root.get())));
+  EXPECT_EQ(rule["media"][0]["range"]["startLine"].asInt(), 0);
+  EXPECT_EQ(rule["media"][0]["range"]["endLine"].asInt(), 0);
+  EXPECT_EQ(rule["media"][0]["range"]["startColumn"].asInt(), 0);
+  EXPECT_EQ(rule["media"][0]["range"]["endColumn"].asInt(),
+            static_cast<int>(std::string("(min-width: 1000px)").length()));
 }
 
 TEST_F(ElementHelperTest, SetStyleTextsTest) {

@@ -4,9 +4,12 @@
 
 #include "core/renderer/css/ng/style/rule_set.h"
 
+#include <vector>
+
 #include "core/renderer/css/css_parser_token.h"
 #include "core/renderer/css/ng/parser/css_parser_token_range.h"
 #include "core/renderer/css/ng/parser/css_tokenizer.h"
+#include "core/renderer/css/ng/parser/media_query_parser.h"
 #include "core/renderer/css/ng/selector/css_parser_context.h"
 #include "core/renderer/css/ng/selector/css_selector_parser.h"
 #include "core/renderer/css/ng/style/condition_rule.h"
@@ -231,6 +234,47 @@ TEST(RuleSetTest, SupportsConditionResultIsCached) {
   SupportsEvaluator non_matching_evaluator(Version(5, 0), {});
   EXPECT_TRUE(
       condition_rule->MatchesSupportsCondition(&non_matching_evaluator));
+}
+
+TEST(RuleSetTest, HasMediaQueryRulesIncludesMergedDeps) {
+  TestFragment parent_fragment;
+  TestFragment dep_fragment;
+
+  auto condition_rule = fml::MakeRefCounted<ConditionRule>(nullptr);
+  condition_rule->SetMediaQueries(
+      MediaQueryParser::ParseMediaQuerySet("(min-width: 100px)"));
+  dep_fragment.GetRuleSet().AddConditionRule(std::move(condition_rule));
+
+  EXPECT_FALSE(parent_fragment.GetRuleSet().HasMediaQueryRules());
+  parent_fragment.GetRuleSet().Merge(dep_fragment.GetRuleSet());
+  EXPECT_TRUE(parent_fragment.GetRuleSet().HasMediaQueryRules());
+}
+
+TEST(RuleSetTest, ForEachConditionRuleVisitsDepsBeforeOwnRules) {
+  TestFragment parent_fragment;
+  TestFragment dep_fragment;
+
+  auto dep_condition_rule = fml::MakeRefCounted<ConditionRule>(nullptr);
+  dep_condition_rule->SetMediaQueries(
+      MediaQueryParser::ParseMediaQuerySet("(min-width: 100px)"));
+  dep_fragment.GetRuleSet().AddConditionRule(std::move(dep_condition_rule));
+
+  auto own_condition_rule = fml::MakeRefCounted<ConditionRule>(nullptr);
+  own_condition_rule->SetMediaQueries(
+      MediaQueryParser::ParseMediaQuerySet("(min-width: 200px)"));
+  parent_fragment.GetRuleSet().AddConditionRule(std::move(own_condition_rule));
+
+  parent_fragment.GetRuleSet().Merge(dep_fragment.GetRuleSet());
+
+  std::vector<std::string> visited;
+  parent_fragment.GetRuleSet().ForEachConditionRule(
+      [&visited](const ConditionRule& rule) {
+        visited.push_back(rule.MediaQueries()->Serialize());
+      });
+
+  ASSERT_EQ(visited.size(), 2U);
+  EXPECT_EQ(visited[0], "(min-width: 100px)");
+  EXPECT_EQ(visited[1], "(min-width: 200px)");
 }
 
 }  // namespace css
