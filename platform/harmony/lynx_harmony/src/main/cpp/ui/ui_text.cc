@@ -22,7 +22,6 @@
 #include "platform/harmony/lynx_harmony/src/main/cpp/text/font_collection_harmony.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/text/paragraph_harmony.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/text/style_harmony.h"
-#include "platform/harmony/lynx_harmony/src/main/cpp/text/utils/unicode_decode_utils.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/base/node_manager.h"
 
 namespace lynx {
