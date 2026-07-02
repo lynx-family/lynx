@@ -1448,6 +1448,13 @@ public abstract class LynxContext extends LynxBaseContext implements ExceptionHa
     return false;
   }
 
+  public boolean getEnableNativeInteraction() {
+    if (null != mPageConfig) {
+      return mPageConfig.getEnableNativeInteraction();
+    }
+    return false;
+  }
+
   /**
    * @brief switch for enable CreateViewAsync
    */
