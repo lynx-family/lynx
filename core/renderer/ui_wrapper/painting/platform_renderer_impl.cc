@@ -27,6 +27,16 @@ PlatformRendererImpl::PlatformRendererImpl(int id, PlatformRendererType type,
   is_overlay_ = IsOverlayTag(tag_name_);
 }
 
+PlatformRendererImpl::~PlatformRendererImpl() {
+  for (const auto& child : children_) {
+    auto* child_impl = static_cast<PlatformRendererImpl*>(child.get());
+    if (child_impl != nullptr && child_impl->parent_ == this) {
+      child_impl->parent_ = nullptr;
+      child_impl->is_ui_owner_child_ = false;
+    }
+  }
+}
+
 base::String PlatformRendererImpl::GetExtendedRendererTagName() const {
   if (!tag_name_.empty()) {
     return tag_name_;
