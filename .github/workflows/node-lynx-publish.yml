@@ -29,10 +29,17 @@ jobs:
         with:
           cache-backend: github
           target: clay
+      - name: Install Tasm Node Dependencies
+        run: |-
+          cd $GITHUB_WORKSPACE/lynx
+          source tools/envsetup.sh
+          pushd oliver/lynx-tasm
+          npm install
+          popd
       - name: Build Linux Node Lynx
         run: |-
           cd $GITHUB_WORKSPACE/lynx
-          tools/env.sh pnpm --filter @lynx-js/node-lynx run build:publish:linux
+          tools/env.sh python3 oliver/build_gn.py --platform linux --type node-lynx --clean true --show_log true
           cp oliver/node-lynx/build/linux/Release/node_lynx.node oliver/node-lynx/platform/linux-x64/node_lynx.node
       - name: Test Linux Node Lynx
         run: |-
@@ -65,6 +72,13 @@ jobs:
         with:
           cache-backend: github
           target: clay
+      - name: Install Tasm Node Dependencies
+        run: |-
+          cd $GITHUB_WORKSPACE/lynx
+          source tools/envsetup.sh
+          pushd oliver/lynx-tasm
+          npm install
+          popd
       - name: Build Darwin Node Lynx
         run: |-
           cd $GITHUB_WORKSPACE/lynx
@@ -72,7 +86,7 @@ jobs:
             echo "node-lynx publish currently expects an arm64 Darwin runner." >&2
             exit 1
           fi
-          tools/env.sh pnpm --filter @lynx-js/node-lynx run build:publish:darwin
+          tools/env.sh python3 oliver/build_gn.py --platform darwin --type node-lynx --local true --clean true --show_log true
           cp oliver/node-lynx/build/darwin/Release/node_lynx.node oliver/node-lynx/platform/darwin-arm64/node_lynx.node
       - name: Test Darwin Node Lynx
         run: |-
@@ -111,6 +125,7 @@ jobs:
         uses: ./lynx/.github/actions/common-deps
         with:
           cache-backend: github
+          target: tasm
       - name: Download Linux Node Lynx Artifact
         uses: actions/download-artifact@v5
         with:
