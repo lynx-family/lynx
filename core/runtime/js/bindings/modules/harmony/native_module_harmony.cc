@@ -55,7 +55,6 @@ napi_value NativeModuleHarmony::InvokePlatformMethod(
     const std::weak_ptr<Delegate>& delegate,
     const runtime::CallbackMap& callbacks, uint64_t flow_id,
     const std::string& first_arg) {
-  base::NapiHandleScope scope(env);
   napi_value platform_get_module_func =
       platform_manager->JSGetModuleFunc(env, sendable);
   napi_value receiver = platform_manager->JSModuleManager(env, sendable);
@@ -144,6 +143,7 @@ NativeModuleHarmony::InvokeMethod(const std::string& method_name,
               });
   if (sendable_) {
     auto env = base::harmony::GetJSThreadNapiEnv();
+    base::NapiHandleScope scope(env);
     napi_value result = InvokePlatformMethod(
         platform_manager_, module_name_, true, env, lepus_value, method_name,
         delegate_, callbacks, flow_id, first_arg);
@@ -164,6 +164,7 @@ NativeModuleHarmony::InvokeMethod(const std::string& method_name,
         [&result_value, manager = platform_manager_, env = main_env_,
          module_name = module_name_, &lepus_value, &method_name,
          delegate = delegate_, &callbacks, flow_id, &first_arg]() {
+          base::NapiHandleScope scope(env);
           napi_value napi_result = InvokePlatformMethod(
               manager, module_name, false, env, lepus_value, method_name,
               delegate, callbacks, flow_id, first_arg);
@@ -185,6 +186,7 @@ NativeModuleHarmony::InvokeMethod(const std::string& method_name,
        first_arg = std::move(first_arg)]() {
         LOGD("LynxModuleHarmony module: " << module_name << ", invoke method: "
                                           << method_name);
+        base::NapiHandleScope scope(env);
         InvokePlatformMethod(manager, module_name, false, env, lepus_argv,
                              method_name, delegate, callbacks, flow_id,
                              first_arg);
