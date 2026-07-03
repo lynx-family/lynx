@@ -130,7 +130,7 @@
   return topContainer;
 }
 
-- (void)destoryOverlayView:(UIView *)overlay
+- (void)destroyOverlayView:(UIView *)overlay
                    atLevel:(NSInteger)level
                   withMode:(LynxOverlayMode)mode
       customViewController:(UIViewController *)customViewController {

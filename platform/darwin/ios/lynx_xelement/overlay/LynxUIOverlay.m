@@ -473,7 +473,7 @@ LYNX_PROP_SETTER("pointer-events", setPointerEvents, NSInteger) {
 
   // avoid objc store weak
   if (_customViewController) {
-    [[LynxOverlayGlobalManager sharedInstance] destoryOverlayView:self.view
+    [[LynxOverlayGlobalManager sharedInstance] destroyOverlayView:self.view
                                                           atLevel:self.level
                                                          withMode:self.mode
                                              customViewController:_customViewController];
