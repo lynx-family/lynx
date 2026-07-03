@@ -1,6 +1,6 @@
 [
     {
-        "count": 236
+        "count": 233
     },
     {
         "id": 1,
@@ -933,17 +933,5 @@
     {
         "id": 233,
         "name": "-x-caret-radius"
-    },
-    {
-        "id": 234,
-        "name": "text-decoration-thickness"
-    },
-    {
-        "id": 235,
-        "name": "-x-text-decoration-width"
-    },
-    {
-        "id": 236,
-        "name": "-x-text-decoration-gap"
     }
 ]

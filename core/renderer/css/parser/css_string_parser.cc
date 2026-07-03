@@ -477,15 +477,7 @@ CSSValue CSSStringParser::ParseTextDecoration() {
       }
       temp_flag |= 1 << 2;
     } else {
-      auto thickness = Length();
-      if (thickness.IsEmpty()) {
-        return CSSValue();
-      }
-      result->emplace_back(
-          static_cast<uint32_t>(starlight::TextDecorationType::kThickness));
-      result->emplace_back(thickness.GetValue());
-      result->emplace_back(static_cast<int>(thickness.GetPattern()));
-      temp_flag |= 1 << 3;
+      return CSSValue();
     }
     if ((temp_flag & flag) != 0) {
       return CSSValue();
