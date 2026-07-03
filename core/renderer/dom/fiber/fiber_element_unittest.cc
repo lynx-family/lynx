@@ -54,6 +54,7 @@
 #include "core/renderer/starlight/types/layout_attribute.h"
 #include "core/renderer/tasm/react/testing/mock_painting_context.h"
 #include "core/renderer/ui_wrapper/common/testing/prop_bundle_mock.h"
+#include "core/renderer/utils/base/tasm_constants.h"
 #include "core/renderer/utils/test/text_utils_mock.h"
 #include "core/runtime/js/bindings/java_script_element.h"
 #include "core/runtime/lepus/bindings/renderer_functions.h"
@@ -1437,6 +1438,40 @@ TEST_P(FiberElementTest, TestSetAttributeInternal05) {
             CSSPropertyID::kPropertyIDLinearOrientation);
   EXPECT_EQ(tasm_mediator.captured_bundles_.back()->styles.back().second,
             tasm::CSSValue(3, CSSValuePattern::ENUM));
+}
+
+TEST_P(FiberElementTest, LazyBundleUrlUpdatesElementEntryName) {
+  auto page = manager->CreateFiberPage("page", 0);
+  auto view = manager->CreateFiberView();
+
+  view->SetAttribute(BASE_STATIC_STRING(kLazyBundleUrl),
+                     lepus::Value("lazy-entry"));
+  page->InsertNode(view);
+  page->FlushActionsAsRoot();
+
+  EXPECT_EQ(view->entry_name().str(), "lazy-entry");
+  EXPECT_TRUE(view->has_layout_only_props_);
+}
+
+TEST_P(FiberElementTest, LazyBundleUrlUpdatesComponentEntryName) {
+  base::String component_id("21");
+  int32_t css_id = 100;
+  base::String entry_name("initial-entry");
+  base::String component_name("TestComp");
+  base::String path("/index/components/TestComp");
+
+  auto page = manager->CreateFiberPage("page", 0);
+  auto comp = manager->CreateFiberComponent(component_id, css_id, entry_name,
+                                            component_name, path);
+
+  comp->SetAttribute(BASE_STATIC_STRING(kLazyBundleUrl),
+                     lepus::Value("lazy-entry"));
+  page->InsertNode(comp);
+  page->FlushActionsAsRoot();
+
+  EXPECT_EQ(comp->entry_name().str(), "lazy-entry");
+  EXPECT_EQ(comp->GetEntryName(), "lazy-entry");
+  EXPECT_TRUE(comp->has_layout_only_props_);
 }
 
 TEST_P(FiberElementTest, ElementInitTest1) {

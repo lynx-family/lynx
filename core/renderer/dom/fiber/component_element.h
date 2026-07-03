@@ -57,13 +57,6 @@ class ComponentElement : public WrapperElement, public BaseComponent {
 
   void set_component_path(const base::String& path) { path_ = path; }
 
-  const base::String& component_entry() const { return entry_name_; }
-
-  void set_component_entry(const base::String& entry) {
-    entry_name_ = entry;
-    set_entry_name(entry);
-  }
-
   void MarkAsWrapperComponent();
 
   virtual bool CanBeLayoutOnly() const override;
@@ -123,7 +116,6 @@ class ComponentElement : public WrapperElement, public BaseComponent {
   lepus::Value prop_;
 
   base::String component_id_;
-  base::String entry_name_;
   base::String name_;
   base::String path_;
 

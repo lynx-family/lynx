@@ -72,6 +72,7 @@
 #include "core/renderer/starlight/types/layout_attribute.h"
 #include "core/renderer/template_assembler.h"
 #include "core/renderer/trace/renderer_trace_event_def.h"
+#include "core/renderer/utils/base/tasm_constants.h"
 #include "core/renderer/utils/lynx_env.h"
 #include "core/renderer/utils/prop_bundle_style_writer.h"
 #include "core/renderer/utils/value_utils.h"
@@ -3921,6 +3922,13 @@ void FiberElement::MarkHasLayoutOnlyPropsIfNecessary(
 
 void FiberElement::SetAttributeInternal(const base::String &key,
                                         const lepus::Value &value) {
+  if (key.IsEqual(kLazyBundleUrl)) {
+    if (value.IsString()) {
+      set_entry_name(value.String());
+    }
+    return;
+  }
+
   WillConsumeAttribute(key, value);
 
   PreparePropBundleIfNeed();

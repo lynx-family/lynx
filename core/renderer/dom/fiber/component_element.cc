@@ -38,7 +38,6 @@ ComponentElement::ComponentElement(ElementManager* manager,
                                    const base::String& path,
                                    const base::String& tag_name)
     : WrapperElement(manager, tag_name),
-      entry_name_(entry_name),
       name_(name),
       path_(path),
       component_css_id_(component_css_id) {
@@ -58,7 +57,6 @@ ComponentElement::ComponentElement(const ComponentElement& element,
                                    bool clone_resolved_props)
     : WrapperElement(element, clone_resolved_props),
       component_id_(element.component_id_),
-      entry_name_(element.entry_name_),
       name_(element.name_),
       path_(element.path_),
       component_css_id_(element.component_css_id_),
@@ -242,7 +240,7 @@ const lepus::Value& ComponentElement::GetData() { return data_; }
 const lepus::Value& ComponentElement::GetProperties() { return prop_; }
 
 const std::string& ComponentElement::GetEntryName() const {
-  return entry_name_.str();
+  return entry_name().str();
 }
 
 std::string ComponentElement::ComponentStrId() { return component_id_.str(); }
