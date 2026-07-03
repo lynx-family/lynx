@@ -12,6 +12,7 @@ import static org.mockito.ArgumentMatchers.anyFloat;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
@@ -27,6 +28,7 @@ import android.view.View;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import com.lynx.tasm.behavior.shadow.text.TextMeasurer;
 import com.lynx.tasm.behavior.shadow.text.TextUpdateBundle;
+import com.lynx.tasm.behavior.ui.LynxBaseUI;
 import com.lynx.tasm.behavior.ui.image.LynxImageManager;
 import com.lynx.tasm.behavior.ui.utils.BorderStyle;
 import com.lynx.tasm.behavior.ui.utils.Spacing;
@@ -222,6 +224,31 @@ public class DisplayListApplierTest {
 
     verify(mockCanvas).save();
     verify(mockCanvas).translate(0f, 0f);
+    assertEquals(0f, testDisplayList.fArgv[0], 0f);
+    assertEquals(0f, testDisplayList.fArgv[1], 0f);
+  }
+
+  @Test
+  public void testOverlayOpBeginKeepsHorizontalOffsetOnly() {
+    Renderer renderer = new Renderer(mockPlatformRendererContext, 1);
+    LynxBaseUI overlayUI = mock(LynxBaseUI.class);
+    when(overlayUI.isOverlay()).thenReturn(true);
+    renderer.setUIHost(overlayUI);
+    when(mockRendererHost.getRenderer()).thenReturn(renderer);
+
+    DisplayListApplier overlayApplier =
+        new DisplayListApplier(null, mockPlatformRendererContext, mockRendererHost);
+    testDisplayList.ops = new int[] {0};
+    testDisplayList.iArgv = new int[] {2, 4, 0, VIEW_TYPE};
+    testDisplayList.fArgv = new float[] {10f, 20f, 100f, 50f};
+
+    overlayApplier.setDisplayList(testDisplayList);
+    overlayApplier.drawTillNextView(mockCanvas);
+
+    verify(mockCanvas).save();
+    verify(mockCanvas).translate(10f, 0f);
+    assertEquals(10f, testDisplayList.fArgv[0], 0f);
+    assertEquals(0f, testDisplayList.fArgv[1], 0f);
   }
 
   /**

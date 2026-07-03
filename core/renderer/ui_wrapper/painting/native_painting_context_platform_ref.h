@@ -58,6 +58,9 @@ class NativePaintingCtxPlatformRef
       const PlatformRendererInitConfig &init_config =
           PlatformRendererInitConfig());
   void UpdateDisplayList(int id, DisplayList &&display_list);
+  void UpdateLayoutMetrics(int id, float left, float top, float width,
+                           float height, const float *paddings,
+                           const float *margins, const float *borders);
 
   void RemovePaintingNode(int parent, int child, int index,
                           bool is_move) override;
@@ -75,6 +78,12 @@ class NativePaintingCtxPlatformRef
   bool DispatchPlatformInputEvent(int int_event_data[],
                                   float float_event_data[],
                                   int32_t event_target_root_id);
+  // Dispatch a longpress recognized by the platform layer. The event payload is
+  // derived from the active platform pointer state in PlatformEventHandler.
+  void DispatchPlatformLongPress();
+  // Dispatch a tap recognized by the platform layer. The event payload is
+  // derived from the pending platform pointer state in PlatformEventHandler.
+  void DispatchPlatformTap();
   // Hit-tests inside the given platform event root and returns whether the hit
   // target lets the event pass through.
   bool IsPlatformEventTargetEventThrough(int32_t event_target_root_id,
@@ -141,7 +150,11 @@ class NativePaintingCtxPlatformRef
  protected:
   virtual void NotifyNodeReady(const std::vector<int32_t> &) {}
 
-  virtual void InvokePlatformRendererUIMethod(
+  bool TryInvokePlatformRendererUIMethod(
+      int32_t id, const std::string &method, const lepus::Value &params,
+      base::MoveOnlyClosure<void, int32_t, const pub::Value &> &callback);
+
+  virtual void InvokePlatformViewUIMethod(
       int32_t id, const std::string &method, const lepus::Value &params,
       base::MoveOnlyClosure<void, int32_t, const pub::Value &> callback);
   virtual void DestroyImageOnPlatformThread(int32_t image_key) {}

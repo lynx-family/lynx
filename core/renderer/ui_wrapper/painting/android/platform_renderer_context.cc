@@ -157,41 +157,6 @@ void PlatformRendererContext::DestroyTextBundle(int32_t id) {
   Java_PlatformRendererContext_destroyTextBundle(env, local_ref.Get(), id);
 }
 
-void PlatformRendererContext::InsertListItemPaintingNode(int32_t list_sign,
-                                                         int32_t child_sign) {
-  base::android::ScopedLocalJavaRef<jobject> local_ref(java_ref_);
-  if (local_ref.IsNull()) {
-    return;
-  }
-  JNIEnv* env = base::android::AttachCurrentThread();
-  Java_PlatformRendererContext_insertListItemPaintingNode(
-      env, local_ref.Get(), list_sign, child_sign);
-}
-
-void PlatformRendererContext::RemoveListItemPaintingNode(int32_t list_sign,
-                                                         int32_t child_sign) {
-  base::android::ScopedLocalJavaRef<jobject> local_ref(java_ref_);
-  if (local_ref.IsNull()) {
-    return;
-  }
-  JNIEnv* env = base::android::AttachCurrentThread();
-  Java_PlatformRendererContext_removeListItemPaintingNode(
-      env, local_ref.Get(), list_sign, child_sign);
-}
-
-void PlatformRendererContext::UpdateContentOffsetForListContainer(
-    int32_t container_id, float content_size, float delta_x, float delta_y,
-    bool is_init_scroll_offset, bool from_layout) {
-  base::android::ScopedLocalJavaRef<jobject> local_ref(java_ref_);
-  if (local_ref.IsNull()) {
-    return;
-  }
-  JNIEnv* env = base::android::AttachCurrentThread();
-  Java_PlatformRendererContext_updateContentOffsetForListContainer(
-      env, local_ref.Get(), container_id, content_size, delta_x, delta_y,
-      is_init_scroll_offset, from_layout);
-}
-
 void PlatformRendererContext::FinishTasmOperation(int64_t operation_id) {
   base::android::ScopedLocalJavaRef<jobject> local_ref(java_ref_);
   if (local_ref.IsNull()) {
@@ -253,7 +218,8 @@ void PlatformRendererContext::UnregisterPlatformRenderer(int32_t id) {
 
 void PlatformRendererContext::UpdatePlatformRendererFrame(
     int32_t target, bool need_clip, const float* frame,
-    const float* render_offset) {
+    const float* render_offset, const float* paddings, const float* margins,
+    const float* borders) {
   base::android::ScopedLocalJavaRef<jobject> local_ref(java_ref_);
   if (local_ref.IsNull()) {
     return;
@@ -263,18 +229,24 @@ void PlatformRendererContext::UpdatePlatformRendererFrame(
       env, local_ref.Get(), target, need_clip, static_cast<jint>(frame[0]),
       static_cast<jint>(frame[1]), static_cast<jint>(frame[2]),
       static_cast<jint>(frame[3]), static_cast<jint>(render_offset[0]),
-      static_cast<jint>(render_offset[1]));
+      static_cast<jint>(render_offset[1]), static_cast<jint>(paddings[0]),
+      static_cast<jint>(paddings[1]), static_cast<jint>(paddings[2]),
+      static_cast<jint>(paddings[3]), static_cast<jint>(margins[0]),
+      static_cast<jint>(margins[1]), static_cast<jint>(margins[2]),
+      static_cast<jint>(margins[3]), static_cast<jint>(borders[0]),
+      static_cast<jint>(borders[1]), static_cast<jint>(borders[2]),
+      static_cast<jint>(borders[3]));
 }
 
 void PlatformRendererContext::UpdatePlatformRendererAttributes(
-    int32_t id, jobject prop_bundle) {
+    int32_t id, jobject prop_bundle, bool tends_to_flatten) {
   base::android::ScopedLocalJavaRef<jobject> local_ref(java_ref_);
   if (local_ref.IsNull() || !prop_bundle) {
     return;
   }
   JNIEnv* env = base::android::AttachCurrentThread();
   Java_PlatformRendererContext_updatePlatformRendererAttributes(
-      env, local_ref.Get(), id, prop_bundle);
+      env, local_ref.Get(), id, prop_bundle, tends_to_flatten);
 }
 
 int32_t PlatformRendererContext::GetTagInfo(const std::string& tag_name) {

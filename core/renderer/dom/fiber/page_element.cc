@@ -180,7 +180,12 @@ void PageElement::Layout(const std::shared_ptr<PipelineOptions>& options) {
   // can emit layout-finished callbacks for this pipeline.
   options->has_layout = true;
 
-  element_container()->FinishLayoutOperation(options);
+  // FragmentLayerRender needs to generate display lists before notifying layout
+  // finish, because iOS extended renderers update their UIOwner layout from the
+  // display list.
+  if (!EnableFragmentLayerRender()) {
+    element_container()->FinishLayoutOperation(options);
+  }
 
   if (!options->enable_unified_pixel_pipeline) {
     element_container()->Flush();

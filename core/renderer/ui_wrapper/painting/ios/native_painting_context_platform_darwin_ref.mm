@@ -4,9 +4,12 @@
 
 #include "core/renderer/ui_wrapper/painting/ios/native_painting_context_platform_darwin_ref.h"
 
+#include "core/renderer/dom/ios/lepus_value_converter.h"
 #include "core/renderer/ui_wrapper/painting/ios/platform_renderer_context_darwin.h"
 #include "core/renderer/ui_wrapper/painting/ios/platform_renderer_darwin.h"
+#include "core/value_wrapper/value_impl_lepus.h"
 
+#import <Lynx/LynxTemplateData+Converter.h>
 #import <Lynx/LynxUIOwner.h>
 
 namespace lynx {
@@ -68,6 +71,68 @@ void NativePaintingCtxPlatformDarwinRef::UpdatePlatformRendererExtraBundle(
     auto* renderer = static_cast<PlatformRendererDarwin*>(it->second.get());
     renderer->UpdatePlatformExtraBundle(platform_extra_bundle);
   }
+}
+
+void NativePaintingCtxPlatformDarwinRef::InvokePlatformViewUIMethod(
+    int32_t sign, const std::string& method, const lepus::Value& params,
+    base::MoveOnlyClosure<void, int32_t, const pub::Value&> callback) {
+  NSString* method_name = [[NSString alloc] initWithUTF8String:method.c_str()];
+  id ns_params = convertLepusValueToNSObject(params);
+  NSDictionary* params_dict =
+      [ns_params isKindOfClass:[NSDictionary class]] ? (NSDictionary*)ns_params : nil;
+  if (auto it = renderers_.find(sign); it != renderers_.end() && it->second) {
+    auto* renderer = static_cast<PlatformRendererDarwin*>(it->second.get());
+    UIView<LynxRendererHost>* view = renderer->GetUIView();
+    if (view != nil && [view respondsToSelector:@selector(invokeUIMethod:params:callback:)]) {
+      auto callback_holder =
+          std::make_shared<base::MoveOnlyClosure<void, int32_t, const pub::Value&>>(
+              std::move(callback));
+      LynxUIMethodCallbackBlock block = ^(int code, id _Nullable data) {
+        if (!callback_holder || !(*callback_holder)) {
+          return;
+        }
+        auto callback = std::move(*callback_holder);
+        callback(code, PubLepusValue(LynxConvertToLepusValue(data)));
+      };
+      BOOL handled = [view invokeUIMethod:method_name params:params_dict callback:block];
+      if (handled) {
+        return;
+      }
+      if (!callback_holder || !(*callback_holder)) {
+        return;
+      }
+      callback = std::move(*callback_holder);
+    }
+  }
+
+  auto* factory = static_cast<PlatformRendererDarwinFactory*>(view_factory_.get());
+  if (factory == nullptr) {
+    NativePaintingCtxPlatformRef::InvokePlatformViewUIMethod(sign, method, params,
+                                                             std::move(callback));
+    return;
+  }
+  auto* context = factory->GetContext();
+  if (context == nullptr) {
+    NativePaintingCtxPlatformRef::InvokePlatformViewUIMethod(sign, method, params,
+                                                             std::move(callback));
+    return;
+  }
+  LynxUIOwner* owner = context->GetUIOwner();
+  if (owner == nil) {
+    NativePaintingCtxPlatformRef::InvokePlatformViewUIMethod(sign, method, params,
+                                                             std::move(callback));
+    return;
+  }
+  auto callback_holder = std::make_shared<base::MoveOnlyClosure<void, int32_t, const pub::Value&>>(
+      std::move(callback));
+  LynxUIMethodCallbackBlock block = ^(int code, id _Nullable data) {
+    if (!callback_holder || !(*callback_holder)) {
+      return;
+    }
+    auto callback = std::move(*callback_holder);
+    callback(code, PubLepusValue(LynxConvertToLepusValue(data)));
+  };
+  [owner invokeUIMethodForSelectorQuery:method_name params:params_dict callback:block toNode:sign];
 }
 
 void NativePaintingCtxPlatformDarwinRef::NotifyNodeReady(const std::vector<int32_t>& signs) {

@@ -9,6 +9,7 @@
 #import <Lynx/LynxGestureHandlerTrigger.h>
 #import <Lynx/LynxLog.h>
 #import <Lynx/LynxRootUI.h>
+#import <Lynx/LynxTemplateRender+Internal.h>
 #import <Lynx/LynxTouchHandler.h>
 #import <Lynx/LynxUI+Internal.h>
 #import <Lynx/LynxUIKitAPIAdapter.h>
@@ -385,23 +386,23 @@ static const NSInteger kLynxFragmentLayerDefaultRootSign = 10;
     [_rootView addGestureRecognizer:_touchRecognizer];
     _isFragmentLayerRendererOn = isFragmentLayerRenderOn;
 
+    _longPressRecognizer =
+        [[UILongPressGestureRecognizer alloc] initWithTarget:self
+                                                      action:@selector(dispatchLongPressEvent:)];
+    _longPressDelegate = [[LongPressGestureRecognizerDelegate alloc] initWithEventHandler:self];
+    _longPressRecognizer.delegate = _longPressDelegate;
+    _longPressRecognizer.cancelsTouchesInView = YES;
+    [_rootView addGestureRecognizer:_longPressRecognizer];
+
+    _tapRecognizer = [[UITapGestureRecognizer alloc] initWithTarget:self
+                                                             action:@selector(dispatchTapEvent:)];
+    _tapDelegate = [[TapGestureRecognizerDelegate alloc] initWithEventHandler:self];
+    _tapRecognizer.delegate = _tapDelegate;
+    _tapRecognizer.cancelsTouchesInView = YES;
+    [_rootView addGestureRecognizer:_tapRecognizer];
+
     if (!_isFragmentLayerRendererOn) {
       [_touchRecognizer setupVelocityTracker:_rootView];
-
-      _tapRecognizer = [[UITapGestureRecognizer alloc] initWithTarget:self
-                                                               action:@selector(dispatchTapEvent:)];
-      _longPressRecognizer =
-          [[UILongPressGestureRecognizer alloc] initWithTarget:self
-                                                        action:@selector(dispatchLongPressEvent:)];
-      _tapDelegate = [[TapGestureRecognizerDelegate alloc] initWithEventHandler:self];
-      _longPressDelegate = [[LongPressGestureRecognizerDelegate alloc] initWithEventHandler:self];
-      _tapRecognizer.delegate = _tapDelegate;
-      _tapRecognizer.cancelsTouchesInView = YES;
-      _longPressRecognizer.delegate = _longPressDelegate;
-      _longPressRecognizer.cancelsTouchesInView = YES;
-
-      [_rootView addGestureRecognizer:_tapRecognizer];
-      [_rootView addGestureRecognizer:_longPressRecognizer];
     }
 
     // Defaul value is nil. If LynxUI has consume-slide-event prop, init _panGestureRecognizer and
@@ -426,9 +427,9 @@ static const NSInteger kLynxFragmentLayerDefaultRootSign = 10;
 - (void)attachContainerView:(UIView*)rootView {
   _rootView = rootView;
   [_rootView addGestureRecognizer:_touchRecognizer];
+  [_rootView addGestureRecognizer:_longPressRecognizer];
+  [_rootView addGestureRecognizer:_tapRecognizer];
   if (!_isFragmentLayerRendererOn) {
-    [_rootView addGestureRecognizer:_tapRecognizer];
-    [_rootView addGestureRecognizer:_longPressRecognizer];
     if (_customPlatformGesture != nil) {
       [_rootView addGestureRecognizer:_customPlatformGesture];
     }
@@ -440,9 +441,9 @@ static const NSInteger kLynxFragmentLayerDefaultRootSign = 10;
 
 - (void)removeEventGestures {
   [_rootView removeGestureRecognizer:_touchRecognizer];
+  [_rootView removeGestureRecognizer:_longPressRecognizer];
+  [_rootView removeGestureRecognizer:_tapRecognizer];
   if (!_isFragmentLayerRendererOn) {
-    [_rootView removeGestureRecognizer:_tapRecognizer];
-    [_rootView removeGestureRecognizer:_longPressRecognizer];
     if (_customPlatformGesture != nil) {
       [_rootView removeGestureRecognizer:_customPlatformGesture];
     }
@@ -516,10 +517,19 @@ static const NSInteger kLynxFragmentLayerDefaultRootSign = 10;
 - (void)dispatchTapEvent:(UITapGestureRecognizer*)sender {
   _LogI(@"Lynxview LynxEventHandler dispatchTapEvent %p: ", self.rootView);
 
+  if (_isFragmentLayerRendererOn) {
+    if (sender.state == UIGestureRecognizerStateRecognized) {
+      LynxTemplateRender* templateRender = ((LynxView*)_uiOwner.uiContext.rootView).templateRender;
+      [templateRender DispatchPlatformTap];
+    }
+    return;
+  }
+
   // For the tap event, it only support single finger.
   if ([_touchRecognizer isEnableAndGetMultiTouch]) {
     return;
   }
+
   CGPoint clientPoint = [sender locationInView:nil];
   CGPoint pagePoint = [sender locationInView:_rootView];
   NSInteger slideTargetSign = [self canRespondTapOrClickEvent:_touchTarget];
@@ -572,6 +582,16 @@ static const NSInteger kLynxFragmentLayerDefaultRootSign = 10;
 
 - (void)dispatchLongPressEvent:(UILongPressGestureRecognizer*)sender {
   _LogI(@"Lynxview LynxEventHandler dispatchLongPressEvent %p: ", self.rootView);
+
+  if (_isFragmentLayerRendererOn) {
+    LynxTemplateRender* templateRender = ((LynxView*)_uiOwner.uiContext.rootView).templateRender;
+    if (sender.state == UIGestureRecognizerStateBegan) {
+      [templateRender DispatchPlatformLongPress];
+    } else if (sender.state == UIGestureRecognizerStateEnded) {
+      [templateRender DispatchPlatformTap];
+    }
+    return;
+  }
 
   // For the longpress event, it only support single finger.
   if (_touchTarget == nil || [_touchRecognizer isEnableAndGetMultiTouch]) {

@@ -118,12 +118,12 @@ class BaseElementContainer {
   virtual void ListCellDisappear(bool is_exist, const base::String& item_key);
   virtual void ListReusePaintingNode(int32_t child_id,
                                      const base::String& item_key);
-  virtual void InsertListItemPaintingNode(int32_t child_id) = 0;
-  virtual void RemoveListItemPaintingNode(int32_t child_id) = 0;
+  virtual void InsertListItemPaintingNode(int32_t child_id);
+  virtual void RemoveListItemPaintingNode(int32_t child_id);
   virtual void UpdateContentOffsetForListContainer(float content_size,
                                                    float delta_x, float delta_y,
                                                    bool is_init_scroll_offset,
-                                                   bool from_layout) = 0;
+                                                   bool from_layout);
 
   virtual std::vector<float> ScrollBy(float width, float height);
   virtual std::vector<float> GetRectToLynxView();

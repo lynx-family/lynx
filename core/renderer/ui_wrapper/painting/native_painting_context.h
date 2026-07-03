@@ -41,15 +41,6 @@ class NativePaintingContext {
       int32_t event_mask = 0, bool disable_default_resize = false) = 0;
   virtual void UpdateTextBundle(int id, intptr_t bundle) = 0;
   virtual void DestroyTextBundle(int id) = 0;
-  virtual void InsertListItemPaintingNode(int32_t list_id,
-                                          int32_t child_id) = 0;
-  virtual void RemoveListItemPaintingNode(int32_t list_id,
-                                          int32_t child_id) = 0;
-  virtual void UpdateContentOffsetForListContainer(int32_t container_id,
-                                                   float content_size,
-                                                   float delta_x, float delta_y,
-                                                   bool is_init_scroll_offset,
-                                                   bool from_layout) = 0;
   virtual void ReconstructEventTargetTreeRecursively() = 0;
   virtual void UpdatePlatformEventBundle(int id,
                                          PlatformEventBundle bundle) = 0;

@@ -9,6 +9,8 @@ import android.os.Build;
 import android.renderscript.Matrix4f;
 import android.view.View;
 import android.view.ViewGroup;
+import com.lynx.react.bridge.Callback;
+import com.lynx.react.bridge.ReadableMap;
 import com.lynx.tasm.behavior.ui.utils.LynxUIHelper;
 import com.lynx.tasm.behavior.ui.utils.TransformProps;
 
@@ -17,6 +19,10 @@ public interface IRendererHost {
   Renderer getRenderer();
   View getView();
   Renderer createRenderer(PlatformRendererContext platformRendererContext, int sign);
+
+  default boolean invokeUIMethod(String method, ReadableMap params, Callback callback) {
+    return false;
+  }
 
   default int getRendererHostWidth() {
     View view = getView();

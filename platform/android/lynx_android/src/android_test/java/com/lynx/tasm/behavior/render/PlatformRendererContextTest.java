@@ -15,8 +15,10 @@ import android.widget.FrameLayout;
 import androidx.test.platform.app.InstrumentationRegistry;
 import com.lynx.tasm.INativeLibraryLoader;
 import com.lynx.tasm.LynxEnv;
+import com.lynx.tasm.behavior.Behavior;
 import com.lynx.tasm.behavior.BehaviorRegistry;
 import com.lynx.tasm.behavior.LynxContext;
+import com.lynx.tasm.behavior.LynxUIOwner;
 import com.lynx.tasm.behavior.ui.LynxBaseUI;
 import com.lynx.tasm.behavior.ui.PropBundle;
 import com.lynx.tasm.behavior.ui.UIBody;
@@ -126,6 +128,21 @@ public class PlatformRendererContextTest {
   }
 
   @Test
+  public void testInsertPlatformRenderer_UsesUIOwnerForFlattenParent() {
+    LynxUIOwner owner = mock(LynxUIOwner.class);
+    LynxBaseUI parentUI = mock(LynxBaseUI.class);
+    LynxBaseUI childUI = mock(LynxBaseUI.class);
+    when(mockLynxContext.getLynxUIOwner()).thenReturn(owner);
+    when(owner.getNode(1)).thenReturn(parentUI);
+    when(owner.getNode(2)).thenReturn(childUI);
+    when(parentUI.isFlatten()).thenReturn(true);
+
+    rendererContext.insertPlatformRenderer(1, 2, -1, false);
+
+    verify(owner).insert(1, 2, -1);
+  }
+
+  @Test
   public void testInvalidatePlatformRenderer() {
     ViewGroup mockView = mock(ViewGroup.class);
     IRendererHost host = createHost(mockView);
@@ -208,11 +225,34 @@ public class PlatformRendererContextTest {
     renderer.setRenderHost(host);
     rendererContext.mViewHolder.put(1, host);
 
-    rendererContext.updatePlatformRendererFrame(1, true, 1, 2, 3, 4, 5, 6);
+    rendererContext.updatePlatformRendererFrame(
+        1, true, 1, 2, 3, 4, 5, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
 
     verify(renderer).setLynxFrame(true, 1, 2, 1 + 3, 2 + 4, 5, 6);
     verify(view).requestLayout();
     verify(renderer).invalidate(Renderer.INVALIDATE_PARENT | Renderer.INVALIDATE_DISPLAY_LIST);
+  }
+
+  @Test
+  public void testUpdatePlatformRendererFrameUpdatesFallbackLayoutWithRenderOffset() {
+    Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
+    FrameLayout view = spy(new FrameLayout(context));
+    Renderer renderer = spy(new Renderer(rendererContext, 1));
+    IRendererHost host = createHost(view, renderer);
+    renderer.setRenderHost(host);
+    rendererContext.mViewHolder.put(1, host);
+
+    LynxUIOwner owner = mock(LynxUIOwner.class);
+    LynxBaseUI node = mock(LynxBaseUI.class);
+    when(mockLynxContext.getLynxUIOwner()).thenReturn(owner);
+    when(owner.getNode(1)).thenReturn(node);
+
+    rendererContext.updatePlatformRendererFrame(
+        1, true, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18);
+
+    verify(owner).updateLayout(eq(1), eq(6), eq(8), eq(3), eq(4), eq(7), eq(8), eq(9), eq(10),
+        eq(11), eq(12), eq(13), eq(14), eq(15), eq(16), eq(17), eq(18), isNull(), isNull(), eq(0f),
+        eq(1));
   }
 
   @Test
@@ -224,9 +264,19 @@ public class PlatformRendererContextTest {
     rendererContext.mViewHolder.put(1, host);
 
     PropBundle propBundle = mock(PropBundle.class);
-    rendererContext.updatePlatformRendererAttributes(1, propBundle);
+    rendererContext.updatePlatformRendererAttributes(1, propBundle, false);
 
     verify(renderer).updateAttributes(propBundle);
+  }
+
+  @Test
+  public void testUpdatePlatformRendererAttributesDoesNotFlattenUnsupportedFallbackUI() {
+    verifyUpdatePlatformRendererAttributesFlatten(false, false);
+  }
+
+  @Test
+  public void testUpdatePlatformRendererAttributesKeepsSupportedFallbackUIFlattened() {
+    verifyUpdatePlatformRendererAttributesFlatten(true, true);
   }
 
   @Test
@@ -272,12 +322,50 @@ public class PlatformRendererContextTest {
     assertNull(child.getParent());
   }
 
+  @Test
+  public void testRemovePlatformRendererFromParent_UsesUIOwnerForFlattenParent() {
+    LynxUIOwner owner = mock(LynxUIOwner.class);
+    LynxBaseUI parentUI = mock(LynxBaseUI.class);
+    LynxBaseUI childUI = mock(LynxBaseUI.class);
+    when(mockLynxContext.getLynxUIOwner()).thenReturn(owner);
+    when(owner.getNode(1)).thenReturn(parentUI);
+    when(owner.getNode(2)).thenReturn(childUI);
+    when(parentUI.isFlatten()).thenReturn(true);
+    when(childUI.getParentBaseUI()).thenReturn(parentUI);
+
+    rendererContext.removePlatformRendererFromParent(1, 2, false);
+
+    verify(owner).remove(1, 2);
+  }
+
   private IRendererHost createHost(ViewGroup view) {
     return new TestRendererHost(view);
   }
 
   private IRendererHost createHost(ViewGroup view, Renderer renderer) {
     return new TestRendererHost(view, renderer);
+  }
+
+  private void verifyUpdatePlatformRendererAttributesFlatten(
+      boolean behaviorSupportsFlatten, boolean expectedFlatten) {
+    ViewGroup mockView = mock(ViewGroup.class);
+    Renderer renderer = spy(new Renderer(rendererContext, 1));
+    IRendererHost host = createHost(mockView, renderer);
+    renderer.setRenderHost(host);
+    rendererContext.mViewHolder.put(1, host);
+
+    LynxUIOwner owner = mock(LynxUIOwner.class);
+    LynxBaseUI ui = mock(LynxBaseUI.class);
+    when(mockLynxContext.getLynxUIOwner()).thenReturn(owner);
+    when(owner.getNode(1)).thenReturn(ui);
+    when(ui.getTagName()).thenReturn("fallback");
+    when(mockBehaviorRegistry.get("fallback"))
+        .thenReturn(new Behavior("fallback", behaviorSupportsFlatten));
+
+    PropBundle propBundle = mock(PropBundle.class);
+    rendererContext.updatePlatformRendererAttributes(1, propBundle, true);
+
+    verify(owner).updateProperties(eq(1), eq(expectedFlatten), isNull(), isNull(), isNull());
   }
 
   private static class TestRendererHost implements IRendererHost {

@@ -1382,6 +1382,24 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
   return NO;
 }
 
+- (void)DispatchPlatformLongPress {
+  if (shell_->IsDestroyed()) {
+    return;
+  }
+  if ([_lynxUIRenderer isKindOfClass:[LynxUIRenderer class]]) {
+    [(LynxUIRenderer*)_lynxUIRenderer DispatchPlatformLongPress];
+  }
+}
+
+- (void)DispatchPlatformTap {
+  if (shell_->IsDestroyed()) {
+    return;
+  }
+  if ([_lynxUIRenderer isKindOfClass:[LynxUIRenderer class]]) {
+    [(LynxUIRenderer*)_lynxUIRenderer DispatchPlatformTap];
+  }
+}
+
 - (void)SetPlatformEventRootActive:(NSInteger)rootSign active:(BOOL)active {
   if ([_lynxUIRenderer isKindOfClass:[LynxUIRenderer class]]) {
     [(LynxUIRenderer*)_lynxUIRenderer SetPlatformEventRootActive:rootSign active:active];

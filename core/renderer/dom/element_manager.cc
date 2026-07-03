@@ -534,6 +534,7 @@ void ElementManager::RequestLayout(
     if (layout_data.layout_triggered) {
       TRACE_EVENT(LYNX_TRACE_CATEGORY, ELEMENT_MANAGER_REPAINT);
       root()->element_container()->CastToFragment()->Draw();
+      root()->element_container()->FinishLayoutOperation(options);
     }
     root()->element_container()->Flush();
   }

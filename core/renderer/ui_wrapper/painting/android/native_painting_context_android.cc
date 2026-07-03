@@ -4,6 +4,8 @@
 
 #include "core/renderer/ui_wrapper/painting/android/native_painting_context_android.h"
 
+#include <algorithm>
+#include <array>
 #include <memory>
 #include <string>
 #include <utility>
@@ -101,6 +103,41 @@ jboolean DispatchPlatformInputEvent(JNIEnv *env, jobject /*jcaller*/,
   return res;
 }
 
+void DispatchPlatformLongPress(JNIEnv *env, jobject /*jcaller*/,
+                               jlong nativePtr) {
+  if (nativePtr == 0) {
+    return;
+  }
+
+  lynx::tasm::NativePaintingCtxAndroid *context =
+      reinterpret_cast<lynx::tasm::NativePaintingCtxAndroid *>(nativePtr);
+
+  auto platform_ref =
+      std::static_pointer_cast<lynx::tasm::NativePaintingCtxAndroidRef>(
+          context->GetPlatformRef());
+  if (platform_ref == nullptr) {
+    return;
+  }
+  platform_ref->DispatchPlatformLongPress();
+}
+
+void DispatchPlatformTap(JNIEnv *env, jobject /*jcaller*/, jlong nativePtr) {
+  if (nativePtr == 0) {
+    return;
+  }
+
+  lynx::tasm::NativePaintingCtxAndroid *context =
+      reinterpret_cast<lynx::tasm::NativePaintingCtxAndroid *>(nativePtr);
+
+  auto platform_ref =
+      std::static_pointer_cast<lynx::tasm::NativePaintingCtxAndroidRef>(
+          context->GetPlatformRef());
+  if (platform_ref == nullptr) {
+    return;
+  }
+  platform_ref->DispatchPlatformTap();
+}
+
 void SetPlatformEventRootActive(JNIEnv *env, jobject /*jcaller*/,
                                 jlong nativePtr, jint rootSign,
                                 jboolean active) {
@@ -131,6 +168,26 @@ void SetPlatformEventRootOffset(JNIEnv *env, jobject /*jcaller*/,
   if (platform_ref) {
     platform_ref->SetPlatformEventRootOffset(rootSign, offsetX, offsetY);
   }
+}
+
+jboolean IsPlatformEventTargetEventThrough(JNIEnv *env, jobject /*jcaller*/,
+                                           jlong nativePtr, jint rootSign,
+                                           jfloat pointX, jfloat pointY) {
+  if (nativePtr == 0) {
+    return JNI_FALSE;
+  }
+  auto *context =
+      reinterpret_cast<lynx::tasm::NativePaintingCtxAndroid *>(nativePtr);
+  auto platform_ref =
+      std::static_pointer_cast<lynx::tasm::NativePaintingCtxAndroidRef>(
+          context->GetPlatformRef());
+  if (platform_ref == nullptr) {
+    return JNI_FALSE;
+  }
+  return platform_ref->IsPlatformEventTargetEventThrough(rootSign, pointX,
+                                                         pointY)
+             ? JNI_TRUE
+             : JNI_FALSE;
 }
 
 jintArray GetMeaningfulPaintingAreaRecords(JNIEnv *env, jobject /*jcaller*/,
@@ -199,6 +256,17 @@ bool RegisterJNIForNativePaintingContext(JNIEnv *env) {
 }  // namespace jni
 
 namespace tasm {
+namespace {
+
+std::array<float, 4> CopyMetrics(const float *source) {
+  std::array<float, 4> result = {0.f, 0.f, 0.f, 0.f};
+  if (source != nullptr) {
+    std::copy_n(source, result.size(), result.data());
+  }
+  return result;
+}
+
+}  // namespace
 
 NativePaintingCtxAndroid::NativePaintingCtxAndroid(
     JNIEnv *env, jobject text_layout, jlong textra,
@@ -296,7 +364,26 @@ void NativePaintingCtxAndroid::UpdateLayout(
     int tag, float x, float y, float width, float height, const float *paddings,
     const float *margins, const float *borders, const float *bounds,
     const float *sticky, float max_height, uint32_t node_index,
-    bool /*display_none*/) {}
+    bool display_none) {
+  (void)bounds;
+  (void)sticky;
+  (void)max_height;
+  (void)node_index;
+  (void)display_none;
+  auto padding_values = CopyMetrics(paddings);
+  auto margin_values = CopyMetrics(margins);
+  auto border_values = CopyMetrics(borders);
+  Enqueue([ref = platform_ref_, tag, x, y, width, height, padding_values,
+           margin_values, border_values]() {
+    auto android_ref =
+        std::static_pointer_cast<NativePaintingCtxAndroidRef>(ref);
+    if (android_ref) {
+      android_ref->UpdateLayoutMetrics(
+          tag, x, y, width, height, padding_values.data(), margin_values.data(),
+          border_values.data());
+    }
+  });
+}
 
 void NativePaintingCtxAndroid::UpdatePlatformExtraBundle(
     int32_t id, PlatformExtraBundle *bundle) {
@@ -370,7 +457,14 @@ std::vector<float> NativePaintingCtxAndroid::getBoundingClientOrigin(int id) {
 }
 
 std::vector<float> NativePaintingCtxAndroid::getWindowSize(int id) {
-  return std::vector<float>();
+  (void)id;
+  float size[2] = {0.f, 0.f};
+  auto android_ref =
+      std::static_pointer_cast<NativePaintingCtxAndroidRef>(platform_ref_);
+  if (android_ref) {
+    android_ref->GetScreenSize(size);
+  }
+  return {size[0], size[1]};
 }
 
 std::vector<float> NativePaintingCtxAndroid::GetRectToWindow(int id) {
@@ -497,40 +591,5 @@ void NativePaintingCtxAndroid::DestroyTextBundle(int id) {
     view_manager_->DestroyTextBundle(id);
   }
 }
-
-void NativePaintingCtxAndroid::InsertListItemPaintingNode(int32_t list_id,
-                                                          int32_t child_id) {
-  if (!view_manager_) {
-    return;
-  }
-  Enqueue([view_manager = view_manager_, list_id, child_id]() {
-    view_manager->InsertListItemPaintingNode(list_id, child_id);
-  });
-}
-
-void NativePaintingCtxAndroid::RemoveListItemPaintingNode(int32_t list_id,
-                                                          int32_t child_id) {
-  if (!view_manager_) {
-    return;
-  }
-  Enqueue([view_manager = view_manager_, list_id, child_id]() {
-    view_manager->RemoveListItemPaintingNode(list_id, child_id);
-  });
-}
-
-void NativePaintingCtxAndroid::UpdateContentOffsetForListContainer(
-    int32_t container_id, float content_size, float delta_x, float delta_y,
-    bool is_init_scroll_offset, bool from_layout) {
-  if (!view_manager_) {
-    return;
-  }
-  Enqueue([view_manager = view_manager_, container_id, content_size, delta_x,
-           delta_y, is_init_scroll_offset, from_layout]() {
-    view_manager->UpdateContentOffsetForListContainer(
-        container_id, content_size, delta_x, delta_y, is_init_scroll_offset,
-        from_layout);
-  });
-}
-
 }  // namespace tasm
 }  // namespace lynx

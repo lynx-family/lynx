@@ -95,8 +95,32 @@ bool PlatformEventHandler::OnInputEvent(
   return true;
 }
 
-void PlatformEventHandler::OnGestureEvent(const std::string& name,
-                                          PlatformPointerEvent& event) {
+void PlatformEventHandler::OnTap() {
+  float root_point[2] = {first_pointer_down_point_[0],
+                         first_pointer_down_point_[1]};
+  if (!first_pointer_moved_ && CanRespondTap(first_target_)) {
+    DispatchGestureEvent(EVENT_TAP, root_point);
+  }
+  auto click_target =
+      click_target_chain_.empty() ? nullptr : click_target_chain_.front();
+  if (!first_pointer_outside_ && CanRespondTap(click_target)) {
+    DispatchGestureEvent(EVENT_CLICK, root_point);
+  }
+  scroll_offset_for_tap_.clear();
+}
+
+void PlatformEventHandler::OnLongPress() {
+  if (!CanRespondTap(first_target_)) {
+    return;
+  }
+
+  float root_point[2] = {first_pointer_down_point_[0],
+                         first_pointer_down_point_[1]};
+  DispatchGestureEvent(EVENT_LONG_PRESS, root_point);
+}
+
+void PlatformEventHandler::DispatchGestureEvent(const std::string& name,
+                                                float root_point[2]) {
   if (!first_target_) {
     LOGE(
         "PlatformEventHandler::DispatchPointerEvent first_target_ is null for "
@@ -104,7 +128,6 @@ void PlatformEventHandler::OnGestureEvent(const std::string& name,
         name);
     return;
   }
-  float root_point[2] = {event.PointerX()[0], event.PointerY()[0]};
   float target_point[2] = {root_point[0], root_point[1]};
   GetTargetPoint(first_target_, target_point, root_point);
   float page_point[2] = {root_point[0], root_point[1]};
@@ -359,12 +382,7 @@ void PlatformEventHandler::OnPointerUp(PlatformPointerEvent& event) {
   int num = event.PointerCount();
   for (int i = 0; i < num; ++i) {
     if (event.PointerID()[i] == 0) {
-      if (CanRespondTap(first_target_)) {
-        OnGestureEvent("tap", event);
-        OnGestureEvent("click", event);
-      }
       ResetClickEnv();
-      scroll_offset_for_tap_.clear();
       UpdateFocusedTarget();
       DeactivatePseudoStatus(LynxPseudoStatus::kAll);
       break;
@@ -448,9 +466,6 @@ void PlatformEventHandler::UpdateFocusedTarget() {
 bool PlatformEventHandler::CanRespondTap(
     fml::RefPtr<PlatformEventTarget> target) {
   if (!target) {
-    return false;
-  }
-  if (first_pointer_moved_ || first_pointer_outside_) {
     return false;
   }
   if (HasScrollContainerScrolledForTap()) {

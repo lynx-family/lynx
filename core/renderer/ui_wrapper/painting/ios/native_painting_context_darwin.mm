@@ -3,6 +3,10 @@
 // LICENSE file in the root directory of this source tree.
 
 #include "core/renderer/ui_wrapper/painting/ios/native_painting_context_darwin.h"
+
+#include <algorithm>
+#include <array>
+
 #include "base/include/debug/lynx_error.h"
 #include "core/base/threading/task_runner_manufactor.h"
 #include "core/renderer/dom/fragment/display_list.h"
@@ -27,6 +31,18 @@
 
 namespace lynx {
 namespace tasm {
+
+namespace {
+
+std::array<float, 4> CopyMetrics(const float *source) {
+  std::array<float, 4> result = {0.f, 0.f, 0.f, 0.f};
+  if (source != nullptr) {
+    std::copy_n(source, result.size(), result.data());
+  }
+  return result;
+}
+
+}  // namespace
 
 NativePaintingCtxDarwin::NativePaintingCtxDarwin(LynxUIOwner *owner, void *textra)
     : context_(
@@ -72,8 +88,13 @@ std::vector<float> NativePaintingCtxDarwin::getBoundingClientOrigin(int id) {
 }
 
 std::vector<float> NativePaintingCtxDarwin::getWindowSize(int id) {
-  // TODO: impl this function later.
-  return std::vector<float>();
+  (void)id;
+  float size[2] = {0.f, 0.f};
+  auto darwin_ref = std::static_pointer_cast<NativePaintingCtxPlatformDarwinRef>(platform_ref_);
+  if (darwin_ref) {
+    darwin_ref->GetScreenSize(size);
+  }
+  return {size[0], size[1]};
 }
 
 std::vector<float> NativePaintingCtxDarwin::GetRectToWindow(int id) {
@@ -89,6 +110,29 @@ std::vector<float> NativePaintingCtxDarwin::GetRectToLynxView(int64_t id) {
 std::vector<float> NativePaintingCtxDarwin::ScrollBy(int64_t id, float width, float height) {
   // TODO: impl this function later.
   return std::vector<float>();
+}
+
+void NativePaintingCtxDarwin::UpdateLayout(int tag, float x, float y, float width, float height,
+                                           const float *paddings, const float *margins,
+                                           const float *borders, const float *bounds,
+                                           const float *sticky, float max_height,
+                                           uint32_t node_index, bool display_none) {
+  (void)bounds;
+  (void)sticky;
+  (void)max_height;
+  (void)node_index;
+  (void)display_none;
+  auto padding_values = CopyMetrics(paddings);
+  auto margin_values = CopyMetrics(margins);
+  auto border_values = CopyMetrics(borders);
+  Enqueue([ref = platform_ref_, tag, x, y, width, height, padding_values, margin_values,
+           border_values]() {
+    auto darwin_ref = std::static_pointer_cast<NativePaintingCtxPlatformDarwinRef>(ref);
+    if (darwin_ref) {
+      darwin_ref->UpdateLayoutMetrics(tag, x, y, width, height, padding_values.data(),
+                                      margin_values.data(), border_values.data());
+    }
+  });
 }
 
 int32_t NativePaintingCtxDarwin::GetTagInfo(const std::string &tag_name) {
@@ -256,16 +300,6 @@ void NativePaintingCtxDarwin::DestroyTextBundle(int id) {
     }
   });
 }
-
-void NativePaintingCtxDarwin::InsertListItemPaintingNode(int32_t list_id, int32_t child_id) {}
-
-void NativePaintingCtxDarwin::RemoveListItemPaintingNode(int32_t list_id, int32_t child_id) {}
-
-void NativePaintingCtxDarwin::UpdateContentOffsetForListContainer(int32_t container_id,
-                                                                  float content_size, float delta_x,
-                                                                  float delta_y,
-                                                                  bool is_init_scroll_offset,
-                                                                  bool from_layout) {}
 
 void NativePaintingCtxDarwin::ReconstructEventTargetTreeRecursively() {
   auto platform_ref = std::static_pointer_cast<NativePaintingCtxPlatformRef>(platform_ref_);
