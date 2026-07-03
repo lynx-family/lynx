@@ -4,6 +4,7 @@
 
 #include "core/renderer/ui_wrapper/painting/platform_renderer_impl.h"
 
+#include <algorithm>
 #include <utility>
 
 #include "core/renderer/dom/fragment/display_list.h"
@@ -15,6 +16,14 @@ namespace {
 
 bool IsOverlayTag(const base::String& tag) {
   return tag.IsEquals("overlay") || tag.IsEquals("x-overlay-ng");
+}
+
+void CopyMetrics(const float* source, float target[4]) {
+  if (source == nullptr) {
+    std::fill_n(target, 4, 0.f);
+    return;
+  }
+  std::copy_n(source, 4, target);
 }
 
 }  // namespace
@@ -77,6 +86,21 @@ void PlatformRendererImpl::UpdateDisplayList(DisplayList display_list) {
 void PlatformRendererImpl::UpdateAttributes(
     const fml::RefPtr<PropBundle>& attributes, bool tends_to_flatten) {
   OnUpdateAttributes(attributes, tends_to_flatten);
+}
+
+void PlatformRendererImpl::UpdateLayoutMetrics(float left, float top,
+                                               float width, float height,
+                                               const float* paddings,
+                                               const float* margins,
+                                               const float* borders) {
+  layout_frame_[0] = left;
+  layout_frame_[1] = top;
+  layout_frame_[2] = width;
+  layout_frame_[3] = height;
+  CopyMetrics(paddings, layout_paddings_);
+  CopyMetrics(margins, layout_margins_);
+  CopyMetrics(borders, layout_borders_);
+  has_layout_metrics_ = true;
 }
 
 void PlatformRendererImpl::AddChild(fml::RefPtr<PlatformRenderer> child,

@@ -4,6 +4,7 @@
 
 #import <Foundation/Foundation.h>
 #import <Lynx/LynxRenderer.h>
+#import <Lynx/LynxUIMethodProcessor.h>
 #import <UIKit/UIKit.h>
 
 @class LynxRenderer;
@@ -19,5 +20,11 @@
 - (LynxRenderer *)createRendererWithSign:(int32_t)sign andContext:(LynxRendererContext *)context;
 
 - (UIView *)view;
+
+@optional
+
+- (BOOL)invokeUIMethod:(NSString *)method
+                params:(NSDictionary *)params
+              callback:(LynxUIMethodCallbackBlock)callback;
 
 @end

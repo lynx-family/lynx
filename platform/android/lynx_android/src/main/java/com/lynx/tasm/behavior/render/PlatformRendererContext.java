@@ -11,6 +11,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import com.lynx.react.bridge.Callback;
 import com.lynx.react.bridge.JavaOnlyArray;
 import com.lynx.react.bridge.ReadableArray;
 import com.lynx.react.bridge.ReadableMap;
@@ -33,9 +34,7 @@ import com.lynx.tasm.behavior.ui.LynxUI;
 import com.lynx.tasm.behavior.ui.PropBundle;
 import com.lynx.tasm.behavior.ui.UIBody;
 import com.lynx.tasm.behavior.ui.image.LynxImageManager;
-import com.lynx.tasm.behavior.ui.list.container.UIListContainer;
 import com.lynx.tasm.behavior.ui.scroll.AndroidScrollView;
-import com.lynx.tasm.behavior.ui.view.UIComponent;
 import com.lynx.tasm.behavior.utils.LynxUIMethodsExecutor;
 import com.lynx.tasm.event.EventsListener;
 import com.lynx.tasm.gesture.detector.GestureDetector;
@@ -166,54 +165,56 @@ public class PlatformRendererContext implements TextMeasurerProvider {
   @CalledByNative
   private void invokeUIMethod(
       int sign, String method, ReadableMap params, long nativePtr, int callbackId) {
+    Callback callback = createInvokeUIMethodCallback(nativePtr, callbackId);
     UIThreadUtils.runOnUiThreadImmediately(new Runnable() {
-      private void cb(Object... args) {
-        if (mDestroyed || mNativePtr == 0 || nativePtr == 0 || callbackId < 0) {
-          return;
-        }
-        if (args == null || args.length == 0) {
-          nativeInvokeUIMethodCallback(
-              nativePtr, callbackId, LynxUIMethodConstants.SUCCESS, new JavaOnlyArray());
-          return;
-        }
-        if (args[0] instanceof Number) {
-          int code = ((Number) args[0]).intValue();
-          Object[] data = new Object[args.length - 1];
-          if (args.length > 1) {
-            System.arraycopy(args, 1, data, 0, args.length - 1);
-          }
-          nativeInvokeUIMethodCallback(nativePtr, callbackId, code, JavaOnlyArray.of(data));
-          return;
-        }
-        nativeInvokeUIMethodCallback(
-            nativePtr, callbackId, LynxUIMethodConstants.SUCCESS, JavaOnlyArray.of(args));
-      }
-
       @Override
       public void run() {
         if (mDestroyed || mNativePtr == 0) {
           return;
         }
+        IRendererHost host = mViewHolder.get(sign);
+        if (host != null && host.invokeUIMethod(method, params, callback)) {
+          return;
+        }
         LynxBaseUI ui = findUIMethodTarget(sign);
         if (ui != null) {
           LynxUIMethodsExecutor.invokeMethod(ui, method, params,
-              (Object... args) -> UIThreadUtils.runOnUiThreadImmediately(() -> cb(args)));
+              (Object... args)
+                  -> UIThreadUtils.runOnUiThreadImmediately(() -> callback.invoke(args)));
         } else {
-          cb(LynxUIMethodConstants.NO_UI_FOR_NODE, "node does not have a LynxUI");
+          callback.invoke(LynxUIMethodConstants.NO_UI_FOR_NODE, "node does not have a LynxUI");
         }
       }
     });
   }
 
+  private Callback createInvokeUIMethodCallback(long nativePtr, int callbackId) {
+    return (Object... args) -> {
+      if (mDestroyed || mNativePtr == 0 || nativePtr == 0 || callbackId < 0) {
+        return;
+      }
+      if (args == null || args.length == 0) {
+        nativeInvokeUIMethodCallback(
+            nativePtr, callbackId, LynxUIMethodConstants.SUCCESS, new JavaOnlyArray());
+        return;
+      }
+      if (args[0] instanceof Number) {
+        int code = ((Number) args[0]).intValue();
+        Object[] data = new Object[args.length - 1];
+        if (args.length > 1) {
+          System.arraycopy(args, 1, data, 0, args.length - 1);
+        }
+        nativeInvokeUIMethodCallback(nativePtr, callbackId, code, JavaOnlyArray.of(data));
+        return;
+      }
+      nativeInvokeUIMethodCallback(
+          nativePtr, callbackId, LynxUIMethodConstants.SUCCESS, JavaOnlyArray.of(args));
+    };
+  }
+
   private LynxBaseUI findUIMethodTarget(int sign) {
     LynxUIOwner owner = mContext != null ? mContext.getLynxUIOwner() : null;
-    LynxBaseUI ui = owner != null ? owner.getNode(sign) : null;
-    if (ui != null) {
-      return ui;
-    }
-    IRendererHost host = mViewHolder.get(sign);
-    Renderer renderer = host != null ? host.getRenderer() : null;
-    return renderer != null ? renderer.getUIHost() : null;
+    return owner != null ? owner.getNode(sign) : null;
   }
 
   PointF convertPointInViewToScreen(int sign, PointF point) {
@@ -362,8 +363,9 @@ public class PlatformRendererContext implements TextMeasurerProvider {
 
   @CalledByNative
   public void createPlatformExtendedRenderer(int sign, String tagName, PropBundle initData) {
+    Behavior behavior = null;
     if (mBehaviorRegistry != null) {
-      Behavior behavior = mBehaviorRegistry.get(tagName);
+      behavior = mBehaviorRegistry.get(tagName);
       if (behavior != null && behavior.supportFragmentLayerRenderer()) {
         IRendererHost host = behavior.createPlatformRendererHost(mContext);
         if (host != null) {
@@ -383,8 +385,7 @@ public class PlatformRendererContext implements TextMeasurerProvider {
       ReadableMap initialProps = initData != null ? initData.getProps() : null;
       ReadableArray eventListeners = initData != null ? initData.getEventHandlers() : null;
       ReadableArray gestureDetectors = initData != null ? initData.getGestures() : null;
-      boolean isFlatten =
-          initialProps != null && initialProps.getBoolean(TENDS_TO_FLATTEN_INIT_DATA_KEY, false);
+      boolean isFlatten = shouldCreateFallbackUIAsFlatten(behavior, initialProps);
       owner.createView(
           sign, tagName, initialProps, null, eventListeners, isFlatten, sign, gestureDetectors);
       LynxBaseUI createdUI = owner.getNode(sign);
@@ -414,6 +415,18 @@ public class PlatformRendererContext implements TextMeasurerProvider {
     view.setRenderer(renderer);
     mViewHolder.put(sign, view);
     view.invalidate();
+  }
+
+  private boolean shouldCreateFallbackUIAsFlatten(
+      @Nullable Behavior behavior, @Nullable ReadableMap props) {
+    boolean tendsToFlatten =
+        props != null && props.getBoolean(TENDS_TO_FLATTEN_INIT_DATA_KEY, false);
+    return shouldCreateFallbackUIAsFlatten(behavior, tendsToFlatten);
+  }
+
+  private boolean shouldCreateFallbackUIAsFlatten(
+      @Nullable Behavior behavior, boolean tendsToFlatten) {
+    return tendsToFlatten && behavior != null && behavior.supportUIFlatten();
   }
 
   @Nullable
@@ -468,6 +481,17 @@ public class PlatformRendererContext implements TextMeasurerProvider {
     }
   }
 
+  private boolean shouldInsertIntoUIOwnerForFlattenRendererParent(
+      @Nullable LynxBaseUI parentUI, @Nullable LynxBaseUI childUI) {
+    return parentUI != null && parentUI.isFlatten() && childUI != null && !childUI.isOverlay();
+  }
+
+  private boolean shouldRemoveFromUIOwnerForFlattenRendererParent(
+      @Nullable LynxBaseUI parentUI, @Nullable LynxBaseUI childUI) {
+    return shouldInsertIntoUIOwnerForFlattenRendererParent(parentUI, childUI)
+        && childUI.getParentBaseUI() == parentUI;
+  }
+
   @CalledByNative
   void insertPlatformRenderer(int parent, int child, int index, boolean shouldUpdateUIOwner) {
     LynxUIOwner owner = mContext.getLynxUIOwner();
@@ -478,6 +502,13 @@ public class PlatformRendererContext implements TextMeasurerProvider {
       return;
     }
     if (!shouldUpdateUIOwner && childUI != null && childUI.isOverlay()) {
+      return;
+    }
+    if (!shouldUpdateUIOwner
+        && shouldInsertIntoUIOwnerForFlattenRendererParent(parentUI, childUI)) {
+      if (childUI.getParentBaseUI() != parentUI) {
+        owner.insert(parent, child, index);
+      }
       return;
     }
 
@@ -511,8 +542,10 @@ public class PlatformRendererContext implements TextMeasurerProvider {
   }
 
   @CalledByNative
-  public void updatePlatformRendererFrame(
-      int sign, boolean needClip, int left, int top, int width, int height, int dx, int dy) {
+  public void updatePlatformRendererFrame(int sign, boolean needClip, int left, int top, int width,
+      int height, int dx, int dy, int paddingLeft, int paddingTop, int paddingRight,
+      int paddingBottom, int marginLeft, int marginTop, int marginRight, int marginBottom,
+      int borderLeftWidth, int borderTopWidth, int borderRightWidth, int borderBottomWidth) {
     IRendererHost host = mViewHolder.get(sign);
     if (host == null) {
       LLog.d(TAG, "host renderer not found for sign: " + sign);
@@ -522,12 +555,12 @@ public class PlatformRendererContext implements TextMeasurerProvider {
 
     LynxUIOwner owner = mContext.getLynxUIOwner();
     if (owner != null && owner.getNode(sign) != null) {
-      com.lynx.tasm.behavior.ui.LynxBaseUI node = owner.getNode(sign);
-      owner.updateLayout(sign, left, top, width, height, node.getPaddingLeft(),
-          node.getPaddingTop(), node.getPaddingRight(), node.getPaddingBottom(),
-          node.getMarginLeft(), node.getMarginTop(), node.getMarginRight(), node.getMarginBottom(),
-          node.getBorderLeftWidth(), node.getBorderTopWidth(), node.getBorderRightWidth(),
-          node.getBorderBottomWidth(), null, null, 0, sign);
+      int layoutLeft = left + dx;
+      int layoutTop = top + dy;
+      owner.updateLayout(sign, layoutLeft, layoutTop, width, height, paddingLeft, paddingTop,
+          paddingRight, paddingBottom, marginLeft, marginTop, marginRight, marginBottom,
+          borderLeftWidth, borderTopWidth, borderRightWidth, borderBottomWidth, null, null, 0,
+          sign);
     }
 
     host.requestLayoutForRenderer();
@@ -535,7 +568,7 @@ public class PlatformRendererContext implements TextMeasurerProvider {
   }
 
   @CalledByNative
-  public void updatePlatformRendererAttributes(int sign, PropBundle propBundle) {
+  void updatePlatformRendererAttributes(int sign, PropBundle propBundle, boolean tendsToFlatten) {
     IRendererHost host = mViewHolder.get(sign);
     if (host == null) {
       LLog.d(TAG, "host renderer not found for sign: " + sign);
@@ -543,14 +576,17 @@ public class PlatformRendererContext implements TextMeasurerProvider {
     }
 
     LynxUIOwner owner = mContext != null ? mContext.getLynxUIOwner() : null;
-    if (owner != null && owner.getNode(sign) != null) {
+    LynxBaseUI ui = owner != null ? owner.getNode(sign) : null;
+    if (ui != null) {
       ReadableMap props = propBundle != null ? propBundle.getProps() : null;
       Map<String, EventsListener> listeners = EventsListener.convertEventListeners(
           propBundle != null ? propBundle.getEventHandlers() : null);
       Map<Integer, GestureDetector> detectors = GestureDetector.convertGestureDetectors(
           propBundle != null ? propBundle.getGestures() : null);
+      Behavior behavior = mBehaviorRegistry != null ? mBehaviorRegistry.get(ui.getTagName()) : null;
+      boolean isFlatten = shouldCreateFallbackUIAsFlatten(behavior, tendsToFlatten);
       owner.updateProperties(
-          sign, false, props != null ? new StylesDiffMap(props) : null, listeners, detectors);
+          sign, isFlatten, props != null ? new StylesDiffMap(props) : null, listeners, detectors);
     }
 
     // Get the renderer
@@ -654,45 +690,6 @@ public class PlatformRendererContext implements TextMeasurerProvider {
   }
 
   @CalledByNative
-  public void insertListItemPaintingNode(int listSign, int childSign) {
-    LynxUIOwner owner = mContext != null ? mContext.getLynxUIOwner() : null;
-    if (owner == null) {
-      return;
-    }
-    LynxBaseUI parent = owner.getNode(listSign);
-    LynxBaseUI child = owner.getNode(childSign);
-    if (parent instanceof UIListContainer && child instanceof UIComponent) {
-      ((UIListContainer) parent).insertListItemNode(child);
-    }
-  }
-
-  @CalledByNative
-  public void removeListItemPaintingNode(int listSign, int childSign) {
-    LynxUIOwner owner = mContext != null ? mContext.getLynxUIOwner() : null;
-    if (owner == null) {
-      return;
-    }
-    LynxBaseUI parent = owner.getNode(listSign);
-    LynxBaseUI child = owner.getNode(childSign);
-    if (parent instanceof UIListContainer && child instanceof UIComponent) {
-      ((UIListContainer) parent).removeView(child);
-    }
-  }
-
-  @CalledByNative
-  public void updateContentOffsetForListContainer(int listSign, float contentSize, float deltaX,
-      float deltaY, boolean isInitScrollOffset, boolean fromLayout) {
-    LynxUIOwner owner = mContext != null ? mContext.getLynxUIOwner() : null;
-    if (owner == null) {
-      return;
-    }
-    LynxBaseUI parent = owner.getNode(listSign);
-    if (parent instanceof UIListContainer) {
-      ((UIListContainer) parent).updateContentSizeAndOffset(contentSize, deltaX, deltaY);
-    }
-  }
-
-  @CalledByNative
   public void finishLayoutOperation(int componentId, long operationId, boolean isFirstScreen) {
     LynxUIOwner owner = mContext != null ? mContext.getLynxUIOwner() : null;
     if (owner == null) {
@@ -737,6 +734,11 @@ public class PlatformRendererContext implements TextMeasurerProvider {
       return;
     }
     if (!shouldUpdateUIOwner && childUI != null && childUI.isOverlay()) {
+      return;
+    }
+    if (!shouldUpdateUIOwner
+        && shouldRemoveFromUIOwnerForFlattenRendererParent(parentUI, childUI)) {
+      owner.remove(parent, sign);
       return;
     }
 

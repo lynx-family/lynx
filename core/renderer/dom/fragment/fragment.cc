@@ -301,34 +301,12 @@ void Fragment::UpdatePaintingNode(
   MarkNodeReadyIfNeeded();
 }
 
-void Fragment::InsertListItemPaintingNode(int32_t child_id) {
-  painting_context()->impl()->CastToNativeCtx()->InsertListItemPaintingNode(
-      id(), child_id);
-}
-
-void Fragment::RemoveListItemPaintingNode(int32_t child_id) {
-  painting_context()->impl()->CastToNativeCtx()->RemoveListItemPaintingNode(
-      id(), child_id);
-}
-
-void Fragment::UpdateContentOffsetForListContainer(float content_size,
-                                                   float delta_x, float delta_y,
-                                                   bool is_init_scroll_offset,
-                                                   bool from_layout) {
-  painting_context()
-      ->impl()
-      ->CastToNativeCtx()
-      ->UpdateContentOffsetForListContainer(id(), content_size, delta_x,
-                                            delta_y, is_init_scroll_offset,
-                                            from_layout);
-}
-
 void Fragment::OnFirstScreen() {
   painting_context()->impl()->CastToNativeCtx()->OnFirstScreen();
 }
 
 void Fragment::OnNodeReady() {
-  if (!ShouldNotifyNodeReady()) {
+  if (!ShouldSyncNativePlatformRenderer()) {
     pending_node_ready_ = false;
     return;
   }
@@ -356,6 +334,13 @@ void Fragment::UpdateLayout(
 
 void Fragment::SetBehavior(std::unique_ptr<FragmentBehavior> behavior) {
   behavior_ = std::move(behavior);
+}
+
+bool Fragment::ShouldSyncNativePlatformRenderer() const {
+  return element() != nullptr && has_platform_renderer_ &&
+         behavior_ != nullptr &&
+         (behavior_->GetType() == PlatformRendererType::kExtended ||
+          element()->is_direct_child_of_compatible_component());
 }
 
 void Fragment::OnElementDestroying() {
@@ -1215,14 +1200,8 @@ void Fragment::DrawFull(DisplayListBuilder& display_list_builder) {
   display_list_builder.End();
 }
 
-bool Fragment::ShouldNotifyNodeReady() const {
-  return has_platform_renderer_ && behavior_ != nullptr &&
-         (behavior_->GetType() == PlatformRendererType::kExtended ||
-          element()->is_direct_child_of_compatible_component());
-}
-
 void Fragment::MarkNodeReadyIfNeeded() {
-  if (ShouldNotifyNodeReady()) {
+  if (ShouldSyncNativePlatformRenderer()) {
     pending_node_ready_ = true;
   }
 }
@@ -1589,6 +1568,18 @@ void Fragment::UpdateRenderOffsetRecursively(float left, float top,
     child_offset_y = 0;
 
     draw_node_capacity_ = kDefaultDrawNodeCapacity;
+
+    if (ShouldSyncNativePlatformRenderer()) {
+      painting_context()->UpdateLayout(
+          id(), layout_info_.layout_result.offset_.X(),
+          layout_info_.layout_result.offset_.Y(),
+          layout_info_.layout_result.size_.width_,
+          layout_info_.layout_result.size_.height_,
+          layout_info_.layout_result.padding_.data(),
+          layout_info_.layout_result.margin_.data(),
+          layout_info_.layout_result.border_.data(), nullptr, nullptr, 0.f,
+          element()->NodeIndex(), element()->display_none());
+    }
   } else if (root != nullptr) {
     root->draw_node_capacity_++;
   }

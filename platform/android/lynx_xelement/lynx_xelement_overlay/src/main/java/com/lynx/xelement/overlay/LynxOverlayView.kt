@@ -728,12 +728,21 @@ class LynxOverlayView(context: LynxContext, val proxy: LynxUIOverlay) : UIGroup<
         if (!mVisible) {
             return false
         }
+        if (lynxContext.isFragmentLayerRenderOn &&
+            lynxContext.isPlatformEventTargetEventThrough(
+                sign,
+                x - getTransLeft().toFloat(),
+                y - getTransTop().toFloat()
+            )) {
+            return false
+        }
 
+        val through = eventThrough(x, y)
         if (!mEventsPassThroughHasBeenSet) {
-            if (!eventThrough(x, y)) {
+            if (!through) {
                 return true
             }
-        } else if (!mEventsPassThrough && !eventThrough(x, y)) {
+        } else if (!mEventsPassThrough && !through) {
             // the overlay will handle all events in the container, if mEventsPassThrough = false && eventThrough() = false
             return true
         }

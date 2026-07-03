@@ -44,11 +44,10 @@ class NativePaintingCtxDarwin : public PaintingCtxPlatformImpl, public NativePai
   void UpdatePaintingNode(int id, bool tend_to_flatten,
                           const fml::RefPtr<PropBundle> &painting_data) override;
 
-  // NativePaintingContextDarwin do not need impl this interface.
   void UpdateLayout(int tag, float x, float y, float width, float height, const float *paddings,
                     const float *margins, const float *borders, const float *bounds,
                     const float *sticky, float max_height, uint32_t node_index,
-                    bool /*display_none*/) override {}
+                    bool display_none) override;
 
   // NativePaintingContextDarwin do not need impl this interface.
   void SetKeyframes(fml::RefPtr<PropBundle> keyframes_data) override {}
@@ -111,14 +110,6 @@ class NativePaintingCtxDarwin : public PaintingCtxPlatformImpl, public NativePai
   void UpdateTextBundle(int id, intptr_t bundle) override;
 
   void DestroyTextBundle(int id) override;
-
-  void InsertListItemPaintingNode(int32_t list_id, int32_t child_id) override;
-
-  void RemoveListItemPaintingNode(int32_t list_id, int32_t child_id) override;
-
-  void UpdateContentOffsetForListContainer(int32_t container_id, float content_size, float delta_x,
-                                           float delta_y, bool is_init_scroll_offset,
-                                           bool from_layout) override;
 
   void ReconstructEventTargetTreeRecursively() override;
 

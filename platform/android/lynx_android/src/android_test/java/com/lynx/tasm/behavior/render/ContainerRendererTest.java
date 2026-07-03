@@ -74,6 +74,34 @@ public class ContainerRendererTest {
     }
   }
 
+  private static class TestRendererHostView extends View implements IRendererHost {
+    private Renderer renderer;
+
+    TestRendererHostView(Context context) {
+      super(context);
+    }
+
+    @Override
+    public Renderer createRenderer(PlatformRendererContext platformRendererContext, int sign) {
+      return new Renderer(platformRendererContext, sign);
+    }
+
+    @Override
+    public void setRenderer(Renderer renderer) {
+      this.renderer = renderer;
+    }
+
+    @Override
+    public Renderer getRenderer() {
+      return renderer;
+    }
+
+    @Override
+    public View getView() {
+      return this;
+    }
+  }
+
   @Test
   public void testConstructor() {
     assertNotNull("ContainerRenderer should be created", containerRenderer);
@@ -277,6 +305,37 @@ public class ContainerRendererTest {
 
     // Verify DisplayList was retrieved
     verify(mockPlatformRendererContext).getDisplayList(eq(TEST_SIGN), any(DisplayList.class));
+  }
+
+  @Test
+  public void testBeforeDrawChild_OffsetsNonContainerRendererHostChild() {
+    DisplayList emptyDisplayList = new DisplayList();
+    emptyDisplayList.ops = new int[] {};
+    emptyDisplayList.iArgv = new int[] {};
+    emptyDisplayList.fArgv = new float[] {};
+
+    doAnswer(invocation -> {
+      DisplayList list = invocation.getArgument(1);
+      list.ops = emptyDisplayList.ops;
+      list.iArgv = emptyDisplayList.iArgv;
+      list.fArgv = emptyDisplayList.fArgv;
+      return null;
+    })
+        .when(mockPlatformRendererContext)
+        .getDisplayList(eq(TEST_SIGN), any(DisplayList.class));
+
+    containerRenderer.onDraw(mockCanvas);
+
+    TestRendererHostView child = new TestRendererHostView(realContext);
+    Renderer childRenderer = child.createRenderer(mockPlatformRendererContext, TEST_SIGN + 1);
+    childRenderer.setRenderHost(child);
+    child.setRenderer(childRenderer);
+    childRenderer.setLynxFrame(false, 5, 10, 50, 60, 7, 11);
+
+    containerRenderer.getRenderer().beforeDrawChild(mockCanvas, child);
+
+    verify(mockCanvas).save();
+    verify(mockCanvas).translate(-7f, -11f);
   }
 
   @Test

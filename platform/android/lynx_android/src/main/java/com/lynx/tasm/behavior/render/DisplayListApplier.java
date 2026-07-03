@@ -97,11 +97,9 @@ public class DisplayListApplier implements Drawable.Callback {
     mHostLayer = new WeakReference<>(hostLayer);
 
     // The drawing position on Android is affected by the frame layout and the
-    // frame in OP_BEGIN togather. For a indepent layer, its position is already
-    // shifted by the layers layout frame, and avoid doing it again in OP_BEGIN.
-    if (displayList != null && displayList.fArgv != null && displayList.fArgv.length >= 2) {
-      displayList.fArgv[0] = displayList.fArgv[1] = 0.f;
-    }
+    // frame in OP_BEGIN together. For an independent layer, its position is already
+    // shifted by the layer's layout frame, so avoid doing it again in OP_BEGIN.
+    normalizeRootBeginOffset(displayList);
   }
 
   public void reset() {
@@ -138,6 +136,28 @@ public class DisplayListApplier implements Drawable.Callback {
   private View getHostLayer() {
     IRendererHost host = getRendererHost();
     return host != null ? host.getView() : null;
+  }
+
+  private boolean shouldKeepOverlayRootHorizontalOffset() {
+    IRendererHost host = getRendererHost();
+    Renderer renderer = host != null ? host.getRenderer() : null;
+    return renderer != null && renderer.getUIHost() != null && renderer.getUIHost().isOverlay();
+  }
+
+  private void normalizeRootBeginOffset(DisplayList displayList) {
+    if (displayList == null || displayList.fArgv == null || displayList.fArgv.length < 2) {
+      return;
+    }
+
+    // Overlay's host view lives in a full-screen Dialog, so the host layout
+    // cannot absorb the renderer frame's horizontal offset. Its content is still
+    // measured against the screen, so the vertical proxy offset should stay zero.
+    if (shouldKeepOverlayRootHorizontalOffset()) {
+      displayList.fArgv[1] = 0.f;
+      return;
+    }
+
+    displayList.fArgv[0] = displayList.fArgv[1] = 0.f;
   }
 
   private boolean shouldNormalizeRootGeometry() {
@@ -938,9 +958,7 @@ public class DisplayListApplier implements Drawable.Callback {
   }
 
   public void setDisplayList(DisplayList displayList) {
-    if (displayList != null && displayList.fArgv != null && displayList.fArgv.length >= 2) {
-      displayList.fArgv[0] = displayList.fArgv[1] = 0.f;
-    }
+    normalizeRootBeginOffset(displayList);
     mDisplayList = displayList;
     reset();
   }

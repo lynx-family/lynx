@@ -105,19 +105,19 @@ bool NativePaintingCtxAndroidRef::IsPlatformRendererScrollable(int32_t sign) {
   return context->IsRendererHostScrollable(sign);
 }
 
-void NativePaintingCtxAndroidRef::InvokePlatformRendererUIMethod(
+void NativePaintingCtxAndroidRef::InvokePlatformViewUIMethod(
     int32_t id, const std::string& method, const lepus::Value& params,
     base::MoveOnlyClosure<void, int32_t, const pub::Value&> callback) {
   auto* factory =
       static_cast<PlatformRendererAndroidFactory*>(view_factory_.get());
   if (factory == nullptr) {
-    NativePaintingCtxPlatformRef::InvokePlatformRendererUIMethod(
+    NativePaintingCtxPlatformRef::InvokePlatformViewUIMethod(
         id, method, params, std::move(callback));
     return;
   }
   auto* context = factory->GetContext();
   if (context == nullptr) {
-    NativePaintingCtxPlatformRef::InvokePlatformRendererUIMethod(
+    NativePaintingCtxPlatformRef::InvokePlatformViewUIMethod(
         id, method, params, std::move(callback));
     return;
   }

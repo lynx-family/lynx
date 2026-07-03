@@ -51,14 +51,18 @@ class PlatformRendererContext {
 
   void UpdatePlatformRendererFrame(int32_t target, bool need_clip,
                                    const float frame[4],
-                                   const float render_offset[2]);
+                                   const float render_offset[2],
+                                   const float paddings[4],
+                                   const float margins[4],
+                                   const float borders[4]);
 
   // Update platform renderer subtree properties (transform, clip, etc.)
   void UpdatePlatformRendererSubtreeProperties(
       int32_t id, const SubtreeProperty* properties, size_t count);
 
   // Update platform renderer attributes
-  void UpdatePlatformRendererAttributes(int32_t id, jobject prop_bundle);
+  void UpdatePlatformRendererAttributes(int32_t id, jobject prop_bundle,
+                                        bool tends_to_flatten);
 
   void UpdatePlatformRendererExtraData(int32_t id, jobject extra_bundle);
 
@@ -77,16 +81,6 @@ class PlatformRendererContext {
   void UpdateTextBundle(int32_t id, intptr_t text_bundle);
 
   void DestroyTextBundle(int32_t id);
-
-  void InsertListItemPaintingNode(int32_t list_sign, int32_t child_sign);
-
-  void RemoveListItemPaintingNode(int32_t list_sign, int32_t child_sign);
-
-  void UpdateContentOffsetForListContainer(int32_t container_id,
-                                           float content_size, float delta_x,
-                                           float delta_y,
-                                           bool is_init_scroll_offset,
-                                           bool from_layout);
 
   void FinishTasmOperation(int64_t operation_id);
 

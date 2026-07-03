@@ -3325,6 +3325,7 @@ public protocol LynxRendererHost-p : <NSObject> {
   public instancetype LynxRendererHost-p::initWithRendererContext:(LynxRendererContext *context);
   public LynxRenderer * LynxRendererHost-p::createRendererWithSign:andContext:(int32_t sign,[andContext] LynxRendererContext *context);
   public UIView * LynxRendererHost-p::view();
+  public BOOL LynxRendererHost-p::invokeUIMethod:params:callback:(NSString *method,[params] NSDictionary *params,[callback] LynxUIMethodCallbackBlock callback);
 }
 
 public protocol LynxResourceFetcher-p : <NSObject> {
@@ -3908,6 +3909,8 @@ public class LynxTemplateRender : NSObject, <LynxTemplateRenderProtocol>, <Templ
   public LynxViewBuilderBlock LynxTemplateRender()::getLynxViewBuilderBlock();
   public void LynxTemplateRender()::detachLynxEngine();
   public BOOL LynxTemplateRender()::DispatchPlatformInputEvent:withData:(NSArray *iEventData, [withData] NSArray *fEventData);
+  public void LynxTemplateRender()::DispatchPlatformLongPress();
+  public void LynxTemplateRender()::DispatchPlatformTap();
   public void LynxTemplateRender()::SetPlatformEventRootActive:active:(NSInteger rootSign, [active] BOOL active);
   public void LynxTemplateRender()::SetPlatformEventRootOffset:offsetX:offsetY:(NSInteger rootSign, [offsetX] CGFloat offsetX, [offsetY] CGFloat offsetY);
   public BOOL LynxTemplateRender()::IsPlatformEventTargetEventThrough:point:(NSInteger rootSign, [point] CGPoint point);
@@ -5201,6 +5204,8 @@ public interface LynxUIOwner(Private) {
 
 public class LynxUIRenderer : NSObject, <LynxUIRendererProtocol> {
   public BOOL LynxUIRenderer::DispatchPlatformInputEvent:withData:(NSArray *iEventData,[withData] NSArray *fEventData);
+  public void LynxUIRenderer::DispatchPlatformLongPress();
+  public void LynxUIRenderer::DispatchPlatformTap();
   public void LynxUIRenderer::SetPlatformEventRootActive:active:(NSInteger rootSign,[active] BOOL active);
   public void LynxUIRenderer::SetPlatformEventRootOffset:offsetX:offsetY:(NSInteger rootSign,[offsetX] CGFloat offsetX,[offsetY] CGFloat offsetY);
   public BOOL LynxUIRenderer::IsPlatformEventTargetEventThrough:point:(NSInteger rootSign,[point] CGPoint point);
