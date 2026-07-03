@@ -31,7 +31,7 @@ class PlatformRendererImpl : public PlatformRenderer {
   explicit PlatformRendererImpl(int id, PlatformRendererType type,
                                 const base::String& tag);
 
-  ~PlatformRendererImpl() override = default;
+  ~PlatformRendererImpl() override;
 
   // PlatformRenderer interface.
   // Content

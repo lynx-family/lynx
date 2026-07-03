@@ -80,3 +80,21 @@ lynx_core_source_set("painting") {
     "../common",
   ]
 }
+
+unittest_set("platform_renderer_testset") {
+  testonly = true
+  sources = [
+    "platform_renderer_impl.cc",
+    "platform_renderer_impl_unittest.cc",
+  ]
+  public_deps = [
+    "../../../../base/src:base_values",
+    "../../../../base/src:base_values_extended",
+    "../../../public",
+    "../../dom/fragment:display_list",
+  ]
+}
+
+unittest_exec("platform_renderer_unittest_exec") {
+  deps = [ ":platform_renderer_testset" ]
+}
