@@ -706,7 +706,7 @@ rapidjson::Value ElementDumpHelper::DumpFiberElementToJSON(
                     allocator);
     value.AddMember("Component Name", component->component_name().str(),
                     allocator);
-    value.AddMember("Component Entry", component->component_entry().str(),
+    value.AddMember("Component Entry", component->entry_name().str(),
                     allocator);
   }
 

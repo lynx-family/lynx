@@ -5423,7 +5423,7 @@ RENDERER_FUNCTION_CC(FiberUpdateComponentInfo) {
     } else if (key_str == kComponentPath) {
       component->set_component_path(value.String());
     } else if (key_str == kComponentEntry) {
-      component->set_component_entry(value.String());
+      component->set_entry_name(value.String());
     } else if (key_str == kComponentCSSID) {
       // Currently, the `cssID` in `FiberUpdateComponentInfo` updates the
       // `component_css_id_` of `ComponentElement` rather than `css_id_`. In
