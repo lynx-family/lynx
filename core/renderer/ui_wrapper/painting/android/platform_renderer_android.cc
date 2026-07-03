@@ -12,6 +12,11 @@
 #include "core/renderer/ui_wrapper/common/native_prop_bundle.h"
 
 namespace lynx::tasm {
+namespace {
+
+constexpr float kZeroMetrics[4] = {0.f, 0.f, 0.f, 0.f};
+
+}  // namespace
 
 PlatformRendererAndroid::~PlatformRendererAndroid() { CleanupAndroidView(); }
 
@@ -61,7 +66,10 @@ void PlatformRendererAndroid::OnUpdateDisplayList(DisplayList display_list) {
 
       context_->UpdatePlatformRendererFrame(
           PlatformRendererImpl::GetId(), display_list_.RootNeedClipBounds(),
-          frame, display_list_.GetRenderOffset());
+          frame, display_list_.GetRenderOffset(),
+          HasLayoutMetrics() ? GetLayoutPaddings() : kZeroMetrics,
+          HasLayoutMetrics() ? GetLayoutMargins() : kZeroMetrics,
+          HasLayoutMetrics() ? GetLayoutBorders() : kZeroMetrics);
     }
   }
 }
@@ -173,7 +181,8 @@ void PlatformRendererAndroid::OnUpdateAttributes(
   // Get the Java object from PropBundleAndroid
   jobject j_prop_bundle = prop_bundle_android.jni_object();
   if (j_prop_bundle) {
-    context_->UpdatePlatformRendererAttributes(GetId(), j_prop_bundle);
+    context_->UpdatePlatformRendererAttributes(GetId(), j_prop_bundle,
+                                               tends_to_flatten);
   }
 }
 

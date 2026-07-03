@@ -9,6 +9,8 @@ NS_ASSUME_NONNULL_BEGIN
 @interface LynxUIRenderer : NSObject <LynxUIRendererProtocol>
 
 - (BOOL)DispatchPlatformInputEvent:(NSArray*)iEventData withData:(NSArray*)fEventData;
+- (void)DispatchPlatformLongPress;
+- (void)DispatchPlatformTap;
 - (void)SetPlatformEventRootActive:(NSInteger)rootSign active:(BOOL)active;
 - (void)SetPlatformEventRootOffset:(NSInteger)rootSign
                            offsetX:(CGFloat)offsetX

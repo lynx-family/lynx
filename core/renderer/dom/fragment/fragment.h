@@ -75,12 +75,6 @@ class Fragment : public BaseElementContainer {
       bool tend_to_flatten,
       const fml::RefPtr<PropBundle>& painting_data) override;
 
-  void InsertListItemPaintingNode(int32_t child_id) override;
-  void RemoveListItemPaintingNode(int32_t child_id) override;
-  void UpdateContentOffsetForListContainer(float content_size, float delta_x,
-                                           float delta_y,
-                                           bool is_init_scroll_offset,
-                                           bool from_layout) override;
   void OnFirstScreen() override;
   void OnNodeReady() override;
   void FinishTasmOperation(
@@ -161,7 +155,7 @@ class Fragment : public BaseElementContainer {
   // children, etc. Called by OnDraw when NeedRedraw() is true.
   void DrawFull(DisplayListBuilder& display_list_builder);
 
-  bool ShouldNotifyNodeReady() const;
+  bool ShouldSyncNativePlatformRenderer() const;
   void MarkNodeReadyIfNeeded();
   void FlushPendingNodeReadyIfNeeded();
 

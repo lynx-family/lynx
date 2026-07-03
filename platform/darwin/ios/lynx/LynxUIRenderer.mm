@@ -420,6 +420,18 @@ static id<LynxServiceTextProtocol> getTextService() {
   return consumed;
 }
 
+- (void)DispatchPlatformLongPress {
+  if (auto *platform_ref = CastToNativePaintingCtxPlatformRef(_paintingCtxPlatformRef)) {
+    platform_ref->DispatchPlatformLongPress();
+  }
+}
+
+- (void)DispatchPlatformTap {
+  if (auto *platform_ref = CastToNativePaintingCtxPlatformRef(_paintingCtxPlatformRef)) {
+    platform_ref->DispatchPlatformTap();
+  }
+}
+
 - (void)SetPlatformEventRootActive:(NSInteger)rootSign active:(BOOL)active {
   if (auto *platform_ref = CastToNativePaintingCtxPlatformRef(_paintingCtxPlatformRef)) {
     platform_ref->SetPlatformEventRootActive(static_cast<int32_t>(rootSign), active);

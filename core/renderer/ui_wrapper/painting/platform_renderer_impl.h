@@ -41,6 +41,13 @@ class PlatformRendererImpl : public PlatformRenderer {
   void UpdateAttributes(const fml::RefPtr<PropBundle>& attributes,
                         bool tends_to_flatten) override;
   const DisplayList& GetDisplayList() const { return display_list_; }
+  void UpdateLayoutMetrics(float left, float top, float width, float height,
+                           const float* paddings, const float* margins,
+                           const float* borders);
+  bool HasLayoutMetrics() const { return has_layout_metrics_; }
+  const float* GetLayoutPaddings() const { return layout_paddings_; }
+  const float* GetLayoutMargins() const { return layout_margins_; }
+  const float* GetLayoutBorders() const { return layout_borders_; }
 
   void RemoveFromParent() override;
   void AddChild(fml::RefPtr<PlatformRenderer> child, int index = -1) override;
@@ -110,6 +117,11 @@ class PlatformRendererImpl : public PlatformRenderer {
 
   DisplayList display_list_;
   ChildVecT children_;
+  float layout_frame_[4] = {0.f, 0.f, 0.f, 0.f};
+  float layout_paddings_[4] = {0.f, 0.f, 0.f, 0.f};
+  float layout_margins_[4] = {0.f, 0.f, 0.f, 0.f};
+  float layout_borders_[4] = {0.f, 0.f, 0.f, 0.f};
+  bool has_layout_metrics_ = false;
   bool is_platform_extended_renderer_ = false;
   bool is_direct_child_of_compatible_component_ = false;
   // True when the current parent edge is mirrored through UIOwner.

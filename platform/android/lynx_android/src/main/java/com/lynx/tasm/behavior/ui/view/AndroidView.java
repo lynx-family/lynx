@@ -377,11 +377,11 @@ public class AndroidView extends ViewGroup
   @Override
   protected boolean drawChild(Canvas canvas, View child, long drawingTime) {
     Rect bound = null;
-    if (mDrawChildHook != null) {
-      bound = mDrawChildHook.beforeDrawChild(canvas, child, drawingTime);
-    }
     if (mRenderer != null) {
       mRenderer.beforeDrawChild(canvas, child);
+    }
+    if (mDrawChildHook != null) {
+      bound = mDrawChildHook.beforeDrawChild(canvas, child, drawingTime);
     }
     boolean ret;
     if (bound != null) {

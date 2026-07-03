@@ -9,8 +9,10 @@
 
 #include <array>
 #include <memory>
+#include <string>
 #include <unordered_map>
 #include <unordered_set>
+#include <vector>
 
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/dom/fiber/image_element.h"
@@ -158,7 +160,9 @@ class TestNativePaintingContext : public NativePaintingContext {
   void FinishTasmOperation(
       const std::shared_ptr<PipelineOptions>& options) override {}
   void FinishLayoutOperation(
-      const std::shared_ptr<PipelineOptions>& options) override {}
+      const std::shared_ptr<PipelineOptions>& options) override {
+    operations.emplace_back("finish_layout");
+  }
   void CreatePlatformRenderer(
       int id, PlatformRendererType type,
       const fml::RefPtr<PropBundle>& init_data,
@@ -177,6 +181,7 @@ class TestNativePaintingContext : public NativePaintingContext {
     }
   }
   void UpdateDisplayList(int id, DisplayList list) override {
+    operations.emplace_back("update_display_list");
     if (ref_) {
       ref_->UpdateDisplayList(id, std::move(list));
     }
@@ -188,13 +193,6 @@ class TestNativePaintingContext : public NativePaintingContext {
   }
   void UpdateTextBundle(int id, intptr_t bundle) override {}
   void DestroyTextBundle(int id) override {}
-  void InsertListItemPaintingNode(int32_t list_id, int32_t child_id) override {}
-  void RemoveListItemPaintingNode(int32_t list_id, int32_t child_id) override {}
-  void UpdateContentOffsetForListContainer(int32_t container_id,
-                                           float content_size, float delta_x,
-                                           float delta_y,
-                                           bool is_init_scroll_offset,
-                                           bool from_layout) override {}
   void ReconstructEventTargetTreeRecursively() override {
     if (ref_) {
       ref_->ReconstructEventTargetTreeRecursively();
@@ -205,6 +203,8 @@ class TestNativePaintingContext : public NativePaintingContext {
       ref_->UpdatePlatformEventBundle(id, std::move(bundle));
     }
   }
+
+  std::vector<std::string> operations;
 
  private:
   TestNativePaintingCtxPlatformRef* ref_ = nullptr;
@@ -1286,6 +1286,39 @@ TEST_F(FragmentDrawTest,
   ASSERT_NE(ops, nullptr);
   EXPECT_EQ(ops[0], static_cast<int32_t>(DisplayListOpType::kBegin));
   EXPECT_EQ(ops[1], static_cast<int32_t>(DisplayListOpType::kEnd));
+}
+
+TEST_F(FragmentDrawTest, FragmentLayerRenderFinishesLayoutAfterDisplayList) {
+  auto page = manager->CreateFiberPage("0", 0);
+  ASSERT_NE(page, nullptr);
+  page->FlushActionsAsRoot();
+  ASSERT_TRUE(page->HasElementContainer());
+
+  auto* fragment = static_cast<Fragment*>(page->element_container());
+  ASSERT_NE(fragment, nullptr);
+  page->SetupFragmentBehavior(fragment);
+
+  auto* native_context = static_cast<NativeMockPaintingContext*>(
+      fragment->painting_context()->impl());
+  auto* native_ref = native_context->GetNativePlatformRef();
+  ASSERT_NE(native_ref, nullptr);
+  native_ref->CreatePlatformRenderer(fragment->id(),
+                                     PlatformRendererType::kPage, nullptr);
+  fragment->has_platform_renderer_ = true;
+
+  auto options = std::make_shared<PipelineOptions>();
+  native_context->operations.clear();
+  page->Layout(options);
+
+  EXPECT_TRUE(options->has_layout);
+  EXPECT_TRUE(native_context->operations.empty());
+
+  fragment->Draw();
+  fragment->FinishLayoutOperation(options);
+
+  ASSERT_EQ(native_context->operations.size(), 2u);
+  EXPECT_EQ(native_context->operations[0], "update_display_list");
+  EXPECT_EQ(native_context->operations[1], "finish_layout");
 }
 
 }  // namespace tasm
