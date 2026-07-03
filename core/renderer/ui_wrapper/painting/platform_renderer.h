@@ -6,13 +6,20 @@
 #define CORE_RENDERER_UI_WRAPPER_PAINTING_PLATFORM_RENDERER_H_
 
 #include <cstdint>
+#include <string>
 
+#include "base/include/closure.h"
 #include "base/include/fml/memory/ref_counted.h"
 #include "base/include/fml/memory/ref_ptr.h"
 #include "base/include/vector.h"
 #include "core/public/platform_renderer_type.h"
 #include "core/public/prop_bundle.h"
+#include "core/public/pub_value.h"
 #include "core/renderer/utils/base/base_def.h"
+
+namespace lynx::lepus {
+class Value;
+}
 
 namespace lynx::tasm {
 
@@ -56,6 +63,15 @@ class PlatformRenderer : public fml::RefCountedThreadSafeStorage {
   Children() const = 0;
 
   virtual base::String GetExtendedRendererTagName() const = 0;
+
+  // Invoke a UI method on the platform renderer host. Return true only when the
+  // renderer handled the method and will own the callback; return false to let
+  // the caller fall back to the platform UI implementation.
+  virtual bool InvokeUIMethod(
+      const std::string& method, const lepus::Value& params,
+      base::MoveOnlyClosure<void, int32_t, const pub::Value&>& callback) {
+    return false;
+  }
 
   void ReleaseSelf() const override = 0;
 };

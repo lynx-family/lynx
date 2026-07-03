@@ -111,6 +111,30 @@ public class NativePaintingContext implements IPaintingContext {
     return nativeDispatchPlatformInputEvent(mNativePtr, iEventData, fEventData);
   }
 
+  @Override
+  public void dispatchPlatformLongPress() {
+    if (mNativePtr == 0 || mDestroyed) {
+      return;
+    }
+    nativeDispatchPlatformLongPress(mNativePtr);
+  }
+
+  @Override
+  public void dispatchPlatformTap() {
+    if (mNativePtr == 0 || mDestroyed) {
+      return;
+    }
+    nativeDispatchPlatformTap(mNativePtr);
+  }
+
+  @Override
+  public boolean isPlatformEventTargetEventThrough(int rootSign, float pointX, float pointY) {
+    if (mNativePtr == 0 || mDestroyed) {
+      return false;
+    }
+    return nativeIsPlatformEventTargetEventThrough(mNativePtr, rootSign, pointX, pointY);
+  }
+
   private static int getPlatformActionType(int actionMasked) {
     if (actionMasked == MotionEvent.ACTION_POINTER_DOWN) {
       return MotionEvent.ACTION_DOWN;
@@ -165,10 +189,17 @@ public class NativePaintingContext implements IPaintingContext {
   native boolean nativeDispatchPlatformInputEvent(
       long nativePtr, int[] iEventData, float[] fEventData);
 
+  native void nativeDispatchPlatformLongPress(long nativePtr);
+
+  native void nativeDispatchPlatformTap(long nativePtr);
+
   native void nativeSetPlatformEventRootActive(long nativePtr, int rootSign, boolean active);
 
   native void nativeSetPlatformEventRootOffset(
       long nativePtr, int rootSign, float offsetX, float offsetY);
+
+  native boolean nativeIsPlatformEventTargetEventThrough(
+      long nativePtr, int rootSign, float pointX, float pointY);
 
   native int nativeGetPlatformEventHandlerState(long nativePtr);
 

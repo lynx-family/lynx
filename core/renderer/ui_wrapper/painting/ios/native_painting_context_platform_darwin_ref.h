@@ -8,6 +8,7 @@
 #import <Lynx/LynxPerformanceController.h>
 
 #include <memory>
+#include <string>
 #include <vector>
 
 #include "core/renderer/ui_wrapper/painting/ios/platform_renderer_darwin_factory.h"
@@ -35,6 +36,9 @@ class NativePaintingCtxPlatformDarwinRef : public NativePaintingCtxPlatformRef {
   }
 
   void UpdatePlatformRendererExtraBundle(int32_t sign, id platform_extra_bundle);
+  void InvokePlatformViewUIMethod(
+      int32_t sign, const std::string& method, const lepus::Value& params,
+      base::MoveOnlyClosure<void, int32_t, const pub::Value&> callback) override;
 
  protected:
   void NotifyNodeReady(const std::vector<int32_t>& signs) override;

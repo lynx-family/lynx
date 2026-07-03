@@ -78,6 +78,20 @@ void NativePaintingCtxPlatformRef::UpdateDisplayList(
   layer->UpdateDisplayList(std::move(display_list));
 }
 
+void NativePaintingCtxPlatformRef::UpdateLayoutMetrics(
+    int id, float left, float top, float width, float height,
+    const float *paddings, const float *margins, const float *borders) {
+  auto it = renderers_.find(id);
+  if (it == renderers_.end() || it->second == nullptr) {
+    return;
+  }
+
+  MarkEventTargetTreeDirty(id);
+  auto renderer = fml::static_ref_ptr_cast<PlatformRendererImpl>(it->second);
+  renderer->UpdateLayoutMetrics(left, top, width, height, paddings, margins,
+                                borders);
+}
+
 void NativePaintingCtxPlatformRef::RemovePaintingNode(int parent, int child,
                                                       int index, bool is_move) {
   if (auto it_child = renderers_.find(child); it_child != renderers_.end()) {
@@ -177,6 +191,14 @@ bool NativePaintingCtxPlatformRef::DispatchPlatformInputEvent(
   }
   return event_handler_->OnInputEvent(event_target_tree, int_event_data,
                                       float_event_data);
+}
+
+void NativePaintingCtxPlatformRef::DispatchPlatformLongPress() {
+  event_handler_->OnLongPress();
+}
+
+void NativePaintingCtxPlatformRef::DispatchPlatformTap() {
+  event_handler_->OnTap();
 }
 
 bool NativePaintingCtxPlatformRef::IsPlatformEventTargetEventThrough(
@@ -581,11 +603,24 @@ void NativePaintingCtxPlatformRef::InvokeUIMethod(
                 callback(code, PubLepusValue(data));
               });
         };
-    InvokePlatformRendererUIMethod(id, method, params, std::move(cb));
+    if (TryInvokePlatformRendererUIMethod(id, method, params, cb)) {
+      return;
+    }
+    InvokePlatformViewUIMethod(id, method, params, std::move(cb));
   }
 }
 
-void NativePaintingCtxPlatformRef::InvokePlatformRendererUIMethod(
+bool NativePaintingCtxPlatformRef::TryInvokePlatformRendererUIMethod(
+    int32_t id, const std::string &method, const lepus::Value &params,
+    base::MoveOnlyClosure<void, int32_t, const pub::Value &> &callback) {
+  auto it = renderers_.find(id);
+  if (it == renderers_.end() || !it->second) {
+    return false;
+  }
+  return it->second->InvokeUIMethod(method, params, callback);
+}
+
+void NativePaintingCtxPlatformRef::InvokePlatformViewUIMethod(
     int32_t id, const std::string &method, const lepus::Value &params,
     base::MoveOnlyClosure<void, int32_t, const pub::Value &> callback) {
   if (callback) {

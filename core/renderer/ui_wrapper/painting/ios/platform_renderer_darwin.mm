@@ -28,6 +28,13 @@ bool IsOverlayRendererTag(const base::String& tag) {
   return tag.IsEqual("overlay") || tag.IsEqual("x-overlay-ng");
 }
 
+UIEdgeInsets UIEdgeInsetsFromLayoutMetrics(const float* metrics) {
+  if (metrics == nullptr) {
+    return UIEdgeInsetsZero;
+  }
+  return UIEdgeInsetsMake(metrics[1], metrics[0], metrics[3], metrics[2]);
+}
+
 void LynxCUIApplyLayoutFrame(UIView* view, CGRect layout_frame) {
   if (CATransform3DIsIdentity(view.layer.transform)) {
     view.layer.anchorPoint = CGPointMake(0.5f, 0.5f);
@@ -411,14 +418,25 @@ void PlatformRendererDarwin::UpdateUIOwnerLayout(CGRect frame) {
     return;
   }
   LynxUI* ui = [owner findUIBySign:GetId()];
+  if (ui == nil) {
+    return;
+  }
+  UIEdgeInsets padding = ui.padding;
+  UIEdgeInsets border = ui.border;
+  UIEdgeInsets margin = ui.margin;
+  if (HasLayoutMetrics()) {
+    padding = UIEdgeInsetsFromLayoutMetrics(GetLayoutPaddings());
+    border = UIEdgeInsetsFromLayoutMetrics(GetLayoutBorders());
+    margin = UIEdgeInsetsFromLayoutMetrics(GetLayoutMargins());
+  }
   [owner updateUI:GetId()
        layoutLeft:frame.origin.x
               top:frame.origin.y
             width:frame.size.width
            height:frame.size.height
-          padding:ui.padding
-           border:ui.border
-           margin:ui.margin
+          padding:padding
+           border:border
+           margin:margin
            sticky:ui.sticky];
 }
 
