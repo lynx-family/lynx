@@ -129,6 +129,7 @@ Value ResponseHandlerInJS::ConvertBundleInfoToPiperValue(
   if (rt == nullptr) {
     return Value::undefined();
   }
+  Scope scope(*rt);
   Object obj(*rt);
   obj.setProperty(*rt, tasm::kBundleResourceInfoKeyUrl, bundle_info.url);
   obj.setProperty(*rt, tasm::kBundleResourceInfoKeyCode, bundle_info.code);
