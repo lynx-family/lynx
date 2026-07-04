@@ -3,6 +3,7 @@
 // LICENSE file in the root directory of this source tree.
 
 #import "LynxEventHandlerUnitTest.h"
+#import <Lynx/LynxCustomGestureRecognizer.h>
 #import <Lynx/LynxEventHandler+Internal.h>
 #import <Lynx/LynxPropsProcessor.h>
 #import <Lynx/LynxRootUI.h>
@@ -152,6 +153,33 @@ static const NSInteger kLynxPanInterceptUnitTestViewTag = 1001;
       never(),
       [mockView addGestureRecognizer:[OCMArg isKindOfClass:NSClassFromString(
                                                                @"LynxCustomGestureRecognizer")]]);
+}
+
+- (void)testPlatformGestureBlocksOtherRecognizersOnlyAfterActive {
+  [_handler setEnablePlatformGesture:YES];
+  id<UIGestureRecognizerDelegate> delegate = _handler.customPlatformGesture.delegate;
+  XCTAssertNotNil(delegate);
+
+  UIView* otherView = [UIView new];
+  UIPanGestureRecognizer* otherGesture = [[UIPanGestureRecognizer alloc] init];
+  [otherView addGestureRecognizer:otherGesture];
+
+  XCTAssertFalse([delegate gestureRecognizer:_handler.customPlatformGesture
+      shouldBeRequiredToFailByGestureRecognizer:otherGesture]);
+  XCTAssertTrue([delegate gestureRecognizer:_handler.customPlatformGesture
+      shouldRecognizeSimultaneouslyWithGestureRecognizer:otherGesture]);
+
+  [_handler onPlatformGestureStatusChanged:LynxGestureHandlerStateBegin];
+  XCTAssertFalse([delegate gestureRecognizer:_handler.customPlatformGesture
+      shouldBeRequiredToFailByGestureRecognizer:otherGesture]);
+  XCTAssertTrue([delegate gestureRecognizer:_handler.customPlatformGesture
+      shouldRecognizeSimultaneouslyWithGestureRecognizer:otherGesture]);
+
+  [_handler onPlatformGestureStatusChanged:LynxGestureHandlerStateActive];
+  XCTAssertTrue([delegate gestureRecognizer:_handler.customPlatformGesture
+      shouldBeRequiredToFailByGestureRecognizer:otherGesture]);
+  XCTAssertFalse([delegate gestureRecognizer:_handler.customPlatformGesture
+      shouldRecognizeSimultaneouslyWithGestureRecognizer:otherGesture]);
 }
 
 - (void)testAttachContainerViewWithFragmentLayerRenderOn {

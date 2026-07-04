@@ -267,6 +267,22 @@ public class GestureHandlerTriggerTest {
   }
 
   @Test
+  public void testPlatformGestureAggregateState() {
+    mHandlerTrigger.initCurrentWinnerWhenDown(arenaMember2);
+    Assert.assertFalse(mHandlerTrigger.hasActivePlatformGesture());
+
+    Map<Integer, BaseGestureHandler> gestureHandlers = arenaMember2.getGestureHandlers();
+    Assert.assertNotNull(gestureHandlers);
+    BaseGestureHandler handler = gestureHandlers.values().iterator().next();
+
+    handler.activate();
+    Assert.assertTrue(mHandlerTrigger.hasActivePlatformGesture());
+
+    handler.fail();
+    Assert.assertFalse(mHandlerTrigger.hasActivePlatformGesture());
+  }
+
+  @Test
   public void testEnd() {
     try {
       Class<?> clazz = GestureHandlerTrigger.class;

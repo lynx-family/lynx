@@ -154,6 +154,10 @@
   }
 }
 
+- (BOOL)hasActivePlatformGesture {
+  return [_gestureHandlerTrigger hasActivePlatformGesture];
+}
+
 - (void)dealloc {
   _arenaMemberMap = nil;
   _bubbleCandidate = nil;

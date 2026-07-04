@@ -2178,6 +2178,7 @@ public class com::lynx::tasm::gesture::arena::GestureArenaManager :  {
   public int com.lynx.tasm.gesture.arena.GestureArenaManager.addMember(@Nullable GestureArenaMember member);
   public boolean com.lynx.tasm.gesture.arena.GestureArenaManager.isMemberExist(int memberId);
   public void com.lynx.tasm.gesture.arena.GestureArenaManager.setGestureDetectorState(int memberId, int gestureId, int state);
+  public boolean com.lynx.tasm.gesture.arena.GestureArenaManager.hasActivePlatformGesture();
   public void com.lynx.tasm.gesture.arena.GestureArenaManager.removeMember(@Nullable GestureArenaMember member);
   public GestureArenaMember com.lynx.tasm.gesture.arena.GestureArenaManager.getMemberById(int id);
   public void com.lynx.tasm.gesture.arena.GestureArenaManager.onDestroy();
@@ -2275,6 +2276,7 @@ public class com::lynx::tasm::gesture::handler::GestureHandlerTrigger :  {
   public void com.lynx.tasm.gesture.handler.GestureHandlerTrigger.resolveTouchEvent(MotionEvent event, LinkedList< GestureArenaMember > competeChainCandidates, LynxTouchEvent lynxTouchEvent, LinkedList< GestureArenaMember > bubbleChainCandidates);
   public void com.lynx.tasm.gesture.handler.GestureHandlerTrigger.computeScroll(LinkedList< GestureArenaMember > competeChainCandidates);
   public void com.lynx.tasm.gesture.handler.GestureHandlerTrigger.handleGestureDetectorState( @Nullable GestureArenaMember member, int gestureId, int state);
+  public boolean com.lynx.tasm.gesture.handler.GestureHandlerTrigger.hasActivePlatformGesture();
   public BaseGestureHandler com.lynx.tasm.gesture.handler.GestureHandlerTrigger.getGestureHandlerById(GestureArenaMember member, int gestureId);
   public void com.lynx.tasm.gesture.handler.GestureHandlerTrigger.dispatchBubbleTouchEvent(String type, LynxTouchEvent touchEvent, LinkedList< GestureArenaMember > bubbleCandidate, GestureArenaMember winner);
   public void com.lynx.tasm.gesture.handler.GestureHandlerTrigger.onDestroy();

@@ -134,6 +134,8 @@ public class TouchEventDispatcher {
   private UIGroup mActiveEventRootUI;
   private boolean mDispatchInCurrentLynxPageOnly;
   private boolean mIsPlatformGestureActive = false;
+  private boolean mDispatchingGestureArena = false;
+  private boolean mPendingPlatformGestureStatusCheck = false;
   private boolean mPanGestureRecognized = false;
 
   private static final String TAG = "LynxTouchEventDispatcher";
@@ -277,6 +279,37 @@ public class TouchEventDispatcher {
     }
     mUIOwner.getRootUI().getView().getParent().requestDisallowInterceptTouchEvent(flag);
     return flag;
+  }
+
+  void resetPlatformGestureProtection() {
+    if (mIsPlatformGestureActive) {
+      requestNativeDisallowIntercept(false);
+    }
+    mIsPlatformGestureActive = false;
+    mPendingPlatformGestureStatusCheck = false;
+  }
+
+  private void checkPlatformGestureProtectionAfterStatusChange() {
+    if (mDispatchingGestureArena) {
+      mPendingPlatformGestureStatusCheck = true;
+      return;
+    }
+    updatePlatformGestureProtectionFromArena();
+  }
+
+  private void updatePlatformGestureProtectionFromArena() {
+    if (mGestureArenaManager != null && mGestureArenaManager.hasActivePlatformGesture()) {
+      mIsPlatformGestureActive = true;
+      return;
+    }
+    resetPlatformGestureProtection();
+  }
+
+  private boolean isPlatformGestureTerminalStatus(int status) {
+    return status == GestureConstants.LYNX_STATE_FAIL
+        || status == GestureConstants.LYNX_STATE_CANCELLED
+        || status == GestureConstants.LYNX_STATE_END
+        || status == GestureConstants.LYNX_STATE_UNDETERMINED;
   }
 
   public boolean consumeSlideEvent(MotionEvent ev) {
@@ -1166,7 +1199,16 @@ public class TouchEventDispatcher {
 
   private void dispatchTouchEventToGestureArena(MotionEvent ev) {
     if (mGestureArenaManager != null) {
-      mGestureArenaManager.dispatchTouchEventToArena(ev, mFirstLynxTouchEvent);
+      mDispatchingGestureArena = true;
+      try {
+        mGestureArenaManager.dispatchTouchEventToArena(ev, mFirstLynxTouchEvent);
+      } finally {
+        mDispatchingGestureArena = false;
+        if (mPendingPlatformGestureStatusCheck) {
+          mPendingPlatformGestureStatusCheck = false;
+          updatePlatformGestureProtectionFromArena();
+        }
+      }
     }
 
     if (mActiveUI != null && mActiveUI.getChildrenLynxPageUI() != null) {
@@ -1187,7 +1229,16 @@ public class TouchEventDispatcher {
   }
 
   public void onPlatformGestureStatusChanged(int status) {
-    mIsPlatformGestureActive = status == GestureConstants.LYNX_STATE_ACTIVE;
+    if (!mEnablePlatformGesture) {
+      resetPlatformGestureProtection();
+      return;
+    }
+    if (status == GestureConstants.LYNX_STATE_ACTIVE) {
+      mIsPlatformGestureActive = true;
+      requestNativeDisallowIntercept(true);
+    } else if (isPlatformGestureTerminalStatus(status)) {
+      checkPlatformGestureProtectionAfterStatusChange();
+    }
   }
 
   public boolean onInterceptTouchEvent(MotionEvent ev) {
@@ -1248,8 +1299,9 @@ public class TouchEventDispatcher {
     }
 
     mTimestamp = System.currentTimeMillis();
+    int action = ev.getActionMasked();
     boolean shouldResetEnv = false;
-    if (ev.getActionMasked() == MotionEvent.ACTION_DOWN) {
+    if (action == MotionEvent.ACTION_DOWN) {
       mActiveEventRootUI = resolveEventRootUI(rootUi);
       mDispatchInCurrentLynxPageOnly = shouldDispatchInCurrentLynxPageOnly(rootUi);
       mIsPlatformGestureActive = false;
@@ -1259,15 +1311,18 @@ public class TouchEventDispatcher {
         LLog.i(TAG, "hit event through");
         return false;
       }
-    } else if (ev.getActionMasked() == MotionEvent.ACTION_POINTER_DOWN) {
+    } else if (action == MotionEvent.ACTION_POINTER_DOWN) {
       handleOtherTouchDown(ev, getActiveEventRootUI());
     } else {
       if (mActiveUI != null && !mActiveUIMap.isEmpty()) {
         if (mActiveUI.eventThrough(mFirstFingerDownPoint.getX(), mFirstFingerDownPoint.getY())) {
           LLog.i(TAG, "hit event through");
+          if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_CANCEL) {
+            resetPlatformGestureProtection();
+          }
           return false;
         }
-        switch (ev.getActionMasked()) {
+        switch (action) {
           case MotionEvent.ACTION_MOVE:
             handleTouchMove(ev);
             break;
@@ -1298,6 +1353,9 @@ public class TouchEventDispatcher {
       if (shouldResetEnv) {
         resetEnvForTouchSequence();
       }
+      if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_CANCEL) {
+        resetPlatformGestureProtection();
+      }
       return false;
     }
 
@@ -1311,6 +1369,9 @@ public class TouchEventDispatcher {
       resetEnvForTouchSequence();
     }
 
+    if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_CANCEL) {
+      resetPlatformGestureProtection();
+    }
     return true;
   }
 

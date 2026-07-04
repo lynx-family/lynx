@@ -25,7 +25,9 @@ import com.lynx.tasm.behavior.ui.view.AndroidView;
 import com.lynx.tasm.behavior.ui.view.UIView;
 import com.lynx.tasm.event.EventsListener;
 import com.lynx.tasm.event.LynxEventDetail;
+import com.lynx.tasm.gesture.arena.GestureArenaManager;
 import com.lynx.tasm.gesture.detector.GestureDetector;
+import com.lynx.tasm.gesture.handler.GestureConstants;
 import com.lynx.testing.base.TestingUtils;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
@@ -262,6 +264,19 @@ public class TouchEventDispatcherTest {
     public void onEventFire(boolean isStop, long eventID) {}
   }
 
+  private static class MockGestureArenaManager extends GestureArenaManager {
+    private boolean mHasActivePlatformGesture;
+
+    void setHasActivePlatformGesture(boolean hasActive) {
+      mHasActivePlatformGesture = hasActive;
+    }
+
+    @Override
+    public boolean hasActivePlatformGesture() {
+      return mHasActivePlatformGesture;
+    }
+  }
+
   @Before
   public void setUp() throws Exception {
     try {
@@ -377,6 +392,121 @@ public class TouchEventDispatcherTest {
       assertFalse(mCalled[0]);
       assertFalse(mDispatcher.consumeSlideEvent(ev));
       assertFalse(mCalled[0]);
+    } catch (Throwable e) {
+      e.printStackTrace();
+      fail();
+    }
+  }
+
+  @Test
+  public void testPlatformGestureBeginDoesNotProtectNativeParent() {
+    try {
+      UIBody.UIBodyView rootView = mOwner.getRootUI().getView();
+      final boolean[] disallowIntercept = {false};
+      AndroidView parentView = new AndroidView(mContext) {
+        @Override
+        public void requestDisallowInterceptTouchEvent(boolean disallowInterceptValue) {
+          disallowIntercept[0] = disallowInterceptValue;
+          super.requestDisallowInterceptTouchEvent(disallowInterceptValue);
+        }
+      };
+      parentView.addView(rootView);
+
+      mDispatcher.setEnablePlatformGesture(true);
+      assertFalse(disallowIntercept[0]);
+      mDispatcher.onPlatformGestureStatusChanged(GestureConstants.LYNX_STATE_BEGIN);
+      assertFalse(disallowIntercept[0]);
+    } catch (Throwable e) {
+      e.printStackTrace();
+      fail();
+    }
+  }
+
+  @Test
+  public void testPlatformGestureActiveProtectsNativeParent() {
+    try {
+      UIBody.UIBodyView rootView = mOwner.getRootUI().getView();
+      final boolean[] disallowIntercept = {false};
+      AndroidView parentView = new AndroidView(mContext) {
+        @Override
+        public void requestDisallowInterceptTouchEvent(boolean disallowInterceptValue) {
+          disallowIntercept[0] = disallowInterceptValue;
+          super.requestDisallowInterceptTouchEvent(disallowInterceptValue);
+        }
+      };
+      parentView.addView(rootView);
+
+      mDispatcher.setEnablePlatformGesture(true);
+      assertFalse(disallowIntercept[0]);
+      mDispatcher.onPlatformGestureStatusChanged(GestureConstants.LYNX_STATE_ACTIVE);
+      assertTrue(disallowIntercept[0]);
+
+      mDispatcher.resetPlatformGestureProtection();
+      assertFalse(disallowIntercept[0]);
+    } catch (Throwable e) {
+      e.printStackTrace();
+      fail();
+    }
+  }
+
+  @Test
+  public void testPlatformGestureFailReleasesNativeParentWhenArenaHasNoActiveGesture() {
+    try {
+      UIBody.UIBodyView rootView = mOwner.getRootUI().getView();
+      final boolean[] disallowIntercept = {false};
+      AndroidView parentView = new AndroidView(mContext) {
+        @Override
+        public void requestDisallowInterceptTouchEvent(boolean disallowInterceptValue) {
+          disallowIntercept[0] = disallowInterceptValue;
+          super.requestDisallowInterceptTouchEvent(disallowInterceptValue);
+        }
+      };
+      parentView.addView(rootView);
+
+      MockGestureArenaManager manager = new MockGestureArenaManager();
+      manager.setHasActivePlatformGesture(false);
+      mDispatcher.setGestureArenaManager(manager);
+      mDispatcher.setEnablePlatformGesture(true);
+
+      mDispatcher.onPlatformGestureStatusChanged(GestureConstants.LYNX_STATE_ACTIVE);
+      assertTrue(disallowIntercept[0]);
+
+      mDispatcher.onPlatformGestureStatusChanged(GestureConstants.LYNX_STATE_CANCELLED);
+      assertFalse(disallowIntercept[0]);
+    } catch (Throwable e) {
+      e.printStackTrace();
+      fail();
+    }
+  }
+
+  @Test
+  public void testPlatformGestureFailDoesNotReleaseNativeParentWhenArenaStillActive() {
+    try {
+      UIBody.UIBodyView rootView = mOwner.getRootUI().getView();
+      final boolean[] disallowIntercept = {false};
+      AndroidView parentView = new AndroidView(mContext) {
+        @Override
+        public void requestDisallowInterceptTouchEvent(boolean disallowInterceptValue) {
+          disallowIntercept[0] = disallowInterceptValue;
+          super.requestDisallowInterceptTouchEvent(disallowInterceptValue);
+        }
+      };
+      parentView.addView(rootView);
+
+      MockGestureArenaManager manager = new MockGestureArenaManager();
+      manager.setHasActivePlatformGesture(true);
+      mDispatcher.setGestureArenaManager(manager);
+      mDispatcher.setEnablePlatformGesture(true);
+
+      mDispatcher.onPlatformGestureStatusChanged(GestureConstants.LYNX_STATE_ACTIVE);
+      assertTrue(disallowIntercept[0]);
+
+      mDispatcher.onPlatformGestureStatusChanged(GestureConstants.LYNX_STATE_FAIL);
+      assertTrue(disallowIntercept[0]);
+      MotionEvent ev = MotionEvent.obtain(SystemClock.uptimeMillis(), SystemClock.uptimeMillis(),
+          MotionEvent.ACTION_MOVE, 100, 100, 0);
+      assertTrue(mDispatcher.onInterceptTouchEvent(ev));
+      ev.recycle();
     } catch (Throwable e) {
       e.printStackTrace();
       fail();
