@@ -10,6 +10,7 @@
 #include <arkui/native_type.h>
 #include <native_drawing/drawing_types.h>
 
+#include <array>
 #include <memory>
 #include <optional>
 #include <string>
@@ -167,6 +168,7 @@ class LYNX_EXPORT UIBase : public std::enable_shared_from_this<UIBase>,
 
   virtual bool IsVerticalScrollView() { return false; };
   EventTarget* HitTest(float point[2]) override;
+  EventTarget* HitTestWithoutOverlayContent(float point[2]);
   bool ShouldHitTest() override;
   bool ContainsPoint(float point[2]) override;
   bool IsOnResponseChain() override { return is_on_response_chain_; };
@@ -382,6 +384,7 @@ class LYNX_EXPORT UIBase : public std::enable_shared_from_this<UIBase>,
   }
 
  private:
+  EventTarget* HitTestInternal(float point[2], bool skip_overlay_content);
   void SetIdSelector(const lepus::Value& value);
   void SetReactRef(const lepus::Value& value);
   void SetBackgroundColor(const lepus::Value& value);
@@ -433,6 +436,8 @@ class LYNX_EXPORT UIBase : public std::enable_shared_from_this<UIBase>,
   void SetFilter(const lepus::Value& value);
   void ApplyOverflowClip();
   void InitDrawNode();
+  bool ShouldDrawOverlayShadowWithDrawNode() const;
+  std::array<float, 4> GetOverlayShadowOutset() const;
   void UpdateDrawNodeFrame();
   void DestroyDrawNode();
   UIBase* GetRelativeUI(const std::string& relativeId);

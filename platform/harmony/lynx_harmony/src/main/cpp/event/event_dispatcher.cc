@@ -136,6 +136,63 @@ std::optional<std::string> ExtractInlineCSSText(const std::string& response) {
   return css_text;
 }
 
+ArkUI_NodeHandle GetEventCoordinateRootNode(UIBase* root) {
+  if (!root) {
+    return nullptr;
+  }
+  if (root->IsOverlayContent()) {
+    return root->RootNode();
+  }
+  if (root->IsRoot()) {
+    return static_cast<UIRoot*>(root)->GetProxyNode();
+  }
+  return nullptr;
+}
+
+bool GetWindowPointInRoot(float page_point[2], const ArkUI_UIInputEvent* event,
+                          size_t index, float point_scale, UIBase* root) {
+  auto root_node = GetEventCoordinateRootNode(root);
+  if (!root_node) {
+    return false;
+  }
+
+  ArkUI_IntOffset root_offset;
+  OH_ArkUI_NodeUtils_GetPositionWithTranslateInScreen(root_node, &root_offset);
+  float scaled_density = root->GetContext()->ScaledDensity();
+  float window_x =
+      OH_ArkUI_PointerEvent_GetWindowXByIndex(event, index) / point_scale;
+  float window_y =
+      OH_ArkUI_PointerEvent_GetWindowYByIndex(event, index) / point_scale;
+  page_point[0] = window_x - root_offset.x / scaled_density;
+  page_point[1] = window_y - root_offset.y / scaled_density;
+  return true;
+}
+
+const char* TouchActionToString(int32_t action) {
+  switch (action) {
+    case UI_TOUCH_EVENT_ACTION_DOWN:
+      return "DOWN";
+    case UI_TOUCH_EVENT_ACTION_MOVE:
+      return "MOVE";
+    case UI_TOUCH_EVENT_ACTION_UP:
+      return "UP";
+    case UI_TOUCH_EVENT_ACTION_CANCEL:
+      return "CANCEL";
+    default:
+      return "UNKNOWN";
+  }
+}
+
+UIBase* GetTargetUI(EventTarget* target) {
+  if (!target) {
+    return nullptr;
+  }
+  if (target->HasUI()) {
+    return static_cast<UIBase*>(target);
+  }
+  return static_cast<UIBase*>(target->FirstUITarget());
+}
+
 }  // namespace
 
 struct EventDispatcher::WeakFlag {
@@ -208,11 +265,14 @@ GestureInterrupter EventDispatcher::event_gesture_interrupter_callback_ =
   if (!event_dispatcher) {
     return GESTURE_INTERRUPT_RESULT_REJECT;
   }
+  auto gesture = OH_ArkUI_GestureInterruptInfo_GetRecognizer(info);
+  if (event_dispatcher->IsOverlayGesture(gesture)) {
+    return event_dispatcher->GetOverlayGestureInterruptResult(gesture);
+  }
   if (event_dispatcher->EventThrough()) {
     return GESTURE_INTERRUPT_RESULT_REJECT;
   }
 
-  auto gesture = OH_ArkUI_GestureInterruptInfo_GetRecognizer(info);
   if (gesture == event_dispatcher->long_press_gesture_ ||
       gesture == event_dispatcher->tap_gesture_) {
     return GESTURE_INTERRUPT_RESULT_CONTINUE;
@@ -334,6 +394,7 @@ EventDispatcher::~EventDispatcher() {
   if (tap_gesture_) {
     NodeManager::Instance().DisposeGesture(tap_gesture_);
   }
+  DisposeOverlayGestures();
   NodeManager::Instance().DisposeGesture(block_outer_pan_gesture_);
   NodeManager::Instance().DisposeGesture(consume_horizontal_pan_gesture_);
   NodeManager::Instance().DisposeGesture(consume_vertical_pan_gesture_);
@@ -347,11 +408,222 @@ EventDispatcher::~EventDispatcher() {
   NodeManager::Instance().DisposeGesture(velocity_tracker_pan_gesture_);
 }
 
+void EventDispatcher::EnsureOverlayGestures() {
+  auto& gestures = overlay_gestures_;
+  auto ensure_pan = [](ArkUI_GestureRecognizer*& gesture,
+                       ArkUI_GestureDirectionMask direction, double distance) {
+    if (!gesture) {
+      gesture =
+          NodeManager::Instance().CreatePanGesture(1, direction, distance);
+    }
+  };
+  if (!gestures.long_press) {
+    gestures.long_press = NodeManager::Instance().CreateLongPressGesture(
+        1, false, long_press_duration_);
+    if (gestures.long_press) {
+      NodeManager::Instance().SetGestureEventTarget(
+          gestures.long_press, GESTURE_EVENT_ACTION_ACCEPT, this,
+          EventDispatcher::long_press_receiver_callback_);
+    }
+  }
+  if (!gestures.tap) {
+    gestures.tap =
+        NodeManager::Instance().createTapGestureWithDistanceThreshold(
+            1, 1, tap_slop_);
+    if (gestures.tap) {
+      NodeManager::Instance().SetGestureEventTarget(
+          gestures.tap, GESTURE_EVENT_ACTION_ACCEPT, this,
+          EventDispatcher::tap_receiver_callback_);
+    }
+  }
+  ensure_pan(gestures.block_outer_pan, GESTURE_DIRECTION_ALL, 5);
+  ensure_pan(gestures.consume_horizontal_pan, GESTURE_DIRECTION_HORIZONTAL, 5);
+  ensure_pan(gestures.native_pan, GESTURE_DIRECTION_ALL, 5);
+  ensure_pan(gestures.consume_vertical_pan, GESTURE_DIRECTION_VERTICAL, 5);
+  ensure_pan(gestures.consume_up_pan, GESTURE_DIRECTION_UP, 5);
+  ensure_pan(gestures.consume_right_pan, GESTURE_DIRECTION_RIGHT, 5);
+  ensure_pan(gestures.consume_down_pan, GESTURE_DIRECTION_DOWN, 5);
+  ensure_pan(gestures.consume_left_pan, GESTURE_DIRECTION_LEFT, 5);
+  ensure_pan(gestures.consume_all_pan, GESTURE_DIRECTION_ALL, 5);
+  if (!gestures.velocity_tracker_pan) {
+    ensure_pan(gestures.velocity_tracker_pan, GESTURE_DIRECTION_ALL, 0);
+    if (gestures.velocity_tracker_pan) {
+      NodeManager::Instance().SetGestureEventTarget(
+          gestures.velocity_tracker_pan, GESTURE_EVENT_ACTION_UPDATE, this,
+          EventDispatcher::velocity_tracker_pan_receiver_callback_);
+    }
+  }
+}
+
+void EventDispatcher::AddOverlayGesturesToRoot(UIBase* root) {
+  EnsureOverlayGestures();
+  auto* root_node = root->RootNode();
+  auto add_gesture = [root_node](ArkUI_GestureRecognizer* gesture,
+                                 ArkUI_GesturePriority priority) {
+    if (gesture) {
+      NodeManager::Instance().AddGestureToNode(root_node, gesture, priority,
+                                               NORMAL_GESTURE_MASK);
+    }
+  };
+  const std::pair<ArkUI_GestureRecognizer*, ArkUI_GesturePriority> gestures[] =
+      {
+          {overlay_gestures_.long_press, PARALLEL},
+          {overlay_gestures_.tap, PARALLEL},
+          {overlay_gestures_.block_outer_pan, PARALLEL},
+          {overlay_gestures_.consume_horizontal_pan, PRIORITY},
+          {overlay_gestures_.consume_vertical_pan, PRIORITY},
+          {overlay_gestures_.consume_up_pan, PRIORITY},
+          {overlay_gestures_.consume_right_pan, PRIORITY},
+          {overlay_gestures_.consume_down_pan, PRIORITY},
+          {overlay_gestures_.consume_left_pan, PRIORITY},
+          {overlay_gestures_.consume_all_pan, PRIORITY},
+          {overlay_gestures_.native_pan, PRIORITY},
+          {overlay_gestures_.velocity_tracker_pan, PARALLEL},
+      };
+  for (const auto& item : gestures) {
+    add_gesture(item.first, item.second);
+  }
+}
+
+void EventDispatcher::RemoveOverlayGesturesFromRoot(
+    ArkUI_NodeHandle root_node) {
+  ArkUI_GestureRecognizer* gestures[] = {
+      overlay_gestures_.long_press,
+      overlay_gestures_.tap,
+      overlay_gestures_.block_outer_pan,
+      overlay_gestures_.consume_horizontal_pan,
+      overlay_gestures_.consume_vertical_pan,
+      overlay_gestures_.consume_up_pan,
+      overlay_gestures_.consume_right_pan,
+      overlay_gestures_.consume_down_pan,
+      overlay_gestures_.consume_left_pan,
+      overlay_gestures_.consume_all_pan,
+      overlay_gestures_.native_pan,
+      overlay_gestures_.velocity_tracker_pan,
+  };
+  for (auto* gesture : gestures) {
+    if (gesture) {
+      NodeManager::Instance().RemoveGestureFromNode(root_node, gesture);
+    }
+  }
+}
+
+void EventDispatcher::DisposeOverlayGestures() {
+  ArkUI_GestureRecognizer** gestures[] = {
+      &overlay_gestures_.long_press,
+      &overlay_gestures_.tap,
+      &overlay_gestures_.block_outer_pan,
+      &overlay_gestures_.consume_horizontal_pan,
+      &overlay_gestures_.consume_vertical_pan,
+      &overlay_gestures_.consume_up_pan,
+      &overlay_gestures_.consume_right_pan,
+      &overlay_gestures_.consume_down_pan,
+      &overlay_gestures_.consume_left_pan,
+      &overlay_gestures_.consume_all_pan,
+      &overlay_gestures_.native_pan,
+      &overlay_gestures_.velocity_tracker_pan,
+  };
+  for (auto** gesture : gestures) {
+    if (*gesture) {
+      NodeManager::Instance().DisposeGesture(*gesture);
+      *gesture = nullptr;
+    }
+  }
+}
+
+bool EventDispatcher::IsOverlayGesture(ArkUI_GestureRecognizer* gesture) const {
+  if (!gesture) {
+    return false;
+  }
+  ArkUI_GestureRecognizer* gestures[] = {
+      overlay_gestures_.long_press,
+      overlay_gestures_.tap,
+      overlay_gestures_.block_outer_pan,
+      overlay_gestures_.consume_horizontal_pan,
+      overlay_gestures_.consume_vertical_pan,
+      overlay_gestures_.consume_up_pan,
+      overlay_gestures_.consume_right_pan,
+      overlay_gestures_.consume_down_pan,
+      overlay_gestures_.consume_left_pan,
+      overlay_gestures_.consume_all_pan,
+      overlay_gestures_.velocity_tracker_pan,
+      overlay_gestures_.native_pan,
+  };
+  for (auto* overlay_gesture : gestures) {
+    if (gesture == overlay_gesture) {
+      return true;
+    }
+  }
+  return false;
+}
+
+ArkUI_GestureInterruptResult EventDispatcher::GetOverlayGestureInterruptResult(
+    ArkUI_GestureRecognizer* gesture) {
+  if (!overlay_touch_consumed_) {
+    return GESTURE_INTERRUPT_RESULT_REJECT;
+  }
+  if (gesture == overlay_gestures_.long_press ||
+      gesture == overlay_gestures_.tap) {
+    return GESTURE_INTERRUPT_RESULT_CONTINUE;
+  }
+  if (gesture == overlay_gestures_.block_outer_pan &&
+      ShouldBlockNativeEvent()) {
+    return GESTURE_INTERRUPT_RESULT_CONTINUE;
+  }
+  if (gesture == overlay_gestures_.velocity_tracker_pan &&
+      ui_owner_->GetGestureArenaManager() != nullptr && ContainGestureNode()) {
+    return GESTURE_INTERRUPT_RESULT_CONTINUE;
+  }
+  if (gesture == overlay_gestures_.native_pan) {
+    return ShouldInterceptGesture() ? GESTURE_INTERRUPT_RESULT_CONTINUE
+                                    : GESTURE_INTERRUPT_RESULT_REJECT;
+  }
+  switch (ShouldConsumeSlideEvent()) {
+    case ConsumeSlideDirection::kHorizontal:
+      return gesture == overlay_gestures_.consume_horizontal_pan
+                 ? GESTURE_INTERRUPT_RESULT_CONTINUE
+                 : GESTURE_INTERRUPT_RESULT_REJECT;
+    case ConsumeSlideDirection::kVertical:
+      return gesture == overlay_gestures_.consume_vertical_pan
+                 ? GESTURE_INTERRUPT_RESULT_CONTINUE
+                 : GESTURE_INTERRUPT_RESULT_REJECT;
+    case ConsumeSlideDirection::kUp:
+      return gesture == overlay_gestures_.consume_up_pan
+                 ? GESTURE_INTERRUPT_RESULT_CONTINUE
+                 : GESTURE_INTERRUPT_RESULT_REJECT;
+    case ConsumeSlideDirection::kRight:
+      return gesture == overlay_gestures_.consume_right_pan
+                 ? GESTURE_INTERRUPT_RESULT_CONTINUE
+                 : GESTURE_INTERRUPT_RESULT_REJECT;
+    case ConsumeSlideDirection::kDown:
+      return gesture == overlay_gestures_.consume_down_pan
+                 ? GESTURE_INTERRUPT_RESULT_CONTINUE
+                 : GESTURE_INTERRUPT_RESULT_REJECT;
+    case ConsumeSlideDirection::kLeft:
+      return gesture == overlay_gestures_.consume_left_pan
+                 ? GESTURE_INTERRUPT_RESULT_CONTINUE
+                 : GESTURE_INTERRUPT_RESULT_REJECT;
+    case ConsumeSlideDirection::kAll:
+      return gesture == overlay_gestures_.consume_all_pan
+                 ? GESTURE_INTERRUPT_RESULT_CONTINUE
+                 : GESTURE_INTERRUPT_RESULT_REJECT;
+    default:
+      return GESTURE_INTERRUPT_RESULT_REJECT;
+  }
+}
+
 void EventDispatcher::AttachGesturesToRoot(UIBase* root) {
   if (ui_owner_->Destroyed() || !root->RootNode()) {
     return;
   }
   root_target_ = root->weak_from_this();
+  if (root->IsOverlayContent()) {
+    AddOverlayGesturesToRoot(root);
+    NodeManager::Instance().SetGestureInterrupterToNode(
+        root->RootNode(), EventDispatcher::event_gesture_interrupter_callback_,
+        this);
+    return;
+  }
   if (long_press_gesture_) {
     NodeManager::Instance().AddGestureToNode(
         root->RootNode(), long_press_gesture_, PARALLEL, NORMAL_GESTURE_MASK);
@@ -405,7 +677,9 @@ void EventDispatcher::DetachGesturesFromRoot(UIBase* root) {
     NodeManager::Instance().RemoveGestureFromNode(root_node,
                                                   long_press_gesture_);
   }
-  if (tap_gesture_) {
+  if (root->IsOverlayContent()) {
+    RemoveOverlayGesturesFromRoot(root_node);
+  } else if (tap_gesture_) {
     NodeManager::Instance().RemoveGestureFromNode(root_node, tap_gesture_);
   }
   NodeManager::Instance().RemoveGestureFromNode(root_node,
@@ -439,13 +713,29 @@ void EventDispatcher::InitTouchEnv(const ArkUI_UIInputEvent* event) {
     if (!IsActiveFinger(event, i)) {
       continue;
     }
-    float page_point[2] = {OH_ArkUI_PointerEvent_GetXByIndex(event, i),
-                           OH_ArkUI_PointerEvent_GetYByIndex(event, i)};
-    GetPagePoint(page_point, page_point);
-    EventTarget* best_hittest_target = FindTarget(page_point);
+    float page_point[2] = {0.f};
+    GetEventPagePoint(page_point, event, i);
+    EventTarget* best_hittest_target =
+        FindTarget(page_point, overlay_touch_through_);
     if (best_hittest_target == nullptr) {
+      LOGI("HarmonyOverlayTouchDebug InitTouchEnv hit_target_null pointer_id: "
+           << OH_ArkUI_PointerEvent_GetPointerId(event, i)
+           << ", page_x: " << page_point[0] << ", page_y: " << page_point[1]
+           << ", from_overlay: " << from_overlay_);
       continue;
     }
+    UIBase* hit_ui = GetTargetUI(best_hittest_target);
+    LOGI("HarmonyOverlayTouchDebug InitTouchEnv hit pointer_id: "
+         << OH_ArkUI_PointerEvent_GetPointerId(event, i)
+         << ", active_sign: " << best_hittest_target->Sign()
+         << ", target_ui_sign: " << (hit_ui ? hit_ui->Sign() : -1)
+         << ", target_ui_tag: " << (hit_ui ? hit_ui->Tag() : "null")
+         << ", page_x: " << page_point[0] << ", page_y: " << page_point[1]
+         << ", target_left: " << (hit_ui ? hit_ui->left_ : 0.f)
+         << ", target_top: " << (hit_ui ? hit_ui->top_ : 0.f)
+         << ", target_width: " << (hit_ui ? hit_ui->width_ : 0.f)
+         << ", target_height: " << (hit_ui ? hit_ui->height_ : 0.f)
+         << ", from_overlay: " << from_overlay_);
     LOGI("EventDispatcher InitTouchEnv hit target: "
          << best_hittest_target->Sign())
     ShowMessageOnConsole("EventDispatcher: hit the target with sign = " +
@@ -465,6 +755,14 @@ void EventDispatcher::InitTouchEnv(const ArkUI_UIInputEvent* event) {
               : static_cast<UIBase*>(best_hittest_target->FirstUITarget());
       LynxUIHelper::ConvertPointFromAncestorToDescendant(
           first_finger_down_point_, root, target_ui, page_point);
+      LOGI("HarmonyOverlayTouchDebug InitTouchEnv primary first_active_sign: "
+           << best_hittest_target->Sign()
+           << ", root_sign: " << (root ? root->Sign() : -1)
+           << ", target_ui_sign: " << (target_ui ? target_ui->Sign() : -1)
+           << ", first_down_target_x: " << first_finger_down_point_[0]
+           << ", first_down_target_y: " << first_finger_down_point_[1]
+           << ", page_x: " << page_point[0] << ", page_y: " << page_point[1]
+           << ", from_overlay: " << from_overlay_);
     }
     active_target_finger_map_.insert_or_assign(
         OH_ArkUI_PointerEvent_GetPointerId(event, i),
@@ -482,16 +780,31 @@ void EventDispatcher::ResetTouchEnv(const ArkUI_UIInputEvent* event) {
         OH_ArkUI_PointerEvent_GetPointerId(event, i));
   }
   has_touch_moved_ = false;
+  if (active_target_finger_map_.empty()) {
+    overlay_touch_through_ = false;
+  }
 }
 
 void EventDispatcher::InitClickEnv() {
   click_target_chain_.clear();
   if (first_active_target_.expired()) {
+    LOGI("HarmonyOverlayTouchDebug InitClickEnv skip reason: "
+         << "first_active_target_expired");
     return;
   }
   auto active_target = first_active_target_.lock().get();
+  LOGI("HarmonyOverlayTouchDebug InitClickEnv enter active_sign: "
+       << (active_target ? active_target->Sign() : -1)
+       << ", first_down_target_x: " << first_finger_down_point_[0]
+       << ", first_down_target_y: " << first_finger_down_point_[1]
+       << ", from_overlay: " << from_overlay_);
   while (active_target != nullptr &&
          active_target->ParentTarget() != active_target) {
+    UIBase* active_ui = GetTargetUI(active_target);
+    LOGI("HarmonyOverlayTouchDebug InitClickEnv chain candidate sign: "
+         << active_target->Sign()
+         << ", tag: " << (active_ui ? active_ui->Tag() : "null")
+         << ", events_count: " << active_target->EventSet().size());
     click_target_chain_.push_back(active_target->WeakTarget());
     active_target = active_target->ParentTarget();
   }
@@ -510,10 +823,21 @@ void EventDispatcher::InitClickEnv() {
       }
     }
     if (has_click_event) {
+      UIBase* click_ui = GetTargetUI(last_target.lock().get());
+      LOGI("HarmonyOverlayTouchDebug InitClickEnv first_click_target sign: "
+           << last_target.lock()->Sign()
+           << ", tag: " << (click_ui ? click_ui->Tag() : "null")
+           << ", chain_size: " << click_target_chain_.size());
       break;
     } else {
+      LOGI("HarmonyOverlayTouchDebug InitClickEnv pop no_click sign: "
+           << last_target.lock()->Sign());
       click_target_chain_.pop_front();
     }
+  }
+
+  if (click_target_chain_.empty()) {
+    LOGI("HarmonyOverlayTouchDebug InitClickEnv no click target");
   }
 
   for (const auto& target : click_target_chain_) {
@@ -557,9 +881,8 @@ void EventDispatcher::OnTouchMove(const ArkUI_UIInputEvent* event) {
   float pre_page_point[2] = {0.f};
   for (size_t i = 0; i < num; ++i) {
     int pointer_id = OH_ArkUI_PointerEvent_GetPointerId(event, i);
-    float page_point[2] = {OH_ArkUI_PointerEvent_GetXByIndex(event, i),
-                           OH_ArkUI_PointerEvent_GetYByIndex(event, i)};
-    GetPagePoint(page_point, page_point);
+    float page_point[2] = {0.f};
+    GetEventPagePoint(page_point, event, i);
     if (auto touch_target = active_target_finger_map_.find(pointer_id);
         touch_target != active_target_finger_map_.end()) {
       touch_target->second.GetPrePoint(pre_page_point);
@@ -587,7 +910,7 @@ void EventDispatcher::OnTouchMove(const ArkUI_UIInputEvent* event) {
         first_touch_target != active_target_finger_map_.end()) {
       first_touch_target->second.GetPrePoint(pre_page_point);
       if (!click_target_chain_.empty()) {
-        auto active_target = FindTarget(pre_page_point);
+        auto active_target = FindTarget(pre_page_point, overlay_touch_through_);
         auto click_target = click_target_chain_.front();
         first_touch_outside_ =
             first_touch_outside_ || IsTouchMoveOutside(active_target) ||
@@ -636,10 +959,19 @@ void EventDispatcher::OnTouchCancel(const ArkUI_UIInputEvent* event) {
 }
 
 EventTarget* EventDispatcher::FindTarget(float point[2]) {
+  return FindTarget(point, false);
+}
+
+EventTarget* EventDispatcher::FindTarget(float point[2],
+                                         bool skip_overlay_content) {
   if (root_target_.expired()) {
     return nullptr;
   }
-  return root_target_.lock()->HitTest(point);
+  auto root = root_target_.lock();
+  if (skip_overlay_content && root && !root->IsOverlayContent()) {
+    return root->HitTestWithoutOverlayContent(point);
+  }
+  return root->HitTest(point);
 }
 
 bool EventDispatcher::CanRespondTap(EventTarget* active_target) {
@@ -706,6 +1038,21 @@ void EventDispatcher::GetPagePoint(float page_point[2], float node_point[2]) {
   page_point[1] = node_point_y - page_offset.y / scaled_density;
 }
 
+void EventDispatcher::GetEventPagePoint(float page_point[2],
+                                        const ArkUI_UIInputEvent* event,
+                                        size_t index, float point_scale) {
+  if (!from_overlay_ && !root_target_.expired()) {
+    auto root_target = root_target_.lock();
+    if (GetWindowPointInRoot(page_point, event, index, point_scale,
+                             root_target.get())) {
+      return;
+    }
+  }
+  page_point[0] = OH_ArkUI_PointerEvent_GetXByIndex(event, index) / point_scale;
+  page_point[1] = OH_ArkUI_PointerEvent_GetYByIndex(event, index) / point_scale;
+  GetPagePoint(page_point, page_point);
+}
+
 void EventDispatcher::AddTargetTouchMap(lepus::Value& target_touch_map,
                                         const ArkUI_UIInputEvent* event) {
   auto dict = target_touch_map.Table();
@@ -723,9 +1070,8 @@ void EventDispatcher::AddTargetTouchMap(lepus::Value& target_touch_map,
       }
 
       std::string target_sign = std::to_string(active_target->Sign());
-      float page_point[2] = {OH_ArkUI_PointerEvent_GetXByIndex(event, i),
-                             OH_ArkUI_PointerEvent_GetYByIndex(event, i)};
-      GetPagePoint(page_point, page_point);
+      float page_point[2] = {0.f};
+      GetEventPagePoint(page_point, event, i);
       float target_point[2] = {page_point[0], page_point[1]};
       GetTargetPoint(active_target, target_point, page_point);
       float client_point[2] = {
@@ -774,9 +1120,11 @@ void EventDispatcher::SetTapSlop(const std::string& tap_slop) {
       tap_gesture_, GESTURE_EVENT_ACTION_ACCEPT, this,
       EventDispatcher::tap_receiver_callback_);
   if (!root_target_.expired()) {
-    NodeManager::Instance().AddGestureToNode(root_target_.lock()->RootNode(),
-                                             tap_gesture_, PARALLEL,
-                                             NORMAL_GESTURE_MASK);
+    auto root = root_target_.lock();
+    if (root && !root->IsOverlayContent()) {
+      NodeManager::Instance().AddGestureToNode(root->RootNode(), tap_gesture_,
+                                               PARALLEL, NORMAL_GESTURE_MASK);
+    }
   }
 }
 
@@ -794,9 +1142,11 @@ void EventDispatcher::SetLongPressDuration(int32_t long_press_duration) {
       long_press_gesture_, GESTURE_EVENT_ACTION_ACCEPT, this,
       EventDispatcher::long_press_receiver_callback_);
   if (!root_target_.expired()) {
-    NodeManager::Instance().AddGestureToNode(root_target_.lock()->RootNode(),
-                                             long_press_gesture_, PARALLEL,
-                                             NORMAL_GESTURE_MASK);
+    auto root = root_target_.lock();
+    if (root && !root->IsOverlayContent()) {
+      NodeManager::Instance().AddGestureToNode(
+          root->RootNode(), long_press_gesture_, PARALLEL, NORMAL_GESTURE_MASK);
+    }
   }
 }
 
@@ -951,11 +1301,22 @@ bool EventDispatcher::IsPrimaryInput(const ArkUI_UIInputEvent* event,
              UI_INPUT_EVENT_TOOL_TYPE_PEN;
 }
 
-void EventDispatcher::EventDispatcher::OnTouchEvent(
-    const ArkUI_UIInputEvent* event, UIBase* root, bool from_overlay) {
+void EventDispatcher::OnTouchEvent(const ArkUI_UIInputEvent* event,
+                                   UIBase* root, bool from_overlay) {
   if (ui_owner_->Destroyed()) {
     return;
   }
+  int32_t action = OH_ArkUI_UIInputEvent_GetAction(event);
+  LOGI("HarmonyOverlayTouchDebug OnTouchEvent action: "
+       << TouchActionToString(action) << ", raw_action: " << action
+       << ", from_overlay_arg: " << from_overlay << ", current_from_overlay: "
+       << from_overlay_ << ", root_sign: " << (root ? root->Sign() : -1)
+       << ", root_tag: " << (root ? root->Tag() : "null")
+       << ", pointer_x: " << OH_ArkUI_PointerEvent_GetX(event)
+       << ", pointer_y: " << OH_ArkUI_PointerEvent_GetY(event)
+       << ", window_x: " << OH_ArkUI_PointerEvent_GetWindowX(event)
+       << ", window_y: " << OH_ArkUI_PointerEvent_GetWindowY(event)
+       << ", overlay_touch_consumed: " << overlay_touch_consumed_);
   time_stamp_ = std::chrono::duration_cast<std::chrono::milliseconds>(
                     std::chrono::system_clock::now().time_since_epoch())
                     .count();
@@ -1040,6 +1401,8 @@ void EventDispatcher::EventDispatcher::OnTouchEvent(
 void EventDispatcher::DispatchSingleTouchEvent(
     const std::string& name, const ArkUI_UIInputEvent* event) {
   if (first_active_target_.expired()) {
+    LOGI("HarmonyOverlayTouchDebug DispatchSingleTouchEvent skip name: "
+         << name << ", reason: first_active_target_expired");
     return;
   }
 
@@ -1053,10 +1416,8 @@ void EventDispatcher::DispatchSingleTouchEvent(
       (name == TouchEvent::TAP || name == TouchEvent::LONGPRESS)
           ? ui_owner_->Context()->ScaledDensity()
           : 1;
-  float page_point[2] = {
-      OH_ArkUI_PointerEvent_GetXByIndex(event, 0) / scaled_density,
-      OH_ArkUI_PointerEvent_GetYByIndex(event, 0) / scaled_density};
-  GetPagePoint(page_point, page_point);
+  float page_point[2] = {0.f};
+  GetEventPagePoint(page_point, event, 0, scaled_density);
   float target_point[2] = {page_point[0], page_point[1]};
   GetTargetPoint(active_target, target_point, page_point);
   float client_point[2] = {
@@ -1066,6 +1427,19 @@ void EventDispatcher::DispatchSingleTouchEvent(
   touch_event.SetPagePoint(page_point);
   touch_event.SetClientPoint(client_point);
   touch_event.SetTimeStamp(OH_ArkUI_UIInputEvent_GetEventTime(event));
+  UIBase* active_ui = GetTargetUI(active_target);
+  LOGI("HarmonyOverlayTouchDebug DispatchSingleTouchEvent send name: "
+       << name << ", active_sign: " << active_target->Sign()
+       << ", active_tag: " << (active_ui ? active_ui->Tag() : "null")
+       << ", page_x: " << page_point[0] << ", page_y: " << page_point[1]
+       << ", target_x: " << target_point[0] << ", target_y: " << target_point[1]
+       << ", client_x: " << client_point[0] << ", client_y: " << client_point[1]
+       << ", raw_x: " << OH_ArkUI_PointerEvent_GetX(event)
+       << ", raw_y: " << OH_ArkUI_PointerEvent_GetY(event)
+       << ", window_x: " << OH_ArkUI_PointerEvent_GetWindowXByIndex(event, 0)
+       << ", window_y: " << OH_ArkUI_PointerEvent_GetWindowYByIndex(event, 0)
+       << ", from_overlay: " << from_overlay_
+       << ", overlay_touch_consumed: " << overlay_touch_consumed_);
   ui_owner_->SendEvent(touch_event);
   last_touch_event_ = std::make_shared<TouchEvent>(touch_event);
 }
@@ -1100,8 +1474,17 @@ void EventDispatcher::OnTapEvent(const ArkUI_UIInputEvent* event) {
     LOGI("EventDispatcher OnTapEvent tap failed: "
          << first_active_target_.expired() << ", " << first_touch_moved_ << ", "
          << can_respond_tap)
+    LOGI("HarmonyOverlayTouchDebug OnTapEvent failed target_expired: "
+         << first_active_target_.expired() << ", first_touch_moved: "
+         << first_touch_moved_ << ", can_respond_tap: " << can_respond_tap
+         << ", from_overlay: " << from_overlay_
+         << ", overlay_touch_consumed: " << overlay_touch_consumed_);
     return;
   }
+  LOGI("HarmonyOverlayTouchDebug OnTapEvent fire target_sign: "
+       << first_active_target_.lock()->Sign()
+       << ", from_overlay: " << from_overlay_
+       << ", overlay_touch_consumed: " << overlay_touch_consumed_);
   ShowMessageOnConsole("EventDispatcher: fire tap for target " +
                            std::to_string(first_active_target_.lock()->Sign()),
                        runtime::CONSOLE_LOG_INFO);
@@ -1110,6 +1493,9 @@ void EventDispatcher::OnTapEvent(const ArkUI_UIInputEvent* event) {
 
 void EventDispatcher::OnClickEvent(const ArkUI_UIInputEvent* event) {
   if (click_target_chain_.empty()) {
+    LOGI("HarmonyOverlayTouchDebug OnClickEvent skip reason: "
+         << "click_target_chain_empty, from_overlay: " << from_overlay_
+         << ", overlay_touch_consumed: " << overlay_touch_consumed_);
     return;
   }
   auto first_click_target = click_target_chain_.front();
@@ -1121,8 +1507,21 @@ void EventDispatcher::OnClickEvent(const ArkUI_UIInputEvent* event) {
     LOGI("EventDispatcher OnClickEvent click failed: "
          << first_click_target.expired() << ", " << first_touch_outside_ << ", "
          << can_respond_tap);
+    LOGI("HarmonyOverlayTouchDebug OnClickEvent failed target_expired: "
+         << first_click_target.expired() << ", first_touch_outside: "
+         << first_touch_outside_ << ", can_respond_tap: " << can_respond_tap
+         << ", from_overlay: " << from_overlay_
+         << ", overlay_touch_consumed: " << overlay_touch_consumed_);
     return;
   }
+  UIBase* click_ui = GetTargetUI(first_click_target.lock().get());
+  LOGI("HarmonyOverlayTouchDebug OnClickEvent fire click_sign: "
+       << first_click_target.lock()->Sign()
+       << ", click_tag: " << (click_ui ? click_ui->Tag() : "null")
+       << ", chain_size: " << click_target_chain_.size()
+       << ", first_touch_outside: " << first_touch_outside_
+       << ", from_overlay: " << from_overlay_
+       << ", overlay_touch_consumed: " << overlay_touch_consumed_);
   DispatchSingleTouchEvent(TouchEvent::CLICK, event);
 }
 
@@ -1196,18 +1595,39 @@ ConsumeSlideDirection EventDispatcher::ShouldConsumeSlideEvent() {
 
 void EventDispatcher::UpdateRootTarget(UIBase* root) {
   if (root) {
+    LOGI("HarmonyOverlayTouchDebug UpdateRootTarget root_sign: "
+         << root->Sign() << ", tag: " << root->Tag() << ", is_overlay_content: "
+         << root->IsOverlayContent() << ", root_node: " << root->RootNode()
+         << ", node: " << root->Node() << ", draw_node: " << root->DrawNode()
+         << ", left: " << root->left_ << ", top: " << root->top_
+         << ", width: " << root->width_ << ", height: " << root->height_);
     root_target_ = root->weak_from_this();
+  } else {
+    LOGI("HarmonyOverlayTouchDebug UpdateRootTarget root is null");
   }
 }
 
 bool EventDispatcher::CanConsumeTouchEvent(float point[2]) {
   if (root_target_.expired() || ui_owner_->Destroyed()) {
+    LOGI("HarmonyOverlayTouchDebug CanConsumeTouchEvent reject reason: "
+         << "root_expired_or_destroyed, input_x: " << point[0] << ", input_y: "
+         << point[1] << ", root_expired: " << root_target_.expired()
+         << ", destroyed: " << ui_owner_->Destroyed());
     return false;
   }
 
   auto root = root_target_.lock();
   if (!root || !root->RootNode()) {
+    LOGI("HarmonyOverlayTouchDebug CanConsumeTouchEvent reject reason: "
+         << "root_or_root_node_missing, input_x: " << point[0] << ", input_y: "
+         << point[1] << ", has_root: " << static_cast<bool>(root)
+         << ", root_node: " << (root ? root->RootNode() : nullptr));
     return false;
+  }
+  bool is_overlay_root = root->IsOverlayContent();
+  if (is_overlay_root) {
+    overlay_touch_consumed_ = false;
+    overlay_touch_through_ = false;
   }
   ArkUI_IntOffset page_offset;
   OH_ArkUI_NodeUtils_GetPositionWithTranslateInScreen(root->RootNode(),
@@ -1216,19 +1636,39 @@ bool EventDispatcher::CanConsumeTouchEvent(float point[2]) {
   float scaled_density = ui_owner_->Context()->ScaledDensity();
   float page_x = page_offset.x / scaled_density;
   float page_y = page_offset.y / scaled_density;
+  LOGI("HarmonyOverlayTouchDebug CanConsumeTouchEvent enter root_sign: "
+       << root->Sign() << ", root_tag: " << root->Tag() << ", is_overlay_root: "
+       << is_overlay_root << ", input_display_x: " << node_point_x
+       << ", input_display_y: " << node_point_y << ", root_screen_offset_x_px: "
+       << page_offset.x << ", root_screen_offset_y_px: " << page_offset.y
+       << ", root_screen_x_vp: " << page_x << ", root_screen_y_vp: " << page_y
+       << ", root_left: " << root->left_ << ", root_top: " << root->top_
+       << ", root_width: " << root->width_ << ", root_height: " << root->height_
+       << ", density: " << scaled_density);
 
   if (base::FloatsLarger(page_x, node_point_x) ||
       base::FloatsLarger(page_y, node_point_y) ||
       base::FloatsLarger(node_point_x, page_x + root->width_) ||
       base::FloatsLarger(node_point_y, page_y + root->height_)) {
+    LOGI("HarmonyOverlayTouchDebug CanConsumeTouchEvent reject reason: "
+         << "outside_root, input_display_x: " << node_point_x
+         << ", input_display_y: " << node_point_y
+         << ", root_screen_x_vp: " << page_x << ", root_screen_y_vp: " << page_y
+         << ", root_right_vp: " << page_x + root->width_
+         << ", root_bottom_vp: " << page_y + root->height_);
     return false;
   }
 
   point[0] = node_point_x - page_x;
   point[1] = node_point_y - page_y;
+  LOGI("HarmonyOverlayTouchDebug CanConsumeTouchEvent root_point root_sign: "
+       << root->Sign() << ", root_x: " << point[0] << ", root_y: " << point[1]);
 
   EventTarget* active_target = FindTarget(point);
   if (active_target == nullptr) {
+    LOGI("HarmonyOverlayTouchDebug CanConsumeTouchEvent reject reason: "
+         << "hit_target_null, root_x: " << point[0]
+         << ", root_y: " << point[1]);
     return false;
   }
   float target_point[2] = {point[0], point[1]};
@@ -1238,7 +1678,25 @@ bool EventDispatcher::CanConsumeTouchEvent(float point[2]) {
           : static_cast<UIBase*>(active_target->FirstUITarget());
   LynxUIHelper::ConvertPointFromAncestorToDescendant(target_point, root.get(),
                                                      target_ui, point);
-  return !active_target->EventThrough(target_point);
+  bool event_through = active_target->EventThrough(target_point);
+  bool can_consume = !event_through;
+  if (is_overlay_root) {
+    overlay_touch_consumed_ = can_consume;
+    overlay_touch_through_ = !can_consume;
+  }
+  LOGI("HarmonyOverlayTouchDebug CanConsumeTouchEvent result root_sign: "
+       << root->Sign() << ", active_sign: " << active_target->Sign()
+       << ", target_ui_sign: " << (target_ui ? target_ui->Sign() : -1)
+       << ", target_ui_tag: " << (target_ui ? target_ui->Tag() : "null")
+       << ", target_left: " << (target_ui ? target_ui->left_ : 0.f)
+       << ", target_top: " << (target_ui ? target_ui->top_ : 0.f)
+       << ", target_width: " << (target_ui ? target_ui->width_ : 0.f)
+       << ", target_height: " << (target_ui ? target_ui->height_ : 0.f)
+       << ", target_x: " << target_point[0] << ", target_y: " << target_point[1]
+       << ", event_through: " << event_through
+       << ", can_consume: " << can_consume
+       << ", overlay_touch_consumed: " << overlay_touch_consumed_);
+  return can_consume;
 }
 
 void EventDispatcher::UpdateNativeInteractionEnabledForTree(UIBase* root) {
