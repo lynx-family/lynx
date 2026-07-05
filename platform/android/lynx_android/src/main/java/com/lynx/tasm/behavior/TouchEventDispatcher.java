@@ -133,6 +133,7 @@ public class TouchEventDispatcher {
   private boolean mDispatchInCurrentLynxPageOnly;
   private boolean mIsPlatformGestureActive = false;
   private boolean mPanGestureRecognized = false;
+  private IPaintingContext mPlatformEventPaintingContext;
 
   private static final String TAG = "LynxTouchEventDispatcher";
 
@@ -232,6 +233,10 @@ public class TouchEventDispatcher {
 
   public void setEnableMultiTouch(boolean value) {
     mEnableMultiTouch = value;
+  }
+
+  void setPlatformEventPaintingContext(IPaintingContext paintingContext) {
+    mPlatformEventPaintingContext = paintingContext;
   }
 
   private boolean requestNativeDisallowIntercept(boolean flag) {
@@ -574,6 +579,12 @@ public class TouchEventDispatcher {
   }
 
   public void fireLongpress(MotionEvent e) {
+    IPaintingContext paintingContext = getPlatformEventPaintingContext();
+    if (paintingContext != null) {
+      paintingContext.dispatchPlatformLongPress();
+      return;
+    }
+
     int slideTargetSign = canRespondTapOrClick(mActiveUI);
     int propsTargetSign = canRespondTapOrClickWhenUISlideWithProps(mActiveUI);
     if ((!mEnableMultiTouch || !mHasMultiTouch) && mActiveUI != null && slideTargetSign == -1
@@ -894,11 +905,7 @@ public class TouchEventDispatcher {
     if (mGestureArenaManager != null) {
       mGestureArenaManager.setActiveUIToArenaAtDownEvent(mActiveUI);
     }
-    int longPressDuration = ViewConfiguration.getLongPressTimeout();
-    if (mUIOwner.getContext().getLongPressDuration() >= 0) {
-      longPressDuration = mUIOwner.getContext().getLongPressDuration();
-    }
-    mDetector.setLongPressTimeout(longPressDuration);
+    updateLongPressTimeout();
 
     if (mEnableMultiTouch) {
       JavaOnlyMap map = new JavaOnlyMap();
@@ -1129,7 +1136,7 @@ public class TouchEventDispatcher {
     if (context == null || !context.isFragmentLayerRenderOn()) {
       return null;
     }
-    return mUIOwner.getPaintingContext();
+    return mPlatformEventPaintingContext;
   }
 
   private int getPlatformEventRootSign(UIGroup rootUi) {
@@ -1139,10 +1146,36 @@ public class TouchEventDispatcher {
     return mUIOwner != null ? mUIOwner.getRootSign() : -1;
   }
 
+  private void updateLongPressTimeout() {
+    int longPressDuration = ViewConfiguration.getLongPressTimeout();
+    if (mUIOwner.getContext().getLongPressDuration() >= 0) {
+      longPressDuration = mUIOwner.getContext().getLongPressDuration();
+    }
+    mDetector.setLongPressTimeout(longPressDuration);
+  }
+
+  private boolean handlePlatformMotionEvent(
+      MotionEvent ev, UIGroup rootUi, IPaintingContext paintingContext) {
+    boolean consumed =
+        paintingContext.dispatchPlatformMotionEvent(ev, getPlatformEventRootSign(rootUi));
+    if (!consumed) {
+      return false;
+    }
+
+    if (ev.getActionMasked() == MotionEvent.ACTION_DOWN) {
+      updateLongPressTimeout();
+    } else if (ev.getActionMasked() == MotionEvent.ACTION_UP) {
+      paintingContext.dispatchPlatformTap();
+    }
+
+    mDetector.onTouchEvent(ev);
+    return true;
+  }
+
   public boolean onTouchEvent(MotionEvent ev, UIGroup rootUi) {
     IPaintingContext paintingContext = getPlatformEventPaintingContext();
     if (paintingContext != null) {
-      return paintingContext.dispatchPlatformMotionEvent(ev, getPlatformEventRootSign(rootUi));
+      return handlePlatformMotionEvent(ev, rootUi, paintingContext);
     }
 
     mTimestamp = System.currentTimeMillis();

@@ -22,5 +22,9 @@ public interface IPaintingContext {
 
   boolean dispatchPlatformMotionEvent(MotionEvent ev, int rootSign);
 
+  void dispatchPlatformLongPress();
+
+  void dispatchPlatformTap();
+
   int getPlatformEventHandlerState();
 }

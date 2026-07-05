@@ -183,6 +183,14 @@ bool NativePaintingCtxPlatformRef::DispatchPlatformInputEvent(
   return DispatchPlatformInputEvent(int_event_data, float_event_data, kRootId);
 }
 
+void NativePaintingCtxPlatformRef::DispatchPlatformLongPress() {
+  event_handler_->OnLongPress();
+}
+
+void NativePaintingCtxPlatformRef::DispatchPlatformTap() {
+  event_handler_->OnTap();
+}
+
 int NativePaintingCtxPlatformRef::GetPlatformEventHandlerState() {
   return event_handler_->EventHandlerState();
 }

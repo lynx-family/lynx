@@ -67,6 +67,10 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (void)DispatchPlatformInputEvent:(NSArray *)iEventData withData:(NSArray *)fEventData;
 
+- (void)DispatchPlatformLongPress;
+
+- (void)DispatchPlatformTap;
+
 - (int)GetPlatformEventHandlerState;
 
 @end

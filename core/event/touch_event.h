@@ -14,6 +14,7 @@
 #define EVENT_TOUCH_END "touchend"
 #define EVENT_TOUCH_CANCEL "touchcancel"
 #define EVENT_TAP "tap"
+#define EVENT_CLICK "click"
 #define EVENT_LONG_PRESS "longpress"
 
 namespace lynx {

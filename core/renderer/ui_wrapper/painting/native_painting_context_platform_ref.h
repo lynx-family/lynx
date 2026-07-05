@@ -69,6 +69,11 @@ class NativePaintingCtxPlatformRef
                                   int32_t event_target_root_id);
   bool DispatchPlatformInputEvent(int int_event_data[],
                                   float float_event_data[]);
+  // Dispatch a longpress recognized by the platform layer.
+  void DispatchPlatformLongPress();
+  // Dispatch a tap recognized by the platform layer. Tap also dispatches click
+  // when the active click target can respond.
+  void DispatchPlatformTap();
   // The current state of PlatformEventHandler is obtained to determine the
   // gesture handling at the platform layer.
   int GetPlatformEventHandlerState();
