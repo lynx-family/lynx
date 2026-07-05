@@ -163,6 +163,7 @@ class LynxTemplateRenderer : public devtool::LynxDevToolProxy {
 
   static napi_value Init(napi_env env, napi_value exports);
   static napi_value GetBaseTraceBackend(napi_env env, napi_callback_info info);
+  static napi_value GetLynxVersion(napi_env env, napi_callback_info info);
   static napi_value InitGlobalEnv(napi_env env, napi_callback_info info);
   static napi_value RegisterImageService(napi_env env, napi_callback_info info);
   static napi_value SetEmojiResourceFetcher(napi_env env,

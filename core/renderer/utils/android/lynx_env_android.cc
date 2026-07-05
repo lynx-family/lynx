@@ -37,6 +37,11 @@ jstring GetSSRApiVersion(JNIEnv* env, jobject jcaller) {
   return env->NewStringUTF(lynx::ssr::kSSRCurrentApiVersion);  // NOLINT
 }
 
+jstring GetLynxVersion(JNIEnv* env, jobject jcaller) {
+  const auto& version = lynx::tasm::Config::GetCurrentLynxVersion();
+  return env->NewStringUTF(version.c_str());  // NOLINT
+}
+
 void PrepareLynxGlobalPool(JNIEnv* env, jclass jcaller) {
   lynx::tasm::LynxGlobalPool::GetInstance().PreparePool();
 }

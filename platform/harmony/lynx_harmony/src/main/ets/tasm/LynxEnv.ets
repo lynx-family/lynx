@@ -6,7 +6,6 @@ import common from '@ohos.app.ability.common';
 import deviceInfo from '@ohos.deviceInfo';
 
 import lynx, { EmbedderPlatform } from 'liblynx.so';
-import BuildProfile from '../../../../BuildProfile';
 import { LLog } from '../base/LLog';
 import { TraceEventDef } from '../base/TraceEventDef';
 import { LynxBaseEnv, LynxBaseServiceCenter, LynxBaseServiceType } from '@lynx/lynx_base';
@@ -68,7 +67,7 @@ class LynxEnvironment {
     LynxEventReporter.initialize();
     LynxTrailHub.getInstance().init(context.getApplicationContext());
     LynxEnvironment.setCacheDirPath(context.cacheDir);
-    LLog.i(TAG, 'LynxEnv initialize with version ' + BuildProfile.HAR_VERSION);
+    LLog.i(TAG, 'LynxEnv initialize with version ' + LynxEnv.getLynxVersion());
     this.initialized = true;
   }
 
@@ -89,7 +88,7 @@ class LynxEnvironment {
         ['network', ''],
         ['deviceModel', ''],
         ['osVersion', 'HarmonyOS'],
-        ['sdkVersion', '1.4.0']
+        ['sdkVersion', LynxEnv.getLynxVersion()]
       ])
     );
   }
@@ -252,7 +251,7 @@ class LynxEnvironment {
   }
 
   public getLynxVersion(): string {
-    return BuildProfile.HAR_VERSION
+    return lynx.getLynxVersion();
   }
 
   private nativeOnMemoryPressure(pressure: number) {

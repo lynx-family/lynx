@@ -21,6 +21,7 @@
 #include "core/base/threading/task_runner_manufactor.h"
 #include "core/renderer/data/harmony/template_data_harmony.h"
 #include "core/renderer/dom/harmony/lynx_template_bundle_harmony.h"
+#include "core/renderer/tasm/config.h"
 #include "core/renderer/ui_wrapper/painting/harmony/ui_delegate_harmony.h"
 #include "core/renderer/utils/base/base_def.h"
 #include "core/runtime/js/bytecode/harmony/js_cache_manager_harmony.h"
@@ -670,6 +671,7 @@ napi_value LynxTemplateRenderer::Init(napi_env env, napi_value exports) {
                        PreloadCommonEmojiResources);
   NAPI_CREATE_FUNCTION(env, exports, "getBaseTraceBackend",
                        GetBaseTraceBackend);
+  NAPI_CREATE_FUNCTION(env, exports, "getLynxVersion", GetLynxVersion);
   NAPI_CREATE_FUNCTION(env, exports, "setTracingDirPath", SetTracingDirPath);
   NAPI_CREATE_FUNCTION(env, exports, "traceEventBegin", TraceEventBegin);
   NAPI_CREATE_FUNCTION(env, exports, "traceEventEnd", TraceEventEnd);
@@ -688,6 +690,14 @@ napi_value LynxTemplateRenderer::GetBaseTraceBackend(napi_env env,
   napi_value result;
   napi_create_int64(env, reinterpret_cast<int64_t>(lynx::base::BaseTraceEvent),
                     &result);
+  return result;
+}
+
+napi_value LynxTemplateRenderer::GetLynxVersion(napi_env env,
+                                                napi_callback_info info) {
+  const auto& version = tasm::Config::GetCurrentLynxVersion();
+  napi_value result;
+  napi_create_string_utf8(env, version.c_str(), version.length(), &result);
   return result;
 }
 

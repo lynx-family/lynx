@@ -1124,6 +1124,9 @@ public class LynxEnv {
   }
 
   public String getLynxVersion() {
+    if (mIsNativeLibraryLoaded) {
+      return nativeGetLynxVersion();
+    }
     return BuildConfig.LYNX_SDK_VERSION;
   }
 
@@ -1248,6 +1251,8 @@ public class LynxEnv {
   }
 
   protected native String nativeGetSSRApiVersion();
+
+  protected native String nativeGetLynxVersion();
 
   @RestrictTo(RestrictTo.Scope.LIBRARY_GROUP)
   public native void nativeSetLocalEnv(String key, String value);

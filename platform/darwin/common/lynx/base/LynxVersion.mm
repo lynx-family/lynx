@@ -4,13 +4,18 @@
 
 #import <Lynx/LynxVersion.h>
 
+#include "core/renderer/tasm/config.h"
+
 @implementation LynxVersion
 
 + (NSString*)versionString {
-// source build will define Lynx_POD_VERSION
 #ifndef Lynx_POD_VERSION
-#define Lynx_POD_VERSION @"9999_1.4.0"
+#define Lynx_POD_VERSION nil
 #endif
-  return [Lynx_POD_VERSION substringFromIndex:5];
+  NSString* podVersion = Lynx_POD_VERSION;
+  if (podVersion) {
+    return [podVersion substringFromIndex:5];
+  }
+  return [NSString stringWithUTF8String:lynx::tasm::Config::GetCurrentLynxVersion().c_str()];
 }
 @end

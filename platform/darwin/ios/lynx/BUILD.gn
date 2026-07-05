@@ -457,7 +457,7 @@ subspec_target("UnitTests") {
     "../../common/lynx/base/LynxConverter+UIUnitTest.m",
     "../../common/lynx/base/LynxPageReloadHelperUnitTest.m",
     "../../common/lynx/base/LynxResourceServiceFetcherUnitTest.m",
-    "../../common/lynx/base/LynxVersionUnitTest.m",
+    "../../common/lynx/base/LynxVersionUnitTest.mm",
     "../../common/lynx/devtool_wrapper/DevToolSettingsUnitTest.mm",
     "../../common/lynx/devtool_wrapper/LynxDevToolPoolUnitTest.mm",
     "../../common/lynx/devtool_wrapper/LynxMemoryListenerUnitTest.m",
