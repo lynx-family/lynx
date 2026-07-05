@@ -203,7 +203,7 @@ source_set("flutter_windows_source") {
   if (enable_skity) {
     deps += [
       "../common/desktop/codec",
-      "//clay/shell/platform/common/desktop/svg",
+      "../common/desktop/svg",
     ]
   }
 

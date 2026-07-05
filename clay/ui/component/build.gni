@@ -24,6 +24,8 @@ ui_component_sources = [
   "editable/ime_listener.h",
   "expose_manager/expose_observer.cc",
   "expose_manager/expose_observer.h",
+  "extend_views.cc",
+  "extend_views.h",
   "focus/focus_isolate.cc",
   "focus/focus_isolate.h",
   "focus_event_handler.h",
@@ -139,6 +141,13 @@ if (is_mac || is_win) {
     "cover_view.h",
     "title_bar_view.cc",
     "title_bar_view.h",
+  ]
+}
+
+if (enable_svg) {
+  ui_component_sources += [
+    "svg_image_view.cc",
+    "svg_image_view.h",
   ]
 }
 
