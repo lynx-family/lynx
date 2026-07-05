@@ -52,7 +52,8 @@ class PlatformEventHandler {
 
   bool OnInputEvent(fml::RefPtr<PlatformEventTarget> target_tree,
                     int int_event_data[], float float_event_data[]);
-  void OnGestureEvent(const std::string& name, PlatformPointerEvent& event);
+  void OnTap();
+  void OnLongPress();
   void DispatchPointerEvent(const std::string& name,
                             const lepus::Value& target_pointer_map);
 
@@ -85,6 +86,7 @@ class PlatformEventHandler {
   void HandlePointerUp(PlatformPointerEvent& event);
   void HandlePointerCancel(PlatformPointerEvent& event);
 
+  void DispatchGestureEvent(const std::string& name, float root_point[2]);
   fml::RefPtr<PlatformEventTarget> FindTarget(float pointer_x, float pointer_y);
   void UpdateFocusedTarget();
   bool CanRespondTap(fml::RefPtr<PlatformEventTarget> target);

@@ -182,6 +182,12 @@ public final class PaintingContext implements IPaintingContext {
   }
 
   @Override
+  public void dispatchPlatformLongPress() {}
+
+  @Override
+  public void dispatchPlatformTap() {}
+
+  @Override
   public int getPlatformEventHandlerState() {
     return 0;
   }

@@ -1388,6 +1388,30 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
   free(float_event_data);
 }
 
+- (void)DispatchPlatformLongPress {
+  if (shell_->IsDestroyed()) {
+    return;
+  }
+
+  auto* platform_ref =
+      static_cast<lynx::tasm::NativePaintingCtxPlatformDarwinRef*>(_paintingCtxPlatformRef.get());
+  if (platform_ref) {
+    platform_ref->DispatchPlatformLongPress();
+  }
+}
+
+- (void)DispatchPlatformTap {
+  if (shell_->IsDestroyed()) {
+    return;
+  }
+
+  auto* platform_ref =
+      static_cast<lynx::tasm::NativePaintingCtxPlatformDarwinRef*>(_paintingCtxPlatformRef.get());
+  if (platform_ref) {
+    platform_ref->DispatchPlatformTap();
+  }
+}
+
 - (int)GetPlatformEventHandlerState {
   return static_cast<lynx::tasm::NativePaintingCtxPlatformDarwinRef*>(_paintingCtxPlatformRef.get())
       ->GetPlatformEventHandlerState();

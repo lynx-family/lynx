@@ -3126,6 +3126,8 @@ public interface com::lynx::tasm::behavior::IPaintingContext {
   public int com.lynx.tasm.behavior.IPaintingContext.getTargetHeight(int sign);
   public void com.lynx.tasm.behavior.IPaintingContext.setLynxEngineActorForPlatformContextRef(long ptr);
   public boolean com.lynx.tasm.behavior.IPaintingContext.dispatchPlatformMotionEvent(MotionEvent ev, int rootSign);
+  public void com.lynx.tasm.behavior.IPaintingContext.dispatchPlatformLongPress();
+  public void com.lynx.tasm.behavior.IPaintingContext.dispatchPlatformTap();
   public int com.lynx.tasm.behavior.IPaintingContext.getPlatformEventHandlerState();
 }
 
@@ -8095,6 +8097,8 @@ public class com::lynx::tasm::behavior::render::NativePaintingContext : com.lynx
   public boolean com.lynx.tasm.behavior.render.NativePaintingContext.dispatchPlatformMotionEvent(MotionEvent ev, int rootSign);
   public void com.lynx.tasm.behavior.render.NativePaintingContext.setPlatformEventRootActive(int rootSign, boolean active);
   public void com.lynx.tasm.behavior.render.NativePaintingContext.setPlatformEventRootOffset(int rootSign, float offsetX, float offsetY);
+  public void com.lynx.tasm.behavior.render.NativePaintingContext.dispatchPlatformLongPress();
+  public void com.lynx.tasm.behavior.render.NativePaintingContext.dispatchPlatformTap();
   public int com.lynx.tasm.behavior.render.NativePaintingContext.getPlatformEventHandlerState();
   public List< MeaningfulPaintingArea > com.lynx.tasm.behavior.render.NativePaintingContext.getMeaningfulPaintingAreas();
 }
@@ -8463,6 +8467,8 @@ public class com::lynx::tasm::behavior::PaintingContext : com.lynx.tasm.behavior
   public int com.lynx.tasm.behavior.PaintingContext.getTargetHeight(int sign);
   public void com.lynx.tasm.behavior.PaintingContext.setLynxEngineActorForPlatformContextRef(long ptr);
   public boolean com.lynx.tasm.behavior.PaintingContext.dispatchPlatformMotionEvent(MotionEvent ev, int rootSign);
+  public void com.lynx.tasm.behavior.PaintingContext.dispatchPlatformLongPress();
+  public void com.lynx.tasm.behavior.PaintingContext.dispatchPlatformTap();
   public int com.lynx.tasm.behavior.PaintingContext.getPlatformEventHandlerState();
   public void com.lynx.tasm.behavior.PaintingContext.rebuildViewTree();
   public void com.lynx.tasm.behavior.PaintingContext.updateLayout(int sign, float x, float y, float width, float height, float paddingLeft, float paddingTop, float paddingRight, float paddingBottom, float marginLeft, float marginTop, float marginRight, float marginBottom, float borderLeftWidth, float borderTopWidth, float borderRightWidth, float borderBottomWidth, float[] bounds, float[] sticky, float maxHeight, int nodeIndex);

@@ -3829,6 +3829,8 @@ public class LynxTemplateRender : NSObject, <LynxTemplateRenderProtocol>, <Templ
   public LynxViewBuilderBlock LynxTemplateRender()::getLynxViewBuilderBlock();
   public void LynxTemplateRender()::detachLynxEngine();
   public void LynxTemplateRender()::DispatchPlatformInputEvent:withData:(NSArray *iEventData, [withData] NSArray *fEventData);
+  public void LynxTemplateRender()::DispatchPlatformLongPress();
+  public void LynxTemplateRender()::DispatchPlatformTap();
   public int LynxTemplateRender()::GetPlatformEventHandlerState();
   public lynx::runtime::js::ModuleFactoryDarwin * LynxTemplateRender()::getModuleFactory();
   public LynxLifecycleDispatcher * LynxTemplateRender()::getLifecycleDispatcher();

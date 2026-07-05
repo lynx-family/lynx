@@ -271,6 +271,9 @@ public class LynxUIRenderer implements ILynxUIRenderer {
     if (mLynxUIOwner != null) {
       mLynxUIOwner.setPaintingContext(null);
     }
+    if (mEventDispatcher != null) {
+      mEventDispatcher.setPlatformEventPaintingContext(null);
+    }
     if (mNativeUIDelegatePtr != 0) {
       nativeDestroyUIDelegate(mNativeUIDelegatePtr);
       mNativeUIDelegatePtr = 0;
@@ -400,6 +403,9 @@ public class LynxUIRenderer implements ILynxUIRenderer {
         mIsUpdatedConfig = false;
         updateEventDispatcherConfig();
       }
+    }
+    if (mEventDispatcher != null) {
+      mEventDispatcher.setPlatformEventPaintingContext(mPaintingContext);
     }
   }
 
