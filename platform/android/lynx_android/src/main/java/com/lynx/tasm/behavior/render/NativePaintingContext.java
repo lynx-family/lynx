@@ -141,6 +141,22 @@ public class NativePaintingContext implements IPaintingContext {
   }
 
   @Override
+  public void dispatchPlatformLongPress() {
+    if (mNativePtr == 0 || mDestroyed) {
+      return;
+    }
+    nativeDispatchPlatformLongPress(mNativePtr);
+  }
+
+  @Override
+  public void dispatchPlatformTap() {
+    if (mNativePtr == 0 || mDestroyed) {
+      return;
+    }
+    nativeDispatchPlatformTap(mNativePtr);
+  }
+
+  @Override
   public int getPlatformEventHandlerState() {
     if (mDestroyed || mNativePtr == 0) {
       return 0;
@@ -169,6 +185,10 @@ public class NativePaintingContext implements IPaintingContext {
 
   native void nativeSetPlatformEventRootOffset(
       long nativePtr, int rootSign, float offsetX, float offsetY);
+
+  native void nativeDispatchPlatformLongPress(long nativePtr);
+
+  native void nativeDispatchPlatformTap(long nativePtr);
 
   native int nativeGetPlatformEventHandlerState(long nativePtr);
 

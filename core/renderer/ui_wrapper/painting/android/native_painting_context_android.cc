@@ -134,6 +134,41 @@ void SetPlatformEventRootOffset(JNIEnv *env, jobject /*jcaller*/,
   }
 }
 
+void DispatchPlatformLongPress(JNIEnv *env, jobject /*jcaller*/,
+                               jlong nativePtr) {
+  if (nativePtr == 0) {
+    return;
+  }
+
+  lynx::tasm::NativePaintingCtxAndroid *context =
+      reinterpret_cast<lynx::tasm::NativePaintingCtxAndroid *>(nativePtr);
+
+  auto platform_ref =
+      std::static_pointer_cast<lynx::tasm::NativePaintingCtxAndroidRef>(
+          context->GetPlatformRef());
+  if (platform_ref == nullptr) {
+    return;
+  }
+  platform_ref->DispatchPlatformLongPress();
+}
+
+void DispatchPlatformTap(JNIEnv *env, jobject /*jcaller*/, jlong nativePtr) {
+  if (nativePtr == 0) {
+    return;
+  }
+
+  lynx::tasm::NativePaintingCtxAndroid *context =
+      reinterpret_cast<lynx::tasm::NativePaintingCtxAndroid *>(nativePtr);
+
+  auto platform_ref =
+      std::static_pointer_cast<lynx::tasm::NativePaintingCtxAndroidRef>(
+          context->GetPlatformRef());
+  if (platform_ref == nullptr) {
+    return;
+  }
+  platform_ref->DispatchPlatformTap();
+}
+
 jintArray GetMeaningfulPaintingAreaRecords(JNIEnv *env, jobject /*jcaller*/,
                                            jlong nativePtr) {
   if (nativePtr == 0) {
