@@ -141,6 +141,9 @@ source_set("quickjs_source") {
     "src/src/interpreter/quickjs/source/quickjs_gc.cc",
     "src/src/interpreter/quickjs/source/quickjs_version.cc",
   ]
+  if (enable_lepusng_bytecode_opt) {
+    sources += [ "src/src/interpreter/quickjs/source/quickjs-opt-bytecode.cc" ]
+  }
   sources += [
     "src/src/basic/log/logging.cc",
     "src/src/basic/log/primjs_logging.cc",

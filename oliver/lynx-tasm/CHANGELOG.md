@@ -1,4 +1,7 @@
 # CHANGELOG
+# 0.0.46
+* add lepusng bytecode optimization
+
 # 0.0.45
 * support lepusng var defs outside to reduce package size when targetSdkVersion greater or equal to 4.1
 
