@@ -6,6 +6,7 @@
 
 #include "base/trace/native/trace_event.h"
 #include "clay/ui/component/builtin_views.h"
+#include "clay/ui/component/extend_views.h"
 #include "clay/ui/component/native_view.h"
 #include "clay/ui/component/page_view.h"
 #include "clay/ui/platform/native_view_tags.h"
@@ -74,6 +75,7 @@ ViewRegistry* ViewRegistry::GetInstance() {
 
 ViewRegistry::ViewRegistry() {
   keepBuiltinElements();
+  keepExtendElements();
 #if (defined(OS_OSX) || defined(OS_IOS))
   for (auto p = __start_clayview; p != __stop_clayview; ++p) {
     this->RegisterView(std::string(p->name), p->view_creator,

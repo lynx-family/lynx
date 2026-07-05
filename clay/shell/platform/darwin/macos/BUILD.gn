@@ -96,7 +96,7 @@ source_set("flutter_framework_source") {
   } else {
     deps += [
       "../../common/desktop/codec",
-      "//clay/shell/platform/common/desktop/svg",
+      "../../common/desktop/svg",
     ]
   }
 
