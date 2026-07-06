@@ -77,6 +77,7 @@
 - (LynxLifecycleDispatcher *)getLifecycleDispatcher;
 - (void)onFrameLoadMetricsEvent:(nonnull LynxPerformanceEntry *)entry;
 - (void)setIntrinsicContentSize:(CGSize)size;
+- (void)clearReloadContentIfNeeded;
 
 @end
 
@@ -274,6 +275,32 @@
   XCTAssertEqual(rootClient.performanceEventCount, 0);
   XCTAssertEqual(frameClientA.performanceEventCount, 1);
   XCTAssertEqual(frameClientB.performanceEventCount, 1);
+}
+
+- (void)testFrameViewReloadCleanupRemovesChildSubviews {
+  LynxFrameView *frameView = [[LynxFrameView alloc] init];
+  UIView *childView = [[UIView alloc] init];
+  [frameView addSubview:childView];
+  [frameView setValue:@YES forKey:@"isBundleLoad"];
+
+  [frameView clearReloadContentIfNeeded];
+
+  XCTAssertNil(childView.superview);
+  XCTAssertEqual(frameView.subviews.count, 0u);
+}
+
+- (void)testFrameViewReloadCleanupKeepsOwnSublayers {
+  LynxFrameView *frameView = [[LynxFrameView alloc] init];
+  UIView *childView = [[UIView alloc] init];
+  CALayer *sentinelLayer = [CALayer layer];
+  [frameView addSubview:childView];
+  [frameView.layer addSublayer:sentinelLayer];
+  [frameView setValue:@YES forKey:@"isBundleLoad"];
+
+  [frameView clearReloadContentIfNeeded];
+
+  XCTAssertNil(childView.superview);
+  XCTAssertEqual(sentinelLayer.superlayer, frameView.layer);
 }
 
 - (void)testFrameViewDispatchesLoadMetricsCustomEventWhenBound {
