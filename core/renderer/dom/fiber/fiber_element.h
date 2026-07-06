@@ -211,48 +211,11 @@ class FiberElement : public Element {
 
   virtual StyleMap GetStylesForWorklet() override;
 
-  /**
-   * @brief Update the simple styles of the current element.
-   *
-   * This method is used to update the simple styles of the element based on
-   * the provided style map. The style map contains key-value pairs representing
-   * CSS properties and their values.
-   *
-   * @note This function is not implemented yet.
-   *
-   * @param style_map A constant reference to a tasm::StyleMap containing the
-   *                  styles to be updated.
-   */
-  void UpdateSimpleStyles(const tasm::StyleMap& style_map) final;
-
-  void UpdateSimpleStyles(tasm::StyleMap&& style_map) final;
-
-  void UpdateStaticAndDynamicSimpleStyles(
-      tasm::StyleMap&& style_map,
-      tasm::StyleMap&& dynamic_style_map) override final;
-
-  void UpdateDynamicSimpleStyles(tasm::StyleMap&& style_map) override final;
-
-  /**
-   * @brief Reset the simple style associated with the specified CSS property
-   * ID.
-   *
-   * This method is intended to reset the simple style of the current element
-   * corresponding to the given CSS property ID.
-   *
-   * @note This function is not implemented yet.
-   *
-   * @param id The CSS property ID of the style to be reset.
-   */
-  void ResetSimpleStyle(const tasm::CSSPropertyID id,
-                        const tasm::CSSValue& value) override final;
-  void ResetSimpleStyle(const tasm::CSSPropertyID id) override final;
   void ResolveCSSStyles(StyleMap& parsed_styles,
                         base::InlineVector<CSSPropertyID, 16>& reset_style_ids,
                         bool& need_update,
                         bool& force_use_current_parsed_style_map);
   void ResolveCSSStylesNewPipeline(bool& need_update);
-  void ResolveSimpleStyles();
 
   void TraversalInsertFixedElementOfTree();
 
@@ -307,10 +270,6 @@ class FiberElement : public Element {
   virtual void EnqueueLayoutTask(
       base::MoveOnlyClosure<void> operation) override;
 
-  void HandleDelayTask(base::MoveOnlyClosure<void> operation) override;
-
-  void HandleKeyframePropsChange();
-
   enum class StyleSideEffectReplayMode {
     kNormal,
     kPreserveLayoutOnly,
@@ -328,15 +287,6 @@ class FiberElement : public Element {
       CSSPropertyID id,
       StyleSideEffectReplayMode mode = StyleSideEffectReplayMode::kNormal);
 
-  /**
-   * @brief Commits font-size and root-font-size changes after style resolution.
-   * @param computed_style The final computed style.
-   * @param old_font_size The previous font size.
-   * @param old_root_font_size The previous root font size.
-   */
-  void CommitFontContext(const starlight::ComputedCSSStyle& computed_style,
-                         double old_font_size, double old_root_font_size);
-  void FinalizeAnimationPropsChange(bool& need_update);
   struct AnimationPropertyChangeAnalysisForLegacyAnimator {
     bool has_transition_props_changed{false};
     bool has_keyframe_props_changed{false};
@@ -572,8 +522,6 @@ class FiberElement : public Element {
       const CSSIDBitset& replayed_ids,
       const CSSIDBitset* source_style_ids = nullptr,
       const CSSIDBitset* inherited_dynamic_ids = nullptr);
-  DynamicCSSStylesManager::StyleUpdateFlags CollectDynamicFlagsForNewPipeline(
-      const StyleMap& resolved_style_map) const;
   NewPipelineStyleMutationPlan BuildNewPipelineStyleMutationPlan(
       const NewPipelineStyleResolveResult& resolved_styles,
       const NewPipelineDynamicStyleInputs& dynamic_inputs,
@@ -708,9 +656,6 @@ class FiberElement : public Element {
   friend class ComponentElement;
   friend class BlockElement;
 
-  bool ShouldPreserveLayoutOnlyForInheritedPlatformStyle(
-      CSSPropertyID id, const CSSIDBitset& source_style_ids);
-
   FiberElement* FindEnclosingNoneWrapper(FiberElement* parent,
                                          FiberElement* node);
 
@@ -748,16 +693,6 @@ class FiberElement : public Element {
   void PrepareRootCSSVariables(AttributeHolder* holder);
   void ParseRawInlineStyles(CSSVariableMap* changed_css_vars);
   void DoFullCSSResolving();
-  const tasm::CSSValue& ResolveCurrentStyleValue(
-      const CSSPropertyID& key, const tasm::CSSValue& default_value);
-
-  void ApplySimpleStyleWithoutTail(const tasm::CSSPropertyID id,
-                                   const tasm::CSSValue& value);
-  void ApplySimpleStylesWithoutTail(const tasm::StyleMap& style_map);
-  void ApplyDynamicSimpleStylesWithoutTail(
-      const tasm::StyleMap& dynamic_style_map,
-      const tasm::StyleMap& base_style_map);
-  void FinalizeSimpleStyleUpdate();
 };
 
 }  // namespace tasm
