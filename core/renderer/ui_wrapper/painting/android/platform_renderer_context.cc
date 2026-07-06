@@ -11,12 +11,10 @@
 #include <utility>
 
 #include "base/include/platform/android/jni_convert_helper.h"
-#include "core/event/event.h"
 #include "core/renderer/dom/lynx_get_ui_result.h"
-#include "core/renderer/ui_wrapper/common/android/platform_extra_bundle_android.h"
+#include "core/renderer/ui_wrapper/painting/android/paint_image_android.h"
 #include "core/renderer/ui_wrapper/painting/android/platform_renderer_android.h"
 #include "core/renderer/utils/android/value_converter_android.h"
-#include "core/shell/lynx_engine.h"
 #include "core/value_wrapper/value_impl_lepus.h"
 #include "platform/android/lynx_android/src/main/jni/gen/PlatformRendererContext_jni.h"
 #include "platform/android/lynx_android/src/main/jni/gen/PlatformRendererContext_register_jni.h"
@@ -110,19 +108,25 @@ void PlatformRendererContext::DestroyPlatformRenderer(int32_t target) {
   UnregisterPlatformRenderer(target);
 }
 
-void PlatformRendererContext::CreateImage(int32_t id, base::String src,
-                                          float width, float height,
-                                          int32_t event_mask) {
+fml::RefPtr<PaintImage> PlatformRendererContext::CreateImage(
+    int32_t id, base::String src, float width, float height,
+    int32_t event_mask) {
   base::android::ScopedLocalJavaRef<jobject> local_ref(java_ref_);
   if (local_ref.IsNull()) {
-    return;
+    return nullptr;
   }
   JNIEnv* env = base::android::AttachCurrentThread();
   auto j_src =
       base::android::JNIConvertHelper::ConvertToJNIStringUTF(env, src.c_str());
+  int32_t image_key = GenerateUniqueImageKey();
   Java_PlatformRendererContext_createImage(
       env, local_ref.Get(), id, j_src.Get(), static_cast<int>(width),
-      static_cast<int>(height), static_cast<int>(event_mask));
+      static_cast<int>(height), static_cast<int>(event_mask), image_key);
+  // Can use raw pointer here because the PaintImage will access this context in
+  // NativePaintingContextRef::UpdateDisplayList. And the
+  // NativePaintingContextRef hold the PlatformRendererContext via unique
+  // pointer. Which means the context lifetime is longer than the PaintImage.
+  return fml::MakeRefCounted<PaintImageAndroid>(image_key, this);
 }
 
 void PlatformRendererContext::DestroyImage(int32_t id) {
