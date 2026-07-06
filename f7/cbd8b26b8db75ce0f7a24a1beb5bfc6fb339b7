@@ -1,0 +1,16 @@
+krypton/BUILD.gn
+  h_c7499b019d31b1 133
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f7cbd8b26b8db75ce0f7a24a1beb5bfc6fb339b7",
+  "prompts": {},
+  "humans": {
+    "h_c7499b019d31b1": {
+      "author": "chenyouhui.duke <chenyouhui.duke@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

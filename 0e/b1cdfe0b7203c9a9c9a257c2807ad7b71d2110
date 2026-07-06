@@ -1,0 +1,16 @@
+platform/android/x_element/x_element_media/src/main/java/com/bytedance/lynx/media/controller/VideoController.java
+  h_cda4310eb4d418 476-478
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "0eb1cdfe0b7203c9a9c9a257c2807ad7b71d2110",
+  "prompts": {},
+  "humans": {
+    "h_cda4310eb4d418": {
+      "author": "mooface <xiamengfei.moonface@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}
