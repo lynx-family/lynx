@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <future>
 #include <memory>
 #include <utility>
 
@@ -17,6 +18,7 @@
 #include "base/include/value/table.h"
 #include "base/trace/native/trace_event.h"
 #include "core/animation/animation_delegate.h"
+#include "core/event/event.h"
 #include "core/renderer/css/computed_css_style_css_text_helper.h"
 #include "core/renderer/css/css_color.h"
 #include "core/renderer/css/css_fragment.h"
@@ -42,6 +44,8 @@
 #include "core/renderer/dom/vdom/radon/node_select_options.h"
 #include "core/renderer/dom/vdom/radon/node_selector.h"
 #include "core/renderer/dom/vdom/radon/radon_component.h"
+#include "core/renderer/events/closure_event_listener.h"
+#include "core/renderer/events/touch_event_handler.h"
 #include "core/renderer/page_proxy.h"
 #include "core/renderer/starlight/style/css_type.h"
 #include "core/renderer/starlight/style/default_layout_style.h"
@@ -49,15 +53,22 @@
 #include "core/renderer/template_assembler.h"
 #include "core/renderer/trace/renderer_trace_event_def.h"
 #include "core/renderer/utils/lynx_env.h"
+#include "core/renderer/utils/base/tasm_constants.h"
 #include "core/renderer/utils/prop_bundle_style_writer.h"
 #include "core/renderer/utils/value_utils.h"
 #include "core/runtime/common/bindings/event/message_event.h"
 #include "core/runtime/js/bindings/java_script_element.h"
+#include "core/runtime/js/runtime_constant.h"
 #include "core/runtime/lepus/bindings/style/shared_css_fragment_wrapper.h"
 #include "core/services/feature_count/feature_counter.h"
 #include "core/services/feature_count/global_feature_counter.h"
 #include "core/services/timing_handler/timing_constants_deprecated.h"
 #include "core/value_wrapper/value_impl_lepus.h"
+
+#if ENABLE_LEPUSNG_WORKLET
+#include "core/runtime/lepusng/napi/worklet/napi_func_callback.h"
+#include "core/renderer/worklet/lepus_raf_handler.h"
+#endif
 
 namespace lynx {
 namespace tasm {
@@ -93,6 +104,30 @@ starlight::DirectionValue<float> ConvertToDirectionValue(
   }
 
   return starlight::DirectionValue<float>(result_values);
+}
+
+void ApplyEventResult(fml::RefPtr<event::Event> event, EventResult result) {
+  if (event == nullptr) {
+    return;
+  }
+  if (static_cast<int>(result) &
+      static_cast<int>(EventResult::kStopImmediatePropagationBit)) {
+    event->set_is_stop_immediate_propagation(true);
+  } else if (static_cast<int>(result) &
+             static_cast<int>(EventResult::kStopPropagationBit)) {
+    event->set_is_stop_propagation(true);
+  }
+}
+
+event::EventListener::Options GetEventListenerOptions(
+    const base::String& type) {
+  const bool is_capture = type.str() == EVENT_TYPE_CAPTURE;
+  const bool is_capture_catch = type.str() == EVENT_TYPE_CAPTURE_CATCH;
+  const bool is_bubble_catch = type.str() == EVENT_TYPE_CATCH;
+  const bool is_global_bind = type.str() == EVENT_TYPE_GLOBAL;
+  return event::EventListener::Options(
+      is_capture || is_capture_catch, false, false, false,
+      is_capture_catch || is_bubble_catch, is_global_bind);
 }
 
 bool IsOverlayTag(const base::String& tag) {
@@ -1138,6 +1173,244 @@ void Element::RemoveAllEvents() {
   MarkDirty(kDirtyEvent);
 }
 
+void Element::FiberAddEvent(const base::String& type,
+                            const base::String& name,
+                            const lepus::Value& callback,
+                            const std::string& context_name) {
+  auto event_options = GetEventListenerOptions(type);
+  auto event_name = name.str();
+  auto* manager = element_manager();
+  const bool should_sync_listener =
+      manager != nullptr && manager->EnableEventHandleRefactor();
+  auto remove_event_listener =
+      [this, &event_name,
+       &event_options](event::ClosureEventListener::ClosureType closure_type) {
+        RemoveEventListener(
+            event_name, std::make_unique<event::ClosureEventListener>(
+                            [](lepus::Value) {}, event_options, closure_type));
+      };
+
+  if (callback.IsEmpty()) {
+    RemoveEvent(name, type);
+    if (should_sync_listener) {
+      remove_event_listener(event::ClosureEventListener::ClosureType::kJS);
+      remove_event_listener(event::ClosureEventListener::ClosureType::kCore);
+    }
+    return;
+  }
+
+  if (callback.IsString()) {
+    SetJSEventHandler(name, type, callback.String());
+    if (should_sync_listener) {
+      auto handler_name = callback.StdString();
+      const bool should_handle_air_fiber_event =
+          manager != nullptr && !manager->IsEmbeddedModeOn() &&
+          manager->IsAirModeFiberEnabled();
+      const bool support_component_js = manager->SupportComponentJS();
+      auto* default_vm_context = manager->GetDefaultEntryRuntime();
+      auto default_entry_name = manager->GetDefaultEntryLogicalName();
+      remove_event_listener(event::ClosureEventListener::ClosureType::kJS);
+      AddEventListener(
+          event_name,
+          std::make_unique<event::ClosureEventListener>(
+              [element = this, event_name, handler_name,
+               should_handle_air_fiber_event, support_component_js,
+               default_vm_context, default_entry_name](lepus::Value args) {
+                const auto& args_array = args.Array();
+                if (!args.IsArray() || args_array->size() != 3) {
+                  return;
+                }
+                const auto& event_info = args_array->get(0);
+                const auto& event_detail = args_array->get(1);
+                const auto& event_info_array = event_info.Array();
+                if (!event_info.IsArray() || event_info_array->size() != 2) {
+                  return;
+                }
+                if (should_handle_air_fiber_event) {
+                  auto event = fml::static_ref_ptr_cast<event::Event>(
+                      args_array->get(2).RefCounted());
+                  if (event == nullptr || !event->target() ||
+                      !event->current_target()) {
+                    return;
+                  }
+                  auto* target = static_cast<Element*>(event->target().get());
+                  auto* current_target =
+                      static_cast<Element*>(event->current_target().get());
+                  auto* parent_component =
+                      current_target->GetParentComponentElement();
+                  if (default_vm_context == nullptr) {
+                    return;
+                  }
+                  if (!current_target->InComponent()) {
+                    if (parent_component) {
+                      BASE_STATIC_STRING_DECL(kCallPageEvent, "$callPageEvent");
+                      default_vm_context->Call(
+                          kCallPageEvent, lepus::Value(handler_name),
+                          lepus_value::ShallowCopy(event_detail),
+                          lepus::Value(parent_component->impl_id()));
+                    }
+                  } else if (parent_component && target) {
+                    BASE_STATIC_STRING_DECL(kCallComponentEvent,
+                                            "$callComponentEvent");
+                    default_vm_context->Call(
+                        kCallComponentEvent,
+                        lepus::Value(parent_component->impl_id()),
+                        lepus::Value(handler_name),
+                        lepus_value::ShallowCopy(event_detail),
+                        lepus::Value(target->impl_id()));
+                  }
+                  return;
+                }
+
+                auto call_method_name =
+                    !support_component_js || event_info_array->get(0).Bool();
+                auto page_name_or_component_id =
+                    call_method_name ? default_entry_name
+                                     : event_info_array->get(1).StdString();
+                TRACE_EVENT(
+                    LYNX_TRACE_CATEGORY, CLOSURE_EVENT_LISTENER_CLOSURE,
+                    [&event_name, &handler_name, &page_name_or_component_id](
+                        lynx::perfetto::EventContext ctx) {
+                      ctx.event()->add_debug_annotations("name", event_name);
+                      ctx.event()->add_debug_annotations("callback",
+                                                         handler_name);
+                      ctx.event()->add_debug_annotations(
+                          "component", page_name_or_component_id);
+                    });
+                LOGI("Invoke the Closure of ClosureEventListener for event: "
+                     << event_name << " with callback: " << handler_name
+                     << " in component: " << page_name_or_component_id)
+                auto message = lepus::CArray::Create();
+                message->emplace_back(page_name_or_component_id);
+                message->emplace_back(handler_name);
+                message->emplace_back(lepus_value::ShallowCopy(event_detail));
+                auto event = fml::MakeRefCounted<runtime::MessageEvent>(
+                    call_method_name
+                        ? runtime::kMessageEventTypeSendPageEvent
+                        : runtime::kMessageEventTypePublishComponentEvent,
+                    runtime::ContextProxy::Type::kCoreContext,
+                    runtime::ContextProxy::Type::kJSContext,
+                    std::make_unique<pub::ValueImplLepus>(
+                        lepus::Value(std::move(message))));
+                element->DispatchMessageEvent(std::move(event));
+              },
+              event_options, event::ClosureEventListener::ClosureType::kJS));
+    }
+    return;
+  }
+
+  if (callback.IsCallable()) {
+    SetLepusEventHandler(name, type, lepus::Value(), callback);
+#if ENABLE_LEPUSNG_WORKLET
+    if (should_sync_listener) {
+      auto callback_value = callback;
+      remove_event_listener(event::ClosureEventListener::ClosureType::kCore);
+      AddEventListener(
+          event_name,
+          std::make_unique<event::ClosureEventListener>(
+              [element = this, callback_value](lepus::Value args) {
+                const auto& args_array = args.Array();
+                if (!args.IsArray() || args_array->size() != 3) {
+                  return;
+                }
+                const auto& event_info = args_array->get(0);
+                const auto& event_detail = args_array->get(1);
+                auto event = fml::static_ref_ptr_cast<event::Event>(
+                    args_array->get(2).RefCounted());
+                const auto& event_info_array = event_info.Array();
+                if (!event_info.IsArray() || event_info_array->size() != 3) {
+                  return;
+                }
+                const auto& component_id = event_info_array->get(0).StdString();
+                const auto& entry_name = event_info_array->get(1).StdString();
+                int32_t element_id = event_info_array->get(2).Int32();
+                auto* manager = element->element_manager();
+                if (manager == nullptr) {
+                  return;
+                }
+
+                auto task_handler =
+                    std::make_shared<worklet::LepusApiHandler>();
+                auto current_option = std::make_shared<PipelineOptions>();
+                EventResult result =
+                    manager->FireElementWorkletAndRequestResolve(
+                        component_id, entry_name, callback_value, event_detail,
+                        task_handler, element_id, current_option);
+                ApplyEventResult(event, result);
+              },
+              event_options, event::ClosureEventListener::ClosureType::kCore));
+    }
+#endif  // ENABLE_LEPUSNG_WORKLET
+    return;
+  }
+
+  if (callback.IsObject()) {
+    BASE_STATIC_STRING_DECL(kType, "type");
+    BASE_STATIC_STRING_DECL(kValue, "value");
+    const auto& obj_type = callback.GetProperty(kType).StdString();
+    const auto& value = callback.GetProperty(kValue);
+
+    if (obj_type == tasm::kWorklet) {
+      SetWorkletEventHandler(name, type, value, context_name);
+    }
+    if (should_sync_listener) {
+      auto worklet_value = value;
+      remove_event_listener(event::ClosureEventListener::ClosureType::kCore);
+      AddEventListener(
+          event_name,
+          std::make_unique<event::ClosureEventListener>(
+              [element = this, context_name, worklet_value](lepus::Value args) {
+                auto* manager = element->element_manager();
+                if (manager == nullptr || worklet_value.IsEmpty()) {
+                  return;
+                }
+                auto* context = manager->GetEntryRuntime(context_name);
+                if (context == nullptr) {
+                  return;
+                }
+                const auto& args_array = args.Array();
+                if (!args.IsArray() || args_array->size() != 3) {
+                  return;
+                }
+                const auto& event_detail = args_array->get(1);
+                auto event = fml::static_ref_ptr_cast<event::Event>(
+                    args_array->get(2).RefCounted());
+
+                BASE_STATIC_STRING_DECL(kEntryFunction, "runWorklet");
+                BASE_STATIC_STRING_DECL(kRunWorkletSource, "source");
+
+                const auto worklet_function_value =
+                    context->GetGlobalData(kEntryFunction);
+                auto param_array = lepus::CArray::Create();
+                param_array->push_back(event_detail);
+
+                auto options = lepus::Dictionary::Create();
+                options.get()->SetValue(
+                    kRunWorkletSource,
+                    static_cast<int>(tasm::RunWorkletType::kEvents));
+
+                EventResult result = EventResult::kDefault;
+                auto call_result_value =
+                    context->CallClosure(worklet_function_value, worklet_value,
+                                         lepus::Value(std::move(param_array)),
+                                         lepus::Value(std::move(options)));
+                BASE_STATIC_STRING_DECL(kEventResult, "eventReturnResult");
+                if (call_result_value.IsObject()) {
+                  result = static_cast<EventResult>(
+                      call_result_value.GetProperty(kEventResult).Number());
+                }
+                ApplyEventResult(event, result);
+              },
+              event_options, event::ClosureEventListener::ClosureType::kCore));
+    }
+    return;
+  }
+
+  LOGW(
+      "FiberAddEvent's 3rd parameter must be undefined, null, string or "
+      "callable.");
+}
+
 void Element::AddConfig(const base::String& key, const lepus::Value& value) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_ADD_CONFIG);
   if (config_ == nullptr) {
@@ -2118,6 +2391,27 @@ bool Element::IsCSSInheritanceEnabled() const {
 bool Element::IsCSSInlineVariablesEnabled() const {
   return element_manager_ &&
          element_manager_->GetDynamicCSSConfigs().enable_css_inline_variables_;
+}
+
+void Element::AsyncResolveSubtreeProperty() {
+  if (element_manager()->GetEnableParallelElement() &&
+      ((dirty_ & ~kDirtyTree) != 0) && scheduler_adapter_.get()) {
+    element_manager()->GetTasmWorkerTaskRunner()->PostTask([this]() mutable {
+      scheduler_adapter_->ResolveSubtreeProperty();
+
+      std::promise<ParallelFlushReturn> promise;
+      std::future<ParallelFlushReturn> future = promise.get_future();
+      auto task_info_ptr =
+          fml::MakeRefCounted<base::OnceTask<ParallelFlushReturn>>(
+              [promise = std::move(promise),
+               scheduler = scheduler_adapter_.get()]() mutable {
+                promise.set_value(
+                    scheduler->GenerateReduceTaskForResolveProperty());
+              },
+              std::move(future));
+      element_manager()->ParallelTasks().emplace_back(std::move(task_info_ptr));
+    });
+  }
 }
 
 bool Element::IsRelatedCSSVariableUpdated(
