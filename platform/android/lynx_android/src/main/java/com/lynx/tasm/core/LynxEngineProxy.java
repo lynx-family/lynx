@@ -212,6 +212,44 @@ public final class LynxEngineProxy {
     });
   }
 
+  public interface LynxElementQueryCallback {
+    void onResult(Object result);
+  }
+
+  public void queryLynxElementRoot(LynxElementQueryCallback callback) {
+    queryLynxElement(0, 0, null, callback);
+  }
+
+  public void queryLynxElement(final int sign, final int queryType, final String argument,
+      LynxElementQueryCallback callback) {
+    UIThreadUtils.runOnUiThreadImmediately(new Runnable() {
+      @Override
+      public void run() {
+        if (mNativePtr == 0) {
+          if (callback != null) {
+            callback.onResult(null);
+          }
+          return;
+        }
+        nativeQueryLynxElement(mNativePtr, sign, queryType, argument, callback);
+      }
+    });
+  }
+
+  @CalledByNative
+  private static void onLynxElementQueryResult(
+      final LynxElementQueryCallback callback, final Object result) {
+    if (callback == null) {
+      return;
+    }
+    UIThreadUtils.runOnUiThreadImmediately(new Runnable() {
+      @Override
+      public void run() {
+        callback.onResult(result);
+      }
+    });
+  }
+
   @CalledByNative
   private static void executeRunnable(Runnable runnable) {
     runnable.run();
@@ -248,4 +286,7 @@ public final class LynxEngineProxy {
 
   private native void nativeInvokeLepusApiCallback(
       long nativePtr, int callbackID, String entryName, Object data);
+
+  private native void nativeQueryLynxElement(
+      long nativePtr, int sign, int queryType, String argument, LynxElementQueryCallback callback);
 }

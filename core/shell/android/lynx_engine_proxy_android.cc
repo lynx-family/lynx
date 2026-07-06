@@ -7,8 +7,11 @@
 #include <string>
 #include <utility>
 
+#include "base/include/platform/android/scoped_java_ref.h"
+#include "base/include/string/string_utils.h"
 #include "core/base/android/java_only_array.h"
 #include "core/base/android/java_only_map.h"
+#include "core/base/android/java_value.h"
 #include "core/base/android/jni_helper.h"
 #include "core/renderer/dom/android/lepus_message_consumer.h"
 #include "core/renderer/utils/android/value_converter_android.h"
@@ -27,6 +30,56 @@ bool RegisterJNIForLynxEngineProxy(JNIEnv *env) {
 }  // namespace lynx
 
 using lynx::lepus::Value;
+
+void CallLynxElementQueryResult(
+    JNIEnv *env,
+    const lynx::base::android::ScopedGlobalJavaRef<jobject> &callback,
+    const lynx::lepus::Value &value) {
+  if (value.IsNil()) {
+    Java_LynxEngineProxy_onLynxElementQueryResult(env, callback.Get(), nullptr);
+  } else if (value.IsBool()) {
+    lynx::base::android::ScopedLocalJavaRef<jobject> result(
+        env, lynx::base::android::converter::booleanValueOf(env, value.Bool()));
+    Java_LynxEngineProxy_onLynxElementQueryResult(env, callback.Get(),
+                                                  result.Get());
+  } else if (value.IsInt32()) {
+    lynx::base::android::ScopedLocalJavaRef<jobject> result(
+        env,
+        lynx::base::android::converter::integerValueOf(env, value.Int32()));
+    Java_LynxEngineProxy_onLynxElementQueryResult(env, callback.Get(),
+                                                  result.Get());
+  } else if (value.IsInt64()) {
+    lynx::base::android::ScopedLocalJavaRef<jobject> result(
+        env, lynx::base::android::converter::longValueOf(env, value.Int64()));
+    Java_LynxEngineProxy_onLynxElementQueryResult(env, callback.Get(),
+                                                  result.Get());
+  } else if (value.IsNumber()) {
+    lynx::base::android::ScopedLocalJavaRef<jobject> result(
+        env,
+        lynx::base::android::converter::doubleValueOf(env, value.Number()));
+    Java_LynxEngineProxy_onLynxElementQueryResult(env, callback.Get(),
+                                                  result.Get());
+  } else if (value.IsString()) {
+    auto result = lynx::base::android::JNIConvertHelper::U16StringToJNIString(
+        env, lynx::base::U8StringToU16(value.StdString()));
+    Java_LynxEngineProxy_onLynxElementQueryResult(env, callback.Get(),
+                                                  result.Get());
+  } else if (value.IsArrayOrJSArray()) {
+    auto result =
+        lynx::tasm::android::ValueConverterAndroid::ConvertLepusToJavaOnlyArray(
+            value);
+    Java_LynxEngineProxy_onLynxElementQueryResult(env, callback.Get(),
+                                                  result.jni_object());
+  } else if (value.IsObject()) {
+    auto result =
+        lynx::tasm::android::ValueConverterAndroid::ConvertLepusToJavaOnlyMap(
+            value);
+    Java_LynxEngineProxy_onLynxElementQueryResult(env, callback.Get(),
+                                                  result.jni_object());
+  } else {
+    Java_LynxEngineProxy_onLynxElementQueryResult(env, callback.Get(), nullptr);
+  }
+}
 
 Value ConvertJavaData(JNIEnv *env, jobject j_data, jint length) {
   if (j_data == nullptr || length <= 0) {
@@ -137,6 +190,32 @@ static void StartEventFire(JNIEnv *env, jobject jcaller, jlong ptr,
       reinterpret_cast<lynx::shell::LynxEngineProxyAndroid *>(ptr);
   engine_proxy->StartEventFire(static_cast<bool>(is_stop),
                                static_cast<int64_t>(id));
+}
+
+static void QueryLynxElement(JNIEnv *env, jobject jcaller, jlong ptr, jint sign,
+                             jint query_type, jstring argument,
+                             jobject callback) {
+  auto *engine_proxy =
+      reinterpret_cast<lynx::shell::LynxEngineProxyAndroid *>(ptr);
+  if (engine_proxy == nullptr) {
+    Java_LynxEngineProxy_onLynxElementQueryResult(env, callback, nullptr);
+    return;
+  }
+  lynx::base::android::ScopedGlobalJavaRef<jobject> global_callback(env,
+                                                                    callback);
+  std::string native_argument =
+      argument == nullptr
+          ? std::string()
+          : lynx::base::android::JNIConvertHelper::ConvertToString(env,
+                                                                   argument);
+  engine_proxy->QueryLynxElement(
+      static_cast<int32_t>(sign), static_cast<int32_t>(query_type),
+      std::move(native_argument),
+      [global_callback =
+           std::move(global_callback)](lynx::lepus::Value result) mutable {
+        JNIEnv *env = lynx::base::android::AttachCurrentThread();
+        CallLynxElementQueryResult(env, global_callback, result);
+      });
 }
 
 jlong Create(JNIEnv *env, jobject jcaller, jlong ptr) {

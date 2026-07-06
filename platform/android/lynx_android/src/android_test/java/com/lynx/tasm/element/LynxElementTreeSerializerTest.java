@@ -2,7 +2,7 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-package com.lynx.tasm;
+package com.lynx.tasm.element;
 
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
@@ -10,6 +10,7 @@ import static org.junit.Assert.assertTrue;
 
 import android.os.Looper;
 import androidx.test.platform.app.InstrumentationRegistry;
+import com.lynx.tasm.LynxView;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
