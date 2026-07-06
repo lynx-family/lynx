@@ -105,7 +105,8 @@ void FrameElement::OnSetSrc(const base::String& key,
   BASE_STATIC_STRING_DECL(kSrc, "src");
   if (key == kSrc && value.IsString()) {
     std::string src = value.String().str();
-    TRACE_EVENT(LYNX_TRACE_CATEGORY, FRAME_ELEMENT_ON_SET_SRC, "src", src);
+    TRACE_EVENT(LYNX_TRACE_CATEGORY, FRAME_ELEMENT_ON_SET_SRC, "previousSrc",
+                src_, "newSrc", src);
     if (src != src_) {
       src_ = std::move(src);
       bundle_data_ = nullptr;
