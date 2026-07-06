@@ -5,19 +5,20 @@
 #import <Foundation/Foundation.h>
 #import <Lynx/LynxEventTarget.h>
 #import <Lynx/LynxExtensionModule.h>
+#import <Lynx/LynxImageFetcher.h>
 #import <Lynx/LynxResourceFetcher.h>
 #import <Lynx/LynxScrollListener.h>
 #import <Lynx/LynxTemplateRenderDelegateExternal.h>
 #import <Lynx/LynxTemplateRenderProtocol.h>
 #import <Lynx/LynxUIListProtocol.h>
 #import <Lynx/LynxViewEnum.h>
-#import "LynxImageFetcher.h"
 
 @class LynxDevtool;
 @class LynxTemplateBundle;
 @class LynxUIIntersectionObserverManager;
 @class LynxUI;
 @class LynxEngine;
+@class LynxElement;
 
 @interface LynxTemplateRender : NSObject <LynxTemplateRenderProtocol>
 
@@ -79,6 +80,7 @@
 - (void)detachEngineFromUIThread;
 
 - (nullable LynxUI*)findUIBySign:(NSInteger)sign;
+- (void)getLynxElementRoot:(void (^_Nullable)(LynxElement* _Nullable root))callback;
 - (nullable UIView*)findViewWithName:(nonnull NSString*)name;
 - (nullable LynxUI*)uiWithName:(nonnull NSString*)name;
 - (nullable LynxUI*)uiWithIdSelector:(nonnull NSString*)idSelector;

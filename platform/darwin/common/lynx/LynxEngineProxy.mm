@@ -3,12 +3,16 @@
 // LICENSE file in the root directory of this source tree.
 
 #import <Lynx/LynxEvent.h>
+#import <Lynx/LynxTemplateData+Converter.h>
+#import <Lynx/LynxThreadManager.h>
 #import <Lynx/LynxTouchEvent.h>
 #import "LynxEngineProxy+Native.h"
-#import "LynxTemplateData+Converter.h"
 
+#include "core/renderer/dom/ios/lepus_value_converter.h"
 #include "core/shell/ios/lynx_engine_proxy_darwin.h"
 #include "core/value_wrapper/value_impl_lepus.h"
+
+#include <utility>
 
 @interface LynxEngineProxy () {
   std::shared_ptr<lynx::shell::LynxEngineProxyDarwin> native_engine_proxy_;
@@ -112,6 +116,33 @@
   if (native_engine_proxy_) {
     native_engine_proxy_->StartEventFire(isStop, eventID);
   }
+}
+
+- (void)queryLynxElementRoot:(LynxEngineProxyQueryCallback)callback {
+  [self queryLynxElement:0 queryType:0 argument:nil callback:callback];
+}
+
+- (void)queryLynxElement:(int32_t)sign
+               queryType:(int32_t)queryType
+                argument:(NSString *)argument
+                callback:(LynxEngineProxyQueryCallback)callback {
+  if (!callback) {
+    return;
+  }
+  if (!native_engine_proxy_) {
+    [LynxThreadManager runBlockInMainQueueImmediately:^{
+      callback(nil);
+    }];
+    return;
+  }
+  std::string native_argument = argument ? std::string([argument UTF8String]) : std::string();
+  native_engine_proxy_->QueryLynxElement(
+      sign, queryType, std::move(native_argument), [callback](lynx::lepus::Value value) {
+        id result = value.IsNil() ? nil : lynx::tasm::convertLepusValueToNSObject(value);
+        [LynxThreadManager runBlockInMainQueueImmediately:^{
+          callback(result);
+        }];
+      });
 }
 
 @end

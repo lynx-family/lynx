@@ -1400,7 +1400,23 @@ public protocol LynxDynamicComponentFetcher-p : <NSObject> {
 
 public class LynxElement : NSObject {
   public instancetype LynxElement::NS_UNAVAILABLE();
-  public void LynxElement::toJSONString:(void(^_Nonnull callback)(NSString *_Nullable json));
+  public void LynxElement::findNodeById:callback:(NSString *idSelector,[callback] nullable void(^ callback)(LynxElement *_Nullable result));
+  public void LynxElement::findNodeByFilter:callback:(nullable LynxElementFilter filter,[callback] nullable void(^ callback)(LynxElement *_Nullable result));
+  public void LynxElement::findNodesByFilter:callback:(nullable LynxElementFilter filter,[callback] nullable void(^ callback)(NSArray< LynxElement * > *result));
+  public void LynxElement::getStatus:(nullable void(^ callback)(LynxElementStatus result));
+  public void LynxElement::getSign:(nullable void(^ callback)(NSNumber *result));
+  public void LynxElement::getTagName:(nullable void(^ callback)(NSString *_Nullable result));
+  public void LynxElement::getId:(nullable void(^ callback)(NSString *_Nullable result));
+  public void LynxElement::getParent:(nullable void(^ callback)(LynxElement *_Nullable result));
+  public void LynxElement::getChildren:(nullable void(^ callback)(NSArray< LynxElement * > *result));
+  public void LynxElement::getChildCount:(nullable void(^ callback)(NSNumber *result));
+  public void LynxElement::getRoot:(nullable void(^ callback)(LynxElement *_Nullable result));
+  public void LynxElement::getPositionInfo:(nullable void(^ callback)(NSDictionary< NSString *, id > *_Nullable result));
+  public void LynxElement::getDataset:(nullable void(^ callback)(NSDictionary< NSString *, id > *result));
+  public void LynxElement::getAttribute:callback:(NSString *name,[callback] nullable void(^ callback)(id _Nullable result));
+  public void LynxElement::getAttributes:(nullable void(^ callback)(NSDictionary< NSString *, id > *result));
+  public void LynxElement::getPlatformView:(nullable void(^ callback)(UIView *_Nullable result));
+  public void LynxElement::toJSONString:(nullable void(^ callback)(NSString *_Nullable result));
   public instancetype LynxElement::NS_UNAVAILABLE();
 }
 
@@ -1451,6 +1467,8 @@ public class LynxEngineProxy : NSObject {
   public void LynxEngineProxy::startEventCapture:(int64_t eventID);
   public void LynxEngineProxy::startEventBubble:(int64_t eventID);
   public void LynxEngineProxy::startEventFire:withEventID:(BOOL isStop,[withEventID] int64_t eventID);
+  public void LynxEngineProxy::queryLynxElementRoot:(LynxEngineProxyQueryCallback callback);
+  public void LynxEngineProxy::queryLynxElement:queryType:argument:callback:(int32_t sign,[queryType] int32_t queryType,[argument] nullable NSString *argument,[callback] LynxEngineProxyQueryCallback callback);
   public void LynxEngineProxy()::setNativeEngineProxy:(std::shared_ptr< lynx::shell::LynxEngineProxyDarwin > proxy);
   public const std::shared_ptr< lynx::shell::LynxEngineProxyDarwin > & LynxEngineProxy()::nativeProxy();
 }
@@ -3879,6 +3897,7 @@ public class LynxTemplateRender : NSObject, <LynxTemplateRenderProtocol>, <Templ
   public void LynxTemplateRender::attachEngineToUIThread();
   public void LynxTemplateRender::detachEngineFromUIThread();
   public nullable LynxUI * LynxTemplateRender::findUIBySign:(NSInteger sign);
+  public void LynxTemplateRender::getLynxElementRoot:(void(^_Nullable callback)(LynxElement *_Nullable root));
   public nullable UIView * LynxTemplateRender::findViewWithName:(nonnull NSString *name);
   public nullable LynxUI * LynxTemplateRender::uiWithName:(nonnull NSString *name);
   public nullable LynxUI * LynxTemplateRender::uiWithIdSelector:(nonnull NSString *idSelector);
@@ -4248,6 +4267,7 @@ public class LynxThreadManager : NSObject {
   public void LynxThreadManager::createIOSThread:runnable:(NSString *name,[runnable] dispatch_block_t runnable);
   public BOOL LynxThreadManager::isMainQueue();
   public void LynxThreadManager::runBlockInMainQueue:(dispatch_block_t _Nonnull runnable);
+  public void LynxThreadManager::runBlockInMainQueueImmediately:(dispatch_block_t _Nonnull runnable);
   public void LynxThreadManager::runInTargetQueue:runnable:(dispatch_queue_t queue,[runnable] dispatch_block_t runnable);
   public dispatch_queue_t LynxThreadManager::getCachedQueueWithPrefix:(NSString *_Nonnull identifier);
 }
@@ -5484,6 +5504,7 @@ public class LynxView : UIView, <LUIBodyView>, <LynxSecurityTarget>, <LynxRender
   public void LynxView::unSubscribeSessionStorage:withId:(nonnull NSString *key,[withId] double callbackId);
   public void LynxView::updateScreenMetricsWithWidth:height:(CGFloat width,[height] CGFloat height);
   public void LynxView::updateFontScale:(CGFloat scale);
+  public void LynxView::getLynxElementRoot:(void(^_Nullable callback)(LynxElement *_Nullable root));
   public void LynxView::updateColorScheme:(LynxColorScheme scheme);
   public void LynxView::pauseRootLayoutAnimation();
   public void LynxView::resumeRootLayoutAnimation();
@@ -5498,7 +5519,6 @@ public class LynxView : UIView, <LUIBodyView>, <LynxSecurityTarget>, <LynxRender
   public nullable LynxUI * LynxView::uiWithName:(nonnull NSString *name);
   public nullable LynxUI * LynxView::uiWithIdSelector:(nonnull NSString *idSelector);
   public nullable UIView * LynxView::viewWithIdSelector:(nonnull NSString *idSelector);
-  public void LynxView::getLynxElementRoot:(void(^_Nonnull callback)(LynxElement *_Nullable element));
   public void LynxView::addLifecycleClient:(nonnull id< LynxViewBaseLifecycle > lifecycleClient);
   public void LynxView::removeLifecycleClient:(nonnull id< LynxViewBaseLifecycle > lifecycleClient);
   public void LynxView::updateViewportWithPreferredLayoutWidth:preferredLayoutHeight:(CGFloat preferredLayoutWidth,[preferredLayoutHeight] CGFloat preferredLayoutHeight);
@@ -6371,6 +6391,8 @@ public enum LynxPanInterceptScope {
 
   public NS_ASSUME_NONNULL_BEGIN typedef void(^ onComponentLoaded) (NSData *_Nullable data, NSError *_Nullable error) onComponentLoaded;
 
+  typedef void(^ LynxEngineProxyQueryCallback) (id _Nullable result)
+
 public enum LynxMemoryPressureLevel {
   LynxMemoryPressureLevelNone
   LynxMemoryPressureLevelModerate
@@ -7056,6 +7078,12 @@ public enum LynxBackgroundJsRuntimeType {
   LynxBackgroundJsRuntimeTypeV8
 }
 
+
+  typedef NSString* LynxElementStatus NS_STRING_ENUM
+  typedef void(^ LynxElementResultCallback) (id _Nullable result)
+  typedef BOOL(^ LynxElementFilter) (LynxElement *node)
+  public FOUNDATION_EXPORT LynxElementStatus const LynxElementStatusAlive LynxElementStatusAlive;
+  public FOUNDATION_EXPORT LynxElementStatus const LynxElementStatusDetached LynxElementStatusDetached;
 
   public BOOL LynxImageFetchherSupportsProcessor(id< LynxImageFetcher > fetcher);
 
