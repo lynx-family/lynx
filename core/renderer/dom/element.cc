@@ -143,6 +143,54 @@ event::EventListener::Options GetEventListenerOptions(
 bool IsOverlayTag(const base::String& tag) {
   return tag.IsEquals("overlay") || tag.IsEquals("x-overlay-ng");
 }
+
+template <typename MapT>
+bool OptionalMapNotEqual(const MapT* old_map, const MapT* new_map) {
+  if ((old_map == nullptr) != (new_map == nullptr)) {
+    return true;
+  }
+  if (old_map == nullptr) {
+    return false;
+  }
+  return *old_map != *new_map;
+}
+
+bool CustomPropertiesChanged(const starlight::ComputedCSSStyle* old_style,
+                             const starlight::ComputedCSSStyle& new_style) {
+  if (old_style == nullptr) {
+    return new_style.GetRawCustomProperties() != nullptr ||
+           new_style.GetCustomProperties() != nullptr;
+  }
+  return OptionalMapNotEqual(old_style->GetRawCustomProperties(),
+                             new_style.GetRawCustomProperties()) ||
+         OptionalMapNotEqual(old_style->GetCustomProperties(),
+                             new_style.GetCustomProperties());
+}
+
+void ApplyAnimationPropertyResetsToResolvedInputs(
+    const starlight::ComputedCSSStyle& base_style,
+    const std::vector<CSSPropertyID>& property_resets,
+    StyleMap& resolved_style_map, CSSIDBitset& variable_dependent_ids) {
+  if (property_resets.empty()) {
+    return;
+  }
+
+  const auto& base_resolved_values = base_style.GetResolvedValues();
+  for (const auto id : property_resets) {
+    auto resolved_iter = resolved_style_map.find(id);
+    if (resolved_iter == resolved_style_map.end()) {
+      variable_dependent_ids.Reset(id);
+      continue;
+    }
+
+    auto base_iter = base_resolved_values.find(id);
+    if (base_iter == base_resolved_values.end() ||
+        base_iter->second != resolved_iter->second) {
+      resolved_style_map.erase(resolved_iter);
+      variable_dependent_ids.Reset(id);
+    }
+  }
+}
 }  // namespace
 
 #define FOREACH_EXTENDED_LAYOUT_ONLY_PROPERTY(V) \
@@ -1066,6 +1114,38 @@ Element::AnalyzeAnimationSampleForNewPipeline(
   return analysis;
 }
 
+std::unique_ptr<starlight::ComputedCSSStyle>
+Element::BuildFinalStyleFromAnimationSampleForNewPipeline(
+    const starlight::ComputedCSSStyle& base_style,
+    const starlight::ComputedCSSStyle* parent_style,
+    const starlight::ComputedCSSStyle* previous_final_style,
+    const animation::AnimationSampleForNewPipeline& animation_sample,
+    StyleMap& resolved_style_map, CSSIDBitset& variable_dependent_ids) {
+  const auto sample_analysis =
+      AnalyzeAnimationSampleForNewPipeline(animation_sample);
+  const StyleMap* animated_property_overrides =
+      animation_sample.property_overrides.empty()
+          ? nullptr
+          : &animation_sample.property_overrides;
+  if (!sample_analysis.changes_resolve_context) {
+    ApplyAnimationPropertyResetsToResolvedInputs(
+        base_style, animation_sample.property_resets, resolved_style_map,
+        variable_dependent_ids);
+    return style_resolver_.BuildFinalStyleFromBaseFastPath(
+        base_style, animated_property_overrides, &resolved_style_map,
+        &variable_dependent_ids);
+  }
+
+  const CustomPropertiesMap* animated_custom_properties =
+      animation_sample.custom_property_overrides.empty()
+          ? nullptr
+          : &animation_sample.custom_property_overrides;
+  return style_resolver_.RebuildFinalStyleFromParent(
+      parent_style, previous_final_style, animated_custom_properties,
+      animated_property_overrides, &resolved_style_map,
+      &variable_dependent_ids);
+}
+
 Element::NewPipelineDynamicStyleInputs
 Element::BuildDynamicStyleInputsForNewPipeline(
     const starlight::ComputedCSSStyle& final_style,
@@ -1098,6 +1178,278 @@ Element::BuildDynamicStyleInputsForNewPipeline(
     result.inherited_dynamic_flags |= value_flags;
   }
   return result;
+}
+
+Element::NewPipelineStyleMutationPlan
+Element::BuildNewPipelineStyleMutationPlan(
+    const NewPipelineStyleResolveResult& resolved_styles,
+    const NewPipelineDynamicStyleInputs& dynamic_inputs,
+    DynamicCSSStylesManager::StyleUpdateFlags requested_dynamic_flags,
+    bool first_render, double old_font_size, double old_root_font_size) const {
+  NewPipelineStyleMutationPlan plan;
+  plan.first_render = first_render;
+  plan.source_style_ids =
+      CSSIDBitset::FromKeys(resolved_styles.resolved_style_map);
+
+  const auto* previous_final_style =
+      first_render ? nullptr : resolved_styles.previous_final_style;
+  const auto& current_values = resolved_styles.final_style->GetResolvedValues();
+  static const StyleMap empty_style_map;
+  const auto& previous_values = previous_final_style != nullptr
+                                    ? previous_final_style->GetResolvedValues()
+                                    : empty_style_map;
+
+  if (previous_values.empty()) {
+    for (const auto& [id, value] : current_values) {
+      plan.AddUpdate(id, value);
+    }
+  } else if (current_values.empty()) {
+    for (const auto& [id, _] : previous_values) {
+      plan.AddReset(id);
+    }
+  } else {
+    std::array<const CSSValue*, kCSSPropertyCount> previous_values_by_id{};
+    for (const auto& [id, value] : previous_values) {
+      DCHECK(CSSProperty::IsPropertyValid(id));
+      previous_values_by_id[static_cast<size_t>(id)] = &value;
+    }
+
+    CSSIDBitset current_value_ids;
+    for (const auto& [id, value] : current_values) {
+      DCHECK(CSSProperty::IsPropertyValid(id));
+      current_value_ids.Set(id);
+      const auto* old_value = previous_values_by_id[static_cast<size_t>(id)];
+      if (old_value == nullptr || *old_value != value) {
+        plan.AddUpdate(id, value);
+      }
+    }
+
+    for (const auto& [id, _] : previous_values) {
+      if (!current_value_ids.Has(id)) {
+        plan.AddReset(id);
+      }
+    }
+  }
+
+  plan.custom_properties_changed = CustomPropertiesChanged(
+      previous_final_style, *resolved_styles.final_style);
+  if (plan.custom_properties_changed) {
+    for (const auto id : resolved_styles.variable_dependent_ids) {
+      auto it = current_values.find(id);
+      auto old_it = previous_values.find(id);
+      if (it != current_values.end() &&
+          (old_it == previous_values.end() || old_it->second != it->second)) {
+        plan.AddUpdate(id, it->second);
+      }
+    }
+  }
+
+  plan.font_size_context_changed = base::FloatsNotEqual(
+      old_font_size, resolved_styles.final_style->GetFontSize());
+  plan.root_font_size_context_changed = base::FloatsNotEqual(
+      old_root_font_size, resolved_styles.final_style->GetRootFontSize());
+
+  auto effective_dynamic_flags = requested_dynamic_flags;
+  if (plan.font_size_context_changed) {
+    effective_dynamic_flags |= DynamicCSSStylesManager::kUpdateEm;
+  }
+  if (plan.root_font_size_context_changed) {
+    effective_dynamic_flags |= DynamicCSSStylesManager::kUpdateRem;
+  }
+
+  if (effective_dynamic_flags != 0) {
+    const auto& css_config = element_manager()->GetDynamicCSSConfigs();
+    for (const auto& [id, value] : dynamic_inputs.resolved_style_map) {
+      const auto value_flags = DynamicCSSStylesManager::GetValueFlags(
+          id, value, css_config.unify_vw_vh_behavior_,
+          element_manager()->FixFilterDynamicUpdateBug());
+      if ((value_flags & effective_dynamic_flags) != 0) {
+        plan.AddUpdate(id, value);
+      }
+    }
+  }
+
+  return plan;
+}
+
+bool Element::MaterializeNewPipelineStyleMutationPlan(
+    const NewPipelineStyleMutationPlan& plan,
+    const starlight::ComputedCSSStyle& baseline_style,
+    starlight::ComputedCSSStyle& final_style) const {
+  auto should_materialize_dirty_bit = [this](CSSPropertyID id) {
+    // Layout-only changes are replayed to layout bundles from the mutation
+    // plan. Generic style dirty bits are consumed by the platform prop bundle.
+    // In layout-in-element mode, the legacy pipeline also wrote supported
+    // layout-only properties through ComputedCSSStyle, which could create an
+    // empty prop bundle and drive UpdatePaintingNode().
+    return !LayoutProperty::IsLayoutOnly(id) || EnableLayoutInElementMode();
+  };
+  const auto& baseline_context = baseline_style.GetMeasureContext();
+  starlight::ComputedCSSStyle replay_style(
+      baseline_context.layouts_unit_per_px_,
+      baseline_context.physical_pixels_per_layout_unit_);
+  replay_style.CopyFrom(baseline_style);
+  replay_style.ClearDirtyBits();
+
+  if (plan.reset_ids.Has(kPropertyIDFontSize)) {
+    replay_style.SetFontSize(final_style.GetFontSize(),
+                             final_style.GetRootFontSize());
+    replay_style.ResetValue(kPropertyIDFontSize);
+  }
+  if (plan.update_ids.Has(kPropertyIDFontSize)) {
+    auto it = plan.update_values.find(kPropertyIDFontSize);
+    if (it != plan.update_values.end()) {
+      replay_style.SetFontSize(final_style.GetFontSize(),
+                               final_style.GetRootFontSize());
+      replay_style.SetValue(kPropertyIDFontSize, it->second);
+    }
+  }
+
+  for (const auto id : plan.reset_ids) {
+    if (id == kPropertyIDFontSize || !should_materialize_dirty_bit(id)) {
+      continue;
+    }
+    replay_style.ResetValue(id);
+  }
+
+  for (const auto id : plan.update_ids) {
+    if (id == kPropertyIDFontSize || !should_materialize_dirty_bit(id)) {
+      continue;
+    }
+    auto it = plan.update_values.find(id);
+    if (it != plan.update_values.end()) {
+      replay_style.SetValue(id, it->second);
+    }
+  }
+
+  final_style.CopyDirtyBitsFrom(replay_style);
+  return final_style.IsDirty();
+}
+
+bool Element::HasInheritedPropertyMutation(
+    const NewPipelineStyleMutationPlan& plan) const {
+  const auto& configs = element_manager()->GetDynamicCSSConfigs();
+  const auto& inheritable_props =
+      !configs.custom_inherit_list_.empty()
+          ? configs.custom_inherit_list_
+          : DynamicCSSStylesManager::GetInheritableProps();
+  bool result = false;
+  auto check_property = [&result, &inheritable_props](const auto id) {
+    result |= id != kPropertyIDFontSize &&
+              inheritable_props.find(id) != inheritable_props.end();
+  };
+  for (const auto id : plan.update_ids) {
+    check_property(id);
+  }
+  for (const auto id : plan.reset_ids) {
+    check_property(id);
+  }
+  return result;
+}
+
+void Element::ReplayMaterializedStyleSideEffects(
+    const starlight::ComputedCSSStyle& computed_style,
+    CSSIDBitset* replayed_ids, const NewPipelineStyleMutationPlan* plan) {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY,
+              FIBER_ELEMENT_REPLAY_MATERIALIZED_STYLE_SIDE_EFFECTS);
+  auto mark_replayed = [replayed_ids](CSSPropertyID id) {
+    if (replayed_ids != nullptr) {
+      replayed_ids->Set(id);
+    }
+  };
+  auto replay_mode = [this, plan](CSSPropertyID id) {
+    return plan != nullptr && ShouldPreserveLayoutOnlyForInheritedPlatformStyle(
+                                  id, plan->source_style_ids)
+               ? StyleSideEffectReplayMode::kPreserveLayoutOnly
+               : StyleSideEffectReplayMode::kNormal;
+  };
+
+  computed_style.ForEachResetProperty([&](const auto id) {
+    ReplayResetStyleSideEffect(id, replay_mode(id));
+    mark_replayed(id);
+  });
+
+  const auto& resolved_values = computed_style.GetResolvedValues();
+  computed_style.ForEachChangedProperty([&](const auto id) {
+    if (id == kPropertyIDFontSize) {
+      return;
+    }
+    auto it = resolved_values.find(id);
+    if (it == resolved_values.end()) {
+      return;
+    }
+    ReplayChangedStyleSideEffect(id, it->second, replay_mode(id));
+    mark_replayed(id);
+  });
+}
+
+void Element::ReplayNewPipelineStyleMutationPlanSideEffects(
+    const NewPipelineStyleMutationPlan& plan, CSSIDBitset* replayed_ids) {
+  auto already_replayed = [replayed_ids](CSSPropertyID id) {
+    return replayed_ids != nullptr && replayed_ids->Has(id);
+  };
+  auto mark_replayed = [replayed_ids](CSSPropertyID id) {
+    if (replayed_ids != nullptr) {
+      replayed_ids->Set(id);
+    }
+  };
+
+  for (const auto id : plan.reset_ids) {
+    if (already_replayed(id)) {
+      continue;
+    }
+    const auto mode = ShouldPreserveLayoutOnlyForInheritedPlatformStyle(
+                          id, plan.source_style_ids)
+                          ? StyleSideEffectReplayMode::kPreserveLayoutOnly
+                          : StyleSideEffectReplayMode::kNormal;
+    ReplayResetStyleSideEffect(id, mode);
+    mark_replayed(id);
+  }
+
+  for (const auto& [id, value] : plan.update_values) {
+    if (already_replayed(id) || id == kPropertyIDFontSize) {
+      continue;
+    }
+    const auto mode = ShouldPreserveLayoutOnlyForInheritedPlatformStyle(
+                          id, plan.source_style_ids)
+                          ? StyleSideEffectReplayMode::kPreserveLayoutOnly
+                          : StyleSideEffectReplayMode::kNormal;
+    ReplayChangedStyleSideEffect(id, value, mode);
+    mark_replayed(id);
+  }
+}
+
+void Element::ReplayDynamicResolvedStyleSideEffects(
+    const StyleMap& resolved_style_map,
+    DynamicCSSStylesManager::StyleUpdateFlags update_flags,
+    const CSSIDBitset& replayed_ids, const CSSIDBitset* source_style_ids,
+    const CSSIDBitset* inherited_dynamic_ids) {
+  if (update_flags == 0) {
+    return;
+  }
+  const auto& css_config = element_manager()->GetDynamicCSSConfigs();
+  for (const auto& [id, value] : resolved_style_map) {
+    if (replayed_ids.Has(id) || id == kPropertyIDFontSize ||
+        CSSProperty::IsTransitionProps(id) ||
+        CSSProperty::IsKeyframeProps(id)) {
+      continue;
+    }
+    const auto value_flags = DynamicCSSStylesManager::GetValueFlags(
+        id, value, css_config.unify_vw_vh_behavior_,
+        element_manager()->FixFilterDynamicUpdateBug());
+    if ((value_flags & update_flags) == 0) {
+      continue;
+    }
+    const bool preserve_layout_only =
+        source_style_ids != nullptr && inherited_dynamic_ids != nullptr &&
+        inherited_dynamic_ids->Has(id) &&
+        ShouldPreserveLayoutOnlyForInheritedPlatformStyle(id,
+                                                          *source_style_ids);
+    ReplayChangedStyleSideEffect(
+        id, value,
+        preserve_layout_only ? StyleSideEffectReplayMode::kPreserveLayoutOnly
+                             : StyleSideEffectReplayMode::kNormal);
+  }
 }
 
 void Element::ReplayChangedStyleSideEffect(CSSPropertyID id,
