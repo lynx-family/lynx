@@ -142,8 +142,6 @@ class FiberElement : public Element {
   virtual void PostResolveTaskToThreadPool(bool is_engine_thread,
                                            ParallelReduceTaskQueue& task_queue);
 
-  void AsyncResolveSubtreeProperty();
-
   void DispatchAsyncResolveSubtreeProperty();
 
   void DispatchAsyncResolveProperty();
@@ -205,10 +203,6 @@ class FiberElement : public Element {
    */
   void UpdateCSSVariable(const lepus::Value& variables,
                          std::shared_ptr<PipelineOptions>& pipeline_option);
-
-  void FiberAddEvent(const base::String& type, const base::String& name,
-                     const lepus::Value& callback,
-                     const std::string& context_name);
 
   /**
    * Element API for setNativeProps
@@ -774,9 +768,6 @@ class FiberElement : public Element {
 
   bool ShouldPreserveLayoutOnlyForInheritedPlatformStyle(
       CSSPropertyID id, const CSSIDBitset& source_style_ids);
-
-  static event::EventListener::Options GetEventListenerOptions(
-      const base::String& type);
 
   FiberElement* FindEnclosingNoneWrapper(FiberElement* parent,
                                          FiberElement* node);
