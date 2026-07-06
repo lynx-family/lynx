@@ -131,7 +131,7 @@ bool LayoutBundleHasStyle(const std::unique_ptr<LayoutBundle>& layout_bundle,
 }
 
 std::map<std::string, lepus::Value>* PaintingPropsFor(ElementManager* manager,
-                                                      FiberElement* element) {
+                                                      Element* element) {
   auto* painting_context = static_cast<FiberMockPaintingContext*>(
       manager->painting_context()->impl());
   auto node_it = painting_context->node_map_.find(element->impl_id());
@@ -10291,13 +10291,12 @@ TEST_P(FiberElementTest, CreateElementTemplateSerializesOptionTemplateArrays) {
 
   ASSERT_TRUE(created_value.IsRefCounted());
   auto created_element =
-      fml::static_ref_ptr_cast<FiberElement>(created_value.RefCounted())
+      fml::static_ref_ptr_cast<TemplateElement>(created_value.RefCounted())
           .strongify();
   ASSERT_NE(created_element, nullptr);
   ASSERT_TRUE(created_element->is_template());
 
-  auto serialized =
-      static_cast<TemplateElement*>(created_element.get())->Serialize();
+  auto serialized = created_element->Serialize();
   auto serialized_options = serialized.GetProperty("options");
   ASSERT_TRUE(serialized_options.IsObject());
   EXPECT_TRUE(serialized_options.GetProperty("enabled").Bool());
@@ -10333,12 +10332,11 @@ TEST_P(FiberElementTest, CreateElementTemplateSkipsEmptyOptions) {
 
   ASSERT_TRUE(created_value.IsRefCounted());
   auto created_element =
-      fml::static_ref_ptr_cast<FiberElement>(created_value.RefCounted())
+      fml::static_ref_ptr_cast<TemplateElement>(created_value.RefCounted())
           .strongify();
   ASSERT_NE(created_element, nullptr);
   ASSERT_TRUE(created_element->is_template());
-  auto serialized =
-      static_cast<TemplateElement*>(created_element.get())->Serialize();
+  auto serialized = created_element->Serialize();
   EXPECT_TRUE(serialized.GetProperty("options").IsEmpty());
 
   lepus::Value typed_args[] = {lepus::Value("view"), lepus::Value(),
@@ -10348,12 +10346,12 @@ TEST_P(FiberElementTest, CreateElementTemplateSkipsEmptyOptions) {
       mts_ctx, typed_args, 5);
   ASSERT_TRUE(created_typed_value.IsRefCounted());
   auto created_typed_element =
-      fml::static_ref_ptr_cast<FiberElement>(created_typed_value.RefCounted())
+      fml::static_ref_ptr_cast<TemplateElement>(
+          created_typed_value.RefCounted())
           .strongify();
   ASSERT_NE(created_typed_element, nullptr);
   ASSERT_TRUE(created_typed_element->is_template());
-  auto serialized_typed =
-      static_cast<TemplateElement*>(created_typed_element.get())->Serialize();
+  auto serialized_typed = created_typed_element->Serialize();
   EXPECT_TRUE(serialized_typed.GetProperty("options").IsEmpty());
 }
 
@@ -10414,13 +10412,12 @@ TEST_P(FiberElementTest, CreateTypedElementTemplateSerializesOptions) {
 
   ASSERT_TRUE(created_value.IsRefCounted());
   auto created_element =
-      fml::static_ref_ptr_cast<FiberElement>(created_value.RefCounted())
+      fml::static_ref_ptr_cast<TemplateElement>(created_value.RefCounted())
           .strongify();
   ASSERT_NE(created_element, nullptr);
   ASSERT_TRUE(created_element->is_template());
 
-  auto serialized =
-      static_cast<TemplateElement*>(created_element.get())->Serialize();
+  auto serialized = created_element->Serialize();
   auto serialized_options = serialized.GetProperty("options");
   ASSERT_TRUE(serialized_options.IsObject());
   EXPECT_EQ(serialized_options.GetProperty("reusePool")
@@ -10447,13 +10444,12 @@ TEST_P(FiberElementTest, CreateElementTemplateDoesNotPrepareBeforeTree) {
 
   ASSERT_TRUE(created_value.IsRefCounted());
   auto created_element =
-      fml::static_ref_ptr_cast<FiberElement>(created_value.RefCounted())
+      fml::static_ref_ptr_cast<TemplateElement>(created_value.RefCounted())
           .strongify();
   ASSERT_NE(created_element, nullptr);
   ASSERT_TRUE(created_element->is_template());
-  auto* created_template = static_cast<TemplateElement*>(created_element.get());
-  EXPECT_FALSE(created_template->IsInTemplateTree());
-  EXPECT_EQ(created_template->async_create_task_, nullptr);
+  EXPECT_FALSE(created_element->IsInTemplateTree());
+  EXPECT_EQ(created_element->async_create_task_, nullptr);
 }
 
 TEST_P(FiberElementTest, PageTemplateElementSlotsPrepareChildrenRecursively) {
@@ -10516,12 +10512,11 @@ TEST_P(FiberElementTest, CreateTypedPageTemplateMaterializesRoot) {
       mts_ctx, create_args, 4);
 
   ASSERT_TRUE(created_value.IsRefCounted());
-  auto created_element =
-      fml::static_ref_ptr_cast<FiberElement>(created_value.RefCounted())
+  auto page_template =
+      fml::static_ref_ptr_cast<TemplateElement>(created_value.RefCounted())
           .strongify();
-  ASSERT_NE(created_element, nullptr);
-  ASSERT_TRUE(created_element->is_template());
-  auto* page_template = static_cast<TemplateElement*>(created_element.get());
+  ASSERT_NE(page_template, nullptr);
+  ASSERT_TRUE(page_template->is_template());
   ASSERT_NE(manager->root(), nullptr);
   ASSERT_NE(page_template->result_, nullptr);
   EXPECT_EQ(manager->root(), page_template->result_.get());
@@ -10941,12 +10936,11 @@ TEST_P(FiberElementTest, RendererFunctionCreateTypedTemplateElement) {
       RendererFunctions::FiberCreateTypedElementTemplate(mts_ctx, args, 4);
 
   ASSERT_TRUE(created_value.IsRefCounted());
-  auto created_element =
-      fml::static_ref_ptr_cast<FiberElement>(created_value.RefCounted())
+  auto typed_template =
+      fml::static_ref_ptr_cast<TemplateElement>(created_value.RefCounted())
           .strongify();
-  ASSERT_NE(created_element, nullptr);
-  ASSERT_TRUE(created_element->is_template());
-  auto* typed_template = static_cast<TemplateElement*>(created_element.get());
+  ASSERT_NE(typed_template, nullptr);
+  ASSERT_TRUE(typed_template->is_template());
   EXPECT_EQ(typed_template->result_, nullptr);
   EXPECT_EQ(typed_template->async_create_task_, nullptr);
 
@@ -10955,7 +10949,7 @@ TEST_P(FiberElementTest, RendererFunctionCreateTypedTemplateElement) {
                                lepus::Value("updated_attr"));
   updated_attributes->SetValue(base::String("data-added"),
                                lepus::Value("added_attr"));
-  lepus::Value update_args[] = {lepus::Value(created_element), lepus::Value(0),
+  lepus::Value update_args[] = {lepus::Value(typed_template), lepus::Value(0),
                                 lepus::Value(updated_attributes)};
   RendererFunctions::FiberSetAttributeOfElementTemplate(nullptr, update_args,
                                                         3);
@@ -10974,7 +10968,7 @@ TEST_P(FiberElementTest, RendererFunctionCreateTypedTemplateElement) {
   auto invalid_attributes = lepus::Dictionary::Create();
   invalid_attributes->SetValue(base::String("data-test"),
                                lepus::Value("invalid_attr"));
-  lepus::Value invalid_update_args[] = {lepus::Value(created_element),
+  lepus::Value invalid_update_args[] = {lepus::Value(typed_template),
                                         lepus::Value(1),
                                         lepus::Value(invalid_attributes)};
   RendererFunctions::FiberSetAttributeOfElementTemplate(nullptr,
@@ -10996,7 +10990,7 @@ TEST_P(FiberElementTest, RendererFunctionCreateTypedTemplateElement) {
   EXPECT_EQ(added_data->StdString(), "added_attr");
   EXPECT_EQ(root->data_model_->attributes().count("data-test"), 0u);
   ASSERT_EQ(root->children().size(), 1u);
-  auto* mounted_child = static_cast<FiberElement*>(root->children()[0].get());
+  auto* mounted_child = root->children()[0].get();
   ASSERT_NE(mounted_child, nullptr);
   EXPECT_EQ(mounted_child, child.get());
   EXPECT_TRUE(mounted_child->is_template());

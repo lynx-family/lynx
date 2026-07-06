@@ -10,7 +10,7 @@ namespace lynx {
 namespace tasm {
 
 void ScrollElement::OnNodeAdded(Element* child) {
-  FiberElement::OnNodeAdded(child);
+  Element::OnNodeAdded(child);
 
   // Scroll's child should not be layout only.
   child->MarkCanBeLayoutOnly(false);
@@ -46,7 +46,7 @@ void ScrollElement::RemoveCommittedStyleFromAttributes(CSSPropertyID id) {
 
 void ScrollElement::SetAttributeInternal(const base::String& key,
                                          const lepus::Value& value) {
-  FiberElement::SetAttributeInternal(key, value);
+  Element::SetAttributeInternal(key, value);
 
   const auto& value_str = value.StdString();
   if (key.IsEquals(kScrollX) && value_str == kTrue) {
@@ -89,7 +89,7 @@ void ScrollElement::SetAttributeInternal(const base::String& key,
 }
 
 void ScrollElement::ResetAttribute(const base::String& key) {
-  FiberElement::ResetAttribute(key);
+  Element::ResetAttribute(key);
 
   if (key.IsEquals(kScrollX) || key.IsEquals(kScrollY) ||
       key.IsEquals(kScrollOrientation) || key.IsEquals(kScrollXReverse) ||

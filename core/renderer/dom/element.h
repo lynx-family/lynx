@@ -91,6 +91,25 @@ enum ElementArchTypeEnum : uint8_t {
   RadonArch,
 };
 
+enum NodeInfoBits : int32_t {
+  // Mask for layout node type, using lower 16 bits.
+  kLayoutNodeTypeMask = 0x0000FFFF,
+  // Mask for async creation flag.
+  kCreateAsyncMask = 0x00010000,
+};
+
+constexpr const int32_t kCommonBuiltInNodeInfo =
+    (static_cast<int32_t>(LayoutNodeType::COMMON) &
+     NodeInfoBits::kLayoutNodeTypeMask) |
+    NodeInfoBits::kCreateAsyncMask;
+constexpr const int32_t kVirtualBuiltInNodeInfo =
+    (static_cast<int32_t>(LayoutNodeType::VIRTUAL) &
+     NodeInfoBits::kLayoutNodeTypeMask);
+constexpr const int32_t kCustomBuiltInNodeInfo =
+    (static_cast<int32_t>(LayoutNodeType::CUSTOM) &
+     NodeInfoBits::kLayoutNodeTypeMask) |
+    NodeInfoBits::kCreateAsyncMask;
+
 class InspectorAttribute {
  public:
   LYNX_EXPORT_FOR_DEVTOOL InspectorAttribute();
@@ -270,9 +289,7 @@ class Element : public lepus::RefCounted,
 
   bool is_fixed() { return is_fixed_; }
   bool fixed_changed() const { return fixed_changed_; }
-  void set_fixed_changed(bool fixed_changed) {
-    fixed_changed_ = fixed_changed;
-  }
+  void set_fixed_changed(bool fixed_changed) { fixed_changed_ = fixed_changed; }
   void set_need_handle_fixed(bool need_handle_fixed) {
     need_handle_fixed_ = need_handle_fixed;
   }
@@ -810,9 +827,8 @@ class Element : public lepus::RefCounted,
 
   virtual void InsertNode(const fml::RefPtr<Element>& child);
   virtual void InsertNode(const fml::RefPtr<Element>& child, int32_t index);
-  virtual void InsertNodeBefore(
-      const fml::RefPtr<Element>& child,
-      const fml::RefPtr<Element>& reference_child);
+  virtual void InsertNodeBefore(const fml::RefPtr<Element>& child,
+                                const fml::RefPtr<Element>& reference_child);
   virtual void InsertNodeBeforeInternal(const fml::RefPtr<Element>& child,
                                         Element* ref_node);
   virtual void InsertNodeBeforeInternal(const fml::RefPtr<Element>& child,
@@ -826,15 +842,13 @@ class Element : public lepus::RefCounted,
                           bool destroy = true);
   virtual void RemoveLogicalChild(const fml::RefPtr<Element>& child);
   virtual void RemoveNodeInternal(const fml::RefPtr<Element>& child,
-                                  bool destroy,
-                                  bool update_logical_children);
+                                  bool destroy, bool update_logical_children);
   virtual void InsertedInto(Element* insertion_point);
   virtual void RemovedFrom(Element* insertion_point);
   virtual void HandleInsertChildAction(Element* child, int index,
                                        Element* ref_node);
   virtual void HandleRemoveChildAction(Element* child);
-  virtual void HandleRemoveSelf(Element* removal_point,
-                                Element* render_parent);
+  virtual void HandleRemoveSelf(Element* removal_point, Element* render_parent);
   virtual void InsertFixedElement(Element* child, Element* ref_node);
   virtual void RemoveFixedElement(Element* child);
   virtual void AddChildAt(fml::RefPtr<Element> child, int index);
@@ -1667,8 +1681,8 @@ class Element : public lepus::RefCounted,
   void DispatchAsyncResolveSubtreeProperty();
   void DispatchAsyncResolveProperty();
   void AsyncPostResolveTaskToThreadPool();
-  virtual void PostResolveTaskToThreadPool(
-      bool is_engine_thread, ParallelReduceTaskQueue& task_queue);
+  virtual void PostResolveTaskToThreadPool(bool is_engine_thread,
+                                           ParallelReduceTaskQueue& task_queue);
 
   void PrepareSelfForThreadedElementResolution();
 
@@ -2065,8 +2079,7 @@ class Element : public lepus::RefCounted,
   void SetFontSizeForAllElement(double cur_node_font_size,
                                 double root_node_font_size);
   void UpdateLengthContextValueForAllElement(const LynxEnvConfig& env_config);
-  void UpdateDynamicChildrenStyleRecursively(uint32_t style,
-                                             bool force_update);
+  void UpdateDynamicChildrenStyleRecursively(uint32_t style, bool force_update);
   void UpdateDynamicElementStyleRecursively(uint32_t style, bool force_update);
   void UpdateDynamicElementStyleForNewPipeline(uint32_t& style,
                                                bool& inner_force_update);

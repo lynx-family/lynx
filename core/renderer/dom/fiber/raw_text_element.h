@@ -5,12 +5,12 @@
 #ifndef CORE_RENDERER_DOM_FIBER_RAW_TEXT_ELEMENT_H_
 #define CORE_RENDERER_DOM_FIBER_RAW_TEXT_ELEMENT_H_
 
-#include "core/renderer/dom/fiber/fiber_element.h"
+#include "core/renderer/dom/element.h"
 
 namespace lynx {
 namespace tasm {
 
-class RawTextElement : public FiberElement {
+class RawTextElement : public Element {
  public:
   RawTextElement(ElementManager* manager);
 
@@ -38,7 +38,7 @@ class RawTextElement : public FiberElement {
 
  protected:
   RawTextElement(const RawTextElement& element, bool clone_resolved_props)
-      : FiberElement(element, clone_resolved_props) {}
+      : Element(element, clone_resolved_props) {}
 
  private:
   base::String content_;

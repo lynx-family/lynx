@@ -37,7 +37,7 @@ bool ShouldUseFrameNativeData(ElementManager* element_manager) {
 }  // namespace
 
 FrameElement::FrameElement(ElementManager* element_manager)
-    : FiberElement(element_manager, BASE_STATIC_STRING(kDefaultFrameTag)) {}
+    : Element(element_manager, BASE_STATIC_STRING(kDefaultFrameTag)) {}
 
 void FrameElement::OnNodeAdded(Element* child) {
   LOGE("frame element cannot adopt any child");
@@ -66,7 +66,7 @@ void FrameElement::SetAttribute(const base::String& key,
             ? std::make_unique<lepus::Value>(lepus::Value::ShallowCopy(value))
             : nullptr;
   }
-  FiberElement::SetAttribute(key, value, need_update_data_model);
+  Element::SetAttribute(key, value, need_update_data_model);
 }
 
 void FrameElement::ResetAttribute(const base::String& key) {
@@ -75,29 +75,29 @@ void FrameElement::ResetAttribute(const base::String& key) {
   } else if (key.IsEqual(kGlobalProps)) {
     global_props_ = nullptr;
   }
-  FiberElement::ResetAttribute(key);
+  Element::ResetAttribute(key);
 }
 
 void FrameElement::SetAttributeInternal(const base::String& key,
                                         const lepus::Value& value) {
   if (!ShouldUseFrameNativeData(element_manager())) {
-    FiberElement::SetAttributeInternal(key, value);
+    Element::SetAttributeInternal(key, value);
     return;
   }
   if (key.IsEqual(kFrameData)) {
     auto* transfer_value = data_ ? new lepus::Value(*data_) : nullptr;
-    FiberElement::SetAttributeInternal(
+    Element::SetAttributeInternal(
         key, lepus::Value(reinterpret_cast<int64_t>(transfer_value)));
     return;
   }
   if (key.IsEqual(kGlobalProps)) {
     auto* transfer_value =
         global_props_ ? new lepus::Value(*global_props_) : nullptr;
-    FiberElement::SetAttributeInternal(
+    Element::SetAttributeInternal(
         key, lepus::Value(reinterpret_cast<int64_t>(transfer_value)));
     return;
   }
-  FiberElement::SetAttributeInternal(key, value);
+  Element::SetAttributeInternal(key, value);
 }
 
 void FrameElement::OnSetSrc(const base::String& key,
@@ -145,7 +145,7 @@ bool FrameElement::DidBundleLoaded(
 }
 
 void FrameElement::FlushProps() {
-  FiberElement::FlushProps();
+  Element::FlushProps();
   TRACE_EVENT(LYNX_TRACE_CATEGORY, FRAME_ELEMENT_FLUSH_PROPS, "src", src_);
   if (bundle_data_ && HasPaintingNode()) {
     if (bundle_data_->bundle) {
