@@ -19,7 +19,23 @@ ImageElement::ImageElement(ElementManager* manager, const base::String& tag)
   if (element_manager_ == nullptr) {
     return;
   }
+
+  if (element_manager_->IsFragmentLayerRenderModeOn()) {
+    SetDefaultOverflow(element_manager_->GetDefaultTextOverflow());
+  }
+
   element_manager_->IncreaseImageElementCount();
+}
+
+void ImageElement::AttachToElementManager(
+    ElementManager* manager,
+    const std::shared_ptr<CSSStyleSheetManager>& style_manager,
+    bool keep_element_id) {
+  FiberElement::AttachToElementManager(manager, style_manager, keep_element_id);
+
+  if (element_manager_->IsFragmentLayerRenderModeOn()) {
+    SetDefaultOverflow(manager->GetDefaultTextOverflow());
+  }
 }
 
 void ImageElement::OnNodeAdded(FiberElement* child) {
