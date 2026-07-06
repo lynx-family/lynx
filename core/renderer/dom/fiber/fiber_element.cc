@@ -1221,96 +1221,6 @@ void FiberElement::DispatchAsyncResolveProperty() {
 
 #pragma region simple styling
 
-void FiberElement::SetStyleObjects(
-    std::unique_ptr<style::StyleObject *, style::StyleObjectArrayDeleter>
-        style_objects) {
-  last_style_objects_ = std::move(style_objects_);
-
-  style_objects_ = std::move(style_objects);
-
-  MarkDirty(kDirtyForceUpdate | kDirtyStyleObjects);
-}
-
-void FiberElement::ReplaceDynamicSimpleStyles(
-    style::DynamicStyleObjectRef new_style_object) {
-  const bool has_committed_dynamic = parsed_dynamic_styles_map_.has_value() &&
-                                     !parsed_dynamic_styles_map_->empty();
-  // Pure no-op: no incoming source, no current source, and no committed
-  // dynamic state to clear.
-  if (!new_style_object && !dynamic_simple_object_ && !has_committed_dynamic) {
-    return;
-  }
-
-  dynamic_simple_object_ = std::move(new_style_object);
-  MarkDirty(kDirtyForceUpdate | kDirtyDynamicStyleObjects);
-}
-
-void FiberElement::AddDynamicSimpleStyles(tasm::StyleMap &&new_styles) {
-  if (new_styles.empty()) {
-    return;
-  }
-
-  if (!dynamic_simple_object_ && parsed_dynamic_styles_map_.has_value() &&
-      !parsed_dynamic_styles_map_->empty()) {
-    // A resolved-only clone does not keep the dynamic mutation carrier.
-    // Rebuild it from the committed resolved dynamic map on the first
-    // post-clone mutation so incremental updates keep previous dynamic state.
-    dynamic_simple_object_ =
-        style::CreateDynamicStyleObjectRef(*parsed_dynamic_styles_map_);
-  }
-
-  if (!dynamic_simple_object_) {
-    dynamic_simple_object_ =
-        style::CreateDynamicStyleObjectRef(std::move(new_styles));
-    MarkDirty(kDirtyForceUpdate | kDirtyDynamicStyleObjects);
-    return;
-  }
-
-  dynamic_simple_object_->MergeStyleMap(std::move(new_styles));
-  MarkDirty(kDirtyForceUpdate | kDirtyDynamicStyleObjects);
-}
-
-void FiberElement::RemoveDynamicSimpleStyleKV(tasm::CSSPropertyID id) {
-  if (!dynamic_simple_object_ && parsed_dynamic_styles_map_.has_value() &&
-      !parsed_dynamic_styles_map_->empty()) {
-    dynamic_simple_object_ =
-        style::CreateDynamicStyleObjectRef(*parsed_dynamic_styles_map_);
-  }
-  if (!dynamic_simple_object_) {
-    return;
-  }
-
-  if (!dynamic_simple_object_->RemoveStyleValue(id)) {
-    return;
-  }
-
-  if (dynamic_simple_object_->Properties().empty()) {
-    dynamic_simple_object_ = nullptr;
-  }
-  MarkDirty(kDirtyForceUpdate | kDirtyDynamicStyleObjects);
-}
-
-void FiberElement::AddDynamicSimpleStyleKV(tasm::CSSPropertyID id,
-                                           tasm::CSSValue &&value) {
-  if (!dynamic_simple_object_ && parsed_dynamic_styles_map_.has_value() &&
-      !parsed_dynamic_styles_map_->empty()) {
-    dynamic_simple_object_ =
-        style::CreateDynamicStyleObjectRef(*parsed_dynamic_styles_map_);
-  }
-
-  if (!dynamic_simple_object_) {
-    StyleMap dynamic_styles;
-    dynamic_styles.insert_or_assign(id, std::move(value));
-    dynamic_simple_object_ =
-        style::CreateDynamicStyleObjectRef(std::move(dynamic_styles));
-    MarkDirty(kDirtyForceUpdate | kDirtyDynamicStyleObjects);
-    return;
-  }
-
-  dynamic_simple_object_->UpdateStyleMap(id, std::move(value));
-  MarkDirty(kDirtyForceUpdate | kDirtyDynamicStyleObjects);
-}
-
 void FiberElement::ApplySimpleStyleWithoutTail(const tasm::CSSPropertyID id,
                                                const tasm::CSSValue &value) {
   EXEC_EXPR_FOR_INSPECTOR(
@@ -4135,35 +4045,6 @@ void FiberElement::FlushProps() {
   has_transition_props_changed_ = false;
 }
 
-// if child's related css variable is updated, invalidate child's style.
-void FiberElement::RecursivelyMarkChildrenCSSVariableDirty(
-    const lepus::Value &css_variable_updated) {
-  for (const auto &child : scoped_children_) {
-    auto *fiber_child = static_cast<FiberElement *>(child.get());
-    if (IsCSSInlineVariablesEnabled()) {
-      // Entering RecursivelyMarkChildrenCSSVariableDirty means current
-      // element's CSS variables changed.
-      // Mark children's custom_properties dirty so CollectCustomProperties can
-      // pick up the latest values.
-      fiber_child->MarkCustomPropertiesDirty();
-    }
-    if (fiber_child->is_raw_text()) {
-      continue;
-    }
-    lepus::Value css_variable_updated_merged = css_variable_updated;
-    // first, merge changing_css_variables with element's css_variable,
-    // element's css_variable is with high priority.
-    fiber_child->data_model()->MergeWithCSSVariables(
-        css_variable_updated_merged);
-    if (IsRelatedCSSVariableUpdated(fiber_child->data_model(),
-                                    css_variable_updated_merged)) {
-      fiber_child->MarkStyleDirty(false);
-    }
-    fiber_child->RecursivelyMarkChildrenCSSVariableDirty(
-        css_variable_updated_merged);
-  }
-}
-
 void FiberElement::RecursivelyMarkCustomPropertiesDirty() {
   for (const auto &child : scoped_children_) {
     auto *fiber_child = static_cast<FiberElement *>(child.get());
@@ -4452,28 +4333,6 @@ void FiberElement::UpdateFiberElement() {
     // Is layout only and can not be layout only
     TransitionToNativeView();
   }
-}
-
-bool FiberElement::IsRelatedCSSVariableUpdated(
-    AttributeHolder *holder, const lepus::Value changing_css_variables) {
-  TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_IS_RELATED_CSS_UPDATED,
-              [this](lynx::perfetto::EventContext ctx) {
-                UpdateTraceDebugInfo(ctx.event());
-              });
-
-  bool changed = false;
-  ForEachLepusValue(
-      changing_css_variables,
-      [holder, &changed](const lepus::Value &key, const lepus::Value &value) {
-        if (!changed) {
-          auto it = holder->css_variable_related().find(key.String());
-          if (it != holder->css_variable_related().end() &&
-              !it->second.IsEqual(value.String())) {
-            changed = true;
-          }
-        }
-      });
-  return changed;
 }
 
 void FiberElement::UpdateCSSVariable(
@@ -4858,20 +4717,6 @@ bool FiberElement::RefreshStyle(StyleMap &parsed_styles,
   return ret;
 }
 
-void FiberElement::OnClassChanged(const ClassList &old_classes,
-                                  const ClassList &new_classes) {
-  if (element_manager() && element_manager()->GetEnableStandardCSSSelector()) {
-    if (element_manager()->CSSFragmentParsingOnTASMWorkerMTSRender()) {
-      element_manager()->GetTasmWorkerTaskRunner()->PostTask(
-          [this, old_classes_ = old_classes, new_classes_ = new_classes]() {
-            CheckHasInvalidationForClass(old_classes_, new_classes_);
-          });
-    } else {
-      CheckHasInvalidationForClass(old_classes, new_classes);
-    }
-  }
-}
-
 // For snapshot test
 void FiberElement::DumpStyle(StyleMap &computed_styles) {
   if (element_manager()->EnableNewStylingPipeline()) {
@@ -5120,19 +4965,6 @@ bool FiberElement::CheckHasInvalidationForId(const std::string &old_id,
   auto old_size = invalidation_lists_.descendants.size();
   CSSFragment::CollectIdChangedInvalidation(css_fragment, invalidation_lists_,
                                             old_id, new_id);
-  return invalidation_lists_.descendants.size() != old_size;
-}
-
-bool FiberElement::CheckHasInvalidationForClass(const ClassList &old_classes,
-                                                const ClassList &new_classes) {
-  auto *css_fragment = GetRelatedCSSFragment();
-  // resolve styles from css fragment
-  if (!css_fragment || !css_fragment->enable_css_invalidation()) {
-    return false;
-  }
-  auto old_size = invalidation_lists_.descendants.size();
-  CSSFragment::CollectClassChangedInvalidation(
-      css_fragment, invalidation_lists_, old_classes, new_classes);
   return invalidation_lists_.descendants.size() != old_size;
 }
 
@@ -5689,38 +5521,6 @@ void FiberElement::DispatchLayoutBefore() {
     customized_layout_node_->OnLayoutBefore();
   }
 }
-
-#if ENABLE_TRACE_PERFETTO
-void FiberElement::UpdateTraceDebugInfo(TraceEvent *event) {
-  auto *tagInfo = event->add_debug_annotations();
-  tagInfo->set_name("tagName");
-  tagInfo->set_string_value(tag_.str());
-
-  if (!data_model_) {
-    return;
-  }
-
-  if (!data_model_->idSelector().empty()) {
-    auto *idInfo = event->add_debug_annotations();
-    idInfo->set_name("idSelector");
-    idInfo->set_string_value(data_model_->idSelector().str());
-  }
-  if (!data_model_->classes().empty()) {
-    std::string class_str = "";
-    for (auto &aClass : data_model_->classes()) {
-      class_str = class_str + " " + aClass.str();
-    }
-    if (!class_str.empty()) {
-      auto *classInfo = event->add_debug_annotations();
-      classInfo->set_name("class");
-      classInfo->set_string_value(class_str);
-    }
-  }
-  auto *nodeIndexInfo = event->add_debug_annotations();
-  nodeIndexInfo->set_name("nodeIndex");
-  nodeIndexInfo->set_uint_value(node_index_);
-}
-#endif
 
 bool FiberElement::IsEventPathCatch(event::EventTarget *target,
                                     event::Event *event) {
