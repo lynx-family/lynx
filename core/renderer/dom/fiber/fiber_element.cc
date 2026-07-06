@@ -297,13 +297,6 @@ bool CustomPropertiesChanged(const starlight::ComputedCSSStyle *old_style,
                              new_style.GetCustomProperties());
 }
 
-void CollectDirtyNodeForList(int32_t impl_id, PipelineOptions *options) {
-  if (impl_id != options->list_id_) {
-    // Note: We should avoid adding the parent list node to
-    // options->updated_list_elements_ when rendering a list item.
-    options->updated_list_elements_.emplace_back(impl_id);
-  }
-}
 }  // namespace
 
 void FiberElement::NewPipelineStyleMutationPlan::AddUpdate(
@@ -795,25 +788,6 @@ FiberElement::~FiberElement() {
     }
     element_manager()->node_manager()->Erase(id_);
   }
-}
-
-const FiberElement::InheritedProperty
-FiberElement::GetParentInheritedProperty() {
-  // If in a parallel flush process or if the parent is null, return
-  // empty InheritedProperty indicating that it is not necessary to consider the
-  // inheritance logic at this time.
-  if (this->is_greedy_parallel_flush()) {
-    return {false, nullptr, nullptr,
-            custom_properties_.Get() ? &custom_properties_.Get()->Value()
-                                     : nullptr};
-  }
-
-  Element *real_parent = parent();
-  if (real_parent == nullptr) {
-    return InheritedProperty();
-  }
-
-  return real_parent->GetInheritedProperty();
 }
 
 CSSFragment *FiberElement::GetRelatedCSSFragment() {
@@ -3677,33 +3651,6 @@ void FiberElement::SetNativeProps(
   }
 }
 
-void FiberElement::MarkFontSizeInvalidateRecursively() {
-  MarkDirty(kDirtyFontSize);
-  auto *child = static_cast<FiberElement *>(first_render_child_);
-  while (child) {
-    child->MarkFontSizeInvalidateRecursively();
-    child = static_cast<FiberElement *>(child->next_render_sibling_);
-  }
-}
-
-void FiberElement::InvalidateChildrenFontSizeRecursively() {
-  auto *child = static_cast<FiberElement *>(first_render_child_);
-  while (child) {
-    child->MarkFontSizeInvalidateRecursively();
-    child = static_cast<FiberElement *>(child->next_render_sibling_);
-  }
-}
-
-void FiberElement::InvalidateChildrenInheritedStylesRecursively() {
-  for (const auto &child : scoped_children_) {
-    child->ApplyFunctionRecursive([](Element *element) {
-      if (!element->is_raw_text()) {
-        element->MarkDirtyLite(kDirtyPropagateInherited);
-      }
-    });
-  }
-}
-
 void FiberElement::FlushProps() {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_FLUSH_PROPS,
               [this](lynx::perfetto::EventContext ctx) {
@@ -3761,103 +3708,6 @@ void FiberElement::FlushProps() {
     has_painting_node_ = true;
   }
   has_transition_props_changed_ = false;
-}
-
-void FiberElement::RecursivelyMarkCustomPropertiesDirty() {
-  for (const auto &child : scoped_children_) {
-    auto *fiber_child = static_cast<FiberElement *>(child.get());
-    if (!fiber_child->is_raw_text()) {
-      fiber_child->MarkStyleDirty(false);
-    }
-    fiber_child->RecursivelyMarkCustomPropertiesDirty();
-  }
-}
-
-void FiberElement::MarkDirectChildrenStyleDirtyForInheritedPropertyMutation() {
-  for (const auto &child : scoped_children_) {
-    auto *fiber_child = static_cast<FiberElement *>(child.get());
-    if (!fiber_child->is_raw_text()) {
-      fiber_child->MarkStyleDirty(false);
-    }
-  }
-}
-
-void FiberElement::UpdateFixedNodeSet() {
-  if (!EnableLayoutInElementMode() || !IsFixedNewOrUnifiedEnabled() ||
-      sl_node_ == nullptr) {
-    return;
-  }
-  if (is_fixed_ && !attached_to_layout_parent_ && !is_page()) {
-    return;
-  }
-  element_manager()->UpdateFixedNodeSet(sl_node_.get(), is_fixed_);
-}
-
-void FiberElement::UpdateFixedNodeSetRecursively(bool is_insert) {
-  if (!EnableLayoutInElementMode() || !IsFixedNewOrUnifiedEnabled()) {
-    return;
-  }
-  if (sl_node_ != nullptr && is_fixed_) {
-    element_manager()->UpdateFixedNodeSet(sl_node_.get(), is_insert);
-  }
-  for (auto &child : scoped_children_) {
-    static_cast<FiberElement *>(child.get())
-        ->UpdateFixedNodeSetRecursively(is_insert);
-  }
-}
-
-void FiberElement::EnsureSLNode() {
-  if (EnableLayoutInElementMode() && sl_node_ == nullptr) {
-    sl_node_ = std::make_unique<SLNode>(
-        element_manager()->GetLayoutConfigs(),
-        computed_css_style()->GetLayoutComputedStyle());
-    if (is_page()) {
-      MarkAsLayoutRoot();
-    }
-    OnLayoutObjectCreated();
-  }
-}
-
-bool FiberElement::HasLayoutInElementPlatformNode() {
-  return EnableLayoutInElementMode() && customized_layout_node_;
-}
-
-int FiberElement::GetLayoutInElementPlatformChildIndex(FiberElement *child) {
-  if (child == nullptr || child->render_parent() == nullptr) {
-    return -1;
-  }
-  int index = 0;
-  auto *render_parent = static_cast<FiberElement *>(child->render_parent());
-  for (auto *current =
-           static_cast<FiberElement *>(render_parent->first_render_child());
-       current != nullptr;
-       current = static_cast<FiberElement *>(current->next_render_sibling())) {
-    if (current == child) {
-      return index;
-    }
-    if (current->HasLayoutInElementPlatformNode()) {
-      ++index;
-    }
-  }
-  return -1;
-}
-
-void FiberElement::MarkAsLayoutRoot() {
-  if (EnableLayoutInElementMode()) {
-    EnsureSLNode();
-    // The default flex direction is column for root
-    sl_node_->GetCSSMutableStyle()->SetFlexDirection(
-        starlight::FlexDirectionType::kColumn);
-    sl_node_->SetContext(element_manager());
-    sl_node_->MarkDirty();
-    sl_node_->SetSLRequestLayoutFunc([](void *context) {
-      static_cast<ElementManager *>(context)->ScheduleLayout();
-    });
-    return;
-  }
-
-  EnsureLayoutBundle();
-  layout_bundle_->is_root = true;
 }
 
 void FiberElement::MarkLayoutDirty() {
@@ -4077,88 +3927,6 @@ void FiberElement::UpdateCSSVariable(
     pipeline_option->target_node = impl_id();
   } else {
     element_manager()->OnPatchFinish(pipeline_option, this);
-  }
-}
-
-void FiberElement::SetFontSize(const tasm::CSSValue &value) {
-  SetFontSize(value, computed_css_style());
-}
-
-void FiberElement::SetFontSize(const tasm::CSSValue &value,
-                               starlight::ComputedCSSStyle *target_style) {
-  base::flex_optional<float> result;
-  const auto current_font_size = target_style->GetFontSize();
-  const auto root_font_size = target_style->GetRootFontSize();
-  if (!value.IsEmpty()) {
-    CheckDynamicUnit(CSSPropertyID::kPropertyIDFontSize, value, false);
-    const auto &env_config = element_manager()->GetLynxEnvConfig();
-    auto unify_vw_vh_behavior =
-        element_manager()->GetDynamicCSSConfigs().unify_vw_vh_behavior_;
-    result = starlight::CSSStyleUtils::ResolveFontSize(
-        value, env_config, unify_vw_vh_behavior, GetParentFontSize(),
-        GetRecordedRootFontSize(), element_manager()->GetCSSParserConfigs());
-  } else {
-    result = GetParentFontSize();
-  }
-
-  if (result.has_value()) {
-    target_style->SetResolvedValue(kPropertyIDFontSize,
-                                   CSSValue(*result, CSSValuePattern::NUMBER));
-  } else {
-    target_style->RemoveResolvedValue(kPropertyIDFontSize);
-  }
-
-  if (result.has_value() && *result != current_font_size) {
-    NotifyUnitValuesUpdatedToAnimation(DynamicCSSStylesManager::kUpdateEm);
-
-    if (is_page()) {
-      if (target_style == computed_css_style()) {
-        SetFontSizeForAllElement(*result, *result);
-      } else {
-        target_style->SetFontSize(*result, *result);
-      }
-      UpdateLayoutNodeFontSize(*result, *result);
-    } else {
-      if (target_style == computed_css_style()) {
-        SetFontSizeForAllElement(*result, root_font_size);
-      } else {
-        target_style->SetFontSize(*result, root_font_size);
-      }
-      UpdateLayoutNodeFontSize(*result, root_font_size);
-    }
-
-    if (!EnableLayoutInElementMode() || IsShadowNodeCustom()) {
-      target_style->SetValue(kPropertyIDFontSize,
-                             CSSValue(*result, CSSValuePattern::NUMBER));
-    }
-    // TODO(ZHOUZHITAO): Figure out why need to determine whether it is a page
-    if (is_page() && !is_greedy_parallel_flush()) {
-      // FIXME(linxs): if parent's font-size changed, we need to invalidate all
-      // descendant‘ style, otherwise the descendant em pattern values will not
-      // be updated dynamically. But it may cause perf issue, we can support it
-      // later.
-      MarkFontSizeInvalidateRecursively();
-    } else {
-      // TODO(zhouzhitao): to find a better way to make this work
-      // TODO(zhouzhitao): Check whether really need to RequireFlush
-      MarkDirty(kDirtyFontSize);
-    }
-  }
-}
-
-void FiberElement::ResetFontSize() {
-  CheckDynamicUnit(CSSPropertyID::kPropertyIDFontSize, CSSValue(), true);
-  // root_font_size_&font_size_ here are used to computed rem&rem
-  auto font_size = element_manager()->GetLynxEnvConfig().PageDefaultFontSize();
-  auto root_font_size = is_page() ? font_size : GetCurrentRootFontSize();
-
-  if (font_size != GetFontSize()) {
-    SetFontSizeForAllElement(font_size, root_font_size);
-    if (!EnableLayoutInElementMode() || IsShadowNodeCustom()) {
-      computed_css_style()->SetValue(
-          kPropertyIDFontSize, CSSValue(font_size, CSSValuePattern::NUMBER));
-    }
-    UpdateLayoutNodeFontSize(font_size, root_font_size);
   }
 }
 
@@ -4754,15 +4522,6 @@ void FiberElement::UpdateDynamicElementStyleForNewPipeline(
   }
 }
 
-void FiberElement::UpdateDynamicChildrenStyleRecursively(uint32_t style,
-                                                         bool force_update) {
-  auto *child = static_cast<FiberElement *>(first_render_child_);
-  while (child) {
-    child->UpdateDynamicElementStyleRecursively(style, force_update);
-    child = static_cast<FiberElement *>(child->next_render_sibling_);
-  }
-}
-
 void FiberElement::UpdateDynamicElementStyleRecursively(uint32_t style,
                                                         bool force_update) {
   if (is_raw_text()) {
@@ -4909,44 +4668,6 @@ void FiberElement::UpdateDynamicElementStyle(uint32_t style,
   UpdateDynamicElementStyleRecursively(style, force_update);
 }
 
-void FiberElement::RecursivelyMarkRenderRootElement(FiberElement *render_root) {
-  render_root_element_ = render_root;
-  for (const auto &child : scoped_children_) {
-    auto *fiber_child = static_cast<FiberElement *>(child.get());
-    if (!fiber_child->is_list_item()) {
-      fiber_child->RecursivelyMarkRenderRootElement(render_root);
-    }
-  }
-}
-
-void FiberElement::UpdateRenderRootElementIfNecessary(FiberElement *child) {
-  if (child->render_root_element_ == this->render_root_element_) {
-    // 1. Child has same render root as parent, indicating tree mutation inside
-    // same render root, no need to propagate change
-    return;
-  }
-  if (child->render_root_element_ == nullptr) {
-    // 2. child doesn't hava valid render_root_element, propagate parent's
-    // render_root_element to child subtree
-    child->RecursivelyMarkRenderRootElement(
-        static_cast<FiberElement *>(this->render_root_element_));
-    return;
-  }
-  if (this->render_root_element_ == nullptr) {
-    // 3. parent doesn't have valid render_root_element, reset chlld subtree
-    // render root
-    child->RecursivelyMarkRenderRootElement(nullptr);
-    return;
-  }
-  // 4.child and parent have different valid render_root_elements, throw warning
-  LOGW(
-      "FiberElement move element to a different render root, inefficient "
-      "operation");
-  // Update child subtree render root with parent render root
-  child->RecursivelyMarkRenderRootElement(
-      static_cast<FiberElement *>(this->render_root_element_));
-}
-
 void FiberElement::CreateListItemScheduler(
     list::BatchRenderStrategy batch_render_strategy,
     bool continuous_resolve_tree) {
@@ -4991,89 +4712,6 @@ void FiberElement::DispatchAsyncResolveSubtreeProperty() {
 bool FiberElement::CanBeLayoutOnly() const {
   return can_be_layout_only_ && element_manager()->GetEnableLayoutOnly() &&
          has_layout_only_props_ && computed_css_style()->IsOverflowXY();
-}
-
-void FiberElement::MarkLayoutDirtyLite() {
-  if (!is_virtual_) {
-    EnsureSLNode();
-    sl_node_->MarkDirtyAndRequestLayout();
-  } else {
-    auto *parent = static_cast<FiberElement *>(render_parent_);
-    while (parent) {
-      if (!parent->is_virtual_) {
-        parent->MarkLayoutDirtyLite();
-        break;
-      }
-      parent = static_cast<FiberElement *>(parent->render_parent_);
-    }
-  }
-}
-
-/**
- * Reference {@link LayoutContext#LayoutRecursively }
- */
-void FiberElement::UpdateLayoutInfoRecursively(PipelineOptions *options) {
-  if (!is_wrapper()) {
-    if (sl_node_ == nullptr || !(sl_node_->IsDirty())) {
-      return;
-    }
-
-    if (IfNeedsUpdateLayoutInfo()) {
-      UpdateLayoutInfo();
-    }
-
-    sl_node_->MarkUpdated();
-  }
-
-  for (auto &child : scoped_children_) {
-    static_cast<FiberElement *>(child.get())
-        ->UpdateLayoutInfoRecursively(options);
-  }
-
-  // A dirty child can change the list's content layout, so collect dirty list
-  // nodes regardless of whether their own layout info needs to be updated. This
-  // is intentionally post-order so nested lists are collected before their
-  // parent list.
-  if (is_list()) {
-    CollectDirtyNodeForList(impl_id(), options);
-  }
-}
-
-/**
- * Reference {@link LayoutContext#UpdateLayoutInfo }
- */
-void FiberElement::UpdateLayoutInfo() {
-  const auto &layout_result = sl_node_->GetLayoutResult();
-  width_ = layout_result.size_.width_;
-  height_ = layout_result.size_.height_;
-  top_ = layout_result.offset_.Y();
-  left_ = layout_result.offset_.X();
-  // paddings
-  paddings_[0] = layout_result.padding_[starlight::kLeft];
-  paddings_[1] = layout_result.padding_[starlight::kTop];
-  paddings_[2] = layout_result.padding_[starlight::kRight];
-  paddings_[3] = layout_result.padding_[starlight::kBottom];
-  // margins
-  margins_[0] = layout_result.margin_[starlight::kLeft];
-  margins_[1] = layout_result.margin_[starlight::kTop];
-  margins_[2] = layout_result.margin_[starlight::kRight];
-  margins_[3] = layout_result.margin_[starlight::kBottom];
-  // borders
-  borders_[0] = layout_result.border_[starlight::kLeft];
-  borders_[1] = layout_result.border_[starlight::kTop];
-  borders_[2] = layout_result.border_[starlight::kRight];
-  borders_[3] = layout_result.border_[starlight::kBottom];
-  display_none_ = sl_node_->GetShouldDisplayNone();
-
-  if (IsShadowNodeCustom()) {
-    element_manager_->layout_context()->OnLayout(id_, left_, top_, width_,
-                                                 height_, paddings_, borders_);
-    customized_layout_node_->OnLayoutAfter();
-  }
-  if (EnableFragmentLayerRender()) {
-    static_cast<Fragment *>(element_container())->UpdateLayout(layout_result);
-  }
-  frame_changed_ = true;
 }
 
 bool FiberElement::IsEventPathCatch(event::EventTarget *target,
