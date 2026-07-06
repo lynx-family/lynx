@@ -7,13 +7,13 @@
 
 #include <cstdint>
 
-#include "core/renderer/dom/fiber/fiber_element.h"
+#include "core/renderer/dom/element.h"
 #include "core/renderer/dom/fiber/platform_types.h"
 
 namespace lynx {
 namespace tasm {
 
-class ImageElement : public FiberElement {
+class ImageElement : public Element {
  public:
   ImageElement(ElementManager* manager, const base::String& tag);
 
@@ -36,7 +36,7 @@ class ImageElement : public FiberElement {
 
  protected:
   ImageElement(const ImageElement& element, bool clone_resolved_props)
-      : FiberElement(element, clone_resolved_props) {}
+      : Element(element, clone_resolved_props) {}
 
   void OnNodeAdded(Element* child) override;
 

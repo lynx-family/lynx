@@ -98,8 +98,7 @@ void RemoveElementFromSlotChildren(lepus::Value* slot_children,
   }
 }
 
-size_t FindSlotChildIndex(const lepus::Value& slot_children,
-                          Element* child) {
+size_t FindSlotChildIndex(const lepus::Value& slot_children, Element* child) {
   if (child == nullptr || !slot_children.IsArray()) {
     return static_cast<size_t>(slot_children.GetLength());
   }
@@ -298,11 +297,11 @@ void ApplyInitialAttributeSlots(
 void ApplyInitialAttributeSlots(
     const base::Vector<fml::RefPtr<Element>>& targets,
     const lepus::Value& attribute_slots) {
-  ApplyInitialAttributeSlots(
-      targets, attribute_slots,
-      [](Element* element, const lepus::Value& slots) {
-        TreeResolver::ApplyTemplateAttributesToElement(element, slots);
-      });
+  ApplyInitialAttributeSlots(targets, attribute_slots,
+                             [](Element* element, const lepus::Value& slots) {
+                               TreeResolver::ApplyTemplateAttributesToElement(
+                                   element, slots);
+                             });
 }
 
 void ApplyInitialNonEventAttributeSlots(
@@ -397,7 +396,7 @@ GeneratedElementsResult GeneratePreparedElementsResult(
 }  // namespace
 
 TemplateElement::TemplateElement(ElementManager* element_manager)
-    : FiberElement(element_manager, BASE_STATIC_STRING(kTemplateTag)),
+    : Element(element_manager, BASE_STATIC_STRING(kTemplateTag)),
       bundle_url_(BASE_STATIC_STRING(kDefaultTemplateBundleUrl)) {
   MarkTemplateElement();
 }
@@ -964,8 +963,7 @@ void TemplateElement::InsertInitialElementSlotChild(
 }
 
 void TemplateElement::MountElementSlotChild(
-    const ElementSlotMountPoint& mount_point,
-    const fml::RefPtr<Element>& child,
+    const ElementSlotMountPoint& mount_point, const fml::RefPtr<Element>& child,
     const fml::RefPtr<Element>& ref_node) {
   if (mount_point.parent_ == nullptr || child == nullptr) {
     return;

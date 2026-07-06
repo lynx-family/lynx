@@ -12,7 +12,7 @@ namespace tasm {
 constexpr const static char kWrapperElementTag[] = "wrapper";
 
 WrapperElement::WrapperElement(ElementManager* manager, const base::String& tag)
-    : FiberElement(manager, tag) {
+    : Element(manager, tag) {
   is_layout_only_ = true;
   if (element_manager_ == nullptr) {
     return;
@@ -62,7 +62,7 @@ void WrapperElement::SetWrapperType(Type type) { type_ |= type; }
 void WrapperElement::SetAttribute(const base::String& key,
                                   const lepus::Value& value,
                                   bool need_update_data_model) {
-  FiberElement::SetAttribute(key, value, need_update_data_model);
+  Element::SetAttribute(key, value, need_update_data_model);
 
   if (type_ & kTouchable) {
     for (auto& child : scoped_children_) {
@@ -72,7 +72,7 @@ void WrapperElement::SetAttribute(const base::String& key,
 }
 
 void WrapperElement::OnNodeAdded(Element* child) {
-  FiberElement::OnNodeAdded(child);
+  Element::OnNodeAdded(child);
   if (is_list_item()) {
     child->MarkAsListItem();
   }
@@ -85,7 +85,7 @@ void WrapperElement::OnNodeAdded(Element* child) {
 }
 
 void WrapperElement::OnNodeRemoved(Element* child) {
-  FiberElement::OnNodeRemoved(child);
+  Element::OnNodeRemoved(child);
 
   if (type_ & kTouchable) {
     for (auto& it : data_model_->attributes()) {

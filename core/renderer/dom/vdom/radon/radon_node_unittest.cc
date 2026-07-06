@@ -65,8 +65,7 @@ TEST_F(RadonNodeTest, CreateFiberElementView) {
 
   EXPECT_TRUE(element->is_view());
   radon_node->DispatchFirstTime();
-  EXPECT_TRUE(static_cast<FiberElement*>(element)->dirty_ &
-              FiberElement::kDirtyStyle);
+  EXPECT_TRUE(element->dirty_ & Element::kDirtyStyle);
   EXPECT_FALSE(element->element_container()->IsRootContainer());
 }
 
@@ -106,7 +105,7 @@ TEST_F(RadonNodeTest, CreateFiberElementRawText) {
       std::make_unique<RadonNode>(page_proxy.get(), "raw-text", 123);
   auto element = radon_node->CreateFiberElement();
 
-  EXPECT_TRUE(static_cast<FiberElement*>(element.get())->is_raw_text());
+  EXPECT_TRUE(element->is_raw_text());
 }
 
 TEST_F(RadonNodeTest, CreateFiberElementImage) {
@@ -121,7 +120,7 @@ TEST_F(RadonNodeTest, CreateFiberElementScrollView) {
       std::make_unique<RadonNode>(page_proxy.get(), "scroll-view", 123);
   auto element = radon_node->CreateFiberElement();
 
-  EXPECT_TRUE(static_cast<FiberElement*>(element.get())->is_scroll_view());
+  EXPECT_TRUE(element->is_scroll_view());
 }
 
 TEST_F(RadonNodeTest, CreateFiberElementXScrollView) {
@@ -129,7 +128,7 @@ TEST_F(RadonNodeTest, CreateFiberElementXScrollView) {
       std::make_unique<RadonNode>(page_proxy.get(), "x-scroll-view", 123);
   auto element = radon_node->CreateFiberElement();
 
-  EXPECT_TRUE(static_cast<FiberElement*>(element.get())->is_scroll_view());
+  EXPECT_TRUE(element->is_scroll_view());
 }
 
 TEST_F(RadonNodeTest, CreateFiberElementXNestedScrollView) {
@@ -137,7 +136,7 @@ TEST_F(RadonNodeTest, CreateFiberElementXNestedScrollView) {
                                                 "x-nested-scroll-view", 123);
   auto element = radon_node->CreateFiberElement();
 
-  EXPECT_TRUE(static_cast<FiberElement*>(element.get())->is_scroll_view());
+  EXPECT_TRUE(element->is_scroll_view());
 }
 
 TEST_F(RadonNodeTest, CreateFiberElementList) {
@@ -154,8 +153,8 @@ TEST_F(RadonNodeTest, CreateFiberElementComponent) {
   radon_node->SetComponent(nullptr);
   auto element = radon_node->CreateFiberElement();
 
-  EXPECT_TRUE(static_cast<FiberElement*>(element.get())->is_component());
-  EXPECT_FALSE(static_cast<FiberElement*>(element.get())->is_wrapper());
+  EXPECT_TRUE(element->is_component());
+  EXPECT_FALSE(element->is_wrapper());
 }
 
 TEST_F(RadonNodeTest, CreateFiberElementWrapperComponent) {
@@ -167,8 +166,8 @@ TEST_F(RadonNodeTest, CreateFiberElementWrapperComponent) {
   radon_node->SetComponent(nullptr);
   auto element = radon_node->CreateFiberElement();
 
-  EXPECT_TRUE(static_cast<FiberElement*>(element.get())->is_component());
-  EXPECT_TRUE(static_cast<FiberElement*>(element.get())->is_wrapper());
+  EXPECT_TRUE(element->is_component());
+  EXPECT_TRUE(element->is_wrapper());
 }
 
 TEST_F(RadonNodeTest, CreateFiberElementPage) {
@@ -177,7 +176,7 @@ TEST_F(RadonNodeTest, CreateFiberElementPage) {
   radon_node->SetComponent(nullptr);
   auto element = radon_node->CreateFiberElement();
 
-  EXPECT_TRUE(static_cast<FiberElement*>(element.get())->is_page());
+  EXPECT_TRUE(element->is_page());
   EXPECT_TRUE(element->element_container()->IsRootContainer());
 }
 
@@ -187,7 +186,7 @@ TEST_F(RadonNodeTest, NotCreateFiberElementPage) {
   radon_node->SetComponent(nullptr);
   auto element = radon_node->CreateFiberElement();
 
-  EXPECT_TRUE(static_cast<FiberElement*>(element.get())->is_page());
+  EXPECT_TRUE(element->is_page());
   EXPECT_TRUE(element->element_container()->IsRootContainer());
 }
 
@@ -196,7 +195,7 @@ TEST_F(RadonNodeTest, CreateFiberElementPageByTag) {
   radon_node->SetComponent(nullptr);
   auto element = radon_node->CreateFiberElement();
 
-  EXPECT_TRUE(static_cast<FiberElement*>(element.get())->is_page());
+  EXPECT_TRUE(element->is_page());
 }
 
 TEST_F(RadonNodeTest, TestViewCanBeLayoutOnlyWithoutOptimization) {
@@ -258,8 +257,8 @@ TEST_F(RadonNodeTest, TestComponentCanBeLayoutOnly) {
   radon_node->SetComponent(nullptr);
   auto element = radon_node->CreateFiberElement();
   element->computed_css_style()->SetOverflowDefaultVisible(true);
-  EXPECT_TRUE(static_cast<FiberElement*>(element.get())->is_component());
-  EXPECT_FALSE(static_cast<FiberElement*>(element.get())->is_wrapper());
+  EXPECT_TRUE(element->is_component());
+  EXPECT_FALSE(element->is_wrapper());
   // Can not be layout only because enable_component_layout_only_ switch
   EXPECT_FALSE(
       static_cast<ComponentElement*>(element.get())->CanBeLayoutOnly());
@@ -274,8 +273,8 @@ TEST_F(RadonNodeTest,
   radon_node->SetComponent(nullptr);
   auto element = radon_node->CreateFiberElement();
   element->computed_css_style()->SetOverflowDefaultVisible(true);
-  EXPECT_TRUE(static_cast<FiberElement*>(element.get())->is_component());
-  EXPECT_FALSE(static_cast<FiberElement*>(element.get())->is_wrapper());
+  EXPECT_TRUE(element->is_component());
+  EXPECT_FALSE(element->is_wrapper());
   // Can be layout only because enable_component_layout_only_ switch
   EXPECT_TRUE(static_cast<ComponentElement*>(element.get())->CanBeLayoutOnly());
 }
@@ -296,7 +295,7 @@ TEST_F(RadonNodeTest, SetInlineStyleForFiber) {
 TEST_F(RadonNodeTest, FlushInlineStyleForFiber) {
   auto radon_node = std::make_unique<RadonNode>(page_proxy.get(), "view", 123);
   radon_node->CreateElementIfNeeded();
-  const auto* fiber_element = static_cast<FiberElement*>(radon_node->element());
+  const auto* fiber_element = radon_node->element();
   radon_node->SetInlineStyle(
       CSSPropertyID::kPropertyIDBackgroundColor, base::String("black"),
       page_proxy->element_manager()->GetCSSParserConfigs());
@@ -319,7 +318,7 @@ TEST_F(RadonNodeTest, FlushInlineStyleForFiber) {
 TEST_F(RadonNodeTest, FlushAttributeForFiber) {
   auto radon_node = std::make_unique<RadonNode>(page_proxy.get(), "view", 123);
   radon_node->CreateElementIfNeeded();
-  const auto* fiber_element = static_cast<FiberElement*>(radon_node->element());
+  const auto* fiber_element = radon_node->element();
   radon_node->SetStaticAttribute("123", lepus::Value("black"));
   EXPECT_FALSE(radon_node->attributes().empty());
   EXPECT_TRUE(radon_node->attributes().count("123"));
@@ -339,8 +338,7 @@ TEST_F(RadonNodeTest, DiffAttributeForFiber) {
   radon_node2->CreateElementIfNeeded();
 
   radon_node1->SetStaticAttribute("123", lepus::Value("black"));
-  const auto* fiber_element =
-      static_cast<FiberElement*>(radon_node1->element());
+  const auto* fiber_element = radon_node1->element();
   const auto& fiber_attribute = fiber_element->updated_attr_map_;
   EXPECT_TRUE(fiber_attribute.empty());
   radon_node1->ShouldFlushAttr(radon_node2.get());
@@ -357,8 +355,7 @@ TEST_F(RadonNodeTest, DiffAttributeEmptyForFiber) {
   radon_node2->CreateElementIfNeeded();
 
   radon_node1->SetStaticAttribute("123", lepus::Value("black"));
-  const auto* fiber_element =
-      static_cast<FiberElement*>(radon_node2->element());
+  const auto* fiber_element = radon_node2->element();
   const auto& fiber_attribute = *fiber_element->reset_attr_vec_;
   EXPECT_TRUE(fiber_attribute.empty());
   radon_node2->ShouldFlushAttr(radon_node1.get());
@@ -393,8 +390,7 @@ TEST_F(RadonNodeTest, DiffStylesForFiber) {
       CSSPropertyID::kPropertyIDBackgroundColor, base::String("red"),
       page_proxy->element_manager()->GetCSSParserConfigs());
   DispatchOption option(page_proxy.get());
-  const auto* fiber_element =
-      static_cast<FiberElement*>(radon_node1->element());
+  const auto* fiber_element = radon_node1->element();
   const auto& fiber_inline_styles = *fiber_element->current_raw_inline_styles_;
   EXPECT_TRUE(fiber_inline_styles.empty());
   EXPECT_TRUE(radon_node1->ShouldFlushStyle(radon_node2.get(), option));
@@ -412,7 +408,7 @@ TEST_F(RadonNodeTest, MarkSubNodeStyleDirtyForFiber) {
   parent->CreateElementIfNeeded();
   auto child = new RadonNode(page_proxy.get(), "view", 0);
   child->CreateElementIfNeeded();
-  auto* child_element = static_cast<FiberElement*>(child->element());
+  auto* child_element = child->element();
   parent->AddChild(std::unique_ptr<RadonBase>(child));
 
   child_element->dirty_ = 0;
@@ -425,7 +421,7 @@ TEST_F(RadonNodeTest, MarkSubNodeStyleDirtyForFiber) {
 TEST_F(RadonNodeTest, MarkSubNodeStyleDirtyForFiberComponent) {
   auto parent = std::make_unique<RadonNode>(page_proxy.get(), "view", 123);
   parent->CreateElementIfNeeded();
-  auto* parent_element = static_cast<FiberElement*>(parent->element());
+  auto* parent_element = parent->element();
 
   auto comp = new RadonComponent(page_proxy.get(), 0, nullptr, nullptr, nullptr,
                                  nullptr, 123, "component");
@@ -433,7 +429,7 @@ TEST_F(RadonNodeTest, MarkSubNodeStyleDirtyForFiberComponent) {
 
   auto child = new RadonNode(page_proxy.get(), "view", 0);
   child->CreateElementIfNeeded();
-  auto* child_element = static_cast<FiberElement*>(child->element());
+  auto* child_element = child->element();
   comp->AddChild(std::unique_ptr<RadonBase>(child));
 
   child_element->dirty_ = 0;
@@ -451,7 +447,7 @@ TEST_F(RadonNodeTest, MarkSubNodeStyleDirtyForFiberComponent) {
 TEST_F(RadonNodeTest, DiffAttr) {
   auto radon_node = std::make_unique<RadonNode>(page_proxy.get(), "view", 123);
   radon_node->CreateElementIfNeeded();
-  const auto* fiber_element = static_cast<FiberElement*>(radon_node->element());
+  const auto* fiber_element = radon_node->element();
   radon_node->SetStaticAttribute("123", lepus::Value("black"));
   EXPECT_FALSE(radon_node->attributes().empty());
   EXPECT_TRUE(radon_node->attributes().count("123"));
@@ -465,8 +461,7 @@ TEST_F(RadonNodeTest, DiffAttr) {
 
   auto radon_node2 = std::make_unique<RadonNode>(page_proxy.get(), "view", 123);
   radon_node2->CreateElementIfNeeded();
-  const auto* fiber_element2 =
-      static_cast<FiberElement*>(radon_node2->element());
+  const auto* fiber_element2 = radon_node2->element();
   radon_node2->SetStaticAttribute("123", lepus::Value("red"));
   EXPECT_FALSE(radon_node2->attributes().empty());
   EXPECT_TRUE(radon_node2->attributes().count("123"));
@@ -484,7 +479,7 @@ TEST_F(RadonNodeTest, DiffAttr) {
 TEST_F(RadonNodeTest, DiffEmptyAttr) {
   auto radon_node = std::make_unique<RadonNode>(page_proxy.get(), "view", 123);
   radon_node->CreateElementIfNeeded();
-  const auto* fiber_element = static_cast<FiberElement*>(radon_node->element());
+  const auto* fiber_element = radon_node->element();
   radon_node->SetStaticAttribute("123", lepus::Value("black"));
   EXPECT_FALSE(radon_node->attributes().empty());
   EXPECT_TRUE(radon_node->attributes().count("123"));
@@ -498,8 +493,7 @@ TEST_F(RadonNodeTest, DiffEmptyAttr) {
 
   auto radon_node2 = std::make_unique<RadonNode>(page_proxy.get(), "view", 123);
   radon_node2->CreateElementIfNeeded();
-  const auto* fiber_element2 =
-      static_cast<FiberElement*>(radon_node2->element());
+  const auto* fiber_element2 = radon_node2->element();
   radon_node2->SetStaticAttribute("123", lepus::Value());
   EXPECT_FALSE(radon_node2->attributes().empty());
   EXPECT_TRUE(radon_node2->attributes().count("123"));

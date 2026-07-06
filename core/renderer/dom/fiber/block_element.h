@@ -8,15 +8,15 @@
 #include <vector>
 
 #include "base/include/vector.h"
-#include "core/renderer/dom/fiber/fiber_element.h"
+#include "core/renderer/dom/element.h"
 
 namespace lynx {
 namespace tasm {
 
-class BlockElement : public FiberElement {
+class BlockElement : public Element {
  public:
   BlockElement(ElementManager* manager, const base::String& tag)
-      : FiberElement(manager, tag) {}
+      : Element(manager, tag) {}
 
   bool is_block() const override { return true; }
 

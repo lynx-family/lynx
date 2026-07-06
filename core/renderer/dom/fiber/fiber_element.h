@@ -34,25 +34,6 @@ namespace tasm {
 class NodeManager;
 class PlatformLayoutFunctionWrapper;
 
-enum NodeInfoBits : int32_t {
-  // Mask for layout node type, using lower 16 bits.
-  kLayoutNodeTypeMask = 0x0000FFFF,
-  // Mask for async creation flag.
-  kCreateAsyncMask = 0x00010000,
-};
-
-constexpr const int32_t kCommonBuiltInNodeInfo =
-    (static_cast<int32_t>(LayoutNodeType::COMMON) &
-     NodeInfoBits::kLayoutNodeTypeMask) |
-    NodeInfoBits::kCreateAsyncMask;
-constexpr const int32_t kVirtualBuiltInNodeInfo =
-    (static_cast<int32_t>(LayoutNodeType::VIRTUAL) &
-     NodeInfoBits::kLayoutNodeTypeMask);
-constexpr const int32_t kCustomBuiltInNodeInfo =
-    (static_cast<int32_t>(LayoutNodeType::CUSTOM) &
-     NodeInfoBits::kLayoutNodeTypeMask) |
-    NodeInfoBits::kCreateAsyncMask;
-
 class FiberElement : public Element {
  public:
   FiberElement(ElementManager* manager, const base::String& tag);

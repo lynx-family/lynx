@@ -8,7 +8,7 @@
 #include <utility>
 
 #include "core/base/thread/once_task.h"
-#include "core/renderer/dom/fiber/fiber_element.h"
+#include "core/renderer/dom/element.h"
 #include "core/renderer/dom/fiber/generated_elements_result.h"
 
 namespace lynx {
@@ -29,7 +29,7 @@ struct TemplateElementTreeCacheKey {
   }
 };
 
-class TemplateElement : public FiberElement {
+class TemplateElement : public Element {
  public:
   explicit TemplateElement(ElementManager* element_manager = nullptr);
   ~TemplateElement() override;
@@ -78,8 +78,7 @@ class TemplateElement : public FiberElement {
 
     PendingOperation(Type type, uint32_t slot_index, lepus::Value value)
         : type_(type), slot_index_(slot_index), value_(std::move(value)) {}
-    PendingOperation(Type type, uint32_t slot_index,
-                     fml::RefPtr<Element> child,
+    PendingOperation(Type type, uint32_t slot_index, fml::RefPtr<Element> child,
                      fml::RefPtr<Element> ref_node = nullptr)
         : type_(type),
           slot_index_(slot_index),
@@ -100,7 +99,7 @@ class TemplateElement : public FiberElement {
   };
 
   TemplateElement(const TemplateElement& element, bool clone_resolved_props)
-      : FiberElement(element, clone_resolved_props),
+      : Element(element, clone_resolved_props),
         tasm_(element.tasm_),
         entry_(element.entry_),
         template_key_(element.template_key_),

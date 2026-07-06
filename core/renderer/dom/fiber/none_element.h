@@ -5,18 +5,17 @@
 #ifndef CORE_RENDERER_DOM_FIBER_NONE_ELEMENT_H_
 #define CORE_RENDERER_DOM_FIBER_NONE_ELEMENT_H_
 
-#include "core/renderer/dom/fiber/fiber_element.h"
+#include "core/renderer/dom/element.h"
 
 namespace lynx {
 namespace tasm {
 
-class NoneElement : public FiberElement {
+class NoneElement : public Element {
  public:
   NoneElement(ElementManager* manager);
 
   fml::RefPtr<Element> CloneElement(bool clone_resolved_props) const override {
-    return fml::AdoptRef<Element>(
-        new NoneElement(*this, clone_resolved_props));
+    return fml::AdoptRef<Element>(new NoneElement(*this, clone_resolved_props));
   }
 
   bool is_none() const override { return true; }

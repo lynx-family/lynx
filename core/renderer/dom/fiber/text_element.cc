@@ -21,7 +21,7 @@ namespace lynx {
 namespace tasm {
 
 TextElement::TextElement(ElementManager* manager, const base::String& tag)
-    : FiberElement(manager, tag) {
+    : Element(manager, tag) {
   is_text_ = true;
   if (element_manager_ == nullptr) {
     return;
@@ -47,13 +47,13 @@ void TextElement::AttachToElementManager(
     ElementManager* manager,
     const std::shared_ptr<CSSStyleSheetManager>& style_manager,
     bool keep_element_id) {
-  FiberElement::AttachToElementManager(manager, style_manager, keep_element_id);
+  Element::AttachToElementManager(manager, style_manager, keep_element_id);
   SetDefaultOverflow(manager->GetDefaultTextOverflow());
 }
 
 void TextElement::SetStyleInternal(CSSPropertyID id,
                                    const tasm::CSSValue& value) {
-  FiberElement::SetStyleInternal(id, value);
+  Element::SetStyleInternal(id, value);
 
   if (id == kPropertyIDFontFamily) {
     if (!EnableLayoutInElementMode()) {
@@ -104,7 +104,7 @@ void TextElement::SetAttributeInternal(const base::String& key,
                        ? ProcessAttributeForLayoutInElement(key, value)
                        : ProcessAttributeForNormalLayoutMode(key, value);
   if (!processed) {
-    FiberElement::SetAttributeInternal(key, value);
+    Element::SetAttributeInternal(key, value);
   }
 }
 
@@ -114,7 +114,7 @@ void TextElement::ResetAttribute(const base::String& key) {
   }
   if (!EnableLayoutInElementMode() ||
       !ProcessAttributeForLayoutInElement(key, lepus::Value(), true)) {
-    FiberElement::ResetAttribute(key);
+    Element::ResetAttribute(key);
   }
 }
 
@@ -202,7 +202,7 @@ void TextElement::ConvertToInlineElement() {
   }
   data_model()->set_tag(tag_);
   UpdateTagToLayoutBundle();
-  FiberElement::ConvertToInlineElement();
+  Element::ConvertToInlineElement();
 }
 
 void TextElement::MarkLayoutInElementTextMeasurerPropertyIfNeeded(
@@ -281,7 +281,7 @@ bool TextElement::ResetCSSValue(CSSPropertyID id) {
       has_processed = true;
     }
   } else {
-    has_processed = FiberElement::ResetCSSValue(id);
+    has_processed = Element::ResetCSSValue(id);
   }
 
   return has_processed;

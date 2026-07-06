@@ -7,12 +7,12 @@
 
 #include <utility>
 
-#include "core/renderer/dom/fiber/fiber_element.h"
+#include "core/renderer/dom/element.h"
 
 namespace lynx {
 namespace tasm {
 
-class WrapperElement : public FiberElement {
+class WrapperElement : public Element {
  public:
   enum Type {
     kCommon = 1 << 0,
@@ -46,7 +46,7 @@ class WrapperElement : public FiberElement {
 
  protected:
   WrapperElement(const WrapperElement& element, bool clone_resolved_props)
-      : FiberElement(element, clone_resolved_props) {
+      : Element(element, clone_resolved_props) {
     is_layout_only_ = true;
   }
 
