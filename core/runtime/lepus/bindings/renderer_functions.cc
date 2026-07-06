@@ -3286,7 +3286,7 @@ RENDERER_FUNCTION_CC(FiberMarkAsyncResolveRoot) {
     RETURN_UNDEFINED();
   }
 
-  auto element = fml::static_ref_ptr_cast<FiberElement>(arg0->RefCounted());
+  auto element = fml::static_ref_ptr_cast<Element>(arg0->RefCounted());
   element->MarkAsyncFlushRoot(true);
 
   RETURN_UNDEFINED();
@@ -3587,7 +3587,7 @@ RENDERER_FUNCTION_CC(FiberGetTemplateParts) {
   if (!arg0->IsRefCounted()) {
     RETURN_UNDEFINED();
   }
-  auto element = fml::static_ref_ptr_cast<FiberElement>(arg0->RefCounted());
+  auto element = fml::static_ref_ptr_cast<Element>(arg0->RefCounted());
   if (!element->IsTemplateElement()) {
     RETURN_UNDEFINED();
   }
@@ -4349,7 +4349,7 @@ RENDERER_FUNCTION_CC(FiberAddEvent) {
   CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(name, 2, String, FiberAddEvent);
   CONVERT_ARG(callback, 3);
 
-  auto element = fml::static_ref_ptr_cast<FiberElement>(arg0->RefCounted());
+  auto element = fml::static_ref_ptr_cast<Element>(arg0->RefCounted());
   CHECK_ILLEGAL_ATTRIBUTE_CONFIG(element, FiberAddEvent);
   element->FiberAddEvent(type->String(), name->String(), *callback,
                          LEPUS_CONTEXT()->name());
@@ -4545,7 +4545,7 @@ RENDERER_FUNCTION_CC(FiberSetEvents) {
   CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(arg0, 0, RefCounted, FiberSetEvents);
   CONVERT_ARG(callbacks, 1);
 
-  auto element = fml::static_ref_ptr_cast<FiberElement>(arg0->RefCounted());
+  auto element = fml::static_ref_ptr_cast<Element>(arg0->RefCounted());
   CHECK_ILLEGAL_ATTRIBUTE_CONFIG(element, FiberSetEvents);
 
   auto* manager = element->element_manager();
@@ -5014,12 +5014,11 @@ RENDERER_FUNCTION_CC(FiberFlushElementTree) {
   // [1] Object -> options
 
   // If argc >= 1, convert arg0 to element.
-  FiberElement* element = nullptr;
+  Element* element = nullptr;
   if (argc >= 1) {
     CONVERT_ARG(arg0, 0);
     if (arg0->IsRefCounted()) {
-      element =
-          fml::static_ref_ptr_cast<FiberElement>(arg0->RefCounted()).get();
+      element = fml::static_ref_ptr_cast<Element>(arg0->RefCounted()).get();
     }
   }
 
@@ -5027,7 +5026,7 @@ RENDERER_FUNCTION_CC(FiberFlushElementTree) {
   // tree. Flush through the nearest non-template ancestor so the following
   // patch pipeline can resolve a target that is attached to the root tree.
   while (element != nullptr && element->is_template()) {
-    element = static_cast<FiberElement*>(element->parent());
+    element = element->parent();
   }
 
   bool trigger_data_updated = false;
@@ -5198,8 +5197,7 @@ RENDERER_FUNCTION_CC(FiberFlushElementTree) {
                       .get();
               if (list_element != nullptr) {
                 list_element->NotifyListReuseNode(
-                    fml::RefPtr<FiberElement>(element),
-                    item_key_value.String());
+                    fml::RefPtr<Element>(element), item_key_value.String());
               }
             }
           }
@@ -5316,15 +5314,15 @@ RENDERER_FUNCTION_CC(FiberElementFromBinary) {
       if (manager->GetDevToolFlag() && manager->IsDomTreeEnabled()) {
         tasm::ForEachLepusValue(node_ary, [manager](const auto& index,
                                                     const auto& value) {
-          std::function<void(FiberElement*)> prepare_node_f =
-              [manager, &prepare_node_f](FiberElement* element) {
+          std::function<void(Element*)> prepare_node_f =
+              [manager, &prepare_node_f](Element* element) {
                 manager->PrepareNodeForInspector(element);
                 for (const auto& child : element->children()) {
-                  prepare_node_f(static_cast<FiberElement*>(child.get()));
+                  prepare_node_f(child.get());
                 }
               };
           prepare_node_f(
-              fml::static_ref_ptr_cast<FiberElement>(value.RefCounted()).get());
+              fml::static_ref_ptr_cast<Element>(value.RefCounted()).get());
         });
       });
 
