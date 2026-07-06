@@ -677,10 +677,10 @@ fml::RefPtr<Element> TreeResolver::CloneElements(
   return res;
 }
 
-base::Vector<fml::RefPtr<FiberElement>> TreeResolver::FromTemplateInfo(
+base::Vector<fml::RefPtr<Element>> TreeResolver::FromTemplateInfo(
     const ElementTemplateInfo& info) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, TREE_RESOLVER_FROM_TEMPLATE_INFO);
-  base::Vector<fml::RefPtr<FiberElement>> res;
+  base::Vector<fml::RefPtr<Element>> res;
   for (const auto& element_info : info.elements_) {
     auto element_node = FromElementInfo(-1, element_info, nullptr);
     element_node->MarkTemplateElement();
@@ -714,7 +714,7 @@ void TreeResolver::InitElementTree(
 }
 
 lepus::Value TreeResolver::InitElementTree(
-    base::Vector<fml::RefPtr<FiberElement>>&& elements, int64_t pid,
+    base::Vector<fml::RefPtr<Element>>&& elements, int64_t pid,
     ElementManager* manager,
     const std::shared_ptr<CSSStyleSheetManager>& style_manager) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, TREE_RESOLVER_INIT_ELEMENT_TREE);
@@ -729,23 +729,20 @@ lepus::Value TreeResolver::InitElementTree(
   return lepus::Value(ary);
 }
 
-fml::RefPtr<FiberElement> TreeResolver::CloneElementRecursively(
-    const FiberElement* element, bool clone_resolved_props) {
-  fml::RefPtr<FiberElement> res =
-      fml::static_ref_ptr_cast<FiberElement>(
-          element->CloneElement(clone_resolved_props));
+fml::RefPtr<Element> TreeResolver::CloneElementRecursively(
+    const Element* element, bool clone_resolved_props) {
+  fml::RefPtr<Element> res = element->CloneElement(clone_resolved_props);
 
   // construct children
   for (const auto& c : element->children()) {
-    res->InsertNode(CloneElementRecursively(static_cast<FiberElement*>(c.get()),
-                                            clone_resolved_props));
+    res->InsertNode(CloneElementRecursively(c.get(), clone_resolved_props));
   }
 
   return res;
 }
 
 void TreeResolver::AttachRootToElementManager(
-    fml::RefPtr<FiberElement>& root, ElementManager* element_manager,
+    const fml::RefPtr<Element>& root, ElementManager* element_manager,
     const std::shared_ptr<CSSStyleSheetManager>& style_manager,
     bool keep_element_id) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, TREE_RESOLVER_ATTACH_TO_ELEMENT_MANAGER);
@@ -756,14 +753,14 @@ void TreeResolver::AttachRootToElementManager(
 }
 
 void TreeResolver::AttachToElementManagerRecursively(
-    FiberElement& element, ElementManager* manager,
+    Element& element, ElementManager* manager,
     const std::shared_ptr<CSSStyleSheetManager>& style_manager,
     bool keep_element_id) {
   element.AttachToElementManager(manager, style_manager, keep_element_id);
 
   for (auto& child : element.children()) {
-    AttachToElementManagerRecursively(*static_cast<FiberElement*>(child.get()),
-                                      manager, style_manager, keep_element_id);
+    AttachToElementManagerRecursively(*child, manager, style_manager,
+                                      keep_element_id);
   }
 }
 
@@ -781,16 +778,16 @@ void TreeResolver::GetPartsRecursively(
   }
 }
 
-fml::RefPtr<FiberElement> TreeResolver::FromElementInfo(
+fml::RefPtr<Element> TreeResolver::FromElementInfo(
     int64_t parent_component_id, const ElementInfo& info) {
   return FromElementInfo(parent_component_id, info, nullptr);
 }
 
-fml::RefPtr<FiberElement> TreeResolver::FromElementInfo(
+fml::RefPtr<Element> TreeResolver::FromElementInfo(
     int64_t parent_component_id, const ElementInfo& info,
     GeneratedElementsResult* generated) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, TREE_RESOLVER_FROM_ELEMENT_INFO);
-  fml::RefPtr<FiberElement> res =
+  fml::RefPtr<Element> res =
       ElementManager::StaticCreateFiberElement(info.tag_enum_, info.tag_);
   if (info.attributes_ != nullptr) {
     // Keep a shared read-only copy of the template attribute descriptors on
@@ -898,7 +895,7 @@ fml::RefPtr<FiberElement> TreeResolver::FromElementInfo(
       ++it;
     }
 
-    fml::RefPtr<FiberElement> materialized_child = nullptr;
+    fml::RefPtr<Element> materialized_child = nullptr;
     if (it != info.children_.end()) {
       materialized_child = FromElementInfo(parent_component_id, *it, generated);
       ++it;
