@@ -114,8 +114,8 @@ bool RadonDiffListNode::ShouldFlush(
   if (list_updated) {
     // forcibly trigger a UI update, even if there is no valid content within
     // the prop_bundle.
-    fiber_element()->MarkPropsDirty();
-    fiber_element()->PreparePropBundleIfNeed();
+    element()->MarkPropsDirty();
+    element()->PreparePropBundleIfNeed();
   }
   return should_flush || list_updated;
 }
