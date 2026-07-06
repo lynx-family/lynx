@@ -109,7 +109,7 @@ class TextElement : public FiberElement {
   }
 
  protected:
-  void OnNodeAdded(FiberElement* child) override;
+  void OnNodeAdded(Element* child) override;
   void SetAttributeInternal(const base::String& key,
                             const lepus::Value& value) override;
 

@@ -36,7 +36,7 @@ class ScrollElement : public FiberElement {
   const StyleMap* PeekCommittedStylesFromAttributes() const override;
 
  protected:
-  void OnNodeAdded(FiberElement* child) override;
+  void OnNodeAdded(Element* child) override;
   void ResetAttribute(const base::String& key) override;
   void CacheCommittedStyleFromAttributes(CSSPropertyID id,
                                          const CSSValue& value) override;
