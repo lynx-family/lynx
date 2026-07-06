@@ -1,52 +1,114 @@
-# @lynx-js/node-lynx Usage
+---
+name: node-lynx
+description: Use this skill when a task needs to run Lynx bundles with the node-lynx CLI, capture screenshots, open a macOS preview window, use DebugRouter OpenCard, inspect rendered content through CDP, or integrate node-lynx through JavaScript or TypeScript APIs.
+---
 
-Use this skill when the task involves running Lynx bundles through `@lynx-js/node-lynx`, capturing screenshots, opening macOS preview windows, using DebugRouter OpenCard, or validating changes to the package under `lynx/oliver/node-lynx`.
+# Node Lynx
 
-## Package Boundary
+Use node-lynx as a local Lynx runtime for screenshots, preview windows, smoke
+tests, DebugRouter OpenCard sessions, and automation that needs to inspect or
+interact with a rendered Lynx page from Node.js.
 
-- Package root: `lynx/oliver/node-lynx`.
-- Public package name: `@lynx-js/node-lynx`.
-- Native addons are resolved from a matching optional platform package, or from local `platform/<platform>-<arch>/node_lynx.node` / `build/<platform>/.../node_lynx.node` during development.
-- Treat files under `lynx/` as open-source-facing. Keep internal-only notes out of this package.
+Default sample template URL:
+
+```text
+https://lynxjs.org/lynx-examples/gallery/dist/GalleryComplete.lynx.bundle
+```
 
 ## CLI
 
-Render a headless screenshot:
+Prefer the CLI for one-off screenshots, quick template validation, and simple
+preview sessions.
+
+Show available options:
 
 ```bash
-node-lynx render https://lynxjs.org/lynx-examples/gallery/dist/GalleryComplete.lynx.bundle \
+node-lynx --help
+```
+
+Capture a headless screenshot and exit:
+
+```bash
+node-lynx render \
+  "https://lynxjs.org/lynx-examples/gallery/dist/GalleryComplete.lynx.bundle" \
   --width 268 \
   --height 469 \
   --dpr 2 \
   --output ./gallery.png \
-  --screenshot-delay 500
+  --timeout 30000 \
+  --screenshot-delay 500 \
+  --no-debug-router
 ```
 
-Open a visible macOS preview window:
+Render a local bundle:
 
 ```bash
-node-lynx preview https://lynxjs.org/lynx-examples/gallery/dist/GalleryComplete.lynx.bundle \
-  --width 268 \
-  --height 469 \
-  --dpr 2
+node-lynx render \
+  --template ./dist/main/template.js \
+  --width 390 \
+  --height 844 \
+  --output ./node-lynx-local.png \
+  --no-debug-router
 ```
 
-Rules:
+Open a visible preview window on macOS:
 
-- `--template <path>` loads a local Lynx bundle.
-- `--url <url>` loads a remote `http://` or `https://` bundle.
-- A positional input starting with `http://` or `https://` is treated as a remote URL.
-- `--width` and `--height` are CSS pixel viewport values.
-- `--dpr` controls output scale; PNG size is `width * dpr` by `height * dpr`.
-- `--timeout <ms>` is a maximum wait for bundle download, template load, CDP calls, and first-frame submission. It is not a fixed screenshot delay.
-- `--screenshot-delay <ms>` waits after first-frame submission and before capture. It defaults to `100`; use `0` to skip the extra settle wait.
-- Prefer a real template URL when the bundle uses URL-relative resources.
+```bash
+node-lynx preview \
+  "https://lynxjs.org/lynx-examples/gallery/dist/GalleryComplete.lynx.bundle" \
+  --width 268 \
+  --height 469 \
+  --dpr 2 \
+  --title "Node Lynx Preview"
+```
 
-## Headless API
+Start a DebugRouter-backed session without an initial template:
 
-```js
-const fs = require('fs');
-const { HeadlessLynxView } = require('@lynx-js/node-lynx');
+```bash
+node-lynx render
+```
+
+CLI rules:
+
+- Use `render` for headless screenshots and automation.
+- Use `preview` only on macOS; it creates an AppKit window.
+- Use `--template <path>` for local bundles and `--url <url>` for remote
+  bundles. A positional `http://` or `https://` input is treated as a remote
+  bundle URL.
+- Use `--width` and `--height` as CSS pixel viewport values.
+- Use `--dpr` or `--device-pixel-ratio` to control output scale; the PNG pixel
+  size is `width * dpr` by `height * dpr`.
+- Use `--timeout <ms>` for bundle download, template load, CDP calls, and first
+  frame submission timeouts.
+- Use `--screenshot-delay <ms>` to wait after the first frame before capture.
+  This defaults to `100`; use a larger delay for image-heavy or network-heavy
+  pages.
+- Pass `--no-debug-router` for CI or one-shot screenshot commands that should
+  exit immediately after writing the PNG.
+- Omit `--no-debug-router` when you need DebugRouter/OpenCard. Without an
+  initial template, `render` waits for DebugRouter OpenCard. `preview` also
+  waits for OpenCard without creating an initial window.
+
+## TypeScript API
+
+Prefer the API when the task needs programmatic setup, repeated captures,
+global props, CDP calls, input simulation, or custom lifecycle handling.
+
+Import from the node-lynx package declared by the target project. For public npm
+usage this is typically:
+
+```ts
+import { HeadlessLynxView } from '@lynx-js/node-lynx';
+```
+
+Render a remote template to PNG:
+
+```ts
+import { writeFile } from 'node:fs/promises';
+import { HeadlessLynxView } from '@lynx-js/node-lynx';
+
+const templateUrl =
+  'https://lynxjs.org/lynx-examples/gallery/dist/GalleryComplete.lynx.bundle';
 
 const view = new HeadlessLynxView({
   width: 268,
@@ -56,44 +118,66 @@ const view = new HeadlessLynxView({
 });
 
 try {
-  await view.loadTemplateFromUrl(
-    'https://lynxjs.org/lynx-examples/gallery/dist/GalleryComplete.lynx.bundle'
-  );
+  await view.loadTemplateFromUrl(templateUrl, {
+    initialData: { source: 'node-lynx' },
+    globalProps: { theme: 'light' },
+  });
   const png = await view.screenshot({ settleMs: 500 });
-  fs.writeFileSync('./screenshot.png', png);
+  await writeFile('./gallery.png', png);
 } finally {
   view.destroy();
 }
 ```
 
-For a local bundle buffer, pass a URL so relative resource resolution has context:
+Render a local bundle buffer. Always pass a file URL so relative resources have
+the right base URL:
 
-```js
-const fs = require('fs');
-const path = require('path');
-const { pathToFileURL } = require('url');
-const { HeadlessLynxView } = require('@lynx-js/node-lynx');
+```ts
+import { readFile, writeFile } from 'node:fs/promises';
+import { resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
+import { HeadlessLynxView } from '@lynx-js/node-lynx';
 
-const templatePath = path.resolve('./template.lynx.bundle');
-const view = new HeadlessLynxView();
+const templatePath = resolve('./dist/main/template.js');
+const view = new HeadlessLynxView({ width: 390, height: 844 });
 
 try {
-  await view.loadTemplate(fs.readFileSync(templatePath), {
-    url: pathToFileURL(templatePath).toString(),
+  await view.loadTemplate(await readFile(templatePath), {
+    url: pathToFileURL(templatePath).href,
   });
-  fs.writeFileSync('./screenshot.png', await view.screenshot());
+  await writeFile('./node-lynx-local.png', await view.screenshot());
 } finally {
   view.destroy();
 }
+```
+
+Inspect the DOM through CDP:
+
+```ts
+const responseText = await view.invokeCDPFromSDK(
+  JSON.stringify({
+    id: 1,
+    method: 'DOM.getDocument',
+    params: { depth: -1, pierce: true },
+  })
+);
+const response = JSON.parse(responseText);
+```
+
+Update runtime data after load:
+
+```ts
+view.updateData({ selected: true });
+view.updateGlobalProps({ locale: 'en-US' });
+await view.waitForFrame();
 ```
 
 ## Windowed API
 
-`WindowedLynxView` is macOS-only and creates an AppKit window.
+Use `WindowedLynxView` only on macOS when a visible app window is required.
 
-```js
-const fs = require('fs');
-const { WindowedLynxView } = require('@lynx-js/node-lynx');
+```ts
+import { WindowedLynxView } from '@lynx-js/node-lynx';
 
 const view = new WindowedLynxView({
   width: 268,
@@ -107,66 +191,65 @@ try {
     'https://lynxjs.org/lynx-examples/gallery/dist/GalleryComplete.lynx.bundle'
   );
   await view.waitForFrame();
-  fs.writeFileSync('./windowed.png', await view.screenshot({ settleMs: 500 }));
+  view.click(20, 70);
+  view.typeText('hello from node-lynx');
+  view.pressKey('Enter');
   await view.waitUntilClosed();
 } finally {
   view.destroy();
 }
 ```
 
-Useful interaction APIs:
-
-- `click(x, y)` uses CSS pixel coordinates.
-- `typeText(text)` commits UTF-8 text into the focused Lynx input.
-- `pressKey(key)` supports `Backspace`, `Delete`, `Enter`, `ArrowLeft`, `ArrowRight`, `ArrowUp`, and `ArrowDown`.
-
-## Screenshot Timing
-
-- `waitForFrame()` means a frame was submitted; it does not guarantee every image resource has decoded or repainted.
-- `screenshot({ settleMs })` and CLI `--screenshot-delay` add a simple post-frame wait before capture.
-- For image-heavy or network-heavy pages, a fixed delay is a pragmatic fallback, but a page-level ready signal is more reliable when available.
-- If a screenshot still shows placeholders after longer delays, investigate image decode, repaint, and capture timing rather than assuming the generic resource fetcher is missing.
+Interaction APIs use CSS pixel coordinates. Supported `pressKey` values are
+`Backspace`, `Delete`, `Enter`, `ArrowLeft`, `ArrowRight`, `ArrowUp`, and
+`ArrowDown`.
 
 ## DebugRouter OpenCard
 
-```js
-const {
+Use OpenCard managers when the page should be opened by DebugRouter instead of
+an initial CLI/API template load.
+
+```ts
+import {
   HeadlessOpenCardManager,
-  WindowedOpenCardManager,
   LynxEnv,
-} = require('@lynx-js/node-lynx');
+  WindowedOpenCardManager,
+} from '@lynx-js/node-lynx';
 
 LynxEnv.init();
-LynxEnv.setAppInfo(['App', 'AppVersion'], ['LynxPlayground', '0.0.2']);
+LynxEnv.setAppInfo(['App', 'AppVersion'], ['NodeLynxSkill', '1.0.0']);
 
-const OpenCardManager =
+const Manager =
   process.platform === 'darwin' ? WindowedOpenCardManager : HeadlessOpenCardManager;
 
-const openCards = new OpenCardManager({
-  view: { width: 268, height: 469, devicePixelRatio: 2 },
+const manager = new Manager({
+  view: { width: 268, height: 469, devicePixelRatio: 2, timeoutMs: 30000 },
+  onCardLoaded(card) {
+    console.log(`opened ${card.url}`);
+  },
+  onCardError(error, card) {
+    console.error(`failed ${card.url}: ${error.message}`);
+  },
 });
 
-openCards.install();
+manager.install();
+
+process.once('SIGINT', () => {
+  manager.dispose();
+  process.exit(0);
+});
 ```
 
-CLI behavior:
+## Operational Notes
 
-- `node-lynx render` or bare `node-lynx` with no initial template waits for DebugRouter OpenCard when debug-router is enabled.
-- `node-lynx preview` with no initial template waits for DebugRouter OpenCard and does not create an initial window.
-- `--no-debug-router` requires an initial template input.
-
-## Validation
-
-From `lynx/oliver/node-lynx`:
-
-```bash
-npx tsc --noEmit
-npm run test
-npm run test:gallery
-```
-
-Native rebuilds are heavier. Use them when native files or build graph changes are involved:
-
-```bash
-npm run build:darwin
-```
+- Prefer a real remote template URL when the bundle loads URL-relative
+  resources.
+- Treat `waitForFrame()` as "a frame was submitted", not as proof that every
+  image or network resource has decoded.
+- Use `screenshot({ settleMs })` or CLI `--screenshot-delay` for pragmatic
+  post-frame settling. Prefer a page-level ready signal when the page exposes
+  one.
+- Always call `destroy()` in a `finally` block for each view.
+- Keep examples and troubleshooting scoped to node-lynx usage. Do not add
+  internal package names, internal registries, or private distribution details
+  to this open-source-facing skill.

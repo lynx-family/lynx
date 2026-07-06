@@ -17,17 +17,12 @@ jobs:
         uses: actions/checkout@v6
         with:
           path: lynx
-      - name: Python Setup
-        uses: actions/setup-python@v6
-        with:
-          python-version: '3.13'
       - uses: actions/setup-node@v6
         with:
           node-version: 24
       - name: Install Common Dependencies
         uses: ./lynx/.github/actions/common-deps
         with:
-          cache-backend: github
           target: clay
       - name: Install Tasm Node Dependencies
         run: |-
@@ -60,17 +55,12 @@ jobs:
         uses: actions/checkout@v6
         with:
           path: lynx
-      - name: Python Setup
-        uses: actions/setup-python@v6
-        with:
-          python-version: '3.13'
       - uses: actions/setup-node@v6
         with:
           node-version: 24
       - name: Install Common Dependencies
         uses: ./lynx/.github/actions/common-deps
         with:
-          cache-backend: github
           target: clay
       - name: Install Tasm Node Dependencies
         run: |-
@@ -113,10 +103,6 @@ jobs:
         uses: actions/checkout@v6
         with:
           path: lynx
-      - name: Python Setup
-        uses: actions/setup-python@v6
-        with:
-          python-version: '3.13'
       - uses: actions/setup-node@v6
         with:
           node-version: 24
@@ -124,7 +110,6 @@ jobs:
       - name: Install Common Dependencies
         uses: ./lynx/.github/actions/common-deps
         with:
-          cache-backend: github
           target: tasm
       - name: Download Linux Node Lynx Artifact
         uses: actions/download-artifact@v5
