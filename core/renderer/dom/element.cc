@@ -794,6 +794,122 @@ void Element::MarkStyleDirty(bool recursive) {
   }
 }
 
+// If a child's related CSS variable is updated, invalidate the child's style.
+void Element::RecursivelyMarkChildrenCSSVariableDirty(
+    const lepus::Value& css_variable_updated) {
+  for (const auto& child : scoped_children_) {
+    if (IsCSSInlineVariablesEnabled()) {
+      // Entering RecursivelyMarkChildrenCSSVariableDirty means current
+      // element's CSS variables changed.
+      // Mark children's custom_properties dirty so CollectCustomProperties can
+      // pick up the latest values.
+      child->MarkCustomPropertiesDirty();
+    }
+    if (child->is_raw_text()) {
+      continue;
+    }
+    lepus::Value css_variable_updated_merged = css_variable_updated;
+    // First, merge changing_css_variables with element's css_variable.
+    // Element's css_variable has higher priority.
+    child->data_model()->MergeWithCSSVariables(css_variable_updated_merged);
+    if (IsRelatedCSSVariableUpdated(child->data_model(),
+                                    css_variable_updated_merged)) {
+      child->MarkStyleDirty(false);
+    }
+    child->RecursivelyMarkChildrenCSSVariableDirty(css_variable_updated_merged);
+  }
+}
+
+void Element::SetStyleObjects(
+    std::unique_ptr<style::StyleObject*, style::StyleObjectArrayDeleter>
+        style_objects) {
+  last_style_objects_ = std::move(style_objects_);
+
+  style_objects_ = std::move(style_objects);
+
+  MarkDirty(kDirtyForceUpdate | kDirtyStyleObjects);
+}
+
+void Element::ReplaceDynamicSimpleStyles(
+    style::DynamicStyleObjectRef new_style_object) {
+  const bool has_committed_dynamic = parsed_dynamic_styles_map_.has_value() &&
+                                     !parsed_dynamic_styles_map_->empty();
+  // Pure no-op: no incoming source, no current source, and no committed
+  // dynamic state to clear.
+  if (!new_style_object && !dynamic_simple_object_ && !has_committed_dynamic) {
+    return;
+  }
+
+  dynamic_simple_object_ = std::move(new_style_object);
+  MarkDirty(kDirtyForceUpdate | kDirtyDynamicStyleObjects);
+}
+
+void Element::AddDynamicSimpleStyles(tasm::StyleMap&& new_styles) {
+  if (new_styles.empty()) {
+    return;
+  }
+
+  if (!dynamic_simple_object_ && parsed_dynamic_styles_map_.has_value() &&
+      !parsed_dynamic_styles_map_->empty()) {
+    // A resolved-only clone does not keep the dynamic mutation carrier.
+    // Rebuild it from the committed resolved dynamic map on the first
+    // post-clone mutation so incremental updates keep previous dynamic state.
+    dynamic_simple_object_ =
+        style::CreateDynamicStyleObjectRef(*parsed_dynamic_styles_map_);
+  }
+
+  if (!dynamic_simple_object_) {
+    dynamic_simple_object_ =
+        style::CreateDynamicStyleObjectRef(std::move(new_styles));
+    MarkDirty(kDirtyForceUpdate | kDirtyDynamicStyleObjects);
+    return;
+  }
+
+  dynamic_simple_object_->MergeStyleMap(std::move(new_styles));
+  MarkDirty(kDirtyForceUpdate | kDirtyDynamicStyleObjects);
+}
+
+void Element::RemoveDynamicSimpleStyleKV(tasm::CSSPropertyID id) {
+  if (!dynamic_simple_object_ && parsed_dynamic_styles_map_.has_value() &&
+      !parsed_dynamic_styles_map_->empty()) {
+    dynamic_simple_object_ =
+        style::CreateDynamicStyleObjectRef(*parsed_dynamic_styles_map_);
+  }
+  if (!dynamic_simple_object_) {
+    return;
+  }
+
+  if (!dynamic_simple_object_->RemoveStyleValue(id)) {
+    return;
+  }
+
+  if (dynamic_simple_object_->Properties().empty()) {
+    dynamic_simple_object_ = nullptr;
+  }
+  MarkDirty(kDirtyForceUpdate | kDirtyDynamicStyleObjects);
+}
+
+void Element::AddDynamicSimpleStyleKV(tasm::CSSPropertyID id,
+                                      tasm::CSSValue&& value) {
+  if (!dynamic_simple_object_ && parsed_dynamic_styles_map_.has_value() &&
+      !parsed_dynamic_styles_map_->empty()) {
+    dynamic_simple_object_ =
+        style::CreateDynamicStyleObjectRef(*parsed_dynamic_styles_map_);
+  }
+
+  if (!dynamic_simple_object_) {
+    StyleMap dynamic_styles;
+    dynamic_styles.insert_or_assign(id, std::move(value));
+    dynamic_simple_object_ =
+        style::CreateDynamicStyleObjectRef(std::move(dynamic_styles));
+    MarkDirty(kDirtyForceUpdate | kDirtyDynamicStyleObjects);
+    return;
+  }
+
+  dynamic_simple_object_->UpdateStyleMap(id, std::move(value));
+  MarkDirty(kDirtyForceUpdate | kDirtyDynamicStyleObjects);
+}
+
 // TODO(wujintian) : Perhaps we can provide an rvalue version of the API to
 // achieve better performance. However, this would result in the need to
 // maintain two versions of the code: one for lvalues and one for rvalues.
@@ -801,6 +917,33 @@ void Element::SetClass(const base::String& clazz) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_SET_CLASS);
   data_model_->SetClass(clazz);
   MarkStyleDirty(NeedForceClassChangeTransmit());
+}
+
+void Element::OnClassChanged(const ClassList& old_classes,
+                             const ClassList& new_classes) {
+  if (element_manager() && element_manager()->GetEnableStandardCSSSelector()) {
+    if (element_manager()->CSSFragmentParsingOnTASMWorkerMTSRender()) {
+      element_manager()->GetTasmWorkerTaskRunner()->PostTask(
+          [this, old_classes_ = old_classes, new_classes_ = new_classes]() {
+            CheckHasInvalidationForClass(old_classes_, new_classes_);
+          });
+    } else {
+      CheckHasInvalidationForClass(old_classes, new_classes);
+    }
+  }
+}
+
+bool Element::CheckHasInvalidationForClass(const ClassList& old_classes,
+                                           const ClassList& new_classes) {
+  auto* css_fragment = GetRelatedCSSFragment();
+  // resolve styles from css fragment
+  if (!css_fragment || !css_fragment->enable_css_invalidation()) {
+    return false;
+  }
+  auto old_size = invalidation_lists_.descendants.size();
+  CSSFragment::CollectClassChangedInvalidation(
+      css_fragment, invalidation_lists_, old_classes, new_classes);
+  return invalidation_lists_.descendants.size() != old_size;
 }
 
 void Element::SetClasses(ClassList&& classes) {
@@ -1976,6 +2119,60 @@ bool Element::IsCSSInlineVariablesEnabled() const {
   return element_manager_ &&
          element_manager_->GetDynamicCSSConfigs().enable_css_inline_variables_;
 }
+
+bool Element::IsRelatedCSSVariableUpdated(
+    AttributeHolder* holder, const lepus::Value changing_css_variables) {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_IS_RELATED_CSS_UPDATED,
+              [this](lynx::perfetto::EventContext ctx) {
+                UpdateTraceDebugInfo(ctx.event());
+              });
+
+  bool changed = false;
+  ForEachLepusValue(
+      changing_css_variables,
+      [holder, &changed](const lepus::Value& key, const lepus::Value& value) {
+        if (!changed) {
+          auto it = holder->css_variable_related().find(key.String());
+          if (it != holder->css_variable_related().end() &&
+              !it->second.IsEqual(value.String())) {
+            changed = true;
+          }
+        }
+      });
+  return changed;
+}
+
+#if ENABLE_TRACE_PERFETTO
+void Element::UpdateTraceDebugInfo(TraceEvent* event) {
+  auto* tagInfo = event->add_debug_annotations();
+  tagInfo->set_name("tagName");
+  tagInfo->set_string_value(tag_.str());
+
+  if (!data_model_) {
+    return;
+  }
+
+  if (!data_model_->idSelector().empty()) {
+    auto* idInfo = event->add_debug_annotations();
+    idInfo->set_name("idSelector");
+    idInfo->set_string_value(data_model_->idSelector().str());
+  }
+  if (!data_model_->classes().empty()) {
+    std::string class_str = "";
+    for (auto& aClass : data_model_->classes()) {
+      class_str = class_str + " " + aClass.str();
+    }
+    if (!class_str.empty()) {
+      auto* classInfo = event->add_debug_annotations();
+      classInfo->set_name("class");
+      classInfo->set_string_value(class_str);
+    }
+  }
+  auto* nodeIndexInfo = event->add_debug_annotations();
+  nodeIndexInfo->set_name("nodeIndex");
+  nodeIndexInfo->set_uint_value(node_index_);
+}
+#endif
 
 PaintingContext* Element::painting_context() {
   return catalyzer_->painting_context();
