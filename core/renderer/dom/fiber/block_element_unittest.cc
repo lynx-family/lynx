@@ -7,8 +7,8 @@
 #include "core/renderer/dom/fiber/block_element.h"
 
 #include "core/base/threading/task_runner_manufactor.h"
+#include "core/renderer/dom/element.h"
 #include "core/renderer/dom/element_manager.h"
-#include "core/renderer/dom/fiber/fiber_element.h"
 #include "core/renderer/dom/fiber/for_element.h"
 #include "core/renderer/dom/fiber/if_element.h"
 #include "core/renderer/tasm/react/testing/mock_painting_context.h"

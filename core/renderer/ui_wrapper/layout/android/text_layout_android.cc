@@ -56,7 +56,7 @@ base::UnicodeDecodeProperty DecodePropertyForTextElement(TextElement* element) {
   return WordBreakToDecodeProperty(text_attributes->word_break);
 }
 
-TextElement* FindParentTextElement(FiberElement* child) {
+TextElement* FindParentTextElement(Element* child) {
   for (Element* parent = child->parent(); parent != nullptr;
        parent = parent->parent()) {
     if (parent->is_text()) {

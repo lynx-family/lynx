@@ -2,8 +2,6 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#include "core/renderer/dom/fiber/fiber_element.h"
-
 #include <algorithm>
 #include <array>
 #include <deque>
@@ -34,12 +32,14 @@
 #include "core/renderer/css/dynamic_direction_styles_manager.h"
 #include "core/renderer/css/layout_property.h"
 #include "core/renderer/css/parser/length_handler.h"
+#include "core/renderer/dom/element.h"
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/dom/element_manager_delegate.h"
 #include "core/renderer/dom/fiber/block_element.h"
 #include "core/renderer/dom/fiber/component_element.h"
 #include "core/renderer/dom/fiber/image_element.h"
 #include "core/renderer/dom/fiber/list_element.h"
+#include "core/renderer/dom/fiber/list_item_scheduler_adapter.h"
 #include "core/renderer/dom/fiber/none_element.h"
 #include "core/renderer/dom/fiber/platform_layout_function_wrapper.h"
 #include "core/renderer/dom/fiber/pseudo_element.h"
@@ -170,7 +170,7 @@ ResolveDirectionAwareKeyframeSampleForNewPipeline(
   return sample;
 }
 
-Element* ResolveTemplateRootForAction(Element* element) {
+Element *ResolveTemplateRootForAction(Element *element) {
   if (element == nullptr) {
     return nullptr;
   }
@@ -178,7 +178,7 @@ Element* ResolveTemplateRootForAction(Element* element) {
     return element;
   }
 
-  auto root = static_cast<TemplateElement*>(element)->GetRoot();
+  auto root = static_cast<TemplateElement *>(element)->GetRoot();
   return root != nullptr ? root.get() : element;
 }
 
@@ -378,18 +378,7 @@ Element::SampleAnimationOverridesForNewPipeline(
   return animation_sample;
 }
 
-FiberElement::FiberElement(ElementManager *manager, const base::String &tag)
-    : Element(manager, tag) {}
-
-FiberElement::FiberElement(ElementManager *manager, const base::String &tag,
-                           int32_t css_id)
-    : Element(manager, tag, css_id) {}
-
-FiberElement::FiberElement(const FiberElement &element,
-                           bool clone_resolved_props)
-    : Element(element, clone_resolved_props) {}
-
-void Element::OnNodeAdded(Element* child) {
+void Element::OnNodeAdded(Element *child) {
   if (child != nullptr) {
     bool is_compatible_parent =
         !is_page() && !is_view() && !is_text() && !is_image();
@@ -418,7 +407,7 @@ void Element::OnNodeAdded(Element* child) {
   UpdateRenderRootElementIfNecessary(child);
 }
 
-void Element::OnNodeRemoved(Element* child) {
+void Element::OnNodeRemoved(Element *child) {
   if (child != nullptr) {
     child->MarkAsDirectChildOfCompatibleComponent(false);
   }
@@ -569,8 +558,8 @@ void Element::InsertNode(const fml::RefPtr<Element> &raw_child) {
   InsertNode(raw_child, static_cast<int32_t>(scoped_children_.size()));
 }
 
-void Element::InsertLogicalChildBefore(
-    const fml::RefPtr<Element> &child, Element *ref_node) {
+void Element::InsertLogicalChildBefore(const fml::RefPtr<Element> &child,
+                                       Element *ref_node) {
   if (ref_node == nullptr) {
     logical_children_.push_back(child);
     return;
@@ -598,8 +587,7 @@ void Element::RemoveLogicalChild(const fml::RefPtr<Element> &child) {
   }
 }
 
-void Element::InsertNode(const fml::RefPtr<Element> &raw_child,
-                              int32_t index) {
+void Element::InsertNode(const fml::RefPtr<Element> &raw_child, int32_t index) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_INSERT_NODE);
   auto child = raw_child;
 
@@ -623,14 +611,14 @@ void Element::InsertNode(const fml::RefPtr<Element> &raw_child,
   InsertNodeBeforeInternal(child, ref);
 }
 
-void Element::InsertNodeBeforeInternal(
-    const fml::RefPtr<Element> &child, Element *ref_node) {
+void Element::InsertNodeBeforeInternal(const fml::RefPtr<Element> &child,
+                                       Element *ref_node) {
   InsertNodeBeforeInternal(child, ref_node, true);
 }
 
-void Element::InsertNodeBeforeInternal(
-    const fml::RefPtr<Element> &child, Element *ref_node,
-    bool update_logical_children) {
+void Element::InsertNodeBeforeInternal(const fml::RefPtr<Element> &child,
+                                       Element *ref_node,
+                                       bool update_logical_children) {
   int index = -1;
   if (ref_node) {
     index = IndexOf(ref_node);
@@ -675,20 +663,17 @@ void Element::InsertNodeBeforeInternal(
   MarkDirty(kDirtyTree);
 }
 
-void Element::InsertNodeBefore(
-    const fml::RefPtr<Element> &child,
-    const fml::RefPtr<Element> &reference_child) {
+void Element::InsertNodeBefore(const fml::RefPtr<Element> &child,
+                               const fml::RefPtr<Element> &reference_child) {
   InsertNodeBeforeInternal(child, reference_child.get());
 }
 
-void Element::RemoveNode(const fml::RefPtr<Element> &raw_child,
-                              bool destroy) {
+void Element::RemoveNode(const fml::RefPtr<Element> &raw_child, bool destroy) {
   RemoveNodeInternal(raw_child, destroy, true);
 }
 
 void Element::RemoveNodeInternal(const fml::RefPtr<Element> &child,
-                                      bool destroy,
-                                      bool update_logical_children) {
+                                 bool destroy, bool update_logical_children) {
   // FIXME(linxs): to use linked node to avoid the index calculation asap!
   int index = IndexOf(child.get());
   if (index >= static_cast<int>(scoped_children_.size()) || index < 0) {
@@ -773,9 +758,9 @@ void Element::RemovedFrom(Element *insertion_point) {
   // the action_param_list_ here.
   if ((parent() != insertion_point) && (ZIndex() != 0 || is_fixed_) &&
       !EnableFragmentLayerRender()) {
-    insertion_point->AppendActionParam(ActionParam(
-        Action::kRemoveIntergenerationAct, insertion_point,
-        fml::RefPtr<Element>(this), 0, nullptr, is_fixed_));
+    insertion_point->AppendActionParam(
+        ActionParam(Action::kRemoveIntergenerationAct, insertion_point,
+                    fml::RefPtr<Element>(this), 0, nullptr, is_fixed_));
     MarkDirty(kDirtyReAttachContainer);
   }
 
@@ -835,7 +820,7 @@ static bool DiffStyleImpl(StyleMap &old_map, StyleMap &new_map,
 }
 
 void Element::ResetDirectionAwareProperty(const CSSPropertyID &id,
-                                               const CSSValue &value) {
+                                          const CSSValue &value) {
   auto css_id = id;
   auto direction_mapping = CheckDirectionMapping(css_id);
   auto is_direction_aware_property =
@@ -1757,8 +1742,8 @@ void Element::DidParallelFlushAsRoot(PerfStatistic &stats) {
   }
 }
 
-void Element::PostResolveTaskToThreadPool(
-    bool is_engine_thread, ParallelReduceTaskQueue &task_queue) {
+void Element::PostResolveTaskToThreadPool(bool is_engine_thread,
+                                          ParallelReduceTaskQueue &task_queue) {
   UpdateResolveStatus(AsyncResolveStatus::kPreparing);
   PrepareSelfForThreadedElementResolution();
 
@@ -1998,7 +1983,7 @@ void Element::PrepareAndGenerateChildrenActions() {
 }
 
 void Element::HandleInsertChildAction(Element *child, int to_index,
-                                           Element *ref_node) {
+                                      Element *ref_node) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_HANDLE_INSERT_CHILD_ACTION,
               [this](lynx::perfetto::EventContext ctx) {
                 UpdateTraceDebugInfo(ctx.event());
@@ -2102,8 +2087,7 @@ void Element::HandleRemoveChildAction(Element *child) {
   element_container()->RemoveElementContainerAccordingToElement(child, false);
 }
 
-void Element::HandleRemoveSelf(Element *removal_point,
-                                    Element *render_parent) {
+void Element::HandleRemoveSelf(Element *removal_point, Element *render_parent) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_HANDLE_REMOVE_SELF,
               [this](lynx::perfetto::EventContext ctx) {
                 UpdateTraceDebugInfo(ctx.event());
@@ -2125,7 +2109,7 @@ void Element::HandleRemoveSelf(Element *removal_point,
 }
 
 void Element::HandleContainerInsertion(Element *parent, Element *child,
-                                            Element *ref_node) {
+                                       Element *ref_node) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_HANDLE_CONTAINER_INSERTION,
               [this](lynx::perfetto::EventContext ctx) {
                 UpdateTraceDebugInfo(ctx.event());
@@ -2138,8 +2122,7 @@ void Element::HandleContainerInsertion(Element *parent, Element *child,
   }
 }
 
-Element *Element::FindEnclosingNoneWrapper(Element *parent,
-                                                Element *node) {
+Element *Element::FindEnclosingNoneWrapper(Element *parent, Element *node) {
   while (parent) {
     if (!parent->is_wrapper()) {
       node->set_enclosing_none_wrapper(parent);
@@ -2172,7 +2155,7 @@ void Element::AddChildAt(fml::RefPtr<Element> child, int index) {
 // in advance.
 // 3. Check every property to determine whether to intercept this update.
 void Element::ConsumeStyle(const StyleMap &styles,
-                                const StyleMap *inherit_styles) {
+                           const StyleMap *inherit_styles) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_CONSUME_STYLE,
               [this](lynx::perfetto::EventContext ctx) {
                 UpdateTraceDebugInfo(ctx.event());
@@ -2363,7 +2346,7 @@ void Element::MarkHasLayoutOnlyPropsIfNecessary(
 }
 
 void Element::SetAttributeInternal(const base::String &key,
-                                        const lepus::Value &value) {
+                                   const lepus::Value &value) {
   if (key.IsEqual(kLazyBundleUrl)) {
     if (value.IsString()) {
       set_entry_name(value.String());
@@ -2794,7 +2777,7 @@ void Element::DumpStyle(StyleMap &computed_styles) {
 }
 
 void Element::OnPseudoStatusChanged(PseudoState prev_status,
-                                         PseudoState current_status) {
+                                    PseudoState current_status) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_PSEUDO_CHANGED,
               [this](lynx::perfetto::EventContext ctx) {
                 UpdateTraceDebugInfo(ctx.event());
@@ -2883,8 +2866,8 @@ bool Element::TryResolveLogicStyleAndSaveDirectionRelatedStyle(
 
 // try to Resolve Direction css
 void Element::TryDoDirectionRelatedCSSChange(CSSPropertyID id,
-                                                  const CSSValue &value,
-                                                  IsLogic is_logic_style) {
+                                             const CSSValue &value,
+                                             IsLogic is_logic_style) {
   CSSPropertyID trans_id = id;
   auto current_direction = computed_css_style()->GetDirection();
   if ((IsRTL(current_direction) && is_logic_style) ||
@@ -2901,8 +2884,7 @@ void Element::TryDoDirectionRelatedCSSChange(CSSPropertyID id,
   SetStyleInternal(trans_id, value);
 }
 
-void Element::ResetTextAlign(StyleMap &update_map,
-                                  bool direction_changed) {
+void Element::ResetTextAlign(StyleMap &update_map, bool direction_changed) {
   // If direction has been changed in current render loop, text_align will be
   // reset when handling direction change. Thus when reset text align,
   // set kPropertyIDTextAlign to kStart only when direction is not changed.

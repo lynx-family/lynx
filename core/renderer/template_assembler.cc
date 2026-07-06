@@ -25,7 +25,6 @@
 #include "core/renderer/data/lynx_view_data_manager.h"
 #include "core/renderer/dom/element.h"
 #include "core/renderer/dom/element_manager.h"
-#include "core/renderer/dom/fiber/fiber_element.h"
 #include "core/renderer/dom/fiber/tree_resolver.h"
 #include "core/renderer/dom/lynx_get_ui_result.h"
 #include "core/renderer/dom/vdom/radon/base_component.h"

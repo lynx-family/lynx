@@ -8,8 +8,8 @@
 #include "core/renderer/dom/fiber/pseudo_element.h"
 
 #include "core/renderer/css/css_value.h"
+#include "core/renderer/dom/element.h"
 #include "core/renderer/dom/element_manager.h"
-#include "core/renderer/dom/fiber/fiber_element.h"
 #include "core/renderer/dom/fiber/text_element.h"
 #include "core/renderer/dom/fiber/view_element.h"
 #include "core/renderer/tasm/react/testing/mock_painting_context.h"

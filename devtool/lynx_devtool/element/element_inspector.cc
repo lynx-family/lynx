@@ -17,7 +17,6 @@
 #include "core/renderer/css/ng/media_query/media_query_evaluator.h"
 #include "core/renderer/css/ng/style/condition_rule.h"
 #include "core/renderer/dom/fiber/component_element.h"
-#include "core/renderer/dom/fiber/fiber_element.h"
 #include "core/renderer/dom/selector/fiber_element_selector.h"
 #include "core/renderer/dom/style_resolver.h"
 #include "core/renderer/dom/vdom/radon/node_select_options.h"
@@ -142,8 +141,7 @@ void ElementInspector::SetStyleValueElement(const any& data) {
 
 bool ElementInspector::HasDataModel(Element* element) {
   CHECK_NULL_AND_LOG_RETURN_VALUE(element, "element is null", false);
-  return element->data_model() != nullptr &&
-         !(static_cast<lynx::tasm::FiberElement*>(element)->is_wrapper());
+  return element->data_model() != nullptr && !element->is_wrapper();
 }
 
 void ElementInspector::InitForInspector(const any& data) {
@@ -441,8 +439,7 @@ Element* ElementInspector::GetParentComponentElementFromDataModel(
   // Get Element's parent, if the parent is component/page, return the parent.
   // Otherwise, return nullptr.
   auto parent = element->parent();
-  if (parent &&
-      static_cast<lynx::tasm::FiberElement*>(parent)->is_component()) {
+  if (parent && parent->is_component()) {
     return parent;
   }
   return nullptr;
@@ -1374,9 +1371,7 @@ std::vector<Element*> ElementInspector::SelectElementAll(
       lynx::tasm::NodeSelectOptions::IdentifierType::CSS_SELECTOR, selector);
   options.first_only = false;
   options.only_current_component = false;
-  auto nodes = lynx::tasm::FiberElementSelector::Select(
-                   static_cast<tasm::FiberElement*>(element), options)
-                   .nodes;
+  auto nodes = lynx::tasm::FiberElementSelector::Select(element, options).nodes;
   if (!nodes.empty()) {
     for (auto* node : nodes) {
       res.push_back(node);

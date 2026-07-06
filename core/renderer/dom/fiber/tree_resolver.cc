@@ -14,7 +14,6 @@
 #include "core/renderer/css/css_property.h"
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/dom/fiber/component_element.h"
-#include "core/renderer/dom/fiber/fiber_element.h"
 #include "core/renderer/dom/fiber/image_element.h"
 #include "core/renderer/dom/fiber/list_element.h"
 #include "core/renderer/dom/fiber/none_element.h"
@@ -301,8 +300,7 @@ void ApplyTemplateAttributeValue(Element* element, const base::String& key,
   element->SetAttribute(key, value);
 }
 
-void ApplyTemplateSpreadAttributes(Element* element,
-                                   const lepus::Value& value,
+void ApplyTemplateSpreadAttributes(Element* element, const lepus::Value& value,
                                    TemplateAttributeApplyMode mode) {
   if (element == nullptr || !value.IsObject()) {
     return;
@@ -659,8 +657,8 @@ fml::RefPtr<Element> TreeResolver::CloneElements(
         c->IsTemplateElement()) {
       continue;
     }
-    res->InsertNode(CloneElements(c, style_manager, clone_resolved_props,
-                                  cloning_depth));
+    res->InsertNode(
+        CloneElements(c, style_manager, clone_resolved_props, cloning_depth));
   }
 
   return res;
@@ -767,8 +765,8 @@ void TreeResolver::GetPartsRecursively(
   }
 }
 
-fml::RefPtr<Element> TreeResolver::FromElementInfo(
-    int64_t parent_component_id, const ElementInfo& info) {
+fml::RefPtr<Element> TreeResolver::FromElementInfo(int64_t parent_component_id,
+                                                   const ElementInfo& info) {
   return FromElementInfo(parent_component_id, info, nullptr);
 }
 

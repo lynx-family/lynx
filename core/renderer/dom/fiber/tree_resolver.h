@@ -12,7 +12,7 @@
 #include "base/include/fml/memory/ref_ptr.h"
 #include "base/include/value/base_string.h"
 #include "base/include/value/table.h"
-#include "core/renderer/dom/fiber/fiber_element.h"
+#include "core/renderer/dom/element.h"
 #include "core/renderer/dom/fiber/generated_elements_result.h"
 
 namespace lynx {
@@ -52,8 +52,9 @@ class TreeResolver {
    * end
    * @return return the real parent and the index in LayoutNode tree
    */
-  static std::pair<Element*, int> FindParentForChildForWrapper(
-      Element* parent, Element* child, Element* ref);
+  static std::pair<Element*, int> FindParentForChildForWrapper(Element* parent,
+                                                               Element* child,
+                                                               Element* ref);
   static int GetLayoutIndexForChildForWrapper(Element* parent, Element* child);
 
   static size_t GetLayoutChildrenCountForWrapper(Element* node);
@@ -146,8 +147,8 @@ class TreeResolver {
   static void DistributeStyleTreesTask(std::list<Element*> discovered,
                                        uint32_t work_unit_size);
 
-  static void DistributeOneChunkStyleTreesTask(
-      std::list<Element*> discovered, uint32_t work_unit_size);
+  static void DistributeOneChunkStyleTreesTask(std::list<Element*> discovered,
+                                               uint32_t work_unit_size);
 };
 
 }  // namespace tasm

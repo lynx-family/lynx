@@ -13,7 +13,6 @@
 #include "core/base/threading/task_runner_manufactor.h"
 #include "core/renderer/dom/element.h"
 #include "core/renderer/dom/element_property.h"
-#include "core/renderer/dom/fiber/fiber_element.h"
 #include "core/renderer/dom/fiber/list_element.h"
 #include "core/renderer/dom/fiber/page_element.h"
 #include "core/renderer/dom/fiber/raw_text_element.h"
@@ -369,7 +368,8 @@ TEST_F(ElementManagerTest, CreateFiberElementImage) {
   EXPECT_TRUE(node->is_image());
 
   base::String raw_tag("custom-image");
-  auto static_node = ElementManager::StaticCreateFiberElement(tag_enum, raw_tag);
+  auto static_node =
+      ElementManager::StaticCreateFiberElement(tag_enum, raw_tag);
 
   EXPECT_EQ(static_node->GetTag(), tag.str());
 
@@ -390,8 +390,8 @@ TEST_F(ElementManagerTest, CreateFiberElementEcomImage) {
 
   EXPECT_TRUE(node->is_image());
 
-  auto static_node = ElementManager::StaticCreateFiberElement(ELEMENT_OTHER,
-                                                             tag);
+  auto static_node =
+      ElementManager::StaticCreateFiberElement(ELEMENT_OTHER, tag);
 
   EXPECT_EQ(static_node->GetTag(), tag.str());
 

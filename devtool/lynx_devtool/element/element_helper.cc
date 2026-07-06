@@ -17,7 +17,6 @@
 #include "core/renderer/css/css_property.h"
 #include "core/renderer/css/parser/css_string_parser.h"
 #include "core/renderer/css/unit_handler.h"
-#include "core/renderer/dom/fiber/fiber_element.h"
 #include "devtool/lynx_devtool/agent/inspector_util.h"
 #include "devtool/lynx_devtool/element/helper_util.h"
 #include "devtool/lynx_devtool/element/inspector_css_helper.h"
@@ -186,9 +185,8 @@ bool IsNewStylingPipelineEnabled(Element* element) {
 
 void FlushFiberStyleMutation(Element* element) {
   CHECK_NULL_AND_LOG_RETURN(element, "element is null");
-  auto* fiber_element = static_cast<lynx::tasm::FiberElement*>(element);
-  if (fiber_element->parent() != nullptr) {
-    fiber_element->FlushActionsAsRoot();
+  if (element->parent() != nullptr) {
+    element->FlushActionsAsRoot();
     return;
   }
   if (element->element_manager() == nullptr ||
@@ -197,7 +195,7 @@ void FlushFiberStyleMutation(Element* element) {
   }
 
   auto options = std::make_shared<lynx::tasm::PipelineOptions>();
-  element->element_manager()->OnPatchFinish(options, fiber_element);
+  element->element_manager()->OnPatchFinish(options, element);
 }
 
 Element* GetFlushRootForStyleMutation(Element* element,
