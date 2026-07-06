@@ -112,9 +112,9 @@ class FiberElement : public Element {
    */
   void FlushActions() override;
 
-  void FlushSelf();
+  void FlushSelf() override;
 
-  void PrepareChildren();
+  void PrepareChildren() override;
 
   void PrepareChildForInsertion(Element* child);
 
@@ -134,11 +134,11 @@ class FiberElement : public Element {
    */
   void PrepareAndGenerateChildrenActions();
 
-  virtual void HandleInsertChildAction(Element* child, int index,
-                                       Element* ref_node);
-  virtual void HandleRemoveChildAction(Element* child);
+  void HandleInsertChildAction(Element* child, int index,
+                               Element* ref_node) override;
+  void HandleRemoveChildAction(Element* child) override;
 
-  void HandleRemoveSelf(Element* removal_point, Element* render_parent);
+  void HandleRemoveSelf(Element* removal_point, Element* render_parent) override;
 
   /**
    * Element API for inserting child
@@ -206,11 +206,14 @@ class FiberElement : public Element {
 
   // TODO(linxs): to check if this APIs can be deleted
   void InsertNodeBeforeInternal(const fml::RefPtr<Element>& child,
-                                Element* ref_node);
+                                Element* ref_node) override;
   void InsertNodeBeforeInternal(const fml::RefPtr<Element>& child,
                                 Element* ref_node,
-                                bool update_logical_children);
-  void AddChildAt(fml::RefPtr<Element> child, int index);
+                                bool update_logical_children) override;
+  void AddChildAt(fml::RefPtr<Element> child, int index) override;
+  void RemoveLogicalChild(const fml::RefPtr<Element>& child) override;
+  void RemoveNodeInternal(const fml::RefPtr<Element>& child, bool destroy,
+                          bool update_logical_children) override;
 
   virtual void CheckHasInlineContainer(Element* parent) override;
 
@@ -218,13 +221,6 @@ class FiberElement : public Element {
       base::MoveOnlyClosure<void> operation) override;
 
   ParallelFlushReturn PrepareForCreateOrUpdate() override;
-
-  void InsertLayoutNode(FiberElement* child, FiberElement* ref);
-  void RemoveLayoutNode(FiberElement* child,
-                        int layout_in_element_platform_index = -1);
-
-  void StoreLayoutNode(FiberElement* child, FiberElement* ref);
-  void RestoreLayoutNode(FiberElement* child);
 
   void OnPseudoStatusChanged(PseudoState prev_status,
                              PseudoState current_status) override;
@@ -252,7 +248,6 @@ class FiberElement : public Element {
 
   bool ShouldFallbackToSerialForNewStylingPipeline() const;
 
-  void InvalidateChildrenIfNeeded();
   bool HasAdjacentSiblingRulesInStyleSheets();
 
  protected:
@@ -295,10 +290,7 @@ class FiberElement : public Element {
   void HandleContainerInsertion(Element* parent, Element* child, Element* ref);
   void InsertLogicalChildBefore(const fml::RefPtr<Element>& child,
                                 Element* ref_node);
-  void RemoveLogicalChild(const fml::RefPtr<Element>& child);
-  void RemoveNodeInternal(const fml::RefPtr<Element>& child, bool destroy,
-                          bool update_logical_children);
-  FiberElement* ReplaceTemplateChildIfNeeded(
+  Element* ReplaceTemplateChildIfNeeded(
       base::InlineVector<fml::RefPtr<Element>,
                          kChildrenInlineVectorSize>::iterator child_iter);
 
@@ -312,8 +304,8 @@ class FiberElement : public Element {
                                                         const CSSValue& value);
 
   void HandleSelfFixedChange();
-  void InsertFixedElement(Element* child, Element* ref_node);
-  void RemoveFixedElement(Element* child);
+  void InsertFixedElement(Element* child, Element* ref_node) override;
+  void RemoveFixedElement(Element* child) override;
 
   void ResetTextAlign(StyleMap& update_map, bool direction_reset);
 
