@@ -479,6 +479,10 @@ class Element : public lepus::RefCounted,
    */
   void RemoveAllEvents();
 
+  void FiberAddEvent(const base::String& type, const base::String& name,
+                     const lepus::Value& callback,
+                     const std::string& context_name);
+
   /**
    * Element API for adding config.
    * @param key the config key,
@@ -696,6 +700,7 @@ class Element : public lepus::RefCounted,
 
   inline bool IsAsyncFlushRoot() const { return is_async_flush_root_; }
   inline void MarkAsyncFlushRoot(bool value) { is_async_flush_root_ = value; }
+  void AsyncResolveSubtreeProperty();
 
   // Data model accessor methods
   const ClassList& classes() { return data_model_->classes(); }
