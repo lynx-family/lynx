@@ -89,7 +89,7 @@ class TreeResolver {
   static void ApplyStaticTemplateEventAttributesToElement(Element* element);
 
   // Construct element tree according to the element-template info.
-  static base::Vector<fml::RefPtr<FiberElement>> FromTemplateInfo(
+  static base::Vector<fml::RefPtr<Element>> FromTemplateInfo(
       const ElementTemplateInfo& info);
 
   // Construct the detached single-root tree used by the new Element Template
@@ -103,7 +103,7 @@ class TreeResolver {
       const std::shared_ptr<CSSStyleSheetManager>& style_manager);
 
   static lepus::Value InitElementTree(
-      base::Vector<fml::RefPtr<FiberElement>>&& elements, int64_t pid,
+      base::Vector<fml::RefPtr<Element>>&& elements, int64_t pid,
       ElementManager* manager,
       const std::shared_ptr<CSSStyleSheetManager>& style_manager);
 
@@ -117,16 +117,16 @@ class TreeResolver {
   // Clone the elements recursively but not yet attached to the current page's
   // element manager. The cloned element needs to be attached to an element
   // manager before it can be used.
-  static fml::RefPtr<FiberElement> CloneElementRecursively(
-      const FiberElement* element, bool clone_resolved_props);
+  static fml::RefPtr<Element> CloneElementRecursively(
+      const Element* element, bool clone_resolved_props);
 
   static void AttachRootToElementManager(
-      fml::RefPtr<FiberElement>& root, ElementManager* element_manager,
+      const fml::RefPtr<Element>& root, ElementManager* element_manager,
       const std::shared_ptr<CSSStyleSheetManager>& style_manager,
       bool keep_element_id);
 
   static void AttachToElementManagerRecursively(
-      FiberElement& element, ElementManager* manager,
+      Element& element, ElementManager* manager,
       const std::shared_ptr<CSSStyleSheetManager>& style_manager,
       bool keep_element_id);
 
@@ -137,9 +137,9 @@ class TreeResolver {
                                   fml::RefPtr<lepus::Dictionary>& parts_map);
 
   // Construct element according to the element info.
-  static fml::RefPtr<FiberElement> FromElementInfo(int64_t parent_component_id,
-                                                   const ElementInfo& info);
-  static fml::RefPtr<FiberElement> FromElementInfo(
+  static fml::RefPtr<Element> FromElementInfo(int64_t parent_component_id,
+                                              const ElementInfo& info);
+  static fml::RefPtr<Element> FromElementInfo(
       int64_t parent_component_id, const ElementInfo& info,
       GeneratedElementsResult* generated);
 
