@@ -30,13 +30,10 @@
 #include "core/renderer/css/css_keyframes_token.h"
 #include "core/renderer/css/css_property.h"
 #include "core/renderer/css/css_property_bitset.h"
-#include "core/renderer/css/css_utils.h"
 #include "core/renderer/css/css_value.h"
 #include "core/renderer/css/dynamic_direction_styles_manager.h"
 #include "core/renderer/css/layout_property.h"
-#include "core/renderer/css/parser/css_string_parser.h"
 #include "core/renderer/css/parser/length_handler.h"
-#include "core/renderer/css/unit_handler.h"
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/dom/element_manager_delegate.h"
 #include "core/renderer/dom/fiber/block_element.h"
@@ -644,53 +641,6 @@ int32_t FiberElement::GetCSSID() const {
     } else {
       return kInvalidCssId;
     }
-  }
-}
-
-bool FiberElement::MergeInlineStyles(StyleMap &new_styles,
-                                     StyleMap &important_styles) {
-  // Styles stored by full_raw_inline_style_ had already been parsed to
-  // current_raw_inline_styles_. So we only handle current_raw_inline_styles_
-  // here.
-  bool res = false;
-  auto &configs = element_manager_->GetCSSParserConfigs();
-
-  auto process_inline_map = [&](const RawLepusStyleMap &src_map,
-                                StyleMap &dst_map) {
-    for (const auto &[id, style_value] : src_map) {
-      bool process_result =
-          UnitHandler::Process(id, style_value, dst_map, configs);
-      if (!process_result && IsCSSInlineVariablesEnabled()) {
-        base::String style_str = style_value.String();
-        CSSStringParser parser{style_str.c_str(),
-                               static_cast<uint32_t>(style_str.length()),
-                               configs};
-        CSSValue css_value = parser.ParseVariable();
-        if (parser.HasMetVarToken()) {
-          dst_map[id] = std::move(css_value);
-          res = true;
-        }
-      }
-    }
-  };
-
-  if (current_raw_inline_styles_.has_value()) {
-    process_inline_map(*current_raw_inline_styles_, new_styles);
-  }
-  if (current_raw_important_inline_styles_.has_value()) {
-    process_inline_map(*current_raw_important_inline_styles_, important_styles);
-  }
-
-  return res;
-}
-
-void FiberElement::ProcessFullRawInlineStyle(CSSVariableMap *changed_css_vars) {
-  // If self has raw inline styles, parse to current_raw_inline_styles_ but do
-  // not process to final style map. Inline styles will be merged finally by
-  // MergeInlineStyles.
-  if (!full_raw_inline_style_.empty()) {
-    ParseRawInlineStyles(changed_css_vars);
-    full_raw_inline_style_ = base::String();
   }
 }
 
@@ -3148,60 +3098,7 @@ void FiberElement::RestoreLayoutNode(FiberElement *node) {
   node->next_render_sibling_ = nullptr;
 }
 
-void FiberElement::ParseRawInlineStyles(CSSVariableMap *changed_css_vars) {
-  TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_PARSE_RAW_INLINE_STYLES);
-  auto &configs = element_manager_->GetCSSParserConfigs();
-  const auto &str = full_raw_inline_style_.str();
-  current_raw_inline_custom_properties_->clear();
-  data_model()->MoveAndClearCSSInlineVariables(changed_css_vars);
-
-  if (current_raw_important_inline_styles_.has_value()) {
-    current_raw_important_inline_styles_->clear();
-  }
-
-  ParseStyleDeclarationList(
-      str.c_str(), static_cast<uint32_t>(str.size()),
-      [this, &configs](const char *key_start, uint32_t key_length,
-                       const char *value_start, uint32_t value_length,
-                       bool important) {
-        (void)configs;
-        auto id = CSSProperty::GetPropertyID(
-            base::static_string::GenericCacheKey(key_start, key_length));
-        if (CSSProperty::IsPropertyValid(id)) {
-          auto value = lepus::Value(base::String(value_start, value_length));
-          auto &target_map = important ? current_raw_important_inline_styles_
-                                       : current_raw_inline_styles_;
-          target_map->insert_or_assign(id, std::move(value));
-        } else if (IsCSSInlineVariablesEnabled() &&
-                   CSSProperty::IsCustomProperty(key_start, key_length)) {
-          current_raw_inline_custom_properties_->insert_or_assign(
-              base::String(key_start, key_length),
-              base::String(value_start, value_length));
-          data_model()->UpdateCSSInlineVariables(
-              base::String(key_start, key_length),
-              base::String(value_start, value_length));
-        }
-
-        // DevTool needs to get InlineStyle information from DataModel's
-        // InlineStyle, so when DevTool is enabled, it needs to set the
-        // corresponding InlineStyle for DataModel.
-        EXEC_EXPR_FOR_INSPECTOR(if (element_manager()->IsDomTreeEnabled()) {
-          if (data_model() == nullptr) {
-            return;
-          }
-          data_model()->SetInlineStyle(
-              id, base::String(value_start, value_length), configs);
-        });
-      });
-
-  data_model()->UpdateInlineStyleChangedVars(changed_css_vars);
-
-  EXEC_EXPR_FOR_INSPECTOR(if (element_manager()->IsDomTreeEnabled()) {
-    element_manager()->OnElementNodeSetForInspector(this);
-  });
-}
-
-void FiberElement::DoFullCSSResolving() {
+void Element::DoFullCSSResolving() {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_DO_FULL_STYLE_RESOLVE);
 
   CSSVariableMap changed_css_vars;
@@ -3228,9 +3125,9 @@ void FiberElement::DoFullCSSResolving() {
   }
 }
 
-bool FiberElement::RefreshStyle(StyleMap &parsed_styles,
-                                base::Vector<CSSPropertyID> &reset_ids,
-                                bool force_use_parsed_styles_map) {
+bool Element::RefreshStyle(StyleMap &parsed_styles,
+                           base::Vector<CSSPropertyID> &reset_ids,
+                           bool force_use_parsed_styles_map) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_REFRESH_STYLE,
               [this](lynx::perfetto::EventContext ctx) {
                 UpdateTraceDebugInfo(ctx.event());
@@ -3276,7 +3173,7 @@ bool FiberElement::RefreshStyle(StyleMap &parsed_styles,
 }
 
 // For snapshot test
-void FiberElement::DumpStyle(StyleMap &computed_styles) {
+void Element::DumpStyle(StyleMap &computed_styles) {
   if (element_manager()->EnableNewStylingPipeline()) {
     computed_styles = computed_css_style()->GetResolvedValues();
     return;
