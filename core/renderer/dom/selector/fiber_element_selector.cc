@@ -19,7 +19,7 @@ namespace lynx {
 namespace tasm {
 
 FiberElementSelector::ElementSelectResult FiberElementSelector::Select(
-    FiberElement* root, const NodeSelectOptions& options) {
+    Element* root, const NodeSelectOptions& options) {
   if (root == nullptr) {
     ElementSelectResult result{{}, options};
     result.root_found = false;
@@ -39,15 +39,13 @@ FiberElementSelector::ElementSelectResult FiberElementSelector::Select(
     const std::unique_ptr<ElementManager>& element_manager,
     const NodeSelectRoot& root, const NodeSelectOptions& options) {
   LOGI(" SelectNodeRoot: " << root.ToPrettyString());
-  FiberElement* base = nullptr;
+  Element* base = nullptr;
   switch (root.root_type) {
     case NodeSelectRoot::RootType::COMPONENT_ID:
-      base = static_cast<FiberElement*>(
-          element_manager->GetComponent(root.component_id));
+      base = element_manager->GetComponent(root.component_id);
       break;
     case NodeSelectRoot::RootType::NODE_UNIQUE_ID:
-      base = static_cast<FiberElement*>(
-          element_manager->node_manager()->Get(root.node_unique_id));
+      base = element_manager->node_manager()->Get(root.node_unique_id);
       break;
   }
   return Select(base, options);
@@ -56,7 +54,7 @@ FiberElementSelector::ElementSelectResult FiberElementSelector::Select(
 void FiberElementSelector::SelectImpl(
     SelectorItem* base, const std::vector<SelectElementToken>& tokens,
     size_t token_pos, const SelectImplOptions& options) {
-  FiberElement* element = static_cast<FiberElement*>(base);
+  Element* element = static_cast<Element*>(base);
   SelectImplRecursive(element, tokens, token_pos, options);
 }
 
@@ -72,7 +70,7 @@ void FiberElementSelector::SelectImpl(
  * etc.), push it to result.
  */
 void FiberElementSelector::SelectImplRecursive(
-    FiberElement* element, const std::vector<SelectElementToken>& tokens,
+    Element* element, const std::vector<SelectElementToken>& tokens,
     size_t token_pos, const SelectImplOptions& options) {
   // if we already have a result with first_only turned on, return!
   if (options.first_only && !result_.empty()) {
@@ -130,14 +128,13 @@ void FiberElementSelector::SelectImplRecursive(
     } else {
       // search in all children
       for (const auto& c : element->children()) {
-        SelectImpl(static_cast<FiberElement*>(c.get()), tokens, pos,
-                   next_options);
+        SelectImpl(c.get(), tokens, pos, next_options);
       }
     }
   }
 }
 
-bool FiberElementSelector::IsTokenSatisfied(FiberElement* node,
+bool FiberElementSelector::IsTokenSatisfied(Element* node,
                                             const SelectElementToken& token) {
   switch (token.type) {
     case SelectElementToken::Type::CSS_SELECTOR:
@@ -171,48 +168,46 @@ void FiberElementSelector::SelectByElementId(SelectorItem* root,
   }
 
   auto element =
-      static_cast<FiberElement*>(root)->element_manager()->node_manager()->Get(
-          id);
+      static_cast<Element*>(root)->element_manager()->node_manager()->Get(id);
   if (element) {
-    InsertResult(static_cast<FiberElement*>(element));
+    InsertResult(element);
   }
 }
 
 void FiberElementSelector::InsertResult(SelectorItem* base) {
-  result_.push_back(static_cast<FiberElement*>(base));
+  result_.push_back(static_cast<Element*>(base));
 }
 
 bool FiberElementSelector::FoundElement() { return !result_.empty(); }
 
 void FiberElementSelector::SelectInSlots(
-    FiberElement* element, const std::vector<SelectElementToken>& tokens,
+    Element* element, const std::vector<SelectElementToken>& tokens,
     size_t token_pos, const SelectImplOptions& options,
     const std::string& parent_component_id) {
   for (const auto& child : element->children()) {
-    auto* fiber_child = static_cast<FiberElement*>(child.get());
-    if (fiber_child->ParentComponentIdString() == parent_component_id) {
-      SelectImpl(fiber_child, tokens, token_pos, options);
+    auto* element_child = child.get();
+    if (element_child->ParentComponentIdString() == parent_component_id) {
+      SelectImpl(element_child, tokens, token_pos, options);
     } else {
-      SelectInSlots(fiber_child, tokens, token_pos, options,
+      SelectInSlots(element_child, tokens, token_pos, options,
                     parent_component_id);
     }
   }
 }
 
-void FiberElementSelector::UniqueAndSortResult(FiberElement* root) {
+void FiberElementSelector::UniqueAndSortResult(Element* root) {
   if (result_.size() < 2) {
     return;
   }
 
-  std::unordered_map<FiberElement*, std::vector<size_t>> index_map;
-  auto indexes = [&index_map](FiberElement* root, FiberElement* node) {
+  std::unordered_map<Element*, std::vector<size_t>> index_map;
+  auto indexes = [&index_map](Element* root, Element* node) {
     if (index_map.count(node)) {
       return index_map[node];
     }
     std::vector<size_t> indexes;
-    for (auto n = node; n != root;
-         n = static_cast<FiberElement*>(n->parent())) {
-      indexes.push_back(static_cast<FiberElement*>(n->parent())->IndexOf(n));
+    for (auto n = node; n != root; n = n->parent()) {
+      indexes.push_back(n->parent()->IndexOf(n));
     }
     std::reverse(indexes.begin(), indexes.end());
     index_map[node] = indexes;
@@ -220,7 +215,7 @@ void FiberElementSelector::UniqueAndSortResult(FiberElement* root) {
   };
 
   std::sort(result_.begin(), result_.end(),
-            [&indexes, root](FiberElement* a, FiberElement* b) {
+            [&indexes, root](Element* a, Element* b) {
               auto a_indexes = indexes(root, a);
               auto b_indexes = indexes(root, b);
               return a_indexes < b_indexes;
