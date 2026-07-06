@@ -2055,6 +2055,13 @@ void Element::InvalidateChildren(css::InvalidationSet* invalidation_set) {
   }
 }
 
+void Element::InvalidateChildrenIfNeeded() {
+  for (auto* invalidation_set : invalidation_lists_.descendants) {
+    InvalidateChildren(invalidation_set);
+  }
+  invalidation_lists_.descendants.clear_and_shrink();
+}
+
 void Element::VisitChildren(
     const base::MoveOnlyClosure<void, Element*>& visitor) {
   for (auto& child : scoped_children_) {
@@ -3697,6 +3704,137 @@ int Element::GetLayoutInElementPlatformChildIndex(Element* child) {
     }
   }
   return -1;
+}
+
+void Element::AddScopedVirtualChild(const fml::RefPtr<Element>& child) {
+  scoped_virtual_children_->push_back(child);
+}
+
+void Element::RemoveScopedVirtualChild(const fml::RefPtr<Element>& child) {
+  if (!scoped_virtual_children_.has_value()) {
+    return;
+  }
+  scoped_virtual_children_->erase(
+      std::remove(scoped_virtual_children_->begin(),
+                  scoped_virtual_children_->end(), child),
+      scoped_virtual_children_->end());
+}
+
+void Element::StoreLayoutNode(Element* child, Element* ref) {
+  child->render_parent_ = this;
+  Element* next_layout_sibling = ref;
+  Element* previous_layout_sibling =
+      next_layout_sibling ? next_layout_sibling->previous_render_sibling_
+                          : last_render_child_;
+  if (previous_layout_sibling) {
+    previous_layout_sibling->next_render_sibling_ = child;
+  } else {
+    first_render_child_ = child;
+  }
+  child->previous_render_sibling_ = previous_layout_sibling;
+
+  if (next_layout_sibling) {
+    next_layout_sibling->previous_render_sibling_ = child;
+  } else {
+    last_render_child_ = child;
+  }
+  child->next_render_sibling_ = next_layout_sibling;
+}
+
+void Element::RestoreLayoutNode(Element* node) {
+  if (node->previous_render_sibling_) {
+    node->previous_render_sibling_->next_render_sibling_ =
+        node->next_render_sibling_;
+  } else {
+    first_render_child_ = node->next_render_sibling_;
+  }
+  if (node->next_render_sibling_) {
+    node->next_render_sibling_->previous_render_sibling_ =
+        node->previous_render_sibling_;
+  } else {
+    last_render_child_ = node->previous_render_sibling_;
+  }
+  node->render_parent_ = nullptr;
+  node->previous_render_sibling_ = nullptr;
+  node->next_render_sibling_ = nullptr;
+}
+
+void Element::InsertLayoutNode(Element* child, Element* ref) {
+  DCHECK(!ref || !ref->is_wrapper());
+  if (EnableLayoutInElementMode()) {
+    Element* container = FindFirstNonVirtualRenderAncestor();
+    bool inserted = false;
+    if (container && !child->is_virtual()) {
+      container->EnsureSLNode();
+      child->EnsureSLNode();
+      Element* ref_node =
+          ref ? ref->FindFirstNonVirtualRenderSibling() : nullptr;
+      if (ref_node) {
+        ref_node->EnsureSLNode();
+      }
+      container->sl_node_->InsertChildBefore(
+          child->sl_node_.get(), ref_node ? ref_node->sl_node_.get() : nullptr);
+      child->UpdateFixedNodeSetRecursively(true);
+      container->MarkLayoutDirtyLite();
+      if (container->customized_layout_node_ &&
+          child->HasLayoutInElementPlatformNode()) {
+        int index = container->GetLayoutInElementPlatformChildIndex(child);
+        if (index >= 0) {
+          element_manager()->layout_context()->InsertLayoutNode(
+              container->impl_id(), child->impl_id(), index);
+        }
+      }
+      inserted = true;
+    }
+    child->attached_to_layout_parent_ = inserted || child->is_virtual();
+    return;
+  }
+
+  if (child->attached_to_layout_parent_) {
+    LOGE("Element layout node already inserted !");
+    this->LogNodeInfo();
+    child->LogNodeInfo();
+  }
+  EnqueueLayoutTask([element_manager = element_manager(), id = id_,
+                     child_id = child->impl_id(),
+                     ref_id = ref ? ref->impl_id() : -1]() {
+    element_manager->InsertLayoutNodeBefore(id, child_id, ref_id);
+  });
+  child->attached_to_layout_parent_ = true;
+}
+
+void Element::RemoveLayoutNode(Element* child,
+                               int layout_in_element_platform_index) {
+  if (EnableLayoutInElementMode()) {
+    if (auto* child_layout_node = child->slnode();
+        child_layout_node && child_layout_node->parent()) {
+      child->UpdateFixedNodeSetRecursively(false);
+      if (customized_layout_node_ && child->HasLayoutInElementPlatformNode()) {
+        int index = layout_in_element_platform_index >= 0
+                        ? layout_in_element_platform_index
+                        : GetLayoutInElementPlatformChildIndex(child);
+        element_manager()->layout_context()->RemoveLayoutNode(
+            impl_id(), child->impl_id(), index);
+      }
+      // FIXME: this->sl_node_ is accidentally not the parent of
+      // child->sl_node_->parent_. Should try to figure out why it happens.
+      if (child_layout_node->parent() != sl_node_.get()) {
+        LOGD(
+            "Trying to remove a LayoutObject that doesn't belong to the "
+            "Element.");
+      }
+      child->slnode()->parent()->RemoveChild(child->slnode());
+      MarkLayoutDirtyLite();
+    }
+    child->attached_to_layout_parent_ = false;
+    return;
+  }
+
+  EnqueueLayoutTask([element_manager = element_manager(), id = id_,
+                     child_id = child->impl_id()]() {
+    element_manager->RemoveLayoutNode(id, child_id);
+  });
+  child->attached_to_layout_parent_ = false;
 }
 
 void Element::UpdateFixedNodeSet() {
