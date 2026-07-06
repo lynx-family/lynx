@@ -294,7 +294,7 @@ void ComponentElement::SetAttribute(const base::String& key,
   }
 }
 
-void ComponentElement::OnNodeAdded(FiberElement* child) {
+void ComponentElement::OnNodeAdded(Element* child) {
   if (is_wrapper()) {
     return WrapperElement::OnNodeAdded(child);
   } else {
@@ -302,7 +302,7 @@ void ComponentElement::OnNodeAdded(FiberElement* child) {
   }
 }
 
-void ComponentElement::OnNodeRemoved(FiberElement* child) {
+void ComponentElement::OnNodeRemoved(Element* child) {
   if (is_wrapper()) {
     return WrapperElement::OnNodeRemoved(child);
   } else {
