@@ -221,20 +221,6 @@ class FiberElement : public Element {
   virtual StyleMap GetStylesForWorklet() override;
 
   /**
-   * @brief Set the style objects for the current element.
-   *
-   * This method is used to assign a list of style objects to the element.
-   * The object list is managed by a custom deleter, which will be called
-   * when the unique pointer goes out of scope.
-   * @note This function is not implemented yet.
-   * @param object_list A unique pointer to an array of StyleObject pointers,
-   *                    along with a custom deleter function for the array.
-   */
-  void SetStyleObjects(
-      std::unique_ptr<style::StyleObject*, style::StyleObjectArrayDeleter>
-          object_list) override final;
-
-  /**
    * @brief Update the simple styles of the current element.
    *
    * This method is used to update the simple styles of the element based on
@@ -270,13 +256,6 @@ class FiberElement : public Element {
   void ResetSimpleStyle(const tasm::CSSPropertyID id,
                         const tasm::CSSValue& value) override final;
   void ResetSimpleStyle(const tasm::CSSPropertyID id) override final;
-  // Update the dynamic simple style source object. The resolved dynamic layer
-  // will be applied during flush in ResolveSimpleStyles().
-  void ReplaceDynamicSimpleStyles(
-      style::DynamicStyleObjectRef new_style_object);
-  void AddDynamicSimpleStyles(tasm::StyleMap&& new_styles);
-  void RemoveDynamicSimpleStyleKV(tasm::CSSPropertyID id);
-  void AddDynamicSimpleStyleKV(tasm::CSSPropertyID id, tasm::CSSValue&& value);
   void ResolveCSSStyles(StyleMap& parsed_styles,
                         base::InlineVector<CSSPropertyID, 16>& reset_style_ids,
                         bool& need_update,
@@ -298,9 +277,6 @@ class FiberElement : public Element {
   void InvalidateChildrenFontSizeRecursively();
   void InvalidateChildrenInheritedStylesRecursively();
 
-  // if child's related css variable is updated, invalidate child's style.
-  void RecursivelyMarkChildrenCSSVariableDirty(
-      const lepus::Value& css_variable_updated);
   void MarkDirectChildrenStyleDirtyForInheritedPropertyMutation();
 
   /**
@@ -665,9 +641,6 @@ class FiberElement : public Element {
 
   void RequestNextFrame() override;
 
-  bool IsRelatedCSSVariableUpdated(AttributeHolder* holder,
-                                   const lepus::Value changing_css_variables);
-
   virtual ParallelFlushReturn PrepareForCreateOrUpdate();
 
   void InsertLayoutNode(FiberElement* child, FiberElement* ref);
@@ -687,19 +660,11 @@ class FiberElement : public Element {
                     base::Vector<CSSPropertyID>& reset_ids,
                     bool force_use_parsed_styles_map = false);
 
-  void OnClassChanged(const ClassList& old_classes,
-                      const ClassList& new_classes);
-
   void UpdateDynamicElementStyle(uint32_t style, bool force_update) override;
 
   void CheckDynamicUnit(CSSPropertyID id, const CSSValue& value,
                         bool reset) override;
   void WillResetCSSValue(CSSPropertyID& id) override;
-
-  // FIXME(liujilong.me): unify trace relative macros.
-#if ENABLE_TRACE_PERFETTO
-  virtual void UpdateTraceDebugInfo(TraceEvent* event);
-#endif
 
   // The text element can call this function to convert child fiber elements
   // into inline elements. Currently, only view, text, image and wrapper
@@ -845,8 +810,6 @@ class FiberElement : public Element {
   bool CheckHasInvalidationForId(const std::string& old_id,
                                  const std::string& new_id) override;
 
-  bool CheckHasInvalidationForClass(const ClassList& old_classes,
-                                    const ClassList& new_classes);
   void InvalidateChildren(css::InvalidationSet* invalidation_set);
   void VisitChildren(const base::MoveOnlyClosure<void, FiberElement*>& visitor);
 
