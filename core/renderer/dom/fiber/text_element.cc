@@ -184,7 +184,7 @@ bool TextElement::ProcessAttributeForNormalLayoutMode(
   if (key.IsEqual(kTextAttr) && !children().empty()) {
     // if setNativeProps with key "text" on TextElement, we need to update it's
     // children.
-    auto* first_child = static_cast<FiberElement*>(children().front().get());
+    auto* first_child = children().front().get();
     if (first_child->is_raw_text()) {
       auto* raw_text = static_cast<RawTextElement*>(first_child);
       raw_text->SetText(value);
