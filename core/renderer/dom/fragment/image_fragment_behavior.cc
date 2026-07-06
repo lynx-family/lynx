@@ -7,6 +7,7 @@
 #include "core/renderer/dom/fiber/image_element.h"
 #include "core/renderer/dom/fragment/display_list_builder.h"
 #include "core/renderer/dom/fragment/fragment.h"
+#include "core/renderer/ui_wrapper/painting/paint_image.h"
 
 namespace lynx::tasm {
 
@@ -42,7 +43,7 @@ void ImageFragmentBehavior::OnUpdateLayout(
     if (event_mask_ < 0) {
       event_mask_ = ComputeEventMask();
     }
-    painting_context_->CreateImage(
+    paint_image_ = painting_context_->CreateImage(
         fragment_->id(), image_url_, layout_info.GetContentBoxWidth(),
         layout_info.GetContentBoxHeight(), event_mask_);
     fragment_->InvalidateForRedraw();
@@ -50,8 +51,11 @@ void ImageFragmentBehavior::OnUpdateLayout(
 }
 
 void ImageFragmentBehavior::OnDraw(DisplayListBuilder& display_list_builder) {
+  if (!paint_image_) {
+    return;
+  }
   display_list_builder.DrawImage(
-      fragment()->id(), fragment()->DefineContentBox(display_list_builder));
+      paint_image_, fragment()->DefineContentBox(display_list_builder));
 }
 
 }  // namespace lynx::tasm

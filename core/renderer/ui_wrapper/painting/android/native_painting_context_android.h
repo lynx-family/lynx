@@ -115,8 +115,9 @@ class NativePaintingCtxAndroid : public PaintingCtxPlatformImpl,
   void UpdatePlatformEventBundle(int32_t id,
                                  PlatformEventBundle bundle) override;
 
-  void CreateImage(int id, base::String src, float width, float height,
-                   int32_t event_mask = 0) override;
+  fml::RefPtr<PaintImage> CreateImage(int id, base::String src, float width,
+                                      float height,
+                                      int32_t event_mask = 0) override;
 
   void UpdateTextBundle(int id, intptr_t bundle) override;
 
@@ -143,7 +144,10 @@ class NativePaintingCtxAndroid : public PaintingCtxPlatformImpl,
   bool has_first_screen_ = false;
   std::shared_ptr<std::atomic_bool> event_target_tree_update_enqueued_ =
       std::make_shared<std::atomic_bool>(false);
-  std::unique_ptr<PlatformRendererContext> view_manager_;
+  // TODO(renzhongyue): Raw pointer here because the lifetime of view_manager_
+  // is managed by NativePaintingCtxAndroidRef. Move related methods into
+  // NativePaintingCtxAndroidRef to avoid raw pointer usage.
+  PlatformRendererContext *view_manager_;
   std::shared_ptr<shell::DynamicUIOperationQueue> queue_;
 };
 

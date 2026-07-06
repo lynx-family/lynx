@@ -10,7 +10,6 @@
 #include <vector>
 
 #include "base/include/fml/memory/ref_ptr.h"
-#include "base/include/vector.h"
 #include "core/base/threading/task_runner_manufactor.h"
 #include "core/renderer/dom/fragment/display_list.h"
 #include "core/renderer/ui_wrapper/common/android/platform_extra_bundle_android.h"
@@ -204,9 +203,10 @@ namespace tasm {
 NativePaintingCtxAndroid::NativePaintingCtxAndroid(
     JNIEnv *env, jobject text_layout, jlong textra,
     PlatformRendererContext *view_manager)
-    : view_manager_(std::unique_ptr<PlatformRendererContext>(view_manager)) {
+    : view_manager_(view_manager) {
   platform_ref_ = std::make_shared<NativePaintingCtxAndroidRef>(
-      std::make_unique<PlatformRendererAndroidFactory>(view_manager_.get()));
+      std::make_unique<PlatformRendererAndroidFactory>(view_manager_),
+      std::unique_ptr<PlatformRendererContext>(view_manager_));
   if (textra != 0) {
     text_layout_impl_ =
         std::make_unique<TextLayoutTextra>(static_cast<intptr_t>(textra));
@@ -308,7 +308,7 @@ void NativePaintingCtxAndroid::UpdatePlatformExtraBundle(
       env, static_cast<PlatformExtraBundleAndroid *>(bundle)
                ->GetPlatformBundle()
                .Get());
-  Enqueue([view_manager = view_manager_.get(), id,
+  Enqueue([view_manager = view_manager_, id,
            java_bundle_ref = std::move(java_bundle_ref)]() {
     view_manager->UpdatePlatformRendererExtraData(id, java_bundle_ref.Get());
   });
@@ -326,7 +326,7 @@ void NativePaintingCtxAndroid::OnFirstScreen() { has_first_screen_ = true; }
 void NativePaintingCtxAndroid::FinishTasmOperation(
     const std::shared_ptr<PipelineOptions> &options) {
   if (view_manager_) {
-    Enqueue([view_manager = view_manager_.get(), options]() {
+    Enqueue([view_manager = view_manager_, options]() {
       view_manager->FinishTasmOperation(options->operation_id);
     });
   }
@@ -343,7 +343,7 @@ void NativePaintingCtxAndroid::FinishLayoutOperation(
   }
 
   if (view_manager_) {
-    Enqueue([view_manager = view_manager_.get(), options]() {
+    Enqueue([view_manager = view_manager_, options]() {
       view_manager->FinishLayoutOperation(options->list_comp_id_,
                                           options->operation_id,
                                           options->is_first_screen);
@@ -474,12 +474,12 @@ void NativePaintingCtxAndroid::ReconstructEventTargetTreeRecursively() {
   });
 }
 
-void NativePaintingCtxAndroid::CreateImage(int id, base::String src,
-                                           float width, float height,
-                                           int32_t event_mask) {
+fml::RefPtr<PaintImage> NativePaintingCtxAndroid::CreateImage(
+    int id, base::String src, float width, float height, int32_t event_mask) {
   if (view_manager_) {
-    view_manager_->CreateImage(id, src, width, height, event_mask);
+    return view_manager_->CreateImage(id, src, width, height, event_mask);
   }
+  return nullptr;
 }
 
 void NativePaintingCtxAndroid::UpdateTextBundle(int id, intptr_t bundle) {
@@ -499,7 +499,7 @@ void NativePaintingCtxAndroid::InsertListItemPaintingNode(int32_t list_id,
   if (!view_manager_) {
     return;
   }
-  Enqueue([view_manager = view_manager_.get(), list_id, child_id]() {
+  Enqueue([view_manager = view_manager_, list_id, child_id]() {
     view_manager->InsertListItemPaintingNode(list_id, child_id);
   });
 }
@@ -509,7 +509,7 @@ void NativePaintingCtxAndroid::RemoveListItemPaintingNode(int32_t list_id,
   if (!view_manager_) {
     return;
   }
-  Enqueue([view_manager = view_manager_.get(), list_id, child_id]() {
+  Enqueue([view_manager = view_manager_, list_id, child_id]() {
     view_manager->RemoveListItemPaintingNode(list_id, child_id);
   });
 }
@@ -520,8 +520,8 @@ void NativePaintingCtxAndroid::UpdateContentOffsetForListContainer(
   if (!view_manager_) {
     return;
   }
-  Enqueue([view_manager = view_manager_.get(), container_id, content_size,
-           delta_x, delta_y, is_init_scroll_offset, from_layout]() {
+  Enqueue([view_manager = view_manager_, container_id, content_size, delta_x,
+           delta_y, is_init_scroll_offset, from_layout]() {
     view_manager->UpdateContentOffsetForListContainer(
         container_id, content_size, delta_x, delta_y, is_init_scroll_offset,
         from_layout);

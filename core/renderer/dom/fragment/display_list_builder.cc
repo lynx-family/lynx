@@ -8,8 +8,10 @@
 #include <cstring>
 #include <utility>
 
+#include "base/include/fml/memory/ref_ptr.h"
 #include "core/renderer/dom/fragment/display_list.h"
 #include "core/renderer/starlight/style/borders_data.h"
+#include "core/renderer/ui_wrapper/painting/paint_image.h"
 #include "core/style/transform/matrix44.h"
 
 namespace lynx {
@@ -67,9 +69,14 @@ DisplayList DisplayListBuilder::Build() { return std::move(display_list_); }
 
 void DisplayListBuilder::Clear() { display_list_ = DisplayList(); }
 
-DisplayListBuilder& DisplayListBuilder::DrawImage(int32_t image_id,
-                                                  int32_t box_index) {
-  display_list_.AddOperation(DisplayListOpType::kImage, image_id, box_index);
+DisplayListBuilder& DisplayListBuilder::DrawImage(
+    const fml::RefPtr<PaintImage>& image, int32_t box_index) {
+  if (!image) {
+    return *this;
+  }
+  display_list_.AddOperation(DisplayListOpType::kImage, image->image_key_,
+                             box_index);
+  display_list_.Images().emplace_back(image);
   return *this;
 }
 

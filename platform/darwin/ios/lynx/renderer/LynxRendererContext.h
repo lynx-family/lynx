@@ -7,7 +7,6 @@
 #import <Lynx/LynxTextRenderManager.h>
 #import <Lynx/LynxUIContext.h>
 #import <Lynx/LynxURL.h>
-
 @interface LynxRendererContext : NSObject
 
 @property(nonatomic, weak) UIView<LUIBodyView> *bodyView;
@@ -17,9 +16,12 @@
 - (void)createImageManager:(int32_t)imageManagerID
              withSourceURL:(LynxURL *)sourceURL
          andPlaceholderURL:(LynxURL *)placeholderURL
-                 eventMask:(int32_t)eventMask;
+                 eventMask:(int32_t)eventMask
+                  imageKey:(int32_t)imageKey;
 
 - (LynxImageManager *)imageManagerForID:(int32_t)imageManagerID;
+
+- (void)destroyImage:(int32_t)imageKey;
 
 - (void)updateTextBundle:(int32_t)textID withBundle:(void *)bundle;
 

@@ -19,18 +19,18 @@ class PlatformRendererContextDarwin {
   PlatformRendererContextDarwin(UIView<LUIBodyView>* container_view, LynxUIOwner* ui_owner = nil);
   ~PlatformRendererContextDarwin();
 
-  UIView<LUIBodyView>* GetContainerView() { return _renderer_context.bodyView; }
+  UIView<LUIBodyView>* GetContainerView() { return renderer_context_.bodyView; }
 
-  LynxRendererContext* GetRendererContext() { return _renderer_context; }
+  LynxRendererContext* GetRendererContext() { return renderer_context_; }
 
-  LynxUIOwner* GetUIOwner() { return _ui_owner; }
+  LynxUIOwner* GetUIOwner() { return ui_owner_; }
 
   CGPoint GetRootViewLocationOnScreen();
   CGSize GetScreenSize();
 
  private:
-  LynxRendererContext* _renderer_context;
-  LynxUIOwner* _ui_owner;
+  LynxRendererContext* renderer_context_;
+  LynxUIOwner* ui_owner_;
 };
 
 }  // namespace tasm

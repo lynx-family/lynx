@@ -33,6 +33,7 @@ class ImageFragmentBehavior : public FragmentBehavior {
   base::String image_url_;
   // Cached event mask - computed lazily on first use, then never changes.
   mutable int32_t event_mask_{-1};  // -1 means not yet computed
+  fml::RefPtr<PaintImage> paint_image_;
 };
 
 }  // namespace lynx::tasm
