@@ -215,7 +215,6 @@ class FiberElement : public Element {
                         base::InlineVector<CSSPropertyID, 16>& reset_style_ids,
                         bool& need_update,
                         bool& force_use_current_parsed_style_map);
-  void ResolveCSSStylesNewPipeline(bool& need_update);
 
   void TraversalInsertFixedElementOfTree();
 
@@ -270,37 +269,6 @@ class FiberElement : public Element {
   virtual void EnqueueLayoutTask(
       base::MoveOnlyClosure<void> operation) override;
 
-  animation::AnimationSampleForNewPipeline
-  SampleAnimationOverridesForNewPipeline(
-      starlight::ComputedCSSStyle& new_base_style, bool base_font_size_changed,
-      bool base_root_font_size_changed,
-      const StyleMap& new_underlying_layout_only_styles,
-      const starlight::ComputedCSSStyle*& previous_final_style);
-  bool HasAuthorAnimationDataChangedForNewPipeline(
-      const starlight::ComputedCSSStyle& new_base_style,
-      const starlight::ComputedCSSStyle* previous_base_style) const;
-  void FlushImperativeAnimationCleanupForNewPipeline(
-      starlight::ComputedCSSStyle& cleanup_style, bool& need_update,
-      CSSIDBitset* replayed_ids, const CSSIDBitset* source_style_ids = nullptr);
-  animation::AnimationEventRecordsForNewPipeline
-  TakeAnimationEventsForNewPipeline();
-  bool NeedsAnimationFrameForNewPipeline() const;
-
-  /**
-   * @brief Resolves the base computed style by collecting matched rules,
-   * inline styles, and attribute styles.
-   * @param previous_final_style The previous final computed style.
-   * @param old_font_size The previous font size.
-   * @param old_root_font_size The previous root font size.
-   * @return A NewPipelineStyleResolveResult containing base and final styles.
-   */
-  NewPipelineStyleResolveResult ResolveComputedStyles(
-      const starlight::ComputedCSSStyle* previous_final_style,
-      double old_font_size, double old_root_font_size);
-
-  NewPipelineResolveOutcome ResolveCSSStylesNewPipelineCore(
-      const NewPipelineResolveRequest& request);
-
   void RequestLayout() override;
 
   void RequestNextFrame() override;
@@ -352,9 +320,6 @@ class FiberElement : public Element {
 
   bool MergeInlineStyles(StyleMap& new_styles,
                          StyleMap& important_styles) final;
-  void PersistAnimationFillStyles(const StyleMap& styles) override;
-  void ClearPersistedAnimationFillStyle(CSSPropertyID id) override;
-
   void CreateListItemScheduler(list::BatchRenderStrategy batch_render_strategy,
                                bool continuous_resolve_tree);
 
