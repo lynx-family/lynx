@@ -189,7 +189,8 @@ void BlockElement::InsertBlockChildrenBefore(BlockElement *block,
 
 void BlockElement::ReplaceElements(
     const base::Vector<fml::RefPtr<Element>> &inserted,
-    const base::Vector<fml::RefPtr<Element>> &removed) {
+    const base::Vector<fml::RefPtr<Element>> &removed, Element *ref_node) {
+  (void)ref_node;
   // Find the ref node
   Element *last_old_element = nullptr;
   if (!removed.empty()) {
