@@ -61,6 +61,7 @@ void ColorFilterLayer::Preroll(PrerollContext* context) {
   // modulation so in that case we can apply the opacity on behalf of our
   // ancestors - otherwise we can apply no attributes.
   if (filter_) {
+    layer_raster_cache_item_->MarkCacheableEffect(context);
     context->renderable_state_flags =
         filter_->can_commute_with_opacity()
             ? LayerStateStack::kCallerCanApplyOpacity

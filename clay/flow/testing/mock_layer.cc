@@ -80,6 +80,9 @@ void MockCacheableContainerLayer::Preroll(PrerollContext* context) {
                          context->state_stack.transform_4x4());
 
   ContainerLayer::Preroll(context);
+  if (mark_cacheable_effect_) {
+    layer_raster_cache_item_->MarkCacheableEffect(context);
+  }
 }
 
 void MockCacheableLayer::Preroll(PrerollContext* context) {
@@ -89,6 +92,9 @@ void MockCacheableLayer::Preroll(PrerollContext* context) {
                          context->state_stack.transform_4x4());
 
   MockLayer::Preroll(context);
+  if (mark_cacheable_effect_) {
+    raster_cache_item_->MarkCacheableEffect(context);
+  }
 }
 
 }  // namespace testing

@@ -75,6 +75,7 @@ class ClipShapeLayer : public CacheableContainerLayer {
     // If we use a SaveLayer then we can accept opacity on behalf
     // of our children and apply it in the saveLayer.
     if (uses_save_layer) {
+      layer_raster_cache_item_->MarkCacheableEffect(context);
       context->renderable_state_flags = kSaveLayerRenderFlags;
     }
   }

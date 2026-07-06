@@ -78,6 +78,8 @@ void OpacityLayer::Preroll(PrerollContext* context) {
     // children can't accept opacity so if the children_can_accept_opacity we
     // should tell the AutoCache object don't do raster_cache.
     auto_cache.ShouldNotBeCached();
+  } else {
+    layer_raster_cache_item_->MarkCacheableEffect(context);
   }
 }
 

@@ -94,6 +94,9 @@ struct PrerollContext {
   // This flag will be set to true if one of the parent of the current layer has
   // a deferred image.
   bool has_deferred_image = false;
+  // This flag indicates there are cache-worthy effects such as filters or
+  // saveLayers in the current subtree.
+  bool has_cacheable_effect = false;
   // The list of flags that describe which rendering state attributes
   // (such as opacity, ColorFilter, ImageFilter) a given layer can
   // render itself without requiring the parent to perform a protective

@@ -145,6 +145,7 @@ void ContainerLayer::PrerollChildren(PrerollContext* context,
   bool child_has_drawable_image_layer = false;
   bool child_has_punch_hole_layer = false;
   bool child_has_deferred_image = false;
+  bool child_has_cacheable_effect = false;
   bool child_has_running_picture_animation = false;
   bool child_has_running_transform_animation = false;
   bool all_renderable_state_flags = LayerStateStack::kCallerCanApplyAnything;
@@ -158,6 +159,7 @@ void ContainerLayer::PrerollChildren(PrerollContext* context,
     context->has_drawable_image_layer = false;
     context->has_punch_hole_layer = false;
     context->has_deferred_image = false;
+    context->has_cacheable_effect = false;
     context->has_running_picture_animation = false;
     context->has_running_transform_animation = false;
 
@@ -180,6 +182,7 @@ void ContainerLayer::PrerollChildren(PrerollContext* context,
     child_has_drawable_image_layer |= context->has_drawable_image_layer;
     child_has_punch_hole_layer |= context->has_punch_hole_layer;
     child_has_deferred_image |= context->has_deferred_image;
+    child_has_cacheable_effect |= context->has_cacheable_effect;
     child_has_running_picture_animation |=
         context->has_running_picture_animation;
     child_has_running_transform_animation |=
@@ -190,6 +193,7 @@ void ContainerLayer::PrerollChildren(PrerollContext* context,
   context->has_drawable_image_layer = child_has_drawable_image_layer;
   context->has_punch_hole_layer = child_has_punch_hole_layer;
   context->has_deferred_image = child_has_deferred_image;
+  context->has_cacheable_effect = child_has_cacheable_effect;
   context->has_running_picture_animation = child_has_running_picture_animation;
   context->has_running_transform_animation =
       child_has_running_transform_animation;

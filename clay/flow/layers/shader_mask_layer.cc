@@ -51,6 +51,7 @@ void ShaderMaskLayer::Preroll(PrerollContext* context) {
                               context->state_stack.transform_4x4());
 
   ContainerLayer::Preroll(context);
+  layer_raster_cache_item_->MarkCacheableEffect(context);
   // We always paint with a saveLayer (or a cached rendering),
   // so we can always apply opacity in any of those cases.
   context->renderable_state_flags = kSaveLayerRenderFlags;

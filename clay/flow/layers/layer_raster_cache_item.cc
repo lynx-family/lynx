@@ -29,6 +29,8 @@ LayerRasterCacheItem::LayerRasterCacheItem(Layer* layer,
 void LayerRasterCacheItem::PrerollSetup(PrerollContext* context,
                                         const skity::Matrix& matrix) {
   cache_state_ = CacheState::kNone;
+  preroll_setup_active_ = false;
+  has_cacheable_effect_ = false;
   if (context->paints_into_platform_view_slice) {
     return;
   }
@@ -36,6 +38,7 @@ void LayerRasterCacheItem::PrerollSetup(PrerollContext* context,
     context->raster_cached_entries->push_back(this);
     child_items_ = context->raster_cached_entries->size();
     matrix_ = matrix;
+    preroll_setup_active_ = true;
   }
 }
 
@@ -45,9 +48,17 @@ std::unique_ptr<LayerRasterCacheItem> LayerRasterCacheItem::Make(
                                                 can_cache_children);
 }
 
+void LayerRasterCacheItem::MarkCacheableEffect(PrerollContext* context) {
+  has_cacheable_effect_ = true;
+  if (context) {
+    context->has_cacheable_effect = true;
+  }
+}
+
 void LayerRasterCacheItem::PrerollFinalize(PrerollContext* context,
                                            const skity::Matrix& matrix) {
-  if (!context->raster_cache || !context->raster_cached_entries) {
+  if (!preroll_setup_active_ || !context->raster_cache ||
+      !context->raster_cached_entries) {
     return;
   }
   // We've marked the cache entry that we would like to cache so it stays
@@ -57,6 +68,9 @@ void LayerRasterCacheItem::PrerollFinalize(PrerollContext* context,
       context->has_punch_hole_layer || context->has_running_picture_animation ||
       context->has_running_transform_animation || context->has_deferred_image ||
       context->state_stack.content_culled(layer_->paint_bounds())) {
+    return;
+  }
+  if (!has_cacheable_effect_ && !context->has_cacheable_effect) {
     return;
   }
   child_items_ = context->raster_cached_entries->size() - child_items_;
@@ -163,6 +177,16 @@ bool LayerRasterCacheItem::TryToPrepareRasterCache(const PaintContext& context,
   }
   if (cache_state_ != kNone) {
     if (const skity::Rect* paint_bounds = GetPaintBoundsFromLayer()) {
+      if (!RasterCacheUtil::CanRasterizeRect(*paint_bounds)) {
+        return false;
+      }
+      auto frame_size = context.compositor_state
+                            ? context.compositor_state->GetFrameSize()
+                            : skity::Vec2{1e9, 1e9};
+      if (paint_bounds->Width() > frame_size.x ||
+          paint_bounds->Height() > frame_size.y) {
+        return false;
+      }
       RasterCache::Context r_context = {
           // clang-format off
           .gr_context         = context.gr_context,

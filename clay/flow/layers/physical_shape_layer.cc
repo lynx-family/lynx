@@ -109,6 +109,9 @@ void PhysicalShapeLayer::Preroll(PrerollContext* context) {
   PrerollChildren(context, &child_paint_bounds);
   context->renderable_state_flags =
       UsesSaveLayer() ? Layer::kSaveLayerRenderFlags : 0;
+  if (UsesSaveLayer()) {
+    context->has_cacheable_effect = true;
+  }
 
   skity::Rect paint_bounds;
 #ifndef ENABLE_SKITY
