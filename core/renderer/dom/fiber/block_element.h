@@ -35,7 +35,8 @@ class BlockElement : public FiberElement {
   void RemoveBlockChildAt(size_t index);
 
   void ReplaceElements(const base::Vector<fml::RefPtr<Element>>& inserted,
-                       const base::Vector<fml::RefPtr<Element>>& removed);
+                       const base::Vector<fml::RefPtr<Element>>& removed,
+                       Element* ref_node = nullptr) override;
 
   const auto& block_children() const { return block_children_; }
 
