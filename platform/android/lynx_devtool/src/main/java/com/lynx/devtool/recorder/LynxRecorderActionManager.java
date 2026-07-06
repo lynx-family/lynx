@@ -12,13 +12,15 @@ import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
 import android.util.Base64;
+import android.util.Base64InputStream;
 import android.util.DisplayMetrics;
+import android.util.JsonReader;
+import android.util.JsonToken;
 import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import com.google.gson.Gson;
 import com.lynx.BuildConfig;
 import com.lynx.devtoolwrapper.LynxBaseInspectorController;
 import com.lynx.recorder.LynxDebugInfoRecorder;
@@ -49,11 +51,15 @@ import com.lynx.tasm.provider.AbsTemplateProvider;
 import com.lynx.tasm.provider.LynxProviderRegistry;
 import com.lynx.tasm.utils.LynxViewBuilderProperty;
 import com.lynx.tasm.utils.UIThreadUtils;
-import java.io.ByteArrayOutputStream;
+import java.io.BufferedInputStream;
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.PushbackInputStream;
+import java.io.Reader;
 import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -65,7 +71,8 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.TimeZone;
-import java.util.zip.Inflater;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.zip.InflaterInputStream;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -245,38 +252,325 @@ public class LynxRecorderActionManager {
   private LynxRecorderReplayDataProviderInternal mDataProvider;
   private LynxDebugInfoRecorderDelegate mLynxDebugInfoRecorderDelegate;
   private int mEmbeddedMode = EmbeddedMode.UNSET;
+  private final AtomicInteger mReplayGeneration = new AtomicInteger(0);
 
   public static final int sEndForFirstScreen = 0;
   public static final int sEndForAll = 1;
 
-  public static byte[] decompress(byte[] data) {
-    byte[] output;
+  private static class ParsedRecordData {
+    JSONObject config;
+    JSONArray jsbIgnoredInfo;
+    JSONObject jsbSettings;
+    JSONArray debugInfo;
+    JSONObject sharedData;
+    JSONArray functionCall;
+    JSONObject callbackData;
+    JSONArray componentList;
+    JSONArray actionList;
+  }
 
-    Inflater decompresser = new Inflater();
-    decompresser.reset();
-    decompresser.setInput(data);
+  private interface RecordedInputStreamProvider {
+    InputStream open() throws IOException;
+  }
 
-    ByteArrayOutputStream o = new ByteArrayOutputStream(data.length);
-    try {
-      byte[] buf = new byte[1024];
-      while (!decompresser.finished()) {
-        int i = decompresser.inflate(buf);
-        o.write(buf, 0, i);
+  private static void skipUtf8Bom(PushbackInputStream inputStream) throws IOException {
+    int first = inputStream.read();
+    if (first != 0xEF) {
+      if (first != -1) {
+        inputStream.unread(first);
       }
-      output = o.toByteArray();
-    } catch (Exception e) {
-      output = data;
-      e.printStackTrace();
-    } finally {
+      return;
+    }
+
+    int second = inputStream.read();
+    int third = inputStream.read();
+    if (second == 0xBB && third == 0xBF) {
+      return;
+    }
+
+    if (third != -1) {
+      inputStream.unread(third);
+    }
+    if (second != -1) {
+      inputStream.unread(second);
+    }
+    inputStream.unread(first);
+  }
+
+  private static boolean isJsonRecordedStream(RecordedInputStreamProvider inputStreamProvider)
+      throws IOException {
+    try (InputStream inputStream = inputStreamProvider.open();
+         PushbackInputStream pushbackInputStream =
+             new PushbackInputStream(new BufferedInputStream(inputStream), 3)) {
+      skipUtf8Bom(pushbackInputStream);
+      int firstNonWhitespace = -1;
+      while ((firstNonWhitespace = pushbackInputStream.read()) != -1) {
+        if (!Character.isWhitespace((char) firstNonWhitespace)) {
+          return firstNonWhitespace == '{';
+        }
+      }
+      return true;
+    }
+  }
+
+  private static InputStream openRecordedPayloadStream(
+      RecordedInputStreamProvider inputStreamProvider, boolean shouldInflate) throws IOException {
+    PushbackInputStream pushbackInputStream =
+        new PushbackInputStream(new BufferedInputStream(inputStreamProvider.open()), 3);
+    skipUtf8Bom(pushbackInputStream);
+    if (!shouldInflate) {
+      return pushbackInputStream;
+    }
+    return new InflaterInputStream(new Base64InputStream(pushbackInputStream, Base64.DEFAULT));
+  }
+
+  private static InputStream openBase64DecodedPayloadStream(
+      RecordedInputStreamProvider inputStreamProvider) throws IOException {
+    PushbackInputStream pushbackInputStream =
+        new PushbackInputStream(new BufferedInputStream(inputStreamProvider.open()), 3);
+    skipUtf8Bom(pushbackInputStream);
+    return new Base64InputStream(pushbackInputStream, Base64.DEFAULT);
+  }
+
+  private static Object readJsonValue(JsonReader reader) throws IOException, JSONException {
+    JsonToken token = reader.peek();
+    switch (token) {
+      case BEGIN_OBJECT:
+        JSONObject object = new JSONObject();
+        reader.beginObject();
+        while (reader.hasNext()) {
+          object.put(reader.nextName(), readJsonValue(reader));
+        }
+        reader.endObject();
+        return object;
+      case BEGIN_ARRAY:
+        JSONArray array = new JSONArray();
+        reader.beginArray();
+        while (reader.hasNext()) {
+          array.put(readJsonValue(reader));
+        }
+        reader.endArray();
+        return array;
+      case STRING:
+        return reader.nextString();
+      case NUMBER:
+        return Double.valueOf(reader.nextString());
+      case BOOLEAN:
+        return reader.nextBoolean();
+      case NULL:
+        reader.nextNull();
+        return JSONObject.NULL;
+      default:
+        throw new IOException("Unsupported json token: " + token);
+    }
+  }
+
+  private static JSONObject readJsonObjectOrNull(JsonReader reader, String key)
+      throws IOException, JSONException {
+    if (reader.peek() == JsonToken.NULL) {
+      reader.nextNull();
+      return null;
+    }
+
+    Object value = readJsonValue(reader);
+    if (value instanceof JSONObject) {
+      return (JSONObject) value;
+    }
+
+    throw new JSONException("Expected object for key \"" + key + "\"");
+  }
+
+  private static JSONObject readConfigObjectOrNull(JsonReader reader)
+      throws IOException, JSONException {
+    JsonToken token = reader.peek();
+    if (token == JsonToken.NULL) {
+      reader.nextNull();
+      return null;
+    }
+
+    if (token == JsonToken.STRING) {
+      String value = reader.nextString();
+      if ("null".equals(value)) {
+        return null;
+      }
+      throw new JSONException("Expected object for key \"Config\"");
+    }
+
+    return readJsonObjectOrNull(reader, "Config");
+  }
+
+  private static JSONArray readJsonArrayOrNull(JsonReader reader, String key)
+      throws IOException, JSONException {
+    if (reader.peek() == JsonToken.NULL) {
+      reader.nextNull();
+      return null;
+    }
+
+    Object value = readJsonValue(reader);
+    if (value instanceof JSONArray) {
+      return (JSONArray) value;
+    }
+
+    throw new JSONException("Expected array for key \"" + key + "\"");
+  }
+
+  private static ParsedRecordData parseRecordedJsonStream(InputStream inputStream)
+      throws IOException, JSONException {
+    try (InputStream recordedInputStream = inputStream;
+         Reader inputReader = new InputStreamReader(recordedInputStream, StandardCharsets.UTF_8)) {
+      JsonReader reader = new JsonReader(inputReader);
+      reader.setLenient(true);
+      ParsedRecordData parsedRecordData = new ParsedRecordData();
+      reader.beginObject();
+      while (reader.hasNext()) {
+        String key = reader.nextName();
+        switch (key) {
+          case "Config":
+            parsedRecordData.config = readConfigObjectOrNull(reader);
+            if (parsedRecordData.config != null) {
+              parsedRecordData.jsbIgnoredInfo =
+                  parsedRecordData.config.optJSONArray("jsbIgnoredInfo");
+              parsedRecordData.jsbSettings = parsedRecordData.config.optJSONObject("jsbSettings");
+            }
+            break;
+          case "Debug Info":
+            parsedRecordData.debugInfo = readJsonArrayOrNull(reader, key);
+            break;
+          case "SharedData":
+            parsedRecordData.sharedData = readJsonObjectOrNull(reader, key);
+            break;
+          case "Invoked Method Data":
+            parsedRecordData.functionCall = readJsonArrayOrNull(reader, key);
+            break;
+          case "Callback":
+            parsedRecordData.callbackData = readJsonObjectOrNull(reader, key);
+            break;
+          case "Component List":
+            parsedRecordData.componentList = readJsonArrayOrNull(reader, key);
+            break;
+          case "Action List":
+            parsedRecordData.actionList = readJsonArrayOrNull(reader, key);
+            break;
+          default:
+            reader.skipValue();
+            break;
+        }
+      }
+      reader.endObject();
+      return parsedRecordData;
+    }
+  }
+
+  private static ParsedRecordData parseRecordedStream(
+      RecordedInputStreamProvider inputStreamProvider) throws IOException, JSONException {
+    if (isJsonRecordedStream(inputStreamProvider)) {
+      return parseRecordedJsonStream(openRecordedPayloadStream(inputStreamProvider, false));
+    }
+
+    try {
+      return parseRecordedJsonStream(openRecordedPayloadStream(inputStreamProvider, true));
+    } catch (IOException | JSONException | RuntimeException inflateException) {
       try {
-        o.close();
-      } catch (IOException e) {
-        e.printStackTrace();
+        return parseRecordedJsonStream(openBase64DecodedPayloadStream(inputStreamProvider));
+      } catch (IOException | JSONException | RuntimeException base64Exception) {
+        base64Exception.addSuppressed(inflateException);
+        throw base64Exception;
+      }
+    }
+  }
+
+  private static ParsedRecordData parseRecordedBody(byte[] body) throws IOException, JSONException {
+    return parseRecordedStream(() -> new ByteArrayInputStream(body));
+  }
+
+  private int createReplayGeneration() {
+    return mReplayGeneration.incrementAndGet();
+  }
+
+  private void invalidateReplayGeneration() {
+    mReplayGeneration.incrementAndGet();
+  }
+
+  private boolean isReplayGenerationActive(int replayGeneration) {
+    return replayGeneration == mReplayGeneration.get();
+  }
+
+  private void handleParsedRecordData(ParsedRecordData parsedRecordData, int replayGeneration) {
+    UIThreadUtils.runOnUiThreadImmediately(() -> {
+      if (!isReplayGenerationActive(replayGeneration)) {
+        return;
+      }
+      try {
+        applyParsedRecordData(parsedRecordData);
+      } catch (JSONException e) {
+        mStateView.setReplayState(LynxRecorderReplayStateView.INVALID_JSON_FILE);
+        Log.e(TAG, "Apply parsed record data failed.", e);
+      }
+    });
+  }
+
+  private void onRecordedFileParseFailed(Throwable throwable, int replayGeneration) {
+    UIThreadUtils.runOnUiThreadImmediately(() -> {
+      if (!isReplayGenerationActive(replayGeneration)) {
+        return;
+      }
+      mStateView.setReplayState(LynxRecorderReplayStateView.INVALID_JSON_FILE);
+      Log.e(TAG, "Parse recorded file failed.", throwable);
+    });
+  }
+
+  private void applyParsedRecordData(ParsedRecordData parsedRecordData) throws JSONException {
+    mainThreadChecker("applyParsedRecordData");
+
+    if (parsedRecordData.config != null) {
+      mConfig = parsedRecordData.config;
+      if (parsedRecordData.jsbIgnoredInfo != null) {
+        mDataProvider.jsbIgnoredInfo = parsedRecordData.jsbIgnoredInfo;
+      }
+
+      if (parsedRecordData.jsbSettings != null) {
+        mDataProvider.jsbSettings = parsedRecordData.jsbSettings;
       }
     }
 
-    decompresser.end();
-    return output;
+    if (parsedRecordData.debugInfo != null) {
+      Log.i(TAG, "debugInfo count: " + parsedRecordData.debugInfo.length());
+      for (int i = 0; i < parsedRecordData.debugInfo.length(); ++i) {
+        JSONObject info = parsedRecordData.debugInfo.getJSONObject(i);
+        String url = info.getString("url");
+        String content = info.getString("content");
+        mLynxDebugInfoRecorderDelegate.setDebugInfo(url, content);
+      }
+    }
+
+    if (parsedRecordData.sharedData != null) {
+      mDataProvider.sharedData = parsedRecordData.sharedData;
+    }
+    if (parsedRecordData.functionCall != null) {
+      mDataProvider.functionCall = parsedRecordData.functionCall;
+    }
+    if (parsedRecordData.callbackData != null) {
+      mDataProvider.callbackData = parsedRecordData.callbackData;
+    }
+    if (parsedRecordData.componentList != null) {
+      mockComponent(parsedRecordData.componentList);
+    }
+    if (parsedRecordData.actionList != null) {
+      if (checkFile(parsedRecordData.actionList)) {
+        mDynamicFetcher.parse(parsedRecordData.actionList);
+        mStateView.setReplayState(LynxRecorderReplayStateView.HANDLE_ACTION_LIST);
+        handleActionList(parsedRecordData.actionList);
+      } else {
+        mStateView.setReplayState(LynxRecorderReplayStateView.RECORD_ERROR_MISS_TEMPLATEJS);
+      }
+    }
+  }
+
+  private void mainThreadChecker(String methodName) {
+    if (!Thread.currentThread().equals(Looper.getMainLooper().getThread())) {
+      throw new IllegalThreadStateException(
+          "Callback " + methodName + "must be fired on main thread.");
+    }
   }
 
   private boolean checkFile(JSONArray actionList) {
@@ -296,93 +590,39 @@ public class LynxRecorderActionManager {
   }
 
   private class InnerCallback implements AbsTemplateProvider.Callback {
+    private final int mReplayGeneration;
+
+    InnerCallback(int replayGeneration) {
+      mReplayGeneration = replayGeneration;
+    }
+
     @Override
     public void onSuccess(byte[] body) {
       mainThreadChecker("onSuccess");
-      try {
-        Gson gson = new Gson();
-
-        // net data -> local data == base64ed Str
-        String str = new String(body, StandardCharsets.UTF_8);
-
-        Map map = null;
-        mStateView.setReplayState(LynxRecorderReplayStateView.PARSING_JSON_FILE);
-        try {
-          if (str.startsWith("{")) {
-            map = gson.fromJson(str, Map.class);
-          } else {
-            // decoder
-            byte[] base64decodedBytes = Base64.decode(str, Base64.DEFAULT);
-
-            String str2 = new String(decompress(base64decodedBytes), StandardCharsets.UTF_8);
-            map = gson.fromJson(str2, Map.class);
-          }
-        } catch (Exception e) {
-          mStateView.setReplayState(LynxRecorderReplayStateView.INVALID_JSON_FILE);
-          return;
-        }
-
-        JSONObject json = new JSONObject(map);
-        if (json.has("Config") && !(json.get("Config").toString().equals("null"))) {
-          mConfig = json.getJSONObject("Config");
-          if (mConfig.has("jsbIgnoredInfo")) {
-            mDataProvider.jsbIgnoredInfo = mConfig.getJSONArray("jsbIgnoredInfo");
-          }
-
-          if (mConfig.has("jsbSettings")) {
-            mDataProvider.jsbSettings = mConfig.getJSONObject("jsbSettings");
-          }
-        }
-        if (json.has("Debug Info")) {
-          JSONArray debugInfo = json.getJSONArray("Debug Info");
-          Log.i("LynxRecorderActionManager", "debugInfo: " + debugInfo.toString());
-          for (int i = 0; i < debugInfo.length(); ++i) {
-            JSONObject info = debugInfo.getJSONObject(i);
-            String url = info.getString("url");
-            String content = info.getString("content");
-            mLynxDebugInfoRecorderDelegate.setDebugInfo(url, content);
-          }
-        }
-        if (json.has("SharedData")) {
-          mDataProvider.sharedData = json.getJSONObject("SharedData");
-        }
-        if (json.has("Invoked Method Data")) {
-          mDataProvider.functionCall = json.getJSONArray("Invoked Method Data");
-        }
-        if (json.has("Callback")) {
-          mDataProvider.callbackData = json.getJSONObject("Callback");
-        }
-        if (json.has("Component List")) {
-          mockComponent(json.getJSONArray("Component List"));
-        }
-        if (json.has("Action List")) {
-          if (checkFile(json.getJSONArray("Action List"))) {
-            mDynamicFetcher.parse(json.getJSONArray("Action List"));
-            mStateView.setReplayState(LynxRecorderReplayStateView.HANDLE_ACTION_LIST);
-            handleActionList(json.getJSONArray("Action List"));
-          } else {
-            mStateView.setReplayState(LynxRecorderReplayStateView.RECORD_ERROR_MISS_TEMPLATEJS);
-            return;
-          }
-        }
-      } catch (JSONException e) {
-        mStateView.setReplayState(LynxRecorderReplayStateView.INVALID_JSON_FILE);
-        e.printStackTrace();
+      if (!isReplayGenerationActive(mReplayGeneration)) {
+        return;
       }
+      mStateView.setReplayState(LynxRecorderReplayStateView.PARSING_JSON_FILE);
+      ThreadUtils.getThreadPool().execute(() -> {
+        try {
+          ParsedRecordData parsedRecordData = parseRecordedBody(body);
+          handleParsedRecordData(parsedRecordData, mReplayGeneration);
+        } catch (Exception e) {
+          onRecordedFileParseFailed(e, mReplayGeneration);
+        } catch (OutOfMemoryError e) {
+          onRecordedFileParseFailed(e, mReplayGeneration);
+        }
+      });
     }
 
     @Override
     public void onFailed(String msg) {
       mainThreadChecker("onFailed");
+      if (!isReplayGenerationActive(mReplayGeneration)) {
+        return;
+      }
       Log.e("LynxRecorderActionManager", "Read recorded file failed!");
       mStateView.setReplayState(LynxRecorderReplayStateView.ERROR_DOWNLOAD_FAILED);
-    }
-
-    private void mainThreadChecker(String methodName) {
-      if (!Thread.currentThread().equals(Looper.getMainLooper().getThread())) {
-        throw new IllegalThreadStateException(
-            "Callback " + methodName + "must be fired on main thread.");
-      }
     }
   }
 
@@ -602,6 +842,7 @@ public class LynxRecorderActionManager {
 
   private void create() {
     destroy();
+    final int replayGeneration = createReplayGeneration();
     if (mLynxView != null) {
       mViewGroup.removeView(mLynxView);
       mLynxView = null;
@@ -615,17 +856,23 @@ public class LynxRecorderActionManager {
           mSourceURL, new AbsTemplateProvider.Callback() {
             @Override
             public void onSuccess(byte[] template) {
+              if (!isReplayGenerationActive(replayGeneration)) {
+                return;
+              }
               mPreloadedTemplateSource = template;
-              downloadRecordedFile();
+              downloadRecordedFile(replayGeneration);
             }
 
             @Override
             public void onFailed(String msg) {
+              if (!isReplayGenerationActive(replayGeneration)) {
+                return;
+              }
               Log.e(TAG, "Load source template js fail!");
             }
           });
     } else {
-      downloadRecordedFile();
+      downloadRecordedFile(replayGeneration);
     }
   }
 
@@ -678,27 +925,39 @@ public class LynxRecorderActionManager {
     }
   }
 
-  private void downloadRecordedFile() {
+  private void downloadRecordedFile(int replayGeneration) {
     if (mUrl.startsWith("asset:///")) {
-      try {
-        InputStream inputStream = mContext.getAssets().open(mUrl.replace("asset:///", ""));
-        final byte[] bytes = Utils.inputStreamToByteArray(inputStream);
-        UIThreadUtils.runOnUiThreadImmediately(new Runnable() {
-          @Override
-          public void run() {
-            new InnerCallback().onSuccess(bytes);
-          }
-        });
-      } catch (final IOException e) {
-        UIThreadUtils.runOnUiThreadImmediately(new Runnable() {
-          @Override
-          public void run() {
-            new InnerCallback().onFailed(e.getMessage());
-          }
-        });
-      }
+      final String assetPath = mUrl.replace("asset:///", "");
+      mStateView.setReplayState(LynxRecorderReplayStateView.PARSING_JSON_FILE);
+      ThreadUtils.getThreadPool().execute(() -> {
+        if (!isReplayGenerationActive(replayGeneration)) {
+          return;
+        }
+        final RecordedInputStreamProvider inputStreamProvider =
+            () -> mContext.getAssets().open(assetPath);
+        try (InputStream ignored = inputStreamProvider.open()) {
+          // Keep the existing download-failure state for asset open errors.
+        } catch (final IOException e) {
+          UIThreadUtils.runOnUiThreadImmediately(new Runnable() {
+            @Override
+            public void run() {
+              new InnerCallback(replayGeneration).onFailed(e.getMessage());
+            }
+          });
+          return;
+        }
+
+        try {
+          ParsedRecordData parsedRecordData = parseRecordedStream(inputStreamProvider);
+          handleParsedRecordData(parsedRecordData, replayGeneration);
+        } catch (Exception e) {
+          onRecordedFileParseFailed(e, replayGeneration);
+        } catch (OutOfMemoryError e) {
+          onRecordedFileParseFailed(e, replayGeneration);
+        }
+      });
     } else {
-      (new LynxRecorderTemplateProvider()).loadTemplate(mUrl, new InnerCallback());
+      (new LynxRecorderTemplateProvider()).loadTemplate(mUrl, new InnerCallback(replayGeneration));
     }
   }
 
@@ -1485,6 +1744,7 @@ public class LynxRecorderActionManager {
   }
 
   public void destroy() {
+    invalidateReplayGeneration();
     if (mLoadTemplateData != null) {
       mLoadTemplateData.recycle();
     }
