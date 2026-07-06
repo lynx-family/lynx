@@ -34,10 +34,8 @@ class TreeResolver {
   static constexpr uint32_t kLocalQueueSizeInMainThread = 32;
   static constexpr uint32_t kLocalQueueSizeInWorker = 0;
 
-  static void NotifyNodeInserted(Element* insertion_point,
-                                 FiberElement* node);
-  static void NotifyNodeRemoved(Element* insertion_point,
-                                FiberElement* node);
+  static void NotifyNodeInserted(Element* insertion_point, Element* node);
+  static void NotifyNodeRemoved(Element* insertion_point, Element* node);
 
   static void AttachChildToTargetParentForWrapper(FiberElement* parent,
                                                   FiberElement* child,
