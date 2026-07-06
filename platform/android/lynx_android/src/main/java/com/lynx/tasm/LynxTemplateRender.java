@@ -898,7 +898,29 @@ public class LynxTemplateRender
     }
   }
 
-  private synchronized void reloadAndInit() {
+  private void reloadAndInit() {
+    synchronized (this) {
+      if (mHasDestroy) {
+        return;
+      }
+      if (!reload) {
+        reload = true;
+        return;
+      }
+    }
+    // When reload the page, we need send disexposure events before JSRuntime destroyed to ensure
+    // the front end can receive events.
+    LynxContext lynxContext = mLynxContext;
+    if (lynxContext != null) {
+      lynxContext.clearExposure();
+    }
+    if (!UIThreadUtils.runOnUiThreadSync(this::reloadAndInitUIThreadPart)) {
+      return;
+    }
+    reloadAndInitInternal();
+  }
+
+  private synchronized void reloadAndInitInternal() {
     if (mHasDestroy) {
       return;
     }
@@ -907,24 +929,6 @@ public class LynxTemplateRender
       mHasPageStart = false;
       mSSRHelper = null;
       mRenderPhase = RENDER_PHASE_SETUP;
-
-      // When reload the page, we need send disexposure events before JSRuntime destroyed to ensure
-      // the front end can receive events.
-      if (mLynxContext != null) {
-        mLynxContext.clearExposure();
-      }
-
-      // for async render, may reuse LynxView in async thread
-      // need post removeAllViews to ui thread
-      UIThreadUtils.runOnUiThreadImmediately(() -> {
-        ILynxUIRenderer uiRenderer = lynxUIRenderer();
-        if (uiRenderer != null) {
-          uiRenderer.onReloadAndInitUIThreadPart();
-        }
-        if (mBodyView != null) {
-          mBodyView.removeAllViews();
-        }
-      });
 
       if (globalProps != null) {
         globalProps = globalProps.deepClone();
@@ -957,6 +961,16 @@ public class LynxTemplateRender
       onTraceEventEnd(TraceEventDef.TEMPLATE_RENDER_RELOAD_AND_INIT);
     } else {
       reload = true;
+    }
+  }
+
+  private void reloadAndInitUIThreadPart() {
+    ILynxUIRenderer uiRenderer = lynxUIRenderer();
+    if (uiRenderer != null) {
+      uiRenderer.onReloadAndInitUIThreadPart();
+    }
+    if (mBodyView != null) {
+      mBodyView.removeAllViews();
     }
   }
 
