@@ -725,6 +725,7 @@ public class com::lynx::tasm::behavior::ui::image::BackgroundImageDrawable : com
   public void com.lynx.tasm.behavior.ui.image.BackgroundImageDrawable.onSizeChanged(int width, int height);
   public void com.lynx.tasm.behavior.ui.image.BackgroundImageDrawable.draw(@NonNull Canvas canvas);
   public void com.lynx.tasm.behavior.ui.image.BackgroundImageDrawable.setLynxUI(LynxBaseUI ui);
+  public void com.lynx.tasm.behavior.ui.image.BackgroundImageDrawable.onLynxUIPropsUpdated();
 }
 
 public interface com::lynx::tasm::behavior::ui::background::BackgroundImageLoader {

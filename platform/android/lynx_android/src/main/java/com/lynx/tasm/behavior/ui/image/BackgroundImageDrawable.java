@@ -155,10 +155,22 @@ public class BackgroundImageDrawable extends BackgroundLayerDrawable {
   public void setLynxUI(LynxBaseUI ui) {
     super.setLynxUI(ui);
     mUI = new WeakReference<>(ui);
+  }
+
+  @Override
+  public void onLynxUIPropsUpdated() {
+    super.onLynxUIPropsUpdated();
+    LynxBaseUI ui = (mUI != null) ? mUI.get() : null;
+    if (ui == null) {
+      return;
+    }
     mLynxImageManager.setLocalCache(ui.getEnableLocalCache());
     mLynxImageManager.setLynxBaseUI(ui);
     mLynxImageManager.setSkipRedirection(ui.getSkipRedirection());
     mLynxImageManager.setSrc(mUrl);
     mLynxImageManager.updateRedirectCheckResult();
+    if (mWidth > 0 && mHeight > 0) {
+      mLynxImageManager.updateNodeProps();
+    }
   }
 }
