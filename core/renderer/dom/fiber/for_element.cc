@@ -4,6 +4,8 @@
 
 #include "core/renderer/dom/fiber/for_element.h"
 
+#include <algorithm>
+
 namespace lynx {
 namespace tasm {
 
@@ -14,12 +16,11 @@ void ForElement::UpdateChildrenCount(uint32_t count) {
   if (block_children_.size() < count) {
     return;
   }
-  auto remove_range = std::vector<fml::RefPtr<FiberElement>>{};
+  auto remove_range = std::vector<fml::RefPtr<Element>>{};
   remove_range.reserve(block_children_.size() - count);
-  std::transform(
-      block_children_.begin() + count, block_children_.end(),
-      std::back_inserter(remove_range),
-      [](const fml::RefPtr<FiberElement>& pChild) { return pChild; });
+  std::transform(block_children_.begin() + count, block_children_.end(),
+                 std::back_inserter(remove_range),
+                 [](const fml::RefPtr<Element>& pChild) { return pChild; });
 
   for (auto& child : remove_range) {
     RemoveNode(child);
