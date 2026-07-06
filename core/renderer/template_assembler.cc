@@ -25,7 +25,6 @@
 #include "core/renderer/data/lynx_view_data_manager.h"
 #include "core/renderer/dom/element.h"
 #include "core/renderer/dom/element_manager.h"
-#include "core/renderer/dom/fiber/fiber_element.h"
 #include "core/renderer/dom/fiber/tree_resolver.h"
 #include "core/renderer/dom/lynx_get_ui_result.h"
 #include "core/renderer/dom/vdom/radon/base_component.h"
@@ -724,7 +723,7 @@ void TemplateAssembler::RenderTemplateForFiber(
   render_options.SetProperty(BASE_STATIC_STRING(kPipelineOptions),
                              PipelineOptionsToLepusValue(pipeline_options));
 
-  fml::RefPtr<FiberElement> element_cache = card->TryToGetElementCache();
+  fml::RefPtr<Element> element_cache = card->TryToGetElementCache();
   if (element_cache.get()) {
     TreeResolver::AttachRootToElementManager(
         element_cache, page_proxy()->element_manager().get(),

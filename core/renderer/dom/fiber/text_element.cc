@@ -21,7 +21,7 @@ namespace lynx {
 namespace tasm {
 
 TextElement::TextElement(ElementManager* manager, const base::String& tag)
-    : FiberElement(manager, tag) {
+    : Element(manager, tag) {
   is_text_ = true;
   if (element_manager_ == nullptr) {
     return;
@@ -47,13 +47,13 @@ void TextElement::AttachToElementManager(
     ElementManager* manager,
     const std::shared_ptr<CSSStyleSheetManager>& style_manager,
     bool keep_element_id) {
-  FiberElement::AttachToElementManager(manager, style_manager, keep_element_id);
+  Element::AttachToElementManager(manager, style_manager, keep_element_id);
   SetDefaultOverflow(manager->GetDefaultTextOverflow());
 }
 
 void TextElement::SetStyleInternal(CSSPropertyID id,
                                    const tasm::CSSValue& value) {
-  FiberElement::SetStyleInternal(id, value);
+  Element::SetStyleInternal(id, value);
 
   if (id == kPropertyIDFontFamily) {
     if (!EnableLayoutInElementMode()) {
@@ -65,7 +65,7 @@ void TextElement::SetStyleInternal(CSSPropertyID id,
   }
 }
 
-void TextElement::OnNodeAdded(FiberElement* child) {
+void TextElement::OnNodeAdded(Element* child) {
   child->ConvertToInlineElement();
   UpdateRenderRootElementIfNecessary(child);
   if (!child->is_raw_text()) {
@@ -104,7 +104,7 @@ void TextElement::SetAttributeInternal(const base::String& key,
                        ? ProcessAttributeForLayoutInElement(key, value)
                        : ProcessAttributeForNormalLayoutMode(key, value);
   if (!processed) {
-    FiberElement::SetAttributeInternal(key, value);
+    Element::SetAttributeInternal(key, value);
   }
 }
 
@@ -114,7 +114,7 @@ void TextElement::ResetAttribute(const base::String& key) {
   }
   if (!EnableLayoutInElementMode() ||
       !ProcessAttributeForLayoutInElement(key, lepus::Value(), true)) {
-    FiberElement::ResetAttribute(key);
+    Element::ResetAttribute(key);
   }
 }
 
@@ -184,7 +184,7 @@ bool TextElement::ProcessAttributeForNormalLayoutMode(
   if (key.IsEqual(kTextAttr) && !children().empty()) {
     // if setNativeProps with key "text" on TextElement, we need to update it's
     // children.
-    auto* first_child = static_cast<FiberElement*>(children().front().get());
+    auto* first_child = children().front().get();
     if (first_child->is_raw_text()) {
       auto* raw_text = static_cast<RawTextElement*>(first_child);
       raw_text->SetText(value);
@@ -202,7 +202,14 @@ void TextElement::ConvertToInlineElement() {
   }
   data_model()->set_tag(tag_);
   UpdateTagToLayoutBundle();
-  FiberElement::ConvertToInlineElement();
+  Element::ConvertToInlineElement();
+}
+
+void TextElement::MarkLayoutInElementTextMeasurerPropertyIfNeeded(
+    CSSPropertyID id) {
+  if (EnableLayoutInElementMode() && IsTextMeasurerWanted(id)) {
+    property_bits_.Set(id);
+  }
 }
 
 void TextElement::ReplayElementSpecificStyleSideEffect(CSSPropertyID id) {
@@ -274,7 +281,7 @@ bool TextElement::ResetCSSValue(CSSPropertyID id) {
       has_processed = true;
     }
   } else {
-    has_processed = FiberElement::ResetCSSValue(id);
+    has_processed = Element::ResetCSSValue(id);
   }
 
   return has_processed;
@@ -344,8 +351,7 @@ void TextElement::UpdateLayoutNodeFontSize(double cur_node_font_size,
         kPropertyIDFontSize,
         CSSValue(cur_node_font_size, CSSValuePattern::NUMBER));
   } else {
-    FiberElement::UpdateLayoutNodeFontSize(cur_node_font_size,
-                                           root_node_font_size);
+    Element::UpdateLayoutNodeFontSize(cur_node_font_size, root_node_font_size);
   }
 }
 

@@ -14,7 +14,6 @@
 #include "core/renderer/css/css_property.h"
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/dom/fiber/component_element.h"
-#include "core/renderer/dom/fiber/fiber_element.h"
 #include "core/renderer/dom/fiber/image_element.h"
 #include "core/renderer/dom/fiber/list_element.h"
 #include "core/renderer/dom/fiber/none_element.h"
@@ -106,9 +105,9 @@ bool IsTemplateEventAttribute(const base::String& key) {
                                      &event_name);
 }
 
-void RegisterSlotTarget(base::Vector<fml::RefPtr<FiberElement>>* targets,
+void RegisterSlotTarget(base::Vector<fml::RefPtr<Element>>* targets,
                         int32_t slot_index,
-                        const fml::RefPtr<FiberElement>& element) {
+                        const fml::RefPtr<Element>& element) {
   if (targets == nullptr || slot_index < 0 || element == nullptr) {
     return;
   }
@@ -125,8 +124,8 @@ void RegisterSlotTarget(base::Vector<fml::RefPtr<FiberElement>>* targets,
 
 void RegisterElementSlotMountPoint(base::Vector<ElementSlotMountPoint>* targets,
                                    int32_t slot_index,
-                                   const fml::RefPtr<FiberElement>& parent,
-                                   const fml::RefPtr<FiberElement>& ref_node) {
+                                   const fml::RefPtr<Element>& parent,
+                                   const fml::RefPtr<Element>& ref_node) {
   if (targets == nullptr || slot_index < 0 || parent == nullptr) {
     return;
   }
@@ -146,8 +145,7 @@ void RegisterElementSlotMountPoint(base::Vector<ElementSlotMountPoint>* targets,
 
 // TODO(songshourui.null): Unify this class application path with Render
 // Functions when both paths can share the same attribute setter.
-void ApplyTemplateClassAttribute(FiberElement* element,
-                                 const lepus::Value& value) {
+void ApplyTemplateClassAttribute(Element* element, const lepus::Value& value) {
   element->RemoveAllClass();
   if (!value.IsString()) {
     return;
@@ -166,8 +164,7 @@ void ApplyTemplateClassAttribute(FiberElement* element,
 
 // TODO(songshourui.null): Unify this style application path with Render
 // Functions when both paths can share the same attribute setter.
-void ApplyTemplateStyleAttribute(FiberElement* element,
-                                 const lepus::Value& value) {
+void ApplyTemplateStyleAttribute(Element* element, const lepus::Value& value) {
   element->RemoveAllInlineStyles();
   if (value.IsString()) {
     element->SetRawInlineStyles(base::String(value.String()));
@@ -204,8 +201,7 @@ void ApplyTemplateStyleAttribute(FiberElement* element,
 
 // TODO(songshourui.null): Unify this dispatch with Render Functions
 // SetAttribute once it supports special attributes through the shared setter.
-bool ApplySpecialTemplateAttribute(FiberElement* element,
-                                   const base::String& key,
+bool ApplySpecialTemplateAttribute(Element* element, const base::String& key,
                                    const lepus::Value& value) {
   if (key == kElementClass) {
     ApplyTemplateClassAttribute(element, value);
@@ -228,7 +224,7 @@ bool ApplySpecialTemplateAttribute(FiberElement* element,
   return false;
 }
 
-bool ApplyTemplateEventAttribute(FiberElement* element, const base::String& key,
+bool ApplyTemplateEventAttribute(Element* element, const base::String& key,
                                  const lepus::Value& value) {
   base::String event_type;
   base::String event_name;
@@ -243,7 +239,7 @@ bool ApplyTemplateEventAttribute(FiberElement* element, const base::String& key,
   return true;
 }
 
-bool ApplyTemplateListCallbackAttribute(FiberElement* element,
+bool ApplyTemplateListCallbackAttribute(Element* element,
                                         const base::String& key,
                                         const lepus::Value& value) {
   if (!ListElement::IsTemplateCallbackAttribute(key)) {
@@ -256,7 +252,7 @@ bool ApplyTemplateListCallbackAttribute(FiberElement* element,
   return true;
 }
 
-bool ApplyTemplateDataAttribute(FiberElement* element, const base::String& key,
+bool ApplyTemplateDataAttribute(Element* element, const base::String& key,
                                 const lepus::Value& value) {
   base::String data_name;
   if (!ParseTemplateDataAttribute(key.string_view(), &data_name)) {
@@ -269,8 +265,7 @@ bool ApplyTemplateDataAttribute(FiberElement* element, const base::String& key,
   return true;
 }
 
-bool RemoveTemplateDataAttribute(FiberElement* element,
-                                 const base::String& key) {
+bool RemoveTemplateDataAttribute(Element* element, const base::String& key) {
   base::String data_name;
   if (!ParseTemplateDataAttribute(key.string_view(), &data_name)) {
     return false;
@@ -280,7 +275,7 @@ bool RemoveTemplateDataAttribute(FiberElement* element,
   return true;
 }
 
-void ApplyTemplateAttributeValue(FiberElement* element, const base::String& key,
+void ApplyTemplateAttributeValue(Element* element, const base::String& key,
                                  const lepus::Value& value,
                                  TemplateAttributeApplyMode mode) {
   if (IsTemplateEventAttribute(key)) {
@@ -305,8 +300,7 @@ void ApplyTemplateAttributeValue(FiberElement* element, const base::String& key,
   element->SetAttribute(key, value);
 }
 
-void ApplyTemplateSpreadAttributes(FiberElement* element,
-                                   const lepus::Value& value,
+void ApplyTemplateSpreadAttributes(Element* element, const lepus::Value& value,
                                    TemplateAttributeApplyMode mode) {
   if (element == nullptr || !value.IsObject()) {
     return;
@@ -328,7 +322,7 @@ lepus::Value ResolveAttributeSlotValue(const lepus::Value& attribute_slots,
 }
 
 void ClearPreviousTemplateSpreadAttributes(
-    FiberElement* element, const TemplateAttributes& template_attributes,
+    Element* element, const TemplateAttributes& template_attributes,
     const lepus::Value& previous_attribute_slots) {
   if (!previous_attribute_slots.IsArrayOrJSArray()) {
     return;
@@ -358,7 +352,7 @@ void ClearPreviousTemplateSpreadAttributes(
 }
 
 void ApplyTemplateAttributesToElementInternal(
-    FiberElement* element, const lepus::Value* previous_attribute_slots,
+    Element* element, const lepus::Value* previous_attribute_slots,
     const lepus::Value& attribute_slots, TemplateAttributeApplyMode mode) {
   if (element == nullptr || !element->HasTemplateAttributes()) {
     return;
@@ -399,13 +393,13 @@ void ApplyTemplateAttributesToElementInternal(
 }  // namespace
 
 void TreeResolver::ApplyTemplateAttributesToElement(
-    FiberElement* element, const lepus::Value& attribute_slots) {
+    Element* element, const lepus::Value& attribute_slots) {
   ApplyTemplateAttributesToElementInternal(element, nullptr, attribute_slots,
                                            TemplateAttributeApplyMode::kAll);
 }
 
 void TreeResolver::ApplyTemplateAttributesToElement(
-    FiberElement* element, const lepus::Value& previous_attribute_slots,
+    Element* element, const lepus::Value& previous_attribute_slots,
     const lepus::Value& attribute_slots) {
   ApplyTemplateAttributesToElementInternal(element, &previous_attribute_slots,
                                            attribute_slots,
@@ -413,21 +407,21 @@ void TreeResolver::ApplyTemplateAttributesToElement(
 }
 
 void TreeResolver::ApplyTemplateNonEventAttributesToElement(
-    FiberElement* element, const lepus::Value& attribute_slots) {
+    Element* element, const lepus::Value& attribute_slots) {
   ApplyTemplateAttributesToElementInternal(
       element, nullptr, attribute_slots,
       TemplateAttributeApplyMode::kNonEventOnly);
 }
 
 void TreeResolver::ApplyTemplateEventAttributesToElement(
-    FiberElement* element, const lepus::Value& attribute_slots) {
+    Element* element, const lepus::Value& attribute_slots) {
   ApplyTemplateAttributesToElementInternal(
       element, nullptr, attribute_slots,
       TemplateAttributeApplyMode::kEventOnly);
 }
 
 void TreeResolver::ApplyStaticTemplateEventAttributesToElement(
-    FiberElement* element) {
+    Element* element) {
   if (element == nullptr || !element->HasTemplateAttributes()) {
     return;
   }
@@ -440,8 +434,7 @@ void TreeResolver::ApplyStaticTemplateEventAttributesToElement(
   }
 }
 
-void TreeResolver::NotifyNodeInserted(FiberElement* insertion_point,
-                                      FiberElement* node) {
+void TreeResolver::NotifyNodeInserted(Element* insertion_point, Element* node) {
   // If the insertion_point IsDetached, no nedd to call NotifyNodeInserted
   // recursively.
   if (insertion_point->IsDetached()) {
@@ -451,13 +444,11 @@ void TreeResolver::NotifyNodeInserted(FiberElement* insertion_point,
   node->InsertedInto(insertion_point);
 
   for (const auto& child : node->children()) {
-    NotifyNodeInserted(insertion_point,
-                       static_cast<FiberElement*>(child.get()));
+    NotifyNodeInserted(insertion_point, child.get());
   }
 }
 
-void TreeResolver::NotifyNodeRemoved(FiberElement* insertion_point,
-                                     FiberElement* node) {
+void TreeResolver::NotifyNodeRemoved(Element* insertion_point, Element* node) {
   // If the insertion_point IsDetached, no nedd to call NotifyNodeRemoved
   // recursively.
   if (insertion_point->IsDetached()) {
@@ -467,23 +458,20 @@ void TreeResolver::NotifyNodeRemoved(FiberElement* insertion_point,
   node->RemovedFrom(insertion_point);
 
   for (const auto& child : node->children()) {
-    if (static_cast<FiberElement*>(child.get())->is_raw_text()) {
+    if (child->is_raw_text()) {
       continue;
     }
-    NotifyNodeRemoved(insertion_point, static_cast<FiberElement*>(child.get()));
+    NotifyNodeRemoved(insertion_point, child.get());
   }
 }
 
-FiberElement* TreeResolver::FindFirstChildOrSiblingAsRefNode(
-    FiberElement* ref) {
-  return ref ? static_cast<FiberElement*>(
-                   ref->FindFirstNonWrapperChildOrSibling())
-             : nullptr;
+Element* TreeResolver::FindFirstChildOrSiblingAsRefNode(Element* ref) {
+  return ref ? ref->FindFirstNonWrapperChildOrSibling() : nullptr;
 }
 
-void TreeResolver::AttachChildToTargetParentForWrapper(FiberElement* parent,
-                                                       FiberElement* child,
-                                                       FiberElement* ref_node) {
+void TreeResolver::AttachChildToTargetParentForWrapper(Element* parent,
+                                                       Element* child,
+                                                       Element* ref_node) {
   // ref is null, find the first none-wrapper ancestor's next sibling as ref!
   auto* temp_parent = parent;
 
@@ -494,14 +482,13 @@ void TreeResolver::AttachChildToTargetParentForWrapper(FiberElement* parent,
   DCHECK(!ref_node || !ref_node->is_wrapper());
 
   while (!ref_node && temp_parent && temp_parent->is_wrapper()) {
-    ref_node = static_cast<FiberElement*>(temp_parent->next_render_sibling());
+    ref_node = temp_parent->next_render_sibling();
 
     if (ref_node && ref_node->EnableLayoutInElementMode()) {
       // If ref_node is virtual in element-mode, try to find the next
       // non-virtual sibling (virtual nodes are not inserted into the layout
       // tree for unknown reasons).
-      ref_node = static_cast<FiberElement*>(
-          ref_node->FindFirstNonVirtualRenderSibling());
+      ref_node = ref_node->FindFirstNonVirtualRenderSibling();
     }
 
     if (ref_node && ref_node->is_wrapper()) {
@@ -514,18 +501,17 @@ void TreeResolver::AttachChildToTargetParentForWrapper(FiberElement* parent,
       break;
     }
 
-    temp_parent = static_cast<FiberElement*>(temp_parent->render_parent());
+    temp_parent = temp_parent->render_parent();
   }
 
-  FiberElement* real_parent =
-      static_cast<FiberElement*>(parent->FindFirstNonWrapperRenderAncestor());
+  Element* real_parent = parent->FindFirstNonWrapperRenderAncestor();
 
   AttachChildToTargetContainerRecursive(real_parent, child, ref_node);
 }
 
-std::pair<FiberElement*, int> TreeResolver::FindParentForChildForWrapper(
-    FiberElement* parent, FiberElement* child, FiberElement* ref_node) {
-  FiberElement* node = parent;
+std::pair<Element*, int> TreeResolver::FindParentForChildForWrapper(
+    Element* parent, Element* child, Element* ref_node) {
+  Element* node = parent;
 
   if (!ref_node && !parent->is_wrapper()) {
     // ref is null & parent is none-wrapper, layout_index:-1 is to append the
@@ -547,7 +533,7 @@ std::pair<FiberElement*, int> TreeResolver::FindParentForChildForWrapper(
     return {nullptr, layout_index};
   }
   while (node->is_wrapper()) {
-    auto* p = static_cast<FiberElement*>(node->render_parent());
+    auto* p = node->render_parent();
     if (!p) {
       return {nullptr, -1};
     }
@@ -557,12 +543,12 @@ std::pair<FiberElement*, int> TreeResolver::FindParentForChildForWrapper(
   return {node, layout_index + in_wrapper_index};
 }
 
-int TreeResolver::GetLayoutIndexForChildForWrapper(FiberElement* parent,
-                                                   FiberElement* child) {
+int TreeResolver::GetLayoutIndexForChildForWrapper(Element* parent,
+                                                   Element* child) {
   int index = 0;
   bool found = false;
   for (const auto& it : parent->children()) {
-    auto* current = static_cast<FiberElement*>(it.get());
+    auto* current = it.get();
     if (child == current) {
       found = true;
       break;
@@ -578,12 +564,12 @@ int TreeResolver::GetLayoutIndexForChildForWrapper(FiberElement* parent,
   return index;
 }
 
-size_t TreeResolver::GetLayoutChildrenCountForWrapper(FiberElement* node) {
+size_t TreeResolver::GetLayoutChildrenCountForWrapper(Element* node) {
   size_t ret = 0;
   for (const auto& current : node->children()) {
-    auto* current_fiber = static_cast<FiberElement*>(current.get());
-    if (current_fiber->is_wrapper()) {
-      ret += GetLayoutChildrenCountForWrapper(current_fiber);
+    auto* current_element = current.get();
+    if (current_element->is_wrapper()) {
+      ret += GetLayoutChildrenCountForWrapper(current_element);
     } else {
       ret++;
     }
@@ -591,9 +577,9 @@ size_t TreeResolver::GetLayoutChildrenCountForWrapper(FiberElement* node) {
   return ret;
 }
 
-void TreeResolver::AttachChildToTargetContainerRecursive(FiberElement* parent,
-                                                         FiberElement* child,
-                                                         FiberElement* ref) {
+void TreeResolver::AttachChildToTargetContainerRecursive(Element* parent,
+                                                         Element* child,
+                                                         Element* ref) {
   // in the mapped layout node tree, insert the wrapper node in front of its
   // first child real parent:
   // [node0,node1,[wrapper,wrapper-child0,wrapper-child1],node3....]
@@ -605,36 +591,33 @@ void TreeResolver::AttachChildToTargetContainerRecursive(FiberElement* parent,
   }
 
   // wrapper node should add subtree to parent recursively.
-  auto* grand = static_cast<FiberElement*>(child->first_render_child());
+  auto* grand = child->first_render_child();
   while (grand) {
     AttachChildToTargetContainerRecursive(parent, grand, ref);
-    grand = static_cast<FiberElement*>(grand->next_render_sibling());
+    grand = grand->next_render_sibling();
   }
 }
 
-FiberElement* TreeResolver::FindTheRealParent(FiberElement* node) {
-  return node ? static_cast<FiberElement*>(
-                    node->FindFirstNonWrapperRenderAncestor())
-              : nullptr;
+Element* TreeResolver::FindTheRealParent(Element* node) {
+  return node ? node->FindFirstNonWrapperRenderAncestor() : nullptr;
 }
 
 // for layout node
-void TreeResolver::RemoveChildRecursively(FiberElement* parent,
-                                          FiberElement* child) {
+void TreeResolver::RemoveChildRecursively(Element* parent, Element* child) {
   if (!child->is_wrapper()) {
     parent->RemoveLayoutNode(child);
   } else {
     auto* grand = child->first_render_child();
     while (grand) {
-      RemoveChildRecursively(parent, static_cast<FiberElement*>(grand));
+      RemoveChildRecursively(parent, grand);
       grand = grand->next_render_sibling();
     }
   }
 }
 
-void TreeResolver::RemoveFromParentForWrapperChild(FiberElement* parent,
-                                                   FiberElement* child) {
-  FiberElement* real_parent = FindTheRealParent(parent);
+void TreeResolver::RemoveFromParentForWrapperChild(Element* parent,
+                                                   Element* child) {
+  Element* real_parent = FindTheRealParent(parent);
   if (real_parent->is_wrapper()) {
     LOGE(
         "[WrapperElement] parent maybe detached from the view tree, can not "
@@ -646,22 +629,22 @@ void TreeResolver::RemoveFromParentForWrapperChild(FiberElement* parent,
 }
 
 fml::RefPtr<lepus::Dictionary> TreeResolver::GetTemplateParts(
-    const fml::RefPtr<FiberElement>& template_element) {
+    const fml::RefPtr<Element>& template_element) {
   DCHECK(template_element->IsTemplateElement());
   auto parts_map = lepus::Dictionary::Create();
   for (const auto& c : template_element->children()) {
-    GetPartsRecursively(fml::static_ref_ptr_cast<FiberElement>(c), parts_map);
+    GetPartsRecursively(c, parts_map);
   }
   return parts_map;
 }
 
-fml::RefPtr<FiberElement> TreeResolver::CloneElements(
-    const fml::RefPtr<FiberElement>& root,
+fml::RefPtr<Element> TreeResolver::CloneElements(
+    const fml::RefPtr<Element>& root,
     const std::shared_ptr<CSSStyleSheetManager>& style_manager,
     bool clone_resolved_props, CloningDepth cloning_depth) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, TREE_RESOLVER_CLONE_ELEMENTS);
 
-  fml::RefPtr<FiberElement> res = root->CloneElement(clone_resolved_props);
+  fml::RefPtr<Element> res = root->CloneElement(clone_resolved_props);
   res->AttachToElementManager(root->element_manager(), style_manager, false);
 
   if (cloning_depth == CloningDepth::kSingle) {
@@ -670,23 +653,21 @@ fml::RefPtr<FiberElement> TreeResolver::CloneElements(
 
   // construct children
   for (const auto& c : root->children()) {
-    auto* child = static_cast<FiberElement*>(c.get());
     if (cloning_depth == CloningDepth::kTemplateScope &&
-        child->IsTemplateElement()) {
+        c->IsTemplateElement()) {
       continue;
     }
-    res->InsertNode(CloneElements(fml::static_ref_ptr_cast<FiberElement>(c),
-                                  style_manager, clone_resolved_props,
-                                  cloning_depth));
+    res->InsertNode(
+        CloneElements(c, style_manager, clone_resolved_props, cloning_depth));
   }
 
   return res;
 }
 
-base::Vector<fml::RefPtr<FiberElement>> TreeResolver::FromTemplateInfo(
+base::Vector<fml::RefPtr<Element>> TreeResolver::FromTemplateInfo(
     const ElementTemplateInfo& info) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, TREE_RESOLVER_FROM_TEMPLATE_INFO);
-  base::Vector<fml::RefPtr<FiberElement>> res;
+  base::Vector<fml::RefPtr<Element>> res;
   for (const auto& element_info : info.elements_) {
     auto element_node = FromElementInfo(-1, element_info, nullptr);
     element_node->MarkTemplateElement();
@@ -711,22 +692,22 @@ GeneratedElementsResult TreeResolver::GenerateElementsFromTemplateInfo(
 }
 
 void TreeResolver::InitElementTree(
-    fml::RefPtr<FiberElement>& element, int64_t pid, ElementManager* manager,
+    fml::RefPtr<Element>& element, int64_t pid, ElementManager* manager,
     const std::shared_ptr<CSSStyleSheetManager>& style_manager) {
-  element->ApplyFunctionRecursive([manager, style_manager](FiberElement* e) {
+  element->ApplyFunctionRecursive([manager, style_manager](Element* e) {
     e->AttachToElementManager(manager, style_manager, false);
   });
   element->SetParentComponentUniqueIdRecursively(pid);
 }
 
 lepus::Value TreeResolver::InitElementTree(
-    base::Vector<fml::RefPtr<FiberElement>>&& elements, int64_t pid,
+    base::Vector<fml::RefPtr<Element>>&& elements, int64_t pid,
     ElementManager* manager,
     const std::shared_ptr<CSSStyleSheetManager>& style_manager) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, TREE_RESOLVER_INIT_ELEMENT_TREE);
   auto ary = lepus::CArray::Create();
   for (auto& element : elements) {
-    element->ApplyFunctionRecursive([manager, style_manager](FiberElement* e) {
+    element->ApplyFunctionRecursive([manager, style_manager](Element* e) {
       e->AttachToElementManager(manager, style_manager, false);
     });
     element->SetParentComponentUniqueIdRecursively(pid);
@@ -735,21 +716,20 @@ lepus::Value TreeResolver::InitElementTree(
   return lepus::Value(ary);
 }
 
-fml::RefPtr<FiberElement> TreeResolver::CloneElementRecursively(
-    const FiberElement* element, bool clone_resolved_props) {
-  fml::RefPtr<FiberElement> res = element->CloneElement(clone_resolved_props);
+fml::RefPtr<Element> TreeResolver::CloneElementRecursively(
+    const Element* element, bool clone_resolved_props) {
+  fml::RefPtr<Element> res = element->CloneElement(clone_resolved_props);
 
   // construct children
   for (const auto& c : element->children()) {
-    res->InsertNode(CloneElementRecursively(static_cast<FiberElement*>(c.get()),
-                                            clone_resolved_props));
+    res->InsertNode(CloneElementRecursively(c.get(), clone_resolved_props));
   }
 
   return res;
 }
 
 void TreeResolver::AttachRootToElementManager(
-    fml::RefPtr<FiberElement>& root, ElementManager* element_manager,
+    const fml::RefPtr<Element>& root, ElementManager* element_manager,
     const std::shared_ptr<CSSStyleSheetManager>& style_manager,
     bool keep_element_id) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, TREE_RESOLVER_ATTACH_TO_ELEMENT_MANAGER);
@@ -760,19 +740,19 @@ void TreeResolver::AttachRootToElementManager(
 }
 
 void TreeResolver::AttachToElementManagerRecursively(
-    FiberElement& element, ElementManager* manager,
+    Element& element, ElementManager* manager,
     const std::shared_ptr<CSSStyleSheetManager>& style_manager,
     bool keep_element_id) {
   element.AttachToElementManager(manager, style_manager, keep_element_id);
 
   for (auto& child : element.children()) {
-    AttachToElementManagerRecursively(*static_cast<FiberElement*>(child.get()),
-                                      manager, style_manager, keep_element_id);
+    AttachToElementManagerRecursively(*child, manager, style_manager,
+                                      keep_element_id);
   }
 }
 
 void TreeResolver::GetPartsRecursively(
-    const fml::RefPtr<FiberElement>& root,
+    const fml::RefPtr<Element>& root,
     fml::RefPtr<lepus::Dictionary>& parts_map) {
   if (root->IsPartElement()) {
     parts_map->SetValue(root->GetPartID(), root);
@@ -781,20 +761,20 @@ void TreeResolver::GetPartsRecursively(
     return;
   }
   for (const auto& c : root->children()) {
-    GetPartsRecursively(fml::static_ref_ptr_cast<FiberElement>(c), parts_map);
+    GetPartsRecursively(c, parts_map);
   }
 }
 
-fml::RefPtr<FiberElement> TreeResolver::FromElementInfo(
-    int64_t parent_component_id, const ElementInfo& info) {
+fml::RefPtr<Element> TreeResolver::FromElementInfo(int64_t parent_component_id,
+                                                   const ElementInfo& info) {
   return FromElementInfo(parent_component_id, info, nullptr);
 }
 
-fml::RefPtr<FiberElement> TreeResolver::FromElementInfo(
+fml::RefPtr<Element> TreeResolver::FromElementInfo(
     int64_t parent_component_id, const ElementInfo& info,
     GeneratedElementsResult* generated) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, TREE_RESOLVER_FROM_ELEMENT_INFO);
-  fml::RefPtr<FiberElement> res =
+  fml::RefPtr<Element> res =
       ElementManager::StaticCreateFiberElement(info.tag_enum_, info.tag_);
   if (info.attributes_ != nullptr) {
     // Keep a shared read-only copy of the template attribute descriptors on
@@ -902,7 +882,7 @@ fml::RefPtr<FiberElement> TreeResolver::FromElementInfo(
       ++it;
     }
 
-    fml::RefPtr<FiberElement> materialized_child = nullptr;
+    fml::RefPtr<Element> materialized_child = nullptr;
     if (it != info.children_.end()) {
       materialized_child = FromElementInfo(parent_component_id, *it, generated);
       ++it;
@@ -943,14 +923,14 @@ fml::RefPtr<FiberElement> TreeResolver::FromElementInfo(
 }
 
 // TODO(ZHOUZHITA0): Merge with greedy threaded element resolution later
-void TreeResolver::TraverseDom(FiberElement* root, uint32_t work_unit_size) {
+void TreeResolver::TraverseDom(Element* root, uint32_t work_unit_size) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, TREE_RESOLVER_TRAVERSE_DOM);
   if (!root->flush_required()) {
     return;
   }
-  std::list<FiberElement*> discovered;
+  std::list<Element*> discovered;
   discovered.emplace_back(root);
-  root->ApplyFunctionRecursive([](FiberElement* element) {
+  root->ApplyFunctionRecursive([](Element* element) {
     if (element->ShouldResolveStyle()) {
       element->PrepareSelfForThreadedElementResolution();
     }
@@ -963,7 +943,7 @@ void TreeResolver::TraverseDom(FiberElement* root, uint32_t work_unit_size) {
 }
 
 std::list<ParallelFlushReturn> TreeResolver::StyleTrees(
-    std::list<FiberElement*>& discovered, uint32_t work_unit_size) {
+    std::list<Element*>& discovered, uint32_t work_unit_size) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, TREE_RESOLVER_STYLE_TREES);
   auto element_manager = discovered.front()->element_manager();
   auto optional_engine_thread_id = element_manager->GetCurrentEngineThreadId();
@@ -982,21 +962,21 @@ std::list<ParallelFlushReturn> TreeResolver::StyleTrees(
     // FIXME(zhouzhitao): Level order traversing is not compatible with async
     // resolving api right now.
     if (target->ShouldResolveStyle()) {
-      target->UpdateResolveStatus(FiberElement::AsyncResolveStatus::kResolving);
-      target->MarkParallelFlushFlag(FiberElement::kFlagLevelOrderParallel);
+      target->UpdateResolveStatus(Element::AsyncResolveStatus::kResolving);
+      target->MarkParallelFlushFlag(Element::kFlagLevelOrderParallel);
       resolve_returns.emplace_back(target->PrepareForCreateOrUpdate());
-      DCHECK((target->dirty() & ~(FiberElement::kDirtyTree |
-                                  FiberElement::kDirtyReAttachContainer)) == 0);
+      DCHECK((target->dirty() &
+              ~(Element::kDirtyTree | Element::kDirtyReAttachContainer)) == 0);
     }
 
     target->InvalidateChildrenIfNeeded();
     for (auto& child : target->children()) {
-      auto* fiber_child = static_cast<FiberElement*>(child.get());
+      auto* element_child = child.get();
       if (target->NeedPropagateInheritedDirtyFlag(true)) {
-        fiber_child->MarkDirtyLite(FiberElement::kDirtyPropagateInherited);
+        element_child->MarkDirtyLite(Element::kDirtyPropagateInherited);
       }
-      if (fiber_child->flush_required()) {
-        discovered.emplace_back(fiber_child);
+      if (element_child->flush_required()) {
+        discovered.emplace_back(element_child);
       }
     }
 
@@ -1009,7 +989,7 @@ std::list<ParallelFlushReturn> TreeResolver::StyleTrees(
       uint32_t kept_work = node_remaining_at_current_depth > local_queue_size
                                ? node_remaining_at_current_depth
                                : local_queue_size;
-      std::list<FiberElement*> distribute_work_list;
+      std::list<Element*> distribute_work_list;
       auto split_point = discovered.begin();
       std::advance(split_point, kept_work);
 
@@ -1027,7 +1007,7 @@ std::list<ParallelFlushReturn> TreeResolver::StyleTrees(
   return resolve_returns;
 }
 
-void TreeResolver::DistributeStyleTreesTask(std::list<FiberElement*> discovered,
+void TreeResolver::DistributeStyleTreesTask(std::list<Element*> discovered,
                                             uint32_t work_unit_size) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, TREE_RESOLVER_DISTRIBUTE_STYLE_TREES_TASK);
   auto element_manager = discovered.front()->element_manager();
@@ -1037,7 +1017,7 @@ void TreeResolver::DistributeStyleTreesTask(std::list<FiberElement*> discovered,
     auto end_iter = discovered.begin();
     std::advance(end_iter, transfer_count);
 
-    std::list<FiberElement*> work_slice;
+    std::list<Element*> work_slice;
     work_slice.splice(work_slice.end(), discovered, discovered.begin(),
                       end_iter);
 
@@ -1048,7 +1028,7 @@ void TreeResolver::DistributeStyleTreesTask(std::list<FiberElement*> discovered,
 }
 
 void TreeResolver::DistributeOneChunkStyleTreesTask(
-    std::list<FiberElement*> discovered, uint32_t work_unit_size) {
+    std::list<Element*> discovered, uint32_t work_unit_size) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY,
               TREE_RESOLVER_DISTRIBUTE_ONE_CHUNK_STYLE_TREES_TASK);
   auto element_manager = discovered.front()->element_manager();

@@ -63,7 +63,7 @@ ListElement::ListElement(ElementManager* manager, const base::String& tag,
                          const lepus::Value& component_at_index,
                          const lepus::Value& enqueue_component,
                          const lepus::Value& component_at_indexes)
-    : FiberElement(manager, tag),
+    : Element(manager, tag),
       component_at_index_(component_at_index),
       enqueue_component_(enqueue_component),
       component_at_indexes_(component_at_indexes) {
@@ -97,7 +97,7 @@ bool ListElement::NeedAsyncResolveListItem() {
              list::BatchRenderStrategy::kAsyncResolvePropertyAndElementTree;
 }
 
-void ListElement::OnNodeAdded(FiberElement* child) {
+void ListElement::OnNodeAdded(Element* child) {
   // List's child should not be flatten.
   child->set_config_flatten(false);
   // List's child should not be layout only.
@@ -152,7 +152,7 @@ void ListElement::ParallelFlushAsRoot() {
     return;
   }
   if (!NeedAsyncResolveListItem()) {
-    FiberElement::ParallelFlushAsRoot();
+    Element::ParallelFlushAsRoot();
     return;
   }
 
@@ -368,7 +368,7 @@ bool ListElement::ApplyTemplateCallbackAttribute(const base::String& key,
   return false;
 }
 
-void ListElement::NotifyListReuseNode(const fml::RefPtr<FiberElement>& child,
+void ListElement::NotifyListReuseNode(const fml::RefPtr<Element>& child,
                                       const base::String& item_key) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, LIST_NOTIFY_REUSE_NODE,
               [this](lynx::perfetto::EventContext ctx) {
@@ -549,7 +549,7 @@ ParallelFlushReturn ListElement::PrepareForCreateOrUpdate() {
       list_container_delegate_internal_->SetEnableBatchRender(
           enable_batch_render);
     }
-    FiberElement::SetAttributeInternal(
+    Element::SetAttributeInternal(
         BASE_STATIC_STRING(list::kExperimentalBatchRenderStrategy),
         lepus::Value(static_cast<int>(batch_render_strategy_)));
     // Report batch render statistic.
@@ -574,7 +574,7 @@ ParallelFlushReturn ListElement::PrepareForCreateOrUpdate() {
   if (it != attr_map.end() && it->second.IsBool()) {
     continuous_resolve_tree_ = it->second.Bool();
   }
-  return FiberElement::PrepareForCreateOrUpdate();
+  return Element::PrepareForCreateOrUpdate();
 }
 
 void ListElement::SetAttributeInternal(const base::String& key,
@@ -583,7 +583,7 @@ void ListElement::SetAttributeInternal(const base::String& key,
       (UseDecoupledList() && list_mediator_->ResolveAttribute(key, value)) ||
       (UseInternalList() &&
        list_container_delegate_internal_->ResolveAttribute(key, value))) {
-    FiberElement::SetAttributeInternal(key, value);
+    Element::SetAttributeInternal(key, value);
   } else if (UseInternalList() && (key.IsEqual(list::kFiberListDiffInfo) ||
                                    key.IsEqual(list::kListPlatformInfo))) {
     // Note: Only use internal list, we need to create and generate
@@ -593,9 +593,8 @@ void ListElement::SetAttributeInternal(const base::String& key,
     auto list_container_info = lepus::Dictionary::Create();
     list_container_delegate_internal_->UpdateListContainerDataSource(
         list_container_info);
-    FiberElement::SetAttributeInternal(
-        BASE_STATIC_STRING(list::kListContainerInfo),
-        lepus::Value(list_container_info));
+    Element::SetAttributeInternal(BASE_STATIC_STRING(list::kListContainerInfo),
+                                  lepus::Value(list_container_info));
   }
 
   if (key.IsEqual(kColumnCount) || key.IsEqual(kSpanCount)) {
@@ -631,7 +630,7 @@ void ListElement::ResetAttribute(const base::String& key) {
     return;
   }
 
-  FiberElement::ResetAttribute(key);
+  Element::ResetAttribute(key);
 
   if (key.IsEquals(kScrollOrientation) || key.IsEquals(kVerticalOrientation)) {
     RemoveStyleFromAttributes(kPropertyIDLinearOrientation);
@@ -812,7 +811,7 @@ void ListElement::AttachToElementManager(
     ElementManager* manager,
     const std::shared_ptr<CSSStyleSheetManager>& style_manager,
     bool keep_element_id) {
-  FiberElement::AttachToElementManager(manager, style_manager, keep_element_id);
+  Element::AttachToElementManager(manager, style_manager, keep_element_id);
   batch_render_strategy_ =
       ResolveBatchRenderStrategyFromPipelineSchedulerConfig(
           manager->GetConfig()->GetPipelineSchedulerConfig(),
@@ -827,7 +826,7 @@ void ListElement::AttachToElementManager(
 
 void ListElement::UpdateLayoutNodeAttribute(starlight::LayoutAttribute key,
                                             const lepus::Value& value) {
-  FiberElement::UpdateLayoutNodeAttribute(key, value.ToLepusValue());
+  Element::UpdateLayoutNodeAttribute(key, value.ToLepusValue());
 }
 
 void ListElement::Hydrate() {
@@ -961,7 +960,7 @@ bool ListElement::UseInternalList() const {
 
 void ListElement::FlushListContainerInfo(const base::String& key,
                                          const lepus::Value& value) {
-  FiberElement::SetAttributeInternal(key, value);
+  Element::SetAttributeInternal(key, value);
 }
 
 }  // namespace tasm

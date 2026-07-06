@@ -66,7 +66,7 @@ ComponentElement::ComponentElement(const ComponentElement& element,
 
 void ComponentElement::SetBuiltinAttribute(ElementBuiltInAttributeEnum key,
                                            const lepus::Value& value) {
-  FiberElement::SetBuiltinAttribute(key, value);
+  Element::SetBuiltinAttribute(key, value);
   switch (key) {
     case ElementBuiltInAttributeEnum::CSS_ID:
       component_css_id_ = static_cast<int32_t>(value.Number());
@@ -89,7 +89,7 @@ void ComponentElement::AttachToElementManager(
     ElementManager* manager,
     const std::shared_ptr<CSSStyleSheetManager>& style_manager,
     bool keep_element_id) {
-  FiberElement::AttachToElementManager(manager, style_manager, keep_element_id);
+  Element::AttachToElementManager(manager, style_manager, keep_element_id);
   SetDefaultOverflow(manager->GetDefaultOverflowVisible());
   manager->RecordComponent(component_id_.str(), this);
   set_style_sheet_manager(style_manager);
@@ -199,7 +199,7 @@ void ComponentElement::MarkAsWrapperComponent() {
 }
 
 bool ComponentElement::CanBeLayoutOnly() const {
-  return enable_component_layout_only_ && FiberElement::CanBeLayoutOnly();
+  return enable_component_layout_only_ && Element::CanBeLayoutOnly();
 }
 
 void ComponentElement::set_component_id(const base::String& id) {
@@ -230,8 +230,8 @@ void ComponentElement::set_component_id(const base::String& id) {
   // markDirty and update.
   // The page element does not need to set the ComponentID attribute
   if (tag_ != kElementPageTag) {
-    FiberElement::SetAttribute(BASE_STATIC_STRING(kComponentID),
-                               lepus::Value(component_id()));
+    Element::SetAttribute(BASE_STATIC_STRING(kComponentID),
+                          lepus::Value(component_id()));
   }
 }
 
@@ -256,15 +256,15 @@ double ComponentElement::GetFontSize() {
   if (is_wrapper()) {
     return WrapperElement::GetFontSize();
   } else {
-    return FiberElement::GetFontSize();
+    return Element::GetFontSize();
   }
 }
 
-const FiberElement::InheritedProperty ComponentElement::GetInheritedProperty() {
+const Element::InheritedProperty ComponentElement::GetInheritedProperty() {
   if (is_wrapper()) {
     return WrapperElement::GetInheritedProperty();
   } else {
-    return FiberElement::GetInheritedProperty();
+    return Element::GetInheritedProperty();
   }
 }
 
@@ -272,7 +272,7 @@ ParallelFlushReturn ComponentElement::PrepareForCreateOrUpdate() {
   if (is_wrapper()) {
     return WrapperElement::PrepareForCreateOrUpdate();
   } else {
-    return FiberElement::PrepareForCreateOrUpdate();
+    return Element::PrepareForCreateOrUpdate();
   }
 }
 
@@ -290,23 +290,23 @@ void ComponentElement::SetAttribute(const base::String& key,
   if (is_wrapper()) {
     return WrapperElement::SetAttribute(key, value, need_update_data_model);
   } else {
-    return FiberElement::SetAttribute(key, value, need_update_data_model);
+    return Element::SetAttribute(key, value, need_update_data_model);
   }
 }
 
-void ComponentElement::OnNodeAdded(FiberElement* child) {
+void ComponentElement::OnNodeAdded(Element* child) {
   if (is_wrapper()) {
     return WrapperElement::OnNodeAdded(child);
   } else {
-    return FiberElement::OnNodeAdded(child);
+    return Element::OnNodeAdded(child);
   }
 }
 
-void ComponentElement::OnNodeRemoved(FiberElement* child) {
+void ComponentElement::OnNodeRemoved(Element* child) {
   if (is_wrapper()) {
     return WrapperElement::OnNodeRemoved(child);
   } else {
-    return FiberElement::OnNodeRemoved(child);
+    return Element::OnNodeRemoved(child);
   }
 }
 void ComponentElement::SetupFragmentBehavior(Fragment* fragment) {

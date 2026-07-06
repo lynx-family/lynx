@@ -106,7 +106,7 @@ lepus::Value ElementDumpHelper::DumpToSnapshot(Element* element,
     DumpAttributeToLepusValue(props, data_model);
 
     tasm::StyleMap computed_styles;
-    static_cast<FiberElement*>(element)->DumpStyle(computed_styles);
+    element->DumpStyle(computed_styles);
 
     if (computed_styles.size() > 0) {
       std::map<CSSPropertyID, CSSValue> ordered_computed_styles_map(
@@ -150,7 +150,7 @@ void ElementDumpHelper::DumpToMarkup(Element* element, std::ostringstream& ss,
     DumpAttributeToMarkup(ss, data_model);
 
     tasm::StyleMap computed_styles;
-    static_cast<FiberElement*>(element)->DumpStyle(computed_styles);
+    element->DumpStyle(computed_styles);
     if (computed_styles.size() > 0) {
       std::map<CSSPropertyID, CSSValue> ordered_computed_styles_map(
           computed_styles.begin(), computed_styles.end());
@@ -187,8 +187,7 @@ std::string ElementDumpHelper::DumpTree(PageProxy* proxy) {
         dumped_document, proxy->radon_page_.get());
   } else if (proxy->client_ && proxy->client_->GetEnableFiberArch()) {
     auto page = proxy->client_->root();
-    dumped_virtual_tree = DumpFiberElementToJSON(
-        dumped_document, static_cast<FiberElement*>(page));
+    dumped_virtual_tree = DumpFiberElementToJSON(dumped_document, page);
   } else {
     return std::string();
   }
@@ -651,7 +650,7 @@ void ElementDumpHelper::DumpAttributeToMarkup(std::ostringstream& ss,
 }
 
 rapidjson::Value ElementDumpHelper::DumpFiberElementToJSON(
-    rapidjson::Document& doc, FiberElement* element) {
+    rapidjson::Document& doc, Element* element) {
   rapidjson::Document::AllocatorType& allocator = doc.GetAllocator();
   rapidjson::Value value;
   value.SetObject();
@@ -718,8 +717,7 @@ rapidjson::Value ElementDumpHelper::DumpFiberElementToJSON(
     children_json.SetArray();
     for (auto&& child : element->children()) {
       children_json.GetArray().PushBack(
-          DumpFiberElementToJSON(doc, static_cast<FiberElement*>(child.get())),
-          allocator);
+          DumpFiberElementToJSON(doc, child.get()), allocator);
     }
     value.AddMember("Children", children_json, allocator);
   }

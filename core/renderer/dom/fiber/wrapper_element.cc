@@ -12,7 +12,7 @@ namespace tasm {
 constexpr const static char kWrapperElementTag[] = "wrapper";
 
 WrapperElement::WrapperElement(ElementManager* manager, const base::String& tag)
-    : FiberElement(manager, tag) {
+    : Element(manager, tag) {
   is_layout_only_ = true;
   if (element_manager_ == nullptr) {
     return;
@@ -25,7 +25,7 @@ WrapperElement::WrapperElement(ElementManager* manager)
 
 double WrapperElement::GetFontSize() { return GetParentFontSize(); }
 
-const FiberElement::InheritedProperty WrapperElement::GetInheritedProperty() {
+const Element::InheritedProperty WrapperElement::GetInheritedProperty() {
   return GetParentInheritedProperty();
 }
 
@@ -46,7 +46,7 @@ void WrapperElement::MarkDirtyLite(const uint32_t flag) {
   dirty_ |= flag;
   MarkRequireFlush();
   for (const auto& child : children()) {
-    static_cast<FiberElement*>(child.get())->MarkDirtyLite(flag);
+    child->MarkDirtyLite(flag);
   }
 }
 
@@ -62,7 +62,7 @@ void WrapperElement::SetWrapperType(Type type) { type_ |= type; }
 void WrapperElement::SetAttribute(const base::String& key,
                                   const lepus::Value& value,
                                   bool need_update_data_model) {
-  FiberElement::SetAttribute(key, value, need_update_data_model);
+  Element::SetAttribute(key, value, need_update_data_model);
 
   if (type_ & kTouchable) {
     for (auto& child : scoped_children_) {
@@ -71,8 +71,8 @@ void WrapperElement::SetAttribute(const base::String& key,
   }
 }
 
-void WrapperElement::OnNodeAdded(FiberElement* child) {
-  FiberElement::OnNodeAdded(child);
+void WrapperElement::OnNodeAdded(Element* child) {
+  Element::OnNodeAdded(child);
   if (is_list_item()) {
     child->MarkAsListItem();
   }
@@ -84,8 +84,8 @@ void WrapperElement::OnNodeAdded(FiberElement* child) {
   }
 }
 
-void WrapperElement::OnNodeRemoved(FiberElement* child) {
-  FiberElement::OnNodeRemoved(child);
+void WrapperElement::OnNodeRemoved(Element* child) {
+  Element::OnNodeRemoved(child);
 
   if (type_ & kTouchable) {
     for (auto& it : data_model_->attributes()) {

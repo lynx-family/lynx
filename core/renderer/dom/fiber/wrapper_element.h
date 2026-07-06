@@ -7,12 +7,12 @@
 
 #include <utility>
 
-#include "core/renderer/dom/fiber/fiber_element.h"
+#include "core/renderer/dom/element.h"
 
 namespace lynx {
 namespace tasm {
 
-class WrapperElement : public FiberElement {
+class WrapperElement : public Element {
  public:
   enum Type {
     kCommon = 1 << 0,
@@ -22,9 +22,8 @@ class WrapperElement : public FiberElement {
   WrapperElement(ElementManager* manager, const base::String& tag);
   WrapperElement(ElementManager* manager);
 
-  fml::RefPtr<FiberElement> CloneElement(
-      bool clone_resolved_props) const override {
-    return fml::AdoptRef<FiberElement>(
+  fml::RefPtr<Element> CloneElement(bool clone_resolved_props) const override {
+    return fml::AdoptRef<Element>(
         new WrapperElement(*this, clone_resolved_props));
   }
 
@@ -47,12 +46,12 @@ class WrapperElement : public FiberElement {
 
  protected:
   WrapperElement(const WrapperElement& element, bool clone_resolved_props)
-      : FiberElement(element, clone_resolved_props) {
+      : Element(element, clone_resolved_props) {
     is_layout_only_ = true;
   }
 
-  void OnNodeAdded(FiberElement* child) override;
-  void OnNodeRemoved(FiberElement* child) override;
+  void OnNodeAdded(Element* child) override;
+  void OnNodeRemoved(Element* child) override;
 
   // type_ is a collection, that is, it may be multiple types of Wrapper at the
   // same time. For example, multiple Wrapper are nested, and the front-end

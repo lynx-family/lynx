@@ -13,7 +13,6 @@
 #include "core/base/threading/task_runner_manufactor.h"
 #include "core/renderer/dom/element.h"
 #include "core/renderer/dom/element_property.h"
-#include "core/renderer/dom/fiber/fiber_element.h"
 #include "core/renderer/dom/fiber/list_element.h"
 #include "core/renderer/dom/fiber/page_element.h"
 #include "core/renderer/dom/fiber/raw_text_element.h"
@@ -190,7 +189,7 @@ TEST_F(ElementManagerTest, TestCalcTotalMemoryDiff) {
   int32_t average_element_memory_size = 0;
 
   int32_t expect_counter = 10;
-  std::vector<fml::RefPtr<FiberElement>> fiber_elements;
+  std::vector<fml::RefPtr<Element>> fiber_elements;
   EXPECT_EQ(manager->total_memory_, 0);
   for (int i = 0; i < expect_counter; i++) {
     auto fiber_element = manager->CreateFiberNode("view");
@@ -369,11 +368,12 @@ TEST_F(ElementManagerTest, CreateFiberElementImage) {
   EXPECT_TRUE(node->is_image());
 
   base::String raw_tag("custom-image");
-  node = ElementManager::StaticCreateFiberElement(tag_enum, raw_tag);
+  auto static_node =
+      ElementManager::StaticCreateFiberElement(tag_enum, raw_tag);
 
-  EXPECT_EQ(node->GetTag(), tag.str());
+  EXPECT_EQ(static_node->GetTag(), tag.str());
 
-  EXPECT_TRUE(node->is_image());
+  EXPECT_TRUE(static_node->is_image());
 }
 
 TEST_F(ElementManagerTest, CreateFiberElementEcomImage) {
@@ -390,11 +390,12 @@ TEST_F(ElementManagerTest, CreateFiberElementEcomImage) {
 
   EXPECT_TRUE(node->is_image());
 
-  node = ElementManager::StaticCreateFiberElement(ELEMENT_OTHER, tag);
+  auto static_node =
+      ElementManager::StaticCreateFiberElement(ELEMENT_OTHER, tag);
 
-  EXPECT_EQ(node->GetTag(), tag.str());
+  EXPECT_EQ(static_node->GetTag(), tag.str());
 
-  EXPECT_TRUE(node->is_image());
+  EXPECT_TRUE(static_node->is_image());
 }
 
 TEST_F(ElementManagerTest, CreateFiberElementScrollView) {

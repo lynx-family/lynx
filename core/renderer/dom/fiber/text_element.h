@@ -10,7 +10,7 @@
 
 #include "core/public/prop_bundle.h"
 #include "core/renderer/css/css_property_bitset.h"
-#include "core/renderer/dom/fiber/fiber_element.h"
+#include "core/renderer/dom/element.h"
 #include "core/renderer/dom/fiber/text_props.h"
 
 namespace lynx {
@@ -27,15 +27,13 @@ struct TextLineInfo {
 
 // Type alias for TextLineInfo array (using unique_ptr with count)
 using TextLineInfoArray = std::unique_ptr<TextLineInfo[]>;
-class TextElement : public FiberElement {
+class TextElement : public Element {
  public:
   TextElement(ElementManager* manager, const base::String& tag);
   ~TextElement() override;
 
-  fml::RefPtr<FiberElement> CloneElement(
-      bool clone_resolved_props) const override {
-    return fml::AdoptRef<FiberElement>(
-        new TextElement(*this, clone_resolved_props));
+  fml::RefPtr<Element> CloneElement(bool clone_resolved_props) const override {
+    return fml::AdoptRef<Element>(new TextElement(*this, clone_resolved_props));
   }
 
   bool is_text() const override { return true; }
@@ -109,16 +107,18 @@ class TextElement : public FiberElement {
   }
 
  protected:
-  void OnNodeAdded(FiberElement* child) override;
+  void OnNodeAdded(Element* child) override;
   void SetAttributeInternal(const base::String& key,
                             const lepus::Value& value) override;
 
   static base::String ConvertContent(const lepus::Value);
 
   TextElement(const TextElement& element, bool clone_resolved_props)
-      : FiberElement(element, clone_resolved_props) {}
+      : Element(element, clone_resolved_props) {}
 
   void SetupFragmentBehavior(Fragment* fragment) override;
+  void MarkLayoutInElementTextMeasurerPropertyIfNeeded(
+      CSSPropertyID id) override;
   void ReplayElementSpecificStyleSideEffect(CSSPropertyID id) override;
 
  private:

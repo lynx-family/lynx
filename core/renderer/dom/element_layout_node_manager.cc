@@ -7,7 +7,6 @@
 #include <utility>
 
 #include "core/renderer/dom/element_manager.h"
-#include "core/renderer/dom/fiber/fiber_element.h"
 #include "core/renderer/starlight/layout/layout_object.h"
 #include "core/renderer/starlight/types/layout_constraints.h"
 
@@ -20,21 +19,21 @@ ElementLayoutNodeManager::ElementLayoutNodeManager(
 
 void ElementLayoutNodeManager::SetMeasureFunc(
     int32_t id, std::unique_ptr<MeasureFunc> measure_func) {
-  auto* element = GetFiberElement(id);
+  auto* element = GetElement(id);
   if (element && element->IsShadowNodeCustom()) {
     element->SetMeasureFunc(std::move(measure_func));
   }
 }
 
 void ElementLayoutNodeManager::MarkDirtyAndRequestLayout(int32_t id) {
-  auto* element = GetFiberElement(id);
+  auto* element = GetElement(id);
   if (element) {
     element->MarkLayoutDirty();
   }
 }
 
 void ElementLayoutNodeManager::MarkDirtyAndForceLayout(int32_t id) {
-  auto* element = GetFiberElement(id);
+  auto* element = GetElement(id);
   if (element) {
     element->MarkLayoutDirty();
   }
@@ -77,7 +76,7 @@ float ElementLayoutNodeManager::GetMarginBottom(int32_t id) { return 0; }
 LayoutResult ElementLayoutNodeManager::UpdateMeasureByPlatform(
     int32_t id, float width, int32_t width_mode, float height,
     int32_t height_mode, bool final_measure) {
-  auto* element = GetFiberElement(id);
+  auto* element = GetElement(id);
   if (element == nullptr || element->slnode() == nullptr) {
     return LayoutResult();
   }
@@ -94,7 +93,7 @@ LayoutResult ElementLayoutNodeManager::UpdateMeasureByPlatform(
 
 void ElementLayoutNodeManager::AlignmentByPlatform(int32_t id, float offset_top,
                                                    float offset_left) {
-  auto* element = GetFiberElement(id);
+  auto* element = GetElement(id);
   if (element == nullptr || element->slnode() == nullptr) {
     return;
   }
@@ -113,9 +112,8 @@ void ElementLayoutNodeManager::DestroyPlatformLayoutNodes() {
   }
 }
 
-FiberElement* ElementLayoutNodeManager::GetFiberElement(int32_t id) const {
-  return reinterpret_cast<FiberElement*>(
-      element_manager_.node_manager()->Get(id));
+Element* ElementLayoutNodeManager::GetElement(int32_t id) const {
+  return element_manager_.node_manager()->Get(id);
 }
 
 }  // namespace tasm

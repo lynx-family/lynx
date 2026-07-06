@@ -10,7 +10,6 @@
 #include <utility>
 
 #include "core/renderer/dom/element_manager.h"
-#include "core/renderer/dom/fiber/fiber_element.h"
 #include "core/renderer/dom/fiber/image_element.h"
 #include "core/renderer/dom/fiber/raw_text_element.h"
 #include "core/renderer/dom/fiber/text_element.h"
@@ -62,8 +61,8 @@ void TextLayoutMock::BuildTextPropsBuffer(TextElement* element,
 
   auto* child = element->first_render_child();
   while (child) {
-    ProcessChildProps(static_cast<FiberElement*>(child), output, current_length,
-                      use_utf16, props, has_inline_view);
+    ProcessChildProps(child, output, current_length, use_utf16, props,
+                      has_inline_view);
     child = child->next_render_sibling();
   }
 
@@ -73,7 +72,7 @@ void TextLayoutMock::BuildTextPropsBuffer(TextElement* element,
   }
 }
 
-void TextLayoutMock::ProcessChildProps(FiberElement* child, std::string& output,
+void TextLayoutMock::ProcessChildProps(Element* child, std::string& output,
                                        size_t& current_length, bool use_utf16,
                                        PropArrayMock* props,
                                        bool* has_inline_view) {
@@ -103,12 +102,11 @@ void TextLayoutMock::ProcessChildProps(FiberElement* child, std::string& output,
                     current_length, props);
     *has_inline_view = true;
   } else if (child->is_wrapper()) {
-    auto* wrap_child = static_cast<FiberElement*>(child->first_render_child());
+    auto* wrap_child = child->first_render_child();
     while (wrap_child) {
       ProcessChildProps(wrap_child, output, current_length, use_utf16, props,
                         has_inline_view);
-      wrap_child =
-          static_cast<FiberElement*>(wrap_child->next_render_sibling());
+      wrap_child = wrap_child->next_render_sibling();
     }
   }
 }

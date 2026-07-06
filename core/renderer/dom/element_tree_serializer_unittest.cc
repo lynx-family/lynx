@@ -13,9 +13,9 @@
 #include "core/base/threading/task_runner_manufactor.h"
 #include "core/public/page_options.h"
 #include "core/renderer/css/css_property_id.h"
+#include "core/renderer/dom/element.h"
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/dom/fiber/component_element.h"
-#include "core/renderer/dom/fiber/fiber_element.h"
 #include "core/renderer/dom/fiber/view_element.h"
 #include "core/renderer/starlight/layout/layout_object.h"
 #include "core/renderer/tasm/react/testing/mock_painting_context.h"
@@ -50,7 +50,7 @@ void ExpectRect(const lepus::Value& rect, float x, float y, float width,
 
 void SetLayoutObjectFrame(Element* element, float x, float y, float width,
                           float height) {
-  static_cast<FiberElement*>(element)->EnsureSLNode();
+  element->EnsureSLNode();
   auto* layout_object = element->GetLayoutObject();
   ASSERT_NE(layout_object, nullptr);
   layout_object->SetBorderBoundLeftFromParentPaddingBound(x);

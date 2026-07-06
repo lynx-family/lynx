@@ -59,7 +59,7 @@ class KeyframedAnimationCurveTest : public ::testing::Test {
     manager->SetConfig(config);
   }
 
-  fml::RefPtr<::lynx::tasm::FiberElement> InitFiberElement() {
+  fml::RefPtr<::lynx::tasm::Element> InitFiberElement() {
     manager->SetEnableNewAnimatorRadon(true);
     auto test_element = manager->CreateFiberView();
     test_element->SetAttribute(base::String("enable-new-animator"),

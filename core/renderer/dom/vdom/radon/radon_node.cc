@@ -160,7 +160,7 @@ void RadonNode::DispatchFirstTime() {
   if (it != attributes().end()) {
     need_transmit_class_dirty_ = it->second.Bool();
   }
-  auto* fiber_element = static_cast<FiberElement*>(element_.get());
+  auto* element = element_.get();
   // Using JSValue across multiple threads
   // is not allowed. Therefore, JSValue needs to be converted to LepusValue
   // before the parallel flush to prevent conversion through LepusContext
@@ -170,24 +170,24 @@ void RadonNode::DispatchFirstTime() {
 
   // Id Selector
   if (!id_selector().empty()) {
-    fiber_element->SetIdSelector(id_selector());
+    element->SetIdSelector(id_selector());
   }
 
   // Class
   if (!classes().empty()) {
-    fiber_element->SetClasses(attribute_holder_->ReleaseClasses());
+    element->SetClasses(attribute_holder_->ReleaseClasses());
   }
 
   // Attribute
   if (!attributes().empty()) {
-    fiber_element->MarkCanBeLayoutOnly(false);
+    element->MarkCanBeLayoutOnly(false);
     for (const auto& [key, value] : attributes()) {
       // In first dispatch, should not flush empty attribute in RadonArch.
       if (!value.IsEmpty()) {
         if (should_convert_to_lepus_value) {
-          fiber_element->SetAttribute(key, value.ToLepusValue(), false);
+          element->SetAttribute(key, value.ToLepusValue(), false);
         } else {
-          fiber_element->SetAttribute(key, value, false);
+          element->SetAttribute(key, value, false);
         }
       }
     }
@@ -195,35 +195,35 @@ void RadonNode::DispatchFirstTime() {
 
   // Data set
   if (!data_set().empty()) {
-    fiber_element->MarkDirty(FiberElement::kDirtyDataset);
+    element->MarkDirty(Element::kDirtyDataset);
   }
 
   // Gesture
   if (!gesture_detectors().empty()) {
-    fiber_element->MarkDirty(FiberElement::kDirtyGesture);
+    element->MarkDirty(Element::kDirtyGesture);
   }
 
   // Event
   if (!static_events().empty()) {
-    fiber_element->MarkDirty(FiberElement::kDirtyEvent);
+    element->MarkDirty(Element::kDirtyEvent);
   }
   if (!lepus_events().empty()) {
-    fiber_element->MarkDirty(FiberElement::kDirtyEvent);
+    element->MarkDirty(Element::kDirtyEvent);
   }
   if (!global_bind_events().empty()) {
-    fiber_element->MarkDirty(FiberElement::kDirtyEvent);
+    element->MarkDirty(Element::kDirtyEvent);
   }
 
   // Raw Inline Styles
   if (!raw_inline_styles().empty()) {
     for (const auto& [key, value] : raw_inline_styles()) {
       if (should_convert_to_lepus_value) {
-        fiber_element->SetStyle(key, value.ToLepusValue());
+        element->SetStyle(key, value.ToLepusValue());
       } else {
-        fiber_element->SetStyle(key, value);
+        element->SetStyle(key, value);
       }
     }
-    // After setting the raw_inline_style in FiberElement,
+    // After setting the raw_inline_style on the element,
     // inline styles will be set in the AttributeHolder for use by DevTool.
     // Therefore, it is necessary to call NotifyElementNodeSetted to notify
     // the Inspector.
@@ -231,7 +231,7 @@ void RadonNode::DispatchFirstTime() {
   }
   // tag selector is enabled by default in RadonDiff. Should Mark style dirty
   // by default.
-  fiber_element->MarkStyleDirty();
+  element->MarkStyleDirty();
   ProcessEvents();
   class_dirty_ = false;
 }
@@ -393,8 +393,7 @@ void RadonNode::SwapElement(const std::unique_ptr<RadonBase>& old_radon_base,
     EXEC_EXPR_FOR_INSPECTOR(UpdateInlineStylesFromOldModel(
         old_radon_node->attribute_holder().get()));
     if (option.refresh_lifecycle_ || option.ssr_hydrating_) {
-      fiber_element()->SetParentComponentUniqueIdForFiber(
-          ParentComponentElementId());
+      element_->SetParentComponentUniqueIdForFiber(ParentComponentElementId());
     }
     EXEC_EXPR_FOR_INSPECTOR({
       // when set RemoveComponentElement and open DevToolDebug and DomTree
@@ -684,12 +683,12 @@ void RadonNode::MarkChildStyleDirtyRecursively(bool mark_whole_tree) {
   if (IsRadonComponent() && !mark_whole_tree) {
     return;
   }
-  auto* fiber_ele = fiber_element();
-  if (fiber_ele) {
-    if (fiber_ele->StyleDirty()) {
+  auto* element = this->element();
+  if (element) {
+    if (element->StyleDirty()) {
       return;
     }
-    fiber_ele->MarkStyleDirty(mark_whole_tree);
+    element->MarkStyleDirty(mark_whole_tree);
   }
   for (auto& child : radon_children_) {
     child->MarkChildStyleDirtyRecursively(mark_whole_tree);
@@ -766,9 +765,9 @@ void RadonNode::SetEventListeners(
                         return;
                       }
                       auto* target =
-                          static_cast<FiberElement*>(event->target().get());
-                      auto* current_target = static_cast<FiberElement*>(
-                          event->current_target().get());
+                          static_cast<Element*>(event->target().get());
+                      auto* current_target =
+                          static_cast<Element*>(event->current_target().get());
                       auto* parent_component =
                           current_target->GetParentComponentElement();
                       auto vm_context =
@@ -906,14 +905,14 @@ bool RadonNode::ShouldFlushStyle(RadonNode* old_radon_node,
               });
   bool style_updated = false;
   attribute_holder_->SetCSSVariableBundle(*old_radon_node->attribute_holder());
-  auto* fiber_element = static_cast<FiberElement*>(element_.get());
+  auto* element = element_.get();
   if (id_dirty_) {
     style_updated = true;
-    fiber_element->SetIdSelector(id_selector());
+    element->SetIdSelector(id_selector());
   }
   if (class_dirty_) {
     style_updated = true;
-    fiber_element->SetClasses(attribute_holder_->ReleaseClasses());
+    element->SetClasses(attribute_holder_->ReleaseClasses());
     for (auto& child : old_radon_node->radon_children_) {
       child->MarkChildStyleDirtyRecursively(option.ShouldForceUpdate());
     }
@@ -1022,8 +1021,7 @@ bool RadonNode::DiffRawStyleForFiber(const RawLepusStyleMap& old_map,
     // style does not exist in new_map, delete it
     if (it_new_map == new_map.end()) {
       need_update = true;
-      static_cast<FiberElement*>(element())->SetStyle(it->first,
-                                                      lepus::Value());
+      element()->SetStyle(it->first, lepus::Value());
     }
   }
   // Using JSValue across multiple threads
@@ -1041,9 +1039,9 @@ bool RadonNode::DiffRawStyleForFiber(const RawLepusStyleMap& old_map,
     if (it_old_map == old_map.end() || !(it.second == it_old_map->second)) {
       need_update = true;
       if (should_convert_to_lepus_value) {
-        fiber_element()->SetStyle(it.first, it.second.ToLepusValue());
+        element()->SetStyle(it.first, it.second.ToLepusValue());
       } else {
-        fiber_element()->SetStyle(it.first, it.second);
+        element()->SetStyle(it.first, it.second);
       }
     }
   }
@@ -1060,8 +1058,7 @@ bool RadonNode::DiffAttrMapForFiber(const AttrMap& old_map,
     // style does not exist in new_map, delete it
     if (it_new_map == new_map.end()) {
       need_update = true;
-      static_cast<FiberElement*>(element())->SetAttribute(
-          it->first, lepus::Value(), false);
+      element()->SetAttribute(it->first, lepus::Value(), false);
     }
   }
   // Using JSValue across multiple threads
@@ -1072,7 +1069,7 @@ bool RadonNode::DiffAttrMapForFiber(const AttrMap& old_map,
       page_proxy_->element_manager()->GetEnableParallelElement();
   // check update and insert
   if (!new_map.empty()) {
-    fiber_element()->MarkCanBeLayoutOnly(false);
+    element()->MarkCanBeLayoutOnly(false);
   }
   for (auto& it : new_map) {
     // try to find the corresponding style in old_map
@@ -1092,10 +1089,9 @@ bool RadonNode::DiffAttrMapForFiber(const AttrMap& old_map,
       }
       need_update = true;
       if (should_convert_to_lepus_value) {
-        fiber_element()->SetAttribute(it.first, it.second.ToLepusValue(),
-                                      false);
+        element()->SetAttribute(it.first, it.second.ToLepusValue(), false);
       } else {
-        fiber_element()->SetAttribute(it.first, it.second, false);
+        element()->SetAttribute(it.first, it.second, false);
       }
     }
   }

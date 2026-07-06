@@ -12,7 +12,7 @@
 #include "base/include/fml/memory/ref_ptr.h"
 #include "base/include/value/base_string.h"
 #include "base/include/value/table.h"
-#include "core/renderer/dom/fiber/fiber_element.h"
+#include "core/renderer/dom/element.h"
 #include "core/renderer/dom/fiber/generated_elements_result.h"
 
 namespace lynx {
@@ -34,17 +34,15 @@ class TreeResolver {
   static constexpr uint32_t kLocalQueueSizeInMainThread = 32;
   static constexpr uint32_t kLocalQueueSizeInWorker = 0;
 
-  static void NotifyNodeInserted(FiberElement* insertion_point,
-                                 FiberElement* node);
-  static void NotifyNodeRemoved(FiberElement* insertion_point,
-                                FiberElement* node);
+  static void NotifyNodeInserted(Element* insertion_point, Element* node);
+  static void NotifyNodeRemoved(Element* insertion_point, Element* node);
 
-  static void AttachChildToTargetParentForWrapper(FiberElement* parent,
-                                                  FiberElement* child,
-                                                  FiberElement* ref_node);
-  static void AttachChildToTargetContainerRecursive(FiberElement* parent,
-                                                    FiberElement* child,
-                                                    FiberElement* wrapper);
+  static void AttachChildToTargetParentForWrapper(Element* parent,
+                                                  Element* child,
+                                                  Element* ref_node);
+  static void AttachChildToTargetContainerRecursive(Element* parent,
+                                                    Element* child,
+                                                    Element* wrapper);
 
   /**
    *  find the Real parent for a wrapper parent
@@ -54,43 +52,41 @@ class TreeResolver {
    * end
    * @return return the real parent and the index in LayoutNode tree
    */
-  static std::pair<FiberElement*, int> FindParentForChildForWrapper(
-      FiberElement* parent, FiberElement* child, FiberElement* ref);
-  static int GetLayoutIndexForChildForWrapper(FiberElement* parent,
-                                              FiberElement* child);
+  static std::pair<Element*, int> FindParentForChildForWrapper(Element* parent,
+                                                               Element* child,
+                                                               Element* ref);
+  static int GetLayoutIndexForChildForWrapper(Element* parent, Element* child);
 
-  static size_t GetLayoutChildrenCountForWrapper(FiberElement* node);
+  static size_t GetLayoutChildrenCountForWrapper(Element* node);
 
-  static void RemoveFromParentForWrapperChild(FiberElement* parent,
-                                              FiberElement* child);
+  static void RemoveFromParentForWrapperChild(Element* parent, Element* child);
 
-  static FiberElement* FindFirstChildOrSiblingAsRefNode(FiberElement* ref);
+  static Element* FindFirstChildOrSiblingAsRefNode(Element* ref);
 
-  static void RemoveChildRecursively(FiberElement* parent, FiberElement* child);
+  static void RemoveChildRecursively(Element* parent, Element* child);
 
-  static FiberElement* FindTheRealParent(FiberElement* node);
+  static Element* FindTheRealParent(Element* node);
 
   static fml::RefPtr<lepus::Dictionary> GetTemplateParts(
-      const fml::RefPtr<FiberElement>& template_element);
+      const fml::RefPtr<Element>& template_element);
 
   // Apply template dynamic/spread attributes on top of the static attributes
   // initialized by FromElementInfo. The overload with previous slots rebuilds
   // template attributes after clearing keys that used to come from spread
   // slots.
   static void ApplyTemplateAttributesToElement(
-      FiberElement* element, const lepus::Value& attribute_slots);
+      Element* element, const lepus::Value& attribute_slots);
   static void ApplyTemplateAttributesToElement(
-      FiberElement* element, const lepus::Value& previous_attribute_slots,
+      Element* element, const lepus::Value& previous_attribute_slots,
       const lepus::Value& attribute_slots);
   static void ApplyTemplateNonEventAttributesToElement(
-      FiberElement* element, const lepus::Value& attribute_slots);
+      Element* element, const lepus::Value& attribute_slots);
   static void ApplyTemplateEventAttributesToElement(
-      FiberElement* element, const lepus::Value& attribute_slots);
-  static void ApplyStaticTemplateEventAttributesToElement(
-      FiberElement* element);
+      Element* element, const lepus::Value& attribute_slots);
+  static void ApplyStaticTemplateEventAttributesToElement(Element* element);
 
   // Construct element tree according to the element-template info.
-  static base::Vector<fml::RefPtr<FiberElement>> FromTemplateInfo(
+  static base::Vector<fml::RefPtr<Element>> FromTemplateInfo(
       const ElementTemplateInfo& info);
 
   // Construct the detached single-root tree used by the new Element Template
@@ -100,59 +96,59 @@ class TreeResolver {
       const ElementTemplateInfo& info);
 
   static void InitElementTree(
-      fml::RefPtr<FiberElement>& elements, int64_t pid, ElementManager* manager,
+      fml::RefPtr<Element>& elements, int64_t pid, ElementManager* manager,
       const std::shared_ptr<CSSStyleSheetManager>& style_manager);
 
   static lepus::Value InitElementTree(
-      base::Vector<fml::RefPtr<FiberElement>>&& elements, int64_t pid,
+      base::Vector<fml::RefPtr<Element>>&& elements, int64_t pid,
       ElementManager* manager,
       const std::shared_ptr<CSSStyleSheetManager>& style_manager);
 
   // Clone the elements and attach it to the current page's element manager
   // recursively.
-  static fml::RefPtr<FiberElement> CloneElements(
-      const fml::RefPtr<FiberElement>& root,
+  static fml::RefPtr<Element> CloneElements(
+      const fml::RefPtr<Element>& root,
       const std::shared_ptr<CSSStyleSheetManager>& style_manager,
       bool clone_resolved_props, CloningDepth cloning_depth);
 
   // Clone the elements recursively but not yet attached to the current page's
   // element manager. The cloned element needs to be attached to an element
   // manager before it can be used.
-  static fml::RefPtr<FiberElement> CloneElementRecursively(
-      const FiberElement* element, bool clone_resolved_props);
+  static fml::RefPtr<Element> CloneElementRecursively(
+      const Element* element, bool clone_resolved_props);
 
   static void AttachRootToElementManager(
-      fml::RefPtr<FiberElement>& root, ElementManager* element_manager,
+      const fml::RefPtr<Element>& root, ElementManager* element_manager,
       const std::shared_ptr<CSSStyleSheetManager>& style_manager,
       bool keep_element_id);
 
   static void AttachToElementManagerRecursively(
-      FiberElement& element, ElementManager* manager,
+      Element& element, ElementManager* manager,
       const std::shared_ptr<CSSStyleSheetManager>& style_manager,
       bool keep_element_id);
 
-  static void TraverseDom(FiberElement* root, uint32_t work_unit_size);
+  static void TraverseDom(Element* root, uint32_t work_unit_size);
 
  protected:
-  static void GetPartsRecursively(const fml::RefPtr<FiberElement>& root,
+  static void GetPartsRecursively(const fml::RefPtr<Element>& root,
                                   fml::RefPtr<lepus::Dictionary>& parts_map);
 
   // Construct element according to the element info.
-  static fml::RefPtr<FiberElement> FromElementInfo(int64_t parent_component_id,
-                                                   const ElementInfo& info);
-  static fml::RefPtr<FiberElement> FromElementInfo(
+  static fml::RefPtr<Element> FromElementInfo(int64_t parent_component_id,
+                                              const ElementInfo& info);
+  static fml::RefPtr<Element> FromElementInfo(
       int64_t parent_component_id, const ElementInfo& info,
       GeneratedElementsResult* generated);
 
  private:
   static std::list<ParallelFlushReturn> StyleTrees(
-      std::list<FiberElement*>& discovered, uint32_t work_unit_size);
+      std::list<Element*>& discovered, uint32_t work_unit_size);
 
-  static void DistributeStyleTreesTask(std::list<FiberElement*> discovered,
+  static void DistributeStyleTreesTask(std::list<Element*> discovered,
                                        uint32_t work_unit_size);
 
-  static void DistributeOneChunkStyleTreesTask(
-      std::list<FiberElement*> discovered, uint32_t work_unit_size);
+  static void DistributeOneChunkStyleTreesTask(std::list<Element*> discovered,
+                                               uint32_t work_unit_size);
 };
 
 }  // namespace tasm

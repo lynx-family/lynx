@@ -7,16 +7,19 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <future>
 #include <memory>
 #include <utility>
 
 #include "base/include/compiler_specific.h"
+#include "base/include/float_comparison.h"
 #include "base/include/no_destructor.h"
 #include "base/include/path_utils.h"
 #include "base/include/value/array.h"
 #include "base/include/value/table.h"
 #include "base/trace/native/trace_event.h"
 #include "core/animation/animation_delegate.h"
+#include "core/event/event.h"
 #include "core/renderer/css/computed_css_style_css_text_helper.h"
 #include "core/renderer/css/css_color.h"
 #include "core/renderer/css/css_fragment.h"
@@ -24,7 +27,9 @@
 #include "core/renderer/css/css_keyframes_token.h"
 #include "core/renderer/css/css_parser_token.h"
 #include "core/renderer/css/css_property.h"
+#include "core/renderer/css/css_utils.h"
 #include "core/renderer/css/layout_property.h"
+#include "core/renderer/css/parser/css_string_parser.h"
 #include "core/renderer/css/parser/length_handler.h"
 #include "core/renderer/css/unit_handler.h"
 #include "core/renderer/dom/element_manager.h"
@@ -41,22 +46,32 @@
 #include "core/renderer/dom/vdom/radon/node_select_options.h"
 #include "core/renderer/dom/vdom/radon/node_selector.h"
 #include "core/renderer/dom/vdom/radon/radon_component.h"
+#include "core/renderer/events/closure_event_listener.h"
+#include "core/renderer/events/touch_event_handler.h"
+#include "core/renderer/lynx_env_config.h"
 #include "core/renderer/page_proxy.h"
 #include "core/renderer/starlight/style/css_type.h"
 #include "core/renderer/starlight/style/default_layout_style.h"
 #include "core/renderer/starlight/types/layout_result.h"
 #include "core/renderer/template_assembler.h"
 #include "core/renderer/trace/renderer_trace_event_def.h"
+#include "core/renderer/utils/base/tasm_constants.h"
 #include "core/renderer/utils/lynx_env.h"
 #include "core/renderer/utils/prop_bundle_style_writer.h"
 #include "core/renderer/utils/value_utils.h"
 #include "core/runtime/common/bindings/event/message_event.h"
 #include "core/runtime/js/bindings/java_script_element.h"
+#include "core/runtime/js/runtime_constant.h"
 #include "core/runtime/lepus/bindings/style/shared_css_fragment_wrapper.h"
 #include "core/services/feature_count/feature_counter.h"
 #include "core/services/feature_count/global_feature_counter.h"
 #include "core/services/timing_handler/timing_constants_deprecated.h"
 #include "core/value_wrapper/value_impl_lepus.h"
+
+#if ENABLE_LEPUSNG_WORKLET
+#include "core/renderer/worklet/lepus_raf_handler.h"
+#include "core/runtime/lepusng/napi/worklet/napi_func_callback.h"
+#endif
 
 namespace lynx {
 namespace tasm {
@@ -94,8 +109,88 @@ starlight::DirectionValue<float> ConvertToDirectionValue(
   return starlight::DirectionValue<float>(result_values);
 }
 
+void CollectDirtyNodeForList(int32_t impl_id, PipelineOptions* options) {
+  if (impl_id != options->list_id_) {
+    // Avoid adding the parent list node to updated_list_elements_ when
+    // rendering a list item.
+    options->updated_list_elements_.emplace_back(impl_id);
+  }
+}
+
+void ApplyEventResult(fml::RefPtr<event::Event> event, EventResult result) {
+  if (event == nullptr) {
+    return;
+  }
+  if (static_cast<int>(result) &
+      static_cast<int>(EventResult::kStopImmediatePropagationBit)) {
+    event->set_is_stop_immediate_propagation(true);
+  } else if (static_cast<int>(result) &
+             static_cast<int>(EventResult::kStopPropagationBit)) {
+    event->set_is_stop_propagation(true);
+  }
+}
+
+event::EventListener::Options GetEventListenerOptions(
+    const base::String& type) {
+  const bool is_capture = type.str() == EVENT_TYPE_CAPTURE;
+  const bool is_capture_catch = type.str() == EVENT_TYPE_CAPTURE_CATCH;
+  const bool is_bubble_catch = type.str() == EVENT_TYPE_CATCH;
+  const bool is_global_bind = type.str() == EVENT_TYPE_GLOBAL;
+  return event::EventListener::Options(
+      is_capture || is_capture_catch, false, false, false,
+      is_capture_catch || is_bubble_catch, is_global_bind);
+}
+
 bool IsOverlayTag(const base::String& tag) {
   return tag.IsEquals("overlay") || tag.IsEquals("x-overlay-ng");
+}
+
+template <typename MapT>
+bool OptionalMapNotEqual(const MapT* old_map, const MapT* new_map) {
+  if ((old_map == nullptr) != (new_map == nullptr)) {
+    return true;
+  }
+  if (old_map == nullptr) {
+    return false;
+  }
+  return *old_map != *new_map;
+}
+
+bool CustomPropertiesChanged(const starlight::ComputedCSSStyle* old_style,
+                             const starlight::ComputedCSSStyle& new_style) {
+  if (old_style == nullptr) {
+    return new_style.GetRawCustomProperties() != nullptr ||
+           new_style.GetCustomProperties() != nullptr;
+  }
+  return OptionalMapNotEqual(old_style->GetRawCustomProperties(),
+                             new_style.GetRawCustomProperties()) ||
+         OptionalMapNotEqual(old_style->GetCustomProperties(),
+                             new_style.GetCustomProperties());
+}
+
+void ApplyAnimationPropertyResetsToResolvedInputs(
+    const starlight::ComputedCSSStyle& base_style,
+    const std::vector<CSSPropertyID>& property_resets,
+    StyleMap& resolved_style_map, CSSIDBitset& variable_dependent_ids) {
+  if (property_resets.empty()) {
+    return;
+  }
+
+  const auto& base_resolved_values = base_style.GetResolvedValues();
+  for (const auto id : property_resets) {
+    auto resolved_iter = resolved_style_map.find(id);
+    if (resolved_iter == resolved_style_map.end()) {
+      variable_dependent_ids.Reset(id);
+      continue;
+    }
+
+    auto base_iter = base_resolved_values.find(id);
+    if (base_iter == base_resolved_values.end() ||
+        base_iter->second != resolved_iter->second) {
+      resolved_style_map.erase(resolved_iter);
+      variable_dependent_ids.Reset(id);
+    }
+  }
 }
 }  // namespace
 
@@ -112,6 +207,42 @@ InspectorAttribute::~InspectorAttribute() {
   }
   if (style_value_) {
     style_value_->set_parent(nullptr);
+  }
+}
+
+Element::Element(ElementManager* manager, const base::String& tag)
+    : Element(manager, tag, kInvalidCssId) {}
+
+Element::Element(ElementManager* manager, const base::String& tag,
+                 int32_t css_id)
+    : Element(tag, manager, kInvalidNodeIndex) {
+  TRACE_EVENT_INSTANT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_CONSTRUCTOR, "tag",
+                      tag.c_str(), "id", id_);
+  dirty_ = kDirtyCreated;
+  css_id_ = css_id;
+  InitLayoutBundle();
+  SetAttributeHolder(fml::MakeRefCounted<AttributeHolder>(this));
+
+  if (IsOverlay()) {
+    can_has_layout_only_children_ = false;
+  }
+
+  if (manager == nullptr) {
+    return;
+  }
+
+  // Set font scale and font size if needed.
+  const auto& env_config = manager->GetLynxEnvConfig();
+
+  computed_css_style()->SetFontScale(env_config.FontScale());
+  if (Config::DefaultFontScale() != env_config.FontScale()) {
+    SetComputedFontSize(env_config.PageDefaultFontSize(),
+                        env_config.PageDefaultFontSize());
+  }
+
+  if (element_manager_->GetEnableStandardCSSSelector()) {
+    // in new selector, mark style dirty while Created.
+    MarkDirty(kDirtyStyle);
   }
 }
 
@@ -165,8 +296,6 @@ Element::Element(const base::String& tag, ElementManager* manager,
     element_container_ = std::make_unique<ElementContainer>(this);
   }
 }
-
-Element::~Element() = default;
 
 // The copy constructor of the element is now only used for copying fiber
 // elements. If you want to use it to copy radon elements, you need to check the
@@ -225,6 +354,60 @@ Element::Element(const Element& element, bool clone_resolved_props)
   platform_css_style_ = std::make_unique<starlight::ComputedCSSStyle>(
       *(element.computed_css_style()));
   element_entry_name_ = element.element_entry_name_;
+
+  invalidation_lists_ = element.invalidation_lists_;
+  parent_component_unique_id_ = element.parent_component_unique_id_;
+  dirty_ = element.dirty_ | kDirtyCreated | kDirtyCloned;
+  css_id_ = element.css_id_;
+  dynamic_style_flags_ = element.dynamic_style_flags_;
+  has_extreme_parsed_styles_ = element.has_extreme_parsed_styles_;
+  only_selector_extreme_parsed_styles_ =
+      element.only_selector_extreme_parsed_styles_;
+  can_be_layout_only_ = element.can_be_layout_only_;
+  is_template_ = element.is_template_;
+  flush_required_ = element.flush_required_;
+  full_raw_inline_style_ = element.full_raw_inline_style_;
+  current_raw_inline_styles_ = element.current_raw_inline_styles_;
+  current_raw_inline_custom_properties_ =
+      element.current_raw_inline_custom_properties_;
+  extreme_parsed_styles_ = element.extreme_parsed_styles_;
+  inherited_styles_ = element.inherited_styles_;
+  reset_inherited_ids_ = element.reset_inherited_ids_;
+  custom_properties_ = element.custom_properties_;
+  updated_attr_map_ = element.updated_attr_map_;
+  builtin_attr_map_ = element.builtin_attr_map_;
+  reset_attr_vec_ = element.reset_attr_vec_;
+  part_id_ = element.part_id_;
+  SetAttributeHolder(
+      fml::MakeRefCounted<AttributeHolder>(*element.data_model()));
+  data_model_->SetCSSVariableBundle(*element.data_model());
+
+  if (clone_resolved_props) {
+    parsed_styles_map_ = element.parsed_styles_map_;
+    updated_inherited_styles_ = element.updated_inherited_styles_;
+    layout_styles_ = element.layout_styles_;
+    // clone_resolved_props only carries committed resolved state. The dynamic
+    // source object is treated as a mutation carrier and will be rebuilt lazily
+    // from parsed_dynamic_styles_map_ when a post-clone incremental update
+    // happens.
+    parsed_dynamic_styles_map_ = element.parsed_dynamic_styles_map_;
+
+    // FIXME(wujintian): The prop bundle stores the style of incremental
+    // updates. If the element flush props has been executed multiple times
+    // before cloning the element, then this prop bundle cannot represent all
+    // the stock styles since the element was created.
+    if (element.pre_prop_bundle_) {
+      prop_bundle_ = element.pre_prop_bundle_->ShallowCopy();
+    } else if (element.prop_bundle_) {
+      prop_bundle_ = element.prop_bundle_->ShallowCopy();
+    }
+  }
+
+  if (element.config().IsTable() && element.config().GetLength() > 0) {
+    config_ = lepus::Value::ShallowCopy(element.config()).Table();
+  }
+
+  // TODO(wujintian): Clone animation-related objects.
 }
 
 void Element::AttachToElementManager(
@@ -263,6 +446,46 @@ void Element::AttachToElementManager(
   } else {
     element_container_ = std::make_unique<ElementContainer>(this);
   }
+
+  const auto& env_config = manager->GetLynxEnvConfig();
+  if (platform_css_style_ == nullptr) {
+    platform_css_style_ = std::make_unique<starlight::ComputedCSSStyle>(
+        *manager->platform_computed_css());
+  }
+  record_parent_font_size_ = env_config.PageDefaultFontSize();
+
+  platform_css_style_->SetScreenWidth(env_config.ScreenWidth());
+  platform_css_style_->SetViewportHeight(env_config.ViewportHeight());
+  platform_css_style_->SetViewportWidth(env_config.ViewportWidth());
+  platform_css_style_->SetCssAlignLegacyWithW3c(
+      manager->GetLayoutConfigs().css_align_with_legacy_w3c_);
+  platform_css_style_->SetFontScaleOnlyEffectiveOnSp(
+      env_config.FontScaleSpOnly());
+  platform_css_style_->SetLayoutUnit(env_config.PhysicalPixelsPerLayoutUnit(),
+                                     env_config.LayoutsUnitPerPx());
+
+  computed_css_style()->SetEnableZIndex(manager->GetEnableZIndex());
+
+  InitLayoutBundle();
+  UpdateLayoutNodeFontSize(GetFontSize(), GetRecordedRootFontSize());
+
+  if (layout_styles_.has_value()) {
+    for (auto& layout_style : *layout_styles_) {
+      UpdateLayoutNodeStyle(layout_style.first, layout_style.second);
+    }
+  }
+
+  SetFontSizeForAllElement(GetFontSize(), GetRecordedRootFontSize());
+
+  if (Config::DefaultFontScale() != env_config.FontScale()) {
+    computed_css_style()->SetFontScale(env_config.FontScale());
+    SetComputedFontSize(env_config.PageDefaultFontSize(),
+                        env_config.PageDefaultFontSize());
+  }
+
+  if (element_manager_->GetEnableStandardCSSSelector()) {
+    MarkDirty(kDirtyStyle);
+  }
 }
 
 void Element::PushStyleToBundle() {
@@ -278,6 +501,62 @@ void Element::PushStyleToBundle() {
     PreparePropBundleIfNeed();
     PropBundleStyleWriter::PushStyleToBundle(prop_bundle_.get(),
                                              computed_css_style());
+  }
+}
+
+void Element::PerformElementContainerCreateOrUpdate(bool need_update,
+                                                    bool need_reset) {
+  PushStyleToBundle();
+
+  if (dirty_ & kDirtyCreated) {
+    TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_HANDLE_CRATE,
+                [this](lynx::perfetto::EventContext ctx) {
+                  UpdateTraceDebugInfo(ctx.event());
+                });
+    // FIXME(linxs): FlushProps can be optimized, for example can we just
+    // create viewElement,imageElement,textElement.. directly?
+    FlushProps();
+    dirty_ &= ~kDirtyCreated;
+  } else if (need_update || dirty_ & kDirtyForceUpdate) {
+    if (prop_bundle_) {
+      UpdateLayoutNodeProps(prop_bundle_);
+
+      if (!is_virtual()) {
+        TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_UPDATE_FIBER_ELEMENT,
+                    [this](lynx::perfetto::EventContext ctx) {
+                      UpdateTraceDebugInfo(ctx.event());
+                    });
+        if (!IsLayoutOnly()) {
+          TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_UPDATE_PAINTING_NODE,
+                      [this](lynx::perfetto::EventContext ctx) {
+                        UpdateTraceDebugInfo(ctx.event());
+                      });
+          element_container()->UpdatePaintingNode(TendToFlatten(),
+                                                  prop_bundle_);
+        } else if (!CanBeLayoutOnly()) {
+          TRACE_EVENT(LYNX_TRACE_CATEGORY,
+                      FIBER_ELEMENT_TRANSITION_TO_NATIVE_VIEW,
+                      [this](lynx::perfetto::EventContext ctx) {
+                        UpdateTraceDebugInfo(ctx.event());
+                      });
+          // Is layout only and can not be layout only
+          TransitionToNativeView();
+        }
+      }
+    }
+
+    // TODO(songshourui.null): Later, determine whether to call StyleChanged
+    // based on whether ComputedCSSStyle is dirty.
+    HandleBeforeFlushActionsTask(
+        [this]() { element_container()->StyleChanged(); },
+        kFlagGreedyParallel | kFlagLevelOrderParallel);
+  }
+  dirty_ &= ~kDirtyForceUpdate;
+
+  UpdateLayoutNodeByBundle();
+
+  if (need_reset) {
+    ResetPropBundle();
   }
 }
 
@@ -458,6 +737,7 @@ bool Element::ConsumeTransitionStylesInAdvance(const StyleMap& styles,
 
 void Element::SetStyleInternal(CSSPropertyID css_id,
                                const tasm::CSSValue& value) {
+  const bool was_fixed = is_fixed_;
   TRACE_EVENT(
       LYNX_TRACE_CATEGORY, ELEMENT_SET_STYLE_INTERNAL,
       [css_id](lynx::perfetto::EventContext ctx) {
@@ -492,6 +772,9 @@ void Element::SetStyleInternal(CSSPropertyID css_id,
       RequestLayout();
     }
     element_container()->InvalidateForRedraw();
+    if (css_id == kPropertyIDPosition && was_fixed != is_fixed_) {
+      UpdateFixedNodeSet();
+    }
     return;
   }
 
@@ -530,6 +813,9 @@ void Element::SetStyleInternal(CSSPropertyID css_id,
       CheckHasNonFlattenCSSProps(css_id);
     }
   }
+  if (css_id == kPropertyIDPosition && was_fixed != is_fixed_) {
+    UpdateFixedNodeSet();
+  }
 }
 
 bool Element::ResolveStyleValue(CSSPropertyID id, const tasm::CSSValue& value) {
@@ -560,14 +846,8 @@ bool Element::HasUIPrimitive() const {
 }
 
 void Element::CheckHasInlineContainer(Element* parent) {
-  if (parent) {
-    allow_layoutnode_inline_ = parent->IsShadowNodeCustom();
-  }
-  if (parent && (parent->is_text_ ||
-                 (parent->is_inline_element_ && !parent->is_view()))) {
-    is_inline_element_ = true;
-    has_layout_only_props_ = false;
-  }
+  EnsureLayoutBundle();
+  allow_layoutnode_inline_ = parent->IsShadowNodeCustom();
 }
 
 bool Element::EnableLayoutInElementMode() const {
@@ -582,6 +862,36 @@ void Element::EnsureLayoutBundle() {
   if (layout_bundle_ == nullptr) {
     layout_bundle_ = std::make_unique<LayoutBundle>();
   }
+}
+
+void Element::EnsureSLNode() {
+  if (EnableLayoutInElementMode() && sl_node_ == nullptr) {
+    sl_node_ = std::make_unique<SLNode>(
+        element_manager()->GetLayoutConfigs(),
+        computed_css_style()->GetLayoutComputedStyle());
+    if (is_page()) {
+      MarkAsLayoutRoot();
+    }
+    OnLayoutObjectCreated();
+  }
+}
+
+void Element::MarkAsLayoutRoot() {
+  if (EnableLayoutInElementMode()) {
+    EnsureSLNode();
+    // The default flex direction is column for root.
+    sl_node_->GetCSSMutableStyle()->SetFlexDirection(
+        starlight::FlexDirectionType::kColumn);
+    sl_node_->SetContext(element_manager());
+    sl_node_->MarkDirty();
+    sl_node_->SetSLRequestLayoutFunc([](void* context) {
+      static_cast<ElementManager*>(context)->ScheduleLayout();
+    });
+    return;
+  }
+
+  EnsureLayoutBundle();
+  layout_bundle_->is_root = true;
 }
 
 void Element::InitLayoutBundle() {
@@ -603,12 +913,58 @@ void Element::UpdateTagToLayoutBundle() {
   layout_bundle_->tag = tag_;
 }
 
+void Element::UpdateLayoutNodeByBundle() {
+  if (EnableLayoutInElementMode()) {
+    EnsureSLNode();
+    return;
+  }
+
+  if (layout_bundle_ == nullptr) {
+    return;
+  }
+  EnqueueLayoutTask([element_manager = element_manager(), id = impl_id(),
+                     layout_bundle = std::move(layout_bundle_)]() mutable {
+    element_manager->UpdateLayoutNodeByBundle(id, std::move(layout_bundle));
+  });
+  layout_bundle_ = nullptr;
+}
+
 bool Element::UsingTextService() const {
   return element_manager() && element_manager()->IsUsingTextService();
 }
 
 bool Element::EnableFragmentLayerRender() const {
   return element_manager() && element_manager()->IsFragmentLayerRenderModeOn();
+}
+
+void Element::CheckDynamicUnit(CSSPropertyID id, const CSSValue& value,
+                               bool reset) {
+  if (reset && parsed_styles_map_.empty()) {
+    // TODO(linxs): try to clear dynamic_style_flags_ here
+    dynamic_style_flags_ = 0;
+    return;
+  }
+
+  dynamic_style_flags_ |= DynamicCSSStylesManager::GetValueFlags(
+      id, value,
+      element_manager()->GetDynamicCSSConfigs().unify_vw_vh_behavior_,
+      element_manager()->FixFilterDynamicUpdateBug());
+}
+
+void Element::WillResetCSSValue(CSSPropertyID& css_id) {
+  if (css_id == CSSPropertyID::kPropertyIDFontSize) {
+    ResetFontSize();
+  }
+
+  // remove self inherit properties if needed
+  if (inherited_styles_.has_value()) {
+    auto it = inherited_styles_->find(css_id);
+    if (it != inherited_styles_->end()) {
+      inherited_styles_->erase(it);
+      reset_inherited_ids_->emplace_back(css_id);
+      children_propagate_inherited_styles_flag_ = true;
+    }
+  }
 }
 
 void Element::ResetStyleInternal(CSSPropertyID css_id) {
@@ -623,6 +979,7 @@ void Element::ResetStyleInternal(CSSPropertyID css_id) {
 }
 
 bool Element::ResetCSSValue(CSSPropertyID css_id) {
+  const bool was_fixed = is_fixed_;
   CheckDynamicUnit(css_id, CSSValue(), true);
 
   if (css_id == kPropertyIDFontSize) {
@@ -653,6 +1010,9 @@ bool Element::ResetCSSValue(CSSPropertyID css_id) {
     is_sticky_ = is_fixed_ = false;
   }
   if (is_layout_only) {
+    if (css_id == kPropertyIDPosition && was_fixed != is_fixed_) {
+      UpdateFixedNodeSet();
+    }
     return processed;
   }
   has_layout_only_props_ = false;
@@ -664,7 +1024,825 @@ bool Element::ResetCSSValue(CSSPropertyID css_id) {
   CheckTransitionProps(css_id);
   CheckKeyframeProps(css_id);
 
+  if (css_id == kPropertyIDPosition && was_fixed != is_fixed_) {
+    UpdateFixedNodeSet();
+  }
   return processed;
+}
+
+void Element::ApplySimpleStyleWithoutTail(const tasm::CSSPropertyID id,
+                                          const tasm::CSSValue& value) {
+  EXEC_EXPR_FOR_INSPECTOR(
+      if (element_manager_ && element_manager_->IsDomTreeEnabled()) {
+        if (value.IsEmpty()) {
+          data_model()->ResetInlineStyle(id);
+        } else {
+          data_model()->SetInlineStyle(id, value);
+        }
+      });
+
+  if (value.IsEmpty()) {
+    if (id == kPropertyIDFontSize) {
+      ResetFontSize();
+    }
+    ResetStyleInternal(id);
+    return;
+  }
+
+  if (id == kPropertyIDFontSize) {
+    SetFontSize(value);
+    dirty_ &= ~kDirtyFontSize;
+  } else {
+    SetStyleInternal(id, value);
+  }
+}
+
+void Element::ApplySimpleStylesWithoutTail(const tasm::StyleMap& style_map) {
+  std::for_each(style_map.begin(), style_map.end(),
+                [this](const auto& pair) -> void {
+                  ApplySimpleStyleWithoutTail(pair.first, pair.second);
+                });
+}
+
+void Element::ApplyDynamicSimpleStylesWithoutTail(
+    const tasm::StyleMap& dynamic_style_map,
+    const tasm::StyleMap& base_style_map) {
+  std::for_each(dynamic_style_map.begin(), dynamic_style_map.end(),
+                [this, &base_style_map](const auto& pair) -> void {
+                  if (!pair.second.IsEmpty()) {
+                    ApplySimpleStyleWithoutTail(pair.first, pair.second);
+                    return;
+                  }
+
+                  // Empty values in the dynamic layer are tombstones: they stop
+                  // the dynamic override and reveal the current static/base
+                  // value, or fall back to default when base doesn't have it.
+                  if (const auto it = base_style_map.find(pair.first);
+                      it != base_style_map.end()) {
+                    ApplySimpleStyleWithoutTail(pair.first, it->second);
+                  } else {
+                    ApplySimpleStyleWithoutTail(pair.first, CSSValue());
+                  }
+                });
+}
+
+void Element::HandleKeyframePropsChange() {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_HANDLE_KEYFRAME_PROPS_CHANGE,
+              [this](lynx::perfetto::EventContext ctx) {
+                UpdateTraceDebugInfo(ctx.event());
+              });
+  if (!enable_new_animator()) {
+    ResolveAndFlushKeyframes();
+  } else {
+    SetDataToNativeKeyframeAnimator();
+  }
+  has_keyframe_props_changed_ = false;
+}
+
+void Element::FinalizeSimpleStyleUpdate() {
+  if (has_keyframe_props_changed_) {
+    HandleDelayTask([this]() { HandleKeyframePropsChange(); });
+    if (!enable_new_animator()) {
+      PushToBundle(kPropertyIDAnimation);
+    }
+  }
+
+  if (has_transition_props_changed_) {
+    TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_HANDLE_TRANSITION_PROPS,
+                [this](lynx::perfetto::EventContext ctx) {
+                  UpdateTraceDebugInfo(ctx.event());
+                });
+    if (!enable_new_animator()) {
+      PushToBundle(kPropertyIDTransition);
+    } else {
+      SetDataToNativeTransitionAnimator();
+    }
+    has_transition_props_changed_ = false;
+  }
+  EXEC_EXPR_FOR_INSPECTOR(
+      element_manager()->OnElementNodeSetForInspector(this););
+  MarkDirty(kDirtyForceUpdate);
+}
+
+void Element::FinalizeAnimationPropsChange(bool& need_update) {
+  // Report when enableNewAnimator is the default value.
+  if ((has_transition_props_changed_ || has_keyframe_props_changed_) &&
+      !enable_new_animator()) {
+    report::GlobalFeatureCounter::Count(
+        report::LynxFeature::CPP_ENABLE_NEW_ANIMATOR_DEFAULT,
+        element_manager()->GetInstanceId());
+  }
+  // keyframe props
+  if (has_keyframe_props_changed_) {
+    HandleDelayTask([this]() { HandleKeyframePropsChange(); });
+    if (!enable_new_animator()) {
+      PushToBundle(kPropertyIDAnimation);
+    }
+    need_update = true;
+  }
+
+  if (has_transition_props_changed_) {
+    TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_HANDLE_TRANSITION_PROPS,
+                [this](lynx::perfetto::EventContext ctx) {
+                  UpdateTraceDebugInfo(ctx.event());
+                });
+    if (!enable_new_animator()) {
+      PushToBundle(kPropertyIDTransition);
+    } else {
+      SetDataToNativeTransitionAnimator();
+    }
+    has_transition_props_changed_ = false;
+    need_update = true;
+  }
+}
+
+Element::AnimationPropertyChangeAnalysisForLegacyAnimator
+Element::AnalyzeAnimationPropChangesForLegacyAnimator(
+    const starlight::ComputedCSSStyle& final_style,
+    const starlight::ComputedCSSStyle* previous_final_style,
+    const StyleMap& resolved_style_map) const {
+  AnimationPropertyChangeAnalysisForLegacyAnimator analysis;
+  const bool is_first_render = IsNewlyCreated();
+  auto analyze_property = [&analysis](CSSPropertyID id) {
+    if (CSSProperty::IsTransitionProps(id)) {
+      analysis.has_transition_props_changed = true;
+    }
+    if (CSSProperty::IsKeyframeProps(id)) {
+      analysis.has_keyframe_props_changed = true;
+    }
+  };
+
+  if (is_first_render) {
+    for (const auto& [id, _] : resolved_style_map) {
+      analyze_property(id);
+    }
+  } else {
+    final_style.ForEachChangedProperty(analyze_property);
+    final_style.ForEachResetProperty(analyze_property);
+    // Computed animation/transition data changes are intentionally tracked
+    // outside the generic platform dirty bits. Setting those dirty bits for
+    // the new animator path would make both C++ animator and platform receive
+    // the same animation update. This function is called only from the legacy
+    // animator branch, where FinalizeAnimationPropsChange() owns bundle
+    // writing.
+    if (previous_final_style != nullptr) {
+      const auto* new_animation_data = final_style.animation_data_or_null();
+      const auto* old_animation_data =
+          previous_final_style->animation_data_or_null();
+      if ((new_animation_data == nullptr) != (old_animation_data == nullptr) ||
+          (new_animation_data != nullptr && old_animation_data != nullptr &&
+           *new_animation_data != *old_animation_data)) {
+        analysis.has_keyframe_props_changed = true;
+      }
+      if (final_style.HasTransition() !=
+              previous_final_style->HasTransition() ||
+          (final_style.HasTransition() &&
+           final_style.transition_data() !=
+               previous_final_style->transition_data())) {
+        analysis.has_transition_props_changed = true;
+      }
+    }
+  }
+
+  if (dirty_ & kDirtyCloned) {
+    for (const auto& [id, _] : parsed_styles_map_) {
+      analyze_property(id);
+    }
+  }
+
+  return analysis;
+}
+
+void Element::NewPipelineStyleMutationPlan::AddUpdate(CSSPropertyID id,
+                                                      const CSSValue& value) {
+  update_values.insert_or_assign(id, value);
+  update_ids.Set(id);
+  reset_ids.Reset(id);
+  source_changed = true;
+}
+
+void Element::NewPipelineStyleMutationPlan::AddReset(CSSPropertyID id) {
+  update_values.erase(id);
+  update_ids.Reset(id);
+  reset_ids.Set(id);
+  source_changed = true;
+}
+
+bool Element::NewPipelineStyleMutationPlan::HasOperations() const {
+  return update_ids.HasAny() || reset_ids.HasAny();
+}
+
+bool Element::NewPipelineStyleMutationPlan::NeedsSemanticCommit() const {
+  return source_changed || custom_properties_changed ||
+         font_size_context_changed || root_font_size_context_changed;
+}
+
+void Element::UpdateSimpleStyles(tasm::StyleMap&& style_map) {
+  parsed_styles_map_ = std::move(style_map);
+  ApplySimpleStylesWithoutTail(parsed_styles_map_);
+  FinalizeSimpleStyleUpdate();
+}
+
+void Element::UpdateStaticAndDynamicSimpleStyles(
+    tasm::StyleMap&& style_map, tasm::StyleMap&& dynamic_style_map) {
+  parsed_styles_map_ = std::move(style_map);
+  if (dynamic_style_map.empty()) {
+    parsed_dynamic_styles_map_.reset();
+  } else {
+    *parsed_dynamic_styles_map_ = std::move(dynamic_style_map);
+  }
+
+  ApplySimpleStylesWithoutTail(parsed_styles_map_);
+  if (parsed_dynamic_styles_map_.has_value()) {
+    ApplyDynamicSimpleStylesWithoutTail(*parsed_dynamic_styles_map_,
+                                        parsed_styles_map_);
+  }
+  FinalizeSimpleStyleUpdate();
+}
+
+void Element::UpdateDynamicSimpleStyles(tasm::StyleMap&& style_map) {
+  if (style_map.empty()) {
+    parsed_dynamic_styles_map_.reset();
+  } else {
+    *parsed_dynamic_styles_map_ = std::move(style_map);
+  }
+
+  if (parsed_dynamic_styles_map_.has_value()) {
+    ApplyDynamicSimpleStylesWithoutTail(*parsed_dynamic_styles_map_,
+                                        parsed_styles_map_);
+  }
+  FinalizeSimpleStyleUpdate();
+}
+
+void Element::UpdateSimpleStyles(const tasm::StyleMap& style_map) {
+  ApplySimpleStylesWithoutTail(style_map);
+  FinalizeSimpleStyleUpdate();
+}
+
+void Element::ResetSimpleStyle(const tasm::CSSPropertyID id,
+                               const tasm::CSSValue& value) {
+  ApplySimpleStyleWithoutTail(id, value);
+}
+
+void Element::ResetSimpleStyle(const tasm::CSSPropertyID id) {
+  ApplySimpleStyleWithoutTail(id, CSSValue());
+}
+
+void Element::ResolveSimpleStyles() {
+  const bool static_dirty = (dirty_ & kDirtyStyleObjects) != 0;
+  const bool dynamic_dirty = (dirty_ & kDirtyDynamicStyleObjects) != 0;
+  if (!static_dirty && !dynamic_dirty) {
+    return;
+  }
+
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_HANDLE_STYLE_OBJECTS);
+  if (element_manager_->EnablePropertyBasedSimpleStyle()) {
+    StyleResolver::ResolveStyleObjectsBasedOnExistingMap(
+        parsed_styles_map_, style_objects_ ? style_objects_.get() : nullptr,
+        parsed_dynamic_styles_map_.has_value() ? &*parsed_dynamic_styles_map_
+                                               : nullptr,
+        dynamic_simple_object_.get(), static_dirty, dynamic_dirty, this);
+  } else if (static_dirty) {
+    DCHECK(!dynamic_dirty)
+        << "dynamic simple style requires property-based simple style";
+    StyleResolver::ResolveStyleObjects(
+        last_style_objects_ ? last_style_objects_.get() : nullptr,
+        style_objects_ ? style_objects_.get() : nullptr, this);
+  }
+  if (has_keyframe_props_changed_) {
+    HandleDelayTask([this]() { HandleKeyframePropsChange(); });
+  }
+  dirty_ &= ~(kDirtyStyleObjects | kDirtyDynamicStyleObjects);
+}
+
+DynamicCSSStylesManager::StyleUpdateFlags
+Element::CollectDynamicFlagsForNewPipeline(
+    const StyleMap& resolved_style_map) const {
+  DynamicCSSStylesManager::StyleUpdateFlags flags = 0;
+  const auto& css_config = element_manager()->GetDynamicCSSConfigs();
+  for (const auto& [id, value] : resolved_style_map) {
+    flags |= DynamicCSSStylesManager::GetValueFlags(
+        id, value, css_config.unify_vw_vh_behavior_,
+        element_manager()->FixFilterDynamicUpdateBug());
+  }
+  return flags;
+}
+
+Element::AnimationSampleAnalysisForNewPipeline
+Element::AnalyzeAnimationSampleForNewPipeline(
+    const animation::AnimationSampleForNewPipeline& animation_sample) {
+  AnimationSampleAnalysisForNewPipeline analysis;
+  analysis.has_style_effects =
+      !animation_sample.property_overrides.empty() ||
+      !animation_sample.custom_property_overrides.empty() ||
+      !animation_sample.property_resets.empty() ||
+      !animation_sample.custom_property_resets.empty() ||
+      animation_sample.requires_base_style_rebuild;
+  analysis.has_animated_font_size =
+      animation_sample.property_overrides.find(kPropertyIDFontSize) !=
+          animation_sample.property_overrides.end() ||
+      std::find(animation_sample.property_resets.begin(),
+                animation_sample.property_resets.end(),
+                kPropertyIDFontSize) != animation_sample.property_resets.end();
+  analysis.has_custom_property_effects =
+      !animation_sample.custom_property_overrides.empty() ||
+      !animation_sample.custom_property_resets.empty();
+  analysis.changes_resolve_context =
+      analysis.has_animated_font_size || analysis.has_custom_property_effects ||
+      animation_sample.requires_base_style_rebuild;
+  return analysis;
+}
+
+std::unique_ptr<starlight::ComputedCSSStyle>
+Element::BuildFinalStyleFromAnimationSampleForNewPipeline(
+    const starlight::ComputedCSSStyle& base_style,
+    const starlight::ComputedCSSStyle* parent_style,
+    const starlight::ComputedCSSStyle* previous_final_style,
+    const animation::AnimationSampleForNewPipeline& animation_sample,
+    StyleMap& resolved_style_map, CSSIDBitset& variable_dependent_ids) {
+  const auto sample_analysis =
+      AnalyzeAnimationSampleForNewPipeline(animation_sample);
+  const StyleMap* animated_property_overrides =
+      animation_sample.property_overrides.empty()
+          ? nullptr
+          : &animation_sample.property_overrides;
+  if (!sample_analysis.changes_resolve_context) {
+    ApplyAnimationPropertyResetsToResolvedInputs(
+        base_style, animation_sample.property_resets, resolved_style_map,
+        variable_dependent_ids);
+    return style_resolver_.BuildFinalStyleFromBaseFastPath(
+        base_style, animated_property_overrides, &resolved_style_map,
+        &variable_dependent_ids);
+  }
+
+  const CustomPropertiesMap* animated_custom_properties =
+      animation_sample.custom_property_overrides.empty()
+          ? nullptr
+          : &animation_sample.custom_property_overrides;
+  return style_resolver_.RebuildFinalStyleFromParent(
+      parent_style, previous_final_style, animated_custom_properties,
+      animated_property_overrides, &resolved_style_map,
+      &variable_dependent_ids);
+}
+
+animation::AnimationEventRecordsForNewPipeline
+Element::TakeAnimationEventsForNewPipeline() {
+  animation::AnimationEventRecordsForNewPipeline event_records;
+  auto append_event_records = [&event_records](auto* manager) {
+    if (manager == nullptr) {
+      return;
+    }
+    auto pending_event_records =
+        manager->TakePendingAnimationEventsForNewPipeline();
+    for (auto& event_record : pending_event_records) {
+      event_records.push_back(std::move(event_record));
+    }
+  };
+  append_event_records(css_keyframe_manager_.get());
+  append_event_records(css_transition_manager_.get());
+  return event_records;
+}
+
+bool Element::NeedsAnimationFrameForNewPipeline() const {
+  if (!enable_new_animator_) {
+    return false;
+  }
+  return (css_keyframe_manager_ != nullptr &&
+          css_keyframe_manager_->NeedsFutureTickForNewPipeline()) ||
+         (css_transition_manager_ != nullptr &&
+          css_transition_manager_->NeedsFutureTickForNewPipeline());
+}
+
+Element::NewPipelineDynamicStyleInputs
+Element::BuildDynamicStyleInputsForNewPipeline(
+    const starlight::ComputedCSSStyle& final_style,
+    const StyleMap& explicit_resolved_style_map) const {
+  NewPipelineDynamicStyleInputs result;
+  result.resolved_style_map = explicit_resolved_style_map;
+
+  if (!IsCSSInheritanceEnabled()) {
+    return result;
+  }
+
+  const auto explicit_style_ids =
+      CSSIDBitset::FromKeys(explicit_resolved_style_map);
+  const auto& css_config = element_manager()->GetDynamicCSSConfigs();
+  for (const auto& [id, value] : final_style.GetResolvedValues()) {
+    if (id == kPropertyIDFontSize || explicit_style_ids.Has(id) ||
+        !IsInheritable(id)) {
+      continue;
+    }
+
+    const auto value_flags = DynamicCSSStylesManager::GetValueFlags(
+        id, value, css_config.unify_vw_vh_behavior_,
+        element_manager()->FixFilterDynamicUpdateBug());
+    if (value_flags == 0) {
+      continue;
+    }
+
+    result.resolved_style_map.insert_or_assign(id, value);
+    result.inherited_dynamic_ids.Set(id);
+    result.inherited_dynamic_flags |= value_flags;
+  }
+  return result;
+}
+
+Element::NewPipelineStyleMutationPlan
+Element::BuildNewPipelineStyleMutationPlan(
+    const NewPipelineStyleResolveResult& resolved_styles,
+    const NewPipelineDynamicStyleInputs& dynamic_inputs,
+    DynamicCSSStylesManager::StyleUpdateFlags requested_dynamic_flags,
+    bool first_render, double old_font_size, double old_root_font_size) const {
+  NewPipelineStyleMutationPlan plan;
+  plan.first_render = first_render;
+  plan.source_style_ids =
+      CSSIDBitset::FromKeys(resolved_styles.resolved_style_map);
+
+  const auto* previous_final_style =
+      first_render ? nullptr : resolved_styles.previous_final_style;
+  const auto& current_values = resolved_styles.final_style->GetResolvedValues();
+  static const StyleMap empty_style_map;
+  const auto& previous_values = previous_final_style != nullptr
+                                    ? previous_final_style->GetResolvedValues()
+                                    : empty_style_map;
+
+  if (previous_values.empty()) {
+    for (const auto& [id, value] : current_values) {
+      plan.AddUpdate(id, value);
+    }
+  } else if (current_values.empty()) {
+    for (const auto& [id, _] : previous_values) {
+      plan.AddReset(id);
+    }
+  } else {
+    std::array<const CSSValue*, kCSSPropertyCount> previous_values_by_id{};
+    for (const auto& [id, value] : previous_values) {
+      DCHECK(CSSProperty::IsPropertyValid(id));
+      previous_values_by_id[static_cast<size_t>(id)] = &value;
+    }
+
+    CSSIDBitset current_value_ids;
+    for (const auto& [id, value] : current_values) {
+      DCHECK(CSSProperty::IsPropertyValid(id));
+      current_value_ids.Set(id);
+      const auto* old_value = previous_values_by_id[static_cast<size_t>(id)];
+      if (old_value == nullptr || *old_value != value) {
+        plan.AddUpdate(id, value);
+      }
+    }
+
+    for (const auto& [id, _] : previous_values) {
+      if (!current_value_ids.Has(id)) {
+        plan.AddReset(id);
+      }
+    }
+  }
+
+  plan.custom_properties_changed = CustomPropertiesChanged(
+      previous_final_style, *resolved_styles.final_style);
+  if (plan.custom_properties_changed) {
+    for (const auto id : resolved_styles.variable_dependent_ids) {
+      auto it = current_values.find(id);
+      auto old_it = previous_values.find(id);
+      if (it != current_values.end() &&
+          (old_it == previous_values.end() || old_it->second != it->second)) {
+        plan.AddUpdate(id, it->second);
+      }
+    }
+  }
+
+  plan.font_size_context_changed = base::FloatsNotEqual(
+      old_font_size, resolved_styles.final_style->GetFontSize());
+  plan.root_font_size_context_changed = base::FloatsNotEqual(
+      old_root_font_size, resolved_styles.final_style->GetRootFontSize());
+
+  auto effective_dynamic_flags = requested_dynamic_flags;
+  if (plan.font_size_context_changed) {
+    effective_dynamic_flags |= DynamicCSSStylesManager::kUpdateEm;
+  }
+  if (plan.root_font_size_context_changed) {
+    effective_dynamic_flags |= DynamicCSSStylesManager::kUpdateRem;
+  }
+
+  if (effective_dynamic_flags != 0) {
+    const auto& css_config = element_manager()->GetDynamicCSSConfigs();
+    for (const auto& [id, value] : dynamic_inputs.resolved_style_map) {
+      const auto value_flags = DynamicCSSStylesManager::GetValueFlags(
+          id, value, css_config.unify_vw_vh_behavior_,
+          element_manager()->FixFilterDynamicUpdateBug());
+      if ((value_flags & effective_dynamic_flags) != 0) {
+        plan.AddUpdate(id, value);
+      }
+    }
+  }
+
+  return plan;
+}
+
+bool Element::MaterializeNewPipelineStyleMutationPlan(
+    const NewPipelineStyleMutationPlan& plan,
+    const starlight::ComputedCSSStyle& baseline_style,
+    starlight::ComputedCSSStyle& final_style) const {
+  auto should_materialize_dirty_bit = [this](CSSPropertyID id) {
+    // Layout-only changes are replayed to layout bundles from the mutation
+    // plan. Generic style dirty bits are consumed by the platform prop bundle.
+    // In layout-in-element mode, the legacy pipeline also wrote supported
+    // layout-only properties through ComputedCSSStyle, which could create an
+    // empty prop bundle and drive UpdatePaintingNode().
+    return !LayoutProperty::IsLayoutOnly(id) || EnableLayoutInElementMode();
+  };
+  const auto& baseline_context = baseline_style.GetMeasureContext();
+  starlight::ComputedCSSStyle replay_style(
+      baseline_context.layouts_unit_per_px_,
+      baseline_context.physical_pixels_per_layout_unit_);
+  replay_style.CopyFrom(baseline_style);
+  replay_style.ClearDirtyBits();
+
+  if (plan.reset_ids.Has(kPropertyIDFontSize)) {
+    replay_style.SetFontSize(final_style.GetFontSize(),
+                             final_style.GetRootFontSize());
+    replay_style.ResetValue(kPropertyIDFontSize);
+  }
+  if (plan.update_ids.Has(kPropertyIDFontSize)) {
+    auto it = plan.update_values.find(kPropertyIDFontSize);
+    if (it != plan.update_values.end()) {
+      replay_style.SetFontSize(final_style.GetFontSize(),
+                               final_style.GetRootFontSize());
+      replay_style.SetValue(kPropertyIDFontSize, it->second);
+    }
+  }
+
+  for (const auto id : plan.reset_ids) {
+    if (id == kPropertyIDFontSize || !should_materialize_dirty_bit(id)) {
+      continue;
+    }
+    replay_style.ResetValue(id);
+  }
+
+  for (const auto id : plan.update_ids) {
+    if (id == kPropertyIDFontSize || !should_materialize_dirty_bit(id)) {
+      continue;
+    }
+    auto it = plan.update_values.find(id);
+    if (it != plan.update_values.end()) {
+      replay_style.SetValue(id, it->second);
+    }
+  }
+
+  final_style.CopyDirtyBitsFrom(replay_style);
+  return final_style.IsDirty();
+}
+
+bool Element::HasInheritedPropertyMutation(
+    const NewPipelineStyleMutationPlan& plan) const {
+  const auto& configs = element_manager()->GetDynamicCSSConfigs();
+  const auto& inheritable_props =
+      !configs.custom_inherit_list_.empty()
+          ? configs.custom_inherit_list_
+          : DynamicCSSStylesManager::GetInheritableProps();
+  bool result = false;
+  auto check_property = [&result, &inheritable_props](const auto id) {
+    result |= id != kPropertyIDFontSize &&
+              inheritable_props.find(id) != inheritable_props.end();
+  };
+  for (const auto id : plan.update_ids) {
+    check_property(id);
+  }
+  for (const auto id : plan.reset_ids) {
+    check_property(id);
+  }
+  return result;
+}
+
+void Element::ReplayMaterializedStyleSideEffects(
+    const starlight::ComputedCSSStyle& computed_style,
+    CSSIDBitset* replayed_ids, const NewPipelineStyleMutationPlan* plan) {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY,
+              FIBER_ELEMENT_REPLAY_MATERIALIZED_STYLE_SIDE_EFFECTS);
+  auto mark_replayed = [replayed_ids](CSSPropertyID id) {
+    if (replayed_ids != nullptr) {
+      replayed_ids->Set(id);
+    }
+  };
+  auto replay_mode = [this, plan](CSSPropertyID id) {
+    return plan != nullptr && ShouldPreserveLayoutOnlyForInheritedPlatformStyle(
+                                  id, plan->source_style_ids)
+               ? StyleSideEffectReplayMode::kPreserveLayoutOnly
+               : StyleSideEffectReplayMode::kNormal;
+  };
+
+  computed_style.ForEachResetProperty([&](const auto id) {
+    ReplayResetStyleSideEffect(id, replay_mode(id));
+    mark_replayed(id);
+  });
+
+  const auto& resolved_values = computed_style.GetResolvedValues();
+  computed_style.ForEachChangedProperty([&](const auto id) {
+    if (id == kPropertyIDFontSize) {
+      return;
+    }
+    auto it = resolved_values.find(id);
+    if (it == resolved_values.end()) {
+      return;
+    }
+    ReplayChangedStyleSideEffect(id, it->second, replay_mode(id));
+    mark_replayed(id);
+  });
+}
+
+void Element::ReplayNewPipelineStyleMutationPlanSideEffects(
+    const NewPipelineStyleMutationPlan& plan, CSSIDBitset* replayed_ids) {
+  auto already_replayed = [replayed_ids](CSSPropertyID id) {
+    return replayed_ids != nullptr && replayed_ids->Has(id);
+  };
+  auto mark_replayed = [replayed_ids](CSSPropertyID id) {
+    if (replayed_ids != nullptr) {
+      replayed_ids->Set(id);
+    }
+  };
+
+  for (const auto id : plan.reset_ids) {
+    if (already_replayed(id)) {
+      continue;
+    }
+    const auto mode = ShouldPreserveLayoutOnlyForInheritedPlatformStyle(
+                          id, plan.source_style_ids)
+                          ? StyleSideEffectReplayMode::kPreserveLayoutOnly
+                          : StyleSideEffectReplayMode::kNormal;
+    ReplayResetStyleSideEffect(id, mode);
+    mark_replayed(id);
+  }
+
+  for (const auto& [id, value] : plan.update_values) {
+    if (already_replayed(id) || id == kPropertyIDFontSize) {
+      continue;
+    }
+    const auto mode = ShouldPreserveLayoutOnlyForInheritedPlatformStyle(
+                          id, plan.source_style_ids)
+                          ? StyleSideEffectReplayMode::kPreserveLayoutOnly
+                          : StyleSideEffectReplayMode::kNormal;
+    ReplayChangedStyleSideEffect(id, value, mode);
+    mark_replayed(id);
+  }
+}
+
+void Element::ReplayDynamicResolvedStyleSideEffects(
+    const StyleMap& resolved_style_map,
+    DynamicCSSStylesManager::StyleUpdateFlags update_flags,
+    const CSSIDBitset& replayed_ids, const CSSIDBitset* source_style_ids,
+    const CSSIDBitset* inherited_dynamic_ids) {
+  if (update_flags == 0) {
+    return;
+  }
+  const auto& css_config = element_manager()->GetDynamicCSSConfigs();
+  for (const auto& [id, value] : resolved_style_map) {
+    if (replayed_ids.Has(id) || id == kPropertyIDFontSize ||
+        CSSProperty::IsTransitionProps(id) ||
+        CSSProperty::IsKeyframeProps(id)) {
+      continue;
+    }
+    const auto value_flags = DynamicCSSStylesManager::GetValueFlags(
+        id, value, css_config.unify_vw_vh_behavior_,
+        element_manager()->FixFilterDynamicUpdateBug());
+    if ((value_flags & update_flags) == 0) {
+      continue;
+    }
+    const bool preserve_layout_only =
+        source_style_ids != nullptr && inherited_dynamic_ids != nullptr &&
+        inherited_dynamic_ids->Has(id) &&
+        ShouldPreserveLayoutOnlyForInheritedPlatformStyle(id,
+                                                          *source_style_ids);
+    ReplayChangedStyleSideEffect(
+        id, value,
+        preserve_layout_only ? StyleSideEffectReplayMode::kPreserveLayoutOnly
+                             : StyleSideEffectReplayMode::kNormal);
+  }
+}
+
+void Element::ReplayChangedStyleSideEffect(CSSPropertyID id,
+                                           const CSSValue& value,
+                                           StyleSideEffectReplayMode mode) {
+  CheckDynamicUnit(id, value, false);
+  MarkLayoutInElementTextMeasurerPropertyIfNeeded(id);
+  const bool preserve_layout_only =
+      mode == StyleSideEffectReplayMode::kPreserveLayoutOnly;
+
+  const bool is_layout_only = LayoutProperty::IsLayoutOnly(id);
+  const bool need_layout = is_layout_only || LayoutProperty::IsLayoutWanted(id);
+  if (need_layout) {
+    const bool was_fixed = is_fixed_;
+    CheckFixedSticky(id, value);
+    if (id == kPropertyIDPosition && was_fixed != is_fixed_) {
+      UpdateFixedNodeSet();
+    }
+    UpdateLayoutNodeStyle(id, value);
+    if (element_manager()->GetEnableDumpElementTree()) {
+      (*layout_styles_)[id] = value;
+    }
+  }
+
+  if (is_layout_only) {
+    if (EnableLayoutInElementMode()) {
+      RequestLayout();
+    }
+    return;
+  }
+
+  ReplayElementSpecificStyleSideEffect(id);
+
+  if (id == kPropertyIDOverflow || id == kPropertyIDOverflowX ||
+      id == kPropertyIDOverflowY) {
+    if (!preserve_layout_only && !computed_css_style()->IsOverflowXY()) {
+      has_layout_only_props_ = false;
+    }
+    return;
+  }
+
+  if (!preserve_layout_only &&
+      (!enable_extended_layout_only_opt_ || !IsExtendedLayoutOnlyProps(id))) {
+    has_layout_only_props_ = false;
+  }
+  if (CSSProperty::IsTransitionProps(id) || CSSProperty::IsKeyframeProps(id)) {
+    has_non_flatten_attrs_ = true;
+  } else {
+    CheckHasNonFlattenCSSProps(id);
+  }
+}
+
+void Element::ReplayResetStyleSideEffect(CSSPropertyID id,
+                                         StyleSideEffectReplayMode mode) {
+  MarkLayoutInElementTextMeasurerPropertyIfNeeded(id);
+  if (id == kPropertyIDFontSize) {
+    return;
+  }
+  const bool preserve_layout_only =
+      mode == StyleSideEffectReplayMode::kPreserveLayoutOnly;
+
+  const bool is_layout_only = LayoutProperty::IsLayoutOnly(id);
+  const bool need_layout = is_layout_only || LayoutProperty::IsLayoutWanted(id);
+  if (need_layout) {
+    ResetLayoutNodeStyle(id);
+    if (element_manager()->GetEnableDumpElementTree() &&
+        layout_styles_.has_value()) {
+      layout_styles_->erase(id);
+    }
+    if (is_layout_only && EnableLayoutInElementMode()) {
+      RequestLayout();
+    }
+  }
+
+  if (id == kPropertyIDPosition) {
+    const bool was_fixed = is_fixed_;
+    if (was_fixed) {
+      fixed_changed_ = true;
+    }
+    is_sticky_ = false;
+    is_fixed_ = false;
+    if (was_fixed) {
+      UpdateFixedNodeSet();
+    }
+  }
+
+  if (is_layout_only) {
+    return;
+  }
+
+  ReplayElementSpecificStyleSideEffect(id);
+
+  if (!preserve_layout_only) {
+    has_layout_only_props_ = false;
+  }
+  if (CSSProperty::IsTransitionProps(id) || CSSProperty::IsKeyframeProps(id)) {
+    has_non_flatten_attrs_ = true;
+  }
+}
+
+bool Element::ShouldPreserveLayoutOnlyForInheritedPlatformStyle(
+    CSSPropertyID id, const CSSIDBitset& source_style_ids) {
+  // Legacy inheritance consumes platform text props through InheritValue(),
+  // which avoids the normal non-layout style path that invalidates layout-only.
+  const bool layout_only_relevant = can_be_layout_only_ || is_layout_only_;
+  return layout_only_relevant && IsCSSInheritanceEnabled() &&
+         GetParentComputedCSSStyle() != nullptr && IsInheritable(id) &&
+         starlight::ComputedCSSStyle::IsPlatformInheritableProperty(id) &&
+         !source_style_ids.Has(id);
+}
+
+void Element::CommitFontContext(
+    const starlight::ComputedCSSStyle& computed_style, double old_font_size,
+    double old_root_font_size) {
+  const auto new_font_size = computed_style.GetFontSize();
+  const auto new_root_font_size = computed_style.GetRootFontSize();
+
+  if (base::FloatsNotEqual(old_font_size, new_font_size)) {
+    NotifyUnitValuesUpdatedToAnimation(DynamicCSSStylesManager::kUpdateEm);
+  }
+  if (base::FloatsNotEqual(old_root_font_size, new_root_font_size)) {
+    NotifyUnitValuesUpdatedToAnimation(DynamicCSSStylesManager::kUpdateRem);
+  }
+
+  SetFontSizeForAllElement(new_font_size, new_root_font_size);
+  UpdateLayoutNodeFontSize(new_font_size, new_root_font_size);
 }
 
 // If the new animator is activated and this element has been created before,
@@ -788,9 +1966,169 @@ void Element::MarkStyleDirty(bool recursive) {
   MarkDirty(kDirtyStyle);
   if (recursive) {
     for (const auto& child : scoped_children_) {
-      static_cast<FiberElement*>(child.get())->MarkStyleDirty(recursive);
+      child->MarkStyleDirty(recursive);
     }
   }
+}
+
+// If a child's related CSS variable is updated, invalidate the child's style.
+void Element::RecursivelyMarkChildrenCSSVariableDirty(
+    const lepus::Value& css_variable_updated) {
+  for (const auto& child : scoped_children_) {
+    if (IsCSSInlineVariablesEnabled()) {
+      // Entering RecursivelyMarkChildrenCSSVariableDirty means current
+      // element's CSS variables changed.
+      // Mark children's custom_properties dirty so CollectCustomProperties can
+      // pick up the latest values.
+      child->MarkCustomPropertiesDirty();
+    }
+    if (child->is_raw_text()) {
+      continue;
+    }
+    lepus::Value css_variable_updated_merged = css_variable_updated;
+    // First, merge changing_css_variables with element's css_variable.
+    // Element's css_variable has higher priority.
+    child->data_model()->MergeWithCSSVariables(css_variable_updated_merged);
+    if (IsRelatedCSSVariableUpdated(child->data_model(),
+                                    css_variable_updated_merged)) {
+      child->MarkStyleDirty(false);
+    }
+    child->RecursivelyMarkChildrenCSSVariableDirty(css_variable_updated_merged);
+  }
+}
+
+void Element::RecursivelyMarkCustomPropertiesDirty() {
+  for (const auto& child : scoped_children_) {
+    if (!child->is_raw_text()) {
+      child->MarkStyleDirty(false);
+    }
+    child->RecursivelyMarkCustomPropertiesDirty();
+  }
+}
+
+void Element::MarkFontSizeInvalidateRecursively() {
+  MarkDirty(kDirtyFontSize);
+  auto* child = first_render_child_;
+  while (child) {
+    child->MarkFontSizeInvalidateRecursively();
+    child = child->next_render_sibling_;
+  }
+}
+
+void Element::InvalidateChildrenFontSizeRecursively() {
+  auto* child = first_render_child_;
+  while (child) {
+    child->MarkFontSizeInvalidateRecursively();
+    child = child->next_render_sibling_;
+  }
+}
+
+void Element::InvalidateChildrenInheritedStylesRecursively() {
+  for (const auto& child : scoped_children_) {
+    child->ApplyFunctionRecursive([](Element* element) {
+      if (!element->is_raw_text()) {
+        element->MarkDirtyLite(kDirtyPropagateInherited);
+      }
+    });
+  }
+}
+
+void Element::MarkDirectChildrenStyleDirtyForInheritedPropertyMutation() {
+  for (const auto& child : scoped_children_) {
+    if (!child->is_raw_text()) {
+      child->MarkStyleDirty(false);
+    }
+  }
+}
+
+void Element::SetStyleObjects(
+    std::unique_ptr<style::StyleObject*, style::StyleObjectArrayDeleter>
+        style_objects) {
+  last_style_objects_ = std::move(style_objects_);
+
+  style_objects_ = std::move(style_objects);
+
+  MarkDirty(kDirtyForceUpdate | kDirtyStyleObjects);
+}
+
+void Element::ReplaceDynamicSimpleStyles(
+    style::DynamicStyleObjectRef new_style_object) {
+  const bool has_committed_dynamic = parsed_dynamic_styles_map_.has_value() &&
+                                     !parsed_dynamic_styles_map_->empty();
+  // Pure no-op: no incoming source, no current source, and no committed
+  // dynamic state to clear.
+  if (!new_style_object && !dynamic_simple_object_ && !has_committed_dynamic) {
+    return;
+  }
+
+  dynamic_simple_object_ = std::move(new_style_object);
+  MarkDirty(kDirtyForceUpdate | kDirtyDynamicStyleObjects);
+}
+
+void Element::AddDynamicSimpleStyles(tasm::StyleMap&& new_styles) {
+  if (new_styles.empty()) {
+    return;
+  }
+
+  if (!dynamic_simple_object_ && parsed_dynamic_styles_map_.has_value() &&
+      !parsed_dynamic_styles_map_->empty()) {
+    // A resolved-only clone does not keep the dynamic mutation carrier.
+    // Rebuild it from the committed resolved dynamic map on the first
+    // post-clone mutation so incremental updates keep previous dynamic state.
+    dynamic_simple_object_ =
+        style::CreateDynamicStyleObjectRef(*parsed_dynamic_styles_map_);
+  }
+
+  if (!dynamic_simple_object_) {
+    dynamic_simple_object_ =
+        style::CreateDynamicStyleObjectRef(std::move(new_styles));
+    MarkDirty(kDirtyForceUpdate | kDirtyDynamicStyleObjects);
+    return;
+  }
+
+  dynamic_simple_object_->MergeStyleMap(std::move(new_styles));
+  MarkDirty(kDirtyForceUpdate | kDirtyDynamicStyleObjects);
+}
+
+void Element::RemoveDynamicSimpleStyleKV(tasm::CSSPropertyID id) {
+  if (!dynamic_simple_object_ && parsed_dynamic_styles_map_.has_value() &&
+      !parsed_dynamic_styles_map_->empty()) {
+    dynamic_simple_object_ =
+        style::CreateDynamicStyleObjectRef(*parsed_dynamic_styles_map_);
+  }
+  if (!dynamic_simple_object_) {
+    return;
+  }
+
+  if (!dynamic_simple_object_->RemoveStyleValue(id)) {
+    return;
+  }
+
+  if (dynamic_simple_object_->Properties().empty()) {
+    dynamic_simple_object_ = nullptr;
+  }
+  MarkDirty(kDirtyForceUpdate | kDirtyDynamicStyleObjects);
+}
+
+void Element::AddDynamicSimpleStyleKV(tasm::CSSPropertyID id,
+                                      tasm::CSSValue&& value) {
+  if (!dynamic_simple_object_ && parsed_dynamic_styles_map_.has_value() &&
+      !parsed_dynamic_styles_map_->empty()) {
+    dynamic_simple_object_ =
+        style::CreateDynamicStyleObjectRef(*parsed_dynamic_styles_map_);
+  }
+
+  if (!dynamic_simple_object_) {
+    StyleMap dynamic_styles;
+    dynamic_styles.insert_or_assign(id, std::move(value));
+    dynamic_simple_object_ =
+        style::CreateDynamicStyleObjectRef(std::move(dynamic_styles));
+    MarkDirty(kDirtyForceUpdate | kDirtyDynamicStyleObjects);
+    return;
+  }
+
+  dynamic_simple_object_->UpdateStyleMap(id, std::move(value));
+  MarkDirty(kDirtyForceUpdate | kDirtyDynamicStyleObjects);
 }
 
 // TODO(wujintian) : Perhaps we can provide an rvalue version of the API to
@@ -800,6 +2138,76 @@ void Element::SetClass(const base::String& clazz) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_SET_CLASS);
   data_model_->SetClass(clazz);
   MarkStyleDirty(NeedForceClassChangeTransmit());
+}
+
+void Element::OnClassChanged(const ClassList& old_classes,
+                             const ClassList& new_classes) {
+  if (element_manager() && element_manager()->GetEnableStandardCSSSelector()) {
+    if (element_manager()->CSSFragmentParsingOnTASMWorkerMTSRender()) {
+      element_manager()->GetTasmWorkerTaskRunner()->PostTask(
+          [this, old_classes_ = old_classes, new_classes_ = new_classes]() {
+            CheckHasInvalidationForClass(old_classes_, new_classes_);
+          });
+    } else {
+      CheckHasInvalidationForClass(old_classes, new_classes);
+    }
+  }
+}
+
+bool Element::CheckHasInvalidationForClass(const ClassList& old_classes,
+                                           const ClassList& new_classes) {
+  auto* css_fragment = GetRelatedCSSFragment();
+  // resolve styles from css fragment
+  if (!css_fragment || !css_fragment->enable_css_invalidation()) {
+    return false;
+  }
+  auto old_size = invalidation_lists_.descendants.size();
+  CSSFragment::CollectClassChangedInvalidation(
+      css_fragment, invalidation_lists_, old_classes, new_classes);
+  return invalidation_lists_.descendants.size() != old_size;
+}
+
+bool Element::CheckHasInvalidationForId(const std::string& old_id,
+                                        const std::string& new_id) {
+  auto* css_fragment = GetRelatedCSSFragment();
+  // resolve styles from css fragment
+  if (!css_fragment || !css_fragment->enable_css_invalidation()) {
+    return false;
+  }
+  auto old_size = invalidation_lists_.descendants.size();
+  CSSFragment::CollectIdChangedInvalidation(css_fragment, invalidation_lists_,
+                                            old_id, new_id);
+  return invalidation_lists_.descendants.size() != old_size;
+}
+
+void Element::InvalidateChildren(css::InvalidationSet* invalidation_set) {
+  if (invalidation_set->WholeSubtreeInvalid() || !invalidation_set->IsEmpty()) {
+    VisitChildren([invalidation_set](Element* child) {
+      if (!child->StyleDirty() && !child->is_raw_text() &&
+          invalidation_set->InvalidatesElement(*child->data_model())) {
+        child->MarkStyleDirty(false);
+      }
+    });
+  }
+}
+
+void Element::InvalidateChildrenIfNeeded() {
+  for (auto* invalidation_set : invalidation_lists_.descendants) {
+    InvalidateChildren(invalidation_set);
+  }
+  invalidation_lists_.descendants.clear_and_shrink();
+}
+
+void Element::VisitChildren(
+    const base::MoveOnlyClosure<void, Element*>& visitor) {
+  for (auto& child : scoped_children_) {
+    auto* child_element = child.get();
+    // In fiber mode, we skip the children in component
+    if (!child_element->is_component()) {
+      visitor(child_element);
+      child_element->VisitChildren(visitor);
+    }
+  }
 }
 
 void Element::SetClasses(ClassList&& classes) {
@@ -992,6 +2400,243 @@ void Element::RemoveEvent(const base::String& name, const base::String& type) {
 void Element::RemoveAllEvents() {
   data_model_->RemoveAllEvents();
   MarkDirty(kDirtyEvent);
+}
+
+void Element::FiberAddEvent(const base::String& type, const base::String& name,
+                            const lepus::Value& callback,
+                            const std::string& context_name) {
+  auto event_options = GetEventListenerOptions(type);
+  auto event_name = name.str();
+  auto* manager = element_manager();
+  const bool should_sync_listener =
+      manager != nullptr && manager->EnableEventHandleRefactor();
+  auto remove_event_listener =
+      [this, &event_name,
+       &event_options](event::ClosureEventListener::ClosureType closure_type) {
+        RemoveEventListener(
+            event_name, std::make_unique<event::ClosureEventListener>(
+                            [](lepus::Value) {}, event_options, closure_type));
+      };
+
+  if (callback.IsEmpty()) {
+    RemoveEvent(name, type);
+    if (should_sync_listener) {
+      remove_event_listener(event::ClosureEventListener::ClosureType::kJS);
+      remove_event_listener(event::ClosureEventListener::ClosureType::kCore);
+    }
+    return;
+  }
+
+  if (callback.IsString()) {
+    SetJSEventHandler(name, type, callback.String());
+    if (should_sync_listener) {
+      auto handler_name = callback.StdString();
+      const bool should_handle_air_fiber_event =
+          manager != nullptr && !manager->IsEmbeddedModeOn() &&
+          manager->IsAirModeFiberEnabled();
+      const bool support_component_js = manager->SupportComponentJS();
+      auto* default_vm_context = manager->GetDefaultEntryRuntime();
+      auto default_entry_name = manager->GetDefaultEntryLogicalName();
+      remove_event_listener(event::ClosureEventListener::ClosureType::kJS);
+      AddEventListener(
+          event_name,
+          std::make_unique<event::ClosureEventListener>(
+              [element = this, event_name, handler_name,
+               should_handle_air_fiber_event, support_component_js,
+               default_vm_context, default_entry_name](lepus::Value args) {
+                const auto& args_array = args.Array();
+                if (!args.IsArray() || args_array->size() != 3) {
+                  return;
+                }
+                const auto& event_info = args_array->get(0);
+                const auto& event_detail = args_array->get(1);
+                const auto& event_info_array = event_info.Array();
+                if (!event_info.IsArray() || event_info_array->size() != 2) {
+                  return;
+                }
+                if (should_handle_air_fiber_event) {
+                  auto event = fml::static_ref_ptr_cast<event::Event>(
+                      args_array->get(2).RefCounted());
+                  if (event == nullptr || !event->target() ||
+                      !event->current_target()) {
+                    return;
+                  }
+                  auto* target = static_cast<Element*>(event->target().get());
+                  auto* current_target =
+                      static_cast<Element*>(event->current_target().get());
+                  auto* parent_component =
+                      current_target->GetParentComponentElement();
+                  if (default_vm_context == nullptr) {
+                    return;
+                  }
+                  if (!current_target->InComponent()) {
+                    if (parent_component) {
+                      BASE_STATIC_STRING_DECL(kCallPageEvent, "$callPageEvent");
+                      default_vm_context->Call(
+                          kCallPageEvent, lepus::Value(handler_name),
+                          lepus_value::ShallowCopy(event_detail),
+                          lepus::Value(parent_component->impl_id()));
+                    }
+                  } else if (parent_component && target) {
+                    BASE_STATIC_STRING_DECL(kCallComponentEvent,
+                                            "$callComponentEvent");
+                    default_vm_context->Call(
+                        kCallComponentEvent,
+                        lepus::Value(parent_component->impl_id()),
+                        lepus::Value(handler_name),
+                        lepus_value::ShallowCopy(event_detail),
+                        lepus::Value(target->impl_id()));
+                  }
+                  return;
+                }
+
+                auto call_method_name =
+                    !support_component_js || event_info_array->get(0).Bool();
+                auto page_name_or_component_id =
+                    call_method_name ? default_entry_name
+                                     : event_info_array->get(1).StdString();
+                TRACE_EVENT(
+                    LYNX_TRACE_CATEGORY, CLOSURE_EVENT_LISTENER_CLOSURE,
+                    [&event_name, &handler_name, &page_name_or_component_id](
+                        lynx::perfetto::EventContext ctx) {
+                      ctx.event()->add_debug_annotations("name", event_name);
+                      ctx.event()->add_debug_annotations("callback",
+                                                         handler_name);
+                      ctx.event()->add_debug_annotations(
+                          "component", page_name_or_component_id);
+                    });
+                LOGI("Invoke the Closure of ClosureEventListener for event: "
+                     << event_name << " with callback: " << handler_name
+                     << " in component: " << page_name_or_component_id)
+                auto message = lepus::CArray::Create();
+                message->emplace_back(page_name_or_component_id);
+                message->emplace_back(handler_name);
+                message->emplace_back(lepus_value::ShallowCopy(event_detail));
+                auto event = fml::MakeRefCounted<runtime::MessageEvent>(
+                    call_method_name
+                        ? runtime::kMessageEventTypeSendPageEvent
+                        : runtime::kMessageEventTypePublishComponentEvent,
+                    runtime::ContextProxy::Type::kCoreContext,
+                    runtime::ContextProxy::Type::kJSContext,
+                    std::make_unique<pub::ValueImplLepus>(
+                        lepus::Value(std::move(message))));
+                element->DispatchMessageEvent(std::move(event));
+              },
+              event_options, event::ClosureEventListener::ClosureType::kJS));
+    }
+    return;
+  }
+
+  if (callback.IsCallable()) {
+    SetLepusEventHandler(name, type, lepus::Value(), callback);
+#if ENABLE_LEPUSNG_WORKLET
+    if (should_sync_listener) {
+      auto callback_value = callback;
+      remove_event_listener(event::ClosureEventListener::ClosureType::kCore);
+      AddEventListener(
+          event_name,
+          std::make_unique<event::ClosureEventListener>(
+              [element = this, callback_value](lepus::Value args) {
+                const auto& args_array = args.Array();
+                if (!args.IsArray() || args_array->size() != 3) {
+                  return;
+                }
+                const auto& event_info = args_array->get(0);
+                const auto& event_detail = args_array->get(1);
+                auto event = fml::static_ref_ptr_cast<event::Event>(
+                    args_array->get(2).RefCounted());
+                const auto& event_info_array = event_info.Array();
+                if (!event_info.IsArray() || event_info_array->size() != 3) {
+                  return;
+                }
+                const auto& component_id = event_info_array->get(0).StdString();
+                const auto& entry_name = event_info_array->get(1).StdString();
+                int32_t element_id = event_info_array->get(2).Int32();
+                auto* manager = element->element_manager();
+                if (manager == nullptr) {
+                  return;
+                }
+
+                auto task_handler =
+                    std::make_shared<worklet::LepusApiHandler>();
+                auto current_option = std::make_shared<PipelineOptions>();
+                EventResult result =
+                    manager->FireElementWorkletAndRequestResolve(
+                        component_id, entry_name, callback_value, event_detail,
+                        task_handler, element_id, current_option);
+                ApplyEventResult(event, result);
+              },
+              event_options, event::ClosureEventListener::ClosureType::kCore));
+    }
+#endif  // ENABLE_LEPUSNG_WORKLET
+    return;
+  }
+
+  if (callback.IsObject()) {
+    BASE_STATIC_STRING_DECL(kType, "type");
+    BASE_STATIC_STRING_DECL(kValue, "value");
+    const auto& obj_type = callback.GetProperty(kType).StdString();
+    const auto& value = callback.GetProperty(kValue);
+
+    if (obj_type == tasm::kWorklet) {
+      SetWorkletEventHandler(name, type, value, context_name);
+    }
+    if (should_sync_listener) {
+      auto worklet_value = value;
+      remove_event_listener(event::ClosureEventListener::ClosureType::kCore);
+      AddEventListener(
+          event_name,
+          std::make_unique<event::ClosureEventListener>(
+              [element = this, context_name, worklet_value](lepus::Value args) {
+                auto* manager = element->element_manager();
+                if (manager == nullptr || worklet_value.IsEmpty()) {
+                  return;
+                }
+                auto* context = manager->GetEntryRuntime(context_name);
+                if (context == nullptr) {
+                  return;
+                }
+                const auto& args_array = args.Array();
+                if (!args.IsArray() || args_array->size() != 3) {
+                  return;
+                }
+                const auto& event_detail = args_array->get(1);
+                auto event = fml::static_ref_ptr_cast<event::Event>(
+                    args_array->get(2).RefCounted());
+
+                BASE_STATIC_STRING_DECL(kEntryFunction, "runWorklet");
+                BASE_STATIC_STRING_DECL(kRunWorkletSource, "source");
+
+                const auto worklet_function_value =
+                    context->GetGlobalData(kEntryFunction);
+                auto param_array = lepus::CArray::Create();
+                param_array->push_back(event_detail);
+
+                auto options = lepus::Dictionary::Create();
+                options.get()->SetValue(
+                    kRunWorkletSource,
+                    static_cast<int>(tasm::RunWorkletType::kEvents));
+
+                EventResult result = EventResult::kDefault;
+                auto call_result_value =
+                    context->CallClosure(worklet_function_value, worklet_value,
+                                         lepus::Value(std::move(param_array)),
+                                         lepus::Value(std::move(options)));
+                BASE_STATIC_STRING_DECL(kEventResult, "eventReturnResult");
+                if (call_result_value.IsObject()) {
+                  result = static_cast<EventResult>(
+                      call_result_value.GetProperty(kEventResult).Number());
+                }
+                ApplyEventResult(event, result);
+              },
+              event_options, event::ClosureEventListener::ClosureType::kCore));
+    }
+    return;
+  }
+
+  LOGW(
+      "FiberAddEvent's 3rd parameter must be undefined, null, string or "
+      "callable.");
 }
 
 void Element::AddConfig(const base::String& key, const lepus::Value& value) {
@@ -1549,12 +3194,55 @@ void Element::HandlePseudoElement() {
   style_resolver_.HandlePseudoElement(GetRelatedCSSFragment());
 }
 
+void Element::PrepareOrUpdatePseudoElement(PseudoState state,
+                                           StyleMap& style_map) {
+  if (style_map.empty() &&
+      (!pseudo_elements_.has_value() ||
+       pseudo_elements_->find(state) == pseudo_elements_->end())) {
+    return;
+  }
+
+  PseudoElement* pseudo_element = CreatePseudoElementIfNeed(state);
+  pseudo_element->UpdateStyleMap(style_map);
+}
+
+PseudoElement* Element::CreatePseudoElementIfNeed(PseudoState state) {
+  if (pseudo_elements_.has_value()) {
+    auto it = pseudo_elements_->find(state);
+    if (it != pseudo_elements_->end()) {
+      return it->second.get();
+    }
+  }
+
+  auto new_pseudo_element = std::make_unique<PseudoElement>(state, this);
+  auto* result = new_pseudo_element.get();
+  (*pseudo_elements_)[state] = std::move(new_pseudo_element);
+  return result;
+}
+
 void Element::HandleCSSVariables(StyleMap& styles) {
   style_resolver_.HandleCSSVariables(styles);
 }
 
 bool Element::DisableFlattenWithOpacity() {
   return computed_css_style()->HasOpacity() && !is_text() && !is_image();
+}
+
+void Element::SetMeasureFunc(std::unique_ptr<MeasureFunc> measure_func) {
+  if (customized_layout_node_ != nullptr) {
+    customized_layout_node_->SetMeasureFunc(std::move(measure_func));
+  }
+}
+
+void Element::SetMeasureFunc(void* context,
+                             starlight::SLMeasureFunc measure_func) {
+  sl_node_->SetContext(context);
+  sl_node_->SetSLMeasureFunc(std::move(measure_func));
+}
+
+void Element::SetAlignmentFunc(void* context,
+                               starlight::SLAlignmentFunc alignment_func) {
+  sl_node_->SetSLAlignmentFunc(std::move(alignment_func));
 }
 
 starlight::ComputedCSSStyle* Element::GetParentComputedCSSStyle() {
@@ -1583,10 +3271,40 @@ starlight::ComputedCSSStyle* Element::GetParentBaseComputedCSSStyle() {
   return temp->base_css_style();
 }
 
+void Element::PrepareSelfForThreadedElementResolution() {
+  EnsureTagInfo();
+  GetRelatedCSSFragment();
+  if (is_component()) {
+    static_cast<ComponentElement*>(this)->GetCSSFragment();
+  }
+}
+
 bool Element::ShouldAvoidFlattenForView() {
   return is_view() && element_manager()->GetDefaultOverflowVisible() &&
          computed_css_style()->IsOverflowHidden() &&
          computed_css_style()->HasBorderRadius();
+}
+
+void Element::DispatchLayoutBeforeRecursively() {
+  if (!is_wrapper()) {
+    if (sl_node_ == nullptr || !sl_node_->IsDirty()) {
+      return;
+    }
+
+    if (sl_node_->GetSLMeasureFunc()) {
+      DispatchLayoutBefore();
+    }
+  }
+
+  for (auto& child : scoped_children_) {
+    child->DispatchLayoutBeforeRecursively();
+  }
+}
+
+void Element::DispatchLayoutBefore() {
+  if (customized_layout_node_) {
+    customized_layout_node_->OnLayoutBefore();
+  }
 }
 
 bool Element::TendToFlatten() {
@@ -1616,6 +3334,102 @@ bool Element::TendToFlatten() {
 }
 
 double Element::GetFontSize() { return computed_css_style()->GetFontSize(); }
+
+const Element::InheritedProperty Element::GetInheritedProperty() {
+  return {
+      children_propagate_inherited_styles_flag_, inherited_styles_.get(),
+      reset_inherited_ids_.get(),
+      custom_properties_.Get() ? &custom_properties_.Get()->Value() : nullptr};
+}
+
+const Element::InheritedProperty Element::GetParentInheritedProperty() {
+  // If in a parallel flush process or if the parent is null, return empty
+  // InheritedProperty indicating that inheritance logic is not needed now.
+  if (this->is_greedy_parallel_flush()) {
+    return {false, nullptr, nullptr,
+            custom_properties_.Get() ? &custom_properties_.Get()->Value()
+                                     : nullptr};
+  }
+
+  Element* real_parent = parent();
+  if (real_parent == nullptr) {
+    return InheritedProperty();
+  }
+
+  return real_parent->GetInheritedProperty();
+}
+
+const tasm::CSSValue& Element::ResolveCurrentStyleValue(
+    const CSSPropertyID& key, const tasm::CSSValue& default_value) {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_RESOLVE_CURRENT_STYLE);
+  auto iter = parsed_styles_map_.find(key);
+  if (iter != parsed_styles_map_.end()) {
+    return iter->second;
+  }
+
+  const auto inherited_property = GetParentInheritedProperty();
+  if (inherited_property.inherited_styles_ != nullptr) {
+    auto iter = inherited_property.inherited_styles_->find(key);
+    if (iter != inherited_property.inherited_styles_->end()) {
+      return iter->second;
+    }
+  }
+
+  return default_value;
+}
+
+bool Element::CollectCustomProperties(AttributeHolder* holder) {
+  if (custom_properties_.Get() != nullptr) {
+    return true;
+  }
+
+  if (!holder) {
+    return false;
+  }
+
+  Element* real_parent = parent();
+  if (real_parent) {
+    if (!real_parent->CollectCustomProperties(real_parent->data_model())) {
+      return false;
+    }
+    // Share parent's map (Copy-On-Write).
+    custom_properties_ = real_parent->custom_properties_;
+  }
+
+  const auto& variables = holder->css_variables_map();
+  const auto& inline_variables = holder->GetCSSInlineVariables();
+
+  // If we don't have any new variables, we can just share the parent's map.
+  if (variables.empty() && inline_variables.empty()) {
+    if (custom_properties_.Get() == nullptr) {
+      custom_properties_.Init();
+    }
+    return true;
+  }
+
+  // Access() will copy the map if it's shared (refcount > 1).
+  if (custom_properties_.Get() == nullptr) {
+    custom_properties_.Init();
+  }
+  auto* map = &custom_properties_.Access()->Value();
+
+  // TODO(renzhongyue): Variables declared in CSS must use the normal
+  // custom-property declaration syntax, not {{}}.
+  for (const auto& [name, value] : variables) {
+    CSSStringParser parser{value.c_str(), static_cast<uint32_t>(value.length()),
+                           element_manager()->GetCSSParserConfigs()};
+    map->insert_or_assign(name, parser.ParseVariable());
+  }
+
+  for (const auto& [name, value] : inline_variables) {
+    CSSStringParser parser{value.c_str(), static_cast<uint32_t>(value.length()),
+                           element_manager()->GetCSSParserConfigs()};
+    map->insert_or_assign(name, parser.ParseVariable());
+  }
+
+  CSSValue::SubstituteAll(*map);
+  return true;
+}
 
 double Element::GetParentFontSize() {
   if (IsCSSInheritanceEnabled() && !is_greedy_parallel_flush() &&
@@ -1652,6 +3466,568 @@ void Element::SetComputedFontSize(double font_size, double root_font_size) {
   UpdateLayoutNodeFontSize(font_size, root_font_size);
   ResolveStyleValue(kPropertyIDFontSize,
                     CSSValue(font_size, CSSValuePattern::NUMBER));
+}
+
+void Element::SetFontSizeForAllElement(double cur_node_font_size,
+                                       double root_node_font_size) {
+  computed_css_style()->SetFontSize(cur_node_font_size, root_node_font_size);
+
+  if (pseudo_elements_.has_value()) {
+    for (const auto& [key, pseudo_element] : *pseudo_elements_) {
+      pseudo_element->SetFontSize(cur_node_font_size, root_node_font_size);
+    }
+  }
+}
+
+void Element::SetFontSize(const tasm::CSSValue& value) {
+  SetFontSize(value, computed_css_style());
+}
+
+void Element::SetFontSize(const tasm::CSSValue& value,
+                          starlight::ComputedCSSStyle* target_style) {
+  base::flex_optional<float> result;
+  const auto current_font_size = target_style->GetFontSize();
+  const auto root_font_size = target_style->GetRootFontSize();
+  if (!value.IsEmpty()) {
+    CheckDynamicUnit(CSSPropertyID::kPropertyIDFontSize, value, false);
+    const auto& env_config = element_manager()->GetLynxEnvConfig();
+    auto unify_vw_vh_behavior =
+        element_manager()->GetDynamicCSSConfigs().unify_vw_vh_behavior_;
+    result = starlight::CSSStyleUtils::ResolveFontSize(
+        value, env_config, unify_vw_vh_behavior, GetParentFontSize(),
+        GetRecordedRootFontSize(), element_manager()->GetCSSParserConfigs());
+  } else {
+    result = GetParentFontSize();
+  }
+
+  if (result.has_value()) {
+    target_style->SetResolvedValue(kPropertyIDFontSize,
+                                   CSSValue(*result, CSSValuePattern::NUMBER));
+  } else {
+    target_style->RemoveResolvedValue(kPropertyIDFontSize);
+  }
+
+  if (result.has_value() && *result != current_font_size) {
+    NotifyUnitValuesUpdatedToAnimation(DynamicCSSStylesManager::kUpdateEm);
+
+    if (is_page()) {
+      if (target_style == computed_css_style()) {
+        SetFontSizeForAllElement(*result, *result);
+      } else {
+        target_style->SetFontSize(*result, *result);
+      }
+      UpdateLayoutNodeFontSize(*result, *result);
+    } else {
+      if (target_style == computed_css_style()) {
+        SetFontSizeForAllElement(*result, root_font_size);
+      } else {
+        target_style->SetFontSize(*result, root_font_size);
+      }
+      UpdateLayoutNodeFontSize(*result, root_font_size);
+    }
+
+    if (!EnableLayoutInElementMode() || IsShadowNodeCustom()) {
+      target_style->SetValue(kPropertyIDFontSize,
+                             CSSValue(*result, CSSValuePattern::NUMBER));
+    }
+    if (is_page() && !is_greedy_parallel_flush()) {
+      MarkFontSizeInvalidateRecursively();
+    } else {
+      MarkDirty(kDirtyFontSize);
+    }
+  }
+}
+
+void Element::ResetFontSize() {
+  CheckDynamicUnit(CSSPropertyID::kPropertyIDFontSize, CSSValue(), true);
+  auto font_size = element_manager()->GetLynxEnvConfig().PageDefaultFontSize();
+  auto root_font_size = is_page() ? font_size : GetCurrentRootFontSize();
+
+  if (font_size != GetFontSize()) {
+    SetFontSizeForAllElement(font_size, root_font_size);
+    if (!EnableLayoutInElementMode() || IsShadowNodeCustom()) {
+      computed_css_style()->SetValue(
+          kPropertyIDFontSize, CSSValue(font_size, CSSValuePattern::NUMBER));
+    }
+    UpdateLayoutNodeFontSize(font_size, root_font_size);
+  }
+}
+
+void Element::UpdateLengthContextValueForAllElement(
+    const LynxEnvConfig& env_config) {
+  computed_css_style()->SetFontScale(env_config.FontScale());
+  computed_css_style()->SetViewportWidth(env_config.ViewportWidth());
+  computed_css_style()->SetViewportHeight(env_config.ViewportHeight());
+  computed_css_style()->SetScreenWidth(env_config.ScreenWidth());
+  computed_css_style()->SetLayoutUnit(env_config.PhysicalPixelsPerLayoutUnit(),
+                                      env_config.LayoutsUnitPerPx());
+
+  if (pseudo_elements_.has_value()) {
+    for (const auto& [key, pseudo_element] : *pseudo_elements_) {
+      pseudo_element->ComputedCSSStyle()->SetFontScale(env_config.FontScale());
+      pseudo_element->ComputedCSSStyle()->SetViewportWidth(
+          env_config.ViewportWidth());
+      pseudo_element->ComputedCSSStyle()->SetViewportHeight(
+          env_config.ViewportHeight());
+      pseudo_element->ComputedCSSStyle()->SetScreenWidth(
+          env_config.ScreenWidth());
+      pseudo_element->ComputedCSSStyle()->SetLayoutUnit(
+          env_config.PhysicalPixelsPerLayoutUnit(),
+          env_config.LayoutsUnitPerPx());
+    }
+  }
+}
+
+void Element::UpdateDynamicChildrenStyleRecursively(uint32_t style,
+                                                    bool force_update) {
+  auto* child = first_render_child_;
+  while (child) {
+    child->UpdateDynamicElementStyle(style, force_update);
+    child = child->next_render_sibling_;
+  }
+}
+
+void Element::UpdateDynamicElementStyleForNewPipeline(
+    uint32_t& style, bool& inner_force_update) {
+  constexpr uint32_t kMediaQueryEnvMask =
+      DynamicCSSStylesManager::kUpdateViewport |
+      DynamicCSSStylesManager::kUpdateScreenMetrics |
+      DynamicCSSStylesManager::kUpdateRem | DynamicCSSStylesManager::kUpdateEm |
+      DynamicCSSStylesManager::kUpdateColorScheme;
+  bool media_query_env_changed = false;
+  if (is_component() &&
+      ((style & kMediaQueryEnvMask) != 0 || (dirty_ & kDirtyFontSize))) {
+    auto* fragment = GetRelatedCSSFragment();
+    if (StyleResolver::FragmentsHasMediaQueries(fragment)) {
+      media_query_env_changed = true;
+      inner_force_update = true;
+    }
+  }
+
+  if ((dynamic_style_flags_ > 0 || inner_force_update ||
+       media_query_env_changed) &&
+      !is_wrapper()) {
+    NotifyUnitValuesUpdatedToAnimation(style);
+    const auto& env_config = element_manager()->GetLynxEnvConfig();
+
+    bool font_scale_changed =
+        (dynamic_style_flags_ & DynamicCSSStylesManager::kUpdateFontScale) &&
+        (style & DynamicCSSStylesManager::kUpdateFontScale) &&
+        (computed_css_style()->GetMeasureContext().font_scale_ !=
+         env_config.FontScale());
+    bool viewport_changed =
+        (dynamic_style_flags_ & DynamicCSSStylesManager::kUpdateViewport) &&
+        (style & DynamicCSSStylesManager::kUpdateViewport) &&
+        !(env_config.ViewportWidth() ==
+              computed_css_style()->GetMeasureContext().viewport_width_ &&
+          env_config.ViewportHeight() ==
+              computed_css_style()->GetMeasureContext().viewport_height_);
+    bool screen_matrix_changed =
+        (dynamic_style_flags_ &
+         DynamicCSSStylesManager::kUpdateScreenMetrics) &&
+        (style & DynamicCSSStylesManager::kUpdateScreenMetrics) &&
+        (env_config.ScreenWidth() !=
+         computed_css_style()->GetMeasureContext().screen_width_);
+    bool rem_changed =
+        (dynamic_style_flags_ & DynamicCSSStylesManager::kUpdateRem) &&
+        (style & DynamicCSSStylesManager::kUpdateRem);
+    bool em_changed =
+        (dynamic_style_flags_ & DynamicCSSStylesManager::kUpdateEm) &&
+        ((style & DynamicCSSStylesManager::kUpdateEm) ||
+         (dirty_ & kDirtyFontSize));
+
+    if (GetCurrentRootFontSize() != GetRecordedRootFontSize()) {
+      computed_css_style()->SetFontSize(GetFontSize(),
+                                        GetCurrentRootFontSize());
+      UpdateLayoutNodeFontSize(GetFontSize(), GetCurrentRootFontSize());
+    }
+
+    if (inner_force_update || font_scale_changed || viewport_changed ||
+        screen_matrix_changed || rem_changed || em_changed ||
+        media_query_env_changed) {
+      UpdateLengthContextValueForAllElement(env_config);
+
+      NewPipelineResolveRequest request;
+      request.force_resolve = true;
+      request.force_platform_update = inner_force_update;
+      request.dynamic_update_flags = style;
+      if (dirty_ & kDirtyFontSize) {
+        request.dynamic_update_flags |= DynamicCSSStylesManager::kUpdateEm;
+      }
+
+      auto outcome = ResolveCSSStylesNewPipelineCore(request);
+      if (outcome.need_update) {
+        RequestLayout();
+        PerformElementContainerCreateOrUpdate(
+            true, element_manager_->FixNewAnimatorFlushBug());
+      }
+      style |= outcome.child_update_flags;
+      inner_force_update |= outcome.force_children;
+    }
+  }
+
+  if (dirty_ & kDirtyFontSize) {
+    if (is_page()) {
+      style |= DynamicCSSStylesManager::kUpdateRem;
+    }
+    dirty_ &= ~kDirtyFontSize;
+  }
+}
+
+void Element::UpdateDynamicElementStyleRecursively(uint32_t style,
+                                                   bool force_update) {
+  if (is_raw_text()) {
+    return;
+  }
+  bool inner_force_update = force_update;
+
+  if (element_manager()->EnableNewStylingPipeline() &&
+      !element_manager()->EnableSimpleStyle()) {
+    UpdateDynamicElementStyleForNewPipeline(style, inner_force_update);
+    UpdateDynamicChildrenStyleRecursively(style, inner_force_update);
+    return;
+  }
+
+  constexpr uint32_t kMediaQueryEnvMask =
+      DynamicCSSStylesManager::kUpdateViewport |
+      DynamicCSSStylesManager::kUpdateScreenMetrics |
+      DynamicCSSStylesManager::kUpdateRem | DynamicCSSStylesManager::kUpdateEm |
+      DynamicCSSStylesManager::kUpdateColorScheme;
+  if (is_component() &&
+      ((style & kMediaQueryEnvMask) != 0 || (dirty_ & kDirtyFontSize))) {
+    auto* fragment = GetRelatedCSSFragment();
+    if (StyleResolver::FragmentsHasMediaQueries(fragment)) {
+      MarkStyleDirty(true);
+    }
+  }
+
+  if ((dynamic_style_flags_ > 0 || inner_force_update) && !is_wrapper()) {
+    // Style could never be "all" here.
+    NotifyUnitValuesUpdatedToAnimation(style);
+    const auto& env_config = element_manager()->GetLynxEnvConfig();
+    const auto& css_config = element_manager()->GetDynamicCSSConfigs();
+
+    bool font_scale_changed =
+        (dynamic_style_flags_ & DynamicCSSStylesManager::kUpdateFontScale) &&
+        (style & DynamicCSSStylesManager::kUpdateFontScale) &&
+        (computed_css_style()->GetMeasureContext().font_scale_ !=
+         env_config.FontScale());
+    bool viewport_changed =
+        (dynamic_style_flags_ & DynamicCSSStylesManager::kUpdateViewport) &&
+        (style & DynamicCSSStylesManager::kUpdateViewport) &&
+        !(env_config.ViewportWidth() ==
+              computed_css_style()->GetMeasureContext().viewport_width_ &&
+          env_config.ViewportHeight() ==
+              computed_css_style()->GetMeasureContext().viewport_height_);
+    bool screen_matrix_changed =
+        (dynamic_style_flags_ &
+         DynamicCSSStylesManager::kUpdateScreenMetrics) &&
+        (style & DynamicCSSStylesManager::kUpdateScreenMetrics) &&
+        (env_config.ScreenWidth() !=
+         computed_css_style()->GetMeasureContext().screen_width_);
+    bool rem_changed =
+        (dynamic_style_flags_ & DynamicCSSStylesManager::kUpdateRem) &&
+        (style & DynamicCSSStylesManager::kUpdateRem);
+
+    if (GetCurrentRootFontSize() != GetRecordedRootFontSize()) {
+      computed_css_style()->SetFontSize(GetFontSize(),
+                                        GetCurrentRootFontSize());
+      UpdateLayoutNodeFontSize(GetFontSize(), GetCurrentRootFontSize());
+    }
+
+    if (inner_force_update || font_scale_changed || viewport_changed ||
+        screen_matrix_changed || rem_changed) {
+      UpdateLengthContextValueForAllElement(env_config);
+      const auto property = GetParentInheritedProperty();
+
+      ConsumeStyleInternal(
+          parsed_styles_map_, property.inherited_styles_,
+          [this, style, &css_config](auto id, const auto& value) {
+            if (CSSProperty::IsTransitionProps(id) ||
+                CSSProperty::IsKeyframeProps(id)) {
+              return true;
+            }
+
+            if (ShouldUseLegacyTransitionInterception() &&
+                css_transition_manager_) {
+              if (IsFiberArch()) {
+                const bool skip_transition =
+                    element_manager_ &&
+                    !element_manager_
+                         ->FixFiberDynamicUpdateTransitionConsumeBug();
+                if (skip_transition &&
+                    css_transition_manager_->NeedsTransition(id)) {
+                  return true;
+                }
+              } else {
+                const bool skip_transition =
+                    element_manager_ &&
+                    element_manager_->FixDynamicUpdateTransitionConsumeBug();
+                if (!skip_transition &&
+                    css_transition_manager_->NeedsTransition(id)) {
+                  return true;
+                }
+              }
+            }
+
+            auto new_flags = DynamicCSSStylesManager::GetValueFlags(
+                id, value, css_config.unify_vw_vh_behavior_,
+                element_manager()->FixFilterDynamicUpdateBug());
+
+            if ((new_flags & (style | ((dirty_ & kDirtyFontSize)
+                                           ? DynamicCSSStylesManager::kUpdateEm
+                                           : 0))) == 0) {
+              return true;
+            }
+
+            return false;
+          });
+
+      if (element_manager()->EnableAnimationForwardUpdatePreservation() &&
+          animation_override_styles_map_.has_value() &&
+          !animation_override_styles_map_->empty()) {
+        ConsumeStyleInternal(*animation_override_styles_map_, nullptr,
+                             [](auto id, const auto& value) {
+                               if (CSSProperty::IsTransitionProps(id) ||
+                                   CSSProperty::IsKeyframeProps(id)) {
+                                 return true;
+                               }
+                               return false;
+                             });
+      }
+
+      if (inherited_styles_.has_value() && !inherited_styles_->empty()) {
+        inner_force_update |= true;
+      }
+
+      PerformElementContainerCreateOrUpdate(
+          true, element_manager_->FixNewAnimatorFlushBug());
+    }
+  }
+
+  if (dirty_ & kDirtyFontSize) {
+    if (is_page()) {
+      style |= DynamicCSSStylesManager::kUpdateRem;
+    }
+    dirty_ &= ~kDirtyFontSize;
+  }
+
+  UpdateDynamicChildrenStyleRecursively(style, inner_force_update);
+}
+
+void Element::UpdateDynamicElementStyle(uint32_t style, bool force_update) {
+  UpdateDynamicElementStyleRecursively(style, force_update);
+}
+
+bool Element::HasLayoutInElementPlatformNode() {
+  return EnableLayoutInElementMode() && customized_layout_node_;
+}
+
+int Element::GetLayoutInElementPlatformChildIndex(Element* child) {
+  if (child == nullptr || child->render_parent() == nullptr) {
+    return -1;
+  }
+  int index = 0;
+  auto* render_parent = child->render_parent();
+  for (auto* current = render_parent->first_render_child(); current != nullptr;
+       current = current->next_render_sibling()) {
+    if (current == child) {
+      return index;
+    }
+    if (current->HasLayoutInElementPlatformNode()) {
+      ++index;
+    }
+  }
+  return -1;
+}
+
+void Element::AddScopedVirtualChild(const fml::RefPtr<Element>& child) {
+  scoped_virtual_children_->push_back(child);
+}
+
+void Element::RemoveScopedVirtualChild(const fml::RefPtr<Element>& child) {
+  if (!scoped_virtual_children_.has_value()) {
+    return;
+  }
+  scoped_virtual_children_->erase(
+      std::remove(scoped_virtual_children_->begin(),
+                  scoped_virtual_children_->end(), child),
+      scoped_virtual_children_->end());
+}
+
+void Element::StoreLayoutNode(Element* child, Element* ref) {
+  child->render_parent_ = this;
+  Element* next_layout_sibling = ref;
+  Element* previous_layout_sibling =
+      next_layout_sibling ? next_layout_sibling->previous_render_sibling_
+                          : last_render_child_;
+  if (previous_layout_sibling) {
+    previous_layout_sibling->next_render_sibling_ = child;
+  } else {
+    first_render_child_ = child;
+  }
+  child->previous_render_sibling_ = previous_layout_sibling;
+
+  if (next_layout_sibling) {
+    next_layout_sibling->previous_render_sibling_ = child;
+  } else {
+    last_render_child_ = child;
+  }
+  child->next_render_sibling_ = next_layout_sibling;
+}
+
+void Element::RestoreLayoutNode(Element* node) {
+  if (node->previous_render_sibling_) {
+    node->previous_render_sibling_->next_render_sibling_ =
+        node->next_render_sibling_;
+  } else {
+    first_render_child_ = node->next_render_sibling_;
+  }
+  if (node->next_render_sibling_) {
+    node->next_render_sibling_->previous_render_sibling_ =
+        node->previous_render_sibling_;
+  } else {
+    last_render_child_ = node->previous_render_sibling_;
+  }
+  node->render_parent_ = nullptr;
+  node->previous_render_sibling_ = nullptr;
+  node->next_render_sibling_ = nullptr;
+}
+
+void Element::InsertLayoutNode(Element* child, Element* ref) {
+  DCHECK(!ref || !ref->is_wrapper());
+  if (EnableLayoutInElementMode()) {
+    Element* container = FindFirstNonVirtualRenderAncestor();
+    bool inserted = false;
+    if (container && !child->is_virtual()) {
+      container->EnsureSLNode();
+      child->EnsureSLNode();
+      Element* ref_node =
+          ref ? ref->FindFirstNonVirtualRenderSibling() : nullptr;
+      if (ref_node) {
+        ref_node->EnsureSLNode();
+      }
+      container->sl_node_->InsertChildBefore(
+          child->sl_node_.get(), ref_node ? ref_node->sl_node_.get() : nullptr);
+      child->UpdateFixedNodeSetRecursively(true);
+      container->MarkLayoutDirtyLite();
+      if (container->customized_layout_node_ &&
+          child->HasLayoutInElementPlatformNode()) {
+        int index = container->GetLayoutInElementPlatformChildIndex(child);
+        if (index >= 0) {
+          element_manager()->layout_context()->InsertLayoutNode(
+              container->impl_id(), child->impl_id(), index);
+        }
+      }
+      inserted = true;
+    }
+    child->attached_to_layout_parent_ = inserted || child->is_virtual();
+    return;
+  }
+
+  if (child->attached_to_layout_parent_) {
+    LOGE("Element layout node already inserted !");
+    this->LogNodeInfo();
+    child->LogNodeInfo();
+  }
+  EnqueueLayoutTask([element_manager = element_manager(), id = id_,
+                     child_id = child->impl_id(),
+                     ref_id = ref ? ref->impl_id() : -1]() {
+    element_manager->InsertLayoutNodeBefore(id, child_id, ref_id);
+  });
+  child->attached_to_layout_parent_ = true;
+}
+
+void Element::RemoveLayoutNode(Element* child,
+                               int layout_in_element_platform_index) {
+  if (EnableLayoutInElementMode()) {
+    if (auto* child_layout_node = child->slnode();
+        child_layout_node && child_layout_node->parent()) {
+      child->UpdateFixedNodeSetRecursively(false);
+      if (customized_layout_node_ && child->HasLayoutInElementPlatformNode()) {
+        int index = layout_in_element_platform_index >= 0
+                        ? layout_in_element_platform_index
+                        : GetLayoutInElementPlatformChildIndex(child);
+        element_manager()->layout_context()->RemoveLayoutNode(
+            impl_id(), child->impl_id(), index);
+      }
+      // FIXME: this->sl_node_ is accidentally not the parent of
+      // child->sl_node_->parent_. Should try to figure out why it happens.
+      if (child_layout_node->parent() != sl_node_.get()) {
+        LOGD(
+            "Trying to remove a LayoutObject that doesn't belong to the "
+            "Element.");
+      }
+      child->slnode()->parent()->RemoveChild(child->slnode());
+      MarkLayoutDirtyLite();
+    }
+    child->attached_to_layout_parent_ = false;
+    return;
+  }
+
+  EnqueueLayoutTask([element_manager = element_manager(), id = id_,
+                     child_id = child->impl_id()]() {
+    element_manager->RemoveLayoutNode(id, child_id);
+  });
+  child->attached_to_layout_parent_ = false;
+}
+
+void Element::UpdateFixedNodeSet() {
+  if (!EnableLayoutInElementMode() || !IsFixedNewOrUnifiedEnabled() ||
+      sl_node_ == nullptr) {
+    return;
+  }
+  if (is_fixed_ && !attached_to_layout_parent_ && !is_page()) {
+    return;
+  }
+  element_manager()->UpdateFixedNodeSet(sl_node_.get(), is_fixed_);
+}
+
+void Element::UpdateFixedNodeSetRecursively(bool is_insert) {
+  if (!EnableLayoutInElementMode() || !IsFixedNewOrUnifiedEnabled()) {
+    return;
+  }
+  if (sl_node_ != nullptr && is_fixed_) {
+    element_manager()->UpdateFixedNodeSet(sl_node_.get(), is_insert);
+  }
+  for (auto& child : scoped_children_) {
+    child->UpdateFixedNodeSetRecursively(is_insert);
+  }
+}
+
+void Element::RecursivelyMarkRenderRootElement(Element* render_root) {
+  render_root_element_ = render_root;
+  for (const auto& child : scoped_children_) {
+    if (!child->is_list_item()) {
+      child->RecursivelyMarkRenderRootElement(render_root);
+    }
+  }
+}
+
+void Element::UpdateRenderRootElementIfNecessary(Element* child) {
+  if (child->render_root_element_ == this->render_root_element_) {
+    // 1. Child has same render root as parent, indicating tree mutation inside
+    // same render root, no need to propagate change
+    return;
+  }
+  if (child->render_root_element_ == nullptr) {
+    // 2. child doesn't hava valid render_root_element, propagate parent's
+    // render_root_element to child subtree
+    child->RecursivelyMarkRenderRootElement(this->render_root_element_);
+    return;
+  }
+  if (this->render_root_element_ == nullptr) {
+    // 3. parent doesn't have valid render_root_element, reset chlld subtree
+    // render root
+    child->RecursivelyMarkRenderRootElement(nullptr);
+    return;
+  }
+  // 4.child and parent have different valid render_root_elements, throw warning
+  LOGW(
+      "FiberElement move element to a different render root, inefficient "
+      "operation");
+  // Update child subtree render root with parent render root
+  child->RecursivelyMarkRenderRootElement(this->render_root_element_);
 }
 
 void Element::CheckFlattenRelatedProp(const base::String& key,
@@ -1916,11 +4292,110 @@ bool Element::IsCSSInlineVariablesEnabled() const {
          element_manager_->GetDynamicCSSConfigs().enable_css_inline_variables_;
 }
 
+void Element::AsyncResolveSubtreeProperty() {
+  if (element_manager()->GetEnableParallelElement() &&
+      ((dirty_ & ~kDirtyTree) != 0) && scheduler_adapter_.get()) {
+    element_manager()->GetTasmWorkerTaskRunner()->PostTask([this]() mutable {
+      scheduler_adapter_->ResolveSubtreeProperty();
+
+      std::promise<ParallelFlushReturn> promise;
+      std::future<ParallelFlushReturn> future = promise.get_future();
+      auto task_info_ptr =
+          fml::MakeRefCounted<base::OnceTask<ParallelFlushReturn>>(
+              [promise = std::move(promise),
+               scheduler = scheduler_adapter_.get()]() mutable {
+                promise.set_value(
+                    scheduler->GenerateReduceTaskForResolveProperty());
+              },
+              std::move(future));
+      element_manager()->ParallelTasks().emplace_back(std::move(task_info_ptr));
+    });
+  }
+}
+
+bool Element::IsRelatedCSSVariableUpdated(
+    AttributeHolder* holder, const lepus::Value changing_css_variables) {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_IS_RELATED_CSS_UPDATED,
+              [this](lynx::perfetto::EventContext ctx) {
+                UpdateTraceDebugInfo(ctx.event());
+              });
+
+  bool changed = false;
+  ForEachLepusValue(
+      changing_css_variables,
+      [holder, &changed](const lepus::Value& key, const lepus::Value& value) {
+        if (!changed) {
+          auto it = holder->css_variable_related().find(key.String());
+          if (it != holder->css_variable_related().end() &&
+              !it->second.IsEqual(value.String())) {
+            changed = true;
+          }
+        }
+      });
+  return changed;
+}
+
+#if ENABLE_TRACE_PERFETTO
+void Element::UpdateTraceDebugInfo(TraceEvent* event) {
+  auto* tagInfo = event->add_debug_annotations();
+  tagInfo->set_name("tagName");
+  tagInfo->set_string_value(tag_.str());
+
+  if (!data_model_) {
+    return;
+  }
+
+  if (!data_model_->idSelector().empty()) {
+    auto* idInfo = event->add_debug_annotations();
+    idInfo->set_name("idSelector");
+    idInfo->set_string_value(data_model_->idSelector().str());
+  }
+  if (!data_model_->classes().empty()) {
+    std::string class_str = "";
+    for (auto& aClass : data_model_->classes()) {
+      class_str = class_str + " " + aClass.str();
+    }
+    if (!class_str.empty()) {
+      auto* classInfo = event->add_debug_annotations();
+      classInfo->set_name("class");
+      classInfo->set_string_value(class_str);
+    }
+  }
+  auto* nodeIndexInfo = event->add_debug_annotations();
+  nodeIndexInfo->set_name("nodeIndex");
+  nodeIndexInfo->set_uint_value(node_index_);
+}
+#endif
+
 PaintingContext* Element::painting_context() {
   return catalyzer_->painting_context();
 }
 
-void Element::MarkLayoutDirty() { element_manager_->MarkLayoutDirty(id_); }
+void Element::MarkLayoutDirty() {
+  if (EnableLayoutInElementMode()) {
+    MarkLayoutDirtyLite();
+    return;
+  }
+
+  EnsureLayoutBundle();
+  layout_bundle_->is_dirty = true;
+}
+
+void Element::MarkLayoutDirtyLite() {
+  if (!is_virtual_) {
+    EnsureSLNode();
+    sl_node_->MarkDirtyAndRequestLayout();
+  } else {
+    auto* parent = render_parent_;
+    while (parent) {
+      if (!parent->is_virtual_) {
+        parent->MarkLayoutDirtyLite();
+        break;
+      }
+      parent = parent->render_parent_;
+    }
+  }
+}
 
 void Element::RequireFlush() {
   if (flush_required_) {
@@ -2113,7 +4588,7 @@ bool Element::TickAllAnimation(fml::TimePoint& frame_time,
   }
   if (need_mark_props_dirty) {
     if (tasm::LynxEnv::GetInstance().EnableNewAnimatorOnPatchFinishOpt()) {
-      static_cast<FiberElement*>(this)->MarkPropsDirty();
+      MarkPropsDirty();
     } else {
       element_manager_->OnFinishUpdateProps(this, options);
     }
@@ -2405,7 +4880,28 @@ void Element::TransitionToNativeView() {
 }
 
 void Element::EnqueueLayoutTask(base::MoveOnlyClosure<void> operation) {
+  auto* render_root = GetRenderRootElement();
+  if (render_root && render_root->GetSchedulerAdapter() &&
+      render_root->GetSchedulerAdapter()->IsBatchResolvingTree()) {
+    render_root->GetSchedulerAdapter()
+        ->resolve_element_tree_queue()
+        .emplace_back(std::move(operation));
+    return;
+  }
+  if (element_manager()->GetParallelWithSyncLayout() &&
+      ShouldProcessParallelTasks()) {
+    EnqueueReduceTask(std::move(operation));
+    return;
+  }
   operation();
+}
+
+void Element::HandleDelayTask(base::MoveOnlyClosure<void> operation) {
+  if (this->is_parallel_flush()) {
+    parallel_reduce_tasks_->emplace_back(std::move(operation));
+  } else {
+    operation();
+  }
 }
 
 bool Element::IsExtendedLayoutOnlyProps(CSSPropertyID css_id) {
@@ -2454,6 +4950,11 @@ bool Element::IsFixedUnifiedOnly() const {
 
 bool Element::IsEventPathCatch(event::EventTarget* target,
                                event::Event* event) {
+  if (IsDetached()) {
+    LOGE("Element::IsEventPathCatch error: the target is detached.");
+    return true;
+  }
+
   if (event && event->from_frontend() && target != this) {
     auto root_component =
         static_cast<Element*>(target)->GetParentComponentElement();
@@ -2944,7 +5445,77 @@ bool Element::IfNeedsUpdateLayoutInfo() {
   return sl_node_->GetHasNewLayout();
 }
 
+void Element::UpdateLayoutInfoRecursively(PipelineOptions* options) {
+  if (!is_wrapper()) {
+    if (sl_node_ == nullptr || !(sl_node_->IsDirty())) {
+      return;
+    }
+
+    if (IfNeedsUpdateLayoutInfo()) {
+      UpdateLayoutInfo();
+    }
+
+    sl_node_->MarkUpdated();
+  }
+
+  for (auto& child : scoped_children_) {
+    child->UpdateLayoutInfoRecursively(options);
+  }
+
+  // A dirty child can change the list's content layout, so collect dirty list
+  // nodes regardless of whether their own layout info needs to be updated. This
+  // is intentionally post-order so nested lists are collected before their
+  // parent list.
+  if (is_list()) {
+    CollectDirtyNodeForList(impl_id(), options);
+  }
+}
+
+void Element::UpdateLayoutInfo() {
+  const auto& layout_result = sl_node_->GetLayoutResult();
+  width_ = layout_result.size_.width_;
+  height_ = layout_result.size_.height_;
+  top_ = layout_result.offset_.Y();
+  left_ = layout_result.offset_.X();
+  paddings_[0] = layout_result.padding_[starlight::kLeft];
+  paddings_[1] = layout_result.padding_[starlight::kTop];
+  paddings_[2] = layout_result.padding_[starlight::kRight];
+  paddings_[3] = layout_result.padding_[starlight::kBottom];
+  margins_[0] = layout_result.margin_[starlight::kLeft];
+  margins_[1] = layout_result.margin_[starlight::kTop];
+  margins_[2] = layout_result.margin_[starlight::kRight];
+  margins_[3] = layout_result.margin_[starlight::kBottom];
+  borders_[0] = layout_result.border_[starlight::kLeft];
+  borders_[1] = layout_result.border_[starlight::kTop];
+  borders_[2] = layout_result.border_[starlight::kRight];
+  borders_[3] = layout_result.border_[starlight::kBottom];
+  display_none_ = sl_node_->GetShouldDisplayNone();
+
+  if (IsShadowNodeCustom()) {
+    element_manager_->layout_context()->OnLayout(id_, left_, top_, width_,
+                                                 height_, paddings_, borders_);
+    customized_layout_node_->OnLayoutAfter();
+  }
+  if (EnableFragmentLayerRender()) {
+    static_cast<Fragment*>(element_container())->UpdateLayout(layout_result);
+  }
+  frame_changed_ = true;
+}
+
 void Element::ResetStyleSheet() { style_sheet_ = nullptr; }
+
+void Element::ResetSheetRecursively(
+    const std::shared_ptr<CSSStyleSheetManager>& manager) {
+  if (is_page() || is_component() || css_id_ != kInvalidCssId) {
+    set_style_sheet_manager(manager);
+  }
+
+  // reset style sheet.
+  ResetStyleSheet();
+  for (const auto& child : children()) {
+    child->ResetSheetRecursively(manager);
+  }
+}
 
 const base::String& Element::GetRawInlineStyles() {
   return full_raw_inline_style_;
@@ -2953,6 +5524,123 @@ const base::String& Element::GetRawInlineStyles() {
 void Element::SetRawInlineStyles(base::String value) {
   full_raw_inline_style_ = std::move(value);
   MarkDirty(kDirtyStyle);
+}
+
+void Element::ParseRawInlineStyles(CSSVariableMap* changed_css_vars) {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_PARSE_RAW_INLINE_STYLES);
+  auto& configs = element_manager_->GetCSSParserConfigs();
+  const auto& str = full_raw_inline_style_.str();
+  current_raw_inline_custom_properties_->clear();
+  data_model()->MoveAndClearCSSInlineVariables(changed_css_vars);
+
+  if (current_raw_important_inline_styles_.has_value()) {
+    current_raw_important_inline_styles_->clear();
+  }
+
+  ParseStyleDeclarationList(
+      str.c_str(), static_cast<uint32_t>(str.size()),
+      [this, &configs](const char* key_start, uint32_t key_length,
+                       const char* value_start, uint32_t value_length,
+                       bool important) {
+        (void)configs;
+        auto id = CSSProperty::GetPropertyID(
+            base::static_string::GenericCacheKey(key_start, key_length));
+        if (CSSProperty::IsPropertyValid(id)) {
+          auto value = lepus::Value(base::String(value_start, value_length));
+          auto& target_map = important ? current_raw_important_inline_styles_
+                                       : current_raw_inline_styles_;
+          target_map->insert_or_assign(id, std::move(value));
+        } else if (IsCSSInlineVariablesEnabled() &&
+                   CSSProperty::IsCustomProperty(key_start, key_length)) {
+          current_raw_inline_custom_properties_->insert_or_assign(
+              base::String(key_start, key_length),
+              base::String(value_start, value_length));
+          data_model()->UpdateCSSInlineVariables(
+              base::String(key_start, key_length),
+              base::String(value_start, value_length));
+        }
+
+        // DevTool needs to get InlineStyle information from DataModel's
+        // InlineStyle, so when DevTool is enabled, it needs to set the
+        // corresponding InlineStyle for DataModel.
+        EXEC_EXPR_FOR_INSPECTOR(if (element_manager()->IsDomTreeEnabled()) {
+          if (data_model() == nullptr) {
+            return;
+          }
+          data_model()->SetInlineStyle(
+              id, base::String(value_start, value_length), configs);
+        });
+      });
+
+  data_model()->UpdateInlineStyleChangedVars(changed_css_vars);
+
+  EXEC_EXPR_FOR_INSPECTOR(if (element_manager()->IsDomTreeEnabled()) {
+    element_manager()->OnElementNodeSetForInspector(this);
+  });
+}
+
+void Element::ProcessFullRawInlineStyle(CSSVariableMap* changed_css_vars) {
+  // If self has raw inline styles, parse to current_raw_inline_styles_ but do
+  // not process to final style map. Inline styles will be merged finally by
+  // MergeInlineStyles.
+  if (!full_raw_inline_style_.empty()) {
+    ParseRawInlineStyles(changed_css_vars);
+    full_raw_inline_style_ = base::String();
+  }
+}
+
+bool Element::MergeInlineStyles(StyleMap& new_styles,
+                                StyleMap& important_styles) {
+  // Styles stored by full_raw_inline_style_ had already been parsed to
+  // current_raw_inline_styles_. So we only handle current_raw_inline_styles_
+  // here.
+  bool res = false;
+  auto& configs = element_manager_->GetCSSParserConfigs();
+
+  auto process_inline_map = [&](const RawLepusStyleMap& src_map,
+                                StyleMap& dst_map) {
+    for (const auto& [id, style_value] : src_map) {
+      bool process_result =
+          UnitHandler::Process(id, style_value, dst_map, configs);
+      if (!process_result && IsCSSInlineVariablesEnabled()) {
+        base::String style_str = style_value.String();
+        CSSStringParser parser{style_str.c_str(),
+                               static_cast<uint32_t>(style_str.length()),
+                               configs};
+        CSSValue css_value = parser.ParseVariable();
+        if (parser.HasMetVarToken()) {
+          dst_map[id] = std::move(css_value);
+          res = true;
+        }
+      }
+    }
+  };
+
+  if (current_raw_inline_styles_.has_value()) {
+    process_inline_map(*current_raw_inline_styles_, new_styles);
+  }
+  if (current_raw_important_inline_styles_.has_value()) {
+    process_inline_map(*current_raw_important_inline_styles_, important_styles);
+  }
+
+  return res;
+}
+
+void Element::PersistAnimationFillStyles(const StyleMap& styles) {
+  if (!element_manager()->EnableAnimationForwardUpdatePreservation() ||
+      !enable_new_animator() || styles.empty()) {
+    return;
+  }
+  for (const auto& [id, value] : styles) {
+    animation_override_styles_map_->insert_or_assign(id, value);
+  }
+}
+
+void Element::ClearPersistedAnimationFillStyle(CSSPropertyID id) {
+  if (!animation_override_styles_map_.has_value()) {
+    return;
+  }
+  animation_override_styles_map_->erase(id);
 }
 
 void Element::SetDefaultOverflow(bool visible) {
