@@ -57,6 +57,31 @@ class NapiHandleScope {
   napi_handle_scope scope_ = nullptr;
 };
 
+class NapiCallbackScope {
+ public:
+  explicit NapiCallbackScope(napi_env env, napi_value resource_object = nullptr,
+                             napi_async_context async_context = nullptr)
+      : env_(env) {
+    if (!resource_object) {
+      napi_get_undefined(env_, &resource_object);
+    }
+    if (napi_open_callback_scope(env_, resource_object, async_context,
+                                 &scope_) != napi_ok) {
+      scope_ = nullptr;
+    }
+  }
+
+  ~NapiCallbackScope() {
+    if (scope_) {
+      napi_close_callback_scope(env_, scope_);
+    }
+  }
+
+ private:
+  napi_env env_;
+  napi_callback_scope scope_ = nullptr;
+};
+
 struct NapiAsyncContext {
   napi_env env = nullptr;
   napi_async_work async_work = nullptr;

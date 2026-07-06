@@ -210,6 +210,7 @@ void UIOwner::DestroyUI(int parent, int child, int index) {
 }
 
 void UIOwner::OnNodeReady(int sign) {
+  base::NapiCallbackScope scope(env_);
   if (auto it = ui_holder_.find(sign); it != ui_holder_.end()) {
     auto* ui = it->second.get();
     TRACE_EVENT(LYNX_TRACE_CATEGORY, UI_OWNER_ON_NODE_READY,
