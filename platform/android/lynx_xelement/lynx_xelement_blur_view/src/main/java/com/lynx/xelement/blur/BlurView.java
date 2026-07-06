@@ -51,6 +51,7 @@ public class BlurView extends AndroidView implements ViewTreeObserver.OnPreDrawL
   private boolean mPreDrawRegistered;
   private boolean mExperimentalUpdateBlurRadius = true;
   private boolean mPreDrawListenerDetached;
+  private final Object mRenderScriptLock = new Object();
 
   private volatile RenderScript mRenderScript;
 
@@ -90,16 +91,29 @@ public class BlurView extends AndroidView implements ViewTreeObserver.OnPreDrawL
     }
   }
 
-  private synchronized void initRenderScript() {
-    TraceEvent.beginSection(TraceEventDef.BLUR_VIEW_CREATE_RENDER_SCRIPT);
-    mRenderScript = RenderScript.create(getContext());
-    mScriptRenderBlur = ScriptIntrinsicBlur.create(mRenderScript, Element.U8_4(mRenderScript));
-    TraceEvent.endSection(TraceEventDef.BLUR_VIEW_CREATE_RENDER_SCRIPT);
-    // the script may not have been created yet when the view is destroyed
+  private void initRenderScript() {
     if (mIsDestroy) {
-      destroyScript();
       return;
     }
+    RenderScript renderScript = null;
+    ScriptIntrinsicBlur scriptRenderBlur = null;
+    TraceEvent.beginSection(TraceEventDef.BLUR_VIEW_CREATE_RENDER_SCRIPT);
+    try {
+      renderScript = RenderScript.create(getContext());
+      scriptRenderBlur = ScriptIntrinsicBlur.create(renderScript, Element.U8_4(renderScript));
+    } catch (RuntimeException e) {
+      destroyScript(renderScript, scriptRenderBlur);
+      throw e;
+    } finally {
+      TraceEvent.endSection(TraceEventDef.BLUR_VIEW_CREATE_RENDER_SCRIPT);
+    }
+
+    // the script may not have been created yet when the view is destroyed
+    if (!setRenderScript(renderScript, scriptRenderBlur)) {
+      destroyScript(renderScript, scriptRenderBlur);
+      return;
+    }
+
     if (!mIsAttachToWindow) {
       return;
     }
@@ -108,19 +122,33 @@ public class BlurView extends AndroidView implements ViewTreeObserver.OnPreDrawL
       @Override
       public void run() {
         TraceEvent.beginSection(TraceEventDef.BLUR_VIEW_RE_BLUR);
-        if (mNeedReBlur) {
-          renderScriptBlur();
-          if (mRenderNode != null) {
-            Canvas canvas = mRenderNode.beginRecording();
-            canvas.drawBitmap(mBlurBitmap, 0, 0, null);
-            mRenderNode.endRecording();
+        try {
+          if (!mIsDestroy && mNeedReBlur) {
+            renderScriptBlur();
+            if (mRenderNode != null && mBlurBitmap != null) {
+              Canvas canvas = mRenderNode.beginRecording();
+              canvas.drawBitmap(mBlurBitmap, 0, 0, null);
+              mRenderNode.endRecording();
+            }
+            mNeedReBlur = false;
+            invalidate();
           }
-          mNeedReBlur = false;
-          invalidate();
+        } finally {
+          TraceEvent.endSection(TraceEventDef.BLUR_VIEW_RE_BLUR);
         }
-        TraceEvent.endSection(TraceEventDef.BLUR_VIEW_RE_BLUR);
       }
     });
+  }
+
+  private boolean setRenderScript(RenderScript renderScript, ScriptIntrinsicBlur scriptRenderBlur) {
+    synchronized (mRenderScriptLock) {
+      if (mIsDestroy) {
+        return false;
+      }
+      mRenderScript = renderScript;
+      mScriptRenderBlur = scriptRenderBlur;
+      return true;
+    }
   }
 
   @Override
@@ -335,14 +363,24 @@ public class BlurView extends AndroidView implements ViewTreeObserver.OnPreDrawL
 
   // we only use renderscript on android 23 and above, in these versions the renderscript's
   // destory() is no-op
-  private synchronized void destroyScript() {
-    if (mRenderScript != null) {
-      mRenderScript.destroy();
+  private void destroyScript() {
+    RenderScript renderScript;
+    ScriptIntrinsicBlur scriptRenderBlur;
+    synchronized (mRenderScriptLock) {
+      renderScript = mRenderScript;
+      scriptRenderBlur = mScriptRenderBlur;
       mRenderScript = null;
-    }
-    if (mScriptRenderBlur != null) {
-      mScriptRenderBlur.destroy();
       mScriptRenderBlur = null;
+    }
+    destroyScript(renderScript, scriptRenderBlur);
+  }
+
+  private void destroyScript(RenderScript renderScript, ScriptIntrinsicBlur scriptRenderBlur) {
+    if (renderScript != null) {
+      renderScript.destroy();
+    }
+    if (scriptRenderBlur != null) {
+      scriptRenderBlur.destroy();
     }
   }
 
