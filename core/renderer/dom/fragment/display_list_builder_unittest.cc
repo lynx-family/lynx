@@ -11,6 +11,7 @@
 
 #include "core/renderer/dom/fragment/display_list_reader.h"
 #include "core/renderer/starlight/style/borders_data.h"
+#include "core/renderer/ui_wrapper/painting/paint_image.h"
 #include "core/style/transform/matrix44.h"
 #include "third_party/googletest/googlemock/include/gmock/gmock.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
@@ -115,7 +116,8 @@ TEST_F(DisplayListBuilderTest, DrawViewOperation) {
 TEST_F(DisplayListBuilderTest, DrawImageOperation) {
   int image_id = 123;
   int32_t box_index = 5;
-  builder_->DrawImage(image_id, box_index);
+  auto image = fml::MakeRefCounted<PaintImage>(image_id);
+  builder_->DrawImage(image, box_index);
 
   DisplayList display_list = builder_->Build();
 
@@ -126,6 +128,8 @@ TEST_F(DisplayListBuilderTest, DrawImageOperation) {
   EXPECT_EQ(item.payload.image.image_id, image_id);
   EXPECT_EQ(item.payload.image.box_index, box_index);
   EXPECT_FALSE(reader.HasNext());
+  EXPECT_EQ(display_list.Images().size(), 1u);
+  EXPECT_EQ(display_list.Images()[0].get(), image.get());
 }
 
 TEST_F(DisplayListBuilderTest, DrawTextOperation) {
@@ -171,7 +175,7 @@ TEST_F(DisplayListBuilderTest, MethodChaining) {
   builder_->Begin(0, PlatformRendererType::kView, 0.0f, 0.0f, 100.0f, 100.0f)
       .Fill(0xFF0000FF)
       .DrawView(123)
-      .DrawImage(456, -1)
+      .DrawImage(fml::MakeRefCounted<PaintImage>(456), -1)
       .DrawText(789, -1)
       .Transform(transforms::Matrix44())
       .End();

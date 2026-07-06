@@ -20,6 +20,8 @@ class Matrix44;
 }
 namespace tasm {
 
+class PaintImage;
+
 class DisplayListBuilder {
  public:
   explicit DisplayListBuilder(float dx = 0, float dy = 0);
@@ -50,7 +52,8 @@ class DisplayListBuilder {
   DisplayListBuilder& Opacity(float alpha);
 
   // Retrieve Image source and draw
-  DisplayListBuilder& DrawImage(int32_t image_id, int32_t box_index);
+  DisplayListBuilder& DrawImage(const fml::RefPtr<PaintImage>& image_id,
+                                int32_t box_index);
 
   // Retrieve text source and draw
   DisplayListBuilder& DrawText(int text_id, int32_t box_index);

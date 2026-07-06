@@ -10,6 +10,7 @@
 #include "core/renderer/ui_wrapper/layout/ios/text_layout_darwin.h"
 #include "core/renderer/ui_wrapper/layout/textra/text_layout_textra.h"
 #include "core/renderer/ui_wrapper/painting/ios/native_painting_context_platform_darwin_ref.h"
+#include "core/renderer/ui_wrapper/painting/ios/paint_image_darwin.h"
 #include "core/renderer/ui_wrapper/painting/ios/painting_context_darwin_utils.h"
 #include "core/renderer/ui_wrapper/painting/ios/platform_renderer_context_darwin.h"
 #include "core/renderer/ui_wrapper/painting/ios/platform_renderer_darwin_factory.h"
@@ -22,6 +23,7 @@
 #import <Lynx/LynxComponentRegistry.h>
 #import <Lynx/LynxShadowNodeOwner.h>
 #import <Lynx/LynxUIOwner+Private.h>
+#include <cstdint>
 
 namespace lynx {
 namespace tasm {
@@ -309,16 +311,19 @@ void NativePaintingCtxDarwin::UpdatePlatformEventBundle(int32_t id, PlatformEven
   });
 }
 
-void NativePaintingCtxDarwin::CreateImage(int id, base::String src, float width, float height,
-                                          int32_t event_mask) {
+fml::RefPtr<PaintImage> NativePaintingCtxDarwin::CreateImage(int id, base::String src, float width,
+                                                             float height, int32_t event_mask) {
   LynxURL *sourceUrl = [[LynxURL alloc] init];
   sourceUrl.url = [[NSURL alloc] initWithString:[[NSString alloc] initWithUTF8String:src.c_str()]];
   sourceUrl.imageSize = CGSizeMake(width, height);
+  int32_t image_key = GenerateUniqueImageKey();
 
   [context_->GetRendererContext() createImageManager:id
                                        withSourceURL:sourceUrl
                                    andPlaceholderURL:nil
-                                           eventMask:event_mask];
+                                           eventMask:event_mask
+                                            imageKey:image_key];
+  return fml::MakeRefCounted<PaintImageDarwin>(image_key, context_->GetRendererContext());
 }
 
 template <typename F>

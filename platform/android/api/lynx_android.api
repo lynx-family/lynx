@@ -8809,9 +8809,9 @@ public class com::lynx::tasm::behavior::render::PlatformRendererContext : com.ly
   public void com.lynx.tasm.behavior.render.PlatformRendererContext.updatePlatformRendererAttributes(int sign, PropBundle propBundle);
   public void com.lynx.tasm.behavior.render.PlatformRendererContext.updatePlatformRendererSubtreeProperties(int sign, ByteBuffer buffer, int count);
   public void com.lynx.tasm.behavior.render.PlatformRendererContext.updatePlatformExtraData(int sign, Object extraData);
-  public LynxImageManager com.lynx.tasm.behavior.render.PlatformRendererContext.getImage(int sign);
-  public void com.lynx.tasm.behavior.render.PlatformRendererContext.createImage(int sign, String src, int width, int height, int eventMask);
-  public void com.lynx.tasm.behavior.render.PlatformRendererContext.destroyImage(int sign);
+  public LynxImageManager com.lynx.tasm.behavior.render.PlatformRendererContext.getImage(int imageKey);
+  public void com.lynx.tasm.behavior.render.PlatformRendererContext.createImage(int sign, String src, int width, int height, int eventMask, int imageKey);
+  public void com.lynx.tasm.behavior.render.PlatformRendererContext.destroyImage(int imageKey);
   public void com.lynx.tasm.behavior.render.PlatformRendererContext.updateTextBundle(int sign, long textBundle);
   public void com.lynx.tasm.behavior.render.PlatformRendererContext.destroyTextBundle(final int sign);
   public void com.lynx.tasm.behavior.render.PlatformRendererContext.insertListItemPaintingNode(int listSign, int childSign);
