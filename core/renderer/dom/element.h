@@ -199,6 +199,15 @@ class Element : public lepus::RefCounted,
     CSSPropertyID rtl_property_{CSSPropertyID::kPropertyStart};
   };
 
+  struct InheritedProperty {
+    // indicate it's children has been marked to propagate inherited properties.
+    bool children_propagate_inherited_styles_flag_{false};
+
+    const StyleMap* inherited_styles_{nullptr};
+    const base::Vector<tasm::CSSPropertyID>* reset_inherited_ids_{nullptr};
+    const CustomPropertiesMap* custom_properties_{nullptr};
+  };
+
   static const uint32_t kDirtyCreated;
   static const uint32_t kDirtyTree;
   static const uint32_t kDirtyStyle;
@@ -702,6 +711,9 @@ class Element : public lepus::RefCounted,
 
   void ResetStyleSheet();
 
+  void ResetSheetRecursively(
+      const std::shared_ptr<CSSStyleSheetManager>& manager);
+
   void set_attached_to_layout_parent(bool has) {
     attached_to_layout_parent_ = has;
   }
@@ -851,6 +863,8 @@ class Element : public lepus::RefCounted,
   void MarkPropsDirty() { MarkDirty(kDirtyForceUpdate); }
 
   void MarkRefreshCSSStyles() { MarkDirty(kDirtyRefreshCSSVariables); }
+
+  bool CollectCustomProperties(AttributeHolder* holder);
 
   // In RadonDiff Mode, worklets require the following two APIs. In RL3.0 or
   // TTML NoDiff, the implementation of worklets no longer relies on these
@@ -1163,6 +1177,8 @@ class Element : public lepus::RefCounted,
 
   // Whether list uses platform component.
   virtual bool DisableListPlatformImplementation() const { return false; }
+
+  virtual const InheritedProperty GetInheritedProperty();
 
   virtual bool NeedFullFlushPath(CSSPropertyID id, const CSSValue& value);
 
