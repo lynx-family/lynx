@@ -282,13 +282,6 @@ class FiberElement : public Element {
   void FlushImperativeAnimationCleanupForNewPipeline(
       starlight::ComputedCSSStyle& cleanup_style, bool& need_update,
       CSSIDBitset* replayed_ids, const CSSIDBitset* source_style_ids = nullptr);
-  std::unique_ptr<starlight::ComputedCSSStyle>
-  BuildFinalStyleFromAnimationSampleForNewPipeline(
-      const starlight::ComputedCSSStyle& base_style,
-      const starlight::ComputedCSSStyle* parent_style,
-      const starlight::ComputedCSSStyle* previous_final_style,
-      const animation::AnimationSampleForNewPipeline& animation_sample,
-      StyleMap& resolved_style_map, CSSIDBitset& variable_dependent_ids);
   animation::AnimationEventRecordsForNewPipeline
   TakeAnimationEventsForNewPipeline();
   bool NeedsAnimationFrameForNewPipeline() const;
@@ -305,29 +298,6 @@ class FiberElement : public Element {
       const starlight::ComputedCSSStyle* previous_final_style,
       double old_font_size, double old_root_font_size);
 
-  void ReplayMaterializedStyleSideEffects(
-      const starlight::ComputedCSSStyle& computed_style,
-      CSSIDBitset* replayed_ids = nullptr,
-      const NewPipelineStyleMutationPlan* plan = nullptr);
-  void ReplayDynamicResolvedStyleSideEffects(
-      const StyleMap& resolved_style_map,
-      DynamicCSSStylesManager::StyleUpdateFlags update_flags,
-      const CSSIDBitset& replayed_ids,
-      const CSSIDBitset* source_style_ids = nullptr,
-      const CSSIDBitset* inherited_dynamic_ids = nullptr);
-  NewPipelineStyleMutationPlan BuildNewPipelineStyleMutationPlan(
-      const NewPipelineStyleResolveResult& resolved_styles,
-      const NewPipelineDynamicStyleInputs& dynamic_inputs,
-      DynamicCSSStylesManager::StyleUpdateFlags requested_dynamic_flags,
-      bool first_render, double old_font_size, double old_root_font_size) const;
-  bool MaterializeNewPipelineStyleMutationPlan(
-      const NewPipelineStyleMutationPlan& plan,
-      const starlight::ComputedCSSStyle& baseline_style,
-      starlight::ComputedCSSStyle& final_style) const;
-  bool HasInheritedPropertyMutation(
-      const NewPipelineStyleMutationPlan& plan) const;
-  void ReplayNewPipelineStyleMutationPlanSideEffects(
-      const NewPipelineStyleMutationPlan& plan, CSSIDBitset* replayed_ids);
   NewPipelineResolveOutcome ResolveCSSStylesNewPipelineCore(
       const NewPipelineResolveRequest& request);
 
