@@ -175,7 +175,7 @@ void FrameElement::SendLoadEvent(
   frame_loaded_info->SetValue(BASE_STATIC_STRING(kParamsName),
                               std::move(detail));
   frame_loaded_info->SetValue(BASE_STATIC_STRING(kFrameElement),
-                              fml::RefPtr<FiberElement>(this));
+                              fml::RefPtr<Element>(this));
 
   if (auto* delegate = element_manager()->element_manager_delegate()) {
     delegate->TriggerLepusGlobalEvent(
