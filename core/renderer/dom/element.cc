@@ -25,6 +25,7 @@
 #include "core/renderer/css/css_parser_token.h"
 #include "core/renderer/css/css_property.h"
 #include "core/renderer/css/layout_property.h"
+#include "core/renderer/css/parser/css_string_parser.h"
 #include "core/renderer/css/parser/length_handler.h"
 #include "core/renderer/css/unit_handler.h"
 #include "core/renderer/dom/element_manager.h"
@@ -788,7 +789,7 @@ void Element::MarkStyleDirty(bool recursive) {
   MarkDirty(kDirtyStyle);
   if (recursive) {
     for (const auto& child : scoped_children_) {
-      static_cast<FiberElement*>(child.get())->MarkStyleDirty(recursive);
+      child->MarkStyleDirty(recursive);
     }
   }
 }
@@ -1617,6 +1618,66 @@ bool Element::TendToFlatten() {
 
 double Element::GetFontSize() { return computed_css_style()->GetFontSize(); }
 
+const Element::InheritedProperty Element::GetInheritedProperty() {
+  return {
+      children_propagate_inherited_styles_flag_, inherited_styles_.get(),
+      reset_inherited_ids_.get(),
+      custom_properties_.Get() ? &custom_properties_.Get()->Value() : nullptr};
+}
+
+bool Element::CollectCustomProperties(AttributeHolder* holder) {
+  if (custom_properties_.Get() != nullptr) {
+    return true;
+  }
+
+  if (!holder) {
+    return false;
+  }
+
+  Element* real_parent = parent();
+  if (real_parent) {
+    if (!real_parent->CollectCustomProperties(real_parent->data_model())) {
+      return false;
+    }
+    // Share parent's map (Copy-On-Write).
+    custom_properties_ = real_parent->custom_properties_;
+  }
+
+  const auto& variables = holder->css_variables_map();
+  const auto& inline_variables = holder->GetCSSInlineVariables();
+
+  // If we don't have any new variables, we can just share the parent's map.
+  if (variables.empty() && inline_variables.empty()) {
+    if (custom_properties_.Get() == nullptr) {
+      custom_properties_.Init();
+    }
+    return true;
+  }
+
+  // Access() will copy the map if it's shared (refcount > 1).
+  if (custom_properties_.Get() == nullptr) {
+    custom_properties_.Init();
+  }
+  auto* map = &custom_properties_.Access()->Value();
+
+  // TODO(renzhongyue): Variables declared in CSS must use the normal
+  // custom-property declaration syntax, not {{}}.
+  for (const auto& [name, value] : variables) {
+    CSSStringParser parser{value.c_str(), static_cast<uint32_t>(value.length()),
+                           element_manager()->GetCSSParserConfigs()};
+    map->insert_or_assign(name, parser.ParseVariable());
+  }
+
+  for (const auto& [name, value] : inline_variables) {
+    CSSStringParser parser{value.c_str(), static_cast<uint32_t>(value.length()),
+                           element_manager()->GetCSSParserConfigs()};
+    map->insert_or_assign(name, parser.ParseVariable());
+  }
+
+  CSSValue::SubstituteAll(*map);
+  return true;
+}
+
 double Element::GetParentFontSize() {
   if (IsCSSInheritanceEnabled() && !is_greedy_parallel_flush() &&
       parent() != nullptr) {
@@ -2113,7 +2174,7 @@ bool Element::TickAllAnimation(fml::TimePoint& frame_time,
   }
   if (need_mark_props_dirty) {
     if (tasm::LynxEnv::GetInstance().EnableNewAnimatorOnPatchFinishOpt()) {
-      static_cast<FiberElement*>(this)->MarkPropsDirty();
+      MarkPropsDirty();
     } else {
       element_manager_->OnFinishUpdateProps(this, options);
     }
@@ -2945,6 +3006,19 @@ bool Element::IfNeedsUpdateLayoutInfo() {
 }
 
 void Element::ResetStyleSheet() { style_sheet_ = nullptr; }
+
+void Element::ResetSheetRecursively(
+    const std::shared_ptr<CSSStyleSheetManager>& manager) {
+  if (is_page() || is_component() || css_id_ != kInvalidCssId) {
+    set_style_sheet_manager(manager);
+  }
+
+  // reset style sheet.
+  ResetStyleSheet();
+  for (const auto& child : children()) {
+    child->ResetSheetRecursively(manager);
+  }
+}
 
 const base::String& Element::GetRawInlineStyles() {
   return full_raw_inline_style_;
