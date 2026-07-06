@@ -55,6 +55,7 @@ import com.lynx.tasm.behavior.ui.UIBody.UIBodyView;
 import com.lynx.tasm.behavior.ui.UIGroup;
 import com.lynx.tasm.performance.longtasktiming.LynxLongTaskMonitor;
 import com.lynx.tasm.utils.DisplayMetricsHolder;
+import com.lynx.tasm.utils.UIThreadUtils;
 import com.lynx.tasm.utils.UnitUtils;
 import java.lang.ref.WeakReference;
 import java.lang.reflect.Field;
@@ -215,16 +216,18 @@ public class LynxUIRenderer implements ILynxUIRenderer {
   }
 
   @Override
-  public void onReloadAndInitUIThreadPart() {}
+  public void onReloadAndInitUIThreadPart() {
+    UIThreadUtils.assertOnUiThread();
+    if (mLynxUIOwner != null) {
+      mLynxUIOwner.reset();
+    }
+  }
 
   @Override
   public void onReloadAndInitAnyThreadPart() {
     // destroy event dispatcher
     if (mEventDispatcher != null) {
       mEventDispatcher.destroy();
-    }
-    if (mLynxUIOwner != null) {
-      mLynxUIOwner.reset();
     }
   }
 

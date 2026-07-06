@@ -15,8 +15,13 @@ import android.os.Handler;
 import android.os.Looper;
 import androidx.annotation.Nullable;
 import com.lynx.tasm.base.Assertions;
+import com.lynx.tasm.base.LLog;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.FutureTask;
 
 public class UIThreadUtils {
+  private static final String TAG = "UIThreadUtils";
+
   @Nullable private static volatile Handler sMainHandler;
 
   private static Handler getUiThreadHandler() {
@@ -56,6 +61,34 @@ public class UIThreadUtils {
       runnable.run();
     } else {
       runOnUiThread(runnable);
+    }
+  }
+
+  /**
+   * Runs the given task on the UI thread and waits for posted execution to finish.
+   *
+   * <p>Returns {@code true} only when the task has completed before this method returns. Returns
+   * {@code false} if the waiting thread is interrupted or if the posted task throws. When called
+   * from the UI thread, the task runs inline and exceptions are propagated. Avoid calling this
+   * while holding locks that the UI task may need.
+   */
+  public static boolean runOnUiThreadSync(Runnable runnable) {
+    if (isOnUiThread()) {
+      runnable.run();
+      return true;
+    }
+    FutureTask<Void> task = new FutureTask<>(runnable, null);
+    runOnUiThread(task);
+    try {
+      task.get();
+      return true;
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      LLog.e(TAG, "Interrupted while waiting for UI thread task: " + e);
+      return false;
+    } catch (ExecutionException e) {
+      LLog.e(TAG, "Exception while running UI thread task: " + e.getCause());
+      return false;
     }
   }
 

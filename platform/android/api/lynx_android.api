@@ -11663,6 +11663,7 @@ public class com::lynx::tasm::utils::UIThreadUtils :  {
   public static void com.lynx.tasm.utils.UIThreadUtils.runOnUiThread(Runnable runnable);
   public static void com.lynx.tasm.utils.UIThreadUtils.postAtFrontOfQueueOnUiThread(Runnable runnable);
   public static void com.lynx.tasm.utils.UIThreadUtils.runOnUiThreadImmediately(Runnable runnable);
+  public static boolean com.lynx.tasm.utils.UIThreadUtils.runOnUiThreadSync(Runnable runnable);
   public static void com.lynx.tasm.utils.UIThreadUtils.runOnUiThreadImmediatelyWithPostAtFront(Runnable runnable);
   public static void com.lynx.tasm.utils.UIThreadUtils.runOnUiThread(Runnable runnable, long delayMs);
   public static void com.lynx.tasm.utils.UIThreadUtils.runOnUiThreadAtTime(Runnable runnable, Object token, long uptimeMillis);
