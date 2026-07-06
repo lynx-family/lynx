@@ -1146,6 +1146,34 @@ Element::BuildFinalStyleFromAnimationSampleForNewPipeline(
       &variable_dependent_ids);
 }
 
+animation::AnimationEventRecordsForNewPipeline
+Element::TakeAnimationEventsForNewPipeline() {
+  animation::AnimationEventRecordsForNewPipeline event_records;
+  auto append_event_records = [&event_records](auto* manager) {
+    if (manager == nullptr) {
+      return;
+    }
+    auto pending_event_records =
+        manager->TakePendingAnimationEventsForNewPipeline();
+    for (auto& event_record : pending_event_records) {
+      event_records.push_back(std::move(event_record));
+    }
+  };
+  append_event_records(css_keyframe_manager_.get());
+  append_event_records(css_transition_manager_.get());
+  return event_records;
+}
+
+bool Element::NeedsAnimationFrameForNewPipeline() const {
+  if (!enable_new_animator_) {
+    return false;
+  }
+  return (css_keyframe_manager_ != nullptr &&
+          css_keyframe_manager_->NeedsFutureTickForNewPipeline()) ||
+         (css_transition_manager_ != nullptr &&
+          css_transition_manager_->NeedsFutureTickForNewPipeline());
+}
+
 Element::NewPipelineDynamicStyleInputs
 Element::BuildDynamicStyleInputsForNewPipeline(
     const starlight::ComputedCSSStyle& final_style,
@@ -4862,6 +4890,23 @@ const base::String& Element::GetRawInlineStyles() {
 void Element::SetRawInlineStyles(base::String value) {
   full_raw_inline_style_ = std::move(value);
   MarkDirty(kDirtyStyle);
+}
+
+void Element::PersistAnimationFillStyles(const StyleMap& styles) {
+  if (!element_manager()->EnableAnimationForwardUpdatePreservation() ||
+      !enable_new_animator() || styles.empty()) {
+    return;
+  }
+  for (const auto& [id, value] : styles) {
+    animation_override_styles_map_->insert_or_assign(id, value);
+  }
+}
+
+void Element::ClearPersistedAnimationFillStyle(CSSPropertyID id) {
+  if (!animation_override_styles_map_.has_value()) {
+    return;
+  }
+  animation_override_styles_map_->erase(id);
 }
 
 void Element::SetDefaultOverflow(bool visible) {
