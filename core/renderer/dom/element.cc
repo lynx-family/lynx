@@ -869,6 +869,63 @@ void Element::FinalizeAnimationPropsChange(bool& need_update) {
   }
 }
 
+Element::AnimationPropertyChangeAnalysisForLegacyAnimator
+Element::AnalyzeAnimationPropChangesForLegacyAnimator(
+    const starlight::ComputedCSSStyle& final_style,
+    const starlight::ComputedCSSStyle* previous_final_style,
+    const StyleMap& resolved_style_map) const {
+  AnimationPropertyChangeAnalysisForLegacyAnimator analysis;
+  const bool is_first_render = IsNewlyCreated();
+  auto analyze_property = [&analysis](CSSPropertyID id) {
+    if (CSSProperty::IsTransitionProps(id)) {
+      analysis.has_transition_props_changed = true;
+    }
+    if (CSSProperty::IsKeyframeProps(id)) {
+      analysis.has_keyframe_props_changed = true;
+    }
+  };
+
+  if (is_first_render) {
+    for (const auto& [id, _] : resolved_style_map) {
+      analyze_property(id);
+    }
+  } else {
+    final_style.ForEachChangedProperty(analyze_property);
+    final_style.ForEachResetProperty(analyze_property);
+    // Computed animation/transition data changes are intentionally tracked
+    // outside the generic platform dirty bits. Setting those dirty bits for
+    // the new animator path would make both C++ animator and platform receive
+    // the same animation update. This function is called only from the legacy
+    // animator branch, where FinalizeAnimationPropsChange() owns bundle
+    // writing.
+    if (previous_final_style != nullptr) {
+      const auto* new_animation_data = final_style.animation_data_or_null();
+      const auto* old_animation_data =
+          previous_final_style->animation_data_or_null();
+      if ((new_animation_data == nullptr) != (old_animation_data == nullptr) ||
+          (new_animation_data != nullptr && old_animation_data != nullptr &&
+           *new_animation_data != *old_animation_data)) {
+        analysis.has_keyframe_props_changed = true;
+      }
+      if (final_style.HasTransition() !=
+              previous_final_style->HasTransition() ||
+          (final_style.HasTransition() &&
+           final_style.transition_data() !=
+               previous_final_style->transition_data())) {
+        analysis.has_transition_props_changed = true;
+      }
+    }
+  }
+
+  if (dirty_ & kDirtyCloned) {
+    for (const auto& [id, _] : parsed_styles_map_) {
+      analyze_property(id);
+    }
+  }
+
+  return analysis;
+}
+
 void Element::UpdateSimpleStyles(tasm::StyleMap&& style_map) {
   parsed_styles_map_ = std::move(style_map);
   ApplySimpleStylesWithoutTail(parsed_styles_map_);
@@ -958,6 +1015,104 @@ Element::CollectDynamicFlagsForNewPipeline(
         element_manager()->FixFilterDynamicUpdateBug());
   }
   return flags;
+}
+
+void Element::ReplayChangedStyleSideEffect(CSSPropertyID id,
+                                           const CSSValue& value,
+                                           StyleSideEffectReplayMode mode) {
+  CheckDynamicUnit(id, value, false);
+  MarkLayoutInElementTextMeasurerPropertyIfNeeded(id);
+  const bool preserve_layout_only =
+      mode == StyleSideEffectReplayMode::kPreserveLayoutOnly;
+
+  const bool is_layout_only = LayoutProperty::IsLayoutOnly(id);
+  const bool need_layout = is_layout_only || LayoutProperty::IsLayoutWanted(id);
+  if (need_layout) {
+    const bool was_fixed = is_fixed_;
+    CheckFixedSticky(id, value);
+    if (id == kPropertyIDPosition && was_fixed != is_fixed_) {
+      UpdateFixedNodeSet();
+    }
+    UpdateLayoutNodeStyle(id, value);
+    if (element_manager()->GetEnableDumpElementTree()) {
+      (*layout_styles_)[id] = value;
+    }
+  }
+
+  if (is_layout_only) {
+    if (EnableLayoutInElementMode()) {
+      RequestLayout();
+    }
+    return;
+  }
+
+  ReplayElementSpecificStyleSideEffect(id);
+
+  if (id == kPropertyIDOverflow || id == kPropertyIDOverflowX ||
+      id == kPropertyIDOverflowY) {
+    if (!preserve_layout_only && !computed_css_style()->IsOverflowXY()) {
+      has_layout_only_props_ = false;
+    }
+    return;
+  }
+
+  if (!preserve_layout_only &&
+      (!enable_extended_layout_only_opt_ || !IsExtendedLayoutOnlyProps(id))) {
+    has_layout_only_props_ = false;
+  }
+  if (CSSProperty::IsTransitionProps(id) || CSSProperty::IsKeyframeProps(id)) {
+    has_non_flatten_attrs_ = true;
+  } else {
+    CheckHasNonFlattenCSSProps(id);
+  }
+}
+
+void Element::ReplayResetStyleSideEffect(CSSPropertyID id,
+                                         StyleSideEffectReplayMode mode) {
+  MarkLayoutInElementTextMeasurerPropertyIfNeeded(id);
+  if (id == kPropertyIDFontSize) {
+    return;
+  }
+  const bool preserve_layout_only =
+      mode == StyleSideEffectReplayMode::kPreserveLayoutOnly;
+
+  const bool is_layout_only = LayoutProperty::IsLayoutOnly(id);
+  const bool need_layout = is_layout_only || LayoutProperty::IsLayoutWanted(id);
+  if (need_layout) {
+    ResetLayoutNodeStyle(id);
+    if (element_manager()->GetEnableDumpElementTree() &&
+        layout_styles_.has_value()) {
+      layout_styles_->erase(id);
+    }
+    if (is_layout_only && EnableLayoutInElementMode()) {
+      RequestLayout();
+    }
+  }
+
+  if (id == kPropertyIDPosition) {
+    const bool was_fixed = is_fixed_;
+    if (was_fixed) {
+      fixed_changed_ = true;
+    }
+    is_sticky_ = false;
+    is_fixed_ = false;
+    if (was_fixed) {
+      UpdateFixedNodeSet();
+    }
+  }
+
+  if (is_layout_only) {
+    return;
+  }
+
+  ReplayElementSpecificStyleSideEffect(id);
+
+  if (!preserve_layout_only) {
+    has_layout_only_props_ = false;
+  }
+  if (CSSProperty::IsTransitionProps(id) || CSSProperty::IsKeyframeProps(id)) {
+    has_non_flatten_attrs_ = true;
+  }
 }
 
 bool Element::ShouldPreserveLayoutOnlyForInheritedPlatformStyle(
