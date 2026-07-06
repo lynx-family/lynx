@@ -8,7 +8,6 @@
 #include <utility>
 
 #include "core/renderer/dom/element_manager.h"
-#include "core/renderer/dom/fiber/fiber_element.h"
 #include "core/renderer/trace/renderer_trace_event_def.h"
 
 namespace lynx {
@@ -33,8 +32,7 @@ void ListItemSchedulerAdapter::ResolveSubtreeProperty() {
       if (current->parent()) {
         current->parent()->EnsureTagInfo();
       }
-      static_cast<FiberElement*>(current)->PostResolveTaskToThreadPool(
-          false, resolve_property_queue());
+      current->PostResolveTaskToThreadPool(false, resolve_property_queue());
     }
     for (const auto& child : current->children()) {
       TRACE_EVENT(LYNX_TRACE_CATEGORY,
@@ -117,7 +115,7 @@ void ListItemSchedulerAdapter::ResolveElementTree(
                                                        std::to_string(impl_id));
                   });
               batch_resolving_tree_ = true;
-              static_cast<FiberElement*>(render_root_)->FlushActions();
+              render_root_->FlushActions();
               batch_resolving_tree_ = false;
               promise.set_value(
                   this->GenerateReduceTaskForResolveElementTree());
@@ -133,7 +131,7 @@ void ListItemSchedulerAdapter::ResolveElementTree(
             list::BatchRenderStrategy::kAsyncResolveProperty) {
       // Invoke resolve element tree directly after consuming resolve property
       // reduce tasks.
-      static_cast<FiberElement*>(render_root_)->FlushActions();
+      render_root_->FlushActions();
     }
   }
 }
