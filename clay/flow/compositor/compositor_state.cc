@@ -19,7 +19,10 @@ void CompositorState::PrerollCompositeEmbeddedView(
     int view_id, std::unique_ptr<EmbeddedViewParams> params) {
   TRACE_EVENT("clay", "CompositorState::PrerollCompositeEmbeddedView");
 
-  skity::Rect view_bounds = params->finalBoundingRect();
+  skity::Rect view_bounds =
+      params->NeedsOverlayLayer()
+          ? params->finalBoundingRect()
+          : skity::Rect::MakeWH(frame_size_.x, frame_size_.y);
 
   std::unique_ptr<EmbedderViewSlice> view;
 #ifndef ENABLE_SKITY
