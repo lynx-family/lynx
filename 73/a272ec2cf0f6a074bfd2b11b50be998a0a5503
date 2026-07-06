@@ -1,0 +1,42 @@
+.cq/pipelines/android-example-build.yml
+  h_7a1e47632c7d77 41,58
+.cq/pipelines/ios-example-remote-source-build.yml
+  h_7a1e47632c7d77 20
+.cq/pipelines/ios-example-build-deploy.yml
+  h_7a1e47632c7d77 34
+.cq/pipelines/card-template-build.yml
+  h_7a1e47632c7d77 19
+.cq/pipelines/relax-ng-card-build.yml
+  h_7a1e47632c7d77 20
+.cq/pipelines/macos-desktop-gn-build.yml
+  h_7a1e47632c7d77 21
+.cq/pipelines/ios-example-asan-build-regress.yml
+  h_7a1e47632c7d77 15
+.cq/pipelines/android-example-build-deploy.yml
+  h_7a1e47632c7d77 40
+.cq/pipelines/ios-example-build.yml
+  h_7a1e47632c7d77 30,56
+.cq/pipelines/clay-ios-example-build-deploy.yml
+  h_7a1e47632c7d77 32
+.cq/pipelines/tasm-linux-build.yml
+  h_7a1e47632c7d77 19
+.cq/pipelines/relax-ng-android-example-build.yml
+  h_7a1e47632c7d77 29
+.cq/pipelines/clay-example-build-android.yml
+  h_7a1e47632c7d77 36
+.cq/pipelines/relax-ng-ios-example-build.yml
+  h_7a1e47632c7d77 27
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "73a272ec2cf0f6a074bfd2b11b50be998a0a5503",
+  "prompts": {},
+  "humans": {
+    "h_7a1e47632c7d77": {
+      "author": "gaohanqing <gaohanqing@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

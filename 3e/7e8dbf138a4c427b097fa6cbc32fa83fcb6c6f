@@ -1,0 +1,47 @@
+dependencies/revision.py
+  h_c7499b019d31b1 73-76
+dependencies/DEPS.macos
+  s_ea84d642eadc92::t_36ebb96076497d 25
+  s_b2838eb14421f4::t_1bb394f29ce90c 18
+dependencies/DEPS.lynxtron
+  s_d697c08d990768::t_d2f1e1a1afea0b 1125
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "3e7e8dbf138a4c427b097fa6cbc32fa83fcb6c6f",
+  "prompts": {},
+  "humans": {
+    "h_c7499b019d31b1": {
+      "author": "chenyouhui.duke <chenyouhui.duke@bytedance.com>"
+    }
+  },
+  "sessions": {
+    "s_b2838eb14421f4": {
+      "agent_id": {
+        "tool": "trae-cue",
+        "id": "ai_tab-icr-213dda5b-8213-42c8-8698-02b060ceb35a",
+        "model": "default"
+      },
+      "human_author": "chenyouhui.duke <chenyouhui.duke@bytedance.com>"
+    },
+    "s_d697c08d990768": {
+      "agent_id": {
+        "tool": "trae-cue",
+        "id": "ai_tab-icr-b3b047f1-5e56-4373-9456-c39e618adabb",
+        "model": "default"
+      },
+      "human_author": "chenyouhui.duke <chenyouhui.duke@bytedance.com>"
+    },
+    "s_ea84d642eadc92": {
+      "agent_id": {
+        "tool": "trae-cue",
+        "id": "ai_tab-icr-aa2c9e73-4165-4527-a267-7e6383cb6ab3",
+        "model": "default"
+      },
+      "human_author": "chenyouhui.duke <chenyouhui.duke@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}
