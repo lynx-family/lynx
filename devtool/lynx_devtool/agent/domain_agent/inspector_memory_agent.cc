@@ -41,12 +41,7 @@ void InspectorMemoryAgent::CallMethod(
   if (iter != functions_map_.end()) {
     (this->*(iter->second))(sender, content);
   } else {
-    Json::Value res;
-    res["error"] = Json::ValueType::objectValue;
-    res["error"]["code"] = kInspectorErrorCode;
-    res["error"]["message"] = "Not implemented: " + method;
-    res["id"] = content["id"].asInt64();
-    sender->SendMessage("CDP", res);
+    SendNotImplementedResponse(sender, content["id"].asInt64(), method);
   }
 }
 

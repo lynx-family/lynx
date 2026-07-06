@@ -4,6 +4,7 @@
 
 #ifndef DEVTOOL_BASE_DEVTOOL_NATIVE_PUBLIC_CDP_DOMAIN_AGENT_BASE_H_
 #define DEVTOOL_BASE_DEVTOOL_NATIVE_PUBLIC_CDP_DOMAIN_AGENT_BASE_H_
+#include <cstdint>
 #include <memory>
 #include <string>
 
@@ -32,6 +33,9 @@ class BASE_DEVTOOL_EXPORT CDPDomainAgentBase {
   bool UseCompression() const;
 
  protected:
+  void SendNotImplementedResponse(const std::shared_ptr<MessageSender>& sender,
+                                  int64_t id, const std::string& method);
+
   bool use_compression_ = false;
   uint32_t compression_threshold_ = 10240;
 };

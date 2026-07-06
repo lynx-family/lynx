@@ -32,11 +32,7 @@ void InspectorTracingAgent::CallMethod(
   std::string method = message["method"].asString();
   auto iter = functions_map_.find(method);
   if (iter == functions_map_.end()) {
-    Json::Value res;
-    res["error"]["code"] = kInspectorErrorCode;
-    res["error"]["message"] = "Not implemented: " + method;
-    res["id"] = message["id"].asInt64();
-    sender->SendMessage("CDP", res);
+    SendNotImplementedResponse(sender, message["id"].asInt64(), method);
   } else {
     (this->*(iter->second))(sender, message);
   }
