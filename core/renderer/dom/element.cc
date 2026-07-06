@@ -107,6 +107,14 @@ starlight::DirectionValue<float> ConvertToDirectionValue(
   return starlight::DirectionValue<float>(result_values);
 }
 
+void CollectDirtyNodeForList(int32_t impl_id, PipelineOptions* options) {
+  if (impl_id != options->list_id_) {
+    // Avoid adding the parent list node to updated_list_elements_ when
+    // rendering a list item.
+    options->updated_list_elements_.emplace_back(impl_id);
+  }
+}
+
 void ApplyEventResult(fml::RefPtr<event::Event> event, EventResult result) {
   if (event == nullptr) {
     return;
@@ -621,6 +629,36 @@ void Element::EnsureLayoutBundle() {
   }
 }
 
+void Element::EnsureSLNode() {
+  if (EnableLayoutInElementMode() && sl_node_ == nullptr) {
+    sl_node_ = std::make_unique<SLNode>(
+        element_manager()->GetLayoutConfigs(),
+        computed_css_style()->GetLayoutComputedStyle());
+    if (is_page()) {
+      MarkAsLayoutRoot();
+    }
+    OnLayoutObjectCreated();
+  }
+}
+
+void Element::MarkAsLayoutRoot() {
+  if (EnableLayoutInElementMode()) {
+    EnsureSLNode();
+    // The default flex direction is column for root.
+    sl_node_->GetCSSMutableStyle()->SetFlexDirection(
+        starlight::FlexDirectionType::kColumn);
+    sl_node_->SetContext(element_manager());
+    sl_node_->MarkDirty();
+    sl_node_->SetSLRequestLayoutFunc([](void* context) {
+      static_cast<ElementManager*>(context)->ScheduleLayout();
+    });
+    return;
+  }
+
+  EnsureLayoutBundle();
+  layout_bundle_->is_root = true;
+}
+
 void Element::InitLayoutBundle() {
   if (EnableLayoutInElementMode()) {
     return;
@@ -853,6 +891,50 @@ void Element::RecursivelyMarkChildrenCSSVariableDirty(
       child->MarkStyleDirty(false);
     }
     child->RecursivelyMarkChildrenCSSVariableDirty(css_variable_updated_merged);
+  }
+}
+
+void Element::RecursivelyMarkCustomPropertiesDirty() {
+  for (const auto& child : scoped_children_) {
+    if (!child->is_raw_text()) {
+      child->MarkStyleDirty(false);
+    }
+    child->RecursivelyMarkCustomPropertiesDirty();
+  }
+}
+
+void Element::MarkFontSizeInvalidateRecursively() {
+  MarkDirty(kDirtyFontSize);
+  auto* child = first_render_child_;
+  while (child) {
+    child->MarkFontSizeInvalidateRecursively();
+    child = child->next_render_sibling_;
+  }
+}
+
+void Element::InvalidateChildrenFontSizeRecursively() {
+  auto* child = first_render_child_;
+  while (child) {
+    child->MarkFontSizeInvalidateRecursively();
+    child = child->next_render_sibling_;
+  }
+}
+
+void Element::InvalidateChildrenInheritedStylesRecursively() {
+  for (const auto& child : scoped_children_) {
+    child->ApplyFunctionRecursive([](Element* element) {
+      if (!element->is_raw_text()) {
+        element->MarkDirtyLite(kDirtyPropagateInherited);
+      }
+    });
+  }
+}
+
+void Element::MarkDirectChildrenStyleDirtyForInheritedPropertyMutation() {
+  for (const auto& child : scoped_children_) {
+    if (!child->is_raw_text()) {
+      child->MarkStyleDirty(false);
+    }
   }
 }
 
@@ -2151,6 +2233,23 @@ const Element::InheritedProperty Element::GetInheritedProperty() {
       custom_properties_.Get() ? &custom_properties_.Get()->Value() : nullptr};
 }
 
+const Element::InheritedProperty Element::GetParentInheritedProperty() {
+  // If in a parallel flush process or if the parent is null, return empty
+  // InheritedProperty indicating that inheritance logic is not needed now.
+  if (this->is_greedy_parallel_flush()) {
+    return {false, nullptr, nullptr,
+            custom_properties_.Get() ? &custom_properties_.Get()->Value()
+                                     : nullptr};
+  }
+
+  Element* real_parent = parent();
+  if (real_parent == nullptr) {
+    return InheritedProperty();
+  }
+
+  return real_parent->GetInheritedProperty();
+}
+
 bool Element::CollectCustomProperties(AttributeHolder* holder) {
   if (custom_properties_.Get() != nullptr) {
     return true;
@@ -2252,6 +2351,80 @@ void Element::SetFontSizeForAllElement(double cur_node_font_size,
   }
 }
 
+void Element::SetFontSize(const tasm::CSSValue& value) {
+  SetFontSize(value, computed_css_style());
+}
+
+void Element::SetFontSize(const tasm::CSSValue& value,
+                          starlight::ComputedCSSStyle* target_style) {
+  base::flex_optional<float> result;
+  const auto current_font_size = target_style->GetFontSize();
+  const auto root_font_size = target_style->GetRootFontSize();
+  if (!value.IsEmpty()) {
+    CheckDynamicUnit(CSSPropertyID::kPropertyIDFontSize, value, false);
+    const auto& env_config = element_manager()->GetLynxEnvConfig();
+    auto unify_vw_vh_behavior =
+        element_manager()->GetDynamicCSSConfigs().unify_vw_vh_behavior_;
+    result = starlight::CSSStyleUtils::ResolveFontSize(
+        value, env_config, unify_vw_vh_behavior, GetParentFontSize(),
+        GetRecordedRootFontSize(), element_manager()->GetCSSParserConfigs());
+  } else {
+    result = GetParentFontSize();
+  }
+
+  if (result.has_value()) {
+    target_style->SetResolvedValue(kPropertyIDFontSize,
+                                   CSSValue(*result, CSSValuePattern::NUMBER));
+  } else {
+    target_style->RemoveResolvedValue(kPropertyIDFontSize);
+  }
+
+  if (result.has_value() && *result != current_font_size) {
+    NotifyUnitValuesUpdatedToAnimation(DynamicCSSStylesManager::kUpdateEm);
+
+    if (is_page()) {
+      if (target_style == computed_css_style()) {
+        SetFontSizeForAllElement(*result, *result);
+      } else {
+        target_style->SetFontSize(*result, *result);
+      }
+      UpdateLayoutNodeFontSize(*result, *result);
+    } else {
+      if (target_style == computed_css_style()) {
+        SetFontSizeForAllElement(*result, root_font_size);
+      } else {
+        target_style->SetFontSize(*result, root_font_size);
+      }
+      UpdateLayoutNodeFontSize(*result, root_font_size);
+    }
+
+    if (!EnableLayoutInElementMode() || IsShadowNodeCustom()) {
+      target_style->SetValue(kPropertyIDFontSize,
+                             CSSValue(*result, CSSValuePattern::NUMBER));
+    }
+    if (is_page() && !is_greedy_parallel_flush()) {
+      MarkFontSizeInvalidateRecursively();
+    } else {
+      MarkDirty(kDirtyFontSize);
+    }
+  }
+}
+
+void Element::ResetFontSize() {
+  CheckDynamicUnit(CSSPropertyID::kPropertyIDFontSize, CSSValue(), true);
+  auto font_size = element_manager()->GetLynxEnvConfig().PageDefaultFontSize();
+  auto root_font_size = is_page() ? font_size : GetCurrentRootFontSize();
+
+  if (font_size != GetFontSize()) {
+    SetFontSizeForAllElement(font_size, root_font_size);
+    if (!EnableLayoutInElementMode() || IsShadowNodeCustom()) {
+      computed_css_style()->SetValue(
+          kPropertyIDFontSize, CSSValue(font_size, CSSValuePattern::NUMBER));
+    }
+    UpdateLayoutNodeFontSize(font_size, root_font_size);
+  }
+}
+
 void Element::UpdateLengthContextValueForAllElement(
     const LynxEnvConfig& env_config) {
   computed_css_style()->SetFontScale(env_config.FontScale());
@@ -2275,6 +2448,95 @@ void Element::UpdateLengthContextValueForAllElement(
           env_config.LayoutsUnitPerPx());
     }
   }
+}
+
+void Element::UpdateDynamicChildrenStyleRecursively(uint32_t style,
+                                                    bool force_update) {
+  auto* child = first_render_child_;
+  while (child) {
+    child->UpdateDynamicElementStyle(style, force_update);
+    child = child->next_render_sibling_;
+  }
+}
+
+bool Element::HasLayoutInElementPlatformNode() {
+  return EnableLayoutInElementMode() && customized_layout_node_;
+}
+
+int Element::GetLayoutInElementPlatformChildIndex(Element* child) {
+  if (child == nullptr || child->render_parent() == nullptr) {
+    return -1;
+  }
+  int index = 0;
+  auto* render_parent = child->render_parent();
+  for (auto* current = render_parent->first_render_child(); current != nullptr;
+       current = current->next_render_sibling()) {
+    if (current == child) {
+      return index;
+    }
+    if (current->HasLayoutInElementPlatformNode()) {
+      ++index;
+    }
+  }
+  return -1;
+}
+
+void Element::UpdateFixedNodeSet() {
+  if (!EnableLayoutInElementMode() || !IsFixedNewOrUnifiedEnabled() ||
+      sl_node_ == nullptr) {
+    return;
+  }
+  if (is_fixed_ && !attached_to_layout_parent_ && !is_page()) {
+    return;
+  }
+  element_manager()->UpdateFixedNodeSet(sl_node_.get(), is_fixed_);
+}
+
+void Element::UpdateFixedNodeSetRecursively(bool is_insert) {
+  if (!EnableLayoutInElementMode() || !IsFixedNewOrUnifiedEnabled()) {
+    return;
+  }
+  if (sl_node_ != nullptr && is_fixed_) {
+    element_manager()->UpdateFixedNodeSet(sl_node_.get(), is_insert);
+  }
+  for (auto& child : scoped_children_) {
+    child->UpdateFixedNodeSetRecursively(is_insert);
+  }
+}
+
+void Element::RecursivelyMarkRenderRootElement(Element* render_root) {
+  render_root_element_ = render_root;
+  for (const auto& child : scoped_children_) {
+    if (!child->is_list_item()) {
+      child->RecursivelyMarkRenderRootElement(render_root);
+    }
+  }
+}
+
+void Element::UpdateRenderRootElementIfNecessary(Element* child) {
+  if (child->render_root_element_ == this->render_root_element_) {
+    // 1. Child has same render root as parent, indicating tree mutation inside
+    // same render root, no need to propagate change
+    return;
+  }
+  if (child->render_root_element_ == nullptr) {
+    // 2. child doesn't hava valid render_root_element, propagate parent's
+    // render_root_element to child subtree
+    child->RecursivelyMarkRenderRootElement(this->render_root_element_);
+    return;
+  }
+  if (this->render_root_element_ == nullptr) {
+    // 3. parent doesn't have valid render_root_element, reset chlld subtree
+    // render root
+    child->RecursivelyMarkRenderRootElement(nullptr);
+    return;
+  }
+  // 4.child and parent have different valid render_root_elements, throw warning
+  LOGW(
+      "FiberElement move element to a different render root, inefficient "
+      "operation");
+  // Update child subtree render root with parent render root
+  child->RecursivelyMarkRenderRootElement(this->render_root_element_);
 }
 
 void Element::CheckFlattenRelatedProp(const base::String& key,
@@ -2619,6 +2881,22 @@ PaintingContext* Element::painting_context() {
 }
 
 void Element::MarkLayoutDirty() { element_manager_->MarkLayoutDirty(id_); }
+
+void Element::MarkLayoutDirtyLite() {
+  if (!is_virtual_) {
+    EnsureSLNode();
+    sl_node_->MarkDirtyAndRequestLayout();
+  } else {
+    auto* parent = render_parent_;
+    while (parent) {
+      if (!parent->is_virtual_) {
+        parent->MarkLayoutDirtyLite();
+        break;
+      }
+      parent = parent->render_parent_;
+    }
+  }
+}
 
 void Element::RequireFlush() {
   if (flush_required_) {
@@ -3640,6 +3918,63 @@ bool Element::IfNeedsUpdateLayoutInfo() {
     return false;
   }
   return sl_node_->GetHasNewLayout();
+}
+
+void Element::UpdateLayoutInfoRecursively(PipelineOptions* options) {
+  if (!is_wrapper()) {
+    if (sl_node_ == nullptr || !(sl_node_->IsDirty())) {
+      return;
+    }
+
+    if (IfNeedsUpdateLayoutInfo()) {
+      UpdateLayoutInfo();
+    }
+
+    sl_node_->MarkUpdated();
+  }
+
+  for (auto& child : scoped_children_) {
+    child->UpdateLayoutInfoRecursively(options);
+  }
+
+  // A dirty child can change the list's content layout, so collect dirty list
+  // nodes regardless of whether their own layout info needs to be updated. This
+  // is intentionally post-order so nested lists are collected before their
+  // parent list.
+  if (is_list()) {
+    CollectDirtyNodeForList(impl_id(), options);
+  }
+}
+
+void Element::UpdateLayoutInfo() {
+  const auto& layout_result = sl_node_->GetLayoutResult();
+  width_ = layout_result.size_.width_;
+  height_ = layout_result.size_.height_;
+  top_ = layout_result.offset_.Y();
+  left_ = layout_result.offset_.X();
+  paddings_[0] = layout_result.padding_[starlight::kLeft];
+  paddings_[1] = layout_result.padding_[starlight::kTop];
+  paddings_[2] = layout_result.padding_[starlight::kRight];
+  paddings_[3] = layout_result.padding_[starlight::kBottom];
+  margins_[0] = layout_result.margin_[starlight::kLeft];
+  margins_[1] = layout_result.margin_[starlight::kTop];
+  margins_[2] = layout_result.margin_[starlight::kRight];
+  margins_[3] = layout_result.margin_[starlight::kBottom];
+  borders_[0] = layout_result.border_[starlight::kLeft];
+  borders_[1] = layout_result.border_[starlight::kTop];
+  borders_[2] = layout_result.border_[starlight::kRight];
+  borders_[3] = layout_result.border_[starlight::kBottom];
+  display_none_ = sl_node_->GetShouldDisplayNone();
+
+  if (IsShadowNodeCustom()) {
+    element_manager_->layout_context()->OnLayout(id_, left_, top_, width_,
+                                                 height_, paddings_, borders_);
+    customized_layout_node_->OnLayoutAfter();
+  }
+  if (EnableFragmentLayerRender()) {
+    static_cast<Fragment*>(element_container())->UpdateLayout(layout_result);
+  }
+  frame_changed_ = true;
 }
 
 void Element::ResetStyleSheet() { style_sheet_ = nullptr; }
