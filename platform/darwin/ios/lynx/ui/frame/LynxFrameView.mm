@@ -119,6 +119,13 @@ static NSString *const kLynxFrameEventModeStandard = @"standard";
   return detail;
 }
 
+- (void)clearReloadContentIfNeeded {
+  if (!_isBundleLoad) {
+    return;
+  }
+  [[self.subviews copy] makeObjectsPerformSelector:@selector(removeFromSuperview)];
+}
+
 - (void)onFrameLoadMetricsEvent:(LynxPerformanceEntry *)entry {
   if (entry == nil || self.context == nil || self.context.eventEmitter == nil ||
       self.context.uiOwner == nil) {
@@ -172,6 +179,7 @@ static NSString *const kLynxFrameEventModeStandard = @"standard";
     _LogE(@"LynxFrameView %p: buildLoadMetaWithBundle failed in setAppBundle", self);
     return NO;
   }
+  [self clearReloadContentIfNeeded];
   [_render loadTemplate:loadMeta];
   _isBundleLoad = YES;
   return YES;
