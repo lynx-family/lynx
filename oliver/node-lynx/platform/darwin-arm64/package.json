@@ -11,6 +11,10 @@
   },
   "author": "Lynx Authors",
   "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/lynx-family/lynx.git"
+  },
   "files": [
     "node_lynx.node"
   ]
