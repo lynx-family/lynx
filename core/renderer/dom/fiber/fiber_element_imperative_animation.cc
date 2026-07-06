@@ -4,13 +4,13 @@
 
 #include "core/renderer/css/computed_css_style.h"
 #include "core/renderer/css/layout_property.h"
-#include "core/renderer/dom/fiber/fiber_element.h"
+#include "core/renderer/dom/element.h"
 #include "core/renderer/utils/prop_bundle_style_writer.h"
 
 namespace lynx {
 namespace tasm {
 
-bool FiberElement::HasAuthorAnimationDataChangedForNewPipeline(
+bool Element::HasAuthorAnimationDataChangedForNewPipeline(
     const starlight::ComputedCSSStyle& new_base_style,
     const starlight::ComputedCSSStyle* previous_base_style) const {
   if (!HasImperativeAnimations()) {
@@ -34,7 +34,7 @@ bool FiberElement::HasAuthorAnimationDataChangedForNewPipeline(
   return *new_animation_data != *old_animation_data;
 }
 
-void FiberElement::FlushImperativeAnimationCleanupForNewPipeline(
+void Element::FlushImperativeAnimationCleanupForNewPipeline(
     starlight::ComputedCSSStyle& cleanup_style, bool& need_update,
     CSSIDBitset* replayed_ids, const CSSIDBitset* source_style_ids) {
   auto cleanup_properties = TakePendingImperativeAnimationCleanupProperties();
