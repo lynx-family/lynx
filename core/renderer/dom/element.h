@@ -75,6 +75,9 @@ struct LayoutBundle;
 class PseudoElement;
 class ListItemSchedulerAdapter;
 class PlatformLayoutFunctionWrapper;
+namespace list {
+enum class BatchRenderStrategy;
+}  // namespace list
 
 using ElementChildrenArray =
     base::InlineVector<Element*, kChildrenInlineVectorSize>;
@@ -1276,6 +1279,15 @@ class Element : public lepus::RefCounted,
   virtual bool is_raw_text() const { return false; }
 
   virtual void MarkAsListItem() { is_list_item_ = true; }
+
+  void CreateListItemScheduler(list::BatchRenderStrategy batch_render_strategy,
+                               bool continuous_resolve_tree);
+  ListItemSchedulerAdapter* GetSchedulerAdapter() {
+    if (scheduler_adapter_) {
+      return scheduler_adapter_.get();
+    }
+    return nullptr;
+  }
 
   void MarkAsDirectChildOfCompatibleComponent(bool flag) {
     is_direct_child_of_compatible_component_ = flag;

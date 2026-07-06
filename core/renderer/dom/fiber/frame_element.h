@@ -48,7 +48,7 @@ class FrameElement : public FiberElement {
   const std::string& GetSrc() const;
 
  protected:
-  void OnNodeAdded(FiberElement* child) override;
+  void OnNodeAdded(Element* child) override;
   void SetAttributeInternal(const base::String& key,
                             const lepus::Value& value) override;
 
