@@ -1018,7 +1018,7 @@ RENDERER_FUNCTION_CC(AdoptStyleSheet) {
   manager->AdoptStyleSheet(wrapper);
 
   // Mark all elements as style dirty to trigger re-resolution
-  auto root = static_cast<FiberElement*>(manager->root());
+  auto root = manager->root();
   if (root) {
     root->ApplyFunctionRecursive(
         [](auto element) { element->MarkStyleDirty(false); });
@@ -1407,8 +1407,7 @@ void ModifyStyleSheetByIdHelper(
   // After replacement/deletion above the CSSFragment held by FiberElement will
   // become a wild ptr, need clear all style_sheet of entire tree
   // so that replaced CSSFragment can be re-obtained
-  auto root =
-      static_cast<FiberElement*>(tasm->page_proxy()->element_manager()->root());
+  auto root = tasm->page_proxy()->element_manager()->root();
   if (root) {
     root->ApplyFunctionRecursive([](auto element) {
       element->ResetStyleSheet();
@@ -4105,7 +4104,7 @@ RENDERER_FUNCTION_CC(FiberAddClass) {
   CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(arg0, 0, RefCounted, FiberAddClass);
   CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(arg1, 1, String, FiberAddClass);
 
-  auto element = fml::static_ref_ptr_cast<FiberElement>(arg0->RefCounted());
+  auto element = fml::static_ref_ptr_cast<Element>(arg0->RefCounted());
   CHECK_ILLEGAL_ATTRIBUTE_CONFIG(element, FiberAddClass);
   element->OnClassChanged(element->classes(), {arg1->String()});
   element->SetClass(arg1->String());
@@ -4122,7 +4121,7 @@ RENDERER_FUNCTION_CC(FiberSetClasses) {
   CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(arg0, 0, RefCounted, FiberSetClasses);
   CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(arg1, 1, String, FiberSetClasses);
 
-  auto element = fml::static_ref_ptr_cast<FiberElement>(arg0->RefCounted());
+  auto element = fml::static_ref_ptr_cast<Element>(arg0->RefCounted());
   CHECK_ILLEGAL_ATTRIBUTE_CONFIG(element, FiberSetClasses);
   auto clazz = arg1->String();
   ClassList old_classes = element->ReleaseClasses();
@@ -4208,11 +4207,11 @@ RENDERER_FUNCTION_CC(FiberSetInlineStyles) {
   CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(arg0, 0, RefCounted,
                                         FiberSetInlineStyles);
   CONVERT_ARG(arg1, 1);
-  auto element = fml::static_ref_ptr_cast<FiberElement>(arg0->RefCounted());
+  auto element = fml::static_ref_ptr_cast<Element>(arg0->RefCounted());
   CHECK_ILLEGAL_ATTRIBUTE_CONFIG(element, FiberSetInlineStyles);
 
   // Since FiberSetInlineStyles means clear the previous value and set the new
-  // value, then, call RemoveAllInlineStyles before call fiber element's
+  // value, then, call RemoveAllInlineStyles before calling the element's
   // SetStyle.
   element->RemoveAllInlineStyles();
 
@@ -6818,7 +6817,7 @@ RENDERER_FUNCTION_CC(SetStyleObject) {
 
   if (const auto element_ref = arg0->RefCounted();
       element_ref->GetRefType() == lepus::RefType::kElement) {
-    auto* element_ptr = static_cast<FiberElement*>(element_ref.get());
+    auto* element_ptr = static_cast<Element*>(element_ref.get());
 
     element_ptr->SetStyleObjects(std::move(style_object_list));
     TRACE_EVENT(LYNX_TRACE_CATEGORY, "Devtool::ON_NODE_MODIFIED");
@@ -6846,7 +6845,7 @@ RENDERER_FUNCTION_CC(SetDynamicStyleObject) {
          arg1->RefCounted()->GetRefType() == lepus::RefType::kStyleObject))) {
     RETURN_UNDEFINED();
   }
-  auto* element_ptr = static_cast<FiberElement*>(element_ref.get());
+  auto* element_ptr = static_cast<Element*>(element_ref.get());
   auto* tasm = GET_TASM_POINTER();
   element_ptr->ReplaceDynamicSimpleStyles(
       CreateDynamicStyleObjectFromValue(*arg1, tasm));
@@ -6864,7 +6863,7 @@ RENDERER_FUNCTION_CC(SetDynamicStyleObjectKV) {
   if (!element_ref || element_ref->GetRefType() != lepus::RefType::kElement) {
     RETURN_UNDEFINED();
   }
-  auto* element_ptr = static_cast<FiberElement*>(element_ref.get());
+  auto* element_ptr = static_cast<Element*>(element_ref.get());
 
   const CSSPropertyID css_id = static_cast<CSSPropertyID>(arg1->Int32());
   if (css_id <= kPropertyStart || css_id >= kPropertyEnd) {
