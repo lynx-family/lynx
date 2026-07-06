@@ -436,8 +436,7 @@ void TreeResolver::ApplyStaticTemplateEventAttributesToElement(
   }
 }
 
-void TreeResolver::NotifyNodeInserted(Element* insertion_point,
-                                      FiberElement* node) {
+void TreeResolver::NotifyNodeInserted(Element* insertion_point, Element* node) {
   // If the insertion_point IsDetached, no nedd to call NotifyNodeInserted
   // recursively.
   if (insertion_point->IsDetached()) {
@@ -447,13 +446,11 @@ void TreeResolver::NotifyNodeInserted(Element* insertion_point,
   node->InsertedInto(insertion_point);
 
   for (const auto& child : node->children()) {
-    NotifyNodeInserted(insertion_point,
-                       static_cast<FiberElement*>(child.get()));
+    NotifyNodeInserted(insertion_point, child.get());
   }
 }
 
-void TreeResolver::NotifyNodeRemoved(Element* insertion_point,
-                                     FiberElement* node) {
+void TreeResolver::NotifyNodeRemoved(Element* insertion_point, Element* node) {
   // If the insertion_point IsDetached, no nedd to call NotifyNodeRemoved
   // recursively.
   if (insertion_point->IsDetached()) {
@@ -463,10 +460,10 @@ void TreeResolver::NotifyNodeRemoved(Element* insertion_point,
   node->RemovedFrom(insertion_point);
 
   for (const auto& child : node->children()) {
-    if (static_cast<FiberElement*>(child.get())->is_raw_text()) {
+    if (child->is_raw_text()) {
       continue;
     }
-    NotifyNodeRemoved(insertion_point, static_cast<FiberElement*>(child.get()));
+    NotifyNodeRemoved(insertion_point, child.get());
   }
 }
 

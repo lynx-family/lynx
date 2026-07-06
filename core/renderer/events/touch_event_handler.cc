@@ -728,9 +728,9 @@ ResponseChainVector TouchEventHandler::GenerateResponseChain(
     return chain;
   }
 
-  // If the fiber element is currently in the detached state, then do not
+  // If the element is currently in the detached state, then do not
   // generate the corresponding chain.
-  if (static_cast<FiberElement *>(target_node)->IsDetached()) {
+  if (target_node->IsDetached()) {
     LOGE(
         "TouchEventHandler::GenerateResponseChain failed since the target node "
         << target_node->GetTag().str()
@@ -780,10 +780,9 @@ ResponseChainVector TouchEventHandler::GenerateResponseChain(
     return chain;
   }
 
-  // If the fiber element is currently in the detached state, then do not
+  // If the element is currently in the detached state, then do not
   // generate the corresponding chain.
-  if (component->IsFiberArch() &&
-      static_cast<FiberElement *>(component)->IsDetached()) {
+  if (component->IsFiberArch() && component->IsDetached()) {
     LOGE(
         "TouchEventHandler::GenerateResponseChain failed since the component "
         "with sign: "
@@ -1072,13 +1071,11 @@ lepus::Value TouchEventHandler::GetTargetInfo(int32_t impl_id,
     }
   }
 
-  // element ref needed in fiber element worklet
+  // element ref needed in element worklet
   if (element != nullptr && !is_js_event) {
     BASE_STATIC_STRING_DECL(kElementRefptr, "elementRefptr");
-    FiberElement *fiberElement =
-        static_cast<FiberElement *>(const_cast<Element *>(element));
     dict.get()->SetValue(kElementRefptr,
-                         fml::RefPtr<FiberElement>(fiberElement));
+                         fml::RefPtr<Element>(const_cast<Element *>(element)));
   }
 
   return lepus::Value(std::move(dict));
@@ -1200,7 +1197,7 @@ bool TouchEventHandler::HandleEventInternal(
         continue;
       }
 
-      if (static_cast<FiberElement *>(cur_target)->IsDetached()) {
+      if (cur_target->IsDetached()) {
         LOGI(
             "TouchEventHandler::HandleEventInternal global bind current target "
             "is detached, id is "

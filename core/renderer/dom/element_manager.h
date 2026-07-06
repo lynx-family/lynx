@@ -1349,7 +1349,7 @@ class ElementManager : public LayoutScheduler::LayoutSchedulerImpl {
   void OnPatchFinishForFiber(
       std::shared_ptr<PipelineOptions> &option,
       base::MoveOnlyClosure<void, bool> patch_finish_callback,
-      FiberElement *root = nullptr);
+      Element *root = nullptr);
   void WillDestroy();
   void ReportElementStatistic();
   ElementManager(const ElementManager &) = delete;
