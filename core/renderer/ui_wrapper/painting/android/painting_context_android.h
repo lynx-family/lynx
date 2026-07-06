@@ -6,7 +6,9 @@
 #define CORE_RENDERER_UI_WRAPPER_PAINTING_ANDROID_PAINTING_CONTEXT_ANDROID_H_
 
 #include <array>
+#include <functional>
 #include <memory>
+#include <mutex>
 #include <queue>
 #include <string>
 #include <tuple>
@@ -136,6 +138,8 @@ class PaintingContextAndroid : public PaintingCtxPlatformImpl {
       int64_t id, const std::string& method, const pub::Value& params,
       const std::function<void(int32_t code, const pub::Value& data)>& callback)
       override;
+  void InvokeUIMethodCallback(int32_t id, int32_t code,
+                              const lepus::Value params);
 
   int32_t GetTagInfo(const std::string& tag_name) override;
   bool IsFlatten(base::MoveOnlyClosure<bool, bool> func) override;
@@ -220,6 +224,11 @@ class PaintingContextAndroid : public PaintingCtxPlatformImpl {
   void InvokeNativeRunnable(
       const base::android::ScopedGlobalJavaRef<jobject>& runnable_ref,
       JNIEnv* env);
+  int32_t AddInvokeUIMethodCallback(
+      std::function<void(int32_t code, const pub::Value& data)> callback);
+  void RemoveInvokeUIMethodCallback(int32_t callback_id);
+  std::function<void(int32_t code, const pub::Value& data)>
+  TakeInvokeUIMethodCallback(int32_t callback_id);
 
   static_assert(static_cast<size_t>(IntValueIndex::SIZE) == 20,
                 "size has changed, make sure stay in sync with platform");
@@ -233,6 +242,12 @@ class PaintingContextAndroid : public PaintingCtxPlatformImpl {
   std::shared_ptr<base::android::ScopedWeakGlobalJavaRef<jobject>> impl_;
   PaintingContextAndroid(const PaintingContextAndroid&) = delete;
   PaintingContextAndroid& operator=(const PaintingContextAndroid&) = delete;
+  // Registered on caller/TASM thread, cleaned up from UI operation or callback.
+  std::mutex invoke_callback_mutex_;
+  int32_t invoke_callback_id_{0};
+  std::unordered_map<int32_t,
+                     std::function<void(int32_t code, const pub::Value& data)>>
+      invoke_callback_maps_;
   std::shared_ptr<shell::DynamicUIOperationQueue> queue_;
   bool enable_vsync_aligned_flush_ = false;
   jint thread_strategy_;
