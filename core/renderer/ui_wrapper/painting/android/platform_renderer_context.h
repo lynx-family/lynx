@@ -5,13 +5,11 @@
 #ifndef CORE_RENDERER_UI_WRAPPER_PAINTING_ANDROID_PLATFORM_RENDERER_CONTEXT_H_
 #define CORE_RENDERER_UI_WRAPPER_PAINTING_ANDROID_PLATFORM_RENDERER_CONTEXT_H_
 
-#include <memory>
 #include <string>
 #include <unordered_map>
 #include <vector>
 
 #include "base/include/closure.h"
-#include "base/include/fml/memory/ref_ptr.h"
 #include "base/include/platform/android/scoped_java_ref.h"
 #include "base/include/vector.h"
 #include "core/public/platform_renderer_type.h"
@@ -28,6 +26,7 @@ class Event;
 namespace tasm {
 
 class PlatformRendererAndroid;
+class PaintImage;
 
 class PlatformRendererContext {
  public:
@@ -67,8 +66,8 @@ class PlatformRendererContext {
   // Register/unregister PlatformRendererAndroid instances
   void RegisterPlatformRenderer(int32_t id, PlatformRendererAndroid* renderer);
   void UnregisterPlatformRenderer(int32_t id);
-  void CreateImage(int32_t id, base::String src, float width, float height,
-                   int32_t event_mask = 0);
+  fml::RefPtr<PaintImage> CreateImage(int32_t id, base::String src, float width,
+                                      float height, int32_t event_mask = 0);
   void DestroyImage(int32_t id);
 
   void UpdateTextBundle(int32_t id, intptr_t text_bundle);
@@ -112,6 +111,8 @@ class PlatformRendererContext {
                      base::MoveOnlyClosure<void, int32_t, const pub::Value&>>
       invoke_ui_method_callbacks_;
   int32_t invoke_ui_method_callback_id_{0};
+  int32_t GenerateUniqueImageKey() { return ++image_key_; }
+  int32_t image_key_{0};
 };
 
 }  // namespace tasm

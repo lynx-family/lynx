@@ -43,7 +43,8 @@ void DestroyTextBundlePointer(void *bundle) {
 - (void)createImageManager:(int32_t)imageManagerID
              withSourceURL:(LynxURL *)sourceURL
          andPlaceholderURL:(LynxURL *)placeholderURL
-                 eventMask:(int32_t)eventMask {
+                 eventMask:(int32_t)eventMask
+                  imageKey:(int32_t)imageKey {
   LynxImageManager *imageManager = [[LynxImageManager alloc] initWithContext:_uiContext];
   [imageManager setSign:imageManagerID];
   [imageManager setEventMask:eventMask];
@@ -52,7 +53,7 @@ void DestroyTextBundlePointer(void *bundle) {
   @synchronized(self) {
     // TODO(songshourui.null): Reset or destroy the previous manager when the same image id is
     // replaced, so any pending request cannot update stale targets after ownership is finalized.
-    _imageManagers[@(imageManagerID)] = imageManager;
+    _imageManagers[@(imageKey)] = imageManager;
   }
 }
 
@@ -62,6 +63,12 @@ void DestroyTextBundlePointer(void *bundle) {
     imageManager = _imageManagers[@(imageManagerID)];
   }
   return imageManager;
+}
+
+- (void)destroyImage:(int32_t)imageKey {
+  @synchronized(self) {
+    [_imageManagers removeObjectForKey:@(imageKey)];
+  }
 }
 
 - (void)updateTextBundle:(int32_t)textID withBundle:(void *)bundle {

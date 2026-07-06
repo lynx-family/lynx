@@ -11,14 +11,14 @@ namespace lynx {
 namespace tasm {
 PlatformRendererContextDarwin::PlatformRendererContextDarwin(UIView<LUIBodyView>* container_view,
                                                              LynxUIOwner* ui_owner)
-    : _ui_owner(ui_owner) {
-  _renderer_context = [[LynxRendererContext alloc] init];
-  _renderer_context.bodyView = container_view;
+    : ui_owner_(ui_owner) {
+  renderer_context_ = [[LynxRendererContext alloc] init];
+  renderer_context_.bodyView = container_view;
 }
 
 PlatformRendererContextDarwin::~PlatformRendererContextDarwin() {
-  _renderer_context = nil;
-  _ui_owner = nil;
+  renderer_context_ = nil;
+  ui_owner_ = nil;
 }
 
 CGPoint PlatformRendererContextDarwin::GetRootViewLocationOnScreen() {

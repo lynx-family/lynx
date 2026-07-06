@@ -10,7 +10,9 @@
 #include <type_traits>
 
 #include "base/include/auto_create_optional.h"
+#include "base/include/fml/memory/ref_ptr.h"
 #include "base/include/vector.h"
+#include "core/renderer/ui_wrapper/painting/paint_image.h"
 
 namespace lynx {
 namespace tasm {
@@ -409,6 +411,8 @@ class DisplayList {
     subtree_properties_->push_back(prop);
   }
 
+  base::InlineVector<fml::RefPtr<PaintImage>, 16>& Images() { return images_; }
+
  private:
   template <typename OpType, typename... Args>
   void AddOperationToData(base::auto_create_optional<OpData>& data_store,
@@ -432,6 +436,8 @@ class DisplayList {
   // Platform renderers that belongs to the layer holds this displayList. Used
   // for re-construct ot update the platform renderer hierachy.
   base::InlineVector<int, 16> sub_layers_;
+
+  base::InlineVector<fml::RefPtr<PaintImage>, 16> images_;
 
   float render_offset_[2] = {0, 0};
 

@@ -591,16 +591,17 @@ public class PlatformRendererContext implements TextMeasurerProvider {
     }
   }
 
-  public LynxImageManager getImage(int sign) {
+  public LynxImageManager getImage(int imageKey) {
     UIBody.UIBodyView rootView = mRootView.get();
     if (rootView != null) {
-      return rootView.peekImageAccordingToNodeIndex(sign);
+      return rootView.peekImageAccordingToNodeIndex(imageKey);
     }
     return null;
   }
 
   @CalledByNative
-  public void createImage(int sign, String src, int width, int height, int eventMask) {
+  public void createImage(
+      int sign, String src, int width, int height, int eventMask, int imageKey) {
     // Create Image managed by LynxImageManager and register to UIBodyView
     LynxImageManager imageManager = new LynxImageManager(mContext);
     imageManager.setFallbackSign(sign);
@@ -609,17 +610,17 @@ public class PlatformRendererContext implements TextMeasurerProvider {
     imageManager.onLayoutUpdated(width, height, 0, 0, 0, 0);
     UIBody.UIBodyView rootView = mRootView.get();
     if (rootView != null) {
-      rootView.registerImageAccordingToNodeIndex(sign, imageManager);
+      rootView.registerImageAccordingToNodeIndex(imageKey, imageManager);
     }
     imageManager.onNodeReady();
   }
 
   @CalledByNative
-  public void destroyImage(int sign) {
+  public void destroyImage(int imageKey) {
     // Remove and release the image source from UIBodyView
     UIBody.UIBodyView rootView = mRootView.get();
     if (rootView != null) {
-      rootView.obtainImageAccordingToNodeIndex(sign);
+      rootView.obtainImageAccordingToNodeIndex(imageKey);
     }
   }
 

@@ -17,6 +17,7 @@
 #include "core/renderer/dom/fiber/text_element.h"
 #include "core/renderer/dom/fiber/view_element.h"
 #include "core/renderer/dom/fragment/display_list_builder.h"
+#include "core/renderer/dom/fragment/display_list_reader.h"
 #include "core/renderer/dom/fragment/fragment_behavior.h"
 #include "core/renderer/dom/fragment/image_fragment_behavior.h"
 #include "core/renderer/lynx_env_config.h"
@@ -24,6 +25,7 @@
 #include "core/renderer/tasm/react/testing/mock_painting_context.h"
 #include "core/renderer/ui_wrapper/common/testing/prop_bundle_mock.h"
 #include "core/renderer/ui_wrapper/painting/native_painting_context_platform_ref.h"
+#include "core/renderer/ui_wrapper/painting/paint_image.h"
 #include "core/renderer/ui_wrapper/painting/platform_renderer_impl.h"
 #include "core/renderer/utils/base/tasm_constants.h"
 #include "core/shell/testing/mock_tasm_delegate.h"
@@ -179,8 +181,11 @@ class TestNativePaintingContext : public NativePaintingContext {
       ref_->UpdateDisplayList(id, std::move(list));
     }
   }
-  void CreateImage(int id, base::String src, float width, float height,
-                   int32_t event_mask = 0) override {}
+  fml::RefPtr<PaintImage> CreateImage(int id, base::String src, float width,
+                                      float height,
+                                      int32_t event_mask = 0) override {
+    return fml::MakeRefCounted<PaintImage>(id);
+  }
   void UpdateTextBundle(int id, intptr_t bundle) override {}
   void DestroyTextBundle(int id) override {}
   void InsertListItemPaintingNode(int32_t list_id, int32_t child_id) override {}
@@ -843,8 +848,12 @@ TEST_F(FragmentTest, RoundedRectGeneratesClipPathOpParams) {
 
 TEST_F(FragmentTest, TestUpdateLayoutAndDefineBoxAndDrawImage) {
   auto element = manager->CreateFiberImage("image");
+  element->SetAttributeInternal("src", lepus::Value("image-src://"));
+
   Fragment fragment(element.get());
   fragment.SetBehavior(std::make_unique<ImageFragmentBehavior>(&fragment));
+  TestNativePaintingContext native_painting_context;
+  fragment.behavior_->painting_context_ = &native_painting_context;
 
   starlight::LayoutResultForRendering layout;
   layout.border_ = starlight::DirectionValue<float>({1.f, 2.f, 3.f, 4.f});
@@ -884,6 +893,8 @@ TEST_F(FragmentTest, TestUpdateLayoutAndDefineBoxAndDrawImage) {
   EXPECT_EQ(fragment.LayoutResult().border_radius_info->x_bottom_left, 22.f);
   EXPECT_EQ(fragment.LayoutResult().border_radius_info->y_bottom_left, 24.f);
 
+  fragment.behavior_->OnUpdateLayout(fragment.LayoutResult());
+
   DisplayListBuilder builder;
   EXPECT_EQ(fragment.DefineBorderBox(builder), 0);
   EXPECT_EQ(fragment.DefinePaddingBox(builder), 1);
@@ -899,6 +910,23 @@ TEST_F(FragmentTest, TestUpdateLayoutAndDefineBoxAndDrawImage) {
   ASSERT_NE(ops, nullptr);
   ASSERT_NE(ints, nullptr);
   ASSERT_NE(floats, nullptr);
+  EXPECT_EQ(list.GetContentOpTypesSize(), 4u);
+  EXPECT_EQ(list.GetContentIntDataSize(), 10u);
+  EXPECT_EQ(list.GetContentFloatDataSize(), 36u);
+
+  DisplayListReader reader(list);
+  EXPECT_EQ(reader.Remaining(), 4u);
+  EXPECT_EQ(reader.Next().type, DisplayListOpType::kRecordBox);
+  EXPECT_EQ(reader.Next().type, DisplayListOpType::kRecordBox);
+  EXPECT_EQ(reader.Next().type, DisplayListOpType::kRecordBox);
+  const auto& image_item = reader.Next();
+  EXPECT_EQ(image_item.type, DisplayListOpType::kImage);
+  EXPECT_EQ(image_item.payload.image.image_id, fragment.id());
+  EXPECT_EQ(image_item.payload.image.box_index, 2);
+  EXPECT_FALSE(reader.HasNext());
+  ASSERT_EQ(list.Images().size(), 1u);
+  ASSERT_NE(list.Images()[0], nullptr);
+  EXPECT_EQ(list.Images()[0]->image_key_, fragment.id());
 
   EXPECT_EQ(ops[0], static_cast<int32_t>(DisplayListOpType::kRecordBox));
   EXPECT_EQ(ints[0], 0);
@@ -957,6 +985,8 @@ TEST_F(FragmentTest, TestUpdateLayoutAndDefineBoxAndDrawImage) {
   EXPECT_EQ(ops[3], static_cast<int32_t>(DisplayListOpType::kImage));
   EXPECT_EQ(ints[6], 2);
   EXPECT_EQ(ints[7], 0);
+  EXPECT_EQ(ints[8], fragment.id());
+  EXPECT_EQ(ints[9], 2);
 }
 
 TEST_F(FragmentTest, TestCheckRootIfNeedClipBounds) {

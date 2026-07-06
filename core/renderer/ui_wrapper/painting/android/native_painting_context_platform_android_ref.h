@@ -9,7 +9,7 @@
 #include <string>
 #include <vector>
 
-#include "core/renderer/ui_wrapper/painting/android/platform_renderer_android.h"
+#include "core/renderer/ui_wrapper/painting/android/platform_renderer_context.h"
 #include "core/renderer/ui_wrapper/painting/native_painting_context_platform_ref.h"
 
 namespace lynx {
@@ -19,8 +19,9 @@ namespace tasm {
 // future
 class NativePaintingCtxAndroidRef : public NativePaintingCtxPlatformRef {
  public:
-  explicit NativePaintingCtxAndroidRef(
-      std::unique_ptr<PlatformRendererFactory> view_factory);
+  NativePaintingCtxAndroidRef(
+      std::unique_ptr<PlatformRendererFactory> view_factory,
+      std::unique_ptr<PlatformRendererContext> view_manager);
   ~NativePaintingCtxAndroidRef() override = default;
 
   void GetRootViewLocationOnScreen(float location[2]) override;
@@ -34,6 +35,9 @@ class NativePaintingCtxAndroidRef : public NativePaintingCtxPlatformRef {
 
  protected:
   void NotifyNodeReady(const std::vector<int32_t>& signs) override;
+
+ private:
+  std::unique_ptr<PlatformRendererContext> view_manager_;
 };
 
 }  // namespace tasm

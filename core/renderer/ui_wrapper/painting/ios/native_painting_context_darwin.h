@@ -22,6 +22,7 @@
 namespace lynx {
 namespace tasm {
 
+class PaintImage;
 class NativePaintingCtxDarwin : public PaintingCtxPlatformImpl, public NativePaintingContext {
  public:
   NativePaintingCtxDarwin(LynxUIOwner *owner, void *textra);
@@ -127,12 +128,14 @@ class NativePaintingCtxDarwin : public PaintingCtxPlatformImpl, public NativePai
 
   void UpdatePlatformEventBundle(int32_t id, PlatformEventBundle bundle) override;
 
-  void CreateImage(int id, base::String src, float width, float height,
-                   int32_t event_mask = 0) override;
+  fml::RefPtr<PaintImage> CreateImage(int id, base::String src, float width, float height,
+                                      int32_t event_mask = 0) override;
 
 #pragma endregion  // NativePaintingContext
 
  private:
+  int32_t GenerateUniqueImageKey() { return ++image_key_; }
+
   template <typename F>
   void Enqueue(F &&func);
 
@@ -142,6 +145,7 @@ class NativePaintingCtxDarwin : public PaintingCtxPlatformImpl, public NativePai
   std::shared_ptr<shell::DynamicUIOperationQueue> queue_;
 
   std::unique_ptr<PlatformRendererContextDarwin> context_;
+  int32_t image_key_{0};
 };
 
 }  // namespace tasm
