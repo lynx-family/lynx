@@ -50,7 +50,11 @@ import com.lynx.tasm.behavior.ui.MeaningfulPaintingArea;
 import com.lynx.tasm.behavior.ui.UIBody;
 import com.lynx.tasm.behavior.ui.UIBody.UIBodyView;
 import com.lynx.tasm.behavior.ui.UIGroup;
+import com.lynx.tasm.core.LynxEngineProxy;
 import com.lynx.tasm.core.VSyncMonitor;
+import com.lynx.tasm.element.LynxElement;
+import com.lynx.tasm.element.LynxElementCallback;
+import com.lynx.tasm.element.LynxElementOwner;
 import com.lynx.tasm.eventreport.LynxEventReporter;
 import com.lynx.tasm.featurecount.LynxFeatureCounter;
 import com.lynx.tasm.group.ILynxViewGroup;
@@ -1675,16 +1679,26 @@ public class LynxView extends UIBodyView implements ILynxSecurityTarget {
    * @brief Obtains the root LynxElement for this LynxView.
    * @param callback Receives the root LynxElement, or null if no root is available.
    */
-  public void getLynxElementRoot(@NonNull LynxElement.Callback<LynxElement> callback) {
+  public void getLynxElementRoot(@NonNull LynxElementCallback<LynxElement> callback) {
     if (callback == null) {
       return;
     }
     UIThreadUtils.runOnUiThread(() -> {
-      if (mLynxTemplateRender == null) {
+      LynxContext lynxContext = getLynxContext();
+      if (mLynxTemplateRender == null || lynxContext == null) {
         callback.onResult(null);
         return;
       }
-      mLynxTemplateRender.getLynxElementRoot(callback);
+      LynxEngineProxy proxy = mLynxTemplateRender.getEngineProxy();
+      if (proxy == null) {
+        callback.onResult(null);
+        return;
+      }
+      LynxElementOwner owner = new LynxElementOwner(proxy, lynxContext);
+      proxy.queryLynxElementRoot(result -> {
+        int sign = result instanceof Integer ? (Integer) result : -1;
+        callback.onResult(owner.element(sign));
+      });
     });
   }
 

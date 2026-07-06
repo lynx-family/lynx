@@ -1221,8 +1221,8 @@ public interface com::lynx::react::bridge::Callback {
   public void com.lynx.react.bridge.Callback.invoke(Object... args);
 }
 
-public interface com::lynx::tasm::LynxElement::Callback {
-  public void com.lynx.tasm.LynxElement.Callback< T >.onResult(@Nullable T result);
+public interface com::lynx::tasm::element::LynxElement::Callback {
+  public void com.lynx.tasm.element.LynxElement.Callback< T >.onResult(@Nullable T result);
 }
 
 public interface com::lynx::tasm::NativeFacade::Callback {
@@ -5135,8 +5135,46 @@ public interface com::lynx::tasm::behavior::LynxElement {
   public Class<? extends IRendererHost > com.lynx.tasm.behavior.LynxElement.fragmentLayerRendererHost() default IRendererHost.class;
 }
 
-public class com::lynx::tasm::LynxElement :  {
-  public void com.lynx.tasm.LynxElement.toJSONString(@NonNull final Callback< String > callback);
+public class com::lynx::tasm::element::LynxElement :  {
+  public void com.lynx.tasm.element.LynxElement.findNodeById(String id, LynxElementCallback< LynxElement > callback);
+  public void com.lynx.tasm.element.LynxElement.findNodeByFilter(LynxElementFilter filter, LynxElementCallback< LynxElement > callback);
+  public void com.lynx.tasm.element.LynxElement.findNodesByFilter(LynxElementFilter filter, LynxElementCallback< List< LynxElement > > callback);
+  public void com.lynx.tasm.element.LynxElement.getStatus(LynxElementCallback< LynxElementStatus > callback);
+  public void com.lynx.tasm.element.LynxElement.getSign(LynxElementCallback< Integer > callback);
+  public void com.lynx.tasm.element.LynxElement.getTagName(LynxElementCallback< String > callback);
+  public void com.lynx.tasm.element.LynxElement.getId(LynxElementCallback< String > callback);
+  public void com.lynx.tasm.element.LynxElement.getParent(LynxElementCallback< LynxElement > callback);
+  public void com.lynx.tasm.element.LynxElement.getChildren(LynxElementCallback< List< LynxElement > > callback);
+  public void com.lynx.tasm.element.LynxElement.getChildCount(LynxElementCallback< Integer > callback);
+  public void com.lynx.tasm.element.LynxElement.getRoot(LynxElementCallback< LynxElement > callback);
+  public void com.lynx.tasm.element.LynxElement.getPositionInfo(LynxElementCallback< Map< String, Object > > callback);
+  public void com.lynx.tasm.element.LynxElement.getDataset(LynxElementCallback< Map< String, Object > > callback);
+  public void com.lynx.tasm.element.LynxElement.getAttribute(String name, LynxElementCallback< Object > callback);
+  public void com.lynx.tasm.element.LynxElement.getAttributes(LynxElementCallback< Map< String, Object > > callback);
+  public void com.lynx.tasm.element.LynxElement.getPlatformView(LynxElementCallback< View > callback);
+  public void com.lynx.tasm.element.LynxElement.toJSONString(LynxElementCallback< String > callback);
+}
+
+public interface com::lynx::tasm::element::LynxElementCallback {
+  public void com.lynx.tasm.element.LynxElementCallback< T >.onResult(T result);
+}
+
+public interface com::lynx::tasm::element::LynxElementFilter {
+  public boolean com.lynx.tasm.element.LynxElementFilter.accept(LynxElement element);
+}
+
+public class com::lynx::tasm::element::LynxElementOwner :  {
+  public com.lynx.tasm.element.LynxElementOwner.LynxElementOwner(LynxEngineProxy engineProxy, LynxContext lynxContext);
+  public LynxElement com.lynx.tasm.element.LynxElementOwner.element(int sign);
+}
+
+public interface com::lynx::tasm::core::LynxEngineProxy::LynxElementQueryCallback {
+  public void com.lynx.tasm.core.LynxEngineProxy.LynxElementQueryCallback.onResult(Object result);
+}
+
+public enum com::lynx::tasm::element::LynxElementStatus {
+  public com.lynx.tasm.element.LynxElementStatus.ALIVE ALIVE;
+  public com.lynx.tasm.element.LynxElementStatus.DETACHED DETACHED;
 }
 
 public class com::lynx::jsbridge::LynxEmbeddedModule : com.lynx.jsbridge.LynxContextModule {
@@ -5192,6 +5230,8 @@ public class com::lynx::tasm::core::LynxEngineProxy :  {
   public void com.lynx.tasm.core.LynxEngineProxy.startEventCapture(long eventID);
   public void com.lynx.tasm.core.LynxEngineProxy.startEventBubble(long eventID);
   public void com.lynx.tasm.core.LynxEngineProxy.startEventFire(boolean isStop, long eventID);
+  public void com.lynx.tasm.core.LynxEngineProxy.queryLynxElementRoot(LynxElementQueryCallback callback);
+  public void com.lynx.tasm.core.LynxEngineProxy.queryLynxElement(final int sign, final int queryType, final String argument, LynxElementQueryCallback callback);
 }
 
 public enum com::lynx::tasm::LynxEngine::LynxEngineState {
@@ -7617,7 +7657,7 @@ public class com::lynx::tasm::LynxView : com.lynx.tasm.behavior.ui.UIBody.UIBody
   public View com.lynx.tasm.LynxView.findViewByIdSelector(String id);
   public LynxBaseUI com.lynx.tasm.LynxView.findUIByIdSelector(String id);
   public UIGroup< UIBodyView > com.lynx.tasm.LynxView.getLynxUIRoot();
-  public void com.lynx.tasm.LynxView.getLynxElementRoot(@NonNull LynxElement.Callback< LynxElement > callback);
+  public void com.lynx.tasm.LynxView.getLynxElementRoot(@NonNull LynxElementCallback< LynxElement > callback);
   public void com.lynx.tasm.LynxView.syncFlush();
   public LynxBaseUI com.lynx.tasm.LynxView.findUIByIndex(int index);
   public void com.lynx.tasm.LynxView.setOnClickListener(@Nullable OnClickListener listener);
