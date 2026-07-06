@@ -46,6 +46,7 @@
 #include "core/renderer/dom/vdom/radon/radon_component.h"
 #include "core/renderer/events/closure_event_listener.h"
 #include "core/renderer/events/touch_event_handler.h"
+#include "core/renderer/lynx_env_config.h"
 #include "core/renderer/page_proxy.h"
 #include "core/renderer/starlight/style/css_type.h"
 #include "core/renderer/starlight/style/default_layout_style.h"
@@ -979,6 +980,42 @@ bool Element::CheckHasInvalidationForClass(const ClassList& old_classes,
   CSSFragment::CollectClassChangedInvalidation(
       css_fragment, invalidation_lists_, old_classes, new_classes);
   return invalidation_lists_.descendants.size() != old_size;
+}
+
+bool Element::CheckHasInvalidationForId(const std::string& old_id,
+                                        const std::string& new_id) {
+  auto* css_fragment = GetRelatedCSSFragment();
+  // resolve styles from css fragment
+  if (!css_fragment || !css_fragment->enable_css_invalidation()) {
+    return false;
+  }
+  auto old_size = invalidation_lists_.descendants.size();
+  CSSFragment::CollectIdChangedInvalidation(css_fragment, invalidation_lists_,
+                                            old_id, new_id);
+  return invalidation_lists_.descendants.size() != old_size;
+}
+
+void Element::InvalidateChildren(css::InvalidationSet* invalidation_set) {
+  if (invalidation_set->WholeSubtreeInvalid() || !invalidation_set->IsEmpty()) {
+    VisitChildren([invalidation_set](Element* child) {
+      if (!child->StyleDirty() && !child->is_raw_text() &&
+          invalidation_set->InvalidatesElement(*child->data_model())) {
+        child->MarkStyleDirty(false);
+      }
+    });
+  }
+}
+
+void Element::VisitChildren(
+    const base::MoveOnlyClosure<void, Element*>& visitor) {
+  for (auto& child : scoped_children_) {
+    auto* child_element = child.get();
+    // In fiber mode, we skip the children in component
+    if (!child_element->is_component()) {
+      visitor(child_element);
+      child_element->VisitChildren(visitor);
+    }
+  }
 }
 
 void Element::SetClasses(ClassList&& classes) {
@@ -1966,12 +2003,55 @@ void Element::HandlePseudoElement() {
   style_resolver_.HandlePseudoElement(GetRelatedCSSFragment());
 }
 
+void Element::PrepareOrUpdatePseudoElement(PseudoState state,
+                                           StyleMap& style_map) {
+  if (style_map.empty() &&
+      (!pseudo_elements_.has_value() ||
+       pseudo_elements_->find(state) == pseudo_elements_->end())) {
+    return;
+  }
+
+  PseudoElement* pseudo_element = CreatePseudoElementIfNeed(state);
+  pseudo_element->UpdateStyleMap(style_map);
+}
+
+PseudoElement* Element::CreatePseudoElementIfNeed(PseudoState state) {
+  if (pseudo_elements_.has_value()) {
+    auto it = pseudo_elements_->find(state);
+    if (it != pseudo_elements_->end()) {
+      return it->second.get();
+    }
+  }
+
+  auto new_pseudo_element = std::make_unique<PseudoElement>(state, this);
+  auto* result = new_pseudo_element.get();
+  (*pseudo_elements_)[state] = std::move(new_pseudo_element);
+  return result;
+}
+
 void Element::HandleCSSVariables(StyleMap& styles) {
   style_resolver_.HandleCSSVariables(styles);
 }
 
 bool Element::DisableFlattenWithOpacity() {
   return computed_css_style()->HasOpacity() && !is_text() && !is_image();
+}
+
+void Element::SetMeasureFunc(std::unique_ptr<MeasureFunc> measure_func) {
+  if (customized_layout_node_ != nullptr) {
+    customized_layout_node_->SetMeasureFunc(std::move(measure_func));
+  }
+}
+
+void Element::SetMeasureFunc(void* context,
+                             starlight::SLMeasureFunc measure_func) {
+  sl_node_->SetContext(context);
+  sl_node_->SetSLMeasureFunc(std::move(measure_func));
+}
+
+void Element::SetAlignmentFunc(void* context,
+                               starlight::SLAlignmentFunc alignment_func) {
+  sl_node_->SetSLAlignmentFunc(std::move(alignment_func));
 }
 
 starlight::ComputedCSSStyle* Element::GetParentComputedCSSStyle() {
@@ -2000,10 +2080,40 @@ starlight::ComputedCSSStyle* Element::GetParentBaseComputedCSSStyle() {
   return temp->base_css_style();
 }
 
+void Element::PrepareSelfForThreadedElementResolution() {
+  EnsureTagInfo();
+  GetRelatedCSSFragment();
+  if (is_component()) {
+    static_cast<ComponentElement*>(this)->GetCSSFragment();
+  }
+}
+
 bool Element::ShouldAvoidFlattenForView() {
   return is_view() && element_manager()->GetDefaultOverflowVisible() &&
          computed_css_style()->IsOverflowHidden() &&
          computed_css_style()->HasBorderRadius();
+}
+
+void Element::DispatchLayoutBeforeRecursively() {
+  if (!is_wrapper()) {
+    if (sl_node_ == nullptr || !sl_node_->IsDirty()) {
+      return;
+    }
+
+    if (sl_node_->GetSLMeasureFunc()) {
+      DispatchLayoutBefore();
+    }
+  }
+
+  for (auto& child : scoped_children_) {
+    child->DispatchLayoutBeforeRecursively();
+  }
+}
+
+void Element::DispatchLayoutBefore() {
+  if (customized_layout_node_) {
+    customized_layout_node_->OnLayoutBefore();
+  }
 }
 
 bool Element::TendToFlatten() {
@@ -2129,6 +2239,42 @@ void Element::SetComputedFontSize(double font_size, double root_font_size) {
   UpdateLayoutNodeFontSize(font_size, root_font_size);
   ResolveStyleValue(kPropertyIDFontSize,
                     CSSValue(font_size, CSSValuePattern::NUMBER));
+}
+
+void Element::SetFontSizeForAllElement(double cur_node_font_size,
+                                       double root_node_font_size) {
+  computed_css_style()->SetFontSize(cur_node_font_size, root_node_font_size);
+
+  if (pseudo_elements_.has_value()) {
+    for (const auto& [key, pseudo_element] : *pseudo_elements_) {
+      pseudo_element->SetFontSize(cur_node_font_size, root_node_font_size);
+    }
+  }
+}
+
+void Element::UpdateLengthContextValueForAllElement(
+    const LynxEnvConfig& env_config) {
+  computed_css_style()->SetFontScale(env_config.FontScale());
+  computed_css_style()->SetViewportWidth(env_config.ViewportWidth());
+  computed_css_style()->SetViewportHeight(env_config.ViewportHeight());
+  computed_css_style()->SetScreenWidth(env_config.ScreenWidth());
+  computed_css_style()->SetLayoutUnit(env_config.PhysicalPixelsPerLayoutUnit(),
+                                      env_config.LayoutsUnitPerPx());
+
+  if (pseudo_elements_.has_value()) {
+    for (const auto& [key, pseudo_element] : *pseudo_elements_) {
+      pseudo_element->ComputedCSSStyle()->SetFontScale(env_config.FontScale());
+      pseudo_element->ComputedCSSStyle()->SetViewportWidth(
+          env_config.ViewportWidth());
+      pseudo_element->ComputedCSSStyle()->SetViewportHeight(
+          env_config.ViewportHeight());
+      pseudo_element->ComputedCSSStyle()->SetScreenWidth(
+          env_config.ScreenWidth());
+      pseudo_element->ComputedCSSStyle()->SetLayoutUnit(
+          env_config.PhysicalPixelsPerLayoutUnit(),
+          env_config.LayoutsUnitPerPx());
+    }
+  }
 }
 
 void Element::CheckFlattenRelatedProp(const base::String& key,
