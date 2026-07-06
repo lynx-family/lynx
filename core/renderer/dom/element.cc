@@ -376,6 +376,62 @@ void Element::PushStyleToBundle() {
   }
 }
 
+void Element::PerformElementContainerCreateOrUpdate(bool need_update,
+                                                    bool need_reset) {
+  PushStyleToBundle();
+
+  if (dirty_ & kDirtyCreated) {
+    TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_HANDLE_CRATE,
+                [this](lynx::perfetto::EventContext ctx) {
+                  UpdateTraceDebugInfo(ctx.event());
+                });
+    // FIXME(linxs): FlushProps can be optimized, for example can we just
+    // create viewElement,imageElement,textElement.. directly?
+    FlushProps();
+    dirty_ &= ~kDirtyCreated;
+  } else if (need_update || dirty_ & kDirtyForceUpdate) {
+    if (prop_bundle_) {
+      UpdateLayoutNodeProps(prop_bundle_);
+
+      if (!is_virtual()) {
+        TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_UPDATE_FIBER_ELEMENT,
+                    [this](lynx::perfetto::EventContext ctx) {
+                      UpdateTraceDebugInfo(ctx.event());
+                    });
+        if (!IsLayoutOnly()) {
+          TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_UPDATE_PAINTING_NODE,
+                      [this](lynx::perfetto::EventContext ctx) {
+                        UpdateTraceDebugInfo(ctx.event());
+                      });
+          element_container()->UpdatePaintingNode(TendToFlatten(),
+                                                  prop_bundle_);
+        } else if (!CanBeLayoutOnly()) {
+          TRACE_EVENT(LYNX_TRACE_CATEGORY,
+                      FIBER_ELEMENT_TRANSITION_TO_NATIVE_VIEW,
+                      [this](lynx::perfetto::EventContext ctx) {
+                        UpdateTraceDebugInfo(ctx.event());
+                      });
+          // Is layout only and can not be layout only
+          TransitionToNativeView();
+        }
+      }
+    }
+
+    // TODO(songshourui.null): Later, determine whether to call StyleChanged
+    // based on whether ComputedCSSStyle is dirty.
+    HandleBeforeFlushActionsTask(
+        [this]() { element_container()->StyleChanged(); },
+        kFlagGreedyParallel | kFlagLevelOrderParallel);
+  }
+  dirty_ &= ~kDirtyForceUpdate;
+
+  UpdateLayoutNodeByBundle();
+
+  if (need_reset) {
+    ResetPropBundle();
+  }
+}
+
 std::vector<float> Element::ScrollBy(float width, float height) {
   return catalyzer_->ScrollBy(impl_id(), width, height);
 }
@@ -728,12 +784,58 @@ void Element::UpdateTagToLayoutBundle() {
   layout_bundle_->tag = tag_;
 }
 
+void Element::UpdateLayoutNodeByBundle() {
+  if (EnableLayoutInElementMode()) {
+    EnsureSLNode();
+    return;
+  }
+
+  if (layout_bundle_ == nullptr) {
+    return;
+  }
+  EnqueueLayoutTask([element_manager = element_manager(), id = impl_id(),
+                     layout_bundle = std::move(layout_bundle_)]() mutable {
+    element_manager->UpdateLayoutNodeByBundle(id, std::move(layout_bundle));
+  });
+  layout_bundle_ = nullptr;
+}
+
 bool Element::UsingTextService() const {
   return element_manager() && element_manager()->IsUsingTextService();
 }
 
 bool Element::EnableFragmentLayerRender() const {
   return element_manager() && element_manager()->IsFragmentLayerRenderModeOn();
+}
+
+void Element::CheckDynamicUnit(CSSPropertyID id, const CSSValue& value,
+                               bool reset) {
+  if (reset && parsed_styles_map_.empty()) {
+    // TODO(linxs): try to clear dynamic_style_flags_ here
+    dynamic_style_flags_ = 0;
+    return;
+  }
+
+  dynamic_style_flags_ |= DynamicCSSStylesManager::GetValueFlags(
+      id, value,
+      element_manager()->GetDynamicCSSConfigs().unify_vw_vh_behavior_,
+      element_manager()->FixFilterDynamicUpdateBug());
+}
+
+void Element::WillResetCSSValue(CSSPropertyID& css_id) {
+  if (css_id == CSSPropertyID::kPropertyIDFontSize) {
+    ResetFontSize();
+  }
+
+  // remove self inherit properties if needed
+  if (inherited_styles_.has_value()) {
+    auto it = inherited_styles_->find(css_id);
+    if (it != inherited_styles_->end()) {
+      inherited_styles_->erase(it);
+      reset_inherited_ids_->emplace_back(css_id);
+      children_propagate_inherited_styles_flag_ = true;
+    }
+  }
 }
 
 void Element::ResetStyleInternal(CSSPropertyID css_id) {
@@ -3343,6 +3445,238 @@ void Element::UpdateDynamicChildrenStyleRecursively(uint32_t style,
   }
 }
 
+void Element::UpdateDynamicElementStyleForNewPipeline(
+    uint32_t& style, bool& inner_force_update) {
+  constexpr uint32_t kMediaQueryEnvMask =
+      DynamicCSSStylesManager::kUpdateViewport |
+      DynamicCSSStylesManager::kUpdateScreenMetrics |
+      DynamicCSSStylesManager::kUpdateRem | DynamicCSSStylesManager::kUpdateEm |
+      DynamicCSSStylesManager::kUpdateColorScheme;
+  bool media_query_env_changed = false;
+  if (is_component() &&
+      ((style & kMediaQueryEnvMask) != 0 || (dirty_ & kDirtyFontSize))) {
+    auto* fragment = GetRelatedCSSFragment();
+    if (StyleResolver::FragmentsHasMediaQueries(fragment)) {
+      media_query_env_changed = true;
+      inner_force_update = true;
+    }
+  }
+
+  if ((dynamic_style_flags_ > 0 || inner_force_update ||
+       media_query_env_changed) &&
+      !is_wrapper()) {
+    NotifyUnitValuesUpdatedToAnimation(style);
+    const auto& env_config = element_manager()->GetLynxEnvConfig();
+
+    bool font_scale_changed =
+        (dynamic_style_flags_ & DynamicCSSStylesManager::kUpdateFontScale) &&
+        (style & DynamicCSSStylesManager::kUpdateFontScale) &&
+        (computed_css_style()->GetMeasureContext().font_scale_ !=
+         env_config.FontScale());
+    bool viewport_changed =
+        (dynamic_style_flags_ & DynamicCSSStylesManager::kUpdateViewport) &&
+        (style & DynamicCSSStylesManager::kUpdateViewport) &&
+        !(env_config.ViewportWidth() ==
+              computed_css_style()->GetMeasureContext().viewport_width_ &&
+          env_config.ViewportHeight() ==
+              computed_css_style()->GetMeasureContext().viewport_height_);
+    bool screen_matrix_changed =
+        (dynamic_style_flags_ &
+         DynamicCSSStylesManager::kUpdateScreenMetrics) &&
+        (style & DynamicCSSStylesManager::kUpdateScreenMetrics) &&
+        (env_config.ScreenWidth() !=
+         computed_css_style()->GetMeasureContext().screen_width_);
+    bool rem_changed =
+        (dynamic_style_flags_ & DynamicCSSStylesManager::kUpdateRem) &&
+        (style & DynamicCSSStylesManager::kUpdateRem);
+    bool em_changed =
+        (dynamic_style_flags_ & DynamicCSSStylesManager::kUpdateEm) &&
+        ((style & DynamicCSSStylesManager::kUpdateEm) ||
+         (dirty_ & kDirtyFontSize));
+
+    if (GetCurrentRootFontSize() != GetRecordedRootFontSize()) {
+      computed_css_style()->SetFontSize(GetFontSize(),
+                                        GetCurrentRootFontSize());
+      UpdateLayoutNodeFontSize(GetFontSize(), GetCurrentRootFontSize());
+    }
+
+    if (inner_force_update || font_scale_changed || viewport_changed ||
+        screen_matrix_changed || rem_changed || em_changed ||
+        media_query_env_changed) {
+      UpdateLengthContextValueForAllElement(env_config);
+
+      NewPipelineResolveRequest request;
+      request.force_resolve = true;
+      request.force_platform_update = inner_force_update;
+      request.dynamic_update_flags = style;
+      if (dirty_ & kDirtyFontSize) {
+        request.dynamic_update_flags |= DynamicCSSStylesManager::kUpdateEm;
+      }
+
+      auto outcome = ResolveCSSStylesNewPipelineCore(request);
+      if (outcome.need_update) {
+        RequestLayout();
+        PerformElementContainerCreateOrUpdate(
+            true, element_manager_->FixNewAnimatorFlushBug());
+      }
+      style |= outcome.child_update_flags;
+      inner_force_update |= outcome.force_children;
+    }
+  }
+
+  if (dirty_ & kDirtyFontSize) {
+    if (is_page()) {
+      style |= DynamicCSSStylesManager::kUpdateRem;
+    }
+    dirty_ &= ~kDirtyFontSize;
+  }
+}
+
+void Element::UpdateDynamicElementStyleRecursively(uint32_t style,
+                                                   bool force_update) {
+  if (is_raw_text()) {
+    return;
+  }
+  bool inner_force_update = force_update;
+
+  if (element_manager()->EnableNewStylingPipeline() &&
+      !element_manager()->EnableSimpleStyle()) {
+    UpdateDynamicElementStyleForNewPipeline(style, inner_force_update);
+    UpdateDynamicChildrenStyleRecursively(style, inner_force_update);
+    return;
+  }
+
+  constexpr uint32_t kMediaQueryEnvMask =
+      DynamicCSSStylesManager::kUpdateViewport |
+      DynamicCSSStylesManager::kUpdateScreenMetrics |
+      DynamicCSSStylesManager::kUpdateRem | DynamicCSSStylesManager::kUpdateEm |
+      DynamicCSSStylesManager::kUpdateColorScheme;
+  if (is_component() &&
+      ((style & kMediaQueryEnvMask) != 0 || (dirty_ & kDirtyFontSize))) {
+    auto* fragment = GetRelatedCSSFragment();
+    if (StyleResolver::FragmentsHasMediaQueries(fragment)) {
+      MarkStyleDirty(true);
+    }
+  }
+
+  if ((dynamic_style_flags_ > 0 || inner_force_update) && !is_wrapper()) {
+    // Style could never be "all" here.
+    NotifyUnitValuesUpdatedToAnimation(style);
+    const auto& env_config = element_manager()->GetLynxEnvConfig();
+    const auto& css_config = element_manager()->GetDynamicCSSConfigs();
+
+    bool font_scale_changed =
+        (dynamic_style_flags_ & DynamicCSSStylesManager::kUpdateFontScale) &&
+        (style & DynamicCSSStylesManager::kUpdateFontScale) &&
+        (computed_css_style()->GetMeasureContext().font_scale_ !=
+         env_config.FontScale());
+    bool viewport_changed =
+        (dynamic_style_flags_ & DynamicCSSStylesManager::kUpdateViewport) &&
+        (style & DynamicCSSStylesManager::kUpdateViewport) &&
+        !(env_config.ViewportWidth() ==
+              computed_css_style()->GetMeasureContext().viewport_width_ &&
+          env_config.ViewportHeight() ==
+              computed_css_style()->GetMeasureContext().viewport_height_);
+    bool screen_matrix_changed =
+        (dynamic_style_flags_ &
+         DynamicCSSStylesManager::kUpdateScreenMetrics) &&
+        (style & DynamicCSSStylesManager::kUpdateScreenMetrics) &&
+        (env_config.ScreenWidth() !=
+         computed_css_style()->GetMeasureContext().screen_width_);
+    bool rem_changed =
+        (dynamic_style_flags_ & DynamicCSSStylesManager::kUpdateRem) &&
+        (style & DynamicCSSStylesManager::kUpdateRem);
+
+    if (GetCurrentRootFontSize() != GetRecordedRootFontSize()) {
+      computed_css_style()->SetFontSize(GetFontSize(),
+                                        GetCurrentRootFontSize());
+      UpdateLayoutNodeFontSize(GetFontSize(), GetCurrentRootFontSize());
+    }
+
+    if (inner_force_update || font_scale_changed || viewport_changed ||
+        screen_matrix_changed || rem_changed) {
+      UpdateLengthContextValueForAllElement(env_config);
+      const auto property = GetParentInheritedProperty();
+
+      ConsumeStyleInternal(
+          parsed_styles_map_, property.inherited_styles_,
+          [this, style, &css_config](auto id, const auto& value) {
+            if (CSSProperty::IsTransitionProps(id) ||
+                CSSProperty::IsKeyframeProps(id)) {
+              return true;
+            }
+
+            if (ShouldUseLegacyTransitionInterception() &&
+                css_transition_manager_) {
+              if (IsFiberArch()) {
+                const bool skip_transition =
+                    element_manager_ &&
+                    !element_manager_
+                         ->FixFiberDynamicUpdateTransitionConsumeBug();
+                if (skip_transition &&
+                    css_transition_manager_->NeedsTransition(id)) {
+                  return true;
+                }
+              } else {
+                const bool skip_transition =
+                    element_manager_ &&
+                    element_manager_->FixDynamicUpdateTransitionConsumeBug();
+                if (!skip_transition &&
+                    css_transition_manager_->NeedsTransition(id)) {
+                  return true;
+                }
+              }
+            }
+
+            auto new_flags = DynamicCSSStylesManager::GetValueFlags(
+                id, value, css_config.unify_vw_vh_behavior_,
+                element_manager()->FixFilterDynamicUpdateBug());
+
+            if ((new_flags & (style | ((dirty_ & kDirtyFontSize)
+                                           ? DynamicCSSStylesManager::kUpdateEm
+                                           : 0))) == 0) {
+              return true;
+            }
+
+            return false;
+          });
+
+      if (element_manager()->EnableAnimationForwardUpdatePreservation() &&
+          animation_override_styles_map_.has_value() &&
+          !animation_override_styles_map_->empty()) {
+        ConsumeStyleInternal(*animation_override_styles_map_, nullptr,
+                             [](auto id, const auto& value) {
+                               if (CSSProperty::IsTransitionProps(id) ||
+                                   CSSProperty::IsKeyframeProps(id)) {
+                                 return true;
+                               }
+                               return false;
+                             });
+      }
+
+      if (inherited_styles_.has_value() && !inherited_styles_->empty()) {
+        inner_force_update |= true;
+      }
+
+      PerformElementContainerCreateOrUpdate(
+          true, element_manager_->FixNewAnimatorFlushBug());
+    }
+  }
+
+  if (dirty_ & kDirtyFontSize) {
+    if (is_page()) {
+      style |= DynamicCSSStylesManager::kUpdateRem;
+    }
+    dirty_ &= ~kDirtyFontSize;
+  }
+
+  UpdateDynamicChildrenStyleRecursively(style, inner_force_update);
+}
+
+void Element::UpdateDynamicElementStyle(uint32_t style, bool force_update) {
+  UpdateDynamicElementStyleRecursively(style, force_update);
+}
+
 bool Element::HasLayoutInElementPlatformNode() {
   return EnableLayoutInElementMode() && customized_layout_node_;
 }
@@ -3764,7 +4098,15 @@ PaintingContext* Element::painting_context() {
   return catalyzer_->painting_context();
 }
 
-void Element::MarkLayoutDirty() { element_manager_->MarkLayoutDirty(id_); }
+void Element::MarkLayoutDirty() {
+  if (EnableLayoutInElementMode()) {
+    MarkLayoutDirtyLite();
+    return;
+  }
+
+  EnsureLayoutBundle();
+  layout_bundle_->is_dirty = true;
+}
 
 void Element::MarkLayoutDirtyLite() {
   if (!is_virtual_) {

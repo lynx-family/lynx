@@ -106,14 +106,10 @@ class FiberElement : public Element {
   /**
    * A key function to GetListNode
    */
-  virtual ListNode* GetListNode() override { return nullptr; };
-
   /**
    * A key function to flush the tree with the current element as the root node.
    */
   virtual void FlushActionsAsRoot();
-
-  virtual bool CanBeLayoutOnly() const override;
 
   /**
    * A key function for flush all pending actions for current Element
@@ -205,12 +201,6 @@ class FiberElement : public Element {
    * Element API for setNativeProps
    *  @param native_props the props that updated from js.
    */
-  void SetNativeProps(
-      const lepus::Value& native_props,
-      std::shared_ptr<PipelineOptions>& pipeline_options) override;
-
-  virtual StyleMap GetStylesForWorklet() override;
-
   void ResolveCSSStyles(StyleMap& parsed_styles,
                         base::InlineVector<CSSPropertyID, 16>& reset_style_ids,
                         bool& need_update,
@@ -221,9 +211,6 @@ class FiberElement : public Element {
   void ConsumeStyle(const StyleMap& styles,
                     const StyleMap* inherit_styles) override;
 
-  // Flush style and attribute to platform shadow node, platform painting node
-  // will be created if has not been created,
-  void FlushProps() override;
   const EventMap& event_map() const override {
     if (data_model_) {
       return data_model_->static_events();
@@ -245,33 +232,10 @@ class FiberElement : public Element {
                                 bool update_logical_children);
   void AddChildAt(fml::RefPtr<FiberElement> child, int index);
 
-  void UpdateFiberElement();
-
-  virtual void MarkLayoutDirty() override;
-  virtual void AttachLayoutNode(const fml::RefPtr<PropBundle>& props) override;
-  virtual void UpdateLayoutNodeProps(
-      const fml::RefPtr<PropBundle>& props) override;
-  virtual void UpdateLayoutNodeStyle(CSSPropertyID css_id,
-                                     const tasm::CSSValue& value) override;
-  virtual void ResetLayoutNodeStyle(tasm::CSSPropertyID css_id) override;
-  virtual void UpdateLayoutNodeFontSize(double cur_node_font_size,
-                                        double root_node_font_size) override;
-  virtual void UpdateLayoutNodeAttribute(starlight::LayoutAttribute key,
-                                         const lepus::Value& value) override;
-
-  /**
-   * Interface used to create/update LayoutNode for FiberElement.
-   */
-  void UpdateLayoutNodeByBundle();
-
   virtual void CheckHasInlineContainer(Element* parent) override;
 
   virtual void EnqueueLayoutTask(
       base::MoveOnlyClosure<void> operation) override;
-
-  void RequestLayout() override;
-
-  void RequestNextFrame() override;
 
   virtual ParallelFlushReturn PrepareForCreateOrUpdate();
 
@@ -284,12 +248,6 @@ class FiberElement : public Element {
 
   void OnPseudoStatusChanged(PseudoState prev_status,
                              PseudoState current_status) override;
-
-  void UpdateDynamicElementStyle(uint32_t style, bool force_update) override;
-
-  void CheckDynamicUnit(CSSPropertyID id, const CSSValue& value,
-                        bool reset) override;
-  void WillResetCSSValue(CSSPropertyID& id) override;
 
   // The text element can call this function to convert child fiber elements
   // into inline elements. Currently, only view, text, image and wrapper
@@ -308,8 +266,6 @@ class FiberElement : public Element {
       ElementManager* manager,
       const std::shared_ptr<CSSStyleSheetManager>& style_manager,
       bool keep_element_id) override;
-
-  int32_t GetCSSID() const override;
 
   void CreateListItemScheduler(list::BatchRenderStrategy batch_render_strategy,
                                bool continuous_resolve_tree);
@@ -342,8 +298,6 @@ class FiberElement : public Element {
 
   bool ConsumeAllAttributes();
 
-  void PerformElementContainerCreateOrUpdate(bool need_update, bool need_reset);
-
   ParallelFlushReturn CreateParallelTaskHandler();
 
   /**
@@ -357,8 +311,6 @@ class FiberElement : public Element {
 
   virtual void SetAttributeInternal(const base::String& key,
                                     const lepus::Value& value);
-
-  virtual CSSFragment* GetRelatedCSSFragment() override;
 
   virtual void MarkHasLayoutOnlyPropsIfNecessary(
       const base::String& attribute_key);
@@ -396,10 +348,6 @@ class FiberElement : public Element {
   void RemoveFixedElement(FiberElement* child);
 
   void ResetTextAlign(StyleMap& update_map, bool direction_reset);
-
-  void UpdateDynamicElementStyleRecursively(uint32_t style, bool force_update);
-  void UpdateDynamicElementStyleForNewPipeline(uint32_t& style,
-                                               bool& inner_force_update);
 
   void PrepareComponentExternalStyles(AttributeHolder* holder);
   void PrepareRootCSSVariables(AttributeHolder* holder);

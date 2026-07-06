@@ -554,10 +554,10 @@ class Element : public lepus::RefCounted,
   // For JS API setNativeProps
   virtual void SetNativeProps(
       const lepus::Value& args,
-      std::shared_ptr<PipelineOptions>& pipeline_options) = 0;
+      std::shared_ptr<PipelineOptions>& pipeline_options);
 
   // Get List Node
-  virtual ListNode* GetListNode() = 0;
+  virtual ListNode* GetListNode() { return nullptr; }
 
   /**
    * A key function to get parent component's element
@@ -832,7 +832,7 @@ class Element : public lepus::RefCounted,
 
   ContentData* content_data() const { return content_data_.get(); }
 
-  virtual void UpdateDynamicElementStyle(uint32_t style, bool force_update) = 0;
+  virtual void UpdateDynamicElementStyle(uint32_t style, bool force_update);
 
   bool HasPlaceHolder() { return has_placeholder_; }
   bool HasTextSelection() { return has_text_selection_; }
@@ -918,11 +918,11 @@ class Element : public lepus::RefCounted,
   // TTML NoDiff, the implementation of worklets no longer relies on these
   // capabilities. After the 2.0 worklet services are phased out, the following
   // two APIs will also be removed.
-  virtual StyleMap GetStylesForWorklet() = 0;
+  virtual StyleMap GetStylesForWorklet();
   virtual const AttrMap& GetAttributesForWorklet();
 
   inline const auto& GlobalBindTarget() { return global_bind_target_set_; }
-  virtual bool CanBeLayoutOnly() const = 0;
+  virtual bool CanBeLayoutOnly() const;
 
   LYNX_EXPORT_FOR_DEVTOOL bool HasUIPrimitive() const;
 
@@ -1076,15 +1076,15 @@ class Element : public lepus::RefCounted,
                                         bool force_reset = false);
 
   virtual void MarkAsLayoutRoot();
-  virtual void AttachLayoutNode(const fml::RefPtr<PropBundle>& props) = 0;
-  virtual void UpdateLayoutNodeProps(const fml::RefPtr<PropBundle>& props) = 0;
+  virtual void AttachLayoutNode(const fml::RefPtr<PropBundle>& props);
+  virtual void UpdateLayoutNodeProps(const fml::RefPtr<PropBundle>& props);
   virtual void UpdateLayoutNodeStyle(CSSPropertyID css_id,
-                                     const tasm::CSSValue& value) = 0;
-  virtual void ResetLayoutNodeStyle(tasm::CSSPropertyID css_id) = 0;
+                                     const tasm::CSSValue& value);
+  virtual void ResetLayoutNodeStyle(tasm::CSSPropertyID css_id);
   virtual void UpdateLayoutNodeFontSize(double cur_node_font_size,
-                                        double root_node_font_size) = 0;
+                                        double root_node_font_size);
   virtual void UpdateLayoutNodeAttribute(starlight::LayoutAttribute key,
-                                         const lepus::Value& value) = 0;
+                                         const lepus::Value& value);
 
   enum class StyleSideEffectReplayMode {
     kNormal,
@@ -1106,9 +1106,7 @@ class Element : public lepus::RefCounted,
   virtual bool ResolveStyleValue(CSSPropertyID id, const tasm::CSSValue& value);
 
   virtual void CheckDynamicUnit(CSSPropertyID id, const CSSValue& value,
-                                bool reset) {
-    // currently, radon element do no need to such kind of check
-  }
+                                bool reset);
 
   bool EnableLayoutInElementMode() const;
 
@@ -1125,6 +1123,8 @@ class Element : public lepus::RefCounted,
 
   void UpdateTagToLayoutBundle();
 
+  void UpdateLayoutNodeByBundle();
+
   void MarkCustomPropertiesDirty() { custom_properties_ = nullptr; }
 
   const StyleMap& GetParsedStylesMap() const { return parsed_styles_map_; }
@@ -1133,7 +1133,7 @@ class Element : public lepus::RefCounted,
 
   bool EnableFragmentLayerRender() const;
 
-  virtual void WillResetCSSValue(CSSPropertyID& id) {}
+  virtual void WillResetCSSValue(CSSPropertyID& id);
 
   virtual bool ResetCSSValue(CSSPropertyID id);
   virtual void ConsumeTransitionStylesInAdvanceInternal(
@@ -1158,9 +1158,9 @@ class Element : public lepus::RefCounted,
 
   CSSKeyframesToken* GetCSSKeyframesToken(const base::String& animation_name);
 
-  virtual CSSFragment* GetRelatedCSSFragment() = 0;
+  virtual CSSFragment* GetRelatedCSSFragment();
 
-  virtual void FlushProps() = 0;
+  virtual void FlushProps();
 
   void DispatchLayoutBeforeRecursively();
   virtual void DispatchLayoutBefore();
@@ -1178,9 +1178,9 @@ class Element : public lepus::RefCounted,
 
   void ClearTransitionPreviousEndValue(const base::String&);
 
-  virtual void RequestLayout() = 0;
+  virtual void RequestLayout();
 
-  virtual void RequestNextFrame() = 0;
+  virtual void RequestNextFrame();
 
   void SetAnimationSampleTimeForNewPipeline(const fml::TimePoint& sample_time);
   base::flex_optional<fml::TimePoint> TakeAnimationSampleTimeForNewPipeline();
@@ -1196,7 +1196,7 @@ class Element : public lepus::RefCounted,
 
   virtual void OnPatchFinish(std::shared_ptr<PipelineOptions>& option);
 
-  virtual int32_t GetCSSID() const = 0;
+  virtual int32_t GetCSSID() const;
 
   virtual void SetCSSID(int32_t id);
 
@@ -1563,6 +1563,8 @@ class Element : public lepus::RefCounted,
   virtual void PushStyleToBundle();
   void PushCurrentPropsToBundleForRecording(PropBundle* bundle);
 
+  void PerformElementContainerCreateOrUpdate(bool need_update, bool need_reset);
+
   void RequireFlush();
 
   const tasm::CSSValue& ResolveCurrentStyleValue(
@@ -1897,6 +1899,9 @@ class Element : public lepus::RefCounted,
   void UpdateLengthContextValueForAllElement(const LynxEnvConfig& env_config);
   void UpdateDynamicChildrenStyleRecursively(uint32_t style,
                                              bool force_update);
+  void UpdateDynamicElementStyleRecursively(uint32_t style, bool force_update);
+  void UpdateDynamicElementStyleForNewPipeline(uint32_t& style,
+                                               bool& inner_force_update);
   void EnsureSLNode();
   bool HasLayoutInElementPlatformNode();
   int GetLayoutInElementPlatformChildIndex(Element* child);
