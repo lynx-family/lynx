@@ -231,40 +231,6 @@ void ExtractTransitionRelevantLayoutOnlyStyles(
   }
 }
 
-FiberElement::NewPipelineDynamicStyleInputs
-BuildDynamicStyleInputsForNewPipeline(
-    const FiberElement &element, const starlight::ComputedCSSStyle &final_style,
-    const StyleMap &explicit_resolved_style_map) {
-  FiberElement::NewPipelineDynamicStyleInputs result;
-  result.resolved_style_map = explicit_resolved_style_map;
-
-  if (!element.IsCSSInheritanceEnabled()) {
-    return result;
-  }
-
-  const auto explicit_style_ids =
-      CSSIDBitset::FromKeys(explicit_resolved_style_map);
-  const auto &css_config = element.element_manager()->GetDynamicCSSConfigs();
-  for (const auto &[id, value] : final_style.GetResolvedValues()) {
-    if (id == kPropertyIDFontSize || explicit_style_ids.Has(id) ||
-        !element.IsInheritable(id)) {
-      continue;
-    }
-
-    const auto value_flags = DynamicCSSStylesManager::GetValueFlags(
-        id, value, css_config.unify_vw_vh_behavior_,
-        element.element_manager()->FixFilterDynamicUpdateBug());
-    if (value_flags == 0) {
-      continue;
-    }
-
-    result.resolved_style_map.insert_or_assign(id, value);
-    result.inherited_dynamic_ids.Set(id);
-    result.inherited_dynamic_flags |= value_flags;
-  }
-  return result;
-}
-
 template <typename MapT>
 bool OptionalMapNotEqual(const MapT *old_map, const MapT *new_map) {
   if ((old_map == nullptr) != (new_map == nullptr)) {
@@ -290,31 +256,7 @@ bool CustomPropertiesChanged(const starlight::ComputedCSSStyle *old_style,
 
 }  // namespace
 
-void FiberElement::NewPipelineStyleMutationPlan::AddUpdate(
-    CSSPropertyID id, const CSSValue &value) {
-  update_values.insert_or_assign(id, value);
-  update_ids.Set(id);
-  reset_ids.Reset(id);
-  source_changed = true;
-}
-
-void FiberElement::NewPipelineStyleMutationPlan::AddReset(CSSPropertyID id) {
-  update_values.erase(id);
-  update_ids.Reset(id);
-  reset_ids.Set(id);
-  source_changed = true;
-}
-
-bool FiberElement::NewPipelineStyleMutationPlan::HasOperations() const {
-  return update_ids.HasAny() || reset_ids.HasAny();
-}
-
-bool FiberElement::NewPipelineStyleMutationPlan::NeedsSemanticCommit() const {
-  return source_changed || custom_properties_changed ||
-         font_size_context_changed || root_font_size_context_changed;
-}
-
-FiberElement::NewPipelineStyleResolveResult FiberElement::ResolveComputedStyles(
+Element::NewPipelineStyleResolveResult FiberElement::ResolveComputedStyles(
     const starlight::ComputedCSSStyle *previous_final_style,
     double old_font_size, double old_root_font_size) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_RESOLVE_COMPUTED_STYLES);
@@ -518,31 +460,6 @@ FiberElement::BuildFinalStyleFromAnimationSampleForNewPipeline(
       parent_style, previous_final_style, animated_custom_properties,
       animated_property_overrides, &resolved_style_map,
       &variable_dependent_ids);
-}
-
-FiberElement::AnimationSampleAnalysisForNewPipeline
-FiberElement::AnalyzeAnimationSampleForNewPipeline(
-    const animation::AnimationSampleForNewPipeline &animation_sample) {
-  AnimationSampleAnalysisForNewPipeline analysis;
-  analysis.has_style_effects =
-      !animation_sample.property_overrides.empty() ||
-      !animation_sample.custom_property_overrides.empty() ||
-      !animation_sample.property_resets.empty() ||
-      !animation_sample.custom_property_resets.empty() ||
-      animation_sample.requires_base_style_rebuild;
-  analysis.has_animated_font_size =
-      animation_sample.property_overrides.find(kPropertyIDFontSize) !=
-          animation_sample.property_overrides.end() ||
-      std::find(animation_sample.property_resets.begin(),
-                animation_sample.property_resets.end(),
-                kPropertyIDFontSize) != animation_sample.property_resets.end();
-  analysis.has_custom_property_effects =
-      !animation_sample.custom_property_overrides.empty() ||
-      !animation_sample.custom_property_resets.empty();
-  analysis.changes_resolve_context =
-      analysis.has_animated_font_size || analysis.has_custom_property_effects ||
-      animation_sample.requires_base_style_rebuild;
-  return analysis;
 }
 
 animation::AnimationEventRecordsForNewPipeline
@@ -1252,7 +1169,7 @@ void FiberElement::ResetDirectionAwareProperty(const CSSPropertyID &id,
   }
 }
 
-FiberElement::NewPipelineResolveOutcome
+Element::NewPipelineResolveOutcome
 FiberElement::ResolveCSSStylesNewPipelineCore(
     const NewPipelineResolveRequest &request) {
   NewPipelineResolveOutcome outcome;
@@ -1283,8 +1200,7 @@ FiberElement::ResolveCSSStylesNewPipelineCore(
         GetRelatedCSSFragment());
 
     const auto dynamic_style_inputs = BuildDynamicStyleInputsForNewPipeline(
-        *this, *resolved_styles.final_style,
-        resolved_styles.resolved_style_map);
+        *resolved_styles.final_style, resolved_styles.resolved_style_map);
     const auto resolved_dynamic_style_flags = CollectDynamicFlagsForNewPipeline(
         dynamic_style_inputs.resolved_style_map);
     outcome.dynamic_style_flags = resolved_dynamic_style_flags;
@@ -1950,7 +1866,7 @@ ParallelFlushReturn FiberElement::PrepareForCreateOrUpdate() {
   return []() {};
 }
 
-FiberElement::NewPipelineStyleMutationPlan
+Element::NewPipelineStyleMutationPlan
 FiberElement::BuildNewPipelineStyleMutationPlan(
     const NewPipelineStyleResolveResult &resolved_styles,
     const NewPipelineDynamicStyleInputs &dynamic_inputs,
