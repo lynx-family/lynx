@@ -208,7 +208,7 @@ void ExtractTransitionRelevantLayoutOnlyStyles(
 
 }  // namespace
 
-Element::NewPipelineStyleResolveResult FiberElement::ResolveComputedStyles(
+Element::NewPipelineStyleResolveResult Element::ResolveComputedStyles(
     const starlight::ComputedCSSStyle *previous_final_style,
     double old_font_size, double old_root_font_size) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_RESOLVE_COMPUTED_STYLES);
@@ -279,7 +279,7 @@ Element::NewPipelineStyleResolveResult FiberElement::ResolveComputedStyles(
 }
 
 animation::AnimationSampleForNewPipeline
-FiberElement::SampleAnimationOverridesForNewPipeline(
+Element::SampleAnimationOverridesForNewPipeline(
     starlight::ComputedCSSStyle &new_base_style, bool base_font_size_changed,
     bool base_root_font_size_changed,
     const StyleMap &new_underlying_layout_only_styles,
@@ -380,34 +380,6 @@ FiberElement::SampleAnimationOverridesForNewPipeline(
     platform_css_style_ = std::move(committed_style_for_sampling);
   }
   return animation_sample;
-}
-
-animation::AnimationEventRecordsForNewPipeline
-FiberElement::TakeAnimationEventsForNewPipeline() {
-  animation::AnimationEventRecordsForNewPipeline event_records;
-  auto append_event_records = [&event_records](auto *manager) {
-    if (manager == nullptr) {
-      return;
-    }
-    auto pending_event_records =
-        manager->TakePendingAnimationEventsForNewPipeline();
-    for (auto &event_record : pending_event_records) {
-      event_records.push_back(std::move(event_record));
-    }
-  };
-  append_event_records(css_keyframe_manager_.get());
-  append_event_records(css_transition_manager_.get());
-  return event_records;
-}
-
-bool FiberElement::NeedsAnimationFrameForNewPipeline() const {
-  if (!enable_new_animator_) {
-    return false;
-  }
-  return (css_keyframe_manager_ != nullptr &&
-          css_keyframe_manager_->NeedsFutureTickForNewPipeline()) ||
-         (css_transition_manager_ != nullptr &&
-          css_transition_manager_->NeedsFutureTickForNewPipeline());
 }
 
 FiberElement::FiberElement(ElementManager *manager, const base::String &tag)
@@ -710,23 +682,6 @@ bool FiberElement::MergeInlineStyles(StyleMap &new_styles,
   }
 
   return res;
-}
-
-void FiberElement::PersistAnimationFillStyles(const StyleMap &styles) {
-  if (!element_manager()->EnableAnimationForwardUpdatePreservation() ||
-      !enable_new_animator() || styles.empty()) {
-    return;
-  }
-  for (const auto &[id, value] : styles) {
-    animation_override_styles_map_->insert_or_assign(id, value);
-  }
-}
-
-void FiberElement::ClearPersistedAnimationFillStyle(CSSPropertyID id) {
-  if (!animation_override_styles_map_.has_value()) {
-    return;
-  }
-  animation_override_styles_map_->erase(id);
 }
 
 void FiberElement::ProcessFullRawInlineStyle(CSSVariableMap *changed_css_vars) {
@@ -1089,8 +1044,7 @@ void FiberElement::ResetDirectionAwareProperty(const CSSPropertyID &id,
   }
 }
 
-Element::NewPipelineResolveOutcome
-FiberElement::ResolveCSSStylesNewPipelineCore(
+Element::NewPipelineResolveOutcome Element::ResolveCSSStylesNewPipelineCore(
     const NewPipelineResolveRequest &request) {
   NewPipelineResolveOutcome outcome;
   const bool has_cached_styles_from_attributes =
@@ -1282,7 +1236,7 @@ FiberElement::ResolveCSSStylesNewPipelineCore(
   return outcome;
 }
 
-void FiberElement::ResolveCSSStylesNewPipeline(bool &need_update) {
+void Element::ResolveCSSStylesNewPipeline(bool &need_update) {
   NewPipelineResolveRequest request;
   auto outcome = ResolveCSSStylesNewPipelineCore(request);
   need_update |= outcome.need_update;
