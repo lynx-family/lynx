@@ -922,143 +922,6 @@ void FiberElement::DispatchAsyncResolveProperty() {
   }
 }
 
-#pragma region simple styling
-
-void FiberElement::ApplySimpleStyleWithoutTail(const tasm::CSSPropertyID id,
-                                               const tasm::CSSValue &value) {
-  EXEC_EXPR_FOR_INSPECTOR(
-      if (element_manager_ && element_manager_->IsDomTreeEnabled()) {
-        if (value.IsEmpty()) {
-          data_model()->ResetInlineStyle(id);
-        } else {
-          data_model()->SetInlineStyle(id, value);
-        }
-      });
-
-  if (value.IsEmpty()) {
-    if (id == kPropertyIDFontSize) {
-      ResetFontSize();
-    }
-    ResetStyleInternal(id);
-    return;
-  }
-
-  if (id == kPropertyIDFontSize) {
-    SetFontSize(value);
-    dirty_ &= ~kDirtyFontSize;
-  } else {
-    SetStyleInternal(id, value);
-  }
-}
-
-void FiberElement::ApplySimpleStylesWithoutTail(
-    const tasm::StyleMap &style_map) {
-  std::for_each(style_map.begin(), style_map.end(),
-                [this](const auto &pair) -> void {
-                  ApplySimpleStyleWithoutTail(pair.first, pair.second);
-                });
-}
-
-void FiberElement::ApplyDynamicSimpleStylesWithoutTail(
-    const tasm::StyleMap &dynamic_style_map,
-    const tasm::StyleMap &base_style_map) {
-  std::for_each(dynamic_style_map.begin(), dynamic_style_map.end(),
-                [this, &base_style_map](const auto &pair) -> void {
-                  if (!pair.second.IsEmpty()) {
-                    ApplySimpleStyleWithoutTail(pair.first, pair.second);
-                    return;
-                  }
-
-                  // Empty values in the dynamic layer are tombstones: they stop
-                  // the dynamic override and reveal the current static/base
-                  // value, or fall back to default when base doesn't have it.
-                  if (const auto it = base_style_map.find(pair.first);
-                      it != base_style_map.end()) {
-                    ApplySimpleStyleWithoutTail(pair.first, it->second);
-                  } else {
-                    ApplySimpleStyleWithoutTail(pair.first, CSSValue());
-                  }
-                });
-}
-
-void FiberElement::FinalizeSimpleStyleUpdate() {
-  if (has_keyframe_props_changed_) {
-    HandleDelayTask([this]() { HandleKeyframePropsChange(); });
-    if (!enable_new_animator()) {
-      PushToBundle(kPropertyIDAnimation);
-    }
-  }
-
-  if (has_transition_props_changed_) {
-    TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_HANDLE_TRANSITION_PROPS,
-                [this](lynx::perfetto::EventContext ctx) {
-                  UpdateTraceDebugInfo(ctx.event());
-                });
-    if (!enable_new_animator()) {
-      PushToBundle(kPropertyIDTransition);
-    } else {
-      SetDataToNativeTransitionAnimator();
-    }
-    has_transition_props_changed_ = false;
-  }
-  EXEC_EXPR_FOR_INSPECTOR(
-      element_manager()->OnElementNodeSetForInspector(this););
-  MarkDirty(kDirtyForceUpdate);
-}
-
-void FiberElement::UpdateSimpleStyles(tasm::StyleMap &&style_map) {
-  parsed_styles_map_ = std::move(style_map);
-  ApplySimpleStylesWithoutTail(parsed_styles_map_);
-  FinalizeSimpleStyleUpdate();
-}
-
-void FiberElement::UpdateStaticAndDynamicSimpleStyles(
-    tasm::StyleMap &&style_map, tasm::StyleMap &&dynamic_style_map) {
-  parsed_styles_map_ = std::move(style_map);
-  if (dynamic_style_map.empty()) {
-    parsed_dynamic_styles_map_.reset();
-  } else {
-    *parsed_dynamic_styles_map_ = std::move(dynamic_style_map);
-  }
-
-  ApplySimpleStylesWithoutTail(parsed_styles_map_);
-  if (parsed_dynamic_styles_map_.has_value()) {
-    ApplyDynamicSimpleStylesWithoutTail(*parsed_dynamic_styles_map_,
-                                        parsed_styles_map_);
-  }
-  FinalizeSimpleStyleUpdate();
-}
-
-void FiberElement::UpdateDynamicSimpleStyles(tasm::StyleMap &&style_map) {
-  if (style_map.empty()) {
-    parsed_dynamic_styles_map_.reset();
-  } else {
-    *parsed_dynamic_styles_map_ = std::move(style_map);
-  }
-
-  if (parsed_dynamic_styles_map_.has_value()) {
-    ApplyDynamicSimpleStylesWithoutTail(*parsed_dynamic_styles_map_,
-                                        parsed_styles_map_);
-  }
-  FinalizeSimpleStyleUpdate();
-}
-
-void FiberElement::UpdateSimpleStyles(const tasm::StyleMap &style_map) {
-  ApplySimpleStylesWithoutTail(style_map);
-  FinalizeSimpleStyleUpdate();
-}
-
-void FiberElement::ResetSimpleStyle(const tasm::CSSPropertyID id,
-                                    const tasm::CSSValue &value) {
-  ApplySimpleStyleWithoutTail(id, value);
-}
-
-void FiberElement::ResetSimpleStyle(const tasm::CSSPropertyID id) {
-  ApplySimpleStyleWithoutTail(id, CSSValue());
-}
-
-#pragma endregion  // simple styling
-
 void FiberElement::AsyncResolveProperty() {
   if ((dirty_ & ~kDirtyTree) != 0) {
     TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_ASYNC_RESOLVE_PROPERTY);
@@ -1398,51 +1261,6 @@ void FiberElement::ResetDirectionAwareProperty(const CSSPropertyID &id,
   }
 }
 
-void FiberElement::HandleKeyframePropsChange() {
-  TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_HANDLE_KEYFRAME_PROPS_CHANGE,
-              [this](lynx::perfetto::EventContext ctx) {
-                UpdateTraceDebugInfo(ctx.event());
-              });
-  if (!enable_new_animator()) {
-    ResolveAndFlushKeyframes();
-  } else {
-    SetDataToNativeKeyframeAnimator();
-  }
-  has_keyframe_props_changed_ = false;
-}
-
-void FiberElement::FinalizeAnimationPropsChange(bool &need_update) {
-  // Report when enableNewAnimator is the default value.
-  if ((has_transition_props_changed_ || has_keyframe_props_changed_) &&
-      !enable_new_animator()) {
-    report::GlobalFeatureCounter::Count(
-        report::LynxFeature::CPP_ENABLE_NEW_ANIMATOR_DEFAULT,
-        element_manager()->GetInstanceId());
-  }
-  // keyframe props
-  if (has_keyframe_props_changed_) {
-    HandleDelayTask([this]() { HandleKeyframePropsChange(); });
-    if (!enable_new_animator()) {
-      PushToBundle(kPropertyIDAnimation);
-    }
-    need_update = true;
-  }
-
-  if (has_transition_props_changed_) {
-    TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_HANDLE_TRANSITION_PROPS,
-                [this](lynx::perfetto::EventContext ctx) {
-                  UpdateTraceDebugInfo(ctx.event());
-                });
-    if (!enable_new_animator()) {
-      PushToBundle(kPropertyIDTransition);
-    } else {
-      SetDataToNativeTransitionAnimator();
-    }
-    has_transition_props_changed_ = false;
-    need_update = true;
-  }
-}
-
 FiberElement::AnimationPropertyChangeAnalysisForLegacyAnimator
 FiberElement::AnalyzeAnimationPropChangesForLegacyAnimator(
     const starlight::ComputedCSSStyle &final_style,
@@ -1498,54 +1316,6 @@ FiberElement::AnalyzeAnimationPropChangesForLegacyAnimator(
   }
 
   return analysis;
-}
-
-void FiberElement::HandleDelayTask(base::MoveOnlyClosure<void> operation) {
-  if (this->is_parallel_flush()) {
-    parallel_reduce_tasks_->emplace_back(std::move(operation));
-  } else {
-    operation();
-  }
-}
-
-void FiberElement::ResolveSimpleStyles() {
-  const bool static_dirty = (dirty_ & kDirtyStyleObjects) != 0;
-  const bool dynamic_dirty = (dirty_ & kDirtyDynamicStyleObjects) != 0;
-  if (!static_dirty && !dynamic_dirty) {
-    return;
-  }
-
-  TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_HANDLE_STYLE_OBJECTS);
-  if (element_manager_->EnablePropertyBasedSimpleStyle()) {
-    StyleResolver::ResolveStyleObjectsBasedOnExistingMap(
-        parsed_styles_map_, style_objects_ ? style_objects_.get() : nullptr,
-        parsed_dynamic_styles_map_.has_value() ? &*parsed_dynamic_styles_map_
-                                               : nullptr,
-        dynamic_simple_object_.get(), static_dirty, dynamic_dirty, this);
-  } else if (static_dirty) {
-    DCHECK(!dynamic_dirty)
-        << "dynamic simple style requires property-based simple style";
-    StyleResolver::ResolveStyleObjects(
-        last_style_objects_ ? last_style_objects_.get() : nullptr,
-        style_objects_ ? style_objects_.get() : nullptr, this);
-  }
-  if (has_keyframe_props_changed_) {
-    HandleDelayTask([this]() { HandleKeyframePropsChange(); });
-  }
-  dirty_ &= ~(kDirtyStyleObjects | kDirtyDynamicStyleObjects);
-}
-
-DynamicCSSStylesManager::StyleUpdateFlags
-FiberElement::CollectDynamicFlagsForNewPipeline(
-    const StyleMap &resolved_style_map) const {
-  DynamicCSSStylesManager::StyleUpdateFlags flags = 0;
-  const auto &css_config = element_manager()->GetDynamicCSSConfigs();
-  for (const auto &[id, value] : resolved_style_map) {
-    flags |= DynamicCSSStylesManager::GetValueFlags(
-        id, value, css_config.unify_vw_vh_behavior_,
-        element_manager()->FixFilterDynamicUpdateBug());
-  }
-  return flags;
 }
 
 FiberElement::NewPipelineResolveOutcome
@@ -2246,17 +2016,6 @@ ParallelFlushReturn FiberElement::PrepareForCreateOrUpdate() {
   return []() {};
 }
 
-bool FiberElement::ShouldPreserveLayoutOnlyForInheritedPlatformStyle(
-    CSSPropertyID id, const CSSIDBitset &source_style_ids) {
-  // Legacy inheritance consumes platform text props through InheritValue(),
-  // which avoids the normal non-layout style path that invalidates layout-only.
-  const bool layout_only_relevant = can_be_layout_only_ || is_layout_only_;
-  return layout_only_relevant && IsCSSInheritanceEnabled() &&
-         GetParentComputedCSSStyle() != nullptr && IsInheritable(id) &&
-         starlight::ComputedCSSStyle::IsPlatformInheritableProperty(id) &&
-         !source_style_ids.Has(id);
-}
-
 void FiberElement::ReplayChangedStyleSideEffect(
     CSSPropertyID id, const CSSValue &value, StyleSideEffectReplayMode mode) {
   CheckDynamicUnit(id, value, false);
@@ -2352,23 +2111,6 @@ void FiberElement::ReplayResetStyleSideEffect(CSSPropertyID id,
   if (CSSProperty::IsTransitionProps(id) || CSSProperty::IsKeyframeProps(id)) {
     has_non_flatten_attrs_ = true;
   }
-}
-
-void FiberElement::CommitFontContext(
-    const starlight::ComputedCSSStyle &computed_style, double old_font_size,
-    double old_root_font_size) {
-  const auto new_font_size = computed_style.GetFontSize();
-  const auto new_root_font_size = computed_style.GetRootFontSize();
-
-  if (base::FloatsNotEqual(old_font_size, new_font_size)) {
-    NotifyUnitValuesUpdatedToAnimation(DynamicCSSStylesManager::kUpdateEm);
-  }
-  if (base::FloatsNotEqual(old_root_font_size, new_root_font_size)) {
-    NotifyUnitValuesUpdatedToAnimation(DynamicCSSStylesManager::kUpdateRem);
-  }
-
-  SetFontSizeForAllElement(new_font_size, new_root_font_size);
-  UpdateLayoutNodeFontSize(new_font_size, new_root_font_size);
 }
 
 FiberElement::NewPipelineStyleMutationPlan
@@ -4129,25 +3871,6 @@ void FiberElement::DoFullCSSResolving() {
         },
         kFlagGreedyParallel);
   }
-}
-
-const tasm::CSSValue &FiberElement::ResolveCurrentStyleValue(
-    const CSSPropertyID &key, const tasm::CSSValue &default_value) {
-  TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_RESOLVE_CURRENT_STYLE);
-  auto iter = parsed_styles_map_.find(key);
-  if (iter != parsed_styles_map_.end()) {
-    return iter->second;
-  }
-
-  const auto inherited_property = GetParentInheritedProperty();
-  if (inherited_property.inherited_styles_ != nullptr) {
-    auto iter = inherited_property.inherited_styles_->find(key);
-    if (iter != inherited_property.inherited_styles_->end()) {
-      return iter->second;
-    }
-  }
-
-  return default_value;
 }
 
 bool FiberElement::RefreshStyle(StyleMap &parsed_styles,
