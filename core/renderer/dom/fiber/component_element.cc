@@ -260,11 +260,11 @@ double ComponentElement::GetFontSize() {
   }
 }
 
-const FiberElement::InheritedProperty ComponentElement::GetInheritedProperty() {
+const Element::InheritedProperty ComponentElement::GetInheritedProperty() {
   if (is_wrapper()) {
     return WrapperElement::GetInheritedProperty();
   } else {
-    return FiberElement::GetInheritedProperty();
+    return Element::GetInheritedProperty();
   }
 }
 
