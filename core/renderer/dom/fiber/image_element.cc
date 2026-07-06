@@ -22,7 +22,7 @@ ImageElement::ImageElement(ElementManager* manager, const base::String& tag)
   element_manager_->IncreaseImageElementCount();
 }
 
-void ImageElement::OnNodeAdded(FiberElement* child) {
+void ImageElement::OnNodeAdded(Element* child) {
   LOGE("image element can not insert any child!!!");
 }
 

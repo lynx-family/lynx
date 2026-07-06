@@ -38,7 +38,7 @@ class ViewElement : public FiberElement {
   void SetupFragmentBehavior(Fragment* fragment) override;
 
  protected:
-  void OnNodeAdded(FiberElement* child) override;
+  void OnNodeAdded(Element* child) override;
 
   ViewElement(const ViewElement& element, bool clone_resolved_props)
       : FiberElement(element, clone_resolved_props) {
