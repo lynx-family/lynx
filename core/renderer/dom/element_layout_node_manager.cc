@@ -7,19 +7,11 @@
 #include <utility>
 
 #include "core/renderer/dom/element_manager.h"
-#include "core/renderer/dom/fiber/fiber_element.h"
 #include "core/renderer/starlight/layout/layout_object.h"
 #include "core/renderer/starlight/types/layout_constraints.h"
 
 namespace lynx {
 namespace tasm {
-namespace {
-
-FiberElement* GetFiberElement(ElementManager& element_manager, int32_t id) {
-  return static_cast<FiberElement*>(element_manager.node_manager()->Get(id));
-}
-
-}  // namespace
 
 ElementLayoutNodeManager::ElementLayoutNodeManager(
     ElementManager& element_manager)
@@ -27,7 +19,7 @@ ElementLayoutNodeManager::ElementLayoutNodeManager(
 
 void ElementLayoutNodeManager::SetMeasureFunc(
     int32_t id, std::unique_ptr<MeasureFunc> measure_func) {
-  auto* element = GetFiberElement(element_manager_, id);
+  auto* element = GetElement(id);
   if (element && element->IsShadowNodeCustom()) {
     element->SetMeasureFunc(std::move(measure_func));
   }
