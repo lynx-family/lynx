@@ -9,7 +9,7 @@
 #include <vector>
 
 #include "base/include/value/base_value.h"
-#include "core/renderer/dom/fiber/fiber_element.h"
+#include "core/renderer/dom/element.h"
 
 namespace lynx {
 namespace tasm {
@@ -27,7 +27,7 @@ class FiberNodeInfo {
    * @param nodes The nodes to get info.
    * @return The info of the nodes as lepus value.
    */
-  static lepus::Value GetNodesInfo(const std::vector<FiberElement *> &nodes,
+  static lepus::Value GetNodesInfo(const std::vector<Element *> &nodes,
                                    const std::vector<std::string> &fields);
 
   /**
@@ -37,10 +37,10 @@ class FiberNodeInfo {
    * @param fields fields to get.
    * @return A dictionary contains the information of the node as lepus value.
    */
-  static lepus::Value GetNodeInfo(FiberElement *node,
+  static lepus::Value GetNodeInfo(Element *node,
                                   const std::vector<std::string> &fields);
 
-  static std::vector<FiberElement *> PathToRoot(FiberElement *base);
+  static std::vector<Element *> PathToRoot(Element *base);
 };
 }  // namespace tasm
 }  // namespace lynx

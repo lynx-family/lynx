@@ -172,8 +172,7 @@ void ElementContainer::RemoveFromParent(bool is_move) {
     painting_context()->RemovePaintingNode(parent()->id(), id(), 0, is_move);
   } else {
     // Layout only node remove children from parent recursively.
-    // fiber element;
-    auto* child = static_cast<FiberElement*>(element())->first_render_child();
+    auto* child = element()->first_render_child();
     while (child) {
       child->element_container_impl()->RemoveFromParent(is_move);
       child = child->next_render_sibling();
@@ -284,8 +283,7 @@ void ElementContainer::AttachChildToTargetContainerRecursive(
   // wrapper element should not create native view, but if add the layout-only
   // child to scroll-view, the child should create native view.
   if (!parent->element()->CanHasLayoutOnlyChildren() && child->IsLayoutOnly() &&
-      !(static_cast<FiberElement*>(child)->is_wrapper()) &&
-      !child->is_virtual()) {
+      !child->is_wrapper() && !child->is_virtual()) {
     child->TransitionToNativeView();
   }
   parent->AddChild(child->element_container_impl(), index);
@@ -294,7 +292,7 @@ void ElementContainer::AttachChildToTargetContainerRecursive(
     return;
   }
   // Layout only node should add subtree to parent recursively.
-  auto* grand = static_cast<FiberElement*>(child)->first_render_child();
+  auto* grand = child->first_render_child();
   while (grand) {
     AttachChildToTargetContainerRecursive(parent, grand, index);
     grand = grand->next_render_sibling();
@@ -432,7 +430,7 @@ void ElementContainer::UpdateLayout(float left, float top,
   // the left and top's value of child element is incorrect.
   if (!element()->DisableListPlatformImplementation()) {
     // Layout children
-    auto* child = static_cast<FiberElement*>(element())->first_render_child();
+    auto* child = element()->first_render_child();
     while (child) {
       if (child->element_container_impl()) {
         child->element_container_impl()->UpdateLayout(
@@ -601,7 +599,7 @@ void ElementContainer::UpdateLayoutWithoutChange() {
     painting_context()->OnNodeReady(element()->impl_id());
     props_changed_ = false;
   }
-  auto* child = static_cast<FiberElement*>(element())->first_render_child();
+  auto* child = element()->first_render_child();
   while (child) {
     child->element_container_impl()->UpdateLayoutWithoutChange();
     child = child->next_render_sibling();
@@ -645,7 +643,7 @@ void ElementContainer::TransitionToNativeView(
   UpdateLayout(last_left_, last_top_, true);
 
   int ui_index = 0;
-  auto* child = static_cast<FiberElement*>(element())->first_render_child();
+  auto* child = element()->first_render_child();
   while (child) {
     ReInsertChildForLayoutOnlyTransition(child, ui_index);
     child = child->next_render_sibling();

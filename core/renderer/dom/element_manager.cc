@@ -406,18 +406,17 @@ void ElementManager::CheckAndProcessSlotForInspector(Element *element) {
       return;
     }
     // Check if element is plug.
-    FiberElement *current = static_cast<FiberElement *>(element);
+    Element *current = element;
     // If current is nullptr, return.
     if (current == nullptr) {
       return;
     }
-    FiberElement *parent = static_cast<FiberElement *>(current->parent());
+    Element *parent = current->parent();
     // If parent is nullptr, return.
     if (parent == nullptr) {
       return;
     }
-    FiberElement *component_element =
-        static_cast<FiberElement *>(current->GetParentComponentElement());
+    Element *component_element = current->GetParentComponentElement();
     // If current's component_element is nullptr, return.
     if (component_element == nullptr) {
       return;
@@ -431,8 +430,7 @@ void ElementManager::CheckAndProcessSlotForInspector(Element *element) {
 
     // If parent's component_element == current's component_element, current
     // must not be plug, then return
-    FiberElement *parent_component_element =
-        static_cast<FiberElement *>(parent->GetParentComponentElement());
+    Element *parent_component_element = parent->GetParentComponentElement();
     if (!parent_component_element ||
         (!parent->is_component() &&
          component_element == parent_component_element) ||
@@ -605,9 +603,8 @@ void ElementManager::PrepareComponentNodeForInspector(Element *component) {
       // The additional element created by the inspector needs to
       // maintain a null data model to indicate that this element is
       // created by inspector.
-      static_cast<FiberElement *>(element)->ResetDataModel();
-      static_cast<FiberElement *>(element)->SetParentComponentUniqueIdForFiber(
-          component->impl_id());
+      element->ResetDataModel();
+      element->SetParentComponentUniqueIdForFiber(component->impl_id());
       return element;
     };
 
@@ -637,7 +634,7 @@ void ElementManager::PrepareComponentNodeForInspector(Element *component) {
                          std::make_tuple(component, style_value));
     }
 
-    if (static_cast<FiberElement *>(component)->is_wrapper()) {
+    if (component->is_wrapper()) {
       component->inspector_attribute()->wrapper_component_ = true;
     }
 
@@ -736,7 +733,7 @@ void ElementManager::OnFinishUpdateProps(
     Element *node, std::shared_ptr<PipelineOptions> &options) {
   // target_node is nullptr for radon by default;
   Element *target_node = nullptr;
-  static_cast<FiberElement *>(node)->MarkPropsDirty();
+  node->MarkPropsDirty();
   target_node = node;
 
   // TODO(nihao.royal): use `enable_unified_pixel_pipeline` to switch multi
@@ -1107,7 +1104,7 @@ void ElementManager::TickAllElement(fml::TimePoint &frame_time) {
     animation_element_set_.clear_keep_buffer();
     bool has_layout_animated_style = false;
     for (auto iter : temp_element_set) {
-      if (static_cast<FiberElement *>(iter)->IsDetached()) {
+      if (iter->IsDetached()) {
         continue;
       }
       // tick element, for List.
