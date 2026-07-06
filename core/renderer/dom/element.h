@@ -364,6 +364,17 @@ class Element : public lepus::RefCounted,
   void SetStyleObjects(
       std::unique_ptr<style::StyleObject*, style::StyleObjectArrayDeleter>
           object_list) override;
+
+  void UpdateSimpleStyles(const tasm::StyleMap& style_map) override final;
+  void UpdateSimpleStyles(tasm::StyleMap&& style_map) override final;
+  void UpdateStaticAndDynamicSimpleStyles(
+      tasm::StyleMap&& style_map,
+      tasm::StyleMap&& dynamic_style_map) override final;
+  void UpdateDynamicSimpleStyles(tasm::StyleMap&& style_map) override final;
+  void ResetSimpleStyle(const tasm::CSSPropertyID id,
+                        const tasm::CSSValue& value) override final;
+  void ResetSimpleStyle(const tasm::CSSPropertyID id) override final;
+
   void ReplaceDynamicSimpleStyles(
       style::DynamicStyleObjectRef new_style_object);
   void AddDynamicSimpleStyles(tasm::StyleMap&& new_styles);
@@ -863,9 +874,7 @@ class Element : public lepus::RefCounted,
 
   virtual void EnqueueLayoutTask(base::MoveOnlyClosure<void> operation);
 
-  virtual void HandleDelayTask(base::MoveOnlyClosure<void> operation) {
-    operation();
-  }
+  virtual void HandleDelayTask(base::MoveOnlyClosure<void> operation);
   void set_parent(Element* parent) { parent_ = parent; }
   bool EnableTriggerGlobalEvent() const { return trigger_global_event_; }
 
@@ -1528,6 +1537,27 @@ class Element : public lepus::RefCounted,
   void PushCurrentPropsToBundleForRecording(PropBundle* bundle);
 
   void RequireFlush();
+
+  const tasm::CSSValue& ResolveCurrentStyleValue(
+      const CSSPropertyID& key, const tasm::CSSValue& default_value);
+
+  void ApplySimpleStyleWithoutTail(const tasm::CSSPropertyID id,
+                                   const tasm::CSSValue& value);
+  void ApplySimpleStylesWithoutTail(const tasm::StyleMap& style_map);
+  void ApplyDynamicSimpleStylesWithoutTail(
+      const tasm::StyleMap& dynamic_style_map,
+      const tasm::StyleMap& base_style_map);
+
+  void HandleKeyframePropsChange();
+  void FinalizeSimpleStyleUpdate();
+  void ResolveSimpleStyles();
+  DynamicCSSStylesManager::StyleUpdateFlags CollectDynamicFlagsForNewPipeline(
+      const StyleMap& resolved_style_map) const;
+  bool ShouldPreserveLayoutOnlyForInheritedPlatformStyle(
+      CSSPropertyID id, const CSSIDBitset& source_style_ids);
+  void CommitFontContext(const starlight::ComputedCSSStyle& computed_style,
+                         double old_font_size, double old_root_font_size);
+  void FinalizeAnimationPropsChange(bool& need_update);
 
   // Mark flush_required without recursively mark parent element
   inline void MarkRequireFlush() { flush_required_ = true; }
