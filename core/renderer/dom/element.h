@@ -24,6 +24,7 @@
 #include "base/include/value/ref_type.h"
 #include "base/include/value/table.h"
 #include "base/include/vector.h"
+#include "base/trace/native/trace_event.h"
 #include "core/animation/css_keyframe_manager.h"
 #include "core/animation/css_transition_manager.h"
 #include "core/base/lynx_export.h"
@@ -359,6 +360,15 @@ class Element : public lepus::RefCounted,
 
   virtual void SetStyleInternal(CSSPropertyID id, const tasm::CSSValue& value);
 
+  void SetStyleObjects(
+      std::unique_ptr<style::StyleObject*, style::StyleObjectArrayDeleter>
+          object_list) override;
+  void ReplaceDynamicSimpleStyles(
+      style::DynamicStyleObjectRef new_style_object);
+  void AddDynamicSimpleStyles(tasm::StyleMap&& new_styles);
+  void RemoveDynamicSimpleStyleKV(tasm::CSSPropertyID id);
+  void AddDynamicSimpleStyleKV(tasm::CSSPropertyID id, tasm::CSSValue&& value);
+
   LYNX_EXPORT_FOR_DEVTOOL virtual void ResetStyle(
       const base::Vector<CSSPropertyID>& style_names);
 
@@ -385,6 +395,8 @@ class Element : public lepus::RefCounted,
    * @param clazz the name of class selector
    */
   void SetClass(const base::String& clazz);
+  void OnClassChanged(const ClassList& old_classes,
+                      const ClassList& new_classes);
 
   /**
    * Element API for setting class names to Element
@@ -814,6 +826,8 @@ class Element : public lepus::RefCounted,
   bool IsCSSInheritanceEnabled() const;
 
   bool IsCSSInlineVariablesEnabled() const;
+  bool IsRelatedCSSVariableUpdated(AttributeHolder* holder,
+                                   const lepus::Value changing_css_variables);
 
   BaseElementContainer* element_container() const {
     return element_container_.get();
@@ -1393,6 +1407,20 @@ class Element : public lepus::RefCounted,
 
   // Mark style dirty, optionally recursively for children
   LYNX_EXPORT_FOR_DEVTOOL void MarkStyleDirty(bool recursive = false);
+  void RecursivelyMarkChildrenCSSVariableDirty(
+      const lepus::Value& css_variable_updated);
+
+#if ENABLE_TRACE_PERFETTO
+  virtual void UpdateTraceDebugInfo(TraceEvent* event);
+#endif
+
+  template <typename F>
+  void ApplyFunctionRecursive(F&& func) {
+    func(this);
+    for (const auto& child : scoped_children_) {
+      child->ApplyFunctionRecursive(func);
+    }
+  }
 
   void MarkTemplateElement() { is_template_ = true; }
 
@@ -1511,6 +1539,8 @@ class Element : public lepus::RefCounted,
                                          const std::string& new_id) {
     return false;
   }
+  bool CheckHasInvalidationForClass(const ClassList& old_classes,
+                                    const ClassList& new_classes);
 
   base::String tag_;
   bool is_overlay_{false};
