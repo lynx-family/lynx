@@ -39,7 +39,7 @@ bool ShouldUseFrameNativeData(ElementManager* element_manager) {
 FrameElement::FrameElement(ElementManager* element_manager)
     : FiberElement(element_manager, BASE_STATIC_STRING(kDefaultFrameTag)) {}
 
-void FrameElement::OnNodeAdded(FiberElement* child) {
+void FrameElement::OnNodeAdded(Element* child) {
   LOGE("frame element cannot adopt any child");
 }
 

@@ -15,14 +15,14 @@ namespace lynx {
 namespace tasm {
 
 ListItemSchedulerAdapter::ListItemSchedulerAdapter(
-    FiberElement* sub_root, list::BatchRenderStrategy batch_render_strategy,
+    Element* sub_root, list::BatchRenderStrategy batch_render_strategy,
     bool continuous_resolve_tree)
     : render_root_(sub_root),
       batch_render_strategy_(batch_render_strategy),
       continuous_resolve_tree_(continuous_resolve_tree) {}
 
 void ListItemSchedulerAdapter::ResolveSubtreeProperty() {
-  std::deque<FiberElement*> queue;
+  std::deque<Element*> queue;
   queue.emplace_back(render_root_);
   while (!queue.empty()) {
     auto current = queue.front();
@@ -33,12 +33,13 @@ void ListItemSchedulerAdapter::ResolveSubtreeProperty() {
       if (current->parent()) {
         current->parent()->EnsureTagInfo();
       }
-      current->PostResolveTaskToThreadPool(false, resolve_property_queue());
+      static_cast<FiberElement*>(current)->PostResolveTaskToThreadPool(
+          false, resolve_property_queue());
     }
     for (const auto& child : current->children()) {
       TRACE_EVENT(LYNX_TRACE_CATEGORY,
                   LIST_SCHEDULER_ADAPTER_SUBTREE_ASYNC_ENQUEUE);
-      queue.emplace_back(static_cast<FiberElement*>(child.get()));
+      queue.emplace_back(child.get());
     }
     queue.pop_front();
   }
@@ -116,7 +117,7 @@ void ListItemSchedulerAdapter::ResolveElementTree(
                                                        std::to_string(impl_id));
                   });
               batch_resolving_tree_ = true;
-              render_root_->FlushActions();
+              static_cast<FiberElement*>(render_root_)->FlushActions();
               batch_resolving_tree_ = false;
               promise.set_value(
                   this->GenerateReduceTaskForResolveElementTree());
@@ -132,7 +133,7 @@ void ListItemSchedulerAdapter::ResolveElementTree(
             list::BatchRenderStrategy::kAsyncResolveProperty) {
       // Invoke resolve element tree directly after consuming resolve property
       // reduce tasks.
-      render_root_->FlushActions();
+      static_cast<FiberElement*>(render_root_)->FlushActions();
     }
   }
 }

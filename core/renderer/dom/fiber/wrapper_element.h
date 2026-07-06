@@ -51,8 +51,8 @@ class WrapperElement : public FiberElement {
     is_layout_only_ = true;
   }
 
-  void OnNodeAdded(FiberElement* child) override;
-  void OnNodeRemoved(FiberElement* child) override;
+  void OnNodeAdded(Element* child) override;
+  void OnNodeRemoved(Element* child) override;
 
   // type_ is a collection, that is, it may be multiple types of Wrapper at the
   // same time. For example, multiple Wrapper are nested, and the front-end
