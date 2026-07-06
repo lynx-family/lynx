@@ -25,7 +25,7 @@ WrapperElement::WrapperElement(ElementManager* manager)
 
 double WrapperElement::GetFontSize() { return GetParentFontSize(); }
 
-const FiberElement::InheritedProperty WrapperElement::GetInheritedProperty() {
+const Element::InheritedProperty WrapperElement::GetInheritedProperty() {
   return GetParentInheritedProperty();
 }
 

@@ -505,7 +505,7 @@ void RadonPage::DispatchSelf(const DispatchOption &option) {
 void RadonPage::AttachSSRPageElement(RadonPage *ssr_page) {
   element_ = std::move(ssr_page->element_);
   element_->SetAttributeHolder(this->attribute_holder_);
-  fiber_element()->ResetSheetRecursively(style_sheet_manager());
+  element_->ResetSheetRecursively(style_sheet_manager());
 }
 
 void RadonPage::Dispatch(const DispatchOption &option) {
