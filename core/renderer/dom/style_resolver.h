@@ -172,7 +172,7 @@ class StyleResolver {
 
   void GetCSSStyleNew(AttributeHolder* node, CSSFragment* style_sheet);
 
-  void GetCSSStyleForFiber(FiberElement* node, CSSFragment* style_sheet);
+  void GetCSSStyleForFiber(Element* node, CSSFragment* style_sheet);
 
   void DidCollectMatchedRules(AttributeHolder* holder, StyleMap& result,
                               StyleMap& important_result,
@@ -192,7 +192,7 @@ class StyleResolver {
   void ApplyCascadeStyles(CSSFragment* style_sheet, AttributeHolder* node,
                           const std::string& rule);
 
-  void ApplyCascadeStylesForFiber(CSSFragment* style_sheet, FiberElement* node,
+  void ApplyCascadeStylesForFiber(CSSFragment* style_sheet, Element* node,
                                   const std::string& rule);
 
   void MergeHigherCascadeStyles(const std::string& current_selector,

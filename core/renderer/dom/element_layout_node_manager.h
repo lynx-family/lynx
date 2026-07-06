@@ -8,8 +8,8 @@
 #include <unordered_set>
 
 #include "core/public/layout_node_manager.h"
+#include "core/renderer/dom/element.h"
 #include "core/renderer/dom/element_manager.h"
-#include "core/renderer/dom/fiber/fiber_element.h"
 
 namespace lynx {
 namespace tasm {
@@ -49,7 +49,7 @@ class ElementLayoutNodeManager : public LayoutNodeManager {
   void DestroyPlatformLayoutNodes();
 
  private:
-  FiberElement* GetFiberElement(int32_t id) const;
+  Element* GetElement(int32_t id) const;
   std::unordered_set<int32_t> destroyed_layout_node_ids_;
   ElementManager& element_manager_;
 };
