@@ -470,6 +470,7 @@ subspec_target("UnitTests") {
     "../../common/lynx/performance/memory/LynxMemoryUsageCollectorUnitTest.m",
     "../../common/lynx/performance/memory/LynxMemoryUsageFetchersUnitTest.m",
     "../../common/lynx/performance/memory/LynxMemoryUsageQueryUnitTest.m",
+    "LynxElementUnitTest.m",
     "LynxModuleManagerDarwinUnitTest.mm",
     "LynxTemplateRenderMemoryUsageUnitTest.mm",
     "LynxUnitTestUtils.h",

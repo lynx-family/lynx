@@ -552,6 +552,24 @@
   }
 }
 
+- (void)getLynxElementRoot:(void (^)(LynxElement* _Nullable root))callback {
+  if (!callback) {
+    return;
+  }
+  if (_templateRender != nil) {
+    [_templateRender getLynxElementRoot:callback];
+    return;
+  }
+  dispatch_block_t task = ^{
+    callback(nil);
+  };
+  if ([NSThread isMainThread]) {
+    task();
+  } else {
+    dispatch_async(dispatch_get_main_queue(), task);
+  }
+}
+
 - (nullable UIView*)findViewWithName:(nonnull NSString*)name {
   if (_templateRender) {
     return [_templateRender findViewWithName:name];
@@ -582,19 +600,6 @@
   } else {
     return nil;
   }
-}
-
-- (void)getLynxElementRoot:(void (^_Nonnull)(LynxElement* _Nullable element))callback {
-  if (callback == nil) {
-    return;
-  }
-  if (_templateRender == nil) {
-    dispatch_async(dispatch_get_main_queue(), ^{
-      callback(nil);
-    });
-    return;
-  }
-  [_templateRender getLynxElementRoot:callback];
 }
 
 #pragma mark - Setter & Getter

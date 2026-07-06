@@ -16,6 +16,11 @@ NS_ASSUME_NONNULL_BEGIN
 + (void)createIOSThread:(NSString*)name runnable:(dispatch_block_t)runnable;
 + (BOOL)isMainQueue;
 + (void)runBlockInMainQueue:(dispatch_block_t _Nonnull)runnable;
+/**
+ * Runs the block immediately when called on the main thread. Otherwise, schedules it
+ * asynchronously on the main queue.
+ */
++ (void)runBlockInMainQueueImmediately:(dispatch_block_t _Nonnull)runnable;
 + (void)runInTargetQueue:(dispatch_queue_t)queue runnable:(dispatch_block_t)runnable;
 + (dispatch_queue_t)getCachedQueueWithPrefix:(NSString* _Nonnull)identifier;
 @end
