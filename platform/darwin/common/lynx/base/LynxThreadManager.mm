@@ -83,6 +83,14 @@
   dispatch_async(dispatch_get_main_queue(), runnable);
 }
 
++ (void)runBlockInMainQueueImmediately:(dispatch_block_t _Nonnull)runnable {
+  if ([NSThread isMainThread]) {
+    runnable();
+  } else {
+    dispatch_async(dispatch_get_main_queue(), runnable);
+  }
+}
+
 + (void)runInTargetQueue:(dispatch_queue_t)queue runnable:(dispatch_block_t)runnable {
   dispatch_async(queue, runnable);
 }

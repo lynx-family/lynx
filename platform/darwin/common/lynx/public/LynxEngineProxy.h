@@ -13,6 +13,8 @@ NS_ASSUME_NONNULL_BEGIN
 @class LynxTouchEvent;
 @class LynxCustomEvent;
 
+typedef void (^LynxEngineProxyQueryCallback)(id _Nullable result);
+
 @interface LynxEngineProxy : NSObject
 
 /**
@@ -61,6 +63,12 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)startEventCapture:(int64_t)eventID;
 - (void)startEventBubble:(int64_t)eventID;
 - (void)startEventFire:(BOOL)isStop withEventID:(int64_t)eventID;
+
+- (void)queryLynxElementRoot:(LynxEngineProxyQueryCallback)callback;
+- (void)queryLynxElement:(int32_t)sign
+               queryType:(int32_t)queryType
+                argument:(nullable NSString *)argument
+                callback:(LynxEngineProxyQueryCallback)callback;
 
 @end
 

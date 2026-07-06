@@ -29,6 +29,7 @@
 #import <Lynx/LynxTemplateRender.h>
 #import <Lynx/LynxTemplateRenderHelper.h>
 #import <Lynx/LynxTheme.h>
+#import <Lynx/LynxThreadManager.h>
 #import <Lynx/LynxTraceEvent.h>
 #import <Lynx/LynxUIRenderer.h>
 #import <Lynx/LynxView.h>
@@ -91,24 +92,6 @@
 #include "core/shell/runtime/common/module_delegate_impl.h"
 #include "core/value_wrapper/darwin/value_impl_darwin.h"
 
-#if defined(LynxElement)
-#pragma push_macro("LynxElement")
-#undef LynxElement
-#define LYNX_RESTORE_LYNX_ELEMENT_EXTENSION 1
-#endif
-
-@interface LynxElement ()
-
-- (instancetype)initWithTemplateRender:(LynxTemplateRender*)templateRender
-                                  sign:(int32_t)sign NS_DESIGNATED_INITIALIZER;
-
-@end
-
-#if defined(LYNX_RESTORE_LYNX_ELEMENT_EXTENSION)
-#pragma pop_macro("LynxElement")
-#undef LYNX_RESTORE_LYNX_ELEMENT_EXTENSION
-#endif
-
 @interface LynxTemplateRender (MemoryUsage)
 
 // Registers this template render as an internal memory usage fetcher after the instance identity is
@@ -121,22 +104,24 @@
 
 @end
 
-namespace {
+#ifdef LynxElement
+#pragma push_macro("LynxElement")
+#undef LynxElement
+#define LYNX_RESTORE_LYNX_ELEMENT_TEMPLATE_RENDER 1
+#endif
 
-void InvokeLynxElementJSONStringCallback(void (^_Nonnull callback)(NSString* _Nullable),
-                                         std::string json) {
-  dispatch_async(dispatch_get_main_queue(), ^{
-    NSString* result = nil;
-    if (!json.empty()) {
-      result = [[NSString alloc] initWithBytes:json.data()
-                                        length:json.size()
-                                      encoding:NSUTF8StringEncoding];
-    }
-    callback(result);
-  });
-}
+@interface LynxElement (Internal)
 
-}  // namespace
++ (void)getRootWithEngineProxy:(LynxEngineProxy*)engineProxy
+                templateRender:(LynxTemplateRender*)templateRender
+                      callback:(void (^)(LynxElement* _Nullable root))callback;
+
+@end
+
+#ifdef LYNX_RESTORE_LYNX_ELEMENT_TEMPLATE_RENDER
+#pragma pop_macro("LynxElement")
+#undef LYNX_RESTORE_LYNX_ELEMENT_TEMPLATE_RENDER
+#endif
 
 @implementation LynxTemplateRender
 
@@ -1638,6 +1623,19 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
   return [_lynxUIRenderer findUIBySign:sign];
 }
 
+- (void)getLynxElementRoot:(void (^)(LynxElement* _Nullable root))callback {
+  if (!callback) {
+    return;
+  }
+  if (!_hasStartedLoad) {
+    [LynxThreadManager runBlockInMainQueueImmediately:^{
+      callback(nil);
+    }];
+    return;
+  }
+  [LynxElement getRootWithEngineProxy:_lynxEngineProxy templateRender:self callback:callback];
+}
+
 - (nullable UIView*)findViewWithName:(nonnull NSString*)name {
   return [_lynxUIRenderer findViewWithName:name];
 }
@@ -1656,56 +1654,6 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
 
 - (nullable UIView*)viewWithName:(nonnull NSString*)name {
   return [_lynxUIRenderer viewWithName:name];
-}
-
-- (void)getLynxElementRoot:(void (^_Nonnull)(LynxElement* _Nullable element))callback {
-  if (callback == nil) {
-    return;
-  }
-  void (^callbackCopy)(LynxElement* _Nullable) = [callback copy];
-  if (shell_ == nullptr || shell_->IsDestroyed()) {
-    dispatch_async(dispatch_get_main_queue(), ^{
-      callbackCopy(nil);
-    });
-    return;
-  }
-  __weak LynxTemplateRender* weakSelf = self;
-  shell_->GetLynxElementRootSignAsync(std::make_unique<lynx::shell::PlatformCallBack>(
-      [weakSelf, callbackCopy](const lynx::lepus::Value& value) mutable {
-        int32_t sign = lynx::tasm::kInvalidImplId;
-        if (value.IsNumber()) {
-          sign = static_cast<int32_t>(value.Number());
-        }
-        dispatch_async(dispatch_get_main_queue(), ^{
-          LynxTemplateRender* templateRender = weakSelf;
-          LynxElement* element = templateRender != nil && sign != lynx::tasm::kInvalidImplId
-                                     ? [[LynxElement alloc] initWithTemplateRender:templateRender
-                                                                              sign:sign]
-                                     : nil;
-          callbackCopy(element);
-        });
-      }));
-}
-
-- (void)lynxElementToJSONStringWithSign:(int32_t)sign
-                               callback:(void (^_Nonnull)(NSString* _Nullable json))callback {
-  if (callback == nil) {
-    return;
-  }
-  void (^callbackCopy)(NSString* _Nullable) = [callback copy];
-  if (shell_ == nullptr || shell_->IsDestroyed() || sign == lynx::tasm::kInvalidImplId) {
-    InvokeLynxElementJSONStringCallback(callbackCopy, "");
-    return;
-  }
-  shell_->GetLynxElementTreeAsJSONStringAsync(
-      sign, std::make_unique<lynx::shell::PlatformCallBack>(
-                [callbackCopy](const lynx::lepus::Value& value) mutable {
-                  std::string json;
-                  if (value.IsString()) {
-                    json = value.StdString();
-                  }
-                  InvokeLynxElementJSONStringCallback(callbackCopy, std::move(json));
-                }));
 }
 
 #pragma mark - Module
