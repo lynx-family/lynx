@@ -76,6 +76,17 @@ public class LynxBaseScrollViewScrollingTest {
   }
 
   @Test
+  public void testKeyboardAvoidingContentHeightExtra() {
+    assertEquals(0, mScrollView.getKeyboardAvoidingContentHeightExtra());
+
+    mScrollView.setKeyboardAvoidingContentHeightExtra(80);
+    assertEquals(80, mScrollView.getKeyboardAvoidingContentHeightExtra());
+
+    mScrollView.setKeyboardAvoidingContentHeightExtra(-1);
+    assertEquals(0, mScrollView.getKeyboardAvoidingContentHeightExtra());
+  }
+
+  @Test
   public void testScrollBy() {
     mScrollView.mIsVertical = true;
     mScrollView.setScrollContentSize(new int[] {100, 400}); // scroll range Y is 200

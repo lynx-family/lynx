@@ -5,16 +5,27 @@
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/scroll/lynx_ui_scroll_view_internal.h"
 
 #include <algorithm>
+#include <cmath>
 #include <utility>
 
 #include "core/renderer/dom/lynx_get_ui_result.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/base/node_manager.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_owner.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_scroll.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/utils/lynx_ui_screenshot_helper.h"
 
 namespace lynx {
 namespace tasm {
 namespace harmony {
+namespace {
+
+constexpr float kContentSizeChangeEpsilon = 0.5f;
+
+bool ContentSizeChanged(float before, float after) {
+  return std::fabs(after - before) >= kContentSizeChangeEpsilon;
+}
+
+}  // namespace
 
 LynxUIScrollViewInternal::LynxUIScrollViewInternal(LynxContext* context,
                                                    int sign,
@@ -206,7 +217,21 @@ void LynxUIScrollViewInternal::FinishLayoutOperation() {
     content_size[1] +=
         child->height_ + child->margin_top_ + child->margin_bottom_;
   }
+  if (scroll_view_->Vertical()) {
+    content_size[1] += scroll_content_height_extra_;
+  }
+  UIOwner* ui_owner = context_ ? context_->GetUIOwner() : nullptr;
+  bool vertical_content_size_changed =
+      scroll_view_->Vertical() &&
+      ContentSizeChanged(scroll_view_->GetScrollContentSizeVertically(),
+                         content_size[1]);
+  if (ui_owner && vertical_content_size_changed) {
+    ui_owner->KeyboardAvoidingScrollContentSizeWillChange(this);
+  }
   scroll_view_->SetScrollContentSize(content_size);
+  if (ui_owner && vertical_content_size_changed) {
+    ui_owner->KeyboardAvoidingScrollContentSizeDidChange(this);
+  }
   FlushFirstRenderOperations();
   UpdateScrollPosition();
 }
@@ -219,6 +244,44 @@ float LynxUIScrollViewInternal::ScrollX() {
 
 float LynxUIScrollViewInternal::ScrollY() {
   return scroll_view_->GetScrollOffsetVertically();
+}
+
+bool LynxUIScrollViewInternal::IsVerticalScrollView() {
+  return scroll_view_ != nullptr && scroll_view_->Vertical();
+}
+
+float LynxUIScrollViewInternal::ScrollContentHeight() const {
+  return scroll_view_ == nullptr
+             ? 0.f
+             : scroll_view_->GetScrollContentSizeVertically();
+}
+
+float LynxUIScrollViewInternal::ScrollContentHeightExtra() const {
+  return scroll_content_height_extra_;
+}
+
+void LynxUIScrollViewInternal::SetScrollContentHeight(float height) {
+  if (scroll_view_ == nullptr || !scroll_view_->Vertical()) {
+    return;
+  }
+  float content_size[2] = {0.f, std::max(0.f, height)};
+  scroll_view_->SetScrollContentSize(content_size);
+}
+
+void LynxUIScrollViewInternal::SetScrollContentHeightExtra(float extra) {
+  scroll_content_height_extra_ = std::max(0.f, extra);
+}
+
+void LynxUIScrollViewInternal::ScrollToVerticalOffset(float offset,
+                                                      bool smooth) {
+  if (scroll_view_ == nullptr || !scroll_view_->Vertical()) {
+    return;
+  }
+  if (smooth) {
+    scroll_view_->AnimatedScrollToVertically(offset);
+  } else {
+    scroll_view_->ScrollToVertically(offset);
+  }
 }
 
 void LynxUIScrollViewInternal::FlushFirstRenderOperations() {
@@ -255,6 +318,18 @@ void LynxUIScrollViewInternal::SendScrollEvent(const char* name,
   CustomEvent scroll_event{Sign(), name, "detail",
                            lepus_value(scroll_event_detail)};
   context_->SendEvent(scroll_event);
+}
+
+void LynxUIScrollViewInternal::SetScrollX(const lepus::Value& value) {
+  if (value.IsBool()) {
+    scroll_view_->SetVertical(!value.Bool());
+  }
+}
+
+void LynxUIScrollViewInternal::SetScrollY(const lepus::Value& value) {
+  if (value.IsBool()) {
+    scroll_view_->SetVertical(value.Bool());
+  }
 }
 
 void LynxUIScrollViewInternal::SetScrollOrientation(const lepus::Value& value) {

@@ -17,6 +17,10 @@ float LynxBaseScrollView::GetScrollOffsetVertically() {
   return y;
 }
 
+float LynxBaseScrollView::GetScrollContentSizeVertically() {
+  return content_size_[1];
+}
+
 void LynxBaseScrollView::SetScrollContentSizeVertically(float content_size) {
   content_size_[1] = content_size;
 }

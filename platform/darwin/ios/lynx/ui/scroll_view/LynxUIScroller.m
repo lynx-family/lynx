@@ -4,6 +4,7 @@
 
 #import <Lynx/LynxBaseGestureHandler.h>
 #import <Lynx/LynxComponentRegistry.h>
+#import <Lynx/LynxKeyboardAvoidingScrollController.h>
 #import <Lynx/LynxLayoutStyle.h>
 #import <Lynx/LynxPropsProcessor.h>
 #import <Lynx/LynxUI+Fluency.h>
@@ -372,18 +373,34 @@ static Class<LynxScrollViewUIDelegate> kUIDelegate = nil;
       }
     }
     contentHeight += self.padding.bottom;
+    contentHeight += self.view.keyboardAvoidingContentHeightExtra;
     contentWidth = self.frame.size.width - self.padding.left - self.padding.right;
   }
 
   if ([self view].contentSize.width != contentWidth ||
       [self view].contentSize.height != contentHeight) {
+    CGSize targetContentSize = CGSizeMake(contentWidth, contentHeight);
     CGFloat prevXOffset =
         self.view.contentSize.width - self.view.contentOffset.x - self.view.frame.size.width;
-    [self view].contentSize = CGSizeMake(contentWidth, contentHeight);
-    [self adjustContentOffsetForRTL:MAX(prevXOffset, -self.view.contentInset.right)];
+    __weak typeof(self) weakSelf = self;
+    [LynxKeyboardAvoidingScrollController
+         updateContentSize:targetContentSize
+             forScrollView:self.view
+             enableScrollY:self.enableScrollY
+        contentSizeUpdater:^{
+          __strong typeof(weakSelf) strongSelf = weakSelf;
+          if (strongSelf == nil) {
+            return;
+          }
+          [strongSelf view].contentSize = targetContentSize;
+          [strongSelf
+              adjustContentOffsetForRTL:MAX(prevXOffset, -strongSelf.view.contentInset.right)];
+        }];
     [self contentSizeDidChanged];
     _stickyDirty = YES;
   }
+  [LynxKeyboardAvoidingScrollController updateFocusedInputStateForScrollView:self.view
+                                                               enableScrollY:self.enableScrollY];
 }
 
 - (CGPoint)contentOffset {

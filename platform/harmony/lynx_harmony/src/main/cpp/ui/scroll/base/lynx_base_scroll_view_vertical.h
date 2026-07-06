@@ -19,6 +19,8 @@ class LynxBaseScrollViewVertical {
  public:
   virtual float GetScrollOffsetVertically() = 0;
 
+  virtual float GetScrollContentSizeVertically() = 0;
+
   virtual void SetScrollContentSizeVertically(float content_size) = 0;
 
   virtual void ScrollByUnlimitedVertically(float delta) = 0;

@@ -18,6 +18,8 @@ namespace harmony {
 
 class LynxUIScrollViewInternal : public UIView, LynxBaseScrollViewDelegate {
  public:
+  void SetScrollX(const lepus::Value& value);
+  void SetScrollY(const lepus::Value& value);
   void SetScrollOrientation(const lepus::Value& value);
   void SetEnableScrollBar(const lepus::Value& value);
   void SetEnableScroll(const lepus::Value& value);
@@ -57,6 +59,12 @@ class LynxUIScrollViewInternal : public UIView, LynxBaseScrollViewDelegate {
   bool IsScrollable() override;
   float ScrollX() override;
   float ScrollY() override;
+  bool IsVerticalScrollView() override;
+  float ScrollContentHeight() const override;
+  float ScrollContentHeightExtra() const override;
+  void SetScrollContentHeight(float height) override;
+  void SetScrollContentHeightExtra(float extra) override;
+  void ScrollToVerticalOffset(float offset, bool smooth) override;
   void ScrollIntoView(bool smooth, const UIBase* target, const std::string& block,
                       const std::string& inline_value) override;
 
@@ -76,6 +84,7 @@ class LynxUIScrollViewInternal : public UIView, LynxBaseScrollViewDelegate {
   bool is_first_render_{true};
   bool at_upper_{false};
   bool at_lower_{false};
+  float scroll_content_height_extra_{0.f};
   float throttle_{0.f};
   float upper_threshold_{0.f};
   float lower_threshold_{0.f};

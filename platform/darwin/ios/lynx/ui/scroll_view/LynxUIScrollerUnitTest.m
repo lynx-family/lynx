@@ -4,6 +4,7 @@
 
 #import <Lynx/LynxBounceView.h>
 #import <Lynx/LynxPropsProcessor.h>
+#import <Lynx/LynxScrollView.h>
 #import <Lynx/LynxUI+Internal.h>
 #import <Lynx/LynxUIContext.h>
 #import <Lynx/LynxUIOwner.h>
@@ -62,6 +63,30 @@
                                        size:CGSizeMake(100, 100)];
   UIScrollView *scrollView = (UIScrollView *)mockContext.mockUI.view;
   XCTAssertEqual(scrollView.contentSize.width, 428.0f);
+  XCTAssertEqual(scrollView.contentSize.height, 1000.0f);
+}
+
+- (void)testScrollYConsumesKeyboardAvoidingContentHeightExtra {
+  LynxUIMockContext *mockContext =
+      [LynxUIUnitTestUtils initUIMockContextWithUI:[[LynxUIScroller alloc] init]];
+  [mockContext.mockUI updateFrame:CGRectMake(0, 0, 428.0f, 100.0f)
+                      withPadding:UIEdgeInsetsZero
+                           border:UIEdgeInsetsZero
+              withLayoutAnimation:NO];
+  [LynxPropsProcessor updateProp:@1 withKey:@"scroll-y" forUI:mockContext.mockUI];
+  [mockContext.mockUI propsDidUpdate];
+  [LynxUIScrollerUnitTestUtils mockChildren:10
+                                    context:mockContext
+                                    scrollY:YES
+                                       size:CGSizeMake(100, 100)];
+
+  LynxScrollView *scrollView = (LynxScrollView *)mockContext.mockUI.view;
+  scrollView.keyboardAvoidingContentHeightExtra = 50.0f;
+  [(LynxUIScroller *)mockContext.mockUI updateContentSize];
+  XCTAssertEqual(scrollView.contentSize.height, 1050.0f);
+
+  scrollView.keyboardAvoidingContentHeightExtra = 0.0f;
+  [(LynxUIScroller *)mockContext.mockUI updateContentSize];
   XCTAssertEqual(scrollView.contentSize.height, 1000.0f);
 }
 

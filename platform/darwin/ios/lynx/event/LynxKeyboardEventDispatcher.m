@@ -6,6 +6,9 @@
 #include <Lynx/LynxLog.h>
 #import <Lynx/LynxWeakProxy.h>
 #import <UIKit/UIKit.h>
+
+#import "LynxKeyboardAvoidingScrollController.h"
+
 #include <math.h>
 
 #define KEYBOARD_STATUS_CHANGED "keyboardstatuschanged"
@@ -28,6 +31,7 @@ static const CGFloat kLynxKeyboardAvoidEpsilon = 0.5;
 @property(nonatomic, weak) id lastEventOwner;
 @property(nonatomic, weak) UIView *rootView;
 @property(nonatomic, weak) UIView *inputView;
+@property(nonatomic, strong) LynxKeyboardAvoidingScrollController *scrollController;
 @property(nonatomic, copy) dispatch_block_t finalHideBlock;
 @property(nonatomic, assign) CGFloat spacing;
 @property(nonatomic, assign) CGFloat keyboardHeight;
@@ -74,6 +78,13 @@ static const CGFloat kLynxKeyboardAvoidEpsilon = 0.5;
 - (void)updateAnimationWithDuration:(NSTimeInterval)duration curve:(UIViewAnimationCurve)curve;
 - (void)updateAvoidDistance;
 - (void)applyAvoidDistance:(CGFloat)targetDistance;
+- (void)applyRootAvoidDistance:(CGFloat)targetDistance;
+- (void)saveKeyboardAvoidingTargetForOwner:(id)owner
+                             avoidKeyboard:(BOOL)avoidKeyboard
+                                   spacing:(CGFloat)spacing;
+- (void)clearKeyboardAvoidingScrollView;
+- (void)clearKeyboardAvoidingScrollViewAnimated:(BOOL)animated
+                                     completion:(dispatch_block_t)completion;
 
 @end
 
@@ -83,6 +94,7 @@ static const CGFloat kLynxKeyboardAvoidEpsilon = 0.5;
   if (self = [super init]) {
     _animationDuration = kLynxKeyboardDefaultAnimationDuration;
     _animationCurve = UIViewAnimationCurveEaseInOut;
+    _scrollController = [[LynxKeyboardAvoidingScrollController alloc] init];
   }
   return self;
 }
@@ -92,6 +104,8 @@ static const CGFloat kLynxKeyboardAvoidEpsilon = 0.5;
                            inputView:(UIView *)inputView
                        avoidKeyboard:(BOOL)avoidKeyboard
                              spacing:(CGFloat)spacing {
+  ++self.keyboardHideGeneration;
+  [self.scrollController resetOriginalOffsetIfInactive];
   [self updateActiveOwner:owner
                  rootView:rootView
                 inputView:inputView
@@ -107,6 +121,18 @@ static const CGFloat kLynxKeyboardAvoidEpsilon = 0.5;
   if (owner == self.activeOwner) {
     self.lastEventOwner = owner;
     self.finalHideBlock = finalHideBlock;
+    dispatch_async(dispatch_get_main_queue(), ^{
+      if (owner != self.activeOwner) {
+        return;
+      }
+      if (self.inputView != nil && self.inputView.isFirstResponder) {
+        return;
+      }
+      if (self.keyboardVisible || self.keyboardHeight > 0) {
+        return;
+      }
+      [self clearKeyboardAvoidingScrollView];
+    });
   }
 }
 
@@ -115,6 +141,7 @@ static const CGFloat kLynxKeyboardAvoidEpsilon = 0.5;
                      inputView:(UIView *)inputView
                  avoidKeyboard:(BOOL)avoidKeyboard
                        spacing:(CGFloat)spacing {
+  [self saveKeyboardAvoidingTargetForOwner:owner avoidKeyboard:avoidKeyboard spacing:spacing];
   if (owner == self.activeOwner && inputView.isFirstResponder &&
       (self.keyboardVisible || self.keyboardHeight > 0)) {
     [self updateActiveOwner:owner
@@ -131,6 +158,7 @@ static const CGFloat kLynxKeyboardAvoidEpsilon = 0.5;
                                   inputView:(UIView *)inputView
                               avoidKeyboard:(BOOL)avoidKeyboard
                                     spacing:(CGFloat)spacing {
+  [self saveKeyboardAvoidingTargetForOwner:owner avoidKeyboard:avoidKeyboard spacing:spacing];
   if (owner == self.activeOwner && inputView.isFirstResponder &&
       (self.keyboardVisible || self.keyboardHeight > 0)) {
     [self updateActiveOwner:owner
@@ -150,6 +178,7 @@ static const CGFloat kLynxKeyboardAvoidEpsilon = 0.5;
                           height:(CGFloat)height
                         duration:(NSTimeInterval)duration
                            curve:(UIViewAnimationCurve)curve {
+  ++self.keyboardHideGeneration;
   self.keyboardVisible = YES;
   self.keyboardHeight = height;
   [self updateAnimationWithDuration:duration curve:curve];
@@ -186,14 +215,20 @@ static const CGFloat kLynxKeyboardAvoidEpsilon = 0.5;
     dispatch_block_t block = self.finalHideBlock;
     self.keyboardVisible = NO;
     self.keyboardHeight = 0;
-    [self applyAvoidDistance:0];
-    if (block != nil) {
-      block();
-    }
-    self.activeOwner = nil;
-    self.lastEventOwner = nil;
-    self.inputView = nil;
-    self.finalHideBlock = nil;
+    [self applyRootAvoidDistance:0];
+    [self clearKeyboardAvoidingScrollViewAnimated:YES
+                                       completion:^{
+                                         if (generation != self.keyboardHideGeneration) {
+                                           return;
+                                         }
+                                         if (block != nil) {
+                                           block();
+                                         }
+                                         self.activeOwner = nil;
+                                         self.lastEventOwner = nil;
+                                         self.inputView = nil;
+                                         self.finalHideBlock = nil;
+                                       }];
   });
 }
 
@@ -202,6 +237,13 @@ static const CGFloat kLynxKeyboardAvoidEpsilon = 0.5;
                 inputView:(UIView *)inputView
             avoidKeyboard:(BOOL)avoidKeyboard
                   spacing:(CGFloat)spacing {
+  [self saveKeyboardAvoidingTargetForOwner:owner avoidKeyboard:avoidKeyboard spacing:spacing];
+  if (owner != self.activeOwner) {
+    LynxUI *newScrollUI = avoidKeyboard ? [self.scrollController scrollUIForOwner:owner] : nil;
+    if (self.scrollController.scrollUI != nil && self.scrollController.scrollUI != newScrollUI) {
+      [self clearKeyboardAvoidingScrollView];
+    }
+  }
   self.activeOwner = owner;
   self.rootView = rootView;
   self.inputView = inputView;
@@ -231,6 +273,49 @@ static const CGFloat kLynxKeyboardAvoidEpsilon = 0.5;
 }
 
 - (void)applyAvoidDistance:(CGFloat)targetDistance {
+  if (!self.avoidKeyboard) {
+    [self clearKeyboardAvoidingScrollView];
+    [self applyRootAvoidDistance:0];
+    return;
+  }
+  if ([self.scrollController scrollUIForOwner:self.activeOwner] != nil) {
+    [self applyRootAvoidDistance:0];
+  }
+  if ([self.scrollController applyWithOwner:self.activeOwner
+                                  inputView:self.inputView
+                             keyboardHeight:self.keyboardHeight
+                                    spacing:self.spacing
+                             targetDistance:targetDistance
+                          animationDuration:self.animationDuration]) {
+    return;
+  }
+  [self clearKeyboardAvoidingScrollView];
+  [self applyRootAvoidDistance:targetDistance];
+}
+
+- (void)saveKeyboardAvoidingTargetForOwner:(id)owner
+                             avoidKeyboard:(BOOL)avoidKeyboard
+                                   spacing:(CGFloat)spacing {
+  [self.scrollController saveTargetForOwner:owner avoidKeyboard:avoidKeyboard spacing:spacing];
+}
+
+- (void)clearKeyboardAvoidingScrollView {
+  [self.scrollController clear];
+}
+
+- (void)clearKeyboardAvoidingScrollViewAnimated:(BOOL)animated
+                                     completion:(dispatch_block_t)completion {
+  NSUInteger generation = self.keyboardHideGeneration;
+  [self.scrollController clearAnimated:animated
+                              duration:self.animationDuration
+                                 curve:self.animationCurve
+                               isStale:^BOOL {
+                                 return generation != self.keyboardHideGeneration;
+                               }
+                            completion:completion];
+}
+
+- (void)applyRootAvoidDistance:(CGFloat)targetDistance {
   UIView *rootView = self.rootView;
   if (rootView == nil) {
     self.currentAvoidDistance = targetDistance;

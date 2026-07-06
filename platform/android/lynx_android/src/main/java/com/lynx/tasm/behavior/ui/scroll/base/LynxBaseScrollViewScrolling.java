@@ -33,6 +33,8 @@ public class LynxBaseScrollViewScrolling extends FrameLayout implements LynxBase
 
   protected final int[] mContentSize = new int[2];
 
+  private int mKeyboardAvoidingContentHeightExtra = 0;
+
   protected int mScrollState = SCROLL_STATE_IDLE;
 
   protected ScrollDelegate mScrollDelegate;
@@ -74,6 +76,18 @@ public class LynxBaseScrollViewScrolling extends FrameLayout implements LynxBase
     } else {
       setScrollContentSizeHorizontally(contentSize[0]);
     }
+  }
+
+  public int getScrollContentSizeVertically() {
+    return mContentSize[1];
+  }
+
+  public int getKeyboardAvoidingContentHeightExtra() {
+    return mKeyboardAvoidingContentHeightExtra;
+  }
+
+  public void setKeyboardAvoidingContentHeightExtra(int extra) {
+    mKeyboardAvoidingContentHeightExtra = Math.max(0, extra);
   }
 
   @Override

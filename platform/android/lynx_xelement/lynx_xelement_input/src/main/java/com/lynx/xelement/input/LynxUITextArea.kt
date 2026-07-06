@@ -22,7 +22,6 @@ import com.lynx.tasm.behavior.StylesDiffMap
 import com.lynx.tasm.event.LynxDetailEvent
 
 open class LynxUITextArea(context: LynxContext, params: Any?) : LynxUIBaseInput(context, params) {
-
     private var mPreHeight:Int = -1
 
     private var mMaxLinesReached:Boolean = false
@@ -38,6 +37,11 @@ open class LynxUITextArea(context: LynxContext, params: Any?) : LynxUIBaseInput(
     }
   
     constructor(context: LynxContext) : this(context, null)
+
+    private fun getTextLayoutWidth(): Int {
+        val viewWidth = if (mView.width > 0) mView.width else width
+        return (viewWidth - mView.paddingLeft - mView.paddingRight).coerceAtLeast(0)
+    }
 
     override fun createView(context: Context?): LynxEditTextView {
         val editText = super.createView(context)
@@ -85,7 +89,7 @@ open class LynxUITextArea(context: LynxContext, params: Any?) : LynxUIBaseInput(
       super.onNodeReady()
       val textLayout = LynxInputUtils().getLayoutInEditText(mView.text.toString(),
         mView,
-        width,
+        getTextLayoutWidth(),
         Int.MAX_VALUE)
   
       triggerUpdateLayout(textLayout.height)
@@ -129,7 +133,7 @@ open class LynxUITextArea(context: LynxContext, params: Any?) : LynxUIBaseInput(
             destBuilder.replace(dstart, dend, replacement.subSequence(0, mid))
             val textLayout: Layout = inputUtils.getLayoutInEditText(destBuilder,
                 mView,
-                width,
+                getTextLayoutWidth(),
                 Int.MAX_VALUE)
             if (textLayout.lineCount <= maxLines) {
                 left = mid
@@ -155,7 +159,7 @@ open class LynxUITextArea(context: LynxContext, params: Any?) : LynxUIBaseInput(
     override fun afterTextDidChanged(s: Editable?) {
         val textLayout = LynxInputUtils().getLayoutInEditText(mView.text.toString(),
             mView,
-            width,
+            getTextLayoutWidth(),
             Int.MAX_VALUE)
 
         if (textLayout.height != mPreHeight) {
@@ -178,7 +182,7 @@ open class LynxUITextArea(context: LynxContext, params: Any?) : LynxUIBaseInput(
   override fun triggerUpdateLayout(updatedHeight: Int) {
     val placeholderTextLayout = LynxInputUtils().getLayoutInEditText(mView.hint,
       mView,
-      width,
+      getTextLayoutWidth(),
       Int.MAX_VALUE)
 
     lynxContext.findShadowNodeAndRunTask(sign) { it ->

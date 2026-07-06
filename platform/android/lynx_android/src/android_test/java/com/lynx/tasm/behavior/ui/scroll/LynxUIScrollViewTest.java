@@ -171,6 +171,19 @@ public class LynxUIScrollViewTest {
   }
 
   @Test
+  public void keyboardAvoidingContentHeightExtraIsConsumedDuringMeasure() {
+    assertEquals(500, mUIScrollView.getView().getScrollContentSizeVertically());
+
+    mUIScrollView.getView().setKeyboardAvoidingContentHeightExtra(120);
+    mUIScrollView.measure();
+    assertEquals(620, mUIScrollView.getView().getScrollContentSizeVertically());
+
+    mUIScrollView.getView().setKeyboardAvoidingContentHeightExtra(0);
+    mUIScrollView.measure();
+    assertEquals(500, mUIScrollView.getView().getScrollContentSizeVertically());
+  }
+
+  @Test
   public void autoScroll() {
     JavaOnlyMap params = JavaOnlyMap.from(new HashMap());
     params.putString("rate", "600px"); // 600px per second

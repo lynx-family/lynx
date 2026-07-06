@@ -367,6 +367,9 @@ public class LynxUIScrollViewInternal
       contentWidth = Math.max(contentWidth,
           child.getWidth() + child.getLeft() + child.getMarginRight() + mPaddingRight);
     }
+    if (mView.isVertical()) {
+      contentHeight += mView.getKeyboardAvoidingContentHeightExtra();
+    }
     mView.setScrollContentSize(new int[] {contentWidth, contentHeight});
     flushFirstRenderOperations();
     updateScrollPosition();

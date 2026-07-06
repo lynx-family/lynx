@@ -519,6 +519,7 @@ open class LynxUIBaseInput(context: LynxContext, params: Any?) : LynxUI<LynxEdit
         mView.inputType = InputType.TYPE_CLASS_TEXT
         mView.setHorizontallyScrolling(false)
         mView.maxLines = mView.maxLines
+        mView.transformationMethod = null
         mIsSettingInputType = false
       }
         when(value ?: "done") {
@@ -543,16 +544,18 @@ open class LynxUIBaseInput(context: LynxContext, params: Any?) : LynxUI<LynxEdit
                 LynxUIBaseInput.TYPE_EMAIL -> mView.inputType = InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS
             }
             val selectionStart = mView.selectionStart
-            if (value != LynxUIBaseInput.TYPE_PASSWORD) {
-                mView.transformationMethod = SingleLineTransformationMethod.getInstance()
-            } else {
-                mView.transformationMethod = PasswordTransformationMethod.getInstance()
-            }
             mView.setSelection(selectionStart)
             mView.inputType = mView.inputType or InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
             if (isTextArea()) {
                 mView.isSingleLine = false
                 mView.imeOptions = imeOptions
+            }
+            if (value == LynxUIBaseInput.TYPE_PASSWORD) {
+                mView.transformationMethod = PasswordTransformationMethod.getInstance()
+            } else if (isTextArea()) {
+                mView.transformationMethod = null
+            } else {
+                mView.transformationMethod = SingleLineTransformationMethod.getInstance()
             }
             mIsSettingInputType = false
     }

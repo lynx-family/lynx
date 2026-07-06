@@ -398,6 +398,11 @@ public class UIScrollView extends AbsLynxUIScroll<AndroidScrollView> implements 
             child.getHeight() + child.getTop() + child.getMarginBottom() + mPaddingBottom);
       }
     }
+    int keyboardAvoidingContentHeightExtra = 0;
+    if (!isHorizontal) {
+      keyboardAvoidingContentHeightExtra = mView.getKeyboardAvoidingContentHeightExtra();
+      contentHeight += keyboardAvoidingContentHeightExtra;
+    }
     if (mView.getContentWidth() != contentWidth || mView.getContentHeight() != contentHeight) {
       onContentSizeChanged(contentWidth, contentHeight);
       mView.setMeasuredSize(contentWidth, contentHeight);

@@ -167,6 +167,11 @@ class LYNX_EXPORT UIBase : public std::enable_shared_from_this<UIBase>,
   std::shared_ptr<GestureArenaManager> GetGestureArenaManager();
 
   virtual bool IsVerticalScrollView() { return false; };
+  virtual float ScrollContentHeight() const { return 0.f; }
+  virtual float ScrollContentHeightExtra() const { return 0.f; }
+  virtual void SetScrollContentHeight(float height) {}
+  virtual void SetScrollContentHeightExtra(float extra) {}
+  virtual void ScrollToVerticalOffset(float offset, bool smooth) {}
   EventTarget* HitTest(float point[2]) override;
   bool ShouldHitTest() override;
   bool ContainsPoint(float point[2]) override;

@@ -265,7 +265,7 @@ export class UIOwner {
 
   requestLayout(): void;
 
-  keyboardStatusChanged(height: number): void;
+  keyboardStatusChanged(height: number, keyboardTop?: number): void;
 
   canConsumeTouchEvent(x: number, y: number): boolean;
 
