@@ -22,7 +22,7 @@ public class StringUtils {
     }
     ByteArrayOutputStream buffer = new ByteArrayOutputStream();
     int nRead;
-    byte[] data = new byte[2048];
+    byte[] data = new byte[1024 * 4];
     try {
       while ((nRead = is.read(data, 0, data.length)) != -1) {
         buffer.write(data, 0, nRead);

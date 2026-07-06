@@ -15,4 +15,11 @@
             android:value="com.lynx.testing.base.instrumentation.LynxInstrumentTestListener" />
     </instrumentation>
 
+    <application>
+        <provider
+            android:name="com.lynx.tasm.resourceprovider.TestContentProvider"
+            android:authorities="com.lynx.test.resourceprovider"
+            android:exported="true" />
+    </application>
+
 </manifest>

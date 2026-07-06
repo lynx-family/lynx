@@ -17,10 +17,8 @@ import com.lynx.tasm.provider.LynxResCallback;
 import com.lynx.tasm.provider.LynxResRequest;
 import com.lynx.tasm.provider.LynxResResponse;
 import com.lynx.tasm.provider.ResProvider;
+import com.lynx.tasm.resourceprovider.LynxResourceUtil;
 import java.io.ByteArrayInputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.concurrent.CountDownLatch;
@@ -48,6 +46,11 @@ public class ResManager {
    * File scheme for URIs
    */
   public static final String FILE_SCHEME = "file://";
+
+  /**
+   * Content scheme for URIs
+   */
+  public static final String CONTENT_SCHEME = "content://";
 
   private static ResManager sInstance;
 
@@ -132,6 +135,8 @@ public class ResManager {
           doFetchRes(url, callback);
         } else if (url.startsWith(FILE_SCHEME) && url.length() > FILE_SCHEME.length()) {
           doFetchFile(url, callback);
+        } else if (url.startsWith(CONTENT_SCHEME) && url.length() > CONTENT_SCHEME.length()) {
+          doFetchContent(url, callback);
         } else {
           LLog.DTHROW(new RuntimeException("illegal url:" + url));
           response.setReasonPhrase("url is illegal:" + url);
@@ -205,31 +210,26 @@ public class ResManager {
   }
 
   private void doFetchFile(@NonNull final String url, @NonNull final LynxResCallback callback) {
-    String path = url.substring(FILE_SCHEME.length());
-    final File file;
-    if (path.startsWith("/")) {
-      file = new File(path);
-    } else {
-      file = new File(LynxEnv.inst().getAppContext().getFilesDir(), path);
-    }
     LynxResResponse response = new LynxResResponse();
-    try {
-      InputStream stream = new FileInputStream(file);
-      StringBuilder sb = new StringBuilder(stream.available());
-      byte[] buffer = new byte[1024];
-      int numRead = 0;
-      while ((numRead = stream.read(buffer)) != -1) {
-        sb.append(new String(buffer, 0, numRead));
-      }
-      InputStream Sstream = new ByteArrayInputStream(sb.toString().getBytes());
-      response.setInputStream(Sstream);
+    byte[] bytes = LynxResourceUtil.readFileFromFileUri(LynxEnv.inst().getAppContext(), url);
+    if (bytes != null) {
+      response.setInputStream(new ByteArrayInputStream(bytes));
       callback.onSuccess(response);
-      stream.close();
-    } catch (FileNotFoundException e) {
+    } else {
       response.setReasonPhrase("file not found!");
       callback.onFailed(response);
-    } catch (IOException e) {
-      response.setReasonPhrase("IO failed");
+    }
+  }
+
+  private void doFetchContent(@NonNull final String url, @NonNull final LynxResCallback callback) {
+    LynxResResponse response = new LynxResResponse();
+    byte[] bytes =
+        LynxResourceUtil.readFileFromContentProvider(LynxEnv.inst().getAppContext(), url);
+    if (bytes != null) {
+      response.setInputStream(new ByteArrayInputStream(bytes));
+      callback.onSuccess(response);
+    } else {
+      response.setReasonPhrase("content provider resource not found!");
       callback.onFailed(response);
     }
   }

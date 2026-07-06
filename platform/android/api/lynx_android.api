@@ -6628,6 +6628,13 @@ public enum com::lynx::tasm::resourceprovider::LynxResourceRequest::LynxResource
   public com.lynx.tasm.resourceprovider.LynxResourceRequest.LynxResourceType.LynxResourceTypeExternalByteCode LynxResourceTypeExternalByteCode;
 }
 
+public class com::lynx::tasm::resourceprovider::LynxResourceUtil :  {
+  public static byte[] com.lynx.tasm.resourceprovider.LynxResourceUtil.readFileFromFileUri(@Nullable Context context, @Nullable String uri);
+  public static byte[] com.lynx.tasm.resourceprovider.LynxResourceUtil.readFileFromFileUri(@Nullable Context context, @Nullable Uri uri);
+  public static byte[] com.lynx.tasm.resourceprovider.LynxResourceUtil.readFileFromContentProvider(@Nullable Context context, @Nullable Uri uri);
+  public static byte[] com.lynx.tasm.resourceprovider.LynxResourceUtil.readFileFromContentProvider( @Nullable Context context, @Nullable String uri);
+}
+
 public class com::lynx::tasm::provider::LynxResRequest :  {
   public final String com.lynx.tasm.provider.LynxResRequest.METHOD_GET METHOD_GET;
   public final String com.lynx.tasm.provider.LynxResRequest.METHOD_POST METHOD_POST;
@@ -9610,6 +9617,7 @@ public class com::lynx::tasm::core::ResManager :  {
   public final String com.lynx.tasm.core.ResManager.LOCAL_ASSET_SCHEME LOCAL_ASSET_SCHEME;
   public final String com.lynx.tasm.core.ResManager.LOCAL_RESOURCE_SCHEME LOCAL_RESOURCE_SCHEME;
   public final String com.lynx.tasm.core.ResManager.FILE_SCHEME FILE_SCHEME;
+  public final String com.lynx.tasm.core.ResManager.CONTENT_SCHEME CONTENT_SCHEME;
   public static ResManager com.lynx.tasm.core.ResManager.inst();
   public LynxResResponse com.lynx.tasm.core.ResManager.requestResourceSync(@NonNull LynxResRequest request);
   public void com.lynx.tasm.core.ResManager.requestResource(final @NonNull LynxResRequest request, @NonNull final LynxResCallback callback);
