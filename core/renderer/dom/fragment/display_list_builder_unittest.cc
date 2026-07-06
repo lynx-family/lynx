@@ -10,6 +10,7 @@
 #include <vector>
 
 #include "core/renderer/starlight/style/borders_data.h"
+#include "core/renderer/ui_wrapper/painting/paint_image.h"
 #include "core/style/transform/matrix44.h"
 #include "third_party/googletest/googlemock/include/gmock/gmock.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
@@ -126,7 +127,9 @@ TEST_F(DisplayListBuilderTest, DrawViewOperation) {
 
 TEST_F(DisplayListBuilderTest, DrawImageOperation) {
   int image_id = 123;
-  builder_->DrawImage(image_id, -1);
+  int32_t box_index = 5;
+  auto image = fml::MakeRefCounted<PaintImage>(image_id);
+  builder_->DrawImage(image, box_index);
 
   DisplayList display_list = builder_->Build();
 
@@ -138,10 +141,13 @@ TEST_F(DisplayListBuilderTest, DrawImageOperation) {
 
   EXPECT_EQ(op_types_data[0], static_cast<int32_t>(DisplayListOpType::kImage));
   // With optimized AddOperation: [int_count, float_count, param]
-  EXPECT_EQ(int_data_data[0], 2);                         // int_count
-  EXPECT_EQ(int_data_data[1], 0);                         // float_count
-  EXPECT_EQ(int_data_data[2], image_id);                  // actual param
+  EXPECT_EQ(int_data_data[0], 2);         // int_count
+  EXPECT_EQ(int_data_data[1], 0);         // float_count
+  EXPECT_EQ(int_data_data[2], image_id);  // image_key
+  EXPECT_EQ(int_data_data[3], box_index);
   EXPECT_EQ(display_list.GetContentFloatDataSize(), 0u);  // No float parameters
+  EXPECT_EQ(display_list.Images().size(), 1u);
+  EXPECT_EQ(display_list.Images()[0].get(), image.get());
 }
 
 TEST_F(DisplayListBuilderTest, DrawTextOperation) {
@@ -192,7 +198,7 @@ TEST_F(DisplayListBuilderTest, MethodChaining) {
   builder_->Begin(0, PlatformRendererType::kView, 0.0f, 0.0f, 100.0f, 100.0f)
       .Fill(0xFF0000FF)
       .DrawView(123)
-      .DrawImage(456, -1)
+      .DrawImage(fml::MakeRefCounted<PaintImage>(456), -1)
       .DrawText(789, -1)
       .Transform(transforms::Matrix44())
       .End();
@@ -264,7 +270,8 @@ TEST_F(DisplayListBuilderTest, LargeOperationSequence) {
   for (size_t i = 0; i < kNumOperations; ++i) {
     builder_->Fill(static_cast<uint32_t>(i));
     if (i % 3 == 0) {
-      builder_->DrawImage(static_cast<int>(i), -1);
+      builder_->DrawImage(fml::MakeRefCounted<PaintImage>(static_cast<int>(i)),
+                          -1);
     }
     if (i % 5 == 0) {
       builder_->DrawText(static_cast<int>(i * 2), -1);
@@ -352,7 +359,7 @@ TEST_F(DisplayListBuilderTest, ZeroValues) {
   builder_->Begin(0, PlatformRendererType::kView, 0.0f, 0.0f, 0.0f, 0.0f)
       .Fill(0)
       .DrawView(0)
-      .DrawImage(0, -1)
+      .DrawImage(fml::MakeRefCounted<PaintImage>(0), -1)
       .DrawText(0, -1)
       .Transform(
           transforms::Matrix44(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0))
@@ -425,7 +432,7 @@ TEST_F(DisplayListBuilderTest, ZeroValues) {
 }
 
 TEST_F(DisplayListBuilderTest, DrawImageAndTextWithZeroValues) {
-  builder_->DrawImage(0, -1);
+  builder_->DrawImage(fml::MakeRefCounted<PaintImage>(0), -1);
   builder_->DrawText(0, -1);
 
   DisplayList display_list = builder_->Build();
@@ -452,7 +459,7 @@ TEST_F(DisplayListBuilderTest, DrawImageAndTextWithZeroValues) {
 }
 
 TEST_F(DisplayListBuilderTest, DrawImageAndTextWithNegativeValues) {
-  builder_->DrawImage(-123, 1);
+  builder_->DrawImage(fml::MakeRefCounted<PaintImage>(-123), 1);
   builder_->DrawText(-456, -1);
 
   DisplayList display_list = builder_->Build();
@@ -838,7 +845,7 @@ TEST_F(DisplayListBuilderTest, RecordBoxModelRoundedCorners) {
 TEST_F(DisplayListBuilderTest, DrawImageWithBoxIndex) {
   int image_id = 123;
   int box_index = 5;
-  builder_->DrawImage(image_id, box_index);
+  builder_->DrawImage(fml::MakeRefCounted<PaintImage>(image_id), box_index);
 
   DisplayList display_list = builder_->Build();
 

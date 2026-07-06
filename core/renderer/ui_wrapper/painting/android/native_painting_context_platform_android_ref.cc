@@ -7,12 +7,17 @@
 #include <string>
 #include <utility>
 
+#include "core/renderer/ui_wrapper/painting/android/platform_renderer_android.h"
+#include "core/renderer/ui_wrapper/painting/android/platform_renderer_context.h"
+
 namespace lynx {
 namespace tasm {
 
 NativePaintingCtxAndroidRef::NativePaintingCtxAndroidRef(
-    std::unique_ptr<PlatformRendererFactory> view_factory)
-    : NativePaintingCtxPlatformRef(std::move(view_factory)) {}
+    std::unique_ptr<PlatformRendererFactory> view_factory,
+    std::unique_ptr<PlatformRendererContext> view_manager)
+    : NativePaintingCtxPlatformRef(std::move(view_factory)),
+      view_manager_(std::move(view_manager)) {}
 
 void NativePaintingCtxAndroidRef::GetRootViewLocationOnScreen(
     float location[2]) {
