@@ -1590,6 +1590,189 @@ class Element : public lepus::RefCounted,
       const starlight::ComputedCSSStyle& final_style,
       const starlight::ComputedCSSStyle* previous_final_style,
       const StyleMap& resolved_style_map) const;
+  // Inputs that tell the new-pipeline resolve pass why it is being run and
+  // which external style contexts must be refreshed.
+  struct NewPipelineResolveRequest {
+    // Run the resolve path even when the element has no style dirty bit.
+    bool force_resolve{false};
+    // Force platform side-effect replay after resolve, even if no dynamic
+    // dependency flag matches the element's resolved styles.
+    bool force_platform_update{false};
+    // Dynamic style contexts that changed in this flush, such as viewport,
+    // screen metrics, rem, or em.
+    DynamicCSSStylesManager::StyleUpdateFlags dynamic_update_flags{0};
+  };
+
+  // Detailed internal result from ResolveComputedStyles(). It carries the
+  // resolved base/final style views, source maps, variable dependency data, and
+  // transient owned snapshots needed by ResolveCSSStylesNewPipelineCore() to
+  // build mutation plans, commit style, and replay side effects. The outer
+  // flush flow receives only NewPipelineResolveOutcome.
+  struct NewPipelineStyleResolveResult {
+    // Explicit resolved source properties from this resolve pass.
+    StyleMap resolved_style_map;
+    // TODO(zhouzhitao): get rid of underlying_layout_only_styles if
+    // layout_in_element is fully rolled out
+
+    // Layout-only source properties needed by transition sampling while
+    // layout-in-element is not universally enabled.
+    StyleMap underlying_layout_only_styles;
+    // Properties in resolved_style_map whose values depend on var().
+    CSSIDBitset variable_dependent_ids;
+    // Animation overrides/resets sampled against the newly resolved base style.
+    animation::AnimationSampleForNewPipeline animation_sample;
+    // Parent style used for inheritance and animation-triggered rebuilds.
+    const starlight::ComputedCSSStyle* parent_inheritance_style{nullptr};
+    // Final style committed by the previous resolve, used as the diff baseline.
+    const starlight::ComputedCSSStyle* previous_final_style{nullptr};
+    // Semantic style after animation effects. Downstream logic should read this
+    // after ResolveComputedStyles() returns. It may alias owned_final_style,
+    // owned_base_style, or the element's platform_css_style_.
+    starlight::ComputedCSSStyle* final_style{nullptr};
+    // Semantic style before animation effects. It may alias owned_base_style or
+    // final_style when no separate base snapshot is needed.
+    starlight::ComputedCSSStyle* base_style{nullptr};
+    // owned_* carry the transient storage backing those semantic views until
+    // the caller decides whether this resolution pass actually commits. They
+    // cannot be replaced by final_style/base_style because commit-time code
+    // needs to move ownership into platform_css_style_ / base_css_style_, while
+    // final_style/base_style may also alias existing external storage.
+    // Owns the resolved unanimated base snapshot when it cannot stay in
+    // base_css_style_ / platform_css_style_ directly during resolution.
+    std::unique_ptr<starlight::ComputedCSSStyle> owned_base_style;
+    // Owns the resolved animated final snapshot before it is committed into
+    // platform_css_style_.
+    std::unique_ptr<starlight::ComputedCSSStyle> owned_final_style;
+
+    // Publishes the semantic final/base style views after ownership has been
+    // decided. Callers should read final_style/base_style and ignore owned_*.
+    void BindResolvedStyles(starlight::ComputedCSSStyle* platform_style) {
+      DCHECK(platform_style != nullptr);
+      final_style = owned_final_style != nullptr  ? owned_final_style.get()
+                    : owned_base_style != nullptr ? owned_base_style.get()
+                                                  : platform_style;
+      base_style =
+          owned_base_style != nullptr ? owned_base_style.get() : final_style;
+      DCHECK(final_style != nullptr);
+      DCHECK(base_style != nullptr);
+    }
+
+    // Commits the resolved final style into platform_css_style_ when a platform
+    // update is required. This moves whichever owned snapshot currently backs
+    // final_style and leaves platform_css_style_ unchanged when final_style
+    // already aliases the existing platform slot.
+    void CommitPlatformStyleIfNeeded(
+        std::unique_ptr<starlight::ComputedCSSStyle>& platform_css_style,
+        bool style_changed) {
+      if (!style_changed) {
+        return;
+      }
+      if (final_style == owned_final_style.get()) {
+        platform_css_style = std::move(owned_final_style);
+      } else if (final_style == owned_base_style.get()) {
+        platform_css_style = std::move(owned_base_style);
+      }
+    }
+
+    // Persists the unanimated base snapshot into base_css_style_ after the
+    // final style has been committed. If final_style reuses owned_base_style,
+    // the base slot is only kept when no platform update happened.
+    void PersistBaseStyle(
+        std::unique_ptr<starlight::ComputedCSSStyle>& base_css_style,
+        bool style_changed) {
+      if (owned_base_style == nullptr) {
+        base_css_style.reset();
+        return;
+      }
+      if (final_style == owned_base_style.get()) {
+        if (style_changed) {
+          base_css_style.reset();
+        } else {
+          base_css_style = std::move(owned_base_style);
+        }
+        return;
+      }
+      base_css_style = std::move(owned_base_style);
+    }
+  };
+
+  // Return summary from ResolveCSSStylesNewPipelineCore() to the outer flush
+  // flow. Unlike NewPipelineStyleResolveResult, this does not carry resolved
+  // style snapshots or ownership. It only reports what the caller should do
+  // after the element has resolved and optionally committed its style.
+  struct NewPipelineResolveOutcome {
+    // Whether this element needs a platform node update/layout request.
+    bool need_update{false};
+    // Whether descendants must be resolved because this element changed a
+    // context they depend on, such as inherited styles, variables, or font
+    // units.
+    bool force_children{false};
+    // Dynamic dependency flags found in this element's resolved styles.
+    DynamicCSSStylesManager::StyleUpdateFlags dynamic_style_flags{0};
+    // Dynamic dependency flags that descendants should refresh because of this
+    // element's context change.
+    DynamicCSSStylesManager::StyleUpdateFlags child_update_flags{0};
+  };
+
+  struct AnimationSampleAnalysisForNewPipeline {
+    bool has_style_effects{false};
+    bool has_animated_font_size{false};
+    bool has_custom_property_effects{false};
+    bool changes_resolve_context{false};
+  };
+  static AnimationSampleAnalysisForNewPipeline
+  AnalyzeAnimationSampleForNewPipeline(
+      const animation::AnimationSampleForNewPipeline& animation_sample);
+
+  // Dynamic-style replay inputs collected from the resolved final style.
+  // They let dynamic context updates replay affected properties without
+  // rebuilding the full cascade for every element.
+  struct NewPipelineDynamicStyleInputs {
+    // Properties that should participate in dynamic-unit replay. Starts with
+    // explicit resolved styles from this pass and may be extended with
+    // inherited dynamic-unit values from the final ComputedCSSStyle.
+    StyleMap resolved_style_map;
+    // Subset of resolved_style_map that came only from inheritance, not from
+    // explicit matched/inline/attribute/animation sources on this element.
+    CSSIDBitset inherited_dynamic_ids;
+    // Union of dynamic dependency flags for inherited_dynamic_ids.
+    DynamicCSSStylesManager::StyleUpdateFlags inherited_dynamic_flags{0};
+  };
+  NewPipelineDynamicStyleInputs BuildDynamicStyleInputsForNewPipeline(
+      const starlight::ComputedCSSStyle& final_style,
+      const StyleMap& explicit_resolved_style_map) const;
+
+  // Diff plan for committing and replaying one new-pipeline style resolve
+  // result. It is built from the old final style, the new final style, and the
+  // explicit resolved source map.
+  struct NewPipelineStyleMutationPlan {
+    // New resolved values for properties that changed or need dynamic replay.
+    StyleMap update_values;
+    // Property ids present in update_values.
+    CSSIDBitset update_ids;
+    // Properties that existed in the previous final style but disappeared from
+    // the new final style.
+    CSSIDBitset reset_ids;
+    // Properties explicitly produced by this resolve pass. Replay uses this to
+    // distinguish explicit styles from inherited platform values, especially
+    // for layout-only inherited-property preservation.
+    CSSIDBitset source_style_ids;
+    // Whether the plan was built for the element's first render.
+    bool first_render{false};
+    // True when AddUpdate/AddReset recorded a normal resolved-value diff.
+    bool source_changed{false};
+    // True when the raw/resolved custom-property maps changed.
+    bool custom_properties_changed{false};
+    // True when this element's font-size context changed.
+    bool font_size_context_changed{false};
+    // True when this element's root-font-size context changed.
+    bool root_font_size_context_changed{false};
+
+    void AddUpdate(CSSPropertyID id, const CSSValue& value);
+    void AddReset(CSSPropertyID id);
+    bool HasOperations() const;
+    bool NeedsSemanticCommit() const;
+  };
 
   // Mark flush_required without recursively mark parent element
   inline void MarkRequireFlush() { flush_required_ = true; }
