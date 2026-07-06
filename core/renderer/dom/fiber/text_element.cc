@@ -205,6 +205,13 @@ void TextElement::ConvertToInlineElement() {
   FiberElement::ConvertToInlineElement();
 }
 
+void TextElement::MarkLayoutInElementTextMeasurerPropertyIfNeeded(
+    CSSPropertyID id) {
+  if (EnableLayoutInElementMode() && IsTextMeasurerWanted(id)) {
+    property_bits_.Set(id);
+  }
+}
+
 void TextElement::ReplayElementSpecificStyleSideEffect(CSSPropertyID id) {
   if (id != kPropertyIDFontFamily) {
     return;

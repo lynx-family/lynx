@@ -1084,6 +1084,23 @@ class Element : public lepus::RefCounted,
   virtual void UpdateLayoutNodeAttribute(starlight::LayoutAttribute key,
                                          const lepus::Value& value) = 0;
 
+  enum class StyleSideEffectReplayMode {
+    kNormal,
+    kPreserveLayoutOnly,
+  };
+
+  /**
+   * @brief Replays the side effects of a single changed style property.
+   * @param id The CSS property that changed.
+   * @param value The new computed value.
+   */
+  void ReplayChangedStyleSideEffect(
+      CSSPropertyID id, const CSSValue& value,
+      StyleSideEffectReplayMode mode = StyleSideEffectReplayMode::kNormal);
+  void ReplayResetStyleSideEffect(
+      CSSPropertyID id,
+      StyleSideEffectReplayMode mode = StyleSideEffectReplayMode::kNormal);
+
   virtual bool ResolveStyleValue(CSSPropertyID id, const tasm::CSSValue& value);
 
   virtual void CheckDynamicUnit(CSSPropertyID id, const CSSValue& value,
@@ -1168,6 +1185,12 @@ class Element : public lepus::RefCounted,
   void DispatchAnimationEventsForNewPipeline(
       const animation::AnimationEventRecordsForNewPipeline& event_records);
   void UpdateFinalStyleMap(const StyleMap& styles);
+  virtual void MarkLayoutInElementTextMeasurerPropertyIfNeeded(
+      CSSPropertyID id) {}
+  // Hook for subclasses to replay element-specific derived style state.
+  // Callers should go through ReplayChangedStyleSideEffect() or
+  // ReplayResetStyleSideEffect() so Element preserves replay bookkeeping.
+  virtual void ReplayElementSpecificStyleSideEffect(CSSPropertyID id) {}
 
   virtual void OnPatchFinish(std::shared_ptr<PipelineOptions>& option);
 
@@ -1558,6 +1581,15 @@ class Element : public lepus::RefCounted,
   void CommitFontContext(const starlight::ComputedCSSStyle& computed_style,
                          double old_font_size, double old_root_font_size);
   void FinalizeAnimationPropsChange(bool& need_update);
+  struct AnimationPropertyChangeAnalysisForLegacyAnimator {
+    bool has_transition_props_changed{false};
+    bool has_keyframe_props_changed{false};
+  };
+  AnimationPropertyChangeAnalysisForLegacyAnimator
+  AnalyzeAnimationPropChangesForLegacyAnimator(
+      const starlight::ComputedCSSStyle& final_style,
+      const starlight::ComputedCSSStyle* previous_final_style,
+      const StyleMap& resolved_style_map) const;
 
   // Mark flush_required without recursively mark parent element
   inline void MarkRequireFlush() { flush_required_ = true; }
