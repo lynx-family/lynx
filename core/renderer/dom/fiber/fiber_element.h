@@ -25,7 +25,6 @@
 #include "core/renderer/dom/attribute_holder.h"
 #include "core/renderer/dom/element.h"
 #include "core/renderer/dom/fiber/list_item_scheduler_adapter.h"
-#include "core/renderer/dom/fiber/pseudo_element.h"
 #include "core/renderer/dom/layout_bundle.h"
 #include "core/renderer/simple_styling/style_object.h"
 #include "core/renderer/utils/base/element_template_info.h"
@@ -258,14 +257,6 @@ class FiberElement : public Element {
   void ResolveSimpleStyles();
 
   void TraversalInsertFixedElementOfTree();
-
-  template <typename F>
-  void ApplyFunctionRecursive(F&& func) {
-    func(this);
-    for (const auto& child : scoped_children_) {
-      static_cast<FiberElement*>(child.get())->ApplyFunctionRecursive(func);
-    }
-  }
 
   void MarkFontSizeInvalidateRecursively();
   void InvalidateChildrenFontSizeRecursively();
@@ -685,8 +676,6 @@ class FiberElement : public Element {
   void PersistAnimationFillStyles(const StyleMap& styles) override;
   void ClearPersistedAnimationFillStyle(CSSPropertyID id) override;
 
-  void PrepareOrUpdatePseudoElement(PseudoState state, StyleMap& style_map);
-
   void CreateListItemScheduler(list::BatchRenderStrategy batch_render_strategy,
                                bool continuous_resolve_tree);
 
@@ -704,9 +693,6 @@ class FiberElement : public Element {
   bool IsEventPathCatch(event::EventTarget* target,
                         event::Event* event) override;
 
-  void SetMeasureFunc(std::unique_ptr<MeasureFunc> measure_func);
-
-  void PrepareSelfForThreadedElementResolution();
   bool ShouldFallbackToSerialForNewStylingPipeline() const;
 
   void InvalidateChildrenIfNeeded();
@@ -755,12 +741,6 @@ class FiberElement : public Element {
 
   void UpdateLayoutInfoRecursively(PipelineOptions* options);
 
-  void DispatchLayoutBeforeRecursively();
-
-  void SetMeasureFunc(void* context, starlight::SLMeasureFunc measure_func);
-  void SetAlignmentFunc(void* context,
-                        starlight::SLAlignmentFunc alignment_func);
-
  private:
   friend class WrapperElement;
   friend class ComponentElement;
@@ -798,18 +778,6 @@ class FiberElement : public Element {
 
   void ResetTextAlign(StyleMap& update_map, bool direction_reset);
 
-  bool CheckHasInvalidationForId(const std::string& old_id,
-                                 const std::string& new_id) override;
-
-  void InvalidateChildren(css::InvalidationSet* invalidation_set);
-  void VisitChildren(const base::MoveOnlyClosure<void, FiberElement*>& visitor);
-
-  PseudoElement* CreatePseudoElementIfNeed(PseudoState state);
-
-  void SetFontSizeForAllElement(double cur_node_font_size,
-                                double root_node_font_size);
-  void UpdateLengthContextValueForAllElement(const LynxEnvConfig& env_config);
-
   void UpdateDynamicElementStyleRecursively(uint32_t style, bool force_update);
   void UpdateDynamicElementStyleForNewPipeline(uint32_t& style,
                                                bool& inner_force_update);
@@ -832,8 +800,6 @@ class FiberElement : public Element {
   void EnsureSLNode();
   bool HasLayoutInElementPlatformNode();
   int GetLayoutInElementPlatformChildIndex(FiberElement* child);
-
-  virtual void DispatchLayoutBefore();
 
   void ApplySimpleStyleWithoutTail(const tasm::CSSPropertyID id,
                                    const tasm::CSSValue& value);
