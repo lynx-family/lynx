@@ -1202,14 +1202,16 @@ fml::RefPtr<FiberElement> ElementManager::CreateFiberElement(
 
 fml::RefPtr<FiberElement> ElementManager::CreateFiberElement(
     ElementBuiltInTagEnum enum_tag, const base::String &raw_tag) {
-  auto result = StaticCreateFiberElement(enum_tag, raw_tag);
+  auto result =
+      fml::static_ref_ptr_cast<FiberElement>(StaticCreateFiberElement(enum_tag,
+                                                                      raw_tag));
   result->AttachToElementManager(this, nullptr, false);
   return result;
 }
 
-fml::RefPtr<FiberElement> ElementManager::StaticCreateFiberElement(
+fml::RefPtr<Element> ElementManager::StaticCreateFiberElement(
     ElementBuiltInTagEnum enum_tag, const base::String &raw_tag) {
-  fml::RefPtr<FiberElement> element = nullptr;
+  fml::RefPtr<Element> element = nullptr;
   // TODO(hexionghui): compatible for cui's fallback ui, remove this when render
   // by flatten ui not displaylist.
   ElementBuiltInTagEnum resolved_enum_tag =

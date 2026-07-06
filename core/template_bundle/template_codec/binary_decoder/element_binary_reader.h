@@ -10,7 +10,7 @@
 #include <utility>
 #include <vector>
 
-#include "core/renderer/dom/fiber/fiber_element.h"
+#include "core/renderer/dom/element.h"
 #include "core/template_bundle/template_codec/binary_decoder/lynx_binary_base_css_reader.h"
 
 namespace lynx {
@@ -40,8 +40,8 @@ class ElementBinaryReader : public LynxBinaryBaseCSSReader {
 
   // Single template decoding API:
   // 1. This API is used to decode element binary and return an element tree.
-  fml::RefPtr<FiberElement> DecodeSingleTemplate(ElementManager* manager,
-                                                 TemplateAssembler* tasm);
+  fml::RefPtr<Element> DecodeSingleTemplate(ElementManager* manager,
+                                            TemplateAssembler* tasm);
 
   // Multiple templates decoding API:
   // 1. This API is used to decode the router for multiple templates.
@@ -58,30 +58,29 @@ class ElementBinaryReader : public LynxBinaryBaseCSSReader {
   std::unique_ptr<ElementBinaryReader> DeriveElementBinaryReader();
 
  protected:
-  // These are the APIs used for decoding data into fiber elements.
-  virtual bool DecodeElementChildrenSection(fml::RefPtr<FiberElement>& element,
+  // These are the APIs used for decoding data into elements.
+  virtual bool DecodeElementChildrenSection(fml::RefPtr<Element>& element,
                                             ElementManager* manager,
                                             TemplateAssembler* tasm,
                                             int64_t parent_component_id);
-  bool DecodeBuiltinAttributesSection(fml::RefPtr<FiberElement>& element);
-  bool DecodeIDSelectorSection(fml::RefPtr<FiberElement>& element);
-  bool DecodeInlineStylesSection(fml::RefPtr<FiberElement>& element);
-  bool DecodeClassesSection(fml::RefPtr<FiberElement>& element);
+  bool DecodeBuiltinAttributesSection(fml::RefPtr<Element>& element);
+  bool DecodeIDSelectorSection(fml::RefPtr<Element>& element);
+  bool DecodeInlineStylesSection(fml::RefPtr<Element>& element);
+  bool DecodeClassesSection(fml::RefPtr<Element>& element);
   bool DecodeEventsSection(TemplateAssembler* tasm,
-                           fml::RefPtr<FiberElement>& element);
+                           fml::RefPtr<Element>& element);
   bool DecodePiperEventsSection(TemplateAssembler* tasm,
-                                fml::RefPtr<FiberElement>& element);
-  bool DecodeAttributesSection(fml::RefPtr<FiberElement>& element);
-  bool DecodeDatasetSection(fml::RefPtr<FiberElement>& element);
-  bool DecodeParsedStylesSection(fml::RefPtr<FiberElement>& element);
-  bool DecodeElementRecursively(fml::RefPtr<FiberElement>& element,
+                                fml::RefPtr<Element>& element);
+  bool DecodeAttributesSection(fml::RefPtr<Element>& element);
+  bool DecodeDatasetSection(fml::RefPtr<Element>& element);
+  bool DecodeParsedStylesSection(fml::RefPtr<Element>& element);
+  bool DecodeElementRecursively(fml::RefPtr<Element>& element,
                                 ElementManager* manager,
                                 TemplateAssembler* tasm,
                                 int64_t parent_component_id);
   bool ConstructElement(ElementSectionEnum section_type,
-                        fml::RefPtr<FiberElement>& element,
-                        ElementManager* manager, TemplateAssembler* tasm,
-                        int64_t parent_component_id);
+                        fml::RefPtr<Element>& element, ElementManager* manager,
+                        TemplateAssembler* tasm, int64_t parent_component_id);
   // These are the APIs used for decoding data into element infos.
   bool DecodeTemplates(ElementTemplateInfo& info);
   bool DecodeElementRecursively(ElementInfo& info);

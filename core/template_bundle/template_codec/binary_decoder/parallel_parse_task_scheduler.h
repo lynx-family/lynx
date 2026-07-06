@@ -14,6 +14,7 @@
 #include "base/include/fml/memory/ref_ptr.h"
 #include "base/include/vector.h"
 #include "core/base/thread/once_task.h"
+#include "core/renderer/dom/element.h"
 #include "core/template_bundle/template_codec/template_binary.h"
 
 namespace lynx {
@@ -22,10 +23,9 @@ class StyleObject;
 }
 namespace tasm {
 
-class FiberElement;
 class ElementBinaryReader;
 struct ElementTemplateInfo;
-using Elements = base::Vector<fml::RefPtr<FiberElement>>;
+using Elements = base::Vector<fml::RefPtr<Element>>;
 using ElementTemplateResult =
     std::pair<std::shared_ptr<ElementTemplateInfo>, Elements>;
 

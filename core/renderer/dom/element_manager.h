@@ -896,11 +896,11 @@ class ElementManager : public LayoutScheduler::LayoutSchedulerImpl {
    *
    * @param enum_tag The enum representation of the tag name.
    * @param raw_tag The raw tag name of the Dom Element.
-   * @return The refCounted FiberElement.
+   * @return The refCounted Element.
    * Note: If the enum tag is 'ELEMENT_EMPTY', the Fiber Element will be created
    * using the raw tag name.
    */
-  static fml::RefPtr<FiberElement> StaticCreateFiberElement(
+  static fml::RefPtr<Element> StaticCreateFiberElement(
       ElementBuiltInTagEnum enum_tag,
       const base::String &raw_tag = base::String());
 
