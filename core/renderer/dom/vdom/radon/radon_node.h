@@ -123,10 +123,6 @@ class RadonNode : public RadonBase {
 
   virtual Element* element() const override { return element_.get(); }
 
-  FiberElement* fiber_element() const {
-    return static_cast<FiberElement*>(element_.get());
-  }
-
   virtual const fml::RefPtr<Element>& GetElementRef() const override {
     return element_;
   }
