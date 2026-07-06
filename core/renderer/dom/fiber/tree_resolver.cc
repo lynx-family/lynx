@@ -646,11 +646,11 @@ void TreeResolver::RemoveFromParentForWrapperChild(FiberElement* parent,
 }
 
 fml::RefPtr<lepus::Dictionary> TreeResolver::GetTemplateParts(
-    const fml::RefPtr<FiberElement>& template_element) {
+    const fml::RefPtr<Element>& template_element) {
   DCHECK(template_element->IsTemplateElement());
   auto parts_map = lepus::Dictionary::Create();
   for (const auto& c : template_element->children()) {
-    GetPartsRecursively(fml::static_ref_ptr_cast<FiberElement>(c), parts_map);
+    GetPartsRecursively(c, parts_map);
   }
   return parts_map;
 }
@@ -772,7 +772,7 @@ void TreeResolver::AttachToElementManagerRecursively(
 }
 
 void TreeResolver::GetPartsRecursively(
-    const fml::RefPtr<FiberElement>& root,
+    const fml::RefPtr<Element>& root,
     fml::RefPtr<lepus::Dictionary>& parts_map) {
   if (root->IsPartElement()) {
     parts_map->SetValue(root->GetPartID(), root);
@@ -781,7 +781,7 @@ void TreeResolver::GetPartsRecursively(
     return;
   }
   for (const auto& c : root->children()) {
-    GetPartsRecursively(fml::static_ref_ptr_cast<FiberElement>(c), parts_map);
+    GetPartsRecursively(c, parts_map);
   }
 }
 
