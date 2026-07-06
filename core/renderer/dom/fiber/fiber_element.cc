@@ -587,7 +587,7 @@ FiberElement::~FiberElement() {
   }
 }
 
-CSSFragment *FiberElement::GetRelatedCSSFragment() {
+CSSFragment *Element::GetRelatedCSSFragment() {
   if (css_id_ != kInvalidCssId) {
     if (style_sheet_ == nullptr || !style_sheet_->HasIntrinsicStyleSheets()) {
       if (!css_style_sheet_manager_ && GetParentComponentElement()) {
@@ -630,7 +630,7 @@ CSSFragment *FiberElement::GetRelatedCSSFragment() {
   }
 }
 
-int32_t FiberElement::GetCSSID() const {
+int32_t Element::GetCSSID() const {
   if (css_id_ != kInvalidCssId) {
     return css_id_;
   } else {
@@ -922,7 +922,7 @@ void FiberElement::RemovedFrom(FiberElement *insertion_point) {
   MarkDetached();
 }
 
-StyleMap FiberElement::GetStylesForWorklet() {
+StyleMap Element::GetStylesForWorklet() {
   if (element_manager()->EnableNewStylingPipeline()) {
     return computed_css_style()->GetResolvedValues();
   }
@@ -2495,43 +2495,6 @@ bool FiberElement::ConsumeAllAttributes() {
   return need_update;
 }
 
-void FiberElement::PerformElementContainerCreateOrUpdate(bool need_update,
-                                                         bool need_reset) {
-  PushStyleToBundle();
-
-  if (dirty_ & kDirtyCreated) {
-    TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_HANDLE_CRATE,
-                [this](lynx::perfetto::EventContext ctx) {
-                  UpdateTraceDebugInfo(ctx.event());
-                });
-    // FIXME(linxs): FlushProps can be optimized, for example can we just
-    // create viewElement,imageElement,textElement.. directly?
-    FlushProps();
-    dirty_ &= ~kDirtyCreated;
-  } else if (need_update || dirty_ & kDirtyForceUpdate) {
-    if (prop_bundle_) {
-      UpdateLayoutNodeProps(prop_bundle_);
-
-      if (!is_virtual()) {
-        UpdateFiberElement();
-      }
-    }
-
-    // TODO(songshourui.null): Later, determine whether to call StyleChanged
-    // based on whether ComputedCSSStyle is dirty.
-    HandleBeforeFlushActionsTask(
-        [this]() { element_container()->StyleChanged(); },
-        kFlagGreedyParallel | kFlagLevelOrderParallel);
-  }
-  dirty_ &= ~kDirtyForceUpdate;
-
-  UpdateLayoutNodeByBundle();
-
-  if (need_reset) {
-    ResetPropBundle();
-  }
-}
-
 ParallelFlushReturn FiberElement::CreateParallelTaskHandler() {
   // Remaining Layout Task should be returned to be executed in threaded flush
   // or sync resolving(i.e. PageElement) scenario
@@ -2648,7 +2611,7 @@ void FiberElement::SetAttributeInternal(const base::String &key,
 #endif
 }
 
-void FiberElement::SetNativeProps(
+void Element::SetNativeProps(
     const lepus::Value &native_props,
     std::shared_ptr<PipelineOptions> &pipeline_options) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_SET_NATIVE_PROPS,
@@ -2694,11 +2657,11 @@ void FiberElement::SetNativeProps(
       element_manager()->OnPatchFinish(pipeline_options, this);
     }
   } else {
-    LOGE("FiberElement::SetNativeProps to an detached element!");
+    LOGE("Element::SetNativeProps to an detached element!");
   }
 }
 
-void FiberElement::FlushProps() {
+void Element::FlushProps() {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_FLUSH_PROPS,
               [this](lynx::perfetto::EventContext ctx) {
                 UpdateTraceDebugInfo(ctx.event());
@@ -2720,12 +2683,11 @@ void FiberElement::FlushProps() {
     PreparePropBundleIfNeed();
 
     // check is in inlineContainer before attachLayoutNode
-    auto *real_parent =
-        static_cast<FiberElement *>((!is_fixed_ || IsFixedNewOrUnifiedEnabled())
-                                        ? parent_
-                                        : element_manager_->root());
+    auto *real_parent = (!is_fixed_ || IsFixedNewOrUnifiedEnabled())
+                            ? parent_
+                            : element_manager_->root();
     while (real_parent && real_parent->is_wrapper()) {
-      real_parent = static_cast<FiberElement *>(real_parent->parent());
+      real_parent = real_parent->parent();
     }
     if (real_parent) {
       CheckHasInlineContainer(real_parent);
@@ -2757,17 +2719,7 @@ void FiberElement::FlushProps() {
   has_transition_props_changed_ = false;
 }
 
-void FiberElement::MarkLayoutDirty() {
-  if (EnableLayoutInElementMode()) {
-    MarkLayoutDirtyLite();
-    return;
-  }
-
-  EnsureLayoutBundle();
-  layout_bundle_->is_dirty = true;
-}
-
-void FiberElement::AttachLayoutNode(const fml::RefPtr<PropBundle> &props) {
+void Element::AttachLayoutNode(const fml::RefPtr<PropBundle> &props) {
   if (EnableLayoutInElementMode()) {
     const bool is_custom = IsShadowNodeCustom();
     if (is_custom) {
@@ -2794,7 +2746,7 @@ void FiberElement::AttachLayoutNode(const fml::RefPtr<PropBundle> &props) {
   layout_bundle_->allow_inline = allow_layoutnode_inline_;
 }
 
-void FiberElement::UpdateLayoutNodeProps(const fml::RefPtr<PropBundle> &props) {
+void Element::UpdateLayoutNodeProps(const fml::RefPtr<PropBundle> &props) {
   if (EnableLayoutInElementMode()) {
     if (customized_layout_node_) {
       customized_layout_node_->UpdateLayoutNodeProps(props);
@@ -2806,8 +2758,8 @@ void FiberElement::UpdateLayoutNodeProps(const fml::RefPtr<PropBundle> &props) {
   layout_bundle_->update_prop_bundles.emplace_back(props);
 }
 
-void FiberElement::UpdateLayoutNodeStyle(CSSPropertyID css_id,
-                                         const tasm::CSSValue &value) {
+void Element::UpdateLayoutNodeStyle(CSSPropertyID css_id,
+                                    const tasm::CSSValue &value) {
   if (EnableLayoutInElementMode()) {
     return;
   }
@@ -2816,7 +2768,7 @@ void FiberElement::UpdateLayoutNodeStyle(CSSPropertyID css_id,
   layout_bundle_->styles.emplace_back(css_id, value);
 }
 
-void FiberElement::ResetLayoutNodeStyle(tasm::CSSPropertyID css_id) {
+void Element::ResetLayoutNodeStyle(tasm::CSSPropertyID css_id) {
   if (EnableLayoutInElementMode()) {
     return;
   }
@@ -2825,8 +2777,8 @@ void FiberElement::ResetLayoutNodeStyle(tasm::CSSPropertyID css_id) {
   layout_bundle_->reset_styles.emplace_back(css_id);
 }
 
-void FiberElement::UpdateLayoutNodeFontSize(double cur_node_font_size,
-                                            double root_node_font_size) {
+void Element::UpdateLayoutNodeFontSize(double cur_node_font_size,
+                                       double root_node_font_size) {
   if (EnableLayoutInElementMode()) {
     return;
   }
@@ -2837,8 +2789,8 @@ void FiberElement::UpdateLayoutNodeFontSize(double cur_node_font_size,
   layout_bundle_->root_node_font_size = root_node_font_size;
 }
 
-void FiberElement::UpdateLayoutNodeAttribute(starlight::LayoutAttribute key,
-                                             const lepus::Value &value) {
+void Element::UpdateLayoutNodeAttribute(starlight::LayoutAttribute key,
+                                        const lepus::Value &value) {
   if (EnableLayoutInElementMode()) {
     EnsureSLNode();
     bool changed = false;
@@ -2866,22 +2818,6 @@ void FiberElement::UpdateLayoutNodeAttribute(starlight::LayoutAttribute key,
   layout_bundle_->attrs.emplace_back(std::make_pair(key, value));
 }
 
-void FiberElement::UpdateLayoutNodeByBundle() {
-  if (EnableLayoutInElementMode()) {
-    EnsureSLNode();
-    return;
-  }
-
-  if (layout_bundle_ == nullptr) {
-    return;
-  }
-  EnqueueLayoutTask([element_manager = element_manager(), id = impl_id(),
-                     layout_bundle = std::move(layout_bundle_)]() mutable {
-    element_manager->UpdateLayoutNodeByBundle(id, std::move(layout_bundle));
-  });
-  layout_bundle_ = nullptr;
-}
-
 void FiberElement::CheckHasInlineContainer(Element *parent) {
   EnsureLayoutBundle();
   allow_layoutnode_inline_ = parent->IsShadowNodeCustom();
@@ -2904,7 +2840,7 @@ void FiberElement::EnqueueLayoutTask(base::MoveOnlyClosure<void> operation) {
   operation();
 }
 
-void FiberElement::RequestLayout() {
+void Element::RequestLayout() {
   if (EnableLayoutInElementMode()) {
     HandleBeforeFlushActionsTask(
         [manager = element_manager(), this]() {
@@ -2919,29 +2855,8 @@ void FiberElement::RequestLayout() {
       [manager = element_manager()]() { manager->SetNeedsLayout(); });
 }
 
-void FiberElement::RequestNextFrame() {
+void Element::RequestNextFrame() {
   HandleDelayTask([this]() { element_manager()->RequestNextFrame(this); });
-}
-
-void FiberElement::UpdateFiberElement() {
-  TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_UPDATE_FIBER_ELEMENT,
-              [this](lynx::perfetto::EventContext ctx) {
-                UpdateTraceDebugInfo(ctx.event());
-              });
-  if (!is_layout_only_) {
-    TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_UPDATE_PAINTING_NODE,
-                [this](lynx::perfetto::EventContext ctx) {
-                  UpdateTraceDebugInfo(ctx.event());
-                });
-    element_container()->UpdatePaintingNode(TendToFlatten(), prop_bundle_);
-  } else if (!CanBeLayoutOnly()) {
-    TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_TRANSITION_TO_NATIVE_VIEW,
-                [this](lynx::perfetto::EventContext ctx) {
-                  UpdateTraceDebugInfo(ctx.event());
-                });
-    // Is layout only and can not be layout only
-    TransitionToNativeView();
-  }
 }
 
 void FiberElement::UpdateCSSVariable(
@@ -3304,22 +3219,6 @@ void FiberElement::ResetTextAlign(StyleMap &update_map,
   }
 }
 
-void FiberElement::WillResetCSSValue(CSSPropertyID &css_id) {
-  if (css_id == CSSPropertyID::kPropertyIDFontSize) {
-    ResetFontSize();
-  }
-
-  // remove self inherit properties if needed
-  if (inherited_styles_.has_value()) {
-    auto it = inherited_styles_->find(css_id);
-    if (it != inherited_styles_->end()) {
-      inherited_styles_->erase(it);
-      reset_inherited_ids_->emplace_back(css_id);
-      children_propagate_inherited_styles_flag_ = true;
-    }
-  }
-}
-
 void FiberElement::TraversalInsertFixedElementOfTree() {
   if (IsFixedUnifiedEnabled()) {
     return;
@@ -3396,253 +3295,6 @@ void FiberElement::RemoveFixedElement(FiberElement *child) {
   child->fixed_changed_ = false;
 }
 
-void FiberElement::CheckDynamicUnit(CSSPropertyID id, const CSSValue &value,
-                                    bool reset) {
-  if (reset && parsed_styles_map_.empty()) {
-    // TODO(linxs): try to clear dynamic_style_flags_ here
-    dynamic_style_flags_ = 0;
-    return;
-  }
-
-  dynamic_style_flags_ |= DynamicCSSStylesManager::GetValueFlags(
-      id, value,
-      element_manager()->GetDynamicCSSConfigs().unify_vw_vh_behavior_,
-      element_manager()->FixFilterDynamicUpdateBug());
-}
-
-void FiberElement::UpdateDynamicElementStyleForNewPipeline(
-    uint32_t &style, bool &inner_force_update) {
-  constexpr uint32_t kMediaQueryEnvMask =
-      DynamicCSSStylesManager::kUpdateViewport |
-      DynamicCSSStylesManager::kUpdateScreenMetrics |
-      DynamicCSSStylesManager::kUpdateRem | DynamicCSSStylesManager::kUpdateEm |
-      DynamicCSSStylesManager::kUpdateColorScheme;
-  bool media_query_env_changed = false;
-  if (is_component() &&
-      ((style & kMediaQueryEnvMask) != 0 || (dirty_ & kDirtyFontSize))) {
-    auto *fragment = GetRelatedCSSFragment();
-    if (StyleResolver::FragmentsHasMediaQueries(fragment)) {
-      media_query_env_changed = true;
-      inner_force_update = true;
-    }
-  }
-
-  if ((dynamic_style_flags_ > 0 || inner_force_update ||
-       media_query_env_changed) &&
-      !is_wrapper()) {
-    NotifyUnitValuesUpdatedToAnimation(style);
-    const auto &env_config = element_manager()->GetLynxEnvConfig();
-
-    bool font_scale_changed =
-        (dynamic_style_flags_ & DynamicCSSStylesManager::kUpdateFontScale) &&
-        (style & DynamicCSSStylesManager::kUpdateFontScale) &&
-        (computed_css_style()->GetMeasureContext().font_scale_ !=
-         env_config.FontScale());
-    bool viewport_changed =
-        (dynamic_style_flags_ & DynamicCSSStylesManager::kUpdateViewport) &&
-        (style & DynamicCSSStylesManager::kUpdateViewport) &&
-        !(env_config.ViewportWidth() ==
-              computed_css_style()->GetMeasureContext().viewport_width_ &&
-          env_config.ViewportHeight() ==
-              computed_css_style()->GetMeasureContext().viewport_height_);
-    bool screen_matrix_changed =
-        (dynamic_style_flags_ &
-         DynamicCSSStylesManager::kUpdateScreenMetrics) &&
-        (style & DynamicCSSStylesManager::kUpdateScreenMetrics) &&
-        (env_config.ScreenWidth() !=
-         computed_css_style()->GetMeasureContext().screen_width_);
-    bool rem_changed =
-        (dynamic_style_flags_ & DynamicCSSStylesManager::kUpdateRem) &&
-        (style & DynamicCSSStylesManager::kUpdateRem);
-    bool em_changed =
-        (dynamic_style_flags_ & DynamicCSSStylesManager::kUpdateEm) &&
-        ((style & DynamicCSSStylesManager::kUpdateEm) ||
-         (dirty_ & kDirtyFontSize));
-
-    if (GetCurrentRootFontSize() != GetRecordedRootFontSize()) {
-      computed_css_style()->SetFontSize(GetFontSize(),
-                                        GetCurrentRootFontSize());
-      UpdateLayoutNodeFontSize(GetFontSize(), GetCurrentRootFontSize());
-    }
-
-    if (inner_force_update || font_scale_changed || viewport_changed ||
-        screen_matrix_changed || rem_changed || em_changed ||
-        media_query_env_changed) {
-      UpdateLengthContextValueForAllElement(env_config);
-
-      NewPipelineResolveRequest request;
-      request.force_resolve = true;
-      request.force_platform_update = inner_force_update;
-      request.dynamic_update_flags = style;
-      if (dirty_ & kDirtyFontSize) {
-        request.dynamic_update_flags |= DynamicCSSStylesManager::kUpdateEm;
-      }
-
-      auto outcome = ResolveCSSStylesNewPipelineCore(request);
-      if (outcome.need_update) {
-        RequestLayout();
-        PerformElementContainerCreateOrUpdate(
-            true, element_manager_->FixNewAnimatorFlushBug());
-      }
-      style |= outcome.child_update_flags;
-      inner_force_update |= outcome.force_children;
-    }
-  }
-
-  if (dirty_ & kDirtyFontSize) {
-    if (is_page()) {
-      style |= DynamicCSSStylesManager::kUpdateRem;
-    }
-    dirty_ &= ~kDirtyFontSize;
-  }
-}
-
-void FiberElement::UpdateDynamicElementStyleRecursively(uint32_t style,
-                                                        bool force_update) {
-  if (is_raw_text()) {
-    return;
-  }
-  bool inner_force_update = force_update;
-
-  if (element_manager()->EnableNewStylingPipeline() &&
-      !element_manager()->EnableSimpleStyle()) {
-    UpdateDynamicElementStyleForNewPipeline(style, inner_force_update);
-    UpdateDynamicChildrenStyleRecursively(style, inner_force_update);
-    return;
-  }
-
-  constexpr uint32_t kMediaQueryEnvMask =
-      DynamicCSSStylesManager::kUpdateViewport |
-      DynamicCSSStylesManager::kUpdateScreenMetrics |
-      DynamicCSSStylesManager::kUpdateRem | DynamicCSSStylesManager::kUpdateEm |
-      DynamicCSSStylesManager::kUpdateColorScheme;
-  if (is_component() &&
-      ((style & kMediaQueryEnvMask) != 0 || (dirty_ & kDirtyFontSize))) {
-    auto *fragment = GetRelatedCSSFragment();
-    if (StyleResolver::FragmentsHasMediaQueries(fragment)) {
-      MarkStyleDirty(true);
-    }
-  }
-
-  if ((dynamic_style_flags_ > 0 || inner_force_update) && !is_wrapper()) {
-    // Style could never be "all" here.
-    NotifyUnitValuesUpdatedToAnimation(style);
-    const auto &env_config = element_manager()->GetLynxEnvConfig();
-    const auto &css_config = element_manager()->GetDynamicCSSConfigs();
-
-    bool font_scale_changed =
-        (dynamic_style_flags_ & DynamicCSSStylesManager::kUpdateFontScale) &&
-        (style & DynamicCSSStylesManager::kUpdateFontScale) &&
-        (computed_css_style()->GetMeasureContext().font_scale_ !=
-         env_config.FontScale());
-    bool viewport_changed =
-        (dynamic_style_flags_ & DynamicCSSStylesManager::kUpdateViewport) &&
-        (style & DynamicCSSStylesManager::kUpdateViewport) &&
-        !(env_config.ViewportWidth() ==
-              computed_css_style()->GetMeasureContext().viewport_width_ &&
-          env_config.ViewportHeight() ==
-              computed_css_style()->GetMeasureContext().viewport_height_);
-    bool screen_matrix_changed =
-        (dynamic_style_flags_ &
-         DynamicCSSStylesManager::kUpdateScreenMetrics) &&
-        (style & DynamicCSSStylesManager::kUpdateScreenMetrics) &&
-        (env_config.ScreenWidth() !=
-         computed_css_style()->GetMeasureContext().screen_width_);
-    bool rem_changed =
-        (dynamic_style_flags_ & DynamicCSSStylesManager::kUpdateRem) &&
-        (style & DynamicCSSStylesManager::kUpdateRem);
-
-    if (GetCurrentRootFontSize() != GetRecordedRootFontSize()) {
-      computed_css_style()->SetFontSize(GetFontSize(),
-                                        GetCurrentRootFontSize());
-      UpdateLayoutNodeFontSize(GetFontSize(), GetCurrentRootFontSize());
-    }
-
-    if (inner_force_update || font_scale_changed || viewport_changed ||
-        screen_matrix_changed || rem_changed) {
-      UpdateLengthContextValueForAllElement(env_config);
-      const auto property = GetParentInheritedProperty();
-
-      ConsumeStyleInternal(
-          parsed_styles_map_, property.inherited_styles_,
-          [this, style, &css_config](auto id, const auto &value) {
-            if (CSSProperty::IsTransitionProps(id) ||
-                CSSProperty::IsKeyframeProps(id)) {
-              return true;
-            }
-
-            if (ShouldUseLegacyTransitionInterception() &&
-                css_transition_manager_) {
-              if (IsFiberArch()) {
-                const bool skip_transition =
-                    element_manager_ &&
-                    !element_manager_
-                         ->FixFiberDynamicUpdateTransitionConsumeBug();
-                if (skip_transition &&
-                    css_transition_manager_->NeedsTransition(id)) {
-                  return true;
-                }
-              } else {
-                const bool skip_transition =
-                    element_manager_ &&
-                    element_manager_->FixDynamicUpdateTransitionConsumeBug();
-                if (!skip_transition &&
-                    css_transition_manager_->NeedsTransition(id)) {
-                  return true;
-                }
-              }
-            }
-
-            auto new_flags = DynamicCSSStylesManager::GetValueFlags(
-                id, value, css_config.unify_vw_vh_behavior_,
-                element_manager()->FixFilterDynamicUpdateBug());
-
-            if ((new_flags & (style | ((dirty_ & kDirtyFontSize)
-                                           ? DynamicCSSStylesManager::kUpdateEm
-                                           : 0))) == 0) {
-              return true;
-            }
-
-            return false;
-          });
-
-      if (element_manager()->EnableAnimationForwardUpdatePreservation() &&
-          animation_override_styles_map_.has_value() &&
-          !animation_override_styles_map_->empty()) {
-        ConsumeStyleInternal(*animation_override_styles_map_, nullptr,
-                             [](auto id, const auto &value) {
-                               if (CSSProperty::IsTransitionProps(id) ||
-                                   CSSProperty::IsKeyframeProps(id)) {
-                                 return true;
-                               }
-                               return false;
-                             });
-      }
-
-      if (inherited_styles_.has_value() && !inherited_styles_->empty()) {
-        inner_force_update |= true;
-      }
-
-      PerformElementContainerCreateOrUpdate(
-          true, element_manager_->FixNewAnimatorFlushBug());
-    }
-  }
-
-  if (dirty_ & kDirtyFontSize) {
-    if (is_page()) {
-      style |= DynamicCSSStylesManager::kUpdateRem;
-    }
-    dirty_ &= ~kDirtyFontSize;
-  }
-
-  UpdateDynamicChildrenStyleRecursively(style, inner_force_update);
-}
-
-void FiberElement::UpdateDynamicElementStyle(uint32_t style,
-                                             bool force_update) {
-  UpdateDynamicElementStyleRecursively(style, force_update);
-}
-
 void FiberElement::CreateListItemScheduler(
     list::BatchRenderStrategy batch_render_strategy,
     bool continuous_resolve_tree) {
@@ -3684,7 +3336,7 @@ void FiberElement::DispatchAsyncResolveSubtreeProperty() {
   }
 }
 
-bool FiberElement::CanBeLayoutOnly() const {
+bool Element::CanBeLayoutOnly() const {
   return can_be_layout_only_ && element_manager()->GetEnableLayoutOnly() &&
          has_layout_only_props_ && computed_css_style()->IsOverflowXY();
 }
