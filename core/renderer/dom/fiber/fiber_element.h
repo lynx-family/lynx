@@ -270,32 +270,6 @@ class FiberElement : public Element {
   virtual void EnqueueLayoutTask(
       base::MoveOnlyClosure<void> operation) override;
 
-  enum class StyleSideEffectReplayMode {
-    kNormal,
-    kPreserveLayoutOnly,
-  };
-
-  /**
-   * @brief Replays the side effects of a single changed style property.
-   * @param id The CSS property that changed.
-   * @param value The new computed value.
-   */
-  void ReplayChangedStyleSideEffect(
-      CSSPropertyID id, const CSSValue& value,
-      StyleSideEffectReplayMode mode = StyleSideEffectReplayMode::kNormal);
-  void ReplayResetStyleSideEffect(
-      CSSPropertyID id,
-      StyleSideEffectReplayMode mode = StyleSideEffectReplayMode::kNormal);
-
-  struct AnimationPropertyChangeAnalysisForLegacyAnimator {
-    bool has_transition_props_changed{false};
-    bool has_keyframe_props_changed{false};
-  };
-  AnimationPropertyChangeAnalysisForLegacyAnimator
-  AnalyzeAnimationPropChangesForLegacyAnimator(
-      const starlight::ComputedCSSStyle& final_style,
-      const starlight::ComputedCSSStyle* previous_final_style,
-      const StyleMap& resolved_style_map) const;
   struct AnimationSampleAnalysisForNewPipeline {
     bool has_style_effects{false};
     bool has_animated_font_size{false};
@@ -612,11 +586,6 @@ class FiberElement : public Element {
 
  protected:
   FiberElement(const FiberElement& element, bool clone_resolved_props);
-
-  // Hook for subclasses to replay element-specific derived style state.
-  // Callers should go through ReplayChangedStyleSideEffect() or
-  // ReplayResetStyleSideEffect() so FiberElement preserves replay bookkeeping.
-  virtual void ReplayElementSpecificStyleSideEffect(CSSPropertyID id) {}
 
   void ConsumeStyleInternal(
       const StyleMap& styles, const StyleMap* inherit_styles,
