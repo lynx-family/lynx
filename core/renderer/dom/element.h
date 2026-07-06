@@ -352,7 +352,9 @@ class Element : public lepus::RefCounted,
   void ClearCachedStylesFromAttributes() { styles_from_attributes_.reset(); }
   void DidConsumeStyle();
 
-  virtual void ProcessFullRawInlineStyle(CSSVariableMap* changed_css_vars) {}
+  void ParseRawInlineStyles(CSSVariableMap* changed_css_vars);
+  LYNX_EXPORT_FOR_DEVTOOL void ProcessFullRawInlineStyle(
+      CSSVariableMap* changed_css_vars);
   virtual void ConsumeStyleInternal(
       const StyleMap& styles, const StyleMap* inherit_styles,
       std::function<bool(CSSPropertyID, const tasm::CSSValue&)> should_skip) {
@@ -1410,8 +1412,7 @@ class Element : public lepus::RefCounted,
   void RemoveGestureDetector(const uint32_t gesture_id);
 
   // Returns true if CSS variables were merged and need to be resolved.
-  virtual bool MergeInlineStyles(StyleMap& merged_styles,
-                                 StyleMap& important_styles) = 0;
+  bool MergeInlineStyles(StyleMap& merged_styles, StyleMap& important_styles);
   void PersistAnimationFillStyles(const StyleMap& styles);
   void ClearPersistedAnimationFillStyle(CSSPropertyID id);
   virtual int32_t GetMemoryUsage() const { return sizeof(*this); }
@@ -1553,6 +1554,9 @@ class Element : public lepus::RefCounted,
 
   void PrepareSelfForThreadedElementResolution();
 
+  // For snapshot test
+  void DumpStyle(StyleMap& parsed_styles);
+
  protected:
   Element(const Element&, bool clone_resolved_props);
 
@@ -1574,6 +1578,10 @@ class Element : public lepus::RefCounted,
   void HandleKeyframePropsChange();
   void FinalizeSimpleStyleUpdate();
   void ResolveSimpleStyles();
+  void DoFullCSSResolving();
+  bool RefreshStyle(StyleMap& parsed_styles,
+                    base::Vector<CSSPropertyID>& reset_ids,
+                    bool force_use_parsed_styles_map = false);
   DynamicCSSStylesManager::StyleUpdateFlags CollectDynamicFlagsForNewPipeline(
       const StyleMap& resolved_style_map) const;
   bool ShouldPreserveLayoutOnlyForInheritedPlatformStyle(
