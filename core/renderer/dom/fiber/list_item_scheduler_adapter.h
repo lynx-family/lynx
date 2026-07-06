@@ -14,11 +14,11 @@
 
 namespace lynx {
 namespace tasm {
-class FiberElement;
+class Element;
 
 class ListItemSchedulerAdapter {
  public:
-  ListItemSchedulerAdapter(FiberElement* sub_root,
+  ListItemSchedulerAdapter(Element* sub_root,
                            list::BatchRenderStrategy batch_render_strategy,
                            bool continuous_resolve_tree);
 
@@ -46,7 +46,7 @@ class ListItemSchedulerAdapter {
   bool IsBatchResolvingTree() { return batch_resolving_tree_; }
 
  private:
-  FiberElement* render_root_;
+  Element* render_root_;
   list::BatchRenderStrategy batch_render_strategy_{
       list::BatchRenderStrategy::kDefault};
   bool continuous_resolve_tree_{false};
