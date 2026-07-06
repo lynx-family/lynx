@@ -52,6 +52,8 @@ class LayerRasterCacheItem : public RasterCacheItem {
 
   void MarkNotCacheChildren() { can_cache_children_ = false; }
 
+  void MarkCacheableEffect(PrerollContext* context);
+
   bool IsCacheChildren() const { return cache_state_ == CacheState::kChildren; }
 
  protected:
@@ -66,6 +68,10 @@ class LayerRasterCacheItem : public RasterCacheItem {
 
   // if the layer's children can be directly cache, set the param is true;
   bool can_cache_children_ = false;
+
+  bool preroll_setup_active_ = false;
+
+  bool has_cacheable_effect_ = false;
 
   mutable int num_cache_attempts_ = 1;
 };

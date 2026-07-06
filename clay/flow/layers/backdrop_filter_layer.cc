@@ -55,6 +55,9 @@ void BackdropFilterLayer::Preroll(PrerollContext* context) {
   }
   skity::Rect child_paint_bounds = skity::Rect::MakeEmpty();
   PrerollChildren(context, &child_paint_bounds);
+  if (filter_) {
+    context->has_cacheable_effect = true;
+  }
   child_paint_bounds.Join(context->state_stack.local_cull_rect());
   set_paint_bounds(child_paint_bounds);
   context->renderable_state_flags = kSaveLayerRenderFlags;

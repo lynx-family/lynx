@@ -75,6 +75,8 @@ void ImageFilterLayer::Preroll(PrerollContext* context) {
     return;
   }
 
+  layer_raster_cache_item_->MarkCacheableEffect(context);
+
   // Our saveLayer would apply any outstanding opacity or any outstanding
   // color filter after it applies our image filter. So we can apply either
   // of those attributes with our saveLayer.

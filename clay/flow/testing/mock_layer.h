@@ -172,8 +172,14 @@ class MockCacheableContainerLayer : public CacheableContainerLayer {
 
   void Preroll(PrerollContext* context) override;
 
-  explicit MockCacheableContainerLayer(bool cache_children = false)
-      : CacheableContainerLayer(3, cache_children) {}
+  explicit MockCacheableContainerLayer(bool cache_children = false,
+                                       bool mark_cacheable_effect = true,
+                                       int render_limit = 3)
+      : CacheableContainerLayer(render_limit, cache_children),
+        mark_cacheable_effect_(mark_cacheable_effect) {}
+
+ private:
+  bool mark_cacheable_effect_ = true;
 };
 
 class MockLayerCacheableItem : public LayerRasterCacheItem {
@@ -183,8 +189,9 @@ class MockLayerCacheableItem : public LayerRasterCacheItem {
 class MockCacheableLayer : public MockLayer {
  public:
   explicit MockCacheableLayer(SkPath path, SkPaint paint = SkPaint(),
-                              int render_limit = 3)
-      : MockLayer(path, paint) {
+                              int render_limit = 3,
+                              bool mark_cacheable_effect = true)
+      : MockLayer(path, paint), mark_cacheable_effect_(mark_cacheable_effect) {
     raster_cache_item_ =
         std::make_unique<MockLayerCacheableItem>(this, render_limit);
   }
@@ -197,6 +204,7 @@ class MockCacheableLayer : public MockLayer {
 
  private:
   std::unique_ptr<LayerRasterCacheItem> raster_cache_item_;
+  bool mark_cacheable_effect_ = true;
 };
 
 }  // namespace testing

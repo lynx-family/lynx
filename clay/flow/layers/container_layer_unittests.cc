@@ -503,6 +503,58 @@ TEST_F(ContainerLayerTest, RasterCacheTest) {
   }
 }
 
+TEST_F(ContainerLayerTest, LayerRasterCacheRequiresCacheableEffect) {
+  SkPath path;
+  path.addRect(SkRect::MakeWH(20.0f, 20.0f));
+  auto layer = std::make_shared<MockCacheableLayer>(path, SkPaint(), 1, false);
+
+  use_mock_raster_cache();
+  layer->Preroll(preroll_context());
+  LayerTree::TryToRasterCache(cacheable_items(), &paint_context());
+
+  EXPECT_EQ(layer->raster_cache_item()->cache_state(),
+            RasterCacheItem::CacheState::kNone);
+  EXPECT_FALSE(layer->raster_cache_item()->GetId().has_value());
+  EXPECT_EQ(raster_cache()->GetLayerCachedEntriesCount(), (size_t)0);
+}
+
+TEST_F(ContainerLayerTest, LayerRasterCacheAcceptsSubtreeCacheableEffect) {
+  SkPath path;
+  path.addRect(SkRect::MakeWH(20.0f, 20.0f));
+  auto parent = std::make_shared<MockCacheableContainerLayer>(false, false, 1);
+  auto child = std::make_shared<MockCacheableLayer>(path, SkPaint(), 1);
+  parent->Add(child);
+
+  use_mock_raster_cache();
+  parent->Preroll(preroll_context());
+
+  EXPECT_EQ(parent->raster_cache_item()->cache_state(),
+            RasterCacheItem::CacheState::kCurrent);
+  EXPECT_TRUE(parent->raster_cache_item()->GetId().has_value());
+  EXPECT_EQ(child->raster_cache_item()->cache_state(),
+            RasterCacheItem::CacheState::kCurrent);
+}
+
+TEST_F(ContainerLayerTest, LayerRasterCacheSkipsBoundsLargerThanFrame) {
+  SkPath path;
+  path.addRect(SkRect::MakeWH(200.0f, 200.0f));
+  auto layer = std::make_shared<MockCacheableLayer>(path, SkPaint(), 1);
+  CompositorState compositor_state(skity::Vec2{100.0f, 100.0f});
+
+  use_mock_raster_cache();
+  preroll_context()->compositor_state = &compositor_state;
+  paint_context().compositor_state = &compositor_state;
+
+  layer->Preroll(preroll_context());
+
+  EXPECT_EQ(layer->raster_cache_item()->cache_state(),
+            RasterCacheItem::CacheState::kCurrent);
+  EXPECT_FALSE(
+      layer->raster_cache_item()->TryToPrepareRasterCache(paint_context()));
+  EXPECT_FALSE(layer->raster_cache_item()->has_been_cached());
+  EXPECT_EQ(raster_cache()->EstimateLayerCacheByteSize(), (size_t)0);
+}
+
 TEST_F(ContainerLayerTest, OpacityInheritance) {
   auto path1 = SkPath().addRect({10, 10, 30, 30});
   auto mock1 = MockLayer::MakeOpacityCompatible(path1);
