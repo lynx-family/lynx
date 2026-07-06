@@ -474,8 +474,7 @@ void PageProxy::SetCSSVariables(
     auto result =
         FiberElementSelector::Select(element_manager(), root, options);
     if (result.Success()) {
-      auto *node = static_cast<FiberElement *>(result.GetOneNode());
-      node->UpdateCSSVariable(properties, pipeline_options);
+      result.GetOneNode()->UpdateCSSVariable(properties, pipeline_options);
     }
   }
 }
