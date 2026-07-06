@@ -652,6 +652,8 @@ class Element : public lepus::RefCounted,
   // Exported for accessing private field from Element Manager to handle legacy
   // logic
   inline Element* GetRenderRootElement() { return render_root_element_; }
+  void RecursivelyMarkRenderRootElement(Element* render_root);
+  void UpdateRenderRootElementIfNecessary(Element* child);
 
   bool IsInSameCSSScope(Element* element) {
     return css_id_ == element->css_id_;
@@ -782,6 +784,21 @@ class Element : public lepus::RefCounted,
    */
   LYNX_EXPORT_FOR_DEVTOOL virtual double GetFontSize();
 
+  /**
+   * Special API for processing font-size.
+   * Font-size should be handled at the beginning of style application.
+   */
+  void SetFontSize(const tasm::CSSValue& value);
+
+  /**
+   * Sets font-size on a specific target ComputedCSSStyle rather than the
+   * element's own platform style.
+   */
+  void SetFontSize(const tasm::CSSValue& value,
+                   starlight::ComputedCSSStyle* target_style);
+
+  void ResetFontSize();
+
   /*
    * return the font size of parent.
    */
@@ -859,7 +876,7 @@ class Element : public lepus::RefCounted,
 
   virtual void MarkLayoutDirty();
 
-  virtual void MarkLayoutDirtyLite(){};
+  virtual void MarkLayoutDirtyLite();
 
   // Dirty flag primitives
   int32_t dirty() const { return dirty_; }
@@ -1047,7 +1064,7 @@ class Element : public lepus::RefCounted,
   bool ConsumeTransitionStylesInAdvance(const StyleMap& styles,
                                         bool force_reset = false);
 
-  virtual void MarkAsLayoutRoot() = 0;
+  virtual void MarkAsLayoutRoot();
   virtual void AttachLayoutNode(const fml::RefPtr<PropBundle>& props) = 0;
   virtual void UpdateLayoutNodeProps(const fml::RefPtr<PropBundle>& props) = 0;
   virtual void UpdateLayoutNodeStyle(CSSPropertyID css_id,
@@ -1202,6 +1219,7 @@ class Element : public lepus::RefCounted,
   virtual bool DisableListPlatformImplementation() const { return false; }
 
   virtual const InheritedProperty GetInheritedProperty();
+  const InheritedProperty GetParentInheritedProperty();
 
   virtual bool NeedFullFlushPath(CSSPropertyID id, const CSSValue& value);
 
@@ -1491,6 +1509,8 @@ class Element : public lepus::RefCounted,
    * @return true if layout info needs update
    */
   bool IfNeedsUpdateLayoutInfo();
+  void UpdateLayoutInfoRecursively(PipelineOptions* options);
+  void UpdateLayoutInfo();
 
   // The element object created using clone interfaces is not attached to the
   // element manager. Use this function to attach it to the element manager.
@@ -1553,11 +1573,23 @@ class Element : public lepus::RefCounted,
                                  const std::string& new_id);
   bool CheckHasInvalidationForClass(const ClassList& old_classes,
                                     const ClassList& new_classes);
+  void MarkFontSizeInvalidateRecursively();
+  void InvalidateChildrenFontSizeRecursively();
+  void InvalidateChildrenInheritedStylesRecursively();
+  void MarkDirectChildrenStyleDirtyForInheritedPropertyMutation();
+  void RecursivelyMarkCustomPropertiesDirty();
   void InvalidateChildren(css::InvalidationSet* invalidation_set);
   void VisitChildren(const base::MoveOnlyClosure<void, Element*>& visitor);
   void SetFontSizeForAllElement(double cur_node_font_size,
                                 double root_node_font_size);
   void UpdateLengthContextValueForAllElement(const LynxEnvConfig& env_config);
+  void UpdateDynamicChildrenStyleRecursively(uint32_t style,
+                                             bool force_update);
+  void EnsureSLNode();
+  bool HasLayoutInElementPlatformNode();
+  int GetLayoutInElementPlatformChildIndex(Element* child);
+  void UpdateFixedNodeSet();
+  void UpdateFixedNodeSetRecursively(bool is_insert);
 
   base::String tag_;
   bool is_overlay_{false};
