@@ -1,0 +1,27 @@
+lynx/.github/workflows/ci.yml
+  h_4d36f4d76420fe 332-342,347-375,380-435
+  s_86c3540fa2faa1::t_405a6187ab5055 343-346,376-379
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.5",
+  "base_commit_sha": "871a33428f316b92e9b1416ef7fff3faaa015b5b",
+  "prompts": {},
+  "humans": {
+    "h_4d36f4d76420fe": {
+      "author": "yangguangzhao <yangguangzhao.solace@bytedance.com>"
+    }
+  },
+  "sessions": {
+    "s_86c3540fa2faa1": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f25d7-692b-7753-8ece-f662fa9f1870",
+        "model": "unknown"
+      },
+      "human_author": "yangguangzhao <yangguangzhao.solace@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}
