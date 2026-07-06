@@ -1412,8 +1412,8 @@ class Element : public lepus::RefCounted,
   // Returns true if CSS variables were merged and need to be resolved.
   virtual bool MergeInlineStyles(StyleMap& merged_styles,
                                  StyleMap& important_styles) = 0;
-  virtual void PersistAnimationFillStyles(const StyleMap& styles) {}
-  virtual void ClearPersistedAnimationFillStyle(CSSPropertyID id) {}
+  void PersistAnimationFillStyles(const StyleMap& styles);
+  void ClearPersistedAnimationFillStyle(CSSPropertyID id);
   virtual int32_t GetMemoryUsage() const { return sizeof(*this); }
 
   virtual bool is_page() const { return false; }
@@ -1803,6 +1803,35 @@ class Element : public lepus::RefCounted,
       const starlight::ComputedCSSStyle* previous_final_style,
       const animation::AnimationSampleForNewPipeline& animation_sample,
       StyleMap& resolved_style_map, CSSIDBitset& variable_dependent_ids);
+  animation::AnimationSampleForNewPipeline
+  SampleAnimationOverridesForNewPipeline(
+      starlight::ComputedCSSStyle& new_base_style, bool base_font_size_changed,
+      bool base_root_font_size_changed,
+      const StyleMap& new_underlying_layout_only_styles,
+      const starlight::ComputedCSSStyle*& previous_final_style);
+  animation::AnimationEventRecordsForNewPipeline
+  TakeAnimationEventsForNewPipeline();
+  bool NeedsAnimationFrameForNewPipeline() const;
+  bool HasAuthorAnimationDataChangedForNewPipeline(
+      const starlight::ComputedCSSStyle& new_base_style,
+      const starlight::ComputedCSSStyle* previous_base_style) const;
+  void FlushImperativeAnimationCleanupForNewPipeline(
+      starlight::ComputedCSSStyle& cleanup_style, bool& need_update,
+      CSSIDBitset* replayed_ids, const CSSIDBitset* source_style_ids = nullptr);
+  /**
+   * @brief Resolves the base computed style by collecting matched rules,
+   * inline styles, and attribute styles.
+   * @param previous_final_style The previous final computed style.
+   * @param old_font_size The previous font size.
+   * @param old_root_font_size The previous root font size.
+   * @return A NewPipelineStyleResolveResult containing base and final styles.
+   */
+  NewPipelineStyleResolveResult ResolveComputedStyles(
+      const starlight::ComputedCSSStyle* previous_final_style,
+      double old_font_size, double old_root_font_size);
+  NewPipelineResolveOutcome ResolveCSSStylesNewPipelineCore(
+      const NewPipelineResolveRequest& request);
+  void ResolveCSSStylesNewPipeline(bool& need_update);
 
   // Mark flush_required without recursively mark parent element
   inline void MarkRequireFlush() { flush_required_ = true; }
