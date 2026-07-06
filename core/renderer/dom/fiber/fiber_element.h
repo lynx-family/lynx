@@ -103,8 +103,6 @@ class FiberElement : public Element {
 
   // for Fiber specific
 
-  const InheritedProperty GetParentInheritedProperty();
-
   /**
    * A key function to GetListNode
    */
@@ -258,18 +256,6 @@ class FiberElement : public Element {
 
   void TraversalInsertFixedElementOfTree();
 
-  void MarkFontSizeInvalidateRecursively();
-  void InvalidateChildrenFontSizeRecursively();
-  void InvalidateChildrenInheritedStylesRecursively();
-
-  void MarkDirectChildrenStyleDirtyForInheritedPropertyMutation();
-
-  /**
-   * @brief Recursively marks all scoped children as style-dirty when custom
-   * properties change on this element.
-   */
-  void RecursivelyMarkCustomPropertiesDirty();
-
   void ConsumeStyle(const StyleMap& styles,
                     const StyleMap* inherit_styles) override;
 
@@ -297,26 +283,8 @@ class FiberElement : public Element {
                                 bool update_logical_children);
   void AddChildAt(fml::RefPtr<FiberElement> child, int index);
 
-  /**
-   * Special API for processing Font size
-   * font size should be handled at the beginning
-   */
-  void SetFontSize(const tasm::CSSValue& value);
-
-  /**
-   * @brief Sets font-size on a specific target ComputedCSSStyle rather than
-   * the element's own platform style.
-   * @param value The font-size CSS value.
-   * @param target_style The ComputedCSSStyle to update.
-   */
-  void SetFontSize(const tasm::CSSValue& value,
-                   starlight::ComputedCSSStyle* target_style);
-
-  void ResetFontSize();
-
   void UpdateFiberElement();
 
-  virtual void MarkAsLayoutRoot() override;
   virtual void MarkLayoutDirty() override;
   virtual void AttachLayoutNode(const fml::RefPtr<PropBundle>& props) override;
   virtual void UpdateLayoutNodeProps(
@@ -679,10 +647,6 @@ class FiberElement : public Element {
   void CreateListItemScheduler(list::BatchRenderStrategy batch_render_strategy,
                                bool continuous_resolve_tree);
 
-  void RecursivelyMarkRenderRootElement(FiberElement* render_root);
-
-  void UpdateRenderRootElementIfNecessary(FiberElement* child);
-
   ListItemSchedulerAdapter* GetSchedulerAdapter() {
     if (scheduler_adapter_) {
       return scheduler_adapter_.get();
@@ -739,8 +703,6 @@ class FiberElement : public Element {
   virtual void MarkHasLayoutOnlyPropsIfNecessary(
       const base::String& attribute_key);
 
-  void UpdateLayoutInfoRecursively(PipelineOptions* options);
-
  private:
   friend class WrapperElement;
   friend class ComponentElement;
@@ -781,7 +743,6 @@ class FiberElement : public Element {
   void UpdateDynamicElementStyleRecursively(uint32_t style, bool force_update);
   void UpdateDynamicElementStyleForNewPipeline(uint32_t& style,
                                                bool& inner_force_update);
-  void UpdateDynamicChildrenStyleRecursively(uint32_t style, bool force_update);
 
   void PrepareComponentExternalStyles(AttributeHolder* holder);
   void PrepareRootCSSVariables(AttributeHolder* holder);
@@ -789,17 +750,6 @@ class FiberElement : public Element {
   void DoFullCSSResolving();
   const tasm::CSSValue& ResolveCurrentStyleValue(
       const CSSPropertyID& key, const tasm::CSSValue& default_value);
-
-  void UpdateLayoutInfo();
-
-  void MarkLayoutDirtyLite() override;
-
-  void UpdateFixedNodeSet();
-  void UpdateFixedNodeSetRecursively(bool is_insert);
-
-  void EnsureSLNode();
-  bool HasLayoutInElementPlatformNode();
-  int GetLayoutInElementPlatformChildIndex(FiberElement* child);
 
   void ApplySimpleStyleWithoutTail(const tasm::CSSPropertyID id,
                                    const tasm::CSSValue& value);
