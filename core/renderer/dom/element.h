@@ -148,8 +148,11 @@ class Element : public lepus::RefCounted,
                 public SelectorItem,
                 public style::SimpleStyleNode {
  public:
+  Element(ElementManager* manager, const base::String& tag);
+  Element(ElementManager* manager, const base::String& tag, int32_t css_id);
   Element(const base::String& tag, ElementManager* element_manager,
           uint32_t node_index);
+  void ReleaseSelf() const override { delete this; }
 
   Element& operator=(const Element&) = delete;
 
@@ -344,7 +347,7 @@ class Element : public lepus::RefCounted,
 
   // For style op
   LYNX_EXPORT_FOR_DEVTOOL virtual void ConsumeStyle(
-      const StyleMap& styles, const StyleMap* inherit_styles = nullptr) = 0;
+      const StyleMap& styles, const StyleMap* inherit_styles = nullptr);
 
   void CacheStyleFromAttributes(CSSPropertyID id, CSSValue&& value);
   void CacheStyleFromAttributes(CSSPropertyID id, const lepus::Value& value);
@@ -375,9 +378,7 @@ class Element : public lepus::RefCounted,
       CSSVariableMap* changed_css_vars);
   virtual void ConsumeStyleInternal(
       const StyleMap& styles, const StyleMap* inherit_styles,
-      std::function<bool(CSSPropertyID, const tasm::CSSValue&)> should_skip) {
-    ConsumeStyle(styles, inherit_styles);
-  }
+      std::function<bool(CSSPropertyID, const tasm::CSSValue&)> should_skip);
 
   virtual void SetStyleInternal(CSSPropertyID id, const tasm::CSSValue& value);
 
@@ -807,36 +808,36 @@ class Element : public lepus::RefCounted,
 
   virtual int32_t IndexOf(const Element* child) const;
 
-  virtual void InsertNode(const fml::RefPtr<Element>& child) = 0;
-  virtual void InsertNode(const fml::RefPtr<Element>& child, int32_t index) = 0;
+  virtual void InsertNode(const fml::RefPtr<Element>& child);
+  virtual void InsertNode(const fml::RefPtr<Element>& child, int32_t index);
   virtual void InsertNodeBefore(
       const fml::RefPtr<Element>& child,
-      const fml::RefPtr<Element>& reference_child) = 0;
+      const fml::RefPtr<Element>& reference_child);
   virtual void InsertNodeBeforeInternal(const fml::RefPtr<Element>& child,
-                                        Element* ref_node) = 0;
+                                        Element* ref_node);
   virtual void InsertNodeBeforeInternal(const fml::RefPtr<Element>& child,
                                         Element* ref_node,
-                                        bool update_logical_children) = 0;
+                                        bool update_logical_children);
   virtual void ReplaceElements(
       const base::Vector<fml::RefPtr<Element>>& inserted,
       const base::Vector<fml::RefPtr<Element>>& removed,
-      Element* ref_node = nullptr) = 0;
+      Element* ref_node = nullptr);
   virtual void RemoveNode(const fml::RefPtr<Element>& child,
-                          bool destroy = true) = 0;
-  virtual void RemoveLogicalChild(const fml::RefPtr<Element>& child) = 0;
+                          bool destroy = true);
+  virtual void RemoveLogicalChild(const fml::RefPtr<Element>& child);
   virtual void RemoveNodeInternal(const fml::RefPtr<Element>& child,
                                   bool destroy,
-                                  bool update_logical_children) = 0;
-  virtual void InsertedInto(Element* insertion_point) = 0;
-  virtual void RemovedFrom(Element* insertion_point) = 0;
+                                  bool update_logical_children);
+  virtual void InsertedInto(Element* insertion_point);
+  virtual void RemovedFrom(Element* insertion_point);
   virtual void HandleInsertChildAction(Element* child, int index,
-                                       Element* ref_node) = 0;
-  virtual void HandleRemoveChildAction(Element* child) = 0;
+                                       Element* ref_node);
+  virtual void HandleRemoveChildAction(Element* child);
   virtual void HandleRemoveSelf(Element* removal_point,
-                                Element* render_parent) = 0;
-  virtual void InsertFixedElement(Element* child, Element* ref_node) = 0;
-  virtual void RemoveFixedElement(Element* child) = 0;
-  virtual void AddChildAt(fml::RefPtr<Element> child, int index) = 0;
+                                Element* render_parent);
+  virtual void InsertFixedElement(Element* child, Element* ref_node);
+  virtual void RemoveFixedElement(Element* child);
+  virtual void AddChildAt(fml::RefPtr<Element> child, int index);
   void StoreLayoutNode(Element* child, Element* ref);
   void RestoreLayoutNode(Element* child);
   virtual void InsertLayoutNode(Element* child, Element* ref);
@@ -888,7 +889,7 @@ class Element : public lepus::RefCounted,
   double GetCurrentRootFontSize();
 
   virtual void OnPseudoStatusChanged(PseudoState prev_status,
-                                     PseudoState current_status) {}
+                                     PseudoState current_status);
 
   ContentData* content_data() const { return content_data_.get(); }
 
@@ -1536,7 +1537,7 @@ class Element : public lepus::RefCounted,
 
   virtual void MarkDetached() { state_ = State::kDetached; }
   virtual bool IsDetached() const { return state_ == State::kDetached; }
-  virtual void SetupFragmentBehavior(Fragment* fragment) {}
+  virtual void SetupFragmentBehavior(Fragment* fragment);
 
   void SetDefaultOverflow(bool visible);
 
@@ -1589,30 +1590,30 @@ class Element : public lepus::RefCounted,
   /**
    * A key function to flush the tree with the current element as the root node.
    */
-  virtual void FlushActionsAsRoot() = 0;
+  virtual void FlushActionsAsRoot();
 
   /**
    * A key function for flush all pending actions for current Element.
    */
-  virtual void FlushActions() = 0;
-  virtual void FlushSelf() = 0;
+  virtual void FlushActions();
+  virtual void FlushSelf();
 
   /**
    * Prepare or update the platform representation and return deferred work.
    */
-  virtual ParallelFlushReturn PrepareForCreateOrUpdate() = 0;
+  virtual ParallelFlushReturn PrepareForCreateOrUpdate();
 
-  virtual void PrepareChildren() = 0;
+  virtual void PrepareChildren();
 
   /**
    * Recursively schedule or perform parallel flush work for this subtree.
    */
-  virtual void ParallelFlushRecursively() = 0;
+  virtual void ParallelFlushRecursively();
 
   /**
    * Recursively insert pending fixed elements for this subtree.
    */
-  virtual void TraversalInsertFixedElementOfTree() = 0;
+  virtual void TraversalInsertFixedElementOfTree();
 
   /**
    * Check if this element needs to propagate inherited dirty flag to children.
@@ -1651,7 +1652,9 @@ class Element : public lepus::RefCounted,
   void UpdateLayoutInfoRecursively(PipelineOptions* options);
   void UpdateLayoutInfo();
 
-  virtual fml::RefPtr<Element> CloneElement(bool clone_resolved_props) const = 0;
+  virtual fml::RefPtr<Element> CloneElement(bool clone_resolved_props) const {
+    return fml::AdoptRef<Element>(new Element(*this, clone_resolved_props));
+  }
 
   // The element object created using clone interfaces is not attached to the
   // element manager. Use this function to attach it to the element manager.
@@ -1665,9 +1668,32 @@ class Element : public lepus::RefCounted,
   void DispatchAsyncResolveProperty();
   void AsyncPostResolveTaskToThreadPool();
   virtual void PostResolveTaskToThreadPool(
-      bool is_engine_thread, ParallelReduceTaskQueue& task_queue) = 0;
+      bool is_engine_thread, ParallelReduceTaskQueue& task_queue);
 
   void PrepareSelfForThreadedElementResolution();
+
+  struct PerfStatistic {
+    PerfStatistic(uint32_t total_task_count)
+        : total_task_count_(total_task_count) {}
+
+    bool enable_report_stats_{false};
+    uint32_t engine_thread_task_count_{0};
+    uint32_t total_task_count_{0};
+    uint64_t total_processing_start_{0};
+    uint64_t total_waiting_time_{0};
+  };
+
+  void PrepareChildForInsertion(Element* child);
+  virtual void ParallelFlushAsRoot();
+  void DidParallelFlushAsRoot(PerfStatistic& stats);
+  void OnParallelFlushAsRoot(PerfStatistic& stats);
+  void PrepareAndGenerateChildrenActions();
+  void ResolveCSSStyles(StyleMap& parsed_styles,
+                        base::InlineVector<CSSPropertyID, 16>& reset_style_ids,
+                        bool& need_update,
+                        bool& force_use_current_parsed_style_map);
+  bool ShouldFallbackToSerialForNewStylingPipeline() const;
+  bool HasAdjacentSiblingRulesInStyleSheets();
 
   // For snapshot test
   void DumpStyle(StyleMap& parsed_styles);
@@ -1679,6 +1705,33 @@ class Element : public lepus::RefCounted,
   void PushCurrentPropsToBundleForRecording(PropBundle* bundle);
 
   void PerformElementContainerCreateOrUpdate(bool need_update, bool need_reset);
+
+  virtual void SetAttributeInternal(const base::String& key,
+                                    const lepus::Value& value);
+  virtual void MarkHasLayoutOnlyPropsIfNecessary(
+      const base::String& attribute_key);
+  bool ConsumeAllAttributes();
+  ParallelFlushReturn CreateParallelTaskHandler();
+  virtual void OnNodeAdded(Element* child);
+  virtual void OnNodeRemoved(Element* child);
+
+  Element* FindEnclosingNoneWrapper(Element* parent, Element* node);
+  void HandleContainerInsertion(Element* parent, Element* child, Element* ref);
+  void InsertLogicalChildBefore(const fml::RefPtr<Element>& child,
+                                Element* ref_node);
+  Element* ReplaceTemplateChildIfNeeded(
+      base::InlineVector<fml::RefPtr<Element>,
+                         kChildrenInlineVectorSize>::iterator child_iter);
+  void ResetDirectionAwareProperty(const CSSPropertyID& id,
+                                   const CSSValue& value);
+  void TryDoDirectionRelatedCSSChange(CSSPropertyID id, const CSSValue& value,
+                                      IsLogic is_logic_style);
+  bool TryResolveLogicStyleAndSaveDirectionRelatedStyle(CSSPropertyID id,
+                                                        const CSSValue& value);
+  void HandleSelfFixedChange();
+  void ResetTextAlign(StyleMap& update_map, bool direction_reset);
+  void PrepareComponentExternalStyles(AttributeHolder* holder);
+  void PrepareRootCSSVariables(AttributeHolder* holder);
 
   void RequireFlush();
 

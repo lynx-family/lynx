@@ -55,8 +55,8 @@
 #include "core/renderer/starlight/types/layout_result.h"
 #include "core/renderer/template_assembler.h"
 #include "core/renderer/trace/renderer_trace_event_def.h"
-#include "core/renderer/utils/lynx_env.h"
 #include "core/renderer/utils/base/tasm_constants.h"
+#include "core/renderer/utils/lynx_env.h"
 #include "core/renderer/utils/prop_bundle_style_writer.h"
 #include "core/renderer/utils/value_utils.h"
 #include "core/runtime/common/bindings/event/message_event.h"
@@ -69,8 +69,8 @@
 #include "core/value_wrapper/value_impl_lepus.h"
 
 #if ENABLE_LEPUSNG_WORKLET
-#include "core/runtime/lepusng/napi/worklet/napi_func_callback.h"
 #include "core/renderer/worklet/lepus_raf_handler.h"
+#include "core/runtime/lepusng/napi/worklet/napi_func_callback.h"
 #endif
 
 namespace lynx {
@@ -210,6 +210,42 @@ InspectorAttribute::~InspectorAttribute() {
   }
 }
 
+Element::Element(ElementManager* manager, const base::String& tag)
+    : Element(manager, tag, kInvalidCssId) {}
+
+Element::Element(ElementManager* manager, const base::String& tag,
+                 int32_t css_id)
+    : Element(tag, manager, kInvalidNodeIndex) {
+  TRACE_EVENT_INSTANT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_CONSTRUCTOR, "tag",
+                      tag.c_str(), "id", id_);
+  dirty_ = kDirtyCreated;
+  css_id_ = css_id;
+  InitLayoutBundle();
+  SetAttributeHolder(fml::MakeRefCounted<AttributeHolder>(this));
+
+  if (IsOverlay()) {
+    can_has_layout_only_children_ = false;
+  }
+
+  if (manager == nullptr) {
+    return;
+  }
+
+  // Set font scale and font size if needed.
+  const auto& env_config = manager->GetLynxEnvConfig();
+
+  computed_css_style()->SetFontScale(env_config.FontScale());
+  if (Config::DefaultFontScale() != env_config.FontScale()) {
+    SetComputedFontSize(env_config.PageDefaultFontSize(),
+                        env_config.PageDefaultFontSize());
+  }
+
+  if (element_manager_->GetEnableStandardCSSSelector()) {
+    // in new selector, mark style dirty while Created.
+    MarkDirty(kDirtyStyle);
+  }
+}
+
 Element::Element(const base::String& tag, ElementManager* manager,
                  uint32_t node_index)
     : tag_(tag),
@@ -260,8 +296,6 @@ Element::Element(const base::String& tag, ElementManager* manager,
     element_container_ = std::make_unique<ElementContainer>(this);
   }
 }
-
-Element::~Element() = default;
 
 // The copy constructor of the element is now only used for copying fiber
 // elements. If you want to use it to copy radon elements, you need to check the
@@ -320,6 +354,60 @@ Element::Element(const Element& element, bool clone_resolved_props)
   platform_css_style_ = std::make_unique<starlight::ComputedCSSStyle>(
       *(element.computed_css_style()));
   element_entry_name_ = element.element_entry_name_;
+
+  invalidation_lists_ = element.invalidation_lists_;
+  parent_component_unique_id_ = element.parent_component_unique_id_;
+  dirty_ = element.dirty_ | kDirtyCreated | kDirtyCloned;
+  css_id_ = element.css_id_;
+  dynamic_style_flags_ = element.dynamic_style_flags_;
+  has_extreme_parsed_styles_ = element.has_extreme_parsed_styles_;
+  only_selector_extreme_parsed_styles_ =
+      element.only_selector_extreme_parsed_styles_;
+  can_be_layout_only_ = element.can_be_layout_only_;
+  is_template_ = element.is_template_;
+  flush_required_ = element.flush_required_;
+  full_raw_inline_style_ = element.full_raw_inline_style_;
+  current_raw_inline_styles_ = element.current_raw_inline_styles_;
+  current_raw_inline_custom_properties_ =
+      element.current_raw_inline_custom_properties_;
+  extreme_parsed_styles_ = element.extreme_parsed_styles_;
+  inherited_styles_ = element.inherited_styles_;
+  reset_inherited_ids_ = element.reset_inherited_ids_;
+  custom_properties_ = element.custom_properties_;
+  updated_attr_map_ = element.updated_attr_map_;
+  builtin_attr_map_ = element.builtin_attr_map_;
+  reset_attr_vec_ = element.reset_attr_vec_;
+  part_id_ = element.part_id_;
+  SetAttributeHolder(
+      fml::MakeRefCounted<AttributeHolder>(*element.data_model()));
+  data_model_->SetCSSVariableBundle(*element.data_model());
+
+  if (clone_resolved_props) {
+    parsed_styles_map_ = element.parsed_styles_map_;
+    updated_inherited_styles_ = element.updated_inherited_styles_;
+    layout_styles_ = element.layout_styles_;
+    // clone_resolved_props only carries committed resolved state. The dynamic
+    // source object is treated as a mutation carrier and will be rebuilt lazily
+    // from parsed_dynamic_styles_map_ when a post-clone incremental update
+    // happens.
+    parsed_dynamic_styles_map_ = element.parsed_dynamic_styles_map_;
+
+    // FIXME(wujintian): The prop bundle stores the style of incremental
+    // updates. If the element flush props has been executed multiple times
+    // before cloning the element, then this prop bundle cannot represent all
+    // the stock styles since the element was created.
+    if (element.pre_prop_bundle_) {
+      prop_bundle_ = element.pre_prop_bundle_->ShallowCopy();
+    } else if (element.prop_bundle_) {
+      prop_bundle_ = element.prop_bundle_->ShallowCopy();
+    }
+  }
+
+  if (element.config().IsTable() && element.config().GetLength() > 0) {
+    config_ = lepus::Value::ShallowCopy(element.config()).Table();
+  }
+
+  // TODO(wujintian): Clone animation-related objects.
 }
 
 void Element::AttachToElementManager(
@@ -357,6 +445,46 @@ void Element::AttachToElementManager(
     element_container_ = std::make_unique<Fragment>(this);
   } else {
     element_container_ = std::make_unique<ElementContainer>(this);
+  }
+
+  const auto& env_config = manager->GetLynxEnvConfig();
+  if (platform_css_style_ == nullptr) {
+    platform_css_style_ = std::make_unique<starlight::ComputedCSSStyle>(
+        *manager->platform_computed_css());
+  }
+  record_parent_font_size_ = env_config.PageDefaultFontSize();
+
+  platform_css_style_->SetScreenWidth(env_config.ScreenWidth());
+  platform_css_style_->SetViewportHeight(env_config.ViewportHeight());
+  platform_css_style_->SetViewportWidth(env_config.ViewportWidth());
+  platform_css_style_->SetCssAlignLegacyWithW3c(
+      manager->GetLayoutConfigs().css_align_with_legacy_w3c_);
+  platform_css_style_->SetFontScaleOnlyEffectiveOnSp(
+      env_config.FontScaleSpOnly());
+  platform_css_style_->SetLayoutUnit(env_config.PhysicalPixelsPerLayoutUnit(),
+                                     env_config.LayoutsUnitPerPx());
+
+  computed_css_style()->SetEnableZIndex(manager->GetEnableZIndex());
+
+  InitLayoutBundle();
+  UpdateLayoutNodeFontSize(GetFontSize(), GetRecordedRootFontSize());
+
+  if (layout_styles_.has_value()) {
+    for (auto& layout_style : *layout_styles_) {
+      UpdateLayoutNodeStyle(layout_style.first, layout_style.second);
+    }
+  }
+
+  SetFontSizeForAllElement(GetFontSize(), GetRecordedRootFontSize());
+
+  if (Config::DefaultFontScale() != env_config.FontScale()) {
+    computed_css_style()->SetFontScale(env_config.FontScale());
+    SetComputedFontSize(env_config.PageDefaultFontSize(),
+                        env_config.PageDefaultFontSize());
+  }
+
+  if (element_manager_->GetEnableStandardCSSSelector()) {
+    MarkDirty(kDirtyStyle);
   }
 }
 
@@ -609,6 +737,7 @@ bool Element::ConsumeTransitionStylesInAdvance(const StyleMap& styles,
 
 void Element::SetStyleInternal(CSSPropertyID css_id,
                                const tasm::CSSValue& value) {
+  const bool was_fixed = is_fixed_;
   TRACE_EVENT(
       LYNX_TRACE_CATEGORY, ELEMENT_SET_STYLE_INTERNAL,
       [css_id](lynx::perfetto::EventContext ctx) {
@@ -643,6 +772,9 @@ void Element::SetStyleInternal(CSSPropertyID css_id,
       RequestLayout();
     }
     element_container()->InvalidateForRedraw();
+    if (css_id == kPropertyIDPosition && was_fixed != is_fixed_) {
+      UpdateFixedNodeSet();
+    }
     return;
   }
 
@@ -681,6 +813,9 @@ void Element::SetStyleInternal(CSSPropertyID css_id,
       CheckHasNonFlattenCSSProps(css_id);
     }
   }
+  if (css_id == kPropertyIDPosition && was_fixed != is_fixed_) {
+    UpdateFixedNodeSet();
+  }
 }
 
 bool Element::ResolveStyleValue(CSSPropertyID id, const tasm::CSSValue& value) {
@@ -711,14 +846,8 @@ bool Element::HasUIPrimitive() const {
 }
 
 void Element::CheckHasInlineContainer(Element* parent) {
-  if (parent) {
-    allow_layoutnode_inline_ = parent->IsShadowNodeCustom();
-  }
-  if (parent && (parent->is_text_ ||
-                 (parent->is_inline_element_ && !parent->is_view()))) {
-    is_inline_element_ = true;
-    has_layout_only_props_ = false;
-  }
+  EnsureLayoutBundle();
+  allow_layoutnode_inline_ = parent->IsShadowNodeCustom();
 }
 
 bool Element::EnableLayoutInElementMode() const {
@@ -850,6 +979,7 @@ void Element::ResetStyleInternal(CSSPropertyID css_id) {
 }
 
 bool Element::ResetCSSValue(CSSPropertyID css_id) {
+  const bool was_fixed = is_fixed_;
   CheckDynamicUnit(css_id, CSSValue(), true);
 
   if (css_id == kPropertyIDFontSize) {
@@ -880,6 +1010,9 @@ bool Element::ResetCSSValue(CSSPropertyID css_id) {
     is_sticky_ = is_fixed_ = false;
   }
   if (is_layout_only) {
+    if (css_id == kPropertyIDPosition && was_fixed != is_fixed_) {
+      UpdateFixedNodeSet();
+    }
     return processed;
   }
   has_layout_only_props_ = false;
@@ -891,6 +1024,9 @@ bool Element::ResetCSSValue(CSSPropertyID css_id) {
   CheckTransitionProps(css_id);
   CheckKeyframeProps(css_id);
 
+  if (css_id == kPropertyIDPosition && was_fixed != is_fixed_) {
+    UpdateFixedNodeSet();
+  }
   return processed;
 }
 
@@ -2266,8 +2402,7 @@ void Element::RemoveAllEvents() {
   MarkDirty(kDirtyEvent);
 }
 
-void Element::FiberAddEvent(const base::String& type,
-                            const base::String& name,
+void Element::FiberAddEvent(const base::String& type, const base::String& name,
                             const lepus::Value& callback,
                             const std::string& context_name) {
   auto event_options = GetEventListenerOptions(type);
@@ -4745,6 +4880,19 @@ void Element::TransitionToNativeView() {
 }
 
 void Element::EnqueueLayoutTask(base::MoveOnlyClosure<void> operation) {
+  auto* render_root = GetRenderRootElement();
+  if (render_root && render_root->GetSchedulerAdapter() &&
+      render_root->GetSchedulerAdapter()->IsBatchResolvingTree()) {
+    render_root->GetSchedulerAdapter()
+        ->resolve_element_tree_queue()
+        .emplace_back(std::move(operation));
+    return;
+  }
+  if (element_manager()->GetParallelWithSyncLayout() &&
+      ShouldProcessParallelTasks()) {
+    EnqueueReduceTask(std::move(operation));
+    return;
+  }
   operation();
 }
 
@@ -4802,6 +4950,11 @@ bool Element::IsFixedUnifiedOnly() const {
 
 bool Element::IsEventPathCatch(event::EventTarget* target,
                                event::Event* event) {
+  if (IsDetached()) {
+    LOGE("Element::IsEventPathCatch error: the target is detached.");
+    return true;
+  }
+
   if (event && event->from_frontend() && target != this) {
     auto root_component =
         static_cast<Element*>(target)->GetParentComponentElement();
