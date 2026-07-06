@@ -87,15 +87,6 @@ class FiberElement : public Element {
 
   void ReleaseSelf() const override { delete this; }
 
-  struct InheritedProperty {
-    // indicate it's children has been marked to propagate inherited properties.
-    bool children_propagate_inherited_styles_flag_{false};
-
-    const StyleMap* inherited_styles_{nullptr};
-    const base::Vector<tasm::CSSPropertyID>* reset_inherited_ids_{nullptr};
-    const CustomPropertiesMap* custom_properties_{nullptr};
-  };
-
   struct PerfStatistic {
     PerfStatistic(uint32_t total_task_count)
         : total_task_count_(total_task_count) {}
@@ -112,8 +103,6 @@ class FiberElement : public Element {
   };
 
   // for Fiber specific
-
-  virtual const InheritedProperty GetInheritedProperty();
 
   const InheritedProperty GetParentInheritedProperty();
 
@@ -679,9 +668,6 @@ class FiberElement : public Element {
   bool IsRelatedCSSVariableUpdated(AttributeHolder* holder,
                                    const lepus::Value changing_css_variables);
 
-  void ResetSheetRecursively(
-      const std::shared_ptr<CSSStyleSheetManager>& manager);
-
   virtual ParallelFlushReturn PrepareForCreateOrUpdate();
 
   void InsertLayoutNode(FiberElement* child, FiberElement* ref);
@@ -760,8 +746,6 @@ class FiberElement : public Element {
                         event::Event* event) override;
 
   void SetMeasureFunc(std::unique_ptr<MeasureFunc> measure_func);
-
-  bool CollectCustomProperties(AttributeHolder* holder);
 
   void PrepareSelfForThreadedElementResolution();
   bool ShouldFallbackToSerialForNewStylingPipeline() const;
