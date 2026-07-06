@@ -50,7 +50,7 @@ void ExpectRect(const lepus::Value& rect, float x, float y, float width,
 
 void SetLayoutObjectFrame(Element* element, float x, float y, float width,
                           float height) {
-  static_cast<FiberElement*>(element)->EnsureSLNode();
+  element->EnsureSLNode();
   auto* layout_object = element->GetLayoutObject();
   ASSERT_NE(layout_object, nullptr);
   layout_object->SetBorderBoundLeftFromParentPaddingBound(x);
