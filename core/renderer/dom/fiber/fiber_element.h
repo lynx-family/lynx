@@ -282,15 +282,8 @@ class FiberElement : public Element {
   void StoreLayoutNode(FiberElement* child, FiberElement* ref);
   void RestoreLayoutNode(FiberElement* child);
 
-  // For snapshot test
-  void DumpStyle(StyleMap& parsed_styles);
-
   void OnPseudoStatusChanged(PseudoState prev_status,
                              PseudoState current_status) override;
-
-  bool RefreshStyle(StyleMap& parsed_styles,
-                    base::Vector<CSSPropertyID>& reset_ids,
-                    bool force_use_parsed_styles_map = false);
 
   void UpdateDynamicElementStyle(uint32_t style, bool force_update) override;
 
@@ -318,8 +311,6 @@ class FiberElement : public Element {
 
   int32_t GetCSSID() const override;
 
-  bool MergeInlineStyles(StyleMap& new_styles,
-                         StyleMap& important_styles) final;
   void CreateListItemScheduler(list::BatchRenderStrategy batch_render_strategy,
                                bool continuous_resolve_tree);
 
@@ -348,8 +339,6 @@ class FiberElement : public Element {
 
   void SetStyleInternal(CSSPropertyID id, const tasm::CSSValue& value) override;
   bool ResetCSSValue(CSSPropertyID id) override;
-
-  void ProcessFullRawInlineStyle(CSSVariableMap* changed_css_vars) override;
 
   bool ConsumeAllAttributes();
 
@@ -414,8 +403,6 @@ class FiberElement : public Element {
 
   void PrepareComponentExternalStyles(AttributeHolder* holder);
   void PrepareRootCSSVariables(AttributeHolder* holder);
-  void ParseRawInlineStyles(CSSVariableMap* changed_css_vars);
-  void DoFullCSSResolving();
 };
 
 }  // namespace tasm
