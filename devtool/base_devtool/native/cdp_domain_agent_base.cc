@@ -48,5 +48,11 @@ void CDPDomainAgentBase::SetCompressionThreshold(uint32_t threshold) {
   compression_threshold_ = threshold;
 }
 
+void CDPDomainAgentBase::SendNotImplementedResponse(
+    const std::shared_ptr<MessageSender>& sender, int64_t id,
+    const std::string& method) {
+  sender->SendErrorResponse(id, "Not implemented: " + method);
+}
+
 }  // namespace devtool
 }  // namespace lynx

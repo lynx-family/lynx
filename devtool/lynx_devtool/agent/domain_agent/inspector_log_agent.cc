@@ -25,12 +25,7 @@ void InspectorLogAgent::CallMethod(const std::shared_ptr<MessageSender>& sender,
   // `Log.entryAdded` messages.
   if (message.isMember("sessionId") ||
       (iter = functions_map_.find(method)) == functions_map_.end()) {
-    Json::Value res;
-    res["error"] = Json::ValueType::objectValue;
-    res["error"]["code"] = kInspectorErrorCode;
-    res["error"]["message"] = "Not implemented: " + method;
-    res["id"] = message["id"].asInt64();
-    sender->SendMessage("CDP", res);
+    SendNotImplementedResponse(sender, message["id"].asInt64(), method);
   } else {
     (this->*(iter->second))(sender, message);
   }
