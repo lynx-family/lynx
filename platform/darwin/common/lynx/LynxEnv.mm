@@ -49,6 +49,8 @@
 #include "core/services/ssr/ssr_type_info.h"
 #include "core/services/timing_handler/timing.h"
 
+#include <atomic>
+
 #if OS_IOS
 #import <Lynx/LynxFontFaceManager.h>
 #import <Lynx/LynxTextRendererCache.h>
@@ -84,6 +86,7 @@ static void LynxClaySetup() {
 
 @implementation LynxEnv {
   std::unique_ptr<fml::SharedMutex> external_env_mutex_;
+  std::atomic_bool init_flow_completed_;
 }
 
 + (instancetype)sharedInstance {
@@ -110,6 +113,7 @@ static void LynxClaySetup() {
 - (instancetype)init {
   self = [super init];
   if (self) {
+    init_flow_completed_.store(false, std::memory_order_release);
     external_env_mutex_ = std::unique_ptr<fml::SharedMutex>(fml::SharedMutex::Create());
     _externalEnvCache = [NSMutableDictionary dictionary];
     _lifecycleDispatcher = [[LynxLifecycleDispatcher alloc] init];
@@ -127,9 +131,15 @@ static void LynxClaySetup() {
 #endif
     [LynxService(LynxServiceExtensionProtocol) onLynxEnvSetup];
     LynxClaySetup();
+    init_flow_completed_.store(true, std::memory_order_release);
   }
   _LogI(@"LynxEnv: init success");
   return self;
+}
+
+- (BOOL)isInitCompleted {
+  return init_flow_completed_.load(std::memory_order_acquire) &&
+         lynx::tasm::LynxEnvDarwin::isNativeUIThreadInitialized();
 }
 
 - (void)initLynxBase {

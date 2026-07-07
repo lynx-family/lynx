@@ -96,6 +96,14 @@ typedef NS_ENUM(NSInteger, LynxMemoryPressureLevel) {
 
 + (instancetype)sharedInstance;
 
+/**
+ * Returns whether LynxEnv initialization has completed successfully.
+ *
+ * This method is safe to call from any thread. It returns true only after the singleton
+ * initialization flow and native UI thread initialization have both completed.
+ */
+- (BOOL)isInitCompleted;
+
 - (void)prepareConfig:(LynxConfig *)config;
 - (void)reportModuleCustomError:(NSString *)error;
 - (void)onPiperInvoked:(NSString *)module

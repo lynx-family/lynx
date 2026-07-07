@@ -4,12 +4,18 @@
 
 #import "core/base/darwin/lynx_env_darwin.h"
 
+#include <atomic>
+
 #include "core/base/threading/task_runner_manufactor.h"
 // TODO(zhengsenyao): move lynx_env_darwin.mm out of //lynx/core/base/
 #import <Lynx/LynxEnv.h>  // nogncheck
 
 namespace lynx {
 namespace tasm {
+
+namespace {
+std::atomic_bool g_native_ui_thread_initialized{false};
+}
 
 void LynxEnvDarwin::onPiperInvoked(const std::string& module_name, const std::string& method_name,
                                    const std::string& param_str, const std::string& url,
@@ -40,11 +46,17 @@ void LynxEnvDarwin::initNativeUIThread() {
   // init ui thread native loop
   if (NSThread.isMainThread) {
     base::UIThread::Init();
+    g_native_ui_thread_initialized.store(true, std::memory_order_release);
   } else {
     dispatch_async(dispatch_get_main_queue(), ^{
       base::UIThread::Init();
+      g_native_ui_thread_initialized.store(true, std::memory_order_release);
     });
   }
+}
+
+bool LynxEnvDarwin::isNativeUIThreadInitialized() {
+  return g_native_ui_thread_initialized.load(std::memory_order_acquire);
 }
 
 }  // namespace tasm
