@@ -1682,14 +1682,13 @@ void PageView::SetKeyframesData(const Value& keyframes_value) {
   }
 
 #if (DEBUG_KEYFRAMES)
-  FML_LOG(ERROR) << "PageView::SetKeyframesData size="
-                 << keyframes_data_.size();
+  FML_LOG(INFO) << "PageView::SetKeyframesData size=" << keyframes_data_.size();
   for (const auto& node : keyframes_data_) {
-    FML_LOG(ERROR) << "PageView::SetKeyframesData \t name=" << node.first
-                   << " property size=" << node.second.size();
+    FML_LOG(INFO) << "PageView::SetKeyframesData \t name=" << node.first
+                  << " property size=" << node.second.size();
     for (const auto& keyframe_set : node.second) {
-      FML_LOG(ERROR) << "PageView::SetKeyframesData \t\t keyframe_set="
-                     << keyframe_set.second->ToString();
+      FML_LOG(INFO) << "PageView::SetKeyframesData \t\t keyframe_set="
+                    << keyframe_set.second->ToString();
     }
   }
 #endif
@@ -1967,13 +1966,13 @@ std::string PageView::ToString() const {
 }
 
 void PageView::DumpRenderingTrees() const {
-  FML_LOG(ERROR) << ">>>>>>>>>> DumpViewTree";
+  FML_LOG(INFO) << ">>>>>>>>>> DumpViewTree";
   DumpViewTree(0);
-  FML_LOG(ERROR) << ">>>>>>>>>> DumpRenderTree";
+  FML_LOG(INFO) << ">>>>>>>>>> DumpRenderTree";
   render_object()->DumpRenderTree();
-  FML_LOG(ERROR) << ">>>>>>>>>> DumpLayerTree";
+  FML_LOG(INFO) << ">>>>>>>>>> DumpLayerTree";
   render_object()->GetLayer()->DumpPendingLayerTree();
-  FML_LOG(ERROR) << ">>>>>>>>>> DumpEngineLayerTree";
+  FML_LOG(INFO) << ">>>>>>>>>> DumpEngineLayerTree";
   frame_builder_->DumpLayerTree();
 }
 #endif

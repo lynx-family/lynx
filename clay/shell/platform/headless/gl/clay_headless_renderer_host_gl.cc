@@ -821,8 +821,8 @@ std::unique_ptr<ClayHeadlessRenderer> ClayHeadlessRenderer::CreateHostGL(
 ClayHeadlessRendererHostGL::ClayHeadlessRendererHostGL(
     ClayHeadlessEngine* engine, const ClayOpenGLRendererConfig& renderer_config)
     : ClayHeadlessRendererGL(engine), config_(renderer_config) {
-  FML_LOG(ERROR) << "Starting Clay in [Host GL] mode. "
-                    "Components using external textures will NOT work";
+  FML_LOG(INFO) << "Starting Clay in [Host GL] mode. "
+                   "Components using external textures will NOT work";
 }
 
 GPUSurfaceGLDelegate::GLProcResolver
@@ -861,8 +861,8 @@ ClayHeadlessRendererSharedImageHostGL::ClayHeadlessRendererSharedImageHostGL(
       host_gl_thread_("clay.headless.host-gl"),
       draw_tasks_enabled_(std::make_shared<std::atomic_bool>(true)),
       config_(renderer_config) {
-  FML_LOG(ERROR) << "Starting Clay in [Host GL+SharedImage] mode. "
-                    "Maybe slow in large views";
+  FML_LOG(INFO) << "Starting Clay in [Host GL+SharedImage] mode. "
+                   "Maybe slow in large views";
 
   ClayHeadlessRendererConfig hardware_config;
 
@@ -1053,7 +1053,7 @@ void ClayHeadlessRendererSharedImageHostGL::Draw() {
     fml::RefPtr<clay::SharedImageBacking> backing =
         shared_image_sink_->UpdateFront(nullptr);
     if (!backing) {
-      FML_LOG(ERROR) << "No front buffer";
+      FML_LOG(INFO) << "No front buffer";
       return;
     }
 

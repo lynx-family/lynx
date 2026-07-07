@@ -99,7 +99,7 @@ std::unique_ptr<SurfaceFrame> GPUSurfaceMetalSkity::AcquireFrame(const skity::Ve
   }
 
   if (frame_size.x == 0 && frame_size.y == 0) {
-    FML_LOG(ERROR) << "Metal surface was asked for an empty frame.";
+    FML_LOG(INFO) << "Metal surface was asked for an empty frame.";
     return nullptr;
   }
 

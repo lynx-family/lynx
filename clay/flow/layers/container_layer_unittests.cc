@@ -621,10 +621,10 @@ TEST_F(ContainerLayerDiffTest, PictureLayerInsertion) {
   t2.root()->Add(t2_c2);
 
   damage = DiffLayerTree(t2, t1);
-  FML_LOG(ERROR) << "frame_damage: " << damage.frame_damage.Left() << ", "
-                 << damage.frame_damage.Top() << ", "
-                 << damage.frame_damage.Right() << ", "
-                 << damage.frame_damage.Bottom();
+  FML_LOG(INFO) << "frame_damage: " << damage.frame_damage.Left() << ", "
+                << damage.frame_damage.Top() << ", "
+                << damage.frame_damage.Right() << ", "
+                << damage.frame_damage.Bottom();
   EXPECT_EQ(damage.frame_damage, skity::Rect::MakeLTRB(200, 0, 250, 50));
 
   // Add in the beginning

@@ -52,6 +52,39 @@ uint32_t AddTag(uint32_t value, uint32_t tag) { return value | tag; }
 
 uint32_t RemoveTag(uint32_t value, uint32_t tag) { return value & ~tag; }
 
+bool IsHandledByTextShadowNode(KeywordID kw) {
+  switch (kw) {
+    case KeywordID::kFontSize:
+    case KeywordID::kTextOverflow:
+    case KeywordID::kFontWeight:
+    case KeywordID::kFontStyle:
+    case KeywordID::kLineHeight:
+    case KeywordID::kLineSpacing:
+    case KeywordID::kLetterSpacing:
+    case KeywordID::kFontFamily:
+    case KeywordID::kTextAlign:
+    case KeywordID::kTextDecoration:
+    case KeywordID::kDirection:
+    case KeywordID::kTextShadow:
+    case KeywordID::kTextStrokeColor:
+    case KeywordID::kTextStrokeWidth:
+    case KeywordID::kEnableFontScaling:
+    case KeywordID::kTextMaxline:
+    case KeywordID::kWordBreak:
+    case KeywordID::kWhiteSpace:
+    case KeywordID::kTextIndent:
+    case KeywordID::kTextMaxlength:
+    case KeywordID::kXAutoFontSize:
+    case KeywordID::kXAutoFontSizePresetSizes:
+    case KeywordID::kTextSingleLineVerticalAlign:
+    case KeywordID::kRichtype:
+    case KeywordID::kText:
+      return true;
+    default:
+      return false;
+  }
+}
+
 }  // namespace
 
 static clay::Value::Map CreateRectMap(const FloatRect& rect) {
@@ -113,8 +146,11 @@ void TextView::SetAttribute(const char* attr, const clay::Value& value) {
     } else if (!value.IsNone()) {
       FML_DLOG(WARNING) << "KeywordID::kColor value is not valid.";
     }
+  } else if (IsHandledByTextShadowNode(kw)) {
+    // Text style attributes are consumed by TextShadowNode.
+    return;
   } else {
-    BaseView ::SetAttribute(attr, value);
+    BaseView::SetAttribute(attr, value);
   }
 }
 

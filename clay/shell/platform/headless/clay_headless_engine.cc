@@ -183,7 +183,7 @@ bool ClayHeadlessEngine::RunEngine(
     }
   }
   if (engine_ != nullptr) {
-    FML_LOG(ERROR) << "HeadlessEngineRun Success!";
+    FML_LOG(INFO) << "HeadlessEngineRun Success!";
   } else {
     FML_LOG(ERROR) << "HeadlessEngineRun Failure!";
     return false;

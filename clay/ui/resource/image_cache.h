@@ -59,7 +59,7 @@ class ImageCache : public std::enable_shared_from_this<ImageCache<T>> {
 
     size_t bytes = image->GetGraphicsImageAllocSize();
     if (bytes > kMaxItemBytes || bytes == 0) {
-      FML_LOG(ERROR) << "image bytes is " + std::to_string(bytes);
+      FML_LOG(INFO) << "image bytes is " + std::to_string(bytes);
       return;
     }
 

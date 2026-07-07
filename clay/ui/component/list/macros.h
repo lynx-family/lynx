@@ -7,7 +7,7 @@
 
 #define LIST_DEBUG_TAG "[Clay]-[LIST] "
 #if (DEBUG_LIST)
-#define LIST_LOG FML_LOG(ERROR) << LIST_DEBUG_TAG
+#define LIST_LOG FML_LOG(INFO) << LIST_DEBUG_TAG
 #else
 #define LIST_LOG FML_EAT_STREAM_PARAMETERS(true)
 #endif

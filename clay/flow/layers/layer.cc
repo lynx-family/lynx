@@ -99,7 +99,7 @@ std::string Layer::ToString() const {
 void Layer::DebugDumpTree(int depth) const {
   std::string indent;
   indent.append(2 * depth, ' ');
-  FML_LOG(ERROR) << indent << "[" << DebugName() << "] -" << ToString();
+  FML_LOG(INFO) << indent << "[" << DebugName() << "] -" << ToString();
 }
 #endif
 }  // namespace clay

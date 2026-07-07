@@ -18,7 +18,7 @@ AHardwareBufferUtils::AHardwareBufferUtils() {
   if (__system_property_get("ro.build.version.sdk", sdk_version_string)) {
     int api_level = atoi(sdk_version_string);
     if (api_level < 26) {
-      FML_LOG(ERROR) << "Sdk version < 26, AHardwareBuffer is not supported.";
+      FML_LOG(INFO) << "Sdk version < 26, AHardwareBuffer is not supported.";
       return;
     }
   }

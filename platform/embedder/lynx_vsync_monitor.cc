@@ -39,7 +39,7 @@ void LynxVSyncMonitor::RequestVSync(Callback callback) {
     callbacks_.emplace_back(std::move(callback));
   }
   if (!c_monitor_ || !c_monitor_->request_vsync_func) {
-    LOGE("request_vsync_func is null, skip RequestVSync");
+    LOGI("request_vsync_func is null, skip RequestVSync");
     callbacks_.clear();
     return;
   }
