@@ -148,10 +148,10 @@ bool UnicodeDecodeUtils::IsCharStartByte(const char c) {
 }
 
 uint32_t UnicodeDecodeUtils::ConvertU8ToU32Char(const char* char_start,
-                                                const int length,
+                                                const std::size_t length,
                                                 const char** end) {
   *end = nullptr;
-  int char_len = 0;
+  std::size_t char_len = 0;
   uint32_t cp;
   uint8_t nxt = char_start[char_len];
   if ((nxt & 0x80u) == 0) {
@@ -172,7 +172,7 @@ uint32_t UnicodeDecodeUtils::ConvertU8ToU32Char(const char* char_start,
   if (char_len > length) {
     return -1;
   }
-  for (int j = 1; j < char_len; ++j) {
+  for (std::size_t j = 1; j < char_len; ++j) {
     nxt = char_start[j];
     if ((nxt & 0xC0u) != 0x80) {
       return -1;
@@ -185,8 +185,8 @@ uint32_t UnicodeDecodeUtils::ConvertU8ToU32Char(const char* char_start,
 }
 
 const char* UnicodeDecodeUtils::ReverseFindUnicodeCharFirstByte(
-    const char* base, const int length) {
-  for (int i = 0; i < length && i <= 4; i++) {
+    const char* base, const std::size_t length) {
+  for (std::size_t i = 0; i < length && i <= 4; i++) {
     const char c = base[-i];
     if (IsCharStartByte(c)) {
       return base - i;
@@ -209,28 +209,34 @@ void UnicodeDecodeUtils::ProcessInsertChar(
     if (const auto* char_start_current = ReverseFindUnicodeCharFirstByte(
             output.c_str() + output.length() - 1, output.length());
         char_start_current != nullptr) {
-      const int current_char_byte_length =
-          output.c_str() + output.length() - char_start_current;
+      const auto current_char_byte_size = static_cast<std::size_t>(
+          output.c_str() + output.length() - char_start_current);
       const char* char_end_current;
       if (const auto unicode_current = ConvertU8ToU32Char(
-              char_start_current, current_char_byte_length, &char_end_current);
+              char_start_current, current_char_byte_size, &char_end_current);
           char_end_current != nullptr && IsCJK(unicode_current)) {
-        if (const auto* char_start_before = ReverseFindUnicodeCharFirstByte(
-                char_start_current - 1,
-                char_start_current - output.c_str() - 1);
-            char_start_before != nullptr) {
-          const char* char_end_before;
-          if (const auto unicode_before = ConvertU8ToU32Char(
-                  char_start_before, char_start_current - char_start_before,
-                  &char_end_before);
-              char_end_before != nullptr && IsCJK(unicode_before)) {
-            char buffer[5];
-            memcpy(buffer, char_start_current, current_char_byte_length);
-            buffer[current_char_byte_length] = '\0';
-            output.erase(output.length() - current_char_byte_length,
-                         current_char_byte_length);
-            output.append("\u2060");
-            output.append(buffer);
+        const auto previous_search_length =
+            char_start_current - output.c_str() - 1;
+        if (previous_search_length > 0) {
+          const auto* char_start_before = ReverseFindUnicodeCharFirstByte(
+              char_start_current - 1,
+              static_cast<std::size_t>(previous_search_length));
+          if (char_start_before != nullptr) {
+            const char* char_end_before;
+            const auto previous_char_byte_size = static_cast<std::size_t>(
+                char_start_current - char_start_before);
+            if (const auto unicode_before = ConvertU8ToU32Char(
+                    char_start_before, previous_char_byte_size,
+                    &char_end_before);
+                char_end_before != nullptr && IsCJK(unicode_before)) {
+              char buffer[5];
+              memcpy(buffer, char_start_current, current_char_byte_size);
+              buffer[current_char_byte_size] = '\0';
+              output.erase(output.length() - current_char_byte_size,
+                           current_char_byte_size);
+              output.append("\u2060");
+              output.append(buffer);
+            }
           }
         }
       }
