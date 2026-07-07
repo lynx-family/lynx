@@ -47,6 +47,11 @@ class CSSTransitionManager : public CSSKeyframeManager {
 
   bool NeedsTransition(tasm::CSSPropertyID css_id);
 
+  bool HasActiveTransition(tasm::CSSPropertyID css_id);
+
+  bool ConsumeCSSPropertyForActiveTransition(tasm::CSSPropertyID css_id,
+                                             const tasm::CSSValue& end_value);
+
   void ClearPreviousEndValue(tasm::CSSPropertyID css_id);
 
  private:
