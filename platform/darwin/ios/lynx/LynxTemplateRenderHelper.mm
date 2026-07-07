@@ -37,10 +37,11 @@
 #import <Lynx/PaintingContextProxy.h>
 #import "LynxTraceEventDef.h"
 
+#include "base/include/lynx_actor.h"
 #include "core/base/darwin/lynx_env_darwin.h"
 #include "core/public/lynx_extension_delegate.h"
+#include "core/public/painting_ctx_platform_impl.h"
 #include "core/renderer/lynx_global_pool.h"
-#include "core/renderer/ui_wrapper/painting/ios/native_painting_context_platform_darwin_ref.h"
 #include "core/renderer/ui_wrapper/painting/ios/painting_context_darwin.h"
 #include "core/renderer/ui_wrapper/painting/ios/painting_context_darwin_utils.h"
 #include "core/resource/lynx_resource_loader_darwin.h"
@@ -52,9 +53,28 @@
 #include "core/shell/ios/lynx_engine_proxy_darwin.h"
 #include "core/shell/ios/native_facade_darwin.h"
 #include "core/shell/ios/tasm_platform_invoker_darwin.h"
+#include "core/shell/lynx_engine.h"
 #include "core/shell/lynx_shell_builder.h"
 #include "core/shell/perf_controller_proxy_impl.h"
 #include "core/shell/runtime/common/module_delegate_impl.h"
+
+namespace {
+
+bool HasNativePaintingCtxPlatformRef(lynx::tasm::PaintingCtxPlatformImpl* painting_context) {
+  if (painting_context == nullptr) {
+    return false;
+  }
+  const auto& platform_ref = painting_context->GetPlatformRef();
+  return platform_ref != nullptr && platform_ref->IsNativePaintingCtxPlatformRef();
+}
+
+}  // namespace
+
+@interface LynxUIRenderer (PaintingContextInternal)
+- (void)setPaintingContextPlatformImpl:(lynx::tasm::PaintingCtxPlatformImpl*)platformImpl;
+- (void)setLynxEngineActorForPlatformContextRef:
+    (const std::shared_ptr<lynx::shell::LynxActor<lynx::shell::LynxEngine>>&)engineActor;
+@end
 
 @implementation LynxTemplateRender (Helper)
 
@@ -124,10 +144,12 @@
     }
   }
 
-  if (painting_context) {
-    _paintingCtxPlatformRef = painting_context->GetPlatformRef();
-  } else {
-    _paintingCtxPlatformRef.reset();
+  BOOL should_set_platform_context = [_lynxUIRenderer isKindOfClass:[LynxUIRenderer class]] &&
+                                     HasNativePaintingCtxPlatformRef(painting_context.get());
+  if (should_set_platform_context) {
+    // Platform event forwarding currently depends on NativePaintingCtxPlatformRef.
+    // Limit injection to this path to avoid changing other painting context behavior.
+    [(LynxUIRenderer*)_lynxUIRenderer setPaintingContextPlatformImpl:painting_context.get()];
   }
 
   shell_.reset(
@@ -165,9 +187,9 @@
   [_lynxEngineProxy setNativeEngineProxy:std::make_shared<lynx::shell::LynxEngineProxyDarwin>(
                                              shell_->GetEngineActor())];
 
-  if (_context.isFragmentLayerRenderOn && _paintingCtxPlatformRef) {
-    static_cast<lynx::tasm::NativePaintingCtxPlatformDarwinRef*>(_paintingCtxPlatformRef.get())
-        ->SetLynxEngineActorForPlatformContextRef(shell_->GetEngineActor());
+  if (_context.isFragmentLayerRenderOn && should_set_platform_context) {
+    [(LynxUIRenderer*)_lynxUIRenderer
+        setLynxEngineActorForPlatformContextRef:shell_->GetEngineActor()];
   }
 
   [_devTool onTemplateAssemblerCreated:(intptr_t)shell_.get()];

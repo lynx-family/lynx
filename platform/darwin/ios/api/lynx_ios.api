@@ -5118,6 +5118,10 @@ public interface LynxUIOwner(Private) {
 }
 
 public class LynxUIRenderer : NSObject, <LynxUIRendererProtocol> {
+  public BOOL LynxUIRenderer::DispatchPlatformInputEvent:withData:(NSArray *iEventData,[withData] NSArray *fEventData);
+  public void LynxUIRenderer::DispatchPlatformLongPress();
+  public void LynxUIRenderer::DispatchPlatformTap();
+  public int LynxUIRenderer::GetPlatformEventHandlerState();
 }
 
 public class LynxUIRendererCreator : NSObject, <LynxUIRendererCreatorProtocol> {
