@@ -190,6 +190,11 @@ public class TraceEventDef {
   public static final String TEMPLATE_BUNDLE_FROM_TEMPLATE = "TemplateBundle.fromTemplate";
   public static final String TEMPLATE_BUNDLE_FROM_BYTEBUFFER =
       "TemplateBundle.fromTemplateWithByteBuffer";
+  /**
+   * @trace_description: Record the network request URL extracted by a NativeModule. The URL is
+   * displayed in the NativeModule trace panel when it can be associated with a NativeModule invoke.
+   */
+  public static final String NATIVE_MODULE_NETWORK_REQUEST = "Network::SendNetworkRequest";
   public static final String TEMPLATE_DATA_FROM_MAP = "TemplateData.FromMap";
   public static final String TEMPLATE_DATA_SHALLOW_CLONE = "TemplateData.ShallowClone";
   public static final String TEMPLATE_DATA_FROM_STRING = "TemplateData.FromString";

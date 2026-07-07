@@ -8,8 +8,11 @@
 #import <Lynx/LynxModule.h>
 #import <Lynx/LynxService.h>
 #import <Lynx/LynxServiceHttpProtocol.h>
+#import <Lynx/LynxTraceEvent.h>
+#import <Lynx/LynxTraceEventWrapper.h>
 #import <objc/runtime.h>
 #import <stdatomic.h>
+#import "LynxTraceEventDef.h"
 
 @implementation LynxFetchModule {
   LynxFetchModuleEventSender *_eventSender;
@@ -79,12 +82,25 @@ NSString *const standardStreamingFlag = @"enableFetchAPIStandardStreaming";
   [httpService invokeStreamingWithRequest:httpRequest callback:block withDelegate:delegate];
 }
 
+- (void)traceFetchRequestWithURL:(id)url {
+  if (![LynxTraceEvent categoryEnabled:LYNX_TRACE_CATEGORY_WRAPPER]) {
+    return;
+  }
+  LYNX_TRACE_INSTANT_WITH_DEBUG_INFO(
+      LYNX_TRACE_CATEGORY_WRAPPER, NATIVE_MODULE_NETWORK_REQUEST, (@{
+        @"url" : [url isKindOfClass:NSString.class] ? (NSString *)url : @"",
+        @"module_name" : @"LynxFetchModule",
+        @"method_name" : @"fetch",
+      }));
+}
+
 - (void)fetch:(NSDictionary *)request
       resolve:(LynxCallbackBlock)resolve
        reject:(LynxCallbackBlock)reject {
   LynxHttpRequest *httpRequest = [[LynxHttpRequest alloc] init];
   httpRequest.httpMethod = request[@"method"];
   httpRequest.url = request[@"url"];
+  [self traceFetchRequestWithURL:httpRequest.url];
   httpRequest.originUrl = request[@"origin"];
   httpRequest.httpHeaders = request[@"headers"];
   httpRequest.httpBody = request[@"body"];

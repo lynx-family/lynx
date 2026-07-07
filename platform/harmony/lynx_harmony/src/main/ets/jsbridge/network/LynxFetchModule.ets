@@ -8,6 +8,8 @@ import { LynxModule } from '../LynxModule';
 import { LynxHttpRequest } from './LynxHttpRequest';
 import { LynxHttpResponse } from './LynxHttpResponse';
 import { HttpStreamingDelegate } from './HttpStreamingDelegate';
+import { TraceCategory, TraceEvent } from '../../base/TraceEvent';
+import { TraceEventDef } from '../../base/TraceEventDef';
 
 const streamingEventNamePrefix = 'LynxFetchModuleStreamingEvent';
 const deprecatedStreamingFlag = 'useStreaming';
@@ -35,6 +37,18 @@ interface ResponseType {
 type ResponseCallBack = (resp: ResponseType) => void;
 
 export class LynxFetchModule extends LynxModule {
+  private traceFetchRequest(url: string) {
+    if (!TraceEvent.enableTrace()) {
+      return;
+    }
+    const traceProps: Record<string, string> = {
+      'url': url,
+      'module_name': 'LynxFetchModule',
+      'method_name': 'fetch',
+    };
+    TraceEvent.instant(TraceCategory.Lynx, TraceEventDef.NATIVE_MODULE_NETWORK_REQUEST, traceProps);
+  }
+
   private buildResponse(request: RequestType, resp: LynxHttpResponse, body: ArrayBuffer,
     lynxExtension: Record<string, Object>): ResponseType {
     return {
@@ -48,6 +62,7 @@ export class LynxFetchModule extends LynxModule {
   }
 
   fetch(request: RequestType, callback: ResponseCallBack) {
+    this.traceFetchRequest(request.url);
     const customConfig = request.lynxExtension ?? {};
     const httpRequest = new LynxHttpRequest(
       request.method,
