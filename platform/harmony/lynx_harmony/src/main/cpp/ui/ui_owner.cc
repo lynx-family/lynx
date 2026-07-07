@@ -812,9 +812,9 @@ napi_value UIOwner::CanConsumeTouchEvent(napi_env env,
   napi_get_value_double(env, argv[1], &temp_value);
   point[1] = static_cast<float>(temp_value);
 
+  bool can_consume = owner->CanConsumeTouchEvent(point);
   napi_value consumed_touch_event;
-  napi_get_boolean(env, owner->CanConsumeTouchEvent(point),
-                   &consumed_touch_event);
+  napi_get_boolean(env, can_consume, &consumed_touch_event);
   return consumed_touch_event;
 }
 

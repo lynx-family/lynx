@@ -7,6 +7,7 @@
 #include <arkui/native_node.h>
 #include <deviceinfo.h>
 #include <multimedia/image_framework/image/image_packer_native.h>
+#include <native_drawing/drawing_canvas.h>
 
 #include <algorithm>
 #include <cmath>
@@ -839,6 +840,14 @@ void UIBase::OnNodeReady() {
         0, 0, width_, height_, padding_left_, padding_top_, padding_right_,
         padding_bottom_, context_->ScaledDensity());
     background_drawable_->AdjustBorder();
+    // The overlay wrapper is sized from the shadow outset. A box-shadow change
+    // only sets kFlagBackgroundChanged (no relayout), so if the node is already
+    // wrapped, re-sync the frame here; otherwise an enlarged shadow keeps the
+    // old, too-small wrapper and gets clipped again. FrameDidChanged (not
+    // UpdateDrawNodeFrame) is used so the content node position is reset first.
+    if (draw_node_ && ShouldDrawOverlayShadowWithDrawNode()) {
+      FrameDidChanged();
+    }
     Invalidate();
   }
 
@@ -940,6 +949,13 @@ void UIBase::OnNodeReady() {
       NodeManager::Instance().SetAttributeWithNumberValue(
           Node(), NODE_BACKGROUND_COLOR, background_color_);
     }
+  }
+  if (has_background_color_ && ShouldDrawOverlayShadowWithDrawNode()) {
+    // The background (incl. color) is painted by background_drawable_ on the
+    // expanded draw node; drop the native color so it does not paint a second,
+    // clipped rect at the offset content-node bounds.
+    NodeManager::Instance().ResetAttribute(Node(), NODE_BACKGROUND_COLOR);
+    has_background_color_ = false;
   }
 
   // Attribute for accessibility
@@ -1273,12 +1289,24 @@ void UIBase::OnDraw(OH_Drawing_Canvas* canvas, ArkUI_NodeHandle node) {
   // the event matches.
   bool need_draw = draw_node_ ? node == draw_node_ : node == Node();
   if (need_draw) {
+    if (draw_node_ && ShouldDrawOverlayShadowWithDrawNode()) {
+      auto outset = GetOverlayShadowOutset();
+      OH_Drawing_CanvasSave(canvas);
+      OH_Drawing_CanvasTranslate(canvas, outset[0] * context_->ScaledDensity(),
+                                 outset[1] * context_->ScaledDensity());
+      background_drawable_->Render(canvas);
+      OH_Drawing_CanvasRestore(canvas);
+      return;
+    }
     background_drawable_->Render(canvas);
   }
 }
 
 void UIBase::OnDrawBehind(OH_Drawing_Canvas* canvas, ArkUI_NodeHandle node) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, UIBASE_ON_DRAW_BEHIND);
+  if (draw_node_ && ShouldDrawOverlayShadowWithDrawNode()) {
+    return;
+  }
   if (background_drawable_) {
     background_drawable_->Render(canvas);
   }
@@ -1973,9 +2001,100 @@ void UIBase::InvokeMethod(
   }
 }
 
+static bool IsOverlayUI(const UIBase* ui) {
+  return ui != nullptr && (ui->IsOverlayContent() || ui->Tag() == "overlay" ||
+                           ui->Tag() == "x-overlay-ng");
+}
+
+static bool IsOverlayUIOrDescendant(const UIBase* ui) {
+  while (ui != nullptr && ui->Parent() != ui) {
+    if (IsOverlayUI(ui)) {
+      return true;
+    }
+    ui = ui->Parent();
+  }
+  return false;
+}
+
+static void MapOverlayPointWithTransform(float res[2], UIBase* ui) {
+  Transform* transform = ui != nullptr ? ui->GetTransform() : nullptr;
+  if (!transform) {
+    return;
+  }
+  float src[2] = {res[0], res[1]};
+  float dst[2] = {0.f, 0.f};
+  transform->GetTransformMatrix(ui->width_, ui->height_, 1.f, true)
+      .mapPoint(dst, src);
+  res[0] = dst[0];
+  res[1] = dst[1];
+}
+
+static void ConvertOverlayPointFromUIToRootUI(float res[2], UIBase* ui,
+                                              float point[2],
+                                              bool enable_transform) {
+  UIBase* root = ui != nullptr ? ui->GetContext()->Root() : nullptr;
+  if (!ui || !root || ui == root) {
+    res[0] = point[0];
+    res[1] = point[1];
+    return;
+  }
+
+  res[0] = point[0];
+  res[1] = point[1];
+  if (enable_transform) {
+    MapOverlayPointWithTransform(res, ui);
+  }
+
+  while (ui != nullptr && ui->Parent() && ui->Parent() != ui && ui != root) {
+    if (IsOverlayUI(ui)) {
+      break;
+    }
+    res[0] += ui->ViewLeft();
+    res[1] += ui->ViewTop();
+    res[0] -= ui->OffsetXForCalcPosition();
+    res[1] -= ui->OffsetYForCalcPosition();
+    ui = ui->Parent();
+    if (IsOverlayUI(ui)) {
+      break;
+    }
+    res[0] -= ui->ScrollX();
+    res[1] -= ui->ScrollY();
+    if (enable_transform) {
+      MapOverlayPointWithTransform(res, ui);
+    }
+  }
+}
+
+static void ConvertOverlayRectFromUIToRootUI(float res[4], UIBase* ui,
+                                             float rect[4],
+                                             bool enable_transform) {
+  float left_top[2] = {rect[0], rect[1]};
+  float right_top[2] = {rect[2], rect[1]};
+  float left_bottom[2] = {rect[0], rect[3]};
+  float right_bottom[2] = {rect[2], rect[3]};
+
+  ConvertOverlayPointFromUIToRootUI(left_top, ui, left_top, enable_transform);
+  ConvertOverlayPointFromUIToRootUI(right_top, ui, right_top, enable_transform);
+  ConvertOverlayPointFromUIToRootUI(left_bottom, ui, left_bottom,
+                                    enable_transform);
+  ConvertOverlayPointFromUIToRootUI(right_bottom, ui, right_bottom,
+                                    enable_transform);
+
+  res[0] = fmin(fmin(left_top[0], right_top[0]),
+                fmin(left_bottom[0], right_bottom[0]));
+  res[1] = fmin(fmin(left_top[1], right_top[1]),
+                fmin(left_bottom[1], right_bottom[1]));
+  res[2] = fmax(fmax(left_top[0], right_top[0]),
+                fmax(left_bottom[0], right_bottom[0]));
+  res[3] = fmax(fmax(left_top[1], right_top[1]),
+                fmax(left_bottom[1], right_bottom[1]));
+}
+
 void UIBase::GetBoundingClientRect(float* res, bool to_screen) {
   float rect[4] = {0, 0, width_, height_};
-  if (to_screen) {
+  if (to_screen && IsOverlayUIOrDescendant(this)) {
+    ConvertOverlayRectFromUIToRootUI(res, this, rect, false);
+  } else if (to_screen) {
     LynxUIHelper::ConvertRectFromUIToScreen(res, this, rect);
   } else {
     LynxUIHelper::ConvertRectFromUIToRootUI(res, this, rect);
@@ -2021,8 +2140,12 @@ void UIBase::GetBoundingClientRect(const lepus::Value& args, float result[4]) {
   bool enable_transform =
       has_harmony ? enable_harmony_transform : enable_android_transform;
   if (relativeId == "screen") {
-    LynxUIHelper::ConvertRectFromUIToScreen(result, this, result,
-                                            enable_transform);
+    if (IsOverlayUIOrDescendant(this)) {
+      ConvertOverlayRectFromUIToRootUI(result, this, result, enable_transform);
+    } else {
+      LynxUIHelper::ConvertRectFromUIToScreen(result, this, result,
+                                              enable_transform);
+    }
   } else {
     UIBase* relativeUI = GetRelativeUI(relativeId);
     relativeUI = relativeUI == nullptr
@@ -2114,6 +2237,10 @@ bool UIBase::NeedDrawNode() {
     return false;
   }
 
+  if (ShouldDrawOverlayShadowWithDrawNode()) {
+    return true;
+  }
+
   if (CanDrawBehind()) {
     if (!NeedClip()) {
       // If clipping is not needed, a draw node is not required
@@ -2152,6 +2279,18 @@ bool UIBase::NeedDrawNode() {
   }
   return background_drawable_->HasBorder() ||
          background_drawable_->HasImage() || background_drawable_->HasShadow();
+}
+
+bool UIBase::ShouldDrawOverlayShadowWithDrawNode() const {
+  return IsOverlayUIOrDescendant(this) && background_drawable_ &&
+         background_drawable_->HasShadow();
+}
+
+std::array<float, 4> UIBase::GetOverlayShadowOutset() const {
+  if (!ShouldDrawOverlayShadowWithDrawNode()) {
+    return {0.f, 0.f, 0.f, 0.f};
+  }
+  return background_drawable_->GetBoxShadowOutset(context_->ScaledDensity());
 }
 
 void UIBase::AttachToNodeContent(NativeNodeContent* content) {
@@ -2236,6 +2375,17 @@ void UIBase::UpdateDrawNodeFrame() {
   auto size = NodeManager::Instance().GetAttribute(Node(), NODE_SIZE);
   float width = size->value[0].f32;
   float height = size->value[1].f32;
+  if (ShouldDrawOverlayShadowWithDrawNode()) {
+    auto outset = GetOverlayShadowOutset();
+    NodeManager::Instance().SetAttributeWithNumberValue(Node(), NODE_POSITION,
+                                                        outset[0], outset[1]);
+    NodeManager::Instance().SetAttributeWithNumberValue(
+        draw_node_, NODE_SIZE, width + outset[0] + outset[2],
+        height + outset[1] + outset[3]);
+    NodeManager::Instance().SetAttributeWithNumberValue(
+        draw_node_, NODE_POSITION, left_ - outset[0], top_ - outset[1]);
+    return;
+  }
   NodeManager::Instance().SetAttributeWithNumberValue(Node(), NODE_POSITION, 0,
                                                       0);
   NodeManager::Instance().SetAttributeWithNumberValue(draw_node_, NODE_SIZE,
@@ -2251,13 +2401,21 @@ float UIBase::TranslateZ() const {
 }
 
 float UIBase::ViewLeft() const {
-  return NodeManager::Instance().GetAttribute<float>(DrawNode(), NODE_POSITION,
-                                                     0);
+  float left =
+      NodeManager::Instance().GetAttribute<float>(DrawNode(), NODE_POSITION, 0);
+  if (draw_node_ && ShouldDrawOverlayShadowWithDrawNode()) {
+    left = left_;
+  }
+  return left;
 }
 
 float UIBase::ViewTop() const {
-  return NodeManager::Instance().GetAttribute<float>(DrawNode(), NODE_POSITION,
-                                                     1);
+  float top =
+      NodeManager::Instance().GetAttribute<float>(DrawNode(), NODE_POSITION, 1);
+  if (draw_node_ && ShouldDrawOverlayShadowWithDrawNode()) {
+    top = top_;
+  }
+  return top;
 }
 
 // TODO(hexionghui): Remove this later, and replace it with GetPointInTarget.
@@ -2333,14 +2491,26 @@ bool UIBase::ShouldHitTest() {
 }
 
 EventTarget* UIBase::HitTest(float point[2]) {
+  return HitTestInternal(point, false);
+}
+
+EventTarget* UIBase::HitTestWithoutOverlayContent(float point[2]) {
+  return HitTestInternal(point, true);
+}
+
+EventTarget* UIBase::HitTestInternal(float point[2],
+                                     bool skip_overlay_content) {
   gesture_status_ = LynxInterceptGestureStatus::LynxInterceptGestureStateUnset;
   float origin_point[2]{point[0], point[1]};
   EventTarget* target = nullptr;
   float target_point[] = {point[0], point[1]};
   float child_point[2] = {0};
-  std::vector<EventTarget*> sibling_targets;
+  std::vector<UIBase*> sibling_targets;
   for (int i = children_.size() - 1; i >= 0; --i) {
     UIBase* ui = children_[i];
+    if (skip_overlay_content && IsOverlayUI(ui)) {
+      continue;
+    }
     if (!ui->ShouldHitTest()) {
       continue;
     }
@@ -2365,18 +2535,21 @@ EventTarget* UIBase::HitTest(float point[2]) {
   }
 
   EventTarget* best_hittest_target =
-      target ? target->HitTest(target_point) : this;
+      target ? static_cast<UIBase*>(target)->HitTestInternal(
+                   target_point, skip_overlay_content)
+             : this;
   if (!best_hittest_target ||
       best_hittest_target->PointerEvents() == LynxPointerEventsValue::kNone) {
     best_hittest_target = nullptr;
     for (auto it = sibling_targets.begin(); it != sibling_targets.end(); ++it) {
-      EventTarget* sibling = *it;
+      UIBase* sibling = *it;
       if (!sibling || sibling == target) {
         continue;
       }
       float sibling_point[] = {origin_point[0], origin_point[1]};
       sibling->GetPointInTarget(sibling_point, this, origin_point);
-      best_hittest_target = sibling->HitTest(sibling_point);
+      best_hittest_target =
+          sibling->HitTestInternal(sibling_point, skip_overlay_content);
       if (!best_hittest_target || best_hittest_target->PointerEvents() ==
                                       LynxPointerEventsValue::kNone) {
         best_hittest_target = nullptr;

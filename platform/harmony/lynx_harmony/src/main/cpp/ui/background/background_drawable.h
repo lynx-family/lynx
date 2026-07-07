@@ -9,6 +9,7 @@
 #include <native_drawing/drawing_path.h>
 #include <native_drawing/drawing_types.h>
 
+#include <array>
 #include <memory>
 #include <string>
 
@@ -106,6 +107,7 @@ class BackgroundDrawable {
   void SetBorderWidth(const std::array<float, 4>& value);
   void Render(OH_Drawing_Canvas* canvas);
   bool HasShadow();
+  std::array<float, 4> GetBoxShadowOutset(float scale_density) const;
   bool HasBorder() { return has_border_; }
   bool HasImage();
   bool UseClipPath() {

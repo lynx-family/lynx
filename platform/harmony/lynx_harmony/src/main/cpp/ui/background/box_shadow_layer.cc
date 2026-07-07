@@ -12,6 +12,7 @@
 #include <native_drawing/drawing_path.h>
 
 #include <algorithm>
+#include <cmath>
 #include <limits>
 
 #include "base/include/float_comparison.h"
@@ -21,6 +22,7 @@ namespace lynx {
 namespace tasm {
 namespace harmony {
 static const float kBLUR_SIGMA_SCALE = 0.57735f;
+static const float kBLUR_OUTSET_SIGMA_MULTIPLIER = 3.0f;
 void BoxShadowLayer::DrawInsetLayer(OH_Drawing_Canvas* canvas) {
   for (int i = shadow_list_.size() - 1; i >= 0; --i) {
     if (shadow_list_.at(i)->is_inset) {
@@ -67,6 +69,33 @@ void BoxShadowLayer::UpdateShadowData(const lepus::Value& data) {
 }
 
 bool BoxShadowLayer::HasShadow() { return !shadow_list_.empty(); }
+
+std::array<float, 4> BoxShadowLayer::GetOutset(float scale_density) const {
+  if (scale_density <= 0.f) {
+    scale_density = 1.f;
+  }
+  std::array<float, 4> outset{0.f, 0.f, 0.f, 0.f};
+  for (const auto& shadow : shadow_list_) {
+    if (shadow->is_inset) {
+      continue;
+    }
+    float blur_outset = 0.f;
+    if (shadow->blur_radius > 0.f) {
+      float blur_sigma =
+          kBLUR_SIGMA_SCALE * shadow->blur_radius * scale_density + 0.5f;
+      blur_outset = kBLUR_OUTSET_SIGMA_MULTIPLIER * blur_sigma / scale_density;
+    }
+    float extent = blur_outset + shadow->spread_radius;
+    outset[0] = std::max(outset[0], std::max(0.f, extent - shadow->offset_x));
+    outset[1] = std::max(outset[1], std::max(0.f, extent - shadow->offset_y));
+    outset[2] = std::max(outset[2], std::max(0.f, extent + shadow->offset_x));
+    outset[3] = std::max(outset[3], std::max(0.f, extent + shadow->offset_y));
+  }
+  for (auto& value : outset) {
+    value = std::ceil(value);
+  }
+  return outset;
+}
 
 void BoxShadowLayer::UpdateShadowDrawer(float left, float top, float width,
                                         float height, BorderRadius* radius,
