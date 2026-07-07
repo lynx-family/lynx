@@ -76,6 +76,7 @@ public class PageConfig {
   private static final String KEY_ENABLE_FIBER = "enableFiber";
   private static final String KEY_ENABLE_MULTITOUCH = "enableMultiTouch";
   private static final String KEY_ENABLE_LYNX_SCROLL_FLUENCY = "enableLynxScrollFluency";
+  private static final String KEY_ENABLE_FSP = "enableFSP";
   private static final String KEY_ENABLE_FLATTEN_TRANSLATE_Z = "enableFlattenTranslateZ";
   private static final String KEY_MAP_CONTAINER_TYPE = "mapContainerType";
   private static final String KEY_ENABLE_TEXT_LAYOUT_CACHE = "enableTextLayoutCache";
@@ -142,6 +143,9 @@ public class PageConfig {
   private String mGit;
   private String mFilePath;
   private double mEnableLynxScrollFluency = -1d;
+  // Resolve the global fallback when this page config is created. A page-level
+  // value below only changes this instance and is never written to LynxEnv.
+  private boolean mEnableFSP = LynxEnv.inst().enableFSP();
   private boolean mEnableTextLayoutCache = true;
   private boolean mEnableTransformedTouchPosition = false;
   private boolean mEnableNewSticky = false;
@@ -366,6 +370,10 @@ public class PageConfig {
 
       if (map.hasKey(KEY_ENABLE_LYNX_SCROLL_FLUENCY)) {
         mEnableLynxScrollFluency = map.getDouble(KEY_ENABLE_LYNX_SCROLL_FLUENCY);
+      }
+
+      if (map.hasKey(KEY_ENABLE_FSP)) {
+        mEnableFSP = map.getBoolean(KEY_ENABLE_FSP);
       }
 
       if (map.hasKey(KEY_ENABLE_TEXT_LAYOUT_CACHE)) {
@@ -618,6 +626,10 @@ public class PageConfig {
 
   public double getEnableLynxScrollFluency() {
     return mEnableLynxScrollFluency;
+  }
+
+  public boolean isFSPEnabled() {
+    return mEnableFSP;
   }
 
   public boolean getEnableTransformedTouchPosition() {

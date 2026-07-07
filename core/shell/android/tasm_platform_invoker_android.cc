@@ -78,6 +78,7 @@ constexpr const char* kEnableLepusNg = "enableLepusNG";
 constexpr const char* kTapSlop = "tapSlop";
 constexpr const char* kDefaultOverflowVisible = "defaultOverflowVisible";
 constexpr const char* kEnableLynxScrollFluency = "enableLynxScrollFluency";
+constexpr const char* kEnableFSP = "enableFSP";
 
 constexpr const char* kEnableCreateViewAsync = "enableCreateViewAsync";
 constexpr const char* kEnableVsyncAlignedFlush = "enableVsyncAlignedFlush";
@@ -175,6 +176,10 @@ base::android::JavaOnlyMap TasmPlatformInvokerAndroid::ConvertToJavaOnlyMap(
                           config->GetDefaultOverflowVisible());
   java_config.PushDouble(kEnableLynxScrollFluency,
                          config->GetEnableScrollFluencyMonitor());
+  if (config->GetEnableFSP() != tasm::TernaryBool::UNDEFINE_VALUE) {
+    java_config.PushBoolean(
+        kEnableFSP, config->GetEnableFSP() == tasm::TernaryBool::TRUE_VALUE);
+  }
   java_config.PushBoolean(kEnableCreateViewAsync,
                           config->GetEnableCreateViewAsync());
   java_config.PushBoolean(kEnableVsyncAlignedFlush,

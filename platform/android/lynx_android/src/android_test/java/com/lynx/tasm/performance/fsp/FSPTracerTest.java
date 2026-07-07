@@ -33,10 +33,12 @@ public class FSPTracerTest {
   @Before
   public void setUp() {
     setField(LynxEnv.class, LynxEnv.inst(), "mEnableFSP", true);
+    when(mockPerfController.isFSPEnabled()).thenReturn(true);
     // Create tracer with mocked performance controller
     tracer = new FSPTracer(mockPerfController);
     // Setup config
-    config = (FSPConfig) getField(FSPTracer.class, tracer, "mConfig");
+    config = new FSPConfig();
+    setField(FSPTracer.class, tracer, "mConfig", config);
     config.parse();
     config.minContentFillPercentageX = 30;
     config.minContentFillPercentageY = 30;
@@ -51,6 +53,19 @@ public class FSPTracerTest {
   @Test
   public void testConstructor() {
     assertNotNull(tracer);
+  }
+
+  @Test
+  public void testDisabledFSPDoesNotCreateConfig() {
+    when(mockPerfController.isFSPEnabled()).thenReturn(false);
+
+    FSPTracer disabledTracer = new FSPTracer(mockPerfController);
+    disabledTracer.start(mockCaptureHandler);
+
+    AtomicBoolean isRunning =
+        (AtomicBoolean) getField(FSPTracer.class, disabledTracer, "mIsRunning");
+    assertFalse(isRunning.get());
+    assertNull(getField(FSPTracer.class, disabledTracer, "mConfig"));
   }
 
   @Test
