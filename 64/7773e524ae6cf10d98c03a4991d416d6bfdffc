@@ -1,0 +1,43 @@
+lynx/platform/android/api/lynx_android.api
+  s_d9174f3ef39f5a::t_72de9302944f7a 273-274,4288-4290
+lynx/platform/android/lynx_android/src/android_test/java/com/lynx/tasm/behavior/ui/scroll/LynxUIScrollViewTest.java
+  s_d9174f3ef39f5a::t_8f716cf19d830c 173-185
+lynx/platform/android/lynx_android/src/android_test/java/com/lynx/tasm/behavior/ui/scroll/base/LynxBaseScrollViewScrollingTest.java
+  s_d9174f3ef39f5a::t_949fd3e178c167 78-88
+lynx/platform/android/lynx_android/src/main/java/com/lynx/tasm/behavior/KeyboardEvent.java
+  s_d9174f3ef39f5a::t_d4ac5696f7f2ad 18-19,21-25,219,234-243,385-397,456,461-469,498-500,583-1266,1389-1390,1393,1434-1435,1563,1577,1589
+lynx/platform/android/lynx_android/src/main/java/com/lynx/tasm/behavior/ui/scroll/LynxUIScrollViewInternal.java
+  s_d9174f3ef39f5a::t_973ca2cd9df5c4 370-372
+lynx/platform/android/lynx_android/src/main/java/com/lynx/tasm/behavior/ui/scroll/base/LynxBaseScrollViewScrolling.java
+  s_d9174f3ef39f5a::t_db4e1b4a4969f2 36-37,81-92
+lynx/platform/darwin/ios/api/lynx_ios.api
+  s_d9174f3ef39f5a::t_ff79e9cd0395a4 3499
+lynx/platform/darwin/ios/lynx/event/LynxKeyboardEventDispatcher.m
+  s_d9174f3ef39f5a::t_107abd56c8c797 5-6,9-12,31-42,49-51,53-56,62,103-129,139,149-153,169-180,189,206,226,263-276,285-291,321-683
+lynx/platform/darwin/ios/lynx/public/ui/scroll_view/LynxScrollView.h
+  s_d9174f3ef39f5a::t_23e1af0cdfeae3 20
+lynx/platform/darwin/ios/lynx/ui/scroll_view/LynxScrollView.m
+  s_d9174f3ef39f5a::t_f79072fb9f2616 10-13
+lynx/platform/darwin/ios/lynx/ui/scroll_view/LynxUIScroller.m
+  s_d9174f3ef39f5a::t_113e912f4be737 375
+lynx/platform/darwin/ios/lynx/ui/scroll_view/LynxUIScrollerUnitTest.m
+  s_d9174f3ef39f5a::t_c684b27c810730 7,69-92
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.5",
+  "base_commit_sha": "647773e524ae6cf10d98c03a4991d416d6bfdffc",
+  "prompts": {},
+  "sessions": {
+    "s_d9174f3ef39f5a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f27ed-f70d-7e60-aaa6-6b56a5b23bb9",
+        "model": "unknown"
+      },
+      "human_author": "mooface <xiamengfei.moonface@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}
