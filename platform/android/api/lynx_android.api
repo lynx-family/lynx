@@ -5947,6 +5947,7 @@ public class com::lynx::tasm::behavior::ui::image::LynxImageManager : Drawable.C
   public void com.lynx.tasm.behavior.ui.image.LynxImageManager.setImageConfig(Bitmap.Config config);
   public void com.lynx.tasm.behavior.ui.image.LynxImageManager.setAutoPlay(boolean autoPlay);
   public void com.lynx.tasm.behavior.ui.image.LynxImageManager.setTintColor(String color);
+  public void com.lynx.tasm.behavior.ui.image.LynxImageManager.setImageTransitionStyle(String style);
   public void com.lynx.tasm.behavior.ui.image.LynxImageManager.setAsyncRequest(boolean enable);
   public void com.lynx.tasm.behavior.ui.image.LynxImageManager.setPreFetchWidth(String width);
   public void com.lynx.tasm.behavior.ui.image.LynxImageManager.setCapInsetsScale(String capInsetsScale);

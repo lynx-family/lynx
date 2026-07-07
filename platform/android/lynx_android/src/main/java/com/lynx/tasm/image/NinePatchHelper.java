@@ -135,6 +135,13 @@ public class NinePatchHelper {
   public static boolean drawNinePatch(int availableWidth, int availableHeight, int sourceWidth,
       int sourceHeight, ScalingUtils.ScaleType scaleType, String capInsets, String capInsetsScale,
       Canvas canvas, Bitmap bitmap) {
+    return drawNinePatch(availableWidth, availableHeight, sourceWidth, sourceHeight, scaleType,
+        capInsets, capInsetsScale, canvas, bitmap, 255);
+  }
+
+  static boolean drawNinePatch(int availableWidth, int availableHeight, int sourceWidth,
+      int sourceHeight, ScalingUtils.ScaleType scaleType, String capInsets, String capInsetsScale,
+      Canvas canvas, Bitmap bitmap, int alpha) {
     TraceEvent.beginSection(TraceEventDef.NINE_PATCH_HELPER_DRAW_NINE_PATH);
     boolean drawn = false;
     try {
@@ -149,10 +156,10 @@ public class NinePatchHelper {
       }
       if (!useCapInsets) {
         Matrix m = getMatrix(availableWidth, availableHeight, sourceWidth, sourceHeight, scaleType);
-        canvas.drawBitmap(bitmap, m, null);
+        canvas.drawBitmap(bitmap, m, createBitmapPaint(alpha, false));
       } else {
         drawWithCapInsets(availableWidth, availableHeight, sourceWidth, sourceHeight, scaleType,
-            floatCapInsetsArr, floatCapInsetsScale, canvas, bitmap);
+            floatCapInsetsArr, floatCapInsetsScale, canvas, bitmap, alpha);
       }
       drawn = true;
     } catch (Throwable e) {
@@ -164,7 +171,7 @@ public class NinePatchHelper {
 
   private static void drawWithCapInsets(int availableWidth, int availableHeight, int sourceWidth,
       int sourceHeight, ScalingUtils.ScaleType scaleType, float[] capInsets, float capInsetsScale,
-      Canvas canvas, Bitmap bitmap) {
+      Canvas canvas, Bitmap bitmap, int alpha) {
     TraceEvent.beginSection(TraceEventDef.NINE_PATCH_HELPER_DRAW_WITH_CAP_INSETS);
     Rect src0 = new Rect(
         0, 0, (int) (capInsets[3] * capInsetsScale), (int) (capInsets[0] * capInsetsScale));
@@ -278,7 +285,7 @@ public class NinePatchHelper {
     dest8.right = dest5.right;
     dest8.bottom = dest7.bottom;
 
-    Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    Paint paint = createBitmapPaint(alpha, true);
     canvas.drawBitmap(bitmap, src0, dest0, paint);
     canvas.drawBitmap(bitmap, src1, dest1, paint);
     canvas.drawBitmap(bitmap, src2, dest2, paint);
@@ -290,5 +297,14 @@ public class NinePatchHelper {
     canvas.drawBitmap(bitmap, src8, dest8, paint);
 
     TraceEvent.endSection(TraceEventDef.NINE_PATCH_HELPER_DRAW_WITH_CAP_INSETS);
+  }
+
+  private static Paint createBitmapPaint(int alpha, boolean forceCreate) {
+    if (!forceCreate && alpha == 255) {
+      return null;
+    }
+    Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    paint.setAlpha(alpha);
+    return paint;
   }
 }

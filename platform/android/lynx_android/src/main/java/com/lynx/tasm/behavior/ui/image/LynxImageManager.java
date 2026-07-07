@@ -13,6 +13,7 @@ import android.graphics.Rect;
 import android.graphics.RectF;
 import android.graphics.drawable.Drawable;
 import android.os.Looper;
+import android.os.SystemClock;
 import android.text.TextUtils;
 import android.util.Log;
 import android.view.View;
@@ -74,6 +75,8 @@ import org.json.JSONObject;
 
 public class LynxImageManager implements Drawable.Callback {
   public static final String TAG = "LynxImageManager";
+  private static final String FADE_IN_STYLE = "fadeIn";
+  private static final int FADE_IN_DURATION_MS = 300;
 
   public static final int kFlagImageLoadEvent = 1;
   public static final int kFlagImageErrorEvent = 1 << 1;
@@ -142,6 +145,10 @@ public class LynxImageManager implements Drawable.Callback {
   private Bitmap.Config mBitmapConfig;
 
   private boolean mAutoPlay = true;
+
+  private int mFadeDurationMs = 0;
+
+  private long mImageFadeStartTimeMs = -1;
 
   private String mTintColor;
 
@@ -381,6 +388,7 @@ public class LynxImageManager implements Drawable.Callback {
         mImageDrawable.setColorFilter(mColorFilter);
       }
       configureBounds(mImageDrawable);
+      startImageTransitionIfNeeded();
       onImageLoadSuccess(mImageWidth, mImageHeight);
       reportImageSuccess(imageInfo);
       invalidate();
@@ -579,6 +587,14 @@ public class LynxImageManager implements Drawable.Callback {
     }
   }
 
+  public void setImageTransitionStyle(String style) {
+    if (FADE_IN_STYLE.equals(style)) {
+      mFadeDurationMs = FADE_IN_DURATION_MS;
+    } else {
+      mFadeDurationMs = 0;
+    }
+  }
+
   public void setAsyncRequest(boolean enable) {
     if (mEnableAsyncRequest != enable) {
       mEnableAsyncRequest = enable;
@@ -719,6 +735,9 @@ public class LynxImageManager implements Drawable.Callback {
           break;
         case PropsConstants.PLACEHOLDER:
           setPlaceholder(props.getString(name));
+          break;
+        case PropsConstants.IMAGE_TRANSITION_STYLE:
+          setImageTransitionStyle(props.getString(name));
           break;
         case PropsConstants.PRE_FETCH_HEIGHT:
           setPreFetchHeight(props.getString(name));
@@ -1152,10 +1171,40 @@ public class LynxImageManager implements Drawable.Callback {
     if (mPlaceholderDrawable != null) {
       mPlaceholderDrawable.draw(canvas);
     }
-    if (mImageDrawable != null) {
-      mImageDrawable.draw(canvas);
-    }
+    drawImageWithTransition(canvas);
     canvas.restore();
+  }
+
+  private void startImageTransitionIfNeeded() {
+    if (mFadeDurationMs > 0) {
+      mImageFadeStartTimeMs = SystemClock.uptimeMillis();
+    } else {
+      mImageFadeStartTimeMs = -1;
+    }
+  }
+
+  private void drawImageWithTransition(Canvas canvas) {
+    if (mImageDrawable == null) {
+      return;
+    }
+    if (mImageFadeStartTimeMs < 0 || mFadeDurationMs <= 0) {
+      mImageDrawable.draw(canvas);
+      return;
+    }
+
+    long elapsedMs = SystemClock.uptimeMillis() - mImageFadeStartTimeMs;
+    if (elapsedMs >= mFadeDurationMs) {
+      mImageFadeStartTimeMs = -1;
+      mImageDrawable.setAlpha(255);
+      mImageDrawable.draw(canvas);
+      return;
+    }
+
+    int alpha = (int) (255 * elapsedMs / mFadeDurationMs);
+    mImageDrawable.setAlpha(alpha);
+    mImageDrawable.draw(canvas);
+    mImageDrawable.setAlpha(255);
+    invalidate();
   }
 
   private void configureBounds(Drawable drawable) {
