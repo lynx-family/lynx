@@ -8,16 +8,11 @@ import android.graphics.Matrix;
 import android.view.View;
 import com.lynx.devtool.framecapture.FrameCapturer;
 import com.lynx.devtoolwrapper.ScreenshotBitmapHandler;
-import com.lynx.tasm.base.CalledByNative;
 import com.lynx.tasm.base.TraceEvent;
 import com.lynx.tasm.utils.BitmapUtils;
 
 public class FrameViewTrace extends FrameCapturer {
-  private long mNativeFrameViewTrace = 0;
-
-  public FrameViewTrace() {
-    mNativeFrameViewTrace = nativeCreateFrameViewTrace();
-  }
+  public FrameViewTrace() {}
 
   private static class FrameViewTraceLoader {
     private static final FrameViewTrace INSTANCE = new FrameViewTrace();
@@ -57,27 +52,7 @@ public class FrameViewTrace extends FrameCapturer {
   }
 
   @Override
-  protected void onNewScreenshotBitmapData(String data) {
-    if (isEnabled()) {
-      FrameTraceService.getInstance().screenshot(data);
-    }
-  }
-
-  @CalledByNative
-  public void startFrameViewTrace() {
-    super.startFrameViewTrace();
-  }
-
-  @CalledByNative
-  public void stopFrameViewTrace() {
-    super.stopFrameViewTrace();
-  }
-
-  public long getNativeFrameViewTrace() {
-    return mNativeFrameViewTrace;
-  }
-
-  private native long nativeCreateFrameViewTrace();
+  protected void onNewScreenshotBitmapData(String data) {}
 
   protected void screenshot(final View view, ScreenshotBitmapHandler handler) {
     String data = takeScreenshot(view);

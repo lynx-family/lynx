@@ -7,9 +7,6 @@ import android.util.Log;
 import androidx.annotation.Keep;
 import com.lynx.devtool.memory.MemoryController;
 import com.lynx.devtool.memory.MemoryUsageResultSerializer;
-import com.lynx.devtool.tracing.FPSTrace;
-import com.lynx.devtool.tracing.FrameViewTrace;
-import com.lynx.devtool.tracing.InstanceTrace;
 import com.lynx.tasm.LynxEnv;
 import com.lynx.tasm.base.CalledByNative;
 import com.lynx.tasm.base.LLog;
@@ -71,21 +68,6 @@ public class GlobalDevToolPlatformAndroidDelegate {
   @CalledByNative
   public static long getTraceController() {
     return TraceController.getInstance().getNativeTraceController();
-  }
-
-  @CalledByNative
-  public static long getFPSTracePlugin() {
-    return FPSTrace.getInstance().getNativeFPSTrace();
-  }
-
-  @CalledByNative
-  public static long getFrameViewTracePlugin() {
-    return FrameViewTrace.getInstance().getNativeFrameViewTrace();
-  }
-
-  @CalledByNative
-  public static long getInstanceTracePlugin() {
-    return InstanceTrace.getInstance().getNativeInstanceTrace();
   }
 
   @CalledByNative

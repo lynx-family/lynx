@@ -4,23 +4,15 @@
 
 #import <Lynx/LynxTraceEvent.h>
 #import <Lynx/LynxUIKitAPIAdapter.h>
-#import <LynxDevtool/LynxFrameTraceService.h>
 #import <LynxDevtool/LynxFrameViewTrace.h>
 #include <mach/mach_time.h>
 #include <chrono>
-
-#if ENABLE_TRACE_PERFETTO || ENABLE_TRACE_SYSTRACE
-#import "tracing/platform/frameview_trace_plugin_darwin.h"
-#endif
 
 @implementation LynxFrameViewTrace {
   // compress quality of a picture, default is 70
   int _defaultScreenshotQuality;
   // Maximum number of pixels of a picture, default is 256000 pixels
   int _maxScreenshotAreaSize;
-#if ENABLE_TRACE_PERFETTO || ENABLE_TRACE_SYSTRACE
-  std::unique_ptr<lynx::trace::TracePlugin> _frameview_trace_plugin;
-#endif
 }
 
 + (instancetype)shareInstance {
@@ -37,9 +29,6 @@
     _defaultScreenshotQuality = 70;
     _maxScreenshotAreaSize = 256000;
     self.delegate = self;
-#if ENABLE_TRACE_PERFETTO || ENABLE_TRACE_SYSTRACE
-    _frameview_trace_plugin = std::make_unique<lynx::trace::FrameViewTracePluginDarwin>();
-#endif
   }
   return self;
 }
@@ -121,18 +110,10 @@
 #endif
 
 - (void)onNewSnapshot:(NSString*)data {
-  [[LynxFrameTraceService shareInstance] screenshot:data];
 }
 
 - (void)onFrameChanged {
   [self screenshot];
-}
-
-- (intptr_t)getFrameViewTracePlugin {
-#if ENABLE_TRACE_PERFETTO || ENABLE_TRACE_SYSTRACE
-  return reinterpret_cast<intptr_t>(_frameview_trace_plugin.get());
-#endif
-  return 0;
 }
 
 @end

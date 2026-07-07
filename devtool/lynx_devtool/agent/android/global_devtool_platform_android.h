@@ -25,9 +25,6 @@ class GlobalDevToolPlatformAndroid : public GlobalDevToolPlatformFacade {
 #if ENABLE_TRACE_PERFETTO || ENABLE_TRACE_SYSTRACE
   // The following functions are used for tracing agent.
   lynx::trace::TraceController* GetTraceController() override;
-  lynx::trace::TracePlugin* GetFPSTracePlugin() override;
-  lynx::trace::TracePlugin* GetFrameViewTracePlugin() override;
-  lynx::trace::TracePlugin* GetInstanceTracePlugin() override;
   std::string GetLynxVersion() override;
 #endif
 

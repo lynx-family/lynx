@@ -440,21 +440,9 @@ void LynxGlobalDevToolMediator::TracingStart(
         return;
       }
 
-      controller->AddTracePlugin(
-          GlobalDevToolPlatformFacade::GetInstance().GetFPSTracePlugin());
-      controller->AddTracePlugin(
-          GlobalDevToolPlatformFacade::GetInstance().GetInstanceTracePlugin());
-
       if (config->js_profile_interval > 0) {
         controller->AddTracePlugin(
             lynx::runtime::profile::GetRuntimeProfilerManager());
-      }
-      if (std::find(config->included_categories.begin(),
-                    config->included_categories.end(),
-                    LYNX_TRACE_CATEGORY_SCREENSHOTS) !=
-          config->included_categories.end()) {
-        controller->AddTracePlugin(GlobalDevToolPlatformFacade::GetInstance()
-                                       .GetFrameViewTracePlugin());
       }
       this->tracing_session_id_ = controller->StartTracing(config);
       if (this->tracing_session_id_ > 0) {

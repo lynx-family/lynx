@@ -157,29 +157,6 @@ GlobalDevToolPlatformAndroid::GetTraceController() {
   return reinterpret_cast<lynx::trace::TraceController*>(res);
 }
 
-lynx::trace::TracePlugin* GlobalDevToolPlatformAndroid::GetFPSTracePlugin() {
-  JNIEnv* env = lynx::base::android::AttachCurrentThread();
-  intptr_t res =
-      Java_GlobalDevToolPlatformAndroidDelegate_getFPSTracePlugin(env);
-  return reinterpret_cast<lynx::trace::TracePlugin*>(res);
-}
-
-lynx::trace::TracePlugin*
-GlobalDevToolPlatformAndroid::GetFrameViewTracePlugin() {
-  JNIEnv* env = lynx::base::android::AttachCurrentThread();
-  intptr_t res =
-      Java_GlobalDevToolPlatformAndroidDelegate_getFrameViewTracePlugin(env);
-  return reinterpret_cast<lynx::trace::TracePlugin*>(res);
-}
-
-lynx::trace::TracePlugin*
-GlobalDevToolPlatformAndroid::GetInstanceTracePlugin() {
-  JNIEnv* env = lynx::base::android::AttachCurrentThread();
-  intptr_t res =
-      Java_GlobalDevToolPlatformAndroidDelegate_getInstanceTracePlugin(env);
-  return reinterpret_cast<lynx::trace::TracePlugin*>(res);
-}
-
 std::string GlobalDevToolPlatformAndroid::GetLynxVersion() {
   JNIEnv* env = lynx::base::android::AttachCurrentThread();
   auto lynx_version =

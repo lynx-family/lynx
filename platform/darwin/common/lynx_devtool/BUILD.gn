@@ -51,14 +51,8 @@ subspec_target("devtool") {
     "Module/LynxDevToolSetModule.mm",
     "Module/LynxTrailModule.mm",
     "Module/LynxWebSocketModule.mm",
-    "Tracing/LynxFPSTrace.h",
-    "Tracing/LynxFPSTrace.mm",
-    "Tracing/LynxFrameTraceService.h",
-    "Tracing/LynxFrameTraceService.mm",
     "Tracing/LynxFrameViewTrace.h",
     "Tracing/LynxFrameViewTrace.mm",
-    "Tracing/LynxInstanceTrace.h",
-    "Tracing/LynxInstanceTrace.mm",
   ]
   sources += devtool_public_headers
   public_header_files = devtool_public_headers
