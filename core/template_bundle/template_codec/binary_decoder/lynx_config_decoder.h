@@ -62,6 +62,12 @@ class LynxConfigDecoder final {
       page_config->SetPreferredFps(doc[config::kPreferredFps].GetString());
     }
 
+    if (doc.HasMember(config::kEnableFSP) && doc[config::kEnableFSP].IsBool()) {
+      page_config->SetEnableFSP(doc[config::kEnableFSP].GetBool()
+                                    ? TernaryBool::TRUE_VALUE
+                                    : TernaryBool::FALSE_VALUE);
+    }
+
     if (doc.HasMember(config::kLepusGCThreshold) &&
         doc[config::kLepusGCThreshold].IsInt64()) {
       page_config->SetLepusGCThreshold(

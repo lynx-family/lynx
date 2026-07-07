@@ -228,6 +228,30 @@ TEST_F(LynxBinaryConfigDecoderTest, ReadDebugMetadataUrl) {
             "https://example.com/debug-info.json");
 }
 
+TEST_F(LynxBinaryConfigDecoderTest, ReadEnableFSP) {
+  EXPECT_EQ(page_config_->GetEnableFSP(), TernaryBool::UNDEFINE_VALUE);
+
+  config_decoder_->DecodePageConfig("{\n  \"enableFSP\" : true\n}",
+                                    page_config_);
+  EXPECT_EQ(page_config_->GetEnableFSP(), TernaryBool::TRUE_VALUE);
+
+  config_decoder_->DecodePageConfig("{\n  \"enableFSP\" : false\n}",
+                                    page_config_);
+  EXPECT_EQ(page_config_->GetEnableFSP(), TernaryBool::FALSE_VALUE);
+}
+
+TEST_F(LynxBinaryConfigDecoderTest,
+       NativeEnableFSPOnlyFillsUndefinedPageConfig) {
+  page_config_->DecodePageConfigFromJsonStringWhileUndefined(
+      "{\n  \"enableFSP\" : true\n}");
+  EXPECT_EQ(page_config_->GetEnableFSP(), TernaryBool::TRUE_VALUE);
+
+  page_config_->SetEnableFSP(TernaryBool::FALSE_VALUE);
+  page_config_->DecodePageConfigFromJsonStringWhileUndefined(
+      "{\n  \"enableFSP\" : true\n}");
+  EXPECT_EQ(page_config_->GetEnableFSP(), TernaryBool::FALSE_VALUE);
+}
+
 TEST_F(LynxBinaryConfigDecoderTest,
        ReportGlobalFeatureSwitchReportsOriginalConfigString) {
   ScopedGlobalFeatureSwitchStatisticEnv scoped_env;
