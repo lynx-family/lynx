@@ -12,9 +12,13 @@ import com.lynx.jsbridge.network.LynxFetchModuleEventSender;
 import com.lynx.react.bridge.Callback;
 import com.lynx.react.bridge.JavaOnlyMap;
 import com.lynx.react.bridge.ReadableMap;
+import com.lynx.tasm.base.TraceEvent;
+import com.lynx.tasm.base.trace.TraceEventDef;
 import com.lynx.tasm.service.ILynxHttpService;
 import com.lynx.tasm.service.LynxHttpRequestCallback;
 import com.lynx.tasm.service.LynxServiceCenter;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class LynxFetchModule extends LynxModule {
@@ -72,9 +76,22 @@ public class LynxFetchModule extends LynxModule {
     }, delegate);
   }
 
+  private void traceFetchRequest(String url) {
+    if (!TraceEvent.isTracingStarted()) {
+      return;
+    }
+    Map<String, String> props = new HashMap<>();
+    props.put("url", url != null ? url : "");
+    props.put("module_name", NAME);
+    props.put("method_name", "fetch");
+    TraceEvent.instant(
+        TraceEvent.CATEGORY_DEFAULT, TraceEventDef.NATIVE_MODULE_NETWORK_REQUEST, props);
+  }
+
   @LynxMethod
   public void fetch(final ReadableMap request, final Callback resolve, final Callback reject) {
     String url = request.getString("url", "");
+    traceFetchRequest(url);
 
     HttpRequest httpRequest = new HttpRequest();
     httpRequest.setHttpMethod(request.getString("method", ""));
