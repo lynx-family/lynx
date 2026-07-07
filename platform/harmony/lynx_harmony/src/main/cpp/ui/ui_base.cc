@@ -7,6 +7,7 @@
 #include <arkui/native_node.h>
 #include <deviceinfo.h>
 #include <multimedia/image_framework/image/image_packer_native.h>
+#include <native_drawing/drawing_canvas.h>
 
 #include <algorithm>
 #include <cmath>
@@ -839,6 +840,9 @@ void UIBase::OnNodeReady() {
         0, 0, width_, height_, padding_left_, padding_top_, padding_right_,
         padding_bottom_, context_->ScaledDensity());
     background_drawable_->AdjustBorder();
+    if (draw_node_ && ShouldDrawOverlayShadowWithDrawNode()) {
+      FrameDidChanged();
+    }
     Invalidate();
   }
 
@@ -940,6 +944,10 @@ void UIBase::OnNodeReady() {
       NodeManager::Instance().SetAttributeWithNumberValue(
           Node(), NODE_BACKGROUND_COLOR, background_color_);
     }
+  }
+  if (has_background_color_ && ShouldDrawOverlayShadowWithDrawNode()) {
+    NodeManager::Instance().ResetAttribute(Node(), NODE_BACKGROUND_COLOR);
+    has_background_color_ = false;
   }
 
   // Attribute for accessibility
@@ -1273,12 +1281,24 @@ void UIBase::OnDraw(OH_Drawing_Canvas* canvas, ArkUI_NodeHandle node) {
   // the event matches.
   bool need_draw = draw_node_ ? node == draw_node_ : node == Node();
   if (need_draw) {
+    if (draw_node_ && ShouldDrawOverlayShadowWithDrawNode()) {
+      auto outset = GetOverlayShadowOutset();
+      OH_Drawing_CanvasSave(canvas);
+      OH_Drawing_CanvasTranslate(canvas, outset[0] * context_->ScaledDensity(),
+                                 outset[1] * context_->ScaledDensity());
+      background_drawable_->Render(canvas);
+      OH_Drawing_CanvasRestore(canvas);
+      return;
+    }
     background_drawable_->Render(canvas);
   }
 }
 
 void UIBase::OnDrawBehind(OH_Drawing_Canvas* canvas, ArkUI_NodeHandle node) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, UIBASE_ON_DRAW_BEHIND);
+  if (draw_node_ && ShouldDrawOverlayShadowWithDrawNode()) {
+    return;
+  }
   if (background_drawable_) {
     background_drawable_->Render(canvas);
   }
@@ -2114,6 +2134,10 @@ bool UIBase::NeedDrawNode() {
     return false;
   }
 
+  if (ShouldDrawOverlayShadowWithDrawNode()) {
+    return true;
+  }
+
   if (CanDrawBehind()) {
     if (!NeedClip()) {
       // If clipping is not needed, a draw node is not required
@@ -2152,6 +2176,28 @@ bool UIBase::NeedDrawNode() {
   }
   return background_drawable_->HasBorder() ||
          background_drawable_->HasImage() || background_drawable_->HasShadow();
+}
+
+bool UIBase::ShouldDrawOverlayShadowWithDrawNode() const {
+  if (!background_drawable_ || !background_drawable_->HasShadow()) {
+    return false;
+  }
+  const UIBase* ui = this;
+  while (ui != nullptr && ui->Parent() != ui) {
+    if (ui->IsOverlayContent() || ui->Tag() == "overlay" ||
+        ui->Tag() == "x-overlay-ng") {
+      return true;
+    }
+    ui = ui->Parent();
+  }
+  return false;
+}
+
+std::array<float, 4> UIBase::GetOverlayShadowOutset() const {
+  if (!ShouldDrawOverlayShadowWithDrawNode()) {
+    return {0.f, 0.f, 0.f, 0.f};
+  }
+  return background_drawable_->GetBoxShadowOutset(context_->ScaledDensity());
 }
 
 void UIBase::AttachToNodeContent(NativeNodeContent* content) {
@@ -2236,6 +2282,17 @@ void UIBase::UpdateDrawNodeFrame() {
   auto size = NodeManager::Instance().GetAttribute(Node(), NODE_SIZE);
   float width = size->value[0].f32;
   float height = size->value[1].f32;
+  if (ShouldDrawOverlayShadowWithDrawNode()) {
+    auto outset = GetOverlayShadowOutset();
+    NodeManager::Instance().SetAttributeWithNumberValue(Node(), NODE_POSITION,
+                                                        outset[0], outset[1]);
+    NodeManager::Instance().SetAttributeWithNumberValue(
+        draw_node_, NODE_SIZE, width + outset[0] + outset[2],
+        height + outset[1] + outset[3]);
+    NodeManager::Instance().SetAttributeWithNumberValue(
+        draw_node_, NODE_POSITION, left_ - outset[0], top_ - outset[1]);
+    return;
+  }
   NodeManager::Instance().SetAttributeWithNumberValue(Node(), NODE_POSITION, 0,
                                                       0);
   NodeManager::Instance().SetAttributeWithNumberValue(draw_node_, NODE_SIZE,
@@ -2251,13 +2308,21 @@ float UIBase::TranslateZ() const {
 }
 
 float UIBase::ViewLeft() const {
-  return NodeManager::Instance().GetAttribute<float>(DrawNode(), NODE_POSITION,
-                                                     0);
+  float left =
+      NodeManager::Instance().GetAttribute<float>(DrawNode(), NODE_POSITION, 0);
+  if (draw_node_ && ShouldDrawOverlayShadowWithDrawNode()) {
+    left = left_;
+  }
+  return left;
 }
 
 float UIBase::ViewTop() const {
-  return NodeManager::Instance().GetAttribute<float>(DrawNode(), NODE_POSITION,
-                                                     1);
+  float top =
+      NodeManager::Instance().GetAttribute<float>(DrawNode(), NODE_POSITION, 1);
+  if (draw_node_ && ShouldDrawOverlayShadowWithDrawNode()) {
+    top = top_;
+  }
+  return top;
 }
 
 // TODO(hexionghui): Remove this later, and replace it with GetPointInTarget.
