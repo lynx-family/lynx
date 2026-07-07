@@ -4656,6 +4656,12 @@ void FiberElement::UpdateDynamicElementStyleRecursively(uint32_t style,
               return true;
             }
 
+            if (IsFiberArch() && css_transition_manager_ &&
+                css_transition_manager_->ConsumeCSSPropertyForActiveTransition(
+                    id, value)) {
+              return true;
+            }
+
             return false;
           });
 

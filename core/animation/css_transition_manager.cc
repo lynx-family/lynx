@@ -813,6 +813,38 @@ bool CSSTransitionManager::NeedsTransition(tasm::CSSPropertyID css_id) {
   return IsShouldTransitionType(property_type);
 }
 
+bool CSSTransitionManager::HasActiveTransition(tasm::CSSPropertyID css_id) {
+  if (!NeedsTransition(css_id)) {
+    return false;
+  }
+  starlight::AnimationPropertyType property_type =
+      GetAnimationPropertyType(css_id);
+  const auto& data =
+      transition_data_.find(static_cast<unsigned int>(property_type));
+  if (data == transition_data_.end()) {
+    return false;
+  }
+  const auto& animation_iterator = animations_map_.find(data->second.name);
+  if (animation_iterator == animations_map_.end() ||
+      animation_iterator->second == nullptr) {
+    return false;
+  }
+  return animation_iterator->second->GetState() != Animation::State::kStop;
+}
+
+bool CSSTransitionManager::ConsumeCSSPropertyForActiveTransition(
+    tasm::CSSPropertyID css_id, const tasm::CSSValue& end_value) {
+  if (!HasActiveTransition(css_id)) {
+    return false;
+  }
+  auto previous_end_value = previous_end_values_.find(css_id);
+  if (previous_end_value != previous_end_values_.end() &&
+      previous_end_value->second == end_value) {
+    return true;
+  }
+  return ConsumeCSSProperty(css_id, end_value);
+}
+
 bool CSSTransitionManager::IsShouldTransitionType(
     starlight::AnimationPropertyType type) {
   return property_types_.find(static_cast<unsigned int>(type)) !=
