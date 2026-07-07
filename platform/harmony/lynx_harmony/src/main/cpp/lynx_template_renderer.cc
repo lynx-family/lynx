@@ -9,6 +9,7 @@
 #include <memory>
 #include <utility>
 
+#include "base/include/fml/platform/harmony/message_loop_harmony.h"
 #include "base/include/log/logging.h"
 #include "base/include/memory/memory_pressure_level.h"
 #include "base/include/notification_center.h"
@@ -743,7 +744,11 @@ napi_value LynxTemplateRenderer::InitGlobalEnv(napi_env env,
   std::call_once(instance_once_flag, [&env, &info]() {
     uv_loop_t* loop;
     napi_get_uv_event_loop(env, &loop);
-    lynx::base::UIThread::Init(loop);
+    base::UIThread::Init(loop);
+
+    auto* ui_loop = static_cast<fml::MessageLoopHarmony*>(
+        base::UIThread::GetRunner()->GetLoop().get());
+    ui_loop->SetupNapiCallback(env);
 
     size_t argc = 1;
     napi_value args[1] = {nullptr};
