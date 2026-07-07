@@ -4,6 +4,7 @@
 
 #ifndef BASE_INCLUDE_STRING_UNICODE_DECODE_UTILS_H_
 #define BASE_INCLUDE_STRING_UNICODE_DECODE_UTILS_H_
+#include <cstddef>
 #include <cstdint>
 #include <string>
 #include <string_view>
@@ -33,10 +34,10 @@ class UnicodeDecodeUtils {
 
   // find the start byte of current unicode char
   static const char* ReverseFindUnicodeCharFirstByte(const char* base,
-                                                     int length);
+                                                     std::size_t length);
 
   // convert current utf-8 char to unicode codepoint, *end = nullptr if invalid
-  static uint32_t ConvertU8ToU32Char(const char* char_start, int length,
+  static uint32_t ConvertU8ToU32Char(const char* char_start, std::size_t length,
                                      const char** end);
 
   // is start byte of a unicode char: 0xxxxxxx, 110xxxxx, 1110xxxx, 11110xxx
