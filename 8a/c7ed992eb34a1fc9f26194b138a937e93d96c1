@@ -1,0 +1,21 @@
+platform/harmony/script/build.py
+  s_337487a73a2a7a::t_4c845c8dd04eb2 226
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8ac7ed992eb34a1fc9f26194b138a937e93d96c1",
+  "prompts": {},
+  "sessions": {
+    "s_337487a73a2a7a": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a30cab0997b5d1b6a748682",
+        "model": "gpt-5.4"
+      },
+      "human_author": "xuze <xuze@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

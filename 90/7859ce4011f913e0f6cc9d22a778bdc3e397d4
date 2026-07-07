@@ -1,0 +1,21 @@
+lynx/pnpm-workspace.yaml
+  s_aaf8e89754edfc::t_edf3f0f50b83b7 4
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "907859ce4011f913e0f6cc9d22a778bdc3e397d4",
+  "prompts": {},
+  "sessions": {
+    "s_aaf8e89754edfc": {
+      "agent_id": {
+        "tool": "trae-cue",
+        "id": "ai_tab-icr-26d2ee9e-4698-4c37-9c57-ef768751153a",
+        "model": "default"
+      },
+      "human_author": "yangguangzhao <yangguangzhao.solace@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}
