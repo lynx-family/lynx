@@ -6771,6 +6771,7 @@ public interface com::lynx::tasm::behavior::LynxShadowNode {
 public class com::lynx::tasm::behavior::ui::list::LynxSnapHelper :  {
   public double com.lynx.tasm.behavior.ui.list.LynxSnapHelper.mSnapAlignmentMillisecondsPerPx mSnapAlignmentMillisecondsPerPx;
   public com.lynx.tasm.behavior.ui.list.LynxSnapHelper.LynxSnapHelper(double snapAlignmentFactor, int snapAlignmentOffset, double snapAlignmentMillisecondsPerPx, LynxSnapHooks snapHooks);
+  public com.lynx.tasm.behavior.ui.list.LynxSnapHelper.LynxSnapHelper(double snapAlignmentFactor, int snapAlignmentOffset, double snapAlignmentMillisecondsPerPx, int maxSnapCount, LynxSnapHooks snapHooks);
   public int[] com.lynx.tasm.behavior.ui.list.LynxSnapHelper.findTargetSnapOffset(int velocityX, int velocityY, boolean isVertical, boolean isRtl);
 }
 

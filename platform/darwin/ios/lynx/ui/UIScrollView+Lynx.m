@@ -6,6 +6,22 @@
 #import <Lynx/UIScrollView+Lynx.h>
 #import <objc/runtime.h>
 
+#include <math.h>
+
+static const NSInteger kLynxItemSnapDefaultMaxSnapCount = 1;
+static const CGFloat kLynxItemSnapFlingDistanceGain = 1.0;
+static const CGFloat kLynxItemSnapVelocityToViewportRatio = 2.0;
+static const CGFloat kLynxItemSnapMillisecondsPerSecond = 1000.0;
+
+@interface LynxItemSnapCandidate : NSObject
+@property(nonatomic, assign) NSInteger position;
+@property(nonatomic, assign) CGFloat offset;
+@property(nonatomic, assign) CGFloat distanceToCurrent;
+@end
+
+@implementation LynxItemSnapCandidate
+@end
+
 @interface LynxCustomScroll : NSObject
 
 @property(readonly, nonatomic, weak) UIScrollView *scrollView;
@@ -433,9 +449,27 @@
                            rtl:(BOOL)rtl
                         factor:(CGFloat)factor
                         offset:(CGFloat)offset
+                  maxSnapCount:(NSInteger)maxSnapCount
                       callback:(UIScrollViewWillSnapToCallback)callback {
   BOOL forward = vertical ? velocity.y >= 0 : velocity.x >= 0;
   BOOL hasVelocity = vertical ? velocity.y != 0 : velocity.x != 0;
+  if (hasVelocity && maxSnapCount > kLynxItemSnapDefaultMaxSnapCount) {
+    CGPoint targetOffset = CGPointZero;
+    NSInteger targetPosition = -1;
+    [self lynx_findMultiStepTargetOffset:&targetOffset
+                                position:&targetPosition
+                                velocity:velocity
+                            visibleItems:visibleItems
+                        getIndexFromView:getIndexFromView
+                                vertical:vertical
+                                  factor:factor
+                                  offset:offset
+                            maxSnapCount:maxSnapCount];
+    if (targetPosition >= 0) {
+      callback(targetPosition, targetOffset);
+      return targetOffset;
+    }
+  }
 
   // A child that is exactly in the position is eligible for both before and after
   __block UIView *closestBeforePosition = nil;
@@ -606,6 +640,173 @@
                                                         isVertical:vertical];
   callback(targetPosition, targetOffset);
   return targetOffset;
+}
+
+- (void)lynx_findMultiStepTargetOffset:(CGPoint *)targetOffset
+                              position:(NSInteger *)targetPosition
+                              velocity:(CGPoint)velocity
+                          visibleItems:(NSArray<UIView *> *)visibleItems
+                      getIndexFromView:(UIScrollViewGetIndexFromView)getIndexFromView
+                              vertical:(BOOL)vertical
+                                factor:(CGFloat)factor
+                                offset:(CGFloat)offset
+                          maxSnapCount:(NSInteger)maxSnapCount {
+  CGFloat viewportSize = vertical ? self.frame.size.height : self.frame.size.width;
+  if (viewportSize <= 0.f) {
+    *targetPosition = -1;
+    return;
+  }
+
+  CGFloat contentOffset = vertical ? self.contentOffset.y : self.contentOffset.x;
+  CGFloat mainAxisVelocity = vertical ? velocity.y : velocity.x;
+  BOOL forward = mainAxisVelocity >= 0.f;
+
+  // Calculate effective distance.
+  CGFloat effectiveDistance =
+      [self lynx_effectiveFlingDistance:mainAxisVelocity * kLynxItemSnapMillisecondsPerSecond
+                           viewportSize:viewportSize];
+  CGFloat projectedOffset = contentOffset + (forward ? effectiveDistance : -effectiveDistance);
+
+  // Collect directional candidates.
+  NSArray<LynxItemSnapCandidate *> *directionalCandidates =
+      [self lynx_snapCandidates:visibleItems
+                  contentOffset:contentOffset
+                        forward:forward
+               getIndexFromView:getIndexFromView
+                       vertical:vertical
+                         factor:factor
+                         offset:offset];
+  if (directionalCandidates.count == 0) {
+    *targetPosition = -1;
+    return;
+  }
+
+  // Sort candidates by distance to current position.
+  NSArray<LynxItemSnapCandidate *> *sortedCandidates = [directionalCandidates
+      sortedArrayUsingComparator:^NSComparisonResult(LynxItemSnapCandidate *_Nonnull lhs,
+                                                     LynxItemSnapCandidate *_Nonnull rhs) {
+        CGFloat lhsDistance = ABS(lhs.distanceToCurrent);
+        CGFloat rhsDistance = ABS(rhs.distanceToCurrent);
+        if (lhsDistance < rhsDistance) {
+          return NSOrderedAscending;
+        }
+        if (lhsDistance > rhsDistance) {
+          return NSOrderedDescending;
+        }
+        return NSOrderedSame;
+      }];
+
+  // Find the best candidate.
+  LynxItemSnapCandidate *firstCandidate = sortedCandidates.firstObject;
+  LynxItemSnapCandidate *bestCandidate = firstCandidate;
+  CGFloat bestDistance = ABS(firstCandidate.offset - projectedOffset);
+  for (LynxItemSnapCandidate *candidate in sortedCandidates) {
+    NSInteger snapCount = ABS(candidate.position - firstCandidate.position) + 1;
+    if (snapCount > maxSnapCount) {
+      continue;
+    }
+    CGFloat distance = ABS(candidate.offset - projectedOffset);
+    if (distance < bestDistance) {
+      bestDistance = distance;
+      bestCandidate = candidate;
+    }
+  }
+
+  *targetPosition = bestCandidate.position;
+  if (vertical) {
+    *targetOffset = CGPointMake(self.contentOffset.x, bestCandidate.offset);
+  } else {
+    *targetOffset = CGPointMake(bestCandidate.offset, self.contentOffset.y);
+  }
+}
+
+- (NSArray<LynxItemSnapCandidate *> *)lynx_snapCandidates:(NSArray<UIView *> *)visibleItems
+                                            contentOffset:(CGFloat)contentOffset
+                                                  forward:(BOOL)forward
+                                         getIndexFromView:
+                                             (UIScrollViewGetIndexFromView)getIndexFromView
+                                                 vertical:(BOOL)vertical
+                                                   factor:(CGFloat)factor
+                                                   offset:(CGFloat)offset {
+  NSMutableArray<LynxItemSnapCandidate *> *candidates = [NSMutableArray array];
+  CGRect scrollviewRect = self.frame;
+  CGFloat startRange = vertical ? -self.contentInset.top : -self.contentInset.left;
+  CGFloat endRange =
+      vertical
+          ? MAX(0, self.contentSize.height - scrollviewRect.size.height + self.contentInset.bottom)
+          : MAX(0, self.contentSize.width - scrollviewRect.size.width + self.contentInset.right);
+  LynxItemSnapCandidate *startCandidate = nil;
+  LynxItemSnapCandidate *endCandidate = nil;
+  CGFloat startCandidateRawOffset = -CGFLOAT_MAX;
+  CGFloat endCandidateRawOffset = CGFLOAT_MAX;
+
+  for (UIView *view in visibleItems) {
+    NSInteger position = getIndexFromView(view);
+    if (position < 0) {
+      continue;
+    }
+
+    CGPoint itemSnapPoint = [self calculateItemSnapPointWithItemFrame:view.frame
+                                                        contentOffset:self.contentOffset
+                                                       scrollviewRect:scrollviewRect
+                                                           snapFactor:factor
+                                                           snapOffset:offset
+                                                           isVertical:vertical];
+    CGFloat itemSnapOffset = vertical ? itemSnapPoint.y : itemSnapPoint.x;
+    CGFloat clampedItemSnapOffset = MAX(startRange, MIN(itemSnapOffset, endRange));
+    CGFloat distanceToCurrent = clampedItemSnapOffset - contentOffset;
+
+    if (!((forward && distanceToCurrent > 0) || (!forward && distanceToCurrent < 0))) {
+      continue;
+    }
+
+    LynxItemSnapCandidate *candidate = [LynxItemSnapCandidate new];
+    candidate.position = position;
+    candidate.offset = clampedItemSnapOffset;
+    candidate.distanceToCurrent = distanceToCurrent;
+
+    // Collapse candidates clamped to the same boundary into one representative item.
+    if (itemSnapOffset <= startRange) {
+      if (!startCandidate || itemSnapOffset > startCandidateRawOffset) {
+        startCandidate = candidate;
+        startCandidateRawOffset = itemSnapOffset;
+      }
+      continue;
+    }
+    if (itemSnapOffset >= endRange) {
+      if (!endCandidate || itemSnapOffset < endCandidateRawOffset) {
+        endCandidate = candidate;
+        endCandidateRawOffset = itemSnapOffset;
+      }
+      continue;
+    }
+    [candidates addObject:candidate];
+  }
+
+  // Add at most one candidate for each scroll boundary.
+  if (startCandidate) {
+    [candidates addObject:startCandidate];
+  }
+  if (endCandidate) {
+    [candidates addObject:endCandidate];
+  }
+  return candidates;
+}
+
+- (CGFloat)lynx_effectiveFlingDistance:(CGFloat)velocity viewportSize:(CGFloat)viewportSize {
+  // This is not UIScrollView's physical fling distance. It is a heuristic distance for choosing
+  // snap candidates.
+  // First, normalize velocity by viewport size:
+  //   normalizedVelocity = abs(velocity) / (viewportSize * 2)
+  // For the same velocity, a smaller viewport produces a larger normalized value, while a larger
+  // viewport produces a smaller one.
+  CGFloat normalizedVelocity =
+      ABS(velocity) / (viewportSize * kLynxItemSnapVelocityToViewportRatio);
+
+  // Then, use log1p(x), which means ln(1 + x), to compress high velocities. A linear
+  // mapping would double the distance when velocity doubles, making fast flings skip too many
+  // items. With ln(1 + x), the distance grows without increasing linearly with velocity.
+  return viewportSize * log1p(normalizedVelocity) * kLynxItemSnapFlingDistanceGain;
 }
 
 @end
