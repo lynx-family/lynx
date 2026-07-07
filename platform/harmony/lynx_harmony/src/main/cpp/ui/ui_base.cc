@@ -1993,9 +1993,100 @@ void UIBase::InvokeMethod(
   }
 }
 
+static bool IsOverlayUI(const UIBase* ui) {
+  return ui != nullptr && (ui->IsOverlayContent() || ui->Tag() == "overlay" ||
+                           ui->Tag() == "x-overlay-ng");
+}
+
+static bool IsOverlayUIOrDescendant(const UIBase* ui) {
+  while (ui != nullptr && ui->Parent() != ui) {
+    if (IsOverlayUI(ui)) {
+      return true;
+    }
+    ui = ui->Parent();
+  }
+  return false;
+}
+
+static void MapOverlayPointWithTransform(float res[2], UIBase* ui) {
+  Transform* transform = ui != nullptr ? ui->GetTransform() : nullptr;
+  if (!transform) {
+    return;
+  }
+  float src[2] = {res[0], res[1]};
+  float dst[2] = {0.f, 0.f};
+  transform->GetTransformMatrix(ui->width_, ui->height_, 1.f, true)
+      .mapPoint(dst, src);
+  res[0] = dst[0];
+  res[1] = dst[1];
+}
+
+static void ConvertOverlayPointFromUIToRootUI(float res[2], UIBase* ui,
+                                              float point[2],
+                                              bool enable_transform) {
+  UIBase* root = ui != nullptr ? ui->GetContext()->Root() : nullptr;
+  if (!ui || !root || ui == root) {
+    res[0] = point[0];
+    res[1] = point[1];
+    return;
+  }
+
+  res[0] = point[0];
+  res[1] = point[1];
+  if (enable_transform) {
+    MapOverlayPointWithTransform(res, ui);
+  }
+
+  while (ui != nullptr && ui->Parent() && ui->Parent() != ui && ui != root) {
+    if (IsOverlayUI(ui)) {
+      break;
+    }
+    res[0] += ui->ViewLeft();
+    res[1] += ui->ViewTop();
+    res[0] -= ui->OffsetXForCalcPosition();
+    res[1] -= ui->OffsetYForCalcPosition();
+    ui = ui->Parent();
+    if (IsOverlayUI(ui)) {
+      break;
+    }
+    res[0] -= ui->ScrollX();
+    res[1] -= ui->ScrollY();
+    if (enable_transform) {
+      MapOverlayPointWithTransform(res, ui);
+    }
+  }
+}
+
+static void ConvertOverlayRectFromUIToRootUI(float res[4], UIBase* ui,
+                                             float rect[4],
+                                             bool enable_transform) {
+  float left_top[2] = {rect[0], rect[1]};
+  float right_top[2] = {rect[2], rect[1]};
+  float left_bottom[2] = {rect[0], rect[3]};
+  float right_bottom[2] = {rect[2], rect[3]};
+
+  ConvertOverlayPointFromUIToRootUI(left_top, ui, left_top, enable_transform);
+  ConvertOverlayPointFromUIToRootUI(right_top, ui, right_top, enable_transform);
+  ConvertOverlayPointFromUIToRootUI(left_bottom, ui, left_bottom,
+                                    enable_transform);
+  ConvertOverlayPointFromUIToRootUI(right_bottom, ui, right_bottom,
+                                    enable_transform);
+
+  res[0] = fmin(fmin(left_top[0], right_top[0]),
+                fmin(left_bottom[0], right_bottom[0]));
+  res[1] = fmin(fmin(left_top[1], right_top[1]),
+                fmin(left_bottom[1], right_bottom[1]));
+  res[2] = fmax(fmax(left_top[0], right_top[0]),
+                fmax(left_bottom[0], right_bottom[0]));
+  res[3] = fmax(fmax(left_top[1], right_top[1]),
+                fmax(left_bottom[1], right_bottom[1]));
+}
+
 void UIBase::GetBoundingClientRect(float* res, bool to_screen) {
   float rect[4] = {0, 0, width_, height_};
-  if (to_screen) {
+  if (to_screen && IsOverlayUIOrDescendant(this)) {
+    ConvertOverlayRectFromUIToRootUI(res, this, rect, false);
+  } else if (to_screen) {
     LynxUIHelper::ConvertRectFromUIToScreen(res, this, rect);
   } else {
     LynxUIHelper::ConvertRectFromUIToRootUI(res, this, rect);
@@ -2041,8 +2132,12 @@ void UIBase::GetBoundingClientRect(const lepus::Value& args, float result[4]) {
   bool enable_transform =
       has_harmony ? enable_harmony_transform : enable_android_transform;
   if (relativeId == "screen") {
-    LynxUIHelper::ConvertRectFromUIToScreen(result, this, result,
-                                            enable_transform);
+    if (IsOverlayUIOrDescendant(this)) {
+      ConvertOverlayRectFromUIToRootUI(result, this, result, enable_transform);
+    } else {
+      LynxUIHelper::ConvertRectFromUIToScreen(result, this, result,
+                                              enable_transform);
+    }
   } else {
     UIBase* relativeUI = GetRelativeUI(relativeId);
     relativeUI = relativeUI == nullptr
@@ -2398,14 +2493,26 @@ bool UIBase::ShouldHitTest() {
 }
 
 EventTarget* UIBase::HitTest(float point[2]) {
+  return HitTestInternal(point, false);
+}
+
+EventTarget* UIBase::HitTestWithoutOverlayContent(float point[2]) {
+  return HitTestInternal(point, true);
+}
+
+EventTarget* UIBase::HitTestInternal(float point[2],
+                                     bool skip_overlay_content) {
   gesture_status_ = LynxInterceptGestureStatus::LynxInterceptGestureStateUnset;
   float origin_point[2]{point[0], point[1]};
   EventTarget* target = nullptr;
   float target_point[] = {point[0], point[1]};
   float child_point[2] = {0};
-  std::vector<EventTarget*> sibling_targets;
+  std::vector<UIBase*> sibling_targets;
   for (int i = children_.size() - 1; i >= 0; --i) {
     UIBase* ui = children_[i];
+    if (skip_overlay_content && IsOverlayUI(ui)) {
+      continue;
+    }
     if (!ui->ShouldHitTest()) {
       continue;
     }
@@ -2430,18 +2537,21 @@ EventTarget* UIBase::HitTest(float point[2]) {
   }
 
   EventTarget* best_hittest_target =
-      target ? target->HitTest(target_point) : this;
+      target ? static_cast<UIBase*>(target)->HitTestInternal(
+                   target_point, skip_overlay_content)
+             : this;
   if (!best_hittest_target ||
       best_hittest_target->PointerEvents() == LynxPointerEventsValue::kNone) {
     best_hittest_target = nullptr;
     for (auto it = sibling_targets.begin(); it != sibling_targets.end(); ++it) {
-      EventTarget* sibling = *it;
+      UIBase* sibling = *it;
       if (!sibling || sibling == target) {
         continue;
       }
       float sibling_point[] = {origin_point[0], origin_point[1]};
       sibling->GetPointInTarget(sibling_point, this, origin_point);
-      best_hittest_target = sibling->HitTest(sibling_point);
+      best_hittest_target =
+          sibling->HitTestInternal(sibling_point, skip_overlay_content);
       if (!best_hittest_target || best_hittest_target->PointerEvents() ==
                                       LynxPointerEventsValue::kNone) {
         best_hittest_target = nullptr;
