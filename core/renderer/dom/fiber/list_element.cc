@@ -26,6 +26,7 @@ static constexpr const char kComponentAtIndexAttribute[] = "component-at-index";
 static constexpr const char kEnqueueComponentAttribute[] = "enqueue-component";
 static constexpr const char kComponentAtIndexesAttribute[] =
     "component-at-indexes";
+static constexpr const int kListSSRHydrateOperationId = 0;
 
 void SetTemplateCallbackAttribute(lepus::Value* target,
                                   const lepus::Value& value) {
@@ -894,7 +895,15 @@ void ListElementSSRHelper::OnListElementHydrateFinish() {
     if (ssr_elements_[list_index].second == SSRItemStatus::kRendered) {
       // Call ComponentAtIndex to release the enqueue status of the Lepus node,
       // which was added during Lepus hydration.
-      list_element_->ComponentAtIndex(list_index, -1, false);
+      int operation_id = -1;
+      if (list_element_->DisableListPlatformImplementation()) {
+        // Note: Here we should use kListSSRHydrateOperationId as operation id,
+        // because this ComponentAtIndex call is triggered by SSR hydrate
+        // instead of ListAdapter. This operation id prevents ListElement from
+        // receiving OnComponentFinished callbacks.
+        operation_id = kListSSRHydrateOperationId;
+      }
+      list_element_->ComponentAtIndex(list_index, operation_id, false);
     }
   }
 }
