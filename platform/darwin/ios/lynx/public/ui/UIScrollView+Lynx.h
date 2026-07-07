@@ -58,6 +58,7 @@ typedef double (^UIScrollViewLynxTimingFunction)(double input);
  @param vertical vertical scroll
  @param rtl is rtl
  @param factor align factor, within [0, 1]
+ @param maxSnapCount max item count allowed for one item-snap fling
  @param callback target position callback
  @return the proposed offset which will let a view placed at the center of the UIScrollView
  */
@@ -70,6 +71,7 @@ typedef double (^UIScrollViewLynxTimingFunction)(double input);
                            rtl:(BOOL)rtl
                         factor:(CGFloat)factor
                         offset:(CGFloat)offset
+                  maxSnapCount:(NSInteger)maxSnapCount
                       callback:(UIScrollViewWillSnapToCallback)callback;
 
 /**

@@ -107,6 +107,53 @@
   XCTAssert(scrollView.scrollEnabled);
 }
 
+- (UIScrollView *)createVerticalSnapScrollViewWithViewportHeight:(CGFloat)viewportHeight
+                                                      itemHeight:(CGFloat)itemHeight
+                                                       itemCount:(NSInteger)itemCount
+                                                   currentOffset:(CGFloat)currentOffset {
+  UIScrollView *scrollView =
+      [[UIScrollView alloc] initWithFrame:CGRectMake(0, 0, 300, viewportHeight)];
+  scrollView.showsVerticalScrollIndicator = NO;
+  scrollView.showsHorizontalScrollIndicator = NO;
+  scrollView.contentSize = CGSizeMake(300, itemHeight * itemCount);
+  scrollView.contentOffset = CGPointMake(0, currentOffset);
+
+  for (NSInteger i = 0; i < itemCount; i++) {
+    UIView *item = [[UIView alloc] initWithFrame:CGRectMake(0, i * itemHeight, 300, itemHeight)];
+    [scrollView addSubview:item];
+  }
+  return scrollView;
+}
+
+- (CGPoint)targetSnapOffsetForScrollView:(UIScrollView *)scrollView
+                                velocity:(CGPoint)velocity
+                            maxSnapCount:(NSInteger)maxSnapCount
+                        callbackPosition:(NSInteger *)callbackPosition
+                          callbackOffset:(CGPoint *)callbackOffset {
+  return [scrollView targetContentOffset:CGPointZero
+      withScrollingVelocity:velocity
+      withVisibleItems:scrollView.subviews
+      getIndexFromView:^NSInteger(UIView *_Nonnull view) {
+        return [scrollView.subviews indexOfObject:view];
+      }
+      getViewRectAtIndex:^CGRect(NSInteger index) {
+        return scrollView.subviews[index].frame;
+      }
+      vertical:YES
+      rtl:NO
+      factor:0
+      offset:0
+      maxSnapCount:maxSnapCount
+      callback:^(NSInteger position, CGPoint offset) {
+        if (callbackPosition) {
+          *callbackPosition = position;
+        }
+        if (callbackOffset) {
+          *callbackOffset = offset;
+        }
+      }];
+}
+
 - (void)testSnap {
   UIScrollView *scrollView = [[UIScrollView alloc] initWithFrame:CGRectMake(0, 0, 300, 100)];
   scrollView.showsVerticalScrollIndicator = NO;
@@ -131,10 +178,75 @@
       rtl:NO
       factor:0
       offset:0
+      maxSnapCount:1
       callback:^(NSInteger position, CGPoint offset){
 
       }];
   XCTAssert(targetOffset.y == 100);
+}
+
+- (void)testSnapMaxSnapCountKeepsSingleStepByDefault {
+  UIScrollView *scrollView = [self createVerticalSnapScrollViewWithViewportHeight:100
+                                                                       itemHeight:100
+                                                                        itemCount:10
+                                                                    currentOffset:10];
+  NSInteger callbackPosition = -1;
+  CGPoint callbackOffset = CGPointZero;
+
+  // Verify that maxSnapCount = 1 keeps the original single-step snap behavior.
+  // Even with a high velocity, it should snap to the first candidate in the scroll direction.
+  CGPoint targetOffset = [self targetSnapOffsetForScrollView:scrollView
+                                                    velocity:CGPointMake(0, 500)
+                                                maxSnapCount:1
+                                            callbackPosition:&callbackPosition
+                                              callbackOffset:&callbackOffset];
+
+  XCTAssertEqualWithAccuracy(targetOffset.y, 100, 0.001);
+  XCTAssertEqual(callbackPosition, 1);
+  XCTAssertEqualWithAccuracy(callbackOffset.y, 100, 0.001);
+}
+
+- (void)testSnapMaxSnapCountLimitsMultiStepTarget {
+  UIScrollView *scrollView = [self createVerticalSnapScrollViewWithViewportHeight:100
+                                                                       itemHeight:100
+                                                                        itemCount:10
+                                                                    currentOffset:10];
+  NSInteger callbackPosition = -1;
+  CGPoint callbackOffset = CGPointZero;
+
+  // Verify that maxSnapCount > 1 enables multi-step snapping.
+  // A high velocity projects farther, but the final target must stay within maxSnapCount.
+  CGPoint targetOffset = [self targetSnapOffsetForScrollView:scrollView
+                                                    velocity:CGPointMake(0, 500)
+                                                maxSnapCount:3
+                                            callbackPosition:&callbackPosition
+                                              callbackOffset:&callbackOffset];
+
+  XCTAssertEqualWithAccuracy(targetOffset.y, 300, 0.001);
+  XCTAssertEqual(callbackPosition, 3);
+  XCTAssertEqualWithAccuracy(callbackOffset.y, 300, 0.001);
+}
+
+- (void)testSnapMaxSnapCountCollapsesBoundaryCandidates {
+  UIScrollView *scrollView = [self createVerticalSnapScrollViewWithViewportHeight:250
+                                                                       itemHeight:80
+                                                                        itemCount:5
+                                                                    currentOffset:50];
+  NSInteger callbackPosition = -1;
+  CGPoint callbackOffset = CGPointZero;
+
+  // Verify that multiple snap offsets clamped to the same endRange collapse into one candidate.
+  // Here contentSize=400 and viewport=250, so endRange=150; positions 2/3/4 clamp to 150.
+  // Position 2 has the raw offset nearest to the boundary and should be the representative item.
+  CGPoint targetOffset = [self targetSnapOffsetForScrollView:scrollView
+                                                    velocity:CGPointMake(0, 500)
+                                                maxSnapCount:3
+                                            callbackPosition:&callbackPosition
+                                              callbackOffset:&callbackOffset];
+
+  XCTAssertEqualWithAccuracy(targetOffset.y, 150, 0.001);
+  XCTAssertEqual(callbackPosition, 2);
+  XCTAssertEqualWithAccuracy(callbackOffset.y, 150, 0.001);
 }
 
 @end
