@@ -75,7 +75,8 @@ os.makedirs(showcase_macos)
 print("========== build showcase page ==========")
 os.chdir(showcase_root_dir)
 # Install dependencies and build
-run_pnpm_command(["pnpm", "install", "--frozen-lockfile"], os.getcwd())
+# no need to install dependencies because they are already installed when executing hab sync
+# run_pnpm_command(["pnpm", "install", "--frozen-lockfile"], os.getcwd())
 run_pnpm_command(["pnpm", "run", "build"], os.getcwd())
 
 print("========== copy showcase resource ==========")
