@@ -4,15 +4,56 @@
 
 import("../../../core/Lynx.gni")
 
+source_set("macos_common") {
+  sources = [
+    "../../darwin/macos/common/LynxUIRenderer.h",
+    "../../darwin/macos/common/LynxUIRenderer.mm",
+    "../../darwin/macos/common/vsync_monitor_macos.h",
+    "../../darwin/macos/common/vsync_monitor_macos.mm",
+  ]
+
+  configs += [
+    "../../../clay:config",
+    "../../../clay/shell/platform/darwin/common:framework_relative_headers",
+  ]
+
+  deps = [
+    "..:windowless_embedder",
+    "../../../clay/ui:ui",
+    "../../../third_party/rapidjson",
+  ]
+}
+
 shared_library("lynx_clay_shared_library") {
   output_name = "Lynx_clay"
 
   deps = [
+    ":macos_common",
     "..:lynx_rust_capi",
-    "../../darwin/macos:lynx_common_deps",
+    "..:windowless_embedder",
+    "../../../base/src:base_static",
+    "../../../clay/lynx_adaptor:lynx_adaptor",
+    "../../../clay/shell/platform/darwin/macos:flutter_framework_source",
+    "../../../clay/shell/platform/embedder:embedder",
+    "../../../core/runtime/common/napi:napi_binding_jsc",
   ]
+  if (enable_testbench_replay) {
+    deps += [ "../../../core/services/replay" ]
+  }
+  if (enable_napi_binding) {
+    deps += [
+      "../../../core/runtime/common/napi:napi_binding_quickjs",
+      "../../../third_party/napi:env",
+    ]
+  }
   if (jsengine_type == "v8") {
     deps += [ "../../../third_party/NativeScript:NativeScript" ]
+    if (enable_napi_binding) {
+      deps += [
+        "../../../core/runtime/common/napi:napi_binding_v8",
+        "../../../third_party/napi:v8",
+      ]
+    }
   }
 
   ldflags = [
