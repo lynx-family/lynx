@@ -113,7 +113,8 @@ public class LynxEnv {
 
   protected volatile boolean mIsNativeLibraryLoaded = false;
   protected boolean mIsDevLibraryLoaded = false;
-  protected boolean mIsNativeUIThreadInited = false;
+  protected volatile boolean mIsNativeUIThreadInited = false;
+  protected volatile boolean mHasInitCompleted = false;
   /**
    * Only use to cache LynxModule Class
    */
@@ -228,6 +229,16 @@ public class LynxEnv {
   public synchronized void init(Application context, INativeLibraryLoader nativeLibraryLoader,
       AbsTemplateProvider templateProvider, BehaviorBundle behaviorBundle,
       @Nullable IDynamicHandler dynamicHandler) {
+    if (!hasInit.compareAndSet(false, true)) {
+      LLog.w(TAG, "LynxEnv is already initialized");
+      return;
+    }
+    mHasInitCompleted = false;
+    // LLog can be called only after setting hasInit as true, otherwise, there will
+    // be a circular
+    // dependency
+    LLog.i(TAG, "LynxEnv start init");
+
     // ensure services are initialized (the host may not call it)
     LynxServiceCenter.inst().initialize(context);
 
@@ -237,17 +248,6 @@ public class LynxEnv {
     // The DevTool needs to be initialized as early as possible because LLog requires the state of
     // the DevTool to determine whether to output logs to the console.
     initDevtoolComponentAttachSwitch();
-
-    if (hasInit.get()) {
-      LLog.w(TAG, "LynxEnv is already initialized");
-      return;
-    }
-
-    hasInit.set(true);
-    // LLog can be called only after setting hasInit as true, otherwise, there will
-    // be a circular
-    // dependency
-    LLog.i(TAG, "LynxEnv start init");
 
     // turn on systrace for app
     setAppTracingAllowed();
@@ -346,6 +346,8 @@ public class LynxEnv {
 
     // add native memory listener
     registerNativeMemoryPressureCallback();
+
+    mHasInitCompleted = true;
   }
 
   private void registerNativeMemoryPressureCallback() {
@@ -703,8 +705,31 @@ public class LynxEnv {
     mLastUrl = url;
   }
 
+  /**
+   * Returns whether {@link #init(Application, INativeLibraryLoader, AbsTemplateProvider,
+   * BehaviorBundle)} has been called.
+   *
+   * <p>This does not mean the initialization has completed. The flag is set at the beginning of
+   * init to prevent reentrant or duplicate initialization.
+   */
   public boolean hasInited() {
     return hasInit.get();
+  }
+
+  /**
+   * Returns whether {@link #init(Application, INativeLibraryLoader, AbsTemplateProvider,
+   * BehaviorBundle)} has completed successfully.
+   *
+   * <p>This method is safe to call from any thread. It returns true only after native libraries are
+   * loaded, native UI thread initialization has completed, and the Java initialization flow has
+   * reached its final completion point.
+   */
+  @AnyThread
+  public boolean isInitCompleted() {
+    if (!mHasInitCompleted) {
+      return false;
+    }
+    return hasInit.get() && mIsNativeLibraryLoaded && mIsNativeUIThreadInited;
   }
 
   protected void initDevtoolEnv() {

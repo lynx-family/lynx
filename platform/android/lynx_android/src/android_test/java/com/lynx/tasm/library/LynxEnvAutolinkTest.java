@@ -85,6 +85,8 @@ public class LynxEnvAutolinkTest {
   private static void resetLynxEnvForTest() throws Exception {
     LynxEnv env = LynxEnv.inst();
     ((AtomicBoolean) getField(env, "hasInit")).set(false);
+    setField(env, "mHasInitCompleted", false);
+    setField(env, "mIsNativeUIThreadInited", false);
     ((Map<?, ?>) getField(env, "mBehaviorMap")).clear();
     setField(env, "mModuleFactory", null);
     setField(env, "mViewManagerBundle", null);

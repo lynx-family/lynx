@@ -24,6 +24,7 @@ class LynxEnvDarwin {
                                const std::string& invoke_session);
 
   static void initNativeUIThread();
+  static bool isNativeUIThreadInitialized();
 };
 
 }  // namespace tasm
