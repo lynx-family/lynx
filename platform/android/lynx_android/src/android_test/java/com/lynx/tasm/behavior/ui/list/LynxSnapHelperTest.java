@@ -3,6 +3,7 @@
 // LICENSE file in the root directory of this source tree.
 
 package com.lynx.tasm.behavior.ui.list;
+
 import static org.junit.Assert.assertEquals;
 
 import android.view.View;
@@ -21,7 +22,9 @@ import org.junit.runner.RunWith;
 
 @RunWith(AndroidJUnit4.class)
 public class LynxSnapHelperTest {
+  private static final int VIEWPORT_WIDTH = 300;
   private LynxContext lynxContext;
+
   @Before
   public void setUp() throws Exception {
     lynxContext = TestingUtils.getLynxContext();
@@ -29,31 +32,90 @@ public class LynxSnapHelperTest {
 
   @Test
   public void testSnap() {
+    double snapAlignmentMillisecondsPerPx = 100f / lynxContext.getScreenMetrics().densityDpi;
+    LynxSnapHelper snapHelper = createVerticalSnapHelper(
+        500, 500, 10, 3, 20, 0, 20, snapAlignmentMillisecondsPerPx, 1, null);
+
+    int[] out = snapHelper.findTargetSnapOffset(0, 100, true, false);
+    assertEquals(0, out[0]);
+    assertEquals(20, out[1]);
+  }
+
+  @Test
+  public void testSnapMaxSnapCountKeepsSingleStepByDefault() {
+    SnapResult snapResult = new SnapResult();
+    LynxSnapHelper snapHelper = createVerticalSnapHelper(100, 100, 10, 10, 1, snapResult);
+
+    // Verify that maxSnapCount = 1 keeps the original single-step snap behavior even for a
+    // high-velocity fling.
+    int[] out = snapHelper.findTargetSnapOffset(0, 10000, true, false);
+
+    assertEquals(100, out[1]);
+    assertEquals(1, snapResult.position);
+    assertEquals(100, snapResult.targetOffsetY);
+  }
+
+  @Test
+  public void testSnapMaxSnapCountLimitsMultiStepTarget() {
+    SnapResult snapResult = new SnapResult();
+    LynxSnapHelper snapHelper = createVerticalSnapHelper(100, 100, 10, 10, 3, snapResult);
+
+    // Verify that maxSnapCount > 1 enables multi-step snapping while limiting the target to
+    // the configured candidate range.
+    int[] out = snapHelper.findTargetSnapOffset(0, 10000, true, false);
+
+    assertEquals(300, out[1]);
+    assertEquals(3, snapResult.position);
+    assertEquals(300, snapResult.targetOffsetY);
+  }
+
+  @Test
+  public void testSnapMaxSnapCountCollapsesBoundaryCandidates() {
+    SnapResult snapResult = new SnapResult();
+    LynxSnapHelper snapHelper = createVerticalSnapHelper(250, 80, 5, 50, 3, snapResult);
+
+    // Verify that multiple snap offsets clamped to the same boundary collapse into one
+    // representative candidate, so the same boundary offset is not counted repeatedly.
+    snapHelper.findTargetSnapOffset(0, 10000, true, false);
+
+    assertEquals(2, snapResult.position);
+  }
+
+  private LynxSnapHelper createVerticalSnapHelper(int viewportHeight, int itemHeight, int itemCount,
+      int currentOffset, int maxSnapCount, SnapResult snapResult) {
+    return createVerticalSnapHelper(viewportHeight, itemHeight, itemCount, itemCount, currentOffset,
+        0, 0, 0, maxSnapCount, snapResult);
+  }
+
+  private LynxSnapHelper createVerticalSnapHelper(int viewportHeight, int itemHeight, int itemCount,
+      int childrenCount, int currentOffset, double snapAlignmentFactor, int snapAlignmentOffset,
+      double snapAlignmentMillisecondsPerPx, int maxSnapCount, SnapResult snapResult) {
     ScrollView scrollView = new ScrollView(lynxContext);
-    scrollView.setLayoutParams(new ViewGroup.LayoutParams(300, 500));
+    scrollView.setLayoutParams(new ViewGroup.LayoutParams(VIEWPORT_WIDTH, viewportHeight));
+    scrollView.layout(0, 0, VIEWPORT_WIDTH, viewportHeight);
+
     LinearLayout linearLayout = new LinearLayout(lynxContext);
     linearLayout.setOrientation(LinearLayout.VERTICAL);
+    int contentHeight = itemHeight * itemCount;
     scrollView.addView(linearLayout,
         new FrameLayout.LayoutParams(
             FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT));
-    int uiCount = 10;
-    int contentSize = 0;
-    for (int i = 0; i < uiCount; i++) {
+    linearLayout.layout(0, 0, VIEWPORT_WIDTH, contentHeight);
+
+    for (int i = 0; i < itemCount; i++) {
       AndroidView view = new AndroidView(lynxContext);
       UIView ui = new UIView(lynxContext);
       view.bindDrawChildHook(ui);
-      ui.setTop(500 * i);
-      ui.setHeight(500);
-      view.setLayoutParams(new ViewGroup.LayoutParams(300, 500));
+      ui.setTop(itemHeight * i);
+      ui.setHeight(itemHeight);
+      view.setLayoutParams(new ViewGroup.LayoutParams(VIEWPORT_WIDTH, itemHeight));
+      view.layout(0, itemHeight * i, VIEWPORT_WIDTH, itemHeight * (i + 1));
       linearLayout.addView(view);
-      if (i == uiCount - 1) {
-        contentSize = ui.getTop() + ui.getHeight();
-      }
     }
-    double snapAlignmentMillisecondsPerPx = 100f / lynxContext.getScreenMetrics().densityDpi;
-    final Integer finalContentSize = contentSize;
-    LynxSnapHelper snapHelper = new LynxSnapHelper(
-        0, 20, snapAlignmentMillisecondsPerPx, new LynxSnapHelper.LynxSnapHooks() {
+    scrollView.scrollTo(0, currentOffset);
+
+    return new LynxSnapHelper(snapAlignmentFactor, snapAlignmentOffset,
+        snapAlignmentMillisecondsPerPx, maxSnapCount, new LynxSnapHelper.LynxSnapHooks() {
           @Override
           public int getScrollX() {
             return scrollView.getScrollX();
@@ -66,32 +128,32 @@ public class LynxSnapHelperTest {
 
           @Override
           public int getScrollHeight() {
-            return scrollView.getHeight();
+            return viewportHeight;
           }
 
           @Override
           public int getScrollWidth() {
-            return scrollView.getWidth();
+            return VIEWPORT_WIDTH;
           }
 
           @Override
           public int getContentHeight() {
-            return finalContentSize;
+            return contentHeight;
           }
 
           @Override
           public int getContentWidth() {
-            return 300;
-          }
-
-          @Override
-          public int getVirtualChildrenCount() {
-            return 3;
+            return VIEWPORT_WIDTH;
           }
 
           @Override
           public int getChildrenCount() {
-            return 3;
+            return childrenCount;
+          }
+
+          @Override
+          public int getVirtualChildrenCount() {
+            return childrenCount;
           }
 
           @Override
@@ -111,11 +173,17 @@ public class LynxSnapHelperTest {
 
           @Override
           public void willSnapTo(int position, int currentOffsetX, int currentOffsetY,
-              int targetOffsetX, int targetOffsetY) {}
+              int targetOffsetX, int targetOffsetY) {
+            if (snapResult != null) {
+              snapResult.position = position;
+              snapResult.targetOffsetY = targetOffsetY;
+            }
+          }
         });
-    scrollView.scrollTo(0, 20);
-    int[] out = snapHelper.findTargetSnapOffset(0, 100, true, false);
-    assertEquals(out[0], 0);
-    assertEquals(out[1], 20);
+  }
+
+  private static class SnapResult {
+    int position = -1;
+    int targetOffsetY = 0;
   }
 }

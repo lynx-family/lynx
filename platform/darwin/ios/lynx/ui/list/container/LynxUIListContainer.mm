@@ -20,10 +20,13 @@
 #import "core/public/list_container_proxy.h"
 #import "core/public/list_engine_proxy.h"
 
+#include <math.h>
+
 static const CGFloat kLynxListContainerInvalidScrollEstimatedOffset = -1.0;
 static const CGFloat kInvalidSnapFactor = -1;
 static const CGFloat kFadeInAnimationDefaultDuration = 0.1;
 static const CGFloat kLynxListAutomaticMaxFlingRatio = CGFLOAT_MAX;
+static const NSInteger kDefaultMaxSnapCount = 1;
 typedef NS_ENUM(NSInteger, LynxListScrollState) {
   LynxListScrollStateIdle = 1,
   LynxListScrollStateDragging = 2,
@@ -153,6 +156,7 @@ typedef NS_ENUM(NSInteger, LynxListScrollState) {
 @property(nonatomic, assign) LynxListScrollState currentScrollState;
 @property(nonatomic, assign) BOOL enableNeedVisibleItemInfo;
 @property(nonatomic, assign) BOOL updatingStickyAfterLayout;
+@property(nonatomic, assign) NSInteger pagingMaxSnapCount;
 // Experimental
 @property(nonatomic, assign) BOOL disableFilterScroll;
 
@@ -175,6 +179,7 @@ LYNX_REGISTER_UI("list-container")
     _verticalOrientation = YES;  // Default Vertical
     self.enableScrollY = YES;
     _pagingAlignFactor = kInvalidSnapFactor;
+    _pagingMaxSnapCount = kDefaultMaxSnapCount;
     _updateAnimationFadeInDuration = kFadeInAnimationDefaultDuration;
     _maxFlingDistanceRatio = -1;
     _enableRecycleStickyItem = YES;
@@ -599,12 +604,28 @@ LYNX_PROP_SETTER("item-snap", setPagingAlignment, NSDictionary *) {
       factor = 0;
     }
     CGFloat offset = [value[@"offset"] doubleValue];
+    NSInteger maxSnapCount = kDefaultMaxSnapCount;
+    id maxSnapCountValue = value[@"maxSnapCount"];
+    if (maxSnapCountValue) {
+      maxSnapCount = [maxSnapCountValue integerValue];
+      if (maxSnapCount < kDefaultMaxSnapCount) {
+        [self.context
+            reportLynxError:[LynxError lynxErrorWithCode:ECLynxComponentListInvalidPropsArg
+                                                 message:@"item-snap invalid!"
+                                           fixSuggestion:@"The maxSnapCount should be greater "
+                                                         @"than 0."
+                                                   level:LynxErrorLevelWarn]];
+        maxSnapCount = kDefaultMaxSnapCount;
+      }
+    }
     self.view.pagingEnabled = NO;
     self.pagingAlignFactor = factor;
     self.pagingAlignOffset = offset;
+    self.pagingMaxSnapCount = maxSnapCount;
     self.view.decelerationRate = UIScrollViewDecelerationRateFast;
   } else {
     self.pagingAlignFactor = kInvalidSnapFactor;
+    self.pagingMaxSnapCount = kDefaultMaxSnapCount;
     self.view.decelerationRate = UIScrollViewDecelerationRateNormal;
   }
 }
@@ -1452,7 +1473,7 @@ LYNX_UI_METHOD(getVisibleCells) {
             return CGRectNull;
           }
 
-          if (index >= (NSInteger)self.itemKeys.count) {
+          if (index >= (NSInteger)weakSelf.itemKeys.count) {
             index = weakSelf.itemKeys.count - 1;
           }
           if (index < 0) {
@@ -1481,19 +1502,11 @@ LYNX_UI_METHOD(getVisibleCells) {
         rtl:[weakSelf isRtl]
         factor:weakSelf.pagingAlignFactor
         offset:weakSelf.pagingAlignOffset
+        maxSnapCount:weakSelf.pagingMaxSnapCount
         callback:^(NSInteger position, CGPoint offset) {
-          if (position >= (NSInteger)weakSelf.itemKeys.count) {
-            position = MAX(0, (NSInteger)weakSelf.itemKeys.count - 1);
-          }
-          [weakSelf.scrollEventManager sendScrollEvent:LynxEventSnap
-                                            scrollView:weakSelf.view
-                                                detail:@{
-                                                  @"position" : @(position),
-                                                  @"currentScrollLeft" : @(currentContentOffset.x),
-                                                  @"currentScrollTop" : @(currentContentOffset.y),
-                                                  @"targetScrollLeft" : @(offset.x),
-                                                  @"targetScrollTop" : @(offset.y),
-                                                }];
+          [weakSelf sendSnapEventWithPosition:position
+                         currentContentOffset:currentContentOffset
+                                 targetOffset:offset];
         }];
     targetContentOffset->x = targetOffset.x;
     targetContentOffset->y = targetOffset.y;
@@ -1538,6 +1551,23 @@ LYNX_UI_METHOD(getVisibleCells) {
                             height:scrollView.frame.size.width];
     }
   }
+}
+
+- (void)sendSnapEventWithPosition:(NSInteger)position
+             currentContentOffset:(CGPoint)currentContentOffset
+                     targetOffset:(CGPoint)targetOffset {
+  if (position >= (NSInteger)self.itemKeys.count) {
+    position = MAX(0, (NSInteger)self.itemKeys.count - 1);
+  }
+  [self.scrollEventManager sendScrollEvent:LynxEventSnap
+                                scrollView:self.view
+                                    detail:@{
+                                      @"position" : @(position),
+                                      @"currentScrollLeft" : @(currentContentOffset.x),
+                                      @"currentScrollTop" : @(currentContentOffset.y),
+                                      @"targetScrollLeft" : @(targetOffset.x),
+                                      @"targetScrollTop" : @(targetOffset.y),
+                                    }];
 }
 
 - (CGFloat)clampContentOffset:(CGFloat)offset
