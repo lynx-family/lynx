@@ -80,6 +80,7 @@ class InspectorUIExecutor
   void SendLynxScreenshotCapturedEvent(const std::string& data);
 
  public:
+  std::vector<double> GetBoxModel(tasm::Element* element);
   std::vector<double> GetBoxModel(const InspectorBoxModelQuery& query);
 
   // task run on ui thread
@@ -95,6 +96,7 @@ class InspectorUIExecutor
   void OnLayoutObjectDestroy(int32_t id);
   void OnComponentUselessUpdate(const std::string& component_name,
                                 const lepus::Value& properties);
+  SLNode* GetLayoutObjectForElement(lynx::tasm::Element* element);
   SLNode* GetLayoutObjectById(int32_t id);
 
  protected:

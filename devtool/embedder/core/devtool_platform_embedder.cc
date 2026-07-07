@@ -106,6 +106,10 @@ class DevtoolPlatformImpl : public lynx::devtool::DevToolPlatformFacade {
     return "";
   }
 
+  std::vector<double> GetBoxModel(Element* element) override {
+    return GetBoxModelInGeneralPlatform(element);
+  }
+
   std::string GetLynxUITree() override {
     auto embedder = weak_embedder_.lock();
     CHECK_NULL_AND_LOG_RETURN_VALUE(embedder, "embedder is null", {});
