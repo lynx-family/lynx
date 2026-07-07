@@ -41,6 +41,22 @@ NativePaintingCtxDarwin::NativePaintingCtxDarwin(LynxUIOwner *owner, void *textr
   }
 }
 
+void NativePaintingCtxDarwin::UpdatePaintingNode(int id, bool tend_to_flatten,
+                                                 const fml::RefPtr<PropBundle> &painting_data) {
+  if (!painting_data) {
+    return;
+  }
+
+  Enqueue([ref = platform_ref_, id, tend_to_flatten, painting_data]() {
+    auto darwin_ref = std::static_pointer_cast<NativePaintingCtxPlatformDarwinRef>(ref);
+    if (!darwin_ref) {
+      return;
+    }
+
+    darwin_ref->UpdateAttributes(id, painting_data, tend_to_flatten);
+  });
+}
+
 std::unique_ptr<pub::Value> NativePaintingCtxDarwin::GetTextInfo(const std::string &content,
                                                                  const pub::Value &info) {
   // TODO: impl this function later.

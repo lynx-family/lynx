@@ -39,9 +39,8 @@ class NativePaintingCtxDarwin : public PaintingCtxPlatformImpl, public NativePai
                           const fml::RefPtr<PropBundle> &painting_data, bool flatten,
                           bool create_node_async, uint32_t node_index) override {}
 
-  // NativePaintingContextDarwin do not need impl this interface.
   void UpdatePaintingNode(int id, bool tend_to_flatten,
-                          const fml::RefPtr<PropBundle> &painting_data) override {}
+                          const fml::RefPtr<PropBundle> &painting_data) override;
 
   // NativePaintingContextDarwin do not need impl this interface.
   void UpdateLayout(int tag, float x, float y, float width, float height, const float *paddings,
