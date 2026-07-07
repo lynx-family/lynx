@@ -28,6 +28,8 @@ public class LynxScaleTypeDrawable extends Drawable {
 
   private ImageContent mCurrentDelegate;
 
+  private int mAlpha = 255;
+
   String mCapInsets;
   String mCapInsetsScale;
 
@@ -50,6 +52,9 @@ public class LynxScaleTypeDrawable extends Drawable {
 
   public void setCurrent(ImageContent newDelegate, boolean needUpdateBounds) {
     mCurrentDelegate = newDelegate;
+    if (mCurrentDelegate != null && mAlpha != 255) {
+      mCurrentDelegate.setAlpha(mAlpha);
+    }
     if (needUpdateBounds) {
       configureBounds();
     }
@@ -83,7 +88,7 @@ public class LynxScaleTypeDrawable extends Drawable {
         if (bitmap != null) {
           NinePatchHelper.drawNinePatch(getBounds().width(), getBounds().height(),
               bitmap.getWidth(), bitmap.getHeight(), mScaleType, mCapInsets, mCapInsetsScale,
-              canvas, mCurrentDelegate.getBitmap());
+              canvas, mCurrentDelegate.getBitmap(), mAlpha);
           return;
         }
       }
@@ -101,6 +106,7 @@ public class LynxScaleTypeDrawable extends Drawable {
 
   @Override
   public void setAlpha(int alpha) {
+    mAlpha = alpha;
     if (mCurrentDelegate != null) {
       mCurrentDelegate.setAlpha(alpha);
     }
