@@ -5,6 +5,7 @@
 #ifndef BASE_INCLUDE_FML_PLATFORM_HARMONY_MESSAGE_LOOP_HARMONY_H_
 #define BASE_INCLUDE_FML_PLATFORM_HARMONY_MESSAGE_LOOP_HARMONY_H_
 
+#include <node_api.h>
 #include <uv.h>
 
 #include <atomic>
@@ -19,18 +20,25 @@ namespace fml {
 /// Harmony implementation of \p MessageLoopImpl.
 ///
 class MessageLoopHarmony : public MessageLoopImpl {
+ public:
+  BASE_EXPORT void SetupNapiCallback(napi_env env);
+
  private:
   uv_loop_t* looper_;
   bool is_looper_owner_;
   uv_poll_t poll_;
   fml::UniqueFD timer_fd_;
   bool running_;
+  napi_env env_ = nullptr;
+  napi_ref top_level_callback_ = nullptr;
 
   void Run() override;
 
   void Terminate() override;
 
   void OnEventFired();
+
+  static napi_value NapiCall(napi_env env, napi_callback_info info);
 
   FML_FRIEND_MAKE_REF_COUNTED(MessageLoopHarmony);
   FML_FRIEND_REF_COUNTED_THREAD_SAFE(MessageLoopHarmony);
