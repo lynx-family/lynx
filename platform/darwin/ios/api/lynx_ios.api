@@ -5207,6 +5207,11 @@ public interface LynxUIOwner(Private) {
 }
 
 public class LynxUIRenderer : NSObject, <LynxUIRendererProtocol> {
+  public BOOL LynxUIRenderer::DispatchPlatformInputEvent:withData:(NSArray *iEventData,[withData] NSArray *fEventData);
+  public void LynxUIRenderer::SetPlatformEventRootActive:active:(NSInteger rootSign,[active] BOOL active);
+  public void LynxUIRenderer::SetPlatformEventRootOffset:offsetX:offsetY:(NSInteger rootSign,[offsetX] CGFloat offsetX,[offsetY] CGFloat offsetY);
+  public BOOL LynxUIRenderer::IsPlatformEventTargetEventThrough:point:(NSInteger rootSign,[point] CGPoint point);
+  public int LynxUIRenderer::GetPlatformEventHandlerState();
 }
 
 public class LynxUIRendererCreator : NSObject, <LynxUIRendererCreatorProtocol> {

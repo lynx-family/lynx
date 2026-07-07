@@ -27,7 +27,12 @@
 #import "LynxUIExposure+Internal.h"
 #import "LynxUIIntersectionObserver+Internal.h"
 
+#include "base/include/lynx_actor.h"
+#include "core/public/painting_ctx_platform_impl.h"
+#include "core/renderer/ui_wrapper/painting/ios/native_painting_context_platform_darwin_ref.h"
 #include "core/renderer/ui_wrapper/painting/ios/ui_delegate_darwin.h"
+#include "core/renderer/ui_wrapper/painting/platform_renderer_impl.h"
+#include "core/shell/lynx_engine.h"
 
 typedef NS_ENUM(NSUInteger, BoxModelOffset) {
   PAD_LEFT = 0,
@@ -47,6 +52,24 @@ typedef NS_ENUM(NSUInteger, BoxModelOffset) {
   LAYOUT_RIGHT,
   LAYOUT_BOTTOM,
 };
+
+namespace {
+
+lynx::tasm::NativePaintingCtxPlatformDarwinRef *CastToNativePaintingCtxPlatformRef(
+    const std::shared_ptr<lynx::tasm::PaintingCtxPlatformRef> &platform_ref) {
+  if (platform_ref == nullptr || !platform_ref->IsNativePaintingCtxPlatformRef()) {
+    return nullptr;
+  }
+  return static_cast<lynx::tasm::NativePaintingCtxPlatformDarwinRef *>(platform_ref.get());
+}
+
+}  // namespace
+
+@interface LynxUIRenderer (PaintingContextInternal)
+- (void)setPaintingContextPlatformImpl:(lynx::tasm::PaintingCtxPlatformImpl *)platformImpl;
+- (void)setLynxEngineActorForPlatformContextRef:
+    (const std::shared_ptr<lynx::shell::LynxActor<lynx::shell::LynxEngine>> &)engineActor;
+@end
 
 static id<LynxServiceTextProtocol> getTextService() {
   static id<LynxServiceTextProtocol> sService = nil;
@@ -72,6 +95,7 @@ static id<LynxServiceTextProtocol> getTextService() {
   LynxUIIntersectionObserverManager *_intersectionObserverManager;
 
   BOOL _enableGenericResourceLoader;
+  std::shared_ptr<lynx::tasm::PaintingCtxPlatformRef> _paintingCtxPlatformRef;
 }
 
 - (instancetype)initWithLynxContext:(LynxContext *)context
@@ -333,6 +357,96 @@ static id<LynxServiceTextProtocol> getTextService() {
   [_uiOwner reset];
 
   _textra = 0;
+  if (auto *platform_ref = CastToNativePaintingCtxPlatformRef(_paintingCtxPlatformRef)) {
+    platform_ref->Destroy();
+  }
+  _paintingCtxPlatformRef.reset();
+}
+
+- (void)setPaintingContextPlatformImpl:(lynx::tasm::PaintingCtxPlatformImpl *)platformImpl {
+  if (platformImpl == nullptr) {
+    _paintingCtxPlatformRef.reset();
+    return;
+  }
+  const auto &platform_ref = platformImpl->GetPlatformRef();
+  if (platform_ref == nullptr || !platform_ref->IsNativePaintingCtxPlatformRef()) {
+    _paintingCtxPlatformRef.reset();
+    return;
+  }
+  _paintingCtxPlatformRef = platform_ref;
+}
+
+- (void)setLynxEngineActorForPlatformContextRef:
+    (const std::shared_ptr<lynx::shell::LynxActor<lynx::shell::LynxEngine>> &)engineActor {
+  if (auto *platform_ref = CastToNativePaintingCtxPlatformRef(_paintingCtxPlatformRef)) {
+    platform_ref->SetLynxEngineActorForPlatformContextRef(engineActor);
+  }
+}
+
+- (BOOL)DispatchPlatformInputEvent:(NSArray *)iEventData withData:(NSArray *)fEventData {
+  auto *platform_ref = CastToNativePaintingCtxPlatformRef(_paintingCtxPlatformRef);
+  if (platform_ref == nullptr) {
+    return NO;
+  }
+
+  NSUInteger int_event_data_count = iEventData.count;
+  int *int_event_data = (int *)malloc(int_event_data_count * sizeof(int));
+  if (int_event_data == NULL) {
+    return NO;
+  }
+  [iEventData enumerateObjectsUsingBlock:^(id _Nonnull obj, NSUInteger idx, BOOL *_Nonnull stop) {
+    int_event_data[idx] = [obj intValue];
+  }];
+
+  NSUInteger float_event_data_count = fEventData.count;
+  float *float_event_data = (float *)malloc(float_event_data_count * sizeof(float));
+  if (float_event_data == NULL) {
+    free(int_event_data);
+    return NO;
+  }
+  [fEventData enumerateObjectsUsingBlock:^(id _Nonnull obj, NSUInteger idx, BOOL *_Nonnull stop) {
+    float_event_data[idx] = [obj floatValue];
+  }];
+
+  int32_t event_target_root_id = kRootId;
+  if (int_event_data_count > 4) {
+    event_target_root_id = int_event_data[4];
+  }
+  BOOL consumed = platform_ref->DispatchPlatformInputEvent(int_event_data, float_event_data,
+                                                           event_target_root_id);
+
+  free(int_event_data);
+  free(float_event_data);
+  return consumed;
+}
+
+- (void)SetPlatformEventRootActive:(NSInteger)rootSign active:(BOOL)active {
+  if (auto *platform_ref = CastToNativePaintingCtxPlatformRef(_paintingCtxPlatformRef)) {
+    platform_ref->SetPlatformEventRootActive(static_cast<int32_t>(rootSign), active);
+  }
+}
+
+- (void)SetPlatformEventRootOffset:(NSInteger)rootSign
+                           offsetX:(CGFloat)offsetX
+                           offsetY:(CGFloat)offsetY {
+  if (auto *platform_ref = CastToNativePaintingCtxPlatformRef(_paintingCtxPlatformRef)) {
+    platform_ref->SetPlatformEventRootOffset(static_cast<int32_t>(rootSign), offsetX, offsetY);
+  }
+}
+
+- (BOOL)IsPlatformEventTargetEventThrough:(NSInteger)rootSign point:(CGPoint)point {
+  if (auto *platform_ref = CastToNativePaintingCtxPlatformRef(_paintingCtxPlatformRef)) {
+    return platform_ref->IsPlatformEventTargetEventThrough(static_cast<int32_t>(rootSign), point.x,
+                                                           point.y);
+  }
+  return NO;
+}
+
+- (int)GetPlatformEventHandlerState {
+  if (auto *platform_ref = CastToNativePaintingCtxPlatformRef(_paintingCtxPlatformRef)) {
+    return platform_ref->GetPlatformEventHandlerState();
+  }
+  return 0;
 }
 
 - (LynxGestureArenaManager *)getGestureArenaManager {
