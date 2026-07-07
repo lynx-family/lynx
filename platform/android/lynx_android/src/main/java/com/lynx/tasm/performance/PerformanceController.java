@@ -20,6 +20,7 @@ import com.lynx.react.bridge.JavaOnlyMap;
 import com.lynx.react.bridge.ReadableMap;
 import com.lynx.tasm.LynxBooleanOption;
 import com.lynx.tasm.LynxEnv;
+import com.lynx.tasm.PageConfig;
 import com.lynx.tasm.TimingHandler;
 import com.lynx.tasm.base.CalledByNative;
 import com.lynx.tasm.base.LLog;
@@ -61,6 +62,7 @@ public class PerformanceController implements IMemoryMonitor, ITimingCollector {
   private JavaOnlyArray mPendingPaintEndPipelineIds = new JavaOnlyArray();
   private int mInstanceId = LynxEventReporter.INSTANCE_ID_UNKNOWN;
   private FSPTracer mFSPTracer = null;
+  private Boolean mFSPEnabled;
 
   /**
    * Set embedded mode
@@ -191,7 +193,7 @@ public class PerformanceController implements IMemoryMonitor, ITimingCollector {
 
   @UiThread
   public void startFSPTracer(IMeaningfulContentSnapshotCaptureHandler captureHandler) {
-    if (!LynxEnv.inst().enableFSP()) {
+    if (!isFSPEnabled()) {
       return;
     }
     if (mFSPTracer == null) {
@@ -200,12 +202,20 @@ public class PerformanceController implements IMemoryMonitor, ITimingCollector {
     mFSPTracer.start(captureHandler);
   }
 
+  public void onPageConfigDecoded(PageConfig pageConfig) {
+    mFSPEnabled = pageConfig == null ? null : pageConfig.isFSPEnabled();
+  }
+
   @UiThread
   public void stopFSPTracerByUserInteraction() {
-    if (!LynxEnv.inst().enableFSP() || mFSPTracer == null) {
+    if (!isFSPEnabled() || mFSPTracer == null) {
       return;
     }
     mFSPTracer.cancelledByUserInteraction();
+  }
+
+  public boolean isFSPEnabled() {
+    return mFSPEnabled == null ? LynxEnv.inst().enableFSP() : mFSPEnabled;
   }
 
   @Override

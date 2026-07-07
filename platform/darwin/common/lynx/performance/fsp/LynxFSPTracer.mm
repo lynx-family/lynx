@@ -9,18 +9,21 @@
 #import <Lynx/LynxMetricFspEntry.h>
 #import <Lynx/LynxPerformanceController+Native.h>
 #include <cstdint>
+#include <optional>
 #include "core/public/performance_controller_platform_impl.h"
 #include "core/services/performance/fsp_tracing/fsp_tracer.h"
 #include "core/services/performance/performance_controller.h"
 #include "core/services/timing_handler/timing_constants.h"
 #include "core/services/timing_handler/timing_utils.h"
 #include "core/services/trace/service_trace_event_def.h"
+#include "core/template_bundle/template_codec/binary_decoder/page_config.h"
 
 using namespace lynx::tasm::timing;
 using namespace lynx::tasm::performance;
 
 @interface LynxFSPTracer () {
   std::shared_ptr<FSPTracer> _impl;
+  std::optional<lynx::tasm::TernaryBool> _pageEnableFSP;
 }
 
 @property(nonatomic, assign) BOOL isRunning;
@@ -33,7 +36,10 @@ using namespace lynx::tasm::performance;
 #pragma mark - Public
 
 - (BOOL)enable {
-  return [[LynxEnv sharedInstance] enableFSP];
+  if (!_pageEnableFSP || *_pageEnableFSP == lynx::tasm::TernaryBool::UNDEFINE_VALUE) {
+    return [[LynxEnv sharedInstance] enableFSP];
+  }
+  return *_pageEnableFSP == lynx::tasm::TernaryBool::TRUE_VALUE;
 }
 
 // Call on main thread
@@ -52,6 +58,14 @@ using namespace lynx::tasm::performance;
   // start timer.
   [self setupSnapshotInterval];
   [self scheduleNextCapture:captureHandler];
+}
+
+- (void)configureWithPageConfig:(const lynx::tasm::PageConfig*)pageConfig {
+  if (pageConfig) {
+    _pageEnableFSP = pageConfig->GetEnableFSP();
+  } else {
+    _pageEnableFSP.reset();
+  }
 }
 
 - (void)stop {
@@ -104,7 +118,7 @@ using namespace lynx::tasm::performance;
   // 1. create tracer impl.
   if (!_impl) {
     FSPConfig config;
-    config.enable_ = YES;
+    config.enable_ = self.enable;
     [self setupFSPConfig:config];
     _impl = std::make_shared<FSPTracer>(std::move(config));
     auto actor = _nativeWeakActorPtr.lock();

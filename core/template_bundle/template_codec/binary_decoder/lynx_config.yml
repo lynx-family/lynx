@@ -442,6 +442,17 @@ enableLynxScrollFluency:
     - Android
     - HarmonyOS
     - iOS
+enableFSP:
+  description: Controls whether FSP tracing is enabled for this page. When unset, runtime falls back to the global `enable_fsp` environment setting. When true, only this page instance opts into FSP tracing; when false, only this page instance opts out. The page-level value must not be written back to global LynxEnv state.
+  defaultValue: TernaryBool::UNDEFINE_VALUE
+  valueType: TernaryBool
+  jsValueType: boolean
+  readNative: true
+  author: ChenglongKe
+  since: '4.1'
+  supportPlatform:
+    - Android
+    - iOS
 lepusGCThreshold:
   description: Controls the LepusNG GC threshold in KB. When LepusNG is enabled, `TemplateAssembler` applies this value to the default entry VM; the default threshold is 256 KB.
   defaultValue: '256'

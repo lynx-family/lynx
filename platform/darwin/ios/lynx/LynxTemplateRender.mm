@@ -10,6 +10,7 @@
 #import <Lynx/LynxEnv+Internal.h>
 #import <Lynx/LynxError.h>
 #import <Lynx/LynxEventReporter.h>
+#import <Lynx/LynxFSPTracer+Native.h>
 #import <Lynx/LynxFontFaceManager.h>
 #import <Lynx/LynxFrameView.h>
 #import <Lynx/LynxLoadMeta.h>
@@ -2406,20 +2407,21 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
 - (void)onTemplateLoaded:(NSString*)url {
   [_delegate templateRender:self onTemplateLoaded:url];
   [_devTool onLoadFinished];
-  if ([[self performanceController].fspTracer enable]) {
+  LynxFSPTracer* fspTracer = [self performanceController].fspTracer;
+  [fspTracer configureWithPageConfig:pageConfig_.get()];
+  if (fspTracer.enable) {
     __weak typeof(self) weakSelf = self;
-    [[self performanceController].fspTracer
-        startWithCaptureHandler:^LynxMeaningfulContentSnapshot* {
-          __strong typeof(weakSelf) strongSelf = weakSelf;
-          if (!strongSelf) {
-            return nil;
-          }
-          LynxUIOwner* owner = [[strongSelf lynxUIRenderer] uiOwner];
-          if (!owner) {
-            return nil;
-          }
-          return [owner getMeaningfulPaintingContents];
-        }];
+    [fspTracer startWithCaptureHandler:^LynxMeaningfulContentSnapshot* {
+      __strong typeof(weakSelf) strongSelf = weakSelf;
+      if (!strongSelf) {
+        return nil;
+      }
+      LynxUIOwner* owner = [[strongSelf lynxUIRenderer] uiOwner];
+      if (!owner) {
+        return nil;
+      }
+      return [owner getMeaningfulPaintingContents];
+    }];
   }
 }
 

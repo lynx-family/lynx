@@ -11,7 +11,6 @@ import java.util.HashMap;
 
 // FSP configuration
 public class FSPConfig {
-  public final boolean enable = LynxEnv.inst().enableFSP();
   // Minimum content fill rate in X-axis direction, default is 30%.
   public int minContentFillPercentageX;
   // Minimum content fill rate in Y-axis direction, default is 30%.
@@ -44,10 +43,8 @@ public class FSPConfig {
   private static final String HARD_TIMEOUT_MS_KEY = "hard_timeout_ms";
   private static final String SNAPSHOT_INTERVAL_MS_KEY = "snapshotIntervalMs";
 
-  FSPConfig() {}
-
   public void parse() {
-    if (mReady || !enable) {
+    if (mReady) {
       return;
     }
     TraceEvent.beginSection(TraceEvent.CATEGORY_DEFAULT, TraceEventDef.FSP_CONFIG_PARSE);

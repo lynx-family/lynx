@@ -11,6 +11,12 @@
 using PerformanceControllerActor =
     lynx::shell::LynxActor<lynx::tasm::performance::PerformanceController>;
 
+namespace lynx {
+namespace tasm {
+class PageConfig;
+}  // namespace tasm
+}  // namespace lynx
+
 NS_ASSUME_NONNULL_BEGIN
 
 @interface LynxFSPTracer () {
@@ -23,6 +29,8 @@ NS_ASSUME_NONNULL_BEGIN
  * @param nativeActor The weak pointer to the native actor.
  */
 - (void)setNativeActor:(const std::shared_ptr<PerformanceControllerActor>&)nativeActor;
+
+- (void)configureWithPageConfig:(const lynx::tasm::PageConfig*)pageConfig;
 
 @end
 NS_ASSUME_NONNULL_END
