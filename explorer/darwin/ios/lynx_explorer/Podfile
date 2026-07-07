@@ -54,7 +54,17 @@ target 'LynxExplorer' do
     :output_dir => File.join(__dir__, 'generated/lynx-library')
   )
 
+  pod 'AnimaX', '1.0.1-alpha.13', :subspecs => [
+    'Core',
+    'Framework',
+    'Textra',
+    'RenderBackend/Skity',
+  ]
+  pod 'skity', '1.1.0-alpha.3'
+  pod 'LynxTextra', '0.1.5'
+
   pod 'XElement', :path => '../../../..', :subspecs => [
+    'AnimaX',
     'Behavior',
   ]
 

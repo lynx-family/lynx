@@ -67,6 +67,8 @@ podspec_target("XElement_podspec") {
   ]
 }
 
+animax_version_requirement = ">= 1.0.1-alpha.13"
+
 subspec_target("AnimaX") {
   deps = [
     ":Common",
@@ -79,21 +81,31 @@ subspec_target("Common") {
     HEADER_SEARCH_PATHS = [
       "//",
       "//PODS_ROOT/AnimaX",
+      "//PODS_ROOT/AnimaX/Core",
+      "//PODS_ROOT/AnimaX/AnimaX",
+      "//PODS_ROOT/AnimaX/AnimaX/Core",
     ]
   }
   flatten_deps = [ "animax:lynx_animax" ]
   dependency = [
-    "AnimaX/Core",
-    "AnimaX/Framework",
-    "AnimaX/Textra",
-    "SSZipArchive",
+    [
+      "AnimaX/Framework",
+      animax_version_requirement,
+    ],
+    [
+      "AnimaX/Textra",
+      animax_version_requirement,
+    ],
   ]
   dependency += lynx_dependency
 }
 
 subspec_target("SkityBackend") {
   dependency = [
-    "AnimaX/RenderBackend/Skity",
+    [
+      "AnimaX/RenderBackend/Skity",
+      animax_version_requirement,
+    ],
     "XElement/AnimaX/Common",
   ]
 }

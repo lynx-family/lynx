@@ -9,7 +9,6 @@
 #import <AnimaX/AnimaXImageView.h>
 #import <AnimaX/AnimaXView.h>
 #import <Lynx/LynxComponentRegistry.h>
-#import <Lynx/LynxContext+Internal.h>
 #import <Lynx/LynxContext.h>
 #import <Lynx/LynxEnv+Internal.h>
 #import <Lynx/LynxEnv.h>
@@ -30,7 +29,6 @@
 #import <XElement/LynxAnimaXPropsPrioritySetter.h>
 #import <XElement/LynxAnimaXResourceFactoryServiceImpl.h>
 #import <XElement/LynxAnimaXResourceFetcherLoader.h>
-#include "core/shell/lynx_shell.h"
 #include "include/base/visibility_state.h"
 #include "src/base/log/log.h"
 #include "src/player/animax_event.h"
@@ -80,7 +78,7 @@ LYNX_REGISTER_UI("animax-view")
 
   self.hasReportMotionEvent = YES;
   [LynxEventReporter onEvent:@"lynxsdk_motion_ui_event"
-                  instanceId:[self.context.rootView instanceId]
+                  instanceId:[self.context instanceId]
                 propsBuilder:^NSDictionary<NSString *, NSObject *> * {
                   return @{@"component_name" : @"animax-view", @"src" : src};
                 }];
