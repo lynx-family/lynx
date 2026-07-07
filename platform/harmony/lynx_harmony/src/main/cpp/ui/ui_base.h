@@ -10,6 +10,7 @@
 #include <arkui/native_type.h>
 #include <native_drawing/drawing_types.h>
 
+#include <array>
 #include <memory>
 #include <optional>
 #include <string>
@@ -445,6 +446,8 @@ class LYNX_EXPORT UIBase : public std::enable_shared_from_this<UIBase>,
   void SetFilter(const lepus::Value& value);
   void ApplyOverflowClip();
   void InitDrawNode();
+  bool ShouldDrawOverlayShadowWithDrawNode() const;
+  std::array<float, 4> GetOverlayShadowOutset() const;
   void UpdateDrawNodeFrame();
   void DestroyDrawNode();
   UIBase* GetRelativeUI(const std::string& relativeId);

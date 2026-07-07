@@ -1164,6 +1164,14 @@ bool BackgroundDrawable::HasShadow() {
   return box_shadow_layer_ && box_shadow_layer_->HasShadow();
 }
 
+std::array<float, 4> BackgroundDrawable::GetBoxShadowOutset(
+    float scale_density) const {
+  if (!box_shadow_layer_) {
+    return {0.f, 0.f, 0.f, 0.f};
+  }
+  return box_shadow_layer_->GetOutset(scale_density);
+}
+
 void BackgroundDrawable::DrawShadow(OH_Drawing_Canvas* canvas) {
   if (HasShadow()) {
     OH_Drawing_CanvasSave(canvas);
