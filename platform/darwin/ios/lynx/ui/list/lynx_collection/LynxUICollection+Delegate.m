@@ -184,6 +184,7 @@ NSString *const kLynxEventListDebugInfo = @"listdebuginfo";
         rtl:NO
         factor:weakSelf.pagingAlignFactor
         offset:weakSelf.pagingAlignOffset
+        maxSnapCount:1
         callback:^(NSInteger position, CGPoint offset) {
           [weakSelf.context.eventEmitter
               sendCustomEvent:[[LynxDetailEvent alloc]

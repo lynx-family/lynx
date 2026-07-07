@@ -585,8 +585,18 @@ public class UIListContainer extends UISimpleView<ListContainerView>
       // The logic here is copied form the SnapHelper provided by Android.
       // TODO: Speed up the snap. In the future, the easing-curve should be able to be customized.
       double snapAlignmentMillisecondsPerPx = 50f / mContext.getScreenMetrics().densityDpi;
-      mView.mSnapHelper = new LynxSnapHelper(
-          factor, offset, snapAlignmentMillisecondsPerPx, new LynxSnapHelper.LynxSnapHooks() {
+      int maxSnapCount = 1;
+      if (params.hasKey("maxSnapCount")) {
+        maxSnapCount = params.getInt("maxSnapCount", 1);
+        if (maxSnapCount < 1) {
+          getLynxContext().handleLynxError(new LynxError(
+              LynxSubErrorCode.E_COMPONENT_LIST_INVALID_PROPS_ARG, "item-snap invalid!",
+              "The maxSnapCount should be greater than 0.", LynxError.LEVEL_WARN));
+          maxSnapCount = 1;
+        }
+      }
+      mView.mSnapHelper = new LynxSnapHelper(factor, offset, snapAlignmentMillisecondsPerPx,
+          maxSnapCount, new LynxSnapHelper.LynxSnapHooks() {
             @Override
             public int getScrollX() {
               return getView().getScrollX();
