@@ -23,4 +23,5 @@ export class TraceEventDef {
   static readonly EVENT_REPORTER_UPDATE_GENERIC_INFO = 'LynxEventReporter.updateGenericInfo';
   static readonly EVENT_REPORTER_HANDLE_EVENT = 'LynxEventReporter.handleEvent';
   static readonly LYNX_ENV_TRIM_MEMORY = 'LynxEnv.trimMemory';
+  static readonly NATIVE_MODULE_NETWORK_REQUEST = 'Network::SendNetworkRequest';
 }

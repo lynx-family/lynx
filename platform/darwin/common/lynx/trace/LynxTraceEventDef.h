@@ -93,6 +93,7 @@ static NSString* const FLUENCY_MONITOR_STOP_FLUENCY_TRACE = @"StopFluencyTrace";
 static const char* const LYNX_VIEW_LIFECYCLE_ON_PIPER_INVOKED = "LynxViewLifeCycle::onPiperInvoked";
 static const char* const LYNX_VIEW_LIFECYCLE_ON_PIPER_RESPONSE =
     "LynxViewLifeCycle::onPiperResponsed";
+static NSString* const NATIVE_MODULE_NETWORK_REQUEST = @"Network::SendNetworkRequest";
 static const char* const LYNX_RESOURCE_SERVICE_FETCHER_FETCH_RESOURCE =
     "LynxResourceServiceFetcher::fetchResource";
 static const char* const DYNAMIC_COMPONENT_FETCHER_LOAD_COMPONENT =
