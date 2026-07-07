@@ -203,7 +203,7 @@ bool GPUSurfaceGLSkia::CreateOrUpdateSurfaces(const skity::Vec2& size) {
   fbo_id_ = 0;
 
   if (size.x == 0 && size.y == 0) {
-    FML_LOG(ERROR) << "Cannot create surfaces of empty size.";
+    FML_LOG(INFO) << "Cannot create surfaces of empty size.";
     return false;
   }
 

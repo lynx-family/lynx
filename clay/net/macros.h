@@ -6,7 +6,7 @@
 #define CLAY_NET_MACROS_H_
 
 #if (DEBUG_NET)
-#define NET_LOG FML_LOG(ERROR) << "[CLAY]-[NET]"
+#define NET_LOG FML_LOG(INFO) << "[CLAY]-[NET]"
 #else
 #define NET_LOG FML_EAT_STREAM_PARAMETERS(true)
 #endif

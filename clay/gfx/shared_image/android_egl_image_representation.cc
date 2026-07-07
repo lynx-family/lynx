@@ -59,7 +59,7 @@ AndroidEGLFenceSync::~AndroidEGLFenceSync() {
 
 int32_t AndroidEGLFenceSync::GetCurrentFD() {
   if (!CheckAndroidNativeFenceSupported() || fence_ == EGL_NO_SYNC_KHR) {
-    FML_LOG(ERROR) << "EGL Android native fence sync is not supported.";
+    FML_LOG(INFO) << "EGL Android native fence sync is not supported.";
     return EGL_NO_NATIVE_FENCE_FD_ANDROID;
   }
   FML_DCHECK(eglGetSyncAttribKHR);
@@ -139,7 +139,7 @@ bool AndroidEGLFenceSync::CheckEGLFenceSupported() {
                   eglDupNativeFenceFDANDROID;
     }
     if (!supported) {
-      FML_LOG(ERROR) << "EGLFenceSync is not supported.";
+      FML_LOG(INFO) << "EGLFenceSync is not supported.";
     }
   };
   std::call_once(flag, init_func);

@@ -134,7 +134,7 @@ static std::shared_ptr<skity::Data> ScreenshotLayerTreeAsImage(
     clay::CompositorContext& compositor_context, bool compressed,
     uint32_t background_color) {
   if (compressed) {
-    FML_LOG(ERROR) << "Screenshot: 'compressed' not supported on skity yet. ";
+    FML_LOG(INFO) << "Screenshot: 'compressed' not supported on skity yet. ";
     return nullptr;
   }
 

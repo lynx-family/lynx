@@ -8,7 +8,7 @@
 namespace clay {
 
 #if (DEBUG_GESTURE)
-#define GESTURE_LOG FML_LOG(ERROR) << "[Gesture] "
+#define GESTURE_LOG FML_LOG(INFO) << "[Gesture] "
 #else
 #define GESTURE_LOG FML_EAT_STREAM_PARAMETERS(true)
 #endif

@@ -179,7 +179,7 @@ class GLRenderer final : public clay::example::SurfaceDelegate,
     }
 
     if (!front_image_) {
-      FML_LOG(ERROR) << "Clay: No front_image_!";
+      FML_LOG(INFO) << "Clay: No front_image_!";
       return;
     }
 

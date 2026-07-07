@@ -300,8 +300,8 @@ BaseView::~BaseView() {
         bool has_this_node =
             layout_controller->RemoveDirtyNode(this->GetWeakPtr());
         if (has_this_node) {
-          FML_LOG(ERROR) << "remove a dirty node in destruct, tag:" << tag_
-                         << ", id :" << id_selector_;
+          FML_LOG(INFO) << "remove a dirty node in destruct, tag:" << tag_
+                        << ", id :" << id_selector_;
         }
       }
     }
@@ -3347,7 +3347,7 @@ void BaseView::DumpViewTree(int depth) const {
   for (int i = 0; i < depth; ++i) {
     intent.append((i == depth - 1) ? "|-" : "| ");
   }
-  FML_LOG(ERROR) << intent << "[" << GetName() << "] " << this << ToString();
+  FML_LOG(INFO) << intent << "[" << GetName() << "] " << this << ToString();
   for (BaseView* child : children_) {
     child->DumpViewTree(depth + 1);
   }

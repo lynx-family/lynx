@@ -452,9 +452,9 @@ void FrameBuilder::PushExternalViewLayer(const ElementId& element_id,
 
 #ifndef NDEBUG
 void FrameBuilder::DumpLayerTree() const {
-  FML_LOG(ERROR) << "frame_size_=(" << frame_size_.x << "," << frame_size_.y
-                 << ") "
-                 << "device_pixel_ratio_=" << device_pixel_ratio_;
+  FML_LOG(INFO) << "frame_size_=(" << frame_size_.x << "," << frame_size_.y
+                << ") "
+                << "device_pixel_ratio_=" << device_pixel_ratio_;
   if (layer_tree_.get() && layer_tree_->root_layer()) {
     layer_tree_->root_layer()->DebugDumpTree(0);
   } else if (layer_stack_.size() > 0) {

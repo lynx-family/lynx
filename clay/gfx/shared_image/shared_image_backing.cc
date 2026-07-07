@@ -102,8 +102,8 @@ fml::RefPtr<SharedImageBacking> SharedImageBacking::Create(
       return fml::MakeRefCounted<D3DTextureImageBacking>(pixel_format, size,
                                                          gfx_handle);
     } else {
-      FML_LOG(ERROR) << "Fallback to D3D9TextureImageBacking because D3D11 is "
-                        "not supported.";
+      FML_LOG(INFO) << "Fallback to D3D9TextureImageBacking because D3D11 is "
+                       "not supported.";
       return fml::MakeRefCounted<D3D9TextureImageBacking>(pixel_format, size,
                                                           gfx_handle);
     }
@@ -114,8 +114,8 @@ fml::RefPtr<SharedImageBacking> SharedImageBacking::Create(
       return fml::MakeRefCounted<AHardwareBufferImageBacking>(
           pixel_format, size, std::nullopt);
     }
-    FML_LOG(ERROR) << "Fallback to EGLImageBacking because AHardwareBuffer is "
-                      "not supported.";
+    FML_LOG(INFO) << "Fallback to EGLImageBacking because AHardwareBuffer is "
+                     "not supported.";
     return fml::MakeRefCounted<EGLImageBacking>(pixel_format, size,
                                                 std::nullopt);
   } else if (type == BackingType::kEGLImage) {

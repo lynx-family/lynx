@@ -38,7 +38,7 @@ void VkFenceSync::ServerWait() {
   }
   if (!fence_semaphore_->WaitSemaphore()) {
     // Fallback to client wait.
-    FML_LOG(ERROR) << "Vulkan fence sync fd is -1, fallback to client wait.";
+    FML_LOG(INFO) << "Vulkan fence sync fd is -1, fallback to client wait.";
     ClientWait();
     return;
   }

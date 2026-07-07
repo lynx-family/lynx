@@ -61,7 +61,7 @@ void PendingLayer::MarkNeedsAddToFrame() { need_add_to_frame_ = true; }
 void PendingLayer::DumpPendingLayerTree() const {
   std::string intent;
   intent.append(2 * Depth(), ' ');
-  FML_LOG(ERROR) << intent << "[" << GetName() << "] " << this << ToString();
+  FML_LOG(INFO) << intent << "[" << GetName() << "] " << this << ToString();
 
   PendingLayer* child = FirstChild();
   while (child) {

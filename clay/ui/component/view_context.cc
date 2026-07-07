@@ -47,7 +47,7 @@
 #define DEBUG_CLAY_CTX 0
 #define CTX_DEBUG_TAG "[CLAY]-[CTX] "
 #if (DEBUG_CLAY_CTX)
-#define CTX_LOG FML_LOG(ERROR) << CTX_DEBUG_TAG
+#define CTX_LOG FML_LOG(INFO) << CTX_DEBUG_TAG
 #else
 #define CTX_LOG FML_EAT_STREAM_PARAMETERS(true)
 #endif
