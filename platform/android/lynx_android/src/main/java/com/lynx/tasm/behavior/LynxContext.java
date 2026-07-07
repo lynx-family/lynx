@@ -387,6 +387,10 @@ public abstract class LynxContext extends LynxBaseContext implements ExceptionHa
 
   public void onPageConfigDecoded(PageConfig config) {
     mPageConfig = config;
+    PerformanceController perfController = getPerfController();
+    if (perfController != null) {
+      perfController.onPageConfigDecoded(config);
+    }
   }
 
   /**

@@ -2108,7 +2108,6 @@ public class com::lynx::tasm::behavior::ui::frame::FrameShadowNode : com.lynx.ta
 }
 
 public class com::lynx::tasm::performance::fsp::FSPConfig :  {
-  public final boolean com.lynx.tasm.performance.fsp.FSPConfig.enable enable;
   public int com.lynx.tasm.performance.fsp.FSPConfig.minContentFillPercentageX minContentFillPercentageX;
   public int com.lynx.tasm.performance.fsp.FSPConfig.minContentFillPercentageY minContentFillPercentageY;
   public int com.lynx.tasm.performance.fsp.FSPConfig.minContentFillPercentageTotalArea minContentFillPercentageTotalArea;
@@ -8598,6 +8597,7 @@ public class com::lynx::tasm::PageConfig :  {
   public boolean com.lynx.tasm.PageConfig.getEnableFiberArc();
   public boolean com.lynx.tasm.PageConfig.getEnableMultiTouch();
   public double com.lynx.tasm.PageConfig.getEnableLynxScrollFluency();
+  public boolean com.lynx.tasm.PageConfig.isFSPEnabled();
   public boolean com.lynx.tasm.PageConfig.getEnableTransformedTouchPosition();
   public boolean com.lynx.tasm.PageConfig.getEnableNewSticky();
   public boolean com.lynx.tasm.PageConfig.getEnableDispatchCustomEventForUI();
@@ -8739,7 +8739,9 @@ public class com::lynx::tasm::performance::PerformanceController : com.lynx.tasm
   public void com.lynx.tasm.performance.PerformanceController.deallocateMemory(IMemoryRecordBuilder builder);
   public void com.lynx.tasm.performance.PerformanceController.updateMemoryUsage(IMemoryRecordBuilder builder);
   public void com.lynx.tasm.performance.PerformanceController.startFSPTracer(IMeaningfulContentSnapshotCaptureHandler captureHandler);
+  public void com.lynx.tasm.performance.PerformanceController.onPageConfigDecoded(PageConfig pageConfig);
   public void com.lynx.tasm.performance.PerformanceController.stopFSPTracerByUserInteraction();
+  public boolean com.lynx.tasm.performance.PerformanceController.isFSPEnabled();
   public void com.lynx.tasm.performance.PerformanceController.updateMemoryUsage(Map< String, MemoryRecord > recordMap);
   public void com.lynx.tasm.performance.PerformanceController.setMsTiming(String key, long msTimestamp, String pipelineID);
   public void com.lynx.tasm.performance.PerformanceController.markTiming(final String key, final String pipelineID);

@@ -16,6 +16,7 @@
 #import <Lynx/LynxEventReporter.h>
 #import <Lynx/LynxEventReporterUtils.h>
 #import <Lynx/LynxExposureModule.h>
+#import <Lynx/LynxFSPTracer.h>
 #import <Lynx/LynxFetchModule.h>
 #import <Lynx/LynxGroup+Internal.h>
 #import <Lynx/LynxHttpStreamingDelegate.h>
