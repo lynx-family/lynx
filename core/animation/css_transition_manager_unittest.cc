@@ -402,6 +402,70 @@ TEST_F(CSSTransitionManagerTest, NoNeedUpdateExistingAnimator) {
   EXPECT_TRUE(opacity_animation_data.delay == 0);
 }
 
+TEST_F(CSSTransitionManagerTest, HasActiveTransition) {
+  auto test_element = InitElement();
+  auto test_manager = InitTestTransitionManager(test_element.get());
+  starlight::TransitionData transition_data =
+      InitTransitionData(starlight::AnimationPropertyType::kOpacity, 2000, 0,
+                         starlight::TimingFunctionData());
+  test_manager->setTransitionData(transition_data);
+
+  EXPECT_FALSE(test_manager->HasActiveTransition(tasm::kPropertyIDOpacity));
+
+  test_manager->element()->RecordElementPreviousStyle(
+      tasm::kPropertyIDOpacity, tasm::CSSValue(0.5, CSSValuePattern::NUMBER));
+  test_manager->ConsumeCSSProperty(tasm::kPropertyIDOpacity,
+                                   tasm::CSSValue(1, CSSValuePattern::NUMBER));
+  EXPECT_TRUE(test_manager->HasActiveTransition(tasm::kPropertyIDOpacity));
+  EXPECT_FALSE(test_manager->HasActiveTransition(tasm::kPropertyIDWidth));
+
+  test_manager->animations_map()[base::String("opacity")]->Stop();
+  EXPECT_FALSE(test_manager->HasActiveTransition(tasm::kPropertyIDOpacity));
+}
+
+TEST_F(CSSTransitionManagerTest, ConsumeCSSPropertyForActiveTransition) {
+  auto test_element = InitElement();
+  auto test_manager = InitTestTransitionManager(test_element.get());
+  starlight::TransitionData transition_data =
+      InitTransitionData(starlight::AnimationPropertyType::kOpacity, 2000, 0,
+                         starlight::TimingFunctionData());
+  test_manager->setTransitionData(transition_data);
+
+  test_manager->element()->RecordElementPreviousStyle(
+      tasm::kPropertyIDOpacity, tasm::CSSValue(0.5, CSSValuePattern::NUMBER));
+  test_manager->ConsumeCSSProperty(tasm::kPropertyIDOpacity,
+                                   tasm::CSSValue(1, CSSValuePattern::NUMBER));
+  auto old_animation = test_manager->animations_map()[base::String("opacity")];
+  ASSERT_NE(nullptr, old_animation);
+
+  EXPECT_TRUE(test_manager->ConsumeCSSPropertyForActiveTransition(
+      tasm::kPropertyIDOpacity, tasm::CSSValue(1, CSSValuePattern::NUMBER)));
+  EXPECT_EQ(old_animation,
+            test_manager->animations_map()[base::String("opacity")]);
+  EXPECT_EQ(old_animation->GetState(), animation::Animation::State::kPlay);
+
+  test_manager->element()->RecordElementPreviousStyle(
+      tasm::kPropertyIDOpacity, tasm::CSSValue(0.75, CSSValuePattern::NUMBER));
+  EXPECT_TRUE(test_manager->ConsumeCSSPropertyForActiveTransition(
+      tasm::kPropertyIDOpacity, tasm::CSSValue(0.25, CSSValuePattern::NUMBER)));
+  auto new_animation = test_manager->animations_map()[base::String("opacity")];
+  ASSERT_NE(nullptr, new_animation);
+  EXPECT_NE(old_animation, new_animation);
+  EXPECT_EQ(old_animation->GetState(), animation::Animation::State::kStop);
+  EXPECT_EQ(new_animation->GetState(), animation::Animation::State::kPlay);
+
+  const auto* opacity_start =
+      FindTransitionKeyframeValue(test_manager.get(), base::String("opacity"),
+                                  0.f, tasm::kPropertyIDOpacity);
+  ASSERT_NE(nullptr, opacity_start);
+  EXPECT_EQ(*opacity_start, tasm::CSSValue(0.75, CSSValuePattern::NUMBER));
+  const auto* opacity_end =
+      FindTransitionKeyframeValue(test_manager.get(), base::String("opacity"),
+                                  1.f, tasm::kPropertyIDOpacity);
+  ASSERT_NE(nullptr, opacity_end);
+  EXPECT_EQ(*opacity_end, tasm::CSSValue(0.25, CSSValuePattern::NUMBER));
+}
+
 TEST_F(CSSTransitionManagerTest, HasTwoSameAnimation) {
   auto test_element = InitElement();
   auto test_manager = InitTestTransitionManager(test_element.get());
