@@ -7,6 +7,7 @@ package com.lynx.tasm.performance.fsp;
 import android.graphics.Rect;
 import androidx.annotation.AnyThread;
 import androidx.annotation.UiThread;
+import com.lynx.tasm.LynxEnv;
 import com.lynx.tasm.base.TraceEvent;
 import com.lynx.tasm.base.trace.TraceEventDef;
 import com.lynx.tasm.behavior.ui.ILynxUIMeaningfulContent;
@@ -64,7 +65,7 @@ public class FSPTracer {
   private static final String KEY_CONTAINER_FILL_PERCENTAGE_CONTAINER_AREA =
       "containerFillPercentageContainerArea";
   // Tracer fields
-  private final FSPConfig mConfig = new FSPConfig();
+  private FSPConfig mConfig;
   private final AtomicBoolean mIsRunning = new AtomicBoolean(false);
   private volatile FSPSnapshot mPreviousSnapshot;
   private int mInstanceId = LynxEventReporter.INSTANCE_ID_UNKNOWN;
@@ -87,10 +88,13 @@ public class FSPTracer {
    */
   @UiThread
   public void start(IMeaningfulContentSnapshotCaptureHandler captureHandler) {
-    if (captureHandler == null || !mConfig.enable || mIsRunning.get()) {
+    if (captureHandler == null || !isFSPEnabled() || mIsRunning.get()) {
       return;
     }
     // 1. setup config.
+    if (mConfig == null) {
+      mConfig = new FSPConfig();
+    }
     mConfig.parse();
     mIsRunning.set(true);
     // 2. start snapshot timer
@@ -105,7 +109,7 @@ public class FSPTracer {
    */
   @UiThread
   public void stop() {
-    if (!mConfig.enable || !mIsRunning.get()) {
+    if (!isFSPEnabled() || !mIsRunning.get()) {
       return;
     }
     internalStop(ResultStatus.STOP);
@@ -117,7 +121,7 @@ public class FSPTracer {
    */
   @UiThread
   public void cancelledByUserInteraction() {
-    if (!mConfig.enable || !mIsRunning.get()) {
+    if (!isFSPEnabled() || !mIsRunning.get()) {
       return;
     }
     internalStop(ResultStatus.CANCEL_BY_USER_INTERACTION);
@@ -132,7 +136,8 @@ public class FSPTracer {
     final WeakReference<FSPTracer> weakSelf = new WeakReference<>(this);
     UIThreadUtils.runOnUiThread(() -> {
       FSPTracer tracer = weakSelf.get();
-      if (tracer == null || !tracer.mIsRunning.get() || captureHandler == null) {
+      if (tracer == null || !tracer.isFSPEnabled() || !tracer.mIsRunning.get()
+          || captureHandler == null) {
         return;
       }
       // Capture the snapshot
@@ -155,7 +160,7 @@ public class FSPTracer {
       return;
     }
     LynxEventReporter.delayRunOnReportThread(() -> {
-      if (!mConfig.enable || !mIsRunning.get()) {
+      if (!isFSPEnabled() || !mIsRunning.get()) {
         return;
       }
       internalStop(ResultStatus.CANCEL_BY_TIMEOUT);
@@ -170,6 +175,11 @@ public class FSPTracer {
       return;
     }
     handleFSPResult(status, mPreviousSnapshot, currentTimestampUs);
+  }
+
+  private boolean isFSPEnabled() {
+    PerformanceController perfController = mPerfControllerRef.get();
+    return perfController == null ? LynxEnv.inst().enableFSP() : perfController.isFSPEnabled();
   }
 
   @UiThread
@@ -212,7 +222,7 @@ public class FSPTracer {
   /// @note Run on ReportThread
   /// Process captured fsp snapshot
   public void onCaptureSnapshot(FSPSnapshot snapshot) {
-    if (!mConfig.enable || !mIsRunning.get()) {
+    if (!isFSPEnabled() || !mIsRunning.get()) {
       return;
     }
 
