@@ -18,6 +18,7 @@
 #include "platform/harmony/lynx_harmony/src/main/cpp/font/font_face_manager.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/lynx_context.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/shadow_node/raw_text_shadow_node.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/shadow_node/shadow_node_owner.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/background/background_conic_gradient_layer.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/background/background_linear_gradient_layer.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/background/background_radial_gradient_layer.h"
@@ -30,7 +31,7 @@ BaseTextShadowNode::BaseTextShadowNode(int sign, const std::string& tag)
     : ShadowNode(sign, tag) {}
 
 void BaseTextShadowNode::OnContextReady() {
-  const auto font_manager = context_->GetFontFaceManager();
+  const auto font_manager = owner_->GetFontFaceManager();
   style_.SetDefaultFontFamily(
       font_manager ? font_manager->GetDefaultFontFamily() : "");
   style_.SetFontSize(context_->DefaultFontSize() * ScaleDensity());
@@ -117,8 +118,7 @@ void BaseTextShadowNode::OnPropsUpdate(const std::string& name,
 
 void BaseTextShadowNode::SetCustomFontFamiliesToStyle() {
   if (!raw_font_families_.empty() && style_.GetCustomFontFamilies().empty()) {
-    const auto font_manager =
-        context_ ? context_->GetFontFaceManager() : nullptr;
+    const auto font_manager = owner_->GetFontFaceManager();
     if (font_manager) {
       std::vector<std::string> new_custom_families =
           font_manager->GetCustomFamiliesFromRawVector(raw_font_families_);
@@ -137,8 +137,7 @@ void BaseTextShadowNode::UpdateInheritedTextStyle(
 
   if (effective_raw_font_families.empty()) {
     style_.ClearCustomFontFamilies();
-    const auto font_manager =
-        context_ ? context_->GetFontFaceManager() : nullptr;
+    const auto font_manager = owner_->GetFontFaceManager();
     const std::string default_font_family =
         font_manager ? font_manager->GetDefaultFontFamily() : "";
     if (!default_font_family.empty()) {
@@ -147,8 +146,7 @@ void BaseTextShadowNode::UpdateInheritedTextStyle(
       style_.SetCustomFontFamilyVector({});
     }
   } else {
-    const auto font_manager =
-        context_ ? context_->GetFontFaceManager() : nullptr;
+    const auto font_manager = owner_->GetFontFaceManager();
     if (font_manager) {
       style_.SetCustomFontFamilyVector(
           font_manager->GetCustomFamiliesFromRawVector(
@@ -230,11 +228,7 @@ void BaseTextShadowNode::LoadFontFamilyIfNeeded(
     const std::vector<std::string>& raw_font_families,
     FontCollectionHarmony* font_collection) const {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, BASE_TEXT_SHADOW_NODE_LOAD_FONT_FAMILY);
-  // try to load font from loader or pre-register
-  if (!context_) {
-    return;
-  }
-  auto font_face_manager = context_->GetFontFaceManager();
+  auto font_face_manager = owner_->GetFontFaceManager();
   if (!font_face_manager) {
     return;
   }

@@ -22,6 +22,7 @@
 #include "platform/harmony/lynx_harmony/src/main/cpp/lynx_context.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/shadow_node/inline_placeholder_shadow_node.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/shadow_node/inline_truncation_shadow_node.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/shadow_node/shadow_node_owner.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/shadow_node/text/text_measure_cache.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/text/paragraph_builder_harmony.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/text/paragraph_harmony.h"
@@ -43,7 +44,7 @@ TextShadowNode::~TextShadowNode() = default;
 
 void TextShadowNode::OnContextReady() {
   BaseTextShadowNode::OnContextReady();
-  const auto font_face_manager = context_->GetFontFaceManager();
+  const auto font_face_manager = owner_->GetFontFaceManager();
   font_collection_ =
       font_face_manager
           ? font_face_manager->GetFontCollection()

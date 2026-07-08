@@ -50,7 +50,6 @@ class CustomEvent;
 class GestureEvent;
 class EventTarget;
 class ShadowNodeOwner;
-class TextMeasureCache;
 class UIOwner;
 class UIBase;
 class UIRoot;
@@ -240,8 +239,6 @@ class LynxContext {
   const std::string& OwnerId();
 
   std::shared_ptr<FontFaceManager> GetFontFaceManager() const;
-
-  TextMeasureCache* GetTextMeasureCache() const;
 
   void CreateNodeContent(UIBase* ui) const;
 

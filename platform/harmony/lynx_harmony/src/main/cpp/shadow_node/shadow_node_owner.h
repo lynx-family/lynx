@@ -129,6 +129,7 @@ class ShadowNodeOwner : public std::enable_shared_from_this<ShadowNodeOwner> {
   std::shared_ptr<LayoutVSyncProxy> vsync_proxy_;
   float root_width_{0.f};
   float root_height_{0.f};
+  bool destroyed_{false};
 };
 }  // namespace harmony
 }  // namespace tasm
