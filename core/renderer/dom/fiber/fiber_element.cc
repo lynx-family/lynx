@@ -1068,13 +1068,6 @@ FiberElement::~FiberElement() {
   }
 }
 
-const FiberElement::InheritedProperty FiberElement::GetInheritedProperty() {
-  return {
-      children_propagate_inherited_styles_flag_, inherited_styles_.get(),
-      reset_inherited_ids_.get(),
-      custom_properties_.Get() ? &custom_properties_.Get()->Value() : nullptr};
-}
-
 const FiberElement::InheritedProperty
 FiberElement::GetParentInheritedProperty() {
   // If in a parallel flush process or if the parent is null, return
@@ -1086,7 +1079,7 @@ FiberElement::GetParentInheritedProperty() {
                                      : nullptr};
   }
 
-  FiberElement *real_parent = static_cast<FiberElement *>(parent());
+  Element *real_parent = parent();
   if (real_parent == nullptr) {
     return InheritedProperty();
   }
@@ -5415,19 +5408,6 @@ void FiberElement::UpdateDynamicElementStyle(uint32_t style,
   UpdateDynamicElementStyleRecursively(style, force_update);
 }
 
-void FiberElement::ResetSheetRecursively(
-    const std::shared_ptr<CSSStyleSheetManager> &manager) {
-  if (is_page() || is_component() || css_id_ != kInvalidCssId) {
-    set_style_sheet_manager(manager);
-  }
-
-  // reset style sheet.
-  ResetStyleSheet();
-  for (const auto &child : children()) {
-    static_cast<FiberElement *>(child.get())->ResetSheetRecursively(manager);
-  }
-}
-
 void FiberElement::PrepareOrUpdatePseudoElement(PseudoState state,
                                                 StyleMap &style_map) {
   if (style_map.empty() &&
@@ -5756,60 +5736,6 @@ bool FiberElement::IsEventPathCatch(event::EventTarget *target,
     return true;
   }
   return Element::IsEventPathCatch(target, event);
-}
-
-bool FiberElement::CollectCustomProperties(AttributeHolder *holder) {
-  if (custom_properties_.Get() != nullptr) {
-    return true;
-  }
-
-  if (!holder) {
-    return false;
-  }
-
-  if (FiberElement *real_parent = static_cast<FiberElement *>(parent());
-      real_parent) {
-    if (!real_parent->CollectCustomProperties(real_parent->data_model())) {
-      return false;
-    }
-    // Share parent's map (Copy-On-Write)
-    // This is cheap - just increments refcount
-    custom_properties_ = real_parent->custom_properties_;
-  }
-
-  const auto &variables = holder->css_variables_map();
-  const auto &inline_variables = holder->GetCSSInlineVariables();
-
-  // If we don't have any new variables, we can just share the parent's map.
-  if (variables.empty() && inline_variables.empty()) {
-    if (custom_properties_.Get() == nullptr) {
-      custom_properties_.Init();
-    }
-    return true;
-  }
-
-  // Access() will copy the map if it's shared (refcount > 1)
-  if (custom_properties_.Get() == nullptr) {
-    custom_properties_.Init();
-  }
-  auto *map = &custom_properties_.Access()->Value();
-
-  // TODO(renzhongyue): Variables declared in CSS must use the normal
-  // custom-property declaration syntax, not {{}}.
-  for (const auto &[name, value] : variables) {
-    CSSStringParser parser{value.c_str(), static_cast<uint32_t>(value.length()),
-                           element_manager()->GetCSSParserConfigs()};
-    map->insert_or_assign(name, parser.ParseVariable());
-  }
-
-  for (const auto &[name, value] : inline_variables) {
-    CSSStringParser parser{value.c_str(), static_cast<uint32_t>(value.length()),
-                           element_manager()->GetCSSParserConfigs()};
-    map->insert_or_assign(name, parser.ParseVariable());
-  }
-
-  CSSValue::SubstituteAll(*map);
-  return true;
 }
 
 // Returns true if any active stylesheet (the element's own CSS fragment or any
