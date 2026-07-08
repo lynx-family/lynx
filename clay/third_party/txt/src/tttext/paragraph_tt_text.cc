@@ -309,4 +309,7 @@ void ParagraphTTText::AddTextRun(tttext::Style& style,
 uint32_t ParagraphTTText::GetTextSize() const {
   return paragraph_->GetCharCount();
 }
+tttext::WriteDirection ParagraphTTText::GetResolvedWriteDirection() const {
+  return paragraph_->GetResolvedWriteDirection();
+}
 }  // namespace txt
