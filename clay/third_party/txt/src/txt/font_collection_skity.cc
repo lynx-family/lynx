@@ -89,7 +89,7 @@ tttext::FontmgrCollection FontCollection::GetIFontCollection() {
 
   assert(default_font_manager_ != nullptr);
   if (default_font_manager_ != nullptr) {
-#if OS_IOS || OS_MAC
+#if OS_IOS
     collection.SetDefaultFontManager(
         std::make_shared<tttext::SkityFontManagerCoreText>());
 #else
@@ -98,7 +98,7 @@ tttext::FontmgrCollection FontCollection::GetIFontCollection() {
 #endif
   }
   if (asset_font_manager_ != nullptr) {
-#if OS_IOS || OS_MAC
+#if OS_IOS
     collection.SetAssetFontManager(
         std::make_shared<tttext::SkityFontManagerCoreText>(
             asset_font_manager_));
