@@ -1340,6 +1340,10 @@ std::vector<double> ElementInspector::GetOverlayNGBoxModel(Element* element) {
   CHECK_NULL_AND_LOG_RETURN_VALUE(catalyzer, "catalyzer is null", res);
 
   auto size = catalyzer->getWindowSize(element);
+  if (size.size() < 2) {
+    LOGW("window size is invalid");
+    return res;
+  }
   res.push_back(size[0]);
   res.push_back(size[1]);
 
