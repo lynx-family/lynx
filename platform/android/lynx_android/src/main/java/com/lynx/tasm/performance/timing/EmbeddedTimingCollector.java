@@ -15,13 +15,13 @@ import java.util.ArrayList;
 /**
  * @brief Embedded timing collector that provides minimal timing tracking
  * for embedded mode, tracking only the essential timing points (loadBundleStart,
- * loadBundleEnd, DrawEnd).
+ * DrawEnd).
  */
 @RestrictTo(RestrictTo.Scope.LIBRARY)
 public class EmbeddedTimingCollector {
-  private long mLoadBundleStartUs;
+  private long mLoadBundleStartUs = -1;
   private final ArrayList<Long> mUpdateDataStartUsList = new ArrayList<>();
-  private long mPaintEndUs;
+  private long mPaintEndUs = -1;
   private boolean mHasEmitLoadBundleEvent = false;
 
   private WeakReference<IPerformanceObserver> mObserver;
@@ -73,6 +73,9 @@ public class EmbeddedTimingCollector {
     }
     IPerformanceObserver observer = mObserver.get();
     if (observer == null) {
+      return;
+    }
+    if (mLoadBundleStartUs < 0 || mPaintEndUs < 0) {
       return;
     }
     mHasEmitLoadBundleEvent = true;
