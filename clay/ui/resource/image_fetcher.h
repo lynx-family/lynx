@@ -42,6 +42,9 @@ class ImageFetcher : public fml::RefCountedThreadSafe<ImageFetcher> {
                                     const ImageCallback& callback);
 
   std::shared_ptr<skity::Image> LoadImage(const std::string& url);
+  fml::RefPtr<fml::TaskRunner> GetUITaskRunner() const {
+    return task_runners_.GetUITaskRunner();
+  }
 
   void TryCancelAsyncFetch(const std::string& original_url, uint64_t fetch_id);
 

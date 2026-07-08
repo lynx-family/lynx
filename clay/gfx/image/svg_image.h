@@ -24,8 +24,6 @@ class SVGImage : public BaseImage {
       fml::WeakPtr<ImageFetcher> image_fetcher, std::string url,
       const std::string& content);
 
-  explicit SVGImage(const std::string& content);
-
   void SetCacheKeyHash(size_t cache_key_hash) {
     cache_key_hash_ = cache_key_hash;
   }
@@ -46,8 +44,13 @@ class SVGImage : public BaseImage {
 
  private:
   SVGImage() = default;
+  SVGImage(fml::WeakPtr<ImageFetcher> image_fetcher,
+           const std::string& content);
+  void InitializeSVGDom();
+  std::shared_ptr<skity::Image> LoadExternalImage(const std::string& url);
+  void ScheduleRepaintAfterUpload(fml::RefPtr<GPUUnrefQueue> unref_queue);
+  void NotifyImageChanged();
 
- private:
   std::string content_;
   // For SVG images, this is the MD5 of the SVG content.
   // This MD5 is primarily used to cache images within ImageCache.
