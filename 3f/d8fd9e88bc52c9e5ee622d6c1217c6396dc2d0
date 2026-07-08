@@ -1,0 +1,44 @@
+animax/animax/platform/android/animax_android/src/main/java/com/lynx/animax/player/CodecManager.java
+  s_4c87a199bbbc56::t_dbe4438a7f66b1 322
+animax/animax/src/layer/text_content_data_source.cc
+  s_87288587c4c8d7::t_c99d1367c1cb77 32-35,101
+animax/animax/src/layer/text_content_data_source.h
+  s_87288587c4c8d7::t_e6f5f69bf969cc 39-40,44
+animax/animax/src/layer/text_content_data_source_unittest.cc
+  s_87288587c4c8d7::t_f0be156a8de5a5 143-168
+animax/animax/src/layer/textra/text_content_layout_context.cc
+  s_87288587c4c8d7::t_1512a9159233b5 54-57,60-61
+animax/animax/src/layer/textra/text_content_layout_context_unittest.cc
+  s_87288587c4c8d7::t_54a87b415efec7 164-165
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.5",
+  "base_commit_sha": "3fd8fd9e88bc52c9e5ee622d6c1217c6396dc2d0",
+  "prompts": {},
+  "humans": {
+    "h_012c876e070b77": {
+      "author": "caitan <caitan.5523@bytedance.com>"
+    }
+  },
+  "sessions": {
+    "s_4c87a199bbbc56": {
+      "agent_id": {
+        "tool": "trae-cue",
+        "id": "ai_tab-icr-c8e8e837-f99c-4eac-8e1c-3d9792af3c2f",
+        "model": "default"
+      },
+      "human_author": "caitan <caitan.5523@bytedance.com>"
+    },
+    "s_87288587c4c8d7": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f3bd8-793b-7b51-8d41-133f8c517668",
+        "model": "unknown"
+      },
+      "human_author": "caitan <caitan.5523@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

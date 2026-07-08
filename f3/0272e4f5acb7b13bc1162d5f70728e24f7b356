@@ -1,0 +1,58 @@
+lynx/oliver/node-lynx/BUILD.gn
+  s_764f4cacc9f11b::t_c292f29657b4f5 65
+lynx/oliver/node-lynx/README.md
+  s_764f4cacc9f11b::t_a396ed04b2301e 51-79,114,129
+lynx/oliver/node-lynx/native/headless_lynx_view_node.cc
+  s_764f4cacc9f11b::t_08fe70f697eec3 25,1419-1420,1450-1451,1638-1698,2111-2126,2136,2140-2159,2243-2247,2327,2369
+lynx/oliver/node-lynx/scripts/test.sh
+  s_764f4cacc9f11b::t_d82042ff9e4801 39
+lynx/oliver/node-lynx/skills/node-lynx/SKILL.md
+  s_764f4cacc9f11b::t_320e4dfb61fbd9 34-42,47-48,101-122
+lynx/oliver/node-lynx/src/cli-main.ts
+  s_764f4cacc9f11b::t_a5d1865140763f 20,22-23,51,61,126-127,133-134,142,151-156,160-181,187-190,248,274-275,283-287,294-295,412-423,550-578
+lynx/oliver/node-lynx/src/headless-lynx-view.ts
+  s_764f4cacc9f11b::t_42826cdda872e0 28-46,73-78,133-135,248,430-448,467-469,473-555,631-656,720-734
+lynx/oliver/node-lynx/src/windowed-lynx-view.ts
+  s_764f4cacc9f11b::t_313531af94a2ae 2,5-6,9,20,55-60,100,244-269,328-342
+lynx/oliver/node-lynx/test/helpers/testbench.js
+  s_764f4cacc9f11b::t_4778adbdf096b5 1-49
+lynx/oliver/node-lynx/test/testbench_replay.js
+  s_764f4cacc9f11b::t_33fd76a5c94514 1-146
+lynx/platform/embedder/lynx_recorder/test_bench_action_manager.cc
+  s_764f4cacc9f11b::t_dae0278b710ccf 10,17-33,36-46,49-51,74-108,145,148-149,153-154,183,186-189,330-332,348-350,377-381,393-395,425-429,441-443,468-470,491-493,518-520,540-542
+lynx/platform/embedder/lynx_recorder/test_bench_action_manager.h
+  s_764f4cacc9f11b::t_c4be1d7dd9f48b 36-37,43-46,52-53,73-74
+lynx/platform/embedder/lynx_recorder/test_bench_replay_config.cc
+  s_764f4cacc9f11b::t_0179af1d96957a 17,25,39
+oliver/node-lynx/BUILD.gn
+  s_764f4cacc9f11b::t_57287a82813b23 66
+oliver/node-lynx/README.md
+  s_764f4cacc9f11b::t_face2c5660059e 28-38
+oliver/node-lynx/scripts/test.sh
+  s_764f4cacc9f11b::t_6305bf430a3e60 39
+oliver/node-lynx/test/testbench_replay.js
+  s_764f4cacc9f11b::t_9c0f39ebe5db79 1-47
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.5",
+  "base_commit_sha": "f30272e4f5acb7b13bc1162d5f70728e24f7b356",
+  "prompts": {},
+  "humans": {
+    "h_4d36f4d76420fe": {
+      "author": "yangguangzhao <yangguangzhao.solace@bytedance.com>"
+    }
+  },
+  "sessions": {
+    "s_764f4cacc9f11b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f3669-fedd-7ee3-a5b9-96103a24c19f",
+        "model": "unknown"
+      },
+      "human_author": "yangguangzhao <yangguangzhao.solace@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}
