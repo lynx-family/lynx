@@ -373,11 +373,12 @@ deps = {
         "decompress": False,
         "condition": system in ['darwin'],
     },
-    "./tools_shared": {
+    "buildtools/tools_shared": {
         "type": "git",
-        "url": "https://github.com/lynx-family/tools-shared.git",
-        "commit": "bdea62f7b500026aab237b271abc7eff279a5c2d",
+        "url": "https://github.com/lynx-family/buildtools.git",
+        "commit": "c16a0e3216969e739c925af094aed78f41940e9d",
         "ignore_in_git": True,
+        "paths": ["tools_shared"]
     },
     'buildtools/doxygen': {
         "type": "http",

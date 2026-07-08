@@ -83,7 +83,7 @@ checker-config:
       - "//config.gni"
       - "//tools/idl_parser"
       - "//out/"
-      - "//tools_shared"
+      - "//buildtools/tools_shared"
       - "//clay"
 
   header-path-checker:

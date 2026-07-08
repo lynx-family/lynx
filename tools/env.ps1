@@ -13,7 +13,7 @@ param(
 $LynxOssEnvAndroidNdkVersion = "21.1.6352462"
 $LynxOssEnvHarmonySdkVersion = "6.0.0.868"
 $LynxOssEnvCommonPathSuffixes = @(
-  "tools_shared",
+  "buildtools/tools_shared/tools_shared",
   "tools\gn_tools"
 )
 $LynxOssEnvBuildtoolsPathSuffixes = @(
