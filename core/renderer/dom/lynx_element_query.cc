@@ -12,7 +12,6 @@
 #include "core/renderer/dom/attribute_holder.h"
 #include "core/renderer/dom/element.h"
 #include "core/renderer/dom/element_manager.h"
-#include "core/renderer/dom/fiber/fiber_element.h"
 #include "core/renderer/dom/fiber/fiber_node_info.h"
 #include "third_party/rapidjson/document.h"
 #include "third_party/rapidjson/stringbuffer.h"
@@ -53,8 +52,7 @@ lepus::Value GetElementFields(Element* element,
   if (element == nullptr) {
     return lepus::Value(lepus::Dictionary::Create());
   }
-  return FiberNodeInfo::GetNodeInfo(static_cast<FiberElement*>(element),
-                                    fields);
+  return FiberNodeInfo::GetNodeInfo(element, fields);
 }
 
 lepus::Value GetField(Element* element, const std::string& field) {
