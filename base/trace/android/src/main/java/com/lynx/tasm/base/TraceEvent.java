@@ -64,13 +64,13 @@ public class TraceEvent {
     if (!enableTrace()) {
       return;
     }
-    if (enablePerfettoTrace()) {
-      if (isTracingStarted()) {
-        nativeBeginSection(category, sectionName);
-      }
+    if (enablePerfettoTrace() && isTracingStarted()) {
+      nativeBeginSection(category, sectionName);
       return;
     }
-    Trace.beginSection(sectionName);
+    if (enableSystemTrace()) {
+      Trace.beginSection(sectionName);
+    }
   }
 
   @Deprecated
@@ -82,13 +82,13 @@ public class TraceEvent {
     if (!enableTrace()) {
       return;
     }
-    if (enablePerfettoTrace()) {
-      if (isTracingStarted()) {
-        nativeEndSection(category, sectionName);
-      }
+    if (enablePerfettoTrace() && isTracingStarted()) {
+      nativeEndSection(category, sectionName);
       return;
     }
-    Trace.endSection();
+    if (enableSystemTrace()) {
+      Trace.endSection();
+    }
   }
 
   public static void beginSection(String sectionName, Map<String, String> props) {
@@ -104,13 +104,13 @@ public class TraceEvent {
     if (!enableTrace()) {
       return;
     }
-    if (enablePerfettoTrace()) {
-      if (isTracingStarted()) {
-        nativeBeginSectionWithProps(category, sectionName, props);
-      }
+    if (enablePerfettoTrace() && isTracingStarted()) {
+      nativeBeginSectionWithProps(category, sectionName, props);
       return;
     }
-    Trace.beginSection(sectionName);
+    if (enableSystemTrace()) {
+      Trace.beginSection(sectionName);
+    }
   }
 
   @Deprecated
@@ -122,13 +122,13 @@ public class TraceEvent {
     if (!enableTrace()) {
       return;
     }
-    if (enablePerfettoTrace()) {
-      if (isTracingStarted()) {
-        nativeEndSectionWithProps(category, sectionName, props);
-      }
+    if (enablePerfettoTrace() && isTracingStarted()) {
+      nativeEndSectionWithProps(category, sectionName, props);
       return;
     }
-    Trace.endSection();
+    if (enableSystemTrace()) {
+      Trace.endSection();
+    }
   }
 
   @Deprecated
@@ -167,14 +167,14 @@ public class TraceEvent {
     if (!enableTrace()) {
       return;
     }
-    if (enablePerfettoTrace()) {
-      if (isTracingStarted()) {
-        nativeInstantWithProps(category, eventName, System.nanoTime() / 1000, props);
-      }
+    if (enablePerfettoTrace() && isTracingStarted()) {
+      nativeInstantWithProps(category, eventName, System.nanoTime() / 1000, props);
       return;
     }
-    Trace.beginSection(eventName);
-    Trace.endSection();
+    if (enableSystemTrace()) {
+      Trace.beginSection(eventName);
+      Trace.endSection();
+    }
   }
 
   @Deprecated
@@ -235,14 +235,14 @@ public class TraceEvent {
     if (!enableTrace()) {
       return;
     }
-    if (enablePerfettoTrace()) {
-      if (isTracingStarted()) {
-        nativeInstant(category, eventName, timestamp, color);
-      }
+    if (enablePerfettoTrace() && isTracingStarted()) {
+      nativeInstant(category, eventName, timestamp, color);
       return;
     }
-    Trace.beginSection(eventName);
-    Trace.endSection();
+    if (enableSystemTrace()) {
+      Trace.beginSection(eventName);
+      Trace.endSection();
+    }
   }
 
   public static void instant(
@@ -250,15 +250,15 @@ public class TraceEvent {
     if (!enableTrace()) {
       return;
     }
-    if (enablePerfettoTrace()) {
-      if (isTracingStarted()) {
-        timestamp = timestamp > 0 ? timestamp : System.nanoTime() / 1000;
-        nativeInstantWithProps(category, eventName, timestamp, props);
-      }
+    if (enablePerfettoTrace() && isTracingStarted()) {
+      timestamp = timestamp > 0 ? timestamp : System.nanoTime() / 1000;
+      nativeInstantWithProps(category, eventName, timestamp, props);
       return;
     }
-    Trace.beginSection(eventName);
-    Trace.endSection();
+    if (enableSystemTrace()) {
+      Trace.beginSection(eventName);
+      Trace.endSection();
+    }
   }
 
   private static native void nativeBeginSection(String category, String sectionName);
