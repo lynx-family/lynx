@@ -91,6 +91,12 @@ class LynxTemplateBundle final {
                                bool skip_css_decode = false,
                                std::optional<bool> is_card = std::nullopt);
 
+  // Builds a bundle from inputs supplied by platform builder APIs.
+  // Returns an empty string on success, or an error message on failure.
+  std::string Build(const std::string& main_thread_script,
+                    const std::string& background_thread_script,
+                    const std::string& template_url);
+
   LynxTemplateBundle()
       : css_style_manager_(std::make_shared<CSSStyleSheetManager>(nullptr)),
         string_list_(std::make_shared<std::vector<base::String>>()),
