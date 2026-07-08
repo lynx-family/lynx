@@ -1,0 +1,47 @@
+lynx/platform/darwin/ios/lynx/ui/frame/LynxFrameView.mm
+  s_70da98b233acdf::t_eeb28a767a0b8d 122-128,182
+lynx/core/renderer/dom/fiber/frame_element.cc
+  s_a5715be3d66fca::t_36ac42d3686ac8 108-109
+lynx/platform/darwin/common/lynx/LynxViewClientUnitTest.mm
+  s_70da98b233acdf::t_218307d2931b5f 280-305
+  s_a9123c09927cd6::t_a3618a4d6dcc58 80
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.5",
+  "base_commit_sha": "283417a0faf5f049330aef6f4df94429cf59ffbe",
+  "prompts": {},
+  "humans": {
+    "h_4d36f4d76420fe": {
+      "author": "yangguangzhao <yangguangzhao.solace@bytedance.com>"
+    }
+  },
+  "sessions": {
+    "s_70da98b233acdf": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f3604-2978-7911-aa86-518b53337be8",
+        "model": "unknown"
+      },
+      "human_author": "yangguangzhao <yangguangzhao.solace@bytedance.com>"
+    },
+    "s_a5715be3d66fca": {
+      "agent_id": {
+        "tool": "trae-cue",
+        "id": "ai_tab-icr-fca49825-3c53-4a7e-b3e0-a812edd220da",
+        "model": "default"
+      },
+      "human_author": "yangguangzhao <yangguangzhao.solace@bytedance.com>"
+    },
+    "s_a9123c09927cd6": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f35ff-05b5-7a32-a8ff-da4ef058ba0f",
+        "model": "unknown"
+      },
+      "human_author": "yangguangzhao <yangguangzhao.solace@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}
