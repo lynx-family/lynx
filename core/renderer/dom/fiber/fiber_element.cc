@@ -661,6 +661,8 @@ FiberElement::FiberElement(const FiberElement &element,
                            bool clone_resolved_props)
     : Element(element, clone_resolved_props) {
   invalidation_lists_ = element.invalidation_lists_;
+  invalidation_lists_.descendants.clear_and_shrink();
+  invalidation_lists_.siblings.clear_and_shrink();
   parent_component_unique_id_ = element.parent_component_unique_id_;
   dirty_ = element.dirty_ | kDirtyCreated | kDirtyCloned;
   css_id_ = element.css_id_;
@@ -4932,6 +4934,13 @@ void FiberElement::OnPseudoStatusChanged(PseudoState prev_status,
         }
       }
       InvalidateChildren(invalidation_set);
+    }
+    for (auto *invalidation_set : invalidation_lists.siblings) {
+      InvalidateSiblings(invalidation_set);
+    }
+
+    if (!invalidation_lists.descendants.empty() ||
+        !invalidation_lists.siblings.empty()) {
       element_manager_->RequestResolve(pipeline_options);
     }
     return;
@@ -5124,10 +5133,12 @@ bool FiberElement::CheckHasInvalidationForId(const std::string &old_id,
   if (!css_fragment || !css_fragment->enable_css_invalidation()) {
     return false;
   }
-  auto old_size = invalidation_lists_.descendants.size();
+  auto old_descendant_size = invalidation_lists_.descendants.size();
+  auto old_sibling_size = invalidation_lists_.siblings.size();
   CSSFragment::CollectIdChangedInvalidation(css_fragment, invalidation_lists_,
                                             old_id, new_id);
-  return invalidation_lists_.descendants.size() != old_size;
+  return invalidation_lists_.descendants.size() != old_descendant_size ||
+         invalidation_lists_.siblings.size() != old_sibling_size;
 }
 
 bool FiberElement::CheckHasInvalidationForClass(const ClassList &old_classes,
@@ -5137,10 +5148,12 @@ bool FiberElement::CheckHasInvalidationForClass(const ClassList &old_classes,
   if (!css_fragment || !css_fragment->enable_css_invalidation()) {
     return false;
   }
-  auto old_size = invalidation_lists_.descendants.size();
+  auto old_descendant_size = invalidation_lists_.descendants.size();
+  auto old_sibling_size = invalidation_lists_.siblings.size();
   CSSFragment::CollectClassChangedInvalidation(
       css_fragment, invalidation_lists_, old_classes, new_classes);
-  return invalidation_lists_.descendants.size() != old_size;
+  return invalidation_lists_.descendants.size() != old_descendant_size ||
+         invalidation_lists_.siblings.size() != old_sibling_size;
 }
 
 void FiberElement::InvalidateChildren(css::InvalidationSet *invalidation_set) {
@@ -5151,6 +5164,26 @@ void FiberElement::InvalidateChildren(css::InvalidationSet *invalidation_set) {
         child->MarkStyleDirty(false);
       }
     });
+  }
+}
+
+void FiberElement::InvalidateSiblings(
+    const css::InvalidationSet *invalidation_set) {
+  for (Element *raw_sibling = next_sibling(); raw_sibling != nullptr;
+       raw_sibling = raw_sibling->next_sibling()) {
+    // In Fiber mode all siblings are FiberElement subclasses; static_cast is
+    // used because this translation unit is built with RTTI disabled.
+    auto *sibling = static_cast<FiberElement *>(raw_sibling);
+    if (sibling->is_raw_text()) {
+      continue;
+    }
+    if (!sibling->StyleDirty() &&
+        invalidation_set->InvalidatesElement(*sibling->data_model())) {
+      sibling->MarkStyleDirty(false);
+    }
+    if (invalidation_set->IsDirectAdjacentOnly()) {
+      break;
+    }
   }
 }
 
@@ -5820,6 +5853,11 @@ void FiberElement::InvalidateChildrenIfNeeded() {
     InvalidateChildren(invalidation_set);
   }
   invalidation_lists_.descendants.clear_and_shrink();
+
+  for (auto *invalidation_set : invalidation_lists_.siblings) {
+    InvalidateSiblings(invalidation_set);
+  }
+  invalidation_lists_.siblings.clear_and_shrink();
 }
 
 void FiberElement::SetupFragmentBehavior(Fragment *fragment) {

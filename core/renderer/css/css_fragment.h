@@ -176,6 +176,10 @@ class CSSFragment {
 
   void SetEnableCSSLazyImport(bool enable) { enable_css_lazy_import_ = enable; }
 
+  // Collect invalidation sets for id/class/pseudo changes. The output
+  // |lists| contains both descendant and sibling invalidation sets (the latter
+  // is populated when sibling combinators are present under the NG selector
+  // path). Legacy callers continue to see an empty siblings vector.
   static void CollectIdChangedInvalidation(CSSFragment*,
                                            css::InvalidationLists&,
                                            const std::string&,

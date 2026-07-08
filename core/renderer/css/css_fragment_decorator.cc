@@ -377,6 +377,9 @@ void CSSFragmentDecorator::ForEachRuleSet(ForEachRuleSetVisitor visitor,
 
 void CSSFragmentDecorator::CollectInvalidationSetsForId(
     css::InvalidationLists& lists, const std::string& id) {
+  // Aggregate invalidation sets from the intrinsic stylesheet and every
+  // adopted stylesheet. Because |lists| is passed by reference, both the
+  // descendants and siblings vectors are naturally combined across fragments.
   if (intrinsic_style_sheets_) {
     intrinsic_style_sheets_->CollectInvalidationSetsForId(lists, id);
   }
@@ -388,6 +391,9 @@ void CSSFragmentDecorator::CollectInvalidationSetsForId(
 
 void CSSFragmentDecorator::CollectInvalidationSetsForClass(
     css::InvalidationLists& lists, const std::string& class_name) {
+  // Aggregate invalidation sets from the intrinsic stylesheet and every
+  // adopted stylesheet. Because |lists| is passed by reference, both the
+  // descendants and siblings vectors are naturally combined across fragments.
   if (intrinsic_style_sheets_) {
     intrinsic_style_sheets_->CollectInvalidationSetsForClass(lists, class_name);
   }
@@ -399,6 +405,9 @@ void CSSFragmentDecorator::CollectInvalidationSetsForClass(
 
 void CSSFragmentDecorator::CollectInvalidationSetsForPseudoClass(
     css::InvalidationLists& lists, css::LynxCSSSelector::PseudoType pseudo) {
+  // Aggregate invalidation sets from the intrinsic stylesheet and every
+  // adopted stylesheet. Because |lists| is passed by reference, both the
+  // descendants and siblings vectors are naturally combined across fragments.
   if (intrinsic_style_sheets_) {
     intrinsic_style_sheets_->CollectInvalidationSetsForPseudoClass(lists,
                                                                    pseudo);

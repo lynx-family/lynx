@@ -42,7 +42,8 @@ void CSSFragment::CollectIdChangedInvalidation(CSSFragment* style_sheet,
                                                css::InvalidationLists& lists,
                                                const std::string& old_id,
                                                const std::string& new_id) {
-  // We know the style_sheet is not empty
+  // Both descendants and siblings are accumulated into |lists|. The actual
+  // population of sibling sets happens inside RuleInvalidationSet::CollectId.
   if (!old_id.empty()) style_sheet->CollectInvalidationSetsForId(lists, old_id);
   if (!new_id.empty()) style_sheet->CollectInvalidationSetsForId(lists, new_id);
 }
@@ -50,6 +51,9 @@ void CSSFragment::CollectIdChangedInvalidation(CSSFragment* style_sheet,
 void CSSFragment::CollectClassChangedInvalidation(
     CSSFragment* style_sheet, css::InvalidationLists& lists,
     const ClassList& old_classes, const ClassList& new_classes) {
+  // Both descendants and siblings are accumulated into |lists|. The actual
+  // population of sibling sets happens inside
+  // RuleInvalidationSet::CollectClass.
   if (old_classes.empty()) {
     for (auto& class_name : new_classes) {
       style_sheet->CollectInvalidationSetsForClass(lists, class_name.str());
@@ -86,6 +90,9 @@ void CSSFragment::CollectClassChangedInvalidation(
 void CSSFragment::CollectPseudoChangedInvalidation(
     CSSFragment* style_sheet, css::InvalidationLists& lists, PseudoState prev,
     PseudoState curr) {
+  // Both descendants and siblings are accumulated into |lists|. The actual
+  // population of sibling sets happens inside
+  // RuleInvalidationSet::CollectPseudoClass.
   if ((prev ^ curr) & kPseudoStateFocus) {
     style_sheet->CollectInvalidationSetsForPseudoClass(
         lists, css::LynxCSSSelector::kPseudoFocus);

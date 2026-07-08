@@ -337,6 +337,56 @@ class RuleInvalidationSetTest : public testing::Test {
     return AssertionSuccess();
   }
 
+  AssertionResult HasSiblingClassInvalidation(
+      const std::string& class_name, InvalidationSetVector& invalidation_sets) {
+    return HasClassInvalidation(class_name, invalidation_sets);
+  }
+
+  AssertionResult HasSiblingClassInvalidation(
+      const std::string& first_class_name, const std::string& second_class_name,
+      InvalidationSetVector& invalidation_sets) {
+    return HasClassInvalidation(first_class_name, second_class_name,
+                                invalidation_sets);
+  }
+
+  AssertionResult HasSiblingClassInvalidation(
+      const std::string& first_class_name, const std::string& second_class_name,
+      const std::string& third_class_name,
+      InvalidationSetVector& invalidation_sets) {
+    return HasClassInvalidation(first_class_name, second_class_name,
+                                third_class_name, invalidation_sets);
+  }
+
+  AssertionResult HasSiblingIdInvalidation(
+      const std::string& id, InvalidationSetVector& invalidation_sets) {
+    return HasIdInvalidation(id, invalidation_sets);
+  }
+
+  AssertionResult HasSiblingIdInvalidation(
+      const std::string& first_id, const std::string& second_id,
+      InvalidationSetVector& invalidation_sets) {
+    return HasIdInvalidation(first_id, second_id, invalidation_sets);
+  }
+
+  AssertionResult HasSiblingPseudoClassInvalidation(
+      LynxCSSSelector::PseudoType pseudo,
+      InvalidationSetVector& invalidation_sets) {
+    if (invalidation_sets.size() != 1u) {
+      return AssertionFailure() << "has " << invalidation_sets.size()
+                                << " invalidation set(s), should have 1";
+    }
+    if (!invalidation_sets[0]->InvalidatesSelf()) {
+      return AssertionFailure()
+             << "should invalidate self for pseudo " << pseudo;
+    }
+    return AssertionSuccess();
+  }
+
+  AssertionResult HasNoSiblingInvalidation(
+      InvalidationSetVector& invalidation_sets) {
+    return HasNoInvalidation(invalidation_sets);
+  }
+
  private:
   RuleInvalidationSet rule_invalidation_set_;
   std::unique_ptr<tasm::MockAttributeHolder> document_;
@@ -479,6 +529,77 @@ TEST_F(RuleInvalidationSetTest, IgnoreSibling) {
   InvalidationLists lists;
   CollectClass(lists, "a");
   EXPECT_TRUE(HasNoInvalidation(lists.descendants));
+}
+
+TEST_F(RuleInvalidationSetTest, SiblingClassSubsequent) {
+  AddSelector(".a ~ .b");
+
+  InvalidationLists invalidation_lists;
+  CollectClass(invalidation_lists, "a");
+  EXPECT_TRUE(HasNoInvalidation(invalidation_lists.descendants));
+  EXPECT_TRUE(HasSiblingClassInvalidation("b", invalidation_lists.siblings));
+  EXPECT_FALSE(invalidation_lists.siblings[0]->IsDirectAdjacentOnly());
+}
+
+TEST_F(RuleInvalidationSetTest, SiblingIdSubsequent) {
+  AddSelector("#a ~ .b");
+
+  InvalidationLists invalidation_lists;
+  CollectId(invalidation_lists, "a");
+  EXPECT_TRUE(HasNoInvalidation(invalidation_lists.descendants));
+  EXPECT_TRUE(HasSiblingClassInvalidation("b", invalidation_lists.siblings));
+}
+
+TEST_F(RuleInvalidationSetTest, SiblingPseudoSubsequent) {
+  AddSelector(":hover ~ .b");
+
+  InvalidationLists invalidation_lists;
+  CollectPseudoClass(invalidation_lists, LynxCSSSelector::kPseudoHover);
+  EXPECT_TRUE(HasNoInvalidation(invalidation_lists.descendants));
+  EXPECT_TRUE(HasSiblingClassInvalidation("b", invalidation_lists.siblings));
+}
+
+TEST_F(RuleInvalidationSetTest, SiblingClassAdjacent) {
+  AddSelector(".a + .b");
+
+  InvalidationLists invalidation_lists;
+  CollectClass(invalidation_lists, "a");
+  EXPECT_TRUE(HasSiblingClassInvalidation("b", invalidation_lists.siblings));
+  EXPECT_TRUE(invalidation_lists.siblings[0]->IsDirectAdjacentOnly());
+}
+
+TEST_F(RuleInvalidationSetTest, SiblingPseudoAdjacent) {
+  AddSelector(":hover + .b");
+
+  InvalidationLists invalidation_lists;
+  CollectPseudoClass(invalidation_lists, LynxCSSSelector::kPseudoHover);
+  EXPECT_TRUE(HasNoInvalidation(invalidation_lists.descendants));
+  EXPECT_TRUE(HasSiblingClassInvalidation("b", invalidation_lists.siblings));
+  EXPECT_TRUE(invalidation_lists.siblings[0]->IsDirectAdjacentOnly());
+}
+
+TEST_F(RuleInvalidationSetTest, SiblingIdAdjacent) {
+  AddSelector("#a + .b");
+
+  InvalidationLists invalidation_lists;
+  CollectId(invalidation_lists, "a");
+  EXPECT_TRUE(HasSiblingClassInvalidation("b", invalidation_lists.siblings));
+}
+
+TEST_F(RuleInvalidationSetTest, SiblingMultipleAdjacent) {
+  AddSelector(".a + .b, .a + .c");
+
+  InvalidationLists invalidation_lists;
+  CollectClass(invalidation_lists, "a");
+  ASSERT_EQ(invalidation_lists.siblings.size(), 2u);
+
+  InvalidationSetVector b_set;
+  b_set.push_back(invalidation_lists.siblings[0]);
+  EXPECT_TRUE(HasSiblingClassInvalidation("b", b_set));
+
+  InvalidationSetVector c_set;
+  c_set.push_back(invalidation_lists.siblings[1]);
+  EXPECT_TRUE(HasSiblingClassInvalidation("c", c_set));
 }
 
 }  // namespace css
