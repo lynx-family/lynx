@@ -1,0 +1,26 @@
+lynx/.github/workflows/node-lynx-publish.yml
+  s_86c3540fa2faa1::t_f5a71d9f18864b 32-38,42,75-81,89,128
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.5",
+  "base_commit_sha": "47888e0854bc37f25e2a08837ead4cc7c166350b",
+  "prompts": {},
+  "humans": {
+    "h_4d36f4d76420fe": {
+      "author": "yangguangzhao <yangguangzhao.solace@bytedance.com>"
+    }
+  },
+  "sessions": {
+    "s_86c3540fa2faa1": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f25d7-692b-7753-8ece-f662fa9f1870",
+        "model": "unknown"
+      },
+      "human_author": "yangguangzhao <yangguangzhao.solace@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}
