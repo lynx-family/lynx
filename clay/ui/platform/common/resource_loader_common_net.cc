@@ -20,7 +20,7 @@
 #include "clay/net/url/url_helper.h"
 #include "clay/ui/common/isolate.h"
 
-#if defined(OS_WIN)
+#if defined(OS_WIN) || defined(OS_MAC)
 #include "clay/ui/resource/zip_resource_helper.h"
 #endif
 
@@ -144,7 +144,7 @@ void ResourceLoaderCommon::LoadByFile(
 RawResource ResourceLoaderCommon::GetResource(std::string src,
                                               const RawResource& raw_resource) {
   RawResource resource;
-#if defined(OS_WIN)
+#if defined(OS_WIN) || defined(OS_MAC)
   static constexpr const char* kClayResourceDir0 = "clay";
   static constexpr const char* kClayResourceDir1 = "resource";
   static const std::string temp_path = fml::CreateTemporaryDirectory();
@@ -160,8 +160,8 @@ RawResource ResourceLoaderCommon::GetResource(std::string src,
         fml::paths::JoinPaths({output_dir_path, output_filename});
     fml::NonOwnedMapping mapping(raw_resource.data.get(), raw_resource.length);
 
-    auto temp_dir = fml::OpenDirectory(temp_path.c_str(), true,
-                                       fml::FilePermission::kReadWrite);
+    auto temp_dir = fml::OpenDirectory(temp_path.c_str(), false,
+                                       fml::FilePermission::kRead);
     if (!temp_dir.is_valid()) {
       return resource;
     }
