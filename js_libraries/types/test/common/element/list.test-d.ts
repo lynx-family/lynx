@@ -165,8 +165,15 @@ describe('ListItemProps type test', () => {
       'item-snap': { factor: 0.5, offset: 10 },
     });
     assertType<ListProps>({
+      'item-snap': { factor: 0.5, offset: 10, maxSnapCount: 3 },
+    });
+    assertType<ListProps>({
       // @ts-expect-error - factor should be a number
       'item-snap': { factor: '0.5', offset: 10 },
+    });
+    assertType<ListProps>({
+      // @ts-expect-error - maxSnapCount should be a number
+      'item-snap': { factor: 0.5, offset: 10, maxSnapCount: '3' },
     });
     assertType<ListProps>({
       // @ts-expect-error - missing factor property
