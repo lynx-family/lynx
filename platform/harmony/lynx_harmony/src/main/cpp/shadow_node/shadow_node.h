@@ -31,6 +31,7 @@ class PropBundle;
 namespace harmony {
 class ParagraphContent;
 class LynxContext;
+class ShadowNodeOwner;
 
 class CustomMeasureFunc {
  public:
@@ -104,6 +105,9 @@ class LYNX_EXPORT ShadowNode : public fml::RefCountedThreadSafeStorage {
     OnContextReady();
   }
 
+  void SetOwner(ShadowNodeOwner* owner) { owner_ = owner; }
+  ShadowNodeOwner* GetOwner() const { return owner_; }
+
   bool IsBindEvent() const;
 
   /**
@@ -121,6 +125,7 @@ class LYNX_EXPORT ShadowNode : public fml::RefCountedThreadSafeStorage {
  protected:
   void SetCustomMeasureFunc(CustomMeasureFunc* measure_func);
   LynxContext* context_{nullptr};
+  ShadowNodeOwner* owner_{nullptr};
   std::vector<std::string> events_;
   LynxPointerEventsValue pointer_events_{LynxPointerEventsValue::kUnset};
   LynxEventPropStatus event_through_{LynxEventPropStatus::kUndefined};

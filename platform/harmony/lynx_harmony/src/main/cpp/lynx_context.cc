@@ -593,13 +593,6 @@ const std::shared_ptr<base::VSyncMonitor> LynxContext::VSyncMonitor() {
   return nullptr;
 }
 
-TextMeasureCache* LynxContext::GetTextMeasureCache() const {
-  if (!node_owner_) {
-    return nullptr;
-  }
-  return node_owner_->GetTextMeasureCache();
-}
-
 std::shared_ptr<FontFaceManager> LynxContext::GetFontFaceManager() const {
   std::shared_lock<std::shared_mutex> guard(node_owner_shared_mutex_);
   if (!node_owner_) {

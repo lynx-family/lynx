@@ -11,6 +11,7 @@
 #include "core/base/harmony/props_constant.h"
 #include "core/renderer/starlight/types/nlength.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/lynx_context.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/shadow_node/shadow_node_owner.h"
 
 namespace lynx {
 namespace tasm {
@@ -139,10 +140,10 @@ const ShadowNode* ShadowNode::FindNonVirtualNode() const {
   const ShadowNode* node = this;
   int hop = 0;
   while (node && node->IsVirtual()) {
-    if (!node->context_ || node->parent_sign_ < 0) {
+    if (node->parent_sign_ < 0) {
       return nullptr;
     }
-    node = node->context_->FindShadowNodeBySign(node->parent_sign_);
+    node = node->owner_->FindShadowNodeBySign(node->parent_sign_);
     if (++hop > 128) {
       return nullptr;
     }
