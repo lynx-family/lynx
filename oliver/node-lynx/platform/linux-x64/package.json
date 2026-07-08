@@ -1,6 +1,6 @@
 {
   "name": "@lynx-js/node-lynx-linux-x64",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "main": "node_lynx.node",
   "description": "The dependency artifacts of @lynx-js/node-lynx on the Linux X64 platform.",
   "os": ["linux"],

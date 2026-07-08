@@ -45,6 +45,7 @@
 
 #include "base/include/debug/lynx_error.h"
 #include "base/include/fml/message_loop.h"
+#include "base/trace/native/trace_controller.h"
 #include "core/base/threading/task_runner_manufactor.h"
 #include "core/build/gen/lynx_sub_error_code.h"
 #include "oliver/node-lynx/native/windowed_lynx_view_mac.h"
@@ -136,6 +137,10 @@ std::string GetString(napi_env env, napi_value value) {
 
 bool GetDouble(napi_env env, napi_value value, double* out) {
   return napi_get_value_double(env, value, out) == napi_ok;
+}
+
+bool GetInt32(napi_env env, napi_value value, int32_t* out) {
+  return napi_get_value_int32(env, value, out) == napi_ok;
 }
 
 bool GetBool(napi_env env, napi_value value, bool default_value = false) {
@@ -2445,9 +2450,75 @@ class LynxEnvNode {
   }
 };
 
+class TraceNode {
+ public:
+  static napi_value Init(napi_env env, napi_value exports) {
+    napi_value start_tracing = nullptr;
+    napi_create_function(env, "startTracing", NAPI_AUTO_LENGTH, StartTracing,
+                         nullptr, &start_tracing);
+    napi_set_named_property(env, exports, "startTracing", start_tracing);
+
+    napi_value stop_tracing = nullptr;
+    napi_create_function(env, "stopTracing", NAPI_AUTO_LENGTH, StopTracing,
+                         nullptr, &stop_tracing);
+    napi_set_named_property(env, exports, "stopTracing", stop_tracing);
+    return exports;
+  }
+
+ private:
+  static napi_value StartTracing(napi_env env, napi_callback_info info) {
+    size_t argc = 1;
+    napi_value args[1] = {nullptr};
+    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    const std::string file_path = argc > 0 ? GetString(env, args[0]) : "";
+    if (file_path.empty()) {
+      ThrowError(env, "startTracing expects a trace file path");
+      return GetUndefined(env);
+    }
+
+    auto trace_config = std::make_shared<lynx::trace::TraceConfig>();
+    trace_config->file_path = file_path;
+    trace_config->included_categories = {"*"};
+    const int session_id =
+        lynx::trace::TraceController::Instance()->StartTracing(trace_config);
+    if (session_id < 0) {
+      ThrowError(env,
+                 "failed to start Lynx trace: trace backend is unavailable");
+      return GetUndefined(env);
+    }
+
+    napi_value result = nullptr;
+    napi_create_int32(env, session_id, &result);
+    return result;
+  }
+
+  static napi_value StopTracing(napi_env env, napi_callback_info info) {
+    size_t argc = 1;
+    napi_value args[1] = {nullptr};
+    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    int32_t session_id = -1;
+    if (argc == 0 || !GetInt32(env, args[0], &session_id) || session_id < 0) {
+      ThrowError(env, "stopTracing expects a valid trace session id");
+      return GetUndefined(env);
+    }
+
+    const bool stopped =
+        lynx::trace::TraceController::Instance()->StopTracing(session_id);
+    if (!stopped) {
+      ThrowError(env, "failed to stop Lynx trace session");
+      return GetUndefined(env);
+    }
+
+    napi_value result = nullptr;
+    napi_get_boolean(env, stopped, &result);
+    return result;
+  }
+};
+
 EXTERN_C_START static napi_value Init(napi_env env, napi_value exports) {
   HeadlessLynxViewNode::Init(env, exports);
   LynxEnvNode::Init(env, exports);
+  TraceNode::Init(env, exports);
   return exports;
 }
 EXTERN_C_END

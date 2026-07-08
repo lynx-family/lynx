@@ -5,6 +5,7 @@ import {
   HeadlessOpenCardManager,
   WindowedOpenCardManager,
 } from './open-card-manager';
+import { startCliTraceCapture } from './cli-trace';
 import { HeadlessLynxView } from './headless-lynx-view';
 import { LynxEnv } from './lynx-env';
 import { WindowedLynxView } from './windowed-lynx-view';
@@ -15,6 +16,10 @@ type TemplateInput = {
   templateKind: TemplateKind;
 };
 type LynxView = HeadlessLynxView | WindowedLynxView;
+type TraceOptions = {
+  outputPath: string;
+  durationSeconds: number;
+};
 
 type CliOptions = {
   mode: 'render' | 'preview';
@@ -28,6 +33,7 @@ type CliOptions = {
   title: string;
   debugRouter: boolean;
   debugRouterSchema?: string;
+  trace?: TraceOptions;
 };
 
 const DEFAULT_WIDTH = 390;
@@ -35,6 +41,7 @@ const DEFAULT_HEIGHT = 844;
 const DEFAULT_DPR = 2;
 const DEFAULT_TIMEOUT_MS = 10000;
 const DEFAULT_SCREENSHOT_DELAY_MS = 100;
+const DEFAULT_TRACE_DURATION_SECONDS = 5;
 const DEBUG_ROUTER_APP_INFO_KEYS = ['App', 'AppVersion'];
 const DEBUG_ROUTER_APP_INFO_VALUES = ['NodeLynxCLI', '0.1.0'];
 const URL_SCHEME_PATTERN = /^[A-Za-z][A-Za-z0-9+.-]*:/;
@@ -59,6 +66,8 @@ Options:
   --no-debug-router                Disable preview debug-router startup. Requires a template input.
   --timeout <ms>                   Load and frame timeout. Defaults to ${DEFAULT_TIMEOUT_MS}.
   --screenshot-delay <ms>          Delay after first frame before screenshot. Defaults to ${DEFAULT_SCREENSHOT_DELAY_MS}.
+  --trace <path>                   Capture a Lynx trace to the given file path.
+  --trace-duration <seconds>       Trace capture duration. Defaults to ${DEFAULT_TRACE_DURATION_SECONDS}.
   -h, --help                       Show this help message.`);
 }
 
@@ -135,6 +144,9 @@ function parseArgs(argv: string[]): CliOptions | undefined {
   let title = 'Node Lynx Preview';
   let debugRouter = true;
   let debugRouterSchema: string | undefined;
+  let tracePath: string | undefined;
+  let traceDurationSeconds = DEFAULT_TRACE_DURATION_SECONDS;
+  let traceDurationProvided = false;
 
   const setTemplate = (value: string, kind: TemplateKind): void => {
     if (initialTemplate) {
@@ -232,6 +244,25 @@ function parseArgs(argv: string[]): CliOptions | undefined {
       if (result.consumed) {
         index++;
       }
+    } else if (arg === '--trace' || arg.startsWith('--trace=')) {
+      const result = readOptionValue(args, index, arg);
+      if (result.value.trim().length === 0) {
+        throw new Error('missing value for --trace');
+      }
+      tracePath = result.value;
+      if (result.consumed) {
+        index++;
+      }
+    } else if (
+      arg === '--trace-duration' ||
+      arg.startsWith('--trace-duration=')
+    ) {
+      const result = readOptionValue(args, index, arg);
+      traceDurationProvided = true;
+      traceDurationSeconds = parsePositiveNumber(result.value, 'traceDuration');
+      if (result.consumed) {
+        index++;
+      }
     } else if (arg.startsWith('-')) {
       throw new Error(`unknown option: ${arg}`);
     } else if (!initialTemplate) {
@@ -243,6 +274,9 @@ function parseArgs(argv: string[]): CliOptions | undefined {
 
   if (!initialTemplate && !debugRouter) {
     throw new Error('missing Lynx bundle path or URL');
+  }
+  if (!tracePath && traceDurationProvided) {
+    throw new Error('--trace-duration requires --trace');
   }
 
   return {
@@ -257,6 +291,9 @@ function parseArgs(argv: string[]): CliOptions | undefined {
     title,
     debugRouter,
     debugRouterSchema,
+    trace: tracePath
+      ? { outputPath: tracePath, durationSeconds: traceDurationSeconds }
+      : undefined,
   };
 }
 
@@ -489,101 +526,112 @@ export async function runNodeLynxCli(): Promise<void> {
   if (!options) {
     return;
   }
+  const traceCapture = await startCliTraceCapture(options.trace);
 
-  if (options.mode === 'preview') {
+  try {
+    if (options.mode === 'preview') {
+      if (options.debugRouter) {
+        initDebugRouter(options.debugRouterSchema);
+      }
+      let cleanupDebugRouter = (): void => undefined;
+      if (!options.initialTemplate) {
+        const debugRouterClose = createDebugRouterCloseHandle();
+        try {
+          cleanupDebugRouter = registerDebugRouterWindowedOpenCardHandlers(
+            options,
+            debugRouterClose.close
+          );
+          await writeStdoutLine(
+            'Node Lynx preview is waiting for DebugRouter OpenCard.'
+          );
+          await waitForExitSignal(debugRouterClose.promise);
+        } finally {
+          cleanupDebugRouter();
+        }
+        return;
+      }
+
+      const view = new WindowedLynxView({
+        width: options.width,
+        height: options.height,
+        devicePixelRatio: options.devicePixelRatio,
+        timeoutMs: options.timeoutMs,
+        title: options.title,
+      });
+      try {
+        if (options.debugRouter) {
+          cleanupDebugRouter = registerDebugRouterWindowedOpenCardHandlers(
+            options,
+            () => view.close()
+          );
+        }
+        await loadTemplateIntoView(view, options);
+        await view.waitForFrame();
+        console.log(
+          'Node Lynx preview window opened. Close the window to exit.'
+        );
+        await view.waitUntilClosed();
+      } finally {
+        cleanupDebugRouter();
+        view.destroy();
+      }
+      return;
+    }
+
     if (options.debugRouter) {
       initDebugRouter(options.debugRouterSchema);
     }
+
     let cleanupDebugRouter = (): void => undefined;
+    let debugRouterClose:
+      | ReturnType<typeof createDebugRouterCloseHandle>
+      | undefined;
+    if (options.debugRouter) {
+      debugRouterClose = createDebugRouterCloseHandle();
+      cleanupDebugRouter = registerDebugRouterHeadlessOpenCardHandlers(
+        options,
+        debugRouterClose.close
+      );
+    }
+
     if (!options.initialTemplate) {
-      const debugRouterClose = createDebugRouterCloseHandle();
       try {
-        cleanupDebugRouter = registerDebugRouterWindowedOpenCardHandlers(
-          options,
-          debugRouterClose.close
-        );
         await writeStdoutLine(
-          'Node Lynx preview is waiting for DebugRouter OpenCard.'
+          'Headless Lynx is waiting for DebugRouter OpenCard.'
         );
-        await waitForExitSignal(debugRouterClose.promise);
+        await waitForExitSignal(debugRouterClose?.promise);
       } finally {
         cleanupDebugRouter();
       }
       return;
     }
 
-    const view = new WindowedLynxView({
+    const outputPath = path.resolve(options.outputPath);
+    const view = new HeadlessLynxView({
       width: options.width,
       height: options.height,
       devicePixelRatio: options.devicePixelRatio,
       timeoutMs: options.timeoutMs,
-      title: options.title,
     });
     try {
-      if (options.debugRouter) {
-        cleanupDebugRouter = registerDebugRouterWindowedOpenCardHandlers(
-          options,
-          () => view.close()
-        );
-      }
       await loadTemplateIntoView(view, options);
-      await view.waitForFrame();
-      console.log('Node Lynx preview window opened. Close the window to exit.');
-      await view.waitUntilClosed();
+      const png = await view.screenshot({
+        settleMs: options.screenshotDelayMs,
+      });
+      await fs.promises.mkdir(path.dirname(outputPath), { recursive: true });
+      await fs.promises.writeFile(outputPath, png);
+      console.log(`Headless Lynx screenshot written to: ${outputPath}`);
+      if (options.debugRouter) {
+        console.log('Headless Lynx is waiting for SIGINT or SIGTERM to exit.');
+        await waitForExitSignal(debugRouterClose?.promise);
+      } else {
+        await traceCapture?.waitForStop();
+      }
     } finally {
       cleanupDebugRouter();
       view.destroy();
     }
-    return;
-  }
-
-  if (options.debugRouter) {
-    initDebugRouter(options.debugRouterSchema);
-  }
-
-  let cleanupDebugRouter = (): void => undefined;
-  let debugRouterClose:
-    | ReturnType<typeof createDebugRouterCloseHandle>
-    | undefined;
-  if (options.debugRouter) {
-    debugRouterClose = createDebugRouterCloseHandle();
-    cleanupDebugRouter = registerDebugRouterHeadlessOpenCardHandlers(
-      options,
-      debugRouterClose.close
-    );
-  }
-
-  if (!options.initialTemplate) {
-    try {
-      await writeStdoutLine(
-        'Headless Lynx is waiting for DebugRouter OpenCard.'
-      );
-      await waitForExitSignal(debugRouterClose?.promise);
-    } finally {
-      cleanupDebugRouter();
-    }
-    return;
-  }
-
-  const outputPath = path.resolve(options.outputPath);
-  const view = new HeadlessLynxView({
-    width: options.width,
-    height: options.height,
-    devicePixelRatio: options.devicePixelRatio,
-    timeoutMs: options.timeoutMs,
-  });
-  try {
-    await loadTemplateIntoView(view, options);
-    const png = await view.screenshot({ settleMs: options.screenshotDelayMs });
-    await fs.promises.mkdir(path.dirname(outputPath), { recursive: true });
-    await fs.promises.writeFile(outputPath, png);
-    console.log(`Headless Lynx screenshot written to: ${outputPath}`);
-    if (options.debugRouter) {
-      console.log('Headless Lynx is waiting for SIGINT or SIGTERM to exit.');
-      await waitForExitSignal(debugRouterClose?.promise);
-    }
   } finally {
-    cleanupDebugRouter();
-    view.destroy();
+    traceCapture?.stop();
   }
 }

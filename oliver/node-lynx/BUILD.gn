@@ -58,6 +58,7 @@ source_set("node_lynx_native") {
 
   deps = [
     "../../base/src:base_group",
+    "../../base/trace/native:trace",
     "../../clay/fml:fml",
     "../../clay/lynx_adaptor:lynx_adaptor",
     "../../core/build:build",
