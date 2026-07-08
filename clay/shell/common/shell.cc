@@ -567,7 +567,9 @@ bool Shell::Setup(std::unique_ptr<PlatformView> platform_view,
           clay::GrContextPtr main_context = output_surface->GetMainGrContext();
           if (main_context) {
 #ifdef ENABLE_SKITY
+#ifndef OS_IOS
             output_surface->PrecompileDefaultSkityShaders();
+#endif
 #endif  // ENABLE_SKITY
             if (unref_queue) {
               unref_queue->SetContext(main_context);
