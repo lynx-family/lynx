@@ -122,6 +122,7 @@ int ShadowNodeOwner::CreateShadowNode(int sign, const std::string& tag,
   }
   if (node) {
     node_holder_[sign] = fml::AdoptRef(node);
+    node->SetOwner(this);
     node->SetLayoutNodeManager(layout_node_manager_);
     node->SetContext(context_.get());
     node->AdoptSlNode();
@@ -272,10 +273,16 @@ void ShadowNodeOwner::DestroyNode(const fml::RefPtr<ShadowNode>& node) {
 }
 
 void ShadowNodeOwner::NativeCallJSTask(base::closure task, bool sync) {
+  auto guarded_task = [this, task = std::move(task)]() {
+    if (destroyed_) {
+      return;
+    }
+    task();
+  };
   if (sync) {
-    context_->GetUITaskRunner()->PostSyncTask(std::move(task));
+    context_->GetUITaskRunner()->PostSyncTask(std::move(guarded_task));
   } else {
-    context_->GetUITaskRunner()->PostTask(std::move(task));
+    context_->GetUITaskRunner()->PostTask(std::move(guarded_task));
   }
 }
 
@@ -517,6 +524,7 @@ napi_value ShadowNodeOwner::Destroy(napi_env env, napi_callback_info info) {
       napi_remove_wrap(env, js_this, reinterpret_cast<void**>(&obj));
   NAPI_THROW_IF_FAILED_NULL(env, status,
                             "ShadowNodeOwner napi_remove_wrap failed!");
+  obj->destroyed_ = true;
   obj->context_->ResetNodeOwner();
   napi_delete_reference(env, obj->js_);
   napi_delete_reference(env, obj->create_);
