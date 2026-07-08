@@ -28,7 +28,7 @@ NS_ASSUME_NONNULL_BEGIN
 /**
  * Destory the `<overlay>` according to its level and mode
  */
-- (void)destroyOverlayView:(UIView *)overlay
+- (void)destoryOverlayView:(UIView *)overlay
                    atLevel:(NSInteger)level
                   withMode:(LynxOverlayMode)mode
       customViewController:(UIViewController *)customViewController;
