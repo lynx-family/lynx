@@ -47,6 +47,19 @@ namespace utils = attribute_utils;
 constexpr float kLayoutTolerance = 1.f;
 static constexpr float kDefaultFontSizeInDip = 14.f;
 
+static bool HasInlineTruncationShadowNode(ShadowNode* node) {
+  if (!node) {
+    return false;
+  }
+  for (auto* child : node->GetChildren()) {
+    if (child->IsInlineTruncationShadowNode() ||
+        HasInlineTruncationShadowNode(child)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 static bool InlineTruncationTextBoxFits(
     const txt::Paragraph::TextBox& box, double layout_width,
     double visible_bottom, double target_line_top, double target_line_bottom,
@@ -554,6 +567,14 @@ float TextRender::GetMaxFontSize() {
 void TextRender::HandleAutoSize(const MeasureConstraint& constraint,
                                 ShadowLayoutContextMeasure* context) {
   if (measure_node_->enable_auto_font_size_) {
+    if (HasInlineTruncationShadowNode(measure_node_)) {
+      return;
+    }
+    if (measure_node_->auto_font_size_preset_sizes_.empty() &&
+        (measure_node_->auto_font_size_step_granularity_ <= 0 ||
+         measure_node_->auto_font_size_min_size_ <= 0)) {
+      return;
+    }
     if (!CheckTextFullyDisplayed(constraint, context)) {
       TryShrinkFontSize(constraint, context);
     } else {
@@ -619,19 +640,24 @@ void TextRender::TryShrinkFontSize(
   }
   while (measure_node_->text_style_->font_size >=
          measure_node_->auto_font_size_min_size_) {
-    measure_node_->text_style_->font_size =
-        measure_node_->text_style_->font_size.value_or(
-            kDefaultFontSizeInDip * measure_node_->Logical2ClayPixelRatio()) -
-        measure_node_->auto_font_size_step_granularity_;
+    auto current_font_size = measure_node_->text_style_->font_size.value_or(
+        kDefaultFontSizeInDip * measure_node_->Logical2ClayPixelRatio());
+    auto target_font_size = std::max(
+        current_font_size - measure_node_->auto_font_size_step_granularity_,
+        measure_node_->auto_font_size_min_size_);
+    if (target_font_size == current_font_size) {
+      return;
+    }
+    measure_node_->text_style_->font_size = target_font_size;
     FlexInlineFontSize(true, measure_node_->text_style_->font_size.value(),
                        measure_node_);
-    if (measure_node_->text_style_->font_size >=
-        measure_node_->auto_font_size_min_size_) {
-      update_flag_ = TextUpdateFlag::kUpdateFlagStyle;
-      BuildTextLayout(constraint, context_measure);
-      if (CheckTextFullyDisplayed(constraint, context_measure)) {
-        return;
-      }
+    update_flag_ = TextUpdateFlag::kUpdateFlagStyle;
+    BuildTextLayout(constraint, context_measure);
+    if (CheckTextFullyDisplayed(constraint, context_measure)) {
+      return;
+    }
+    if (target_font_size == measure_node_->auto_font_size_min_size_) {
+      return;
     }
   }
 }
