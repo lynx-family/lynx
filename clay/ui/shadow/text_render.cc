@@ -396,6 +396,13 @@ std::unique_ptr<txt::Paragraph> TextRender::LayoutParagraph(
   impl->SetNeedTrimSpace(true);
 #endif
   paragraph->Layout(layout_width);
+#if defined(CLAY_ENABLE_TTTEXT)
+  auto* tttext_paragraph = static_cast<txt::ParagraphTTText*>(paragraph.get());
+  truncation_direction_ = tttext_paragraph->GetResolvedWriteDirection() ==
+                                  tttext::WriteDirection::kRTL
+                              ? TextDirection::kRtl
+                              : TextDirection::kLtr;
+#endif
   end_glyph_position_ = context_text.TextSizeIncludingPlaceholders();
   return paragraph;
 }
@@ -779,13 +786,9 @@ void TextRender::HandleInlineTruncation(const MeasureConstraint& constraint,
         const double truncation_layout_width =
             has_hard_break ? prev_layout_width_
                            : cache_paragraph_->GetMaxIntrinsicWidth();
-#ifndef CLAY_ENABLE_TTTEXT
         auto end_dx = truncation_direction_ == TextDirection::kRtl
                           ? truncation_size.width()
                           : truncation_layout_width - truncation_size.width();
-#else
-        auto end_dx = truncation_layout_width - truncation_size.width();
-#endif
         auto last_line_height = line_metrics.back().height;
         auto end_dy = constraint.height_mode == MeasureMode::kIndefinite
                           ? cache_paragraph_->GetHeight()
@@ -807,12 +810,10 @@ void TextRender::HandleInlineTruncation(const MeasureConstraint& constraint,
           bool glyph_overlaps_truncation =
               glyph_box.rect.Right() >
               prev_layout_width_ - truncation_size.width();
-#ifndef CLAY_ENABLE_TTTEXT
           if (truncation_direction_ == TextDirection::kRtl) {
             glyph_overlaps_truncation =
                 glyph_box.rect.Left() < truncation_size.width();
           }
-#endif
           if (glyph_overlaps_truncation) {
             display_glyph_num =
                 end_glyph_index.position > 0 ? end_glyph_index.position - 1 : 0;

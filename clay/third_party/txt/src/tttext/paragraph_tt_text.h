@@ -92,6 +92,7 @@ class ParagraphTTText : public Paragraph {
   void AddTextRun(tttext::Style& style, const std::u16string& content);
   void AddTextRun(tttext::Style& style, const std::string& content);
   uint32_t GetTextSize() const;
+  tttext::WriteDirection GetResolvedWriteDirection() const;
 
  private:
   std::shared_ptr<FontCollection> font_collection_;
