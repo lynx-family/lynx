@@ -186,20 +186,32 @@ LynxNativeModuleNAPI::InvokeMethod(const std::string& method_name,
   if (method_iter == method_refs_.end()) {
     return std::unique_ptr<pub::Value>(nullptr);
   }
-  napi_handle_scope scope;
-  napi_open_handle_scope(env_, &scope);
+  napi_handle_scope scope = nullptr;
+  if (napi_open_handle_scope(env_, &scope) != napi_ok || scope == nullptr) {
+    return base::unexpected("NativeModule: Failed to open napi handle scope.");
+  }
+  auto close_scope_with_error = [this, scope](const std::string& error)
+      -> base::expected<std::unique_ptr<pub::Value>, std::string> {
+    napi_close_handle_scope(env_, scope);
+    return base::unexpected(error);
+  };
   std::vector<napi_value> capi_args;
   for (size_t i = 0; i < count; i++) {
     auto arg = args->GetValueAtIndex(static_cast<uint32_t>(i));
-    napi_value capi_arg;
+    napi_value capi_arg = nullptr;
     // Check if the parameter at the current index is a callback
     runtime::CallbackMap::const_iterator iter = callbacks.find(i);
     if (iter != callbacks.end()) {
       auto func_data = new LynxModuleFunctionData(iter->second, delegate_);
-      napi_create_function(env_, "jsb callback", 0,
-                           LynxNativeModuleNAPI::Callback, func_data,
-                           &capi_arg);
-      napi_add_finalizer(
+      napi_status status = napi_create_function(env_, "jsb callback", 0,
+                                                LynxNativeModuleNAPI::Callback,
+                                                func_data, &capi_arg);
+      if (status != napi_ok || capi_arg == nullptr) {
+        delete func_data;
+        return close_scope_with_error(
+            "NativeModule: Failed to create napi callback function.");
+      }
+      status = napi_add_finalizer(
           env_, capi_arg, func_data,
           [](napi_env env, void* data, void* hint) {
             delete reinterpret_cast<
@@ -207,20 +219,37 @@ LynxNativeModuleNAPI::InvokeMethod(const std::string& method_name,
                           std::weak_ptr<Delegate>>*>(data);
           },
           nullptr, nullptr);
+      if (status != napi_ok) {
+        delete func_data;
+        return close_scope_with_error(
+            "NativeModule: Failed to add napi callback finalizer.");
+      }
     } else {
       capi_arg = static_cast<napi_value>(
           pub::ValueUtilsOpaqueNapiPrimJS::ConvertPubValueToOpaqueNapiValue(
               static_cast<void*>(env_), *arg));
+    }
+    if (capi_arg == nullptr) {
+      return close_scope_with_error(
+          "NativeModule: Failed to convert argument to napi value.");
     }
     capi_args.push_back(capi_arg);
   }
   napi_value ret = nullptr;
   napi_value func;
   napi_value undefined;
-  napi_get_undefined(env_, &undefined);
-  napi_get_reference_value(env_, method_iter->second, &func);
-  napi_call_function(env_, undefined, func, capi_args.size(), capi_args.data(),
-                     &ret);
+  if (napi_get_undefined(env_, &undefined) != napi_ok) {
+    return close_scope_with_error("NativeModule: Failed to get undefined.");
+  }
+  if (napi_get_reference_value(env_, method_iter->second, &func) != napi_ok ||
+      func == nullptr) {
+    return close_scope_with_error(
+        "NativeModule: Failed to get napi method reference.");
+  }
+  if (napi_call_function(env_, undefined, func, capi_args.size(),
+                         capi_args.data(), &ret) != napi_ok) {
+    return close_scope_with_error("NativeModule: Failed to call napi method.");
+  }
   std::unique_ptr<lynx::pub::Value> result = nullptr;
   if (ret) {
     result = pub::ValueUtilsOpaqueNapiPrimJS::CreateValueWithOpaqueNapiArgs(
