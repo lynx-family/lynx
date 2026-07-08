@@ -396,6 +396,14 @@ export interface ListItemSnapAlignment {
    * @Harmony
    */
   offset: number;
+
+  /**
+   * The maximum number of list items that one fling can snap across.
+   * @defaultValue 1
+   * @Android
+   * @iOS
+   */
+  maxSnapCount?: number;
 }
 
 /**
