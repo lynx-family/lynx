@@ -4,7 +4,6 @@
 
 #include "base/include/string/unicode_decode_utils.h"
 
-#include <cstring>
 #include <utility>
 
 #include "base/include/string/string_number_convert.h"
@@ -229,13 +228,7 @@ void UnicodeDecodeUtils::ProcessInsertChar(
                     char_start_before, previous_char_byte_size,
                     &char_end_before);
                 char_end_before != nullptr && IsCJK(unicode_before)) {
-              char buffer[5];
-              memcpy(buffer, char_start_current, current_char_byte_size);
-              buffer[current_char_byte_size] = '\0';
-              output.erase(output.length() - current_char_byte_size,
-                           current_char_byte_size);
-              output.append("\u2060");
-              output.append(buffer);
+              output.insert(output.length() - current_char_byte_size, "\u2060");
             }
           }
         }
