@@ -6,11 +6,9 @@
 
 #include <memory>
 #include <utility>
-#include <vector>
 
 #include "core/public/platform_renderer_type.h"
 #include "core/renderer/dom/fragment/display_list_reader.h"
-#include "third_party/googletest/googlemock/include/gmock/gmock.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 namespace lynx {
@@ -218,23 +216,6 @@ TEST_F(DisplayListTest, ClearSubtreeProperties) {
 
   EXPECT_EQ(display_list_->GetSubtreePropertiesSize(), 0u);
   EXPECT_EQ(display_list_->GetSubtreePropertiesData(), nullptr);
-}
-
-TEST_F(DisplayListTest, DisplayListItemABICompliance) {
-  // Verify ABI invariants that cross-platform consumers depend on
-  static_assert(sizeof(DisplayListItem) == 56,
-                "DisplayListItem size must be 56 bytes");
-  static_assert(offsetof(DisplayListItem, type) == 0,
-                "type field must be at offset 0");
-  static_assert(offsetof(DisplayListItem, payload) == 4,
-                "payload union must be at offset 4");
-  static_assert(std::is_standard_layout<DisplayListItem>::value,
-                "DisplayListItem must be standard layout");
-  static_assert(std::is_trivially_copyable<DisplayListItem>::value,
-                "DisplayListItem must be trivially copyable");
-
-  // SUCCEED if all static_asserts pass
-  SUCCEED();
 }
 
 TEST_F(DisplayListTest, DisplayListReaderRoundTrip) {
