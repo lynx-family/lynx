@@ -2351,47 +2351,17 @@ void UIBase::GetTransformValue(float left, float right, float top, float bottom,
   point[7] = left_bottom.second;
 }
 
-void UIBase::MapPointWithTransform(std::pair<float, float>& point) {
-  if (GetTransform()) {
-    float dst_point[2] = {0.f, 0.f};
-    float src_point[2] = {point.first, point.second};
-    GetTransform()
-        ->GetTransformMatrix(width_, height_, 1.f, true)
-        .mapPoint(dst_point, src_point);
-    point.first = dst_point[0];
-    point.second = dst_point[1];
-  }
-}
-
-void UIBase::TransformFromViewToRootView(UIBase* ui,
-                                         std::pair<float, float>& point) {
-  auto scale = context_->ScaledDensity();
-  point.first *= scale;
-  point.second *= scale;
-  ui->MapPointWithTransform(point);
-  auto current_ui = ui;
-  while (!current_ui->IsRoot()) {
-    auto parent_ui = current_ui->Parent();
-    if (!parent_ui) {
-      break;
-    }
-    point.first += current_ui->left_ * scale;
-    point.second += current_ui->top_ * scale;
-    point.first -= parent_ui->ScrollX() * scale;
-    point.second -= parent_ui->ScrollY() * scale;
-    parent_ui->MapPointWithTransform(point);
-    current_ui = parent_ui;
-  }
-}
-
 void UIBase::GetLocationOnScreen(std::pair<float, float>& point) {
-  auto base_point = std::pair<float, float>();
-  // TODO(chengjunnan)  use windowLocation here later.
-  base_point.first = 0;
-  base_point.second = 0;
-  TransformFromViewToRootView(this, point);
-  point.first += base_point.first;
-  point.second += base_point.second;
+  float origin_point[2] = {point.first, point.second};
+  float root_point[2] = {point.first, point.second};
+  LynxUIHelper::ConvertPointFromUIToRootUI(root_point, this, origin_point);
+
+  float scaled_density = context_ ? context_->ScaledDensity() : 1.f;
+  if (base::FloatsLargerOrEqual(0.f, scaled_density)) {
+    scaled_density = 1.f;
+  }
+  point.first = root_point[0] * scaled_density;
+  point.second = root_point[1] * scaled_density;
 }
 
 void UIBase::SetVisibility(bool visible) {

@@ -425,8 +425,6 @@ class LYNX_EXPORT UIBase : public std::enable_shared_from_this<UIBase>,
   void SetBlockNativeEventAreas(const lepus::Value& value);
   void SetConsumeSlideEvent(const lepus::Value& value);
   void SetEnableTouchPseudoPropagation(const lepus::Value& value);
-  void TransformFromViewToRootView(UIBase* ui, std::pair<float, float>& point);
-  void MapPointWithTransform(std::pair<float, float>& point);
   void SetExposureID(const lepus::Value& value);
   void SetExposureScene(const lepus::Value& value);
   void SetExposureScreenMarginLeft(const lepus::Value& value);
