@@ -22,7 +22,7 @@ class NativePaintingCtxAndroidRef : public NativePaintingCtxPlatformRef {
   NativePaintingCtxAndroidRef(
       std::unique_ptr<PlatformRendererFactory> view_factory,
       std::unique_ptr<PlatformRendererContext> view_manager);
-  ~NativePaintingCtxAndroidRef() override = default;
+  ~NativePaintingCtxAndroidRef() override;
 
   void GetRootViewLocationOnScreen(float location[2]) override;
   void GetScreenSize(float size[2]) override;
@@ -35,6 +35,7 @@ class NativePaintingCtxAndroidRef : public NativePaintingCtxPlatformRef {
 
  protected:
   void NotifyNodeReady(const std::vector<int32_t>& signs) override;
+  void DestroyImageOnPlatformThread(int32_t image_key) override;
 
  private:
   std::unique_ptr<PlatformRendererContext> view_manager_;

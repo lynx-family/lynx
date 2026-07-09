@@ -5,22 +5,26 @@
 #ifndef CORE_RENDERER_UI_WRAPPER_PAINTING_ANDROID_PAINT_IMAGE_ANDROID_H_
 #define CORE_RENDERER_UI_WRAPPER_PAINTING_ANDROID_PAINT_IMAGE_ANDROID_H_
 
-#include "core/renderer/ui_wrapper/painting/android/platform_renderer_context.h"
+#include <memory>
+#include <utility>
+
+#include "core/renderer/ui_wrapper/painting/native_painting_context_platform_ref.h"
 #include "core/renderer/ui_wrapper/painting/paint_image.h"
 
 namespace lynx::tasm {
 class PaintImageAndroid : public PaintImage {
  public:
-  PaintImageAndroid(int32_t image_key, PlatformRendererContext* context)
-      : PaintImage(image_key), context_(context) {}
+  PaintImageAndroid(int32_t image_key,
+                    std::weak_ptr<NativePaintingCtxPlatformRef> platform_ref)
+      : PaintImage(image_key), platform_ref_(std::move(platform_ref)) {}
   ~PaintImageAndroid() override {
-    if (context_) {
-      context_->DestroyImage(image_key_);
+    if (auto platform_ref = platform_ref_.lock()) {
+      platform_ref->ScheduleDestroyImage(image_key_);
     }
   }
 
  private:
-  PlatformRendererContext* context_;
+  std::weak_ptr<NativePaintingCtxPlatformRef> platform_ref_;
 };
 }  // namespace lynx::tasm
 #endif  // CORE_RENDERER_UI_WRAPPER_PAINTING_ANDROID_PAINT_IMAGE_ANDROID_H_
