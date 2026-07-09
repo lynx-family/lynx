@@ -20037,7 +20037,7 @@ TEST_P(FiberElementTest,
   current.SetValue(CSSPropertyID::kPropertyIDOpacity, opacity);
   current.ClearDirtyBits();
 
-  FiberElement::NewPipelineStyleResolveResult resolved_styles;
+  Element::NewPipelineStyleResolveResult resolved_styles;
   resolved_styles.previous_final_style = &previous;
   resolved_styles.final_style = &current;
   resolved_styles.resolved_style_map.insert_or_assign(
@@ -20047,7 +20047,7 @@ TEST_P(FiberElementTest,
   resolved_styles.resolved_style_map.insert_or_assign(
       CSSPropertyID::kPropertyIDOpacity, opacity);
 
-  FiberElement::NewPipelineDynamicStyleInputs dynamic_inputs;
+  Element::NewPipelineDynamicStyleInputs dynamic_inputs;
   auto plan = element->BuildNewPipelineStyleMutationPlan(
       resolved_styles, dynamic_inputs, 0, false, current.GetFontSize(),
       current.GetRootFontSize());
