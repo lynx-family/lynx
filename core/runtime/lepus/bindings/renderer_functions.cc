@@ -924,42 +924,31 @@ RENDERER_FUNCTION_CC(LoadStyleSheet) {
   auto* tasm = GET_TASM_POINTER();
   if (!tasm) RETURN_UNDEFINED();
 
-  auto page_config = tasm->GetPageConfig();
   auto entry = tasm->FindTemplateEntry(DEFAULT_ENTRY_NAME);
   CompileOptions options = entry->compile_options();
-  // These fields are derived from page config at compile/decode time and are
-  // not serialized into the template header. See
-  // LynxBinaryConfigDecoder::UpdateCSSConfigs().
-  // TODO: Unify this with UpdateCSSConfigs() to avoid config drift between
-  // normal template decoding and runtime stylesheet loading.
-  if (page_config) {
-    options.enable_parse_int_flex_ = page_config->GetEnableParseIntFlex();
-    options.enable_flex_basis_zero_percent_ =
-        page_config->GetEnableFlexBasisZeroPercent();
-    options.enable_grid_placement_shorthands_ =
-        page_config->GetEnableGridPlacementShorthands();
-  }
 
   auto bundle = tasm->FindTemplateBundle(bundle_name);
-  if (bundle) {
-    auto& bundle_options = bundle->GetCompileOptions();
-    if (page_config) {
-      if (lynx::base::Version(bundle_options.target_sdk_version_) >
-              LYNX_VERSION ||
-          options.enable_css_parser_ != bundle_options.enable_css_parser_ ||
-          options.enable_css_selector_ != bundle_options.enable_css_selector_ ||
-          options.enable_css_invalidation_ !=
-              bundle_options.enable_css_invalidation_ ||
-          options.enable_css_strict_mode_ !=
-              bundle_options.enable_css_strict_mode_ ||
-          options.enable_css_variable_ != bundle_options.enable_css_variable_) {
-        LOGI(
-            "LoadStyleSheet failed, the compile options in the bundle is not "
-            "compatible with the current page config.");
-        RETURN_UNDEFINED();
-      }
-    }
+
+  if (!bundle) {
+    LOGI("FindTemplateBundle failed, bundle_name: " << bundle_name.c_str());
+    RETURN_UNDEFINED();
   }
+  auto bundle_options = bundle->GetCompileOptions();
+  if (lynx::base::Version(bundle_options.target_sdk_version_) > LYNX_VERSION ||
+      options.enable_css_parser_ != bundle_options.enable_css_parser_ ||
+      options.enable_css_selector_ != bundle_options.enable_css_selector_ ||
+      options.enable_css_invalidation_ !=
+          bundle_options.enable_css_invalidation_ ||
+      options.enable_css_strict_mode_ !=
+          bundle_options.enable_css_strict_mode_ ||
+      options.enable_css_variable_ != bundle_options.enable_css_variable_) {
+    LOGI(
+        "LoadStyleSheet failed, the compile options in the bundle is not "
+        "compatible with the current page config.");
+    RETURN_UNDEFINED();
+  }
+
+  auto page_config = bundle->GetPageConfig();
 
   auto source_code = tasm->GetCustomSectionByKey(key, bundle_name);
   if (!source_code.IsByteArray()) {
@@ -968,13 +957,28 @@ RENDERER_FUNCTION_CC(LoadStyleSheet) {
     RETURN_UNDEFINED();
   }
 
+  // These fields are derived from page config at compile/decode time and are
+  // not serialized into the template header. See
+  // LynxBinaryConfigDecoder::UpdateCSSConfigs().
+  // TODO: Unify this with UpdateCSSConfigs() to avoid config drift between
+  // normal template decoding and runtime stylesheet loading.
+  if (page_config) {
+    bundle_options.enable_parse_int_flex_ =
+        page_config->GetEnableParseIntFlex();
+    bundle_options.enable_flex_basis_zero_percent_ =
+        page_config->GetEnableFlexBasisZeroPercent();
+    bundle_options.enable_grid_placement_shorthands_ =
+        page_config->GetEnableGridPlacementShorthands();
+    bundle_options.enable_css_rule_ = page_config->GetEnableCSSRule();
+  }
+
   auto byte_array = source_code.ByteArray();
 
   std::vector<uint8_t> data(byte_array->GetPtr(),
                             byte_array->GetPtr() + byte_array->GetLength());
   auto input_stream =
       std::make_unique<lepus::ByteArrayInputStream>(std::move(data));
-  RuntimeCSSReader reader(std::move(input_stream), options,
+  RuntimeCSSReader reader(std::move(input_stream), bundle_options,
                           tasm->GetPageConfig()->GetEnableCSSInlineVariables());
 
   auto fragment = std::make_unique<SharedCSSFragment>();
