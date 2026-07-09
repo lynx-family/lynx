@@ -1,0 +1,36 @@
+testing/lynx-platform-tests/test_script/case_sets/memory_leak_mall/mall_order_detail.py
+  h_9c98230ff87fe6 14
+testing/lynx-platform-tests/test_script/case_sets/memory_leak_list/image_long_list.py
+  h_9c98230ff87fe6 15-16
+testing/lynx-platform-tests/test_script/case_sets/memory_leak_poi/poi_page.py
+  h_9c98230ff87fe6 14
+testing/lynx-platform-tests/test_script/case_sets/memory_leak_douyin/douyin_finace_page.py
+  h_9c98230ff87fe6 14-15
+testing/lynx-platform-tests/test_script/case_sets/memory_leak_elements/canvas_2d_3d.py
+  h_9c98230ff87fe6 12-14
+testing/lynx-platform-tests/test_script/case_sets/memory_leak_mall/mall_coupon.py
+  h_9c98230ff87fe6 14
+testing/lynx-platform-tests/test_script/case_sets/memory_leak_elements/text_custom.py
+  h_9c98230ff87fe6 12-14
+testing/lynx-platform-tests/test_script/case_sets/memory_leak_douyin/douyin_smartapp_list.py
+  h_9c98230ff87fe6 14-15
+testing/lynx-platform-tests/test_script/case_sets/memory_leak_elements/animax_custom.py
+  h_9c98230ff87fe6 12-14
+testing/lynx-platform-tests/test_script/case_sets/memory_leak_poi/poi_order_page.py
+  h_9c98230ff87fe6 14-15
+testing/lynx-platform-tests/test_script/case_sets/memory_leak_list/long_list.py
+  h_9c98230ff87fe6 15-16
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "46e9c456b2e32eaebdd14e89f54b9609c978c851",
+  "prompts": {},
+  "humans": {
+    "h_9c98230ff87fe6": {
+      "author": "xieqiangqiang <xieqiangqiang@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}
