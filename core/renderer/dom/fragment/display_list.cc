@@ -130,5 +130,22 @@ void DisplayList::AddLinearGradient(float angle,
   content_items_->push_back(item);
 }
 
+void DisplayList::AddBackgroundImage(const fml::RefPtr<PaintImage>& image,
+                                     int32_t tiling_index, int32_t clip_index,
+                                     int32_t repeat_x, int32_t repeat_y) {
+  AddOperation(DisplayListOpType::kBackgroundImage, image->image_key_,
+               tiling_index, clip_index, repeat_x, repeat_y);
+
+  DisplayListItem item{};
+  item.type = DisplayListOpType::kBackgroundImage;
+  item.payload.background_image.image_id = image->image_key_;
+  item.payload.background_image.tiling_index = tiling_index;
+  item.payload.background_image.clip_index = clip_index;
+  item.payload.background_image.repeat_x = repeat_x;
+  item.payload.background_image.repeat_y = repeat_y;
+  AppendItem(item);
+  Images().emplace_back(image);
+}
+
 }  // namespace tasm
 }  // namespace lynx

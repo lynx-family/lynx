@@ -14,6 +14,7 @@
 #include <unordered_set>
 #include <vector>
 
+#include "base/include/fml/message_loop.h"
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/dom/fiber/image_element.h"
 #include "core/renderer/dom/fiber/text_element.h"
@@ -146,14 +147,35 @@ class TestNativePaintingCtxPlatformRef : public NativePaintingCtxPlatformRef {
     return scrollable_signs.count(sign) > 0;
   }
 
+  void UseCurrentThreadAsTaskRunnerForTest() {
+    fml::MessageLoop::EnsureInitializedForCurrentThread();
+    event_target_task_runner_ = fml::MessageLoop::GetCurrent().GetTaskRunner();
+  }
+
   std::unordered_map<int32_t, std::array<float, 2>> scroll_offsets;
   std::unordered_set<int32_t> scrollable_signs;
+  std::vector<int32_t> destroyed_image_keys;
+
+ protected:
+  void DestroyImageOnPlatformThread(int32_t image_key) override {
+    destroyed_image_keys.push_back(image_key);
+  }
 };
 
 // Adapter that exposes the NativePaintingContext interface expected by
 // Fragment::Draw() and forwards to a TestNativePaintingCtxPlatformRef.
 class TestNativePaintingContext : public NativePaintingContext {
  public:
+  struct CreatedImage {
+    int id;
+    base::String src;
+    float width;
+    float height;
+    int32_t event_mask;
+    bool disable_default_resize;
+    int32_t image_key;
+  };
+
   void SetPlatformRef(TestNativePaintingCtxPlatformRef* ref) { ref_ = ref; }
 
   void OnFirstScreen() override {}
@@ -186,10 +208,13 @@ class TestNativePaintingContext : public NativePaintingContext {
       ref_->UpdateDisplayList(id, std::move(list));
     }
   }
-  fml::RefPtr<PaintImage> CreateImage(int id, base::String src, float width,
-                                      float height,
-                                      int32_t event_mask = 0) override {
-    return fml::MakeRefCounted<PaintImage>(id);
+  fml::RefPtr<PaintImage> CreateImage(
+      int id, base::String src, float width, float height,
+      int32_t event_mask = 0, bool disable_default_resize = false) override {
+    int32_t image_key = next_image_key_++;
+    created_images_.push_back({id, src, width, height, event_mask,
+                               disable_default_resize, image_key});
+    return fml::MakeRefCounted<PaintImage>(image_key);
   }
   void UpdateTextBundle(int id, intptr_t bundle) override {}
   void DestroyTextBundle(int id) override {}
@@ -205,9 +230,11 @@ class TestNativePaintingContext : public NativePaintingContext {
   }
 
   std::vector<std::string> operations;
+  std::vector<CreatedImage> created_images_;
 
  private:
   TestNativePaintingCtxPlatformRef* ref_ = nullptr;
+  int32_t next_image_key_{1000};
 };
 
 // A MockPaintingContext whose platform ref is a real
@@ -228,6 +255,20 @@ class NativeMockPaintingContext : public MockPaintingContext,
     return static_cast<TestNativePaintingCtxPlatformRef*>(platform_ref_.get());
   }
 };
+
+TEST(NativePaintingCtxPlatformRefTest,
+     ScheduleDestroyImageUsesWeakRefAndNoOpsAfterDestroy) {
+  auto ref = std::make_shared<TestNativePaintingCtxPlatformRef>();
+  ref->UseCurrentThreadAsTaskRunnerForTest();
+
+  ref->ScheduleDestroyImage(11);
+  EXPECT_THAT(ref->destroyed_image_keys, ::testing::ElementsAre(11));
+
+  ref->Destroy();
+  ref->ScheduleDestroyImage(12);
+  ref->Destroy();
+  EXPECT_THAT(ref->destroyed_image_keys, ::testing::ElementsAre(11));
+}
 
 class FragmentDrawTest : public ::testing::Test {
  public:
@@ -921,12 +962,16 @@ TEST_F(FragmentTest, TestUpdateLayoutAndDefineBoxAndDrawImage) {
   EXPECT_EQ(reader.Next().type, DisplayListOpType::kRecordBox);
   const auto& image_item = reader.Next();
   EXPECT_EQ(image_item.type, DisplayListOpType::kImage);
-  EXPECT_EQ(image_item.payload.image.image_id, fragment.id());
+  ASSERT_EQ(native_painting_context.created_images_.size(), 1u);
+  EXPECT_EQ(native_painting_context.created_images_[0].id, fragment.id());
+  const int32_t image_key =
+      native_painting_context.created_images_[0].image_key;
+  EXPECT_EQ(image_item.payload.image.image_id, image_key);
   EXPECT_EQ(image_item.payload.image.box_index, 2);
   EXPECT_FALSE(reader.HasNext());
   ASSERT_EQ(list.Images().size(), 1u);
   ASSERT_NE(list.Images()[0], nullptr);
-  EXPECT_EQ(list.Images()[0]->image_key_, fragment.id());
+  EXPECT_EQ(list.Images()[0]->image_key_, image_key);
 
   EXPECT_EQ(ops[0], static_cast<int32_t>(DisplayListOpType::kRecordBox));
   EXPECT_EQ(ints[0], 0);
@@ -985,7 +1030,7 @@ TEST_F(FragmentTest, TestUpdateLayoutAndDefineBoxAndDrawImage) {
   EXPECT_EQ(ops[3], static_cast<int32_t>(DisplayListOpType::kImage));
   EXPECT_EQ(ints[6], 2);
   EXPECT_EQ(ints[7], 0);
-  EXPECT_EQ(ints[8], fragment.id());
+  EXPECT_EQ(ints[8], image_key);
   EXPECT_EQ(ints[9], 2);
 }
 
@@ -1134,6 +1179,98 @@ TEST_F(FragmentTest, LinearGradientGeneratesLinearGradientOp) {
   EXPECT_FLOAT_EQ(floats[8], 90.0f);
   EXPECT_FLOAT_EQ(floats[9], 0.0f);
   EXPECT_FLOAT_EQ(floats[10], 1.0f);
+}
+
+TEST_F(FragmentDrawTest, BackgroundUrlGeneratesBackgroundImageOp) {
+  auto element = manager->CreateFiberView();
+  Fragment fragment(element.get());
+
+  starlight::LayoutResultForRendering layout;
+  layout.border_ = starlight::DirectionValue<float>({0.f, 0.f, 0.f, 0.f});
+  layout.padding_ = starlight::DirectionValue<float>({0.f, 0.f, 0.f, 0.f});
+  layout.size_ = FloatSize(100.f, 80.f);
+  fragment.UpdateLayout(layout);
+
+  auto* style = element->computed_css_style();
+  style->background_data_ = starlight::BackgroundData();
+  style->background_data_->image_data =
+      starlight::BackgroundData::BackgroundImageData();
+  auto& image_data = *style->background_data_->image_data;
+  image_data.image_count = 1;
+  image_data.origin.push_back(starlight::BackgroundOriginType::kBorderBox);
+  image_data.clip.push_back(starlight::BackgroundClipType::kBorderBox);
+  image_data.repeat.push_back(starlight::BackgroundRepeatType::kRepeat);
+  image_data.repeat.push_back(starlight::BackgroundRepeatType::kNoRepeat);
+  image_data.size.push_back(starlight::NLength::MakeUnitNLength(40.f));
+  image_data.size.push_back(starlight::NLength::MakeUnitNLength(20.f));
+  image_data.position.push_back(starlight::NLength::MakeUnitNLength(10.f));
+  image_data.position.push_back(starlight::NLength::MakeUnitNLength(15.f));
+
+  auto image_array = lepus::CArray::Create();
+  image_array->emplace_back(
+      static_cast<int32_t>(starlight::BackgroundImageType::kUrl));
+  image_array->emplace_back("https://example.com/bg.png");
+  image_data.image = lepus::Value(std::move(image_array));
+
+  auto* native_context = static_cast<NativeMockPaintingContext*>(
+      manager->painting_context()->impl());
+
+  DisplayListBuilder builder;
+  fragment.DrawBackground(builder);
+
+  ASSERT_EQ(native_context->created_images_.size(), 1u);
+  EXPECT_EQ(native_context->created_images_[0].src.str(),
+            "https://example.com/bg.png");
+  EXPECT_FLOAT_EQ(native_context->created_images_[0].width, 40.f);
+  EXPECT_FLOAT_EQ(native_context->created_images_[0].height, 20.f);
+  EXPECT_EQ(native_context->created_images_[0].event_mask, 0);
+  EXPECT_TRUE(native_context->created_images_[0].disable_default_resize);
+
+  DisplayList list = builder.Build();
+  ASSERT_EQ(list.GetContentOpTypesSize(), 4u);
+  const int32_t* ops = list.GetContentOpTypesData();
+  const int32_t* ints = list.GetContentIntData();
+  const float* floats = list.GetContentFloatData();
+  ASSERT_NE(ops, nullptr);
+  ASSERT_NE(ints, nullptr);
+  ASSERT_NE(floats, nullptr);
+
+  EXPECT_EQ(ops[0], static_cast<int32_t>(DisplayListOpType::kRecordBox));
+  EXPECT_EQ(ops[1], static_cast<int32_t>(DisplayListOpType::kFill));
+  EXPECT_EQ(ops[2], static_cast<int32_t>(DisplayListOpType::kRecordBox));
+  EXPECT_EQ(ops[3], static_cast<int32_t>(DisplayListOpType::kBackgroundImage));
+
+  EXPECT_EQ(ints[8], 5);
+  EXPECT_EQ(ints[9], 0);
+  EXPECT_EQ(ints[10], native_context->created_images_[0].image_key);
+  EXPECT_EQ(ints[11], 1);
+  EXPECT_EQ(ints[12], 0);
+  EXPECT_EQ(ints[13],
+            static_cast<int32_t>(starlight::BackgroundRepeatType::kRepeat));
+  EXPECT_EQ(ints[14],
+            static_cast<int32_t>(starlight::BackgroundRepeatType::kNoRepeat));
+
+  EXPECT_FLOAT_EQ(floats[4], 10.f);
+  EXPECT_FLOAT_EQ(floats[5], 15.f);
+  EXPECT_FLOAT_EQ(floats[6], 40.f);
+  EXPECT_FLOAT_EQ(floats[7], 20.f);
+  EXPECT_EQ(list.Images().size(), 1u);
+
+  image_data.size.clear();
+  image_data.size.push_back(starlight::NLength::MakeUnitNLength(60.f));
+  image_data.size.push_back(starlight::NLength::MakeUnitNLength(30.f));
+
+  DisplayListBuilder repaint_builder;
+  fragment.DrawBackground(repaint_builder);
+
+  EXPECT_EQ(native_context->created_images_.size(), 1u);
+  DisplayList repaint_list = repaint_builder.Build();
+  ASSERT_EQ(repaint_list.GetContentOpTypesSize(), 3u);
+  const int32_t* repaint_ints = repaint_list.GetContentIntData();
+  ASSERT_NE(repaint_ints, nullptr);
+  EXPECT_EQ(repaint_list.GetOpAtIndex(2),
+            static_cast<int32_t>(DisplayListOpType::kBackgroundImage));
+  EXPECT_EQ(repaint_ints[8], native_context->created_images_[0].image_key);
 }
 
 TEST_F(FragmentTest, BackgroundColorUsesBottomImageLayerClip) {

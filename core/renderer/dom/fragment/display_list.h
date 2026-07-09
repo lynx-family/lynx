@@ -40,6 +40,7 @@ enum class DisplayListOpType : int32_t {
   kRecordBox = 11,
   kLinearGradient = 12,
   kBoxShadow = 13,
+  kBackgroundImage = 14,
 };
 
 enum class DisplayListSubtreePropertyOpType : int32_t {
@@ -131,6 +132,13 @@ typedef struct DisplayListItem {
       int32_t box_index;
     } image;
     struct {
+      int32_t image_id;
+      int32_t tiling_index;
+      int32_t clip_index;
+      int32_t repeat_x;
+      int32_t repeat_y;
+    } background_image;
+    struct {
       int32_t out_index;
       int32_t inner_index;
       uint32_t colors[4];
@@ -217,6 +225,22 @@ static_assert(offsetof(DisplayListItem, payload.image.image_id) == 4,
               "image.image_id must be at offset 4");
 static_assert(offsetof(DisplayListItem, payload.image.box_index) == 8,
               "image.box_index must be at offset 8");
+
+// BackgroundImage payload offsets
+static_assert(offsetof(DisplayListItem, payload.background_image.image_id) == 4,
+              "background_image.image_id must be at offset 4");
+static_assert(offsetof(DisplayListItem,
+                       payload.background_image.tiling_index) == 8,
+              "background_image.tiling_index must be at offset 8");
+static_assert(offsetof(DisplayListItem, payload.background_image.clip_index) ==
+                  12,
+              "background_image.clip_index must be at offset 12");
+static_assert(offsetof(DisplayListItem, payload.background_image.repeat_x) ==
+                  16,
+              "background_image.repeat_x must be at offset 16");
+static_assert(offsetof(DisplayListItem, payload.background_image.repeat_y) ==
+                  20,
+              "background_image.repeat_y must be at offset 20");
 
 // Border payload offsets
 static_assert(offsetof(DisplayListItem, payload.border.out_index) == 4,
@@ -396,6 +420,10 @@ class DisplayList {
                          const base::Vector<float>& stops, int32_t tiling_index,
                          int32_t clip_index, int32_t repeat_x,
                          int32_t repeat_y);
+
+  void AddBackgroundImage(const fml::RefPtr<PaintImage>& image,
+                          int32_t tiling_index, int32_t clip_index,
+                          int32_t repeat_x, int32_t repeat_y);
 
   template <typename... Args>
   auto AddOperation(DisplayListOpType type, Args... args) {
