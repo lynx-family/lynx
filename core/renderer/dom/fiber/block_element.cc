@@ -15,16 +15,15 @@ void BlockElement::InsertNode(const fml::RefPtr<Element> &raw_child) {
 
   child->set_virtual_parent(this);
   if (parent_) {
-    auto *parent = static_cast<FiberElement *>(parent_);
+    auto *parent = parent_;
     if (child->is_block()) {
       child->set_parent(parent);
-      parent->scoped_virtual_children_->push_back(child);
+      parent->AddScopedVirtualChild(child);
     } else {
       size_t index = FindInsertIndex(child);
-      auto *ref_node =
-          index < parent->children().size()
-              ? static_cast<FiberElement *>(parent->GetChildAt(index))
-              : nullptr;
+      auto *ref_node = index < parent->children().size()
+                           ? parent->GetChildAt(index)
+                           : nullptr;
       parent->InsertNodeBeforeInternal(child, ref_node, false);
     }
   }
@@ -39,22 +38,11 @@ void BlockElement::RemoveNode(const fml::RefPtr<Element> &raw_child,
     static_cast<BlockElement *>(child.get())->RemoveAllBlockNodes();
     // Remove this BlockElement from parent's scoped_virtual_children_
     if (parent_) {
-      auto parent_fiber = static_cast<FiberElement *>(parent_);
-      parent_fiber->RemoveLogicalChild(child);
-      if (parent_fiber->scoped_virtual_children_.has_value()) {
-        auto &virtual_children = *parent_fiber->scoped_virtual_children_;
-        auto it = std::find_if(virtual_children.begin(), virtual_children.end(),
-                               [&child](const fml::RefPtr<Element> &elem) {
-                                 return elem.get() == child.get();
-                               });
-        if (it != virtual_children.end()) {
-          virtual_children.erase(it);
-        }
-      }
+      parent_->RemoveLogicalChild(child);
+      parent_->RemoveScopedVirtualChild(child);
     }
   } else if (parent_) {
-    static_cast<FiberElement *>(parent_)->RemoveNodeInternal(child, destroy,
-                                                             false);
+    parent_->RemoveNodeInternal(child, destroy, false);
   }
   child->set_virtual_parent(nullptr);
   child->set_parent(nullptr);
@@ -157,8 +145,7 @@ void BlockElement::RemoveBlockChildrenFromParent(BlockElement *block,
       RemoveBlockChildrenFromParent(
           static_cast<BlockElement *>(block_child.get()), parent);
     } else {
-      static_cast<FiberElement *>(parent)->RemoveNodeInternal(block_child,
-                                                              false, false);
+      parent->RemoveNodeInternal(block_child, false, false);
     }
   }
 }
@@ -173,15 +160,13 @@ void BlockElement::InsertBlockChildrenBefore(BlockElement *block,
                                 parent, ref);
     } else {
       if (ref) {
-        static_cast<FiberElement *>(parent)->InsertNodeBeforeInternal(
-            block_child, ref, false);
+        parent->InsertNodeBeforeInternal(block_child, ref, false);
       } else {
         size_t index = block->FindInsertIndex(block_child);
         auto *ref_node = index < parent->children().size()
                              ? parent->GetChildAt(index)
                              : nullptr;
-        static_cast<FiberElement *>(parent)->InsertNodeBeforeInternal(
-            block_child, ref_node, false);
+        parent->InsertNodeBeforeInternal(block_child, ref_node, false);
       }
     }
   }
@@ -227,7 +212,7 @@ void BlockElement::ReplaceElements(
     return;
   }
 
-  FiberElement *parent = static_cast<FiberElement *>(parent_);
+  Element *parent = parent_;
 
   std::unordered_set<fml::RefPtr<Element>> removed_set(removed.begin(),
                                                        removed.end());
@@ -243,12 +228,7 @@ void BlockElement::ReplaceElements(
 
       if (child->is_block()) {
         BlockElement *block_child = static_cast<BlockElement *>(child.get());
-        if (parent->scoped_virtual_children_.has_value()) {
-          parent->scoped_virtual_children_->erase(
-              std::remove(parent->scoped_virtual_children_->begin(),
-                          parent->scoped_virtual_children_->end(), child),
-              parent->scoped_virtual_children_->end());
-        }
+        parent->RemoveScopedVirtualChild(child);
         RemoveBlockChildrenFromParent(block_child, parent);
       } else {
         parent->RemoveNodeInternal(child, false, false);
@@ -265,17 +245,16 @@ void BlockElement::ReplaceElements(
       AddBlockChildAt(child, block_children_.size());
       child->set_parent(parent);
       child->set_virtual_parent(this);
-      parent->scoped_virtual_children_->push_back(child);
+      parent->AddScopedVirtualChild(child);
       InsertBlockChildrenBefore(block_child, parent, ref);
     } else {
       if (ref) {
         parent->InsertNodeBeforeInternal(child, ref, false);
       } else {
         size_t index = FindInsertIndex(child);
-        auto *ref_node =
-            index < parent->children().size()
-                ? static_cast<FiberElement *>(parent->GetChildAt(index))
-                : nullptr;
+        auto *ref_node = index < parent->children().size()
+                             ? parent->GetChildAt(index)
+                             : nullptr;
         parent->InsertNodeBeforeInternal(child, ref_node, false);
       }
       AddBlockChildAt(child, block_children_.size());

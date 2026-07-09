@@ -3077,7 +3077,7 @@ TEST_P(FiberElementTest, SetStyle) {
 }
 
 TEST_P(FiberElementTest, DestroyPlatformNode) {
-  // FiberElement is referenced only by UI.
+  // Element is referenced only by UI.
   auto parent = manager->CreateFiberNode("view");
   auto element = manager->CreateFiberNode("view");
   parent->FlushProps();
@@ -3085,30 +3085,29 @@ TEST_P(FiberElementTest, DestroyPlatformNode) {
   parent->InsertNode(element);
   // parent destory
   parent->DestroyPlatformNode();
-  // make a weak_ptr to monitor FiberElement.
-  FiberElement* child = element.get();
-  std::shared_ptr<FiberElement*> sp = std::make_shared<FiberElement*>(child);
-  std::weak_ptr<FiberElement*> wp = sp;
+  // make a weak_ptr to monitor Element.
+  Element* child = element.get();
+  std::shared_ptr<Element*> sp = std::make_shared<Element*>(child);
+  std::weak_ptr<Element*> wp = sp;
   element = nullptr;  // clear local ref.
   sp = nullptr;
   EXPECT_FALSE(parent->HasPaintingNode());
   EXPECT_FALSE(wp.lock());
 
-  // FIberElement is referenced by UI and JS.
+  // Element is referenced by UI and JS.
   auto parent_new = manager->CreateFiberNode("view");
   auto element_new = manager->CreateFiberNode("view");
   parent_new->FlushProps();
   element_new->FlushProps();
   // mock JS ref
-  fml::RefPtr<FiberElement> ref = fml::RefPtr<FiberElement>(element_new.get());
+  fml::RefPtr<Element> ref = fml::RefPtr<Element>(element_new.get());
   parent_new->InsertNode(element_new);
   // parent destory
   parent_new->DestroyPlatformNode();
-  // make a weak_ptr to monitor FiberElement.
-  FiberElement* child_new = element_new.get();
-  std::shared_ptr<FiberElement*> sp_new =
-      std::make_shared<FiberElement*>(child_new);
-  std::weak_ptr<FiberElement*> wp_new = sp_new;
+  // make a weak_ptr to monitor Element.
+  Element* child_new = element_new.get();
+  std::shared_ptr<Element*> sp_new = std::make_shared<Element*>(child_new);
+  std::weak_ptr<Element*> wp_new = sp_new;
   element_new = nullptr;  // clear local ref.
   EXPECT_FALSE(parent_new->HasPaintingNode());
   EXPECT_EQ(wp_new.use_count(), 1);

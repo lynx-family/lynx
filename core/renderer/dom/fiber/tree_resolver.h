@@ -37,12 +37,12 @@ class TreeResolver {
   static void NotifyNodeInserted(Element* insertion_point, Element* node);
   static void NotifyNodeRemoved(Element* insertion_point, Element* node);
 
-  static void AttachChildToTargetParentForWrapper(FiberElement* parent,
-                                                  FiberElement* child,
-                                                  FiberElement* ref_node);
-  static void AttachChildToTargetContainerRecursive(FiberElement* parent,
-                                                    FiberElement* child,
-                                                    FiberElement* wrapper);
+  static void AttachChildToTargetParentForWrapper(Element* parent,
+                                                  Element* child,
+                                                  Element* ref_node);
+  static void AttachChildToTargetContainerRecursive(Element* parent,
+                                                    Element* child,
+                                                    Element* wrapper);
 
   /**
    *  find the Real parent for a wrapper parent
@@ -52,21 +52,20 @@ class TreeResolver {
    * end
    * @return return the real parent and the index in LayoutNode tree
    */
-  static std::pair<FiberElement*, int> FindParentForChildForWrapper(
-      FiberElement* parent, FiberElement* child, FiberElement* ref);
-  static int GetLayoutIndexForChildForWrapper(FiberElement* parent,
-                                              FiberElement* child);
+  static std::pair<Element*, int> FindParentForChildForWrapper(Element* parent,
+                                                               Element* child,
+                                                               Element* ref);
+  static int GetLayoutIndexForChildForWrapper(Element* parent, Element* child);
 
-  static size_t GetLayoutChildrenCountForWrapper(FiberElement* node);
+  static size_t GetLayoutChildrenCountForWrapper(Element* node);
 
-  static void RemoveFromParentForWrapperChild(FiberElement* parent,
-                                              FiberElement* child);
+  static void RemoveFromParentForWrapperChild(Element* parent, Element* child);
 
-  static FiberElement* FindFirstChildOrSiblingAsRefNode(FiberElement* ref);
+  static Element* FindFirstChildOrSiblingAsRefNode(Element* ref);
 
-  static void RemoveChildRecursively(FiberElement* parent, FiberElement* child);
+  static void RemoveChildRecursively(Element* parent, Element* child);
 
-  static FiberElement* FindTheRealParent(FiberElement* node);
+  static Element* FindTheRealParent(Element* node);
 
   static fml::RefPtr<lepus::Dictionary> GetTemplateParts(
       const fml::RefPtr<Element>& template_element);
@@ -128,7 +127,7 @@ class TreeResolver {
       const std::shared_ptr<CSSStyleSheetManager>& style_manager,
       bool keep_element_id);
 
-  static void TraverseDom(FiberElement* root, uint32_t work_unit_size);
+  static void TraverseDom(Element* root, uint32_t work_unit_size);
 
  protected:
   static void GetPartsRecursively(const fml::RefPtr<Element>& root,
@@ -143,13 +142,13 @@ class TreeResolver {
 
  private:
   static std::list<ParallelFlushReturn> StyleTrees(
-      std::list<FiberElement*>& discovered, uint32_t work_unit_size);
+      std::list<Element*>& discovered, uint32_t work_unit_size);
 
-  static void DistributeStyleTreesTask(std::list<FiberElement*> discovered,
+  static void DistributeStyleTreesTask(std::list<Element*> discovered,
                                        uint32_t work_unit_size);
 
-  static void DistributeOneChunkStyleTreesTask(
-      std::list<FiberElement*> discovered, uint32_t work_unit_size);
+  static void DistributeOneChunkStyleTreesTask(std::list<Element*> discovered,
+                                               uint32_t work_unit_size);
 };
 
 }  // namespace tasm

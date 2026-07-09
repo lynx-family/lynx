@@ -466,16 +466,13 @@ void TreeResolver::NotifyNodeRemoved(Element* insertion_point, Element* node) {
   }
 }
 
-FiberElement* TreeResolver::FindFirstChildOrSiblingAsRefNode(
-    FiberElement* ref) {
-  return ref ? static_cast<FiberElement*>(
-                   ref->FindFirstNonWrapperChildOrSibling())
-             : nullptr;
+Element* TreeResolver::FindFirstChildOrSiblingAsRefNode(Element* ref) {
+  return ref ? ref->FindFirstNonWrapperChildOrSibling() : nullptr;
 }
 
-void TreeResolver::AttachChildToTargetParentForWrapper(FiberElement* parent,
-                                                       FiberElement* child,
-                                                       FiberElement* ref_node) {
+void TreeResolver::AttachChildToTargetParentForWrapper(Element* parent,
+                                                       Element* child,
+                                                       Element* ref_node) {
   // ref is null, find the first none-wrapper ancestor's next sibling as ref!
   auto* temp_parent = parent;
 
@@ -486,14 +483,13 @@ void TreeResolver::AttachChildToTargetParentForWrapper(FiberElement* parent,
   DCHECK(!ref_node || !ref_node->is_wrapper());
 
   while (!ref_node && temp_parent && temp_parent->is_wrapper()) {
-    ref_node = static_cast<FiberElement*>(temp_parent->next_render_sibling());
+    ref_node = temp_parent->next_render_sibling();
 
     if (ref_node && ref_node->EnableLayoutInElementMode()) {
       // If ref_node is virtual in element-mode, try to find the next
       // non-virtual sibling (virtual nodes are not inserted into the layout
       // tree for unknown reasons).
-      ref_node = static_cast<FiberElement*>(
-          ref_node->FindFirstNonVirtualRenderSibling());
+      ref_node = ref_node->FindFirstNonVirtualRenderSibling();
     }
 
     if (ref_node && ref_node->is_wrapper()) {
@@ -506,18 +502,17 @@ void TreeResolver::AttachChildToTargetParentForWrapper(FiberElement* parent,
       break;
     }
 
-    temp_parent = static_cast<FiberElement*>(temp_parent->render_parent());
+    temp_parent = temp_parent->render_parent();
   }
 
-  FiberElement* real_parent =
-      static_cast<FiberElement*>(parent->FindFirstNonWrapperRenderAncestor());
+  Element* real_parent = parent->FindFirstNonWrapperRenderAncestor();
 
   AttachChildToTargetContainerRecursive(real_parent, child, ref_node);
 }
 
-std::pair<FiberElement*, int> TreeResolver::FindParentForChildForWrapper(
-    FiberElement* parent, FiberElement* child, FiberElement* ref_node) {
-  FiberElement* node = parent;
+std::pair<Element*, int> TreeResolver::FindParentForChildForWrapper(
+    Element* parent, Element* child, Element* ref_node) {
+  Element* node = parent;
 
   if (!ref_node && !parent->is_wrapper()) {
     // ref is null & parent is none-wrapper, layout_index:-1 is to append the
@@ -539,7 +534,7 @@ std::pair<FiberElement*, int> TreeResolver::FindParentForChildForWrapper(
     return {nullptr, layout_index};
   }
   while (node->is_wrapper()) {
-    auto* p = static_cast<FiberElement*>(node->render_parent());
+    auto* p = node->render_parent();
     if (!p) {
       return {nullptr, -1};
     }
@@ -549,12 +544,12 @@ std::pair<FiberElement*, int> TreeResolver::FindParentForChildForWrapper(
   return {node, layout_index + in_wrapper_index};
 }
 
-int TreeResolver::GetLayoutIndexForChildForWrapper(FiberElement* parent,
-                                                   FiberElement* child) {
+int TreeResolver::GetLayoutIndexForChildForWrapper(Element* parent,
+                                                   Element* child) {
   int index = 0;
   bool found = false;
   for (const auto& it : parent->children()) {
-    auto* current = static_cast<FiberElement*>(it.get());
+    auto* current = it.get();
     if (child == current) {
       found = true;
       break;
@@ -570,12 +565,12 @@ int TreeResolver::GetLayoutIndexForChildForWrapper(FiberElement* parent,
   return index;
 }
 
-size_t TreeResolver::GetLayoutChildrenCountForWrapper(FiberElement* node) {
+size_t TreeResolver::GetLayoutChildrenCountForWrapper(Element* node) {
   size_t ret = 0;
   for (const auto& current : node->children()) {
-    auto* current_fiber = static_cast<FiberElement*>(current.get());
-    if (current_fiber->is_wrapper()) {
-      ret += GetLayoutChildrenCountForWrapper(current_fiber);
+    auto* current_element = current.get();
+    if (current_element->is_wrapper()) {
+      ret += GetLayoutChildrenCountForWrapper(current_element);
     } else {
       ret++;
     }
@@ -583,9 +578,9 @@ size_t TreeResolver::GetLayoutChildrenCountForWrapper(FiberElement* node) {
   return ret;
 }
 
-void TreeResolver::AttachChildToTargetContainerRecursive(FiberElement* parent,
-                                                         FiberElement* child,
-                                                         FiberElement* ref) {
+void TreeResolver::AttachChildToTargetContainerRecursive(Element* parent,
+                                                         Element* child,
+                                                         Element* ref) {
   // in the mapped layout node tree, insert the wrapper node in front of its
   // first child real parent:
   // [node0,node1,[wrapper,wrapper-child0,wrapper-child1],node3....]
@@ -597,36 +592,33 @@ void TreeResolver::AttachChildToTargetContainerRecursive(FiberElement* parent,
   }
 
   // wrapper node should add subtree to parent recursively.
-  auto* grand = static_cast<FiberElement*>(child->first_render_child());
+  auto* grand = child->first_render_child();
   while (grand) {
     AttachChildToTargetContainerRecursive(parent, grand, ref);
-    grand = static_cast<FiberElement*>(grand->next_render_sibling());
+    grand = grand->next_render_sibling();
   }
 }
 
-FiberElement* TreeResolver::FindTheRealParent(FiberElement* node) {
-  return node ? static_cast<FiberElement*>(
-                    node->FindFirstNonWrapperRenderAncestor())
-              : nullptr;
+Element* TreeResolver::FindTheRealParent(Element* node) {
+  return node ? node->FindFirstNonWrapperRenderAncestor() : nullptr;
 }
 
 // for layout node
-void TreeResolver::RemoveChildRecursively(FiberElement* parent,
-                                          FiberElement* child) {
+void TreeResolver::RemoveChildRecursively(Element* parent, Element* child) {
   if (!child->is_wrapper()) {
     parent->RemoveLayoutNode(child);
   } else {
     auto* grand = child->first_render_child();
     while (grand) {
-      RemoveChildRecursively(parent, static_cast<FiberElement*>(grand));
+      RemoveChildRecursively(parent, grand);
       grand = grand->next_render_sibling();
     }
   }
 }
 
-void TreeResolver::RemoveFromParentForWrapperChild(FiberElement* parent,
-                                                   FiberElement* child) {
-  FiberElement* real_parent = FindTheRealParent(parent);
+void TreeResolver::RemoveFromParentForWrapperChild(Element* parent,
+                                                   Element* child) {
+  Element* real_parent = FindTheRealParent(parent);
   if (real_parent->is_wrapper()) {
     LOGE(
         "[WrapperElement] parent maybe detached from the view tree, can not "
@@ -932,12 +924,12 @@ fml::RefPtr<Element> TreeResolver::FromElementInfo(
 }
 
 // TODO(ZHOUZHITA0): Merge with greedy threaded element resolution later
-void TreeResolver::TraverseDom(FiberElement* root, uint32_t work_unit_size) {
+void TreeResolver::TraverseDom(Element* root, uint32_t work_unit_size) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, TREE_RESOLVER_TRAVERSE_DOM);
   if (!root->flush_required()) {
     return;
   }
-  std::list<FiberElement*> discovered;
+  std::list<Element*> discovered;
   discovered.emplace_back(root);
   root->ApplyFunctionRecursive([](Element* element) {
     if (element->ShouldResolveStyle()) {
@@ -952,7 +944,7 @@ void TreeResolver::TraverseDom(FiberElement* root, uint32_t work_unit_size) {
 }
 
 std::list<ParallelFlushReturn> TreeResolver::StyleTrees(
-    std::list<FiberElement*>& discovered, uint32_t work_unit_size) {
+    std::list<Element*>& discovered, uint32_t work_unit_size) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, TREE_RESOLVER_STYLE_TREES);
   auto element_manager = discovered.front()->element_manager();
   auto optional_engine_thread_id = element_manager->GetCurrentEngineThreadId();
@@ -971,21 +963,21 @@ std::list<ParallelFlushReturn> TreeResolver::StyleTrees(
     // FIXME(zhouzhitao): Level order traversing is not compatible with async
     // resolving api right now.
     if (target->ShouldResolveStyle()) {
-      target->UpdateResolveStatus(FiberElement::AsyncResolveStatus::kResolving);
-      target->MarkParallelFlushFlag(FiberElement::kFlagLevelOrderParallel);
+      target->UpdateResolveStatus(Element::AsyncResolveStatus::kResolving);
+      target->MarkParallelFlushFlag(Element::kFlagLevelOrderParallel);
       resolve_returns.emplace_back(target->PrepareForCreateOrUpdate());
-      DCHECK((target->dirty() & ~(FiberElement::kDirtyTree |
-                                  FiberElement::kDirtyReAttachContainer)) == 0);
+      DCHECK((target->dirty() &
+              ~(Element::kDirtyTree | Element::kDirtyReAttachContainer)) == 0);
     }
 
     target->InvalidateChildrenIfNeeded();
     for (auto& child : target->children()) {
-      auto* fiber_child = static_cast<FiberElement*>(child.get());
+      auto* element_child = child.get();
       if (target->NeedPropagateInheritedDirtyFlag(true)) {
-        fiber_child->MarkDirtyLite(FiberElement::kDirtyPropagateInherited);
+        element_child->MarkDirtyLite(Element::kDirtyPropagateInherited);
       }
-      if (fiber_child->flush_required()) {
-        discovered.emplace_back(fiber_child);
+      if (element_child->flush_required()) {
+        discovered.emplace_back(element_child);
       }
     }
 
@@ -998,7 +990,7 @@ std::list<ParallelFlushReturn> TreeResolver::StyleTrees(
       uint32_t kept_work = node_remaining_at_current_depth > local_queue_size
                                ? node_remaining_at_current_depth
                                : local_queue_size;
-      std::list<FiberElement*> distribute_work_list;
+      std::list<Element*> distribute_work_list;
       auto split_point = discovered.begin();
       std::advance(split_point, kept_work);
 
@@ -1016,7 +1008,7 @@ std::list<ParallelFlushReturn> TreeResolver::StyleTrees(
   return resolve_returns;
 }
 
-void TreeResolver::DistributeStyleTreesTask(std::list<FiberElement*> discovered,
+void TreeResolver::DistributeStyleTreesTask(std::list<Element*> discovered,
                                             uint32_t work_unit_size) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, TREE_RESOLVER_DISTRIBUTE_STYLE_TREES_TASK);
   auto element_manager = discovered.front()->element_manager();
@@ -1026,7 +1018,7 @@ void TreeResolver::DistributeStyleTreesTask(std::list<FiberElement*> discovered,
     auto end_iter = discovered.begin();
     std::advance(end_iter, transfer_count);
 
-    std::list<FiberElement*> work_slice;
+    std::list<Element*> work_slice;
     work_slice.splice(work_slice.end(), discovered, discovered.begin(),
                       end_iter);
 
@@ -1037,7 +1029,7 @@ void TreeResolver::DistributeStyleTreesTask(std::list<FiberElement*> discovered,
 }
 
 void TreeResolver::DistributeOneChunkStyleTreesTask(
-    std::list<FiberElement*> discovered, uint32_t work_unit_size) {
+    std::list<Element*> discovered, uint32_t work_unit_size) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY,
               TREE_RESOLVER_DISTRIBUTE_ONE_CHUNK_STYLE_TREES_TASK);
   auto element_manager = discovered.front()->element_manager();
