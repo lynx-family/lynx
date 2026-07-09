@@ -19,6 +19,7 @@
 #include "core/runtime/js/bindings/modules/lynx_module_manager.h"
 #include "core/runtime/js/js_bundle_holder.h"
 #include "core/runtime/js/runtime_constant.h"
+#include "core/services/event_report/event_tracker.h"
 #include "core/services/feature_count/feature_counter.h"
 #include "core/services/feature_count/global_feature_counter.h"
 #include "core/services/recorder/recorder_controller.h"
@@ -475,6 +476,10 @@ void LynxShell::InitRuntime(
                 ctx.event()->add_debug_annotations(kTaskName,
                                                    kJSTaskInitRuntime);
               });
+  if (!page_options_.IsEmbeddedModeOn()) {
+    tasm::report::EventTracker::UpdateGenericInfo(
+        instance_id_, tasm::report::kPropBTSGroupId, group_id);
+  }
 
 #if ENABLE_TESTBENCH_RECORDER
   int64_t record_id = reinterpret_cast<int64_t>(this);

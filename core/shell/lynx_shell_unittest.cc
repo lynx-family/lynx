@@ -10,11 +10,14 @@
 #include "core/shell/lynx_shell.h"
 
 #include <thread>
+#include <vector>
 
 #include "base/include/debug/lynx_error.h"
 #include "base/include/value/base_value.h"
 #include "core/public/pub_value.h"
+#include "core/renderer/tasm/testing/event_tracker_mock.h"
 #include "core/renderer/utils/lynx_env.h"
+#include "core/services/event_report/event_tracker.h"
 #include "core/services/performance/memory_monitor/memory_monitor.h"
 #include "core/services/performance/memory_monitor/memory_record.h"
 #include "core/shell/lynx_shell_builder.h"
@@ -126,6 +129,30 @@ TEST_F(LynxShellTest, OnUpdateDataWithoutChange) {
   tasm_mediator_->OnUpdateDataWithoutChange();
   arwe_->Wait();
   ASSERT_TRUE(*facade_);
+}
+
+TEST_F(LynxShellTest, InitRuntimeUpdatesBTSGroupIdGenericInfo) {
+  constexpr const char* kGroupId = "test_group";
+  auto event = tasm::report::EventTrackerWaitableEvent::Await();
+  event->Reset();
+  tasm::report::EventTrackerWaitableEvent::instance_id_ =
+      tasm::report::kUnknownInstanceId;
+  tasm::report::EventTrackerWaitableEvent::generic_info_.clear();
+
+  shell_->enable_runtime_ = false;
+  shell_->InitRuntime(
+      kGroupId, nullptr, nullptr,
+      [](const std::shared_ptr<LynxActor<BTSRuntime>>&) {},
+      std::vector<std::string>(), 0, "");
+  event->Wait();
+
+  EXPECT_EQ(tasm::report::EventTrackerWaitableEvent::instance_id_,
+            shell_->GetInstanceId());
+  const auto& generic_info =
+      tasm::report::EventTrackerWaitableEvent::generic_info_;
+  auto bts_group_id = generic_info.find(tasm::report::kPropBTSGroupId);
+  ASSERT_NE(bts_group_id, generic_info.end());
+  EXPECT_EQ(bts_group_id->second, kGroupId);
 }
 
 TEST_F(LynxShellTest, GetAllPerformanceEntries) {

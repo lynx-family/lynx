@@ -26,6 +26,8 @@ constexpr const static char* kPropURL = "url";
 constexpr const static char* kPropThreadMode = "thread_mode";
 // Enable SSR.
 constexpr const static char* kPropEnableSSR = "enable_ssr";
+// Runtime BTS group id used by the template instance.
+constexpr const static char* kPropBTSGroupId = "bts_group_id";
 
 // Instance ID is used to identify a LynxShell runtime environment. It can be
 // used in event reporting to associate events with common parameter
