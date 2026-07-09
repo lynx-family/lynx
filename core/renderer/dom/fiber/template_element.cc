@@ -379,7 +379,7 @@ GeneratedElementsResult GeneratePreparedElementsResult(
 }  // namespace
 
 TemplateElement::TemplateElement(ElementManager* element_manager)
-    : FiberElement(element_manager, BASE_STATIC_STRING(kTemplateTag)),
+    : Element(element_manager, BASE_STATIC_STRING(kTemplateTag)),
       bundle_url_(BASE_STATIC_STRING(kDefaultTemplateBundleUrl)) {
   MarkTemplateElement();
 }

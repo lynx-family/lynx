@@ -11,8 +11,8 @@
 #include <utility>
 #include <vector>
 
+#include "core/renderer/dom/element.h"
 #include "core/renderer/dom/element_manager.h"
-#include "core/renderer/dom/fiber/fiber_element.h"
 #include "core/renderer/ui_component/list/list_container_delegate_internal.h"
 #include "core/renderer/ui_component/list/mediator/list_mediator.h"
 #include "core/renderer/ui_wrapper/layout/list_node.h"
@@ -57,7 +57,7 @@ class ListElementSSRHelper {
   std::vector<std::pair<fml::RefPtr<Element>, SSRItemStatus>> ssr_elements_;
 };
 
-class ListElement : public FiberElement, public tasm::ListNode {
+class ListElement : public Element, public tasm::ListNode {
  public:
   ListElement(ElementManager* manager, const base::String& tag,
               const lepus::Value& component_at_index,
@@ -76,7 +76,7 @@ class ListElement : public FiberElement, public tasm::ListNode {
     mark_func(runtime, v, trace_tool);
     v = WRAP_AS_JS_VALUE(enqueue_component_.value());
     mark_func(runtime, v, trace_tool);
-    FiberElement::visitor(rt, reinterpret_cast<void*>(mark_func), trace_tool);
+    Element::visitor(rt, reinterpret_cast<void*>(mark_func), trace_tool);
   }
 
   ~ListElement() override = default;
@@ -186,7 +186,7 @@ class ListElement : public FiberElement, public tasm::ListNode {
   // empty implementation.
   // TODO(WUJINTIAN): copy fiber list element
   ListElement(const ListElement& element, bool clone_resolved_props)
-      : FiberElement(element, clone_resolved_props) {}
+      : Element(element, clone_resolved_props) {}
 
   void OnNodeAdded(Element* child) override;
   void FilterComponents(

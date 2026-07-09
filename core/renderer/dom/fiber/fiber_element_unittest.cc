@@ -5,8 +5,6 @@
 #define private public
 #define protected public
 
-#include "core/renderer/dom/fiber/fiber_element.h"
-
 #include <cmath>
 #include <functional>
 #include <map>
@@ -31,6 +29,7 @@
 #include "core/renderer/css/ng/selector/css_parser_context.h"
 #include "core/renderer/css/ng/selector/css_selector_parser.h"
 #include "core/renderer/css/parser/css_string_parser.h"
+#include "core/renderer/dom/element.h"
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/dom/fiber/component_element.h"
 #include "core/renderer/dom/fiber/for_element.h"
@@ -133,7 +132,7 @@ bool LayoutBundleHasStyle(const std::unique_ptr<LayoutBundle>& layout_bundle,
 }
 
 std::map<std::string, lepus::Value>* PaintingPropsFor(ElementManager* manager,
-                                                      FiberElement* element) {
+                                                      Element* element) {
   auto* painting_context = static_cast<FiberMockPaintingContext*>(
       manager->painting_context()->impl());
   auto node_it = painting_context->node_map_.find(element->impl_id());
@@ -5800,7 +5799,7 @@ TEST_P(FiberElementTest, RequireFlush) {
   EXPECT_TRUE(element10->flush_required_ == false);
 
   element00->SetAttribute("enable-layout", lepus::Value("false"));
-  element10->dirty_ |= FiberElement::kDirtyAttr;  // just hardcode for testing
+  element10->dirty_ |= Element::kDirtyAttr;  // just hardcode for testing
 
   EXPECT_TRUE(page->flush_required_ == true);
   EXPECT_TRUE(element0->flush_required_ == true);
@@ -5816,7 +5815,7 @@ TEST_P(FiberElementTest, RequireFlush) {
   EXPECT_TRUE(element000->flush_required_ == false);
   EXPECT_TRUE(element1->flush_required_ == false);
   EXPECT_TRUE(element10->flush_required_ == false);
-  EXPECT_TRUE((element10->dirty_ & FiberElement::kDirtyAttr) != 0);
+  EXPECT_TRUE((element10->dirty_ & Element::kDirtyAttr) != 0);
 }
 
 // position:fixed related
@@ -6579,9 +6578,9 @@ TEST_P(FiberElementTest, FiberElementClassChangeTransmitTEST) {
   element0->SetClass(newClass);
 
   EXPECT_TRUE(element0->enable_class_change_transmit_ = true);
-  EXPECT_TRUE((element0->dirty_ & FiberElement::kDirtyStyle) != 0);
-  EXPECT_TRUE((element1->dirty_ & FiberElement::kDirtyStyle) != 0);
-  EXPECT_TRUE((element2->dirty_ & FiberElement::kDirtyStyle) != 0);
+  EXPECT_TRUE((element0->dirty_ & Element::kDirtyStyle) != 0);
+  EXPECT_TRUE((element1->dirty_ & Element::kDirtyStyle) != 0);
+  EXPECT_TRUE((element2->dirty_ & Element::kDirtyStyle) != 0);
 
   EXPECT_TRUE(element0->flush_required_ == true);
   EXPECT_TRUE(element1->flush_required_ == true);
@@ -6589,9 +6588,9 @@ TEST_P(FiberElementTest, FiberElementClassChangeTransmitTEST) {
 
   page->FlushActionsAsRoot();
 
-  EXPECT_TRUE((element0->dirty_ & FiberElement::kDirtyStyle) == 0);
-  EXPECT_TRUE((element1->dirty_ & FiberElement::kDirtyStyle) == 0);
-  EXPECT_TRUE((element2->dirty_ & FiberElement::kDirtyStyle) == 0);
+  EXPECT_TRUE((element0->dirty_ & Element::kDirtyStyle) == 0);
+  EXPECT_TRUE((element1->dirty_ & Element::kDirtyStyle) == 0);
+  EXPECT_TRUE((element2->dirty_ & Element::kDirtyStyle) == 0);
 
   EXPECT_TRUE(element0->flush_required_ == false);
   EXPECT_TRUE(element1->flush_required_ == false);
@@ -10313,7 +10312,7 @@ TEST_P(FiberElementTest, FromTemplateInfoTest) {
 
   auto root = res.GetProperty(0);
   EXPECT_EQ(root.IsRefCounted(), true);
-  auto root_element = fml::static_ref_ptr_cast<FiberElement>(root.RefCounted());
+  auto root_element = fml::static_ref_ptr_cast<Element>(root.RefCounted());
   EXPECT_EQ(root_element->IsTemplateElement(), true);
   EXPECT_EQ(root_element->IsPartElement(), true);
   auto map = TreeResolver::GetTemplateParts(root_element);
@@ -10488,13 +10487,12 @@ TEST_P(FiberElementTest, CreateElementTemplateSerializesOptionTemplateArrays) {
 
   ASSERT_TRUE(created_value.IsRefCounted());
   auto created_element =
-      fml::static_ref_ptr_cast<FiberElement>(created_value.RefCounted())
+      fml::static_ref_ptr_cast<TemplateElement>(created_value.RefCounted())
           .strongify();
   ASSERT_NE(created_element, nullptr);
   ASSERT_TRUE(created_element->is_template());
 
-  auto serialized =
-      static_cast<TemplateElement*>(created_element.get())->Serialize();
+  auto serialized = created_element->Serialize();
   auto serialized_options = serialized.GetProperty("options");
   ASSERT_TRUE(serialized_options.IsObject());
   EXPECT_TRUE(serialized_options.GetProperty("enabled").Bool());
@@ -10530,12 +10528,11 @@ TEST_P(FiberElementTest, CreateElementTemplateSkipsEmptyOptions) {
 
   ASSERT_TRUE(created_value.IsRefCounted());
   auto created_element =
-      fml::static_ref_ptr_cast<FiberElement>(created_value.RefCounted())
+      fml::static_ref_ptr_cast<TemplateElement>(created_value.RefCounted())
           .strongify();
   ASSERT_NE(created_element, nullptr);
   ASSERT_TRUE(created_element->is_template());
-  auto serialized =
-      static_cast<TemplateElement*>(created_element.get())->Serialize();
+  auto serialized = created_element->Serialize();
   EXPECT_TRUE(serialized.GetProperty("options").IsEmpty());
 
   lepus::Value typed_args[] = {lepus::Value("view"), lepus::Value(),
@@ -10544,13 +10541,12 @@ TEST_P(FiberElementTest, CreateElementTemplateSkipsEmptyOptions) {
   auto created_typed_value = RendererFunctions::FiberCreateTypedElementTemplate(
       mts_ctx, typed_args, 5);
   ASSERT_TRUE(created_typed_value.IsRefCounted());
-  auto created_typed_element =
-      fml::static_ref_ptr_cast<FiberElement>(created_typed_value.RefCounted())
-          .strongify();
+  auto created_typed_element = fml::static_ref_ptr_cast<TemplateElement>(
+                                   created_typed_value.RefCounted())
+                                   .strongify();
   ASSERT_NE(created_typed_element, nullptr);
   ASSERT_TRUE(created_typed_element->is_template());
-  auto serialized_typed =
-      static_cast<TemplateElement*>(created_typed_element.get())->Serialize();
+  auto serialized_typed = created_typed_element->Serialize();
   EXPECT_TRUE(serialized_typed.GetProperty("options").IsEmpty());
 }
 
@@ -10611,13 +10607,12 @@ TEST_P(FiberElementTest, CreateTypedElementTemplateSerializesOptions) {
 
   ASSERT_TRUE(created_value.IsRefCounted());
   auto created_element =
-      fml::static_ref_ptr_cast<FiberElement>(created_value.RefCounted())
+      fml::static_ref_ptr_cast<TemplateElement>(created_value.RefCounted())
           .strongify();
   ASSERT_NE(created_element, nullptr);
   ASSERT_TRUE(created_element->is_template());
 
-  auto serialized =
-      static_cast<TemplateElement*>(created_element.get())->Serialize();
+  auto serialized = created_element->Serialize();
   auto serialized_options = serialized.GetProperty("options");
   ASSERT_TRUE(serialized_options.IsObject());
   EXPECT_EQ(serialized_options.GetProperty("reusePool")
@@ -10644,13 +10639,12 @@ TEST_P(FiberElementTest, CreateElementTemplateDoesNotPrepareBeforeTree) {
 
   ASSERT_TRUE(created_value.IsRefCounted());
   auto created_element =
-      fml::static_ref_ptr_cast<FiberElement>(created_value.RefCounted())
+      fml::static_ref_ptr_cast<TemplateElement>(created_value.RefCounted())
           .strongify();
   ASSERT_NE(created_element, nullptr);
   ASSERT_TRUE(created_element->is_template());
-  auto* created_template = static_cast<TemplateElement*>(created_element.get());
-  EXPECT_FALSE(created_template->IsInTemplateTree());
-  EXPECT_EQ(created_template->async_create_task_, nullptr);
+  EXPECT_FALSE(created_element->IsInTemplateTree());
+  EXPECT_EQ(created_element->async_create_task_, nullptr);
 }
 
 TEST_P(FiberElementTest, PageTemplateElementSlotsPrepareChildrenRecursively) {
@@ -10713,12 +10707,11 @@ TEST_P(FiberElementTest, CreateTypedPageTemplateMaterializesRoot) {
       mts_ctx, create_args, 4);
 
   ASSERT_TRUE(created_value.IsRefCounted());
-  auto created_element =
-      fml::static_ref_ptr_cast<FiberElement>(created_value.RefCounted())
+  auto page_template =
+      fml::static_ref_ptr_cast<TemplateElement>(created_value.RefCounted())
           .strongify();
-  ASSERT_NE(created_element, nullptr);
-  ASSERT_TRUE(created_element->is_template());
-  auto* page_template = static_cast<TemplateElement*>(created_element.get());
+  ASSERT_NE(page_template, nullptr);
+  ASSERT_TRUE(page_template->is_template());
   ASSERT_NE(manager->root(), nullptr);
   ASSERT_NE(page_template->result_, nullptr);
   EXPECT_EQ(manager->root(), page_template->result_.get());
@@ -10827,7 +10820,7 @@ TEST_P(FiberElementTest, InsertTypedPageTemplateChildBeforeAutomaticFlush) {
   manager->OnPatchFinish(options);
   ASSERT_EQ(page_template->result_->children().size(), 1u);
   EXPECT_FALSE(
-      static_cast<FiberElement*>(page_template->result_->children()[0].get())
+      static_cast<Element*>(page_template->result_->children()[0].get())
           ->is_template());
 }
 
@@ -11138,12 +11131,11 @@ TEST_P(FiberElementTest, RendererFunctionCreateTypedTemplateElement) {
       RendererFunctions::FiberCreateTypedElementTemplate(mts_ctx, args, 4);
 
   ASSERT_TRUE(created_value.IsRefCounted());
-  auto created_element =
-      fml::static_ref_ptr_cast<FiberElement>(created_value.RefCounted())
+  auto typed_template =
+      fml::static_ref_ptr_cast<TemplateElement>(created_value.RefCounted())
           .strongify();
-  ASSERT_NE(created_element, nullptr);
-  ASSERT_TRUE(created_element->is_template());
-  auto* typed_template = static_cast<TemplateElement*>(created_element.get());
+  ASSERT_NE(typed_template, nullptr);
+  ASSERT_TRUE(typed_template->is_template());
   EXPECT_EQ(typed_template->result_, nullptr);
   EXPECT_EQ(typed_template->async_create_task_, nullptr);
 
@@ -11152,7 +11144,7 @@ TEST_P(FiberElementTest, RendererFunctionCreateTypedTemplateElement) {
                                lepus::Value("updated_attr"));
   updated_attributes->SetValue(base::String("data-added"),
                                lepus::Value("added_attr"));
-  lepus::Value update_args[] = {lepus::Value(created_element), lepus::Value(0),
+  lepus::Value update_args[] = {lepus::Value(typed_template), lepus::Value(0),
                                 lepus::Value(updated_attributes)};
   RendererFunctions::FiberSetAttributeOfElementTemplate(nullptr, update_args,
                                                         3);
@@ -11171,7 +11163,7 @@ TEST_P(FiberElementTest, RendererFunctionCreateTypedTemplateElement) {
   auto invalid_attributes = lepus::Dictionary::Create();
   invalid_attributes->SetValue(base::String("data-test"),
                                lepus::Value("invalid_attr"));
-  lepus::Value invalid_update_args[] = {lepus::Value(created_element),
+  lepus::Value invalid_update_args[] = {lepus::Value(typed_template),
                                         lepus::Value(1),
                                         lepus::Value(invalid_attributes)};
   RendererFunctions::FiberSetAttributeOfElementTemplate(nullptr,
@@ -11193,7 +11185,7 @@ TEST_P(FiberElementTest, RendererFunctionCreateTypedTemplateElement) {
   EXPECT_EQ(added_data->StdString(), "added_attr");
   EXPECT_EQ(root->data_model_->attributes().count("data-test"), 0u);
   ASSERT_EQ(root->children().size(), 1u);
-  auto* mounted_child = static_cast<FiberElement*>(root->children()[0].get());
+  auto* mounted_child = root->children()[0].get();
   ASSERT_NE(mounted_child, nullptr);
   EXPECT_EQ(mounted_child, child.get());
   EXPECT_TRUE(mounted_child->is_template());
@@ -14053,16 +14045,14 @@ TEST_P(FiberElementTest, CopyTestComponentElement) {
 
 TEST_P(FiberElementTest, CopyInsertNode) {
   auto parent = manager->CreateFiberNode("view");
-  parent = fml::AdoptRef<FiberElement>(
-      new FiberElement(*static_cast<FiberElement*>(parent.get()), true));
+  parent = fml::AdoptRef<Element>(new Element(*parent.get(), true));
   parent->AttachToElementManager(
       manager, tasm->style_sheet_manager(tasm::DEFAULT_ENTRY_NAME), false);
 
   EXPECT_EQ(static_cast<int>(parent->GetChildCount()), 0);
 
   auto element = manager->CreateFiberNode("view");
-  element = fml::AdoptRef<FiberElement>(
-      new FiberElement(*static_cast<FiberElement*>(element.get()), true));
+  element = fml::AdoptRef<Element>(new Element(*element.get(), true));
   element->AttachToElementManager(
       manager, tasm->style_sheet_manager(tasm::DEFAULT_ENTRY_NAME), false);
 
@@ -14416,8 +14406,8 @@ TEST_P(FiberElementTest, ElementBundleTest01) {
 
   auto cloned_page_node = lepus::Value(
       TreeResolver::CloneElementRecursively(current_page.get(), true));
-  fml::RefPtr<FiberElement> cloned_page_node_ref =
-      fml::static_ref_ptr_cast<FiberElement>(cloned_page_node.RefCounted());
+  fml::RefPtr<Element> cloned_page_node_ref =
+      fml::static_ref_ptr_cast<Element>(cloned_page_node.RefCounted());
   TreeResolver::AttachRootToElementManager(
       cloned_page_node_ref, manager_1,
       tasm_1->style_sheet_manager(tasm::DEFAULT_ENTRY_NAME), true);
@@ -14567,8 +14557,8 @@ TEST_P(FiberElementTest, ElementBundleTest02) {
 
   auto cloned_page_node = lepus::Value(
       TreeResolver::CloneElementRecursively(current_page.get(), true));
-  fml::RefPtr<FiberElement> cloned_page_node_ref =
-      fml::static_ref_ptr_cast<FiberElement>(cloned_page_node.RefCounted());
+  fml::RefPtr<Element> cloned_page_node_ref =
+      fml::static_ref_ptr_cast<Element>(cloned_page_node.RefCounted());
   TreeResolver::AttachRootToElementManager(
       cloned_page_node_ref, manager_1,
       tasm_1->style_sheet_manager(tasm::DEFAULT_ENTRY_NAME), true);
@@ -14580,21 +14570,21 @@ TEST_P(FiberElementTest, ElementBundleTest02) {
   EXPECT_TRUE(manager_1->node_manager_->Get(current_child1->impl_id()) !=
               nullptr);
 
-  auto cloned_page = static_cast<FiberElement*>(
+  auto cloned_page = static_cast<Element*>(
       manager_1->node_manager_->Get(current_page->impl_id()));
   cloned_page->style_sheet_ =
       std::make_unique<CSSFragmentDecorator>(indexFragment.get());
-  EXPECT_TRUE((cloned_page->dirty_ & FiberElement::kDirtyCloned) > 0);
+  EXPECT_TRUE((cloned_page->dirty_ & Element::kDirtyCloned) > 0);
 
-  auto cloned_child1 = static_cast<FiberElement*>(
+  auto cloned_child1 = static_cast<Element*>(
       manager_1->node_manager_->Get(current_child1->impl_id()));
-  EXPECT_TRUE((cloned_child1->dirty_ & FiberElement::kDirtyCloned) > 0);
+  EXPECT_TRUE((cloned_child1->dirty_ & Element::kDirtyCloned) > 0);
   EXPECT_TRUE(cloned_child1->computed_css_style()->animation_data().empty());
 
   cloned_page->FlushActionsAsRoot();
   EXPECT_TRUE(!cloned_child1->computed_css_style()->animation_data().empty());
-  EXPECT_TRUE((cloned_child1->dirty_ & FiberElement::kDirtyCloned) == 0);
-  EXPECT_TRUE((cloned_page->dirty_ & FiberElement::kDirtyCloned) == 0);
+  EXPECT_TRUE((cloned_child1->dirty_ & Element::kDirtyCloned) == 0);
+  EXPECT_TRUE((cloned_page->dirty_ & Element::kDirtyCloned) == 0);
 }
 
 TEST_P(FiberElementTest, TestGetParentComponentElement) {
@@ -17244,10 +17234,10 @@ TEST_P(FiberElementTest, TestDirtyPropagateInherited0) {
   parent->InsertNode(child);
   parent->InsertNode(child2);
 
-  EXPECT_FALSE(page->dirty_ & FiberElement::kDirtyPropagateInherited);
-  EXPECT_TRUE(parent->dirty_ & FiberElement::kDirtyPropagateInherited);
-  EXPECT_TRUE(child->dirty_ & FiberElement::kDirtyPropagateInherited);
-  EXPECT_TRUE(child2->dirty_ & FiberElement::kDirtyPropagateInherited);
+  EXPECT_FALSE(page->dirty_ & Element::kDirtyPropagateInherited);
+  EXPECT_TRUE(parent->dirty_ & Element::kDirtyPropagateInherited);
+  EXPECT_TRUE(child->dirty_ & Element::kDirtyPropagateInherited);
+  EXPECT_TRUE(child2->dirty_ & Element::kDirtyPropagateInherited);
 }
 
 TEST_P(FiberElementTest, TestDirtyPropagateInherited1) {
@@ -17268,10 +17258,10 @@ TEST_P(FiberElementTest, TestDirtyPropagateInherited1) {
   parent->InsertNode(child);
   parent->InsertNode(child2);
 
-  EXPECT_FALSE(page->dirty_ & FiberElement::kDirtyPropagateInherited);
-  EXPECT_FALSE(parent->dirty_ & FiberElement::kDirtyPropagateInherited);
-  EXPECT_FALSE(child->dirty_ & FiberElement::kDirtyPropagateInherited);
-  EXPECT_FALSE(child2->dirty_ & FiberElement::kDirtyPropagateInherited);
+  EXPECT_FALSE(page->dirty_ & Element::kDirtyPropagateInherited);
+  EXPECT_FALSE(parent->dirty_ & Element::kDirtyPropagateInherited);
+  EXPECT_FALSE(child->dirty_ & Element::kDirtyPropagateInherited);
+  EXPECT_FALSE(child2->dirty_ & Element::kDirtyPropagateInherited);
 }
 
 TEST_P(FiberElementTest, TestFlushRequiredPropagateWithInheritance) {
@@ -17462,12 +17452,11 @@ TEST_P(FiberElementTest, TestAsyncResolveProperty) {
   parent->SetClass("root");
   parent->AsyncResolveProperty();
   EXPECT_TRUE(parent->resolve_status_ ==
-              FiberElement::AsyncResolveStatus::kPrepareRequested);
+              Element::AsyncResolveStatus::kPrepareRequested);
 
   page->InsertNode(parent);
   page->FlushActionsAsRoot();
-  EXPECT_TRUE(parent->resolve_status_ ==
-              FiberElement::AsyncResolveStatus::kUpdated);
+  EXPECT_TRUE(parent->resolve_status_ == Element::AsyncResolveStatus::kUpdated);
 }
 
 TEST_P(FiberElementTest, TestAsyncResolveProperty_ReplaceElements) {
@@ -17516,7 +17505,7 @@ TEST_P(FiberElementTest, TestAsyncResolveProperty_ReplaceElements) {
   parent->InsertNode(element0);
   element0->AsyncResolveProperty();
   EXPECT_TRUE(element0->resolve_status_ >=
-              FiberElement::AsyncResolveStatus::kPrepareTriggered);
+              Element::AsyncResolveStatus::kPrepareTriggered);
 
   base::Vector<fml::RefPtr<Element>> inserted_elements{};
   base::Vector<fml::RefPtr<Element>> removed_elements{};
@@ -17525,7 +17514,7 @@ TEST_P(FiberElementTest, TestAsyncResolveProperty_ReplaceElements) {
 
   page->FlushActionsAsRoot();
   EXPECT_TRUE(element0->resolve_status_ ==
-              FiberElement::AsyncResolveStatus::kUpdated);
+              Element::AsyncResolveStatus::kUpdated);
 }
 
 TEST_P(FiberElementTest, TestAsyncResolveProperty_CheckElementResolveStatus) {
@@ -17544,25 +17533,23 @@ TEST_P(FiberElementTest, TestAsyncResolveProperty_CheckElementResolveStatus) {
   page->InsertNode(wrapper);
 
   page->FlushActionsAsRoot();
+  EXPECT_TRUE(page->resolve_status_ == Element::AsyncResolveStatus::kUpdated ||
+              page->resolve_status_ == Element::AsyncResolveStatus::kCreated);
   EXPECT_TRUE(
-      page->resolve_status_ == FiberElement::AsyncResolveStatus::kUpdated ||
-      page->resolve_status_ == FiberElement::AsyncResolveStatus::kCreated);
-  EXPECT_TRUE(
-      element0->resolve_status_ == FiberElement::AsyncResolveStatus::kUpdated ||
-      element0->resolve_status_ == FiberElement::AsyncResolveStatus::kCreated);
+      element0->resolve_status_ == Element::AsyncResolveStatus::kUpdated ||
+      element0->resolve_status_ == Element::AsyncResolveStatus::kCreated);
   EXPECT_TRUE(element_before_black->resolve_status_ ==
-                  FiberElement::AsyncResolveStatus::kUpdated ||
+                  Element::AsyncResolveStatus::kUpdated ||
               element_before_black->resolve_status_ ==
-                  FiberElement::AsyncResolveStatus::kCreated);
+                  Element::AsyncResolveStatus::kCreated);
+  EXPECT_TRUE(text->resolve_status_ == Element::AsyncResolveStatus::kUpdated ||
+              text->resolve_status_ == Element::AsyncResolveStatus::kCreated);
   EXPECT_TRUE(
-      text->resolve_status_ == FiberElement::AsyncResolveStatus::kUpdated ||
-      text->resolve_status_ == FiberElement::AsyncResolveStatus::kCreated);
+      element->resolve_status_ == Element::AsyncResolveStatus::kUpdated ||
+      element->resolve_status_ == Element::AsyncResolveStatus::kCreated);
   EXPECT_TRUE(
-      element->resolve_status_ == FiberElement::AsyncResolveStatus::kUpdated ||
-      element->resolve_status_ == FiberElement::AsyncResolveStatus::kCreated);
-  EXPECT_TRUE(
-      wrapper->resolve_status_ == FiberElement::AsyncResolveStatus::kUpdated ||
-      wrapper->resolve_status_ == FiberElement::AsyncResolveStatus::kCreated);
+      wrapper->resolve_status_ == Element::AsyncResolveStatus::kUpdated ||
+      wrapper->resolve_status_ == Element::AsyncResolveStatus::kCreated);
 }
 
 TEST_P(FiberElementTest, TestAsyncResolveProperty_CheckElementResolveStatus02) {
@@ -17618,35 +17605,35 @@ TEST_P(FiberElementTest, TestAsyncResolveProperty_CheckElementResolveStatus02) {
 
   page->FlushActionsAsRoot();
   EXPECT_TRUE(
-      element0->resolve_status_ == FiberElement::AsyncResolveStatus::kUpdated ||
-      element0->resolve_status_ == FiberElement::AsyncResolveStatus::kCreated);
+      element0->resolve_status_ == Element::AsyncResolveStatus::kUpdated ||
+      element0->resolve_status_ == Element::AsyncResolveStatus::kCreated);
   EXPECT_TRUE(element_before_black->resolve_status_ ==
-                  FiberElement::AsyncResolveStatus::kUpdated ||
+                  Element::AsyncResolveStatus::kUpdated ||
               element_before_black->resolve_status_ ==
-                  FiberElement::AsyncResolveStatus::kCreated);
+                  Element::AsyncResolveStatus::kCreated);
 
   element0->AsyncResolveProperty();
   // For non-dirty element, resolve_status_ should not be updated to
   // kPrepareRequested.
   EXPECT_TRUE(element0->resolve_status_ ==
-              FiberElement::AsyncResolveStatus::kUpdated);
+              Element::AsyncResolveStatus::kUpdated);
   element_before_black->SetClass("root");
   element_before_black->AsyncResolveProperty();
   // For non-dirty element, resolve_status_ should not be updated to
   // kPrepareRequested.
   // For dirty element, resolve_status_ should be updated.
   EXPECT_TRUE(element_before_black->resolve_status_ !=
-                  FiberElement::AsyncResolveStatus::kCreated &&
+                  Element::AsyncResolveStatus::kCreated &&
               element_before_black->resolve_status_ !=
-                  FiberElement::AsyncResolveStatus::kUpdated);
+                  Element::AsyncResolveStatus::kUpdated);
   page->FlushActionsAsRoot();
   EXPECT_TRUE(
-      element0->resolve_status_ == FiberElement::AsyncResolveStatus::kUpdated ||
-      element0->resolve_status_ == FiberElement::AsyncResolveStatus::kCreated);
+      element0->resolve_status_ == Element::AsyncResolveStatus::kUpdated ||
+      element0->resolve_status_ == Element::AsyncResolveStatus::kCreated);
   EXPECT_TRUE(element_before_black->resolve_status_ ==
-                  FiberElement::AsyncResolveStatus::kUpdated ||
+                  Element::AsyncResolveStatus::kUpdated ||
               element_before_black->resolve_status_ ==
-                  FiberElement::AsyncResolveStatus::kCreated);
+                  Element::AsyncResolveStatus::kCreated);
 }
 
 TEST_P(FiberElementTest, TestGetParentFontSize0) {
@@ -19861,7 +19848,7 @@ TEST_P(FiberElementTest, PrepareAndGenerateChildrenActionsUsesHasZIndex) {
   child_with_z->RemovedFrom(mock_insertion_point.get());
 
   // mock_insertion_point must be dirty to process actions
-  mock_insertion_point->MarkDirty(FiberElement::kDirtyTree);
+  mock_insertion_point->MarkDirty(Element::kDirtyTree);
   mock_insertion_point->PrepareAndGenerateChildrenActions();
 
   SUCCEED();
@@ -19896,12 +19883,12 @@ TEST_P(FiberElementTest,
   layout_only_child->is_layout_only_ = true;
   layout_only_child->ResetAllDirtyBits();
   grandchild->ResetAllDirtyBits();
-  grandchild->MarkDirtyLite(FiberElement::kDirtyCreated);
+  grandchild->MarkDirtyLite(Element::kDirtyCreated);
 
   insertion_point->PrepareChildForInsertion(layout_only_child.get());
 
   EXPECT_TRUE(grandchild->dirty_when_prepared_ &
-              FiberElement::kDirtyPropagateInherited);
+              Element::kDirtyPropagateInherited);
 }
 
 // Helper: create a SharedCSSFragment with CSS selector support and add a rule.
@@ -20276,7 +20263,7 @@ TEST_P(FiberElementTest,
 
   element->layout_bundle_.reset();
   element->SetRawInlineStyles("font-size: 20px; width: 2em;");
-  FiberElement::NewPipelineResolveRequest request;
+  Element::NewPipelineResolveRequest request;
   auto outcome = element->ResolveCSSStylesNewPipelineCore(request);
 
   EXPECT_TRUE(outcome.need_update);
@@ -20348,7 +20335,7 @@ TEST_P(FiberElementTest,
   final_style.CopyFrom(baseline);
   final_style.ClearDirtyBits();
 
-  FiberElement::NewPipelineStyleMutationPlan plan;
+  Element::NewPipelineStyleMutationPlan plan;
   plan.AddUpdate(CSSPropertyID::kPropertyIDOpacity, opacity);
 
   EXPECT_FALSE(element->MaterializeNewPipelineStyleMutationPlan(plan, baseline,
@@ -20407,7 +20394,7 @@ TEST_P(FiberElementTest,
       element->computed_css_style()->GetLayoutComputedStyle();
   ASSERT_EQ(element->slnode()->GetCSSStyle(), old_layout_style);
 
-  FiberElement::NewPipelineResolveRequest request;
+  Element::NewPipelineResolveRequest request;
   request.force_resolve = true;
   request.force_platform_update = true;
   auto outcome = element->ResolveCSSStylesNewPipelineCore(request);
@@ -20647,7 +20634,7 @@ TEST_P(FiberElementTest,
   element->imperative_animation_state_.pending_cleanup_properties_.Set(
       CSSPropertyID::kPropertyIDOpacity);
 
-  FiberElement::NewPipelineResolveRequest request;
+  Element::NewPipelineResolveRequest request;
   request.force_resolve = true;
   auto outcome = element->ResolveCSSStylesNewPipelineCore(request);
 
@@ -20689,7 +20676,7 @@ TEST_P(
   wrapper->imperative_animation_state_.pending_cleanup_properties_.Set(
       CSSPropertyID::kPropertyIDLineHeight);
 
-  FiberElement::NewPipelineResolveRequest request;
+  Element::NewPipelineResolveRequest request;
   request.force_resolve = true;
   auto outcome = wrapper->ResolveCSSStylesNewPipelineCore(request);
 
@@ -20784,7 +20771,7 @@ TEST_P(FiberElementTest,
 
   auto resolve_at = [&](int64_t ms) {
     element->SetAnimationSampleTimeForNewPipeline(TimePointFromMs(ms));
-    FiberElement::NewPipelineResolveRequest request;
+    Element::NewPipelineResolveRequest request;
     request.force_resolve = true;
     return element->ResolveCSSStylesNewPipelineCore(request);
   };
@@ -20947,7 +20934,7 @@ TEST_P(FiberElementTest,
                           SLMeasureModeDefinite, false);
   view->UpdateLengthContextValueForAllElement(manager->GetLynxEnvConfig());
 
-  FiberElement::NewPipelineResolveRequest request;
+  Element::NewPipelineResolveRequest request;
   request.force_resolve = true;
   request.dynamic_update_flags = DynamicCSSStylesManager::kUpdateViewport;
   auto outcome = view->ResolveCSSStylesNewPipelineCore(request);
@@ -21188,7 +21175,7 @@ TEST_P(
 
   manager->UpdateViewport(200, SLMeasureModeDefinite, 600,
                           SLMeasureModeDefinite, false);
-  FiberElement::NewPipelineResolveRequest request;
+  Element::NewPipelineResolveRequest request;
   request.force_resolve = true;
   request.dynamic_update_flags = DynamicCSSStylesManager::kUpdateViewport;
   auto outcome = wrapper->ResolveCSSStylesNewPipelineCore(request);
@@ -21333,7 +21320,7 @@ TEST_P(FiberElementTest,
   element->ResetAllDirtyBits();
   element->SetStyle(CSSPropertyID::kPropertyIDFontSize, lepus::Value("20px"));
 
-  FiberElement::NewPipelineResolveRequest request;
+  Element::NewPipelineResolveRequest request;
   auto outcome = element->ResolveCSSStylesNewPipelineCore(request);
 
   EXPECT_TRUE(outcome.need_update);
@@ -21354,19 +21341,19 @@ TEST_P(FiberElementTest,
   page->FlushActionsAsRoot();
 
   ASSERT_FALSE(child->StyleDirty());
-  ASSERT_FALSE(child->dirty_ & FiberElement::kDirtyFontSize);
-  ASSERT_FALSE(child->dirty_ & FiberElement::kDirtyPropagateInherited);
+  ASSERT_FALSE(child->dirty_ & Element::kDirtyFontSize);
+  ASSERT_FALSE(child->dirty_ & Element::kDirtyPropagateInherited);
 
   parent->SetStyle(CSSPropertyID::kPropertyIDFontSize, lepus::Value("20px"));
   parent->SetStyle(CSSPropertyID::kPropertyIDColor, lepus::Value("blue"));
 
-  FiberElement::NewPipelineResolveRequest request;
+  Element::NewPipelineResolveRequest request;
   auto outcome = parent->ResolveCSSStylesNewPipelineCore(request);
 
   EXPECT_TRUE(outcome.force_children);
   EXPECT_TRUE(outcome.child_update_flags & DynamicCSSStylesManager::kUpdateEm);
-  EXPECT_TRUE(child->dirty_ & FiberElement::kDirtyFontSize);
-  EXPECT_TRUE(child->dirty_ & FiberElement::kDirtyPropagateInherited);
+  EXPECT_TRUE(child->dirty_ & Element::kDirtyFontSize);
+  EXPECT_TRUE(child->dirty_ & Element::kDirtyPropagateInherited);
   EXPECT_TRUE(child->StyleDirty());
 }
 
@@ -21383,25 +21370,25 @@ TEST_P(FiberElementTest,
   page->FlushActionsAsRoot();
 
   ASSERT_FALSE(child->StyleDirty());
-  ASSERT_FALSE(child->dirty_ & FiberElement::kDirtyPropagateInherited);
+  ASSERT_FALSE(child->dirty_ & Element::kDirtyPropagateInherited);
 
   parent->MarkParallelFlushFlag(Element::kFlagGreedyParallel);
   parent->SetStyle(CSSPropertyID::kPropertyIDColor, lepus::Value("blue"));
 
-  FiberElement::NewPipelineResolveRequest request;
+  Element::NewPipelineResolveRequest request;
   auto outcome = parent->ResolveCSSStylesNewPipelineCore(request);
 
   EXPECT_TRUE(outcome.force_children);
   ASSERT_TRUE(parent->parallel_before_flush_action_tasks_.has_value());
   EXPECT_FALSE(child->StyleDirty());
-  EXPECT_FALSE(child->dirty_ & FiberElement::kDirtyPropagateInherited);
+  EXPECT_FALSE(child->dirty_ & Element::kDirtyPropagateInherited);
 
   for (const auto& task : *parent->parallel_before_flush_action_tasks_) {
     task();
   }
 
   EXPECT_TRUE(child->StyleDirty());
-  EXPECT_TRUE(child->dirty_ & FiberElement::kDirtyPropagateInherited);
+  EXPECT_TRUE(child->dirty_ & Element::kDirtyPropagateInherited);
 }
 
 TEST_P(FiberElementTest,
@@ -21417,18 +21404,18 @@ TEST_P(FiberElementTest,
   page->FlushActionsAsRoot();
 
   ASSERT_FALSE(child->StyleDirty());
-  ASSERT_FALSE(child->dirty_ & FiberElement::kDirtyPropagateInherited);
+  ASSERT_FALSE(child->dirty_ & Element::kDirtyPropagateInherited);
 
   parent->MarkParallelFlushFlag(Element::kFlagLevelOrderParallel);
   parent->SetStyle(CSSPropertyID::kPropertyIDColor, lepus::Value("blue"));
 
-  FiberElement::NewPipelineResolveRequest request;
+  Element::NewPipelineResolveRequest request;
   auto outcome = parent->ResolveCSSStylesNewPipelineCore(request);
 
   EXPECT_TRUE(outcome.force_children);
   EXPECT_FALSE(parent->parallel_before_flush_action_tasks_.has_value());
   EXPECT_TRUE(child->StyleDirty());
-  EXPECT_TRUE(child->dirty_ & FiberElement::kDirtyPropagateInherited);
+  EXPECT_TRUE(child->dirty_ & Element::kDirtyPropagateInherited);
 }
 
 TEST_P(FiberElementTest,
@@ -21442,24 +21429,24 @@ TEST_P(FiberElementTest,
   page->InsertNode(parent);
   page->FlushActionsAsRoot();
 
-  ASSERT_FALSE(child->dirty_ & FiberElement::kDirtyFontSize);
+  ASSERT_FALSE(child->dirty_ & Element::kDirtyFontSize);
 
   parent->MarkParallelFlushFlag(Element::kFlagGreedyParallel);
   parent->SetStyle(CSSPropertyID::kPropertyIDFontSize, lepus::Value("20px"));
 
-  FiberElement::NewPipelineResolveRequest request;
+  Element::NewPipelineResolveRequest request;
   auto outcome = parent->ResolveCSSStylesNewPipelineCore(request);
 
   EXPECT_TRUE(outcome.force_children);
   EXPECT_TRUE(outcome.child_update_flags & DynamicCSSStylesManager::kUpdateEm);
   ASSERT_TRUE(parent->parallel_before_flush_action_tasks_.has_value());
-  EXPECT_FALSE(child->dirty_ & FiberElement::kDirtyFontSize);
+  EXPECT_FALSE(child->dirty_ & Element::kDirtyFontSize);
 
   for (const auto& task : *parent->parallel_before_flush_action_tasks_) {
     task();
   }
 
-  EXPECT_TRUE(child->dirty_ & FiberElement::kDirtyFontSize);
+  EXPECT_TRUE(child->dirty_ & Element::kDirtyFontSize);
 }
 
 TEST_P(FiberElementTest,
@@ -21473,18 +21460,18 @@ TEST_P(FiberElementTest,
   page->InsertNode(parent);
   page->FlushActionsAsRoot();
 
-  ASSERT_FALSE(child->dirty_ & FiberElement::kDirtyFontSize);
+  ASSERT_FALSE(child->dirty_ & Element::kDirtyFontSize);
 
   parent->MarkParallelFlushFlag(Element::kFlagLevelOrderParallel);
   parent->SetStyle(CSSPropertyID::kPropertyIDFontSize, lepus::Value("20px"));
 
-  FiberElement::NewPipelineResolveRequest request;
+  Element::NewPipelineResolveRequest request;
   auto outcome = parent->ResolveCSSStylesNewPipelineCore(request);
 
   EXPECT_TRUE(outcome.force_children);
   EXPECT_TRUE(outcome.child_update_flags & DynamicCSSStylesManager::kUpdateEm);
   EXPECT_FALSE(parent->parallel_before_flush_action_tasks_.has_value());
-  EXPECT_TRUE(child->dirty_ & FiberElement::kDirtyFontSize);
+  EXPECT_TRUE(child->dirty_ & Element::kDirtyFontSize);
 }
 
 TEST_P(FiberElementTest,
@@ -21509,7 +21496,7 @@ TEST_P(FiberElementTest,
   parent->MarkParallelFlushFlag(Element::kFlagGreedyParallel);
   parent->SetRawInlineStyles("--theme-color: blue;");
 
-  FiberElement::NewPipelineResolveRequest request;
+  Element::NewPipelineResolveRequest request;
   auto outcome = parent->ResolveCSSStylesNewPipelineCore(request);
 
   EXPECT_TRUE(outcome.force_children);
@@ -21548,7 +21535,7 @@ TEST_P(
   parent->MarkParallelFlushFlag(Element::kFlagLevelOrderParallel);
   parent->SetRawInlineStyles("--theme-color: blue;");
 
-  FiberElement::NewPipelineResolveRequest request;
+  Element::NewPipelineResolveRequest request;
   auto outcome = parent->ResolveCSSStylesNewPipelineCore(request);
 
   EXPECT_TRUE(outcome.force_children);

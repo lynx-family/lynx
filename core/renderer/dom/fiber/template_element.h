@@ -8,7 +8,7 @@
 #include <utility>
 
 #include "core/base/thread/once_task.h"
-#include "core/renderer/dom/fiber/fiber_element.h"
+#include "core/renderer/dom/element.h"
 #include "core/renderer/dom/fiber/generated_elements_result.h"
 
 namespace lynx {
@@ -29,7 +29,7 @@ struct TemplateElementTreeCacheKey {
   }
 };
 
-class TemplateElement : public FiberElement {
+class TemplateElement : public Element {
  public:
   explicit TemplateElement(ElementManager* element_manager = nullptr);
   ~TemplateElement() override;
@@ -99,7 +99,7 @@ class TemplateElement : public FiberElement {
   };
 
   TemplateElement(const TemplateElement& element, bool clone_resolved_props)
-      : FiberElement(element, clone_resolved_props),
+      : Element(element, clone_resolved_props),
         tasm_(element.tasm_),
         entry_(element.entry_),
         template_key_(element.template_key_),

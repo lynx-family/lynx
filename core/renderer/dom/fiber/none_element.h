@@ -5,12 +5,12 @@
 #ifndef CORE_RENDERER_DOM_FIBER_NONE_ELEMENT_H_
 #define CORE_RENDERER_DOM_FIBER_NONE_ELEMENT_H_
 
-#include "core/renderer/dom/fiber/fiber_element.h"
+#include "core/renderer/dom/element.h"
 
 namespace lynx {
 namespace tasm {
 
-class NoneElement : public FiberElement {
+class NoneElement : public Element {
  public:
   NoneElement(ElementManager* manager);
 

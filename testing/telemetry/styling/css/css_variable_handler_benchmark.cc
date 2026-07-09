@@ -12,8 +12,8 @@
 #include "core/renderer/css/css_variable_handler.h"
 #include "core/renderer/css/parser/css_string_parser.h"
 #include "core/renderer/dom/attribute_holder.h"
+#include "core/renderer/dom/element.h"
 #include "core/renderer/dom/element_manager.h"
-#include "core/renderer/dom/fiber/fiber_element.h"
 #include "testing/telemetry/styling/css/styling_benchmark_support.h"
 
 namespace lynx {
@@ -34,8 +34,7 @@ CSSValue CreateVariableValue(const std::string& raw_value) {
 static void BM_GetCSSVariableByRule(benchmark::State& state) {
   BenchmarkEnvironment env;
   CSSVariableHandler handler(true);
-  auto element =
-      fml::AdoptRef(new FiberElement(env.element_manager.get(), "view"));
+  auto element = fml::AdoptRef(new Element(env.element_manager.get(), "view"));
   AttributeHolder* holder = element->data_model();
   holder->UpdateCSSVariable("--main-bg-color", "red");
   holder->UpdateCSSVariable("--main-width", "100px");
@@ -57,8 +56,7 @@ BENCHMARK(BM_GetCSSVariableByRule);
 static void BM_HandleCSSVariables_Simple(benchmark::State& state) {
   BenchmarkEnvironment env;
   CSSVariableHandler handler(true);
-  auto element =
-      fml::AdoptRef(new FiberElement(env.element_manager.get(), "view"));
+  auto element = fml::AdoptRef(new Element(env.element_manager.get(), "view"));
   AttributeHolder* holder = element->data_model();
   holder->UpdateCSSVariable("--bg-color", "blue");
 
@@ -94,8 +92,7 @@ BENCHMARK(BM_HandleCSSVariables_Simple);
 static void BM_HandleCSSVariables_DeeplyNested(benchmark::State& state) {
   BenchmarkEnvironment env;
   CSSVariableHandler handler(true);
-  auto element =
-      fml::AdoptRef(new FiberElement(env.element_manager.get(), "view"));
+  auto element = fml::AdoptRef(new Element(env.element_manager.get(), "view"));
   AttributeHolder* holder = element->data_model();
 
   int depth = state.range(0);
@@ -137,8 +134,7 @@ BENCHMARK(BM_HandleCSSVariables_DeeplyNested)->Range(1, 16);
 static void BM_HandleCSSVariables_LargeScope(benchmark::State& state) {
   BenchmarkEnvironment env;
   CSSVariableHandler handler(true);
-  auto element =
-      fml::AdoptRef(new FiberElement(env.element_manager.get(), "view"));
+  auto element = fml::AdoptRef(new Element(env.element_manager.get(), "view"));
   AttributeHolder* holder = element->data_model();
 
   int num_vars = state.range(0);
@@ -177,8 +173,7 @@ BENCHMARK(BM_HandleCSSVariables_LargeScope)->Range(10, 1000);
 static void BM_HandleCSSVariables_Fallback(benchmark::State& state) {
   BenchmarkEnvironment env;
   CSSVariableHandler handler(true);
-  auto element =
-      fml::AdoptRef(new FiberElement(env.element_manager.get(), "view"));
+  auto element = fml::AdoptRef(new Element(env.element_manager.get(), "view"));
   AttributeHolder* holder = element->data_model();
   // No variables defined in holder
 
@@ -212,8 +207,7 @@ BENCHMARK(BM_HandleCSSVariables_Fallback);
 static void BM_HandleCSSVariables_MultiVars(benchmark::State& state) {
   BenchmarkEnvironment env;
   CSSVariableHandler handler(true);
-  auto element =
-      fml::AdoptRef(new FiberElement(env.element_manager.get(), "view"));
+  auto element = fml::AdoptRef(new Element(env.element_manager.get(), "view"));
   AttributeHolder* holder = element->data_model();
   holder->UpdateCSSVariable("--width", "10px");
   holder->UpdateCSSVariable("--color", "red");
@@ -252,10 +246,10 @@ static void BM_HandleCSSVariables_Cascade(benchmark::State& state) {
   CSSVariableHandler handler(true);
   int depth = state.range(0);
 
-  std::vector<fml::RefPtr<FiberElement>> elements;
+  std::vector<fml::RefPtr<Element>> elements;
   for (int i = 0; i < depth; ++i) {
     elements.push_back(
-        fml::AdoptRef(new FiberElement(env.element_manager.get(), "view")));
+        fml::AdoptRef(new Element(env.element_manager.get(), "view")));
     if (i > 0) {
       elements[i - 1]->InsertNode(elements[i]);
     }
@@ -305,10 +299,10 @@ static void BM_HandleCSSVariables_Redefinition(benchmark::State& state) {
   CSSVariableHandler handler(true);
   int depth = state.range(0);
 
-  std::vector<fml::RefPtr<FiberElement>> elements;
+  std::vector<fml::RefPtr<Element>> elements;
   for (int i = 0; i < depth; ++i) {
     elements.push_back(
-        fml::AdoptRef(new FiberElement(env.element_manager.get(), "view")));
+        fml::AdoptRef(new Element(env.element_manager.get(), "view")));
     if (i > 0) {
       elements[i - 1]->InsertNode(elements[i]);
     }

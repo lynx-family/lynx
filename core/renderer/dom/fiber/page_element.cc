@@ -92,19 +92,19 @@ void PageElement::FlushActionsAsRoot() {
                 UpdateTraceDebugInfo(ctx.event());
               });
   element_manager()->SetCurrentEngineThreadId(std::this_thread::get_id());
-  FiberElement::ParallelFlushAsRoot();
-  FiberElement::FlushActions();
-  FiberElement::TraversalInsertFixedElementOfTree();
+  Element::ParallelFlushAsRoot();
+  Element::FlushActions();
+  Element::TraversalInsertFixedElementOfTree();
 }
 
 void PageElement::PostResolveTaskToThreadPool(
     bool is_engine_thread, ParallelReduceTaskQueue& task_queue) {
   // In threaded element flush mode, the PageElement PrepareForCreateOrUpdate
   // should be performed in the TASM thread before dispatching the
-  // PrepareForCreateOrUpdate for all the children FiberElement, thus the rem
+  // PrepareForCreateOrUpdate for all child elements, thus the rem
   // pattern value will be guaranteed to be calculated precisely.
   UpdateResolveStatus(AsyncResolveStatus::kPreparing);
-  FiberElement::PrepareSelfForThreadedElementResolution();
+  Element::PrepareSelfForThreadedElementResolution();
 
   UpdateResolveStatus(AsyncResolveStatus::kSyncResolving);
   ParallelFlushReturn remaining_task = PrepareForCreateOrUpdate();
