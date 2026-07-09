@@ -1,0 +1,56 @@
+testing/lynx-platform-tests/test_script/case_sets/memory_leak_mall/mall_order_detail.py
+  h_9c98230ff87fe6 14
+testing/lynx-platform-tests/test_script/case_sets/memory_leak_poi/poi_page.py
+  h_9c98230ff87fe6 14
+testing/lynx-platform-tests/test_script/case_sets/memory_leak_list/image_long_list.py
+  h_9c98230ff87fe6 15-16
+testing/lynx-platform-tests/test_script/case_sets/memory_leak_mall/mall_coupon.py
+  h_9c98230ff87fe6 14
+testing/lynx-platform-tests/test_script/case_sets/memory_leak_elements/canvas_2d_3d.py
+  h_9c98230ff87fe6 12-14,20
+testing/lynx-platform-tests/test_script/case_sets/memory_leak_elements/text_custom.py
+  s_ea570d5381ead7::t_a563ead178fef1 20
+  h_9c98230ff87fe6 12-14
+testing/lynx-platform-tests/test_script/case_sets/memory_leak_douyin/douyin_finace_page.py
+  h_9c98230ff87fe6 14-15
+testing/lynx-platform-tests/test_script/case_sets/memory_leak_list/long_list.py
+  h_9c98230ff87fe6 15-16
+testing/lynx-platform-tests/test_script/case_sets/memory_leak_elements/animax_custom.py
+  s_8a64de79eadc3b::t_33a0769006a40f 20
+  h_9c98230ff87fe6 12-14
+testing/lynx-platform-tests/test_script/case_sets/memory_leak_douyin/douyin_smartapp_list.py
+  h_9c98230ff87fe6 14-15
+testing/lynx-platform-tests/test_script/case_sets/memory_leak_poi/poi_order_page.py
+  h_9c98230ff87fe6 14-15
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "f152884f231d5cbb21fea522e5bdaa0a31ff31a2",
+  "prompts": {},
+  "humans": {
+    "h_9c98230ff87fe6": {
+      "author": "xieqiangqiang <xieqiangqiang@bytedance.com>"
+    }
+  },
+  "sessions": {
+    "s_8a64de79eadc3b": {
+      "agent_id": {
+        "tool": "trae-cue",
+        "id": "ai_tab-icr-0e08cb6b-5e4d-4ed8-89eb-0f920761e8d7",
+        "model": "default"
+      },
+      "human_author": "xieqiangqiang <xieqiangqiang@bytedance.com>"
+    },
+    "s_ea570d5381ead7": {
+      "agent_id": {
+        "tool": "trae-cue",
+        "id": "ai_tab-icr-c0f121b4-f84b-4146-b529-5c496afd3d7f",
+        "model": "default"
+      },
+      "human_author": "xieqiangqiang <xieqiangqiang@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}
