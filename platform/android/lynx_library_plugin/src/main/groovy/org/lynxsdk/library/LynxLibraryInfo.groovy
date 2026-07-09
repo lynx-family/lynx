@@ -7,6 +7,18 @@ package org.lynxsdk.library
 import groovy.transform.TupleConstructor
 
 @TupleConstructor
+class LynxNodeApiAddonInfo {
+    String name
+    String libraryName
+    File jniLibsDir
+    boolean required
+
+    String getSharedLibraryName() {
+        "lib${libraryName}.so"
+    }
+}
+
+@TupleConstructor
 class LynxLibraryInfo {
     String npmName
     File packageDir
@@ -15,6 +27,7 @@ class LynxLibraryInfo {
     String androidSourceDir
     File androidDir
     String projectPath
+    List<LynxNodeApiAddonInfo> nodeApiAddons = []
 
     String getProviderClassName() {
         "${androidPackageName}.LynxLibraryProviderImpl"
