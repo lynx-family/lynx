@@ -5973,8 +5973,8 @@ TEST_P(FiberElementTest, FiberElementFixedReplaceCase) {
 
   auto parent_sibling = manager->CreateFiberNode("view");
 
-  base::Vector<fml::RefPtr<FiberElement>> inserted_elements{};
-  base::Vector<fml::RefPtr<FiberElement>> removed_elements{};
+  base::Vector<fml::RefPtr<Element>> inserted_elements{};
+  base::Vector<fml::RefPtr<Element>> removed_elements{};
   inserted_elements.emplace_back(parent_sibling);
   inserted_elements.emplace_back(parent);
   removed_elements.emplace_back(parent);
@@ -6009,8 +6009,8 @@ TEST_P(FiberElementTest, FiberElementFixedDoubleReplaceCase) {
   auto container_sibling = manager->CreateFiberNode("view");
   auto parent_sibling = manager->CreateFiberNode("view");
 
-  base::Vector<fml::RefPtr<FiberElement>> parent_inserted_elements{};
-  base::Vector<fml::RefPtr<FiberElement>> parent_removed_elements{};
+  base::Vector<fml::RefPtr<Element>> parent_inserted_elements{};
+  base::Vector<fml::RefPtr<Element>> parent_removed_elements{};
   parent_inserted_elements.emplace_back(container_sibling);
   parent_inserted_elements.emplace_back(container);
   parent_removed_elements.emplace_back(container);
@@ -6018,8 +6018,8 @@ TEST_P(FiberElementTest, FiberElementFixedDoubleReplaceCase) {
   parent_container->ReplaceElements(parent_inserted_elements,
                                     parent_removed_elements, nullptr);
 
-  base::Vector<fml::RefPtr<FiberElement>> inserted_elements{};
-  base::Vector<fml::RefPtr<FiberElement>> removed_elements{};
+  base::Vector<fml::RefPtr<Element>> inserted_elements{};
+  base::Vector<fml::RefPtr<Element>> removed_elements{};
   inserted_elements.emplace_back(parent_sibling);
   inserted_elements.emplace_back(parent);
   removed_elements.emplace_back(parent);
@@ -17478,8 +17478,8 @@ TEST_P(FiberElementTest, TestAsyncResolveProperty_ReplaceElements) {
   EXPECT_TRUE(element0->resolve_status_ >=
               FiberElement::AsyncResolveStatus::kPrepareTriggered);
 
-  base::Vector<fml::RefPtr<FiberElement>> inserted_elements{};
-  base::Vector<fml::RefPtr<FiberElement>> removed_elements{};
+  base::Vector<fml::RefPtr<Element>> inserted_elements{};
+  base::Vector<fml::RefPtr<Element>> removed_elements{};
   inserted_elements.emplace_back(element0);
   page->ReplaceElements(inserted_elements, removed_elements, nullptr);
 
@@ -19447,8 +19447,8 @@ TEST_P(FiberElementTest, TestRemovePaintingNodeIsMoveFlag) {
   // Ensure leaf element is not layout only
   second_leaf->computed_css_style()->SetOverflowDefaultVisible(false);
 
-  base::Vector<fml::RefPtr<FiberElement>> inserted_elements{};
-  base::Vector<fml::RefPtr<FiberElement>> removed_elements{};
+  base::Vector<fml::RefPtr<Element>> inserted_elements{};
+  base::Vector<fml::RefPtr<Element>> removed_elements{};
   inserted_elements.emplace_back(second_leaf);
   inserted_elements.emplace_back(leaf);
   removed_elements.emplace_back(leaf);
@@ -19631,6 +19631,43 @@ TEST_P(FiberElementTest, PrepareAndGenerateChildrenActionsUsesHasZIndex) {
   mock_insertion_point->PrepareAndGenerateChildrenActions();
 
   SUCCEED();
+}
+
+TEST_P(FiberElementTest,
+       PrepareChildForInsertionUsesCurrentChildPropagationState) {
+  class RecordingViewElement final : public ViewElement {
+   public:
+    explicit RecordingViewElement(ElementManager* manager)
+        : ViewElement(manager) {}
+
+    ParallelFlushReturn PrepareForCreateOrUpdate() override {
+      dirty_when_prepared_ = dirty();
+      return []() {};
+    }
+
+    uint32_t dirty_when_prepared_{0};
+  };
+
+  manager->SetEnableParallelElement(false);
+  manager->SetEnableLevelOrderTraversing(false);
+
+  auto insertion_point = manager->CreateFiberView();
+  auto layout_only_child = manager->CreateFiberView();
+  auto grandchild =
+      fml::AdoptRef<RecordingViewElement>(new RecordingViewElement(manager));
+  layout_only_child->InsertNode(grandchild);
+
+  insertion_point->children_propagate_inherited_styles_flag_ = false;
+  layout_only_child->children_propagate_inherited_styles_flag_ = true;
+  layout_only_child->is_layout_only_ = true;
+  layout_only_child->ResetAllDirtyBits();
+  grandchild->ResetAllDirtyBits();
+  grandchild->MarkDirtyLite(FiberElement::kDirtyCreated);
+
+  insertion_point->PrepareChildForInsertion(layout_only_child.get());
+
+  EXPECT_TRUE(grandchild->dirty_when_prepared_ &
+              FiberElement::kDirtyPropagateInherited);
 }
 
 // Helper: create a SharedCSSFragment with CSS selector support and add a rule.

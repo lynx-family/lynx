@@ -71,7 +71,7 @@ void WrapperElement::SetAttribute(const base::String& key,
   }
 }
 
-void WrapperElement::OnNodeAdded(FiberElement* child) {
+void WrapperElement::OnNodeAdded(Element* child) {
   FiberElement::OnNodeAdded(child);
   if (is_list_item()) {
     child->MarkAsListItem();
@@ -84,7 +84,7 @@ void WrapperElement::OnNodeAdded(FiberElement* child) {
   }
 }
 
-void WrapperElement::OnNodeRemoved(FiberElement* child) {
+void WrapperElement::OnNodeRemoved(Element* child) {
   FiberElement::OnNodeRemoved(child);
 
   if (type_ & kTouchable) {

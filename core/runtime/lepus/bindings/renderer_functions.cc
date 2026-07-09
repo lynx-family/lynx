@@ -3378,9 +3378,8 @@ RENDERER_FUNCTION_CC(FiberReplaceElements) {
     RETURN_UNDEFINED();
   }
 
-  std::function<void(base::Vector<fml::RefPtr<FiberElement>>&,
-                     const lepus::Value&)>
-      convert_function = [&](base::Vector<fml::RefPtr<FiberElement>>& elements,
+  std::function<void(base::Vector<fml::RefPtr<Element>>&, const lepus::Value&)>
+      convert_function = [&](base::Vector<fml::RefPtr<Element>>& elements,
                              const lepus::Value& input) {
         if (input.IsRefCounted()) {
           elements.emplace_back(
@@ -3395,11 +3394,11 @@ RENDERER_FUNCTION_CC(FiberReplaceElements) {
       };
 
   // Get inserted elements.
-  base::InlineVector<fml::RefPtr<FiberElement>, 16> inserted_elements{};
+  base::InlineVector<fml::RefPtr<Element>, 16> inserted_elements{};
   convert_function(inserted_elements, *arg1);
 
   // Get removed elements.
-  base::InlineVector<fml::RefPtr<FiberElement>, 16> removed_elements{};
+  base::InlineVector<fml::RefPtr<Element>, 16> removed_elements{};
   convert_function(removed_elements, *arg2);
 
   // Perform a simple diff on the inserted_elements and removed_elements,
@@ -3419,10 +3418,7 @@ RENDERER_FUNCTION_CC(FiberReplaceElements) {
   });
 
   if (!parent->is_block()) {
-    auto* ref =
-        last_old_element
-            ? static_cast<FiberElement*>(last_old_element->next_sibling())
-            : nullptr;
+    auto* ref = last_old_element ? last_old_element->next_sibling() : nullptr;
     parent->ReplaceElements(inserted_elements, removed_elements, ref);
   } else {
     static_cast<BlockElement*>(parent)->ReplaceElements(inserted_elements,

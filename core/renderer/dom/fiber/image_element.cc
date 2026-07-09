@@ -42,7 +42,7 @@ void ImageElement::AttachToElementManager(
   }
 }
 
-void ImageElement::OnNodeAdded(FiberElement* child) {
+void ImageElement::OnNodeAdded(Element* child) {
   LOGE("image element can not insert any child!!!");
 }
 
