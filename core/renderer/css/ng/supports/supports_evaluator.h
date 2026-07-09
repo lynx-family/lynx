@@ -7,6 +7,7 @@
 
 #include <cstdint>
 
+#include "core/base/lynx_export.h"
 #include "core/renderer/css/ng/supports/supports_condition.h"
 #include "core/renderer/css/parser/css_parser_configs.h"
 
@@ -19,7 +20,7 @@ inline uint32_t PackVersion(const base::Version& version) {
       static_cast<uint16_t>(version.Minor()));
 }
 
-class SupportsEvaluator {
+class LYNX_EXPORT_FOR_DEVTOOL SupportsEvaluator {
  public:
   explicit SupportsEvaluator(const tasm::CSSParserConfigs& configs)
       : engine_version_(PackVersion(LYNX_VERSION)), configs_(configs) {}

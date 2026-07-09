@@ -239,6 +239,8 @@ InspectorStyleSheet StyleTextParser(T ptr, std::string text,
   style_sheet.position_ = pre_style.position_;
   style_sheet.media_text_ = pre_style.media_text_;
   style_sheet.media_range_ = pre_style.media_range_;
+  style_sheet.supports_text_ = pre_style.supports_text_;
+  style_sheet.supports_range_ = pre_style.supports_range_;
 
   int property_start_column = style_sheet.style_value_range_.start_column_;
   for (auto& item : style_sheet.css_properties_) item.second.looped_ = false;
