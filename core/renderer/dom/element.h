@@ -192,6 +192,10 @@ class Element : public lepus::RefCounted,
     bool has_z_index_;
   };
 
+  void AppendActionParam(ActionParam action_param) {
+    action_param_list_.emplace_back(std::move(action_param));
+  }
+
   // Direction mapping support for RTL/LTR layout
   struct DirectionMapping {
     DirectionMapping()
@@ -782,6 +786,14 @@ class Element : public lepus::RefCounted,
 
   virtual ElementChildrenArray GetChildren();
 
+  Element* enclosing_none_wrapper() const { return enclosing_none_wrapper_; }
+  void set_enclosing_none_wrapper(Element* wrapper) {
+    enclosing_none_wrapper_ = wrapper;
+  }
+  uint32_t wrapper_element_count() const { return wrapper_element_count_; }
+  void IncrementWrapperElementCount() { wrapper_element_count_++; }
+  void DecrementWrapperElementCount() { wrapper_element_count_--; }
+
   virtual size_t GetUIIndexForChild(Element* child) { return 0; }
 
   virtual int32_t IndexOf(const Element* child) const;
@@ -797,6 +809,8 @@ class Element : public lepus::RefCounted,
       Element* ref_node = nullptr) = 0;
   virtual void RemoveNode(const fml::RefPtr<Element>& child,
                           bool destroy = true) = 0;
+  virtual void InsertedInto(Element* insertion_point) = 0;
+  virtual void RemovedFrom(Element* insertion_point) = 0;
 
   inline bool CanHasLayoutOnlyChildren() {
     return can_has_layout_only_children_;
@@ -1403,6 +1417,13 @@ class Element : public lepus::RefCounted,
                                         const lepus::Value& value);
 
   /**
+   * Element API for updating css variables
+   * @param variables the css variables to be updated from JS.
+   */
+  void UpdateCSSVariable(const lepus::Value& variables,
+                         std::shared_ptr<PipelineOptions>& pipeline_option);
+
+  /**
    * Element API for removing all inline styles.
    */
   LYNX_EXPORT_FOR_DEVTOOL void RemoveAllInlineStyles();
@@ -1537,6 +1558,26 @@ class Element : public lepus::RefCounted,
    * A key function to flush the tree with the current element as the root node.
    */
   virtual void FlushActionsAsRoot() = 0;
+
+  /**
+   * A key function for flush all pending actions for current Element.
+   */
+  virtual void FlushActions() = 0;
+
+  /**
+   * Prepare or update the platform representation and return deferred work.
+   */
+  virtual ParallelFlushReturn PrepareForCreateOrUpdate() = 0;
+
+  /**
+   * Recursively schedule or perform parallel flush work for this subtree.
+   */
+  virtual void ParallelFlushRecursively() = 0;
+
+  /**
+   * Recursively insert pending fixed elements for this subtree.
+   */
+  virtual void TraversalInsertFixedElementOfTree() = 0;
 
   /**
    * Check if this element needs to propagate inherited dirty flag to children.

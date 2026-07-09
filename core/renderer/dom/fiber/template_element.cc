@@ -571,8 +571,7 @@ void TemplateElement::ReleaseCachedTemplateTreeRecursively() {
     }
   }
   if (result_ != nullptr && result_->parent() != nullptr) {
-    auto* parent = static_cast<FiberElement*>(result_->parent());
-    parent->RemoveNode(result_);
+    result_->parent()->RemoveNode(result_);
   }
   ClearCachedTemplateTreeShell();
 }

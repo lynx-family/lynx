@@ -49,7 +49,7 @@ class ElementDumpHelper {
       rapidjson::Document& doc, AttributeHolder* holder,
       std::function<void(rapidjson::Value& target)> custom_dump = nullptr);
   static rapidjson::Value DumpFiberElementToJSON(rapidjson::Document& doc,
-                                                 FiberElement* element);
+                                                 Element* element);
 
   static void DumpAttributeToLepusValue(fml::RefPtr<lepus::Dictionary>& props,
                                         AttributeHolder* holder);
