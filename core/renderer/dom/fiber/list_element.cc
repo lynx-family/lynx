@@ -828,7 +828,7 @@ void ListElement::AttachToElementManager(
 
 void ListElement::UpdateLayoutNodeAttribute(starlight::LayoutAttribute key,
                                             const lepus::Value& value) {
-  FiberElement::UpdateLayoutNodeAttribute(key, value.ToLepusValue());
+  Element::UpdateLayoutNodeAttribute(key, value.ToLepusValue());
 }
 
 void ListElement::Hydrate() {

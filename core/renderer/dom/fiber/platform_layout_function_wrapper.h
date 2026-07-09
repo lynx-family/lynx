@@ -7,18 +7,16 @@
 
 #include <memory>
 
-#include "core/renderer/dom/fiber/fiber_element.h"
+#include "core/renderer/dom/element.h"
 #include "core/renderer/starlight/layout/layout_object.h"
 
 namespace lynx {
 namespace tasm {
 
-class FiberElement;
-
 class PlatformLayoutFunctionWrapper {
  public:
   explicit PlatformLayoutFunctionWrapper(
-      FiberElement& element, const fml::RefPtr<PropBundle>& initial_props);
+      Element& element, const fml::RefPtr<PropBundle>& initial_props);
   ~PlatformLayoutFunctionWrapper() = default;
 
   static FloatSize MeasureCallback(void* context,
@@ -34,7 +32,7 @@ class PlatformLayoutFunctionWrapper {
   void OnLayoutAfter();
 
  private:
-  FiberElement& element_;
+  Element& element_;
   std::unique_ptr<MeasureFunc> measure_func_;
   starlight::LayoutObject* layout_object_ = nullptr;
   int32_t id_ = 0;

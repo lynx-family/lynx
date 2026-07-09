@@ -1981,8 +1981,6 @@ PaintingContext* Element::painting_context() {
   return catalyzer_->painting_context();
 }
 
-void Element::MarkLayoutDirty() { element_manager_->MarkLayoutDirty(id_); }
-
 void Element::RequireFlush() {
   if (flush_required_) {
     return;
