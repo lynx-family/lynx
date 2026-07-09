@@ -103,8 +103,6 @@ class FiberElement : public Element {
 
   // for Fiber specific
 
-  const InheritedProperty GetParentInheritedProperty();
-
   /**
    * A key function to GetListNode
    */
@@ -213,62 +211,13 @@ class FiberElement : public Element {
 
   virtual StyleMap GetStylesForWorklet() override;
 
-  /**
-   * @brief Update the simple styles of the current element.
-   *
-   * This method is used to update the simple styles of the element based on
-   * the provided style map. The style map contains key-value pairs representing
-   * CSS properties and their values.
-   *
-   * @note This function is not implemented yet.
-   *
-   * @param style_map A constant reference to a tasm::StyleMap containing the
-   *                  styles to be updated.
-   */
-  void UpdateSimpleStyles(const tasm::StyleMap& style_map) final;
-
-  void UpdateSimpleStyles(tasm::StyleMap&& style_map) final;
-
-  void UpdateStaticAndDynamicSimpleStyles(
-      tasm::StyleMap&& style_map,
-      tasm::StyleMap&& dynamic_style_map) override final;
-
-  void UpdateDynamicSimpleStyles(tasm::StyleMap&& style_map) override final;
-
-  /**
-   * @brief Reset the simple style associated with the specified CSS property
-   * ID.
-   *
-   * This method is intended to reset the simple style of the current element
-   * corresponding to the given CSS property ID.
-   *
-   * @note This function is not implemented yet.
-   *
-   * @param id The CSS property ID of the style to be reset.
-   */
-  void ResetSimpleStyle(const tasm::CSSPropertyID id,
-                        const tasm::CSSValue& value) override final;
-  void ResetSimpleStyle(const tasm::CSSPropertyID id) override final;
   void ResolveCSSStyles(StyleMap& parsed_styles,
                         base::InlineVector<CSSPropertyID, 16>& reset_style_ids,
                         bool& need_update,
                         bool& force_use_current_parsed_style_map);
   void ResolveCSSStylesNewPipeline(bool& need_update);
-  void ResolveSimpleStyles();
 
   void TraversalInsertFixedElementOfTree();
-
-  void MarkFontSizeInvalidateRecursively();
-  void InvalidateChildrenFontSizeRecursively();
-  void InvalidateChildrenInheritedStylesRecursively();
-
-  void MarkDirectChildrenStyleDirtyForInheritedPropertyMutation();
-
-  /**
-   * @brief Recursively marks all scoped children as style-dirty when custom
-   * properties change on this element.
-   */
-  void RecursivelyMarkCustomPropertiesDirty();
 
   void ConsumeStyle(const StyleMap& styles,
                     const StyleMap* inherit_styles) override;
@@ -297,26 +246,8 @@ class FiberElement : public Element {
                                 bool update_logical_children);
   void AddChildAt(fml::RefPtr<FiberElement> child, int index);
 
-  /**
-   * Special API for processing Font size
-   * font size should be handled at the beginning
-   */
-  void SetFontSize(const tasm::CSSValue& value);
-
-  /**
-   * @brief Sets font-size on a specific target ComputedCSSStyle rather than
-   * the element's own platform style.
-   * @param value The font-size CSS value.
-   * @param target_style The ComputedCSSStyle to update.
-   */
-  void SetFontSize(const tasm::CSSValue& value,
-                   starlight::ComputedCSSStyle* target_style);
-
-  void ResetFontSize();
-
   void UpdateFiberElement();
 
-  virtual void MarkAsLayoutRoot() override;
   virtual void MarkLayoutDirty() override;
   virtual void AttachLayoutNode(const fml::RefPtr<PropBundle>& props) override;
   virtual void UpdateLayoutNodeProps(
@@ -339,45 +270,6 @@ class FiberElement : public Element {
   virtual void EnqueueLayoutTask(
       base::MoveOnlyClosure<void> operation) override;
 
-  void HandleDelayTask(base::MoveOnlyClosure<void> operation) override;
-
-  void HandleKeyframePropsChange();
-
-  enum class StyleSideEffectReplayMode {
-    kNormal,
-    kPreserveLayoutOnly,
-  };
-
-  /**
-   * @brief Replays the side effects of a single changed style property.
-   * @param id The CSS property that changed.
-   * @param value The new computed value.
-   */
-  void ReplayChangedStyleSideEffect(
-      CSSPropertyID id, const CSSValue& value,
-      StyleSideEffectReplayMode mode = StyleSideEffectReplayMode::kNormal);
-  void ReplayResetStyleSideEffect(
-      CSSPropertyID id,
-      StyleSideEffectReplayMode mode = StyleSideEffectReplayMode::kNormal);
-
-  /**
-   * @brief Commits font-size and root-font-size changes after style resolution.
-   * @param computed_style The final computed style.
-   * @param old_font_size The previous font size.
-   * @param old_root_font_size The previous root font size.
-   */
-  void CommitFontContext(const starlight::ComputedCSSStyle& computed_style,
-                         double old_font_size, double old_root_font_size);
-  void FinalizeAnimationPropsChange(bool& need_update);
-  struct AnimationPropertyChangeAnalysisForLegacyAnimator {
-    bool has_transition_props_changed{false};
-    bool has_keyframe_props_changed{false};
-  };
-  AnimationPropertyChangeAnalysisForLegacyAnimator
-  AnalyzeAnimationPropChangesForLegacyAnimator(
-      const starlight::ComputedCSSStyle& final_style,
-      const starlight::ComputedCSSStyle* previous_final_style,
-      const StyleMap& resolved_style_map) const;
   struct AnimationSampleAnalysisForNewPipeline {
     bool has_style_effects{false};
     bool has_animated_font_size{false};
@@ -604,8 +496,6 @@ class FiberElement : public Element {
       const CSSIDBitset& replayed_ids,
       const CSSIDBitset* source_style_ids = nullptr,
       const CSSIDBitset* inherited_dynamic_ids = nullptr);
-  DynamicCSSStylesManager::StyleUpdateFlags CollectDynamicFlagsForNewPipeline(
-      const StyleMap& resolved_style_map) const;
   NewPipelineStyleMutationPlan BuildNewPipelineStyleMutationPlan(
       const NewPipelineStyleResolveResult& resolved_styles,
       const NewPipelineDynamicStyleInputs& dynamic_inputs,
@@ -679,10 +569,6 @@ class FiberElement : public Element {
   void CreateListItemScheduler(list::BatchRenderStrategy batch_render_strategy,
                                bool continuous_resolve_tree);
 
-  void RecursivelyMarkRenderRootElement(FiberElement* render_root);
-
-  void UpdateRenderRootElementIfNecessary(FiberElement* child);
-
   ListItemSchedulerAdapter* GetSchedulerAdapter() {
     if (scheduler_adapter_) {
       return scheduler_adapter_.get();
@@ -700,11 +586,6 @@ class FiberElement : public Element {
 
  protected:
   FiberElement(const FiberElement& element, bool clone_resolved_props);
-
-  // Hook for subclasses to replay element-specific derived style state.
-  // Callers should go through ReplayChangedStyleSideEffect() or
-  // ReplayResetStyleSideEffect() so FiberElement preserves replay bookkeeping.
-  virtual void ReplayElementSpecificStyleSideEffect(CSSPropertyID id) {}
 
   void ConsumeStyleInternal(
       const StyleMap& styles, const StyleMap* inherit_styles,
@@ -739,15 +620,10 @@ class FiberElement : public Element {
   virtual void MarkHasLayoutOnlyPropsIfNecessary(
       const base::String& attribute_key);
 
-  void UpdateLayoutInfoRecursively(PipelineOptions* options);
-
  private:
   friend class WrapperElement;
   friend class ComponentElement;
   friend class BlockElement;
-
-  bool ShouldPreserveLayoutOnlyForInheritedPlatformStyle(
-      CSSPropertyID id, const CSSIDBitset& source_style_ids);
 
   FiberElement* FindEnclosingNoneWrapper(FiberElement* parent,
                                          FiberElement* node);
@@ -781,33 +657,11 @@ class FiberElement : public Element {
   void UpdateDynamicElementStyleRecursively(uint32_t style, bool force_update);
   void UpdateDynamicElementStyleForNewPipeline(uint32_t& style,
                                                bool& inner_force_update);
-  void UpdateDynamicChildrenStyleRecursively(uint32_t style, bool force_update);
 
   void PrepareComponentExternalStyles(AttributeHolder* holder);
   void PrepareRootCSSVariables(AttributeHolder* holder);
   void ParseRawInlineStyles(CSSVariableMap* changed_css_vars);
   void DoFullCSSResolving();
-  const tasm::CSSValue& ResolveCurrentStyleValue(
-      const CSSPropertyID& key, const tasm::CSSValue& default_value);
-
-  void UpdateLayoutInfo();
-
-  void MarkLayoutDirtyLite() override;
-
-  void UpdateFixedNodeSet();
-  void UpdateFixedNodeSetRecursively(bool is_insert);
-
-  void EnsureSLNode();
-  bool HasLayoutInElementPlatformNode();
-  int GetLayoutInElementPlatformChildIndex(FiberElement* child);
-
-  void ApplySimpleStyleWithoutTail(const tasm::CSSPropertyID id,
-                                   const tasm::CSSValue& value);
-  void ApplySimpleStylesWithoutTail(const tasm::StyleMap& style_map);
-  void ApplyDynamicSimpleStylesWithoutTail(
-      const tasm::StyleMap& dynamic_style_map,
-      const tasm::StyleMap& base_style_map);
-  void FinalizeSimpleStyleUpdate();
 };
 
 }  // namespace tasm
