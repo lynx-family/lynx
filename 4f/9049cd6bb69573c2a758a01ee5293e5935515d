@@ -1,0 +1,66 @@
+lynx/platform/android/lynx_devtool/src/main/java/com/lynx/devtool/recorder/LynxRecorderActionManager.java
+  s_ac95efc8549153::t_3b72e387687482 408-414 gitai:{"mixed_line_ranges":[],"operations":[{"operation_id":"6a4c7a4bec55d528723ed223","tool_type":"agent","tool_id":"apply_patch","line_ranges":[{"Range":[408,414]}]}]}
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.5",
+  "base_commit_sha": "4f9049cd6bb69573c2a758a01ee5293e5935515d",
+  "prompts": {},
+  "sessions": {
+    "s_ac95efc8549153": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "681b21504102743389bbdb90",
+        "model": "gpt-5.4__dev"
+      },
+      "human_author": "tanxuelian.rovic <tanxuelian.rovic@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {
+    "lynx/platform/android/lynx_devtool/src/main/java/com/lynx/devtool/recorder/LynxRecorderActionManager.java": [
+      {
+        "hash": "s_ac95efc8549153::t_3b72e387687482",
+        "line_ranges": [
+          {
+            "Range": [
+              408,
+              414
+            ]
+          }
+        ],
+        "mixed_line_ranges": [],
+        "operations": [
+          {
+            "operation_id": "6a4c7a4bec55d528723ed223",
+            "tool_type": "agent",
+            "tool_id": "apply_patch",
+            "line_ranges": [
+              {
+                "Range": [
+                  408,
+                  414
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "remote_transcripts": {
+    "s_ac95efc8549153": {
+      "tool": "trae",
+      "conversation_id": "681b21504102743389bbdb90",
+      "session_id": "681b21504102743389bbdb90",
+      "status": "remote_only",
+      "message": "Remote transcript resolution is not implemented yet for TRAE prompts."
+    },
+    "s_ac95efc8549153::t_3b72e387687482": {
+      "tool": "trae",
+      "conversation_id": "681b21504102743389bbdb90",
+      "session_id": "681b21504102743389bbdb90",
+      "status": "remote_only",
+      "message": "Remote transcript resolution is not implemented yet for TRAE prompts."
+    }
+  }
+}

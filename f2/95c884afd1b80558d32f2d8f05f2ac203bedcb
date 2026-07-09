@@ -1,0 +1,37 @@
+platform/darwin/ios/bd_xelement/bd_xelement/classes/map/BDXLynxMapNG.m
+  s_9562e32c7720dc::t_7b00c299365ef6 42,196-206,936
+clay/shell/platform/darwin/ios/services/native_view_service_ios.mm
+  s_9562e32c7720dc::t_9a5dbb669be853 6,35-43,152-154,157-165
+platform/darwin/ios/lynx/clay/LynxUIRendererClay.mm
+  s_9562e32c7720dc::t_59e6f23002b41d 325-334
+platform/darwin/ios/lynx_clay/LynxClayCustomBehaviorSupport.h
+  s_9562e32c7720dc::t_0f2e5343741c49 8,37-41
+platform/darwin/ios/lynx_clay/LynxClayCustomBehaviorSupport.mm
+  s_9562e32c7720dc::t_12f90164bcf2fa 10,33,38-39,47-48,60-139,143-144,893-902,918,932,1094,1119,1161-1163,1203-1204,1211-1212,1221-1332,1347,1408-1443,1453-1455,1492-1495,1669,1723-1725,1795-1820,1870-1913
+lynx/platform/darwin/ios/lynx_devtool/BUILD.gn
+  s_9562e32c7720dc::t_ec6b1597e904f7 417-419
+lynx/platform/darwin/ios/lynx_devtool/lynx_recorder/LynxRecorderActionManager.mm
+  s_9562e32c7720dc::t_7f74c8938567f1 19,21,28-58,158-170,705,882
+platform/darwin/ios/lynx_clay/BUILD.gn
+  s_9562e32c7720dc::t_0a9e211652d50c 13-16
+lynx/platform/darwin/common/lynx/public/LynxContext.h
+  s_9562e32c7720dc::t_85da3cc80b640b 20-25,45-46
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.5",
+  "base_commit_sha": "f295c884afd1b80558d32f2d8f05f2ac203bedcb",
+  "prompts": {},
+  "sessions": {
+    "s_9562e32c7720dc": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f1173-3c51-7431-a8ce-9bcd9390797f",
+        "model": "unknown"
+      },
+      "human_author": "mooface <xiamengfei.moonface@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}
