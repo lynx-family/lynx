@@ -37,7 +37,7 @@ class NapiEnvironment;
 namespace tasm {
 class TemplateAssembler;
 class ElementManager;
-class FiberElement;
+class Element;
 class LynxBinaryRecyclerDelegate;
 
 class PageConfigger {
@@ -270,7 +270,7 @@ class TemplateEntry : public VmContextHolder, public CSSStyleSheetDelegate {
   explicit TemplateEntry(const std::shared_ptr<runtime::MTSRuntime>& context,
                          const std::string& targetSdkVersion);
 
-  fml::RefPtr<FiberElement> TryToGetElementCache();
+  fml::RefPtr<Element> TryToGetElementCache();
 
   void SetLepusObserver(
       const std::shared_ptr<lepus::InspectorLepusObserver>& observer) {

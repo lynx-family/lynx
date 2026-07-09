@@ -17,9 +17,8 @@ class ScrollElement : public FiberElement {
     can_has_layout_only_children_ = false;
   }
 
-  fml::RefPtr<FiberElement> CloneElement(
-      bool clone_resolved_props) const override {
-    return fml::AdoptRef<FiberElement>(
+  fml::RefPtr<Element> CloneElement(bool clone_resolved_props) const override {
+    return fml::AdoptRef<Element>(
         new ScrollElement(*this, clone_resolved_props));
   }
 

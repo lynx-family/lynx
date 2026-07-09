@@ -9,6 +9,7 @@
 
 #include "base/include/log/logging.h"
 #include "base/trace/native/trace_event.h"
+#include "core/renderer/dom/element.h"
 #include "core/renderer/dom/fiber/tree_resolver.h"
 #include "core/renderer/lynx_global_pool.h"
 #include "core/renderer/tasm/config.h"
@@ -605,13 +606,13 @@ TemplateEntry::GetTemplateBundleRecycler() {
   return template_bundle_.CreateRecycler();
 }
 
-fml::RefPtr<FiberElement> TemplateEntry::TryToGetElementCache() {
-  fml::RefPtr<FiberElement> page_ref;
+fml::RefPtr<Element> TemplateEntry::TryToGetElementCache() {
+  fml::RefPtr<Element> page_ref;
   const auto* template_bundle = GetCompleteTemplateBundle();
   if (template_bundle && template_bundle->GetContainsElementTree()) {
     auto& element_bundle = template_bundle->GetElementBundle();
     if (element_bundle.IsValid()) {
-      page_ref = fml::static_ref_ptr_cast<FiberElement>(
+      page_ref = fml::static_ref_ptr_cast<Element>(
           element_bundle.GetPageNode().RefCounted());
     }
   }

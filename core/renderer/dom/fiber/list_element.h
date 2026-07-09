@@ -41,7 +41,7 @@ class ListElementSSRHelper {
   int32_t ComponentAtIndexInSSR(uint32_t index, int64_t operationId);
 
   bool HasHydrate() { return has_hydrate_; }
-  void AppendChild(fml::RefPtr<FiberElement> child) {
+  void AppendChild(fml::RefPtr<Element> child) {
     ssr_elements_.push_back({child, SSRItemStatus::kWaitingRender});
   }
 
@@ -54,8 +54,7 @@ class ListElementSSRHelper {
 
   bool has_hydrate_ = false;
   ListElement* list_element_;
-  std::vector<std::pair<fml::RefPtr<FiberElement>, SSRItemStatus>>
-      ssr_elements_;
+  std::vector<std::pair<fml::RefPtr<Element>, SSRItemStatus>> ssr_elements_;
 };
 
 class ListElement : public FiberElement, public tasm::ListNode {
@@ -65,10 +64,8 @@ class ListElement : public FiberElement, public tasm::ListNode {
               const lepus::Value& enqueue_component,
               const lepus::Value& component_at_indexes);
 
-  fml::RefPtr<FiberElement> CloneElement(
-      bool clone_resolved_props) const override {
-    return fml::AdoptRef<FiberElement>(
-        new ListElement(*this, clone_resolved_props));
+  fml::RefPtr<Element> CloneElement(bool clone_resolved_props) const override {
+    return fml::AdoptRef<Element>(new ListElement(*this, clone_resolved_props));
   }
   void visitor(void* rt, void* func, uint64_t trace_tool) override {
     LEPUSRuntime* runtime = reinterpret_cast<LEPUSRuntime*>(rt);

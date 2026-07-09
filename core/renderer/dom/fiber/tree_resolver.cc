@@ -106,9 +106,9 @@ bool IsTemplateEventAttribute(const base::String& key) {
                                      &event_name);
 }
 
-void RegisterSlotTarget(base::Vector<fml::RefPtr<FiberElement>>* targets,
+void RegisterSlotTarget(base::Vector<fml::RefPtr<Element>>* targets,
                         int32_t slot_index,
-                        const fml::RefPtr<FiberElement>& element) {
+                        const fml::RefPtr<Element>& element) {
   if (targets == nullptr || slot_index < 0 || element == nullptr) {
     return;
   }
@@ -125,8 +125,8 @@ void RegisterSlotTarget(base::Vector<fml::RefPtr<FiberElement>>* targets,
 
 void RegisterElementSlotMountPoint(base::Vector<ElementSlotMountPoint>* targets,
                                    int32_t slot_index,
-                                   const fml::RefPtr<FiberElement>& parent,
-                                   const fml::RefPtr<FiberElement>& ref_node) {
+                                   const fml::RefPtr<Element>& parent,
+                                   const fml::RefPtr<Element>& ref_node) {
   if (targets == nullptr || slot_index < 0 || parent == nullptr) {
     return;
   }
@@ -146,8 +146,7 @@ void RegisterElementSlotMountPoint(base::Vector<ElementSlotMountPoint>* targets,
 
 // TODO(songshourui.null): Unify this class application path with Render
 // Functions when both paths can share the same attribute setter.
-void ApplyTemplateClassAttribute(FiberElement* element,
-                                 const lepus::Value& value) {
+void ApplyTemplateClassAttribute(Element* element, const lepus::Value& value) {
   element->RemoveAllClass();
   if (!value.IsString()) {
     return;
@@ -166,8 +165,7 @@ void ApplyTemplateClassAttribute(FiberElement* element,
 
 // TODO(songshourui.null): Unify this style application path with Render
 // Functions when both paths can share the same attribute setter.
-void ApplyTemplateStyleAttribute(FiberElement* element,
-                                 const lepus::Value& value) {
+void ApplyTemplateStyleAttribute(Element* element, const lepus::Value& value) {
   element->RemoveAllInlineStyles();
   if (value.IsString()) {
     element->SetRawInlineStyles(base::String(value.String()));
@@ -204,8 +202,7 @@ void ApplyTemplateStyleAttribute(FiberElement* element,
 
 // TODO(songshourui.null): Unify this dispatch with Render Functions
 // SetAttribute once it supports special attributes through the shared setter.
-bool ApplySpecialTemplateAttribute(FiberElement* element,
-                                   const base::String& key,
+bool ApplySpecialTemplateAttribute(Element* element, const base::String& key,
                                    const lepus::Value& value) {
   if (key == kElementClass) {
     ApplyTemplateClassAttribute(element, value);
@@ -228,7 +225,7 @@ bool ApplySpecialTemplateAttribute(FiberElement* element,
   return false;
 }
 
-bool ApplyTemplateEventAttribute(FiberElement* element, const base::String& key,
+bool ApplyTemplateEventAttribute(Element* element, const base::String& key,
                                  const lepus::Value& value) {
   base::String event_type;
   base::String event_name;
@@ -243,7 +240,7 @@ bool ApplyTemplateEventAttribute(FiberElement* element, const base::String& key,
   return true;
 }
 
-bool ApplyTemplateListCallbackAttribute(FiberElement* element,
+bool ApplyTemplateListCallbackAttribute(Element* element,
                                         const base::String& key,
                                         const lepus::Value& value) {
   if (!ListElement::IsTemplateCallbackAttribute(key)) {
@@ -256,7 +253,7 @@ bool ApplyTemplateListCallbackAttribute(FiberElement* element,
   return true;
 }
 
-bool ApplyTemplateDataAttribute(FiberElement* element, const base::String& key,
+bool ApplyTemplateDataAttribute(Element* element, const base::String& key,
                                 const lepus::Value& value) {
   base::String data_name;
   if (!ParseTemplateDataAttribute(key.string_view(), &data_name)) {
@@ -269,8 +266,7 @@ bool ApplyTemplateDataAttribute(FiberElement* element, const base::String& key,
   return true;
 }
 
-bool RemoveTemplateDataAttribute(FiberElement* element,
-                                 const base::String& key) {
+bool RemoveTemplateDataAttribute(Element* element, const base::String& key) {
   base::String data_name;
   if (!ParseTemplateDataAttribute(key.string_view(), &data_name)) {
     return false;
@@ -280,7 +276,7 @@ bool RemoveTemplateDataAttribute(FiberElement* element,
   return true;
 }
 
-void ApplyTemplateAttributeValue(FiberElement* element, const base::String& key,
+void ApplyTemplateAttributeValue(Element* element, const base::String& key,
                                  const lepus::Value& value,
                                  TemplateAttributeApplyMode mode) {
   if (IsTemplateEventAttribute(key)) {
@@ -305,8 +301,7 @@ void ApplyTemplateAttributeValue(FiberElement* element, const base::String& key,
   element->SetAttribute(key, value);
 }
 
-void ApplyTemplateSpreadAttributes(FiberElement* element,
-                                   const lepus::Value& value,
+void ApplyTemplateSpreadAttributes(Element* element, const lepus::Value& value,
                                    TemplateAttributeApplyMode mode) {
   if (element == nullptr || !value.IsObject()) {
     return;
@@ -328,7 +323,7 @@ lepus::Value ResolveAttributeSlotValue(const lepus::Value& attribute_slots,
 }
 
 void ClearPreviousTemplateSpreadAttributes(
-    FiberElement* element, const TemplateAttributes& template_attributes,
+    Element* element, const TemplateAttributes& template_attributes,
     const lepus::Value& previous_attribute_slots) {
   if (!previous_attribute_slots.IsArrayOrJSArray()) {
     return;
@@ -358,7 +353,7 @@ void ClearPreviousTemplateSpreadAttributes(
 }
 
 void ApplyTemplateAttributesToElementInternal(
-    FiberElement* element, const lepus::Value* previous_attribute_slots,
+    Element* element, const lepus::Value* previous_attribute_slots,
     const lepus::Value& attribute_slots, TemplateAttributeApplyMode mode) {
   if (element == nullptr || !element->HasTemplateAttributes()) {
     return;
@@ -399,13 +394,13 @@ void ApplyTemplateAttributesToElementInternal(
 }  // namespace
 
 void TreeResolver::ApplyTemplateAttributesToElement(
-    FiberElement* element, const lepus::Value& attribute_slots) {
+    Element* element, const lepus::Value& attribute_slots) {
   ApplyTemplateAttributesToElementInternal(element, nullptr, attribute_slots,
                                            TemplateAttributeApplyMode::kAll);
 }
 
 void TreeResolver::ApplyTemplateAttributesToElement(
-    FiberElement* element, const lepus::Value& previous_attribute_slots,
+    Element* element, const lepus::Value& previous_attribute_slots,
     const lepus::Value& attribute_slots) {
   ApplyTemplateAttributesToElementInternal(element, &previous_attribute_slots,
                                            attribute_slots,
@@ -413,21 +408,21 @@ void TreeResolver::ApplyTemplateAttributesToElement(
 }
 
 void TreeResolver::ApplyTemplateNonEventAttributesToElement(
-    FiberElement* element, const lepus::Value& attribute_slots) {
+    Element* element, const lepus::Value& attribute_slots) {
   ApplyTemplateAttributesToElementInternal(
       element, nullptr, attribute_slots,
       TemplateAttributeApplyMode::kNonEventOnly);
 }
 
 void TreeResolver::ApplyTemplateEventAttributesToElement(
-    FiberElement* element, const lepus::Value& attribute_slots) {
+    Element* element, const lepus::Value& attribute_slots) {
   ApplyTemplateAttributesToElementInternal(
       element, nullptr, attribute_slots,
       TemplateAttributeApplyMode::kEventOnly);
 }
 
 void TreeResolver::ApplyStaticTemplateEventAttributesToElement(
-    FiberElement* element) {
+    Element* element) {
   if (element == nullptr || !element->HasTemplateAttributes()) {
     return;
   }
@@ -440,7 +435,7 @@ void TreeResolver::ApplyStaticTemplateEventAttributesToElement(
   }
 }
 
-void TreeResolver::NotifyNodeInserted(FiberElement* insertion_point,
+void TreeResolver::NotifyNodeInserted(Element* insertion_point,
                                       FiberElement* node) {
   // If the insertion_point IsDetached, no nedd to call NotifyNodeInserted
   // recursively.
@@ -456,7 +451,7 @@ void TreeResolver::NotifyNodeInserted(FiberElement* insertion_point,
   }
 }
 
-void TreeResolver::NotifyNodeRemoved(FiberElement* insertion_point,
+void TreeResolver::NotifyNodeRemoved(Element* insertion_point,
                                      FiberElement* node) {
   // If the insertion_point IsDetached, no nedd to call NotifyNodeRemoved
   // recursively.
@@ -655,13 +650,13 @@ fml::RefPtr<lepus::Dictionary> TreeResolver::GetTemplateParts(
   return parts_map;
 }
 
-fml::RefPtr<FiberElement> TreeResolver::CloneElements(
-    const fml::RefPtr<FiberElement>& root,
+fml::RefPtr<Element> TreeResolver::CloneElements(
+    const fml::RefPtr<Element>& root,
     const std::shared_ptr<CSSStyleSheetManager>& style_manager,
     bool clone_resolved_props, CloningDepth cloning_depth) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, TREE_RESOLVER_CLONE_ELEMENTS);
 
-  fml::RefPtr<FiberElement> res = root->CloneElement(clone_resolved_props);
+  fml::RefPtr<Element> res = root->CloneElement(clone_resolved_props);
   res->AttachToElementManager(root->element_manager(), style_manager, false);
 
   if (cloning_depth == CloningDepth::kSingle) {
@@ -670,14 +665,12 @@ fml::RefPtr<FiberElement> TreeResolver::CloneElements(
 
   // construct children
   for (const auto& c : root->children()) {
-    auto* child = static_cast<FiberElement*>(c.get());
     if (cloning_depth == CloningDepth::kTemplateScope &&
-        child->IsTemplateElement()) {
+        c->IsTemplateElement()) {
       continue;
     }
-    res->InsertNode(CloneElements(fml::static_ref_ptr_cast<FiberElement>(c),
-                                  style_manager, clone_resolved_props,
-                                  cloning_depth));
+    res->InsertNode(
+        CloneElements(c, style_manager, clone_resolved_props, cloning_depth));
   }
 
   return res;
@@ -711,7 +704,7 @@ GeneratedElementsResult TreeResolver::GenerateElementsFromTemplateInfo(
 }
 
 void TreeResolver::InitElementTree(
-    fml::RefPtr<FiberElement>& element, int64_t pid, ElementManager* manager,
+    fml::RefPtr<Element>& element, int64_t pid, ElementManager* manager,
     const std::shared_ptr<CSSStyleSheetManager>& style_manager) {
   element->ApplyFunctionRecursive([manager, style_manager](Element* e) {
     e->AttachToElementManager(manager, style_manager, false);
@@ -737,7 +730,8 @@ lepus::Value TreeResolver::InitElementTree(
 
 fml::RefPtr<FiberElement> TreeResolver::CloneElementRecursively(
     const FiberElement* element, bool clone_resolved_props) {
-  fml::RefPtr<FiberElement> res = element->CloneElement(clone_resolved_props);
+  fml::RefPtr<FiberElement> res = fml::static_ref_ptr_cast<FiberElement>(
+      element->CloneElement(clone_resolved_props));
 
   // construct children
   for (const auto& c : element->children()) {

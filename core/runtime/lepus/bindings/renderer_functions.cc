@@ -150,12 +150,12 @@ lepus::Value GetSystemInfoFromTasm(TemplateAssembler* tasm) {
   return GenerateSystemInfo(&config);
 }
 
-fml::RefPtr<FiberElement> GetFiberElementFromValue(const lepus::Value& value) {
+fml::RefPtr<Element> GetFiberElementFromValue(const lepus::Value& value) {
   if (!value.IsRefCounted() ||
       value.RefCounted()->GetRefType() != lepus::RefType::kElement) {
     return nullptr;
   }
-  return fml::static_ref_ptr_cast<FiberElement>(value.RefCounted());
+  return fml::static_ref_ptr_cast<Element>(value.RefCounted());
 }
 
 TemplateElement* GetTemplateElementFromValue(const lepus::Value& value) {
@@ -3140,8 +3140,8 @@ RENDERER_FUNCTION_CC(FiberAppendElement) {
                                         FiberAppendElement);
   CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(arg1, 1, RefCounted,
                                         FiberAppendElement);
-  auto parent = fml::static_ref_ptr_cast<FiberElement>(arg0->RefCounted());
-  auto child = fml::static_ref_ptr_cast<FiberElement>(arg1->RefCounted());
+  auto parent = fml::static_ref_ptr_cast<Element>(arg0->RefCounted());
+  auto child = fml::static_ref_ptr_cast<Element>(arg1->RefCounted());
   parent->InsertNode(child);
 
   ON_NODE_ADDED(child);
@@ -3158,8 +3158,8 @@ RENDERER_FUNCTION_CC(FiberRemoveElement) {
                                         FiberRemoveElement);
   CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(arg1, 1, RefCounted,
                                         FiberRemoveElement);
-  auto parent = fml::static_ref_ptr_cast<FiberElement>(arg0->RefCounted());
-  auto child = fml::static_ref_ptr_cast<FiberElement>(arg1->RefCounted());
+  auto parent = fml::static_ref_ptr_cast<Element>(arg0->RefCounted());
+  auto child = fml::static_ref_ptr_cast<Element>(arg1->RefCounted());
 
   // make sure to notify DevTool child removed before RemoveNode
   ON_NODE_REMOVED(child);
@@ -3181,10 +3181,10 @@ RENDERER_FUNCTION_CC(FiberInsertElementBefore) {
   CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(arg1, 1, RefCounted,
                                         FiberInsertElementBefore);
   CONVERT_ARG(arg2, 2)
-  auto parent = fml::static_ref_ptr_cast<FiberElement>(arg0->RefCounted());
-  auto child = fml::static_ref_ptr_cast<FiberElement>(arg1->RefCounted());
+  auto parent = fml::static_ref_ptr_cast<Element>(arg0->RefCounted());
+  auto child = fml::static_ref_ptr_cast<Element>(arg1->RefCounted());
   if (arg2->IsRefCounted()) {
-    auto ref = fml::static_ref_ptr_cast<FiberElement>(arg2->RefCounted());
+    auto ref = fml::static_ref_ptr_cast<Element>(arg2->RefCounted());
     parent->InsertNodeBefore(child, ref);
   } else {
     parent->InsertNode(child);
@@ -3270,8 +3270,7 @@ RENDERER_FUNCTION_CC(FiberAsyncResolveElement) {
     RETURN_UNDEFINED();
   }
 
-  auto* element =
-      fml::static_ref_ptr_cast<FiberElement>(arg0->RefCounted()).get();
+  auto* element = fml::static_ref_ptr_cast<Element>(arg0->RefCounted()).get();
   CHECK_ILLEGAL_ATTRIBUTE_CONFIG(element, FiberAsyncResolveElement);
   element->AsyncResolveProperty();
 
@@ -3313,8 +3312,7 @@ RENDERER_FUNCTION_CC(FiberAsyncResolveSubtreeProperty) {
     RETURN_UNDEFINED();
   }
 
-  auto* element =
-      fml::static_ref_ptr_cast<FiberElement>(arg0->RefCounted()).get();
+  auto* element = fml::static_ref_ptr_cast<Element>(arg0->RefCounted()).get();
   element->DispatchAsyncResolveSubtreeProperty();
 
   RETURN_UNDEFINED();
@@ -3332,8 +3330,8 @@ RENDERER_FUNCTION_CC(FiberReplaceElement) {
   CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(arg1, 1, RefCounted,
                                         FiberReplaceElement);
 
-  auto new_element = fml::static_ref_ptr_cast<FiberElement>(arg0->RefCounted());
-  auto old_element = fml::static_ref_ptr_cast<FiberElement>(arg1->RefCounted());
+  auto new_element = fml::static_ref_ptr_cast<Element>(arg0->RefCounted());
+  auto old_element = fml::static_ref_ptr_cast<Element>(arg1->RefCounted());
 
   // if new element == old element, return
   if (new_element->impl_id() == old_element->impl_id()) {
@@ -3341,7 +3339,7 @@ RENDERER_FUNCTION_CC(FiberReplaceElement) {
     RETURN_UNDEFINED();
   }
 
-  auto* parent = static_cast<FiberElement*>(old_element->parent());
+  auto* parent = old_element->parent();
   if (parent == nullptr) {
     LOGE("FiberReplaceElement failed since parent is null.");
     RETURN_UNDEFINED();
@@ -3371,8 +3369,7 @@ RENDERER_FUNCTION_CC(FiberReplaceElements) {
   CONVERT_ARG(arg2, 2);
 
   // Get parent
-  auto* parent =
-      fml::static_ref_ptr_cast<FiberElement>(arg0->RefCounted()).get();
+  auto* parent = fml::static_ref_ptr_cast<Element>(arg0->RefCounted()).get();
   if (parent == nullptr) {
     LOGE("FiberReplaceElements failed since parent is null.");
     RETURN_UNDEFINED();
@@ -3383,7 +3380,7 @@ RENDERER_FUNCTION_CC(FiberReplaceElements) {
                              const lepus::Value& input) {
         if (input.IsRefCounted()) {
           elements.emplace_back(
-              fml::static_ref_ptr_cast<FiberElement>(input.RefCounted()));
+              fml::static_ref_ptr_cast<Element>(input.RefCounted()));
         } else if (input.IsArrayOrJSArray()) {
           tasm::ForEachLepusValue(
               input, [&elements, &convert_function](const auto& index,
@@ -3417,13 +3414,8 @@ RENDERER_FUNCTION_CC(FiberReplaceElements) {
     }
   });
 
-  if (!parent->is_block()) {
-    auto* ref = last_old_element ? last_old_element->next_sibling() : nullptr;
-    parent->ReplaceElements(inserted_elements, removed_elements, ref);
-  } else {
-    static_cast<BlockElement*>(parent)->ReplaceElements(inserted_elements,
-                                                        removed_elements);
-  }
+  auto* ref = last_old_element ? last_old_element->next_sibling() : nullptr;
+  parent->ReplaceElements(inserted_elements, removed_elements, ref);
 
   EXEC_EXPR_FOR_INSPECTOR({
     for (const auto& child : inserted_elements) {
@@ -3443,18 +3435,16 @@ RENDERER_FUNCTION_CC(FiberSwapElement) {
   CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(arg0, 0, RefCounted, FiberSwapElement);
   CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(arg1, 1, RefCounted, FiberSwapElement);
 
-  auto left_element =
-      fml::static_ref_ptr_cast<FiberElement>(arg0->RefCounted());
-  auto right_element =
-      fml::static_ref_ptr_cast<FiberElement>(arg1->RefCounted());
+  auto left_element = fml::static_ref_ptr_cast<Element>(arg0->RefCounted());
+  auto right_element = fml::static_ref_ptr_cast<Element>(arg1->RefCounted());
 
-  auto* left_parent = static_cast<FiberElement*>(left_element->parent());
+  auto* left_parent = left_element->parent();
   if (left_parent == nullptr) {
     LOGE("FiberSwapElement failed since left parent is null.");
     RETURN_UNDEFINED();
   }
 
-  auto* right_parent = static_cast<FiberElement*>(right_element->parent());
+  auto* right_parent = right_element->parent();
   if (right_parent == nullptr) {
     LOGE("FiberSwapElement failed since right parent is null.");
     RETURN_UNDEFINED();
@@ -3745,7 +3735,7 @@ RENDERER_FUNCTION_CC(FiberCreateTypedElementTemplate) {
   element->SetElementSlots(element_slots);
   element->SetOptions(options);
   element->SetUid(*arg3);
-  fml::RefPtr<FiberElement> typed_page_root = nullptr;
+  fml::RefPtr<Element> typed_page_root = nullptr;
   if (arg0->String().IsEqual(kElementPageTag)) {
     // Page templates are root templates, so materialize the root eagerly while
     // still returning the TemplateElement shell for template APIs.
@@ -3811,7 +3801,7 @@ RENDERER_FUNCTION_CC(FiberInsertNodeToElementTemplate) {
         "element slot 0");
     RETURN_UNDEFINED();
   }
-  fml::RefPtr<FiberElement> ref_node = nullptr;
+  fml::RefPtr<Element> ref_node = nullptr;
   if (argc >= 4) {
     CONVERT_ARG(arg3, 3);
     if (arg3->IsRefCounted()) {
@@ -3907,7 +3897,7 @@ RENDERER_FUNCTION_CC(FiberCloneElement) {
   }
 
   auto* self = GET_TASM_POINTER();
-  auto element = fml::static_ref_ptr_cast<FiberElement>(arg0->RefCounted());
+  auto element = fml::static_ref_ptr_cast<Element>(arg0->RefCounted());
 
   if (clone_resolved_props && element->flush_required() &&
       element->IsAttached()) {

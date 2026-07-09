@@ -28,6 +28,7 @@
 #include "core/animation/css_keyframe_manager.h"
 #include "core/animation/css_transition_manager.h"
 #include "core/base/lynx_export.h"
+#include "core/base/thread/once_task.h"
 #include "core/event/event_target.h"
 #include "core/inspector/style_sheet.h"
 #include "core/public/common_constants.h"
@@ -81,6 +82,9 @@ enum class BatchRenderStrategy;
 
 using ElementChildrenArray =
     base::InlineVector<Element*, kChildrenInlineVectorSize>;
+using ParallelFlushReturn = base::closure;
+using ParallelReduceTaskQueue =
+    std::list<base::OnceTaskRefptr<ParallelFlushReturn>>;
 
 enum ElementArchTypeEnum : uint8_t {
   FiberArch = 0,
@@ -784,6 +788,13 @@ class Element : public lepus::RefCounted,
 
   virtual void InsertNode(const fml::RefPtr<Element>& child) = 0;
   virtual void InsertNode(const fml::RefPtr<Element>& child, int32_t index) = 0;
+  virtual void InsertNodeBefore(
+      const fml::RefPtr<Element>& child,
+      const fml::RefPtr<Element>& reference_child) = 0;
+  virtual void ReplaceElements(
+      const base::Vector<fml::RefPtr<Element>>& inserted,
+      const base::Vector<fml::RefPtr<Element>>& removed,
+      Element* ref_node = nullptr) = 0;
   virtual void RemoveNode(const fml::RefPtr<Element>& child,
                           bool destroy = true) = 0;
 
@@ -1523,6 +1534,11 @@ class Element : public lepus::RefCounted,
   void LogNodeInfo();
 
   /**
+   * A key function to flush the tree with the current element as the root node.
+   */
+  virtual void FlushActionsAsRoot() = 0;
+
+  /**
    * Check if this element needs to propagate inherited dirty flag to children.
    * @param force_propagate whether to force propagation
    * @return true if propagation is needed
@@ -1557,12 +1573,22 @@ class Element : public lepus::RefCounted,
   void UpdateLayoutInfoRecursively(PipelineOptions* options);
   void UpdateLayoutInfo();
 
+  virtual fml::RefPtr<Element> CloneElement(
+      bool clone_resolved_props) const = 0;
+
   // The element object created using clone interfaces is not attached to the
   // element manager. Use this function to attach it to the element manager.
   virtual void AttachToElementManager(
       ElementManager* manager,
       const std::shared_ptr<CSSStyleSheetManager>& style_manager,
       bool keep_element_id);
+
+  void AsyncResolveProperty();
+  void DispatchAsyncResolveSubtreeProperty();
+  void DispatchAsyncResolveProperty();
+  void AsyncPostResolveTaskToThreadPool();
+  virtual void PostResolveTaskToThreadPool(
+      bool is_engine_thread, ParallelReduceTaskQueue& task_queue) = 0;
 
   void PrepareSelfForThreadedElementResolution();
 

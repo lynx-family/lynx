@@ -7,19 +7,19 @@
 #include "base/include/fml/memory/ref_ptr.h"
 #include "base/include/value/base_value.h"
 #include "base/include/vector.h"
-#include "core/renderer/dom/fiber/fiber_element.h"
+#include "core/renderer/dom/element.h"
 
 namespace lynx {
 namespace tasm {
 
 struct ElementSlotMountPoint {
-  fml::RefPtr<FiberElement> parent_;
-  fml::RefPtr<FiberElement> ref_node_;
+  fml::RefPtr<Element> parent_;
+  fml::RefPtr<Element> ref_node_;
 };
 
 struct PreparedElementSlotInsertion {
   uint32_t slot_index_{0};
-  fml::RefPtr<FiberElement> child_;
+  fml::RefPtr<Element> child_;
 };
 
 // Aggregated output of one Element Template materialization task.
@@ -37,10 +37,10 @@ struct PreparedElementSlotInsertion {
 // The result is returned from the async task first, then moved into
 // TemplateElement on the consuming thread.
 struct GeneratedElementsResult {
-  fml::RefPtr<FiberElement> result_;
-  base::Vector<fml::RefPtr<FiberElement>> attribute_slot_targets_;
-  base::Vector<fml::RefPtr<FiberElement>> event_attribute_slot_targets_;
-  base::Vector<fml::RefPtr<FiberElement>> static_event_targets_;
+  fml::RefPtr<Element> result_;
+  base::Vector<fml::RefPtr<Element>> attribute_slot_targets_;
+  base::Vector<fml::RefPtr<Element>> event_attribute_slot_targets_;
+  base::Vector<fml::RefPtr<Element>> static_event_targets_;
   base::Vector<ElementSlotMountPoint> element_slot_targets_;
   base::Vector<PreparedElementSlotInsertion> prepared_element_slot_insertions_;
   lepus::Value prepared_root_attributes_;

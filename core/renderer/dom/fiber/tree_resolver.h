@@ -34,10 +34,8 @@ class TreeResolver {
   static constexpr uint32_t kLocalQueueSizeInMainThread = 32;
   static constexpr uint32_t kLocalQueueSizeInWorker = 0;
 
-  static void NotifyNodeInserted(FiberElement* insertion_point,
-                                 FiberElement* node);
-  static void NotifyNodeRemoved(FiberElement* insertion_point,
-                                FiberElement* node);
+  static void NotifyNodeInserted(Element* insertion_point, FiberElement* node);
+  static void NotifyNodeRemoved(Element* insertion_point, FiberElement* node);
 
   static void AttachChildToTargetParentForWrapper(FiberElement* parent,
                                                   FiberElement* child,
@@ -78,16 +76,15 @@ class TreeResolver {
   // template attributes after clearing keys that used to come from spread
   // slots.
   static void ApplyTemplateAttributesToElement(
-      FiberElement* element, const lepus::Value& attribute_slots);
+      Element* element, const lepus::Value& attribute_slots);
   static void ApplyTemplateAttributesToElement(
-      FiberElement* element, const lepus::Value& previous_attribute_slots,
+      Element* element, const lepus::Value& previous_attribute_slots,
       const lepus::Value& attribute_slots);
   static void ApplyTemplateNonEventAttributesToElement(
-      FiberElement* element, const lepus::Value& attribute_slots);
+      Element* element, const lepus::Value& attribute_slots);
   static void ApplyTemplateEventAttributesToElement(
-      FiberElement* element, const lepus::Value& attribute_slots);
-  static void ApplyStaticTemplateEventAttributesToElement(
-      FiberElement* element);
+      Element* element, const lepus::Value& attribute_slots);
+  static void ApplyStaticTemplateEventAttributesToElement(Element* element);
 
   // Construct element tree according to the element-template info.
   static base::Vector<fml::RefPtr<FiberElement>> FromTemplateInfo(
@@ -100,7 +97,7 @@ class TreeResolver {
       const ElementTemplateInfo& info);
 
   static void InitElementTree(
-      fml::RefPtr<FiberElement>& elements, int64_t pid, ElementManager* manager,
+      fml::RefPtr<Element>& elements, int64_t pid, ElementManager* manager,
       const std::shared_ptr<CSSStyleSheetManager>& style_manager);
 
   static lepus::Value InitElementTree(
@@ -110,8 +107,8 @@ class TreeResolver {
 
   // Clone the elements and attach it to the current page's element manager
   // recursively.
-  static fml::RefPtr<FiberElement> CloneElements(
-      const fml::RefPtr<FiberElement>& root,
+  static fml::RefPtr<Element> CloneElements(
+      const fml::RefPtr<Element>& root,
       const std::shared_ptr<CSSStyleSheetManager>& style_manager,
       bool clone_resolved_props, CloningDepth cloning_depth);
 

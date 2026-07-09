@@ -42,8 +42,7 @@ static constexpr const char kDefaultPageComponentId[] = "0";
 static constexpr int32_t kDefaultPageCSSId = 0;
 static constexpr uint32_t kTypedTemplateRootSlotIndex = 0;
 
-fml::RefPtr<FiberElement> ResolveInitialElementSlotChild(
-    const lepus::Value& child) {
+fml::RefPtr<Element> ResolveInitialElementSlotChild(const lepus::Value& child) {
   if (!child.IsRefCounted()) {
     return nullptr;
   }
@@ -53,7 +52,7 @@ fml::RefPtr<FiberElement> ResolveInitialElementSlotChild(
     return nullptr;
   }
 
-  return fml::static_ref_ptr_cast<FiberElement>(ref_counted);
+  return fml::static_ref_ptr_cast<Element>(ref_counted);
 }
 
 fml::RefPtr<TemplateElement> ResolveTemplateElementSlotChild(
@@ -83,7 +82,7 @@ base::Vector<fml::RefPtr<TemplateElement>> CollectTemplateElementSlotChildren(
 }
 
 void RemoveElementFromSlotChildren(lepus::Value* slot_children,
-                                   FiberElement* child) {
+                                   Element* child) {
   if (slot_children == nullptr || child == nullptr ||
       !slot_children->IsArray()) {
     return;
@@ -99,8 +98,7 @@ void RemoveElementFromSlotChildren(lepus::Value* slot_children,
   }
 }
 
-size_t FindSlotChildIndex(const lepus::Value& slot_children,
-                          FiberElement* child) {
+size_t FindSlotChildIndex(const lepus::Value& slot_children, Element* child) {
   if (child == nullptr || !slot_children.IsArray()) {
     return static_cast<size_t>(slot_children.GetLength());
   }
@@ -187,7 +185,7 @@ lepus::Value CreateRootAttributeSlots(const lepus::Value& root_attributes) {
 SharedTemplateAttributes CreateRootSpreadTemplateAttributes();
 
 template <typename Apply>
-void ApplyRootTemplateAttributes(FiberElement* root, Apply&& apply) {
+void ApplyRootTemplateAttributes(Element* root, Apply&& apply) {
   if (root == nullptr) {
     return;
   }
@@ -197,7 +195,7 @@ void ApplyRootTemplateAttributes(FiberElement* root, Apply&& apply) {
   root->SetTemplateAttributes(compiled_attributes);
 }
 
-void ApplyRootTemplateAttributes(FiberElement* root,
+void ApplyRootTemplateAttributes(Element* root,
                                  const lepus::Value& previous_root_attributes,
                                  const lepus::Value& root_attributes) {
   if (!previous_root_attributes.IsObject() && !root_attributes.IsObject()) {
@@ -216,7 +214,7 @@ void ApplyRootTemplateAttributes(FiberElement* root,
       });
 }
 
-void ApplyRootTemplateNonEventAttributes(FiberElement* root,
+void ApplyRootTemplateNonEventAttributes(Element* root,
                                          const lepus::Value& root_attributes) {
   if (!root_attributes.IsObject()) {
     return;
@@ -227,7 +225,7 @@ void ApplyRootTemplateNonEventAttributes(FiberElement* root,
   });
 }
 
-void ApplyRootTemplateEventAttributes(FiberElement* root,
+void ApplyRootTemplateEventAttributes(Element* root,
                                       const lepus::Value& root_attributes) {
   if (!root_attributes.IsObject()) {
     return;
@@ -245,9 +243,9 @@ SharedTemplateAttributes CreateRootSpreadTemplateAttributes() {
                 lepus::Value(), kTypedTemplateRootSlotIndex}});
 }
 
-fml::RefPtr<FiberElement> CreateTypedRootElement(ElementManager* manager,
-                                                 TemplateAssembler* tasm,
-                                                 const base::String& tag) {
+fml::RefPtr<Element> CreateTypedRootElement(ElementManager* manager,
+                                            TemplateAssembler* tasm,
+                                            const base::String& tag) {
   if (tag.IsEqual(kElementPageTag)) {
     auto page = manager->CreateFiberPage(
         BASE_STATIC_STRING(kDefaultPageComponentId), kDefaultPageCSSId);
@@ -266,9 +264,9 @@ fml::RefPtr<FiberElement> CreateTypedRootElement(ElementManager* manager,
 
 template <typename Apply>
 void ApplyInitialAttributeSlots(
-    const base::Vector<fml::RefPtr<FiberElement>>& targets,
+    const base::Vector<fml::RefPtr<Element>>& targets,
     const lepus::Value& attribute_slots, Apply apply) {
-  FiberElement* previous_element = nullptr;
+  Element* previous_element = nullptr;
   for (const auto& target : targets) {
     auto* element = target.get();
     if (element == nullptr || element == previous_element) {
@@ -280,37 +278,37 @@ void ApplyInitialAttributeSlots(
 }
 
 void ApplyInitialAttributeSlots(
-    const base::Vector<fml::RefPtr<FiberElement>>& targets,
+    const base::Vector<fml::RefPtr<Element>>& targets,
     const lepus::Value& attribute_slots) {
-  ApplyInitialAttributeSlots(
-      targets, attribute_slots,
-      [](FiberElement* element, const lepus::Value& slots) {
-        TreeResolver::ApplyTemplateAttributesToElement(element, slots);
-      });
+  ApplyInitialAttributeSlots(targets, attribute_slots,
+                             [](Element* element, const lepus::Value& slots) {
+                               TreeResolver::ApplyTemplateAttributesToElement(
+                                   element, slots);
+                             });
 }
 
 void ApplyInitialNonEventAttributeSlots(
-    const base::Vector<fml::RefPtr<FiberElement>>& targets,
+    const base::Vector<fml::RefPtr<Element>>& targets,
     const lepus::Value& attribute_slots) {
   ApplyInitialAttributeSlots(
       targets, attribute_slots,
-      [](FiberElement* element, const lepus::Value& slots) {
+      [](Element* element, const lepus::Value& slots) {
         TreeResolver::ApplyTemplateNonEventAttributesToElement(element, slots);
       });
 }
 
 void ApplyInitialEventAttributeSlots(
-    const base::Vector<fml::RefPtr<FiberElement>>& targets,
+    const base::Vector<fml::RefPtr<Element>>& targets,
     const lepus::Value& attribute_slots) {
   ApplyInitialAttributeSlots(
       targets, attribute_slots,
-      [](FiberElement* element, const lepus::Value& slots) {
+      [](Element* element, const lepus::Value& slots) {
         TreeResolver::ApplyTemplateEventAttributesToElement(element, slots);
       });
 }
 
 void ApplyStaticEventAttributes(
-    const base::Vector<fml::RefPtr<FiberElement>>& targets) {
+    const base::Vector<fml::RefPtr<Element>>& targets) {
   for (const auto& target : targets) {
     TreeResolver::ApplyStaticTemplateEventAttributesToElement(target.get());
   }
@@ -941,7 +939,7 @@ void TemplateElement::ApplyInitialElementSlots() {
 
 void TemplateElement::InsertInitialElementSlotChild(
     const ElementSlotMountPoint& mount_point,
-    const fml::RefPtr<FiberElement>& child) {
+    const fml::RefPtr<Element>& child) {
   if (mount_point.parent_ == nullptr || child == nullptr) {
     return;
   }
@@ -953,9 +951,8 @@ void TemplateElement::InsertInitialElementSlotChild(
 }
 
 void TemplateElement::MountElementSlotChild(
-    const ElementSlotMountPoint& mount_point,
-    const fml::RefPtr<FiberElement>& child,
-    const fml::RefPtr<FiberElement>& ref_node) {
+    const ElementSlotMountPoint& mount_point, const fml::RefPtr<Element>& child,
+    const fml::RefPtr<Element>& ref_node) {
   if (mount_point.parent_ == nullptr || child == nullptr) {
     return;
   }
@@ -999,7 +996,7 @@ void TemplateElement::MountElementSlotChild(
 
 void TemplateElement::UnmountElementSlotChild(
     const ElementSlotMountPoint& mount_point,
-    const fml::RefPtr<FiberElement>& child) {
+    const fml::RefPtr<Element>& child) {
   if (mount_point.parent_ == nullptr || child == nullptr) {
     return;
   }
@@ -1035,7 +1032,7 @@ lepus::Value TemplateElement::GetOrCreateElementSlotChildren(
 }
 
 void TemplateElement::RemoveElementSlotChildFromSlot(uint32_t slot_index,
-                                                     FiberElement* child) {
+                                                     Element* child) {
   if (child == nullptr || !element_slots_.IsArrayOrJSArray() ||
       slot_index >= static_cast<uint32_t>(element_slots_.GetLength())) {
     return;
@@ -1154,8 +1151,7 @@ lepus::Value TemplateElement::SerializeTemplateOptionArray(
       continue;
     }
 
-    auto element =
-        fml::static_ref_ptr_cast<FiberElement>(ref_counted).strongify();
+    auto element = fml::static_ref_ptr_cast<Element>(ref_counted).strongify();
     if (element == nullptr || !element->is_template()) {
       serialized_array->emplace_back(std::move(option_value));
       continue;
@@ -1204,8 +1200,7 @@ lepus::Value TemplateElement::SerializeElementSlotChild(
     return lepus::Value();
   }
 
-  auto element =
-      fml::static_ref_ptr_cast<FiberElement>(ref_counted).strongify();
+  auto element = fml::static_ref_ptr_cast<Element>(ref_counted).strongify();
   if (element == nullptr || !element->is_template()) {
     LOGE(
         "SerializeElementTemplate only supports TemplateElement children in "
@@ -1216,7 +1211,7 @@ lepus::Value TemplateElement::SerializeElementSlotChild(
   return template_element->Serialize();
 }
 
-fml::RefPtr<FiberElement> TemplateElement::GetRoot() {
+fml::RefPtr<Element> TemplateElement::GetRoot() {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, TEMPLATE_ELEMENT_GET_ROOT, "template_key",
               template_key_.str(), "bundle_url", bundle_url_.str());
   ResolveGeneratedElements();
@@ -1264,8 +1259,8 @@ void TemplateElement::SetAttributeSlot(uint32_t slot_index,
 }
 
 void TemplateElement::InsertElementSlotChild(
-    uint32_t slot_index, const fml::RefPtr<FiberElement>& child,
-    const fml::RefPtr<FiberElement>& ref_node) {
+    uint32_t slot_index, const fml::RefPtr<Element>& child,
+    const fml::RefPtr<Element>& ref_node) {
   if (child == nullptr || child.get() == ref_node.get()) {
     return;
   }
@@ -1301,7 +1296,7 @@ void TemplateElement::InsertElementSlotChild(
 }
 
 void TemplateElement::RemoveElementSlotChild(
-    uint32_t slot_index, const fml::RefPtr<FiberElement>& child) {
+    uint32_t slot_index, const fml::RefPtr<Element>& child) {
   if (child == nullptr) {
     return;
   }
