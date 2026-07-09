@@ -1,0 +1,27 @@
+lynx/oliver/node-lynx/scripts/run-test-with-timeout.js
+  s_3ffcda3018340c::t_7732ec93f0539d 1-88
+lynx/oliver/node-lynx/scripts/test.sh
+  s_3ffcda3018340c::t_a0bafb70fa08a9 31-38,44-48
+lynx/oliver/node-lynx/test/helpers/open-card-cases.js
+  s_3ffcda3018340c::t_6796a7cdea6a3f 88-117,217
+oliver/node-lynx/scripts/test.sh
+  s_3ffcda3018340c::t_cb09b1ce24a66c 34-48,61
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "f66bd110ef2d6db0376fa106cf4d236278595bb6",
+  "prompts": {},
+  "sessions": {
+    "s_3ffcda3018340c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f45e2-87e0-75f1-a7ad-2c0d9ed03886",
+        "model": "unknown"
+      },
+      "human_author": "yangguangzhao <yangguangzhao.solace@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}
