@@ -1213,16 +1213,15 @@ bool ElementManager::Hydrate(AttributeHolder *node, Element *shadow_node) {
   return true;
 }
 
-fml::RefPtr<FiberElement> ElementManager::CreateFiberElement(
+fml::RefPtr<Element> ElementManager::CreateFiberElement(
     const base::String &raw_tag) {
   return CreateFiberElement(ElementProperty::ConvertStringTagToEnumTag(raw_tag),
                             raw_tag);
 }
 
-fml::RefPtr<FiberElement> ElementManager::CreateFiberElement(
+fml::RefPtr<Element> ElementManager::CreateFiberElement(
     ElementBuiltInTagEnum enum_tag, const base::String &raw_tag) {
-  auto result = fml::static_ref_ptr_cast<FiberElement>(
-      StaticCreateFiberElement(enum_tag, raw_tag));
+  auto result = StaticCreateFiberElement(enum_tag, raw_tag);
   result->AttachToElementManager(this, nullptr, false);
   return result;
 }
@@ -1313,17 +1312,16 @@ fml::RefPtr<Element> ElementManager::StaticCreateFiberElement(
           new PageElement(nullptr, base::String(), -1));
       break;
     default:
-      element = fml::AdoptRef<FiberElement>(new FiberElement(nullptr, raw_tag));
+      element = fml::AdoptRef<Element>(new FiberElement(nullptr, raw_tag));
   }
   return element;
 }
 
-fml::RefPtr<FiberElement> ElementManager::CreateFiberNode(
-    const base::String &tag) {
+fml::RefPtr<Element> ElementManager::CreateFiberNode(const base::String &tag) {
   if (tag.IsEqual(kElementEcomImageTag)) {
-    return fml::AdoptRef<FiberElement>(new ImageElement(this, tag));
+    return fml::AdoptRef<Element>(new ImageElement(this, tag));
   }
-  auto res = fml::AdoptRef<FiberElement>(new FiberElement(this, tag));
+  auto res = fml::AdoptRef<Element>(new FiberElement(this, tag));
   return res;
 }
 

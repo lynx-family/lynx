@@ -15,7 +15,6 @@
 namespace lynx {
 namespace tasm {
 
-class FiberElement;
 class TextElement;
 
 class TextLayoutDarwin : public TextLayoutImpl {
@@ -40,7 +39,7 @@ class TextLayoutDarwin : public TextLayoutImpl {
   void GenerateAttributedString(NSMutableAttributedString* attributedString, Element* element,
                                 NSDictionary<NSAttributedStringKey, id>* baseAttributes,
                                 NSMutableSet* inlineElementSigns, Boolean* hasViewOrImage);
-  void ProcessChildAttribute(NSMutableAttributedString* attributedString, FiberElement* element,
+  void ProcessChildAttribute(NSMutableAttributedString* attributedString, Element* element,
                              NSDictionary<NSAttributedStringKey, id>* baseAttributes,
                              NSMutableSet* inlineElementSigns, Boolean* hasViewOrImage);
   void MeasureChildrenRecursively(Element* element, const starlight::Constraints& constraints,

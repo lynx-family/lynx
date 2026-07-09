@@ -20,7 +20,6 @@
 namespace lynx {
 namespace tasm {
 class PropArrayAndroid;
-class FiberElement;
 class TextElement;
 class ViewElement;
 class ImageElement;
@@ -41,7 +40,7 @@ class TextLayoutAndroid : public TextLayoutImpl {
   void BuildTextPropsBuffer(TextElement* element, std::string& output,
                             size_t& current_length, bool use_utf16,
                             PropArrayAndroid* props, bool* has_inline_view);
-  void ProcessChildProps(FiberElement* element, std::string& output,
+  void ProcessChildProps(Element* element, std::string& output,
                          size_t& current_length, bool use_utf16,
                          PropArrayAndroid* props, bool* has_inline_view);
   static void AppendTextProps(TextElement* element, size_t pos_start,

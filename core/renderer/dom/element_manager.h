@@ -67,7 +67,6 @@ struct PseudoPlaceHolderStyles;
 class PaintingContext;
 class PropBundle;
 class Element;
-class FiberElement;
 class ComponentElement;
 class ImageElement;
 class ListElement;
@@ -884,9 +883,9 @@ class ElementManager : public LayoutScheduler::LayoutSchedulerImpl {
    * the corresponding method to create the specific Fiber Element.
    *
    * @param raw_tag The raw tag name of the Dom Element.
-   * @return The refCounted FiberElement.
+   * @return The refCounted Element.
    */
-  fml::RefPtr<FiberElement> CreateFiberElement(const base::String &raw_tag);
+  fml::RefPtr<Element> CreateFiberElement(const base::String &raw_tag);
   /**
    * Create a Fiber Element based on the enum tag and default tag name.
    * This method uses a switch statement to decide which specific method to call
@@ -894,11 +893,11 @@ class ElementManager : public LayoutScheduler::LayoutSchedulerImpl {
    *
    * @param enum_tag The enum representation of the tag name.
    * @param raw_tag The raw tag name of the Dom Element.
-   * @return The refCounted FiberElement.
+   * @return The refCounted Element.
    * Note: If the enum tag is 'ELEMENT_EMPTY', the Fiber Element will be created
    * using the raw tag name.
    */
-  fml::RefPtr<FiberElement> CreateFiberElement(
+  fml::RefPtr<Element> CreateFiberElement(
       ElementBuiltInTagEnum enum_tag,
       const base::String &raw_tag = base::String());
 
@@ -922,7 +921,7 @@ class ElementManager : public LayoutScheduler::LayoutSchedulerImpl {
    * @param tag the tag name of Dom Element
    * @return  the refCounted type
    */
-  fml::RefPtr<FiberElement> CreateFiberNode(const base::String &tag);
+  fml::RefPtr<Element> CreateFiberNode(const base::String &tag);
   /**
    * create Page Element for fiber
    * @param component_id the component id for Page

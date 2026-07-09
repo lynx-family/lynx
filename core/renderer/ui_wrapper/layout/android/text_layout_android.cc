@@ -56,7 +56,7 @@ base::UnicodeDecodeProperty DecodePropertyForTextElement(TextElement* element) {
   return WordBreakToDecodeProperty(text_attributes->word_break);
 }
 
-TextElement* FindParentTextElement(FiberElement* child) {
+TextElement* FindParentTextElement(Element* child) {
   for (Element* parent = child->parent(); parent != nullptr;
        parent = parent->parent()) {
     if (parent->is_text()) {
@@ -172,10 +172,9 @@ void TextLayoutAndroid::MeasureInlineViewRecursively(
     if (child->is_text()) {
       MeasureInlineViewRecursively(child, constraints, layout_result);
     } else if (child->is_view()) {
-      FiberElement* fiber_element = static_cast<FiberElement*>(child);
       FloatSize size =
-          fiber_element->slnode()->UpdateMeasureByPlatform(constraints, true);
-      layout_result.push_back(fiber_element->impl_id());
+          child->slnode()->UpdateMeasureByPlatform(constraints, true);
+      layout_result.push_back(child->impl_id());
       layout_result.push_back(size.width_);
       layout_result.push_back(size.height_);
       layout_result.push_back(size.baseline_);
@@ -221,11 +220,10 @@ void TextLayoutAndroid::AlignChildrenRecursively(
     if (child->is_text()) {
       AlignChildrenRecursively(child, result_map);
     } else if (child->is_view()) {
-      FiberElement* fiber_element = static_cast<FiberElement*>(child);
-      auto it = result_map.find(fiber_element->impl_id());
+      auto it = result_map.find(child->impl_id());
       if (it != result_map.end()) {
-        fiber_element->slnode()->AlignmentByPlatform(it->second.first,
-                                                     it->second.second);
+        child->slnode()->AlignmentByPlatform(it->second.first,
+                                             it->second.second);
       }
     }
   }
@@ -281,8 +279,8 @@ void TextLayoutAndroid::BuildTextPropsBuffer(
 
   auto* child = element->first_render_child();
   while (child) {
-    ProcessChildProps(static_cast<FiberElement*>(child), output, current_length,
-                      use_utf16, props, has_inline_view);
+    ProcessChildProps(child, output, current_length, use_utf16, props,
+                      has_inline_view);
     child = child->next_render_sibling();
   }
 
@@ -292,9 +290,11 @@ void TextLayoutAndroid::BuildTextPropsBuffer(
   }
 }
 
-void TextLayoutAndroid::ProcessChildProps(
-    FiberElement* child, std::string& output, size_t& current_length,
-    bool use_utf16, PropArrayAndroid* props, bool* has_inline_view) {
+void TextLayoutAndroid::ProcessChildProps(Element* child, std::string& output,
+                                          size_t& current_length,
+                                          bool use_utf16,
+                                          PropArrayAndroid* props,
+                                          bool* has_inline_view) {
   if (child->is_raw_text()) {
     auto* raw_text_child = static_cast<RawTextElement*>(child);
     const auto& raw_content = raw_text_child->content();
@@ -322,12 +322,11 @@ void TextLayoutAndroid::ProcessChildProps(
                     current_length, props);
     *has_inline_view = true;
   } else if (child->is_wrapper()) {
-    auto* wrap_child = static_cast<FiberElement*>(child->first_render_child());
+    auto* wrap_child = child->first_render_child();
     while (wrap_child) {
       ProcessChildProps(wrap_child, output, current_length, use_utf16, props,
                         has_inline_view);
-      wrap_child =
-          static_cast<FiberElement*>(wrap_child->next_render_sibling());
+      wrap_child = wrap_child->next_render_sibling();
     }
   }
 }
