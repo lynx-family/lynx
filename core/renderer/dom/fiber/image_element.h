@@ -18,9 +18,8 @@ class ImageElement : public FiberElement {
  public:
   ImageElement(ElementManager* manager, const base::String& tag);
 
-  fml::RefPtr<FiberElement> CloneElement(
-      bool clone_resolved_props) const override {
-    return fml::AdoptRef<FiberElement>(
+  fml::RefPtr<Element> CloneElement(bool clone_resolved_props) const override {
+    return fml::AdoptRef<Element>(
         new ImageElement(*this, clone_resolved_props));
   }
 

@@ -230,7 +230,8 @@ FiberElement *ResolveTemplateRootForAction(Element *element) {
   }
 
   auto root = static_cast<TemplateElement *>(fiber_element)->GetRoot();
-  return root != nullptr ? root.get() : fiber_element;
+  return root != nullptr ? static_cast<FiberElement *>(root.get())
+                         : fiber_element;
 }
 
 bool IsTransitionRelevantLayoutOnlyStyle(CSSPropertyID id) {
@@ -1198,7 +1199,7 @@ void Element::ProcessFullRawInlineStyle(CSSVariableMap *changed_css_vars) {
   }
 }
 
-void FiberElement::DispatchAsyncResolveProperty() {
+void Element::DispatchAsyncResolveProperty() {
   if ((dirty_ & ~kDirtyTree) != 0 && IsAttached()) {
     UpdateResolveStatus(AsyncResolveStatus::kPreparing);
     ResolveParentComponentElement();
@@ -1435,7 +1436,7 @@ void Element::ResetSimpleStyle(const tasm::CSSPropertyID id) {
 
 #pragma endregion  // simple styling
 
-void FiberElement::AsyncResolveProperty() {
+void Element::AsyncResolveProperty() {
   if ((dirty_ & ~kDirtyTree) != 0) {
     TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_ASYNC_RESOLVE_PROPERTY);
     UpdateResolveStatus(AsyncResolveStatus::kPrepareRequested);
@@ -1445,7 +1446,7 @@ void FiberElement::AsyncResolveProperty() {
   }
 }
 
-void FiberElement::AsyncPostResolveTaskToThreadPool() {
+void Element::AsyncPostResolveTaskToThreadPool() {
   if ((dirty_ & ~kDirtyTree) != 0) {
     UpdateResolveStatus(AsyncResolveStatus::kPrepareTriggered);
     element_manager()->GetTasmWorkerTaskRunner()->PostTask([this]() mutable {
@@ -1645,7 +1646,7 @@ void FiberElement::RemoveNodeInternal(const fml::RefPtr<Element> &child,
   MarkDirty(kDirtyTree);
 }
 
-void FiberElement::InsertedInto(FiberElement *insertion_point) {
+void FiberElement::InsertedInto(Element *insertion_point) {
   MarkAttached();
   if (resolve_status_ == AsyncResolveStatus::kPrepareRequested) {
     AsyncPostResolveTaskToThreadPool();
@@ -1656,7 +1657,7 @@ void FiberElement::InsertedInto(FiberElement *insertion_point) {
   });
 }
 
-void FiberElement::RemovedFrom(FiberElement *insertion_point) {
+void FiberElement::RemovedFrom(Element *insertion_point) {
   // We need to handle the intergenerational node which has zIndex or fixed,
   // they may be inserted to difference parent in UI/layout tree instead of dom
   // parent If the removed node's parent is the insertion_point, no need to do
@@ -1678,7 +1679,8 @@ void FiberElement::RemovedFrom(FiberElement *insertion_point) {
             (iter->type_ == Action::kRemoveChildAct &&
              (iter->is_fixed_ || iter->has_z_index_))) {
           iter->type_ = Action::kRemoveIntergenerationAct;
-          insertion_point->action_param_list_.emplace_back(std::move(*iter));
+          static_cast<FiberElement *>(insertion_point)
+              ->action_param_list_.emplace_back(std::move(*iter));
           iter = action_param_list_.erase(iter);
         } else {
           ++iter;
@@ -1692,9 +1694,10 @@ void FiberElement::RemovedFrom(FiberElement *insertion_point) {
   // the action_param_list_ here.
   if ((parent() != insertion_point) && (ZIndex() != 0 || is_fixed_) &&
       !EnableFragmentLayerRender()) {
-    insertion_point->action_param_list_.emplace_back(
-        Action::kRemoveIntergenerationAct, insertion_point,
-        fml::RefPtr<FiberElement>(this), 0, nullptr, is_fixed_);
+    static_cast<FiberElement *>(insertion_point)
+        ->action_param_list_.emplace_back(
+            Action::kRemoveIntergenerationAct, insertion_point,
+            fml::RefPtr<FiberElement>(this), 0, nullptr, is_fixed_);
     MarkDirty(kDirtyReAttachContainer);
   }
 
@@ -3333,7 +3336,7 @@ FiberElement *FiberElement::ReplaceTemplateChildIfNeeded(
   // materialized template root when this becomes observable.
 
   *child_iter = root;
-  fiber_child = root.get();
+  fiber_child = static_cast<FiberElement *>(root.get());
   OnNodeAdded(fiber_child);
   TreeResolver::NotifyNodeInserted(this, fiber_child);
   fiber_child->set_parent(this);
@@ -5510,12 +5513,12 @@ void Element::CreateListItemScheduler(
       this, batch_render_strategy, continuous_resolve_tree);
 }
 
-void FiberElement::DispatchAsyncResolveSubtreeProperty() {
+void Element::DispatchAsyncResolveSubtreeProperty() {
   if (element_manager()->GetEnableParallelElement() &&
       ((dirty_ & ~kDirtyTree) != 0) && this->IsAttached()) {
     UpdateResolveStatus(AsyncResolveStatus::kPrepareTriggered);
     element_manager()->GetTasmWorkerTaskRunner()->PostTask([this]() mutable {
-      std::deque<FiberElement *> queue;
+      std::deque<Element *> queue;
       auto root = this;
       queue.emplace_back(root);
       while (!queue.empty()) {
@@ -5536,7 +5539,7 @@ void FiberElement::DispatchAsyncResolveSubtreeProperty() {
               false, element_manager()->ParallelTasks());
         }
         for (const auto &child : current->children()) {
-          queue.emplace_back(static_cast<FiberElement *>(child.get()));
+          queue.emplace_back(child.get());
         }
         queue.pop_front();
       }

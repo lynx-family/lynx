@@ -33,9 +33,6 @@ namespace lynx {
 namespace tasm {
 class NodeManager;
 class PlatformLayoutFunctionWrapper;
-using ParallelFlushReturn = base::closure;
-using ParallelReduceTaskQueue =
-    std::list<base::OnceTaskRefptr<ParallelFlushReturn>>;
 
 enum NodeInfoBits : int32_t {
   // Mask for layout node type, using lower 16 bits.
@@ -69,14 +66,13 @@ class FiberElement : public Element {
   // This function will clone an incomplete fiber element that is not attached
   // to the element manager. Before using this fiber element, it needs to be
   // attached to the element manager first.
-  virtual fml::RefPtr<FiberElement> CloneElement(
-      bool clone_resolved_props) const {
+  fml::RefPtr<Element> CloneElement(bool clone_resolved_props) const override {
     // Because the performance of the copy constructor is better than the
     // combination of default construction and assignment operation, we choose
     // to use the copy constructor to copy the element here. To minimize the
     // impact caused by exposing the copy constructor, we have made it protected
     // and encapsulated it in CloneElement.
-    return fml::AdoptRef<FiberElement>(
+    return fml::AdoptRef<Element>(
         new FiberElement(*this, clone_resolved_props));
   }
 
@@ -109,7 +105,7 @@ class FiberElement : public Element {
   /**
    * A key function to flush the tree with the current element as the root node.
    */
-  virtual void FlushActionsAsRoot();
+  void FlushActionsAsRoot() override;
 
   /**
    * A key function for flush all pending actions for current Element
@@ -130,16 +126,8 @@ class FiberElement : public Element {
 
   void ParallelFlushRecursively();
 
-  void AsyncResolveProperty();
-
-  virtual void PostResolveTaskToThreadPool(bool is_engine_thread,
-                                           ParallelReduceTaskQueue& task_queue);
-
-  void DispatchAsyncResolveSubtreeProperty();
-
-  void DispatchAsyncResolveProperty();
-
-  void AsyncPostResolveTaskToThreadPool();
+  virtual void PostResolveTaskToThreadPool(
+      bool is_engine_thread, ParallelReduceTaskQueue& task_queue) override;
 
   /**
    * A key function for generating children's actions.
@@ -165,7 +153,7 @@ class FiberElement : public Element {
    */
   void ReplaceElements(const base::Vector<fml::RefPtr<Element>>& inserted,
                        const base::Vector<fml::RefPtr<Element>>& removed,
-                       Element* ref_node);
+                       Element* ref_node) override;
 
   /**
    * Element API for InsertingNodeBefore reference child
@@ -173,7 +161,7 @@ class FiberElement : public Element {
    * @param reference_child the reference child
    */
   void InsertNodeBefore(const fml::RefPtr<Element>& child,
-                        const fml::RefPtr<Element>& reference_child);
+                        const fml::RefPtr<Element>& reference_child) override;
   /**
    * Element API for removing the specific child Element
    * @param child the Element to be removed
@@ -249,10 +237,10 @@ class FiberElement : public Element {
   // elements may be converted into inline elements.
 
   // current element is inserted to DOM tree
-  virtual void InsertedInto(FiberElement* insertion_point);
+  virtual void InsertedInto(Element* insertion_point);
 
   // current element is removed from DOM tree
-  virtual void RemovedFrom(FiberElement* insertion_point);
+  virtual void RemovedFrom(Element* insertion_point);
 
   // The element object created using the clone interface of FiberElement is not
   // attached to the element manager. Use this function to attach it to the

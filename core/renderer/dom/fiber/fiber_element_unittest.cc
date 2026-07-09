@@ -284,7 +284,7 @@ TemplateCallbackValues CreateTemplateCallbackValuesRecordingEnqueue(
       lepus_runtime->GetGlobalData("componentAtIndexes")};
 }
 
-const lepus::Value* DatasetValue(const FiberElement* element,
+const lepus::Value* DatasetValue(const Element* element,
                                  const base::String& key) {
   auto it = element->data_model_->dataset().find(key);
   if (it == element->data_model_->dataset().end()) {

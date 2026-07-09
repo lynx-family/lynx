@@ -20,10 +20,8 @@ class PageElement : public ComponentElement {
   PageElement(ElementManager* manager, const base::String& component_id,
               int32_t css_id);
 
-  fml::RefPtr<FiberElement> CloneElement(
-      bool clone_resolved_props) const override {
-    return fml::AdoptRef<FiberElement>(
-        new PageElement(*this, clone_resolved_props));
+  fml::RefPtr<Element> CloneElement(bool clone_resolved_props) const override {
+    return fml::AdoptRef<Element>(new PageElement(*this, clone_resolved_props));
   }
 
   bool is_page() const override { return true; }

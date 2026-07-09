@@ -765,9 +765,9 @@ void RadonNode::SetEventListeners(
                         return;
                       }
                       auto* target =
-                          static_cast<FiberElement*>(event->target().get());
-                      auto* current_target = static_cast<FiberElement*>(
-                          event->current_target().get());
+                          static_cast<Element*>(event->target().get());
+                      auto* current_target =
+                          static_cast<Element*>(event->current_target().get());
                       auto* parent_component =
                           current_target->GetParentComponentElement();
                       auto vm_context =
