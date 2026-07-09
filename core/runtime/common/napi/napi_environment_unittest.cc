@@ -66,7 +66,7 @@ TEST_F(NapiEnvironmentTest, BasicScriptingTest) {
 TEST_F(NapiEnvironmentTest, LoadModuleTest) {
   class TestDelegate : public NapiEnvironment::Delegate {
     void OnAttach(Napi::Env env) override {
-      test::TestModule m;
+      ::lynx::test::TestModule m;
       Napi::Object global = env.Global();
       m.OnLoad(global);
     }

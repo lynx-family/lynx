@@ -27,6 +27,7 @@
 #include "core/services/timing_handler/timing.h"
 #include "core/services/timing_handler/timing_handler.h"
 #include "core/shell/lynx_card_cache_data_op.h"
+#include "core/template_bundle/lynx_template_bundle.h"
 #include "third_party/rapidjson/document.h"
 
 namespace lynx {
@@ -97,7 +98,8 @@ class TemplateDelegate : public ContextProxy::Delegate,
       runtime::js::ApiCallBack callback) = 0;
   virtual bool LoadDynamicComponentFromJS(
       const std::string& url, const runtime::js::ApiCallBack& callback,
-      const std::vector<std::string>& ids) = 0;
+      const std::vector<std::string>& ids,
+      std::optional<tasm::LynxTemplateBundle> template_bundle) = 0;
   virtual void LoadScriptAsync(const std::string& url,
                                runtime::js::ApiCallBack callback) = 0;
 
