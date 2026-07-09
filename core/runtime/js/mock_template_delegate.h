@@ -40,7 +40,8 @@ class MockTemplateDelegate : public runtime::TemplateDelegate {
       runtime::js::ApiCallBack callback) override {}
   bool LoadDynamicComponentFromJS(
       const std::string& url, const runtime::js::ApiCallBack& callback,
-      const std::vector<std::string>& ids) override {
+      const std::vector<std::string>& ids,
+      std::optional<tasm::LynxTemplateBundle> template_bundle) override {
     return true;
   }
   void LoadScriptAsync(const std::string& url,

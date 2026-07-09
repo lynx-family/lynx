@@ -144,12 +144,34 @@ void BTSRuntimeMediator::GetComponentContextDataAsync(
 
 bool BTSRuntimeMediator::LoadDynamicComponentFromJS(
     const std::string& url, const runtime::js::ApiCallBack& callback,
-    const std::vector<std::string>& ids) {
+    const std::vector<std::string>& ids,
+    std::optional<tasm::LynxTemplateBundle> template_bundle) {
   if (runtime_standalone_mode_) {
     REPORT_JSI_NATIVE_EXCEPTION(
         "LoadDynamicComponentFromJS not supported on runtime standalone mode");
     return true;
   }
+
+  if (template_bundle) {
+    auto callback_info =
+        tasm::LazyBundleLoader::CallBackInfo{std::string(url),
+                                             {},
+                                             std::move(template_bundle),
+                                             std::nullopt,
+                                             true,
+                                             callback.id(),
+                                             std::vector<std::string>(ids)};
+    if (!engine_actor_) {
+      LOGE("LoadDynamicComponentFromJS:engine_actor is null");
+      return false;
+    }
+    engine_actor_->Act(
+        [callback_info = std::move(callback_info)](auto& engine) mutable {
+          engine->DidLoadComponentFromJS(std::move(callback_info));
+        });
+    return false;
+  }
+
   external_resource_loader_->LoadLazyBundle(url, callback.id(), ids);
   return false;
 }

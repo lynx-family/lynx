@@ -75,6 +75,9 @@ class TemplateEntryHolder : public JsBundleHolderImpl::BundleProxy {
   void TryPostJSBundle(const std::string& url,
                        const LynxTemplateBundle& bundle);
 
+  void TryPostTemplateBundle(const std::string& url,
+                             const LynxTemplateBundle& bundle);
+
   std::unordered_map<std::string, std::shared_ptr<TemplateEntry>>
       template_entries_;
 
