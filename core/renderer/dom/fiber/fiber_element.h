@@ -25,7 +25,6 @@
 #include "core/renderer/dom/attribute_holder.h"
 #include "core/renderer/dom/element.h"
 #include "core/renderer/dom/fiber/list_item_scheduler_adapter.h"
-#include "core/renderer/dom/fiber/pseudo_element.h"
 #include "core/renderer/dom/layout_bundle.h"
 #include "core/renderer/simple_styling/style_object.h"
 #include "core/renderer/utils/base/element_template_info.h"
@@ -142,8 +141,6 @@ class FiberElement : public Element {
   virtual void PostResolveTaskToThreadPool(bool is_engine_thread,
                                            ParallelReduceTaskQueue& task_queue);
 
-  void AsyncResolveSubtreeProperty();
-
   void DispatchAsyncResolveSubtreeProperty();
 
   void DispatchAsyncResolveProperty();
@@ -206,10 +203,6 @@ class FiberElement : public Element {
   void UpdateCSSVariable(const lepus::Value& variables,
                          std::shared_ptr<PipelineOptions>& pipeline_option);
 
-  void FiberAddEvent(const base::String& type, const base::String& name,
-                     const lepus::Value& callback,
-                     const std::string& context_name);
-
   /**
    * Element API for setNativeProps
    *  @param native_props the props that updated from js.
@@ -219,20 +212,6 @@ class FiberElement : public Element {
       std::shared_ptr<PipelineOptions>& pipeline_options) override;
 
   virtual StyleMap GetStylesForWorklet() override;
-
-  /**
-   * @brief Set the style objects for the current element.
-   *
-   * This method is used to assign a list of style objects to the element.
-   * The object list is managed by a custom deleter, which will be called
-   * when the unique pointer goes out of scope.
-   * @note This function is not implemented yet.
-   * @param object_list A unique pointer to an array of StyleObject pointers,
-   *                    along with a custom deleter function for the array.
-   */
-  void SetStyleObjects(
-      std::unique_ptr<style::StyleObject*, style::StyleObjectArrayDeleter>
-          object_list) override final;
 
   /**
    * @brief Update the simple styles of the current element.
@@ -270,13 +249,6 @@ class FiberElement : public Element {
   void ResetSimpleStyle(const tasm::CSSPropertyID id,
                         const tasm::CSSValue& value) override final;
   void ResetSimpleStyle(const tasm::CSSPropertyID id) override final;
-  // Update the dynamic simple style source object. The resolved dynamic layer
-  // will be applied during flush in ResolveSimpleStyles().
-  void ReplaceDynamicSimpleStyles(
-      style::DynamicStyleObjectRef new_style_object);
-  void AddDynamicSimpleStyles(tasm::StyleMap&& new_styles);
-  void RemoveDynamicSimpleStyleKV(tasm::CSSPropertyID id);
-  void AddDynamicSimpleStyleKV(tasm::CSSPropertyID id, tasm::CSSValue&& value);
   void ResolveCSSStyles(StyleMap& parsed_styles,
                         base::InlineVector<CSSPropertyID, 16>& reset_style_ids,
                         bool& need_update,
@@ -286,21 +258,10 @@ class FiberElement : public Element {
 
   void TraversalInsertFixedElementOfTree();
 
-  template <typename F>
-  void ApplyFunctionRecursive(F&& func) {
-    func(this);
-    for (const auto& child : scoped_children_) {
-      static_cast<FiberElement*>(child.get())->ApplyFunctionRecursive(func);
-    }
-  }
-
   void MarkFontSizeInvalidateRecursively();
   void InvalidateChildrenFontSizeRecursively();
   void InvalidateChildrenInheritedStylesRecursively();
 
-  // if child's related css variable is updated, invalidate child's style.
-  void RecursivelyMarkChildrenCSSVariableDirty(
-      const lepus::Value& css_variable_updated);
   void MarkDirectChildrenStyleDirtyForInheritedPropertyMutation();
 
   /**
@@ -665,9 +626,6 @@ class FiberElement : public Element {
 
   void RequestNextFrame() override;
 
-  bool IsRelatedCSSVariableUpdated(AttributeHolder* holder,
-                                   const lepus::Value changing_css_variables);
-
   virtual ParallelFlushReturn PrepareForCreateOrUpdate();
 
   void InsertLayoutNode(FiberElement* child, FiberElement* ref);
@@ -687,19 +645,11 @@ class FiberElement : public Element {
                     base::Vector<CSSPropertyID>& reset_ids,
                     bool force_use_parsed_styles_map = false);
 
-  void OnClassChanged(const ClassList& old_classes,
-                      const ClassList& new_classes);
-
   void UpdateDynamicElementStyle(uint32_t style, bool force_update) override;
 
   void CheckDynamicUnit(CSSPropertyID id, const CSSValue& value,
                         bool reset) override;
   void WillResetCSSValue(CSSPropertyID& id) override;
-
-  // FIXME(liujilong.me): unify trace relative macros.
-#if ENABLE_TRACE_PERFETTO
-  virtual void UpdateTraceDebugInfo(TraceEvent* event);
-#endif
 
   // The text element can call this function to convert child fiber elements
   // into inline elements. Currently, only view, text, image and wrapper
@@ -726,8 +676,6 @@ class FiberElement : public Element {
   void PersistAnimationFillStyles(const StyleMap& styles) override;
   void ClearPersistedAnimationFillStyle(CSSPropertyID id) override;
 
-  void PrepareOrUpdatePseudoElement(PseudoState state, StyleMap& style_map);
-
   void CreateListItemScheduler(list::BatchRenderStrategy batch_render_strategy,
                                bool continuous_resolve_tree);
 
@@ -745,9 +693,6 @@ class FiberElement : public Element {
   bool IsEventPathCatch(event::EventTarget* target,
                         event::Event* event) override;
 
-  void SetMeasureFunc(std::unique_ptr<MeasureFunc> measure_func);
-
-  void PrepareSelfForThreadedElementResolution();
   bool ShouldFallbackToSerialForNewStylingPipeline() const;
 
   void InvalidateChildrenIfNeeded();
@@ -796,12 +741,6 @@ class FiberElement : public Element {
 
   void UpdateLayoutInfoRecursively(PipelineOptions* options);
 
-  void DispatchLayoutBeforeRecursively();
-
-  void SetMeasureFunc(void* context, starlight::SLMeasureFunc measure_func);
-  void SetAlignmentFunc(void* context,
-                        starlight::SLAlignmentFunc alignment_func);
-
  private:
   friend class WrapperElement;
   friend class ComponentElement;
@@ -809,9 +748,6 @@ class FiberElement : public Element {
 
   bool ShouldPreserveLayoutOnlyForInheritedPlatformStyle(
       CSSPropertyID id, const CSSIDBitset& source_style_ids);
-
-  static event::EventListener::Options GetEventListenerOptions(
-      const base::String& type);
 
   FiberElement* FindEnclosingNoneWrapper(FiberElement* parent,
                                          FiberElement* node);
@@ -842,20 +778,6 @@ class FiberElement : public Element {
 
   void ResetTextAlign(StyleMap& update_map, bool direction_reset);
 
-  bool CheckHasInvalidationForId(const std::string& old_id,
-                                 const std::string& new_id) override;
-
-  bool CheckHasInvalidationForClass(const ClassList& old_classes,
-                                    const ClassList& new_classes);
-  void InvalidateChildren(css::InvalidationSet* invalidation_set);
-  void VisitChildren(const base::MoveOnlyClosure<void, FiberElement*>& visitor);
-
-  PseudoElement* CreatePseudoElementIfNeed(PseudoState state);
-
-  void SetFontSizeForAllElement(double cur_node_font_size,
-                                double root_node_font_size);
-  void UpdateLengthContextValueForAllElement(const LynxEnvConfig& env_config);
-
   void UpdateDynamicElementStyleRecursively(uint32_t style, bool force_update);
   void UpdateDynamicElementStyleForNewPipeline(uint32_t& style,
                                                bool& inner_force_update);
@@ -878,8 +800,6 @@ class FiberElement : public Element {
   void EnsureSLNode();
   bool HasLayoutInElementPlatformNode();
   int GetLayoutInElementPlatformChildIndex(FiberElement* child);
-
-  virtual void DispatchLayoutBefore();
 
   void ApplySimpleStyleWithoutTail(const tasm::CSSPropertyID id,
                                    const tasm::CSSValue& value);

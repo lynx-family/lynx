@@ -646,11 +646,11 @@ void TreeResolver::RemoveFromParentForWrapperChild(FiberElement* parent,
 }
 
 fml::RefPtr<lepus::Dictionary> TreeResolver::GetTemplateParts(
-    const fml::RefPtr<FiberElement>& template_element) {
+    const fml::RefPtr<Element>& template_element) {
   DCHECK(template_element->IsTemplateElement());
   auto parts_map = lepus::Dictionary::Create();
   for (const auto& c : template_element->children()) {
-    GetPartsRecursively(fml::static_ref_ptr_cast<FiberElement>(c), parts_map);
+    GetPartsRecursively(c, parts_map);
   }
   return parts_map;
 }
@@ -713,7 +713,7 @@ GeneratedElementsResult TreeResolver::GenerateElementsFromTemplateInfo(
 void TreeResolver::InitElementTree(
     fml::RefPtr<FiberElement>& element, int64_t pid, ElementManager* manager,
     const std::shared_ptr<CSSStyleSheetManager>& style_manager) {
-  element->ApplyFunctionRecursive([manager, style_manager](FiberElement* e) {
+  element->ApplyFunctionRecursive([manager, style_manager](Element* e) {
     e->AttachToElementManager(manager, style_manager, false);
   });
   element->SetParentComponentUniqueIdRecursively(pid);
@@ -726,7 +726,7 @@ lepus::Value TreeResolver::InitElementTree(
   TRACE_EVENT(LYNX_TRACE_CATEGORY, TREE_RESOLVER_INIT_ELEMENT_TREE);
   auto ary = lepus::CArray::Create();
   for (auto& element : elements) {
-    element->ApplyFunctionRecursive([manager, style_manager](FiberElement* e) {
+    element->ApplyFunctionRecursive([manager, style_manager](Element* e) {
       e->AttachToElementManager(manager, style_manager, false);
     });
     element->SetParentComponentUniqueIdRecursively(pid);
@@ -772,7 +772,7 @@ void TreeResolver::AttachToElementManagerRecursively(
 }
 
 void TreeResolver::GetPartsRecursively(
-    const fml::RefPtr<FiberElement>& root,
+    const fml::RefPtr<Element>& root,
     fml::RefPtr<lepus::Dictionary>& parts_map) {
   if (root->IsPartElement()) {
     parts_map->SetValue(root->GetPartID(), root);
@@ -781,7 +781,7 @@ void TreeResolver::GetPartsRecursively(
     return;
   }
   for (const auto& c : root->children()) {
-    GetPartsRecursively(fml::static_ref_ptr_cast<FiberElement>(c), parts_map);
+    GetPartsRecursively(c, parts_map);
   }
 }
 
@@ -950,7 +950,7 @@ void TreeResolver::TraverseDom(FiberElement* root, uint32_t work_unit_size) {
   }
   std::list<FiberElement*> discovered;
   discovered.emplace_back(root);
-  root->ApplyFunctionRecursive([](FiberElement* element) {
+  root->ApplyFunctionRecursive([](Element* element) {
     if (element->ShouldResolveStyle()) {
       element->PrepareSelfForThreadedElementResolution();
     }

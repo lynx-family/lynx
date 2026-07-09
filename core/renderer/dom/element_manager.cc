@@ -364,17 +364,17 @@ void ElementManager::RunDevToolFunction(
   });
 }
 
-void ElementManager::FiberAttachToInspectorRecursively(FiberElement *root) {
+void ElementManager::FiberAttachToInspectorRecursively(Element *root) {
   EXEC_EXPR_FOR_INSPECTOR({
     if (!devtool_flag_ || !IsDomTreeEnabled()) {
       return;
     }
     TRACE_EVENT(LYNX_TRACE_CATEGORY, DEVTOOL_FIBER_ATTACH_TO_INSPECTOR);
-    std::function<void(FiberElement *)> prepare_and_add_node_f =
-        [this, &prepare_and_add_node_f](FiberElement *element) {
+    std::function<void(Element *)> prepare_and_add_node_f =
+        [this, &prepare_and_add_node_f](Element *element) {
           PrepareNodeForInspector(element);
           for (const auto &child : element->children()) {
-            prepare_and_add_node_f(static_cast<FiberElement *>(child.get()));
+            prepare_and_add_node_f(child.get());
           }
           CheckAndProcessSlotForInspector(element);
           OnElementNodeAddedForInspector(element);
@@ -1629,7 +1629,7 @@ void ElementManager::OnPatchFinishForFiber(
   if (options->force_update_style_sheet_) {
     // When force_update_style_sheet_ is true, need recursively traverse the
     // entire tree to mark dirty and reset style sheet.
-    element->ApplyFunctionRecursive([](FiberElement *element) {
+    element->ApplyFunctionRecursive([](Element *element) {
       element->ResetStyleSheet();
       element->MarkStyleDirty();
     });
@@ -1641,7 +1641,7 @@ void ElementManager::OnPatchFinishForFiber(
   if (options->is_reload_template && config_ &&
       config_->GetEnableReloadLifecycle()) {
     element->ApplyFunctionRecursive(
-        [](FiberElement *element) { element->onNodeReload(); });
+        [](Element *element) { element->onNodeReload(); });
     catalyzer_->painting_context()->UpdateNodeReloadPatching();
   }
   FirePostMTSRenderTasks();
@@ -1835,18 +1835,17 @@ int32_t ElementManager::CalcTotalMemoryUsageDiff() {
 }
 
 namespace {
-void ClearExtremeParsedStylesRecursively(FiberElement *cur) {
+void ClearExtremeParsedStylesRecursively(Element *cur) {
   cur->ClearExtremeParsedStyles();
   for (auto &child : cur->children()) {
-    ClearExtremeParsedStylesRecursively(
-        static_cast<FiberElement *>(child.get()));
+    ClearExtremeParsedStylesRecursively(child.get());
   }
 }
 }  // namespace
 
 void ElementManager::ClearExtremeParsedStyles() {
   if (likely(root_)) {
-    ClearExtremeParsedStylesRecursively(static_cast<FiberElement *>(root()));
+    ClearExtremeParsedStylesRecursively(root());
   }
 }
 

@@ -24,6 +24,7 @@
 #include "base/include/value/ref_type.h"
 #include "base/include/value/table.h"
 #include "base/include/vector.h"
+#include "base/trace/native/trace_event.h"
 #include "core/animation/css_keyframe_manager.h"
 #include "core/animation/css_transition_manager.h"
 #include "core/base/lynx_export.h"
@@ -66,6 +67,7 @@ class ElementManager;
 class ElementContainer;
 class HierarchyObserver;
 class ListNode;
+class LynxEnvConfig;
 class Fragment;
 class CSSFragmentDecorator;
 class CSSParseToken;
@@ -359,6 +361,15 @@ class Element : public lepus::RefCounted,
 
   virtual void SetStyleInternal(CSSPropertyID id, const tasm::CSSValue& value);
 
+  void SetStyleObjects(
+      std::unique_ptr<style::StyleObject*, style::StyleObjectArrayDeleter>
+          object_list) override;
+  void ReplaceDynamicSimpleStyles(
+      style::DynamicStyleObjectRef new_style_object);
+  void AddDynamicSimpleStyles(tasm::StyleMap&& new_styles);
+  void RemoveDynamicSimpleStyleKV(tasm::CSSPropertyID id);
+  void AddDynamicSimpleStyleKV(tasm::CSSPropertyID id, tasm::CSSValue&& value);
+
   LYNX_EXPORT_FOR_DEVTOOL virtual void ResetStyle(
       const base::Vector<CSSPropertyID>& style_names);
 
@@ -385,6 +396,8 @@ class Element : public lepus::RefCounted,
    * @param clazz the name of class selector
    */
   void SetClass(const base::String& clazz);
+  void OnClassChanged(const ClassList& old_classes,
+                      const ClassList& new_classes);
 
   /**
    * Element API for setting class names to Element
@@ -466,6 +479,10 @@ class Element : public lepus::RefCounted,
    * Element API for removing all events
    */
   void RemoveAllEvents();
+
+  void FiberAddEvent(const base::String& type, const base::String& name,
+                     const lepus::Value& callback,
+                     const std::string& context_name);
 
   /**
    * Element API for adding config.
@@ -684,6 +701,7 @@ class Element : public lepus::RefCounted,
 
   inline bool IsAsyncFlushRoot() const { return is_async_flush_root_; }
   inline void MarkAsyncFlushRoot(bool value) { is_async_flush_root_ = value; }
+  void AsyncResolveSubtreeProperty();
 
   // Data model accessor methods
   const ClassList& classes() { return data_model_->classes(); }
@@ -814,6 +832,8 @@ class Element : public lepus::RefCounted,
   bool IsCSSInheritanceEnabled() const;
 
   bool IsCSSInlineVariablesEnabled() const;
+  bool IsRelatedCSSVariableUpdated(AttributeHolder* holder,
+                                   const lepus::Value changing_css_variables);
 
   BaseElementContainer* element_container() const {
     return element_container_.get();
@@ -1097,6 +1117,9 @@ class Element : public lepus::RefCounted,
 
   virtual void FlushProps() = 0;
 
+  void DispatchLayoutBeforeRecursively();
+  virtual void DispatchLayoutBefore();
+
   virtual void set_will_destroy(bool destroy);
 
   bool will_destroy() { return will_destroy_; }
@@ -1228,6 +1251,10 @@ class Element : public lepus::RefCounted,
 
   // If element not CanBeLayoutOnly, call this function to create LynxUI.
   void TransitionToNativeView();
+  void SetMeasureFunc(std::unique_ptr<MeasureFunc> measure_func);
+  void SetMeasureFunc(void* context, starlight::SLMeasureFunc measure_func);
+  void SetAlignmentFunc(void* context,
+                        starlight::SLAlignmentFunc alignment_func);
 
   // When list component finishes all props update
   virtual void PropsUpdateFinish() {}
@@ -1250,6 +1277,7 @@ class Element : public lepus::RefCounted,
                     CSSVariableMap* changed_css_vars = nullptr);
 
   void HandlePseudoElement();
+  void PrepareOrUpdatePseudoElement(PseudoState state, StyleMap& style_map);
 
   void HandleCSSVariables(StyleMap& styles);
 
@@ -1393,6 +1421,20 @@ class Element : public lepus::RefCounted,
 
   // Mark style dirty, optionally recursively for children
   LYNX_EXPORT_FOR_DEVTOOL void MarkStyleDirty(bool recursive = false);
+  void RecursivelyMarkChildrenCSSVariableDirty(
+      const lepus::Value& css_variable_updated);
+
+#if ENABLE_TRACE_PERFETTO
+  virtual void UpdateTraceDebugInfo(TraceEvent* event);
+#endif
+
+  template <typename F>
+  void ApplyFunctionRecursive(F&& func) {
+    func(this);
+    for (const auto& child : scoped_children_) {
+      child->ApplyFunctionRecursive(func);
+    }
+  }
 
   void MarkTemplateElement() { is_template_ = true; }
 
@@ -1450,16 +1492,17 @@ class Element : public lepus::RefCounted,
    */
   bool IfNeedsUpdateLayoutInfo();
 
- protected:
-  Element(const Element&, bool clone_resolved_props);
-
-  // The element object created using the clone interface of FiberElement is
-  // not attached to the element manager. Use this function to attach it to
-  // the element manager.
+  // The element object created using clone interfaces is not attached to the
+  // element manager. Use this function to attach it to the element manager.
   virtual void AttachToElementManager(
       ElementManager* manager,
       const std::shared_ptr<CSSStyleSheetManager>& style_manager,
       bool keep_element_id);
+
+  void PrepareSelfForThreadedElementResolution();
+
+ protected:
+  Element(const Element&, bool clone_resolved_props);
 
   virtual void PushStyleToBundle();
   void PushCurrentPropsToBundleForRecording(PropBundle* bundle);
@@ -1505,12 +1548,16 @@ class Element : public lepus::RefCounted,
     return enable_class_change_transmit_ && !(dirty_ & kDirtyCreated);
   }
 
-  // Check if there's invalidation for id selector change. Override in
-  // FiberElement.
-  virtual bool CheckHasInvalidationForId(const std::string& old_id,
-                                         const std::string& new_id) {
-    return false;
-  }
+  // Check if there's invalidation for id selector change.
+  bool CheckHasInvalidationForId(const std::string& old_id,
+                                 const std::string& new_id);
+  bool CheckHasInvalidationForClass(const ClassList& old_classes,
+                                    const ClassList& new_classes);
+  void InvalidateChildren(css::InvalidationSet* invalidation_set);
+  void VisitChildren(const base::MoveOnlyClosure<void, Element*>& visitor);
+  void SetFontSizeForAllElement(double cur_node_font_size,
+                                double root_node_font_size);
+  void UpdateLengthContextValueForAllElement(const LynxEnvConfig& env_config);
 
   base::String tag_;
   bool is_overlay_{false};
@@ -1792,6 +1839,8 @@ class Element : public lepus::RefCounted,
   // Dom tree. When an Element is constructed, it is definitely not on the root
   // Dom tree, so state_ is initialized as State::kDetached.
   State state_{State::kDetached};
+
+  PseudoElement* CreatePseudoElementIfNeed(PseudoState state);
 
   bool WriteRenderStyleToBundle(tasm::CSSPropertyID id,
                                 const tasm::CSSValue& value);
