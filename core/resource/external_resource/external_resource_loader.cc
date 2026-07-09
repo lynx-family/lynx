@@ -125,9 +125,9 @@ void ExternalResourceLoader::LoadLazyBundle(const std::string& url,
   LoadLazyBundle(url, callback_id, {});
 }
 
-void ExternalResourceLoader::LoadLazyBundle(
-    const std::string& url, int32_t callback_id,
-    const std::vector<std::string>& ids) {
+void ExternalResourceLoader::LoadLazyBundle(std::string url,
+                                            int32_t callback_id,
+                                            std::vector<std::string> ids) {
   if (!resource_loader_) {
     LOGE("LoadLazyBundle:resource_loader_ is null");
     return;
@@ -135,9 +135,9 @@ void ExternalResourceLoader::LoadLazyBundle(
   auto request =
       pub::LynxResourceRequest{url, pub::LynxResourceType::kLazyBundle};
   resource_loader_->LoadResource(
-      request,
-      [url, callback_id, component_ids = ids, weak_self = weak_from_this()](
-          pub::LynxResourceResponse& response) mutable {
+      request, [url = std::move(url), callback_id,
+                component_ids = std::move(ids), weak_self = weak_from_this()](
+                   pub::LynxResourceResponse& response) mutable {
         auto self = weak_self.lock();
         if (!self) {
           LOGI("LoadLazyBundle:self is null");
