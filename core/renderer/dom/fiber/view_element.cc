@@ -25,7 +25,7 @@ ViewElement::ViewElement(ElementManager* manager)
 
 void ViewElement::ConvertToInlineElement() { MarkAsInline(); }
 
-void ViewElement::OnNodeAdded(FiberElement* child) {
+void ViewElement::OnNodeAdded(Element* child) {
   UpdateRenderRootElementIfNecessary(child);
 }
 

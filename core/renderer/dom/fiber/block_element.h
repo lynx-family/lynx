@@ -26,32 +26,32 @@ class BlockElement : public FiberElement {
 
   void RemoveAllBlockNodes();
 
-  size_t FindInsertIndex(const fml::RefPtr<FiberElement>& child);
+  size_t FindInsertIndex(const fml::RefPtr<Element>& child);
   size_t GetAllNodeCountExcludeBlock();
 
-  void AddBlockChildAt(const fml::RefPtr<FiberElement>& child, size_t index);
+  void AddBlockChildAt(const fml::RefPtr<Element>& child, size_t index);
 
-  size_t IndexOfBlockChild(const fml::RefPtr<FiberElement>& child);
+  size_t IndexOfBlockChild(const fml::RefPtr<Element>& child);
   void RemoveBlockChildAt(size_t index);
 
-  void ReplaceElements(const base::Vector<fml::RefPtr<FiberElement>>& inserted,
-                       const base::Vector<fml::RefPtr<FiberElement>>& removed);
+  void ReplaceElements(const base::Vector<fml::RefPtr<Element>>& inserted,
+                       const base::Vector<fml::RefPtr<Element>>& removed);
 
   const auto& block_children() const { return block_children_; }
 
  private:
-  void RemoveBlockChildrenFromParent(BlockElement* block, FiberElement* parent);
-  void InsertBlockChildrenBefore(BlockElement* block, FiberElement* parent,
-                                 FiberElement* ref);
+  void RemoveBlockChildrenFromParent(BlockElement* block, Element* parent);
+  void InsertBlockChildrenBefore(BlockElement* block, Element* parent,
+                                 Element* ref);
 
-  FiberElement* FirstFlattenedNode();
-  FiberElement* FindNearestRightLogicalRenderedSibling(FiberElement* parent);
-  FiberElement* FindNearestLeftLogicalRenderedSibling(FiberElement* parent);
+  Element* FirstFlattenedNode();
+  Element* FindNearestRightLogicalRenderedSibling(Element* parent);
+  Element* FindNearestLeftLogicalRenderedSibling(Element* parent);
   size_t GetFlattenStartIndexInParent();
-  FiberElement* LastFlattenedNode();
+  Element* LastFlattenedNode();
 
  protected:
-  base::InlineVector<fml::RefPtr<FiberElement>, kChildrenInlineVectorSize>
+  base::InlineVector<fml::RefPtr<Element>, kChildrenInlineVectorSize>
       block_children_;
 };
 

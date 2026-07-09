@@ -9,7 +9,7 @@
 namespace lynx {
 namespace tasm {
 
-void ScrollElement::OnNodeAdded(FiberElement* child) {
+void ScrollElement::OnNodeAdded(Element* child) {
   FiberElement::OnNodeAdded(child);
 
   // Scroll's child should not be layout only.

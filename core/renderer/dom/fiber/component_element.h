@@ -101,8 +101,8 @@ class ComponentElement : public WrapperElement, public BaseComponent {
  protected:
   ComponentElement(const ComponentElement& element, bool clone_resolved_props);
 
-  void OnNodeAdded(FiberElement* child) override;
-  void OnNodeRemoved(FiberElement* child) override;
+  void OnNodeAdded(Element* child) override;
+  void OnNodeRemoved(Element* child) override;
 
   void UpdateRootCSSVariables(AttributeHolder* holder,
                               const fml::RefPtr<CSSParseToken>& root_token);

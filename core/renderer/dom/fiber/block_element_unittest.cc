@@ -307,10 +307,9 @@ TEST_F(BlockElementTest, ReplaceElements_SimpleReorder) {
 
   EXPECT_EQ(parent->GetChildCount(), 4);
 
-  base::Vector<fml::RefPtr<FiberElement>> inserted = {childD, childB, childA,
-                                                      childC};
-  base::Vector<fml::RefPtr<FiberElement>> removed = {childA, childB, childC,
-                                                     childD};
+  base::Vector<fml::RefPtr<Element>> inserted = {childD, childB, childA,
+                                                 childC};
+  base::Vector<fml::RefPtr<Element>> removed = {childA, childB, childC, childD};
   block->ReplaceElements(inserted, removed);
 
   EXPECT_EQ(parent->GetChildCount(), 4);
@@ -343,9 +342,8 @@ TEST_F(BlockElementTest, ReplaceElements_SimpleDelete) {
 
   EXPECT_EQ(parent->GetChildCount(), 4);
 
-  base::Vector<fml::RefPtr<FiberElement>> inserted = {childA, childD};
-  base::Vector<fml::RefPtr<FiberElement>> removed = {childA, childB, childC,
-                                                     childD};
+  base::Vector<fml::RefPtr<Element>> inserted = {childA, childD};
+  base::Vector<fml::RefPtr<Element>> removed = {childA, childB, childC, childD};
   block->ReplaceElements(inserted, removed);
 
   EXPECT_EQ(parent->GetChildCount(), 2);
@@ -373,9 +371,9 @@ TEST_F(BlockElementTest, ReplaceElements_SimpleInsert) {
   auto childC = manager->CreateFiberNode("view");
   auto childD = manager->CreateFiberNode("view");
 
-  base::Vector<fml::RefPtr<FiberElement>> inserted = {childA, childB, childC,
-                                                      childD};
-  base::Vector<fml::RefPtr<FiberElement>> removed = {childA, childB};
+  base::Vector<fml::RefPtr<Element>> inserted = {childA, childB, childC,
+                                                 childD};
+  base::Vector<fml::RefPtr<Element>> removed = {childA, childB};
   block->ReplaceElements(inserted, removed);
 
   EXPECT_EQ(parent->GetChildCount(), 4);
@@ -408,9 +406,9 @@ TEST_F(BlockElementTest, ReplaceElements_DeleteAndReorder) {
 
   EXPECT_EQ(parent->GetChildCount(), 5);
 
-  base::Vector<fml::RefPtr<FiberElement>> inserted = {childD, childB, childE};
-  base::Vector<fml::RefPtr<FiberElement>> removed = {childA, childB, childC,
-                                                     childD, childE};
+  base::Vector<fml::RefPtr<Element>> inserted = {childD, childB, childE};
+  base::Vector<fml::RefPtr<Element>> removed = {childA, childB, childC, childD,
+                                                childE};
   block->ReplaceElements(inserted, removed);
 
   EXPECT_EQ(parent->GetChildCount(), 3);
@@ -437,9 +435,9 @@ TEST_F(BlockElementTest, ReplaceElements_InsertAndReorder) {
   auto childD = manager->CreateFiberNode("view");
   auto childE = manager->CreateFiberNode("view");
 
-  base::Vector<fml::RefPtr<FiberElement>> inserted = {childC, childD, childA,
-                                                      childE, childB};
-  base::Vector<fml::RefPtr<FiberElement>> removed = {childA, childB, childC};
+  base::Vector<fml::RefPtr<Element>> inserted = {childC, childD, childA, childE,
+                                                 childB};
+  base::Vector<fml::RefPtr<Element>> removed = {childA, childB, childC};
   block->ReplaceElements(inserted, removed);
 
   EXPECT_EQ(parent->GetChildCount(), 5);
@@ -472,10 +470,10 @@ TEST_F(BlockElementTest, ReplaceElements_DeleteInsertReorder) {
   auto childF = manager->CreateFiberNode("view");
   auto childG = manager->CreateFiberNode("view");
 
-  base::Vector<fml::RefPtr<FiberElement>> inserted = {childE, childF, childB,
-                                                      childG};
-  base::Vector<fml::RefPtr<FiberElement>> removed = {childA, childB, childC,
-                                                     childD, childE};
+  base::Vector<fml::RefPtr<Element>> inserted = {childE, childF, childB,
+                                                 childG};
+  base::Vector<fml::RefPtr<Element>> removed = {childA, childB, childC, childD,
+                                                childE};
   block->ReplaceElements(inserted, removed);
 
   EXPECT_EQ(parent->GetChildCount(), 4);
@@ -496,8 +494,8 @@ TEST_F(BlockElementTest, ReplaceElements_EmptyToEmpty) {
 
   EXPECT_EQ(parent->GetChildCount(), 0);
 
-  base::Vector<fml::RefPtr<FiberElement>> inserted = {};
-  base::Vector<fml::RefPtr<FiberElement>> removed = {};
+  base::Vector<fml::RefPtr<Element>> inserted = {};
+  base::Vector<fml::RefPtr<Element>> removed = {};
   block->ReplaceElements(inserted, removed);
 
   EXPECT_EQ(parent->GetChildCount(), 0);
@@ -513,8 +511,8 @@ TEST_F(BlockElementTest, ReplaceElements_EmptyToNonEmpty) {
   auto childB = manager->CreateFiberNode("view");
   auto childC = manager->CreateFiberNode("view");
 
-  base::Vector<fml::RefPtr<FiberElement>> inserted = {childA, childB, childC};
-  base::Vector<fml::RefPtr<FiberElement>> removed = {};
+  base::Vector<fml::RefPtr<Element>> inserted = {childA, childB, childC};
+  base::Vector<fml::RefPtr<Element>> removed = {};
   block->ReplaceElements(inserted, removed);
 
   EXPECT_EQ(parent->GetChildCount(), 3);
@@ -540,8 +538,8 @@ TEST_F(BlockElementTest, ReplaceElements_NonEmptyToEmpty) {
 
   EXPECT_EQ(parent->GetChildCount(), 3);
 
-  base::Vector<fml::RefPtr<FiberElement>> inserted = {};
-  base::Vector<fml::RefPtr<FiberElement>> removed = {childA, childB, childC};
+  base::Vector<fml::RefPtr<Element>> inserted = {};
+  base::Vector<fml::RefPtr<Element>> removed = {childA, childB, childC};
   block->ReplaceElements(inserted, removed);
 
   EXPECT_EQ(parent->GetChildCount(), 0);
@@ -558,8 +556,8 @@ TEST_F(BlockElementTest, ReplaceElements_SingleElement) {
 
   auto childB = manager->CreateFiberNode("view");
 
-  base::Vector<fml::RefPtr<FiberElement>> inserted = {childB};
-  base::Vector<fml::RefPtr<FiberElement>> removed = {childA};
+  base::Vector<fml::RefPtr<Element>> inserted = {childB};
+  base::Vector<fml::RefPtr<Element>> removed = {childA};
   block->ReplaceElements(inserted, removed);
 
   EXPECT_EQ(parent->GetChildCount(), 1);
@@ -590,10 +588,8 @@ TEST_F(BlockElementTest, ReplaceElements_WithNestedBlock) {
 
   EXPECT_EQ(parent->GetChildCount(), 4);
 
-  base::Vector<fml::RefPtr<FiberElement>> inserted = {nested_block, child1,
-                                                      child4};
-  base::Vector<fml::RefPtr<FiberElement>> removed = {child1, nested_block,
-                                                     child4};
+  base::Vector<fml::RefPtr<Element>> inserted = {nested_block, child1, child4};
+  base::Vector<fml::RefPtr<Element>> removed = {child1, nested_block, child4};
   block->ReplaceElements(inserted, removed);
 
   EXPECT_EQ(parent->GetChildCount(), 4);
@@ -628,9 +624,8 @@ TEST_F(BlockElementTest, ReplaceElements_DeleteNestedBlock) {
 
   EXPECT_EQ(parent->GetChildCount(), 4);
 
-  base::Vector<fml::RefPtr<FiberElement>> inserted = {child1, child4};
-  base::Vector<fml::RefPtr<FiberElement>> removed = {child1, nested_block,
-                                                     child4};
+  base::Vector<fml::RefPtr<Element>> inserted = {child1, child4};
+  base::Vector<fml::RefPtr<Element>> removed = {child1, nested_block, child4};
   block->ReplaceElements(inserted, removed);
 
   EXPECT_EQ(parent->GetChildCount(), 2);
@@ -659,8 +654,8 @@ TEST_F(BlockElementTest, ReplaceElements_WithForElement) {
 
   EXPECT_EQ(parent->GetChildCount(), 3);
 
-  base::Vector<fml::RefPtr<FiberElement>> inserted = {for_node, child3, child1};
-  base::Vector<fml::RefPtr<FiberElement>> removed = {child1, for_node, child3};
+  base::Vector<fml::RefPtr<Element>> inserted = {for_node, child3, child1};
+  base::Vector<fml::RefPtr<Element>> removed = {child1, for_node, child3};
   block->ReplaceElements(inserted, removed);
 
   EXPECT_EQ(parent->GetChildCount(), 3);
@@ -697,8 +692,8 @@ TEST_F(BlockElementTest, ReplaceElements_WithRefNode) {
 
   EXPECT_EQ(parent->GetChildCount(), 6);
 
-  base::Vector<fml::RefPtr<FiberElement>> inserted = {childC, childB, childA};
-  base::Vector<fml::RefPtr<FiberElement>> removed = {childA, childB, childC};
+  base::Vector<fml::RefPtr<Element>> inserted = {childC, childB, childA};
+  base::Vector<fml::RefPtr<Element>> removed = {childA, childB, childC};
   block->ReplaceElements(inserted, removed);
 
   EXPECT_EQ(parent->GetChildCount(), 6);
@@ -736,10 +731,10 @@ TEST_F(BlockElementTest, ReplaceElements_MixedBlockAndNormal) {
 
   auto childF = manager->CreateFiberNode("view");
 
-  base::Vector<fml::RefPtr<FiberElement>> inserted = {childE, nested_block,
-                                                      childF, childA};
-  base::Vector<fml::RefPtr<FiberElement>> removed = {childA, nested_block,
-                                                     childD, childE};
+  base::Vector<fml::RefPtr<Element>> inserted = {childE, nested_block, childF,
+                                                 childA};
+  base::Vector<fml::RefPtr<Element>> removed = {childA, nested_block, childD,
+                                                childE};
   block->ReplaceElements(inserted, removed);
 
   EXPECT_EQ(parent->GetChildCount(), 5);
@@ -773,8 +768,8 @@ TEST_F(BlockElementTest, ReplaceElements_AllNewElements) {
   auto childE = manager->CreateFiberNode("view");
   auto childF = manager->CreateFiberNode("view");
 
-  base::Vector<fml::RefPtr<FiberElement>> inserted = {childD, childE, childF};
-  base::Vector<fml::RefPtr<FiberElement>> removed = {childA, childB, childC};
+  base::Vector<fml::RefPtr<Element>> inserted = {childD, childE, childF};
+  base::Vector<fml::RefPtr<Element>> removed = {childA, childB, childC};
   block->ReplaceElements(inserted, removed);
 
   EXPECT_EQ(parent->GetChildCount(), 3);
@@ -810,10 +805,10 @@ TEST_F(BlockElementTest, ReplaceElements_MixedForAndIfElements) {
 
   EXPECT_EQ(parent->GetChildCount(), 4);
 
-  base::Vector<fml::RefPtr<FiberElement>> inserted = {if_node, child1, for_node,
-                                                      child4};
-  base::Vector<fml::RefPtr<FiberElement>> removed = {child1, for_node, if_node,
-                                                     child4};
+  base::Vector<fml::RefPtr<Element>> inserted = {if_node, child1, for_node,
+                                                 child4};
+  base::Vector<fml::RefPtr<Element>> removed = {child1, for_node, if_node,
+                                                child4};
   block->ReplaceElements(inserted, removed);
 
   EXPECT_EQ(parent->GetChildCount(), 4);
@@ -839,8 +834,8 @@ TEST_F(BlockElementTest, ReplaceElements_VerifyVirtualParent) {
   block->InsertNode(childA);
   block->InsertNode(childB);
 
-  base::Vector<fml::RefPtr<FiberElement>> inserted = {childB, childC, childA};
-  base::Vector<fml::RefPtr<FiberElement>> removed = {childA, childB};
+  base::Vector<fml::RefPtr<Element>> inserted = {childB, childC, childA};
+  base::Vector<fml::RefPtr<Element>> removed = {childA, childB};
   block->ReplaceElements(inserted, removed);
 
   EXPECT_EQ(childA->virtual_parent(), block.get());
@@ -863,10 +858,8 @@ TEST_F(BlockElementTest, ReplaceElements_VerifyParentChildren) {
   nested_block->InsertNode(child2);
   block->InsertNode(child3);
 
-  base::Vector<fml::RefPtr<FiberElement>> inserted = {child3, nested_block,
-                                                      child1};
-  base::Vector<fml::RefPtr<FiberElement>> removed = {child1, nested_block,
-                                                     child3};
+  base::Vector<fml::RefPtr<Element>> inserted = {child3, nested_block, child1};
+  base::Vector<fml::RefPtr<Element>> removed = {child1, nested_block, child3};
   block->ReplaceElements(inserted, removed);
 
   EXPECT_EQ(parent->GetChildCount(), 3);
@@ -888,8 +881,8 @@ TEST_F(BlockElementTest, ReplaceElements_VerifyBlockChildren) {
   block->InsertNode(childB);
   block->InsertNode(childC);
 
-  base::Vector<fml::RefPtr<FiberElement>> inserted = {childC, childA, childB};
-  base::Vector<fml::RefPtr<FiberElement>> removed = {childA, childB, childC};
+  base::Vector<fml::RefPtr<Element>> inserted = {childC, childA, childB};
+  base::Vector<fml::RefPtr<Element>> removed = {childA, childB, childC};
   block->ReplaceElements(inserted, removed);
 
   EXPECT_EQ(block->block_children_.size(), 3);
@@ -920,8 +913,8 @@ TEST_F(BlockElementTest, InsertNode_AfterReplaceElements) {
   EXPECT_EQ(parent->GetChildAt(1), child1.get());
 
   // Reorder via ReplaceElements: move block0 to the front
-  base::Vector<fml::RefPtr<FiberElement>> inserted = {block0, child0, child1};
-  base::Vector<fml::RefPtr<FiberElement>> removed = {child0, child1, block0};
+  base::Vector<fml::RefPtr<Element>> inserted = {block0, child0, child1};
+  base::Vector<fml::RefPtr<Element>> removed = {child0, child1, block0};
   block->ReplaceElements(inserted, removed);
 
   // Verify the order after rearrangement
@@ -979,8 +972,8 @@ TEST_F(BlockElementTest,
   for_node->InsertNode(for_child2);
   block->InsertNode(childB);
 
-  base::Vector<fml::RefPtr<FiberElement>> inserted = {for_node, childB, childA};
-  base::Vector<fml::RefPtr<FiberElement>> removed = {childA, for_node, childB};
+  base::Vector<fml::RefPtr<Element>> inserted = {for_node, childB, childA};
+  base::Vector<fml::RefPtr<Element>> removed = {childA, for_node, childB};
   block->ReplaceElements(inserted, removed);
 
   EXPECT_EQ(parent->GetChildCount(), 4);
@@ -1020,8 +1013,8 @@ TEST_F(BlockElementTest, NestedIfUpdateIfIndex_AfterOuterReplaceElements) {
   if_node->InsertNode(if_child1);
   block->InsertNode(childB);
 
-  base::Vector<fml::RefPtr<FiberElement>> inserted = {childA, childB, if_node};
-  base::Vector<fml::RefPtr<FiberElement>> removed = {childA, if_node, childB};
+  base::Vector<fml::RefPtr<Element>> inserted = {childA, childB, if_node};
+  base::Vector<fml::RefPtr<Element>> removed = {childA, if_node, childB};
   block->ReplaceElements(inserted, removed);
 
   EXPECT_EQ(parent->GetChildCount(), 3);
@@ -1065,10 +1058,8 @@ TEST_F(BlockElementTest, DeepNestedIfUpdateIfIndex_AfterOuterReplaceElements) {
   nested_block->InsertNode(nested_child);
   outer_block->InsertNode(childB);
 
-  base::Vector<fml::RefPtr<FiberElement>> inserted = {childB, nested_block,
-                                                      childA};
-  base::Vector<fml::RefPtr<FiberElement>> removed = {childA, nested_block,
-                                                     childB};
+  base::Vector<fml::RefPtr<Element>> inserted = {childB, nested_block, childA};
+  base::Vector<fml::RefPtr<Element>> removed = {childA, nested_block, childB};
   outer_block->ReplaceElements(inserted, removed);
 
   EXPECT_EQ(parent->GetChildCount(), 4);
@@ -1109,10 +1100,8 @@ TEST_F(BlockElementTest,
   outer_block->InsertNode(empty_nested_block);
   parent->InsertNode(sibling);
 
-  base::Vector<fml::RefPtr<FiberElement>> inserted = {empty_nested_block,
-                                                      childA};
-  base::Vector<fml::RefPtr<FiberElement>> removed = {childA,
-                                                     empty_nested_block};
+  base::Vector<fml::RefPtr<Element>> inserted = {empty_nested_block, childA};
+  base::Vector<fml::RefPtr<Element>> removed = {childA, empty_nested_block};
   outer_block->ReplaceElements(inserted, removed);
 
   EXPECT_EQ(parent->GetChildCount(), 2);
@@ -1169,9 +1158,8 @@ TEST_F(BlockElementTest,
   EXPECT_EQ(parent->GetChildAt(4), suffix.get());
 
   auto nested3 = manager->CreateFiberNode("view");
-  base::Vector<fml::RefPtr<FiberElement>> inserted = {nested2, nested3,
-                                                      nested1};
-  base::Vector<fml::RefPtr<FiberElement>> removed = {nested1, nested2};
+  base::Vector<fml::RefPtr<Element>> inserted = {nested2, nested3, nested1};
+  base::Vector<fml::RefPtr<Element>> removed = {nested1, nested2};
   nested_block->ReplaceElements(inserted, removed);
 
   EXPECT_EQ(parent->GetChildCount(), 6);
@@ -1216,10 +1204,10 @@ TEST_F(BlockElementTest,
   EXPECT_EQ(parent->GetChildAt(4), childD.get());
   EXPECT_EQ(parent->GetChildAt(5), childB.get());
 
-  base::Vector<fml::RefPtr<FiberElement>> outer_inserted = {
-      childB, nested_block, childA};
-  base::Vector<fml::RefPtr<FiberElement>> outer_removed = {childA, nested_block,
-                                                           childB};
+  base::Vector<fml::RefPtr<Element>> outer_inserted = {childB, nested_block,
+                                                       childA};
+  base::Vector<fml::RefPtr<Element>> outer_removed = {childA, nested_block,
+                                                      childB};
   outer_block->ReplaceElements(outer_inserted, outer_removed);
 
   EXPECT_EQ(parent->GetChildCount(), 6);
@@ -1230,10 +1218,10 @@ TEST_F(BlockElementTest,
   EXPECT_EQ(parent->GetChildAt(4), childD.get());
   EXPECT_EQ(parent->GetChildAt(5), childA.get());
 
-  base::Vector<fml::RefPtr<FiberElement>> nested_inserted = {childD, for_node,
-                                                             childC};
-  base::Vector<fml::RefPtr<FiberElement>> nested_removed = {childC, for_node,
-                                                            childD};
+  base::Vector<fml::RefPtr<Element>> nested_inserted = {childD, for_node,
+                                                        childC};
+  base::Vector<fml::RefPtr<Element>> nested_removed = {childC, for_node,
+                                                       childD};
   nested_block->ReplaceElements(nested_inserted, nested_removed);
 
   EXPECT_EQ(parent->GetChildCount(), 6);

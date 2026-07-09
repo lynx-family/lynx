@@ -191,7 +191,7 @@ class ListElement : public FiberElement, public tasm::ListNode {
   ListElement(const ListElement& element, bool clone_resolved_props)
       : FiberElement(element, clone_resolved_props) {}
 
-  void OnNodeAdded(FiberElement* child) override;
+  void OnNodeAdded(Element* child) override;
   void FilterComponents(
       std::vector<std::unique_ptr<ListComponentInfo>>& components,
       tasm::TemplateAssembler* tasm) override {}

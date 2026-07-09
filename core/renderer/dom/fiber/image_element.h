@@ -46,7 +46,7 @@ class ImageElement : public FiberElement {
   ImageElement(const ImageElement& element, bool clone_resolved_props)
       : FiberElement(element, clone_resolved_props) {}
 
-  void OnNodeAdded(FiberElement* child) override;
+  void OnNodeAdded(Element* child) override;
 
   void SetAttributeInternal(const base::String& key,
                             const lepus::Value& value) override;

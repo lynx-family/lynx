@@ -120,7 +120,7 @@ class FiberElement : public Element {
 
   void PrepareChildren();
 
-  void PrepareChildForInsertion(FiberElement* child);
+  void PrepareChildForInsertion(Element* child);
 
   virtual void ParallelFlushAsRoot();
 
@@ -146,12 +146,11 @@ class FiberElement : public Element {
    */
   void PrepareAndGenerateChildrenActions();
 
-  virtual void HandleInsertChildAction(FiberElement* child, int index,
-                                       FiberElement* ref_node);
-  virtual void HandleRemoveChildAction(FiberElement* child);
+  virtual void HandleInsertChildAction(Element* child, int index,
+                                       Element* ref_node);
+  virtual void HandleRemoveChildAction(Element* child);
 
-  void HandleRemoveSelf(FiberElement* removal_point,
-                        FiberElement* render_parent);
+  void HandleRemoveSelf(Element* removal_point, Element* render_parent);
 
   /**
    * Element API for inserting child
@@ -164,17 +163,17 @@ class FiberElement : public Element {
    * @param inserted inserted elements
    * @param removed removed elements
    */
-  void ReplaceElements(const base::Vector<fml::RefPtr<FiberElement>>& inserted,
-                       const base::Vector<fml::RefPtr<FiberElement>>& removed,
-                       FiberElement* ref_node);
+  void ReplaceElements(const base::Vector<fml::RefPtr<Element>>& inserted,
+                       const base::Vector<fml::RefPtr<Element>>& removed,
+                       Element* ref_node);
 
   /**
    * Element API for InsertingNodeBefore reference child
    * @param child the child Element need to be inserted
    * @param reference_child the reference child
    */
-  void InsertNodeBefore(const fml::RefPtr<FiberElement>& child,
-                        const fml::RefPtr<FiberElement>& reference_child);
+  void InsertNodeBefore(const fml::RefPtr<Element>& child,
+                        const fml::RefPtr<Element>& reference_child);
   /**
    * Element API for removing the specific child Element
    * @param child the Element to be removed
@@ -221,12 +220,12 @@ class FiberElement : public Element {
   }
 
   // TODO(linxs): to check if this APIs can be deleted
-  void InsertNodeBeforeInternal(const fml::RefPtr<FiberElement>& child,
-                                FiberElement* ref_node);
-  void InsertNodeBeforeInternal(const fml::RefPtr<FiberElement>& child,
-                                FiberElement* ref_node,
+  void InsertNodeBeforeInternal(const fml::RefPtr<Element>& child,
+                                Element* ref_node);
+  void InsertNodeBeforeInternal(const fml::RefPtr<Element>& child,
+                                Element* ref_node,
                                 bool update_logical_children);
-  void AddChildAt(fml::RefPtr<FiberElement> child, int index);
+  void AddChildAt(fml::RefPtr<Element> child, int index);
 
   virtual void CheckHasInlineContainer(Element* parent) override;
 
@@ -263,16 +262,6 @@ class FiberElement : public Element {
       const std::shared_ptr<CSSStyleSheetManager>& style_manager,
       bool keep_element_id) override;
 
-  void CreateListItemScheduler(list::BatchRenderStrategy batch_render_strategy,
-                               bool continuous_resolve_tree);
-
-  ListItemSchedulerAdapter* GetSchedulerAdapter() {
-    if (scheduler_adapter_) {
-      return scheduler_adapter_.get();
-    }
-    return nullptr;
-  }
-
   bool IsEventPathCatch(event::EventTarget* target,
                         event::Event* event) override;
 
@@ -300,10 +289,10 @@ class FiberElement : public Element {
    * This function will be called before add node.
    * @param child the added node
    */
-  virtual void OnNodeAdded(FiberElement* child);
+  virtual void OnNodeAdded(Element* child);
 
   // called when a child element is removed
-  virtual void OnNodeRemoved(FiberElement* child);
+  virtual void OnNodeRemoved(Element* child);
 
   virtual void SetAttributeInternal(const base::String& key,
                                     const lepus::Value& value);
@@ -316,15 +305,13 @@ class FiberElement : public Element {
   friend class ComponentElement;
   friend class BlockElement;
 
-  FiberElement* FindEnclosingNoneWrapper(FiberElement* parent,
-                                         FiberElement* node);
+  Element* FindEnclosingNoneWrapper(Element* parent, Element* node);
 
-  void HandleContainerInsertion(FiberElement* parent, FiberElement* child,
-                                FiberElement* ref);
-  void InsertLogicalChildBefore(const fml::RefPtr<FiberElement>& child,
-                                FiberElement* ref_node);
-  void RemoveLogicalChild(const fml::RefPtr<FiberElement>& child);
-  void RemoveNodeInternal(const fml::RefPtr<FiberElement>& child, bool destroy,
+  void HandleContainerInsertion(Element* parent, Element* child, Element* ref);
+  void InsertLogicalChildBefore(const fml::RefPtr<Element>& child,
+                                Element* ref_node);
+  void RemoveLogicalChild(const fml::RefPtr<Element>& child);
+  void RemoveNodeInternal(const fml::RefPtr<Element>& child, bool destroy,
                           bool update_logical_children);
   FiberElement* ReplaceTemplateChildIfNeeded(
       base::InlineVector<fml::RefPtr<Element>,
@@ -340,8 +327,8 @@ class FiberElement : public Element {
                                                         const CSSValue& value);
 
   void HandleSelfFixedChange();
-  void InsertFixedElement(FiberElement* child, FiberElement* ref_node);
-  void RemoveFixedElement(FiberElement* child);
+  void InsertFixedElement(Element* child, Element* ref_node);
+  void RemoveFixedElement(Element* child);
 
   void ResetTextAlign(StyleMap& update_map, bool direction_reset);
 

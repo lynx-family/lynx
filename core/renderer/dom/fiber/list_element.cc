@@ -98,7 +98,7 @@ bool ListElement::NeedAsyncResolveListItem() {
              list::BatchRenderStrategy::kAsyncResolvePropertyAndElementTree;
 }
 
-void ListElement::OnNodeAdded(FiberElement* child) {
+void ListElement::OnNodeAdded(Element* child) {
   // List's child should not be flatten.
   child->set_config_flatten(false);
   // List's child should not be layout only.
