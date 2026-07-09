@@ -81,6 +81,28 @@ popd
 # prepare source cache
 export COCOAPODS_CONVERT_GIT_TO_HTTP=false
 export LANG=en_US.UTF-8
-pod deintegrate "$project_name"
-rm -rf Podfile.lock
-COCOAPODS_LOCAL_SOURCE_REPO=$source_cache_dir/.git pod install --repo-update
+BUNDLE_GEMFILE="$root_dir/Gemfile"
+pod_cmd="pod"
+if command -v bundle >/dev/null 2>&1 && [ -f "$BUNDLE_GEMFILE" ]; then
+    pushd "$root_dir"
+    bundle config set path "$root_dir/.bundle"
+    SDKROOT=/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk bundle install
+    popd
+    pod_cmd="bundle exec pod"
+fi
+
+repo_update_flag="--no-repo-update"
+if [ ! -d "$HOME/.cocoapods/repos/trunk" ]; then
+    repo_update_flag="--repo-update"
+fi
+
+$pod_cmd deintegrate "$project_name" || true
+if [ "${LYNX_POD_RESET_LOCK:-0}" == "1" ]; then
+    rm -rf Podfile.lock
+fi
+
+if [ -n "${source_cache_dir:-}" ] && [ -d "$source_cache_dir/.git" ]; then
+    COCOAPODS_LOCAL_SOURCE_REPO="$source_cache_dir/.git" $pod_cmd install $repo_update_flag
+else
+    $pod_cmd install $repo_update_flag
+fi

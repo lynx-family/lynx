@@ -16,6 +16,16 @@ runs:
   steps:
     - name: Install Common Dependencies
       uses: ./lynx/.github/actions/common-deps
+    - name: Cache CocoaPods
+      uses: lynx-infra/cache@5c6160a6a4c7fca80a2f3057bb9dfc9513fcb732
+      with:
+        path: |
+          ~/.cocoapods
+          ~/Library/Caches/CocoaPods
+          lynx/.bundle
+        key: cocoapods-${{ runner.os }}-${{ hashFiles('lynx/Gemfile', 'lynx/explorer/darwin/ios/lynx_explorer/Podfile') }}
+        restore-keys: |
+          cocoapods-${{ runner.os }}-
     - name: Install iOS Dependencies
       uses: nick-fields/retry@v2
       with:
