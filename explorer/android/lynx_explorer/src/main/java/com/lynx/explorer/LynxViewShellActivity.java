@@ -61,6 +61,7 @@ public class LynxViewShellActivity extends AppCompatActivity {
   private ViewGroup mLynxContainer;
   private LynxView mLynxView;
   private String mFrontendTheme;
+  private QueryMapUtils mCurrentQueryMap;
   private TimingHandler.ExtraTimingInfo extraTimingInfo = new TimingHandler.ExtraTimingInfo();
 
   @Override
@@ -99,6 +100,20 @@ public class LynxViewShellActivity extends AppCompatActivity {
       mLynxView.destroy();
     }
     super.onDestroy();
+  }
+
+  @Override
+  public void onConfigurationChanged(Configuration newConfig) {
+    super.onConfigurationChanged(newConfig);
+    if (mLynxView == null) {
+      return;
+    }
+
+    DisplayMetrics displayMetrics = DisplayMetricsHolder.getRealScreenDisplayMetrics(this);
+    mLynxView.updateScreenMetrics(displayMetrics.widthPixels, displayMetrics.heightPixels);
+    if (mCurrentQueryMap != null) {
+      mLynxView.updateGlobalProps(getGlobalProps(this, mCurrentQueryMap));
+    }
   }
 
   @Override
@@ -249,6 +264,7 @@ public class LynxViewShellActivity extends AppCompatActivity {
     } else {
       queryMap.parse(url);
     }
+    mCurrentQueryMap = queryMap;
 
     if (queryMap.contains("width") && queryMap.contains("height")) {
       builder.setPresetMeasuredSpec(

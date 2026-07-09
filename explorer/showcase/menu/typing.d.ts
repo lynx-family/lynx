@@ -11,5 +11,7 @@ declare module '@lynx-js/types' {
     theme: string;
     safeAreaTop?: number;
     safeAreaBottom?: number;
+    safeAreaLeft?: number;
+    safeAreaRight?: number;
   }
 }
