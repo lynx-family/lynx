@@ -184,7 +184,6 @@ TEST_F(InspectorUIExecutorTest, GetBoxModelReturnsOverlaySnapshotCase) {
   std::shared_ptr<testing::DevToolPlatformFacadeMock> facade =
       std::make_shared<testing::DevToolPlatformFacadeMock>();
   facade->InitWithDevToolMediator(devtool_mediator_);
-  facade->supports_overlay_box_model_ = true;
 
   std::vector<double> overlay_box_model(kBoxModelSize);
   for (size_t i = 0; i < overlay_box_model.size(); ++i) {
@@ -197,32 +196,6 @@ TEST_F(InspectorUIExecutorTest, GetBoxModelReturnsOverlaySnapshotCase) {
 
   EXPECT_EQ(facade->GetBoxModel(query), overlay_box_model);
   EXPECT_TRUE(facade->transform_value_ids_.empty());
-}
-
-TEST_F(InspectorUIExecutorTest,
-       GetBoxModelFallsBackForInvalidOverlaySnapshotCase) {
-  std::shared_ptr<testing::DevToolPlatformFacadeMock> facade =
-      std::make_shared<testing::DevToolPlatformFacadeMock>();
-  facade->InitWithDevToolMediator(devtool_mediator_);
-  facade->supports_overlay_box_model_ = true;
-  facade->transform_value_response_ = BuildTransformValue(100.f);
-
-  devtool::InspectorBoxModelQuery query;
-  query.is_overlay = true;
-  query.overlay_box_model = {1.0, 2.0};
-  query.has_ui_primitive = true;
-  query.layout_object.id = 11;
-  query.layout_object.has_snapshot = true;
-  query.layout_object.border_bound_width = 50;
-  query.layout_object.border_bound_height = 20;
-  query.transform_node = query.layout_object;
-
-  std::vector<double> box_model = facade->GetBoxModel(query);
-
-  ASSERT_EQ(box_model.size(), kBoxModelSize);
-  EXPECT_NE(box_model, query.overlay_box_model);
-  ASSERT_EQ(facade->transform_value_ids_.size(), 1U);
-  EXPECT_EQ(facade->transform_value_ids_[0], 11);
 }
 
 TEST_F(InspectorUIExecutorTest, GetBoxModelUsesLayoutOnlyOffsetSnapshotCase) {

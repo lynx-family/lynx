@@ -9,7 +9,6 @@
 
 #include <sys/wait.h>
 
-#include <chrono>
 #include <cstddef>
 #include <future>
 #include <initializer_list>
@@ -35,10 +34,8 @@
 #include "core/renderer/dom/vdom/radon/radon_component.h"
 #include "core/renderer/tasm/react/testing/mock_painting_context.h"
 #include "core/shell/testing/mock_tasm_delegate.h"
-#include "devtool/base_devtool/native/public/devtool_status.h"
 #include "devtool/base_devtool/native/test/message_sender_mock.h"
 #include "devtool/base_devtool/native/test/mock_receiver.h"
-#include "devtool/lynx_devtool/agent/inspector_ui_executor.h"
 #include "devtool/lynx_devtool/agent/inspector_util.h"
 #include "devtool/lynx_devtool/agent/lynx_devtool_mediator.h"
 #include "devtool/lynx_devtool/element/element_inspector.h"
@@ -54,32 +51,6 @@ static constexpr int32_t kWidth = 1080;
 static constexpr int32_t kHeight = 1920;
 static constexpr float kDefaultLayoutsUnitPerPx = 1.f;
 static constexpr double kDefaultPhysicalPixelsPerLayoutUnit = 1.f;
-static constexpr size_t kBoxModelSize = 34;
-
-static std::vector<double> BuildBoxModel(double start) {
-  std::vector<double> box_model(kBoxModelSize);
-  for (size_t i = 0; i < box_model.size(); ++i) {
-    box_model[i] = start + static_cast<double>(i);
-  }
-  return box_model;
-}
-
-static std::vector<double> BuildBoxModelWithBorder(double left, double top,
-                                                   double right,
-                                                   double bottom) {
-  std::vector<double> box_model(kBoxModelSize, 0.0);
-  box_model[0] = 100;
-  box_model[1] = 100;
-  box_model[18] = 100;
-  box_model[10] = box_model[18] + left;
-  box_model[12] = 200;
-  box_model[20] = box_model[12] + right;
-  box_model[19] = 300;
-  box_model[11] = box_model[19] + top;
-  box_model[17] = 400;
-  box_model[25] = box_model[17] + bottom;
-  return box_model;
-}
 
 class RecordingMessageSender : public devtool::MessageSender {
  public:
@@ -257,23 +228,13 @@ class InspectorTasmExecutorTest : public ::testing::Test {
         devtool_mediator_, nullptr, 1);
     ui_thread_ = std::make_unique<fml::Thread>("ui");
     devtool_mediator_->ui_task_runner_ = ui_thread_->GetTaskRunner();
-    devtool_mediator_->default_task_runner_ = ui_thread_->GetTaskRunner();
   }
 
   void FlushDevtoolTasks() {
     std::promise<void> p;
     auto f = p.get_future();
-    ASSERT_TRUE(
-        devtool_mediator_->RunOnDevToolThread([&p]() { p.set_value(); }, true));
-    ASSERT_EQ(f.wait_for(std::chrono::seconds(5)), std::future_status::ready);
-  }
-
-  void FlushUITasks() {
-    std::promise<void> p;
-    auto f = p.get_future();
-    ASSERT_TRUE(
-        devtool_mediator_->RunOnUIThread([&p]() { p.set_value(); }, true));
-    ASSERT_EQ(f.wait_for(std::chrono::seconds(5)), std::future_status::ready);
+    devtool_mediator_->RunOnDevToolThread([&p]() { p.set_value(); }, true);
+    f.wait();
   }
 
  private:
@@ -526,24 +487,11 @@ TEST_F(InspectorTasmExecutorTest, GetComputedStyleOfNodeStyleOrderCase) {
       new lynx::tasm::RadonComponent(nullptr, 0, nullptr, nullptr, 0, 0, 0));
   auto element = manager_->CreateFiberElement("view");
   element->SetAttributeHolder(comp.get()->attribute_holder());
-  element->MarkAttached();
   lynx::devtool::ElementInspector::InitForInspector(
       std::make_tuple(element.get()));
-  element_executor_->element_root_ = element.get();
 
-  Json::Value message(Json::ValueType::objectValue);
-  message["id"] = 100;
-  message["params"]["nodeId"] =
-      devtool::ElementInspector::NodeId(element.get());
-  element_executor_->GetComputedStyleForNode(message_sender_, message);
-  FlushUITasks();
-
-  Json::Value response;
-  Json::Reader reader;
-  ASSERT_TRUE(reader.parse(
-      devtool::MockReceiver::GetInstance().received_message_.second, response));
-
-  const Json::Value& computed_style = response["result"]["computedStyle"];
+  Json::Value computed_style =
+      element_executor_->GetComputedStyleOfNode(element.get());
   ASSERT_TRUE(computed_style.isArray());
 
   auto find_style_index = [&computed_style](const std::string& name) {
@@ -569,90 +517,6 @@ TEST_F(InspectorTasmExecutorTest, GetComputedStyleOfNodeStyleOrderCase) {
   EXPECT_LT(caret_height, caret_radius);
 }
 
-TEST_F(InspectorTasmExecutorTest,
-       GetComputedStyleForNodeUsesBoxModelBorderShorthandCase) {
-  auto facade = std::make_shared<testing::DevToolPlatformFacadeMock>();
-  facade->box_model_response_ = BuildBoxModelWithBorder(3, 3, 5, 8);
-  devtool_mediator_->ui_executor_ =
-      std::make_shared<devtool::InspectorUIExecutor>(devtool_mediator_);
-  devtool_mediator_->ui_executor_->SetDevToolPlatformFacade(facade);
-
-  auto element = manager_->CreateFiberElement("view");
-  element->MarkCanBeLayoutOnly(false);
-  lynx::devtool::ElementInspector::InitForInspector(
-      std::make_tuple(element.get()));
-  element->CreateElementContainer(false);
-  element->MarkAttached();
-  element_executor_->element_root_ = element.get();
-
-  Json::Value message(Json::ValueType::objectValue);
-  message["id"] = 13;
-  message["params"]["nodeId"] =
-      devtool::ElementInspector::NodeId(element.get());
-  element_executor_->GetComputedStyleForNode(message_sender_, message);
-  FlushUITasks();
-
-  Json::Value res;
-  Json::Reader reader;
-  ASSERT_TRUE(reader.parse(
-      devtool::MockReceiver::GetInstance().received_message_.second, res));
-  const Json::Value& computed_style = res["result"]["computedStyle"];
-  ASSERT_TRUE(computed_style.isArray());
-  int border_index = -1;
-  for (Json::ArrayIndex i = 0; i < computed_style.size(); ++i) {
-    if (computed_style[i]["name"].asString() == "border") {
-      border_index = static_cast<int>(i);
-      break;
-    }
-  }
-  ASSERT_GE(border_index, 0);
-  EXPECT_EQ(computed_style[static_cast<Json::ArrayIndex>(border_index)]["value"]
-                .asString(),
-            "3px 5px 8px 3px");
-}
-
-TEST_F(InspectorTasmExecutorTest,
-       GetComputedStyleForNodeUsesBoxModelEqualBorderShorthandCase) {
-  auto facade = std::make_shared<testing::DevToolPlatformFacadeMock>();
-  facade->box_model_response_ = BuildBoxModelWithBorder(4, 4, 4, 4);
-  devtool_mediator_->ui_executor_ =
-      std::make_shared<devtool::InspectorUIExecutor>(devtool_mediator_);
-  devtool_mediator_->ui_executor_->SetDevToolPlatformFacade(facade);
-
-  auto element = manager_->CreateFiberElement("view");
-  element->MarkCanBeLayoutOnly(false);
-  lynx::devtool::ElementInspector::InitForInspector(
-      std::make_tuple(element.get()));
-  element->CreateElementContainer(false);
-  element->MarkAttached();
-  element_executor_->element_root_ = element.get();
-
-  Json::Value message(Json::ValueType::objectValue);
-  message["id"] = 14;
-  message["params"]["nodeId"] =
-      devtool::ElementInspector::NodeId(element.get());
-  element_executor_->GetComputedStyleForNode(message_sender_, message);
-  FlushUITasks();
-
-  Json::Value res;
-  Json::Reader reader;
-  ASSERT_TRUE(reader.parse(
-      devtool::MockReceiver::GetInstance().received_message_.second, res));
-  const Json::Value& computed_style = res["result"]["computedStyle"];
-  ASSERT_TRUE(computed_style.isArray());
-  int border_index = -1;
-  for (Json::ArrayIndex i = 0; i < computed_style.size(); ++i) {
-    if (computed_style[i]["name"].asString() == "border") {
-      border_index = static_cast<int>(i);
-      break;
-    }
-  }
-  ASSERT_GE(border_index, 0);
-  EXPECT_EQ(computed_style[static_cast<Json::ArrayIndex>(border_index)]["value"]
-                .asString(),
-            "4px");
-}
-
 TEST_F(InspectorTasmExecutorTest, SendLayerTreeDidChangeEventCase) {
   element_executor_->layer_tree_enabled_ = true;
 
@@ -663,8 +527,6 @@ TEST_F(InspectorTasmExecutorTest, SendLayerTreeDidChangeEventCase) {
   auto element_container = element->element_container_impl();
 
   auto child = manager_->CreateFiberElement("view");
-  child->MarkCanBeLayoutOnly(true);
-  child->computed_css_style()->SetOverflowDefaultVisible(true);
   lynx::devtool::ElementInspector::InitForInspector(
       std::make_tuple(child.get()));
   element->AddChildAt(child, 0);
@@ -722,6 +584,59 @@ TEST_F(InspectorTasmExecutorTest, SendLayerTreeDidChangeEventCase) {
   EXPECT_EQ(expected_json, res);
 }
 
+TEST_F(InspectorTasmExecutorTest, BuildLayerTreeFromElement) {
+  auto element = manager_->CreateFiberElement("view");
+  lynx::devtool::ElementInspector::InitForInspector(
+      std::make_tuple(element.get()));
+  element->CreateElementContainer(false);
+  auto element_container = element->element_container_impl();
+
+  auto child = manager_->CreateFiberElement("view");
+  lynx::devtool::ElementInspector::InitForInspector(
+      std::make_tuple(child.get()));
+  element->AddChildAt(child, 0);
+  EXPECT_EQ(child->parent(), element.get());
+
+  child->CreateElementContainer(false);
+  auto child_container = child->element_container_impl();
+  child_container->InsertSelf();
+  EXPECT_EQ(child_container->parent(), element_container);
+  EXPECT_EQ(element_container->children().size(), static_cast<size_t>(1));
+
+  auto res = element_executor_->BuildLayerTreeFromElement(element.get());
+  std::string layer_str = R"([
+  {
+    "backendNodeId": 10,
+    "drawsContent": true,
+    "height": null,
+    "invisible": true,
+    "layerId": "10",
+    "name": "view",
+    "offsetX": null,
+    "offsetY": null,
+    "paintCount": 1,
+    "width": null
+  },
+  {
+    "backendNodeId": 11,
+    "drawsContent": true,
+    "height": null,
+    "invisible": true,
+    "layerId": "11",
+    "name": "view",
+    "offsetX": null,
+    "offsetY": null,
+    "paintCount": 1,
+    "parentLayerId": "10",
+    "width": null
+  }
+])";
+  Json::Reader reader;
+  Json::Value layer;
+  reader.parse(layer_str, layer);
+  EXPECT_EQ(res, layer);
+}
+
 TEST_F(InspectorTasmExecutorTest, GetLayerContentFromElementCase) {
   LOGI("InspectorTasmExecutorTest GetLayerContentFromElementCase start");
   auto element = manager_->CreateFiberElement("view");
@@ -743,278 +658,6 @@ TEST_F(InspectorTasmExecutorTest, GetLayerContentFromElementCase) {
   layer["height"] = layout["height"];
 
   EXPECT_EQ(layer, res);
-}
-
-TEST_F(InspectorTasmExecutorTest, BuildBoxModelQueryWithLayoutOnlyNodeCase) {
-  auto root = manager_->CreateFiberElement("view");
-  root->MarkCanBeLayoutOnly(false);
-  lynx::devtool::ElementInspector::InitForInspector(
-      std::make_tuple(root.get()));
-  root->CreateElementContainer(false);
-  root->MarkAttached();
-
-  auto child = manager_->CreateFiberElement("view");
-  child->MarkCanBeLayoutOnly(true);
-  child->computed_css_style()->SetOverflowDefaultVisible(true);
-  lynx::devtool::ElementInspector::InitForInspector(
-      std::make_tuple(child.get()));
-  root->AddChildAt(child, 0);
-  child->CreateElementContainer(false);
-  child->MarkAttached();
-
-  devtool::InspectorBoxModelQuery query;
-  ASSERT_TRUE(element_executor_->BuildBoxModelQuery(child.get(), query));
-  EXPECT_FALSE(query.has_ui_primitive);
-  EXPECT_EQ(query.layout_object.id, child->impl_id());
-  EXPECT_EQ(query.transform_node.id, root->impl_id());
-  ASSERT_EQ(query.layout_only_nodes.size(), 1U);
-  EXPECT_EQ(query.layout_only_nodes[0].id, child->impl_id());
-  EXPECT_FALSE(query.is_overlay);
-}
-
-TEST_F(InspectorTasmExecutorTest,
-       GetDocumentBodyWithBoxModelStoresPathsOutsideJsonCase) {
-  auto root = manager_->CreateFiberElement("view");
-  root->MarkCanBeLayoutOnly(false);
-  lynx::devtool::ElementInspector::InitForInspector(
-      std::make_tuple(root.get()));
-  root->CreateElementContainer(false);
-  root->MarkAttached();
-
-  auto child = manager_->CreateFiberElement("view");
-  child->MarkCanBeLayoutOnly(false);
-  lynx::devtool::ElementInspector::InitForInspector(
-      std::make_tuple(child.get()));
-  root->AddChildAt(child, 0);
-  child->CreateElementContainer(false);
-  child->MarkAttached();
-
-  std::vector<devtool::InspectorBoxModelQuery> queries;
-  std::vector<std::vector<Json::ArrayIndex>> box_model_paths;
-  Json::Value document = element_executor_->GetDocumentBodyFromNodeWithBoxModel(
-      root.get(), queries, box_model_paths, {});
-
-  ASSERT_EQ(queries.size(), 2U);
-  ASSERT_EQ(box_model_paths.size(), 2U);
-  EXPECT_TRUE(box_model_paths[0].empty());
-  ASSERT_EQ(box_model_paths[1].size(), 1U);
-  EXPECT_EQ(box_model_paths[1][0], 0U);
-  EXPECT_TRUE(document["box_model"].isNull());
-  ASSERT_TRUE(document["children"].isArray());
-  ASSERT_EQ(document["children"].size(), 1U);
-  EXPECT_TRUE(document["children"][0]["box_model"].isNull());
-  EXPECT_FALSE(document.isMember("box_model_index"));
-  EXPECT_FALSE(document["children"][0].isMember("box_model_index"));
-}
-
-TEST_F(InspectorTasmExecutorTest, DOMGetBoxModelRequestsBoxModelOnUICase) {
-  auto facade = std::make_shared<testing::DevToolPlatformFacadeMock>();
-  facade->box_model_response_ = BuildBoxModel(20);
-  devtool_mediator_->ui_executor_ =
-      std::make_shared<devtool::InspectorUIExecutor>(devtool_mediator_);
-  devtool_mediator_->ui_executor_->SetDevToolPlatformFacade(facade);
-
-  auto element = manager_->CreateFiberElement("view");
-  element->MarkCanBeLayoutOnly(false);
-  lynx::devtool::ElementInspector::InitForInspector(
-      std::make_tuple(element.get()));
-  element->CreateElementContainer(false);
-  element->MarkAttached();
-  element_executor_->element_root_ = element.get();
-  std::string screen_shot_mode =
-      devtool::DevToolStatus::GetInstance().GetStatus(
-          devtool::DevToolStatus::kDevToolStatusKeyScreenShotMode);
-  devtool::DevToolStatus::GetInstance().SetStatus(
-      devtool::DevToolStatus::kDevToolStatusKeyScreenShotMode,
-      devtool::DevToolStatus::SCREENSHOT_MODE_FULLSCREEN);
-
-  Json::Value message(Json::ValueType::objectValue);
-  message["id"] = 9;
-  message["params"]["nodeId"] =
-      devtool::ElementInspector::NodeId(element.get());
-  element_executor_->DOM_GetBoxModel(message_sender_, message);
-  FlushUITasks();
-  devtool::DevToolStatus::GetInstance().SetStatus(
-      devtool::DevToolStatus::kDevToolStatusKeyScreenShotMode,
-      screen_shot_mode);
-
-  Json::Value res;
-  Json::Reader reader;
-  ASSERT_TRUE(reader.parse(
-      devtool::MockReceiver::GetInstance().received_message_.second, res));
-  EXPECT_EQ(res["id"], 9);
-  EXPECT_TRUE(res["error"].isNull());
-  ASSERT_TRUE(res["result"]["model"].isObject());
-  EXPECT_DOUBLE_EQ(res["result"]["model"]["width"].asDouble(),
-                   facade->box_model_response_[0]);
-  EXPECT_DOUBLE_EQ(res["result"]["model"]["height"].asDouble(),
-                   facade->box_model_response_[1]);
-  ASSERT_EQ(facade->box_model_queries_.size(), 1U);
-  EXPECT_EQ(facade->box_model_queries_[0].layout_object.id, element->impl_id());
-}
-
-TEST_F(InspectorTasmExecutorTest, DOMGetBoxModelAppliesRootOffsetCase) {
-  auto facade = std::make_shared<testing::DevToolPlatformFacadeMock>();
-  facade->box_model_response_ = BuildBoxModel(20);
-  devtool_mediator_->ui_executor_ =
-      std::make_shared<devtool::InspectorUIExecutor>(devtool_mediator_);
-  devtool_mediator_->ui_executor_->SetDevToolPlatformFacade(facade);
-
-  auto root = manager_->CreateFiberElement("view");
-  root->MarkCanBeLayoutOnly(false);
-  lynx::devtool::ElementInspector::InitForInspector(
-      std::make_tuple(root.get()));
-  root->CreateElementContainer(false);
-  root->MarkAttached();
-
-  auto child = manager_->CreateFiberElement("view");
-  child->MarkCanBeLayoutOnly(false);
-  lynx::devtool::ElementInspector::InitForInspector(
-      std::make_tuple(child.get()));
-  root->AddChildAt(child, 0);
-  child->CreateElementContainer(false);
-  child->MarkAttached();
-  element_executor_->element_root_ = root.get();
-
-  std::string screen_shot_mode =
-      devtool::DevToolStatus::GetInstance().GetStatus(
-          devtool::DevToolStatus::kDevToolStatusKeyScreenShotMode);
-  devtool::DevToolStatus::GetInstance().SetStatus(
-      devtool::DevToolStatus::kDevToolStatusKeyScreenShotMode,
-      devtool::DevToolStatus::SCREENSHOT_MODE_LYNXVIEW);
-
-  Json::Value message(Json::ValueType::objectValue);
-  message["id"] = 10;
-  message["params"]["nodeId"] = devtool::ElementInspector::NodeId(child.get());
-  element_executor_->DOM_GetBoxModel(message_sender_, message);
-  FlushUITasks();
-  devtool::DevToolStatus::GetInstance().SetStatus(
-      devtool::DevToolStatus::kDevToolStatusKeyScreenShotMode,
-      screen_shot_mode);
-
-  Json::Value res;
-  Json::Reader reader;
-  ASSERT_TRUE(reader.parse(
-      devtool::MockReceiver::GetInstance().received_message_.second, res));
-  EXPECT_EQ(res["id"], 10);
-  ASSERT_TRUE(res["result"]["model"].isObject());
-  EXPECT_DOUBLE_EQ(res["result"]["model"]["width"].asDouble(),
-                   facade->box_model_response_[0]);
-  EXPECT_DOUBLE_EQ(
-      res["result"]["model"]["content"][0U].asDouble(),
-      facade->box_model_response_[2] - facade->box_model_response_[18]);
-  ASSERT_EQ(facade->box_model_queries_.size(), 2U);
-  EXPECT_EQ(facade->box_model_queries_[0].layout_object.id, child->impl_id());
-  EXPECT_EQ(facade->box_model_queries_[1].layout_object.id, root->impl_id());
-}
-
-TEST_F(InspectorTasmExecutorTest,
-       DOMGetBoxModelReturnsErrorForMissingNodeCase) {
-  Json::Value message(Json::ValueType::objectValue);
-  message["id"] = 11;
-  message["params"]["nodeId"] = 99999;
-  element_executor_->DOM_GetBoxModel(message_sender_, message);
-  FlushDevtoolTasks();
-
-  Json::Value res;
-  Json::Reader reader;
-  ASSERT_TRUE(reader.parse(
-      devtool::MockReceiver::GetInstance().received_message_.second, res));
-  EXPECT_EQ(res["id"], 11);
-  EXPECT_EQ(res["result"]["error"]["code"], -32000);
-  EXPECT_EQ(res["result"]["error"]["message"].asString(),
-            "Could not compute box model.");
-}
-
-TEST_F(InspectorTasmExecutorTest, GetComputedStyleForNodeUsesBoxModelCase) {
-  auto facade = std::make_shared<testing::DevToolPlatformFacadeMock>();
-  facade->box_model_response_ = BuildBoxModel(30);
-  devtool_mediator_->ui_executor_ =
-      std::make_shared<devtool::InspectorUIExecutor>(devtool_mediator_);
-  devtool_mediator_->ui_executor_->SetDevToolPlatformFacade(facade);
-
-  auto element = manager_->CreateFiberElement("view");
-  element->MarkCanBeLayoutOnly(false);
-  lynx::devtool::ElementInspector::InitForInspector(
-      std::make_tuple(element.get()));
-  element->CreateElementContainer(false);
-  element->MarkAttached();
-  element_executor_->element_root_ = element.get();
-
-  Json::Value message(Json::ValueType::objectValue);
-  message["id"] = 12;
-  message["params"]["nodeId"] =
-      devtool::ElementInspector::NodeId(element.get());
-  element_executor_->GetComputedStyleForNode(message_sender_, message);
-  FlushUITasks();
-
-  Json::Value res;
-  Json::Reader reader;
-  ASSERT_TRUE(reader.parse(
-      devtool::MockReceiver::GetInstance().received_message_.second, res));
-  EXPECT_EQ(res["id"], 12);
-  ASSERT_TRUE(res["result"]["computedStyle"].isArray());
-  EXPECT_GT(res["result"]["computedStyle"].size(), 0U);
-  ASSERT_EQ(facade->box_model_queries_.size(), 1U);
-  EXPECT_EQ(facade->box_model_queries_[0].layout_object.id, element->impl_id());
-}
-
-TEST_F(InspectorTasmExecutorTest, SendLayerTreeDidChangeAppliesBoxModelsCase) {
-  auto facade = std::make_shared<testing::DevToolPlatformFacadeMock>();
-  facade->box_model_response_ = BuildBoxModel(40);
-  devtool_mediator_->ui_executor_ =
-      std::make_shared<devtool::InspectorUIExecutor>(devtool_mediator_);
-  devtool_mediator_->ui_executor_->SetDevToolPlatformFacade(facade);
-
-  auto root = manager_->CreateFiberElement("view");
-  lynx::devtool::ElementInspector::InitForInspector(
-      std::make_tuple(root.get()));
-  auto child = manager_->CreateFiberElement("view");
-  lynx::devtool::ElementInspector::InitForInspector(
-      std::make_tuple(child.get()));
-  root->AddChildAt(child, 0);
-  element_executor_->element_root_ = root.get();
-  element_executor_->layer_tree_enabled_ = true;
-
-  element_executor_->SendLayerTreeDidChangeEvent();
-  FlushUITasks();
-
-  Json::Value res;
-  Json::Reader reader;
-  ASSERT_TRUE(reader.parse(
-      devtool::MockReceiver::GetInstance().received_message_.second, res));
-  EXPECT_EQ(res["method"], "LayerTree.layerTreeDidChange");
-  ASSERT_TRUE(res["params"]["layers"].isArray());
-  ASSERT_EQ(res["params"]["layers"].size(), 2U);
-  EXPECT_DOUBLE_EQ(res["params"]["layers"][0U]["width"].asDouble(), 2.0);
-  EXPECT_DOUBLE_EQ(res["params"]["layers"][0U]["offsetX"].asDouble(),
-                   facade->box_model_response_[26]);
-  EXPECT_DOUBLE_EQ(res["params"]["layers"][1U]["offsetX"].asDouble(), 0.0);
-}
-
-TEST_F(InspectorTasmExecutorTest, SendLayerPaintedAppliesBoxModelClipCase) {
-  auto facade = std::make_shared<testing::DevToolPlatformFacadeMock>();
-  facade->box_model_response_ = BuildBoxModel(50);
-  devtool_mediator_->ui_executor_ =
-      std::make_shared<devtool::InspectorUIExecutor>(devtool_mediator_);
-  devtool_mediator_->ui_executor_->SetDevToolPlatformFacade(facade);
-
-  auto root = manager_->CreateFiberElement("view");
-  lynx::devtool::ElementInspector::InitForInspector(
-      std::make_tuple(root.get()));
-  element_executor_->element_root_ = root.get();
-
-  element_executor_->SendLayerPaintedEvent();
-  FlushUITasks();
-
-  Json::Value res;
-  Json::Reader reader;
-  ASSERT_TRUE(reader.parse(
-      devtool::MockReceiver::GetInstance().received_message_.second, res));
-  EXPECT_EQ(res["method"], "LayerTree.layerPainted");
-  EXPECT_DOUBLE_EQ(res["params"]["clip"]["x"].asDouble(),
-                   facade->box_model_response_[26]);
-  EXPECT_DOUBLE_EQ(res["params"]["clip"]["width"].asDouble(), 2.0);
 }
 
 TEST_F(InspectorTasmExecutorTest, GetDocumentWithDepthCase) {

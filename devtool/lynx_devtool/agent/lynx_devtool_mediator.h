@@ -5,9 +5,7 @@
 #ifndef DEVTOOL_LYNX_DEVTOOL_AGENT_LYNX_DEVTOOL_MEDIATOR_H_
 #define DEVTOOL_LYNX_DEVTOOL_AGENT_LYNX_DEVTOOL_MEDIATOR_H_
 
-#include <functional>
 #include <memory>
-#include <vector>
 
 #include "base/include/fml/task_runner.h"
 #include "core/devtool_wrapper/devtool_pool.h"
@@ -237,13 +235,9 @@ class LynxDevToolMediator
   bool RunOnDevToolThread(lynx::base::closure&& closure, bool run_now = true);
 
  public:
-  void GetBoxModel(const InspectorBoxModelQuery& query,
-                   std::function<void(std::vector<double>)> callback);
-  void GetBoxModels(
-      const std::vector<InspectorBoxModelQuery>& queries,
-      std::function<void(std::vector<std::vector<double>>)> callback);
+  std::vector<double> GetBoxModel(tasm::Element* element);
+  SLNode* GetLayoutObjectForElement(lynx::tasm::Element* element);
   SLNode* GetLayoutObjectById(int32_t id);
-  void GetLayoutTree(int32_t id, std::function<void(std::string)> callback);
   void SendLayoutTree();
   void SendCDPEvent(const Json::Value& msg);
   void SendCDPEvent(const std::string& msg);

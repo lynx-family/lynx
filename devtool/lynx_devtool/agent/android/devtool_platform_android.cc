@@ -11,6 +11,7 @@
 #include "devtool/lynx_devtool/agent/inspector_util.h"
 #include "devtool/lynx_devtool/agent/lynx_devtool_mediator.h"
 #include "devtool/lynx_devtool/base/screen_metadata.h"
+#include "devtool/lynx_devtool/element/element_inspector.h"
 #include "devtool/lynx_devtool/js_debug/js/inspector_java_script_debugger_impl.h"
 #include "platform/android/lynx_devtool/src/main/jni/gen/DevToolPlatformAndroidDelegate_jni.h"
 #include "platform/android/lynx_devtool/src/main/jni/gen/DevToolPlatformAndroidDelegate_register_jni.h"
@@ -456,7 +457,14 @@ int DevToolPlatformAndroid::SetUIStyle(int id, std::string name,
       env, ref.Get(), id, jni_name.Get(), jni_content.Get());
 }
 
-bool DevToolPlatformAndroid::SupportsOverlayBoxModel() const { return true; }
+std::vector<double> DevToolPlatformAndroid::GetBoxModel(
+    tasm::Element* element) {
+  if (element->GetTag() == "x-overlay-ng" || element->GetTag() == "overlay") {
+    return ElementInspector::GetOverlayNGBoxModel(element);
+  }
+  auto box_model = GetBoxModelInGeneralPlatform(element);
+  return box_model;
+}
 
 std::vector<float> DevToolPlatformAndroid::GetTransformValue(
     int id, const std::vector<float>& pad_border_margin_layout) {

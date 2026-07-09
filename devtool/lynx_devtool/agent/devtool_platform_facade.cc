@@ -12,10 +12,6 @@
 namespace lynx {
 namespace devtool {
 
-namespace {
-constexpr size_t kBoxModelSize = 34;
-}  // namespace
-
 InspectorLayoutObjectInfo BuildLayoutObjectInfo(int32_t id,
                                                 SLNode* layout_obj) {
   InspectorLayoutObjectInfo info;
@@ -119,11 +115,111 @@ void DevToolPlatformFacade::SendCDPEvent(const std::string& message) {
 
 std::vector<double> DevToolPlatformFacade::GetBoxModel(
     const InspectorBoxModelQuery& query) {
-  if (SupportsOverlayBoxModel() && query.is_overlay &&
-      query.overlay_box_model.size() == kBoxModelSize) {
-    return query.overlay_box_model;
+  if (query.is_overlay) {
+    if (query.overlay_box_model.size() == 34) {
+      return query.overlay_box_model;
+    }
   }
   return GetBoxModelInGeneralPlatform(query);
+}
+
+std::vector<double> DevToolPlatformFacade::GetBoxModelInGeneralPlatform(
+    tasm::Element* element) {
+  std::vector<double> res;
+
+  CHECK_NULL_AND_LOG_RETURN_VALUE(element, "element is null", res);
+
+  auto devtool_mediator_ = devtool_mediator_wp_.lock();
+  CHECK_NULL_AND_LOG_RETURN_VALUE(devtool_mediator_,
+                                  "devtool_mediator_ is null", res);
+
+  auto layout_obj = devtool_mediator_->GetLayoutObjectForElement(element);
+  if (element->is_virtual() ||
+      (static_cast<lynx::tasm::FiberElement*>(element)->is_wrapper())) {
+    auto temp_parent = element->parent();
+    while (
+        temp_parent &&
+        (temp_parent->is_virtual() ||
+         (static_cast<lynx::tasm::FiberElement*>(temp_parent)->is_wrapper()))) {
+      temp_parent = temp_parent->parent();
+    }
+    if (temp_parent) {
+      res = GetBoxModel(temp_parent);
+    }
+  } else if (layout_obj != nullptr) {
+    res.push_back(layout_obj->GetBorderBoundWidth() -
+                  layout_obj->GetLayoutPaddingLeft() -
+                  layout_obj->GetLayoutPaddingRight() -
+                  layout_obj->GetLayoutBorderLeftWidth() -
+                  layout_obj->GetLayoutBorderRightWidth());
+    res.push_back(layout_obj->GetBorderBoundHeight() -
+                  layout_obj->GetLayoutPaddingTop() -
+                  layout_obj->GetLayoutPaddingBottom() -
+                  layout_obj->GetLayoutBorderTopWidth() -
+                  layout_obj->GetLayoutBorderBottomWidth());
+
+    std::vector<float> pad_border_margin_layout = {
+        layout_obj->GetLayoutPaddingLeft(),
+        layout_obj->GetLayoutPaddingTop(),
+        layout_obj->GetLayoutPaddingRight(),
+        layout_obj->GetLayoutPaddingBottom(),
+        layout_obj->GetLayoutBorderLeftWidth(),
+        layout_obj->GetLayoutBorderTopWidth(),
+        layout_obj->GetLayoutBorderRightWidth(),
+        layout_obj->GetLayoutBorderBottomWidth(),
+        layout_obj->GetLayoutMarginLeft(),
+        layout_obj->GetLayoutMarginTop(),
+        layout_obj->GetLayoutMarginRight(),
+        layout_obj->GetLayoutMarginBottom(),
+        0,
+        0,
+        0,
+        0};
+    std::vector<float> trans;
+    if (!element->HasUIPrimitive()) {
+      auto current = element;
+      float layout_only_x = 0;
+      float layout_only_y = 0;
+      while (current != nullptr && !current->HasUIPrimitive()) {
+        auto current_layout_obj =
+            devtool_mediator_->GetLayoutObjectForElement(current);
+        if (current_layout_obj != nullptr) {
+          layout_only_x +=
+              current_layout_obj->GetBorderBoundLeftFromParentPaddingBound();
+          layout_only_y +=
+              current_layout_obj->GetBorderBoundTopFromParentPaddingBound();
+        }
+        do {
+          current = current->parent();
+        } while (current != nullptr &&
+                 static_cast<lynx::tasm::FiberElement*>(current)->is_wrapper());
+      }
+      if (current != nullptr) {
+        auto current_layout_obj =
+            devtool_mediator_->GetLayoutObjectForElement(current);
+        if (current_layout_obj != nullptr) {
+          layout_only_x += current_layout_obj->GetLayoutBorderLeftWidth();
+          layout_only_y += current_layout_obj->GetLayoutBorderTopWidth();
+          pad_border_margin_layout[12] = layout_only_x;
+          pad_border_margin_layout[13] = layout_only_y;
+          pad_border_margin_layout[14] =
+              current_layout_obj->GetBorderBoundWidth() - layout_only_x -
+              layout_obj->GetBorderBoundWidth();
+          pad_border_margin_layout[15] =
+              current_layout_obj->GetBorderBoundHeight() - layout_only_y -
+              layout_obj->GetBorderBoundHeight();
+        }
+        trans = GetTransformValue(current->impl_id(), pad_border_margin_layout);
+      }
+    } else {
+      trans = GetTransformValue(element->impl_id(), pad_border_margin_layout);
+    }
+    for (float t : trans) {
+      res.push_back(t);
+    }
+    return res;
+  }
+  return res;
 }
 
 std::vector<double> DevToolPlatformFacade::GetBoxModelInGeneralPlatform(

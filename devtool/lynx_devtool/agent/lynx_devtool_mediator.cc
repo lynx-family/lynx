@@ -32,20 +32,6 @@ int GenerateViewId() {
   return (*id)++;
 }
 
-template <typename T>
-void RunCallbackOnTasmThread(
-    const lynx::fml::RefPtr<lynx::fml::TaskRunner>& runner,
-    std::function<void(T)> callback, T value) {
-  if (!runner || runner->RunsTasksOnCurrentThread()) {
-    callback(std::move(value));
-    return;
-  }
-  runner->PostTask(
-      [callback = std::move(callback), value = std::move(value)]() mutable {
-        callback(std::move(value));
-      });
-}
-
 }  // namespace
 
 LynxDevToolMediator::LynxDevToolMediator() { view_id_ = GenerateViewId(); }
@@ -299,9 +285,9 @@ void LynxDevToolMediator::DescribeNode(
 void LynxDevToolMediator::GetDocumentWithBoxModel(
     const std::shared_ptr<lynx::devtool::MessageSender>& sender,
     const Json::Value& message) {
-  if (tasm_task_runner_) {
-    RunOnTaskRunner(tasm_task_runner_, [element_executor = element_executor_,
-                                        sender, message]() {
+  if (ui_task_runner_) {
+    RunOnTaskRunner(ui_task_runner_, [element_executor = element_executor_,
+                                      sender, message]() {
       element_executor->GetDocumentWithBoxModel(sender, message);
     });
   }
@@ -321,8 +307,8 @@ void LynxDevToolMediator::RequestChildNodes(
 void LynxDevToolMediator::DOM_GetBoxModel(
     const std::shared_ptr<lynx::devtool::MessageSender>& sender,
     const Json::Value& message) {
-  if (tasm_task_runner_) {
-    RunOnTaskRunner(tasm_task_runner_,
+  if (ui_task_runner_) {
+    RunOnTaskRunner(ui_task_runner_,
                     [element_executor = element_executor_, sender, message]() {
                       element_executor->DOM_GetBoxModel(sender, message);
                     });
@@ -569,9 +555,9 @@ void LynxDevToolMediator::GetMatchedStylesForNode(
 void LynxDevToolMediator::GetComputedStyleForNode(
     const std::shared_ptr<lynx::devtool::MessageSender>& sender,
     const Json::Value& message) {
-  if (tasm_task_runner_) {
-    RunOnTaskRunner(tasm_task_runner_, [element_executor = element_executor_,
-                                        sender, message]() {
+  if (ui_task_runner_) {
+    RunOnTaskRunner(ui_task_runner_, [element_executor = element_executor_,
+                                      sender, message]() {
       element_executor->GetComputedStyleForNode(sender, message);
     });
   }
@@ -1198,7 +1184,7 @@ void LynxDevToolMediator::SendLogEntryAddedEvent(
 void LynxDevToolMediator::LayerTreeEnable(
     const std::shared_ptr<lynx::devtool::MessageSender>& sender,
     const Json::Value& message) {
-  RunOnTASMThread([sender, message, executor = element_executor_] {
+  RunOnUIThread([sender, message, executor = element_executor_] {
     executor->LayerTreeEnable(sender, message);
   });
 }
@@ -1206,13 +1192,13 @@ void LynxDevToolMediator::LayerTreeEnable(
 void LynxDevToolMediator::LayerTreeDisable(
     const std::shared_ptr<lynx::devtool::MessageSender>& sender,
     const Json::Value& message) {
-  RunOnTASMThread([sender, message, executor = element_executor_] {
+  RunOnUIThread([sender, message, executor = element_executor_] {
     executor->LayerTreeDisable(sender, message);
   });
 }
 
 void LynxDevToolMediator::SendLayerTreeDidChangeEvent() {
-  RunOnTASMThread([executor = element_executor_] {
+  RunOnUIThread([executor = element_executor_] {
     executor->SendLayerTreeDidChangeEvent();
   });
 }
@@ -1220,44 +1206,29 @@ void LynxDevToolMediator::SendLayerTreeDidChangeEvent() {
 void LynxDevToolMediator::CompositingReasons(
     const std::shared_ptr<lynx::devtool::MessageSender>& sender,
     const Json::Value& message) {
-  RunOnTASMThread([sender, message, executor = element_executor_] {
+  RunOnUIThread([sender, message, executor = element_executor_] {
     executor->CompositingReasons(sender, message);
   });
 }
 
-void LynxDevToolMediator::GetBoxModel(
-    const InspectorBoxModelQuery& query,
-    std::function<void(std::vector<double>)> callback) {
-  if (!ui_task_runner_ || !ui_executor_) {
-    RunCallbackOnTasmThread(tasm_task_runner_, std::move(callback), {});
-    return;
+std::vector<double> LynxDevToolMediator::GetBoxModel(tasm::Element* element) {
+  if (!ui_task_runner_->RunsTasksOnCurrentThread()) {
+    LOGE("LynxDevToolMediator::GetBoxModel must be called on the UI thread");
+    return std::vector<double>();
   }
-  RunOnTaskRunner(ui_task_runner_, [executor = ui_executor_, query,
-                                    callback = std::move(callback),
-                                    tasm_runner = tasm_task_runner_]() mutable {
-    RunCallbackOnTasmThread(tasm_runner, std::move(callback),
-                            executor->GetBoxModel(query));
-  });
+  return ui_executor_->GetBoxModel(element);
 }
 
-void LynxDevToolMediator::GetBoxModels(
-    const std::vector<InspectorBoxModelQuery>& queries,
-    std::function<void(std::vector<std::vector<double>>)> callback) {
-  if (!ui_task_runner_ || !ui_executor_) {
-    RunCallbackOnTasmThread(tasm_task_runner_, std::move(callback), {});
-    return;
+SLNode* LynxDevToolMediator::GetLayoutObjectForElement(
+    lynx::tasm::Element* element) {
+  if (!ui_task_runner_->RunsTasksOnCurrentThread()) {
+    LOGE(
+        "LynxDevToolMediator::GetLayoutObjectForElement must be called on the "
+        "UI "
+        "thread");
+    return nullptr;
   }
-  RunOnTaskRunner(ui_task_runner_, [executor = ui_executor_, queries,
-                                    callback = std::move(callback),
-                                    tasm_runner = tasm_task_runner_]() mutable {
-    std::vector<std::vector<double>> box_models;
-    box_models.reserve(queries.size());
-    for (const auto& query : queries) {
-      box_models.push_back(executor->GetBoxModel(query));
-    }
-    RunCallbackOnTasmThread(tasm_runner, std::move(callback),
-                            std::move(box_models));
-  });
+  return ui_executor_->GetLayoutObjectForElement(element);
 }
 
 SLNode* LynxDevToolMediator::GetLayoutObjectById(int32_t id) {
@@ -1270,30 +1241,10 @@ SLNode* LynxDevToolMediator::GetLayoutObjectById(int32_t id) {
   return ui_executor_->GetLayoutObjectById(id);
 }
 
-void LynxDevToolMediator::GetLayoutTree(
-    int32_t id, std::function<void(std::string)> callback) {
-  if (!ui_task_runner_ || !ui_executor_) {
-    RunCallbackOnTasmThread(tasm_task_runner_, std::move(callback),
-                            std::string());
-    return;
-  }
-  RunOnTaskRunner(ui_task_runner_, [executor = ui_executor_, id,
-                                    callback = std::move(callback),
-                                    tasm_runner = tasm_task_runner_]() mutable {
-    auto* layout_node = executor->GetLayoutObjectById(id);
-    if (layout_node == nullptr) {
-      RunCallbackOnTasmThread(tasm_runner, std::move(callback), std::string());
-      return;
-    }
-    RunCallbackOnTasmThread(
-        tasm_runner, std::move(callback),
-        lynx::tasm::replay::ReplayController::GetLayoutTree(layout_node));
-  });
-}
-
 void LynxDevToolMediator::SendLayoutTree() {
-  RunOnTASMThread(
-      [executor = element_executor_] { executor->SendLayoutTree(); });
+  // Execute in UI thread since GetLayoutObjectForElement has assertion for
+  // UI thread
+  RunOnUIThread([executor = element_executor_] { executor->SendLayoutTree(); });
 }
 
 void LynxDevToolMediator::LynxGetProperties(
