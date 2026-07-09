@@ -10,6 +10,7 @@
 
 #include "base/include/value/base_value.h"
 #include "core/runtime/js/js_bundle.h"
+#include "core/template_bundle/lynx_template_bundle.h"
 
 namespace lynx {
 namespace runtime {
@@ -22,6 +23,9 @@ class JsBundleHolder {
   virtual ~JsBundleHolder() = default;
 
   virtual std::optional<JsBundle> GetJSBundleFromBT(const std::string& url) = 0;
+
+  virtual std::optional<tasm::LynxTemplateBundle> GetTemplateBundleFromBT(
+      const std::string& url) = 0;
 
   virtual lepus::Value GetCustomSectionByKey(const std::string& url,
                                              const std::string& key) = 0;

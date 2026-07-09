@@ -65,8 +65,8 @@ class ExternalResourceLoader
    * loading
    * @param ids ids of the components which should be updated after loading
    */
-  void LoadLazyBundle(const std::string& url, int32_t callback_id,
-                      const std::vector<std::string>& ids);
+  void LoadLazyBundle(std::string url, int32_t callback_id,
+                      std::vector<std::string> ids);
 
   // Load lynx_core.js and assets
   std::vector<uint8_t> LoadJSSource(const std::string& url);

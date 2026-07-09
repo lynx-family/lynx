@@ -88,9 +88,10 @@ class BTSRuntimeMediator : public runtime::TemplateDelegate {
   void GetComponentContextDataAsync(const std::string& component_id,
                                     const std::string& key,
                                     runtime::js::ApiCallBack callback) override;
-  bool LoadDynamicComponentFromJS(const std::string& url,
-                                  const runtime::js::ApiCallBack& callback,
-                                  const std::vector<std::string>& ids) override;
+  bool LoadDynamicComponentFromJS(
+      const std::string& url, const runtime::js::ApiCallBack& callback,
+      const std::vector<std::string>& ids,
+      std::optional<tasm::LynxTemplateBundle> template_bundle) override;
   void LoadScriptAsync(const std::string& url,
                        runtime::js::ApiCallBack callback) override;
   void AddFont(const lepus::Value& font,

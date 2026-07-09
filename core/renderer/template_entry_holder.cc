@@ -79,11 +79,10 @@ void TemplateEntryHolder::InsertLynxTemplateBundle(
    * items in template_entries_ do not need to be inserted.
    */
   if (template_entries_.find(url) == template_entries_.end()) {
-    // TODD(yangguangzhao.solace): JS query component should use preloaded
-    // bundle too.
     TRACE_EVENT(LYNX_TRACE_CATEGORY, TEMPLATE_RENDER_REGISTER_LAZY_BUNDLE,
                 "url", url);
     preload_template_bundles_.try_emplace(url, bundle);
+    TryPostTemplateBundle(url, bundle);
   }
 
   // TODO: It's reasonable that using component_loader as bundle_manager
@@ -100,6 +99,13 @@ void TemplateEntryHolder::TryPostJSBundle(const std::string& url,
   // from the Engine Thread except for the first screen.
   if (bundle.EnableFiberArch() && js_bundle_holder_) {
     js_bundle_holder_->InsertJSBundle(url, bundle.GetJsBundle());
+  }
+}
+
+void TemplateEntryHolder::TryPostTemplateBundle(
+    const std::string& url, const LynxTemplateBundle& bundle) {
+  if (bundle.EnableFiberArch() && js_bundle_holder_) {
+    js_bundle_holder_->InsertTemplateBundle(url, bundle);
   }
 }
 

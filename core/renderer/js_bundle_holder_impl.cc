@@ -37,6 +37,15 @@ std::optional<runtime::js::JsBundle> JsBundleHolderImpl::GetJSBundleFromBT(
   return bundle;
 }
 
+std::optional<tasm::LynxTemplateBundle>
+JsBundleHolderImpl::GetTemplateBundleFromBT(const std::string& url) {
+  std::lock_guard<std::mutex> lock(mutex_);
+  auto bundle = template_bundle_map_.find(url);
+  return bundle != template_bundle_map_.end()
+             ? std::make_optional(bundle->second)
+             : std::nullopt;
+}
+
 lepus::Value JsBundleHolderImpl::GetCustomSectionByKey(const std::string& url,
                                                        const std::string& key) {
   auto bundle = proxy_.FindTemplateBundle(url);
@@ -58,6 +67,13 @@ void JsBundleHolderImpl::InsertJSBundle(
     const std::string& url, const runtime::js::JsBundle& js_bundle) {
   std::unique_lock<std::mutex> lock(mutex_);
   js_bundle_map_.emplace(url, js_bundle);
+  template_bundle_map_.erase(url);
+}
+
+void JsBundleHolderImpl::InsertTemplateBundle(
+    const std::string& url, const tasm::LynxTemplateBundle& template_bundle) {
+  std::lock_guard<std::mutex> lock(mutex_);
+  template_bundle_map_.emplace(url, template_bundle);
 }
 
 std::unique_ptr<JsBundleHolderImpl::RequestScope>
