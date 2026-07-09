@@ -148,8 +148,11 @@ class Element : public lepus::RefCounted,
                 public SelectorItem,
                 public style::SimpleStyleNode {
  public:
+  Element(ElementManager* manager, const base::String& tag);
+  Element(ElementManager* manager, const base::String& tag, int32_t css_id);
   Element(const base::String& tag, ElementManager* element_manager,
           uint32_t node_index);
+  void ReleaseSelf() const override { delete this; }
 
   Element& operator=(const Element&) = delete;
 
@@ -1682,6 +1685,8 @@ class Element : public lepus::RefCounted,
   Element* FindEnclosingNoneWrapper(Element* parent, Element* node);
   void HandleContainerInsertion(Element* parent, Element* child, Element* ref);
   void HandleSelfFixedChange();
+  virtual void OnNodeAdded(Element* child);
+  virtual void OnNodeRemoved(Element* child);
 
   void RequireFlush();
 
@@ -2300,6 +2305,11 @@ class Element : public lepus::RefCounted,
   std::unique_ptr<SLNode> sl_node_{nullptr};
 
  private:
+  void AttachToElementManagerInner(
+      ElementManager* manager,
+      const std::shared_ptr<CSSStyleSheetManager>& style_manager,
+      bool keep_element_id);
+
   // Element state, used to identify whether the current Element is on the root
   // Dom tree. When an Element is constructed, it is definitely not on the root
   // Dom tree, so state_ is initialized as State::kDetached.
