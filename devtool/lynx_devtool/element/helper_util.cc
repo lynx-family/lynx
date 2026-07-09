@@ -298,6 +298,22 @@ void MergeCSSStyle(Json::Value& res,
     media_item["range"]["endColumn"] = style_sheet.media_range_.end_column_;
     rule["media"].append(media_item);
   }
+  rule["supports"] = Json::Value(Json::ValueType::arrayValue);
+  if (!style_sheet.supports_text_.empty()) {
+    Json::Value supports_item(Json::ValueType::objectValue);
+    supports_item["text"] = style_sheet.supports_text_;
+    supports_item["active"] = true;
+    supports_item["styleSheetId"] = style_sheet.style_sheet_id_;
+    supports_item["range"] = Json::Value(Json::ValueType::objectValue);
+    supports_item["range"]["startLine"] =
+        style_sheet.supports_range_.start_line_;
+    supports_item["range"]["startColumn"] =
+        style_sheet.supports_range_.start_column_;
+    supports_item["range"]["endLine"] = style_sheet.supports_range_.end_line_;
+    supports_item["range"]["endColumn"] =
+        style_sheet.supports_range_.end_column_;
+    rule["supports"].append(supports_item);
+  }
   rule["origin"] = "regular";
   rule["selectorList"] = Json::Value(Json::ValueType::objectValue);
   rule["selectorList"]["text"] = style_name;
