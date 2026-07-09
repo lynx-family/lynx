@@ -17,21 +17,7 @@ namespace clay {
 
 namespace {
 constexpr const char* kDefaultOverlayIdPrefix = "default_overlay_id_";
-
-PointerEvent ConvertToOverlayHitEvent(const PointerEvent& event,
-                                      const Point& offset) {
-  auto converted_event = event;
-  converted_event.position.Move(-offset.x(), -offset.y());
-  return converted_event;
 }
-
-FloatPoint ConvertToOverlayHitPosition(const FloatPoint& position,
-                                       const Point& offset) {
-  auto converted_position = position;
-  converted_position.Move(-offset.x(), -offset.y());
-  return converted_position;
-}
-}  // namespace
 
 OverlayManager::OverlayManager(PageView* page_view) : page_view_(page_view) {}
 
@@ -79,26 +65,9 @@ void OverlayManager::OnHideOverlay(OverlayView* overlay) {
   }
 }
 
-void OverlayManager::InsertOverlayByLevel(OverlayView* overlay) {
-  // Overlays are ordered by descending level. The back of the list is the top
-  // hit-test target, so lower level overlays and newer same-level overlays stay
-  // closer to the back.
-  auto insert_pos = overlays_.begin();
-  for (; insert_pos != overlays_.end(); ++insert_pos) {
-    if ((*insert_pos)->Level() <= overlay->Level()) {
-      break;
-    }
-  }
-  for (; insert_pos != overlays_.end(); ++insert_pos) {
-    if ((*insert_pos)->Level() != overlay->Level()) {
-      break;
-    }
-  }
-  overlays_.insert(insert_pos, overlay);
-}
-
 void OverlayManager::OnShowOverlay(OverlayView* overlay) {
   FML_DCHECK(overlay);
+
   // Avoid add overlay twice
   if (std::find(overlays_.begin(), overlays_.end(), overlay) !=
       overlays_.end()) {
@@ -109,7 +78,21 @@ void OverlayManager::OnShowOverlay(OverlayView* overlay) {
     overlay->RequestFocus();
   }
 
-  InsertOverlayByLevel(overlay);
+  // Overlays are ordered by level with descent order. For overlays with the
+  // same level, newer is at the end.
+  // The actual UI level is managed by the platform side
+  auto it = overlays_.rbegin();
+  for (; it != overlays_.rend(); it++) {
+    if ((*it)->Level() < overlay->Level()) {
+      break;
+    }
+  }
+  if (overlays_.size() == 0) {
+    overlays_.push_back(overlay);
+  } else {
+    auto insert_pos = std::next(it.base(), 1);
+    overlays_.insert(insert_pos, overlay);
+  }
   if (overlay->ShouldChangeOffset()) {
     if (overlay->HasEvent(event_attr::kEventShowOverlay)) {
       // In clay, overlays will never show failure
@@ -119,16 +102,6 @@ void OverlayManager::OnShowOverlay(OverlayView* overlay) {
       SendOverlayEvent(overlay, "onShowOverlay");
     }
   }
-}
-
-void OverlayManager::OnOverlayLevelChanged(OverlayView* overlay) {
-  FML_DCHECK(overlay);
-  auto iter = std::find(overlays_.begin(), overlays_.end(), overlay);
-  if (iter == overlays_.end()) {
-    return;
-  }
-  overlays_.erase(iter);
-  InsertOverlayByLevel(overlay);
 }
 
 bool OverlayManager::DispatchKeyEvent(const KeyEvent* event) {
@@ -168,34 +141,18 @@ bool OverlayManager::DispatchKeyEvent(const KeyEvent* event) {
 bool OverlayManager::HitTest(const PointerEvent& event, HitTestResult& result,
                              bool& is_pass_through,
                              PointerEvent& converted_position) {
-  bool found_visible_overlay = false;
-  Point pass_through_offset;
   for (auto it = overlays_.rbegin(); it != overlays_.rend(); ++it) {
     auto overlay = *it;
     if (!overlay->Visible()) {
       continue;
     }
-    Point touch_offset;
-    if (overlay->ShouldChangeOffset()) {
-      touch_offset = overlay->GetTouchOffset();
-      if (!found_visible_overlay) {
-        found_visible_overlay = true;
-        pass_through_offset = touch_offset;
-      }
-    }
-    auto overlay_event = overlay->ShouldChangeOffset()
-                             ? ConvertToOverlayHitEvent(event, touch_offset)
-                             : event;
-    auto overlay_result =
-        overlay->HitTest(overlay_event, result, is_pass_through);
+    auto overlay_result = overlay->HitTest(event, result, is_pass_through);
     if (overlay_result) {
       return true;
+    } else if (overlay->ShouldChangeOffset() && is_pass_through) {
+      auto offset = overlay->GetTouchOffset();
+      converted_position.position.Move(offset.x(), offset.y());
     }
-  }
-  if (found_visible_overlay && is_pass_through) {
-    converted_position = event;
-    converted_position.position.Move(pass_through_offset.x(),
-                                     pass_through_offset.y());
   }
   return false;
 }
@@ -245,21 +202,13 @@ BaseView* OverlayManager::GetTopViewToAcceptEvent(
     if (!overlay->Visible()) {
       continue;
     }
-    Point touch_offset;
-    if (overlay->ShouldChangeOffset()) {
-      touch_offset = overlay->GetTouchOffset();
-      if (!found_visible_overlay) {
-        found_visible_overlay = true;
-        // only record top one
-        offset = touch_offset;
-      }
+    if (overlay->ShouldChangeOffset() && !found_visible_overlay) {
+      found_visible_overlay = true;
+      // only record top one
+      offset = overlay->GetTouchOffset();
     }
-    auto overlay_position =
-        overlay->ShouldChangeOffset()
-            ? ConvertToOverlayHitPosition(position, touch_offset)
-            : position;
-    auto view = overlay->GetTopViewToAcceptEvent(
-        overlay_position, relative_position, platform_try_hit_id);
+    auto view = overlay->GetTopViewToAcceptEvent(position, relative_position,
+                                                 platform_try_hit_id);
     if (view) {
       if (view == overlay && overlay->CanEventsPassThroughToViewsBehind()) {
         continue;

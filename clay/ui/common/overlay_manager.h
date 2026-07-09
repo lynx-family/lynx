@@ -28,7 +28,6 @@ class OverlayManager {
 
   void OnHideOverlay(OverlayView* overlay);
   void OnShowOverlay(OverlayView* overlay);
-  void OnOverlayLevelChanged(OverlayView* overlay);
 
   bool HasOverlay() const { return !overlays_.empty(); }
 
@@ -113,7 +112,6 @@ class OverlayManager {
   };
 
   void RequestCloseOverlay(std::string_view overlay_id);
-  void InsertOverlayByLevel(OverlayView* overlay);
 
   // Send callback to lynx
   void SendOverlayEvent(OverlayView* overlay, const char* event_name) const;
