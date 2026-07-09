@@ -266,6 +266,11 @@ class Element : public lepus::RefCounted,
   AttributeHolder* data_model() const { return data_model_.get(); };
 
   bool is_fixed() { return is_fixed_; }
+  bool fixed_changed() const { return fixed_changed_; }
+  void set_fixed_changed(bool fixed_changed) { fixed_changed_ = fixed_changed; }
+  void set_need_handle_fixed(bool need_handle_fixed) {
+    need_handle_fixed_ = need_handle_fixed;
+  }
   // TODO(ZHOUZHITAO): Move parallel_flush_ flag from element to
   // ParallelResolver
   bool is_parallel_flush() { return parallel_flush_ > 0; }
@@ -635,6 +640,8 @@ class Element : public lepus::RefCounted,
   }
   Element* virtual_parent() { return virtual_parent_; }
   Element* root_virtual_parent();
+  void AddScopedVirtualChild(const fml::RefPtr<Element>& child);
+  void RemoveScopedVirtualChild(const fml::RefPtr<Element>& child);
 
   // Parent component unique ID access methods
   int64_t GetParentComponentUniqueIdForFiber() {
@@ -803,14 +810,35 @@ class Element : public lepus::RefCounted,
   virtual void InsertNodeBefore(
       const fml::RefPtr<Element>& child,
       const fml::RefPtr<Element>& reference_child) = 0;
+  virtual void InsertNodeBeforeInternal(const fml::RefPtr<Element>& child,
+                                        Element* ref_node) = 0;
+  virtual void InsertNodeBeforeInternal(const fml::RefPtr<Element>& child,
+                                        Element* ref_node,
+                                        bool update_logical_children) = 0;
   virtual void ReplaceElements(
       const base::Vector<fml::RefPtr<Element>>& inserted,
       const base::Vector<fml::RefPtr<Element>>& removed,
       Element* ref_node = nullptr) = 0;
   virtual void RemoveNode(const fml::RefPtr<Element>& child,
                           bool destroy = true) = 0;
+  void RemoveLogicalChild(const fml::RefPtr<Element>& child);
+  virtual void RemoveNodeInternal(const fml::RefPtr<Element>& child,
+                                  bool destroy,
+                                  bool update_logical_children) = 0;
   virtual void InsertedInto(Element* insertion_point) = 0;
   virtual void RemovedFrom(Element* insertion_point) = 0;
+  void HandleInsertChildAction(Element* child, int index, Element* ref_node);
+  void HandleRemoveChildAction(Element* child);
+  void HandleRemoveSelf(Element* removal_point, Element* render_parent);
+  void InsertFixedElement(Element* child, Element* ref_node);
+  void RemoveFixedElement(Element* child);
+  virtual void AddChildAt(fml::RefPtr<Element> child, int index) = 0;
+  void StoreLayoutNode(Element* child, Element* ref);
+  void RestoreLayoutNode(Element* child);
+  void InsertLayoutNode(Element* child, Element* ref);
+  void RemoveLayoutNode(Element* child,
+                        int layout_in_element_platform_index = -1);
+  bool HasLayoutInElementPlatformNode();
 
   inline bool CanHasLayoutOnlyChildren() {
     return can_has_layout_only_children_;
@@ -1563,11 +1591,14 @@ class Element : public lepus::RefCounted,
    * A key function for flush all pending actions for current Element.
    */
   virtual void FlushActions() = 0;
+  virtual void FlushSelf() = 0;
 
   /**
    * Prepare or update the platform representation and return deferred work.
    */
   virtual ParallelFlushReturn PrepareForCreateOrUpdate() = 0;
+
+  virtual void PrepareChildren() = 0;
 
   /**
    * Recursively schedule or perform parallel flush work for this subtree.
@@ -1585,6 +1616,8 @@ class Element : public lepus::RefCounted,
    * @return true if propagation is needed
    */
   bool NeedPropagateInheritedDirtyFlag(bool force_propagate);
+
+  void InvalidateChildrenIfNeeded();
 
   /**
    * Check if the CSS fragment has id selector map.
@@ -1644,6 +1677,10 @@ class Element : public lepus::RefCounted,
 
   void PerformElementContainerCreateOrUpdate(bool need_update, bool need_reset);
   void UpdateFiberElement();
+
+  Element* FindEnclosingNoneWrapper(Element* parent, Element* node);
+  void HandleContainerInsertion(Element* parent, Element* child, Element* ref);
+  void HandleSelfFixedChange();
 
   void RequireFlush();
 
@@ -1982,7 +2019,6 @@ class Element : public lepus::RefCounted,
   void UpdateDynamicElementStyleForNewPipeline(uint32_t& style,
                                                bool& inner_force_update);
   void EnsureSLNode();
-  bool HasLayoutInElementPlatformNode();
   int GetLayoutInElementPlatformChildIndex(Element* child);
   void UpdateFixedNodeSet();
   void UpdateFixedNodeSetRecursively(bool is_insert);
