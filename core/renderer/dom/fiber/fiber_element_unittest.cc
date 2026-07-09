@@ -37,6 +37,7 @@
 #include "core/renderer/dom/fiber/if_element.h"
 #include "core/renderer/dom/fiber/image_element.h"
 #include "core/renderer/dom/fiber/list_element.h"
+#include "core/renderer/dom/fiber/list_item_scheduler_adapter.h"
 #include "core/renderer/dom/fiber/none_element.h"
 #include "core/renderer/dom/fiber/page_element.h"
 #include "core/renderer/dom/fiber/platform_layout_function_wrapper.h"
@@ -3111,6 +3112,27 @@ TEST_P(FiberElementTest, DestroyPlatformNode) {
   element_new = nullptr;  // clear local ref.
   EXPECT_FALSE(parent_new->HasPaintingNode());
   EXPECT_EQ(wp_new.use_count(), 1);
+}
+
+TEST_P(FiberElementTest, DestroyQueuesLayoutTaskDuringBatchResolve) {
+  auto render_root = manager->CreateFiberNode("view");
+  render_root->CreateListItemScheduler(list::BatchRenderStrategy::kBatchRender,
+                                       false);
+  render_root->RecursivelyMarkRenderRootElement(render_root.get());
+
+  auto element = manager->CreateFiberNode("view");
+  element->RecursivelyMarkRenderRootElement(render_root.get());
+
+  auto* scheduler = render_root->GetSchedulerAdapter();
+  scheduler->batch_resolving_tree_ = true;
+  ASSERT_TRUE(scheduler->resolve_element_tree_queue_.empty());
+
+  element = nullptr;
+
+  ASSERT_EQ(1U, scheduler->resolve_element_tree_queue_.size());
+  scheduler->batch_resolving_tree_ = false;
+  scheduler->resolve_element_tree_queue_.front()();
+  scheduler->resolve_element_tree_queue_.pop_front();
 }
 
 TEST_P(FiberElementTest, RemoveNodeAndFlush) {

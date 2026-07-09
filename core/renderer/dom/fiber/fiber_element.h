@@ -78,9 +78,7 @@ class FiberElement : public Element {
 
   void SetupFragmentBehavior(Fragment* fragment) override;
 
-  ~FiberElement() override;
-
-  void ReleaseSelf() const override { delete this; }
+  ~FiberElement() override = default;
 
   struct PerfStatistic {
     PerfStatistic(uint32_t total_task_count)
@@ -206,9 +204,6 @@ class FiberElement : public Element {
 
   virtual void CheckHasInlineContainer(Element* parent) override;
 
-  virtual void EnqueueLayoutTask(
-      base::MoveOnlyClosure<void> operation) override;
-
   ParallelFlushReturn PrepareForCreateOrUpdate() override;
 
   void OnPseudoStatusChanged(PseudoState prev_status,
@@ -223,14 +218,6 @@ class FiberElement : public Element {
 
   // current element is removed from DOM tree
   void RemovedFrom(Element* insertion_point) override;
-
-  // The element object created using the clone interface of FiberElement is not
-  // attached to the element manager. Use this function to attach it to the
-  // element manager.
-  void AttachToElementManager(
-      ElementManager* manager,
-      const std::shared_ptr<CSSStyleSheetManager>& style_manager,
-      bool keep_element_id) override;
 
   bool IsEventPathCatch(event::EventTarget* target,
                         event::Event* event) override;
@@ -253,15 +240,6 @@ class FiberElement : public Element {
   bool ConsumeAllAttributes();
 
   ParallelFlushReturn CreateParallelTaskHandler();
-
-  /**
-   * This function will be called before add node.
-   * @param child the added node
-   */
-  virtual void OnNodeAdded(Element* child);
-
-  // called when a child element is removed
-  virtual void OnNodeRemoved(Element* child);
 
   virtual void SetAttributeInternal(const base::String& key,
                                     const lepus::Value& value);

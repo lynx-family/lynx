@@ -613,11 +613,11 @@ bool Element::NeedsAnimationFrameForNewPipeline() const {
           css_transition_manager_->NeedsFutureTickForNewPipeline());
 }
 
-FiberElement::FiberElement(ElementManager *manager, const base::String &tag)
-    : FiberElement(manager, tag, kInvalidCssId) {}
+Element::Element(ElementManager *manager, const base::String &tag)
+    : Element(manager, tag, kInvalidCssId) {}
 
-FiberElement::FiberElement(ElementManager *manager, const base::String &tag,
-                           int32_t css_id)
+Element::Element(ElementManager *manager, const base::String &tag,
+                 int32_t css_id)
     : Element(tag, manager, kInvalidNodeIndex) {
   TRACE_EVENT_INSTANT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_CONSTRUCTOR, "tag",
                       tag.c_str(), "id", id_);
@@ -644,68 +644,20 @@ FiberElement::FiberElement(ElementManager *manager, const base::String &tag,
   }
 
   if (element_manager_->GetEnableStandardCSSSelector()) {
-    // in new selector, mark style dirty while Created.
     MarkDirty(kDirtyStyle);
   }
 }
 
+FiberElement::FiberElement(ElementManager *manager, const base::String &tag)
+    : Element(manager, tag) {}
+
+FiberElement::FiberElement(ElementManager *manager, const base::String &tag,
+                           int32_t css_id)
+    : Element(manager, tag, css_id) {}
+
 FiberElement::FiberElement(const FiberElement &element,
                            bool clone_resolved_props)
-    : Element(element, clone_resolved_props) {
-  invalidation_lists_ = element.invalidation_lists_;
-  parent_component_unique_id_ = element.parent_component_unique_id_;
-  dirty_ = element.dirty_ | kDirtyCreated | kDirtyCloned;
-  css_id_ = element.css_id_;
-  dynamic_style_flags_ = element.dynamic_style_flags_;
-  has_extreme_parsed_styles_ = element.has_extreme_parsed_styles_;
-  only_selector_extreme_parsed_styles_ =
-      element.only_selector_extreme_parsed_styles_;
-  can_be_layout_only_ = element.can_be_layout_only_;
-  is_template_ = element.is_template_;
-  flush_required_ = element.flush_required_;
-  full_raw_inline_style_ = element.full_raw_inline_style_;
-  current_raw_inline_styles_ = element.current_raw_inline_styles_;
-  current_raw_inline_custom_properties_ =
-      element.current_raw_inline_custom_properties_;
-  extreme_parsed_styles_ = element.extreme_parsed_styles_;
-  inherited_styles_ = element.inherited_styles_;
-  reset_inherited_ids_ = element.reset_inherited_ids_;
-  custom_properties_ = element.custom_properties_;
-  updated_attr_map_ = element.updated_attr_map_;
-  builtin_attr_map_ = element.builtin_attr_map_;
-  reset_attr_vec_ = element.reset_attr_vec_;
-  part_id_ = element.part_id_;
-  SetAttributeHolder(
-      fml::MakeRefCounted<AttributeHolder>(*element.data_model()));
-  data_model_->SetCSSVariableBundle(*element.data_model());
-
-  if (clone_resolved_props) {
-    parsed_styles_map_ = element.parsed_styles_map_;
-    updated_inherited_styles_ = element.updated_inherited_styles_;
-    layout_styles_ = element.layout_styles_;
-    // clone_resolved_props only carries committed resolved state. The dynamic
-    // source object is treated as a mutation carrier and will be rebuilt lazily
-    // from parsed_dynamic_styles_map_ when a post-clone incremental update
-    // happens.
-    parsed_dynamic_styles_map_ = element.parsed_dynamic_styles_map_;
-
-    // FIXME(wujintian): The prop bundle stores the style of incremental
-    // updates. If the element flush props has been executed multiple times
-    // before cloning the element, then this prop bundle cannot represent all
-    // the stock styles since the element was created.
-    if (element.pre_prop_bundle_) {
-      prop_bundle_ = element.pre_prop_bundle_->ShallowCopy();
-    } else if (element.prop_bundle_) {
-      prop_bundle_ = element.prop_bundle_->ShallowCopy();
-    }
-  }
-
-  if (element.config().IsTable() && element.config().GetLength() > 0) {
-    config_ = lepus::Value::ShallowCopy(element.config()).Table();
-  }
-
-  // TODO(wujintian): Clone animation-related objects.
-}
+    : Element(element, clone_resolved_props) {}
 
 void Element::FiberAddEvent(const base::String &type, const base::String &name,
                             const lepus::Value &callback,
@@ -945,11 +897,11 @@ void Element::FiberAddEvent(const base::String &type, const base::String &name,
       "callable.");
 }
 
-void FiberElement::AttachToElementManager(
+void Element::AttachToElementManager(
     ElementManager *manager,
     const std::shared_ptr<CSSStyleSheetManager> &style_manager,
     bool keep_element_id) {
-  Element::AttachToElementManager(manager, style_manager, keep_element_id);
+  AttachToElementManagerInner(manager, style_manager, keep_element_id);
 
   const auto &env_config = manager->GetLynxEnvConfig();
   if (platform_css_style_ == nullptr) {
@@ -985,20 +937,16 @@ void FiberElement::AttachToElementManager(
 
   if (Config::DefaultFontScale() != env_config.FontScale()) {
     computed_css_style()->SetFontScale(env_config.FontScale());
-  }
-
-  if (Config::DefaultFontScale() != env_config.FontScale()) {
     SetComputedFontSize(env_config.PageDefaultFontSize(),
                         env_config.PageDefaultFontSize());
   }
 
   if (element_manager_->GetEnableStandardCSSSelector()) {
-    // in new selector, mark style dirty while Created.
     MarkDirty(kDirtyStyle);
   }
 }
 
-void FiberElement::OnNodeAdded(Element *child) {
+void Element::OnNodeAdded(Element *child) {
   if (child != nullptr) {
     bool is_compatible_parent =
         !is_page() && !is_view() && !is_text() && !is_image();
@@ -1027,13 +975,13 @@ void FiberElement::OnNodeAdded(Element *child) {
   UpdateRenderRootElementIfNecessary(child);
 }
 
-void FiberElement::OnNodeRemoved(Element *child) {
+void Element::OnNodeRemoved(Element *child) {
   if (child != nullptr) {
     child->MarkAsDirectChildOfCompatibleComponent(false);
   }
 }
 
-FiberElement::~FiberElement() {
+Element::~Element() {
   TRACE_EVENT_INSTANT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_DESTRUCTOR, "id", id_);
   if (ShouldDestroy()) {
     element_manager_->EraseGlobalBindElementId(global_bind_event_map(),
@@ -4377,7 +4325,7 @@ void FiberElement::CheckHasInlineContainer(Element *parent) {
   allow_layoutnode_inline_ = parent->IsShadowNodeCustom();
 }
 
-void FiberElement::EnqueueLayoutTask(base::MoveOnlyClosure<void> operation) {
+void Element::EnqueueLayoutTask(base::MoveOnlyClosure<void> operation) {
   auto *render_root = GetRenderRootElement();
   if (render_root && render_root->GetSchedulerAdapter() &&
       render_root->GetSchedulerAdapter()->IsBatchResolvingTree()) {
