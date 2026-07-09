@@ -364,6 +364,17 @@ class Element : public lepus::RefCounted,
   void SetStyleObjects(
       std::unique_ptr<style::StyleObject*, style::StyleObjectArrayDeleter>
           object_list) override;
+
+  void UpdateSimpleStyles(const tasm::StyleMap& style_map) override final;
+  void UpdateSimpleStyles(tasm::StyleMap&& style_map) override final;
+  void UpdateStaticAndDynamicSimpleStyles(
+      tasm::StyleMap&& style_map,
+      tasm::StyleMap&& dynamic_style_map) override final;
+  void UpdateDynamicSimpleStyles(tasm::StyleMap&& style_map) override final;
+  void ResetSimpleStyle(const tasm::CSSPropertyID id,
+                        const tasm::CSSValue& value) override final;
+  void ResetSimpleStyle(const tasm::CSSPropertyID id) override final;
+
   void ReplaceDynamicSimpleStyles(
       style::DynamicStyleObjectRef new_style_object);
   void AddDynamicSimpleStyles(tasm::StyleMap&& new_styles);
@@ -652,6 +663,8 @@ class Element : public lepus::RefCounted,
   // Exported for accessing private field from Element Manager to handle legacy
   // logic
   inline Element* GetRenderRootElement() { return render_root_element_; }
+  void RecursivelyMarkRenderRootElement(Element* render_root);
+  void UpdateRenderRootElementIfNecessary(Element* child);
 
   bool IsInSameCSSScope(Element* element) {
     return css_id_ == element->css_id_;
@@ -782,6 +795,21 @@ class Element : public lepus::RefCounted,
    */
   LYNX_EXPORT_FOR_DEVTOOL virtual double GetFontSize();
 
+  /**
+   * Special API for processing font-size.
+   * Font-size should be handled at the beginning of style application.
+   */
+  void SetFontSize(const tasm::CSSValue& value);
+
+  /**
+   * Sets font-size on a specific target ComputedCSSStyle rather than the
+   * element's own platform style.
+   */
+  void SetFontSize(const tasm::CSSValue& value,
+                   starlight::ComputedCSSStyle* target_style);
+
+  void ResetFontSize();
+
   /*
    * return the font size of parent.
    */
@@ -846,9 +874,7 @@ class Element : public lepus::RefCounted,
 
   virtual void EnqueueLayoutTask(base::MoveOnlyClosure<void> operation);
 
-  virtual void HandleDelayTask(base::MoveOnlyClosure<void> operation) {
-    operation();
-  }
+  virtual void HandleDelayTask(base::MoveOnlyClosure<void> operation);
   void set_parent(Element* parent) { parent_ = parent; }
   bool EnableTriggerGlobalEvent() const { return trigger_global_event_; }
 
@@ -859,7 +885,7 @@ class Element : public lepus::RefCounted,
 
   virtual void MarkLayoutDirty();
 
-  virtual void MarkLayoutDirtyLite(){};
+  virtual void MarkLayoutDirtyLite();
 
   // Dirty flag primitives
   int32_t dirty() const { return dirty_; }
@@ -1047,7 +1073,7 @@ class Element : public lepus::RefCounted,
   bool ConsumeTransitionStylesInAdvance(const StyleMap& styles,
                                         bool force_reset = false);
 
-  virtual void MarkAsLayoutRoot() = 0;
+  virtual void MarkAsLayoutRoot();
   virtual void AttachLayoutNode(const fml::RefPtr<PropBundle>& props) = 0;
   virtual void UpdateLayoutNodeProps(const fml::RefPtr<PropBundle>& props) = 0;
   virtual void UpdateLayoutNodeStyle(CSSPropertyID css_id,
@@ -1057,6 +1083,23 @@ class Element : public lepus::RefCounted,
                                         double root_node_font_size) = 0;
   virtual void UpdateLayoutNodeAttribute(starlight::LayoutAttribute key,
                                          const lepus::Value& value) = 0;
+
+  enum class StyleSideEffectReplayMode {
+    kNormal,
+    kPreserveLayoutOnly,
+  };
+
+  /**
+   * @brief Replays the side effects of a single changed style property.
+   * @param id The CSS property that changed.
+   * @param value The new computed value.
+   */
+  void ReplayChangedStyleSideEffect(
+      CSSPropertyID id, const CSSValue& value,
+      StyleSideEffectReplayMode mode = StyleSideEffectReplayMode::kNormal);
+  void ReplayResetStyleSideEffect(
+      CSSPropertyID id,
+      StyleSideEffectReplayMode mode = StyleSideEffectReplayMode::kNormal);
 
   virtual bool ResolveStyleValue(CSSPropertyID id, const tasm::CSSValue& value);
 
@@ -1142,6 +1185,12 @@ class Element : public lepus::RefCounted,
   void DispatchAnimationEventsForNewPipeline(
       const animation::AnimationEventRecordsForNewPipeline& event_records);
   void UpdateFinalStyleMap(const StyleMap& styles);
+  virtual void MarkLayoutInElementTextMeasurerPropertyIfNeeded(
+      CSSPropertyID id) {}
+  // Hook for subclasses to replay element-specific derived style state.
+  // Callers should go through ReplayChangedStyleSideEffect() or
+  // ReplayResetStyleSideEffect() so Element preserves replay bookkeeping.
+  virtual void ReplayElementSpecificStyleSideEffect(CSSPropertyID id) {}
 
   virtual void OnPatchFinish(std::shared_ptr<PipelineOptions>& option);
 
@@ -1202,6 +1251,7 @@ class Element : public lepus::RefCounted,
   virtual bool DisableListPlatformImplementation() const { return false; }
 
   virtual const InheritedProperty GetInheritedProperty();
+  const InheritedProperty GetParentInheritedProperty();
 
   virtual bool NeedFullFlushPath(CSSPropertyID id, const CSSValue& value);
 
@@ -1491,6 +1541,8 @@ class Element : public lepus::RefCounted,
    * @return true if layout info needs update
    */
   bool IfNeedsUpdateLayoutInfo();
+  void UpdateLayoutInfoRecursively(PipelineOptions* options);
+  void UpdateLayoutInfo();
 
   // The element object created using clone interfaces is not attached to the
   // element manager. Use this function to attach it to the element manager.
@@ -1508,6 +1560,36 @@ class Element : public lepus::RefCounted,
   void PushCurrentPropsToBundleForRecording(PropBundle* bundle);
 
   void RequireFlush();
+
+  const tasm::CSSValue& ResolveCurrentStyleValue(
+      const CSSPropertyID& key, const tasm::CSSValue& default_value);
+
+  void ApplySimpleStyleWithoutTail(const tasm::CSSPropertyID id,
+                                   const tasm::CSSValue& value);
+  void ApplySimpleStylesWithoutTail(const tasm::StyleMap& style_map);
+  void ApplyDynamicSimpleStylesWithoutTail(
+      const tasm::StyleMap& dynamic_style_map,
+      const tasm::StyleMap& base_style_map);
+
+  void HandleKeyframePropsChange();
+  void FinalizeSimpleStyleUpdate();
+  void ResolveSimpleStyles();
+  DynamicCSSStylesManager::StyleUpdateFlags CollectDynamicFlagsForNewPipeline(
+      const StyleMap& resolved_style_map) const;
+  bool ShouldPreserveLayoutOnlyForInheritedPlatformStyle(
+      CSSPropertyID id, const CSSIDBitset& source_style_ids);
+  void CommitFontContext(const starlight::ComputedCSSStyle& computed_style,
+                         double old_font_size, double old_root_font_size);
+  void FinalizeAnimationPropsChange(bool& need_update);
+  struct AnimationPropertyChangeAnalysisForLegacyAnimator {
+    bool has_transition_props_changed{false};
+    bool has_keyframe_props_changed{false};
+  };
+  AnimationPropertyChangeAnalysisForLegacyAnimator
+  AnalyzeAnimationPropChangesForLegacyAnimator(
+      const starlight::ComputedCSSStyle& final_style,
+      const starlight::ComputedCSSStyle* previous_final_style,
+      const StyleMap& resolved_style_map) const;
 
   // Mark flush_required without recursively mark parent element
   inline void MarkRequireFlush() { flush_required_ = true; }
@@ -1553,11 +1635,22 @@ class Element : public lepus::RefCounted,
                                  const std::string& new_id);
   bool CheckHasInvalidationForClass(const ClassList& old_classes,
                                     const ClassList& new_classes);
+  void MarkFontSizeInvalidateRecursively();
+  void InvalidateChildrenFontSizeRecursively();
+  void InvalidateChildrenInheritedStylesRecursively();
+  void MarkDirectChildrenStyleDirtyForInheritedPropertyMutation();
+  void RecursivelyMarkCustomPropertiesDirty();
   void InvalidateChildren(css::InvalidationSet* invalidation_set);
   void VisitChildren(const base::MoveOnlyClosure<void, Element*>& visitor);
   void SetFontSizeForAllElement(double cur_node_font_size,
                                 double root_node_font_size);
   void UpdateLengthContextValueForAllElement(const LynxEnvConfig& env_config);
+  void UpdateDynamicChildrenStyleRecursively(uint32_t style, bool force_update);
+  void EnsureSLNode();
+  bool HasLayoutInElementPlatformNode();
+  int GetLayoutInElementPlatformChildIndex(Element* child);
+  void UpdateFixedNodeSet();
+  void UpdateFixedNodeSetRecursively(bool is_insert);
 
   base::String tag_;
   bool is_overlay_{false};
