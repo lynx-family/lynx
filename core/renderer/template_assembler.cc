@@ -726,10 +726,8 @@ void TemplateAssembler::RenderTemplateForFiber(
 
   fml::RefPtr<Element> element_cache = card->TryToGetElementCache();
   if (element_cache.get()) {
-    auto fiber_element_cache =
-        fml::static_ref_ptr_cast<FiberElement>(element_cache);
     TreeResolver::AttachRootToElementManager(
-        fiber_element_cache, page_proxy()->element_manager().get(),
+        element_cache, page_proxy()->element_manager().get(),
         style_sheet_manager(DEFAULT_ENTRY_NAME), true);
     render_options.SetProperty(BASE_STATIC_STRING(kInitPage),
                                lepus::Value(element_cache));

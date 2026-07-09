@@ -75,13 +75,13 @@ ElementBinaryReader::ElementBinaryReader(
   string_key_parsed_styles_router_ = string_key_parsed_styles_router;
 }
 
-// These are the APIs used for decoding data and return fiber elements:
-fml::RefPtr<FiberElement> ElementBinaryReader::DecodeSingleTemplate(
+// These are the APIs used for decoding data and return elements:
+fml::RefPtr<Element> ElementBinaryReader::DecodeSingleTemplate(
     ElementManager* manager, TemplateAssembler* tasm) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY,
               ELEMENT_BINARY_READER_DECODE_SINGLE_TEMPLATE);
   // 1. Decode Element
-  fml::RefPtr<FiberElement> element;
+  fml::RefPtr<Element> element;
   // Because DecodeSingleTemplate always starts decoding from the page node, and
   // the parent component id of the page node is always its own impl id, we pass
   // an unavailable default value of -1 here.
@@ -92,7 +92,7 @@ fml::RefPtr<FiberElement> ElementBinaryReader::DecodeSingleTemplate(
 }
 
 bool ElementBinaryReader::DecodeElementRecursively(
-    fml::RefPtr<FiberElement>& element, ElementManager* manager,
+    fml::RefPtr<Element>& element, ElementManager* manager,
     TemplateAssembler* tasm, int64_t parent_component_id) {
   // 1. Decode children section offset
   DECODE_U32(children_section_offset);
@@ -222,7 +222,7 @@ bool ElementBinaryReader::DecodeElementRecursively(
 }
 
 bool ElementBinaryReader::DecodeBuiltinAttributesSection(
-    fml::RefPtr<FiberElement>& element) {
+    fml::RefPtr<Element>& element) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY,
               ELEMENT_BINARY_READER_DECODE_BUILTIN_ATTR_SECTION);
   DECODE_COMPACT_U32(size);
@@ -236,7 +236,7 @@ bool ElementBinaryReader::DecodeBuiltinAttributesSection(
 }
 
 bool ElementBinaryReader::DecodeIDSelectorSection(
-    fml::RefPtr<FiberElement>& element) {
+    fml::RefPtr<Element>& element) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY,
               ELEMENT_BINARY_READER_DECODE_ID_SELECTOR_SECTION);
   DECODE_STR(id_selector);
@@ -245,7 +245,7 @@ bool ElementBinaryReader::DecodeIDSelectorSection(
 }
 
 bool ElementBinaryReader::DecodeInlineStylesSection(
-    fml::RefPtr<FiberElement>& element) {
+    fml::RefPtr<Element>& element) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY,
               ELEMENT_BINARY_READER_DECODE_INLINE_STYLES_SECTION);
   DECODE_COMPACT_U32(size);
@@ -257,8 +257,7 @@ bool ElementBinaryReader::DecodeInlineStylesSection(
   return true;
 }
 
-bool ElementBinaryReader::DecodeClassesSection(
-    fml::RefPtr<FiberElement>& element) {
+bool ElementBinaryReader::DecodeClassesSection(fml::RefPtr<Element>& element) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY,
               ELEMENT_BINARY_READER_DECODE_CLASSES_SECTION);
   DECODE_COMPACT_U32(size);
@@ -269,8 +268,8 @@ bool ElementBinaryReader::DecodeClassesSection(
   return true;
 }
 
-bool ElementBinaryReader::DecodeEventsSection(
-    TemplateAssembler* tasm, fml::RefPtr<FiberElement>& element) {
+bool ElementBinaryReader::DecodeEventsSection(TemplateAssembler* tasm,
+                                              fml::RefPtr<Element>& element) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, ELEMENT_BINARY_READER_DECODE_EVENTS_SECTION);
   DECODE_COMPACT_U32(size);
   for (uint32_t i = 0; i < size; ++i) {
@@ -356,7 +355,7 @@ bool ElementBinaryReader::DecodeEventsSection(
 }
 
 bool ElementBinaryReader::DecodePiperEventsSection(
-    TemplateAssembler* tasm, fml::RefPtr<FiberElement>& element) {
+    TemplateAssembler* tasm, fml::RefPtr<Element>& element) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY,
               ELEMENT_BINARY_READER_DECODE_PIPER_EVENTS_SECTION);
   DECODE_COMPACT_U32(size);
@@ -417,7 +416,7 @@ bool ElementBinaryReader::DecodePiperEventsSection(
 }
 
 bool ElementBinaryReader::DecodeAttributesSection(
-    fml::RefPtr<FiberElement>& element) {
+    fml::RefPtr<Element>& element) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, ELEMENT_BINARY_READER_DECODE_ATTR_SECTION);
   DECODE_COMPACT_U32(size);
   for (uint32_t i = 0; i < size; ++i) {
@@ -428,8 +427,7 @@ bool ElementBinaryReader::DecodeAttributesSection(
   return true;
 }
 
-bool ElementBinaryReader::DecodeDatasetSection(
-    fml::RefPtr<FiberElement>& element) {
+bool ElementBinaryReader::DecodeDatasetSection(fml::RefPtr<Element>& element) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY,
               ELEMENT_BINARY_READER_DECODE_DATASET_SECTION);
   DECODE_COMPACT_U32(size);
@@ -442,7 +440,7 @@ bool ElementBinaryReader::DecodeDatasetSection(
 }
 
 bool ElementBinaryReader::DecodeParsedStylesSection(
-    fml::RefPtr<FiberElement>& element) {
+    fml::RefPtr<Element>& element) {
   StyleMap parsed_styles;
   CSSVariableMap css_var;
   if (!DecodeParsedStylesSectionInternal(parsed_styles, css_var)) {
@@ -453,11 +451,11 @@ bool ElementBinaryReader::DecodeParsedStylesSection(
 }
 
 bool ElementBinaryReader::DecodeElementChildrenSection(
-    fml::RefPtr<FiberElement>& element, ElementManager* manager,
+    fml::RefPtr<Element>& element, ElementManager* manager,
     TemplateAssembler* tasm, int64_t parent_component_id) {
   DECODE_COMPACT_U32(size);
   for (size_t i = 0; i < size; ++i) {
-    fml::RefPtr<FiberElement> child;
+    fml::RefPtr<Element> child;
     if (!DecodeElementRecursively(child, manager, tasm, parent_component_id)) {
       return false;
     }
@@ -467,7 +465,7 @@ bool ElementBinaryReader::DecodeElementChildrenSection(
 }
 
 bool ElementBinaryReader::ConstructElement(ElementSectionEnum section_type,
-                                           fml::RefPtr<FiberElement>& element,
+                                           fml::RefPtr<Element>& element,
                                            ElementManager* manager,
                                            TemplateAssembler* tasm,
                                            int64_t parent_component_id) {

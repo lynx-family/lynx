@@ -1628,8 +1628,7 @@ void FiberElement::RemoveNodeInternal(const fml::RefPtr<Element> &child,
 
   // take care: NotifyNodeRemoved after removeAction inserted!
   OnNodeRemoved(child.get());
-  TreeResolver::NotifyNodeRemoved(this,
-                                  static_cast<FiberElement *>(child.get()));
+  TreeResolver::NotifyNodeRemoved(this, child.get());
 
   Element *removed = scoped_children_[index].get();
   scoped_children_.erase(scoped_children_.begin() + index);
@@ -1679,8 +1678,7 @@ void FiberElement::RemovedFrom(Element *insertion_point) {
             (iter->type_ == Action::kRemoveChildAct &&
              (iter->is_fixed_ || iter->has_z_index_))) {
           iter->type_ = Action::kRemoveIntergenerationAct;
-          static_cast<FiberElement *>(insertion_point)
-              ->action_param_list_.emplace_back(std::move(*iter));
+          insertion_point->AppendActionParam(std::move(*iter));
           iter = action_param_list_.erase(iter);
         } else {
           ++iter;
@@ -1694,10 +1692,9 @@ void FiberElement::RemovedFrom(Element *insertion_point) {
   // the action_param_list_ here.
   if ((parent() != insertion_point) && (ZIndex() != 0 || is_fixed_) &&
       !EnableFragmentLayerRender()) {
-    static_cast<FiberElement *>(insertion_point)
-        ->action_param_list_.emplace_back(
-            Action::kRemoveIntergenerationAct, insertion_point,
-            fml::RefPtr<FiberElement>(this), 0, nullptr, is_fixed_);
+    insertion_point->AppendActionParam(
+        ActionParam(Action::kRemoveIntergenerationAct, insertion_point,
+                    fml::RefPtr<Element>(this), 0, nullptr, is_fixed_));
     MarkDirty(kDirtyReAttachContainer);
   }
 
@@ -3031,10 +3028,10 @@ void FiberElement::FlushActionsAsRoot() {
   }
 
   // find the first non wrapper && non dirty parent to get the flush option
-  auto *flush_parent = static_cast<FiberElement *>(parent());
+  auto *flush_parent = parent();
 
   // find the first non dirty parent to do flush,if flush from subtree
-  if (flush_parent->dirty_) {
+  if (flush_parent->dirty()) {
     LOGW("FiberElement::FlushActionsAsRoot maybe from a wrong parent, this tag:"
          << tag_.str() << ",component:" << ParentComponentEntryName());
     return flush_parent->FlushActionsAsRoot();
@@ -3048,7 +3045,7 @@ void FiberElement::FlushActionsAsRoot() {
 
   // find the first non wrapper parent to get the flush option
   while (flush_parent && flush_parent->is_wrapper()) {
-    flush_parent = static_cast<FiberElement *>(flush_parent->parent());
+    flush_parent = flush_parent->parent();
   }
 
   if (!flush_parent) {
@@ -3117,11 +3114,10 @@ void FiberElement::FlushActions() {
 
   // Step III: recursively call FlushActions for each child
   for (const auto &child : scoped_children_) {
-    auto *fiber_child = static_cast<FiberElement *>(child.get());
     if (NeedPropagateInheritedDirtyFlag(false)) {
-      fiber_child->MarkDirtyLite(kDirtyPropagateInherited);
+      child->MarkDirtyLite(kDirtyPropagateInherited);
     }
-    fiber_child->FlushActions();
+    child->FlushActions();
   }
   // below flags should be delayed until children flushed
   children_propagate_inherited_styles_flag_ = false;
@@ -3280,7 +3276,7 @@ void FiberElement::ParallelFlushRecursively() {
   }
 
   for (const auto &child : scoped_children_) {
-    static_cast<FiberElement *>(child.get())->ParallelFlushRecursively();
+    child->ParallelFlushRecursively();
   }
 }
 
@@ -3352,7 +3348,7 @@ void FiberElement::PrepareChildForInsertion(Element *child) {
     if (NeedPropagateInheritedDirtyFlag(false)) {
       child->MarkDirtyLite(FiberElement::kDirtyPropagateInherited);
     }
-    static_cast<FiberElement *>(child)->PrepareForCreateOrUpdate();
+    child->PrepareForCreateOrUpdate();
   }
   if (child->IsLayoutOnly() && !child->is_raw_text()) {
     for (const auto &grand : child->children()) {
@@ -3526,7 +3522,7 @@ void FiberElement::HandleInsertChildAction(Element *child, int to_index,
     FindEnclosingNoneWrapper(parent, fiber_child);
   }
 
-  if (UNLIKELY(parent->is_wrapper() || (parent->wrapper_element_count_ > 0) ||
+  if (UNLIKELY(parent->is_wrapper() || (parent->wrapper_element_count() > 0) ||
                child->is_wrapper())) {
     TreeResolver::AttachChildToTargetParentForWrapper(parent, fiber_child,
                                                       fiber_ref_node);
@@ -3575,11 +3571,10 @@ void FiberElement::HandleRemoveChildAction(Element *child) {
     return;
   }
 
-  if (UNLIKELY(parent->is_wrapper() || parent->wrapper_element_count_ > 0) ||
+  if (UNLIKELY(parent->is_wrapper() || parent->wrapper_element_count() > 0) ||
       child->is_wrapper()) {
-    if (fiber_child->enclosing_none_wrapper_) {
-      static_cast<FiberElement *>(fiber_child->enclosing_none_wrapper_)
-          ->wrapper_element_count_--;
+    if (fiber_child->enclosing_none_wrapper()) {
+      fiber_child->enclosing_none_wrapper()->DecrementWrapperElementCount();
     }
     TreeResolver::RemoveFromParentForWrapperChild(parent, fiber_child);
   } else {
@@ -3627,12 +3622,10 @@ void FiberElement::HandleContainerInsertion(Element *parent, Element *child,
 
 Element *FiberElement::FindEnclosingNoneWrapper(Element *parent,
                                                 Element *node) {
-  auto *fiber_node = static_cast<FiberElement *>(node);
   while (parent) {
     if (!parent->is_wrapper()) {
-      auto *fiber_parent = static_cast<FiberElement *>(parent);
-      fiber_node->enclosing_none_wrapper_ = fiber_parent;
-      fiber_parent->wrapper_element_count_++;
+      node->set_enclosing_none_wrapper(parent);
+      parent->IncrementWrapperElementCount();
       break;
     }
     parent = parent->parent();
@@ -3647,8 +3640,7 @@ void FiberElement::AddChildAt(fml::RefPtr<Element> child, int index) {
     scoped_children_.insert(scoped_children_.begin() + index, child);
   }
   OnNodeAdded(child.get());
-  TreeResolver::NotifyNodeInserted(this,
-                                   static_cast<FiberElement *>(child.get()));
+  TreeResolver::NotifyNodeInserted(this, child.get());
   child->set_parent(this);
 }
 
@@ -3936,7 +3928,7 @@ void FiberElement::SetAttributeInternal(const base::String &key,
   // kFullSpan's value to ListComponentInfo::Type and synchronize it to
   // LayoutNode.
   constexpr const static char kFullSpan[] = "full-span";
-  if (parent() != nullptr && static_cast<FiberElement *>(parent())->is_list()) {
+  if (parent() != nullptr && parent()->is_list()) {
     if (key.IsEquals(kFullSpan)) {
       ListComponentInfo::Type type = ListComponentInfo::Type::DEFAULT;
       if (value.IsBool() && value.Bool()) {
@@ -4384,7 +4376,7 @@ void FiberElement::CheckHasInlineContainer(Element *parent) {
 }
 
 void FiberElement::EnqueueLayoutTask(base::MoveOnlyClosure<void> operation) {
-  auto *render_root = static_cast<FiberElement *>(GetRenderRootElement());
+  auto *render_root = GetRenderRootElement();
   if (render_root && render_root->GetSchedulerAdapter() &&
       render_root->GetSchedulerAdapter()->IsBatchResolvingTree()) {
     render_root->GetSchedulerAdapter()
@@ -4462,7 +4454,7 @@ bool Element::IsRelatedCSSVariableUpdated(
   return changed;
 }
 
-void FiberElement::UpdateCSSVariable(
+void Element::UpdateCSSVariable(
     const lepus::Value &css_variable_updated,
     std::shared_ptr<PipelineOptions> &pipeline_option) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_UPDATE_CSS_VARIABLE,
@@ -5008,8 +5000,7 @@ void FiberElement::TraversalInsertFixedElementOfTree() {
     need_handle_fixed_ = false;
   }
   for (auto child : scoped_children_) {
-    static_cast<FiberElement *>(child.get())
-        ->TraversalInsertFixedElementOfTree();
+    child->TraversalInsertFixedElementOfTree();
   }
 }
 

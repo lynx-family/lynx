@@ -110,7 +110,7 @@ class FiberElement : public Element {
   /**
    * A key function for flush all pending actions for current Element
    */
-  void FlushActions();
+  void FlushActions() override;
 
   void FlushSelf();
 
@@ -124,7 +124,7 @@ class FiberElement : public Element {
 
   void OnParallelFlushAsRoot(PerfStatistic& stats);
 
-  void ParallelFlushRecursively();
+  void ParallelFlushRecursively() override;
 
   virtual void PostResolveTaskToThreadPool(
       bool is_engine_thread, ParallelReduceTaskQueue& task_queue) override;
@@ -177,19 +177,12 @@ class FiberElement : public Element {
   virtual void InsertNode(const fml::RefPtr<Element>& child,
                           int32_t index) override;
 
-  /**
-   * Element API for updating css variables
-   * @param variables the css variables to be updated from JS.
-   */
-  void UpdateCSSVariable(const lepus::Value& variables,
-                         std::shared_ptr<PipelineOptions>& pipeline_option);
-
   void ResolveCSSStyles(StyleMap& parsed_styles,
                         base::InlineVector<CSSPropertyID, 16>& reset_style_ids,
                         bool& need_update,
                         bool& force_use_current_parsed_style_map);
 
-  void TraversalInsertFixedElementOfTree();
+  void TraversalInsertFixedElementOfTree() override;
 
   void ConsumeStyle(const StyleMap& styles,
                     const StyleMap* inherit_styles) override;
@@ -220,7 +213,7 @@ class FiberElement : public Element {
   virtual void EnqueueLayoutTask(
       base::MoveOnlyClosure<void> operation) override;
 
-  virtual ParallelFlushReturn PrepareForCreateOrUpdate();
+  ParallelFlushReturn PrepareForCreateOrUpdate() override;
 
   void InsertLayoutNode(FiberElement* child, FiberElement* ref);
   void RemoveLayoutNode(FiberElement* child,
@@ -237,10 +230,10 @@ class FiberElement : public Element {
   // elements may be converted into inline elements.
 
   // current element is inserted to DOM tree
-  virtual void InsertedInto(Element* insertion_point);
+  void InsertedInto(Element* insertion_point) override;
 
   // current element is removed from DOM tree
-  virtual void RemovedFrom(Element* insertion_point);
+  void RemovedFrom(Element* insertion_point) override;
 
   // The element object created using the clone interface of FiberElement is not
   // attached to the element manager. Use this function to attach it to the

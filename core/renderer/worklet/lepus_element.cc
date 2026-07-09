@@ -446,22 +446,20 @@ void LepusElement::SetStyles(const Napi::Object& styles) {
     LOGE("LepusElement::SetStyles failed, since input para is not object.");
     return;
   }
-  auto* fiber_element = static_cast<tasm::FiberElement*>(element);
   for (const auto& pair : *(lepus_v.Table())) {
     const auto& key = tasm::CSSProperty::GetPropertyID(pair.first);
     const auto& val = pair.second;
-    if (fiber_element->IsRadonArch()) {
+    if (element->IsRadonArch()) {
       auto processed_values = tasm::UnitHandler::Process(
           key, pair.second, element->element_manager()->GetCSSParserConfigs());
       if (processed_values.empty()) {
         continue;
       }
     }
-    fiber_element->SetStyle(key, val);
+    element->SetStyle(key, val);
   }
   auto pipeline_options = std::make_shared<tasm::PipelineOptions>();
-  fiber_element->element_manager()->OnPatchFinish(pipeline_options,
-                                                  fiber_element);
+  element->element_manager()->OnPatchFinish(pipeline_options, element);
 }
 
 void LepusElement::SetAttributes(const Napi::Object& attributes) {

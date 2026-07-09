@@ -1142,8 +1142,7 @@ void ElementManager::TickAllElement(fml::TimePoint &frame_time) {
       // Optimization: If there is only an element need to be ticked, take
       // it as root to flush action.
       if (temp_element_set.size() == 1) {
-        OnPatchFinish(options, static_cast<tasm::FiberElement *>(
-                                   *temp_element_set.begin()));
+        OnPatchFinish(options, *temp_element_set.begin());
       } else {
         OnPatchFinish(options);
       }
@@ -1222,14 +1221,15 @@ fml::RefPtr<FiberElement> ElementManager::CreateFiberElement(
 
 fml::RefPtr<FiberElement> ElementManager::CreateFiberElement(
     ElementBuiltInTagEnum enum_tag, const base::String &raw_tag) {
-  auto result = StaticCreateFiberElement(enum_tag, raw_tag);
+  auto result = fml::static_ref_ptr_cast<FiberElement>(
+      StaticCreateFiberElement(enum_tag, raw_tag));
   result->AttachToElementManager(this, nullptr, false);
   return result;
 }
 
-fml::RefPtr<FiberElement> ElementManager::StaticCreateFiberElement(
+fml::RefPtr<Element> ElementManager::StaticCreateFiberElement(
     ElementBuiltInTagEnum enum_tag, const base::String &raw_tag) {
-  fml::RefPtr<FiberElement> element = nullptr;
+  fml::RefPtr<Element> element = nullptr;
   // TODO(hexionghui): compatible for cui's fallback ui, remove this when render
   // by flatten ui not displaylist.
   ElementBuiltInTagEnum resolved_enum_tag =
@@ -1565,8 +1565,7 @@ void ElementManager::OnPatchFinish(std::shared_ptr<PipelineOptions> &option,
         }
       };
   // in fiber, do element style resolve and request layout;
-  OnPatchFinishForFiber(option, std::move(patch_finish_callback),
-                        static_cast<FiberElement *>(element));
+  OnPatchFinishForFiber(option, std::move(patch_finish_callback), element);
   if (option->need_timestamps && EnableEventReporter()) {
     report::EventTracker::UpdateGenericInfo(
         instance_id_, kEventDomSizeKey,
@@ -1610,8 +1609,7 @@ void ElementManager::ResolveStyle(std::shared_ptr<PipelineOptions> &option,
         }
       };
   // in fiber, do element style resolve and request layout;
-  OnPatchFinishForFiber(option, std::move(patch_finish_callback),
-                        static_cast<FiberElement *>(element));
+  OnPatchFinishForFiber(option, std::move(patch_finish_callback), element);
   if (option->need_timestamps && EnableEventReporter()) {
     report::EventTracker::UpdateGenericInfo(
         instance_id_, kEventDomSizeKey,
@@ -1621,8 +1619,7 @@ void ElementManager::ResolveStyle(std::shared_ptr<PipelineOptions> &option,
 
 void ElementManager::OnPatchFinishForFiber(
     std::shared_ptr<PipelineOptions> &options,
-    base::MoveOnlyClosure<void, bool> patch_finish_callback,
-    FiberElement *element) {
+    base::MoveOnlyClosure<void, bool> patch_finish_callback, Element *element) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, ELEMENT_MANAGER_ON_PATCH_FINISH_FOR_FIBER);
   if (options->need_timestamps && !page_options_.IsEmbeddedModeOn()) {
     painting_context()->MarkUIOperationQueueFlushTiming(

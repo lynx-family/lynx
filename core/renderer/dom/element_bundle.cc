@@ -8,7 +8,6 @@
 #include <utility>
 
 #include "base/include/value/table.h"
-#include "core/renderer/dom/fiber/fiber_element.h"
 #include "core/renderer/dom/fiber/tree_resolver.h"
 
 namespace lynx {
@@ -20,7 +19,7 @@ ElementBundle ElementBundle::DeepClone() const {
     return bundle;
   }
   auto new_page = TreeResolver::CloneElementRecursively(
-      static_cast<FiberElement*>(page_node_.RefCounted().get()), true);
+      static_cast<Element*>(page_node_.RefCounted().get()), true);
   bundle.page_node_ = lepus::Value(std::move(new_page));
   return bundle;
 }
