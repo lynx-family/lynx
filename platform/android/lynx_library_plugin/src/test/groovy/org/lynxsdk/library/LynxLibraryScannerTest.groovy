@@ -50,13 +50,89 @@ class LynxLibraryScannerTest {
     }
 
     @Test
+    void parsesNodeApiAddons() {
+        File root = temporaryFolder.newFolder('app')
+        File packageDir = writeLibrary(root, 'napi-lib', 'com.example.napi', null)
+        File jniLibsDir = new File(packageDir, 'napi_addons')
+        new File(jniLibsDir, 'arm64-v8a').mkdirs()
+        String libraryName = 'demo_addon'
+        new File(jniLibsDir, "arm64-v8a/lib${libraryName}.so").text = ''
+        new File(packageDir, 'lynx.lib.json').text = '''{
+          "platforms": {
+            "android": {
+              "packageName": "com.example.napi",
+              "nodeApiAddons": [{
+                "name": "demo_addon",
+                "libraryName": "demo_addon",
+                "jniLibsDir": "napi_addons",
+                "required": false
+              }]
+            }
+          }
+        }'''
+
+        List<LynxLibraryInfo> libraries = LynxLibraryScanner.scan(root)
+
+        assertEquals(1, libraries.size())
+        assertEquals(1, libraries.first().nodeApiAddons.size())
+        LynxNodeApiAddonInfo addon = libraries.first().nodeApiAddons.first()
+        assertEquals('demo_addon', addon.name)
+        assertEquals('demo_addon', addon.libraryName)
+        assertEquals("lib${libraryName}.so".toString(), addon.sharedLibraryName)
+        assertEquals(LynxLibraryScanner.canonicalOrAbsolute(jniLibsDir), addon.jniLibsDir)
+        assertTrue(!addon.required)
+    }
+
+    @Test
+    void rejectsInvalidNodeApiAddonName() {
+        File root = temporaryFolder.newFolder('app')
+        File packageDir = writeLibrary(root, 'bad-napi-lib', 'com.example.invalid.name', null)
+        new File(packageDir, 'lynx.lib.json').text = '''{
+          "platforms": {
+            "android": {
+              "packageName": "com.example.invalid.name",
+              "nodeApiAddons": [{"name": "@scope/bad"}]
+            }
+          }
+        }'''
+
+        try {
+            LynxLibraryScanner.scan(root)
+            assertTrue('Expected GradleException', false)
+        } catch (GradleException e) {
+            assertTrue(e.message.contains('nodeApiAddons[0].name'))
+        }
+    }
+
+    @Test
+    void rejectsNodeApiAddonPathOutsidePackage() {
+        File root = temporaryFolder.newFolder('app')
+        File packageDir = writeLibrary(root, 'bad-path-lib', 'com.example.invalid.path', null)
+        new File(packageDir, 'lynx.lib.json').text = '''{
+          "platforms": {
+            "android": {
+              "packageName": "com.example.invalid.path",
+              "nodeApiAddons": [{"name": "demo", "jniLibsDir": "../shared"}]
+            }
+          }
+        }'''
+
+        try {
+            LynxLibraryScanner.scan(root)
+            assertTrue('Expected GradleException', false)
+        } catch (GradleException e) {
+            assertTrue(e.message.contains('must stay within package directory'))
+        }
+    }
+
+    @Test
     void fallsBackToAbsoluteFileWhenCanonicalFileFails() {
         File file = new BrokenCanonicalFile(new File(temporaryFolder.root, 'node_modules').path)
 
         assertEquals(file.absoluteFile, LynxLibraryScanner.canonicalOrAbsolute(file))
     }
 
-    private static void writeLibrary(
+    private static File writeLibrary(
         File root, String npmName, String packageName, String sourceDir) {
         File packageDir = new File(root, "node_modules/${npmName}")
         packageDir.mkdirs()
@@ -66,6 +142,7 @@ class LynxLibraryScannerTest {
         String sourceEntry = sourceDir == null ? '' : ",\"sourceDir\":\"${sourceDir}\""
         new File(packageDir, 'lynx.lib.json').text =
             "{\"platforms\":{\"android\":{\"packageName\":\"${packageName}\"${sourceEntry}}}}"
+        packageDir
     }
 
     private static class BrokenCanonicalFile extends File {

@@ -72,7 +72,8 @@ class LynxLibraryAutolinkTest < Minitest::Test
       assert_includes implementation, '#import "LynxGeneratedLibraryRegistry.h"'
       assert_includes implementation, '@implementation LynxGeneratedLibraryRegistry'
       refute_includes implementation, '@implementation LibraryRegistry'
-      assert_includes podspec, "s.source_files = 'LynxGeneratedLibraryRegistry.{h,m}'"
+      assert_includes podspec,
+                      "s.source_files = 'LynxGeneratedLibraryRegistry.{h,m}', 'LynxGeneratedNodeAPIAddonUse.mm'"
       assert_includes components,
                       Lynx::Library::ComponentInfo.new(
                         :service, 'LynxDemoServiceProtocol', 'DemoService')
@@ -88,6 +89,145 @@ class LynxLibraryAutolinkTest < Minitest::Test
       assert_includes implementation,
                       '[config registerShadowNode:NSClassFromString(@"DemoShadowNode") withName:@"demo-shadow"]'
       refute_includes implementation, 'registerService'
+    end
+  end
+
+  def test_scan_ios_node_api_addons
+    Dir.mktmpdir do |dir|
+      package_dir = write_library(dir, 'demo-addon', 'DemoAddon')
+      File.write(File.join(package_dir, 'lynx.lib.json'), <<~JSON)
+        {
+          "platforms": {
+            "ios": {
+              "nodeApiAddons": [{
+                "name": "demo_addon",
+                "podName": "DemoAddon",
+                "addonUseHeader": "addon_use.h",
+                "required": false
+              }]
+            }
+          }
+        }
+      JSON
+
+      library = Lynx::Library::Autolink.scan(dir).first
+
+      assert_equal 1, library.node_api_addons.size
+      addon = library.node_api_addons.first
+      assert_equal 'demo_addon', addon.name
+      assert_equal 'DemoAddon', addon.pod_name
+      assert_equal File.realpath(File.join(package_dir, 'ios/DemoAddon.podspec')),
+                   addon.podspec_path
+      assert_equal 'addon_use.h', addon.addon_use_header
+      refute addon.required
+    end
+  end
+
+  def test_generate_registry_includes_node_api_addon_use_source
+    Dir.mktmpdir do |dir|
+      package_dir = write_library(dir, 'demo-addon', 'DemoAddon')
+      File.write(File.join(package_dir, 'lynx.lib.json'), <<~JSON)
+        {
+          "platforms": {
+            "ios": {
+              "nodeApiAddons": [{
+                "name": "demo_addon",
+                "podName": "DemoAddon",
+                "addonUseHeader": "addon_use.h"
+              }]
+            }
+          }
+        }
+      JSON
+
+      libraries = Lynx::Library::Autolink.scan(dir)
+      Lynx::Library::Autolink.generate_registry(File.join(dir, 'generated/lynx-library'), libraries)
+      registry_dir = File.join(dir, 'generated/lynx-library')
+      addon_use = File.read(File.join(registry_dir, 'LynxGeneratedNodeAPIAddonUse.mm'))
+      implementation = File.read(File.join(registry_dir, 'LynxGeneratedLibraryRegistry.m'))
+      podspec = File.read(File.join(registry_dir, 'LynxLibraryRegistry.podspec'))
+
+      assert_includes addon_use, '#if __has_include(<DemoAddon/addon_use.h>)'
+      assert_includes addon_use, '#include <DemoAddon/addon_use.h>'
+      assert_includes addon_use, 'void LynxGeneratedNodeAPIAddonUse(void) {}'
+      assert_includes implementation, 'extern void LynxGeneratedNodeAPIAddonUse(void);'
+      assert_includes implementation, 'LynxGeneratedNodeAPIAddonUse();'
+      assert_includes podspec,
+                      "s.source_files = 'LynxGeneratedLibraryRegistry.{h,m}', 'LynxGeneratedNodeAPIAddonUse.mm'"
+      assert_includes podspec, "s.dependency 'LynxWeakNodeAPI'"
+      assert_includes podspec, "s.dependency 'DemoAddon'"
+      assert_includes podspec, 'PrimJS/src/napi'
+    end
+  end
+
+  def test_install_adds_node_api_addons_by_pod_path
+    Dir.mktmpdir do |dir|
+      package_dir = write_library(dir, 'demo-addon', 'DemoAddon')
+      File.write(File.join(package_dir, 'lynx.lib.json'), <<~JSON)
+        {
+          "platforms": {
+            "ios": {
+              "nodeApiAddons": [{
+                "name": "demo_addon",
+                "podName": "DemoAddon",
+                "podspecPath": "ios/DemoAddon.podspec",
+                "addonUseHeader": "addon_use.h"
+              }]
+            }
+          }
+        }
+      JSON
+      podfile = FakePodfile.new
+
+      Lynx::Library::Autolink.install!(podfile, root: dir,
+                                                output_dir: File.join(dir, 'generated/lynx-library'))
+
+      assert_includes podfile.pods,
+                      ['DemoAddon', { path: File.realpath(File.join(package_dir, 'ios')) }]
+      assert_equal 1, podfile.pods.count { |name, _options| name == 'DemoAddon' }
+      assert_includes podfile.pods,
+                      ['LynxLibraryRegistry', { path: File.join(dir, 'generated/lynx-library') }]
+    end
+  end
+
+  def test_manifest_rejects_invalid_node_api_addon_name
+    Dir.mktmpdir do |dir|
+      package_dir = write_library(dir, 'bad-addon', 'BadAddon')
+      File.write(File.join(package_dir, 'lynx.lib.json'), <<~JSON)
+        {"platforms":{"ios":{"nodeApiAddons":[{"name":"@scope/bad"}]}}}
+      JSON
+
+      error = assert_raises(RuntimeError) { Lynx::Library::Autolink.scan(dir) }
+      assert_includes error.message, 'nodeApiAddons[0].name'
+    end
+  end
+
+  def test_manifest_rejects_node_api_addon_podspec_path_outside_package
+    Dir.mktmpdir do |dir|
+      package_dir = write_library(dir, 'bad-addon', 'BadAddon')
+      shared_dir = File.join(dir, 'node_modules/shared')
+      FileUtils.mkdir_p(shared_dir)
+      File.write(File.join(shared_dir, 'SharedAddon.podspec'), <<~PODSPEC)
+        Pod::Spec.new do |s|
+          s.name = 'SharedAddon'
+        end
+      PODSPEC
+      File.write(File.join(package_dir, 'lynx.lib.json'), <<~JSON)
+        {
+          "platforms": {
+            "ios": {
+              "nodeApiAddons": [{
+                "name": "demo",
+                "podspecPath": "../shared/SharedAddon.podspec"
+              }]
+            }
+          }
+        }
+      JSON
+
+      error = assert_raises(RuntimeError) { Lynx::Library::Autolink.scan(dir) }
+      assert_includes error.message,
+                      "iOS nodeApiAddons[0].podspecPath '../shared/SharedAddon.podspec' must stay within package directory"
     end
   end
 
@@ -235,6 +375,18 @@ class LynxLibraryAutolinkTest < Minitest::Test
   end
 
   private
+
+  class FakePodfile
+    attr_reader :pods
+
+    def initialize
+      @pods = []
+    end
+
+    def pod(name, options)
+      @pods << [name, options]
+    end
+  end
 
   def write_library(root, npm_name, pod_name)
     package_dir = File.join(root, 'node_modules', npm_name)

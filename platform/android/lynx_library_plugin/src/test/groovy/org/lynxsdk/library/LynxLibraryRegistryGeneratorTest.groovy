@@ -14,7 +14,7 @@ class LynxLibraryRegistryGeneratorTest {
     void generatesReflectionBasedRegistry() {
         LynxLibraryInfo library = new LynxLibraryInfo('demo', new File('/tmp/demo'),
             new File('/tmp/demo/lynx.lib.json'), 'com.demo.library', 'android',
-            new File('/tmp/demo/android'), ':lynx_library_demo')
+            new File('/tmp/demo/android'), ':lynx_library_demo', [])
 
         String source = LynxLibraryRegistryGenerator.generate([library])
 
@@ -24,6 +24,21 @@ class LynxLibraryRegistryGeneratorTest {
         assertTrue(source.contains('"com.demo.library.LynxLibraryProviderImpl"'))
         assertTrue(source.contains('setupGlobal(Context context)'))
         assertTrue(source.contains('setup(LynxViewBuilder builder)'))
+    }
+
+    @Test
+    void generatesNodeApiAddonStartupLoads() {
+        LynxNodeApiAddonInfo addon = new LynxNodeApiAddonInfo('demo_addon', 'demo_addon',
+            new File('/tmp/demo/android/src/main/jniLibs'), true)
+        LynxLibraryInfo library = new LynxLibraryInfo('demo', new File('/tmp/demo'),
+            new File('/tmp/demo/lynx.lib.json'), 'com.demo.library', 'android',
+            new File('/tmp/demo/android'), ':lynx_library_demo', [addon])
+
+        String source = LynxLibraryRegistryGenerator.generate([library])
+
+        assertTrue(source.contains('new NodeApiAddon("demo_addon", "demo_addon", true)'))
+        assertTrue(source.contains('loadNodeApiAddons();'))
+        assertTrue(source.contains('System.loadLibrary(addon.libraryName);'))
     }
 
     @Test

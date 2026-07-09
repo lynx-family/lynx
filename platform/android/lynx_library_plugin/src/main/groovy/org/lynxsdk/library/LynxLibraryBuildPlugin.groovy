@@ -5,6 +5,7 @@
 package org.lynxsdk.library
 
 import org.gradle.api.Plugin
+import org.gradle.api.GradleException
 import org.gradle.api.Project
 import org.gradle.api.tasks.compile.JavaCompile
 
@@ -84,6 +85,81 @@ class LynxLibraryBuildPlugin implements Plugin<Project> {
         }
         variant.registerJavaGeneratingTask(taskProvider.get(), generatedDir)
         wireGeneratedRegistrySource(project, variantName, taskProvider, generatedDir)
+        configureNodeApiAddons(project, variantName, libraries)
+    }
+
+    private static void configureNodeApiAddons(
+        Project project, String variantName, List<LynxLibraryInfo> libraries) {
+        List<LynxLibraryInfo> librariesWithAddons = libraries.findAll { LynxLibraryInfo library ->
+            !library.nodeApiAddons.isEmpty()
+        }
+        if (librariesWithAddons.isEmpty()) {
+            return
+        }
+
+        Object android = project.extensions.findByName('android')
+        if (android == null) {
+            return
+        }
+
+        File generatedJniLibsDir = new File(
+            project.buildDir, "generated/lynxNodeApiAddons/${variantName}/jniLibs")
+        String taskName = "copy${variantName.capitalize()}LynxNodeApiAddons"
+        def copyTask = project.tasks.register(taskName) { task ->
+            task.outputs.dir(generatedJniLibsDir)
+            task.doLast {
+                project.delete(generatedJniLibsDir)
+                librariesWithAddons.each { LynxLibraryInfo library ->
+                    library.nodeApiAddons.each { LynxNodeApiAddonInfo addon ->
+                        copyNodeApiAddon(project, library, addon, generatedJniLibsDir)
+                    }
+                }
+            }
+        }
+
+        android.sourceSets.maybeCreate(variantName).jniLibs.srcDir(generatedJniLibsDir)
+        String mergeTaskName = "merge${variantName.capitalize()}JniLibFolders"
+        project.tasks.matching { it.name == mergeTaskName }.configureEach { task ->
+            task.dependsOn(copyTask)
+        }
+    }
+
+    private static void copyNodeApiAddon(Project project, LynxLibraryInfo library,
+        LynxNodeApiAddonInfo addon, File generatedJniLibsDir) {
+        File[] abiDirs = addon.jniLibsDir.listFiles({ File file -> file.isDirectory() } as FileFilter)
+        if (abiDirs == null || abiDirs.length == 0) {
+            handleMissingAddon(library, addon,
+                "Node-API addon '${addon.name}' declares '${addon.jniLibsDir}', but no ABI directories were found")
+            return
+        }
+
+        int copied = 0
+        abiDirs.each { File abiDir ->
+            File source = new File(abiDir, addon.sharedLibraryName)
+            if (!source.isFile()) {
+                return
+            }
+            File targetDir = new File(generatedJniLibsDir, abiDir.name)
+            project.copy {
+                from source
+                into targetDir
+            }
+            copied++
+        }
+
+        if (copied == 0) {
+            handleMissingAddon(library, addon,
+                "Node-API addon '${addon.name}' could not find '${addon.sharedLibraryName}' under ${addon.jniLibsDir}")
+        }
+    }
+
+    private static void handleMissingAddon(
+        LynxLibraryInfo library, LynxNodeApiAddonInfo addon, String message) {
+        String fullMessage = "${message} for ${library.manifestFile}"
+        if (addon.required) {
+            throw new GradleException(fullMessage)
+        }
+        println("[LynxLibrary] ${fullMessage}")
     }
 
     private static void wireGeneratedRegistrySource(

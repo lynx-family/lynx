@@ -7,20 +7,29 @@ require 'json'
 
 module Lynx
   module Library
-    LibraryInfo = Struct.new(:npm_name, :package_dir, :manifest_file, :source_dir, :podspec_path)
+    LibraryInfo = Struct.new(
+      :npm_name, :package_dir, :manifest_file, :source_dir, :podspec_path, :node_api_addons)
     ComponentInfo = Struct.new(:kind, :name, :class_name)
+    NodeApiAddonInfo = Struct.new(
+      :name, :pod_name, :podspec_path, :addon_use_header, :required)
 
     class Autolink
       REGISTRY_CLASS_NAME = 'LynxGeneratedLibraryRegistry'
+      ADDON_USE_SOURCE_NAME = 'LynxGeneratedNodeAPIAddonUse.mm'
+      ADDON_NAME_PATTERN = /\A[A-Za-z0-9_.-]+\z/
 
       class << self
         def install!(podfile, options = {})
           start_dir = File.expand_path(options[:root] || Dir.pwd)
           output_dir = File.expand_path(options[:output_dir] || 'generated/lynx-library', start_dir)
           libraries = scan(start_dir)
+          added_pods = []
           libraries.each do |library|
             pod_name = pod_name_from_podspec(library.podspec_path)
-            podfile.pod pod_name, :path => File.dirname(library.podspec_path)
+            add_pod_once(podfile, added_pods, pod_name, File.dirname(library.podspec_path))
+            library.node_api_addons.each do |addon|
+              add_pod_once(podfile, added_pods, addon.pod_name, File.dirname(addon.podspec_path))
+            end
           end
           generate_registry(output_dir, libraries)
           podfile.pod 'LynxLibraryRegistry', :path => output_dir
@@ -36,10 +45,13 @@ module Lynx
         def generate_registry(output_dir, libraries)
           FileUtils.mkdir_p(output_dir)
           components = libraries.flat_map { |library| scan_components(library.source_dir) }
+          node_api_addons = libraries.flat_map(&:node_api_addons)
           File.write(File.join(output_dir, "#{REGISTRY_CLASS_NAME}.h"), header_source)
           File.write(File.join(output_dir, "#{REGISTRY_CLASS_NAME}.m"),
                      implementation_source(components))
-          File.write(File.join(output_dir, 'LynxLibraryRegistry.podspec'), podspec_source)
+          File.write(File.join(output_dir, ADDON_USE_SOURCE_NAME), addon_use_source(node_api_addons))
+          File.write(File.join(output_dir, 'LynxLibraryRegistry.podspec'),
+                     podspec_source(node_api_addons))
           components
         end
 
@@ -106,12 +118,77 @@ module Lynx
           raise "No iOS podspec found for #{manifest_file}" unless
             podspec_path && File.file?(podspec_path)
 
+          node_api_addons = parse_node_api_addons(ios['nodeApiAddons'], package_realpath,
+                                                  podspec_path, manifest_file)
+
           npm_name = File.basename(package_dir)
           parent_name = File.basename(File.dirname(package_dir))
           npm_name = "#{parent_name}/#{npm_name}" if parent_name.start_with?('@')
-          LibraryInfo.new(npm_name, package_dir, manifest_file, source_dir, podspec_path)
+          LibraryInfo.new(npm_name, package_dir, manifest_file, source_dir, podspec_path,
+                          node_api_addons)
         rescue JSON::ParserError => e
           raise "Failed to parse #{manifest_file}: #{e.message}"
+        end
+
+        def add_pod_once(podfile, added_pods, pod_name, pod_path)
+          key = [pod_name, pod_path]
+          return if added_pods.include?(key)
+
+          podfile.pod pod_name, :path => pod_path
+          added_pods << key
+        end
+
+        def parse_node_api_addons(addons, package_realpath, default_podspec_path, manifest_file)
+          return [] if addons.nil?
+          raise "platforms.ios.nodeApiAddons in #{manifest_file} must be an array" unless
+            addons.is_a?(Array)
+
+          addons.each_with_index.map do |addon, index|
+            raise "platforms.ios.nodeApiAddons[#{index}] in #{manifest_file} must be an object" unless
+              addon.is_a?(Hash)
+
+            name = addon['name']
+            validate_addon_name(name, "platforms.ios.nodeApiAddons[#{index}].name", manifest_file)
+            addon_podspec_path = if addon['podspecPath']
+                                   resolve_package_path(package_realpath, addon['podspecPath'],
+                                                        manifest_file,
+                                                        "nodeApiAddons[#{index}].podspecPath")
+                                 else
+                                   default_podspec_path
+                                 end
+            raise "No iOS Node-API addon podspec found for #{manifest_file}" unless
+              addon_podspec_path && File.file?(addon_podspec_path)
+
+            pod_name = addon['podName'] || pod_name_from_podspec(addon_podspec_path)
+            addon_use_header = addon['addonUseHeader'] || 'addon_use.h'
+            validate_addon_use_header(addon_use_header,
+                                      "platforms.ios.nodeApiAddons[#{index}].addonUseHeader",
+                                      manifest_file)
+            required = addon.key?('required') ? !!addon['required'] : true
+            NodeApiAddonInfo.new(name.strip, pod_name, addon_podspec_path, addon_use_header,
+                                 required)
+          end
+        end
+
+        def validate_addon_name(name, field_name, manifest_file)
+          raise "Missing #{field_name} in #{manifest_file}" if name.nil? || name.strip.empty?
+
+          normalized = name.strip
+          return if normalized.length <= 128 && !normalized.include?('..') &&
+                    normalized.match?(ADDON_NAME_PATTERN)
+
+          raise "Invalid #{field_name} '#{name}' in #{manifest_file}; " \
+                "expected [A-Za-z0-9_.-] without '..'"
+        end
+
+        def validate_addon_use_header(header, field_name, manifest_file)
+          raise "Missing #{field_name} in #{manifest_file}" if header.nil? || header.strip.empty?
+
+          normalized = header.strip
+          return if !normalized.start_with?('/') && !normalized.include?('..') &&
+                    normalized.match?(/\A[A-Za-z0-9_\.\/-]+\z/)
+
+          raise "Invalid #{field_name} '#{header}' in #{manifest_file}"
         end
 
         def pod_name_from_podspec(podspec_path)
@@ -223,8 +300,11 @@ module Lynx
             #import "#{REGISTRY_CLASS_NAME}.h"
             #import <Lynx/LynxConfig.h>
 
+            extern void LynxGeneratedNodeAPIAddonUse(void);
+
             @implementation #{REGISTRY_CLASS_NAME}
             - (void)setup:(LynxConfig *)config {
+              LynxGeneratedNodeAPIAddonUse();
               if (config == nil) {
                 return;
               }
@@ -234,7 +314,45 @@ module Lynx
           IMPL
         end
 
-        def podspec_source
+        def addon_use_source(node_api_addons)
+          includes = node_api_addons.uniq { |addon| [addon.pod_name, addon.addon_use_header] }
+                                    .map do |addon|
+            header = "#{addon.pod_name}/#{addon.addon_use_header}"
+            <<~INCLUDE.chomp
+              #if __has_include(<#{header}>)
+              #include <#{header}>
+              #endif
+            INCLUDE
+          end.join("\n\n")
+
+          <<~SOURCE
+            // Generated by cocoapods-lynx-library. Do not edit.
+            #{includes}
+
+            #ifdef __cplusplus
+            extern "C" {
+            #endif
+            void LynxGeneratedNodeAPIAddonUse(void) {}
+            #ifdef __cplusplus
+            }
+            #endif
+          SOURCE
+        end
+
+        def podspec_source(node_api_addons = [])
+          addon_pod_names = node_api_addons.map(&:pod_name).uniq
+          addon_dependencies = addon_pod_names.map { |pod_name| "  s.dependency '#{pod_name}'" }
+                                            .join("\n")
+          weak_node_api_dependency = node_api_addons.empty? ? '' : "  s.dependency 'LynxWeakNodeAPI'"
+          node_api_xcconfig = if node_api_addons.empty?
+                                ''
+                              else
+                                <<~XCCONFIG.chomp
+                                  s.pod_target_xcconfig = {
+                                    'HEADER_SEARCH_PATHS' => '$(inherited) "${PODS_ROOT}/LynxWeakNodeAPI/packages/weak-node-api/headers" "${PODS_ROOT}/PrimJS/src/napi" "${PODS_ROOT}/PrimJS/src/napi/js_native_api"'
+                                  }
+                                XCCONFIG
+                              end
           <<~PODSPEC
             Pod::Spec.new do |s|
               s.name = 'LynxLibraryRegistry'
@@ -244,8 +362,11 @@ module Lynx
               s.license = 'Apache-2.0'
               s.author = 'Lynx'
               s.source = { :path => '.' }
-              s.source_files = '#{REGISTRY_CLASS_NAME}.{h,m}'
+              s.source_files = '#{REGISTRY_CLASS_NAME}.{h,m}', '#{ADDON_USE_SOURCE_NAME}'
               s.dependency 'Lynx'
+            #{weak_node_api_dependency}
+            #{addon_dependencies}
+            #{node_api_xcconfig}
               s.requires_arc = true
             end
           PODSPEC

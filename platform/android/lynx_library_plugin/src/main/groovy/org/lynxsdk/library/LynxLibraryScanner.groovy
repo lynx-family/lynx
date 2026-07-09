@@ -8,6 +8,8 @@ import groovy.json.JsonSlurper
 import org.gradle.api.GradleException
 
 class LynxLibraryScanner {
+    private static final String ADDON_NAME_PATTERN = '[A-Za-z0-9_.-]+'
+
     static List<LynxLibraryInfo> scan(File startDir) {
         Set<File> nodeModulesDirs = findNodeModulesDirs(startDir)
         List<LynxLibraryInfo> result = []
@@ -119,8 +121,69 @@ class LynxLibraryScanner {
         if (packageDir.parentFile?.name?.startsWith('@')) {
             npmName = "${packageDir.parentFile.name}/${packageDir.name}"
         }
+        List<LynxNodeApiAddonInfo> nodeApiAddons = parseNodeApiAddons(
+            android.nodeApiAddons, packageDir, manifest)
         new LynxLibraryInfo(npmName, packageDir, manifest, packageName.trim(), sourceDir,
-            androidDir, projectPathFor(npmName))
+            androidDir, projectPathFor(npmName), nodeApiAddons)
+    }
+
+    private static List<LynxNodeApiAddonInfo> parseNodeApiAddons(
+        Object addons, File packageDir, File manifest) {
+        if (addons == null) {
+            return []
+        }
+        if (!(addons instanceof List)) {
+            throw new GradleException("platforms.android.nodeApiAddons in ${manifest} must be an array")
+        }
+        List<LynxNodeApiAddonInfo> result = []
+        addons.eachWithIndex { Object addon, int index ->
+            if (!(addon instanceof Map)) {
+                throw new GradleException(
+                    "platforms.android.nodeApiAddons[${index}] in ${manifest} must be an object")
+            }
+            String name = addon.name?.trim()
+            validateAddonName(name, "platforms.android.nodeApiAddons[${index}].name", manifest)
+            String libraryName = (addon.libraryName ?: name)?.trim()
+            validateAddonName(libraryName,
+                "platforms.android.nodeApiAddons[${index}].libraryName", manifest)
+
+            String jniLibsDirName = addon.jniLibsDir ?: 'android/src/main/jniLibs'
+            File jniLibsDir = resolvePackagePath(
+                packageDir, jniLibsDirName, manifest,
+                "platforms.android.nodeApiAddons[${index}].jniLibsDir")
+            boolean required = addon.containsKey('required') ? addon.required as boolean : true
+            result << new LynxNodeApiAddonInfo(name, libraryName, jniLibsDir, required)
+        }
+        result
+    }
+
+    private static void validateAddonName(String name, String fieldName, File manifest) {
+        if (name == null || name.trim().isEmpty()) {
+            throw new GradleException("Missing ${fieldName} in ${manifest}")
+        }
+        String normalized = name.trim()
+        if (normalized.size() > 128 || normalized.contains('..') ||
+            !(normalized ==~ ADDON_NAME_PATTERN)) {
+            throw new GradleException(
+                "Invalid ${fieldName} '${name}' in ${manifest}; expected [A-Za-z0-9_.-] without '..'")
+        }
+    }
+
+    private static File resolvePackagePath(
+        File packageDir, String configuredPath, File manifest, String fieldName) {
+        File path = new File(configuredPath)
+        if (!path.isAbsolute()) {
+            path = new File(packageDir, configuredPath)
+        }
+        File packageRoot = canonicalOrAbsolute(packageDir)
+        File resolved = canonicalOrAbsolute(path)
+        String packagePath = packageRoot.path
+        String resolvedPath = resolved.path
+        if (resolvedPath == packagePath || resolvedPath.startsWith("${packagePath}${File.separator}")) {
+            return resolved
+        }
+        throw new GradleException(
+            "Android ${fieldName} '${configuredPath}' must stay within package directory for ${manifest}")
     }
 
     static String projectPathFor(String npmName) {
