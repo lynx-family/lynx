@@ -369,7 +369,7 @@ bool ListElement::ApplyTemplateCallbackAttribute(const base::String& key,
   return false;
 }
 
-void ListElement::NotifyListReuseNode(const fml::RefPtr<FiberElement>& child,
+void ListElement::NotifyListReuseNode(const fml::RefPtr<Element>& child,
                                       const base::String& item_key) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, LIST_NOTIFY_REUSE_NODE,
               [this](lynx::perfetto::EventContext ctx) {

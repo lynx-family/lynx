@@ -115,7 +115,7 @@ class ListElement : public FiberElement, public tasm::ListNode {
   bool ApplyTemplateCallbackAttribute(const base::String& key,
                                       const lepus::Value& value);
 
-  void NotifyListReuseNode(const fml::RefPtr<FiberElement>& child,
+  void NotifyListReuseNode(const fml::RefPtr<Element>& child,
                            const base::String& item_key);
 
   void OnListItemBatchFinished(

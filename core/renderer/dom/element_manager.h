@@ -1043,10 +1043,10 @@ class ElementManager : public LayoutScheduler::LayoutSchedulerImpl {
   void PrepareNodeForInspector(Element *element);
 
   /**
-   * Recursively attach an fiber element tree to the inspector
-   * @param root The root node of the fiber element tree
+   * Recursively attach an element tree to the inspector.
+   * @param root The root node of the element tree.
    */
-  void FiberAttachToInspectorRecursively(FiberElement *root);
+  void FiberAttachToInspectorRecursively(Element *root);
 
   /**
    * Prepare slot and plug node for inspector

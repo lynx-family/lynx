@@ -12,12 +12,12 @@
 
 namespace lynx {
 namespace tasm {
-class FiberElement;
+class Element;
 class PropBundle;
 
 class PseudoElement {
  public:
-  PseudoElement(PseudoState state, FiberElement* holder_element);
+  PseudoElement(PseudoState state, Element* holder_element);
 
   void UpdateStyleMap(const StyleMap& new_style_map);
   void PushCurrentPropertiesToBundle(PropBundle* bundle);
@@ -38,7 +38,7 @@ class PseudoElement {
   void UpdatePropertyFromStyleMap(const StyleMap& style_map);
 
   PseudoState state_;
-  FiberElement* holder_element_;
+  Element* holder_element_;
   StyleMap style_map_;
   std::unique_ptr<starlight::ComputedCSSStyle> platform_css_style_;
 };

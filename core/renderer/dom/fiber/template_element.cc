@@ -1225,11 +1225,11 @@ fml::RefPtr<FiberElement> TemplateElement::GetRoot() {
       auto* manager = element_manager();
       if (result_ != nullptr && manager != nullptr &&
           manager->GetDevToolFlag() && manager->IsDomTreeEnabled()) {
-        std::function<void(FiberElement*)> prepare_node_f =
-            [manager, &prepare_node_f](FiberElement* element) {
+        std::function<void(Element*)> prepare_node_f =
+            [manager, &prepare_node_f](Element* element) {
               manager->PrepareNodeForInspector(element);
               for (const auto& child : element->children()) {
-                prepare_node_f(static_cast<FiberElement*>(child.get()));
+                prepare_node_f(child.get());
               }
             };
         prepare_node_f(result_.get());

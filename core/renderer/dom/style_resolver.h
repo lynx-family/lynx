@@ -33,7 +33,6 @@ class StyleObject;
 }  // namespace style
 namespace tasm {
 class Element;
-class FiberElement;
 class ElementManager;
 
 class StyleResolver {
@@ -236,12 +235,10 @@ class StyleResolver {
                                          const char* selector);
 
   void ResolvePseudoElement(PseudoState state, CSSFragment* fragment,
-                            FiberElement* fiber_element,
-                            const char* pseudo_selector);
+                            Element* element, const char* pseudo_selector);
 
-  void ParsePseudoCSSTokensForFiber(FiberElement* element,
-                                    CSSFragment* fragment, const char* selector,
-                                    StyleMap& map);
+  void ParsePseudoCSSTokensForFiber(Element* element, CSSFragment* fragment,
+                                    const char* selector, StyleMap& map);
 
   static thread_local MatchedVector<const StyleMap*> matched_style_map;
   static thread_local MatchedVector<const StyleMap*>

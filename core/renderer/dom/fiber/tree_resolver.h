@@ -71,7 +71,7 @@ class TreeResolver {
   static FiberElement* FindTheRealParent(FiberElement* node);
 
   static fml::RefPtr<lepus::Dictionary> GetTemplateParts(
-      const fml::RefPtr<FiberElement>& template_element);
+      const fml::RefPtr<Element>& template_element);
 
   // Apply template dynamic/spread attributes on top of the static attributes
   // initialized by FromElementInfo. The overload with previous slots rebuilds
@@ -134,7 +134,7 @@ class TreeResolver {
   static void TraverseDom(FiberElement* root, uint32_t work_unit_size);
 
  protected:
-  static void GetPartsRecursively(const fml::RefPtr<FiberElement>& root,
+  static void GetPartsRecursively(const fml::RefPtr<Element>& root,
                                   fml::RefPtr<lepus::Dictionary>& parts_map);
 
   // Construct element according to the element info.
