@@ -22,8 +22,8 @@
 #include "core/renderer/css/ng/selector/css_selector_parser.h"
 #include "core/renderer/css/parser/css_string_parser.h"
 #include "core/renderer/css/shared_css_fragment.h"
+#include "core/renderer/dom/element.h"
 #include "core/renderer/dom/element_manager.h"
-#include "core/renderer/dom/fiber/fiber_element.h"
 #include "core/renderer/dom/fiber/page_element.h"
 #include "core/renderer/pipeline/pipeline_context.h"
 #include "core/template_bundle/template_codec/binary_decoder/page_config.h"
@@ -174,10 +174,10 @@ struct BenchmarkEnvironment {
   std::shared_ptr<PageConfig> config;
 };
 
-class BenchmarkFiberElement : public FiberElement {
+class BenchmarkFiberElement : public Element {
  public:
   explicit BenchmarkFiberElement(ElementManager* manager)
-      : FiberElement(manager, base::String("view")) {}
+      : Element(manager, base::String("view")) {}
 
   bool IsStyleDirtyForBenchmark() const { return StyleDirty(); }
   void ClearDirtyForBenchmark() { ResetAllDirtyBits(); }

@@ -14,7 +14,6 @@
 #include "core/renderer/css/css_property.h"
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/dom/fiber/component_element.h"
-#include "core/renderer/dom/fiber/fiber_element.h"
 #include "core/renderer/dom/fiber/image_element.h"
 #include "core/renderer/dom/fiber/list_element.h"
 #include "core/renderer/dom/fiber/none_element.h"

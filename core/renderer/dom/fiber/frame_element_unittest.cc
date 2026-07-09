@@ -263,9 +263,9 @@ void ExpectFrameLoadedPayload(const RecordingElementManagerDelegate& delegate,
   const auto frame_element = payload->GetValue(kFrameElement);
   ASSERT_TRUE(frame_element.IsRefCounted());
   const auto frame_ref =
-      fml::static_ref_ptr_cast<FiberElement>(frame_element.RefCounted());
+      fml::static_ref_ptr_cast<Element>(frame_element.RefCounted());
   ASSERT_TRUE(frame_ref);
-  EXPECT_EQ(frame_ref.get(), static_cast<const FiberElement*>(frame));
+  EXPECT_EQ(frame_ref.get(), static_cast<const Element*>(frame));
 }
 
 }  // namespace

@@ -8,8 +8,8 @@
 #include "core/renderer/dom/fiber/pseudo_element.h"
 
 #include "core/renderer/css/css_value.h"
+#include "core/renderer/dom/element.h"
 #include "core/renderer/dom/element_manager.h"
-#include "core/renderer/dom/fiber/fiber_element.h"
 #include "core/renderer/dom/fiber/text_element.h"
 #include "core/renderer/dom/fiber/view_element.h"
 #include "core/renderer/tasm/react/testing/mock_painting_context.h"
@@ -63,7 +63,7 @@ TEST_F(PseudoElementTest, Constructor) {
   manager->SetConfig(config);
   auto page = manager->CreateFiberPage("page", 11);
   auto text = manager->CreateFiberText("text");
-  auto text_element = static_cast<lynx::tasm::FiberElement *>(text.get());
+  auto text_element = static_cast<lynx::tasm::Element *>(text.get());
   PseudoElement pseudo_element(state, text_element);
 
   EXPECT_EQ(pseudo_element.state_, state);
@@ -79,7 +79,7 @@ TEST_F(PseudoElementTest, UpdateStyleMap) {
   manager->SetConfig(config);
   auto page = manager->CreateFiberPage("page", 11);
   auto text = manager->CreateFiberText("text");
-  auto text_element = static_cast<lynx::tasm::FiberElement *>(text.get());
+  auto text_element = static_cast<lynx::tasm::Element *>(text.get());
   PseudoElement pseudo_element(state, text_element);
 
   StyleMap new_style_map;
@@ -107,7 +107,7 @@ TEST_F(PseudoElementTest, UpdateStyleMap) {
   EXPECT_TRUE(pseudo_element.style_map_.empty());
 
   auto view = manager->CreateFiberView();
-  auto view_element = static_cast<lynx::tasm::FiberElement *>(view.get());
+  auto view_element = static_cast<lynx::tasm::Element *>(view.get());
   PseudoElement placeholder_pseudo_element(kPseudoStatePlaceHolder,
                                            view_element);
   new_style_map.insert_or_assign(kPropertyIDFontSize,
@@ -132,7 +132,7 @@ TEST_F(PseudoElementTest, FontSizeUnit) {
   manager->SetConfig(config);
   auto page = manager->CreateFiberPage("page", 11);
   auto text = manager->CreateFiberText("text");
-  auto text_element = static_cast<lynx::tasm::FiberElement *>(text.get());
+  auto text_element = static_cast<lynx::tasm::Element *>(text.get());
   PseudoElement pseudo_element(state, text_element);
   StyleMap new_style_map;
   new_style_map.insert_or_assign(kPropertyIDFontSize,

@@ -2,8 +2,6 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#include "core/renderer/dom/fiber/fiber_element.h"
-
 #include <algorithm>
 #include <array>
 #include <deque>
@@ -37,12 +35,14 @@
 #include "core/renderer/css/parser/css_string_parser.h"
 #include "core/renderer/css/parser/length_handler.h"
 #include "core/renderer/css/unit_handler.h"
+#include "core/renderer/dom/element.h"
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/dom/element_manager_delegate.h"
 #include "core/renderer/dom/fiber/block_element.h"
 #include "core/renderer/dom/fiber/component_element.h"
 #include "core/renderer/dom/fiber/image_element.h"
 #include "core/renderer/dom/fiber/list_element.h"
+#include "core/renderer/dom/fiber/list_item_scheduler_adapter.h"
 #include "core/renderer/dom/fiber/none_element.h"
 #include "core/renderer/dom/fiber/platform_layout_function_wrapper.h"
 #include "core/renderer/dom/fiber/pseudo_element.h"
@@ -648,17 +648,6 @@ Element::Element(ElementManager *manager, const base::String &tag,
   }
 }
 
-FiberElement::FiberElement(ElementManager *manager, const base::String &tag)
-    : Element(manager, tag) {}
-
-FiberElement::FiberElement(ElementManager *manager, const base::String &tag,
-                           int32_t css_id)
-    : Element(manager, tag, css_id) {}
-
-FiberElement::FiberElement(const FiberElement &element,
-                           bool clone_resolved_props)
-    : Element(element, clone_resolved_props) {}
-
 void Element::FiberAddEvent(const base::String &type, const base::String &name,
                             const lepus::Value &callback,
                             const std::string &context_name) {
@@ -718,10 +707,9 @@ void Element::FiberAddEvent(const base::String &type, const base::String &name,
                       !event->current_target()) {
                     return;
                   }
-                  auto *target =
-                      static_cast<FiberElement *>(event->target().get());
-                  auto *current_target = static_cast<FiberElement *>(
-                      event->current_target().get());
+                  auto *target = static_cast<Element *>(event->target().get());
+                  auto *current_target =
+                      static_cast<Element *>(event->current_target().get());
                   auto *parent_component =
                       current_target->GetParentComponentElement();
                   if (default_vm_context == nullptr) {
@@ -3293,7 +3281,7 @@ void Element::PrepareChildForInsertion(Element *child) {
   }
   if (child->IsLayoutOnly() && !child->is_raw_text()) {
     for (const auto &grand : child->children()) {
-      static_cast<FiberElement *>(child)->PrepareChildForInsertion(grand.get());
+      child->PrepareChildForInsertion(grand.get());
     }
   }
 }
@@ -3585,8 +3573,8 @@ void Element::AddChildAt(fml::RefPtr<Element> child, int index) {
 // 2. Skip all transition styles in the later process if they have been consume
 // in advance.
 // 3. Check every property to determine whether to intercept this update.
-void FiberElement::ConsumeStyle(const StyleMap &styles,
-                                const StyleMap *inherit_styles) {
+void Element::ConsumeStyle(const StyleMap &styles,
+                           const StyleMap *inherit_styles) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_CONSUME_STYLE,
               [this](lynx::perfetto::EventContext ctx) {
                 UpdateTraceDebugInfo(ctx.event());
@@ -3632,7 +3620,7 @@ void FiberElement::ConsumeStyle(const StyleMap &styles,
   DidConsumeStyle();
 }
 
-void FiberElement::ConsumeStyleInternal(
+void Element::ConsumeStyleInternal(
     const StyleMap &styles, const StyleMap *inherit_styles,
     std::function<bool(CSSPropertyID, const tasm::CSSValue &)> should_skip) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_CONSUME_STYLE,
@@ -3715,23 +3703,6 @@ void FiberElement::ConsumeStyleInternal(
   }
 
   consume_func(styles, false);
-}
-
-void FiberElement::SetStyleInternal(CSSPropertyID id, const CSSValue &value) {
-  const bool was_fixed = is_fixed_;
-  Element::SetStyleInternal(id, value);
-  if (id == kPropertyIDPosition && was_fixed != is_fixed_) {
-    UpdateFixedNodeSet();
-  }
-}
-
-bool FiberElement::ResetCSSValue(CSSPropertyID id) {
-  const bool was_fixed = is_fixed_;
-  bool processed = Element::ResetCSSValue(id);
-  if (id == kPropertyIDPosition && was_fixed != is_fixed_) {
-    UpdateFixedNodeSet();
-  }
-  return processed;
 }
 
 bool Element::ConsumeAllAttributes() {
@@ -4316,11 +4287,6 @@ void Element::UpdateLayoutNodeByBundle() {
   layout_bundle_ = nullptr;
 }
 
-void FiberElement::CheckHasInlineContainer(Element *parent) {
-  EnsureLayoutBundle();
-  allow_layoutnode_inline_ = parent->IsShadowNodeCustom();
-}
-
 void Element::EnqueueLayoutTask(base::MoveOnlyClosure<void> operation) {
   auto *render_root = GetRenderRootElement();
   if (render_root && render_root->GetSchedulerAdapter() &&
@@ -4797,8 +4763,8 @@ void Element::DumpStyle(StyleMap &computed_styles) {
   computed_styles = parsed_styles_map_;
 }
 
-void FiberElement::OnPseudoStatusChanged(PseudoState prev_status,
-                                         PseudoState current_status) {
+void Element::OnPseudoStatusChanged(PseudoState prev_status,
+                                    PseudoState current_status) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_PSEUDO_CHANGED,
               [this](lynx::perfetto::EventContext ctx) {
                 UpdateTraceDebugInfo(ctx.event());
@@ -4931,7 +4897,7 @@ void Element::WillResetCSSValue(CSSPropertyID &css_id) {
   }
 }
 
-void FiberElement::TraversalInsertFixedElementOfTree() {
+void Element::TraversalInsertFixedElementOfTree() {
   if (IsFixedUnifiedEnabled()) {
     return;
   }
@@ -5628,15 +5594,6 @@ void Element::UpdateTraceDebugInfo(TraceEvent *event) {
 }
 #endif
 
-bool FiberElement::IsEventPathCatch(event::EventTarget *target,
-                                    event::Event *event) {
-  if (IsDetached()) {
-    LOGE("FiberElement::IsEventPathCatch error: the target is detached.");
-    return true;
-  }
-  return Element::IsEventPathCatch(target, event);
-}
-
 // Returns true if any active stylesheet (the element's own CSS fragment or any
 // adopted stylesheet from the element manager) contains a next-sibling
 // combinator rule (A + B). Used to guard sibling invalidation on insertion /
@@ -5654,7 +5611,7 @@ void Element::InvalidateChildrenIfNeeded() {
   invalidation_lists_.descendants.clear_and_shrink();
 }
 
-void FiberElement::SetupFragmentBehavior(Fragment *fragment) {
+void Element::SetupFragmentBehavior(Fragment *fragment) {
   if (is_list_item()) {
     fragment->SetBehavior(std::make_unique<ListItemFragmentBehavior>(fragment));
     return;

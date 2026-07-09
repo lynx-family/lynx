@@ -9,8 +9,8 @@
 #include <string>
 #include <utility>
 
+#include "core/renderer/dom/element.h"
 #include "core/renderer/dom/element_manager.h"
-#include "core/renderer/dom/fiber/fiber_element.h"
 #include "core/resource/lazy_bundle/lazy_bundle_loader.h"
 #include "core/template_bundle/lynx_template_bundle.h"
 
@@ -32,7 +32,7 @@ struct FrameElementData {
   std::string error_message;
 };
 
-class FrameElement : public FiberElement {
+class FrameElement : public Element {
  public:
   explicit FrameElement(ElementManager* element_manager);
   ~FrameElement() override;

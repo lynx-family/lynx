@@ -513,6 +513,7 @@ bool Element::ConsumeTransitionStylesInAdvance(const StyleMap& styles,
 
 void Element::SetStyleInternal(CSSPropertyID css_id,
                                const tasm::CSSValue& value) {
+  const bool was_fixed = is_fixed_;
   TRACE_EVENT(
       LYNX_TRACE_CATEGORY, ELEMENT_SET_STYLE_INTERNAL,
       [css_id](lynx::perfetto::EventContext ctx) {
@@ -547,6 +548,9 @@ void Element::SetStyleInternal(CSSPropertyID css_id,
       RequestLayout();
     }
     element_container()->InvalidateForRedraw();
+    if (css_id == kPropertyIDPosition && was_fixed != is_fixed_) {
+      UpdateFixedNodeSet();
+    }
     return;
   }
 
@@ -584,6 +588,9 @@ void Element::SetStyleInternal(CSSPropertyID css_id,
       CheckHasNonFlattenCSSProps(css_id);
     }
   }
+  if (css_id == kPropertyIDPosition && was_fixed != is_fixed_) {
+    UpdateFixedNodeSet();
+  }
 }
 
 bool Element::ResolveStyleValue(CSSPropertyID id, const tasm::CSSValue& value) {
@@ -614,14 +621,8 @@ bool Element::HasUIPrimitive() const {
 }
 
 void Element::CheckHasInlineContainer(Element* parent) {
-  if (parent) {
-    allow_layoutnode_inline_ = parent->IsShadowNodeCustom();
-  }
-  if (parent && (parent->is_text_ ||
-                 (parent->is_inline_element_ && !parent->is_view()))) {
-    is_inline_element_ = true;
-    has_layout_only_props_ = false;
-  }
+  EnsureLayoutBundle();
+  allow_layoutnode_inline_ = parent->IsShadowNodeCustom();
 }
 
 bool Element::EnableLayoutInElementMode() const {
@@ -685,6 +686,7 @@ void Element::ResetStyleInternal(CSSPropertyID css_id) {
 }
 
 bool Element::ResetCSSValue(CSSPropertyID css_id) {
+  const bool was_fixed = is_fixed_;
   CheckDynamicUnit(css_id, CSSValue(), true);
 
   if (css_id == kPropertyIDFontSize) {
@@ -715,6 +717,9 @@ bool Element::ResetCSSValue(CSSPropertyID css_id) {
     is_sticky_ = is_fixed_ = false;
   }
   if (is_layout_only) {
+    if (css_id == kPropertyIDPosition && was_fixed != is_fixed_) {
+      UpdateFixedNodeSet();
+    }
     return processed;
   }
   has_layout_only_props_ = false;
@@ -726,6 +731,9 @@ bool Element::ResetCSSValue(CSSPropertyID css_id) {
   CheckTransitionProps(css_id);
   CheckKeyframeProps(css_id);
 
+  if (css_id == kPropertyIDPosition && was_fixed != is_fixed_) {
+    UpdateFixedNodeSet();
+  }
   return processed;
 }
 
@@ -2576,6 +2584,11 @@ bool Element::IsFixedUnifiedOnly() const {
 
 bool Element::IsEventPathCatch(event::EventTarget* target,
                                event::Event* event) {
+  if (IsDetached()) {
+    LOGE("FiberElement::IsEventPathCatch error: the target is detached.");
+    return true;
+  }
+
   if (event && event->from_frontend() && target != this) {
     auto root_component =
         static_cast<Element*>(target)->GetParentComponentElement();

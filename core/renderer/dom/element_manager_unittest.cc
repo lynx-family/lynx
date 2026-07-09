@@ -15,7 +15,6 @@
 #include "core/renderer/css/shared_css_fragment.h"
 #include "core/renderer/dom/element.h"
 #include "core/renderer/dom/element_property.h"
-#include "core/renderer/dom/fiber/fiber_element.h"
 #include "core/renderer/dom/fiber/list_element.h"
 #include "core/renderer/dom/fiber/page_element.h"
 #include "core/renderer/dom/fiber/raw_text_element.h"

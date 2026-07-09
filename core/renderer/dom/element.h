@@ -91,6 +91,25 @@ enum ElementArchTypeEnum : uint8_t {
   RadonArch,
 };
 
+enum NodeInfoBits : int32_t {
+  // Mask for layout node type, using lower 16 bits.
+  kLayoutNodeTypeMask = 0x0000FFFF,
+  // Mask for async creation flag.
+  kCreateAsyncMask = 0x00010000,
+};
+
+constexpr const int32_t kCommonBuiltInNodeInfo =
+    (static_cast<int32_t>(LayoutNodeType::COMMON) &
+     NodeInfoBits::kLayoutNodeTypeMask) |
+    NodeInfoBits::kCreateAsyncMask;
+constexpr const int32_t kVirtualBuiltInNodeInfo =
+    (static_cast<int32_t>(LayoutNodeType::VIRTUAL) &
+     NodeInfoBits::kLayoutNodeTypeMask);
+constexpr const int32_t kCustomBuiltInNodeInfo =
+    (static_cast<int32_t>(LayoutNodeType::CUSTOM) &
+     NodeInfoBits::kLayoutNodeTypeMask) |
+    NodeInfoBits::kCreateAsyncMask;
+
 class InspectorAttribute {
  public:
   LYNX_EXPORT_FOR_DEVTOOL InspectorAttribute();
@@ -345,7 +364,7 @@ class Element : public lepus::RefCounted,
 
   // For style op
   LYNX_EXPORT_FOR_DEVTOOL virtual void ConsumeStyle(
-      const StyleMap& styles, const StyleMap* inherit_styles = nullptr) = 0;
+      const StyleMap& styles, const StyleMap* inherit_styles = nullptr);
 
   void CacheStyleFromAttributes(CSSPropertyID id, CSSValue&& value);
   void CacheStyleFromAttributes(CSSPropertyID id, const lepus::Value& value);
@@ -376,9 +395,7 @@ class Element : public lepus::RefCounted,
       CSSVariableMap* changed_css_vars);
   virtual void ConsumeStyleInternal(
       const StyleMap& styles, const StyleMap* inherit_styles,
-      std::function<bool(CSSPropertyID, const tasm::CSSValue&)> should_skip) {
-    ConsumeStyle(styles, inherit_styles);
-  }
+      std::function<bool(CSSPropertyID, const tasm::CSSValue&)> should_skip);
 
   virtual void SetStyleInternal(CSSPropertyID id, const tasm::CSSValue& value);
 
@@ -886,7 +903,7 @@ class Element : public lepus::RefCounted,
   double GetCurrentRootFontSize();
 
   virtual void OnPseudoStatusChanged(PseudoState prev_status,
-                                     PseudoState current_status) {}
+                                     PseudoState current_status);
 
   ContentData* content_data() const { return content_data_.get(); }
 
@@ -1534,7 +1551,7 @@ class Element : public lepus::RefCounted,
 
   virtual void MarkDetached() { state_ = State::kDetached; }
   virtual bool IsDetached() const { return state_ == State::kDetached; }
-  virtual void SetupFragmentBehavior(Fragment* fragment) {}
+  virtual void SetupFragmentBehavior(Fragment* fragment);
 
   void SetDefaultOverflow(bool visible);
 
@@ -1610,7 +1627,7 @@ class Element : public lepus::RefCounted,
   /**
    * Recursively insert pending fixed elements for this subtree.
    */
-  virtual void TraversalInsertFixedElementOfTree() = 0;
+  virtual void TraversalInsertFixedElementOfTree();
 
   /**
    * Check if this element needs to propagate inherited dirty flag to children.
@@ -1649,8 +1666,9 @@ class Element : public lepus::RefCounted,
   void UpdateLayoutInfoRecursively(PipelineOptions* options);
   void UpdateLayoutInfo();
 
-  virtual fml::RefPtr<Element> CloneElement(
-      bool clone_resolved_props) const = 0;
+  virtual fml::RefPtr<Element> CloneElement(bool clone_resolved_props) const {
+    return fml::AdoptRef<Element>(new Element(*this, clone_resolved_props));
+  }
 
   // The element object created using clone interfaces is not attached to the
   // element manager. Use this function to attach it to the element manager.

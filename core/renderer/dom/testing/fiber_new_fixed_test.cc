@@ -182,7 +182,7 @@ TEST_P(FiberElementTest,
   EXPECT_EQ(parent->GetChildAt(0), fixed_element.get());
 
   // Mark for reattach. The reattach insertion must not rely on render_parent_.
-  fixed_element->MarkDirty(FiberElement::kDirtyReAttachContainer);
+  fixed_element->MarkDirty(Element::kDirtyReAttachContainer);
 
   // Reattach should insert layout node under its logical parent.
   EXPECT_CALL(
@@ -242,7 +242,7 @@ TEST_P(FiberElementTest,
   EXPECT_EQ(fixed_child->parent(), logical_parent.get());
   EXPECT_EQ(fixed_child->render_parent(), nullptr);
   EXPECT_FALSE(fixed_child->attached_to_layout_parent_);
-  EXPECT_TRUE(fixed_child->dirty_ & FiberElement::kDirtyReAttachContainer);
+  EXPECT_TRUE(fixed_child->dirty_ & Element::kDirtyReAttachContainer);
 
   ::testing::Mock::VerifyAndClearExpectations(&tasm_mediator);
 

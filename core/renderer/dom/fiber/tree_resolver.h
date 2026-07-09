@@ -12,7 +12,7 @@
 #include "base/include/fml/memory/ref_ptr.h"
 #include "base/include/value/base_string.h"
 #include "base/include/value/table.h"
-#include "core/renderer/dom/fiber/fiber_element.h"
+#include "core/renderer/dom/element.h"
 #include "core/renderer/dom/fiber/generated_elements_result.h"
 
 namespace lynx {

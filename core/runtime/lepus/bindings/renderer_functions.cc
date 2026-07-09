@@ -32,9 +32,9 @@
 #include "core/renderer/css/css_style_sheet_manager.h"
 #include "core/renderer/css/css_utils.h"
 #include "core/renderer/css/parser/css_string_parser.h"
+#include "core/renderer/dom/element.h"
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/dom/fiber/block_element.h"
-#include "core/renderer/dom/fiber/fiber_element.h"
 #include "core/renderer/dom/fiber/for_element.h"
 #include "core/renderer/dom/fiber/frame_element.h"
 #include "core/renderer/dom/fiber/if_element.h"
@@ -296,7 +296,7 @@ int32_t MergeResolveTarget(TemplateAssembler* tasm,
  inline styles, classes, id and so on. For example:
  ```
  auto element =
- fml::static_ref_ptr_cast<FiberElement>(arg0->RefCounted());
+ fml::static_ref_ptr_cast<Element>(arg0->RefCounted());
  element->SetAttribute(arg1->String(), *arg2);
 
  ON_NODE_MODIFIED(element);
@@ -315,8 +315,8 @@ int32_t MergeResolveTarget(TemplateAssembler* tasm,
  example:
  ```
  auto parent =
- fml::static_ref_ptr_cast<FiberElement>(arg0->RefCounted()); auto child
- = fml::static_ref_ptr_cast<FiberElement>(arg1->RefCounted());
+ fml::static_ref_ptr_cast<Element>(arg0->RefCounted()); auto child
+ = fml::static_ref_ptr_cast<Element>(arg1->RefCounted());
  parent->InsertNode(child);
 
  ON_NODE_ADDED(child);
@@ -349,8 +349,8 @@ int32_t MergeResolveTarget(TemplateAssembler* tasm,
 /* Use this macro when fiber element is removed from the parent. For example:
  ```
  auto parent =
- fml::static_ref_ptr_cast<FiberElement>(arg0->RefCounted()); auto child
- = fml::static_ref_ptr_cast<FiberElement>(arg1->RefCounted());
+ fml::static_ref_ptr_cast<Element>(arg0->RefCounted()); auto child
+ = fml::static_ref_ptr_cast<Element>(arg1->RefCounted());
 
  ON_NODE_REMOVED(child);
  parent->RemoveNode(child);

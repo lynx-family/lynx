@@ -16,6 +16,7 @@
 #include "core/renderer/css/ng/selector/css_selector_parser.h"
 #include "core/renderer/css/parser/css_string_parser.h"
 #include "core/renderer/css/shared_css_fragment.h"
+#include "core/renderer/dom/element.h"
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/dom/fiber/component_element.h"
 #include "core/renderer/dom/fiber/pseudo_element.h"
@@ -213,7 +214,7 @@ std::unique_ptr<SharedCSSFragment> MakeSelectorFragmentWithToken(
 
 TEST_F(CSSPatchingTest, GetCSSStyleForFiber) {
   auto fiber_element =
-      fml::AdoptRef<FiberElement>(new FiberElement(manager.get(), "view"));
+      fml::AdoptRef<Element>(new Element(manager.get(), "view"));
   auto* attribute_holder = fiber_element->data_model();
   attribute_holder->set_tag("text");
   attribute_holder->SetClass("text-c");
@@ -299,14 +300,14 @@ TEST_F(CSSPatchingTest, GetCSSStyleForFiber) {
 TEST_F(CSSPatchingTest, GetCSSStyleForFiberDescendantSelector) {
   // parent
   auto parent_fiber_element =
-      fml::AdoptRef<FiberElement>(new FiberElement(manager.get(), "view"));
+      fml::AdoptRef<Element>(new Element(manager.get(), "view"));
   auto* parent_attribute_holder = parent_fiber_element->data_model();
   parent_attribute_holder->set_tag("view");
   parent_attribute_holder->SetClass("a");
   parent_attribute_holder->SetIdSelector("#a-id");
 
   auto fiber_element =
-      fml::AdoptRef<FiberElement>(new FiberElement(manager.get(), "view"));
+      fml::AdoptRef<Element>(new Element(manager.get(), "view"));
   auto* attribute_holder = fiber_element->data_model();
   attribute_holder->set_tag("view");
   attribute_holder->SetClass("b");
@@ -773,7 +774,7 @@ class MockCSSFragment : public tasm::SharedCSSFragment {
 
 TEST_F(CSSPatchingTest, AdoptedStylesheets_MergeLogic) {
   auto fiber_element =
-      fml::AdoptRef<FiberElement>(new FiberElement(manager.get(), "view"));
+      fml::AdoptRef<Element>(new Element(manager.get(), "view"));
   auto* attribute_holder = fiber_element->data_model();
   attribute_holder->set_tag("view");
   attribute_holder->SetIdSelector("view-id");
@@ -840,7 +841,7 @@ TEST_F(CSSPatchingTest, AdoptedStylesheets_MergeLogic) {
 
 TEST_F(CSSPatchingTest, Specificity_Prioritize_Cascade_Order) {
   auto fiber_element =
-      fml::AdoptRef<FiberElement>(new FiberElement(manager.get(), "view"));
+      fml::AdoptRef<Element>(new Element(manager.get(), "view"));
   auto* attribute_holder = fiber_element->data_model();
   attribute_holder->set_tag("view");
   attribute_holder->SetIdSelector("view-id");
@@ -923,7 +924,7 @@ TEST_F(CSSPatchingTest, Specificity_Prioritize_Cascade_Order) {
 
 TEST_F(CSSPatchingTest, AdoptedStylesheets_BasicIntegration) {
   auto fiber_element =
-      fml::AdoptRef<FiberElement>(new FiberElement(manager.get(), "view"));
+      fml::AdoptRef<Element>(new Element(manager.get(), "view"));
 
   auto mock_fragment = std::make_unique<MockCSSFragment>();
   mock_fragment->SetEnableCSSSelector(true);
@@ -949,7 +950,7 @@ TEST_F(CSSPatchingTest, AdoptedStylesheets_BasicIntegration) {
 
 TEST_F(CSSPatchingTest, AdoptedStylesheets_EmptyList) {
   auto fiber_element =
-      fml::AdoptRef<FiberElement>(new FiberElement(manager.get(), "view"));
+      fml::AdoptRef<Element>(new Element(manager.get(), "view"));
 
   EXPECT_TRUE(manager->GetAdoptedStyleSheets().empty());
 
@@ -966,7 +967,7 @@ TEST_F(CSSPatchingTest, AdoptedStylesheets_EmptyList) {
 
 TEST_F(CSSPatchingTest, AdoptedStylesheets_DisabledSelector) {
   auto fiber_element =
-      fml::AdoptRef<FiberElement>(new FiberElement(manager.get(), "view"));
+      fml::AdoptRef<Element>(new Element(manager.get(), "view"));
 
   auto mock_fragment = std::make_unique<MockCSSFragment>();
   mock_fragment->SetEnableCSSSelector(false);
@@ -994,7 +995,7 @@ TEST_F(CSSPatchingTest,
   // stylesheets when specificity is equal. This verifies the fix where adopted
   // stylesheets now share the same level counter as base stylesheets.
   auto fiber_element =
-      fml::AdoptRef<FiberElement>(new FiberElement(manager.get(), "view"));
+      fml::AdoptRef<Element>(new Element(manager.get(), "view"));
   auto* attribute_holder = fiber_element->data_model();
   attribute_holder->set_tag("view");
   attribute_holder->SetClass("test-class");
@@ -1059,7 +1060,7 @@ TEST_F(CSSPatchingTest,
 TEST_F(CSSPatchingTest, GetCSSStyleNew_NoAdoptedStylesheets) {
   // Test that style resolution works when no adopted stylesheets are present
   auto fiber_element =
-      fml::AdoptRef<FiberElement>(new FiberElement(manager.get(), "view"));
+      fml::AdoptRef<Element>(new Element(manager.get(), "view"));
   auto* attribute_holder = fiber_element->data_model();
   attribute_holder->set_tag("view");
   attribute_holder->SetClass("test-class");
@@ -1105,7 +1106,7 @@ TEST_F(CSSPatchingTest, GetCSSStyleNew_NoAdoptedStylesheets) {
 TEST_F(CSSPatchingTest, GetCSSStyleNew_AdoptedStylesheetDisabledSelector) {
   // Test that adopted stylesheets with disabled selectors are skipped
   auto fiber_element =
-      fml::AdoptRef<FiberElement>(new FiberElement(manager.get(), "view"));
+      fml::AdoptRef<Element>(new Element(manager.get(), "view"));
   auto* attribute_holder = fiber_element->data_model();
   attribute_holder->set_tag("view");
   attribute_holder->SetClass("test-class");
@@ -1165,7 +1166,7 @@ TEST_F(CSSPatchingTest, DidCollectMatchedRules_BulkCSSVariableUpdate) {
   // Test that CSS variables from multiple matched rules are correctly merged
   // and passed to AttributeHolder using bulk UpdateCSSVariable.
   auto fiber_element =
-      fml::AdoptRef<FiberElement>(new FiberElement(manager.get(), "view"));
+      fml::AdoptRef<Element>(new Element(manager.get(), "view"));
   auto* attribute_holder = fiber_element->data_model();
   attribute_holder->set_tag("view");
   attribute_holder->SetClass("test-class");
@@ -1276,7 +1277,7 @@ TEST_F(CSSPatchingTest, DidCollectMatchedRules_CSSVariableRemoval) {
       &(manager->GetConfig()->css_configs_.enable_css_inline_variables_), true);
 
   auto fiber_element =
-      fml::AdoptRef<FiberElement>(new FiberElement(manager.get(), "view"));
+      fml::AdoptRef<Element>(new Element(manager.get(), "view"));
   auto* attribute_holder = fiber_element->data_model();
   attribute_holder->set_tag("view");
   attribute_holder->SetClass("test-class");
@@ -1345,7 +1346,7 @@ TEST_F(CSSPatchingTest, DidCollectMatchedRules_DuplicateKeyPrecedence) {
   // Test that when the same CSS variable is defined in multiple matched rules,
   // the later rule's value takes precedence (last-match-wins semantics).
   auto fiber_element =
-      fml::AdoptRef<FiberElement>(new FiberElement(manager.get(), "view"));
+      fml::AdoptRef<Element>(new Element(manager.get(), "view"));
   auto* attribute_holder = fiber_element->data_model();
   attribute_holder->set_tag("view");
   attribute_holder->SetClass("test-class");
@@ -1403,7 +1404,7 @@ TEST_F(CSSPatchingTest, DidCollectMatchedRules_NoChangeDiff) {
   // Test that resolving with the same CSS variables produces empty
   // changed_css_vars (no invalidation needed).
   auto fiber_element =
-      fml::AdoptRef<FiberElement>(new FiberElement(manager.get(), "view"));
+      fml::AdoptRef<Element>(new Element(manager.get(), "view"));
   auto* attribute_holder = fiber_element->data_model();
   attribute_holder->set_tag("view");
   attribute_holder->SetClass("test-class");
@@ -1460,7 +1461,7 @@ TEST_F(CSSPatchingTest, DidCollectMatchedRules_NoChangeDiff) {
 TEST_F(CSSPatchingTest, DidCollectMatchedRules_NullChangedCssVars) {
   // Test that ResolveStyle works correctly when changed_css_vars is nullptr.
   auto fiber_element =
-      fml::AdoptRef<FiberElement>(new FiberElement(manager.get(), "view"));
+      fml::AdoptRef<Element>(new Element(manager.get(), "view"));
   auto* attribute_holder = fiber_element->data_model();
   attribute_holder->set_tag("view");
   attribute_holder->SetClass("test-class");
@@ -1551,7 +1552,7 @@ TEST_F(CSSPatchingTest,
   // When neither the base fragment nor adopted stylesheets have pseudo rules,
   // HandlePseudoElement should early-return without issue.
   auto fiber_element =
-      fml::AdoptRef<FiberElement>(new FiberElement(manager.get(), "view"));
+      fml::AdoptRef<Element>(new Element(manager.get(), "view"));
   fiber_element->data_model()->set_tag("view");
 
   auto base_fragment = std::make_unique<MockCSSFragment>();

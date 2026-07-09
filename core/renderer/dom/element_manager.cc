@@ -23,7 +23,6 @@
 #include "core/renderer/dom/element_manager_delegate.h"
 #include "core/renderer/dom/element_vsync_proxy.h"
 #include "core/renderer/dom/fiber/component_element.h"
-#include "core/renderer/dom/fiber/fiber_element.h"
 #include "core/renderer/dom/fiber/frame_element.h"
 #include "core/renderer/dom/fiber/image_element.h"
 #include "core/renderer/dom/fiber/list_element.h"
@@ -600,7 +599,7 @@ void ElementManager::PrepareComponentNodeForInspector(Element *component) {
 
     const auto &create_element = [this, component](const std::string &tag) {
       Element *element = nullptr;
-      element = new FiberElement(this, tag);
+      element = new Element(this, tag);
       // The additional element created by the inspector needs to
       // maintain a null data model to indicate that this element is
       // created by inspector.
@@ -1313,7 +1312,7 @@ fml::RefPtr<Element> ElementManager::StaticCreateFiberElement(
           new PageElement(nullptr, base::String(), -1));
       break;
     default:
-      element = fml::AdoptRef<Element>(new FiberElement(nullptr, raw_tag));
+      element = fml::AdoptRef<Element>(new Element(nullptr, raw_tag));
   }
   return element;
 }
@@ -1322,7 +1321,7 @@ fml::RefPtr<Element> ElementManager::CreateFiberNode(const base::String &tag) {
   if (tag.IsEqual(kElementEcomImageTag)) {
     return fml::AdoptRef<Element>(new ImageElement(this, tag));
   }
-  auto res = fml::AdoptRef<Element>(new FiberElement(this, tag));
+  auto res = fml::AdoptRef<Element>(new Element(this, tag));
   return res;
 }
 

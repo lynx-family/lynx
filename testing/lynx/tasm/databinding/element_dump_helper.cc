@@ -106,7 +106,7 @@ lepus::Value ElementDumpHelper::DumpToSnapshot(Element* element,
     DumpAttributeToLepusValue(props, data_model);
 
     tasm::StyleMap computed_styles;
-    static_cast<FiberElement*>(element)->DumpStyle(computed_styles);
+    element->DumpStyle(computed_styles);
 
     if (computed_styles.size() > 0) {
       std::map<CSSPropertyID, CSSValue> ordered_computed_styles_map(
@@ -150,7 +150,7 @@ void ElementDumpHelper::DumpToMarkup(Element* element, std::ostringstream& ss,
     DumpAttributeToMarkup(ss, data_model);
 
     tasm::StyleMap computed_styles;
-    static_cast<FiberElement*>(element)->DumpStyle(computed_styles);
+    element->DumpStyle(computed_styles);
     if (computed_styles.size() > 0) {
       std::map<CSSPropertyID, CSSValue> ordered_computed_styles_map(
           computed_styles.begin(), computed_styles.end());

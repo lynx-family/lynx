@@ -7,7 +7,7 @@
 
 #include <memory>
 
-#include "core/renderer/dom/fiber/fiber_element.h"
+#include "core/renderer/dom/element.h"
 
 namespace lynx {
 namespace tasm {
@@ -15,7 +15,7 @@ namespace tasm {
 class ElementManager;
 class Fragment;
 
-class ViewElement : public FiberElement {
+class ViewElement : public Element {
  public:
   ViewElement(ElementManager* manager);
 
@@ -39,7 +39,7 @@ class ViewElement : public FiberElement {
   void OnNodeAdded(Element* child) override;
 
   ViewElement(const ViewElement& element, bool clone_resolved_props)
-      : FiberElement(element, clone_resolved_props) {
+      : Element(element, clone_resolved_props) {
     MarkCanBeLayoutOnly(true);
   }
 };
