@@ -432,6 +432,46 @@ TEST_P(FiberElementTest, TestRefType) {
   EXPECT_EQ(prim_obj->GetRefType(), lepus::RefType::kJSIObject);
 }
 
+TEST_P(FiberElementTest, LoadStyleSheetUsesBundleCSSRuleConfig) {
+  CompileOptions serialized_options;
+  serialized_options.target_sdk_version_ = "3.2";
+  serialized_options.enable_css_selector_ = true;
+  serialized_options.enable_css_invalidation_ = true;
+
+  auto default_entry = std::make_shared<TemplateEntry>();
+  default_entry->template_bundle_.compile_options_ = serialized_options;
+  tasm->template_entries_[DEFAULT_ENTRY_NAME] = std::move(default_entry);
+
+  LynxTemplateBundle bundle;
+  bundle.compile_options_ = serialized_options;
+  bundle.page_configs_ = std::make_shared<PageConfig>();
+  bundle.page_configs_->SetEnableCSSRule(true);
+
+  constexpr size_t kEmptyCSSRuleFragmentSize = 3;
+  auto data = std::make_unique<uint8_t[]>(kEmptyCSSRuleFragmentSize);
+  bundle.AddCustomSection("style",
+                          lepus::Value(lepus::ByteArray::Create(
+                              std::move(data), kEmptyCSSRuleFragmentSize)));
+  tasm->InsertLynxTemplateBundle("bundle", std::move(bundle));
+
+  auto lepus_ctx = runtime::MTSRuntime::CreateContext(
+      runtime::ContextType::LepusNGContextType);
+  ASSERT_TRUE(lepus_ctx);
+  lepus_ctx->Initialize();
+  lepus_ctx->SetGlobalData(
+      BASE_STATIC_STRING(tasm::kTemplateAssembler),
+      lepus::Value(static_cast<runtime::MTSRuntime::Delegate*>(tasm.get())));
+  auto* mts_ctx = runtime::MTSRuntime::ToQuickContext(lepus_ctx.get());
+  ASSERT_TRUE(mts_ctx);
+
+  lepus::Value argv[] = {lepus::Value("style"), lepus::Value("bundle")};
+  auto result = ::lynx::tasm::RendererFunctions::LoadStyleSheet(
+      mts_ctx, argv, static_cast<int>(std::size(argv)));
+
+  ASSERT_TRUE(result.IsRefCounted());
+  EXPECT_EQ(result.RefCounted()->GetRefType(), lepus::RefType::kCSSFragment);
+}
+
 TEST_P(FiberElementTest, TestSetOverflow) {
   manager->GetLynxEnvConfig().font_scale_ = 1.3f;
   manager->GetLynxEnvConfig().font_scale_sp_only_ = false;
