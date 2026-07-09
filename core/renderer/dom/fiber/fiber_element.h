@@ -106,14 +106,10 @@ class FiberElement : public Element {
   /**
    * A key function to GetListNode
    */
-  virtual ListNode* GetListNode() override { return nullptr; };
-
   /**
    * A key function to flush the tree with the current element as the root node.
    */
   virtual void FlushActionsAsRoot();
-
-  virtual bool CanBeLayoutOnly() const override;
 
   /**
    * A key function for flush all pending actions for current Element
@@ -201,30 +197,16 @@ class FiberElement : public Element {
   void UpdateCSSVariable(const lepus::Value& variables,
                          std::shared_ptr<PipelineOptions>& pipeline_option);
 
-  /**
-   * Element API for setNativeProps
-   *  @param native_props the props that updated from js.
-   */
-  void SetNativeProps(
-      const lepus::Value& native_props,
-      std::shared_ptr<PipelineOptions>& pipeline_options) override;
-
-  virtual StyleMap GetStylesForWorklet() override;
-
   void ResolveCSSStyles(StyleMap& parsed_styles,
                         base::InlineVector<CSSPropertyID, 16>& reset_style_ids,
                         bool& need_update,
                         bool& force_use_current_parsed_style_map);
-  void ResolveCSSStylesNewPipeline(bool& need_update);
 
   void TraversalInsertFixedElementOfTree();
 
   void ConsumeStyle(const StyleMap& styles,
                     const StyleMap* inherit_styles) override;
 
-  // Flush style and attribute to platform shadow node, platform painting node
-  // will be created if has not been created,
-  void FlushProps() override;
   const EventMap& event_map() const override {
     if (data_model_) {
       return data_model_->static_events();
@@ -246,94 +228,10 @@ class FiberElement : public Element {
                                 bool update_logical_children);
   void AddChildAt(fml::RefPtr<FiberElement> child, int index);
 
-  void UpdateFiberElement();
-
-  virtual void MarkLayoutDirty() override;
-  virtual void AttachLayoutNode(const fml::RefPtr<PropBundle>& props) override;
-  virtual void UpdateLayoutNodeProps(
-      const fml::RefPtr<PropBundle>& props) override;
-  virtual void UpdateLayoutNodeStyle(CSSPropertyID css_id,
-                                     const tasm::CSSValue& value) override;
-  virtual void ResetLayoutNodeStyle(tasm::CSSPropertyID css_id) override;
-  virtual void UpdateLayoutNodeFontSize(double cur_node_font_size,
-                                        double root_node_font_size) override;
-  virtual void UpdateLayoutNodeAttribute(starlight::LayoutAttribute key,
-                                         const lepus::Value& value) override;
-
-  /**
-   * Interface used to create/update LayoutNode for FiberElement.
-   */
-  void UpdateLayoutNodeByBundle();
-
   virtual void CheckHasInlineContainer(Element* parent) override;
 
   virtual void EnqueueLayoutTask(
       base::MoveOnlyClosure<void> operation) override;
-
-  animation::AnimationSampleForNewPipeline
-  SampleAnimationOverridesForNewPipeline(
-      starlight::ComputedCSSStyle& new_base_style, bool base_font_size_changed,
-      bool base_root_font_size_changed,
-      const StyleMap& new_underlying_layout_only_styles,
-      const starlight::ComputedCSSStyle*& previous_final_style);
-  bool HasAuthorAnimationDataChangedForNewPipeline(
-      const starlight::ComputedCSSStyle& new_base_style,
-      const starlight::ComputedCSSStyle* previous_base_style) const;
-  void FlushImperativeAnimationCleanupForNewPipeline(
-      starlight::ComputedCSSStyle& cleanup_style, bool& need_update,
-      CSSIDBitset* replayed_ids, const CSSIDBitset* source_style_ids = nullptr);
-  std::unique_ptr<starlight::ComputedCSSStyle>
-  BuildFinalStyleFromAnimationSampleForNewPipeline(
-      const starlight::ComputedCSSStyle& base_style,
-      const starlight::ComputedCSSStyle* parent_style,
-      const starlight::ComputedCSSStyle* previous_final_style,
-      const animation::AnimationSampleForNewPipeline& animation_sample,
-      StyleMap& resolved_style_map, CSSIDBitset& variable_dependent_ids);
-  animation::AnimationEventRecordsForNewPipeline
-  TakeAnimationEventsForNewPipeline();
-  bool NeedsAnimationFrameForNewPipeline() const;
-
-  /**
-   * @brief Resolves the base computed style by collecting matched rules,
-   * inline styles, and attribute styles.
-   * @param previous_final_style The previous final computed style.
-   * @param old_font_size The previous font size.
-   * @param old_root_font_size The previous root font size.
-   * @return A NewPipelineStyleResolveResult containing base and final styles.
-   */
-  NewPipelineStyleResolveResult ResolveComputedStyles(
-      const starlight::ComputedCSSStyle* previous_final_style,
-      double old_font_size, double old_root_font_size);
-
-  void ReplayMaterializedStyleSideEffects(
-      const starlight::ComputedCSSStyle& computed_style,
-      CSSIDBitset* replayed_ids = nullptr,
-      const NewPipelineStyleMutationPlan* plan = nullptr);
-  void ReplayDynamicResolvedStyleSideEffects(
-      const StyleMap& resolved_style_map,
-      DynamicCSSStylesManager::StyleUpdateFlags update_flags,
-      const CSSIDBitset& replayed_ids,
-      const CSSIDBitset* source_style_ids = nullptr,
-      const CSSIDBitset* inherited_dynamic_ids = nullptr);
-  NewPipelineStyleMutationPlan BuildNewPipelineStyleMutationPlan(
-      const NewPipelineStyleResolveResult& resolved_styles,
-      const NewPipelineDynamicStyleInputs& dynamic_inputs,
-      DynamicCSSStylesManager::StyleUpdateFlags requested_dynamic_flags,
-      bool first_render, double old_font_size, double old_root_font_size) const;
-  bool MaterializeNewPipelineStyleMutationPlan(
-      const NewPipelineStyleMutationPlan& plan,
-      const starlight::ComputedCSSStyle& baseline_style,
-      starlight::ComputedCSSStyle& final_style) const;
-  bool HasInheritedPropertyMutation(
-      const NewPipelineStyleMutationPlan& plan) const;
-  void ReplayNewPipelineStyleMutationPlanSideEffects(
-      const NewPipelineStyleMutationPlan& plan, CSSIDBitset* replayed_ids);
-  NewPipelineResolveOutcome ResolveCSSStylesNewPipelineCore(
-      const NewPipelineResolveRequest& request);
-
-  void RequestLayout() override;
-
-  void RequestNextFrame() override;
 
   virtual ParallelFlushReturn PrepareForCreateOrUpdate();
 
@@ -344,21 +242,8 @@ class FiberElement : public Element {
   void StoreLayoutNode(FiberElement* child, FiberElement* ref);
   void RestoreLayoutNode(FiberElement* child);
 
-  // For snapshot test
-  void DumpStyle(StyleMap& parsed_styles);
-
   void OnPseudoStatusChanged(PseudoState prev_status,
                              PseudoState current_status) override;
-
-  bool RefreshStyle(StyleMap& parsed_styles,
-                    base::Vector<CSSPropertyID>& reset_ids,
-                    bool force_use_parsed_styles_map = false);
-
-  void UpdateDynamicElementStyle(uint32_t style, bool force_update) override;
-
-  void CheckDynamicUnit(CSSPropertyID id, const CSSValue& value,
-                        bool reset) override;
-  void WillResetCSSValue(CSSPropertyID& id) override;
 
   // The text element can call this function to convert child fiber elements
   // into inline elements. Currently, only view, text, image and wrapper
@@ -377,13 +262,6 @@ class FiberElement : public Element {
       ElementManager* manager,
       const std::shared_ptr<CSSStyleSheetManager>& style_manager,
       bool keep_element_id) override;
-
-  int32_t GetCSSID() const override;
-
-  bool MergeInlineStyles(StyleMap& new_styles,
-                         StyleMap& important_styles) final;
-  void PersistAnimationFillStyles(const StyleMap& styles) override;
-  void ClearPersistedAnimationFillStyle(CSSPropertyID id) override;
 
   void CreateListItemScheduler(list::BatchRenderStrategy batch_render_strategy,
                                bool continuous_resolve_tree);
@@ -414,11 +292,7 @@ class FiberElement : public Element {
   void SetStyleInternal(CSSPropertyID id, const tasm::CSSValue& value) override;
   bool ResetCSSValue(CSSPropertyID id) override;
 
-  void ProcessFullRawInlineStyle(CSSVariableMap* changed_css_vars) override;
-
   bool ConsumeAllAttributes();
-
-  void PerformElementContainerCreateOrUpdate(bool need_update, bool need_reset);
 
   ParallelFlushReturn CreateParallelTaskHandler();
 
@@ -433,8 +307,6 @@ class FiberElement : public Element {
 
   virtual void SetAttributeInternal(const base::String& key,
                                     const lepus::Value& value);
-
-  virtual CSSFragment* GetRelatedCSSFragment() override;
 
   virtual void MarkHasLayoutOnlyPropsIfNecessary(
       const base::String& attribute_key);
@@ -473,14 +345,8 @@ class FiberElement : public Element {
 
   void ResetTextAlign(StyleMap& update_map, bool direction_reset);
 
-  void UpdateDynamicElementStyleRecursively(uint32_t style, bool force_update);
-  void UpdateDynamicElementStyleForNewPipeline(uint32_t& style,
-                                               bool& inner_force_update);
-
   void PrepareComponentExternalStyles(AttributeHolder* holder);
   void PrepareRootCSSVariables(AttributeHolder* holder);
-  void ParseRawInlineStyles(CSSVariableMap* changed_css_vars);
-  void DoFullCSSResolving();
 };
 
 }  // namespace tasm

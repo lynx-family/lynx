@@ -7,15 +7,15 @@
 #include <utility>
 
 #include "core/public/platform_extra_bundle.h"
+#include "core/renderer/dom/element.h"
 #include "core/renderer/dom/element_manager.h"
-#include "core/renderer/dom/fiber/fiber_element.h"
 #include "core/renderer/starlight/layout/layout_object.h"
 
 namespace lynx {
 namespace tasm {
 
 PlatformLayoutFunctionWrapper::PlatformLayoutFunctionWrapper(
-    FiberElement& element, const fml::RefPtr<PropBundle>& initial_props)
+    Element& element, const fml::RefPtr<PropBundle>& initial_props)
     : element_(element), id_(element.impl_id()) {
   layout_object_ = element.slnode();
 }
@@ -72,7 +72,7 @@ void PlatformLayoutFunctionWrapper::UpdateLayoutNodeProps(
 }
 
 void PlatformLayoutFunctionWrapper::Destroy() {
-  // Destroy related layout node is handled in FiberElement destructor
+  // Destroying the related layout node is handled by the owning element.
   measure_func_ = nullptr;
 }
 

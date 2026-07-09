@@ -199,7 +199,7 @@ void ComponentElement::MarkAsWrapperComponent() {
 }
 
 bool ComponentElement::CanBeLayoutOnly() const {
-  return enable_component_layout_only_ && FiberElement::CanBeLayoutOnly();
+  return enable_component_layout_only_ && Element::CanBeLayoutOnly();
 }
 
 void ComponentElement::set_component_id(const base::String& id) {

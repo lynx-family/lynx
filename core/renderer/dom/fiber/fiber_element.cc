@@ -355,7 +355,7 @@ event::EventListener::Options GetEventListenerOptions(
       is_capture_catch || is_bubble_catch, is_global_bind);
 }
 
-FiberElement::NewPipelineStyleResolveResult FiberElement::ResolveComputedStyles(
+Element::NewPipelineStyleResolveResult Element::ResolveComputedStyles(
     const starlight::ComputedCSSStyle *previous_final_style,
     double old_font_size, double old_root_font_size) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_RESOLVE_COMPUTED_STYLES);
@@ -426,7 +426,7 @@ FiberElement::NewPipelineStyleResolveResult FiberElement::ResolveComputedStyles(
 }
 
 animation::AnimationSampleForNewPipeline
-FiberElement::SampleAnimationOverridesForNewPipeline(
+Element::SampleAnimationOverridesForNewPipeline(
     starlight::ComputedCSSStyle &new_base_style, bool base_font_size_changed,
     bool base_root_font_size_changed,
     const StyleMap &new_underlying_layout_only_styles,
@@ -530,7 +530,7 @@ FiberElement::SampleAnimationOverridesForNewPipeline(
 }
 
 std::unique_ptr<starlight::ComputedCSSStyle>
-FiberElement::BuildFinalStyleFromAnimationSampleForNewPipeline(
+Element::BuildFinalStyleFromAnimationSampleForNewPipeline(
     const starlight::ComputedCSSStyle &base_style,
     const starlight::ComputedCSSStyle *parent_style,
     const starlight::ComputedCSSStyle *previous_final_style,
@@ -587,7 +587,7 @@ Element::AnalyzeAnimationSampleForNewPipeline(
 }
 
 animation::AnimationEventRecordsForNewPipeline
-FiberElement::TakeAnimationEventsForNewPipeline() {
+Element::TakeAnimationEventsForNewPipeline() {
   animation::AnimationEventRecordsForNewPipeline event_records;
   auto append_event_records = [&event_records](auto *manager) {
     if (manager == nullptr) {
@@ -604,7 +604,7 @@ FiberElement::TakeAnimationEventsForNewPipeline() {
   return event_records;
 }
 
-bool FiberElement::NeedsAnimationFrameForNewPipeline() const {
+bool Element::NeedsAnimationFrameForNewPipeline() const {
   if (!enable_new_animator_) {
     return false;
   }
@@ -1077,7 +1077,7 @@ const Element::InheritedProperty Element::GetParentInheritedProperty() {
   return real_parent->GetInheritedProperty();
 }
 
-CSSFragment *FiberElement::GetRelatedCSSFragment() {
+CSSFragment *Element::GetRelatedCSSFragment() {
   if (css_id_ != kInvalidCssId) {
     if (style_sheet_ == nullptr || !style_sheet_->HasIntrinsicStyleSheets()) {
       if (!css_style_sheet_manager_ && GetParentComponentElement()) {
@@ -1120,7 +1120,7 @@ CSSFragment *FiberElement::GetRelatedCSSFragment() {
   }
 }
 
-int32_t FiberElement::GetCSSID() const {
+int32_t Element::GetCSSID() const {
   if (css_id_ != kInvalidCssId) {
     return css_id_;
   } else {
@@ -1134,8 +1134,8 @@ int32_t FiberElement::GetCSSID() const {
   }
 }
 
-bool FiberElement::MergeInlineStyles(StyleMap &new_styles,
-                                     StyleMap &important_styles) {
+bool Element::MergeInlineStyles(StyleMap &new_styles,
+                                StyleMap &important_styles) {
   // Styles stored by full_raw_inline_style_ had already been parsed to
   // current_raw_inline_styles_. So we only handle current_raw_inline_styles_
   // here.
@@ -1171,7 +1171,7 @@ bool FiberElement::MergeInlineStyles(StyleMap &new_styles,
   return res;
 }
 
-void FiberElement::PersistAnimationFillStyles(const StyleMap &styles) {
+void Element::PersistAnimationFillStyles(const StyleMap &styles) {
   if (!element_manager()->EnableAnimationForwardUpdatePreservation() ||
       !enable_new_animator() || styles.empty()) {
     return;
@@ -1181,14 +1181,14 @@ void FiberElement::PersistAnimationFillStyles(const StyleMap &styles) {
   }
 }
 
-void FiberElement::ClearPersistedAnimationFillStyle(CSSPropertyID id) {
+void Element::ClearPersistedAnimationFillStyle(CSSPropertyID id) {
   if (!animation_override_styles_map_.has_value()) {
     return;
   }
   animation_override_styles_map_->erase(id);
 }
 
-void FiberElement::ProcessFullRawInlineStyle(CSSVariableMap *changed_css_vars) {
+void Element::ProcessFullRawInlineStyle(CSSVariableMap *changed_css_vars) {
   // If self has raw inline styles, parse to current_raw_inline_styles_ but do
   // not process to final style map. Inline styles will be merged finally by
   // MergeInlineStyles.
@@ -1702,7 +1702,7 @@ void FiberElement::RemovedFrom(FiberElement *insertion_point) {
   MarkDetached();
 }
 
-StyleMap FiberElement::GetStylesForWorklet() {
+StyleMap Element::GetStylesForWorklet() {
   if (element_manager()->EnableNewStylingPipeline()) {
     return computed_css_style()->GetResolvedValues();
   }
@@ -1924,8 +1924,7 @@ Element::CollectDynamicFlagsForNewPipeline(
   return flags;
 }
 
-FiberElement::NewPipelineResolveOutcome
-FiberElement::ResolveCSSStylesNewPipelineCore(
+Element::NewPipelineResolveOutcome Element::ResolveCSSStylesNewPipelineCore(
     const NewPipelineResolveRequest &request) {
   NewPipelineResolveOutcome outcome;
   const bool has_cached_styles_from_attributes =
@@ -2117,7 +2116,7 @@ FiberElement::ResolveCSSStylesNewPipelineCore(
   return outcome;
 }
 
-void FiberElement::ResolveCSSStylesNewPipeline(bool &need_update) {
+void Element::ResolveCSSStylesNewPipeline(bool &need_update) {
   NewPipelineResolveRequest request;
   auto outcome = ResolveCSSStylesNewPipelineCore(request);
   need_update |= outcome.need_update;
@@ -2747,8 +2746,8 @@ void Element::CommitFontContext(
   UpdateLayoutNodeFontSize(new_font_size, new_root_font_size);
 }
 
-FiberElement::NewPipelineStyleMutationPlan
-FiberElement::BuildNewPipelineStyleMutationPlan(
+Element::NewPipelineStyleMutationPlan
+Element::BuildNewPipelineStyleMutationPlan(
     const NewPipelineStyleResolveResult &resolved_styles,
     const NewPipelineDynamicStyleInputs &dynamic_inputs,
     DynamicCSSStylesManager::StyleUpdateFlags requested_dynamic_flags,
@@ -2839,7 +2838,7 @@ FiberElement::BuildNewPipelineStyleMutationPlan(
   return plan;
 }
 
-bool FiberElement::MaterializeNewPipelineStyleMutationPlan(
+bool Element::MaterializeNewPipelineStyleMutationPlan(
     const NewPipelineStyleMutationPlan &plan,
     const starlight::ComputedCSSStyle &baseline_style,
     starlight::ComputedCSSStyle &final_style) const {
@@ -2893,7 +2892,7 @@ bool FiberElement::MaterializeNewPipelineStyleMutationPlan(
   return final_style.IsDirty();
 }
 
-bool FiberElement::HasInheritedPropertyMutation(
+bool Element::HasInheritedPropertyMutation(
     const NewPipelineStyleMutationPlan &plan) const {
   const auto &configs = element_manager()->GetDynamicCSSConfigs();
   const auto &inheritable_props =
@@ -2914,7 +2913,7 @@ bool FiberElement::HasInheritedPropertyMutation(
   return result;
 }
 
-void FiberElement::ReplayMaterializedStyleSideEffects(
+void Element::ReplayMaterializedStyleSideEffects(
     const starlight::ComputedCSSStyle &computed_style,
     CSSIDBitset *replayed_ids, const NewPipelineStyleMutationPlan *plan) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY,
@@ -2950,7 +2949,7 @@ void FiberElement::ReplayMaterializedStyleSideEffects(
   });
 }
 
-void FiberElement::ReplayNewPipelineStyleMutationPlanSideEffects(
+void Element::ReplayNewPipelineStyleMutationPlanSideEffects(
     const NewPipelineStyleMutationPlan &plan, CSSIDBitset *replayed_ids) {
   auto already_replayed = [replayed_ids](CSSPropertyID id) {
     return replayed_ids != nullptr && replayed_ids->Has(id);
@@ -2986,7 +2985,7 @@ void FiberElement::ReplayNewPipelineStyleMutationPlanSideEffects(
   }
 }
 
-void FiberElement::ReplayDynamicResolvedStyleSideEffects(
+void Element::ReplayDynamicResolvedStyleSideEffects(
     const StyleMap &resolved_style_map,
     DynamicCSSStylesManager::StyleUpdateFlags update_flags,
     const CSSIDBitset &replayed_ids, const CSSIDBitset *source_style_ids,
@@ -3832,8 +3831,8 @@ bool FiberElement::ConsumeAllAttributes() {
   return need_update;
 }
 
-void FiberElement::PerformElementContainerCreateOrUpdate(bool need_update,
-                                                         bool need_reset) {
+void Element::PerformElementContainerCreateOrUpdate(bool need_update,
+                                                    bool need_reset) {
   PushStyleToBundle();
 
   if (dirty_ & kDirtyCreated) {
@@ -3985,7 +3984,7 @@ void FiberElement::SetAttributeInternal(const base::String &key,
 #endif
 }
 
-void FiberElement::SetNativeProps(
+void Element::SetNativeProps(
     const lepus::Value &native_props,
     std::shared_ptr<PipelineOptions> &pipeline_options) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_SET_NATIVE_PROPS,
@@ -4031,7 +4030,7 @@ void FiberElement::SetNativeProps(
       element_manager()->OnPatchFinish(pipeline_options, this);
     }
   } else {
-    LOGE("FiberElement::SetNativeProps to an detached element!");
+    LOGE("Element::SetNativeProps to an detached element!");
   }
 }
 
@@ -4062,7 +4061,7 @@ void Element::InvalidateChildrenInheritedStylesRecursively() {
   }
 }
 
-void FiberElement::FlushProps() {
+void Element::FlushProps() {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_FLUSH_PROPS,
               [this](lynx::perfetto::EventContext ctx) {
                 UpdateTraceDebugInfo(ctx.event());
@@ -4084,12 +4083,11 @@ void FiberElement::FlushProps() {
     PreparePropBundleIfNeed();
 
     // check is in inlineContainer before attachLayoutNode
-    auto *real_parent =
-        static_cast<FiberElement *>((!is_fixed_ || IsFixedNewOrUnifiedEnabled())
-                                        ? parent_
-                                        : element_manager_->root());
+    auto *real_parent = (!is_fixed_ || IsFixedNewOrUnifiedEnabled())
+                            ? parent_
+                            : element_manager_->root();
     while (real_parent && real_parent->is_wrapper()) {
-      real_parent = static_cast<FiberElement *>(real_parent->parent());
+      real_parent = real_parent->parent();
     }
     if (real_parent) {
       CheckHasInlineContainer(real_parent);
@@ -4248,7 +4246,7 @@ void Element::MarkAsLayoutRoot() {
   layout_bundle_->is_root = true;
 }
 
-void FiberElement::MarkLayoutDirty() {
+void Element::MarkLayoutDirty() {
   if (EnableLayoutInElementMode()) {
     MarkLayoutDirtyLite();
     return;
@@ -4258,7 +4256,7 @@ void FiberElement::MarkLayoutDirty() {
   layout_bundle_->is_dirty = true;
 }
 
-void FiberElement::AttachLayoutNode(const fml::RefPtr<PropBundle> &props) {
+void Element::AttachLayoutNode(const fml::RefPtr<PropBundle> &props) {
   if (EnableLayoutInElementMode()) {
     const bool is_custom = IsShadowNodeCustom();
     if (is_custom) {
@@ -4285,7 +4283,7 @@ void FiberElement::AttachLayoutNode(const fml::RefPtr<PropBundle> &props) {
   layout_bundle_->allow_inline = allow_layoutnode_inline_;
 }
 
-void FiberElement::UpdateLayoutNodeProps(const fml::RefPtr<PropBundle> &props) {
+void Element::UpdateLayoutNodeProps(const fml::RefPtr<PropBundle> &props) {
   if (EnableLayoutInElementMode()) {
     if (customized_layout_node_) {
       customized_layout_node_->UpdateLayoutNodeProps(props);
@@ -4297,8 +4295,8 @@ void FiberElement::UpdateLayoutNodeProps(const fml::RefPtr<PropBundle> &props) {
   layout_bundle_->update_prop_bundles.emplace_back(props);
 }
 
-void FiberElement::UpdateLayoutNodeStyle(CSSPropertyID css_id,
-                                         const tasm::CSSValue &value) {
+void Element::UpdateLayoutNodeStyle(CSSPropertyID css_id,
+                                    const tasm::CSSValue &value) {
   if (EnableLayoutInElementMode()) {
     return;
   }
@@ -4307,7 +4305,7 @@ void FiberElement::UpdateLayoutNodeStyle(CSSPropertyID css_id,
   layout_bundle_->styles.emplace_back(css_id, value);
 }
 
-void FiberElement::ResetLayoutNodeStyle(tasm::CSSPropertyID css_id) {
+void Element::ResetLayoutNodeStyle(tasm::CSSPropertyID css_id) {
   if (EnableLayoutInElementMode()) {
     return;
   }
@@ -4316,8 +4314,8 @@ void FiberElement::ResetLayoutNodeStyle(tasm::CSSPropertyID css_id) {
   layout_bundle_->reset_styles.emplace_back(css_id);
 }
 
-void FiberElement::UpdateLayoutNodeFontSize(double cur_node_font_size,
-                                            double root_node_font_size) {
+void Element::UpdateLayoutNodeFontSize(double cur_node_font_size,
+                                       double root_node_font_size) {
   if (EnableLayoutInElementMode()) {
     return;
   }
@@ -4328,8 +4326,8 @@ void FiberElement::UpdateLayoutNodeFontSize(double cur_node_font_size,
   layout_bundle_->root_node_font_size = root_node_font_size;
 }
 
-void FiberElement::UpdateLayoutNodeAttribute(starlight::LayoutAttribute key,
-                                             const lepus::Value &value) {
+void Element::UpdateLayoutNodeAttribute(starlight::LayoutAttribute key,
+                                        const lepus::Value &value) {
   if (EnableLayoutInElementMode()) {
     EnsureSLNode();
     bool changed = false;
@@ -4357,7 +4355,7 @@ void FiberElement::UpdateLayoutNodeAttribute(starlight::LayoutAttribute key,
   layout_bundle_->attrs.emplace_back(std::make_pair(key, value));
 }
 
-void FiberElement::UpdateLayoutNodeByBundle() {
+void Element::UpdateLayoutNodeByBundle() {
   if (EnableLayoutInElementMode()) {
     EnsureSLNode();
     return;
@@ -4395,7 +4393,7 @@ void FiberElement::EnqueueLayoutTask(base::MoveOnlyClosure<void> operation) {
   operation();
 }
 
-void FiberElement::RequestLayout() {
+void Element::RequestLayout() {
   if (EnableLayoutInElementMode()) {
     HandleBeforeFlushActionsTask(
         [manager = element_manager(), this]() {
@@ -4410,11 +4408,11 @@ void FiberElement::RequestLayout() {
       [manager = element_manager()]() { manager->SetNeedsLayout(); });
 }
 
-void FiberElement::RequestNextFrame() {
+void Element::RequestNextFrame() {
   HandleDelayTask([this]() { element_manager()->RequestNextFrame(this); });
 }
 
-void FiberElement::UpdateFiberElement() {
+void Element::UpdateFiberElement() {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_UPDATE_FIBER_ELEMENT,
               [this](lynx::perfetto::EventContext ctx) {
                 UpdateTraceDebugInfo(ctx.event());
@@ -4685,7 +4683,7 @@ void FiberElement::RestoreLayoutNode(FiberElement *node) {
   node->next_render_sibling_ = nullptr;
 }
 
-void FiberElement::ParseRawInlineStyles(CSSVariableMap *changed_css_vars) {
+void Element::ParseRawInlineStyles(CSSVariableMap *changed_css_vars) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_PARSE_RAW_INLINE_STYLES);
   auto &configs = element_manager_->GetCSSParserConfigs();
   const auto &str = full_raw_inline_style_.str();
@@ -4738,7 +4736,7 @@ void FiberElement::ParseRawInlineStyles(CSSVariableMap *changed_css_vars) {
   });
 }
 
-void FiberElement::DoFullCSSResolving() {
+void Element::DoFullCSSResolving() {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_DO_FULL_STYLE_RESOLVE);
 
   CSSVariableMap changed_css_vars;
@@ -4784,9 +4782,9 @@ const tasm::CSSValue &Element::ResolveCurrentStyleValue(
   return default_value;
 }
 
-bool FiberElement::RefreshStyle(StyleMap &parsed_styles,
-                                base::Vector<CSSPropertyID> &reset_ids,
-                                bool force_use_parsed_styles_map) {
+bool Element::RefreshStyle(StyleMap &parsed_styles,
+                           base::Vector<CSSPropertyID> &reset_ids,
+                           bool force_use_parsed_styles_map) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_REFRESH_STYLE,
               [this](lynx::perfetto::EventContext ctx) {
                 UpdateTraceDebugInfo(ctx.event());
@@ -4846,7 +4844,7 @@ void Element::OnClassChanged(const ClassList &old_classes,
 }
 
 // For snapshot test
-void FiberElement::DumpStyle(StyleMap &computed_styles) {
+void Element::DumpStyle(StyleMap &computed_styles) {
   if (element_manager()->EnableNewStylingPipeline()) {
     computed_styles = computed_css_style()->GetResolvedValues();
     return;
@@ -4977,7 +4975,7 @@ void FiberElement::ResetTextAlign(StyleMap &update_map,
   }
 }
 
-void FiberElement::WillResetCSSValue(CSSPropertyID &css_id) {
+void Element::WillResetCSSValue(CSSPropertyID &css_id) {
   if (css_id == CSSPropertyID::kPropertyIDFontSize) {
     ResetFontSize();
   }
@@ -5069,8 +5067,8 @@ void FiberElement::RemoveFixedElement(FiberElement *child) {
   child->fixed_changed_ = false;
 }
 
-void FiberElement::CheckDynamicUnit(CSSPropertyID id, const CSSValue &value,
-                                    bool reset) {
+void Element::CheckDynamicUnit(CSSPropertyID id, const CSSValue &value,
+                               bool reset) {
   if (reset && parsed_styles_map_.empty()) {
     // TODO(linxs): try to clear dynamic_style_flags_ here
     dynamic_style_flags_ = 0;
@@ -5132,7 +5130,7 @@ void Element::VisitChildren(
   }
 }
 
-void FiberElement::UpdateDynamicElementStyleForNewPipeline(
+void Element::UpdateDynamicElementStyleForNewPipeline(
     uint32_t &style, bool &inner_force_update) {
   constexpr uint32_t kMediaQueryEnvMask =
       DynamicCSSStylesManager::kUpdateViewport |
@@ -5228,8 +5226,8 @@ void Element::UpdateDynamicChildrenStyleRecursively(uint32_t style,
   }
 }
 
-void FiberElement::UpdateDynamicElementStyleRecursively(uint32_t style,
-                                                        bool force_update) {
+void Element::UpdateDynamicElementStyleRecursively(uint32_t style,
+                                                   bool force_update) {
   if (is_raw_text()) {
     return;
   }
@@ -5376,8 +5374,7 @@ void FiberElement::UpdateDynamicElementStyleRecursively(uint32_t style,
   UpdateDynamicChildrenStyleRecursively(style, inner_force_update);
 }
 
-void FiberElement::UpdateDynamicElementStyle(uint32_t style,
-                                             bool force_update) {
+void Element::UpdateDynamicElementStyle(uint32_t style, bool force_update) {
   UpdateDynamicElementStyleRecursively(style, force_update);
 }
 
@@ -5542,7 +5539,7 @@ void FiberElement::DispatchAsyncResolveSubtreeProperty() {
   }
 }
 
-bool FiberElement::CanBeLayoutOnly() const {
+bool Element::CanBeLayoutOnly() const {
   return can_be_layout_only_ && element_manager()->GetEnableLayoutOnly() &&
          has_layout_only_props_ && computed_css_style()->IsOverflowXY();
 }
