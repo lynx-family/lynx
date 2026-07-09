@@ -16,6 +16,7 @@
 #include "core/renderer/css/css_property.h"
 #include "core/renderer/css/ng/media_query/media_query_evaluator.h"
 #include "core/renderer/css/ng/style/condition_rule.h"
+#include "core/renderer/css/ng/supports/supports_evaluator.h"
 #include "core/renderer/dom/fiber/component_element.h"
 #include "core/renderer/dom/fiber/fiber_element.h"
 #include "core/renderer/dom/selector/fiber_element_selector.h"
@@ -72,6 +73,70 @@ bool CompareKeyframesNameOrder(std::string str_lhs, std::string str_rhs) {
   double num_lhs = std::atof(str_lhs.c_str());
   double num_rhs = std::atof(str_rhs.c_str());
   return num_lhs < num_rhs;
+}
+
+struct ConditionRuleTokenInfo {
+  std::string text;
+  Range range;
+};
+
+template <typename IsConditionRule, typename IsActiveConditionRule,
+          typename SerializeConditionRule>
+void CollectActiveConditionRuleTokenInfo(
+    lynx::tasm::CSSFragment* style_sheet,
+    lynx::tasm::AttributeHolder* attribute_holder,
+    IsConditionRule is_condition_rule,
+    IsActiveConditionRule is_active_condition_rule,
+    SerializeConditionRule serialize_condition_rule,
+    std::unordered_map<lynx::tasm::CSSParseToken*, ConditionRuleTokenInfo>*
+        output) {
+  if (!style_sheet || !attribute_holder || !output) {
+    return;
+  }
+
+  struct Ctx {
+    lynx::tasm::AttributeHolder* attribute_holder;
+    IsConditionRule* is_condition_rule;
+    IsActiveConditionRule* is_active_condition_rule;
+    SerializeConditionRule* serialize_condition_rule;
+    std::unordered_map<lynx::tasm::CSSParseToken*, ConditionRuleTokenInfo>*
+        output;
+    int condition_index;
+  };
+  Ctx ctx{attribute_holder,
+          &is_condition_rule,
+          &is_active_condition_rule,
+          &serialize_condition_rule,
+          output,
+          0};
+  style_sheet->ForEachRuleSet(
+      [](css::RuleSet* rs, void* cb_data) {
+        auto* c = static_cast<Ctx*>(cb_data);
+        if (!rs) return;
+        rs->ForEachConditionRule([c](const css::ConditionRule& rule) {
+          if (!(*c->is_condition_rule)(rule)) return;
+          const int condition_index = c->condition_index++;
+          if (!(*c->is_active_condition_rule)(rule)) {
+            return;
+          }
+          const std::string condition_text =
+              (*c->serialize_condition_rule)(rule);
+          Range condition_range{condition_index, condition_index, 0,
+                                static_cast<int>(condition_text.length())};
+
+          unsigned inner_level = 0;
+          base::Vector<css::MatchedRule> inner_matched;
+          rule.GetRuleSet().MatchOwnStyles(c->attribute_holder, inner_level,
+                                           inner_matched);
+          for (const auto& inner : inner_matched) {
+            auto token = inner.Data()->Rule()->Token();
+            if (token) {
+              (*c->output)[token.get()] = {condition_text, condition_range};
+            }
+          }
+        });
+      },
+      &ctx);
 }
 
 std::unordered_map<InspectorElementType, InspectorNodeType>&
@@ -637,8 +702,9 @@ ElementInspector::GetMatchedStyleSheet(Element* element) {
   CHECK_NULL_AND_LOG_RETURN_VALUE(inspector_attribute,
                                   "inspector_attribute is null", res);
 
-  // Build the same media-query environment used by style resolution, so
-  // DevTool only reports @media rules that are active for the current node.
+  // Build the same condition-rule environment used by style resolution, so
+  // DevTool only reports conditional rules that are active for the current
+  // node.
   std::unique_ptr<css::MediaQueryEvaluator> media_evaluator;
   if (style_sheet->HasMediaQueryRules()) {
     auto* mgr = element->element_manager();
@@ -648,53 +714,58 @@ ElementInspector::GetMatchedStyleSheet(Element* element) {
     }
   }
 
-  // Map matched rule tokens back to the active @media text that owns them.
-  // This lets the CDP CSSRule response fill rule.media for the Styles panel.
-  struct MediaInfo {
-    std::string text;
-    Range range;
-  };
-  std::unordered_map<lynx::tasm::CSSParseToken*, MediaInfo> token_media_map;
+  std::unique_ptr<css::SupportsEvaluator> supports_evaluator;
+  if (style_sheet->GetConditionRuleFlags() & css::RuleSet::kHasSupports) {
+    if (auto* mgr = element->element_manager()) {
+      supports_evaluator =
+          std::make_unique<css::SupportsEvaluator>(mgr->GetCSSParserConfigs());
+    } else {
+      supports_evaluator = std::make_unique<css::SupportsEvaluator>(
+          lynx::tasm::CSSParserConfigs());
+    }
+  }
+
+  // Map matched rule tokens back to the active condition text that owns them.
+  // This lets the CDP CSSRule response fill rule.media/rule.supports.
+  std::unordered_map<lynx::tasm::CSSParseToken*, ConditionRuleTokenInfo>
+      token_media_map;
+  std::unordered_map<lynx::tasm::CSSParseToken*, ConditionRuleTokenInfo>
+      token_supports_map;
   if (media_evaluator) {
-    struct Ctx {
-      lynx::tasm::AttributeHolder* attribute_holder;
-      const css::MediaQueryEvaluator* media_evaluator;
-      std::unordered_map<lynx::tasm::CSSParseToken*, MediaInfo>*
-          token_media_map;
-      int media_index;
-    };
-    Ctx ctx{attribute_holder, media_evaluator.get(), &token_media_map, 0};
-    style_sheet->ForEachRuleSet(
-        [](css::RuleSet* rs, void* cb_data) {
-          auto* c = static_cast<Ctx*>(cb_data);
-          if (!rs) return;
-          rs->ForEachConditionRule([c](const css::ConditionRule& rule) {
-            if (!rule.HasStructuredMediaQuery()) return;
-            const int media_index = c->media_index++;
-            if (!c->media_evaluator->Eval(rule.MediaQueries().get())) {
-              return;
-            }
-            const std::string media_text = rule.MediaQueries()->Serialize();
-            Range media_range{media_index, media_index, 0,
-                              static_cast<int>(media_text.length())};
-            unsigned inner_level = 0;
-            base::Vector<css::MatchedRule> inner_matched;
-            rule.GetRuleSet().MatchOwnStyles(c->attribute_holder, inner_level,
-                                             inner_matched);
-            for (const auto& inner : inner_matched) {
-              auto token = inner.Data()->Rule()->Token();
-              if (token) {
-                (*c->token_media_map)[token.get()] = {media_text, media_range};
-              }
-            }
-          });
+    CollectActiveConditionRuleTokenInfo(
+        style_sheet, attribute_holder,
+        [](const css::ConditionRule& rule) {
+          return rule.HasStructuredMediaQuery();
         },
-        &ctx);
+        [media_evaluator =
+             media_evaluator.get()](const css::ConditionRule& rule) {
+          return media_evaluator->Eval(rule.MediaQueries().get());
+        },
+        [](const css::ConditionRule& rule) {
+          return rule.MediaQueries()->Serialize();
+        },
+        &token_media_map);
+  }
+  if (supports_evaluator) {
+    CollectActiveConditionRuleTokenInfo(
+        style_sheet, attribute_holder,
+        [](const css::ConditionRule& rule) {
+          return rule.HasStructuredSupportsRules();
+        },
+        [supports_evaluator =
+             supports_evaluator.get()](const css::ConditionRule& rule) {
+          return supports_evaluator->Eval(rule.SupportsCondition().get());
+        },
+        [](const css::ConditionRule& rule) {
+          return rule.SupportsCondition()->Serialize();
+        },
+        &token_supports_map);
   }
 
   auto* style_root = inspector_attribute->style_root_;
   auto matched_rules = lynx::tasm::StyleResolver::GetCSSMatchedRule(
-      attribute_holder, style_sheet, media_evaluator.get(), nullptr);
+      attribute_holder, style_sheet, media_evaluator.get(),
+      supports_evaluator.get());
   for (const auto& matched : matched_rules) {
     auto matched_token = matched.Data()->Rule()->Token();
     if (matched_token != nullptr) {
@@ -719,6 +790,11 @@ ElementInspector::GetMatchedStyleSheet(Element* element) {
               field.media_text_ = media_it->second.text;
               field.media_range_ = media_it->second.range;
             }
+            if (auto supports_it = token_supports_map.find(matched_token.get());
+                supports_it != token_supports_map.end()) {
+              field.supports_text_ = supports_it->second.text;
+              field.supports_range_ = supports_it->second.range;
+            }
             res.push_back(field);
             break;
           }
@@ -739,6 +815,11 @@ ElementInspector::GetMatchedStyleSheet(Element* element) {
                 media_it != token_media_map.end()) {
               style_sheet.media_text_ = media_it->second.text;
               style_sheet.media_range_ = media_it->second.range;
+            }
+            if (auto supports_it = token_supports_map.find(matched_token.get());
+                supports_it != token_supports_map.end()) {
+              style_sheet.supports_text_ = supports_it->second.text;
+              style_sheet.supports_range_ = supports_it->second.range;
             }
             res.push_back(style_sheet);
             inspector_attribute->style_sheet_map_.insert({name, style_sheet});

@@ -21,6 +21,18 @@ devtool_source_set("element") {
     public_deps = [ "../../../core/renderer/css:css_decoder" ]
   }
 
+  if (!enable_unittests &&
+      (is_android || (is_harmony && enable_harmony_shared))) {
+    # Android and Harmony shared DevTool link independently from the main Lynx
+    # library, so they need a local copy of the supports evaluator
+    # implementation. Non-shared Harmony links DevTool into liblynx together
+    # with core css, so adding this source there would duplicate symbols.
+    sources += [
+      "../../../core/renderer/css/ng/supports/supports_evaluator.cc",
+      "../../../core/renderer/css/ng/supports/supports_evaluator.h",
+    ]
+  }
+
   if (is_android) {
     # liblynx.so does not export symbols in following two files
     if (!is_headless) {

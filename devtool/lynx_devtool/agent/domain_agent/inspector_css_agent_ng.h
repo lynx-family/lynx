@@ -64,6 +64,8 @@ class InspectorCSSAgentNG : public CDPDomainAgentBase {
                        const Json::Value& message);
   void SetMediaText(const std::shared_ptr<MessageSender>& sender,
                     const Json::Value& message);
+  void SetSupportsText(const std::shared_ptr<MessageSender>& sender,
+                       const Json::Value& message);
   void CollectDomTreeCssUsage(const std::shared_ptr<MessageSender>& sender,
                               Json::Value& rule_usage_array,
                               const std::string& stylesheet_id,
