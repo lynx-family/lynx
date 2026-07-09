@@ -208,7 +208,7 @@ std::shared_ptr<tasm::SharedCSSFragment> CreateSupportsCSSFragment(
 struct MediaQueryTestDom {
   fml::RefPtr<tasm::PageElement> page;
   fml::RefPtr<tasm::ComponentElement> component;
-  fml::RefPtr<tasm::FiberElement> element;
+  fml::RefPtr<tasm::Element> element;
   tasm::Element* style_value = nullptr;
   std::shared_ptr<tasm::SharedCSSFragment> fragment;
 };

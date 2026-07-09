@@ -15,7 +15,6 @@
 #include "core/renderer/dom/attribute_holder.h"
 #include "core/renderer/dom/element.h"
 #include "core/renderer/dom/element_manager.h"
-#include "core/renderer/dom/fiber/fiber_element.h"
 #include "core/renderer/dom/fiber/image_element.h"
 #include "core/renderer/dom/fiber/raw_text_element.h"
 #include "core/renderer/dom/fiber/text_element.h"
@@ -158,8 +157,7 @@ std::string DecodeTextContent(const base::String& text) {
 
 class TextraInlineView : public text::InlineView {
  public:
-  explicit TextraInlineView(Element* child)
-      : child_(static_cast<FiberElement*>(child)) {}
+  explicit TextraInlineView(Element* child) : child_(child) {}
   ~TextraInlineView() override = default;
   text::MeasureResult Measure(const text::MeasureParams& params) override {
     auto* slnode = child_->slnode();
@@ -198,7 +196,7 @@ class TextraInlineView : public text::InlineView {
   void SetTruncation(Element* truncation) { truncation_ = truncation; }
 
  private:
-  FiberElement* child_{nullptr};
+  Element* child_{nullptr};
   Element* truncation_{nullptr};
 };
 
@@ -444,8 +442,7 @@ void TextLayoutTextra::BuildParagraphRecursively(Element* element,
                                   decoded_content.length());
     }
   } else if (IsInlineTextElement(element)) {
-    auto* fiber_element = static_cast<FiberElement*>(element);
-    ApplyTextStyle(element, CreateTextStylePropertyBits(fiber_element));
+    ApplyTextStyle(element, CreateTextStylePropertyBits(element));
   }
 
   for (auto* child = element->first_render_child(); child;
@@ -546,7 +543,7 @@ void TextLayoutTextra::HandleInlineImageProps(Element* element) {
 }
 
 void TextLayoutTextra::HandleInlineViewProps(Element* element) {
-  auto* child = static_cast<FiberElement*>(element);
+  auto* child = element;
   auto inline_view = std::make_unique<TextraInlineView>(child);
   if (building_inline_truncation_) {
     inline_view->SetTruncation(truncation_);
@@ -569,7 +566,7 @@ void TextLayoutTextra::HandleInlineViewProps(Element* element) {
 
 void TextLayoutTextra::ProcessChildStyleAndProps(Element* element,
                                                  bool& has_inline_view) {
-  auto* child = static_cast<FiberElement*>(element);
+  auto* child = element;
   if (!building_inline_truncation_ && IsInlineTruncationElement(child)) {
     BuildInlineTruncation(child, has_inline_view);
     return;
