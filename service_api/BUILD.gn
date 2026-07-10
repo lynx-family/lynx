@@ -9,6 +9,7 @@ import("service_api.gni")
 
 source_set("src") {
   sources = service_api_sources
+  public = service_api_public
   if (enable_unittests) {
     defines = [ "TESTING=1" ]
   }

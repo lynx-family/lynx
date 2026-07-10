@@ -5,6 +5,7 @@
 import("//${lynx_dir}/build_overrides/darwin.gni")
 import("../../../../config.gni")
 import("../../../../core/Lynx.gni")
+import("../../../../service_api/service_api.gni")
 
 group("LynxServiceAPI") {
   deps = [ ":LynxServiceAPI_podspec" ]
@@ -48,7 +49,10 @@ podspec_target("LynxServiceAPI_podspec") {
       deployment_target = "10.0"
     }
   }
-  deps = [ ":Core" ]
+  deps = [
+    ":Core",
+    ":Native",
+  ]
 }
 
 lynx_service_api_sources = [
@@ -71,13 +75,14 @@ subspec_target("Core") {
     "./LynxServiceTrailProtocol.h",
     "./LynxServiceLogProtocol.h",
   ]
-  flatten_deps = [ ":service_api_native" ]
+  dependency = [ "LynxServiceAPI/Native" ]
 }
 
 lynx_core_source_set("lynx_service_api_sources") {
   sources = lynx_service_api_sources
 }
 
-subspec_target("service_api_native") {
+subspec_target("Native") {
+  header_mappings_dir = "lynx"
   deps = [ "../../../../service_api:src" ]
 }
