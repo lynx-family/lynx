@@ -5,6 +5,7 @@
 #ifndef PLATFORM_HARMONY_LYNX_HARMONY_SRC_MAIN_CPP_UI_UI_EXPOSURE_H_
 #define PLATFORM_HARMONY_LYNX_HARMONY_SRC_MAIN_CPP_UI_UI_EXPOSURE_H_
 
+#include <cstdint>
 #include <memory>
 #include <set>
 #include <string>
@@ -65,15 +66,26 @@ class UIExposure : public UIObserverCallback,
   void RefreshUIInExposedMap(UIBase* ui, std::string unique_id);
   void StopExposure(const lepus::Value& options);
   void ResumeExposure();
+  void OnRootAttachedToViewTree();
+  void OnRootDetachedFromViewTree();
   void SetObserverFrameRate(const lepus::Value& options);
   void ExecExposureCheck();
   void PostTask() override;
   void CheckOnUIThread();
 
  private:
+  enum ExposurePauseReason : uint8_t {
+    kRootDetached = 1 << 0,
+    kStoppedByAPI = 1 << 1,
+  };
+
   void SendEvent(const std::set<UIExposureDetail>& ui_set,
                  const std::string& event_name) const;
   void ScheduleUIExposureCheck();
+  void UpdateExposureCheckScheduling(bool request_check);
+  void SetExposurePaused(ExposurePauseReason reason, bool paused);
+  bool CanRunExposureCheck() const;
+  bool NeedExposureVSync() const;
   bool IsLynxViewChanged();
   void AddCommonAncestorUI(UIBase* ui);
   void RemoveCommonAncestorUI(UIBase* ui);
@@ -90,6 +102,9 @@ class UIExposure : public UIObserverCallback,
   int time_interval_for_lynxview_check_{50};
   float old_lynx_origin_rect_[4] = {0};
   bool exposure_check_flag_{false};
+  bool exposure_vsync_scheduled_{false};
+  bool observer_registered_{false};
+  uint8_t exposure_pause_reasons_{kRootDetached};
 };
 
 }  // namespace harmony

@@ -102,7 +102,7 @@ LynxTemplateRenderer::~LynxTemplateRenderer() {
     weak_flag_->renderer.store(nullptr, std::memory_order_release);
   }
   {
-    std::lock_guard<std::mutex> lock(inspector_owner_mutex_);
+    std::lock_guard<std::recursive_mutex> lock(inspector_owner_mutex_);
     inspector_owner_.store(nullptr, std::memory_order_release);
   }
   if (auto lynx_context = lynx_context_.lock()) {
@@ -204,7 +204,7 @@ void LynxTemplateRenderer::SetUpLynxShell(
   invoker_ptr->SetUITaskRunner(shell_->GetRunners()->GetUITaskRunner());
 
   {
-    std::lock_guard<std::mutex> lock(inspector_owner_mutex_);
+    std::lock_guard<std::recursive_mutex> lock(inspector_owner_mutex_);
     auto* inspector_owner = inspector_owner_.load(std::memory_order_acquire);
     if (inspector_owner != nullptr) {
       inspector_owner->SetUITaskRunner(shell_->GetRunners()->GetUITaskRunner());
@@ -352,7 +352,7 @@ void LynxTemplateRenderer::LoadTemplate(
     const std::shared_ptr<tasm::TemplateData>& template_data,
     bool enable_recycle_template_bundle) {
   {
-    std::lock_guard<std::mutex> lock(inspector_owner_mutex_);
+    std::lock_guard<std::recursive_mutex> lock(inspector_owner_mutex_);
     auto* inspector_owner = inspector_owner_.load(std::memory_order_acquire);
     if (inspector_owner != nullptr) {
       inspector_owner->OnLoadTemplate(url, source, template_data);
@@ -384,7 +384,7 @@ void LynxTemplateRenderer::LoadTemplateBundle(
     const std::shared_ptr<lynx::tasm::TemplateData>& template_data,
     bool enable_dump_element_tree) {
   {
-    std::lock_guard<std::mutex> lock(inspector_owner_mutex_);
+    std::lock_guard<std::recursive_mutex> lock(inspector_owner_mutex_);
     auto* inspector_owner = inspector_owner_.load(std::memory_order_acquire);
     if (inspector_owner != nullptr) {
       LOGI("LoadTemplateBundle, inspector_owner_ is not null, do OnLoaded");
@@ -2197,7 +2197,7 @@ void LynxTemplateRenderer::SetupExtensionDelegate(
 void LynxTemplateRenderer::SetInspectorOwner(
     devtool::LynxInspectorOwner* owner) {
   {
-    std::lock_guard<std::mutex> lock(inspector_owner_mutex_);
+    std::lock_guard<std::recursive_mutex> lock(inspector_owner_mutex_);
     inspector_owner_.store(owner, std::memory_order_release);
   }
   SyncInspectorOwnerToLynxContext();
@@ -2223,7 +2223,7 @@ void LynxTemplateRenderer::SyncInspectorOwnerToLynxContext() {
     return;
   }
   {
-    std::lock_guard<std::mutex> lock(inspector_owner_mutex_);
+    std::lock_guard<std::recursive_mutex> lock(inspector_owner_mutex_);
     if (inspector_owner_.load(std::memory_order_acquire) == nullptr) {
       lynx_context->SetConsoleMessageCallback(nullptr);
       lynx_context->SetInvokeCDPFromSDKCallback(nullptr);
@@ -2240,7 +2240,8 @@ void LynxTemplateRenderer::SyncInspectorOwnerToLynxContext() {
         if (!renderer) {
           return;
         }
-        std::lock_guard<std::mutex> lock(renderer->inspector_owner_mutex_);
+        std::lock_guard<std::recursive_mutex> lock(
+            renderer->inspector_owner_mutex_);
         auto* inspector_owner =
             renderer->inspector_owner_.load(std::memory_order_acquire);
         if (!inspector_owner) {
@@ -2257,7 +2258,8 @@ void LynxTemplateRenderer::SyncInspectorOwnerToLynxContext() {
         if (!renderer) {
           return;
         }
-        std::lock_guard<std::mutex> lock(renderer->inspector_owner_mutex_);
+        std::lock_guard<std::recursive_mutex> lock(
+            renderer->inspector_owner_mutex_);
         auto* inspector_owner =
             renderer->inspector_owner_.load(std::memory_order_acquire);
         if (!inspector_owner) {

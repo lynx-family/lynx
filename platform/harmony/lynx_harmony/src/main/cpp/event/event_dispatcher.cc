@@ -1803,19 +1803,17 @@ void EventDispatcher::InspectHitTarget(EventTarget* active_target) {
         if (!ui_task_runner) {
           return;
         }
-        fml::TaskRunner::RunNowOrPostTask(
-            ui_task_runner,
-            [weak_flag, active_target_weak, active_sign, result, sequence]() {
-              auto flag = weak_flag.lock();
-              auto* dispatcher =
-                  flag ? flag->dispatcher.load(std::memory_order_acquire)
-                       : nullptr;
-              if (!dispatcher) {
-                return;
-              }
-              dispatcher->ApplyHitTargetStyle(active_target_weak, active_sign,
-                                              result, sequence);
-            });
+        ui_task_runner->PostTask([weak_flag, active_target_weak, active_sign,
+                                  result, sequence]() {
+          auto flag = weak_flag.lock();
+          auto* dispatcher =
+              flag ? flag->dispatcher.load(std::memory_order_acquire) : nullptr;
+          if (!dispatcher) {
+            return;
+          }
+          dispatcher->ApplyHitTargetStyle(active_target_weak, active_sign,
+                                          result, sequence);
+        });
       });
 }
 
