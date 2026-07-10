@@ -1,0 +1,46 @@
+lynx/core/resource/lazy_bundle/lazy_bundle_loader.h
+  s_071d8cf57e2b04::t_3c2f43202c61a7 30-32,119-120,183-188
+lynx/core/resource/external_resource/external_resource_loader.cc
+  s_ce5e624e04bb18::t_e48ce0b47897f9 216-217
+lynx/core/resource/external_resource/external_resource_loader.h
+  s_071d8cf57e2b04::t_01fb78a5f22950 20-25,90-96,101-102
+lynx/core/shell/runtime/bts/bts_runtime_mediator.h
+  s_071d8cf57e2b04::t_d026d4e8b2d2da 69-70
+lynx/core/resource/lazy_bundle/lazy_bundle_unittest.cc
+  s_071d8cf57e2b04::t_f0a9de60cd1f8c 125-182
+lynx/core/resource/lazy_bundle/lazy_bundle_loader.cc
+  s_071d8cf57e2b04::t_2e037bce98c77e 166,172-194
+lynx/core/renderer/template_assembler.cc
+  s_071d8cf57e2b04::t_4aa16ac64b971b 18,1445-1450,1458-1461,1465-1467,1510-1517
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "3dc5378ff1f95e042024912c1cc4335e8439c937",
+  "prompts": {},
+  "humans": {
+    "h_4d36f4d76420fe": {
+      "author": "yangguangzhao <yangguangzhao.solace@bytedance.com>"
+    }
+  },
+  "sessions": {
+    "s_071d8cf57e2b04": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f4609-b22f-7ab3-8d9a-ace51395e283",
+        "model": "unknown"
+      },
+      "human_author": "yangguangzhao <yangguangzhao.solace@bytedance.com>"
+    },
+    "s_ce5e624e04bb18": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a4f63cc32aad578b3de0b0e",
+        "model": "c_o_new_thinking__max"
+      },
+      "human_author": "yangguangzhao <yangguangzhao.solace@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}
