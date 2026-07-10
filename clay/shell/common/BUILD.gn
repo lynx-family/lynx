@@ -6,6 +6,7 @@
 # LICENSE file in the root directory of this source tree.
 
 import("//third_party/icu/config.gni")
+import("../../../oliver/oliver.gni")
 import("../../common/config.gni")
 import("../../testing/testing.gni")
 
@@ -110,6 +111,13 @@ source_set("common") {
     frameworks = [ "QuartzCore.framework" ]
   }
 
+  if (is_oliver_node_lynx || !(is_android || is_ios || is_win || is_mac)) {
+    sources += [
+      "services/compositor/platform_overlay_service_fallback.cc",
+      "services/compositor/presenter_service_fallback.cc",
+    ]
+  }
+
   if (enable_screenshot_service) {
     sources += [
       "services/screenshot_encoder.cc",
@@ -160,14 +168,18 @@ source_set("common") {
   }
 }
 
-# Headless embedders and platforms without compositor service implementations
-# should depend on this target explicitly. Platform window targets that provide
-# their own PlatformOverlayService/PresenterService must not link it.
-source_set("compositor_service_fallback") {
-  sources = [
-    "services/compositor/platform_overlay_service_fallback.cc",
-    "services/compositor/presenter_service_fallback.cc",
-  ]
+source_set("platform_overlay_service_fallback") {
+  sources = [ "services/compositor/platform_overlay_service_fallback.cc" ]
+
+  public_configs = [ "../../:config" ]
+
+  if (!enable_skity) {
+    public_deps = [ "//third_party/skia" ]
+  }
+}
+
+source_set("presenter_service_fallback") {
+  sources = [ "services/compositor/presenter_service_fallback.cc" ]
 
   public_configs = [ "../../:config" ]
 
