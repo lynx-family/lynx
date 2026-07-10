@@ -6,6 +6,7 @@
 
 #include <memory>
 
+#include "base/include/no_destructor.h"
 #include "clay/gfx/shared_image/utils/image_utils.h"
 #if SKIA_ENABLE_GL
 #include "clay/gfx/shared_image/angle_d3d_image_representation.h"
@@ -41,10 +42,18 @@ class D3D9TextureFactory {
   D3D9TextureFactory();
   bool InitializeD3D9Device();
 
-  fml::RefPtr<fml::NativeLibrary> d3d9_;
   Microsoft::WRL::ComPtr<IDirect3D9> d3d9_api_;
   Microsoft::WRL::ComPtr<IDirect3DDevice9> d3d9_device_;
 };
+
+fml::NativeLibrary* GetPinnedD3D9Library() {
+  // D3D9 COM objects can be retained by shared image backings after the
+  // per-thread factory is destroyed. Keep d3d9.dll loaded for the process so
+  // late COM Release calls never jump into an unloaded module.
+  static fml::NoDestructor<fml::RefPtr<fml::NativeLibrary>> d3d9(
+      fml::NativeLibrary::Create("d3d9.dll"));
+  return d3d9->get();
+}
 
 D3D9TextureFactory& D3D9TextureFactory::Instance() {
   // It seems that one D3D device binding to multiple WGL context
@@ -66,15 +75,15 @@ D3D9TextureFactory::D3D9TextureFactory() {
 }
 
 bool D3D9TextureFactory::InitializeD3D9Device() {
-  d3d9_ = fml::NativeLibrary::Create("d3d9.dll");
+  auto* d3d9 = GetPinnedD3D9Library();
 
-  if (!d3d9_) {
+  if (!d3d9) {
     FML_LOG(ERROR) << "Could not load D3D9 library.";
     return false;
   }
 
   auto Direct3DCreate9ExFn =
-      d3d9_->ResolveFunction<decltype(&Direct3DCreate9Ex)>("Direct3DCreate9Ex");
+      d3d9->ResolveFunction<decltype(&Direct3DCreate9Ex)>("Direct3DCreate9Ex");
 
   if (!Direct3DCreate9ExFn.has_value()) {
     FML_LOG(ERROR) << "Could not retrieve Direct3DCreate9Ex address.";
@@ -199,7 +208,11 @@ D3D9TextureImageBacking::D3D9TextureImageBacking(
   FML_CHECK(d3d9_texture_);
 }
 
-D3D9TextureImageBacking::~D3D9TextureImageBacking() = default;
+D3D9TextureImageBacking::~D3D9TextureImageBacking() {
+  staging_texture_.Reset();
+  d3d9_texture_.Reset();
+  d3d9_device_.Reset();
+}
 
 bool D3D9TextureImageBacking::OpenForDevice(
     IDirect3DDevice9* device, IDirect3DTexture9** out_texture) const {
