@@ -437,6 +437,7 @@ using namespace lynx::tasm;
   list_ = list;
 
   [self processContentOperations];
+  [_view setNeedsDisplay];
 }
 
 - (void)reset {

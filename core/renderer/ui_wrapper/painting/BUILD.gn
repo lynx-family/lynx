@@ -13,6 +13,7 @@ ui_wrapper_painting_shared_sources = [
   "native_painting_context.h",
   "native_painting_context_platform_ref.cc",
   "native_painting_context_platform_ref.h",
+  "paint_image.h",
   "painting_context.cc",
   "painting_context.h",
   "platform_renderer.h",
@@ -31,6 +32,7 @@ if (!enable_unittests) {
       "android/painting_context_android.h",
 
       # The following implementations are used for FlattenView rendering.
+      "android/paint_image_android.h",
       "android/platform_renderer_android.cc",
       "android/platform_renderer_android.h",
       "android/platform_renderer_context.cc",
@@ -51,6 +53,8 @@ if (!enable_unittests) {
       "ios/native_painting_context_darwin.mm",
       "ios/native_painting_context_platform_darwin_ref.h",
       "ios/native_painting_context_platform_darwin_ref.mm",
+      "ios/paint_image_darwin.h",
+      "ios/paint_image_darwin.mm",
       "ios/painting_context_darwin.h",
       "ios/painting_context_darwin.mm",
       "ios/painting_context_darwin_utils.h",
