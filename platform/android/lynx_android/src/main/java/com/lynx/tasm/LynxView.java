@@ -544,17 +544,18 @@ public class LynxView extends UIBodyView implements ILynxSecurityTarget {
           LogBoxLogLevel.Info.ordinal());
     }
     LLog.i(TAG, "LynxView sendGlobalEvent " + name + " with this: " + this.toString());
-    if (mLynxTemplateRender == null) {
+    LynxTemplateRender render = mLynxTemplateRender;
+    if (render == null) {
       LLog.e(TAG,
           "LynxVew sendGlobalEvent failed since mLynxTemplateRender is null with this: "
               + this.toString());
       return;
     }
-    if (enableAirStrictMode() || mLynxTemplateRender.shouldSendEventToMainThread()) {
+    if (enableAirStrictMode() || render.shouldSendEventToMainThread()) {
       // In Air mode or when MTS handles main-thread events, send global event by triggerEventBus.
       triggerEventBus(name, params);
     } else {
-      mLynxTemplateRender.sendGlobalEvent(name, params);
+      render.sendGlobalEvent(name, params);
     }
   }
 
