@@ -3,6 +3,7 @@
 // LICENSE file in the root directory of this source tree.
 package com.lynx.tasm.service;
 
+import android.graphics.Typeface;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
@@ -100,4 +101,11 @@ public interface ILynxResourceService extends IServiceProvider {
   @Nullable
   ILynxResourceServiceResponse fetchResourceSync(@Nullable String url,
       @NonNull LynxResourceServiceRequestParams lynxResourceServiceRequestParams);
+
+  /**
+   * Create a typeface from the specified resource URL or file path.
+   * @param url resource URL or file path
+   * @return typeface if creation succeeds, otherwise null
+   */
+  @Nullable Typeface createTypeFace(@NonNull String url);
 }

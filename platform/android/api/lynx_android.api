@@ -2638,6 +2638,7 @@ public interface com::lynx::tasm::service::ILynxResourceService {
   public void com.lynx.tasm.service.ILynxResourceService.addResourceLoader(@NonNull Object loader, @NonNull String templateUrl);
   public ILynxResourceServiceRequestOperation com.lynx.tasm.service.ILynxResourceService.fetchResourceAsync(@Nullable String url, @NonNull LynxResourceServiceRequestParams lynxResourceServiceRequestParams, @NonNull final LynxResourceServiceCallback callback);
   public ILynxResourceServiceResponse com.lynx.tasm.service.ILynxResourceService.fetchResourceSync(@Nullable String url, @NonNull LynxResourceServiceRequestParams lynxResourceServiceRequestParams);
+  public Typeface com.lynx.tasm.service.ILynxResourceService.createTypeFace(@NonNull String url);
 }
 
 public interface com::lynx::tasm::service::ILynxResourceServiceRequestOperation {
