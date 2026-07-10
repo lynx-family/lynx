@@ -9,10 +9,13 @@
 #include <unordered_map>
 #include <utility>
 
-#include "platform/embedder/public/capi/lynx_env_capi.h"
+#include "platform/embedder/public/capi/lynx_extension_module_types_capi.h"
 #include "platform/embedder/public/capi/lynx_generic_resource_fetcher_capi.h"
 #include "platform/embedder/public/capi/lynx_group_capi.h"
-#include "platform/embedder/public/capi/lynx_view_builder_capi.h"
+#include "platform/embedder/public/capi/lynx_native_module_types_capi.h"
+#include "platform/embedder/public/capi/lynx_native_view_capi.h"
+#include "platform/embedder/public/capi/lynx_view_builder_types_capi.h"
+#include "platform/embedder/public/capi/lynx_windowless_renderer_capi.h"
 #if defined(ENABLE_WINDOWLESS)
 #include "platform/embedder/windowless/lynx_windowless_renderer_priv.h"
 #endif
@@ -48,10 +51,7 @@ struct lynx_view_builder_t {
   std::unordered_map<std::string, std::pair<lynx_native_view_creator, void*>>
       native_view_creators;
 
-  const char* GetICUDataPath() const {
-    return !icu_data_path.empty() ? icu_data_path.c_str()
-                                  : lynx_env_get_icu_data_path();
-  }
+  const char* GetICUDataPath() const;
 
   const char* GetWebView2FixedRuntimePath() const {
     return !webview2_fixed_runtime_path.empty()

@@ -38,8 +38,8 @@ config("config") {
 }
 
 lynx_core_source_set("lynx_runtime_lifecycle_observer") {
+  public_deps = [ "../../third_party/weak-node-api:weak_node_api_headers" ]
   sources = [ "lynx_runtime_lifecycle_observer.cc" ]
-  public_configs = [ "../../third_party/weak-node-api:weak_node_api_config" ]
 }
 
 lynx_core_source_set("devtool_settings_embedder") {
@@ -163,6 +163,7 @@ copy("lynx_embedder_capi") {
     "./public/capi/lynx_log_capi.h",
     "./public/capi/lynx_memory_capi.h",
     "./public/capi/lynx_native_module_capi.h",
+    "./public/capi/lynx_native_module_types_capi.h",
     "./public/capi/lynx_native_view_capi.h",
     "./public/capi/lynx_resource_request_capi.h",
     "./public/capi/lynx_resource_response_capi.h",
@@ -176,6 +177,7 @@ copy("lynx_embedder_capi") {
     "./public/capi/lynx_types.h",
     "./public/capi/lynx_update_meta_capi.h",
     "./public/capi/lynx_view_builder_capi.h",
+    "./public/capi/lynx_view_builder_types_capi.h",
     "./public/capi/lynx_view_capi.h",
     "./public/capi/lynx_view_client_capi.h",
     "./public/capi/lynx_vsync_monitor_capi.h",
@@ -225,16 +227,18 @@ copy("lynx_value_api") {
 }
 
 copy("lynx_napi_api") {
+  deps = [ "../../third_party/weak-node-api:setup_napi_deps" ]
+  weak_node_api_headers_root = "$root_gen_dir/third_party/weak-node-api/headers"
   sources = [
-    "../../third_party/weak-node-api/headers/js_native_api.h",
-    "../../third_party/weak-node-api/headers/js_native_api_types.h",
-    "../../third_party/weak-node-api/headers/napi-inl.deprecated.h",
-    "../../third_party/weak-node-api/headers/napi-inl.h",
-    "../../third_party/weak-node-api/headers/napi.h",
-    "../../third_party/weak-node-api/headers/node_api.h",
-    "../../third_party/weak-node-api/headers/node_api_types.h",
-    "../../third_party/weak-node-api/headers/weak_napi_defines.h",
-    "../../third_party/weak-node-api/headers/weak_napi_undefs.h",
+    "$weak_node_api_headers_root/js_native_api.h",
+    "$weak_node_api_headers_root/js_native_api_types.h",
+    "$weak_node_api_headers_root/napi-inl.deprecated.h",
+    "$weak_node_api_headers_root/napi-inl.h",
+    "$weak_node_api_headers_root/napi.h",
+    "$weak_node_api_headers_root/node_api.h",
+    "$weak_node_api_headers_root/node_api_types.h",
+    "$weak_node_api_headers_root/weak_napi_defines.h",
+    "$weak_node_api_headers_root/weak_napi_undefs.h",
   ]
   outputs = [ "$root_build_dir/include/third_party/weak-node-api/headers/{{source_file_part}}" ]
 }

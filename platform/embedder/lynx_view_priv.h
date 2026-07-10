@@ -11,9 +11,10 @@
 #include "platform/embedder/fetcher/lynx_resource_fetcher_holder.h"
 #include "platform/embedder/lynx_ui_renderer.h"
 #include "platform/embedder/lynx_view_clients.h"
+#if ENABLE_NAPI_BINDING
 #include "platform/embedder/module/extension_module_factory_impl.h"
 #include "platform/embedder/module/lynx_module_manager_napi.h"
-#include "platform/embedder/public/capi/lynx_view_capi.h"
+#endif
 #include "platform/embedder/public/capi/lynx_vsync_monitor_capi.h"
 #include "platform/embedder/public/lynx_event_simulation_proxy.h"
 #if ENABLE_INSPECTOR

@@ -3,6 +3,8 @@ cmake_minimum_required(VERSION 3.4.1)
 project(lynx_explorer)
 
 set(LYNX_ROOT_PATH ${PROJECT_SOURCE_DIR}/../../../../../..)
+set(WEAK_NODE_API_PACKAGE_ROOT
+    ${LYNX_ROOT_PATH}/third_party/weak-node-api/node_modules/@lynx-js/weak-node-api)
 
 add_library(
         lynx_napi_addon_loader
@@ -56,10 +58,12 @@ set_target_properties(napi PROPERTIES IMPORTED_LOCATION ${NAPI_SO})
 
 target_include_directories(lynx_napi_addon_loader PUBLIC
 ${LYNX_ROOT_PATH}/explorer/cpp
-${LYNX_ROOT_PATH})
+${LYNX_ROOT_PATH}
+${WEAK_NODE_API_PACKAGE_ROOT})
 
 target_link_libraries(lynx_napi_addon_loader PUBLIC libace_napi.z.so libhilog_ndk.z.so napi_adapter napi)
-target_compile_definitions(lynx_napi_addon_loader PUBLIC USE_WEAK_SUFFIX_NAPI=1)
+target_compile_definitions(lynx_napi_addon_loader PUBLIC
+    USE_WEAK_SUFFIX_NAPI=1)
 
 # Optional Node-API addon packaging:
 # Put addon files under:

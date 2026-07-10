@@ -16,6 +16,8 @@ lynx_core_source_set("lynx_rust_capi") {
 
   deps = [ "../../third_party/skia" ]
 
+  public_deps = [ "../../third_party/weak-node-api:weak_node_api_headers" ]
+
   include_dirs = [ "../.." ]
 }
 

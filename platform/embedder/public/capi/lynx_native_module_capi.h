@@ -5,6 +5,7 @@
 #define PLATFORM_EMBEDDER_PUBLIC_CAPI_LYNX_NATIVE_MODULE_CAPI_H_
 
 #include "lynx_export.h"
+#include "lynx_native_module_types_capi.h"
 #include "third_party/weak-node-api/headers/node_api.h"
 
 #ifdef USE_WEAK_SUFFIX_NAPI
@@ -14,10 +15,6 @@
 LYNX_EXTERN_C_BEGIN
 
 #define LYNX_NAPI_ENV_LYNX_VIEW_TAG 0xAC7F
-
-typedef napi_value (*napi_module_creator)(napi_env, napi_value exports,
-                                          const char* module_name,
-                                          void* opaque);
 
 // Stores a data with key to the global map.
 LYNX_CAPI_EXPORT void lynx_napi_set_instance_data(napi_env env, uint64_t key,
