@@ -44,9 +44,6 @@ lynx_core_source_set("dynamic_lib_windowless") {
     "../../clay/shell/platform/headless:headless",
     "../../clay/ui:ui",
   ]
-  if (!is_mac) {
-    deps += [ "../../clay/shell/common:compositor_service_fallback" ]
-  }
 }
 
 lynx_core_source_set("windowless_embedder") {
