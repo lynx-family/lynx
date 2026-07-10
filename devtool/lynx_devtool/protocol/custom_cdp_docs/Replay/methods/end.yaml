@@ -1,0 +1,5 @@
+summary: Initial documentation entry for the Lynx-custom Replay.end CDP method.
+notes:
+  - Registered in devtool/lynx_devtool/agent/domain_agent/inspector_testbench_replay_agent.cc.
+  - Replay support must be enabled in the current runtime.
+  - Complete source-backed request, response, event, and example docs before using this entry for website generation.

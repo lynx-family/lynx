@@ -1,0 +1,5 @@
+summary: Initial documentation entry for the Lynx-custom Template.templateConfigInfo CDP method.
+notes:
+  - Registered in devtool/lynx_devtool/agent/domain_agent/inspector_template_agent.cc.
+  - This is a compatibility stub that returns an empty result because config info was removed.
+  - Complete source-backed request, response, event, and example docs before using this entry for website generation.

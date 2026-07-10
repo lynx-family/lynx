@@ -1,0 +1,34 @@
+summary: Gets global Lynx memory usage across live registered Lynx instances.
+parameters:
+  - name: timeoutMs
+    type: number
+    optional: true
+    description: Non-negative timeout in milliseconds. Omit the field to let the platform choose its default wait policy.
+returns:
+  - name: collectionStatus
+    type: string
+    description: Collection result status reported by the global memory usage implementation.
+  - name: totalBytes
+    type: number
+    description: Global Lynx-attributed memory size in bytes.
+  - name: appBytes
+    type: number
+    description: App memory footprint in bytes when the platform reports it.
+  - name: instances
+    type: array
+    description: Per-instance memory usage details reported by completed instance collectors.
+notes:
+  - Registered in devtool/lynx_devtool/agent/domain_agent/inspector_memory_agent.cc.
+  - Send this method to the global DevTool handler with session ID -1.
+  - This method differs from Runtime.getHeapUsage, which reports JavaScript heap usage for one target runtime.
+examples:
+  - title: Use the platform default timeout
+    request:
+      id: 1
+      method: Memory.getAllMemoryUsage
+  - title: Use an explicit timeout
+    request:
+      id: 2
+      method: Memory.getAllMemoryUsage
+      params:
+        timeoutMs: 50000

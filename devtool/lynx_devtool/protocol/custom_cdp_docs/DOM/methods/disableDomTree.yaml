@@ -1,0 +1,4 @@
+summary: Initial documentation entry for the Lynx-custom DOM.disableDomTree CDP method.
+notes:
+  - Registered in devtool/lynx_devtool/agent/domain_agent/inspector_dom_agent_ng.cc.
+  - Complete source-backed request, response, event, and example docs before using this entry for website generation.
