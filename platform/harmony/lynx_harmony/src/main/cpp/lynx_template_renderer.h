@@ -277,7 +277,7 @@ class LynxTemplateRenderer : public devtool::LynxDevToolProxy {
   std::shared_ptr<LynxResourceLoaderHarmony> resource_loader_;
   std::weak_ptr<tasm::harmony::LynxContext> lynx_context_;
   std::shared_ptr<WeakFlag> weak_flag_;
-  std::mutex inspector_owner_mutex_;
+  std::recursive_mutex inspector_owner_mutex_;
   std::atomic<devtool::LynxInspectorOwner*> inspector_owner_{nullptr};
   std::unordered_map<int32_t, napi_ref> session_storage_callback_refs_;
 };

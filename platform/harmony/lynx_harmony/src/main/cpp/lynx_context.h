@@ -239,6 +239,10 @@ class LynxContext {
 
   void ResumeExposure();
 
+  void OnRootAttachedToViewTree();
+
+  void OnRootDetachedFromViewTree();
+
   void SetObserverFrameRate(const lepus::Value& options);
 
   void CreateUIIntersectionObserver(int intersection_observer_id,

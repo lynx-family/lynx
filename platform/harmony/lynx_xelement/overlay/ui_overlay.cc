@@ -239,12 +239,10 @@ void UIOverlay::OnNodeEvent(ArkUI_NodeEvent* event) {
     }
   } else if (OH_ArkUI_NodeEvent_GetEventType(event) == NODE_EVENT_ON_ATTACH) {
     is_root_attached_ = true;
-    context_->ResumeExposure();
+    context_->NotifyUIScroll();
   } else if (OH_ArkUI_NodeEvent_GetEventType(event) == NODE_EVENT_ON_DETACH) {
     is_root_attached_ = false;
-    auto dict = lepus::Dictionary::Create();
-    dict->SetValue("sendEvent", false);
-    context_->StopExposure(lepus::Value(dict));
+    context_->NotifyUIScroll();
   }
 }
 
