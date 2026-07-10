@@ -122,6 +122,8 @@ class EventDispatcher {
 
   bool CanConsumeTouchEvent(float point[2]);
 
+  bool CanConsumeTouchEventAtRoot(float point[2], UIBase* root);
+
   // TODO(hexionghui): replace it with HitTestMode.BLOCK_DESCENDANTS
   void UpdateNativeInteractionEnabledForTree(UIBase* root);
 
@@ -178,6 +180,9 @@ class EventDispatcher {
                       float page_point[2]);
 
   void GetPagePoint(float page_point[2], float node_point[2]);
+
+  void GetEventPagePoint(float page_point[2], const ArkUI_UIInputEvent* event,
+                         size_t index, float point_scale = 1.f);
 
   void AddTargetTouchMap(lepus::Value& target_touch_map,
                          const ArkUI_UIInputEvent* event);

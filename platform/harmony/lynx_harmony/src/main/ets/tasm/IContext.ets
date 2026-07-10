@@ -31,6 +31,7 @@ export interface IContext {
 
   canConsumeTouchEvent(x: number, y: number): boolean;
 
+  canConsumeTouchEventAtRoot(x: number, y: number, content: NativeContent): boolean;
+
   updateRootTarget(content: NativeContent): void;
 }
-
