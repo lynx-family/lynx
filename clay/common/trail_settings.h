@@ -6,6 +6,8 @@
 
 #include <string>
 
+#include "service_api/services/trail/trail_service.h"
+
 namespace clay {
 namespace setting {
 
@@ -15,6 +17,9 @@ namespace setting {
 // "clay_demo_text_1", "demo");
 // LYNX_SETTING_KEY(CLAY_ENABLE_FEATURE_A, bool, "clay_enable_feature_a");
 // LYNX_SETTING_KEY(CLAY_ENABLE_FEATURE_B, bool, "clay_enable_feature_b", true);
+
+LYNX_SETTING_KEY(CLAY_PRECOMPILE_SKITY_SHADERS, bool,
+                 "clay_precompile_skity_shaders");
 
 }  // namespace setting
 }  // namespace clay
