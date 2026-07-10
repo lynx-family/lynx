@@ -14,11 +14,22 @@
 #include "core/resource/lazy_bundle/lazy_bundle_utils.h"
 
 namespace lynx {
+namespace shell {
+template <typename T>
+class LynxActor;
+}  // namespace shell
+
 namespace tasm {
+namespace performance {
+class PerformanceController;
+}  // namespace performance
+
+enum class LazyBundleEntryOrigin { kMTS, kBTS };
 
 struct LazyBundleLifecycleOption {
-  LazyBundleLifecycleOption(const std::string &url, int instance_id,
-                            bool enable_event_reporter);
+  LazyBundleLifecycleOption(
+      const std::string &url, int instance_id, bool enable_event_reporter,
+      LazyBundleEntryOrigin entry_origin = LazyBundleEntryOrigin::kMTS);
 
   // Move Only.
   LazyBundleLifecycleOption(const LazyBundleLifecycleOption &) = delete;
@@ -32,6 +43,22 @@ struct LazyBundleLifecycleOption {
   bool OnLazyBundleLifecycleEnd(TemplateAssembler *tasm);
 
   void SyncOption(const LazyBundleLifecycleOption &option);
+
+  void SetPerfControllerActor(
+      std::weak_ptr<shell::LynxActor<performance::PerformanceController>>
+          actor);
+
+  void RecordRequireStart(int64_t timestamp);
+  void RecordRequireEnd(int64_t timestamp, bool is_sync, int64_t resource_size);
+  void RecordDecodeStart(int64_t timestamp);
+  void RecordDecodeEnd(int64_t timestamp);
+  void SetLoadResult(bool success);
+
+  // Mark the URL before an MTS lazy bundle request starts.
+  void MarkMTSLazyBundleUrl();
+
+  // Report at most one LazyBundleEntry for this lifecycle.
+  void ReportLazyBundleEntry();
 
   // Deprecated. Use GetLazyBundleEntry instead.
   lepus::Value GetPerfInfo();
@@ -77,6 +104,11 @@ struct LazyBundleLifecycleOption {
 
   std::shared_ptr<pub::PubValueFactory> value_factory_ =
       std::make_shared<pub::PubValueFactoryDefault>();
+
+  std::weak_ptr<shell::LynxActor<performance::PerformanceController>>
+      perf_controller_actor_;
+  LazyBundleEntryOrigin entry_origin_{LazyBundleEntryOrigin::kMTS};
+  bool lazy_bundle_entry_reported_{false};
 };
 
 }  // namespace tasm

@@ -15,6 +15,7 @@
 #include "base/include/fml/make_copyable.h"
 #include "base/include/log/logging.h"
 #include "base/include/string/string_number_convert.h"
+#include "base/include/timer/time_utils.h"
 #include "base/include/value/array.h"
 #include "base/include/value/base_value.h"
 #include "base/trace/native/trace_event.h"
@@ -1441,7 +1442,12 @@ void TemplateAssembler::LoadComponentWithCallbackInfo(
         component_entry, url,
         [this, &url,
          &callback_info](const std::shared_ptr<TemplateEntry>& entry) -> bool {
-          component_loader_->StartRecordDecodeTime(url);
+          if (callback_info.lifecycle_option) {
+            callback_info.lifecycle_option->RecordDecodeStart(
+                base::CurrentSystemTimeMilliseconds());
+          } else if (component_loader_) {
+            component_loader_->StartRecordDecodeTime(url);
+          }
 
           bool res =
               callback_info.bundle
@@ -1449,10 +1455,15 @@ void TemplateAssembler::LoadComponentWithCallbackInfo(
                         this, std::move(*callback_info.bundle), page_options_)
                   : this->FromBinary(entry, std::move(callback_info.data),
                                      false);
+          if (callback_info.lifecycle_option) {
+            callback_info.lifecycle_option->RecordDecodeEnd(
+                base::CurrentSystemTimeMilliseconds());
+          } else if (component_loader_) {
+            component_loader_->EndRecordDecodeTime(url);
+          }
           if (!res) {
             return false;
           }
-          component_loader_->EndRecordDecodeTime(url);
           return true;
         });
   }
@@ -1494,6 +1505,10 @@ void TemplateAssembler::LoadComponentWithCallbackInfo(
       page_proxy()->OnLazyBundleLoadedFromJS(url, callback_info.component_ids,
                                              pipeline_options);
     }
+  }
+  if (callback_info.lifecycle_option) {
+    callback_info.lifecycle_option->SetLoadResult(is_success);
+    callback_info.lifecycle_option->ReportLazyBundleEntry();
   }
 }
 
