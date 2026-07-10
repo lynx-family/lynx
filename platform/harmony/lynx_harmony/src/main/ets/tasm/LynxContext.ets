@@ -395,6 +395,13 @@ export class LynxContext implements IContext {
     return false;
   }
 
+  public canConsumeTouchEventAtRoot(x: number, y: number, content: NativeContent): boolean {
+    if (this.uiOwner) {
+      return this.uiOwner.canConsumeTouchEventAtRoot(x, y, content);
+    }
+    return false;
+  }
+
   public updateRootTarget(content: NativeContent) {
     if (this.uiOwner) {
       this.uiOwner.updateRootTarget(content);
