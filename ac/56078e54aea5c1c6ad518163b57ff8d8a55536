@@ -1,0 +1,53 @@
+lynx/core/resource/external_resource/external_resource_loader.h
+  s_071d8cf57e2b04::t_01fb78a5f22950 20-25,90-96,101-102
+lynx/core/shell/runtime/bts/bts_runtime_mediator.h
+  s_071d8cf57e2b04::t_d026d4e8b2d2da 69-70
+lynx/core/resource/lazy_bundle/lazy_bundle_loader.cc
+  s_071d8cf57e2b04::t_2e037bce98c77e 167,322
+  s_071d8cf57e2b04::t_d7afebbce4549a 323-325
+  s_b25ae8e7bc37d8::t_b4a071fa88c8b2 141,313,326,334,342,350,360
+lynx/core/renderer/template_assembler.cc
+  s_071d8cf57e2b04::t_4aa16ac64b971b 18,1445-1450,1458-1463,1509-1510
+  s_071d8cf57e2b04::t_88d61e2ed14839 1511-1512
+lynx/core/resource/lazy_bundle/lazy_bundle_loader.h
+  s_071d8cf57e2b04::t_3c2f43202c61a7 30-32,119-120
+lynx/core/resource/external_resource/external_resource_loader.cc
+  s_b25ae8e7bc37d8::t_f864df61a25790 12,14-15,134-137,140-143,149-152,178-182,190,196-197
+lynx/core/resource/lazy_bundle/lazy_bundle_lifecycle_option.cc
+  s_b25ae8e7bc37d8::t_0db5adbf19df3d 9,12,23-77
+lynx/core/resource/lazy_bundle/lazy_bundle_lifecycle_option.h
+  s_b25ae8e7bc37d8::t_ec523966f03109 17-21,23-25,44-56,101-104
+lynx/core/resource/lazy_bundle/lazy_bundle_unittest.cc
+  s_b25ae8e7bc37d8::t_3c4dfa77366921 5-7,11-12,15,21-22,29-90,195-322
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "ac56078e54aea5c1c6ad518163b57ff8d8a55536",
+  "prompts": {},
+  "humans": {
+    "h_4d36f4d76420fe": {
+      "author": "yangguangzhao <yangguangzhao.solace@bytedance.com>"
+    }
+  },
+  "sessions": {
+    "s_071d8cf57e2b04": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f4609-b22f-7ab3-8d9a-ace51395e283",
+        "model": "unknown"
+      },
+      "human_author": "yangguangzhao <yangguangzhao.solace@bytedance.com>"
+    },
+    "s_b25ae8e7bc37d8": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f4a5c-ff6f-7910-a4fa-aeb4769b37c2",
+        "model": "unknown"
+      },
+      "human_author": "yangguangzhao <yangguangzhao.solace@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}
