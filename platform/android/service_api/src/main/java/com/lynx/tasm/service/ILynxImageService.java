@@ -115,6 +115,19 @@ public interface ILynxImageService extends IServiceProvider {
   void decodeImage(@NonNull ImageRequestInfo imageRequestInfo, @NonNull ImageLoadListener listener);
 
   /**
+   * Fetches an SVG resource as an image.
+   *
+   * <p>The default implementation keeps this optional for image service implementations that do
+   * not provide SVG support.
+   *
+   * @return True if the SVG loading request has been accepted, false otherwise.
+   */
+  default boolean fetchSVGImage(@NonNull ImageRequestInfo imageRequestInfo,
+      @NonNull ImageLoadListener loadListener, @NonNull Context context) {
+    return false;
+  }
+
+  /**
    * Releases resources associated with the given image request.
    *
    * @param imageRequestInfo Information about the image request to release.

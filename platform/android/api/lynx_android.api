@@ -2549,6 +2549,7 @@ public interface com::lynx::tasm::service::ILynxImageService {
   public void com.lynx.tasm.service.ILynxImageService.prefetchImage( @NonNull String uri, @Nullable Object callerContext, @Nullable Map< String, Object > params);
   public void com.lynx.tasm.service.ILynxImageService.prefetchImage(@NonNull String uri, @Nullable Object callerContext, @Nullable Map< String, Object > params, @Nullable ImageLoadListener loadListener);
   public void com.lynx.tasm.service.ILynxImageService.decodeImage(@NonNull ImageRequestInfo imageRequestInfo, @NonNull ImageLoadListener listener);
+  public default boolean com.lynx.tasm.service.ILynxImageService.fetchSVGImage(@NonNull ImageRequestInfo imageRequestInfo, @NonNull ImageLoadListener loadListener, @NonNull Context context);
   public void com.lynx.tasm.service.ILynxImageService.releaseImage(@NonNull ImageRequestInfo imageRequestInfo);
   public void com.lynx.tasm.service.ILynxImageService.releaseAnimDrawable(@NonNull Drawable drawable);
   public boolean com.lynx.tasm.service.ILynxImageService.canParseUrl(@NonNull String url);
