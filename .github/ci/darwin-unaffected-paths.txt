@@ -18,3 +18,6 @@ windows/*
 platform/windows/*
 explorer/windows/*
 .github/actions/windows-*
+linux/*
+platform/linux/*
+.github/actions/linux-*

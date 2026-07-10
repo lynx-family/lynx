@@ -39,6 +39,7 @@ COMMON_GN_ARGS = [
     'enable_napi_binding = true',
     'enable_inspector = true',
     'jsengine_type = "quickjs"',
+    'use_flutter_cxx = true',
     'is_debug = false',
 ]
 
@@ -50,8 +51,8 @@ def run_command(command):
 
 def sha256_file(path):
   digest = hashlib.sha256()
-  with path.open('rb') as f:
-    for chunk in iter(lambda: f.read(1024 * 1024), b''):
+  with path.open('rb') as file:
+    for chunk in iter(lambda: file.read(1024 * 1024), b''):
       digest.update(chunk)
   return digest.hexdigest()
 
@@ -63,81 +64,36 @@ def write_checksum(path):
   return checksum_path
 
 
-def build_config(platform, target_cpu, build_dir):
-  platform_args = []
-  if platform == 'macos':
-    platform_args.extend([
-        'desktop_enable_embedder_layer = true',
-        'skia_use_metal = true',
-        'shell_enable_metal = true',
-        'use_flutter_cxx = false',
-    ])
-    return {
-        'target': 'platform/dynamic_lib/macos:package_sdk',
-        'shared_target':
-            'platform/dynamic_lib/macos:lynx_clay_shared_library',
-        'args': platform_args,
-        'artifact': build_dir / f'lynx_clay_sdk_macos_{target_cpu}.zip',
-        'dylib': build_dir / 'libLynx_clay.dylib',
-    }
-  if platform == 'linux':
-    platform_args.extend([
-        'use_flutter_cxx = true',
-    ])
-    return {
-        'target': 'platform/dynamic_lib/linux:package_sdk',
-        'shared_target':
-            'platform/dynamic_lib/linux:lynx_clay_shared_library',
-        'args': platform_args,
-        'artifact': build_dir / f'lynx_clay_sdk_linux_{target_cpu}.zip',
-        'dylib': None,
-    }
-  raise ValueError(f'Unsupported platform: {platform}')
-
-
 def main():
   parser = argparse.ArgumentParser(
-      description='Build and package the libLynx_clay dynamic library SDK.')
-  parser.add_argument('--platform', choices=['macos', 'linux'], required=True)
+      description='Build and package the Lynx SDK for Linux.')
   parser.add_argument('--target-cpu', required=True)
   parser.add_argument('--build-dir', default='out/Default')
-  parser.add_argument(
-      '--skip-codesign',
-      action='store_true',
-      help='Skip macOS ad-hoc signing before packaging.')
   args = parser.parse_args()
 
   build_dir = Path(args.build_dir)
-  config = build_config(args.platform, args.target_cpu, build_dir)
+  target = 'platform/linux:package_sdk'
+  artifact = build_dir / f'lynx_sdk_linux_{args.target_cpu}.zip'
   gn_args = [
       f'target_cpu = "{args.target_cpu}"',
       *COMMON_GN_ARGS,
-      *config['args'],
   ]
 
   run_command([
       'buildtools/gn/gn',
       'gen',
       str(build_dir),
-      f'--root-target=//{config["target"]}',
+      f'--root-target=//{target}',
       '--args=' + ' '.join(gn_args),
   ])
-  run_command(['buildtools/ninja/ninja', '-C', str(build_dir),
-               config['shared_target']])
+  run_command([
+      'buildtools/ninja/ninja', '-C', str(build_dir), target
+  ])
 
-  dylib = config['dylib']
-  if dylib is not None and not args.skip_codesign:
-    run_command(['codesign', '--force', '--sign', '-', str(dylib)])
-    run_command(['codesign', '--verify', '-vvv', str(dylib)])
-
-  run_command(['buildtools/ninja/ninja', '-C', str(build_dir),
-               config['target']])
-
-  artifact = config['artifact']
   if not artifact.is_file():
     raise FileNotFoundError(f'Expected artifact does not exist: {artifact}')
   checksum = write_checksum(artifact)
-  print(f'Built dynamic library SDK: {artifact}')
+  print(f'Built Linux SDK: {artifact}')
   print(f'Wrote checksum: {checksum}')
 
 

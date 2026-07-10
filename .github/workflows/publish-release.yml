@@ -552,22 +552,11 @@ jobs:
           allowUpdates: true
           body: ''
 
-  dynamic-lib-release:
+  linux-sdk-release:
     timeout-minutes: 60
     needs: get-version
     if: ${{ !contains(needs.get-version.outputs.version, '-nightly.') }}
-    strategy:
-      matrix:
-        include:
-          - platform: macos
-            arch: arm64
-            runner: lynx-darwin-15.6.1-medium
-            artifact: lynx_clay_sdk_macos_arm64.zip
-          - platform: linux
-            arch: x64
-            runner: lynx-ubuntu-22.04-large
-            artifact: lynx_clay_sdk_linux_x64.zip
-    runs-on: ${{ matrix.runner }}
+    runs-on: lynx-ubuntu-22.04-large
     steps:
       - name: Download Source
         uses: actions/checkout@v6
@@ -584,19 +573,17 @@ jobs:
         with:
           cache-backend: github
           target: clay
-      - name: Build dynamic library SDK
+      - name: Build Linux SDK
         run: |-
           cd $GITHUB_WORKSPACE/lynx
           source tools/envsetup.sh
-          python3 platform/dynamic_lib/tools/build_release.py \
-            --platform ${{ matrix.platform }} \
-            --target-cpu ${{ matrix.arch }}
-      - name: push dynamic library SDK to release
+          python3 platform/linux/build_release.py --target-cpu x64
+      - name: push Linux SDK to release
         uses: ncipollo/release-action@v1
         with:
           tag: ${{ needs.get-version.outputs.version }}
           token: ${{ secrets.GITHUB_TOKEN }}
-          artifacts: '${{ github.workspace }}/lynx/out/Default/${{ matrix.artifact }},${{ github.workspace }}/lynx/out/Default/${{ matrix.artifact }}.sha256'
+          artifacts: '${{ github.workspace }}/lynx/out/Default/lynx_sdk_linux_x64.zip,${{ github.workspace }}/lynx/out/Default/lynx_sdk_linux_x64.zip.sha256'
           allowUpdates: true
           body: ''
 
