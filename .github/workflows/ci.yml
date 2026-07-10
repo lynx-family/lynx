@@ -338,7 +338,7 @@ jobs:
         run: |
           tools/env.sh pnpm --filter @lynx-js/node-lynx run test
 
-  dynamic-lib-linux-amd64-build:
+  linux-sdk-amd64-build:
     runs-on: lynx-ubuntu-22.04-large
     timeout-minutes: 60
     steps:
@@ -354,19 +354,17 @@ jobs:
         uses: ./lynx/.github/actions/common-deps
         with:
           target: clay
-      - name: Build Linux dynamic library SDK
+      - name: Build Linux SDK
         run: |
           source tools/envsetup.sh
-          python3 platform/dynamic_lib/tools/build_release.py \
-            --platform linux \
-            --target-cpu x64
+          python3 platform/linux/build_release.py --target-cpu x64
       - name: upload artifact
         uses: lynx-infra/upload-artifact@332ec52e99f7cbf1fbbdc9bcc09280d49147d092
         with:
-          name: dynamic-lib-linux-amd64-build
+          name: linux-sdk-amd64-build
           path: |
-            ${{ github.workspace }}/lynx/out/Default/lynx_clay_sdk_linux_x64.zip
-            ${{ github.workspace }}/lynx/out/Default/lynx_clay_sdk_linux_x64.zip.sha256
+            ${{ github.workspace }}/lynx/out/Default/lynx_sdk_linux_x64.zip
+            ${{ github.workspace }}/lynx/out/Default/lynx_sdk_linux_x64.zip.sha256
 
   tasm-wasm-build:
     needs: [darwin-impact-check]
@@ -1064,34 +1062,6 @@ jobs:
         with:
           name: clay_glfw
           path: '${{ github.workspace }}/lynx/out/Default/clay_glfw'
-
-  dynamic-lib-darwin-aarch64-build:
-    needs: [darwin-impact-check]
-    if: ${{ needs.darwin-impact-check.outputs.darwin == 'true' }}
-    timeout-minutes: 60
-    runs-on: lynx-darwin-15.6.1-medium
-    steps:
-      - name: Download Source
-        uses: actions/checkout@v6
-        with:
-          path: lynx
-      - name: Install Common Dependencies
-        uses: ./lynx/.github/actions/common-deps
-        with:
-          target: clay
-      - name: Build Darwin dynamic library SDK
-        run: |
-          source tools/envsetup.sh
-          python3 platform/dynamic_lib/tools/build_release.py \
-            --platform macos \
-            --target-cpu arm64
-      - name: upload artifact
-        uses: lynx-infra/upload-artifact@332ec52e99f7cbf1fbbdc9bcc09280d49147d092
-        with:
-          name: dynamic-lib-darwin-aarch64-build
-          path: |
-            ${{ github.workspace }}/lynx/out/Default/lynx_clay_sdk_macos_arm64.zip
-            ${{ github.workspace }}/lynx/out/Default/lynx_clay_sdk_macos_arm64.zip.sha256
 
   macos-explorer-build:
     needs: [darwin-impact-check]
