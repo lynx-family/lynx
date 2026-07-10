@@ -1,0 +1,115 @@
+lynx/platform/android/lynx_xelement/lynx_xelement_input/src/main/java/com/lynx/xelement/input/LynxUITextArea.kt
+  s_d9174f3ef39f5a::t_0932ed228e2b4b 41-45,92,136,162,185
+lynx/platform/android/lynx_android/src/main/java/com/lynx/tasm/behavior/ui/scroll/AndroidScrollView.java
+  s_d9174f3ef39f5a::t_4e25d7fb1e2b67 65,699-706
+lynx/platform/harmony/lynx_harmony/src/main/cpp/ui/scroll/base/lynx_base_scroll_view.h
+  s_d9174f3ef39f5a::t_1c8d1bbe651ca3 53-54
+lynx/platform/darwin/ios/api/lynx_ios.api
+  s_d9174f3ef39f5a::t_ff79e9cd0395a4 3518
+lynx/platform/android/api/lynx_android.api
+  s_d9174f3ef39f5a::t_72de9302944f7a 273-274,1486-1492,4295-4297
+platform/harmony/clay/src/main/ets/ClayUIRenderer.ets
+  s_d9174f3ef39f5a::t_cb6aa41cc9c56f 159
+lynx/platform/android/lynx_android/src/main/java/com/lynx/tasm/behavior/ui/scroll/LynxUIScrollViewInternal.java
+  s_d9174f3ef39f5a::t_973ca2cd9df5c4 370-372
+lynx/platform/harmony/lynx_harmony/src/main/cpp/ui/scroll/lynx_ui_scroll_view_internal.cc
+  s_d9174f3ef39f5a::t_5796fab82b450f 26,220-230,232-234,249-286,323-334
+  s_d9174f3ef39f5a::t_25c6ee1cddab87 23-25
+  s_d9174f3ef39f5a::t_93a7fb09e3dece 27-28
+  s_d9174f3ef39f5a::t_2a8af389a35e1b 8,13,20-22
+lynx/platform/android/lynx_android/src/android_test/java/com/lynx/tasm/behavior/ui/scroll/base/LynxBaseScrollViewScrollingTest.java
+  s_d9174f3ef39f5a::t_949fd3e178c167 78-88
+lynx/platform/harmony/lynx_harmony/src/main/ets/tasm/LynxUIRenderer.ets
+  s_d9174f3ef39f5a::t_58d18c7a9b2cd8 17
+lynx/platform/harmony/lynx_harmony/src/main/cpp/ui/ui_owner.cc
+  s_d9174f3ef39f5a::t_f9e1ca05263b39 510-518,527-529,535,548,556,560-563,570,574-577,587,601,604,609-638,643,647-655,674-693,704-706,722-729,731-734,737,739,741-752,755-771,773-777,785-786,802-805,890,895,898-900,1464-1465,1468-1478,1487-1493
+lynx/platform/android/lynx_android/src/android_test/java/com/lynx/tasm/behavior/ui/scroll/LynxUIScrollViewTest.java
+  s_d9174f3ef39f5a::t_8f716cf19d830c 173-185
+lynx/platform/harmony/lynx_harmony/src/main/ets/tasm/LynxView.ets
+  s_d9174f3ef39f5a::t_72242a7bc69d79 21,74-75,92,185,198,235,409,424,427,432,434,442,446,511,640-643,724,787-796
+lynx/platform/harmony/lynx_harmony/src/main/cpp/ui/utils/base_scroll_container.h
+  s_d9174f3ef39f5a::t_2e459b121b6b09 38-42,74
+lynx/platform/darwin/ios/lynx/ui/scroll_view/LynxScrollView.m
+  s_d9174f3ef39f5a::t_f79072fb9f2616 10-13
+lynx/platform/android/lynx_android/src/main/java/com/lynx/tasm/behavior/KeyboardEvent.java
+  s_d9174f3ef39f5a::t_f6c2d9f0b05e79 1064,1087,1230
+  s_d9174f3ef39f5a::t_d4ac5696f7f2ad 213,228-237,358-360,374-375,378-399,426,434-435,439,450-451,458,460,465-473,482-484,493-494,498,504-506,518,530-531,543-544,555,560-561,567,574,584,590-592,595-658,663,697,778-779,782,815,823-824,828-829,833-834,844,853,860,863,946,952-956,970,982
+platform/harmony/entry/src/main/ets/pages/Lynx.ets
+  s_d9174f3ef39f5a::t_caf8d003873354 48,261
+lynx/platform/darwin/ios/lynx/public/ui/scroll_view/LynxScrollView.h
+  s_d9174f3ef39f5a::t_23e1af0cdfeae3 20
+lynx/platform/harmony/lynx_harmony/src/main/cpp/ui/scroll/lynx_ui_scroll_view.h
+  s_d9174f3ef39f5a::t_d7acbf9a4a1baf 37-38
+lynx/platform/harmony/lynx_harmony/src/main/ets/tasm/behavior/UIOwner.ets
+  s_d9174f3ef39f5a::t_21078c2019ab50 132-133
+lynx/platform/harmony/lynx_harmony/src/main/cpp/ui/scroll/base/lynx_base_scroll_view_vertical.h
+  s_d9174f3ef39f5a::t_7be215df37322a 22-23
+lynx/platform/harmony/lynx_harmony/src/main/cpp/ui/keyboard_avoiding_scroll_controller.cc
+  s_d9174f3ef39f5a::t_9f1ef9462bf9a7 1-623
+lynx/platform/darwin/ios/lynx/event/LynxKeyboardEventDispatcher.m
+  s_d9174f3ef39f5a::t_107abd56c8c797 34,81-87,97,107-108,124-135,144,161,181,218-231,240-246,276-318
+  s_d9174f3ef39f5a::t_1b197f89e46d49 9-11
+lynx/platform/harmony/lynx_harmony/src/main/cpp/ui/keyboard_avoiding_scroll_controller.h
+  s_d9174f3ef39f5a::t_7affaaacc2b58c 1-124
+lynx/platform/darwin/ios/lynx/ui/scroll_view/LynxUIScrollerUnitTest.m
+  s_d9174f3ef39f5a::t_c684b27c810730 7,69-92
+platform/harmony/entry/src/main/ets/pages/Index.ets
+  s_d9174f3ef39f5a::t_2c5079fcc370a8 36,58,209
+lynx/platform/android/lynx_android/src/main/java/com/lynx/tasm/behavior/ui/scroll/UIScrollView.java
+  s_d9174f3ef39f5a::t_d060bcaccd84e9 401-405
+lynx/platform/android/lynx_xelement/lynx_xelement_input/src/main/java/com/lynx/xelement/input/LynxUIBaseInput.kt
+  s_d9174f3ef39f5a::t_c9218c2e2cda76 522,553-559
+lynx/platform/darwin/ios/lynx/event/LynxKeyboardAvoidingScrollController.m
+  s_d9174f3ef39f5a::t_6ab4907441c418 1-603
+lynx/platform/harmony/lynx_harmony/src/main/cpp/ui/ui_scroll.cc
+  s_d9174f3ef39f5a::t_7872cefb58c237 254-256,470,474
+  s_d9174f3ef39f5a::t_476b915e04f69b 467-469
+  s_d9174f3ef39f5a::t_4de4eeaca281c5 472-473
+  s_d9174f3ef39f5a::t_5929e4949e0bdc 21,465-466
+lynx/platform/android/lynx_android/src/main/java/com/lynx/tasm/behavior/ui/scroll/base/LynxBaseScrollViewScrolling.java
+  s_d9174f3ef39f5a::t_db4e1b4a4969f2 36-37,81-92
+lynx/platform/harmony/lynx_harmony/src/main/cpp/ui/scroll/lynx_ui_scroll_view_internal.h
+  s_d9174f3ef39f5a::t_dd14f5e034bc2e 21-22,62-67,87
+lynx/platform/harmony/api/lynx_harmony.api
+  s_d9174f3ef39f5a::t_edf660b7f8b09f 229,261,628,1229
+lynx/platform/harmony/lynx_harmony/src/main/cpp/ui/ui_base.h
+  s_d9174f3ef39f5a::t_336ae4ff9af71d 170-174
+lynx/platform/android/lynx_android/src/main/java/com/lynx/tasm/behavior/KeyboardAvoidingScrollController.java
+  s_d9174f3ef39f5a::t_a8f77d3087fce9 1-845
+lynx/platform/harmony/lynx_harmony/src/main/cpp/ui/scroll/base/lynx_base_scroll_view_vertical.cc
+  s_d9174f3ef39f5a::t_a5ad5ff07265f1 20-23
+lynx/platform/harmony/lynx_harmony/src/main/ets/tasm/behavior/HarmonyUIRenderer.ets
+  s_d9174f3ef39f5a::t_d5def305cf29b1 254-255
+lynx/platform/harmony/lynx_harmony/src/main/cpp/ui/utils/base_scroll_container.cc
+  s_d9174f3ef39f5a::t_f83a8048a463a2 7-8,142-165
+lynx/platform/darwin/ios/lynx/BUILD.gn
+  s_d9174f3ef39f5a::t_61845e8c71e4f7 197-198
+lynx/platform/darwin/ios/lynx/event/LynxKeyboardAvoidingScrollController.h
+  s_d9174f3ef39f5a::t_83dedce7c7f762 1-51
+lynx/platform/harmony/lynx_harmony/src/main/ets/tasm/types/liblynx/index.d.ts
+  s_d9174f3ef39f5a::t_011b748eab44f0 268
+lynx/platform/darwin/ios/lynx/ui/scroll_view/LynxUIScroller.m
+  s_d9174f3ef39f5a::t_113e912f4be737 376
+  s_d9174f3ef39f5a::t_8b4ddc6f22368a 7,382,385-398,402-403
+lynx/platform/harmony/lynx_harmony/src/main/cpp/ui/ui_owner.h
+  s_d9174f3ef39f5a::t_b70273cba4734d 24,35,203-204,248
+  s_d9174f3ef39f5a::t_3a4f0594db2fc2 251-252,255-257,260,262-268,277-278,298-299,318
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "9d88ae84910acea0664be0f57bda45faee359362",
+  "prompts": {},
+  "sessions": {
+    "s_d9174f3ef39f5a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f27ed-f70d-7e60-aaa6-6b56a5b23bb9",
+        "model": "unknown"
+      },
+      "human_author": "mooface <xiamengfei.moonface@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}
