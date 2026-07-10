@@ -42,12 +42,18 @@ executable("clay_glfw") {
     "../../fml:fml",
     "../../fml:icu_util",
     "../../shell/common",
-    "../../shell/common:compositor_service_fallback",
     "../../shell/gpu:gpu_surface_gl",
     "../../ui",
     "//build/secondary/third_party/glfw",
     "//third_party/skia",
   ]
+
+  if (is_win || is_mac) {
+    deps += [
+      "../../shell/common:platform_overlay_service_fallback",
+      "../../shell/common:presenter_service_fallback",
+    ]
+  }
 
   ldflags = []
   if (is_linux) {
