@@ -175,6 +175,8 @@ class UIOwner {
 
   bool CanConsumeTouchEvent(float point[2]);
 
+  bool CanConsumeTouchEventAtRoot(float point[2], UIBase* root);
+
   void UpdateRootTarget(UIBase* root);
 
   void SendGlobalEvent(lepus::Value params) const;
@@ -228,6 +230,8 @@ class UIOwner {
   static napi_value Destroy(napi_env, napi_callback_info info);
   static napi_value RequestLayout(napi_env env, napi_callback_info info);
   static napi_value CanConsumeTouchEvent(napi_env env, napi_callback_info info);
+  static napi_value CanConsumeTouchEventAtRoot(napi_env env,
+                                               napi_callback_info info);
   static napi_value KeyboardStatusChanged(napi_env env,
                                           napi_callback_info info);
   static napi_value UpdateRootTarget(napi_env env, napi_callback_info info);
