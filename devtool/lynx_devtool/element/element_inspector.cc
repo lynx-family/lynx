@@ -1045,15 +1045,22 @@ ElementInspector::GetInlineStylesFromAttributeHolder(Element* element) {
   const StyleMap& inline_style = node->inline_styles();
   res = GetCssByStyleMap(element, inline_style);
 
-  auto insert_css_variables = [&res](const CSSVariableMap& var_map) {
-    for (const auto& pair : var_map) {
-      res[pair.first.str()] = pair.second.str();
-    }
-  };
-
-  insert_css_variables(node->css_variables_map());
-  insert_css_variables(node->css_variable_from_js());
-  insert_css_variables(node->css_variable_related());
+  // Custom properties declared in an element's own inline style (e.g.
+  // style="--foo: red") are not stored in inline_styles(); they are routed to
+  // css_variable_from_js() during inline-style parsing. Surface only that map
+  // as inline styles.
+  //
+  // Do NOT inject css_variables_map() or css_variable_related() here:
+  //   - css_variables_map() holds variables resolved from matched selector
+  //     rules (e.g. .light { --foo: red }). Those already appear under
+  //     matchedCSSRules; re-emitting them as inline styles fabricates a
+  //     highest-priority inline declaration that incorrectly strikes through
+  //     the real rule and can display a stale value when the rule changes.
+  //   - css_variable_related() only tracks the var() names a node references
+  //     for invalidation, not variables the node declares.
+  for (const auto& pair : node->css_variable_from_js()) {
+    res[pair.first.str()] = pair.second.str();
+  }
 
   return res;
 }
