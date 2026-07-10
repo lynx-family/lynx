@@ -213,11 +213,15 @@ GestureInterrupter EventDispatcher::event_gesture_interrupter_callback_ =
   if (!event_dispatcher) {
     return GESTURE_INTERRUPT_RESULT_REJECT;
   }
+  auto gesture = OH_ArkUI_GestureInterruptInfo_GetRecognizer(info);
+  // Keep pass-through rejection scoped to recognizers attached to overlays.
+  if (event_dispatcher->IsOverlayGesture(gesture)) {
+    return event_dispatcher->GetOverlayGestureInterruptResult(gesture);
+  }
   if (event_dispatcher->EventThrough()) {
     return GESTURE_INTERRUPT_RESULT_REJECT;
   }
 
-  auto gesture = OH_ArkUI_GestureInterruptInfo_GetRecognizer(info);
   if (gesture == event_dispatcher->long_press_gesture_ ||
       gesture == event_dispatcher->tap_gesture_) {
     return GESTURE_INTERRUPT_RESULT_CONTINUE;
@@ -339,6 +343,7 @@ EventDispatcher::~EventDispatcher() {
   if (tap_gesture_) {
     NodeManager::Instance().DisposeGesture(tap_gesture_);
   }
+  DisposeOverlayGestures();
   NodeManager::Instance().DisposeGesture(block_outer_pan_gesture_);
   NodeManager::Instance().DisposeGesture(consume_horizontal_pan_gesture_);
   NodeManager::Instance().DisposeGesture(consume_vertical_pan_gesture_);
@@ -352,11 +357,221 @@ EventDispatcher::~EventDispatcher() {
   NodeManager::Instance().DisposeGesture(velocity_tracker_pan_gesture_);
 }
 
+void EventDispatcher::EnsureOverlayGestures() {
+  auto ensure_pan = [](ArkUI_GestureRecognizer*& gesture,
+                       ArkUI_GestureDirectionMask direction, double distance) {
+    if (!gesture) {
+      gesture =
+          NodeManager::Instance().CreatePanGesture(1, direction, distance);
+    }
+  };
+  if (!overlay_gestures_.long_press) {
+    overlay_gestures_.long_press =
+        NodeManager::Instance().CreateLongPressGesture(1, false,
+                                                       long_press_duration_);
+    if (overlay_gestures_.long_press) {
+      NodeManager::Instance().SetGestureEventTarget(
+          overlay_gestures_.long_press, GESTURE_EVENT_ACTION_ACCEPT, this,
+          EventDispatcher::long_press_receiver_callback_);
+    }
+  }
+  if (!overlay_gestures_.tap) {
+    overlay_gestures_.tap =
+        NodeManager::Instance().createTapGestureWithDistanceThreshold(
+            1, 1, tap_slop_);
+    if (overlay_gestures_.tap) {
+      NodeManager::Instance().SetGestureEventTarget(
+          overlay_gestures_.tap, GESTURE_EVENT_ACTION_ACCEPT, this,
+          EventDispatcher::tap_receiver_callback_);
+    }
+  }
+  ensure_pan(overlay_gestures_.block_outer_pan, GESTURE_DIRECTION_ALL, 5);
+  ensure_pan(overlay_gestures_.consume_horizontal_pan,
+             GESTURE_DIRECTION_HORIZONTAL, 5);
+  ensure_pan(overlay_gestures_.consume_vertical_pan, GESTURE_DIRECTION_VERTICAL,
+             5);
+  ensure_pan(overlay_gestures_.consume_up_pan, GESTURE_DIRECTION_UP, 5);
+  ensure_pan(overlay_gestures_.consume_right_pan, GESTURE_DIRECTION_RIGHT, 5);
+  ensure_pan(overlay_gestures_.consume_down_pan, GESTURE_DIRECTION_DOWN, 5);
+  ensure_pan(overlay_gestures_.consume_left_pan, GESTURE_DIRECTION_LEFT, 5);
+  ensure_pan(overlay_gestures_.consume_all_pan, GESTURE_DIRECTION_ALL, 5);
+  ensure_pan(overlay_gestures_.native_pan, GESTURE_DIRECTION_ALL, 5);
+  if (!overlay_gestures_.velocity_tracker_pan) {
+    ensure_pan(overlay_gestures_.velocity_tracker_pan, GESTURE_DIRECTION_ALL,
+               0);
+    if (overlay_gestures_.velocity_tracker_pan) {
+      NodeManager::Instance().SetGestureEventTarget(
+          overlay_gestures_.velocity_tracker_pan, GESTURE_EVENT_ACTION_UPDATE,
+          this, EventDispatcher::velocity_tracker_pan_receiver_callback_);
+    }
+  }
+}
+
+void EventDispatcher::AddOverlayGesturesToRoot(UIBase* root) {
+  EnsureOverlayGestures();
+  auto* root_node = root->RootNode();
+  const std::pair<ArkUI_GestureRecognizer*, ArkUI_GesturePriority> gestures[] =
+      {
+          {overlay_gestures_.long_press, PARALLEL},
+          {overlay_gestures_.tap, PARALLEL},
+          {overlay_gestures_.block_outer_pan, PARALLEL},
+          {overlay_gestures_.consume_horizontal_pan, PRIORITY},
+          {overlay_gestures_.consume_vertical_pan, PRIORITY},
+          {overlay_gestures_.consume_up_pan, PRIORITY},
+          {overlay_gestures_.consume_right_pan, PRIORITY},
+          {overlay_gestures_.consume_down_pan, PRIORITY},
+          {overlay_gestures_.consume_left_pan, PRIORITY},
+          {overlay_gestures_.consume_all_pan, PRIORITY},
+          {overlay_gestures_.native_pan, PRIORITY},
+          {overlay_gestures_.velocity_tracker_pan, PARALLEL},
+      };
+  for (const auto& item : gestures) {
+    if (item.first) {
+      NodeManager::Instance().AddGestureToNode(
+          root_node, item.first, item.second, NORMAL_GESTURE_MASK);
+    }
+  }
+}
+
+void EventDispatcher::RemoveOverlayGesturesFromRoot(
+    ArkUI_NodeHandle root_node) {
+  ArkUI_GestureRecognizer* gestures[] = {
+      overlay_gestures_.long_press,
+      overlay_gestures_.tap,
+      overlay_gestures_.block_outer_pan,
+      overlay_gestures_.consume_horizontal_pan,
+      overlay_gestures_.consume_vertical_pan,
+      overlay_gestures_.consume_up_pan,
+      overlay_gestures_.consume_right_pan,
+      overlay_gestures_.consume_down_pan,
+      overlay_gestures_.consume_left_pan,
+      overlay_gestures_.consume_all_pan,
+      overlay_gestures_.native_pan,
+      overlay_gestures_.velocity_tracker_pan,
+  };
+  for (auto* gesture : gestures) {
+    if (gesture) {
+      NodeManager::Instance().RemoveGestureFromNode(root_node, gesture);
+    }
+  }
+}
+
+void EventDispatcher::DisposeOverlayGestures() {
+  ArkUI_GestureRecognizer** gestures[] = {
+      &overlay_gestures_.long_press,
+      &overlay_gestures_.tap,
+      &overlay_gestures_.block_outer_pan,
+      &overlay_gestures_.consume_horizontal_pan,
+      &overlay_gestures_.consume_vertical_pan,
+      &overlay_gestures_.consume_up_pan,
+      &overlay_gestures_.consume_right_pan,
+      &overlay_gestures_.consume_down_pan,
+      &overlay_gestures_.consume_left_pan,
+      &overlay_gestures_.consume_all_pan,
+      &overlay_gestures_.native_pan,
+      &overlay_gestures_.velocity_tracker_pan,
+  };
+  for (auto** gesture : gestures) {
+    if (*gesture) {
+      NodeManager::Instance().DisposeGesture(*gesture);
+      *gesture = nullptr;
+    }
+  }
+}
+
+bool EventDispatcher::IsOverlayGesture(ArkUI_GestureRecognizer* gesture) const {
+  if (!gesture) {
+    return false;
+  }
+  ArkUI_GestureRecognizer* gestures[] = {
+      overlay_gestures_.long_press,
+      overlay_gestures_.tap,
+      overlay_gestures_.block_outer_pan,
+      overlay_gestures_.consume_horizontal_pan,
+      overlay_gestures_.consume_vertical_pan,
+      overlay_gestures_.consume_up_pan,
+      overlay_gestures_.consume_right_pan,
+      overlay_gestures_.consume_down_pan,
+      overlay_gestures_.consume_left_pan,
+      overlay_gestures_.consume_all_pan,
+      overlay_gestures_.velocity_tracker_pan,
+      overlay_gestures_.native_pan,
+  };
+  for (auto* overlay_gesture : gestures) {
+    if (gesture == overlay_gesture) {
+      return true;
+    }
+  }
+  return false;
+}
+
+ArkUI_GestureInterruptResult EventDispatcher::GetOverlayGestureInterruptResult(
+    ArkUI_GestureRecognizer* gesture) {
+  if (!overlay_touch_consumed_) {
+    return GESTURE_INTERRUPT_RESULT_REJECT;
+  }
+  if (gesture == overlay_gestures_.long_press ||
+      gesture == overlay_gestures_.tap) {
+    return GESTURE_INTERRUPT_RESULT_CONTINUE;
+  }
+  if (gesture == overlay_gestures_.block_outer_pan) {
+    return ShouldBlockNativeEvent() ? GESTURE_INTERRUPT_RESULT_CONTINUE
+                                    : GESTURE_INTERRUPT_RESULT_REJECT;
+  }
+  if (gesture == overlay_gestures_.velocity_tracker_pan &&
+      ui_owner_->GetGestureArenaManager() != nullptr && ContainGestureNode()) {
+    return GESTURE_INTERRUPT_RESULT_CONTINUE;
+  }
+  if (gesture == overlay_gestures_.native_pan) {
+    return ShouldInterceptGesture() ? GESTURE_INTERRUPT_RESULT_CONTINUE
+                                    : GESTURE_INTERRUPT_RESULT_REJECT;
+  }
+  switch (ShouldConsumeSlideEvent()) {
+    case ConsumeSlideDirection::kHorizontal:
+      return gesture == overlay_gestures_.consume_horizontal_pan
+                 ? GESTURE_INTERRUPT_RESULT_CONTINUE
+                 : GESTURE_INTERRUPT_RESULT_REJECT;
+    case ConsumeSlideDirection::kVertical:
+      return gesture == overlay_gestures_.consume_vertical_pan
+                 ? GESTURE_INTERRUPT_RESULT_CONTINUE
+                 : GESTURE_INTERRUPT_RESULT_REJECT;
+    case ConsumeSlideDirection::kUp:
+      return gesture == overlay_gestures_.consume_up_pan
+                 ? GESTURE_INTERRUPT_RESULT_CONTINUE
+                 : GESTURE_INTERRUPT_RESULT_REJECT;
+    case ConsumeSlideDirection::kRight:
+      return gesture == overlay_gestures_.consume_right_pan
+                 ? GESTURE_INTERRUPT_RESULT_CONTINUE
+                 : GESTURE_INTERRUPT_RESULT_REJECT;
+    case ConsumeSlideDirection::kDown:
+      return gesture == overlay_gestures_.consume_down_pan
+                 ? GESTURE_INTERRUPT_RESULT_CONTINUE
+                 : GESTURE_INTERRUPT_RESULT_REJECT;
+    case ConsumeSlideDirection::kLeft:
+      return gesture == overlay_gestures_.consume_left_pan
+                 ? GESTURE_INTERRUPT_RESULT_CONTINUE
+                 : GESTURE_INTERRUPT_RESULT_REJECT;
+    case ConsumeSlideDirection::kAll:
+      return gesture == overlay_gestures_.consume_all_pan
+                 ? GESTURE_INTERRUPT_RESULT_CONTINUE
+                 : GESTURE_INTERRUPT_RESULT_REJECT;
+    default:
+      return GESTURE_INTERRUPT_RESULT_REJECT;
+  }
+}
+
 void EventDispatcher::AttachGesturesToRoot(UIBase* root) {
   if (ui_owner_->Destroyed() || !root->RootNode()) {
     return;
   }
   root_target_ = root->weak_from_this();
+  if (root->IsOverlayContent()) {
+    AddOverlayGesturesToRoot(root);
+    NodeManager::Instance().SetGestureInterrupterToNode(
+        root->RootNode(), EventDispatcher::event_gesture_interrupter_callback_,
+        this);
+    return;
+  }
   if (long_press_gesture_) {
     NodeManager::Instance().AddGestureToNode(
         root->RootNode(), long_press_gesture_, PARALLEL, NORMAL_GESTURE_MASK);
@@ -406,6 +621,13 @@ void EventDispatcher::DetachGesturesFromRoot(UIBase* root) {
   }
   auto* root_node = root->RootNode();
   NodeManager::Instance().SetGestureInterrupterToNode(root_node, nullptr);
+  if (root->IsOverlayContent()) {
+    RemoveOverlayGesturesFromRoot(root_node);
+    if (root_target_.lock().get() == root) {
+      root_target_.reset();
+    }
+    return;
+  }
   if (long_press_gesture_) {
     NodeManager::Instance().RemoveGestureFromNode(root_node,
                                                   long_press_gesture_);
@@ -1711,6 +1933,12 @@ bool EventDispatcher::CanConsumeTouchEventAtRoot(float point[2], UIBase* root) {
   if (!root || !root->RootNode()) {
     return false;
   }
+  auto record_overlay_touch_result = [this, root](bool can_consume) {
+    if (root->IsOverlayContent()) {
+      overlay_touch_consumed_ = can_consume;
+    }
+    return can_consume;
+  };
   ArkUI_IntOffset page_offset;
   OH_ArkUI_NodeUtils_GetPositionWithTranslateInScreen(root->RootNode(),
                                                       &page_offset);
@@ -1723,7 +1951,7 @@ bool EventDispatcher::CanConsumeTouchEventAtRoot(float point[2], UIBase* root) {
       base::FloatsLarger(page_y, node_point_y) ||
       base::FloatsLarger(node_point_x, page_x + root->width_) ||
       base::FloatsLarger(node_point_y, page_y + root->height_)) {
-    return false;
+    return record_overlay_touch_result(false);
   }
 
   point[0] = node_point_x - page_x;
@@ -1731,7 +1959,7 @@ bool EventDispatcher::CanConsumeTouchEventAtRoot(float point[2], UIBase* root) {
 
   EventTarget* active_target = root->HitTest(point);
   if (active_target == nullptr) {
-    return false;
+    return record_overlay_touch_result(false);
   }
   float target_point[2] = {point[0], point[1]};
   UIBase* target_ui =
@@ -1740,7 +1968,8 @@ bool EventDispatcher::CanConsumeTouchEventAtRoot(float point[2], UIBase* root) {
           : static_cast<UIBase*>(active_target->FirstUITarget());
   LynxUIHelper::ConvertPointFromAncestorToDescendant(target_point, root,
                                                      target_ui, point);
-  return !active_target->EventThrough(target_point);
+  return record_overlay_touch_result(
+      !active_target->EventThrough(target_point));
 }
 
 void EventDispatcher::UpdateNativeInteractionEnabledForTree(UIBase* root) {
