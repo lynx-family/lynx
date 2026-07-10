@@ -87,16 +87,23 @@ UIExposure::UIExposure(UIObserver* ui_observer, UIOwner* ui_owner)
     : ui_owner_(ui_owner), ui_observer_(ui_observer) {}
 
 void UIExposure::RegisterExposureCheckCallBack() {
+  if (observer_registered_) {
+    return;
+  }
   ui_observer_->AddUILayoutObserver(this);
   ui_observer_->AddUIScrollObserver(this);
   ui_observer_->AddUIPropsChangeObserver(this);
-  PostTask();
+  observer_registered_ = true;
 }
 
 void UIExposure::UnregisterExposureCheckCallBack() {
+  if (!observer_registered_) {
+    return;
+  }
   ui_observer_->RemoveUILayoutObserver(this);
   ui_observer_->RemoveUIScrollObserver(this);
   ui_observer_->RemoveUIPropsChangeObserver(this);
+  observer_registered_ = false;
 }
 
 void UIExposure::AddUIToExposedMap(UIBase* ui, std::string unique_id,
@@ -108,7 +115,7 @@ void UIExposure::AddUIToExposedMap(UIBase* ui, std::string unique_id,
       ui->Sign(), std::move(unique_id), ui->ExposureID(), ui->ExposureScene(),
       std::move(extra_data), ui->Dataset(), is_custom_event);
   if (exposed_ui_map_.size() == 1) {
-    RegisterExposureCheckCallBack();
+    UpdateExposureCheckScheduling(true);
   }
 }
 
@@ -119,11 +126,14 @@ void UIExposure::RemoveUIFromExposedMap(UIBase* ui, std::string unique_id) {
   RemoveCommonAncestorUI(ui);
   exposed_ui_map_.erase(ui->ExposureUIKey(std::move(unique_id), false));
   if (exposed_ui_map_.empty()) {
+    exposure_check_flag_ = false;
     UnregisterExposureCheckCallBack();
   }
 }
 
 void UIExposure::StopExposure(const lepus::Value& options) {
+  SetExposurePaused(kStoppedByAPI, true);
+  exposure_check_flag_ = false;
   UnregisterExposureCheckCallBack();
   bool is_send_event = true;
   if (options.IsObject()) {
@@ -140,11 +150,26 @@ void UIExposure::StopExposure(const lepus::Value& options) {
   }
 }
 
-void UIExposure::ResumeExposure() { RegisterExposureCheckCallBack(); }
+void UIExposure::ResumeExposure() {
+  SetExposurePaused(kStoppedByAPI, false);
+  UpdateExposureCheckScheduling(true);
+}
+
+void UIExposure::OnRootAttachedToViewTree() {
+  SetExposurePaused(kRootDetached, false);
+  UpdateExposureCheckScheduling(true);
+}
+
+void UIExposure::OnRootDetachedFromViewTree() {
+  SetExposurePaused(kRootDetached, true);
+  exposure_check_flag_ = false;
+  UnregisterExposureCheckCallBack();
+}
 
 void UIExposure::ExecExposureCheck() {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, UI_EXPOSURE_EXEC);
-  if (exposed_ui_map_.empty() || ui_owner_->Destroyed()) {
+  if (!CanRunExposureCheck()) {
+    exposure_check_flag_ = false;
     return;
   }
 
@@ -188,7 +213,7 @@ void UIExposure::ExecExposureCheck() {
 }
 
 void UIExposure::PostTask() {
-  if (exposure_check_flag_ || exposed_ui_map_.empty()) {
+  if (exposure_check_flag_ || !CanRunExposureCheck()) {
     return;
   }
   exposure_check_flag_ = true;
@@ -249,14 +274,10 @@ void OnVSync(const std::weak_ptr<UIExposure>& weak_this) {
 }
 
 void UIExposure::CheckOnUIThread() {
-  if (time_interval_for_lynxview_check_ <= 0 && !exposure_check_flag_) {
+  exposure_vsync_scheduled_ = false;
+  if (!CanRunExposureCheck() || !NeedExposureVSync()) {
     return;
   }
-
-  // request next tick first
-  ui_owner_->VSyncMonitor()->ScheduleVSyncSecondaryCallback(
-      reinterpret_cast<uintptr_t>(this),
-      [weak_this = weak_from_this()](int64_t, int64_t) { OnVSync(weak_this); });
 
   // do Exec if needed
   auto time_stamp = std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -268,6 +289,7 @@ void UIExposure::CheckOnUIThread() {
                            : time_interval_for_exposure_check_;
   // use the min duration as vsync check interval
   if (time_stamp - last_lynxview_check_time_ < check_duration) {
+    ScheduleUIExposureCheck();
     return;
   }
   last_lynxview_check_time_ = time_stamp;
@@ -276,18 +298,50 @@ void UIExposure::CheckOnUIThread() {
       exposure_check_flag_) {
     ExecExposureCheck();
   }
+  ScheduleUIExposureCheck();
 }
 
 void UIExposure::ScheduleUIExposureCheck() {
   // lynxview_check and exposure_check both need to request to new frame to
   // do checking
-  if (time_interval_for_lynxview_check_ > 0 || exposure_check_flag_) {
-    ui_owner_->VSyncMonitor()->ScheduleVSyncSecondaryCallback(
-        reinterpret_cast<uintptr_t>(this),
-        [weak_this = weak_from_this()](int64_t, int64_t) {
-          OnVSync(weak_this);
-        });
+  if (!CanRunExposureCheck() || !NeedExposureVSync() ||
+      exposure_vsync_scheduled_) {
+    return;
   }
+  exposure_vsync_scheduled_ = true;
+  ui_owner_->VSyncMonitor()->ScheduleVSyncSecondaryCallback(
+      reinterpret_cast<uintptr_t>(this),
+      [weak_this = weak_from_this()](int64_t, int64_t) { OnVSync(weak_this); });
+}
+
+void UIExposure::UpdateExposureCheckScheduling(bool request_check) {
+  if (request_check && !exposed_ui_map_.empty()) {
+    exposure_check_flag_ = true;
+  }
+  if (!CanRunExposureCheck()) {
+    UnregisterExposureCheckCallBack();
+    return;
+  }
+  RegisterExposureCheckCallBack();
+  ScheduleUIExposureCheck();
+}
+
+void UIExposure::SetExposurePaused(ExposurePauseReason reason, bool paused) {
+  if (paused) {
+    exposure_pause_reasons_ |= static_cast<uint8_t>(reason);
+    return;
+  }
+  exposure_pause_reasons_ = static_cast<uint8_t>(exposure_pause_reasons_ &
+                                                 ~static_cast<uint8_t>(reason));
+}
+
+bool UIExposure::CanRunExposureCheck() const {
+  return ui_owner_ && !ui_owner_->Destroyed() && !exposed_ui_map_.empty() &&
+         exposure_pause_reasons_ == 0;
+}
+
+bool UIExposure::NeedExposureVSync() const {
+  return time_interval_for_lynxview_check_ > 0 || exposure_check_flag_;
 }
 
 bool UIExposure::IsLynxViewChanged() {
@@ -327,14 +381,14 @@ void UIExposure::SetObserverFrameRate(const lepus::Value& options) {
     if (key.StdString() == "forExposureCheck") {
       if (0 < frequency && frequency <= 60) {
         time_interval_for_exposure_check_ = std::max(16, 1000 / frequency);
-        ScheduleUIExposureCheck();
+        UpdateExposureCheckScheduling(false);
       }
     } else if (key.StdString() == "forPageRect") {
       if (0 <= frequency && frequency <= 60) {
         time_interval_for_lynxview_check_ =
             frequency ? std::max(16, 1000 / frequency) : 0;
         if (time_interval_for_lynxview_check_) {
-          ScheduleUIExposureCheck();
+          UpdateExposureCheckScheduling(false);
         }
       }
     }

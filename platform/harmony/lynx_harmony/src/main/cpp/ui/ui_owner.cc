@@ -1052,6 +1052,14 @@ void UIOwner::StopExposure(const lepus::Value& options) {
 
 void UIOwner::ResumeExposure() { ui_observer_->ResumeExposure(); }
 
+void UIOwner::OnRootAttachedToViewTree() {
+  ui_observer_->OnRootAttachedToViewTree();
+}
+
+void UIOwner::OnRootDetachedFromViewTree() {
+  ui_observer_->OnRootDetachedFromViewTree();
+}
+
 void UIOwner::SetObserverFrameRate(const lepus::Value& options) {
   ui_observer_->SetObserverFrameRate(options);
 }

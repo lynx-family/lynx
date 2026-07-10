@@ -112,12 +112,10 @@ void UIRoot::OnNodeEvent(ArkUI_NodeEvent* event) {
     context_->NotifyUIScroll();
   } else if (OH_ArkUI_NodeEvent_GetEventType(event) == NODE_EVENT_ON_ATTACH) {
     is_root_attached_ = true;
-    context_->ResumeExposure();
+    context_->OnRootAttachedToViewTree();
   } else if (OH_ArkUI_NodeEvent_GetEventType(event) == NODE_EVENT_ON_DETACH) {
     is_root_attached_ = false;
-    auto dict = lepus::Dictionary::Create();
-    dict->SetValue("sendEvent", false);
-    context_->StopExposure(lepus::Value(dict));
+    context_->OnRootDetachedFromViewTree();
   } else if (OH_ArkUI_NodeEvent_GetEventType(event) ==
              NODE_ON_TOUCH_INTERCEPT) {
     context_->OnTouchEvent(OH_ArkUI_NodeEvent_GetInputEvent(event),
