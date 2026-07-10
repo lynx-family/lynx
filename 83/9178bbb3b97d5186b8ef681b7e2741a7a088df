@@ -1,0 +1,103 @@
+ai/skills/android-lynx-example/SKILL.md
+  h_7a1e47632c7d77 6
+  s_dc9224cd577457::t_35d40d6a9903a6 3-5
+ai/skills/e2e-test-run/SKILL.md
+  s_dc9224cd577457::t_a10c284db81ebd 5-7
+ai/skills/validate-css-ref/SKILL.md
+  s_dc9224cd577457::t_9c86a0ecf4644b 3,6-9,73
+ai/skills/ios-lynx-example/SKILL.md
+  s_dc9224cd577457::t_22833a0725702a 3-6
+.cq/pipelines/skill-quality-check.yml
+  s_dc9224cd577457::t_1b48b0533e1a86 1-34,36-37
+  s_dc9224cd577457::t_d9ebed0da2b843 35
+ai/skills/e2e-test-run/references/troubleshooting/index.md
+  s_dc9224cd577457::t_b0f8ef6975e4be 132
+ai/skills/react-lynx-example/SKILL.md
+  s_dc9224cd577457::t_42744d8e8d7ada 3,39,46,59,77,105
+ai/skills/e2e-demo-generate/SKILL.md
+  s_dc9224cd577457::t_ce9534f1c75bfe 2
+  s_dc9224cd577457::t_b6a27b14f69407 47,49,68,86-87,124,126,129,176,181,184,186
+  h_7a1e47632c7d77 23,93,136-137
+tools/lynx_tools/checkers/skill_quality_checker_test.py
+  s_dc9224cd577457::t_fc9afcf468094d 106,108-109,112-113
+  s_dc9224cd577457::t_f558a5dc93a499 16,136-154
+  s_dc9224cd577457::t_3aa7e66dac48c5 14,101-105,107,110-111
+  s_dc9224cd577457::t_05a309113514bc 17,123-135,155
+  s_dc9224cd577457::t_e3aa3e63dfeaa0 1-13,15,18-100,114-122,156-159
+ai/skills/lynx-runtime-alog/references/ios-runtime-alog.md
+  s_dc9224cd577457::t_8d6919391fe9dd 326
+ai/skills/commit-message/SKILL.md
+  s_dc9224cd577457::t_378acd9565773c 3-6,9-10,15
+.sqcconfig.jsonc
+  s_10e7d23b60974b::t_43caecbf7f349b 1-10,14-15
+  s_d187bd09f9fc50::t_53032e96547c2b 13
+  h_7a1e47632c7d77 11
+ai/skills/e2e-script-generate/SKILL.md
+  h_7a1e47632c7d77 3
+ai/skills/cpp-unittest/SKILL.md
+  s_dc9224cd577457::t_ce75b9e984259e 3
+ai/skills/harmony-lynx-example/SKILL.md
+  s_dc9224cd577457::t_7010a47c5646dd 3-6
+ai/skills/integration-workflow/SKILL.md
+  s_dc9224cd577457::t_5a25699d45df24 3
+ai/skills/commit-queue-usage-installer/SKILL.md
+  s_dc9224cd577457::t_90cab321f534c9 11-12
+.cq/workflows/pre-check.yml
+  s_dc9224cd577457::t_be7bde833a3ce4 111-118
+tools/lynx_tools/checkers/skill_quality_checker.py
+  s_dc9224cd577457::t_83111b44dd5a4d 23,101-110,177,189,285
+  s_dc9224cd577457::t_0428f788112858 91-100,176,182
+  s_dc9224cd577457::t_0d21b44dcfbd1d 47-50,191-213,222-225,272-275
+  s_dc9224cd577457::t_087d6d7988aa6f 1-22,32-46,51-66,79-90,111-146,156-175,178-181,183-188,190,214-221,226-271,288-296,298-301
+  s_dc9224cd577457::t_76d076e3e0bc54 24-25,69-71,73-78,147-155
+  s_dc9224cd577457::t_be47b19ccf14dc 67-68,72
+  s_dc9224cd577457::t_2f59c04e94e848 276-284,286-287,297
+  s_dc9224cd577457::t_58e5a50d58a12c 26-31
+ai/skills/lynx-ios-unittest/SKILL.md
+  s_dc9224cd577457::t_10172db9da07fc 3
+ai/skills/lynx-android-unittest/SKILL.md
+  s_dc9224cd577457::t_edca5308ab258a 3
+ai/skills/lynx-api-diff-check/SKILL.md
+  s_dc9224cd577457::t_e8f9dfb8606282 3
+ai/skills/lynx-open-source-review/SKILL.md
+  s_dc9224cd577457::t_080d820850b9dd 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "839178bbb3b97d5186b8ef681b7e2741a7a088df",
+  "prompts": {},
+  "humans": {
+    "h_7a1e47632c7d77": {
+      "author": "gaohanqing <gaohanqing@bytedance.com>"
+    }
+  },
+  "sessions": {
+    "s_10e7d23b60974b": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a4b68ebc2d0de288444bc4c",
+        "model": "gpt-5.4__dev"
+      },
+      "human_author": "gaohanqing <gaohanqing@bytedance.com>"
+    },
+    "s_d187bd09f9fc50": {
+      "agent_id": {
+        "tool": "trae-cue",
+        "id": "ai_tab-icr-a0df0545-4a16-48d0-99e1-a0d724043308",
+        "model": "default"
+      },
+      "human_author": "gaohanqing <gaohanqing@bytedance.com>"
+    },
+    "s_dc9224cd577457": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a4cc5dec2d0de288444c05d",
+        "model": "gpt-5.4__dev"
+      },
+      "human_author": "gaohanqing <gaohanqing@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}
