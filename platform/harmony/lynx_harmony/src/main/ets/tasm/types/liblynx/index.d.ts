@@ -269,6 +269,8 @@ export class UIOwner {
 
   canConsumeTouchEvent(x: number, y: number): boolean;
 
+  canConsumeTouchEventAtRoot(x: number, y: number, content: NativeContent): boolean;
+
   updateRootTarget(node: NativeContent): void;
 
   setLynxImageConfig(config?: Object): void;
