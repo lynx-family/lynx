@@ -41,7 +41,7 @@ napi_value PropBundleHarmony::GetJSProps() const {
 
 napi_value PropBundleHarmony::GetJSEventHandler() const {
   napi_value js_event_handler;
-  if (event_handler_ && !event_handler_->empty()) {
+  if (event_handler_) {
     napi_create_array(env_, &js_event_handler);
     napi_env env = env_;
     size_t index = 0;
