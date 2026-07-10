@@ -294,17 +294,15 @@ subspec_target("js_debug") {
   }
   deps = JSDebug_deps
   dependency = js_debug_dependency
-  if (defined(enable_rts_runtime) && enable_rts_runtime && !use_flatten_deps) {
+  if (defined(enable_rts_runtime) && enable_rts_runtime && is_debug &&
+      !use_flatten_deps) {
     pod_target_xcconfig.HEADER_SEARCH_PATHS += [ "//PODS_ROOT/PrimTS/src/" ]
     deps += [
       "../../../../../devtool/js_inspect/rts:rts_debug",
       "../../../../../devtool/js_inspect/rts:rts_debug_client",
       "../../../../../devtool/lynx_devtool/js_debug:rts_inspector_manager_factory",
     ]
-    dependency += [ [
-          "PrimTS/rtsvm-devtool",
-          "1.0.0-rc.5.1.binary",
-        ] ]
+    dependency += [ "PrimTS/rtsvm-devtool" ]
   }
   if (!use_flatten_deps) {
     dependency += [ "LynxDevtool/LynxCore" ]
