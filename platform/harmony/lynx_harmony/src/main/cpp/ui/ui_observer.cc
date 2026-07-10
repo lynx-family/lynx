@@ -81,6 +81,14 @@ void UIObserver::StopExposure(const lepus::Value& options) {
 
 void UIObserver::ResumeExposure() { ui_exposure_->ResumeExposure(); }
 
+void UIObserver::OnRootAttachedToViewTree() {
+  ui_exposure_->OnRootAttachedToViewTree();
+}
+
+void UIObserver::OnRootDetachedFromViewTree() {
+  ui_exposure_->OnRootDetachedFromViewTree();
+}
+
 void UIObserver::SetObserverFrameRate(const lepus::Value& options) {
   ui_exposure_->SetObserverFrameRate(options);
 }

@@ -411,6 +411,20 @@ void LynxContext::ResumeExposure() {
   ui_owner_->ResumeExposure();
 }
 
+void LynxContext::OnRootAttachedToViewTree() {
+  if (!ui_owner_) {
+    return;
+  }
+  ui_owner_->OnRootAttachedToViewTree();
+}
+
+void LynxContext::OnRootDetachedFromViewTree() {
+  if (!ui_owner_) {
+    return;
+  }
+  ui_owner_->OnRootDetachedFromViewTree();
+}
+
 void LynxContext::SetObserverFrameRate(const lepus::Value& options) {
   if (!ui_owner_) {
     return;
