@@ -4,11 +4,13 @@
 package com.lynx.xelement.scroll.coordinator
 
 import android.content.Context
+import android.graphics.Rect
 import android.view.MotionEvent
 import android.view.VelocityTracker
 import android.view.View
 import android.view.ViewConfiguration
 import android.view.ViewGroup
+import android.view.ViewTreeObserver
 import android.widget.OverScroller
 import androidx.core.view.NestedScrollingChild2
 import androidx.core.view.NestedScrollingChildHelper
@@ -25,6 +27,7 @@ class ScrollCoordinatorLayout(
 ) : ScrollCoordinatorToolbarLayout<ScrollCoordinatorAppBarLayout>(context), NestedScrollingChild2 {
   companion object {
     const val TAG = "ScrollCoordinatorLayout"
+    private const val NO_SLOT_BOUNDARY = -1
   }
 
   private var lastXIntercept = 0f
@@ -43,13 +46,37 @@ class ScrollCoordinatorLayout(
   private val scrollOffset = IntArray(2)
   private val scrollConsumed = IntArray(2)
   private val nestedOffsets = IntArray(2)
+  private val parentScrollConsumed = IntArray(2)
+  private val ancestorScrollConsumed = IntArray(2)
   private var dispatchOffsetUpdatesMethod: Method? = null
+  private var slotView: View? = null
+  private val visibleRect = Rect()
+  private val slotBounds = Rect()
+  private val candidateBounds = Rect()
+  private val slotLocation = IntArray(2)
+  private val candidateLocation = IntArray(2)
+  private var cachedScrollableView: View? = null
+  private var cachedNonScrollableRoot: View? = null
+  private var clampingSlotBoundary = false
+  private val slotScrollChangedListener =
+    ViewTreeObserver.OnScrollChangedListener { cachedNonScrollableRoot = null }
+
+  init {
+    appBarLayoutView.addOnOffsetChangedListener(
+      AppBarLayout.OnOffsetChangedListener { _, _ ->
+        if (!clampingSlotBoundary) {
+          clampNonScrollableSlotBoundary()
+        }
+      },
+    )
+  }
 
   open fun getCollapsingToolbarLayout(): CollapsingToolbarLayout {
     return getCollapsingToolbar()
   }
 
   override fun addSlotView(slotView: View) {
+    updateSlotView(slotView)
     val layoutParams =
       LayoutParams(
         ViewGroup.LayoutParams(
@@ -60,21 +87,40 @@ class ScrollCoordinatorLayout(
     layoutParams.behavior = AppBarLayout.ScrollingViewBehavior()
     slotView.layoutParams = layoutParams
     addView(slotView)
+    slotView.post {
+      if (this.slotView === slotView) {
+        invalidateSlotScrollCache()
+        clampNonScrollableSlotBoundary()
+      }
+    }
   }
 
   private fun scrollSelf(dy: Int): Int {
     val params = appBarLayoutView.layoutParams as? LayoutParams ?: return 0
     val behavior = params.behavior as? AppBarLayout.Behavior ?: return 0
+    val slotScrollRange = if (dy > 0) getNonScrollableSlotScrollRange() else NO_SLOT_BOUNDARY
+    if (slotScrollRange != NO_SLOT_BOUNDARY) {
+      clampToSlotBoundary(slotScrollRange)
+    }
     val currentOffset = behavior.topAndBottomOffset
-    val totalScrollRange = appBarLayoutView.totalScrollRange
+    val totalScrollRange =
+      if (slotScrollRange != NO_SLOT_BOUNDARY) slotScrollRange else appBarLayoutView.totalScrollRange
     val desiredOffset = currentOffset - dy
     val clampedOffset = desiredOffset.coerceIn(-totalScrollRange, 0)
     if (clampedOffset == currentOffset) {
+      if (dy > 0 && slotScrollRange != NO_SLOT_BOUNDARY && abs(currentOffset) >= slotScrollRange) {
+        if (!scroller.isFinished) {
+          stopOwnFling()
+        }
+        return dy
+      }
       return 0
     }
 
-    behavior.topAndBottomOffset = clampedOffset
-    dispatchOffsetUpdates()
+    withSlotBoundaryCallbackSuppressed {
+      behavior.topAndBottomOffset = clampedOffset
+      dispatchOffsetUpdates()
+    }
     return currentOffset - clampedOffset
   }
 
@@ -105,6 +151,197 @@ class ScrollCoordinatorLayout(
     if (!scroller.isFinished) {
       scroller.forceFinished(true)
     }
+  }
+
+  private fun getNonScrollableSlotScrollRange(scrollTarget: View? = null): Int {
+    val totalScrollRange = appBarLayoutView.totalScrollRange
+    val currentSlotView = slotView
+    if (currentSlotView == null || currentSlotView.height <= 0) {
+      if (totalScrollRange <= 0 || !getGlobalVisibleRect(visibleRect) || visibleRect.height() <= 0) {
+        return NO_SLOT_BOUNDARY
+      }
+      return minOf(
+        totalScrollRange,
+        (appBarLayoutView.height - visibleRect.height()).coerceAtLeast(0),
+      )
+    }
+    if (totalScrollRange <= 0 || appBarLayoutView.height <= currentSlotView.height) {
+      return NO_SLOT_BOUNDARY
+    }
+    val targetView = scrollTarget?.takeIf { isViewInSubtree(currentSlotView, it) } ?: currentSlotView
+    if (canScrollVerticallyInVisibleSubtree(currentSlotView, targetView)) {
+      return NO_SLOT_BOUNDARY
+    }
+    return minOf(totalScrollRange, appBarLayoutView.height - currentSlotView.height)
+  }
+
+  private fun updateSlotView(view: View?) {
+    if (slotView === view) {
+      return
+    }
+    slotView?.viewTreeObserver?.takeIf { it.isAlive }
+      ?.removeOnScrollChangedListener(slotScrollChangedListener)
+    slotView = view
+    cachedScrollableView = null
+    cachedNonScrollableRoot = null
+    view?.viewTreeObserver?.addOnScrollChangedListener(slotScrollChangedListener)
+  }
+
+  private fun invalidateSlotScrollCache() {
+    cachedNonScrollableRoot = null
+  }
+
+  private inline fun <T> withSlotBoundaryCallbackSuppressed(block: () -> T): T {
+    val wasClampingSlotBoundary = clampingSlotBoundary
+    clampingSlotBoundary = true
+    return try {
+      block()
+    } finally {
+      clampingSlotBoundary = wasClampingSlotBoundary
+    }
+  }
+
+  private fun clampToSlotBoundary(scrollRange: Int): Boolean {
+    val params = appBarLayoutView.layoutParams as? LayoutParams ?: return false
+    val behavior = params.behavior as? AppBarLayout.Behavior ?: return false
+    val minOffset = -scrollRange
+    if (behavior.topAndBottomOffset >= minOffset) {
+      return false
+    }
+    withSlotBoundaryCallbackSuppressed {
+      behavior.topAndBottomOffset = minOffset
+      dispatchOffsetUpdates()
+    }
+    return true
+  }
+
+  private fun isViewInSubtree(root: View, view: View): Boolean {
+    var current: View? = view
+    while (current != null) {
+      if (current === root) {
+        return true
+      }
+      current = current.parent as? View
+    }
+    return false
+  }
+
+  private fun canScrollVerticallyInVisibleSubtree(slot: View, root: View): Boolean {
+    if (cachedNonScrollableRoot === root) {
+      return false
+    }
+    updateSlotBounds(slot)
+    if (cachedScrollableView === root &&
+      isViewWithinSlotBounds(root) &&
+      canScrollVertically(root)
+    ) {
+      return true
+    }
+    cachedScrollableView?.let { cachedView ->
+      if (isViewInSubtree(root, cachedView) &&
+        isViewWithinSlotBounds(cachedView) &&
+        canScrollVertically(cachedView)
+      ) {
+        return true
+      }
+    }
+    cachedScrollableView = null
+    cachedScrollableView = findScrollableViewInVisibleSubtree(root)
+    cachedNonScrollableRoot = if (cachedScrollableView == null) root else null
+    return cachedScrollableView != null
+  }
+
+  private fun findScrollableViewInVisibleSubtree(view: View): View? {
+    if (!isViewWithinSlotBounds(view)) {
+      return null
+    }
+    if (canScrollVertically(view)) {
+      return view
+    }
+    if (view is ViewGroup) {
+      for (index in 0 until view.childCount) {
+        val scrollableView = findScrollableViewInVisibleSubtree(view.getChildAt(index))
+        if (scrollableView != null) {
+          return scrollableView
+        }
+      }
+    }
+    return null
+  }
+
+  private fun canScrollVertically(view: View): Boolean {
+    return view.canScrollVertically(1) || view.canScrollVertically(-1)
+  }
+
+  private fun updateSlotBounds(slot: View) {
+    slot.getLocationOnScreen(slotLocation)
+    slotBounds.set(
+      slotLocation[0],
+      slotLocation[1],
+      slotLocation[0] + slot.width,
+      slotLocation[1] + slot.height,
+    )
+  }
+
+  private fun isViewWithinSlotBounds(view: View): Boolean {
+    if (!view.isShown || view.width <= 0 || view.height <= 0) {
+      return false
+    }
+    view.getLocationOnScreen(candidateLocation)
+    candidateBounds.set(
+      candidateLocation[0],
+      candidateLocation[1],
+      candidateLocation[0] + view.width,
+      candidateLocation[1] + view.height,
+    )
+    return Rect.intersects(slotBounds, candidateBounds)
+  }
+
+  private fun consumeUpwardScrollAtSlotBoundary(
+    dy: Int,
+    consumed: IntArray,
+    scrollRange: Int,
+  ): Boolean {
+    if (dy <= 0 || scrollRange == NO_SLOT_BOUNDARY) {
+      return false
+    }
+    if (abs(appBarLayoutView.topAndBottomOffset) < scrollRange) {
+      return false
+    }
+    clampToSlotBoundary(scrollRange)
+    consumed[1] += dy
+    if (!scroller.isFinished) {
+      stopOwnFling()
+    }
+    return true
+  }
+
+  private fun getNestedPreScrollDy(dy: Int, scrollRange: Int): Int {
+    if (dy <= 0 || scrollRange == NO_SLOT_BOUNDARY) {
+      return dy
+    }
+    clampToSlotBoundary(scrollRange)
+    val remaining = scrollRange - abs(appBarLayoutView.topAndBottomOffset)
+    return dy.coerceAtMost(remaining.coerceAtLeast(0))
+  }
+
+  private fun clampNonScrollableSlotBoundary(): Boolean {
+    val scrollRange = getNonScrollableSlotScrollRange()
+    if (scrollRange == NO_SLOT_BOUNDARY) {
+      return false
+    }
+    return clampToSlotBoundary(scrollRange).also { clamped ->
+      if (clamped) {
+        stopOwnFling()
+        appBarLayoutView.stopFling()
+      }
+    }
+  }
+
+  override fun onLayout(changed: Boolean, left: Int, top: Int, right: Int, bottom: Int) {
+    super.onLayout(changed, left, top, right, bottom)
+    invalidateSlotScrollCache()
+    clampNonScrollableSlotBoundary()
   }
 
   fun stopFling() {
@@ -334,6 +571,9 @@ class ScrollCoordinatorLayout(
   }
 
   internal fun removeSlotView(view: View) {
+    if (slotView === view) {
+      updateSlotView(null)
+    }
     removeView(view)
   }
 
@@ -360,28 +600,68 @@ class ScrollCoordinatorLayout(
   }
 
   override fun onNestedPreScroll(target: View, dx: Int, dy: Int, consumed: IntArray, type: Int) {
+    val slotScrollRange =
+      if (dy > 0) getNonScrollableSlotScrollRange(target) else NO_SLOT_BOUNDARY
+    val preScrollDy = getNestedPreScrollDy(dy, slotScrollRange)
     if (nestedScrollAsChild) {
-      val parentConsumed = intArrayOf(0, 0)
-      super.onNestedPreScroll(target, dx, dy, parentConsumed, type)
-      val localConsumed = intArrayOf(0, 0)
-      dispatchNestedPreScroll(dx, dy, localConsumed, null)
-      consumed[0] = parentConsumed[0] + localConsumed[0]
-      consumed[1] = parentConsumed[1] + localConsumed[1]
+      parentScrollConsumed[0] = 0
+      parentScrollConsumed[1] = 0
+      withSlotBoundaryCallbackSuppressed {
+        super.onNestedPreScroll(target, dx, preScrollDy, parentScrollConsumed, type)
+      }
+      if (consumeUpwardScrollAtSlotBoundary(
+          dy - parentScrollConsumed[1],
+          parentScrollConsumed,
+          slotScrollRange,
+        )
+      ) {
+        consumed[0] = parentScrollConsumed[0]
+        consumed[1] = parentScrollConsumed[1]
+        return
+      }
+      ancestorScrollConsumed[0] = 0
+      ancestorScrollConsumed[1] = 0
+      dispatchNestedPreScroll(dx, dy, ancestorScrollConsumed, null)
+      consumed[0] = parentScrollConsumed[0] + ancestorScrollConsumed[0]
+      consumed[1] = parentScrollConsumed[1] + ancestorScrollConsumed[1]
     } else {
-      super.onNestedPreScroll(target, dx, dy, consumed, type)
+      withSlotBoundaryCallbackSuppressed {
+        super.onNestedPreScroll(target, dx, preScrollDy, consumed, type)
+      }
+      consumeUpwardScrollAtSlotBoundary(dy - consumed[1], consumed, slotScrollRange)
     }
   }
 
   override fun onNestedPreScroll(target: View, dx: Int, dy: Int, consumed: IntArray) {
+    val slotScrollRange =
+      if (dy > 0) getNonScrollableSlotScrollRange(target) else NO_SLOT_BOUNDARY
+    val preScrollDy = getNestedPreScrollDy(dy, slotScrollRange)
     if (nestedScrollAsChild) {
-      val parentConsumed = intArrayOf(0, 0)
-      super.onNestedPreScroll(target, dx, dy, parentConsumed)
-      val localConsumed = intArrayOf(0, 0)
-      dispatchNestedPreScroll(dx, dy, localConsumed, null)
-      consumed[0] = parentConsumed[0] + localConsumed[0]
-      consumed[1] = parentConsumed[1] + localConsumed[1]
+      parentScrollConsumed[0] = 0
+      parentScrollConsumed[1] = 0
+      withSlotBoundaryCallbackSuppressed {
+        super.onNestedPreScroll(target, dx, preScrollDy, parentScrollConsumed)
+      }
+      if (consumeUpwardScrollAtSlotBoundary(
+          dy - parentScrollConsumed[1],
+          parentScrollConsumed,
+          slotScrollRange,
+        )
+      ) {
+        consumed[0] = parentScrollConsumed[0]
+        consumed[1] = parentScrollConsumed[1]
+        return
+      }
+      ancestorScrollConsumed[0] = 0
+      ancestorScrollConsumed[1] = 0
+      dispatchNestedPreScroll(dx, dy, ancestorScrollConsumed, null)
+      consumed[0] = parentScrollConsumed[0] + ancestorScrollConsumed[0]
+      consumed[1] = parentScrollConsumed[1] + ancestorScrollConsumed[1]
     } else {
-      super.onNestedPreScroll(target, dx, dy, consumed)
+      withSlotBoundaryCallbackSuppressed {
+        super.onNestedPreScroll(target, dx, preScrollDy, consumed)
+      }
+      consumeUpwardScrollAtSlotBoundary(dy - consumed[1], consumed, slotScrollRange)
     }
   }
 
