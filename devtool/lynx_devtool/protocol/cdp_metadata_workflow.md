@@ -1,0 +1,340 @@
+# DevTool CDP Metadata Workflow
+
+## Workflow
+
+```mermaid
+flowchart LR
+    A[Native agent declarations] --> B[Metadata scanner]
+    B --> C[Generated manifest]
+    C --> D[Docs generator]
+    D --> E[Website MDX]
+    F[Custom YAML docs] --> D
+    G[CI check] --> B
+    G --> F
+    style B fill:#fff3e0,color:#e65100
+    style G fill:#bbdefb,color:#0d47a1
+    style D fill:#c8e6c9,color:#1a5e20
+```
+
+## Target Files
+
+- `devtool/lynx_devtool/protocol/cdp_manifest.generated.yaml`
+  - Generated inventory of locally supported CDP methods and future CDP entries such as events.
+  - Rewritten by the update script.
+  - Do not edit by hand.
+- `devtool/lynx_devtool/protocol/custom_cdp_docs/`
+  - Human-maintained docs data for Lynx-customized CDP entries.
+  - Contains one YAML file per documented custom method or event.
+  - Uses `Domain/methods/method.yaml` paths for methods, such as `DOM/methods/getDocumentWithBoxModel.yaml`.
+  - Future custom events should use `Domain/events/event.yaml` paths.
+- `devtool/lynx_devtool/protocol/cdp_upstream/protocol.json`
+  - Vendored Chrome DevTools Protocol schema.
+  - Updated deliberately, not fetched during normal CI.
+- `devtool/lynx_devtool/protocol/cdp_upstream/README.md`
+  - Source, version, license, and update notes for the vendored CDP schema.
+- `devtool/lynx_devtool/protocol/cdp_upstream/LICENSE`
+  - License text copied from the vendored CDP schema source.
+- `devtool/lynx_devtool/protocol/scripts/update_cdp_metadata.py`
+  - Scans source code and updates or checks generated metadata.
+- `devtool/lynx_devtool/protocol/scripts/generate_cdp_docs.py`
+  - Reads metadata and method docs, then generates website MDX.
+
+## Update Script Modes
+
+```bash
+tools/env.sh python3 devtool/lynx_devtool/protocol/scripts/update_cdp_metadata.py --write
+tools/env.sh python3 devtool/lynx_devtool/protocol/scripts/update_cdp_metadata.py --check
+```
+
+- `--write`
+  - Scans the code.
+  - Compares local methods with vendored standard CDP.
+  - Rewrites `cdp_manifest.generated.yaml`.
+- `--check`
+  - Runs the same scan.
+  - Builds expected generated metadata in memory.
+  - Fails if the checked-in generated YAML is stale.
+  - Prints the command developers should run to update it.
+
+## Source Scan Scope
+
+Scan non-forwarding native domain agents:
+
+- `devtool/lynx_devtool/agent/domain_agent/*.cc`
+- Exclude `*_unittest.cc`.
+- Extract entries matching `functions_map_["Domain.method"]`.
+- Store the declaration file as `source` for each extracted method.
+- Skip forwarded JS-engine domains.
+
+Scan domain registration:
+
+- `devtool/lynx_devtool/lynx_devtool_ng.cc`
+- Extract `RegisterAgent("Domain", ...)`.
+- Use registration location to mark domain scope:
+  - `global`
+  - `instance`
+  - `global-and-instance`
+
+Do not infer detailed API docs from C++ implementation bodies. Use the scan only for inventory and source links.
+Do not scan arbitrary string literals, engine implementation maps, or one-off protocol checks as supported CDP entries.
+If a method or event is not declared in a scanner-friendly place, treat it as unsupported by this metadata flow until the implementation adds a proper declaration.
+
+## Deferred Scope
+
+These are intentional v1 boundaries rather than task records.
+
+- Forwarded JS-engine CDP methods are outside `cdp_manifest.generated.yaml`.
+  - `Debugger`, `Runtime`, `HeapProfiler`, and `Profiler` are registered as DevTool domains, but their instance agents forward requests through `devtool_mediator_->DispatchJSMessage(...)`.
+  - `Debugger` may also contain local pre-hook methods before forwarding. Treat those entries as forwarding hooks, not as complete method support declarations.
+  - Do not emit methods from engine implementation maps, including `third_party/quickjs/src/src/inspector/protocols.cc` `GetDebugFunctionMap()`.
+  - Add engine-backed CDP methods only after the workflow has scanners for every supported JS engine and explicit per-engine availability metadata.
+- Structured lifecycle metadata is outside the v1 generated schema.
+  - Do not emit `lifecycle` in `cdp_manifest.generated.yaml`.
+  - Document compatibility, deprecation, experimental status, and behavior differences as prose in `custom_cdp_docs/`.
+  - Add structured lifecycle only together with an authoritative declaration contract and scanner validation rules.
+
+Future discussion reference:
+
+- Consider a lightweight CDP declaration framework so code declares support through a uniform DSL instead of the v1 heuristic scanner.
+- The declaration should be compile-checked but should not become a runtime registry. It can use macros around small enum values for `scope`, `engine`, and `lifecycle`.
+- Example shape:
+
+  ```cpp
+  LYNX_CDP_METHOD(Runtime, evaluate, kInstance, kQuickJS, kActive)
+  LYNX_CDP_METHOD(DOM, getDocument, kInstance, kEngineIndependent, kActive)
+  LYNX_CDP_EVENT(Runtime, consoleAPICalled, kInstance, kQuickJS, kActive)
+  ```
+
+- `origin` should still be generated by comparing declarations with the vendored upstream CDP schema, not declared in C++.
+- Native domain agents should declare their native CDP entries near their implementation; runtime-backed implementations such as QuickJS, V8, and future runtimes should declare only the entries they actually implement.
+- A future migration scanner should cross-check legacy implementation maps, such as `functions_map_`, against declarations so undeclared implemented methods are detected.
+- Header placement is unresolved. `devtool/lynx_devtool/protocol/cdp.h` is natural for Lynx DevTool agents, but it may be an awkward dependency for third-party runtime code such as QuickJS. `devtool/base_devtool/native/public/cdp_protocol.h` may be a better public, engine-neutral location.
+- The declaration header must be lightweight and dependency-neutral: enum values and macros only, with no JSON, dispatcher, `CDPDomainAgentBase`, or LynxDevTool mediator dependency.
+
+## Controlled Field Values
+
+Generated metadata enum fields are closed sets. The generator and `--check` mode must reject values not listed in this document. Adding a new value requires updating this section and the validator in the same change.
+
+- `origin`: `standard`, `lynx-extension`, `lynx-domain`
+- `scope`: `global`, `instance`, `global-and-instance`
+
+## Classification Rules
+
+Use `Domain.method` as the stable key for methods.
+If event scanning is added later, use the same origin values and keep entry type explicit in the generated metadata.
+
+- `origin: standard`
+  - The domain and method exist in vendored CDP.
+  - Website docs should link to the official CDP method or domain.
+- `origin: lynx-extension`
+  - The domain exists in vendored CDP, but the method does not.
+  - Website docs must be generated from `custom_cdp_docs/`.
+- `origin: lynx-domain`
+  - The domain does not exist in vendored CDP.
+  - Website docs must be generated from `custom_cdp_docs/`.
+
+## Generated Metadata Shape
+
+```yaml
+version: 1
+generatedFrom:
+  chromeDevToolsProtocol: cdp_upstream/protocol.json
+upstreamRoot: https://chromedevtools.github.io/devtools-protocol/tot
+domains:
+  - name: DOM
+    origin: standard
+    scope: instance
+    methods:
+      - name: getDocument
+        origin: standard
+        source: devtool/lynx_devtool/agent/domain_agent/inspector_dom_agent_ng.cc
+      - name: getDocumentWithBoxModel
+        origin: lynx-extension
+        source: devtool/lynx_devtool/agent/domain_agent/inspector_dom_agent_ng.cc
+  - name: Recording
+    origin: lynx-domain
+    scope: instance
+    methods:
+      - name: start
+        origin: lynx-domain
+        source: devtool/lynx_devtool/agent/domain_agent/inspector_recording_agent_ng.cc
+```
+
+Rules:
+
+- Do not store derived entry keys. Method keys are derived as `<domain.name>.<method.name>`.
+- Do not store per-domain or per-method upstream URLs.
+- Derive standard CDP links from `upstreamRoot`:
+  - Domain page: `<upstreamRoot>/<Domain>/`
+  - Method: `<upstreamRoot>/<Domain>/#method-<method>`
+  - Event, when event scanning is added: `<upstreamRoot>/<Domain>/#event-<event>`
+
+## Manual Docs Shape
+
+Each Lynx-customized method has one docs file:
+
+```text
+devtool/lynx_devtool/protocol/custom_cdp_docs/Memory/methods/getAllMemoryUsage.yaml
+```
+
+```yaml
+summary: Gets global Lynx memory usage across live registered Lynx instances.
+parameters:
+  - name: timeoutMs
+    type: number
+    optional: true
+    description: Non-negative timeout in milliseconds. `0` or omission lets the platform choose its default wait policy. Maximum accepted value is `300000`.
+returns:
+  - name: collectionStatus
+    type: string
+    enum: [completed, timeout]
+    description: Whether all expected instance fetchers completed.
+  - name: totalBytes
+    type: number
+    description: Global Lynx-attributed bytes, excluding `appBytes` and deduplicating shared background runtime groups.
+  - name: appBytes
+    type: number
+    description: Current app memory footprint sampled by the platform.
+  - name: instances
+    type: array
+    description: Completed instance list, sorted by `totalBytes` descending.
+events: []
+notes:
+  - Send this method to the global DevTool handler with session ID `-1`.
+  - This method differs from `Runtime.getHeapUsage`, which only reports JavaScript heap usage for one session/thread.
+examples:
+  - title: Use the platform default timeout
+    request:
+      id: 1
+      method: Memory.getAllMemoryUsage
+  - title: Use an explicit timeout
+    request:
+      id: 2
+      method: Memory.getAllMemoryUsage
+      params:
+        timeoutMs: 50000
+```
+
+Rules:
+
+- Every `lynx-extension` and `lynx-domain` method must have a matching entry.
+- `standard` methods do not need manual docs unless Lynx behavior differs from upstream.
+- Manual docs are keyed by path: `custom_cdp_docs/<Domain>/methods/<method>.yaml`.
+- Future custom events should use `custom_cdp_docs/<Domain>/events/<event>.yaml`.
+- A standard method may have a docs file only for Lynx-specific notes or behavior differences.
+- The docs generator should fail if a docs file has no matching metadata method.
+- The docs generator should fail if a required manual docs entry is missing.
+
+## CI Check
+
+Pre-submit should run:
+
+```bash
+tools/env.sh python3 devtool/lynx_devtool/protocol/scripts/update_cdp_metadata.py --check
+```
+
+Expected CI behavior:
+
+- Fail if code scan output differs from `cdp_manifest.generated.yaml`.
+- Fail if generated metadata contains custom methods missing from `custom_cdp_docs/`.
+- Do not fetch network resources.
+- Do not modify files.
+- Print the local update command.
+
+Failure message format:
+
+```text
+DevTool CDP metadata is stale.
+Run:
+  tools/env.sh python3 devtool/lynx_devtool/protocol/scripts/update_cdp_metadata.py --write
+Then review and commit:
+  devtool/lynx_devtool/protocol/cdp_manifest.generated.yaml
+  devtool/lynx_devtool/protocol/custom_cdp_docs/
+```
+
+## Developer Update Flow
+
+1. Change DevTool CDP implementation code.
+2. Run:
+
+   ```bash
+   tools/env.sh python3 devtool/lynx_devtool/protocol/scripts/update_cdp_metadata.py --write
+   ```
+
+3. Review generated diff in `cdp_manifest.generated.yaml`.
+4. If new custom methods were added, update `custom_cdp_docs/`.
+5. Run:
+
+   ```bash
+   tools/env.sh python3 devtool/lynx_devtool/protocol/scripts/update_cdp_metadata.py --check
+   ```
+
+6. Generate website docs:
+
+   ```bash
+   tools/env.sh python3 devtool/lynx_devtool/protocol/scripts/generate_cdp_docs.py \
+     --metadata devtool/lynx_devtool/protocol/cdp_manifest.generated.yaml \
+     --docs-dir devtool/lynx_devtool/protocol/custom_cdp_docs \
+     --out [OUT_PATH]
+   ```
+
+   `[OUT_PATH]` is the target website docs directory or a temporary output directory for manual review.
+
+7. Review website MDX diff.
+8. Run the website docs build or lint command from the website repo.
+
+## Website Generation Rules
+
+Standard methods:
+
+- Render in compact tables grouped by domain.
+- Link to official CDP docs by deriving URLs from `upstreamRoot`.
+- Do not duplicate official parameter and return docs.
+
+Lynx-customized methods and standard methods with Lynx-specific notes:
+
+- Render manual docs from `custom_cdp_docs/`.
+- Include summary, parameters, return object, events, notes, examples, and known behavior differences when present.
+
+Domain page structure:
+
+- Overview page lists all supported domains.
+- Each domain section separates:
+  - Standard CDP methods
+  - Lynx-customized methods
+
+## Vendored CDP Update Flow
+
+1. Download the desired Chrome DevTools Protocol schema outside normal CI.
+2. Replace:
+
+   ```text
+   devtool/lynx_devtool/protocol/cdp_upstream/protocol.json
+   ```
+
+3. Run:
+
+   ```bash
+   tools/env.sh python3 devtool/lynx_devtool/protocol/scripts/update_cdp_metadata.py --write
+   tools/env.sh python3 devtool/lynx_devtool/protocol/scripts/update_cdp_metadata.py --check
+   ```
+
+4. Review methods whose origin changed.
+5. Update docs data if a method moves between standard and custom classifications.
+
+## Availability Notes
+
+Generated metadata reflects method implementation in source code. It does not model compile-time configuration, runtime configuration, session state, parameter validation, or method-specific error behavior.
+
+When conditional availability, deprecation, or behavior differences matter to users, document them in the matching file under `custom_cdp_docs/`.
+
+Known examples:
+
+- `Recording.start`, `Recording.end`
+  - Note in manual docs that recorder support must be enabled in the current runtime.
+- `Replay.start`, `Replay.end`
+  - Note in manual docs that replay support must be enabled in the current runtime.
+- `Log.enable`, `Log.disable`, `Log.clear`
+  - Note in manual docs that messages with `sessionId` return not implemented.
+- `Template.templateConfigInfo`
+  - Note in manual docs that this is a compatibility stub returning an empty result because config info was removed.
