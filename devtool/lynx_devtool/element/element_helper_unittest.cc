@@ -627,6 +627,58 @@ TEST_F(ElementHelperTest, SetStyleTextsTest) {
 }
 
 TEST_F(ElementHelperTest,
+       GetInlineStyleOfNodeExcludesMatchedSelectorVariables) {
+  // Regression test for the DevTool Styles panel showing wrong / struck-through
+  // CSS variable values. Variables resolved from matched selector rules (e.g.
+  // .light { --doubao-color: red }) live in css_variables_map(), and the var()
+  // names a node references live in css_variable_related(). Neither is an
+  // inline declaration. Surfacing them as inline styles fabricates a
+  // highest-priority inline declaration that incorrectly strikes through the
+  // real matched rule and can display a stale value when the matched rule
+  // changes. Only variables declared in the element's own inline style
+  // (css_variable_from_js) belong in the inline style payload.
+  auto element = manager->CreateFiberElement("view");
+  auto* node = element->data_model();
+  ASSERT_NE(node, nullptr);
+
+  // Matched selector variable, as produced by DidCollectMatchedRules for
+  // `.light { --doubao-color: red }`.
+  node->UpdateCSSVariable(lynx::base::String("--doubao-color"),
+                          lynx::base::String("red"));
+  // var() reference tracking for invalidation (a dependency, not a
+  // declaration).
+  node->AddCSSVariableRelated(lynx::base::String("--doubao-color"),
+                              lynx::base::String("red"));
+  // Genuine inline-declared custom property, e.g. style="--inline-brand: blue".
+  node->UpdateCSSInlineVariables(lynx::base::String("--inline-brand"),
+                                 lynx::base::String("blue"));
+
+  lynx::devtool::ElementInspector::InitForInspector(
+      std::make_tuple(element.get()));
+
+  Json::Value inline_style =
+      lynx::devtool::ElementHelper::GetInlineStyleOfNode(element.get());
+
+  bool found_inline_brand = false;
+  bool found_doubao = false;
+  for (const auto& prop : inline_style["cssProperties"]) {
+    const std::string name = prop["name"].asString();
+    if (name == "--inline-brand") {
+      found_inline_brand = true;
+      EXPECT_EQ(prop["value"].asString(), "blue");
+    } else if (name == "--doubao-color") {
+      found_doubao = true;
+    }
+  }
+  // The genuinely inline variable is kept; the matched-rule variable is not
+  // re-emitted as an inline style.
+  EXPECT_TRUE(found_inline_brand);
+  EXPECT_FALSE(found_doubao);
+  EXPECT_EQ(inline_style["cssText"].asString().find("--doubao-color"),
+            std::string::npos);
+}
+
+TEST_F(ElementHelperTest,
        SetInlineStyleTextsNewPipelineSyncsAndClearsInlineVariables) {
   manager->enable_new_styling_pipeline_ = true;
   lynx::base::AutoReset<bool> css_inline_config(
