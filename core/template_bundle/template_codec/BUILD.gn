@@ -25,6 +25,8 @@ lynx_core_source_set("lepus_compile") {
     "//${lynx_dir}/core/template_bundle/template_codec/binary_encoder/template_binary_writer.h",
     "binary_encoder/encoder.h",
     "binary_encoder/template_binary_writer_impl.cc",
+    "generator/meta_factory.cc",
+    "generator/meta_factory.h",
     "generator/template_parser.cc",
     "generator/template_parser.h",
   ]
@@ -34,6 +36,8 @@ lynx_core_source_set("lepus_compile") {
     exclude_configs += [ "//build/config/compiler:no_rtti" ]
     configs = [ "//build/config/compiler:rtti" ]
   }
+
+  deps = [ "../../../third_party/rapidjson:rapidjson" ]
 }
 
 lynx_core_source_set("magic_number") {

@@ -32,6 +32,7 @@
 #include "core/runtime/lepus/exception.h"
 #include "core/runtime/lepusng/quick_context.h"
 #include "core/template_bundle/template_codec/binary_encoder/style_object_encoder/style_object_parser.h"
+#include "core/template_bundle/template_codec/generator/meta_factory.h"
 #include "core/template_bundle/template_codec/generator/source_generator.h"
 #include "core/template_bundle/template_codec/template_binary.h"
 
@@ -259,11 +260,50 @@ void TemplateBinaryWriter::EncodeCustomSection() {
           }
           case CustomSectionEncodingType::CSS: {
             const auto& json_content = it.value["content"];
-            if (json_content.IsObject() && json_content.HasMember("ruleList") &&
-                json_content["ruleList"].IsArray()) {
-              auto fragment = css_parser_->ParseExternalFragment(
-                  json_content["ruleList"], it.name.GetString());
-              auto buffer = EncodeCSSFragmentToVector(fragment.get());
+            if (json_content.IsObject()) {
+              constexpr char kCustomSectionOptions[] = "options";
+              const auto options_iter =
+                  json_content.FindMember(kCustomSectionOptions);
+              const bool has_options = options_iter != json_content.MemberEnd();
+              if (has_options && !options_iter->value.IsObject()) {
+                throw lepus::CompileException(
+                    "custom section options must be an object");
+              }
+
+              if (!json_content.HasMember("ruleList") ||
+                  !json_content["ruleList"].IsArray()) {
+                break;
+              }
+
+              std::vector<uint8_t> buffer;
+              if (has_options) {
+                rapidjson::Document options;
+                options.CopyFrom(options_iter->value, options.GetAllocator());
+                auto encoder_options = MetaFactory::GetEncoderOptions(options);
+                if (!encoder_options.parser_result_) {
+                  throw lepus::CompileException(
+                      encoder_options.err_msg_.c_str());
+                }
+
+                CSSParser css_parser(encoder_options.compile_options_);
+                auto fragment = css_parser.ParseExternalFragment(
+                    json_content["ruleList"], it.name.GetString());
+                TemplateBinaryWriter writer(
+                    mts_context(), ctx_type_, silence_, parser_, &css_parser,
+                    style_object_parser_, air_styles_,
+                    element_template_parsed_styles_, element_template_,
+                    binary_info_.lepus_version_, binary_info_.cli_version_,
+                    app_type_, config_, lepus_code_, lepus_code_filename_,
+                    lepus_chunk_code_, encoder_options.compile_options_,
+                    trial_options_, template_info_, js_code_, custom_sections_,
+                    need_lepus_debug_info_);
+                buffer = writer.EncodeCSSFragmentToVector(fragment.get());
+                css_parser_->AppendCSSDiagnostics(css_parser);
+              } else {
+                auto fragment = css_parser_->ParseExternalFragment(
+                    json_content["ruleList"], it.name.GetString());
+                buffer = EncodeCSSFragmentToVector(fragment.get());
+              }
               const size_t length = buffer.size();
               std::unique_ptr<uint8_t[]> ptr;
               if (length > 0) {

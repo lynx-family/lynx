@@ -1,4 +1,7 @@
 # CHANGELOG
+# 0.0.47
+* Encode custom section CSS with its embedded compiler options
+
 # 0.0.46
 * add lepusng bytecode optimization
 

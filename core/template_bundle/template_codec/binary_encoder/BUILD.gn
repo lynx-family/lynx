@@ -31,5 +31,8 @@ lynx_core_source_set("binary_encoder") {
     exclude_configs += [ "//build/config/compiler:no_rtti" ]
     configs = [ "//build/config/compiler:rtti" ]
   }
-  deps = [ "../../../../third_party/rapidjson:rapidjson" ]
+  deps = [
+    "../../../../third_party/rapidjson:rapidjson",
+    "../generator:generator",
+  ]
 }

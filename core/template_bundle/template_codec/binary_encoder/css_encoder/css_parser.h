@@ -51,6 +51,8 @@ class CSSParser {
 
   std::string GetCSSDiagnosticsJson() const;
 
+  void AppendCSSDiagnostics(const CSSParser &parser);
+
   const std::vector<Diagnostic> &css_diagnostics() const {
     return css_diagnostics_;
   }
