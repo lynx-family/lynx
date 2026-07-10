@@ -218,6 +218,12 @@ std::string CSSParser::GetCSSDiagnosticsJson() const {
   return base::ToJson(doc);
 }
 
+void CSSParser::AppendCSSDiagnostics(const CSSParser &parser) {
+  css_diagnostics_.insert(css_diagnostics_.end(),
+                          parser.css_diagnostics_.begin(),
+                          parser.css_diagnostics_.end());
+}
+
 void CSSParser::ExtractLoc(const rapidjson::Value &obj, const char *loc_key,
                            int &line, int &column) {
   if (!obj.HasMember(loc_key) || !obj[loc_key].IsObject()) {
