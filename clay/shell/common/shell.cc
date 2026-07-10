@@ -58,6 +58,9 @@
 #if defined(OS_WIN) || defined(OS_MAC)
 #include "clay/memory/memory_pressure_monitor.h"
 #endif
+#if defined(OS_ANDROID) || defined(OS_IOS)
+#include "clay/common/trail_settings.h"
+#endif
 #include "base/include/fml/task_runner.h"
 #include "clay/net/loader/resource_loader_intercept.h"
 #include "clay/ui/platform/keyboard_types.h"
@@ -586,9 +589,11 @@ bool Shell::Setup(std::unique_ptr<PlatformView> platform_view,
           output_surface->CreateMainGrContext();
           clay::GrContextPtr main_context = output_surface->GetMainGrContext();
           if (main_context) {
-#ifdef ENABLE_SKITY
-            output_surface->PrecompileDefaultSkityShaders();
-#endif  // ENABLE_SKITY
+#if defined(ENABLE_SKITY) && (defined(OS_ANDROID) || defined(OS_IOS))
+            if (clay::setting::CLAY_PRECOMPILE_SKITY_SHADERS.value()) {
+              output_surface->PrecompileDefaultSkityShaders();
+            }
+#endif
             if (unref_queue) {
               unref_queue->SetContext(main_context);
             }
