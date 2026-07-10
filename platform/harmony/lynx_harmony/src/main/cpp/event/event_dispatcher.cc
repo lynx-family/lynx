@@ -318,9 +318,8 @@ void EventDispatcher::InitTouchEnv(const ArkUI_UIInputEvent* event) {
     if (!IsActiveFinger(event, i)) {
       continue;
     }
-    float page_point[2] = {OH_ArkUI_PointerEvent_GetXByIndex(event, i),
-                           OH_ArkUI_PointerEvent_GetYByIndex(event, i)};
-    GetPagePoint(page_point, page_point);
+    float page_point[2] = {0.f};
+    GetEventPagePoint(page_point, event, i);
     EventTarget* best_hittest_target = FindTarget(page_point);
     if (best_hittest_target == nullptr) {
       continue;
@@ -432,9 +431,8 @@ void EventDispatcher::OnTouchMove(const ArkUI_UIInputEvent* event) {
   float pre_page_point[2] = {0.f};
   for (size_t i = 0; i < num; ++i) {
     int pointer_id = OH_ArkUI_PointerEvent_GetPointerId(event, i);
-    float page_point[2] = {OH_ArkUI_PointerEvent_GetXByIndex(event, i),
-                           OH_ArkUI_PointerEvent_GetYByIndex(event, i)};
-    GetPagePoint(page_point, page_point);
+    float page_point[2] = {0.f};
+    GetEventPagePoint(page_point, event, i);
     if (auto touch_target = active_target_finger_map_.find(pointer_id);
         touch_target != active_target_finger_map_.end()) {
       touch_target->second.GetPrePoint(pre_page_point);
@@ -581,6 +579,16 @@ void EventDispatcher::GetPagePoint(float page_point[2], float node_point[2]) {
   page_point[1] = node_point_y - page_offset.y / scaled_density;
 }
 
+void EventDispatcher::GetEventPagePoint(float page_point[2],
+                                        const ArkUI_UIInputEvent* event,
+                                        size_t index, float point_scale) {
+  // ArkUI events are local to the receiving root. GetPagePoint retains the
+  // coordinate conversion for events forwarded by the legacy overlay path.
+  page_point[0] = OH_ArkUI_PointerEvent_GetXByIndex(event, index) / point_scale;
+  page_point[1] = OH_ArkUI_PointerEvent_GetYByIndex(event, index) / point_scale;
+  GetPagePoint(page_point, page_point);
+}
+
 void EventDispatcher::AddTargetTouchMap(lepus::Value& target_touch_map,
                                         const ArkUI_UIInputEvent* event) {
   auto dict = target_touch_map.Table();
@@ -598,9 +606,8 @@ void EventDispatcher::AddTargetTouchMap(lepus::Value& target_touch_map,
       }
 
       std::string target_sign = std::to_string(active_target->Sign());
-      float page_point[2] = {OH_ArkUI_PointerEvent_GetXByIndex(event, i),
-                             OH_ArkUI_PointerEvent_GetYByIndex(event, i)};
-      GetPagePoint(page_point, page_point);
+      float page_point[2] = {0.f};
+      GetEventPagePoint(page_point, event, i);
       float target_point[2] = {page_point[0], page_point[1]};
       GetTargetPoint(active_target, target_point, page_point);
       float client_point[2] = {
@@ -907,10 +914,8 @@ void EventDispatcher::DispatchSingleTouchEvent(
       (name == TouchEvent::TAP || name == TouchEvent::LONGPRESS)
           ? ui_owner_->Context()->ScaledDensity()
           : 1;
-  float page_point[2] = {
-      OH_ArkUI_PointerEvent_GetXByIndex(event, 0) / scaled_density,
-      OH_ArkUI_PointerEvent_GetYByIndex(event, 0) / scaled_density};
-  GetPagePoint(page_point, page_point);
+  float page_point[2] = {0.f};
+  GetEventPagePoint(page_point, event, 0, scaled_density);
   float target_point[2] = {page_point[0], page_point[1]};
   GetTargetPoint(active_target, target_point, page_point);
   float client_point[2] = {
@@ -1047,11 +1052,18 @@ void EventDispatcher::UpdateRootTarget(UIBase* root) {
 }
 
 bool EventDispatcher::CanConsumeTouchEvent(float point[2]) {
-  if (root_target_.expired() || ui_owner_->Destroyed()) {
+  auto root = root_target_.lock();
+  return CanConsumeTouchEventAtRoot(point, root.get());
+}
+
+bool EventDispatcher::CanConsumeTouchEventAtRoot(float point[2], UIBase* root) {
+  if (ui_owner_->Destroyed()) {
     return false;
   }
 
-  auto root = root_target_.lock();
+  auto retained_root =
+      root ? root->weak_from_this().lock() : root_target_.lock();
+  root = retained_root.get();
   if (!root || !root->RootNode()) {
     return false;
   }
@@ -1073,7 +1085,7 @@ bool EventDispatcher::CanConsumeTouchEvent(float point[2]) {
   point[0] = node_point_x - page_x;
   point[1] = node_point_y - page_y;
 
-  EventTarget* active_target = FindTarget(point);
+  EventTarget* active_target = root->HitTest(point);
   if (active_target == nullptr) {
     return false;
   }
@@ -1082,7 +1094,7 @@ bool EventDispatcher::CanConsumeTouchEvent(float point[2]) {
       active_target->HasUI()
           ? static_cast<UIBase*>(active_target)
           : static_cast<UIBase*>(active_target->FirstUITarget());
-  LynxUIHelper::ConvertPointFromAncestorToDescendant(target_point, root.get(),
+  LynxUIHelper::ConvertPointFromAncestorToDescendant(target_point, root,
                                                      target_ui, point);
   return !active_target->EventThrough(target_point);
 }

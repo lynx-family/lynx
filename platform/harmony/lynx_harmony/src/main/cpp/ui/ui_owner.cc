@@ -53,6 +53,8 @@ napi_value UIOwner::Init(napi_env env, napi_value exports) {
       DECLARE_NAPI_FUNCTION("keyboardStatusChanged", KeyboardStatusChanged),
 
       DECLARE_NAPI_FUNCTION("canConsumeTouchEvent", CanConsumeTouchEvent),
+      DECLARE_NAPI_FUNCTION("canConsumeTouchEventAtRoot",
+                            CanConsumeTouchEventAtRoot),
       DECLARE_NAPI_FUNCTION("updateRootTarget", UpdateRootTarget),
       DECLARE_NAPI_FUNCTION("onEnterForeground", OnEnterForeground),
       DECLARE_NAPI_FUNCTION("onEnterBackground", OnEnterBackground),
@@ -809,6 +811,36 @@ napi_value UIOwner::CanConsumeTouchEvent(napi_env env,
   return consumed_touch_event;
 }
 
+napi_value UIOwner::CanConsumeTouchEventAtRoot(napi_env env,
+                                               napi_callback_info info) {
+  UIOwner* owner = nullptr;
+  napi_value js_this = nullptr;
+  size_t argc = 3;
+  napi_value argv[argc];
+  napi_get_cb_info(env, info, &argc, argv, &js_this, nullptr);
+  napi_unwrap(env, js_this, reinterpret_cast<void**>(&owner));
+  if (!owner) {
+    return nullptr;
+  }
+
+  float point[2] = {0.f};
+  double temp_value = 0.0;
+  napi_get_value_double(env, argv[0], &temp_value);
+  point[0] = static_cast<float>(temp_value);
+  napi_get_value_double(env, argv[1], &temp_value);
+  point[1] = static_cast<float>(temp_value);
+
+  NativeNodeContent* content{nullptr};
+  napi_unwrap(env, argv[2], reinterpret_cast<void**>(&content));
+
+  napi_value consumed_touch_event;
+  napi_get_boolean(env,
+                   owner->CanConsumeTouchEventAtRoot(
+                       point, content ? content->UI() : nullptr),
+                   &consumed_touch_event);
+  return consumed_touch_event;
+}
+
 napi_value UIOwner::UpdateRootTarget(napi_env env, napi_callback_info info) {
   size_t argc = 1;
   napi_value argv[argc];
@@ -891,6 +923,10 @@ napi_value UIOwner::SetLynxImageConfig(napi_env env, napi_callback_info info) {
 
 bool UIOwner::CanConsumeTouchEvent(float point[2]) {
   return event_dispatcher_->CanConsumeTouchEvent(point);
+}
+
+bool UIOwner::CanConsumeTouchEventAtRoot(float point[2], UIBase* root) {
+  return event_dispatcher_->CanConsumeTouchEventAtRoot(point, root);
 }
 
 void UIOwner::UpdateRootTarget(UIBase* root) {

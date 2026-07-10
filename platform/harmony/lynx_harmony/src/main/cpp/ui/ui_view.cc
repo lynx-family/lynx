@@ -42,12 +42,13 @@ void UIView::OnNodeEvent(ArkUI_NodeEvent* event) {
   if (IsOverlayContent()) {
     if (OH_ArkUI_NodeEvent_GetEventType(event) == NODE_ON_TOUCH_INTERCEPT) {
       auto* input_event = OH_ArkUI_NodeEvent_GetInputEvent(event);
-      float window_x = OH_ArkUI_PointerEvent_GetWindowX(input_event);
-      float window_y = OH_ArkUI_PointerEvent_GetWindowY(input_event);
+      float display_x = OH_ArkUI_PointerEvent_GetDisplayX(input_event);
+      float display_y = OH_ArkUI_PointerEvent_GetDisplayY(input_event);
       if (context_ && context_->GetUIOwner()) {
-        float point[2] = {window_x, window_y};
-        context_->GetUIOwner()->UpdateRootTarget(this);
-        is_consume_event_ = context_->GetUIOwner()->CanConsumeTouchEvent(point);
+        // Hit testing rebases screen coordinates against the root position.
+        float point[2] = {display_x, display_y};
+        is_consume_event_ =
+            context_->GetUIOwner()->CanConsumeTouchEventAtRoot(point, this);
       }
     } else if (OH_ArkUI_NodeEvent_GetEventType(event) == NODE_TOUCH_EVENT) {
       if (is_consume_event_) {
