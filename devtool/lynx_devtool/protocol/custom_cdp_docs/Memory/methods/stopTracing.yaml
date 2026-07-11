@@ -1,4 +1,21 @@
-summary: Initial documentation entry for the Lynx-custom Memory.stopTracing CDP method.
+summary: Stops platform memory tracing for Lynx memory diagnostics.
+parameters: []
+returns:
+  - name: result
+    type: object
+    description: Empty object on success.
+events: []
 notes:
   - Registered in devtool/lynx_devtool/agent/domain_agent/inspector_memory_agent.cc.
-  - Complete source-backed request, response, event, and example docs before using this entry for website generation.
+  - Use the global DevTool handler with session ID -1 when controlling app-wide memory tracing.
+  - Dispatches through LynxGlobalDevToolMediator to GlobalDevToolPlatformFacade.StopMemoryTracing.
+  - Android and Darwin unregister the DevTool memory controller from platform memory reporting.
+  - The generic embedder implementation is a no-op until the embedder supplies a memory bridge.
+examples:
+  - title: Stop memory tracing
+    request:
+      id: 1
+      method: Memory.stopTracing
+    response:
+      id: 1
+      result: {}

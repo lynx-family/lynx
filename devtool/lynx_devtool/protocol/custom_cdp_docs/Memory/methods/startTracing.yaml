@@ -1,4 +1,21 @@
-summary: Initial documentation entry for the Lynx-custom Memory.startTracing CDP method.
+summary: Starts platform memory tracing for Lynx memory diagnostics.
+parameters: []
+returns:
+  - name: result
+    type: object
+    description: Empty object on success.
+events: []
 notes:
   - Registered in devtool/lynx_devtool/agent/domain_agent/inspector_memory_agent.cc.
-  - Complete source-backed request, response, event, and example docs before using this entry for website generation.
+  - Use the global DevTool handler with session ID -1 when controlling app-wide memory tracing.
+  - Dispatches through LynxGlobalDevToolMediator to GlobalDevToolPlatformFacade.StartMemoryTracing.
+  - Android and Darwin register the DevTool memory controller as a platform memory reporter.
+  - The generic embedder implementation is a no-op until the embedder supplies a memory bridge.
+examples:
+  - title: Start memory tracing
+    request:
+      id: 1
+      method: Memory.startTracing
+    response:
+      id: 1
+      result: {}

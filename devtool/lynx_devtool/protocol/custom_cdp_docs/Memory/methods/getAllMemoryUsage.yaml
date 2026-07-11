@@ -1,25 +1,110 @@
-summary: Gets global Lynx memory usage across live registered Lynx instances.
+summary: Queries global Lynx-attributed memory usage across live registered Lynx instances.
 parameters:
   - name: timeoutMs
-    type: number
+    type: integer
     optional: true
-    description: Non-negative timeout in milliseconds. Omit the field to let the platform choose its default wait policy.
+    minimum: 0
+    maximum: 300000
+    description: Non-negative integer timeout in milliseconds. Omit the field or pass 0 to let the platform bridge choose its default wait policy. Android and Darwin currently use 2000 ms when the bridge receives 0.
 returns:
+  - name: collectionStartMs
+    type: integer
+    description: Wall-clock collection start time in milliseconds, as reported by the platform memory collector.
   - name: collectionStatus
     type: string
-    description: Collection result status reported by the global memory usage implementation.
+    enum: [completed, timeout]
+    description: Whether all expected instance fetchers completed or the timeout produced a partial result.
+  - name: collectionDurationMs
+    type: integer
+    description: Elapsed collection time in milliseconds.
+  - name: collectionTimeoutMs
+    type: integer
+    description: Timeout in milliseconds used by the platform collector for this request.
+  - name: expectedInstanceCount
+    type: integer
+    description: Number of live instance fetchers captured when the request starts.
+  - name: completedInstanceCount
+    type: integer
+    description: Number of completed instance results included in this response.
   - name: totalBytes
-    type: number
-    description: Global Lynx-attributed memory size in bytes.
+    type: integer
+    description: Global Lynx-attributed bytes. The total includes element, view, main-thread runtime, and background-thread runtime bytes, and excludes appBytes.
   - name: appBytes
+    type: integer
+    description: Current app memory footprint in bytes when the platform reports it.
+  - name: ratioToApp
     type: number
-    description: App memory footprint in bytes when the platform reports it.
+    description: totalBytes divided by appBytes. The value is 0 when appBytes is unavailable.
+  - name: elementBytes
+    type: integer
+    description: Aggregated element memory in bytes across completed instance results.
+  - name: elementNodeCount
+    type: integer
+    description: Aggregated element node count across completed instance results.
+  - name: viewBytes
+    type: integer
+    description: Aggregated UI view memory in bytes across completed instance results.
+  - name: mainThreadRuntimeBytes
+    type: integer
+    description: Aggregated main-thread runtime heap bytes across completed instance results.
+  - name: backgroundThreadRuntimeBytes
+    type: integer
+    description: Aggregated background-thread runtime heap bytes. Shared background runtime groups are counted once in the global total.
   - name: instances
     type: array
-    description: Per-instance memory usage details reported by completed instance collectors.
+    description: Completed instance memory usage results, sorted by totalBytes descending by the platform result object.
+  - name: 'instances[].instanceId'
+    type: integer
+    description: LynxShell instance id. A value of -1 means the instance was not fully attached.
+  - name: 'instances[].pageId'
+    type: string
+    description: Temporary page identity for the instance memory sample. Empty when unavailable.
+  - name: 'instances[].url'
+    type: string
+    description: Current template URL captured when the instance fetcher completes. Empty when unavailable.
+  - name: 'instances[].totalBytes'
+    type: integer
+    description: Instance-attributed total bytes, including element, view, main runtime, and background runtime bytes.
+  - name: 'instances[].elementBytes'
+    type: integer
+    description: Element tree memory in bytes reported for the instance.
+  - name: 'instances[].elementNodeCount'
+    type: integer
+    description: Element node count for the instance.
+  - name: 'instances[].viewBytes'
+    type: integer
+    description: UI view memory in bytes reported for the instance.
+  - name: 'instances[].viewDetail'
+    type: object
+    description: Per-view-category memory detail. Object keys are view categories or tags.
+  - name: 'instances[].viewDetail.<key>.category'
+    type: string
+    description: View memory category name.
+  - name: 'instances[].viewDetail.<key>.sizeBytes'
+    type: integer
+    description: Memory size in bytes for the view category.
+  - name: 'instances[].viewDetail.<key>.instanceCount'
+    type: integer
+    description: Number of view instances in this category.
+  - name: 'instances[].viewDetail.<key>.detail'
+    type: object
+    description: Category-specific string map reported by the platform memory record.
+  - name: 'instances[].mainThreadRuntimeBytes'
+    type: integer
+    description: Main-thread runtime heap snapshot bytes for the instance.
+  - name: 'instances[].backgroundThreadRuntimeBytes'
+    type: integer
+    description: Background-thread runtime heap snapshot bytes for the instance.
+  - name: 'instances[].btsRuntimeGroupId'
+    type: string
+    description: Background runtime group id used by the global result to deduplicate shared background runtime memory. Empty when unavailable.
+events: []
 notes:
   - Registered in devtool/lynx_devtool/agent/domain_agent/inspector_memory_agent.cc.
   - Send this method to the global DevTool handler with session ID -1.
+  - The mediator validates params.timeoutMs before dispatch. Non-object params, non-integer timeoutMs, negative timeoutMs, and timeoutMs values greater than 300000 return CDP errors.
+  - The platform bridge returns only the result object as JSON. The mediator parses that object and wraps it in the CDP response envelope with the original request id.
+  - Runtimes without a platform memory bridge return a CDP error instead of a partial memory result.
   - This method differs from Runtime.getHeapUsage, which reports JavaScript heap usage for one target runtime.
 examples:
   - title: Use the platform default timeout
