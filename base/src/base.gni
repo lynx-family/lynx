@@ -38,6 +38,9 @@ template("lynx_base_source_set") {
     if (!defined(libs)) {
       libs = []
     }
+    if (!defined(include_dirs)) {
+      include_dirs = []
+    }
     if (defined(invoker.configs)) {
       configs += invoker.configs
     }

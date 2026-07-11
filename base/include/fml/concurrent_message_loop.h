@@ -9,12 +9,9 @@
 #define BASE_INCLUDE_FML_CONCURRENT_MESSAGE_LOOP_H_
 
 #include <atomic>
-#include <condition_variable>
 #include <cstdint>
 #include <memory>
-#include <queue>
 #include <string>
-#include <vector>
 
 #include "base/include/base_export.h"
 #include "base/include/closure.h"
@@ -23,6 +20,7 @@
 namespace lynx {
 namespace fml {
 
+class ConcurrentLoopBackend;
 class ConcurrentTaskRunner;
 
 class BASE_EXPORT ConcurrentMessageLoop
@@ -58,16 +56,8 @@ class BASE_EXPORT ConcurrentMessageLoop
   void Terminate();
 
  private:
-  std::mutex notify_mutex_;
-  std::condition_variable notify_condition_;
-  std::vector<std::thread> workers_;
-  std::atomic<std::uint32_t> worker_count_ = 0;
-  std::mutex tasks_mutex_;
-  std::queue<base::closure> tasks_;
-  std::atomic<std::uint32_t> task_count_ = 0;
+  std::unique_ptr<ConcurrentLoopBackend> backend_;
   std::atomic_bool shutdown_ = false;
-
-  void WorkerMain(uint32_t index);
 };
 
 class ConcurrentTaskRunner : public BasicTaskRunner {
