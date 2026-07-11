@@ -3,6 +3,7 @@
 // LICENSE file in the root directory of this source tree.
 // #import <Lynx/LynxLog.h>
 #import <LynxServiceAPI/LynxServiceProtocol.h>
+#import <LynxServiceAPI/LynxServiceTrailProtocol.h>
 #import <LynxServiceAPI/ServiceAPI.h>
 #import <LynxServiceAPI/ServiceLazyLoad.h>
 
@@ -13,6 +14,22 @@
 @property(atomic, strong) NSMutableDictionary<NSString *, Class> *protocolToClassMap;
 @property(atomic, strong) NSMutableDictionary<NSString *, id> *protocolToInstanceMap;
 @property(atomic, strong) NSRecursiveLock *recLock;
+
+@end
+
+@implementation LynxTrailValueLayer
+
+- (instancetype)initWithName:(NSString *)name
+                   updatedAt:(NSInteger)updatedAt
+                      values:(NSDictionary<NSString *, NSString *> *)values {
+  self = [super init];
+  if (self) {
+    _name = [name copy];
+    _updatedAt = updatedAt;
+    _values = [values copy];
+  }
+  return self;
+}
 
 @end
 

@@ -10,6 +10,8 @@ NS_ASSUME_NONNULL_BEGIN
 
 typedef void (^GlobalDevToolMemoryUsageCallback)(NSString* _Nullable resultJson,
                                                  NSString* _Nullable errorMessage);
+typedef void (^GlobalDevToolLynxSettingCallback)(NSString* resultJson,
+                                                 NSString* _Nullable errorMessage);
 
 @interface GlobalDevToolPlatformDarwinDelegate : NSObject
 
@@ -17,6 +19,10 @@ typedef void (^GlobalDevToolMemoryUsageCallback)(NSString* _Nullable resultJson,
 + (void)stopMemoryTracing;
 + (void)queryAllMemoryUsageWithTimeoutMs:(int64_t)timeoutMs
                                 callback:(GlobalDevToolMemoryUsageCallback)callback;
++ (void)handleLynxSettingMethod:(NSString*)method
+                            key:(NSString*)key
+                          value:(NSString*)value
+                       callback:(GlobalDevToolLynxSettingCallback)callback;
 
 + (intptr_t)getTraceController;
 + (intptr_t)getFPSTracePlugin;

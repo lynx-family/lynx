@@ -39,6 +39,8 @@ subspec_target("devtool") {
     "LynxDevToolNGDarwinDelegate.h",
     "LynxDevToolNGDarwinDelegate.mm",
     "LynxInspectorOwner.mm",
+    "LynxSettingPlatformDarwin.h",
+    "LynxSettingPlatformDarwin.mm",
     "LynxWebSocket.h",
     "LynxWebSocket.mm",
   ]

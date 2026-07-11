@@ -16,6 +16,7 @@
 #include <memory>
 #include <mutex>
 #include <utility>
+#import "LynxSettingPlatformDarwin.h"
 
 #include "devtool/lynx_devtool/agent/global_devtool_platform_facade.h"
 
@@ -58,6 +59,14 @@ struct MemoryUsageCallbackState {
   GlobalDevToolPlatformFacade::MemoryUsageCallback callback;
 };
 
+struct LynxSettingCallbackState {
+  explicit LynxSettingCallbackState(GlobalDevToolPlatformFacade::LynxSettingCallback&& callback)
+      : callback(std::move(callback)) {}
+
+  std::mutex mutex;
+  GlobalDevToolPlatformFacade::LynxSettingCallback callback;
+};
+
 }  // namespace
 
 class GlobalDevToolPlatformDarwin : public GlobalDevToolPlatformFacade {
@@ -97,6 +106,43 @@ class GlobalDevToolPlatformDarwin : public GlobalDevToolPlatformFacade {
                                   }
                                   std::move(callbackToRun)(result, error);
                                 }];
+  }
+
+  void HandleLynxSetting(LynxSettingRequest request, LynxSettingCallback callback) override {
+    if (!callback) {
+      return;
+    }
+    NSString* method = [[NSString alloc] initWithBytes:request.method.data()
+                                                length:request.method.size()
+                                              encoding:NSUTF8StringEncoding];
+    NSString* key = [[NSString alloc] initWithBytes:request.key.data()
+                                             length:request.key.size()
+                                           encoding:NSUTF8StringEncoding];
+    NSString* value = [[NSString alloc] initWithBytes:request.value.data()
+                                               length:request.value.size()
+                                             encoding:NSUTF8StringEncoding];
+    if (!method || !key || !value) {
+      std::move(callback)("{}", "Invalid UTF-8 LynxSetting request");
+      return;
+    }
+    auto callbackState = std::make_shared<LynxSettingCallbackState>(std::move(callback));
+    [GlobalDevToolPlatformDarwinDelegate
+        handleLynxSettingMethod:method
+                            key:key
+                          value:value
+                       callback:^(NSString* resultJson, NSString* errorMessage) {
+                         LynxSettingCallback callbackToRun;
+                         {
+                           std::lock_guard<std::mutex> lock(callbackState->mutex);
+                           if (!callbackState->callback) {
+                             return;
+                           }
+                           callbackToRun = std::move(callbackState->callback);
+                         }
+                         const char* result = resultJson.UTF8String;
+                         const char* error = errorMessage.UTF8String;
+                         std::move(callbackToRun)(result ?: "{}", error ?: "");
+                       }];
   }
 
   lynx::trace::TraceController* GetTraceController() override {
@@ -166,6 +212,13 @@ GlobalDevToolPlatformFacade& GlobalDevToolPlatformFacade::GetInstance() {
                                 callback:(GlobalDevToolMemoryUsageCallback)callback {
   [[LynxMemoryController shareInstance] queryAllMemoryUsageWithTimeoutMs:timeoutMs
                                                                 callback:callback];
+}
+
++ (void)handleLynxSettingMethod:(NSString*)method
+                            key:(NSString*)key
+                          value:(NSString*)value
+                       callback:(GlobalDevToolLynxSettingCallback)callback {
+  [LynxSettingPlatformDarwin handleMethod:method key:key value:value callback:callback];
 }
 
 + (intptr_t)getTraceController {
