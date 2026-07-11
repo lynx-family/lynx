@@ -1,4 +1,21 @@
-summary: Initial documentation entry for the Lynx-custom Page.canScreencast CDP method.
+summary: Reports that the Lynx page target supports screencast commands.
+parameters: []
+returns:
+  - name: result
+    type: boolean
+    description: Always true when the request is dispatched to the UI executor.
+events: []
 notes:
   - Registered in devtool/lynx_devtool/agent/domain_agent/inspector_page_agent_ng.cc.
-  - Complete source-backed request, response, event, and example docs before using this entry for website generation.
+  - Dispatches through LynxDevToolMediator to InspectorUIExecutor on the UI thread.
+  - The native implementation does not inspect platform state or request params. It returns result.result as true.
+  - If the mediator has no UI task runner, the current handler does not send an explicit CDP response.
+examples:
+  - title: Check screencast support
+    request:
+      id: 1
+      method: Page.canScreencast
+    response:
+      id: 1
+      result:
+        result: true
