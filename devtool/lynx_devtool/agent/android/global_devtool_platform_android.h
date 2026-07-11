@@ -21,6 +21,8 @@ class GlobalDevToolPlatformAndroid : public GlobalDevToolPlatformFacade {
   void StopMemoryTracing() override;
   void GetAllMemoryUsage(int64_t timeout_ms,
                          MemoryUsageCallback callback) override;
+  void HandleLynxSetting(LynxSettingRequest request,
+                         LynxSettingCallback callback) override;
 
 #if ENABLE_TRACE_PERFETTO || ENABLE_TRACE_SYSTRACE
   // The following functions are used for tracing agent.

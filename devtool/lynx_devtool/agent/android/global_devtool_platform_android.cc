@@ -92,6 +92,28 @@ static void OnMemoryUsageResult(JNIEnv* env, jclass jcaller, jlong callback_ptr,
   CompleteMemoryUsageCallback(*callback_state, result, error);
 }
 
+static void OnLynxSettingResult(JNIEnv* env, jclass jcaller, jlong callback_ptr,
+                                jstring result_json, jstring error_message) {
+  std::unique_ptr<
+      lynx::devtool::GlobalDevToolPlatformFacade::LynxSettingCallback>
+      callback(
+          reinterpret_cast<
+              lynx::devtool::GlobalDevToolPlatformFacade::LynxSettingCallback*>(
+              callback_ptr));
+  if (!callback || !(*callback)) {
+    return;
+  }
+  std::string result =
+      result_json ? lynx::base::android::JNIConvertHelper::ConvertToString(
+                        env, result_json)
+                  : "{}";
+  std::string error =
+      error_message ? lynx::base::android::JNIConvertHelper::ConvertToString(
+                          env, error_message)
+                    : "";
+  std::move (*callback)(result, error);
+}
+
 namespace lynx {
 namespace devtool {
 namespace jni {
@@ -145,6 +167,33 @@ void GlobalDevToolPlatformAndroid::GetAllMemoryUsage(
                                   kAndroidMemoryUsageJniException);
     }
     return;
+  }
+}
+
+void GlobalDevToolPlatformAndroid::HandleLynxSetting(
+    LynxSettingRequest request, LynxSettingCallback callback) {
+  if (!callback) {
+    return;
+  }
+  JNIEnv* env = lynx::base::android::AttachCurrentThread();
+  auto j_method = lynx::base::android::JNIConvertHelper::ConvertToJNIStringUTF(
+      env, request.method);
+  auto j_key = lynx::base::android::JNIConvertHelper::ConvertToJNIStringUTF(
+      env, request.key);
+  auto j_value = lynx::base::android::JNIConvertHelper::ConvertToJNIStringUTF(
+      env, request.value);
+  auto callback_owner =
+      std::make_unique<LynxSettingCallback>(std::move(callback));
+  jlong callback_ptr = reinterpret_cast<jlong>(callback_owner.release());
+  Java_GlobalDevToolPlatformAndroidDelegate_handleLynxSetting(
+      env, j_method.Get(), j_key.Get(), j_value.Get(), callback_ptr);
+  if (lynx::base::android::HasJNIException()) {
+    std::unique_ptr<LynxSettingCallback> cleanup(
+        reinterpret_cast<LynxSettingCallback*>(callback_ptr));
+    if (cleanup && *cleanup) {
+      std::move (*cleanup)("{}",
+                           "LynxSetting failed on Android (JNI exception)");
+    }
   }
 }
 

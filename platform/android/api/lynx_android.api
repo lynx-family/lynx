@@ -1931,6 +1931,10 @@ public class com::lynx::tasm::behavior::ui::list::FactoredPagerSnapHelper : Page
   public void com.lynx.tasm.behavior.ui.list.FactoredPagerSnapHelper.attachToRecyclerView(@Nullable RecyclerView recyclerView);
 }
 
+public interface com::lynx::tasm::service::ILynxTrailService::FetchCallback {
+  public void com.lynx.tasm.service.ILynxTrailService.FetchCallback.onResult(boolean success, @Nullable String errorMessage);
+}
+
 public class com::lynx::tasm::behavior::ui::image::FlattenUIImage : com.lynx.tasm.behavior.ui.LynxFlattenUI {
   public com.lynx.tasm.behavior.ui.image.FlattenUIImage.FlattenUIImage(LynxContext context);
   public com.lynx.tasm.behavior.ui.image.FlattenUIImage.FlattenUIImage(LynxContext context, Object params);
@@ -2717,6 +2721,11 @@ public interface com::lynx::tasm::service::ILynxTrailService {
   public String com.lynx.tasm.service.ILynxTrailService.stringValueForTrailKey(@NonNull String key);
   public Object com.lynx.tasm.service.ILynxTrailService.objectValueForTrailKey(@NonNull String key);
   public Map< String, Object > com.lynx.tasm.service.ILynxTrailService.getAllValues();
+  public default List< LynxTrailValueLayer > com.lynx.tasm.service.ILynxTrailService.getLayeredValues();
+  public default boolean com.lynx.tasm.service.ILynxTrailService.setMockValue(@NonNull String key, @NonNull String value);
+  public default boolean com.lynx.tasm.service.ILynxTrailService.removeMockValue(@NonNull String key);
+  public default boolean com.lynx.tasm.service.ILynxTrailService.clearMockValues();
+  public default void com.lynx.tasm.service.ILynxTrailService.fetchLatestSettings(@NonNull FetchCallback callback);
 }
 
 public interface com::lynx::tasm::service::ILynxTrailServiceExtension {
@@ -7204,6 +7213,13 @@ public class com::lynx::tasm::event::LynxTouchEvent : com.lynx.tasm.event.LynxEv
   public void com.lynx.tasm.event.LynxTouchEvent.setActiveTargetMap(HashMap< Integer, EventTargetBase > activeTargetMap);
   public HashMap< Integer, EventTargetBase > com.lynx.tasm.event.LynxTouchEvent.getActiveTargetMap();
   public ArrayList< Object > com.lynx.tasm.event.LynxTouchEvent.getEventParams();
+}
+
+public class com::lynx::tasm::service::ILynxTrailService::LynxTrailValueLayer :  {
+  public com.lynx.tasm.service.ILynxTrailService.LynxTrailValueLayer.LynxTrailValueLayer( @NonNull String name, long updatedAt, @NonNull Map< String, String > values);
+  public String com.lynx.tasm.service.ILynxTrailService.LynxTrailValueLayer.getName();
+  public long com.lynx.tasm.service.ILynxTrailService.LynxTrailValueLayer.getUpdatedAt();
+  public Map< String, String > com.lynx.tasm.service.ILynxTrailService.LynxTrailValueLayer.getValues();
 }
 
 public class abstract com::lynx::tasm::behavior::ui::LynxUI : com.lynx.tasm.behavior.ui.LynxBaseUI, com.lynx.tasm.behavior.ui.IProcessViewInfoHook {
