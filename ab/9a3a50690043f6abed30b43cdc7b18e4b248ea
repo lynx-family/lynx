@@ -3,6 +3,7 @@ lynx/core/resource/external_resource/external_resource_loader.cc
   s_cb16567de0f223::t_aaaf9dd6a5ba20 141-142
   s_cb16567de0f223::t_f98b7d0bba6b5a 140
   s_cb16567de0f223::t_42f2f501ea786b 143
+  s_11c420ae9702fa::t_440c0e639c2d48 134-137,150-152,179-183,191,197-198 gitai:{"mixed_line_ranges":[],"operations":[{"operation_id":"6a51da5232aad578b3de0c73","tool_type":"agent","tool_id":"apply_patch","line_ranges":[{"Single":12},{"Range":[14,15]},{"Range":[134,137]},{"Range":[140,143]},{"Range":[150,152]},{"Range":[179,183]},{"Single":191},{"Range":[197,198]}]}]}
 lynx/core/renderer/template_assembler.cc
   s_071d8cf57e2b04::t_3b89fa2000d943 1510
   s_071d8cf57e2b04::t_4aa16ac64b971b 18,1445-1450,1458-1461
@@ -58,6 +59,15 @@ lynx/core/services/performance/performance_controller.h
       },
       "human_author": "yangguangzhao <yangguangzhao.solace@bytedance.com>"
     },
+    "s_11c420ae9702fa": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a51d97b32aad578b3de0c2d",
+        "model": "gpt-5.6-sol__dev",
+        "display_model_name": "GPT-5.6-Sol"
+      },
+      "human_author": "yangguangzhao <yangguangzhao.solace@bytedance.com>"
+    },
     "s_b25ae8e7bc37d8": {
       "agent_id": {
         "tool": "codex",
@@ -75,6 +85,93 @@ lynx/core/services/performance/performance_controller.h
       "human_author": "yangguangzhao <yangguangzhao.solace@bytedance.com>"
     }
   },
-  "attestation_metadata": {},
+  "attestation_metadata": {
+    "lynx/core/resource/external_resource/external_resource_loader.cc": [
+      {
+        "hash": "s_11c420ae9702fa::t_440c0e639c2d48",
+        "line_ranges": [
+          {
+            "Range": [
+              134,
+              137
+            ]
+          },
+          {
+            "Range": [
+              150,
+              152
+            ]
+          },
+          {
+            "Range": [
+              179,
+              183
+            ]
+          },
+          {
+            "Single": 191
+          },
+          {
+            "Range": [
+              197,
+              198
+            ]
+          }
+        ],
+        "mixed_line_ranges": [],
+        "operations": [
+          {
+            "operation_id": "6a51da5232aad578b3de0c73",
+            "tool_type": "agent",
+            "tool_id": "apply_patch",
+            "line_ranges": [
+              {
+                "Single": 12
+              },
+              {
+                "Range": [
+                  14,
+                  15
+                ]
+              },
+              {
+                "Range": [
+                  134,
+                  137
+                ]
+              },
+              {
+                "Range": [
+                  140,
+                  143
+                ]
+              },
+              {
+                "Range": [
+                  150,
+                  152
+                ]
+              },
+              {
+                "Range": [
+                  179,
+                  183
+                ]
+              },
+              {
+                "Single": 191
+              },
+              {
+                "Range": [
+                  197,
+                  198
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
   "remote_transcripts": {}
 }
