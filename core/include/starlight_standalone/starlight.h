@@ -5,6 +5,7 @@
 #ifndef CORE_INCLUDE_STARLIGHT_STANDALONE_STARLIGHT_H_
 #define CORE_INCLUDE_STARLIGHT_STANDALONE_STARLIGHT_H_
 
+#include <stdbool.h>
 #include <stdint.h>
 
 #include "starlight_config.h"
@@ -94,6 +95,13 @@ bool SLNodeIsRTL(const SLNodeRef node);
 // outer box (margin box) will be limited by the owner_width and owner_height.
 void SLNodeCalculateLayout(const SLNodeRef node, float owner_width,
                            float owner_height, SLDirection owner_direction);
+// Same as SLNodeCalculateLayout, but preserves the measure modes for root owner
+// constraints instead of treating every finite owner size as exact.
+void SLNodeCalculateLayoutWithMode(const SLNodeRef node, float owner_width,
+                                   SLNodeMeasureMode owner_width_mode,
+                                   float owner_height,
+                                   SLNodeMeasureMode owner_height_mode,
+                                   SLDirection owner_direction);
 
 /**
  * @brief Set the measurement delegate of a node.
@@ -126,11 +134,81 @@ void SLNodeStyleSetAlignContent(const SLNodeRef node, SLAlignContent value);
 void SLNodeStyleSetAlignItems(const SLNodeRef node, SLFlexAlign value);
 void SLNodeStyleSetAlignSelf(const SLNodeRef node, SLFlexAlign value);
 
-// only supports `absoulte` and `relative`. Defaults to `relative`.
+// Defaults to `relative`.
 void SLNodeStyleSetPositionType(const SLNodeRef node, SLPositionType value);
 
 // Defaults to `no-wrap`.
 void SLNodeStyleSetFlexWrap(const SLNodeRef node, SLFlexWrap value);
+
+void SLNodeStyleSetLinearOrientation(const SLNodeRef node,
+                                     SLLinearOrientation value);
+void SLNodeStyleSetLinearGravity(const SLNodeRef node, SLLinearGravity value);
+void SLNodeStyleSetLinearLayoutGravity(const SLNodeRef node,
+                                       SLLinearLayoutGravity value);
+void SLNodeStyleSetLinearCrossGravity(const SLNodeRef node,
+                                      SLLinearCrossGravity value);
+void SLNodeStyleSetLinearColumnCount(const SLNodeRef node, int32_t value);
+void SLNodeStyleSetListComponentType(const SLNodeRef node,
+                                     SLListComponentType value);
+void SLNodeStyleSetListMainAxisGap(const SLNodeRef node, float value);
+void SLNodeStyleSetListMainAxisGapPercent(const SLNodeRef node, float value);
+void SLNodeStyleSetListMainAxisGapCalc(const SLNodeRef node,
+                                       StarlightValue value);
+void SLNodeStyleSetListMainAxisGapValue(const SLNodeRef node,
+                                        StarlightValue value);
+void SLNodeStyleSetListCrossAxisGap(const SLNodeRef node, float value);
+void SLNodeStyleSetListCrossAxisGapPercent(const SLNodeRef node, float value);
+void SLNodeStyleSetListCrossAxisGapCalc(const SLNodeRef node,
+                                        StarlightValue value);
+void SLNodeStyleSetListCrossAxisGapValue(const SLNodeRef node,
+                                         StarlightValue value);
+void SLNodeStyleSetLinearWeight(const SLNodeRef node, float value);
+void SLNodeStyleSetLinearWeightSum(const SLNodeRef node, float value);
+
+void SLNodeStyleSetRelativeId(const SLNodeRef node, int32_t value);
+void SLNodeStyleSetRelativeAlignTop(const SLNodeRef node, int32_t value);
+void SLNodeStyleSetRelativeAlignRight(const SLNodeRef node, int32_t value);
+void SLNodeStyleSetRelativeAlignBottom(const SLNodeRef node, int32_t value);
+void SLNodeStyleSetRelativeAlignLeft(const SLNodeRef node, int32_t value);
+void SLNodeStyleSetRelativeTopOf(const SLNodeRef node, int32_t value);
+void SLNodeStyleSetRelativeRightOf(const SLNodeRef node, int32_t value);
+void SLNodeStyleSetRelativeBottomOf(const SLNodeRef node, int32_t value);
+void SLNodeStyleSetRelativeLeftOf(const SLNodeRef node, int32_t value);
+void SLNodeStyleSetRelativeLayoutOnce(const SLNodeRef node, bool value);
+void SLNodeStyleSetRelativeCenter(const SLNodeRef node, SLRelativeCenter value);
+
+void SLNodeStyleSetGridTemplateColumns(const SLNodeRef node,
+                                       const StarlightValue* values,
+                                       int32_t count);
+void SLNodeStyleSetGridTemplateColumnsMax(const SLNodeRef node,
+                                          const StarlightValue* values,
+                                          int32_t count);
+void SLNodeStyleSetGridTemplateRows(const SLNodeRef node,
+                                    const StarlightValue* values,
+                                    int32_t count);
+void SLNodeStyleSetGridTemplateRowsMax(const SLNodeRef node,
+                                       const StarlightValue* values,
+                                       int32_t count);
+void SLNodeStyleSetGridAutoColumns(const SLNodeRef node,
+                                   const StarlightValue* values,
+                                   int32_t count);
+void SLNodeStyleSetGridAutoColumnsMax(const SLNodeRef node,
+                                      const StarlightValue* values,
+                                      int32_t count);
+void SLNodeStyleSetGridAutoRows(const SLNodeRef node,
+                                const StarlightValue* values, int32_t count);
+void SLNodeStyleSetGridAutoRowsMax(const SLNodeRef node,
+                                   const StarlightValue* values,
+                                   int32_t count);
+void SLNodeStyleSetGridAutoFlow(const SLNodeRef node, SLGridAutoFlow value);
+void SLNodeStyleSetJustifyItems(const SLNodeRef node, SLJustifyItem value);
+void SLNodeStyleSetJustifySelf(const SLNodeRef node, SLJustifyItem value);
+void SLNodeStyleSetGridColumnStart(const SLNodeRef node, int32_t value);
+void SLNodeStyleSetGridColumnEnd(const SLNodeRef node, int32_t value);
+void SLNodeStyleSetGridRowStart(const SLNodeRef node, int32_t value);
+void SLNodeStyleSetGridRowEnd(const SLNodeRef node, int32_t value);
+void SLNodeStyleSetGridColumnSpan(const SLNodeRef node, int32_t value);
+void SLNodeStyleSetGridRowSpan(const SLNodeRef node, int32_t value);
 
 // Defaults to `flex`.
 void SLNodeStyleSetDisplay(const SLNodeRef node, SLDisplay value);
@@ -154,12 +232,22 @@ void SLNodeStyleSetFlexShrink(const SLNodeRef node, float value);
 // flex-basis: defaults to `auto`.
 void SLNodeStyleSetFlexBasis(const SLNodeRef node, float value);
 void SLNodeStyleSetFlexBasisPercent(const SLNodeRef node, float value);
+void SLNodeStyleSetFlexBasisCalc(const SLNodeRef node, StarlightValue value);
+void SLNodeStyleSetFlexBasisValue(const SLNodeRef node, StarlightValue value);
 void SLNodeStyleSetFlexBasisAuto(const SLNodeRef node);
+void SLNodeStyleSetFlexBasisMaxContent(const SLNodeRef node);
+void SLNodeStyleSetFlexBasisFitContent(const SLNodeRef node);
+void SLNodeStyleSetFlexBasisFitContentValue(const SLNodeRef node,
+                                            StarlightValue value);
 
 // top, bottom, left, right: defaults to `auto`.
 void SLNodeStyleSetPosition(const SLNodeRef node, SLEdge edge, float position);
 void SLNodeStyleSetPositionPercent(const SLNodeRef node, SLEdge edge,
                                    float position);
+void SLNodeStyleSetPositionCalc(const SLNodeRef node, SLEdge edge,
+                                StarlightValue position);
+void SLNodeStyleSetPositionValue(const SLNodeRef node, SLEdge edge,
+                                 StarlightValue position);
 void SLNodeStyleSetPositionAuto(const SLNodeRef node, SLEdge edge);
 
 // margin
@@ -167,6 +255,10 @@ void SLNodeStyleSetPositionAuto(const SLNodeRef node, SLEdge edge);
 void SLNodeStyleSetMargin(const SLNodeRef node, SLEdge edge, float value);
 void SLNodeStyleSetMarginPercent(const SLNodeRef node, SLEdge edge,
                                  float value);
+void SLNodeStyleSetMarginCalc(const SLNodeRef node, SLEdge edge,
+                              StarlightValue value);
+void SLNodeStyleSetMarginValue(const SLNodeRef node, SLEdge edge,
+                               StarlightValue value);
 void SLNodeStyleSetMarginAuto(const SLNodeRef node, SLEdge edge);
 
 // padding
@@ -174,6 +266,10 @@ void SLNodeStyleSetMarginAuto(const SLNodeRef node, SLEdge edge);
 void SLNodeStyleSetPadding(const SLNodeRef node, SLEdge edge, float value);
 void SLNodeStyleSetPaddingPercent(const SLNodeRef node, SLEdge edge,
                                   float value);
+void SLNodeStyleSetPaddingCalc(const SLNodeRef node, SLEdge edge,
+                               StarlightValue value);
+void SLNodeStyleSetPaddingValue(const SLNodeRef node, SLEdge edge,
+                                StarlightValue value);
 
 // border width
 // Defaults to 0.
@@ -183,34 +279,70 @@ void SLNodeStyleSetBorder(const SLNodeRef node, SLEdge edge, float value);
 // Defaults to 0.
 void SLNodeStyleSetGap(const SLNodeRef node, SLGap gutter, float value);
 void SLNodeStyleSetGapPercent(const SLNodeRef node, SLGap gutter, float value);
+void SLNodeStyleSetGapCalc(const SLNodeRef node, SLGap gutter,
+                           StarlightValue value);
+void SLNodeStyleSetGapValue(const SLNodeRef node, SLGap gutter,
+                            StarlightValue value);
 
 // width properties
 // width: defaults to `auto`.
 void SLNodeStyleSetWidth(const SLNodeRef node, float value);
 void SLNodeStyleSetWidthPercent(const SLNodeRef node, float value);
+void SLNodeStyleSetWidthCalc(const SLNodeRef node, StarlightValue value);
+void SLNodeStyleSetWidthValue(const SLNodeRef node, StarlightValue value);
 void SLNodeStyleSetWidthAuto(const SLNodeRef node);
 void SLNodeStyleSetWidthMaxContent(const SLNodeRef node);
 void SLNodeStyleSetWidthFitContent(const SLNodeRef node);
+void SLNodeStyleSetWidthFitContentValue(const SLNodeRef node,
+                                        StarlightValue value);
 // min-width: defaults to `0`.
 void SLNodeStyleSetMinWidth(const SLNodeRef node, float value);
 void SLNodeStyleSetMinWidthPercent(const SLNodeRef node, float value);
+void SLNodeStyleSetMinWidthCalc(const SLNodeRef node, StarlightValue value);
+void SLNodeStyleSetMinWidthValue(const SLNodeRef node, StarlightValue value);
+void SLNodeStyleSetMinWidthMaxContent(const SLNodeRef node);
+void SLNodeStyleSetMinWidthFitContent(const SLNodeRef node);
+void SLNodeStyleSetMinWidthFitContentValue(const SLNodeRef node,
+                                           StarlightValue value);
 // max-width: defaults to no limit.
 void SLNodeStyleSetMaxWidth(const SLNodeRef node, float value);
 void SLNodeStyleSetMaxWidthPercent(const SLNodeRef node, float value);
+void SLNodeStyleSetMaxWidthCalc(const SLNodeRef node, StarlightValue value);
+void SLNodeStyleSetMaxWidthValue(const SLNodeRef node, StarlightValue value);
+void SLNodeStyleSetMaxWidthMaxContent(const SLNodeRef node);
+void SLNodeStyleSetMaxWidthFitContent(const SLNodeRef node);
+void SLNodeStyleSetMaxWidthFitContentValue(const SLNodeRef node,
+                                           StarlightValue value);
 
 // height properties
 // height: defaults to `auto`.
 void SLNodeStyleSetHeight(const SLNodeRef node, float value);
 void SLNodeStyleSetHeightPercent(const SLNodeRef node, float value);
+void SLNodeStyleSetHeightCalc(const SLNodeRef node, StarlightValue value);
+void SLNodeStyleSetHeightValue(const SLNodeRef node, StarlightValue value);
 void SLNodeStyleSetHeightAuto(const SLNodeRef node);
 void SLNodeStyleSetHeightMaxContent(const SLNodeRef node);
 void SLNodeStyleSetHeightFitContent(const SLNodeRef node);
+void SLNodeStyleSetHeightFitContentValue(const SLNodeRef node,
+                                         StarlightValue value);
 // min-height: defaults to `0`.
 void SLNodeStyleSetMinHeight(const SLNodeRef node, float value);
 void SLNodeStyleSetMinHeightPercent(const SLNodeRef node, float value);
+void SLNodeStyleSetMinHeightCalc(const SLNodeRef node, StarlightValue value);
+void SLNodeStyleSetMinHeightValue(const SLNodeRef node, StarlightValue value);
+void SLNodeStyleSetMinHeightMaxContent(const SLNodeRef node);
+void SLNodeStyleSetMinHeightFitContent(const SLNodeRef node);
+void SLNodeStyleSetMinHeightFitContentValue(const SLNodeRef node,
+                                            StarlightValue value);
 // max-height: defaults to no limit.
 void SLNodeStyleSetMaxHeight(const SLNodeRef node, float value);
 void SLNodeStyleSetMaxHeightPercent(const SLNodeRef node, float value);
+void SLNodeStyleSetMaxHeightCalc(const SLNodeRef node, StarlightValue value);
+void SLNodeStyleSetMaxHeightValue(const SLNodeRef node, StarlightValue value);
+void SLNodeStyleSetMaxHeightMaxContent(const SLNodeRef node);
+void SLNodeStyleSetMaxHeightFitContent(const SLNodeRef node);
+void SLNodeStyleSetMaxHeightFitContentValue(const SLNodeRef node,
+                                            StarlightValue value);
 
 // get style
 SLFlexDirection SLNodeStyleGetFlexDirection(const SLNodeRef node);
@@ -222,12 +354,38 @@ SLFlexAlign SLNodeStyleGetAlignItems(const SLNodeRef node);
 SLFlexAlign SLNodeStyleGetAlignSelf(const SLNodeRef node);
 SLPositionType SLNodeStyleGetPositionType(const SLNodeRef node);
 SLFlexWrap SLNodeStyleGetFlexWrap(const SLNodeRef node);
+SLLinearOrientation SLNodeStyleGetLinearOrientation(const SLNodeRef node);
+SLLinearGravity SLNodeStyleGetLinearGravity(const SLNodeRef node);
+SLLinearLayoutGravity SLNodeStyleGetLinearLayoutGravity(const SLNodeRef node);
+SLLinearCrossGravity SLNodeStyleGetLinearCrossGravity(const SLNodeRef node);
+SLRelativeCenter SLNodeStyleGetRelativeCenter(const SLNodeRef node);
+SLGridAutoFlow SLNodeStyleGetGridAutoFlow(const SLNodeRef node);
+SLJustifyItem SLNodeStyleGetJustifyItems(const SLNodeRef node);
+SLJustifyItem SLNodeStyleGetJustifySelf(const SLNodeRef node);
 SLDisplay SLNodeStyleGetDisplay(const SLNodeRef node);
 SLBoxSizing SLNodeStyleGetBoxSizing(const SLNodeRef node);
 float SLNodeStyleGetAspectRatio(const SLNodeRef node);
 int32_t SLNodeStyleGetOrder(const SLNodeRef node);
+int32_t SLNodeStyleGetRelativeId(const SLNodeRef node);
+int32_t SLNodeStyleGetRelativeAlignTop(const SLNodeRef node);
+int32_t SLNodeStyleGetRelativeAlignRight(const SLNodeRef node);
+int32_t SLNodeStyleGetRelativeAlignBottom(const SLNodeRef node);
+int32_t SLNodeStyleGetRelativeAlignLeft(const SLNodeRef node);
+int32_t SLNodeStyleGetRelativeTopOf(const SLNodeRef node);
+int32_t SLNodeStyleGetRelativeRightOf(const SLNodeRef node);
+int32_t SLNodeStyleGetRelativeBottomOf(const SLNodeRef node);
+int32_t SLNodeStyleGetRelativeLeftOf(const SLNodeRef node);
+bool SLNodeStyleGetRelativeLayoutOnce(const SLNodeRef node);
+int32_t SLNodeStyleGetGridColumnStart(const SLNodeRef node);
+int32_t SLNodeStyleGetGridColumnEnd(const SLNodeRef node);
+int32_t SLNodeStyleGetGridRowStart(const SLNodeRef node);
+int32_t SLNodeStyleGetGridRowEnd(const SLNodeRef node);
+int32_t SLNodeStyleGetGridColumnSpan(const SLNodeRef node);
+int32_t SLNodeStyleGetGridRowSpan(const SLNodeRef node);
 float SLNodeStyleGetFlexGrow(const SLNodeRef node);
 float SLNodeStyleGetFlexShrink(const SLNodeRef node);
+float SLNodeStyleGetLinearWeight(const SLNodeRef node);
+float SLNodeStyleGetLinearWeightSum(const SLNodeRef node);
 float SLNodeStyleGetBorder(const SLNodeRef node, SLEdge edge);
 StarlightValue SLNodeStyleGetFlexBasis(const SLNodeRef node);
 StarlightValue SLNodeStyleGetPosition(const SLNodeRef node, SLEdge edge);
@@ -256,9 +414,13 @@ float SLNodeLayoutGetTop(const SLNodeRef node);
 // return the width and height of border box.
 float SLNodeLayoutGetWidth(const SLNodeRef node);
 float SLNodeLayoutGetHeight(const SLNodeRef node);
+// return the node baseline offset from the top edge of the border box. When no
+// baseline was calculated, this returns the border-box height fallback.
+float SLNodeLayoutGetBaseline(const SLNodeRef node);
 float SLNodeLayoutGetMargin(const SLNodeRef node, SLEdge edge);
 float SLNodeLayoutGetPadding(const SLNodeRef node, SLEdge edge);
 float SLNodeLayoutGetBorder(const SLNodeRef node, SLEdge edge);
+float SLNodeLayoutGetStickyPosition(const SLNodeRef node, SLEdge edge);
 
 #ifdef __cplusplus
 }

@@ -1,0 +1,8 @@
+[package]
+name = "starlight_standalone"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+starlight_layout = { path = "../starlight_layout" }

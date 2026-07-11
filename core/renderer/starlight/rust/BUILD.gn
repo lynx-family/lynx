@@ -1,0 +1,230 @@
+# Copyright 2026 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+group("starlight_rust_tests") {
+  testonly = true
+  deps = [
+    ":cargo_clippy_workspace",
+    ":cargo_test_workspace",
+  ]
+}
+
+group("starlight_rust_native_parity_tests") {
+  testonly = true
+  deps = [ ":cargo_test_native_head_to_head" ]
+}
+
+group("starlight_rust_cpp_import_tests") {
+  testonly = true
+  deps = [ ":cargo_test_cpp_native_contracts" ]
+}
+
+group("starlight_rust_ffi_tests") {
+  testonly = true
+  deps = [ ":cargo_test_ffi_link_smoke" ]
+}
+
+group("starlight_rust_benchmarks") {
+  testonly = true
+  deps = [ ":cargo_bench_cpp_baseline" ]
+}
+
+group("starlight_rust_full_tests") {
+  testonly = true
+  deps = [
+    ":cargo_bench_cpp_baseline",
+    ":cargo_clippy_workspace",
+    ":cargo_test_ffi_link_smoke",
+    ":cargo_test_cpp_native_contracts",
+    ":cargo_test_native_head_to_head",
+    ":cargo_test_workspace",
+  ]
+}
+
+group("starlight_rust_ffi") {
+  deps = [ ":cargo_build_starlight_ffi_staticlib" ]
+}
+
+source_set("starlight_rust_ffi_link") {
+  sources = [
+    "crates/starlight_ffi/include/starlight_rust_ffi.h",
+    "crates/starlight_ffi/include/starlight_rust_ffi_cpp.h",
+  ]
+  deps = [ ":cargo_build_starlight_ffi_staticlib" ]
+  public_configs = [ ":starlight_rust_ffi_link_config" ]
+}
+
+if (is_win) {
+  starlight_rust_ffi_staticlib = "$target_gen_dir/starlight_ffi.lib"
+} else {
+  starlight_rust_ffi_staticlib = "$target_gen_dir/libstarlight_ffi.a"
+}
+
+config("starlight_rust_ffi_link_config") {
+  include_dirs = [ "crates/starlight_ffi/include" ]
+  libs = [ rebase_path(starlight_rust_ffi_staticlib, root_build_dir) ]
+}
+
+action("cargo_build_starlight_ffi_staticlib") {
+  script = "scripts/cargo_staticlib_action.py"
+  outputs = [ starlight_rust_ffi_staticlib ]
+  args = [
+    "--workspace-dir",
+    rebase_path(".", root_build_dir),
+    "--target-dir",
+    rebase_path("$target_gen_dir/cargo-target", root_build_dir),
+    "--package",
+    "starlight_ffi",
+    "--output",
+    rebase_path(outputs[0], root_build_dir),
+  ]
+}
+
+action("cargo_test_workspace") {
+  testonly = true
+  script = "scripts/cargo_workspace_action.py"
+  outputs = [ "$target_gen_dir/cargo_test_workspace.stamp" ]
+  args = [
+    "--workspace-dir",
+    rebase_path(".", root_build_dir),
+    "--target-dir",
+    rebase_path("$target_gen_dir/cargo-target", root_build_dir),
+    "--stamp",
+    rebase_path(outputs[0], root_build_dir),
+    "--",
+    "test",
+    "--workspace",
+    "--quiet",
+  ]
+}
+
+action("cargo_clippy_workspace") {
+  testonly = true
+  script = "scripts/cargo_workspace_action.py"
+  outputs = [ "$target_gen_dir/cargo_clippy_workspace.stamp" ]
+  args = [
+    "--workspace-dir",
+    rebase_path(".", root_build_dir),
+    "--target-dir",
+    rebase_path("$target_gen_dir/cargo-target", root_build_dir),
+    "--stamp",
+    rebase_path(outputs[0], root_build_dir),
+    "--",
+    "clippy",
+    "--workspace",
+    "--all-targets",
+    "--",
+    "-D",
+    "warnings",
+  ]
+}
+
+action("cargo_test_native_head_to_head") {
+  testonly = true
+  script = "scripts/cargo_workspace_action.py"
+  outputs = [ "$target_gen_dir/cargo_test_native_head_to_head.stamp" ]
+  env = [
+    "STARLIGHT_CPP_NATIVE_STANDALONE_BUILD_FROM_SOURCE=1",
+    "STARLIGHT_GENERATED_CASE_COUNT=32768",
+  ]
+  args = [
+    "--workspace-dir",
+    rebase_path(".", root_build_dir),
+    "--target-dir",
+    rebase_path("$target_gen_dir/cargo-target", root_build_dir),
+    "--stamp",
+    rebase_path(outputs[0], root_build_dir),
+    "--",
+    "test",
+    "-p",
+    "starlight_parity",
+    "--features",
+    "native-standalone",
+    "--test",
+    "native_head_to_head_tests",
+    "--test",
+    "native_generated_head_to_head_tests",
+    "--test",
+    "standalone_head_to_head_tests",
+    "--quiet",
+  ]
+}
+
+action("cargo_test_cpp_native_contracts") {
+  testonly = true
+  script = "scripts/cargo_workspace_action.py"
+  outputs = [ "$target_gen_dir/cargo_test_cpp_native_contracts.stamp" ]
+  env = [ "STARLIGHT_CPP_NATIVE_STANDALONE_CHECK=1" ]
+  args = [
+    "--workspace-dir",
+    rebase_path(".", root_build_dir),
+    "--target-dir",
+    rebase_path("$target_gen_dir/cargo-target", root_build_dir),
+    "--stamp",
+    rebase_path(outputs[0], root_build_dir),
+    "--",
+    "test",
+    "-p",
+    "starlight_cpp",
+    "--features",
+    "native-standalone",
+    "--quiet",
+  ]
+}
+
+action("cargo_test_ffi_link_smoke") {
+  testonly = true
+  script = "scripts/cargo_workspace_action.py"
+  deps = [ ":cargo_build_starlight_ffi_staticlib" ]
+  outputs = [ "$target_gen_dir/cargo_test_ffi_link_smoke.stamp" ]
+  env = [
+    "STARLIGHT_RUST_FFI_LIBRARY=" +
+        rebase_path(starlight_rust_ffi_staticlib, root_build_dir),
+  ]
+  args = [
+    "--workspace-dir",
+    rebase_path(".", root_build_dir),
+    "--target-dir",
+    rebase_path("$target_gen_dir/cargo-target", root_build_dir),
+    "--stamp",
+    rebase_path(outputs[0], root_build_dir),
+    "--",
+    "test",
+    "-p",
+    "starlight_ffi",
+    "--test",
+    "c_abi_smoke_tests",
+    "--quiet",
+  ]
+}
+
+action("cargo_bench_cpp_baseline") {
+  testonly = true
+  script = "scripts/cargo_workspace_action.py"
+  outputs = [ "$target_gen_dir/cargo_bench_cpp_baseline.stamp" ]
+  env = [
+    "STARLIGHT_BENCH_MIN_SPEEDUP=1.0",
+    "STARLIGHT_BENCH_REQUIRE_CPP_BASELINE=1",
+    "STARLIGHT_CPP_NATIVE_STANDALONE_BUILD_FROM_SOURCE=1",
+  ]
+  args = [
+    "--workspace-dir",
+    rebase_path(".", root_build_dir),
+    "--target-dir",
+    rebase_path("$target_gen_dir/cargo-target", root_build_dir),
+    "--stamp",
+    rebase_path(outputs[0], root_build_dir),
+    "--",
+    "run",
+    "--release",
+    "-p",
+    "starlight_bench",
+    "--features",
+    "native-standalone",
+    "--",
+    "1000",
+    "200",
+    "10",
+  ]
+}

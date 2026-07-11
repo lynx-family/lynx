@@ -1,0 +1,15 @@
+[package]
+name = "starlight_cpp"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[features]
+default = []
+native-standalone = []
+
+[dependencies]
+starlight_layout = { path = "../starlight_layout" }
+
+[dev-dependencies]
+starlight_standalone = { path = "../starlight_standalone" }

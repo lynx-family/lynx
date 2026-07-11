@@ -1,0 +1,9 @@
+[package]
+name = "starlight_layout"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lib]
+name = "starlight_layout"
+path = "src/lib.rs"

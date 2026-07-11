@@ -146,6 +146,44 @@ group("starlight_tests") {
   public_deps = [ ":starlight_testset" ]
 }
 
+group("starlight_rust_tests") {
+  testonly = true
+  deps = [ "rust:starlight_rust_tests" ]
+}
+
+group("starlight_rust_native_parity_tests") {
+  testonly = true
+  deps = [ "rust:starlight_rust_native_parity_tests" ]
+}
+
+group("starlight_rust_cpp_import_tests") {
+  testonly = true
+  deps = [ "rust:starlight_rust_cpp_import_tests" ]
+}
+
+group("starlight_rust_ffi_tests") {
+  testonly = true
+  deps = [ "rust:starlight_rust_ffi_tests" ]
+}
+
+group("starlight_rust_benchmarks") {
+  testonly = true
+  deps = [ "rust:starlight_rust_benchmarks" ]
+}
+
+group("starlight_rust_full_tests") {
+  testonly = true
+  deps = [ "rust:starlight_rust_full_tests" ]
+}
+
+group("starlight_rust_ffi") {
+  deps = [ "rust:starlight_rust_ffi" ]
+}
+
+group("starlight_rust_ffi_link") {
+  public_deps = [ "rust:starlight_rust_ffi_link" ]
+}
+
 unittest_set("starlight_testset") {
   public_configs = [ "../../:lynx_public_config" ]
   sources = [

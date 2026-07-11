@@ -13,6 +13,10 @@ typedef enum SLDisplay {
   SLDisplayNone = 0,
   // default value
   SLDisplayFlex = 1,
+  SLDisplayGrid = 2,
+  SLDisplayLinear = 3,
+  SLDisplayRelative = 4,
+  SLDisplayBlock = 5,
 } SLDisplay;
 
 // for align-self: auto is default value
@@ -37,6 +41,7 @@ typedef enum SLAlignContent {
   SLAlignContentStretch = 3,
   SLAlignContentSpaceBetween = 4,
   SLAlignContentSpaceAround = 5,
+  SLAlignContentSpaceEvenly = 6,
 } SLAlignContent;
 
 typedef enum SLJustifyContent {
@@ -64,7 +69,88 @@ typedef enum SLFlexWrap {
   SLFlexWrapWrapReverse = 2,
 } SLFlexWrap;
 
+typedef enum SLLinearOrientation {
+  SLLinearOrientationHorizontal = 0,
+  SLLinearOrientationVertical = 1,
+  SLLinearOrientationHorizontalReverse = 2,
+  SLLinearOrientationVerticalReverse = 3,
+  SLLinearOrientationRow = 4,
+  SLLinearOrientationColumn = 5,
+  SLLinearOrientationRowReverse = 6,
+  SLLinearOrientationColumnReverse = 7,
+} SLLinearOrientation;
+
+typedef enum SLLinearGravity {
+  SLLinearGravityNone = 0,
+  SLLinearGravityTop = 1,
+  SLLinearGravityBottom = 2,
+  SLLinearGravityLeft = 3,
+  SLLinearGravityRight = 4,
+  SLLinearGravityCenterVertical = 5,
+  SLLinearGravityCenterHorizontal = 6,
+  SLLinearGravitySpaceBetween = 7,
+  SLLinearGravityStart = 8,
+  SLLinearGravityEnd = 9,
+  SLLinearGravityCenter = 10,
+} SLLinearGravity;
+
+typedef enum SLLinearLayoutGravity {
+  SLLinearLayoutGravityNone = 0,
+  SLLinearLayoutGravityTop = 1,
+  SLLinearLayoutGravityBottom = 2,
+  SLLinearLayoutGravityLeft = 3,
+  SLLinearLayoutGravityRight = 4,
+  SLLinearLayoutGravityCenterVertical = 5,
+  SLLinearLayoutGravityCenterHorizontal = 6,
+  SLLinearLayoutGravityFillVertical = 7,
+  SLLinearLayoutGravityFillHorizontal = 8,
+  SLLinearLayoutGravityCenter = 9,
+  SLLinearLayoutGravityStretch = 10,
+  SLLinearLayoutGravityStart = 11,
+  SLLinearLayoutGravityEnd = 12,
+} SLLinearLayoutGravity;
+
+typedef enum SLLinearCrossGravity {
+  SLLinearCrossGravityNone = 0,
+  SLLinearCrossGravityStart = 1,
+  SLLinearCrossGravityEnd = 2,
+  SLLinearCrossGravityCenter = 3,
+  SLLinearCrossGravityStretch = 4,
+} SLLinearCrossGravity;
+
+typedef enum SLListComponentType {
+  SLListComponentTypeDefault = 0,
+  SLListComponentTypeHeader = 1,
+  SLListComponentTypeFooter = 2,
+  SLListComponentTypeListRow = 3,
+} SLListComponentType;
+
+typedef enum SLRelativeCenter {
+  SLRelativeCenterNone = 0,
+  SLRelativeCenterVertical = 1,
+  SLRelativeCenterHorizontal = 2,
+  SLRelativeCenterBoth = 3,
+} SLRelativeCenter;
+
+typedef enum SLGridAutoFlow {
+  SLGridAutoFlowRow = 0,
+  SLGridAutoFlowColumn = 1,
+  SLGridAutoFlowDense = 2,
+  SLGridAutoFlowRowDense = 3,
+  SLGridAutoFlowColumnDense = 4,
+} SLGridAutoFlow;
+
+typedef enum SLJustifyItem {
+  SLJustifyItemAuto = 0,
+  SLJustifyItemStretch = 1,
+  SLJustifyItemStart = 2,
+  SLJustifyItemEnd = 3,
+  SLJustifyItemCenter = 4,
+} SLJustifyItem;
+
 typedef enum SLDirection {
+  SLDirectionNormal = 0,
+  SLDirectionLynxRTL = 1,
   SLDirectionRTL = 2,
   SLDirectionLTR = 3,
 } SLDirection;
@@ -72,6 +158,8 @@ typedef enum SLDirection {
 typedef enum SLPositionType {
   SLPositionTypeAbsolute = 0,
   SLPositionTypeRelative = 1,
+  SLPositionTypeFixed = 2,
+  SLPositionTypeSticky = 3,
 } SLPositionType;
 
 typedef enum SLBoxSizing {
@@ -111,6 +199,8 @@ typedef enum SLUnit {
   SLUnitAuto = 2,
   SLUnitMaxContent = 3,
   SLUnitFitContent = 4,
+  SLUnitFr = 5,
+  SLUnitCalc = 6,
 } SLUnit;
 
 #ifdef __cplusplus

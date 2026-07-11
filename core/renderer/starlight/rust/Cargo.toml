@@ -1,0 +1,15 @@
+[workspace]
+members = [
+  "crates/starlight_bench",
+  "crates/starlight_cpp",
+  "crates/starlight_ffi",
+  "crates/starlight_layout",
+  "crates/starlight_parity",
+  "crates/starlight_standalone",
+]
+resolver = "2"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "Apache-2.0"

@@ -5,6 +5,8 @@
 #ifndef CORE_INCLUDE_STARLIGHT_STANDALONE_STARLIGHT_VALUE_H_
 #define CORE_INCLUDE_STARLIGHT_STANDALONE_STARLIGHT_VALUE_H_
 
+#include <stdint.h>
+
 #include "starlight_enums.h"
 
 #ifdef __cplusplus
@@ -21,7 +23,12 @@ typedef struct StarlightSize {
 typedef struct StarlightValue {
   float value_;
   SLUnit unit_;
+  float percentage_;
+  int32_t flags_;
 } StarlightValue;
+
+#define SLValueFlagHasValue (1 << 0)
+#define SLValueFlagHasPercentage (1 << 1)
 
 #define SLUndefined (10E20f)
 #define kDefaultPhysicalPixelsPerLayoutUnit (1.f)

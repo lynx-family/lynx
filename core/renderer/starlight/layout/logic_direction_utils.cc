@@ -102,6 +102,11 @@ void ResolveAlignContent(const LayoutComputedStyle* css_style,
       }
       break;
     }
+    case AlignContentType::kSpaceEvenly: {
+      axis_interval = available_space / (sub_item_count + 1);
+      axis_start = axis_interval;
+      break;
+    }
   }
 }
 

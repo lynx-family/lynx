@@ -1,0 +1,11 @@
+[package]
+name = "starlight_ffi"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lib]
+crate-type = ["rlib", "staticlib", "cdylib"]
+
+[dependencies]
+starlight_layout = { path = "../starlight_layout" }
