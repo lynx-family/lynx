@@ -44,7 +44,6 @@ returns:
     description: SSR data size recorded by TimingInfo.
 events: []
 notes:
-  - Registered in devtool/lynx_devtool/agent/domain_agent/inspector_performance_agent.cc.
   - Dispatches through LynxDevToolMediator to InspectorUIExecutor on the UI thread.
   - The executor reads LynxShell::GetAllTimingInfo() and uses that object directly as the CDP result.
   - TimingHandler returns TimingInfo::GetAllTimingInfoAsMicrosecond(), so timestamp and duration values in timing maps are microseconds.

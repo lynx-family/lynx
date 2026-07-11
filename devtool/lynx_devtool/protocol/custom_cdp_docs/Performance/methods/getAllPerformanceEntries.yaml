@@ -24,7 +24,6 @@ returns:
     description: Timing markers supplied by the host platform.
 events: []
 notes:
-  - Registered in devtool/lynx_devtool/agent/domain_agent/inspector_performance_agent.cc.
   - Dispatches through LynxDevToolMediator to InspectorUIExecutor on the UI thread.
   - The executor reads LynxShell::GetAllPerformanceEntries() and wraps the converted array as result.entries.
   - PerformanceController only caches pipeline entries when LynxEnv DevTool is enabled. This is independent of the CDP Performance.enable method.

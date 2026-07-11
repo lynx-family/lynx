@@ -6,7 +6,6 @@ returns:
     description: Always an empty string.
 events: []
 notes:
-  - Registered in devtool/lynx_devtool/agent/domain_agent/inspector_template_agent.cc.
   - This method does not call the mediator or platform facade.
   - The response result is an empty string, not an object, because config info support was removed.
 examples:

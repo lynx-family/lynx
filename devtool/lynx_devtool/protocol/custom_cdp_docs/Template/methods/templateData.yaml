@@ -6,7 +6,6 @@ returns:
     description: Serialized template data produced from the platform Lepus value. This field is present only when the platform facade returns a non-null template data value.
 events: []
 notes:
-  - Registered in devtool/lynx_devtool/agent/domain_agent/inspector_template_agent.cc.
   - Dispatches through LynxDevToolMediator to InspectorUIExecutor on the UI thread.
   - Android reads the saved initial TemplateData pointer from the platform reload helper; Darwin delegates to the platform implementation.
   - If the platform facade has no template data value, the result object is returned without content.

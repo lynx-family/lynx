@@ -6,7 +6,6 @@ returns:
     description: Startup tracing configuration string read from the trace controller storage.
 events: []
 notes:
-  - Registered in devtool/lynx_devtool/agent/domain_agent/inspector_tracing_agent.cc.
   - Dispatches through LynxGlobalDevToolMediator on the global DevTool task runner.
   - Reads GlobalDevToolPlatformFacade::GetTraceController()->GetStartupTracingConfig().
   - The trace controller stores the configuration as an opaque string. Lynx does not parse or validate it in this CDP method.

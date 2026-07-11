@@ -3,7 +3,6 @@ parameters: []
 returns: []
 events: []
 notes:
-  - Registered in devtool/lynx_devtool/agent/domain_agent/inspector_testbench_replay_agent.cc.
   - Replay support must be enabled in the current runtime. If ReplayController::Enable() is false, the agent returns method not implemented.
   - Dispatches through LynxGlobalDevToolMediator and starts ReplayController::StartTest() on the UI task runner.
   - Returns an empty result object on success.

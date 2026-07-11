@@ -6,7 +6,6 @@ parameters:
 returns: []
 events: []
 notes:
-  - Registered in devtool/lynx_devtool/agent/domain_agent/inspector_tracing_agent.cc.
   - Dispatches through LynxGlobalDevToolMediator on the global DevTool task runner.
   - Writes params.config to GlobalDevToolPlatformFacade::GetTraceController()->SetStartupTracingConfig().
   - The trace controller stores the configuration as an opaque string. Lynx does not parse or validate it in this CDP method.

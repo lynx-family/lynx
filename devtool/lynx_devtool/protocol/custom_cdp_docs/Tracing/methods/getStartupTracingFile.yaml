@@ -4,7 +4,6 @@ returns: []
 events:
   - Tracing.tracingComplete
 notes:
-  - Registered in devtool/lynx_devtool/agent/domain_agent/inspector_tracing_agent.cc.
   - Dispatches through LynxGlobalDevToolMediator on the global DevTool task runner.
   - Reads GlobalDevToolPlatformFacade::GetTraceController()->GetStartupTracingFilePath().
   - When a startup tracing file path exists, the method first sends an empty OK response and then sends Tracing.tracingComplete.

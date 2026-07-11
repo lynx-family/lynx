@@ -100,7 +100,6 @@ returns:
     description: Background runtime group id used by the global result to deduplicate shared background runtime memory. Empty when unavailable.
 events: []
 notes:
-  - Registered in devtool/lynx_devtool/agent/domain_agent/inspector_memory_agent.cc.
   - Send this method to the global DevTool handler with session ID -1.
   - The mediator validates params.timeoutMs before dispatch. Non-object params, non-integer timeoutMs, negative timeoutMs, and timeoutMs values greater than 300000 return CDP errors.
   - The platform bridge returns only the result object as JSON. The mediator parses that object and wraps it in the CDP response envelope with the original request id.

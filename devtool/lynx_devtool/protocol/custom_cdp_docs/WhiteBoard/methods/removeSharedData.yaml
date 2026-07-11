@@ -1,4 +1,3 @@
 summary: Initial documentation entry for the Lynx-custom WhiteBoard.removeSharedData CDP method.
 notes:
-  - Registered in devtool/lynx_devtool/agent/domain_agent/inspector_white_board_agent.cc.
   - Complete source-backed request, response, event, and example docs before using this entry for website generation.

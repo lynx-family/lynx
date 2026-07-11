@@ -14,7 +14,6 @@ returns:
     description: Base64-encoded template bytes for the requested range. Empty when no template bytes are available, offset is outside the saved template, or the platform delegate is unavailable.
 events: []
 notes:
-  - Registered in devtool/lynx_devtool/agent/domain_agent/inspector_template_agent.cc.
   - Dispatches through LynxDevToolMediator to InspectorUIExecutor on the UI thread.
   - params.offset and params.size are required. If either field is missing, the method returns a CDP error with message Params must have offset and size properties.
   - The native executor reads offset and size as unsigned integers; callers should pass non-negative integers.

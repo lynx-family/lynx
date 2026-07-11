@@ -239,7 +239,7 @@ def build_manifest(
     ]
 
     for domain in sorted(domains):
-        domain_origin = "standard" if domain in upstream_methods else "lynx-domain"
+        domain_origin = "standard" if domain in upstream_methods else "lynx-extension"
         lines.extend(
             [
                 f"  - name: {yaml_scalar(domain)}",
@@ -266,7 +266,7 @@ def classify_method(
 ) -> str:
     upstream_domain_methods = upstream_methods.get(method.domain)
     if upstream_domain_methods is None:
-        return "lynx-domain"
+        return "lynx-extension"
     if method.method in upstream_domain_methods:
         return "standard"
     return "lynx-extension"

@@ -6,7 +6,6 @@ returns:
     description: Empty object on success.
 events: []
 notes:
-  - Registered in devtool/lynx_devtool/agent/domain_agent/inspector_memory_agent.cc.
   - Use the global DevTool handler with session ID -1 when controlling app-wide memory tracing.
   - Dispatches through LynxGlobalDevToolMediator to GlobalDevToolPlatformFacade.StartMemoryTracing.
   - Android and Darwin register the DevTool memory controller as a platform memory reporter.

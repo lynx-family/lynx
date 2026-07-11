@@ -10,7 +10,6 @@ returns:
 events:
   - Replay.end
 notes:
-  - Registered in devtool/lynx_devtool/agent/domain_agent/inspector_testbench_replay_agent.cc.
   - Replay support must be enabled in the current runtime. If ReplayController::Enable() is false, the agent returns method not implemented.
   - params is a raw string file path, not an object.
   - On success, LynxGlobalDevToolMediator opens the file with FileStream::Open() and sends a Replay.end message whose params.stream is the stream handle.

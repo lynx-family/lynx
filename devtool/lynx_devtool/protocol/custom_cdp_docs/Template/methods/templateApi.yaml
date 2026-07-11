@@ -9,7 +9,6 @@ returns:
     description: Names of registered data processor entries. This field is omitted when the processor map is empty.
 events: []
 notes:
-  - Registered in devtool/lynx_devtool/agent/domain_agent/inspector_template_agent.cc.
   - Dispatches through LynxDevToolMediator to InspectorTasmExecutor on the TASM thread.
   - When TASM is unavailable, the result reports useDefault as false.
 examples:

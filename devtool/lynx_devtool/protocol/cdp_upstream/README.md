@@ -2,7 +2,7 @@
 
 `protocol.json` is a generated, vendored Chrome DevTools Protocol schema used by
 `devtool/lynx_devtool/protocol/scripts/update_cdp_metadata.py` to classify
-locally implemented Lynx DevTool CDP methods as standard CDP or Lynx-customized
+locally implemented Lynx DevTool CDP methods as standard CDP or Lynx-extension
 CDP.
 
 Generate the file with `devtool/lynx_devtool/protocol/scripts/update_cdp_upstream.py`.

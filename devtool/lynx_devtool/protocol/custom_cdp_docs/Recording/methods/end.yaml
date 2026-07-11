@@ -4,7 +4,6 @@ returns: []
 events:
   - Recording.recordingComplete
 notes:
-  - Registered in devtool/lynx_devtool/agent/domain_agent/inspector_testbench_recorder_agent.cc.
   - Recorder support must be enabled in the current runtime. If RecorderController::Enable() is false, the agent returns method not implemented.
   - Dispatches through LynxGlobalDevToolMediator and calls RecorderController::EndRecord() on the UI task runner.
   - Returns an empty result object after the end-record request is accepted.

@@ -63,11 +63,11 @@ domains:
         origin: lynx-extension
         source: devtool/lynx_devtool/agent/domain_agent/inspector_css_agent_ng.cc
   - name: Component
-    origin: lynx-domain
+    origin: lynx-extension
     scope: global-and-instance
     methods:
       - name: uselessUpdate
-        origin: lynx-domain
+        origin: lynx-extension
         source: devtool/lynx_devtool/agent/domain_agent/inspector_component_agent.cc
   - name: DOM
     origin: standard
@@ -217,38 +217,38 @@ domains:
         origin: standard
         source: devtool/lynx_devtool/agent/domain_agent/inspector_log_agent.cc
   - name: Lynx
-    origin: lynx-domain
+    origin: lynx-extension
     scope: instance
     methods:
       - name: getComponentId
-        origin: lynx-domain
+        origin: lynx-extension
         source: devtool/lynx_devtool/agent/domain_agent/inspector_lynx_agent_ng.cc
       - name: getData
-        origin: lynx-domain
+        origin: lynx-extension
         source: devtool/lynx_devtool/agent/domain_agent/inspector_lynx_agent_ng.cc
       - name: getProperties
-        origin: lynx-domain
+        origin: lynx-extension
         source: devtool/lynx_devtool/agent/domain_agent/inspector_lynx_agent_ng.cc
       - name: getRectToWindow
-        origin: lynx-domain
+        origin: lynx-extension
         source: devtool/lynx_devtool/agent/domain_agent/inspector_lynx_agent_ng.cc
       - name: getScreenshot
-        origin: lynx-domain
+        origin: lynx-extension
         source: devtool/lynx_devtool/agent/domain_agent/inspector_lynx_agent_ng.cc
       - name: getVersion
-        origin: lynx-domain
+        origin: lynx-extension
         source: devtool/lynx_devtool/agent/domain_agent/inspector_lynx_agent_ng.cc
       - name: getViewLocationOnScreen
-        origin: lynx-domain
+        origin: lynx-extension
         source: devtool/lynx_devtool/agent/domain_agent/inspector_lynx_agent_ng.cc
       - name: sendVMEvent
-        origin: lynx-domain
+        origin: lynx-extension
         source: devtool/lynx_devtool/agent/domain_agent/inspector_lynx_agent_ng.cc
       - name: setTraceMode
-        origin: lynx-domain
+        origin: lynx-extension
         source: devtool/lynx_devtool/agent/domain_agent/inspector_lynx_agent_ng.cc
       - name: transferData
-        origin: lynx-domain
+        origin: lynx-extension
         source: devtool/lynx_devtool/agent/domain_agent/inspector_lynx_agent_ng.cc
   - name: Memory
     origin: standard
@@ -324,24 +324,24 @@ domains:
         origin: lynx-extension
         source: devtool/lynx_devtool/agent/domain_agent/inspector_performance_agent.cc
   - name: Recording
-    origin: lynx-domain
+    origin: lynx-extension
     scope: global-and-instance
     methods:
       - name: end
-        origin: lynx-domain
+        origin: lynx-extension
         source: devtool/lynx_devtool/agent/domain_agent/inspector_testbench_recorder_agent.cc
       - name: start
-        origin: lynx-domain
+        origin: lynx-extension
         source: devtool/lynx_devtool/agent/domain_agent/inspector_testbench_recorder_agent.cc
   - name: Replay
-    origin: lynx-domain
+    origin: lynx-extension
     scope: global-and-instance
     methods:
       - name: end
-        origin: lynx-domain
+        origin: lynx-extension
         source: devtool/lynx_devtool/agent/domain_agent/inspector_testbench_replay_agent.cc
       - name: start
-        origin: lynx-domain
+        origin: lynx-extension
         source: devtool/lynx_devtool/agent/domain_agent/inspector_testbench_replay_agent.cc
   - name: SystemInfo
     origin: standard
@@ -351,20 +351,20 @@ domains:
         origin: standard
         source: devtool/lynx_devtool/agent/domain_agent/system_info_agent.cc
   - name: Template
-    origin: lynx-domain
+    origin: lynx-extension
     scope: instance
     methods:
       - name: getTemplateJs
-        origin: lynx-domain
+        origin: lynx-extension
         source: devtool/lynx_devtool/agent/domain_agent/inspector_template_agent.cc
       - name: templateApi
-        origin: lynx-domain
+        origin: lynx-extension
         source: devtool/lynx_devtool/agent/domain_agent/inspector_template_agent.cc
       - name: templateConfigInfo
-        origin: lynx-domain
+        origin: lynx-extension
         source: devtool/lynx_devtool/agent/domain_agent/inspector_template_agent.cc
       - name: templateData
-        origin: lynx-domain
+        origin: lynx-extension
         source: devtool/lynx_devtool/agent/domain_agent/inspector_template_agent.cc
   - name: Tracing
     origin: standard
@@ -386,43 +386,43 @@ domains:
         origin: standard
         source: devtool/lynx_devtool/agent/domain_agent/inspector_tracing_agent.cc
   - name: UITree
-    origin: lynx-domain
+    origin: lynx-extension
     scope: instance
     methods:
       - name: disable
-        origin: lynx-domain
+        origin: lynx-extension
         source: devtool/lynx_devtool/agent/domain_agent/inspector_ui_tree_agent.cc
       - name: enable
-        origin: lynx-domain
+        origin: lynx-extension
         source: devtool/lynx_devtool/agent/domain_agent/inspector_ui_tree_agent.cc
       - name: getLynxUITree
-        origin: lynx-domain
+        origin: lynx-extension
         source: devtool/lynx_devtool/agent/domain_agent/inspector_ui_tree_agent.cc
       - name: getUIInfoForNode
-        origin: lynx-domain
+        origin: lynx-extension
         source: devtool/lynx_devtool/agent/domain_agent/inspector_ui_tree_agent.cc
       - name: setUIStyle
-        origin: lynx-domain
+        origin: lynx-extension
         source: devtool/lynx_devtool/agent/domain_agent/inspector_ui_tree_agent.cc
   - name: WhiteBoard
-    origin: lynx-domain
+    origin: lynx-extension
     scope: instance
     methods:
       - name: clear
-        origin: lynx-domain
+        origin: lynx-extension
         source: devtool/lynx_devtool/agent/domain_agent/inspector_white_board_agent.cc
       - name: disable
-        origin: lynx-domain
+        origin: lynx-extension
         source: devtool/lynx_devtool/agent/domain_agent/inspector_white_board_agent.cc
       - name: enable
-        origin: lynx-domain
+        origin: lynx-extension
         source: devtool/lynx_devtool/agent/domain_agent/inspector_white_board_agent.cc
       - name: getSharedData
-        origin: lynx-domain
+        origin: lynx-extension
         source: devtool/lynx_devtool/agent/domain_agent/inspector_white_board_agent.cc
       - name: removeSharedData
-        origin: lynx-domain
+        origin: lynx-extension
         source: devtool/lynx_devtool/agent/domain_agent/inspector_white_board_agent.cc
       - name: setSharedData
-        origin: lynx-domain
+        origin: lynx-extension
         source: devtool/lynx_devtool/agent/domain_agent/inspector_white_board_agent.cc
