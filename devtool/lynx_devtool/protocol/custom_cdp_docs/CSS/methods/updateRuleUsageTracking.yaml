@@ -1,3 +1,26 @@
-summary: Initial documentation entry for the Lynx-custom CSS.updateRuleUsageTracking CDP method.
+summary: Records selectors that should be marked as used by the Lynx CSS rule usage tracker.
+parameters:
+  - name: selector
+    type: array
+    optional: true
+    description: Selector strings to add to the current CSS rule usage set while CSS rule usage tracking is active.
+  - name: 'selector[]'
+    type: string
+    description: Selector text. The native handler stores the string as-is and later searches for it in the generated stylesheet text.
+returns: []
+events: []
 notes:
-  - Complete source-backed request, response, event, and example docs before using this entry for website generation.
+  - Dispatches through LynxDevToolMediator to InspectorTasmExecutor on the TASM thread.
+  - This method is only effective after CSS.startRuleUsageTracking has enabled rule usage tracking.
+  - The handler inserts each params.selector item into an in-memory selector set and does not send a CDP response.
+  - CSS.stopRuleUsageTracking later emits the collected selectors as ruleUsage entries. Each entry contains styleSheetId, startOffset, endOffset, and used.
+  - When CSS.stopRuleUsageTracking runs with no selectors collected by this method, Lynx falls back to collecting id and class selector usage from the DOM tree.
+examples:
+  - title: Mark selectors as used during tracking
+    request:
+      id: 1
+      method: CSS.updateRuleUsageTracking
+      params:
+        selector:
+          - '#app'
+          - '.title'

@@ -1,3 +1,27 @@
-summary: Initial documentation entry for the Lynx-custom DOM.getOriginalNodeIndex CDP method.
+summary: Returns the Lynx source node index associated with a DevTool node id.
+parameters:
+  - name: nodeId
+    type: integer
+    description: DevTool node id to resolve in the current Lynx element tree.
+returns:
+  - name: nodeIndex
+    type: integer
+    optional: true
+    description: Raw node index stored on the resolved Lynx element. The field is omitted when the node id cannot be resolved.
+events: []
 notes:
-  - Complete source-backed request, response, event, and example docs before using this entry for website generation.
+  - Dispatches through LynxDevToolMediator to InspectorTasmExecutor on the TASM thread.
+  - The handler resolves params.nodeId with the current inspector element map and returns Element::NodeIndex().
+  - The response result is an empty object when no element is found for params.nodeId.
+  - If the mediator has no TASM task runner, the current handler does not send an explicit CDP response.
+examples:
+  - title: Resolve a DevTool node to its Lynx source index
+    request:
+      id: 1
+      method: DOM.getOriginalNodeIndex
+      params:
+        nodeId: 42
+    response:
+      id: 1
+      result:
+        nodeIndex: 7

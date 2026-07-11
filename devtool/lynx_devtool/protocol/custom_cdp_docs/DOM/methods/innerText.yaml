@@ -1,3 +1,39 @@
-summary: Initial documentation entry for the Lynx-custom DOM.innerText CDP method.
+summary: Returns raw text child values for a Lynx text node.
+parameters:
+  - name: nodeId
+    type: integer
+    description: DevTool node id to inspect.
+returns:
+  - name: nodeId
+    type: integer
+    description: The node id from the request.
+  - name: rawTextValues
+    type: array
+    description: Raw text child entries collected from the requested text node. Empty when the node is missing, detached, not a text element, or has no raw-text children with text attributes.
+  - name: 'rawTextValues[].nodeId'
+    type: integer
+    description: DevTool node id of the raw-text child.
+  - name: 'rawTextValues[].text'
+    type: string
+    description: Text attribute value from the raw-text child.
+events: []
 notes:
-  - Complete source-backed request, response, event, and example docs before using this entry for website generation.
+  - Dispatches through LynxDevToolMediator to InspectorTasmExecutor on the TASM thread.
+  - The handler only scans attached elements whose localName is text.
+  - For matching text elements, the handler walks direct raw-text children and reads their text attributes.
+  - The method does not concatenate text; callers receive one rawTextValues item per raw-text child that contributes text.
+  - If the mediator has no TASM task runner, the current handler does not send an explicit CDP response.
+examples:
+  - title: Read raw text children
+    request:
+      id: 1
+      method: DOM.innerText
+      params:
+        nodeId: 42
+    response:
+      id: 1
+      result:
+        nodeId: 42
+        rawTextValues:
+          - nodeId: 43
+            text: Hello Lynx

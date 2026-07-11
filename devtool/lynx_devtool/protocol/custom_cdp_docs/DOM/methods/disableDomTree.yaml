@@ -1,3 +1,25 @@
-summary: Initial documentation entry for the Lynx-custom DOM.disableDomTree CDP method.
+summary: Disables Lynx DOM tree capture and reloads the current page.
+parameters:
+  - name: ignoreCache
+    type: boolean
+    optional: true
+    default: false
+    description: Whether the page reload triggered by this method should ignore cache.
+returns: []
+events: []
 notes:
-  - Complete source-backed request, response, event, and example docs before using this entry for website generation.
+  - Dispatches through LynxDevToolMediator to InspectorTasmExecutor on the TASM thread.
+  - Sets the local Lynx environment flag kLynxEnableDomTree to false.
+  - Calls Page.reload with params.ignoreCache. Missing params or a missing ignoreCache field are treated as false.
+  - Returns an empty result object after scheduling the reload.
+  - If the mediator has no TASM task runner, the current handler does not send an explicit CDP response.
+examples:
+  - title: Disable DOM tree capture and reload
+    request:
+      id: 1
+      method: DOM.disableDomTree
+      params:
+        ignoreCache: false
+    response:
+      id: 1
+      result: {}

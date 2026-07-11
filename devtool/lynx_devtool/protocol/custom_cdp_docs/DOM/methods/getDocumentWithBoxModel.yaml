@@ -1,3 +1,112 @@
-summary: Initial documentation entry for the Lynx-custom DOM.getDocumentWithBoxModel CDP method.
+summary: Returns the Lynx DOM tree with per-node box model data when it can be computed.
+parameters: []
+returns:
+  - name: root
+    type: object|string
+    description: DOM root object when uncompressed, or a base64-encoded compressed string when result.compress is true.
+  - name: compress
+    type: boolean
+    description: Whether result.root was zlib-compressed and base64-encoded by the native handler.
+  - name: 'root.nodeId'
+    type: integer
+    optional: true
+    description: DevTool node id for the Lynx element.
+  - name: 'root.backendNodeId'
+    type: integer
+    optional: true
+    description: Backend node id. Lynx currently uses the same value as nodeId.
+  - name: 'root.nodeType'
+    type: integer
+    optional: true
+    description: DOM node type value reported by ElementInspector.
+  - name: 'root.localName'
+    type: string
+    optional: true
+    description: Local element name reported by ElementInspector.
+  - name: 'root.nodeName'
+    type: string
+    optional: true
+    description: Node name reported by ElementInspector.
+  - name: 'root.nodeValue'
+    type: string
+    optional: true
+    description: Node value reported by ElementInspector.
+  - name: 'root.parentId'
+    type: integer
+    optional: true
+    description: Parent node id when the element has a parent.
+  - name: 'root.attributes'
+    type: array
+    optional: true
+    description: Flat name/value array containing attributes, data attributes, event attributes, class, style, and selected Lynx inspector metadata.
+  - name: 'root.childNodeCount'
+    type: integer
+    optional: true
+    description: Number of child nodes serialized for this node.
+  - name: 'root.children'
+    type: array
+    optional: true
+    description: Child nodes serialized with the same shape as root.
+  - name: 'root.box_model'
+    type: object|null
+    optional: true
+    description: Box model for this node when Lynx can build and resolve the native layout query. Null when unavailable.
+  - name: 'root.box_model.width'
+    type: number
+    optional: true
+    description: Element width after conversion from layout units to pixels.
+  - name: 'root.box_model.height'
+    type: number
+    optional: true
+    description: Element height after conversion from layout units to pixels.
+  - name: 'root.box_model.content'
+    type: array
+    optional: true
+    description: Eight numeric coordinates for the content quad.
+  - name: 'root.box_model.padding'
+    type: array
+    optional: true
+    description: Eight numeric coordinates for the padding quad.
+  - name: 'root.box_model.border'
+    type: array
+    optional: true
+    description: Eight numeric coordinates for the border quad.
+  - name: 'root.box_model.margin'
+    type: array
+    optional: true
+    description: Eight numeric coordinates for the margin quad.
+events: []
 notes:
-  - Complete source-backed request, response, event, and example docs before using this entry for website generation.
+  - Dispatches through LynxDevToolMediator to InspectorTasmExecutor on the TASM thread, then asks the platform for native box models before sending the response.
+  - The returned tree is built from the current element root and uses the same node fields as the standard DOM tree, with Lynx's box_model field added to each serializable node.
+  - Coordinates are adjusted relative to the root box model in LynxView screenshot mode and converted by LayoutsUnitPerPx.
+  - If the serialized root exceeds the native DOM compression threshold and compression succeeds, result.compress is true and result.root is a compressed base64 string.
+  - If a node cannot produce a valid box model, that node's box_model field is null.
+  - The native implementation does not read request params.
+  - If the mediator has no TASM task runner or the element root is unavailable, the current handler does not send an explicit CDP response.
+examples:
+  - title: Read the DOM tree with box models
+    request:
+      id: 1
+      method: DOM.getDocumentWithBoxModel
+    response:
+      id: 1
+      result:
+        compress: false
+        root:
+          nodeId: 1
+          backendNodeId: 1
+          nodeType: 1
+          localName: page
+          nodeName: page
+          nodeValue: ''
+          attributes: []
+          childNodeCount: 1
+          box_model:
+            width: 390
+            height: 844
+            content: [0, 0, 390, 0, 390, 844, 0, 844]
+            padding: [0, 0, 390, 0, 390, 844, 0, 844]
+            border: [0, 0, 390, 0, 390, 844, 0, 844]
+            margin: [0, 0, 390, 0, 390, 844, 0, 844]
+          children: []
