@@ -1,5 +1,19 @@
-summary: Initial documentation entry for the Lynx-custom Template.templateConfigInfo CDP method.
+summary: Compatibility method for removed template config info support.
+parameters: []
+returns:
+  - name: result
+    type: string
+    description: Always an empty string.
+events: []
 notes:
   - Registered in devtool/lynx_devtool/agent/domain_agent/inspector_template_agent.cc.
-  - This is a compatibility stub that returns an empty result because config info was removed.
-  - Complete source-backed request, response, event, and example docs before using this entry for website generation.
+  - This method does not call the mediator or platform facade.
+  - The response result is an empty string, not an object, because config info support was removed.
+examples:
+  - title: Get removed template config info
+    request:
+      id: 1
+      method: Template.templateConfigInfo
+    response:
+      id: 1
+      result: ''

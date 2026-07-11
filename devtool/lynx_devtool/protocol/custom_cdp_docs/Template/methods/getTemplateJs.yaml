@@ -1,4 +1,34 @@
-summary: Initial documentation entry for the Lynx-custom Template.getTemplateJs CDP method.
+summary: Returns a base64-encoded slice of saved template binary bytes.
+parameters:
+  - name: offset
+    type: integer
+    minimum: 0
+    description: Byte offset into the saved template binary.
+  - name: size
+    type: integer
+    minimum: 0
+    description: Maximum number of bytes to read. Platform implementations may clamp this value to the available template length.
+returns:
+  - name: data
+    type: string
+    description: Base64-encoded template bytes for the requested range. Empty when no template bytes are available, offset is outside the saved template, or the platform delegate is unavailable.
+events: []
 notes:
   - Registered in devtool/lynx_devtool/agent/domain_agent/inspector_template_agent.cc.
-  - Complete source-backed request, response, event, and example docs before using this entry for website generation.
+  - Dispatches through LynxDevToolMediator to InspectorUIExecutor on the UI thread.
+  - params.offset and params.size are required. If either field is missing, the method returns a CDP error with message Params must have offset and size properties.
+  - The native executor reads offset and size as unsigned integers; callers should pass non-negative integers.
+  - Android returns a base64 slice from the saved binary template data or the bytes captured after a URL template load. The slice length is clamped to the remaining template bytes.
+  - The generic embedder implementation returns an empty data string.
+examples:
+  - title: Read a template byte range
+    request:
+      id: 1
+      method: Template.getTemplateJs
+      params:
+        offset: 0
+        size: 4096
+    response:
+      id: 1
+      result:
+        data: AAECAw==

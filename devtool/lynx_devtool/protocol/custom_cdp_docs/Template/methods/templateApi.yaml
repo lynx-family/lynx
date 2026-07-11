@@ -1,4 +1,25 @@
-summary: Initial documentation entry for the Lynx-custom Template.templateApi CDP method.
+summary: Reports template data processor API information for the current template.
+parameters: []
+returns:
+  - name: useDefault
+    type: boolean
+    description: Whether the current template has a default data processor closure.
+  - name: processMapKeys
+    type: array
+    description: Names of registered data processor entries. This field is omitted when the processor map is empty.
+events: []
 notes:
   - Registered in devtool/lynx_devtool/agent/domain_agent/inspector_template_agent.cc.
-  - Complete source-backed request, response, event, and example docs before using this entry for website generation.
+  - Dispatches through LynxDevToolMediator to InspectorTasmExecutor on the TASM thread.
+  - When TASM is unavailable, the result reports useDefault as false.
+examples:
+  - title: Get template processor API info
+    request:
+      id: 1
+      method: Template.templateApi
+    response:
+      id: 1
+      result:
+        useDefault: true
+        processMapKeys:
+          - main
