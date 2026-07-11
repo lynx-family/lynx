@@ -1,0 +1,40 @@
+.cq/pipelines/clay-vs-native-ios-e2e-css-test.yml
+  h_dc1658ba751399 25
+.cq/pipelines/macos-vs-ios-e2e-css-test.yml
+  h_dc1658ba751399 25
+.cq/pipelines/clay-vs-native-android-e2e-core-test.yml
+  h_dc1658ba751399 25-26
+.cq/pipelines/clay-vs-native-android-e2e-component-test.yml
+  h_dc1658ba751399 25-26
+.cq/pipelines/clay-vs-native-ios-e2e-core-test.yml
+  h_dc1658ba751399 25
+.cq/pipelines/macos-vs-ios-e2e-core-test.yml
+  h_dc1658ba751399 25
+.cq/pipelines/clay-vs-native-ios-e2e-component-test.yml
+  h_dc1658ba751399 25
+.cq/pipelines/clay-vs-native-android-e2e-css-test.yml
+  h_dc1658ba751399 25-26
+.cq/workflows/periodic-tasks.yml
+  h_dc1658ba751399 683,694,705,716,920,928,936
+  s_c925634b1584f3::t_5df9ea6c0996eb 672
+.cq/pipelines/macos-vs-ios-e2e-component-test.yml
+  h_dc1658ba751399 25
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e6efe0b9632e8d02a57c5b518b41443ab16cecc2",
+  "prompts": {},
+  "sessions": {
+    "s_c925634b1584f3": {
+      "agent_id": {
+        "tool": "trae-cue",
+        "id": "ai_tab-icr-3e4e5b58-caa0-47a0-bf3e-c5fa9790a93c",
+        "model": "default"
+      },
+      "human_author": null
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

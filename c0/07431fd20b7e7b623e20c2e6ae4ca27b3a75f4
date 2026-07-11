@@ -1,0 +1,77 @@
+lynx/core/resource/lazy_bundle/lazy_bundle_loader.h
+  s_071d8cf57e2b04::t_3c2f43202c61a7 30-32,119-120
+lynx/core/resource/lazy_bundle/lazy_bundle_loader.cc
+  s_071d8cf57e2b04::t_d7afebbce4549a 168,323-324,351
+  s_b25ae8e7bc37d8::t_b4a071fa88c8b2 141,325
+  s_b25ae8e7bc37d8::t_df08760d709757 142
+  s_b25ae8e7bc37d8::t_830668b0e15a71 326-327
+  s_cb16567de0f223::t_41e2b3e1e360ba 314,335,343,361
+lynx/core/resource/lazy_bundle/lazy_bundle_lifecycle_option.h
+  s_b25ae8e7bc37d8::t_ec523966f03109 17-21,23-27,30-32,47-62,107-111
+lynx/core/resource/external_resource/external_resource_loader.cc
+  s_b25ae8e7bc37d8::t_f864df61a25790 12,14-15,134-137,140-142
+  s_b25ae8e7bc37d8::t_476de0e468c776 143
+  s_cb16567de0f223::t_aaaf9dd6a5ba20 149-152,178-182,190,196-197
+lynx/core/resource/lazy_bundle/lazy_bundle_lifecycle_option.cc
+  s_b25ae8e7bc37d8::t_0db5adbf19df3d 9,12,18-98
+lynx/core/renderer/template_assembler.cc
+  s_071d8cf57e2b04::t_4aa16ac64b971b 18,1445-1450,1458-1463,1509
+  s_071d8cf57e2b04::t_88d61e2ed14839 1510
+  s_071d8cf57e2b04::t_3b89fa2000d943 1511-1512
+lynx/core/shell/runtime/bts/bts_runtime_mediator.h
+  s_071d8cf57e2b04::t_d026d4e8b2d2da 69-70
+lynx/core/resource/lazy_bundle/lazy_bundle_unittest.cc
+  s_b25ae8e7bc37d8::t_3c4dfa77366921 5-7,11-12,15,21-22,29-100,205-320,324-325,335-348,351-353,361-370,373-376,378
+  s_071d8cf57e2b04::t_f0a9de60cd1f8c 321-322,349,371,379,408
+  s_b25ae8e7bc37d8::t_1da641f692bde8 326-328,332-334
+  s_b25ae8e7bc37d8::t_c2e5a126907334 354-356,358-360
+  s_b25ae8e7bc37d8::t_43212591b2b0d7 377
+  s_071d8cf57e2b04::t_f8e152241f07ef 380-382,405-407
+  s_071d8cf57e2b04::t_0f582507e6237e 409-411
+  s_cb16567de0f223::t_438f1756badf73 323,329-331,350,357,372,383-404,412
+lynx/core/resource/external_resource/external_resource_loader.h
+  s_071d8cf57e2b04::t_01fb78a5f22950 20-25,90-96,101-102
+lynx/core/services/performance/performance_controller.cc
+  s_cb16567de0f223::t_b934cc54e1ada8 53-70,86
+lynx/core/services/performance/performance_controller.h
+  s_cb16567de0f223::t_521a42ce507c52 10-11,60-67,104
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "c007431fd20b7e7b623e20c2e6ae4ca27b3a75f4",
+  "prompts": {},
+  "humans": {
+    "h_4d36f4d76420fe": {
+      "author": "yangguangzhao <yangguangzhao.solace@bytedance.com>"
+    }
+  },
+  "sessions": {
+    "s_071d8cf57e2b04": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f4609-b22f-7ab3-8d9a-ace51395e283",
+        "model": "unknown"
+      },
+      "human_author": "yangguangzhao <yangguangzhao.solace@bytedance.com>"
+    },
+    "s_b25ae8e7bc37d8": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f4a5c-ff6f-7910-a4fa-aeb4769b37c2",
+        "model": "unknown"
+      },
+      "human_author": "yangguangzhao <yangguangzhao.solace@bytedance.com>"
+    },
+    "s_cb16567de0f223": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f4b06-46eb-7072-8f71-b18fa97c3ab5",
+        "model": "unknown"
+      },
+      "human_author": "yangguangzhao <yangguangzhao.solace@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

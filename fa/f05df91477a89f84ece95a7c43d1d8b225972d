@@ -1,0 +1,21 @@
+.cq/workflows/regress.yml
+  s_66a02440eee005::t_10dfcefff4bffa 990-1016
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "faf05df91477a89f84ece95a7c43d1d8b225972d",
+  "prompts": {},
+  "sessions": {
+    "s_66a02440eee005": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f49e3-7f8e-7f93-a7ae-b8ff29344f0f",
+        "model": "unknown"
+      },
+      "human_author": "liangruijie.030116 <liangruijie.030116@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}
