@@ -14,6 +14,21 @@ NS_ASSUME_NONNULL_BEGIN
 
 @protocol LynxServiceProtocol;
 
+typedef void (^LynxTrailFetchCallback)(BOOL success, NSString *_Nullable errorMessage);
+
+/** Immutable values and metadata for one host-defined Trail layer. */
+@interface LynxTrailValueLayer : NSObject
+
+@property(nonatomic, copy, readonly) NSString *name;
+@property(nonatomic, assign, readonly) NSInteger updatedAt;
+@property(nonatomic, copy, readonly) NSDictionary<NSString *, NSString *> *values;
+
+- (instancetype)initWithName:(NSString *)name
+                   updatedAt:(NSInteger)updatedAt
+                      values:(NSDictionary<NSString *, NSString *> *)values;
+
+@end
+
 @protocol LynxServiceTrailProtocol <LynxServiceProtocol>
 
 /**
@@ -33,6 +48,34 @@ NS_ASSUME_NONNULL_BEGIN
  * Get all values for key from experiment.
  */
 - (NSDictionary *)getAllValues;
+
+@optional
+
+/**
+ * Returns an immutable snapshot of the value layers maintained by this service.
+ *
+ * A layer is a host-defined source of Trail values. Implementations may provide any number of
+ * layers with non-empty, unique names. The returned list is ordered from highest to lowest
+ * priority: when the same key exists in multiple layers, the value in the first matching layer is
+ * effective. The name `mock` is reserved for local mock overrides. When present, the mock layer
+ * must be the first layer in the list.
+ *
+ * Each layer contains all values discoverable by the implementation. A layer's `updatedAt` is
+ * implementation-defined; zero means that its update time is unknown or unsupported.
+ */
+- (NSArray<LynxTrailValueLayer *> *)getLayeredValues;
+
+/** Sets a process-wide mock override. */
+- (BOOL)setMockValue:(NSString *)value forKey:(NSString *)key;
+
+/** Removes a process-wide mock override. */
+- (BOOL)removeMockValueForKey:(NSString *)key;
+
+/** Clears all process-wide mock overrides. */
+- (BOOL)clearMockValues;
+
+/** Fetches the latest values from the implementation-defined backing source. */
+- (void)fetchLatestSettings:(LynxTrailFetchCallback)callback;
 
 @end
 
