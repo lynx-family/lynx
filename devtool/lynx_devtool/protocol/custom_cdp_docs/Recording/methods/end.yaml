@@ -1,5 +1,31 @@
-summary: Initial documentation entry for the Lynx-custom Recording.end CDP method.
+summary: Stops TestBench recording and emits stream handles for generated recording files.
+parameters: []
+returns: []
+events:
+  - Recording.recordingComplete
 notes:
   - Registered in devtool/lynx_devtool/agent/domain_agent/inspector_testbench_recorder_agent.cc.
-  - Recorder support must be enabled in the current runtime.
-  - Complete source-backed request, response, event, and example docs before using this entry for website generation.
+  - Recorder support must be enabled in the current runtime. If RecorderController::Enable() is false, the agent returns method not implemented.
+  - Dispatches through LynxGlobalDevToolMediator and calls RecorderController::EndRecord() on the UI task runner.
+  - Returns an empty result object after the end-record request is accepted.
+  - Sends Recording.recordingComplete asynchronously after the recorder writes the output files.
+  - Recording.recordingComplete.params.stream is an array of FileStream handles. Read each handle with IO.read and close it with IO.close.
+  - Recording.recordingComplete.params.filenames contains the generated file paths. Recording.recordingComplete.params.sessionIDs contains matching session ids or -1 when the recorder has no mapped session id.
+  - Recording.recordingComplete.params.recordFormat is json.
+  - The TestBench recorder writes compressed and base64-encoded JSON content to each generated file.
+examples:
+  - title: Stop recording
+    request:
+      id: 2
+      method: Recording.end
+    response:
+      id: 2
+      result: {}
+  - title: Recording complete notification
+    response:
+      method: Recording.recordingComplete
+      params:
+        stream: [1]
+        filenames: [/tmp/1001.json]
+        sessionIDs: [1001]
+        recordFormat: json

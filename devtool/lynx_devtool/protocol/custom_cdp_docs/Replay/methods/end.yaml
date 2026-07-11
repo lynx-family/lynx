@@ -1,5 +1,30 @@
-summary: Initial documentation entry for the Lynx-custom Replay.end CDP method.
+summary: Ends TestBench replay by exposing a replay dump file as a stream.
+parameters:
+  - name: params
+    type: string
+    description: File path for the replay dump file. The native handler reads the whole params value as this string.
+returns:
+  - name: stream
+    type: string
+    description: FileStream handle returned in the Replay.end message params on success.
+events:
+  - Replay.end
 notes:
   - Registered in devtool/lynx_devtool/agent/domain_agent/inspector_testbench_replay_agent.cc.
-  - Replay support must be enabled in the current runtime.
-  - Complete source-backed request, response, event, and example docs before using this entry for website generation.
+  - Replay support must be enabled in the current runtime. If ReplayController::Enable() is false, the agent returns method not implemented.
+  - params is a raw string file path, not an object.
+  - On success, LynxGlobalDevToolMediator opens the file with FileStream::Open() and sends a Replay.end message whose params.stream is the stream handle.
+  - Read the returned stream handle with IO.read and close it with IO.close.
+  - If the file path cannot be opened, the method returns a CDP error with message file path doesn't exist.
+  - If ReplayController::Enable() becomes false inside the mediator task, the method returns a CDP error with message Replay doesn't enable.
+  - In the internal replay workflow, ReplayController::EndTest() saves collected replay dump data to this file path before notifying DevTool through the same Replay.end message shape.
+examples:
+  - title: End replay and open the dump file
+    request:
+      id: 2
+      method: Replay.end
+      params: /tmp/lynx-replay-dump.json
+    response:
+      method: Replay.end
+      params:
+        stream: '1'

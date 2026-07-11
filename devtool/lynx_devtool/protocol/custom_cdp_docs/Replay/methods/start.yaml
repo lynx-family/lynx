@@ -1,5 +1,18 @@
-summary: Initial documentation entry for the Lynx-custom Replay.start CDP method.
+summary: Starts TestBench replay collection for the current Lynx page.
+parameters: []
+returns: []
+events: []
 notes:
   - Registered in devtool/lynx_devtool/agent/domain_agent/inspector_testbench_replay_agent.cc.
-  - Replay support must be enabled in the current runtime.
-  - Complete source-backed request, response, event, and example docs before using this entry for website generation.
+  - Replay support must be enabled in the current runtime. If ReplayController::Enable() is false, the agent returns method not implemented.
+  - Dispatches through LynxGlobalDevToolMediator and starts ReplayController::StartTest() on the UI task runner.
+  - Returns an empty result object on success.
+  - Returns a CDP error with message Cannot find ui task runner when no UI task runner is available.
+examples:
+  - title: Start replay collection
+    request:
+      id: 1
+      method: Replay.start
+    response:
+      id: 1
+      result: {}
