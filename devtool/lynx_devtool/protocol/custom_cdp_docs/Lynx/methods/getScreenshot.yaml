@@ -1,3 +1,16 @@
-summary: Initial documentation entry for the Lynx-custom Lynx.getScreenshot CDP method.
+summary: Requests the platform to send a Lynx screenshot or card preview.
+parameters: []
+returns: []
+events: []
 notes:
-  - Complete source-backed request, response, event, and example docs before using this entry for website generation.
+  - Dispatches through LynxDevToolMediator to InspectorUIExecutor on the UI thread.
+  - The handler calls DevToolPlatformFacade::GetLynxScreenShot().
+  - Android and Darwin delegate this to their sendCardPreview platform hook.
+  - The current native handler does not send a CDP response after invoking the platform hook.
+  - The native implementation does not read request params.
+  - If the mediator has no UI task runner or the platform facade is unavailable, the current handler does not send an explicit CDP response.
+examples:
+  - title: Request a Lynx screenshot
+    request:
+      id: 1
+      method: Lynx.getScreenshot

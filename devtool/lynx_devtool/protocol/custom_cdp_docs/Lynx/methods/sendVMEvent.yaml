@@ -1,3 +1,33 @@
-summary: Initial documentation entry for the Lynx-custom Lynx.sendVMEvent CDP method.
+summary: Sends a DevTool-originated event to a Lynx VM target.
+parameters:
+  - name: vmType
+    type: string
+    description: VM target string passed to the platform facade.
+  - name: event
+    type: string
+    description: Event name passed to the VM.
+  - name: data
+    type: string
+    optional: true
+    default: ''
+    description: String payload passed with the event. Non-string values are treated as an empty string by the native handler.
+returns: []
+events: []
 notes:
-  - Complete source-backed request, response, event, and example docs before using this entry for website generation.
+  - Dispatches through LynxDevToolMediator to InspectorUIExecutor on the UI thread.
+  - The handler forwards the event only when params.vmType and params.event are strings.
+  - Darwin wraps the payload with origin Devtool and target set to params.vmType before calling the platform delegate.
+  - The handler returns an empty CDP result object after processing the request, including requests with missing or invalid params.
+  - If params are valid but the platform facade is unavailable, the current handler does not send an explicit CDP response.
+examples:
+  - title: Send a VM event
+    request:
+      id: 1
+      method: Lynx.sendVMEvent
+      params:
+        vmType: main
+        event: DevToolRefresh
+        data: '{"reason":"manual"}'
+    response:
+      id: 1
+      result: {}

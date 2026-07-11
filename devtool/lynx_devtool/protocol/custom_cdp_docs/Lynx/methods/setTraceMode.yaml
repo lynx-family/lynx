@@ -1,3 +1,19 @@
-summary: Initial documentation entry for the Lynx-custom Lynx.setTraceMode CDP method.
+summary: Deprecated trace-mode method that currently returns a method-not-found error.
+parameters: []
+returns: []
+events: []
 notes:
-  - Complete source-backed request, response, event, and example docs before using this entry for website generation.
+  - Dispatches through LynxDevToolMediator to InspectorDefaultExecutor on the DevTool thread.
+  - The native handler no longer supports this method and does not read request params.
+  - The response is a CDP error with JSON-RPC code -32601 and message SetTraceMode is deprecated. Use global messages.
+  - If the mediator has no DevTool task runner, the current handler does not send an explicit CDP response.
+examples:
+  - title: Deprecated trace mode request
+    request:
+      id: 1
+      method: Lynx.setTraceMode
+    response:
+      id: 1
+      error:
+        code: -32601
+        message: SetTraceMode is deprecated. Use global messages.

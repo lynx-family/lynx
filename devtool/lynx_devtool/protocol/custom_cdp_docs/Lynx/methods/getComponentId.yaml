@@ -1,3 +1,36 @@
-summary: Initial documentation entry for the Lynx-custom Lynx.getComponentId CDP method.
+summary: Returns the Lynx component id associated with a DevTool node id.
+parameters:
+  - name: nodeId
+    type: integer
+    description: DevTool node id to resolve in the current Lynx element tree.
+returns:
+  - name: componentId
+    type: string|integer
+    description: Component id string for component nodes. The value is the integer -1 when the node is missing or is not a component node.
+events: []
 notes:
-  - Complete source-backed request, response, event, and example docs before using this entry for website generation.
+  - Dispatches through LynxDevToolMediator to InspectorTasmExecutor on the TASM thread.
+  - The handler resolves params.nodeId and reads ComponentElement::component_id() only for component elements.
+  - The response uses mixed value types today. Component ids are strings, while the fallback value is the integer -1.
+  - If the mediator has no TASM task runner, the current handler does not send an explicit CDP response.
+examples:
+  - title: Resolve a component node id
+    request:
+      id: 1
+      method: Lynx.getComponentId
+      params:
+        nodeId: 42
+    response:
+      id: 1
+      result:
+        componentId: '21'
+  - title: Non-component fallback
+    request:
+      id: 2
+      method: Lynx.getComponentId
+      params:
+        nodeId: 7
+    response:
+      id: 2
+      result:
+        componentId: -1

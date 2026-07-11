@@ -1,3 +1,26 @@
-summary: Initial documentation entry for the Lynx-custom Lynx.getProperties CDP method.
+summary: Returns the serialized properties string for a Lynx component node.
+parameters:
+  - name: nodeId
+    type: integer
+    description: DevTool node id to resolve in the current Lynx element tree.
+returns:
+  - name: properties
+    type: string
+    description: Serialized component properties. Empty string when the node is missing, is not a component node, or the component properties helper has no data.
+events: []
 notes:
-  - Complete source-backed request, response, event, and example docs before using this entry for website generation.
+  - Dispatches through LynxDevToolMediator to InspectorTasmExecutor on the TASM thread.
+  - The handler only calls the component properties helper when params.nodeId resolves to a component element.
+  - The current native component properties helper returns an empty string.
+  - If the mediator has no TASM task runner, the current handler does not send an explicit CDP response.
+examples:
+  - title: Read component properties
+    request:
+      id: 1
+      method: Lynx.getProperties
+      params:
+        nodeId: 42
+    response:
+      id: 1
+      result:
+        properties: ''

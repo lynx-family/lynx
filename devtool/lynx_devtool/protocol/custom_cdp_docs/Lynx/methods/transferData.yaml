@@ -1,3 +1,30 @@
-summary: Initial documentation entry for the Lynx-custom Lynx.transferData CDP method.
+summary: Transfers a template data fragment to the platform reload helper.
+parameters:
+  - name: dataType
+    type: string
+    enum: [template]
+    description: Data category. The native handler only processes the value template.
+  - name: data
+    type: string
+    description: Template fragment data to pass to the platform facade.
+  - name: eof
+    type: boolean
+    description: Whether this fragment is the final template fragment.
+returns: []
+events: []
 notes:
-  - Complete source-backed request, response, event, and example docs before using this entry for website generation.
+  - Dispatches through LynxDevToolMediator to InspectorUIExecutor on the UI thread.
+  - The handler forwards data only when params.dataType is template, params.data is a string, and params.eof is a boolean.
+  - Matching requests call DevToolPlatformFacade::OnReceiveTemplateFragment(data, eof).
+  - Missing params, unsupported dataType values, or invalid field types are ignored.
+  - The current native handler does not send a CDP response.
+  - If the mediator has no UI task runner or the platform facade is unavailable, the current handler does not send an explicit CDP response.
+examples:
+  - title: Transfer a template fragment
+    request:
+      id: 1
+      method: Lynx.transferData
+      params:
+        dataType: template
+        data: '<binary-or-encoded-template-fragment>'
+        eof: false

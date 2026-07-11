@@ -1,3 +1,34 @@
-summary: Initial documentation entry for the Lynx-custom Lynx.getRectToWindow CDP method.
+summary: Returns the LynxView rectangle relative to the containing window.
+parameters: []
+returns:
+  - name: left
+    type: number
+    description: Left coordinate of the LynxView rectangle.
+  - name: top
+    type: number
+    description: Top coordinate of the LynxView rectangle.
+  - name: width
+    type: number
+    description: Width of the LynxView rectangle.
+  - name: height
+    type: number
+    description: Height of the LynxView rectangle.
+events: []
 notes:
-  - Complete source-backed request, response, event, and example docs before using this entry for website generation.
+  - Dispatches through LynxDevToolMediator to InspectorUIExecutor on the UI thread.
+  - The result is the four-value vector returned by the platform facade as left, top, width, and height.
+  - Android reads the root UI rect from UITreeHelper. Darwin reads the root UI rect and multiplies it by the screen scale.
+  - The native implementation does not read request params.
+  - If the mediator has no UI task runner or the platform facade is unavailable, the current handler does not send an explicit CDP response.
+examples:
+  - title: Read the LynxView window rectangle
+    request:
+      id: 1
+      method: Lynx.getRectToWindow
+    response:
+      id: 1
+      result:
+        left: 0
+        top: 0
+        width: 390
+        height: 844

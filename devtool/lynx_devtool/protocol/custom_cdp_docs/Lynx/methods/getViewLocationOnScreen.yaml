@@ -1,3 +1,27 @@
-summary: Initial documentation entry for the Lynx-custom Lynx.getViewLocationOnScreen CDP method.
+summary: Returns the LynxView top-left location on the screen.
+parameters: []
+returns:
+  - name: x
+    type: integer
+    description: Platform-provided x coordinate for the LynxView on screen, or -1 when unavailable.
+  - name: y
+    type: integer
+    description: Platform-provided y coordinate for the LynxView on screen, or -1 when unavailable.
+events: []
 notes:
-  - Complete source-backed request, response, event, and example docs before using this entry for website generation.
+  - Dispatches through LynxDevToolMediator to InspectorUIExecutor on the UI thread.
+  - The handler returns x and y from DevToolPlatformFacade::GetViewLocationOnScreen().
+  - Android reads the LynxView location on screen and divides the stored coordinates by display density. Darwin returns the root view point converted to screen coordinates.
+  - If the platform facade returns fewer than two coordinates, the response uses x = -1 and y = -1.
+  - The native implementation does not read request params.
+  - If the mediator has no UI task runner or the platform facade is unavailable, the current handler does not send an explicit CDP response.
+examples:
+  - title: Read the LynxView screen location
+    request:
+      id: 1
+      method: Lynx.getViewLocationOnScreen
+    response:
+      id: 1
+      result:
+        x: 12
+        y: 48
