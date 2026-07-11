@@ -1,4 +1,68 @@
-summary: Initial documentation entry for the Lynx-custom Performance.getAllTimingInfo CDP method.
+summary: Returns all Lynx timing information for the current page in microseconds.
+parameters: []
+returns:
+  - name: setup_timing
+    type: object
+    description: Setup timing map prepared by the timing handler.
+  - name: extra_timing
+    type: object
+    description: Container-layer timing map.
+  - name: metrics
+    type: object
+    description: Computed timing metric map.
+  - name: update_timings
+    type: object
+    description: Map from update timing flag to the corresponding update timing map.
+  - name: url
+    type: string
+    description: Current page URL recorded by TimingInfo.
+  - name: thread_strategy
+    type: integer
+    description: Numeric value of the rendering thread strategy recorded by TimingInfo.
+  - name: has_reload
+    type: boolean
+    description: Whether the timing handler has observed a reload for the current page.
+  - name: ssr_metrics
+    type: object
+    optional: true
+    description: SSR timing metric map, present only when SSR timing data is used.
+  - name: ssr_render_page_timing
+    type: object
+    optional: true
+    description: SSR render page timing map, present only when SSR timing data is used.
+  - name: ssr_extra_info
+    type: object
+    optional: true
+    description: SSR extra info object, present only when SSR timing data is used.
+  - name: 'ssr_extra_info.url'
+    type: string
+    optional: true
+    description: SSR URL recorded by TimingInfo.
+  - name: 'ssr_extra_info.data_size'
+    type: integer
+    optional: true
+    description: SSR data size recorded by TimingInfo.
+events: []
 notes:
   - Registered in devtool/lynx_devtool/agent/domain_agent/inspector_performance_agent.cc.
-  - Complete source-backed request, response, event, and example docs before using this entry for website generation.
+  - Dispatches through LynxDevToolMediator to InspectorUIExecutor on the UI thread.
+  - The executor reads LynxShell::GetAllTimingInfo() and uses that object directly as the CDP result.
+  - TimingHandler returns TimingInfo::GetAllTimingInfoAsMicrosecond(), so timestamp and duration values in timing maps are microseconds.
+  - The nested timing maps are extensible. Their keys are produced by the Timing API and may vary by page lifecycle, pipeline type, platform, and frontend framework markers.
+  - The native implementation does not read request params and does not require the CDP Performance.enable method.
+  - If the shell has already been destroyed, the current handler sends a response with the request id and no result object.
+examples:
+  - title: Read all timing info
+    request:
+      id: 1
+      method: Performance.getAllTimingInfo
+    response:
+      id: 1
+      result:
+        setup_timing: {}
+        extra_timing: {}
+        metrics: {}
+        update_timings: {}
+        url: lynx://example/page
+        thread_strategy: 0
+        has_reload: false

@@ -1,4 +1,26 @@
-summary: Initial documentation entry for the Lynx-custom Tracing.setStartupTracingConfig CDP method.
+summary: Stores an opaque startup tracing configuration string.
+parameters:
+  - name: config
+    type: string
+    description: Startup tracing configuration string to persist through the trace controller.
+returns: []
+events: []
 notes:
   - Registered in devtool/lynx_devtool/agent/domain_agent/inspector_tracing_agent.cc.
-  - Complete source-backed request, response, event, and example docs before using this entry for website generation.
+  - Dispatches through LynxGlobalDevToolMediator on the global DevTool task runner.
+  - Writes params.config to GlobalDevToolPlatformFacade::GetTraceController()->SetStartupTracingConfig().
+  - The trace controller stores the configuration as an opaque string. Lynx does not parse or validate it in this CDP method.
+  - Returns an empty OK response when params.config is present.
+  - Returns a CDP error with message Set Startup Tracing config is null when params.config is missing.
+  - Returns a CDP error with message Failed to get trace controller when no trace controller is available.
+  - If the global mediator has no default task runner, the current handler does not send an explicit CDP response.
+examples:
+  - title: Store startup tracing config
+    request:
+      id: 1
+      method: Tracing.setStartupTracingConfig
+      params:
+        config: '{"traceConfig":{"includedCategories":["*"]}}'
+    response:
+      id: 1
+      result: {}
