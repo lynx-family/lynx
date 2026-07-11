@@ -1,3 +1,68 @@
-summary: Initial documentation entry for the Lynx-custom UITree.getLynxUITree CDP method.
+summary: Returns the platform Lynx UI tree for the current page.
+parameters: []
+returns:
+  - name: root
+    type: object|string|null
+    description: Parsed platform UI tree root when uncompressed, a base64-encoded compressed string when result.compress is true, or null when the platform returns no tree string.
+  - name: compress
+    type: boolean
+    description: Whether result.root was zlib-compressed and base64-encoded by the native handler.
+  - name: 'root.name'
+    type: string
+    optional: true
+    description: Platform UI class or tag name.
+  - name: 'root.id'
+    type: integer
+    optional: true
+    description: Platform UI node id.
+  - name: 'root.tagName'
+    type: string
+    optional: true
+    description: Lynx tag name. Present on Android and Darwin tree payloads.
+  - name: 'root.nodeIndex'
+    type: integer
+    optional: true
+    description: Lynx node index. Present on Android and Darwin tree payloads.
+  - name: 'root.props'
+    type: object
+    optional: true
+    description: Platform serialized Lynx props. Present on Android and Darwin tree payloads.
+  - name: 'root.label'
+    type: string
+    optional: true
+    description: Accessibility label when the platform includes it.
+  - name: 'root.frame'
+    type: array
+    optional: true
+    description: Four numeric values for the UI frame. The order is left, top, width, and height.
+  - name: 'root.children'
+    type: array
+    optional: true
+    description: Child UI nodes serialized with the same platform-owned shape.
+events: []
 notes:
-  - Complete source-backed request, response, event, and example docs before using this entry for website generation.
+  - Requires UITree.enable first. If UI tree inspection is not enabled, the current handler returns without sending a CDP response.
+  - Dispatches through LynxDevToolMediator to InspectorUIExecutor on the UI thread.
+  - The platform facade returns a JSON string, and the executor parses that string into result.root.
+  - Android and Darwin include name, id, tagName, nodeIndex, props, label, frame, and children. Harmony includes name, id, frame, and children.
+  - If compression is enabled and the serialized root exceeds the stored threshold, result.compress is true and result.root is a compressed base64 string.
+  - The native implementation does not read request params.
+  - If the mediator has no UI task runner or the platform facade is unavailable, the current handler does not send an explicit CDP response.
+examples:
+  - title: Read the Lynx UI tree
+    request:
+      id: 1
+      method: UITree.getLynxUITree
+    response:
+      id: 1
+      result:
+        compress: false
+        root:
+          name: com.lynx.tasm.behavior.ui.view.UIView
+          id: 1
+          tagName: view
+          nodeIndex: 0
+          props: {}
+          label: ''
+          frame: [0, 0, 390, 844]
+          children: []

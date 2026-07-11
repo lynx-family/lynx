@@ -1,3 +1,30 @@
-summary: Initial documentation entry for the Lynx-custom UITree.enable CDP method.
+summary: Enables Lynx UI tree inspection methods on the current target.
+parameters:
+  - name: useCompression
+    type: boolean
+    optional: true
+    default: false
+    description: Whether UITree.getLynxUITree should compress a large root payload before returning it.
+  - name: compressionThreshold
+    type: boolean
+    optional: true
+    description: Current native code reads this field as a boolean. true stores threshold 1 and false stores threshold 0.
+returns: []
+events: []
 notes:
-  - Complete source-backed request, response, event, and example docs before using this entry for website generation.
+  - Dispatches through LynxDevToolMediator to InspectorUIExecutor on the UI thread.
+  - Sets the UI tree enabled flag used by UITree.getLynxUITree, UITree.getUIInfoForNode, and UITree.setUIStyle.
+  - Returns an empty result object.
+  - The default compression threshold before this method changes it is 10240 bytes.
+  - If the mediator has no UI task runner, the current handler does not send an explicit CDP response.
+examples:
+  - title: Enable UI tree inspection
+    request:
+      id: 1
+      method: UITree.enable
+      params:
+        useCompression: true
+        compressionThreshold: true
+    response:
+      id: 1
+      result: {}

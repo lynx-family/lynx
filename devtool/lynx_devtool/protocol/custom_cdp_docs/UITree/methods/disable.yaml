@@ -1,3 +1,18 @@
-summary: Initial documentation entry for the Lynx-custom UITree.disable CDP method.
+summary: Disables Lynx UI tree inspection methods on the current target.
+parameters: []
+returns: []
+events: []
 notes:
-  - Complete source-backed request, response, event, and example docs before using this entry for website generation.
+  - Dispatches through LynxDevToolMediator to InspectorUIExecutor on the UI thread.
+  - Clears the UI tree enabled flag used by UITree.getLynxUITree, UITree.getUIInfoForNode, and UITree.setUIStyle.
+  - Returns an empty result object.
+  - The native implementation does not read request params.
+  - If the mediator has no UI task runner, the current handler does not send an explicit CDP response.
+examples:
+  - title: Disable UI tree inspection
+    request:
+      id: 1
+      method: UITree.disable
+    response:
+      id: 1
+      result: {}

@@ -1,3 +1,96 @@
-summary: Initial documentation entry for the Lynx-custom UITree.getUIInfoForNode CDP method.
+summary: Returns detailed platform UI information for one Lynx UI node.
+parameters:
+  - name: UINodeId
+    type: integer
+    description: Platform UI node id to inspect.
+returns:
+  - name: id
+    type: integer
+    optional: true
+    description: Platform UI node id returned by the platform helper.
+  - name: isFlatten
+    type: boolean
+    optional: true
+    description: Android-only flag indicating whether the UI node is flattened.
+  - name: editableProps
+    type: object
+    optional: true
+    description: Editable UI properties exposed by the platform helper.
+  - name: 'editableProps.border'
+    type: array
+    optional: true
+    description: Four border-width values in the order top, right, bottom, and left.
+  - name: 'editableProps.margin'
+    type: array
+    optional: true
+    description: Four margin values in the order top, right, bottom, and left.
+  - name: 'editableProps.frame'
+    type: array
+    optional: true
+    description: Four frame values in the order left, top, width, and height.
+  - name: 'editableProps.visible'
+    type: boolean|integer
+    optional: true
+    description: Platform visibility value.
+  - name: readonlyProps
+    type: object
+    optional: true
+    description: Android root-level readonly properties such as location, clickability, scrollability, text, test id, and event metadata.
+  - name: ui
+    type: object
+    optional: true
+    description: Platform UI object metadata.
+  - name: 'ui.name'
+    type: string
+    optional: true
+    description: Platform UI class or tag name.
+  - name: 'ui.readonlyProps'
+    type: object
+    optional: true
+    description: Reflection-derived platform UI fields.
+  - name: view
+    type: object
+    optional: true
+    description: Platform view metadata when the platform exposes a backing view object.
+  - name: 'view.name'
+    type: string
+    optional: true
+    description: Platform view class name.
+  - name: 'view.readonlyProps'
+    type: object
+    optional: true
+    description: Reflection-derived platform view fields.
+  - name: layers
+    type: object
+    optional: true
+    description: Darwin-only layer metadata for the view and Lynx background or border layers.
+events: []
 notes:
-  - Complete source-backed request, response, event, and example docs before using this entry for website generation.
+  - Requires UITree.enable first. If UI tree inspection is not enabled, the current handler returns without sending a CDP response.
+  - Dispatches through LynxDevToolMediator to InspectorUIExecutor on the UI thread.
+  - The platform facade returns a JSON string, and the executor parses that string directly into result.
+  - If the platform returns an empty string or the node id cannot be resolved, the current handler returns an empty result object.
+  - Android, Darwin, and Harmony expose different platform-owned details. Consumers should tolerate missing optional fields.
+  - If the mediator has no UI task runner or the platform facade is unavailable, the current handler does not send an explicit CDP response.
+examples:
+  - title: Read UI information for one node
+    request:
+      id: 1
+      method: UITree.getUIInfoForNode
+      params:
+        UINodeId: 42
+    response:
+      id: 1
+      result:
+        id: 42
+        editableProps:
+          border: [0, 0, 0, 0]
+          margin: [0, 0, 0, 0]
+          frame: [0, 0, 100, 50]
+          visible: true
+        ui:
+          name: com.lynx.tasm.behavior.ui.view.UIView
+          readonlyProps: {}
+        view:
+          name: android.view.View
+          readonlyProps: {}

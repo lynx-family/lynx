@@ -1,3 +1,60 @@
-summary: Initial documentation entry for the Lynx-custom UITree.setUIStyle CDP method.
+summary: Applies an editable style value to a Lynx UI node through the platform helper.
+parameters:
+  - name: UINodeId
+    type: integer
+    description: Platform UI node id to mutate.
+  - name: styleName
+    type: string
+    enum: [frame, margin, border, visible, background-color, border-color]
+    description: Editable style name.
+  - name: styleContent
+    type: string
+    description: Style value string. frame, margin, and border use four comma or whitespace separated numbers. color styles use eight-digit RGBA hex values. visible uses true or false on Android and Darwin, while Harmony treats false and 0 as hidden.
+returns:
+  - name: error
+    type: object
+    optional: true
+    description: Present inside result when the platform helper returns -1.
+  - name: 'error.code'
+    type: integer
+    optional: true
+    description: Always -32000 when present.
+  - name: 'error.message'
+    type: string
+    optional: true
+    description: Always set ui style fail when present.
+events: []
 notes:
-  - Complete source-backed request, response, event, and example docs before using this entry for website generation.
+  - Requires UITree.enable first. If UI tree inspection is not enabled, the current handler returns without sending a CDP response.
+  - Dispatches through LynxDevToolMediator to InspectorUIExecutor on the UI thread.
+  - The handler forwards params.UINodeId, params.styleName, and params.styleContent to DevToolPlatformFacade::SetUIStyle.
+  - The response is an empty result object when the platform return value is not -1.
+  - When the platform return value is -1, the response still uses result.error rather than a top-level CDP error.
+  - Android, Darwin, and Harmony support frame, margin, border, visible, background-color, and border-color, but unsupported or invalid inputs do not produce identical platform return values.
+  - If the mediator has no UI task runner or the platform facade is unavailable, the current handler does not send an explicit CDP response.
+examples:
+  - title: Update a UI frame
+    request:
+      id: 1
+      method: UITree.setUIStyle
+      params:
+        UINodeId: 42
+        styleName: frame
+        styleContent: 0,0,100,50
+    response:
+      id: 1
+      result: {}
+  - title: Failed style update
+    request:
+      id: 2
+      method: UITree.setUIStyle
+      params:
+        UINodeId: 42
+        styleName: frame
+        styleContent: invalid
+    response:
+      id: 2
+      result:
+        error:
+          code: -32000
+          message: set ui style fail
