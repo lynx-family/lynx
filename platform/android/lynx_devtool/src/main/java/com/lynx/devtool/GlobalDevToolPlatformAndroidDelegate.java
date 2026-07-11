@@ -69,6 +69,23 @@ public class GlobalDevToolPlatformAndroidDelegate {
   }
 
   @CalledByNative
+  public static void handleLynxSetting(String method, String key, String value, long callbackPtr) {
+    AtomicBoolean didCallback = new AtomicBoolean(false);
+    try {
+      LynxSettingPlatformAndroid.handle(method, key, value, (resultJson, errorMessage) -> {
+        if (didCallback.compareAndSet(false, true)) {
+          nativeOnLynxSettingResult(callbackPtr, resultJson, errorMessage);
+        }
+      });
+    } catch (Throwable throwable) {
+      if (didCallback.compareAndSet(false, true)) {
+        nativeOnLynxSettingResult(
+            callbackPtr, EMPTY_RESULT_JSON, "LynxSetting failed: " + throwable.getMessage());
+      }
+    }
+  }
+
+  @CalledByNative
   public static long getTraceController() {
     return TraceController.getInstance().getNativeTraceController();
   }
@@ -94,5 +111,8 @@ public class GlobalDevToolPlatformAndroidDelegate {
   }
 
   private static native void nativeOnMemoryUsageResult(
+      long callbackPtr, String resultJson, String errorMessage);
+
+  private static native void nativeOnLynxSettingResult(
       long callbackPtr, String resultJson, String errorMessage);
 }
