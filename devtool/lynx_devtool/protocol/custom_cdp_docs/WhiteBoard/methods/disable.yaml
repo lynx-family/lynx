@@ -1,3 +1,19 @@
-summary: Initial documentation entry for the Lynx-custom WhiteBoard.disable CDP method.
+summary: Disables WhiteBoard shared-data inspection for the current target.
+parameters: []
+returns: []
+events: []
 notes:
-  - Complete source-backed request, response, event, and example docs before using this entry for website generation.
+  - Dispatches through LynxDevToolMediator to the TASM executor when available, otherwise to the JavaScript debugger.
+  - If neither backend task runner is available, the mediator does not dispatch the request and no explicit CDP response is sent.
+  - Sets the WhiteBoard inspector delegate enabled flag to false.
+  - Returns an empty result object.
+  - After disable succeeds, WhiteBoard data methods that require an enabled delegate return no explicit CDP response.
+  - If no WhiteBoard inspector delegate is attached, the current handler does not send an explicit CDP response.
+examples:
+  - title: Disable WhiteBoard inspection
+    request:
+      id: 2
+      method: WhiteBoard.disable
+    response:
+      id: 2
+      result: {}

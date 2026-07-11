@@ -1,3 +1,19 @@
-summary: Initial documentation entry for the Lynx-custom WhiteBoard.enable CDP method.
+summary: Enables WhiteBoard shared-data inspection for the current target.
+parameters: []
+returns: []
+events: []
 notes:
-  - Complete source-backed request, response, event, and example docs before using this entry for website generation.
+  - Dispatches through LynxDevToolMediator to the TASM executor when available, otherwise to the JavaScript debugger.
+  - If neither backend task runner is available, the mediator does not dispatch the request and no explicit CDP response is sent.
+  - Sets the WhiteBoard inspector delegate enabled flag to true.
+  - Returns an empty result object.
+  - After enable succeeds, WhiteBoard shared-data change events can be delivered to this target.
+  - If no WhiteBoard inspector delegate is attached, the current handler does not send an explicit CDP response.
+examples:
+  - title: Enable WhiteBoard inspection
+    request:
+      id: 1
+      method: WhiteBoard.enable
+    response:
+      id: 1
+      result: {}

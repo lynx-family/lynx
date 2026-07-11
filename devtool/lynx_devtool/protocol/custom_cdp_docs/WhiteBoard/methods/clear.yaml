@@ -1,3 +1,24 @@
-summary: Initial documentation entry for the Lynx-custom WhiteBoard.clear CDP method.
+summary: Clears all global WhiteBoard shared-data entries.
+parameters: []
+returns: []
+events:
+  - WhiteBoard.onSharedDataCleared
 notes:
-  - Complete source-backed request, response, event, and example docs before using this entry for website generation.
+  - Requires WhiteBoard.enable first. If the delegate is disabled, the current handler returns without sending a CDP response.
+  - Dispatches through LynxDevToolMediator to the TASM executor when available, otherwise to the JavaScript debugger.
+  - If neither backend task runner is available, the mediator does not dispatch the request and no explicit CDP response is sent.
+  - Returns an empty result object on success.
+  - Returns a CDP error with code -32000 and message Failed to clear shared data! when the WhiteBoard instance is unavailable.
+  - On success, enabled delegates receive WhiteBoard.onSharedDataCleared without params.
+  - If no WhiteBoard inspector delegate is attached, the current handler does not send an explicit CDP response.
+examples:
+  - title: Clear shared data
+    request:
+      id: 8
+      method: WhiteBoard.clear
+    response:
+      id: 8
+      result: {}
+  - title: Shared-data cleared notification
+    response:
+      method: WhiteBoard.onSharedDataCleared

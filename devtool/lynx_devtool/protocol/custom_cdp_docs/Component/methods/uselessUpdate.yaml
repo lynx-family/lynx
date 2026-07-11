@@ -1,3 +1,26 @@
-summary: Initial documentation entry for the Lynx-custom Component.uselessUpdate CDP method.
+summary: Echoes a Component.uselessUpdate message with the request params.
+parameters:
+  - name: params
+    type: object
+    optional: true
+    description: Opaque payload copied from the request params field into the outgoing Component.uselessUpdate message.
+returns: []
+events:
+  - Component.uselessUpdate
 notes:
-  - Complete source-backed request, response, event, and example docs before using this entry for website generation.
+  - The handler does not send a normal CDP response with id and result fields.
+  - The outgoing CDP message has method Component.uselessUpdate and params copied from the request.
+  - The native implementation does not inspect or validate the params payload.
+examples:
+  - title: Echo a component update payload
+    request:
+      id: 1
+      method: Component.uselessUpdate
+      params:
+        componentId: comp-1
+        reason: debug
+    response:
+      method: Component.uselessUpdate
+      params:
+        componentId: comp-1
+        reason: debug

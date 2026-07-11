@@ -1,3 +1,34 @@
-summary: Initial documentation entry for the Lynx-custom WhiteBoard.getSharedData CDP method.
+summary: Returns all global WhiteBoard shared-data entries.
+parameters: []
+returns:
+  - name: entries
+    type: array
+    description: Shared-data entries currently stored in the WhiteBoard.
+  - name: 'entries[].key'
+    type: string
+    description: Shared-data key.
+  - name: 'entries[].value'
+    type: string
+    description: JSON text for the shared-data value.
+events: []
 notes:
-  - Complete source-backed request, response, event, and example docs before using this entry for website generation.
+  - Requires WhiteBoard.enable first. If the delegate is disabled, the current handler returns without sending a CDP response.
+  - Dispatches through LynxDevToolMediator to the TASM executor when available, otherwise to the JavaScript debugger.
+  - If neither backend task runner is available, the mediator does not dispatch the request and no explicit CDP response is sent.
+  - The native implementation does not read request params.
+  - Values are returned as serialized JSON text strings.
+  - Returns a CDP error with code -32000 and message Failed to get shared data! when the WhiteBoard instance is unavailable.
+  - If no WhiteBoard inspector delegate is attached, the current handler does not send an explicit CDP response.
+examples:
+  - title: Get all shared data
+    request:
+      id: 5
+      method: WhiteBoard.getSharedData
+    response:
+      id: 5
+      result:
+        entries:
+          - key: userName
+            value: '"Ada"'
+          - key: count
+            value: '3'

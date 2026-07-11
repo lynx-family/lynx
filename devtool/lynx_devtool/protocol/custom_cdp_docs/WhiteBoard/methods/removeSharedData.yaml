@@ -1,3 +1,43 @@
-summary: Initial documentation entry for the Lynx-custom WhiteBoard.removeSharedData CDP method.
+summary: Removes one global WhiteBoard shared-data entry.
+parameters:
+  - name: key
+    type: string
+    description: Shared-data key to remove.
+returns: []
+events:
+  - WhiteBoard.onSharedDataRemoved
 notes:
-  - Complete source-backed request, response, event, and example docs before using this entry for website generation.
+  - Requires WhiteBoard.enable first. If the delegate is disabled, the current handler returns without sending a CDP response.
+  - Dispatches through LynxDevToolMediator to the TASM executor when available, otherwise to the JavaScript debugger.
+  - If neither backend task runner is available, the mediator does not dispatch the request and no explicit CDP response is sent.
+  - Returns an empty result object when the key exists and is removed.
+  - Returns a CDP error with code -32602 and message The key does not exist! when the key is not present.
+  - Returns a CDP error with code -32000 and message Failed to remove shared data! when the WhiteBoard instance is unavailable.
+  - On success, enabled delegates receive WhiteBoard.onSharedDataRemoved with params.key.
+  - If no WhiteBoard inspector delegate is attached, the current handler does not send an explicit CDP response.
+examples:
+  - title: Remove one shared-data entry
+    request:
+      id: 6
+      method: WhiteBoard.removeSharedData
+      params:
+        key: userName
+    response:
+      id: 6
+      result: {}
+  - title: Shared-data removed notification
+    response:
+      method: WhiteBoard.onSharedDataRemoved
+      params:
+        key: userName
+  - title: Missing key
+    request:
+      id: 7
+      method: WhiteBoard.removeSharedData
+      params:
+        key: missing
+    response:
+      id: 7
+      error:
+        code: -32602
+        message: The key does not exist!

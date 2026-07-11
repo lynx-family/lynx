@@ -1,3 +1,52 @@
-summary: Initial documentation entry for the Lynx-custom WhiteBoard.setSharedData CDP method.
+summary: Writes one global WhiteBoard shared-data entry.
+parameters:
+  - name: key
+    type: string
+    description: Shared-data key to create or update.
+  - name: value
+    type: string
+    description: JSON text for the shared-data value.
+returns: []
+events:
+  - WhiteBoard.onSharedDataAdded
+  - WhiteBoard.onSharedDataUpdated
 notes:
-  - Complete source-backed request, response, event, and example docs before using this entry for website generation.
+  - Requires WhiteBoard.enable first. If the delegate is disabled, the current handler returns without sending a CDP response.
+  - Dispatches through LynxDevToolMediator to the TASM executor when available, otherwise to the JavaScript debugger.
+  - If neither backend task runner is available, the mediator does not dispatch the request and no explicit CDP response is sent.
+  - The value param must be a string containing valid JSON text. For a string value, include the JSON string quotes inside the value text.
+  - Returns an empty result object on success.
+  - Returns a CDP error with code -32602 and message The value must be a valid JSON string! when value cannot be parsed as JSON.
+  - Returns a CDP error with code -32000 and message Failed to set shared data! when the WhiteBoard instance is unavailable.
+  - The shared-data store emits WhiteBoard.onSharedDataAdded for a new key and WhiteBoard.onSharedDataUpdated for an existing key.
+  - The add event params contain key and value. The update event params contain key and newValue.
+  - If no WhiteBoard inspector delegate is attached, the current handler does not send an explicit CDP response.
+examples:
+  - title: Set a string value
+    request:
+      id: 3
+      method: WhiteBoard.setSharedData
+      params:
+        key: userName
+        value: '"Ada"'
+    response:
+      id: 3
+      result: {}
+  - title: Shared-data added notification
+    response:
+      method: WhiteBoard.onSharedDataAdded
+      params:
+        key: userName
+        value: '"Ada"'
+  - title: Invalid JSON value
+    request:
+      id: 4
+      method: WhiteBoard.setSharedData
+      params:
+        key: userName
+        value: Ada
+    response:
+      id: 4
+      error:
+        code: -32602
+        message: The value must be a valid JSON string!
