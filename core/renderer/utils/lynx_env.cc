@@ -671,5 +671,9 @@ bool LynxEnv::EnableElementApiNewRegistration() {
 bool LynxEnv::EnableElementInvokeUIMethodPendingTask() {
   return GetBoolEnv(Key::ENABLE_ELEMENT_INVOKE_UI_METHOD_PENDING_TASK, false);
 }
+
+bool LynxEnv::EnableFiberUpdateMetaData() {
+  return GetBoolEnv(Key::ENABLE_FIBER_UPDATE_METADATA, false);
+}
 }  // namespace tasm
 }  // namespace lynx
