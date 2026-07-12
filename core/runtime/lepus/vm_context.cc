@@ -203,6 +203,12 @@ namespace lepus {
     return;                                                                  \
   }
 
+#define TYPE_GUARD_TRAP(msg)                                                   \
+  if (ReportException(msg, pc, length, closure, function, base, regs, true)) { \
+    continue;                                                                  \
+  }                                                                            \
+  return;
+
 #define TYPE_OF(dst, src)                                     \
   static constexpr const char kUndefined[] = "undefined";     \
   static constexpr const char kObject[] = "object";           \
@@ -1251,6 +1257,9 @@ void VMContext::RunFrame() {
       BREAK;
       CASE(TypeOp_BoolJmpFalse) : {
         GET_REGISTER_A(i);
+        if (unlikely(!a->IsBool())) {
+          TYPE_GUARD_TRAP("TypeError: expected boolean value");
+        }
         if (!UnsafeOp::TypeSure::GetBool(*a))
           pc += -1 + Instruction::GetParamsBx(i);
       }
@@ -1310,6 +1319,9 @@ void VMContext::RunFrame() {
       BREAK;
       CASE(TypeOp_BoolJmpTrue) : {
         GET_REGISTER_A(i);
+        if (unlikely(!a->IsBool())) {
+          TYPE_GUARD_TRAP("TypeError: expected boolean value");
+        }
         if (UnsafeOp::TypeSure::GetBool(*a))
           pc += -1 + Instruction::GetParamsBx(i);
       }
@@ -1485,6 +1497,9 @@ void VMContext::RunFrame() {
       CASE(TypeOp_Len) : BREAK;
       CASE(TypeOp_AddAnyString) : {
         GET_REGISTER_ABC(i);
+        if (unlikely(!c->IsString())) {
+          TYPE_GUARD_TRAP("TypeError: expected string");
+        }
         double b_value;
         if (b->IsString()) {
           a->SetString(UnsafeOp::TypeSure::GetStdString(*b) +
@@ -1500,6 +1515,9 @@ void VMContext::RunFrame() {
       BREAK;
       CASE(TypeOp_AddStringAny) : {
         GET_REGISTER_ABC(i);
+        if (unlikely(!b->IsString())) {
+          TYPE_GUARD_TRAP("TypeError: expected string");
+        }
         if (likely(c->IsString())) {
           a->SetString(UnsafeOp::TypeSure::GetStdString(*b) +
                        UnsafeOp::TypeSure::GetStdString(*c));
@@ -1513,6 +1531,9 @@ void VMContext::RunFrame() {
       BREAK;
       CASE(TypeOp_AddStringString) : {
         GET_REGISTER_ABC(i);
+        if (unlikely(!b->IsString() || !c->IsString())) {
+          TYPE_GUARD_TRAP("TypeError: expected string operands");
+        }
         a->SetString(UnsafeOp::TypeSure::GetStdString(*b) +
                      UnsafeOp::TypeSure::GetStdString(*c));
       }
@@ -1649,6 +1670,9 @@ void VMContext::RunFrame() {
       BREAK;
       CASE(TypeOp_EqualString) : {
         GET_REGISTER_ABC(i);
+        if (unlikely(!b->IsString() || !c->IsString())) {
+          TYPE_GUARD_TRAP("TypeError: expected string operands");
+        }
         a->SetBool(UnsafeOp::TypeSure::GetStdString(*b) ==
                    UnsafeOp::TypeSure::GetStdString(*c));
       }
@@ -1660,6 +1684,9 @@ void VMContext::RunFrame() {
       BREAK;
       CASE(TypeOp_UnEqualString) : {
         GET_REGISTER_ABC(i);
+        if (unlikely(!b->IsString() || !c->IsString())) {
+          TYPE_GUARD_TRAP("TypeError: expected string operands");
+        }
         a->SetBool(UnsafeOp::TypeSure::GetStdString(*b) !=
                    UnsafeOp::TypeSure::GetStdString(*c));
       }
@@ -1852,6 +1879,9 @@ void VMContext::RunFrame() {
       BREAK;
       CASE(TypeOp_SetObjectString) : {
         GET_REGISTER_ABC(i);
+        if (unlikely(!a->IsTable() || !b->IsString())) {
+          TYPE_GUARD_TRAP("TypeError: expected table and string key");
+        }
         UnsafeOp::TypeSure::GetTable(*a)->SetValue(
             UnsafeOp::TypeSure::GetString(*b), *c);
       }
@@ -1861,6 +1891,9 @@ void VMContext::RunFrame() {
         GET_REGISTER_C(i);
         const Value* const_key =
             function->GetConstValue(Instruction::GetParamB(i));
+        if (unlikely(!a->IsTable() || !const_key->IsString())) {
+          TYPE_GUARD_TRAP("TypeError: expected table and string key");
+        }
         auto key = base::String::Unsafe::ConstructWeakRefStringFromRawRef(
             reinterpret_cast<base::RefCountedStringImpl*>(
                 const_key->value().val_ptr));
@@ -1917,12 +1950,18 @@ void VMContext::RunFrame() {
       BREAK;
       CASE(TypeOp_GetArrayInt64) : {
         GET_REGISTER_ABC(i);
+        if (unlikely(!b->IsArray() || !c->IsInt64())) {
+          TYPE_GUARD_TRAP("TypeError: expected array and integer index");
+        }
         auto arr = UnsafeOp::TypeSure::GetArray(*b);
         RestrictedValue::Assign(*a, arr->get(UnsafeOp::TypeSure::GetInt64(*c)));
       }
       BREAK;
       CASE(TypeOp_GetObjectString) : {
         GET_REGISTER_ABC(i);
+        if (unlikely(!b->IsTable() || !c->IsString())) {
+          TYPE_GUARD_TRAP("TypeError: expected table and string key");
+        }
         auto tbl = UnsafeOp::TypeSure::GetTable(*b);
         RestrictedValue::Assign(
             *a,
@@ -1933,6 +1972,9 @@ void VMContext::RunFrame() {
       BREAK;
       CASE(TypeOp_GetObjectNumber) : {
         GET_REGISTER_ABC(i);
+        if (unlikely(!b->IsTable())) {
+          TYPE_GUARD_TRAP("TypeError: expected table");
+        }
         auto tbl = UnsafeOp::TypeSure::GetTable(*b);
         std::ostringstream s;
         s << c->Number();
@@ -1943,6 +1985,9 @@ void VMContext::RunFrame() {
       CASE(TypeOp_GetStringLength) : {
         GET_REGISTER_A(i);
         GET_REGISTER_B(i);
+        if (unlikely(!b->IsString())) {
+          TYPE_GUARD_TRAP("TypeError: expected string");
+        }
         a->SetNumber(static_cast<int64_t>(
             UnsafeOp::TypeSure::GetString(*b).length_utf16()));
         BREAK;
@@ -1974,6 +2019,9 @@ void VMContext::RunFrame() {
       CASE(TypeOp_GetBuiltinFunc) : {
         GET_REGISTER_ABC(i);
         if (likely(c->IsString())) {
+          if (unlikely(!b->IsBuiltinFunctionTable())) {
+            TYPE_GUARD_TRAP("TypeError: expected builtin function table");
+          }
           RestrictedValue::Assign(*a, b->FunctionTable()->GetFunction(
                                           UnsafeOp::TypeSure::GetString(*c)));
         } else {
@@ -2095,6 +2143,9 @@ void VMContext::RunFrame() {
       BREAK;
       CASE(TypeOp_GetTableString) : {
         GET_REGISTER_ABC(i);
+        if (unlikely(!c->IsString())) {
+          TYPE_GUARD_TRAP("TypeError: expected string key");
+        }
         constexpr char k_length[] = "length";
         constexpr char k_input[] = "input";
         constexpr char k_index[] = "index";
@@ -2178,7 +2229,9 @@ void VMContext::RunFrame() {
 
         const Value* const_key_val =
             function->GetConstValue(Instruction::GetParamC(i));
-        // Const pool entry is expected to be a string.
+        if (unlikely(!const_key_val->IsString())) {
+          TYPE_GUARD_TRAP("TypeError: expected string constant key");
+        }
         auto key = base::String::Unsafe::ConstructWeakRefStringFromRawRef(
             reinterpret_cast<base::RefCountedStringImpl*>(
                 const_key_val->value().val_ptr));
