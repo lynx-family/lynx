@@ -2244,11 +2244,11 @@ void TemplateAssembler::UpdateMetaData(
   bool data_changed = template_data != nullptr;
 
   // In fiber mode, when both data and globalProps are updated together,
-  // check if frontend registered __UpdateMetaData. If so, use the combined
-  // event to avoid triggering two separate renders (one for updateGlobalProps,
-  // one for updateData -> UpdateTemplate).
+  // use the combined event if the env switch is enabled and frontend registered
+  // __UpdateMetaData. This avoids triggering two separate renders (one for
+  // updateGlobalProps, one for updateData -> UpdateTemplate).
   if (template_loaded_ && global_props_changed && data_changed &&
-      EnableFiberArch()) {
+      EnableFiberArch() && LynxEnv::GetInstance().EnableFiberUpdateMetaData()) {
     auto engine_context_proxy =
         GetContextProxy(runtime::ContextProxy::Type::kEngine);
     if (engine_context_proxy &&
