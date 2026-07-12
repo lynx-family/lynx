@@ -160,6 +160,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
     ENABLE_ELEMENT_API_NEW_REGISTRATION,
     ENABLE_HARMONY_TEXT_CUSTOM_EMOJI,
     ENABLE_ELEMENT_INVOKE_UI_METHOD_PENDING_TASK,
+    ENABLE_FIBER_UPDATE_METADATA,
     // Please add new enum values above
     END_MARK,  // Keep this as the last enum value, and do not use
   };
@@ -338,6 +339,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
              "enable_harmony_text_custom_emoji"},
             {Key::ENABLE_ELEMENT_INVOKE_UI_METHOD_PENDING_TASK,
              "enable_element_invoke_ui_method_pending_task"},
+            {Key::ENABLE_FIBER_UPDATE_METADATA, "enable_fiber_update_metadata"},
         });
     auto it = (*env_key_to_string_map).find(key);
     DCHECK(it != (*env_key_to_string_map).end());
@@ -514,6 +516,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
   bool EnableHarmonyTextCustomEmoji();
   bool EnableElementApiNewRegistration();
   bool EnableElementInvokeUIMethodPendingTask();
+  bool EnableFiberUpdateMetaData();
 
   LynxEnv(const LynxEnv&) = delete;
   LynxEnv& operator=(const LynxEnv&) = delete;
