@@ -670,5 +670,10 @@ bool LynxEnv::EnableReadableStreamMemFix() {
 bool LynxEnv::EnableElementApiNewRegistration() {
   return GetBoolEnv(Key::ENABLE_ELEMENT_API_NEW_REGISTRATION, false);
 }
+
+bool LynxEnv::EnableFiberUpdateMetaData() {
+  return GetBoolEnv(Key::ENABLE_FIBER_UPDATE_METADATA, false);
+}
+
 }  // namespace tasm
 }  // namespace lynx
