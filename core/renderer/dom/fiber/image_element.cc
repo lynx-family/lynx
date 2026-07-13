@@ -78,6 +78,9 @@ void ImageElement::ProcessAttributeForLayoutInElement(
 void ImageElement::ResetAttribute(const base::String& key) {
   if (EnableLayoutInElementMode()) {
     attr_map_[key] = lepus::Value();
+    if (key.IsEqual(kSrc)) {
+      url_ = base::String();
+    }
   }
   FiberElement::ResetAttribute(key);
 }
