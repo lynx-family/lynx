@@ -1,0 +1,31 @@
+.cq/pipelines/ios-example-build.yml
+  s_220ab0dfc2d2dd::t_4b0daabdf676e1 38,65,161
+example/darwin/ios/lynx_example/Podfile
+  s_9d75fc42773569::t_bb7fcdc7fa36ac 270-273
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "c08b0eeadf69a8ebfe86837eb6a874261abf6f8d",
+  "prompts": {},
+  "sessions": {
+    "s_220ab0dfc2d2dd": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f3b8a-2533-77a2-b39a-bee58297793f",
+        "model": "unknown"
+      },
+      "human_author": "jianliang00 <wangjianliang0@126.com>"
+    },
+    "s_9d75fc42773569": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f4628-5933-7c00-855a-703f754722c0",
+        "model": "unknown"
+      },
+      "human_author": "jianliang00 <wangjianliang0@126.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

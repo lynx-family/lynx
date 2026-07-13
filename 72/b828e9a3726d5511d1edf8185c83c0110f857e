@@ -1,0 +1,24 @@
+platform/android/x_element/x_element_audio_tt/src/main/java/com/bytedance/ies/xelement/audiott/transform/LynxContextTransformer.kt
+  s_303bf309aec031::t_4e04f44c729422 67-69,75,87
+.vscode/launch.json
+  s_303bf309aec031::t_4e04f44c729422 2-150
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "72b828e9a3726d5511d1edf8185c83c0110f857e",
+  "prompts": {},
+  "sessions": {
+    "s_303bf309aec031": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6901d486421373f31ed84128",
+        "model": "c_o_new_thinking__dev",
+        "display_model_name": "Test-O-New-Thinking"
+      },
+      "human_author": "mooface <xiamengfei.moonface@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}
