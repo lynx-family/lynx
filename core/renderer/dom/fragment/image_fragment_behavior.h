@@ -19,6 +19,7 @@ class ImageFragmentBehavior : public FragmentBehavior {
  public:
   explicit ImageFragmentBehavior(Fragment* fragment)
       : FragmentBehavior(fragment) {}
+  void OnAttributeUpdate(const fml::RefPtr<PropBundle>& attributes) override;
   void OnUpdateLayout(const LayoutInfoForDraw& layout_result) override;
   void OnDraw(DisplayListBuilder& display_list_builder) override;
   PlatformRendererType GetType() const override {
@@ -29,8 +30,11 @@ class ImageFragmentBehavior : public FragmentBehavior {
   // Computes event mask based on element's event map.
   // Returns a bitmask of kFlagImageLoadEvent and kFlagImageErrorEvent.
   int32_t ComputeEventMask() const;
+  bool UpdateImageIfNeeded(const LayoutInfoForDraw& layout_info);
 
   base::String image_url_;
+  float image_width_{0.f};
+  float image_height_{0.f};
   // Cached event mask - computed lazily on first use, then never changes.
   mutable int32_t event_mask_{-1};  // -1 means not yet computed
   fml::RefPtr<PaintImage> paint_image_;

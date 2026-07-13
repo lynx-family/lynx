@@ -34,20 +34,55 @@ int32_t ImageFragmentBehavior::ComputeEventMask() const {
 
 void ImageFragmentBehavior::OnUpdateLayout(
     const LayoutInfoForDraw& layout_info) {
+  if (UpdateImageIfNeeded(layout_info)) {
+    fragment_->InvalidateForRedraw();
+  }
+}
+
+void ImageFragmentBehavior::OnAttributeUpdate(const fml::RefPtr<PropBundle>&) {
+  if (!fragment_ || !fragment_->element()) {
+    return;
+  }
+
   const auto& current_src =
       static_cast<ImageElement*>(fragment_->element())->src();
 
-  if (image_url_ != current_src) {
-    image_url_ = current_src;
-    // Lazily compute event mask on first use, then cache it.
-    if (event_mask_ < 0) {
-      event_mask_ = ComputeEventMask();
-    }
-    paint_image_ = painting_context_->CreateImage(
-        fragment_->id(), image_url_, layout_info.GetContentBoxWidth(),
-        layout_info.GetContentBoxHeight(), event_mask_);
+  if (image_url_ != current_src &&
+      UpdateImageIfNeeded(fragment_->LayoutResult())) {
     fragment_->InvalidateForRedraw();
   }
+}
+
+bool ImageFragmentBehavior::UpdateImageIfNeeded(
+    const LayoutInfoForDraw& layout_info) {
+  if (!painting_context_ || !fragment_ || !fragment_->element()) {
+    return false;
+  }
+
+  const auto& current_src =
+      static_cast<ImageElement*>(fragment_->element())->src();
+  const float current_width = layout_info.GetContentBoxWidth();
+  const float current_height = layout_info.GetContentBoxHeight();
+
+  if (image_url_ == current_src &&
+      (current_src.empty() ||
+       (image_width_ == current_width && image_height_ == current_height))) {
+    return false;
+  }
+
+  if (event_mask_ < 0) {
+    event_mask_ = ComputeEventMask();
+  }
+  auto paint_image = painting_context_->CreateImage(
+      fragment_->id(), current_src, current_width, current_height, event_mask_);
+  if (!paint_image) {
+    return false;
+  }
+  image_url_ = current_src;
+  image_width_ = current_width;
+  image_height_ = current_height;
+  paint_image_ = paint_image;
+  return true;
 }
 
 void ImageFragmentBehavior::OnDraw(DisplayListBuilder& display_list_builder) {
