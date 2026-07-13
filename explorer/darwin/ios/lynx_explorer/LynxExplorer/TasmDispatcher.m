@@ -32,10 +32,11 @@ static NSMapTable<NSString *, __kindof UIViewController *> *_dispatchedViewContr
     return;
   }
   _latestParams = [[NSMutableDictionary alloc] init];
-  for (NSString *param in [_latestQuery componentsSeparatedByString:@"&"]) {
-    NSArray *elts = [param componentsSeparatedByString:@"="];
-    if ([elts count] < 2) continue;
-    [_latestParams setObject:[elts lastObject] forKey:[elts firstObject]];
+  NSURLComponents *components = [[NSURLComponents alloc] init];
+  components.percentEncodedQuery = _latestQuery;
+  for (NSURLQueryItem *item in components.queryItems) {
+    if (item.value == nil) continue;
+    [_latestParams setObject:item.value forKey:item.name];
   }
 }
 
@@ -60,9 +61,11 @@ static NSMapTable<NSString *, __kindof UIViewController *> *_dispatchedViewContr
   } else if (localRes.isLynxRecorderSchema) {
     url = localRes.url;
   } else {
-    NSString *encodeUrl = [sourceUrl
-        stringByAddingPercentEncodingWithAllowedCharacters:[NSCharacterSet
-                                                               URLFragmentAllowedCharacterSet]];
+    NSMutableCharacterSet *allowedCharacters =
+        [[NSCharacterSet URLFragmentAllowedCharacterSet] mutableCopy];
+    [allowedCharacters addCharactersInString:@"%"];
+    NSString *encodeUrl =
+        [sourceUrl stringByAddingPercentEncodingWithAllowedCharacters:allowedCharacters];
     NSURL *source = [NSURL URLWithString:encodeUrl];
     if ([source.scheme isEqualToString:@"http"] || [source.scheme isEqualToString:@"https"]) {
       _latestQuery = source.query;

@@ -33,16 +33,25 @@ class RouterServiceImpl: RouterService {
         }
     }
 
-    /// Converts `hybrid://lynxview_page?bundle=name.lynx.bundle&k=v`
-    /// to `file://lynx?local://name.lynx.bundle?k=v`.
-    private static func hybridToLegacy(_ scheme: String) -> String {
+    /// Converts a hybrid bundle target to the dispatcher's local scheme, or
+    /// unwraps a hybrid `url=` target for loading from a development server.
+    static func hybridToLegacy(_ scheme: String) -> String {
         guard let components = URLComponents(string: scheme),
               components.scheme == "hybrid",
-              let queryItems = components.queryItems,
-              let bundle = queryItems.first(where: { $0.name == "bundle" })?.value else {
+              let queryItems = components.queryItems else {
             return scheme
         }
-        let remaining = queryItems.filter { $0.name != "bundle" }
+
+        let remaining = queryItems.filter { $0.name != "bundle" && $0.name != "url" }
+        if let target = queryItems.first(where: { $0.name == "url" })?.value,
+           var targetComponents = URLComponents(string: target) {
+            targetComponents.queryItems = (targetComponents.queryItems ?? []) + remaining
+            return targetComponents.string ?? target
+        }
+
+        guard let bundle = queryItems.first(where: { $0.name == "bundle" })?.value else {
+            return scheme
+        }
         if remaining.isEmpty {
             return "file://lynx?local://\(bundle)"
         }
