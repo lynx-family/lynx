@@ -7592,6 +7592,122 @@ TEST_P(FiberElementTest, UpdateCSSVariables_CSS_NG_1) {
   EXPECT_TRUE(node_4_background_color_value.UInt32() == 0xff008000);
 }
 
+TEST_P(FiberElementTest, UpdateIndirectCSSVariableAfterParentClassChange) {
+  lynx::base::AutoReset<bool> css_inheritance_config(
+      &(manager->GetConfig()->css_configs_.enable_css_inheritance_), true);
+  lynx::base::AutoReset<bool> css_inline_config(
+      &(manager->GetConfig()->css_configs_.enable_css_inline_variables_), true);
+  manager->enable_new_styling_pipeline_ = false;
+
+  CSSParserConfigs parser_configs;
+  CSSParserTokenMap index_token_map;
+
+  {
+    auto tokens = fml::MakeRefCounted<CSSParseToken>(parser_configs);
+    tokens->style_variables_.insert_or_assign("--theme-color", "red");
+    const std::string key = ".light";
+    tokens->sheets().emplace_back(std::make_shared<CSSSheet>(key));
+    index_token_map.insert(std::make_pair(key, tokens));
+  }
+
+  {
+    auto tokens = fml::MakeRefCounted<CSSParseToken>(parser_configs);
+    tokens->style_variables_.insert_or_assign("--theme-color", "green");
+    const std::string key = ".dark";
+    tokens->sheets().emplace_back(std::make_shared<CSSSheet>(key));
+    index_token_map.insert(std::make_pair(key, tokens));
+  }
+
+  {
+    auto tokens = fml::MakeRefCounted<CSSParseToken>(parser_configs);
+    tokens->style_variables_.insert_or_assign("--main-color",
+                                              "var(--theme-color)");
+    const std::string key = ".text";
+    tokens->sheets().emplace_back(std::make_shared<CSSSheet>(key));
+    index_token_map.insert(std::make_pair(key, tokens));
+  }
+
+  {
+    auto tokens = fml::MakeRefCounted<CSSParseToken>(parser_configs);
+    CSSStringParser parser{"var(--main-color)", 17, parser_configs};
+    tokens->raw_attributes_[CSSPropertyID::kPropertyIDColor] =
+        parser.ParseVariable();
+    const std::string key = ".text2";
+    tokens->sheets().emplace_back(std::make_shared<CSSSheet>(key));
+    index_token_map.insert(std::make_pair(key, tokens));
+  }
+
+  const std::vector<int32_t> dependent_ids;
+  CSSKeyframesTokenMap keyframes;
+  CSSFontFaceRuleMap font_faces;
+  auto index_fragment = std::make_shared<SharedCSSFragment>(
+      1, dependent_ids, index_token_map, keyframes, font_faces);
+
+  index_fragment->SetEnableCSSSelector();
+  for (const auto& [selector_key, parse_token] : index_token_map) {
+    css::CSSParserContext context;
+    css::CSSTokenizer tokenizer(selector_key);
+    const auto parser_tokens = tokenizer.TokenizeToEOF();
+    css::CSSParserTokenRange range(parser_tokens);
+    auto selector_vector =
+        css::CSSSelectorParser::ParseSelector(range, &context);
+    const size_t flattened_size =
+        css::CSSSelectorParser::FlattenedSize(selector_vector);
+    auto selector_array =
+        std::make_unique<css::LynxCSSSelector[]>(flattened_size);
+    css::CSSSelectorParser::AdoptSelectorVector(
+        selector_vector, selector_array.get(), flattened_size);
+    index_fragment->AddStyleRule(std::move(selector_array), parse_token);
+  }
+
+  auto page = manager->CreateFiberPage("page", 0);
+  page->style_sheet_ =
+      std::make_unique<CSSFragmentDecorator>(index_fragment.get());
+
+  auto parent = manager->CreateFiberView();
+  parent->parent_component_element_ = page.get();
+  parent->SetClass("light");
+  page->InsertNode(parent);
+
+  auto child = manager->CreateFiberText("text");
+  child->parent_component_element_ = page.get();
+  child->SetClasses({"text", "text2"});
+  parent->InsertNode(child);
+
+  page->FlushActionsAsRoot();
+  auto* painting_context = static_cast<FiberMockPaintingContext*>(
+      manager->painting_context()->impl());
+  painting_context->Flush();
+
+  auto* painting_node = painting_context->node_map_.at(child->impl_id()).get();
+  ASSERT_NE(painting_node, nullptr);
+  EXPECT_EQ(painting_node->props_.at("color"),
+            lepus::Value(static_cast<uint32_t>(kTestColorMap["red"])));
+
+  const auto& initial_related = child->data_model()->css_variable_related();
+  auto main_color = initial_related.find("--main-color");
+  ASSERT_NE(main_color, initial_related.end());
+  EXPECT_TRUE(main_color->second.IsEqual("red"));
+  auto theme_color = initial_related.find("--theme-color");
+  ASSERT_NE(theme_color, initial_related.end());
+  EXPECT_TRUE(theme_color->second.IsEqual("red"));
+
+  parent->RemoveAllClass();
+  parent->SetClass("dark");
+  page->FlushActionsAsRoot();
+  painting_context->Flush();
+
+  EXPECT_EQ(painting_node->props_.at("color"),
+            lepus::Value(static_cast<uint32_t>(kTestColorMap["green"])));
+  const auto& updated_related = child->data_model()->css_variable_related();
+  main_color = updated_related.find("--main-color");
+  ASSERT_NE(main_color, updated_related.end());
+  EXPECT_TRUE(main_color->second.IsEqual("green"));
+  theme_color = updated_related.find("--theme-color");
+  ASSERT_NE(theme_color, updated_related.end());
+  EXPECT_TRUE(theme_color->second.IsEqual("green"));
+}
+
 TEST_P(FiberElementTest, UpdateMultipleCSSVariables) {
   // construct css fragment
   StyleMap indexAttributes;
