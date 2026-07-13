@@ -742,6 +742,70 @@ TEST_F(CSSValueSubstitutionTest, SubstituteAll) {
   EXPECT_EQ(custom_properties["--d"].AsStdString(), "   blue");
 }
 
+TEST_F(CSSValueSubstitutionTest, SubstituteAllPreservesTransitiveDependencies) {
+  CustomPropertiesMap custom_properties;
+  custom_properties.insert_or_assign("--a", CSSValue::MakePlainString("red"));
+
+  for (const auto& [name, value] :
+       {std::pair{"--b", "var(--a)"}, std::pair{"--c", "var(--b)"}}) {
+    lepus::Value variable = lepus::Value(value);
+    CSSStringParser parser =
+        CSSStringParser::FromLepusString(variable, configs_);
+    custom_properties.insert_or_assign(name, parser.ParseVariable());
+  }
+
+  CSSVariableMap substitute_all_dependencies;
+  CSSValue::SubstituteAll(
+      custom_properties, 10,
+      [&substitute_all_dependencies](const base::String& name,
+                                     const base::String& value) {
+        substitute_all_dependencies.insert_or_assign(name, value);
+      });
+
+  ASSERT_EQ(custom_properties["--b"].AsStdString(), "red");
+  ASSERT_EQ(custom_properties["--c"].AsStdString(), "red");
+  EXPECT_EQ(substitute_all_dependencies.size(), 2U);
+  EXPECT_EQ(substitute_all_dependencies["--a"], "red");
+  EXPECT_EQ(substitute_all_dependencies["--b"], "red");
+  ASSERT_TRUE(
+      custom_properties["--c"]
+          .optionals_.HasValue<CSSValue::CustomPropertyDependencyField>());
+
+  CSSVariableMap dependencies;
+  lepus::Value variable = lepus::Value("var(--c)");
+  CSSStringParser parser = CSSStringParser::FromLepusString(variable, configs_);
+  CSSValue value = parser.ParseVariable();
+  auto record_dependency = [&dependencies](const base::String& name,
+                                           const base::String& value) {
+    dependencies.insert_or_assign(name, value);
+  };
+
+  EXPECT_EQ(
+      CSSValue::Substitution(value, custom_properties, 10, record_dependency),
+      "red");
+  EXPECT_EQ(dependencies.size(), 3U);
+  EXPECT_EQ(dependencies["--a"], "red");
+  EXPECT_EQ(dependencies["--b"], "red");
+  EXPECT_EQ(dependencies["--c"], "red");
+
+  dependencies.clear();
+  EXPECT_EQ(CSSValue::SubstitutionResolved(value, custom_properties,
+                                           record_dependency),
+            "red");
+  EXPECT_EQ(dependencies.size(), 3U);
+  EXPECT_EQ(dependencies["--a"], "red");
+  EXPECT_EQ(dependencies["--b"], "red");
+  EXPECT_EQ(dependencies["--c"], "red");
+
+  custom_properties["--c"].SetString("blue", CSSValuePattern::STRING);
+  dependencies.clear();
+  EXPECT_EQ(CSSValue::SubstitutionResolved(value, custom_properties,
+                                           record_dependency),
+            "blue");
+  EXPECT_EQ(dependencies.size(), 1U);
+  EXPECT_EQ(dependencies["--c"], "blue");
+}
+
 // Tests for ToVarReference function using Substitution method
 TEST_F(CSSValueToVarReferenceTest, SimpleVariableToVarReference) {
   // Test simple {{--variable}} format conversion
