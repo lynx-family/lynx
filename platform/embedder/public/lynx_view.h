@@ -29,6 +29,11 @@ struct lynx_view_t;
 namespace lynx {
 namespace pub {
 
+struct LynxDevtoolTarget {
+  int32_t session_id;
+  std::string url;
+};
+
 /**
  * @apidoc
  * @brief LynxView is the main entry point for rendering and interacting with
@@ -342,6 +347,19 @@ class LynxView {
     } else {
       lynx_view_set_event_simulation_proxy(lynx_view_, nullptr, nullptr);
     }
+  }
+
+  bool GetDevtoolTarget(LynxDevtoolTarget* target) {
+    if (!target) {
+      return false;
+    }
+    lynx_devtool_target_t native_target{};
+    if (!lynx_view_get_devtool_target(lynx_view_, &native_target)) {
+      return false;
+    }
+    target->session_id = native_target.session_id;
+    target->url = native_target.url ? native_target.url : "";
+    return true;
   }
 
   lynx_view_t* Impl() { return lynx_view_; }

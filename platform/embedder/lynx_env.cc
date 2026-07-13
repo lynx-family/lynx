@@ -6,6 +6,7 @@
 #if ENABLE_INSPECTOR
 #include "devtool/embedder/common/debugger_embedder.h"
 #include "platform/embedder/lynx_devtool/devtool_env_embedder.h"
+#include "third_party/debug_router/src/debug_router/native/core/debug_router_core.h"
 #endif
 #include "platform/embedder/module/global_module_registry.h"
 #include "platform/embedder/public/capi/lynx_env_capi.h"
@@ -45,6 +46,14 @@ LYNX_EXTERN_C int lynx_env_is_devtool_enabled() {
   return lynx::embedder::DevToolEnvEmbedder::GetInstance().IsDevToolEnabled();
 #else
   return 0;
+#endif
+}
+
+LYNX_EXTERN_C int lynx_env_get_devtool_local_port() {
+#if ENABLE_INSPECTOR
+  return debugrouter::core::DebugRouterCore::GetInstance().GetUSBPort();
+#else
+  return -1;
 #endif
 }
 

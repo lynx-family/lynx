@@ -53,6 +53,8 @@ class LynxInspectorOwner {
   OnBackgroundRuntimeCreated(const std::string& group_thread_name) = 0;
   virtual void OnReceiveMessageEvent(const Json::Value& event) = 0;
   virtual void DispatchConsoleMessage(const std::string&, int32_t, int64_t) {}
+  virtual int32_t GetSessionId() { return 0; }
+  virtual std::string GetTemplateUrl() { return {}; }
 };
 
 }  // namespace devtool

@@ -71,9 +71,9 @@ class InspectorOwnerEmbedder
 
   std::shared_ptr<tasm::TemplateData> getTemplateDate();
 
-  std::string GetTemplateUrl();
+  std::string GetTemplateUrl() override;
 
-  int32_t GetSessionId();
+  int32_t GetSessionId() override;
 
   // LynxInspectorOwner
   void OnReceiveMessageEvent(const Json::Value& event) override;

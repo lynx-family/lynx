@@ -179,6 +179,27 @@ LYNX_EXTERN_C void* lynx_view_get_user_data(lynx_view_t* view) {
   return view->user_data;
 }
 
+LYNX_EXTERN_C bool lynx_view_get_devtool_target(lynx_view_t* view,
+                                                lynx_devtool_target_t* target) {
+  if (!view || !target) {
+    return false;
+  }
+#if ENABLE_INSPECTOR
+  const int32_t session_id =
+      view->lynx_template_renderer->GetDevtoolSessionId();
+  if (session_id <= 0) {
+    return false;
+  }
+  view->devtool_target_url =
+      view->lynx_template_renderer->GetDevtoolTemplateUrl();
+  target->session_id = session_id;
+  target->url = view->devtool_target_url.c_str();
+  return true;
+#else
+  return false;
+#endif
+}
+
 LYNX_EXTERN_C const char* lynx_view_get_webview2_fixed_runtime_path(
     lynx_view_t* view) {
   return view->webview2_fixed_runtime_path.c_str();

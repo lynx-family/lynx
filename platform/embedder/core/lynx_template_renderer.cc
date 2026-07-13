@@ -672,5 +672,23 @@ void LynxTemplateRenderer::DispatchMessageEvent(const Json::Value& message) {
   shell_->DispatchMessageEvent(event);
 }
 
+int32_t LynxTemplateRenderer::GetDevtoolSessionId() {
+#if ENABLE_INSPECTOR
+  if (devtools_) {
+    return devtools_->GetInspectorOwner()->GetSessionId();
+  }
+#endif
+  return 0;
+}
+
+std::string LynxTemplateRenderer::GetDevtoolTemplateUrl() {
+#if ENABLE_INSPECTOR
+  if (devtools_) {
+    return devtools_->GetInspectorOwner()->GetTemplateUrl();
+  }
+#endif
+  return {};
+}
+
 }  // namespace embedder
 }  // namespace lynx

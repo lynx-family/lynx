@@ -268,6 +268,9 @@ class LynxTemplateRenderer : public devtool::LynxDevToolProxy {
 
   void DispatchMessageEvent(const Json::Value& message) override;
 
+  int32_t GetDevtoolSessionId();
+  std::string GetDevtoolTemplateUrl();
+
  protected:
   std::vector<uint8_t> LoadJSSource(const std::string& url);
   void UpdateGenericInfoWithUrl(const std::string& url);
