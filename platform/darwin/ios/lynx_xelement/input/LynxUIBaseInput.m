@@ -841,9 +841,20 @@ LYNX_UI_METHOD(setSelectionRange) {
     CGFloat width = self.view.bounds.size.width ? : UIScreen.mainScreen.bounds.size.width;
     [self.view sizeThatFits:CGSizeMake(0, 0)];
     CGSize updatedSize = [self.view sizeThatFits:CGSizeMake(width, CGFLOAT_MAX)];
-    // While there is no text, the lineSpacing should not be taken into account
+    // Measure an empty input as a single text line. UITextView's empty-text size may handle
+    // paragraph line spacing differently across iOS versions.
     if (![self getText].length) {
-      updatedSize.height -= self.inputParagraphStyle.lineSpacing;
+      CGFloat contentWidth = MAX(0, width - self.padding.left - self.padding.right);
+      NSAttributedString *measureUnit =
+          [[NSAttributedString alloc] initWithString:@" " attributes:self.inputAttrs];
+      CGSize intrinsicSize =
+          [measureUnit boundingRectWithSize:CGSizeMake(contentWidth, CGFLOAT_MAX)
+                                    options:NSStringDrawingUsesLineFragmentOrigin |
+                                            NSStringDrawingUsesFontLeading
+                                    context:nil]
+              .size;
+      updatedSize.height =
+          ceil(intrinsicSize.height) + self.padding.top + self.padding.bottom;
     } else if ([self getContentSize]) {
       CGSize contentSize = [[self getContentSize] CGSizeValue];
       if (contentSize.height != 0) {
