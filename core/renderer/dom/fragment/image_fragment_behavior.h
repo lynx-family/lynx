@@ -6,6 +6,7 @@
 
 #include "core/renderer/dom/fragment/display_list_builder.h"
 #include "core/renderer/dom/fragment/fragment_behavior.h"
+#include "core/renderer/ui_wrapper/painting/paint_image.h"
 
 namespace lynx::tasm {
 
@@ -33,6 +34,7 @@ class ImageFragmentBehavior : public FragmentBehavior {
   bool UpdateImageIfNeeded(const LayoutInfoForDraw& layout_info);
 
   base::String image_url_;
+  ImageFitMode image_mode_{ImageFitMode::kScaleToFill};
   float image_width_{0.f};
   float image_height_{0.f};
   // Cached event mask - computed lazily on first use, then never changes.

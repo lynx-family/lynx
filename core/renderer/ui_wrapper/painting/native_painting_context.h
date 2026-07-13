@@ -10,12 +10,12 @@
 #include "base/include/value/base_string.h"
 #include "core/public/painting_ctx_platform_impl.h"
 #include "core/public/platform_renderer_type.h"
+#include "core/renderer/ui_wrapper/painting/paint_image.h"
 #include "core/renderer/ui_wrapper/painting/platform_renderer.h"
 
 namespace lynx::tasm {
 class DisplayList;
 class PlatformEventBundle;
-class PaintImage;
 class NativePaintingContext {
  public:
   NativePaintingContext() = default;
@@ -37,7 +37,7 @@ class NativePaintingContext {
           PlatformRendererInitConfig()) = 0;
   virtual void UpdateDisplayList(int id, DisplayList list) = 0;
   virtual fml::RefPtr<PaintImage> CreateImage(
-      int id, base::String src, float width, float height,
+      int id, base::String src, ImageFitMode mode, float width, float height,
       int32_t event_mask = 0, bool disable_default_resize = false) = 0;
   virtual void UpdateTextBundle(int id, intptr_t bundle) = 0;
   virtual void DestroyTextBundle(int id) = 0;
