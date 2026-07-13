@@ -1,0 +1,205 @@
+lynx/core/shell/runtime/bts/bts_runtime_mediator.h
+  h_4d36f4d76420fe 93-94
+lynx/core/runtime/js/template_delegate.h
+  s_17f8d5d232e427::t_7e964f0f0767c1 30
+  h_4d36f4d76420fe 101
+  s_e84a3fbb0a19fd::t_58b5f61ae9b9a7 102
+lynx/core/renderer/js_bundle_holder_impl.cc
+  h_4d36f4d76420fe 72-75
+  s_12938d55be5746::t_affb9711aaafa9 47
+  s_5ff09738f0ecf3::t_ee8c0fb9c5643e 69
+  s_12938d55be5746::t_21d7304ab7c86b 40-46,70
+lynx/core/renderer/template_entry_holder.cc
+  h_4d36f4d76420fe 105-108
+  s_3a1cc53737ee36::t_087cb354633db1 85
+lynx/core/shell/runtime/bts/bts_runtime_mediator.cc
+  h_4d36f4d76420fe 147-148
+  s_730682825b25cb::t_d15b294438460d 154
+  s_730682825b25cb::t_24a5fa531df867 155-156
+lynx/core/resource/external_resource/external_resource_loader.cc
+  s_ab20f47f3fb5fb::t_b1e722c0e79514 125
+  s_8d4685f88c24a2::t_c0dbac05768fe9 131,146
+  s_74d51cbf8a6164::t_d9b73d2b1b53db 133
+  s_c39caa8dfbea57::t_0f72980ed67807 134
+  s_ce5e624e04bb18::t_c41fafb21c8785 129-130
+  s_ce5e624e04bb18::t_e63902a3c73549 155-156
+  h_4d36f4d76420fe 132,135-140,147
+  s_ce5e624e04bb18::t_a782f5dbae2838 141-145
+  s_ce5e624e04bb18::t_3cd74120d42af4 157
+lynx/core/renderer/js_bundle_holder_impl.h
+  h_4d36f4d76420fe 47-49
+  s_74e61ff1434c66::t_62616253edc534 58
+  s_74e61ff1434c66::t_a420695c405475 56-57
+  s_9ddcc331841be6::t_0047e4a154e44f 83-84
+lynx/core/resource/external_resource/external_resource_loader.h
+  s_ce5e624e04bb18::t_9ca8484e3b3557 68-70
+lynx/core/renderer/template_entry_holder.h
+  s_2e2ff5dd8932cf::t_444cbd6b92da3e 78-79
+  s_2e2ff5dd8932cf::t_99489590207d96 80
+lynx/core/runtime/js/bindings/js_app.cc
+  s_9142bd3a2b62ac::t_290720eb2addc1 3155
+  s_4a10412bc7177d::t_bf6ae43691620f 3158
+lynx/core/runtime/js/js_bundle_holder.h
+  s_5cf13c20d3abf0::t_021c4d3833fdfd 29
+  s_5cf13c20d3abf0::t_ae1948c556ff81 27-28
+  s_a7e83fe6421433::t_07a3d95c6beadb 13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "47eeeaafeae38db0f8773449003d9ed86cf8d64a",
+  "prompts": {},
+  "humans": {
+    "h_4d36f4d76420fe": {
+      "author": "yangguangzhao <yangguangzhao.solace@bytedance.com>"
+    }
+  },
+  "sessions": {
+    "s_12938d55be5746": {
+      "agent_id": {
+        "tool": "trae-cue",
+        "id": "ai_tab-icr-96a25f6b-eccf-4d49-9bbc-4e718738a998",
+        "model": "default"
+      },
+      "human_author": "yangguangzhao <yangguangzhao.solace@bytedance.com>"
+    },
+    "s_17f8d5d232e427": {
+      "agent_id": {
+        "tool": "trae-cue",
+        "id": "ai_tab-icr-84b24a66-cc1e-4c3a-8dac-b64cd314ce59",
+        "model": "default"
+      },
+      "human_author": "yangguangzhao <yangguangzhao.solace@bytedance.com>"
+    },
+    "s_2e2ff5dd8932cf": {
+      "agent_id": {
+        "tool": "trae-cue",
+        "id": "ai_tab-icr-df534389-cce6-43e0-bbc9-f52750d2592c",
+        "model": "default"
+      },
+      "human_author": "yangguangzhao <yangguangzhao.solace@bytedance.com>"
+    },
+    "s_3a1cc53737ee36": {
+      "agent_id": {
+        "tool": "trae-cue",
+        "id": "ai_tab-icr-9410685f-3d57-4bdc-b553-600f6cbb1d43",
+        "model": "default"
+      },
+      "human_author": "yangguangzhao <yangguangzhao.solace@bytedance.com>"
+    },
+    "s_4a10412bc7177d": {
+      "agent_id": {
+        "tool": "trae-cue",
+        "id": "ai_tab-icr-c927133f-3b28-4a37-8dc4-67a72e7a4826",
+        "model": "default"
+      },
+      "human_author": "yangguangzhao <yangguangzhao.solace@bytedance.com>"
+    },
+    "s_5cf13c20d3abf0": {
+      "agent_id": {
+        "tool": "trae-cue",
+        "id": "ai_tab-icr-a16521fc-a923-4d20-a995-5eadc0071bd9",
+        "model": "default"
+      },
+      "human_author": "yangguangzhao <yangguangzhao.solace@bytedance.com>"
+    },
+    "s_5ff09738f0ecf3": {
+      "agent_id": {
+        "tool": "trae-cue",
+        "id": "ai_tab-icr-e308bd86-9588-4d0b-b39a-7a52757e34bd",
+        "model": "default"
+      },
+      "human_author": "yangguangzhao <yangguangzhao.solace@bytedance.com>"
+    },
+    "s_730682825b25cb": {
+      "agent_id": {
+        "tool": "trae-cue",
+        "id": "ai_tab-icr-64d350ce-8eae-4609-b75d-1f253c308d02",
+        "model": "default"
+      },
+      "human_author": "yangguangzhao <yangguangzhao.solace@bytedance.com>"
+    },
+    "s_74d51cbf8a6164": {
+      "agent_id": {
+        "tool": "trae-cue",
+        "id": "ai_tab-icr-c8dd6987-c7d7-434c-a80c-03f3460be187",
+        "model": "default"
+      },
+      "human_author": "yangguangzhao <yangguangzhao.solace@bytedance.com>"
+    },
+    "s_74e61ff1434c66": {
+      "agent_id": {
+        "tool": "trae-cue",
+        "id": "ai_tab-icr-5736279d-0df6-4907-8a3e-07fdb4d3f7b2",
+        "model": "default"
+      },
+      "human_author": "yangguangzhao <yangguangzhao.solace@bytedance.com>"
+    },
+    "s_8d4685f88c24a2": {
+      "agent_id": {
+        "tool": "trae-cue",
+        "id": "ai_tab-icr-67031bcb-0267-46c1-a04b-d8c0edbaf263",
+        "model": "default"
+      },
+      "human_author": "yangguangzhao <yangguangzhao.solace@bytedance.com>"
+    },
+    "s_9142bd3a2b62ac": {
+      "agent_id": {
+        "tool": "trae-cue",
+        "id": "ai_tab-icr-02d73a03-7ed9-4b7b-92fe-fbff5a8cd92a",
+        "model": "default"
+      },
+      "human_author": "yangguangzhao <yangguangzhao.solace@bytedance.com>"
+    },
+    "s_9ddcc331841be6": {
+      "agent_id": {
+        "tool": "trae-cue",
+        "id": "ai_tab-icr-6dd8c738-7068-4e36-93ff-05285dac3c7b",
+        "model": "default"
+      },
+      "human_author": "yangguangzhao <yangguangzhao.solace@bytedance.com>"
+    },
+    "s_a7e83fe6421433": {
+      "agent_id": {
+        "tool": "trae-cue",
+        "id": "ai_tab-icr-513750e9-ed5b-49cc-888a-156b0937995f",
+        "model": "default"
+      },
+      "human_author": "yangguangzhao <yangguangzhao.solace@bytedance.com>"
+    },
+    "s_ab20f47f3fb5fb": {
+      "agent_id": {
+        "tool": "trae-cue",
+        "id": "ai_tab-icr-58a86638-0494-4186-9d39-65a5d7216963",
+        "model": "default"
+      },
+      "human_author": "yangguangzhao <yangguangzhao.solace@bytedance.com>"
+    },
+    "s_c39caa8dfbea57": {
+      "agent_id": {
+        "tool": "trae-cue",
+        "id": "ai_tab-icr-5b0cd1c6-ddbb-446c-a629-50ea2ad4bd2f",
+        "model": "default"
+      },
+      "human_author": "yangguangzhao <yangguangzhao.solace@bytedance.com>"
+    },
+    "s_ce5e624e04bb18": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a4f63cc32aad578b3de0b0e",
+        "model": "c_o_new_thinking__max"
+      },
+      "human_author": "yangguangzhao <yangguangzhao.solace@bytedance.com>"
+    },
+    "s_e84a3fbb0a19fd": {
+      "agent_id": {
+        "tool": "trae-cue",
+        "id": "ai_tab-icr-e6f738c3-3af7-4f5a-bed2-5ecd88a92cd7",
+        "model": "default"
+      },
+      "human_author": "yangguangzhao <yangguangzhao.solace@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}
