@@ -20,6 +20,7 @@
 		2B590A492D635BEB0041DE80 /* DemoMeidaResourceFetcher.m in Sources */ = {isa = PBXBuildFile; fileRef = 2B590A482D635BEB0041DE80 /* DemoMeidaResourceFetcher.m */; };
 		2B590A4C2D635CF00041DE80 /* DemoTemplateResourceFetcher.m in Sources */ = {isa = PBXBuildFile; fileRef = 2B590A4B2D635CF00041DE80 /* DemoTemplateResourceFetcher.m */; };
 		2B736B8C2D096F8A000A35F6 /* LynxExplorerTests.m in Sources */ = {isa = PBXBuildFile; fileRef = 2B736B8B2D096F8A000A35F6 /* LynxExplorerTests.m */; };
+		C69250032E21A00100C0D3E1 /* RouterServiceImplTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C69250022E21A00100C0D3E1 /* RouterServiceImplTests.swift */; };
 		2B948FA22C2D9FD900535C96 /* AppDelegate.mm in Sources */ = {isa = PBXBuildFile; fileRef = 2B948FA12C2D9FD900535C96 /* AppDelegate.mm */; };
 		2B948FA82C2D9FD900535C96 /* LynxViewShellViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 2B948FA72C2D9FD900535C96 /* LynxViewShellViewController.m */; };
 		2B948FAB2C2D9FD900535C96 /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 2B948FA92C2D9FD900535C96 /* Main.storyboard */; };
@@ -73,6 +74,7 @@
 		2B590A4B2D635CF00041DE80 /* DemoTemplateResourceFetcher.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = DemoTemplateResourceFetcher.m; sourceTree = "<group>"; };
 		2B736B892D096F8A000A35F6 /* LynxExplorerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = LynxExplorerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		2B736B8B2D096F8A000A35F6 /* LynxExplorerTests.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = LynxExplorerTests.m; sourceTree = "<group>"; };
+		C69250022E21A00100C0D3E1 /* RouterServiceImplTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouterServiceImplTests.swift; sourceTree = "<group>"; };
 		2B948F9D2C2D9FD900535C96 /* LynxExplorer.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = LynxExplorer.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		2B948FA02C2D9FD900535C96 /* AppDelegate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AppDelegate.h; sourceTree = "<group>"; };
 		2B948FA12C2D9FD900535C96 /* AppDelegate.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = AppDelegate.mm; sourceTree = "<group>"; };
@@ -205,6 +207,7 @@
 			isa = PBXGroup;
 			children = (
 				2B736B8B2D096F8A000A35F6 /* LynxExplorerTests.m */,
+				C69250022E21A00100C0D3E1 /* RouterServiceImplTests.swift */,
 			);
 			path = LynxExplorerTests;
 			sourceTree = "<group>";
@@ -456,6 +459,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				2B736B8C2D096F8A000A35F6 /* LynxExplorerTests.m in Sources */,
+				C69250032E21A00100C0D3E1 /* RouterServiceImplTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -525,6 +529,10 @@
 				CLANG_CXX_LIBRARY = "libc++";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(BUILT_PRODUCTS_DIR)/**",
+				);
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.2;
@@ -535,6 +543,7 @@
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.lynx.test.LynxExplorerTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_VERSION = 5.0;
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/LynxExplorer.app/LynxExplorer";
@@ -550,6 +559,10 @@
 				CLANG_CXX_LIBRARY = "libc++";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(BUILT_PRODUCTS_DIR)/**",
+				);
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.2;
@@ -560,6 +573,7 @@
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.lynx.test.LynxExplorerTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_VERSION = 5.0;
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/LynxExplorer.app/LynxExplorer";

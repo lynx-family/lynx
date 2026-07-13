@@ -5,6 +5,10 @@
 #import <XCTest/XCTest.h>
 #import "LynxViewShellViewController.h"
 
+@interface LynxViewShellViewController (Testing)
+- (id)getGlobalPropsForScreenSize:(CGSize)screenSize;
+@end
+
 @interface LynxExplorerTests : XCTestCase
 
 @end
@@ -30,6 +34,15 @@
 
   shellVC.params = [@{@"orientation" : @"landscape"} mutableCopy];
   XCTAssertEqual([shellVC supportedInterfaceOrientations], UIInterfaceOrientationMaskLandscape);
+}
+
+- (void)testShellViewControllerExposesRouteParamsAsQueryItems {
+  LynxViewShellViewController *shellVC = [[LynxViewShellViewController alloc] init];
+  shellVC.params = [@{ @"userId" : @"42", @"action" : @"view" } mutableCopy];
+
+  NSDictionary *globalProps = [[shellVC getGlobalPropsForScreenSize:CGSizeMake(402, 874)] dictionary];
+
+  XCTAssertEqualObjects(globalProps[@"queryItems"], shellVC.params);
 }
 
 @end
