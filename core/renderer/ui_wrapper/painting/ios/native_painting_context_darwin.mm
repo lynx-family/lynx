@@ -345,7 +345,8 @@ void NativePaintingCtxDarwin::UpdatePlatformEventBundle(int32_t id, PlatformEven
   });
 }
 
-fml::RefPtr<PaintImage> NativePaintingCtxDarwin::CreateImage(int id, base::String src, float width,
+fml::RefPtr<PaintImage> NativePaintingCtxDarwin::CreateImage(int id, base::String src,
+                                                             ImageFitMode mode, float width,
                                                              float height, int32_t event_mask,
                                                              bool disable_default_resize) {
   static_cast<void>(disable_default_resize);
@@ -357,6 +358,7 @@ fml::RefPtr<PaintImage> NativePaintingCtxDarwin::CreateImage(int id, base::Strin
   [context_->GetRendererContext() createImageManager:id
                                        withSourceURL:sourceUrl
                                    andPlaceholderURL:nil
+                                                mode:static_cast<int32_t>(mode)
                                            eventMask:event_mask
                                             imageKey:image_key];
   return fml::MakeRefCounted<PaintImageDarwin>(image_key, context_->GetRendererContext());

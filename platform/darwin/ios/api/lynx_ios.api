@@ -2353,6 +2353,7 @@ public class LynxImageManager : NSObject {
   public void LynxImageManager::setTarget:(UIImageView *view);
   public void LynxImageManager::setSign:(NSInteger sign);
   public void LynxImageManager::setEventMask:(NSInteger eventMask);
+  public void LynxImageManager::setMode:(int32_t mode);
   public void LynxImageManager::reset();
 }
 
@@ -3319,7 +3320,7 @@ public class LynxRendererContext : NSObject {
   public UIView<LUIBodyView>* LynxRendererContext::bodyView bodyView;
   public LynxUIContext* LynxRendererContext::uiContext uiContext;
   public LynxTextRenderManager* LynxRendererContext::textRenderManager textRenderManager;
-  public void LynxRendererContext::createImageManager:withSourceURL:andPlaceholderURL:eventMask:imageKey:(int32_t imageManagerID,[withSourceURL] LynxURL *sourceURL,[andPlaceholderURL] LynxURL *placeholderURL,[eventMask] int32_t eventMask,[imageKey] int32_t imageKey);
+  public void LynxRendererContext::createImageManager:withSourceURL:andPlaceholderURL:mode:eventMask:imageKey:(int32_t imageManagerID,[withSourceURL] LynxURL *sourceURL,[andPlaceholderURL] LynxURL *placeholderURL,[mode] int32_t mode,[eventMask] int32_t eventMask,[imageKey] int32_t imageKey);
   public LynxImageManager * LynxRendererContext::imageManagerForID:(int32_t imageManagerID);
   public void LynxRendererContext::destroyImage:(int32_t imageKey);
   public void LynxRendererContext::updateTextBundle:withBundle:(int32_t textID,[withBundle] void *bundle);

@@ -169,6 +169,7 @@ class TestNativePaintingContext : public NativePaintingContext {
   struct CreatedImage {
     int id;
     base::String src;
+    ImageFitMode mode;
     float width;
     float height;
     int32_t event_mask;
@@ -209,13 +210,13 @@ class TestNativePaintingContext : public NativePaintingContext {
     }
   }
   fml::RefPtr<PaintImage> CreateImage(
-      int id, base::String src, float width, float height,
+      int id, base::String src, ImageFitMode mode, float width, float height,
       int32_t event_mask = 0, bool disable_default_resize = false) override {
     if (fail_image_creation_) {
       return nullptr;
     }
     int32_t image_key = next_image_key_++;
-    created_images_.push_back({id, src, width, height, event_mask,
+    created_images_.push_back({id, src, mode, width, height, event_mask,
                                disable_default_resize, image_key});
     return fml::MakeRefCounted<PaintImage>(image_key);
   }
@@ -894,6 +895,7 @@ TEST_F(FragmentTest, RoundedRectGeneratesClipPathOpParams) {
 TEST_F(FragmentTest, TestUpdateLayoutAndDefineBoxAndDrawImage) {
   auto element = manager->CreateFiberImage("image");
   element->SetAttributeInternal("src", lepus::Value("image-src://"));
+  element->SetAttributeInternal("mode", lepus::Value("aspectFit"));
 
   Fragment fragment(element.get());
   fragment.SetBehavior(std::make_unique<ImageFragmentBehavior>(&fragment));
@@ -968,6 +970,8 @@ TEST_F(FragmentTest, TestUpdateLayoutAndDefineBoxAndDrawImage) {
   EXPECT_EQ(image_item.type, DisplayListOpType::kImage);
   ASSERT_EQ(native_painting_context.created_images_.size(), 1u);
   EXPECT_EQ(native_painting_context.created_images_[0].id, fragment.id());
+  EXPECT_EQ(native_painting_context.created_images_[0].mode,
+            ImageFitMode::kAspectFit);
   const int32_t image_key =
       native_painting_context.created_images_[0].image_key;
   EXPECT_EQ(image_item.payload.image.image_id, image_key);
@@ -1038,6 +1042,109 @@ TEST_F(FragmentTest, TestUpdateLayoutAndDefineBoxAndDrawImage) {
   EXPECT_EQ(ints[9], 2);
 }
 
+TEST_F(FragmentTest, ImageModesNormalizeBeforeCreation) {
+  static_assert(static_cast<int32_t>(ImageFitMode::kScaleToFill) == 0);
+  static_assert(static_cast<int32_t>(ImageFitMode::kAspectFit) == 1);
+  static_assert(static_cast<int32_t>(ImageFitMode::kAspectFill) == 2);
+  static_assert(static_cast<int32_t>(ImageFitMode::kCenter) == 3);
+
+  struct ModeCase {
+    const char* value;
+    ImageFitMode expected;
+  };
+  constexpr std::array<ModeCase, 6> kModeCases = {{
+      {"scaleToFill", ImageFitMode::kScaleToFill},
+      {"aspectFit", ImageFitMode::kAspectFit},
+      {"aspectFill", ImageFitMode::kAspectFill},
+      {"center", ImageFitMode::kCenter},
+      {"", ImageFitMode::kScaleToFill},
+      {"unsupported", ImageFitMode::kScaleToFill},
+  }};
+
+  for (const auto& mode_case : kModeCases) {
+    SCOPED_TRACE(mode_case.value);
+    auto element = manager->CreateFiberImage("image");
+    element->SetAttributeInternal("src", lepus::Value("image-src://mode"));
+    element->SetAttributeInternal("mode", lepus::Value(mode_case.value));
+
+    Fragment fragment(element.get());
+    fragment.SetBehavior(std::make_unique<ImageFragmentBehavior>(&fragment));
+    TestNativePaintingContext native_painting_context;
+    fragment.behavior_->painting_context_ = &native_painting_context;
+
+    starlight::LayoutResultForRendering layout;
+    layout.size_ = FloatSize(100.f, 60.f);
+    fragment.UpdateLayout(layout);
+    fragment.behavior_->OnUpdateLayout(fragment.LayoutResult());
+
+    ASSERT_EQ(native_painting_context.created_images_.size(), 1u);
+    EXPECT_EQ(native_painting_context.created_images_[0].mode,
+              mode_case.expected);
+  }
+
+  auto element = manager->CreateFiberImage("image");
+  element->SetAttributeInternal("src", lepus::Value("image-src://default"));
+  element->SetAttributeInternal("mode", lepus::Value(42));
+  Fragment fragment(element.get());
+  fragment.SetBehavior(std::make_unique<ImageFragmentBehavior>(&fragment));
+  TestNativePaintingContext native_painting_context;
+  fragment.behavior_->painting_context_ = &native_painting_context;
+  starlight::LayoutResultForRendering layout;
+  layout.size_ = FloatSize(100.f, 60.f);
+  fragment.UpdateLayout(layout);
+  fragment.behavior_->OnUpdateLayout(fragment.LayoutResult());
+  ASSERT_EQ(native_painting_context.created_images_.size(), 1u);
+  EXPECT_EQ(native_painting_context.created_images_[0].mode,
+            ImageFitMode::kScaleToFill);
+}
+
+TEST_F(FragmentTest, ImageModeUpdateRecreatesOnlyForEffectiveChanges) {
+  auto element = manager->CreateFiberImage("image");
+  element->SetAttributeInternal("src", lepus::Value("image-src://initial"));
+  element->SetAttributeInternal("mode", lepus::Value("aspectFit"));
+
+  Fragment fragment(element.get());
+  fragment.SetBehavior(std::make_unique<ImageFragmentBehavior>(&fragment));
+  TestNativePaintingContext native_painting_context;
+  fragment.behavior_->painting_context_ = &native_painting_context;
+
+  starlight::LayoutResultForRendering layout;
+  layout.size_ = FloatSize(100.f, 60.f);
+  fragment.UpdateLayout(layout);
+  fragment.behavior_->OnUpdateLayout(fragment.LayoutResult());
+  DisplayListBuilder initial_builder;
+  fragment.OnDraw(initial_builder);
+  ASSERT_EQ(native_painting_context.created_images_.size(), 1u);
+
+  element->SetAttributeInternal("mode", lepus::Value("aspectFit"));
+  fragment.UpdatePaintingNode(true, nullptr);
+  EXPECT_EQ(native_painting_context.created_images_.size(), 1u);
+
+  element->SetAttributeInternal("mode", lepus::Value("aspectFill"));
+  fragment.UpdatePaintingNode(true, nullptr);
+  ASSERT_EQ(native_painting_context.created_images_.size(), 2u);
+  EXPECT_EQ(native_painting_context.created_images_.back().mode,
+            ImageFitMode::kAspectFill);
+  EXPECT_TRUE(fragment.NeedRedraw());
+
+  fragment.behavior_->OnUpdateLayout(fragment.LayoutResult());
+  EXPECT_EQ(native_painting_context.created_images_.size(), 2u);
+
+  element->SetAttributeInternal("mode", lepus::Value("unsupported"));
+  fragment.UpdatePaintingNode(true, nullptr);
+  ASSERT_EQ(native_painting_context.created_images_.size(), 3u);
+  EXPECT_EQ(native_painting_context.created_images_.back().mode,
+            ImageFitMode::kScaleToFill);
+
+  element->SetAttributeInternal("mode", lepus::Value("still-unsupported"));
+  fragment.UpdatePaintingNode(true, nullptr);
+  EXPECT_EQ(native_painting_context.created_images_.size(), 3u);
+
+  element->ResetAttribute(base::String("mode"));
+  fragment.UpdatePaintingNode(true, nullptr);
+  EXPECT_EQ(native_painting_context.created_images_.size(), 3u);
+}
+
 TEST_F(FragmentTest, ImageSrcUpdateInvalidatesWithoutDuplicateImageCreation) {
   // Given: an image has completed its initial layout and draw.
   auto element = manager->CreateFiberImage("image");
@@ -1056,6 +1163,8 @@ TEST_F(FragmentTest, ImageSrcUpdateInvalidatesWithoutDuplicateImageCreation) {
   fragment.OnDraw(initial_builder);
 
   ASSERT_EQ(native_painting_context.created_images_.size(), 1u);
+  EXPECT_EQ(native_painting_context.created_images_[0].mode,
+            ImageFitMode::kScaleToFill);
   ASSERT_FALSE(fragment.NeedRedraw());
 
   // When: src changes and the same-size update, layout, and draw path runs.
