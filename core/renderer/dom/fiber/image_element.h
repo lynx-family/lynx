@@ -35,7 +35,8 @@ class ImageElement : public FiberElement {
       const std::shared_ptr<CSSStyleSheetManager>& style_manager,
       bool keep_element_id) override;
 
-  const base::String& src() { return url_; }
+  const base::String& src() const { return url_; }
+  const base::String& mode() const { return mode_; }
 
   void ResetAttribute(const base::String& key) override;
 
@@ -60,6 +61,7 @@ class ImageElement : public FiberElement {
   AttrUMap attr_map_;
   bool has_auto_size_{false};
   base::String url_;
+  base::String mode_;
 
  private:
   template <OSType type>

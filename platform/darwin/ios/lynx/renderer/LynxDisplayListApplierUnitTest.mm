@@ -3,6 +3,7 @@
 // LICENSE file in the root directory of this source tree.
 
 #import <Lynx/LynxDisplayListApplier+Internal.h>
+#import <Lynx/LynxImageManager.h>
 #import <Lynx/LynxRenderer.h>
 #import <Lynx/LynxRendererContext.h>
 #import <Lynx/LynxRendererHost.h>
@@ -12,8 +13,13 @@
 #import <XCTest/XCTest.h>
 #include "core/public/platform_renderer_type.h"
 #include "core/renderer/dom/fragment/display_list.h"
+#include "core/renderer/ui_wrapper/painting/paint_image.h"
 
 using namespace lynx::tasm;
+
+@interface LynxImageManager (LynxDisplayListApplierUnitTest)
+- (void)setMode:(int32_t)mode;
+@end
 
 namespace {
 constexpr int32_t kViewType = static_cast<int32_t>(PlatformRendererType::kView);
@@ -474,6 +480,75 @@ constexpr int32_t kViewType = static_cast<int32_t>(PlatformRendererType::kView);
   XCTAssertNotNil(layer.mask);
   XCTAssertTrue([layer.mask isKindOfClass:[CAShapeLayer class]]);
   XCTAssertTrue(((CAShapeLayer *)layer.mask).path != nil);
+}
+
+- (void)testImageAppliesRoundedContentBox {
+  LynxMockView *view = [[LynxMockView alloc] initWithFrame:CGRectMake(0, 0, 100, 100)];
+  LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:view
+                                                                      andContext:nil];
+
+  DisplayList list;
+  list.AddOperation(DisplayListOpType::kRecordBox, 10.0f, 12.0f, 40.0f, 50.0f, 6.0f, 6.0f, 6.0f,
+                    6.0f, 6.0f, 6.0f, 6.0f, 6.0f);
+  list.AddOperation(DisplayListOpType::kImage, 123, 0);
+
+  [applier applyDisplayList:&list];
+
+  UIImageView *imageView = (UIImageView *)view.subviews.firstObject;
+  XCTAssertNotNil(imageView);
+  XCTAssertTrue(CGRectEqualToRect(imageView.frame, CGRectMake(10.0f, 12.0f, 40.0f, 50.0f)));
+  XCTAssertEqualWithAccuracy(imageView.layer.cornerRadius, 6.0f, 0.001f);
+  XCTAssertTrue(imageView.layer.masksToBounds);
+}
+
+- (void)testImageAppliesNonUniformRoundedContentBox {
+  LynxMockView *view = [[LynxMockView alloc] initWithFrame:CGRectMake(0, 0, 100, 100)];
+  LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:view
+                                                                      andContext:nil];
+
+  DisplayList list;
+  list.AddOperation(DisplayListOpType::kRecordBox, 10.0f, 12.0f, 40.0f, 50.0f, 2.0f, 3.0f, 4.0f,
+                    5.0f, 6.0f, 7.0f, 8.0f, 9.0f);
+  list.AddOperation(DisplayListOpType::kImage, 123, 0);
+
+  [applier applyDisplayList:&list];
+
+  UIImageView *imageView = (UIImageView *)view.subviews.firstObject;
+  XCTAssertNotNil(imageView);
+  XCTAssertEqualWithAccuracy(imageView.layer.cornerRadius, 0.0f, 0.001f);
+  XCTAssertFalse(imageView.layer.masksToBounds);
+  XCTAssertNotNil(imageView.layer.mask);
+  XCTAssertTrue([imageView.layer.mask isKindOfClass:[CAShapeLayer class]]);
+  XCTAssertTrue(((CAShapeLayer *)imageView.layer.mask).path != NULL);
+}
+
+- (void)testImageManagerAppliesFitModeToTarget {
+  NSDictionary<NSNumber *, NSNumber *> *expectations = @{
+    @(static_cast<int32_t>(ImageFitMode::kScaleToFill)) : @(UIViewContentModeScaleToFill),
+    @(static_cast<int32_t>(ImageFitMode::kAspectFit)) : @(UIViewContentModeScaleAspectFit),
+    @(static_cast<int32_t>(ImageFitMode::kAspectFill)) : @(UIViewContentModeScaleAspectFill),
+    @(static_cast<int32_t>(ImageFitMode::kCenter)) : @(UIViewContentModeCenter),
+  };
+
+  for (NSNumber *mode in expectations) {
+    LynxImageManager *imageManager = [[LynxImageManager alloc] initWithContext:nil];
+    [imageManager setMode:mode.intValue];
+    UIImageView *imageView = [UIImageView new];
+    [imageManager setTarget:imageView];
+    XCTAssertEqual(imageView.contentMode,
+                   static_cast<UIViewContentMode>(expectations[mode].integerValue));
+  }
+
+  LynxImageManager *defaultManager = [[LynxImageManager alloc] initWithContext:nil];
+  UIImageView *defaultView = [UIImageView new];
+  [defaultManager setTarget:defaultView];
+  XCTAssertEqual(defaultView.contentMode, UIViewContentModeScaleToFill);
+
+  LynxImageManager *invalidManager = [[LynxImageManager alloc] initWithContext:nil];
+  [invalidManager setMode:-1];
+  UIImageView *invalidView = [UIImageView new];
+  [invalidManager setTarget:invalidView];
+  XCTAssertEqual(invalidView.contentMode, UIViewContentModeScaleToFill);
 }
 
 - (void)testBeginWithMatchingSign {

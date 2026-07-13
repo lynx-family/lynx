@@ -215,7 +215,10 @@ using namespace lynx::tasm;
       case DisplayListOpType::kImage: {
         if (int_count >= 2) {
           auto image_id = [self nextContentInt];
-          [[maybe_unused]] auto box_index = [self nextContentInt];
+          auto box_index = [self nextContentInt];
+          if (box_index < 0 || static_cast<size_t>(box_index) >= box_array_.size()) {
+            break;
+          }
           LynxImageManager *imageManager = [self imageManagerForID:image_id];
 
           UIImageView *imageView = [self createImageView];
@@ -225,6 +228,9 @@ using namespace lynx::tasm;
           rect.origin.x += left_offset_;
           rect.origin.y += top_offset_;
           [imageView setFrame:rect];
+          if (box.HasRadius()) {
+            [self applyRoundedRect:box toLayer:imageView.layer];
+          }
 
           [imageManager setTarget:imageView];
 
