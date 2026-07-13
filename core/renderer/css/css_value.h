@@ -160,6 +160,7 @@ class LYNX_EXPORT_FOR_DEVTOOL CSSValue {
   void SetPattern(CSSValuePattern pattern) { pattern_ = pattern; }
   void SetValueAndPattern(const lepus::Value& value, CSSValuePattern pattern);
   void SetType(CSSValueType type) {
+    ClearCustomPropertyDependencies();
     is_variable_ = type == CSSValueType::VARIABLE;
   }
   void SetDefaultValue(base::String default_val);
@@ -196,6 +197,7 @@ class LYNX_EXPORT_FOR_DEVTOOL CSSValue {
 
   template <typename EnumT, typename = std::enable_if_t<std::is_enum_v<EnumT>>>
   void SetEnum(EnumT value) {
+    ClearCustomPropertyDependencies();
     FreeValueStorage();
     val_int32 = static_cast<int32_t>(value);
     type_ = lynx_value_int32;
@@ -261,6 +263,10 @@ class LYNX_EXPORT_FOR_DEVTOOL CSSValue {
   class CycleDetector;
   friend class LynxBinaryBaseCSSReader;
 
+  struct CustomPropertyDependencyField {
+    using Type = base::LinearFlatMap<base::String, base::String>;
+  };
+
   // Make a CSSValue of default type and string value. Normally for unit-tests.
   static CSSValue MakePlainString(const char* value) {
     return CSSValue(value, CSSValuePattern::STRING, CSSValueType::DEFAULT);
@@ -281,6 +287,14 @@ class LYNX_EXPORT_FOR_DEVTOOL CSSValue {
   static std::string ResolveFallbackResolved(
       const VarReference& ref, const CustomPropertiesMap& variable_map,
       const HandleCustomPropertyFunc& handle_func = nullptr);
+  void SetCustomPropertyDependencies(
+      CustomPropertyDependencyField::Type dependencies);
+  void ClearCustomPropertyDependencies();
+  void ReplayCustomPropertyDependencies(
+      const HandleCustomPropertyFunc& handle_func) const;
+  static void ReportCustomPropertyDependency(
+      const std::string& name, const CSSValue* value,
+      const HandleCustomPropertyFunc& handle_func);
 
   BASE_INLINE bool IsValueStorageNumber() const {
     return type_ >= lynx_value_double && type_ <= lynx_value_uint64;
@@ -328,7 +342,8 @@ class LYNX_EXPORT_FOR_DEVTOOL CSSValue {
     using Type = base::Vector<VarReference>;
   };
   mutable base::BundledOptionals<DefaultValueField, DefaultValueMapField,
-                                 VarReferenceField>
+                                 VarReferenceField,
+                                 CustomPropertyDependencyField>
       optionals_;
 };
 
