@@ -109,12 +109,12 @@ FlutterWindowsView::FlutterWindowsView(
 }
 
 FlutterWindowsView::~FlutterWindowsView() {
-  binding_handler_.reset();
   if (view_id_ == kImplicitViewId) {
     // stop draw texture in raster thread before destroy window view avoid crash
     engine_->Stop();
     engine_->SetView(nullptr);
   }
+  binding_handler_.reset();
   if (surface_) {
     DestroyWindowSurface(*engine_, std::move(surface_));
   }
