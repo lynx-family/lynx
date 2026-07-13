@@ -1,0 +1,27 @@
+lynx/explorer/darwin/ios/lynx_explorer/Podfile
+  s_06d13f2c2be001::t_7a0e20a0b6e41d 1-4,59,65-66,73-74,79-80,82-84
+lynx/explorer/darwin/ios/lynx_explorer/Podfile.source_list
+  s_06d13f2c2be001::t_5c8cfaea137e59 1-10
+lynx/tools/ios_tools/source_list.rb
+  s_06d13f2c2be001::t_c72c96cdf78573 1-110
+lynx/tools/ios_tools/source_list_test.rb
+  s_06d13f2c2be001::t_baf7b353c02793 1-90
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "14c4a97322cdc51af8b5ce4870cceeb8e6ca3057",
+  "prompts": {},
+  "sessions": {
+    "s_06d13f2c2be001": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f4584-be0e-7c00-87f6-67c0567704cd",
+        "model": "unknown"
+      },
+      "human_author": "jianliang00 <wangjianliang0@126.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}
