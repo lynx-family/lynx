@@ -118,8 +118,8 @@ class NativePaintingCtxDarwin : public PaintingCtxPlatformImpl, public NativePai
 
   void UpdatePlatformEventBundle(int32_t id, PlatformEventBundle bundle) override;
 
-  fml::RefPtr<PaintImage> CreateImage(int id, base::String src, float width, float height,
-                                      int32_t event_mask = 0,
+  fml::RefPtr<PaintImage> CreateImage(int id, base::String src, ImageFitMode mode, float width,
+                                      float height, int32_t event_mask = 0,
                                       bool disable_default_resize = false) override;
 
 #pragma endregion  // NativePaintingContext

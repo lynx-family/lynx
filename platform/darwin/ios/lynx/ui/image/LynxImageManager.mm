@@ -6,11 +6,14 @@
 #import <Lynx/LynxImageLoader.h>
 #import <Lynx/LynxImageManager.h>
 #import <Lynx/LynxUIContext.h>
+#include "core/renderer/ui_wrapper/painting/paint_image.h"
 
 static const NSInteger kFlagImageLoadEvent = 1 << 0;
 static const NSInteger kFlagImageErrorEvent = 1 << 1;
 static NSString* const kLynxImageEventLoad = @"load";
 static NSString* const kLynxImageEventError = @"error";
+
+using lynx::tasm::ImageFitMode;
 
 @implementation LynxImageManager {
   NSMutableDictionary<id, dispatch_block_t>* _cancelBlocks;
@@ -22,6 +25,7 @@ static NSString* const kLynxImageEventError = @"error";
   float _viewHeight;
   NSInteger _sign;
   NSInteger _eventMask;
+  UIViewContentMode _contentMode;
 }
 
 - (instancetype)initWithContext:(LynxUIContext*)context {
@@ -29,6 +33,7 @@ static NSString* const kLynxImageEventError = @"error";
   if (self) {
     _context = context;
     _sign = -1;
+    _contentMode = UIViewContentModeScaleToFill;
     _cancelBlocks = [NSMutableDictionary new];
     _images = [NSMutableDictionary new];
   }
@@ -41,6 +46,24 @@ static NSString* const kLynxImageEventError = @"error";
 
 - (void)setEventMask:(NSInteger)eventMask {
   _eventMask = eventMask;
+}
+
+- (void)setMode:(int32_t)mode {
+  switch (static_cast<ImageFitMode>(mode)) {
+    case ImageFitMode::kAspectFit:
+      _contentMode = UIViewContentModeScaleAspectFit;
+      break;
+    case ImageFitMode::kAspectFill:
+      _contentMode = UIViewContentModeScaleAspectFill;
+      break;
+    case ImageFitMode::kCenter:
+      _contentMode = UIViewContentModeCenter;
+      break;
+    case ImageFitMode::kScaleToFill:
+    default:
+      _contentMode = UIViewContentModeScaleToFill;
+      break;
+  }
 }
 
 - (void)sendCustomEvent:(NSString*)name withParams:(NSDictionary*)params {
@@ -116,6 +139,7 @@ static NSString* const kLynxImageEventError = @"error";
 
 - (void)setTarget:(UIImageView*)view {
   _imageView = view;
+  _imageView.contentMode = _contentMode;
 
   // Try set source image first.
   if (_images[@(LynxImageRequestSrc)] != nil) {
