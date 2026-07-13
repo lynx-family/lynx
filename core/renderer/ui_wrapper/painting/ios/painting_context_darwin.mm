@@ -676,6 +676,7 @@ shell::UIOperation PaintingContextDarwin::CreateInvokeUIMethodOperation(
     int64_t element_id, std::string method, lepus::Value lepus_params,
     std::function<void(int32_t code, const pub::Value& data)> callback) {
   __weak LynxUIOwner* owner = uiOwner_;
+  lepus_params = lepus_params.ToLepusValue();
   // needs to be passed by copying instead of passing a reference, because
   // OC's block and C++'s callback are not compatible.
   auto block = std::move(callback);
