@@ -9,6 +9,7 @@ import android.graphics.LinearGradient;
 import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.PointF;
+import android.graphics.Rect;
 import android.graphics.RectF;
 import android.graphics.Region;
 import android.graphics.Shader;
@@ -49,6 +50,7 @@ public class DisplayListApplier implements Drawable.Callback {
   private static final int OP_RECORD_BOX = 11;
   private static final int OP_LINEAR_GRADIENT = 12;
   private static final int OP_BOX_SHADOW = 13;
+  private static final int OP_BACKGROUND_IMAGE = 14;
 
   // Subtree property operation types (matching C++ DisplayListSubtreePropertyOpType)
   static final int SUBTREE_OP_TRANSFORM = 0;
@@ -286,6 +288,92 @@ public class DisplayListApplier implements Drawable.Callback {
     imageManager.onDraw(canvas);
   }
 
+  private void drawBackgroundImage(
+      Canvas canvas, int id, int tilingIndex, int clipIndex, int repeatX, int repeatY) {
+    LynxImageManager imageManager = mContext.getImage(id);
+    if (imageManager == null) {
+      return;
+    }
+
+    RoundedRectangle tilingBox = getNormalizedRoundedRectangle(tilingIndex);
+    if (tilingBox == null) {
+      return;
+    }
+
+    RoundedRectangle clipBox = getNormalizedRoundedRectangle(clipIndex);
+    if (clipBox == null) {
+      return;
+    }
+
+    RectF tilingRect = tilingBox.getRectF();
+    float width = tilingRect.width();
+    float height = tilingRect.height();
+    if (width <= 0.f || height <= 0.f) {
+      return;
+    }
+
+    RectF clipRect = clipBox.getRectF();
+    canvas.save();
+    if (clipBox.hasBorderRadius()) {
+      mReusablePath.reset();
+      mReusablePath.addRoundRect(clipRect, clipBox.getBorderRadii(), Path.Direction.CW);
+      canvas.clipPath(mReusablePath);
+    } else {
+      canvas.clipRect(clipRect);
+    }
+
+    imageManager.setView(getHostLayer());
+    imageManager.updateInnerClipPathForBorderRadius(null);
+
+    boolean repeatHorizontally = repeatX == StyleConstants.BACKGROUND_REPEAT_REPEAT
+        || repeatX == StyleConstants.BACKGROUND_REPEAT_REPEAT_X;
+    boolean repeatVertically = repeatY == StyleConstants.BACKGROUND_REPEAT_REPEAT
+        || repeatY == StyleConstants.BACKGROUND_REPEAT_REPEAT_Y;
+
+    if (!repeatHorizontally && !repeatVertically) {
+      drawBackgroundImageTile(canvas, imageManager, tilingRect.left, tilingRect.top, width, height);
+      canvas.restore();
+      return;
+    }
+
+    float tileStartX = tilingRect.left;
+    float tileStartY = tilingRect.top;
+    if (repeatHorizontally) {
+      if (tileStartX > clipRect.left) {
+        tileStartX = tileStartX - ((int) Math.ceil((tileStartX - clipRect.left) / width)) * width;
+      }
+    }
+    if (repeatVertically) {
+      if (tileStartY > clipRect.top) {
+        tileStartY = tileStartY - ((int) Math.ceil((tileStartY - clipRect.top) / height)) * height;
+      }
+    }
+
+    float pixelAlignedStartX = Math.round(tileStartX);
+    float pixelAlignedStartY = Math.round(tileStartY);
+    float pixelAlignedWidth = Math.max(1, Math.round(width));
+    float pixelAlignedHeight = Math.max(1, Math.round(height));
+    for (float x = pixelAlignedStartX; x < clipRect.right; x += pixelAlignedWidth) {
+      for (float y = pixelAlignedStartY; y < clipRect.bottom; y += pixelAlignedHeight) {
+        drawBackgroundImageTile(canvas, imageManager, x, y, pixelAlignedWidth, pixelAlignedHeight);
+        if (!repeatVertically) {
+          break;
+        }
+      }
+      if (!repeatHorizontally) {
+        break;
+      }
+    }
+    canvas.restore();
+  }
+
+  private void drawBackgroundImageTile(Canvas canvas, LynxImageManager imageManager, float left,
+      float top, float width, float height) {
+    imageManager.updateDrawableBounds(new Rect(
+        Math.round(left), Math.round(top), Math.round(left + width), Math.round(top + height)));
+    imageManager.onDraw(canvas);
+  }
+
   private void drawText(Canvas canvas, int textId) {
     if (mContext.getLynxContext() != null && mContext.getLynxContext().isTextServiceModeOn()) {
       drawTextForTextra(canvas, textId);
@@ -438,6 +526,17 @@ public class DisplayListApplier implements Drawable.Callback {
             int imageId = nextContentInt();
             int boxIndex = nextContentInt();
             drawImage(canvas, imageId, boxIndex);
+          }
+          break;
+        }
+        case OP_BACKGROUND_IMAGE: {
+          if (intParamCount >= 5) {
+            int imageId = nextContentInt();
+            int tilingIndex = nextContentInt();
+            int clipIndex = nextContentInt();
+            int repeatX = nextContentInt();
+            int repeatY = nextContentInt();
+            drawBackgroundImage(canvas, imageId, tilingIndex, clipIndex, repeatX, repeatY);
           }
           break;
         }

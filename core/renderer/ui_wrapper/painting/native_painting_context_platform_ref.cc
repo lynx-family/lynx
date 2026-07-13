@@ -45,6 +45,9 @@ NativePaintingCtxPlatformRef::NativePaintingCtxPlatformRef(
 void NativePaintingCtxPlatformRef::CreatePlatformRenderer(
     int id, PlatformRendererType type, const fml::RefPtr<PropBundle> &init_data,
     const PlatformRendererInitConfig &init_config) {
+  if (destroyed_.load(std::memory_order_acquire)) {
+    return;
+  }
   renderers_.insert_or_assign(
       id, view_factory_->CreateRenderer(id, type, init_data, init_config));
 }
@@ -53,12 +56,18 @@ void NativePaintingCtxPlatformRef::CreatePlatformExtendedRenderer(
     int id, const base::String &tag_name,
     const fml::RefPtr<PropBundle> &init_data,
     const PlatformRendererInitConfig &init_config) {
+  if (destroyed_.load(std::memory_order_acquire)) {
+    return;
+  }
   renderers_.insert_or_assign(id, view_factory_->CreateExtendedRenderer(
                                       id, tag_name, init_data, init_config));
 }
 
 void NativePaintingCtxPlatformRef::UpdateDisplayList(
     int id, DisplayList &&display_list) {
+  if (destroyed_.load(std::memory_order_acquire)) {
+    return;
+  }
   auto it = renderers_.find(id);
   if (it == renderers_.end()) {
     return;
@@ -80,6 +89,9 @@ void NativePaintingCtxPlatformRef::UpdateDisplayList(
 
 void NativePaintingCtxPlatformRef::RemovePaintingNode(int parent, int child,
                                                       int index, bool is_move) {
+  if (destroyed_.load(std::memory_order_acquire)) {
+    return;
+  }
   if (auto it_child = renderers_.find(child); it_child != renderers_.end()) {
     it_child->second->RemoveFromParent();
   }
@@ -87,6 +99,9 @@ void NativePaintingCtxPlatformRef::RemovePaintingNode(int parent, int child,
 
 void NativePaintingCtxPlatformRef::DestroyPaintingNode(int parent, int child,
                                                        int index) {
+  if (destroyed_.load(std::memory_order_acquire)) {
+    return;
+  }
   MarkEventTargetTreeDirty(parent);
   if (event_target_helper_->IsActiveEventRoot(child)) {
     event_target_exposure_->RemoveExposureTargetsInEventRoot(child);
@@ -300,6 +315,9 @@ void NativePaintingCtxPlatformRef::ClearEventTargetRootDirty(int32_t root_id) {
 
 void NativePaintingCtxPlatformRef::ScheduleEnsureEventTargetTree(
     int32_t root_id) {
+  if (destroyed_.load(std::memory_order_acquire)) {
+    return;
+  }
   if (scheduled_event_target_tree_update_.exchange(true)) {
     return;
   }
@@ -314,7 +332,7 @@ void NativePaintingCtxPlatformRef::ScheduleEnsureEventTargetTree(
   event_target_task_runner_->PostDelayedTask(
       [weak_this, root_id]() {
         auto self = weak_this.lock();
-        if (!self) {
+        if (!self || self->destroyed_.load(std::memory_order_acquire)) {
           return;
         }
         self->scheduled_event_target_tree_update_.store(false);
@@ -594,7 +612,30 @@ void NativePaintingCtxPlatformRef::InvokePlatformRendererUIMethod(
   }
 }
 
+void NativePaintingCtxPlatformRef::ScheduleDestroyImage(int32_t image_key) {
+  if (destroyed_.load(std::memory_order_acquire)) {
+    return;
+  }
+
+  auto weak_this = weak_from_this();
+  if (weak_this.expired() || !event_target_task_runner_) {
+    return;
+  }
+
+  fml::TaskRunner::RunNowOrPostTask(
+      event_target_task_runner_, [weak_this, image_key]() {
+        auto self = weak_this.lock();
+        if (!self || self->destroyed_.load(std::memory_order_acquire)) {
+          return;
+        }
+        self->DestroyImageOnPlatformThread(image_key);
+      });
+}
+
 void NativePaintingCtxPlatformRef::Destroy() {
+  if (destroyed_.exchange(true, std::memory_order_acq_rel)) {
+    return;
+  }
   renderers_.clear();
   platform_event_bundles_.clear();
   scheduled_event_target_tree_update_.store(false);

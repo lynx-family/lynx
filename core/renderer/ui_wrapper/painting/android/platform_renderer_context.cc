@@ -109,8 +109,9 @@ void PlatformRendererContext::DestroyPlatformRenderer(int32_t target) {
 }
 
 fml::RefPtr<PaintImage> PlatformRendererContext::CreateImage(
-    int32_t id, base::String src, float width, float height,
-    int32_t event_mask) {
+    int32_t id, base::String src, float width, float height, int32_t event_mask,
+    bool disable_default_resize,
+    std::weak_ptr<NativePaintingCtxPlatformRef> platform_ref) {
   base::android::ScopedLocalJavaRef<jobject> local_ref(java_ref_);
   if (local_ref.IsNull()) {
     return nullptr;
@@ -121,12 +122,10 @@ fml::RefPtr<PaintImage> PlatformRendererContext::CreateImage(
   int32_t image_key = GenerateUniqueImageKey();
   Java_PlatformRendererContext_createImage(
       env, local_ref.Get(), id, j_src.Get(), static_cast<int>(width),
-      static_cast<int>(height), static_cast<int>(event_mask), image_key);
-  // Can use raw pointer here because the PaintImage will access this context in
-  // NativePaintingContextRef::UpdateDisplayList. And the
-  // NativePaintingContextRef hold the PlatformRendererContext via unique
-  // pointer. Which means the context lifetime is longer than the PaintImage.
-  return fml::MakeRefCounted<PaintImageAndroid>(image_key, this);
+      static_cast<int>(height), static_cast<int>(event_mask), image_key,
+      disable_default_resize);
+  return fml::MakeRefCounted<PaintImageAndroid>(image_key,
+                                                std::move(platform_ref));
 }
 
 void PlatformRendererContext::DestroyImage(int32_t id) {

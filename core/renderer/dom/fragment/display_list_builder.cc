@@ -146,6 +146,14 @@ DisplayListBuilder& DisplayListBuilder::LinearGradient(
   return *this;
 }
 
+DisplayListBuilder& DisplayListBuilder::BackgroundImage(
+    const fml::RefPtr<PaintImage>& image, int32_t tiling_index,
+    int32_t clip_index, int32_t repeat_x, int32_t repeat_y) {
+  display_list_.AddBackgroundImage(image, tiling_index, clip_index, repeat_x,
+                                   repeat_y);
+  return *this;
+}
+
 DisplayListBuilder& DisplayListBuilder::BoxShadow(int32_t shadow_box_index,
                                                   int32_t clip_box_index,
                                                   uint32_t color,

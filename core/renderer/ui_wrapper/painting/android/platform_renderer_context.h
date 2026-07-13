@@ -5,6 +5,7 @@
 #ifndef CORE_RENDERER_UI_WRAPPER_PAINTING_ANDROID_PLATFORM_RENDERER_CONTEXT_H_
 #define CORE_RENDERER_UI_WRAPPER_PAINTING_ANDROID_PLATFORM_RENDERER_CONTEXT_H_
 
+#include <memory>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -27,6 +28,7 @@ namespace tasm {
 
 class PlatformRendererAndroid;
 class PaintImage;
+class NativePaintingCtxPlatformRef;
 
 class PlatformRendererContext {
  public:
@@ -66,8 +68,10 @@ class PlatformRendererContext {
   // Register/unregister PlatformRendererAndroid instances
   void RegisterPlatformRenderer(int32_t id, PlatformRendererAndroid* renderer);
   void UnregisterPlatformRenderer(int32_t id);
-  fml::RefPtr<PaintImage> CreateImage(int32_t id, base::String src, float width,
-                                      float height, int32_t event_mask = 0);
+  fml::RefPtr<PaintImage> CreateImage(
+      int32_t id, base::String src, float width, float height,
+      int32_t event_mask, bool disable_default_resize,
+      std::weak_ptr<NativePaintingCtxPlatformRef> platform_ref);
   void DestroyImage(int32_t id);
 
   void UpdateTextBundle(int32_t id, intptr_t text_bundle);

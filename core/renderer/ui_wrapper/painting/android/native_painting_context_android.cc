@@ -475,9 +475,13 @@ void NativePaintingCtxAndroid::ReconstructEventTargetTreeRecursively() {
 }
 
 fml::RefPtr<PaintImage> NativePaintingCtxAndroid::CreateImage(
-    int id, base::String src, float width, float height, int32_t event_mask) {
+    int id, base::String src, float width, float height, int32_t event_mask,
+    bool disable_default_resize) {
   if (view_manager_) {
-    return view_manager_->CreateImage(id, src, width, height, event_mask);
+    auto platform_ref =
+        std::static_pointer_cast<NativePaintingCtxPlatformRef>(platform_ref_);
+    return view_manager_->CreateImage(id, src, width, height, event_mask,
+                                      disable_default_resize, platform_ref);
   }
   return nullptr;
 }

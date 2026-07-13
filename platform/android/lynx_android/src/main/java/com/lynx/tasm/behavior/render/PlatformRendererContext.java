@@ -600,12 +600,13 @@ public class PlatformRendererContext implements TextMeasurerProvider {
   }
 
   @CalledByNative
-  public void createImage(
-      int sign, String src, int width, int height, int eventMask, int imageKey) {
+  public void createImage(int sign, String src, int width, int height, int eventMask, int imageKey,
+      boolean disableDefaultResize) {
     // Create Image managed by LynxImageManager and register to UIBodyView
     LynxImageManager imageManager = new LynxImageManager(mContext);
     imageManager.setFallbackSign(sign);
     imageManager.setEventMask(eventMask);
+    imageManager.setDisableDefaultResize(disableDefaultResize);
     imageManager.setSrc(src);
     imageManager.onLayoutUpdated(width, height, 0, 0, 0, 0);
     UIBody.UIBodyView rootView = mRootView.get();

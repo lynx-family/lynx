@@ -20,6 +20,7 @@
 #include "core/renderer/dom/fragment/fragment_behavior.h"
 #include "core/renderer/dom/fragment/rounded_rectangle.h"
 #include "core/renderer/starlight/style/css_type.h"
+#include "core/renderer/ui_wrapper/painting/native_painting_context.h"
 #include "core/renderer/ui_wrapper/painting/platform_renderer_impl.h"
 #include "core/renderer/utils/base/tasm_constants.h"
 #include "core/style/transform/matrix44.h"
@@ -502,13 +503,72 @@ void CalculateBackgroundPosition(
 
 }  // namespace
 
+fml::RefPtr<PaintImage> Fragment::GetOrCreateBackgroundImage(
+    size_t image_index, const base::String& url, float image_width,
+    float image_height) {
+  if (background_image_resources_.size() <= image_index) {
+    background_image_resources_.resize(image_index + 1);
+  }
+
+  auto& resource = background_image_resources_[image_index];
+  if (resource.image && resource.url == url) {
+    return resource.image;
+  }
+
+  if (image_width <= 0.f || image_height <= 0.f) {
+    resource = BackgroundImageResource{};
+    return nullptr;
+  }
+
+  auto* platform_impl = painting_context()->impl();
+  if (!platform_impl) {
+    resource = BackgroundImageResource{};
+    return nullptr;
+  }
+
+  auto* native_context = platform_impl->CastToNativeCtx();
+  if (!native_context) {
+    resource = BackgroundImageResource{};
+    return nullptr;
+  }
+
+  auto image = native_context->CreateImage(id(), url, image_width, image_height,
+                                           0, true);
+  if (!image) {
+    resource = BackgroundImageResource{};
+    return nullptr;
+  }
+
+  resource.url = url;
+  resource.image = image;
+  return resource.image;
+}
+
+void Fragment::ClearBackgroundImage(size_t image_index) {
+  if (image_index < background_image_resources_.size()) {
+    background_image_resources_[image_index] = BackgroundImageResource{};
+  }
+}
+
 void Fragment::DrawBackground(DisplayListBuilder& display_list_builder) {
   if (!element()->computed_css_style()->GetBackgroundData()) {
+    background_image_resources_.clear();
     return;
   }
   const auto& background_data =
       element()->computed_css_style()->GetBackgroundData();
-  int32_t clip_index = -1;
+  auto define_clip_index = [&](starlight::BackgroundClipType clip_type) {
+    switch (clip_type) {
+      case starlight::BackgroundClipType::kPaddingBox:
+        return DefinePaddingBox(display_list_builder);
+      case starlight::BackgroundClipType::kContentBox:
+        return DefineContentBox(display_list_builder);
+      case starlight::BackgroundClipType::kBorderBox:
+      default:
+        return DefineBorderBox(display_list_builder);
+    }
+  };
+
   starlight::BackgroundClipType clip_type =
       starlight::BackgroundClipType::kBorderBox;
   if (background_data->image_data &&
@@ -522,139 +582,146 @@ void Fragment::DrawBackground(DisplayListBuilder& display_list_builder) {
       clip_type = image_data.clip[bottom_layer_index % image_data.clip.size()];
     }
   }
-  switch (clip_type) {
-    case starlight::BackgroundClipType::kPaddingBox:
-      clip_index = DefinePaddingBox(display_list_builder);
-      break;
-    case starlight::BackgroundClipType::kBorderBox:
-      clip_index = DefineBorderBox(display_list_builder);
-      break;
-    case starlight::BackgroundClipType::kContentBox:
-      clip_index = DefineContentBox(display_list_builder);
-      break;
-    default:
-      clip_index = DefineBorderBox(display_list_builder);
-      break;
+  display_list_builder.Fill(background_data->color,
+                            define_clip_index(clip_type));
+
+  if (!background_data->image_data) {
+    background_image_resources_.clear();
+    return;
   }
-  display_list_builder.Fill(background_data->color, clip_index);
 
-  if (background_data->image_data) {
-    const auto& image_data = background_data->image_data;
-    if (image_data->image.IsArray()) {
-      auto array = image_data->image.Array();
-      for (size_t i = 0; i + 1 < array->size(); i += 2) {
-        size_t i_image = i / 2;
-        starlight::BackgroundOriginType origin_type =
-            starlight::BackgroundOriginType::kPaddingBox;
+  const auto& image_data = background_data->image_data;
+  if (!image_data->image.IsArray()) {
+    background_image_resources_.clear();
+    return;
+  }
 
-        if (!image_data->origin.empty()) {
-          size_t i_origin = i_image % image_data->origin.size();
-          origin_type = image_data->origin[i_origin];
+  auto array = image_data->image.Array();
+  background_image_resources_.resize(array->size() / 2);
+  auto define_image_clip_index = [&](size_t image_index) {
+    starlight::BackgroundClipType image_clip_type =
+        starlight::BackgroundClipType::kBorderBox;
+    if (!image_data->clip.empty()) {
+      image_clip_type = image_data->clip[image_index % image_data->clip.size()];
+    }
+    return define_clip_index(image_clip_type);
+  };
+
+  for (size_t i = 0; i + 1 < array->size(); i += 2) {
+    size_t i_image = i / 2;
+    starlight::BackgroundOriginType origin_type =
+        starlight::BackgroundOriginType::kPaddingBox;
+
+    if (!image_data->origin.empty()) {
+      size_t i_origin = i_image % image_data->origin.size();
+      origin_type = image_data->origin[i_origin];
+    }
+
+    // Get origin box dimensions
+    float origin_x, origin_y, origin_width, origin_height;
+
+    switch (origin_type) {
+      case starlight::BackgroundOriginType::kBorderBox:
+        origin_x = layout_info_.GetBorderBoxX();
+        origin_y = layout_info_.GetBorderBoxY();
+        origin_width = layout_info_.GetBorderBoxWidth();
+        origin_height = layout_info_.GetBorderBoxHeight();
+        break;
+      case starlight::BackgroundOriginType::kContentBox:
+        origin_x = layout_info_.GetContentBoxX();
+        origin_y = layout_info_.GetContentBoxY();
+        origin_width = layout_info_.GetContentBoxWidth();
+        origin_height = layout_info_.GetContentBoxHeight();
+        break;
+      default:
+        origin_x = layout_info_.GetPaddingBoxX();
+        origin_y = layout_info_.GetPaddingBoxY();
+        origin_width = layout_info_.GetPaddingBoxWidth();
+        origin_height = layout_info_.GetPaddingBoxHeight();
+        break;
+    }
+
+    starlight::BackgroundRepeatType repeat_x =
+        starlight::BackgroundRepeatType::kRepeat;
+    starlight::BackgroundRepeatType repeat_y =
+        starlight::BackgroundRepeatType::kRepeat;
+
+    if (!image_data->repeat.empty()) {
+      size_t i_repeat = i_image % (image_data->repeat.size() / 2);
+      repeat_x = image_data->repeat[2 * i_repeat];
+      repeat_y = image_data->repeat[2 * i_repeat + 1];
+    }
+
+    // Calculate tiling box based on size and position
+    float tiling_width, tiling_height;
+    CalculateBackgroundSize(*image_data, i_image, origin_width, origin_height,
+                            tiling_width, tiling_height);
+
+    float offset_x = .0f, offset_y = .0f;
+    CalculateBackgroundPosition(*image_data, i_image, origin_width,
+                                origin_height, tiling_width, tiling_height,
+                                offset_x, offset_y);
+
+    // Create tiling box rectangle
+    RoundedRectangle tiling_rect;
+    tiling_rect.SetX(origin_x + offset_x);
+    tiling_rect.SetY(origin_y + offset_y);
+    tiling_rect.SetWidth(std::max(0.f, tiling_width));
+    tiling_rect.SetHeight(std::max(0.f, tiling_height));
+
+    // Record tiling box and get its index
+    int32_t tiling_index = -1;
+    display_list_builder.RecordBoxModel(tiling_rect, tiling_index);
+
+    auto type =
+        static_cast<starlight::BackgroundImageType>(array->get(i).Number());
+    switch (type) {
+      case starlight::BackgroundImageType::kUrl: {
+        if (!array->get(i + 1).IsString()) {
+          ClearBackgroundImage(i_image);
+          break;
         }
-
-        // Get origin box dimensions
-        float origin_x, origin_y, origin_width, origin_height;
-
-        switch (origin_type) {
-          case starlight::BackgroundOriginType::kBorderBox:
-            origin_x = layout_info_.GetBorderBoxX();
-            origin_y = layout_info_.GetBorderBoxY();
-            origin_width = layout_info_.GetBorderBoxWidth();
-            origin_height = layout_info_.GetBorderBoxHeight();
-            break;
-          case starlight::BackgroundOriginType::kContentBox:
-            origin_x = layout_info_.GetContentBoxX();
-            origin_y = layout_info_.GetContentBoxY();
-            origin_width = layout_info_.GetContentBoxWidth();
-            origin_height = layout_info_.GetContentBoxHeight();
-            break;
-          default:
-            origin_x = layout_info_.GetPaddingBoxX();
-            origin_y = layout_info_.GetPaddingBoxY();
-            origin_width = layout_info_.GetPaddingBoxWidth();
-            origin_height = layout_info_.GetPaddingBoxHeight();
-            break;
+        auto image = GetOrCreateBackgroundImage(
+            i_image, array->get(i + 1).String(), tiling_rect.GetWidth(),
+            tiling_rect.GetHeight());
+        if (!image) {
+          break;
         }
-
-        starlight::BackgroundRepeatType repeat_x =
-            starlight::BackgroundRepeatType::kRepeat;
-        starlight::BackgroundRepeatType repeat_y =
-            starlight::BackgroundRepeatType::kRepeat;
-
-        if (!image_data->repeat.empty()) {
-          size_t i_repeat = i_image % (image_data->repeat.size() / 2);
-          repeat_x = image_data->repeat[2 * i_repeat];
-          repeat_y = image_data->repeat[2 * i_repeat + 1];
-        }
-
-        // Calculate tiling box based on size and position
-        float tiling_width, tiling_height;
-        CalculateBackgroundSize(*image_data, i_image, origin_width,
-                                origin_height, tiling_width, tiling_height);
-
-        float offset_x = .0f, offset_y = .0f;
-        CalculateBackgroundPosition(*image_data, i_image, origin_width,
-                                    origin_height, tiling_width, tiling_height,
-                                    offset_x, offset_y);
-
-        // Create tiling box rectangle
-        RoundedRectangle tiling_rect;
-        tiling_rect.SetX(origin_x + offset_x);
-        tiling_rect.SetY(origin_y + offset_y);
-        tiling_rect.SetWidth(std::max(0.f, tiling_width));
-        tiling_rect.SetHeight(std::max(0.f, tiling_height));
-
-        // Record tiling box and get its index
-        int32_t tiling_index = -1;
-        display_list_builder.RecordBoxModel(tiling_rect, tiling_index);
-
-        auto type =
-            static_cast<starlight::BackgroundImageType>(array->get(i).Number());
-        if (type == starlight::BackgroundImageType::kLinearGradient) {
-          auto gradient_arr = array->get(i + 1).Array();
-          // gradient_arr: [angle, colors, stops, side_or_corner]
-          float angle = static_cast<float>(gradient_arr->get(0).Number());
-          auto colors_arr = gradient_arr->get(1).Array();
-          auto stops_arr = gradient_arr->get(2).Array();
-
-          base::Vector<uint32_t> colors;
-          colors.reserve(colors_arr->size());
-          for (size_t j = 0; j < colors_arr->size(); ++j) {
-            colors.push_back(
-                static_cast<uint32_t>(colors_arr->get(j).UInt32()));
-          }
-
-          base::Vector<float> stops;
-          stops.reserve(stops_arr->size());
-          for (size_t j = 0; j < stops_arr->size(); ++j) {
-            stops.push_back(static_cast<float>(stops_arr->get(j).Number()) /
-                            100.0f);
-          }
-
-          clip_type = starlight::BackgroundClipType::kBorderBox;
-          if (background_data->image_data &&
-              !background_data->image_data->clip.empty()) {
-            size_t i_clip = i_image % image_data->clip.size();
-            clip_type = background_data->image_data->clip[i_clip];
-          }
-          switch (clip_type) {
-            case starlight::BackgroundClipType::kPaddingBox:
-              clip_index = DefinePaddingBox(display_list_builder);
-              break;
-            case starlight::BackgroundClipType::kContentBox:
-              clip_index = DefineContentBox(display_list_builder);
-              break;
-            case lynx::starlight::BackgroundClipType::kBorderBox:
-            default:
-              clip_index = DefineBorderBox(display_list_builder);
-              break;
-          }
-
-          display_list_builder.LinearGradient(
-              angle, colors, stops, tiling_index, clip_index,
-              static_cast<int32_t>(repeat_x), static_cast<int32_t>(repeat_y));
-        }
+        display_list_builder.BackgroundImage(
+            image, tiling_index, define_image_clip_index(i_image),
+            static_cast<int32_t>(repeat_x), static_cast<int32_t>(repeat_y));
+        break;
       }
+      case starlight::BackgroundImageType::kLinearGradient: {
+        ClearBackgroundImage(i_image);
+        auto gradient_arr = array->get(i + 1).Array();
+        // gradient_arr: [angle, colors, stops, side_or_corner]
+        float angle = static_cast<float>(gradient_arr->get(0).Number());
+        auto colors_arr = gradient_arr->get(1).Array();
+        auto stops_arr = gradient_arr->get(2).Array();
+
+        base::Vector<uint32_t> colors;
+        colors.reserve(colors_arr->size());
+        for (size_t j = 0; j < colors_arr->size(); ++j) {
+          colors.push_back(static_cast<uint32_t>(colors_arr->get(j).UInt32()));
+        }
+
+        base::Vector<float> stops;
+        stops.reserve(stops_arr->size());
+        for (size_t j = 0; j < stops_arr->size(); ++j) {
+          stops.push_back(static_cast<float>(stops_arr->get(j).Number()) /
+                          100.0f);
+        }
+
+        display_list_builder.LinearGradient(angle, colors, stops, tiling_index,
+                                            define_image_clip_index(i_image),
+                                            static_cast<int32_t>(repeat_x),
+                                            static_cast<int32_t>(repeat_y));
+        break;
+      }
+      default:
+        ClearBackgroundImage(i_image);
+        break;
     }
   }
 }
