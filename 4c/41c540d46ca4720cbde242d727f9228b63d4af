@@ -1,0 +1,57 @@
+core/runtime/lepus/mts_context_factory_impl.cc
+  s_cd37edd53d5198::t_4705c6e818a7b6 53-54
+core/runtime/rts/binding/idl/renderer_function_ng.idl
+  s_cd37edd53d5198::t_39c49a287f47cb 48
+core/runtime/rts/binding/impls/renderer_function_ng.h
+  s_cd37edd53d5198::t_d3dd5a5052b30a 13,509-516
+core/runtime/rts/native_runtime/android/platform_static_task_manager_android.cc
+  s_cd37edd53d5198::t_90346da4f59300 48-50,56-58,66-68,77-80,83-110
+core/runtime/rts/native_runtime/harmony/platform_static_task_manager_harmony.cc
+  s_cd37edd53d5198::t_f50c7e5c9fb097 93-97
+core/runtime/rts/native_runtime/native_context.cc
+  s_cd37edd53d5198::t_9a5e2cad00aa06 55-57,63-70,115,120-125
+core/runtime/rts/native_runtime/native_context.h
+  s_cd37edd53d5198::t_4d085b00ff1eb4 16,28-30,84,87,102,107-109,113
+core/runtime/rts/native_runtime/platform_static_task_manager.h
+  s_cd37edd53d5198::t_6506b2ad54770c 35-38,54
+lynx/platform/android/api/lynx_android.api
+  s_cd37edd53d5198::t_e55cd59491723b 9414-9459
+lynx/platform/android/lynx_android/src/main/java/com/lynx/tasm/LynxTemplateRender.java
+  s_cd37edd53d5198::t_230fb764eea9f0 83-85,252,1062-1063,1653,2000-2005,2104-2108,2121-2126,2148-2160,2443-2446
+lynx/platform/android/lynx_android/src/main/java/com/lynx/tasm/relax/RelaxCreateSnapshot.java
+  s_cd37edd53d5198::t_4de3d552b4aded 1-97
+lynx/platform/android/lynx_android/src/main/java/com/lynx/tasm/relax/RelaxHostHolder.java
+  s_cd37edd53d5198::t_5fd8fd33df0ee2 1-168
+lynx/platform/android/lynx_android/src/main/java/com/lynx/tasm/relax/RelaxHostRegistry.java
+  s_cd37edd53d5198::t_48a8420c61f6cf 1-45
+lynx/platform/android/lynx_android/src/main/java/com/lynx/tasm/relax/RelaxInstance.java
+  s_cd37edd53d5198::t_8e1fa03557ccbd 1-27
+lynx/platform/darwin/ios/api/lynx_ios.api
+  s_cd37edd53d5198::t_c7dc00feb59a87 3837-3843
+lynx/platform/darwin/ios/lynx/LynxTemplateRender+Protected.h
+  s_cd37edd53d5198::t_8214b70e24bf4d 133-149
+lynx/platform/darwin/ios/lynx/LynxTemplateRender.mm
+  s_cd37edd53d5198::t_eb8cca68e50401 34,124-181,456-487,518,553,560,935,1015-1019,1063-1065,1083-1085,1120-1126
+lynx/platform/darwin/ios/lynx/LynxTemplateRenderHelper.mm
+  s_cd37edd53d5198::t_dd38bd650cf8d4 178-179,286
+platform/android/lynx_android/src/main/java/com/lynx/tasm/runtime/LynxStaticTaskRegistry.java
+  s_cd37edd53d5198::t_05c8aa417e837d 10-11,46-48,53,65,77,84-93
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.5",
+  "base_commit_sha": "4c41c540d46ca4720cbde242d727f9228b63d4af",
+  "prompts": {},
+  "sessions": {
+    "s_cd37edd53d5198": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f3a88-52bb-7e51-956c-d22e644bb06c",
+        "model": "unknown"
+      },
+      "human_author": "fangzheyuan <fangzheyuan@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

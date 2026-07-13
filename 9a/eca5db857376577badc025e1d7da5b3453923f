@@ -1,0 +1,21 @@
+clay/shell/platform/darwin/ios/plugins/internal_platform_views/ClayInputView.m
+  s_ce92da8846bd25::t_4ae65ddb187bb5 113,167
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "9aeca5db857376577badc025e1d7da5b3453923f",
+  "prompts": {},
+  "sessions": {
+    "s_ce92da8846bd25": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f45ca-1498-78f2-accd-1fe705e6ff00",
+        "model": "unknown"
+      },
+      "human_author": "liangruijie.030116 <liangruijie.030116@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

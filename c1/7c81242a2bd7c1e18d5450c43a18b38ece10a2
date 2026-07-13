@@ -1,0 +1,76 @@
+lynx/oliver/node-lynx/native/headless_lynx_view_node.cc
+  s_764f4cacc9f11b::t_08fe70f697eec3 35-36,40,44,62,65-67,121-154,399-400,418-630,1077,1536-1553,1572-1578,1594-1602,1676-1677,1702,1723-1724,1754-1755,1908-1917,1922,1925,1954-2080,2289,2299-2301,2304-2306,2500-2532,2542,2546-2598,2673-2675,2683-2686,2689-2706,2745-2749,2756-3074
+  s_764f4cacc9f11b::t_59f2c614326321 3075-3077
+  s_764f4cacc9f11b::t_3ecc7e9743f3ca 8,10-11,21,26-28,30,32-33,3078-3126,3162,3168-3173,3208,3211-3221
+lynx/oliver/node-lynx/README.md
+  s_764f4cacc9f11b::t_a396ed04b2301e 51-79,114,129
+lynx/oliver/node-lynx/src/windowed-lynx-view.ts
+  s_764f4cacc9f11b::t_313531af94a2ae 2,5-6,9,20,55-60,100,244-269,328-342
+oliver/node-lynx/test/testbench_replay.js
+  s_764f4cacc9f11b::t_9c0f39ebe5db79 1-95
+lynx/oliver/node-lynx/test/helpers/testbench.js
+  s_764f4cacc9f11b::t_4778adbdf096b5 1-161
+oliver/node-lynx/scripts/test.sh
+  s_764f4cacc9f11b::t_6305bf430a3e60 39
+lynx/oliver/node-lynx/skills/node-lynx/SKILL.md
+  s_764f4cacc9f11b::t_320e4dfb61fbd9 34-42,47-48,101-122
+lynx/oliver/node-lynx/src/headless-lynx-view.ts
+  s_764f4cacc9f11b::t_42826cdda872e0 28-46,73-78,133-145,258,440-458,477-479,483-648,651,654-670,736-761,825-839
+lynx/oliver/node-lynx/scripts/test.sh
+  s_764f4cacc9f11b::t_d82042ff9e4801 39
+oliver/node-lynx/BUILD.gn
+  s_764f4cacc9f11b::t_57287a82813b23 70
+  s_764f4cacc9f11b::t_b9cbcbcf4b28da 46-50
+lynx/oliver/node-lynx/src/cli-main.ts
+  s_764f4cacc9f11b::t_a5d1865140763f 20,22-23,51,61,126-127,133-134,142,151-156,160-181,187-190,248,274-275,283-287,294-295,412-423,550-578
+lynx/oliver/node-lynx/BUILD.gn
+  s_764f4cacc9f11b::t_c292f29657b4f5 69
+  s_764f4cacc9f11b::t_a34a92a1be86ea 46-50
+oliver/node-lynx/README.md
+  s_764f4cacc9f11b::t_face2c5660059e 28-39
+lynx/oliver/node-lynx/test/testbench_replay.js
+  s_764f4cacc9f11b::t_33fd76a5c94514 1-320
+lynx/oliver/build_gn.py
+  s_764f4cacc9f11b::t_c82f76b5fefb27 62,72-73
+lynx/oliver/node-lynx/.gitignore
+  s_764f4cacc9f11b::t_36eebbaafa6248 8-11
+lynx/oliver/node-lynx/native/node_testbench_jsb_replay.cc
+  s_764f4cacc9f11b::t_ac2778dbdeb0f4 1-552
+lynx/oliver/node-lynx/native/node_testbench_jsb_replay.h
+  s_764f4cacc9f11b::t_5afd19fc241cae 1-40
+lynx/oliver/node-lynx/native/node_testbench_replay.cc
+  s_764f4cacc9f11b::t_85330c4fc9e1a2 1-1012
+lynx/oliver/node-lynx/native/node_testbench_replay.h
+  s_764f4cacc9f11b::t_505859df1565ad 1-77
+lynx/oliver/node-lynx/scripts/build_resources.js
+  s_764f4cacc9f11b::t_e3e49a6ef67199 6,12,14,30-42,47,50-56,68-74,82-119
+oliver/build_gn.py
+  s_764f4cacc9f11b::t_a2ae9f7033a77c 56,68
+oliver/node-lynx/.gitignore
+  s_764f4cacc9f11b::t_51f0992fe13c1c 8-11
+oliver/node-lynx/package.json
+  s_764f4cacc9f11b::t_d0c80df4cef19e 27
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.5",
+  "base_commit_sha": "c17c81242a2bd7c1e18d5450c43a18b38ece10a2",
+  "prompts": {},
+  "humans": {
+    "h_4d36f4d76420fe": {
+      "author": "yangguangzhao <yangguangzhao.solace@bytedance.com>"
+    }
+  },
+  "sessions": {
+    "s_764f4cacc9f11b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f3669-fedd-7ee3-a5b9-96103a24c19f",
+        "model": "unknown"
+      },
+      "human_author": "yangguangzhao <yangguangzhao.solace@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}
