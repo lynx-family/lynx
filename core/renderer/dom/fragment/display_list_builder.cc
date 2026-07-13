@@ -70,12 +70,13 @@ DisplayList DisplayListBuilder::Build() { return std::move(display_list_); }
 void DisplayListBuilder::Clear() { display_list_ = DisplayList(); }
 
 DisplayListBuilder& DisplayListBuilder::DrawImage(
-    const fml::RefPtr<PaintImage>& image, int32_t box_index) {
+    const fml::RefPtr<PaintImage>& image, int32_t box_index,
+    ImageFitMode mode) {
   if (!image) {
     return *this;
   }
   display_list_.AddOperation(DisplayListOpType::kImage, image->image_key_,
-                             box_index);
+                             box_index, static_cast<int32_t>(mode));
   display_list_.Images().emplace_back(image);
   return *this;
 }

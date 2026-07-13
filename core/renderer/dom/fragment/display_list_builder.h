@@ -52,8 +52,8 @@ class DisplayListBuilder {
   DisplayListBuilder& Opacity(float alpha);
 
   // Retrieve Image source and draw
-  DisplayListBuilder& DrawImage(const fml::RefPtr<PaintImage>& image_id,
-                                int32_t box_index);
+  DisplayListBuilder& DrawImage(const fml::RefPtr<PaintImage>& image,
+                                int32_t box_index, ImageFitMode mode);
 
   // Retrieve text source and draw
   DisplayListBuilder& DrawText(int text_id, int32_t box_index);

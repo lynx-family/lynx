@@ -476,6 +476,39 @@ constexpr int32_t kViewType = static_cast<int32_t>(PlatformRendererType::kView);
   XCTAssertTrue(((CAShapeLayer *)layer.mask).path != nil);
 }
 
+- (void)testImageAppliesFitModeAndRoundedContentBox {
+  struct ModeExpectation {
+    ImageFitMode mode;
+    UIViewContentMode contentMode;
+  };
+  const ModeExpectation expectations[] = {
+      {ImageFitMode::kAspectFill, UIViewContentModeScaleAspectFill},
+      {ImageFitMode::kAspectFit, UIViewContentModeScaleAspectFit},
+      {ImageFitMode::kScaleToFill, UIViewContentModeScaleToFill},
+      {ImageFitMode::kCenter, UIViewContentModeCenter},
+  };
+
+  LynxMockView *view = [[LynxMockView alloc] initWithFrame:CGRectMake(0, 0, 100, 100)];
+  LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:view
+                                                                      andContext:nil];
+
+  for (const auto &expectation : expectations) {
+    DisplayList list;
+    list.AddOperation(DisplayListOpType::kRecordBox, 10.0f, 12.0f, 40.0f, 50.0f, 6.0f, 6.0f, 6.0f,
+                      6.0f, 6.0f, 6.0f, 6.0f, 6.0f);
+    list.AddOperation(DisplayListOpType::kImage, 123, 0, static_cast<int32_t>(expectation.mode));
+
+    [applier applyDisplayList:&list];
+
+    UIImageView *imageView = (UIImageView *)view.subviews.firstObject;
+    XCTAssertNotNil(imageView);
+    XCTAssertEqual(imageView.contentMode, expectation.contentMode);
+    XCTAssertTrue(CGRectEqualToRect(imageView.frame, CGRectMake(10.0f, 12.0f, 40.0f, 50.0f)));
+    XCTAssertEqualWithAccuracy(imageView.layer.cornerRadius, 6.0f, 0.001f);
+    XCTAssertTrue(imageView.layer.masksToBounds);
+  }
+}
+
 - (void)testBeginWithMatchingSign {
   id mockUIView = OCMClassMock([LynxMockView class]);
   id mockRenderer = OCMClassMock([LynxRenderer class]);

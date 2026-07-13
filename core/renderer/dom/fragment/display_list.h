@@ -45,6 +45,15 @@ enum class DisplayListOpType : int32_t {
   kBackgroundImage = 14,
 };
 
+// NOTE: This enum is serialized as part of the kImage operation. Keep its
+// values synchronized with all platform consumers.
+enum class ImageFitMode : int32_t {
+  kAspectFill = 0,
+  kAspectFit = 1,
+  kScaleToFill = 2,
+  kCenter = 3,
+};
+
 enum class DisplayListSubtreePropertyOpType : int32_t {
   kTransform = 0,
   kOpacity = 1,

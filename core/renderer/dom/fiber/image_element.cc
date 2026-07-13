@@ -14,6 +14,10 @@
 namespace lynx {
 namespace tasm {
 
+namespace {
+constexpr char kImageMode[] = "mode";
+}  // namespace
+
 ImageElement::ImageElement(ElementManager* manager, const base::String& tag)
     : FiberElement(manager, tag) {
   if (element_manager_ == nullptr) {
@@ -72,12 +76,17 @@ void ImageElement::ProcessAttributeForLayoutInElement(
     has_auto_size_ = value.Bool();
   } else if (key.IsEqual(kSrc)) {
     url_ = value.String();
+  } else if (key.IsEqual(kImageMode)) {
+    mode_ = value.IsString() ? value.String() : base::String();
   }
 }
 
 void ImageElement::ResetAttribute(const base::String& key) {
   if (EnableLayoutInElementMode()) {
     attr_map_[key] = lepus::Value();
+    if (key.IsEqual(kImageMode)) {
+      mode_ = base::String();
+    }
   }
   FiberElement::ResetAttribute(key);
 }

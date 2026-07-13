@@ -52,6 +52,12 @@ public class DisplayListApplier implements Drawable.Callback {
   private static final int OP_BOX_SHADOW = 13;
   private static final int OP_BACKGROUND_IMAGE = 14;
 
+  // Image fit modes matching C++ ImageFitMode.
+  private static final int IMAGE_MODE_ASPECT_FILL = 0;
+  private static final int IMAGE_MODE_ASPECT_FIT = 1;
+  private static final int IMAGE_MODE_SCALE_TO_FILL = 2;
+  private static final int IMAGE_MODE_CENTER = 3;
+
   // Subtree property operation types (matching C++ DisplayListSubtreePropertyOpType)
   static final int SUBTREE_OP_TRANSFORM = 0;
   static final int SUBTREE_OP_OPACITY = 1;
@@ -272,11 +278,27 @@ public class DisplayListApplier implements Drawable.Callback {
     }
   }
 
-  private void drawImage(Canvas canvas, int id, int boxIndex) {
+  private static String imageModeToString(int mode) {
+    switch (mode) {
+      case IMAGE_MODE_ASPECT_FIT:
+        return "aspectFit";
+      case IMAGE_MODE_SCALE_TO_FILL:
+        return "scaleToFill";
+      case IMAGE_MODE_CENTER:
+        return "center";
+      case IMAGE_MODE_ASPECT_FILL:
+      default:
+        return "aspectFill";
+    }
+  }
+
+  private void drawImage(Canvas canvas, int id, int boxIndex, int mode) {
     LynxImageManager imageManager = mContext.getImage(id);
     if (imageManager == null) {
       return;
     }
+    imageManager.setMode(imageModeToString(mode));
+    imageManager.updateNodeProps();
     RoundedRectangle rect = boxIndex >= 0 && boxIndex < mRoundedRectangleArray.size()
         ? mRoundedRectangleArray.get(boxIndex)
         : null;
@@ -521,11 +543,12 @@ public class DisplayListApplier implements Drawable.Callback {
         }
 
         case OP_IMAGE: {
-          // Image: image_id (1 int), boxIndex (1 int)
-          if (intParamCount >= 2) {
+          // Image: image_id (1 int), boxIndex (1 int), mode (1 int)
+          if (intParamCount >= 3) {
             int imageId = nextContentInt();
             int boxIndex = nextContentInt();
-            drawImage(canvas, imageId, boxIndex);
+            int mode = nextContentInt();
+            drawImage(canvas, imageId, boxIndex, mode);
           }
           break;
         }

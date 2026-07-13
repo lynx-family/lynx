@@ -20,6 +20,24 @@
 using namespace lynx;
 using namespace lynx::tasm;
 
+namespace {
+
+UIViewContentMode ToUIViewContentMode(int32_t mode) {
+  switch (static_cast<ImageFitMode>(mode)) {
+    case ImageFitMode::kAspectFit:
+      return UIViewContentModeScaleAspectFit;
+    case ImageFitMode::kScaleToFill:
+      return UIViewContentModeScaleToFill;
+    case ImageFitMode::kCenter:
+      return UIViewContentModeCenter;
+    case ImageFitMode::kAspectFill:
+    default:
+      return UIViewContentModeScaleAspectFill;
+  }
+}
+
+}  // namespace
+
 @interface LynxDisplayListApplier ()
 
 - (void)insertHostDecorationLayer:(CALayer *)layer;
@@ -213,18 +231,26 @@ using namespace lynx::tasm;
         break;
       }
       case DisplayListOpType::kImage: {
-        if (int_count >= 2) {
+        if (int_count >= 3) {
           auto image_id = [self nextContentInt];
-          [[maybe_unused]] auto box_index = [self nextContentInt];
+          auto box_index = [self nextContentInt];
+          int32_t mode = [self nextContentInt];
+          if (box_index < 0 || static_cast<size_t>(box_index) >= box_array_.size()) {
+            break;
+          }
           LynxImageManager *imageManager = [self imageManagerForID:image_id];
 
           UIImageView *imageView = [self createImageView];
+          imageView.contentMode = ToUIViewContentMode(mode);
 
           auto &box = box_array_[box_index];
           CGRect rect = CGRectMake(box.GetX(), box.GetY(), box.GetWidth(), box.GetHeight());
           rect.origin.x += left_offset_;
           rect.origin.y += top_offset_;
           [imageView setFrame:rect];
+          if (box.HasRadius()) {
+            [self applyRoundedRect:box toLayer:imageView.layer];
+          }
 
           [imageManager setTarget:imageView];
 

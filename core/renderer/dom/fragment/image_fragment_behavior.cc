@@ -11,6 +11,27 @@
 
 namespace lynx::tasm {
 
+namespace {
+
+BASE_STATIC_STRING_DECL(kModeAspectFit, "aspectFit");
+BASE_STATIC_STRING_DECL(kModeScaleToFill, "scaleToFill");
+BASE_STATIC_STRING_DECL(kModeCenter, "center");
+
+ImageFitMode ResolveImageFitMode(const base::String& mode) {
+  if (mode.IsEqual(kModeAspectFit)) {
+    return ImageFitMode::kAspectFit;
+  }
+  if (mode.IsEqual(kModeScaleToFill)) {
+    return ImageFitMode::kScaleToFill;
+  }
+  if (mode.IsEqual(kModeCenter)) {
+    return ImageFitMode::kCenter;
+  }
+  return ImageFitMode::kAspectFill;
+}
+
+}  // namespace
+
 int32_t ImageFragmentBehavior::ComputeEventMask() const {
   int32_t event_mask = 0;
   auto* element = fragment_->element();
@@ -54,8 +75,11 @@ void ImageFragmentBehavior::OnDraw(DisplayListBuilder& display_list_builder) {
   if (!paint_image_) {
     return;
   }
+  const auto* image_element =
+      static_cast<const ImageElement*>(fragment_->element());
   display_list_builder.DrawImage(
-      paint_image_, fragment()->DefineContentBox(display_list_builder));
+      paint_image_, fragment()->DefineContentBox(display_list_builder),
+      ResolveImageFitMode(image_element->mode()));
 }
 
 }  // namespace lynx::tasm

@@ -67,7 +67,7 @@ import org.mockito.stubbing.Answer;
  *   <li>{@code OP_FILL (2)}: Fill fragment bounds with solid color</li>
  *   <li>{@code OP_DRAW_VIEW (3)}: Draw native view by ID, stops processing</li>
  *   <li>{@code OP_TEXT (6)}: Draw text layout by ID</li>
- *   <li>{@code OP_IMAGE (7)}: Draw image by ID with bounds</li>
+ *   <li>{@code OP_IMAGE (7)}: Draw image by ID with bounds and fit mode</li>
  *   <li>{@code OP_CUSTOM (8)}: Custom drawing operation</li>
  *   <li>{@code OP_BORDER (9)}: Draw rectangular borders with specified widths, colors, and
  * styles</li>
@@ -413,9 +413,10 @@ public class DisplayListApplierTest {
    * <p>Test Data Layout:
    * <pre>
    * ops = {0, 7}                    // OP_BEGIN, OP_IMAGE
-   * iArgv = {2, 4, 0, 1, 2, 0, 789, -1} // param counts: (2int,4float),
-   *                                      // (id=0,type=kView), (2int,0float),
-   * imageId=789 fArgv = {0f, 0f, 100f, 50f, 10f, 20f, 30f, 40f} // bounds + image drawing params
+   * iArgv = {2, 4, 0, 1, 3, 0, 789, -1, 3} // param counts: (2int,4float),
+   *                                         // (id=0,type=kView), (3int,0float),
+   *                                         // imageId=789, boxIndex=-1, mode=center
+   * fArgv = {0f, 0f, 100f, 50f} // bounds
    * </pre>
    *
    * <p>Expected Behavior:
@@ -429,21 +430,18 @@ public class DisplayListApplierTest {
   @Test
   public void testOpImage() {
     testDisplayList.ops = new int[] {0, 7}; // OP_BEGIN, OP_IMAGE
-    testDisplayList.iArgv = new int[] {2, 4, 0, VIEW_TYPE, 2, 0, -1}; // intParamCounts
-    testDisplayList.fArgv =
-        new float[] {0f, 0f, 100f, 50f, 10f, 20f, 30f, 40f}; // bounds + image params
-
-    // Add image ID parameter
-    int[] iArgvWithImage = new int[testDisplayList.iArgv.length + 1];
-    System.arraycopy(testDisplayList.iArgv, 0, iArgvWithImage, 0, testDisplayList.iArgv.length);
-    iArgvWithImage[iArgvWithImage.length - 1] = 789; // imageId
-    testDisplayList.iArgv = iArgvWithImage;
+    testDisplayList.iArgv =
+        new int[] {2, 4, 0, VIEW_TYPE, 3, 0, 789, -1, 3}; // intParamCounts + params
+    testDisplayList.fArgv = new float[] {0f, 0f, 100f, 50f}; // bounds
+    when(mockPlatformRendererContext.getImage(789)).thenReturn(mockImageManager);
 
     displayListApplier.setDisplayList(testDisplayList);
     displayListApplier.drawTillNextView(mockCanvas);
 
     verify(mockCanvas).save();
-    // Image drawing would be implemented with actual image data lookup
+    verify(mockImageManager).setMode("center");
+    verify(mockImageManager).updateNodeProps();
+    verify(mockImageManager).onDraw(mockCanvas);
   }
 
   /**

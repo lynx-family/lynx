@@ -866,6 +866,7 @@ TEST_F(FragmentTest, RoundedRectGeneratesClipPathOpParams) {
 TEST_F(FragmentTest, TestUpdateLayoutAndDefineBoxAndDrawImage) {
   auto element = manager->CreateFiberImage("image");
   element->SetAttributeInternal("src", lepus::Value("image-src://"));
+  element->SetAttributeInternal("mode", lepus::Value("aspectFit"));
 
   Fragment fragment(element.get());
   fragment.SetBehavior(std::make_unique<ImageFragmentBehavior>(&fragment));
@@ -928,7 +929,7 @@ TEST_F(FragmentTest, TestUpdateLayoutAndDefineBoxAndDrawImage) {
   ASSERT_NE(ints, nullptr);
   ASSERT_NE(floats, nullptr);
   EXPECT_EQ(list.GetContentOpTypesSize(), 4u);
-  EXPECT_EQ(list.GetContentIntDataSize(), 10u);
+  EXPECT_EQ(list.GetContentIntDataSize(), 11u);
   EXPECT_EQ(list.GetContentFloatDataSize(), 36u);
 
   ASSERT_EQ(native_painting_context.created_images_.size(), 1u);
@@ -994,10 +995,11 @@ TEST_F(FragmentTest, TestUpdateLayoutAndDefineBoxAndDrawImage) {
   EXPECT_FLOAT_EQ(floats[35], 24.f - 4.f);
 
   EXPECT_EQ(ops[3], static_cast<int32_t>(DisplayListOpType::kImage));
-  EXPECT_EQ(ints[6], 2);
+  EXPECT_EQ(ints[6], 3);
   EXPECT_EQ(ints[7], 0);
   EXPECT_EQ(ints[8], image_key);
   EXPECT_EQ(ints[9], 2);
+  EXPECT_EQ(ints[10], static_cast<int32_t>(ImageFitMode::kAspectFit));
 }
 
 TEST_F(FragmentTest, TestCheckRootIfNeedClipBounds) {
