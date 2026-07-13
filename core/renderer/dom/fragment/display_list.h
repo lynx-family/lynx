@@ -42,6 +42,7 @@ enum class DisplayListOpType : int32_t {
   kRecordBox = 11,
   kLinearGradient = 12,
   kBoxShadow = 13,
+  kBackgroundImage = 14,
 };
 
 enum class DisplayListSubtreePropertyOpType : int32_t {
@@ -187,6 +188,10 @@ class DisplayList {
                          const base::Vector<float>& stops, int32_t tiling_index,
                          int32_t clip_index, int32_t repeat_x,
                          int32_t repeat_y);
+
+  void AddBackgroundImage(const fml::RefPtr<PaintImage>& image,
+                          int32_t tiling_index, int32_t clip_index,
+                          int32_t repeat_x, int32_t repeat_y);
 
   template <typename... Args>
   auto AddOperation(DisplayListOpType type, Args... args) {

@@ -46,6 +46,7 @@ class NativePaintingCtxPlatformRef
   ~NativePaintingCtxPlatformRef() override = default;
 
   void Destroy();
+  void ScheduleDestroyImage(int32_t image_key);
 
   void CreatePlatformRenderer(int id, PlatformRendererType type,
                               const fml::RefPtr<PropBundle> &init_data,
@@ -143,6 +144,7 @@ class NativePaintingCtxPlatformRef
   virtual void InvokePlatformRendererUIMethod(
       int32_t id, const std::string &method, const lepus::Value &params,
       base::MoveOnlyClosure<void, int32_t, const pub::Value &> callback);
+  virtual void DestroyImageOnPlatformThread(int32_t image_key) {}
 
   void RebuildSubLayers(const fml::RefPtr<PlatformRenderer> &renderer,
                         const base::InlineVector<int, 16> &new_children);
@@ -169,6 +171,7 @@ class NativePaintingCtxPlatformRef
   base::InlineOrderedFlatMap<int32_t, PlatformEventBundle, 64>
       platform_event_bundles_;
   std::atomic_bool scheduled_event_target_tree_update_{false};
+  std::atomic_bool destroyed_{false};
   std::unordered_set<int32_t> dirty_event_root_ids_;
 };
 

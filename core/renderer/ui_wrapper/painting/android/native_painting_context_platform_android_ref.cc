@@ -19,6 +19,8 @@ NativePaintingCtxAndroidRef::NativePaintingCtxAndroidRef(
     : NativePaintingCtxPlatformRef(std::move(view_factory)),
       view_manager_(std::move(view_manager)) {}
 
+NativePaintingCtxAndroidRef::~NativePaintingCtxAndroidRef() { Destroy(); }
+
 void NativePaintingCtxAndroidRef::GetRootViewLocationOnScreen(
     float location[2]) {
   if (location == nullptr) {
@@ -134,6 +136,14 @@ void NativePaintingCtxAndroidRef::NotifyNodeReady(
     return;
   }
   context->OnNodeReady(signs);
+}
+
+void NativePaintingCtxAndroidRef::DestroyImageOnPlatformThread(
+    int32_t image_key) {
+  if (!view_manager_) {
+    return;
+  }
+  view_manager_->DestroyImage(image_key);
 }
 
 }  // namespace tasm

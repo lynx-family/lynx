@@ -20,12 +20,14 @@ import static org.mockito.Mockito.when;
 
 import android.graphics.Canvas;
 import android.graphics.Paint;
+import android.graphics.Rect;
 import android.graphics.RectF;
 import android.graphics.Shader;
 import android.view.View;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import com.lynx.tasm.behavior.shadow.text.TextMeasurer;
 import com.lynx.tasm.behavior.shadow.text.TextUpdateBundle;
+import com.lynx.tasm.behavior.ui.image.LynxImageManager;
 import com.lynx.tasm.behavior.ui.utils.BorderStyle;
 import com.lynx.tasm.behavior.ui.utils.Spacing;
 import java.lang.reflect.Field;
@@ -90,6 +92,7 @@ public class DisplayListApplierTest {
   @Mock private android.text.Layout mockTextLayout;
   @Mock private IRendererHost mockRendererHost;
   @Mock private View mockHostView;
+  @Mock private LynxImageManager mockImageManager;
 
   private DisplayListApplier displayListApplier;
   private DisplayListApplier spyDisplayListApplier;
@@ -762,6 +765,27 @@ public class DisplayListApplierTest {
     verify(mockCanvas, times(3)).restore();
     verify(mockCanvas).drawRect(anyFloat(), anyFloat(), anyFloat(), anyFloat(), any(Paint.class));
     assertNotNull(capturedShader.get());
+  }
+
+  @Test
+  public void testOpBackgroundImageRepeatX() {
+    testDisplayList.ops = new int[] {0, 11, 11, 14, 1};
+    testDisplayList.iArgv = new int[] {2, 4, 0, VIEW_TYPE, 0, 4, 0, 4, 5, 0, 321, 0, 1, 0, 1, 0, 0};
+    testDisplayList.fArgv = new float[] {0f, 0f, 100f, 40f, 0f, 0f, 40f, 20f, 0f, 0f, 90f, 40f};
+    when(mockPlatformRendererContext.getImage(321)).thenReturn(mockImageManager);
+
+    displayListApplier.setDisplayList(testDisplayList);
+    displayListApplier.drawTillNextView(mockCanvas);
+
+    verify(mockCanvas, times(2)).save();
+    verify(mockCanvas).clipRect(eq(new RectF(0f, 0f, 90f, 40f)));
+    verify(mockImageManager).setView(mockHostView);
+    verify(mockImageManager).updateInnerClipPathForBorderRadius(null);
+    verify(mockImageManager).updateDrawableBounds(eq(new Rect(0, 0, 40, 20)));
+    verify(mockImageManager).updateDrawableBounds(eq(new Rect(40, 0, 80, 20)));
+    verify(mockImageManager).updateDrawableBounds(eq(new Rect(80, 0, 120, 20)));
+    verify(mockImageManager, times(3)).onDraw(mockCanvas);
+    verify(mockCanvas, times(2)).restore();
   }
 
   @Test

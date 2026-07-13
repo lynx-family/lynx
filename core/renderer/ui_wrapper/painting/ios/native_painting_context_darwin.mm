@@ -295,7 +295,9 @@ void NativePaintingCtxDarwin::UpdatePlatformEventBundle(int32_t id, PlatformEven
 }
 
 fml::RefPtr<PaintImage> NativePaintingCtxDarwin::CreateImage(int id, base::String src, float width,
-                                                             float height, int32_t event_mask) {
+                                                             float height, int32_t event_mask,
+                                                             bool disable_default_resize) {
+  static_cast<void>(disable_default_resize);
   LynxURL *sourceUrl = [[LynxURL alloc] init];
   sourceUrl.url = [[NSURL alloc] initWithString:[[NSString alloc] initWithUTF8String:src.c_str()]];
   sourceUrl.imageSize = CGSizeMake(width, height);

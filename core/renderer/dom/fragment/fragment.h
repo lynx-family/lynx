@@ -6,6 +6,7 @@
 
 #include <memory>
 
+#include "base/include/value/base_string.h"
 #include "core/renderer/dom/base_element_container.h"
 #include "core/renderer/dom/fragment/box_model_recorder.h"
 #include "core/renderer/dom/fragment/display_list_builder.h"
@@ -176,6 +177,17 @@ class Fragment : public BaseElementContainer {
 
   void DispatchUpdateDisplayList();
 
+  struct BackgroundImageResource {
+    base::String url;
+    fml::RefPtr<PaintImage> image;
+  };
+
+  fml::RefPtr<PaintImage> GetOrCreateBackgroundImage(size_t image_index,
+                                                     const base::String& url,
+                                                     float image_width,
+                                                     float image_height);
+  void ClearBackgroundImage(size_t image_index);
+
   bool has_platform_renderer_{false};
   bool pending_node_ready_{false};
 
@@ -208,6 +220,7 @@ class Fragment : public BaseElementContainer {
 
   PlatformEventPropMap event_props_;
   base::Vector<PlatformEventName> event_names_;
+  base::Vector<BackgroundImageResource> background_image_resources_;
   bool event_bundle_dirty_{false};
 
   float render_offset_[2] = {0, 0};

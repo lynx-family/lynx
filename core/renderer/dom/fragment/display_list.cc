@@ -85,5 +85,13 @@ void DisplayList::AddLinearGradient(float angle,
   }
 }
 
+void DisplayList::AddBackgroundImage(const fml::RefPtr<PaintImage>& image,
+                                     int32_t tiling_index, int32_t clip_index,
+                                     int32_t repeat_x, int32_t repeat_y) {
+  AddOperation(DisplayListOpType::kBackgroundImage, image->image_key_,
+               tiling_index, clip_index, repeat_x, repeat_y);
+  Images().emplace_back(image);
+}
+
 }  // namespace tasm
 }  // namespace lynx
