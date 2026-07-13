@@ -21,6 +21,8 @@
 
 - (void)setEventMask:(NSInteger)eventMask;
 
+- (void)setMode:(int32_t)mode;
+
 - (void)reset;
 
 @end
