@@ -96,6 +96,9 @@ LYNX_PROP_SETTER("show-soft-input-on-focus", setShowSoftInputOnFocus, BOOL) {
 
 - (void)propsDidUpdate {
   [super propsDidUpdate];
+  if (self.view.textStorage.length > 0) {
+    [self.view.textStorage addAttributes:self.inputAttrs range:NSMakeRange(0, self.view.textStorage.length)];
+  }
   self.view.typingAttributes = self.inputAttrs;
   if (self.placeholder.length) {
     if (!_placeholderView) {
