@@ -199,6 +199,7 @@ void CSSValue::SetDefaultValueMap(lepus::Value default_value_map) {
 }
 
 void CSSValue::SetVarReferences(base::Vector<VarReference> var_references) {
+  ClearCustomPropertyDependencies();
   if (var_references.empty()) {
     optionals_.Release<VarReferenceField>();
   } else {
@@ -208,8 +209,45 @@ void CSSValue::SetVarReferences(base::Vector<VarReference> var_references) {
   needs_variable_resolution_ = true;
 }
 
+void CSSValue::SetCustomPropertyDependencies(
+    CustomPropertyDependencyField::Type dependencies) {
+  if (dependencies.empty()) {
+    optionals_.Release<CustomPropertyDependencyField>();
+  } else {
+    optionals_.Get<CustomPropertyDependencyField>() = std::move(dependencies);
+  }
+}
+
+void CSSValue::ClearCustomPropertyDependencies() {
+  optionals_.Release<CustomPropertyDependencyField>();
+}
+
+void CSSValue::ReplayCustomPropertyDependencies(
+    const HandleCustomPropertyFunc& handle_func) const {
+  if (!handle_func || !optionals_.HasValue<CustomPropertyDependencyField>()) {
+    return;
+  }
+  for (const auto& [name, value] :
+       optionals_.Get<CustomPropertyDependencyField>()) {
+    handle_func(name, value);
+  }
+}
+
+void CSSValue::ReportCustomPropertyDependency(
+    const std::string& name, const CSSValue* value,
+    const HandleCustomPropertyFunc& handle_func) {
+  if (!handle_func) {
+    return;
+  }
+  handle_func(name, value ? value->AsString() : base::String());
+  if (value) {
+    value->ReplayCustomPropertyDependencies(handle_func);
+  }
+}
+
 void CSSValue::SetValueAndPattern(const lepus::Value& value,
                                   CSSValuePattern pattern) {
+  ClearCustomPropertyDependencies();
   FreeValueStorage();
   val_uint64 = value.value().val_uint64;
   type_ = value.value().type;
@@ -286,6 +324,7 @@ const std::string& CSSValue::AsStdString() const {
 }
 
 void CSSValue::SetArray(fml::RefPtr<lepus::CArray>&& array) {
+  ClearCustomPropertyDependencies();
   FreeValueStorage();
   val_ptr = reinterpret_cast<lynx_value_ptr>(array.AbandonRef());
   type_ = lynx_value_array;
@@ -294,6 +333,7 @@ void CSSValue::SetArray(fml::RefPtr<lepus::CArray>&& array) {
 }
 
 void CSSValue::SetBoolean(bool value) {
+  ClearCustomPropertyDependencies();
   FreeValueStorage();
   val_bool = value;
   type_ = lynx_value_bool;
@@ -302,6 +342,7 @@ void CSSValue::SetBoolean(bool value) {
 }
 
 void CSSValue::SetNumber(double val, CSSValuePattern pattern) {
+  ClearCustomPropertyDependencies();
   FreeValueStorage();
   val_double = val;
   type_ = lynx_value_double;
@@ -310,6 +351,7 @@ void CSSValue::SetNumber(double val, CSSValuePattern pattern) {
 }
 
 void CSSValue::SetNumber(int32_t val, CSSValuePattern pattern) {
+  ClearCustomPropertyDependencies();
   FreeValueStorage();
   val_int32 = val;
   type_ = lynx_value_int32;
@@ -318,6 +360,7 @@ void CSSValue::SetNumber(int32_t val, CSSValuePattern pattern) {
 }
 
 void CSSValue::SetNumber(uint32_t val, CSSValuePattern pattern) {
+  ClearCustomPropertyDependencies();
   FreeValueStorage();
   val_uint32 = val;
   type_ = lynx_value_uint32;
@@ -326,6 +369,7 @@ void CSSValue::SetNumber(uint32_t val, CSSValuePattern pattern) {
 }
 
 void CSSValue::SetNumber(int64_t val, CSSValuePattern pattern) {
+  ClearCustomPropertyDependencies();
   FreeValueStorage();
   val_int64 = val;
   type_ = lynx_value_int64;
@@ -334,6 +378,7 @@ void CSSValue::SetNumber(int64_t val, CSSValuePattern pattern) {
 }
 
 void CSSValue::SetNumber(uint64_t val, CSSValuePattern pattern) {
+  ClearCustomPropertyDependencies();
   FreeValueStorage();
   val_uint64 = val;
   type_ = lynx_value_uint64;
@@ -342,6 +387,7 @@ void CSSValue::SetNumber(uint64_t val, CSSValuePattern pattern) {
 }
 
 void CSSValue::SetString(const base::String& value, CSSValuePattern pattern) {
+  ClearCustomPropertyDependencies();
   FreeValueStorage();
   auto* ptr = base::String::Unsafe::GetUntaggedStringRawRef(value);
   ptr->AddRef();
@@ -352,6 +398,7 @@ void CSSValue::SetString(const base::String& value, CSSValuePattern pattern) {
 }
 
 void CSSValue::SetString(base::String&& value, CSSValuePattern pattern) {
+  ClearCustomPropertyDependencies();
   FreeValueStorage();
   auto* ptr = base::String::Unsafe::GetUntaggedStringRawRef(value);
   if (ptr != base::String::Unsafe::GetStringRawRef(value)) {
@@ -536,12 +583,25 @@ void CSSValue::SubstituteAll(CustomPropertiesMap& custom_properties,
                              int max_depth,
                              const HandleCustomPropertyFunc& handle_func) {
   CycleDetector detector(custom_properties);
-  for (auto& [name, value] : custom_properties) {
+  for (auto& entry : custom_properties) {
+    auto& value = entry.second;
     if (value.NeedsVariableResolution()) {
-      auto property = CSSValue::Substitution(value, custom_properties, detector,
-                                             max_depth, handle_func);
-      custom_properties[name] = CSSValue(
-          std::move(property), CSSValuePattern::STRING, CSSValueType::DEFAULT);
+      CustomPropertyDependencyField::Type dependencies;
+      HandleCustomPropertyFunc collecting_handle_func =
+          [&dependencies, &handle_func](const base::String& dependency_name,
+                                        const base::String& dependency_value) {
+            dependencies.insert_or_assign(dependency_name, dependency_value);
+            if (handle_func) {
+              handle_func(dependency_name, dependency_value);
+            }
+          };
+      std::string property =
+          CSSValue::Substitution(value, custom_properties, detector, max_depth,
+                                 collecting_handle_func);
+      CSSValue resolved_value(std::move(property), CSSValuePattern::STRING,
+                              CSSValueType::DEFAULT);
+      resolved_value.SetCustomPropertyDependencies(std::move(dependencies));
+      value = std::move(resolved_value);
     }
   }
 }
@@ -608,13 +668,9 @@ std::string CSSValue::Substitution(
     const std::string dep_name(var_ref.Name(raw_value));
 
     auto var_it = custom_properties.find(dep_name);
-    if (handle_func) {
-      if (var_it != custom_properties.end()) {
-        handle_func(dep_name, var_it->second.AsString());
-      } else {
-        handle_func(dep_name, base::String());
-      }
-    }
+    ReportCustomPropertyDependency(
+        dep_name, var_it != custom_properties.end() ? &var_it->second : nullptr,
+        handle_func);
 
     // Fast path: check if variable exists and not in cycle
     if (var_it != custom_properties.end() && !detector.IsInCycle(dep_name)) {
@@ -684,13 +740,9 @@ std::string CSSValue::SubstitutionResolved(
     const std::string dep_name(var_ref.Name(raw_value));
 
     auto var_it = custom_properties.find(dep_name);
-    if (handle_func) {
-      if (var_it != custom_properties.end()) {
-        handle_func(dep_name, var_it->second.AsString());
-      } else {
-        handle_func(dep_name, base::String());
-      }
-    }
+    ReportCustomPropertyDependency(
+        dep_name, var_it != custom_properties.end() ? &var_it->second : nullptr,
+        handle_func);
 
     if (var_it != custom_properties.end()) {
       // Variable exists - resolve it normally
