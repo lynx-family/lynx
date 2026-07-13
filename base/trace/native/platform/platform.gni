@@ -27,6 +27,8 @@ if (enable_trace == "perfetto") {
       "platform/windows/trace_controller_win.cc",
       "platform/windows/trace_controller_win.h",
     ]
+  } else if (is_linux) {
+    platform_shared_sources += [ "platform/linux/trace_controller_linux.cc" ]
   }
 } else {
   if (is_android) {
