@@ -23,6 +23,7 @@ class LynxEnv {
   void SetDevtoolAppInfo(const char* name, const char* value);
   void SetDevtoolEnabled(bool enable);
   bool IsDevtoolEnabled();
+  int GetDevtoolLocalPort();
   bool ConnectDevtool(const char* url);
   void SetOpenCardCallback(lynx_env_open_card_callback callback,
                            void* user_data);
@@ -69,6 +70,10 @@ inline void LynxEnv::SetDevtoolEnabled(bool enable) {
 
 inline bool LynxEnv::IsDevtoolEnabled() {
   return lynx_env_is_devtool_enabled();
+}
+
+inline int LynxEnv::GetDevtoolLocalPort() {
+  return lynx_env_get_devtool_local_port();
 }
 
 inline bool LynxEnv::ConnectDevtool(const char* url) {

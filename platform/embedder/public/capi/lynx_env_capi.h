@@ -27,6 +27,8 @@ LYNX_CAPI_EXPORT void lynx_env_set_devtool_app_info(const char* name,
                                                     const char* value);
 LYNX_CAPI_EXPORT void lynx_env_enable_devtool(int enable);
 LYNX_CAPI_EXPORT int lynx_env_is_devtool_enabled();
+// Returns the local DebugRouter TCP port, or -1 before the listener is ready.
+LYNX_CAPI_EXPORT int lynx_env_get_devtool_local_port();
 LYNX_CAPI_EXPORT int lynx_env_connect_devtool(const char* url);
 LYNX_CAPI_EXPORT void lynx_env_set_open_card_callback(
     lynx_env_open_card_callback callback, void* user_data);

@@ -20,10 +20,20 @@ LYNX_EXTERN_C_BEGIN
 // when it is no longer needed.
 typedef struct lynx_view_t lynx_view_t;
 
+typedef struct lynx_devtool_target_t {
+  int32_t session_id;
+  // Owned by the LynxView and valid until the next target query or release.
+  const char* url;
+} lynx_devtool_target_t;
+
 // Create lynx view with builder.
 LYNX_CAPI_EXPORT lynx_view_t* lynx_view_create(lynx_view_builder_t* builder,
                                                void* user_data);
 LYNX_CAPI_EXPORT void* lynx_view_get_user_data(lynx_view_t*);
+
+// Returns false until this LynxView is attached to the DebugRouter.
+LYNX_CAPI_EXPORT bool lynx_view_get_devtool_target(
+    lynx_view_t*, lynx_devtool_target_t* target);
 
 // Get the fixed WebView2 runtime path configured by the builder. Returns an
 // empty string if no fixed runtime path was configured.
