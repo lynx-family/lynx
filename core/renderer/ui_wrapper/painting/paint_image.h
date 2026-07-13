@@ -9,6 +9,14 @@
 #include "base/include/fml/memory/ref_counted.h"
 
 namespace lynx::tasm {
+
+enum class ImageFitMode : int32_t {
+  kScaleToFill = 0,
+  kAspectFit = 1,
+  kAspectFill = 2,
+  kCenter = 3,
+};
+
 class PaintImage : public fml::RefCountedThreadSafe<PaintImage> {
  public:
   explicit PaintImage(int32_t image_key) : image_key_(image_key) {}

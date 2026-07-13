@@ -11,6 +11,7 @@ import android.graphics.RectF;
 import com.lynx.tasm.behavior.LynxContext;
 import com.lynx.tasm.behavior.render.RoundedRectangle;
 import com.lynx.tasm.behavior.ui.utils.BackgroundDrawable;
+import com.lynx.tasm.image.ScalingUtils;
 import com.lynx.testing.base.TestingUtils;
 import java.lang.reflect.Field;
 import org.junit.After;
@@ -69,6 +70,17 @@ public class LynxImageManagerTest {
       return result.isEmpty();
     }
     return false;
+  }
+
+  @Test
+  public void getModeFromInt() {
+    LynxImageManager manager = new LynxImageManager(mContext);
+
+    assertSame(ScalingUtils.ScaleType.FIT_XY, manager.getMode(0));
+    assertSame(ScalingUtils.ScaleType.FIT_CENTER, manager.getMode(1));
+    assertSame(ScalingUtils.ScaleType.CENTER_CROP, manager.getMode(2));
+    assertSame(ScalingUtils.ScaleType.CENTER, manager.getMode(3));
+    assertSame(ScalingUtils.ScaleType.FIT_XY, manager.getMode(-1));
   }
 
   @Test

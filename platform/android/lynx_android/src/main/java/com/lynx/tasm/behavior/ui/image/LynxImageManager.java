@@ -71,6 +71,10 @@ import org.json.JSONObject;
 
 public class LynxImageManager implements Drawable.Callback {
   public static final String TAG = "LynxImageManager";
+  private static final int IMAGE_MODE_SCALE_TO_FILL = 0;
+  private static final int IMAGE_MODE_ASPECT_FIT = 1;
+  private static final int IMAGE_MODE_ASPECT_FILL = 2;
+  private static final int IMAGE_MODE_CENTER = 3;
 
   public static final int kFlagImageLoadEvent = 1;
   public static final int kFlagImageErrorEvent = 1 << 1;
@@ -506,7 +510,14 @@ public class LynxImageManager implements Drawable.Callback {
   }
 
   public void setMode(@Nullable String mode) {
-    ScalingUtils.ScaleType scaleType = getMode(mode);
+    setMode(getMode(mode));
+  }
+
+  public void setMode(int mode) {
+    setMode(getMode(mode));
+  }
+
+  private void setMode(ScalingUtils.ScaleType scaleType) {
     if (!Objects.equals(scaleType, mMode)) {
       mMode = scaleType;
       dirtyFlags |= MODE_CHANGED;
@@ -1235,6 +1246,20 @@ public class LynxImageManager implements Drawable.Callback {
       mode = ScalingUtils.ScaleType.FIT_XY;
     }
     return mode;
+  }
+
+  ScalingUtils.ScaleType getMode(int mode) {
+    switch (mode) {
+      case IMAGE_MODE_ASPECT_FIT:
+        return ScalingUtils.ScaleType.FIT_CENTER;
+      case IMAGE_MODE_ASPECT_FILL:
+        return ScalingUtils.ScaleType.CENTER_CROP;
+      case IMAGE_MODE_CENTER:
+        return ScalingUtils.ScaleType.CENTER;
+      case IMAGE_MODE_SCALE_TO_FILL:
+      default:
+        return ScalingUtils.ScaleType.FIT_XY;
+    }
   }
 
   private boolean isDirty(long flag) {
