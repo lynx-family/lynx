@@ -33,6 +33,9 @@
 #endif  // ENABLE_INSPECTOR
 
 namespace lynx {
+namespace tasm {
+class WhiteBoard;
+}
 namespace embedder {
 
 struct LynxSize {
@@ -110,6 +113,7 @@ class LynxTemplateRenderer : public devtool::LynxDevToolProxy {
     bool enable_bytecode = false;
     std::string bytecode_source_url = "";
     bool enable_js = true;
+    std::shared_ptr<tasm::WhiteBoard> white_board = nullptr;
     std::shared_ptr<base::VSyncMonitorPlatformImpl>
         vsync_monitor_platform_impl = nullptr;
   };

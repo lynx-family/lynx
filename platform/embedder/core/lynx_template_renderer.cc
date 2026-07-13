@@ -127,6 +127,7 @@ void LynxTemplateRenderer::Reset(bool wait_for_runtime_detach) {
           .SetEnableNewAnimator(settings_.enable_new_animator)
           .SetEnableNativeList(settings_.enable_native_list ||
                                ui_delegate_->EnableNativeList())
+          .SetWhiteBoard(settings_.white_board)
           .SetLazyBundleLoader(loader)
           .SetLayoutContextPlatformImpl(ui_delegate_->CreateLayoutContext())
           .SetStrategy(static_cast<base::ThreadStrategyForRendering>(
