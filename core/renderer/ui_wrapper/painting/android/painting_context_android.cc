@@ -1208,6 +1208,7 @@ shell::UIOperation PaintingContextAndroid::CreateInvokeUIMethodOperation(
   auto impl = impl_;
   const auto context = reinterpret_cast<jlong>(this);
   const auto callback_id = AddInvokeUIMethodCallback(std::move(callback));
+  lepus_params = lepus_params.ToLepusValue();
   return
       [this, impl, id, method = std::move(method),
        lepus_params = std::move(lepus_params), context, callback_id]() mutable {
