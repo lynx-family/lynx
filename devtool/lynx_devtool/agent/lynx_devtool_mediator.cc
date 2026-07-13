@@ -708,6 +708,17 @@ void LynxDevToolMediator::SetMediaText(
   }
 }
 
+void LynxDevToolMediator::SetSupportsText(
+    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
+    const Json::Value& message) {
+  if (tasm_task_runner_) {
+    RunOnTaskRunner(tasm_task_runner_,
+                    [element_executor = element_executor_, sender, message]() {
+                      element_executor->SetSupportsText(sender, message);
+                    });
+  }
+}
+
 void LynxDevToolMediator::HighlightNode(
     const std::shared_ptr<lynx::devtool::MessageSender>& sender,
     const Json::Value& message) {

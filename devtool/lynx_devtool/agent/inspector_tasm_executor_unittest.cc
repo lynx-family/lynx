@@ -23,6 +23,7 @@
 #include "core/renderer/css/ng/parser/css_parser_token_range.h"
 #include "core/renderer/css/ng/parser/css_tokenizer.h"
 #include "core/renderer/css/ng/parser/media_query_parser.h"
+#include "core/renderer/css/ng/parser/supports_condition_parser.h"
 #include "core/renderer/css/ng/selector/css_parser_context.h"
 #include "core/renderer/css/ng/selector/css_selector_parser.h"
 #include "core/renderer/css/ng/style/condition_rule.h"
@@ -41,6 +42,7 @@
 #include "devtool/lynx_devtool/agent/inspector_ui_executor.h"
 #include "devtool/lynx_devtool/agent/inspector_util.h"
 #include "devtool/lynx_devtool/agent/lynx_devtool_mediator.h"
+#include "devtool/lynx_devtool/element/element_helper.h"
 #include "devtool/lynx_devtool/element/element_inspector.h"
 #include "devtool/testing/mock/devtool_platform_facade_mock.h"
 #include "devtool/testing/mock/lynx_devtool_ng_mock.h"
@@ -129,6 +131,13 @@ struct MediaRuleForTest {
   std::string media_text;
 };
 
+struct SupportsRuleForTest {
+  std::string selector;
+  tasm::CSSPropertyID property_id;
+  std::string value;
+  std::string supports_text;
+};
+
 std::shared_ptr<tasm::SharedCSSFragment> CreateMediaCSSFragment(
     std::initializer_list<MediaRuleForTest> rules) {
   tasm::CSSParserTokenMap token_map;
@@ -162,6 +171,40 @@ std::shared_ptr<tasm::SharedCSSFragment> CreateMediaCSSFragment(
   return fragment;
 }
 
+std::shared_ptr<tasm::SharedCSSFragment> CreateSupportsCSSFragment(
+    std::initializer_list<SupportsRuleForTest> rules) {
+  tasm::CSSParserTokenMap token_map;
+  std::vector<fml::RefPtr<tasm::CSSParseToken>> tokens;
+  tokens.reserve(rules.size());
+
+  for (const auto& rule : rules) {
+    auto token = CreateParseToken(rule.selector, rule.property_id, rule.value);
+    token_map.insert(std::make_pair(rule.selector, token));
+    tokens.push_back(std::move(token));
+  }
+
+  const std::vector<int32_t> dependent_ids;
+  tasm::CSSKeyframesTokenMap keyframes;
+  tasm::CSSFontFaceRuleMap font_faces;
+  auto fragment = std::make_shared<tasm::SharedCSSFragment>(
+      1, dependent_ids, token_map, keyframes, font_faces);
+  fragment->SetEnableCSSSelector();
+
+  size_t index = 0;
+  for (const auto& rule : rules) {
+    auto supports_condition =
+        css::SupportsConditionParser::Parse(rule.supports_text);
+    auto condition_rule =
+        fml::MakeRefCounted<css::ConditionRule>(fragment.get());
+    condition_rule->SetSupportsCondition(std::move(supports_condition));
+    condition_rule->AddStyleRule(fml::MakeRefCounted<css::StyleRule>(
+        CreateSelectorArray(rule.selector), tokens[index++]));
+    fragment->AddConditionRule(std::move(condition_rule));
+  }
+
+  return fragment;
+}
+
 struct MediaQueryTestDom {
   fml::RefPtr<tasm::PageElement> page;
   fml::RefPtr<tasm::ComponentElement> component;
@@ -179,6 +222,17 @@ std::string FirstMediaText(tasm::SharedCSSFragment* fragment) {
         }
       });
   return media_text;
+}
+
+std::string FirstSupportsText(tasm::SharedCSSFragment* fragment) {
+  std::string supports_text;
+  fragment->rule_set()->ForEachConditionRule(
+      [&supports_text](const css::ConditionRule& rule) {
+        if (supports_text.empty() && rule.HasStructuredSupportsRules()) {
+          supports_text = rule.SupportsCondition()->Serialize();
+        }
+      });
+  return supports_text;
 }
 
 void CreateStyleValueElement(tasm::ElementManager* manager,
@@ -199,6 +253,45 @@ MediaQueryTestDom BuildMediaQueryTestDom(
     std::initializer_list<MediaRuleForTest> rules) {
   MediaQueryTestDom dom;
   dom.fragment = CreateMediaCSSFragment(rules);
+  dom.page = manager->CreateFiberPage("page", 0);
+  manager->SetFiberPageElement(dom.page);
+  devtool::ElementInspector::InitForInspector(std::make_tuple(dom.page.get()));
+
+  dom.component = manager->CreateFiberComponent(
+      lynx::base::String("21"), 100, lynx::base::String("__Card__"),
+      lynx::base::String("TestComp"),
+      lynx::base::String("/index/components/TestComp"));
+  dom.component->style_sheet_ =
+      std::make_unique<tasm::CSSFragmentDecorator>(dom.fragment.get());
+  devtool::ElementInspector::InitForInspector(
+      std::make_tuple(dom.component.get()));
+  dom.page->InsertNode(dom.component);
+
+  dom.element = manager->CreateFiberElement("view");
+  dom.element->SetParentComponentUniqueIdForFiber(
+      static_cast<int64_t>(dom.component->impl_id()));
+  for (const auto& rule : rules) {
+    if (!rule.selector.empty() && rule.selector[0] == '.') {
+      const std::string class_name = rule.selector.substr(1);
+      dom.element->data_model()->SetClass(class_name.c_str());
+    }
+  }
+  devtool::ElementInspector::InitForInspector(
+      std::make_tuple(dom.element.get()));
+  CreateStyleValueElement(manager, dom.component.get(), dom);
+  devtool::ElementInspector::SetStyleValueElement(
+      std::make_tuple(dom.element.get(), dom.style_value));
+  devtool::ElementInspector::SetStyleRoot(
+      std::make_tuple(dom.element.get(), dom.style_value));
+  dom.component->InsertNode(dom.element);
+  return dom;
+}
+
+MediaQueryTestDom BuildSupportsTestDom(
+    tasm::ElementManager* manager,
+    std::initializer_list<SupportsRuleForTest> rules) {
+  MediaQueryTestDom dom;
+  dom.fragment = CreateSupportsCSSFragment(rules);
   dom.page = manager->CreateFiberPage("page", 0);
   manager->SetFiberPageElement(dom.page);
   devtool::ElementInspector::InitForInspector(std::make_tuple(dom.page.get()));
@@ -519,6 +612,174 @@ TEST_F(InspectorTasmExecutorTest, SetMediaTextReportsErrors) {
   EXPECT_EQ(
       response_sender->json_messages_[0].second["error"]["message"].asString(),
       "Media rule not found");
+}
+
+TEST_F(InspectorTasmExecutorTest,
+       SetSupportsTextUpdatesRuleCacheAndSendsEvents) {
+  auto dom = BuildSupportsTestDom(
+      manager_.get(),
+      {{".active-supports", tasm::CSSPropertyID::kPropertyIDWidth, "10px",
+        "(display: flex)"}});
+  element_executor_->element_root_ = dom.element.get();
+
+  auto matched_styles =
+      devtool::ElementInspector::GetMatchedStyleSheet(dom.element.get());
+  ASSERT_EQ(matched_styles.size(), 1U);
+  EXPECT_EQ(matched_styles[0].supports_text_, "(display: flex)");
+  EXPECT_EQ(matched_styles[0].supports_range_.start_line_, 0);
+
+  Json::Value matched =
+      devtool::ElementHelper::GetMatchedStylesForNode(dom.element.get());
+  ASSERT_TRUE(matched["matchedCSSRules"].isArray());
+  ASSERT_EQ(matched["matchedCSSRules"].size(), 1U);
+  const Json::Value& supports =
+      matched["matchedCSSRules"][0]["rule"]["supports"];
+  ASSERT_TRUE(supports.isArray());
+  ASSERT_EQ(supports.size(), 1U);
+  EXPECT_EQ(supports[0]["text"].asString(), "(display: flex)");
+  EXPECT_TRUE(supports[0]["active"].asBool());
+
+  auto event_sender = std::make_shared<RecordingMessageSender>();
+  devtools_ng_->message_sender_ = event_sender;
+  auto response_sender = std::make_shared<RecordingMessageSender>();
+
+  Json::Value message(Json::ValueType::objectValue);
+  message["id"] = 106;
+  message["params"]["styleSheetId"] =
+      std::to_string(devtool::ElementInspector::NodeId(dom.style_value));
+  message["params"]["range"]["startLine"] = 0;
+  message["params"]["range"]["startColumn"] = 0;
+  message["params"]["range"]["endLine"] = 0;
+  message["params"]["range"]["endColumn"] =
+      static_cast<int>(std::string("(display: flex)").length());
+  message["params"]["text"] = "@supports (color: red)";
+
+  element_executor_->SetSupportsText(response_sender, message);
+
+  ASSERT_EQ(response_sender->json_messages_.size(), 1U);
+  const Json::Value& response = response_sender->json_messages_[0].second;
+  EXPECT_EQ(response["id"].asInt(), 106);
+  EXPECT_TRUE(response["error"].isNull());
+  EXPECT_EQ(response["result"]["supports"]["text"].asString(), "(color: red)");
+  EXPECT_TRUE(response["result"]["supports"]["active"].asBool());
+  EXPECT_EQ(FirstSupportsText(dom.fragment.get()), "(color: red)");
+
+  auto updated_sheet = devtool::ElementInspector::GetStyleSheetByName(
+      dom.element.get(), ".active-supports");
+  ASSERT_FALSE(updated_sheet.empty);
+  EXPECT_EQ(updated_sheet.supports_text_, "(color: red)");
+  EXPECT_EQ(updated_sheet.supports_range_.start_line_, 0);
+  EXPECT_EQ(updated_sheet.supports_range_.end_column_,
+            static_cast<int>(std::string("(color: red)").length()));
+
+  ASSERT_EQ(event_sender->json_messages_.size(), 1U);
+  EXPECT_EQ(event_sender->json_messages_[0].second["method"].asString(),
+            "CSS.styleSheetChanged");
+  EXPECT_EQ(event_sender->json_messages_[0]
+                .second["params"]["styleSheetId"]
+                .asString(),
+            std::to_string(devtool::ElementInspector::NodeId(dom.style_value)));
+}
+
+TEST_F(InspectorTasmExecutorTest,
+       SetSupportsTextDeactivatesUnsupportedCondition) {
+  auto dom = BuildSupportsTestDom(
+      manager_.get(),
+      {{".active-supports", tasm::CSSPropertyID::kPropertyIDWidth, "10px",
+        "(display: flex)"}});
+  element_executor_->element_root_ = dom.element.get();
+
+  auto initial_styles =
+      devtool::ElementInspector::GetMatchedStyleSheet(dom.element.get());
+  ASSERT_EQ(initial_styles.size(), 1U);
+
+  auto response_sender = std::make_shared<RecordingMessageSender>();
+  Json::Value message(Json::ValueType::objectValue);
+  message["id"] = 107;
+  message["params"]["styleSheetId"] =
+      std::to_string(devtool::ElementInspector::NodeId(dom.style_value));
+  message["params"]["range"]["startLine"] = 0;
+  message["params"]["range"]["startColumn"] = 0;
+  message["params"]["range"]["endLine"] = 0;
+  message["params"]["range"]["endColumn"] =
+      static_cast<int>(std::string("(display: flex)").length());
+  message["params"]["text"] = "(unknown-property: value)";
+
+  element_executor_->SetSupportsText(response_sender, message);
+
+  ASSERT_EQ(response_sender->json_messages_.size(), 1U);
+  const Json::Value& response = response_sender->json_messages_[0].second;
+  EXPECT_FALSE(response["result"]["supports"]["active"].asBool());
+  EXPECT_EQ(response["result"]["supports"]["text"].asString(),
+            "(unknown-property: value)");
+  EXPECT_EQ(FirstSupportsText(dom.fragment.get()), "(unknown-property: value)");
+
+  auto& style_sheet_map =
+      devtool::ElementInspector::GetStyleSheetMap(dom.style_value);
+  auto cached_styles = style_sheet_map.equal_range(".active-supports");
+  ASSERT_NE(cached_styles.first, cached_styles.second);
+  EXPECT_EQ(cached_styles.first->second.supports_text_,
+            "(unknown-property: value)");
+  EXPECT_TRUE(devtool::ElementInspector::GetMatchedStyleSheet(dom.element.get())
+                  .empty());
+}
+
+TEST_F(InspectorTasmExecutorTest, SetSupportsTextReportsErrors) {
+  auto dom = BuildSupportsTestDom(
+      manager_.get(),
+      {{".active-supports", tasm::CSSPropertyID::kPropertyIDWidth, "10px",
+        "(display: flex)"}});
+  element_executor_->element_root_ = dom.element.get();
+
+  auto response_sender = std::make_shared<RecordingMessageSender>();
+  Json::Value invalid_location_message(Json::ValueType::objectValue);
+  invalid_location_message["id"] = 107;
+  invalid_location_message["params"]["styleSheetId"] = "";
+  invalid_location_message["params"]["text"] = "(color: red)";
+  element_executor_->SetSupportsText(response_sender, invalid_location_message);
+
+  ASSERT_EQ(response_sender->json_messages_.size(), 1U);
+  EXPECT_EQ(response_sender->json_messages_[0].second["error"]["code"].asInt(),
+            devtool::kInvalidParams);
+
+  response_sender->json_messages_.clear();
+  Json::Value invalid_condition_message(Json::ValueType::objectValue);
+  invalid_condition_message["id"] = 108;
+  invalid_condition_message["params"]["styleSheetId"] =
+      std::to_string(devtool::ElementInspector::NodeId(dom.style_value));
+  invalid_condition_message["params"]["range"]["startLine"] = 0;
+  invalid_condition_message["params"]["range"]["startColumn"] = 0;
+  invalid_condition_message["params"]["range"]["endLine"] = 0;
+  invalid_condition_message["params"]["range"]["endColumn"] = 15;
+  invalid_condition_message["params"]["text"] = "not not (display: flex)";
+  element_executor_->SetSupportsText(response_sender,
+                                     invalid_condition_message);
+
+  ASSERT_EQ(response_sender->json_messages_.size(), 1U);
+  EXPECT_EQ(response_sender->json_messages_[0].second["error"]["code"].asInt(),
+            devtool::kInvalidParams);
+  EXPECT_EQ(
+      response_sender->json_messages_[0].second["error"]["message"].asString(),
+      "Invalid supports condition");
+
+  response_sender->json_messages_.clear();
+  Json::Value not_found_message(Json::ValueType::objectValue);
+  not_found_message["id"] = 109;
+  not_found_message["params"]["styleSheetId"] =
+      std::to_string(devtool::ElementInspector::NodeId(dom.style_value));
+  not_found_message["params"]["range"]["startLine"] = 99;
+  not_found_message["params"]["range"]["startColumn"] = 0;
+  not_found_message["params"]["range"]["endLine"] = 99;
+  not_found_message["params"]["range"]["endColumn"] = 10;
+  not_found_message["params"]["text"] = "(color: red)";
+  element_executor_->SetSupportsText(response_sender, not_found_message);
+
+  ASSERT_EQ(response_sender->json_messages_.size(), 1U);
+  EXPECT_EQ(response_sender->json_messages_[0].second["error"]["code"].asInt(),
+            devtool::kServerError);
+  EXPECT_EQ(
+      response_sender->json_messages_[0].second["error"]["message"].asString(),
+      "Supports rule not found");
 }
 
 TEST_F(InspectorTasmExecutorTest, GetComputedStyleOfNodeStyleOrderCase) {
