@@ -63,11 +63,13 @@ class UIOverlay : public UIBase {
   bool is_event_pass_through_{false};
   bool consume_event_self_{false};
   bool child_event_through_{false};
+  bool enable_level_unique_id_{false};
   ArkUI_LevelMode harmony_level_mode_{ARKUI_LEVEL_MODE_OVERLAY};
   ArkUI_NodeHandle stack_{nullptr};
   ArkUI_NativeDialog* native_dialog_{nullptr};
 
   void ShowDialog(bool is_show);
+  void ApplyLevelUniqueId(ArkUI_NativeDialogAPI_2* dialog_api);
   void ApplyLevelMode();
   void RestoreRootTarget();
 };
