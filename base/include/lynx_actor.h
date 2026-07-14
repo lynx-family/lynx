@@ -5,6 +5,9 @@
 #ifndef BASE_INCLUDE_LYNX_ACTOR_H_
 #define BASE_INCLUDE_LYNX_ACTOR_H_
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+
 #include <memory>
 #include <string>
 #include <utility>
@@ -157,5 +160,7 @@ class LynxActor : public LynxActorMixin<LynxActor<T>, T>,
 
 }  // namespace shell
 }  // namespace lynx
+
+#pragma clang diagnostic pop
 
 #endif  // BASE_INCLUDE_LYNX_ACTOR_H_
