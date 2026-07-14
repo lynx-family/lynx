@@ -13,6 +13,7 @@
 #include "base/trace/native/trace_event.h"
 #include "clay/lynx_adaptor/clay_value.h"
 #include "clay/lynx_adaptor/platform_extra_bundle_clay.h"
+#include "clay/lynx_adaptor/platform_node_tag_resolver.h"
 #include "clay/lynx_adaptor/prop_bundle_impl.h"
 #include "clay/ui/common/measure_constraint.h"
 #include "core/base/trace/trace_event_def.h"
@@ -147,9 +148,10 @@ void LayoutContextClay::SetLayoutNodeManager(
 int LayoutContextClay::CreateLayoutNode(int id, const std::string& tag,
                                         PropBundle* painting_data,
                                         bool allow_inline) {
+  auto resolved_tag = ResolveClayPlatformNodeTag(tag, painting_data);
   TRACE_EVENT("clay", CLAY_LAYOUT_CONTEXT_CREATE_LAYOUT_NODE, "id", id, "tag",
-              tag.c_str());
-  auto node = view_context_->CreateShadowNode(id, tag.c_str(), allow_inline);
+              resolved_tag.c_str());
+  auto node = view_context_->CreateShadowNode(id, resolved_tag, allow_inline);
   int rule = 0;
   if (node) {
     bool measurable = node->GetMeasurable() || node->GetCustomMeasurable();
