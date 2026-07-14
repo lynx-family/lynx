@@ -3,12 +3,10 @@
 // LICENSE file in the root directory of this source tree.
 package com.lynx.explorer.sparkling
 
-import android.app.Activity
 import android.app.Application
 import android.content.Context
-import com.tiktok.sparkling.Sparkling
-import com.tiktok.sparkling.SparklingContext
 import com.tiktok.sparkling.hybridkit.utils.GlobalPropsUtils
+import com.lynx.explorer.routes.RouteCoordinator
 import com.tiktok.sparkling.method.registry.core.BridgePlatformType
 import com.tiktok.sparkling.method.registry.core.IBridgeContext
 import com.tiktok.sparkling.method.registry.core.SparklingBridgeManager
@@ -48,10 +46,13 @@ object SparklingNavigationRegistrar {
       if (scheme.isBlank()) {
         return false
       }
-      val sparklingContext = SparklingContext()
-      sparklingContext.scheme = scheme
       val launchContext = context ?: bridgeContext?.context ?: application
-      return Sparkling.build(launchContext.applicationContext, sparklingContext).navigate()
+      RouteCoordinator.open(
+          launchContext.applicationContext,
+          scheme,
+          true,
+          android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+      return true
     }
 
     override fun closeView(

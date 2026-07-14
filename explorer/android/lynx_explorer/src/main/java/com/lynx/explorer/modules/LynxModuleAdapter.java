@@ -17,7 +17,7 @@ import com.lynx.devtoolwrapper.LynxDevtoolCardListener;
 import com.lynx.devtoolwrapper.LynxDevtoolGlobalHelper;
 import com.lynx.explorer.LynxViewShellActivity;
 import com.lynx.explorer.scan.QRScanActivity;
-import com.lynx.explorer.shell.TemplateDispatcher;
+import com.lynx.explorer.routes.RouteCoordinator;
 import com.lynx.react.bridge.JavaOnlyMap;
 import com.lynx.react.bridge.WritableMap;
 import com.lynx.tasm.LynxEnv;
@@ -148,15 +148,22 @@ public class LynxModuleAdapter {
     startContext.startActivity(intent);
   }
 
+  public void openSchemaWithSparkling(Context context, String url) {
+    Activity activity = context instanceof Activity ? (Activity) context : null;
+    Context startContext = getStartContext(activity);
+    int flags = startContext instanceof Activity ? 0 : Intent.FLAG_ACTIVITY_NEW_TASK;
+    RouteCoordinator.open(startContext, url, true, flags);
+  }
+
   private void startFromUrl(@Nullable Activity activity, String url) {
     Context startContext = getStartContext(activity);
     int flags = startContext instanceof Activity ? 0 : Intent.FLAG_ACTIVITY_NEW_TASK;
-    TemplateDispatcher.dispatchUrl(startContext, url, flags);
+    RouteCoordinator.open(startContext, url, false, flags);
   }
 
   private void startFromUrlSingleTop(String url) {
-    TemplateDispatcher.dispatchUrl(
-        mContext, url, Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
+    RouteCoordinator.open(
+        mContext, url, false, Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
   }
 
   private Context getStartContext(@Nullable Activity activity) {

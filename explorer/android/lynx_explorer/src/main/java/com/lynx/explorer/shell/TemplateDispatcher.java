@@ -11,6 +11,7 @@ import com.lynx.explorer.LynxViewShellActivity;
 import com.lynx.explorer.utils.QueryMapUtils;
 import com.lynx.tasm.LynxLoadMeta;
 import com.lynx.tasm.LynxView;
+import com.lynx.explorer.routes.RouteCoordinator;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -62,7 +63,7 @@ public abstract class TemplateDispatcher {
   }
 
   public static void dispatchUrl(Context ctx, String url) {
-    dispatchUrl(ctx, url, Intent.FLAG_ACTIVITY_NEW_TASK);
+    RouteCoordinator.open(ctx, url);
   }
 
   protected void pageRedirection(String url, Context ctx, int activityLaunchFlags,
@@ -76,6 +77,10 @@ public abstract class TemplateDispatcher {
   }
 
   public static void dispatchUrl(Context ctx, String url, int activityLaunchFlags) {
+    RouteCoordinator.open(ctx, url, false, activityLaunchFlags);
+  }
+
+  public static void dispatchLegacyUrl(Context ctx, String url, int activityLaunchFlags) {
     for (Map.Entry<String, TemplateDispatcher> entry : sDispatchers.entrySet()) {
       TemplateDispatcher dispatcher = entry.getValue();
       if (dispatcher.checkUrl(url)) {

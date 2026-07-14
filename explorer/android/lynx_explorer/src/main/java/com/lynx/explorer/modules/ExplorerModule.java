@@ -28,6 +28,11 @@ public class ExplorerModule extends LynxModule {
   }
 
   @LynxMethod
+  public void openSchemaWithSparkling(String url) {
+    LynxModuleAdapter.getInstance().openSchemaWithSparkling(mContext, url);
+  }
+
+  @LynxMethod
   public void setThreadMode(int threadMode) {
     LynxModuleAdapter.getInstance().setThreadMode(threadMode);
   }
