@@ -1,0 +1,28 @@
+.cq/pipelines/GithubCQTest.yml
+  s_a9acff1420a3f7::t_b062e09704452f 28
+.cq/pipelines/RunExternalCI.yml
+  h_7a1e47632c7d77 17,27
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "0c95c7e8b624e37e9b9aa438f34c73a8dd45a0e1",
+  "prompts": {},
+  "humans": {
+    "h_7a1e47632c7d77": {
+      "author": "gaohanqing <gaohanqing@bytedance.com>"
+    }
+  },
+  "sessions": {
+    "s_a9acff1420a3f7": {
+      "agent_id": {
+        "tool": "trae-cue",
+        "id": "ai_tab-icr-b2519d2d-b7f5-4389-b6b2-53f549046d6d",
+        "model": "default"
+      },
+      "human_author": null
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

@@ -1,0 +1,45 @@
+core/runtime/rts/binding/impls/renderer_function_ng.cc
+  s_cf12fd0ba43531::t_9d6656d2c65b92 6,8,11-13,15,21-81,84-105
+lynx/core/shell/runtime/mts/mts_runtime.h
+  s_cf12fd0ba43531::t_4b1867a6f49672 56-57
+lynx/platform/android/lynx_xelement/lynx_xelement_input/src/main/java/com/lynx/xelement/input/LynxUIBaseInput.kt
+  s_cf12fd0ba43531::t_ea120390070e63 231-234,236-237,239-240
+lynx/platform/android/lynx_xelement/lynx_xelement_input/src/main/java/com/lynx/xelement/input/LynxUIInput.kt
+  s_cf12fd0ba43531::t_b79b1f203655ce 20-23,27-32
+lynx/platform/android/lynx_xelement/lynx_xelement_input/src/main/res/values/styles.xml
+  s_cf12fd0ba43531::t_697cff7befc165 1-20
+lynx/platform/darwin/ios/lynx_xelement/input/LynxUIInput.m
+  s_cf12fd0ba43531::t_e79e4f40973e3b 13-19,171-173
+lynx/platform/darwin/ios/lynx_xelement/input/LynxUITextArea.m
+  s_cf12fd0ba43531::t_eb3c7dd4477640 14-20,306-308
+lynx/platform/harmony/lynx_xelement/input/ui_base_input.cc
+  s_cf12fd0ba43531::t_1c1b71b60cc0c1 174,176,718-725,727-734
+lynx/platform/harmony/lynx_xelement/input/ui_base_input.h
+  s_cf12fd0ba43531::t_d1f96cbad87173 35,45,123
+lynx/platform/harmony/lynx_xelement/input/ui_input.cc
+  s_cf12fd0ba43531::t_fe6f57649275fb 165-166,169-171
+lynx/platform/harmony/lynx_xelement/input/ui_textarea.cc
+  s_cf12fd0ba43531::t_6e5fbdb05ae4bc 190,204-206
+platform/android/lynx_xelement/lynx_xelement_input/build.gradle
+  s_cf12fd0ba43531::t_7f54b8e4599be4 28-30
+platform/android/lynx_xelement/lynx_xelement_input/src/main/java/com/lynx/xelement/input/LynxUIInputNG.kt
+  s_cf12fd0ba43531::t_da2482bb24a34a 5-6,15-30
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.5",
+  "base_commit_sha": "d6568ba587e45f021ba52dbaba766c7364c56681",
+  "prompts": {},
+  "sessions": {
+    "s_cf12fd0ba43531": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f3c7d-d8f5-7ce2-998d-5b771a3f85ff",
+        "model": "unknown"
+      },
+      "human_author": "fangzheyuan <fangzheyuan@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

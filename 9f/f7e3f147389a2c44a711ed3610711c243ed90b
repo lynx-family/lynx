@@ -1,0 +1,31 @@
+.cq/commit-queue.yml
+  h_7a1e47632c7d77 11-12
+lynx/.github/workflows/ci.yml
+  h_7a1e47632c7d77 229
+.cq/pipelines/RunExternalCI.yml
+  h_7a1e47632c7d77 17
+  s_e313c047497fc7::t_bc2b162c617ae7 27
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "9ff7e3f147389a2c44a711ed3610711c243ed90b",
+  "prompts": {},
+  "humans": {
+    "h_7a1e47632c7d77": {
+      "author": "gaohanqing <gaohanqing@bytedance.com>"
+    }
+  },
+  "sessions": {
+    "s_e313c047497fc7": {
+      "agent_id": {
+        "tool": "trae-cue",
+        "id": "ai_tab-icr-ee1047b7-3654-4ded-8e13-008294e915cb",
+        "model": "default"
+      },
+      "human_author": null
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

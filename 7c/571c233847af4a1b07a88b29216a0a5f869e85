@@ -1,0 +1,36 @@
+.cq/workflows/cq-test-internal-3.yml
+  s_8dce0ad1df6df3::t_57e80092c277d1 163-166,178-181,190-193
+  s_8dce0ad1df6df3::t_abfd72393acb00 250,279
+.cq/pipelines/oss-workflow-start.yml
+  s_8dce0ad1df6df3::t_e0957dc8aa3397 23-30
+.cq/pipelines/regress-start.yml
+  h_7a1e47632c7d77 1-21
+.cq/workflows/dry-run-external.yml
+  s_8dce0ad1df6df3::t_07ee23775f7ded 74,116,178
+.cq/workflows/regress.yml
+  h_7a1e47632c7d77 7
+  s_8dce0ad1df6df3::t_7044917a01ad39 280-283,1008-1011,1029-1032,1041-1044,1055-1058,1068-1071,1080-1083
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7c571c233847af4a1b07a88b29216a0a5f869e85",
+  "prompts": {},
+  "humans": {
+    "h_7a1e47632c7d77": {
+      "author": "gaohanqing <gaohanqing@bytedance.com>"
+    }
+  },
+  "sessions": {
+    "s_8dce0ad1df6df3": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a5054b9c2d0de288444cfcc",
+        "model": "gpt-5.4__dev"
+      },
+      "human_author": "gaohanqing <gaohanqing@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

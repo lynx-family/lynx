@@ -1,0 +1,293 @@
+lynx/base/trace/native/trace_defines.h
+  h_aeff19c41d4423 13-15
+lynx/devtool/lynx_devtool/tracing/platform/memory_trace_plugin_darwin.mm
+  s_53fc2fbb588a38::t_347f54f3514ead 12,21-31,33-39 gitai:{"mixed_line_ranges":[],"operations":[{"operation_id":"6a4b0ef065a9dd7b54a35c1a","tool_type":"agent","tool_id":"apply_patch","line_ranges":[{"Single":12},{"Range":[21,31]},{"Range":[33,39]}]}]}
+  h_aeff19c41d4423 19-20,40,48,65,70-74
+  s_53fc2fbb588a38::t_0e87cfe2bcd149 32 gitai:{"mixed_line_ranges":[],"operations":[{"operation_id":"6a4b0f1b65a9dd7b54a35c60","tool_type":"agent","tool_id":"apply_patch","line_ranges":[{"Single":32}]}]}
+  s_53fc2fbb588a38::t_a439d656259b3e 9-11
+lynx/devtool/lynx_devtool/tracing/platform/memory_trace_plugin_android.cc
+  h_aeff19c41d4423 38
+  s_53fc2fbb588a38::t_3c968852c817a6 11,40-56 gitai:{"mixed_line_ranges":[],"operations":[{"operation_id":"6a4b0fd465a9dd7b54a35cd0","tool_type":"agent","tool_id":"apply_patch","line_ranges":[{"Single":11},{"Range":[40,56]}]}]}
+  s_9fe2072d23dba6::t_33ed213dcb0f6d 67
+  s_58bee6a5d13790::t_14f0226b9feb7d 84
+  s_53fc2fbb588a38::t_e9cc8c93a21fd3 8-10
+  s_58bee6a5d13790::t_300f1d20833a9b 85-87
+lynx/devtool/lynx_devtool/tracing/platform/memory_trace_plugin_android.h
+  s_53fc2fbb588a38::t_a6121150c14f63 9-10,37-38 gitai:{"mixed_line_ranges":[],"operations":[{"operation_id":"6a4b0fc965a9dd7b54a35ca7","tool_type":"agent","tool_id":"apply_patch","line_ranges":[{"Range":[9,10]},{"Range":[37,38]}]}]}
+  h_aeff19c41d4423 11,32-33,39
+  s_53fc2fbb588a38::t_612990c4722a66 6-8
+lynx/devtool/lynx_devtool/tracing/platform/memory_trace_plugin_darwin.h
+  h_aeff19c41d4423 11,28-29,34
+  s_53fc2fbb588a38::t_3507a8f7b08cf7 9-10,32-33 gitai:{"mixed_line_ranges":[],"operations":[{"operation_id":"6a4b0ee565a9dd7b54a35bef","tool_type":"agent","tool_id":"apply_patch","line_ranges":[{"Range":[9,10]},{"Range":[32,33]}]}]}
+  s_53fc2fbb588a38::t_b7df10f6fd6ca9 6-8
+lynx/core/shell/lynx_shell.cc
+  h_aeff19c41d4423 454-455
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.5",
+  "base_commit_sha": "d3639e666efb5220c0d6731ec20f2aa97dafd201",
+  "prompts": {},
+  "humans": {
+    "h_aeff19c41d4423": {
+      "author": "yuyang.1024 <yuyang.1024@bytedance.com>"
+    }
+  },
+  "sessions": {
+    "s_53fc2fbb588a38": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a16620f3bf261486506bb0e",
+        "model": "gpt-5.5__dev"
+      },
+      "human_author": "yuyang.1024 <yuyang.1024@bytedance.com>"
+    },
+    "s_58bee6a5d13790": {
+      "agent_id": {
+        "tool": "trae-cue",
+        "id": "ai_tab-icr-ff24e2ca-ce11-428e-95ca-5bfb1c9dcb0e",
+        "model": "default"
+      },
+      "human_author": "yuyang.1024 <yuyang.1024@bytedance.com>"
+    },
+    "s_9fe2072d23dba6": {
+      "agent_id": {
+        "tool": "trae-cue",
+        "id": "ai_tab-icr-4e4727f6-d6ea-40c2-af82-48d242abbbb5",
+        "model": "default"
+      },
+      "human_author": "yuyang.1024 <yuyang.1024@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {
+    "lynx/devtool/lynx_devtool/tracing/platform/memory_trace_plugin_android.cc": [
+      {
+        "hash": "s_53fc2fbb588a38::t_3c968852c817a6",
+        "line_ranges": [
+          {
+            "Single": 11
+          },
+          {
+            "Range": [
+              40,
+              56
+            ]
+          }
+        ],
+        "mixed_line_ranges": [],
+        "operations": [
+          {
+            "operation_id": "6a4b0fd465a9dd7b54a35cd0",
+            "tool_type": "agent",
+            "tool_id": "apply_patch",
+            "line_ranges": [
+              {
+                "Single": 11
+              },
+              {
+                "Range": [
+                  40,
+                  56
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "lynx/devtool/lynx_devtool/tracing/platform/memory_trace_plugin_android.h": [
+      {
+        "hash": "s_53fc2fbb588a38::t_a6121150c14f63",
+        "line_ranges": [
+          {
+            "Range": [
+              9,
+              10
+            ]
+          },
+          {
+            "Range": [
+              37,
+              38
+            ]
+          }
+        ],
+        "mixed_line_ranges": [],
+        "operations": [
+          {
+            "operation_id": "6a4b0fc965a9dd7b54a35ca7",
+            "tool_type": "agent",
+            "tool_id": "apply_patch",
+            "line_ranges": [
+              {
+                "Range": [
+                  9,
+                  10
+                ]
+              },
+              {
+                "Range": [
+                  37,
+                  38
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "lynx/devtool/lynx_devtool/tracing/platform/memory_trace_plugin_darwin.h": [
+      {
+        "hash": "s_53fc2fbb588a38::t_3507a8f7b08cf7",
+        "line_ranges": [
+          {
+            "Range": [
+              9,
+              10
+            ]
+          },
+          {
+            "Range": [
+              32,
+              33
+            ]
+          }
+        ],
+        "mixed_line_ranges": [],
+        "operations": [
+          {
+            "operation_id": "6a4b0ee565a9dd7b54a35bef",
+            "tool_type": "agent",
+            "tool_id": "apply_patch",
+            "line_ranges": [
+              {
+                "Range": [
+                  9,
+                  10
+                ]
+              },
+              {
+                "Range": [
+                  32,
+                  33
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "lynx/devtool/lynx_devtool/tracing/platform/memory_trace_plugin_darwin.mm": [
+      {
+        "hash": "s_53fc2fbb588a38::t_347f54f3514ead",
+        "line_ranges": [
+          {
+            "Single": 12
+          },
+          {
+            "Range": [
+              21,
+              31
+            ]
+          },
+          {
+            "Range": [
+              33,
+              39
+            ]
+          }
+        ],
+        "mixed_line_ranges": [],
+        "operations": [
+          {
+            "operation_id": "6a4b0ef065a9dd7b54a35c1a",
+            "tool_type": "agent",
+            "tool_id": "apply_patch",
+            "line_ranges": [
+              {
+                "Single": 12
+              },
+              {
+                "Range": [
+                  21,
+                  31
+                ]
+              },
+              {
+                "Range": [
+                  33,
+                  39
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "hash": "s_53fc2fbb588a38::t_0e87cfe2bcd149",
+        "line_ranges": [
+          {
+            "Single": 32
+          }
+        ],
+        "mixed_line_ranges": [],
+        "operations": [
+          {
+            "operation_id": "6a4b0f1b65a9dd7b54a35c60",
+            "tool_type": "agent",
+            "tool_id": "apply_patch",
+            "line_ranges": [
+              {
+                "Single": 32
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "remote_transcripts": {
+    "s_53fc2fbb588a38": {
+      "tool": "trae",
+      "conversation_id": "6a16620f3bf261486506bb0e",
+      "session_id": "6a16620f3bf261486506bb0e",
+      "status": "remote_only",
+      "message": "Remote transcript resolution is not implemented yet for TRAE prompts."
+    },
+    "s_53fc2fbb588a38::t_0e87cfe2bcd149": {
+      "tool": "trae",
+      "conversation_id": "6a16620f3bf261486506bb0e",
+      "session_id": "6a16620f3bf261486506bb0e",
+      "status": "remote_only",
+      "message": "Remote transcript resolution is not implemented yet for TRAE prompts."
+    },
+    "s_53fc2fbb588a38::t_347f54f3514ead": {
+      "tool": "trae",
+      "conversation_id": "6a16620f3bf261486506bb0e",
+      "session_id": "6a16620f3bf261486506bb0e",
+      "status": "remote_only",
+      "message": "Remote transcript resolution is not implemented yet for TRAE prompts."
+    },
+    "s_53fc2fbb588a38::t_3507a8f7b08cf7": {
+      "tool": "trae",
+      "conversation_id": "6a16620f3bf261486506bb0e",
+      "session_id": "6a16620f3bf261486506bb0e",
+      "status": "remote_only",
+      "message": "Remote transcript resolution is not implemented yet for TRAE prompts."
+    },
+    "s_53fc2fbb588a38::t_3c968852c817a6": {
+      "tool": "trae",
+      "conversation_id": "6a16620f3bf261486506bb0e",
+      "session_id": "6a16620f3bf261486506bb0e",
+      "status": "remote_only",
+      "message": "Remote transcript resolution is not implemented yet for TRAE prompts."
+    },
+    "s_53fc2fbb588a38::t_a6121150c14f63": {
+      "tool": "trae",
+      "conversation_id": "6a16620f3bf261486506bb0e",
+      "session_id": "6a16620f3bf261486506bb0e",
+      "status": "remote_only",
+      "message": "Remote transcript resolution is not implemented yet for TRAE prompts."
+    }
+  }
+}

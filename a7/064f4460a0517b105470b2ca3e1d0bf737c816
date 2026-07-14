@@ -1,0 +1,18 @@
+.cq/workflows/periodic-tasks.yml
+  s_56cf9c6b47c130::t_f05167d5b1cb5a 948-955,977-978
+.cq/pipelines/pc-vs-mobile-e2e-test-reporter.yml
+  s_56cf9c6b47c130::t_e9e7d32fae8b11 39-42
+  h_dc1658ba751399 35-37
+.cq/pipelines/windows-vs-android-e2e-css-test.yml
+  s_56cf9c6b47c130::t_262c7871ee66b5 1-40
+testing/lynx-platform-tests/test_script/lynxlib/test_runner/plugins/pc_mobile_diff_plugin.py
+  h_dc1658ba751399 58-71,111
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a7064f4460a0517b105470b2ca3e1d0bf737c816",
+  "prompts": {},
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}
