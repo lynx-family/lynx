@@ -17,6 +17,7 @@ import { LLog, LynxEnv, MetaData, TemplateBundle } from '../Index';
 import { RuntimeLifecycleListener } from '../jsbridge/RuntimeLifecycleListener';
 import { TemplateData } from './MetaData';
 import { SessionStorageCallback } from './SessionStorage';
+import { getGlobalModuleWrappers } from './library/LynxLibraryRegistry';
 
 const TAG = 'LynxBackgroundRuntime';
 const INVALID_SESSION_STORAGE_LISTENER_ID = -1;
@@ -43,6 +44,9 @@ export class LynxBackgroundRuntime extends lynx.LynxRuntimeWrapper {
     super();
     this.providers = [genericResourceFetcher, mediaResourceFetcher, templateResourceFetcher];
     this.backgroundRuntimeOptions = new LynxBackgroundRuntimeOptions(backgroundRuntimeOptions);
+    getGlobalModuleWrappers().forEach((v, k) => {
+      this.moduleManager.registerModule(k, v);
+    });
     modules?.forEach((v, k) => {
       this.moduleManager.registerModule(k, v);
     });

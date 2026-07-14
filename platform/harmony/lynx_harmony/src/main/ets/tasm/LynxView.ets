@@ -47,6 +47,7 @@ import { ILogBox } from '../devtool_wrapper/ILogBox';
 import { LynxDevTool } from '../devtool_wrapper/LynxDevTool';
 import { ILynxDevToolService } from './service/ILynxDevToolService';
 import { LynxImageConfig } from './image/LynxImageConfig';
+import { getGlobalModuleWrappers, mergeGlobalBehaviors } from './library/LynxLibraryRegistry';
 
 export enum MeasureMode {
   INDEFINITE = 0,
@@ -284,6 +285,11 @@ export struct LynxView {
       this.templateResourceFetcher = this.templateResourceFetcher ?? this.backgroundRuntime.templateResourceFetcher;
     }
 
+    if (!this.backgroundRuntime) {
+      getGlobalModuleWrappers().forEach((v, k) => {
+        this.moduleManager.registerModule(k, v);
+      });
+    }
     this.modules.forEach((v, k) => {
       this.moduleManager.registerModule(k, v);
     });
@@ -346,14 +352,15 @@ export struct LynxView {
 
     let providers = [this.genericResourceFetcher, this.mediaResourceFetcher, this.templateResourceFetcher];
     this.perfController = new PerformanceController();
+    const behaviors = mergeGlobalBehaviors(this.behaviors);
     if (this.uiRendererCreator) {
       this.uiRenderer =
         this.uiRendererCreator.createUIRenderer(this.context,
-          this.rootSize, providers, this.behaviors) as LynxUIRenderer;
+          this.rootSize, providers, behaviors) as LynxUIRenderer;
     } else {
       this.uiRenderer =
         new HarmonyUIRenderer(this.context, this.rootSize,
-          this.behaviors, this.getUIContext(), this.perfController);
+          behaviors, this.getUIContext(), this.perfController);
     }
     let extensionService: ILynxExtensionService | undefined =
       LynxServiceCenter.getService<ILynxExtensionService>(LynxServiceType.Extension);

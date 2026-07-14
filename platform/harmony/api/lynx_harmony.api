@@ -355,6 +355,23 @@ export interface ModuleClassWrapper {
   param?: Object;
 }
 
+export class LynxLibraryRegistry {
+  registerBehavior(name: string, behavior: Behavior): void;
+  registerModule(name: string, wrapper: ModuleClassWrapper): void;
+  registerService(type: LynxServiceType, instance: IServiceProvider): void;
+  registerInitializer(name: string, initializer: () => void): void;
+  static setupGlobal(entries: LynxLibraryProviderEntry[]): void;
+}
+
+export interface LynxLibraryProvider {
+  register(registry: LynxLibraryRegistry): void;
+}
+
+export interface LynxLibraryProviderEntry {
+  packageName: string;
+  provider: LynxLibraryProvider;
+}
+
 export class LynxHttpRequest {
   constructor(httpMethod: string, url: string, originUrl: string, httpBody: ArrayBuffer, httpHeaders: Record<string, string>, customConfig: Record<string, Object>);
   public httpMethod: string;
