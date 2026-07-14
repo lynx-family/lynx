@@ -1,0 +1,16 @@
+platform/harmony/entry/src/main/ets/provider/ExampleTemplateResourceFetcher.ets
+  h_4ae36eb083c79d 5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "c83bbd96cef8d9db6a0265c201449a037909358e",
+  "prompts": {},
+  "humans": {
+    "h_4ae36eb083c79d": {
+      "author": "tanxuelian.rovic <tanxuelian.rovic@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}
