@@ -1,0 +1,20 @@
+.cq/pipelines/RunExternalCI.yml
+  h_7a1e47632c7d77 17,27
+.cq/commit-queue.yml
+  h_7a1e47632c7d77 11-12
+lynx/.github/workflows/ci.yml
+  h_7a1e47632c7d77 133-149,151-169,171-189,229,239-272,274-294,296-316,318-319,321-339,341-369,371-391,415-437,524-706,708-757,759-775,777-809,811-876,878-1048,1050-1066,1068-1094,1096-1117
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "968f94b355fd2301f156f65dc3c6d1415a9752fb",
+  "prompts": {},
+  "humans": {
+    "h_7a1e47632c7d77": {
+      "author": "gaohanqing <gaohanqing@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}
