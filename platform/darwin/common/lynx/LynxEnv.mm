@@ -94,17 +94,6 @@ static void LynxClaySetup() {
   static dispatch_once_t onceToken;
   dispatch_once(&onceToken, ^{
     _instance = [[LynxEnv alloc] init];
-    [_instance initDevTool];
-    [_instance initLynxTrace];
-    // register component here without using +load
-#if OS_IOS
-    [LynxComponentRegistry registerUI:[LynxUICollection class] withName:@"list"];
-    dispatch_async(dispatch_get_main_queue(), ^{
-      // Delay text prewarm until LynxEnv setup is fully finished to avoid pulling
-      // trail/settings initialization into LynxEnv init.
-      [_instance prewarmTextIfNeeded];
-    });
-#endif
   });
 
   return _instance;
@@ -131,6 +120,17 @@ static void LynxClaySetup() {
 #endif
     [LynxService(LynxServiceExtensionProtocol) onLynxEnvSetup];
     LynxClaySetup();
+    [self initDevTool];
+    [self initLynxTrace];
+    // register component here without using +load
+#if OS_IOS
+    [LynxComponentRegistry registerUI:[LynxUICollection class] withName:@"list"];
+    dispatch_async(dispatch_get_main_queue(), ^{
+      // Delay text prewarm until LynxEnv setup is fully finished to avoid pulling
+      // trail/settings initialization into LynxEnv init.
+      [self prewarmTextIfNeeded];
+    });
+#endif
     init_flow_completed_.store(true, std::memory_order_release);
   }
   _LogI(@"LynxEnv: init success");
