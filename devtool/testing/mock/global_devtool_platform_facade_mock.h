@@ -31,6 +31,21 @@ class GlobalDevToolPlatformFacadeMock
     return timeout_ms;
   }
 
+  static std::string& LynxSettingResultJson() {
+    static std::string result_json = "{}";
+    return result_json;
+  }
+
+  static std::string& LynxSettingErrorMessage() {
+    static std::string error_message;
+    return error_message;
+  }
+
+  static lynx::devtool::LynxSettingRequest& LastLynxSettingRequest() {
+    static lynx::devtool::LynxSettingRequest request;
+    return request;
+  }
+
   void StartMemoryTracing() override {}
   void StopMemoryTracing() override {}
   void GetAllMemoryUsage(
@@ -44,6 +59,15 @@ class GlobalDevToolPlatformFacadeMock
     LastMemoryUsageTimeoutMs() = timeout_ms;
     if (callback) {
       std::move(callback)(MemoryUsageResultJson(), MemoryUsageErrorMessage());
+    }
+  }
+  void HandleLynxSetting(
+      lynx::devtool::LynxSettingRequest request,
+      lynx::devtool::GlobalDevToolPlatformFacade::LynxSettingCallback callback)
+      override {
+    LastLynxSettingRequest() = std::move(request);
+    if (callback) {
+      std::move(callback)(LynxSettingResultJson(), LynxSettingErrorMessage());
     }
   }
   lynx::trace::TraceController* GetTraceController() override {

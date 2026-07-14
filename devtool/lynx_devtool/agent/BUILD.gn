@@ -32,6 +32,8 @@ devtool_agent_shared_sources = [
   "domain_agent/inspector_log_agent.h",
   "domain_agent/inspector_lynx_agent_ng.cc",
   "domain_agent/inspector_lynx_agent_ng.h",
+  "domain_agent/inspector_lynx_setting_agent.cc",
+  "domain_agent/inspector_lynx_setting_agent.h",
   "domain_agent/inspector_memory_agent.cc",
   "domain_agent/inspector_memory_agent.h",
   "domain_agent/inspector_overlay_agent_ng.cc",
