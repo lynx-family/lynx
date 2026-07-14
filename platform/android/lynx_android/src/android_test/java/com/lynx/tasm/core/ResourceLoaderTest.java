@@ -104,6 +104,15 @@ public class ResourceLoaderTest {
   }
 
   @Test
+  public void lynxResourceLoaderLoadJSSourceReturnsBytesForContentUri() throws Exception {
+    byte[] expected = "Hello LynxResourceLoader ContentProvider".getBytes(StandardCharsets.UTF_8);
+    TestContentProvider.setContent(expected);
+
+    LynxResourceLoader loader = new LynxResourceLoader(null, null, null, null, null);
+    assertArrayEquals(expected, invokeLoadJSSource(loader, CONTENT_URI));
+  }
+
+  @Test
   public void testLoadBytecodeFailureDoesNotReportError() throws Exception {
     CountDownLatch errorLatch = new CountDownLatch(1);
     ILynxErrorReceiver errorReceiver = new ILynxErrorReceiver() {
@@ -136,6 +145,12 @@ public class ResourceLoaderTest {
 
   private byte[] invokeLoadJSSource(ResourceLoader loader, String name) throws Exception {
     Method loadJSSource = ResourceLoader.class.getDeclaredMethod("loadJSSource", String.class);
+    loadJSSource.setAccessible(true);
+    return (byte[]) loadJSSource.invoke(loader, name);
+  }
+
+  private byte[] invokeLoadJSSource(LynxResourceLoader loader, String name) throws Exception {
+    Method loadJSSource = LynxResourceLoader.class.getDeclaredMethod("loadJSSource", String.class);
     loadJSSource.setAccessible(true);
     return (byte[]) loadJSSource.invoke(loader, name);
   }

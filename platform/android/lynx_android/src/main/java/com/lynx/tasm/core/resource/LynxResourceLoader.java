@@ -23,6 +23,7 @@ import com.lynx.tasm.provider.LynxResourceCallback;
 import com.lynx.tasm.provider.LynxResourceProvider;
 import com.lynx.tasm.provider.LynxResourceResponse;
 import com.lynx.tasm.resourceprovider.LynxResourceRequest;
+import com.lynx.tasm.resourceprovider.LynxResourceUtil;
 import com.lynx.tasm.resourceprovider.generic.LynxGenericResourceFetcher;
 import com.lynx.tasm.resourceprovider.template.LynxTemplateResourceFetcher;
 import com.lynx.tasm.utils.UIThreadUtils;
@@ -38,6 +39,7 @@ public class LynxResourceLoader {
   static final String CORE_JS = "assets://lynx_core.js";
   static final String CORE_DEBUG_JS = "lynx_core_dev.js";
   static final String FILE_SCHEME = "file://";
+  static final String CONTENT_SCHEME = "content://";
   static final String ASSETS_SCHEME = "assets://";
   // For compatibility with iOS, on iOS the path of assets://lynx_core.js and assets://[others].js
   // is different
@@ -219,10 +221,11 @@ public class LynxResourceLoader {
     /* 1. if the file name is assets://lynx_core.js
      *   i. if devtool is enabled, try to load assets://lynx_core_dev.js
      * 2. if the file name is start with "file://", use FileInputStream to get the file content.
-     * 3. if the file name is start with "assets://", use
+     * 3. if the file name is start with "content://", load it from ContentProvider.
+     * 4. if the file name is start with "assets://", use
      * LynxEnv.inst().getAppContext().getResources().getAssets().open() to get the
      * file content
-     * 4. if the file name is start with "lynx_assets://", the same as above. (the reason for this
+     * 5. if the file name is start with "lynx_assets://", the same as above. (the reason for this
      * is compatibility with iOS resource loader, the paths of assets://lynx_core.js and
      * assets://other_file.js are different in iOS)
      * */
@@ -259,6 +262,12 @@ public class LynxResourceLoader {
             file = new File(LynxEnv.inst().getAppContext().getFilesDir(), path);
           }
           inputStream = new FileInputStream(file);
+        } else if (name.length() > CONTENT_SCHEME.length() && name.startsWith(CONTENT_SCHEME)) {
+          byte[] bytes =
+              LynxResourceUtil.readFileFromContentProvider(LynxEnv.inst().getAppContext(), name);
+          if (bytes != null) {
+            return bytes;
+          }
         } else if (name.length() > ASSETS_SCHEME.length() && name.startsWith(ASSETS_SCHEME)) {
           inputStream = LynxEnv.inst().getAppContext().getResources().getAssets().open(
               name.substring(ASSETS_SCHEME.length()));
