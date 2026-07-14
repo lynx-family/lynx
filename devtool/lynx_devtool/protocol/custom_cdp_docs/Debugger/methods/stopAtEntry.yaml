@@ -1,0 +1,19 @@
+summary: Pauses PrimJS execution at the next available statement.
+parameters: []
+returns: []
+events:
+  - Debugger.paused
+notes:
+  - This Lynx extension is implemented by the PrimJS inspector method map.
+  - The handler does not send a normal CDP response with id and result fields.
+  - The handler sends Debugger.paused through the pause-on-next-statement path. If no explicit pause reason is stored, the paused event uses stopAtEntry as the reason.
+  - V8 stop-at-entry behavior is controlled through the V8 Inspector integration and is not represented by this Lynx-extension method.
+examples:
+  - title: Pause at entry
+    request:
+      id: 1
+      method: Debugger.stopAtEntry
+    response:
+      method: Debugger.paused
+      params:
+        reason: stopAtEntry

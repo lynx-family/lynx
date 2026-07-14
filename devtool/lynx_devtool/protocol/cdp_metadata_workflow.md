@@ -6,6 +6,8 @@
 flowchart LR
     subgraph Engine["Lynx engine repo"]
         A["Native agent declarations"] --> B["Metadata scanner"]
+        Q["PrimJS method map"] --> B
+        V["V8 CDP version reference"] --> B
         U["Vendored upstream CDP schema"] --> B
         B --> C["Generated manifest"]
         M["Manual / agent docs writing"] --> F["Custom YAML docs"]
@@ -33,6 +35,7 @@ flowchart LR
 
 - `devtool/lynx_devtool/protocol/cdp_manifest.generated.yaml`
   - Generated inventory of locally supported CDP methods and future CDP entries such as events.
+  - Contains engine-owned external CDP references, such as the V8 CDP documentation root adopted by Lynx.
   - Rewritten by the update script.
   - Do not edit by hand.
 - `devtool/lynx_devtool/protocol/custom_cdp_docs/`
@@ -62,7 +65,7 @@ tools/env.sh python3 devtool/lynx_devtool/protocol/scripts/update_cdp_metadata.p
 ```
 
 - `--write`
-  - Scans the code.
+  - Scans native domain agents and the PrimJS runtime method map.
   - Compares local methods with vendored standard CDP.
   - Rewrites `cdp_manifest.generated.yaml`.
 - `--check`
@@ -104,7 +107,25 @@ Scan non-forwarding native domain agents:
 - Exclude `*_unittest.cc`.
 - Extract entries matching `functions_map_["Domain.method"]`.
 - Store the declaration file as `source` for each extracted method.
-- Skip forwarded JS-engine domains.
+- Do not use forwarding-only JS-engine domain agents as method inventory sources.
+  - `Debugger`, `Runtime`, `HeapProfiler`, and `Profiler` are registered as DevTool domains, but their domain agents forward requests through `devtool_mediator_->DispatchJSMessage(...)`.
+  - `Debugger` may also contain local pre-hook methods before forwarding. Treat those entries as forwarding hooks, not as complete method support declarations.
+
+Scan the PrimJS runtime CDP method map:
+
+- `third_party/quickjs/src/src/inspector/protocols.cc`
+- Extract method keys from `debugger_function_map` in `GetDebugFunctionMap()`.
+- Store the map file as `source` for each extracted method.
+- These entries represent the PrimJS inspector implementation. Use the listed source path only as implementation evidence.
+- Do not add per-method runtime availability fields. Website docs can explain globally that PrimJS is used for both Main-Thread Scripting and Background-Thread Scripting.
+
+Record the V8 external CDP reference:
+
+- V8-backed runtime CDP is delegated to V8 Inspector and should not generate per-method entries from Lynx source.
+- Store the engine-adopted V8 CDP documentation root under `externalReferences.v8.cdpRoot`.
+- Current value is hardcoded as `https://chromedevtools.github.io/devtools-protocol/1-3`.
+- Update this value when Lynx upgrades the adopted V8 Inspector protocol version.
+- Do not scan or parse V8 source code for this workflow.
 
 Scan domain registration:
 
@@ -116,39 +137,38 @@ Scan domain registration:
   - `global-and-instance`
 
 Do not infer detailed API docs from C++ implementation bodies. Use the scan only for inventory and source links.
-Do not scan arbitrary string literals, engine implementation maps, or one-off protocol checks as supported CDP entries.
+Do not scan arbitrary string literals, unlisted engine implementation maps, or one-off protocol checks as supported CDP entries.
 If a method or event is not declared in a scanner-friendly place, treat it as unsupported by this metadata flow until the implementation adds a proper declaration.
 
 ## Deferred Scope
 
-These are intentional v1 boundaries rather than task records.
+These are intentional current boundaries rather than task records.
 
-- Forwarded JS-engine CDP methods are outside `cdp_manifest.generated.yaml`.
-  - `Debugger`, `Runtime`, `HeapProfiler`, and `Profiler` are registered as DevTool domains, but their instance agents forward requests through `devtool_mediator_->DispatchJSMessage(...)`.
-  - `Debugger` may also contain local pre-hook methods before forwarding. Treat those entries as forwarding hooks, not as complete method support declarations.
-  - Do not emit methods from engine implementation maps, including `third_party/quickjs/src/src/inspector/protocols.cc` `GetDebugFunctionMap()`.
-  - Add engine-backed CDP methods only after the workflow has scanners for every supported JS engine and explicit per-engine availability metadata.
-- Structured lifecycle metadata is outside the v1 generated schema.
+- Runtime-backed CDP inventory is limited to the PrimJS method map.
+  - JavaScriptCore is omitted because Lynx does not support CDP in JSC.
+  - V8 is represented only by `externalReferences.v8`; do not emit V8 per-method entries.
+  - Do not add per-engine availability metadata. Keep method rows as `name`, `origin`, and `source`.
+- Structured lifecycle metadata is outside the generated schema.
   - Do not emit `lifecycle` in `cdp_manifest.generated.yaml`.
   - Document compatibility, deprecation, experimental status, and behavior differences as prose in `custom_cdp_docs/`.
   - Add structured lifecycle only together with an authoritative declaration contract and scanner validation rules.
 
 Future discussion reference:
 
-- Consider a lightweight CDP declaration framework so code declares support through a uniform DSL instead of the v1 heuristic scanner.
+- Consider a lightweight CDP declaration framework so code declares support through a uniform DSL instead of the current heuristic scanner.
 - The declaration should be compile-checked but should not become a runtime registry. It can use macros around small enum values for `scope`, `engine`, and `lifecycle`.
 - Example shape:
 
   ```cpp
-  LYNX_CDP_METHOD(Runtime, evaluate, kInstance, kQuickJS, kActive)
+  LYNX_CDP_METHOD(Runtime, evaluate, kInstance, kPrimJS, kActive)
   LYNX_CDP_METHOD(DOM, getDocument, kInstance, kEngineIndependent, kActive)
-  LYNX_CDP_EVENT(Runtime, consoleAPICalled, kInstance, kQuickJS, kActive)
+  LYNX_CDP_EVENT(Runtime, consoleAPICalled, kInstance, kPrimJS, kActive)
   ```
 
 - `origin` should still be generated by comparing declarations with the vendored upstream CDP schema, not declared in C++.
-- Native domain agents should declare their native CDP entries near their implementation; runtime-backed implementations such as QuickJS, V8, and future runtimes should declare only the entries they actually implement.
+- Native domain agents should declare their native CDP entries near their implementation; runtime-backed implementations such as PrimJS and future runtimes should declare only the entries they actually implement.
 - A future migration scanner should cross-check legacy implementation maps, such as `functions_map_`, against declarations so undeclared implemented methods are detected.
-- Header placement is unresolved. `devtool/lynx_devtool/protocol/cdp.h` is natural for Lynx DevTool agents, but it may be an awkward dependency for third-party runtime code such as QuickJS. `devtool/base_devtool/native/public/cdp_protocol.h` may be a better public, engine-neutral location.
+- Header placement is unresolved. `devtool/lynx_devtool/protocol/cdp.h` is natural for Lynx DevTool agents, but it may be an awkward dependency for third-party runtime code. A matching runtime-local declaration header can keep PrimJS independent from Lynx while still giving the scanner deterministic method and event names.
 - The declaration header must be lightweight and dependency-neutral: enum values and macros only, with no JSON, dispatcher, `CDPDomainAgentBase`, or LynxDevTool mediator dependency.
 
 ## Controlled Field Values
@@ -175,10 +195,14 @@ If event scanning is added later, use the same origin values and keep entry type
 ## Generated Metadata Shape
 
 ```yaml
-version: 1
+version: 2
 generatedFrom:
   chromeDevToolsProtocol: cdp_upstream/protocol.json
 upstreamRoot: https://chromedevtools.github.io/devtools-protocol/tot
+externalReferences:
+  v8:
+    displayName: V8
+    cdpRoot: https://chromedevtools.github.io/devtools-protocol/1-3
 domains:
   - name: DOM
     origin: standard
@@ -197,16 +221,32 @@ domains:
       - name: start
         origin: lynx-extension
         source: devtool/lynx_devtool/agent/domain_agent/inspector_recording_agent_ng.cc
+  - name: Runtime
+    origin: standard
+    scope: instance
+    methods:
+      - name: evaluate
+        origin: standard
+        source: third_party/quickjs/src/src/inspector/protocols.cc
+      - name: getHeapUsage
+        origin: standard
+        source: third_party/quickjs/src/src/inspector/protocols.cc
 ```
 
 Rules:
 
 - Do not store derived entry keys. Method keys are derived as `<domain.name>.<method.name>`.
 - Do not store per-domain or per-method upstream URLs.
+- Do not store `domains.sources`.
+- Do not store per-method runtime availability fields.
+- Website docs own global prose for PrimJS MTS/BTS behavior and V8 delegated behavior.
 - Derive standard CDP links from `upstreamRoot`:
   - Domain page: `<upstreamRoot>/<Domain>/`
   - Method: `<upstreamRoot>/<Domain>/#method-<method>`
   - Event, when event scanning is added: `<upstreamRoot>/<Domain>/#event-<event>`
+- Derive V8 external reference links from `externalReferences.v8.cdpRoot` if the website needs V8-specific links:
+  - Domain page: `<externalReferences.v8.cdpRoot>/<Domain>/`
+  - Method: `<externalReferences.v8.cdpRoot>/<Domain>/#method-<method>`
 
 ## Manual Docs Shape
 
@@ -343,6 +383,27 @@ Then review and commit:
 
 5. Review methods whose origin changed.
 6. Update docs data if a method moves between standard and custom classifications.
+
+## V8 CDP Reference Update Flow
+
+The V8 CDP reference is engine-owned metadata because it reflects the V8 Inspector protocol version adopted by Lynx. The website repository should consume it, not own it.
+
+1. When Lynx upgrades the adopted V8 Inspector protocol version, update the hardcoded `externalReferences.v8.cdpRoot` value used by the metadata update script.
+2. Current value:
+
+   ```yaml
+   externalReferences:
+     v8:
+       displayName: V8
+       cdpRoot: https://chromedevtools.github.io/devtools-protocol/1-3
+   ```
+
+3. Regenerate and check generated metadata:
+
+   ```bash
+   tools/env.sh python3 devtool/lynx_devtool/protocol/scripts/update_cdp_metadata.py --write
+   tools/env.sh python3 devtool/lynx_devtool/protocol/scripts/update_cdp_metadata.py --check
+   ```
 
 ## Availability Notes
 
