@@ -26,11 +26,40 @@ export interface SetGlobalPropsParams {
   global_props: object
 }
 
+export interface RecordedTemplateDataParams {
+  value?: object | string | null,
+  preprocessorName?: string | null,
+  readOnly?: boolean
+}
+
 export interface LoadTemplateParams {
-  url: Uint8Array,
+  url?: string | null,
   source: string,
   isCSR: boolean,
   templateData: object
+}
+
+export interface LoadComponentWithCallbackParams {
+  url: string,
+  source: string,
+  sync_tag?: boolean,
+  callback_id?: number
+}
+
+export interface UpdateMetaDataParams {
+  templateData?: RecordedTemplateDataParams | null,
+  global_props?: object | null
+}
+
+export interface UpdatePageOptionParams {
+  reset_page_data?: boolean
+}
+
+export interface UpdateDataByPreParsedDataParams {
+  value?: object | string | null,
+  preprocessorName?: string | null,
+  readOnly?: boolean,
+  updatePageOption?: UpdatePageOptionParams
 }
 
 export interface SendGlobalEventParams {
