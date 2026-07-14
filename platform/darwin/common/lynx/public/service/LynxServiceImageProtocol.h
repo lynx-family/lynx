@@ -212,6 +212,20 @@ typedef void (^LynxImageLoadCompletionBlock)(UIImage *_Nullable image, NSError *
 @optional
 - (dispatch_block_t)loadImageWithOptions:(LynxImageLoadOptions *)options;
 
+/**
+ * Loads SVG content as a UIImage through the image service.
+ *
+ * @param requestUrl The SVG resource URL or data URI wrapped by LynxURL.
+ * @param targetSize The target image size in points.
+ * @param contextInfo Additional context information used to find the caller UI if needed.
+ * @param completed The completion block to execute when the SVG load is finished.
+ */
+@optional
+- (void)loadSVGImageWithURL:(LynxURL *)requestUrl
+                       size:(CGSize)targetSize
+                contextInfo:(NSDictionary *)contextInfo
+                  completed:(LynxImageLoadCompletionBlock)completed;
+
 @end
 
 NS_ASSUME_NONNULL_END

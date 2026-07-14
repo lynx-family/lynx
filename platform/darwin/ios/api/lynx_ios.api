@@ -3615,6 +3615,7 @@ public protocol LynxServiceImageProtocol-p : <LynxServiceProtocol> {
   public void LynxServiceImageProtocol-p::setFrameCacheAutomatically:value:(id view,[value] BOOL frameCacheAutomatically);
   public void LynxServiceImageProtocol-p::registerAnimatedImageCallback:UI:(id view,[UI] LynxUIImage *ui);
   public dispatch_block_t LynxServiceImageProtocol-p::loadImageWithOptions:(LynxImageLoadOptions *options);
+  public void LynxServiceImageProtocol-p::loadSVGImageWithURL:size:contextInfo:completed:(LynxURL *requestUrl,[size] CGSize targetSize,[contextInfo] NSDictionary *contextInfo,[completed] LynxImageLoadCompletionBlock completed);
 }
 
 public class LynxServiceInfo : NSObject {

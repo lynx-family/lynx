@@ -38,6 +38,16 @@
 
 #import <Lynx/LynxContext+Internal.h>
 
+static NSString* const LynxSVGImageDataPrefix = @"data:image/svg+xml;base64";
+static NSString* const LynxSVGImageErrorDomain = @"LynxSVGImageErrorDomain";
+static NSString* const LynxImageEventLoad = @"load";
+
+static NSError* LynxSVGImageError(NSString* description) {
+  return [NSError errorWithDomain:LynxSVGImageErrorDomain
+                             code:ECLynxResourceImageException
+                         userInfo:@{NSLocalizedDescriptionKey : description}];
+}
+
 typedef NS_ENUM(NSInteger, LynxResizeMode) {
   LynxResizeModeCover = UIViewContentModeScaleAspectFill,
   LynxResizeModeContain = UIViewContentModeScaleAspectFit,
@@ -271,6 +281,7 @@ typedef NS_ENUM(NSInteger, LynxImagePlayState) {
 
 @implementation LynxUIImage {
   NSString* _preSrc;
+  NSUInteger _svgRequestGeneration;
 }
 
 #if LYNX_LAZY_LOAD
@@ -717,6 +728,69 @@ UIEdgeInsets LynxRoundInsetsToPixel(UIEdgeInsets edgeInsets) {
   }
 }
 
+- (BOOL)isSVGSource:(LynxURL*)requestUrl {
+  if (requestUrl.type != LynxImageRequestSrc) {
+    return NO;
+  }
+  NSURL* url = requestUrl.url;
+  NSString* src = url.absoluteString.lowercaseString;
+  return [src hasPrefix:LynxSVGImageDataPrefix] ||
+         [url.pathExtension.lowercaseString isEqualToString:@"svg"];
+}
+
+- (BOOL)loadSVGImageWithRequest:(LynxURL*)requestUrl
+                           size:(CGSize)size
+                    contextInfo:(NSDictionary*)contextInfo {
+  NSUInteger requestGeneration = ++_svgRequestGeneration;
+  id<LynxServiceImageProtocol> imageService = [LynxImageLoader imageService];
+  if (![imageService respondsToSelector:@selector(loadSVGImageWithURL:
+                                                                 size:contextInfo:completed:)]) {
+    return NO;
+  }
+  NSString* requestedSrc = [requestUrl.url.absoluteString copy];
+  __weak typeof(self) weakSelf = self;
+  [imageService
+      loadSVGImageWithURL:requestUrl
+                     size:size
+              contextInfo:contextInfo
+                completed:^(UIImage* _Nullable image, NSError* _Nullable error,
+                            NSURL* _Nullable imageURL) {
+                  __strong typeof(weakSelf) strongSelf = weakSelf;
+                  if (strongSelf == nil) {
+                    return;
+                  }
+                  if (requestGeneration != strongSelf->_svgRequestGeneration ||
+                      ![strongSelf.src.url.absoluteString isEqualToString:requestedSrc]) {
+                    return;
+                  }
+                  if (image == nil || error != nil) {
+                    NSError* loadError =
+                        error ?: LynxSVGImageError(@"Failed to load or decode SVG image.");
+                    [strongSelf reportURLSrcError:loadError
+                                             type:requestUrl.type
+                                           source:requestUrl.url];
+                    return;
+                  }
+                  strongSelf.image = image;
+                  [strongSelf updateLayerMaskOnFrameChangedInner:YES URL:requestUrl];
+                  if ([strongSelf.eventSet valueForKey:LynxImageEventLoad]) {
+                    [strongSelf.context.eventEmitter
+                        dispatchCustomEvent:[[LynxDetailEvent alloc]
+                                                initWithName:LynxImageEventLoad
+                                                  targetSign:strongSelf.sign
+                                                      detail:@{
+                                                        @"height" : [NSNumber
+                                                            numberWithFloat:roundf(
+                                                                                image.size.height)],
+                                                        @"width" : [NSNumber
+                                                            numberWithFloat:roundf(
+                                                                                image.size.width)]
+                                                      }]];
+                  }
+                }];
+  return true;
+}
+
 - (void)requestImage:(LynxURL*)requestUrl {
   if (_cancelBlocks[@(requestUrl.type)]) {
     _cancelBlocks[@(requestUrl.type)]();
@@ -735,6 +809,26 @@ UIEdgeInsets LynxRoundInsetsToPixel(UIEdgeInsets edgeInsets) {
   }
   TRACE_EVENT(LYNX_TRACE_CATEGORY, UI_IMAGE_REQUEST_IMAGE, "url", [url.absoluteString UTF8String],
               "useNewImage", [self shouldUseNewImage]);
+  CGSize size = CGSizeZero;
+  if ((_preFetchWidth > 0 && _preFetchWidth > 0) &&
+      (self.frame.size.width <= 0 || self.frame.size.height <= 0)) {
+    size = CGSizeMake(_preFetchWidth, _preFetchHeight);
+  } else {
+    size = self.view.bounds.size;
+  }
+  if ([self isSVGSource:requestUrl]) {
+    if (![self loadSVGImageWithRequest:requestUrl
+                                  size:size
+                           contextInfo:@{
+                             LynxImageFetcherContextKeyUI : self,
+                             LynxImagePreloadAllFrames : @(YES)
+                           }]) {
+      [self reportURLSrcError:LynxSVGImageError(@"SVG image loader is unavailable.")
+                         type:requestUrl.type
+                       source:url];
+    }
+    return;
+  }
   NSMutableArray* processors = [NSMutableArray new];
   if (!UIEdgeInsetsEqualToEdgeInsets(_capInsets, UIEdgeInsetsZero)) {
     [processors addObject:[[LynxNinePatchImageProcessor alloc] initWithCapInsets:_capInsets
@@ -761,14 +855,6 @@ UIEdgeInsets LynxRoundInsetsToPixel(UIEdgeInsets edgeInsets) {
     }
   }
   __weak typeof(self) weakSelf = self;
-  static NSString* LynxImageEventLoad = @"load";
-  CGSize size = CGSizeZero;
-  if ((_preFetchWidth > 0 && _preFetchWidth > 0) &&
-      (self.frame.size.width <= 0 || self.frame.size.height <= 0)) {
-    size = CGSizeMake(_preFetchWidth, _preFetchHeight);
-  } else {
-    size = self.view.bounds.size;
-  }
   LynxImageLoadCompletionBlock requestBlock = ^(UIImage* _Nullable image, NSError* _Nullable error,
                                                 NSURL* _Nullable imageURL) {
     typeof(weakSelf) strongSelf = weakSelf;
