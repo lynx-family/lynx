@@ -127,7 +127,7 @@ void RasterFrameService::Commit(
   // using async compositor. If we are using sync compositor, it's the Push
   // request of LayerTree.
   if (!layer_tree) {
-    CommitWithNoUpdates();
+    CommitWithNoUpdates(recorder ? recorder->GetFrameRequestId() : 0);
   } else {
     TRACE_EVENT("clay", "RasterFrameService::Commit");
     if (force_begin_frame_) {
@@ -163,7 +163,7 @@ void RasterFrameService::Commit(
   }
 }
 
-void RasterFrameService::CommitWithNoUpdates() {
+void RasterFrameService::CommitWithNoUpdates(uint64_t frame_request_id) {
   TRACE_EVENT("clay", "RasterFrameService::CommitWithNoUpdates");
   if (force_begin_frame_) {
     force_begin_frame_ = false;
@@ -172,6 +172,9 @@ void RasterFrameService::CommitWithNoUpdates() {
       scheduler_->NotifyReadyToCommit(true);
       RequestFrameSignal();
     }
+  }
+  if (rasterizer_ && frame_request_id != 0) {
+    rasterizer_->NotifyFrameRequestCompletedWithoutUpdates(frame_request_id);
   }
 }
 

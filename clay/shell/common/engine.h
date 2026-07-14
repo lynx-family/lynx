@@ -8,6 +8,7 @@
 #ifndef CLAY_SHELL_COMMON_ENGINE_H_
 #define CLAY_SHELL_COMMON_ENGINE_H_
 
+#include <cstdint>
 #include <future>
 #include <memory>
 #include <string>
@@ -155,6 +156,7 @@ class Engine : public clay::RenderDelegate, public clay::Recyclable {
   // clay::RenderDelegate
   void ScheduleFrame() override;
   void ForceBeginFrame() override;
+  void ForceBeginFrame(uint64_t frame_request_id);
   void OnFirstMeaningfulLayout() override;
   bool Raster(std::unique_ptr<clay::LayerTree> layer_tree,
               std::unique_ptr<clay::FrameTimingsRecorder> recorder = nullptr,

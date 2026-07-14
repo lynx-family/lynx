@@ -165,6 +165,19 @@ TEST(FrameTimingsRecorderTest, ClonedHasSameFrameNumber) {
   ASSERT_EQ(recorder->GetFrameNumber(), cloned->GetFrameNumber());
 }
 
+TEST(FrameTimingsRecorderTest, FrameRequestIdDefaultsToZeroAndSurvivesClone) {
+  auto recorder = std::make_unique<FrameTimingsRecorder>();
+  EXPECT_EQ(recorder->GetFrameRequestId(), 0u);
+
+  const auto now = fml::TimePoint::Now();
+  recorder->RecordVsync(now, now + fml::TimeDelta::FromMilliseconds(16));
+  recorder->RecordFrameRequestId(42);
+
+  auto cloned = recorder->CloneUntil(FrameTimingsRecorder::State::kVsync);
+  EXPECT_EQ(recorder->GetFrameRequestId(), 42u);
+  EXPECT_EQ(cloned->GetFrameRequestId(), 42u);
+}
+
 TEST(FrameTimingsRecorderTest, ClonedHasSameVsyncStartAndTarget) {
   auto recorder = std::make_unique<FrameTimingsRecorder>();
 

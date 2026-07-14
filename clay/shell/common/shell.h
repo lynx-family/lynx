@@ -8,6 +8,8 @@
 #ifndef CLAY_SHELL_COMMON_SHELL_H_
 #define CLAY_SHELL_COMMON_SHELL_H_
 
+#include <atomic>
+#include <cstdint>
 #include <deque>
 #include <functional>
 #include <memory>
@@ -39,6 +41,7 @@
 #include "base/include/fml/synchronization/sync_switch.h"
 #include "base/include/fml/synchronization/waitable_event.h"
 #include "base/include/fml/thread.h"
+#include "base/include/fml/time/time_delta.h"
 #include "base/include/fml/time/time_point.h"
 #include "clay/fml/status.h"
 #include "clay/shell/common/devtools_instrumentation.h"
@@ -450,6 +453,8 @@ class Shell final : public PlatformView::Delegate,
   void OnPostInvalidate(bool is_raster_frame);
 
  private:
+  void InvalidateScreenshotRequests();
+
   const std::shared_ptr<clay::ServiceManager> service_manager_;
   const TaskRunners task_runners_;
   const clay::Puppet<clay::Owner::kPlatform, AnimatorInfoService>
@@ -480,8 +485,11 @@ class Shell final : public PlatformView::Delegate,
       std::make_shared<std::atomic<bool>>(true);
   std::mutex waiting_for_first_frame_mutex_;
   std::condition_variable waiting_for_first_frame_condition_;
-  std::shared_ptr<std::atomic<bool>> screenshot =
-      std::make_shared<std::atomic<bool>>(true);
+  std::shared_ptr<std::atomic<uint64_t>> screenshot_request_in_flight_ =
+      std::make_shared<std::atomic<uint64_t>>(0);
+  std::shared_ptr<std::atomic<uint64_t>> screenshot_generation_ =
+      std::make_shared<std::atomic<uint64_t>>(1);
+  fml::TimeDelta screenshot_hard_timeout_ = fml::TimeDelta::FromSeconds(10);
 
   // Whether there's a task scheduled to report the timings.
   bool frame_timings_report_scheduled_ = false;

@@ -48,7 +48,7 @@ class RasterFrameService
 
   // Commit with no updates, it's used when we are not able to build a new
   // LayerTree. To avoid the state machine to break, we must do a commit action.
-  void CommitWithNoUpdates();
+  void CommitWithNoUpdates(uint64_t frame_request_id = 0);
 
   // Force commit & draw the LayerTree, it's only used for unittests. The
   // shell_test is not able to handle the scheduler with state machine.

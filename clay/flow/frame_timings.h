@@ -9,6 +9,7 @@
 #define CLAY_FLOW_FRAME_TIMINGS_H_
 
 #include <array>
+#include <cstdint>
 #include <memory>
 #include <mutex>
 #include <string>
@@ -213,6 +214,12 @@ class FrameTimingsRecorder {
 
   void RecordForced(bool forced);
 
+  /// Associates this frame with a caller-owned request. Zero means that the
+  /// frame is not correlated with a request.
+  void RecordFrameRequestId(uint64_t request_id);
+
+  uint64_t GetFrameRequestId() const;
+
   void RecordVsyncSequenceId(int id);
 
   /// Clones the recorder until (and including) the specified state.
@@ -261,6 +268,7 @@ class FrameTimingsRecorder {
   fml::TimePoint vsync_time_on_generation_;
   // force to produce layer_tree even the pipeLine is full.
   bool forced_ = false;
+  uint64_t frame_request_id_ = 0;
   int vsync_sequence_id_ = -1;
   size_t layer_cache_count_;
   size_t layer_cache_bytes_;

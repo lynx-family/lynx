@@ -307,7 +307,15 @@ void Engine::ScheduleFrame() {
   ui_frame_service_.Act([](auto& impl) { impl.RequestFrame(); });
 }
 
-void Engine::ForceBeginFrame() {
+void Engine::ForceBeginFrame() { ForceBeginFrame(0); }
+
+void Engine::ForceBeginFrame(uint64_t frame_request_id) {
+  // A correlated screenshot must produce its own complete layer tree. Merely
+  // observing clean UI state is insufficient because a newer tree may still
+  // be pending on the raster thread while the retained tree is stale.
+  if (frame_request_id != 0 && page_view_) {
+    page_view_->RequestPaintBase();
+  }
   clay::Puppet<clay::Owner::kUI, VsyncWaiterService> vsync_waiter_service =
       service_manager_->GetService<VsyncWaiterService>();
   const auto frame_begin_time = fml::TimePoint::Now();
@@ -318,6 +326,7 @@ void Engine::ForceBeginFrame() {
       std::make_unique<FrameTimingsRecorder>();
   recorder->RecordVsync(frame_begin_time, frame_end_time);
   recorder->RecordForced(true);
+  recorder->RecordFrameRequestId(frame_request_id);
   ui_frame_service_.Act([recorder = std::move(recorder)](auto& impl) mutable {
     impl.ForceBeginFrame(std::move(recorder));
   });
@@ -337,7 +346,11 @@ bool Engine::Raster(std::unique_ptr<clay::LayerTree> layer_tree,
     layer_tree.reset();
   }
   if (!layer_tree) {
-    raster_frame_service_.Act([](auto& impl) { impl.CommitWithNoUpdates(); });
+    const uint64_t frame_request_id =
+        recorder ? recorder->GetFrameRequestId() : 0;
+    raster_frame_service_.Act([frame_request_id](auto& impl) {
+      impl.CommitWithNoUpdates(frame_request_id);
+    });
   } else {
     if (!recorder) {
       recorder = std::make_unique<FrameTimingsRecorder>();
