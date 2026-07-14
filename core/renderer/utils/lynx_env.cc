@@ -44,10 +44,7 @@ void LynxEnv::onPiperResponsed(const std::string& module_name,
                                const std::string& method_name,
                                const std::string& url,
                                const std::string& response,
-                               const std::string& invoke_session) {
-#if OS_ANDROID
-#endif
-}
+                               const std::string& invoke_session) {}
 
 bool LynxEnv::ContainKey(const std::string& key) {
   std::lock_guard<std::mutex> lock(mutex_);
@@ -373,8 +370,9 @@ bool LynxEnv::IsDebugModeEnabled() {
 std::optional<std::string> LynxEnv::GetLocalEnv(Key key) {
   std::string key_string = GetEnvKeyString(key);
   std::lock_guard<std::mutex> lock(mutex_);
-  if (local_env_map_.count(key_string) > 0) {
-    return local_env_map_[key_string];
+  auto it = local_env_map_.find(key_string);
+  if (it != local_env_map_.end()) {
+    return it->second;
   }
   return std::nullopt;
 }
