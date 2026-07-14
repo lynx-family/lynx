@@ -1,0 +1,25 @@
+testing/lynx-platform-tests/test_script/resources/android/clay_text_auto_font_size_1.png
+  s_2d5cc66d41f29b::t_6c660880b138ef 2-3
+testing/lynx-platform-tests/test_script/resources/android/clay_text_auto_font_size_2.png
+  s_2d5cc66d41f29b::t_5b127b67a778a6 2-3
+testing/lynx-platform-tests/test_script/resources/android/clay_text_auto_font_size_3.png
+  s_2d5cc66d41f29b::t_e3c35e3264a872 2-3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "36acdef95f8c87b5cf3c6dd47c025596d67af46f",
+  "prompts": {},
+  "sessions": {
+    "s_2d5cc66d41f29b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f5ea2-19b9-79d3-8795-e351035947cf",
+        "model": "unknown"
+      },
+      "human_author": "liangruijie.030116 <liangruijie.030116@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}
