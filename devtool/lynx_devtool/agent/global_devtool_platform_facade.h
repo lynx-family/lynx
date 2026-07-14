@@ -16,6 +16,12 @@
 namespace lynx {
 namespace devtool {
 
+struct LynxSettingRequest {
+  std::string method;
+  std::string key;
+  std::string value;
+};
+
 /*
 Why use GlobalDevToolPlatformFacade?
 
@@ -47,6 +53,8 @@ class GlobalDevToolPlatformFacade
   // model explicit for platform bridges that capture request-scoped resources.
   using MemoryUsageCallback =
       base::MoveOnlyClosure<void, const std::string&, const std::string&>;
+  using LynxSettingCallback =
+      base::MoveOnlyClosure<void, const std::string&, const std::string&>;
 
   static GlobalDevToolPlatformFacade& GetInstance();
 
@@ -62,6 +70,15 @@ class GlobalDevToolPlatformFacade
       std::move(callback)(
           "{}",
           "Memory.getAllMemoryUsage is not available in this Lynx runtime.");
+    }
+  }
+
+  virtual void HandleLynxSetting(LynxSettingRequest request,
+                                 LynxSettingCallback callback) {
+    (void)request;
+    if (callback) {
+      std::move(callback)("{}",
+                          "LynxSetting is not available in this Lynx runtime.");
     }
   }
 
