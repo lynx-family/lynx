@@ -1,0 +1,53 @@
+platform/harmony/api/lynx_harmony.api
+  s_ea7eaf4a9eaa57::t_96bbc9c5ec5ef5 358-374
+platform/harmony/lynx_harmony/src/main/ets/Index.ets
+  s_ea7eaf4a9eaa57::t_4e0f410de57136 14-17
+platform/harmony/lynx_harmony/src/main/ets/tasm/LynxBackgroundRuntime.ets
+  s_ea7eaf4a9eaa57::t_c8caed0cd79c82 20,47-49
+platform/harmony/lynx_harmony/src/main/ets/tasm/LynxView.ets
+  s_ea7eaf4a9eaa57::t_4bdb738950eb14 50,288-292,355,359,363
+platform/harmony/lynx_harmony/src/main/ets/tasm/library/LynxLibraryRegistry.ets
+  s_ea7eaf4a9eaa57::t_26498d623de006 1-187
+platform/harmony/lynx_library_plugin/README.md
+  s_ea7eaf4a9eaa57::t_c884231be7d677 1-28
+platform/harmony/lynx_library_plugin/package.json
+  s_ea7eaf4a9eaa57::t_51a1ced3fe0a4f 1-35
+platform/harmony/lynx_library_plugin/src/cli.ts
+  s_ea7eaf4a9eaa57::t_09e30bdc82e782 1-74
+platform/harmony/lynx_library_plugin/src/generator.ts
+  s_ea7eaf4a9eaa57::t_37c05eea0bc596 1-353
+platform/harmony/lynx_library_plugin/src/index.ts
+  s_ea7eaf4a9eaa57::t_4d009096c6849b 1-15
+platform/harmony/lynx_library_plugin/src/plugin.ts
+  s_ea7eaf4a9eaa57::t_6dc891cb88f353 1-28
+platform/harmony/lynx_library_plugin/src/scanner.ts
+  s_ea7eaf4a9eaa57::t_a5f0a669f23968 1-226
+platform/harmony/lynx_library_plugin/src/types.ts
+  s_ea7eaf4a9eaa57::t_9829a8e3553241 1-47
+platform/harmony/lynx_library_plugin/test/plugin.test.ts
+  s_ea7eaf4a9eaa57::t_18b4956e1c822b 1-291
+platform/harmony/lynx_library_plugin/tsconfig.build.json
+  s_ea7eaf4a9eaa57::t_13f9168b1ffa69 1-11
+platform/harmony/lynx_library_plugin/tsconfig.json
+  s_ea7eaf4a9eaa57::t_025170c55c4a54 1-18
+platform/harmony/lynx_library_plugin/vitest.config.ts
+  s_ea7eaf4a9eaa57::t_3da0b9a9c95a1c 1-8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "ddf4629f26ee3bf66a35b0c089d66398aae77e04",
+  "prompts": {},
+  "sessions": {
+    "s_ea7eaf4a9eaa57": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019e2be6-557d-7023-ac19-e2623e46eaa6",
+        "model": "unknown"
+      },
+      "human_author": "jianliang00 <wangjianliang0@126.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}
