@@ -48,7 +48,57 @@ void UIOverlay::OnPropUpdate(const std::string& name,
         harmony_level_mode_ = ARKUI_LEVEL_MODE_EMBEDDED;
       }
     }
+  } else if (name == "level-unique-id") {
+    enable_level_unique_id_ = value.IsBool() && value.Bool();
+    has_level_unique_id_ = false;
+    harmony_level_unique_id_ = 0;
+    if (enable_level_unique_id_) {
+      TryUpdateLevelUniqueId(level_unique_node_);
+      if (native_dialog_) {
+        ApplyLevelMode();
+      }
+    }
   }
+}
+
+void UIOverlay::TryUpdateLevelUniqueId(ArkUI_NodeHandle node) {
+  if (!enable_level_unique_id_) {
+    return;
+  }
+  if (!node) {
+    return;
+  }
+  int32_t unique_id = 0;
+  int32_t result = OH_ArkUI_NodeUtils_GetNodeUniqueId(node, &unique_id);
+  if (result == 0) {
+    has_level_unique_id_ = true;
+    harmony_level_unique_id_ = unique_id;
+  }
+  LOGI("overlay get node unique id sign="
+       << Sign() << " node=" << static_cast<const void*>(node)
+       << " result=" << result << " unique_id=" << unique_id
+       << " has_level_unique_id=" << has_level_unique_id_);
+}
+
+void UIOverlay::ApplyLevelUniqueId(ArkUI_NativeDialogAPI_2* dialog_api) {
+  if (!enable_level_unique_id_) {
+    return;
+  }
+  if (!dialog_api) {
+    return;
+  }
+  if (!has_level_unique_id_) {
+    TryUpdateLevelUniqueId(level_unique_node_);
+  }
+  if (!has_level_unique_id_) {
+    return;
+  }
+  int32_t result =
+      dialog_api->setLevelUniqueId(native_dialog_, harmony_level_unique_id_);
+  LOGI("overlay setLevelUniqueId sign="
+       << Sign() << " dialog=" << static_cast<const void*>(native_dialog_)
+       << " level_unique_id=" << harmony_level_unique_id_
+       << " result=" << result);
 }
 
 void UIOverlay::ApplyLevelMode() {
@@ -62,6 +112,7 @@ void UIOverlay::ApplyLevelMode() {
   if (!dialog_api) {
     return;
   }
+  ApplyLevelUniqueId(dialog_api);
   dialog_api->setLevelMode(native_dialog_, harmony_level_mode_);
 }
 
@@ -135,6 +186,24 @@ void UIOverlay::RemoveNode(UIBase* child) {
   auto draw = child->DrawNode();
   if (!draw) {
     return;
+  }
+  if (draw == level_unique_node_) {
+    level_unique_node_ = nullptr;
+    has_level_unique_id_ = false;
+    harmony_level_unique_id_ = 0;
+    for (auto* sibling : children_) {
+      if (sibling == child) {
+        continue;
+      }
+      level_unique_node_ = sibling->DrawNode();
+      break;
+    }
+    if (enable_level_unique_id_) {
+      TryUpdateLevelUniqueId(level_unique_node_);
+      if (native_dialog_) {
+        ApplyLevelMode();
+      }
+    }
   }
   NodeManager::Instance().RemoveNode(stack_, draw);
 }
@@ -298,7 +367,17 @@ LynxPointerEventsValue UIOverlay::PointerEvents() {
 }
 
 void UIOverlay::InsertNode(UIBase* child, int index) {
-  NodeManager::Instance().InsertNode(stack_, child->DrawNode(), index);
+  ArkUI_NodeHandle child_node = child->DrawNode();
+  NodeManager::Instance().InsertNode(stack_, child_node, index);
+  if (!children_.empty() && children_.front() == child) {
+    level_unique_node_ = child_node;
+    if (enable_level_unique_id_) {
+      TryUpdateLevelUniqueId(level_unique_node_);
+      if (native_dialog_) {
+        ApplyLevelMode();
+      }
+    }
+  }
 }
 
 void UIOverlay::OnNodeReady() {
