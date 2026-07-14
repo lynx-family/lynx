@@ -18,7 +18,7 @@ Contains the native iOS apps that integrated Lynx. See [iOS Build Guide](darwin/
 
 ## Developing the Bundled Lynx Projects
 
-If you already have a built Lynx Explorer app (or any other Lynx-integrated environment), you can focus on developing the Lynx screens that run inside it. There are currently two screens: 
+If you already have a built Lynx Explorer app (or any other Lynx-integrated environment), you can focus on developing the Lynx screens that run inside it. There are currently two screens:
 
 ### homepage/
 Contains the home screen of Lynx Explorer implemented with ReactLynx. This is the entry point of the application.

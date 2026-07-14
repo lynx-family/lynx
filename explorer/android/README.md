@@ -185,7 +185,7 @@ You can compile LynxExplorer through the command line terminal or Android Studio
 
 1. Use Android Studio to open the `/explorer/android` directory of the project.
 
-2. Make sure that the JDK used by your Android Studio points to the JDK 11 installed in the above steps: 
+2. Make sure that the JDK used by your Android Studio points to the JDK 11 installed in the above steps:
 
     1. Open Settings > Build,Execution,Deployment > Build Tools > Gradle, modify the Default Gradle JDK.
     2. Fill in the path of your JAVA_HOME. If you follow the JDK configuration steps above, it is likely to be
