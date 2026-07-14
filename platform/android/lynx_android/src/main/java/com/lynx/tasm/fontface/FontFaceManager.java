@@ -33,7 +33,9 @@ import com.lynx.tasm.provider.LynxResourceProvider;
 import com.lynx.tasm.provider.LynxResourceRequest;
 import com.lynx.tasm.provider.LynxResourceResponse;
 import com.lynx.tasm.resourceprovider.generic.LynxGenericResourceFetcher;
+import com.lynx.tasm.service.ILynxResourceService;
 import com.lynx.tasm.service.LynxResourceServiceRequestParams;
+import com.lynx.tasm.service.LynxServiceCenter;
 import com.lynx.tasm.utils.CallStackUtil;
 import com.lynx.tasm.utils.TypefaceUtils;
 import com.lynx.tasm.utils.UIThreadUtils;
@@ -54,6 +56,7 @@ public class FontFaceManager {
   // TODO: For resource loading methods such as base64, it can be used as a general utils method.
   private static final String LOCAL_SRC_PREFIX = "file://";
   private static final String LOCAL_ASSET_PREFIX = "asset:///";
+  private static final String CONTENT_SRC_PREFIX = "content://";
   private static final String URL_SRC_PREFIX = "https";
   private static final String URL_HTTP_SRC_PREFIX = "http";
   private static final String BASE64_SRC_PREFIX = "data:";
@@ -400,6 +403,8 @@ public class FontFaceManager {
             reportError(LynxSubErrorCode.E_RESOURCE_FONT_REGISTER_FAILED,
                 "Create typeface from local asset failed", path, e, context);
           }
+        } else if (path.startsWith(CONTENT_SRC_PREFIX)) {
+          typeface = createTypefaceFromContentUri(path, context);
         }
       }
     }
@@ -737,5 +742,28 @@ public class FontFaceManager {
     }
 
     return typeface;
+  }
+
+  private Typeface createTypefaceFromContentUri(String uri, LynxContext context) {
+    ILynxResourceService resourceService =
+        LynxServiceCenter.inst().getService(ILynxResourceService.class);
+    if (resourceService == null) {
+      reportError(LynxSubErrorCode.E_RESOURCE_FONT_REGISTER_FAILED,
+          "Resource service is unavailable for content URI", uri, null, context);
+      return null;
+    }
+
+    try {
+      Typeface typeface = resourceService.createTypeFace(uri);
+      if (typeface == null) {
+        reportError(LynxSubErrorCode.E_RESOURCE_FONT_REGISTER_FAILED,
+            "Resource service returned no typeface for content URI", uri, null, context);
+      }
+      return typeface;
+    } catch (RuntimeException e) {
+      reportError(LynxSubErrorCode.E_RESOURCE_FONT_REGISTER_FAILED,
+          "Create typeface from content URI failed", uri, e, context);
+      return null;
+    }
   }
 }
