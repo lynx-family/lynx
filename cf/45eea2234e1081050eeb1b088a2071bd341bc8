@@ -1,0 +1,89 @@
+.gitignore
+  s_ea7eaf4a9eaa57::t_ef51bb252bee01 109-112
+packages/lynx/autolink-codegen/README.md
+  s_ea7eaf4a9eaa57::t_002ede7c57759b 1-13
+packages/lynx/autolink-codegen/package.json
+  s_ea7eaf4a9eaa57::t_7d780013fcc59f 1-46
+packages/lynx/autolink-codegen/src/index.ts
+  s_ea7eaf4a9eaa57::t_c7c93ce2cb7dba 1-539
+packages/lynx/autolink-codegen/test/codegen.test.ts
+  s_ea7eaf4a9eaa57::t_27b555d3bccbf7 1-203
+packages/lynx/autolink-codegen/tsconfig.build.json
+  s_ea7eaf4a9eaa57::t_1c1d7bf63fa1a7 1-11
+packages/lynx/autolink-codegen/tsconfig.json
+  s_ea7eaf4a9eaa57::t_4b1979feb53c5d 1-18
+packages/lynx/autolink-codegen/turbo.json
+  s_ea7eaf4a9eaa57::t_49049b714dda60 1-18
+packages/lynx/create-lynx-library/README.md
+  s_ea7eaf4a9eaa57::t_f6f79ad34e8214 1-17
+packages/lynx/create-lynx-library/package.json
+  s_ea7eaf4a9eaa57::t_791e5e5f55985f 1-44
+packages/lynx/create-lynx-library/src/cli.ts
+  s_ea7eaf4a9eaa57::t_6c098dbf6296da 1-153
+packages/lynx/create-lynx-library/src/index.ts
+  s_ea7eaf4a9eaa57::t_157b96c41e7274 1-743
+packages/lynx/create-lynx-library/test/create.test.ts
+  s_ea7eaf4a9eaa57::t_3b9929ffe521a6 1-113
+packages/lynx/create-lynx-library/tsconfig.build.json
+  s_ea7eaf4a9eaa57::t_4f20953587adb9 1-11
+packages/lynx/create-lynx-library/tsconfig.json
+  s_ea7eaf4a9eaa57::t_360d72d8a839b1 1-18
+packages/lynx/create-lynx-library/turbo.json
+  s_ea7eaf4a9eaa57::t_7db12ac4c9184e 1-18
+platform/harmony/api/lynx_harmony.api
+  s_ea7eaf4a9eaa57::t_9a1559795f2506 350-366
+platform/harmony/lynx_harmony/src/main/ets/Index.ets
+  s_ea7eaf4a9eaa57::t_5fe3a4fc69d6d1 14-17
+platform/harmony/lynx_harmony/src/main/ets/tasm/LynxBackgroundRuntime.ets
+  s_ea7eaf4a9eaa57::t_31d5ab090197fd 20,47-49
+platform/harmony/lynx_harmony/src/main/ets/tasm/LynxView.ets
+  s_ea7eaf4a9eaa57::t_c83ed442116b52 50,271-275,338,342,346
+platform/harmony/lynx_harmony/src/main/ets/tasm/library/LynxLibraryRegistry.ets
+  s_ea7eaf4a9eaa57::t_0e434dafc49c92 1-187
+platform/harmony/lynx_library_plugin/README.md
+  s_ea7eaf4a9eaa57::t_084c1e224e5bdc 1-28
+platform/harmony/lynx_library_plugin/package.json
+  s_ea7eaf4a9eaa57::t_9486d4179e721e 1-35
+platform/harmony/lynx_library_plugin/src/cli.ts
+  s_ea7eaf4a9eaa57::t_c816580a82b851 1-74
+platform/harmony/lynx_library_plugin/src/generator.ts
+  s_ea7eaf4a9eaa57::t_482fbbe1eaa33e 1-353
+platform/harmony/lynx_library_plugin/src/index.ts
+  s_ea7eaf4a9eaa57::t_3c0d75194a5645 1-15
+platform/harmony/lynx_library_plugin/src/plugin.ts
+  s_ea7eaf4a9eaa57::t_0abfb6531b7e7e 1-28
+platform/harmony/lynx_library_plugin/src/scanner.ts
+  s_ea7eaf4a9eaa57::t_bf6072eae6c75d 1-226
+platform/harmony/lynx_library_plugin/src/types.ts
+  s_ea7eaf4a9eaa57::t_82babcc90b5777 1-47
+platform/harmony/lynx_library_plugin/test/plugin.test.ts
+  s_ea7eaf4a9eaa57::t_3c27760ffe6415 1-291
+platform/harmony/lynx_library_plugin/tsconfig.build.json
+  s_ea7eaf4a9eaa57::t_b9728413cc16b8 1-11
+platform/harmony/lynx_library_plugin/tsconfig.json
+  s_ea7eaf4a9eaa57::t_4bd95046cd94a5 1-18
+platform/harmony/lynx_library_plugin/vitest.config.ts
+  s_ea7eaf4a9eaa57::t_73d6c6793e986a 1-8
+pnpm-lock.yaml
+  s_ea7eaf4a9eaa57::t_4d32fdc2828cf9 280-313
+pnpm-workspace.yaml
+  s_ea7eaf4a9eaa57::t_aa91391418f926 4-5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "cf45eea2234e1081050eeb1b088a2071bd341bc8",
+  "prompts": {},
+  "sessions": {
+    "s_ea7eaf4a9eaa57": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019e2be6-557d-7023-ac19-e2623e46eaa6",
+        "model": "unknown"
+      },
+      "human_author": "jianliang00 <wangjianliang0@126.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}
