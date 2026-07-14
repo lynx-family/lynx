@@ -1,0 +1,27 @@
+example/android/lynx_example/src/main/java/com/lynx/react/uiapp/shell/LynxViewShell.java
+  h_4d36f4d76420fe 94-95,849
+  s_b4588b3d30ff20::t_18afd42eea95a5 219-224,231-251,257-277,355-382
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "7c15957a2e48b13f8e117197f54f96bd8bad47c6",
+  "prompts": {},
+  "humans": {
+    "h_4d36f4d76420fe": {
+      "author": "yangguangzhao <yangguangzhao.solace@bytedance.com>"
+    }
+  },
+  "sessions": {
+    "s_b4588b3d30ff20": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f407b-d8d4-7380-b9f6-89e5541777a2",
+        "model": "unknown"
+      },
+      "human_author": "yangguangzhao <yangguangzhao.solace@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

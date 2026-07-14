@@ -1,0 +1,138 @@
+lynx/core/runtime/js/template_delegate.h
+  h_4d36f4d76420fe 47-51,105
+lynx/core/runtime/js/bindings/js_app.cc
+  s_3097f766b6b866::t_4f647a28d4f0d8 3149
+  s_3097f766b6b866::t_2994a83b920d93 3152-3155
+  s_de6c0e651dff6f::t_cf21d2530aa5c8 3156
+  s_3097f766b6b866::t_ad7912d6abf0af 3150-3151
+  s_995e8b78afdefc::t_3945202881dfc3 3148
+lynx/core/runtime/js/mock_template_delegate.h
+  h_4d36f4d76420fe 43-44
+testing/lynx/tasm/radon_fiber/radon_fiber_equality_tests.cc
+  s_b4588b3d30ff20::t_35b7284e71c2b8 1793-1796
+lynx/core/renderer/template_entry_holder.cc
+  s_3097f766b6b866::t_56a184b43a1c3d 85-87
+  h_4d36f4d76420fe 89
+  s_c9f1650572061f::t_e787b9d42e1f70 88,90
+lynx/core/shell/lynx_engine.cc
+  s_3097f766b6b866::t_4d97261237fb21 352-356
+  s_3097f766b6b866::t_2a7c6a9134a0eb 357-358
+lynx/core/renderer/trace/renderer_trace_event_def.h
+  h_4d36f4d76420fe 257-259
+lynx/core/renderer/template_assembler.h
+  s_3097f766b6b866::t_e8c19698612778 317-319
+  s_3097f766b6b866::t_9a169fdef7b0b9 320
+lynx/core/renderer/js_bundle_holder_impl.cc
+  s_a64833b30db460::t_2e703f00904845 21
+lynx/core/shell/runtime/bts/bts_runtime_mediator.cc
+  s_3097f766b6b866::t_d9f48e903aed89 154-158,174
+  s_3097f766b6b866::t_2fedef42bc3e73 176-178
+  s_3097f766b6b866::t_e1fa4d5ac3bc76 162-173,175
+  s_3097f766b6b866::t_fad908919a473a 159-161
+lynx/core/renderer/template_assembler.cc
+  h_4d36f4d76420fe 1501,1503-1514,1518,1520-1532
+  s_3097f766b6b866::t_fd0718454373eb 1500,1502,1515-1517,1519
+lynx/core/runtime/js/js_bundle.h
+  h_4d36f4d76420fe 63-64
+lynx/core/shell/lynx_engine.h
+  s_3097f766b6b866::t_90c96cef563daf 176
+  s_3097f766b6b866::t_9bc0826286bdac 15
+  s_3097f766b6b866::t_8c54be2e42b15b 173-175
+lynx/core/shell/bts_runtime_mediator_unittest.cc
+  s_3097f766b6b866::t_539f4477315fe6 81-83
+  s_3097f766b6b866::t_371285c0d2ab30 85-89
+  s_3097f766b6b866::t_598936499a9a5d 99-107
+  s_3097f766b6b866::t_dcdd39de067126 209-235
+  s_3097f766b6b866::t_e2cbff35c3531b 84,90,98,108,120,206-208,236,238,260,262,280,301
+  s_3097f766b6b866::t_f89c4ef8454a61 193-198
+  s_3097f766b6b866::t_26a36fc8bf68d9 185
+  s_3097f766b6b866::t_2c123cfd82d107 261
+  s_3097f766b6b866::t_aba6caacd0bc16 78-80
+  s_3097f766b6b866::t_928750b91370db 281-300
+  s_3097f766b6b866::t_69c66d59b12ce6 239-259
+  s_3097f766b6b866::t_42dd9e71c62270 184,199-200,205
+  s_3097f766b6b866::t_60073edc5ea28d 121-123
+  s_3097f766b6b866::t_76aaae2c352c0c 237
+  s_3097f766b6b866::t_879302dcb6eb24 302
+  s_3097f766b6b866::t_272792fd109e95 204
+  s_3097f766b6b866::t_74e1ba772fc472 91-97
+  s_3097f766b6b866::t_3083aa7c42e627 176-183,186-192,201-203
+  s_3097f766b6b866::t_13471dee98aea6 109-119
+  s_3097f766b6b866::t_d1148a72b0ddff 263-279
+  s_3097f766b6b866::t_3fc24f68ba09a8 75-77
+lynx/core/shell/testing/BUILD.gn
+  s_90c2845f14acf7::t_0a958725a6d354 40
+lynx/core/shell/runtime/bts/bts_runtime_mediator.h
+  h_4d36f4d76420fe 93-94
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "e835b934f70e1ac2569962dc1c11c0c710bf419f",
+  "prompts": {},
+  "humans": {
+    "h_4d36f4d76420fe": {
+      "author": "yangguangzhao <yangguangzhao.solace@bytedance.com>"
+    }
+  },
+  "sessions": {
+    "s_3097f766b6b866": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a4e53daa7c2051f79a1732d",
+        "model": "c_o_new_thinking__max"
+      },
+      "human_author": "yangguangzhao <yangguangzhao.solace@bytedance.com>"
+    },
+    "s_90c2845f14acf7": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f40c4-4f79-7bc0-98bc-0020c28acefc",
+        "model": "unknown"
+      },
+      "human_author": "yangguangzhao <yangguangzhao.solace@bytedance.com>"
+    },
+    "s_995e8b78afdefc": {
+      "agent_id": {
+        "tool": "trae-cue",
+        "id": "ai_tab-icr-1a5ade80-2d58-4448-bf9e-39fe8265d00f",
+        "model": "default"
+      },
+      "human_author": "yangguangzhao <yangguangzhao.solace@bytedance.com>"
+    },
+    "s_a64833b30db460": {
+      "agent_id": {
+        "tool": "trae-cue",
+        "id": "ai_tab-icr-1372f3b9-d311-4d02-b9c8-e47eda2885c7",
+        "model": "default"
+      },
+      "human_author": "yangguangzhao <yangguangzhao.solace@bytedance.com>"
+    },
+    "s_b4588b3d30ff20": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f407b-d8d4-7380-b9f6-89e5541777a2",
+        "model": "unknown"
+      },
+      "human_author": "yangguangzhao <yangguangzhao.solace@bytedance.com>"
+    },
+    "s_c9f1650572061f": {
+      "agent_id": {
+        "tool": "trae-cue",
+        "id": "ai_tab-icr-524f8153-e8e0-4f10-b896-dcbac04390ef",
+        "model": "default"
+      },
+      "human_author": "yangguangzhao <yangguangzhao.solace@bytedance.com>"
+    },
+    "s_de6c0e651dff6f": {
+      "agent_id": {
+        "tool": "trae-cue",
+        "id": "ai_tab-icr-c6c6228f-cab3-4ea4-bdb9-04818e287f40",
+        "model": "default"
+      },
+      "human_author": "yangguangzhao <yangguangzhao.solace@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

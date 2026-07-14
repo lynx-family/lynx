@@ -1,0 +1,34 @@
+lynx/core/resource/lynx_resource_loader_harmony.cc
+  h_4d36f4d76420fe 537
+lynx/core/resource/external_resource/external_resource_loader.cc
+  s_fc2d7eb0184ab6::t_6161c62d6b09df 147-149,162
+lynx/core/resource/lazy_bundle/lazy_bundle_loader.cc
+  s_fc2d7eb0184ab6::t_d59fe129b30751 25,51-59,201-202,209,255-256,263
+lynx/core/resource/lazy_bundle/lazy_bundle_loader.h
+  s_fc2d7eb0184ab6::t_5f31912ec91b81 39-55,58-60,66,72,76,82,90,119
+lynx/core/resource/lazy_bundle/lazy_bundle_unittest.cc
+  s_fc2d7eb0184ab6::t_c6e7d4b2ed60c3 73-108
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.5",
+  "base_commit_sha": "a867728c93c449f079d1e2c0ff834eba3441f0e6",
+  "prompts": {},
+  "humans": {
+    "h_4d36f4d76420fe": {
+      "author": "yangguangzhao <yangguangzhao.solace@bytedance.com>"
+    }
+  },
+  "sessions": {
+    "s_fc2d7eb0184ab6": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f219c-6e04-74e1-9793-23e3462539cb",
+        "model": "unknown"
+      },
+      "human_author": "yangguangzhao <yangguangzhao.solace@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}
