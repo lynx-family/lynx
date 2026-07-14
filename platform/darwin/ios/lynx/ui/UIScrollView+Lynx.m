@@ -10,6 +10,7 @@
 
 static const NSInteger kLynxItemSnapDefaultMaxSnapCount = 1;
 static const CGFloat kLynxItemSnapFlingDistanceGain = 1.0;
+static const CGFloat kLynxItemSnapExtraDistanceVelocityThreshold = 2000.0;
 static const CGFloat kLynxItemSnapVelocityToViewportRatio = 2.0;
 static const CGFloat kLynxItemSnapMillisecondsPerSecond = 1000.0;
 
@@ -796,12 +797,13 @@ static const CGFloat kLynxItemSnapMillisecondsPerSecond = 1000.0;
 - (CGFloat)lynx_effectiveFlingDistance:(CGFloat)velocity viewportSize:(CGFloat)viewportSize {
   // This is not UIScrollView's physical fling distance. It is a heuristic distance for choosing
   // snap candidates.
-  // First, normalize velocity by viewport size:
-  //   normalizedVelocity = abs(velocity) / (viewportSize * 2)
+  // First, normalize the velocity above the extra-distance threshold by viewport size:
+  //   normalizedVelocity = max(abs(velocity) - 2000, 0) / (viewportSize * 2)
   // For the same velocity, a smaller viewport produces a larger normalized value, while a larger
   // viewport produces a smaller one.
   CGFloat normalizedVelocity =
-      ABS(velocity) / (viewportSize * kLynxItemSnapVelocityToViewportRatio);
+      MAX(ABS(velocity) - kLynxItemSnapExtraDistanceVelocityThreshold, 0.0) /
+      (viewportSize * kLynxItemSnapVelocityToViewportRatio);
 
   // Then, use log1p(x), which means ln(1 + x), to compress high velocities. A linear
   // mapping would double the distance when velocity doubles, making fast flings skip too many

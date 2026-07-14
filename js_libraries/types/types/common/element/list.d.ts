@@ -402,6 +402,7 @@ export interface ListItemSnapAlignment {
    * @defaultValue 1
    * @Android
    * @iOS
+   * @Harmony
    */
   maxSnapCount?: number;
 }

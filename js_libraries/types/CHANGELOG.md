@@ -1,5 +1,8 @@
 # CHANGELOG
 
+## 4.2.1
+- Add Harmony support metadata for `maxSnapCount` on the `item-snap` property for `<list>`.
+
 ## 4.2.0
 - Add `box-shadow` to `transition-property` typings.
 

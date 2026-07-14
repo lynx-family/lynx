@@ -70,6 +70,22 @@ public class LynxSnapHelperTest {
   }
 
   @Test
+  public void testSnapExtraDistanceStartsAboveVelocityThreshold() {
+    SnapResult snapResult = new SnapResult();
+    LynxSnapHelper snapHelper = createVerticalSnapHelper(100, 100, 10, 10, 3, snapResult);
+
+    int[] out = snapHelper.findTargetSnapOffset(0, 2000, true, false);
+
+    assertEquals(100, out[1]);
+    assertEquals(1, snapResult.position);
+
+    out = snapHelper.findTargetSnapOffset(0, 3000, true, false);
+
+    assertEquals(200, out[1]);
+    assertEquals(2, snapResult.position);
+  }
+
+  @Test
   public void testSnapMaxSnapCountCollapsesBoundaryCandidates() {
     SnapResult snapResult = new SnapResult();
     LynxSnapHelper snapHelper = createVerticalSnapHelper(250, 80, 5, 50, 3, snapResult);
