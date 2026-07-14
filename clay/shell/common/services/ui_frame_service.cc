@@ -96,9 +96,10 @@ void UIFrameService::BeginFrame(
   recorder->RecordBuildStart(fml::TimePoint::Now());
   TRACE_EVENT_WITH_FRAME_NUMBER(recorder, "clay", "UIFrameService::BeginFrame");
   inside_ui_frame_ = true;
+  const uint64_t frame_request_id = recorder->GetFrameRequestId();
   if (!engine_->BeginFrame(std::move(recorder))) {
     // Commit with no updates if failed to build LayerTree.
-    CommitWithNoUpdates();
+    CommitWithNoUpdates(frame_request_id);
   }
   inside_ui_frame_ = false;
 }
@@ -110,16 +111,18 @@ void UIFrameService::ForceBeginFrame(
   recorder->RecordBuildStart(fml::TimePoint::Now());
   FML_DCHECK(engine_);
   inside_ui_frame_ = true;
+  const uint64_t frame_request_id = recorder->GetFrameRequestId();
   if (!engine_->BeginFrame(std::move(recorder))) {
     // Commit with no updates if failed to build LayerTree.
-    CommitWithNoUpdates();
+    CommitWithNoUpdates(frame_request_id);
   }
   inside_ui_frame_ = false;
 }
 
-void UIFrameService::CommitWithNoUpdates() {
-  raster_frame_service_->puppet_.Act(
-      [](auto& impl) { impl.CommitWithNoUpdates(); });
+void UIFrameService::CommitWithNoUpdates(uint64_t frame_request_id) {
+  raster_frame_service_->puppet_.Act([frame_request_id](auto& impl) {
+    impl.CommitWithNoUpdates(frame_request_id);
+  });
 }
 
 void UIFrameService::PrepareForRecycle() {

@@ -46,7 +46,7 @@ class UIFrameService : public clay::Service<UIFrameService, clay::Owner::kUI> {
   void CleanForRecycle();
 
  private:
-  void CommitWithNoUpdates();
+  void CommitWithNoUpdates(uint64_t frame_request_id = 0);
 
   void OnInit(clay::ServiceManager& service_manager,
               const clay::UIServiceContext& ctx) override;

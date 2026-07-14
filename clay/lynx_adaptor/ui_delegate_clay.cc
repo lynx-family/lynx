@@ -139,15 +139,20 @@ void UIDelegateClay::TakeSnapshot(
   request.callback_ = [callback = std::move(callback), screenshot_runner](
                           clay::GrDataPtr data,
                           const clay::ScreenMetadata& metadata) {
-    screenshot_runner->PostTask([data = std::move(data), metadata,
-                                 callback = std::move(callback)] {
-      float timestamp =
-          std::chrono::steady_clock::now().time_since_epoch().count();
-      std::string base64_str = std::string(
-          static_cast<const char*>(DATA_GET_DATA(data)), DATA_GET_SIZE(data));
-      callback(std::move(base64_str), timestamp, metadata.device_width_,
-               metadata.device_height_, metadata.page_scale_factor_);
-    });
+    screenshot_runner->PostTask(
+        [data = std::move(data), metadata, callback = std::move(callback)] {
+          float timestamp =
+              std::chrono::steady_clock::now().time_since_epoch().count();
+          const char* bytes = "";
+          size_t size = 0;
+          if (data && !DATA_IS_EMPTY(data)) {
+            bytes = static_cast<const char*>(DATA_GET_DATA(data));
+            size = DATA_GET_SIZE(data);
+          }
+          std::string base64_str(bytes, size);
+          callback(std::move(base64_str), timestamp, metadata.device_width_,
+                   metadata.device_height_, metadata.page_scale_factor_);
+        });
   };
   page_view->TakeScreenshotHardware(request);
 }

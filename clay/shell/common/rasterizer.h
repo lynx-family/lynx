@@ -9,6 +9,7 @@
 #define CLAY_SHELL_COMMON_RASTERIZER_H_
 
 #include <atomic>
+#include <cstdint>
 #include <deque>
 #include <memory>
 #include <optional>
@@ -236,6 +237,16 @@ class Rasterizer final : public Stopwatch::RefreshRateUpdater,
   ///
   void AddNextFrameCallback(const fml::closure& callback);
 
+  /// Adds a one-shot callback that is only completed by the successfully
+  /// committed frame carrying the same non-zero request ID.
+  void AddNextFrameCallbackForRequest(
+      uint64_t request_id, const fml::closure& callback,
+      const fml::closure& no_update_callback = nullptr);
+
+  /// Completes a correlated request without treating a previously retained
+  /// layer tree as the requested frame.
+  void NotifyFrameRequestCompletedWithoutUpdates(uint64_t request_id);
+
   //----------------------------------------------------------------------------
   /// @brief      Returns a pointer to the compositor context used by this
   ///             rasterizer. This pointer will never be `nullptr`.
@@ -320,7 +331,10 @@ class Rasterizer final : public Stopwatch::RefreshRateUpdater,
   RasterStatus DrawToSurfaceUnsafe(FrameTimingsRecorder& frame_timings_recorder,
                                    clay::LayerTree& layer_tree);
 
-  void FireNextFrameCallbackIfPresent();
+  void FireNextFrameCallbackIfPresent(uint64_t completed_request_id = 0,
+                                      bool frame_committed = true);
+
+  void CompletePendingFrameCallbacksWithoutUpdates();
 
   static bool NoDiscard(const clay::LayerTree& layer_tree) { return false; }
 
@@ -338,7 +352,11 @@ class Rasterizer final : public Stopwatch::RefreshRateUpdater,
   std::unique_ptr<clay::CompositorContext> compositor_context_;
   // This is the last successfully rasterized layer tree.
   std::shared_ptr<clay::LayerTree> last_layer_tree_;
+  // Parallel vectors preserve the original closure container instantiation;
+  // this path is size-sensitive on Android and Harmony.
   std::vector<fml::closure> next_frame_callbacks_;
+  std::vector<uint64_t> next_frame_request_ids_;
+  std::vector<fml::closure> next_frame_no_update_callbacks_;
   bool user_override_resource_cache_bytes_;
   std::optional<size_t> max_cache_bytes_;
   fml::RefPtr<GPUUnrefQueue> unref_queue_;

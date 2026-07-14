@@ -7,7 +7,6 @@
 
 #include "clay/shell/common/rasterizer.h"
 
-#include <algorithm>
 #include <cmath>
 #include <cstdint>
 #include <memory>
@@ -110,12 +109,14 @@ void Rasterizer::Teardown() {
   }
 
   last_layer_tree_.reset();
+  CompletePendingFrameCallbacksWithoutUpdates();
   last_ignore_raster_cache_.store(false, std::memory_order_relaxed);
 }
 
 void Rasterizer::CleanForRecycle() {
   user_override_resource_cache_bytes_ = false;
   last_layer_tree_.reset();
+  CompletePendingFrameCallbacksWithoutUpdates();
   last_ignore_raster_cache_.store(false, std::memory_order_relaxed);
   compositor_context_ = std::make_unique<clay::CompositorContext>(*this);
   if (unref_queue_) {
@@ -170,6 +171,7 @@ RasterStatus Rasterizer::DrawLastLayerTree(
         frame_timings_recorder->GetVsyncStartTime());
     frame_timings_recorder->RecordVsyncSequenceId(
         frame_timings_recorder->GetVsyncSequenceId());
+    FireNextFrameCallbackIfPresent();
   }
   return raster_status;
 }
@@ -321,6 +323,9 @@ RasterStatus Rasterizer::DoDraw(
 #endif
 #endif
 
+  // Callbacks may inspect or re-rasterize the retained tree. Run them only
+  // after the submitted tree is committed and DrawToSurface has unwound.
+  FireNextFrameCallbackIfPresent(frame_timings_recorder->GetFrameRequestId());
   return raster_status;
 }
 
@@ -490,8 +495,6 @@ RasterStatus Rasterizer::DrawToSurfaceUnsafe(
     frame_timings_recorder.RecordRasterEnd(
         &compositor_context_->raster_cache());
 
-    FireNextFrameCallbackIfPresent();
-
     if (unref_queue_) {
       unref_queue_->Drain();
     }
@@ -546,18 +549,88 @@ ScreenshotData Rasterizer::ScreenshotLastLayerTree(
 
 void Rasterizer::AddNextFrameCallback(const fml::closure& callback) {
   next_frame_callbacks_.push_back(callback);
+  next_frame_request_ids_.push_back(0);
+  next_frame_no_update_callbacks_.emplace_back();
 }
 
-void Rasterizer::FireNextFrameCallbackIfPresent() {
+void Rasterizer::AddNextFrameCallbackForRequest(
+    uint64_t request_id, const fml::closure& callback,
+    const fml::closure& no_update_callback) {
+  if (request_id == 0) {
+    FML_DLOG(ERROR) << "A targeted frame callback requires a non-zero request "
+                       "ID.";
+    return;
+  }
+  next_frame_callbacks_.push_back(callback);
+  next_frame_request_ids_.push_back(request_id);
+  next_frame_no_update_callbacks_.push_back(no_update_callback);
+}
+
+void Rasterizer::NotifyFrameRequestCompletedWithoutUpdates(
+    uint64_t request_id) {
+  if (request_id != 0) {
+    FireNextFrameCallbackIfPresent(request_id, false);
+  }
+}
+
+void Rasterizer::FireNextFrameCallbackIfPresent(uint64_t completed_request_id,
+                                                bool frame_committed) {
   if (next_frame_callbacks_.empty()) {
     return;
   }
-  // It is safe for callbacks to register new callbacks.
+  FML_DCHECK(next_frame_callbacks_.size() == next_frame_request_ids_.size());
+  FML_DCHECK(next_frame_callbacks_.size() ==
+             next_frame_no_update_callbacks_.size());
+
+  // Move the current queue aside so callbacks may safely register more work.
+  // Generic callbacks run after the next successful draw. Correlated callbacks
+  // only run after their exact frame request has been committed.
   std::vector<fml::closure> callbacks;
+  std::vector<uint64_t> request_ids;
+  std::vector<fml::closure> no_update_callbacks;
   callbacks.swap(next_frame_callbacks_);
-  for (auto& cb : callbacks) {
-    if (cb) {
-      cb();
+  request_ids.swap(next_frame_request_ids_);
+  no_update_callbacks.swap(next_frame_no_update_callbacks_);
+  for (size_t i = 0; i < callbacks.size(); ++i) {
+    if (!callbacks[i] && !no_update_callbacks[i]) {
+      continue;
+    }
+    if (request_ids[i] == 0) {
+      if (frame_committed) {
+        continue;
+      } else {
+        AddNextFrameCallback(callbacks[i]);
+      }
+    } else if (completed_request_id != 0 &&
+               request_ids[i] == completed_request_id) {
+      if (!frame_committed) {
+        callbacks[i] = std::move(no_update_callbacks[i]);
+      }
+      continue;
+    } else {
+      AddNextFrameCallbackForRequest(request_ids[i], callbacks[i],
+                                     no_update_callbacks[i]);
+    }
+    callbacks[i] = nullptr;
+  }
+  for (auto& callback : callbacks) {
+    if (callback) callback();
+  }
+}
+
+void Rasterizer::CompletePendingFrameCallbacksWithoutUpdates() {
+  FML_DCHECK(next_frame_callbacks_.size() == next_frame_request_ids_.size());
+  FML_DCHECK(next_frame_callbacks_.size() ==
+             next_frame_no_update_callbacks_.size());
+  std::vector<fml::closure> callbacks;
+  std::vector<uint64_t> request_ids;
+  std::vector<fml::closure> no_update_callbacks;
+  callbacks.swap(next_frame_callbacks_);
+  request_ids.swap(next_frame_request_ids_);
+  no_update_callbacks.swap(next_frame_no_update_callbacks_);
+  for (size_t i = 0; i < request_ids.size(); ++i) {
+    if (request_ids[i] != 0 && no_update_callbacks[i]) {
+      no_update_callbacks[i]();
     }
   }
 }

@@ -8,16 +8,20 @@
 #include "clay/shell/common/shell.h"
 
 #include <atomic>
+#include <cstdint>
 #include <future>
 #include <memory>
 #include <sstream>
+#include <string_view>
 #include <utility>
 #include <vector>
 
 #include "base/include/fml/make_copyable.h"
 #include "base/include/fml/message_loop.h"
+#include "base/include/fml/thread.h"
 #include "base/include/fml/time/time_delta.h"
 #include "base/include/fml/unique_fd.h"
+#include "base/include/no_destructor.h"
 #include "clay/common/graphics/persistent_cache.h"
 #include "clay/common/graphics/shared_image_external_texture.h"
 #include "clay/common/sys_info.h"
@@ -68,6 +72,223 @@
 namespace clay {
 
 namespace {
+
+constexpr int kScreenshotStageTimeoutMs = 1000;
+std::atomic<uint64_t> g_next_screenshot_request_id{1};
+
+struct ScreenshotCaptureRequest {
+  ScreenshotCaptureRequest(uint64_t request_id,
+                           ScreenshotData::ScreenshotType screenshot_type,
+                           uint32_t background_color,
+                           std::shared_ptr<std::atomic<uint64_t>> generation,
+                           fml::RefPtr<fml::TaskRunner> raster_task_runner)
+      : request_id(request_id),
+        screenshot_type(screenshot_type),
+        background_color(background_color),
+        generation(std::move(generation)),
+        request_generation(this->generation->load(std::memory_order_acquire)),
+        raster_task_runner(std::move(raster_task_runner)),
+        future(promise.get_future()) {}
+
+  std::atomic<bool> delivered{false};
+  std::atomic<bool> capture_started{false};
+  std::atomic<bool> ui_build_started{false};
+  const uint64_t request_id;
+  const ScreenshotData::ScreenshotType screenshot_type;
+  const uint32_t background_color;
+  std::shared_ptr<std::atomic<uint64_t>> generation;
+  const uint64_t request_generation;
+  fml::RefPtr<fml::TaskRunner> raster_task_runner;
+  // This weak pointer is assigned, checked, and dereferenced only by raster
+  // tasks. It may be carried by closures on other threads.
+  fml::WeakPtr<Rasterizer> rasterizer;
+  fml::AutoResetWaitableEvent registration_complete;
+  std::atomic<bool> registration_succeeded{false};
+  std::promise<ScreenshotData> promise;
+  std::future<ScreenshotData> future;
+  bool asynchronous = false;
+  std::shared_ptr<std::atomic<uint64_t>> request_in_flight;
+  fml::RefPtr<fml::TaskRunner> platform_task_runner;
+  std::function<void(ScreenshotData)> callback;
+
+  bool IsCurrentGeneration() const {
+    return generation &&
+           generation->load(std::memory_order_acquire) == request_generation;
+  }
+};
+
+const fml::RefPtr<fml::TaskRunner>& GetScreenshotWatchdogTaskRunner() {
+  static fml::NoDestructor<fml::Thread> watchdog_thread(
+      "clay_screenshot_watchdog");
+  return watchdog_thread->GetTaskRunner();
+}
+
+uint64_t NextScreenshotRequestId() {
+  uint64_t request_id =
+      g_next_screenshot_request_id.fetch_add(1, std::memory_order_relaxed);
+  if (request_id == 0) {
+    request_id =
+        g_next_screenshot_request_id.fetch_add(1, std::memory_order_relaxed);
+  }
+  return request_id;
+}
+
+void TraceScreenshotCompletion(uint64_t request_id,
+                               const char* completion_source) {
+  const std::string request_id_string = std::to_string(request_id);
+  TRACE_EVENT_INSTANT("clay", "Shell::ScreenshotComplete", "request_id",
+                      request_id_string.c_str(), "completion_source",
+                      completion_source);
+  if (std::string_view(completion_source) == "committed_frame") {
+    FML_DLOG(INFO) << "Screenshot request " << request_id << " completed from "
+                   << completion_source;
+  } else {
+    FML_LOG(WARNING) << "Screenshot request " << request_id
+                     << " completed from " << completion_source;
+  }
+}
+
+using ScreenshotRequestPtr = std::shared_ptr<ScreenshotCaptureRequest>;
+
+void FinishScreenshotRequest(const ScreenshotRequestPtr& request,
+                             ScreenshotData result,
+                             const char* completion_source) {
+  if (!request->asynchronous) {
+    TraceScreenshotCompletion(request->request_id, completion_source);
+    request->promise.set_value(std::move(result));
+    return;
+  }
+
+  request->platform_task_runner->PostTask(fml::MakeCopyable(
+      [request, result = std::move(result), completion_source]() mutable {
+        // The raster result may have been queued immediately before the
+        // platform view was destroyed. Revalidate on the delivery thread so
+        // an old surface cannot publish pixels into the next lifecycle.
+        if (!request->IsCurrentGeneration()) {
+          result = ScreenshotData{};
+          completion_source = "lifecycle_changed";
+        }
+        TraceScreenshotCompletion(request->request_id, completion_source);
+        auto callback = std::move(request->callback);
+        uint64_t expected_request_id = request->request_id;
+        request->request_in_flight->compare_exchange_strong(
+            expected_request_id, 0, std::memory_order_acq_rel);
+        if (callback) {
+          callback(std::move(result));
+        }
+      }));
+}
+
+void CompleteScreenshotRequest(const ScreenshotRequestPtr& request,
+                               ScreenshotData result,
+                               const char* completion_source) {
+  if (request->delivered.exchange(true)) {
+    return;
+  }
+  if (!request->IsCurrentGeneration()) {
+    result = ScreenshotData{};
+    completion_source = "lifecycle_changed";
+  }
+  FinishScreenshotRequest(request, std::move(result), completion_source);
+}
+
+void CompleteScreenshotRequestWithoutUpdatesOnRaster(
+    const ScreenshotRequestPtr& request) {
+  if (request->rasterizer) {
+    request->rasterizer->NotifyFrameRequestCompletedWithoutUpdates(
+        request->request_id);
+  }
+}
+
+void FailScreenshotRequest(const ScreenshotRequestPtr& request,
+                           const char* completion_source) {
+  if (request->delivered.exchange(true)) {
+    return;
+  }
+  // Queue removal before unblocking a synchronous caller so shell teardown
+  // cannot overtake it on the raster task runner.
+  request->raster_task_runner->PostTask([request]() {
+    CompleteScreenshotRequestWithoutUpdatesOnRaster(request);
+  });
+  FinishScreenshotRequest(request, ScreenshotData{}, completion_source);
+}
+
+void CaptureScreenshotOnRaster(const ScreenshotRequestPtr& request,
+                               const char* completion_source) {
+  if (request->delivered.load() || request->capture_started.exchange(true)) {
+    return;
+  }
+  ScreenshotData result;
+  if (request->rasterizer) {
+    result = request->rasterizer->ScreenshotLastLayerTree(
+        request->screenshot_type, false, request->background_color);
+  }
+  CompleteScreenshotRequest(request, std::move(result), completion_source);
+}
+
+void ArmScreenshotHardTimeout(const ScreenshotRequestPtr& request,
+                              fml::TimeDelta hard_timeout) {
+  GetScreenshotWatchdogTaskRunner()->PostDelayedTask(
+      [request]() { FailScreenshotRequest(request, "hard_timeout"); },
+      hard_timeout);
+}
+
+bool RegisterScreenshotRequest(const ScreenshotRequestPtr& request,
+                               RasterizerService& service) {
+  if (request->delivered.load()) {
+    return false;
+  }
+  if (!request->IsCurrentGeneration()) {
+    CompleteScreenshotRequest(request, ScreenshotData{}, "lifecycle_changed");
+    return false;
+  }
+
+  auto* rasterizer = service.GetRasterizer();
+  request->rasterizer =
+      rasterizer ? rasterizer->GetWeakPtr() : fml::WeakPtr<Rasterizer>();
+  if (!rasterizer) {
+    CompleteScreenshotRequest(request, ScreenshotData{}, "no_rasterizer");
+    return false;
+  }
+
+  rasterizer->AddNextFrameCallbackForRequest(
+      request->request_id,
+      [request]() { CaptureScreenshotOnRaster(request, "committed_frame"); },
+      [request]() {
+        CompleteScreenshotRequest(request, ScreenshotData{}, "no_updates");
+      });
+  GetScreenshotWatchdogTaskRunner()->PostDelayedTask(
+      [request]() {
+        if (!request->ui_build_started.load()) {
+          FailScreenshotRequest(request, "ui_task_timeout");
+        }
+      },
+      fml::TimeDelta::FromMilliseconds(kScreenshotStageTimeoutMs));
+  return true;
+}
+
+void StartScreenshotFrame(const ScreenshotRequestPtr& request,
+                          const fml::RefPtr<fml::TaskRunner>& ui_task_runner,
+                          fml::WeakPtr<Engine> engine) {
+  // Run inline when a synchronous caller shares the UI task runner, avoiding a
+  // self-blocked frame request.
+  fml::TaskRunner::RunNowOrPostTask(
+      ui_task_runner, [request, engine]() mutable {
+        if (request->delivered.load()) {
+          return;
+        }
+        if (!request->IsCurrentGeneration()) {
+          FailScreenshotRequest(request, "lifecycle_changed");
+          return;
+        }
+        request->ui_build_started.store(true);
+        if (!engine) {
+          FailScreenshotRequest(request, "no_engine");
+          return;
+        }
+        engine->ForceBeginFrame(request->request_id);
+      });
+}
 
 std::unique_ptr<Engine> CreateEngine(
     std::shared_ptr<clay::ServiceManager> service_manager,
@@ -697,6 +918,7 @@ void Shell::OnPlatformViewDestroyed() {
   TRACE_EVENT("clay", "Shell::OnPlatformViewDestroyed");
   FML_DCHECK(is_setup_);
   FML_DCHECK(task_runners_.GetPlatformTaskRunner()->RunsTasksOnCurrentThread());
+  InvalidateScreenshotRequests();
   clay::Puppet<clay::Owner::kPlatform, RasterFrameService>
       raster_frame_service =
           GetServiceManager()->GetService<RasterFrameService>();
@@ -1086,155 +1308,64 @@ Shell::GetResourceLoaderIntercept() {
 ScreenshotData Shell::ScreenshotSync(
     ScreenshotData::ScreenshotType screenshot_type, uint32_t background_color) {
   TRACE_EVENT("clay", "Shell::ScreenshotSync");
-  constexpr int kScreenshotTimeoutMs = 30;
+  FML_DCHECK(screenshot_hard_timeout_ > fml::TimeDelta::Zero());
+  auto request = std::make_shared<ScreenshotCaptureRequest>(
+      NextScreenshotRequestId(), screenshot_type, background_color,
+      screenshot_generation_, task_runners_.GetRasterTaskRunner());
+  ArmScreenshotHardTimeout(request, screenshot_hard_timeout_);
 
-  struct ScreenshotSyncState {
-    ScreenshotSyncState() : future(promise.get_future()) {}
+  rasterizer_service_.Act([request](auto& impl) {
+    request->registration_succeeded.store(
+        RegisterScreenshotRequest(request, impl));
+    request->registration_complete.Signal();
+  });
 
-    std::atomic<bool> done{false};
-    std::promise<ScreenshotData> promise;
-    std::future<ScreenshotData> future;
-  };
-
-  auto state = std::make_shared<ScreenshotSyncState>();
-  fml::RefPtr<fml::TaskRunner> raster_task_runner =
-      task_runners_.GetRasterTaskRunner();
-
-  std::future<std::optional<bool>> register_future =
-      rasterizer_service_.ActWithPromise([state, screenshot_type,
-                                          background_color,
-                                          raster_task_runner](auto& impl) {
-        auto* rasterizer = impl.GetRasterizer();
-        fml::WeakPtr<Rasterizer> weak_rasterizer =
-            rasterizer ? rasterizer->GetWeakPtr() : fml::WeakPtr<Rasterizer>();
-
-        auto on_next_frame = [state, weak_rasterizer, screenshot_type,
-                              background_color]() mutable {
-          if (state->done.exchange(true)) {
-            return;
-          }
-          ScreenshotData result;
-          if (weak_rasterizer) {
-            result = weak_rasterizer->ScreenshotLastLayerTree(
-                screenshot_type, false, background_color);
-          }
-          state->promise.set_value(std::move(result));
-        };
-
-        if (rasterizer) {
-          rasterizer->AddNextFrameCallback(on_next_frame);
-        }
-
-        raster_task_runner->PostDelayedTask(
-            [state, weak_rasterizer, screenshot_type,
-             background_color]() mutable {
-              if (state->done.exchange(true)) {
-                return;
-              }
-              ScreenshotData result;
-              if (weak_rasterizer) {
-                result = weak_rasterizer->ScreenshotLastLayerTree(
-                    screenshot_type, false, background_color);
-              }
-              state->promise.set_value(std::move(result));
-            },
-            fml::TimeDelta::FromMilliseconds(kScreenshotTimeoutMs));
-
-        return true;
-      });
-  register_future.get();
-
-  // Trigger BeginFrame first to submit the latest frame to the Rasterizer.
-  if (auto engine = weak_engine_) {
-    engine->ForceBeginFrame();
+  if (!request->registration_complete.WaitWithTimeout(
+          screenshot_hard_timeout_)) {
+    if (request->registration_succeeded.load()) {
+      StartScreenshotFrame(request, task_runners_.GetUITaskRunner(),
+                           weak_engine_);
+    }
+  } else {
+    FailScreenshotRequest(request, "registration_timeout");
   }
 
-  return state->future.get();
+  return request->future.get();
 }
 
 void Shell::ScreenshotAsync(ScreenshotData::ScreenshotType screenshot_type,
                             uint32_t background_color,
                             std::function<void(ScreenshotData)> callback) {
-  constexpr int kScreenshotTimeoutMs = 30;
+  const uint64_t request_id = NextScreenshotRequestId();
+  uint64_t expected_request_id = 0;
+  if (!screenshot_request_in_flight_->compare_exchange_strong(
+          expected_request_id, request_id, std::memory_order_acq_rel)) {
+    TraceScreenshotCompletion(request_id, "busy");
+    task_runners_.GetPlatformTaskRunner()->PostTask(
+        fml::MakeCopyable([callback = std::move(callback)]() mutable {
+          if (callback) {
+            callback(ScreenshotData{});
+          }
+        }));
+    return;
+  }
 
-  fml::RefPtr<fml::TaskRunner> platform_task_runner =
-      task_runners_.GetPlatformTaskRunner();
-  fml::RefPtr<fml::TaskRunner> ui_task_runner = task_runners_.GetUITaskRunner();
-  fml::RefPtr<fml::TaskRunner> raster_task_runner =
-      task_runners_.GetRasterTaskRunner();
+  FML_DCHECK(screenshot_hard_timeout_ > fml::TimeDelta::Zero());
+  auto request = std::make_shared<ScreenshotCaptureRequest>(
+      request_id, screenshot_type, background_color, screenshot_generation_,
+      task_runners_.GetRasterTaskRunner());
+  request->asynchronous = true;
+  request->request_in_flight = screenshot_request_in_flight_;
+  request->platform_task_runner = task_runners_.GetPlatformTaskRunner();
+  request->callback = std::move(callback);
+  ArmScreenshotHardTimeout(request, screenshot_hard_timeout_);
 
-  rasterizer_service_.Act([callback = std::move(callback), screenshot_type,
-                           background_color, platform_task_runner,
-                           ui_task_runner, raster_task_runner,
-                           screenshot = screenshot,
+  rasterizer_service_.Act([request,
+                           ui_task_runner = task_runners_.GetUITaskRunner(),
                            engine = weak_engine_](auto& impl) mutable {
-    bool expected = true;
-    if (!screenshot->compare_exchange_strong(expected, false)) {
-      return;
+    if (RegisterScreenshotRequest(request, impl)) {
+      StartScreenshotFrame(request, ui_task_runner, engine);
     }
-
-    struct ScreenshotAsyncState {
-      std::atomic<bool> done{false};
-      std::shared_ptr<std::atomic<bool>> screenshot;
-      fml::RefPtr<fml::TaskRunner> platform_task_runner;
-      std::function<void(ScreenshotData)> callback;
-    };
-    auto state = std::make_shared<ScreenshotAsyncState>();
-    state->screenshot = screenshot;
-    state->platform_task_runner = platform_task_runner;
-    state->callback = std::move(callback);
-
-    auto* rasterizer = impl.GetRasterizer();
-    fml::WeakPtr<Rasterizer> weak_rasterizer =
-        rasterizer ? rasterizer->GetWeakPtr() : fml::WeakPtr<Rasterizer>();
-
-    auto on_next_frame = [state, weak_rasterizer, screenshot_type,
-                          background_color]() mutable {
-      if (state->done.exchange(true)) {
-        return;
-      }
-      ScreenshotData result;
-      if (weak_rasterizer) {
-        result = weak_rasterizer->ScreenshotLastLayerTree(
-            screenshot_type, false, background_color);
-      }
-      state->platform_task_runner->PostTask(
-          fml::MakeCopyable([state, result = std::move(result)]() mutable {
-            state->callback(std::move(result));
-            state->screenshot->store(true);
-          }));
-    };
-
-    if (rasterizer) {
-      rasterizer->AddNextFrameCallback(on_next_frame);
-    } else {
-      on_next_frame();
-      return;
-    }
-
-    raster_task_runner->PostDelayedTask(
-        [state, weak_rasterizer, screenshot_type, background_color]() mutable {
-          if (state->done.exchange(true)) {
-            return;
-          }
-          ScreenshotData result;
-          if (weak_rasterizer) {
-            result = weak_rasterizer->ScreenshotLastLayerTree(
-                screenshot_type, false, background_color);
-          }
-          state->platform_task_runner->PostTask(
-              fml::MakeCopyable([state, result = std::move(result)]() mutable {
-                state->callback(std::move(result));
-                state->screenshot->store(true);
-              }));
-        },
-        fml::TimeDelta::FromMilliseconds(kScreenshotTimeoutMs));
-
-    ui_task_runner->PostTask(fml::MakeCopyable([engine]() mutable {
-      if (engine) {
-        engine->ForceBeginFrame();
-      }
-    }));
   });
 }
 
@@ -1411,6 +1542,7 @@ void Shell::OnPlatformViewDispatchSemanticsAction(int virtual_view_id,
 #endif
 
 void Shell::CleanForRecycle() {
+  InvalidateScreenshotRequests();
   if (engine_) {
     engine_->CleanForRecycle();
   }
@@ -1426,6 +1558,11 @@ void Shell::CleanForRecycle() {
   waiting_for_first_frame_->store(true);
   devtools_instrumentation_enabled_ = false;
   devtool_instrumentation_.reset();
+}
+
+void Shell::InvalidateScreenshotRequests() {
+  screenshot_generation_->fetch_add(1, std::memory_order_acq_rel);
+  screenshot_request_in_flight_->store(0, std::memory_order_release);
 }
 
 void Shell::PrepareForRecycle() {

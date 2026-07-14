@@ -126,6 +126,16 @@ void FrameTimingsRecorder::RecordForced(bool forced) {
   forced_ = forced;
 }
 
+void FrameTimingsRecorder::RecordFrameRequestId(uint64_t request_id) {
+  std::scoped_lock state_lock(state_mutex_);
+  frame_request_id_ = request_id;
+}
+
+uint64_t FrameTimingsRecorder::GetFrameRequestId() const {
+  std::scoped_lock state_lock(state_mutex_);
+  return frame_request_id_;
+}
+
 void FrameTimingsRecorder::RecordLastDrawVsyncTime(
     fml::TimePoint last_draw_vsync) {
   std::scoped_lock state_lock(state_mutex_);
@@ -225,6 +235,7 @@ std::unique_ptr<FrameTimingsRecorder> FrameTimingsRecorder::CloneUntil(
       std::make_unique<FrameTimingsRecorder>(frame_number_);
   FML_DCHECK(state_ >= state);
   recorder->state_ = state;
+  recorder->frame_request_id_ = frame_request_id_;
 
   if (state >= State::kVsync) {
     recorder->vsync_start_ = vsync_start_;

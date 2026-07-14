@@ -4,6 +4,7 @@
 
 #include "clay/shell/common/services/screenshot_service.h"
 
+#include <atomic>
 #include <utility>
 
 #include "clay/shell/common/services/screenshot_encoder.h"
@@ -49,23 +50,27 @@ GrDataPtr ScreenshotService::TakeScreenshotHardware(
                        "is no callback.";
     return nullptr;
   }
+  auto callback_posted = std::make_shared<std::atomic_bool>(false);
   shell_->ScreenshotAsync(
       ScreenshotData::ScreenshotType::UncompressedImage,
-      request.background_color_, [request](ScreenshotData screenshot) {
-        auto data = screenshot.data;
-        if (!data) {
+      request.background_color_,
+      [request, callback_posted](ScreenshotData screenshot) {
+        if (callback_posted->exchange(true)) {
           return;
         }
         auto task_runner = request.task_runner_
                                ? request.task_runner_
                                : clay::Isolate::Instance().GetIOTaskRunner();
         task_runner->PostTask([screenshot, request]() {
-          auto result = ScreenshotEncoder::ScaleAndEncode(screenshot, request);
+          ScreenshotEncodeResult result;
+          if (screenshot.data) {
+            result = ScreenshotEncoder::ScaleAndEncode(screenshot, request);
+          }
           if (result.data) {
             result.metadata.timestamp_ =
                 std::chrono::steady_clock::now().time_since_epoch().count();
-            request.callback_.value()(result.data, result.metadata);
           }
+          request.callback_.value()(result.data, result.metadata);
         });
       });
   return nullptr;
@@ -77,41 +82,45 @@ GrDataPtr ScreenshotService::TakeExternalScreenshot(
     return nullptr;
   }
 
-  clay::GrImagePtr screenshot = external_screenshot_callback_();
-
-#ifndef ENABLE_SKITY
-  if (!screenshot) {
-    return nullptr;
-  }
-  SkPixmap pixmap;
-  screenshot->peekPixels(&pixmap);
-#else
-  if (!screenshot || !screenshot->GetPixmap()) {
-    return nullptr;
-  }
-  std::shared_ptr<skity::Pixmap> pixmap = *(screenshot->GetPixmap());
-#endif  // ENABLE_SKITY
-
-  if (request.is_sync_) {
-    auto result = ScreenshotEncoder::Encode(pixmap, request);
-    return result.data;
-  }
-
-  if (!request.callback_.has_value()) {
+  if (!request.is_sync_ && !request.callback_.has_value()) {
     FML_DLOG(ERROR) << "Has requested an asynchronous screenshot, but there "
                        "is no callback.";
     return nullptr;
   }
+
+  clay::GrImagePtr screenshot = external_screenshot_callback_();
+
+#ifndef ENABLE_SKITY
+  SkPixmap pixmap;
+  const bool has_pixels = screenshot && screenshot->peekPixels(&pixmap);
+#else
+  std::shared_ptr<skity::Pixmap> pixmap = screenshot && screenshot->GetPixmap()
+                                              ? *(screenshot->GetPixmap())
+                                              : nullptr;
+  const bool has_pixels = pixmap != nullptr;
+#endif  // ENABLE_SKITY
+
+  if (request.is_sync_) {
+    if (!has_pixels) {
+      return nullptr;
+    }
+    auto result = ScreenshotEncoder::Encode(pixmap, request);
+    return result.data;
+  }
+
   auto task_runner = request.task_runner_
                          ? request.task_runner_
                          : clay::Isolate::Instance().GetIOTaskRunner();
-  task_runner->PostTask([screenshot, pixmap, request]() {
-    ScreenshotEncodeResult result = ScreenshotEncoder::Encode(pixmap, request);
+  task_runner->PostTask([screenshot, pixmap, request, has_pixels]() {
+    ScreenshotEncodeResult result;
+    if (has_pixels) {
+      result = ScreenshotEncoder::Encode(pixmap, request);
+    }
     if (result.data) {
       result.metadata.timestamp_ =
           std::chrono::steady_clock::now().time_since_epoch().count();
-      request.callback_.value()(result.data, result.metadata);
     }
+    request.callback_.value()(result.data, result.metadata);
   });
   return nullptr;
 }
