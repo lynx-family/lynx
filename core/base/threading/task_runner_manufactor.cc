@@ -194,7 +194,7 @@ static size_t GetConcurrentLoopHighPriorityWorkerCount() {
   const size_t max_count =
       std::max(min_count, size_t(std::thread::hardware_concurrency()));
   size_t count = max_count;
-#ifdef OS_ANDROID
+#if defined(OS_ANDROID) && !defined(ENABLE_HEADLESS)
   size_t percent =
       std::clamp(tasm::LynxEnv::GetInstance().GetLongEnv(
                      tasm::LynxEnv::Key::
