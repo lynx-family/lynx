@@ -35,6 +35,7 @@ source_set("lynx_adaptor") {
     "perf_controller_clay.cc",
     "perf_controller_clay.h",
     "platform_extra_bundle_clay.h",
+    "platform_node_tag_resolver.h",
     "prop_bundle_impl.cc",
     "prop_bundle_impl.h",
     "ui_delegate_clay.cc",
