@@ -7,9 +7,11 @@
 #include <arkui/native_node.h>
 #include <arkui/native_type.h>
 #include <deviceinfo.h>
+#include <dlfcn.h>
 
 #include <vector>
 
+#include "core/base/harmony/harmony_function_loader.h"
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/tasm/config.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/lynx_context.h"
@@ -27,6 +29,24 @@ static std::vector<UIOverlay*>
     global_dialogs;  // Due to API restrictions, only global dialogs can be used
                      // for OnDismiss event
 static constexpr int kDialogLevelModeSupportVersion = 15;
+static constexpr int kNodeUniqueIdSupportVersion = 20;
+
+static void* GetNodeUniqueIdFunc() {
+  if (OH_GetSdkApiVersion() < kNodeUniqueIdSupportVersion) {
+    return nullptr;
+  }
+  void* handle =
+      base::harmony::GetSharedObjectHandler(base::harmony::kAceNdkSoName);
+  if (!handle) {
+    return nullptr;
+  }
+  return dlsym(handle, "OH_ArkUI_NodeUtils_GetNodeUniqueId");
+}
+
+static void* NodeUniqueIdFuncHandle() {
+  static void* handle = GetNodeUniqueIdFunc();
+  return handle;
+}
 
 UIBase* UIOverlay::Make(LynxContext* context, int sign,
                         const std::string& tag) {
@@ -48,6 +68,24 @@ void UIOverlay::OnPropUpdate(const std::string& name,
         harmony_level_mode_ = ARKUI_LEVEL_MODE_EMBEDDED;
       }
     }
+  } else if (name == "harmony-level-unique-id") {
+    enable_level_unique_id_ = value.IsBool() && value.Bool();
+  }
+}
+
+void UIOverlay::ApplyLevelUniqueId(ArkUI_NativeDialogAPI_2* dialog_api) {
+  if (!enable_level_unique_id_) {
+    return;
+  }
+  void* handle = NodeUniqueIdFuncHandle();
+  ArkUI_NodeHandle node = DrawNode();
+  if (!handle || !node) {
+    return;
+  }
+  using GetNodeUniqueId = int32_t (*)(ArkUI_NodeHandle, int32_t*);
+  int32_t unique_id = 0;
+  if (reinterpret_cast<GetNodeUniqueId>(handle)(node, &unique_id) == 0) {
+    dialog_api->setLevelUniqueId(native_dialog_, unique_id);
   }
 }
 
@@ -62,6 +100,7 @@ void UIOverlay::ApplyLevelMode() {
   if (!dialog_api) {
     return;
   }
+  ApplyLevelUniqueId(dialog_api);
   dialog_api->setLevelMode(native_dialog_, harmony_level_mode_);
 }
 
