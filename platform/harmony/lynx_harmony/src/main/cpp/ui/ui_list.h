@@ -7,6 +7,7 @@
 #include <arkui/native_animate.h>
 #include <native_vsync/native_vsync.h>
 
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <tuple>
@@ -30,9 +31,17 @@ namespace harmony {
 static constexpr ArkUI_NodeEventType LIST_NODE_EVENT_TYPES[] = {
     NODE_SCROLL_EVENT_ON_SCROLL, NODE_SCROLL_EVENT_ON_SCROLL_START,
     NODE_SCROLL_EVENT_ON_SCROLL_STOP, NODE_SCROLL_EVENT_ON_WILL_SCROLL};
+
 class AutoScroller;
 class UIList : public BaseScrollContainer,
                public UIComponent::NodeReadyListener {
+ private:
+  struct SnapCandidate {
+    int32_t position{-1};
+    float offset{0.f};
+    float distance_to_current{0.f};
+  };
+
  public:
   static UIBase* Make(LynxContext* context, int sign, const std::string& tag) {
     return new UIList(context, sign, tag);
@@ -92,7 +101,9 @@ class UIList : public BaseScrollContainer,
   bool HasParentDrawNode(UIBase* child) const;
   void HandleScrollStartEvent();
   void HandleScrollStopEvent();
-  void HandleWillScrollEvent(ArkUI_NodeComponentEvent* component_event);
+  void HandleWillScrollEvent(ArkUI_NodeEvent* event);
+  void HandleTouchEvent(ArkUI_NodeEvent* event);
+  void HandleWillStopDraggingEvent(ArkUI_NodeEvent* event);
   bool ShouldCallScroll(float delta_x, float delta_y);
   void StartScroller();
   void ScrollToAsync(float delta_x, float delta_y);
@@ -108,6 +119,19 @@ class UIList : public BaseScrollContainer,
       float rate, bool start, bool auto_stop,
       base::MoveOnlyClosure<void, int32_t, const lepus::Value&> callback);
   fml::RefPtr<lepus::CArray> GetVisibleCells() const;
+  void DetectSnapScroll();
+  std::tuple<int32_t, float, float> CalculateSingleStepSnapScroll(
+      bool forward, bool has_velocity);
+  std::tuple<int32_t, float, float> CalculateMultiStepSnapScroll(
+      bool forward, float velocity);
+  bool HasValidSnapFactor() const;
+  bool HasValidMaxSnapCount() const;
+  float CalculateEffectiveFlingDistance(float velocity,
+                                        float viewport_size) const;
+  std::vector<SnapCandidate> CollectDirectionalSnapCandidates(
+      float content_offset, bool forward);
+  void ApplySnapScrollTarget(
+      const std::tuple<int32_t, float, float>& scroll_target);
   void SendScrollEndEvent();
   float GetScrollRange();
   void UpdateStickyView();
@@ -142,6 +166,7 @@ class UIList : public BaseScrollContainer,
   float content_offset_percent_during_scroll_{1};
   float snap_factor_{-1};
   float snap_offset_{0};
+  int32_t max_snap_count_{1};
   std::pair<float, float> async_delta_offset_{0.f, 0.f};
   std::pair<float, float> last_scroll_offset_{0.0, 0.0};
 
@@ -151,10 +176,7 @@ class UIList : public BaseScrollContainer,
   bool IsVisibleCellVertical(UIComponent* component) const;
   bool IsVisibleCellHorizontal(UIComponent* component) const;
   UIComponent* GetItemAtIndex(int32_t index);
-  void DetectSnapScroll(int32_t action);
   std::pair<float, float> CalculateOffsets(UIComponent* item);
-  std::tuple<int32_t, float, float> CalcSnapScroll(bool forward,
-                                                   bool has_velocity);
   bool IsListItem(UIBase* list_item) const;
 
   std::shared_ptr<animation::basic::LynxBasicAnimator>

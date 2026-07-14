@@ -227,6 +227,33 @@
   XCTAssertEqualWithAccuracy(callbackOffset.y, 300, 0.001);
 }
 
+- (void)testSnapExtraDistanceStartsAboveVelocityThreshold {
+  UIScrollView *scrollView = [self createVerticalSnapScrollViewWithViewportHeight:100
+                                                                       itemHeight:100
+                                                                        itemCount:10
+                                                                    currentOffset:10];
+  NSInteger callbackPosition = -1;
+  CGPoint callbackOffset = CGPointZero;
+
+  CGPoint targetOffset = [self targetSnapOffsetForScrollView:scrollView
+                                                    velocity:CGPointMake(0, 2)
+                                                maxSnapCount:3
+                                            callbackPosition:&callbackPosition
+                                              callbackOffset:&callbackOffset];
+
+  XCTAssertEqualWithAccuracy(targetOffset.y, 100, 0.001);
+  XCTAssertEqual(callbackPosition, 1);
+
+  targetOffset = [self targetSnapOffsetForScrollView:scrollView
+                                            velocity:CGPointMake(0, 3)
+                                        maxSnapCount:3
+                                    callbackPosition:&callbackPosition
+                                      callbackOffset:&callbackOffset];
+
+  XCTAssertEqualWithAccuracy(targetOffset.y, 200, 0.001);
+  XCTAssertEqual(callbackPosition, 2);
+}
+
 - (void)testSnapMaxSnapCountCollapsesBoundaryCandidates {
   UIScrollView *scrollView = [self createVerticalSnapScrollViewWithViewportHeight:250
                                                                        itemHeight:80

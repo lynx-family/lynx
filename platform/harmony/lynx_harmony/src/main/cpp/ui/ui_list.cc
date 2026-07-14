@@ -5,8 +5,10 @@
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_list.h"
 
 #include <arkui/native_node.h>
+#include <deviceinfo.h>
 
 #include <algorithm>
+#include <cmath>
 #include <limits>
 #include <string>
 
@@ -28,6 +30,25 @@ namespace lynx {
 namespace tasm {
 namespace harmony {
 
+namespace {
+
+constexpr int32_t kOnWillStopDraggingVersion = 20;
+constexpr int32_t kDefaultMaxSnapCount = 1;
+constexpr float kItemSnapFlingDistanceGain = 1.f;
+constexpr float kItemSnapExtraDistanceVelocityThreshold = 4000.f;
+constexpr float kItemSnapVelocityToViewportRatio = 4.f;
+
+int32_t GetHarmonySdkApiVersion() {
+  static int32_t sdk_api_version = OH_GetSdkApiVersion();
+  return sdk_api_version;
+}
+
+bool IsOnWillStopDraggingSupported() {
+  return GetHarmonySdkApiVersion() >= kOnWillStopDraggingVersion;
+}
+
+}  // namespace
+
 UIList::UIList(LynxContext* context, int sign, const std::string& tag)
     : BaseScrollContainer(context, sign, tag) {
   container_layout_ = NodeManager::Instance().CreateNode(ARKUI_NODE_CUSTOM);
@@ -48,6 +69,12 @@ UIList::UIList(LynxContext* context, int sign, const std::string& tag)
   for (auto eventType : LIST_NODE_EVENT_TYPES) {
     NodeManager::Instance().RegisterNodeEvent(node_, eventType, this);
   }
+  if (IsOnWillStopDraggingSupported()) {
+    // API 20 introduces a release-velocity callback. Older versions retain
+    // the touch-up single-step snap path.
+    NodeManager::Instance().RegisterNodeEvent(
+        node_, NODE_SCROLL_EVENT_ON_WILL_STOP_DRAGGING, this);
+  }
   NodeManager::Instance().RegisterNodeCustomEvent(
       container_layout_, ARKUI_NODE_CUSTOM_EVENT_ON_MEASURE, this);
   auto_scroller_ = std::make_shared<AutoScroller>(this);
@@ -56,6 +83,10 @@ UIList::UIList(LynxContext* context, int sign, const std::string& tag)
 UIList::~UIList() {
   for (auto eventType : LIST_NODE_EVENT_TYPES) {
     NodeManager::Instance().UnregisterNodeEvent(node_, eventType);
+  }
+  if (IsOnWillStopDraggingSupported()) {
+    NodeManager::Instance().UnregisterNodeEvent(
+        node_, NODE_SCROLL_EVENT_ON_WILL_STOP_DRAGGING);
   }
   NodeManager::Instance().UnregisterNodeCustomEvent(
       container_layout_, ARKUI_NODE_CUSTOM_EVENT_ON_MEASURE);
@@ -143,15 +174,20 @@ void UIList::ResolveItemSnapProp(const lepus::Value& value) {
     ResetItemSnapProp();
   } else {
     bool need_reset_item_snap = true;
+    int32_t max_snap_count = kDefaultMaxSnapCount;
     tasm::ForEachLepusValue(
-        value, [this, &need_reset_item_snap](const lepus::Value& key,
-                                             const lepus::Value& val) {
+        value, [this, &need_reset_item_snap, &max_snap_count](
+                   const lepus::Value& key, const lepus::Value& val) {
           if (key.StdString() == "factor" && val.IsNumber()) {
             snap_factor_ = val.Number();
             need_reset_item_snap = false;
           } else if (key.StdString() == "offset" && val.IsNumber()) {
             snap_offset_ = val.Number();
             need_reset_item_snap = false;
+          } else if (key.StdString() == "maxSnapCount" && val.IsNumber()) {
+            // maxSnapCount only limits the number of snap candidates crossed
+            // by one fling. factor/offset still enable item snap.
+            max_snap_count = static_cast<int32_t>(val.Number());
           }
         });
     if (need_reset_item_snap) {
@@ -166,6 +202,16 @@ void UIList::ResolveItemSnapProp(const lepus::Value& value) {
         lynx::base::ErrorStorage::GetInstance().SetError(std::move(error));
         snap_factor_ = 0;
       }
+      if (max_snap_count < kDefaultMaxSnapCount) {
+        auto error =
+            lynx::base::LynxError(error::E_COMPONENT_LIST_INVALID_PROPS_ARG,
+                                  Tag() + " item-snap arguments invalid!",
+                                  "The maxSnapCount should be greater than 0.",
+                                  base::LynxErrorLevel::Warn);
+        lynx::base::ErrorStorage::GetInstance().SetError(std::move(error));
+        max_snap_count = kDefaultMaxSnapCount;
+      }
+      max_snap_count_ = max_snap_count;
       // Set the friction value to 1000.f (a big value) to avoid the fling
       // animation.
       NodeManager::Instance().SetAttributeWithNumberValue(
@@ -176,6 +222,7 @@ void UIList::ResolveItemSnapProp(const lepus::Value& value) {
 
 void UIList::ResetItemSnapProp() {
   snap_factor_ = -1;
+  max_snap_count_ = kDefaultMaxSnapCount;
   // 0.6 is the default friction value.
   NodeManager::Instance().SetAttributeWithNumberValue(
       node_, NODE_SCROLL_FRICTION, 0.6f);
@@ -516,15 +563,11 @@ void UIList::OnNodeEvent(ArkUI_NodeEvent* event) {
     // Note: Handle scroll offset in any scroll state case, because we need to
     // use delta_offset_ from c++ to modify the scroll offset in this
     // ON_WLL_SCROLL EVENT.
-    auto* component_event = OH_ArkUI_NodeEvent_GetNodeComponentEvent(event);
-    if (IsEnableNewGesture() && !consume_gesture_) {
-      component_event->data[0].f32 = 0.f;
-      component_event->data[1].f32 = 0.f;
-    }
-    HandleWillScrollEvent(component_event);
+    HandleWillScrollEvent(event);
   } else if (type == NODE_TOUCH_EVENT) {
-    DetectSnapScroll(OH_ArkUI_UIInputEvent_GetAction(
-        OH_ArkUI_NodeEvent_GetInputEvent(event)));
+    HandleTouchEvent(event);
+  } else if (type == NODE_SCROLL_EVENT_ON_WILL_STOP_DRAGGING) {
+    HandleWillStopDraggingEvent(event);
   } else {
     UIBase::OnNodeEvent(event);
   }
@@ -538,64 +581,85 @@ bool UIList::IsListItem(UIBase* list_item) const {
   return false;
 }
 
-void UIList::DetectSnapScroll(int32_t action) {
-  if (snap_factor_ != -1) {
+void UIList::HandleTouchEvent(ArkUI_NodeEvent* event) {
+  if (HasValidSnapFactor()) {
+    int32_t action = OH_ArkUI_UIInputEvent_GetAction(
+        OH_ArkUI_NodeEvent_GetInputEvent(event));
     switch (action) {
       case UI_TOUCH_EVENT_ACTION_DOWN:
       case UI_TOUCH_EVENT_ACTION_MOVE:
         last_scroll_offset_ = GetScrollOffset();
         break;
       case UI_TOUCH_EVENT_ACTION_UP: {
-        auto scroll_offset = GetScrollOffset();
-        bool vertical = IsVerticalScrollView();
-        bool forward = false;
-        if (vertical) {
-          if (last_scroll_offset_.second == scroll_offset.second &&
-              scroll_offset.second == 0) {
-            // At top
-            forward = false;
-          } else {
-            forward = scroll_offset.second >= last_scroll_offset_.second;
-          }
-        } else {
-          if (last_scroll_offset_.first == scroll_offset.first &&
-              scroll_offset.first == 0) {
-            // At Left
-            forward = false;
-          } else {
-            forward = scroll_offset.first >= last_scroll_offset_.first;
-          }
+        if (!IsOnWillStopDraggingSupported() || !HasValidMaxSnapCount()) {
+          // Fall back to touch-up single-step snapping when release velocity
+          // is unavailable or multi-step snapping is disabled.
+          DetectSnapScroll();
         }
-        bool has_velocity =
-            vertical ? last_scroll_offset_.second != scroll_offset.second
-                     : last_scroll_offset_.first != scroll_offset.first;
-        auto scroll_target = CalcSnapScroll(forward, has_velocity);
-        int32_t scroll_position = std::get<0>(scroll_target);
-        if (scroll_position != -1) {
-          if (scroll_position >= item_keys_.size()) {
-            scroll_position =
-                std::max(0, static_cast<int32_t>(item_keys_.size() - 1));
-          }
-          NodeManager::Instance().SetAttributeWithNumberValue(
-              node_, NODE_SCROLL_OFFSET, std::get<1>(scroll_target),
-              std::get<2>(scroll_target), 250,
-              static_cast<int>(ARKUI_CURVE_SMOOTH), 0);
-        }
-        auto dict = lepus::Dictionary::Create();
-        dict->SetValue("position", scroll_position);
-        dict->SetValue("currentScrollLeft", scroll_offset.first);
-        dict->SetValue("currentScrollTop", scroll_offset.second);
-        dict->SetValue("targetScrollLeft", std::get<1>(scroll_target));
-        dict->SetValue("targetScrollTop", std::get<2>(scroll_target));
-        CustomEvent event{Sign(), list::kSnap, "detail", lepus_value(dict)};
-        context_->SendEvent(event);
-      } break;
-      case UI_TOUCH_EVENT_ACTION_CANCEL:
         break;
+      }
       default:
         break;
     }
   }
+}
+
+void UIList::HandleWillStopDraggingEvent(ArkUI_NodeEvent* event) {
+  if (HasValidSnapFactor()) {
+    std::tuple<int32_t, float, float> scroll_target(-1, 0.f, 0.f);
+    auto* component_event = OH_ArkUI_NodeEvent_GetNodeComponentEvent(event);
+    // ArkUI provides the velocity in the scroll direction (vp/s) just before
+    // the drag ends.
+    float velocity = component_event->data[0].f32;
+    bool has_velocity = base::FloatsNotEqual(velocity, 0.f);
+    bool forward = base::FloatsLarger(0.f, velocity);
+    if (HasValidMaxSnapCount()) {
+      if (has_velocity) {
+        scroll_target = CalculateMultiStepSnapScroll(forward, velocity);
+      }
+      if (std::get<0>(scroll_target) == -1) {
+        scroll_target = CalculateSingleStepSnapScroll(forward, has_velocity);
+      }
+      ApplySnapScrollTarget(scroll_target);
+    }
+  }
+}
+
+bool UIList::HasValidSnapFactor() const {
+  return base::FloatsLargerOrEqual(snap_factor_, 0.f) &&
+         base::FloatsLargerOrEqual(1.f, snap_factor_);
+}
+
+bool UIList::HasValidMaxSnapCount() const {
+  return max_snap_count_ > kDefaultMaxSnapCount;
+}
+
+void UIList::DetectSnapScroll() {
+  auto scroll_offset = GetScrollOffset();
+  bool vertical = IsVerticalScrollView();
+  bool forward = false;
+  if (vertical) {
+    if (last_scroll_offset_.second == scroll_offset.second &&
+        scroll_offset.second == 0) {
+      // At top
+      forward = false;
+    } else {
+      forward = scroll_offset.second >= last_scroll_offset_.second;
+    }
+  } else {
+    if (last_scroll_offset_.first == scroll_offset.first &&
+        scroll_offset.first == 0) {
+      // At Left
+      forward = false;
+    } else {
+      forward = scroll_offset.first >= last_scroll_offset_.first;
+    }
+  }
+  bool has_velocity = vertical
+                          ? last_scroll_offset_.second != scroll_offset.second
+                          : last_scroll_offset_.first != scroll_offset.first;
+  auto scroll_target = CalculateSingleStepSnapScroll(forward, has_velocity);
+  ApplySnapScrollTarget(scroll_target);
 }
 
 UIComponent* UIList::GetItemAtIndex(int32_t index) {
@@ -651,11 +715,10 @@ bool UIList::HasParentDrawNode(UIBase* child) const {
          NodeManager::Instance().GetParent(child->DrawNode()) != nullptr;
 }
 
-std::tuple<int32_t, float, float> UIList::CalcSnapScroll(bool forward,
-                                                         bool has_velocity) {
+std::tuple<int32_t, float, float> UIList::CalculateSingleStepSnapScroll(
+    bool forward, bool has_velocity) {
   bool vertical = IsVerticalScrollView();
   std::pair scroll_offset = GetScrollOffset();
-
   UIComponent* closest_item_before_position = nullptr;
   UIComponent* closest_item_after_position = nullptr;
   UIComponent* clamped_item_before_position = nullptr;
@@ -793,6 +856,129 @@ std::tuple<int32_t, float, float> UIList::CalcSnapScroll(bool forward,
   return {target_position, offsets.first, offsets.second};
 }
 
+std::tuple<int32_t, float, float> UIList::CalculateMultiStepSnapScroll(
+    bool forward, float velocity) {
+  bool vertical = IsVerticalScrollView();
+  float viewport_size = vertical ? height_ : width_;
+  std::pair scroll_offset = GetScrollOffset();
+  if (!base::FloatsLarger(viewport_size, 0.f)) {
+    return {-1, scroll_offset.first, scroll_offset.second};
+  }
+
+  float content_offset =
+      is_horizontal_ ? scroll_offset.first : scroll_offset.second;
+  float effective_distance =
+      CalculateEffectiveFlingDistance(velocity, viewport_size);
+  float projected_offset =
+      content_offset + (forward ? effective_distance : -effective_distance);
+  std::vector<SnapCandidate> candidates =
+      CollectDirectionalSnapCandidates(content_offset, forward);
+  if (candidates.empty()) {
+    return {-1, scroll_offset.first, scroll_offset.second};
+  }
+
+  const auto first_candidate_iter =
+      std::min_element(candidates.begin(), candidates.end(),
+                       [](const SnapCandidate& lhs, const SnapCandidate& rhs) {
+                         return std::abs(lhs.distance_to_current) <
+                                std::abs(rhs.distance_to_current);
+                       });
+  SnapCandidate best_candidate = *first_candidate_iter;
+  float best_distance = std::abs(best_candidate.offset - projected_offset);
+  for (const auto& candidate : candidates) {
+    int32_t snap_count =
+        std::abs(candidate.position - first_candidate_iter->position) + 1;
+    if (snap_count > max_snap_count_) {
+      continue;
+    }
+    float distance = std::abs(candidate.offset - projected_offset);
+    if (distance < best_distance) {
+      best_distance = distance;
+      best_candidate = candidate;
+    }
+  }
+
+  if (vertical) {
+    return {best_candidate.position, 0.f, best_candidate.offset};
+  }
+  return {best_candidate.position, best_candidate.offset, 0.f};
+}
+
+std::vector<UIList::SnapCandidate> UIList::CollectDirectionalSnapCandidates(
+    float content_offset, bool forward) {
+  std::vector<SnapCandidate> candidates;
+  float min_scroll_range = 0.f;
+  float max_scroll_range = GetScrollRange();
+  bool has_start_candidate = false;
+  bool has_end_candidate = false;
+  SnapCandidate start_candidate{-1, 0.f, 0.f};
+  SnapCandidate end_candidate{-1, 0.f, 0.f};
+  float start_candidate_raw_offset = std::numeric_limits<float>::lowest();
+  float end_candidate_raw_offset = std::numeric_limits<float>::max();
+
+  for (UIBase* child : children_) {
+    if (!IsListItem(child) || !HasParentDrawNode(child)) {
+      continue;
+    }
+    auto* list_item = static_cast<UIComponent*>(child);
+    int32_t position = GetIndexFromItemKey(list_item->item_key());
+    if (position == -1) {
+      continue;
+    }
+
+    float item_snap_offset = GetListItemSnapScrollOffset(list_item);
+    float snap_offset =
+        std::clamp(item_snap_offset, min_scroll_range, max_scroll_range);
+    float distance_to_current = snap_offset - content_offset;
+    bool directional_candidate =
+        (forward && base::FloatsLarger(distance_to_current, 0.f)) ||
+        (!forward && base::FloatsLarger(0.f, distance_to_current));
+    if (!directional_candidate) {
+      continue;
+    }
+
+    SnapCandidate candidate{position, snap_offset, distance_to_current};
+    // Multiple items can clamp to the same scroll boundary. Keep only the
+    // representative nearest to that boundary to avoid duplicate snap pages.
+    if (item_snap_offset <= min_scroll_range) {
+      if (!has_start_candidate ||
+          item_snap_offset > start_candidate_raw_offset) {
+        start_candidate = candidate;
+        start_candidate_raw_offset = item_snap_offset;
+        has_start_candidate = true;
+      }
+      continue;
+    }
+    if (item_snap_offset >= max_scroll_range) {
+      if (!has_end_candidate || item_snap_offset < end_candidate_raw_offset) {
+        end_candidate = candidate;
+        end_candidate_raw_offset = item_snap_offset;
+        has_end_candidate = true;
+      }
+      continue;
+    }
+    candidates.emplace_back(candidate);
+  }
+
+  if (has_start_candidate) {
+    candidates.emplace_back(start_candidate);
+  }
+  if (has_end_candidate) {
+    candidates.emplace_back(end_candidate);
+  }
+  return candidates;
+}
+
+float UIList::CalculateEffectiveFlingDistance(float velocity,
+                                              float viewport_size) const {
+  float abs_vel = std::abs(velocity);
+  float normalized_velocity =
+      std::max(abs_vel - kItemSnapExtraDistanceVelocityThreshold, 0.f) /
+      (viewport_size * kItemSnapVelocityToViewportRatio);
+  return viewport_size * std::log1p(normalized_velocity) *
+         kItemSnapFlingDistanceGain;
+}
+
 float UIList::GetListItemSnapScrollOffset(UIComponent* list_item) const {
   if (is_horizontal_) {
     return list_item->left_ - (width_ - list_item->width_) * snap_factor_ +
@@ -815,6 +1001,30 @@ void UIList::HandleScrollStopEvent() {
   SendScrollEndEvent();
 }
 
+void UIList::ApplySnapScrollTarget(
+    const std::tuple<int32_t, float, float>& scroll_target) {
+  auto scroll_offset = GetScrollOffset();
+  int32_t scroll_position = std::get<0>(scroll_target);
+  if (scroll_position != -1) {
+    if (scroll_position >= item_keys_.size()) {
+      scroll_position =
+          std::max(0, static_cast<int32_t>(item_keys_.size() - 1));
+    }
+    NodeManager::Instance().SetAttributeWithNumberValue(
+        node_, NODE_SCROLL_OFFSET, std::get<1>(scroll_target),
+        std::get<2>(scroll_target), 250, static_cast<int>(ARKUI_CURVE_SMOOTH),
+        0);
+  }
+  auto dict = lepus::Dictionary::Create();
+  dict->SetValue("position", scroll_position);
+  dict->SetValue("currentScrollLeft", scroll_offset.first);
+  dict->SetValue("currentScrollTop", scroll_offset.second);
+  dict->SetValue("targetScrollLeft", std::get<1>(scroll_target));
+  dict->SetValue("targetScrollTop", std::get<2>(scroll_target));
+  CustomEvent event{Sign(), list::kSnap, "detail", lepus_value(dict)};
+  context_->SendEvent(event);
+}
+
 void UIList::SendScrollEndEvent() {
   auto offset = GetScrollOffset();
   auto param = lepus::Dictionary::Create();
@@ -831,7 +1041,12 @@ void UIList::SendScrollEndEvent() {
   context_->SendEvent(event);
 }
 
-void UIList::HandleWillScrollEvent(ArkUI_NodeComponentEvent* component_event) {
+void UIList::HandleWillScrollEvent(ArkUI_NodeEvent* event) {
+  auto* component_event = OH_ArkUI_NodeEvent_GetNodeComponentEvent(event);
+  if (IsEnableNewGesture() && !consume_gesture_) {
+    component_event->data[0].f32 = 0.f;
+    component_event->data[1].f32 = 0.f;
+  }
   // component_event->data[0].f32 and component_event->data[1].f32 is the delta
   // of content offset that will be consumed.
   float delta_offset_x = component_event->data[0].f32;
