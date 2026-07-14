@@ -8,20 +8,21 @@ namespace clay {
 
 const std::unordered_set<std::string>& InternalPlatformViewTags() {
   // iOS implementation. Android links native_view_tags_android.cc, where
-  // x-video-engine is admitted as an XElement-backed platform view. iOS
-  // intentionally leaves that tag to the Clay C++ VideoEngineView so it uses
-  // VideoPlayerServiceDarwin and VideoEngine.mm instead of XElement.
+  // x-video-engine is admitted as an XElement-backed platform view.
+  // Clay's c++ video tag is changed to be clay-video-engine.
   static const std::unordered_set<std::string> tags = {
-      "x-map-ng", "map-view",   "input-view", "textarea-view", "input",
-      "x-input",  "x-input-ng", "textarea",   "x-textarea",    "x-textarea-ng",
+      "x-map-ng",   "map-view",      "input-view",     "textarea-view",
+      "input",      "x-input",       "x-input-ng",     "textarea",
+      "x-textarea", "x-textarea-ng", "x-video-engine",
   };
   return tags;
 }
 
 const std::unordered_set<std::string>& InternalPlatformViewShadowNodeTags() {
   static const std::unordered_set<std::string> tags = {
-      "map-view",   "input-view", "textarea-view", "input",         "x-input",
-      "x-input-ng", "textarea",   "x-textarea",    "x-textarea-ng",
+      "map-view",      "input-view",     "textarea-view", "input",
+      "x-input",       "x-input-ng",     "textarea",      "x-textarea",
+      "x-textarea-ng", "x-video-engine",
   };
   return tags;
 }

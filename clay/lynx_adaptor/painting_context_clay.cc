@@ -13,6 +13,7 @@
 #include "clay/lynx_adaptor/base_def.h"
 #include "clay/lynx_adaptor/clay_value.h"
 #include "clay/lynx_adaptor/platform_extra_bundle_clay.h"
+#include "clay/lynx_adaptor/platform_node_tag_resolver.h"
 #include "clay/lynx_adaptor/prop_bundle_impl.h"
 #include "clay/lynx_adaptor/value_converter.h"
 #include "clay/public/value.h"
@@ -205,8 +206,10 @@ void PaintingContextClay::CreatePaintingNode(
     int id, const std::string& tag,
     const fml::RefPtr<PropBundle>& painting_data, bool flatten,
     bool create_node_async, uint32_t node_index) {
-  auto task = [view_context = view_context_, id, tag, painting_data, flatten,
-               create_node_async, node_index]() mutable {
+  auto resolved_tag = ResolveClayPlatformNodeTag(tag, painting_data.get());
+  auto task = [view_context = view_context_, id, tag = std::move(resolved_tag),
+               painting_data, flatten, create_node_async,
+               node_index]() mutable {
     TRACE_EVENT("clay", CLAY_PAINTING_CONTEXT_CREATE_PAINTING_NODE, "id", id,
                 "tag", tag.c_str(), "flatten", flatten, "create_node_async",
                 create_node_async, "node_index", node_index);

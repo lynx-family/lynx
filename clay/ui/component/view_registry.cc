@@ -97,11 +97,9 @@ BaseView* ViewRegistry::CreateView(int32_t id, const std::string& tag_name,
   // InternalPlatformViewTags > C++ registered views > fallback native views.
   // InternalPlatformViewTags is platform-specific and intentionally shadows C++
   // entries only for tags that should be platform native views on that
-  // platform. Example: Android keeps x-video-engine here to use the x-element
-  // provider, while iOS omits it so the C++ VideoEngineView wins and uses
-  // VideoPlayerServiceDarwin/VideoEngine.mm. On iOS, ClayPlatformViewRegistry
-  // also filters the dynamic wrapped x-video-engine tag so the normal iOS
-  // XElement video engine cannot override that C++ path.
+  // platform. Clay can resolve an element to a different platform tag before
+  // creation, such as using the internal clay-video-engine alias for the C++
+  // video implementation while keeping x-video-engine for platform video.
   if (IsInternalPlatformViewTag(tag_name)) {
     return CreateNativeViewIfAvailable(id, tag_name, page_view);
   }
