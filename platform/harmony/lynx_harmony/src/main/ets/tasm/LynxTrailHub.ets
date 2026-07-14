@@ -75,6 +75,7 @@ export enum LynxTrailKey {
   TRY_TO_FIX_NATIVE_WINDOW_LEAK_HARMONY_CANVAS = 'try_to_fix_native_window_leak_harmony_canvas',
   FIX_LIST_CALLBACK_LEAK_BUG = 'fix_list_callback_leak',
   ENABLE_HARMONY_NEW_IMAGE = 'enable_harmony_new_image',
+  ENABLE_HARMONY_GESTURE_INTERRUPTER_USER_DATA = 'enable_harmony_gesture_interrupter_user_data',
   FIX_FILTER_DYNAMIC_UPDATE_BUG = 'fix_filter_dynamic_update_bug',
   // Temporary validation switch for the Fiber viewport + transition dynamic
   // update fix. Remove this key after the fix is verified online.
