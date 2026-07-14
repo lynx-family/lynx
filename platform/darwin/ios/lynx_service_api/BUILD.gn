@@ -84,5 +84,6 @@ lynx_core_source_set("lynx_service_api_sources") {
 
 subspec_target("Native") {
   header_mappings_dir = "lynx"
+  sources = [ "../../../../platform/embedder/public/capi/lynx_export.h" ]
   deps = [ "../../../../service_api:src" ]
 }

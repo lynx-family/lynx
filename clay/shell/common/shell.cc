@@ -23,6 +23,7 @@
 #include "clay/common/sys_info.h"
 #include "clay/common/task_runners.h"
 #include "clay/common/thread_host.h"
+#include "clay/common/trail_settings.h"
 #include "clay/flow/frame_timings.h"
 #include "clay/flow/layers/layer_tree.h"
 #include "clay/gfx/shared_image/shared_image_sink.h"
@@ -57,9 +58,6 @@
 #include "third_party/rapidjson/writer.h"
 #if defined(OS_WIN) || defined(OS_MAC)
 #include "clay/memory/memory_pressure_monitor.h"
-#endif
-#if defined(OS_ANDROID) || defined(OS_IOS)
-#include "clay/common/trail_settings.h"
 #endif
 #include "base/include/fml/task_runner.h"
 #include "clay/net/loader/resource_loader_intercept.h"
@@ -175,6 +173,10 @@ std::unique_ptr<Shell> Shell::CreateShellOnPlatformThread(
     FML_LOG(ERROR) << "Task runners to run the shell were invalid.";
     return nullptr;
   }
+
+  FML_LOG(INFO) << "Clay setting enable_memory_monitor: "
+                << setting::ENABLE_MEMORY_MONITOR.value();
+
   auto shell = std::unique_ptr<Shell>(new Shell(service_manager, task_runners,
                                                 resource_cache_limit_calculator,
                                                 settings, is_gpu_disabled));

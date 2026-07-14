@@ -32,7 +32,10 @@ source_set("common") {
     sources += [ "sys_info.cc" ]
   }
 
-  deps = [ "../fml:fml" ]
+  deps = [
+    "../../service_api:src",
+    "../fml:fml",
+  ]
 
   include_dirs = [ "//third_party/boringssl/src/include" ]
 

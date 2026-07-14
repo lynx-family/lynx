@@ -21,7 +21,7 @@ struct lynx_trail_service_t : public lynx::embedder::LynxServiceBase {
   std::atomic<lynx_trail_string_value_func> string_value_func = nullptr;
 };
 
-std::optional<std::string> lynx_trail_service_get_string_value(
+LYNX_CAPI_EXPORT std::optional<std::string> lynx_trail_service_get_string_value(
     lynx_trail_service_t* trail_service, const std::string& key);
 
 #endif  // PLATFORM_EMBEDDER_LYNX_SERVICE_LYNX_TRAIL_SERVICE_PRIV_H_

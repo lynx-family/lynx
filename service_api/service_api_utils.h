@@ -6,17 +6,24 @@
 
 #include <string>
 #include <utility>
+
+#include "platform/embedder/public/capi/lynx_export.h"
+
 #if defined(OS_IOS)
 #include <service_api/service_lazy_load.h>
 #endif
 
-#define EXPORT_FUNC                                                \
-  __attribute__((visibility("default"))) __attribute__((noinline)) \
-  __attribute__((used))
-#define EXPORT_VAR __attribute__((visibility("default"))) __attribute__((used))
-#define EXPORT_CLASS __attribute__((visibility("default")))
+#if defined(_WIN32)
+#define LYNX_SERVICE_API_USED __declspec(noinline)
+#else
+#define LYNX_SERVICE_API_USED __attribute__((noinline)) __attribute__((used))
+#endif
 
-#define DYLIB_ENTRY(name) __attribute__((constructor)) EXPORT_FUNC void name()
+#define EXPORT_FUNC LYNX_CAPI_EXPORT LYNX_SERVICE_API_USED
+#define EXPORT_VAR __attribute__((visibility("default"))) __attribute__((used))
+#define EXPORT_CLASS LYNX_CAPI_EXPORT
+
+#define DYLIB_ENTRY(name) __attribute__((constructor)) void name()
 
 #if defined(OS_IOS)
 #define _LYNX_SERVICE_ENTRY_FUNC(name) SERVICE_LAZY_LOAD_CPP(name)
@@ -78,8 +85,8 @@
  */
 #define USE_LINK_ANCHOR(name)                                        \
   extern void __lynx_link_anchor_##name(void);                       \
-  __attribute__((used)) static void *__lynx_link_anchor_ref_##name = \
-      (void *)&__lynx_link_anchor_##name
+  __attribute__((used)) static void* __lynx_link_anchor_ref_##name = \
+      (void*)&__lynx_link_anchor_##name
 
 namespace lynx {
 namespace service {
@@ -119,33 +126,33 @@ class NoDestructor {
   // Not constexpr; just write static constexpr T x = ...; if the value should
   // be a constexpr.
   template <typename... Args>
-  explicit NoDestructor(Args &&...args) {
+  explicit NoDestructor(Args&&... args) {
     new (storage_) T(std::forward<Args>(args)...);
   }
 
   // Allows copy and move construction of the contained type, to allow
   // construction from an initializer list, e.g. for std::vector.
-  explicit NoDestructor(const T &x) { new (storage_) T(x); }
+  explicit NoDestructor(const T& x) { new (storage_) T(x); }
 
-  explicit NoDestructor(T &&x) { new (storage_) T(std::move(x)); }
+  explicit NoDestructor(T&& x) { new (storage_) T(std::move(x)); }
 
-  NoDestructor(const NoDestructor &) = delete;
+  NoDestructor(const NoDestructor&) = delete;
 
-  NoDestructor &operator=(const NoDestructor &) = delete;
+  NoDestructor& operator=(const NoDestructor&) = delete;
 
   ~NoDestructor() = default;
 
-  const T &operator*() const { return *get(); }
+  const T& operator*() const { return *get(); }
 
-  T &operator*() { return *get(); }
+  T& operator*() { return *get(); }
 
-  const T *operator->() const { return get(); }
+  const T* operator->() const { return get(); }
 
-  T *operator->() { return get(); }
+  T* operator->() { return get(); }
 
-  const T *get() const { return reinterpret_cast<const T *>(storage_); }
+  const T* get() const { return reinterpret_cast<const T*>(storage_); }
 
-  T *get() { return reinterpret_cast<T *>(storage_); }
+  T* get() { return reinterpret_cast<T*>(storage_); }
 
  private:
   alignas(T) char storage_[sizeof(T)];
@@ -163,7 +170,7 @@ class NoDestructor {
   // reproductions: until that's resolved, hold an explicit pointer to the
   // placement-new'd object in leak sanitizer mode to help LSan realize that
   // objects allocated by the contained type are still reachable.
-  T *storage_ptr_ = reinterpret_cast<T *>(storage_);
+  T* storage_ptr_ = reinterpret_cast<T*>(storage_);
 #endif  // defined(LEAK_SANITIZER)
 };
 }  // namespace utils
