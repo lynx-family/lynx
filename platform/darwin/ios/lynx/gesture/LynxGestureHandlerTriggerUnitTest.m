@@ -226,6 +226,23 @@
   XCTAssertTrue(velocityTracker == tracker);
 }
 
+- (void)testHasActivePlatformGesture {
+  LynxGestureArenaMemberMock *mock = [[LynxGestureArenaMemberMock alloc] init];
+  [self.trigger setCurrentWinnerWhenDown:mock];
+  XCTAssertFalse([self.trigger hasActivePlatformGesture]);
+
+  LynxBaseGestureHandler *handler =
+      [[mock getGestureHandlers] objectForKey:@(LynxGestureHandlerOptionPan)];
+  [handler begin];
+  XCTAssertFalse([self.trigger hasActivePlatformGesture]);
+
+  [handler activate];
+  XCTAssertTrue([self.trigger hasActivePlatformGesture]);
+
+  [handler end];
+  XCTAssertFalse([self.trigger hasActivePlatformGesture]);
+}
+
 - (void)testConvertResponseChainToCompeteChain1 {
   LynxGestureArenaMemberMock *mock1 = [[LynxGestureArenaMemberMock alloc] init];
   LynxGestureArenaMemberMock *mock2 = [[LynxGestureArenaMemberMock alloc] init];

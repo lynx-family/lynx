@@ -101,6 +101,8 @@ NS_ASSUME_NONNULL_BEGIN
                        memberId:(NSInteger)memberId
                           state:(LynxGestureState)state;
 
+- (BOOL)hasActivePlatformGesture;
+
 @end
 
 NS_ASSUME_NONNULL_END

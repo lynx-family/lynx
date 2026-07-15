@@ -79,7 +79,7 @@
     [self startLongPress];
   } else if (touchType == LynxEventTouchMove) {
     _lastPoint = touchPoint;
-    if ([self shouldFail]) {
+    if (self.status == LynxGestureHandlerStateBegin && [self shouldFail]) {
       [self fail];
       [self endLongPress];
     }
