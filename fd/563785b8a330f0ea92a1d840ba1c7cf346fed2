@@ -1,0 +1,37 @@
+krypton/core/video/video_element.cc
+  s_d16ce5604b1dd1::t_b5f3214a0a507b 591
+krypton/core/renderer/webgl/webgl_rendering_context.cc
+  s_d16ce5604b1dd1::t_754026e5cfd829 57,110
+krypton/core/renderer/webgl/webgl_rendering_context_base.h
+  s_d16ce5604b1dd1::t_abbd1dccd05907 352
+krypton/core/renderer/canvas/pipeline/canvas_resource_provider.cc
+  s_d16ce5604b1dd1::t_945896df74ca26 18,342-347,630-633
+krypton/core/renderer/canvas/pipeline/canvas_resource_provider.h
+  s_d16ce5604b1dd1::t_748b4476883062 134-137,232-233
+krypton/core/renderer/webgl/webgl2/webgl2_rendering_context.cc
+  s_d16ce5604b1dd1::t_2bca14b48f3ac2 1470,2372,2488,2530
+krypton/core/renderer/canvas/pipeline/canvas_resource_provider_3d.h
+  s_d16ce5604b1dd1::t_acfbfe982ca54b 29
+krypton/core/renderer/canvas/pipeline/canvas_resource_provider_3d.cc
+  s_d16ce5604b1dd1::t_b219f888925fe3 14,94-149,247,266
+krypton/core/renderer/webgl/webgl_rendering_context_base.cc
+  s_d16ce5604b1dd1::t_c6f5b45b37da6f 787,1803,1836,4820-4825
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.5",
+  "base_commit_sha": "fd563785b8a330f0ea92a1d840ba1c7cf346fed2",
+  "prompts": {},
+  "sessions": {
+    "s_d16ce5604b1dd1": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f64a8-d6b0-7c92-828d-f8d178edee2c",
+        "model": "unknown"
+      },
+      "human_author": "yingjunkang <yingjunkang@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}
