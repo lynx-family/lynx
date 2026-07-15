@@ -53,7 +53,7 @@ bool ShouldDispatchFrontendCustomEventBubbleCompatible(
 }
 
 bool HasBubbleEventListener(EventTarget& target, Event& event) {
-  auto* listeners = target.GetEventListenerMap()->Find(event.type());
+  auto* listeners = target.FindEventListeners(event.type());
   if (listeners == nullptr) {
     return false;
   }

@@ -18678,28 +18678,52 @@ TEST_P(FiberElementTest, TestCheckTriggerGlobalEvent) {
 
 TEST_P(FiberElementTest, TestCheckGlobalBindTarget) {
   auto page = manager->CreateFiberPage("page", 11);
-  EXPECT_TRUE(page->global_bind_target_set_->empty());
+  EXPECT_FALSE(page->rare_data_);
+  EXPECT_EQ(page->GlobalBindTarget(), nullptr);
 
   page->CheckGlobalBindTarget("global-target", lepus::Value(true));
-  EXPECT_TRUE(page->global_bind_target_set_->empty());
+  EXPECT_FALSE(page->rare_data_);
 
   page->CheckGlobalBindTarget("global-target", lepus::Value(1));
-  EXPECT_TRUE(page->global_bind_target_set_->empty());
+  EXPECT_FALSE(page->rare_data_);
 
   page->CheckGlobalBindTarget("global-target", lepus::Value(false));
-  EXPECT_TRUE(page->global_bind_target_set_->empty());
+  EXPECT_FALSE(page->rare_data_);
 
   page->CheckGlobalBindTarget("global-target", lepus::Value("xxx"));
-  EXPECT_FALSE(page->global_bind_target_set_->empty());
-  EXPECT_EQ(page->global_bind_target_set_->count("xxx"), 1);
+  ASSERT_TRUE(page->rare_data_);
+  ASSERT_NE(page->GlobalBindTarget(), nullptr);
+  EXPECT_EQ(page->GlobalBindTarget()->count("xxx"), 1);
 
   page->CheckGlobalBindTarget("global-target",
                               lepus::Value("xxxx, yyyy,zzzz,"));
-  EXPECT_FALSE(page->global_bind_target_set_->empty());
-  EXPECT_EQ(page->global_bind_target_set_->count("xxx"), 0);
-  EXPECT_EQ(page->global_bind_target_set_->count("xxxx"), 1);
-  EXPECT_EQ(page->global_bind_target_set_->count("yyyy"), 1);
-  EXPECT_EQ(page->global_bind_target_set_->count("zzzz"), 1);
+  EXPECT_EQ(page->GlobalBindTarget()->count("xxx"), 0);
+  EXPECT_EQ(page->GlobalBindTarget()->count("xxxx"), 1);
+  EXPECT_EQ(page->GlobalBindTarget()->count("yyyy"), 1);
+  EXPECT_EQ(page->GlobalBindTarget()->count("zzzz"), 1);
+
+  page->CheckGlobalBindTarget("global-target", lepus::Value(""));
+  EXPECT_FALSE(page->rare_data_);
+  EXPECT_EQ(page->GlobalBindTarget(), nullptr);
+}
+
+TEST_P(FiberElementTest, PendingInvokeTasksMaterializeRareDataLazily) {
+  auto view = manager->CreateFiberView();
+  EXPECT_FALSE(view->rare_data_);
+
+  view->AppendPendingInvokeTask(base::closure());
+  EXPECT_FALSE(view->rare_data_);
+
+  int invoked_count = 0;
+  view->AppendPendingInvokeTask([&invoked_count]() { ++invoked_count; });
+  ASSERT_TRUE(view->rare_data_);
+  EXPECT_EQ(view->rare_data_->pending_invoke_tasks_.size(), 1U);
+  EXPECT_NE(view->dirty_ & Element::kDirtyInvoke, 0U);
+
+  view->FlushPendingInvokeTasks();
+  EXPECT_EQ(invoked_count, 1);
+  EXPECT_EQ(view->dirty_ & Element::kDirtyInvoke, 0U);
+  EXPECT_FALSE(view->rare_data_);
 }
 
 TEST_P(FiberElementTest, CheckNewAnimatorAttr) {
@@ -20326,6 +20350,39 @@ TEST_P(FiberElementTest,
 }
 
 TEST_P(FiberElementTest,
+       NewStylingImperativeAnimationStateIsMaterializedLazily) {
+  manager->enable_new_styling_pipeline_ = true;
+  auto element = manager->CreateFiberView();
+
+  EXPECT_EQ(element->imperative_animation_state_, nullptr);
+  EXPECT_FALSE(element->HasImperativeAnimations());
+  EXPECT_FALSE(element->HasPendingImperativeAnimationCleanupProperties());
+  EXPECT_FALSE(
+      element->TakePendingImperativeAnimationCleanupProperties().HasAny());
+  element->CancelImperativeAnimation(ImperativeAnimationState::Source::kAnimate,
+                                     "missing");
+  element->FinishImperativeAnimation(ImperativeAnimationState::Source::kAnimate,
+                                     "missing");
+  element->ClearImperativeAnimationsForStyleAnimationUpdate();
+  EXPECT_EQ(element->imperative_animation_state_, nullptr);
+
+  element->RecordImperativeAnimationStart(
+      ImperativeAnimationState::Source::kAnimate, "fade", "fade", false,
+      StyleMap());
+  ASSERT_NE(element->imperative_animation_state_, nullptr);
+  EXPECT_TRUE(element->HasImperativeAnimations());
+
+  element->ClearImperativeAnimationsForStyleAnimationUpdate();
+  EXPECT_EQ(element->imperative_animation_state_, nullptr);
+
+  element->RecordImperativeAnimationStart(
+      ImperativeAnimationState::Source::kAnimate, "fade", "fade", false,
+      StyleMap());
+  element->ClearImperativeAnimationState();
+  EXPECT_EQ(element->imperative_animation_state_, nullptr);
+}
+
+TEST_P(FiberElementTest,
        NewStylingImperativeAnimationCleanupPushesCleanupSnapshotValue) {
   manager->enable_new_styling_pipeline_ = true;
   auto element = manager->CreateFiberView();
@@ -20336,7 +20393,7 @@ TEST_P(FiberElementTest,
   starlight::ComputedCSSStyle cleanup_style(*manager->platform_computed_css());
   cleanup_style.SetValue(CSSPropertyID::kPropertyIDOpacity,
                          CSSValue(0.8, CSSValuePattern::NUMBER), false);
-  element->imperative_animation_state_.pending_cleanup_properties_.Set(
+  element->EnsureImperativeAnimationState().pending_cleanup_properties_.Set(
       CSSPropertyID::kPropertyIDOpacity);
 
   bool need_update = false;
@@ -20373,7 +20430,7 @@ TEST_P(FiberElementTest,
   element->css_keyframe_manager_
       ->pending_property_overrides_[CSSPropertyID::kPropertyIDOpacity] =
       CSSValue(0.8, CSSValuePattern::NUMBER);
-  element->imperative_animation_state_.pending_cleanup_properties_.Set(
+  element->EnsureImperativeAnimationState().pending_cleanup_properties_.Set(
       CSSPropertyID::kPropertyIDOpacity);
 
   FiberElement::NewPipelineResolveRequest request;
@@ -20415,7 +20472,7 @@ TEST_P(
   EXPECT_TRUE(wrapper->CanBeLayoutOnly());
   EXPECT_TRUE(wrapper->is_layout_only_);
 
-  wrapper->imperative_animation_state_.pending_cleanup_properties_.Set(
+  wrapper->EnsureImperativeAnimationState().pending_cleanup_properties_.Set(
       CSSPropertyID::kPropertyIDLineHeight);
 
   FiberElement::NewPipelineResolveRequest request;

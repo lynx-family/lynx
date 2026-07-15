@@ -35,6 +35,30 @@ lepus::Value CreateEventTargetInfo(const std::string& id,
 
 }  // namespace
 
+TEST_F(EventTargetTest, EventListenerMapIsCreatedLazily) {
+  EXPECT_FALSE(mock_target_->HasMaterializedEventListenerMap());
+  EXPECT_EQ(mock_target_->FindEventListeners("test"), nullptr);
+  EXPECT_FALSE(mock_target_->HasEventListener("test"));
+  EXPECT_FALSE(mock_target_->HasMaterializedEventListenerMap());
+
+  auto mock_event = fml::MakeRefCounted<Event>(
+      "test", Event::EventType::kNone, Event::Capture::kNo, Event::Bubbles::kNo,
+      Event::Cancelable::kYes, Event::ComposedMode::kComposed,
+      Event::PhaseType::kNone);
+  EXPECT_FALSE(mock_target_->DispatchEvent(mock_event).consumed);
+  EXPECT_FALSE(mock_target_->RemoveEventListeners("test"));
+  mock_target_->ClearEventListeners();
+  EXPECT_EQ(mock_target_->FindEventListeners("test"), nullptr);
+  EXPECT_FALSE(mock_target_->HasMaterializedEventListenerMap());
+
+  mock_target_->AddEventListener(
+      "test", std::make_unique<MockEventListener>(
+                  EventListener::Type::kJSClosureEventListener, "1"));
+  EXPECT_TRUE(mock_target_->HasMaterializedEventListenerMap());
+  EXPECT_NE(mock_target_->FindEventListeners("test"), nullptr);
+  EXPECT_TRUE(mock_target_->HasEventListener("test"));
+}
+
 TEST_F(EventTargetTest, TestEventTargetTest0) {
   auto map = mock_target_->GetEventListenerMap();
 

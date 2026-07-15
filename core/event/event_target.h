@@ -70,13 +70,15 @@ class EventTarget {
   virtual bool RemoveEventListener(const std::string& type,
                                    std::shared_ptr<EventListener> listener);
   virtual bool RemoveEventListeners(const std::string& type);
+  void ClearEventListeners();
 
-  EventListenerMap* GetEventListenerMap() const {
-    return event_listener_map_.get();
-  }
+  EventListenerMap* GetEventListenerMap() const;
+
+  EventListenerVector* FindEventListeners(const std::string& event_type) const;
 
   bool HasEventListener(const std::string& event_type) {
-    return event_listener_map_->Contains(event_type);
+    return event_listener_map_ != nullptr &&
+           event_listener_map_->Contains(event_type);
   }
 
   EventTargetType target_type() { return target_type_; }
@@ -113,7 +115,7 @@ class EventTarget {
 
  protected:
   EventTargetType target_type_{EventTargetType::kNone};
-  std::unique_ptr<EventListenerMap> event_listener_map_;
+  mutable std::unique_ptr<EventListenerMap> event_listener_map_;
 };
 
 }  // namespace event

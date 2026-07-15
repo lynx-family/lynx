@@ -44,11 +44,23 @@
 namespace lynx {
 namespace event {
 
-EventTarget::EventTarget()
-    : event_listener_map_(std::make_unique<EventListenerMap>()) {}
+EventTarget::EventTarget() = default;
+
+EventListenerMap* EventTarget::GetEventListenerMap() const {
+  if (event_listener_map_ == nullptr) {
+    event_listener_map_ = std::make_unique<EventListenerMap>();
+  }
+  return event_listener_map_.get();
+}
+
+EventListenerVector* EventTarget::FindEventListeners(
+    const std::string& event_type) const {
+  return event_listener_map_ != nullptr ? event_listener_map_->Find(event_type)
+                                        : nullptr;
+}
 
 DispatchEventResult EventTarget::DispatchEvent(fml::RefPtr<Event> event) {
-  auto vector = event_listener_map_->Find(event->type());
+  auto vector = FindEventListeners(event->type());
   if (vector == nullptr) {
     return {EventCancelType::kNotCanceled, false};
   }
@@ -121,16 +133,23 @@ DispatchEventResult EventTarget::DispatchEvent(fml::RefPtr<Event> event) {
 
 bool EventTarget::AddEventListener(const std::string& type,
                                    std::shared_ptr<EventListener> listener) {
-  return event_listener_map_->Add(type, std::move(listener));
+  return GetEventListenerMap()->Add(type, std::move(listener));
 }
 
 bool EventTarget::RemoveEventListener(const std::string& type,
                                       std::shared_ptr<EventListener> listener) {
-  return event_listener_map_->Remove(type, std::move(listener));
+  return event_listener_map_ != nullptr &&
+         event_listener_map_->Remove(type, std::move(listener));
 }
 
 bool EventTarget::RemoveEventListeners(const std::string& type) {
-  return event_listener_map_->Remove(type);
+  return event_listener_map_ != nullptr && event_listener_map_->Remove(type);
+}
+
+void EventTarget::ClearEventListeners() {
+  if (event_listener_map_ != nullptr) {
+    event_listener_map_->Clear();
+  }
 }
 
 }  // namespace event

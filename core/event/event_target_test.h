@@ -30,6 +30,9 @@ class MockEventTarget : public EventTarget {
   void SetEventTargetInfo(const lepus::Value& info) {
     event_target_info_ = info;
   }
+  bool HasMaterializedEventListenerMap() const {
+    return event_listener_map_ != nullptr;
+  }
 
  private:
   EventTarget* parent_{nullptr};

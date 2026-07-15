@@ -4554,8 +4554,7 @@ RENDERER_FUNCTION_CC(FiberSetEvents) {
 
   auto* manager = element->element_manager();
   if (manager != nullptr && manager->EnableEventHandleRefactor()) {
-    auto event_listener_map = element->GetEventListenerMap();
-    event_listener_map->Clear();
+    element->ClearEventListeners();
   }
 
   element->RemoveAllEvents();
