@@ -1,3 +1,8 @@
+## 0.0.18
+- Separate the generated strict declaration from the handwritten compatibility façade.
+- Add explicit unitless-number metadata for inline length values that support JavaScript numbers.
+- Align metadata with schema validation and correct `list-main-axis-gap` metadata.
+
 ## 0.0.17
 - Add compat_data for `box-shadow` animations and the `transition-property: box-shadow` keyword.
 

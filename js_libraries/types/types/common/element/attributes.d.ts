@@ -2,7 +2,7 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-import { CSSProperties } from '../csstype';
+import { InlineStyleProperties } from '../csstype';
 
 /**
  * IntrinsicAttributes specifies extra properties used by the JSX framework
@@ -29,7 +29,7 @@ export interface IntrinsicAttributes {
    *
    * Has no effect when `removeComponentElement` enabled.
    */
-  style?: string | CSSProperties;
+  style?: string | InlineStyleProperties;
 
   // /**
   //  * The CSS classes set to the view of component.

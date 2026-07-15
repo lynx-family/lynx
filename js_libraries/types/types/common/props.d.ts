@@ -2,7 +2,7 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-import { CSSProperties } from './csstype';
+import { InlineStyleProperties } from './csstype';
 import { LynxEventProps } from './events';
 
 export interface StandardProps extends LynxEventProps {
@@ -265,7 +265,7 @@ export interface StandardProps extends LynxEventProps {
    * @Harmony
    * @PC
    */
-  style?: string | CSSProperties;
+  style?: string | InlineStyleProperties;
 
   /**
    * We use CAShapeLayer to accelerate rendering of the component's backgrounds on iOS.

@@ -10,6 +10,7 @@ interface CSSDefine {
   values?: Array<{ value: string; version: string; desc?: string }>;
   default_value: string;
   keywords?: string[];
+  allow_unitless_number?: boolean;
   is_shorthand: boolean;
 }
 
@@ -25,6 +26,13 @@ function generateTypeDefinition(property: CSSDefine): string {
   // Handle numeric types
   if (property.type === 'number' || property.type === 'integer') {
     return `${camelName}?: number;`;
+  }
+
+  // Handle length types, including explicitly supported unitless numbers
+  if (property.type === 'length') {
+    return property.allow_unitless_number
+      ? `${camelName}?: string | number;`
+      : `${camelName}?: string;`;
   }
 
   // Handle enum types from values array
@@ -43,7 +51,7 @@ function generateTypeDefinition(property: CSSDefine): string {
   // Handle properties with keywords
   if (property.keywords && Array.isArray(property.keywords)) {
     const keywords = property.keywords.map((k) => `'${k}'`).join(' | ');
-    return `${camelName}?: ${keywords} | (string & {});`;
+    return `${camelName}?: ${keywords};`;
   }
 
   // Default to string type
@@ -118,7 +126,8 @@ function generateTypeDefinitions(): string {
   const cssDefinesDir = path.join(__dirname, '..', 'css_defines');
   const files = fs
     .readdirSync(cssDefinesDir)
-    .filter((f: string) => f.endsWith('.json'));
+    .filter((f: string) => f.endsWith('.json'))
+    .sort();
 
   const cssDefines = files.map((file: string) => {
     const filePath = path.join(cssDefinesDir, file);
@@ -161,19 +170,19 @@ function generateTypeDefinitions(): string {
  * This file is auto-generated from CSS define files in the css_defines directory.
  * Each property's type is determined by:
  * 1. For enum types: Uses the values array from the CSS define file
- * 2. For properties with keywords: Uses the keywords array as enum values, with (string & {}) for open-ended types
- * 3. For other types: Uses string type
+ * 2. For length types: Uses string, plus number only when metadata allows it
+ * 3. For properties with keywords: Uses the keywords array as enum values
+ * 4. For other types: Uses string type
+ *
+ * LynxCSSProperties is the stricter metadata-derived opt-in type.
  */
 
-export type CSSProperties = {
+export type LynxCSSProperties = {
 ${typeDefinitions}
 };
 
-export type Shorthands = ${shorthandDefinitions};
-export type Longhands = ${longhandsDefinitions};
-
-export type CSSPropertiesWithShorthands = Pick<CSSProperties, Shorthands>;
-export type CSSPropertiesWithLonghands = Pick<CSSProperties, Longhands>;
+export type Shorthands =${shorthandDefinitions};
+export type Longhands =${longhandsDefinitions};
 `;
 }
 
@@ -185,6 +194,6 @@ if (!fs.existsSync(distDir)) {
 
 // Generate and write the type definitions
 const typeDefinitions = generateTypeDefinitions();
-fs.writeFileSync(path.join(distDir, 'csstype.d.ts'), typeDefinitions);
+fs.writeFileSync(path.join(distDir, 'csstype.generated.d.ts'), typeDefinitions);
 
 console.log('Type definitions generated successfully!');

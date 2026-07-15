@@ -2,6 +2,7 @@
   "name": "-x-caret-width",
   "id": 231,
   "type": "length",
+  "allow_unitless_number": true,
   "default_value": "0px",
   "version": "4.0",
   "author": "fanjinsong",

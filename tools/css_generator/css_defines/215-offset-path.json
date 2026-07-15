@@ -46,7 +46,7 @@
           }
         }
       },
-      "circle()": {
+      "circle": {
         "__compat": {
           "status": {
             "deprecated": false,
@@ -80,7 +80,7 @@
           }
         }
       },
-      "inset()": {
+      "inset": {
         "__compat": {
           "status": {
             "deprecated": false,
@@ -114,7 +114,7 @@
           }
         }
       },
-      "ellipse()": {
+      "ellipse": {
         "__compat": {
           "status": {
             "deprecated": false,
@@ -148,7 +148,7 @@
           }
         }
       },
-      "path()": {
+      "path": {
         "__compat": {
           "status": {
             "deprecated": false,

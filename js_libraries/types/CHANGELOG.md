@@ -1,5 +1,15 @@
 # CHANGELOG
 
+## 4.4.0
+- Add explicit `CompatibleCSSProperties` and `StrictCSSProperties` contracts.
+- Add `StrictStyleSheet` for type-only module-level strict adoption.
+- Add the `@lynx-js/types/strict` entry for project-level JSX style checking.
+- Route public style props through `InlineStyleProperties` while keeping compatible defaults.
+
+## 4.3.0
+- Preserve `csstype` and 4.2 `CSSProperties` compatibility in the default inline-style type.
+- Add generated `LynxCSSProperties` for opt-in metadata-based checking.
+
 ## 4.2.0
 - Add `box-shadow` to `transition-property` typings.
 

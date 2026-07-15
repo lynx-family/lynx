@@ -24,6 +24,7 @@ import {
   RequestAccessibilityFocusMethod,
   IsAnimatingMethod,
   ScrollIntoViewMethod,
+  LynxCSSProperties,
 } from '../../types';
 
 // Props Types Check
@@ -159,6 +160,18 @@ let a;
   // Style
   <view style="color: red;" />;
   <view style={{ color: 'red' }} />;
+  <view
+    style={{
+      display: 'linear',
+      position: 'absolute',
+    } satisfies LynxCSSProperties}
+  />;
+  <view
+    style={{
+      // @ts-expect-error: static is outside the generated Lynx position values
+      position: 'static',
+    } satisfies LynxCSSProperties}
+  />;
   assertType<string | import('../../types/common/csstype').CSSProperties | undefined>(a as IntrinsicElements['view']['style']);
 
   // iOS background shape layer
