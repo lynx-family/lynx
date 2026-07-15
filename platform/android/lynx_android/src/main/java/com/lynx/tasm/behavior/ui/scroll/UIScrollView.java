@@ -1727,4 +1727,19 @@ public class UIScrollView extends AbsLynxUIScroll<AndroidScrollView> implements 
       mView.setForceCanScroll(value);
     }
   }
+
+  /**
+   * @name: experimental-android-enable-new-overflow
+   * @description: Enables the new Android overflow clipping implementation for scroll-view. When
+   * disabled, the legacy overflow clipping implementation is used.
+   * @category: different
+   * @standardAction: offline
+   * @supportVersion: 4.2
+   **/
+  @LynxProp(name = "experimental-android-enable-new-overflow", defaultBoolean = true)
+  public void setEnableNewOverflow(boolean value) {
+    if (mView != null) {
+      mView.mEnableNewOverflow = value;
+    }
+  }
 }

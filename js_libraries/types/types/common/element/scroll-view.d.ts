@@ -52,6 +52,15 @@ export interface ScrollViewProps extends StandardProps {
   'enable-scroll'?: boolean;
 
   /**
+   * Enables the experimental Android overflow clipping implementation for scroll-view.
+   * @defaultValue true
+   * @Android
+   * @experimental
+   * @since 4.2
+   */
+  'experimental-android-enable-new-overflow'?: boolean;
+
+  /**
    * Enable scrollbar
    * @defaultValue true
    * @since 1.4

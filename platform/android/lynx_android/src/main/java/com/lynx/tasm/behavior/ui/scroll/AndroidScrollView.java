@@ -29,6 +29,7 @@ import com.lynx.tasm.behavior.render.Renderer;
 import com.lynx.tasm.behavior.ui.IDrawChildHook;
 import com.lynx.tasm.behavior.ui.IDrawChildHook.IDrawChildHookBinding;
 import com.lynx.tasm.behavior.ui.LynxBaseUI;
+import com.lynx.tasm.behavior.ui.list.ScrollContainerDrawHelper;
 import com.lynx.tasm.behavior.ui.utils.BackgroundDrawable;
 import com.lynx.tasm.behavior.ui.utils.BorderRadius;
 import com.lynx.tasm.event.LynxScrollEvent;
@@ -78,6 +79,9 @@ public class AndroidScrollView
   protected boolean mDirectionChanged = false;
   private boolean mForbidFocusChangeAfterFling = false;
   private boolean mHandleTouchMove = false;
+  private final ScrollContainerDrawHelper mScrollContainerDrawHelper =
+      new ScrollContainerDrawHelper();
+  boolean mEnableNewOverflow = true;
 
   /**
    * SCROLL_STATE_IDLE: Indicates that the scrollview is in an idle, settled state.
@@ -599,7 +603,31 @@ public class AndroidScrollView
       mRenderer.afterDispatchDraw(canvas);
       return;
     }
-
+    if (mEnableNewOverflow && mScrollContainerDrawHelper != null) {
+      // AndroidScrollView (outer)
+      // └─ CustomHorizontalScrollView (inner; handles horizontal scrolling)
+      //    └─ LinearLayout (content)
+      //
+      // In vertical scrolling, AndroidScrollView uses UIScrollView's viewport height, whereas
+      // CustomHorizontalScrollView and LinearLayout use the content height. In horizontal
+      // scrolling, AndroidScrollView and CustomHorizontalScrollView use the scroll-view's
+      // viewport width, whereas LinearLayout uses the content width.
+      //
+      // The clip path is built on the Canvas received by the outer AndroidScrollView's
+      // dispatchDraw(). This Canvas uses AndroidScrollView's content coordinate system, so
+      // getClipPath(this) reads the outer view's getScrollX()/getScrollY() as the coordinate
+      // offsets. During horizontal scrolling, getRealScrollX() belongs to the inner
+      // CustomHorizontalScrollView, which applies this offset while drawing LinearLayout. Using
+      // it to build clipPath here would additionally shift the outer clipping region.
+      Path clipPath = mScrollContainerDrawHelper.getClipPath(this);
+      int count = canvas.save();
+      if (clipPath != null) {
+        canvas.clipPath(clipPath);
+      }
+      super.dispatchDraw(canvas);
+      canvas.restoreToCount(count);
+      return;
+    }
     Drawable drawable = getBackground();
     if (drawable instanceof BackgroundDrawable) {
       BackgroundDrawable backgroundDrawable = (BackgroundDrawable) drawable;
@@ -804,6 +832,9 @@ public class AndroidScrollView
     // the system did not update the clipBounds during the scroll, so the content out of bounds will
     // be clipped... just clip canvas in dispatchDraw
     mUiBound = clipBounds;
+    if (mEnableNewOverflow && mScrollContainerDrawHelper != null) {
+      mScrollContainerDrawHelper.setUiBound(clipBounds == null ? null : new Rect(clipBounds));
+    }
   }
 
   @Override

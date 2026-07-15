@@ -21,6 +21,9 @@ let a;
   <scroll-view enable-scroll={true} />;
   assertType<boolean | undefined>(a as IntrinsicElements['scroll-view']['enable-scroll']);
 
+  <scroll-view experimental-android-enable-new-overflow={true} />;
+  assertType<boolean | undefined>(a as IntrinsicElements['scroll-view']['experimental-android-enable-new-overflow']);
+
   <scroll-view scroll-bar-enable={true} />;
   assertType<boolean | undefined>(a as IntrinsicElements['scroll-view']['scroll-bar-enable']);
 

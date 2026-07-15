@@ -1,5 +1,8 @@
 # CHANGELOG
 
+## 4.2.2
+- Add `experimental-android-enable-new-overflow` typing for `<scroll-view>`.
+
 ## 4.2.1
 - Add Harmony support metadata for `maxSnapCount` on the `item-snap` property for `<list>`.
 
