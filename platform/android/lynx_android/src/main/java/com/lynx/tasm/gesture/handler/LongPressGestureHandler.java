@@ -105,7 +105,7 @@ public class LongPressGestureHandler extends BaseGestureHandler {
       case MotionEvent.ACTION_MOVE:
         mLastX = event.getX();
         mLastY = event.getY();
-        if (shouldFail()) {
+        if (mStatus == GestureConstants.LYNX_STATE_BEGIN && shouldFail()) {
           fail();
           endLongPress();
         }
