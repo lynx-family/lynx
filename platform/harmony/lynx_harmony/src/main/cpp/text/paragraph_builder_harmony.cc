@@ -229,7 +229,6 @@ bool ParagraphBuilderHarmony::TryAddEmojiPlaceholder(std::string_view name) {
     return false;
   }
   inline_emojis_.emplace_back(std::move(emoji));
-  text_ += u8"\uFFFC";
   return true;
 }
 

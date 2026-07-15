@@ -51,6 +51,7 @@ class ParagraphBuilderHarmony {
                                                  placeholder.GetRawStruct());
       placeholder_signs_.emplace_back(sign);
       char16_count_++;
+      text_ += kObjectReplacementCharacter;
       return true;
     }
     return false;
@@ -91,6 +92,8 @@ class ParagraphBuilderHarmony {
   void SetRichType(std::string_view rich_type);
 
  private:
+  static constexpr std::string_view kObjectReplacementCharacter = u8"\uFFFC";
+
   struct EmojiParseRule {
     char left_delimiter{0};
     char right_delimiter{0};
