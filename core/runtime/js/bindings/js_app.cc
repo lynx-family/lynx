@@ -1914,8 +1914,6 @@ void App::Init() {
           CallJSFunctionInLepusEvent(component_id, name, params);
         }
       }));
-  // TODO(hexionghui): delete this and add
-  // lynx.getCoreContext().addEventListener for kMessageEventTypeGlobalEvent.
   core_context_proxy->AddEventListener(
       runtime::kMessageEventTypeSendGlobalEvent,
       std::make_unique<event::ClosureEventListener>([this](lepus::Value args) {
@@ -2487,6 +2485,8 @@ void App::SendSsrGlobalEvent(const std::string& name,
   }
 }
 
+// TODO(hexionghui): delete this and add
+// lynx.getNative().addEventListener for lynx_core.js
 void App::CallFunction(const std::string& module_id,
                        const std::string& method_id, const Array& arguments) {
   auto rt = rt_.Lock();

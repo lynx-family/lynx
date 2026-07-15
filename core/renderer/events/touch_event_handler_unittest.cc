@@ -9,7 +9,9 @@
 
 #include "base/include/value/base_value.h"
 #include "core/renderer/dom/vdom/radon/radon_dispatch_option.h"
+#include "core/renderer/events/closure_event_listener.h"
 #include "core/renderer/tasm/react/testing/mock_painting_context.h"
+#include "core/runtime/js/runtime_constant.h"
 #include "core/shell/testing/mock_tasm_delegate.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
@@ -105,6 +107,36 @@ TEST_F(TouchEventHandlerTest, TestGetTargetInfoNodeIndex) {
   ASSERT_TRUE(target_info_with_element.IsObject());
   EXPECT_EQ(target_info_with_element.Table()->GetValue("nodeIndex").Number(),
             42);
+}
+
+TEST_F(TouchEventHandlerTest, SendGlobalEventToCoreContext) {
+  auto* native_context_proxy =
+      tasm_->GetContextProxy(runtime::ContextProxy::Type::kNative);
+  ASSERT_NE(native_context_proxy, nullptr);
+
+  int32_t event_count = 0;
+  lepus::Value received_args;
+  native_context_proxy->AddEventListener(
+      runtime::kMessageEventTypeGlobalEvent,
+      std::make_shared<event::ClosureEventListener>(
+          [&event_count, &received_args](lepus::Value args) {
+            ++event_count;
+            received_args = lepus_value::ShallowCopy(args);
+          }));
+
+  lepus::Value info(lepus::Dictionary::Create());
+  info.SetProperty("key", lepus::Value("value"));
+  touch_event_handler_->SendGlobalEvent(tasm_.get(), EventType::kComponent,
+                                        "global-event", info);
+
+  EXPECT_EQ(event_count, 1);
+  ASSERT_TRUE(received_args.IsArray());
+  ASSERT_EQ(received_args.Array()->size(), 2U);
+  EXPECT_EQ(received_args.Array()->get(0), lepus::Value("global-event"));
+  const auto& received_params = received_args.Array()->get(1);
+  ASSERT_TRUE(received_params.IsArray());
+  ASSERT_EQ(received_params.Array()->size(), 1U);
+  EXPECT_EQ(received_params.Array()->get(0), info);
 }
 
 TEST_F(TouchEventHandlerTest, TestHandleTriggerComponentEvent0) {

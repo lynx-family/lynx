@@ -255,8 +255,8 @@ class TouchEventHandler {
                              const std::string &handler,
                              const lepus::Value &info,
                              uint64_t trace_flow_id) const;
-  void SendGlobalEvent(const EventType &type, const std::string &name,
-                       const lepus::Value &info) const;
+  void SendGlobalEvent(TemplateAssembler *tasm, const EventType &type,
+                       const std::string &name, const lepus::Value &info) const;
   void TriggerLepusBridgesAsync(
       const EventType &type, TemplateAssembler *tasm,
       const std::string &event_name,

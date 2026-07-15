@@ -103,7 +103,7 @@ void TouchEventHandler::HandleEventOperations(TemplateAssembler *tasm,
     const lepus_value &params =
         context.get_event_params(op.target_, op.current_target_, is_js_event);
     if (op.global_event_) {
-      SendGlobalEvent(context.event_type, context.event_name, params);
+      SendGlobalEvent(tasm, context.event_type, context.event_name, params);
     } else {
       // trigger jsb event
       if (op.handler_->is_piper_event()) {
@@ -1381,7 +1381,8 @@ void TouchEventHandler::PublishComponentEvent(const EventType &type,
   }
 }
 
-void TouchEventHandler::SendGlobalEvent(const EventType &type,
+void TouchEventHandler::SendGlobalEvent(TemplateAssembler *tasm,
+                                        const EventType &type,
                                         const std::string &name,
                                         const lepus::Value &info) const {
   LOGI("SendGlobalEvent " << GetEventType(type) << ": " << name);
@@ -1395,6 +1396,28 @@ void TouchEventHandler::SendGlobalEvent(const EventType &type,
       runtime::ContextProxy::Type::kJSContext,
       std::make_unique<pub::ValueImplLepus>(lepus::Value(std::move(args))));
   context_proxy_delegate_.DispatchMessageEvent(std::move(event));
+
+  auto *native_context_proxy =
+      tasm != nullptr
+          ? tasm->GetContextProxy(runtime::ContextProxy::Type::kNative)
+          : nullptr;
+  if (native_context_proxy != nullptr &&
+      native_context_proxy->HasEventListener(
+          runtime::kMessageEventTypeGlobalEvent)) {
+    auto native_context_args = lepus::CArray::Create();
+    native_context_args->emplace_back(name);
+    auto native_context_params = lepus::CArray::Create();
+    native_context_params->emplace_back(lepus_value::ShallowCopy(info));
+    native_context_args->emplace_back(std::move(native_context_params));
+    auto native_context_event = fml::MakeRefCounted<runtime::MessageEvent>(
+        runtime::kMessageEventTypeGlobalEvent,
+        runtime::ContextProxy::Type::kNative,
+        runtime::ContextProxy::Type::kCoreContext,
+        std::make_unique<pub::ValueImplLepus>(
+            lepus::Value(std::move(native_context_args))));
+    native_context_proxy->DispatchEvent(std::move(native_context_event));
+  }
+
   if (type != EventType::kComponent) {
     constexpr const static char *kPrefix = "Global";
     tasm::replay::ReplayController::SendFileByAgent(
@@ -1876,8 +1899,8 @@ void TouchEventHandler::StartEventFire(TemplateAssembler *tasm, bool is_stop,
         const lepus_value &params = event_context.get_event_params(
             op.target_, op.current_target_, is_js_event);
         if (op.global_event_) {
-          SendGlobalEvent(event_context.event_type, event_context.event_name,
-                          params);
+          SendGlobalEvent(tasm, event_context.event_type,
+                          event_context.event_name, params);
         } else {
           // trigger jsb event
           if (op.handler_->is_piper_event()) {

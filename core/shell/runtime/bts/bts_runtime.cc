@@ -641,30 +641,23 @@ void BTSRuntime::CallFunction(const std::string& module_id,
     }
   }
 #endif
-  auto native_context_proxy =
-      app_->GetOrCreateContextProxyImpl(runtime::ContextProxy::Type::kNative);
-  if (native_context_proxy != nullptr &&
-      native_context_proxy->HasEventListener(
-          runtime::kMessageEventTypeGlobalEvent) &&
-      module_id == "GlobalEventEmitter" && method_id == "emit") {
-    auto jsContextEvent = fml::MakeRefCounted<runtime::MessageEvent>(
-        runtime::kMessageEventTypeGlobalEvent,
-        runtime::ContextProxy::Type::kNative,
-        runtime::ContextProxy::Type::kJSContext,
-        std::make_unique<pub::ValueImplPiper>(
-            *js_runtime, runtime::js::Value(*js_runtime, arguments)));
-    native_context_proxy->DispatchEvent(std::move(jsContextEvent));
-    auto coreContextEvent = fml::MakeRefCounted<runtime::MessageEvent>(
+  // GlobalEventEmitter.emit already receives the JSModule argument shape
+  // [name, params]. Snapshot it for CoreContext without replacing the original
+  // JS call, since standalone runtimes do not have a CoreContext target.
+  std::optional<lepus_value> lepus_arguments;
+  if (module_id == "GlobalEventEmitter" && method_id == "emit") {
+    lepus_arguments = app_->ParseJSValueToLepusValue(
+        runtime::js::Value(*js_runtime, arguments), PAGE_GROUP_ID);
+  }
+  app_->CallFunction(module_id, method_id, arguments);
+  if (lepus_arguments) {
+    auto core_context_event = fml::MakeRefCounted<runtime::MessageEvent>(
         runtime::kMessageEventTypeGlobalEvent,
         runtime::ContextProxy::Type::kNative,
         runtime::ContextProxy::Type::kCoreContext,
-        std::make_unique<pub::ValueImplLepus>(*app_->ParseJSValueToLepusValue(
-            runtime::js::Value(*js_runtime, std::move(arguments)),
-            PAGE_GROUP_ID)));
-    delegate_->DispatchMessageEvent(std::move(coreContextEvent));
-    return;
+        std::make_unique<pub::ValueImplLepus>(std::move(*lepus_arguments)));
+    delegate_->DispatchMessageEvent(std::move(core_context_event));
   }
-  app_->CallFunction(module_id, method_id, std::move(arguments));
 }
 
 void BTSRuntime::FlushJSBTiming(runtime::js::NativeModuleInfo timing) {
