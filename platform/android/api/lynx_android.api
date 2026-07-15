@@ -11537,6 +11537,7 @@ public class com::lynx::tasm::behavior::ui::scroll::UIScrollView : com.lynx.tasm
   public void com.lynx.tasm.behavior.ui.scroll.UIScrollView.onListCellDisAppear(String itemKey, LynxBaseUI list, boolean isExist);
   public void com.lynx.tasm.behavior.ui.scroll.UIScrollView.setTouchSlop(String value);
   public void com.lynx.tasm.behavior.ui.scroll.UIScrollView.setForceCanScroll(boolean value);
+  public void com.lynx.tasm.behavior.ui.scroll.UIScrollView.setEnableNewOverflow(boolean value);
   public com.lynx.tasm.behavior.ui.scroll.UIScrollView.UIScrollView(LynxContext context);
   public com.lynx.tasm.behavior.ui.scroll.UIScrollView.UIScrollView(LynxContext context, Object params);
   public boolean com.lynx.tasm.behavior.ui.scroll.UIScrollView.isScrollContainer();
