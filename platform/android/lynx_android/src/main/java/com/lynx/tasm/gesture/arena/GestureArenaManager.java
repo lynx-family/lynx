@@ -208,6 +208,11 @@ public class GestureArenaManager {
     mGestureHandlerTrigger.handleGestureDetectorState(weakRef.get(), gestureId, state);
   }
 
+  public boolean hasActivePlatformGesture() {
+    return isEnableNewGesture() && mGestureHandlerTrigger != null
+        && mGestureHandlerTrigger.hasActivePlatformGesture();
+  }
+
   /**
    * Removes a gesture member from the arena.
    *

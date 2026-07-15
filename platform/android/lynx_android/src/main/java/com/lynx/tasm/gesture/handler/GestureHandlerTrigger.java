@@ -601,6 +601,39 @@ public class GestureHandlerTrigger {
     }
   }
 
+  public boolean hasActivePlatformGesture() {
+    return hasActiveGesture(mWinner) || hasActiveGesture(mLastWinner)
+        || hasActiveSimultaneousGesture();
+  }
+
+  private boolean hasActiveSimultaneousGesture() {
+    if (mSimultaneousWinners == null) {
+      return false;
+    }
+    for (GestureArenaMember member : mSimultaneousWinners) {
+      if (hasActiveGesture(member)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private boolean hasActiveGesture(@Nullable GestureArenaMember member) {
+    if (member == null) {
+      return false;
+    }
+    Map<Integer, BaseGestureHandler> gestureHandler = member.getGestureHandlers();
+    if (gestureHandler == null) {
+      return false;
+    }
+    for (BaseGestureHandler handler : gestureHandler.values()) {
+      if (handler.getGestureStatus() == GestureConstants.LYNX_STATE_ACTIVE) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   /**
    * Retrieves the gesture handler by gesture ID associated with the GestureArenaMember.
    *
