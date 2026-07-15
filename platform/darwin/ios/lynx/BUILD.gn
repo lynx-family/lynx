@@ -438,6 +438,9 @@ subspec_target("lynx") {
     "LynxUIRendererProtocol.h",
     "LynxContext+Internal.h",
     "LynxUIRenderer.h",
+    "renderer/LynxContainerView.h",
+    "renderer/LynxRenderer.h",
+    "renderer/LynxRendererHost.h",
   ]
 }
 
