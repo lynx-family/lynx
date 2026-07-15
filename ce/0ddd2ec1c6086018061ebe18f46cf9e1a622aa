@@ -15,7 +15,7 @@ lynx/platform/harmony/lynx_devtool/src/main/ets/recorder/LynxRecorderView.ets
   s_a9200be3d0744a::t_14239757c4cc83 321
 lynx/platform/harmony/lynx_devtool/src/main/ets/recorder/DataType.ets
   s_41fcca6a866f1f::t_2efd2b3178da15 30-31,50-51,59-60
-  s_41fcca6a866f1f::t_8c11eb74befec2 36,62
+  s_41fcca6a866f1f::t_8c11eb74befec2 36,62,79
   s_41fcca6a866f1f::t_1d6400c81a7621 29,32-34,49,52-58,61
   s_41fcca6a866f1f::t_f7dae57422b9ce 63
   s_a9200be3d0744a::t_844c556835ed98 42-48,79 gitai:{"mixed_line_ranges":[],"operations":[{"operation_id":"6a5637870237c703f43df2c0","tool_type":"agent","tool_id":"apply_patch","line_ranges":[{"Range":[42,48]},{"Single":79}]}]}
