@@ -8,6 +8,7 @@
 #include <string>
 
 #include "base/include/fml/memory/ref_counted.h"
+#include "core/base/lynx_export.h"
 #include "core/renderer/css/ng/supports/supports_condition.h"
 
 namespace lynx {
@@ -18,7 +19,7 @@ class CSSParserTokenStream;
 class SupportsConditionParser {
  public:
   // Returns null when input is completely unparseable.
-  static fml::RefPtr<const SupportsConditionNode> Parse(
+  LYNX_EXPORT_FOR_DEVTOOL static fml::RefPtr<const SupportsConditionNode> Parse(
       const std::string& text);
 
  private:
