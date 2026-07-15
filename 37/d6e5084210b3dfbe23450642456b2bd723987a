@@ -1,0 +1,40 @@
+lynx/core/renderer/css/css_value.h
+  s_a2bbfc8353a72f::t_d3d074c466abc6 163,200,266-269,290-297,345-346
+lynx/core/renderer/css/css_value_unittest.cc
+  s_a2bbfc8353a72f::t_c52b7990491549 745-808
+lynx/core/renderer/css/css_value.cc
+  h_4d36f4d76420fe 202,212-247,250,327,336,345,354,363,372,381,390,401,586-587,589-597,600-604,671-672,743-744
+lynx/core/renderer/dom/fiber/fiber_element_unittest.cc
+  s_99996868c93972::t_2c475341fdede2 7595-7710
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "37d6e5084210b3dfbe23450642456b2bd723987a",
+  "prompts": {},
+  "humans": {
+    "h_4d36f4d76420fe": {
+      "author": "yangguangzhao <yangguangzhao.solace@bytedance.com>"
+    }
+  },
+  "sessions": {
+    "s_99996868c93972": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f4fef-52e2-7d20-ba0a-ef8f49d73f68",
+        "model": "unknown"
+      },
+      "human_author": "yangguangzhao <yangguangzhao.solace@bytedance.com>"
+    },
+    "s_a2bbfc8353a72f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f4fcc-16b1-7841-9981-16b6695f786c",
+        "model": "unknown"
+      },
+      "human_author": "yangguangzhao <yangguangzhao.solace@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}
