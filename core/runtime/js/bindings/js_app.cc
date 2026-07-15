@@ -1868,6 +1868,24 @@ void App::Init() {
               jsi_object_wrapper_manager_->ForceGcOnJSThread();
             }));
   }
+  auto create_send_global_event_listener = [this]() {
+    return std::make_unique<event::ClosureEventListener>(
+        [this](lepus::Value args) {
+          auto args_array = args.Array();
+          if (args.IsArray() && args_array->size() == 2) {
+            const auto& name = args_array->get(0).StdString();
+            const auto& params = args_array->get(1);
+            SendGlobalEvent(name, params);
+          }
+        });
+  };
+  auto* native_context_proxy =
+      GetOrCreateContextProxyImpl(runtime::ContextProxy::Type::kNative);
+  if (native_context_proxy != nullptr) {
+    native_context_proxy->AddEventListener(
+        runtime::kMessageEventTypeSendGlobalEvent,
+        create_send_global_event_listener());
+  }
   auto* core_context_proxy =
       GetOrCreateContextProxyImpl(runtime::ContextProxy::Type::kCoreContext);
   if (core_context_proxy == nullptr) {
@@ -1914,18 +1932,9 @@ void App::Init() {
           CallJSFunctionInLepusEvent(component_id, name, params);
         }
       }));
-  // TODO(hexionghui): delete this and add
-  // lynx.getCoreContext().addEventListener for kMessageEventTypeGlobalEvent.
   core_context_proxy->AddEventListener(
       runtime::kMessageEventTypeSendGlobalEvent,
-      std::make_unique<event::ClosureEventListener>([this](lepus::Value args) {
-        auto args_array = args.Array();
-        if (args.IsArray() && args_array->size() == 2) {
-          const auto& name = args_array->get(0).StdString();
-          const auto& params = args_array->get(1);
-          SendGlobalEvent(name, params);
-        }
-      }));
+      create_send_global_event_listener());
   core_context_proxy->AddEventListener(
       runtime::kMessageEventTypeOnBTSConsoleEvent,
       std::make_unique<event::ClosureEventListener>(

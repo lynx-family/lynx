@@ -14,6 +14,7 @@
 #include "core/public/jsb/native_module_factory.h"
 #include "core/renderer/utils/base/tasm_constants.h"
 #include "core/renderer/utils/lynx_env.h"
+#include "core/runtime/common/bindings/event/message_event.h"
 #include "core/runtime/js/bindings/event/context_proxy_in_js.h"
 #include "core/runtime/js/bindings/js_object_destruction_observer.h"
 #include "core/runtime/js/bindings/lynx.h"
@@ -28,6 +29,7 @@
 #include "core/runtime/js/mock_template_delegate.h"
 #include "core/runtime/js/runtime_constant.h"
 #include "core/runtime/js/utils.h"
+#include "core/value_wrapper/value_impl_lepus.h"
 #include "lynx_sub_error_code.h"
 #include "third_party/googletest/googlemock/include/gmock/gmock.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
@@ -429,6 +431,34 @@ TEST_P(AppTest, NativeLynxContextProxyTest) {
       app->GetOrCreateContextProxyImpl(runtime::ContextProxy::Type::kUIContext);
   EXPECT_TRUE(proxy != nullptr);
   EXPECT_EQ(proxy->GetTargetType(), runtime::ContextProxy::Type::kUIContext);
+}
+
+TEST_P(AppTest, SendGlobalEventFromNativeContextTest) {
+  auto* native_context_proxy =
+      app->GetOrCreateContextProxyImpl(runtime::ContextProxy::Type::kNative);
+  ASSERT_NE(native_context_proxy, nullptr);
+  ASSERT_TRUE(native_context_proxy->HasEventListener(
+      runtime::kMessageEventTypeSendGlobalEvent));
+
+  auto args = lepus::CArray::Create();
+  args->emplace_back("testGlobalEvent");
+  auto params = lepus::Dictionary::Create();
+  params->SetValue("key", "value");
+  args->emplace_back(std::move(params));
+  auto event = fml::MakeRefCounted<runtime::MessageEvent>(
+      runtime::kMessageEventTypeSendGlobalEvent,
+      runtime::ContextProxy::Type::kNative,
+      runtime::ContextProxy::Type::kJSContext,
+      std::make_unique<pub::ValueImplLepus>(lepus::Value(std::move(args))));
+
+  auto result = native_context_proxy->DispatchEvent(std::move(event));
+
+  EXPECT_TRUE(result.consumed);
+  ASSERT_EQ(mock_js_app_->call_count, 1u);
+  ASSERT_EQ(mock_js_app_->args_ary[0].size(), 3u);
+  EXPECT_EQ(mock_js_app_->args_ary[0][0].getString(rt).utf8(rt),
+            "GlobalEventEmitter");
+  EXPECT_EQ(mock_js_app_->args_ary[0][1].getString(rt).utf8(rt), "emit");
 }
 
 TEST_P(AppTest, LoadAppTest) {
