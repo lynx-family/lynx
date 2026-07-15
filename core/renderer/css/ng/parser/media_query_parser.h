@@ -29,6 +29,7 @@
 #include <string>
 
 #include "base/include/fml/memory/ref_counted.h"
+#include "core/base/lynx_export.h"
 #include "core/renderer/css/ng/media_query/media_query.h"
 #include "core/renderer/css/ng/media_query/media_query_exp.h"
 #include "core/renderer/css/ng/media_query/media_query_set.h"
@@ -44,7 +45,8 @@ class MediaQueryParser {
   //   * Empty / whitespace-only input -> empty set (spec: matches all).
   //   * Wholly invalid input          -> single `not all` entry.
   //   * Mixed list                    -> invalid entries dropped.
-  static fml::RefPtr<MediaQuerySet> ParseMediaQuerySet(const std::string& text);
+  LYNX_EXPORT_FOR_DEVTOOL static fml::RefPtr<MediaQuerySet> ParseMediaQuerySet(
+      const std::string& text);
 
   // Parses a single <media-condition> (without a media-type). Returns null
   // when the input cannot be parsed.
