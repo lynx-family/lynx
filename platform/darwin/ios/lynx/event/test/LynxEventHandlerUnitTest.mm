@@ -3,6 +3,7 @@
 // LICENSE file in the root directory of this source tree.
 
 #import "LynxEventHandlerUnitTest.h"
+#import <Lynx/LynxCustomGestureRecognizer.h>
 #import <Lynx/LynxEventHandler+Internal.h>
 #import <Lynx/LynxPropsProcessor.h>
 #import <Lynx/LynxRootUI.h>
@@ -152,6 +153,77 @@ static const NSInteger kLynxPanInterceptUnitTestViewTag = 1001;
       never(),
       [mockView addGestureRecognizer:[OCMArg isKindOfClass:NSClassFromString(
                                                                @"LynxCustomGestureRecognizer")]]);
+}
+
+- (void)testPlatformGestureBlocksOtherRecognizersOnlyAfterActive {
+  [_handler setEnablePlatformGesture:YES];
+  id<UIGestureRecognizerDelegate> delegate = _handler.customPlatformGesture.delegate;
+  XCTAssertNotNil(delegate);
+
+  UIView* otherView = [UIView new];
+  UIPanGestureRecognizer* otherGesture = [[UIPanGestureRecognizer alloc] init];
+  [otherView addGestureRecognizer:otherGesture];
+
+  XCTAssertFalse([delegate gestureRecognizer:_handler.customPlatformGesture
+      shouldBeRequiredToFailByGestureRecognizer:otherGesture]);
+  XCTAssertTrue([delegate gestureRecognizer:_handler.customPlatformGesture
+      shouldRecognizeSimultaneouslyWithGestureRecognizer:otherGesture]);
+
+  [_handler onPlatformGestureStatusChanged:LynxGestureHandlerStateBegin];
+  XCTAssertFalse([delegate gestureRecognizer:_handler.customPlatformGesture
+      shouldBeRequiredToFailByGestureRecognizer:otherGesture]);
+  XCTAssertTrue([delegate gestureRecognizer:_handler.customPlatformGesture
+      shouldRecognizeSimultaneouslyWithGestureRecognizer:otherGesture]);
+
+  [_handler onPlatformGestureStatusChanged:LynxGestureHandlerStateActive];
+  XCTAssertTrue([delegate gestureRecognizer:_handler.customPlatformGesture
+      shouldBeRequiredToFailByGestureRecognizer:otherGesture]);
+  XCTAssertFalse([delegate gestureRecognizer:_handler.customPlatformGesture
+      shouldRecognizeSimultaneouslyWithGestureRecognizer:otherGesture]);
+}
+
+- (void)testPlatformGestureRecordedRecognizersClearedOnBegin {
+  [_handler setEnablePlatformGesture:YES];
+  id<UIGestureRecognizerDelegate> delegate = _handler.customPlatformGesture.delegate;
+  XCTAssertNotNil(delegate);
+
+  UIView* otherView = [UIView new];
+  UIPanGestureRecognizer* otherGesture = [[UIPanGestureRecognizer alloc] init];
+  [otherView addGestureRecognizer:otherGesture];
+  NSMutableDictionary* innerGestures = [(NSObject*)delegate valueForKey:@"innerGestures"];
+
+  XCTAssertTrue([delegate gestureRecognizer:_handler.customPlatformGesture
+      shouldRecognizeSimultaneouslyWithGestureRecognizer:otherGesture]);
+  XCTAssertEqual(innerGestures.count, 1);
+
+  [_handler onPlatformGestureStatusChanged:LynxGestureHandlerStateBegin];
+  XCTAssertEqual(innerGestures.count, 0);
+}
+
+- (void)testPlatformGestureBeginResetsLeakedActiveState {
+  [_handler setEnablePlatformGesture:YES];
+  id<UIGestureRecognizerDelegate> delegate = _handler.customPlatformGesture.delegate;
+  XCTAssertNotNil(delegate);
+
+  UIView* otherView = [UIView new];
+  UIPanGestureRecognizer* otherGesture = [[UIPanGestureRecognizer alloc] init];
+  [otherView addGestureRecognizer:otherGesture];
+
+  [_handler onPlatformGestureStatusChanged:LynxGestureHandlerStateActive];
+  XCTAssertTrue([delegate gestureRecognizer:_handler.customPlatformGesture
+      shouldBeRequiredToFailByGestureRecognizer:otherGesture]);
+  XCTAssertFalse([delegate gestureRecognizer:_handler.customPlatformGesture
+      shouldRecognizeSimultaneouslyWithGestureRecognizer:otherGesture]);
+
+  UIView* nextOtherView = [UIView new];
+  UIPanGestureRecognizer* nextOtherGesture = [[UIPanGestureRecognizer alloc] init];
+  [nextOtherView addGestureRecognizer:nextOtherGesture];
+
+  [_handler onPlatformGestureStatusChanged:LynxGestureHandlerStateBegin];
+  XCTAssertFalse([delegate gestureRecognizer:_handler.customPlatformGesture
+      shouldBeRequiredToFailByGestureRecognizer:nextOtherGesture]);
+  XCTAssertTrue([delegate gestureRecognizer:_handler.customPlatformGesture
+      shouldRecognizeSimultaneouslyWithGestureRecognizer:nextOtherGesture]);
 }
 
 - (void)testAttachContainerViewWithFragmentLayerRenderOn {

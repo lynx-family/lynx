@@ -19,6 +19,7 @@
 #import <Lynx/LynxViewInternal.h>
 #import <Lynx/LynxWeakProxy.h>
 #import <Lynx/UIView+Lynx.h>
+#import "LynxGestureArenaManager.h"
 #import "LynxTouchHandler+Internal.h"
 
 #include <stdint.h>
@@ -172,6 +173,11 @@ static BOOL LynxGestureMatchesPanInterceptClasses(UIGestureRecognizer* gesture, 
 @interface LynxCustomPlatformGestureRecognizerDelegate : CustomGestureRecognizerDelegate
 
 @property(nonatomic, readonly) NSMutableDictionary<NSString*, LynxWeakProxy*>* innerGestures;
+@property(nonatomic, assign) BOOL platformGestureActive;
+
+- (void)recordOtherGesture:(UIGestureRecognizer*)otherGestureRecognizer;
+- (void)clearOtherGestures;
+- (void)failOtherGestures;
 
 @end
 
@@ -191,7 +197,8 @@ static BOOL LynxGestureMatchesPanInterceptClasses(UIGestureRecognizer* gesture, 
   if ([gestureRecognizer.view isEqual:otherGestureRecognizer.view]) {
     return YES;
   }
-  return !(self.eventHandler.customPlatformGesture.state == UIGestureRecognizerStateChanged);
+  [self recordOtherGesture:otherGestureRecognizer];
+  return !self.platformGestureActive;
 }
 
 - (BOOL)gestureRecognizer:(UIGestureRecognizer*)gestureRecognizer
@@ -199,19 +206,34 @@ static BOOL LynxGestureMatchesPanInterceptClasses(UIGestureRecognizer* gesture, 
   if ([gestureRecognizer.view isEqual:otherGestureRecognizer.view]) {
     return NO;
   } else {
-    [_innerGestures setValue:[LynxWeakProxy proxyWithTarget:otherGestureRecognizer]
-                      forKey:[@(otherGestureRecognizer.hash) stringValue]];
+    [self recordOtherGesture:otherGestureRecognizer];
   }
-  // Only require other gestures to wait when CustomPlatformGesture is actively processing
-  if (self.eventHandler.customPlatformGesture.state == UIGestureRecognizerStateChanged) {
-    return YES;  // Wait for CustomPlatformGesture to finish
-  }
-  // In other states (Possible, Began, Ended, Cancelled, Failed), don't block other gestures
-  return NO;
+  return self.platformGestureActive;
 }
 
 - (NSArray<LynxWeakProxy*>*)otherGestures {
   return [_innerGestures allValues];
+}
+
+- (void)recordOtherGesture:(UIGestureRecognizer*)otherGestureRecognizer {
+  [_innerGestures setValue:[LynxWeakProxy proxyWithTarget:otherGestureRecognizer]
+                    forKey:[@(otherGestureRecognizer.hash) stringValue]];
+}
+
+- (void)clearOtherGestures {
+  [_innerGestures removeAllObjects];
+}
+
+- (void)failOtherGestures {
+  [[self otherGestures] enumerateObjectsUsingBlock:^(LynxWeakProxy* _Nonnull obj, NSUInteger idx,
+                                                     BOOL* _Nonnull stop) {
+    UIGestureRecognizer* otherGesture = (UIGestureRecognizer*)obj.target;
+    if (otherGesture == nil ||
+        [otherGesture.view isEqual:self.eventHandler.customPlatformGesture.view]) {
+      return;
+    }
+    otherGesture.state = UIGestureRecognizerStateFailed;
+  }];
 }
 
 @end
@@ -1050,13 +1072,23 @@ static const NSInteger kLynxFragmentLayerDefaultRootSign = 10;
   void (^work)(void) = ^{
     switch (status) {
       case LynxGestureHandlerStateBegin:
+        [self->_customPlatformDelegate clearOtherGestures];
+        self->_customPlatformDelegate.platformGestureActive =
+            [self.gestureArenaManager hasActivePlatformGesture];
         [self.customPlatformGesture beginGesture];
         break;
       case LynxGestureHandlerStateActive:
+        self->_customPlatformDelegate.platformGestureActive = YES;
         [self.customPlatformGesture changeGesture];
+        [self->_customPlatformDelegate failOtherGestures];
         break;
+      case LynxGestureHandlerStateFail:
       case LynxGestureHandlerStateEnd:
       case LynxGestureHandlerStateCancel:
+        if ([self.gestureArenaManager hasActivePlatformGesture]) {
+          break;
+        }
+        self->_customPlatformDelegate.platformGestureActive = NO;
         if (self.customPlatformGesture.state == UIGestureRecognizerStateChanged) {
           [self.customPlatformGesture endGesture];
         } else {

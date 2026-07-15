@@ -13,6 +13,16 @@
 #import "LynxGestureHandlerTrigger.h"
 #import "LynxUIUnitTestUtils.h"
 
+@interface LynxLongPressMockTouch : UITouch
+@property(nonatomic, assign) CGPoint mockLocation;
+@end
+
+@implementation LynxLongPressMockTouch
+- (CGPoint)locationInView:(UIView *)view {
+  return self.mockLocation;
+}
+@end
+
 @interface LynxLongPressGestureHandlerUnitTest : XCTestCase
 
 @end
@@ -31,6 +41,26 @@
 - (void)tearDown {
   // Put teardown code here. This method is called after the invocation of each test method in the
   // class.
+}
+
+- (LynxLongPressGestureHandler *)longPressHandlerWithMaxDistance:(CGFloat)maxDistance {
+  return [[LynxLongPressGestureHandler alloc]
+      initWithSign:1
+           context:(LynxUIContext *)[LynxUIUnitTestUtils
+                       initUIMockContextWithUI:[[LynxUIText alloc] init]]
+            member:self
+          detector:[[LynxGestureDetectorDarwin alloc]
+                          initWithGestureID:0
+                                gestureType:LynxGestureTypeLongPress
+                       gestureCallbackNames:@[
+                         ON_TOUCHES_DOWN, ON_TOUCHES_MOVE, ON_TOUCHES_UP, ON_TOUCHES_CANCEL,
+                         ON_BEGIN, ON_UPDATE, ON_END
+                       ]
+                                relationMap:@{}
+                                  configMap:@{
+                                    @"minDuration" : @3600000.f,
+                                    @"maxDistance" : @(maxDistance)
+                                  }]];
 }
 
 - (void)testMask {
@@ -124,6 +154,70 @@
   XCTAssertEqual(handler.status, LynxGestureHandlerStateCancel);
 
 #pragma clang diagnostic pop
+}
+
+- (void)testBeginLongPressFailsWhenMovementExceedsMaxDistance {
+  LynxLongPressGestureHandler *handler = [self longPressHandlerWithMaxDistance:10.f];
+  LynxLongPressMockTouch *touch = [[LynxLongPressMockTouch alloc] init];
+  NSSet<UITouch *> *touches = [NSSet setWithObject:touch];
+  UIEvent *event = [[UIEvent alloc] init];
+  LynxTouchEvent *touchEvent = [[LynxTouchEvent alloc] init];
+
+  touch.mockLocation = CGPointZero;
+  [handler onHandle:LynxEventTouchStart
+                   touches:touches
+                     event:event
+                touchEvent:touchEvent
+                flingPoint:CGPointZero
+      handleBySimultaneous:NO
+               extraBundle:nil];
+  XCTAssertEqual(handler.status, LynxGestureHandlerStateBegin);
+
+  touch.mockLocation = CGPointMake(20.f, 0.f);
+  [handler onHandle:LynxEventTouchMove
+                   touches:touches
+                     event:event
+                touchEvent:touchEvent
+                flingPoint:CGPointZero
+      handleBySimultaneous:NO
+               extraBundle:nil];
+  XCTAssertEqual(handler.status, LynxGestureHandlerStateCancel);
+}
+
+- (void)testActiveLongPressDoesNotFailWhenMovementExceedsMaxDistance {
+  LynxLongPressGestureHandler *handler = [self longPressHandlerWithMaxDistance:10.f];
+  LynxLongPressMockTouch *touch = [[LynxLongPressMockTouch alloc] init];
+  NSSet<UITouch *> *touches = [NSSet setWithObject:touch];
+  UIEvent *event = [[UIEvent alloc] init];
+  LynxTouchEvent *touchEvent = [[LynxTouchEvent alloc] init];
+
+  touch.mockLocation = CGPointZero;
+  [handler onHandle:LynxEventTouchStart
+                   touches:touches
+                     event:event
+                touchEvent:touchEvent
+                flingPoint:CGPointZero
+      handleBySimultaneous:NO
+               extraBundle:nil];
+  [handler activate];
+
+  touch.mockLocation = CGPointMake(20.f, 0.f);
+  [handler onHandle:LynxEventTouchMove
+                   touches:touches
+                     event:event
+                touchEvent:touchEvent
+                flingPoint:CGPointZero
+      handleBySimultaneous:NO
+               extraBundle:nil];
+  XCTAssertEqual(handler.status, LynxGestureHandlerStateActive);
+
+  [handler onHandle:LynxEventTouchCancel
+                   touches:touches
+                     event:event
+                touchEvent:touchEvent
+                flingPoint:CGPointZero
+      handleBySimultaneous:NO
+               extraBundle:nil];
 }
 
 - (BOOL)canConsumeGesture:(CGPoint)delta {

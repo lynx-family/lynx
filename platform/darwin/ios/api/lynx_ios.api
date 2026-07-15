@@ -2004,6 +2004,7 @@ public class LynxGestureArenaManager : NSObject {
   public void LynxGestureArenaManager::registerGestureDetectors:detectorMap:(NSInteger memberId,[detectorMap] NSDictionary< NSNumber *, LynxGestureDetectorDarwin * > *gestureDetectors);
   public void LynxGestureArenaManager::unregisterGestureDetectors:detectorMap:(NSInteger memberId,[detectorMap] NSDictionary< NSNumber *, LynxGestureDetectorDarwin * > *gestureDetectors);
   public void LynxGestureArenaManager::setGestureDetectorState:memberId:state:(NSInteger gestureId,[memberId] NSInteger memberId,[state] LynxGestureState state);
+  public BOOL LynxGestureArenaManager::hasActivePlatformGesture();
 }
 
 public protocol LynxGestureArenaMember-p : <LynxEventTarget> {
@@ -2072,6 +2073,7 @@ public class LynxGestureHandlerTrigger : NSObject {
   public void LynxGestureHandlerTrigger::resolveTouchEvent:touches:event:touchEvent:completionChainCandidates:bubbleCandidates:(NSString *const touchType,[touches] NSSet< UITouch * > *touches,[event] UIEvent *event,[touchEvent] LynxTouchEvent *touchEvent,[completionChainCandidates] NSArray< id< LynxGestureArenaMember > > *completionChainCandidate,[bubbleCandidates] NSArray< id< LynxGestureArenaMember > > *bubbleCandidates);
   public void LynxGestureHandlerTrigger::dispatchBubble:touchEvent:bubbleCandidate:winner:(NSString *const touchType,[touchEvent] LynxTouchEvent *touchEvent,[bubbleCandidate] NSArray< id< LynxGestureArenaMember > > *bubbleCandidate,[winner] id< LynxGestureArenaMember > winner);
   public void LynxGestureHandlerTrigger::handleGestureDetectorState:gestureId:state:(id< LynxGestureArenaMember > member,[gestureId] NSInteger gestureId,[state] LynxGestureState state);
+  public BOOL LynxGestureHandlerTrigger::hasActivePlatformGesture();
   public NSInteger LynxGestureHandlerTrigger::addVelocityTracker:(LynxGestureVelocityTracker *velocityTracker);
   public NSInteger LynxGestureHandlerTrigger::addEventHandler:(LynxEventHandler *eventHandler);
   public void LynxGestureHandlerTrigger::removeVelocityTracker:(NSInteger index);

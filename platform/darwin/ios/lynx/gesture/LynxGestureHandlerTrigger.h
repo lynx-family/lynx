@@ -82,6 +82,8 @@ NS_ASSUME_NONNULL_BEGIN
                          gestureId:(NSInteger)gestureId
                              state:(LynxGestureState)state;
 
+- (BOOL)hasActivePlatformGesture;
+
 - (NSInteger)addVelocityTracker:(LynxGestureVelocityTracker *)velocityTracker;
 
 - (NSInteger)addEventHandler:(LynxEventHandler *)eventHandler;

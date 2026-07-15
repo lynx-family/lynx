@@ -703,6 +703,30 @@
   return target;
 }
 
+- (BOOL)hasActiveGestureInMember:(id<LynxGestureArenaMember>)member {
+  NSDictionary<NSNumber *, LynxBaseGestureHandler *> *gestureHandlers = [member getGestureHandlers];
+  for (LynxBaseGestureHandler *handler in [gestureHandlers allValues]) {
+    if ([handler isActive]) {
+      return YES;
+    }
+  }
+  return NO;
+}
+
+- (BOOL)hasActiveGestureInMembers:(NSSet<id<LynxGestureArenaMember>> *)members {
+  for (id<LynxGestureArenaMember> member in members) {
+    if ([self hasActiveGestureInMember:member]) {
+      return YES;
+    }
+  }
+  return NO;
+}
+
+- (BOOL)hasActivePlatformGesture {
+  return [self hasActiveGestureInMember:_winner] || [self hasActiveGestureInMember:_lastWinner] ||
+         [self hasActiveGestureInMembers:_simultaneousWinners];
+}
+
 - (void)dealloc {
   _gestureArenaManager = nil;
   _gestureDetectorManager = nil;

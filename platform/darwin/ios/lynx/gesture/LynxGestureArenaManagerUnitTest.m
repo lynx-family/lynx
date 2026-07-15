@@ -188,6 +188,7 @@
   [self.manager registerGestureDetectors:gestureId detectorMap:[mock getGestureDetectorMap]];
 
   [self.manager setActiveUIToArena:mock];
+  XCTAssertFalse([self.manager hasActivePlatformGesture]);
 
   [self.manager dispatchTouchToArena:LynxEventTouchStart
                              touches:[NSSet set]
@@ -239,6 +240,26 @@
 
   [self.manager removeMember:mock detectorMap:[mock getGestureDetectorMap]];
   [self.manager unregisterGestureDetectors:gestureId detectorMap:[mock getGestureDetectorMap]];
+}
+
+- (void)testHasActivePlatformGesture {
+  id<LynxGestureArenaMember, LynxEventTarget> mock =
+      [[LynxGestureArenaMemberMockForArena alloc] init];
+
+  NSInteger gestureId = [self.manager addMember:mock];
+  [self.manager registerGestureDetectors:gestureId detectorMap:[mock getGestureDetectorMap]];
+  [self.manager setActiveUIToArena:mock];
+  XCTAssertFalse([self.manager hasActivePlatformGesture]);
+
+  LynxBaseGestureHandler *handler =
+      [[mock getGestureHandlers] objectForKey:@(LynxGestureHandlerOptionPan)];
+  [handler activate];
+  XCTAssertTrue([self.manager hasActivePlatformGesture]);
+
+  [handler end];
+  XCTAssertFalse([self.manager hasActivePlatformGesture]);
+
+  [self.manager removeMember:mock detectorMap:[mock getGestureDetectorMap]];
 }
 
 @end
