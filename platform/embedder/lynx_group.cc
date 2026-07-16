@@ -2,6 +2,7 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+#include "core/shared_data/lynx_white_board.h"
 #include "platform/embedder/lynx_group_priv.h"
 
 namespace {
@@ -41,6 +42,17 @@ LYNX_EXTERN_C void lynx_group_set_preload_js_paths(lynx_group_t* group,
 LYNX_EXTERN_C void lynx_group_set_enable_js_group_thread(lynx_group_t* group,
                                                          int enable) {
   group->enable_js_group_thread = enable;
+}
+
+LYNX_EXTERN_C void lynx_group_set_enable_white_board(lynx_group_t* group,
+                                                     int enable) {
+  if (enable) {
+    if (!group->white_board) {
+      group->white_board = std::make_shared<lynx::tasm::WhiteBoard>();
+    }
+    return;
+  }
+  group->white_board = nullptr;
 }
 
 LYNX_EXTERN_C void lynx_group_release(lynx_group_t* group) { delete group; }

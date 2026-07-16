@@ -30,3 +30,20 @@ TEST(LynxGroup, SetEnableJsGroupThread) {
   EXPECT_FALSE(group->enable_js_group_thread);
   lynx_group_release(group);
 }
+
+TEST(LynxGroup, SetEnableWhiteBoard) {
+  lynx_group_t* group = lynx_group_create_with_id("group", LYNX_SINGLE_GROUP);
+  EXPECT_TRUE(group != nullptr);
+  EXPECT_EQ(group->white_board, nullptr);
+
+  lynx_group_set_enable_white_board(group, 1);
+  EXPECT_NE(group->white_board, nullptr);
+  auto white_board = group->white_board;
+
+  lynx_group_set_enable_white_board(group, 1);
+  EXPECT_EQ(group->white_board, white_board);
+
+  lynx_group_set_enable_white_board(group, 0);
+  EXPECT_EQ(group->white_board, nullptr);
+  lynx_group_release(group);
+}
