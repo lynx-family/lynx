@@ -27,6 +27,7 @@ import com.lynx.tasm.image.ScalingUtils;
 import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.nio.ReadOnlyBufferException;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.Before;
 import org.junit.Test;
@@ -88,6 +89,23 @@ public class PlatformRendererContextTest {
     assertNotNull(rendererContext);
     assertNotNull(rendererContext.getNativePtr());
     assertEquals(mockBodyView, rendererContext.mRootView.get());
+  }
+
+  @Test
+  public void testDisplayListBufferIsReadOnly() {
+    ByteBuffer storage = ByteBuffer.allocateDirect(Integer.BYTES);
+    storage.order(ByteOrder.nativeOrder()).putInt(0, 42);
+    ByteBuffer buffer = PlatformRendererContext.makeReadOnlyDisplayListBuffer(storage);
+
+    assertTrue(buffer.isDirect());
+    assertTrue(buffer.isReadOnly());
+    assertEquals(42, buffer.order(ByteOrder.nativeOrder()).getInt(0));
+    try {
+      buffer.put(0, (byte) 0);
+      fail("Display list buffers must be read-only");
+    } catch (ReadOnlyBufferException expected) {
+      // Expected: callers cannot mutate the native display list memory.
+    }
   }
 
   @Test
