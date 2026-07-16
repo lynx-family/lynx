@@ -5182,6 +5182,11 @@ RENDERER_FUNCTION_CC(FiberFlushElementTree) {
         trigger_data_updated = arg1->GetProperty(kTriggerDataUpdated).Bool();
       }
 
+      BASE_STATIC_STRING_DECL(kEmptyPatch, "emptyPatch");
+      if (arg1->Contains(kEmptyPatch)) {
+        current_option->is_empty_patch = arg1->GetProperty(kEmptyPatch).Bool();
+      }
+
       BASE_STATIC_STRING_DECL(kListReuseNotification, "listReuseNotification");
       if (arg1->Contains(kListReuseNotification)) {
         const auto& notification_value =
@@ -5219,12 +5224,14 @@ RENDERER_FUNCTION_CC(FiberFlushElementTree) {
     }
 
     BASE_STATIC_STRING_DECL(kOnLayoutReady, "onLayoutReady");
-    if (auto on_layout_ready = arg1->GetProperty(kOnLayoutReady);
-        on_layout_ready.IsCallable()) {
-      GET_TASM_POINTER()->RegisterOnLayoutReadyHook(
-          [context = LEPUS_CONTEXT(), hook = on_layout_ready]() mutable {
-            context->CallClosure(hook);
-          });
+    if (!current_option->is_empty_patch) {
+      if (auto on_layout_ready = arg1->GetProperty(kOnLayoutReady);
+          on_layout_ready.IsCallable()) {
+        GET_TASM_POINTER()->RegisterOnLayoutReadyHook(
+            [context = LEPUS_CONTEXT(), hook = on_layout_ready]() mutable {
+              context->CallClosure(hook);
+            });
+      }
     }
   }
 
@@ -5239,17 +5246,21 @@ RENDERER_FUNCTION_CC(FiberFlushElementTree) {
   // behaviours. After `RunPixelPipeline` is unified, we may remove the
   // redundant logic here.
   if (current_option->enable_unified_pixel_pipeline) {
-    const int32_t incoming_target_node =
-        element ? element->impl_id() : PipelineOptions::kInvalidTargetNodeId;
-    // kInvalidTargetNodeId can mean either no target yet or an existing root
-    // resolve request. Use resolve_requested to distinguish these states.
-    const bool had_resolve_request = current_option->resolve_requested;
-    current_option->resolve_requested = true;
-    current_option->target_node =
-        had_resolve_request
-            ? MergeResolveTarget(self, current_option->target_node, element)
-            : incoming_target_node;
-    current_option->need_trigger_data_updated_ |= trigger_data_updated;
+    if (current_option->is_empty_patch) {
+      LOGE("FiberFlushElementTree is_empty_patch: true");
+    } else {
+      const int32_t incoming_target_node =
+          element ? element->impl_id() : PipelineOptions::kInvalidTargetNodeId;
+      // kInvalidTargetNodeId can mean either no target yet or an existing root
+      // resolve request. Use resolve_requested to distinguish these states.
+      const bool had_resolve_request = current_option->resolve_requested;
+      current_option->resolve_requested = true;
+      current_option->target_node =
+          had_resolve_request
+              ? MergeResolveTarget(self, current_option->target_node, element)
+              : incoming_target_node;
+      current_option->need_trigger_data_updated_ |= trigger_data_updated;
+    }
   } else {
     self->page_proxy()->element_manager()->OnPatchFinish(current_option,
                                                          element);
