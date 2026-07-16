@@ -1610,20 +1610,14 @@ public interface com::lynx::tasm::image::model::DiskCacheChoice {
   public int com.lynx.tasm.image.model.DiskCacheChoice.CUSTOM_DISK CUSTOM_DISK;
 }
 
-public class com::lynx::tasm::behavior::render::DisplayList :  {
-  public int [] com.lynx.tasm.behavior.render.DisplayList.ops ops;
-  public int [] com.lynx.tasm.behavior.render.DisplayList.iArgv iArgv;
-  public float [] com.lynx.tasm.behavior.render.DisplayList.fArgv fArgv;
-}
-
 public class com::lynx::tasm::behavior::render::DisplayListApplier : Drawable.Callback {
-  public com.lynx.tasm.behavior.render.DisplayListApplier.DisplayListApplier(DisplayList displayList, PlatformRendererContext platformRendererContext, IRendererHost hostLayer);
+  public com.lynx.tasm.behavior.render.DisplayListApplier.DisplayListApplier(ByteBuffer itemsBuffer, ByteBuffer dataBuffer, PlatformRendererContext platformRendererContext, IRendererHost hostLayer);
   public void com.lynx.tasm.behavior.render.DisplayListApplier.reset();
   public void com.lynx.tasm.behavior.render.DisplayListApplier.drawTillNextView(Canvas canvas);
-  public void com.lynx.tasm.behavior.render.DisplayListApplier.setDisplayList(DisplayList displayList);
+  public void com.lynx.tasm.behavior.render.DisplayListApplier.setBuffer(ByteBuffer itemsBuffer, ByteBuffer dataBuffer);
   public void com.lynx.tasm.behavior.render.DisplayListApplier.invalidateDrawable(@NonNull Drawable who);
-  public void com.lynx.tasm.behavior.render.DisplayListApplier.scheduleDrawable(@NonNull Drawable who, @NonNull Runnable what, long when);
-  public void com.lynx.tasm.behavior.render.DisplayListApplier.unscheduleDrawable(@NonNull Drawable who, @NonNull Runnable what);
+  public void com.lynx.tasm.behavior.render.DisplayListApplier.scheduleDrawable(@NonNull Drawable who, Runnable what, long when);
+  public void com.lynx.tasm.behavior.render.DisplayListApplier.unscheduleDrawable(@NonNull Drawable who, Runnable what);
 }
 
 public class com::lynx::tasm::utils::DisplayMetricsHolder :  {
@@ -8886,7 +8880,6 @@ public class com::lynx::tasm::behavior::render::PlatformRendererContext : com.ly
   public void com.lynx.tasm.behavior.render.PlatformRendererContext.destroyTextBundle(final int sign);
   public void com.lynx.tasm.behavior.render.PlatformRendererContext.finishLayoutOperation(int componentId, long operationId, boolean isFirstScreen);
   public void com.lynx.tasm.behavior.render.PlatformRendererContext.onNodeReadyBatch(int[] signs);
-  public void com.lynx.tasm.behavior.render.PlatformRendererContext.getDisplayList(int id, DisplayList displayList);
   public TextLayout com.lynx.tasm.behavior.render.PlatformRendererContext.getTextLayout();
   public float[] com.lynx.tasm.behavior.render.PlatformRendererContext.measureText(int sign, float width, int widthMode, float height, int heightMode, float[] inlineViewLayoutResult);
   public void com.lynx.tasm.behavior.render.PlatformRendererContext.dispatchLayoutBefore(int sign, ReadableCompactArrayBuffer buffer);
