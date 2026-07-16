@@ -1,0 +1,23 @@
+explorer/harmony/hvigor/hvigor-config.json5
+  s_3101666001455b::t_9c458ce63de2a8 4,22
+explorer/harmony/lynx_explorer/hvigorfile.ts
+  s_3101666001455b::t_42e8df4606d272 2,6
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "21ce2b14a508982350d26705ac90a6e9cf54d78d",
+  "prompts": {},
+  "sessions": {
+    "s_3101666001455b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f60e2-38d8-7493-890d-2c3b53d1485e",
+        "model": "unknown"
+      },
+      "human_author": "jianliang00 <wangjianliang0@126.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}
