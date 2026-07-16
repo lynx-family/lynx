@@ -438,9 +438,9 @@ void Destroy(JNIEnv* env, jobject jcaller, jlong nativePtr) {
   }
   reinterpret_cast<lynx::tasm::PlatformRendererContext*>(nativePtr)->Destroy();
 }
-jintArray GetDisplayListLengths(JNIEnv* env, jobject /*jcaller*/,
-                                jlong nativePtr, jint id) {
-  // Get the PlatformRendererContext instance from the native pointer
+
+jobject GetDisplayListItemsBuffer(JNIEnv* env, jobject /*jcaller*/,
+                                  jlong nativePtr, jint id) {
   if (nativePtr == 0) {
     return nullptr;
   }
@@ -448,110 +448,49 @@ jintArray GetDisplayListLengths(JNIEnv* env, jobject /*jcaller*/,
   lynx::tasm::PlatformRendererContext* context =
       reinterpret_cast<lynx::tasm::PlatformRendererContext*>(nativePtr);
 
-  // Find the PlatformRendererAndroid instance by id
   lynx::tasm::PlatformRendererAndroid* renderer =
       context->GetPlatformRenderer(id);
   if (renderer == nullptr) {
     return nullptr;
   }
 
-  // Get the display list from the renderer
-  const lynx::tasm::DisplayList& display_list = renderer->GetDisplayList();
-
-  jintArray result = env->NewIntArray(3);
-  if (result == nullptr) {
+  const uint8_t* items_data = renderer->GetSerializedContentItemsData();
+  const size_t items_bytes = renderer->GetSerializedContentItemsSize();
+  if (items_data == nullptr || items_bytes == 0) {
     return nullptr;
   }
 
-  jint lengths[3] = {static_cast<jint>(display_list.GetContentOpTypesSize()),
-                     static_cast<jint>(display_list.GetContentIntDataSize()),
-                     static_cast<jint>(display_list.GetContentFloatDataSize())};
-  env->SetIntArrayRegion(result, 0, 3, lengths);
-
-  return result;
+  return env->NewDirectByteBuffer(const_cast<uint8_t*>(items_data),
+                                  static_cast<jlong>(items_bytes));
 }
 
-/**
- * Fills the provided arrays with display list data.
- * It is assumed that the arrays have been pre-allocated with sufficient lengths
- * obtained from
- * Java_com_lynx_tasm_behavior_render_PlatformRendererContext_nativeGetDisplayListLengths().
- * If the arrays are smaller than expected, the method will only copy up to the
- * array's length.
- */
-void GetDisplayListData(JNIEnv* env, jobject /*jcaller*/, jlong nativePtr,
-                        jint id, jintArray ops, jintArray iArgv,
-                        jfloatArray fArgv) {
-  if (ops == nullptr || iArgv == nullptr || fArgv == nullptr) {
-    return;
-  }
-
-  // Get the PlatformRendererContext instance from the native pointer
+jobject GetDisplayListDataBuffer(JNIEnv* env, jobject /*jcaller*/,
+                                 jlong nativePtr, jint id) {
   if (nativePtr == 0) {
-    return;
+    return nullptr;
   }
 
   lynx::tasm::PlatformRendererContext* context =
       reinterpret_cast<lynx::tasm::PlatformRendererContext*>(nativePtr);
 
-  // Find the PlatformRendererAndroid instance by id
   lynx::tasm::PlatformRendererAndroid* renderer =
       context->GetPlatformRenderer(id);
   if (renderer == nullptr) {
-    return;
+    return nullptr;
   }
 
-  // Get the display list from the renderer
   const lynx::tasm::DisplayList& display_list = renderer->GetDisplayList();
-
-  // Get array lengths
-  jsize opsLength = env->GetArrayLength(ops);
-  jsize iArgvLength = env->GetArrayLength(iArgv);
-  jsize fArgvLength = env->GetArrayLength(fArgv);
-
-  // Get the display list data pointers
-  const int32_t* opsDataSrc = display_list.GetContentOpTypesData();
-  const int32_t* iArgvDataSrc = display_list.GetContentIntData();
-  const float* fArgvDataSrc = display_list.GetContentFloatData();
-
-  // Get Java array elements
-  jint* opsData = env->GetIntArrayElements(ops, nullptr);
-  jint* iArgvData = env->GetIntArrayElements(iArgv, nullptr);
-  jfloat* fArgvData = env->GetFloatArrayElements(fArgv, nullptr);
-
-  if (opsData != nullptr && iArgvData != nullptr && fArgvData != nullptr) {
-    // Copy data using memcpy as requested
-    if (opsDataSrc != nullptr && opsLength > 0) {
-      memcpy(opsData, opsDataSrc,
-             std::min(opsLength, static_cast<jsize>(
-                                     display_list.GetContentOpTypesSize())) *
-                 sizeof(jint));
-    }
-    if (iArgvDataSrc != nullptr && iArgvLength > 0) {
-      memcpy(iArgvData, iArgvDataSrc,
-             std::min(iArgvLength, static_cast<jsize>(
-                                       display_list.GetContentIntDataSize())) *
-                 sizeof(jint));
-    }
-    if (fArgvDataSrc != nullptr && fArgvLength > 0) {
-      memcpy(
-          fArgvData, fArgvDataSrc,
-          std::min(fArgvLength,
-                   static_cast<jsize>(display_list.GetContentFloatDataSize())) *
-              sizeof(jfloat));
-    }
-
-    // Release arrays
-    env->ReleaseIntArrayElements(ops, opsData, 0);
-    env->ReleaseIntArrayElements(iArgv, iArgvData, 0);
-    env->ReleaseFloatArrayElements(fArgv, fArgvData, 0);
+  const uint8_t* data = display_list.GetContentData();
+  const size_t data_bytes = display_list.GetContentDataSize();
+  if (data == nullptr || data_bytes == 0) {
+    return nullptr;
   }
+
+  return env->NewDirectByteBuffer(const_cast<uint8_t*>(data),
+                                  static_cast<jlong>(data_bytes));
 }
 
 void Java_com_lynx_tasm_behavior_render_PlatformRendererContext_nativeDestroy(
     JNIEnv* env, jobject jcaller, jlong nativePtr) {
-  if (nativePtr == 0) {
-    return;
-  }
-  reinterpret_cast<lynx::tasm::PlatformRendererContext*>(nativePtr)->Destroy();
+  Destroy(env, jcaller, nativePtr);
 }
