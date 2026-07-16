@@ -36,9 +36,16 @@ class LynxGroup {
 
   bool EnableJSGroupThread() const { return enable_js_group_thread_; }
 
+  bool EnableWhiteBoard() const { return enable_white_board_; }
+
   void SetEnableJSGroupThread(bool enable) {
     enable_js_group_thread_ = enable;
     lynx_group_set_enable_js_group_thread(group_, enable);
+  }
+
+  void SetEnableWhiteBoard(bool enable) {
+    enable_white_board_ = enable;
+    lynx_group_set_enable_white_board(group_, enable);
   }
 
   void SetPreloadJSPaths(std::vector<std::string> paths) {
@@ -62,6 +69,7 @@ class LynxGroup {
   std::string id_;
   std::vector<std::string> preload_js_paths_;
   bool enable_js_group_thread_ = false;
+  bool enable_white_board_ = false;
 };
 
 }  // namespace pub
