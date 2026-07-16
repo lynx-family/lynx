@@ -99,7 +99,7 @@ lynx_core_source_set("windowless_embedder") {
       "../embedder/module:module",
     ]
   }
-  if (enable_inspector) {
+  if (enable_inspector && enable_logbox) {
     deps += [ "../embedder/lynx_devtool:lynx_devtool_logbox" ]
   }
 

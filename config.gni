@@ -63,6 +63,9 @@ declare_args() {
   # enable_inspector_test corresponds the macro of INSPECTOR_TEST
   enable_inspector_test = false
 
+  # in some situation we don't want to build logbox, we can disable this flag
+  enable_logbox = true
+
   # enable_lepusng_bytecode_opt corresponds the macro of ENABLE_LEPUSNG_BYTECODE_OPT
   enable_lepusng_bytecode_opt = false
 
