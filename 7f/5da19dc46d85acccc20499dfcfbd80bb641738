@@ -1,0 +1,25 @@
+lynx/core/renderer/starlight/layout/layout_object.cc
+  s_d9db7e1de0ef0f::t_1a6ad32895d5b6 202-205
+lynx/core/renderer/starlight/style/layout_style_utils.cc
+  s_d9db7e1de0ef0f::t_13181d6c363fdc 17-24
+lynx/core/renderer/starlight/style/layout_style_utils.h
+  s_d9db7e1de0ef0f::t_168e2d909c0009 18-21
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "7f5da19dc46d85acccc20499dfcfbd80bb641738",
+  "prompts": {},
+  "sessions": {
+    "s_d9db7e1de0ef0f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f40ba-47ff-7972-84ea-34ca8c9dfc8f",
+        "model": "unknown"
+      },
+      "human_author": "liangruijie.030116 <liangruijie.030116@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

@@ -1,0 +1,95 @@
+lynx/clay/ui/rendering/text/render_text.cc
+  s_f1a54f7017c726::t_feeddccb9f6d0b 154-155
+  s_6a549976764f00::t_5fff3486332480 117,125-146
+lynx/clay/ui/rendering/text/render_text.h
+  s_f1a54f7017c726::t_ef92971309039a 91-93,106-107,118
+lynx/clay/ui/component/text/text_view.cc
+  s_f1a54f7017c726::t_3b7eb1aa2ebdbb 120-123
+  s_f1a54f7017c726::t_f3ca6e4244b87f 124
+lynx/clay/ui/component/text/text_view.h
+  s_f1a54f7017c726::t_8e44510b3ff8e5 40
+lynx/clay/ui/shadow/text_render.cc
+  s_f1a54f7017c726::t_3e1be7075508c8 776
+  s_f1a54f7017c726::t_ab6f08055deb2f 775
+  s_73e1c9cfd4327d::t_c7c7c15836d04e 415-417,842-843,855,857,883
+ai/reports/e2e-debug-analyzer/text-inline-truncation-android-clay-analyzer.md
+  s_6a549976764f00::t_5cbcb23d0acd26 1-254
+ai/reports/e2e-debug-analyzer/text-inline-truncation-android-clay-analyzer.zh.md
+  s_6a549976764f00::t_2f1ff9b0126e62 1-196
+ai/reports/e2e-debug-review/text-inline-truncation-android-clay-review.md
+  s_6a549976764f00::t_f1b6e6712c1138 1-233
+ai/reports/e2e-debug-review/text-inline-truncation-android-clay-review.zh.md
+  s_6a549976764f00::t_0b8cb1f68a8962 1-233
+ai/reports/e2e-debug/environment-profile.md
+  s_6a549976764f00::t_9ebff9198f9c32 1-65
+ai/reports/e2e-debug/text-inline-truncation-android-clay-debug.md
+  s_6a549976764f00::t_fc6ae09e92cccd 1-267
+ai/reports/e2e-debug/text-inline-truncation-android-clay-debug.zh.md
+  s_6a549976764f00::t_111034e10d4712 1-228
+ai/skills/e2e-debug-analyzer/SKILL.md
+  s_044ebad8fc1435::t_3d7ffc8bcfa8e2 207,210-233,246-251,561-572,667-668
+ai/skills/e2e-debug-analyzer/references/analyzer-report-template.md
+  s_044ebad8fc1435::t_1a4d6b05efcfa2 83-95
+ai/skills/e2e-debug-analyzer/references/analyzer-report-template.zh.md
+  s_044ebad8fc1435::t_b649d26a4a07b8 85-97
+ai/skills/e2e-debug-review/SKILL.md
+  s_044ebad8fc1435::t_f38fcb26453a63 127-143,170-172,240-241
+ai/skills/e2e-debug-review/references/review-report-template.md
+  s_044ebad8fc1435::t_3ddd9f967fd85c 61-69
+ai/skills/e2e-debug-review/references/review-report-template.zh.md
+  s_044ebad8fc1435::t_52106e9723181a 61-69
+ai/skills/e2e-debug-workflow/SKILL.md
+  s_6a549976764f00::t_69113326f744f7 69-72,120-123
+lynx/clay/ui/rendering/render_box.cc
+  s_6a549976764f00::t_68028e78d89dff 11,20-37,110-145
+lynx/clay/ui/rendering/render_box.h
+  s_6a549976764f00::t_407c8618883bda 114-116
+lynx/clay/ui/rendering/render_container.cc
+  s_6a549976764f00::t_ea7baae4bb0a2a 7,21-25
+lynx/clay/ui/shadow/text_render.h
+  s_73e1c9cfd4327d::t_556ce293f08ec0 106
+testing/lynx-platform-tests/test_script/resources/android/clay_inline_truncation_1.png
+  s_73e1c9cfd4327d::t_da09c0908ce415 2-3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "fc709ad261edbd4f61730dad5934f17fb505dbc6",
+  "prompts": {},
+  "sessions": {
+    "s_044ebad8fc1435": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f60d2-4a15-73d0-9f40-945c60ed19dd",
+        "model": "unknown"
+      },
+      "human_author": "liangruijie.030116 <liangruijie.030116@bytedance.com>"
+    },
+    "s_6a549976764f00": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f4712-64e1-7ef2-bbe2-626e8dcd5f9d",
+        "model": "unknown"
+      },
+      "human_author": "liangruijie.030116 <liangruijie.030116@bytedance.com>"
+    },
+    "s_73e1c9cfd4327d": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f60c5-49dd-7b83-885b-dbbb9f121b6b",
+        "model": "unknown"
+      },
+      "human_author": "liangruijie.030116 <liangruijie.030116@bytedance.com>"
+    },
+    "s_f1a54f7017c726": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a54deb767581c0c6d0e80f4",
+        "model": "gpt-5.6-terra__dev"
+      },
+      "human_author": "liangruijie.030116 <liangruijie.030116@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

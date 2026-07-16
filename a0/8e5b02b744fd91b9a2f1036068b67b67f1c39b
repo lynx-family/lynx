@@ -1,0 +1,29 @@
+lynx/platform/embedder/BUILD.gn
+  s_0e5e2d4b29213b::t_9fd0f476e5aab9 8-12,35,114
+lynx/oliver/node-lynx/scripts/run_tests_with_diagnostics.js
+  s_0e5e2d4b29213b::t_e91cf6f7f86dbd 1-612
+lynx/oliver/node-lynx/scripts/test.sh
+  s_0e5e2d4b29213b::t_182900198d9526 36-43
+lynx/oliver/node-lynx/test/diagnostic_runner.test.js
+  s_0e5e2d4b29213b::t_505d56002aab6e 1-380
+oliver/node-lynx/scripts/test.sh
+  s_0e5e2d4b29213b::t_1058a27d8f20c9 45-53,55,57-60
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "a08e5b02b744fd91b9a2f1036068b67b67f1c39b",
+  "prompts": {},
+  "sessions": {
+    "s_0e5e2d4b29213b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f6375-36d4-7990-ae14-e57368b5e128",
+        "model": "unknown"
+      },
+      "human_author": "yangguangzhao <yangguangzhao.solace@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}
