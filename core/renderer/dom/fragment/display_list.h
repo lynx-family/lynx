@@ -17,16 +17,10 @@
 namespace lynx {
 namespace tasm {
 
-struct OpData {
-  base::InlineVector<int32_t, 8> ops;
-  base::InlineVector<int32_t, 16> int_data;
-  base::InlineVector<float, 16> float_data;
-};
-
 // NOTE: This enum is serialized into the cross-platform DisplayList protocol.
 // Any addition/renumbering MUST be synchronized with all consumers
 // (C++/Android/iOS/etc.). Consumers MUST tolerate unknown op types by
-// skipping them based on per-op int/float parameter counts.
+// skipping the corresponding fixed-size DisplayListItem.
 enum class DisplayListOpType : int32_t {
   kBegin = 0,
   kEnd = 1,
@@ -310,45 +304,6 @@ class DisplayList {
     return content_data_.has_value() ? content_data_->size() : 0;
   }
 
-  const int32_t* GetContentOpTypesData() const {
-    return legacy_content_data_.has_value() ? legacy_content_data_->ops.data()
-                                            : nullptr;
-  }
-  const int32_t* GetContentIntData() const {
-    return legacy_content_data_.has_value()
-               ? legacy_content_data_->int_data.data()
-               : nullptr;
-  }
-  const float* GetContentFloatData() const {
-    return legacy_content_data_.has_value()
-               ? legacy_content_data_->float_data.data()
-               : nullptr;
-  }
-  size_t GetContentOpTypesSize() const {
-    return legacy_content_data_.has_value() ? legacy_content_data_->ops.size()
-                                            : 0;
-  }
-  bool HasContent() const { return GetContentOpTypesSize() != 0; }
-  size_t GetContentIntDataSize() const {
-    return legacy_content_data_.has_value()
-               ? legacy_content_data_->int_data.size()
-               : 0;
-  }
-  size_t GetContentFloatDataSize() const {
-    return legacy_content_data_.has_value()
-               ? legacy_content_data_->float_data.size()
-               : 0;
-  }
-  int32_t GetOpAtIndex(size_t index) const {
-    return legacy_content_data_->ops[index];
-  }
-  int32_t GetIntAtIndex(size_t index) const {
-    return legacy_content_data_->int_data[index];
-  }
-  float GetFloatAtIndex(size_t index) const {
-    return legacy_content_data_->float_data[index];
-  }
-
   const float* GetRenderOffset() const { return render_offset_; }
 
   size_t GetSubtreePropertiesSize() const {
@@ -377,11 +332,6 @@ class DisplayList {
                           int32_t tiling_index, int32_t clip_index,
                           int32_t repeat_x, int32_t repeat_y);
 
-  template <typename... Args>
-  auto AddOperation(DisplayListOpType type, Args... args) {
-    AddOperationToData(legacy_content_data_, type, args...);
-  }
-
   void AppendItem(const DisplayListItem& item);
 
   void AddSubLayer(int id) { sub_layers_.emplace_back(id); }
@@ -394,18 +344,12 @@ class DisplayList {
   base::InlineVector<fml::RefPtr<PaintImage>, 16>& Images() { return images_; }
 
  private:
-  template <typename OpType, typename... Args>
-  void AddOperationToData(base::auto_create_optional<OpData>& data_store,
-                          OpType type, Args... args);
-
   // Content operations (stable during animations) - lazy allocated
   base::auto_create_optional<base::InlineVector<DisplayListItem, 8>>
       content_items_;
 
   // Trailing variable-length data region for gradient colors/stops
   base::auto_create_optional<base::Vector<uint8_t>> content_data_;
-
-  base::auto_create_optional<OpData> legacy_content_data_;
 
   // Subtree-influencing group properties (frequently updated during animations)
   // These operations affect the entire subtree and only apply to owner layers -
@@ -423,41 +367,6 @@ class DisplayList {
 
   bool root_need_clip_bounds_{false};
 };
-
-template <typename OpType, typename... Args>
-void DisplayList::AddOperationToData(
-    base::auto_create_optional<OpData>& data_store, OpType type, Args... args) {
-  static_assert((... && (std::is_same_v<std::decay_t<Args>, int32_t> ||
-                         std::is_same_v<std::decay_t<Args>, float>)),
-                "AddOperation only accepts int32_t and float parameters");
-
-  OpData* op_data = &(*data_store);
-
-  op_data->ops.push_back(static_cast<int32_t>(type));
-
-  if constexpr (sizeof...(Args) == 0) {
-    op_data->int_data.push_back(0);
-    op_data->int_data.push_back(0);
-  } else {
-    constexpr size_t int_count =
-        (... + (std::is_same_v<std::decay_t<Args>, int32_t> ? 1 : 0));
-    constexpr size_t float_count =
-        (... + (std::is_same_v<std::decay_t<Args>, float> ? 1 : 0));
-
-    op_data->int_data.reserve(op_data->int_data.size() + 2 + int_count);
-    if constexpr (float_count > 0) {
-      op_data->float_data.reserve(op_data->float_data.size() + float_count);
-    }
-
-    op_data->int_data.push_back(static_cast<int32_t>(int_count));
-    op_data->int_data.push_back(static_cast<int32_t>(float_count));
-
-    ((std::is_same_v<std::decay_t<Args>, int32_t>
-          ? op_data->int_data.push_back(static_cast<int32_t>(args))
-          : op_data->float_data.push_back(static_cast<float>(args))),
-     ...);
-  }
-}
 
 }  // namespace tasm
 }  // namespace lynx

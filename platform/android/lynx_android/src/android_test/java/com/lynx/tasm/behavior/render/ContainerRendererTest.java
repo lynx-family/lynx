@@ -284,11 +284,8 @@ public class ContainerRendererTest {
 
   @Test
   public void testOnDraw_InitializesDisplayListApplier() {
-    // Setup a minimal ByteBuffer display list (BEGIN + END)
-    DisplayList displayList = new DisplayList();
-    displayList.ops = new int[] {0, 1};
-    displayList.iArgv = new int[] {2, 4, 0, 0, 0, 0};
-    displayList.fArgv = new float[] {0f, 0f, 100f, 100f};
+    DisplayListBufferBuilder displayList =
+        new DisplayListBufferBuilder().begin(0, 0, 0f, 0f, 100f, 100f).end();
 
     // Mock PlatformRendererContext to return the ByteBuffer
     when(mockPlatformRendererContext.getDisplayListItemsBuffer(TEST_SIGN))
@@ -306,10 +303,7 @@ public class ContainerRendererTest {
 
   @Test
   public void testBeforeDrawChild_OffsetsNonContainerRendererHostChild() {
-    DisplayList emptyDisplayList = new DisplayList();
-    emptyDisplayList.ops = new int[] {};
-    emptyDisplayList.iArgv = new int[] {};
-    emptyDisplayList.fArgv = new float[] {};
+    DisplayListBufferBuilder emptyDisplayList = new DisplayListBufferBuilder();
 
     when(mockPlatformRendererContext.getDisplayListItemsBuffer(TEST_SIGN))
         .thenReturn(emptyDisplayList.toItemsBuffer());
@@ -332,11 +326,8 @@ public class ContainerRendererTest {
 
   @Test
   public void testOnDraw_UpdatesExistingDisplayListApplier() {
-    // First call to initialize DisplayListApplier
-    DisplayList initialDisplayList = new DisplayList();
-    initialDisplayList.ops = new int[] {0, 1};
-    initialDisplayList.iArgv = new int[] {2, 4, 0, 0, 0, 0};
-    initialDisplayList.fArgv = new float[] {0f, 0f, 100f, 100f};
+    DisplayListBufferBuilder initialDisplayList =
+        new DisplayListBufferBuilder().begin(0, 0, 0f, 0f, 100f, 100f).end();
 
     when(mockPlatformRendererContext.getDisplayListItemsBuffer(TEST_SIGN))
         .thenReturn(initialDisplayList.toItemsBuffer());
@@ -346,11 +337,8 @@ public class ContainerRendererTest {
     // First onDraw call
     containerRenderer.onDraw(mockCanvas);
 
-    // Update DisplayList
-    DisplayList updatedDisplayList = new DisplayList();
-    updatedDisplayList.ops = new int[] {0, 1};
-    updatedDisplayList.iArgv = new int[] {2, 4, 0, 0, 0, 0};
-    updatedDisplayList.fArgv = new float[] {0f, 0f, 200f, 200f};
+    DisplayListBufferBuilder updatedDisplayList =
+        new DisplayListBufferBuilder().begin(0, 0, 0f, 0f, 200f, 200f).end();
 
     when(mockPlatformRendererContext.getDisplayListItemsBuffer(TEST_SIGN))
         .thenReturn(updatedDisplayList.toItemsBuffer());
