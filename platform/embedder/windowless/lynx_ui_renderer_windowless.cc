@@ -190,6 +190,17 @@ void LynxUIRendererWindowless::OnEnterBackground() {
   headless_engine_->OnEnterBackground();
 }
 
+// NativeViewServiceDesktop is only available for desktop windowless embedders.
+#if defined(OS_WIN) || defined(OS_MAC)
+void LynxUIRendererWindowless::RegisterNativeView(
+    const char* name, lynx_native_view_creator creator, void* opaque) {
+  auto* view_context =
+      static_cast<clay::ViewContext*>(headless_engine_->GetViewContext());
+  clay::NativeViewServiceDesktop::AddViewFactory(view_context, name, creator,
+                                                 opaque);
+}
+#endif
+
 lynx::tasm::UIDelegate* LynxUIRendererWindowless::GetUIDelegate() {
   return ui_delegate_.get();
 }
