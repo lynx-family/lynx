@@ -5,6 +5,9 @@ import("../Android.gni")
 declare_args() {
   enable_memory_tracing = false
 
+  # Enable JNI helpers for Android instrumentation tests.
+  enable_lynx_android_test = false
+
   # enable lynx testing with googletest
   enable_lynx_testing = false
 }

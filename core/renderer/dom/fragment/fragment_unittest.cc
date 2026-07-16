@@ -47,6 +47,16 @@ static constexpr int32_t kConfigHeight = 1920;
 static constexpr float kDefaultLayoutsUnitPerPx = 1.f;
 static constexpr double kDefaultPhysicalPixelsPerLayoutUnit = 1.f;
 
+static std::vector<DisplayListItem> CollectDisplayListItems(
+    const DisplayList& list) {
+  std::vector<DisplayListItem> items;
+  DisplayListReader reader(list);
+  while (reader.HasNext()) {
+    items.push_back(reader.Next());
+  }
+  return items;
+}
+
 class FragmentTest : public ::testing::Test {
  public:
   FragmentTest() {}
@@ -104,7 +114,9 @@ class TestPlatformRenderer : public PlatformRendererImpl {
 
  protected:
   void OnUpdateDisplayList(DisplayList display_list) override {
-    display_list_ = std::move(display_list);
+    if (display_list.GetContentItemsSize() > 0) {
+      display_list_ = std::move(display_list);
+    }
   }
   void OnUpdateAttributes(const fml::RefPtr<PropBundle>&, bool) override {}
   void OnAddChild(PlatformRenderer*, int, bool) override {}
@@ -755,38 +767,19 @@ TEST_F(FragmentTest, DrawBoxShadowWithOutsetShadow) {
   fragment.DrawBoxShadow(builder);
 
   DisplayList list = builder.Build();
-  const int32_t* ops = list.GetContentOpTypesData();
-  const int32_t* ints = list.GetContentIntData();
-  const float* floats = list.GetContentFloatData();
+  auto items = CollectDisplayListItems(list);
+  ASSERT_GE(items.size(), 3u);
 
-  ASSERT_NE(ops, nullptr);
-  ASSERT_NE(ints, nullptr);
-  ASSERT_NE(floats, nullptr);
+  EXPECT_EQ(items[0].type, DisplayListOpType::kRecordBox);
+  EXPECT_EQ(items[1].type, DisplayListOpType::kRecordBox);
+  EXPECT_EQ(items[2].type, DisplayListOpType::kBoxShadow);
 
-  ASSERT_GE(list.GetContentOpTypesSize(), 3u);
-  ASSERT_GE(list.GetContentIntDataSize(), 10u);
-  ASSERT_GE(list.GetContentFloatDataSize(), 9u);
-
-  // Op 0: RecordBox for border box (DefineBorderBox)
-  // Op 1: RecordBox for shadow box
-  // Op 2: BoxShadow
-  EXPECT_EQ(ops[0], static_cast<int32_t>(DisplayListOpType::kRecordBox));
-  EXPECT_EQ(ops[1], static_cast<int32_t>(DisplayListOpType::kRecordBox));
-  EXPECT_EQ(ops[2], static_cast<int32_t>(DisplayListOpType::kBoxShadow));
-
-  // Verify BoxShadow params:
-  // Each plain RecordBox: int_count=0, float_count=4 (2 ints + 4 floats)
-  // Op 0: ints[0]=0, ints[1]=4, floats[0..3]=border box
-  // Op 1: ints[2]=0, ints[3]=4, floats[4..7]=shadow box
-  // Op 2: ints[4]=4, ints[5]=1, ints[6..9]=params, floats[8]=blur
-  EXPECT_EQ(ints[4], 4);  // int_count for BoxShadow
-  EXPECT_EQ(ints[5], 1);  // float_count for BoxShadow
-  EXPECT_EQ(ints[6], 1);  // shadow_box_index
-  EXPECT_EQ(ints[7], 0);  // clip_box_index
-  EXPECT_EQ(static_cast<uint32_t>(ints[8]), 0xFF000000);  // color
-  EXPECT_EQ(ints[9], 0);                                  // clip_mode (outset)
-
-  EXPECT_FLOAT_EQ(floats[8], 5.0f);  // blur
+  const auto& box_shadow = items[2].payload.box_shadow;
+  EXPECT_EQ(box_shadow.shadow_box_index, 1);
+  EXPECT_EQ(box_shadow.clip_box_index, 0);
+  EXPECT_EQ(box_shadow.color, 0xFF000000u);
+  EXPECT_EQ(box_shadow.clip_mode, 0);
+  EXPECT_FLOAT_EQ(box_shadow.blur_radius, 5.0f);
 }
 
 TEST_F(FragmentTest, DrawBoxShadowWithInsetShadow) {
@@ -815,38 +808,19 @@ TEST_F(FragmentTest, DrawBoxShadowWithInsetShadow) {
   fragment.DrawBoxShadow(builder);
 
   DisplayList list = builder.Build();
-  const int32_t* ops = list.GetContentOpTypesData();
-  const int32_t* ints = list.GetContentIntData();
-  const float* floats = list.GetContentFloatData();
+  auto items = CollectDisplayListItems(list);
+  ASSERT_GE(items.size(), 3u);
 
-  ASSERT_NE(ops, nullptr);
-  ASSERT_NE(ints, nullptr);
-  ASSERT_NE(floats, nullptr);
+  EXPECT_EQ(items[0].type, DisplayListOpType::kRecordBox);
+  EXPECT_EQ(items[1].type, DisplayListOpType::kRecordBox);
+  EXPECT_EQ(items[2].type, DisplayListOpType::kBoxShadow);
 
-  ASSERT_GE(list.GetContentOpTypesSize(), 3u);
-  ASSERT_GE(list.GetContentIntDataSize(), 10u);
-  ASSERT_GE(list.GetContentFloatDataSize(), 9u);
-
-  // Op 0: RecordBox for padding box (DefinePaddingBox)
-  // Op 1: RecordBox for shadow box
-  // Op 2: BoxShadow
-  EXPECT_EQ(ops[0], static_cast<int32_t>(DisplayListOpType::kRecordBox));
-  EXPECT_EQ(ops[1], static_cast<int32_t>(DisplayListOpType::kRecordBox));
-  EXPECT_EQ(ops[2], static_cast<int32_t>(DisplayListOpType::kBoxShadow));
-
-  // Verify BoxShadow params:
-  // Each plain RecordBox: int_count=0, float_count=4 (2 ints + 4 floats)
-  // Op 0: ints[0]=0, ints[1]=4, floats[0..3]=padding box
-  // Op 1: ints[2]=0, ints[3]=4, floats[4..7]=shadow box
-  // Op 2: ints[4]=4, ints[5]=1, ints[6..9]=params, floats[8]=blur
-  EXPECT_EQ(ints[4], 4);  // int_count for BoxShadow
-  EXPECT_EQ(ints[5], 1);  // float_count for BoxShadow
-  EXPECT_EQ(ints[6], 1);  // shadow_box_index
-  EXPECT_EQ(ints[7], 0);  // clip_box_index
-  EXPECT_EQ(static_cast<uint32_t>(ints[8]), 0x80FF0000);  // color
-  EXPECT_EQ(ints[9], 1);                                  // clip_mode (inset)
-
-  EXPECT_FLOAT_EQ(floats[8], 4.0f);  // blur
+  const auto& box_shadow = items[2].payload.box_shadow;
+  EXPECT_EQ(box_shadow.shadow_box_index, 1);
+  EXPECT_EQ(box_shadow.clip_box_index, 0);
+  EXPECT_EQ(box_shadow.color, 0x80FF0000u);
+  EXPECT_EQ(box_shadow.clip_mode, 1);
+  EXPECT_FLOAT_EQ(box_shadow.blur_radius, 4.0f);
 }
 
 TEST_F(FragmentTest, DrawBoxShadowMultipleShadows) {
@@ -885,20 +859,18 @@ TEST_F(FragmentTest, DrawBoxShadowMultipleShadows) {
   fragment.DrawBoxShadow(builder);
 
   DisplayList list = builder.Build();
-  const int32_t* ops = list.GetContentOpTypesData();
-
-  ASSERT_NE(ops, nullptr);
-  ASSERT_GE(list.GetContentOpTypesSize(), 6u);
+  auto items = CollectDisplayListItems(list);
+  ASSERT_GE(items.size(), 6u);
 
   // Shadows are drawn in reverse order (painter's algorithm):
   // shadow2 (inset) first, then shadow1 (outset)
   // For each shadow: RecordBox (clip), RecordBox (shadow), BoxShadow
-  EXPECT_EQ(ops[0], static_cast<int32_t>(DisplayListOpType::kRecordBox));
-  EXPECT_EQ(ops[1], static_cast<int32_t>(DisplayListOpType::kRecordBox));
-  EXPECT_EQ(ops[2], static_cast<int32_t>(DisplayListOpType::kBoxShadow));
-  EXPECT_EQ(ops[3], static_cast<int32_t>(DisplayListOpType::kRecordBox));
-  EXPECT_EQ(ops[4], static_cast<int32_t>(DisplayListOpType::kRecordBox));
-  EXPECT_EQ(ops[5], static_cast<int32_t>(DisplayListOpType::kBoxShadow));
+  EXPECT_EQ(items[0].type, DisplayListOpType::kRecordBox);
+  EXPECT_EQ(items[1].type, DisplayListOpType::kRecordBox);
+  EXPECT_EQ(items[2].type, DisplayListOpType::kBoxShadow);
+  EXPECT_EQ(items[3].type, DisplayListOpType::kRecordBox);
+  EXPECT_EQ(items[4].type, DisplayListOpType::kRecordBox);
+  EXPECT_EQ(items[5].type, DisplayListOpType::kBoxShadow);
 }
 
 TEST_F(FragmentTest, DrawBoxShadowNoShadowData) {
@@ -910,9 +882,8 @@ TEST_F(FragmentTest, DrawBoxShadowNoShadowData) {
 
   DisplayList list = builder.Build();
 
-  EXPECT_EQ(list.GetContentOpTypesSize(), 0u);
-  EXPECT_EQ(list.GetContentIntDataSize(), 0u);
-  EXPECT_EQ(list.GetContentFloatDataSize(), 0u);
+  EXPECT_EQ(list.GetContentItemsSize(), 0u);
+  EXPECT_EQ(list.GetContentDataSize(), 0u);
 }
 
 TEST_F(FragmentTest, ComputeOutsetAdjustedRadiusFollowsW3CSpec) {
@@ -979,9 +950,9 @@ TEST_F(FragmentTest, DrawBoxShadowInsetWithLargeSpreadSkipsInvertedRect) {
 
   // The shadow should be skipped because spread inverts the rect
   // But padding box RecordBox is still added by DefinePaddingBox
-  EXPECT_EQ(list.GetContentOpTypesSize(), 1u);
-  EXPECT_EQ(list.GetContentOpTypesData()[0],
-            static_cast<int32_t>(DisplayListOpType::kRecordBox));
+  auto items = CollectDisplayListItems(list);
+  ASSERT_EQ(items.size(), 1u);
+  EXPECT_EQ(items[0].type, DisplayListOpType::kRecordBox);
 }
 
 TEST_F(FragmentTest, DrawBoxShadowInsetWithNegativeSpread) {
@@ -1023,33 +994,23 @@ TEST_F(FragmentTest, DrawBoxShadowInsetWithNegativeSpread) {
   fragment.DrawBoxShadow(builder);
 
   DisplayList list = builder.Build();
-  const int32_t* ops = list.GetContentOpTypesData();
-  const float* floats = list.GetContentFloatData();
+  auto items = CollectDisplayListItems(list);
+  ASSERT_GE(items.size(), 3u);
 
-  ASSERT_NE(ops, nullptr);
-  ASSERT_NE(floats, nullptr);
-  ASSERT_GE(list.GetContentOpTypesSize(), 3u);
-  ASSERT_GE(list.GetContentFloatDataSize(), 24u);
+  EXPECT_EQ(items[0].type, DisplayListOpType::kRecordBox);
+  EXPECT_EQ(items[1].type, DisplayListOpType::kRecordBox);
+  EXPECT_EQ(items[2].type, DisplayListOpType::kBoxShadow);
 
-  EXPECT_EQ(ops[0], static_cast<int32_t>(DisplayListOpType::kRecordBox));
-  EXPECT_EQ(ops[1], static_cast<int32_t>(DisplayListOpType::kRecordBox));
-  EXPECT_EQ(ops[2], static_cast<int32_t>(DisplayListOpType::kBoxShadow));
-
-  // Padding box radii are at floats[4..11]; shadow box radii at floats[16..23].
   // radius=10, effective outset=20, coverage=2*min(10/40, 10/40)=0.5:
   //   ratio = 10/20 = 0.5
   //   result = 10 + 20 * (1 - 0.5^3 * (1 - 0.5^3))
   //          = 10 + 20 * (1 - 0.125 * 0.875)
   //          = 27.8125
   const float kExpectedRadius = 27.8125f;
-  EXPECT_FLOAT_EQ(floats[16], kExpectedRadius);
-  EXPECT_FLOAT_EQ(floats[17], kExpectedRadius);
-  EXPECT_FLOAT_EQ(floats[18], kExpectedRadius);
-  EXPECT_FLOAT_EQ(floats[19], kExpectedRadius);
-  EXPECT_FLOAT_EQ(floats[20], kExpectedRadius);
-  EXPECT_FLOAT_EQ(floats[21], kExpectedRadius);
-  EXPECT_FLOAT_EQ(floats[22], kExpectedRadius);
-  EXPECT_FLOAT_EQ(floats[23], kExpectedRadius);
+  const auto& shadow_box = items[1].payload.record_box;
+  for (float radius : shadow_box.radii) {
+    EXPECT_FLOAT_EQ(radius, kExpectedRadius);
+  }
 }
 
 TEST_F(FragmentTest, PlainRectGeneratesClipRectOp) {
@@ -1067,22 +1028,16 @@ TEST_F(FragmentTest, PlainRectGeneratesClipRectOp) {
   fragment.DrawClip(builder);
 
   DisplayList list = builder.Build();
-  const int32_t* ops = list.GetContentOpTypesData();
-  const int32_t* ints = list.GetContentIntData();
-  const float* floats = list.GetContentFloatData();
+  auto items = CollectDisplayListItems(list);
+  ASSERT_EQ(items.size(), 1u);
 
-  ASSERT_NE(ops, nullptr);
-  ASSERT_NE(ints, nullptr);
-  ASSERT_NE(floats, nullptr);
-
-  EXPECT_EQ(ops[0], static_cast<int32_t>(DisplayListOpType::kClipRect));
-  EXPECT_EQ(ints[0], 0);
-  EXPECT_EQ(ints[1], 4);
-
-  EXPECT_FLOAT_EQ(floats[0], 1.f);
-  EXPECT_FLOAT_EQ(floats[1], 3.f);
-  EXPECT_FLOAT_EQ(floats[2], 100.f - 1.f - 2.f);
-  EXPECT_FLOAT_EQ(floats[3], 60.f - 3.f - 4.f);
+  EXPECT_EQ(items[0].type, DisplayListOpType::kClipRect);
+  const auto& clip_rect = items[0].payload.clip_rect;
+  EXPECT_EQ(clip_rect.has_radii, 0u);
+  EXPECT_FLOAT_EQ(clip_rect.x, 1.f);
+  EXPECT_FLOAT_EQ(clip_rect.y, 3.f);
+  EXPECT_FLOAT_EQ(clip_rect.w, 100.f - 1.f - 2.f);
+  EXPECT_FLOAT_EQ(clip_rect.h, 60.f - 3.f - 4.f);
 }
 
 TEST_F(FragmentTest, RoundedRectGeneratesClipPathOpParams) {
@@ -1113,31 +1068,25 @@ TEST_F(FragmentTest, RoundedRectGeneratesClipPathOpParams) {
   fragment.DrawClip(builder);
 
   DisplayList list = builder.Build();
-  const int32_t* ops = list.GetContentOpTypesData();
-  const int32_t* ints = list.GetContentIntData();
-  const float* floats = list.GetContentFloatData();
+  auto items = CollectDisplayListItems(list);
+  ASSERT_EQ(items.size(), 1u);
 
-  ASSERT_NE(ops, nullptr);
-  ASSERT_NE(ints, nullptr);
-  ASSERT_NE(floats, nullptr);
+  EXPECT_EQ(items[0].type, DisplayListOpType::kClipRect);
+  const auto& clip_rect = items[0].payload.clip_rect;
+  EXPECT_EQ(clip_rect.has_radii, 1u);
+  EXPECT_FLOAT_EQ(clip_rect.x, 1.f);
+  EXPECT_FLOAT_EQ(clip_rect.y, 3.f);
+  EXPECT_FLOAT_EQ(clip_rect.w, 100.f - 1.f - 2.f);
+  EXPECT_FLOAT_EQ(clip_rect.h, 60.f - 3.f - 4.f);
 
-  EXPECT_EQ(ops[0], static_cast<int32_t>(DisplayListOpType::kClipRect));
-  EXPECT_EQ(ints[0], 0);
-  EXPECT_EQ(ints[1], 12);
-
-  EXPECT_FLOAT_EQ(floats[0], 1.f);
-  EXPECT_FLOAT_EQ(floats[1], 3.f);
-  EXPECT_FLOAT_EQ(floats[2], 100.f - 1.f - 2.f);
-  EXPECT_FLOAT_EQ(floats[3], 60.f - 3.f - 4.f);
-
-  EXPECT_FLOAT_EQ(floats[4], 10.f - 1.f);
-  EXPECT_FLOAT_EQ(floats[5], 12.f - 3.f);
-  EXPECT_FLOAT_EQ(floats[6], 14.f - 2.f);
-  EXPECT_FLOAT_EQ(floats[7], 16.f - 3.f);
-  EXPECT_FLOAT_EQ(floats[8], 18.f - 2.f);
-  EXPECT_FLOAT_EQ(floats[9], 20.f - 4.f);
-  EXPECT_FLOAT_EQ(floats[10], 22.f - 1.f);
-  EXPECT_FLOAT_EQ(floats[11], 24.f - 4.f);
+  EXPECT_FLOAT_EQ(clip_rect.radii[0], 10.f - 1.f);
+  EXPECT_FLOAT_EQ(clip_rect.radii[1], 12.f - 3.f);
+  EXPECT_FLOAT_EQ(clip_rect.radii[2], 14.f - 2.f);
+  EXPECT_FLOAT_EQ(clip_rect.radii[3], 16.f - 3.f);
+  EXPECT_FLOAT_EQ(clip_rect.radii[4], 18.f - 2.f);
+  EXPECT_FLOAT_EQ(clip_rect.radii[5], 20.f - 4.f);
+  EXPECT_FLOAT_EQ(clip_rect.radii[6], 22.f - 1.f);
+  EXPECT_FLOAT_EQ(clip_rect.radii[7], 24.f - 4.f);
 }
 
 TEST_F(FragmentTest, TestUpdateLayoutAndDefineBoxAndDrawImage) {
@@ -1198,96 +1147,69 @@ TEST_F(FragmentTest, TestUpdateLayoutAndDefineBoxAndDrawImage) {
   fragment.behavior_->OnDraw(builder);
 
   DisplayList list = builder.Build();
-  const int32_t* ops = list.GetContentOpTypesData();
-  const int32_t* ints = list.GetContentIntData();
-  const float* floats = list.GetContentFloatData();
+  auto items = CollectDisplayListItems(list);
+  ASSERT_EQ(items.size(), 4u);
 
-  ASSERT_NE(ops, nullptr);
-  ASSERT_NE(ints, nullptr);
-  ASSERT_NE(floats, nullptr);
-  EXPECT_EQ(list.GetContentOpTypesSize(), 4u);
-  EXPECT_EQ(list.GetContentIntDataSize(), 10u);
-  EXPECT_EQ(list.GetContentFloatDataSize(), 36u);
+  EXPECT_EQ(items[0].type, DisplayListOpType::kRecordBox);
+  const auto& border_box = items[0].payload.record_box;
+  EXPECT_EQ(border_box.has_radii, 1u);
+  EXPECT_FLOAT_EQ(border_box.x, 0.f);
+  EXPECT_FLOAT_EQ(border_box.y, 0.f);
+  EXPECT_FLOAT_EQ(border_box.w, 100.f);
+  EXPECT_FLOAT_EQ(border_box.h, 60.f);
+  EXPECT_FLOAT_EQ(border_box.radii[0], 10.f);
+  EXPECT_FLOAT_EQ(border_box.radii[1], 12.f);
+  EXPECT_FLOAT_EQ(border_box.radii[2], 14.f);
+  EXPECT_FLOAT_EQ(border_box.radii[3], 16.f);
+  EXPECT_FLOAT_EQ(border_box.radii[4], 18.f);
+  EXPECT_FLOAT_EQ(border_box.radii[5], 20.f);
+  EXPECT_FLOAT_EQ(border_box.radii[6], 22.f);
+  EXPECT_FLOAT_EQ(border_box.radii[7], 24.f);
 
-  DisplayListReader reader(list);
-  EXPECT_EQ(reader.Remaining(), 4u);
-  EXPECT_EQ(reader.Next().type, DisplayListOpType::kRecordBox);
-  EXPECT_EQ(reader.Next().type, DisplayListOpType::kRecordBox);
-  EXPECT_EQ(reader.Next().type, DisplayListOpType::kRecordBox);
-  const auto& image_item = reader.Next();
-  EXPECT_EQ(image_item.type, DisplayListOpType::kImage);
+  EXPECT_EQ(items[1].type, DisplayListOpType::kRecordBox);
+  const auto& padding_box = items[1].payload.record_box;
+  EXPECT_EQ(padding_box.has_radii, 1u);
+  EXPECT_FLOAT_EQ(padding_box.x, 1.f);
+  EXPECT_FLOAT_EQ(padding_box.y, 3.f);
+  EXPECT_FLOAT_EQ(padding_box.w, 97.f);
+  EXPECT_FLOAT_EQ(padding_box.h, 53.f);
+  EXPECT_FLOAT_EQ(padding_box.radii[0], 10.f - 1.f);
+  EXPECT_FLOAT_EQ(padding_box.radii[1], 12.f - 3.f);
+  EXPECT_FLOAT_EQ(padding_box.radii[2], 14.f - 2.f);
+  EXPECT_FLOAT_EQ(padding_box.radii[3], 16.f - 3.f);
+  EXPECT_FLOAT_EQ(padding_box.radii[4], 18.f - 2.f);
+  EXPECT_FLOAT_EQ(padding_box.radii[5], 20.f - 4.f);
+  EXPECT_FLOAT_EQ(padding_box.radii[6], 22.f - 1.f);
+  EXPECT_FLOAT_EQ(padding_box.radii[7], 24.f - 4.f);
+
+  EXPECT_EQ(items[2].type, DisplayListOpType::kRecordBox);
+  const auto& content_box = items[2].payload.record_box;
+  EXPECT_EQ(content_box.has_radii, 1u);
+  EXPECT_FLOAT_EQ(content_box.x, 1.f);
+  EXPECT_FLOAT_EQ(content_box.y, 3.f);
+  EXPECT_FLOAT_EQ(content_box.w, 100.f - 1.f - 2.f);
+  EXPECT_FLOAT_EQ(content_box.h, 60.f - 3.f - 4.f);
+  EXPECT_FLOAT_EQ(content_box.radii[0], 10.f - 1.f);
+  EXPECT_FLOAT_EQ(content_box.radii[1], 12.f - 3.f);
+  EXPECT_FLOAT_EQ(content_box.radii[2], 14.f - 2.f);
+  EXPECT_FLOAT_EQ(content_box.radii[3], 16.f - 3.f);
+  EXPECT_FLOAT_EQ(content_box.radii[4], 18.f - 2.f);
+  EXPECT_FLOAT_EQ(content_box.radii[5], 20.f - 4.f);
+  EXPECT_FLOAT_EQ(content_box.radii[6], 22.f - 1.f);
+  EXPECT_FLOAT_EQ(content_box.radii[7], 24.f - 4.f);
+
+  EXPECT_EQ(items[3].type, DisplayListOpType::kImage);
   ASSERT_EQ(native_painting_context.created_images_.size(), 1u);
   EXPECT_EQ(native_painting_context.created_images_[0].id, fragment.id());
   EXPECT_EQ(native_painting_context.created_images_[0].mode,
             ImageFitMode::kAspectFit);
   const int32_t image_key =
       native_painting_context.created_images_[0].image_key;
-  EXPECT_EQ(image_item.payload.image.image_id, image_key);
-  EXPECT_EQ(image_item.payload.image.box_index, 2);
-  EXPECT_FALSE(reader.HasNext());
+  EXPECT_EQ(items[3].payload.image.image_id, image_key);
+  EXPECT_EQ(items[3].payload.image.box_index, 2);
   ASSERT_EQ(list.Images().size(), 1u);
   ASSERT_NE(list.Images()[0], nullptr);
   EXPECT_EQ(list.Images()[0]->image_key_, image_key);
-
-  EXPECT_EQ(ops[0], static_cast<int32_t>(DisplayListOpType::kRecordBox));
-  EXPECT_EQ(ints[0], 0);
-  EXPECT_EQ(ints[1], 12);
-
-  EXPECT_FLOAT_EQ(floats[0], 0.f);
-  EXPECT_FLOAT_EQ(floats[1], 0.f);
-  EXPECT_FLOAT_EQ(floats[2], 100.f);
-  EXPECT_FLOAT_EQ(floats[3], 60.f);
-
-  EXPECT_FLOAT_EQ(floats[4], 10.f);
-  EXPECT_FLOAT_EQ(floats[5], 12.f);
-  EXPECT_FLOAT_EQ(floats[6], 14.f);
-  EXPECT_FLOAT_EQ(floats[7], 16.f);
-  EXPECT_FLOAT_EQ(floats[8], 18.f);
-  EXPECT_FLOAT_EQ(floats[9], 20.f);
-  EXPECT_FLOAT_EQ(floats[10], 22.f);
-  EXPECT_FLOAT_EQ(floats[11], 24.f);
-
-  EXPECT_EQ(ops[1], static_cast<int32_t>(DisplayListOpType::kRecordBox));
-  EXPECT_EQ(ints[2], 0);
-  EXPECT_EQ(ints[3], 12);
-
-  EXPECT_FLOAT_EQ(floats[12], 1.f);
-  EXPECT_FLOAT_EQ(floats[13], 3.f);
-  EXPECT_FLOAT_EQ(floats[14], 97.f);
-  EXPECT_FLOAT_EQ(floats[15], 53.f);
-
-  EXPECT_FLOAT_EQ(floats[16], 10.f - 1.f);
-  EXPECT_FLOAT_EQ(floats[17], 12.f - 3.f);
-  EXPECT_FLOAT_EQ(floats[18], 14.f - 2.f);
-  EXPECT_FLOAT_EQ(floats[19], 16.f - 3.f);
-  EXPECT_FLOAT_EQ(floats[20], 18.f - 2.f);
-  EXPECT_FLOAT_EQ(floats[21], 20.f - 4.f);
-  EXPECT_FLOAT_EQ(floats[22], 22.f - 1.f);
-  EXPECT_FLOAT_EQ(floats[23], 24.f - 4.f);
-
-  EXPECT_EQ(ops[2], static_cast<int32_t>(DisplayListOpType::kRecordBox));
-  EXPECT_EQ(ints[4], 0);
-  EXPECT_EQ(ints[5], 12);
-
-  EXPECT_FLOAT_EQ(floats[24], 1.f);
-  EXPECT_FLOAT_EQ(floats[25], 3.f);
-  EXPECT_FLOAT_EQ(floats[26], 100.f - 1.f - 2.f);
-  EXPECT_FLOAT_EQ(floats[27], 60.f - 3.f - 4.f);
-
-  EXPECT_FLOAT_EQ(floats[28], 10.f - 1.f);
-  EXPECT_FLOAT_EQ(floats[29], 12.f - 3.f);
-  EXPECT_FLOAT_EQ(floats[30], 14.f - 2.f);
-  EXPECT_FLOAT_EQ(floats[31], 16.f - 3.f);
-  EXPECT_FLOAT_EQ(floats[32], 18.f - 2.f);
-  EXPECT_FLOAT_EQ(floats[33], 20.f - 4.f);
-  EXPECT_FLOAT_EQ(floats[34], 22.f - 1.f);
-  EXPECT_FLOAT_EQ(floats[35], 24.f - 4.f);
-
-  EXPECT_EQ(ops[3], static_cast<int32_t>(DisplayListOpType::kImage));
-  EXPECT_EQ(ints[6], 2);
-  EXPECT_EQ(ints[7], 0);
-  EXPECT_EQ(ints[8], image_key);
-  EXPECT_EQ(ints[9], 2);
 }
 
 TEST_F(FragmentTest, ImageModesNormalizeBeforeCreation) {
@@ -1698,45 +1620,32 @@ TEST_F(FragmentTest, LinearGradientGeneratesLinearGradientOp) {
   fragment.DrawBackground(builder);
 
   DisplayList list = builder.Build();
-  const int32_t* ops = list.GetContentOpTypesData();
-  ASSERT_NE(ops, nullptr);
+  auto items = CollectDisplayListItems(list);
+  ASSERT_GE(items.size(), 4u);
 
-  // Op 0 is RecordBox (for clip)
-  // Op 1 is Fill (background color)
-  // Op 2 is RecordBox (for tiling box)
-  // Op 3 is LinearGradient
-  EXPECT_EQ(ops[3], static_cast<int32_t>(DisplayListOpType::kLinearGradient));
+  EXPECT_EQ(items[0].type, DisplayListOpType::kRecordBox);
+  EXPECT_EQ(items[1].type, DisplayListOpType::kFill);
+  EXPECT_EQ(items[2].type, DisplayListOpType::kRecordBox);
+  EXPECT_EQ(items[3].type, DisplayListOpType::kLinearGradient);
 
-  const int32_t* ints = list.GetContentIntData();
-  const float* floats = list.GetContentFloatData();
-
-  // Verify gradient params
-  // Op 0 (RecordBox): ints[0,1] = [0, 4]
-  // Op 1 (Fill): ints[2,3] = [2, 0], ints[4,5] = [color, clip_index]
-  // Op 2 (RecordBox): ints[6,7] = [0, 4]
-  // Op 3 (LinearGradient): ints[8,9] = [int_count, float_count], ints[10] =
-  // color_count
-  EXPECT_EQ(ints[8], 8);   // int_count (1 + 2 + 1 + 4)
-  EXPECT_EQ(ints[10], 2);  // color_count
-  EXPECT_EQ(static_cast<uint32_t>(ints[11]), 0xFFFF0000);
-  EXPECT_EQ(static_cast<uint32_t>(ints[12]), 0xFF0000FF);
-  EXPECT_EQ(ints[13], 2);  // stop_count
-  // repeat_x, repeat_y are at ints[16], ints[17]
-  // params start at ints[10]: color_count (10), colors (11,12), stop_count
-  // (13), tiling (14), clip (15), repeat_x (16), repeat_y (17)
-  EXPECT_EQ(ints[16],
+  const auto& gradient = items[3].payload.linear_gradient;
+  EXPECT_EQ(gradient.color_count, 2u);
+  EXPECT_EQ(gradient.stop_count, 2u);
+  EXPECT_EQ(gradient.repeat_x,
             static_cast<int32_t>(starlight::BackgroundRepeatType::kRepeat));
-  EXPECT_EQ(ints[17],
+  EXPECT_EQ(gradient.repeat_y,
             static_cast<int32_t>(starlight::BackgroundRepeatType::kNoRepeat));
+  EXPECT_FLOAT_EQ(gradient.angle, 90.0f);
 
-  // Verify floats
-  // Op 0: floats[0-3]
-  // Op 1: (none)
-  // Op 2: floats[4-7]
-  // Op 3: floats[8] = angle, floats[9,10] = stops
-  EXPECT_FLOAT_EQ(floats[8], 90.0f);
-  EXPECT_FLOAT_EQ(floats[9], 0.0f);
-  EXPECT_FLOAT_EQ(floats[10], 1.0f);
+  DisplayListReader reader(list);
+  const uint32_t* colors = reader.Colors(items[3]);
+  const float* stops = reader.Stops(items[3]);
+  ASSERT_NE(colors, nullptr);
+  ASSERT_NE(stops, nullptr);
+  EXPECT_EQ(colors[0], 0xFFFF0000u);
+  EXPECT_EQ(colors[1], 0xFF0000FFu);
+  EXPECT_FLOAT_EQ(stops[0], 0.0f);
+  EXPECT_FLOAT_EQ(stops[1], 1.0f);
 }
 
 TEST_F(FragmentTest, LinearGradientCornerDirectionUsesTilingBoxSize) {
@@ -1854,34 +1763,31 @@ TEST_F(FragmentDrawTest, BackgroundUrlGeneratesBackgroundImageOp) {
   EXPECT_TRUE(native_context->created_images_[0].disable_default_resize);
 
   DisplayList list = builder.Build();
-  ASSERT_EQ(list.GetContentOpTypesSize(), 4u);
-  const int32_t* ops = list.GetContentOpTypesData();
-  const int32_t* ints = list.GetContentIntData();
-  const float* floats = list.GetContentFloatData();
-  ASSERT_NE(ops, nullptr);
-  ASSERT_NE(ints, nullptr);
-  ASSERT_NE(floats, nullptr);
+  auto items = CollectDisplayListItems(list);
+  ASSERT_EQ(items.size(), 4u);
+  EXPECT_EQ(items[0].type, DisplayListOpType::kRecordBox);
+  EXPECT_EQ(items[1].type, DisplayListOpType::kFill);
+  EXPECT_EQ(items[2].type, DisplayListOpType::kRecordBox);
+  EXPECT_EQ(items[3].type, DisplayListOpType::kBackgroundImage);
 
-  EXPECT_EQ(ops[0], static_cast<int32_t>(DisplayListOpType::kRecordBox));
-  EXPECT_EQ(ops[1], static_cast<int32_t>(DisplayListOpType::kFill));
-  EXPECT_EQ(ops[2], static_cast<int32_t>(DisplayListOpType::kRecordBox));
-  EXPECT_EQ(ops[3], static_cast<int32_t>(DisplayListOpType::kBackgroundImage));
+  const auto& tiling_box = items[2].payload.record_box;
+  EXPECT_FLOAT_EQ(tiling_box.x, 10.f);
+  EXPECT_FLOAT_EQ(tiling_box.y, 15.f);
+  EXPECT_FLOAT_EQ(tiling_box.w, 40.f);
+  EXPECT_FLOAT_EQ(tiling_box.h, 20.f);
 
-  EXPECT_EQ(ints[8], 5);
-  EXPECT_EQ(ints[9], 0);
-  EXPECT_EQ(ints[10], native_context->created_images_[0].image_key);
-  EXPECT_EQ(ints[11], 1);
-  EXPECT_EQ(ints[12], 0);
-  EXPECT_EQ(ints[13],
+  const auto& background_image = items[3].payload.background_image;
+  EXPECT_EQ(background_image.image_id,
+            native_context->created_images_[0].image_key);
+  EXPECT_EQ(background_image.tiling_index, 1);
+  EXPECT_EQ(background_image.clip_index, 0);
+  EXPECT_EQ(background_image.repeat_x,
             static_cast<int32_t>(starlight::BackgroundRepeatType::kRepeat));
-  EXPECT_EQ(ints[14],
+  EXPECT_EQ(background_image.repeat_y,
             static_cast<int32_t>(starlight::BackgroundRepeatType::kNoRepeat));
-
-  EXPECT_FLOAT_EQ(floats[4], 10.f);
-  EXPECT_FLOAT_EQ(floats[5], 15.f);
-  EXPECT_FLOAT_EQ(floats[6], 40.f);
-  EXPECT_FLOAT_EQ(floats[7], 20.f);
-  EXPECT_EQ(list.Images().size(), 1u);
+  ASSERT_EQ(list.Images().size(), 1u);
+  ASSERT_NE(list.Images()[0], nullptr);
+  EXPECT_EQ(list.Images()[0]->image_key_, background_image.image_id);
 
   image_data.size.clear();
   image_data.size.push_back(starlight::NLength::MakeUnitNLength(60.f));
@@ -1892,12 +1798,11 @@ TEST_F(FragmentDrawTest, BackgroundUrlGeneratesBackgroundImageOp) {
 
   EXPECT_EQ(native_context->created_images_.size(), 1u);
   DisplayList repaint_list = repaint_builder.Build();
-  ASSERT_EQ(repaint_list.GetContentOpTypesSize(), 3u);
-  const int32_t* repaint_ints = repaint_list.GetContentIntData();
-  ASSERT_NE(repaint_ints, nullptr);
-  EXPECT_EQ(repaint_list.GetOpAtIndex(2),
-            static_cast<int32_t>(DisplayListOpType::kBackgroundImage));
-  EXPECT_EQ(repaint_ints[8], native_context->created_images_[0].image_key);
+  auto repaint_items = CollectDisplayListItems(repaint_list);
+  ASSERT_EQ(repaint_items.size(), 3u);
+  EXPECT_EQ(repaint_items[2].type, DisplayListOpType::kBackgroundImage);
+  EXPECT_EQ(repaint_items[2].payload.background_image.image_id,
+            native_context->created_images_[0].image_key);
 }
 
 TEST_F(FragmentTest, BackgroundColorUsesBottomImageLayerClip) {
@@ -1925,22 +1830,19 @@ TEST_F(FragmentTest, BackgroundColorUsesBottomImageLayerClip) {
   fragment.DrawBackground(builder);
 
   DisplayList list = builder.Build();
-  const int32_t* ops = list.GetContentOpTypesData();
-  const int32_t* ints = list.GetContentIntData();
-  const float* floats = list.GetContentFloatData();
+  auto items = CollectDisplayListItems(list);
+  ASSERT_GE(items.size(), 2u);
 
-  ASSERT_NE(ops, nullptr);
-  ASSERT_NE(ints, nullptr);
-  ASSERT_NE(floats, nullptr);
+  EXPECT_EQ(items[0].type, DisplayListOpType::kRecordBox);
+  EXPECT_EQ(items[1].type, DisplayListOpType::kFill);
 
-  EXPECT_EQ(ops[0], static_cast<int32_t>(DisplayListOpType::kRecordBox));
-  EXPECT_EQ(ops[1], static_cast<int32_t>(DisplayListOpType::kFill));
-  EXPECT_FLOAT_EQ(floats[0], 16.f);
-  EXPECT_FLOAT_EQ(floats[1], 26.f);
-  EXPECT_FLOAT_EQ(floats[2], 62.f);
-  EXPECT_FLOAT_EQ(floats[3], 20.f);
-  EXPECT_EQ(static_cast<uint32_t>(ints[4]), 0xFF00FF00);
-  EXPECT_EQ(ints[5], 0);
+  const auto& box = items[0].payload.record_box;
+  EXPECT_FLOAT_EQ(box.x, 16.f);
+  EXPECT_FLOAT_EQ(box.y, 26.f);
+  EXPECT_FLOAT_EQ(box.w, 62.f);
+  EXPECT_FLOAT_EQ(box.h, 20.f);
+  EXPECT_EQ(items[1].payload.fill.color, 0xFF00FF00u);
+  EXPECT_EQ(items[1].payload.fill.clip_index, 0);
 }
 
 TEST_F(FragmentTest, OutsetShadowWithZeroSizeElement) {
@@ -1988,7 +1890,7 @@ TEST_F(FragmentTest, OutsetShadowWithZeroSizeElement) {
 
   DisplayList list = builder.Build();
   // Should produce at least one op without crash
-  EXPECT_GE(list.GetContentOpTypesSize(), 1u);
+  EXPECT_GE(list.GetContentItemsSize(), 1u);
 }
 
 TEST_F(FragmentDrawTest,
@@ -2030,9 +1932,7 @@ TEST_F(FragmentDrawTest,
   // When visible, Draw() produces a display list with background content.
   page->display_none_ = false;
   fragment->Draw();
-  EXPECT_TRUE(renderer->display_list_.HasContent());
-  const size_t visible_op_count =
-      renderer->display_list_.GetContentOpTypesSize();
+  const size_t visible_op_count = renderer->display_list_.GetContentItemsSize();
   EXPECT_GT(visible_op_count, 2u);
 
   // When display_none becomes true, Draw() must still send a display list that
@@ -2044,12 +1944,10 @@ TEST_F(FragmentDrawTest,
   manager->MarkNeedReconstructEventTargetTreeForExposure();
   fragment->Draw();
   EXPECT_FALSE(manager->NeedReconstructEventTargetTreeForExposure());
-  EXPECT_TRUE(renderer->display_list_.HasContent());
-  EXPECT_EQ(renderer->display_list_.GetContentOpTypesSize(), 2u);
-  const int32_t* ops = renderer->display_list_.GetContentOpTypesData();
-  ASSERT_NE(ops, nullptr);
-  EXPECT_EQ(ops[0], static_cast<int32_t>(DisplayListOpType::kBegin));
-  EXPECT_EQ(ops[1], static_cast<int32_t>(DisplayListOpType::kEnd));
+  auto display_none_items = CollectDisplayListItems(renderer->display_list_);
+  ASSERT_EQ(display_none_items.size(), 2u);
+  EXPECT_EQ(display_none_items[0].type, DisplayListOpType::kBegin);
+  EXPECT_EQ(display_none_items[1].type, DisplayListOpType::kEnd);
 }
 
 TEST_F(FragmentDrawTest, FragmentLayerRenderFinishesLayoutAfterDisplayList) {
