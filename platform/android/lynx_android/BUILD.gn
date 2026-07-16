@@ -107,6 +107,9 @@ group("lynx_android_lib") {
   if (enable_napi_binding) {
     public_deps += [ "../../../core/runtime/common/napi:napi_binding_quickjs" ]
   }
+  if (enable_lynx_android_test || enable_lynx_testing) {
+    public_deps += [ "../../../testing/lynx:lynx_android_unittests_jni" ]
+  }
   if (enable_lynx_testing) {
     public_deps += [
       "../../../core/base:gtest_lynx_base_android",

@@ -7,6 +7,7 @@ import static org.junit.Assert.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
+import android.app.Application;
 import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Matrix;
@@ -15,12 +16,15 @@ import android.os.Build;
 import android.view.View;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
+import com.lynx.tasm.LynxEnv;
 import com.lynx.tasm.behavior.LynxContext;
 import com.lynx.tasm.behavior.StyleConstants;
 import com.lynx.tasm.behavior.ui.PropBundle;
 import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.util.ArrayList;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -36,6 +40,7 @@ public class ContainerRendererTest {
 
   private ContainerRenderer parentContainer;
   private ContainerRenderer containerRenderer;
+  private final ArrayList<NativeDisplayListBuilder> nativeDisplayLists = new ArrayList<>();
   private static final int TEST_SIGN = 123;
   private static final int TEST_LEFT = 10;
   private static final int TEST_TOP = 20;
@@ -48,6 +53,9 @@ public class ContainerRendererTest {
 
     // Use real Android context from instrumentation test
     realContext = InstrumentationRegistry.getInstrumentation().getTargetContext();
+    Context applicationContext = realContext.getApplicationContext();
+    LynxEnv.inst().init((Application) applicationContext, null, null, null, null);
+    NativeDisplayListBuilder.ensureRegistered();
 
     // Create a simple LynxContext for testing - we'll mock the specific methods we need
     realLynxContext = spy(new TestLynxContext(realContext));
@@ -60,6 +68,20 @@ public class ContainerRendererTest {
     containerRenderer.setRenderer(renderer);
 
     parentContainer.addView(containerRenderer);
+  }
+
+  @After
+  public void tearDown() {
+    for (NativeDisplayListBuilder displayList : nativeDisplayLists) {
+      displayList.close();
+    }
+    nativeDisplayLists.clear();
+  }
+
+  private NativeDisplayListBuilder createDisplayList() {
+    NativeDisplayListBuilder displayList = new NativeDisplayListBuilder();
+    nativeDisplayLists.add(displayList);
+    return displayList;
   }
 
   // Simple test implementation of LynxContext
@@ -284,11 +306,8 @@ public class ContainerRendererTest {
 
   @Test
   public void testOnDraw_InitializesDisplayListApplier() {
-    // Setup a minimal ByteBuffer display list (BEGIN + END)
-    DisplayList displayList = new DisplayList();
-    displayList.ops = new int[] {0, 1};
-    displayList.iArgv = new int[] {2, 4, 0, 0, 0, 0};
-    displayList.fArgv = new float[] {0f, 0f, 100f, 100f};
+    NativeDisplayListBuilder displayList =
+        createDisplayList().begin(0, 0, 0f, 0f, 100f, 100f).end();
 
     // Mock PlatformRendererContext to return the ByteBuffer
     when(mockPlatformRendererContext.getDisplayListItemsBuffer(TEST_SIGN))
@@ -306,10 +325,7 @@ public class ContainerRendererTest {
 
   @Test
   public void testBeforeDrawChild_OffsetsNonContainerRendererHostChild() {
-    DisplayList emptyDisplayList = new DisplayList();
-    emptyDisplayList.ops = new int[] {};
-    emptyDisplayList.iArgv = new int[] {};
-    emptyDisplayList.fArgv = new float[] {};
+    NativeDisplayListBuilder emptyDisplayList = createDisplayList();
 
     when(mockPlatformRendererContext.getDisplayListItemsBuffer(TEST_SIGN))
         .thenReturn(emptyDisplayList.toItemsBuffer());
@@ -332,11 +348,8 @@ public class ContainerRendererTest {
 
   @Test
   public void testOnDraw_UpdatesExistingDisplayListApplier() {
-    // First call to initialize DisplayListApplier
-    DisplayList initialDisplayList = new DisplayList();
-    initialDisplayList.ops = new int[] {0, 1};
-    initialDisplayList.iArgv = new int[] {2, 4, 0, 0, 0, 0};
-    initialDisplayList.fArgv = new float[] {0f, 0f, 100f, 100f};
+    NativeDisplayListBuilder initialDisplayList =
+        createDisplayList().begin(0, 0, 0f, 0f, 100f, 100f).end();
 
     when(mockPlatformRendererContext.getDisplayListItemsBuffer(TEST_SIGN))
         .thenReturn(initialDisplayList.toItemsBuffer());
@@ -346,11 +359,8 @@ public class ContainerRendererTest {
     // First onDraw call
     containerRenderer.onDraw(mockCanvas);
 
-    // Update DisplayList
-    DisplayList updatedDisplayList = new DisplayList();
-    updatedDisplayList.ops = new int[] {0, 1};
-    updatedDisplayList.iArgv = new int[] {2, 4, 0, 0, 0, 0};
-    updatedDisplayList.fArgv = new float[] {0f, 0f, 200f, 200f};
+    NativeDisplayListBuilder updatedDisplayList =
+        createDisplayList().begin(0, 0, 0f, 0f, 200f, 200f).end();
 
     when(mockPlatformRendererContext.getDisplayListItemsBuffer(TEST_SIGN))
         .thenReturn(updatedDisplayList.toItemsBuffer());

@@ -297,6 +297,9 @@ task configGnCompileParas {
                     gnBuildArgs_list.put("enable_trace", "perfetto")
                 }
                 gnBuildArgs_list.put("is_debug", "true")
+                if(enable_lynx_android_test.toBoolean()){
+                    gnBuildArgs_list.put("enable_lynx_android_test", "true")
+                }
             }
             rootProject.ext.abiList.each { abi ->
                 gnBuildArgs_map.put(flavorName+buildType+abi, gnBuildArgs_list)

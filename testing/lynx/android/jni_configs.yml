@@ -1,0 +1,10 @@
+# gn file configs.
+gn_configs:
+  output_path: testing/lynx/android/BUILD.gn
+  template_name: source_set
+# jni files configs.
+jni_class_configs:
+  output_dir: testing/lynx/android/gen
+  jni_classes:
+    - java: platform/android/lynx_android/src/android_test/java/com/lynx/tasm/behavior/render/DisplayListItemBufferTest.java
+    - java: platform/android/lynx_android/src/android_test/java/com/lynx/tasm/behavior/render/NativeDisplayListBuilder.java
