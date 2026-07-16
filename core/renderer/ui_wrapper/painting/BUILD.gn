@@ -21,6 +21,14 @@ ui_wrapper_painting_shared_sources = [
   "platform_renderer_impl.h",
 ]
 
+ui_wrapper_painting_shared_deps = [
+  "../../../public",
+  "../../../value_wrapper:value_wrapper",
+  "../../starlight:starlight",
+  "../../trace:renderer_trace",
+  "../common",
+]
+
 if (!enable_unittests) {
   if (is_android) {
     ui_wrapper_painting_shared_sources += [
@@ -75,14 +83,7 @@ if (!enable_unittests) {
 
 lynx_core_source_set("painting") {
   sources = ui_wrapper_painting_shared_sources
-
-  deps = [
-    "../../../public",
-    "../../../value_wrapper:value_wrapper",
-    "../../starlight:starlight",
-    "../../trace:renderer_trace",
-    "../common",
-  ]
+  deps = ui_wrapper_painting_shared_deps
 }
 
 unittest_set("platform_renderer_testset") {

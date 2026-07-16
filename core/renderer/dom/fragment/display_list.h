@@ -193,148 +193,81 @@ typedef struct DisplayListItem {
   } payload;
 } DisplayListItem;
 
-// ABI locking: static_asserts for every field that cross-platform consumers
-// read
+// DisplayListItem is exposed to platform code as a DirectByteBuffer. Keep this
+// ABI in sync with every platform reader.
 static_assert(sizeof(DisplayListItem) == 56,
               "DisplayListItem size must be 56 bytes");
+static_assert(alignof(DisplayListItem) == alignof(int32_t),
+              "DisplayListItem alignment must match its 32-bit fields");
 static_assert(offsetof(DisplayListItem, type) == 0,
               "type field must be at offset 0");
 static_assert(offsetof(DisplayListItem, payload) == 4,
-              "payload union must be at offset 4");
-
-// Begin payload offsets
-static_assert(offsetof(DisplayListItem, payload.begin.id) == 4,
-              "begin.id must be at offset 4");
-static_assert(offsetof(DisplayListItem, payload.begin.type) == 8,
-              "begin.type must be at offset 8");
-static_assert(offsetof(DisplayListItem, payload.begin.x) == 12,
-              "begin.x must be at offset 12");
-static_assert(offsetof(DisplayListItem, payload.begin.y) == 16,
-              "begin.y must be at offset 16");
-static_assert(offsetof(DisplayListItem, payload.begin.w) == 20,
-              "begin.w must be at offset 20");
-static_assert(offsetof(DisplayListItem, payload.begin.h) == 24,
-              "begin.h must be at offset 24");
-
-// Fill payload offsets
-static_assert(offsetof(DisplayListItem, payload.fill.color) == 4,
-              "fill.color must be at offset 4");
-static_assert(offsetof(DisplayListItem, payload.fill.clip_index) == 8,
-              "fill.clip_index must be at offset 8");
-
-// DrawView payload offsets
-static_assert(offsetof(DisplayListItem, payload.draw_view.view_id) == 4,
-              "draw_view.view_id must be at offset 4");
-static_assert(offsetof(DisplayListItem, payload.draw_view.offset_x) == 8,
-              "draw_view.offset_x must be at offset 8");
-static_assert(offsetof(DisplayListItem, payload.draw_view.offset_y) == 12,
-              "draw_view.offset_y must be at offset 12");
-
-// Text payload offsets
-static_assert(offsetof(DisplayListItem, payload.text.text_id) == 4,
-              "text.text_id must be at offset 4");
-static_assert(offsetof(DisplayListItem, payload.text.box_index) == 8,
-              "text.box_index must be at offset 8");
-
-// Image payload offsets
-static_assert(offsetof(DisplayListItem, payload.image.image_id) == 4,
-              "image.image_id must be at offset 4");
-static_assert(offsetof(DisplayListItem, payload.image.box_index) == 8,
-              "image.box_index must be at offset 8");
-
-// BackgroundImage payload offsets
-static_assert(offsetof(DisplayListItem, payload.background_image.image_id) == 4,
-              "background_image.image_id must be at offset 4");
+              "payload must start at offset 4");
+static_assert(offsetof(DisplayListItem, payload.begin.id) == 4);
+static_assert(offsetof(DisplayListItem, payload.begin.type) == 8);
+static_assert(offsetof(DisplayListItem, payload.begin.x) == 12);
+static_assert(offsetof(DisplayListItem, payload.begin.y) == 16);
+static_assert(offsetof(DisplayListItem, payload.begin.w) == 20);
+static_assert(offsetof(DisplayListItem, payload.begin.h) == 24);
+static_assert(offsetof(DisplayListItem, payload.fill.color) == 4);
+static_assert(offsetof(DisplayListItem, payload.fill.clip_index) == 8);
+static_assert(offsetof(DisplayListItem, payload.draw_view.view_id) == 4);
+static_assert(offsetof(DisplayListItem, payload.draw_view.offset_x) == 8);
+static_assert(offsetof(DisplayListItem, payload.draw_view.offset_y) == 12);
+static_assert(offsetof(DisplayListItem, payload.text.text_id) == 4);
+static_assert(offsetof(DisplayListItem, payload.text.box_index) == 8);
+static_assert(offsetof(DisplayListItem, payload.image.image_id) == 4);
+static_assert(offsetof(DisplayListItem, payload.image.box_index) == 8);
+static_assert(offsetof(DisplayListItem, payload.background_image.image_id) ==
+              4);
 static_assert(offsetof(DisplayListItem,
-                       payload.background_image.tiling_index) == 8,
-              "background_image.tiling_index must be at offset 8");
+                       payload.background_image.tiling_index) == 8);
 static_assert(offsetof(DisplayListItem, payload.background_image.clip_index) ==
-                  12,
-              "background_image.clip_index must be at offset 12");
+              12);
 static_assert(offsetof(DisplayListItem, payload.background_image.repeat_x) ==
-                  16,
-              "background_image.repeat_x must be at offset 16");
+              16);
 static_assert(offsetof(DisplayListItem, payload.background_image.repeat_y) ==
-                  20,
-              "background_image.repeat_y must be at offset 20");
-
-// Border payload offsets
-static_assert(offsetof(DisplayListItem, payload.border.out_index) == 4,
-              "border.out_index must be at offset 4");
-static_assert(offsetof(DisplayListItem, payload.border.inner_index) == 8,
-              "border.inner_index must be at offset 8");
-static_assert(offsetof(DisplayListItem, payload.border.colors) == 12,
-              "border.colors must be at offset 12");
-static_assert(offsetof(DisplayListItem, payload.border.styles) == 28,
-              "border.styles must be at offset 28");
-
-// RecordBox payload offsets
-static_assert(offsetof(DisplayListItem, payload.record_box.x) == 4,
-              "record_box.x must be at offset 4");
-static_assert(offsetof(DisplayListItem, payload.record_box.y) == 8,
-              "record_box.y must be at offset 8");
-static_assert(offsetof(DisplayListItem, payload.record_box.w) == 12,
-              "record_box.w must be at offset 12");
-static_assert(offsetof(DisplayListItem, payload.record_box.h) == 16,
-              "record_box.h must be at offset 16");
-static_assert(offsetof(DisplayListItem, payload.record_box.radii) == 20,
-              "record_box.radii must be at offset 20");
-static_assert(offsetof(DisplayListItem, payload.record_box.has_radii) == 52,
-              "record_box.has_radii must be at offset 52");
-
-// ClipRect payload offsets
-static_assert(offsetof(DisplayListItem, payload.clip_rect.x) == 4,
-              "clip_rect.x must be at offset 4");
-static_assert(offsetof(DisplayListItem, payload.clip_rect.y) == 8,
-              "clip_rect.y must be at offset 8");
-static_assert(offsetof(DisplayListItem, payload.clip_rect.w) == 12,
-              "clip_rect.w must be at offset 12");
-static_assert(offsetof(DisplayListItem, payload.clip_rect.h) == 16,
-              "clip_rect.h must be at offset 16");
-static_assert(offsetof(DisplayListItem, payload.clip_rect.radii) == 20,
-              "clip_rect.radii must be at offset 20");
-static_assert(offsetof(DisplayListItem, payload.clip_rect.has_radii) == 52,
-              "clip_rect.has_radii must be at offset 52");
-
-// LinearGradient payload offsets
+              20);
+static_assert(offsetof(DisplayListItem, payload.border.out_index) == 4);
+static_assert(offsetof(DisplayListItem, payload.border.inner_index) == 8);
+static_assert(offsetof(DisplayListItem, payload.border.colors) == 12);
+static_assert(offsetof(DisplayListItem, payload.border.styles) == 28);
+static_assert(offsetof(DisplayListItem, payload.record_box.x) == 4);
+static_assert(offsetof(DisplayListItem, payload.record_box.y) == 8);
+static_assert(offsetof(DisplayListItem, payload.record_box.w) == 12);
+static_assert(offsetof(DisplayListItem, payload.record_box.h) == 16);
+static_assert(offsetof(DisplayListItem, payload.record_box.radii) == 20);
+static_assert(offsetof(DisplayListItem, payload.record_box.has_radii) == 52);
+static_assert(offsetof(DisplayListItem, payload.clip_rect.x) == 4);
+static_assert(offsetof(DisplayListItem, payload.clip_rect.y) == 8);
+static_assert(offsetof(DisplayListItem, payload.clip_rect.w) == 12);
+static_assert(offsetof(DisplayListItem, payload.clip_rect.h) == 16);
+static_assert(offsetof(DisplayListItem, payload.clip_rect.radii) == 20);
+static_assert(offsetof(DisplayListItem, payload.clip_rect.has_radii) == 52);
 static_assert(offsetof(DisplayListItem,
-                       payload.linear_gradient.color_count_offset) == 4,
-              "linear_gradient.color_count_offset must be at offset 4");
+                       payload.linear_gradient.color_count_offset) == 4);
 static_assert(offsetof(DisplayListItem, payload.linear_gradient.color_count) ==
-                  8,
-              "linear_gradient.color_count must be at offset 8");
+              8);
 static_assert(offsetof(DisplayListItem,
-                       payload.linear_gradient.stop_count_offset) == 12,
-              "linear_gradient.stop_count_offset must be at offset 12");
+                       payload.linear_gradient.stop_count_offset) == 12);
 static_assert(offsetof(DisplayListItem, payload.linear_gradient.stop_count) ==
-                  16,
-              "linear_gradient.stop_count must be at offset 16");
+              16);
 static_assert(offsetof(DisplayListItem, payload.linear_gradient.tiling_index) ==
-                  20,
-              "linear_gradient.tiling_index must be at offset 20");
+              20);
 static_assert(offsetof(DisplayListItem, payload.linear_gradient.clip_index) ==
-                  24,
-              "linear_gradient.clip_index must be at offset 24");
-static_assert(offsetof(DisplayListItem, payload.linear_gradient.repeat_x) == 28,
-              "linear_gradient.repeat_x must be at offset 28");
-static_assert(offsetof(DisplayListItem, payload.linear_gradient.repeat_y) == 32,
-              "linear_gradient.repeat_y must be at offset 32");
-static_assert(offsetof(DisplayListItem, payload.linear_gradient.angle) == 36,
-              "linear_gradient.angle must be at offset 36");
-
-// BoxShadow payload offsets
+              24);
+static_assert(offsetof(DisplayListItem, payload.linear_gradient.repeat_x) ==
+              28);
+static_assert(offsetof(DisplayListItem, payload.linear_gradient.repeat_y) ==
+              32);
+static_assert(offsetof(DisplayListItem, payload.linear_gradient.angle) == 36);
 static_assert(offsetof(DisplayListItem, payload.box_shadow.shadow_box_index) ==
-                  4,
-              "box_shadow.shadow_box_index must be at offset 4");
-static_assert(offsetof(DisplayListItem, payload.box_shadow.clip_box_index) == 8,
-              "box_shadow.clip_box_index must be at offset 8");
-static_assert(offsetof(DisplayListItem, payload.box_shadow.color) == 12,
-              "box_shadow.color must be at offset 12");
-static_assert(offsetof(DisplayListItem, payload.box_shadow.blur_radius) == 16,
-              "box_shadow.blur_radius must be at offset 16");
-static_assert(offsetof(DisplayListItem, payload.box_shadow.clip_mode) == 20,
-              "box_shadow.clip_mode must be at offset 20");
-
+              4);
+static_assert(offsetof(DisplayListItem, payload.box_shadow.clip_box_index) ==
+              8);
+static_assert(offsetof(DisplayListItem, payload.box_shadow.color) == 12);
+static_assert(offsetof(DisplayListItem, payload.box_shadow.blur_radius) == 16);
+static_assert(offsetof(DisplayListItem, payload.box_shadow.clip_mode) == 20);
 static_assert(std::is_standard_layout<DisplayListItem>::value,
               "DisplayListItem must be standard layout for JNI");
 static_assert(
@@ -366,6 +299,9 @@ class DisplayList {
   }
   size_t GetContentItemsSize() const {
     return content_items_.has_value() ? content_items_->size() : 0;
+  }
+  size_t GetContentItemsByteSize() const {
+    return GetContentItemsSize() * sizeof(DisplayListItem);
   }
   const uint8_t* GetContentData() const {
     return content_data_.has_value() ? content_data_->data() : nullptr;

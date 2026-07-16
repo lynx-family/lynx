@@ -51,11 +51,8 @@ class PlatformRendererAndroid : public PlatformRendererImpl {
   void InitializeAndroidView(const fml::RefPtr<PropBundle>& init_data);
   bool ShouldCreatePlatformExtendedRenderer(
       const PlatformRendererInitConfig& init_config) const;
-
   // Clean up Android resources
   void CleanupAndroidView();
-
-  // Get the display list
 };
 
 // Android-specific factory
