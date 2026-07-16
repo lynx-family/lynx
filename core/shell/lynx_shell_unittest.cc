@@ -18,6 +18,7 @@
 #include "core/renderer/tasm/testing/event_tracker_mock.h"
 #include "core/renderer/utils/lynx_env.h"
 #include "core/services/event_report/event_tracker.h"
+#include "core/services/event_report/event_tracker_platform_impl.h"
 #include "core/services/performance/memory_monitor/memory_monitor.h"
 #include "core/services/performance/memory_monitor/memory_record.h"
 #include "core/shell/lynx_shell_builder.h"
@@ -133,6 +134,14 @@ TEST_F(LynxShellTest, OnUpdateDataWithoutChange) {
 
 TEST_F(LynxShellTest, InitRuntimeUpdatesBTSGroupIdGenericInfo) {
   constexpr const char* kGroupId = "test_group";
+
+  // Previous fixture destruction can enqueue element statistic events on the
+  // shared mock TASM runner. Drain the producer and report queues before
+  // resetting the shared event tracker state.
+  shell_->engine_actor_->GetRunner()->PostSyncTask([]() {});
+  tasm::report::EventTrackerPlatformImpl::GetReportTaskRunner()->PostSyncTask(
+      []() {});
+
   auto event = tasm::report::EventTrackerWaitableEvent::Await();
   event->Reset();
   tasm::report::EventTrackerWaitableEvent::instance_id_ =
