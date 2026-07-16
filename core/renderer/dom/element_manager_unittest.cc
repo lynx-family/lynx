@@ -11,6 +11,8 @@
 #include <vector>
 
 #include "core/base/threading/task_runner_manufactor.h"
+#include "core/renderer/css/css_fragment_decorator.h"
+#include "core/renderer/css/shared_css_fragment.h"
 #include "core/renderer/dom/element.h"
 #include "core/renderer/dom/element_property.h"
 #include "core/renderer/dom/fiber/fiber_element.h"
@@ -701,6 +703,49 @@ TEST_F(ElementManagerTest, EnableAnimationForwardUpdatePreservation_False) {
   config->enable_animation_forward_update_preservation_ = false;
   manager->SetConfig(config);
   EXPECT_FALSE(manager->EnableAnimationForwardUpdatePreservation());
+}
+
+TEST_F(ElementManagerTest,
+       IntrinsicFontFacesResolvedOnceAcrossDecoratorsInSameView) {
+  CSSFontFaceRuleMap fontfaces;
+  auto font_rule = std::make_shared<CSSFontFaceRule>(
+      "custom-font", CSSFontFaceAttrsMap{{"src", "url(custom.woff2)"}});
+  fontfaces["custom-font"].push_back(font_rule);
+
+  SharedCSSFragment shared(1, std::vector<int32_t>{}, CSSParserTokenMap{},
+                           CSSKeyframesTokenMap{}, std::move(fontfaces));
+
+  // Two decorators in the same LynxView sharing the same intrinsic fragment.
+  CSSFragmentDecorator decorator_a(&shared, manager.get());
+  CSSFragmentDecorator decorator_b(&shared, manager.get());
+
+  size_t visit_count_a = 0;
+  decorator_a.ForEachUnresolvedFontFaceMap(
+      [](const CSSFontFaceRuleMap& map, void* cb_data) {
+        if (!map.empty()) {
+          ++*static_cast<size_t*>(cb_data);
+        }
+      },
+      &visit_count_a);
+  EXPECT_EQ(visit_count_a, 1u);
+
+  // Mark the first decorator resolved; this should also register the shared
+  // intrinsic fragment in the ElementManager so the second decorator skips it.
+  decorator_a.MarkFontFacesResolved(true);
+
+  size_t visit_count_b = 0;
+  decorator_b.ForEachUnresolvedFontFaceMap(
+      [](const CSSFontFaceRuleMap& map, void* cb_data) {
+        if (!map.empty()) {
+          ++*static_cast<size_t*>(cb_data);
+        }
+      },
+      &visit_count_b);
+  EXPECT_EQ(visit_count_b, 0u);
+
+  // The shared intrinsic fragment itself must remain unmarked; only the
+  // per-LynxView ElementManager tracks the resolved state.
+  EXPECT_FALSE(shared.HasFontFacesResolved());
 }
 
 }  // namespace testing

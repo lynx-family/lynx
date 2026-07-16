@@ -170,7 +170,13 @@ class MockTasmDelegate : public TemplateAssembler::Delegate,
                const lepus::Value& value),
               (override));
 
-  void SetFontFaces(const CSSFontFaceRuleMap& fontfaces) override {}
+  void SetFontFaces(const CSSFontFaceRuleMap& fontfaces) override {
+    ++set_font_faces_call_count_;
+  }
+
+  size_t set_font_faces_call_count() const {
+    return set_font_faces_call_count_;
+  }
 
   MOCK_METHOD(void, UpdateLayoutNodeByBundle,
               (int32_t id, std::unique_ptr<LayoutBundle> bundle), (override));
@@ -288,6 +294,8 @@ class MockTasmDelegate : public TemplateAssembler::Delegate,
   void UpdateMockDelegateThemeConfig(const lepus::Value& data);
 
   bool dispatch_layout_updates_called_{false};
+
+  size_t set_font_faces_call_count_{0};
 
   std::string lepus_method_id_{};
   lepus::Value lepus_method_arguments_{};

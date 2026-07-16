@@ -63,6 +63,14 @@ class CSSFragmentDecorator : public CSSFragment {
 
   void MarkFontFacesResolved(bool resolved) override;
 
+  // Returns whether the intrinsic fragment's font faces have already been
+  // resolved within this LynxView. Unlike CSSFragment::HasFontFacesResolved()
+  // (a flag local to each decorator), this consults the per-LynxView
+  // ElementManager when available, so that multiple decorators sharing the
+  // same intrinsic fragment in one view agree on the resolved state. Falls
+  // back to this decorator's own flag when no ElementManager is available.
+  bool HasIntrinsicFontFacesResolved() const;
+
   void ForEachKeyframesMap(ForEachKeyframesMapVisitor visitor,
                            void* cb_data) override;
   void ForEachUnresolvedFontFaceMap(ForEachFontFaceMapVisitor visitor,

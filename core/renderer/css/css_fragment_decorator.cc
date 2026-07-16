@@ -251,8 +251,27 @@ bool CSSFragmentDecorator::HasInAdopted(Predicate pred) {
   return found;
 }
 
+bool CSSFragmentDecorator::HasIntrinsicFontFacesResolved() const {
+  if (intrinsic_style_sheets_ && element_manager_) {
+    return element_manager_->HasIntrinsicFontFacesResolved(
+        intrinsic_style_sheets_);
+  }
+  return CSSFragment::HasFontFacesResolved();
+}
+
 void CSSFragmentDecorator::MarkFontFacesResolved(bool resolved) {
   CSSFragment::MarkFontFacesResolved(resolved);
+  // Note: do NOT mark the shared intrinsic_style_sheets_ directly here.
+  // Multiple LynxViews/ComponentElements may share the same intrinsic
+  // SharedCSSFragment (e.g. predecoded template data), while each one has its
+  // own CSSFragmentDecorator. Instead, record the resolved state in the
+  // per-LynxView ElementManager so that multiple decorators within the same
+  // view sharing the same intrinsic fragment avoid duplicate work, while
+  // different LynxViews remain isolated.
+  if (intrinsic_style_sheets_ && element_manager_) {
+    element_manager_->MarkIntrinsicFontFacesResolved(intrinsic_style_sheets_,
+                                                     resolved);
+  }
   if (element_manager_) {
     element_manager_->ForEachAdoptedStyleSheet([resolved](const auto& wrapper) {
       if (wrapper) {
@@ -346,8 +365,10 @@ void CSSFragmentDecorator::ForEachUnresolvedFontFaceMap(
     }
     return true;
   });
-  if (intrinsic_style_sheets_ &&
-      !intrinsic_style_sheets_->HasFontFacesResolved()) {
+  // Use the per-LynxView ElementManager tracking when available, otherwise fall
+  // back to this decorator's own flag. The intrinsic fragment may be shared
+  // across LynxViews, so its own flag must not be used for the skip decision.
+  if (intrinsic_style_sheets_ && !HasIntrinsicFontFacesResolved()) {
     visitor(intrinsic_style_sheets_->GetFontFaceRuleMap(), cb_data);
   }
 }

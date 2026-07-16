@@ -18854,6 +18854,73 @@ TEST_P(FiberElementTest, RadonFiberArchFontFace) {
   EXPECT_TRUE(comp->style_sheet_->HasFontFacesResolved());
 }
 
+TEST_P(FiberElementTest, RadonFiberArchFontFaceResolvedOnceAcrossComponents) {
+  //  constructor css fragment
+  StyleMap indexAttributes;
+  CSSParserConfigs configs;
+  auto tokens = fml::MakeRefCounted<CSSParseToken>(configs);
+
+  // mock fontfaces
+  CSSFontFaceRuleMap fontfaces;
+  std::vector<std::shared_ptr<CSSFontFaceRule>> face_token_list;
+  CSSFontFaceRule* face_token = new CSSFontFaceRule();
+  CSSFontTokenAddAttribute(face_token, "font-family", "font-base64");
+  CSSFontTokenAddAttribute(
+      face_token, "src",
+      "url(data:application/x-font-woff;charset=utf-8;base64,test...)");
+  std::shared_ptr<CSSFontFaceRule> face_token_ptr(face_token);
+  face_token_list.emplace_back(face_token_ptr);
+  fontfaces.insert(
+      std::pair<std::string, std::vector<std::shared_ptr<CSSFontFaceRule>>>(
+          "font-base64", face_token_list));
+  const std::vector<int32_t> dependent_ids;
+  CSSKeyframesTokenMap keyframes;
+  CSSParserTokenMap indexTokensMap;
+
+  auto indexFragment = std::make_shared<SharedCSSFragment>(
+      1, dependent_ids, indexTokensMap, keyframes, fontfaces);
+
+  // Two components in the same LynxView (ElementManager) share the same
+  // intrinsic fragment, each owning its own CSSFragmentDecorator.
+  base::String entry_name("__Card__");
+  base::String component_name("TestComp");
+  base::String path("/index/components/TestComp");
+
+  auto comp_a = manager->CreateFiberComponent(base::String("21"), 100,
+                                              entry_name, component_name, path);
+  comp_a->arch_type_ = RadonArch;
+  comp_a->style_sheet_ =
+      std::make_unique<CSSFragmentDecorator>(indexFragment.get(), manager);
+
+  auto comp_b = manager->CreateFiberComponent(base::String("22"), 101,
+                                              entry_name, component_name, path);
+  comp_b->arch_type_ = RadonArch;
+  comp_b->style_sheet_ =
+      std::make_unique<CSSFragmentDecorator>(indexFragment.get(), manager);
+
+  size_t font_faces_call_count = tasm_mediator.set_font_faces_call_count();
+
+  // The first component flushes the intrinsic FontFace and records the
+  // resolved state in the per-LynxView ElementManager.
+  comp_a->PrepareForFontFaceIfNeeded();
+  EXPECT_EQ(tasm_mediator.set_font_faces_call_count(),
+            font_faces_call_count + 1);
+  EXPECT_TRUE(manager->HasIntrinsicFontFacesResolved(indexFragment.get()));
+
+  // The second component shares the same intrinsic fragment; although its own
+  // decorator flag is still false, it must not flush the same FontFace again
+  // within this LynxView.
+  EXPECT_FALSE(comp_b->style_sheet_->HasFontFacesResolved());
+  comp_b->PrepareForFontFaceIfNeeded();
+  EXPECT_EQ(tasm_mediator.set_font_faces_call_count(),
+            font_faces_call_count + 1);
+
+  // The shared intrinsic fragment itself must remain unmarked, so that
+  // another LynxView sharing the same predecoded CSS data can still resolve
+  // its own FontFace.
+  EXPECT_FALSE(indexFragment->HasFontFacesResolved());
+}
+
 TEST_P(FiberElementTest, MarkRenderRootElementTest) {
   auto page = manager->CreateFiberPage("page", 11);
 

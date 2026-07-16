@@ -331,6 +331,19 @@ class ElementManager : public LayoutScheduler::LayoutSchedulerImpl {
   void SetFontFaces(const tasm::CSSFontFaceRuleMap &fontfaces);
   void AddFontFace(const lepus::Value &font);
 
+  // Tracks whether the intrinsic font-face map of the given CSSFragment has
+  // already been resolved within this ElementManager (i.e. this LynxView).
+  // Multiple CSSFragmentDecorators in the same view may share the same
+  // intrinsic SharedCSSFragment; this set prevents them from flushing the same
+  // font-faces repeatedly, while still allowing a different LynxView to resolve
+  // the same shared fragment independently. Thread-safe: may be called from
+  // worker threads during threaded element resolution. Note the check and the
+  // mark are separate calls; a rare concurrent duplicate flush is acceptable
+  // and matches the pre-existing per-decorator behavior.
+  bool HasIntrinsicFontFacesResolved(const tasm::CSSFragment *fragment) const;
+  void MarkIntrinsicFontFacesResolved(const tasm::CSSFragment *fragment,
+                                      bool resolved);
+
   void SetEnableSimpleStyle(bool enable) { enable_simple_style_ = enable; }
   bool EnableSimpleStyle() const { return enable_simple_style_; }
 
@@ -1511,6 +1524,15 @@ class ElementManager : public LayoutScheduler::LayoutSchedulerImpl {
   // Adopted stylesheets for runtime CSS adoption with highest cascade priority
   mutable std::shared_mutex adopted_style_sheets_mutex_;
   std::vector<fml::RefPtr<tasm::SharedCSSFragmentWrapper>> adopted_stylesheets_;
+
+  // Intrinsic CSSFragment pointers whose font-face maps have already been
+  // resolved in this ElementManager. Used by CSSFragmentDecorator to avoid
+  // duplicate SetFontFaces calls across multiple decorators sharing the same
+  // intrinsic fragment within a single LynxView. Guarded by a read-write lock
+  // because threaded element resolution may access it from worker threads.
+  mutable std::shared_mutex resolved_intrinsic_font_faces_mutex_;
+  std::unordered_set<const tasm::CSSFragment *>
+      resolved_intrinsic_font_face_fragments_;
 
   base::MoveOnlyClosure<void, int> vm_update_outer_obj_size_callback_{};
 
