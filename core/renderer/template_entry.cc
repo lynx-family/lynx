@@ -214,14 +214,6 @@ bool TemplateEntry::InitWithPageConfigger(PageConfigger* configger,
                                           const PageOptions& page_options) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, TEMPLATE_ENTRY_INIT_WITH_PAGE_CONFIG);
 
-  // TODO(nihao.royal): TemplateEntry should not maintain a separate reader
-  // pointer. This is a temporary workaround to keep both LynxTemplateBundle
-  // and TemplateEntry referencing the same reader until all lazy reader usages
-  // are fully migrated from TemplateEntry to LynxTemplateBundle.
-  if (!reader_ && template_bundle_.lazy_reader_) {
-    reader_ = template_bundle_.lazy_reader_;
-  }
-
   if (is_card_ != template_bundle_.IsCard()) {
     // expected type does not match actual type
     error_msg_ = "Template bundle type mismatch, expect type: " +
@@ -428,19 +420,6 @@ lepus::Value TemplateEntry::ElementFromBinary(const std::string& key,
                                               ElementManager* manager) {
   tasm::report::FeatureCounter::Instance()->Count(
       tasm::report::LynxFeature::CPP_ELEMENT_FROM_BINARY);
-  if (reader_) {
-    auto result = reader_->GetElementTemplateParseResult(key);
-    if (result.first != nullptr && result.first->exist_) {
-      // TODO(songshourui.null): It may be worth posting another async task to
-      // fix the issue where the subsequent `Element Template` cannot
-      // asynchronously create the `Element Tree` when the `Element Template` is
-      // reused.
-      template_bundle_.element_template_infos_[key] = result.first;
-      return TreeResolver::InitElementTree(std::move(result.second), pid,
-                                           manager, GetStyleSheetManager());
-    }
-  }
-
   auto result = template_bundle_.TryGetElements(key);
   if (result.has_value()) {
     return TreeResolver::InitElementTree(std::move(*result), pid, manager,

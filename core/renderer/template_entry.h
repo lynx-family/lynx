@@ -22,9 +22,7 @@
 #include "core/runtime/lepus/lepus_global.h"
 #include "core/runtime/lepus/vm_context.h"
 #include "core/template_bundle/lynx_template_bundle.h"
-#include "core/template_bundle/template_codec/binary_decoder/lynx_binary_lazy_reader_delegate.h"
 #include "core/template_bundle/template_codec/binary_decoder/page_config.h"
-#include "core/template_bundle/template_codec/binary_decoder/template_binary_reader.h"
 #include "core/template_bundle/template_codec/moulds.h"
 
 namespace lynx {
@@ -231,13 +229,6 @@ class TemplateEntry : public VmContextHolder, public CSSStyleSheetDelegate {
     enable_fetch_api_standard_ = enable;
   }
 
-  void SetLazyReader(std::shared_ptr<LynxBinaryLazyReaderDelegate> reader) {
-    reader_ = reader;
-    template_bundle_.lazy_reader_ = std::move(reader);
-  }
-
-  LynxBinaryLazyReaderDelegate* GetReader() { return reader_.get(); }
-
   TasmRuntimeBundle CreateTasmRuntimeBundle();
 
   virtual bool DecodeCSSFragmentById(int32_t fragmentId) override;
@@ -329,7 +320,6 @@ class TemplateEntry : public VmContextHolder, public CSSStyleSheetDelegate {
   bool enable_circular_data_check_ = true;
 
   std::weak_ptr<lepus::InspectorLepusObserver> lepus_observer_;
-  std::shared_ptr<LynxBinaryLazyReaderDelegate> reader_;
 
   LynxTemplateBundle template_bundle_{};
   // whether the template bundle if from pre-decode, which is complte

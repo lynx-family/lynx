@@ -45,6 +45,7 @@
 #include "core/runtime/lepus/vm_context.h"
 #include "core/services/timing_handler/timing.h"
 #include "core/template_bundle/lynx_template_bundle.h"
+#include "core/template_bundle/template_codec/binary_decoder/lynx_binary_lazy_reader_delegate.h"
 #include "core/template_bundle/template_codec/binary_decoder/page_config.h"
 #include "core/template_bundle/template_codec/moulds.h"
 #include "third_party/rapidjson/document.h"
