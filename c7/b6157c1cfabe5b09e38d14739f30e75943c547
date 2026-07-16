@@ -1,0 +1,16 @@
+lynx/core/template_bundle/template_codec/binary_encoder/BUILD.gn
+  h_121356361e418a 36,40-41
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "c7b6157c1cfabe5b09e38d14739f30e75943c547",
+  "prompts": {},
+  "humans": {
+    "h_121356361e418a": {
+      "author": "yuezhicheng.123 <yuezhicheng.123@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}
