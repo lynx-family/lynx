@@ -5,9 +5,6 @@
 #include "core/renderer/dom/fragment/display_list.h"
 
 #include <cstdint>
-#include <limits>
-#include <string>
-#include <string_view>
 
 namespace lynx {
 namespace tasm {
@@ -127,7 +124,7 @@ void DisplayList::AddLinearGradient(float angle,
   item.payload.linear_gradient.repeat_y = repeat_y;
   item.payload.linear_gradient.angle = angle;
 
-  content_items_->push_back(item);
+  AppendItem(item);
 }
 
 void DisplayList::AddBackgroundImage(const fml::RefPtr<PaintImage>& image,

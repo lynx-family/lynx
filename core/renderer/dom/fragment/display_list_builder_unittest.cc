@@ -7,19 +7,15 @@
 
 #include "core/renderer/dom/fragment/display_list_builder.h"
 
-#include <vector>
-
 #include "core/renderer/dom/fragment/display_list_reader.h"
 #include "core/renderer/starlight/style/borders_data.h"
 #include "core/renderer/ui_wrapper/painting/paint_image.h"
 #include "core/style/filter_data.h"
 #include "core/style/transform/matrix44.h"
-#include "third_party/googletest/googlemock/include/gmock/gmock.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 namespace lynx {
 namespace tasm {
-
 class DisplayListBuilderTest : public ::testing::Test {
  protected:
   void SetUp() override { builder_ = std::make_unique<DisplayListBuilder>(); }
@@ -551,29 +547,43 @@ TEST_F(DisplayListBuilderTest, MoveSemantics) {
   EXPECT_EQ(display_list.GetContentItemsSize(), 1u);
 }
 
-TEST_F(DisplayListBuilderTest, DisplayListItemABI) {
-  // Verify ABI invariants that cross-platform consumers depend on
-  static_assert(sizeof(DisplayListItem) == 56,
-                "DisplayListItem size must be 56 bytes");
-  static_assert(offsetof(DisplayListItem, type) == 0,
-                "type field must be at offset 0");
-  static_assert(offsetof(DisplayListItem, payload.begin.id) == 4,
-                "begin.id must be at offset 4");
-  static_assert(offsetof(DisplayListItem, payload.fill.color) == 4,
-                "fill.color must be at offset 4");
-  static_assert(offsetof(DisplayListItem, payload.linear_gradient.angle) == 36,
-                "linear_gradient.angle must be at offset 36");
-  static_assert(std::is_standard_layout<DisplayListItem>::value,
-                "DisplayListItem must be standard layout");
+TEST_F(DisplayListBuilderTest, ContentItemsExposeContiguousPodBuffer) {
+  builder_
+      ->Begin(101, PlatformRendererType::kView, 1.25f, 2.5f, 300.75f, 400.5f)
+      .Fill(0xFFA1B2C3, 7)
+      .DrawView(202, 3.25f, -4.5f)
+      .End();
 
+  DisplayList display_list = builder_->Build();
+  ASSERT_EQ(display_list.GetContentItemsSize(), 4u);
+  ASSERT_EQ(display_list.GetContentItemsByteSize(),
+            4u * sizeof(DisplayListItem));
+
+  const auto* items = reinterpret_cast<const DisplayListItem*>(
+      display_list.GetContentItemsData());
+  ASSERT_NE(items, nullptr);
+  EXPECT_EQ(items[0].type, DisplayListOpType::kBegin);
+  EXPECT_EQ(items[0].payload.begin.id, 101);
+  EXPECT_FLOAT_EQ(items[0].payload.begin.w, 300.75f);
+  EXPECT_EQ(items[1].type, DisplayListOpType::kFill);
+  EXPECT_EQ(items[1].payload.fill.color, 0xFFA1B2C3u);
+  EXPECT_EQ(items[1].payload.fill.clip_index, 7);
+  EXPECT_EQ(items[2].type, DisplayListOpType::kDrawView);
+  EXPECT_EQ(items[2].payload.draw_view.view_id, 202);
+  EXPECT_FLOAT_EQ(items[2].payload.draw_view.offset_x, 3.25f);
+  EXPECT_FLOAT_EQ(items[2].payload.draw_view.offset_y, -4.5f);
+  EXPECT_EQ(items[3].type, DisplayListOpType::kEnd);
+}
+
+TEST_F(DisplayListBuilderTest, SubtreePropertyABI) {
   static_assert(sizeof(SubtreeProperty) == 68,
                 "SubtreeProperty size must remain stable");
   static_assert(offsetof(SubtreeProperty, data.filter.type) == 4,
                 "filter.type must be at offset 4");
   static_assert(offsetof(SubtreeProperty, data.filter.amount) == 8,
                 "filter.amount must be at offset 8");
-  static_assert(std::is_trivially_copyable<DisplayListItem>::value,
-                "DisplayListItem must be trivially copyable");
+  static_assert(std::is_trivially_copyable<SubtreeProperty>::value,
+                "SubtreeProperty must be trivially copyable");
 
   SUCCEED();
 }

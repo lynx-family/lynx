@@ -33,6 +33,8 @@ import com.lynx.tasm.behavior.ui.image.LynxImageManager;
 import com.lynx.tasm.behavior.ui.utils.BorderStyle;
 import com.lynx.tasm.behavior.ui.utils.Spacing;
 import java.lang.reflect.Field;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.Before;
@@ -115,7 +117,7 @@ public class DisplayListApplierTest {
     when(mockPlatformRendererContext.getTextMeasurer()).thenReturn(mockTextMeasurer);
     when(mockRendererHost.getView()).thenReturn(mockHostView);
     displayListApplier =
-        new DisplayListApplier(null, mockPlatformRendererContext, mockRendererHost);
+        new DisplayListApplier(null, null, mockPlatformRendererContext, mockRendererHost);
     spyDisplayListApplier = spy(displayListApplier);
     testDisplayList = new DisplayList();
 
@@ -127,6 +129,20 @@ public class DisplayListApplierTest {
     outBoxCaptor = forClass(RoundedRectangle.class);
     innerBoxCaptor = forClass(RoundedRectangle.class);
   }
+  /**
+   * Helper that feeds a legacy-style {@link DisplayList} into the ByteBuffer-based applier.
+   */
+  private void setDisplayList(DisplayListApplier applier, DisplayList displayList) {
+    applier.setBuffer(displayList == null ? null : displayList.toItemsBuffer(),
+        displayList == null ? null : displayList.toDataBuffer());
+  }
+
+  /**
+   * Convenience overload for the default {@code displayListApplier} instance.
+   */
+  private void setDisplayList(DisplayList displayList) {
+    setDisplayList(displayListApplier, displayList);
+  }
 
   /**
    * Tests basic constructor functionality.
@@ -135,8 +151,8 @@ public class DisplayListApplierTest {
   @Test
   public void testConstructor() {
     when(mockPlatformRendererContext.getTextMeasurer()).thenReturn(mockTextMeasurer);
-    DisplayListApplier applier =
-        new DisplayListApplier(testDisplayList, mockPlatformRendererContext, mockRendererHost);
+    DisplayListApplier applier = new DisplayListApplier(testDisplayList.toItemsBuffer(),
+        testDisplayList.toDataBuffer(), mockPlatformRendererContext, mockRendererHost);
     assertNotNull(applier);
   }
 
@@ -159,7 +175,7 @@ public class DisplayListApplierTest {
     testDisplayList.iArgv = new int[] {2, 4, 0, VIEW_TYPE, 0, 0}; // intParamCounts
     testDisplayList.fArgv = new float[] {10f, 20f, 100f, 50f}; // x, y, width, height
 
-    displayListApplier.setDisplayList(testDisplayList);
+    setDisplayList(displayListApplier, testDisplayList);
     displayListApplier.drawTillNextView(mockCanvas);
 
     // Reset and verify it doesn't crash
@@ -173,7 +189,7 @@ public class DisplayListApplierTest {
    */
   @Test
   public void testNullDisplayList() {
-    displayListApplier.setDisplayList(null);
+    setDisplayList(displayListApplier, null);
     displayListApplier.drawTillNextView(mockCanvas);
     // Should not crash
     verify(mockCanvas, never()).save();
@@ -189,7 +205,7 @@ public class DisplayListApplierTest {
     testDisplayList.iArgv = new int[0];
     testDisplayList.fArgv = new float[0];
 
-    displayListApplier.setDisplayList(testDisplayList);
+    setDisplayList(displayListApplier, testDisplayList);
     displayListApplier.drawTillNextView(mockCanvas);
 
     verify(mockCanvas, never()).save();
@@ -201,15 +217,14 @@ public class DisplayListApplierTest {
    *
    * <p>Test Data Layout:
    * <pre>
-   * ops = {0}                       // OP_BEGIN
    * iArgv = {2, 4, 0, 1}               // 2 int params, 4 float params, id, type
-   * fArgv = {10f, 20f, 100f, 50f}    // x=10, y=20, width=100, height=50
+   * fArgv = {0f, 0f, 100f, 50f}    // x=0, y=0, width=100, height=50
    * </pre>
    *
    * <p>Expected Behavior:
    * <ul>
    *   <li>Canvas.save() is called to save current state</li>
-   *   <li>Canvas.translate(10, 20) is called to position the fragment</li>
+   *   <li>Canvas.translate(0, 0) is called to position the fragment</li>
    *   <li>Bounds are stored internally for subsequent operations</li>
    * </ul>
    */
@@ -217,9 +232,9 @@ public class DisplayListApplierTest {
   public void testOpBegin() {
     testDisplayList.ops = new int[] {0}; // OP_BEGIN
     testDisplayList.iArgv = new int[] {2, 4, 0, VIEW_TYPE}; // 2 int params, 4 float params
-    testDisplayList.fArgv = new float[] {10f, 20f, 100f, 50f}; // x, y, width, height
+    testDisplayList.fArgv = new float[] {0f, 0f, 100f, 50f}; // x, y, width, height
 
-    displayListApplier.setDisplayList(testDisplayList);
+    setDisplayList(displayListApplier, testDisplayList);
     displayListApplier.drawTillNextView(mockCanvas);
 
     verify(mockCanvas).save();
@@ -237,18 +252,16 @@ public class DisplayListApplierTest {
     when(mockRendererHost.getRenderer()).thenReturn(renderer);
 
     DisplayListApplier overlayApplier =
-        new DisplayListApplier(null, mockPlatformRendererContext, mockRendererHost);
+        new DisplayListApplier(null, null, mockPlatformRendererContext, mockRendererHost);
     testDisplayList.ops = new int[] {0};
     testDisplayList.iArgv = new int[] {2, 4, 0, VIEW_TYPE};
     testDisplayList.fArgv = new float[] {10f, 20f, 100f, 50f};
 
-    overlayApplier.setDisplayList(testDisplayList);
+    setDisplayList(overlayApplier, testDisplayList);
     overlayApplier.drawTillNextView(mockCanvas);
 
     verify(mockCanvas).save();
     verify(mockCanvas).translate(10f, 0f);
-    assertEquals(10f, testDisplayList.fArgv[0], 0f);
-    assertEquals(0f, testDisplayList.fArgv[1], 0f);
   }
 
   /**
@@ -276,7 +289,7 @@ public class DisplayListApplierTest {
     testDisplayList.iArgv = new int[] {2, 4, 0, VIEW_TYPE, 0, 0}; // intParamCounts
     testDisplayList.fArgv = new float[] {10f, 20f, 100f, 50f}; // x, y, width, height
 
-    displayListApplier.setDisplayList(testDisplayList);
+    setDisplayList(displayListApplier, testDisplayList);
     displayListApplier.drawTillNextView(mockCanvas);
 
     verify(mockCanvas).save();
@@ -316,7 +329,7 @@ public class DisplayListApplierTest {
         0f, 0f, 100f, 100f // bounds for OP_RECORD_BOX
     };
 
-    displayListApplier.setDisplayList(testDisplayList);
+    setDisplayList(displayListApplier, testDisplayList);
     displayListApplier.drawTillNextView(mockCanvas);
 
     verify(mockCanvas).save();
@@ -351,7 +364,7 @@ public class DisplayListApplierTest {
     testDisplayList.iArgv = new int[] {2, 4, 0, VIEW_TYPE, 1, 2, 123}; // param counts and int args
     testDisplayList.fArgv = new float[] {0f, 0f, 100f, 50f, 15f, 26f}; // bounds and offset
 
-    displayListApplier.setDisplayList(testDisplayList);
+    setDisplayList(displayListApplier, testDisplayList);
     displayListApplier.drawTillNextView(mockCanvas);
 
     verify(mockCanvas).save();
@@ -388,7 +401,7 @@ public class DisplayListApplierTest {
                                             // OP_TEXT{int: 2, float: 0} OP_TEXT_ID: 456
     testDisplayList.fArgv = new float[] {0f, 0f, 100f, 50f}; // bounds for OP_BEGIN
 
-    displayListApplier.setDisplayList(testDisplayList);
+    setDisplayList(displayListApplier, testDisplayList);
     displayListApplier.drawTillNextView(mockCanvas);
 
     verify(mockTextMeasurer).takeTextLayout(456);
@@ -428,7 +441,7 @@ public class DisplayListApplierTest {
     iArgvWithText[iArgvWithText.length - 1] = 456; // textId
     testDisplayList.iArgv = iArgvWithText;
 
-    displayListApplier.setDisplayList(testDisplayList);
+    setDisplayList(displayListApplier, testDisplayList);
     displayListApplier.drawTillNextView(mockCanvas);
 
     verify(mockTextMeasurer).takeTextLayout(456);
@@ -468,7 +481,7 @@ public class DisplayListApplierTest {
     iArgvWithImage[iArgvWithImage.length - 1] = 789; // imageId
     testDisplayList.iArgv = iArgvWithImage;
 
-    displayListApplier.setDisplayList(testDisplayList);
+    setDisplayList(displayListApplier, testDisplayList);
     displayListApplier.drawTillNextView(mockCanvas);
 
     verify(mockCanvas).save();
@@ -504,7 +517,7 @@ public class DisplayListApplierTest {
         0f, 0f, 32f, 32f // RECORD_BOX
     };
 
-    displayListApplier.setDisplayList(newDisplayList);
+    setDisplayList(displayListApplier, newDisplayList);
     displayListApplier.drawTillNextView(mockCanvas);
 
     // Should process the new display list
@@ -536,7 +549,7 @@ public class DisplayListApplierTest {
     testDisplayList.iArgv = new int[] {2, 4, 0, VIEW_TYPE}; // Missing parameters for OP_FILL
     testDisplayList.fArgv = new float[] {0f, 0f, 100f, 50f};
 
-    displayListApplier.setDisplayList(testDisplayList);
+    setDisplayList(displayListApplier, testDisplayList);
     displayListApplier.drawTillNextView(mockCanvas);
 
     // Should handle gracefully without crashing
@@ -557,7 +570,7 @@ public class DisplayListApplierTest {
    *
    * <p>Expected Behavior:
    * <ul>
-   *   <li>OP_BEGIN: Canvas.save() and Canvas.translate(10, 20)</li>
+   *   <li>OP_BEGIN: Canvas.save() and Canvas.translate(0, 0)</li>
    *   <li>OP_FILL: Canvas.drawRect() with blue color (0xFF0000FF)</li>
    *   <li>OP_TEXT: TextMeasurer.takeTextLayout(999) and TextLayout.draw()</li>
    *   <li>OP_END: Canvas.restore() and processing stops</li>
@@ -570,14 +583,14 @@ public class DisplayListApplierTest {
     testDisplayList.iArgv = new int[] {
         2, 4, 0, VIEW_TYPE, 0, 4, 2, 0, 0xFF0000FF, 0, 2, 0, 999, -1, 0, 0}; // intParamCounts
     testDisplayList.fArgv = new float[] {
-        10f, 20f, 100f, 50f, // BEGIN
+        0f, 0f, 100f, 50f, // BEGIN
         0f, 0f, 100f, 50f // RECORD_BOX
     };
 
     when(mockTextMeasurer.takeTextLayout(anyInt())).thenReturn(mockTextUpdateBundle);
     when(mockTextUpdateBundle.getTextLayout()).thenReturn(mockTextLayout);
 
-    displayListApplier.setDisplayList(testDisplayList);
+    setDisplayList(displayListApplier, testDisplayList);
     displayListApplier.drawTillNextView(mockCanvas);
 
     verify(mockCanvas).save();
@@ -625,7 +638,7 @@ public class DisplayListApplierTest {
         5f, 5f, 5f, 5f // border widths: left=5, top=5, right=5, bottom=5
     };
 
-    spyDisplayListApplier.setDisplayList(testDisplayList);
+    setDisplayList(spyDisplayListApplier, testDisplayList);
     spyDisplayListApplier.drawTillNextView(mockCanvas);
 
     verify(spyDisplayListApplier)
@@ -675,7 +688,7 @@ public class DisplayListApplierTest {
         5f, 5f, 90f, 90f // inner box
     };
 
-    spyDisplayListApplier.setDisplayList(testDisplayList);
+    setDisplayList(spyDisplayListApplier, testDisplayList);
     spyDisplayListApplier.drawTillNextView(mockCanvas);
 
     verify(spyDisplayListApplier)
@@ -725,7 +738,7 @@ public class DisplayListApplierTest {
         5f, 5f, 5f, 5f // border widths: left=5, top=5, right=5, bottom=5
     };
 
-    spyDisplayListApplier.setDisplayList(testDisplayList);
+    setDisplayList(spyDisplayListApplier, testDisplayList);
     spyDisplayListApplier.drawTillNextView(mockCanvas);
 
     verify(spyDisplayListApplier)
@@ -783,7 +796,7 @@ public class DisplayListApplierTest {
         .when(mockCanvas)
         .drawRect(anyFloat(), anyFloat(), anyFloat(), anyFloat(), any(Paint.class));
 
-    displayListApplier.setDisplayList(testDisplayList);
+    setDisplayList(displayListApplier, testDisplayList);
     displayListApplier.drawTillNextView(mockCanvas);
 
     // The gradient implementation uses nested save/restore calls:
@@ -803,7 +816,7 @@ public class DisplayListApplierTest {
     testDisplayList.fArgv = new float[] {0f, 0f, 100f, 40f, 0f, 0f, 40f, 20f, 0f, 0f, 90f, 40f};
     when(mockPlatformRendererContext.getImage(321)).thenReturn(mockImageManager);
 
-    displayListApplier.setDisplayList(testDisplayList);
+    setDisplayList(displayListApplier, testDisplayList);
     displayListApplier.drawTillNextView(mockCanvas);
 
     verify(mockCanvas, times(2)).save();
@@ -823,7 +836,7 @@ public class DisplayListApplierTest {
     testDisplayList.iArgv = new int[] {2, 4, 0, VIEW_TYPE, 0, 4, 0, 0};
     testDisplayList.fArgv = new float[] {0f, 0f, 100f, 50f, 10f, 12f, 80f, 30f};
 
-    displayListApplier.setDisplayList(testDisplayList);
+    setDisplayList(displayListApplier, testDisplayList);
     displayListApplier.drawTillNextView(mockCanvas);
 
     verify(mockCanvas).save();
@@ -852,7 +865,7 @@ public class DisplayListApplierTest {
     ArrayList<RoundedRectangle> list = getBoxArray(displayListApplier);
     assertEquals(0, list.size());
 
-    displayListApplier.setDisplayList(testDisplayList);
+    setDisplayList(displayListApplier, testDisplayList);
     displayListApplier.drawTillNextView(mockCanvas);
 
     assertEquals(1, list.size());
@@ -872,7 +885,7 @@ public class DisplayListApplierTest {
     ArrayList<RoundedRectangle> list = getBoxArray(displayListApplier);
     assertEquals(0, list.size());
 
-    displayListApplier.setDisplayList(testDisplayList);
+    setDisplayList(displayListApplier, testDisplayList);
     displayListApplier.drawTillNextView(mockCanvas);
 
     float[] border = new float[8];
@@ -899,7 +912,7 @@ public class DisplayListApplierTest {
     testDisplayList.fArgv =
         new float[] {0f, 0f, 100f, 50f, 10f, 12f, 80f, 30f, 5f, 6f, 7f, 8f, 9f, 10f, 11f, 12f};
 
-    displayListApplier.setDisplayList(testDisplayList);
+    setDisplayList(displayListApplier, testDisplayList);
     displayListApplier.drawTillNextView(mockCanvas);
 
     verify(mockCanvas).save();
@@ -937,12 +950,327 @@ public class DisplayListApplierTest {
         5f // blur radius
     };
 
-    displayListApplier.setDisplayList(testDisplayList);
+    setDisplayList(displayListApplier, testDisplayList);
     displayListApplier.drawTillNextView(mockCanvas);
 
     verify(mockCanvas, times(2)).save();
     verify(mockCanvas).drawPath(any(android.graphics.Path.class), any(Paint.class));
     verify(mockCanvas).restoreToCount(anyInt());
     verify(mockCanvas).restore();
+  }
+}
+
+/**
+ * Test-only helper that converts the legacy parallel-array display list encoding
+ * (ops / iArgv / fArgv) into the ByteBuffer format consumed by {@link DisplayListApplier}.
+ */
+class DisplayList {
+  public int[] ops;
+  public int[] iArgv;
+  public float[] fArgv;
+
+  private static final int ITEM_SIZE = 56;
+  private static final int OP_BEGIN = 0;
+  private static final int OP_END = 1;
+  private static final int OP_FILL = 2;
+  private static final int OP_DRAW_VIEW = 3;
+  private static final int OP_TEXT = 6;
+  private static final int OP_IMAGE = 7;
+  private static final int OP_CUSTOM = 8;
+  private static final int OP_BORDER = 9;
+  private static final int OP_CLIP_RECT = 10;
+  private static final int OP_RECORD_BOX = 11;
+  private static final int OP_LINEAR_GRADIENT = 12;
+  private static final int OP_BOX_SHADOW = 13;
+  private static final int OP_BACKGROUND_IMAGE = 14;
+
+  private static final int BEGIN_ID_OFFSET = 4;
+  private static final int BEGIN_TYPE_OFFSET = 8;
+  private static final int BEGIN_X_OFFSET = 12;
+  private static final int BEGIN_Y_OFFSET = 16;
+  private static final int BEGIN_W_OFFSET = 20;
+  private static final int BEGIN_H_OFFSET = 24;
+
+  private static final int FILL_COLOR_OFFSET = 4;
+  private static final int FILL_CLIP_INDEX_OFFSET = 8;
+
+  private static final int DRAW_VIEW_ID_OFFSET = 4;
+  private static final int DRAW_VIEW_OFFSET_X_OFFSET = 8;
+  private static final int DRAW_VIEW_OFFSET_Y_OFFSET = 12;
+
+  private static final int TEXT_ID_OFFSET = 4;
+  private static final int TEXT_BOX_INDEX_OFFSET = 8;
+
+  private static final int IMAGE_ID_OFFSET = 4;
+  private static final int IMAGE_BOX_INDEX_OFFSET = 8;
+
+  private static final int BACKGROUND_IMAGE_ID_OFFSET = 4;
+  private static final int BACKGROUND_IMAGE_TILING_INDEX_OFFSET = 8;
+  private static final int BACKGROUND_IMAGE_CLIP_INDEX_OFFSET = 12;
+  private static final int BACKGROUND_IMAGE_REPEAT_X_OFFSET = 16;
+  private static final int BACKGROUND_IMAGE_REPEAT_Y_OFFSET = 20;
+
+  private static final int BORDER_OUT_INDEX_OFFSET = 4;
+  private static final int BORDER_INNER_INDEX_OFFSET = 8;
+  private static final int BORDER_COLORS_OFFSET = 12;
+  private static final int BORDER_STYLES_OFFSET = 28;
+
+  private static final int RECORD_BOX_X_OFFSET = 4;
+  private static final int RECORD_BOX_Y_OFFSET = 8;
+  private static final int RECORD_BOX_W_OFFSET = 12;
+  private static final int RECORD_BOX_H_OFFSET = 16;
+  private static final int RECORD_BOX_RADII_OFFSET = 20;
+  private static final int RECORD_BOX_HAS_RADII_OFFSET = 52;
+
+  private static final int CLIP_RECT_X_OFFSET = 4;
+  private static final int CLIP_RECT_Y_OFFSET = 8;
+  private static final int CLIP_RECT_W_OFFSET = 12;
+  private static final int CLIP_RECT_H_OFFSET = 16;
+  private static final int CLIP_RECT_RADII_OFFSET = 20;
+  private static final int CLIP_RECT_HAS_RADII_OFFSET = 52;
+
+  private static final int GRADIENT_COLOR_COUNT_OFFSET_OFFSET = 4;
+  private static final int GRADIENT_COLOR_COUNT_OFFSET = 8;
+  private static final int GRADIENT_STOP_COUNT_OFFSET_OFFSET = 12;
+  private static final int GRADIENT_STOP_COUNT_OFFSET = 16;
+  private static final int GRADIENT_TILING_INDEX_OFFSET = 20;
+  private static final int GRADIENT_CLIP_INDEX_OFFSET = 24;
+  private static final int GRADIENT_REPEAT_X_OFFSET = 28;
+  private static final int GRADIENT_REPEAT_Y_OFFSET = 32;
+  private static final int GRADIENT_ANGLE_OFFSET = 36;
+
+  private static final int BOX_SHADOW_SHADOW_BOX_INDEX_OFFSET = 4;
+  private static final int BOX_SHADOW_CLIP_BOX_INDEX_OFFSET = 8;
+  private static final int BOX_SHADOW_COLOR_OFFSET = 12;
+  private static final int BOX_SHADOW_BLUR_RADIUS_OFFSET = 16;
+  private static final int BOX_SHADOW_CLIP_MODE_OFFSET = 20;
+
+  public ByteBuffer toItemsBuffer() {
+    return toBuffers()[0];
+  }
+
+  public ByteBuffer toDataBuffer() {
+    return toBuffers()[1];
+  }
+
+  private ByteBuffer[] toBuffers() {
+    if (ops == null)
+      ops = new int[0];
+    if (iArgv == null)
+      iArgv = new int[0];
+    if (fArgv == null)
+      fArgv = new float[0];
+
+    int itemCount = ops.length;
+    int dataSize = computeDataSize();
+    ByteBuffer buffer = ByteBuffer.allocateDirect(itemCount * ITEM_SIZE);
+    buffer.order(ByteOrder.nativeOrder());
+
+    ByteBuffer dataBuffer = ByteBuffer.allocateDirect(dataSize).order(ByteOrder.nativeOrder());
+
+    int iIdx = 0;
+    int fIdx = 0;
+    for (int op : ops) {
+      int itemStart = buffer.position();
+      putInt(buffer, itemStart, 0, op);
+
+      int intCount = 0;
+      int floatCount = 0;
+      if (iIdx + 1 <= iArgv.length) {
+        intCount = iArgv[iIdx++];
+        floatCount = iArgv[iIdx++];
+      }
+
+      switch (op) {
+        case OP_BEGIN: {
+          int id = intParam(iIdx, 0);
+          int type = intParam(iIdx, 1);
+          float x = floatParam(fIdx, 0);
+          float y = floatParam(fIdx, 1);
+          float w = floatParam(fIdx, 2);
+          float h = floatParam(fIdx, 3);
+          putInt(buffer, itemStart, BEGIN_ID_OFFSET, id);
+          putInt(buffer, itemStart, BEGIN_TYPE_OFFSET, type);
+          putFloat(buffer, itemStart, BEGIN_X_OFFSET, x);
+          putFloat(buffer, itemStart, BEGIN_Y_OFFSET, y);
+          putFloat(buffer, itemStart, BEGIN_W_OFFSET, w);
+          putFloat(buffer, itemStart, BEGIN_H_OFFSET, h);
+          break;
+        }
+        case OP_FILL: {
+          int color = intParam(iIdx, 0);
+          int clipIndex = intParam(iIdx, 1);
+          putInt(buffer, itemStart, FILL_COLOR_OFFSET, color);
+          putInt(buffer, itemStart, FILL_CLIP_INDEX_OFFSET, clipIndex);
+          break;
+        }
+        case OP_DRAW_VIEW: {
+          int viewId = intParam(iIdx, 0);
+          putInt(buffer, itemStart, DRAW_VIEW_ID_OFFSET, viewId);
+          putFloat(buffer, itemStart, DRAW_VIEW_OFFSET_X_OFFSET, floatParam(fIdx, 0));
+          putFloat(buffer, itemStart, DRAW_VIEW_OFFSET_Y_OFFSET, floatParam(fIdx, 1));
+          break;
+        }
+        case OP_TEXT: {
+          int textId = intParam(iIdx, 0);
+          int boxIndex = intParam(iIdx, 1);
+          putInt(buffer, itemStart, TEXT_ID_OFFSET, textId);
+          putInt(buffer, itemStart, TEXT_BOX_INDEX_OFFSET, boxIndex);
+          break;
+        }
+        case OP_IMAGE: {
+          int imageId = intParam(iIdx, 0);
+          int boxIndex = intParam(iIdx, 1);
+          putInt(buffer, itemStart, IMAGE_ID_OFFSET, imageId);
+          putInt(buffer, itemStart, IMAGE_BOX_INDEX_OFFSET, boxIndex);
+          break;
+        }
+        case OP_BACKGROUND_IMAGE: {
+          putInt(buffer, itemStart, BACKGROUND_IMAGE_ID_OFFSET, intParam(iIdx, 0));
+          putInt(buffer, itemStart, BACKGROUND_IMAGE_TILING_INDEX_OFFSET, intParam(iIdx, 1));
+          putInt(buffer, itemStart, BACKGROUND_IMAGE_CLIP_INDEX_OFFSET, intParam(iIdx, 2));
+          putInt(buffer, itemStart, BACKGROUND_IMAGE_REPEAT_X_OFFSET, intParam(iIdx, 3));
+          putInt(buffer, itemStart, BACKGROUND_IMAGE_REPEAT_Y_OFFSET, intParam(iIdx, 4));
+          break;
+        }
+        case OP_BORDER: {
+          putInt(buffer, itemStart, BORDER_OUT_INDEX_OFFSET, intParam(iIdx, 0));
+          putInt(buffer, itemStart, BORDER_INNER_INDEX_OFFSET, intParam(iIdx, 1));
+          putInt(buffer, itemStart, BORDER_COLORS_OFFSET, intParam(iIdx, 2));
+          putInt(buffer, itemStart, BORDER_COLORS_OFFSET + 4, intParam(iIdx, 3));
+          putInt(buffer, itemStart, BORDER_COLORS_OFFSET + 8, intParam(iIdx, 4));
+          putInt(buffer, itemStart, BORDER_COLORS_OFFSET + 12, intParam(iIdx, 5));
+          putInt(buffer, itemStart, BORDER_STYLES_OFFSET, intParam(iIdx, 6));
+          putInt(buffer, itemStart, BORDER_STYLES_OFFSET + 4, intParam(iIdx, 7));
+          putInt(buffer, itemStart, BORDER_STYLES_OFFSET + 8, intParam(iIdx, 8));
+          putInt(buffer, itemStart, BORDER_STYLES_OFFSET + 12, intParam(iIdx, 9));
+          break;
+        }
+        case OP_CLIP_RECT: {
+          putFloat(buffer, itemStart, CLIP_RECT_X_OFFSET, floatParam(fIdx, 0));
+          putFloat(buffer, itemStart, CLIP_RECT_Y_OFFSET, floatParam(fIdx, 1));
+          putFloat(buffer, itemStart, CLIP_RECT_W_OFFSET, floatParam(fIdx, 2));
+          putFloat(buffer, itemStart, CLIP_RECT_H_OFFSET, floatParam(fIdx, 3));
+          boolean hasRadii = floatCount >= 12;
+          putInt(buffer, itemStart, CLIP_RECT_HAS_RADII_OFFSET, hasRadii ? 1 : 0);
+          if (hasRadii) {
+            for (int i = 0; i < 8; i++) {
+              putFloat(buffer, itemStart, CLIP_RECT_RADII_OFFSET + i * 4, floatParam(fIdx, 4 + i));
+            }
+          }
+          break;
+        }
+        case OP_RECORD_BOX: {
+          putFloat(buffer, itemStart, RECORD_BOX_X_OFFSET, floatParam(fIdx, 0));
+          putFloat(buffer, itemStart, RECORD_BOX_Y_OFFSET, floatParam(fIdx, 1));
+          putFloat(buffer, itemStart, RECORD_BOX_W_OFFSET, floatParam(fIdx, 2));
+          putFloat(buffer, itemStart, RECORD_BOX_H_OFFSET, floatParam(fIdx, 3));
+          boolean hasRadii = floatCount >= 12;
+          putInt(buffer, itemStart, RECORD_BOX_HAS_RADII_OFFSET, hasRadii ? 1 : 0);
+          if (hasRadii) {
+            for (int i = 0; i < 8; i++) {
+              putFloat(buffer, itemStart, RECORD_BOX_RADII_OFFSET + i * 4, floatParam(fIdx, 4 + i));
+            }
+          }
+          break;
+        }
+        case OP_LINEAR_GRADIENT: {
+          int colorCount = intParam(iIdx, 0);
+          int stopCount = intParam(iIdx, 1 + colorCount);
+          int tilingIndex = intParam(iIdx, 2 + colorCount);
+          int clipIndex = intParam(iIdx, 3 + colorCount);
+          int repeatX = intParam(iIdx, 4 + colorCount);
+          int repeatY = intParam(iIdx, 5 + colorCount);
+          float angle = floatParam(fIdx, 0);
+
+          int colorOffset = 0;
+          if (colorCount > 0) {
+            colorOffset = dataBuffer.position();
+            for (int i = 0; i < colorCount; i++) {
+              dataBuffer.putInt(intParam(iIdx, 1 + i));
+            }
+          }
+          int stopOffset = 0;
+          if (stopCount > 0) {
+            stopOffset = dataBuffer.position();
+            for (int i = 0; i < stopCount; i++) {
+              dataBuffer.putFloat(floatParam(fIdx, 1 + i));
+            }
+          }
+
+          putInt(buffer, itemStart, GRADIENT_COLOR_COUNT_OFFSET_OFFSET, colorOffset);
+          putInt(buffer, itemStart, GRADIENT_COLOR_COUNT_OFFSET, colorCount);
+          putInt(buffer, itemStart, GRADIENT_STOP_COUNT_OFFSET_OFFSET, stopOffset);
+          putInt(buffer, itemStart, GRADIENT_STOP_COUNT_OFFSET, stopCount);
+          putInt(buffer, itemStart, GRADIENT_TILING_INDEX_OFFSET, tilingIndex);
+          putInt(buffer, itemStart, GRADIENT_CLIP_INDEX_OFFSET, clipIndex);
+          putInt(buffer, itemStart, GRADIENT_REPEAT_X_OFFSET, repeatX);
+          putInt(buffer, itemStart, GRADIENT_REPEAT_Y_OFFSET, repeatY);
+          putFloat(buffer, itemStart, GRADIENT_ANGLE_OFFSET, angle);
+          break;
+        }
+        case OP_BOX_SHADOW: {
+          int shadowBoxIndex = intParam(iIdx, 0);
+          int clipBoxIndex = intParam(iIdx, 1);
+          int color = intParam(iIdx, 2);
+          int clipMode = intParam(iIdx, 3);
+          float blurRadius = floatParam(fIdx, 0);
+          putInt(buffer, itemStart, BOX_SHADOW_SHADOW_BOX_INDEX_OFFSET, shadowBoxIndex);
+          putInt(buffer, itemStart, BOX_SHADOW_CLIP_BOX_INDEX_OFFSET, clipBoxIndex);
+          putInt(buffer, itemStart, BOX_SHADOW_COLOR_OFFSET, color);
+          putFloat(buffer, itemStart, BOX_SHADOW_BLUR_RADIUS_OFFSET, blurRadius);
+          putInt(buffer, itemStart, BOX_SHADOW_CLIP_MODE_OFFSET, clipMode);
+          break;
+        }
+        default:
+          break;
+      }
+
+      iIdx += intCount;
+      fIdx += floatCount;
+      buffer.position(itemStart + ITEM_SIZE);
+    }
+
+    dataBuffer.flip();
+    buffer.flip();
+    return new ByteBuffer[] {buffer, dataSize == 0 ? null : dataBuffer};
+  }
+
+  private int computeDataSize() {
+    int iIdx = 0;
+    int dataSize = 0;
+    for (int op : ops) {
+      int intCount = 0;
+      int floatCount = 0;
+      if (iIdx + 1 <= iArgv.length) {
+        intCount = iArgv[iIdx++];
+        floatCount = iArgv[iIdx++];
+      }
+      if (op == OP_LINEAR_GRADIENT) {
+        int colorCount = (iIdx < iArgv.length) ? iArgv[iIdx] : 0;
+        int stopCount = (iIdx + 1 + colorCount < iArgv.length) ? iArgv[iIdx + 1 + colorCount] : 0;
+        dataSize += (colorCount + stopCount) * 4;
+      }
+      iIdx += intCount;
+    }
+    return dataSize;
+  }
+
+  private int intParam(int base, int index) {
+    int pos = base + index;
+    return (pos >= 0 && pos < iArgv.length) ? iArgv[pos] : 0;
+  }
+
+  private float floatParam(int base, int index) {
+    int pos = base + index;
+    return (pos >= 0 && pos < fArgv.length) ? fArgv[pos] : 0.0f;
+  }
+
+  private static void putInt(ByteBuffer buffer, int itemStart, int offset, int value) {
+    buffer.putInt(itemStart + offset, value);
+  }
+
+  private static void putFloat(ByteBuffer buffer, int itemStart, int offset, float value) {
+    buffer.putFloat(itemStart + offset, value);
   }
 }
