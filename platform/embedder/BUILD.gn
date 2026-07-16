@@ -5,11 +5,6 @@
 import("../../core/Lynx.gni")
 import("../../testing/test.gni")
 
-# macOS/Windows window targets can be built with `is_headless=true`, but
-# node-lynx is still a true windowless embedder.
-enable_windowless_embedder =
-    is_headless && (!(is_mac || is_win) || is_oliver_node_lynx)
-
 config("public_api") {
   include_dirs = [ "./public" ]
   defines = [
@@ -32,7 +27,7 @@ config("config") {
       "-Wno-vla-cxx-extension",
     ]
   }
-  if (enable_windowless_embedder) {
+  if (is_headless) {
     defines += [ "ENABLE_WINDOWLESS" ]
   }
 }
@@ -111,7 +106,7 @@ lynx_core_source_set("embedder") {
       "./module:module",
     ]
   }
-  if (enable_windowless_embedder) {
+  if (is_headless) {
     deps += [ "./windowless:windowless" ]
   }
   if (enable_inspector) {
