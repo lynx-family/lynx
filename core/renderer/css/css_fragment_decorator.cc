@@ -253,9 +253,6 @@ bool CSSFragmentDecorator::HasInAdopted(Predicate pred) {
 
 void CSSFragmentDecorator::MarkFontFacesResolved(bool resolved) {
   CSSFragment::MarkFontFacesResolved(resolved);
-  if (intrinsic_style_sheets_) {
-    intrinsic_style_sheets_->MarkFontFacesResolved(resolved);
-  }
   if (element_manager_) {
     element_manager_->ForEachAdoptedStyleSheet([resolved](const auto& wrapper) {
       if (wrapper) {
