@@ -34,6 +34,11 @@ LYNX_CAPI_EXPORT void lynx_group_set_preload_js_paths(lynx_group_t*,
 LYNX_CAPI_EXPORT void lynx_group_set_enable_js_group_thread(lynx_group_t*,
                                                             int enable);
 
+// Enables or disables the shared white board for a lynx group. When enabled,
+// Lynx views in the same group share one white board instance.
+LYNX_CAPI_EXPORT void lynx_group_set_enable_white_board(lynx_group_t*,
+                                                        int enable);
+
 // Release the lynx group.
 LYNX_CAPI_EXPORT void lynx_group_release(lynx_group_t*);
 
