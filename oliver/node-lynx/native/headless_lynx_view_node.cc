@@ -4,7 +4,6 @@
 
 #include <algorithm>
 #include <atomic>
-#include <chrono>
 #include <cstdint>
 #include <cstring>
 #include <fstream>
@@ -47,6 +46,7 @@
 #include "base/include/fml/message_loop.h"
 #include "core/base/threading/task_runner_manufactor.h"
 #include "core/build/gen/lynx_sub_error_code.h"
+#include "oliver/node-lynx/native/headless_event_simulation_proxy.h"
 #include "oliver/node-lynx/native/windowed_lynx_view_mac.h"
 #include "third_party/debug_router/src/debug_router/native/core/debug_router_core.h"
 #include "third_party/debug_router/src/debug_router/native/core/debug_router_message_handler.h"
@@ -2155,6 +2155,12 @@ class HeadlessLynxViewNode {
       ThrowError(env_, "failed to create LynxView");
       return;
     }
+    view_->SetEventSimulationProxy(
+        std::make_shared<HeadlessEventSimulationProxy>(
+            [this]() { return device_pixel_ratio_; },
+            [this](const lynx_pointer_event_t& event) {
+              SendPointerEventFromHost(event);
+            }));
     ConfigureTextureBackendForRenderer(renderer_type);
     view_->AddClient(client_);
     template_client_ = std::make_unique<HeadlessTemplateClient>(state_);
