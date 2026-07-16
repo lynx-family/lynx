@@ -2,10 +2,14 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+#import <Lynx/LynxBlurImageProcessor.h>
+#import <Lynx/LynxEnv.h>
 #import <Lynx/LynxEventDetail.h>
 #import <Lynx/LynxImageLoader.h>
 #import <Lynx/LynxImageManager.h>
+#import <Lynx/LynxUI.h>
 #import <Lynx/LynxUIContext.h>
+#import <Lynx/LynxUnitUtils.h>
 #include "core/renderer/ui_wrapper/painting/paint_image.h"
 
 static const NSInteger kFlagImageLoadEvent = 1 << 0;
@@ -14,6 +18,37 @@ static NSString* const kLynxImageEventLoad = @"load";
 static NSString* const kLynxImageEventError = @"error";
 
 using lynx::tasm::ImageFitMode;
+using lynx::tasm::ImagePaintInfo;
+
+namespace {
+
+UIViewContentMode LynxImageContentModeFromMode(int32_t mode) {
+  switch (static_cast<ImageFitMode>(mode)) {
+    case ImageFitMode::kAspectFit:
+      return UIViewContentModeScaleAspectFit;
+    case ImageFitMode::kAspectFill:
+      return UIViewContentModeScaleAspectFill;
+    case ImageFitMode::kCenter:
+      return UIViewContentModeCenter;
+    case ImageFitMode::kScaleToFill:
+    default:
+      return UIViewContentModeScaleToFill;
+  }
+}
+
+CGFloat LynxImageBlurRadiusFromProp(NSString* value, LynxUIContext* context) {
+  if (![value isKindOfClass:NSString.class] || value.length == 0) {
+    return 0;
+  }
+  return [LynxUnitUtils toPtWithScreenMetrics:context.screenMetrics
+                                    unitValue:value
+                                 rootFontSize:0
+                                  curFontSize:0
+                                    rootWidth:0
+                                   rootHeight:0
+                                withDefaultPt:0];
+}
+}  // namespace
 
 @implementation LynxImageManager {
   NSMutableDictionary<id, dispatch_block_t>* _cancelBlocks;
@@ -26,6 +61,7 @@ using lynx::tasm::ImageFitMode;
   NSInteger _sign;
   NSInteger _eventMask;
   UIViewContentMode _contentMode;
+  CGFloat _blurRadius;
 }
 
 - (instancetype)initWithContext:(LynxUIContext*)context {
@@ -36,6 +72,7 @@ using lynx::tasm::ImageFitMode;
     _contentMode = UIViewContentModeScaleToFill;
     _cancelBlocks = [NSMutableDictionary new];
     _images = [NSMutableDictionary new];
+    _blurRadius = 0;
   }
   return self;
 }
@@ -48,22 +85,12 @@ using lynx::tasm::ImageFitMode;
   _eventMask = eventMask;
 }
 
-- (void)setMode:(int32_t)mode {
-  switch (static_cast<ImageFitMode>(mode)) {
-    case ImageFitMode::kAspectFit:
-      _contentMode = UIViewContentModeScaleAspectFit;
-      break;
-    case ImageFitMode::kAspectFill:
-      _contentMode = UIViewContentModeScaleAspectFill;
-      break;
-    case ImageFitMode::kCenter:
-      _contentMode = UIViewContentModeCenter;
-      break;
-    case ImageFitMode::kScaleToFill:
-    default:
-      _contentMode = UIViewContentModeScaleToFill;
-      break;
-  }
+- (void)updatePaintInfo:(const ImagePaintInfo&)paintInfo {
+  _contentMode = LynxImageContentModeFromMode(static_cast<int32_t>(paintInfo.mode));
+  NSString* blurRadius = paintInfo.blur_radius.empty()
+                             ? nil
+                             : [[NSString alloc] initWithUTF8String:paintInfo.blur_radius.c_str()];
+  _blurRadius = LynxImageBlurRadiusFromProp(blurRadius, _context);
 }
 
 - (void)sendCustomEvent:(NSString*)name withParams:(NSDictionary*)params {
@@ -95,7 +122,16 @@ using lynx::tasm::ImageFitMode;
   contextInfo[LynxShouldUseImageService] = @YES;
   options.contextInfo = contextInfo;
 
-  options.processors = [NSArray new];
+  NSMutableArray* processors = [NSMutableArray new];
+  if (_blurRadius > 0) {
+    LynxBlurImageProcessor* blurProcessor =
+        [[LynxBlurImageProcessor alloc] initWithBlurRadius:_blurRadius];
+    if ([LynxEnv.sharedInstance enableImageCIGaussianBlur]) {
+      [blurProcessor setUseCIGaussianBlur:YES];
+    }
+    [processors addObject:blurProcessor];
+  }
+  options.processors = processors;
   options.completed = ^(UIImage* image, NSError* error, NSURL* imageURL) {
     self->_images[@(type)] = image;
 

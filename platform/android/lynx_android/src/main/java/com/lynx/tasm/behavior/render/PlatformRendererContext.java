@@ -16,6 +16,7 @@ import com.lynx.react.bridge.JavaOnlyArray;
 import com.lynx.react.bridge.ReadableArray;
 import com.lynx.react.bridge.ReadableMap;
 import com.lynx.react.bridge.mapbuffer.ReadableCompactArrayBuffer;
+import com.lynx.react.bridge.mapbuffer.ReadableMapBuffer;
 import com.lynx.tasm.base.CalledByNative;
 import com.lynx.tasm.base.LLog;
 import com.lynx.tasm.behavior.Behavior;
@@ -67,6 +68,9 @@ public class PlatformRendererContext implements TextMeasurerProvider {
     public static final int kNone = 0;
     public static final int kEventThrough = 1;
   }
+
+  private static final int IMAGE_PAINT_INFO_MODE = 1;
+  private static final int IMAGE_PAINT_INFO_BLUR_RADIUS = 2;
 
   WeakReference<UIBody.UIBodyView> mRootView = null;
 
@@ -636,15 +640,18 @@ public class PlatformRendererContext implements TextMeasurerProvider {
   }
 
   @CalledByNative
-  void createImage(int sign, String src, int mode, int width, int height, int eventMask,
-      int imageKey, boolean disableDefaultResize) {
+  void createImage(int sign, String src, ReadableMapBuffer paintInfo, int width, int height,
+      int eventMask, int imageKey, boolean disableDefaultResize) {
     // Create Image managed by LynxImageManager and register to UIBodyView
     LynxImageManager imageManager = new LynxImageManager(mContext);
     imageManager.setFallbackSign(sign);
     imageManager.setEventMask(eventMask);
-    imageManager.setDisableDefaultResize(disableDefaultResize);
-    imageManager.setMode(mode);
     imageManager.setSrc(src);
+    imageManager.setDisableDefaultResize(disableDefaultResize);
+    if (paintInfo != null) {
+      imageManager.setMode(paintInfo.getInt(IMAGE_PAINT_INFO_MODE));
+      imageManager.setBlurRadius(paintInfo.getString(IMAGE_PAINT_INFO_BLUR_RADIUS, null));
+    }
     imageManager.onLayoutUpdated(width, height, 0, 0, 0, 0);
     UIBody.UIBodyView rootView = mRootView.get();
     if (rootView != null) {

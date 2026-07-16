@@ -16,6 +16,24 @@ namespace tasm {
 
 namespace {
 constexpr char kImageMode[] = "mode";
+constexpr char kImageBlurRadius[] = "blur-radius";
+
+BASE_STATIC_STRING_DECL(kModeAspectFit, "aspectFit");
+BASE_STATIC_STRING_DECL(kModeAspectFill, "aspectFill");
+BASE_STATIC_STRING_DECL(kModeCenter, "center");
+
+ImageFitMode ResolveImageFitMode(const base::String& mode) {
+  if (mode.IsEqual(kModeAspectFit)) {
+    return ImageFitMode::kAspectFit;
+  }
+  if (mode.IsEqual(kModeAspectFill)) {
+    return ImageFitMode::kAspectFill;
+  }
+  if (mode.IsEqual(kModeCenter)) {
+    return ImageFitMode::kCenter;
+  }
+  return ImageFitMode::kScaleToFill;
+}
 }  // namespace
 
 ImageElement::ImageElement(ElementManager* manager, const base::String& tag)
@@ -77,7 +95,11 @@ void ImageElement::ProcessAttributeForLayoutInElement(
   } else if (key.IsEqual(kSrc)) {
     url_ = value.String();
   } else if (key.IsEqual(kImageMode)) {
-    mode_ = value.IsString() ? value.String() : base::String();
+    paint_info_.mode = value.IsString() ? ResolveImageFitMode(value.String())
+                                        : ImageFitMode::kScaleToFill;
+  } else if (key.IsEqual(kImageBlurRadius)) {
+    paint_info_.blur_radius =
+        value.IsString() ? value.String() : base::String();
   }
 }
 
@@ -87,7 +109,9 @@ void ImageElement::ResetAttribute(const base::String& key) {
     if (key.IsEqual(kSrc)) {
       url_ = base::String();
     } else if (key.IsEqual(kImageMode)) {
-      mode_ = base::String();
+      paint_info_.mode = ImageFitMode::kScaleToFill;
+    } else if (key.IsEqual(kImageBlurRadius)) {
+      paint_info_.blur_radius = base::String();
     }
   }
   FiberElement::ResetAttribute(key);

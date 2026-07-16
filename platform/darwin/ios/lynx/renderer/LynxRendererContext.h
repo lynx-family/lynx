@@ -7,18 +7,27 @@
 #import <Lynx/LynxTextRenderManager.h>
 #import <Lynx/LynxUIContext.h>
 #import <Lynx/LynxURL.h>
+
+#if defined(__cplusplus)
+namespace lynx::tasm {
+struct ImagePaintInfo;
+}
+#endif
+
 @interface LynxRendererContext : NSObject
 
 @property(nonatomic, weak) UIView<LUIBodyView> *bodyView;
 @property(nonatomic, strong) LynxUIContext *uiContext;
 @property(nonatomic, strong) LynxTextRenderManager *textRenderManager;
 
+#if defined(__cplusplus)
 - (void)createImageManager:(int32_t)imageManagerID
              withSourceURL:(LynxURL *)sourceURL
          andPlaceholderURL:(LynxURL *)placeholderURL
-                      mode:(int32_t)mode
+                 paintInfo:(const lynx::tasm::ImagePaintInfo &)paintInfo
                  eventMask:(int32_t)eventMask
                   imageKey:(int32_t)imageKey;
+#endif
 
 - (LynxImageManager *)imageManagerForID:(int32_t)imageManagerID;
 

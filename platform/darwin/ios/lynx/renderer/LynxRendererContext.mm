@@ -5,6 +5,7 @@
 #import <Lynx/LynxRendererContext.h>
 #import <Lynx/LynxService.h>
 #import <Lynx/LynxServiceTextProtocol.h>
+#include "core/renderer/ui_wrapper/painting/paint_image.h"
 
 namespace {
 
@@ -43,13 +44,13 @@ void DestroyTextBundlePointer(void *bundle) {
 - (void)createImageManager:(int32_t)imageManagerID
              withSourceURL:(LynxURL *)sourceURL
          andPlaceholderURL:(LynxURL *)placeholderURL
-                      mode:(int32_t)mode
+                 paintInfo:(const lynx::tasm::ImagePaintInfo &)paintInfo
                  eventMask:(int32_t)eventMask
                   imageKey:(int32_t)imageKey {
   LynxImageManager *imageManager = [[LynxImageManager alloc] initWithContext:_uiContext];
   [imageManager setSign:imageManagerID];
   [imageManager setEventMask:eventMask];
-  [imageManager setMode:mode];
+  [imageManager updatePaintInfo:paintInfo];
   [imageManager requestImage:sourceURL withType:LynxImageRequestSrc];
   [imageManager requestImage:sourceURL withType:LynxImageRequestPlaceholder];
   @synchronized(self) {

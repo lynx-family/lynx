@@ -9,19 +9,27 @@
 
 @class LynxUIContext;
 
+#if defined(__cplusplus)
+namespace lynx::tasm {
+struct ImagePaintInfo;
+}
+#endif
+
 @interface LynxImageManager : NSObject
 
-- (instancetype)initWithContext:(LynxUIContext*)context;
+- (instancetype _Nonnull)initWithContext:(LynxUIContext* _Nullable)context;
 
-- (void)requestImage:(LynxURL*)imageURL withType:(LynxImageRequestType)type;
+- (void)requestImage:(LynxURL* _Nullable)imageURL withType:(LynxImageRequestType)type;
 
-- (void)setTarget:(UIImageView*)view;
+- (void)setTarget:(UIImageView* _Nullable)view;
 
 - (void)setSign:(NSInteger)sign;
 
 - (void)setEventMask:(NSInteger)eventMask;
 
-- (void)setMode:(int32_t)mode;
+#if defined(__cplusplus)
+- (void)updatePaintInfo:(const lynx::tasm::ImagePaintInfo&)paintInfo;
+#endif
 
 - (void)reset;
 

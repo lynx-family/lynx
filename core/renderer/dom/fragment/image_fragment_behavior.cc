@@ -3,35 +3,12 @@
 // LICENSE file in the root directory of this source tree.
 #include "core/renderer/dom/fragment/image_fragment_behavior.h"
 
-#include "base/include/value/base_string.h"
 #include "core/renderer/dom/fiber/image_element.h"
 #include "core/renderer/dom/fragment/display_list_builder.h"
 #include "core/renderer/dom/fragment/fragment.h"
 #include "core/renderer/ui_wrapper/painting/paint_image.h"
 
 namespace lynx::tasm {
-
-namespace {
-
-BASE_STATIC_STRING_DECL(kModeAspectFit, "aspectFit");
-BASE_STATIC_STRING_DECL(kModeAspectFill, "aspectFill");
-BASE_STATIC_STRING_DECL(kModeScaleToFill, "scaleToFill");
-BASE_STATIC_STRING_DECL(kModeCenter, "center");
-
-ImageFitMode ResolveImageFitMode(const base::String& mode) {
-  if (mode.IsEqual(kModeAspectFit)) {
-    return ImageFitMode::kAspectFit;
-  }
-  if (mode.IsEqual(kModeAspectFill)) {
-    return ImageFitMode::kAspectFill;
-  }
-  if (mode.IsEqual(kModeCenter)) {
-    return ImageFitMode::kCenter;
-  }
-  return ImageFitMode::kScaleToFill;
-}
-
-}  // namespace
 
 int32_t ImageFragmentBehavior::ComputeEventMask() const {
   int32_t event_mask = 0;
@@ -79,14 +56,14 @@ bool ImageFragmentBehavior::UpdateImageIfNeeded(
 
   const auto* image_element = static_cast<ImageElement*>(fragment_->element());
   const auto& current_src = image_element->src();
-  const auto current_mode = ResolveImageFitMode(image_element->mode());
+  const auto& current_paint_info = image_element->paint_info();
   const float current_width = layout_info.GetContentBoxWidth();
   const float current_height = layout_info.GetContentBoxHeight();
 
   if (image_url_ == current_src &&
       (current_src.empty() ||
-       (image_mode_ == current_mode && image_width_ == current_width &&
-        image_height_ == current_height))) {
+       (image_paint_info_ == current_paint_info &&
+        image_width_ == current_width && image_height_ == current_height))) {
     return false;
   }
 
@@ -94,13 +71,13 @@ bool ImageFragmentBehavior::UpdateImageIfNeeded(
     event_mask_ = ComputeEventMask();
   }
   auto paint_image = painting_context_->CreateImage(
-      fragment_->id(), current_src, current_mode, current_width, current_height,
-      event_mask_);
+      fragment_->id(), current_src, current_paint_info, current_width,
+      current_height, event_mask_);
   if (!paint_image) {
     return false;
   }
   image_url_ = current_src;
-  image_mode_ = current_mode;
+  image_paint_info_ = current_paint_info;
   image_width_ = current_width;
   image_height_ = current_height;
   paint_image_ = paint_image;
