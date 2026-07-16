@@ -13,6 +13,7 @@ import android.util.DisplayMetrics;
 import android.view.ViewGroup;
 import android.widget.FrameLayout;
 import androidx.test.platform.app.InstrumentationRegistry;
+import com.lynx.react.bridge.mapbuffer.ReadableMapBuffer;
 import com.lynx.tasm.INativeLibraryLoader;
 import com.lynx.tasm.LynxEnv;
 import com.lynx.tasm.behavior.Behavior;
@@ -99,7 +100,11 @@ public class PlatformRendererContextTest {
 
   @Test
   public void testCreateImageInitializesImageManagerWithMode() throws Exception {
-    rendererContext.createImage(7, null, IMAGE_MODE_ASPECT_FILL, 100, 60, 0, 11, false);
+    ReadableMapBuffer paintInfo = mock(ReadableMapBuffer.class);
+    when(paintInfo.getInt(1)).thenReturn(IMAGE_MODE_ASPECT_FILL);
+    when(paintInfo.getString(2, null)).thenReturn(null);
+
+    rendererContext.createImage(7, null, paintInfo, 100, 60, 0, 11, false);
 
     ArgumentCaptor<LynxImageManager> imageManagerCaptor =
         ArgumentCaptor.forClass(LynxImageManager.class);

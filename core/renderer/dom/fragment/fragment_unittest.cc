@@ -220,6 +220,7 @@ class TestNativePaintingContext : public NativePaintingContext {
     int id;
     base::String src;
     ImageFitMode mode;
+    base::String blur_radius;
     float width;
     float height;
     int32_t event_mask;
@@ -260,13 +261,15 @@ class TestNativePaintingContext : public NativePaintingContext {
     }
   }
   fml::RefPtr<PaintImage> CreateImage(
-      int id, base::String src, ImageFitMode mode, float width, float height,
-      int32_t event_mask = 0, bool disable_default_resize = false) override {
+      int id, base::String src, const ImagePaintInfo& paint_info, float width,
+      float height, int32_t event_mask = 0,
+      bool disable_default_resize = false) override {
     if (fail_image_creation_) {
       return nullptr;
     }
     int32_t image_key = next_image_key_++;
-    created_images_.push_back({id, src, mode, width, height, event_mask,
+    created_images_.push_back({id, src, paint_info.mode, paint_info.blur_radius,
+                               width, height, event_mask,
                                disable_default_resize, image_key});
     return fml::MakeRefCounted<PaintImage>(image_key);
   }
@@ -1219,6 +1222,32 @@ TEST_F(FragmentTest, ImageModeUpdateRecreatesOnlyForEffectiveChanges) {
   element->ResetAttribute(base::String("mode"));
   fragment.UpdatePaintingNode(true, nullptr);
   EXPECT_EQ(native_painting_context.created_images_.size(), 3u);
+}
+
+TEST_F(FragmentTest, ImageBlurRadiusUpdateRecreatesImage) {
+  auto element = manager->CreateFiberImage("image");
+  element->SetAttributeInternal("src", lepus::Value("image-src://initial"));
+  element->SetAttributeInternal("blur-radius", lepus::Value("0px"));
+
+  Fragment fragment(element.get());
+  fragment.SetBehavior(std::make_unique<ImageFragmentBehavior>(&fragment));
+  TestNativePaintingContext native_painting_context;
+  fragment.behavior_->painting_context_ = &native_painting_context;
+
+  starlight::LayoutResultForRendering layout;
+  layout.size_ = FloatSize(100.f, 60.f);
+  fragment.UpdateLayout(layout);
+  fragment.behavior_->OnUpdateLayout(fragment.LayoutResult());
+
+  ASSERT_EQ(native_painting_context.created_images_.size(), 1u);
+  EXPECT_EQ(native_painting_context.created_images_[0].blur_radius, "0px");
+
+  element->SetAttributeInternal("blur-radius", lepus::Value("5px"));
+  fragment.UpdatePaintingNode(true, nullptr);
+
+  ASSERT_EQ(native_painting_context.created_images_.size(), 2u);
+  EXPECT_EQ(native_painting_context.created_images_.back().blur_radius, "5px");
+  EXPECT_TRUE(fragment.NeedRedraw());
 }
 
 TEST_F(FragmentTest, ImageSrcUpdateInvalidatesWithoutDuplicateImageCreation) {

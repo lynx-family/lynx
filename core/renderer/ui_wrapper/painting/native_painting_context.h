@@ -37,8 +37,9 @@ class NativePaintingContext {
           PlatformRendererInitConfig()) = 0;
   virtual void UpdateDisplayList(int id, DisplayList list) = 0;
   virtual fml::RefPtr<PaintImage> CreateImage(
-      int id, base::String src, ImageFitMode mode, float width, float height,
-      int32_t event_mask = 0, bool disable_default_resize = false) = 0;
+      int id, base::String src, const ImagePaintInfo& paint_info, float width,
+      float height, int32_t event_mask = 0,
+      bool disable_default_resize = false) = 0;
   virtual void UpdateTextBundle(int id, intptr_t bundle) = 0;
   virtual void DestroyTextBundle(int id) = 0;
   virtual void ReconstructEventTargetTreeRecursively() = 0;

@@ -73,8 +73,9 @@ class PlatformRendererContext {
   void RegisterPlatformRenderer(int32_t id, PlatformRendererAndroid* renderer);
   void UnregisterPlatformRenderer(int32_t id);
   fml::RefPtr<PaintImage> CreateImage(
-      int32_t id, base::String src, ImageFitMode mode, float width,
-      float height, int32_t event_mask, bool disable_default_resize,
+      int32_t id, base::String src, const ImagePaintInfo& paint_info,
+      float width, float height, int32_t event_mask,
+      bool disable_default_resize,
       std::weak_ptr<NativePaintingCtxPlatformRef> platform_ref);
   void DestroyImage(int32_t id);
 

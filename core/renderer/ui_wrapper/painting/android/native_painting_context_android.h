@@ -121,8 +121,9 @@ class NativePaintingCtxAndroid : public PaintingCtxPlatformImpl,
                                  PlatformEventBundle bundle) override;
 
   fml::RefPtr<PaintImage> CreateImage(
-      int id, base::String src, ImageFitMode mode, float width, float height,
-      int32_t event_mask = 0, bool disable_default_resize = false) override;
+      int id, base::String src, const ImagePaintInfo &paint_info, float width,
+      float height, int32_t event_mask = 0,
+      bool disable_default_resize = false) override;
 
   void UpdateTextBundle(int id, intptr_t bundle) override;
 

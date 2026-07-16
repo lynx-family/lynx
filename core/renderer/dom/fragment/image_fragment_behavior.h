@@ -34,7 +34,7 @@ class ImageFragmentBehavior : public FragmentBehavior {
   bool UpdateImageIfNeeded(const LayoutInfoForDraw& layout_info);
 
   base::String image_url_;
-  ImageFitMode image_mode_{ImageFitMode::kScaleToFill};
+  ImagePaintInfo image_paint_info_;
   float image_width_{0.f};
   float image_height_{0.f};
   // Cached event mask - computed lazily on first use, then never changes.

@@ -12,6 +12,8 @@
 
 #include "base/include/platform/android/jni_convert_helper.h"
 #include "core/renderer/dom/lynx_get_ui_result.h"
+#include "core/renderer/tasm/react/android/mapbuffer/map_buffer_builder.h"
+#include "core/renderer/tasm/react/android/mapbuffer/readable_map_buffer.h"
 #include "core/renderer/ui_wrapper/painting/android/paint_image_android.h"
 #include "core/renderer/ui_wrapper/painting/android/platform_renderer_android.h"
 #include "core/renderer/utils/android/value_converter_android.h"
@@ -49,6 +51,25 @@ bool RegisterJNIForPlatformRendererContext(JNIEnv* env) {
 }
 }  // namespace jni
 namespace tasm {
+namespace {
+
+constexpr uint16_t kImagePaintInfoMode = 1;
+constexpr uint16_t kImagePaintInfoBlurRadius = 2;
+
+base::android::ScopedLocalJavaRef<jobject> CreateImagePaintInfoMapBuffer(
+    const ImagePaintInfo& paint_info) {
+  base::android::MapBufferBuilder builder;
+  builder.putInt(kImagePaintInfoMode, static_cast<int32_t>(paint_info.mode));
+  if (!paint_info.blur_radius.empty()) {
+    builder.putString(kImagePaintInfoBlurRadius,
+                      paint_info.blur_radius.c_str());
+  }
+  auto buffer = builder.build();
+  return base::android::JReadableMapBuffer::CreateReadableMapBuffer(buffer);
+}
+
+}  // namespace
+
 void PlatformRendererContext::CreatePlatformRenderer(
     int32_t id, PlatformRendererType type) {
   base::android::ScopedLocalJavaRef<jobject> local_ref(java_ref_);
@@ -109,8 +130,8 @@ void PlatformRendererContext::DestroyPlatformRenderer(int32_t target) {
 }
 
 fml::RefPtr<PaintImage> PlatformRendererContext::CreateImage(
-    int32_t id, base::String src, ImageFitMode mode, float width, float height,
-    int32_t event_mask, bool disable_default_resize,
+    int32_t id, base::String src, const ImagePaintInfo& paint_info, float width,
+    float height, int32_t event_mask, bool disable_default_resize,
     std::weak_ptr<NativePaintingCtxPlatformRef> platform_ref) {
   base::android::ScopedLocalJavaRef<jobject> local_ref(java_ref_);
   if (local_ref.IsNull()) {
@@ -120,8 +141,10 @@ fml::RefPtr<PaintImage> PlatformRendererContext::CreateImage(
   auto j_src =
       base::android::JNIConvertHelper::ConvertToJNIStringUTF(env, src.c_str());
   int32_t image_key = GenerateUniqueImageKey();
+  auto j_paint_info = CreateImagePaintInfoMapBuffer(paint_info);
+
   Java_PlatformRendererContext_createImage(
-      env, local_ref.Get(), id, j_src.Get(), static_cast<int32_t>(mode),
+      env, local_ref.Get(), id, j_src.Get(), j_paint_info.Get(),
       static_cast<int>(width), static_cast<int>(height),
       static_cast<int>(event_mask), image_key, disable_default_resize);
   return fml::MakeRefCounted<PaintImageAndroid>(image_key,

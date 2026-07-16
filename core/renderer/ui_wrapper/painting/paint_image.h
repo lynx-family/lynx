@@ -7,6 +7,7 @@
 #include <cstdint>
 
 #include "base/include/fml/memory/ref_counted.h"
+#include "base/include/value/base_string.h"
 
 namespace lynx::tasm {
 
@@ -15,6 +16,19 @@ enum class ImageFitMode : int32_t {
   kAspectFit = 1,
   kAspectFill = 2,
   kCenter = 3,
+};
+
+struct ImagePaintInfo {
+  ImageFitMode mode{ImageFitMode::kScaleToFill};
+  base::String blur_radius;
+
+  bool operator==(const ImagePaintInfo& other) const {
+    return mode == other.mode && blur_radius == other.blur_radius;
+  }
+
+  bool operator!=(const ImagePaintInfo& other) const {
+    return !(*this == other);
+  }
 };
 
 class PaintImage : public fml::RefCountedThreadSafe<PaintImage> {

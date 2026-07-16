@@ -19,7 +19,7 @@
 using namespace lynx::tasm;
 
 @interface LynxImageManager (LynxDisplayListApplierUnitTest)
-- (void)setMode:(int32_t)mode;
+- (void)updatePaintInfo:(const ImagePaintInfo &)paintInfo;
 @end
 
 namespace {
@@ -628,7 +628,9 @@ constexpr int32_t kViewType = static_cast<int32_t>(PlatformRendererType::kView);
 
   for (NSNumber *mode in expectations) {
     LynxImageManager *imageManager = [[LynxImageManager alloc] initWithContext:nil];
-    [imageManager setMode:mode.intValue];
+    ImagePaintInfo paintInfo;
+    paintInfo.mode = static_cast<ImageFitMode>(mode.intValue);
+    [imageManager updatePaintInfo:paintInfo];
     UIImageView *imageView = [UIImageView new];
     [imageManager setTarget:imageView];
     XCTAssertEqual(imageView.contentMode,
@@ -641,7 +643,9 @@ constexpr int32_t kViewType = static_cast<int32_t>(PlatformRendererType::kView);
   XCTAssertEqual(defaultView.contentMode, UIViewContentModeScaleToFill);
 
   LynxImageManager *invalidManager = [[LynxImageManager alloc] initWithContext:nil];
-  [invalidManager setMode:-1];
+  ImagePaintInfo invalidPaintInfo;
+  invalidPaintInfo.mode = static_cast<ImageFitMode>(-1);
+  [invalidManager updatePaintInfo:invalidPaintInfo];
   UIImageView *invalidView = [UIImageView new];
   [invalidManager setTarget:invalidView];
   XCTAssertEqual(invalidView.contentMode, UIViewContentModeScaleToFill);
