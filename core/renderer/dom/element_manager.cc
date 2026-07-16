@@ -981,6 +981,25 @@ void ElementManager::AddFontFace(const lepus::Value &font) {
   delegate_->SetFontFaces(map);
 }
 
+bool ElementManager::HasIntrinsicFontFacesResolved(
+    const tasm::CSSFragment *fragment) const {
+  std::shared_lock<std::shared_mutex> lock(
+      resolved_intrinsic_font_faces_mutex_);
+  return resolved_intrinsic_font_face_fragments_.find(fragment) !=
+         resolved_intrinsic_font_face_fragments_.end();
+}
+
+void ElementManager::MarkIntrinsicFontFacesResolved(
+    const tasm::CSSFragment *fragment, bool resolved) {
+  std::unique_lock<std::shared_mutex> lock(
+      resolved_intrinsic_font_faces_mutex_);
+  if (resolved) {
+    resolved_intrinsic_font_face_fragments_.insert(fragment);
+  } else {
+    resolved_intrinsic_font_face_fragments_.erase(fragment);
+  }
+}
+
 void ElementManager::UpdateLayoutNodeProps(
     int32_t id, const fml::RefPtr<tasm::PropBundle> &props) {
   delegate_->UpdateLayoutNodeProps(id, props);

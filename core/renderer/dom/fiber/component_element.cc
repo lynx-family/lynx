@@ -153,8 +153,13 @@ void ComponentElement::PrepareForFontFaceIfNeeded() {
   // To prevent business logic breaks and maintain alignment with
   // the behavior of the Radon architecture.
   // in the Radon-Fiber architecture, FontFace is flushed for each style_sheet.
+  //
+  // The resolved state is tracked per LynxView via the ElementManager (see
+  // CSSFragmentDecorator::MarkFontFacesResolved), so components within the
+  // same view that share the same intrinsic fragment flush its FontFace only
+  // once, while different LynxViews still resolve it independently.
   if (style_sheet_ && !style_sheet_->GetFontFaceRuleMap().empty() &&
-      !style_sheet_->HasFontFacesResolved()) {
+      !style_sheet_->HasIntrinsicFontFacesResolved()) {
     SetFontFaces(style_sheet_->GetFontFaceRuleMap());
     style_sheet_->MarkFontFacesResolved(true);
   }

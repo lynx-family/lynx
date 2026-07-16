@@ -79,6 +79,7 @@ unittest_set("css_test_testset") {
     "computed_css_style_unittest.cc",
     "css_color_unittest.cc",
     "css_font_face_token_unittest.cc",
+    "css_fragment_decorator_unittest.cc",
     "css_fragment_unittest.cc",
     "css_keyframes_token_unittest.cc",
     "css_keywords_unittest.cc",
