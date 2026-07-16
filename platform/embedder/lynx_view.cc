@@ -122,6 +122,7 @@ LYNX_EXTERN_C lynx_view_t* lynx_view_create(lynx_view_builder_t* builder,
     settings.group_id = builder->group->id;
     settings.enable_js_group_thread = builder->group->enable_js_group_thread;
     settings.preload_js_paths = builder->group->preload_js_paths;
+    settings.white_board = builder->group->white_board;
   }
 #if defined(OS_HARMONY) && defined(ENABLE_WINDOWLESS)
   settings.use_quickjs = true;
