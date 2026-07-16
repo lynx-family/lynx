@@ -1,0 +1,22 @@
+platform/android/publish.gradle
+  s_c9da953da61e2b::t_11b1717b27641d 30-34,308
+  s_c9da953da61e2b::t_b994843971b931 36-44,283-291,298-305
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "69c6f0b5e196c46ef7861fbd59a9fc41a1aa8d74",
+  "prompts": {},
+  "sessions": {
+    "s_c9da953da61e2b": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a3fcf05c2d0de2884449bc3",
+        "model": "gpt-5.4__dev"
+      },
+      "human_author": "gaohanqing <gaohanqing@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

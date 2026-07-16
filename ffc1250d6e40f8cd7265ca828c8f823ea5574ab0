@@ -1,0 +1,29 @@
+platform/android/build.gradle
+  h_7a1e47632c7d77 49-54
+platform/android/lynx_android/build.gradle
+  h_7a1e47632c7d77 340,342-343
+  s_5c7642224d4cfd::t_862fe335fbdc0a 341
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ffc1250d6e40f8cd7265ca828c8f823ea5574ab0",
+  "prompts": {},
+  "humans": {
+    "h_7a1e47632c7d77": {
+      "author": "gaohanqing <gaohanqing@bytedance.com>"
+    }
+  },
+  "sessions": {
+    "s_5c7642224d4cfd": {
+      "agent_id": {
+        "tool": "trae-cue",
+        "id": "ai_tab-icr-6519c095-5c20-4952-801e-9cb886959d51",
+        "model": "default"
+      },
+      "human_author": null
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}
