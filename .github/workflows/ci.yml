@@ -719,18 +719,6 @@ jobs:
           path: demo
           repository: lynx-family/integrating-lynx-demo-projects
           ref: 0ab9340e1e560f07d3d4c4331f8b62b0702d067a
-      - name: Setup CocoaPods cache
-        uses: lynx-infra/cache@5c6160a6a4c7fca80a2f3057bb9dfc9513fcb732
-        with:
-          path: |
-            ~/.cocoapods/repos/trunk
-            ~/Library/Caches/CocoaPods
-          # This cache is for third-party pods' trunk/spec and download artifacts.
-          # The Podfile rewrite below only pins Lynx pods to a local source, so the
-          # original demo Podfile/Podfile.lock is sufficient to key third-party cache.
-          key: cocoapods-ios-integration-${{ runner.os }}-${{ hashFiles('demo/ios/HelloLynxObjc/Podfile', 'demo/ios/HelloLynxObjc/Podfile.lock') }}
-          restore-keys: |
-            cocoapods-ios-integration-${{ runner.os }}-
       - name: Build the Demo Project
         run: |-
           cd $GITHUB_WORKSPACE
