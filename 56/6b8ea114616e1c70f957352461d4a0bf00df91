@@ -1,0 +1,31 @@
+platform/harmony/lynx_harmony/src/main/ets/Index.ets
+  s_3101666001455b::t_01cad9b280ac4f 154-157
+platform/harmony/lynx_harmony/src/main/ets/library/LynxLibraryRegistry.ets
+  s_3101666001455b::t_81c87a78f2791a 1-186
+platform/harmony/lynx_harmony/src/main/ets/tasm/LynxBackgroundRuntime.ets
+  s_3101666001455b::t_363e660a0f1023 20,47
+platform/harmony/lynx_harmony/src/main/ets/tasm/LynxView.ets
+  s_3101666001455b::t_13ec45633e7280 51,287-288
+platform/harmony/lynx_harmony/src/main/ets/tasm/behavior/HarmonyUIRenderer.ets
+  s_3101666001455b::t_4e99d03717a82a 149,151-154,157,159
+platform/harmony/lynx_library_plugin/README.md
+  s_3101666001455b::t_1cc2f3f9b48408 1-23
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "566b8ea114616e1c70f957352461d4a0bf00df91",
+  "prompts": {},
+  "sessions": {
+    "s_3101666001455b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f60e2-38d8-7493-890d-2c3b53d1485e",
+        "model": "unknown"
+      },
+      "human_author": "jianliang00 <wangjianliang0@126.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}
