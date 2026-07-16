@@ -43,6 +43,7 @@ config("lynx_public_config") {
     "DISABLE_NANBOX=${disable_nanbox}",
     "ENABLE_JUST_LEPUSNG=${enable_just_lepusng}",
     "ENABLE_INSPECTOR=${enable_inspector}",
+    "LYNX_ENABLE_LOGBOX=${enable_logbox}",
   ]
 
   if (is_android) {
