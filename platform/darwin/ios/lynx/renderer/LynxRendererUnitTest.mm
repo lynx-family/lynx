@@ -220,10 +220,18 @@
   [[view renderer] applyTransform:rotate];
 
   lynx::tasm::DisplayList list;
-  list.AddOperation(lynx::tasm::DisplayListOpType::kBegin, 13,
-                    static_cast<int32_t>(PlatformRendererType::kView), 135.0f, 45.0f, 120.0f,
-                    120.0f);
-  list.AddOperation(lynx::tasm::DisplayListOpType::kEnd);
+  lynx::tasm::DisplayListItem begin;
+  begin.type = lynx::tasm::DisplayListOpType::kBegin;
+  begin.payload.begin.id = 13;
+  begin.payload.begin.type = static_cast<int32_t>(PlatformRendererType::kView);
+  begin.payload.begin.x = 135.0f;
+  begin.payload.begin.y = 45.0f;
+  begin.payload.begin.w = 120.0f;
+  begin.payload.begin.h = 120.0f;
+  list.AppendItem(begin);
+  lynx::tasm::DisplayListItem end;
+  end.type = lynx::tasm::DisplayListOpType::kEnd;
+  list.AppendItem(end);
   renderer.OnUpdateDisplayList(std::move(list));
 
   XCTAssertTrue(CGPointEqualToPoint(view.layer.anchorPoint, CGPointZero));

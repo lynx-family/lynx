@@ -17,6 +17,7 @@
 
 #include <stack>
 #include "base/include/vector.h"
+#include "core/renderer/dom/fragment/display_list_reader.h"
 #include "core/renderer/dom/fragment/rounded_rectangle.h"
 
 using namespace lynx;
@@ -79,11 +80,7 @@ bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
 @implementation LynxDisplayListApplier {
   __weak UIView<LynxRendererHost> *_view;
   LynxRendererContext *_renderer_context;
-  DisplayList *list_;
-
-  size_t content_op_index_;
-  size_t content_int_index_;
-  size_t content_float_index_;
+  DisplayListReader reader_;
 
   std::stack<float> x_stack_;
   float left_offset_;
@@ -110,9 +107,7 @@ bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
     _view = view;
     _renderer_context = context;
 
-    content_op_index_ = 0;
-    content_int_index_ = 0;
-    content_float_index_ = 0;
+    reader_ = DisplayListReader();
 
     left_offset_ = 0;
     top_offset_ = 0;
@@ -126,21 +121,13 @@ bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
   return self;
 }
 
-- (int32_t)nextContentInt {
-  return list_->GetIntAtIndex(content_int_index_++);
-}
-
-- (float)nextContentFloat {
-  return list_->GetFloatAtIndex(content_float_index_++);
-}
-
 - (BOOL)isTextServiceModeOn {
   LynxContext *lynxContext = _renderer_context.uiContext.lynxContext;
   return lynxContext != nil && lynxContext.isTextServiceModeOn;
 }
 
 - (void)processContentOperations {
-  if (list_ == nullptr || list_->GetContentOpTypesSize() == 0) {
+  if (!reader_.HasNext()) {
     return;
   }
 
@@ -148,34 +135,20 @@ bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
   int32_t view_index = 0;
   UIView *refView = nil;
 
-  while (content_op_index_ < list_->GetContentOpTypesSize()) {
-    auto op = static_cast<DisplayListOpType>(list_->GetOpAtIndex(content_op_index_++));
-    auto int_count = list_->GetIntAtIndex(content_int_index_++);
-    auto float_count = list_->GetIntAtIndex(content_int_index_++);
-
-    size_t next_int_index = content_int_index_ + int_count;
-    size_t next_float_index = content_float_index_ + float_count;
+  while (reader_.HasNext()) {
+    const auto &item = reader_.Next();
+    auto op = item.type;
 
     switch (op) {
       case DisplayListOpType::kBegin: {
-        bool record_offset = false;
-        if (int_count >= 2) {
-          int32_t sign = [self nextContentInt];
-          record_offset = _view.renderer.sign != sign;
-          sign_stack_.emplace(sign);
-          [self nextContentInt];  // skip type
-        }
+        bool record_offset = _view.renderer.sign != item.payload.begin.id;
+        sign_stack_.emplace(item.payload.begin.id);
 
-        if (float_count == 4) {
-          x_stack_.emplace([self nextContentFloat]);
-          if (record_offset) left_offset_ += x_stack_.top();
+        x_stack_.emplace(item.payload.begin.x);
+        if (record_offset) left_offset_ += x_stack_.top();
 
-          y_stack_.emplace([self nextContentFloat]);
-          if (record_offset) top_offset_ += y_stack_.top();
-
-          [self nextContentFloat];
-          [self nextContentFloat];
-        }
+        y_stack_.emplace(item.payload.begin.y);
+        if (record_offset) top_offset_ += y_stack_.top();
         break;
       }
       case DisplayListOpType::kEnd: {
@@ -190,8 +163,8 @@ bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
         break;
       }
       case DisplayListOpType::kFill: {
-        auto argb = [self nextContentInt];
-        auto clip_index = [self nextContentInt];
+        auto argb = item.payload.fill.color;
+        auto clip_index = item.payload.fill.clip_index;
 
         CGFloat a = ((argb >> 24) & 0xFF) / 255.0;
         CGFloat r = ((argb >> 16) & 0xFF) / 255.0;
@@ -208,9 +181,9 @@ bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
         break;
       }
       case DisplayListOpType::kDrawView: {
-        auto view_id = [self nextContentInt];
-        auto offset_x = [self nextContentFloat];
-        auto offset_y = [self nextContentFloat];
+        auto view_id = item.payload.draw_view.view_id;
+        auto offset_x = item.payload.draw_view.offset_x;
+        auto offset_y = item.payload.draw_view.offset_y;
         if (static_cast<NSUInteger>(view_index) < hostSubviewsSnapshot.count) {
           refView = hostSubviewsSnapshot[view_index++];
           _refLayer = refView.layer;
@@ -234,113 +207,107 @@ bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
         break;
       }
       case DisplayListOpType::kText: {
-        if (int_count >= 2) {
-          auto text_id = [self nextContentInt];
-          auto box_index = [self nextContentInt];
-          CALayer *layer = nil;
-          if ([self isTextServiceModeOn]) {
-            void *page = [_renderer_context getTextBundle:text_id];
-            if (page != nullptr) {
-              layer = [[LynxTextraLayer alloc] initWithTextID:text_id
-                                              rendererContext:_renderer_context];
-            }
-          } else {
-            LynxTextRenderer *textRenderer =
-                (LynxTextRenderer *)[_renderer_context.textRenderManager takeTextRender:text_id];
-            if (textRenderer != nil) {
-              layer = [[LynxTextLayer alloc] initWithLynxTextRenderer:textRenderer];
-            }
+        auto text_id = item.payload.text.text_id;
+        auto box_index = item.payload.text.box_index;
+        CALayer *layer = nil;
+        if ([self isTextServiceModeOn]) {
+          void *page = [_renderer_context getTextBundle:text_id];
+          if (page != nullptr) {
+            layer = [[LynxTextraLayer alloc] initWithTextID:text_id
+                                            rendererContext:_renderer_context];
           }
-          if (layer != nil) {
-            [self applyRectToLayer:layer withBoxIndex:box_index];
-            [self insertLayer:layer];
-            [layer setNeedsDisplay];
+        } else {
+          LynxTextRenderer *textRenderer =
+              (LynxTextRenderer *)[_renderer_context.textRenderManager takeTextRender:text_id];
+          if (textRenderer != nil) {
+            layer = [[LynxTextLayer alloc] initWithLynxTextRenderer:textRenderer];
           }
+        }
+        if (layer != nil) {
+          [self applyRectToLayer:layer withBoxIndex:box_index];
+          [self insertLayer:layer];
+          [layer setNeedsDisplay];
         }
         break;
       }
       case DisplayListOpType::kImage: {
-        if (int_count >= 2) {
-          auto image_id = [self nextContentInt];
-          auto box_index = [self nextContentInt];
-          if (box_index < 0 || static_cast<size_t>(box_index) >= box_array_.size()) {
-            break;
-          }
-          LynxImageManager *imageManager = [self imageManagerForID:image_id];
-
-          UIImageView *imageView = [self createImageView];
-
-          auto &box = box_array_[box_index];
-          CGRect rect = CGRectMake(box.GetX(), box.GetY(), box.GetWidth(), box.GetHeight());
-          rect.origin.x += left_offset_;
-          rect.origin.y += top_offset_;
-          [imageView setFrame:rect];
-          if (box.HasRadius()) {
-            [self applyRoundedRect:box toLayer:imageView.layer];
-          }
-
-          [imageManager setTarget:imageView];
-
-          if (refView == nil) {
-            [_view insertSubview:imageView atIndex:0];
-          } else {
-            [_view insertSubview:imageView aboveSubview:refView];
-          }
-
-          [self insertLayer:imageView.layer forOp:op];
-
-          refView = imageView;
-
-          [_contentImageViews addObject:imageView];
+        auto image_id = item.payload.image.image_id;
+        auto box_index = item.payload.image.box_index;
+        if (box_index < 0 || static_cast<size_t>(box_index) >= box_array_.size()) {
+          break;
         }
+        LynxImageManager *imageManager = [self imageManagerForID:image_id];
+
+        UIImageView *imageView = [self createImageView];
+
+        auto &box = box_array_[box_index];
+        CGRect rect = CGRectMake(box.GetX(), box.GetY(), box.GetWidth(), box.GetHeight());
+        rect.origin.x += left_offset_;
+        rect.origin.y += top_offset_;
+        [imageView setFrame:rect];
+        if (box.HasRadius()) {
+          [self applyRoundedRect:box toLayer:imageView.layer];
+        }
+
+        [imageManager setTarget:imageView];
+
+        if (refView == nil) {
+          [_view insertSubview:imageView atIndex:0];
+        } else {
+          [_view insertSubview:imageView aboveSubview:refView];
+        }
+
+        [self insertLayer:imageView.layer forOp:op];
+
+        refView = imageView;
+
+        [_contentImageViews addObject:imageView];
         break;
       }
       case DisplayListOpType::kBorder: {
-        if (int_count >= 10) {
-          int out_box_index = [self nextContentInt];
-          int inner_box_index = [self nextContentInt];
+        int out_box_index = item.payload.border.out_index;
+        int inner_box_index = item.payload.border.inner_index;
 
-          // 4 colors: Top, Right, Bottom, Left (ARGB int)
-          UIColor *topColor = [self colorFromARGB:[self nextContentInt]];
-          UIColor *rightColor = [self colorFromARGB:[self nextContentInt]];
-          UIColor *bottomColor = [self colorFromARGB:[self nextContentInt]];
-          UIColor *leftColor = [self colorFromARGB:[self nextContentInt]];
+        // 4 colors: Top, Right, Bottom, Left (ARGB int)
+        UIColor *topColor = [self colorFromARGB:item.payload.border.colors[0]];
+        UIColor *rightColor = [self colorFromARGB:item.payload.border.colors[1]];
+        UIColor *bottomColor = [self colorFromARGB:item.payload.border.colors[2]];
+        UIColor *leftColor = [self colorFromARGB:item.payload.border.colors[3]];
 
-          // 4 styles: Top, Right, Bottom, Left (0=none, 1=solid, 2=dashed, 3=dotted)
-          int topStyle = [self nextContentInt];
-          int rightStyle = [self nextContentInt];
-          int bottomStyle = [self nextContentInt];
-          int leftStyle = [self nextContentInt];
+        // 4 styles: Top, Right, Bottom, Left (0=none, 1=solid, 2=dashed, 3=dotted)
+        int topStyle = item.payload.border.styles[0];
+        int rightStyle = item.payload.border.styles[1];
+        int bottomStyle = item.payload.border.styles[2];
+        int leftStyle = item.payload.border.styles[3];
 
-          // Validate box indices
-          if (out_box_index < 0 || static_cast<size_t>(out_box_index) >= box_array_.size() ||
-              inner_box_index < 0 || static_cast<size_t>(inner_box_index) >= box_array_.size()) {
-            break;
-          }
+        // Validate box indices
+        if (out_box_index < 0 || static_cast<size_t>(out_box_index) >= box_array_.size() ||
+            inner_box_index < 0 || static_cast<size_t>(inner_box_index) >= box_array_.size()) {
+          break;
+        }
 
-          const RoundedRectangle &outBox = box_array_[out_box_index];
-          const RoundedRectangle &innerBox = box_array_[inner_box_index];
+        const RoundedRectangle &outBox = box_array_[out_box_index];
+        const RoundedRectangle &innerBox = box_array_[inner_box_index];
 
-          // Create border image
-          UIImage *borderImage =
-              [self createBorderImageWithOutBox:outBox
-                                          inner:innerBox
-                                         colors:@[ topColor, rightColor, bottomColor, leftColor ]
-                                         styles:@[
-                                           @(topStyle), @(rightStyle), @(bottomStyle), @(leftStyle)
-                                         ]];
+        // Create border image
+        UIImage *borderImage =
+            [self createBorderImageWithOutBox:outBox
+                                        inner:innerBox
+                                       colors:@[ topColor, rightColor, bottomColor, leftColor ]
+                                       styles:@[
+                                         @(topStyle), @(rightStyle), @(bottomStyle), @(leftStyle)
+                                       ]];
 
-          if (borderImage) {
-            CALayer *borderLayer = [CALayer layer];
-            borderLayer.contents = (id)borderImage.CGImage;
+        if (borderImage) {
+          CALayer *borderLayer = [CALayer layer];
+          borderLayer.contents = (id)borderImage.CGImage;
 
-            // Set frame with offset
-            CGRect frame = CGRectMake(outBox.GetX() + left_offset_, outBox.GetY() + top_offset_,
-                                      outBox.GetWidth(), outBox.GetHeight());
-            borderLayer.frame = frame;
+          // Set frame with offset
+          CGRect frame = CGRectMake(outBox.GetX() + left_offset_, outBox.GetY() + top_offset_,
+                                    outBox.GetWidth(), outBox.GetHeight());
+          borderLayer.frame = frame;
 
-            [self insertLayer:borderLayer forOp:op];
-          }
+          [self insertLayer:borderLayer forOp:op];
         }
         break;
       }
@@ -350,26 +317,24 @@ bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
         _view.layer.cornerRadius = 0;
         _view.layer.masksToBounds = NO;
 
-        // TODO(songshourui.null): Align with C++ display list generation once
-        // kClipRect carries a box index instead of raw rect/radius parameters.
         RoundedRectangle roundedRect;
-        roundedRect.SetX([self nextContentFloat] + left_offset_);
-        roundedRect.SetY([self nextContentFloat] + top_offset_);
-        roundedRect.SetWidth([self nextContentFloat]);
-        roundedRect.SetHeight([self nextContentFloat]);
+        roundedRect.SetX(item.payload.clip_rect.x + left_offset_);
+        roundedRect.SetY(item.payload.clip_rect.y + top_offset_);
+        roundedRect.SetWidth(item.payload.clip_rect.w);
+        roundedRect.SetHeight(item.payload.clip_rect.h);
 
         CGRect rect = CGRectMake(roundedRect.GetX(), roundedRect.GetY(), roundedRect.GetWidth(),
                                  roundedRect.GetHeight());
 
-        if (float_count >= 12) {
-          roundedRect.SetRadiusXTopLeft([self nextContentFloat]);
-          roundedRect.SetRadiusYTopLeft([self nextContentFloat]);
-          roundedRect.SetRadiusXTopRight([self nextContentFloat]);
-          roundedRect.SetRadiusYTopRight([self nextContentFloat]);
-          roundedRect.SetRadiusXBottomRight([self nextContentFloat]);
-          roundedRect.SetRadiusYBottomRight([self nextContentFloat]);
-          roundedRect.SetRadiusXBottomLeft([self nextContentFloat]);
-          roundedRect.SetRadiusYBottomLeft([self nextContentFloat]);
+        if (item.payload.clip_rect.has_radii) {
+          roundedRect.SetRadiusXTopLeft(item.payload.clip_rect.radii[0]);
+          roundedRect.SetRadiusYTopLeft(item.payload.clip_rect.radii[1]);
+          roundedRect.SetRadiusXTopRight(item.payload.clip_rect.radii[2]);
+          roundedRect.SetRadiusYTopRight(item.payload.clip_rect.radii[3]);
+          roundedRect.SetRadiusXBottomRight(item.payload.clip_rect.radii[4]);
+          roundedRect.SetRadiusYBottomRight(item.payload.clip_rect.radii[5]);
+          roundedRect.SetRadiusXBottomLeft(item.payload.clip_rect.radii[6]);
+          roundedRect.SetRadiusYBottomLeft(item.payload.clip_rect.radii[7]);
 
           CGRect viewBounds = _view.bounds;
           BOOL isFullView = CGRectEqualToRect(rect, viewBounds);
@@ -399,59 +364,54 @@ bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
       case DisplayListOpType::kRecordBox: {
         RoundedRectangle rect;
 
-        rect.SetX([self nextContentFloat]);
-        rect.SetY([self nextContentFloat]);
-        rect.SetWidth([self nextContentFloat]);
-        rect.SetHeight([self nextContentFloat]);
+        rect.SetX(item.payload.record_box.x);
+        rect.SetY(item.payload.record_box.y);
+        rect.SetWidth(item.payload.record_box.w);
+        rect.SetHeight(item.payload.record_box.h);
 
-        if (float_count > 4) {
-          rect.SetRadiusXTopLeft([self nextContentFloat]);
-          rect.SetRadiusYTopLeft([self nextContentFloat]);
-          rect.SetRadiusXTopRight([self nextContentFloat]);
-          rect.SetRadiusYTopRight([self nextContentFloat]);
-          rect.SetRadiusXBottomRight([self nextContentFloat]);
-          rect.SetRadiusYBottomRight([self nextContentFloat]);
-          rect.SetRadiusXBottomLeft([self nextContentFloat]);
-          rect.SetRadiusYBottomLeft([self nextContentFloat]);
+        if (item.payload.record_box.has_radii) {
+          rect.SetRadiusXTopLeft(item.payload.record_box.radii[0]);
+          rect.SetRadiusYTopLeft(item.payload.record_box.radii[1]);
+          rect.SetRadiusXTopRight(item.payload.record_box.radii[2]);
+          rect.SetRadiusYTopRight(item.payload.record_box.radii[3]);
+          rect.SetRadiusXBottomRight(item.payload.record_box.radii[4]);
+          rect.SetRadiusYBottomRight(item.payload.record_box.radii[5]);
+          rect.SetRadiusXBottomLeft(item.payload.record_box.radii[6]);
+          rect.SetRadiusYBottomLeft(item.payload.record_box.radii[7]);
         }
 
         box_array_.emplace_back(std::move(rect));
         break;
       }
       case DisplayListOpType::kLinearGradient: {
-        if (int_count < 6 || float_count < 1) {
-          break;
-        }
+        int32_t color_count = item.payload.linear_gradient.color_count;
+        int32_t stop_count = item.payload.linear_gradient.stop_count;
 
-        int32_t color_count = [self nextContentInt];
-        if (color_count < 0 || int_count < color_count + 6) {
+        if (color_count < 0) {
           break;
         }
 
         NSMutableArray<NSNumber *> *colors = [NSMutableArray arrayWithCapacity:color_count];
+        const uint32_t *color_data = reader_.Colors(item);
         for (int32_t i = 0; i < color_count; ++i) {
-          [colors addObject:@([self nextContentInt])];
+          [colors addObject:@(color_data[i])];
         }
 
-        int32_t stop_count = [self nextContentInt];
-        if (stop_count < 0 || float_count < stop_count + 1) {
-          break;
-        }
-
-        int32_t origin_index = [self nextContentInt];
-        int32_t clip_index = [self nextContentInt];
-        int32_t repeat_x = [self nextContentInt];
-        int32_t repeat_y = [self nextContentInt];
+        int32_t origin_index = item.payload.linear_gradient.tiling_index;
+        int32_t clip_index = item.payload.linear_gradient.clip_index;
+        int32_t repeat_x = item.payload.linear_gradient.repeat_x;
+        int32_t repeat_y = item.payload.linear_gradient.repeat_y;
 
         if (origin_index < 0 || static_cast<size_t>(origin_index) >= box_array_.size() ||
             clip_index < 0 || static_cast<size_t>(clip_index) >= box_array_.size()) {
           break;
         }
 
-        float angle = [self nextContentFloat];
+        float angle = item.payload.linear_gradient.angle;
         NSMutableArray<NSNumber *> *stops = [NSMutableArray arrayWithCapacity:stop_count];
+        const float *stop_data = reader_.Stops(item);
         for (int32_t i = 0; i < stop_count; ++i) {
-          [stops addObject:@([self nextContentFloat] * 100.0f)];
+          [stops addObject:@(stop_data[i] * 100.0f)];
         }
 
         CALayer *gradientLayer = [self createLinearGradientLayerWithAngle:angle
@@ -469,10 +429,6 @@ bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
       default:
         break;
     }
-
-    // Ensure alignment
-    content_int_index_ = next_int_index;
-    content_float_index_ = next_float_index;
   }
 }
 
@@ -487,16 +443,14 @@ bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
 
   [self reset];
 
-  list_ = list;
+  reader_ = DisplayListReader(*list);
 
   [self processContentOperations];
   [_view setNeedsDisplay];
 }
 
 - (void)reset {
-  content_op_index_ = 0;
-  content_int_index_ = 0;
-  content_float_index_ = 0;
+  reader_ = DisplayListReader();
   top_offset_ = 0;
   left_offset_ = 0;
   box_array_.clear();

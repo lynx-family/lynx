@@ -6,6 +6,7 @@
 
 #include <memory>
 
+#include "core/renderer/dom/fragment/display_list_reader.h"
 #include "core/renderer/ui_wrapper/common/ios/prop_bundle_darwin.h"
 #include "core/renderer/ui_wrapper/common/native_prop_bundle.h"
 #include "core/renderer/ui_wrapper/painting/ios/platform_renderer_context_darwin.h"
@@ -113,29 +114,30 @@ PlatformRendererDarwin::PlatformRendererDarwin(PlatformRendererContextDarwin* co
 PlatformRendererDarwin::~PlatformRendererDarwin() { CleanupUIView(); }
 
 void PlatformRendererDarwin::OnUpdateDisplayList(DisplayList display_list) {
-  if (display_list.HasContent()) {
+  if (display_list.GetContentItemsSize() > 0) {
     display_list_ = std::move(display_list);
 
     UIView<LynxRendererHost>* view = GetUIView();
     if (view != nil) {
-      constexpr int kFrameValueCount = 4;
-      if (display_list_.GetContentFloatData() &&
-          display_list_.GetContentFloatDataSize() >= kFrameValueCount) {
-        float frame[4];
-        // The first four float values in the display list are the frame of the
-        // layer's OP_BEGIN.
-        memcpy(frame, display_list_.GetContentFloatData(), 4 * sizeof(float));
+      DisplayListReader reader(display_list_);
+      if (reader.HasNext()) {
+        const auto& item = reader.Next();
+        if (item.type == DisplayListOpType::kBegin) {
+          float x = item.payload.begin.x;
+          float y = item.payload.begin.y;
+          float w = item.payload.begin.w;
+          float h = item.payload.begin.h;
 
-        CGRect layout_frame =
-            CGRectMake(frame[0] + display_list_.GetRenderOffset()[0],
-                       frame[1] + display_list_.GetRenderOffset()[1], frame[2], frame[3]);
-        layout_frame = ResolveLayoutFrame(layout_frame);
-        UpdateUIOwnerLayout(CGRectMake(frame[0], frame[1], frame[2], frame[3]));
-        LynxCUIApplyLayoutFrame(view, layout_frame);
-        [[view renderer] onSetFrame:layout_frame];
+          CGRect layout_frame = CGRectMake(x + display_list_.GetRenderOffset()[0],
+                                           y + display_list_.GetRenderOffset()[1], w, h);
+          layout_frame = ResolveLayoutFrame(layout_frame);
+          UpdateUIOwnerLayout(CGRectMake(x, y, w, h));
+          LynxCUIApplyLayoutFrame(view, layout_frame);
+          [[view renderer] onSetFrame:layout_frame];
 
-        if ([view conformsToProtocol:@protocol(LUIBodyView)]) {
-          ((UIView<LUIBodyView>*)view).intrinsicContentSize = CGSizeMake(frame[2], frame[3]);
+          if ([view conformsToProtocol:@protocol(LUIBodyView)]) {
+            ((UIView<LUIBodyView>*)view).intrinsicContentSize = CGSizeMake(w, h);
+          }
         }
       }
 
