@@ -43,7 +43,10 @@ if (is_mac) {
 }
 
 source_set("node_lynx_native") {
-  sources = [ "native/headless_lynx_view_node.cc" ]
+  sources = [
+    "native/headless_event_simulation_proxy.cc",
+    "native/headless_lynx_view_node.cc",
+  ]
 
   if (!enable_unittests) {
     sources += [ "../../platform/embedder/lynx_ui_renderer_mock.cc" ]
