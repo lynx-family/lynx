@@ -1,0 +1,28 @@
+lynx/platform/harmony/lynx_harmony/src/main/cpp/ui/ui_owner.cc
+  s_d421c34b1661ee::t_d473edbca13d53 109-110
+lynx/core/renderer/utils/lynx_env.cc
+  h_b43d17cf7587c8 592
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "46c0d46defbef6f6e7cff214680ba82b374e9dc2",
+  "prompts": {},
+  "humans": {
+    "h_b43d17cf7587c8": {
+      "author": "liubeibei.emma <liubeibei.emma@bytedance.com>"
+    }
+  },
+  "sessions": {
+    "s_d421c34b1661ee": {
+      "agent_id": {
+        "tool": "trae-cue",
+        "id": "ai_tab-icr-a6f9196a-a9bf-410f-bccd-7cb166adb754",
+        "model": "default"
+      },
+      "human_author": "liubeibei.emma <liubeibei.emma@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}
