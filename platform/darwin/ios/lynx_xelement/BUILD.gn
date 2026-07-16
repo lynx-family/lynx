@@ -84,6 +84,8 @@ subspec_target("Common") {
       "//PODS_ROOT/AnimaX/Core",
       "//PODS_ROOT/AnimaX/AnimaX",
       "//PODS_ROOT/AnimaX/AnimaX/Core",
+      "//PODS_ROOT/LynxBase/lynx",
+      "//PODS_ROOT/LynxBase",
     ]
   }
   flatten_deps = [ "animax:lynx_animax" ]
