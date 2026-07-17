@@ -122,6 +122,8 @@ typedef struct DisplayListItem {
     } fill;
     struct {
       int32_t view_id;
+      float offset_x;
+      float offset_y;
     } draw_view;
     struct {
       int32_t text_id;
@@ -213,6 +215,10 @@ static_assert(offsetof(DisplayListItem, payload.fill.clip_index) == 8,
 // DrawView payload offsets
 static_assert(offsetof(DisplayListItem, payload.draw_view.view_id) == 4,
               "draw_view.view_id must be at offset 4");
+static_assert(offsetof(DisplayListItem, payload.draw_view.offset_x) == 8,
+              "draw_view.offset_x must be at offset 8");
+static_assert(offsetof(DisplayListItem, payload.draw_view.offset_y) == 12,
+              "draw_view.offset_y must be at offset 12");
 
 // Text payload offsets
 static_assert(offsetof(DisplayListItem, payload.text.text_id) == 4,

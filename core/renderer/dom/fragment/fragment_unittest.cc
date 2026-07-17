@@ -305,6 +305,32 @@ class FragmentDrawTest : public ::testing::Test {
   std::shared_ptr<::testing::NiceMock<test::MockTasmDelegate>> tasm_mediator;
 };
 
+TEST_F(FragmentDrawTest, DrawViewRecordsFinalOffsetWithRenderOffset) {
+  auto element = manager->CreateFiberView();
+  Fragment fragment(element.get());
+  fragment.has_platform_renderer_ = true;
+
+  starlight::LayoutResultForRendering layout;
+  layout.offset_ = starlight::FloatPoint(5.f, 6.f);
+  layout.size_ = FloatSize(30.f, 40.f);
+  fragment.UpdateLayout(layout);
+  fragment.render_offset_[0] = 10.f;
+  fragment.render_offset_[1] = 20.f;
+
+  DisplayListBuilder builder;
+  fragment.Draw(builder);
+
+  DisplayList display_list = builder.Build();
+  DisplayListReader reader(display_list);
+  ASSERT_TRUE(reader.HasNext());
+  const auto& view_item = reader.Next();
+  EXPECT_EQ(view_item.type, DisplayListOpType::kDrawView);
+  EXPECT_EQ(view_item.payload.draw_view.view_id, fragment.id());
+  EXPECT_FLOAT_EQ(view_item.payload.draw_view.offset_x, 15.f);
+  EXPECT_FLOAT_EQ(view_item.payload.draw_view.offset_y, 26.f);
+  EXPECT_FALSE(reader.HasNext());
+}
+
 TEST_F(FragmentTest, CreateLayerIfNeededWritesFlattenInitData) {
   auto element = manager->CreateFiberText("text");
   element->MarkAsDirectChildOfCompatibleComponent(true);
@@ -366,7 +392,7 @@ TEST_F(FragmentTest, ReusedEventTargetTreeRefreshesScrollOffsetForHitTest) {
   DisplayListBuilder root_builder;
   root_builder
       .Begin(kRootId, PlatformRendererType::kPage, 0.f, 0.f, 100.f, 100.f)
-      .DrawView(1)
+      .DrawView(1, 0.f, 0.f)
       .End();
   root_renderer->UpdateDisplayList(root_builder.Build());
 
