@@ -151,6 +151,28 @@ target(clay_lib_type, "standalone_lib") {
   }
 }
 
+if (enable_unittests) {
+  executable("exposure_unittests") {
+    testonly = true
+    sources = [
+      "ui/component/expose_manager/expose_observer_test_services.cc",
+      "ui/component/expose_manager/expose_observer_unittests.cc",
+    ]
+    deps = [
+      "../base/src:base_static",
+      "../base/trace/native:trace",
+      "common/service",
+      "flow",
+      "gfx",
+      "testing",
+      "testing:testing_fixtures",
+      "ui:ui",
+      "//third_party/skia/modules/skparagraph:skparagraph",
+    ]
+    public_configs = [ ":config" ]
+  }
+}
+
 group("unittests") {
   testonly = true
   public_deps = []
@@ -158,6 +180,7 @@ group("unittests") {
   # Compile all unittests targets if enabled.
   if (enable_unittests) {
     public_deps += [
+      ":exposure_unittests",
       "flow:flow_unittests",
       "gfx:gfx_unittests",
       "memory:memory_unittests",
