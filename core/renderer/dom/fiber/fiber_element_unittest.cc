@@ -19062,6 +19062,133 @@ TEST_P(FiberElementTest, TestGetComputedStyleByKey) {
   EXPECT_TRUE(page->GetComputedStyleByKey("opacity").StdString() == "0.9");
 }
 
+TEST_P(FiberElementTest, TestGetComputedStyleByKeyUsesCssPixels) {
+  constexpr float kLayoutsUnitPerPx = 2.f;
+  auto config = manager->GetConfig();
+  config->SetCSSAlignWithLegacyW3C(true);
+  manager->SetConfig(config);
+
+  auto page = manager->CreateFiberPage("page", 11);
+  auto default_border_view = manager->CreateFiberView();
+  default_border_view->computed_css_style()->SetLayoutUnit(1.f,
+                                                           kLayoutsUnitPerPx);
+  default_border_view->SetStyle(CSSPropertyID::kPropertyIDWidth,
+                                lepus::Value("1px"));
+  page->InsertNode(default_border_view);
+
+  auto view = manager->CreateFiberView();
+  view->computed_css_style()->SetLayoutUnit(1.f, kLayoutsUnitPerPx);
+  view->SetStyle(CSSPropertyID::kPropertyIDPosition, lepus::Value("absolute"));
+  view->SetStyle(CSSPropertyID::kPropertyIDLeft, lepus::Value("10px"));
+  view->SetStyle(CSSPropertyID::kPropertyIDTop, lepus::Value("20px"));
+  view->SetStyle(CSSPropertyID::kPropertyIDWidth, lepus::Value("100px"));
+  view->SetStyle(CSSPropertyID::kPropertyIDHeight, lepus::Value("50px"));
+  view->SetStyle(CSSPropertyID::kPropertyIDPaddingTop, lepus::Value("1px"));
+  view->SetStyle(CSSPropertyID::kPropertyIDPaddingRight, lepus::Value("2px"));
+  view->SetStyle(CSSPropertyID::kPropertyIDPaddingBottom, lepus::Value("3px"));
+  view->SetStyle(CSSPropertyID::kPropertyIDPaddingLeft, lepus::Value("4px"));
+  view->SetStyle(CSSPropertyID::kPropertyIDMarginTop, lepus::Value("5px"));
+  view->SetStyle(CSSPropertyID::kPropertyIDMarginRight, lepus::Value("6px"));
+  view->SetStyle(CSSPropertyID::kPropertyIDMarginBottom, lepus::Value("7px"));
+  view->SetStyle(CSSPropertyID::kPropertyIDMarginLeft, lepus::Value("8px"));
+  view->SetStyle(CSSPropertyID::kPropertyIDBorderTopWidth, lepus::Value("9px"));
+  view->SetStyle(CSSPropertyID::kPropertyIDBorderRightWidth,
+                 lepus::Value("10px"));
+  view->SetStyle(CSSPropertyID::kPropertyIDBorderBottomWidth,
+                 lepus::Value("11px"));
+  view->SetStyle(CSSPropertyID::kPropertyIDBorderLeftWidth,
+                 lepus::Value("12px"));
+  view->SetStyle(CSSPropertyID::kPropertyIDBorderTopLeftRadius,
+                 lepus::Value("13px 14px"));
+  view->SetStyle(CSSPropertyID::kPropertyIDBorderTopRightRadius,
+                 lepus::Value("15px 16px"));
+  view->SetStyle(CSSPropertyID::kPropertyIDBorderBottomRightRadius,
+                 lepus::Value("17px 18px"));
+  view->SetStyle(CSSPropertyID::kPropertyIDBorderBottomLeftRadius,
+                 lepus::Value("19px 20px"));
+  view->SetStyle(CSSPropertyID::kPropertyIDTransformOrigin,
+                 lepus::Value("21px 22px"));
+  view->SetStyle(CSSPropertyID::kPropertyIDFilter, lepus::Value("blur(23px)"));
+  view->SetStyle(CSSPropertyID::kPropertyIDBackgroundImage,
+                 lepus::Value("linear-gradient(red, blue)"));
+  view->SetStyle(CSSPropertyID::kPropertyIDBackgroundPosition,
+                 lepus::Value("24px 25%"));
+  page->InsertNode(view);
+
+  page->FlushActionsAsRoot();
+
+  view->UpdateLayout(20.f, 40.f, 200.f, 100.f, {8.f, 2.f, 4.f, 6.f},
+                     {16.f, 10.f, 12.f, 14.f}, {24.f, 18.f, 20.f, 22.f},
+                     nullptr, 0.f);
+
+  const std::pair<const char*, const char*> expectations[] = {
+      {"top", "20px"},
+      {"bottom", "70px"},
+      {"left", "10px"},
+      {"right", "110px"},
+      {"width", "100px"},
+      {"height", "50px"},
+      {"padding", "1px 2px 3px 4px"},
+      {"padding-top", "1px"},
+      {"padding-right", "2px"},
+      {"padding-bottom", "3px"},
+      {"padding-left", "4px"},
+      {"margin", "5px 6px 7px 8px"},
+      {"margin-top", "5px"},
+      {"margin-right", "6px"},
+      {"margin-bottom", "7px"},
+      {"margin-left", "8px"},
+      {"border-width", "9px 10px 11px 12px"},
+      {"border-top-width", "9px"},
+      {"border-right-width", "10px"},
+      {"border-bottom-width", "11px"},
+      {"border-left-width", "12px"},
+      {"border-radius", "13px 15px 17px 19px / 14px 16px 18px 20px"},
+      {"border-top-left-radius", "13px 14px"},
+      {"border-top-right-radius", "15px 16px"},
+      {"border-bottom-right-radius", "17px 18px"},
+      {"border-bottom-left-radius", "19px 20px"},
+      {"transform-origin", "21px 22px"},
+      {"filter", "blur(23px)"},
+      {"background-position", "24px 25%"},
+  };
+  for (const auto& [key, expected] : expectations) {
+    SCOPED_TRACE(key);
+    EXPECT_EQ(view->GetComputedStyleByKey(key).StdString(), expected);
+  }
+
+  EXPECT_EQ(
+      default_border_view->GetComputedStyleByKey("border-width").StdString(),
+      "3px 3px 3px 3px");
+}
+
+TEST_P(FiberElementTest, TestGetComputedStyleByKeyTransformUsesCssPixels) {
+  constexpr float kLayoutsUnitPerPx = 2.f;
+  auto page = manager->CreateFiberPage("page", 11);
+  auto view = manager->CreateFiberView();
+  view->computed_css_style()->SetLayoutUnit(1.f, kLayoutsUnitPerPx);
+  view->SetStyle(CSSPropertyID::kPropertyIDWidth, lepus::Value("100px"));
+  view->SetStyle(CSSPropertyID::kPropertyIDHeight, lepus::Value("50px"));
+  page->InsertNode(view);
+  page->FlushActionsAsRoot();
+  view->UpdateLayout(0.f, 0.f, 200.f, 100.f, {0.f}, {0.f}, {0.f}, nullptr, 0.f);
+
+  const std::pair<const char*, const char*> test_cases[] = {
+      {"translate(10px, 50%)", "matrix(1, 0, 0, 1, 10, 25)"},
+      {"translate3d(10px, 20px, 30px)",
+       "matrix3d(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 10, 20, 30, 1)"},
+      {"matrix(1, 2, 3, 4, 5, 6)", "matrix(1, 2, 3, 4, 5, 6)"},
+      {"matrix3d(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 7, 8, 9, 1)",
+       "matrix3d(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 7, 8, 9, 1)"},
+  };
+  for (const auto& [style, expected] : test_cases) {
+    SCOPED_TRACE(style);
+    view->SetStyle(CSSPropertyID::kPropertyIDTransform, lepus::Value(style));
+    page->FlushActionsAsRoot();
+    EXPECT_EQ(view->GetComputedStyleByKey("transform").StdString(), expected);
+  }
+}
+
 TEST_P(FiberElementTest, TestGetComputedStyleByKey_transform_translate) {
   //  constructor css fragment
   StyleMap indexAttributes;
