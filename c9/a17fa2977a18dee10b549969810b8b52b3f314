@@ -1,0 +1,33 @@
+explorer/harmony/hvigorconfig.ts
+  s_3101666001455b::t_fce866bacad1e4 5,8
+platform/harmony/lynx_library_plugin/README.md
+  s_3101666001455b::t_cea80782505357 19,22,32-37
+platform/harmony/lynx_library_plugin/package.json
+  s_3101666001455b::t_7aeb1afead3a35 22
+platform/harmony/lynx_library_plugin/src/core.js
+  s_3101666001455b::t_8c9b87bc3e50b6 17-18,48,59-64,81-83,86-90,120-121,129-134,141,157-163,171,214-215,217,352,385,413,425,604-609,628,632-634,651-656,676,696,716-717,719,740,742,777-785,813-818,853,1054-1071
+platform/harmony/lynx_library_plugin/src/index.d.ts
+  s_3101666001455b::t_dbad646b1107b2 13
+platform/harmony/lynx_library_plugin/src/index.js
+  s_3101666001455b::t_1e9fd8f39e002d 10-24
+platform/harmony/lynx_library_plugin/test/core.test.js
+  s_3101666001455b::t_43d7a0893b1d30 10,39-44,54-57,76,95,110,125,137,361-362,373-378,404-405,578-583,599-602
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "c9a17fa2977a18dee10b549969810b8b52b3f314",
+  "prompts": {},
+  "sessions": {
+    "s_3101666001455b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f60e2-38d8-7493-890d-2c3b53d1485e",
+        "model": "unknown"
+      },
+      "human_author": "jianliang00 <wangjianliang0@126.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}
