@@ -4,6 +4,7 @@
 
 #include <memory>
 
+#include "clay/ui/component/map_marker_view.h"
 #include "clay/ui/component/native_view.h"
 #include "clay/ui/component/page_view.h"
 #include "clay/ui/component/view.h"
@@ -43,6 +44,137 @@ TEST(NativeViewTest, TextureRegistry) {
 }
 
 class NativeViewHitTestTest : public UITest {};
+
+class MapMarkerViewTest : public UITest {};
+
+TEST_F_UI(MapMarkerViewTest, SnapshotUsesContentSizeForParentStretchedAxis) {
+  auto* map = new View(1, page_.get());
+  auto* marker = new MapMarkerView(2, page_.get());
+  auto* content = new View(3, page_.get());
+  page_->AddChild(map);
+  map->AddChild(marker);
+  marker->AddChild(content);
+
+  map->SetWidth(393.f);
+  map->SetHeight(852.f);
+  marker->SetWidth(231.f);
+  marker->SetHeight(852.f);
+  content->SetWidth(231.f);
+  content->SetHeight(109.f);
+
+  FloatSize size = marker->RasterSnapshotSize();
+  EXPECT_FLOAT_EQ(size.width(), 231.f);
+  EXPECT_FLOAT_EQ(size.height(), 109.f);
+}
+
+TEST_F_UI(MapMarkerViewTest, SnapshotPreservesNonParentFillSize) {
+  auto* map = new View(1, page_.get());
+  auto* marker = new MapMarkerView(2, page_.get());
+  auto* content = new View(3, page_.get());
+  page_->AddChild(map);
+  map->AddChild(marker);
+  marker->AddChild(content);
+
+  map->SetWidth(393.f);
+  map->SetHeight(852.f);
+  marker->SetWidth(260.f);
+  marker->SetHeight(140.f);
+  content->SetWidth(231.f);
+  content->SetHeight(109.f);
+
+  FloatSize size = marker->RasterSnapshotSize();
+  EXPECT_FLOAT_EQ(size.width(), 260.f);
+  EXPECT_FLOAT_EQ(size.height(), 140.f);
+}
+
+TEST_F_UI(MapMarkerViewTest, SnapshotUsesUnionOfMarkerChildren) {
+  auto* map = new View(1, page_.get());
+  auto* marker = new MapMarkerView(2, page_.get());
+  auto* first = new View(3, page_.get());
+  auto* second = new View(4, page_.get());
+  page_->AddChild(map);
+  map->AddChild(marker);
+  marker->AddChild(first);
+  marker->AddChild(second);
+
+  map->SetWidth(393.f);
+  map->SetHeight(852.f);
+  marker->SetWidth(231.f);
+  marker->SetHeight(852.f);
+  first->SetWidth(180.f);
+  first->SetHeight(80.f);
+  second->SetX(20.f);
+  second->SetY(70.f);
+  second->SetWidth(211.f);
+  second->SetHeight(39.f);
+
+  FloatSize size = marker->RasterSnapshotSize();
+  EXPECT_FLOAT_EQ(size.width(), 231.f);
+  EXPECT_FLOAT_EQ(size.height(), 109.f);
+}
+
+TEST_F_UI(MapMarkerViewTest,
+          SnapshotTightensWidthDespiteNegativeCrossAxisOffset) {
+  auto* map = new View(1, page_.get());
+  auto* marker = new MapMarkerView(2, page_.get());
+  auto* content = new View(3, page_.get());
+  page_->AddChild(map);
+  map->AddChild(marker);
+  marker->AddChild(content);
+
+  map->SetWidth(393.f);
+  map->SetHeight(852.f);
+  marker->SetWidth(393.f);
+  marker->SetHeight(109.f);
+  content->SetY(-10.f);
+  content->SetWidth(231.f);
+  content->SetHeight(109.f);
+
+  FloatSize size = marker->RasterSnapshotSize();
+  EXPECT_FLOAT_EQ(size.width(), 231.f);
+  EXPECT_FLOAT_EQ(size.height(), 109.f);
+}
+
+TEST_F_UI(MapMarkerViewTest, SnapshotPreservesAmbiguousTwoAxisFill) {
+  auto* map = new View(1, page_.get());
+  auto* marker = new MapMarkerView(2, page_.get());
+  auto* content = new View(3, page_.get());
+  page_->AddChild(map);
+  map->AddChild(marker);
+  marker->AddChild(content);
+
+  map->SetWidth(393.f);
+  map->SetHeight(852.f);
+  marker->SetWidth(393.f);
+  marker->SetHeight(852.f);
+  content->SetWidth(393.f);
+  content->SetHeight(109.f);
+
+  FloatSize size = marker->RasterSnapshotSize();
+  EXPECT_FLOAT_EQ(size.width(), 393.f);
+  EXPECT_FLOAT_EQ(size.height(), 852.f);
+}
+
+TEST_F_UI(MapMarkerViewTest, SnapshotPreservesRootWhenChildOverflows) {
+  auto* map = new View(1, page_.get());
+  auto* marker = new MapMarkerView(2, page_.get());
+  auto* content = new View(3, page_.get());
+  page_->AddChild(map);
+  map->AddChild(marker);
+  marker->AddChild(content);
+
+  map->SetWidth(393.f);
+  map->SetHeight(852.f);
+  marker->SetWidth(393.f);
+  marker->SetHeight(140.f);
+  content->SetX(-10.f);
+  content->SetWidth(231.f);
+  content->SetHeight(109.f);
+
+  FloatSize size = marker->RasterSnapshotSize();
+  EXPECT_FLOAT_EQ(size.width(), 393.f);
+  EXPECT_FLOAT_EQ(size.height(), 140.f);
+}
 
 TEST_F_UI(NativeViewHitTestTest, IgnoreUnhandledTouchSequenceInHitTest) {
   auto* background_view = new View(1, page_.get());
