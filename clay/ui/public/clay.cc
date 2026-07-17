@@ -21,6 +21,9 @@
 #include "clay/gfx/shared_image/shared_image_sink_accessor.h"
 #include "clay/net/loader/data_image_loader.h"
 #include "clay/ui/common/isolate.h"
+#if OS_HARMONY
+#include "clay/gfx/shared_image/native_image_image_backing.h"
+#endif
 #ifdef ENABLE_SKITY
 #include "skity/codec/codec.hpp"
 #endif
@@ -42,6 +45,8 @@ SharedImageBacking::BackingType ClaySharedImageBackingTypeToBackingType(
       return SharedImageBacking::BackingType::kNativeImage;
     case kClaySharedImageBackingTypeShmImage:
       return SharedImageBacking::BackingType::kShmImage;
+    case kClaySharedImageBackingTypeAngleShmImage:
+      return SharedImageBacking::BackingType::kAngleShmImage;
   }
   FML_UNREACHABLE();
 }
@@ -293,6 +298,9 @@ CLAY_EXTERN_C void ClaySharedImageGetBacking(
       case SharedImageBacking::BackingType::kShmImage:
         *out_type = kClaySharedImageBackingTypeShmImage;
         break;
+      case SharedImageBacking::BackingType::kAngleShmImage:
+        *out_type = kClaySharedImageBackingTypeAngleShmImage;
+        break;
       default:
         break;
     }
@@ -403,6 +411,17 @@ ClayCreateSharedImageSink(ClaySharedImageSinkBufferMode clay_buffer_mode,
                      << clay_buffer_mode;
       return nullptr;
   }
+#if OS_HARMONY
+  if (type == kClaySharedImageBackingTypeNativeImage) {
+    fml::RefPtr<SharedImageSink> sink =
+        fml::MakeRefCounted<SharedImageSinkUnmanaged>(
+            fml::MakeRefCounted<NativeImageImageBacking>(
+                ClaySharedImageBackingPixelFormatToPixelFormat(pixel_format),
+                skity::Vec2{0, 0}));
+    sink->AddRef();
+    return reinterpret_cast<ClaySharedImageSinkRef>(sink.get());
+  }
+#endif
   fml::RefPtr<SharedImageSink> sink =
       fml::MakeRefCounted<SharedImageSinkManaged>(
           buffer_mode,

@@ -62,10 +62,11 @@ source_set("lynx_adaptor") {
     public_deps += [ ":lynx_trail_hub_impl_clay" ]
   }
 
-  if (is_win || is_mac) {
+  if (is_win || is_mac || (is_linux && is_headless) ||
+      (is_harmony && is_headless)) {
     sources += [
-      "native_view_service_desktop.cc",
-      "native_view_service_desktop.h",
+      "native_view_service_embedder.cc",
+      "native_view_service_embedder.h",
     ]
     if (enable_unittests) {
       sources += [ "native_platform_view_mock.cc" ]

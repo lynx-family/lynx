@@ -40,9 +40,8 @@ class LynxUIRendererWindowless : public LynxUIRenderer,
   void OnEnterBackground() override;
 
   void InjectBubbleEvent(const char* params) override {}
-  // Windowless native views currently rely on the desktop native view service,
-  // which is only available on Windows and macOS.
-#if defined(OS_WIN) || defined(OS_MAC)
+#if defined(OS_WIN) || defined(OS_MAC) || defined(OS_LINUX) || \
+    defined(OS_HARMONY)
   void RegisterNativeView(const char* name, lynx_native_view_creator creator,
                           void* opaque) override;
 #endif

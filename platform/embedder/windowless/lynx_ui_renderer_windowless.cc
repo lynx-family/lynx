@@ -11,7 +11,7 @@
 
 #include "base/include/log/logging.h"
 #include "clay/lynx_adaptor/native_module/lynx_module_factory.h"
-#include "clay/lynx_adaptor/native_view_service_desktop.h"
+#include "clay/lynx_adaptor/native_view_service_embedder.h"
 #include "clay/lynx_adaptor/resource_loader_embedder.h"
 #include "clay/net/loader/resource_loader_creator_service.h"
 #include "clay/ui/component/view_context.h"
@@ -91,8 +91,9 @@ LynxUIRendererWindowless::LynxUIRendererWindowless(lynx_view_builder_t* builder)
   ui_delegate_ = std::make_unique<lynx::tasm::UIDelegateClay>(
       view_context, std::move(module_factory));
 
-#if defined(OS_WIN) || defined(OS_MAC)
-  clay::NativeViewServiceDesktop::SetViewFactories(
+#if defined(OS_WIN) || defined(OS_MAC) || defined(OS_LINUX) || \
+    defined(OS_HARMONY)
+  clay::NativeViewServiceEmbedder::SetViewFactories(
       view_context, std::move(builder->native_view_creators));
 #endif
 
@@ -190,14 +191,14 @@ void LynxUIRendererWindowless::OnEnterBackground() {
   headless_engine_->OnEnterBackground();
 }
 
-// NativeViewServiceDesktop is only available for desktop windowless embedders.
-#if defined(OS_WIN) || defined(OS_MAC)
+#if defined(OS_WIN) || defined(OS_MAC) || defined(OS_LINUX) || \
+    defined(OS_HARMONY)
 void LynxUIRendererWindowless::RegisterNativeView(
     const char* name, lynx_native_view_creator creator, void* opaque) {
   auto* view_context =
       static_cast<clay::ViewContext*>(headless_engine_->GetViewContext());
-  clay::NativeViewServiceDesktop::AddViewFactory(view_context, name, creator,
-                                                 opaque);
+  clay::NativeViewServiceEmbedder::AddViewFactory(view_context, name, creator,
+                                                  opaque);
 }
 #endif
 

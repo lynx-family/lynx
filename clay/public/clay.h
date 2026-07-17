@@ -88,6 +88,7 @@ typedef enum {
   kClaySharedImageBackingTypeD3DTexture,     /// Windows
   kClaySharedImageBackingTypeNativeImage,    /// Harmony
   kClaySharedImageBackingTypeShmImage,       /// Linux
+  kClaySharedImageBackingTypeAngleShmImage,  /// Linux software rendering
 } ClaySharedImageBackingType;
 
 typedef enum {
