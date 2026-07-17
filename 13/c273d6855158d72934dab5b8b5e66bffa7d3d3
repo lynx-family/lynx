@@ -1,0 +1,49 @@
+testing/lynx-platform-tests/test_script/resources/harmony/clay_native_list_layout_did_finish_1.png
+  s_d9db7e1de0ef0f::t_7167b6dd17ace6 2-3
+testing/lynx-platform-tests/test_script/resources/harmony/clay_native_list_layout_did_finish_2.png
+  s_d9db7e1de0ef0f::t_c52e40eb83fe31 1-3
+testing/lynx-platform-tests/card_template/copy_only.sh
+  s_d9db7e1de0ef0f::t_e86bdef8f05a7f 179,186
+testing/lynx-platform-tests/test_script/resources/harmony/clay_list_grid_insert_delete_0.png
+  s_d9db7e1de0ef0f::t_3b62e03b706f03 2-3
+testing/lynx-platform-tests/test_script/resources/harmony/clay_list_grid_insert_delete_1.png
+  s_d9db7e1de0ef0f::t_ed41152c16ba39 1-3
+testing/lynx-platform-tests/test_script/resources/harmony/clay_list_grid_insert_delete_10.png
+  s_d9db7e1de0ef0f::t_8c2f781f2fb1fb 1-3
+testing/lynx-platform-tests/test_script/resources/harmony/clay_list_grid_insert_delete_11.png
+  s_d9db7e1de0ef0f::t_90ab192b69c09a 1-3
+testing/lynx-platform-tests/test_script/resources/harmony/clay_list_grid_insert_delete_2.png
+  s_d9db7e1de0ef0f::t_85171230c987d5 1-3
+testing/lynx-platform-tests/test_script/resources/harmony/clay_list_grid_insert_delete_3.png
+  s_d9db7e1de0ef0f::t_e2decc55e746e9 1-3
+testing/lynx-platform-tests/test_script/resources/harmony/clay_list_grid_insert_delete_4.png
+  s_d9db7e1de0ef0f::t_5c4b758773750c 1-3
+testing/lynx-platform-tests/test_script/resources/harmony/clay_list_grid_insert_delete_5.png
+  s_d9db7e1de0ef0f::t_7fc8f79d5fce17 1-3
+testing/lynx-platform-tests/test_script/resources/harmony/clay_list_grid_insert_delete_6.png
+  s_d9db7e1de0ef0f::t_e05128acde2fc1 1-3
+testing/lynx-platform-tests/test_script/resources/harmony/clay_list_grid_insert_delete_7.png
+  s_d9db7e1de0ef0f::t_89b5953530c645 1-3
+testing/lynx-platform-tests/test_script/resources/harmony/clay_list_grid_insert_delete_8.png
+  s_d9db7e1de0ef0f::t_11f008b5796f49 1-3
+testing/lynx-platform-tests/test_script/resources/harmony/clay_list_grid_insert_delete_9.png
+  s_d9db7e1de0ef0f::t_702a7680e26447 1-3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "13c273d6855158d72934dab5b8b5e66bffa7d3d3",
+  "prompts": {},
+  "sessions": {
+    "s_d9db7e1de0ef0f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f40ba-47ff-7972-84ea-34ca8c9dfc8f",
+        "model": "unknown"
+      },
+      "human_author": "liangruijie.030116 <liangruijie.030116@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

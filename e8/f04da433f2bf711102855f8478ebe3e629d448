@@ -1,0 +1,20 @@
+lynx/.github/workflows/ci.yml
+  h_7a1e47632c7d77 133-149,151-169,171-189,229,239-272,274-294,296-316,318-319,321-339,341-369,371-391,393-413,415-437,439-456,458-486,488-522,524-706,708-757,759-775,777-809,811-876,878-1048,1050-1066,1068-1094,1096-1117
+.cq/pipelines/GithubCQTest.yml
+  h_7a1e47632c7d77 28
+.cq/pipelines/RunExternalCI.yml
+  h_7a1e47632c7d77 17,27
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "e8f04da433f2bf711102855f8478ebe3e629d448",
+  "prompts": {},
+  "humans": {
+    "h_7a1e47632c7d77": {
+      "author": "gaohanqing <gaohanqing@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}
