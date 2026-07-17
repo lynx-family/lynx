@@ -81,7 +81,6 @@ source_set("node_lynx_native") {
 
   if (is_linux) {
     sources += [
-      "../../clay/lynx_adaptor/native_platform_view_mock.cc",
       "../../core/services/event_report/event_tracker_platform_impl.cc",
       "../../platform/embedder/resource/js_source_loader_desktop.cc",
     ]

@@ -8,7 +8,6 @@ shared_library("lynx_clay_shared_library") {
   output_name = "Lynx_clay"
 
   sources = [
-    "../../../clay/lynx_adaptor/native_platform_view_mock.cc",
     "../../../platform/embedder/lynx_ui_renderer_mock.cc",
     "lynx_dynamic_lib_fallbacks.cc",
   ]

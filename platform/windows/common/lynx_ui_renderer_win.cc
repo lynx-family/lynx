@@ -15,7 +15,7 @@
 #include "base/include/string/string_conversion_win.h"
 #include "clay/common/service/service_manager.h"
 #include "clay/lynx_adaptor/native_module/lynx_module_factory.h"
-#include "clay/lynx_adaptor/native_view_service_desktop.h"
+#include "clay/lynx_adaptor/native_view_service_embedder.h"
 #include "clay/lynx_adaptor/resource_loader_embedder.h"
 #include "clay/net/loader/resource_loader_creator_service.h"
 #include "clay/shell/common/services/instrumentation_service.h"
@@ -91,7 +91,7 @@ LynxUIRendererWin::LynxUIRendererWin(lynx_view_builder_t* builder)
   ui_delegate_ = std::make_unique<lynx::tasm::UIDelegateClay>(
       view_context, std::move(module_factory));
 
-  clay::NativeViewServiceDesktop::SetViewFactories(
+  clay::NativeViewServiceEmbedder::SetViewFactories(
       view_context, std::move(builder->native_view_creators));
 
   if (builder->generic_fetcher) {
@@ -262,8 +262,8 @@ void LynxUIRendererWin::RegisterNativeView(const char* name,
                                            void* opaque) {
   auto* view_context =
       static_cast<clay::ViewContext*>(engine_->GetViewContext());
-  clay::NativeViewServiceDesktop::AddViewFactory(view_context, name, creator,
-                                                 opaque);
+  clay::NativeViewServiceEmbedder::AddViewFactory(view_context, name, creator,
+                                                  opaque);
 }
 
 lynx::tasm::UIDelegate* LynxUIRendererWin::GetUIDelegate() {

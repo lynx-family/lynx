@@ -125,10 +125,10 @@ lynx_core_source_set("embedder") {
       "vsync_monitor_fallback.h",
     ]
   } else {
-    sources += [
-      "../../clay/lynx_adaptor/native_platform_view_mock.cc",
-      "lynx_ui_renderer_mock.cc",
-    ]
+    sources += [ "lynx_ui_renderer_mock.cc" ]
+    if (!(is_harmony && is_headless)) {
+      sources += [ "../../clay/lynx_adaptor/native_platform_view_mock.cc" ]
+    }
   }
   if (is_win) {
     sources += [ "../../core/renderer/utils/sys_lynx_env/sys_env_default.cc" ]

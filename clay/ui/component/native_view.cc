@@ -11,6 +11,9 @@
 #include "base/include/fml/macros.h"
 #include "base/trace/native/trace_event.h"
 #include "clay/common/graphics/drawable_image.h"
+#if OS_LINUX
+#include "clay/common/graphics/shared_image_external_bitmap.h"
+#endif
 #include "clay/common/graphics/shared_image_external_texture.h"
 #include "clay/gfx/shared_image/shared_image_sink.h"
 #include "clay/ui/common/attribute_utils.h"
@@ -72,9 +75,18 @@ void NativeView::BindExternalTexture(fml::RefPtr<SharedImageSink> image_sink) {
   if (!image_sink || tex_id_.has_value()) {
     return;
   }
-  auto texture = std::make_shared<SharedImageExternalTexture>(image_sink);
-  page_view()->RegisterDrawableImage(texture);
-  tex_id_ = texture->Id();
+  std::shared_ptr<SharedDrawableImage> drawable_image;
+#if OS_LINUX
+  if (page_view()->UseTextureBackend()) {
+    drawable_image = std::make_shared<SharedImageExternalTexture>(image_sink);
+  } else {
+    drawable_image = std::make_shared<SharedImageExternalBitmap>(image_sink);
+  }
+#else
+  drawable_image = std::make_shared<SharedImageExternalTexture>(image_sink);
+#endif
+  page_view()->RegisterDrawableImage(drawable_image);
+  tex_id_ = drawable_image->Id();
   auto content = static_cast<RenderExternalContent*>(render_object());
   content->SetDrawableImageId(*tex_id_);
   content->SetFitMode(DrawableImage::FitMode::kClipToBounds);

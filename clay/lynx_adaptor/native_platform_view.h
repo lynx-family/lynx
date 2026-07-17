@@ -60,6 +60,14 @@ class CLAY_EXPORT NativePlatformView {
   virtual ClaySharedImageBackingType backing_type() const {
 #if defined(OS_WIN)
     return kClaySharedImageBackingTypeD3DTexture;
+#elif defined(OS_LINUX)
+#if defined(ENABLE_SOFTWARE_RENDERING)
+    return kClaySharedImageBackingTypeAngleShmImage;
+#else
+    return kClaySharedImageBackingTypeShmImage;
+#endif
+#elif defined(OS_HARMONY)
+    return kClaySharedImageBackingTypeNativeImage;
 #else
     return kClaySharedImageBackingTypeIOSurface;
 #endif
@@ -83,8 +91,8 @@ class CLAY_EXPORT NativePlatformView {
  private:
   virtual void Release() = 0;
 
-  friend class NativeViewServiceDesktop;
-  friend class NativeViewPluginDesktop;
+  friend class NativeViewServiceEmbedder;
+  friend class NativeViewPluginEmbedder;
   class NativeView* native_view_ = nullptr;
   ClaySharedImageSinkRef sink_ref_ = nullptr;
 };

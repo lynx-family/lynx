@@ -97,7 +97,7 @@ clay::Value ValueConverter::CreateClayValue(const uint32_t* data, size_t size) {
   return clay::Value(std::move(array));
 }
 
-#if OS_WIN || OS_MAC
+#if OS_WIN || OS_MAC || OS_LINUX || OS_HARMONY
 namespace {
 bool GetLynxValueString(lynx_api_env env, lynx_value val, std::string& str) {
   size_t length = 0;

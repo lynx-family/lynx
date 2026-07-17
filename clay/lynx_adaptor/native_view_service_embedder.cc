@@ -2,7 +2,7 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#include "clay/lynx_adaptor/native_view_service_desktop.h"
+#include "clay/lynx_adaptor/native_view_service_embedder.h"
 
 #include <assert.h>
 
@@ -25,14 +25,14 @@
 
 namespace clay {
 
-class NativeViewPluginDesktop : public NativeViewPlugin {
+class NativeViewPluginEmbedder : public NativeViewPlugin {
  public:
-  NativeViewPluginDesktop(int id, NativeView* native_view,
-                          NativePlatformView* native_platform_view)
+  NativeViewPluginEmbedder(int id, NativeView* native_view,
+                           NativePlatformView* native_platform_view)
       : NativeViewPlugin(id),
         native_view_(native_view),
         native_platform_view_(native_platform_view) {}
-  ~NativeViewPluginDesktop() override { native_platform_view_->Release(); }
+  ~NativeViewPluginEmbedder() override { native_platform_view_->Release(); }
 
   bool OnCreate(std::string tag) override {
     return native_platform_view_->OnCreate();
@@ -202,22 +202,23 @@ class NativeViewPluginDesktop : public NativeViewPlugin {
 };
 
 std::unique_ptr<NativeViewPlugin>
-NativeViewServiceDesktop::CreateNativeViewPlugin(int id, NativeView* view_ptr) {
+NativeViewServiceEmbedder::CreateNativeViewPlugin(int id,
+                                                  NativeView* view_ptr) {
   const auto& tag = view_ptr->GetName();
   auto search = view_factories.find(tag);
   if (search != view_factories.end()) {
     auto native_view_ptr = search->second();
     if (native_view_ptr) {
       native_view_ptr->native_view_ = view_ptr;
-      return std::make_unique<NativeViewPluginDesktop>(id, view_ptr,
-                                                       native_view_ptr);
+      return std::make_unique<NativeViewPluginEmbedder>(id, view_ptr,
+                                                        native_view_ptr);
     }
   }
   return nullptr;
 }
 
 // static
-void NativeViewServiceDesktop::SetViewFactories(
+void NativeViewServiceEmbedder::SetViewFactories(
     ViewContext* view_context,
     std::unordered_map<std::string, std::function<NativePlatformView*()>>
         factories) {
@@ -234,13 +235,13 @@ void NativeViewServiceDesktop::SetViewFactories(
           ->GetServiceManager()
           ->GetService<NativeViewService>();
   native_view_service.Act([&factories](auto& service) {
-    static_cast<NativeViewServiceDesktop&>(service).view_factories =
+    static_cast<NativeViewServiceEmbedder&>(service).view_factories =
         std::move(factories);
   });
 }
 
 // static
-void NativeViewServiceDesktop::SetViewFactories(
+void NativeViewServiceEmbedder::SetViewFactories(
     ViewContext* view_context,
     std::unordered_map<std::string, std::pair<lynx_native_view_creator, void*>>
         creators) {
@@ -259,17 +260,17 @@ void NativeViewServiceDesktop::SetViewFactories(
 }
 
 // static
-void NativeViewServiceDesktop::AddViewFactory(ViewContext* view_context,
-                                              const char* name,
-                                              lynx_native_view_creator creator,
-                                              void* opaque) {
+void NativeViewServiceEmbedder::AddViewFactory(ViewContext* view_context,
+                                               const char* name,
+                                               lynx_native_view_creator creator,
+                                               void* opaque) {
   Puppet<Owner::kUI, NativeViewService> native_view_service =
       view_context->GetPageView()
           ->GetServiceManager()
           ->GetService<NativeViewService>();
   native_view_service.Act([view_context, name, creator, opaque](auto& service) {
     auto& factories =
-        static_cast<NativeViewServiceDesktop&>(service).view_factories;
+        static_cast<NativeViewServiceEmbedder&>(service).view_factories;
     std::unordered_set<std::string> native_view_tags;
     for (auto& pair : factories) {
       native_view_tags.insert(pair.first);
@@ -287,7 +288,7 @@ void NativeViewServiceDesktop::AddViewFactory(ViewContext* view_context,
 }
 
 std::shared_ptr<NativeViewService> NativeViewService::Create() {
-  return std::make_shared<NativeViewServiceDesktop>();
+  return std::make_shared<NativeViewServiceEmbedder>();
 }
 
 }  // namespace clay

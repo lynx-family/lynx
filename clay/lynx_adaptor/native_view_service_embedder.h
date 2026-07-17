@@ -2,8 +2,8 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#ifndef CLAY_LYNX_ADAPTOR_NATIVE_VIEW_SERVICE_DESKTOP_H_
-#define CLAY_LYNX_ADAPTOR_NATIVE_VIEW_SERVICE_DESKTOP_H_
+#ifndef CLAY_LYNX_ADAPTOR_NATIVE_VIEW_SERVICE_EMBEDDER_H_
+#define CLAY_LYNX_ADAPTOR_NATIVE_VIEW_SERVICE_EMBEDDER_H_
 
 #include <memory>
 #include <string>
@@ -17,7 +17,7 @@
 namespace clay {
 class ViewContext;
 
-class NativeViewServiceDesktop final : public NativeViewService {
+class NativeViewServiceEmbedder final : public NativeViewService {
  public:
   std::unique_ptr<NativeViewPlugin> CreateNativeViewPlugin(
       int id, NativeView* view_ptr) override;
@@ -39,4 +39,4 @@ class NativeViewServiceDesktop final : public NativeViewService {
 
 }  // namespace clay
 
-#endif  // CLAY_LYNX_ADAPTOR_NATIVE_VIEW_SERVICE_DESKTOP_H_
+#endif  // CLAY_LYNX_ADAPTOR_NATIVE_VIEW_SERVICE_EMBEDDER_H_

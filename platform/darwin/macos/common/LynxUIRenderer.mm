@@ -6,7 +6,7 @@
 #include "clay/common/service/service_manager.h"
 #include "clay/lynx_adaptor/native_module/lynx_module_factory.h"
 #include "clay/lynx_adaptor/native_platform_view.h"
-#include "clay/lynx_adaptor/native_view_service_desktop.h"
+#include "clay/lynx_adaptor/native_view_service_embedder.h"
 #include "clay/lynx_adaptor/resource_loader_embedder.h"
 #include "clay/net/loader/resource_loader_creator_service.h"
 #include "clay/shell/common/services/instrumentation_service.h"
@@ -226,8 +226,8 @@ LynxUIRendererImpl::LynxUIRendererImpl(lynx_view_builder_t* builder)
   [lynx_ui_renderer setFrame:frame];
   [lynx_ui_renderer setParent:builder->parent];
 
-  clay::NativeViewServiceDesktop::SetViewFactories(view_context,
-                                                   std::move(builder->native_view_creators));
+  clay::NativeViewServiceEmbedder::SetViewFactories(view_context,
+                                                    std::move(builder->native_view_creators));
 
   if (builder->generic_fetcher) {
     auto fetcher_holder = std::make_shared<LynxResourceFetcherHolder>(builder->generic_fetcher);
@@ -378,7 +378,7 @@ void LynxUIRendererImpl::RegisterNativeView(const char* name, lynx_native_view_c
   LynxUIRendererMac* lynx_ui_renderer = (__bridge LynxUIRendererMac*)lynx_ui_renderer_;
   auto* view_context =
       reinterpret_cast<clay::ViewContext*>(lynx_ui_renderer.clayViewProvider.clayViewContext);
-  clay::NativeViewServiceDesktop::AddViewFactory(view_context, name, creator, opaque);
+  clay::NativeViewServiceEmbedder::AddViewFactory(view_context, name, creator, opaque);
   // A native view factory was registered.  If the overlay already exists,
   // re-insert it on top so that a new factory whose view is created later
   // does not end up above the overlay (corner case C2).
