@@ -5,6 +5,7 @@
 #ifndef CLAY_UI_COMPONENT_MAP_MARKER_VIEW_H_
 #define CLAY_UI_COMPONENT_MAP_MARKER_VIEW_H_
 
+#include "clay/gfx/geometry/float_size.h"
 #include "clay/ui/component/native_view.h"
 
 namespace clay {
@@ -13,6 +14,8 @@ class MapMarkerView : public WithTypeInfo<MapMarkerView, NativeView> {
  public:
   MapMarkerView(int id, PageView* page_view);
   ~MapMarkerView() override = default;
+
+  FloatSize RasterSnapshotSize();
 };
 
 }  // namespace clay

@@ -202,10 +202,14 @@ annotation for insertion if the map binding already exists.
 ### 5.3 Layout before marker ready work
 
 Because generic `NativeView::OnNodeReady()` pushes a final `ApplyUpdateChanged()`
-before dispatching ready, Java-side marker code can receive up-to-date layout
-before `LynxMapMarker.onNodeReady()` runs.
+before dispatching ready, Android marker code receives up-to-date layout before
+`LynxMapMarker.onNodeReady()` runs.
 
-This ordering is relied on by the marker snapshot flow.
+On iOS, the current marker's props, events, and padding are force-flushed before
+the wrapped `BDXLynxMapMarkerNG` receives `onNodeReady()`. Its layout remains
+queued for compositor presentation. This ordering is required because initial
+map props can register node-ready work that would otherwise be stranded if a
+scroll or layout burst deferred prop delivery until after ready.
 
 ### 5.4 NodeReady remains C++-driven
 
@@ -355,9 +359,15 @@ Implementation boundary:
 - `PageView::MakeRasterSnapshot(...)` reads the target render object's layer,
   creates a temporary `FrameBuilder`, calls `BuildSubtreeFrame(layer)`, and
   rasterizes that isolated subtree
-- for detached marker roots, the encoded bitmap is still rasterized from
-  the physical layer tree, but the callback width and height are forced to the
-  marker root's layout size; map SDK consumers use that layout size for marker
+- for detached marker roots, the encoded bitmap is still rasterized from the
+  physical layer tree; a marker root keeps its layout size unless exactly one
+  axis fills the map parent and has a smaller, non-negative child-content extent
+- in that single-axis fill case, the detached snapshot viewport and callback use
+  the child-content extent for the filled axis; this prevents transparent
+  map-sized space from changing marker annotation sizing and anchors
+- the physical snapshot canvas rounds each converted viewport axis up and keeps
+  at least one pixel, so fractional content extents are not truncated
+- map SDK consumers use the callback's logical snapshot viewport for marker
   annotation sizing and anchor/offset calculations instead of inferring it from
   device pixels
 
@@ -421,10 +431,10 @@ Current iOS chain:
    `NativeViewPluginIOS`
 4. C++ selects the marker `NativeView` root as the snapshot root
 5. `PageView::MakeRasterSnapshot(...)` returns PNG bytes and output size
-   asynchronously; for detached map marker snapshots the output size is the marker
-   layout size, not the encoded image pixel size
+   asynchronously; for detached map marker snapshots the output size is the
+   logical snapshot viewport, not the encoded image pixel size
 6. the iOS bridge decodes the bitmap, derives `UIImage.scale` from the decoded
-   image pixels divided by the current marker layout size, sets the snapshot
+   image pixels divided by the reported logical viewport size, sets the snapshot
    image on the wrapped marker `UIImageView`, and invokes `refreshMarker`
 
 Current root-selection rule:
@@ -433,7 +443,10 @@ Current root-selection rule:
 
 Rationale:
 
-- the marker root size is the bitmap contract passed back to the map SDK
+- the marker root is the bitmap contract passed back to the map SDK
+- when exactly one root axis fills the map parent and its child-content extent is
+  smaller and non-negative, that child-content extent is the logical viewport
+  contract for the filled axis
 - child-local offsets under the marker root must be preserved
 - the root's page/global offset should be normalized by the snapshot path rather
   than copied into the bitmap content
@@ -570,9 +583,10 @@ The iOS bridge must not use decoded `UIImage.size` as a layout fallback for
 `x-map-marker-ng`: decoded snapshot images are pixel-backed, while the marker
 custom annotation view expects UIKit point size. For detached map marker
 snapshots, `PageView::MakeRasterSnapshot(...)` returns physical PNG bytes and
-reports the marker layout size in Clay logical pixels. iOS converts that
-reported size directly to UIKit points, then derives `UIImage.scale` from
-decoded pixel width divided by the target point width.
+reports the marker's logical snapshot viewport in Clay pixels. iOS converts
+that reported size directly to UIKit points, then derives the single
+`UIImage.scale` value from the mean of the decoded-pixel-to-logical-size ratios
+on both axes.
 
 On iOS, if snapshot application succeeds but `refreshMarker` still reports that
 the map owner, annotation model, or renderable marker content is not ready, the
@@ -686,8 +700,8 @@ The required coverage is:
 - A logical-only marker does not contribute visible platform-view drawing.
 - Snapshot bytes decode to a non-empty bitmap before the map annotation is
   created or refreshed.
-- The callback dimensions for a detached marker use its logical layout bounds,
-  while the encoded image retains the physical pixel density.
+- The callback dimensions for a detached marker use its logical snapshot
+  viewport, while the encoded image retains the physical pixel density.
 - Repeated marker updates replace the existing annotation image instead of
   creating duplicate visible markers.
 
@@ -696,7 +710,7 @@ The required coverage is:
 - The wrapped platform view forwards snapshot requests to the marker's Clay
   render object.
 - Snapshot image data contains physical pixels, while the reported detached
-  marker dimensions preserve the logical layout size.
+  marker dimensions preserve the logical snapshot viewport size.
 - The image scale represents physical pixel density, and the annotation view
   size remains expressed in UIKit points.
 - Snapshot completion refreshes the existing map annotation after both the map
