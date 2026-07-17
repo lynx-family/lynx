@@ -61,6 +61,8 @@ class ExposeObserver : public IntersectionObserver {
 
   void ResumeExposure();
 
+  void SetExposureHostVisible(bool visible);
+
   void CheckForIntersectionWithTarget() override;
 
  protected:
@@ -70,8 +72,10 @@ class ExposeObserver : public IntersectionObserver {
 
  private:
   ExposeAttrs expose_attrs_ = {};
+  bool exposure_host_visible_ = true;
   void NotifyAppearEvent(bool appear);
   void NotifyGlobalEvent(bool appear);
+  void NotifyExposureEvent(bool appear);
   void AssembleDetailData();
   void NotifyTarget() override;
   std::function<void(clay::Value::Map)> custom_event_callback_ = nullptr;

@@ -328,6 +328,7 @@ class ViewContext : public std::enable_shared_from_this<ViewContext> {
 
   void StopExposure(bool send_event);
   void ResumeExposure();
+  void SetExposureHostVisible(bool visible);
 
  protected:
   // FIXME(Xietong):
