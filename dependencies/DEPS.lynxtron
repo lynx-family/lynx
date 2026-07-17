@@ -179,7 +179,7 @@ deps = {
     "third_party/quickjs/src": {
         "type": "git",
         "url": "https://github.com/lynx-family/primjs.git",
-        "commit": "2588054ab58e40ac31f23c74d41569880cca8fbd",
+        "commit": revision.PRIMJS,
         "ignore_in_git": True,
     },
     '../third_party/libpng': {
@@ -481,5 +481,11 @@ deps = {
         "deps_file": "DEPS",
         "ignore_in_git": True,
         "enable_lfs": False,
+    },
+    "../third_party/ServalKit": {
+        "type": "git",
+        "url": "https://github.com/lynx-family/serval-kit.git",
+        "commit": revision.SERVALKIT,
+        "ignore_in_git": True,
     },
 }
