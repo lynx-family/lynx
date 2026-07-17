@@ -25,6 +25,8 @@ class ComputedCSSStyleCssTextHelper {
   base::String GetComputedStyleByPropertyID(
       tasm::CSSPropertyID id, starlight::ComputedCSSStyle* computed_css_style,
       starlight::LayoutResultForRendering ref_layout_result) {
+    layouts_unit_per_px_ =
+        computed_css_style->GetMeasureContext().layouts_unit_per_px_;
     const auto* funcMap = GetterFuncMap();
     if (id > tasm::CSSPropertyID::kPropertyStart &&
         id < tasm::CSSPropertyID::kPropertyEnd) {
@@ -109,6 +111,8 @@ class ComputedCSSStyleCssTextHelper {
       const starlight::LayoutResultForRendering& ref_layout_result);
 
   float GetDefaultBorderWidth(starlight::ComputedCSSStyle* computed_css_style);
+
+  float layouts_unit_per_px_{1.f};
 };
 
 }  // namespace tasm
