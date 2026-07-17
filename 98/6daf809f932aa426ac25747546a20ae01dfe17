@@ -1,0 +1,31 @@
+lynx/base/include/fml/concurrent_message_loop.h
+  s_785ece39d0e827::t_81ceede265a6db 22,27-29,74-77
+lynx/base/src/BUILD.gn
+  s_785ece39d0e827::t_e162af7e9bcd71 263,316-318
+lynx/base/src/fml/concurrent_message_loop.cc
+  s_785ece39d0e827::t_91d30998b679fa 18-21,67-74,92-96,103-107,111-118,135-141,226-231
+lynx/base/src/fml/message_loop_unittests.cc
+  s_785ece39d0e827::t_750b357f661c55 10,12,301-370
+lynx/base/src/fml/platform/harmony/concurrent_message_loop_harmony_impl.cc
+  s_785ece39d0e827::t_9961a7f000602f 1-262
+lynx/base/src/fml/platform/harmony/concurrent_message_loop_harmony_impl.h
+  s_785ece39d0e827::t_d01a3dcc8ba41c 1-70
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "986daf809f932aa426ac25747546a20ae01dfe17",
+  "prompts": {},
+  "sessions": {
+    "s_785ece39d0e827": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f5e5b-7799-7870-93a3-a7bce6ef941a",
+        "model": "unknown"
+      },
+      "human_author": "yangguangzhao <yangguangzhao.solace@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}
