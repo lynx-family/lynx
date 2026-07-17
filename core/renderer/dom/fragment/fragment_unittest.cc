@@ -278,6 +278,40 @@ class FragmentDrawTest : public ::testing::Test {
   std::shared_ptr<::testing::NiceMock<test::MockTasmDelegate>> tasm_mediator;
 };
 
+TEST_F(FragmentDrawTest, DrawViewRecordsFinalOffsetWithRenderOffset) {
+  auto element = manager->CreateFiberView();
+  Fragment fragment(element.get());
+  fragment.has_platform_renderer_ = true;
+
+  starlight::LayoutResultForRendering layout;
+  layout.offset_ = starlight::FloatPoint(5.f, 6.f);
+  layout.size_ = FloatSize(30.f, 40.f);
+  fragment.UpdateLayout(layout);
+  fragment.render_offset_[0] = 10.f;
+  fragment.render_offset_[1] = 20.f;
+
+  DisplayListBuilder builder;
+  fragment.Draw(builder);
+
+  DisplayList display_list = builder.Build();
+  ASSERT_EQ(display_list.GetContentOpTypesSize(), 1u);
+  ASSERT_EQ(display_list.GetContentIntDataSize(), 3u);
+  ASSERT_EQ(display_list.GetContentFloatDataSize(), 2u);
+
+  const int32_t* op_types = display_list.GetContentOpTypesData();
+  const int32_t* int_data = display_list.GetContentIntData();
+  const float* float_data = display_list.GetContentFloatData();
+  ASSERT_NE(op_types, nullptr);
+  ASSERT_NE(int_data, nullptr);
+  ASSERT_NE(float_data, nullptr);
+  EXPECT_EQ(op_types[0], static_cast<int32_t>(DisplayListOpType::kDrawView));
+  EXPECT_EQ(int_data[0], 1);
+  EXPECT_EQ(int_data[1], 2);
+  EXPECT_EQ(int_data[2], fragment.id());
+  EXPECT_FLOAT_EQ(float_data[0], 15.f);
+  EXPECT_FLOAT_EQ(float_data[1], 26.f);
+}
+
 TEST_F(FragmentTest, CreateLayerIfNeededWritesFlattenInitData) {
   auto element = manager->CreateFiberText("text");
   element->MarkAsDirectChildOfCompatibleComponent(true);
@@ -339,7 +373,7 @@ TEST_F(FragmentTest, ReusedEventTargetTreeRefreshesScrollOffsetForHitTest) {
   DisplayListBuilder root_builder;
   root_builder
       .Begin(kRootId, PlatformRendererType::kPage, 0.f, 0.f, 100.f, 100.f)
-      .DrawView(1)
+      .DrawView(1, 0.f, 0.f)
       .End();
   root_renderer->UpdateDisplayList(root_builder.Build());
 
