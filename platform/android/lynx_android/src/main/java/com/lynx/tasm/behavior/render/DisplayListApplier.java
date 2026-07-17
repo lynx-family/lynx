@@ -524,8 +524,12 @@ public class DisplayListApplier implements Drawable.Callback {
         }
 
         case OP_DRAW_VIEW: {
-          // Draw view: view_id (1 int)
+          // Draw view: view_id (1 int), offset_x and offset_y (2 floats).
+          // Android lays out the native child separately, but still consumes
+          // the synchronized protocol.
           nextContentInt();
+          nextContentFloat();
+          nextContentFloat();
           return;
         }
 
