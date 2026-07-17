@@ -314,7 +314,7 @@ export class UIBase {
 
   setChildrenManagementFuncs(insertChild: Function, removeChild: Function): void;
 
-  attachGestureToNode(node: NativeContent): void;
+  attachGestureToNode(node: NativeContent, level?: number): void;
 
   reuseNativeContent(node: NativeContent): void;
 

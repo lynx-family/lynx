@@ -284,6 +284,7 @@ class LynxContext {
   bool EventThrough();
   bool ShouldBlockNativeEvent();
   void AttachGesturesToRoot(UIBase* root);
+  void AttachGesturesToOverlayRoot(UIBase* root, int32_t level);
   void DetachGesturesFromRoot(UIBase* root);
   void OnGestureRecognized(UIBase* ui);
   void OnGestureRecognizedWithSign(int sign);

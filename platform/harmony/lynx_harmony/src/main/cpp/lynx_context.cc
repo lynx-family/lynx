@@ -485,6 +485,13 @@ void LynxContext::AttachGesturesToRoot(UIBase* root) {
   ui_owner_->AttachGesturesToRoot(root);
 }
 
+void LynxContext::AttachGesturesToOverlayRoot(UIBase* root, int32_t level) {
+  if (!ui_owner_) {
+    return;
+  }
+  ui_owner_->AttachGesturesToOverlayRoot(root, level);
+}
+
 void LynxContext::DetachGesturesFromRoot(UIBase* root) {
   if (!ui_owner_) {
     return;
