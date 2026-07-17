@@ -2375,6 +2375,9 @@ bool UIBase::ContainsPoint(float point[2]) {
 }
 
 bool UIBase::ShouldHitTest() {
+  if (!overlay_content_active_) {
+    return false;
+  }
   // When the parent node is JSUIBase, in the case of Custom Layout, the parent
   // of FrameNode is nullptr, which will cause the child node to fail to respond
   // to HitTest. Therefore, this needs to be avoided.
@@ -2396,14 +2399,29 @@ bool UIBase::ShouldHitTest() {
 }
 
 EventTarget* UIBase::HitTest(float point[2]) {
+  return HitTestInternal(point, nullptr);
+}
+
+EventTarget* UIBase::HitTestExcluding(
+    float point[2], const std::vector<UIBase*>& excluded_roots) {
+  return HitTestInternal(point, &excluded_roots);
+}
+
+EventTarget* UIBase::HitTestInternal(
+    float point[2], const std::vector<UIBase*>* excluded_roots) {
   gesture_status_ = LynxInterceptGestureStatus::LynxInterceptGestureStateUnset;
   float origin_point[2]{point[0], point[1]};
   EventTarget* target = nullptr;
   float target_point[] = {point[0], point[1]};
   float child_point[2] = {0};
-  std::vector<EventTarget*> sibling_targets;
+  std::vector<UIBase*> sibling_targets;
   for (int i = children_.size() - 1; i >= 0; --i) {
     UIBase* ui = children_[i];
+    if (excluded_roots &&
+        std::find(excluded_roots->begin(), excluded_roots->end(), ui) !=
+            excluded_roots->end()) {
+      continue;
+    }
     if (!ui->ShouldHitTest()) {
       continue;
     }
@@ -2427,19 +2445,34 @@ EventTarget* UIBase::HitTest(float point[2]) {
     }
   }
 
+  auto hit_test_child = [this, excluded_roots](UIBase* child,
+                                               float child_point[2]) {
+    if (excluded_roots) {
+      for (UIBase* excluded_root : *excluded_roots) {
+        for (UIBase* ancestor = excluded_root->Parent();
+             ancestor && ancestor != this; ancestor = ancestor->Parent()) {
+          if (ancestor == child) {
+            return child->HitTestInternal(child_point, excluded_roots);
+          }
+        }
+      }
+    }
+    return child->HitTest(child_point);
+  };
   EventTarget* best_hittest_target =
-      target ? target->HitTest(target_point) : this;
+      target ? hit_test_child(static_cast<UIBase*>(target), target_point)
+             : this;
   if (!best_hittest_target ||
       best_hittest_target->PointerEvents() == LynxPointerEventsValue::kNone) {
     best_hittest_target = nullptr;
     for (auto it = sibling_targets.begin(); it != sibling_targets.end(); ++it) {
-      EventTarget* sibling = *it;
+      UIBase* sibling = *it;
       if (!sibling || sibling == target) {
         continue;
       }
       float sibling_point[] = {origin_point[0], origin_point[1]};
       sibling->GetPointInTarget(sibling_point, this, origin_point);
-      best_hittest_target = sibling->HitTest(sibling_point);
+      best_hittest_target = hit_test_child(sibling, sibling_point);
       if (!best_hittest_target || best_hittest_target->PointerEvents() ==
                                       LynxPointerEventsValue::kNone) {
         best_hittest_target = nullptr;

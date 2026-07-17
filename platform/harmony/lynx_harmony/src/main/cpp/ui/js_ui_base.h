@@ -75,6 +75,7 @@ class JSUIBase : public UIBase {
   static napi_value ReuseNativeContent(napi_env env, napi_callback_info info);
   static napi_value DetachGestureFromNode(napi_env env,
                                           napi_callback_info info);
+  static void SetOverlayContent(UIBase* ui, bool is_overlay_content);
 
   static napi_value GetUIFromNativeContent(napi_env env,
                                            napi_callback_info info);
