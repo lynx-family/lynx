@@ -258,6 +258,8 @@ TEST_F(DisplayListTest, DisplayListReaderRoundTrip) {
   DisplayListItem draw_view;
   draw_view.type = DisplayListOpType::kDrawView;
   draw_view.payload.draw_view.view_id = 99;
+  draw_view.payload.draw_view.offset_x = 12.0f;
+  draw_view.payload.draw_view.offset_y = 34.0f;
   display_list_->AppendItem(draw_view);
 
   DisplayListItem text;
@@ -340,6 +342,8 @@ TEST_F(DisplayListTest, DisplayListReaderRoundTrip) {
   const auto& r3 = reader.Next();
   EXPECT_EQ(r3.type, DisplayListOpType::kDrawView);
   EXPECT_EQ(r3.payload.draw_view.view_id, 99);
+  EXPECT_FLOAT_EQ(r3.payload.draw_view.offset_x, 12.0f);
+  EXPECT_FLOAT_EQ(r3.payload.draw_view.offset_y, 34.0f);
 
   const auto& r4 = reader.Next();
   EXPECT_EQ(r4.type, DisplayListOpType::kText);

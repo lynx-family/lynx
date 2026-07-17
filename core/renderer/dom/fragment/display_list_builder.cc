@@ -63,11 +63,15 @@ DisplayListBuilder& DisplayListBuilder::Fill(uint32_t color,
   return *this;
 }
 
-DisplayListBuilder& DisplayListBuilder::DrawView(int view_id) {
-  display_list_.AddOperation(DisplayListOpType::kDrawView, view_id);
+DisplayListBuilder& DisplayListBuilder::DrawView(int view_id, float offset_x,
+                                                 float offset_y) {
+  display_list_.AddOperation(DisplayListOpType::kDrawView, view_id, offset_x,
+                             offset_y);
   DisplayListItem item{};
   item.type = DisplayListOpType::kDrawView;
   item.payload.draw_view.view_id = view_id;
+  item.payload.draw_view.offset_x = offset_x;
+  item.payload.draw_view.offset_y = offset_y;
   display_list_.AppendItem(item);
   display_list_.AddSubLayer(view_id);
   return *this;

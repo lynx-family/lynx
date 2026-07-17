@@ -90,6 +90,35 @@
 - (void)onSetFrame:(CGRect)frame {
 }
 
+- (void)updateLayoutOffsetIfNeeded:(CGPoint)offset {
+  if (_host == nil) {
+    return;
+  }
+
+  CGRect layoutFrame;
+  if (CATransform3DIsIdentity(_host.layer.transform)) {
+    layoutFrame = _host.frame;
+    if (CGPointEqualToPoint(layoutFrame.origin, offset)) {
+      return;
+    }
+    layoutFrame.origin = offset;
+    [_host setFrame:layoutFrame];
+  } else {
+    CALayer* layer = _host.layer;
+    BOOL anchorPointChanged = !CGPointEqualToPoint(layer.anchorPoint, CGPointZero);
+    BOOL positionChanged = !CGPointEqualToPoint(layer.position, offset);
+    if (!anchorPointChanged && !positionChanged) {
+      return;
+    }
+    layoutFrame = CGRectMake(offset.x, offset.y, layer.bounds.size.width, layer.bounds.size.height);
+    layer.anchorPoint = CGPointZero;
+    layer.position = offset;
+  }
+
+  [self onSetFrame:layoutFrame];
+  [self syncHostDecorationLayers];
+}
+
 - (void)syncHostDecorationLayers {
   if (_applier == nil) {
     return;
