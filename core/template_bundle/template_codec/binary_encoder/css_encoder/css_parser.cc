@@ -146,7 +146,7 @@ void CSSParser::MergeCSSParseToken(fml::RefPtr<CSSParseToken> &originToken,
   auto &originStyle = originToken->attributes();
   auto &newStyle = newToken->attributes();
   for (auto &iter : newStyle) {
-    originStyle[iter.first] = std::move(iter.second);
+    originStyle[iter.first] = iter.second;
   }
 
   originToken->GetImportantAttributes();
@@ -154,7 +154,7 @@ void CSSParser::MergeCSSParseToken(fml::RefPtr<CSSParseToken> &originToken,
   auto &originImportant = originToken->important_attributes();
   auto &newImportant = newToken->important_attributes();
   for (auto &iter : newImportant) {
-    originImportant[iter.first] = std::move(iter.second);
+    originImportant[iter.first] = iter.second;
   }
 }
 
@@ -345,15 +345,6 @@ void CSSParser::ParseCSSTokensNew(
       std::make_unique<CSSParseTokenGroup>(value, path, compile_options_);
   if (token_group->selector_parse_failed()) {
     CollectSelectorDiagnostics(value, token_group->failed_selector_text());
-  }
-  const std::string &key = token_group->selector_key_;
-  for (auto &selector_tuple : selector_tuple_lists) {
-    if (selector_tuple.selector_key == key) {
-      // the new css ng will support class merge by default
-      MergeCSSParseToken(selector_tuple.parse_token,
-                         token_group->selector_tuple_.parse_token);
-      break;
-    }
   }
   selector_tuple_lists.emplace_back(std::move(token_group->selector_tuple_));
 }
