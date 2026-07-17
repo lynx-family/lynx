@@ -45,7 +45,7 @@ class UIImage : public UIBase {
   virtual void SetImageSrcAttribute(const std::string& value, bool is_base64);
   void SetImageRendering(const lepus::Value& value) override;
   void OnNodeReady() override;
-  bool HasOverlappingRendering() override { return HasBackground(); };
+  bool HasOverlappingRendering() override { return overlap_ && HasBackground(); }
 
  private:
   std::string src_;

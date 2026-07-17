@@ -55,7 +55,9 @@ class UIFlattenImage : public UIBase,
   void onAnimationStart() override;
   void onAnimationRepeat() override;
   void onAnimationStop() override;
-  bool HasOverlappingRendering() override { return HasBackground(); };
+  bool HasOverlappingRendering() override {
+    return overlap_ && HasBackground();
+  }
 
  private:
   std::string src_;
