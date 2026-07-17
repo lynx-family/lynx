@@ -209,6 +209,59 @@ TEST(CSSParser, MergeCSSParseTokenPreservesImportantAttributes) {
       origin->GetImportantAttributes().contains(tasm::kPropertyIDWidth));
 }
 
+TEST(CSSParser, ParseCSSTokensNewKeepsDuplicatedSelectorValues) {
+  CompileOptions options;
+  options.enable_css_selector_ = true;
+  options.enable_css_parser_ = true;
+  options.target_sdk_version_ = "3.9";
+  CSSParser parser(options);
+
+  std::string rule_list_json = R"([
+    {
+      "type": "StyleRule",
+      "selectorText": {"value": ".box", "loc": {"line": 1, "column": 1}},
+      "style": [
+        {"name": "color", "value": "red", "keyLoc": {"line": 2, "column": 3}},
+        {"name": "font-size", "value": "30px", "keyLoc": {"line": 3, "column": 3}}
+      ],
+      "variables": {}
+    },
+    {
+      "type": "StyleRule",
+      "selectorText": {"value": ".box", "loc": {"line": 5, "column": 1}},
+      "style": [
+        {"name": "color", "value": "blue", "keyLoc": {"line": 6, "column": 3}},
+        {"name": "width", "value": "200px", "keyLoc": {"line": 7, "column": 3}}
+      ],
+      "variables": {}
+    }
+  ])";
+
+  rapidjson::Document doc;
+  doc.Parse(rule_list_json.c_str());
+  ASSERT_FALSE(doc.HasParseError());
+
+  auto fragment = parser.ParseExternalFragment(doc, "/test.css");
+  ASSERT_NE(fragment, nullptr);
+
+  const auto& tuples = fragment->selector_tuple();
+  ASSERT_EQ(tuples.size(), 2);
+
+  const auto& first_attrs = tuples[0].parse_token->GetAttributes();
+  auto first_color = first_attrs.find(tasm::kPropertyIDColor);
+  ASSERT_TRUE(first_color != first_attrs.end());
+  EXPECT_FALSE(first_color->second.IsEmpty());
+  EXPECT_TRUE(first_attrs.contains(tasm::kPropertyIDFontSize));
+  EXPECT_FALSE(first_attrs.contains(tasm::kPropertyIDWidth));
+
+  const auto& second_attrs = tuples[1].parse_token->GetAttributes();
+  auto second_color = second_attrs.find(tasm::kPropertyIDColor);
+  ASSERT_TRUE(second_color != second_attrs.end());
+  EXPECT_FALSE(second_color->second.IsEmpty());
+  EXPECT_TRUE(second_attrs.contains(tasm::kPropertyIDWidth));
+  EXPECT_FALSE(second_attrs.contains(tasm::kPropertyIDFontSize));
+}
+
 TEST(CSSParserDiagnostics, ParseExternalFragmentCollectsDiagnostics) {
   CompileOptions options;
   CSSParser parser(options);
