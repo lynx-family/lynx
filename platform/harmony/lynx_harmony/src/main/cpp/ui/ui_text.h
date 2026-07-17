@@ -39,7 +39,9 @@ class UIText : public UIBase {
   void FrameDidChanged() override;
   EventTarget* HitTest(float point[2]) override;
   const std::string& GetAccessibilityLabel() const override;
-  bool HasOverlappingRendering() override { return HasBackground(); }
+  bool HasOverlappingRendering() override {
+    return overlap_ && HasBackground();
+  }
 
   void InvokeMethod(const std::string& method, const lepus::Value& args,
                     base::MoveOnlyClosure<void, int32_t, const lepus::Value&>

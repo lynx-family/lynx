@@ -309,7 +309,7 @@ class LYNX_EXPORT UIBase : public std::enable_shared_from_this<UIBase>,
   float margin_bottom_{0};
   std::optional<StickyInfo> sticky_info_{std::nullopt};
   float opacity_{1.f};
-  bool render_group_{false};
+  bool overlap_{true};
   void GetTransformValue(float left, float right, float top, float bottom,
                          std::vector<float>& point);
   void GetLocationOnScreen(std::pair<float, float>& point);
@@ -389,7 +389,7 @@ class LYNX_EXPORT UIBase : public std::enable_shared_from_this<UIBase>,
   void InitAccessibilityAttrs(LynxAccessibilityMode mode,
                               const std::string& traits);
   // Returns whether this view has content which overlaps.
-  virtual bool HasOverlappingRendering() { return true; }
+  virtual bool HasOverlappingRendering() { return overlap_; }
   bool HasBackground() const {
     return background_drawable_ || has_background_color_;
   }
@@ -399,7 +399,7 @@ class LYNX_EXPORT UIBase : public std::enable_shared_from_this<UIBase>,
   void SetReactRef(const lepus::Value& value);
   void SetBackgroundColor(const lepus::Value& value);
   void SetOpacity(const lepus::Value& value);
-  void SetGroup(const lepus::Value& value);
+  void SetOverlap(const lepus::Value& value);
   void SetVisibility(const lepus::Value& value);
   void CreateOrUpdateBackground();
   void CreateOrUpdateMask();

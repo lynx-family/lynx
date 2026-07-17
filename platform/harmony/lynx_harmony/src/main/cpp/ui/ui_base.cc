@@ -106,7 +106,7 @@ std::unordered_map<std::string, UIBase::PropSetter> UIBase::prop_setters_ = {
     {"overflow-y", &UIBase::SetOverflowY},
     {"overflow", &UIBase::SetOverflow},
     {"opacity", &UIBase::SetOpacity},
-    {"harmony-render-group", &UIBase::SetGroup},
+    {"overlap", &UIBase::SetOverlap},
     {"visibility", &UIBase::SetVisibility},
     {"image-rendering", &UIBase::SetImageRendering},
     {"border-width", &UIBase::SetBorderWidth},
@@ -859,10 +859,8 @@ void UIBase::OnNodeReady() {
 
   if (dirty_flags_ & kFlagRenderGroup) {
     int group =
-        (base::FloatsNotEqual(opacity_, 1.0) && HasOverlappingRendering()) ||
-                render_group_
-            ? 1
-            : 0;
+        (base::FloatsNotEqual(opacity_, 1.0) && HasOverlappingRendering()) ? 1
+                                                                           : 0;
     NodeManager::Instance().SetAttributeWithNumberValue(
         DrawNode(), NODE_RENDER_GROUP, group);
   }
@@ -1009,12 +1007,12 @@ void UIBase::SetOpacity(const lepus::Value& value) {
                                                       opacity);
 }
 
-void UIBase::SetGroup(const lepus::Value& value) {
+void UIBase::SetOverlap(const lepus::Value& value) {
   bool v = value.Bool();
   if (value.IsNil()) {
-    v = false;
+    v = true;
   }
-  render_group_ = v;
+  overlap_ = v;
   dirty_flags_ |= kFlagRenderGroup;
 }
 
