@@ -442,6 +442,7 @@ bool PageView::BeginFrame(
     render_phase_ = RenderPhase::kIdle;
     FlushUIMethodTasks();
     FlushGapTaskIfNecessary(target_time);
+    SendGlobalExposureEvent();
 
 #ifdef ENABLE_ACCESSIBILITY
     // We still need to update the semantics even though the UI has not changed.

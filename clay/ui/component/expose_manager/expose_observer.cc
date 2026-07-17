@@ -74,16 +74,18 @@ ExposeObserver::ExposeObserver(IntersectionObserverManager* manager,
     : IntersectionObserver(manager, map, view) {}
 
 void ExposeObserver::StopExposure(bool send_event) {
-  if (send_event) {
-    CheckForIntersectionWithTarget();
-  }
+  const bool should_notify_disappear =
+      send_event && expose_attrs_.expose_state == kExposed;
   expose_attrs_.exposure_stoped = true;
-  expose_attrs_.expose_state = kInit;
+  if (should_notify_disappear) {
+    NotifyExposureEvent(false);
+  }
 }
 
-void ExposeObserver::ResumeExposure() {
-  expose_attrs_.exposure_stoped = false;
-  CheckForIntersectionWithTarget();
+void ExposeObserver::ResumeExposure() { expose_attrs_.exposure_stoped = false; }
+
+void ExposeObserver::SetExposureHostVisible(bool visible) {
+  exposure_host_visible_ = visible;
 }
 
 void ExposeObserver::NotifyAppearEvent(bool appear) {
@@ -130,6 +132,22 @@ void ExposeObserver::NotifyGlobalEvent(bool appear) {
                                                       attached_view_);
 }
 
+void ExposeObserver::NotifyExposureEvent(bool appear) {
+  if (expose_attrs_.exposure_should_notify_appear_ ||
+      expose_attrs_.exposure_should_notify_disappear_) {
+    NotifyAppearEvent(appear);
+  }
+  if (!expose_attrs_.exposure_id.empty()) {
+    NotifyGlobalEvent(appear);
+  } else {
+    FML_DLOG(ERROR) << " fail notify by exposure id null, view "
+                    << attached_view_
+                    << "view id: " << attached_view_->GetIdSelector();
+  }
+  expose_attrs_.expose_state =
+      appear ? ExposureState::kExposed : ExposureState::kDisExposed;
+}
+
 void ExposeObserver::NotifyTarget() {
   double ratio = 0;
   auto map = now_entry_->ToMap();
@@ -137,20 +155,7 @@ void ExposeObserver::NotifyTarget() {
   if (it != map.end()) {
     attribute_utils::TryGetNum(it->second, ratio, 0);
   }
-  bool show = ratio > 0;
-  if (expose_attrs_.exposure_should_notify_appear_ ||
-      expose_attrs_.exposure_should_notify_disappear_) {
-    NotifyAppearEvent(show);
-  };
-  if (!expose_attrs_.exposure_id.empty()) {
-    NotifyGlobalEvent(show);
-  } else {
-    FML_DLOG(ERROR) << " fail notify by exposure id null, view "
-                    << attached_view_
-                    << "view id: " << attached_view_->GetIdSelector();
-  }
-  expose_attrs_.expose_state =
-      show ? ExposureState::kExposed : ExposureState::kDisExposed;
+  NotifyExposureEvent(ratio > 0);
 }
 
 void ExposeObserver::CheckForIntersectionWithTarget() {
@@ -159,6 +164,11 @@ void ExposeObserver::CheckForIntersectionWithTarget() {
       (expose_attrs_.exposure_id.empty() &&
        !expose_attrs_.exposure_should_notify_appear_ &&
        !expose_attrs_.exposure_should_notify_disappear_)) {
+    return;
+  }
+  // Window detachment only suspends exposure detection and preserves the
+  // current state. A real node detachment must still close an active exposure.
+  if (!exposure_host_visible_ && !is_detaching_) {
     return;
   }
   now_entry_ = std::make_unique<IntersectionObserverEntry>();
