@@ -87,7 +87,7 @@ struct OpData {
 | kBegin | 0 | Begin a Fragment, record position and size |
 | kEnd | 1 | End current Fragment |
 | kFill | 2 | Fill background color |
-| kDrawView | 3 | Draw child View (nested Layer) |
+| kDrawView | 3 | Draw child View using its final local offset |
 | kText | 6 | Draw text |
 | kImage | 7 | Draw image |
 | kCustom | 8 | Custom drawing |
@@ -124,7 +124,7 @@ class DisplayListBuilder {
   DisplayListBuilder& Begin(int id, float x, float y, float width, float height);
   DisplayListBuilder& End();
   DisplayListBuilder& Fill(uint32_t color, int32_t clip_index);
-  DisplayListBuilder& DrawView(int view_id);
+  DisplayListBuilder& DrawView(int view_id, float offset_x, float offset_y);
   DisplayListBuilder& Transform(const transforms::Matrix44& matrix);
   DisplayListBuilder& Opacity(float alpha);
   DisplayListBuilder& Border(int32_t out_index, int32_t inner_index, const BordersData& border);
@@ -280,7 +280,9 @@ void Fragment::Draw() {
 void Fragment::Draw(DisplayListBuilder& display_list_builder) {
   if (has_platform_renderer_) {
     // Has independent renderer, draw reference and generate own DisplayList
-    display_list_builder.DrawView(id());
+    display_list_builder.DrawView(
+        id(), layout_info_.layout_result.offset_.X() + render_offset_[0],
+        layout_info_.layout_result.offset_.Y() + render_offset_[1]);
     Draw();  // Generate independent DisplayList
     return;
   }
@@ -364,9 +366,16 @@ The iOS platform parses DisplayList through **direct memory access**. The C++ la
         break;
       }
       case DisplayListOpType::kDrawView: {
-        // Reference child View, adjust drawing order
+        auto view_id = [self nextContentInt];
+        auto offset_x = [self nextContentFloat];
+        auto offset_y = [self nextContentFloat];
+        // Reference the child View, adjust drawing order, and update only its
+        // final offset when it changed. Size remains owned by the child layer.
         refView = [_view subviews][view_index++];
         _refLayer = refView.layer;
+        if (refView.renderer.sign == view_id) {
+          [refView.renderer updateLayoutOffsetIfNeeded:CGPointMake(offset_x, offset_y)];
+        }
         break;
       }
       case DisplayListOpType::kRecordBox: {
@@ -454,7 +463,11 @@ public class DisplayListApplier {
           imageManager.onDraw(canvas);
           break;
         case OP_DRAW_VIEW:
-          // Stop current drawing, wait for child View's onDraw to be called
+          // Consume view ID and final local offset. Android lays out the native
+          // child separately, then waits for its onDraw callback.
+          nextContentInt();
+          nextContentFloat();
+          nextContentFloat();
           return;
         case OP_RECORD_BOX:
           // Record RoundedRectangle to array for subsequent operations to reference
