@@ -22,7 +22,7 @@ class TypeSpecification : public FunctionPass {
       : FunctionPass(ir_ctx, "type-specification") {}
   ~TypeSpecification() override = default;
   bool RunOnFunction(FuncOp* func) override;
-  const std::string& GetConstString(LoadConstInst* load_const_inst);
+  std::string GetConstString(LoadConstInst* load_const_inst);
   void Reset(FuncOp* func);
   void SpecifyGetTableForStringProtoType();
   void PropagateTypes();

@@ -1,4 +1,7 @@
 # CHANGELOG
+# 0.0.48
+*  Skip unsupported patterns in TypeSpecification instead of throwing for lepus bytecode optimization
+
 # 0.0.47
 * Encode custom section CSS with its embedded compiler options
 

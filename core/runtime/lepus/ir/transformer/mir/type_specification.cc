@@ -641,16 +641,14 @@ static void SetBuiltinCallTypeAndAttr(IRContext* ir_ctx, FuncOp* func) {
       }
 }
 
-const std::string& TypeSpecification::GetConstString(
-    LoadConstInst* load_const_inst) {
+std::string TypeSpecification::GetConstString(LoadConstInst* load_const_inst) {
   auto* lit = llvh::cast<LiteralUint32>(load_const_inst->GetSingleOperand());
   auto const_id = lit->GetValue();
 
   lynx::lepus::Value* method_str =
       func_->GetLepusFunction()->GetConstValue(const_id);
   if (LEPUS_UNLIKELY(!method_str || !method_str->IsString())) {
-    throw ::lynx::lepus::CompileException(
-        "Lepus IR error: TypeSpecification expected const value to be string");
+    return "";
   }
   return method_str->StdString();
 }
@@ -686,12 +684,8 @@ void TypeSpecification::SpecifyGetTableForStringProtoType() {
 
           // if the get_table is getStringLength, use new inst
           if (auto* load_const = llvh::dyn_cast<LoadConstInst>(prop)) {
-            if (LEPUS_UNLIKELY(!load_const->GetType()->IsStringType())) {
-              throw ::lynx::lepus::CompileException(
-                  "Lepus IR error: TypeSpecification expected string proto "
-                  "property to have string type");
-            }
             auto str = GetConstString(load_const);
+            if (str.empty()) continue;
             // string.length, replace with GetStringLengthInst
             if (str == constants::kStringLength) {
               builder->SetInsertionPointAfter(get_table_inst);
@@ -745,40 +739,29 @@ void TypeSpecification::SpecifyGetTableForStringProtoType() {
           std::string str;
           if (auto* get_table_inst = llvh::dyn_cast<GetTableInst>(call_func)) {
             auto prop = get_table_inst->GetProp();
-            if (LEPUS_UNLIKELY(!llvh::isa<LoadConstInst>(prop))) {
-              throw ::lynx::lepus::CompileException(
-                  "Lepus IR error: TypeSpecification expected string proto "
-                  "property to be LoadConstInst");
+            if (!llvh::isa<LoadConstInst>(prop)) {
+              continue;
             }
-            if (LEPUS_UNLIKELY(!llvh::cast<LoadConstInst>(prop)
-                                    ->GetType()
-                                    ->IsStringType())) {
-              throw ::lynx::lepus::CompileException(
-                  "Lepus IR error: TypeSpecification expected string proto "
-                  "property LoadConstInst to have string type");
+            auto* load_const = llvh::cast<LoadConstInst>(prop);
+            if (!load_const->GetType()->IsStringType()) {
+              continue;
             }
-            auto load_const = llvh::cast<LoadConstInst>(prop);
             str = GetConstString(load_const);
+            if (str.empty()) continue;
           } else if (auto* get_table_const =
                          llvh::dyn_cast<GetTableConstStringKeyInst>(
                              call_func)) {
             auto* idx_lit =
                 llvh::dyn_cast<LiteralUint32>(get_table_const->GetConstIndex());
-            if (LEPUS_UNLIKELY(!idx_lit)) {
-              throw ::lynx::lepus::CompileException(
-                  "Lepus IR error: TypeSpecification expected string proto "
-                  "const key to be LiteralUint32");
+            if (!idx_lit) {
+              continue;
             }
             str = get_const_string_by_index(idx_lit->GetValue());
-            if (LEPUS_UNLIKELY(str.empty())) {
-              throw ::lynx::lepus::CompileException(
-                  "Lepus IR error: TypeSpecification expected const value to "
-                  "be string");
+            if (str.empty()) {
+              continue;
             }
           } else {
-            throw ::lynx::lepus::CompileException(
-                "Lepus IR error: TypeSpecification expected string proto call "
-                "function to be GetTableInst/GetTableConstStringKeyInst");
+            continue;
           }
 
           TypeOp* type =
@@ -798,10 +781,6 @@ void TypeSpecification::SpecifyGetTableForStringProtoType() {
 
           if (type) {
             call_inst->SetType(type);
-          } else {
-            throw ::lynx::lepus::CompileException(
-                "Lepus IR error: TypeSpecification encountered unsupported "
-                "String proto API name");
           }
         }
       }
