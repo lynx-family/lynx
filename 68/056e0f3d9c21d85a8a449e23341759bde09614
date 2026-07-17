@@ -1,0 +1,53 @@
+krypton/core/renderer/webgl/webgl_rendering_context.cc
+  s_d16ce5604b1dd1::t_754026e5cfd829 58-59,112-113
+  s_d16ce5604b1dd1::t_e63258075a0095 114
+  s_d16ce5604b1dd1::t_060c5524074e9a 57
+krypton/core/renderer/canvas/pipeline/canvas_resource_provider_3d.cc
+  s_d16ce5604b1dd1::t_b219f888925fe3 14,94-155,253,272
+krypton/core/renderer/webgl/webgl_rendering_context_base.h
+  s_d16ce5604b1dd1::t_abbd1dccd05907 352
+krypton/core/renderer/webgl/webgl_rendering_context_base.cc
+  s_d16ce5604b1dd1::t_c6f5b45b37da6f 788-789,1805-1807,1840-1842,4826-4831
+  s_d16ce5604b1dd1::t_ae54b9e44f824d 787
+krypton/core/renderer/canvas/pipeline/canvas_resource_provider.cc
+  s_d16ce5604b1dd1::t_945896df74ca26 18,342-347,630-633
+krypton/core/video/video_element.cc
+  s_d16ce5604b1dd1::t_b5f3214a0a507b 596
+  s_cd69a4754cd91b::t_47fab84cec7776 549-553,598
+krypton/core/renderer/webgl/webgl2/webgl2_rendering_context.cc
+  s_d16ce5604b1dd1::t_2bca14b48f3ac2 1472-1473,1690-1692,2378-2381,2497-2500,2542-2543
+  s_d16ce5604b1dd1::t_fbdd173e0065e0 1470-1471
+  s_d16ce5604b1dd1::t_23c429703d8028 2544
+krypton/core/renderer/canvas/pipeline/canvas_resource_provider_3d.h
+  s_d16ce5604b1dd1::t_acfbfe982ca54b 29
+krypton/core/renderer/webgl/webgl2/webgl2_rendering_context.h
+  s_cd69a4754cd91b::t_8659c010c962f7 575-581
+krypton/core/renderer/canvas/pipeline/canvas_resource_provider.h
+  s_d16ce5604b1dd1::t_748b4476883062 134-137,232-233
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "68056e0f3d9c21d85a8a449e23341759bde09614",
+  "prompts": {},
+  "sessions": {
+    "s_cd69a4754cd91b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f65c1-e177-7752-94d6-51ae7567a313",
+        "model": "unknown"
+      },
+      "human_author": "yingjunkang <yingjunkang@bytedance.com>"
+    },
+    "s_d16ce5604b1dd1": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f64a8-d6b0-7c92-828d-f8d178edee2c",
+        "model": "unknown"
+      },
+      "human_author": "yingjunkang <yingjunkang@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}
