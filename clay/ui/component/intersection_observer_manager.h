@@ -41,6 +41,7 @@ class IntersectionObserverManager {
 
   void StopExposure(bool send_event);
   void ResumeExposure();
+  void SetExposureHostVisible(bool visible);
 
   void SetExposureFrequency(int freq);
   void SetExposureUIMarginEnabled(bool enabled);
@@ -51,6 +52,8 @@ class IntersectionObserverManager {
  private:
   int64_t expose_min_time_gap_ms_ = 1000 / 20;
   bool exposure_ui_margin_enabled_ = false;
+  bool exposure_stopped_ = false;
+  bool exposure_host_visible_ = true;
   int64_t last_expose_time_ = -1;
 
   BaseView* page_view_;

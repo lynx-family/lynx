@@ -289,6 +289,7 @@ class PageView : public BaseView,
   void AddGlobalExposureEvent(bool exposure,
                               std::unique_ptr<clay::Value::Map> params,
                               BaseView* view);
+  void SendGlobalExposureEvent();
 
   void SetInterceptBackKeyOnce(bool intercept) {
     intercept_back_key_once_ = intercept;
@@ -548,8 +549,6 @@ class PageView : public BaseView,
                              int view_id,
                              ClayAnimationPropertyType property_type);
   void FlushUIMethodTasks();
-  void SendGlobalExposureEvent();
-
   void SendDrawEndEvent();
   void HandleA11yTapEvent(BaseView* view);
   void HandleA11yLongPressEvent(BaseView* view);
