@@ -10,7 +10,6 @@
 #include <string>
 #include <utility>
 
-#include "base/include/log/logging.h"
 #include "base/include/platform/harmony/napi_util.h"
 #include "core/base/harmony/napi_convert_helper.h"
 #include "core/renderer/ui_wrapper/common/harmony/prop_bundle_harmony.h"
@@ -19,6 +18,27 @@
 namespace lynx {
 namespace tasm {
 namespace harmony {
+
+void JSUIBase::SetOverlayContent(UIBase* ui, bool is_overlay_content) {
+  ui->SetIsOverlayContent(is_overlay_content);
+  auto& manager = NodeManager::Instance();
+  if (is_overlay_content) {
+    manager.RegisterNodeEvent(ui->Node(), NODE_EVENT_ON_ATTACH, ui);
+    manager.RegisterNodeEvent(ui->Node(), NODE_EVENT_ON_DETACH, ui);
+    manager.RegisterNodeEvent(ui->Node(), NODE_ON_TOUCH_INTERCEPT, ui);
+    manager.RegisterNodeEvent(ui->Node(), NODE_TOUCH_EVENT, ui);
+    manager.AddNodeEventReceiver(ui->Node(), UIBase::EventReceiver);
+    manager.AddNodeCustomEventReceiver(ui->Node(), UIBase::CustomEventReceiver);
+  } else {
+    manager.RemoveNodeEventReceiver(ui->Node(), UIBase::EventReceiver);
+    manager.RemoveNodeCustomEventReceiver(ui->Node(),
+                                          UIBase::CustomEventReceiver);
+    manager.UnregisterNodeEvent(ui->Node(), NODE_TOUCH_EVENT);
+    manager.UnregisterNodeEvent(ui->Node(), NODE_ON_TOUCH_INTERCEPT);
+    manager.UnregisterNodeEvent(ui->Node(), NODE_EVENT_ON_ATTACH);
+    manager.UnregisterNodeEvent(ui->Node(), NODE_EVENT_ON_DETACH);
+  }
+}
 
 void JSUIBase::InvokeMethod(const std::string& method, const lepus::Value& args,
                             UIMethodCallback callback) {
@@ -204,8 +224,9 @@ napi_value JSUIBase::AttachGestureToNode(napi_env env,
                                          napi_callback_info info) {
   /*
    * 0 - nativeContent: NativeContent
+   * 1 - level?: number
    */
-  size_t argc = 1;
+  size_t argc = 2;
   napi_value argv[argc];
   napi_value js_this;
   napi_get_cb_info(env, info, &argc, argv, &js_this, nullptr);
@@ -219,8 +240,17 @@ napi_value JSUIBase::AttachGestureToNode(napi_env env,
         status != napi_ok || !ui) {
       return nullptr;
     }
-    node->UI()->SetIsOverlayContent(true);
-    ui->context_->AttachGesturesToRoot(node->UI());
+    auto* overlay_content = node->UI();
+    if (!overlay_content->IsOverlayContent()) {
+      SetOverlayContent(overlay_content, true);
+    }
+    overlay_content->SetOverlayContentActive(true);
+    int32_t level = 0;
+    if (argc > 1 && napi_get_value_int32(env, argv[1], &level) == napi_ok) {
+      ui->context_->AttachGesturesToOverlayRoot(overlay_content, level);
+    } else {
+      ui->context_->AttachGesturesToRoot(overlay_content);
+    }
   }
   return nullptr;
 }
@@ -267,7 +297,12 @@ napi_value JSUIBase::DetachGestureFromNode(napi_env env,
         status != napi_ok || !ui) {
       return nullptr;
     }
-    ui->context_->DetachGesturesFromRoot(node->UI());
+    auto* overlay_content = node->UI();
+    ui->context_->DetachGesturesFromRoot(overlay_content);
+    overlay_content->SetOverlayContentActive(false);
+    if (overlay_content->IsOverlayContent()) {
+      SetOverlayContent(overlay_content, false);
+    }
   }
   return nullptr;
 }
