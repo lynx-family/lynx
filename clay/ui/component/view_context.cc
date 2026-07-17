@@ -1097,6 +1097,15 @@ void ViewContext::ResumeExposure() {
   }
 }
 
+void ViewContext::SetExposureHostVisible(bool visible) {
+  if (page_view_) {
+    auto intersection_manager = page_view_->intersection_observer_manager();
+    if (intersection_manager) {
+      intersection_manager->SetExposureHostVisible(visible);
+    }
+  }
+}
+
 void ViewContext::SyncNativeViewCompositionPreferences(
     std::unordered_map<std::string, NativeViewCompositionPreference>
         composition_preferences) {

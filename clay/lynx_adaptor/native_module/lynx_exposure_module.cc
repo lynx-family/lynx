@@ -45,7 +45,16 @@ std::unique_ptr<lynx::pub::Value> LynxExposureModule::stopExposure(
                          "been destroyed.";
       return;
     }
-    bool send_event = args_array->GetValueAtIndex(0)->Bool();
+    // lynx.stopExposure accepts an optional options map. Keep sendEvent's
+    // documented default when the argument or field is absent/invalid.
+    bool send_event = true;
+    auto options = args_array ? args_array->GetValueAtIndex(0) : nullptr;
+    if (options && options->IsMap()) {
+      auto send_event_option = options->GetValueForKey("sendEvent");
+      if (send_event_option && send_event_option->IsBool()) {
+        send_event = send_event_option->Bool();
+      }
+    }
     auto intersection_manager =
         view_context->GetPageView()->intersection_observer_manager();
     if (!intersection_manager) {
