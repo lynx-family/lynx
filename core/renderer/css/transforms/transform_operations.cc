@@ -503,20 +503,30 @@ tasm::CSSValue TransformOperations::ToTransformRawValue() {
 }
 
 namespace {
-std::string Get2DRepresentation(const Matrix44& matrix) {
+std::string Get2DRepresentation(const Matrix44& matrix,
+                                float layouts_unit_per_px) {
   return "matrix(" + tasm::CSSDecoder::NumberToString(matrix.rc(0, 0)) + ", " +
          tasm::CSSDecoder::NumberToString(matrix.rc(1, 0)) + ", " +
          tasm::CSSDecoder::NumberToString(matrix.rc(0, 1)) + ", " +
          tasm::CSSDecoder::NumberToString(matrix.rc(1, 1)) + ", " +
-         tasm::CSSDecoder::NumberToString(matrix.rc(0, 3)) + ", " +
-         tasm::CSSDecoder::NumberToString(matrix.rc(1, 3)) + ")";
+         tasm::CSSDecoder::NumberToString(matrix.rc(0, 3) /
+                                          layouts_unit_per_px) +
+         ", " +
+         tasm::CSSDecoder::NumberToString(matrix.rc(1, 3) /
+                                          layouts_unit_per_px) +
+         ")";
 }
 
-std::string Get3DRepresentation(const Matrix44& matrix) {
+std::string Get3DRepresentation(const Matrix44& matrix,
+                                float layouts_unit_per_px) {
   std::string res = "matrix3d(";
   for (int col = 0; col < 4; ++col) {
     for (int row = 0; row < 4; ++row) {
-      res = res + tasm::CSSDecoder::NumberToString(matrix.rc(row, col));
+      float value = matrix.rc(row, col);
+      if (col == 3 && row < 3) {
+        value /= layouts_unit_per_px;
+      }
+      res = res + tasm::CSSDecoder::NumberToString(value);
       if (col != 3 || row != 3) {
         res = res + ", ";
       }
@@ -527,12 +537,12 @@ std::string Get3DRepresentation(const Matrix44& matrix) {
 }
 }  // namespace
 
-base::String TransformOperations::CssText() {
+base::String TransformOperations::CssText(float layouts_unit_per_px) {
   Matrix44 transform = ApplyRemaining(0, element_layout_result_);
   if (transform.Is2dTransform()) {
-    return Get2DRepresentation(transform);
+    return Get2DRepresentation(transform, layouts_unit_per_px);
   } else {
-    return Get3DRepresentation(transform);
+    return Get3DRepresentation(transform, layouts_unit_per_px);
   }
 }
 
