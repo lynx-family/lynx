@@ -167,6 +167,8 @@ class LYNX_EXPORT UIBase : public std::enable_shared_from_this<UIBase>,
 
   virtual bool IsVerticalScrollView() { return false; };
   EventTarget* HitTest(float point[2]) override;
+  EventTarget* HitTestExcluding(float point[2],
+                                const std::vector<UIBase*>& excluded_roots);
   bool ShouldHitTest() override;
   bool ContainsPoint(float point[2]) override;
   bool IsOnResponseChain() override { return is_on_response_chain_; };
@@ -231,6 +233,9 @@ class LYNX_EXPORT UIBase : public std::enable_shared_from_this<UIBase>,
   virtual bool IsOverlayContent() const { return is_overlay_content_; }
   void SetIsOverlayContent(bool is_overlay_content) {
     is_overlay_content_ = is_overlay_content;
+  }
+  void SetOverlayContentActive(bool active) {
+    overlay_content_active_ = active;
   }
   void GestureRecognized();
   const std::string& ExposureID() { return exposure_id_; }
@@ -318,6 +323,9 @@ class LYNX_EXPORT UIBase : public std::enable_shared_from_this<UIBase>,
   void SendAnimationEvent(const char* event, const std::string& name);
 
  protected:
+  EventTarget* HitTestInternal(float point[2],
+                               const std::vector<UIBase*>* excluded_roots);
+
   static void EventReceiver(ArkUI_NodeEvent* event);
   static void CustomEventReceiver(ArkUI_NodeCustomEvent* event);
   virtual void OnPropUpdate(const std::string& name, const lepus::Value& value);
@@ -526,6 +534,7 @@ class LYNX_EXPORT UIBase : public std::enable_shared_from_this<UIBase>,
 
   bool user_interaction_enabled_{true};
   bool is_overlay_content_{false};
+  bool overlay_content_active_{true};
   bool native_interaction_enabled_{true};
   float hit_slop_left_{0};
   float hit_slop_right_{0};

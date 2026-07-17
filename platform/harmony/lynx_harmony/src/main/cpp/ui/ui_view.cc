@@ -6,6 +6,7 @@
 
 #include <string>
 
+#include "base/include/log/logging.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/base/node_manager.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_owner.h"
 
@@ -22,21 +23,7 @@ void UIView::OnPropUpdate(const std::string& name, const lepus::Value& value) {
   UIBase::OnPropUpdate(name, value);
 }
 
-void UIView::OnNodeReady() {
-  UIBase::OnNodeReady();
-  if (IsOverlayContent()) {
-    NodeManager::Instance().RegisterNodeEvent(Node(), NODE_EVENT_ON_ATTACH,
-                                              this);
-    NodeManager::Instance().RegisterNodeEvent(Node(), NODE_EVENT_ON_DETACH,
-                                              this);
-    NodeManager::Instance().RegisterNodeEvent(Node(), NODE_ON_TOUCH_INTERCEPT,
-                                              this);
-    NodeManager::Instance().RegisterNodeEvent(Node(), NODE_TOUCH_EVENT, this);
-    NodeManager::Instance().AddNodeEventReceiver(Node(), UIBase::EventReceiver);
-    NodeManager::Instance().AddNodeCustomEventReceiver(
-        Node(), UIBase::CustomEventReceiver);
-  }
-}
+void UIView::OnNodeReady() { UIBase::OnNodeReady(); }
 
 void UIView::OnNodeEvent(ArkUI_NodeEvent* event) {
   if (IsOverlayContent()) {
@@ -49,10 +36,17 @@ void UIView::OnNodeEvent(ArkUI_NodeEvent* event) {
         float point[2] = {display_x, display_y};
         is_consume_event_ =
             context_->GetUIOwner()->CanConsumeTouchEventAtRoot(point, this);
+        if (OH_ArkUI_UIInputEvent_GetAction(input_event) ==
+            UI_TOUCH_EVENT_ACTION_DOWN) {
+          LOGI("[OverlayContentSlot] phase=native-intercept-down sign="
+               << Sign() << " displayX=" << display_x << " displayY="
+               << display_y << " canConsume=" << is_consume_event_)
+        }
       }
     } else if (OH_ArkUI_NodeEvent_GetEventType(event) == NODE_TOUCH_EVENT) {
+      auto* input_event = OH_ArkUI_NodeEvent_GetInputEvent(event);
       if (is_consume_event_) {
-        context_->OnTouchEvent(OH_ArkUI_NodeEvent_GetInputEvent(event), this);
+        context_->OnTouchEvent(input_event, this);
       }
     } else if (OH_ArkUI_NodeEvent_GetEventType(event) == NODE_EVENT_ON_ATTACH) {
       is_root_attached_ = true;
