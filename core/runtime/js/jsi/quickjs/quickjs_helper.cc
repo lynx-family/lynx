@@ -3,6 +3,7 @@
 // LICENSE file in the root directory of this source tree.
 #include "core/runtime/js/jsi/quickjs/quickjs_helper.h"
 
+#include <algorithm>
 #include <string>
 
 #include "core/runtime/js/jsi/jsi.h"
@@ -13,8 +14,11 @@
 #include <string>
 #include <utility>
 
+#include "base/include/notification_center.h"
+#include "base/trace/native/trace_event.h"
 #include "core/build/gen/lynx_sub_error_code.h"
 #include "core/runtime/js/jsi/quickjs/quickjs_runtime.h"
+#include "core/runtime/js/runtime_constant.h"
 #include "quickjs/include/quickjs.h"
 extern "C" {
 #include "quickjs/include/quickjs-libc.h"
@@ -306,6 +310,113 @@ LEPUSValue QuickjsHelper::ThrowJsException(
     }
   }
   return LEPUS_Throw(ctx, err);
+}
+
+QuickjsHelper::MemoryUsage QuickjsHelper::GetMemoryUsage(
+    LEPUSRuntime *runtime) {
+  QuickjsHelper::MemoryUsage result;
+  memset(&result, 0, sizeof(result));
+  if (runtime) {
+    LEPUSMemoryUsage usage;
+    LEPUS_ComputeMemoryUsage(runtime, &usage);
+    result.base_size = usage.base_malloc_size;
+    result.heap_size = usage.malloc_size;
+    result.page_rss_size =
+        LEPUS_IsGCModeRT(runtime) ? usage.memory_used_size : usage.malloc_size;
+  }
+  if (result.heap_size == 0 && runtime != nullptr) {
+    result.heap_size = LEPUS_GetHeapSize(runtime);
+  }
+  return result;
+}
+
+std::string QuickjsHelper::GetDebugDescription(LEPUSRuntime *runtime) {
+  if (runtime) {
+#if ENABLE_TRACE_PERFETTO
+    auto usage = GetMemoryUsage(runtime);
+    std::string vm_type =
+        std::string("quickjs(") + (LEPUS_IsGCModeRT(runtime) ? "gc)" : "rc)");
+
+    std::stringstream vm_info;
+    vm_info << "{\n"
+            << "  \"vm_type\": \"" << vm_type << "\",\n"
+            << "  \"base_usage\": " << usage.base_size << ",\n"
+            << "  \"page_rss_usage\": " << usage.page_rss_size << ",\n"
+            << "  \"acc_usage\": " << usage.heap_size << "\n"
+            << "}\n";
+    return vm_info.str();
+#else
+    return std::string("quickjs(") +
+           (LEPUS_IsGCModeRT(runtime) ? "gc)" : "rc)");
+#endif
+  } else {
+    return "";
+  }
+}
+
+bool QuickjsHelper::TakeHeapSnapshot(LEPUSContext *ctx,
+                                     const std::string &identifier) {
+#if ENABLE_TRACE_PERFETTO
+  constexpr size_t kMaxHeapSnapshotChunkSize = 128 * 1024;
+  std::string snapshot_id =
+      identifier + "#" + std::to_string(trace::GetTraceTimeNs());
+  if (ctx) {
+    TRACE_EVENT_INSTANT(
+        LYNX_TRACE_CATEGORY, "will_capture_snapshot",
+        [&](lynx::perfetto::EventContext event_ctx) {
+          event_ctx.event()->add_debug_annotations("id", identifier);
+          event_ctx.event()->add_debug_annotations("snapshot_id", snapshot_id);
+        });
+    auto *snapshot = js_profile_take_heap_snapshot(ctx);
+    if (snapshot != nullptr) {
+      size_t total_length = std::strlen(snapshot);
+      size_t chunk_count = (total_length + kMaxHeapSnapshotChunkSize - 1) /
+                           kMaxHeapSnapshotChunkSize;
+      auto time_stamp = trace::GetTraceTimeNs();
+      TRACE_EVENT_INSTANT(
+          LYNX_TRACE_CATEGORY, "capture_snapshot", time_stamp++,
+          [&](lynx::perfetto::EventContext event_ctx) {
+            event_ctx.event()->add_debug_annotations("id", identifier);
+            event_ctx.event()->add_debug_annotations("snapshot_id",
+                                                     snapshot_id);
+            event_ctx.event()->add_debug_annotations(
+                "total_length", std::to_string(total_length));
+            event_ctx.event()->add_debug_annotations(
+                "chunk_size", std::to_string(kMaxHeapSnapshotChunkSize));
+            event_ctx.event()->add_debug_annotations(
+                "chunk_count", std::to_string(chunk_count));
+            event_ctx.event()->add_debug_annotations(
+                "desc", GetDebugDescription(LEPUS_GetRuntime(ctx)));
+          });
+      for (size_t chunk_index = 0; chunk_index < chunk_count; ++chunk_index) {
+        size_t offset = chunk_index * kMaxHeapSnapshotChunkSize;
+        size_t content_length =
+            std::min(kMaxHeapSnapshotChunkSize, total_length - offset);
+        std::string chunk(snapshot + offset, content_length);
+        TRACE_EVENT_INSTANT(
+            LYNX_TRACE_CATEGORY, "snapshot_chunk", time_stamp++,
+            [&](lynx::perfetto::EventContext event_ctx) {
+              event_ctx.event()->add_debug_annotations("id", identifier);
+              event_ctx.event()->add_debug_annotations("snapshot_id",
+                                                       snapshot_id);
+              event_ctx.event()->add_debug_annotations(
+                  "chunk_index", std::to_string(chunk_index));
+              event_ctx.event()->add_debug_annotations("offset",
+                                                       std::to_string(offset));
+              event_ctx.event()->add_debug_annotations(
+                  "content_length", std::to_string(content_length));
+              event_ctx.event()->add_debug_annotations("content", chunk);
+            });
+      }
+      js_profile_free_heap_snapshot(snapshot);
+      LOGI("VM heap snapshot captured of '" << snapshot_id << "'");
+      base::NotificationCallback::Notify(kVMSnapshotCaptured, 0);
+      return true;
+    }
+  }
+  LOGI("Fail to take VM heap snapshot of '" << snapshot_id << "'");
+#endif
+  return false;
 }
 
 }  // namespace detail

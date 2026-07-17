@@ -25,12 +25,16 @@
 #include <ctime>
 #include <fstream>
 #include <functional>
+#include <map>
 #include <sstream>
 #include <string>
+#include <thread>
 #include <utility>
 
 #include "base/include/log/logging.h"
+#include "base/include/notification_center.h"
 #include "base/include/thread/timed_task.h"
+#include "base/trace/native/trace_defines.h"
 #include "base/trace/native/trace_event_utils_perfetto.h"
 #include "base/trace/native/track_event_wrapper.h"
 #include "third_party/rapidjson/document.h"
@@ -49,6 +53,169 @@ namespace trace {
 
 namespace {
 std::atomic<bool> g_trace_event_runtime_enabled{false};
+
+constexpr uint32_t kPostTraceMemorySampleIntervalMs = 100;
+constexpr uint32_t kPostTraceMemorySampleDurationMs = 3000;
+constexpr uint32_t kPostTraceMemoryPacketSequenceId = 0x6C796E78;  // "lynx"
+
+using TracePacket = ::perfetto::protos::pbzero::TracePacket;
+using TrackDescriptor = ::perfetto::protos::pbzero::TrackDescriptor;
+using TracingServiceEvent = ::perfetto::protos::pbzero::TracingServiceEvent;
+
+struct PostTraceMemorySample {
+  uint64_t timestamp = 0;
+  std::vector<std::pair<std::string, int64_t>> counters;
+};
+
+void AppendVarInt(std::vector<char>& data, uint64_t value) {
+  while (value >= 0x80) {
+    data.push_back(static_cast<char>(value | 0x80));
+    value >>= 7;
+  }
+  data.push_back(static_cast<char>(value));
+}
+
+void AppendTracePacket(std::vector<char>& trace_data,
+                       const std::string& packet) {
+  AppendVarInt(trace_data, static_cast<uint64_t>(0x0A));
+  AppendVarInt(trace_data, static_cast<uint64_t>(packet.size()));
+  trace_data.insert(trace_data.end(), packet.begin(), packet.end());
+}
+
+std::string BuildIncrementalStateClearedPacket(uint64_t timestamp) {
+  ::protozero::HeapBuffered<TracePacket> packet;
+  packet->set_trusted_packet_sequence_id(kPostTraceMemoryPacketSequenceId);
+  packet->set_first_packet_on_sequence(true);
+  packet->set_timestamp(timestamp);
+  packet->set_timestamp_clock_id(
+      static_cast<uint32_t>(TrackEvent::GetTraceClockId()));
+  packet->set_sequence_flags(TracePacket::SEQ_INCREMENTAL_STATE_CLEARED);
+  return packet.SerializeAsString();
+}
+
+std::string BuildTrackDescriptorPacket(uint64_t timestamp,
+                                       const ::perfetto::CounterTrack& track) {
+  ::protozero::HeapBuffered<TracePacket> packet;
+  packet->set_trusted_packet_sequence_id(kPostTraceMemoryPacketSequenceId);
+  packet->set_timestamp(timestamp);
+  packet->set_timestamp_clock_id(
+      static_cast<uint32_t>(TrackEvent::GetTraceClockId()));
+  packet->set_sequence_flags(TracePacket::SEQ_NEEDS_INCREMENTAL_STATE);
+  track.Serialize(packet->set_track_descriptor<TrackDescriptor>());
+  return packet.SerializeAsString();
+}
+
+std::string BuildCounterPacket(uint64_t timestamp, uint64_t track_uuid,
+                               int64_t value) {
+  ::protozero::HeapBuffered<TracePacket> packet;
+  packet->set_trusted_packet_sequence_id(kPostTraceMemoryPacketSequenceId);
+  packet->set_timestamp(timestamp);
+  packet->set_timestamp_clock_id(
+      static_cast<uint32_t>(TrackEvent::GetTraceClockId()));
+  packet->set_sequence_flags(TracePacket::SEQ_NEEDS_INCREMENTAL_STATE);
+  auto* event = packet->set_track_event<TrackEventMessage>();
+  event->set_type(TrackEvent_Type::TYPE_COUNTER);
+  event->set_track_uuid(track_uuid);
+  event->set_double_counter_value(value);
+  return packet.SerializeAsString();
+}
+
+std::string BuildTracingDisabledPacket(uint64_t timestamp) {
+  ::protozero::HeapBuffered<TracePacket> packet;
+  packet->set_timestamp(timestamp);
+  packet->set_timestamp_clock_id(
+      static_cast<uint32_t>(TrackEvent::GetTraceClockId()));
+  packet->set_service_event<TracingServiceEvent>()->set_tracing_disabled(true);
+  return packet.SerializeAsString();
+}
+
+std::vector<PostTraceMemorySample> CollectPostTraceMemorySamples(
+    TraceController::Delegate* delegate) {
+  std::vector<PostTraceMemorySample> samples;
+  if (delegate == nullptr) {
+    return samples;
+  }
+  constexpr uint32_t kSampleCount =
+      kPostTraceMemorySampleDurationMs / kPostTraceMemorySampleIntervalMs;
+  samples.reserve(kSampleCount);
+  for (uint32_t sample_index = 0; sample_index < kSampleCount; ++sample_index) {
+    if (sample_index > 0) {
+      std::this_thread::sleep_for(
+          std::chrono::milliseconds(kPostTraceMemorySampleIntervalMs));
+    }
+    auto data_array = delegate->GetMemoryStats();
+    PostTraceMemorySample sample;
+    sample.timestamp = GetTraceTimeNs();
+    for (size_t i = 0; i + 1 < data_array.size(); i += 2) {
+      sample.counters.emplace_back(data_array[i],
+                                   std::stoll(data_array[i + 1]));
+    }
+    if (!sample.counters.empty()) {
+      samples.emplace_back(std::move(sample));
+    }
+  }
+  return samples;
+}
+
+void AppendPostTraceMemoryPackets(
+    std::vector<char>& trace_data,
+    const std::vector<PostTraceMemorySample>& samples) {
+  if (samples.empty()) {
+    return;
+  }
+  std::map<std::string, ::perfetto::CounterTrack> tracks;
+  for (const auto& sample : samples) {
+    for (const auto& counter : sample.counters) {
+      if (tracks.find(counter.first) == tracks.end()) {
+        tracks.emplace(counter.first,
+                       ConvertToPerfCounterTrack(lynx::perfetto::CounterTrack(
+                           counter.first.c_str())));
+      }
+    }
+  }
+  AppendTracePacket(trace_data, BuildIncrementalStateClearedPacket(
+                                    samples.front().timestamp));
+  for (const auto& track : tracks) {
+    AppendTracePacket(trace_data, BuildTrackDescriptorPacket(
+                                      samples.front().timestamp, track.second));
+  }
+  for (const auto& sample : samples) {
+    for (const auto& counter : sample.counters) {
+      AppendTracePacket(
+          trace_data,
+          BuildCounterPacket(sample.timestamp, tracks.at(counter.first).uuid,
+                             counter.second));
+    }
+  }
+  AppendTracePacket(trace_data,
+                    BuildTracingDisabledPacket(samples.back().timestamp));
+}
+
+void AppendTraceDataToFile(const std::string& file_path,
+                           const std::vector<char>& trace_data) {
+  if (trace_data.empty()) {
+    return;
+  }
+  std::ofstream output(file_path,
+                       std::ios::out | std::ios::binary | std::ios::app);
+  output.write(trace_data.data(), trace_data.size());
+  output.flush();
+}
+
+void AppendPostTraceMemoryToTraceFile(const std::string& file_path,
+                                      TraceController::Delegate* delegate) {
+  if (file_path.empty() || delegate == nullptr) {
+    return;
+  }
+  std::vector<PostTraceMemorySample> samples =
+      CollectPostTraceMemorySamples(delegate);
+  std::vector<char> post_trace_memory_data;
+  AppendPostTraceMemoryPackets(post_trace_memory_data, samples);
+  if (post_trace_memory_data.empty()) {
+    return;
+  }
+  AppendTraceDataToFile(file_path, post_trace_memory_data);
+}
 }  // namespace
 
 // Implementations of the definition of the
@@ -262,6 +429,7 @@ int TraceControllerImpl::StartTracing(
     const std::shared_ptr<TraceConfig>& config) {
   auto& session = CreateNewSession(config);
   session.config = config;
+  last_session_ = &session;
 
   // handle categories set
   ::perfetto::protos::gen::TrackEventConfig track_event_cfg;
@@ -285,7 +453,6 @@ int TraceControllerImpl::StartTracing(
   auto* ds_cfg = cfg.add_data_sources()->mutable_config();
   ds_cfg->set_name("track_event");
   ds_cfg->set_track_event_config_raw(track_event_cfg.SerializeAsString());
-  // DCHECK(config->buffer_size > 0);
   cfg.set_flush_period_ms(1000);
   cfg.add_buffers()->set_size_kb(config->buffer_size);
 
@@ -302,9 +469,7 @@ int TraceControllerImpl::StartTracing(
 
   // setup and start session
   if (config->record_mode == TraceConfig::RECORD_CONTINUOUSLY) {
-    // write trace events from buffer to file every 3 seconds.
-    // DCHECK(!config->file_path.empty());
-    cfg.set_file_write_period_ms(3 * 1000);
+    cfg.set_file_write_period_ms(config->file_write_period_ms);
     int fd = open(config->file_path.c_str(), O_RDWR | O_CREAT | O_TRUNC, 0600);
     session.opened_fds.push_back(fd);
     session.session_impl->Setup(cfg, fd);
@@ -327,22 +492,43 @@ int TraceControllerImpl::StartTracing(
   session.session_impl->StartBlocking();
   g_trace_event_runtime_enabled.store(true, std::memory_order_relaxed);
 
+  // The first event after StartBlocking.
+  TraceEventImplementation(
+      INTERNAL_TRACE_CATEGORY, "TRACE_BEGIN", TraceEventType::TYPE_INSTANT,
+      nullptr, 0, [&](lynx::perfetto::EventContext ctx) {
+        ctx.event()->add_debug_annotations(
+            "enable_memory_trace", std::to_string(config->enable_memory_trace));
+        ctx.event()->add_debug_annotations(
+            "memory_trace_force_gc",
+            std::to_string(config->memory_trace_force_gc));
+      });
+
   // plugin
   for (auto& trace_plugin_pair : trace_plugins_) {
     if (trace_plugin_pair.second) {
       trace_plugin_pair.second->DispatchBegin();
     }
   }
-  if (config->enable_systrace) {
+  if (config->enable_systrace || config->enable_memory_trace) {
     if (!hook_systrace_) {
-      hook_systrace_ = std::make_unique<HookSystemTrace>();
+      hook_systrace_ = std::make_unique<HookSystemTrace>(*this);
     }
-    hook_systrace_->Install();
+    HookSystemTrace::SetupConfig sys_config;
+    if (config->enable_memory_trace) {
+      // To reduce trace data volume, disable cpu trace when recording memory.
+      sys_config.cpu_trace_enabled = false;
+    }
+    hook_systrace_->Install(sys_config);
   }
 
   // status
   session.started = true;
   is_tracing_started_ = true;
+
+  // post trace begin notification after session started, plugins started and
+  // is_tracing_started_ flag is set true.
+  base::NotificationCallback::Notify(LYNX_ON_TRACE_BEGIN_NOTIFICATION, 0);
+
   LOGI("Tracing started, session id: " << session.id << " buffer size: "
                                        << config->buffer_size);
 
@@ -366,6 +552,14 @@ bool TraceControllerImpl::StopTracing(int session_id) {
   trace_plugins_.clear();
 
   auto& session = session_pair->second;
+  const std::string trace_file_path = session->config->file_path;
+  const bool enable_memory_trace = session->config->enable_memory_trace;
+  const auto complete_callbacks = session->complete_callbacks;
+
+  // The last event before StopBlocking.
+  TraceEventImplementation(INTERNAL_TRACE_CATEGORY, "TRACE_END",
+                           TraceEventType::TYPE_INSTANT, nullptr, 0, nullptr);
+
   session->session_impl->StopBlocking();
   session->started = false;
   is_tracing_started_ = false;
@@ -379,7 +573,6 @@ bool TraceControllerImpl::StopTracing(int session_id) {
     startup_tracing_file_ = session->config->file_path;
   }
   LOGI("Tracing stopped, file path:" << session->config->file_path);
-  // DCHECK(session->config != nullptr);
 
   if (session->config->record_mode == TraceConfig::RECORD_CONTINUOUSLY) {
     for (int& fd : session->opened_fds) {
@@ -401,11 +594,23 @@ bool TraceControllerImpl::StopTracing(int session_id) {
     hook_systrace_->Uninstall();
   }
 
-  for (const auto& callback : session->complete_callbacks) {
+  // Release the tracing session before collecting post-trace memory samples, so
+  // the tail data reflects memory after Perfetto and trace buffers are freed.
+  if (last_session_ && last_session_->id == session_id) {
+    last_session_ = nullptr;
+  }
+  tracing_sessions_.erase(session_id);
+
+  if (enable_memory_trace) {
+    // Continuously record memory data for several seconds to ensure that the
+    // trace itself has been released and will not affect the accuracy of the
+    // data.
+    AppendPostTraceMemoryToTraceFile(trace_file_path, delegate_.get());
+  }
+
+  for (const auto& callback : complete_callbacks) {
     callback();
   }
-  // register an empty backend to avoid using a lock
-  tracing_sessions_.erase(session_id);
   LOGI("Tracing stopped, session id: " << session_id);
 
   return true;
@@ -557,6 +762,13 @@ std::string TraceControllerImpl::GetStartupTracingFilePath() {
 }
 
 bool TraceControllerImpl::IsTracingStarted() { return is_tracing_started_; }
+
+std::shared_ptr<TraceConfig> TraceControllerImpl::GetLastSessionTraceConfig() {
+  if (tracing_sessions_.empty() || last_session_ == nullptr) {
+    return nullptr;
+  }
+  return last_session_->config;
+}
 
 // private
 TraceControllerImpl::TracingSession& TraceControllerImpl::CreateNewSession(

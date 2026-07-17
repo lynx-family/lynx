@@ -10,8 +10,12 @@
 #include <unordered_map>
 #include <unordered_set>
 
+#include "base/include/fml/time/time_point.h"
 #include "base/include/log/logging.h"
 #include "base/include/no_destructor.h"
+#if ENABLE_TRACE_PERFETTO
+#include "base/include/notification_center.h"
+#endif
 #include "base/include/vector.h"
 #include "core/runtime/js/jsi/jsi.h"
 #include "quickjs/include/quickjs.h"
@@ -27,7 +31,7 @@ namespace js {
 using LepusIdContainer = std::unordered_map<LEPUSRuntime*, LEPUSClassID>;
 class QuickjsRuntimeInstance : public VMInstance, public GCObserver {
  public:
-  QuickjsRuntimeInstance() = default;
+  QuickjsRuntimeInstance();
   virtual ~QuickjsRuntimeInstance();
 
   void InitQuickjsRuntime(bool is_sync = true, uint32_t runtime_mode = 0);
@@ -93,6 +97,17 @@ class QuickjsRuntimeInstance : public VMInstance, public GCObserver {
   base::LinearFlatSet<JSIObserver*> obs_set_ptr_;
   static LEPUSClassID s_function_id_;
   static LEPUSClassID s_object_id_;
+
+#if ENABLE_TRACE_PERFETTO
+  // When tracing is enabled, the initial snapshot of a BTS VM will only be
+  // captured once.
+  bool initial_snapshot_captured_{false};
+  fml::TimePoint last_trace_event_time_;
+  fml::TimePoint creation_time_as_unique_;
+  std::unique_ptr<base::NotificationCallback> notification_callback_;
+
+  void ReportMemoryForTrace();
+#endif
 };
 
 }  // namespace js

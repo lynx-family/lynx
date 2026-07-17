@@ -14,10 +14,12 @@
 #include "base/include/no_destructor.h"
 #include "base/trace/native/trace_event.h"
 #include "core/base/threading/task_runner_manufactor.h"
+#include "core/base/trace/trace_event_def.h"
 #include "core/renderer/tasm/config.h"
 #include "core/runtime/js/bindings/global.h"
 #include "core/runtime/js/js_executor.h"
 #include "core/runtime/js/jsi/jsi.h"
+#include "core/runtime/js/runtime_constant.h"
 #include "core/runtime/trace/runtime_trace_event_def.h"
 
 #ifndef JS_ENGINE_TYPE
@@ -77,6 +79,28 @@ class VMInstancePool {
   std::shared_ptr<runtime::js::VMInstance> TakeVMInstance(
       runtime::js::JSRuntimeType runtime_type);
 
+#if ENABLE_TRACE_PERFETTO
+  VMInstancePool()
+      : report_pool_state_(
+            LYNX_ON_TRACE_BEGIN_NOTIFICATION,
+            [&](const std::string& tag, intptr_t data) { ReportPoolState(); }) {
+  }
+  void ReportPoolState() {
+    TRACE_EVENT_INSTANT(LYNX_TRACE_CATEGORY, BTS_VM_POOL_STATE_EVENT,
+                        [&](lynx::perfetto::EventContext ctx) {
+                          int index = 0;
+                          for (auto&& [type, instance_vec] : vm_instances_) {
+                            for (auto&& vm_inst : instance_vec) {
+                              ctx.event()->add_debug_annotations(
+                                  std::string("id_") + std::to_string(index++),
+                                  vm_inst->GetDebugDescription());
+                            }
+                          }
+                        });
+  }
+  base::NotificationCallback report_pool_state_;
+#endif
+
  private:
   void CreateVMInstanceAsync(runtime::js::JSRuntimeType runtime_type);
   std::shared_ptr<runtime::js::VMInstance> DoCreateVMInstance(
@@ -130,6 +154,10 @@ void VMInstancePool::CreateVMInstanceAsync(
           auto ret = DoCreateVMInstance(runtime_type);
           vm_instances_[runtime_type].emplace_back(std::move(ret));
         }
+
+#if ENABLE_TRACE_PERFETTO
+        ReportPoolState();
+#endif
       },
       base::ConcurrentTaskType::NORMAL_PRIORITY);
 }
@@ -153,11 +181,23 @@ RuntimeManager* RuntimeManager::Instance() {
 }
 
 RuntimeManager::RuntimeManager()
-    : memory_pressure_callback_(
-          base::MEMORY_PRESSURE_NOTIFICATION,
-          [this](const std::string& tag, intptr_t data) {
-            OnMemoryPressure(static_cast<base::MemoryPressureLevel>(data));
-          }) {}
+    : memory_pressure_callback_(base::NotificationCallback::CallbackList{
+          {base::MEMORY_PRESSURE_NOTIFICATION,
+           [this](const std::string& tag, intptr_t data) {
+             OnMemoryPressure(static_cast<base::MemoryPressureLevel>(data));
+           }}
+#if ENABLE_TRACE_PERFETTO
+          ,
+          {kScheduleVMSnapshot,
+           [this](const std::string& tag, intptr_t data) {
+             const char* group_id = reinterpret_cast<const char*>(data);
+             if (group_id != nullptr) {
+               ScheduleVMSnapshot(group_id);
+             }
+           }}
+#endif
+      }) {
+}
 
 RuntimeManager::~RuntimeManager() {
   // Should destroy runtime_manager_delegate_ before mVMContainer_
@@ -254,6 +294,20 @@ base::UnsafeOwningPtr<runtime::js::Runtime> RuntimeManager::CreateJSRuntime(
            << js_context.get() << ", group:" << group_id);
     }
   }
+
+  TRACE_EVENT_INSTANT(
+      LYNX_TRACE_CATEGORY, LYNX_PAGE_USES_BTS_VM,
+      [&](lynx::perfetto::EventContext ctx) {
+        ctx.event()->add_debug_annotations("group_id", group_id);
+        ctx.event()->add_debug_annotations(
+            "instance_id", std::to_string(page_options.GetInstanceID()));
+        ctx.event()->add_debug_annotations(
+            "desc", js_context->getVM()->GetDebugDescription());
+        ctx.event()->add_debug_annotations(
+            "ptr", std::to_string(
+                       reinterpret_cast<intptr_t>(js_context->getVM().get())));
+      });
+
   EnsureConsolePostMan(js_context, executor, force_use_lightweight_js_engine,
                        page_options);
   js_runtime->InitRuntime(js_context);
@@ -331,6 +385,20 @@ base::UnsafeOwningPtr<runtime::js::Runtime> RuntimeManager::CreateJSRuntime(
                                                 group_id);
     }
   }
+
+#if ENABLE_TRACE_PERFETTO
+  if (!is_single_context) {
+    // Take snapshot before loading pages using this shared runtime.
+    if (auto config =
+            trace::TraceController::Instance()->GetLastSessionTraceConfig();
+        config && config->enable_memory_trace && config->auto_take_snapshot) {
+      if (config->auto_take_snapshot_group_id.empty() ||
+          config->auto_take_snapshot_group_id == group_id) {
+        TakeVMSnapshot(group_id, true);
+      }
+    }
+  }
+#endif
 
   return js_runtime;
 }
@@ -557,6 +625,45 @@ std::unique_ptr<runtime::js::Runtime> RuntimeManager::MakeRuntime(
 }
 
 #if ENABLE_TRACE_PERFETTO
+void RuntimeManager::TakeVMSnapshot(const std::string& group_id, bool initial) {
+  auto* ctx_wrap = GetContextWrapper(group_id);
+  if (ctx_wrap) {
+    auto ctx = ctx_wrap->getJSContext();
+    if (ctx) {
+      std::string identifier = group_id + "(shared bts)";
+      intptr_t payload[3] = {reinterpret_cast<intptr_t>(ctx.get()),
+                             reinterpret_cast<intptr_t>(identifier.c_str()),
+                             static_cast<intptr_t>(initial)};
+      base::NotificationCallback::Notify(kBTSTakeVMSnapshot,
+                                         reinterpret_cast<intptr_t>(payload));
+    }
+  }
+}
+
+void RuntimeManager::ScheduleVMSnapshot(const std::string& group_id) {
+  if (!memory_task_runner_) {
+    return;
+  }
+  uint64_t task_id = 0;
+  {
+    std::lock_guard<std::mutex> lock(pending_vm_snapshot_mutex_);
+    task_id = ++pending_vm_snapshot_tasks_[group_id];
+  }
+  memory_task_runner_->PostDelayedTask(
+      [this, group_id, task_id]() {
+        {
+          std::lock_guard<std::mutex> lock(pending_vm_snapshot_mutex_);
+          auto it = pending_vm_snapshot_tasks_.find(group_id);
+          if (it == pending_vm_snapshot_tasks_.end() || it->second != task_id) {
+            return;
+          }
+          pending_vm_snapshot_tasks_.erase(it);
+        }
+        TakeVMSnapshot(group_id, false);
+      },
+      fml::TimeDelta::FromMilliseconds(500));
+}
+
 std::shared_ptr<profile::RuntimeProfiler> RuntimeManager::MakeRuntimeProfiler(
     std::shared_ptr<runtime::js::JSIContext> js_context,
     bool force_use_lightweight_js_engine,
@@ -596,6 +703,7 @@ void RuntimeManager::OnMemoryPressure(base::MemoryPressureLevel level) {
     return;
   }
   memory_task_runner_->PostTask([this]() {
+    TRACE_EVENT(LYNX_TRACE_CATEGORY, RUN_GC_EVENT);
     std::vector<base::UnsafeWeakPtr<runtime::js::Runtime>> alive;
     std::unordered_set<std::string> seen_groups;
     for (auto& w : weak_runtimes_) {

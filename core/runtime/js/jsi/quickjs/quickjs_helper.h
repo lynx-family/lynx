@@ -77,6 +77,21 @@ class QuickjsHelper {
       const char* filename, int eval_flags);
   static LEPUSValue ThrowJsException(LEPUSContext* ctx,
                                      const JSINativeException& exception);
+
+  struct MemoryUsage {
+    size_t base_size;      // base usage besides js objects.
+    size_t heap_size;      // size of accumulating js objects.
+    size_t page_rss_size;  // resident set size of GC pages, and equals
+                           // heap_size in RC mode.
+  };
+
+  /// If inspector is disabled, only heap size is returned.
+  static MemoryUsage GetMemoryUsage(LEPUSRuntime* runtime);
+
+  static std::string GetDebugDescription(LEPUSRuntime* runtime);
+
+  static bool TakeHeapSnapshot(LEPUSContext* ctx,
+                               const std::string& identifier);
 };
 
 }  // namespace detail

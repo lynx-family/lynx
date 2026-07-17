@@ -23,6 +23,8 @@ InspectorTracingAgent::InspectorTracingAgent() {
       &InspectorTracingAgent::GetStartupTracingConfig;
   functions_map_["Tracing.getStartupTracingFile"] =
       &InspectorTracingAgent::GetStartupTracingFile;
+  functions_map_["Tracing.takeVMSnapshotByUrl"] =
+      &InspectorTracingAgent::TakeVMSnapshotByUrl;
 }
 
 InspectorTracingAgent::~InspectorTracingAgent() = default;
@@ -64,6 +66,11 @@ void InspectorTracingAgent::GetStartupTracingFile(
     const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
   LynxGlobalDevToolMediator::GetInstance().GetStartupTracingFile(sender,
                                                                  message);
+}
+
+void InspectorTracingAgent::TakeVMSnapshotByUrl(
+    const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
+  LynxGlobalDevToolMediator::GetInstance().TakeVMSnapshotByUrl(sender, message);
 }
 
 }  // namespace devtool

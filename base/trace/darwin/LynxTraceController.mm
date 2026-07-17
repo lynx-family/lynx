@@ -42,12 +42,11 @@ static LynxTraceController *lynxTraceController = nil;
 }
 
 - (void)startTracing:(completeBlockType)completeBlock config:(NSDictionary *)config {
-  static int const kDefaultBufferSize = 40960;
   if (completeBlock != nullptr) {
     [_completeBlocks addObject:completeBlock];
   }
   if (_traceController != nullptr) {
-    int bufferSize = kDefaultBufferSize;
+    int bufferSize = lynx::trace::TraceConfig::kDefaultBufferSize;
     if ([config valueForKey:@"buffer_size"] != nil) {
       bufferSize = [config[@"buffer_size"] intValue];
     }

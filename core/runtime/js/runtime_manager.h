@@ -4,7 +4,9 @@
 #ifndef CORE_RUNTIME_JS_RUNTIME_MANAGER_H_
 #define CORE_RUNTIME_JS_RUNTIME_MANAGER_H_
 
+#include <cstdint>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <unordered_map>
 #include <utility>
@@ -75,8 +77,6 @@ class LYNX_EXPORT_FOR_DEVTOOL RuntimeManager
   static RuntimeManager* Instance();
   typedef std::unordered_map<std::string, std::shared_ptr<JSContextWrapper>>
       Shared_Context_Map;
-  typedef std::vector<std::shared_ptr<NoneSharedJSContextWrapper>>
-      None_Shared_Context_List;
 
   ~RuntimeManager() override;
 
@@ -121,6 +121,10 @@ class LYNX_EXPORT_FOR_DEVTOOL RuntimeManager
       bool force_use_lightweight_js_engine, bool use_shared_context,
       const tasm::PageOptions& page_options);
 #if ENABLE_TRACE_PERFETTO
+  std::mutex pending_vm_snapshot_mutex_;
+  std::unordered_map<std::string, uint64_t> pending_vm_snapshot_tasks_;
+  void TakeVMSnapshot(const std::string& group_id, bool initial);
+  void ScheduleVMSnapshot(const std::string& group_id);
   std::shared_ptr<profile::RuntimeProfiler> MakeRuntimeProfiler(
       std::shared_ptr<runtime::js::JSIContext> js_context,
       bool force_use_lightweight_js_engine,

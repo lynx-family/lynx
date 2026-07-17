@@ -11,9 +11,19 @@ void HookSystemTrace::InstallSystemTraceHooks() {}
 
 void HookSystemTrace::UninstallSystemTraceHooks() {}
 
-void HookSystemTrace::Install() { cpu_info_trace_.DispatchBegin(); }
+void HookSystemTrace::Install(const SetupConfig& config) {
+  if (config.cpu_trace_enabled) {
+    cpu_info_trace_.DispatchBegin();
+  }
+  if (config.memory_info_trace_enabled) {
+    memory_info_trace_.DispatchBegin();
+  }
+}
 
-void HookSystemTrace::Uninstall() { cpu_info_trace_.DispatchEnd(); }
+void HookSystemTrace::Uninstall() {
+  cpu_info_trace_.DispatchEnd();
+  memory_info_trace_.DispatchEnd();
+}
 
 }  // namespace trace
 }  // namespace lynx

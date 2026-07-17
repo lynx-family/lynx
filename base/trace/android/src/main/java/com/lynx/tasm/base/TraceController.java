@@ -8,6 +8,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.Build;
+import android.os.Debug;
 import android.os.Environment;
 import android.os.Trace;
 import android.text.TextUtils;
@@ -179,6 +180,32 @@ public class TraceController {
   @CalledByNative
   private String generateTracingFileDir() {
     return mContext.getExternalFilesDir(null).getPath();
+  }
+
+  @CalledByNative
+  private String[] getMemoryStats() {
+    try {
+      Debug.MemoryInfo memoryInfo = new Debug.MemoryInfo();
+      Debug.getMemoryInfo(memoryInfo);
+
+      Map<String, String> stats;
+      String totalPssKey = "summary.total-pss";
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+        stats = memoryInfo.getMemoryStats();
+      } else {
+        stats = new HashMap<String, String>();
+        stats.put(totalPssKey, Integer.toString(memoryInfo.getTotalPss()));
+      }
+      List<String> memoryStats = new ArrayList<>();
+      for (Map.Entry<String, String> entry : stats.entrySet()) {
+        memoryStats.add(entry.getKey());
+        memoryStats.add(entry.getValue());
+      }
+      return memoryStats.toArray(new String[0]);
+    } catch (Exception e) {
+      Log.w(TAG, "failed to get memory stats", e);
+      return new String[0];
+    }
   }
 
   private File getFile() {

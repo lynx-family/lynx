@@ -22,6 +22,7 @@ typedef void (^GlobalDevToolMemoryUsageCallback)(NSString* _Nullable resultJson,
 + (intptr_t)getFPSTracePlugin;
 + (intptr_t)getFrameViewTracePlugin;
 + (intptr_t)getInstanceTracePlugin;
++ (intptr_t)getMemoryTracePlugin;
 
 + (std::string)getSystemModelName;
 

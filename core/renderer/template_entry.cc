@@ -9,6 +9,7 @@
 
 #include "base/include/log/logging.h"
 #include "base/trace/native/trace_event.h"
+#include "core/base/trace/trace_event_def.h"
 #include "core/renderer/dom/element.h"
 #include "core/renderer/dom/fiber/tree_resolver.h"
 #include "core/renderer/lynx_global_pool.h"
@@ -120,6 +121,15 @@ bool TemplateEntry::ConstructContext(
   if (!vm_context_) {
     return false;
   }
+
+  TRACE_EVENT_INSTANT(
+      LYNX_TRACE_CATEGORY, LYNX_PAGE_USES_MTS_VM,
+      [&](lynx::perfetto::EventContext ctx) {
+        ctx.event()->add_debug_annotations(
+            "instance_id", std::to_string(page_options.GetInstanceID()));
+        ctx.event()->add_debug_annotations(
+            "desc", vm_context_->GetMTSContext()->GetDebugDescription());
+      });
 
   if (source_type != LepusContextSourceType::kFromLocalPool) {
     vm_context_->SetSdkVersion(assembler->target_sdk_version_);

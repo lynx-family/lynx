@@ -10,6 +10,7 @@ import com.lynx.devtool.memory.MemoryUsageResultSerializer;
 import com.lynx.devtool.tracing.FPSTrace;
 import com.lynx.devtool.tracing.FrameViewTrace;
 import com.lynx.devtool.tracing.InstanceTrace;
+import com.lynx.devtool.tracing.MemoryTrace;
 import com.lynx.tasm.LynxEnv;
 import com.lynx.tasm.base.CalledByNative;
 import com.lynx.tasm.base.LLog;
@@ -86,6 +87,11 @@ public class GlobalDevToolPlatformAndroidDelegate {
   @CalledByNative
   public static long getInstanceTracePlugin() {
     return InstanceTrace.getInstance().getNativeInstanceTrace();
+  }
+
+  @CalledByNative
+  public static long getMemoryTracePlugin() {
+    return MemoryTrace.getInstance().getNativeMemoryTrace();
   }
 
   @CalledByNative

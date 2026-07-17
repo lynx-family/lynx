@@ -787,6 +787,13 @@ void BTSRuntime::Destroy() {
   if (state_ == State::kNotStarted || state_ == State::kDestroying) {
     return;
   }
+
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, BTS_RUNTIME_DESTROY,
+              [instance_id = instance_id_](lynx::perfetto::EventContext ctx) {
+                ctx.event()->add_debug_annotations(INSTANCE_ID,
+                                                   std::to_string(instance_id));
+              });
+
   LOGI("LynxRuntime::Destroy, runtime_id: " << GetRuntimeId()
                                             << " this: " << this);
   state_ = State::kDestroying;

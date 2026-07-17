@@ -7,6 +7,7 @@
 #include <utility>
 
 #include "base/trace/native/trace_event.h"
+#include "core/runtime/js/runtime_constant.h"
 #include "core/runtime/profile/runtime_profiler_manager.h"
 #include "core/services/recorder/recorder_controller.h"
 #include "core/services/replay/replay_controller.h"
@@ -18,7 +19,6 @@
 namespace lynx {
 namespace devtool {
 
-constexpr int kDefaultBufferSize = 20 * 1024;  // 20M
 constexpr char kMemoryUsageTimeoutMs[] = "timeoutMs";
 constexpr int64_t kMaxMemoryUsageTimeoutMs = 5 * 60 * 1000;
 
@@ -369,6 +369,17 @@ void LynxGlobalDevToolMediator::TracingStart(
     const Json::Value& message) {
   if (default_task_runner_) {
     RunOnTaskRunner(default_task_runner_, [this, sender, message]() {
+      if (!tracing_notification_callback_) {
+        tracing_notification_callback_ =
+            std::make_unique<base::NotificationCallback>(
+                runtime::kVMSnapshotCaptured,
+                [sender](const std::string& tag, intptr_t data) {
+                  Json::Value msg;
+                  msg["method"] = "VM.snapshotCaptured";
+                  sender->SendMessage("CDP", msg);
+                });
+      }
+
       int id = static_cast<int>(message["id"].asInt64());
       if (!lynx::tasm::LynxEnv::GetInstance().IsDebugModeEnabled()) {
         sender->SendErrorResponse(id, "Tracing not enabled");
@@ -396,9 +407,9 @@ void LynxGlobalDevToolMediator::TracingStart(
         to_vector(trace_config["excludedCategories"],
                   config->excluded_categories);
         config->enable_systrace = trace_config["enableSystrace"].asBool();
-        config->buffer_size = trace_config.isMember("bufferSize")
-                                  ? trace_config["bufferSize"].asInt()
-                                  : kDefaultBufferSize;
+        if (trace_config.isMember("bufferSize")) {
+          config->buffer_size = trace_config["bufferSize"].asInt();
+        }
 
         if (trace_config.isMember("recordMod")) {
           const auto& record_mod = trace_config["recordMod"];
@@ -408,6 +419,28 @@ void LynxGlobalDevToolMediator::TracingStart(
         }
         if (trace_config.isMember("enableCompress")) {
           config->enable_compress = trace_config["enableCompress"].asBool();
+        }
+        if (trace_config.isMember("enableMemoryTrace")) {
+          config->enable_memory_trace =
+              trace_config["enableMemoryTrace"].asBool();
+          if (config->enable_memory_trace) {
+            // When memory data tracing is enabled, use continuous file writing
+            // mode to reduce the impact on physical memory.
+            config->record_mode = trace::TraceConfig::RECORD_CONTINUOUSLY;
+            config->file_write_period_ms =
+                trace::TraceConfig::kMemoryTraceFileWritePeriodMs;
+          }
+        }
+        if (trace_config.isMember("forceGC")) {
+          config->memory_trace_force_gc = trace_config["forceGC"].asBool();
+        }
+        if (trace_config.isMember("enableAutoHeapSnapshot")) {
+          config->auto_take_snapshot =
+              trace_config["enableAutoHeapSnapshot"].asBool();
+          if (trace_config.isMember("sharedGroupId")) {
+            config->auto_take_snapshot_group_id =
+                trace_config["sharedGroupId"].asString();
+          }
         }
 
         config->js_profile_interval =
@@ -439,7 +472,10 @@ void LynxGlobalDevToolMediator::TracingStart(
         sender->SendErrorResponse(id, "Failed to get trace controller");
         return;
       }
-
+      if (config->enable_memory_trace) {
+        controller->AddTracePlugin(
+            GlobalDevToolPlatformFacade::GetInstance().GetMemoryTracePlugin());
+      }
       controller->AddTracePlugin(
           GlobalDevToolPlatformFacade::GetInstance().GetFPSTracePlugin());
       controller->AddTracePlugin(
@@ -588,6 +624,35 @@ void LynxGlobalDevToolMediator::GetStartupTracingFile(
         } else {
           sender->SendErrorResponse(id, "Failed to get startup tracing file");
         }
+      }
+    });
+  }
+}
+
+void LynxGlobalDevToolMediator::TakeVMSnapshotByUrl(
+    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
+    const Json::Value& message) {
+  if (default_task_runner_) {
+    RunOnTaskRunner(default_task_runner_, [this, sender, message]() {
+      const int id = static_cast<int>(message["id"].asInt());
+      if (this->tracing_session_id_ > 0) {
+        const auto& params = message["params"];
+        if (params.isMember("url")) {
+          const auto url = params["url"].asString();
+          if (params.isMember("type")) {
+            const auto type = params["type"].asString();
+            intptr_t payload[2] = {reinterpret_cast<intptr_t>(url.c_str()),
+                                   reinterpret_cast<intptr_t>(type.c_str())};
+            base::NotificationCallback::Notify(
+                runtime::kTakeVMSnapshotByUrl,
+                reinterpret_cast<intptr_t>(payload));
+            sender->SendOKResponse(id);
+            return;
+          }
+        }
+        sender->SendErrorResponse(id, "Argument error");
+      } else {
+        sender->SendErrorResponse(id, "Tracing is not started");
       }
     });
   }

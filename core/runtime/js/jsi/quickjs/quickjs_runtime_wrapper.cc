@@ -4,6 +4,9 @@
 
 #include "core/runtime/js/jsi/quickjs/quickjs_runtime_wrapper.h"
 
+#include <algorithm>
+#include <chrono>
+#include <cstring>
 #include <mutex>
 #include <utility>
 
@@ -15,7 +18,11 @@ extern "C" {
 }
 #endif
 
+#include "base/trace/native/trace_controller.h"
+#include "base/trace/native/trace_event.h"
 #include "core/renderer/utils/lynx_env.h"
+#include "core/runtime/js/jsi/quickjs/quickjs_context_wrapper.h"
+#include "core/runtime/js/jsi/quickjs/quickjs_helper.h"
 #include "core/runtime/js/jsi/quickjs/quickjs_host_function.h"
 #include "core/runtime/js/jsi/quickjs/quickjs_host_object.h"
 #include "core/runtime/js/runtime_constant.h"
@@ -29,6 +36,53 @@ using detail::QuickjsHostObjectProxy;
 LEPUSClassID QuickjsRuntimeInstance::s_function_id_ = 0;
 LEPUSClassID QuickjsRuntimeInstance::s_object_id_ = 0;
 
+QuickjsRuntimeInstance::QuickjsRuntimeInstance()
+#if ENABLE_TRACE_PERFETTO
+    : creation_time_as_unique_(fml::TimePoint::Now()),
+      notification_callback_(std::make_unique<base::NotificationCallback>(
+          base::NotificationCallback::CallbackList{
+              {LYNX_ON_TRACE_BEGIN_NOTIFICATION,
+               [this](const std::string& tag, intptr_t data) {
+                 if (this->rt_) {
+                   LEPUS_SetGCInfoThreshold(
+                       this->rt_,
+                       lynx::runtime::kMemoryReportDeltaThresholdInTrace);
+                 }
+               }},
+              {kBTSReportMemoryInfo,
+               [this](const std::string& tag, intptr_t data) {
+                 if (this->rt_) {
+                   LEPUS_ReportGCInfo(this->rt_);
+                 }
+               }},
+              {kBTSTakeVMSnapshot,
+               [this](const std::string& tag, intptr_t data) {
+                 intptr_t* payload = reinterpret_cast<intptr_t*>(data);
+                 js::JSIContext* ctx =
+                     reinterpret_cast<js::JSIContext*>(payload[0]);
+                 if (ctx &&
+                     ctx->getVM().get() == static_cast<VMInstance*>(this)) {
+                   const char* identifier =
+                       reinterpret_cast<const char*>(payload[1]);
+                   const bool initial = static_cast<bool>(payload[2]);
+                   if (this->initial_snapshot_captured_ && initial) {
+                     LOGI("Initial snapshot already captured of '" << identifier
+                                                                   << "'");
+                     return;
+                   }
+                   auto qjs_ctx = static_cast<QuickjsContextWrapper*>(ctx);
+                   if (detail::QuickjsHelper::TakeHeapSnapshot(
+                           qjs_ctx->getContext(), identifier)) {
+                     if (initial) {
+                       this->initial_snapshot_captured_ = true;
+                     }
+                   }
+                 }
+               }}}))
+#endif
+{
+}
+
 QuickjsRuntimeInstance::~QuickjsRuntimeInstance() {
   LOGE("LYNX free quickjs runtime start");
   if (rt_) {
@@ -37,6 +91,11 @@ QuickjsRuntimeInstance::~QuickjsRuntimeInstance() {
   }
   GetFunctionIdContainer().erase(rt_);
   GetObjectIdContainer().erase(rt_);
+
+  rt_ = nullptr;
+#if ENABLE_TRACE_PERFETTO
+  ReportMemoryForTrace();
+#endif
 
   LOGI("LYNX free quickjs runtime end. " << this << " LEPUSRuntime: " << rt_);
 }
@@ -67,6 +126,13 @@ void QuickjsRuntimeInstance::InitQuickjsRuntime(bool is_sync,
   rt_ = rt;
 
   LEPUS_SetGCObserver(rt_, static_cast<GCObserver*>(this));
+
+#if ENABLE_TRACE_PERFETTO
+  if (trace::TraceController::Instance()->IsTracingStarted()) {
+    LEPUS_SetGCInfoThreshold(rt_,
+                             lynx::runtime::kMemoryReportDeltaThresholdInTrace);
+  }
+#endif
 
   static std::once_flag s_init_id_flag;
   static LEPUSClassDef s_function_class_def;
@@ -116,13 +182,46 @@ void QuickjsRuntimeInstance::InitQuickjsRuntime(bool is_sync,
 }
 
 void QuickjsRuntimeInstance::OnGC(std::string mem_info) {
-  if (obs_set_ptr_.empty()) {
-    return;
-  }
+#if ENABLE_TRACE_PERFETTO
+  ReportMemoryForTrace();
+#endif
   for (auto* observer : obs_set_ptr_) {
     observer->OnRuntimeGC({{kRawRuntimeMemoryInfo, mem_info}});
   }
 }
+
+#if ENABLE_TRACE_PERFETTO
+void QuickjsRuntimeInstance::ReportMemoryForTrace() {
+  if (!trace::TraceController::Instance()->IsTracingStarted()) {
+    return;
+  }
+
+  // When Lynx Trace is enabled, memory data is reported directly on the JS
+  // thread. Otherwise, multithreading may cause the time sequence of events to
+  // be disordered, hindering automated analysis.
+  auto now = fml::TimePoint::Now();
+  if (rt_ && ((now - last_trace_event_time_).ToMilliseconds() < 16)) {
+    return;
+  }
+  last_trace_event_time_ = now;
+  std::string track_name =
+      "bts_vm_acc_" +
+      std::to_string(creation_time_as_unique_.ToEpochDelta().ToNanoseconds());
+
+  auto usage = detail::QuickjsHelper::GetMemoryUsage(rt_);
+  TRACE_COUNTER(
+      LYNX_TRACE_CATEGORY, track_name.c_str(), usage.heap_size,
+      [this, usage](perfetto::EventContext ctx) {
+        ctx.event()->add_debug_annotations(kRawRuntimeBaseMemoryInfo,
+                                           std::to_string(usage.base_size));
+        ctx.event()->add_debug_annotations(kRawRuntimePageRssMemoryInfo,
+                                           std::to_string(usage.page_rss_size));
+        ctx.event()->add_debug_annotations(
+            "ptr", std::to_string(reinterpret_cast<intptr_t>(
+                       static_cast<VMInstance*>(this))));
+      });
+}
+#endif
 
 void QuickjsRuntimeInstance::AddObserver(JSIObserver* obs) {
   if (!obs) {
@@ -139,11 +238,7 @@ void QuickjsRuntimeInstance::RemoveObserver(JSIObserver* obs) {
 }
 
 std::string QuickjsRuntimeInstance::GetDebugDescription() const {
-  if (rt_) {
-    return std::string("quickjs(") + (LEPUS_IsGCModeRT(rt_) ? "gc)" : "rc)");
-  } else {
-    return "";
-  }
+  return detail::QuickjsHelper::GetDebugDescription(rt_);
 }
 
 void QuickjsRuntimeInstance::AddToIdContainer() {

@@ -80,6 +80,7 @@ class GlobalDevToolPlatformFacadeMock
   lynx::trace::TracePlugin* GetInstanceTracePlugin() override {
     return nullptr;
   }
+  lynx::trace::TracePlugin* GetMemoryTracePlugin() override { return nullptr; }
 };
 
 }  // namespace testing

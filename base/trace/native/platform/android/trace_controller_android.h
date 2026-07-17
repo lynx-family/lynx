@@ -6,6 +6,7 @@
 #define BASE_TRACE_NATIVE_PLATFORM_ANDROID_TRACE_CONTROLLER_ANDROID_H_
 
 #include <string>
+#include <vector>
 
 #include "base/include/platform/android/scoped_java_ref.h"
 #include "base/trace/native/trace_controller.h"
@@ -25,6 +26,8 @@ class TraceControllerDelegateAndroid : public TraceController::Delegate {
   void SetIsTracingStarted(bool is_tracing_started) override;
 
   void RefreshATraceTags() override;
+
+  std::vector<std::string> GetMemoryStats() override;
 
  private:
   TraceControllerDelegateAndroid(const TraceControllerDelegateAndroid &) =
