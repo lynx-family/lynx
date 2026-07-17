@@ -49,6 +49,7 @@
 #include "clay/ui/component/inline_image_view.h"
 #include "clay/ui/component/intersection_observer.h"
 #include "clay/ui/component/keywords.h"
+#include "clay/ui/component/map_marker_view.h"
 #ifdef ENABLE_ACCESSIBILITY
 #ifndef LYNX_ENABLE_CLAY_NATIVE_LIST
 #include "clay/ui/component/list/base_list_view.h"
@@ -1878,20 +1879,34 @@ void PageView::MakeRasterSnapshot(
   // Reset the offset of the target view to (0, 0) to take the snapshot, and
   // will be restored after.
   layer->SetOffset(FloatPoint(0, 0));
-  // Get the frame size with physical pixel.
-  int32_t width = static_cast<int32_t>(
-      ConvertTo<kPixelTypePhysical>(target->Width()) * scale);
-  int32_t height = static_cast<int32_t>(
-      ConvertTo<kPixelTypePhysical>(target->Height()) * scale);
   const bool should_build_into_layer_tree =
       render_object->ShouldBuildIntoLayerTree();
+  const bool is_detached_map_marker =
+      !should_build_into_layer_tree && target->Is<MapMarkerView>();
+  FloatSize snapshot_size(target->Width(), target->Height());
+  if (is_detached_map_marker) {
+    snapshot_size = static_cast<MapMarkerView*>(target)->RasterSnapshotSize();
+  }
+  // Get the frame size with physical pixel.
+  const float physical_width =
+      ConvertTo<kPixelTypePhysical>(snapshot_size.width()) * scale;
+  const float physical_height =
+      ConvertTo<kPixelTypePhysical>(snapshot_size.height()) * scale;
+  int32_t width =
+      is_detached_map_marker
+          ? std::max(1, static_cast<int32_t>(std::ceil(physical_width)))
+          : static_cast<int32_t>(physical_width);
+  int32_t height =
+      is_detached_map_marker
+          ? std::max(1, static_cast<int32_t>(std::ceil(physical_height)))
+          : static_cast<int32_t>(physical_height);
   const int32_t callback_width =
       !should_build_into_layer_tree
-          ? std::max(1, static_cast<int32_t>(std::ceil(target->Width())))
+          ? std::max(1, static_cast<int32_t>(std::ceil(snapshot_size.width())))
           : width;
   const int32_t callback_height =
       !should_build_into_layer_tree
-          ? std::max(1, static_cast<int32_t>(std::ceil(target->Height())))
+          ? std::max(1, static_cast<int32_t>(std::ceil(snapshot_size.height())))
           : height;
   // Create a temporary FrameBuilder to generate the layer tree.
   std::unique_ptr<FrameBuilder> frame_builder = std::make_unique<FrameBuilder>(

@@ -1,6 +1,8 @@
-# Native View Spec (Clay Android)
+# Native View Spec (Clay Android with iOS Lifecycle Notes)
 
-This document describes the current Clay Android contract for `NativeView`.
+This document primarily describes the current Clay Android contract for
+`NativeView`. Platform-neutral lifecycle rules and the iOS node-ready ordering
+needed by wrapped native views are called out explicitly where they differ.
 
 It is a spec for the implemented behavior, not a historical design note.
 Whenever the C++, JNI, Java holder, or bridge layers change in a way that
@@ -12,6 +14,7 @@ Scope:
 - generic `NativeView` behavior in Clay Android
 - lifecycle alignment across C++, JNI, Java platform-view glue, and wrapped
   `LynxBaseUI` instances
+- iOS visual-mutation ordering at the node-ready boundary
 - rendering mode and holder selection
 - optional Clay subtree raster snapshot support
 
@@ -291,13 +294,26 @@ Bridge-side behavior in `LynxUIClayUIBridgeImpl.updateLayoutInfo(...)`:
 
 ### 8.3 Layout before nodeReady
 
-Current `NativeView` behavior guarantees a final layout push before ready:
+Current `NativeView` behavior requests a final update push before ready:
 
 - `NativeView::OnNodeReady()` first calls `ApplyUpdateChanged()`
 - only then does it call `plugin.OnNodeReady()`
 
-This means Java can observe `onLayout(...)` before `onNodeReady()` for the same
-patch, even when the last size change happens right before ready flush.
+Platform delivery differs by implementation:
+
+- Android applies the queued layout synchronously, so Java observes
+  `onLayout(...)` before `onNodeReady()` for the same patch
+- iOS flushes the current view's queued props, events, and padding before
+  forwarding `onNodeReady()`, even when visual mutation delivery is otherwise
+  deferred during a layout or scroll burst
+- iOS layout remains compositor-owned and queued for the normal presentation
+  flush; the lifecycle guarantee does not imply that UIKit layout has completed
+  before `onNodeReady()`
+
+The iOS visual flush is scoped to one newly ready view. It prevents platform
+components that register initial-prop work for node-ready from missing that
+work, without turning the ready callback into a general synchronous layout
+flush.
 
 ## 9. NodeReady Contract
 
