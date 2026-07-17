@@ -1,4 +1,8 @@
+import { release } from 'os';
 import { loadNodeLynxNativeBinding } from './headless-lynx-view';
+
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const packageJson = require('../package.json');
 
 export type OpenCardCallback = (url: string) => void;
 export type ClosePageCallback = () => void;
@@ -9,6 +13,23 @@ export class LynxEnv {
     lynx.initGlobalEnv();
     lynx.LynxEnv.setDevtoolSwitch('enable_devtool', true);
     lynx.LynxEnv.setDevtoolSwitch('enable_quickjs_debug', true);
+
+    // Set default clientInfo for debug router
+    const defaultKeys = [
+      'App',
+      'deviceModel',
+      'osType',
+      'osVersion',
+      'sdkVersion',
+    ];
+    const defaultValues = [
+      'node-lynx',
+      `nodejs-${process.version}`,
+      process.platform,
+      release(),
+      packageJson.version ?? '0.0.0',
+    ];
+    lynx.LynxEnv.setAppInfo(defaultKeys, defaultValues);
   }
 
   static setAppInfo(
