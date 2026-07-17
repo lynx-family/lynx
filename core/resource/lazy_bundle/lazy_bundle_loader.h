@@ -5,7 +5,9 @@
 #ifndef CORE_RESOURCE_LAZY_BUNDLE_LAZY_BUNDLE_LOADER_H_
 #define CORE_RESOURCE_LAZY_BUNDLE_LAZY_BUNDLE_LOADER_H_
 
+#include <cstdint>
 #include <memory>
+#include <mutex>
 #include <optional>
 #include <set>
 #include <string>
@@ -17,19 +19,41 @@
 #include "core/build/gen/lynx_sub_error_code.h"
 #include "core/public/lynx_resource_loader.h"
 #include "core/renderer/dom/vdom/radon/radon_lazy_component.h"
+#include "core/resource/lazy_bundle/bundle_manager.h"
 #include "core/resource/lazy_bundle/lazy_bundle_lifecycle_option.h"
 #include "core/resource/lazy_bundle/lazy_bundle_request.h"
 #include "core/template_bundle/lynx_template_bundle.h"
 
 namespace lynx {
 namespace shell {
+class BTSRuntime;
 class LynxEngine;
-}
+
+struct ExternalResourceInfo {
+  std::vector<uint8_t> data;
+  int32_t err_code{0};
+  std::string err_msg;
+
+  ExternalResourceInfo() = default;
+
+  ExternalResourceInfo(std::vector<uint8_t> data, int32_t err_code,
+                       std::string err_msg)
+      : data(std::move(data)),
+        err_code(err_code),
+        err_msg(std::move(err_msg)) {}
+
+  ExternalResourceInfo(int32_t err_code, std::string err_msg)
+      : err_code(err_code), err_msg(std::move(err_msg)) {}
+
+  bool Success() const { return err_code == 0; }
+};
+}  // namespace shell
 
 namespace tasm {
 
-// TODO(zhoupeng.z): this loader helps to load LazyBundle and Frame bundle,
-// should be renamed with EngineLoader
+// Loads template bundles and external runtime resources. A loader can dispatch
+// results to both the engine and runtime actors, while its BundleManager can be
+// shared with another loader when the actors have different lifecycles.
 class LazyBundleLoader : public std::enable_shared_from_this<LazyBundleLoader> {
   using UrlToLifecycleOptionMap = std::unordered_map<
       std::string, std::vector<std::unique_ptr<LazyBundleLifecycleOption>>>;
@@ -137,15 +161,22 @@ class LazyBundleLoader : public std::enable_shared_from_this<LazyBundleLoader> {
   };
 
  public:
-  LazyBundleLoader() : engine_actor_(nullptr) {}
+  LazyBundleLoader() : LazyBundleLoader(nullptr) {}
   explicit LazyBundleLoader(
-      const std::shared_ptr<pub::LynxResourceLoader>& resource_loader)
-      : engine_actor_(nullptr), resource_loader_(resource_loader) {}
+      const std::shared_ptr<pub::LynxResourceLoader>& resource_loader,
+      std::shared_ptr<BundleManager> bundle_manager = nullptr)
+      : resource_loader_(resource_loader),
+        bundle_manager_(bundle_manager ? std::move(bundle_manager)
+                                       : std::make_shared<BundleManager>()) {}
 
   virtual ~LazyBundleLoader() = default;
   inline void SetEngineActor(
       std::shared_ptr<shell::LynxActor<shell::LynxEngine>> actor) {
     engine_actor_ = std::move(actor);
+  }
+  inline void SetRuntimeActor(
+      const std::shared_ptr<shell::LynxActor<shell::BTSRuntime>>& actor) {
+    runtime_actor_ = actor;
   }
   inline void SetPerfControllerActor(
       std::shared_ptr<
@@ -188,6 +219,20 @@ class LazyBundleLoader : public std::enable_shared_from_this<LazyBundleLoader> {
    */
   void DidFetchBundle(LazyBundleLoader::CallBackInfo callback_info);
 
+  shell::ExternalResourceInfo LoadScript(const std::string& url, long timeout);
+
+  shell::ExternalResourceInfo LoadByteCode(const std::string& url,
+                                           long timeout);
+
+  void LoadScriptAsync(const std::string& url, int32_t callback_id);
+
+  void LoadLazyBundle(const std::string& url, int32_t callback_id);
+
+  void LoadLazyBundle(std::string url, int32_t callback_id,
+                      std::vector<std::string> component_ids);
+
+  std::vector<uint8_t> LoadJSSource(const std::string& url);
+
   // is being required synchronously
   bool SyncRequiring(const std::string& url);
 
@@ -213,19 +258,22 @@ class LazyBundleLoader : public std::enable_shared_from_this<LazyBundleLoader> {
 
   lepus::Value GetPerfInfo(const std::string& url);
 
-  /**
-   * Manage template_bundles in LazyBundleLoader fetched with `fetchBundle` api.
-   * It's meant to be thread-safe.
-   */
   void InsertTemplateBundle(const std::string& url, LynxTemplateBundle bundle);
 
   std::optional<LynxTemplateBundle> GetTemplateBundle(const std::string& url);
+
+  std::shared_ptr<BundleManager> GetBundleManager() const;
+
+  void SetBundleManager(std::shared_ptr<BundleManager> bundle_manager);
 
  protected:
   virtual void ReportErrorInner(int32_t code, const std::string& msg){};
 
  private:
+  void DidLoadComponentFromJS(CallBackInfo callback_info);
+
   std::shared_ptr<shell::LynxActor<shell::LynxEngine>> engine_actor_;
+  std::weak_ptr<shell::LynxActor<shell::BTSRuntime>> runtime_actor_;
   std::shared_ptr<shell::LynxActor<tasm::performance::PerformanceController>>
       perf_controller_actor_;
   std::shared_ptr<pub::LynxResourceLoader> resource_loader_ = nullptr;
@@ -237,8 +285,8 @@ class LazyBundleLoader : public std::enable_shared_from_this<LazyBundleLoader> {
 
   bool enable_component_async_decode_{false};
 
-  std::unordered_map<std::string, LynxTemplateBundle> loaded_bundles_{};
-  std::mutex mutex_;
+  std::shared_ptr<BundleManager> bundle_manager_;
+  mutable std::mutex bundle_manager_mutex_;
 };
 
 }  // namespace tasm

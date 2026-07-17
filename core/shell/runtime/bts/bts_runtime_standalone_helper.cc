@@ -73,9 +73,8 @@ BTSRuntimeStandalone::InitRuntimeStandalone(
           tasm::report::EventTrackerPlatformImpl::GetReportTaskRunner(),
           instance_id);
 
-  auto external_resource_loader =
-      std::make_unique<ExternalResourceLoader>(resource_loader);
-  auto* external_resource_loader_ptr = external_resource_loader.get();
+  auto lazy_bundle_loader =
+      std::make_shared<tasm::LazyBundleLoader>(resource_loader);
 
   auto white_board_delegate =
       std::make_shared<tasm::WhiteBoardRuntimeDelegate>(white_board);
@@ -86,15 +85,12 @@ BTSRuntimeStandalone::InitRuntimeStandalone(
 
   auto delegate = std::make_unique<BTSRuntimeMediator>(
       native_runtime_facade, nullptr, performance_actor, nullptr,
-      js_task_runner, std::move(external_resource_loader));
-  auto lazy_bundle_loader =
-      std::make_shared<tasm::LazyBundleLoader>(resource_loader);
+      js_task_runner, lazy_bundle_loader);
   auto js_bundle_proxy =
       std::make_unique<BTSRuntimeStandalone::StandaloneBundleProxy>(
           lazy_bundle_loader);
   auto js_bundle_holder =
       std::make_shared<tasm::JsBundleHolderImpl>(*js_bundle_proxy);
-  delegate->SetLazyBundleLoader(lazy_bundle_loader);
   delegate->SetJsBundleHolder(js_bundle_holder);
   delegate->SetPropBundleCreator(prop_bundle_creator);
   delegate->SetWhiteBoardDelegate(white_board_delegate);
@@ -115,7 +111,7 @@ BTSRuntimeStandalone::InitRuntimeStandalone(
   lazy_bundle_loader->SetEngineActor(nullptr);
 
   on_runtime_actor_created(runtime_actor, native_runtime_facade);
-  external_resource_loader_ptr->SetRuntimeActor(runtime_actor);
+  lazy_bundle_loader->SetRuntimeActor(runtime_actor);
   white_board_delegate->SetRuntimeActor(runtime_actor);
   white_board_delegate->SetRuntimeFacadeActor(native_runtime_facade);
   const auto global_props_value = global_props

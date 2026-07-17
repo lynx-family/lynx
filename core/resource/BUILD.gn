@@ -7,8 +7,8 @@ import("../Lynx.gni")
 
 lynx_core_source_set("resource") {
   sources = [
-    "external_resource/external_resource_loader.cc",
-    "external_resource/external_resource_loader.h",
+    "lazy_bundle/bundle_manager.cc",
+    "lazy_bundle/bundle_manager.h",
     "lazy_bundle/bundle_resource_info.h",
     "lazy_bundle/lazy_bundle_lifecycle_option.cc",
     "lazy_bundle/lazy_bundle_lifecycle_option.h",

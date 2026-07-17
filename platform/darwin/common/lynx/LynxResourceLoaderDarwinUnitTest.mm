@@ -300,7 +300,7 @@
   lynx::runtime::TemplateDelegate* delegate = runtime->impl_->delegate_.get();
   lynx::shell::BTSRuntimeMediator* runtime_mediator =
       static_cast<lynx::shell::BTSRuntimeMediator*>(delegate);
-  runtime_mediator->external_resource_loader_->LoadJSSource("test");
+  runtime_mediator->lazy_bundle_loader_->LoadJSSource("test");
 }
 
 @end

@@ -7,15 +7,18 @@ This directory contains resource-loading infrastructure for Lynx, including gene
 ## Module Map
 
 - `lynx_resource_loader*`: shared resource-loader entry points and platform implementations.
-- `external_resource/`: external resource loader helpers.
-- `lazy_bundle/`: lazy-bundle request, lifecycle, loader, and utility logic.
+- `lazy_bundle/`: unified bundle/external-resource loader, shared bundle cache,
+  lazy-bundle request, lifecycle, and utility logic.
 - `trace/`: resource trace-event definitions.
 
 ## Key Files And Types
 
 - `lynx_resource_loader.cc`: shared resource-loader entry point used by platform-specific implementations.
 - `lynx_resource_loader_android.*`, `lynx_resource_loader_darwin.*`, `lynx_resource_loader_harmony.*`: platform-specific loading and reporting behavior.
-- `lazy_bundle/lazy_bundle_loader.*`: lazy-bundle orchestration.
+- `lazy_bundle/lazy_bundle_loader.*`: bundle and external runtime resource
+  orchestration across engine/runtime actors.
+- `lazy_bundle/bundle_manager.*`: thread-safe template-bundle cache shared by
+  loader instances.
 - `lazy_bundle/lazy_bundle_lifecycle_option.*`: lazy-bundle lifecycle behavior controls.
 
 ## Edit Rules

@@ -17,7 +17,6 @@
 #include "core/public/lynx_resource_loader.h"
 #include "core/public/page_options.h"
 #include "core/renderer/js_bundle_holder_impl.h"
-#include "core/resource/external_resource/external_resource_loader.h"
 #include "core/resource/lazy_bundle/lazy_bundle_loader.h"
 #include "core/runtime/js/bindings/modules/lynx_module_manager.h"
 #include "core/runtime/js/js_bundle_holder.h"

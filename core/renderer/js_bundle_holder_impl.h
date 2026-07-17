@@ -44,17 +44,11 @@ class JsBundleHolderImpl : public runtime::js::JsBundleHolder {
   std::optional<runtime::js::JsBundle> GetJSBundleFromBT(
       const std::string& url) override;
 
-  std::optional<tasm::LynxTemplateBundle> GetTemplateBundleFromBT(
-      const std::string& url) override;
-
   lepus::Value GetCustomSectionByKey(const std::string& url,
                                      const std::string& key) override;
 
   void InsertJSBundle(const std::string& url,
                       const runtime::js::JsBundle& js_bundle);
-
-  void InsertTemplateBundle(const std::string& url,
-                            const tasm::LynxTemplateBundle& template_bundle);
 
   void SetEnable(bool enable);
 
@@ -80,8 +74,6 @@ class JsBundleHolderImpl : public runtime::js::JsBundleHolder {
   bool IsRequesting(const std::string& url);
 
   std::unordered_map<std::string, runtime::js::JsBundle> js_bundle_map_{};
-  std::unordered_map<std::string, tasm::LynxTemplateBundle>
-      template_bundle_map_{};
   std::unordered_map<std::string, lepus::Value> custom_sections_map_{};
 
   std::atomic<bool> enable_{false};

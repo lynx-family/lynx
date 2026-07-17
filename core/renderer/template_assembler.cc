@@ -1430,6 +1430,7 @@ void TemplateAssembler::LoadComponentWithCallbackInfo(
   LOGI("TemplateAssembler::LoadComponentWithCallback: "
        << url << " sync: " << sync << " callback_id: " << callback_id);
   std::shared_ptr<TemplateEntry> component_entry = FindTemplateEntry(url);
+  const bool should_cache_bundle = component_entry == nullptr;
   bool is_success = true;
   if (!component_entry) {
     // if the lazy bundle is first loaded, then need to build
@@ -1459,6 +1460,10 @@ void TemplateAssembler::LoadComponentWithCallbackInfo(
 
   lepus::Value callback_msg;  // message send to js callback.
   if (is_success) {
+    if (should_cache_bundle) {
+      component_loader_->InsertTemplateBundle(
+          url, component_entry->template_bundle());
+    }
     // decode success
     callback_msg = lazy_bundle::ConstructSuccessMessageForBTS(url);
     if (callback_id < 0) {

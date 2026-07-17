@@ -2,9 +2,6 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#define private public
-#define protected public
-
 #include "core/renderer/tasm/testing/event_tracker_mock.h"
 #include "core/renderer/utils/lynx_env.h"
 #include "core/resource/lazy_bundle/lazy_bundle_lifecycle_option.h"
@@ -17,6 +14,42 @@
 namespace lynx {
 namespace tasm {
 namespace test {
+
+class CountingResourceLoader : public pub::LynxResourceLoader {
+ public:
+  int load_resource_count_{0};
+
+ protected:
+  void LoadResourceInternal(
+      const pub::LynxResourceRequest&,
+      base::MoveOnlyClosure<void, pub::LynxResourceResponse&> callback)
+      override {
+    ++load_resource_count_;
+    pub::LynxResourceResponse response;
+    response.err_code = -1;
+    response.err_msg = "test resource miss";
+    callback(response);
+  }
+};
+
+class BundleResourceLoader : public pub::LynxResourceLoader {
+ public:
+  int load_resource_count_{0};
+
+ protected:
+  void LoadResourceInternal(
+      const pub::LynxResourceRequest&,
+      base::MoveOnlyClosure<void, pub::LynxResourceResponse&> callback)
+      override {
+    ++load_resource_count_;
+    pub::LynxResourceResponse response;
+    response.bundle = &bundle_;
+    callback(response);
+  }
+
+ private:
+  LynxTemplateBundle bundle_;
+};
 
 // Test that pre-registered bundle can be retrieved via GetTemplateBundle
 TEST(LazyBundleLoaderTest, InsertAndGetTemplateBundle) {
@@ -49,6 +82,63 @@ TEST(LazyBundleLoaderTest, GetTemplateBundleNotFound) {
   EXPECT_FALSE(result.has_value());
 }
 
+TEST(LazyBundleLoaderTest, LoadersShareBundlesThroughBundleManager) {
+  auto bundle_manager = std::make_shared<BundleManager>();
+  auto engine_loader =
+      std::make_shared<LazyBundleLoader>(nullptr, bundle_manager);
+  auto runtime_loader =
+      std::make_shared<LazyBundleLoader>(nullptr, bundle_manager);
+  constexpr const char kBundleUrl[] = "shared_component_url";
+
+  engine_loader->InsertTemplateBundle(kBundleUrl, LynxTemplateBundle{});
+
+  EXPECT_TRUE(runtime_loader->GetTemplateBundle(kBundleUrl).has_value());
+}
+
+TEST(LazyBundleLoaderTest, SetBundleManagerMergesExistingBundles) {
+  auto engine_loader = std::make_shared<LazyBundleLoader>(nullptr);
+  auto runtime_loader = std::make_shared<LazyBundleLoader>(nullptr);
+  constexpr const char kEngineBundleUrl[] = "engine_component_url";
+  constexpr const char kRuntimeBundleUrl[] = "runtime_component_url";
+  engine_loader->InsertTemplateBundle(kEngineBundleUrl, LynxTemplateBundle{});
+  runtime_loader->InsertTemplateBundle(kRuntimeBundleUrl, LynxTemplateBundle{});
+
+  runtime_loader->SetBundleManager(engine_loader->GetBundleManager());
+
+  EXPECT_EQ(runtime_loader->GetBundleManager(),
+            engine_loader->GetBundleManager());
+  EXPECT_TRUE(engine_loader->GetTemplateBundle(kEngineBundleUrl).has_value());
+  EXPECT_TRUE(engine_loader->GetTemplateBundle(kRuntimeBundleUrl).has_value());
+  EXPECT_TRUE(runtime_loader->GetTemplateBundle(kEngineBundleUrl).has_value());
+  EXPECT_TRUE(runtime_loader->GetTemplateBundle(kRuntimeBundleUrl).has_value());
+}
+
+TEST(LazyBundleLoaderTest, LoadLazyBundleUsesBundleManagerCache) {
+  auto bundle_manager = std::make_shared<BundleManager>();
+  auto resource_loader = std::make_shared<CountingResourceLoader>();
+  auto engine_loader =
+      std::make_shared<LazyBundleLoader>(nullptr, bundle_manager);
+  auto runtime_loader =
+      std::make_shared<LazyBundleLoader>(resource_loader, bundle_manager);
+  constexpr const char kBundleUrl[] = "cached_runtime_component_url";
+  engine_loader->InsertTemplateBundle(kBundleUrl, LynxTemplateBundle{});
+
+  runtime_loader->LoadLazyBundle(kBundleUrl, 1, {"component-id"});
+
+  EXPECT_EQ(resource_loader->load_resource_count_, 0);
+}
+
+TEST(LazyBundleLoaderTest, LoadLazyBundleCachesBundleResponse) {
+  auto resource_loader = std::make_shared<BundleResourceLoader>();
+  auto loader = std::make_shared<LazyBundleLoader>(resource_loader);
+  constexpr const char kBundleUrl[] = "loaded_runtime_component_url";
+
+  loader->LoadLazyBundle(kBundleUrl, 1, {"component-id"});
+
+  EXPECT_EQ(resource_loader->load_resource_count_, 1);
+  EXPECT_TRUE(loader->GetTemplateBundle(kBundleUrl).has_value());
+}
+
 // Test that LoadFrameBundle uses pre-registered bundle without network request
 // when bundle is pre-inserted
 TEST(LazyBundleLoaderTest, LoadFrameBundleUsesCache) {
@@ -61,13 +151,9 @@ TEST(LazyBundleLoaderTest, LoadFrameBundleUsesCache) {
   const std::string kTestUrl = "cached_component_url";
   loader->InsertTemplateBundle(kTestUrl, bundle);
 
-  // Verify the bundle is in loaded_bundles_ (cache)
+  // Verify the bundle is in BundleManager (cache)
   auto cached_bundle = loader->GetTemplateBundle(kTestUrl);
   EXPECT_TRUE(cached_bundle.has_value());
-
-  // Verify requiring_urls_ is empty (no pending requests yet)
-  // This ensures LoadFrameBundle can proceed to check cache
-  EXPECT_TRUE(loader->requiring_urls_.empty());
 }
 
 TEST(LazyBundleLoaderTest, CallBackInfoPreservesVerifyErrorCode) {
