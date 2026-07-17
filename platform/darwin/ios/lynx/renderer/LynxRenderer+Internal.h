@@ -17,6 +17,8 @@
 
 - (void)syncHostDecorationLayers;
 
+- (void)updateLayoutOffsetIfNeeded:(CGPoint)offset;
+
 // SubtreeProperties support
 - (void)applySubtreeProperties:(const lynx::tasm::SubtreeProperty *)properties count:(size_t)count;
 - (void)applyTransform:(const float *)transform;

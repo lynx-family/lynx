@@ -6,6 +6,7 @@
 #import <Lynx/LynxBackgroundUtils.h>
 #import <Lynx/LynxContext+Internal.h>
 #import <Lynx/LynxImageLoader.h>
+#import <Lynx/LynxRenderer+Internal.h>
 #import <Lynx/LynxRendererContext.h>
 #import <Lynx/LynxRendererHost.h>
 #import <Lynx/LynxTextLayer.h>
@@ -174,15 +175,21 @@ using namespace lynx::tasm;
         break;
       }
       case DisplayListOpType::kDrawView: {
-        if (int_count == 1) {
-          [[maybe_unused]] auto view_id = [self nextContentInt];
-        }
+        auto view_id = [self nextContentInt];
+        auto offset_x = [self nextContentFloat];
+        auto offset_y = [self nextContentFloat];
         if (static_cast<NSUInteger>(view_index) < hostSubviewsSnapshot.count) {
           refView = hostSubviewsSnapshot[view_index++];
           _refLayer = refView.layer;
         } else {
           refView = nil;
           _refLayer = nil;
+        }
+        if ([refView conformsToProtocol:@protocol(LynxRendererHost)]) {
+          LynxRenderer *renderer = ((UIView<LynxRendererHost> *)refView).renderer;
+          if (renderer != nil && renderer.sign == view_id) {
+            [renderer updateLayoutOffsetIfNeeded:CGPointMake(offset_x, offset_y)];
+          }
         }
         break;
       }

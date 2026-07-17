@@ -97,15 +97,17 @@ TEST_F(DisplayListBuilderTest, FillOperationWithClipIndex) {
 
 TEST_F(DisplayListBuilderTest, DrawViewOperation) {
   int view_id = 42;
-  builder_->DrawView(view_id);
+  builder_->DrawView(view_id, 10.0f, 20.0f);
 
   DisplayList display_list = builder_->Build();
 
   DisplayListReader reader(display_list);
   EXPECT_TRUE(reader.HasNext());
-  const auto& item = reader.Next();
-  EXPECT_EQ(item.type, DisplayListOpType::kDrawView);
-  EXPECT_EQ(item.payload.draw_view.view_id, view_id);
+  const auto& view_item = reader.Next();
+  EXPECT_EQ(view_item.type, DisplayListOpType::kDrawView);
+  EXPECT_EQ(view_item.payload.draw_view.view_id, view_id);
+  EXPECT_FLOAT_EQ(view_item.payload.draw_view.offset_x, 10.0f);
+  EXPECT_FLOAT_EQ(view_item.payload.draw_view.offset_y, 20.0f);
   EXPECT_FALSE(reader.HasNext());
 
   // Verify sub_layers_ tracking
@@ -174,7 +176,7 @@ TEST_F(DisplayListBuilderTest, TransformOperation) {
 TEST_F(DisplayListBuilderTest, MethodChaining) {
   builder_->Begin(0, PlatformRendererType::kView, 0.0f, 0.0f, 100.0f, 100.0f)
       .Fill(0xFF0000FF)
-      .DrawView(123)
+      .DrawView(123, 10.0f, 20.0f)
       .DrawImage(fml::MakeRefCounted<PaintImage>(456), -1)
       .DrawText(789, -1)
       .Transform(transforms::Matrix44())
