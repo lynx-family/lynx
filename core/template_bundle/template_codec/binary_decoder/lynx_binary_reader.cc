@@ -13,6 +13,7 @@
 #include "core/shell/runtime/mts/mts_runtime.h"
 #include "core/template_bundle/template_codec/binary_decoder/binary_decoder_trace_event_def.h"
 #include "core/template_bundle/template_codec/binary_decoder/lynx_binary_base_css_reader.h"
+#include "core/template_bundle/template_codec/binary_decoder/section_range_utils.h"
 #include "core/template_bundle/template_codec/template_binary.h"
 
 namespace lynx {
@@ -233,15 +234,19 @@ bool LynxBinaryReader::DecodeLepusChunkRoute() {
     // LepusChunkRange
     DECODE_COMPACT_U32(start);
     DECODE_COMPACT_U32(end);
+    if (start >= end) {
+      return false;
+    }
     lepus_chunk_route_.start_offsets_.emplace(
         std::piecewise_construct, std::forward_as_tuple(std::move(path)),
         std::forward_as_tuple(start));
     lepus_chunk_length = std::max(end, lepus_chunk_length);
   }
-  lepus_chunk_route_.descriptor_offset_ =
-      static_cast<uint32_t>(stream_->offset());
-  lepus_chunk_range_.start = lepus_chunk_route_.descriptor_offset_;
-  lepus_chunk_range_.end = lepus_chunk_range_.start + lepus_chunk_length;
+  if (!ValidateAndSetSectionRange(*stream_, lepus_chunk_length,
+                                  lepus_chunk_range_)) {
+    return false;
+  }
+  lepus_chunk_route_.descriptor_offset_ = lepus_chunk_range_.start;
   return true;
 }
 

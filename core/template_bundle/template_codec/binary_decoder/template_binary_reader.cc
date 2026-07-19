@@ -70,7 +70,7 @@ bool TemplateBinaryReader::DecodeCSSDescriptor() {
   if (enable_css_async_decode) {
     TRACE_EVENT(LYNX_TRACE_CATEGORY,
                 TEMPLATE_BINARY_READER_DECODE_CSS_DESCRIPTOR_WITH_THREAD);
-    const int length = css_section_range_.end - css_section_range_.start;
+    const size_t length = css_section_range_.end - css_section_range_.start;
     auto css_reader = TemplateBinaryReader::Create(stream_->cursor(), length);
     css_reader->CopyForAsyncDecode(*this);
 
@@ -134,7 +134,7 @@ bool TemplateBinaryReader::DecodeStyleObjects() {
   size_t size = route.style_object_ranges.size();
   if (size > 0) {
     const auto& style_obj_array = template_bundle().InitStyleObjectList(size);
-    const int length =
+    const size_t length =
         style_objects_section_range_.end - style_objects_section_range_.start;
     auto cursor = stream_->cursor();
     size_t index = 0;
@@ -368,7 +368,7 @@ bool TemplateBinaryReader::DecodeLepusChunk() {
       compile_options_.lynx_air_mode_ == CompileOptionAirMode::AIR_MODE_FIBER;
   if (enable_lepus_chunk_async) {
     // decode lepus chunk async
-    const int length = lepus_chunk_range_.end - lepus_chunk_range_.start;
+    const size_t length = lepus_chunk_range_.end - lepus_chunk_range_.start;
     auto lepus_chunk_reader =
         TemplateBinaryReader::Create(stream_->cursor(), length);
     lepus_chunk_reader->CopyForAsyncDecode(*this);

@@ -19,6 +19,7 @@
 #include "core/renderer/css/parser/css_parser_configs.h"
 #include "core/runtime/lepus/base_binary_reader.h"
 #include "core/template_bundle/template_codec/binary_decoder/binary_decoder_trace_event_def.h"
+#include "core/template_bundle/template_codec/binary_decoder/section_range_utils.h"
 
 namespace lynx {
 namespace tasm {
@@ -93,14 +94,16 @@ bool LynxBinaryBaseCSSReader::DecodeCSSRoute(CSSRoute& css_route) {
     // CSSRange
     DECODE_COMPACT_U32(start);
     DECODE_COMPACT_U32(end);
+    if (start >= end) {
+      return false;
+    }
     css_route_length = std::max(css_route_length, end);
     css_route.fragment_ranges.emplace(std::piecewise_construct,
                                       std::forward_as_tuple(id),
                                       std::forward_as_tuple(start, end));
   }
-  css_section_range_.start = static_cast<uint32_t>(stream_->offset());
-  css_section_range_.end = css_section_range_.start + css_route_length;
-  return true;
+  return ValidateAndSetSectionRange(*stream_, css_route_length,
+                                    css_section_range_);
 }
 
 bool LynxBinaryBaseCSSReader::DecodeCSSFragment(SharedCSSFragment* fragment,
@@ -802,13 +805,14 @@ bool LynxBinaryBaseCSSReader::DecodeStyleObjectRoute(
   for (size_t i = 0; i < size; ++i) {
     DECODE_COMPACT_U32(start);
     DECODE_COMPACT_U32(end);
+    if (start >= end) {
+      return false;
+    }
     css_route_length = std::max(css_route_length, end);
     style_object_route.style_object_ranges.emplace_back(start, end);
   }
-  style_objects_section_range_.start = static_cast<uint32_t>(stream_->offset());
-  style_objects_section_range_.end =
-      style_objects_section_range_.start + css_route_length;
-  return true;
+  return ValidateAndSetSectionRange(*stream_, css_route_length,
+                                    style_objects_section_range_);
 }
 
 bool LynxBinaryBaseCSSReader::DecodeCSSAttributes(StyleMap& attr,

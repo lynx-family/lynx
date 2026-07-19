@@ -117,7 +117,7 @@ struct InputBuffer {
 
 class ByteArrayInputStream : public InputStream {
  public:
-  ByteArrayInputStream(const uint8_t* data, int len) {
+  ByteArrayInputStream(const uint8_t* data, size_t len) {
     buf_.reset(new InputBuffer());
     buf_->data.assign(data, data + len);
     Initialize();
