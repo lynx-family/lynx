@@ -63,6 +63,7 @@ def gen_build_file(platform, arch, debug, root_path, type, sysroot, is_static=Fa
       jsengine_type="quickjs" \
       use_custom_message_loop=false \
       disable_visibility_hidden=true \
+      enable_trace="perfetto" \
       is_headless=true \
       enable_clay=true \
       enable_clay_standalone=true \

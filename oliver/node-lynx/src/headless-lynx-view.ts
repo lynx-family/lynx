@@ -85,6 +85,8 @@ export type NativeBinding = {
     resourceFetcher: ResourceFetcher
   ) => NativeHeadlessLynxView;
   initGlobalEnv(): void;
+  startTracing(filePath: string): number;
+  stopTracing(sessionId: number): boolean;
   LynxEnv: {
     connectDevtools(schema: string): boolean;
     setAppInfo(optionKeys: string[], optionValues: string[]): void;

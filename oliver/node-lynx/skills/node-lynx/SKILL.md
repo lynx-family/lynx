@@ -40,6 +40,15 @@ node-lynx render \
   --no-debug-router
 ```
 
+Capture a startup trace while rendering:
+
+```bash
+node-lynx render ./bundle.lynx.bundle \
+  --trace ./startup.pftrace \
+  --trace-duration 10 \
+  --no-debug-router
+```
+
 Render a local bundle:
 
 ```bash
@@ -83,6 +92,12 @@ CLI rules:
 - Use `--screenshot-delay <ms>` to wait after the first frame before capture.
   This defaults to `100`; use a larger delay for image-heavy or network-heavy
   pages.
+- Use `--trace <path>` to capture a Lynx trace to a file. Parent directories
+  are created recursively and an existing file is overwritten.
+- Use `--trace-duration <seconds>` to control trace capture duration. It
+  defaults to `5` and requires `--trace`.
+- For `render --no-debug-router`, the process exits after both the screenshot
+  is written and trace capture finishes.
 - Pass `--no-debug-router` for CI or one-shot screenshot commands that should
   exit immediately after writing the PNG.
 - Omit `--no-debug-router` when you need DebugRouter/OpenCard. Without an

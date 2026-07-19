@@ -12,6 +12,8 @@ const fs = require('fs');
 const Module = require('module');
 
 const state = {
+  events: [],
+  eventLog: [],
   initCalls: 0,
   setAppInfoCalls: 0,
   connectDevtoolsCalls: 0,
@@ -24,7 +26,17 @@ const state = {
   headlessScreenshotCalls: 0,
   headlessScreenshotArgs: [],
   windowedWaitUntilClosedCalls: 0,
+  traceStartCalls: 0,
+  traceStartArgs: [],
+  traceStopCalls: 0,
+  traceStopArgs: [],
+  traceTimerDelays: [],
 };
+
+function record(event) {
+  state.events.push(event);
+  state.eventLog.push({ event, time: Date.now() });
+}
 
 function writeState() {
   if (process.env.NODE_LYNX_CLI_TEST_STATE) {
@@ -32,8 +44,18 @@ function writeState() {
   }
 }
 
+const originalSetTimeout = global.setTimeout;
+global.setTimeout = function patchedSetTimeout(callback, delay, ...args) {
+  if (process.env.NODE_LYNX_CLI_TEST_TRACE_TIMER === '1' && typeof delay === 'number') {
+    state.traceTimerDelays.push(delay);
+    return originalSetTimeout(callback, Math.min(delay, 10), ...args);
+  }
+  return originalSetTimeout(callback, delay, ...args);
+};
+
 class MockHeadlessLynxView {
   constructor() {
+    record('HeadlessLynxView.constructor');
     state.headlessViewConstructed += 1;
   }
 
@@ -44,6 +66,7 @@ class MockHeadlessLynxView {
   async waitForFrame() {}
 
   async screenshot(...args) {
+    record('HeadlessLynxView.screenshot');
     state.headlessScreenshotCalls += 1;
     state.headlessScreenshotArgs = args;
     return Buffer.from('png');
@@ -54,6 +77,7 @@ class MockHeadlessLynxView {
 
 class MockWindowedLynxView {
   constructor() {
+    record('WindowedLynxView.constructor');
     state.windowedViewConstructed += 1;
   }
 
@@ -74,6 +98,7 @@ class MockWindowedLynxView {
 
 const mockLynxEnv = {
   init() {
+    record('LynxEnv.init');
     state.initCalls += 1;
   },
   setAppInfo() {
@@ -98,10 +123,30 @@ const mockLynxEnv = {
   },
 };
 
+const mockNativeBinding = {
+  startTracing(filePath) {
+    record('startTracing');
+    state.traceStartCalls += 1;
+    state.traceStartArgs.push(filePath);
+    return 1001;
+  },
+  stopTracing(sessionId) {
+    record('stopTracing');
+    state.traceStopCalls += 1;
+    state.traceStopArgs.push(sessionId);
+    return true;
+  },
+};
+
 const originalLoad = Module._load;
 Module._load = function patchedLoad(request, parent, isMain) {
   if (request === './headless-lynx-view') {
-    return { HeadlessLynxView: MockHeadlessLynxView };
+    return {
+      HeadlessLynxView: MockHeadlessLynxView,
+      loadNodeLynxNativeBinding() {
+        return mockNativeBinding;
+      },
+    };
   }
   if (request === './windowed-lynx-view') {
     return { WindowedLynxView: MockWindowedLynxView };
@@ -115,7 +160,7 @@ Module._load = function patchedLoad(request, parent, isMain) {
 process.on('exit', writeState);
 `;
 
-async function runCli(args) {
+async function runCli(args, extraEnv = {}) {
   const tempDir = await mkdtemp(
     path.join(os.tmpdir(), 'node-lynx-cli-test-')
   );
@@ -125,6 +170,7 @@ async function runCli(args) {
 
   const env = {
     ...process.env,
+    ...extraEnv,
     NODE_LYNX_CLI_TEST_STATE: statePath,
   };
 
@@ -284,12 +330,182 @@ async function testRenderPassesScreenshotDelay() {
   }
 }
 
+function eventIndex(result, event) {
+  return result.state.events.indexOf(event);
+}
+
+function eventTime(result, event) {
+  const entry = result.state.eventLog.find((item) => item.event === event);
+  assert.ok(entry, `missing event: ${event}`);
+  return entry.time;
+}
+
+async function testTraceStartsBeforeDebugRouterAndView() {
+  const outputPath = path.join(
+    os.tmpdir(),
+    `node-lynx-cli-trace-order-${process.pid}.png`
+  );
+  const tracePath = path.join(
+    os.tmpdir(),
+    `node-lynx-cli-trace-order-${process.pid}.pftrace`
+  );
+  try {
+    const result = await runCli(
+      [
+        'render',
+        '--template',
+        path.join(PACKAGE_ROOT, 'package.json'),
+        '--output',
+        outputPath,
+        '--trace',
+        tracePath,
+        '--trace-duration',
+        '0.01',
+      ],
+      { NODE_LYNX_CLI_TEST_TRACE_TIMER: '1' }
+    );
+
+    assert.strictEqual(result.code, 0, result.stderr);
+    assert.strictEqual(result.state.traceStartCalls, 1);
+    assert.deepStrictEqual(result.state.traceStartArgs, [tracePath]);
+    assert.strictEqual(result.state.traceStopCalls, 1);
+    assert.deepStrictEqual(result.state.traceStopArgs, [1001]);
+    assert.ok(
+      eventIndex(result, 'startTracing') < eventIndex(result, 'LynxEnv.init')
+    );
+    assert.ok(
+      eventIndex(result, 'startTracing') <
+        eventIndex(result, 'HeadlessLynxView.constructor')
+    );
+  } finally {
+    await rm(outputPath, { force: true });
+    await rm(tracePath, { force: true });
+  }
+}
+
+async function testTraceDurationDefaultsToFiveSeconds() {
+  const outputPath = path.join(
+    os.tmpdir(),
+    `node-lynx-cli-trace-default-duration-${process.pid}.png`
+  );
+  const tracePath = path.join(
+    os.tmpdir(),
+    `node-lynx-cli-trace-default-duration-${process.pid}.pftrace`
+  );
+  try {
+    const result = await runCli(
+      [
+        'render',
+        '--no-debug-router',
+        '--template',
+        path.join(PACKAGE_ROOT, 'package.json'),
+        '--output',
+        outputPath,
+        '--trace',
+        tracePath,
+      ],
+      { NODE_LYNX_CLI_TEST_TRACE_TIMER: '1' }
+    );
+
+    assert.strictEqual(result.code, 0, result.stderr);
+    assert.deepStrictEqual(result.state.traceTimerDelays, [5000]);
+    assert.strictEqual(result.state.traceStopCalls, 1);
+  } finally {
+    await rm(outputPath, { force: true });
+    await rm(tracePath, { force: true });
+  }
+}
+
+async function testShortRenderWaitsForTraceStop() {
+  const outputPath = path.join(
+    os.tmpdir(),
+    `node-lynx-cli-trace-wait-${process.pid}.png`
+  );
+  const tracePath = path.join(
+    os.tmpdir(),
+    `node-lynx-cli-trace-wait-${process.pid}.pftrace`
+  );
+  try {
+    const result = await runCli([
+      'render',
+      '--no-debug-router',
+      '--template',
+      path.join(PACKAGE_ROOT, 'package.json'),
+      '--output',
+      outputPath,
+      '--trace',
+      tracePath,
+      '--trace-duration',
+      '0.05',
+    ]);
+
+    assert.strictEqual(result.code, 0, result.stderr);
+    assert.strictEqual(result.state.traceStopCalls, 1);
+    assert.ok(
+      eventIndex(result, 'HeadlessLynxView.screenshot') <
+        eventIndex(result, 'stopTracing')
+    );
+    assert.ok(
+      eventTime(result, 'stopTracing') -
+        eventTime(result, 'HeadlessLynxView.screenshot') >=
+        25
+    );
+  } finally {
+    await rm(outputPath, { force: true });
+    await rm(tracePath, { force: true });
+  }
+}
+
+async function testTraceArgValidation() {
+  const missingTraceValue = await runCli([
+    'render',
+    '--trace',
+    '--no-debug-router',
+  ]);
+  assert.strictEqual(missingTraceValue.code, 1);
+  assert.match(missingTraceValue.stderr, /missing value for --trace/);
+
+  const invalidDuration = await runCli([
+    'render',
+    '--no-debug-router',
+    '--template',
+    path.join(PACKAGE_ROOT, 'package.json'),
+    '--trace',
+    path.join(
+      os.tmpdir(),
+      `node-lynx-cli-invalid-duration-${process.pid}.pftrace`
+    ),
+    '--trace-duration',
+    '0',
+  ]);
+  assert.strictEqual(invalidDuration.code, 1);
+  assert.match(
+    invalidDuration.stderr,
+    /traceDuration must be a positive number/
+  );
+
+  const durationWithoutTrace = await runCli([
+    'render',
+    '--no-debug-router',
+    '--template',
+    path.join(PACKAGE_ROOT, 'package.json'),
+    '--trace-duration',
+    '5',
+  ]);
+  assert.strictEqual(durationWithoutTrace.code, 1);
+  assert.match(durationWithoutTrace.stderr, /--trace-duration requires --trace/);
+}
+
 async function main() {
   await testRenderWaitsForOpenCardWithoutInitialView();
   await testImplicitRenderWaitsForOpenCardWithoutInitialView();
   await testPreviewWaitsForOpenCardWithoutInitialWindow();
   await testNoTemplateStillRequiresDebugRouter();
   await testRenderPassesScreenshotDelay();
+  await testTraceStartsBeforeDebugRouterAndView();
+  await testTraceDurationDefaultsToFiveSeconds();
+  await testShortRenderWaitsForTraceStop();
+  await testTraceArgValidation();
 }
 
 main()
