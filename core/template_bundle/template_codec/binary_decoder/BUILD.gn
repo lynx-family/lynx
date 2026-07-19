@@ -31,6 +31,7 @@ binary_decoder_shared_sources = [
   "page_config.h",
   "parallel_parse_task_scheduler.cc",
   "parallel_parse_task_scheduler.h",
+  "section_range_utils.h",
   "template_binary_reader.cc",
   "template_binary_reader.h",
 ]
