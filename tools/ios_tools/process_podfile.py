@@ -31,15 +31,56 @@ def replace_pod_version(component, version, podfile):
     else:
         print(f"Failed to write the new version {version} of {component} to {podfile} ")
 
+
+def pin_pod_source(component, source, podfile):
+    pod_pattern = re.compile(
+        rf"^(\s*pod\s+['\"]{re.escape(component)}['\"]\s*,\s*['\"][^'\"]+['\"])(.*)$"
+    )
+    source_pattern = re.compile(r"(\s*,\s*:source\s*=>\s*['\"])([^'\"]+)(['\"])")
+
+    success_write = 0
+    with open(podfile, "r", encoding="utf8") as f:
+        lines = f.readlines()
+
+    new_lines = []
+    for line in lines:
+        line_without_newline = line.rstrip("\n")
+        match = pod_pattern.match(line_without_newline)
+        if not match:
+            new_lines.append(line)
+            continue
+
+        pod_prefix, pod_suffix = match.groups()
+        if source_pattern.search(pod_suffix):
+            pod_suffix = source_pattern.sub(rf"\g<1>{source}\g<3>", pod_suffix)
+        else:
+            pod_suffix = f", :source => '{source}'{pod_suffix}"
+        new_lines.append(f"{pod_prefix}{pod_suffix}\n")
+        success_write = 1
+
+    with open(podfile, "w", encoding="utf8") as f:
+        f.writelines(new_lines)
+
+    if success_write:
+        print(f"Successfully wrote the new source {source} of {component} to {podfile} ")
+    else:
+        print(f"Failed to write the new source {source} of {component} to {podfile} ")
+
+
 def insert_source_to_podfile(source, podfile):
-    with open(podfile, "r") as f:
+    with open(podfile, "r", encoding="utf8") as f:
         content = f.read()
 
+    if re.search(rf'^source\s+["\']{re.escape(source)}["\']\s*$', content, re.MULTILINE):
+        print(f"Source {source} already exists in {podfile} ")
+        return
+
     new_content = f"source \"{source}\"\n" + content
-    
-    with open(podfile, "w") as f:
+
+    with open(podfile, "w", encoding="utf8") as f:
         f.write(new_content)
     print(f"Successfully wrote the source {source} to {podfile} ")
+
 
 def main():
     """
@@ -47,7 +88,13 @@ def main():
     like : python3 process_podfile.py  --component Lynx --version 3.4.0 --podfile ios/HelloLynxObjc/Podfile
     """
     parser = argparse.ArgumentParser()
-    parser.add_argument('--action', type=str, choices=["replace_pod_version", "insert_pod_source"], help='the action for processing podfile', required=True)
+    parser.add_argument(
+        '--action',
+        type=str,
+        choices=["replace_pod_version", "insert_pod_source", "pin_pod_source"],
+        help='the action for processing podfile',
+        required=True,
+    )
     parser.add_argument('--component', type=str, help='the component need to be processed', required=False)
     parser.add_argument('--version', type=str, help='the component version', required=False)
     parser.add_argument('--pod_source', type=str, help='the pod source need to be insert to the top of podfile', required=False)
@@ -67,6 +114,13 @@ def main():
             exit(1)
         else:
             insert_source_to_podfile(args.pod_source, args.podfile)
+
+    elif args.action == 'pin_pod_source':
+        if not args.component or not args.pod_source or not args.podfile:
+            print('Please specify --component, --pod_source, --podfile')
+            exit(1)
+        else:
+            pin_pod_source(args.component, args.pod_source, args.podfile)
  
 
 if __name__ == '__main__':
