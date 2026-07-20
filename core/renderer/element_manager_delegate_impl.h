@@ -47,9 +47,6 @@ class ElementManagerDelegateImpl : public ElementManagerDelegate {
   void SendGlobalEvent(const std::string &event,
                        const lepus::Value &info) override;
 
-  void TriggerLepusGlobalEvent(const std::string &event,
-                               const lepus::Value &info) override;
-
   void OnLayoutAfter(PipelineLayoutData &data) override;
 
  private:
