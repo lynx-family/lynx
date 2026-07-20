@@ -1,0 +1,37 @@
+testing/lynx-platform-tests/test_script/case_sets/scrollview/scrollview_basic.py
+  s_d716889007be8f::t_597e562ff15e33 12-13
+testing/lynx-platform-tests/test_script/case_sets/image/placeholder_n_loop_count.py
+  s_d716889007be8f::t_d24a4c78c958a0 15
+testing/lynx-platform-tests/test_script/case_sets/scrollview/scrollview_padding.py
+  s_d716889007be8f::t_e6d87206109b49 10-11
+testing/lynx-platform-tests/test_script/case_sets/scrollview/rtl.py
+  s_d716889007be8f::t_a7f64e746b7d24 10-11
+testing/lynx-platform-tests/test_script/case_sets/scrollview/scroll_into_view.py
+  s_d716889007be8f::t_9cb4a911b7da44 10-11
+testing/lynx-platform-tests/test_script/case_sets/image/border-width.py
+  s_d716889007be8f::t_0f006e1ae9cef1 10
+testing/lynx-platform-tests/test_script/case_sets/scrollview/scrollview_clip.py
+  s_d716889007be8f::t_cbc1b5d4dac1f3 10-11
+testing/lynx-platform-tests/test_script/case_sets/scrollview/scrollview_issue_6846.py
+  s_d716889007be8f::t_467b2ae7387cfd 14
+.cq/pipelines/windows-vs-android-e2e-component-test.yml
+  h_dc1658ba751399 32
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "9fa8855f149894cb609c7025209d170deed66fa5",
+  "prompts": {},
+  "sessions": {
+    "s_d716889007be8f": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a33b1594a7197882da6a65d",
+        "model": "gemini-3.1-pro__dev"
+      },
+      "human_author": "tangyongjie <tangyongjie@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

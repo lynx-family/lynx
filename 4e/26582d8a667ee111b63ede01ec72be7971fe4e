@@ -1,0 +1,22 @@
+.cq/workflows/regress.yml
+  s_dd0a00e9fc2dce::t_612efe3876810e 995
+  s_dd0a00e9fc2dce::t_b027e5f1a55288 996-998
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "4e26582d8a667ee111b63ede01ec72be7971fe4e",
+  "prompts": {},
+  "sessions": {
+    "s_dd0a00e9fc2dce": {
+      "agent_id": {
+        "tool": "trae-cue",
+        "id": "ai_tab-icr-c286f234-feb6-419e-8ff1-250088d4cfcc",
+        "model": "default"
+      },
+      "human_author": "dongxianghu.2233 <dongxianghu.2233@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

@@ -1,0 +1,95 @@
+lynx/core/public/pipeline_option.h
+  h_4d36f4d76420fe 117-119
+lynx/core/runtime/lepus/bindings/renderer_functions.cc
+  s_b8c4422a049944::t_4f5ce883c2b51b 5250
+  s_b351e4b18099ae::t_e2c3200481b6cc 5187
+  h_4d36f4d76420fe 5227-5228,5234,5249,5251,5263 gitai:{"mixed_line_ranges":[{"Single":5249},{"Single":5251}],"operations":[]}
+  s_b351e4b18099ae::t_2ba88a129d21c3 5185-5186
+  s_b351e4b18099ae::t_07544fb1f26ce9 5188-5189
+lynx/core/renderer/template_assembler.cc
+  h_4d36f4d76420fe 214
+lynx/js_libraries/type-element-api/types/element-api.d.ts
+  h_4d36f4d76420fe 290 gitai:{"mixed_line_ranges":[{"Single":290}],"operations":[]}
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "12dcdd4dae398eea595380039ed395067384c5e9",
+  "prompts": {},
+  "humans": {
+    "h_4d36f4d76420fe": {
+      "author": "yangguangzhao <yangguangzhao.solace@bytedance.com>"
+    }
+  },
+  "sessions": {
+    "s_b351e4b18099ae": {
+      "agent_id": {
+        "tool": "trae-cue",
+        "id": "ai_tab-icr-76fe04c9-6520-4cc1-baa5-23038e890799",
+        "model": "default"
+      },
+      "human_author": "yangguangzhao <yangguangzhao.solace@bytedance.com>"
+    },
+    "s_b8c4422a049944": {
+      "agent_id": {
+        "tool": "trae-cue",
+        "id": "ai_tab-icr-72666309-1b68-4c44-ba0d-cf1f5f393a29",
+        "model": "default"
+      },
+      "human_author": "yangguangzhao <yangguangzhao.solace@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {
+    "lynx/core/runtime/lepus/bindings/renderer_functions.cc": [
+      {
+        "hash": "h_4d36f4d76420fe",
+        "line_ranges": [
+          {
+            "Range": [
+              5227,
+              5228
+            ]
+          },
+          {
+            "Single": 5234
+          },
+          {
+            "Single": 5249
+          },
+          {
+            "Single": 5251
+          },
+          {
+            "Single": 5263
+          }
+        ],
+        "mixed_line_ranges": [
+          {
+            "Single": 5249
+          },
+          {
+            "Single": 5251
+          }
+        ],
+        "operations": []
+      }
+    ],
+    "lynx/js_libraries/type-element-api/types/element-api.d.ts": [
+      {
+        "hash": "h_4d36f4d76420fe",
+        "line_ranges": [
+          {
+            "Single": 290
+          }
+        ],
+        "mixed_line_ranges": [
+          {
+            "Single": 290
+          }
+        ],
+        "operations": []
+      }
+    ]
+  },
+  "remote_transcripts": {}
+}

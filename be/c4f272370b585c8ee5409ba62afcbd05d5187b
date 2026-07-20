@@ -1,0 +1,16 @@
+animax/animax/platform/android/animax_android/src/main/java/com/lynx/animax/player/CodecManager.java
+  h_012c876e070b77 96-111,113-117
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.5",
+  "base_commit_sha": "bec4f272370b585c8ee5409ba62afcbd05d5187b",
+  "prompts": {},
+  "humans": {
+    "h_012c876e070b77": {
+      "author": "caitan <caitan.5523@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

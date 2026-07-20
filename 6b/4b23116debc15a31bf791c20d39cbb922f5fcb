@@ -1,0 +1,23 @@
+lynx/platform/embedder/BUILD.gn
+  s_0e5e2d4b29213b::t_9fd0f476e5aab9 8-12,35,114
+lynx/platform/embedder/windowless/BUILD.gn
+  s_0e5e2d4b29213b::t_a3dc2400439ac9 25-34
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "6b4b23116debc15a31bf791c20d39cbb922f5fcb",
+  "prompts": {},
+  "sessions": {
+    "s_0e5e2d4b29213b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f6375-36d4-7990-ae14-e57368b5e128",
+        "model": "unknown"
+      },
+      "human_author": "yangguangzhao <yangguangzhao.solace@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

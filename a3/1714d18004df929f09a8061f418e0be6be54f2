@@ -1,0 +1,16 @@
+lynx/core/base/harmony/threading/js_thread_config_getter_harmony.cc
+  h_4d36f4d76420fe 5,32-40,59-68,78-84
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a31714d18004df929f09a8061f418e0be6be54f2",
+  "prompts": {},
+  "humans": {
+    "h_4d36f4d76420fe": {
+      "author": "yangguangzhao <yangguangzhao.solace@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

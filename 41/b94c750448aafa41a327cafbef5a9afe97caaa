@@ -1,0 +1,211 @@
+lynx/platform/darwin/macos/lynx_devtool/lynx_logbox_bridge_darwin.mm
+  s_926c1e09840f4b::t_a2559e21ac8db4 109,111 gitai:{"mixed_line_ranges":[],"operations":[{"operation_id":"6a3258aaaa1fe4e9570a159f","tool_type":"agent","tool_id":"apply_patch","line_ranges":[{"Single":109},{"Single":111}]}]}
+lynx/platform/embedder/lynx_devtool/logbox/lynx_logbox_wrapper_embedder.h
+  s_926c1e09840f4b::t_577902be0cda5c 59 gitai:{"mixed_line_ranges":[],"operations":[{"operation_id":"6a3257d6aa1fe4e9570a14fa","tool_type":"agent","tool_id":"apply_patch","line_ranges":[{"Single":59}]}]}
+lynx/platform/embedder/lynx_devtool/logbox/lynx_logbox_wrapper_embedder.cc
+  s_926c1e09840f4b::t_8f1aff16ea1afd 23-25,29-32 gitai:{"mixed_line_ranges":[],"operations":[{"operation_id":"6a3257dfaa1fe4e9570a1523","tool_type":"agent","tool_id":"apply_patch","line_ranges":[{"Range":[23,25]},{"Range":[29,32]}]}]}
+lynx/platform/windows/lynx_devtool/lynx_logbox_bridge_win.cc
+  h_c7499b019d31b1 31,59
+lynx/platform/darwin/macos/lynx_devtool/lynx_logbox_bridge_darwin.h
+  s_926c1e09840f4b::t_f70e1b3d09127c 7-8,20-21,30 gitai:{"mixed_line_ranges":[],"operations":[{"operation_id":"6a32589eaa1fe4e9570a1574","tool_type":"agent","tool_id":"apply_patch","line_ranges":[{"Range":[7,8]},{"Range":[20,21]},{"Single":30}]}]}
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "41b94c750448aafa41a327cafbef5a9afe97caaa",
+  "prompts": {},
+  "humans": {
+    "h_c7499b019d31b1": {
+      "author": "chenyouhui.duke <chenyouhui.duke@bytedance.com>"
+    }
+  },
+  "sessions": {
+    "s_926c1e09840f4b": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a32578faa1fe4e9570a14c3",
+        "model": "gpt-5.4__dev"
+      },
+      "human_author": "chenyouhui.duke <chenyouhui.duke@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {
+    "lynx/platform/darwin/macos/lynx_devtool/lynx_logbox_bridge_darwin.h": [
+      {
+        "hash": "s_926c1e09840f4b::t_f70e1b3d09127c",
+        "line_ranges": [
+          {
+            "Range": [
+              7,
+              8
+            ]
+          },
+          {
+            "Range": [
+              20,
+              21
+            ]
+          },
+          {
+            "Single": 30
+          }
+        ],
+        "mixed_line_ranges": [],
+        "operations": [
+          {
+            "operation_id": "6a32589eaa1fe4e9570a1574",
+            "tool_type": "agent",
+            "tool_id": "apply_patch",
+            "line_ranges": [
+              {
+                "Range": [
+                  7,
+                  8
+                ]
+              },
+              {
+                "Range": [
+                  20,
+                  21
+                ]
+              },
+              {
+                "Single": 30
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "lynx/platform/darwin/macos/lynx_devtool/lynx_logbox_bridge_darwin.mm": [
+      {
+        "hash": "s_926c1e09840f4b::t_a2559e21ac8db4",
+        "line_ranges": [
+          {
+            "Single": 109
+          },
+          {
+            "Single": 111
+          }
+        ],
+        "mixed_line_ranges": [],
+        "operations": [
+          {
+            "operation_id": "6a3258aaaa1fe4e9570a159f",
+            "tool_type": "agent",
+            "tool_id": "apply_patch",
+            "line_ranges": [
+              {
+                "Single": 109
+              },
+              {
+                "Single": 111
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "lynx/platform/embedder/lynx_devtool/logbox/lynx_logbox_wrapper_embedder.cc": [
+      {
+        "hash": "s_926c1e09840f4b::t_8f1aff16ea1afd",
+        "line_ranges": [
+          {
+            "Range": [
+              23,
+              25
+            ]
+          },
+          {
+            "Range": [
+              29,
+              32
+            ]
+          }
+        ],
+        "mixed_line_ranges": [],
+        "operations": [
+          {
+            "operation_id": "6a3257dfaa1fe4e9570a1523",
+            "tool_type": "agent",
+            "tool_id": "apply_patch",
+            "line_ranges": [
+              {
+                "Range": [
+                  23,
+                  25
+                ]
+              },
+              {
+                "Range": [
+                  29,
+                  32
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "lynx/platform/embedder/lynx_devtool/logbox/lynx_logbox_wrapper_embedder.h": [
+      {
+        "hash": "s_926c1e09840f4b::t_577902be0cda5c",
+        "line_ranges": [
+          {
+            "Single": 59
+          }
+        ],
+        "mixed_line_ranges": [],
+        "operations": [
+          {
+            "operation_id": "6a3257d6aa1fe4e9570a14fa",
+            "tool_type": "agent",
+            "tool_id": "apply_patch",
+            "line_ranges": [
+              {
+                "Single": 59
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "remote_transcripts": {
+    "s_926c1e09840f4b": {
+      "tool": "trae",
+      "conversation_id": "6a32578faa1fe4e9570a14c3",
+      "session_id": "6a32578faa1fe4e9570a14c3",
+      "status": "remote_only",
+      "message": "Remote transcript resolution is not implemented yet for TRAE prompts."
+    },
+    "s_926c1e09840f4b::t_577902be0cda5c": {
+      "tool": "trae",
+      "conversation_id": "6a32578faa1fe4e9570a14c3",
+      "session_id": "6a32578faa1fe4e9570a14c3",
+      "status": "remote_only",
+      "message": "Remote transcript resolution is not implemented yet for TRAE prompts."
+    },
+    "s_926c1e09840f4b::t_8f1aff16ea1afd": {
+      "tool": "trae",
+      "conversation_id": "6a32578faa1fe4e9570a14c3",
+      "session_id": "6a32578faa1fe4e9570a14c3",
+      "status": "remote_only",
+      "message": "Remote transcript resolution is not implemented yet for TRAE prompts."
+    },
+    "s_926c1e09840f4b::t_a2559e21ac8db4": {
+      "tool": "trae",
+      "conversation_id": "6a32578faa1fe4e9570a14c3",
+      "session_id": "6a32578faa1fe4e9570a14c3",
+      "status": "remote_only",
+      "message": "Remote transcript resolution is not implemented yet for TRAE prompts."
+    },
+    "s_926c1e09840f4b::t_f70e1b3d09127c": {
+      "tool": "trae",
+      "conversation_id": "6a32578faa1fe4e9570a14c3",
+      "session_id": "6a32578faa1fe4e9570a14c3",
+      "status": "remote_only",
+      "message": "Remote transcript resolution is not implemented yet for TRAE prompts."
+    }
+  }
+}

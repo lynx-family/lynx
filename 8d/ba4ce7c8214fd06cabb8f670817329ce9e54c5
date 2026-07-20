@@ -1,0 +1,28 @@
+oliver/build_gn.py
+  s_e90a636540cdd2::t_359a4da47302ee 66
+oliver/node-lynx/BUILD.gn
+  h_4d36f4d76420fe 103
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8dba4ce7c8214fd06cabb8f670817329ce9e54c5",
+  "prompts": {},
+  "humans": {
+    "h_4d36f4d76420fe": {
+      "author": "yangguangzhao <yangguangzhao.solace@bytedance.com>"
+    }
+  },
+  "sessions": {
+    "s_e90a636540cdd2": {
+      "agent_id": {
+        "tool": "trae-cue",
+        "id": "ai_tab-icr-d8537b34-3e1a-445a-a8d5-6ff6389a9b00",
+        "model": "default"
+      },
+      "human_author": "yangguangzhao <yangguangzhao.solace@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

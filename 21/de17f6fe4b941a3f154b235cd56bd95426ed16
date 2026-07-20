@@ -1,0 +1,27 @@
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "21de17f6fe4b941a3f154b235cd56bd95426ed16",
+  "prompts": {},
+  "sessions": {
+    "s_6a549976764f00": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f4712-64e1-7ef2-bbe2-626e8dcd5f9d",
+        "model": "unknown"
+      },
+      "human_author": "liangruijie.030116 <liangruijie.030116@bytedance.com>"
+    },
+    "s_82fda60df949e5": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f5fb8-e10a-7162-942b-e6e54c550c2e",
+        "model": "unknown"
+      },
+      "human_author": "liangruijie.030116 <liangruijie.030116@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}
