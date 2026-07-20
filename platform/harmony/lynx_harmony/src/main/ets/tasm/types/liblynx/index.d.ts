@@ -207,6 +207,8 @@ export class LynxTemplateRenderer {
 
   nativeGetAllJsSource(): Record<string, string>;
 
+  nativeGetAllJsSourceAsync(callback: (source: Record<string, string>) => void): void;
+
   nativeSetSessionStorageItem(key: string, data?: Object | string): void;
 
   nativeGetSessionStorageItem(key: string, callback: Function): void;

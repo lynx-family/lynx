@@ -547,8 +547,12 @@ export struct LynxView {
       return;
     }
     this.logBox = LynxDevTool.createLogBox((_msg: string) => {
-    }, (): Record<string, string> => {
-      return this.templateRenderer?.getAllJsSource() ?? {};
+    }, (callback: (source: Record<string, string>) => void): void => {
+      if (this.templateRenderer && !this.templateRenderer.isDestroyed()) {
+        this.templateRenderer.getAllJsSourceAsync(callback);
+      } else {
+        callback({});
+      }
     });
     if (this.logBox) {
       LynxDevTool.registerLogBox(this.logBox, this.getUIContext());
