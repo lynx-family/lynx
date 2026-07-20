@@ -22,11 +22,13 @@ namespace lynx {
 namespace tasm {
 
 class PaintingContextClay;
+class FrameChildRuntimeFactory;
 class LayoutContextClay;
 class PerfControllerClay;
 
 class UIDelegateClay : public UIDelegate {
  public:
+  explicit UIDelegateClay(clay::ViewContext* view_context);
   UIDelegateClay(
       clay::ViewContext* view_context,
       std::unique_ptr<lynx::runtime::NativeModuleFactory> module_factory);
@@ -40,6 +42,9 @@ class UIDelegateClay : public UIDelegate {
   bool UsesLogicalPixels() const override;
 
   double GetScreenScaleFactor() const override;
+
+  void SetFrameChildRuntimeFactory(
+      std::shared_ptr<FrameChildRuntimeFactory> factory);
 
   void OnLynxCreate(
       const std::shared_ptr<shell::ListEngineProxy>& list_engine_proxy,
@@ -83,6 +88,7 @@ class UIDelegateClay : public UIDelegate {
   LayoutContextClay* layout_context_ = nullptr;
   std::shared_ptr<PerfControllerClay> perf_controller_;
   std::optional<bool> platform_enable_fluency_monitor_;
+  std::shared_ptr<FrameChildRuntimeFactory> frame_child_runtime_factory_;
 };
 
 }  // namespace tasm

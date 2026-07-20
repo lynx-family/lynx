@@ -56,6 +56,9 @@ source_set("lynx_adaptor") {
     "base_def.h",
     "clay_value.cc",
     "clay_value.h",
+    "frame_child_page_host.cc",
+    "frame_child_page_host.h",
+    "frame_child_runtime.h",
     "layout_context_clay.cc",
     "layout_context_clay.h",
     "lynx_event_dispatcher.cc",
@@ -75,6 +78,18 @@ source_set("lynx_adaptor") {
     "video_engine_tag_priority.h",
   ]
   sources += rebase_path(clay_native_module_sources, "", "native_module")
+
+  if (is_android) {
+    sources += [
+      "frame_child_runtime_android.cc",
+      "frame_child_runtime_android.h",
+    ]
+  } else if (!is_ios) {
+    sources += [
+      "frame_child_runtime_embedder.cc",
+      "frame_child_runtime_embedder.h",
+    ]
+  }
 
   # lynx_websocket_module.cc requires boringssl
   include_dirs = [ "//third_party/boringssl/src/include" ]

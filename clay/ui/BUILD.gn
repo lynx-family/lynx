@@ -85,6 +85,12 @@ source_set("ui") {
     "../fml:fml",
     "../shell/platform/common:common_cpp_input",
   ]
+  if (is_android) {
+    sources += [
+      "component/frame_child_data_android.cc",
+      "component/frame_child_data_android.h",
+    ]
+  }
   if (is_win || is_mac) {
     deps += [ "//third_party/zlib" ]
   }

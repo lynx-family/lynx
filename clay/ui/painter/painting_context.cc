@@ -15,6 +15,7 @@
 #include "clay/ui/compositing/pending_drawable_image_layer.h"
 #include "clay/ui/compositing/pending_effect_layer.h"
 #include "clay/ui/compositing/pending_external_view_layer.h"
+#include "clay/ui/compositing/pending_frame_surface_layer.h"
 #include "clay/ui/compositing/pending_layer.h"
 #include "clay/ui/compositing/pending_offset_layer.h"
 #include "clay/ui/compositing/pending_picture_layer.h"
@@ -452,6 +453,22 @@ void PaintingContext::AddPlatformView(int dx, int dy, int width, int height,
   PendingPlatformViewLayer* platform_view_layer =
       new PendingPlatformViewLayer(dx, dy, width, height, view_id);
   AppendLayer(platform_view_layer);
+}
+
+void PaintingContext::AddFrameSurface(const ElementId& element_id,
+                                      const skity::Rect& rect) {
+  StopRecordingIfNeeded();
+  PendingFrameSurfaceLayer* frame_surface_layer =
+      new PendingFrameSurfaceLayer(element_id, rect);
+  AppendLayer(frame_surface_layer);
+}
+
+void PaintingContext::AddFrameSurface(const FrameSurfaceId& surface_id,
+                                      const skity::Rect& rect) {
+  StopRecordingIfNeeded();
+  PendingFrameSurfaceLayer* frame_surface_layer =
+      new PendingFrameSurfaceLayer(surface_id, rect);
+  AppendLayer(frame_surface_layer);
 }
 
 void PaintingContext::AddPunchHole(const Rect& punch_hole_rect) {

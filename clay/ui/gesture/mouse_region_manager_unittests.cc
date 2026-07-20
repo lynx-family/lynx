@@ -2,8 +2,11 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+#include <initializer_list>
+
 #include "base/include/fml/thread.h"
 #include "clay/ui/component/page_view.h"
+#include "clay/ui/component/text/text_view.h"
 #include "clay/ui/component/view.h"
 #include "clay/ui/gesture/mouse_region_manager.h"
 #include "clay/ui/testing/ui_test.h"
@@ -145,6 +148,81 @@ TEST_F_UI(MouseRegionManagerTest, EnterLeaveMouseRegion) {
   EXPECT_THAT(views_leave, ElementsAre(4));
   EXPECT_THAT(views_enter, ElementsAre());
   clear();
+}
+
+TEST_F_UI(MouseRegionManagerTest, EventThroughSkipsInheritedHoverRegions) {
+  auto& root = page_;
+  auto* background = new View(1, root.get());
+  auto* foreground = new View(2, root.get());
+  auto* foreground_child = new TextView(3, root.get());
+  root->AddChild(background);
+  root->AddChild(foreground);
+  foreground->AddChild(foreground_child);
+
+  root->SetWidth(100.f);
+  root->SetHeight(100.f);
+  for (BaseView* view :
+       std::initializer_list<BaseView*>{background, foreground,
+                                        foreground_child}) {
+    view->SetWidth(100.f);
+    view->SetHeight(100.f);
+  }
+  std::vector<int> views_enter;
+  std::vector<int> views_leave;
+  std::vector<int> views_hover;
+  auto* manager = root->mouse_region_manager();
+  ASSERT_NE(manager, nullptr);
+  manager->RegisterEnterCallback(
+      background,
+      [&views_enter](const PointerEvent&) { views_enter.push_back(1); });
+  manager->RegisterEnterCallback(
+      foreground,
+      [&views_enter](const PointerEvent&) { views_enter.push_back(2); });
+  manager->RegisterEnterCallback(
+      foreground_child,
+      [&views_enter](const PointerEvent&) { views_enter.push_back(3); });
+  manager->RegisterLeaveCallback(
+      foreground,
+      [&views_leave](const PointerEvent&) { views_leave.push_back(2); });
+  manager->RegisterLeaveCallback(
+      foreground_child,
+      [&views_leave](const PointerEvent&) { views_leave.push_back(3); });
+  manager->RegisterHoverTrackingCallback(
+      background,
+      [&views_hover](const PointerEvent&) { views_hover.push_back(1); });
+  manager->RegisterHoverTrackingCallback(
+      foreground,
+      [&views_hover](const PointerEvent&) { views_hover.push_back(2); });
+  manager->RegisterHoverTrackingCallback(
+      foreground_child,
+      [&views_hover](const PointerEvent&) { views_hover.push_back(3); });
+
+  root->DispatchPointerEvent(CreateHoverPointer(10.f, 10.f));
+  EXPECT_THAT(views_enter, ElementsAre(2, 3));
+  views_enter.clear();
+
+  foreground->SetAttribute("event-through", clay::Value(true));
+
+  FloatPoint relative_position;
+  EXPECT_EQ(
+      root->GetTopViewToAcceptEvent(FloatPoint(10.f, 10.f), &relative_position),
+      background);
+
+  root->DispatchPointerEvent(CreateHoverPointer(10.f, 10.f));
+  EXPECT_THAT(views_enter, ElementsAre(1));
+  EXPECT_THAT(views_leave, ElementsAre(3, 2));
+
+  root->DispatchPointerEvent(CreateHoverPointer(10.f, 10.f));
+  EXPECT_THAT(views_hover, ElementsAre(1));
+
+  foreground_child->SetAttribute("event-through", clay::Value(false));
+  EXPECT_EQ(
+      root->GetTopViewToAcceptEvent(FloatPoint(10.f, 10.f), &relative_position),
+      foreground_child);
+  foreground_child->SetAttribute("event-through", clay::Value::Null());
+  EXPECT_EQ(
+      root->GetTopViewToAcceptEvent(FloatPoint(10.f, 10.f), &relative_position),
+      background);
 }
 }  // namespace testing
 }  // namespace clay

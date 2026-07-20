@@ -45,6 +45,8 @@
 #include "clay/ui/common/utils/watch_dog.h"
 #include "clay/ui/component/base_view.h"
 #include "clay/ui/component/component_constants.h"
+#include "clay/ui/component/frame_tick_client.h"
+#include "clay/ui/component/frame_view.h"
 #include "clay/ui/component/image_view.h"
 #include "clay/ui/component/inline_image_view.h"
 #include "clay/ui/component/intersection_observer.h"
@@ -167,6 +169,22 @@ bool DispatchA11yScrollAction(BaseView* view,
   return A11yScrollPosition(scroll_target) != previous_scroll_position;
 }
 #endif
+
+bool IsForwardingFrameView(BaseView* view) {
+  return view && view->Is<FrameView>() &&
+         static_cast<FrameView*>(view)->IsPointerEventForwardingEnabled();
+}
+
+bool IsRawTouchEvent(ClayEventType type) {
+  return type == kClayEventTypeTouchStart ||
+         type == kClayEventTypeTouchMove ||
+         type == kClayEventTypeTouchCancel || type == kClayEventTypeTouchEnd;
+}
+
+bool IsRawMouseOrWheelEvent(ClayEventType type) {
+  return type == kClayEventTypeMouseDown || type == kClayEventTypeMouseUp ||
+         type == kClayEventTypeMouseMove || type == kClayEventTypeWheel;
+}
 }  // namespace
 
 #define DEBUG_KEYFRAMES 0
@@ -190,6 +208,7 @@ PageView::PageView(uint32_t id, std::shared_ptr<ServiceManager> service_manager,
                    clay::TaskRunners task_runners)
     : BaseView(id, "page", std::make_unique<RenderPage>(), this),
       task_runners_(std::move(task_runners)),
+      frame_surface_registry_(std::make_shared<FrameSurfaceRegistry>()),
       gesture_manager_(std::make_unique<GestureManager>(
           task_runners_.GetUITaskRunner(), service_manager)),
       nested_scroll_manager_(std::make_unique<NestedScrollManager>(this)),
@@ -209,7 +228,7 @@ PageView::PageView(uint32_t id, std::shared_ptr<ServiceManager> service_manager,
   frame_builder_ = std::make_unique<FrameBuilder>(
       skity::Vec2{static_cast<int32_t>(metrics_.physical_width),
                   static_cast<int32_t>(metrics_.physical_height)},
-      metrics_.device_pixel_ratio, unref_queue_);
+      metrics_.device_pixel_ratio, unref_queue_, frame_surface_registry_);
   animation_handler_ = std::make_unique<AnimationHandler>();
   SetupAnimationCallback();
   renderer_ = std::make_unique<Renderer>(this, unref_queue_);
@@ -246,6 +265,11 @@ void PageView::OnDestroy() {
   FML_DLOG(INFO) << "Page OnDestroy; id = " << id_;
   animation_handler_->ClearCallbacks();
   DestroyAllChildren();
+  if (frame_surface_registry_) {
+    frame_surface_registry_->Clear();
+  }
+  pending_child_frame_clients_.clear();
+  pending_child_frame_forced_.clear();
   touch_view_map_.clear();
   image_resource_fetcher_ = nullptr;
   exposure_event_arr_.clear();
@@ -430,6 +454,10 @@ bool PageView::BeginFrame(
   }
 
   GetFocusManager()->RestoreFocusSwitching();
+
+  if (DrainScheduledChildFrames(*recorder)) {
+    force_raster_ = true;
+  }
 
   if (!force_raster_ && !renderer_->HasDirtyNodes()) {
     render_phase_ = RenderPhase::kIdle;
@@ -1099,6 +1127,20 @@ int PageView::GetHitTestingTargetNativeViewId(const FloatPoint& position,
   FloatPoint unused;
   BaseView* top_view =
       GetTopViewToAcceptEvent(position, &unused, platform_try_hit_id);
+  // Native views embedded by a frame belong to its child PageView. Recurse
+  // before deciding whether the platform view or Clay owns this touch.
+  if (top_view && top_view->Is<FrameView>()) {
+    bool child_has_hit_target = false;
+    int child_native_view_id =
+        static_cast<FrameView*>(top_view)->ForwardNativeViewHitTest(
+            position, platform_try_hit_id, &child_has_hit_target);
+    if (child_has_hit_target) {
+      if (has_hit_target) {
+        *has_hit_target = true;
+      }
+      return child_native_view_id;
+    }
+  }
   if (has_hit_target != nullptr) {
     *has_hit_target = top_view != nullptr;
   }
@@ -1148,6 +1190,7 @@ void PageView::ReportTopViewEvent(const PointerEvent& event,
   if (!top_view || top_view->IsAnonymousView()) {
     return;
   }
+  const bool is_forwarding_frame = IsForwardingFrameView(top_view);
 
   switch (event.device) {
     case PointerEvent::DeviceType::kTouch: {
@@ -1157,15 +1200,16 @@ void PageView::ReportTopViewEvent(const PointerEvent& event,
         touch_view_map_[event.pointer_id] = top_view->id();
       }
 
-      bool is_raw_events =
-          type == kClayEventTypeTouchStart || type == kClayEventTypeTouchEnd ||
-          type == kClayEventTypeTouchMove || type == kClayEventTypeTouchCancel;
+      bool is_raw_events = IsRawTouchEvent(type);
       if (is_raw_events && UNLIKELY(top_view->Is<NativeView>())) {
         // Only dispatch the raw touch events to the NativeView. Generated
         // events such as tapping or long pressing should not be dispatched to
         // the NativeViews.
         static_cast<NativeView*>(top_view)->SendMotionEvent(
             event, transformed_position);
+      }
+      if (is_forwarding_frame && is_raw_events) {
+        break;
       }
       if (event_delegate_) {
         event_delegate_->OnTouchEvent(
@@ -1178,6 +1222,9 @@ void PageView::ReportTopViewEvent(const PointerEvent& event,
       bool is_raw_events = type == kClayEventTypeMouseDown ||
                            type == kClayEventTypeMouseUp ||
                            type == kClayEventTypeMouseMove;
+      if (is_forwarding_frame && IsRawMouseOrWheelEvent(type)) {
+        break;
+      }
       if (UNLIKELY(top_view->Is<NativeView>())) {
         auto native_view = static_cast<NativeView*>(top_view);
         if (is_raw_events ||
@@ -1239,6 +1286,9 @@ void PageView::ReportTopViewEvent(const PointerEvent& event,
     } break;
     case PointerEvent::DeviceType::kTrackpad: {
       if (event.type == PointerEvent::EventType::kPanZoomStartEvent) {
+        if (is_forwarding_frame) {
+          return;
+        }
         pan_zoom_target_ = top_view;
         return;
       }
@@ -1250,6 +1300,9 @@ void PageView::ReportTopViewEvent(const PointerEvent& event,
         FML_DLOG(INFO) << "omit trackpad event: "
                        << static_cast<int>(event.type);
         return;
+      }
+      if (is_forwarding_frame) {
+        break;
       }
       bool has_pan_data =
           event.pan_delta.width() > 0 || event.pan_delta.height() > 0;
@@ -1340,6 +1393,60 @@ void PageView::DispatchTransitionEvent(
 }
 void PageView::RequestPaint() { Invalidate(); }
 void PageView::RequestPaintBase() { BaseView::Invalidate(); }
+
+void PageView::ScheduleChildFrame(FrameTickClient* client, bool forced) {
+  if (!client) {
+    return;
+  }
+  auto [it, inserted] = pending_child_frame_forced_.try_emplace(client, forced);
+  if (inserted) {
+    pending_child_frame_clients_.push_back(client);
+  } else {
+    it->second = it->second || forced;
+  }
+  RequestNewFrame();
+}
+
+void PageView::CancelChildFrame(FrameTickClient* client) {
+  pending_child_frame_forced_.erase(client);
+  pending_child_frame_clients_.erase(
+      std::remove(pending_child_frame_clients_.begin(),
+                  pending_child_frame_clients_.end(), client),
+      pending_child_frame_clients_.end());
+}
+
+bool PageView::DrainScheduledChildFrames(const FrameTimingsRecorder& recorder) {
+  if (pending_child_frame_forced_.empty()) {
+    pending_child_frame_clients_.clear();
+    return false;
+  }
+
+  auto clients = std::move(pending_child_frame_clients_);
+  auto forced = std::move(pending_child_frame_forced_);
+  pending_child_frame_clients_.clear();
+  pending_child_frame_forced_.clear();
+
+  FrameTickInfo tick;
+  tick.vsync_start = recorder.GetVsyncStartTime();
+  tick.vsync_target = recorder.GetVsyncTargetTime();
+  tick.vsync_sequence_id = recorder.GetVsyncSequenceId();
+  tick.parent_forced = recorder.GetForced();
+
+  bool produced_frame = false;
+  for (auto* client : clients) {
+    auto it = forced.find(client);
+    if (it == forced.end() || !client) {
+      continue;
+    }
+    produced_frame =
+        client->BeginScheduledFrame(tick, it->second) || produced_frame;
+  }
+
+  if (!pending_child_frame_forced_.empty()) {
+    RequestNewFrame();
+  }
+  return produced_frame;
+}
 
 #if OS_IOS
 void PageView::RunAtNextBeginFrame(fml::closure task) {
@@ -1841,11 +1948,18 @@ void PageView::ResetPageView(bool recycle) {
   touch_view_map_.clear();
   fling_stop_tap_suppressed_pointer_ids_.clear();
   isolated_gesture_detector_.ClearScrollTapSuppressionStates();
+  pending_child_frame_clients_.clear();
+  pending_child_frame_forced_.clear();
   active_fling_count_ = 0;
+  if (frame_surface_registry_) {
+    frame_surface_registry_->Clear();
+  } else {
+    frame_surface_registry_ = std::make_shared<FrameSurfaceRegistry>();
+  }
   frame_builder_ = std::make_unique<FrameBuilder>(
       skity::Vec2{static_cast<int32_t>(metrics_.physical_width),
                   static_cast<int32_t>(metrics_.physical_height)},
-      metrics_.device_pixel_ratio, unref_queue_);
+      metrics_.device_pixel_ratio, unref_queue_, frame_surface_registry_);
   focus_manager_ = FocusManager(this);
   focus_manager_.SetIsRootScope();
   view_tree_observer_.reset();
@@ -1945,7 +2059,8 @@ void PageView::MakeRasterSnapshot(
           : height;
   // Create a temporary FrameBuilder to generate the layer tree.
   std::unique_ptr<FrameBuilder> frame_builder = std::make_unique<FrameBuilder>(
-      skity::Vec2{width, height}, metrics_.device_pixel_ratio, unref_queue_);
+      skity::Vec2{width, height}, metrics_.device_pixel_ratio, unref_queue_,
+      frame_surface_registry_);
   // Apply the scale ratio using a transform layer to get the final image.
   float scale_ratio =
       GetPixelRatio<kPixelTypeClay, kPixelTypePhysical>() * scale;
@@ -2084,10 +2199,16 @@ void PageView::ReportTiming(
 void PageView::RegisterFirstFrameAvailable(int64_t image_id,
                                            const fml::closure& callback) {
   first_frame_callbacks_[image_id] = callback;
+  if (render_delegate_) {
+    render_delegate_->RegisterDrawableImageFirstFrameAvailable(image_id);
+  }
 }
 
 void PageView::UnRegisterFirstFrameAvailable(int64_t image_id) {
   first_frame_callbacks_.erase(image_id);
+  if (render_delegate_) {
+    render_delegate_->UnregisterDrawableImageFirstFrameAvailable(image_id);
+  }
 }
 
 bool PageView::MarkDrawableImageFrameAvailable(int64_t image_id) {

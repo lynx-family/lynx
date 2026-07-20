@@ -12,6 +12,7 @@ ui_platform_sources = [
   "keyboard_types.h",
   "native_view_service.h",
   "native_view_tags.h",
+  "overlay_service.h",
   "text_emoji_provider.h",
 ]
 

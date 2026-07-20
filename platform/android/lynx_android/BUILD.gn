@@ -40,8 +40,14 @@ cmake_target("lynx_android") {
   }
 }
 
+lynx_core_source_set("frame_child_runtime_bridge") {
+  sources = [ "src/main/jni/frame_child_runtime_bridge.cc" ]
+  deps = [ "../../../core/renderer/dom:dom" ]
+}
+
 group("lynx_android_lib") {
   public_deps = [
+    ":frame_child_runtime_bridge",
     "../../../core/animation:animation",
     "../../../core/animation/basic_animation:basic_animation",
     "../../../core/animation/lynx_basic_animator:lynx_basic_animator",

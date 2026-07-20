@@ -10,6 +10,7 @@
 #include <utility>
 
 #include "base/include/log/logging.h"
+#include "clay/lynx_adaptor/frame_child_runtime_embedder.h"
 #include "clay/lynx_adaptor/native_module/lynx_module_factory.h"
 #include "clay/lynx_adaptor/native_view_service_embedder.h"
 #include "clay/lynx_adaptor/resource_loader_embedder.h"
@@ -206,8 +207,11 @@ lynx::tasm::UIDelegate* LynxUIRendererWindowless::GetUIDelegate() {
   return ui_delegate_.get();
 }
 
-void LynxUIRendererWindowless::SendPointerEvent(const ClayPointerEvent& event) {
-  headless_engine_->SendPointerEvents(&event, 1);
+void LynxUIRendererWindowless::SetTemplateRendererSettings(
+    const LynxTemplateRenderer::Settings& settings) {
+  static_cast<lynx::tasm::UIDelegateClay*>(ui_delegate_.get())
+      ->SetFrameChildRuntimeFactory(
+          lynx::tasm::CreateFrameChildRuntimeFactoryEmbedder(settings));
 }
 
 const char* LynxUIRendererWindowless::GetClipboardData() const {

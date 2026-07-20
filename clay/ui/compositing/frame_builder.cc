@@ -11,6 +11,7 @@
 #include "clay/common/element_id.h"
 #include "clay/flow/animation/animation_host.h"
 #include "clay/flow/animation/animation_mutator.h"
+#include "clay/flow/frame_surface_registry.h"
 #include "clay/flow/layers/backdrop_filter_layer.h"
 #include "clay/flow/layers/clip_path_layer.h"
 #include "clay/flow/layers/clip_rect_layer.h"
@@ -19,6 +20,7 @@
 #include "clay/flow/layers/container_layer.h"
 #include "clay/flow/layers/drawable_image_layer.h"
 #include "clay/flow/layers/external_view_layer.h"
+#include "clay/flow/layers/frame_surface_layer.h"
 #include "clay/flow/layers/image_filter_layer.h"
 #include "clay/flow/layers/layer.h"
 #include "clay/flow/layers/layer_tree.h"
@@ -62,12 +64,17 @@ void InitializeAnimationMutator(RenderObject* owner,
 
 }  // namespace
 
-FrameBuilder::FrameBuilder(const skity::Vec2& frame_size,
-                           float device_pixel_ratio,
-                           fml::RefPtr<GPUUnrefQueue> unref_queue)
+FrameBuilder::FrameBuilder(
+    const skity::Vec2& frame_size, float device_pixel_ratio,
+    fml::RefPtr<GPUUnrefQueue> unref_queue,
+    std::shared_ptr<FrameSurfaceRegistry> frame_surface_registry)
     : frame_size_(frame_size),
       device_pixel_ratio_(device_pixel_ratio),
-      unref_queue_(std::move(unref_queue)) {
+      unref_queue_(std::move(unref_queue)),
+      frame_surface_registry_(std::move(frame_surface_registry)) {
+  if (!frame_surface_registry_) {
+    frame_surface_registry_ = std::make_shared<FrameSurfaceRegistry>();
+  }
   // Add a ContainerLayer as the root layer, so that AddLayer operations are
   // always valid.
   PushLayer(std::make_shared<clay::ContainerLayer>());
@@ -382,6 +389,34 @@ void FrameBuilder::AddPlatformView(double dx, double dy, double width,
   has_platform_view_layer_ = true;
   auto layer = std::make_unique<clay::PlatformViewLayer>(
       skity::Vec2(dx, dy), skity::Vec2(width, height), view_id);
+  AddLayer(std::move(layer));
+}
+
+void FrameBuilder::AddFrameSurface(const ElementId& element_id,
+                                   const skity::Rect& rect) {
+  if (!frame_surface_registry_) {
+    return;
+  }
+  auto surface =
+      frame_surface_registry_->AcquireLatestSurfaceForParentFrame(element_id);
+  if (!surface) {
+    return;
+  }
+  AddLayer(std::make_unique<clay::FrameSurfaceLayer>(std::move(surface), rect));
+}
+
+void FrameBuilder::AddFrameSurface(const FrameSurfaceId& surface_id,
+                                   const skity::Rect& rect) {
+  if (!frame_surface_registry_) {
+    return;
+  }
+  auto surface =
+      frame_surface_registry_->AcquireSurfaceForParentFrame(surface_id);
+  if (!surface) {
+    return;
+  }
+  auto layer =
+      std::make_unique<clay::FrameSurfaceLayer>(std::move(surface), rect);
   AddLayer(std::move(layer));
 }
 

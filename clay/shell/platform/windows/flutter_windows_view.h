@@ -91,6 +91,10 @@ class FlutterWindowsView : public WindowBindingHandlerDelegate,
   // Returns the frame buffer id for the engine to render to.
   uint32_t GetFrameBufferId(size_t width, size_t height);
 
+  // Prepares a surface resize for the next frame without blocking the caller.
+  // The actual resize is performed by GetFrameBufferId on the raster thread.
+  void PrepareSurfaceSize(size_t width, size_t height);
+
   void SetDamageRegion(const clay::Rect& region);
 
   void SetPresentDamageRegion(const clay::Rect& region);
