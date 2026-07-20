@@ -100,7 +100,7 @@ export class LogBox implements ILogBox {
   public onLoaded(url: string): void;
   public detach(): void;
   onError: (msg: string) => void;
-  getJsSource: () => Record<string, string>;
+  getJsSource: (callback: (source: Record<string, string>) => void) => void;
   nativeBridge: NativeBridge; = new NativeBridge()
 }
 
