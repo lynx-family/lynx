@@ -270,6 +270,15 @@ public class ListContainerView extends NestedScrollContainerView
     mInNonTouchNestedScroll = false;
   }
 
+  @Override
+  public void onNestedScroll(@NonNull View target, int dxConsumed, int dyConsumed, int dxUnconsumed,
+      int dyUnconsumed, int type, @NonNull int[] consumed) {
+    mInNonTouchNestedScroll = (type == ViewCompat.TYPE_NON_TOUCH);
+    super.onNestedScroll(
+        target, dxConsumed, dyConsumed, dxUnconsumed, dyUnconsumed, type, consumed);
+    mInNonTouchNestedScroll = false;
+  }
+
   private void createCustomLinearLayoutIfNeeded() {
     if (mCustomLinearLayout == null) {
       mCustomLinearLayout = new CustomLinearLayout(this.getContext());
