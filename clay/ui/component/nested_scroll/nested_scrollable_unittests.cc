@@ -2,6 +2,7 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+#include "clay/ui/component/isolated_gesture_detector.h"
 #include "clay/ui/component/nested_scroll/nested_scroll_manager.h"
 #include "clay/ui/component/nested_scroll/nested_scrollable.h"
 #include "clay/ui/component/scroll_view.h"
@@ -44,6 +45,17 @@ class TestScrollable : public NestedScrollable {
     if (status_ == ScrollStatus::kBounce) {
       bounced_ = true;
     }
+  }
+
+  ScrollableDirection GetScrollableDirection() const override {
+    ScrollableDirection direction = ScrollableDirection::kNone;
+    if (scroll_offset_ > 0) {
+      direction |= ScrollableDirection::kUpwards;
+    }
+    if (scroll_offset_ < max_scroll_offset_) {
+      direction |= ScrollableDirection::kDownwards;
+    }
+    return direction;
   }
 
   float max_scroll_offset_;
@@ -585,6 +597,84 @@ TEST_F_UI(NestedScrollableTest, PageViewFlingStopDoesNotTriggerTap) {
   EXPECT_EQ(tap_count, 1);
 }
 
+TEST_F_UI(NestedScrollableTest, TouchDragDoesNotTriggerTap) {
+  TestScrollable* scrollable = new TestScrollable(page_.get(), 100, 1);
+  page_->AddChild(scrollable);
+  page_->SetTapSlop(200);
+
+  int tap_count = 0;
+  touch_event_callback_ = [&tap_count](const std::string& event_name, int tag) {
+    if (event_name == "tap" && tag == 1) {
+      tap_count++;
+    }
+  };
+
+  page_->DispatchPointerEvent(
+      {CreatePointer(0, PointerEvent::EventType::kDownEvent, {50, 50})});
+  page_->DispatchPointerEvent({CreatePointer(
+      0, PointerEvent::EventType::kMoveEvent, {50, 35}, {0, -15})});
+  page_->DispatchPointerEvent(
+      {CreatePointer(0, PointerEvent::EventType::kUpEvent, {50, 35})});
+  EXPECT_GT(scrollable->scroll_offset_, 0);
+  EXPECT_EQ(tap_count, 0);
+
+  DispatchTapEvent({50, 50});
+  EXPECT_EQ(tap_count, 1);
+}
+
+TEST_F_UI(NestedScrollableTest, TouchDragBatchDoesNotTriggerTap) {
+  TestScrollable* scrollable = new TestScrollable(page_.get(), 100, 1);
+  page_->AddChild(scrollable);
+  page_->SetTapSlop(200);
+
+  int tap_count = 0;
+  touch_event_callback_ = [&tap_count](const std::string& event_name, int tag) {
+    if (event_name == "tap" && tag == 1) {
+      tap_count++;
+    }
+  };
+
+  page_->DispatchPointerEvent(
+      {CreatePointer(0, PointerEvent::EventType::kDownEvent, {50, 50}),
+       CreatePointer(0, PointerEvent::EventType::kMoveEvent, {50, 35},
+                     {0, -15}),
+       CreatePointer(0, PointerEvent::EventType::kUpEvent, {50, 35})});
+  EXPECT_GT(scrollable->scroll_offset_, 0);
+  EXPECT_EQ(tap_count, 0);
+}
+
+TEST_F_UI(NestedScrollableTest, TouchPointersUseIndependentSuppressionState) {
+  auto* first_scrollable = new TestScrollable(page_.get(), 100, 1);
+  page_->AddChild(first_scrollable);
+  auto* second_scrollable = new TestScrollable(page_.get(), 100, 2);
+  second_scrollable->SetBound(200, 0, 100, 100);
+  page_->AddChild(second_scrollable);
+  page_->SetTapSlop(200);
+
+  int tap_count = 0;
+  touch_event_callback_ = [&tap_count](const std::string& event_name, int tag) {
+    if (event_name == "tap" && tag == 1) {
+      tap_count++;
+    }
+  };
+
+  page_->DispatchPointerEvent(
+      {CreatePointer(3, PointerEvent::EventType::kDownEvent, {50, 50})});
+  page_->DispatchPointerEvent({CreatePointer(
+      3, PointerEvent::EventType::kMoveEvent, {50, 35}, {0, -15})});
+  page_->DispatchPointerEvent(
+      {CreatePointer(4, PointerEvent::EventType::kDownEvent, {250, 80})});
+  page_->DispatchPointerEvent({CreatePointer(
+      4, PointerEvent::EventType::kMoveEvent, {250, 75}, {0, -5})});
+
+  page_->DispatchPointerEvent(
+      {CreatePointer(3, PointerEvent::EventType::kUpEvent, {50, 35})});
+  EXPECT_EQ(tap_count, 0);
+
+  page_->DispatchPointerEvent(
+      {CreatePointer(4, PointerEvent::EventType::kCancel, {250, 75})});
+}
+
 TEST_F_UI(NestedScrollableTest,
           UnconsumedFlingStopDoesNotSuppressFollowingTap) {
   TestScrollable* scrollable = new TestScrollable(page_.get(), 100, 1);
@@ -624,6 +714,25 @@ TEST_F_UI(NestedScrollableTest, ResetPageViewClearsFlingStopTapSuppression) {
 
   DispatchTapEvent({50, 50});
   EXPECT_EQ(tap_count, 1);
+}
+
+TEST_F_UI(NestedScrollableTest, ClearScrollTapSuppressionStates) {
+  auto* scrollable = new TestScrollable(page_.get(), 100);
+  page_->AddChild(scrollable);
+
+  IsolatedGestureDetector detector(ui_task_runner());
+  PointerEvent down_event =
+      CreatePointer(7, PointerEvent::EventType::kDownEvent, {50, 50});
+  HitTestResult hit_test_result{scrollable->GetHitTestTargetWeakPtr()};
+  detector.TrackScrollTapSuppressionForPointerDown(down_event, hit_test_result);
+  std::vector<PointerEvent> events{
+      down_event,
+      CreatePointer(7, PointerEvent::EventType::kMoveEvent, {50, 35})};
+  detector.DispatchPointerEvent(events, {});
+  EXPECT_TRUE(detector.ShouldSuppressTapForScrollDrag(7));
+
+  detector.ClearScrollTapSuppressionStates();
+  EXPECT_FALSE(detector.ShouldSuppressTapForScrollDrag(7));
 }
 
 TEST_F_UI(NestedScrollableTest, ManagerStatusTouchOnWheelAnimation) {
