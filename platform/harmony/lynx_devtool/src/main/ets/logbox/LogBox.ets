@@ -1161,7 +1161,7 @@ export class LogBoxNotificationOwner {
 
 export class LogBox implements ILogBox {
   onError: (msg: string) => void;
-  getJsSource: () => Record<string, string>;
+  getJsSource: (callback: (source: Record<string, string>) => void) => void;
   nativeBridge: NativeBridge = new NativeBridge();
 
   public reportError(err: LynxError) {
@@ -1188,17 +1188,18 @@ export class LogBox implements ILogBox {
   }
 
   public onLoaded(url: string) {
-    let jsSource: Record<string, string> = this.getJsSource();
-    this.nativeBridge.setJsSource(jsSource);
     this.nativeBridge.setTemplateUrl(url);
+    this.getJsSource((jsSource: Record<string, string>) => {
+      this.nativeBridge.setJsSource(jsSource);
+    });
   }
 
   public detach() {
     let jsSource = this.nativeBridge.getJsSource();
     this.onError = (_msg: string) => {
     };
-    this.getJsSource = (): Record<string, string> => {
-      return jsSource;
+    this.getJsSource = (callback: (source: Record<string, string>) => void): void => {
+      callback(jsSource);
     };
   }
 
