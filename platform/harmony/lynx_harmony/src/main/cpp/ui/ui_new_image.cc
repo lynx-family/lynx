@@ -307,8 +307,14 @@ void UINewImage::AutoSizeIfNeeded() {
       Sign(), [auto_size = auto_size_, image_width = image_width_,
                image_height = image_height_, width = width_,
                height = height_](ShadowNode* shadow_node) {
-        auto* image_shadow_node =
-            reinterpret_cast<ImageShadowNode*>(shadow_node);
+        if (!shadow_node) {
+          return;
+        }
+        const std::string tag = shadow_node->Tag();
+        if (tag != "image" && tag != "filter-image") {
+          return;
+        }
+        auto* image_shadow_node = static_cast<ImageShadowNode*>(shadow_node);
         image_shadow_node->JustSize(auto_size, image_width, image_height, width,
                                     height);
       });
