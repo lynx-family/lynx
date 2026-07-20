@@ -9,6 +9,7 @@
 
 #include <utility>
 
+#include "base/include/auto_reset.h"
 #include "clay/flow/raster_cache_item.h"
 #include "clay/flow/raster_cache_util.h"
 #include "clay/gfx/comparable.h"
@@ -74,9 +75,8 @@ void ColorFilterLayer::Paint(PaintContext& context) const {
   FML_DCHECK(needs_painting(context));
   if (subtree_has_punch_hole()) {
     auto mutator = context.state_stack.save();
-    context.only_draw_punch_hole = true;
+    lynx::base::AutoReset<bool> resetter(&context.only_draw_punch_hole, true);
     PaintChildren(context);
-    context.only_draw_punch_hole = false;
   }
 
   auto mutator = context.state_stack.save();

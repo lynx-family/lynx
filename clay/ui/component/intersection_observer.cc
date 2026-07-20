@@ -8,6 +8,7 @@
 #include <memory>
 #include <utility>
 
+#include "base/include/auto_reset.h"
 #include "clay/ui/common/attribute_utils.h"
 #include "clay/ui/component/base_view.h"
 #include "clay/ui/component/css_property.h"
@@ -226,10 +227,9 @@ void IntersectionObserver::OnDetach() {
   if (!available_) {
     return;
   }
-  is_detaching_ = true;
+  lynx::base::AutoReset<bool> resetter(&is_detaching_, true);
   CheckForIntersectionWithTarget();
   available_ = false;
-  is_detaching_ = false;
 }
 
 void IntersectionObserver::CheckForIntersectionWithTarget() {

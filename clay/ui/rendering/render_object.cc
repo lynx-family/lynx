@@ -8,6 +8,7 @@
 #include <cmath>
 #include <sstream>
 
+#include "base/include/auto_reset.h"
 #include "clay/fml/logging.h"
 #include "clay/gfx/animation/animation_properties_util.h"
 #include "clay/gfx/geometry/float_rounded_rect.h"
@@ -1338,31 +1339,33 @@ void RenderObject::PaintWithContext(PaintingContext& context,
     return;
   }
 
-  painting_ = true;
-  needs_paint_ = false;
-  needs_effect_ = false;
-  // FIXME(fangzheyuan): Read IsRepaintBoundary before actual rendering starts.
-  // Some render object's properties(like 'repaint_boundary_') can be mutable in
-  // painting, this is a temporary workaround to avoid this scenario.
-  bool is_repaint_boundary = IsRepaintBoundary();
+  {
+    lynx::base::AutoReset<bool> resetter(&painting_, true);
+    needs_paint_ = false;
+    needs_effect_ = false;
+    // FIXME(fangzheyuan): Read IsRepaintBoundary before actual rendering
+    // starts. Some render object's properties(like 'repaint_boundary_') can be
+    // mutable in painting, this is a temporary workaround to avoid this
+    // scenario.
+    bool is_repaint_boundary = IsRepaintBoundary();
 
-  if (is_repaint_boundary && GetContainerLayer()) {
-    context.AddLayer(GetContainerLayer());
-  } else {
-    // If this object has shadow, should add shadow offset to show shadow.
-    Paint(context, offset + PaintOffsetEx());
+    if (is_repaint_boundary && GetContainerLayer()) {
+      context.AddLayer(GetContainerLayer());
+    } else {
+      // If this object has shadow, should add shadow offset to show shadow.
+      Paint(context, offset + PaintOffsetEx());
 
-    if (is_repaint_boundary && !GetContainerLayer() &&
-        context.GetContainerLayer()) {
-      SetContainerLayer(
-          std::unique_ptr<PendingContainerLayer>(context.GetContainerLayer()));
+      if (is_repaint_boundary && !GetContainerLayer() &&
+          context.GetContainerLayer()) {
+        SetContainerLayer(std::unique_ptr<PendingContainerLayer>(
+            context.GetContainerLayer()));
+      }
     }
-  }
 
-  // Check that the Paint() method didn't mark us dirty again.
-  FML_DCHECK(!needs_paint_);
-  FML_DCHECK(!needs_effect_);
-  painting_ = false;
+    // Check that the Paint() method didn't mark us dirty again.
+    FML_DCHECK(!needs_paint_);
+    FML_DCHECK(!needs_effect_);
+  }
 #ifdef ENABLE_RASTER_CACHE_SCALE
   if (strategy_ == CacheStrategy::NotCache) {
     // Reset strategy for self and descendant render objects.

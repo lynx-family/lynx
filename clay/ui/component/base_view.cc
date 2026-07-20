@@ -12,6 +12,7 @@
 #include <unordered_set>
 #include <utility>
 
+#include "base/include/auto_reset.h"
 #include "clay/fml/base64.h"
 #include "clay/fml/logging.h"
 #include "clay/gfx/animation/animation_properties_util.h"
@@ -444,9 +445,8 @@ void BaseView::RemoveChild(BaseView* child) {
 }
 
 void BaseView::RemoveChildTemporarily(BaseView* child) {
-  child->remove_temporarily_ = true;
+  lynx::base::AutoReset<bool> resetter(&child->remove_temporarily_, true);
   RemoveChild(child);
-  child->remove_temporarily_ = false;
 }
 
 void BaseView::DestroyAllChildren() {
@@ -618,35 +618,32 @@ void BaseView::SetHeight(float height) {
 
 void BaseView::SetBound(float left, float top, float width, float height) {
   FloatRect old_bounds = GetBounds();
-  // TODO: Maybe we can use Class 'AutoReset' to save the original value of the
-  // variable and set a new value. When the life cycle ends, restore the
-  // original value of the variable.
-  // https://source.chromium.org/chromium/chromium/src/+/main:base/auto_reset.h;l=25;bpv=1;bpt=1?q=AutoReset&ss=chromium%2Fchromium%2Fsrc
-  ignore_size_change_checks_ = true;
-  SetX(left);
-  SetWidth(width);
+  {
+    lynx::base::AutoReset<bool> resetter(&ignore_size_change_checks_, true);
+    SetX(left);
+    SetWidth(width);
 
-  const bool should_couple_top_with_height_transition =
-      top_ != top && height_ != height && IsTransitionAnimationReady() &&
-      transition_mgr_ &&
-      transition_mgr_->Enabled(ClayAnimationPropertyType::kHeight) &&
-      !transition_mgr_->Enabled(ClayAnimationPropertyType::kTop);
+    const bool should_couple_top_with_height_transition =
+        top_ != top && height_ != height && IsTransitionAnimationReady() &&
+        transition_mgr_ &&
+        transition_mgr_->Enabled(ClayAnimationPropertyType::kHeight) &&
+        !transition_mgr_->Enabled(ClayAnimationPropertyType::kTop);
 
-  if (should_couple_top_with_height_transition) {
-    if (transition_mgr_->TransitionTo(ClayAnimationPropertyType::kHeight,
-                                      height)) {
-      transition_mgr_->TransitionWithTiming(ClayAnimationPropertyType::kTop,
-                                            top,
-                                            ClayAnimationPropertyType::kHeight);
+    if (should_couple_top_with_height_transition) {
+      if (transition_mgr_->TransitionTo(ClayAnimationPropertyType::kHeight,
+                                        height)) {
+        transition_mgr_->TransitionWithTiming(
+            ClayAnimationPropertyType::kTop, top,
+            ClayAnimationPropertyType::kHeight);
+      } else {
+        SetProperty(ClayAnimationPropertyType::kTop, top, false);
+        SetProperty(ClayAnimationPropertyType::kHeight, height, false);
+      }
     } else {
-      SetProperty(ClayAnimationPropertyType::kTop, top, false);
-      SetProperty(ClayAnimationPropertyType::kHeight, height, false);
+      SetY(top);
+      SetHeight(height);
     }
-  } else {
-    SetY(top);
-    SetHeight(height);
   }
-  ignore_size_change_checks_ = false;
   NotifyBoundChangeIfNeeded(old_bounds);
 
   OnLayoutChange();
