@@ -111,6 +111,20 @@ FloatRect ComputeIntersection(BaseView* target_view, BaseView* root,
     parent = parent->Parent();
   }
 
+  // The default root can be the page view, which may not appear in the Clay
+  // view's parent chain. Still clip by the root viewport to avoid treating an
+  // off-screen target as fully exposed.
+  if (!at_root) {
+    if (!root->Visible()) {
+      return FloatRect();
+    }
+    if (intersection_rect.Intersects(relative_rect)) {
+      intersection_rect.Intersect(relative_rect);
+    } else {
+      intersection_rect = FloatRect();
+    }
+  }
+
   return intersection_rect;
 }
 
