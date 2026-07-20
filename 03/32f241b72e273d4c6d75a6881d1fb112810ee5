@@ -1,0 +1,21 @@
+platform/darwin/ios/bd_xelement/bd_xelement/classes/video/pro/BDXLynxVideoPlayerPro.m
+  s_912c10305c4d84::t_eef74e63a4b224 55-73,98,100,104-111,113,121-130
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "0332f241b72e273d4c6d75a6881d1fb112810ee5",
+  "prompts": {},
+  "sessions": {
+    "s_912c10305c4d84": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f6dc9-6437-77f2-aed7-9aca74826635",
+        "model": "unknown"
+      },
+      "human_author": "mooface <xiamengfei.moonface@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}
