@@ -8,6 +8,7 @@
 #include <unordered_set>
 #include <utility>
 
+#include "base/include/auto_reset.h"
 #include "clay/fml/logging.h"
 
 namespace clay {
@@ -49,14 +50,11 @@ class ValueChangeNotifier {
 
   void NotifyValueChanged() {
 #ifndef NDEBUG
-    notifying_ = true;
+    lynx::base::AutoReset<bool> resetter(&notifying_, true);
 #endif
     for (Observer* observer : observers_) {
       observer->OnValueChanged(value_, this);
     }
-#ifndef NDEBUG
-    notifying_ = false;
-#endif
   }
 
   bool SetValue(const T& value) {

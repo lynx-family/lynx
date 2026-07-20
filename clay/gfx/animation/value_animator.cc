@@ -25,6 +25,7 @@
 #include <optional>
 #include <utility>
 
+#include "base/include/auto_reset.h"
 #include "clay/fml/logging.h"
 #include "clay/gfx/animation/animation_data.h"
 #include "clay/gfx/animation/animation_handler.h"
@@ -369,13 +370,12 @@ void ValueAnimator::Start(bool play_backwards) {
 }
 
 void ValueAnimator::StartWithoutPulsing(bool in_reverse) {
-  suppress_self_pulse_requested_ = true;
+  lynx::base::AutoReset<bool> resetter(&suppress_self_pulse_requested_, true);
   if (in_reverse) {
     Reverse();
   } else {
     Start();
   }
-  suppress_self_pulse_requested_ = false;
 }
 
 void ValueAnimator::Cancel() {

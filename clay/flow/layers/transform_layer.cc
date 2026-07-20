@@ -11,6 +11,7 @@
 #include <optional>
 #include <string>
 
+#include "base/include/auto_reset.h"
 #include "clay/flow/animation/animation_mutator.h"
 
 namespace clay {
@@ -61,8 +62,9 @@ void TransformLayer::Diff(DiffContext* context, const Layer* old_layer) {
 }
 
 void TransformLayer::Preroll(PrerollContext* context) {
-  bool prev = context->parent_has_running_transform_animation;
-  context->parent_has_running_transform_animation |= HasAnimationRunning();
+  lynx::base::AutoReset<bool> resetter(
+      &context->parent_has_running_transform_animation,
+      context->parent_has_running_transform_animation || HasAnimationRunning());
 
   auto mutator = context->state_stack.save();
   skity::Matrix transform = GetMatrix();
@@ -77,8 +79,6 @@ void TransformLayer::Preroll(PrerollContext* context) {
 
   transform.MapRect(&child_paint_bounds, child_paint_bounds);
   set_paint_bounds(child_paint_bounds);
-
-  context->parent_has_running_transform_animation = prev;
 }
 
 void TransformLayer::Paint(PaintContext& context) const {

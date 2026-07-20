@@ -6,6 +6,7 @@
 
 #include <memory>
 
+#include "base/include/auto_reset.h"
 #include "base/include/thread/timed_task.h"
 #include "clay/gfx/animation/animation_handler.h"
 #include "clay/gfx/animation/animator.h"
@@ -90,12 +91,11 @@ void FlingScroller::Stop() {
   if (stopping_) {
     return;
   }
-  stopping_ = true;
+  lynx::base::AutoReset<bool> resetter(&stopping_, true);
   current_fling_state_ = static_cast<uint8_t>(FlingState::IDLE);
   if (animator_) {
     animator_->Cancel();
   }
-  stopping_ = false;
 }
 
 }  // namespace clay

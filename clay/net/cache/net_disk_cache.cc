@@ -8,6 +8,7 @@
 #include <cstring>
 #include <vector>
 
+#include "base/include/auto_reset.h"
 #include "base/include/fml/task_runner.h"
 #include "clay/common/graphics/persistent_cache.h"
 #include "clay/fml/mapping.h"
@@ -144,10 +145,8 @@ void NetDiskCache::ClearCaches() {
   if (!Available()) {
     return;
   }
-  int64_t old_size = config_.max_cache_size_;
-  config_.max_cache_size_ = 0;
+  lynx::base::AutoReset<int64_t> resetter(&config_.max_cache_size_, 0);
   CheckMayTrim();
-  config_.max_cache_size_ = old_size;
 }
 
 void NetDiskCache::CheckMayTrim() {

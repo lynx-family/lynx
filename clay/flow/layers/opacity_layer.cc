@@ -10,6 +10,7 @@
 #include <limits>
 #include <optional>
 
+#include "base/include/auto_reset.h"
 #include "clay/flow/animation/animation_mutator.h"
 #include "clay/flow/raster_cache_util.h"
 #include "clay/gfx/rendering_backend.h"
@@ -88,9 +89,8 @@ void OpacityLayer::Paint(PaintContext& context) const {
   if (subtree_has_punch_hole()) {
     auto mutator = context.state_stack.save();
     mutator.translate(offset_.x, offset_.y);
-    context.only_draw_punch_hole = true;
+    lynx::base::AutoReset<bool> resetter(&context.only_draw_punch_hole, true);
     PaintChildren(context);
-    context.only_draw_punch_hole = false;
   }
 
   auto mutator = context.state_stack.save();

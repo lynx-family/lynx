@@ -6,6 +6,7 @@
 
 #include <utility>
 
+#include "base/include/auto_reset.h"
 #include "clay/fml/logging.h"
 #include "clay/shell/common/engine.h"
 #include "clay/shell/common/services/platform_const_service.h"
@@ -95,12 +96,11 @@ void UIFrameService::BeginFrame(
   frame_requested_ = false;
   recorder->RecordBuildStart(fml::TimePoint::Now());
   TRACE_EVENT_WITH_FRAME_NUMBER(recorder, "clay", "UIFrameService::BeginFrame");
-  inside_ui_frame_ = true;
+  lynx::base::AutoReset<bool> resetter(&inside_ui_frame_, true);
   if (!engine_->BeginFrame(std::move(recorder))) {
     // Commit with no updates if failed to build LayerTree.
     CommitWithNoUpdates();
   }
-  inside_ui_frame_ = false;
 }
 
 void UIFrameService::ForceBeginFrame(
@@ -109,12 +109,11 @@ void UIFrameService::ForceBeginFrame(
       [](auto& impl) { impl.ForceBeginFrame(); });
   recorder->RecordBuildStart(fml::TimePoint::Now());
   FML_DCHECK(engine_);
-  inside_ui_frame_ = true;
+  lynx::base::AutoReset<bool> resetter(&inside_ui_frame_, true);
   if (!engine_->BeginFrame(std::move(recorder))) {
     // Commit with no updates if failed to build LayerTree.
     CommitWithNoUpdates();
   }
-  inside_ui_frame_ = false;
 }
 
 void UIFrameService::CommitWithNoUpdates() {

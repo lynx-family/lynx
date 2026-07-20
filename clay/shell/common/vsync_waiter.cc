@@ -10,6 +10,7 @@
 #include <utility>
 #include <vector>
 
+#include "base/include/auto_reset.h"
 #include "base/include/fml/message_loop_task_queues.h"
 #include "base/include/fml/task_queue_id.h"
 #include "base/include/fml/task_runner.h"
@@ -128,7 +129,7 @@ void VsyncWaiter::FireCallback(fml::TimePoint frame_start_time,
     // TRACE_EVENT_INSTANT("clay", "MismatchedFrameCallback");
     return;
   }
-  inside_vsync_ = true;
+  lynx::base::AutoReset<bool> resetter(&inside_vsync_, true);
 
   if (callback) {
     TRACE_EVENT("clay", kVsyncTraceName, "StartTime",
@@ -143,8 +144,6 @@ void VsyncWaiter::FireCallback(fml::TimePoint frame_start_time,
   for (auto& secondary_callback : secondary_callbacks) {
     task_runner_->PostTask(std::move(secondary_callback));
   }
-
-  inside_vsync_ = false;
 }
 
 void VsyncWaiter::Hook(AWaitVSyncCallback callback) {
