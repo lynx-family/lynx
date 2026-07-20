@@ -285,6 +285,8 @@ class LynxShell {
   // TODO(heshan):will be deleted, pass when ReportError
   std::unordered_map<std::string, std::string> GetAllJsSource();
 
+  void GetAllJsSourceAsync(std::unique_ptr<shell::PlatformCallBack> callback);
+
   void GetLynxElementRootSignAsync(
       std::unique_ptr<shell::PlatformCallBack> callback);
 

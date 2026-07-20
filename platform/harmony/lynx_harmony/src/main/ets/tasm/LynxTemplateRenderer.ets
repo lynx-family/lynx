@@ -223,6 +223,12 @@ export class LynxTemplateRenderer extends lynx.LynxTemplateRenderer {
     return this.nativeGetAllJsSource();
   }
 
+  getAllJsSourceAsync(callback: (source: Record<string, string>) => void): void {
+    this.nativeGetAllJsSourceAsync((source: Record<string, string>) => {
+      callback(source ?? {});
+    });
+  }
+
   isDestroyed(): boolean {
     return this.hasDestroyed;
   }
