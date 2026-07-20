@@ -1428,8 +1428,9 @@ public class LynxTemplateRender
   private void legacyLoadTemplateWithProvider(
       @NonNull String templateUrl, AbsTemplateProvider.Callback callback) {
     if (TextUtils.isEmpty(templateUrl)) {
-      throw new IllegalArgumentException(
+      onErrorOccurred(LynxSubErrorCode.E_APP_BUNDLE_LOAD_BAD_RESPONSE,
           TAG + " template url is null or TemplateProvider is not init");
+      return;
     }
     dispatchOnPageStart(mUrl);
     mPerformanceController.markTiming(TimingHandler.PREPARE_TEMPLATE_START, null);
