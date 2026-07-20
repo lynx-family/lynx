@@ -36,7 +36,7 @@ dependencies {
     compileOnly project(':LynxAndroid')
     compileOnly 'androidx.annotation:annotation:1.0.0'
     implementation 'androidx.multidex:multidex:2.0.1'
-    api 'androidx.core:core:1.0.0'
+    api 'androidx.core:core:1.1.0'
     api 'org.mockito:mockito-android:4.8.1'
     api 'androidx.test.ext:junit:1.1.1'
     api 'androidx.test.espresso:espresso-core:3.1.0'

@@ -317,7 +317,8 @@ dependencies {
 
     compileOnly group: 'com.google.code.gson', name: 'gson', version: '2.8.5'
 
-    compileOnly('androidx.appcompat:appcompat:1.0.0')
+    implementation 'androidx.core:core:1.1.0'
+    compileOnly 'androidx.appcompat:appcompat:1.0.0'
     compileOnly 'androidx.recyclerview:recyclerview:1.0.0'
     compileOnly 'androidx.annotation:annotation:1.0.0'
     // Exclude useless res dir of com.android.support:appcompat-v7:23.0.1
