@@ -3665,6 +3665,7 @@ public class com::lynx::tasm::behavior::ui::list::container::ListContainerView :
   public Renderer com.lynx.tasm.behavior.ui.list.container.ListContainerView.getRenderer();
   public View com.lynx.tasm.behavior.ui.list.container.ListContainerView.getView();
   public void com.lynx.tasm.behavior.ui.list.container.ListContainerView.onNestedScroll(@NonNull View target, int dxConsumed, int dyConsumed, int dxUnconsumed, int dyUnconsumed, int type);
+  public void com.lynx.tasm.behavior.ui.list.container.ListContainerView.onNestedScroll(@NonNull View target, int dxConsumed, int dyConsumed, int dxUnconsumed, int dyUnconsumed, int type, @NonNull int[] consumed);
   public boolean com.lynx.tasm.behavior.ui.list.container.ListContainerView.onInterceptTouchEvent(MotionEvent e);
   public boolean com.lynx.tasm.behavior.ui.list.container.ListContainerView.dispatchTouchEvent(MotionEvent ev);
   public boolean com.lynx.tasm.behavior.ui.list.container.ListContainerView.onTouchEvent(MotionEvent ev);
@@ -8355,7 +8356,7 @@ public class com::lynx::tasm::behavior::ui::scroll::NestedHorizontalScrollView :
   public int com.lynx.tasm.behavior.ui.scroll.NestedHorizontalScrollView.getNestedScrollAxes();
 }
 
-public class com::lynx::tasm::behavior::ui::list::container::NestedScrollContainerView : FrameLayout, NestedScrollingParent2, NestedScrollingChild2, ScrollingView {
+public class com::lynx::tasm::behavior::ui::list::container::NestedScrollContainerView : FrameLayout, NestedScrollingParent3, NestedScrollingChild3, ScrollingView {
   public LynxSnapHelper com.lynx.tasm.behavior.ui.list.container.NestedScrollContainerView.mSnapHelper mSnapHelper;
   public boolean com.lynx.tasm.behavior.ui.list.container.NestedScrollContainerView.mIsDuringAutoScroll mIsDuringAutoScroll;
   public final float com.lynx.tasm.behavior.ui.list.container.NestedScrollContainerView.LIST_AUTOMATIC_MAX_FLING_RATIO LIST_AUTOMATIC_MAX_FLING_RATIO;
@@ -8403,6 +8404,7 @@ public class com::lynx::tasm::behavior::ui::list::container::NestedScrollContain
   public boolean com.lynx.tasm.behavior.ui.list.container.NestedScrollContainerView.dispatchNestedPreScroll(int dx, int dy, int[] consumed, int[] offsetInWindow);
   public boolean com.lynx.tasm.behavior.ui.list.container.NestedScrollContainerView.dispatchNestedPreFling(float velocityX, float velocityY);
   public boolean com.lynx.tasm.behavior.ui.list.container.NestedScrollContainerView.dispatchNestedFling(float velocityX, float velocityY, boolean consumed);
+  public void com.lynx.tasm.behavior.ui.list.container.NestedScrollContainerView.dispatchNestedScroll(int dxConsumed, int dyConsumed, int dxUnconsumed, int dyUnconsumed, @Nullable int[] offsetInWindow, int type, @NonNull int[] consumed);
   public boolean com.lynx.tasm.behavior.ui.list.container.NestedScrollContainerView.onStartNestedScroll( @NonNull View child, @NonNull View target, int axes, int type);
   public boolean com.lynx.tasm.behavior.ui.list.container.NestedScrollContainerView.onStartNestedScroll(View child, View target, int axes);
   public void com.lynx.tasm.behavior.ui.list.container.NestedScrollContainerView.onNestedScrollAccepted( @NonNull View child, @NonNull View target, int axes, int type);
@@ -8416,6 +8418,7 @@ public class com::lynx::tasm::behavior::ui::list::container::NestedScrollContain
   public boolean com.lynx.tasm.behavior.ui.list.container.NestedScrollContainerView.onNestedPreFling(View target, float velocityX, float velocityY);
   public boolean com.lynx.tasm.behavior.ui.list.container.NestedScrollContainerView.onNestedFling(View target, float velocityX, float velocityY, boolean consumed);
   public int com.lynx.tasm.behavior.ui.list.container.NestedScrollContainerView.getNestedScrollAxes();
+  public void com.lynx.tasm.behavior.ui.list.container.NestedScrollContainerView.onNestedScroll(@NonNull View target, int dxConsumed, int dyConsumed, int dxUnconsumed, int dyUnconsumed, int type, @NonNull int[] consumed);
 }
 
 public class com::lynx::tasm::behavior::ui::scroll::NestedScrollView : ScrollView, NestedScrollingParent2, NestedScrollingChild2 {
