@@ -1,13 +1,9 @@
 # CHANGELOG
 
-## 4.1.2
-- Add `maxSnapCount` to the `item-snap` property for `<list>`.
-
-## 4.1.1
-- Add `pan-intercept-direction`, `pan-intercept-scope`, `pan-intercept-gesture-class`, `pan-intercept-view-class` and `pan-intercept-view-tag` properties.
-
 ## 4.1.0
 - Introduce experimental `<video>` element types.
+- Add `pan-intercept-direction`, `pan-intercept-scope`, `pan-intercept-gesture-class`, `pan-intercept-view-class` and `pan-intercept-view-tag` properties.
+- Add `maxSnapCount` to the `item-snap` property for `<list>`.
 
 ## 4.0.0
 - Introduce `<blur-view>`.
