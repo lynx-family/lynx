@@ -871,7 +871,7 @@ jobs:
           python3 lynx/tools/ios_tools/process_podfile.py --action pin_pod_source --component XElement --podfile demo/ios/HelloLynxObjc/Podfile --pod_source "$LOCAL_POD_SOURCE"
           cd demo/ios/HelloLynxObjc
           export LANG=en_US.UTF-8
-          pod install
+          pod install --repo-update
           rm -rf $GITHUB_WORKSPACE/lynx/*  # Prevent pods and header files from depending on local resources
           xcodebuild -workspace Hello-Lynx-OC.xcworkspace/ -scheme Hello-Lynx-OC CODE_SIGNING_ALLOWED=NO build
 
