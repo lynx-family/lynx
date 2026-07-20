@@ -1361,6 +1361,25 @@ std::unordered_map<std::string, std::string> LynxShell::GetAllJsSource() {
       [](auto& engine) { return engine->GetAllJsSource(); });
 }
 
+void LynxShell::GetAllJsSourceAsync(
+    std::unique_ptr<PlatformCallBack> callback) {
+  if (!callback) {
+    return;
+  }
+  if (IsDestroyed() || engine_actor_ == nullptr) {
+    callback->InvokeWithValue(lepus::Value(lepus::Dictionary::Create()));
+    return;
+  }
+  engine_actor_->Act([callback = std::move(callback)](auto& engine) mutable {
+    auto source = engine->GetAllJsSource();
+    auto dict = lepus::Dictionary::Create();
+    for (const auto& [key, value] : source) {
+      dict->SetValue(base::String(key), lepus::Value(base::String(value)));
+    }
+    callback->InvokeWithValue(lepus::Value(std::move(dict)));
+  });
+}
+
 void LynxShell::GetLynxElementRootSignAsync(
     std::unique_ptr<shell::PlatformCallBack> callback) {
   if (!callback) {

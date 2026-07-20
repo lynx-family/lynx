@@ -6,7 +6,7 @@ import { LynxError } from '../tasm/LynxError';
 
 export type OnErrorCallback = (msg: string) => void;
 
-export type GetJSSourceCallback = () => Record<string, string>;
+export type GetJSSourceCallback = (callback: (source: Record<string, string>) => void) => void;
 
 export interface ILogBox {
   reportError(err: LynxError): void;

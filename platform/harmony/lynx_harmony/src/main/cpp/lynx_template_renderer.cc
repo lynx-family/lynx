@@ -14,6 +14,7 @@
 #include "base/include/notification_center.h"
 #include "base/include/platform/harmony/harmony_vsync_manager.h"
 #include "base/include/platform/harmony/napi_util.h"
+#include "base/include/value/table.h"
 #include "base/trace/native/platform/harmony/trace_controller_delegate_harmony.h"
 #include "base/trace/native/trace_event.h"
 #include "core/base/harmony/napi_convert_helper.h"
@@ -626,6 +627,7 @@ napi_value LynxTemplateRenderer::Init(napi_env env, napi_value exports) {
       DECLARE_NAPI_METHOD("nativeLynxElementToJSONString",
                           LynxElementToJSONString),
       DECLARE_NAPI_METHOD("nativeGetAllJsSource", GetAllJsSource),
+      DECLARE_NAPI_METHOD("nativeGetAllJsSourceAsync", GetAllJsSourceAsync),
       DECLARE_NAPI_METHOD("invokeLepusCallback", InvokeLepusCallback),
   };
 
@@ -680,6 +682,37 @@ napi_value LynxTemplateRenderer::GetAllJsSource(napi_env env,
   }
   auto js_source = obj->shell_->GetAllJsSource();
   return base::NapiUtil::CreateMap(env, js_source);
+}
+
+napi_value LynxTemplateRenderer::GetAllJsSourceAsync(napi_env env,
+                                                     napi_callback_info info) {
+  napi_value js_this = nullptr;
+  size_t argc = 1;
+  napi_value args[1] = {nullptr};
+  napi_get_cb_info(env, info, &argc, args, &js_this, nullptr);
+
+  if (argc < 1 || !IsNapiFunction(env, args[0])) {
+    return nullptr;
+  }
+
+  auto callback =
+      std::make_unique<shell::PlatformCallBackHarmony>(env, args[0]);
+
+  LynxTemplateRenderer* obj = nullptr;
+  napi_status status =
+      napi_unwrap(env, js_this, reinterpret_cast<void**>(&obj));
+  if (!CheckNapiUnwrapObject(status, obj, "GetAllJsSourceAsync failed")) {
+    callback->InvokeWithValue(lepus::Value(lepus::Dictionary::Create()));
+    return nullptr;
+  }
+
+  if (!obj->shell_ || obj->shell_->IsDestroyed()) {
+    callback->InvokeWithValue(lepus::Value(lepus::Dictionary::Create()));
+    return nullptr;
+  }
+
+  obj->shell_->GetAllJsSourceAsync(std::move(callback));
+  return nullptr;
 }
 
 napi_value LynxTemplateRenderer::InvokeLepusCallback(napi_env env,
