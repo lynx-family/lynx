@@ -11,6 +11,8 @@
 #include <vector>
 
 #include "base/include/fml/memory/ref_ptr.h"
+#include "clay/common/element_id.h"
+#include "clay/flow/frame_surface_registry.h"
 #include "clay/flow/layers/layer_tree.h"
 #include "clay/flow/raster_cache.h"
 #include "clay/gfx/geometry/float_rounded_rect.h"
@@ -37,8 +39,10 @@ using CacheStrategy = clay::CacheStrategy;
 
 class FrameBuilder {
  public:
-  FrameBuilder(const skity::Vec2& frame_size, float device_pixel_ratio,
-               fml::RefPtr<GPUUnrefQueue> unref_queue);
+  FrameBuilder(
+      const skity::Vec2& frame_size, float device_pixel_ratio,
+      fml::RefPtr<GPUUnrefQueue> unref_queue,
+      std::shared_ptr<FrameSurfaceRegistry> frame_surface_registry = nullptr);
   ~FrameBuilder();
 
   FrameBuilder(const FrameBuilder&) = delete;
@@ -91,6 +95,10 @@ class FrameBuilder {
 
   void AddPlatformView(double dx, double dy, double width, double height,
                        int64_t view_id);
+
+  void AddFrameSurface(const ElementId& element_id, const skity::Rect& rect);
+  void AddFrameSurface(const FrameSurfaceId& surface_id,
+                       const skity::Rect& rect);
 
   void AddPunchHole(const skity::Rect& rect);
 
@@ -147,6 +155,7 @@ class FrameBuilder {
   float device_pixel_ratio_ = 1.0f;
   std::unique_ptr<clay::LayerTree> layer_tree_;
   fml::RefPtr<GPUUnrefQueue> unref_queue_;
+  std::shared_ptr<FrameSurfaceRegistry> frame_surface_registry_;
   std::vector<std::shared_ptr<clay::ContainerLayer>> layer_stack_;
   std::shared_ptr<clay::AnimationHost> animation_host_;
   bool has_platform_view_layer_ = false;

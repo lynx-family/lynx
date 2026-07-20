@@ -245,6 +245,12 @@ void LynxUIRendererWindowless::SendPointerEvent(const ClayPointerEvent& event) {
   headless_engine_->SendPointerEvents(&event, 1);
 }
 
+void LynxUIRendererWindowless::SetTemplateRendererSettings(
+    const LynxTemplateRenderer::Settings& settings) {
+  static_cast<lynx::tasm::UIDelegateClay*>(ui_delegate_.get())
+      ->SetParentFrameRendererSettings(settings);
+}
+
 const char* LynxUIRendererWindowless::GetClipboardData() const {
   if (windowless_renderer_ && windowless_renderer_->get_clipboard_data) {
     return windowless_renderer_->get_clipboard_data(

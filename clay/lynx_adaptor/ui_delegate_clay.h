@@ -13,6 +13,7 @@
 #include "clay/lynx_adaptor/lynx_event_dispatcher.h"
 #include "core/public/lynx_resource_loader.h"
 #include "core/public/ui_delegate.h"
+#include "platform/embedder/core/lynx_template_renderer.h"
 
 namespace clay {
 class ViewContext;
@@ -27,6 +28,7 @@ class PerfControllerClay;
 
 class UIDelegateClay : public UIDelegate {
  public:
+  explicit UIDelegateClay(clay::ViewContext* view_context);
   UIDelegateClay(
       clay::ViewContext* view_context,
       std::unique_ptr<lynx::runtime::NativeModuleFactory> module_factory);
@@ -40,6 +42,9 @@ class UIDelegateClay : public UIDelegate {
   bool UsesLogicalPixels() const override;
 
   double GetScreenScaleFactor() const override;
+
+  void SetParentFrameRendererSettings(
+      const embedder::LynxTemplateRenderer::Settings& settings);
 
   void OnLynxCreate(
       const std::shared_ptr<shell::ListEngineProxy>& list_engine_proxy,
@@ -83,6 +88,7 @@ class UIDelegateClay : public UIDelegate {
   LayoutContextClay* layout_context_ = nullptr;
   std::shared_ptr<PerfControllerClay> perf_controller_;
   std::optional<bool> platform_enable_fluency_monitor_;
+  embedder::LynxTemplateRenderer::Settings parent_frame_renderer_settings_;
 };
 
 }  // namespace tasm

@@ -18,14 +18,23 @@
 #include "core/public/lynx_runtime_proxy.h"
 #include "core/public/painting_ctx_platform_impl.h"
 #include "core/public/perf_controller_proxy.h"
+#include "platform/embedder/core/lynx_template_renderer.h"
 
 namespace lynx {
+namespace pub {
+class LynxResourceLoader;
+}  // namespace pub
 namespace tasm {
+
+class FrameChildPageHost;
+class LynxTemplateBundle;
+class PaintingContextClay;
 
 class PaintingContextClayRef : public PaintingCtxPlatformRef {
  public:
-  explicit PaintingContextClayRef(clay::ViewContext* view_context)
-      : view_context_(view_context) {}
+  PaintingContextClayRef(clay::ViewContext* view_context,
+                         PaintingContextClay* owner)
+      : view_context_(view_context), owner_(owner) {}
   ~PaintingContextClayRef() override = default;
 
   void SetUIOperationQueue(
@@ -56,6 +65,7 @@ class PaintingContextClayRef : public PaintingCtxPlatformRef {
 
  private:
   clay::ViewContext* view_context_ = nullptr;
+  PaintingContextClay* owner_ = nullptr;
   std::weak_ptr<shell::UIOperationQueueInterface> queue_;
   std::shared_ptr<PerfControllerClay> perf_controller_;
 };
@@ -63,7 +73,9 @@ class PaintingContextClayRef : public PaintingCtxPlatformRef {
 class PaintingContextClay : public PaintingCtxPlatformImpl,
                             public clay::UIComponentDelegate {
  public:
-  explicit PaintingContextClay(clay::ViewContext* view_context);
+  explicit PaintingContextClay(clay::ViewContext* view_context,
+                               embedder::LynxTemplateRenderer::Settings
+                                   parent_frame_renderer_settings = {});
   ~PaintingContextClay() override;
 
   void SetUIOperationQueue(
@@ -82,6 +94,10 @@ class PaintingContextClay : public PaintingCtxPlatformImpl,
   void SetRuntimeProxy(
       const std::shared_ptr<shell::LynxRuntimeProxy>& runtime_proxy) {
     runtime_proxy_ = runtime_proxy;
+  }
+  void SetResourceLoader(
+      const std::shared_ptr<pub::LynxResourceLoader>& resource_loader) {
+    resource_loader_ = resource_loader;
   }
   void SetInstanceId(const int32_t instance_id) override {
     instance_id_ = instance_id;
@@ -130,6 +146,8 @@ class PaintingContextClay : public PaintingCtxPlatformImpl,
   bool NeedAnimationProps() override { return true; }
   bool EnableParallelElement() override { return true; }
   bool EnableUIOperationQueue() override { return true; }
+  void SetFrameAppBundle(
+      int tag, const std::shared_ptr<LynxTemplateBundle>& bundle) override;
 
   // TODO(chenhyouhui): Use default implementations
   std::vector<float> getWindowSize(int id) override { return floats_; }
@@ -149,8 +167,15 @@ class PaintingContextClay : public PaintingCtxPlatformImpl,
   void ConsumeGesture(int64_t id, int32_t gesture_id,
                       const pub::Value& params) override;
   void Enqueue(base::closure&& op);
+  void DestroyFrameChildHost(int tag);
 
  private:
+  void UpdateFrameChildViewport(int tag);
+  void UpdateFrameChildState(int tag);
+  void LoadFrameChildBundle(int tag);
+  void UpdateFrameChildMetadata(int tag);
+  void DestroyFrameChildHostIfSrcChanged(int tag, PropBundle* attributes);
+
   std::shared_ptr<shell::UIOperationQueueInterface> ui_operation_queue_ref_;
   static void SetAttribute(clay::ViewContext* view_context, int sign,
                            PropBundle* attributes, bool init);
@@ -173,11 +198,15 @@ class PaintingContextClay : public PaintingCtxPlatformImpl,
   clay::ViewContext* view_context_ = nullptr;
   std::shared_ptr<shell::LynxEngineProxy> engine_proxy_ = nullptr;
   std::shared_ptr<shell::LynxRuntimeProxy> runtime_proxy_ = nullptr;
+  std::shared_ptr<pub::LynxResourceLoader> resource_loader_ = nullptr;
+  embedder::LynxTemplateRenderer::Settings parent_frame_renderer_settings_;
 
   int32_t instance_id_ = 0;
 
   // Use to return an empty vector
   std::vector<float> floats_;
+  std::unordered_map<int, std::unique_ptr<FrameChildPageHost>>
+      frame_child_hosts_;
 };
 
 }  // namespace tasm

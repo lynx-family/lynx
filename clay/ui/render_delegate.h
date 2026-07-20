@@ -101,6 +101,8 @@ class RenderDelegate {
   virtual void RegisterDrawableImage(
       std::shared_ptr<DrawableImage> drawable_image) = 0;
   virtual void UnregisterDrawableImage(int64_t id) = 0;
+  virtual void RegisterDrawableImageFirstFrameAvailable(int64_t image_id) {}
+  virtual void UnregisterDrawableImageFirstFrameAvailable(int64_t image_id) {}
 };
 
 }  // namespace clay

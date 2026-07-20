@@ -10,6 +10,7 @@
 
 #include "clay/fml/logging.h"
 #include "clay/lynx_adaptor/layout_context_clay.h"
+#include "clay/lynx_adaptor/native_module/lynx_module_factory.h"
 #include "clay/lynx_adaptor/painting_context_clay.h"
 #include "clay/lynx_adaptor/perf_controller_clay.h"
 #include "clay/lynx_adaptor/prop_bundle_impl.h"
@@ -21,6 +22,12 @@
 
 namespace lynx {
 namespace tasm {
+
+UIDelegateClay::UIDelegateClay(clay::ViewContext* view_context)
+    : UIDelegateClay(
+          view_context,
+          std::unique_ptr<runtime::NativeModuleFactory>(
+              LynxModuleFactory::CreateModuleFactory(view_context))) {}
 
 UIDelegateClay::UIDelegateClay(
     clay::ViewContext* view_context,
@@ -40,7 +47,8 @@ UIDelegateClay::~UIDelegateClay() {
 
 std::unique_ptr<PaintingCtxPlatformImpl>
 UIDelegateClay::CreatePaintingContext() {
-  auto painting_context = std::make_unique<PaintingContextClay>(view_context_);
+  auto painting_context = std::make_unique<PaintingContextClay>(
+      view_context_, parent_frame_renderer_settings_);
   painting_context_ = painting_context.get();
   return painting_context;
 }
@@ -69,6 +77,11 @@ double UIDelegateClay::GetScreenScaleFactor() const {
   return page_view ? page_view->DevicePixelRatio() : 1.0;
 }
 
+void UIDelegateClay::SetParentFrameRendererSettings(
+    const embedder::LynxTemplateRenderer::Settings& settings) {
+  parent_frame_renderer_settings_ = settings;
+}
+
 void UIDelegateClay::OnLynxCreate(
     const std::shared_ptr<shell::ListEngineProxy>& list_engine_proxy,
     const std::shared_ptr<shell::LynxEngineProxy>& engine_proxy,
@@ -90,6 +103,7 @@ void UIDelegateClay::OnLynxCreate(
     painting_context_->SetListEngineProxy(list_engine_proxy);
     painting_context_->SetEngineProxy(engine_proxy);
     painting_context_->SetRuntimeProxy(runtime_proxy);
+    painting_context_->SetResourceLoader(resource_loader);
     auto ref = painting_context_->GetPlatformRef();
     if (ref) {
       auto* painting_context_ref =

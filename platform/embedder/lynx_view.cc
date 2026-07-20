@@ -135,6 +135,7 @@ LYNX_EXTERN_C lynx_view_t* lynx_view_create(lynx_view_builder_t* builder,
   settings.viewport_size.cy = builder->frame.height;
   settings.device_pixel_ratio = builder->screen_size.pixel_ratio;
   settings.enable_js = builder->enable_js_runtime;
+  settings.font_scale = builder->font_scale;
   auto resource_loader =
       std::make_shared<lynx::embedder::LynxResourceLoaderEmbedder>();
   settings.resource_loader = resource_loader;
@@ -172,6 +173,11 @@ LYNX_EXTERN_C lynx_view_t* lynx_view_create(lynx_view_builder_t* builder,
             view->custom_vsync_monitor);
   }
 
+  view->lynx_ui_renderer->SetTemplateRendererSettings(settings);
+
+  auto lynx_template_renderer = std::make_unique<
+      lynx::embedder::LynxTemplateRenderer>(
+      settings, ui_delegate, nullptr, nullptr,
 #if ENABLE_NAPI_BINDING
   std::unordered_map<std::string, std::pair<napi_module_creator, void*>>
       mts_module_creators;

@@ -119,6 +119,10 @@ class LynxTemplateRenderer : public devtool::LynxDevToolProxy {
     bool enable_bytecode = false;
     std::string bytecode_source_url = "";
     bool enable_js = true;
+    float font_scale = 1.f;
+    bool enable_pre_update_data = false;
+    bool enable_multi_async_thread = false;
+    int embedded_mode = 0;
     std::shared_ptr<tasm::WhiteBoard> white_board = nullptr;
     std::shared_ptr<base::VSyncMonitorPlatformImpl>
         vsync_monitor_platform_impl = nullptr;
