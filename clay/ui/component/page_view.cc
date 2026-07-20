@@ -277,6 +277,8 @@ void PageView::InitManagers() {
   focus_manager_.SetIsRootScope();
   gesture_manager_->SetListenerForPointerDownAfterHitTest(
       [this](const PointerEvent& event, const HitTestResult& result) {
+        isolated_gesture_detector_.TrackScrollTapSuppressionForPointerDown(
+            event, result);
         if (event.device != PointerEvent::DeviceType::kTouch &&
             event.device != PointerEvent::DeviceType::kMouse) {
           return;
@@ -921,6 +923,7 @@ bool PageView::DispatchPointerEvent(std::vector<PointerEvent> events) {
     }
 #endif
   }
+  isolated_gesture_detector_.ClearScrollTapSuppressionForEndedEvents(events);
   ClearTapSuppressedPointersForEndedEvents(events);
 
   if (render_settings_) {
@@ -1026,6 +1029,10 @@ void PageView::SetupIsolatedGestures() {
       isolated_gesture_detector_.gesture_manager());
   tap_recognizer->SetTaskRunner(GetTaskRunner());
   tap_recognizer->SetTapUpCallback([this](const PointerEvent& event) {
+    if (isolated_gesture_detector_.ShouldSuppressTapForScrollDrag(
+            event.pointer_id)) {
+      return;
+    }
     if (event.device == PointerEvent::DeviceType::kTouch) {
       ReportTopViewEvent(event, kClayEventTypeTap);
     } else {
@@ -1806,6 +1813,7 @@ void PageView::ResetPageView(bool recycle) {
   SetupAnimationCallback();
   touch_view_map_.clear();
   fling_stop_tap_suppressed_pointer_ids_.clear();
+  isolated_gesture_detector_.ClearScrollTapSuppressionStates();
   active_fling_count_ = 0;
   frame_builder_ = std::make_unique<FrameBuilder>(
       skity::Vec2{static_cast<int32_t>(metrics_.physical_width),
