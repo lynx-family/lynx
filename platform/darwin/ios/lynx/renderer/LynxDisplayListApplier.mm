@@ -11,6 +11,7 @@
 #import <Lynx/LynxRendererHost.h>
 #import <Lynx/LynxTextLayer.h>
 #import <Lynx/LynxUIContext.h>
+#import <Lynx/UIView+Lynx.h>
 #import "LynxDisplayListApplier+Internal.h"
 #import "LynxTextraLayer.h"
 
@@ -20,6 +21,38 @@
 
 using namespace lynx;
 using namespace lynx::tasm;
+
+namespace {
+
+// Renderer hosts need renderer callbacks and decoration-layer synchronization. Legacy LynxUI-backed
+// views have no renderer, so update only their host geometry here.
+bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
+  if (view == nil) {
+    return false;
+  }
+
+  CALayer *layer = view.layer;
+  if (CATransform3DIsIdentity(layer.transform)) {
+    CGRect frame = view.frame;
+    if (CGPointEqualToPoint(frame.origin, offset)) {
+      return false;
+    }
+    frame.origin = offset;
+    [view setFrame:frame];
+    return true;
+  }
+
+  BOOL anchorPointChanged = !CGPointEqualToPoint(layer.anchorPoint, CGPointZero);
+  BOOL positionChanged = !CGPointEqualToPoint(layer.position, offset);
+  if (!anchorPointChanged && !positionChanged) {
+    return false;
+  }
+  layer.anchorPoint = CGPointZero;
+  layer.position = offset;
+  return true;
+}
+
+}  // namespace
 
 @interface LynxDisplayListApplier ()
 
@@ -185,11 +218,18 @@ using namespace lynx::tasm;
           refView = nil;
           _refLayer = nil;
         }
+        LynxRenderer *renderer = nil;
         if ([refView conformsToProtocol:@protocol(LynxRendererHost)]) {
-          LynxRenderer *renderer = ((UIView<LynxRendererHost> *)refView).renderer;
-          if (renderer != nil && renderer.sign == view_id) {
-            [renderer updateLayoutOffsetIfNeeded:CGPointMake(offset_x, offset_y)];
-          }
+          renderer = ((UIView<LynxRendererHost> *)refView).renderer;
+        }
+        NSNumber *refViewSign = refView.lynxSign;
+        BOOL rendererSignMatches = renderer != nil && renderer.sign == view_id;
+        BOOL legacyViewSignMatches =
+            renderer == nil && refViewSign != nil && refViewSign.intValue == view_id;
+        if (rendererSignMatches) {
+          [renderer updateLayoutOffsetIfNeeded:CGPointMake(offset_x, offset_y)];
+        } else if (legacyViewSignMatches) {
+          UpdateLegacyViewLayoutOffsetIfNeeded(refView, CGPointMake(offset_x, offset_y));
         }
         break;
       }

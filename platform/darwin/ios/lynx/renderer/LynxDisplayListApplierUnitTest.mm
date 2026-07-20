@@ -9,6 +9,7 @@
 #import <Lynx/LynxRendererHost.h>
 #import <Lynx/LynxTextLayer.h>
 #import <Lynx/LynxTextRenderManager.h>
+#import <Lynx/UIView+Lynx.h>
 #import <OCMock/OCMock.h>
 #import <XCTest/XCTest.h>
 #include "core/public/platform_renderer_type.h"
@@ -245,6 +246,50 @@ constexpr int32_t kViewType = static_cast<int32_t>(PlatformRendererType::kView);
   XCTAssertTrue(CGPointEqualToPoint(child.layer.position, CGPointMake(15.0f, 26.0f)));
   XCTAssertTrue(CGSizeEqualToSize(child.layer.bounds.size, CGSizeMake(12.0f, 13.0f)));
   XCTAssertEqual(childRenderer.setFrameCount, 1);
+}
+
+- (void)testDrawViewUpdatesLegacyViewOffset {
+  LynxMockView *host = [[LynxMockView alloc] initWithRendererContext:nil];
+  [host createRendererWithSign:1 andContext:nil];
+  UIView *child = [[UIView alloc] initWithFrame:CGRectMake(1.0f, 2.0f, 12.0f, 13.0f)];
+  child.lynxSign = @2;
+  [host addSubview:child];
+
+  LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:host
+                                                                      andContext:nil];
+  DisplayList list;
+  list.AddOperation(DisplayListOpType::kBegin, 1, kViewType, 0.0f, 0.0f, 100.0f, 100.0f);
+  list.AddOperation(DisplayListOpType::kDrawView, 2, 15.0f, 26.0f);
+  list.AddOperation(DisplayListOpType::kEnd);
+
+  [applier applyDisplayList:&list];
+  [applier applyDisplayList:&list];
+
+  XCTAssertTrue(CGRectEqualToRect(child.frame, CGRectMake(15.0f, 26.0f, 12.0f, 13.0f)));
+}
+
+- (void)testDrawViewUsesTopLeftAnchorForTransformedLegacyView {
+  LynxMockView *host = [[LynxMockView alloc] initWithRendererContext:nil];
+  [host createRendererWithSign:1 andContext:nil];
+  UIView *child = [[UIView alloc] initWithFrame:CGRectMake(1.0f, 2.0f, 12.0f, 13.0f)];
+  child.lynxSign = @2;
+  child.layer.anchorPoint = CGPointMake(0.5f, 0.5f);
+  child.layer.transform = CATransform3DMakeScale(2.0f, 2.0f, 1.0f);
+  [host addSubview:child];
+
+  LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:host
+                                                                      andContext:nil];
+  DisplayList list;
+  list.AddOperation(DisplayListOpType::kBegin, 1, kViewType, 0.0f, 0.0f, 100.0f, 100.0f);
+  list.AddOperation(DisplayListOpType::kDrawView, 2, 15.0f, 26.0f);
+  list.AddOperation(DisplayListOpType::kEnd);
+
+  [applier applyDisplayList:&list];
+  [applier applyDisplayList:&list];
+
+  XCTAssertTrue(CGPointEqualToPoint(child.layer.anchorPoint, CGPointZero));
+  XCTAssertTrue(CGPointEqualToPoint(child.layer.position, CGPointMake(15.0f, 26.0f)));
+  XCTAssertTrue(CGSizeEqualToSize(child.layer.bounds.size, CGSizeMake(12.0f, 13.0f)));
 }
 
 - (void)testProcessContentOperationsWithUnknownOp {
