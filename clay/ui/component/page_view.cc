@@ -1884,7 +1884,7 @@ void PageView::MakeRasterSnapshot(
       !should_build_into_layer_tree && target->Is<MapMarkerView>();
   FloatSize snapshot_size(target->Width(), target->Height());
   if (is_detached_map_marker) {
-    snapshot_size = static_cast<MapMarkerView*>(target)->RasterSnapshotSize();
+    snapshot_size = static_cast<MapMarkerView*>(target)->SnapshotSize();
   }
   // Get the frame size with physical pixel.
   const float physical_width =

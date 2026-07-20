@@ -15,7 +15,7 @@ class MapMarkerView : public WithTypeInfo<MapMarkerView, NativeView> {
   MapMarkerView(int id, PageView* page_view);
   ~MapMarkerView() override = default;
 
-  FloatSize RasterSnapshotSize();
+  FloatSize SnapshotSize();
 };
 
 }  // namespace clay

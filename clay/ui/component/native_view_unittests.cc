@@ -62,7 +62,7 @@ TEST_F_UI(MapMarkerViewTest, SnapshotUsesContentSizeForParentStretchedAxis) {
   content->SetWidth(231.f);
   content->SetHeight(109.f);
 
-  FloatSize size = marker->RasterSnapshotSize();
+  FloatSize size = marker->SnapshotSize();
   EXPECT_FLOAT_EQ(size.width(), 231.f);
   EXPECT_FLOAT_EQ(size.height(), 109.f);
 }
@@ -82,7 +82,7 @@ TEST_F_UI(MapMarkerViewTest, SnapshotPreservesNonParentFillSize) {
   content->SetWidth(231.f);
   content->SetHeight(109.f);
 
-  FloatSize size = marker->RasterSnapshotSize();
+  FloatSize size = marker->SnapshotSize();
   EXPECT_FLOAT_EQ(size.width(), 260.f);
   EXPECT_FLOAT_EQ(size.height(), 140.f);
 }
@@ -108,7 +108,7 @@ TEST_F_UI(MapMarkerViewTest, SnapshotUsesUnionOfMarkerChildren) {
   second->SetWidth(211.f);
   second->SetHeight(39.f);
 
-  FloatSize size = marker->RasterSnapshotSize();
+  FloatSize size = marker->SnapshotSize();
   EXPECT_FLOAT_EQ(size.width(), 231.f);
   EXPECT_FLOAT_EQ(size.height(), 109.f);
 }
@@ -130,7 +130,7 @@ TEST_F_UI(MapMarkerViewTest,
   content->SetWidth(231.f);
   content->SetHeight(109.f);
 
-  FloatSize size = marker->RasterSnapshotSize();
+  FloatSize size = marker->SnapshotSize();
   EXPECT_FLOAT_EQ(size.width(), 231.f);
   EXPECT_FLOAT_EQ(size.height(), 109.f);
 }
@@ -150,7 +150,7 @@ TEST_F_UI(MapMarkerViewTest, SnapshotPreservesAmbiguousTwoAxisFill) {
   content->SetWidth(393.f);
   content->SetHeight(109.f);
 
-  FloatSize size = marker->RasterSnapshotSize();
+  FloatSize size = marker->SnapshotSize();
   EXPECT_FLOAT_EQ(size.width(), 393.f);
   EXPECT_FLOAT_EQ(size.height(), 852.f);
 }
@@ -171,7 +171,7 @@ TEST_F_UI(MapMarkerViewTest, SnapshotPreservesRootWhenChildOverflows) {
   content->SetWidth(231.f);
   content->SetHeight(109.f);
 
-  FloatSize size = marker->RasterSnapshotSize();
+  FloatSize size = marker->SnapshotSize();
   EXPECT_FLOAT_EQ(size.width(), 393.f);
   EXPECT_FLOAT_EQ(size.height(), 140.f);
 }

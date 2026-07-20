@@ -22,7 +22,7 @@ MapMarkerView::MapMarkerView(int id, PageView* page_view)
   render_object()->SetShouldBuildIntoLayerTree(false);
 }
 
-FloatSize MapMarkerView::RasterSnapshotSize() {
+FloatSize MapMarkerView::SnapshotSize() {
   FloatSize snapshot_size(Width(), Height());
   BaseView* parent = Parent();
   if (parent == nullptr || GetChildren().empty()) {
