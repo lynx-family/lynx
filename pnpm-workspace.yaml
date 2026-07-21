@@ -1,5 +1,6 @@
 packages:
   - '.'
+  - 'ai/skills/lynx-api-docs'
   - 'js_libraries/*'
   - 'oliver/node-lynx'
   - 'oliver/node-lynx/platform/*'

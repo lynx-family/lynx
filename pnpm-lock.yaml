@@ -208,6 +208,9 @@ importers:
       '@types/react': 18.3.18
       prettier: 3.4.2
 
+  ai/skills/lynx-api-docs:
+    specifiers: {}
+
   js_libraries/lynx-core:
     specifiers:
       '@lynx-js/ios-polyfill': workspace:*
