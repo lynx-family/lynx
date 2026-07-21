@@ -39,6 +39,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
     ENABLE_GLOBAL_FEATURE_SWITCH_STATISTIC,
     ENABLE_FEATURE_COUNTER,
     ENABLE_JSB_TIMING,
+    JSB_TIMING_URL_LIST,
     ENABLE_ASYNC_JSB_TIMING,
     ENABLE_LONG_TASK_TIMING,
     ENABLE_MEMORY_MONITOR,
@@ -188,6 +189,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
             {Key::ENABLE_GLOBAL_FEATURE_SWITCH_STATISTIC,
              "ENABLE_GLOBAL_FEATURE_SWITCH_STATISTIC"},
             {Key::ENABLE_JSB_TIMING, "enable_jsb_timing"},
+            {Key::JSB_TIMING_URL_LIST, "jsb_timing_url_list"},
             {Key::ENABLE_FEATURE_COUNTER, "ENABLE_FEATURE_COUNTER"},
             {Key::ENABLE_ASYNC_JSB_TIMING, "enable_async_jsb_timing"},
             {Key::ENABLE_LONG_TASK_TIMING, "enable_long_task_timing"},
@@ -438,7 +440,9 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
   bool EnableGlobalFeatureSwitchStatistic();
   bool EnableFeatureCounter();
   bool EnableJSBTiming();
+  bool EnableJSBTiming(const std::string& page_url);
   bool EnableAsyncJSBTiming();
+  bool EnableAsyncJSBTiming(const std::string& page_url);
   bool EnableLongTaskTiming();
   bool EnableMemoryMonitor();
   bool EnableJSBlockingMonitor();
@@ -543,6 +547,10 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
 
   std::recursive_mutex external_env_mutex_;
   std::unordered_map<Key, std::string> external_env_map_;
+  std::unordered_map<std::string, std::unordered_set<std::string>>
+      external_env_group_sets_;
+
+  bool IsJSBTimingURLMatched(const std::string& page_url);
 };
 
 }  // namespace tasm

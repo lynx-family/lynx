@@ -19,18 +19,19 @@ namespace js {
 NativeModuleInfoCollector::NativeModuleInfoCollector(
     const std::shared_ptr<ModuleDelegate>& delegate,
     const std::string& module_name, const std::string& method_name,
-    const std::string& method_first_arg_name)
+    const std::string& method_first_arg_name, const std::string& page_url)
     : delegate_(delegate) {
   timing_.module_name_ = module_name;
   timing_.method_name_ = method_name;
   timing_.method_first_arg_name_ = method_first_arg_name;
+  timing_.page_url_ = page_url;
   // TODO: - @limeng.amer
   //  "bridge.call" is supported in the first stage, and other methods will be
   //  added later. eg:
   //  LynxIntersectionObserverModule、LynxUIMethodModule、LynxSetModule...
-  enable_ = (module_name == "bridge" && method_name == "call" &&
-             !method_first_arg_name.empty() &&
-             tasm::LynxEnv::GetInstance().EnableJSBTiming());
+  enable_ = module_name == "bridge" && method_name == "call" &&
+            !method_first_arg_name.empty() &&
+            tasm::LynxEnv::GetInstance().EnableJSBTiming(page_url);
 }
 
 void NativeModuleInfoCollector::EndCallFunc(uint64_t start_time) {
