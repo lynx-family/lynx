@@ -97,6 +97,8 @@ public interface IRendererHost {
     }
   }
 
+  default void applyRendererHostFilter(int type, float amount) {}
+
   default void applyRendererTransform(float[] transform) {
     View view = getView();
     if (view == null) {

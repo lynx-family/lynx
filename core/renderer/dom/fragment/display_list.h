@@ -46,6 +46,7 @@ enum class DisplayListOpType : int32_t {
 enum class DisplayListSubtreePropertyOpType : int32_t {
   kTransform = 0,
   kOpacity = 1,
+  kFilter = 2,
 };
 
 enum class DisplayListOpCategory : int8_t {
@@ -68,14 +69,15 @@ struct DisplayListOpCategoryTraits<DisplayListOpCategory::kSubtreeProperty> {
  * fragment.
  *
  * The DisplayList separates content operations from subtree-influencing group
- * properties (transform) to optimize animation performance. Group
+ * properties (transform, opacity, filter) to optimize animation performance.
+ * Group
  * properties affect the entire subtree and only apply to owner layers, making
  * them special operations that can be updated independently.
  *
  * Data Layout:
  * - content_items_: Array of DisplayListItem structs (fixed-size, tagged union)
  * - content_data_: Trailing variable-length data region (gradient colors/stops)
- * - subtree_properties_: Subtree-influencing group properties (Transform)
+ * - subtree_properties_: Subtree-influencing group properties
  */
 
 extern "C" {
@@ -84,6 +86,10 @@ typedef struct SubtreeProperty {
   union Data {
     float transform[16];
     float opacity;
+    struct {
+      int32_t type;
+      float amount;
+    } filter;
   } data;
 } SubtreeProperty;
 
@@ -99,6 +105,10 @@ static_assert(offsetof(SubtreeProperty, data.transform) == 4,
               "transform array must start at offset 4");
 static_assert(offsetof(SubtreeProperty, data.opacity) == 4,
               "opacity must be at offset 4 (union shared)");
+static_assert(offsetof(SubtreeProperty, data.filter.type) == 4,
+              "filter.type must be at offset 4 (union shared)");
+static_assert(offsetof(SubtreeProperty, data.filter.amount) == 8,
+              "filter.amount must be at offset 8");
 static_assert(std::is_standard_layout<SubtreeProperty>::value,
               "SubtreeProperty must be standard layout for JNI");
 static_assert(

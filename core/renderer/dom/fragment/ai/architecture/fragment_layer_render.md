@@ -102,6 +102,7 @@ struct OpData {
 |------|-------|-------------|
 | kTransform | 0 | Transformation matrix (4x4) |
 | kOpacity | 1 | Opacity |
+| kFilter | 2 | Filter type and platform amount (percentages as fractions) |
 
 #### Data Layout Example
 
@@ -490,17 +491,21 @@ public class DisplayListApplier {
 
 ### 5.3 Subtree Property Application
 
-Subtree properties (Transform/Opacity) are updated through independent channels to optimize animation performance.
+Subtree properties (Transform/Opacity/Filter) are updated through independent channels to optimize animation performance.
 
 **Data Structure Definition** (`lynx/core/renderer/dom/fragment/display_list.h`):
 
 ```cpp
 // SubtreeProperty memory layout (shared between C++ and Java/OC)
 struct SubtreeProperty {
-  int32_t type;  // 0=Transform, 1=Opacity
+  int32_t type;  // 0=Transform, 1=Opacity, 2=Filter
   union {
     float matrix[16];  // 4x4 transformation matrix
     float alpha;       // Opacity
+    struct {
+      int32_t type;    // FilterType
+      float amount;    // Percentage values use fractional form
+    } filter;
   } data;
 };
 ```

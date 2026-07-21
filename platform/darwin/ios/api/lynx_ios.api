@@ -3340,6 +3340,7 @@ public class LynxRenderer : NSObject {
   public void LynxRenderer()::applySubtreeProperties:count:(const lynx::tasm::SubtreeProperty *properties, [count] size_t count);
   public void LynxRenderer()::applyTransform:(const float *transform);
   public void LynxRenderer()::applyOpacity:(float opacity);
+  public void LynxRenderer()::applyFilter:amount:(int32_t type, [amount] float amount);
 }
 
 public class LynxRendererContext : NSObject {

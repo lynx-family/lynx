@@ -494,6 +494,11 @@ class ComputedCSSStyle {
            reset_bitset_.Has(tasm::kPropertyIDOpacity);
   }
 
+  bool FilterChanged() const {
+    return changed_bitset_.Has(tasm::kPropertyIDFilter) ||
+           reset_bitset_.Has(tasm::kPropertyIDFilter);
+  }
+
   const LayoutComputedStyle* GetConstLayoutComputedStyle() const {
     return &layout_computed_style_;
   }

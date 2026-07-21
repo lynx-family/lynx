@@ -16,6 +16,7 @@ import android.view.View;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
 import com.lynx.tasm.behavior.LynxContext;
+import com.lynx.tasm.behavior.StyleConstants;
 import com.lynx.tasm.behavior.ui.PropBundle;
 import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
@@ -416,6 +417,76 @@ public class ContainerRendererTest {
     containerRenderer.getRenderer().applySubtreeProperties(buffer, 1);
 
     assertEquals(0.5f, hostView.getAlpha(), 0.0001f);
+  }
+
+  @Test
+  public void testApplySubtreePropertiesFilterOnRendererHost() {
+    ByteBuffer buffer = ByteBuffer.allocate(68).order(ByteOrder.nativeOrder());
+    buffer.putInt(DisplayListApplier.SUBTREE_OP_FILTER);
+    buffer.putInt(StyleConstants.FILTER_TYPE_GRAYSCALE);
+    buffer.putFloat(0.25f);
+    buffer.position(0);
+
+    containerRenderer.getRenderer().applySubtreeProperties(buffer, 1);
+
+    assertEquals(View.LAYER_TYPE_HARDWARE, containerRenderer.getLayerType());
+
+    buffer.clear();
+    buffer.putInt(DisplayListApplier.SUBTREE_OP_FILTER);
+    buffer.putInt(StyleConstants.FILTER_TYPE_NONE);
+    buffer.putFloat(0.0f);
+    buffer.position(0);
+
+    containerRenderer.getRenderer().applySubtreeProperties(buffer, 1);
+
+    assertEquals(View.LAYER_TYPE_NONE, containerRenderer.getLayerType());
+  }
+
+  @Test
+  public void testApplyRendererHostColorFilters() {
+    int[] filterTypes = {StyleConstants.FILTER_TYPE_GRAYSCALE,
+        StyleConstants.FILTER_TYPE_BRIGHTNESS, StyleConstants.FILTER_TYPE_CONTRAST,
+        StyleConstants.FILTER_TYPE_SATURATE};
+    float[] filterAmounts = {2.0f, -1.0f, 4.0f, -1.0f};
+
+    for (int i = 0; i < filterTypes.length; i++) {
+      containerRenderer.applyRendererHostFilter(filterTypes[i], filterAmounts[i]);
+
+      assertEquals(View.LAYER_TYPE_HARDWARE, containerRenderer.getLayerType());
+    }
+  }
+
+  @Test
+  public void testApplyRendererHostBlurTransitionsToColorFilter() {
+    containerRenderer.applyRendererHostFilter(StyleConstants.FILTER_TYPE_BLUR, -1.0f);
+    assertEquals(View.LAYER_TYPE_NONE, containerRenderer.getLayerType());
+
+    containerRenderer.applyRendererHostFilter(StyleConstants.FILTER_TYPE_BLUR, 2.0f);
+    assertEquals(View.LAYER_TYPE_NONE, containerRenderer.getLayerType());
+
+    containerRenderer.applyRendererHostFilter(StyleConstants.FILTER_TYPE_BRIGHTNESS, 1.0f);
+    assertEquals(View.LAYER_TYPE_HARDWARE, containerRenderer.getLayerType());
+  }
+
+  @Test
+  public void testApplyRendererHostUnsupportedFiltersClearColorFilter() {
+    containerRenderer.applyRendererHostFilter(StyleConstants.FILTER_TYPE_GRAYSCALE, 1.0f);
+    containerRenderer.applyRendererHostFilter(StyleConstants.FILTER_TYPE_HUE_ROTATE, 90.0f);
+    assertEquals(View.LAYER_TYPE_NONE, containerRenderer.getLayerType());
+
+    containerRenderer.applyRendererHostFilter(StyleConstants.FILTER_TYPE_GRAYSCALE, 1.0f);
+    containerRenderer.applyRendererHostFilter(Integer.MAX_VALUE, 1.0f);
+    assertEquals(View.LAYER_TYPE_NONE, containerRenderer.getLayerType());
+  }
+
+  @Test
+  public void testDefaultRendererHostFilterIsNoOp() {
+    TestRendererHostView host = new TestRendererHostView(realContext);
+    host.setLayerType(View.LAYER_TYPE_HARDWARE, null);
+
+    host.applyRendererHostFilter(StyleConstants.FILTER_TYPE_NONE, 0.0f);
+
+    assertEquals(View.LAYER_TYPE_HARDWARE, host.getLayerType());
   }
 
   @Test

@@ -980,6 +980,16 @@ void Fragment::DrawOpacity(DisplayListBuilder& display_list_builder) {
   display_list_builder.Opacity(opacity);
 }
 
+void Fragment::DrawFilter(DisplayListBuilder& display_list_builder) {
+  auto* style = element()->computed_css_style();
+  if (!style->FilterChanged()) {
+    return;
+  }
+
+  const auto& filter = style->GetFilterData();
+  display_list_builder.Filter(filter ? *filter : starlight::FilterData());
+}
+
 void Fragment::DrawClip(DisplayListBuilder& display_list_builder) {
   if (element()->IsOverlay()) {
     // Overlay keeps a zero-sized layout box while its content is measured
@@ -1192,9 +1202,9 @@ void Fragment::OnDraw(DisplayListBuilder& display_list_builder) {
 
   // Only a fragment backed by a platform layer can skip full draw when its
   // contents haven't changed and only update subtree properties (transform,
-  // opacity) instead. Fragments without a platform renderer have no display
-  // list of their own and must always contribute to the parent layer's display
-  // list via DrawFull.
+  // opacity, filter) instead. Fragments without a platform renderer have no
+  // display list of their own and must always contribute to the parent layer's
+  // display list via DrawFull.
   if (NeedRedraw() || !has_platform_renderer_) {
     DrawFull(display_list_builder);
   } else {
@@ -1204,6 +1214,7 @@ void Fragment::OnDraw(DisplayListBuilder& display_list_builder) {
   if (NeedUpdateSubtreeProperty()) {
     DrawTransform(display_list_builder);
     DrawOpacity(display_list_builder);
+    DrawFilter(display_list_builder);
   }
 
   ClearPaintDirtyState();

@@ -12,6 +12,7 @@
 #include "core/renderer/dom/fragment/display_list_reader.h"
 #include "core/renderer/starlight/style/borders_data.h"
 #include "core/renderer/ui_wrapper/painting/paint_image.h"
+#include "core/style/filter_data.h"
 #include "core/style/transform/matrix44.h"
 #include "third_party/googletest/googlemock/include/gmock/gmock.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
@@ -456,6 +457,25 @@ TEST_F(DisplayListBuilderTest, OpacityOperation) {
   EXPECT_FLOAT_EQ(subtree_properties_data[0].data.opacity, 0.5f);
 }
 
+TEST_F(DisplayListBuilderTest, FilterOperation) {
+  starlight::FilterData filter;
+  filter.type = starlight::FilterType::kGrayscale;
+  filter.amount = starlight::NLength::MakePercentageNLength(25.f);
+  builder_->Filter(filter);
+
+  DisplayList display_list = builder_->Build();
+  const SubtreeProperty* subtree_properties_data =
+      display_list.GetSubtreePropertiesData();
+
+  ASSERT_NE(subtree_properties_data, nullptr);
+  ASSERT_EQ(display_list.GetSubtreePropertiesSize(), 1u);
+  EXPECT_EQ(subtree_properties_data[0].type,
+            DisplayListSubtreePropertyOpType::kFilter);
+  EXPECT_EQ(subtree_properties_data[0].data.filter.type,
+            static_cast<int32_t>(starlight::FilterType::kGrayscale));
+  EXPECT_FLOAT_EQ(subtree_properties_data[0].data.filter.amount, 0.25f);
+}
+
 TEST_F(DisplayListBuilderTest, MarkRootNeedClipBounds) {
   builder_->MarkRootNeedClipBounds();
 
@@ -545,6 +565,13 @@ TEST_F(DisplayListBuilderTest, DisplayListItemABI) {
                 "linear_gradient.angle must be at offset 36");
   static_assert(std::is_standard_layout<DisplayListItem>::value,
                 "DisplayListItem must be standard layout");
+
+  static_assert(sizeof(SubtreeProperty) == 68,
+                "SubtreeProperty size must remain stable");
+  static_assert(offsetof(SubtreeProperty, data.filter.type) == 4,
+                "filter.type must be at offset 4");
+  static_assert(offsetof(SubtreeProperty, data.filter.amount) == 8,
+                "filter.amount must be at offset 8");
   static_assert(std::is_trivially_copyable<DisplayListItem>::value,
                 "DisplayListItem must be trivially copyable");
 

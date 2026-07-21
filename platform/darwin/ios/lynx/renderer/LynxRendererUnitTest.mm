@@ -2,6 +2,7 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+#import <Lynx/LynxCSSType.h>
 #import <Lynx/LynxContainerView.h>
 #import <Lynx/LynxDisplayListApplier+Internal.h>
 #import <Lynx/LynxRenderer+Internal.h>
@@ -293,6 +294,22 @@
   // Less than 0 should be clamped to 0
   [renderer applyOpacity:-0.5f];
   XCTAssertEqual(hostView.alpha, 0.0f);
+}
+
+- (void)testApplyFilterReset {
+  LynxContainerView* hostView = [[LynxContainerView alloc] init];
+  hostView.layer.filters = @[];
+
+  LynxRenderer* renderer = [[LynxRenderer alloc] initWithRenderHost:hostView
+                                                            andSign:1
+                                                         andContext:nil];
+  lynx::tasm::SubtreeProperty prop = {};
+  prop.type = lynx::tasm::DisplayListSubtreePropertyOpType::kFilter;
+  prop.data.filter.type = LynxFilterTypeNone;
+  prop.data.filter.amount = 0.0f;
+  [renderer applySubtreeProperties:&prop count:1];
+
+  XCTAssertNil(hostView.layer.filters);
 }
 
 - (void)testApplySubtreePropertiesBoth {

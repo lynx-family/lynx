@@ -23,5 +23,6 @@
 - (void)applySubtreeProperties:(const lynx::tasm::SubtreeProperty *)properties count:(size_t)count;
 - (void)applyTransform:(const float *)transform;
 - (void)applyOpacity:(float)opacity;
+- (void)applyFilter:(int32_t)type amount:(float)amount;
 
 @end

@@ -3,6 +3,7 @@
 // LICENSE file in the root directory of this source tree.
 package com.lynx.tasm.behavior.render;
 
+import static com.lynx.tasm.behavior.render.DisplayListApplier.SUBTREE_OP_FILTER;
 import static com.lynx.tasm.behavior.render.DisplayListApplier.SUBTREE_OP_OPACITY;
 import static com.lynx.tasm.behavior.render.DisplayListApplier.SUBTREE_OP_TRANSFORM;
 
@@ -243,6 +244,10 @@ public class Renderer {
       } else if (type == SUBTREE_OP_OPACITY) {
         float opacity = buffer.getFloat();
         rendererHost.applyRendererOpacity(opacity);
+      } else if (type == SUBTREE_OP_FILTER) {
+        int filterType = buffer.getInt();
+        float amount = buffer.getFloat();
+        rendererHost.applyRendererHostFilter(filterType, amount);
       }
     }
   }

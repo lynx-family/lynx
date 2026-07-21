@@ -2,12 +2,15 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+#import <Lynx/LynxCSSType.h>
 #import <Lynx/LynxDisplayListApplier+Internal.h>
 #import <Lynx/LynxRenderer+Internal.h>
 #import <Lynx/LynxRenderer.h>
 #import <Lynx/LynxRendererContext.h>
 #import <Lynx/LynxRendererHost.h>
 #import <QuartzCore/QuartzCore.h>
+
+#import "LynxFilterUtil.h"
 
 @implementation LynxRenderer {
   __weak UIView<LynxRendererHost>* _host;
@@ -143,6 +146,9 @@
     } else if (prop.type == lynx::tasm::DisplayListSubtreePropertyOpType::kOpacity) {
       [self applyOpacity:prop.data.opacity];
       needs_sync = true;
+    } else if (prop.type == lynx::tasm::DisplayListSubtreePropertyOpType::kFilter) {
+      [self applyFilter:prop.data.filter.type amount:prop.data.filter.amount];
+      needs_sync = true;
     }
   }
 
@@ -209,6 +215,37 @@
   }
 
   _host.alpha = MAX(0.0f, MIN(1.0f, opacity));
+}
+
+- (void)applyFilter:(int32_t)type amount:(float)amount {
+  if (!_host) {
+    return;
+  }
+
+  LynxFilterType filter_type = static_cast<LynxFilterType>(type);
+  switch (filter_type) {
+    case LynxFilterTypeNone:
+      _host.layer.filters = nil;
+      return;
+    case LynxFilterTypeGrayScale:
+      amount = MAX(0.0f, MIN(1.0f, 1.0f - amount));
+      break;
+    case LynxFilterTypeBrightness:
+      amount = MAX(0.0f, MIN(2.0f, amount));
+      break;
+    case LynxFilterTypeContrast:
+      amount = MAX(0.0f, MIN(3.0f, amount));
+      break;
+    case LynxFilterTypeSaturate:
+      amount = MAX(0.0f, MIN(3.0f, amount));
+      break;
+    case LynxFilterTypeBlur:
+    case LynxFilterTypeHueRotate:
+      break;
+  }
+
+  id filter = [LynxFilterUtil getFilterWithType:filter_type filterAmount:amount];
+  _host.layer.filters = filter ? @[ filter ] : nil;
 }
 
 // Override point for subclasses to handle attribute updates.

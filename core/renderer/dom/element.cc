@@ -98,6 +98,11 @@ starlight::DirectionValue<float> ConvertToDirectionValue(
 bool IsOverlayTag(const base::String& tag) {
   return tag.IsEquals("overlay") || tag.IsEquals("x-overlay-ng");
 }
+
+bool IsSubtreeProperty(CSSPropertyID css_id) {
+  return css_id == kPropertyIDOpacity || css_id == kPropertyIDTransform ||
+         css_id == kPropertyIDVisibility || css_id == kPropertyIDFilter;
+}
 }  // namespace
 
 #define FOREACH_EXTENDED_LAYOUT_ONLY_PROPERTY(V) \
@@ -496,8 +501,7 @@ void Element::SetStyleInternal(CSSPropertyID css_id,
     return;
   }
 
-  if (css_id == kPropertyIDOpacity || css_id == kPropertyIDTransform ||
-      css_id == kPropertyIDVisibility) {
+  if (IsSubtreeProperty(css_id)) {
     element_container()->InvalidateForSubtreeProperty();
   } else {
     element_container()->InvalidateForRedraw();
@@ -620,7 +624,15 @@ void Element::ResetStyleInternal(CSSPropertyID css_id) {
 
   WillResetCSSValue(css_id);
 
-  ResetCSSValue(css_id);
+  if (!ResetCSSValue(css_id)) {
+    return;
+  }
+
+  if (IsSubtreeProperty(css_id)) {
+    element_container()->InvalidateForSubtreeProperty();
+  } else {
+    element_container()->InvalidateForRedraw();
+  }
 }
 
 bool Element::ResetCSSValue(CSSPropertyID css_id) {
