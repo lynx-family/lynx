@@ -55,7 +55,7 @@ void ModuleDelegateImpl::OnMethodInvoked(const std::string& module_name,
 
 void ModuleDelegateImpl::FlushJSBTiming(runtime::js::NativeModuleInfo timing) {
   runtime_actor_->Act([timing = std::move(timing)](auto& runtime) mutable {
-    if (tasm::LynxEnv::GetInstance().EnableAsyncJSBTiming()) {
+    if (tasm::LynxEnv::GetInstance().EnableAsyncJSBTiming(timing.page_url_)) {
       tasm::report::EventTracker::OnEvent(
           [timing = std::move(timing)](tasm::report::MoveOnlyEvent& event) {
             event.SetName("lynxsdk_jsb_timing");
