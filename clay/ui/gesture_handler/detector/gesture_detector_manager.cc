@@ -50,6 +50,18 @@ void GestureDetectorManager::UnregisterGestureDetector(
   UnregisterGestureIdWithMemberId(gesture_detector->gesture_id(), member_id);
 }
 
+void GestureDetectorManager::UnregisterMember(int member_id) {
+  for (auto it = gesture_to_arena_members_.begin();
+       it != gesture_to_arena_members_.end();) {
+    it->second.erase(member_id);
+    if (it->second.empty()) {
+      it = gesture_to_arena_members_.erase(it);
+    } else {
+      ++it;
+    }
+  }
+}
+
 std::vector<fml::WeakPtr<GestureArenaMember>>
 GestureDetectorManager::ConvertResponseChainToCompeteChain(
     const std::vector<fml::WeakPtr<GestureArenaMember>>& response_list) {

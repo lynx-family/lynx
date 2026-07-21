@@ -26,8 +26,7 @@ TEST_F(TapGestureHandlerTest,
 
   TestGestureArenaMember member(1);
   Value::Map config_map;
-  config_map.emplace(GestureConstants::MAX_DURATION,
-                     Value(static_cast<int64_t>(50)));
+  config_map.emplace(GestureConstants::MAX_DURATION, Value(50));
   config_map.emplace(GestureConstants::MAX_DISTANCE, Value(5.0f));
   Value config(std::move(config_map));
   auto detector =
@@ -159,15 +158,60 @@ TEST_F(TapGestureHandlerTest, TimerExpiry_FailsGesture) {
   TapGestureHandler handler(1, page_view.get(), detector, member.GetWeakPtr());
 
   PointerEvent down =
-      MakePointerEvent(PointerEvent::EventType::kDownEvent, {0, 0}, 1);
+      MakePointerEvent(PointerEvent::EventType::kDownEvent, {3, 4}, 1);
 
-  EXPECT_CALL(delegate, OnGestureHandlerEvent(StrEq(GestureConstants::ON_END),
-                                              Eq(1), Eq(1), _, _, _, _, _, _))
+  EXPECT_CALL(delegate,
+              OnGestureHandlerEvent(StrEq(GestureConstants::ON_END), Eq(1),
+                                    Eq(1), _, _, Eq(3.0f), Eq(4.0f), Eq(1), _))
       .Times(1);
 
   handler.HandleMotionEvent(&down, 0, 0, false, nullptr);
+  down.position = {30, 40};
+  down.timestamp = 10;
   runner->AdvanceBy(fml::TimeDelta::FromMilliseconds(30));
   EXPECT_EQ(handler.GetGestureStatus(), GestureConstants::LYNX_STATE_FAIL);
+}
+
+TEST_F(TapGestureHandlerTest, ResetStopsPendingTimer) {
+  auto runner = TestTaskRunner::Create();
+  auto page_view = MakeTestPageView(0, runner);
+  TestGestureArenaMember member(1);
+
+  Value::Map config_map;
+  config_map.emplace(GestureConstants::MAX_DURATION, Value(30));
+  Value config(std::move(config_map));
+  auto detector =
+      MakeDetector(1, GestureHandlerType::Tap, {}, {}, std::move(config));
+  TapGestureHandler handler(1, page_view.get(), detector, member.GetWeakPtr());
+
+  PointerEvent down =
+      MakePointerEvent(PointerEvent::EventType::kDownEvent, {0, 0}, 1);
+  handler.HandleMotionEvent(&down, 0, 0, false, nullptr);
+  handler.Reset();
+  runner->AdvanceBy(fml::TimeDelta::FromMilliseconds(30));
+
+  EXPECT_EQ(handler.GetGestureStatus(), GestureConstants::LYNX_STATE_INIT);
+}
+
+TEST_F(TapGestureHandlerTest, EndStopsPendingTimer) {
+  auto runner = TestTaskRunner::Create();
+  auto page_view = MakeTestPageView(0, runner);
+  TestGestureArenaMember member(1);
+
+  Value::Map config_map;
+  config_map.emplace(GestureConstants::MAX_DURATION, Value(30));
+  Value config(std::move(config_map));
+  auto detector =
+      MakeDetector(1, GestureHandlerType::Tap, {}, {}, std::move(config));
+  TapGestureHandler handler(1, page_view.get(), detector, member.GetWeakPtr());
+
+  PointerEvent down =
+      MakePointerEvent(PointerEvent::EventType::kDownEvent, {0, 0}, 1);
+  handler.HandleMotionEvent(&down, 0, 0, false, nullptr);
+  handler.End();
+  runner->AdvanceBy(fml::TimeDelta::FromMilliseconds(30));
+
+  EXPECT_EQ(handler.GetGestureStatus(), GestureConstants::LYNX_STATE_END);
 }
 
 TEST_F(TapGestureHandlerTest, DistanceFail_WorksForNegativeMovementToo) {

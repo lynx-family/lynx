@@ -74,17 +74,19 @@ void GestureArenaManager::SetActiveUIToArenaAtDownEvent(
   }
   EnsureGestureDetectorAndHandler();
   ClearCurrentGesture();
+  PruneExpiredMembers();
   if (arena_member_map_.empty() || !gesture_handler_trigger_) {
     return;
   }
 
   for (auto& hit_test_object : hit_test_result) {
+    if (!hit_test_object) {
+      continue;
+    }
     BaseView* view = static_cast<BaseView*>(hit_test_object.get());
-    for (auto& pair : arena_member_map_) {
-      if (pair.second->GestureArenaMemberId() == view->GestureArenaMemberId()) {
-        bubble_candidate_.emplace_back(view->GetWeakPtr());
-        break;
-      }
+    auto member = arena_member_map_.find(view->GestureArenaMemberId());
+    if (member != arena_member_map_.end() && member->second) {
+      bubble_candidate_.emplace_back(view->GetWeakPtr());
     }
   }
 
@@ -122,7 +124,15 @@ bool GestureArenaManager::IsMemberExist(int member_id) {
   if (!IsEnableNewGesture()) {
     return false;
   }
-  return arena_member_map_.find(member_id) != arena_member_map_.end();
+  auto member = arena_member_map_.find(member_id);
+  if (member == arena_member_map_.end()) {
+    return false;
+  }
+  if (!member->second) {
+    RemoveMemberById(member_id);
+    return false;
+  }
+  return true;
 }
 
 void GestureArenaManager::SetGestureDetectorState(int member_id, int gesture_id,
@@ -142,14 +152,11 @@ void GestureArenaManager::SetGestureDetectorState(int member_id, int gesture_id,
   }
 }
 
-void GestureArenaManager::RemoveMember(
-    fml::WeakPtr<GestureArenaMember> arena_member) {
-  if (!IsEnableNewGesture() || !arena_member) {
+void GestureArenaManager::RemoveMember(int member_id) {
+  if (!IsEnableNewGesture()) {
     return;
   }
-  arena_member_map_.erase(arena_member->GestureArenaMemberId());
-  UnRegisterGestureDetectors(arena_member->GestureArenaMemberId(),
-                             arena_member->GetGestureDetectorMap());
+  RemoveMemberById(member_id);
 }
 
 fml::WeakPtr<GestureArenaMember> GestureArenaManager::GetMemberById(int id) {
@@ -174,6 +181,32 @@ void GestureArenaManager::OnDestroy() {
   }
 }
 
+void GestureArenaManager::PruneExpiredMembers() {
+  for (auto member = arena_member_map_.begin();
+       member != arena_member_map_.end();) {
+    if (member->second) {
+      ++member;
+      continue;
+    }
+    int member_id = member->first;
+    ++member;
+    RemoveMemberById(member_id);
+  }
+}
+
+void GestureArenaManager::RemoveMemberById(int member_id) {
+  arena_member_map_.erase(member_id);
+  if (winner_ && winner_->GestureArenaMemberId() == member_id) {
+    winner_.reset();
+  }
+  if (gesture_handler_trigger_) {
+    gesture_handler_trigger_->RemoveMember(member_id);
+  }
+  if (gesture_detector_manager_) {
+    gesture_detector_manager_->UnregisterMember(member_id);
+  }
+}
+
 void GestureArenaManager::RegisterGestureDetectors(
     int member_id, const GestureMap& gesture_detectors) {
   if (!IsEnableNewGesture() || gesture_detectors.empty()) {
@@ -186,21 +219,6 @@ void GestureArenaManager::RegisterGestureDetectors(
 
   for (const auto& entry : gesture_detectors) {
     gesture_detector_manager_->RegisterGestureDetector(member_id, entry.second);
-  }
-}
-
-void GestureArenaManager::UnRegisterGestureDetectors(
-    int member_id, const GestureMap& gesture_detectors) {
-  if (!IsEnableNewGesture() || gesture_detectors.empty()) {
-    return;
-  }
-  EnsureGestureDetectorAndHandler();
-  if (!gesture_detector_manager_) {
-    return;
-  }
-  for (const auto& entry : gesture_detectors) {
-    gesture_detector_manager_->UnregisterGestureDetector(member_id,
-                                                         entry.second);
   }
 }
 

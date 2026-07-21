@@ -329,6 +329,17 @@ BaseView::~BaseView() {
 }
 
 void BaseView::Destroy() {
+  if (gesture_arena_member_id_ > 0 && page_view_ && page_view_ != this) {
+    auto* dispatcher = page_view_->GetGestureHandlerDispatcher();
+    if (dispatcher) {
+      auto* arena_manager = dispatcher->gesture_arena_manager();
+      if (arena_manager) {
+        arena_manager->RemoveMember(gesture_arena_member_id_);
+      }
+    }
+    gesture_arena_member_id_ = 0;
+  }
+
   OnDestroy();
 
   if (attach_to_tree_) {

@@ -55,9 +55,9 @@ void DefaultGestureHandler::OnHandle(
     const PointerEvent* pointer_event, float fling_delta_x, float fling_delta_y,
     bool handle_by_simultaneous,
     const std::shared_ptr<GestureExtraBundle>& extra_bundle) {
-  last_pointer_event_ = pointer_event;
+  last_pointer_event_.Update(pointer_event);
   if (status_ >= GestureConstants::LYNX_STATE_FAIL) {
-    OnEnd(last_point_.x(), last_point_.y(), last_pointer_event_);
+    OnEnd(last_point_.x(), last_point_.y(), last_pointer_event_.Get());
     return;
   }
 
@@ -197,10 +197,10 @@ void DefaultGestureHandler::Fail() {
   if (status_ != GestureConstants::LYNX_STATE_FAIL) {
     status_ = GestureConstants::LYNX_STATE_FAIL;
   }
-  if (last_pointer_event_ == nullptr) {
+  if (!last_pointer_event_.Get()) {
     OnEnd(0, 0, nullptr);
   } else {
-    OnEnd(last_point_.x(), last_point_.y(), last_pointer_event_);
+    OnEnd(last_point_.x(), last_point_.y(), last_pointer_event_.Get());
   }
 }
 
@@ -208,10 +208,10 @@ void DefaultGestureHandler::End() {
   if (status_ != GestureConstants::LYNX_STATE_END) {
     status_ = GestureConstants::LYNX_STATE_END;
   }
-  if (last_pointer_event_ == nullptr) {
+  if (!last_pointer_event_.Get()) {
     OnEnd(0, 0, nullptr);
   } else {
-    OnEnd(last_point_.x(), last_point_.y(), last_pointer_event_);
+    OnEnd(last_point_.x(), last_point_.y(), last_pointer_event_.Get());
   }
 }
 
@@ -221,6 +221,7 @@ void DefaultGestureHandler::Reset() {
   is_invoked_begin_ = false;
   is_invoked_start_ = false;
   is_invoked_end_ = false;
+  last_pointer_event_.Reset();
 }
 
 Value DefaultGestureHandler::GenerateAdditionalEventParams(float delta_x,

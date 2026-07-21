@@ -6,6 +6,7 @@
 
 #include <stdint.h>
 
+#include <algorithm>
 #include <cfloat>
 #include <cstddef>
 
@@ -17,6 +18,14 @@
 #include "clay/ui/gesture_handler/handler/base_gesture_handler.h"
 
 namespace clay {
+
+namespace {
+
+bool IsRegisteredGestureMember(const fml::WeakPtr<GestureArenaMember>& member) {
+  return member && member->GestureArenaMemberId() > 0;
+}
+
+}  // namespace
 
 GestureHandlerTrigger::GestureHandlerTrigger(
     PageView* page_view, std::shared_ptr<GestureDetectorManager> manager)
@@ -90,6 +99,9 @@ void GestureHandlerTrigger::SetVelocity(float velocity_x, float velocity_y) {
 
 void GestureHandlerTrigger::FlingCallback(int status, float delta_x,
                                           float delta_y) {
+  if (!page_view_) {
+    return;
+  }
   delta_x = delta_x / page_view_->DevicePixelRatio();
   delta_y = delta_y / page_view_->DevicePixelRatio();
 
@@ -145,12 +157,21 @@ void GestureHandlerTrigger::DispatchBubbleTouchEvent(
     return;
   }
 
-  for (const auto& member : bubble_candidate) {
+  auto bubble_candidate_snapshot = bubble_candidate;
+  for (const auto& member : bubble_candidate_snapshot) {
+    if (!IsRegisteredGestureMember(member)) {
+      continue;
+    }
+    int member_id = member->GestureArenaMemberId();
     auto gesture_handler_map = member->GetGestureHandlers();
     if (gesture_handler_map.empty()) {
       continue;
     }
     for (const auto& handler_entry : gesture_handler_map) {
+      if (!IsRegisteredGestureMember(member) ||
+          member->GestureArenaMemberId() != member_id) {
+        break;
+      }
       auto& handler = handler_entry.second;
       if (type == PointerEvent::EventType::kDownEvent) {
         handler->OnTouchesDown(pointer_event);
@@ -165,11 +186,42 @@ void GestureHandlerTrigger::DispatchBubbleTouchEvent(
   }
 }
 
+void GestureHandlerTrigger::RemoveMember(int member_id) {
+  auto simultaneous_member = std::find_if(
+      simultaneous_winners_.begin(), simultaneous_winners_.end(),
+      [member_id](const fml::WeakPtr<GestureArenaMember>& member) {
+        return member && member->GestureArenaMemberId() == member_id;
+      });
+  if (simultaneous_member != simultaneous_winners_.end()) {
+    simultaneous_winners_.erase(simultaneous_member);
+  }
+
+  if (last_winner_ && last_winner_->GestureArenaMemberId() == member_id) {
+    last_winner_.reset();
+  }
+  if (duplicated_member_ &&
+      duplicated_member_->GestureArenaMemberId() == member_id) {
+    duplicated_member_.reset();
+  }
+  if (last_fling_target_id_ == member_id) {
+    last_fling_target_id_ = 0;
+  }
+  if (!winner_ || winner_->GestureArenaMemberId() != member_id) {
+    return;
+  }
+  winner_.reset();
+  simultaneous_gesture_ids_.clear();
+  if (fling_scroller_ && !fling_scroller_->IsIdle()) {
+    fling_scroller_->Stop();
+  }
+}
+
 void GestureHandlerTrigger::Destroy() {
   page_view_ = nullptr;
-  if (!simultaneous_winners_.empty()) {
-    simultaneous_winners_.clear();
+  if (fling_scroller_ && !fling_scroller_->IsIdle()) {
+    fling_scroller_->Stop();
   }
+  simultaneous_winners_.clear();
 }
 
 void GestureHandlerTrigger::ResetCandidatesGestures(
@@ -183,14 +235,19 @@ void GestureHandlerTrigger::ResetCandidatesGestures(
 void GestureHandlerTrigger::FailOthersMembersInRaceRelation(
     fml::WeakPtr<GestureArenaMember> member, uint32_t current_gesture_id,
     std::unordered_set<int>& simultaneous_gesture_ids) {
-  if (!member) {
+  if (!IsRegisteredGestureMember(member)) {
     return;
   }
+  int member_id = member->GestureArenaMemberId();
   auto gesture_handler_map = member->GetGestureHandlers();
   if (gesture_handler_map.empty()) {
     return;
   }
   for (const auto& handler_entry : gesture_handler_map) {
+    if (!IsRegisteredGestureMember(member) ||
+        member->GestureArenaMemberId() != member_id) {
+      return;
+    }
     auto& handler = handler_entry.second;
     if (handler->GetGestureDetector()->gesture_id() != current_gesture_id &&
         simultaneous_gesture_ids.find(
@@ -209,6 +266,9 @@ void GestureHandlerTrigger::StopFlingByLastFlingMember(
     return;
   }
   for (const auto& member : bubble_candidates) {
+    if (!IsRegisteredGestureMember(member)) {
+      continue;
+    }
     if ((winner_ && last_fling_target_id_ == member->GestureArenaMemberId()) ||
         last_fling_target_id_ == 0) {
       last_fling_target_id_ = 0;
@@ -216,7 +276,7 @@ void GestureHandlerTrigger::StopFlingByLastFlingMember(
         DispatchMotionEventWithSimultaneousAndReCompete(
             winner_, 0, 0, compete_chain_candidates, pointer_event);
         fling_scroller_->Stop();
-        if (page_view_) {
+        if (page_view_ && IsRegisteredGestureMember(member)) {
           page_view_->OnGestureRecognizedWithSign(member->Sign());
         }
       }
@@ -258,6 +318,12 @@ void GestureHandlerTrigger::UpdateLastWinner(
 fml::WeakPtr<GestureArenaMember> GestureHandlerTrigger::ReCompeteByGestures(
     std::vector<fml::WeakPtr<GestureArenaMember>>& competitor_chain_candidates,
     fml::WeakPtr<GestureArenaMember> current) {
+  if (!IsRegisteredGestureMember(current)) {
+    current.reset();
+  }
+  if (!IsRegisteredGestureMember(last_winner_)) {
+    last_winner_.reset();
+  }
   if ((!current && !last_winner_) || !competitor_chain_candidates.size()) {
     return fml::WeakPtr<GestureArenaMember>();
   }
@@ -285,7 +351,8 @@ fml::WeakPtr<GestureArenaMember> GestureHandlerTrigger::ReCompeteByGestures(
       [&current](const fml::WeakPtr<GestureArenaMember>& elem) {
         auto current_lock = current;
         auto elem_lock = elem;
-        if (!current_lock || !elem_lock) {
+        if (!IsRegisteredGestureMember(current_lock) ||
+            !IsRegisteredGestureMember(elem_lock)) {
           return false;
         }
         return current_lock->GestureArenaMemberId() ==
@@ -302,7 +369,8 @@ fml::WeakPtr<GestureArenaMember> GestureHandlerTrigger::ReCompeteByGestures(
                    [&current](const fml::WeakPtr<GestureArenaMember>& elem) {
                      auto current_lock = current;
                      auto elem_lock = elem;
-                     return current_lock && elem_lock &&
+                     return IsRegisteredGestureMember(current_lock) &&
+                            IsRegisteredGestureMember(elem_lock) &&
                             current_lock->GestureArenaMemberId() ==
                                 elem_lock->GestureArenaMemberId();
                    })
@@ -328,6 +396,9 @@ fml::WeakPtr<GestureArenaMember> GestureHandlerTrigger::ReCompeteByGestures(
   for (auto next_it = it + 1; next_it != competitor_chain_candidates.end();
        ++next_it) {
     auto node = *next_it;
+    if (!IsRegisteredGestureMember(node)) {
+      continue;
+    }
     if (node->GestureArenaMemberId() == current_member_id) {
       continue;
     }
@@ -350,6 +421,9 @@ fml::WeakPtr<GestureArenaMember> GestureHandlerTrigger::ReCompeteByGestures(
   for (auto pre_it = competitor_chain_candidates.begin(); pre_it != it;
        ++pre_it) {
     auto node = *pre_it;
+    if (!IsRegisteredGestureMember(node)) {
+      continue;
+    }
     if (node->GestureArenaMemberId() == current_member_id) {
       continue;
     }
@@ -376,15 +450,20 @@ void GestureHandlerTrigger::DispatchMotionEventOnCurrentWinner(
     const PointerEvent* event, fml::WeakPtr<GestureArenaMember> member,
     float delta_x, float delta_y, bool handle_by_simultaneous,
     const std::shared_ptr<GestureExtraBundle>& current_extra_bundle) {
-  if (!member) {
+  if (!IsRegisteredGestureMember(member)) {
     return;
   }
+  int member_id = member->GestureArenaMemberId();
   auto gesture_handler_map = member->GetGestureHandlers();
   if (gesture_handler_map.empty()) {
     return;
   }
 
   for (auto& handler_pair : gesture_handler_map) {
+    if (!IsRegisteredGestureMember(member) ||
+        member->GestureArenaMemberId() != member_id) {
+      return;
+    }
     handler_pair.second->HandleMotionEvent(
         event, delta_x, delta_y, handle_by_simultaneous, current_extra_bundle);
   }
@@ -392,9 +471,10 @@ void GestureHandlerTrigger::DispatchMotionEventOnCurrentWinner(
 
 int GestureHandlerTrigger::GetCurrentMemberState(
     fml::WeakPtr<GestureArenaMember> node) {
-  if (!node) {
+  if (!IsRegisteredGestureMember(node)) {
     return GestureConstants::LYNX_STATE_FAIL;
   }
+  int member_id = node->GestureArenaMemberId();
 
   auto gesture_handler_map = node->GetGestureHandlers();
   if (gesture_handler_map.empty()) {
@@ -403,6 +483,10 @@ int GestureHandlerTrigger::GetCurrentMemberState(
 
   int min_status = -1;
   for (auto& handler_pair : gesture_handler_map) {
+    if (!IsRegisteredGestureMember(node) ||
+        node->GestureArenaMemberId() != member_id) {
+      return GestureConstants::LYNX_STATE_FAIL;
+    }
     auto& handler = handler_pair.second;
     if (handler->IsEnd()) {
       ResetGestureHandlerAndSimultaneous(node);
@@ -414,7 +498,10 @@ int GestureHandlerTrigger::GetCurrentMemberState(
       FailOthersMembersInRaceRelation(
           node, handler->GetGestureDetector()->gesture_id(),
           simultaneous_gesture_ids_);
-      return GestureConstants::LYNX_STATE_ACTIVE;
+      return IsRegisteredGestureMember(node) &&
+                     node->GestureArenaMemberId() == member_id
+                 ? GestureConstants::LYNX_STATE_ACTIVE
+                 : GestureConstants::LYNX_STATE_FAIL;
     }
 
     int status = handler->GetGestureStatus();
@@ -437,7 +524,7 @@ void GestureHandlerTrigger::ResetGestureHandlerAndSimultaneous(
 
 void GestureHandlerTrigger::ResetGestureHandler(
     fml::WeakPtr<GestureArenaMember> member) {
-  if (!member) {
+  if (!IsRegisteredGestureMember(member)) {
     return;
   }
 
@@ -470,7 +557,13 @@ void GestureHandlerTrigger::DispatchMotionEventWithSimultaneousAndReCompete(
   DispatchMotionEventOnCurrentWinner(pointer_event, winner, x, y, false,
                                      current_extra_bundle_);
 
-  for (const auto& member : simultaneous_winners_) {
+  auto simultaneous_winners_snapshot = simultaneous_winners_;
+  for (const auto& member : simultaneous_winners_snapshot) {
+    if (!IsRegisteredGestureMember(member) ||
+        std::find(simultaneous_winners_.begin(), simultaneous_winners_.end(),
+                  member) == simultaneous_winners_.end()) {
+      continue;
+    }
     DispatchMotionEventOnCurrentWinner(pointer_event, member, x, y, true,
                                        current_extra_bundle_);
   }
