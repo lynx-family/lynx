@@ -26,6 +26,7 @@ void PlatformViewLayer::Preroll(PrerollContext* context) {
     return;
   }
   context->has_platform_view = true;
+  context->paints_into_platform_view_slice = true;
   set_subtree_has_platform_view(true);
   MutatorsStack mutators;
   context->state_stack.fill(&mutators);

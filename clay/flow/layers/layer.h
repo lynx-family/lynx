@@ -72,6 +72,11 @@ struct PrerollContext {
   // These allow us to track properties like elevation, opacity, and the
   // presence of a platform view during Preroll.
   bool has_platform_view = false;
+  // This flag indicates a platform view has already been encountered earlier
+  // in the current DFS preroll traversal, so subsequent paint-order content
+  // will be recorded into an embedded view slice instead of the main
+  // background canvas.
+  bool paints_into_platform_view_slice = false;
   // These allow us to track properties like elevation, opacity, and the
   // presence of a drawable image layer during Preroll.
   bool has_drawable_image_layer = false;
