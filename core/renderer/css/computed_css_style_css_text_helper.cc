@@ -40,14 +40,12 @@ constexpr CSSPropertyID kBorderColorIDs[] = {
     kPropertyIDBorderTopColor, kPropertyIDBorderRightColor,
     kPropertyIDBorderBottomColor, kPropertyIDBorderLeftColor};
 
-std::string NumericLengthToString(const starlight::NLength::BaseLength& length,
-                                  float layouts_unit_per_px) {
+std::string NumericLengthToString(
+    const starlight::NLength::BaseLength& length) {
   if (!length.HasValue()) {
     return std::string("0px");
   } else if (length.ContainsFixedValue() && !length.ContainsPercentage()) {
-    return CSSDecoder::NumberToString(length.GetFixedPart() /
-                                      layouts_unit_per_px) +
-           kPxMark;
+    return CSSDecoder::NumberToString(length.GetFixedPart()) + kPxMark;
   } else if (!length.ContainsFixedValue() && length.ContainsPercentage()) {
     return CSSDecoder::NumberToString(length.GetPercentagePart()) +
            kPercentageMark;
@@ -207,7 +205,7 @@ base::String ComputedCSSStyleCssTextHelper::TransformCSSText(
   if (computed_css_style->transform_raw_) {
     auto transform_operations = transforms::TransformOperations(
         ref_layout_result, *(computed_css_style->transform_raw_));
-    return transform_operations.CssText(layouts_unit_per_px_);
+    return transform_operations.CssText();
   } else {
     return base::String();
   }
@@ -257,13 +255,11 @@ base::String ComputedCSSStyleCssTextHelper::FilterCSSText(
   std::ostringstream filter_sstream;
   if (computed_css_style->filter_->type == starlight::FilterType::kBlur) {
     filter_sstream << "blur(";
-    filter_sstream << FloatToPixelString(
-                          starlight::NLengthToLayoutUnit(
-                              computed_css_style->filter_->amount,
-                              starlight::LayoutUnit::Indefinite())
-                              .ToFloat())
-                          .str();
-    filter_sstream << ")";
+    filter_sstream << CSSDecoder::NumberToString(
+        starlight::NLengthToLayoutUnit(computed_css_style->filter_->amount,
+                                       starlight::LayoutUnit::Indefinite())
+            .ToFloat());
+    filter_sstream << "px)";
   } else if (computed_css_style->filter_->type ==
              starlight::FilterType::kGrayscale) {
     filter_sstream << "grayscale(";
@@ -303,16 +299,16 @@ ComputedCSSStyleCssTextHelper::ParseBackgroundPositionArray(
     const auto& y_length = position[idx * 2 + 1];
 
     if (x_length.IsUnit() || x_length.IsPercent()) {
-      tokens.emplace_back(base::String(NumericLengthToString(
-          x_length.NumericLength(), layouts_unit_per_px_)));
+      tokens.emplace_back(
+          base::String(NumericLengthToString(x_length.NumericLength())));
     } else {
       tokens.emplace_back(
           BASE_STATIC_STRING(kDefaultBackgroundPositionDimensionValue));
     }
 
     if (y_length.IsUnit() || y_length.IsPercent()) {
-      tokens.emplace_back(base::String(NumericLengthToString(
-          y_length.NumericLength(), layouts_unit_per_px_)));
+      tokens.emplace_back(
+          base::String(NumericLengthToString(y_length.NumericLength())));
     } else {
       tokens.emplace_back(
           BASE_STATIC_STRING(kDefaultBackgroundPositionDimensionValue));
@@ -641,8 +637,7 @@ ComputedCSSStyleCssTextHelper::BorderRadiusPairCSSTextComponents(
 }
 
 base::String ComputedCSSStyleCssTextHelper::FloatToPixelString(float value) {
-  std::string num_value =
-      CSSDecoder::NumberToString(value / layouts_unit_per_px_);
+  std::string num_value = CSSDecoder::NumberToString(value);
 
   return base::String(num_value + "px");
 }
@@ -700,11 +695,9 @@ base::String ComputedCSSStyleCssTextHelper::ConcatStringsWithWhitespace(
 
 float ComputedCSSStyleCssTextHelper::GetDefaultBorderWidth(
     starlight::ComputedCSSStyle* computed_css_style) {
-  const float default_width =
-      computed_css_style->css_align_with_legacy_w3c_
-          ? starlight::DefaultLayoutStyle::W3C_DEFAULT_BORDER
-          : starlight::DefaultLayoutStyle::SL_DEFAULT_BORDER;
-  return default_width * layouts_unit_per_px_;
+  return computed_css_style->css_align_with_legacy_w3c_
+             ? starlight::DefaultLayoutStyle::W3C_DEFAULT_BORDER
+             : starlight::DefaultLayoutStyle::SL_DEFAULT_BORDER;
 }
 
 }  // namespace tasm

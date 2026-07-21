@@ -5,8 +5,8 @@
 Harmony `markdown` should follow the native XElement integration path:
 
 - `markdown` is registered from the native XElement registry. Keep
-  `<markdown>` as the public tag under `lynx/`; internal `x-markdown` belongs
-  outside the open-source boundary.
+  `<markdown>` as the only public tag under `lynx/`; do not add compatibility
+  aliases for internal markdown tags.
 - Layout and rendering are implemented by C++ `UIBase` and `ShadowNode`
   classes through C UI/ArkUI native nodes.
 - The core `@lynx/lynx` package must not depend on

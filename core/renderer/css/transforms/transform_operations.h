@@ -105,7 +105,7 @@ class TransformOperations {
 
   tasm::CSSValue ToTransformRawValue();
 
-  base::String CssText(float layouts_unit_per_px);
+  base::String CssText();
 
  private:
   bool BlendInternal(TransformOperations& from, float progress,
