@@ -486,6 +486,48 @@ void CalculateBackgroundPosition(
   }
 }
 
+float ResolveLinearGradientAngle(float angle,
+                                 starlight::LinearGradientDirection direction,
+                                 float tiling_width, float tiling_height) {
+  constexpr float kPi = 3.14159265358979323846f;
+  switch (direction) {
+    case starlight::LinearGradientDirection::kTop:
+      return 0.f;
+    case starlight::LinearGradientDirection::kNone:
+    case starlight::LinearGradientDirection::kBottom:
+      return 180.f;
+    case starlight::LinearGradientDirection::kLeft:
+      return 270.f;
+    case starlight::LinearGradientDirection::kRight:
+      return 90.f;
+    case starlight::LinearGradientDirection::kTopRight:
+    case starlight::LinearGradientDirection::kTopLeft:
+    case starlight::LinearGradientDirection::kBottomRight:
+    case starlight::LinearGradientDirection::kBottomLeft: {
+      // A corner keyword uses the gradient-box diagonal perpendicular to the
+      // gradient line, so its angle depends on the tiling box's aspect ratio.
+      const float corner_angle =
+          std::atan2(tiling_height, tiling_width) * 180.f / kPi;
+      switch (direction) {
+        case starlight::LinearGradientDirection::kTopRight:
+          return corner_angle;
+        case starlight::LinearGradientDirection::kTopLeft:
+          return 360.f - corner_angle;
+        case starlight::LinearGradientDirection::kBottomRight:
+          return 180.f - corner_angle;
+        case starlight::LinearGradientDirection::kBottomLeft:
+          return 180.f + corner_angle;
+        default:
+          break;
+      }
+      break;
+    }
+    case starlight::LinearGradientDirection::kAngle:
+      return angle;
+  }
+  return angle;
+}
+
 }  // namespace
 
 fml::RefPtr<PaintImage> Fragment::GetOrCreateBackgroundImage(
@@ -683,6 +725,14 @@ void Fragment::DrawBackground(DisplayListBuilder& display_list_builder) {
         auto gradient_arr = array->get(i + 1).Array();
         // gradient_arr: [angle, colors, stops, side_or_corner]
         float angle = static_cast<float>(gradient_arr->get(0).Number());
+        if (gradient_arr->size() > 3) {
+          const auto direction =
+              static_cast<starlight::LinearGradientDirection>(
+                  gradient_arr->get(3).Number());
+          angle = ResolveLinearGradientAngle(angle, direction,
+                                             tiling_rect.GetWidth(),
+                                             tiling_rect.GetHeight());
+        }
         auto colors_arr = gradient_arr->get(1).Array();
         auto stops_arr = gradient_arr->get(2).Array();
 
