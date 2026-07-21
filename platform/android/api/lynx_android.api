@@ -10335,7 +10335,7 @@ public class com::lynx::tasm::TemplateBundle : com.lynx.tasm.service.security.IL
   public boolean com.lynx.tasm.TemplateBundle.isElementBundleValid();
   public int com.lynx.tasm.TemplateBundle.getTemplateSize();
   public long com.lynx.tasm.TemplateBundle.getNativePtr();
-  public void com.lynx.tasm.TemplateBundle.release();
+  public synchronized void com.lynx.tasm.TemplateBundle.release();
   public boolean com.lynx.tasm.TemplateBundle.isValid();
   public boolean com.lynx.tasm.TemplateBundle.isInitialized();
   public void com.lynx.tasm.TemplateBundle.postJsCacheGenerationTask(String bytecodeSourceUrl, boolean useV8, @Nullable LynxBytecodeCallback callback);
