@@ -224,5 +224,40 @@ TEST_F(ExposeObserverTest, RealDetachClosesExposureWhileHostWindowIsDetached) {
   EXPECT_EQ(custom_events(), Events({"uiappear", "uidisappear"}));
 }
 
+TEST_F(ExposeObserverTest, RootViewportClipsDetachedTarget) {
+  auto detached_parent = std::make_unique<View>(1, page_.get());
+  auto target = std::make_unique<View>(2, page_.get());
+  detached_parent->AddChild(target.get());
+  ASSERT_NE(target->Parent(), page_.get());
+
+  target->SetBound(1391, 4, 70, 24);
+  target->SetAttribute("exposure-id", Value("detached-target"));
+  target->AddEventCallback("uiappear");
+  target->AddEventCallback("uidisappear");
+
+  manager()->NotifyObservers();
+  EXPECT_TRUE(custom_events().empty());
+  page_->SendGlobalExposureEvent();
+  EXPECT_TRUE(global_events().empty());
+
+  target->SetBound(950, 0, 100, 100);
+  manager()->StopExposure(false);
+  manager()->ResumeExposure();
+  manager()->NotifyObservers();
+  EXPECT_EQ(custom_events(), Events({"uiappear"}));
+  page_->SendGlobalExposureEvent();
+  EXPECT_EQ(global_events(), Events({"exposure"}));
+
+  page_->SetVisible(false);
+  manager()->StopExposure(false);
+  manager()->ResumeExposure();
+  manager()->NotifyObservers();
+  EXPECT_EQ(custom_events(), Events({"uiappear", "uidisappear"}));
+  page_->SendGlobalExposureEvent();
+  EXPECT_EQ(global_events(), Events({"exposure", "disexposure"}));
+
+  detached_parent->RemoveChild(target.get());
+}
+
 }  // namespace
 }  // namespace clay
