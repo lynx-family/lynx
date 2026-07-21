@@ -40,6 +40,10 @@ class PaintingContextHarmonyRef : public PaintingCtxPlatformRef {
                                            float delta_y,
                                            bool is_init_scroll_offset,
                                            bool from_layout) override;
+  void ListReusePaintingNode(int sign, const std::string& item_key) override;
+  void ListCellWillAppear(int sign, const std::string& item_key) override;
+  void ListCellDisappear(int sign, bool isExist,
+                         const std::string& item_key) override;
 
   void SetGestureDetectorState(int64_t id, int32_t gesture_id,
                                int32_t state) override;

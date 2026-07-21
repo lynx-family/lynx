@@ -93,6 +93,11 @@ class LYNX_EXPORT UIBase : public std::enable_shared_from_this<UIBase>,
   virtual LynxContext* GetContext() { return context_; };
   virtual void OnLayoutFinish(UIBase* base, int64_t operation_id) {}
   virtual void UpdateSticky(const float* sticky);
+  virtual void OnListCellAppear(const std::string& item_key, UIBase* ui_list);
+  virtual void OnListCellDisAppear(const std::string& item_key, UIBase* ui_list,
+                                   bool is_exist);
+  virtual void OnListCellPrepareForReuse(const std::string& item_key,
+                                         UIBase* ui_list);
   virtual void WillRemoveFromUIParent();
   bool CheckStickyOnParentScroll(float scroll_left, float scroll_top);
   void RemoveFromParent();
@@ -290,6 +295,7 @@ class LYNX_EXPORT UIBase : public std::enable_shared_from_this<UIBase>,
       starlight::ImageRenderingType::kAuto};
   int gesture_arena_member_id_{0};
   bool consume_gesture_{true};
+  bool block_list_event_{false};
   LynxInterceptGestureStatus gesture_status_{
       LynxInterceptGestureStatus::LynxInterceptGestureStateUnset};
   enum class LynxAccessibilityMode {
@@ -399,6 +405,7 @@ class LYNX_EXPORT UIBase : public std::enable_shared_from_this<UIBase>,
   void SetDataset(const lepus::Value& value);
   void SetClipPath(const lepus::Value& value);
   void SetPerspective(const lepus::Value& value);
+  void SetBlockListEvent(const lepus::Value& value);
   float GetPerspectiveValue();
   void SetAccessibilityElement(const lepus::Value& value);
   void SetAccessibilityLabel(const lepus::Value& value);
