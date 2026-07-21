@@ -545,13 +545,21 @@ class Shell final : public PlatformView::Delegate,
   bool Setup(std::unique_ptr<PlatformView> platform_view,
              std::unique_ptr<Engine> engine);
 
+  void SetupOutputSurface(bool reuse_existing_surface);
+
   void ReportTimings();
 
   // |PlatformView::Delegate|
   void OnPlatformViewCreated() override;
 
   // |PlatformView::Delegate|
+  void OnPlatformViewSurfaceCreated() override;
+
+  // |PlatformView::Delegate|
   void OnPlatformViewDestroyed() override;
+
+  // |PlatformView::Delegate|
+  void OnPlatformViewSurfaceDestroyed() override;
 
   // |PlatformView::Delegate|
   void OnPlatformViewScheduleFrame() override;

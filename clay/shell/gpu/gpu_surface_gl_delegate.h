@@ -8,6 +8,7 @@
 #ifndef CLAY_SHELL_GPU_GPU_SURFACE_GL_DELEGATE_H_
 #define CLAY_SHELL_GPU_GPU_SURFACE_GL_DELEGATE_H_
 
+#include <cstdint>
 #include <memory>
 #include <optional>
 
@@ -62,6 +63,11 @@ class GPUSurfaceGLDelegate {
   // either the GPU or IO threads.
   virtual bool GLContextClearCurrent() = 0;
 
+  // Returns whether a valid onscreen surface is available for rendering.
+  // Embedders that do not manage an explicit onscreen surface may use the
+  // default implementation.
+  virtual bool GLContextIsOnscreenSurfaceValid() const;
+
   // Inform the GL Context that there's going to be no writing beyond
   // the specified region
   virtual void GLContextSetDamageRegion(
@@ -74,6 +80,12 @@ class GPUSurfaceGLDelegate {
   // The information about the main window bound framebuffer. ID is Typically
   // FBO0.
   virtual GLFBOInfo GLContextFBO(GLFrameInfo frame_info) const = 0;
+
+  // A generation number for the platform onscreen surface backing the current
+  // FBO. Platforms that reuse a GPUSurface across native surface recreation
+  // must increment it whenever the underlying window surface is destroyed or
+  // recreated. The default implementation assumes a stable surface.
+  virtual uint64_t GLContextSurfaceGeneration() const;
 
   // The rendering subsystem assumes that the ID of the main window bound
   // framebuffer remains constant throughout. If this assumption in incorrect,

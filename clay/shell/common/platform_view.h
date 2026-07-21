@@ -78,12 +78,24 @@ class PlatformView {
     virtual void OnPlatformViewCreated() = 0;
 
     //--------------------------------------------------------------------------
+    /// @brief      Notifies the delegate that the platform render surface was
+    ///             recreated while the platform view itself stayed alive.
+    ///
+    virtual void OnPlatformViewSurfaceCreated() { OnPlatformViewCreated(); }
+
+    //--------------------------------------------------------------------------
     /// @brief      Notifies the delegate that the platform view was destroyed.
     ///             This is usually a sign to the rasterizer to suspend
     ///             rendering a previously configured surface and collect any
     ///             intermediate resources.
     ///
     virtual void OnPlatformViewDestroyed() = 0;
+
+    //--------------------------------------------------------------------------
+    /// @brief      Notifies the delegate that the platform render surface was
+    ///             destroyed while the platform view itself stayed alive.
+    ///
+    virtual void OnPlatformViewSurfaceDestroyed() { OnPlatformViewDestroyed(); }
 
     //--------------------------------------------------------------------------
     /// @brief      Notifies the delegate that the platform needs to schedule a
@@ -224,6 +236,13 @@ class PlatformView {
   void NotifyCreated();
 
   //----------------------------------------------------------------------------
+  /// @brief      Used by embedders to notify the shell that a platform render
+  ///             surface became available while the platform view itself stayed
+  ///             alive.
+  ///
+  void NotifySurfaceCreated();
+
+  //----------------------------------------------------------------------------
   /// @brief      Used by embedders to notify the shell that the platform view
   ///             has been destroyed. This notification used to collect the
   ///             rendering surface and all associated resources. Frame
@@ -234,6 +253,13 @@ class PlatformView {
   ///             class method at some point in their implementation.
   ///
   virtual void NotifyDestroyed();
+
+  //----------------------------------------------------------------------------
+  /// @brief      Used by embedders to notify the shell that a platform render
+  ///             surface became unavailable while the platform view itself
+  ///             stayed alive.
+  ///
+  virtual void NotifySurfaceDestroyed();
 
   //----------------------------------------------------------------------------
   /// @brief      Used by embedders to schedule a frame. In response to this
