@@ -8,6 +8,7 @@
 #include <memory>
 #include <vector>
 #include "paragraph_tt_text.h"
+#include "textra/layout_definition.h"
 #ifdef ENABLE_SKITY
 #include "txt/font_collection_skity.h"
 #else
@@ -42,6 +43,7 @@ class ParagraphBuilderTTText : public ParagraphBuilder {
   tttext::ParagraphStyle GetTTParagraphStyle() { return paragraph_style_; }
 
  private:
+  tttext::LineType ToTTLineType(TextDecorationStyle decoration_style);
   tttext::Style ToTTStyle(const TextStyle& text_style);
   void ToTTParaStyle(const ParagraphStyle& para_style);
   void CreateParagraph();
