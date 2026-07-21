@@ -71,6 +71,7 @@ class GestureHandlerTrigger {
       std::vector<fml::WeakPtr<GestureArenaMember>>& bubble_candidate,
       fml::WeakPtr<GestureArenaMember> winner);
   void SetVelocity(float velocity_x, float velocity_y);
+  void RemoveMember(int member_id);
 
   void Destroy();
 

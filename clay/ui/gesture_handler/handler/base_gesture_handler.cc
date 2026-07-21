@@ -18,6 +18,17 @@
 
 namespace clay {
 
+void BaseGestureHandler::PointerEventSnapshot::Update(
+    const PointerEvent* pointer_event) {
+  event_ = pointer_event ? std::make_optional(*pointer_event) : std::nullopt;
+}
+
+const PointerEvent* BaseGestureHandler::PointerEventSnapshot::Get() const {
+  return event_ ? &*event_ : nullptr;
+}
+
+void BaseGestureHandler::PointerEventSnapshot::Reset() { event_.reset(); }
+
 BaseGestureHandler::BaseGestureHandler(
     int sign, PageView* page_view,
     std::shared_ptr<GestureDetector> gesture_detector,

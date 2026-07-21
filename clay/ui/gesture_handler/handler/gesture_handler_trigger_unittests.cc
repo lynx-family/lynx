@@ -285,6 +285,53 @@ TEST_F(GestureHandlerTriggerTest,
   EXPECT_FALSE(calls.empty());
 }
 
+TEST_F(GestureHandlerTriggerTest, DestroyStopsActiveFling) {
+  auto runner = TestTaskRunner::Create();
+  auto page_view = MakeTestPageView(0, runner);
+  MockEventDelegate delegate;
+  page_view->SetEventDelegate(&delegate);
+
+  auto arena_manager =
+      std::make_shared<GestureArenaManager>(true, page_view.get());
+  auto detector_manager =
+      std::make_shared<GestureDetectorManager>(arena_manager);
+  GestureHandlerTrigger trigger(page_view.get(), detector_manager);
+
+  TestGestureArenaMember winner(1);
+  GestureMap detectors;
+  detectors.emplace(1, MakeDetector(1, GestureHandlerType::Default,
+                                    {GestureConstants::ON_END}));
+  winner.SetGestureDetectorMap(detectors);
+  winner.SetGestureHandlers(BaseGestureHandler::ConvertToGestureHandler(
+      winner.Sign(), page_view.get(), winner.GetWeakPtr(), detectors));
+
+  trigger.InitCurrentWinnerWhenDown(winner.GetWeakPtr());
+  std::vector<fml::WeakPtr<GestureArenaMember>> compete = {winner.GetWeakPtr()};
+  std::vector<fml::WeakPtr<GestureArenaMember>> bubble = {winner.GetWeakPtr()};
+
+  PointerEvent down =
+      MakePointerEvent(PointerEvent::EventType::kDownEvent, {0, 0}, 1);
+  trigger.ResolveTouchEvent(&down, compete, bubble);
+  trigger.SetVelocity(1000, 0);
+  PointerEvent up =
+      MakePointerEvent(PointerEvent::EventType::kUpEvent, {0, 0}, 2);
+  trigger.ResolveTouchEvent(&up, compete, bubble);
+
+  auto& animation_handler = *page_view->GetAnimationHandler();
+  animation_handler.DoAnimationFrame(0);
+  animation_handler.DoAnimationFrame(16);
+  auto handler = winner.GetGestureHandlers().at(1);
+  ASSERT_EQ(handler->GetGestureStatus(), GestureConstants::LYNX_STATE_BEGIN);
+  winner.SetShouldConsume(false);
+  EXPECT_CALL(delegate, OnGestureHandlerEvent).Times(0);
+  trigger.Destroy();
+  animation_handler.DoAnimationFrame(32);
+
+  EXPECT_EQ(trigger.page_view_, nullptr);
+  EXPECT_TRUE(trigger.fling_scroller_->IsIdle());
+  EXPECT_EQ(handler->GetGestureStatus(), GestureConstants::LYNX_STATE_BEGIN);
+}
+
 TEST_F(GestureHandlerTriggerTest,
        ResolveTouchEvent_Up_NoFling_DispatchesSentinelMinDelta) {
   auto runner = TestTaskRunner::Create();
@@ -372,6 +419,83 @@ TEST_F(GestureHandlerTriggerTest,
 
   auto calls = m2.TakeScrollCalls();
   EXPECT_FALSE(calls.empty());
+}
+
+TEST_F(GestureHandlerTriggerTest,
+       SimultaneousDispatchSkipsMembersRemovedByCallback) {
+  auto runner = TestTaskRunner::Create();
+  auto page_view = MakeTestPageView(0, runner);
+  MockEventDelegate delegate;
+  page_view->SetEventDelegate(&delegate);
+
+  auto arena_manager =
+      std::make_shared<GestureArenaManager>(true, page_view.get());
+  auto detector_manager =
+      std::make_shared<GestureDetectorManager>(arena_manager);
+  GestureHandlerTrigger trigger(page_view.get(), detector_manager);
+
+  TestGestureArenaMember winner(1);
+  TestGestureArenaMember removed_simultaneous(2);
+  TestGestureArenaMember remaining_simultaneous(3);
+
+  GestureMap winner_detectors;
+  winner_detectors.emplace(1, MakeDetector(1, GestureHandlerType::Default, {},
+                                           {{"simultaneous", {2, 3}}}));
+  winner.SetGestureDetectorMap(winner_detectors);
+  winner.SetGestureHandlers(BaseGestureHandler::ConvertToGestureHandler(
+      winner.Sign(), page_view.get(), winner.GetWeakPtr(), winner_detectors));
+
+  GestureMap first_detectors;
+  first_detectors.emplace(2, MakeDetector(2, GestureHandlerType::Pan,
+                                          {GestureConstants::ON_BEGIN}));
+  removed_simultaneous.SetGestureDetectorMap(first_detectors);
+  removed_simultaneous.SetGestureHandlers(
+      BaseGestureHandler::ConvertToGestureHandler(
+          removed_simultaneous.Sign(), page_view.get(),
+          removed_simultaneous.GetWeakPtr(), first_detectors));
+
+  GestureMap destroyed_detectors;
+  destroyed_detectors.emplace(3, MakeDetector(3, GestureHandlerType::Pan,
+                                              {GestureConstants::ON_BEGIN}));
+  remaining_simultaneous.SetGestureDetectorMap(destroyed_detectors);
+  remaining_simultaneous.SetGestureHandlers(
+      BaseGestureHandler::ConvertToGestureHandler(
+          remaining_simultaneous.Sign(), page_view.get(),
+          remaining_simultaneous.GetWeakPtr(), destroyed_detectors));
+
+  arena_manager->AddMember(winner.GetWeakPtr());
+  arena_manager->AddMember(removed_simultaneous.GetWeakPtr());
+  arena_manager->AddMember(remaining_simultaneous.GetWeakPtr());
+  detector_manager->RegisterGestureDetector(winner.Sign(),
+                                            winner_detectors.at(1));
+  detector_manager->RegisterGestureDetector(removed_simultaneous.Sign(),
+                                            first_detectors.at(2));
+  detector_manager->RegisterGestureDetector(remaining_simultaneous.Sign(),
+                                            destroyed_detectors.at(3));
+
+  EXPECT_CALL(delegate, OnGestureHandlerEvent(
+                            ::testing::StrEq(GestureConstants::ON_BEGIN), Eq(3),
+                            Eq(3), ::testing::_, ::testing::_, ::testing::_,
+                            ::testing::_, ::testing::_, ::testing::_))
+      .Times(0);
+  EXPECT_CALL(delegate, OnGestureHandlerEvent(
+                            ::testing::StrEq(GestureConstants::ON_BEGIN), Eq(2),
+                            Eq(2), ::testing::_, ::testing::_, ::testing::_,
+                            ::testing::_, ::testing::_, ::testing::_))
+      .WillOnce([&](const std::string&, int, uint32_t, float, float, float,
+                    float, int64_t, Value&) {
+        trigger.RemoveMember(2);
+        trigger.RemoveMember(3);
+      });
+
+  trigger.InitCurrentWinnerWhenDown(winner.GetWeakPtr());
+  std::vector<fml::WeakPtr<GestureArenaMember>> compete = {winner.GetWeakPtr()};
+  std::vector<fml::WeakPtr<GestureArenaMember>> bubble = {
+      winner.GetWeakPtr(), remaining_simultaneous.GetWeakPtr()};
+  PointerEvent down =
+      MakePointerEvent(PointerEvent::EventType::kDownEvent, {0, 0}, 1);
+
+  trigger.ResolveTouchEvent(&down, compete, bubble);
 }
 
 TEST_F(GestureHandlerTriggerTest,

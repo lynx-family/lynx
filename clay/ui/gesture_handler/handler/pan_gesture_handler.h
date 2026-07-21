@@ -53,7 +53,7 @@ class PanGestureHandler : public BaseGestureHandler {
   float min_distance_;
   FloatPoint start_point_;
   FloatPoint last_point_;
-  const PointerEvent* last_pointer_event_{nullptr};
+  PointerEventSnapshot last_pointer_event_;
   bool is_invoked_begin_;
   bool is_invoked_start_;
   bool is_invoked_end_;

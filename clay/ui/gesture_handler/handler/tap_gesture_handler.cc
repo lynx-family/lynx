@@ -5,6 +5,7 @@
 #include "clay/ui/gesture_handler/handler/tap_gesture_handler.h"
 
 #include "base/include/fml/time/time_delta.h"
+#include "clay/ui/common/attribute_utils.h"
 #include "clay/ui/component/page_view.h"
 #include "clay/ui/gesture_handler/handler/base_gesture_handler.h"
 
@@ -30,7 +31,7 @@ void TapGestureHandler::HandleConfigMap(const Value& config) {
   if (!config.IsMap()) return;
   const auto& map = config.GetMap();
   if (auto iter = map.find(GestureConstants::MAX_DURATION); iter != map.end()) {
-    max_duration_ = iter->second.GetLong();
+    max_duration_ = attribute_utils::GetLong(iter->second, max_duration_);
   }
   if (auto iter = map.find(GestureConstants::MAX_DISTANCE); iter != map.end()) {
     if (iter->second.IsInt()) {
@@ -53,7 +54,7 @@ void TapGestureHandler::OnHandle(
     const PointerEvent* pointer_event, float fling_delta_x, float fling_delta_y,
     bool handle_by_simultaneous,
     const std::shared_ptr<GestureExtraBundle>& extra_bundle) {
-  last_point_event_ = pointer_event;
+  last_pointer_event_.Update(pointer_event);
   if (pointer_event == nullptr) {
     Ignore();
     EndTap();
@@ -97,20 +98,23 @@ void TapGestureHandler::OnHandle(
 void TapGestureHandler::Fail() {
   if (status_ != GestureConstants::LYNX_STATE_FAIL) {
     status_ = GestureConstants::LYNX_STATE_FAIL;
-    OnEnd(last_point_.x(), last_point_.y(), last_point_event_);
+    OnEnd(last_point_.x(), last_point_.y(), last_pointer_event_.Get());
   }
 }
 
 void TapGestureHandler::End() {
   if (status_ != GestureConstants::LYNX_STATE_END) {
+    EndTap();
     status_ = GestureConstants::LYNX_STATE_END;
-    OnEnd(last_point_.x(), last_point_.y(), last_point_event_);
+    OnEnd(last_point_.x(), last_point_.y(), last_pointer_event_.Get());
   }
 }
 
 void TapGestureHandler::Reset() {
+  EndTap();
   BaseGestureHandler::Reset();
   is_invoked_end_ = false;
+  last_pointer_event_.Reset();
 }
 void TapGestureHandler::StartTap() {
   is_tap_active_ = true;
@@ -121,7 +125,10 @@ void TapGestureHandler::StartTap() {
   });
 }
 
-void TapGestureHandler::EndTap() { is_tap_active_ = false; }
+void TapGestureHandler::EndTap() {
+  is_tap_active_ = false;
+  timer_.Stop();
+}
 
 bool TapGestureHandler::ShouldFail() {
   FloatPoint delta = last_point_ - start_point_;

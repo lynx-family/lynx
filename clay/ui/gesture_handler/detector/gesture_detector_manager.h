@@ -58,6 +58,7 @@ class GestureDetectorManager {
       int member_id, std::shared_ptr<GestureDetector> gesture_detector);
   void UnregisterGestureDetector(
       int member_id, std::shared_ptr<GestureDetector> gesture_detector);
+  void UnregisterMember(int member_id);
 
   std::vector<fml::WeakPtr<GestureArenaMember>>
   ConvertResponseChainToCompeteChain(
