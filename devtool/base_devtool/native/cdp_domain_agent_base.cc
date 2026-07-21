@@ -26,11 +26,11 @@ int CDPDomainAgentBase::CompressData(const std::string& tag,
       compress(compressed_data.get(), &compressed_size,
                reinterpret_cast<const Bytef*>(data.c_str()), data.size());
   if (z_result == Z_OK) {
-    unsigned long base64_size = modp_b64_encode_len(compressed_size);
+    unsigned long base64_size = lynx_modp_b64_encode_len(compressed_size);
     std::unique_ptr<char[]> base64_data = std::make_unique<char[]>(base64_size);
-    modp_b64_encode(base64_data.get(),
-                    reinterpret_cast<const char*>(compressed_data.get()),
-                    compressed_size);
+    lynx_modp_b64_encode(base64_data.get(),
+                         reinterpret_cast<const char*>(compressed_data.get()),
+                         compressed_size);
     value["compress"] = true;
     value[key] = std::string(base64_data.get());
   }
