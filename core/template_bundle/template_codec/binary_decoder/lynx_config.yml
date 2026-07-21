@@ -1975,7 +1975,7 @@ enableElementApiNewRegistration:
   defaultValue: 'false'
   valueType: bool
   readSettings: true
-  author: yangguangzhao
+  author: pilipala195
   since: '4.0'
   supportPlatform:
     - Android
@@ -1988,6 +1988,16 @@ enableElementInvokeUIMethodPendingTask:
   readSettings: true
   author: hexionghui
   since: '4.1'
+  supportPlatform:
+    - Android
+    - HarmonyOS
+    - iOS
+enableSkipEmptyPatch:
+  description: Controls whether the unified pixel pipeline short-circuits when FE declares an empty patch. When enabled, FiberFlushElementTree skips resolve-target accumulation and onLayoutReady registration for patches marked as empty; when disabled, empty patches follow the normal pipeline path regardless of the emptyPatch flag.
+  defaultValue: 'true'
+  valueType: bool
+  author: pilipala195
+  since: '4.2'
   supportPlatform:
     - Android
     - HarmonyOS

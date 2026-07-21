@@ -980,6 +980,12 @@ class LynxConfigDecoder final {
       page_config->SetEnableElementInvokeUIMethodPendingTask(
           LynxEnv::GetInstance().EnableElementInvokeUIMethodPendingTask());
     }
+
+    if (doc.HasMember(config::kEnableSkipEmptyPatch) &&
+        doc[config::kEnableSkipEmptyPatch].IsBool()) {
+      page_config->SetEnableSkipEmptyPatch(
+          doc[config::kEnableSkipEmptyPatch].GetBool());
+    }
   };
 };
 }  // namespace tasm
