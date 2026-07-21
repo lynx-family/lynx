@@ -52,14 +52,14 @@ extern void RegisterJSVMRuntimeProxyFactory(
 #include "core/runtime/profile/v8/v8_runtime_profiler.h"
 #endif
 
-#if defined(OS_WIN) || defined(OS_OSX)
+#if defined(OS_WIN) || defined(OS_OSX) || defined(OS_LINUX)
 #if ENABLE_NAPI_BINDING
 #include "core/runtime/common/napi/napi_runtime_proxy_v8.h"
 
 extern void RegisterV8RuntimeProxyFactory(
     lynx::runtime::js::NapiRuntimeProxyV8Factory*);
 #endif  // ENABLE_NAPI_BINDING
-#endif  // OS_WIN || OS_OSX
+#endif  // OS_WIN || OS_OSX || OS_LINUX
 
 namespace lynx {
 namespace runtime {
@@ -511,7 +511,7 @@ std::unique_ptr<runtime::js::Runtime> RuntimeManager::MakeRuntime(
 
 #endif  // OS_ANDROID
 
-#if defined(OS_WIN)
+#if defined(OS_WIN) || defined(OS_LINUX)
 #if JS_ENGINE_TYPE == 0
 
 #if ENABLE_NAPI_BINDING
@@ -526,7 +526,7 @@ std::unique_ptr<runtime::js::Runtime> RuntimeManager::MakeRuntime(
   return runtime::js::makeQuickJsRuntime();
 #endif
 
-#endif  // OS_WIN
+#endif  // OS_WIN || OS_LINUX
 
 #if OS_HARMONY
 #if JS_ENGINE_TYPE != 3
