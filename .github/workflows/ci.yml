@@ -288,7 +288,7 @@ jobs:
 
   windows-explorer-build:
     # Disable temporarily due to flakiness
-    if: false
+    if: true
     runs-on: lynx-windows-2022-large
     strategy:
       matrix:
