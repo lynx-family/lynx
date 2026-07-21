@@ -1,6 +1,6 @@
 [
     {
-        "count": 225
+        "count": 228
     },
     {
         "id": 1,
@@ -901,5 +901,17 @@
     {
         "id": 225,
         "name": "pointer-events"
+    },
+    {
+        "id": 226,
+        "name": "text-decoration-thickness"
+    },
+    {
+        "id": 227,
+        "name": "-x-text-decoration-width"
+    },
+    {
+        "id": 228,
+        "name": "-x-text-decoration-gap"
     }
 ]
