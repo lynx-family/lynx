@@ -5,6 +5,8 @@
 #ifndef CORE_RENDERER_DOM_FRAGMENT_DISPLAY_LIST_BUILDER_H_
 #define CORE_RENDERER_DOM_FRAGMENT_DISPLAY_LIST_BUILDER_H_
 
+#include <cstdint>
+
 #include "core/renderer/dom/fragment/display_list.h"
 #include "core/renderer/dom/fragment/rounded_rectangle.h"
 
@@ -64,6 +66,11 @@ class DisplayListBuilder {
                                      int32_t& index);
 
   // Draw linear gradient
+  // tiling_index: the box index for gradient tiling (size determined by
+  // background-origin and background-size)
+  // clip_index: the box index for clipping/filling (determined by
+  // background-clip). The gradient tiling box is repeated to fill this area.
+  // repeat_x, repeat_y: background-repeat values
   DisplayListBuilder& LinearGradient(float angle,
                                      const base::Vector<uint32_t>& colors,
                                      const base::Vector<float>& stops,
