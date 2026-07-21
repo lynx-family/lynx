@@ -14,6 +14,7 @@
 #include "core/renderer/trace/renderer_trace_event_def.h"
 #include "core/renderer/utils/devtool_lifecycle.h"
 #include "core/renderer/utils/lynx_trail_hub.h"
+#include "third_party/rapidjson/document.h"
 #include "third_party/rapidjson/stringbuffer.h"
 #include "third_party/rapidjson/writer.h"
 
@@ -249,12 +250,58 @@ bool LynxEnv::EnableFeatureCounter() {
   return GetBoolEnv(Key::ENABLE_FEATURE_COUNTER, false);
 }
 
-bool LynxEnv::EnableJSBTiming() {
-  return GetBoolEnv(Key::ENABLE_JSB_TIMING, false);
+bool LynxEnv::EnableJSBTiming() { return EnableJSBTiming(""); }
+
+bool LynxEnv::EnableJSBTiming(const std::string& page_url) {
+  if (GetBoolEnv(Key::ENABLE_JSB_TIMING, false)) {
+    return true;
+  }
+  return IsJSBTimingURLMatched(page_url);
 }
 
-bool LynxEnv::EnableAsyncJSBTiming() {
-  return GetBoolEnv(Key::ENABLE_ASYNC_JSB_TIMING, false);
+bool LynxEnv::IsJSBTimingURLMatched(const std::string& page_url) {
+  const auto& group_key = GetEnvKeyString(Key::JSB_TIMING_URL_LIST);
+  {
+    std::lock_guard<std::recursive_mutex> lock(external_env_mutex_);
+    const auto it = external_env_group_sets_.find(group_key);
+    if (it != external_env_group_sets_.end()) {
+      return std::any_of(it->second.begin(), it->second.end(),
+                         [&page_url](const auto& url) {
+                           return page_url.find(url) != std::string::npos;
+                         });
+    }
+  }
+
+  std::unordered_set<std::string> url_list;
+  const auto value = GetStringEnv(Key::JSB_TIMING_URL_LIST);
+  if (value.has_value() && !value->empty()) {
+    rapidjson::Document document;
+    document.Parse(value->c_str());
+    if (document.IsArray()) {
+      for (const auto& item : document.GetArray()) {
+        if (item.IsString() && item.GetStringLength() > 0) {
+          url_list.emplace(item.GetString(), item.GetStringLength());
+        }
+      }
+    }
+  }
+
+  std::lock_guard<std::recursive_mutex> lock(external_env_mutex_);
+  const auto it =
+      external_env_group_sets_.emplace(group_key, std::move(url_list)).first;
+  return std::any_of(it->second.begin(), it->second.end(),
+                     [&page_url](const auto& url) {
+                       return page_url.find(url) != std::string::npos;
+                     });
+}
+
+bool LynxEnv::EnableAsyncJSBTiming() { return EnableAsyncJSBTiming(""); }
+
+bool LynxEnv::EnableAsyncJSBTiming(const std::string& page_url) {
+  if (GetBoolEnv(Key::ENABLE_ASYNC_JSB_TIMING, false)) {
+    return true;
+  }
+  return IsJSBTimingURLMatched(page_url);
 }
 
 bool LynxEnv::EnableLongTaskTiming() {
@@ -405,6 +452,7 @@ std::optional<std::string> LynxEnv::GetExternalEnv(Key key) {
 void LynxEnv::CleanExternalCache() {
   std::lock_guard<std::recursive_mutex> lock(external_env_mutex_);
   external_env_map_.clear();
+  external_env_group_sets_.clear();
 }
 
 int32_t LynxEnv::GetGlobalQuickContextPoolSize(int32_t default_value) {
