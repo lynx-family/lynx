@@ -860,15 +860,21 @@ StyleResolver::BuildMediaQueryEvaluator(ElementManager* element_manager,
     float height = env_config.ViewportHeight().IsDefinite()
                        ? env_config.ViewportHeight().ToFloat()
                        : env_config.ScreenHeight();
+    float layout_unit = env_config.LayoutsUnitPerPx();
+    if (layout_unit == 0) {
+      layout_unit = 1.f;
+    }
+    width /= layout_unit;
+    height /= layout_unit;
     values = css::MediaValues::WithViewport(width, height,
                                             env_config.DevicePixelRatio());
     values.SetPreferredColorScheme(env_config.PreferredColorScheme());
     if (Element* root = element_manager->root()) {
-      values.SetRootFontSize(root->GetFontSize());
+      values.SetRootFontSize(root->GetFontSize() / layout_unit);
     }
-  }
-  if (owning_element) {
-    values.SetFontSize(owning_element->GetFontSize());
+    if (owning_element) {
+      values.SetFontSize(owning_element->GetFontSize() / layout_unit);
+    }
   }
   return std::make_unique<css::MediaQueryEvaluator>(values);
 }
