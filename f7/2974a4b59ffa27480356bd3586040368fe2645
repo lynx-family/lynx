@@ -1,0 +1,29 @@
+lynx/devtool/lynx_devtool/tracing/platform/memory_trace_plugin_android.cc
+  h_aeff19c41d4423 8-10
+  s_b3b0cd73ac4504::t_6c1f4289570f89 78
+lynx/devtool/lynx_devtool/tracing/platform/memory_trace_plugin_darwin.mm
+  h_aeff19c41d4423 7-9,58
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "f72974a4b59ffa27480356bd3586040368fe2645",
+  "prompts": {},
+  "humans": {
+    "h_aeff19c41d4423": {
+      "author": "yuyang.1024 <yuyang.1024@bytedance.com>"
+    }
+  },
+  "sessions": {
+    "s_b3b0cd73ac4504": {
+      "agent_id": {
+        "tool": "trae-cue",
+        "id": "ai_tab-icr-92990151-1538-4457-aaf0-42bdf100adcd",
+        "model": "default"
+      },
+      "human_author": null
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}
