@@ -43,7 +43,10 @@ void BackgroundImageLayer::Draw(OH_Drawing_Canvas* canvas,
 
   OH_Drawing_PixelMap* draw_bitmap = nullptr;
   if (image_drawable_) {
-    draw_bitmap = image_drawable_->GetCurrentDrawBitmap();
+    auto* pixel_map = image_drawable_->GetCurrentPixelMap();
+    draw_bitmap = pixel_map
+                      ? OH_Drawing_PixelMapGetFromOhPixelMapNative(pixel_map)
+                      : nullptr;
   } else if (pixel_map_ && pixel_map_->FirstFrame() &&
              pixel_map_->FirstFrame()->DrawBitmap()) {
     draw_bitmap = pixel_map_->FirstFrame()->DrawBitmap();
@@ -55,6 +58,12 @@ void BackgroundImageLayer::Draw(OH_Drawing_Canvas* canvas,
   }
   OH_Drawing_CanvasDrawPixelMapRect(canvas, draw_bitmap, src_rect_, dest_rect_,
                                     sample_);
+  if (image_drawable_) {
+    // The drawing pixel map is created from the current native pixel map for
+    // this draw only. Release that temporary wrapper after the canvas consumes
+    // it; cached DrawBitmap() instances are owned by LynxPixelMap.
+    OH_Drawing_PixelMapDissolve(draw_bitmap);
+  }
 }
 
 bool BackgroundImageLayer::IsReady() {
