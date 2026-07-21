@@ -1906,13 +1906,6 @@ public class LynxTemplateRender
     return mUrl == null ? "" : mUrl;
   }
 
-  private String buildInstanceLogContext() {
-    String url = !TextUtils.isEmpty(mUrl) ? mUrl : "";
-    String instanceId =
-        mLynxContext != null ? String.valueOf(mLynxContext.getInstanceId()) : "null";
-    return "instanceId:" + instanceId + " url:" + url;
-  }
-
   public void setTheme(LynxTheme theme) {
     if (theme == null) {
       return;
@@ -2884,7 +2877,7 @@ public class LynxTemplateRender
 
     @Override
     public void onUpdateDataWithoutChange() {
-      LLog.i(TAG, "InnerPageLoadListener.onUpdateDataWithoutChange " + buildInstanceLogContext());
+      LLog.i(TAG, "InnerPageLoadListener.onUpdateDataWithoutChange");
       try {
         // run on ui thread.
         UIThreadUtils.runOnUiThread(new Runnable() {
@@ -3213,8 +3206,7 @@ public class LynxTemplateRender
 
     @Override
     public void onLoaded(int templateSize) {
-      LLog.i(TAG,
-          "TASMCallback.onLoaded templateSize:" + templateSize + " " + buildInstanceLogContext());
+      LLog.i(TAG, "TASMCallback.onLoaded");
       HeroTransitionManager.inst().executeEnterAnim(mBodyView, null);
       if (mClient != null) {
         dispatchLoadSuccess(templateSize);
@@ -3245,7 +3237,7 @@ public class LynxTemplateRender
 
     @Override
     public void onRuntimeReady() {
-      LLog.i(TAG, "TASMCallback.onRuntimeReady " + buildInstanceLogContext());
+      LLog.i(TAG, "TASMCallback.onRuntimeReady");
       if (mClient != null) {
         onTraceEventBegin(TraceEventDef.CLIENT_ON_RUNTIME_READY);
         mClient.onRuntimeReady();
@@ -3255,7 +3247,7 @@ public class LynxTemplateRender
 
     @Override
     public void onDataUpdated() {
-      LLog.i(TAG, "TASMCallback.onDataUpdated " + buildInstanceLogContext());
+      LLog.i(TAG, "TASMCallback.onDataUpdated");
       if (mClient != null) {
         onTraceEventBegin(TraceEventDef.CLIENT_ON_DATA_UPDATED);
         mClient.onDataUpdated();
@@ -3266,8 +3258,8 @@ public class LynxTemplateRender
     @Override
     public void onPageChanged(boolean isFirstScreen) {
       LLog.i(TAG,
-          "TASMCallback.onPageChanged isFirstScreen:" + isFirstScreen + " "
-              + buildInstanceLogContext());
+          isFirstScreen ? "TASMCallback.onPageChanged isFirstScreen:true"
+                        : "TASMCallback.onPageChanged isFirstScreen:false");
       if (isFirstScreen) {
         // TODO(heshan):remove PageLoadListener.
         mPageLoadListener.onFirstScreen();
@@ -3287,9 +3279,7 @@ public class LynxTemplateRender
 
     @Override
     public void onErrorOccurred(LynxError error) {
-      LLog.i(TAG,
-          "TASMCallback.onErrorOccurred errorCode:"
-              + (error != null ? error.getErrorCode() : "null") + " " + buildInstanceLogContext());
+      LLog.i(TAG, "TASMCallback.onErrorOccurred");
       LynxTemplateRender.this.onErrorOccurred(error);
     }
 
@@ -3366,7 +3356,7 @@ public class LynxTemplateRender
 
     @Override
     public void onUpdateDataWithoutChange() {
-      LLog.i(TAG, "TemplateRenderCallback.onUpdateDataWithoutChange " + buildInstanceLogContext());
+      LLog.i(TAG, "TemplateRenderCallback.onUpdateDataWithoutChange");
       if (mClient != null) {
         onTraceEventBegin(TraceEventDef.CLIENT_ON_UPDATE_WITHOUT_CHANGE);
         mClient.onUpdateDataWithoutChange();
