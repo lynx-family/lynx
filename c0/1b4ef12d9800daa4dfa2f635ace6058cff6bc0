@@ -1,0 +1,16 @@
+.cq/workflows/pre-check.yml
+  h_ae83f540b6d323 2-6,14,36,38,41-43,46-147
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "c01b4ef12d9800daa4dfa2f635ace6058cff6bc0",
+  "prompts": {},
+  "humans": {
+    "h_ae83f540b6d323": {
+      "author": "fenghao.0721 <fenghao.0721@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}
