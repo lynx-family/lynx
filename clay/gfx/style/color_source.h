@@ -510,7 +510,7 @@ class RadialGradientColorSource final : public GradientColorSourceBase {
     std::vector<skity::Vec4> skity_colors = colors_vec4();
     auto shader = skity::Shader::MakeRadial(
         center, radius_, skity_colors.data(), stops(), stop_count(),
-        static_cast<skity::TileMode>(tile_mode()), 1);
+        static_cast<skity::TileMode>(tile_mode()));
     if (shader) {
       skity::Matrix skity_matrix = matrix();
       shader->SetLocalMatrix(skity_matrix);
