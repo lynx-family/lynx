@@ -154,8 +154,7 @@ clay::LayerTree* Rasterizer::GetLastLayerTree() {
   return last_layer_tree_.get();
 }
 
-RasterStatus Rasterizer::DrawLastLayerTree(
-    std::unique_ptr<FrameTimingsRecorder> frame_timings_recorder) {
+RasterStatus Rasterizer::DrawLastLayerTree() {
   if (!last_layer_tree_ || !surface_) {
     return RasterStatus::kFailed;
   }
@@ -163,14 +162,7 @@ RasterStatus Rasterizer::DrawLastLayerTree(
   if (!last_layer_tree_->DoAnimations()) {
     raster_frame_service_->RequestRasterFrame();
   }
-  raster_status = DrawToSurface(*frame_timings_recorder, *last_layer_tree_);
-
-  if (raster_status == RasterStatus::kSuccess) {
-    frame_timings_recorder->RecordLastDrawVsyncTime(
-        frame_timings_recorder->GetVsyncStartTime());
-    frame_timings_recorder->RecordVsyncSequenceId(
-        frame_timings_recorder->GetVsyncSequenceId());
-  }
+  raster_status = DrawToSurface(nullptr, *last_layer_tree_);
   return raster_status;
 }
 
@@ -246,7 +238,7 @@ RasterStatus Rasterizer::DoDraw(
   }
 
   RasterStatus raster_status =
-      DrawToSurface(*frame_timings_recorder, *layer_tree);
+      DrawToSurface(frame_timings_recorder.get(), *layer_tree);
 
   // In order to release the `SkiaGPUObject`s held by the `LayerTree`s in time.
   fml::ScopedCleanupClosure unref_queue_drain([unref_queue = unref_queue_] {
@@ -325,18 +317,21 @@ RasterStatus Rasterizer::DoDraw(
 }
 
 RasterStatus Rasterizer::DrawToSurface(
-    FrameTimingsRecorder& frame_timings_recorder, clay::LayerTree& layer_tree) {
+    FrameTimingsRecorder* frame_timings_recorder, clay::LayerTree& layer_tree) {
   TRACE_EVENT("clay", "Rasterizer::DrawToSurface");
   FML_DCHECK(surface_);
 
-  instrumentation_service_.Act([raster_time = raster_time_,
-                                now = fml::TimePoint::Now()](auto& impl) {
-    if (impl.GetFrameTimingCollector()->IsRecordingFirstFramePerf()) {
-      impl.GetFrameTimingCollector()->BeginRecord(clay::Perf::kFirstRasterCost);
-    } else {
-      raster_time->Start(now);
-    }
-  });
+  if (frame_timings_recorder) {
+    instrumentation_service_.Act(
+        [raster_time = raster_time_, now = fml::TimePoint::Now()](auto& impl) {
+          if (impl.GetFrameTimingCollector()->IsRecordingFirstFramePerf()) {
+            impl.GetFrameTimingCollector()->BeginRecord(
+                clay::Perf::kFirstRasterCost);
+          } else {
+            raster_time->Start(now);
+          }
+        });
+  }
 
   RasterStatus raster_status;
   if (surface_->AllowsDrawingWhenGpuDisabled()) {
@@ -351,8 +346,10 @@ RasterStatus Rasterizer::DrawToSurface(
             }));
   }
 
-  layer_tree.AppendFrameTimings(frame_timings_recorder.TakeFrameTimings(),
-                                true);
+  if (frame_timings_recorder) {
+    layer_tree.AppendFrameTimings(frame_timings_recorder->TakeFrameTimings(),
+                                  true);
+  }
   return raster_status;
 }
 
@@ -360,24 +357,26 @@ RasterStatus Rasterizer::DrawToSurface(
 /// when iOS is backgrounded, for example.
 /// \see Rasterizer::DrawToSurface
 RasterStatus Rasterizer::DrawToSurfaceUnsafe(
-    FrameTimingsRecorder& frame_timings_recorder, clay::LayerTree& layer_tree) {
+    FrameTimingsRecorder* frame_timings_recorder, clay::LayerTree& layer_tree) {
   FML_DCHECK(surface_);
 
-  ScopedTimingRecorder scoped_draw_timing(frame_timings_recorder,
-                                          FrameTimingKey::kDoDrawStart,
-                                          FrameTimingKey::kDoDrawEnd);
-
-  compositor_context_->ui_time().SetLapTime(
-      frame_timings_recorder.GetBuildDuration());
+  if (frame_timings_recorder) {
+    frame_timings_recorder->RecordFrameTime(FrameTimingKey::kDoDrawStart);
+    compositor_context_->ui_time().SetLapTime(
+        frame_timings_recorder->GetBuildDuration());
+  }
 
   std::unique_ptr<SurfaceFrame> frame = nullptr;
   {
     TRACE_EVENT("clay", "GPURasterizer::AcquireFrame");
-    ScopedTimingRecorder scoped_acquire_frame_timing(
-        frame_timings_recorder, FrameTimingKey::kAcquireFrameStart,
-        FrameTimingKey::kAcquireFrameEnd);
+    if (frame_timings_recorder) {
+      frame_timings_recorder->RecordFrameTime(
+          FrameTimingKey::kAcquireFrameStart);
+    }
     frame = surface_->AcquireFrame(layer_tree.frame_size());
-    scoped_acquire_frame_timing.MarkRecordEnd();
+    if (frame_timings_recorder) {
+      frame_timings_recorder->RecordFrameTime(FrameTimingKey::kAcquireFrameEnd);
+    }
   }
   if (frame == nullptr) {
     return RasterStatus::kFailed;
@@ -385,28 +384,32 @@ RasterStatus Rasterizer::DrawToSurfaceUnsafe(
   auto compositor_state =
       std::make_unique<CompositorState>(layer_tree.frame_size());
 
-  instrumentation_service_.Act(
-      [supports_partial_repaint =
-           frame->framebuffer_info().supports_partial_repaint](auto& impl) {
-        if (impl.GetFrameTimingCollector()->IsRecordingFirstFramePerf()) {
-          impl.GetFrameTimingCollector()->InsertRecord(
-              clay::Perf::kEnablePartialRepaint, supports_partial_repaint);
-        }
-      });
+  if (frame_timings_recorder) {
+    instrumentation_service_.Act(
+        [supports_partial_repaint =
+             frame->framebuffer_info().supports_partial_repaint](auto& impl) {
+          if (impl.GetFrameTimingCollector()->IsRecordingFirstFramePerf()) {
+            impl.GetFrameTimingCollector()->InsertRecord(
+                clay::Perf::kEnablePartialRepaint, supports_partial_repaint);
+          }
+        });
+  }
 
   auto compositor_frame = compositor_context_->AcquireFrame(
       surface_->GetContext(),             // skia GrContext
       frame->GetCanvas(),                 // root surface canvas
       compositor_state.get(),             // compositor state
       surface_->GetRootTransformation(),  // root surface transformation
-      true,                               // instrumentation enabled
+      frame_timings_recorder != nullptr,  // instrumentation enabled
       frame->framebuffer_info()
           .supports_readback,  // surface supports pixel reads
       GetRasterCacheSampleCount(platform_const_service_->GetSettings()));
 
   if (compositor_frame) {
     compositor_context_->raster_cache().BeginFrame();
-    frame_timings_recorder.RecordRasterStart(fml::TimePoint::Now());
+    if (frame_timings_recorder) {
+      frame_timings_recorder->RecordRasterStart(fml::TimePoint::Now());
+    }
 
     std::unique_ptr<FrameDamage> damage;
     if (frame->framebuffer_info().supports_partial_repaint) {
@@ -438,23 +441,29 @@ RasterStatus Rasterizer::DrawToSurfaceUnsafe(
     }
     last_ignore_raster_cache_.store(ignore_raster_cache,
                                     std::memory_order_relaxed);
-    frame_timings_recorder.RecordFrameTime(FrameTimingKey::kRasterStart);
+    if (frame_timings_recorder) {
+      frame_timings_recorder->RecordFrameTime(FrameTimingKey::kRasterStart);
+    }
     RasterStatus raster_status = compositor_frame->Raster(
         layer_tree, ignore_raster_cache, damage.get(),
         Color::kTransparent().Value(), [&] {
           frame->Prepare(damage ? damage->GetBufferDamage() : std::nullopt);
         });
-    frame_timings_recorder.RecordFrameTime(FrameTimingKey::kRasterEnd);
-    auto timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(
-                         std::chrono::system_clock::now().time_since_epoch())
-                         .count();
-    instrumentation_service_.Act([timestamp](auto& impl) {
-      if (impl.GetFrameTimingCollector()->IsRecordingFirstFramePerf()) {
-        impl.GetFrameTimingCollector()->InsertRecord(
-            clay::Perf::kFirstRasterEnd, timestamp);
-        impl.GetFrameTimingCollector()->EndRecord(clay::Perf::kFirstRasterCost);
-      }
-    });
+    if (frame_timings_recorder) {
+      frame_timings_recorder->RecordFrameTime(FrameTimingKey::kRasterEnd);
+      const auto timestamp =
+          std::chrono::duration_cast<std::chrono::milliseconds>(
+              std::chrono::system_clock::now().time_since_epoch())
+              .count();
+      instrumentation_service_.Act([timestamp](auto& impl) {
+        if (impl.GetFrameTimingCollector()->IsRecordingFirstFramePerf()) {
+          impl.GetFrameTimingCollector()->InsertRecord(
+              clay::Perf::kFirstRasterEnd, timestamp);
+          impl.GetFrameTimingCollector()->EndRecord(
+              clay::Perf::kFirstRasterCost);
+        }
+      });
+    }
     if (raster_status == RasterStatus::kFailed) {
       return raster_status;
     }
@@ -464,9 +473,12 @@ RasterStatus Rasterizer::DrawToSurfaceUnsafe(
     // this can be in the past and might need to get snapped to future as this
     // frame could have been resubmitted. `presentation_time` on `submit_info`
     // is not set in this case.
-    const auto presentation_time = frame_timings_recorder.GetVsyncTargetTime();
-    if (presentation_time > fml::TimePoint::Now()) {
-      submit_info.presentation_time = presentation_time;
+    if (frame_timings_recorder) {
+      const auto presentation_time =
+          frame_timings_recorder->GetVsyncTargetTime();
+      if (presentation_time > fml::TimePoint::Now()) {
+        submit_info.presentation_time = presentation_time;
+      }
     }
     if (damage) {
       submit_info.frame_damage = damage->GetFrameDamage();
@@ -476,16 +488,22 @@ RasterStatus Rasterizer::DrawToSurfaceUnsafe(
     frame->set_submit_info(submit_info);
     {
       TRACE_EVENT("clay", "GPURasterizer::SubmitFrame");
-      ScopedTimingRecorder scoped_submit_frame_timing(
-          frame_timings_recorder, FrameTimingKey::kSubmitFrameStart,
-          FrameTimingKey::kSubmitFrameEnd);
+      if (frame_timings_recorder) {
+        frame_timings_recorder->RecordFrameTime(
+            FrameTimingKey::kSubmitFrameStart);
+      }
       compositor_service_->SubmitFrame(surface_->GetContext(), std::move(frame),
                                        std::move(compositor_state));
-      scoped_submit_frame_timing.MarkRecordEnd();
+      if (frame_timings_recorder) {
+        frame_timings_recorder->RecordFrameTime(
+            FrameTimingKey::kSubmitFrameEnd);
+      }
     }
     compositor_context_->raster_cache().EndFrame();
-    frame_timings_recorder.RecordRasterEnd(
-        &compositor_context_->raster_cache());
+    if (frame_timings_recorder) {
+      frame_timings_recorder->RecordRasterEnd(
+          &compositor_context_->raster_cache());
+    }
 
     FireNextFrameCallbackIfPresent();
 
@@ -493,28 +511,31 @@ RasterStatus Rasterizer::DrawToSurfaceUnsafe(
       unref_queue_->Drain();
     }
 
-    fml::TimePoint now = fml::TimePoint::Now();
-    timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(
-                    std::chrono::system_clock::now().time_since_epoch())
-                    .count();
-    instrumentation_service_.Act(
-        [raster_time = raster_time_, frame_total_time = frame_total_time_, now,
-         lap_time = now - frame_timings_recorder.GetBuildStartTime(),
-         sync_compositor =
-             platform_const_service_->GetSettings().enable_sync_compositor,
-         timestamp](auto& impl) {
-          if (impl.GetFrameTimingCollector()->IsRecordingFirstFramePerf() &&
-              !sync_compositor) {
-            impl.GetFrameTimingCollector()->InsertRecord(
-                clay::Perf::kFirstPresentEnd, timestamp);
-          } else {
-            raster_time->Stop(now);
-            impl.GetFrameTimingCollector()->InsertRasterRecord(*raster_time);
-            frame_total_time->SetLapTime(lap_time);
-            impl.GetFrameTimingCollector()->InsertFrameTotalCostRecord(
-                *frame_total_time);
-          }
-        });
+    if (frame_timings_recorder) {
+      const fml::TimePoint now = fml::TimePoint::Now();
+      const auto timestamp =
+          std::chrono::duration_cast<std::chrono::milliseconds>(
+              std::chrono::system_clock::now().time_since_epoch())
+              .count();
+      instrumentation_service_.Act(
+          [raster_time = raster_time_, frame_total_time = frame_total_time_,
+           now, lap_time = now - frame_timings_recorder->GetBuildStartTime(),
+           sync_compositor =
+               platform_const_service_->GetSettings().enable_sync_compositor,
+           timestamp](auto& impl) {
+            if (impl.GetFrameTimingCollector()->IsRecordingFirstFramePerf() &&
+                !sync_compositor) {
+              impl.GetFrameTimingCollector()->InsertRecord(
+                  clay::Perf::kFirstPresentEnd, timestamp);
+            } else {
+              raster_time->Stop(now);
+              impl.GetFrameTimingCollector()->InsertRasterRecord(*raster_time);
+              frame_total_time->SetLapTime(lap_time);
+              impl.GetFrameTimingCollector()->InsertFrameTotalCostRecord(
+                  *frame_total_time);
+            }
+          });
+    }
     if (surface_->GetContext()) {
 #ifndef ENABLE_SKITY
       surface_->GetContext()->performDeferredCleanup(kSkiaCleanupExpiration);
@@ -525,7 +546,9 @@ RasterStatus Rasterizer::DrawToSurfaceUnsafe(
         impl.UpdateRasterCacheInfo(raster_cache_info);
       });
     }
-    scoped_draw_timing.MarkRecordEnd();
+    if (frame_timings_recorder) {
+      frame_timings_recorder->RecordFrameTime(FrameTimingKey::kDoDrawEnd);
+    }
     return raster_status;
   }
 

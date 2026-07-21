@@ -18,9 +18,15 @@ namespace clay {
 
 GPUSurfaceGLDelegate::~GPUSurfaceGLDelegate() = default;
 
+bool GPUSurfaceGLDelegate::GLContextIsOnscreenSurfaceValid() const {
+  return true;
+}
+
 bool GPUSurfaceGLDelegate::GLContextFBOResetAfterPresent() const {
   return false;
 }
+
+uint64_t GPUSurfaceGLDelegate::GLContextSurfaceGeneration() const { return 0; }
 
 SurfaceFrame::FramebufferInfo GPUSurfaceGLDelegate::GLContextFramebufferInfo()
     const {

@@ -88,6 +88,9 @@ std::unique_ptr<SurfaceFrame> GPUSurfaceGLSkity::AcquireFrame(
     FML_LOG(ERROR) << "OpenGL surface was invalid.";
     return nullptr;
   }
+  if (!delegate_->GLContextIsOnscreenSurfaceValid()) {
+    return nullptr;
+  }
 
   auto swap_callback = [weak = weak_factory_.GetWeakPtr(),
                         delegate = delegate_]() -> bool {
@@ -167,8 +170,19 @@ skity::GPUContext* GPUSurfaceGLSkity::GetContext() {
 
 std::shared_ptr<skity::GPUSurface> GPUSurfaceGLSkity::AcquireRenderSurface(
     const skity::Vec2& size) {
+  const uint64_t current_surface_generation =
+      delegate_->GLContextSurfaceGeneration();
+  if (!has_surface_generation_ ||
+      surface_generation_ != current_surface_generation) {
+    surface_generation_ = current_surface_generation;
+    has_surface_generation_ = true;
+    gpu_surface_ = nullptr;
+    gpu_surface_map_.clear();
+  }
+
   if (size != size_) {
     size_ = size;
+    gpu_surface_ = nullptr;
     gpu_surface_map_.clear();
   }
 
@@ -227,6 +241,7 @@ bool GPUSurfaceGLSkity::PresentSurface(const SurfaceFrame& frame) {
     gpu_surface_map_.erase(fbo_id_);
     fbo_id_ = 0;
     existing_damage_ = {};
+    has_surface_generation_ = false;
   }
 
   return true;

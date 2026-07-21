@@ -650,6 +650,16 @@ void Shell::OnPlatformViewCreated() {
                                       }
                                     });
 
+  SetupOutputSurface(false);
+}
+
+// |PlatformView::Delegate|
+void Shell::OnPlatformViewSurfaceCreated() {
+  TRACE_EVENT("clay", "Shell::OnPlatformViewSurfaceCreated");
+  SetupOutputSurface(true);
+}
+
+void Shell::SetupOutputSurface(bool reuse_existing_surface) {
   fml::RefPtr<OutputSurface> output_surface =
       platform_view_->GetOutputSurface();
   if (!output_surface) {
@@ -667,13 +677,21 @@ void Shell::OnPlatformViewCreated() {
   rasterizer_service_.Act([waiting_for_first_frame = waiting_for_first_frame_,
                            output_surface,
                            ui_task_runner = task_runners_.GetUITaskRunner(),
-                           engine = engine_->GetWeakPtr()](auto& impl) mutable {
+                           engine = engine_->GetWeakPtr(),
+                           reuse_existing_surface](auto& impl) mutable {
     bool success = false;
-    if (auto surface = output_surface->CreateGPUSurface();
-        surface && surface->IsValid()) {
-      impl.GetRasterizer()->Setup(std::move(surface));
+    if (reuse_existing_surface && impl.GetRasterizer()->HasSurface()) {
+      success =
+          impl.GetRasterizer()->DrawLastLayerTree() == RasterStatus::kSuccess;
+    } else {
+      if (auto surface = output_surface->CreateGPUSurface();
+          surface && surface->IsValid()) {
+        impl.GetRasterizer()->Setup(std::move(surface));
+        success = true;
+      }
+    }
+    if (success) {
       waiting_for_first_frame->store(true);
-      success = true;
     }
     fml::TaskRunner::RunNowOrPostTask(ui_task_runner, [engine, success] {
       if (engine) {
@@ -690,6 +708,24 @@ void Shell::OnPlatformViewCreated() {
           GetServiceManager()->GetService<RasterFrameService>();
   raster_frame_service.Act(
       [](auto& impl) { impl.SetOutputSurfaceValid(true); });
+}
+
+// |PlatformView::Delegate|
+void Shell::OnPlatformViewSurfaceDestroyed() {
+  TRACE_EVENT("clay", "Shell::OnPlatformViewSurfaceDestroyed");
+  FML_DCHECK(is_setup_);
+  FML_DCHECK(task_runners_.GetPlatformTaskRunner()->RunsTasksOnCurrentThread());
+  clay::Puppet<clay::Owner::kPlatform, RasterFrameService>
+      raster_frame_service =
+          GetServiceManager()->GetService<RasterFrameService>();
+  raster_frame_service.Act(
+      [](auto& impl) { impl.SetOutputSurfaceValid(false); });
+
+  task_runners_.GetUITaskRunner()->PostTask([engine = engine_->GetWeakPtr()]() {
+    if (engine) {
+      engine->OnOutputSurfaceDestroyed();
+    }
+  });
 }
 
 // |PlatformView::Delegate|
