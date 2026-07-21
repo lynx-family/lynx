@@ -84,8 +84,8 @@ base::expected<Value, JSINativeException> LynxJSIModule::invokeMethod(
     first_arg_str = args[0].getString(*rt).utf8(*rt);
   }
   NativeModuleInfoCollectorPtr timing_collector =
-      std::make_shared<NativeModuleInfoCollector>(delegate_, name_, method.name,
-                                                  first_arg_str);
+      std::make_shared<NativeModuleInfoCollector>(
+          delegate_, name_, method.name, first_arg_str, rt->GetPageUrl());
 
   if (invoke_method_frequency_monitor_) {
     std::string monitor_method_name;
