@@ -38,7 +38,10 @@ lynx_core_source_set("renderer_utils") {
     sources += lynx_trail_hub_default_sources_path
   }
   public_deps = [ "../../public" ]
-  deps = [ "../../../base/src:base_log_headers" ]
+  deps = [
+    "../../../base/src:base_log_headers",
+    "../../../third_party/rapidjson:rapidjson",
+  ]
   if (is_headless) {
     defines = [ "ENABLE_HEADLESS" ]
   }
