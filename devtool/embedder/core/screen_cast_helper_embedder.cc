@@ -70,6 +70,7 @@ void ScreenCastHelper::StartCapture(int32_t quality, int32_t max_width,
   quality_ = quality;
   max_width_ = max_width;
   max_height_ = max_height;
+  ClearSnapshotCache();
   StartFrameViewTrace();
 }
 
