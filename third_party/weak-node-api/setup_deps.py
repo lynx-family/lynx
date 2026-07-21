@@ -5,16 +5,7 @@
 import os
 import sys
 import shutil
-# Add the lynx tools directory to Python path
-def add_lynx_tools_path():
-    # Get the project root directory
-    project_root = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."))
-    lynx_tools_path = os.path.join(project_root, "tools")
-    sys.path.append(lynx_tools_path)
-# Add lynx tools path to import pnpm_helper
-add_lynx_tools_path()
-# Import pnpm_helper from js_tools
-from js_tools.pnpm_helper import run_pnpm_command
+
 def main():
     # Get the directory where the current script is located
     script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -23,11 +14,6 @@ def main():
     project_root = os.path.abspath(os.path.join(script_dir, "..", ".."))
     
     print(f"Project root: {project_root}")
-    
-    # Execute pnpm install command using pnpm_helper
-    print(f"Running pnpm install in {script_dir}")
-    pnpm_args = ['pnpm', 'install', '--ignore-workspace']
-    run_pnpm_command(pnpm_args, script_dir)
     
     # Move the weak-node-api package to the current directory
     source_dir = os.path.join(script_dir, "node_modules", "@lynx-js", "weak-node-api")
