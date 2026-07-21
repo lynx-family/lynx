@@ -1141,4 +1141,14 @@ void ViewContext::SyncNativeViewTags(std::unordered_set<std::string> tags) {
   }
 }
 
+std::vector<float> ViewContext::GetRectToLynxView(int64_t id) {
+  auto view = FindViewByViewId(id);
+  FloatRect rect;
+  if (view) {
+    rect = view->BoundsRelativeTo(nullptr);
+  }
+  return std::vector<float>{rect.left(), rect.top(), rect.width(),
+                            rect.height()};
+}
+
 }  // namespace clay
