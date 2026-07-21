@@ -112,6 +112,8 @@ class Rasterizer final : public Stopwatch::RefreshRateUpdater,
   ///
   void Teardown();
 
+  bool HasSurface() const { return surface_ != nullptr; }
+
   //----------------------------------------------------------------------------
   /// @brief      Notifies the rasterizer that there is a low memory situation
   ///             and it must purge as many unnecessary resources as possible.
@@ -154,10 +156,11 @@ class Rasterizer final : public Stopwatch::RefreshRateUpdater,
   ///             a cadence different from that of the Flutter application.
   ///             Flutter can re-render the layer tree with just the updated
   ///             textures instead of waiting for the framework to do the work
-  ///             to generate the layer tree describing the same contents.
+  ///             to generate the layer tree describing the same contents. This
+  ///             repaint is not a logical frame and is excluded from frame
+  ///             timing statistics.
   ///
-  RasterStatus DrawLastLayerTree(
-      std::unique_ptr<FrameTimingsRecorder> frame_timings_recorder);
+  RasterStatus DrawLastLayerTree();
 
   std::shared_ptr<DrawableImageRegistry> GetDrawableImageRegistry();
 
@@ -314,10 +317,12 @@ class Rasterizer final : public Stopwatch::RefreshRateUpdater,
       std::unique_ptr<FrameTimingsRecorder> frame_timings_recorder,
       std::shared_ptr<clay::LayerTree> layer_tree);
 
-  RasterStatus DrawToSurface(FrameTimingsRecorder& frame_timings_recorder,
+  // A null recorder denotes a surface-only repaint, which is not a logical
+  // frame and must not contribute to frame timing statistics.
+  RasterStatus DrawToSurface(FrameTimingsRecorder* frame_timings_recorder,
                              clay::LayerTree& layer_tree);
 
-  RasterStatus DrawToSurfaceUnsafe(FrameTimingsRecorder& frame_timings_recorder,
+  RasterStatus DrawToSurfaceUnsafe(FrameTimingsRecorder* frame_timings_recorder,
                                    clay::LayerTree& layer_tree);
 
   void FireNextFrameCallbackIfPresent();
