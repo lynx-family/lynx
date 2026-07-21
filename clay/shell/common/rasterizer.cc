@@ -409,10 +409,7 @@ RasterStatus Rasterizer::DrawToSurfaceUnsafe(
     frame_timings_recorder.RecordRasterStart(fml::TimePoint::Now());
 
     std::unique_ptr<FrameDamage> damage;
-    // when leaf layer tracing is enabled we wish to repaint the whole frame
-    // for accurate performance metrics.
-    if (frame->framebuffer_info().supports_partial_repaint &&
-        !layer_tree.is_leaf_layer_tracing_enabled()) {
+    if (frame->framebuffer_info().supports_partial_repaint) {
       // FIXME(haoyoufeng.aji) : partial repaint with platform view present
       bool force_full_repaint = true;
 

@@ -6,7 +6,6 @@
 #define CLAY_FLOW_FLOW_RENDERING_BACKEND_H_
 
 #ifndef ENABLE_SKITY
-#include "clay/flow/layers/offscreen_surface.h"
 #include "clay/flow/layers/picture_complexity_helper_skia.h"
 #else
 #include "clay/flow/layers/picture_complexity_calculator_skity.h"

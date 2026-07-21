@@ -14,7 +14,6 @@
 #include <vector>
 
 #include "base/include/fml/macros.h"
-#include "clay/flow/layer_snapshot_store.h"
 #include "clay/flow/layers/layer.h"
 #include "clay/flow/testing/mock_raster_cache.h"
 #include "clay/gfx/skity_to_skia_utils.h"
@@ -177,8 +176,6 @@ class LayerTestBase : public CanvasTestBase<BaseT> {
   }
   const SkPaint& checkerboard_paint() { return checkerboard_paint_; }
   PaintContext& checkerboard_context() { return checkerboard_context_; }
-  LayerSnapshotStore& layer_snapshot_store() { return snapshot_store_; }
-
   sk_sp<SkPicture> display_list() {
     if (display_list_ == nullptr) {
       // null out the canvas and recorder fields of the PaintContext
@@ -189,16 +186,6 @@ class LayerTestBase : public CanvasTestBase<BaseT> {
       rtree_factory_.reset();
     }
     return display_list_;
-  }
-
-  void enable_leaf_layer_tracing() {
-    paint_context_.enable_leaf_layer_tracing = true;
-    paint_context_.layer_snapshot_store = &snapshot_store_;
-  }
-
-  void disable_leaf_layer_tracing() {
-    paint_context_.enable_leaf_layer_tracing = false;
-    paint_context_.layer_snapshot_store = nullptr;
   }
 
  private:
@@ -236,8 +223,6 @@ class LayerTestBase : public CanvasTestBase<BaseT> {
   PaintContext display_list_paint_context_;
   SkPaint checkerboard_paint_;
   PaintContext checkerboard_context_;
-  LayerSnapshotStore snapshot_store_;
-
   std::vector<RasterCacheItem*> cacheable_items_;
 
   BASE_DISALLOW_COPY_AND_ASSIGN(LayerTestBase);

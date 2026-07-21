@@ -11,7 +11,6 @@
 #include "base/trace/native/trace_event.h"
 #include "clay/flow/embedded_views.h"
 #include "clay/flow/frame_timings.h"
-#include "clay/flow/layer_snapshot_store.h"
 #include "clay/flow/layers/cacheable_layer.h"
 #include "clay/flow/layers/layer.h"
 #include "clay/flow/paint_utils.h"
@@ -172,13 +171,6 @@ void LayerTree::Paint(CompositorContext::ScopedFrame& frame,
 
   state_stack.set_delegate(frame.canvas());
 
-  // clear the previous snapshots.
-  LayerSnapshotStore* snapshot_store = nullptr;
-  if (enable_leaf_layer_tracing_) {
-    frame.context().snapshot_store().Clear();
-    snapshot_store = &frame.context().snapshot_store();
-  }
-
   RasterCache* cache =
       ignore_raster_cache ? nullptr : &frame.context().raster_cache();
 
@@ -197,8 +189,6 @@ void LayerTree::Paint(CompositorContext::ScopedFrame& frame,
       .drawable_image_registry       = frame.context().drawable_image_registry(),
       .raster_cache                  = cache,
       .frame_device_pixel_ratio      = device_pixel_ratio_,
-      .layer_snapshot_store          = snapshot_store,
-      .enable_leaf_layer_tracing     = enable_leaf_layer_tracing_,
       // clang-format on
   };
 

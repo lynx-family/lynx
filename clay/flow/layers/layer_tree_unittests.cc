@@ -263,9 +263,6 @@ TEST_F(LayerTreeTest, PaintContextInitialization) {
     EXPECT_EQ(context.raster_cache, nullptr);
     EXPECT_EQ(context.state_stack.checkerboard_func(), nullptr);
     EXPECT_EQ(context.frame_device_pixel_ratio, 1.0f);
-
-    EXPECT_EQ(context.enable_leaf_layer_tracing, false);
-    EXPECT_EQ(context.layer_snapshot_store, nullptr);
   };
 
   // These 4 initializers are required because they are handled by reference
