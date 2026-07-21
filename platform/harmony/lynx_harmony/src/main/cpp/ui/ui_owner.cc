@@ -109,7 +109,8 @@ void UIOwner::CreateUI(int sign, const std::string& tag,
   TRACE_EVENT(LYNX_TRACE_CATEGORY, UI_OWNER_CREATE_UI + tag);
   UIBase* ui = nullptr;
   static bool enable_new_image = LynxEnv::GetInstance().EnableHarmonyNewImage();
-  if ((tag == "image" || tag == "inline-image" || tag == "x-inline-image") &&
+  if ((tag == "image" || tag == "origin-image" || tag == "inline-image" ||
+       tag == "x-inline-image") &&
       enable_new_image && image_service) {
     ui = UINewImage::Make(context_.get(), sign, tag);
   } else if ((tag == "image") && (painting_data->Contains("autoplay") ||

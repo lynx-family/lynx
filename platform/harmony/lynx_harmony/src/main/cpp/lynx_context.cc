@@ -30,6 +30,7 @@
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_bounce.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_image.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_list.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_new_image.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_owner.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_root.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_scroll.h"
@@ -64,6 +65,8 @@ LynxContext::GetCAPINodeInfoMap() {
            {nullptr, InlineTextShadowNode::Make,
             LayoutNodeType::CUSTOM | LayoutNodeType::VIRTUAL}},
           {"view", {UIView::Make}},
+          {"origin-image",
+           {UIImage::Make, ImageShadowNode::Make, LayoutNodeType::CUSTOM}},
           {"image",
            {UIImage::Make, ImageShadowNode::Make, LayoutNodeType::CUSTOM}},
           {"filter-image",
