@@ -11,6 +11,7 @@ import com.lynx.devtoolwrapper.LynxDevToolPool;
 import com.lynx.jsbridge.LynxBytecodeCallback;
 import com.lynx.react.bridge.ReadableMap;
 import com.lynx.tasm.base.CalledByNative;
+import com.lynx.tasm.base.CleanupReference;
 import com.lynx.tasm.base.LLog;
 import com.lynx.tasm.base.TraceEvent;
 import com.lynx.tasm.base.trace.TraceEventDef;
@@ -33,7 +34,6 @@ public final class TemplateBundle implements ILynxSecurityTarget {
   public static final String TAG = "TemplateBundle";
 
   private String url;
-  private long nativePtr = 0; // native pointer for LynxTemplateBundle.
   private Map<String, Object> extraInfo;
   private String errorMsg = null;
   private int templateSize;
@@ -42,13 +42,49 @@ public final class TemplateBundle implements ILynxSecurityTarget {
   private PageConfig pageConfig;
   private OnReleaseCallback onReleaseCallback;
 
-  private LynxDevToolPool mDevToolPool;
+  private final CleanupTask mCleanupTask;
+  private final CleanupReference mCleanupReference;
 
   interface OnReleaseCallback {
     void onRelease();
   }
+
+  private static final class CleanupTask implements Runnable {
+    private long mNativePtr;
+    private LynxDevToolPool mDevToolPool;
+
+    private synchronized long getNativePtr() {
+      return mNativePtr;
+    }
+
+    private synchronized void setNativePtr(long nativePtr) {
+      mNativePtr = nativePtr;
+    }
+
+    private synchronized void setDevToolPool(LynxDevToolPool devToolPool) {
+      mDevToolPool = devToolPool;
+    }
+
+    @Override
+    public synchronized void run() {
+      try {
+        if (mDevToolPool != null) {
+          mDevToolPool.destroy();
+          mDevToolPool = null;
+        }
+      } finally {
+        if (checkIfEnvPrepared() && mNativePtr != 0) {
+          nativeReleaseBundle(mNativePtr);
+          mNativePtr = 0;
+        }
+      }
+    }
+  }
+
   public TemplateBundle() {
     pageConfig = new PageConfig(null);
+    mCleanupTask = new CleanupTask();
+    mCleanupReference = new CleanupReference(this, mCleanupTask, false);
   }
 
   private synchronized boolean initialize(
@@ -56,7 +92,7 @@ public final class TemplateBundle implements ILynxSecurityTarget {
     if (initialized) {
       return false;
     }
-    nativePtr = ptr;
+    mCleanupTask.setNativePtr(ptr);
     this.templateSize = templateSize;
     this.url = url;
     errorMsg = errMsg;
@@ -120,7 +156,7 @@ public final class TemplateBundle implements ILynxSecurityTarget {
           }
           result.initialize(ptr, length, url, (String) options[0], (ReadableMap) options[1]);
           if (result.isValid()) {
-            result.mDevToolPool = devToolPool;
+            result.mCleanupTask.setDevToolPool(devToolPool);
             devToolPool = null;
           }
         } else {
@@ -240,7 +276,7 @@ public final class TemplateBundle implements ILynxSecurityTarget {
       return;
     }
     nativeInitWithOption(
-        nativePtr, option.getContextPoolSize(), option.getEnableContextAutoRefill());
+        getNativePtr(), option.getContextPoolSize(), option.getEnableContextAutoRefill());
   }
 
   /**
@@ -256,7 +292,7 @@ public final class TemplateBundle implements ILynxSecurityTarget {
     if (extraInfo == null) {
       if (checkIfEnvPrepared() && isValid()) {
         extraInfo = new HashMap<>();
-        Object data = nativeGetExtraInfo(nativePtr);
+        Object data = nativeGetExtraInfo(getNativePtr());
         if (data instanceof Map) {
           extraInfo.putAll((Map<String, Object>) data);
         }
@@ -273,7 +309,7 @@ public final class TemplateBundle implements ILynxSecurityTarget {
   public boolean isElementBundleValid() {
     boolean valid = false;
     if (checkIfEnvPrepared() && isValid()) {
-      valid = nativeGetContainsElementTree(nativePtr);
+      valid = nativeGetContainsElementTree(getNativePtr());
     }
     return valid;
   }
@@ -293,7 +329,7 @@ public final class TemplateBundle implements ILynxSecurityTarget {
    */
   @RestrictTo(RestrictTo.Scope.LIBRARY_GROUP)
   public long getNativePtr() {
-    return this.nativePtr;
+    return mCleanupTask.getNativePtr();
   }
 
   /**
@@ -301,25 +337,15 @@ public final class TemplateBundle implements ILynxSecurityTarget {
    * @brief Release the `Native` memory held by the current `TemplateBundle` object.
    * After executing the `release` method, the `TemplateBundle` will become the `inValid` state.
    */
-  public void release() {
-    boolean shouldReleaseNative = checkIfEnvPrepared() && nativePtr != 0;
+  public synchronized void release() {
+    boolean shouldReleaseNative = checkIfEnvPrepared() && getNativePtr() != 0;
     if (shouldReleaseNative && onReleaseCallback != null) {
       onReleaseCallback.onRelease();
       onReleaseCallback = null;
     }
-    if (mDevToolPool != null) {
-      mDevToolPool.destroy();
-      mDevToolPool = null;
-    }
-    if (shouldReleaseNative) {
-      nativeReleaseBundle(nativePtr);
-      nativePtr = 0;
-    }
-  }
-
-  @Override
-  protected void finalize() throws Throwable {
-    release();
+    // Keep release() synchronous on every calling thread. CleanupReference.cleanupNow() ignores
+    // UI-thread calls for worker-thread cleanup tasks, so run this idempotent task directly here.
+    mCleanupTask.run();
   }
 
   /**
@@ -328,7 +354,7 @@ public final class TemplateBundle implements ILynxSecurityTarget {
    * @return `true` if the current `TemplateBundle` object is valid, else `false`.
    */
   public boolean isValid() {
-    return nativePtr != 0;
+    return getNativePtr() != 0;
   }
 
   public boolean isInitialized() {
@@ -396,7 +422,7 @@ public final class TemplateBundle implements ILynxSecurityTarget {
    */
   @Deprecated
   public boolean constructContext(int count) {
-    return checkIfEnvPrepared() && isValid() && nativeConstructContext(nativePtr, count);
+    return checkIfEnvPrepared() && isValid() && nativeConstructContext(getNativePtr(), count);
   }
 
   /**
