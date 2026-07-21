@@ -7,6 +7,7 @@
 
 #include <limits>
 #include <memory>
+#include <optional>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -137,6 +138,16 @@ class BaseGestureHandler {
   std::shared_ptr<GestureDetector> GetGestureDetector() const;
 
  protected:
+  class PointerEventSnapshot {
+   public:
+    void Update(const PointerEvent* pointer_event);
+    const PointerEvent* Get() const;
+    void Reset();
+
+   private:
+    std::optional<PointerEvent> event_;
+  };
+
   int sign_;
   int status_;
 

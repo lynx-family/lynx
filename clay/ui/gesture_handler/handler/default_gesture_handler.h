@@ -51,7 +51,7 @@ class DefaultGestureHandler : public BaseGestureHandler {
   bool is_invoked_start_;
   bool is_invoked_end_;
   int tap_slop_;
-  const PointerEvent* last_pointer_event_{nullptr};
+  PointerEventSnapshot last_pointer_event_;
 };
 
 }  // namespace clay

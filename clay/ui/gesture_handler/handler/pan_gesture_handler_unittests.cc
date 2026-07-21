@@ -169,6 +169,34 @@ TEST_F(PanGestureHandlerTest, OnHandle_Up_FailsAndEmitsOnEnd) {
   EXPECT_EQ(handler.GetGestureStatus(), GestureConstants::LYNX_STATE_FAIL);
 }
 
+TEST_F(PanGestureHandlerTest, EndUsesPointerEventSnapshot) {
+  auto runner = TestTaskRunner::Create();
+  auto page_view = MakeTestPageView(0, runner);
+  MockEventDelegate delegate;
+  page_view->SetEventDelegate(&delegate);
+
+  TestGestureArenaMember member(1);
+  auto detector =
+      MakeDetector(1, GestureHandlerType::Pan,
+                   {GestureConstants::ON_BEGIN, GestureConstants::ON_END});
+  PanGestureHandler handler(1, page_view.get(), detector, member.GetWeakPtr());
+
+  PointerEvent down =
+      MakePointerEvent(PointerEvent::EventType::kDownEvent, {3, 4}, 1);
+  EXPECT_CALL(delegate, OnGestureHandlerEvent(StrEq(GestureConstants::ON_BEGIN),
+                                              Eq(1), Eq(1), _, _, _, _, _, _))
+      .Times(1);
+  handler.HandleMotionEvent(&down, 0, 0, false, nullptr);
+  down.position = {30, 40};
+  down.timestamp = 10;
+
+  EXPECT_CALL(delegate,
+              OnGestureHandlerEvent(StrEq(GestureConstants::ON_END), Eq(1),
+                                    Eq(1), _, _, Eq(3.0f), Eq(4.0f), Eq(1), _))
+      .Times(1);
+  handler.End();
+}
+
 TEST_F(PanGestureHandlerTest, Activation_WorksForNegativeMovementToo) {
   auto runner = TestTaskRunner::Create();
   auto page_view = MakeTestPageView(0, runner);
