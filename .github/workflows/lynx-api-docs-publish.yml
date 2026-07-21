@@ -1,0 +1,116 @@
+name: lynx_api_docs_publish
+
+on:
+  push:
+    branches:
+      - develop
+    paths:
+      - 'ai/skills/lynx-api-docs/**'
+      - '.github/workflows/lynx-api-docs-publish.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: lynx-api-docs-publish
+  cancel-in-progress: false
+
+jobs:
+  check-version-change:
+    if: github.ref == 'refs/heads/develop'
+    runs-on: ubuntu-latest
+    outputs:
+      version_changed: ${{ steps.check.outputs.version_changed }}
+    steps:
+      - name: Download Source
+        uses: actions/checkout@v6
+        with:
+          path: lynx
+          fetch-depth: 1
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          registry-url: 'https://registry.npmjs.org'
+      - name: Setup Package Manager
+        run: |
+          npm install -g npm@11.10.0
+          npm --version
+      - name: Check Version
+        id: check
+        working-directory: lynx/ai/skills/lynx-api-docs
+        run: |
+          package_name=$(node -p "require('./package.json').name")
+          package_version=$(node -p "require('./package.json').version")
+          test "$package_name" = '@lynx-js/lynx-api-docs'
+
+          echo "Package: $package_name"
+          echo "Current version: $package_version"
+
+          registry_error=$(mktemp "$RUNNER_TEMP/lynx-api-docs-npm-view.XXXXXX")
+          if npm view "$package_name@$package_version" version \
+            >/dev/null 2>"$registry_error"; then
+            echo "Version $package_version is already published."
+            echo "version_changed=false" >> "$GITHUB_OUTPUT"
+          elif grep -q 'E404' "$registry_error"; then
+            echo "Version $package_version is not published yet."
+            echo "version_changed=true" >> "$GITHUB_OUTPUT"
+          else
+            cat "$registry_error" >&2
+            exit 1
+          fi
+
+  lynx_api_docs_publish:
+    if: needs.check-version-change.outputs.version_changed == 'true'
+    needs: check-version-change
+    runs-on: ubuntu-latest
+    environment: npm
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Download Source
+        uses: actions/checkout@v6
+        with:
+          path: lynx
+          fetch-depth: 1
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          registry-url: 'https://registry.npmjs.org'
+      - name: Setup Package Manager
+        run: |
+          npm install -g npm@11.10.0
+          npm --version
+      - name: Validate Package
+        id: pack
+        working-directory: lynx/ai/skills/lynx-api-docs
+        run: |
+          npm test
+
+          smoke_root=$(mktemp -d "$RUNNER_TEMP/lynx-api-docs-smoke.XXXXXX")
+          mkdir -p "$smoke_root/unpack" "$smoke_root/project"
+
+          npm pack . \
+            --ignore-scripts \
+            --json \
+            --pack-destination "$smoke_root" \
+            > "$smoke_root/pack.json"
+
+          tarball_name=$(node -e \
+            "const fs = require('fs'); const result = JSON.parse(fs.readFileSync(process.argv[1], 'utf8')); process.stdout.write(result[0].filename);" \
+            "$smoke_root/pack.json")
+          tarball="$smoke_root/$tarball_name"
+
+          tar -xzf "$tarball" -C "$smoke_root/unpack"
+          unpacked_package="$smoke_root/unpack/package"
+          node "$unpacked_package/verify-package-layout.js"
+          node "$unpacked_package/cli.js" install \
+            --project "$smoke_root/project" \
+            --no-link
+
+          test -f "$smoke_root/project/AGENTS.md"
+          test -f "$smoke_root/project/.ai/lynx-api-docs/README.md"
+          test -f "$smoke_root/project/.agents/skills/using-lynx-api-docs/SKILL.md"
+          test -z "$(git -C "$GITHUB_WORKSPACE/lynx" status --porcelain)"
+
+          echo "tarball=$tarball" >> "$GITHUB_OUTPUT"
+      - name: Publish
+        run: npm publish "${{ steps.pack.outputs.tarball }}" --access public --provenance

@@ -1,0 +1,40 @@
+{
+  "name": "@lynx-js/lynx-api-docs",
+  "version": "0.3.8",
+  "description": "Install the public Lynx engine AI context bundle into a project and inject AGENTS.md references.",
+  "keywords": [
+    "lynx",
+    "agent-skill",
+    "api-docs"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/lynx-family/lynx.git",
+    "directory": "ai/skills/lynx-api-docs"
+  },
+  "author": "Lynx Authors",
+  "bin": {
+    "lynx-api-docs": "cli.js"
+  },
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org",
+    "access": "public"
+  },
+  "files": [
+    "cli.js",
+    "CHANGELOG.md",
+    "LICENSE",
+    "README.md",
+    "package.json",
+    "verify-package-layout.js",
+    "skills/using-lynx-api-docs"
+  ],
+  "engines": {
+    "node": ">=14"
+  },
+  "license": "Apache-2.0",
+  "scripts": {
+    "prepack": "node ./verify-package-layout.js",
+    "test": "node ./test.js"
+  }
+}
