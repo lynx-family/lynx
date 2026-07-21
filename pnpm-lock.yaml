@@ -221,6 +221,7 @@ importers:
       cross-env: ^7.0.3
       esbuild: 0.19.12
       regenerator-runtime: 0.13.7
+      vitest: 2.1.9
     devDependencies:
       '@lynx-js/ios-polyfill': link:../lynx-polyfill
       '@lynx-js/ios-polyfill-promise': link:../lynx-promise
@@ -230,6 +231,7 @@ importers:
       cross-env: 7.0.3
       esbuild: 0.19.12
       regenerator-runtime: 0.13.7
+      vitest: 2.1.9
 
   js_libraries/lynx-polyfill:
     specifiers:
