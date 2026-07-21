@@ -1220,6 +1220,7 @@ export enum LynxTrailKey {
   ENABLE_VSYNC_ALIGNED_FLUSH_LOCAL = 'enable_vsync_aligned_flush_local'
   ENABLE_GLOBAL_FEATURE_SWITCH_STATISTIC = 'ENABLE_GLOBAL_FEATURE_SWITCH_STATISTIC'
   ENABLE_JSB_TIMING = 'enable_jsb_timing'
+  JSB_TIMING_URL_LIST = 'jsb_timing_url_list'
   ENABLE_FEATURE_COUNTER = 'ENABLE_FEATURE_COUNTER'
   ENABLE_ASYNC_JSB_TIMING = 'enable_async_jsb_timing'
   ENABLE_LONG_TASK_TIMING = 'enable_long_task_timing'
