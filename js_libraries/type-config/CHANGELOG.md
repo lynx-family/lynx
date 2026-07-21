@@ -1,7 +1,11 @@
 # CHANGELOG
 
-## 3.6.0
+## 4.1.0
 
-### Patch Changes
+### Minor Changes
 
-- Add all Lynx Config and CompilerOptions types on this packages.
+- Initial release of `@lynx-js/type-config` with exported Config type definitions and `configKeys` runtime constant.
+
+- Include 28 exported `Config` entries covering layout, CSS, events, gestures, text, list, and accessibility configs, including `enableCSSInheritance`, `enableCSSInlineVariables`, `enableCSSRule`, `enableEventThrough`, `enableMultiTouch`, `enableGridPlacementShorthands`, `enableFlexBasisZeroPercent`, `enableTransformedTouchPosition`, `unifyVWVHBehavior`, `fontScaleEffectiveOnlyOnSp`, and more.
+
+- Provide `configKeys` runtime constant for programmatic config key enumeration.

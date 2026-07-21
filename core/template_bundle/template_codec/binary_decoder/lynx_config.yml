@@ -421,12 +421,7 @@ quirksMode:
     - HarmonyOS
     - iOS
 enableLynxScrollFluency:
-  description:
-    Force report lynx scroll fluency event. When setting pageConfig.enableLynxScrollFluency
-    to a double value in the range [0, 1], we will monitor the fluency metrics for
-    this LynxUI based on this probability. The probability indicates the likelihood
-    of enabling fluency monitoring, and the metrics will be reported unconditionally
-    through the applogService.
+  description: Controls the scroll-fluency monitoring probability for the page. When set to a value in [0, 1], the scroll fluency monitor is enabled with that sampling probability and metrics are reported unconditionally through the applog service; when set to -1 (default), scroll fluency monitoring is off.
   defaultValue: '-1'
   valueType: double
   jsValueType: boolean | number
@@ -793,10 +788,7 @@ lepusNullPropAsUndef:
     - HarmonyOS
     - iOS
 dataStrictMode:
-  description:
-    ReactLynx cannot opt top_level_variables used in lepus. So we cannot
-    forbid updateData when variable not in top_level_variables. User can use this
-    config to close the check.
+  description: Controls whether the Lepus VM enforces top-level variable registration for `updateData` calls. When enabled, `VMContext` rejects data updates to variables not declared in the top-level variable set; when disabled, undeclared variables are auto-registered. ReactLynx DSL always disables this check regardless of the config value.
   defaultValue: 'true'
   valueType: bool
   author: nhsprite
@@ -1512,9 +1504,7 @@ enableQueryComponentSync:
     - HarmonyOS
     - iOS
 enableAsyncResolveSubtree:
-  description:
-    FE Framework use this config to notify Engine that resolve subtree
-    binding will be triggered when render DOM (Not exposed to normal user)
+  description: Controls whether runtime enables CSS fragment parsing on the TASM worker thread during MTS render. When true, `TemplateAssembler` turns on `CSSFragmentParsingOnTASMWorkerMTSRender` so that subtree resolve binding can happen concurrently with DOM render; when false or unset, CSS fragment parsing stays on the main decode path.
   defaultValue: TernaryBool::UNDEFINE_VALUE
   valueType: TernaryBool
   author: usczz
@@ -1525,9 +1515,7 @@ enableAsyncResolveSubtree:
     - Android
     - iOS
 absoluteInContentBound:
-  description:
-    When set to true, the containing block of absolute/fixed elements is
-    the content area; otherwise, it is the padding area
+  description: Controls the containing block used for absolute and fixed positioned elements during layout. When enabled, the containing block is the content area (excluding padding); when disabled, the containing block is the padding area (including padding), matching the legacy Lynx behavior.
   defaultValue: 'false'
   valueType: bool
   bindMemberTo: layout_configs_.is_absolute_in_content_bound_
@@ -1574,9 +1562,7 @@ enableCSSInheritance:
     - iOS
   export: true
 CSSAlignWithLegacyW3C:
-  description:
-    When set to true, for compatibility, some layout behaviors are consistent
-    with the previous incorrect behaviors.
+  description: Controls whether CSS computed-style defaults use W3C-standard initial values instead of legacy Lynx values. When enabled, default border-width is `medium` and default border-style is `none` per the W3C specification; when disabled, default border-width is `0` and default border-style is `solid`, preserving the older Lynx-specific behavior.
   defaultValue: 'false'
   valueType: bool
   codeGen:
