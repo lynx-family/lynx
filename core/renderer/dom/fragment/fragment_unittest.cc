@@ -1491,6 +1491,75 @@ TEST_F(FragmentTest, LinearGradientGeneratesLinearGradientOp) {
   EXPECT_FLOAT_EQ(floats[10], 1.0f);
 }
 
+TEST_F(FragmentTest, LinearGradientCornerDirectionUsesTilingBoxSize) {
+  struct TestCase {
+    starlight::LinearGradientDirection direction;
+    float expected_angle;
+  };
+  const TestCase test_cases[] = {
+      {starlight::LinearGradientDirection::kTopRight, 63.434948f},
+      {starlight::LinearGradientDirection::kTopLeft, 296.565063f},
+      {starlight::LinearGradientDirection::kBottomRight, 116.565048f},
+      {starlight::LinearGradientDirection::kBottomLeft, 243.434952f},
+  };
+
+  for (const auto& test_case : test_cases) {
+    SCOPED_TRACE(static_cast<int32_t>(test_case.direction));
+    auto element = manager->CreateFiberView();
+    Fragment fragment(element.get());
+
+    starlight::LayoutResultForRendering layout;
+    layout.size_ = FloatSize(300.f, 300.f);
+    fragment.UpdateLayout(layout);
+
+    auto* style = element->computed_css_style();
+    style->background_data_ = starlight::BackgroundData();
+    style->background_data_->image_data =
+        starlight::BackgroundData::BackgroundImageData();
+    auto& image_data = *style->background_data_->image_data;
+    image_data.image_count = 1;
+    image_data.size.push_back(starlight::NLength::MakeUnitNLength(100.f));
+    image_data.size.push_back(starlight::NLength::MakeUnitNLength(200.f));
+
+    auto color_array = lepus::CArray::Create();
+    color_array->emplace_back(0xFFFF0000);
+    color_array->emplace_back(0xFF0000FF);
+
+    auto position_array = lepus::CArray::Create();
+    position_array->emplace_back(0.0f);
+    position_array->emplace_back(100.0f);
+
+    auto gradient_obj = lepus::CArray::Create();
+    gradient_obj->emplace_back(45.0f);
+    gradient_obj->emplace_back(std::move(color_array));
+    gradient_obj->emplace_back(std::move(position_array));
+    gradient_obj->emplace_back(static_cast<int32_t>(test_case.direction));
+
+    auto image_array = lepus::CArray::Create();
+    image_array->emplace_back(
+        static_cast<int32_t>(starlight::BackgroundImageType::kLinearGradient));
+    image_array->emplace_back(std::move(gradient_obj));
+    image_data.image = lepus::Value(std::move(image_array));
+
+    DisplayListBuilder builder;
+    fragment.DrawBackground(builder);
+
+    DisplayList list = builder.Build();
+    DisplayListReader reader(list);
+    ASSERT_TRUE(reader.HasNext());
+    reader.Next();  // clip box
+    ASSERT_TRUE(reader.HasNext());
+    reader.Next();  // background color
+    ASSERT_TRUE(reader.HasNext());
+    reader.Next();  // tiling box
+    ASSERT_TRUE(reader.HasNext());
+    const auto& gradient_item = reader.Next();
+    ASSERT_EQ(gradient_item.type, DisplayListOpType::kLinearGradient);
+    EXPECT_NEAR(gradient_item.payload.linear_gradient.angle,
+                test_case.expected_angle, 0.0001f);
+  }
+}
+
 TEST_F(FragmentDrawTest, BackgroundUrlGeneratesBackgroundImageOp) {
   auto element = manager->CreateFiberView();
   Fragment fragment(element.get());
