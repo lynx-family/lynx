@@ -1,0 +1,25 @@
+lynx/clay/ui/component/scroll_view.cc
+  s_d9db7e1de0ef0f::t_45f4cfda640e21 75-79,509-515
+testing/lynx-platform-tests/test_script/resources/harmony/clay_native_list_layout_did_finish_1.png
+  s_d9db7e1de0ef0f::t_7167b6dd17ace6 2-3
+testing/lynx-platform-tests/test_script/resources/harmony/clay_native_list_layout_did_finish_2.png
+  s_d9db7e1de0ef0f::t_c52e40eb83fe31 1-3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "77ac2f32011773c00737cfa8a1e835a23933fe01",
+  "prompts": {},
+  "sessions": {
+    "s_d9db7e1de0ef0f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f40ba-47ff-7972-84ea-34ca8c9dfc8f",
+        "model": "unknown"
+      },
+      "human_author": "liangruijie.030116 <liangruijie.030116@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

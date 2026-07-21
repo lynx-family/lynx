@@ -1,0 +1,61 @@
+lynx/base/trace/native/trace_defines.h
+  h_aeff19c41d4423 10,13
+lynx/core/shell/lynx_shell.cc
+  s_de3378bf4e6ccd::t_972808893d2695 431,465,801,910
+  s_de3378bf4e6ccd::t_7d25bd9f40709a 432-433
+  s_de3378bf4e6ccd::t_ba260abd9e9786 790,798-800,865,885,909
+  h_aeff19c41d4423 457,859
+  s_de3378bf4e6ccd::t_676c7f487a1b97 438
+  s_de3378bf4e6ccd::t_81990702bf3ae9 911-913
+  s_de3378bf4e6ccd::t_2e0af7507c4624 430,439,802
+  s_de3378bf4e6ccd::t_3139a4591190b3 466
+  s_de3378bf4e6ccd::t_a3f19fad7b9e62 787-789
+  s_de3378bf4e6ccd::t_e3fb7032415dce 791-793,795-797
+  s_de3378bf4e6ccd::t_ad71610f3f6a6f 866-868,882-884
+  s_de3378bf4e6ccd::t_d1c54ecfe00e75 886-888,906-908
+lynx/base/trace/native/platform/darwin/trace_controller_darwin.h
+  h_aeff19c41d4423 9
+cspell.config.yml
+  h_aeff19c41d4423 681,1172-1173
+lynx/core/runtime/js/jsi/quickjs/quickjs_runtime_wrapper.cc
+  h_aeff19c41d4423 43
+lynx/core/runtime/js/jsi/quickjs/quickjs_helper.cc
+  h_aeff19c41d4423 6
+lynx/core/shell/runtime/mts/mts_runtime_pool.cc
+  h_aeff19c41d4423 151
+lynx/devtool/lynx_devtool/tracing/platform/memory_trace_plugin_android.h
+  h_aeff19c41d4423 24,38
+lynx/devtool/lynx_devtool/tracing/platform/memory_trace_plugin_darwin.mm
+  h_aeff19c41d4423 17
+lynx/devtool/lynx_devtool/tracing/platform/memory_trace_plugin_android.cc
+  h_aeff19c41d4423 34-35
+lynx/devtool/lynx_devtool/tracing/platform/memory_trace_plugin_darwin.h
+  h_aeff19c41d4423 33
+lynx/core/runtime/js/runtime_manager.cc
+  h_aeff19c41d4423 85,706
+lynx/core/runtime/lepusng/quick_context.cc
+  h_aeff19c41d4423 568
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "79b2144e885d6eb6a1175843598faa6a6cff33c9",
+  "prompts": {},
+  "humans": {
+    "h_aeff19c41d4423": {
+      "author": "yuyang.1024 <yuyang.1024@bytedance.com>"
+    }
+  },
+  "sessions": {
+    "s_de3378bf4e6ccd": {
+      "agent_id": {
+        "tool": "trae-cue",
+        "id": "ai_tab-icr-38b3e106-f77b-4a49-b866-d1fe15a387e9",
+        "model": "default"
+      },
+      "human_author": null
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

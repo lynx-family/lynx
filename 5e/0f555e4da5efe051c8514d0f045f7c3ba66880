@@ -1,0 +1,71 @@
+lynx/core/renderer/ui_wrapper/painting/ios/painting_context_darwin.mm
+  s_912c10305c4d84::t_2788fc52972222 487,536
+lynx/core/renderer/ui_wrapper/painting/ios/platform_renderer_context_darwin.mm
+  s_912c10305c4d84::t_f5c3e1d5a2932d 33
+lynx/platform/darwin/ios/lynx/gesture/LynxGestureFlingTrigger.m
+  s_912c10305c4d84::t_10beb1023154b8 38
+lynx/platform/darwin/ios/lynx/public/base/background/LynxBackgroundRenderer+Internal.h
+  s_912c10305c4d84::t_9470c3f32c3e01 157,159
+lynx/platform/darwin/ios/lynx/renderer/LynxTextLayer.mm
+  s_912c10305c4d84::t_2003bce6aa17ce 16
+lynx/platform/darwin/ios/lynx/renderer/LynxTextraLayer.mm
+  s_912c10305c4d84::t_c17d5eb88d2c02 21
+lynx/platform/darwin/ios/lynx/ui/LynxUI.m
+  s_912c10305c4d84::t_76d3d1ec6261ac 1612,1616
+lynx/platform/darwin/ios/lynx/ui/image/LynxImageBlurUtils.m
+  s_912c10305c4d84::t_81ee52297d51fa 47,104
+lynx/platform/darwin/ios/lynx/ui/list/container/LynxUIListContainer.mm
+  s_912c10305c4d84::t_c7ebb5ce1b6cba 1086
+lynx/platform/darwin/ios/lynx/ui/list/lynx_collection/LynxUICollection+Delegate.m
+  s_912c10305c4d84::t_976888545e524f 411
+lynx/platform/darwin/ios/lynx/ui/scroll_view/LynxUIScrollViewInternal.m
+  s_912c10305c4d84::t_7892b8a0ef9435 293
+lynx/platform/darwin/ios/lynx/ui/scroll_view/LynxUIScroller.m
+  s_912c10305c4d84::t_1344cdf5033c92 1458
+lynx/platform/darwin/ios/lynx/ui/scroll_view/base/LynxBaseScrollView+Horizontal.m
+  s_912c10305c4d84::t_edd3100ff945a2 60
+lynx/platform/darwin/ios/lynx/ui/scroll_view/base/LynxBaseScrollView+Nested.m
+  s_912c10305c4d84::t_621e2ab531f166 115,121
+lynx/platform/darwin/ios/lynx/ui/scroll_view/base/LynxBaseScrollView+Vertical.m
+  s_912c10305c4d84::t_479a528c045b46 60
+lynx/platform/darwin/ios/lynx/ui/text/LynxUIText.m
+  s_912c10305c4d84::t_844e428bd13756 147
+lynx/platform/darwin/ios/lynx_service/image/LynxImageService.m
+  s_912c10305c4d84::t_c43cc15472668c 183,185
+lynx/platform/darwin/ios/lynx_xelement/scroll_coordinator/LynxUIScrollCoordinator.m
+  s_912c10305c4d84::t_5218659daac079 67
+platform/darwin/ios/bd_xelement/bd_xelement/classes/experiment/rich_text/ExperimentRichTextUI.m
+  s_912c10305c4d84::t_9a5d860e48fabf 29
+platform/darwin/ios/bd_xelement/bd_xelement/classes/input/BDXLynxInput.m
+  s_912c10305c4d84::t_6348dfca4ffa47 436
+platform/darwin/ios/bd_xelement/bd_xelement/classes/input/BDXLynxTextArea.m
+  s_912c10305c4d84::t_87d3bd5bdf952f 332
+platform/darwin/ios/bd_xelement/bd_xelement/classes/markdown/BDXLynxMarkdownView.m
+  s_912c10305c4d84::t_00164dfc59ac0a 572
+platform/darwin/ios/bd_xelement/bd_xelement/classes/svg/BDXLynxBaseSvgUI.m
+  s_912c10305c4d84::t_93377c968391f9 191,193
+platform/darwin/ios/bd_xelement/example/BDXElement/BDXAppDelegate.m
+  s_912c10305c4d84::t_784b9a6bd8055f 33
+platform/darwin/ios/bd_xelement/example/BDXElement/BDXLynxViewController.m
+  s_912c10305c4d84::t_c9c565c7e81609 20,22,50,70
+platform/darwin/ios/bd_xelement/example/BDXElement/BDXWebViewController.m
+  s_912c10305c4d84::t_9d5ab39c024c29 37
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "5e0f555e4da5efe051c8514d0f045f7c3ba66880",
+  "prompts": {},
+  "sessions": {
+    "s_912c10305c4d84": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f6dc9-6437-77f2-aed7-9aca74826635",
+        "model": "unknown"
+      },
+      "human_author": "mooface <xiamengfei.moonface@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}
