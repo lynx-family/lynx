@@ -51,7 +51,15 @@ void PlatformView::SetViewportMetrics(const ViewportMetrics& metrics) {
 
 void PlatformView::NotifyCreated() { delegate_.OnPlatformViewCreated(); }
 
+void PlatformView::NotifySurfaceCreated() {
+  delegate_.OnPlatformViewSurfaceCreated();
+}
+
 void PlatformView::NotifyDestroyed() { delegate_.OnPlatformViewDestroyed(); }
+
+void PlatformView::NotifySurfaceDestroyed() {
+  delegate_.OnPlatformViewSurfaceDestroyed();
+}
 
 void PlatformView::ScheduleFrame() { delegate_.OnPlatformViewScheduleFrame(); }
 
