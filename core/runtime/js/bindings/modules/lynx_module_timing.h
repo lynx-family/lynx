@@ -72,6 +72,7 @@ struct NativeModuleInfo {
   std::string module_name_;
   std::string method_name_;
   std::string method_first_arg_name_;
+  std::string page_url_;
   NativeModuleStatusCode status_code_ = NativeModuleStatusCode::SUCCESS;
 
   NetworkRequestInfo network_request_info_;
@@ -82,7 +83,8 @@ class NativeModuleInfoCollector {
   NativeModuleInfoCollector(const std::shared_ptr<ModuleDelegate>& delegate,
                             const std::string& module_name,
                             const std::string& method_name,
-                            const std::string& method_first_arg_name);
+                            const std::string& method_first_arg_name,
+                            const std::string& page_url = "");
   ~NativeModuleInfoCollector();
 
   NativeModuleInfoCollector() = delete;
