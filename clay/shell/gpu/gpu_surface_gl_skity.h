@@ -5,6 +5,7 @@
 #ifndef CLAY_SHELL_GPU_GPU_SURFACE_GL_SKITY_H_
 #define CLAY_SHELL_GPU_GPU_SURFACE_GL_SKITY_H_
 
+#include <cstdint>
 #include <functional>
 #include <memory>
 #include <unordered_map>
@@ -71,6 +72,8 @@ class GPUSurfaceGLSkity : public Surface {
   std::shared_ptr<skity::GPUContext> gpu_context_;
   uint32_t fbo_id_ = 0;
   skity::Vec2 size_;
+  uint64_t surface_generation_ = 0;
+  bool has_surface_generation_ = false;
 
   // The current FBO's existing damage, as tracked by the GPU surface, delegates
   // still have an option of overriding this damage with their own in

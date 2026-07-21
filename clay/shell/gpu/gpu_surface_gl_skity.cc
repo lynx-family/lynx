@@ -87,6 +87,9 @@ std::unique_ptr<SurfaceFrame> GPUSurfaceGLSkity::AcquireFrame(
     FML_LOG(ERROR) << "OpenGL surface was invalid.";
     return nullptr;
   }
+  if (!delegate_->GLContextIsOnscreenSurfaceValid()) {
+    return nullptr;
+  }
 
   auto swap_callback = [weak = weak_factory_.GetWeakPtr(),
                         delegate = delegate_]() -> bool {
@@ -108,10 +111,12 @@ std::unique_ptr<SurfaceFrame> GPUSurfaceGLSkity::AcquireFrame(
   SurfaceFrame::FramebufferInfo framebuffer_info;
 
   std::shared_ptr<skity::GPUSurface> gpu_surface = AcquireRenderSurface(size);
+  if (!gpu_surface) {
+    return nullptr;
+  }
 
   SurfaceFrame::EncodeCallback encode_callback =
       [weak = weak_factory_.GetWeakPtr()](const SurfaceFrame& surface_frame,
-
                                           skity::Canvas* canvas) {
         if (!canvas) {
           FML_LOG(ERROR) << "Canvas is null during submit";
@@ -166,14 +171,29 @@ skity::GPUContext* GPUSurfaceGLSkity::GetContext() {
 
 std::shared_ptr<skity::GPUSurface> GPUSurfaceGLSkity::AcquireRenderSurface(
     const skity::Vec2& size) {
+  const uint64_t current_surface_generation =
+      delegate_->GLContextSurfaceGeneration();
+  if (!has_surface_generation_ ||
+      surface_generation_ != current_surface_generation) {
+    surface_generation_ = current_surface_generation;
+    has_surface_generation_ = true;
+    gpu_surface_ = nullptr;
+    gpu_surface_map_.clear();
+  }
+
   if (size != size_) {
     size_ = size;
+    gpu_surface_ = nullptr;
     gpu_surface_map_.clear();
   }
 
   GLFrameInfo frame_info = {static_cast<uint32_t>(size.x),
                             static_cast<uint32_t>(size.y)};
   const GLFBOInfo fbo_info = delegate_->GLContextFBO(frame_info);
+  if (fbo_info.fbo_id < 0) {
+    FML_LOG(ERROR) << "Invalid FBO id: " << fbo_info.fbo_id;
+    return nullptr;
+  }
 
   fbo_id_ = fbo_info.fbo_id;
   existing_damage_ = fbo_info.existing_damage;
@@ -194,8 +214,12 @@ std::shared_ptr<skity::GPUSurface> GPUSurfaceGLSkity::AcquireRenderSurface(
   desc.has_stencil_attachment = true;
   desc.surface_type = skity::GLSurfaceType::kFramebuffer;
 
-  gpu_surface_map_[fbo_info.fbo_id] = gpu_context_->CreateSurface(&desc);
-  gpu_surface_ = gpu_surface_map_[fbo_info.fbo_id];
+  gpu_surface_ = gpu_context_->CreateSurface(&desc);
+  if (!gpu_surface_) {
+    FML_LOG(ERROR) << "Could not create Skity onscreen surface.";
+    return nullptr;
+  }
+  gpu_surface_map_[fbo_info.fbo_id] = gpu_surface_;
 
   return gpu_surface_;
 }
@@ -226,6 +250,7 @@ bool GPUSurfaceGLSkity::PresentSurface(const SurfaceFrame& frame) {
     gpu_surface_map_.erase(fbo_id_);
     fbo_id_ = 0;
     existing_damage_ = {};
+    has_surface_generation_ = false;
   }
 
   return true;

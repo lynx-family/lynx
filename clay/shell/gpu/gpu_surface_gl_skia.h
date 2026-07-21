@@ -8,6 +8,7 @@
 #ifndef CLAY_SHELL_GPU_GPU_SURFACE_GL_SKIA_H_
 #define CLAY_SHELL_GPU_GPU_SURFACE_GL_SKIA_H_
 
+#include <cstdint>
 #include <functional>
 #include <memory>
 #include <optional>
@@ -73,6 +74,8 @@ class GPUSurfaceGLSkia : public Surface {
   // still have an option of overriding this damage with their own in
   // `GLContextFrameBufferInfo`.
   std::optional<skity::Rect> existing_damage_ = std::nullopt;
+  uint64_t surface_generation_ = 0;
+  bool has_surface_generation_ = false;
   bool context_owner_ = false;
   // TODO(38466): Refactor GPU surface APIs take into account the fact that an
   // external view embedder may want to render to the root surface. This is a

@@ -188,7 +188,10 @@ static sk_sp<SkSurface> WrapOnscreenSurface(GrDirectContext* context,
 }
 
 bool GPUSurfaceGLSkia::CreateOrUpdateSurfaces(const skity::Vec2& size) {
-  if (onscreen_surface_ != nullptr &&
+  const uint64_t current_surface_generation =
+      delegate_->GLContextSurfaceGeneration();
+  if (onscreen_surface_ != nullptr && has_surface_generation_ &&
+      surface_generation_ == current_surface_generation &&
       size == skity::Vec2(onscreen_surface_->width(),
                           onscreen_surface_->height())) {
     // Surface size appears unchanged. So bail.
@@ -235,6 +238,8 @@ bool GPUSurfaceGLSkia::CreateOrUpdateSurfaces(const skity::Vec2& size) {
   onscreen_surface_ = std::move(onscreen_surface);
   fbo_id_ = fbo_info.fbo_id;
   existing_damage_ = fbo_info.existing_damage;
+  surface_generation_ = current_surface_generation;
+  has_surface_generation_ = true;
 
   return true;
 }
@@ -247,7 +252,8 @@ skity::Matrix GPUSurfaceGLSkia::GetRootTransformation() const {
 // |Surface|
 std::unique_ptr<SurfaceFrame> GPUSurfaceGLSkia::AcquireFrame(
     const skity::Vec2& size) {
-  if (delegate_ == nullptr) {
+  if (delegate_ == nullptr ||
+      (render_to_surface_ && !delegate_->GLContextIsOnscreenSurfaceValid())) {
     return nullptr;
   }
   auto context_switch = delegate_->GLContextMakeCurrent();
@@ -344,6 +350,7 @@ bool GPUSurfaceGLSkia::PresentSurface(const SurfaceFrame& frame) {
     onscreen_surface_ = nullptr;
     fbo_id_ = 0;
     existing_damage_ = {};
+    has_surface_generation_ = false;
   }
 
   return true;
