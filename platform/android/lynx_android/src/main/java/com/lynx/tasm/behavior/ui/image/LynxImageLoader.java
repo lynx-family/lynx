@@ -8,6 +8,7 @@ import android.content.Context;
 import android.graphics.drawable.Drawable;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import com.lynx.tasm.LynxSubErrorCode;
 import com.lynx.tasm.base.TraceEvent;
 import com.lynx.tasm.base.trace.TraceEventDef;
 import com.lynx.tasm.image.model.AnimationListener;
@@ -20,7 +21,7 @@ import com.lynx.tasm.service.LynxServiceCenter;
 // Image loading delegate class  for encapsulating the implementation of image resource loading and
 // animated image playback control.
 class LynxImageLoader {
-  private ILynxImageService mLynxImageService;
+  @Nullable private volatile ILynxImageService mLynxImageService;
   private LynxImageFetcher mImageFetcher;
   private boolean mEnableImageFetcher;
 
@@ -30,6 +31,14 @@ class LynxImageLoader {
     mEnableImageFetcher = imageFetcher != null;
   }
 
+  @Nullable
+  private ILynxImageService getImageService() {
+    if (mLynxImageService == null) {
+      mLynxImageService = LynxServiceCenter.inst().getService(ILynxImageService.class);
+    }
+    return mLynxImageService;
+  }
+
   public void fetchImage(@NonNull ImageRequestInfo imageRequestInfo,
       @NonNull ImageLoadListener loadListener, @Nullable AnimationListener animationListener,
       Context context) {
@@ -37,42 +46,55 @@ class LynxImageLoader {
     if (mEnableImageFetcher) {
       mImageFetcher.loadImage(imageRequestInfo, loadListener, animationListener, context);
     } else {
-      mLynxImageService.fetchImage(imageRequestInfo, loadListener, animationListener, context);
+      ILynxImageService imageService = getImageService();
+      if (imageService == null) {
+        loadListener.onFailure(LynxSubErrorCode.E_RESOURCE_IMAGE_EXCEPTION,
+            new IllegalStateException("Lynx image service is unavailable."));
+      } else {
+        imageService.fetchImage(imageRequestInfo, loadListener, animationListener, context);
+      }
     }
     TraceEvent.endSection(TraceEventDef.IMAGE_SERVICE_PROXY_FETCH_IMAGE);
   }
 
   public boolean startAnimation(Drawable animatable) {
     if (!mEnableImageFetcher) {
-      return mLynxImageService.startAnimation(animatable);
+      ILynxImageService imageService = getImageService();
+      return imageService != null && imageService.startAnimation(animatable);
     }
     return false;
   }
 
   public boolean resumeAnimation(Drawable animatable) {
     if (!mEnableImageFetcher) {
-      return mLynxImageService.resumeAnimation(animatable);
+      ILynxImageService imageService = getImageService();
+      return imageService != null && imageService.resumeAnimation(animatable);
     }
     return false;
   }
 
   public boolean pauseAnimation(Drawable animatable) {
     if (!mEnableImageFetcher) {
-      return mLynxImageService.pauseAnimation(animatable);
+      ILynxImageService imageService = getImageService();
+      return imageService != null && imageService.pauseAnimation(animatable);
     }
     return false;
   }
 
   public boolean stopAnimation(Drawable animatable) {
     if (!mEnableImageFetcher) {
-      return mLynxImageService.stopAnimation(animatable);
+      ILynxImageService imageService = getImageService();
+      return imageService != null && imageService.stopAnimation(animatable);
     }
     return false;
   }
 
   public void releaseImage(ImageRequestInfo imageRequestInfo) {
     if (!mEnableImageFetcher) {
-      mLynxImageService.releaseImage(imageRequestInfo);
+      ILynxImageService imageService = getImageService();
+      if (imageService != null) {
+        imageService.releaseImage(imageRequestInfo);
+      }
     } else {
       mImageFetcher.releaseImage(imageRequestInfo);
     }
@@ -80,13 +102,17 @@ class LynxImageLoader {
 
   public void releaseAnimDrawable(Drawable drawable) {
     if (!mEnableImageFetcher) {
-      mLynxImageService.releaseAnimDrawable(drawable);
+      ILynxImageService imageService = getImageService();
+      if (imageService != null) {
+        imageService.releaseAnimDrawable(drawable);
+      }
     }
   }
 
   public boolean canParseUrl(String url) {
     if (!mEnableImageFetcher) {
-      return mLynxImageService.canParseUrl(url);
+      ILynxImageService imageService = getImageService();
+      return imageService != null && imageService.canParseUrl(url);
     }
     return false;
   }
