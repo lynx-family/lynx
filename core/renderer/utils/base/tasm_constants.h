@@ -84,6 +84,7 @@ static constexpr const char kRemoveComponents[] = "removeComponents";
 static constexpr const char kUpdatePage[] = "updatePage";
 static constexpr const char kComponentID[] = "ComponentID";
 static constexpr const char kUpdateGlobalProps[] = "updateGlobalProps";
+static constexpr const char kUpdateMetaData[] = "__UpdateMetaData";
 
 // Constant string associated with radon
 static constexpr const char kRemoveComponentElement[] =
