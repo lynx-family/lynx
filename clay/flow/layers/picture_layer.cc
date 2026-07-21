@@ -11,7 +11,6 @@
 #include <memory>
 #include <utility>
 
-#include "clay/flow/flow_rendering_backend.h"
 #include "clay/flow/layers/cacheable_layer.h"
 #include "clay/gfx/rendering_backend.h"
 
@@ -189,35 +188,6 @@ void PictureLayer::Paint(PaintContext& context) const {
   }
 
 #ifndef ENABLE_SKITY
-  if (context.enable_leaf_layer_tracing) {
-    const auto canvas_size = context.canvas->getBaseLayerSize();
-    auto offscreen_surface = std::make_unique<OffscreenSurface>(
-        context.gr_context,
-        skity::Vec2(canvas_size.fWidth, canvas_size.fHeight));
-
-    const auto& ctm = context.canvas->getTotalMatrix();
-
-    const auto start_time = fml::TimePoint::Now();
-    {
-      // render picture to offscreen surface.
-      auto* canvas = offscreen_surface->GetCanvas();
-      SkAutoCanvasRestore save(canvas, true);
-      canvas->clear(SK_ColorTRANSPARENT);
-      canvas->setMatrix(ctm);
-      picture()->playback(canvas);
-      canvas->flush();
-    }
-    const fml::TimeDelta offscreen_render_time =
-        fml::TimePoint::Now() - start_time;
-
-    const skity::Rect device_bounds = RasterCacheUtil::GetDeviceBounds(
-        paint_bounds(), clay::ConvertSkMatrixToSkityMatrix(ctm));
-    sk_sp<SkData> raster_data = offscreen_surface->GetRasterData(true);
-    LayerSnapshotData snapshot_data(unique_id(), offscreen_render_time,
-                                    raster_data, device_bounds);
-    context.layer_snapshot_store->Add(snapshot_data);
-  }
-
   picture()->playback(context.canvas);
 #else
   picture()->Draw(context.canvas);

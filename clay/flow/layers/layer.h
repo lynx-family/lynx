@@ -22,7 +22,6 @@
 #include "clay/common/graphics/drawable_image.h"
 #include "clay/flow/compositor/compositor_state.h"
 #include "clay/flow/diff_context.h"
-#include "clay/flow/layer_snapshot_store.h"
 #include "clay/flow/layers/layer_state_stack.h"
 #include "clay/flow/raster_cache.h"
 #include "clay/flow/stopwatch.h"
@@ -139,11 +138,6 @@ struct PaintContext {
   std::shared_ptr<DrawableImageRegistry> drawable_image_registry;
   const RasterCache* raster_cache;
   const float frame_device_pixel_ratio = 1.0f;
-
-  // Snapshot store to collect leaf layer snapshots. The store is non-null
-  // only when leaf layer tracing is enabled.
-  LayerSnapshotStore* layer_snapshot_store = nullptr;
-  bool enable_leaf_layer_tracing = false;
 
   bool only_draw_punch_hole = false;
 

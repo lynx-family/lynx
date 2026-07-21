@@ -19,7 +19,6 @@
 #include "clay/flow/compositor/compositor_state.h"
 #include "clay/flow/diff_context.h"
 #include "clay/flow/embedded_views.h"
-#include "clay/flow/layer_snapshot_store.h"
 #include "clay/flow/raster_cache.h"
 #include "clay/flow/stopwatch.h"
 #include "clay/gfx/rendering_backend.h"
@@ -157,8 +156,6 @@ class CompositorContext {
 
   Stopwatch& ui_time() { return ui_time_; }
 
-  LayerSnapshotStore& snapshot_store() { return layer_snapshot_store_; }
-
   std::vector<RasterCacheInfo>* GetRasterCacheInfo() {
     return raster_cache_.GetRasterCacheInfo();
   }
@@ -169,8 +166,6 @@ class CompositorContext {
   Counter frame_count_;
   Stopwatch raster_time_;
   Stopwatch ui_time_;
-  LayerSnapshotStore layer_snapshot_store_;
-
   /// Only used by default constructor of `CompositorContext`.
   FixedRefreshRateUpdater fixed_refresh_rate_updater_;
 
