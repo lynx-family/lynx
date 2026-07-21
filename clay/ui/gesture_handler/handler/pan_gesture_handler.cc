@@ -52,7 +52,7 @@ void PanGestureHandler::OnHandle(
     const PointerEvent* pointer_event, float fling_delta_x, float fling_delta_y,
     bool handle_by_simultaneous,
     const std::shared_ptr<GestureExtraBundle>& extra_bundle) {
-  last_pointer_event_ = pointer_event;
+  last_pointer_event_.Update(pointer_event);
   if (pointer_event == nullptr) {
     Ignore();
     return;
@@ -101,12 +101,12 @@ bool PanGestureHandler::ShouldActivate() {
 
 void PanGestureHandler::Fail() {
   BaseGestureHandler::Fail();
-  OnEnd(last_point_.x(), last_point_.y(), last_pointer_event_);
+  OnEnd(last_point_.x(), last_point_.y(), last_pointer_event_.Get());
 }
 
 void PanGestureHandler::End() {
   BaseGestureHandler::End();
-  OnEnd(last_point_.x(), last_point_.y(), last_pointer_event_);
+  OnEnd(last_point_.x(), last_point_.y(), last_pointer_event_.Get());
 }
 
 void PanGestureHandler::Reset() {
@@ -114,6 +114,7 @@ void PanGestureHandler::Reset() {
   is_invoked_begin_ = false;
   is_invoked_start_ = false;
   is_invoked_end_ = false;
+  last_pointer_event_.Reset();
 }
 
 Value PanGestureHandler::GenerateAdditionalEventParams() {

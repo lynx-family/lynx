@@ -53,7 +53,7 @@ class TapGestureHandler : public BaseGestureHandler {
   FloatPoint start_point_;
   FloatPoint last_point_;
   bool is_invoked_end_;
-  const PointerEvent* last_point_event_{nullptr};
+  PointerEventSnapshot last_pointer_event_;
   bool is_tap_active_;
   fml::OneshotTimer timer_;
 };

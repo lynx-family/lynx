@@ -54,7 +54,7 @@ class LongPressGestureHandler : public BaseGestureHandler {
   FloatPoint last_point_;
   bool is_invoked_end_;
 
-  const PointerEvent* last_pointer_event_{nullptr};
+  PointerEventSnapshot last_pointer_event_;
   fml::OneshotTimer timer_;
 };
 

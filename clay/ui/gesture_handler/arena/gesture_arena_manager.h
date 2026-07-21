@@ -40,17 +40,17 @@ class GestureArenaManager
   int AddMember(fml::WeakPtr<GestureArenaMember> member);
   bool IsMemberExist(int member_id);
   void SetGestureDetectorState(int member_id, int gesture_id, int state);
-  void RemoveMember(fml::WeakPtr<GestureArenaMember> member);
+  void RemoveMember(int member_id);
   fml::WeakPtr<GestureArenaMember> GetMemberById(int id);
   void OnDestroy();
 
  private:
   bool IsEnableNewGesture() const;
   void ClearCurrentGesture();
+  void PruneExpiredMembers();
+  void RemoveMemberById(int member_id);
   void RegisterGestureDetectors(int member_id,
                                 const GestureMap& gesture_detectors);
-  void UnRegisterGestureDetectors(int member_id,
-                                  const GestureMap& gesture_detectors);
 
   void EnsureGestureDetectorAndHandler();
 

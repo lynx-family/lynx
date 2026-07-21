@@ -7,6 +7,7 @@
 #include "base/include/fml/time/time_delta.h"
 #include "base/include/fml/time/timer.h"
 #include "clay/gfx/geometry/float_point.h"
+#include "clay/ui/common/attribute_utils.h"
 #include "clay/ui/component/page_view.h"
 #include "clay/ui/gesture_handler/handler/base_gesture_handler.h"
 
@@ -31,7 +32,7 @@ void LongPressGestureHandler::HandleConfigMap(const Value& config) {
   if (!config.IsMap()) return;
   const auto& map = config.GetMap();
   if (auto iter = map.find(GestureConstants::MIN_DURATION); iter != map.end()) {
-    min_duration_ = iter->second.GetLong();
+    min_duration_ = attribute_utils::GetLong(iter->second, min_duration_);
   }
   if (auto iter = map.find(GestureConstants::MAX_DISTANCE); iter != map.end()) {
     if (iter->second.IsInt()) {
@@ -54,7 +55,7 @@ void LongPressGestureHandler::OnHandle(
     const PointerEvent* pointer_event, float fling_delta_x, float fling_delta_y,
     bool handle_by_simultaneous,
     const std::shared_ptr<GestureExtraBundle>& extra_bundle) {
-  last_pointer_event_ = pointer_event;
+  last_pointer_event_.Update(pointer_event);
   if (pointer_event == nullptr) {
     Ignore();
     return;
@@ -91,27 +92,30 @@ void LongPressGestureHandler::OnHandle(
 void LongPressGestureHandler::Fail() {
   if (status_ != GestureConstants::LYNX_STATE_FAIL) {
     status_ = GestureConstants::LYNX_STATE_FAIL;
-    OnEnd(last_point_.x(), last_point_.y(), last_pointer_event_);
+    OnEnd(last_point_.x(), last_point_.y(), last_pointer_event_.Get());
   }
 }
 
 void LongPressGestureHandler::End() {
   if (status_ != GestureConstants::LYNX_STATE_END) {
+    EndLongPress();
     status_ = GestureConstants::LYNX_STATE_END;
-    OnEnd(last_point_.x(), last_point_.y(), last_pointer_event_);
+    OnEnd(last_point_.x(), last_point_.y(), last_pointer_event_.Get());
   }
 }
 
 void LongPressGestureHandler::Reset() {
+  EndLongPress();
   BaseGestureHandler::Reset();
   is_invoked_end_ = false;
+  last_pointer_event_.Reset();
 }
 void LongPressGestureHandler::StartLongPress() {
   timer_.Start(fml::TimeDelta::FromMilliseconds(min_duration_), [this]() {
     if (status_ != GestureConstants::LYNX_STATE_FAIL &&
         status_ != GestureConstants::LYNX_STATE_ACTIVE) {
       Activate();
-      OnStart(last_point_.x(), last_point_.y(), last_pointer_event_);
+      OnStart(last_point_.x(), last_point_.y(), last_pointer_event_.Get());
     }
   });
 }
