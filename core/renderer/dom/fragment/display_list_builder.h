@@ -14,7 +14,8 @@
 namespace lynx {
 namespace starlight {
 class BordersData;
-}
+struct FilterData;
+}  // namespace starlight
 namespace transforms {
 class Matrix44;
 }
@@ -50,6 +51,7 @@ class DisplayListBuilder {
   // Apply transform
   DisplayListBuilder& Transform(const transforms::Matrix44& matrix);
   DisplayListBuilder& Opacity(float alpha);
+  DisplayListBuilder& Filter(const starlight::FilterData& filter);
 
   // Retrieve Image source and draw
   DisplayListBuilder& DrawImage(const fml::RefPtr<PaintImage>& image_id,

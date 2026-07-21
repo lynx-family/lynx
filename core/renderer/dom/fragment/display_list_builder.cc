@@ -12,6 +12,7 @@
 #include "core/renderer/dom/fragment/display_list.h"
 #include "core/renderer/starlight/style/borders_data.h"
 #include "core/renderer/ui_wrapper/painting/paint_image.h"
+#include "core/style/filter_data.h"
 #include "core/style/transform/matrix44.h"
 
 namespace lynx {
@@ -262,6 +263,23 @@ DisplayListBuilder& DisplayListBuilder::Opacity(float alpha) {
   display_list_.AddSubtreeProperty(
       (SubtreeProperty){.type = DisplayListSubtreePropertyOpType::kOpacity,
                         .data.opacity = alpha});
+  return *this;
+}
+
+DisplayListBuilder& DisplayListBuilder::Filter(
+    const starlight::FilterData& filter) {
+  const auto& amount = filter.amount.NumericLength();
+  const float platform_amount = amount.ContainsPercentage()
+                                    ? amount.GetPercentagePart() / 100.f
+                                    : amount.GetFixedPart();
+  display_list_.AddSubtreeProperty((SubtreeProperty){
+      .type = DisplayListSubtreePropertyOpType::kFilter,
+      .data.filter =
+          {
+              .type = static_cast<int32_t>(filter.type),
+              .amount = platform_amount,
+          },
+  });
   return *this;
 }
 

@@ -574,6 +574,7 @@ bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
 
     layer.opacity = hostOpacity;
     layer.hidden = hostHidden;
+    layer.filters = hostLayer.filters;
   }
 
   [CATransaction commit];

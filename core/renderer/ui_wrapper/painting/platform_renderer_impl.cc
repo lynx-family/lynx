@@ -175,6 +175,8 @@ void PlatformRendererImpl::UpdateSubtreeProperty(
       case DisplayListSubtreePropertyOpType::kTransform:
         *transform_ = *p;
         break;
+      case DisplayListSubtreePropertyOpType::kFilter:
+        break;
     }
   }
   OnUpdateSubtreeProperties(display_list);

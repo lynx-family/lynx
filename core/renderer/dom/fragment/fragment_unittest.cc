@@ -128,6 +128,56 @@ class TestPlatformRendererFactory : public PlatformRendererFactory {
   }
 };
 
+TEST_F(FragmentTest, FilterResetInvalidatesSubtreeAndEmitsNone) {
+  auto element = manager->CreateFiberView();
+  auto* fragment = element->element_container()->CastToFragment();
+  ASSERT_NE(fragment, nullptr);
+  auto* style = element->computed_css_style();
+
+  auto filter_array = lepus::CArray::Create();
+  filter_array->emplace_back(
+      static_cast<int32_t>(starlight::FilterType::kGrayscale));
+  filter_array->emplace_back(40.f);
+  filter_array->emplace_back(static_cast<int32_t>(CSSValuePattern::PERCENT));
+  element->SetStyleInternal(
+      CSSPropertyID::kPropertyIDFilter,
+      CSSValue(lepus::Value(filter_array), CSSValuePattern::ARRAY));
+  ASSERT_TRUE(element->element_container()->NeedUpdateSubtreeProperty());
+
+  DisplayListBuilder filter_builder;
+  fragment->DrawFilter(filter_builder);
+  DisplayList filter_list = filter_builder.Build();
+  const SubtreeProperty* filter_properties =
+      filter_list.GetSubtreePropertiesData();
+  ASSERT_NE(filter_properties, nullptr);
+  ASSERT_EQ(filter_list.GetSubtreePropertiesSize(), 1u);
+  EXPECT_EQ(filter_properties[0].type,
+            DisplayListSubtreePropertyOpType::kFilter);
+  EXPECT_EQ(filter_properties[0].data.filter.type,
+            static_cast<int32_t>(starlight::FilterType::kGrayscale));
+  EXPECT_FLOAT_EQ(filter_properties[0].data.filter.amount, 0.4f);
+
+  style->ClearChanged();
+  element->element_container()->ClearPaintDirtyState();
+  base::Vector<CSSPropertyID> reset_styles = {CSSPropertyID::kPropertyIDFilter};
+  element->ResetStyle(reset_styles);
+  ASSERT_TRUE(element->element_container()->NeedUpdateSubtreeProperty());
+  EXPECT_FALSE(element->element_container()->NeedRedraw());
+
+  DisplayListBuilder reset_builder;
+  fragment->DrawFilter(reset_builder);
+  DisplayList reset_list = reset_builder.Build();
+  const SubtreeProperty* reset_properties =
+      reset_list.GetSubtreePropertiesData();
+  ASSERT_NE(reset_properties, nullptr);
+  ASSERT_EQ(reset_list.GetSubtreePropertiesSize(), 1u);
+  EXPECT_EQ(reset_properties[0].type,
+            DisplayListSubtreePropertyOpType::kFilter);
+  EXPECT_EQ(reset_properties[0].data.filter.type,
+            static_cast<int32_t>(starlight::FilterType::kNone));
+  EXPECT_FLOAT_EQ(reset_properties[0].data.filter.amount, 0.f);
+}
+
 class TestNativePaintingCtxPlatformRef : public NativePaintingCtxPlatformRef {
  public:
   TestNativePaintingCtxPlatformRef()

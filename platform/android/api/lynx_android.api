@@ -1365,6 +1365,7 @@ public class com::lynx::tasm::behavior::render::ContainerRenderer : ViewGroup, c
   public Renderer com.lynx.tasm.behavior.render.ContainerRenderer.getRenderer();
   public View com.lynx.tasm.behavior.render.ContainerRenderer.getView();
   public com.lynx.tasm.behavior.render.ContainerRenderer.ContainerRenderer(LynxContext context);
+  public void com.lynx.tasm.behavior.render.ContainerRenderer.applyRendererHostFilter(int type, float amount);
 }
 
 public class com::lynx::tasm::utils::ContextUtils :  {
@@ -3215,6 +3216,7 @@ public interface com::lynx::tasm::behavior::render::IRendererHost {
   public default void com.lynx.tasm.behavior.render.IRendererHost.setClipChildrenForRenderer(boolean clipChildren);
   public default void com.lynx.tasm.behavior.render.IRendererHost.applyRendererClipBounds(boolean needClip, Rect clipBounds);
   public default void com.lynx.tasm.behavior.render.IRendererHost.applyRendererOpacity(float opacity);
+  public default void com.lynx.tasm.behavior.render.IRendererHost.applyRendererHostFilter(int type, float amount);
   public default void com.lynx.tasm.behavior.render.IRendererHost.applyRendererTransform(float[] transform);
 }
 

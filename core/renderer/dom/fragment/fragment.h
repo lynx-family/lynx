@@ -151,6 +151,7 @@ class Fragment : public BaseElementContainer {
   void DrawBoxShadow(DisplayListBuilder& display_list_builder);
   void DrawTransform(DisplayListBuilder& display_list_builder);
   void DrawOpacity(DisplayListBuilder& display_list_builder);
+  void DrawFilter(DisplayListBuilder& display_list_builder);
 
   // Performs a full redraw of this fragment including background, border,
   // children, etc. Called by OnDraw when NeedRedraw() is true.

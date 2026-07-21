@@ -55,6 +55,7 @@ public class DisplayListApplier implements Drawable.Callback {
   // Subtree property operation types (matching C++ DisplayListSubtreePropertyOpType)
   static final int SUBTREE_OP_TRANSFORM = 0;
   static final int SUBTREE_OP_OPACITY = 1;
+  static final int SUBTREE_OP_FILTER = 2;
 
   private DisplayList mDisplayList;
   private TextMeasurer mTextMeasurer;
