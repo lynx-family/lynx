@@ -5,6 +5,7 @@
 #ifndef PLATFORM_HARMONY_LYNX_HARMONY_SRC_MAIN_CPP_UI_IMAGE_DRAWABLE_H_
 #define PLATFORM_HARMONY_LYNX_HARMONY_SRC_MAIN_CPP_UI_IMAGE_DRAWABLE_H_
 
+#include <multimedia/image_framework/image/pixelmap_native.h>
 #include <native_drawing/drawing_canvas.h>
 #include <native_drawing/drawing_pixel_map.h>
 
@@ -48,15 +49,13 @@ class ImageDrawable {
   void Render(OH_Drawing_Canvas* canvas);
   void DrawPixelMap(OH_Drawing_Canvas* canvas,
                     OH_Drawing_PixelMap* draw_bitmap);
-  bool HasContent() {
-    return pixel_maps_ != nullptr || !image_data_draw_bitmaps_.empty();
-  }
+  bool HasContent() { return pixel_maps_ != nullptr || image_data_ != nullptr; }
   bool IsAnimate();
   bool IsAnimateRunning() { return is_running_; };
   void StartAnimation();
   void StopAnimation();
   void PauseAnimation();
-  OH_Drawing_PixelMap* GetCurrentDrawBitmap();
+  OH_PixelmapNative* GetCurrentPixelMap();
   ~ImageDrawable();
   void ResetContent();
   void DestroyMatrix();
@@ -68,7 +67,6 @@ class ImageDrawable {
  private:
   std::unique_ptr<LynxBaseImage> pixel_maps_{nullptr};
   std::shared_ptr<ImageData> image_data_{nullptr};
-  std::vector<OH_Drawing_PixelMap*> image_data_draw_bitmaps_;
   std::unique_ptr<base::TimedTaskManager> timer_task_manager_{nullptr};
   ImageMode mode_{ImageMode::kScaleToFill};
   std::weak_ptr<UIBase> ui_base_;
@@ -121,11 +119,9 @@ class ImageDrawable {
 
   int32_t FrameDuration(int32_t frame_number) const;
 
-  OH_Drawing_PixelMap* FrameDrawBitmap(int32_t frame_number) const;
+  OH_PixelmapNative* FramePixelMap(int32_t frame_number) const;
 
   bool IsAnimImage() const;
-
-  void DestroyImageDataDrawBitmaps();
 
   void DispatchAnimationStart();
 
