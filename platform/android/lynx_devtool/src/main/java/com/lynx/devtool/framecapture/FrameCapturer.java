@@ -98,6 +98,7 @@ public abstract class FrameCapturer {
   protected void screenshot() {
     final long currentTime = FrameTraceUtil.getSystemBootTimeNs() / 1000;
     if (currentTime - mLastScreenshotTime < mScreenshotInterval) {
+      onScreenshotSkipped();
       return;
     }
 
@@ -109,6 +110,7 @@ public abstract class FrameCapturer {
       public void run() {
         View view = mView.get();
         if (view == null) {
+          onScreenshotSkipped();
           return;
         }
         onScreenshotActionStart();
@@ -120,11 +122,14 @@ public abstract class FrameCapturer {
             }
           });
         } catch (Throwable e) {
+          onScreenshotSkipped();
           e.printStackTrace();
         }
       }
     });
   }
+
+  protected void onScreenshotSkipped() {}
 
   protected void onScreenshotActionEnd() {}
 
