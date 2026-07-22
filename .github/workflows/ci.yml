@@ -484,6 +484,16 @@ jobs:
         uses: ./lynx/.github/actions/windows-explorer-build
         with:
           build-arch: ${{ matrix.arch }}
+      - name: upload artifact
+        uses: lynx-infra/upload-artifact@332ec52e99f7cbf1fbbdc9bcc09280d49147d092
+        with:
+          name: windows-explorer-build-${{ matrix.arch }}
+          path: '${{ github.workspace }}/lynx/LynxExplorer-windows-${{ matrix.arch }}.tar.gz'
+      - name: upload SDK artifact
+        uses: lynx-infra/upload-artifact@332ec52e99f7cbf1fbbdc9bcc09280d49147d092
+        with:
+          name: windows-sdk-${{ matrix.arch }}
+          path: '${{ github.workspace }}/lynx/out/Default/lynx_sdk_windows_${{ matrix.arch }}.zip'
 
   android-sdk-release:
     timeout-minutes: 60
