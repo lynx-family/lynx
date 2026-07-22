@@ -20,6 +20,7 @@ describe('Test Config Types', () => {
     expectTypeOf<Config>().toHaveProperty('enableEndGestureAtLastFingerUp').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('enableEventThrough').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('enableFetchAPIStandardStreaming').toEqualTypeOf<boolean | undefined>();
+    expectTypeOf<Config>().toHaveProperty('enableFixedNew').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('enableFlexBasisZeroPercent').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('enableGridPlacementShorthands').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('enableJsBindingApiThrowException').toEqualTypeOf<boolean | undefined>();
@@ -29,6 +30,8 @@ describe('Test Config Types', () => {
     expectTypeOf<Config>().toHaveProperty('enableNewGesture').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('enableNewIntersectionObserver').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('enableNewTransformOrigin').toEqualTypeOf<boolean | undefined>();
+    expectTypeOf<Config>().toHaveProperty('enableParseIntFlex').toEqualTypeOf<boolean | undefined>();
+    expectTypeOf<Config>().toHaveProperty('enableReloadLifecycle').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('enableSimultaneousTap').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('enableTextOverflow').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('enableTransformedTouchPosition').toEqualTypeOf<boolean | undefined>();

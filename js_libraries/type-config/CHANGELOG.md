@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## 4.1.1
+
+### Patch Changes
+
+- Add `enableFixedNew`, `enableParseIntFlex`, and `enableReloadLifecycle` to the exported `Config` type and `configKeys` runtime constant.
+
 ## 4.1.0
 
 ### Minor Changes
