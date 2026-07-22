@@ -33,6 +33,13 @@
 #include <LynxWeakNodeAPI/headers/weak_napi_defines.h>
 #endif
 
+#elif defined(__ANDROID__) || defined(__OHOS__)
+
+#include "headers/node_api.h"
+#ifdef USE_WEAK_SUFFIX_NAPI
+#include "headers/weak_napi_defines.h"
+#endif
+
 #else
 
 #include "third_party/weak-node-api/headers/node_api.h"

@@ -313,9 +313,9 @@ importers:
 
   third_party/weak-node-api:
     specifiers:
-      '@lynx-js/weak-node-api': 0.0.9
+      '@lynx-js/weak-node-api': 0.1.0
     dependencies:
-      '@lynx-js/weak-node-api': 0.0.9
+      '@lynx-js/weak-node-api': 0.1.0
 
   tools/api/parser/ts_morph:
     specifiers:
@@ -2019,8 +2019,9 @@ packages:
     dependencies:
       csstype: 3.1.3
 
-  /@lynx-js/weak-node-api/0.0.9:
-    resolution: {integrity: sha512-s+UR4gBGxLKk/S1f7C8nEow/oxfgQ6pJQBR8fM4XOFYaecIHlgIj7/XujQw6f4wtk21VSP4BxrRWeomYjiEoJQ==}
+  /@lynx-js/weak-node-api/0.1.0:
+    resolution: {integrity: sha512-FIw4ZCkqvyh7u2icVdIZy6FU8IVWNDJ9AQkom+4YZgTXMlhsDXUY6HPInxln02JuWba+cODwtOPBzBN2BUzQYA==}
+    hasBin: true
     dependencies:
       node-addon-api: 7.1.0
     dev: false

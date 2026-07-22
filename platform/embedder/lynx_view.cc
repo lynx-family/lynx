@@ -21,6 +21,7 @@
 #include "platform/embedder/lynx_view_priv.h"
 #include "platform/embedder/lynx_vsync_monitor_priv.h"
 #include "platform/embedder/module/global_module_registry.h"
+#include "platform/embedder/public/capi/lynx_view_capi.h"
 #include "platform/embedder/resource/lynx_resource_loader_embedder.h"
 
 #if ENABLE_INSPECTOR && LYNX_ENABLE_LOGBOX

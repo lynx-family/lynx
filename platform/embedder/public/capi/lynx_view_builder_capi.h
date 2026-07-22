@@ -10,13 +10,11 @@
 #include "lynx_group_capi.h"
 #include "lynx_native_module_capi.h"
 #include "lynx_native_view_capi.h"
+#include "lynx_view_builder_types_capi.h"
 #include "lynx_windowless_renderer_capi.h"
 
 LYNX_EXTERN_C_BEGIN
 
-typedef void* NativeWindow;
-
-typedef struct lynx_view_builder_t lynx_view_builder_t;
 LYNX_CAPI_EXPORT lynx_view_builder_t* lynx_view_builder_create();
 
 // Sets the screen size and pixel ratio for the LynxView being built. This

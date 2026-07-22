@@ -4,6 +4,8 @@ cmake_minimum_required(VERSION 3.4.1)
 project("lynx_explorer")
 
 set(LYNX_ROOT_PATH ${PROJECT_SOURCE_DIR}/../../../)
+set(WEAK_NODE_API_PACKAGE_ROOT
+        ${LYNX_ROOT_PATH}/third_party/weak-node-api/node_modules/@lynx-js/weak-node-api)
 
 add_library(
         lynx_napi_addon_loader
@@ -13,7 +15,8 @@ add_library(
 )
 
 target_include_directories(lynx_napi_addon_loader PUBLIC
-${LYNX_ROOT_PATH})
+        ${LYNX_ROOT_PATH}
+        ${WEAK_NODE_API_PACKAGE_ROOT})
 
 add_library(napi_adapter SHARED IMPORTED)
 set_target_properties(napi_adapter PROPERTIES IMPORTED_LOCATION

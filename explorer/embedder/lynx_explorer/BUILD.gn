@@ -17,5 +17,5 @@ source_set("lynx_explorer_embedder") {
   ]
 
   deps = [ "../../../platform/embedder:public_headers" ]
-  configs += [ "../../../third_party/weak-node-api:weak_node_api_config" ]
+  public_deps = [ "../../../third_party/weak-node-api:weak_node_api_headers" ]
 }

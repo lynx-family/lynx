@@ -5,6 +5,13 @@
 #include "base/include/log/logging.h"
 #include "platform/embedder/lynx_view_builder_priv.h"
 #include "platform/embedder/native_view/lynx_texture_view.h"
+#include "platform/embedder/public/capi/lynx_env_capi.h"
+#include "platform/embedder/public/capi/lynx_view_builder_capi.h"
+
+const char* lynx_view_builder_t::GetICUDataPath() const {
+  return !icu_data_path.empty() ? icu_data_path.c_str()
+                                : lynx_env_get_icu_data_path();
+}
 
 LYNX_EXTERN_C lynx_view_builder_t* lynx_view_builder_create() {
   auto builder = new lynx_view_builder_t();

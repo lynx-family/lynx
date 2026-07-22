@@ -14,7 +14,7 @@
 #include "platform/embedder/core/lynx_template_renderer.h"
 #include "platform/embedder/lynx_devtool/logbox/logbox_resource_provider.h"
 #include "platform/embedder/lynx_devtool/logbox/lynx_logbox_bridge.h"
-#include "platform/embedder/public/capi/lynx_view_builder_capi.h"
+#include "platform/embedder/public/capi/lynx_view_builder_types_capi.h"
 
 namespace lynx {
 namespace embedder {

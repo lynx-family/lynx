@@ -6,6 +6,7 @@ import("../../../core/Lynx.gni")
 assert(enable_napi_binding)
 
 lynx_core_source_set("base_module") {
+  public_deps = [ "../../../third_party/weak-node-api:weak_node_api_headers" ]
   sources = [
     "lynx_module_factory_napi.cc",
     "lynx_module_factory_napi.h",
@@ -14,7 +15,6 @@ lynx_core_source_set("base_module") {
     "lynx_native_module_napi.cc",
     "lynx_native_module_napi.h",
   ]
-  public_configs = [ "../../../third_party/weak-node-api:weak_node_api_config" ]
 }
 
 lynx_core_source_set("module") {
@@ -28,6 +28,8 @@ lynx_core_source_set("module") {
     "lynx_fetch_module.cc",
     "lynx_fetch_module.h",
   ]
-  deps = [ ":base_module" ]
-  public_configs = [ "../../../third_party/weak-node-api:weak_node_api_config" ]
+  deps = [
+    ":base_module",
+    "../../../third_party/weak-node-api:weak_node_api_headers",
+  ]
 }
