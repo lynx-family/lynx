@@ -179,6 +179,10 @@ export struct LynxView {
   // We have introduced an experimental switch as a temporary workaround for the abnormal layout problem in the waterfall flow scenario.
   // This switch will be removed once OpenHarmony is fixed. Please avoid using it unnecessarily.
   experimentalFixFitContent?: boolean = false;
+  // TODO(yangguangzhao): Skip viewport update when the node is off the main tree. 
+  // Disabled by default because the underlying API requires a higher SDK version and may break existing behavior.
+  // Remove this switch and enable unconditionally once verified stable in production.
+  skipOffTreeViewportUpdate?: boolean = false;
   private perfController?: PerformanceController;
   private uiRenderer?: LynxUIRenderer;
   private templateRenderer?: LynxTemplateRenderer;
@@ -700,6 +704,14 @@ export struct LynxView {
   }
 
   private updateViewport(width: number, height: number) {
+    if (this.skipOffTreeViewportUpdate) {
+      const frameNode: FrameNode | null = this.getUIContext().getFrameNodeByUniqueId(this.getUniqueId());
+      // Access dynamically because Lynx still supports compile SDKs that predate this API 23 method.
+      if (frameNode && typeof frameNode['isOnMainTree'] === 'function' && !frameNode['isOnMainTree']()) {
+        return;
+      }
+    }
+
     LLog.d(TAG, `update view port width: ${width}, height: ${height}`);
     this.templateRenderer?.updateViewport(width,
       this.fitContentWidth ? MeasureMode.INDEFINITE : MeasureMode.DEFINITE,
