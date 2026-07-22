@@ -7,5 +7,9 @@ group("telemetry") {
   deps = [
     "base:base_benchmark",
     "lepus:lepus_benchmark",
+    "styling/css:css_invalidation_benchmark",
+    "styling/css:css_variable_handler_benchmark",
+    "styling/css:fiber_restyle_benchmark",
+    "styling/css:selector_matcher_benchmark",
   ]
 }

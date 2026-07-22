@@ -10,6 +10,7 @@ group("testing") {
     "../service_api/testing:lynx_service_api_testing",
     "lynx:lynx_test",
     "lynx_devtool:devtool_unit_test",
+    "telemetry",
   ]
 }
 

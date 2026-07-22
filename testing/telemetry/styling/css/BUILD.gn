@@ -1,0 +1,37 @@
+# Copyright 2026 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("../../../test.gni")
+
+styling_benchmark_deps = [
+  "../../../../core/renderer:tasm",
+  "../../../../core/renderer/css:css",
+  "../../../../core/renderer/dom:dom",
+  "../../../../core/renderer/dom:renderer_dom",
+  "../../../../core/runtime/lepus/bindings:bindings",
+]
+
+benchmark_test("css_variable_handler_benchmark") {
+  testonly = true
+  sources = [ "css_variable_handler_benchmark.cc" ]
+  deps = styling_benchmark_deps
+}
+
+benchmark_test("css_invalidation_benchmark") {
+  testonly = true
+  sources = [ "css_invalidation_benchmark.cc" ]
+  deps = styling_benchmark_deps
+}
+
+benchmark_test("selector_matcher_benchmark") {
+  testonly = true
+  sources = [ "selector_matcher_benchmark.cc" ]
+  deps = styling_benchmark_deps
+}
+
+benchmark_test("fiber_restyle_benchmark") {
+  testonly = true
+  sources = [ "fiber_restyle_benchmark.cc" ]
+  deps = styling_benchmark_deps
+}
