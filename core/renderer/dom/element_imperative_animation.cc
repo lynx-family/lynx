@@ -19,6 +19,21 @@ bool Element::ShouldTrackImperativeAnimationsForNewPipeline() const {
          element_manager_->EnableNewStylingPipeline();
 }
 
+ImperativeAnimationState& Element::EnsureImperativeAnimationState() {
+  if (imperative_animation_state_ == nullptr) {
+    imperative_animation_state_ = std::make_unique<ImperativeAnimationState>();
+  }
+  return *imperative_animation_state_;
+}
+
+void Element::ReleaseImperativeAnimationStateIfEmpty() {
+  if (imperative_animation_state_ != nullptr &&
+      !imperative_animation_state_->HasRecords() &&
+      !imperative_animation_state_->HasPendingCleanupProperties()) {
+    imperative_animation_state_.reset();
+  }
+}
+
 void Element::ApplyImperativeAnimationMutation(
     const ImperativeAnimationState::Mutation& mutation) {
   if (!ShouldTrackImperativeAnimationsForNewPipeline()) {
@@ -65,7 +80,7 @@ void Element::RecordImperativeAnimationStart(
       keyframes_token = keyframes_iter->second.get();
     }
   }
-  ApplyImperativeAnimationMutation(imperative_animation_state_.RecordStart(
+  ApplyImperativeAnimationMutation(EnsureImperativeAnimationState().RecordStart(
       source, js_name, animation_name, owns_generated_keyframe, timing_styles,
       keyframes_token));
 }
@@ -76,8 +91,10 @@ void Element::UpdateImperativeAnimationPlayState(
   if (!ShouldTrackImperativeAnimationsForNewPipeline()) {
     return;
   }
-  imperative_animation_state_.UpdatePlayState(source, name, timing_styles,
-                                              paused);
+  if (imperative_animation_state_ != nullptr) {
+    imperative_animation_state_->UpdatePlayState(source, name, timing_styles,
+                                                 paused);
+  }
 }
 
 void Element::CancelImperativeAnimation(ImperativeAnimationState::Source source,
@@ -85,8 +102,11 @@ void Element::CancelImperativeAnimation(ImperativeAnimationState::Source source,
   if (!ShouldTrackImperativeAnimationsForNewPipeline()) {
     return;
   }
-  ApplyImperativeAnimationMutation(
-      imperative_animation_state_.Cancel(source, name));
+  if (imperative_animation_state_ != nullptr) {
+    ApplyImperativeAnimationMutation(
+        imperative_animation_state_->Cancel(source, name));
+    ReleaseImperativeAnimationStateIfEmpty();
+  }
 }
 
 void Element::FinishImperativeAnimation(ImperativeAnimationState::Source source,
@@ -94,16 +114,22 @@ void Element::FinishImperativeAnimation(ImperativeAnimationState::Source source,
   if (!ShouldTrackImperativeAnimationsForNewPipeline()) {
     return;
   }
-  ApplyImperativeAnimationMutation(
-      imperative_animation_state_.Finish(source, name));
+  if (imperative_animation_state_ != nullptr) {
+    ApplyImperativeAnimationMutation(
+        imperative_animation_state_->Finish(source, name));
+    ReleaseImperativeAnimationStateIfEmpty();
+  }
 }
 
 void Element::ClearImperativeAnimationsForStyleAnimationUpdate() {
   if (!ShouldTrackImperativeAnimationsForNewPipeline()) {
     return;
   }
-  ApplyImperativeAnimationMutation(
-      imperative_animation_state_.ClearForStyleAnimationUpdate());
+  if (imperative_animation_state_ != nullptr) {
+    ApplyImperativeAnimationMutation(
+        imperative_animation_state_->ClearForStyleAnimationUpdate());
+    ReleaseImperativeAnimationStateIfEmpty();
+  }
 }
 
 void Element::ReplayImperativeAnimationsToStyle(
@@ -111,35 +137,48 @@ void Element::ReplayImperativeAnimationsToStyle(
   if (!ShouldTrackImperativeAnimationsForNewPipeline()) {
     return;
   }
-  imperative_animation_state_.ReplayToStyle(computed_style);
+  if (imperative_animation_state_ != nullptr) {
+    imperative_animation_state_->ReplayToStyle(computed_style);
+  }
 }
 
 CSSIDBitset Element::TakePendingImperativeAnimationCleanupProperties() {
   if (!ShouldTrackImperativeAnimationsForNewPipeline()) {
     return CSSIDBitset();
   }
-  return imperative_animation_state_.TakePendingCleanupProperties();
+  if (imperative_animation_state_ == nullptr) {
+    return CSSIDBitset();
+  }
+  auto cleanup_properties =
+      imperative_animation_state_->TakePendingCleanupProperties();
+  ReleaseImperativeAnimationStateIfEmpty();
+  return cleanup_properties;
 }
 
 bool Element::HasPendingImperativeAnimationCleanupProperties() const {
   if (!ShouldTrackImperativeAnimationsForNewPipeline()) {
     return false;
   }
-  return imperative_animation_state_.HasPendingCleanupProperties();
+  return imperative_animation_state_ != nullptr &&
+         imperative_animation_state_->HasPendingCleanupProperties();
 }
 
 bool Element::HasImperativeAnimations() const {
   if (!ShouldTrackImperativeAnimationsForNewPipeline()) {
     return false;
   }
-  return imperative_animation_state_.HasRecords();
+  return imperative_animation_state_ != nullptr &&
+         imperative_animation_state_->HasRecords();
 }
 
 void Element::ClearImperativeAnimationState() {
   if (!ShouldTrackImperativeAnimationsForNewPipeline()) {
     return;
   }
-  ApplyImperativeAnimationMutation(imperative_animation_state_.Clear());
+  if (imperative_animation_state_ != nullptr) {
+    ApplyImperativeAnimationMutation(imperative_animation_state_->Clear());
+    imperative_animation_state_.reset();
+  }
   will_removed_keyframe_name_ = base::String();
 }
 

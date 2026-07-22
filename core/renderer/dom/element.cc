@@ -214,11 +214,15 @@ Element::Element(const Element& element, bool clone_resolved_props)
       sticky_positions_(element.sticky_positions_),
       max_height_(element.max_height_),
       record_parent_font_size_(element.record_parent_font_size_),
-      global_bind_target_set_(element.global_bind_target_set_),
       animation_previous_styles_(element.animation_previous_styles_),
       committed_underlying_layout_only_styles_for_new_pipeline_(
           element.committed_underlying_layout_only_styles_for_new_pipeline_),
       template_attributes_(element.template_attributes_) {
+  if (element.rare_data_ &&
+      element.rare_data_->global_bind_target_set_.has_value()) {
+    EnsureRareData().global_bind_target_set_ =
+        element.rare_data_->global_bind_target_set_;
+  }
   if (element.base_css_style() != nullptr) {
     base_css_style_ = std::make_unique<starlight::ComputedCSSStyle>(
         *(element.base_css_style()));
@@ -350,7 +354,7 @@ void Element::AppendPendingInvokeTask(base::closure task) {
   if (!task) {
     return;
   }
-  pending_invoke_tasks_.emplace_back(std::move(task));
+  EnsureRareData().pending_invoke_tasks_.emplace_back(std::move(task));
   MarkDirty(kDirtyInvoke);
 }
 
@@ -364,12 +368,61 @@ void Element::FlushPendingInvokeTasks() {
   if (!(dirty_ & kDirtyInvoke)) {
     return;
   }
-  for (auto& task : pending_invoke_tasks_) {
-    task();
+  if (rare_data_) {
+    auto& pending_invoke_tasks = rare_data_->pending_invoke_tasks_;
+    for (auto& task : pending_invoke_tasks) {
+      task();
+    }
+    pending_invoke_tasks.clear();
   }
-  pending_invoke_tasks_.clear();
   dirty_ &= ~kDirtyInvoke;
+  ReleaseRareDataIfEmpty();
   element_container_->FlushImmediately();
+}
+
+ElementRareData& Element::EnsureRareData() {
+  if (!rare_data_) {
+    rare_data_ = std::make_unique<ElementRareData>();
+  }
+  return *rare_data_;
+}
+
+void Element::ReleaseRareDataIfEmpty() {
+  if (rare_data_ && rare_data_->empty()) {
+    rare_data_.reset();
+  }
+}
+
+const ElementLayoutStyleMap* Element::GetLayoutStyles() const {
+  if (!rare_data_ || !rare_data_->layout_styles_.has_value()) {
+    return nullptr;
+  }
+  return rare_data_->layout_styles_.get();
+}
+
+void Element::CopyLayoutStylesFrom(const Element& element) {
+  const auto* layout_styles = element.GetLayoutStyles();
+  if (layout_styles) {
+    *EnsureRareData().layout_styles_ = *layout_styles;
+  } else if (rare_data_) {
+    rare_data_->layout_styles_.reset();
+    ReleaseRareDataIfEmpty();
+  }
+}
+
+void Element::RecordLayoutStyle(CSSPropertyID id, const CSSValue& value) {
+  (*EnsureRareData().layout_styles_)[id] = value;
+}
+
+void Element::RemoveRecordedLayoutStyle(CSSPropertyID id) {
+  if (!rare_data_ || !rare_data_->layout_styles_.has_value()) {
+    return;
+  }
+  rare_data_->layout_styles_->erase(id);
+  if (rare_data_->layout_styles_->empty()) {
+    rare_data_->layout_styles_.reset();
+    ReleaseRareDataIfEmpty();
+  }
 }
 
 const EventMap& Element::event_map() const {
@@ -483,7 +536,7 @@ void Element::SetStyleInternal(CSSPropertyID css_id,
     UpdateLayoutNodeStyle(css_id, value);
 
     if (element_manager_->GetEnableDumpElementTree()) {
-      (*layout_styles_)[css_id] = value;
+      RecordLayoutStyle(css_id, value);
     }
   }
 
@@ -637,9 +690,7 @@ bool Element::ResetCSSValue(CSSPropertyID css_id) {
   if (need_layout) {
     ResetLayoutNodeStyle(css_id);
     if (element_manager_->GetEnableDumpElementTree()) {
-      if (layout_styles_.has_value()) {
-        layout_styles_->erase(css_id);
-      }
+      RemoveRecordedLayoutStyle(css_id);
     }
     if (is_layout_only && EnableLayoutInElementMode() &&
         computed_css_style()->ResetValue(css_id)) {
@@ -1891,7 +1942,10 @@ void Element::CheckGlobalBindTarget(const lynx::base::String& key,
   // clear target_set_ if set global-target attribute, no matter value is empty
   // or not
   auto value_str = value.StringView();
-  global_bind_target_set_.reset();
+  if (rare_data_) {
+    rare_data_->global_bind_target_set_.reset();
+    ReleaseRareDataIfEmpty();
+  }
   if (value_str.empty()) {
     return;
   }
@@ -1899,8 +1953,9 @@ void Element::CheckGlobalBindTarget(const lynx::base::String& key,
   std::vector<std::string> id_targets;
   // multiple id split by comma delimiter
   base::SplitString(base::TrimString(value_str), kDelimiter, id_targets);
+  auto& global_bind_target_set = EnsureRareData().global_bind_target_set_;
   for (auto& s : id_targets) {
-    global_bind_target_set_->insert(base::TrimString(s));
+    global_bind_target_set->insert(base::TrimString(s));
   }
 }
 
@@ -2375,9 +2430,9 @@ CSSKeyframesToken* Element::GetSimpleStyleKeyframesToken(
 
 CSSKeyframesToken* Element::GetCSSKeyframesToken(
     const base::String& animation_name) {
-  if (ShouldTrackImperativeAnimationsForNewPipeline() &&
-      keyframes_map_.has_value() &&
-      imperative_animation_state_.HasAnimationName(animation_name)) {
+  if (ShouldTrackImperativeAnimationsForNewPipeline() && keyframes_map_ &&
+      imperative_animation_state_ != nullptr &&
+      imperative_animation_state_->HasAnimationName(animation_name)) {
     if (auto it = keyframes_map_->find(animation_name);
         it != keyframes_map_->end()) {
       return it->second.get();
@@ -2585,9 +2640,9 @@ void Element::HandleGlobalEvent(fml::RefPtr<event::Event> event) {
         continue;
       }
       event->set_current_target(current_target->GetWeakTarget());
-      const auto& global_bind_target_set = current_target->GlobalBindTarget();
+      const auto* global_bind_target_set = current_target->GlobalBindTarget();
       // If set is empty, means the target is all other elements.
-      if (!global_bind_target_set.has_value() ||
+      if (global_bind_target_set == nullptr ||
           global_bind_target_set->empty()) {
         current_target->DispatchEvent(event);
       } else {

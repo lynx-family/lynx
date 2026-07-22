@@ -683,7 +683,7 @@ FiberElement::FiberElement(const FiberElement &element,
   if (clone_resolved_props) {
     parsed_styles_map_ = element.parsed_styles_map_;
     updated_inherited_styles_ = element.updated_inherited_styles_;
-    layout_styles_ = element.layout_styles_;
+    CopyLayoutStylesFrom(element);
     // clone_resolved_props only carries committed resolved state. The dynamic
     // source object is treated as a mutation carrier and will be rebuilt lazily
     // from parsed_dynamic_styles_map_ when a post-clone incremental update
@@ -694,11 +694,17 @@ FiberElement::FiberElement(const FiberElement &element,
     // updates. If the element flush props has been executed multiple times
     // before cloning the element, then this prop bundle cannot represent all
     // the stock styles since the element was created.
+#if ENABLE_UNITTESTS
     if (element.pre_prop_bundle_) {
       prop_bundle_ = element.pre_prop_bundle_->ShallowCopy();
-    } else if (element.prop_bundle_) {
-      prop_bundle_ = element.prop_bundle_->ShallowCopy();
+    } else {
+#endif
+      if (element.prop_bundle_) {
+        prop_bundle_ = element.prop_bundle_->ShallowCopy();
+      }
+#if ENABLE_UNITTESTS
     }
+#endif
   }
 
   if (element.config().IsTable() && element.config().GetLength() > 0) {
@@ -976,8 +982,8 @@ void FiberElement::AttachToElementManager(
   InitLayoutBundle();
   UpdateLayoutNodeFontSize(GetFontSize(), GetRecordedRootFontSize());
 
-  if (layout_styles_.has_value()) {
-    for (auto &layout_style : *layout_styles_) {
+  if (const auto *layout_styles = GetLayoutStyles()) {
+    for (const auto &layout_style : *layout_styles) {
       UpdateLayoutNodeStyle(layout_style.first, layout_style.second);
     }
   }
@@ -2648,7 +2654,7 @@ void Element::ReplayChangedStyleSideEffect(CSSPropertyID id,
     }
     UpdateLayoutNodeStyle(id, value);
     if (element_manager()->GetEnableDumpElementTree()) {
-      (*layout_styles_)[id] = value;
+      RecordLayoutStyle(id, value);
     }
   }
 
@@ -2693,9 +2699,8 @@ void Element::ReplayResetStyleSideEffect(CSSPropertyID id,
   const bool need_layout = is_layout_only || LayoutProperty::IsLayoutWanted(id);
   if (need_layout) {
     ResetLayoutNodeStyle(id);
-    if (element_manager()->GetEnableDumpElementTree() &&
-        layout_styles_.has_value()) {
-      layout_styles_->erase(id);
+    if (element_manager()->GetEnableDumpElementTree()) {
+      RemoveRecordedLayoutStyle(id);
     }
     if (is_layout_only && EnableLayoutInElementMode()) {
       RequestLayout();

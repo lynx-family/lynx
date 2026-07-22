@@ -81,6 +81,7 @@ enum class BatchRenderStrategy;
 
 using ElementChildrenArray =
     base::InlineVector<Element*, kChildrenInlineVectorSize>;
+constexpr size_t kElementOwnedChildrenInlineCapacity = 2;
 
 enum ElementArchTypeEnum : uint8_t {
   FiberArch = 0,
@@ -136,6 +137,24 @@ class InspectorAttribute {
 
   std::unique_ptr<Element> doc_;
   std::unique_ptr<Element> style_value_;
+};
+
+using ElementGlobalBindTargetSet = base::LinearFlatSet<std::string>;
+using ElementLayoutStyleMap =
+    base::LinearFlatMap<tasm::CSSPropertyID, CSSValue>;
+
+struct ElementRareData {
+  bool empty() const {
+    return pending_invoke_tasks_.empty() &&
+           !global_bind_target_set_.has_value() &&
+           !layout_styles_.has_value() && inspector_attribute_ == nullptr;
+  }
+
+  base::Vector<base::closure> pending_invoke_tasks_;
+  base::auto_create_optional<ElementGlobalBindTargetSet>
+      global_bind_target_set_;
+  base::auto_create_optional<ElementLayoutStyleMap> layout_styles_;
+  std::unique_ptr<InspectorAttribute> inspector_attribute_;
 };
 
 class Element : public lepus::RefCounted,
@@ -924,7 +943,12 @@ class Element : public lepus::RefCounted,
   virtual StyleMap GetStylesForWorklet();
   virtual const AttrMap& GetAttributesForWorklet();
 
-  inline const auto& GlobalBindTarget() { return global_bind_target_set_; }
+  inline const ElementGlobalBindTargetSet* GlobalBindTarget() const {
+    if (rare_data_ && rare_data_->global_bind_target_set_.has_value()) {
+      return rare_data_->global_bind_target_set_.get();
+    }
+    return nullptr;
+  }
   virtual bool CanBeLayoutOnly() const;
 
   LYNX_EXPORT_FOR_DEVTOOL bool HasUIPrimitive() const;
@@ -1330,11 +1354,21 @@ class Element : public lepus::RefCounted,
   // For devtool
   ALLOW_UNUSED_TYPE void set_inspector_attribute(
       std::unique_ptr<InspectorAttribute> ptr) {
-    inspector_attribute_ = std::move(ptr);
+    if (ptr) {
+      if (!rare_data_) {
+        rare_data_ = std::make_unique<ElementRareData>();
+      }
+      rare_data_->inspector_attribute_ = std::move(ptr);
+    } else if (rare_data_) {
+      rare_data_->inspector_attribute_.reset();
+      if (rare_data_->empty()) {
+        rare_data_.reset();
+      }
+    }
   }
 
   ALLOW_UNUSED_TYPE InspectorAttribute* inspector_attribute() {
-    return inspector_attribute_.get();
+    return rare_data_ ? rare_data_->inspector_attribute_.get() : nullptr;
   }
 
   void ResolveStyle(StyleMap& new_styles,
@@ -1880,6 +1914,8 @@ class Element : public lepus::RefCounted,
   bool HasImperativeAnimations() const;
   void ApplyImperativeAnimationMutation(
       const ImperativeAnimationState::Mutation& mutation);
+  ImperativeAnimationState& EnsureImperativeAnimationState();
+  void ReleaseImperativeAnimationStateIfEmpty();
   void RemoveOwnedImperativeAnimationKeyframe(
       const base::String& animation_name);
   void ClearImperativeAnimationState();
@@ -1919,6 +1955,12 @@ class Element : public lepus::RefCounted,
   int GetLayoutInElementPlatformChildIndex(Element* child);
   void UpdateFixedNodeSet();
   void UpdateFixedNodeSetRecursively(bool is_insert);
+  ElementRareData& EnsureRareData();
+  void ReleaseRareDataIfEmpty();
+  const ElementLayoutStyleMap* GetLayoutStyles() const;
+  void CopyLayoutStylesFrom(const Element& element);
+  void RecordLayoutStyle(CSSPropertyID id, const CSSValue& value);
+  void RemoveRecordedLayoutStyle(CSSPropertyID id);
 
   base::String tag_;
   bool is_overlay_{false};
@@ -2051,8 +2093,10 @@ class Element : public lepus::RefCounted,
 
   fml::RefPtr<PropBundle> prop_bundle_;
 
+#if ENABLE_UNITTESTS
   // Stores the previous PropBundle for unit test verification after a reset.
   fml::RefPtr<PropBundle> pre_prop_bundle_;
+#endif
 
   // relevant to hierarchy
   Element* parent_{nullptr};
@@ -2070,10 +2114,7 @@ class Element : public lepus::RefCounted,
   base::auto_create_optional<CSSKeyframesTokenMap> keyframes_map_;
   // Save increase key of the Animate API.
   base::String will_removed_keyframe_name_;
-  ImperativeAnimationState imperative_animation_state_;
-  // for global-bind event
-  base::auto_create_optional<base::LinearFlatSet<std::string>>
-      global_bind_target_set_;
+  std::unique_ptr<ImperativeAnimationState> imperative_animation_state_;
 
   // Using to record some previous element styles which New Animator needs.
   base::LinearFlatMap<tasm::CSSPropertyID, CSSValue> animation_previous_styles_;
@@ -2082,20 +2123,12 @@ class Element : public lepus::RefCounted,
   // layout-only properties in the new styling pipeline.
   base::auto_create_optional<StyleMap>
       committed_underlying_layout_only_styles_for_new_pipeline_;
-  // Used to record all layout-related styles of the element only when we
-  // enable dump element tree. In the copied element, we will use these styles
-  // to initialize the layout node.
-  base::auto_create_optional<base::LinearFlatMap<tasm::CSSPropertyID, CSSValue>>
-      layout_styles_;
-
-  // for devtool
-  std::unique_ptr<InspectorAttribute> inspector_attribute_;
 
   std::unique_ptr<PlatformLayoutFunctionWrapper> customized_layout_node_;
 
-  base::InlineVector<fml::RefPtr<Element>, kChildrenInlineVectorSize>
+  base::InlineVector<fml::RefPtr<Element>, kElementOwnedChildrenInlineCapacity>
       scoped_children_;
-  base::InlineVector<fml::RefPtr<Element>, kChildrenInlineVectorSize>
+  base::InlineVector<fml::RefPtr<Element>, kElementOwnedChildrenInlineCapacity>
       logical_children_;
   base::auto_create_optional<base::InlineVector<fml::RefPtr<Element>, 2>>
       scoped_virtual_children_;
@@ -2118,7 +2151,7 @@ class Element : public lepus::RefCounted,
 
   uint32_t dirty_{0};
   uint32_t wrapper_element_count_{0};
-  base::Vector<base::closure> pending_invoke_tasks_;
+  std::unique_ptr<ElementRareData> rare_data_;
 
   int32_t css_id_{kInvalidCssId};
   base::String element_entry_name_;
