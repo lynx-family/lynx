@@ -177,6 +177,11 @@ function assertNoInitialView(result) {
   assert.strictEqual(result.state.windowedWaitUntilClosedCalls, 0);
 }
 
+function assertDebugRouterInitialized(result) {
+  assert.strictEqual(result.state.initCalls, 1);
+  assert.strictEqual(result.state.setAppInfoCalls, 0);
+}
+
 async function testRenderWaitsForOpenCardWithoutInitialView() {
   const result = await runCli(['render']);
 
@@ -185,7 +190,7 @@ async function testRenderWaitsForOpenCardWithoutInitialView() {
     result.stdout,
     /Headless Lynx is waiting for DebugRouter OpenCard\./
   );
-  assert.strictEqual(result.state.initCalls, 1);
+  assertDebugRouterInitialized(result);
   assert.strictEqual(result.state.setOpenCardCallbackCalls, 1);
   assert.strictEqual(result.state.setClosePageCallbackCalls, 1);
   assert.strictEqual(result.state.clearOpenCardCallbackCalls, 1);
@@ -201,7 +206,7 @@ async function testImplicitRenderWaitsForOpenCardWithoutInitialView() {
     result.stdout,
     /Headless Lynx is waiting for DebugRouter OpenCard\./
   );
-  assert.strictEqual(result.state.initCalls, 1);
+  assertDebugRouterInitialized(result);
   assert.strictEqual(result.state.setOpenCardCallbackCalls, 1);
   assert.strictEqual(result.state.setClosePageCallbackCalls, 1);
   assert.strictEqual(result.state.clearOpenCardCallbackCalls, 1);
@@ -217,7 +222,7 @@ async function testPreviewWaitsForOpenCardWithoutInitialWindow() {
     result.stdout,
     /Node Lynx preview is waiting for DebugRouter OpenCard\./
   );
-  assert.strictEqual(result.state.initCalls, 1);
+  assertDebugRouterInitialized(result);
   assert.strictEqual(result.state.setOpenCardCallbackCalls, 1);
   assert.strictEqual(result.state.setClosePageCallbackCalls, 1);
   assert.strictEqual(result.state.clearOpenCardCallbackCalls, 1);
