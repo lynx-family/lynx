@@ -83,7 +83,15 @@ function trimStack(stack) {
 module.exports = (opt) => {
   var nextTick = opt.nextTick;
   function Promise(fn) {
-      this.__createStack = trimStack(new Error('Promise creation stack').stack);
+    // Keep __createStack non-enumerable so it is skipped when the promise
+    // object is iterated (for...in / Object.keys / spread). It is only used
+    // internally by rejection-tracking to attach a creation stack.
+    Object.defineProperty(this, '__createStack', {
+      value: trimStack(new Error('Promise creation stack').stack),
+      enumerable: false,
+      writable: true,
+      configurable: true,
+    });
     if (typeof this !== 'object') {
       throw new TypeError('Promises must be constructed via new');
     }
