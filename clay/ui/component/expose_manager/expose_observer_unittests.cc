@@ -2,15 +2,19 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+#include <algorithm>
 #include <initializer_list>
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "clay/public/event_delegate.h"
 #include "clay/public/value.h"
+#include "clay/ui/component/css_property.h"
 #include "clay/ui/component/intersection_observer_manager.h"
 #include "clay/ui/component/page_view.h"
+#include "clay/ui/component/scroll_view.h"
 #include "clay/ui/component/view.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
@@ -23,15 +27,21 @@ std::vector<std::string> Events(std::initializer_list<std::string> names) {
 
 class RecordingEventDelegate final : public EventDelegate {
  public:
+  using CustomEvent = std::pair<int, std::string>;
+
   const std::vector<std::string>& custom_events() const {
     return custom_events_;
+  }
+  const std::vector<CustomEvent>& custom_events_by_target() const {
+    return custom_events_by_target_;
   }
   const std::vector<std::string>& global_events() const {
     return global_events_;
   }
-  void OnSendCustomEvent(int, const std::string& event_name,
+  void OnSendCustomEvent(int callback_id, const std::string& event_name,
                          Value::Map) override {
     custom_events_.push_back(event_name);
+    custom_events_by_target_.emplace_back(callback_id, event_name);
   }
   void OnSendGlobalEvent(const std::string& event_name, Value) override {
     global_events_.push_back(event_name);
@@ -65,6 +75,7 @@ class RecordingEventDelegate final : public EventDelegate {
 
  private:
   std::vector<std::string> custom_events_;
+  std::vector<CustomEvent> custom_events_by_target_;
   std::vector<std::string> global_events_;
 };
 
@@ -78,15 +89,28 @@ class ExposeObserverTest : public ::testing::Test {
 
   void TearDown() override { page_->DestroyAllChildren(); }
 
-  View* AddVisibleObservedView(int id) {
+  View* AddObservedView(BaseView* parent, int id, float left, float top,
+                        float width, float height) {
     auto* target = new View(id, page_.get());
-    page_->AddChild(target);
-    target->SetBound(0, 0, 100, 100);
+    parent->AddChild(target);
+    target->SetBound(left, top, width, height);
     target->SetAttribute("exposure-id",
                          Value("visible-target-" + std::to_string(id)));
     target->AddEventCallback("uiappear");
     target->AddEventCallback("uidisappear");
     return target;
+  }
+
+  View* AddVisibleObservedView(int id) {
+    return AddObservedView(page_.get(), id, 0, 0, 100, 100);
+  }
+
+  // A stop/resume pair marks the next notification as a new frame without
+  // emitting a synthetic disappear event.
+  void NotifyObserversOnNextFrame() {
+    manager()->StopExposure(false);
+    manager()->ResumeExposure();
+    manager()->NotifyObservers();
   }
 
   IntersectionObserverManager* manager() {
@@ -99,6 +123,20 @@ class ExposeObserverTest : public ::testing::Test {
 
   const std::vector<std::string>& global_events() const {
     return event_delegate_.global_events();
+  }
+
+  size_t CustomEventCount(const char* event_name) const {
+    return static_cast<size_t>(
+        std::count(custom_events().begin(), custom_events().end(), event_name));
+  }
+
+  size_t CustomEventCount(int callback_id, const char* event_name) const {
+    return static_cast<size_t>(std::count_if(
+        event_delegate_.custom_events_by_target().begin(),
+        event_delegate_.custom_events_by_target().end(),
+        [callback_id, event_name](const auto& event) {
+          return event.first == callback_id && event.second == event_name;
+        }));
   }
 
   RecordingEventDelegate event_delegate_;
@@ -222,6 +260,161 @@ TEST_F(ExposeObserverTest, RealDetachClosesExposureWhileHostWindowIsDetached) {
   manager()->SetExposureHostVisible(false);
   manager()->NotifyTargetDetached(target);
   EXPECT_EQ(custom_events(), Events({"uiappear", "uidisappear"}));
+}
+
+TEST_F(ExposeObserverTest, StableGeometryDoesNotAmplifyAppearEvents) {
+  View* target = AddVisibleObservedView(1);
+
+  // Repeated frame notifications must not turn a stable state into duplicate
+  // appear or disappear events.
+  for (int i = 0; i < 10; ++i) {
+    NotifyObserversOnNextFrame();
+  }
+  EXPECT_EQ(CustomEventCount("uiappear"), 1u);
+  EXPECT_EQ(CustomEventCount("uidisappear"), 0u);
+
+  target->SetBound(2000, 2000, 100, 100);
+  for (int i = 0; i < 10; ++i) {
+    NotifyObserversOnNextFrame();
+  }
+  EXPECT_EQ(CustomEventCount("uiappear"), 1u);
+  EXPECT_EQ(CustomEventCount("uidisappear"), 1u);
+
+  target->SetBound(0, 0, 100, 100);
+  for (int i = 0; i < 10; ++i) {
+    NotifyObserversOnNextFrame();
+  }
+  EXPECT_EQ(CustomEventCount("uiappear"), 2u);
+  EXPECT_EQ(CustomEventCount("uidisappear"), 1u);
+}
+
+TEST_F(ExposeObserverTest, HorizontalScrollViewOnlyExposesIntersectingCards) {
+  auto* scroll_view =
+      new ScrollView(1, ScrollDirection::kHorizontal, page_.get());
+  page_->AddChild(scroll_view);
+  scroll_view->SetBound(100, 100, 300, 100);
+
+  // Child bounds are local to the 300-pixel-wide scroll viewport. The third
+  // card starts beyond its right edge.
+  AddObservedView(scroll_view, 2, 0, 0, 100, 100);
+  AddObservedView(scroll_view, 3, 150, 0, 100, 100);
+  AddObservedView(scroll_view, 4, 350, 0, 100, 100);
+
+  manager()->NotifyObservers();
+  EXPECT_EQ(CustomEventCount(2, "uiappear"), 1u);
+  EXPECT_EQ(CustomEventCount(3, "uiappear"), 1u);
+  EXPECT_EQ(CustomEventCount(4, "uiappear"), 0u);
+
+  scroll_view->OnScrollUpdate(100);
+  EXPECT_EQ(scroll_view->GetScrollOffset().x(), 100);
+  NotifyObserversOnNextFrame();
+  EXPECT_EQ(CustomEventCount(2, "uidisappear"), 1u);
+  EXPECT_EQ(CustomEventCount(3, "uidisappear"), 0u);
+  EXPECT_EQ(CustomEventCount(4, "uiappear"), 1u);
+
+  scroll_view->OnScrollUpdate(0);
+  EXPECT_EQ(scroll_view->GetScrollOffset().x(), 0);
+  NotifyObserversOnNextFrame();
+  EXPECT_EQ(CustomEventCount(2, "uiappear"), 2u);
+  EXPECT_EQ(CustomEventCount(3, "uidisappear"), 0u);
+  EXPECT_EQ(CustomEventCount(4, "uidisappear"), 1u);
+}
+
+TEST_F(ExposeObserverTest, HiddenPreloadedPageDoesNotExposeItsContent) {
+  // Model two page containers that occupy the same viewport. Only the active
+  // container may contribute exposure events.
+  auto* current_page = new View(1, page_.get());
+  page_->AddChild(current_page);
+  current_page->SetBound(0, 0, 1000, 1000);
+  AddObservedView(current_page, 2, 0, 0, 100, 100);
+
+  auto* preloaded_page = new View(3, page_.get());
+  page_->AddChild(preloaded_page);
+  preloaded_page->SetBound(0, 0, 1000, 1000);
+  preloaded_page->SetVisible(false);
+  AddObservedView(preloaded_page, 4, 0, 0, 100, 100);
+
+  manager()->NotifyObservers();
+  EXPECT_EQ(CustomEventCount(2, "uiappear"), 1u);
+  EXPECT_EQ(CustomEventCount(4, "uiappear"), 0u);
+
+  current_page->SetVisible(false);
+  preloaded_page->SetVisible(true);
+  NotifyObserversOnNextFrame();
+  EXPECT_EQ(CustomEventCount(2, "uidisappear"), 1u);
+  EXPECT_EQ(CustomEventCount(4, "uiappear"), 1u);
+
+  for (int i = 0; i < 10; ++i) {
+    NotifyObserversOnNextFrame();
+  }
+  EXPECT_EQ(CustomEventCount(2, "uiappear"), 1u);
+  EXPECT_EQ(CustomEventCount(2, "uidisappear"), 1u);
+  EXPECT_EQ(CustomEventCount(4, "uiappear"), 1u);
+  EXPECT_EQ(CustomEventCount(4, "uidisappear"), 0u);
+}
+
+TEST_F(ExposeObserverTest, OverflowHiddenViewportClipsOffscreenListItem) {
+  auto* list_viewport = new View(1, page_.get());
+  page_->AddChild(list_viewport);
+  list_viewport->SetBound(100, 100, 200, 200);
+  list_viewport->SetOverflow(CSSProperty::OVERFLOW_HIDDEN);
+  // The item is inside the page but outside its parent's clipping rectangle.
+  View* list_item = AddObservedView(list_viewport, 2, 250, 0, 100, 100);
+
+  manager()->NotifyObservers();
+  EXPECT_EQ(CustomEventCount("uiappear"), 0u);
+
+  list_item->SetBound(150, 0, 100, 100);
+  NotifyObserversOnNextFrame();
+  EXPECT_EQ(CustomEventCount("uiappear"), 1u);
+
+  list_item->SetBound(250, 0, 100, 100);
+  NotifyObserversOnNextFrame();
+  EXPECT_EQ(CustomEventCount("uidisappear"), 1u);
+}
+
+TEST_F(ExposeObserverTest, RecycledListItemReconcilesBeforeReappearing) {
+  auto* list_viewport = new View(1, page_.get());
+  page_->AddChild(list_viewport);
+  list_viewport->SetBound(0, 0, 300, 300);
+  list_viewport->SetOverflow(CSSProperty::OVERFLOW_HIDDEN);
+  View* list_item = AddObservedView(list_viewport, 2, 0, 0, 100, 100);
+
+  manager()->NotifyObservers();
+  ASSERT_EQ(CustomEventCount("uiappear"), 1u);
+
+  list_viewport->RemoveChild(list_item);
+  EXPECT_EQ(CustomEventCount("uidisappear"), 1u);
+
+  // Reattaching a recycled item offscreen must not reuse its previous visible
+  // state. It can appear again only after moving back into the viewport.
+  list_item->SetBound(0, 400, 100, 100);
+  list_viewport->AddChild(list_item);
+  NotifyObserversOnNextFrame();
+  EXPECT_EQ(CustomEventCount("uiappear"), 1u);
+
+  list_item->SetBound(0, 100, 100, 100);
+  NotifyObserversOnNextFrame();
+  EXPECT_EQ(CustomEventCount("uiappear"), 2u);
+  EXPECT_EQ(CustomEventCount("uidisappear"), 1u);
+}
+
+TEST_F(ExposeObserverTest, StableTargetDoesNotReappearAfterHostForeground) {
+  AddVisibleObservedView(1);
+  manager()->NotifyObservers();
+  ASSERT_EQ(CustomEventCount("uiappear"), 1u);
+
+  // Host visibility gates observation; it does not imply that a stable target
+  // left and re-entered the viewport.
+  for (int i = 0; i < 10; ++i) {
+    manager()->SetExposureHostVisible(false);
+    manager()->NotifyObservers();
+    manager()->SetExposureHostVisible(true);
+    manager()->NotifyObservers();
+  }
+
+  EXPECT_EQ(CustomEventCount("uiappear"), 1u);
+  EXPECT_EQ(CustomEventCount("uidisappear"), 0u);
 }
 
 TEST_F(ExposeObserverTest, RootViewportClipsDetachedTarget) {

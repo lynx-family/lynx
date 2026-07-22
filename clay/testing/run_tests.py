@@ -301,6 +301,7 @@ def run_cc_tests(build_dir, executable_filter, coverage, capture_core_dump):
   unittests = [
       make_test('common_cpp_core_unittests'),
       make_test('common_cpp_unittests'),
+      make_test('exposure_unittests'),
       make_test('memory_unittests'),
       make_test('testing_unittests'),
       make_test('clay_unittests'),
