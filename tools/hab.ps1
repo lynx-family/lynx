@@ -1,6 +1,6 @@
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 
-$__version__ = "0.3.147"
+$__version__ = "0.3.149-alpha.0"
 
 if ($null -eq $env:HABITAT_VERSION) { 
     $HABITAT_VERSION = $__version__
@@ -9,7 +9,7 @@ else {
     $HABITAT_VERSION = $env:HABITAT_VERSION
 }
 
-$HABITAT_RELEASE_BASE_URL = "https://github.com/lynx-family/habitat/releases"
+$HABITAT_RELEASE_BASE_URL = "https://github.com/Hoooao/habitat/releases"
 
 if ('latest' -eq $HABITAT_VERSION) {
     $HABITAT_DOWNLOAD_URL = "${HABITAT_RELEASE_BASE_URL}/latest/download/hab.exe"

@@ -11,7 +11,7 @@ set -e
 ##  habitat start up script for UN*X
 ##
 ##############################################################################
-__version__="0.3.147"
+__version__="0.3.149-alpha.0"
 
 if [[ "$HABITAT_DEBUG" = "true" ]]; then
   set -x
@@ -35,7 +35,7 @@ die ( ) {
 }
 
 HABITAT_VERSION=${HABITAT_VERSION:-$__version__}
-HABITAT_RELEASES_URL=https://github.com/lynx-family/habitat/releases/download
+HABITAT_RELEASES_URL=https://github.com/Hoooao/habitat/releases/download
 
 # Attempt to set APP_HOME
 # Resolve links: $0 may be a link
