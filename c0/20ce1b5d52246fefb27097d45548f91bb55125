@@ -1,0 +1,53 @@
+testing/lynx-platform-tests/test_script/androidlynxtest/case_sets/lynx_e2e_mvp.py
+  s_fd8a403563b39c::t_214e7f8abf614b 68
+  h_dc1658ba751399 61-67,69-70 gitai:{"mixed_line_ranges":[{"Single":61}],"operations":[]}
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "c020ce1b5d52246fefb27097d45548f91bb55125",
+  "prompts": {},
+  "humans": {
+    "h_dc1658ba751399": {
+      "author": "tangyongjie <tangyongjie@bytedance.com>"
+    }
+  },
+  "sessions": {
+    "s_fd8a403563b39c": {
+      "agent_id": {
+        "tool": "trae-cue",
+        "id": "ai_tab-icr-11282a0d-1308-48ce-8180-1b2a5db051f4",
+        "model": "default"
+      },
+      "human_author": "tangyongjie <tangyongjie@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {
+    "testing/lynx-platform-tests/test_script/androidlynxtest/case_sets/lynx_e2e_mvp.py": [
+      {
+        "hash": "h_dc1658ba751399",
+        "line_ranges": [
+          {
+            "Range": [
+              61,
+              67
+            ]
+          },
+          {
+            "Range": [
+              69,
+              70
+            ]
+          }
+        ],
+        "mixed_line_ranges": [
+          {
+            "Single": 61
+          }
+        ],
+        "operations": []
+      }
+    ]
+  },
+  "remote_transcripts": {}
+}
