@@ -1385,6 +1385,7 @@ enableReloadLifecycle:
     - Android
     - HarmonyOS
     - iOS
+  export: true
 enableA11y:
   description: Controls whether Android turns on the helper-based Lynx accessibility path for the page. When enabled, LynxAccessibilityWrapper initializes the accessibility helper and a11y-id based lookup path; when disabled, runtime falls back to the default or delegate-based accessibility behavior.
   defaultValue: 'false'
@@ -1545,6 +1546,7 @@ enableFixedNew:
     - Android
     - HarmonyOS
     - iOS
+  export: true
 enableCSSInheritance:
   description: Controls whether the style system applies the CSS inheritance path during style propagation. When enabled, Fiber style propagation and inherited-property updates respect CSS inheritance; when disabled, inherited style propagation stays off.
   defaultValue: 'false'
@@ -1649,6 +1651,7 @@ enableParseIntFlex:
     - Android
     - HarmonyOS
     - iOS
+  export: true
 enableGridPlacementShorthands:
   description: Controls whether the CSS parser accepts grid-column and grid-row shorthand syntax. When enabled, grid shorthand handlers parse placement shorthands into style values; when disabled, those shorthand declarations are rejected.
   defaultValue: 'false'
