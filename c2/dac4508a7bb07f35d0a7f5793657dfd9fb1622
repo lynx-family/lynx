@@ -1,0 +1,27 @@
+lynx/.gitignore
+  s_fc5ea31c0e65eb::t_25ebcfd429dd73 96-101,137-138
+lynx/base/platform/harmony/harmony.gni
+  s_fc5ea31c0e65eb::t_f43f6b5edc4922 1-6
+lynx/base/platform/harmony/oh-package.json5
+  s_fc5ea31c0e65eb::t_b8b27f82e30608 5
+lynx/base/src/base.gni
+  s_fc5ea31c0e65eb::t_96136fb784fc14 41-43
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "c2dac4508a7bb07f35d0a7f5793657dfd9fb1622",
+  "prompts": {},
+  "sessions": {
+    "s_fc5ea31c0e65eb": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f64bd-e956-7b81-8974-2d634e35d583",
+        "model": "unknown"
+      },
+      "human_author": "yangguangzhao <yangguangzhao.solace@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

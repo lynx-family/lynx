@@ -1,0 +1,27 @@
+oliver/node-lynx/scripts/build_resources.js
+  s_fc5ea31c0e65eb::t_680f7857ea6e7f 1-23
+oliver/node-lynx/scripts/test.sh
+  s_fc5ea31c0e65eb::t_3156bc781467ca 34
+oliver/node-lynx/test/internal_resources.js
+  s_fc5ea31c0e65eb::t_685f6e59b708fd 1-38
+oliver/node-lynx/test/invoke_cdp_from_sdk.js
+  s_fc5ea31c0e65eb::t_878191b0e025ec 1-5,41-58,60,68,112-113,136-174,177-188,192-201
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "ad3fe69220d9e75b93a8c74f9f8cb9d7146de6d2",
+  "prompts": {},
+  "sessions": {
+    "s_fc5ea31c0e65eb": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f64bd-e956-7b81-8974-2d634e35d583",
+        "model": "unknown"
+      },
+      "human_author": "yangguangzhao <yangguangzhao.solace@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

@@ -1,0 +1,27 @@
+testing/lynx-platform-tests/test_script/androidlynxtest/case_sets/lynx_e2e_mvp.py
+  h_dc1658ba751399 22-25,33-36,39,41-42,44-46
+  s_eda2458672e260::t_3102f0310605fd 37
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "fca305fb39a616d4b74a0f5ea955ab2e816832e4",
+  "prompts": {},
+  "humans": {
+    "h_dc1658ba751399": {
+      "author": "tangyongjie <tangyongjie@bytedance.com>"
+    }
+  },
+  "sessions": {
+    "s_eda2458672e260": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a5f6ac47dad67aaaa5efc20",
+        "model": "gemini-3.1-pro__dev"
+      },
+      "human_author": null
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

@@ -1,0 +1,73 @@
+lynx/core/template_bundle/BUILD.gn
+  s_c2565c06895e42::t_a35baa4b5a46f5 5
+  s_c2565c06895e42::t_f1a7f19b225fbf 23-24
+core/runtime/lepus/base_binary_reader.cc
+  s_c2565c06895e42::t_7b9c42e0cedd70 476-479
+  s_c2565c06895e42::t_352483ec2977bc 480-481,483
+  s_c2565c06895e42::t_5fd4ecc241e5a7 44-45
+build_overrides/lepus_context_factory_files.gni
+  s_c2565c06895e42::t_ff9af59e59863a 10-11,13-16
+oliver/lynx-tasm/BUILD.gn
+  s_c2565c06895e42::t_11de375cea3e3e 5
+  s_c2565c06895e42::t_dbe7c9d4b98518 184
+  s_c2565c06895e42::t_b56fa0f72aabbb 177
+  s_c2565c06895e42::t_2432d1c234af73 178-183
+  s_c2565c06895e42::t_99d737a31cd613 185-188
+dependencies/DEPS
+  s_c2565c06895e42::t_a62d1b5c17bbb4 367
+core/runtime/lepus/rts_bundle_decoder.cc
+  s_c2565c06895e42::t_52c17fe700ee90 1-18,20,22-26,28-29,33-49
+  s_c2565c06895e42::t_dbc8bed581bd6c 19,21,27,30-32
+core/runtime/lepus/rts_bundle_decoder.h
+  s_c2565c06895e42::t_5aa467dbb7e773 1-31
+build_overrides/codec_files.gni
+  s_c2565c06895e42::t_928660f1c45b41 12-21
+oliver/lynx-tasm/package.json
+  s_c2565c06895e42::t_e0bc73af02af35 3
+core/runtime/lepus/mts_context_factory_impl.cc
+  s_c2565c06895e42::t_a9cbb98571ebb9 55-67,76-79,81-82,90-95,97-98
+  s_c2565c06895e42::t_3808f03c5623fa 54,68-69,80,96
+  s_c2565c06895e42::t_ed9d50e24d45d5 125-128
+testing/lynx/tasm/codec/test_cases/test_cases.yml
+  s_c2565c06895e42::t_9ae68a6a366299 20
+  s_c2565c06895e42::t_eff2e88cd660b9 34
+oliver/lynx-tasm/CHANGELOG.md
+  s_c2565c06895e42::t_787588647de769 2,4
+  s_c2565c06895e42::t_2bd5cd2bc79e74 3
+testing/lynx/tasm/codec/encoder/encoder_test.cc
+  s_c2565c06895e42::t_9310d4dc9a190b 5035-5044,5047-5048
+  s_c2565c06895e42::t_5b579e463a42a9 5045-5046
+lynx/build_overrides/codec_files.gni
+  s_c2565c06895e42::t_994711875d8155 7
+  s_c2565c06895e42::t_3080f0f4391be6 8-9
+core/runtime/lepus/context_bundle_factory_impl.cc
+  s_c2565c06895e42::t_aea0c889043d25 1-51
+core/template_bundle/lynx_template_bundle_converter.cc
+  s_c2565c06895e42::t_c99b922bff0e7b 23-25
+  s_c2565c06895e42::t_ad531ccc5696d0 123
+  s_c2565c06895e42::t_84b5d3378ef1bf 108-112,116-122,127-128
+  s_c2565c06895e42::t_47013ca5e13ce8 1-22,26-107,113-115,124-126,129-234
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "41bf38ad327ac64f2ab8130b759109db3f31997f",
+  "prompts": {},
+  "humans": {
+    "h_f3ed92d6628256": {
+      "author": "liyanbo.monster <liyanbo.monster@bytedance.com>"
+    }
+  },
+  "sessions": {
+    "s_c2565c06895e42": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a5f1b1904130cb513f0e554",
+        "model": "openrouter-2o__max"
+      },
+      "human_author": "liyanbo.monster <liyanbo.monster@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

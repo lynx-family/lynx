@@ -1,0 +1,76 @@
+ai/docs/lynx_devtool_mcp_demo.md
+  s_93bf1c2a33cb3c::t_97529372013177 1-273
+ai/prototypes/lynx-e2e-mvp/.gitignore
+  s_549c246aea5b58::t_15a6a0628211d3 1-3
+ai/prototypes/lynx-e2e-mvp/README.md
+  s_549c246aea5b58::t_fc8425d91589ed 1-134
+ai/prototypes/lynx-e2e-mvp/TECHNICAL_DESIGN.md
+  s_549c246aea5b58::t_87185c082e7677 1-366
+ai/prototypes/lynx-e2e-mvp/package.json
+  s_549c246aea5b58::t_28f9c9205f4857 1-25
+ai/prototypes/lynx-e2e-mvp/src/android-app-controller.ts
+  s_549c246aea5b58::t_8a38cfe1af341a 1-93
+ai/prototypes/lynx-e2e-mvp/src/automation.ts
+  s_549c246aea5b58::t_e9300341243224 1-78
+ai/prototypes/lynx-e2e-mvp/src/cdp-session.ts
+  s_549c246aea5b58::t_81842926ab0790 1-21
+ai/prototypes/lynx-e2e-mvp/src/default-connector.ts
+  s_549c246aea5b58::t_840d84b4d6b501 1-19
+ai/prototypes/lynx-e2e-mvp/src/index.ts
+  s_549c246aea5b58::t_4d718114e4851b 1-9
+ai/prototypes/lynx-e2e-mvp/src/input-controller.ts
+  s_549c246aea5b58::t_795a7f11948b1b 1-44
+ai/prototypes/lynx-e2e-mvp/src/page.ts
+  s_549c246aea5b58::t_614b97d215738b 1-177
+ai/prototypes/lynx-e2e-mvp/src/protocol.ts
+  s_549c246aea5b58::t_75ac8a7d999f0c 1-118
+ai/prototypes/lynx-e2e-mvp/src/visual-comparison.ts
+  s_549c246aea5b58::t_35fcda5af2eabe 1-94
+ai/prototypes/lynx-e2e-mvp/src/vitest.ts
+  s_549c246aea5b58::t_aa4bdbacef24d4 1-28
+ai/prototypes/lynx-e2e-mvp/src/wait.ts
+  s_549c246aea5b58::t_260b1a35007e86 1-34
+ai/prototypes/lynx-e2e-mvp/tests/device.smoke.test.ts
+  s_549c246aea5b58::t_93c53df688178c 1-92
+ai/prototypes/lynx-e2e-mvp/tests/fake-connector.ts
+  s_549c246aea5b58::t_634881061d3a86 1-69
+ai/prototypes/lynx-e2e-mvp/tests/mvp.test.ts
+  s_549c246aea5b58::t_788870537fee74 1-60
+ai/prototypes/lynx-e2e-mvp/tests/visual-comparison.test.ts
+  s_549c246aea5b58::t_f54532000ea1b2 1-81
+ai/prototypes/lynx-e2e-mvp/tsconfig.json
+  s_549c246aea5b58::t_a977b828737597 1-13
+ai/prototypes/lynx-e2e-mvp/vitest.config.ts
+  s_549c246aea5b58::t_fef8535f7b0d15 1-10
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "16760d70717c7ccff3a244222c40b3b903773323",
+  "prompts": {},
+  "humans": {
+    "h_dc1658ba751399": {
+      "author": "tangyongjie <tangyongjie@bytedance.com>"
+    }
+  },
+  "sessions": {
+    "s_549c246aea5b58": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f7ef5-4ab6-7812-afca-ed4204ded6b9",
+        "model": "unknown"
+      },
+      "human_author": "tangyongjie <tangyongjie@bytedance.com>"
+    },
+    "s_93bf1c2a33cb3c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f7d97-151b-7cf1-b6a4-a7c824f72378",
+        "model": "unknown"
+      },
+      "human_author": "tangyongjie <tangyongjie@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}
