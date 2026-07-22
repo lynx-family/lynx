@@ -2,6 +2,7 @@
 # Licensed under the Apache License Version 2.0 that can be found in the
 # LICENSE file in the root directory of this source tree.
 
+import("//${lynx_dir}/build_overrides/codec_files.gni")
 import("../Lynx.gni")
 
 # constant_share_sources
@@ -19,9 +20,13 @@ lynx_core_source_set("template_bundle") {
 }
 
 lynx_core_source_set("template_bundle_converter") {
+  # The shared implementation (compiler options / BTS / custom sections /
+  # top-level `Convert...` entry point) lives in `_impl.cc` so the OSS and
+  # internal builds do not have to keep two copies in sync. Only
+  # `SerializeMTSBundle` is swapped via `template_bundle_converter_sources`.
   sources = [
-    "lynx_template_bundle_converter.cc",
-    "lynx_template_bundle_converter.h",
-  ]
+              "lynx_template_bundle_converter.h",
+              "lynx_template_bundle_converter_impl.cc",
+            ] + template_bundle_converter_sources
   public_deps = [ ":template_bundle" ]
 }
