@@ -18,7 +18,7 @@ describe('type-config index', () => {
     expect(compilerOptionsKeys).toEqual([]);
   });
   it('should have correct configKeys', () => {
-    expect(configKeys.length).toBe(28);
+    expect(configKeys.length).toBe(31);
     expect(configKeys).toEqual([
       'disableLongpressAfterScroll',
       'enableA11y',
@@ -29,6 +29,7 @@ describe('type-config index', () => {
       'enableEndGestureAtLastFingerUp',
       'enableEventThrough',
       'enableFetchAPIStandardStreaming',
+      'enableFixedNew',
       'enableFlexBasisZeroPercent',
       'enableGridPlacementShorthands',
       'enableJsBindingApiThrowException',
@@ -38,6 +39,8 @@ describe('type-config index', () => {
       'enableNewGesture',
       'enableNewIntersectionObserver',
       'enableNewTransformOrigin',
+      'enableParseIntFlex',
+      'enableReloadLifecycle',
       'enableSimultaneousTap',
       'enableTextOverflow',
       'enableTransformedTouchPosition',

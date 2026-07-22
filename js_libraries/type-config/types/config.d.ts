@@ -109,6 +109,17 @@ export interface Config {
   enableFetchAPIStandardStreaming?: boolean;
 
   /**
+   * Controls the newer fixed-position layout path. When enabled, fixed nodes participate in the new fixed layout and container insertion logic; when disabled, fixed elements keep the legacy positioning behavior unless unified fixed behavior is enabled.
+   *
+   * Supported platform: Android, HarmonyOS, iOS
+   *
+   * Since: LynxSDK 3.2
+   *
+   * @defaultValue false
+   */
+  enableFixedNew?: boolean;
+
+  /**
    * When enabled, flex-basis defaults to 0% instead of 0 when omitted in flex shorthand, matching web browser behavior.
    *
    * Supported platform: Android, HarmonyOS, iOS
@@ -206,6 +217,28 @@ export interface Config {
    * @defaultValue true
    */
   enableNewTransformOrigin?: boolean;
+
+  /**
+   * Controls CSS parser handling for numeric flex shorthand input. When enabled, numeric flex values preserve integer-style parsing; when disabled, numeric flex shorthand keeps the legacy numeric parsing behavior.
+   *
+   * Supported platform: Android, HarmonyOS, iOS
+   *
+   * Since: LynxSDK 3.8
+   *
+   * @defaultValue false
+   */
+  enableParseIntFlex?: boolean;
+
+  /**
+   * Controls whether reload patching triggers the LynxUI onNodeReload lifecycle on affected elements. When enabled, refresh patching walks reloaded elements and calls onNodeReload; when disabled, reload updates skip that lifecycle callback.
+   *
+   * Supported platform: Android, HarmonyOS, iOS
+   *
+   * Since: LynxSDK 3.2
+   *
+   * @defaultValue false
+   */
+  enableReloadLifecycle?: boolean;
 
   /**
    * Controls whether iOS Lynx tap gestures can fire at the same time as outer native tap gestures. When enabled, LynxTap and host tap gestures are allowed to recognize together; when disabled, Lynx keeps the default mutual-exclusion behavior.
