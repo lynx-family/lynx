@@ -3,7 +3,6 @@
 # LICENSE file in the root directory of this source tree.
 
 import("//${lynx_dir}/build_overrides/bindings_files.gni")
-import("//${lynx_dir}/build_overrides/lepus_context_factory_files.gni")
 import("//${lynx_dir}/build_overrides/runtime_extend.gni")
 import("../../testing/test.gni")
 import("../Lynx.gni")
@@ -14,10 +13,11 @@ declare_args() {
 
 lynx_core_source_set("runtime") {
   sources = [
-              "mts_context.cc",
-              "mts_context.h",
-              "mts_context_factory.h",
-            ] + mts_context_factory_sources
+    "//${lynx_dir}/core/runtime/mts_context_factory.cc",
+    "mts_context.cc",
+    "mts_context.h",
+    "mts_context_factory.h",
+  ]
 
   deps = [
     "../../third_party/rapidjson",

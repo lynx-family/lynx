@@ -4,3 +4,6 @@
 
 magic_source =
     rebase_path([ "../core/template_bundle/template_codec/magic_number.cc" ])
+
+template_bundle_converter_sources =
+    rebase_path([ "../core/template_bundle/lynx_template_bundle_converter.cc" ])
