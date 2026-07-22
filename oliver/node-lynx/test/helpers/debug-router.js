@@ -1,6 +1,8 @@
 const assert = require('assert');
 const net = require('net');
 const { spawn } = require('child_process');
+const { release } = require('os');
+const path = require('path');
 
 const REQUEST_TIMEOUT_MS = 30000;
 const SESSION_TIMEOUT_MS = 30000;
@@ -322,13 +324,29 @@ async function waitForChildExit(child) {
   });
 }
 
-async function initialize(connection) {
+async function initialize(connection, packageRoot) {
+  const packageJson = require(path.join(packageRoot, 'package.json'));
   const response = await sendMessage(
     connection,
     { event: 'Initialize', data: connection.port },
     (message) => message.event === 'Register'
   );
-  assert.strictEqual(response.data.info.App, 'NodeLynxCLI');
+  assert.deepStrictEqual(
+    {
+      App: response.data.info.App,
+      deviceModel: response.data.info.deviceModel,
+      osType: response.data.info.osType,
+      osVersion: response.data.info.osVersion,
+      sdkVersion: response.data.info.sdkVersion,
+    },
+    {
+      App: 'node-lynx',
+      deviceModel: `nodejs-${process.version}`,
+      osType: process.platform,
+      osVersion: release(),
+      sdkVersion: packageJson.version,
+    }
+  );
   return response;
 }
 
@@ -566,7 +584,7 @@ async function runDebugRouterProtocolSmoke({
   try {
     await waitForCliReady(child, childOutput);
     connection = await DebugRouterConnection.connect(port);
-    await initialize(connection);
+    await initialize(connection, packageRoot);
 
     await sendAppMessage(connection, clientId, 'App.openPage', {
       url: templateUrl,

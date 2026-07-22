@@ -35,8 +35,6 @@ const DEFAULT_HEIGHT = 844;
 const DEFAULT_DPR = 2;
 const DEFAULT_TIMEOUT_MS = 10000;
 const DEFAULT_SCREENSHOT_DELAY_MS = 100;
-const DEBUG_ROUTER_APP_INFO_KEYS = ['App', 'AppVersion'];
-const DEBUG_ROUTER_APP_INFO_VALUES = ['NodeLynxCLI', '0.1.0'];
 const URL_SCHEME_PATTERN = /^[A-Za-z][A-Za-z0-9+.-]*:/;
 
 function printUsage(): void {
@@ -262,7 +260,6 @@ function parseArgs(argv: string[]): CliOptions | undefined {
 
 function initDebugRouter(schema?: string): void {
   LynxEnv.init();
-  LynxEnv.setAppInfo(DEBUG_ROUTER_APP_INFO_KEYS, DEBUG_ROUTER_APP_INFO_VALUES);
   if (schema) {
     const connected = LynxEnv.connectDevtools(schema);
     if (!connected) {
