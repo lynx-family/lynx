@@ -226,6 +226,7 @@ export abstract class LynxNodeController extends NodeController {
   @Prop fitContentWidth: boolean; = false
   @Prop fitContentHeight: boolean; = false
   experimentalFixFitContent?: boolean; = false
+  @Prop keyboardAvoidMode: KeyboardAvoidMode; = DEFAULT_KEYBOARD_AVOID_MODE
   onCreate: (context: LynxContext) => void; = ((context: LynxContext) => {
   })
   onReuse: (context: LynxContext) => boolean; = ((context: LynxContext) => {
@@ -257,6 +258,7 @@ export interface LynxViewBuilder {
   fitContentWidth?: boolean;
   fitContentHeight?: boolean;
   experimentalFixFitContent?: boolean;
+  keyboardAvoidMode?: KeyboardAvoidMode;
   beforeLoadTemplate?: (context: LynxContext) => void;
   threadMode?: ThreadStrategyForRendering;
   backgroundRuntimeOptions?: LynxBackgroundRuntimeOptions;
@@ -624,7 +626,7 @@ export class UIOwner {
   getId(): string;
   destroy(id: string): void;
   requestLayout(): void;
-  keyboardStatusChanged(height: number): void;
+  keyboardStatusChanged(height: number, keyboardTop: number): void;
   canConsumeTouchEvent(x: number, y: number): boolean;
   canConsumeTouchEventAtRoot(x: number, y: number, content: NativeContent): boolean;
   updateRootTarget(node: NativeContent): void;
@@ -1229,7 +1231,7 @@ export interface LynxUIRenderer {
   updateRefreshRate(updateRefreshRate: number): void;
   updateViewport(width: number, height: number): void;
   requestLayout(): void;
-  keyboardStatusChanged(height: number): void;
+  keyboardStatusChanged(height: number, keyboardTop: number): void;
   setAvoidKeyboardListener(avoidKeyboardListener: (translateY: number, isKeyboardTransition: boolean) => void): void;
   onEnterForeground(): void;
   onEnterBackground(): void;

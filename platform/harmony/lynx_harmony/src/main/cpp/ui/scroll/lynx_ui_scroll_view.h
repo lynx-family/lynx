@@ -34,6 +34,8 @@ class LynxUIScrollView : public LynxUIScrollViewInternal {
                         callback) override;
 
   std::unordered_map<std::string, PropSetter> prop_setters_ = {
+      {"scroll-x", &LynxUIScrollViewInternal::SetScrollX},
+      {"scroll-y", &LynxUIScrollViewInternal::SetScrollY},
       {"scroll-orientation", &LynxUIScrollViewInternal::SetScrollOrientation},
       {"enable-scroll-bar", &LynxUIScrollViewInternal::SetEnableScrollBar},
       {"enable-scroll", &LynxUIScrollViewInternal::SetEnableScroll},

@@ -2450,6 +2450,24 @@ public protocol LynxJSBTimingListener-p : <NSObject> {
   public void LynxJSBTimingListener-p::lynxView:onJSBInvoked:(LynxView *lynxView,[onJSBInvoked] NSDictionary *jsbInfo);
 }
 
+public class LynxKeyboardAvoidingScrollController : NSObject {
+  public LynxUI* LynxKeyboardAvoidingScrollController::scrollUI scrollUI;
+  public void LynxKeyboardAvoidingScrollController::updateContentSize:forScrollView:enableScrollY:contentSizeUpdater:(CGSize contentSize,[forScrollView] nullable UIScrollView *scrollView,[enableScrollY] BOOL enableScrollY,[contentSizeUpdater] dispatch_block_t contentSizeUpdater);
+  public void LynxKeyboardAvoidingScrollController::updateFocusedInputStateForScrollView:enableScrollY:(nullable UIScrollView *scrollView,[enableScrollY] BOOL enableScrollY);
+  public void LynxKeyboardAvoidingScrollController::saveTargetForOwner:avoidKeyboard:spacing:(nullable id owner,[avoidKeyboard] BOOL avoidKeyboard,[spacing] CGFloat spacing);
+  public void LynxKeyboardAvoidingScrollController::resetOriginalOffsetIfInactive();
+  public nullable LynxKeyboardAvoidingTargetInfo * LynxKeyboardAvoidingScrollController::targetInfoForOwner:(nullable id owner);
+  public nullable LynxUI * LynxKeyboardAvoidingScrollController::scrollUIForOwner:(nullable id owner);
+  public void LynxKeyboardAvoidingScrollController::clear();
+  public void LynxKeyboardAvoidingScrollController::clearAnimated:duration:curve:isStale:completion:(BOOL animated,[duration] NSTimeInterval duration,[curve] UIViewAnimationCurve curve,[isStale] nullable BOOL(^ isStale)(void),[completion] nullable dispatch_block_t completion);
+  public BOOL LynxKeyboardAvoidingScrollController::applyWithOwner:inputView:keyboardHeight:spacing:targetDistance:animationDuration:(nullable id owner,[inputView] nullable UIView *inputView,[keyboardHeight] CGFloat keyboardHeight,[spacing] CGFloat spacing,[targetDistance] CGFloat targetDistance,[animationDuration] NSTimeInterval animationDuration);
+}
+
+public class LynxKeyboardAvoidingTargetInfo : NSObject {
+  public BOOL LynxKeyboardAvoidingTargetInfo::avoidKeyboard avoidKeyboard;
+  public CGFloat LynxKeyboardAvoidingTargetInfo::spacing spacing;
+}
+
 public class LynxKeyboardEventDispatcher : NSObject {
   public instancetype LynxKeyboardEventDispatcher::initWithContext:(LynxContext *context);
   public void LynxKeyboardEventDispatcher::addKeyboardEventObserver:(id< LynxKeyboardEventObserver > observer);
@@ -3527,6 +3545,7 @@ public class LynxScrollView : UIScrollView, <UIGestureRecognizerDelegate> {
   public Class LynxScrollView::blockGestureClass blockGestureClass;
   public NSInteger LynxScrollView::recognizedViewTag recognizedViewTag;
   public LynxUIScroller* LynxScrollView::weakUIScroller weakUIScroller;
+  public CGFloat LynxScrollView::keyboardAvoidingContentHeightExtra keyboardAvoidingContentHeightExtra;
   public BOOL LynxScrollView::duringGestureScroll duringGestureScroll;
   public BOOL LynxScrollView::gestureEnabled gestureEnabled;
   public BOOL LynxScrollView::increaseFrequencyWithGesture increaseFrequencyWithGesture;

@@ -4,6 +4,8 @@
 
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/utils/base_scroll_container.h"
 
+#include <algorithm>
+
 #include "base/include/float_comparison.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/base/node_manager.h"
 
@@ -135,6 +137,30 @@ float BaseScrollContainer::ScrollY() {
   }
   auto offset = GetScrollOffset();
   return offset.second;
+}
+
+float BaseScrollContainer::ScrollContentHeight() const {
+  return content_height_;
+}
+
+float BaseScrollContainer::ScrollContentHeightExtra() const {
+  return scroll_content_height_extra_;
+}
+
+void BaseScrollContainer::SetScrollContentHeight(float height) {
+  if (!is_horizontal_) {
+    UpdateContentSize(content_width_, std::max(0.f, height));
+  }
+}
+
+void BaseScrollContainer::SetScrollContentHeightExtra(float extra) {
+  scroll_content_height_extra_ = std::max(0.f, extra);
+}
+
+void BaseScrollContainer::ScrollToVerticalOffset(float offset, bool smooth) {
+  if (!is_horizontal_) {
+    ScrollTo(0.f, offset, smooth);
+  }
 }
 
 void BaseScrollContainer::OnPropUpdate(const std::string& name,

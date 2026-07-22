@@ -17,6 +17,7 @@
 // Use to find UI
 @property(weak, nonatomic) LynxUIScroller *weakUIScroller;
 
+@property(nonatomic, assign) CGFloat keyboardAvoidingContentHeightExtra;
 @property(nonatomic, assign) BOOL duringGestureScroll;
 @property(nonatomic, assign) BOOL gestureEnabled;
 @property(nonatomic, assign) BOOL increaseFrequencyWithGesture;

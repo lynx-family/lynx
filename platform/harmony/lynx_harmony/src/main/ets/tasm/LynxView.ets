@@ -18,7 +18,7 @@ import { LynxPipelineInfo, LynxPipelineOrigin, LynxViewClient } from './LynxView
 import { CAPIView } from './behavior/CAPIView';
 import { LynxError } from './LynxError';
 import { LynxSubErrorCode } from './gen/LynxSubErrorCode';
-import { BuilderNode, curves, FrameNode, NodeController, Size, UIContext, window } from '@kit.ArkUI';
+import { BuilderNode, curves, FrameNode, KeyboardAvoidMode, NodeController, Size, UIContext, window } from '@kit.ArkUI';
 import { TraceCategory, TraceEvent } from '../base/TraceEvent';
 import { TraceEventDef } from '../base/TraceEventDef';
 import { PerformanceController } from './performance/PerformanceController';
@@ -71,6 +71,8 @@ export enum ColorScheme {
 const TAG = 'LynxView';
 const DEFAULT_KEYBOARD_AVOID_ANIMATION_DURATION = 300;
 const KEYBOARD_ANIMATION_CURVE_PARAM_SIZE = 4;
+const KEYBOARD_AVOID_MODE_UNSPECIFIED = -1;
+const DEFAULT_KEYBOARD_AVOID_MODE = KEYBOARD_AVOID_MODE_UNSPECIFIED as KeyboardAvoidMode;
 
 export interface LynxViewBuilder {
   genericResourceFetcher?: LynxGenericResourceFetcher;
@@ -87,6 +89,7 @@ export interface LynxViewBuilder {
   fitContentWidth?: boolean;
   fitContentHeight?: boolean;
   experimentalFixFitContent?: boolean;
+  keyboardAvoidMode?: KeyboardAvoidMode;
   beforeLoadTemplate?: (context: LynxContext) => void;
   threadMode?: ThreadStrategyForRendering;
   backgroundRuntimeOptions?: LynxBackgroundRuntimeOptions;
@@ -179,6 +182,7 @@ export struct LynxView {
   // We have introduced an experimental switch as a temporary workaround for the abnormal layout problem in the waterfall flow scenario.
   // This switch will be removed once OpenHarmony is fixed. Please avoid using it unnecessarily.
   experimentalFixFitContent?: boolean = false;
+  @Prop keyboardAvoidMode: KeyboardAvoidMode = DEFAULT_KEYBOARD_AVOID_MODE;
   private perfController?: PerformanceController;
   private uiRenderer?: LynxUIRenderer;
   private templateRenderer?: LynxTemplateRenderer;
@@ -191,6 +195,7 @@ export struct LynxView {
   private keyboardWillShowCallback?: (keyboardInfo: window.KeyboardInfo) => void;
   private keyboardWillHideCallback?: (keyboardInfo: window.KeyboardInfo) => void;
   private pendingKeyboardAnimationOption?: AnimateParam;
+  private pendingKeyboardTop?: number;
   private activeKeyboardAnimationOption?: AnimateParam;
   private loadingID: number = 0;
   private fontScale: number = 1.0;
@@ -227,6 +232,7 @@ export struct LynxView {
     this.fitContentWidth = builder.fitContentWidth ?? false;
     this.fitContentHeight = builder.fitContentHeight ?? false;
     this.experimentalFixFitContent = builder.experimentalFixFitContent ?? false;
+    this.keyboardAvoidMode = builder.keyboardAvoidMode ?? DEFAULT_KEYBOARD_AVOID_MODE;
     this.beforeLoadTemplate = builder.beforeLoadTemplate ?? ((context: LynxContext) => {
     });
     this.threadMode = builder.threadMode ?? ThreadStrategyForRendering.ALL_ON_UI;
@@ -400,6 +406,7 @@ export struct LynxView {
   aboutToAppear() {
     TraceEvent.beginSection(TraceCategory.Lynx, TraceEventDef.LYNX_VIEW_CREATE);
     this.hasAppeared = true;
+    this.applyKeyboardAvoidMode();
     LynxServiceCenter.getService<ILynxTrailService>(LynxServiceType.Trail)?.parseLynxView(this);
     this.nodeController =
       this.uiRendererCreator ? this.uiRendererCreator.createNodeController() : new CAPINodeController()
@@ -414,14 +421,17 @@ export struct LynxView {
     (this.windowStage ? this.windowStage.getMainWindow() : window.getLastWindow(getContext(this))).then((win) => {
       this.currentWindow = win;
       this.syncWindowInfoToNative(win);
+      this.applyKeyboardAvoidMode(win.getUIContext());
       this.keyboardHeightChangeCallback = (height: number) => {
         const keyBoardHeight = Math.floor(px2vp(height));
+        const keyboardTop = height !== 0 ? this.pendingKeyboardTop : undefined;
         this.sendGlobalEvent('keyboardstatuschanged', [height !== 0 ? 'on' : 'off', keyBoardHeight, keyBoardHeight]);
         this.activeKeyboardAnimationOption =
           this.pendingKeyboardAnimationOption ?? this.getDefaultKeyboardAnimationOption();
         this.pendingKeyboardAnimationOption = undefined;
+        this.pendingKeyboardTop = undefined;
         try {
-          this.uiRenderer?.keyboardStatusChanged(height !== 0 ? keyBoardHeight + 1 : 0)
+          this.uiRenderer?.keyboardStatusChanged(height !== 0 ? keyBoardHeight + 1 : 0, keyboardTop)
         } finally {
           this.activeKeyboardAnimationOption = undefined;
         }
@@ -429,9 +439,11 @@ export struct LynxView {
       this.currentWindow.on('keyboardHeightChange', this.keyboardHeightChangeCallback);
       this.keyboardWillShowCallback = (keyboardInfo: window.KeyboardInfo) => {
         this.pendingKeyboardAnimationOption = this.getKeyboardAnimationOption(keyboardInfo);
+        this.pendingKeyboardTop = Math.floor(px2vp(keyboardInfo.endRect.top));
       };
       this.keyboardWillHideCallback = (keyboardInfo: window.KeyboardInfo) => {
         this.pendingKeyboardAnimationOption = this.getKeyboardAnimationOption(keyboardInfo);
+        this.pendingKeyboardTop = undefined;
       };
       try {
         this.currentWindow.on('keyboardWillShow', this.keyboardWillShowCallback);
@@ -496,6 +508,7 @@ export struct LynxView {
     this.keyboardWillShowCallback = undefined;
     this.keyboardWillHideCallback = undefined;
     this.pendingKeyboardAnimationOption = undefined;
+    this.pendingKeyboardTop = undefined;
     this.activeKeyboardAnimationOption = undefined;
     let extensionService: ILynxExtensionService | undefined =
       LynxServiceCenter.getService<ILynxExtensionService>(LynxServiceType.Extension);
@@ -624,6 +637,10 @@ export struct LynxView {
     if (params.fitContentHeight !== undefined && this.fitContentHeight != params.fitContentHeight) {
       this.fitContentHeight = params.fitContentHeight;
     }
+    if (params.keyboardAvoidMode !== undefined && this.keyboardAvoidMode != params.keyboardAvoidMode) {
+      this.keyboardAvoidMode = params.keyboardAvoidMode;
+      this.applyKeyboardAvoidMode();
+    }
     if (params.onCreate !== undefined && this.onCreate != params.onCreate) {
       this.onCreate = params.onCreate;
     }
@@ -704,6 +721,7 @@ export struct LynxView {
   }
 
   override onMeasureSize(selfLayoutInfo: GeometryInfo, children: Measurable[], constraint: ConstraintSizeOptions) {
+    this.applyKeyboardAvoidMode();
     if (!this.templateRenderer) {
       return selfLayoutInfo;
     }
@@ -764,6 +782,16 @@ export struct LynxView {
     pipelineInfo.addPipelineOrigin(pipelineOrigin);
     this.clients.forEach(client => client.onPageStarted(this.context, pipelineInfo));
     LynxEventReporter.onEvent(LynxEventReporter.LYNX_SDK_OPEN_PAGE_EVENT, instanceId);
+  }
+
+  private applyKeyboardAvoidMode(uiContext?: UIContext) {
+    if ((this.keyboardAvoidMode as number) === KEYBOARD_AVOID_MODE_UNSPECIFIED) {
+      return;
+    }
+    const context = uiContext ?? this.getUIContext();
+    context?.runScopedTask(() => {
+      context.setKeyboardAvoidMode(this.keyboardAvoidMode);
+    });
   }
 
   loadTemplate() {

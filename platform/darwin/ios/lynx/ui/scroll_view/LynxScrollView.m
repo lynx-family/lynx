@@ -7,6 +7,10 @@
 
 @implementation LynxScrollView
 
+- (void)setKeyboardAvoidingContentHeightExtra:(CGFloat)keyboardAvoidingContentHeightExtra {
+  _keyboardAvoidingContentHeightExtra = MAX(0, keyboardAvoidingContentHeightExtra);
+}
+
 - (BOOL)gestureRecognizer:(UIPanGestureRecognizer *)gestureRecognizer
     shouldRecognizeSimultaneouslyWithGestureRecognizer:
         (UISwipeGestureRecognizer *)otherGestureRecognizer {

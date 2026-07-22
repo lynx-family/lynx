@@ -63,6 +63,7 @@ public class AndroidScrollView
   boolean isUserDragging = false;
   private int mMeasuredWidth = 0;
   private int mMeasuredHeight = 0;
+  private int mKeyboardAvoidingContentHeightExtra = 0;
   private ArrayList<OnScrollListener> mOnScrollListenerList;
   private IDrawChildHook mDrawChildHook;
   private Renderer mRenderer;
@@ -721,6 +722,14 @@ public class AndroidScrollView
 
   public int getContentHeight() {
     return mMeasuredHeight;
+  }
+
+  public int getKeyboardAvoidingContentHeightExtra() {
+    return mKeyboardAvoidingContentHeightExtra;
+  }
+
+  public void setKeyboardAvoidingContentHeightExtra(int extra) {
+    mKeyboardAvoidingContentHeightExtra = Math.max(0, extra);
   }
 
   @Override

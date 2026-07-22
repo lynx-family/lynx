@@ -5,11 +5,7 @@ package com.lynx.tasm.behavior;
 
 import android.app.Activity;
 import android.graphics.Rect;
-import android.graphics.drawable.GradientDrawable;
 import android.os.Build;
-import android.util.DisplayMetrics;
-import android.view.Display;
-import android.view.OrientationEventListener;
 import android.view.Surface;
 import android.view.View;
 import android.view.ViewParent;
@@ -17,12 +13,9 @@ import android.view.ViewTreeObserver;
 import android.view.WindowInsets;
 import android.view.WindowInsetsAnimation;
 import android.view.animation.PathInterpolator;
-import androidx.appcompat.widget.LinearLayoutCompat;
-import androidx.recyclerview.widget.OrientationHelper;
 import com.lynx.react.bridge.JavaOnlyArray;
 import com.lynx.tasm.base.LLog;
 import com.lynx.tasm.behavior.ui.UIBody;
-import com.lynx.tasm.core.LynxThreadPool;
 import com.lynx.tasm.event.LynxKeyboardEvent;
 import com.lynx.tasm.utils.ContextUtils;
 import com.lynx.tasm.utils.LynxConstants;
@@ -51,6 +44,7 @@ public class KeyboardEvent {
   private Rect mDisplayFrame;
   private static final double KEYBOARD_LOWER_THRESHOLD = 0.4;
   private static final double KEYBOARD_HIGHER_THRESHOLD = 0.9;
+  static final long KEYBOARD_ANIMATION_DURATION_MS = 285L;
   private int keyboardHeightForLast = 0;
   private int keyboardTopFromLynxView = 0;
   private WeakHashMap<Object, ViewTreeObserver.OnGlobalLayoutListener> mOnGlobalLayoutListenerList =
@@ -216,7 +210,7 @@ public class KeyboardEvent {
     if (mKeyboardMonitor == null) {
       mKeyboardMonitor = new KeyboardMonitor(activity);
     }
-    mKeyboardAvoidingContext.start(activity.getWindow().getDecorView());
+    mKeyboardAvoidingContext.start(resolveKeyboardAvoidingFocusRootView(activity));
 
     mListener = new ViewTreeObserver.OnGlobalLayoutListener() {
       @Override
@@ -229,6 +223,16 @@ public class KeyboardEvent {
     mKeyboardMonitor.addOnGlobalLayoutListener(mListener);
     mKeyboardMonitor.start();
     isStartedInUIThread = true;
+  }
+
+  private View resolveKeyboardAvoidingFocusRootView(Activity activity) {
+    if (mLynxContext != null && mLynxContext.getUIBody() != null) {
+      UIBody.UIBodyView bodyView = mLynxContext.getUIBody().getBodyView();
+      if (bodyView != null) {
+        return bodyView;
+      }
+    }
+    return activity.getWindow().getDecorView();
   }
 
   public synchronized void stop() {
@@ -345,16 +349,15 @@ public class KeyboardEvent {
   }
 
   private class KeyboardAvoidingContext {
-    private static final long KEYBOARD_ANIMATION_DURATION_MS = 285L;
     private static final long INSETS_ANIMATION_START_FALLBACK_DELAY_MS = 64L;
     private static final long INSETS_ANIMATION_END_FALLBACK_PADDING_MS = 80L;
     private static final int KEYBOARD_TRANSITION_NONE = 0;
     private static final int KEYBOARD_TRANSITION_SHOW = 1;
     private static final int KEYBOARD_TRANSITION_HIDE = 2;
 
-    private final WeakHashMap<View, KeyboardAvoidTarget> mTargets = new WeakHashMap<>();
-    private WeakReference<KeyboardAvoidTarget> mActiveTarget =
-        new WeakReference<KeyboardAvoidTarget>(null);
+    private final WeakHashMap<View, KeyboardAvoidingTarget> mTargets = new WeakHashMap<>();
+    private WeakReference<KeyboardAvoidingTarget> mActiveTarget =
+        new WeakReference<KeyboardAvoidingTarget>(null);
     private WeakReference<Object> mLastEventOwner = new WeakReference<Object>(null);
     private WeakReference<View> mLastLynxView = new WeakReference<View>(null);
     private View mFocusRootView;
@@ -368,10 +371,32 @@ public class KeyboardEvent {
     private float mAvoidDistanceBeforeImeAnimation = 0f;
     private int mPendingKeyboardTransition = KEYBOARD_TRANSITION_NONE;
     private int mPendingKeyboardHeight = 0;
-    private WeakReference<KeyboardAvoidTarget> mPendingKeyboardTarget =
-        new WeakReference<KeyboardAvoidTarget>(null);
+    private WeakReference<KeyboardAvoidingTarget> mPendingKeyboardTarget =
+        new WeakReference<KeyboardAvoidingTarget>(null);
     private Runnable mPendingKeyboardFallbackRunnable;
     private View mPendingKeyboardFallbackView;
+    private final KeyboardAvoidingScrollController mScrollController =
+        new KeyboardAvoidingScrollController(new KeyboardAvoidingScrollController.Delegate() {
+          @Override
+          public Iterable<KeyboardAvoidingTarget> getTargets() {
+            return mTargets.values();
+          }
+
+          @Override
+          public KeyboardAvoidingTarget getActiveTarget() {
+            return KeyboardAvoidingContext.this.getActiveTarget();
+          }
+
+          @Override
+          public Activity getActivity() {
+            return ContextUtils.getActivity(mLynxContext);
+          }
+
+          @Override
+          public int getKeyboardAvoidingScreenBottom(View decorView) {
+            return KeyboardAvoidingContext.this.getKeyboardAvoidingScreenBottom(decorView);
+          }
+        });
 
     void start(View focusRootView) {
       if (focusRootView == null) {
@@ -398,7 +423,7 @@ public class KeyboardEvent {
       stopFocusTracking();
       stopInsetsAnimationTracking();
       mTargets.clear();
-      mActiveTarget = new WeakReference<KeyboardAvoidTarget>(null);
+      mActiveTarget = new WeakReference<KeyboardAvoidingTarget>(null);
       mLastEventOwner = new WeakReference<Object>(null);
       mLastLynxView = new WeakReference<View>(null);
       mKeyboardHeight = 0;
@@ -406,11 +431,12 @@ public class KeyboardEvent {
 
     void avoidKeyboardPropsDidChangeForOwner(
         Object owner, View inputView, View lynxView, boolean avoidKeyboard, float spacing) {
-      KeyboardAvoidTarget target = saveTarget(owner, inputView, lynxView, avoidKeyboard, spacing);
+      KeyboardAvoidingTarget target =
+          saveTarget(owner, inputView, lynxView, avoidKeyboard, spacing);
       if (target == null) {
         return;
       }
-      KeyboardAvoidTarget activeTarget = getActiveTarget();
+      KeyboardAvoidingTarget activeTarget = getActiveTarget();
       if (activeTarget != null && activeTarget.matchesOwner(owner)) {
         setActiveTarget(target);
         updateAvoidDistance();
@@ -421,19 +447,30 @@ public class KeyboardEvent {
 
     void inputDidBeginEditing(
         Object owner, View inputView, View lynxView, boolean avoidKeyboard, float spacing) {
-      KeyboardAvoidTarget target = saveTarget(owner, inputView, lynxView, avoidKeyboard, spacing);
+      KeyboardAvoidingTarget target =
+          saveTarget(owner, inputView, lynxView, avoidKeyboard, spacing);
       if (target != null) {
         activateTarget(target);
       }
     }
 
     void inputDidEndEditing(Object owner) {
-      KeyboardAvoidTarget activeTarget = getActiveTarget();
+      KeyboardAvoidingTarget activeTarget = getActiveTarget();
       if (activeTarget != null && activeTarget.matchesOwner(owner)) {
+        View inputView = activeTarget.getInputView();
         setActiveTarget(null);
         setLastEventOwner(owner);
         if (mKeyboardHeight <= 0) {
           resetAvoidDistance();
+        } else if (inputView != null) {
+          inputView.post(new Runnable() {
+            @Override
+            public void run() {
+              if (getActiveTarget() == null && findCurrentFocusedTarget() == null) {
+                mScrollController.clear(true);
+              }
+            }
+          });
         }
       } else {
         setLastEventOwner(owner);
@@ -442,8 +479,9 @@ public class KeyboardEvent {
 
     void inputDidLayout(
         Object owner, View inputView, View lynxView, boolean avoidKeyboard, float spacing) {
-      KeyboardAvoidTarget target = saveTarget(owner, inputView, lynxView, avoidKeyboard, spacing);
-      KeyboardAvoidTarget activeTarget = getActiveTarget();
+      KeyboardAvoidingTarget target =
+          saveTarget(owner, inputView, lynxView, avoidKeyboard, spacing);
+      KeyboardAvoidingTarget activeTarget = getActiveTarget();
       if (target != null && activeTarget != null && activeTarget.matchesOwner(owner)) {
         setActiveTarget(target);
         updateAvoidDistance();
@@ -452,16 +490,20 @@ public class KeyboardEvent {
 
     void keyboardWillShow(Object owner, View inputView, View lynxView, boolean avoidKeyboard,
         float spacing, int keyboardHeight) {
-      KeyboardAvoidTarget target = saveTarget(owner, inputView, lynxView, avoidKeyboard, spacing);
+      KeyboardAvoidingTarget target =
+          saveTarget(owner, inputView, lynxView, avoidKeyboard, spacing);
       if (target == null) {
         return;
       }
-      KeyboardAvoidTarget activeTarget = getActiveTarget();
+      KeyboardAvoidingTarget activeTarget = getActiveTarget();
       if (inputView.isFocused() || (activeTarget != null && activeTarget.matchesOwner(owner))) {
         if (shouldUseInsetsAnimationForKeyboardTransition()) {
           setActiveTarget(target);
           setLastEventOwner(target.getOwner());
           prepareInsetsKeyboardTransition(KEYBOARD_TRANSITION_SHOW, keyboardHeight, target);
+          if (shouldApplyKeyboardWillShowHeightForScrollTarget(target, keyboardHeight)) {
+            applyAvoidDistance(target, keyboardHeight, currentRootWindowInsets(), true);
+          }
         } else {
           mKeyboardHeight = keyboardHeight;
           activateTarget(target);
@@ -473,7 +515,7 @@ public class KeyboardEvent {
       if (!isActiveOwner(owner) && !isLastEventOwner(owner)) {
         return;
       }
-      KeyboardAvoidTarget focusedTarget = findCurrentFocusedTarget();
+      KeyboardAvoidingTarget focusedTarget = findCurrentFocusedTarget();
       if (shouldUseInsetsAnimationForKeyboardTransition()) {
         setActiveTarget(focusedTarget);
         setLastEventOwner(owner);
@@ -485,7 +527,8 @@ public class KeyboardEvent {
       }
       mKeyboardHeight = 0;
       if (focusedTarget != null) {
-        activateTarget(focusedTarget);
+        setActiveTarget(focusedTarget);
+        resetAvoidDistance();
       } else {
         setActiveTarget(null);
         resetAvoidDistance();
@@ -497,8 +540,8 @@ public class KeyboardEvent {
     }
 
     private void handleGlobalFocusChanged(View oldFocus, View newFocus) {
-      KeyboardAvoidTarget oldTarget = findTarget(oldFocus);
-      KeyboardAvoidTarget newTarget = findTarget(newFocus);
+      KeyboardAvoidingTarget oldTarget = findTarget(oldFocus);
+      KeyboardAvoidingTarget newTarget = findTarget(newFocus);
       if (oldTarget != null) {
         setLastEventOwner(oldTarget.getOwner());
       }
@@ -509,26 +552,26 @@ public class KeyboardEvent {
       }
     }
 
-    private KeyboardAvoidTarget saveTarget(
+    private KeyboardAvoidingTarget saveTarget(
         Object owner, View inputView, View lynxView, boolean avoidKeyboard, float spacing) {
       if (owner == null || inputView == null || lynxView == null) {
         return null;
       }
-      KeyboardAvoidTarget target =
-          new KeyboardAvoidTarget(owner, inputView, lynxView, avoidKeyboard, spacing);
+      KeyboardAvoidingTarget target =
+          new KeyboardAvoidingTarget(owner, inputView, lynxView, avoidKeyboard, spacing);
       mTargets.put(inputView, target);
       startInsetsAnimationTracking();
       return target;
     }
 
-    private void activateTarget(KeyboardAvoidTarget target) {
+    private void activateTarget(KeyboardAvoidingTarget target) {
       if (target == null || !target.isValid()) {
         return;
       }
       setActiveTarget(target);
       setLastEventOwner(target.getOwner());
       if (mPendingKeyboardTransition == KEYBOARD_TRANSITION_SHOW) {
-        mPendingKeyboardTarget = new WeakReference<KeyboardAvoidTarget>(target);
+        mPendingKeyboardTarget = new WeakReference<KeyboardAvoidingTarget>(target);
       }
       updateAvoidDistance();
     }
@@ -538,23 +581,86 @@ public class KeyboardEvent {
     }
 
     private void updateAvoidDistance(boolean animated) {
-      KeyboardAvoidTarget target = getActiveTarget();
+      KeyboardAvoidingTarget target = getActiveTarget();
       if (target == null || !target.isValid()) {
         setActiveTarget(null);
         resetAvoidDistance(animated);
         return;
       }
-      View lynxView = target.getLynxView();
-      float avoidDistance = calculateAvoidDistance(target, mKeyboardHeight);
-      applyAvoidDistance(lynxView, avoidDistance, animated);
+      WindowInsets insets = currentRootWindowInsets();
+      int keyboardHeight = keyboardHeightForAvoidDistance(insets);
+      applyAvoidDistance(target, keyboardHeight, insets, animated);
     }
 
-    private float calculateAvoidDistance(KeyboardAvoidTarget target, int keyboardHeight) {
+    private void applyAvoidDistance(
+        KeyboardAvoidingTarget target, int keyboardHeight, WindowInsets insets, boolean animated) {
+      if (target == null || !target.isValid()) {
+        setActiveTarget(null);
+        resetAvoidDistance(animated);
+        return;
+      }
+      if (!target.shouldAvoidKeyboard()) {
+        mScrollController.clear(animated);
+        applyRootAvoidDistance(target.getLynxView(), 0f, animated);
+        return;
+      }
+      if (applyScrollViewAvoidDistance(target, keyboardHeight, insets, animated)) {
+        return;
+      }
+      mScrollController.clear(animated);
+      float avoidDistance = calculateAvoidDistance(target, keyboardHeight, insets);
+      applyRootAvoidDistance(target.getLynxView(), avoidDistance, animated);
+    }
+
+    private boolean applyScrollViewAvoidDistance(
+        KeyboardAvoidingTarget target, int keyboardHeight, WindowInsets insets, boolean animated) {
+      if (!mScrollController.canHandleTarget(target)) {
+        return false;
+      }
+      applyRootAvoidDistance(target.getLynxView(), 0f, animated);
+      return mScrollController.applyAvoidDistance(target, keyboardHeight, insets, animated,
+          shouldUseKeyboardWillShowHeightForScrollViewAvoidDistance(), mPendingKeyboardHeight);
+    }
+
+    private boolean shouldApplyKeyboardWillShowHeightForScrollTarget(
+        KeyboardAvoidingTarget target, int keyboardHeight) {
+      return target != null && target.shouldAvoidKeyboard() && keyboardHeight > 0
+          && mScrollController.canHandleTarget(target);
+    }
+
+    private boolean shouldUseKeyboardWillShowHeightForScrollViewAvoidDistance() {
+      return mPendingKeyboardTransition == KEYBOARD_TRANSITION_SHOW && mPendingKeyboardHeight > 0;
+    }
+
+    private WindowInsets currentRootWindowInsets() {
+      if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
+        return null;
+      }
+      View hostView = mInsetsAnimationHostView;
+      if (hostView == null) {
+        hostView = resolveInsetsAnimationHostView();
+      }
+      return hostView == null ? null : hostView.getRootWindowInsets();
+    }
+
+    private int keyboardHeightForAvoidDistance(WindowInsets insets) {
+      int keyboardHeight = mKeyboardHeight;
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && insets != null) {
+        int insetsKeyboardHeight = getKeyboardHeightFromInsets(insets);
+        if (insetsKeyboardHeight > 0) {
+          keyboardHeight = insetsKeyboardHeight;
+          mKeyboardHeight = keyboardHeight;
+        }
+      }
+      return keyboardHeight;
+    }
+
+    private float calculateAvoidDistance(KeyboardAvoidingTarget target, int keyboardHeight) {
       return calculateAvoidDistance(target, keyboardHeight, null);
     }
 
     private float calculateAvoidDistance(
-        KeyboardAvoidTarget target, int keyboardHeight, WindowInsets insets) {
+        KeyboardAvoidingTarget target, int keyboardHeight, WindowInsets insets) {
       if (!target.shouldAvoidKeyboard()) {
         return 0f;
       }
@@ -588,7 +694,7 @@ public class KeyboardEvent {
       return Math.max(0f, keyboardHeight - inputBottomToScreen + target.getSpacing());
     }
 
-    private float calculateAvoidDistanceInHost(KeyboardAvoidTarget target, int keyboardHeight,
+    private float calculateAvoidDistanceInHost(KeyboardAvoidingTarget target, int keyboardHeight,
         View hostView, WindowInsets insets, boolean preferVisibleFrame) {
       View inputView = target.getInputView();
       View lynxView = target.getLynxView();
@@ -669,11 +775,11 @@ public class KeyboardEvent {
       return decorLocation[1] + decorView.getHeight();
     }
 
-    private void applyAvoidDistance(View lynxView, float avoidDistance) {
-      applyAvoidDistance(lynxView, avoidDistance, shouldAnimateAvoidDistance());
+    private void applyRootAvoidDistance(View lynxView, float avoidDistance) {
+      applyRootAvoidDistance(lynxView, avoidDistance, shouldAnimateAvoidDistance());
     }
 
-    private void applyAvoidDistance(View lynxView, float avoidDistance, boolean animated) {
+    private void applyRootAvoidDistance(View lynxView, float avoidDistance, boolean animated) {
       float targetAvoidDistance = Math.max(0f, avoidDistance);
       if (lynxView == null) {
         mCurrentAvoidDistance = targetAvoidDistance;
@@ -706,7 +812,7 @@ public class KeyboardEvent {
 
     private void resetAvoidDistance(boolean animated) {
       View lynxView = null;
-      KeyboardAvoidTarget activeTarget = getActiveTarget();
+      KeyboardAvoidingTarget activeTarget = getActiveTarget();
       if (activeTarget != null) {
         lynxView = activeTarget.getLynxView();
       }
@@ -714,17 +820,18 @@ public class KeyboardEvent {
         lynxView = mLastLynxView.get();
       }
       if (lynxView != null || mCurrentAvoidDistance != 0f) {
-        applyAvoidDistance(lynxView, 0f, animated);
+        mScrollController.clear(animated);
+        applyRootAvoidDistance(lynxView, 0f, animated);
       }
     }
 
-    private KeyboardAvoidTarget getActiveTarget() {
-      KeyboardAvoidTarget target = mActiveTarget.get();
+    private KeyboardAvoidingTarget getActiveTarget() {
+      KeyboardAvoidingTarget target = mActiveTarget.get();
       return target != null && target.isValid() ? target : null;
     }
 
-    private void setActiveTarget(KeyboardAvoidTarget target) {
-      mActiveTarget = new WeakReference<KeyboardAvoidTarget>(target);
+    private void setActiveTarget(KeyboardAvoidingTarget target) {
+      mActiveTarget = new WeakReference<KeyboardAvoidingTarget>(target);
     }
 
     private void setLastEventOwner(Object owner) {
@@ -734,7 +841,7 @@ public class KeyboardEvent {
     }
 
     private boolean isActiveOwner(Object owner) {
-      KeyboardAvoidTarget activeTarget = getActiveTarget();
+      KeyboardAvoidingTarget activeTarget = getActiveTarget();
       return activeTarget != null && activeTarget.matchesOwner(owner);
     }
 
@@ -743,17 +850,17 @@ public class KeyboardEvent {
       return owner != null && lastOwner == owner;
     }
 
-    private KeyboardAvoidTarget findCurrentFocusedTarget() {
+    private KeyboardAvoidingTarget findCurrentFocusedTarget() {
       if (mFocusRootView == null) {
         return null;
       }
       return findTarget(mFocusRootView.findFocus());
     }
 
-    private KeyboardAvoidTarget findTarget(View view) {
+    private KeyboardAvoidingTarget findTarget(View view) {
       View current = view;
       while (current != null) {
-        KeyboardAvoidTarget target = mTargets.get(current);
+        KeyboardAvoidingTarget target = mTargets.get(current);
         if (target != null && target.isValid()) {
           return target;
         }
@@ -836,14 +943,17 @@ public class KeyboardEvent {
         return false;
       }
       int keyboardHeight = getKeyboardHeightFromInsets(insets);
-      KeyboardAvoidTarget target = getActiveTarget();
+      KeyboardAvoidingTarget target = getActiveTarget();
       if (target == null || !target.isValid()) {
         applyImeInsetsAvoidDistanceWithoutActiveTarget(keyboardHeight);
         return true;
       }
       mKeyboardHeight = keyboardHeight;
-      float avoidDistance = calculateAvoidDistance(target, keyboardHeight, insets);
-      applyAvoidDistance(target.getLynxView(), avoidDistance, false);
+      if (keyboardHeight <= 0 && mPendingKeyboardTransition == KEYBOARD_TRANSITION_HIDE) {
+        resetAvoidDistance(false);
+        return true;
+      }
+      applyAvoidDistance(target, keyboardHeight, insets, false);
       return true;
     }
 
@@ -857,6 +967,7 @@ public class KeyboardEvent {
     }
 
     private void applyImeInsetsAvoidDistanceWithoutActiveTarget(int keyboardHeight) {
+      mScrollController.clear(true);
       View lynxView = mLastLynxView.get();
       if (lynxView == null) {
         mKeyboardHeight = keyboardHeight;
@@ -868,14 +979,14 @@ public class KeyboardEvent {
             mAvoidDistanceBeforeImeAnimation * keyboardHeight / mKeyboardHeightBeforeImeAnimation;
       }
       mKeyboardHeight = keyboardHeight;
-      applyAvoidDistance(lynxView, avoidDistance, false);
+      applyRootAvoidDistance(lynxView, avoidDistance, false);
     }
 
     private void prepareInsetsKeyboardTransition(
-        int transition, int keyboardHeight, KeyboardAvoidTarget target) {
+        int transition, int keyboardHeight, KeyboardAvoidingTarget target) {
       mPendingKeyboardTransition = transition;
       mPendingKeyboardHeight = keyboardHeight;
-      mPendingKeyboardTarget = new WeakReference<KeyboardAvoidTarget>(target);
+      mPendingKeyboardTarget = new WeakReference<KeyboardAvoidingTarget>(target);
       long delay = INSETS_ANIMATION_START_FALLBACK_DELAY_MS;
       if (mIsImeAnimationRunning) {
         delay = getInsetsAnimationFallbackDelay(null);
@@ -936,7 +1047,7 @@ public class KeyboardEvent {
     }
 
     private void applyPendingKeyboardTransition(boolean animated) {
-      KeyboardAvoidTarget target = mPendingKeyboardTarget.get();
+      KeyboardAvoidingTarget target = mPendingKeyboardTarget.get();
       if (target != null && !target.isValid()) {
         target = null;
       }
@@ -950,7 +1061,7 @@ public class KeyboardEvent {
         mKeyboardHeight = 0;
         if (target != null) {
           setActiveTarget(target);
-          updateAvoidDistance(animated);
+          resetAvoidDistance(animated);
         } else {
           setActiveTarget(null);
           resetAvoidDistance(animated);
@@ -973,7 +1084,7 @@ public class KeyboardEvent {
     private void clearPendingKeyboardTransition() {
       mPendingKeyboardTransition = KEYBOARD_TRANSITION_NONE;
       mPendingKeyboardHeight = 0;
-      mPendingKeyboardTarget = new WeakReference<KeyboardAvoidTarget>(null);
+      mPendingKeyboardTarget = new WeakReference<KeyboardAvoidingTarget>(null);
     }
 
     private long getInsetsAnimationFallbackDelay(WindowInsetsAnimation animation) {
@@ -1116,14 +1227,14 @@ public class KeyboardEvent {
     }
   }
 
-  private static class KeyboardAvoidTarget {
+  static class KeyboardAvoidingTarget {
     private final WeakReference<Object> mOwner;
     private final WeakReference<View> mInputView;
     private final WeakReference<View> mLynxView;
     private final boolean mAvoidKeyboard;
     private final float mSpacing;
 
-    KeyboardAvoidTarget(
+    KeyboardAvoidingTarget(
         Object owner, View inputView, View lynxView, boolean avoidKeyboard, float spacing) {
       mOwner = new WeakReference<Object>(owner);
       mInputView = new WeakReference<View>(inputView);

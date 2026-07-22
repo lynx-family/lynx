@@ -35,6 +35,11 @@ class BaseScrollContainer : public UIView {
   float ScrollX() override;
   float ScrollY() override;
   bool IsScrollable() override;
+  float ScrollContentHeight() const override;
+  float ScrollContentHeightExtra() const override;
+  void SetScrollContentHeight(float height) override;
+  void SetScrollContentHeightExtra(float extra) override;
+  void ScrollToVerticalOffset(float offset, bool smooth) override;
   std::vector<float> ScrollBy(float delta_x, float delta_y) override;
   std::vector<float> GestureScrollBy(float delta_x, float delta_y) override;
   virtual void AutoScrollStopped(){};
@@ -66,6 +71,7 @@ class BaseScrollContainer : public UIView {
   bool is_horizontal_{false};
   float content_width_{0};
   float content_height_{0};
+  float scroll_content_height_extra_{0.f};
 
   // “enable-nested-scroll” cannot meet the needs,so add the
   // scrollForward/scrollBackWard options.

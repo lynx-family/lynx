@@ -21,6 +21,7 @@
 #include "platform/harmony/lynx_harmony/src/main/cpp/event/event_emitter.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/lynx_context.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/public/image_service.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/ui/keyboard_avoiding_scroll_controller.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_base.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_observer.h"
 
@@ -31,7 +32,7 @@ class UIRoot;
 class GestureArenaManager;
 class LynxImageConfig;
 
-class UIOwner {
+class UIOwner : private KeyboardAvoidingScrollController::Delegate {
  public:
   static ImageService* image_service;
   UIOwner();
@@ -203,6 +204,8 @@ class UIOwner {
   void KeyboardWillShowForOwner(UIBase* owner, float keyboard_height,
                                 bool avoid_keyboard, float spacing);
   bool KeyboardWillHideForOwner(UIBase* owner);
+  void KeyboardAvoidingScrollContentSizeWillChange(UIBase* scroll_ui);
+  void KeyboardAvoidingScrollContentSizeDidChange(UIBase* scroll_ui);
 
   void OnEnterForeground();
   void OnEnterBackground();
@@ -248,13 +251,27 @@ class UIOwner {
   void UpdateComponentIdMap(UIBase* ui, PropBundleHarmony* painting_data);
   void InitLynxImageConfig(bool enable_image_load_callback,
                            bool enable_redirect_url);
+  using KeyboardAvoidingTarget = KeyboardAvoidingScrollController::Target;
   void SaveKeyboardAvoidingTarget(UIBase* owner, bool avoid_keyboard,
                                   float spacing);
+  void ActivateKeyboardAvoidingTarget(UIBase* owner, bool avoid_keyboard,
+                                      float spacing);
   void UpdateKeyboardAvoidDistance();
   void ApplyKeyboardAvoidDistance(float target_distance);
+  bool ApplyScrollViewAvoidDistance(UIBase* owner);
+  void ClearKeyboardAvoidingScrollView();
+  void ClearKeyboardAvoidingScrollView(bool smooth);
   float CalculateKeyboardAvoidDistance(UIBase* owner);
   float GetKeyboardAvoidingScreenBottom();
+  float GetKeyboardAvoidingKeyboardTop();
   void ResetKeyboardAvoidingTargetIfNeeded(int32_t sign);
+  UIBase* FindUIBySignForKeyboardAvoiding(int32_t sign) const override;
+  const std::unordered_map<int32_t, KeyboardAvoidingTarget>&
+  KeyboardAvoidingTargets() const override;
+  int32_t ActiveKeyboardAvoidingTargetSign() const override;
+  float KeyboardAvoidingKeyboardTop() override;
+  LynxContext* KeyboardAvoidingContext() const override;
+  bool KeyboardAvoidingDestroyed() const override;
 
   int GetJSNodeType(int sign, const std::string& tag) const;
   static constexpr int32_t kInvalidKeyboardAvoidingSign = -2;
@@ -263,6 +280,8 @@ class UIOwner {
   std::unordered_map<std::string, int32_t> component_map_;
   std::unordered_map<int32_t, std::weak_ptr<UIBase>> layout_changed_nodes_;
   std::unordered_map<int32_t, std::weak_ptr<UIBase>> keyboard_event_observers_;
+  std::unordered_map<int32_t, KeyboardAvoidingTarget>
+      keyboard_avoiding_targets_;
   std::unordered_set<UIBase*> window_state_listeners_;
 
   napi_env env_{nullptr};
@@ -282,6 +301,8 @@ class UIOwner {
   std::shared_ptr<EventEmitter> event_emitter_ =
       std::make_shared<EventEmitter>(this);
   std::unique_ptr<UIObserver> ui_observer_ = std::make_unique<UIObserver>(this);
+  std::unique_ptr<KeyboardAvoidingScrollController>
+      keyboard_avoiding_scroll_controller_;
   // TODO(@renzhongyue) implement the lynxContext wrapper and store the
   // ark_ui_context into the lynxContext.
   ArkUI_ContextHandle ark_ui_context_{nullptr};
@@ -300,6 +321,7 @@ class UIOwner {
   int32_t keyboard_avoiding_active_owner_{kInvalidKeyboardAvoidingSign};
   int32_t keyboard_avoiding_last_event_owner_{kInvalidKeyboardAvoidingSign};
   float keyboard_height_{0.f};
+  float keyboard_top_{0.f};
   float keyboard_avoiding_screen_bottom_{0.f};
   float current_avoid_distance_{0.f};
   bool is_keyboard_transition_{false};

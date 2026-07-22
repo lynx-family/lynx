@@ -183,6 +183,8 @@ lynx_core_source_set("cpp") {
     "ui/image_drawable.h",
     "ui/js_ui_base.cc",
     "ui/js_ui_base.h",
+    "ui/keyboard_avoiding_scroll_controller.cc",
+    "ui/keyboard_avoiding_scroll_controller.h",
     "ui/scroll/base/lynx_base_scroll_view.cc",
     "ui/scroll/base/lynx_base_scroll_view.h",
     "ui/scroll/base/lynx_base_scroll_view_auto.cc",

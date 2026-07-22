@@ -18,6 +18,7 @@
 #include "platform/harmony/lynx_harmony/src/main/cpp/lynx_context.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/base/node_manager.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_bounce.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_owner.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/utils/lynx_ui_screenshot_helper.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/utils/lynx_unit_utils.h"
 
@@ -250,6 +251,9 @@ void UIScroll::OnMeasure(ArkUI_LayoutConstraint* layout_constraint) {
       }
     }
   }
+  if (!IsHorizontal()) {
+    content_height += scroll_content_height_extra_;
+  }
 
   if (start_bounce_view_ != nullptr) {
     auto node = start_bounce_view_->DrawNode();
@@ -458,7 +462,16 @@ void UIScroll::FrameDidChanged() {
 
 void UIScroll::UpdateContentSize(float width, float height) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, UI_SCROLL_UPDATE_CONTENT_SIZE);
+  UIOwner* ui_owner = context_ ? context_->GetUIOwner() : nullptr;
+  bool vertical_content_size_changed =
+      !IsHorizontal() && !base::FloatsEqual(height, content_height_);
+  if (ui_owner && vertical_content_size_changed) {
+    ui_owner->KeyboardAvoidingScrollContentSizeWillChange(this);
+  }
   BaseScrollContainer::UpdateContentSize(width, height);
+  if (ui_owner && vertical_content_size_changed) {
+    ui_owner->KeyboardAvoidingScrollContentSizeDidChange(this);
+  }
   NodeManager::Instance().SetMeasuredSize(container_layout_,
                                           context_->ScaledDensity() * width,
                                           context_->ScaledDensity() * height);

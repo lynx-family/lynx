@@ -129,8 +129,8 @@ export class UIOwner {
     this.native.requestLayout();
   }
 
-  keyboardStatusChanged(height: number) {
-    this.native.keyboardStatusChanged(height);
+  keyboardStatusChanged(height: number, keyboardTop?: number) {
+    this.native.keyboardStatusChanged(height, keyboardTop);
   }
 
   setAvoidKeyboardListener(avoidKeyboardListener?: (translateY: number, isKeyboardTransition: boolean) => void):void {

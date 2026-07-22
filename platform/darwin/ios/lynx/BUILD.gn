@@ -194,6 +194,8 @@ subspec_target("lynx") {
     "event/LynxEventHandler+Internal.h",
     "event/LynxEventHandler.m",
     "event/LynxEventSpec.m",
+    "event/LynxKeyboardAvoidingScrollController.h",
+    "event/LynxKeyboardAvoidingScrollController.m",
     "event/LynxKeyboardEventDispatcher.m",
     "event/LynxTouchHandler+Internal.h",
     "event/LynxTouchHandler.mm",
