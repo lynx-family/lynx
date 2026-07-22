@@ -119,6 +119,42 @@ module.exports = Promise => {
     });
   };
 
+  Promise.allSettled = function(arr) {
+    return new Promise(function(resolve) {
+      // Consume the iterable inside the executor so a non-iterable input or a
+      // throwing iterator surfaces as a rejected promise (matching the spec)
+      // instead of escaping synchronously at the call site.
+      var args = iterableToArray(arr);
+      if (args.length === 0) return resolve([]);
+      var remaining = args.length;
+
+      function settle(i, status, valueOrReason) {
+        args[i] =
+          status === 'fulfilled'
+            ? { status: status, value: valueOrReason }
+            : { status: status, reason: valueOrReason };
+        if (--remaining === 0) {
+          resolve(args);
+        }
+      }
+
+      function res(i, value) {
+        Promise.resolve(value).then(
+          function(val) {
+            settle(i, 'fulfilled', val);
+          },
+          function(reason) {
+            settle(i, 'rejected', reason);
+          }
+        );
+      }
+
+      for (var i = 0; i < args.length; i++) {
+        res(i, args[i]);
+      }
+    });
+  };
+
   Promise.reject = function(value) {
     return new Promise(function(resolve, reject) {
       reject(value);
