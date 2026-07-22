@@ -226,6 +226,7 @@ export abstract class LynxNodeController extends NodeController {
   @Prop fitContentWidth: boolean; = false
   @Prop fitContentHeight: boolean; = false
   experimentalFixFitContent?: boolean; = false
+  skipOffTreeViewportUpdate?: boolean; = false
   onCreate: (context: LynxContext) => void; = ((context: LynxContext) => {
   })
   onReuse: (context: LynxContext) => boolean; = ((context: LynxContext) => {
