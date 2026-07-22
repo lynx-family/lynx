@@ -4,7 +4,6 @@
 
 #import <Foundation/Foundation.h>
 #import <Lynx/LynxPerformanceEntryConverter.h>
-#import <OCMock/OCMock.h>
 #import <XCTest/XCTest.h>
 #import "LynxPerformanceController+Native.h"
 
@@ -34,9 +33,10 @@ class MockPerformanceSender : public performance::PerformanceEventSender {
 
 @implementation MockObserver
 - (void)onPerformanceEvent:(nonnull LynxPerformanceEntry *)entry {
-  self.lastEntry = entry;
-  [self.expectation fulfill];  // Fulfill
+  XCTestExpectation *expectation = self.expectation;
   self.expectation = nil;
+  self.lastEntry = entry;
+  [expectation fulfill];
 }
 @end
 
@@ -44,7 +44,7 @@ class MockPerformanceSender : public performance::PerformanceEventSender {
   std::shared_ptr<PerformanceControllerActor> _actor;
 }
 @property(nonatomic, strong) LynxPerformanceController *controller;
-@property(nonatomic, strong) id mockObserver;
+@property(nonatomic, strong) MockObserver *mockObserver;
 
 @end
 
@@ -53,7 +53,7 @@ class MockPerformanceSender : public performance::PerformanceEventSender {
 - (void)setUp {
   [super setUp];
   performance::MemoryMonitor::SetForceEnable(true);
-  self.mockObserver = OCMProtocolMock(@protocol(LynxPerformanceObserverProtocol));
+  self.mockObserver = [[MockObserver alloc] init];
   self.controller = [[LynxPerformanceController alloc] initWithObserver:self.mockObserver];
   auto perfControllerDarwin =
       std::make_unique<performance::PerformanceControllerDarwin>(self.controller);
@@ -68,15 +68,9 @@ class MockPerformanceSender : public performance::PerformanceEventSender {
 - (void)asyncVerify:(void (^)(void))func
               check:(void (^)(LynxPerformanceEntry *entry))checkCallback {
   XCTestExpectation *expectation =
-      [self expectationWithDescription:@"Performance event should be received via OCMock"];
-  __block LynxPerformanceEntry *receivedEntry = nil;
-  OCMExpect([self.mockObserver onPerformanceEvent:[OCMArg checkWithBlock:^BOOL(id obj) {
-                                 XCTAssertTrue([obj isKindOfClass:[LynxPerformanceEntry class]],
-                                               @"Argument should be a LynxPerformanceEntry");
-                                 receivedEntry = (LynxPerformanceEntry *)obj;
-                                 [expectation fulfill];
-                                 return YES;
-                               }]]);
+      [self expectationWithDescription:@"Performance event should be received"];
+  self.mockObserver.lastEntry = nil;
+  self.mockObserver.expectation = expectation;
 
   if (func) {
     func();
@@ -87,9 +81,11 @@ class MockPerformanceSender : public performance::PerformanceEventSender {
                                    XCTFail(@"Expectation failed with error: %@", error);
                                  }
                                }];
-  OCMVerifyAll(self.mockObserver);
+  LynxPerformanceEntry *receivedEntry = self.mockObserver.lastEntry;
+  XCTAssertTrue([receivedEntry isKindOfClass:[LynxPerformanceEntry class]],
+                @"Argument should be a LynxPerformanceEntry");
   XCTAssertNotNil(receivedEntry, @"Received entry should not be nil");
-  if (checkCallback) {
+  if (receivedEntry && checkCallback) {
     checkCallback(receivedEntry);
   }
 }
