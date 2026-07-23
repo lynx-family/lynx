@@ -61,6 +61,23 @@ TEST_F(DisplayListBuilderTest, BeginOperation) {
   EXPECT_FLOAT_EQ(float_data_data[3], 200.0f);
 }
 
+TEST_F(DisplayListBuilderTest, BeginOperationWithHitTestState) {
+  builder_->Begin(0, PlatformRendererType::kView, 10.0f, 20.0f, 100.0f, 200.0f,
+                  true, false, true);
+
+  DisplayList display_list = builder_->Build();
+  const int32_t* int_data = display_list.GetContentIntData();
+
+  ASSERT_NE(int_data, nullptr);
+  EXPECT_EQ(int_data[0], 5);
+  EXPECT_EQ(int_data[1], 4);
+  EXPECT_EQ(int_data[2], 0);
+  EXPECT_EQ(int_data[3], static_cast<int32_t>(PlatformRendererType::kView));
+  EXPECT_EQ(int_data[4], 1);
+  EXPECT_EQ(int_data[5], 0);
+  EXPECT_EQ(int_data[6], 1);
+}
+
 TEST_F(DisplayListBuilderTest, EndOperation) {
   builder_->End();
 

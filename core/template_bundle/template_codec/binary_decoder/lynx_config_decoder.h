@@ -307,6 +307,12 @@ class LynxConfigDecoder final {
           doc[config::kEnableEventThrough].GetBool());
     }
 
+    if (doc.HasMember(config::kEnableLayoutOnlyEventThrough) &&
+        doc[config::kEnableLayoutOnlyEventThrough].IsBool()) {
+      page_config->SetEnableLayoutOnlyEventThrough(
+          doc[config::kEnableLayoutOnlyEventThrough].GetBool());
+    }
+
     if (doc.HasMember(config::kRemoveComponentElement) &&
         doc[config::kRemoveComponentElement].IsBool()) {
       page_config->SetRemoveComponentElement(

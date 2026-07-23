@@ -560,6 +560,17 @@ export interface Config {
   enableJSDataProcessor?: boolean;
 
   /**
+   * Controls whether layout-only nodes are excluded as hit-test targets in Fragment Layer Render while their non-layout-only descendants remain eligible. When disabled, layout-only nodes keep the existing PlatformEventTarget hit-test behavior.
+   *
+   * Supported platform: Android, HarmonyOS, iOS
+   *
+   * Since: LynxSDK 4.0
+   *
+   * @defaultValue false
+   */
+  enableLayoutOnlyEventThrough?: boolean;
+
+  /**
    * Does diffResult have moveAction
    *
    * Supported platform: Android, HarmonyOS, iOS

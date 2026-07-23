@@ -127,6 +127,8 @@ class Fragment : public BaseElementContainer {
 
   const auto& LayoutResult() const { return layout_info_; }
 
+  bool ShouldSyncLayoutOnlyToEventTarget() const;
+
   int32_t DefineBorderBox(DisplayListBuilder& display_list_builder);
   int32_t DefinePaddingBox(DisplayListBuilder& display_list_builder);
   int32_t DefineContentBox(DisplayListBuilder& display_list_builder);

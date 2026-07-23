@@ -61,6 +61,7 @@ describe('Test Config Types', () => {
     expectTypeOf<Config>().toHaveProperty('enableiOSAnimationLayerForExposure').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('enableJsBindingApiThrowException').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('enableJSDataProcessor').toEqualTypeOf<boolean | undefined>();
+    expectTypeOf<Config>().toHaveProperty('enableLayoutOnlyEventThrough').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('enableListMoveOperation').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('enableListNewArchitecture').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('enableListPlug').toEqualTypeOf<boolean | undefined>();

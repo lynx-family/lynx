@@ -36,6 +36,18 @@ DisplayListBuilder& DisplayListBuilder::Begin(int id, PlatformRendererType type,
   return *this;
 }
 
+DisplayListBuilder& DisplayListBuilder::Begin(int id, PlatformRendererType type,
+                                              float x, float y, float width,
+                                              float height, bool overflow_x,
+                                              bool overflow_y,
+                                              bool is_layout_only) {
+  display_list_.AddOperation(
+      DisplayListOpType::kBegin, id, static_cast<int32_t>(type),
+      static_cast<int32_t>(overflow_x), static_cast<int32_t>(overflow_y),
+      static_cast<int32_t>(is_layout_only), x, y, width, height);
+  return *this;
+}
+
 DisplayListBuilder& DisplayListBuilder::End() {
   display_list_.AddOperation(DisplayListOpType::kEnd);
   return *this;
