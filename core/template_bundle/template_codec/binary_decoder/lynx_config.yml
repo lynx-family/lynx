@@ -883,6 +883,16 @@ enableEventThrough:
     - Android
     - HarmonyOS
     - iOS
+enableLayoutOnlyEventThrough:
+  description: Controls whether layout-only nodes are excluded as hit-test targets in Fragment Layer Render while their non-layout-only descendants remain eligible. When disabled, layout-only nodes keep the existing PlatformEventTarget hit-test behavior.
+  defaultValue: 'false'
+  valueType: bool
+  author: rAY-ooo
+  since: '4.0'
+  supportPlatform:
+    - Android
+    - HarmonyOS
+    - iOS
 removeComponentElement:
   description: deprecated
   defaultValue: 'false'

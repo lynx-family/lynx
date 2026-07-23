@@ -211,6 +211,15 @@ TEST_F(LynxBinaryConfigDecoderTest,
   EXPECT_EQ(output[kPropertyIDGridColumnEnd].AsNumber(), 4);
 }
 
+TEST_F(LynxBinaryConfigDecoderTest, EnableLayoutOnlyEventThrough) {
+  EXPECT_FALSE(page_config_->GetEnableLayoutOnlyEventThrough());
+
+  config_decoder_->DecodePageConfig(
+      "{\n  \"enableLayoutOnlyEventThrough\" : true\n}", page_config_);
+
+  EXPECT_TRUE(page_config_->GetEnableLayoutOnlyEventThrough());
+}
+
 TEST_F(LynxBinaryConfigDecoderTest, ReadDebugMetadataUrl) {
   config_decoder_->DecodePageConfig(
       "{\n  \"debugMetadataUrl\" : \"https://example.com/debug-info.json\"\n}",

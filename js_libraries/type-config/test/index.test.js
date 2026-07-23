@@ -46,7 +46,7 @@ describe('type-config index', () => {
     ]);
   });
   it('should have correct configKeys', () => {
-    expect(configKeys.length).toBe(141);
+    expect(configKeys.length).toBe(142);
     expect(configKeys).toEqual([
       'absoluteInContentBound',
       'alignMouseEventWithW3C',
@@ -98,6 +98,7 @@ describe('type-config index', () => {
       'enableiOSAnimationLayerForExposure',
       'enableJsBindingApiThrowException',
       'enableJSDataProcessor',
+      'enableLayoutOnlyEventThrough',
       'enableListMoveOperation',
       'enableListNewArchitecture',
       'enableListPlug',

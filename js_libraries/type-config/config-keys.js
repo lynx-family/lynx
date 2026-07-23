@@ -83,6 +83,7 @@ const configKeys = [
   'enableiOSAnimationLayerForExposure',
   'enableJsBindingApiThrowException',
   'enableJSDataProcessor',
+  'enableLayoutOnlyEventThrough',
   'enableListMoveOperation',
   'enableListNewArchitecture',
   'enableListPlug',

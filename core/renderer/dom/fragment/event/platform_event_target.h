@@ -12,6 +12,7 @@
 #include <utility>
 #include <vector>
 
+#include "base/include/auto_create_optional.h"
 #include "base/include/fml/memory/ref_counted.h"
 #include "base/include/fml/memory/ref_ptr.h"
 #include "base/include/fml/memory/weak_ptr.h"
@@ -19,6 +20,7 @@
 #include "core/renderer/dom/fragment/event/platform_event_bundle.h"
 #include "core/renderer/dom/fragment/event/platform_event_target_exposure.h"
 #include "core/renderer/ui_wrapper/painting/platform_renderer_impl.h"
+#include "core/style/transform/matrix44.h"
 #include "core/value_wrapper/value_impl_lepus.h"
 
 namespace lynx {
@@ -120,6 +122,10 @@ class PlatformEventTarget
     return enable_exposure_ui_clip_;
   }
   bool IsScrollable() const { return is_scroll_container_; }
+  bool OverflowX() const { return overflow_x_; }
+  bool OverflowY() const { return overflow_y_; }
+  bool IsLayoutOnly() const { return is_layout_only_; }
+  const transforms::Matrix44* Transform() const { return transform_.get(); }
   bool IsRoot() const { return sign_ == root_id_; }
   bool IsPageRoot() const { return IsRoot() && root_id_ == kRootId; }
   const base::Vector<PlatformEventName>& EventSet() const { return event_set_; }
@@ -169,7 +175,7 @@ class PlatformEventTarget
   void GetPointInTarget(float target_point[2],
                         fml::RefPtr<PlatformEventTarget> parent_target,
                         float point[2]);
-  bool ContainsPoint(float point[2]) const;
+  bool ContainsPoint(float point[2]);
   bool IsVisibleForExposure(
       std::unordered_map<int32_t, CommonAncestorRect>& common_ancestor_rect_map,
       float root_view_origin_on_screen[2], const float window_rect[4]) const;
@@ -238,6 +244,12 @@ class PlatformEventTarget
   void SetScrollContainer(bool is_scroll_container) {
     is_scroll_container_ = is_scroll_container;
   }
+  void SetOverflow(bool overflow_x, bool overflow_y) {
+    overflow_x_ = overflow_x;
+    overflow_y_ = overflow_y;
+  }
+  void SetLayoutOnly(bool is_layout_only) { is_layout_only_ = is_layout_only; }
+  void SetTransform(const float transform[16]);
   void SetEventThrough(LynxEventPropStatus value) { event_through_ = value; }
   void SetEventThroughActiveRegions(
       std::vector<EventThroughRegion> event_through_active_regions) {
@@ -269,6 +281,10 @@ class PlatformEventTarget
   float height_{0.f};
   PlatformRendererType platform_renderer_type_{PlatformRendererType::kUnknown};
   bool is_scroll_container_{false};
+  bool overflow_x_{false};
+  bool overflow_y_{false};
+  bool is_layout_only_{false};
+  base::auto_create_optional<transforms::Matrix44> transform_;
   bool scroll_offset_updated_{false};
   float scroll_offset_x_{0.f};
   float scroll_offset_y_{0.f};
