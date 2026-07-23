@@ -7,10 +7,14 @@ apply plugin: 'signing'
 import org.gradle.api.internal.artifacts.dependencies.DefaultExternalModuleDependency
 import org.gradle.api.internal.artifacts.dependencies.DefaultProjectDependency
 
-def aarPathList=""
-
 def baseVersion = findProperty("version")
-def devVersion = "${baseVersion}-dev"
+
+if (findProperty("ARTIFACT_GROUP") != null) {
+    project.group = ARTIFACT_GROUP
+}
+if (baseVersion != null) {
+    project.version = baseVersion
+}
 
 def getAARPath(buildPath, boolean isDev = false) {
     def filePattern
@@ -55,6 +59,11 @@ boolean isAndroidModule() {
     return result
 }
 
+boolean isGradlePluginModule() {
+    boolean result = project.plugins.hasPlugin('java-gradle-plugin')
+    return result
+}
+
 boolean hasDevFlavor() {
     if (!isAndroidModule() || !project.android.productFlavors.any { it.name == "dev" }) {
         return false
@@ -64,6 +73,36 @@ boolean hasDevFlavor() {
         taskName.contains("dev")
     }
     return isDevTaskExecuted
+}
+
+Task createJavaSourceJar() {
+    Task existingTask = project.tasks.findByName("sourceJar")
+    if (existingTask != null) {
+        return existingTask
+    }
+    return project.tasks.create("sourceJar", Jar) {
+        if (project.gradle.gradleVersion >= '8.0') {
+            it.setArchiveClassifier('sources')
+        } else {
+            classifier = 'sources'
+        }
+        from sourceSets.main.allSource
+    }
+}
+
+Task createJavaJavadocJar() {
+    Task existingTask = project.tasks.findByName("javadocJar")
+    if (existingTask != null) {
+        return existingTask
+    }
+    return project.tasks.create("javadocJar", Jar) {
+        if (project.gradle.gradleVersion >= '8.0') {
+            it.setArchiveClassifier('javadoc')
+        } else {
+            classifier = 'javadoc'
+        }
+        from sourceSets.main.java
+    }
 }
 
 Task createSourceJar(String baseName) {
@@ -89,13 +128,40 @@ Task createSourceJar(String baseName) {
     }
 }
 
-def configureSigning(pom) {
+def configurePomMetadata(publication) {
+    publication.pom {
+        name = publication.artifactId
+        url = REPOSITORY_URL
+        description = DESCRIPTION
+        licenses {
+            license {
+                name = 'The Apache License, version 2.0'
+                url = 'https://www.apache.org/licenses/LICENSE-2.0.txt'
+            }
+        }
+        developers {
+            developer {
+                name = DEVELOPER_NAME
+                email = DEVELOPER_EMAIL
+            }
+        }
+        scm {
+            url = REPOSITORY_URL
+            connection = "scm:git:git://$REPOSITORY_SSH_URL"
+            developerConnection = "scm:git:ssh://$REPOSITORY_SSH_URL"
+        }
+    }
+}
+
+def configureSigningForPublications() {
     def signingKeyId = findProperty("signing.keyId")
     def signingPassword = findProperty("signing.password")
     def signingSecretKey = findProperty("signing.secretKey")
     if (signingKeyId != null && signingKeyId != "") {
-        useInMemoryPgpKeys(signingKeyId, signingSecretKey, signingPassword)
-        sign pom
+        signing {
+            useInMemoryPgpKeys(signingKeyId, signingSecretKey, signingPassword)
+            sign publishing.publications
+        }
     }
 }
 
@@ -131,101 +197,37 @@ afterEvaluate {
     if (runTasks.contains("publish")) {
         publishing {
             publications {
-                if (isJavaModule()) {
+                if (isGradlePluginModule()) {
+                    withType(MavenPublication).all { publication ->
+                        if (publication.name == "pluginMaven") {
+                            groupId ARTIFACT_GROUP
+                            artifactId ARTIFACT_NAME
+                            version baseVersion
+                            artifact(createJavaSourceJar())
+                            artifact(createJavaJavadocJar())
+                        } else if (publication.name.endsWith("PluginMarkerMaven")) {
+                            version baseVersion
+                        }
+                    }
+                } else if (isJavaModule()) {
                     "jar"(MavenPublication) {
                         groupId ARTIFACT_GROUP
                         artifactId ARTIFACT_NAME
-                        version findProperty("version")
+                        version baseVersion
                         from components.java
-                        task sourceJar(type: Jar) {
-                            if (project.gradle.gradleVersion >= '8.0') {
-                                it.setArchiveClassifier('sources')
-                            } else {
-                                classifier = 'sources'
-                            }
-                            from sourceSets.main.allSource
-                        }
-                        task javadocJar(type: Jar) {
-                            if (project.gradle.gradleVersion >= '8.0') {
-                                it.setArchiveClassifier('javadoc')
-                            } else {
-                                classifier = 'javadoc'
-                            }
-                            from sourceSets.main.java
-                        }
-                        artifact(sourceJar)
-                        artifact(javadocJar)
-                        pom {
-                            name = artifactId
-                            url = REPOSITORY_URL
-                            description = DESCRIPTION
-                            licenses {
-                                license {
-                                    name = 'The Apache License, version 2.0'
-                                    url = 'https://www.apache.org/licenses/LICENSE-2.0.txt'
-                                }
-                            }
-                            developers {
-                                developer {
-                                    name = DEVELOPER_NAME
-                                    email = DEVELOPER_EMAIL
-                                }
-                            }
-                            scm {
-                                url = REPOSITORY_URL
-                                connection = "scm:git:git://$REPOSITORY_SSH_URL"
-                                developerConnection = "scm:git:ssh://$REPOSITORY_SSH_URL"
-                            }
-                            signing {
-                                def signingKeyId = findProperty("signing.keyId")
-                                def signingPassword = findProperty("signing.password")
-                                def signingSecretKey = findProperty("signing.secretKey")
-                                if (signingKeyId != null && signingKeyId != "") {
-                                    useInMemoryPgpKeys(signingKeyId, signingSecretKey, signingPassword)
-                                    sign publishing.publications.jar
-                                }
-                            }
-                        }
+                        artifact(createJavaSourceJar())
+                        artifact(createJavaJavadocJar())
                     }
                 } else if (isAndroidModule()) {
                     release(MavenPublication) {
                         groupId ARTIFACT_GROUP
                         artifactId ARTIFACT_NAME
-                        version findProperty("version")
+                        version baseVersion
                         artifact(getAARPath("$project.buildDir/outputs/aar"))
                         // collect source jar and add it into the component artifact.
                         Task sourceJar = createSourceJar("release-source")
                         artifact sourceJar
                         pom {
-                            name = artifactId
-                            url = REPOSITORY_URL
-                            description = DESCRIPTION
-                            licenses {
-                                license {
-                                    name = 'The Apache License, version 2.0'
-                                    url = 'https://www.apache.org/licenses/LICENSE-2.0.txt'
-                                }
-                            }
-                            developers {
-                                developer {
-                                    name = DEVELOPER_NAME
-                                    email = DEVELOPER_EMAIL
-                                }
-                            }
-                            scm {
-                                url = REPOSITORY_URL
-                                connection = "scm:git:git://$REPOSITORY_SSH_URL"
-                                developerConnection = "scm:git:ssh://$REPOSITORY_SSH_URL"
-                            }
-                            signing {
-                                def signingKeyId = findProperty("signing.keyId")
-                                def signingPassword = findProperty("signing.password")
-                                def signingSecretKey = findProperty("signing.secretKey")
-                                if (signingKeyId != null && signingKeyId != "") {
-                                    useInMemoryPgpKeys(signingKeyId, signingSecretKey, signingPassword)
-                                    sign publishing.publications.release
-                                }
-                            }
                             withXml {
                                 addDependenciesToPom(asNode())
                             }
@@ -236,46 +238,20 @@ afterEvaluate {
                     devRelease(MavenPublication) {
                         groupId ARTIFACT_GROUP
                         artifactId ARTIFACT_NAME
-                        version findProperty("version")
+                        version baseVersion
                         artifact(getAARPath("$project.buildDir/outputs/aar", true))
                         // collect source jar and add it into the component artifact.
                         Task sourceJarDev = createSourceJar("dev-sources")
                         artifact sourceJarDev
                         pom {
-                            name = artifactId
-                            url = REPOSITORY_URL
-                            description = DESCRIPTION
-                            licenses {
-                                license {
-                                    name = 'The Apache License, version 2.0'
-                                    url = 'https://www.apache.org/licenses/LICENSE-2.0.txt'
-                                }
-                            }
-                            developers {
-                                developer {
-                                    name = DEVELOPER_NAME
-                                    email = DEVELOPER_EMAIL
-                                }
-                            }
-                            scm {
-                                url = REPOSITORY_URL
-                                connection = "scm:git:git://$REPOSITORY_SSH_URL"
-                                developerConnection = "scm:git:ssh://$REPOSITORY_SSH_URL"
-                            }
-                            signing {
-                                def signingKeyId = findProperty("signing.keyId")
-                                def signingPassword = findProperty("signing.password")
-                                def signingSecretKey = findProperty("signing.secretKey")
-                                if (signingKeyId != null && signingKeyId != "") {
-                                    useInMemoryPgpKeys(signingKeyId, signingSecretKey, signingPassword)
-                                    sign publishing.publications.devRelease
-                                }
-                            }
                             withXml {
                                 addDependenciesToPom(asNode())
                             }
                         }
                     }
+                }
+                withType(MavenPublication).all { publication ->
+                    configurePomMetadata(publication)
                 }
             }
             repositories {
@@ -292,6 +268,7 @@ afterEvaluate {
                 }
             }
         }
+        configureSigningForPublications()
     }
     tasks.withType(PublishToMavenRepository) { task ->
         task.doFirst {
