@@ -124,6 +124,9 @@ lynx_core_source_set("embedder") {
       "vsync_monitor_fallback.cc",
       "vsync_monitor_fallback.h",
     ]
+    if (is_linux) {
+      sources += [ "lynx_ui_renderer_mock.cc" ]
+    }
   } else {
     sources += [ "lynx_ui_renderer_mock.cc" ]
     if (!(is_harmony && is_headless)) {
