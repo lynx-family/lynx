@@ -221,6 +221,14 @@ class TestNativePaintingContext : public NativePaintingContext {
     base::String src;
     ImageFitMode mode;
     base::String blur_radius;
+    bool auto_size;
+    base::String placeholder;
+    base::String tint_color;
+    base::String cap_insets;
+    float cap_insets_scale;
+    bool skip_redirection;
+    bool autoplay;
+    int32_t loop_count;
     float width;
     float height;
     int32_t event_mask;
@@ -268,9 +276,12 @@ class TestNativePaintingContext : public NativePaintingContext {
       return nullptr;
     }
     int32_t image_key = next_image_key_++;
-    created_images_.push_back({id, src, paint_info.mode, paint_info.blur_radius,
-                               width, height, event_mask,
-                               disable_default_resize, image_key});
+    created_images_.push_back(
+        {id, src, paint_info.mode, paint_info.blur_radius, paint_info.auto_size,
+         paint_info.placeholder, paint_info.tint_color, paint_info.cap_insets,
+         paint_info.cap_insets_scale, paint_info.skip_redirection,
+         paint_info.autoplay, paint_info.loop_count, width, height, event_mask,
+         disable_default_resize, image_key});
     return fml::MakeRefCounted<PaintImage>(image_key);
   }
   void UpdateTextBundle(int id, intptr_t bundle) override {}
@@ -1248,6 +1259,41 @@ TEST_F(FragmentTest, ImageBlurRadiusUpdateRecreatesImage) {
   ASSERT_EQ(native_painting_context.created_images_.size(), 2u);
   EXPECT_EQ(native_painting_context.created_images_.back().blur_radius, "5px");
   EXPECT_TRUE(fragment.NeedRedraw());
+}
+
+TEST_F(FragmentTest, ImagePaintInfoAttributesReachNativePaintingContext) {
+  auto element = manager->CreateFiberImage("image");
+  element->SetAttributeInternal("src", lepus::Value("image-src://initial"));
+  element->SetAttributeInternal("auto-size", lepus::Value(true));
+  element->SetAttributeInternal("placeholder",
+                                lepus::Value("image-src://placeholder"));
+  element->SetAttributeInternal("tint-color", lepus::Value("#ff0000"));
+  element->SetAttributeInternal("cap-insets", lepus::Value("1px 2px 3px 4px"));
+  element->SetAttributeInternal("cap-insets-scale", lepus::Value("2.5"));
+  element->SetAttributeInternal("skip-redirection", lepus::Value(true));
+  element->SetAttributeInternal("autoplay", lepus::Value(false));
+  element->SetAttributeInternal("loop-count", lepus::Value(3));
+
+  Fragment fragment(element.get());
+  fragment.SetBehavior(std::make_unique<ImageFragmentBehavior>(&fragment));
+  TestNativePaintingContext native_painting_context;
+  fragment.behavior_->painting_context_ = &native_painting_context;
+
+  starlight::LayoutResultForRendering layout;
+  layout.size_ = FloatSize(100.f, 60.f);
+  fragment.UpdateLayout(layout);
+  fragment.behavior_->OnUpdateLayout(fragment.LayoutResult());
+
+  ASSERT_EQ(native_painting_context.created_images_.size(), 1u);
+  const auto& image = native_painting_context.created_images_.back();
+  EXPECT_TRUE(image.auto_size);
+  EXPECT_EQ(image.placeholder, "image-src://placeholder");
+  EXPECT_EQ(image.tint_color, "#ff0000");
+  EXPECT_EQ(image.cap_insets, "1px 2px 3px 4px");
+  EXPECT_FLOAT_EQ(image.cap_insets_scale, 2.5f);
+  EXPECT_TRUE(image.skip_redirection);
+  EXPECT_FALSE(image.autoplay);
+  EXPECT_EQ(image.loop_count, 3);
 }
 
 TEST_F(FragmentTest, ImageSrcUpdateInvalidatesWithoutDuplicateImageCreation) {

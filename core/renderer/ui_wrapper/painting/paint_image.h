@@ -21,9 +21,22 @@ enum class ImageFitMode : int32_t {
 struct ImagePaintInfo {
   ImageFitMode mode{ImageFitMode::kScaleToFill};
   base::String blur_radius;
+  bool auto_size{false};
+  base::String placeholder;
+  base::String tint_color;
+  base::String cap_insets;
+  float cap_insets_scale{1.f};
+  bool skip_redirection{false};
+  bool autoplay{true};
+  int32_t loop_count{0};
 
   bool operator==(const ImagePaintInfo& other) const {
-    return mode == other.mode && blur_radius == other.blur_radius;
+    return mode == other.mode && blur_radius == other.blur_radius &&
+           auto_size == other.auto_size && placeholder == other.placeholder &&
+           tint_color == other.tint_color && cap_insets == other.cap_insets &&
+           cap_insets_scale == other.cap_insets_scale &&
+           skip_redirection == other.skip_redirection &&
+           autoplay == other.autoplay && loop_count == other.loop_count;
   }
 
   bool operator!=(const ImagePaintInfo& other) const {

@@ -55,6 +55,14 @@ namespace {
 
 constexpr uint16_t kImagePaintInfoMode = 1;
 constexpr uint16_t kImagePaintInfoBlurRadius = 2;
+constexpr uint16_t kImagePaintInfoAutoSize = 3;
+constexpr uint16_t kImagePaintInfoPlaceholder = 4;
+constexpr uint16_t kImagePaintInfoTintColor = 5;
+constexpr uint16_t kImagePaintInfoCapInsets = 6;
+constexpr uint16_t kImagePaintInfoCapInsetsScale = 7;
+constexpr uint16_t kImagePaintInfoSkipRedirection = 8;
+constexpr uint16_t kImagePaintInfoAutoplay = 9;
+constexpr uint16_t kImagePaintInfoLoopCount = 10;
 
 base::android::ScopedLocalJavaRef<jobject> CreateImagePaintInfoMapBuffer(
     const ImagePaintInfo& paint_info) {
@@ -64,6 +72,21 @@ base::android::ScopedLocalJavaRef<jobject> CreateImagePaintInfoMapBuffer(
     builder.putString(kImagePaintInfoBlurRadius,
                       paint_info.blur_radius.c_str());
   }
+  builder.putBool(kImagePaintInfoAutoSize, paint_info.auto_size);
+  if (!paint_info.placeholder.empty()) {
+    builder.putString(kImagePaintInfoPlaceholder,
+                      paint_info.placeholder.c_str());
+  }
+  if (!paint_info.tint_color.empty()) {
+    builder.putString(kImagePaintInfoTintColor, paint_info.tint_color.c_str());
+  }
+  if (!paint_info.cap_insets.empty()) {
+    builder.putString(kImagePaintInfoCapInsets, paint_info.cap_insets.c_str());
+  }
+  builder.putDouble(kImagePaintInfoCapInsetsScale, paint_info.cap_insets_scale);
+  builder.putBool(kImagePaintInfoSkipRedirection, paint_info.skip_redirection);
+  builder.putBool(kImagePaintInfoAutoplay, paint_info.autoplay);
+  builder.putInt(kImagePaintInfoLoopCount, paint_info.loop_count);
   auto buffer = builder.build();
   return base::android::JReadableMapBuffer::CreateReadableMapBuffer(buffer);
 }
