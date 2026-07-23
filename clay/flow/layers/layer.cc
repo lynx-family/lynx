@@ -36,6 +36,57 @@ void Layer::PreservePaintRegion(DiffContext* context) {
   // retained layer means same instance so 'this' is used to index into both
   // current and old region
   context->SetLayerPaintRegion(this, context->GetOldLayerPaintRegion(this));
+  retained_preroll_generation_ = context->retained_preroll_generation();
+}
+
+void Layer::SavePrerollSummary(const PrerollContext& context,
+                               size_t raster_cache_entry_count_before) {
+  // A quick-rejected subtree was not fully visited, so its bounds, propagated
+  // flags, and raster cache entries cannot describe a future visible frame.
+  preroll_summary_.is_valid = !context.subtree_was_quick_rejected;
+  preroll_summary_.raster_cache_enabled = context.raster_cache != nullptr;
+  preroll_summary_.has_raster_cache_entries =
+      context.raster_cached_entries &&
+      context.raster_cached_entries->size() > raster_cache_entry_count_before;
+  preroll_summary_.surface_needs_readback = context.surface_needs_readback;
+  preroll_summary_.has_platform_view = context.has_platform_view;
+  preroll_summary_.has_drawable_image_layer = context.has_drawable_image_layer;
+  preroll_summary_.has_punch_hole_layer = context.has_punch_hole_layer;
+  preroll_summary_.has_running_picture_animation =
+      context.has_running_picture_animation;
+  preroll_summary_.has_running_transform_animation =
+      context.has_running_transform_animation;
+  preroll_summary_.has_deferred_image = context.has_deferred_image;
+  preroll_summary_.has_cacheable_effect = context.has_cacheable_effect;
+  preroll_summary_.renderable_state_flags = context.renderable_state_flags;
+}
+
+bool Layer::CanReusePrerollSummary(const PrerollContext& context) const {
+  return preroll_summary_.is_valid &&
+         preroll_summary_.raster_cache_enabled ==
+             (context.raster_cache != nullptr) &&
+         !preroll_summary_.has_raster_cache_entries &&
+         !preroll_summary_.surface_needs_readback &&
+         !preroll_summary_.has_platform_view &&
+         !preroll_summary_.has_drawable_image_layer &&
+         !preroll_summary_.has_punch_hole_layer &&
+         !preroll_summary_.has_running_picture_animation &&
+         !preroll_summary_.has_running_transform_animation &&
+         !preroll_summary_.has_deferred_image;
+}
+
+void Layer::RestorePrerollSummary(PrerollContext* context) const {
+  FML_DCHECK(CanReusePrerollSummary(*context));
+  context->has_platform_view = preroll_summary_.has_platform_view;
+  context->has_drawable_image_layer = preroll_summary_.has_drawable_image_layer;
+  context->has_punch_hole_layer = preroll_summary_.has_punch_hole_layer;
+  context->has_running_picture_animation =
+      preroll_summary_.has_running_picture_animation;
+  context->has_running_transform_animation =
+      preroll_summary_.has_running_transform_animation;
+  context->has_deferred_image = preroll_summary_.has_deferred_image;
+  context->has_cacheable_effect = preroll_summary_.has_cacheable_effect;
+  context->renderable_state_flags = preroll_summary_.renderable_state_flags;
 }
 
 Layer::AutoPrerollSaveLayerState::AutoPrerollSaveLayerState(

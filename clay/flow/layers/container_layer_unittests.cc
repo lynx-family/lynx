@@ -72,6 +72,34 @@ TEST_F(ContainerLayerTest, PaintBeforePrerollDies) {
 }
 #endif
 
+TEST_F(ContainerLayerTest, PrerollQuickRejectsEmptyCullRectSubtree) {
+  const SkPath child_path = SkPath().addRect(5.0f, 6.0f, 20.5f, 21.5f);
+  auto mock_layer = std::make_shared<MockLayer>(child_path);
+  mock_layer->set_fake_has_platform_view(true)
+      .set_fake_has_drawable_image_layer(true)
+      .set_fake_has_punch_hole_layer(true)
+      .set_fake_reads_surface(true);
+  auto layer = std::make_shared<ContainerLayer>();
+  layer->Add(mock_layer);
+
+  preroll_context()->state_stack.set_preroll_delegate(skity::Rect::MakeEmpty(),
+                                                      skity::Matrix());
+  layer->Preroll(preroll_context());
+
+  EXPECT_EQ(mock_layer->paint_bounds(), skity::Rect::MakeEmpty());
+  EXPECT_EQ(layer->paint_bounds(), skity::Rect::MakeEmpty());
+  EXPECT_EQ(layer->child_paint_bounds(), skity::Rect::MakeEmpty());
+  EXPECT_FALSE(preroll_context()->has_platform_view);
+  EXPECT_FALSE(preroll_context()->has_drawable_image_layer);
+  EXPECT_FALSE(preroll_context()->has_punch_hole_layer);
+  EXPECT_FALSE(preroll_context()->surface_needs_readback);
+  EXPECT_TRUE(preroll_context()->subtree_was_quick_rejected);
+  EXPECT_FALSE(layer->subtree_has_platform_view());
+  EXPECT_FALSE(layer->subtree_has_punch_hole());
+  EXPECT_EQ(layer->children_renderable_state_flags(),
+            LayerStateStack::kCallerCanApplyAnything);
+}
+
 TEST_F(ContainerLayerTest, LayerWithParentHasDrawableImageLayerNeedsResetFlag) {
   SkPath child_path1;
   child_path1.addRect(5.0f, 6.0f, 20.5f, 21.5f);
