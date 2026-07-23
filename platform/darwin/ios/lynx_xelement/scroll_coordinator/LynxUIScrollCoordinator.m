@@ -120,10 +120,12 @@ static Class LynxScrollCoordinatorLookupClass(const char *name) { return objc_lo
 }
 
 - (BOOL)checkAllowList:(UIScrollView *)scrollview {
-  for (Class cls in @[
-         LynxScrollCoordinatorLookupClass("LynxUICollectionView"),
-         LynxScrollCoordinatorLookupClass("LynxScrollView")
-       ]) {
+  NSMutableArray *classes = [NSMutableArray array];
+  Class cls1 = LynxScrollCoordinatorLookupClass("LynxUICollectionView");
+  Class cls2 = LynxScrollCoordinatorLookupClass("LynxScrollView");
+  if (cls1) [classes addObject:cls1];
+  if (cls2) [classes addObject:cls2];
+  for (Class cls in classes) {
     if ([scrollview isKindOfClass:cls] && [self checkVisibleVerticalScrollView:scrollview]) {
       return YES;
     }
@@ -135,8 +137,11 @@ static Class LynxScrollCoordinatorLookupClass(const char *name) { return objc_lo
   if ([self.uiDelegate shouldIgnoreNestedScrollView:scrollview]) {
     return YES;
   }
-  for (Class cls in @[ LynxScrollCoordinatorLookupClass("LynxViewPager") ]) {
-    if ([scrollview isKindOfClass:cls]) {
+  NSMutableArray *classes = [NSMutableArray array];
+  Class cls = LynxScrollCoordinatorLookupClass("LynxViewPager");
+  if (cls) [classes addObject:cls];
+  for (Class c in classes) {
+    if ([scrollview isKindOfClass:c]) {
       return YES;
     }
   }
