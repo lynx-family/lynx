@@ -141,11 +141,34 @@ void ContainerLayer::PrerollChildren(PrerollContext* context,
   FML_DCHECK(!context->has_drawable_image_layer);
   FML_DCHECK(!context->has_punch_hole_layer);
 
+  // An empty local cull rect means that the current transform and clips have
+  // already rejected everything below this container. Avoid walking the
+  // subtree since none of its content can contribute to this frame.
+  if (context->state_stack.local_cull_rect().IsEmpty()) {
+    child_paint_bounds->SetEmpty();
+    context->has_platform_view = false;
+    context->has_drawable_image_layer = false;
+    context->has_punch_hole_layer = false;
+    context->has_deferred_image = false;
+    context->has_cacheable_effect = false;
+    context->subtree_was_quick_rejected = true;
+    context->has_running_picture_animation = false;
+    context->has_running_transform_animation = false;
+    context->renderable_state_flags = LayerStateStack::kCallerCanApplyAnything;
+
+    set_subtree_has_platform_view(false);
+    set_subtree_has_punch_hole(false);
+    set_children_renderable_state_flags(context->renderable_state_flags);
+    set_child_paint_bounds(*child_paint_bounds);
+    return;
+  }
+
   bool child_has_platform_view = false;
   bool child_has_drawable_image_layer = false;
   bool child_has_punch_hole_layer = false;
   bool child_has_deferred_image = false;
   bool child_has_cacheable_effect = false;
+  bool child_subtree_was_quick_rejected = false;
   bool child_has_running_picture_animation = false;
   bool child_has_running_transform_animation = false;
   bool all_renderable_state_flags = LayerStateStack::kCallerCanApplyAnything;
@@ -160,6 +183,7 @@ void ContainerLayer::PrerollChildren(PrerollContext* context,
     context->has_punch_hole_layer = false;
     context->has_deferred_image = false;
     context->has_cacheable_effect = false;
+    context->subtree_was_quick_rejected = false;
     context->has_running_picture_animation = false;
     context->has_running_transform_animation = false;
 
@@ -167,7 +191,21 @@ void ContainerLayer::PrerollChildren(PrerollContext* context,
     // opt-in to applying state attributes during its |Preroll|
     context->renderable_state_flags = 0;
 
-    layer->Preroll(context);
+    const bool is_retained =
+        layer->WasRetainedForPreroll(context->retained_preroll_generation);
+    const bool is_outside_damage =
+        context->state_stack.content_culled(layer->paint_bounds());
+    if (is_retained && is_outside_damage &&
+        layer->CanReusePrerollSummary(*context)) {
+      layer->RestorePrerollSummary(context);
+    } else {
+      const size_t raster_cache_entry_count_before =
+          context->raster_cached_entries
+              ? context->raster_cached_entries->size()
+              : 0u;
+      layer->Preroll(context);
+      layer->SavePrerollSummary(*context, raster_cache_entry_count_before);
+    }
 
     all_renderable_state_flags &= context->renderable_state_flags;
     if (safe_intersection_test(child_paint_bounds, layer->paint_bounds())) {
@@ -183,6 +221,7 @@ void ContainerLayer::PrerollChildren(PrerollContext* context,
     child_has_punch_hole_layer |= context->has_punch_hole_layer;
     child_has_deferred_image |= context->has_deferred_image;
     child_has_cacheable_effect |= context->has_cacheable_effect;
+    child_subtree_was_quick_rejected |= context->subtree_was_quick_rejected;
     child_has_running_picture_animation |=
         context->has_running_picture_animation;
     child_has_running_transform_animation |=
@@ -194,6 +233,7 @@ void ContainerLayer::PrerollChildren(PrerollContext* context,
   context->has_punch_hole_layer = child_has_punch_hole_layer;
   context->has_deferred_image = child_has_deferred_image;
   context->has_cacheable_effect = child_has_cacheable_effect;
+  context->subtree_was_quick_rejected = child_subtree_was_quick_rejected;
   context->has_running_picture_animation = child_has_running_picture_animation;
   context->has_running_transform_animation =
       child_has_running_transform_animation;

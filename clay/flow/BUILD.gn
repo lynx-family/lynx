@@ -193,6 +193,7 @@ if (enable_unittests) {
     sources = [
       "animation/scroll_offset_animation_unittests.cc",
       "compositor/compositor_state_unittests.cc",
+      "compositor_context_unittests.cc",
       "diff_context_unittests.cc",
 
       # "layers/display_list_layer_unittests.cc",

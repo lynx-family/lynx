@@ -413,10 +413,8 @@ RasterStatus Rasterizer::DrawToSurfaceUnsafe(
 
     std::unique_ptr<FrameDamage> damage;
     if (frame->framebuffer_info().supports_partial_repaint) {
-      bool force_full_repaint = layer_tree.HasPlatformViewLayer();
-
       damage = std::make_unique<FrameDamage>();
-      if (frame->framebuffer_info().existing_damage && !force_full_repaint) {
+      if (frame->framebuffer_info().existing_damage) {
         damage->SetPreviousLayerTree(last_layer_tree_.get());
         damage->AddAdditionalDamage(*frame->framebuffer_info().existing_damage);
         damage->SetClipAlignment(
