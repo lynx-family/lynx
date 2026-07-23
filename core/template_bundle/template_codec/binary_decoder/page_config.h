@@ -374,6 +374,14 @@ class PageConfig final : public LynxConfig {
 
   bool NeedPostToPlatform() const { return need_post_to_platform_; }
 
+  void SetAutoNonFlattenPlatformSupported(bool supported) {
+    auto_non_flatten_platform_supported_ = supported;
+  }
+
+  bool IsAutoNonFlattenPlatformSupported() const {
+    return auto_non_flatten_platform_supported_;
+  }
+
   // TODO(zhoupeng.z): remove this method after pre-postings applied on all
   // platforms.
   void MarkPostToPlatform() { need_post_to_platform_ = false; }
@@ -416,6 +424,8 @@ class PageConfig final : public LynxConfig {
   // Indicates whether the parallel flush of Element has been enabled. And the
   // default value is false.
   bool enable_parallel_element_{false};
+
+  bool auto_non_flatten_platform_supported_{false};
 
   // enable raster animation
   bool enable_raster_animation_{false};

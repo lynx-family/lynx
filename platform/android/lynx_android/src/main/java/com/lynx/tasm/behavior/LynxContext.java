@@ -1478,6 +1478,13 @@ public abstract class LynxContext extends LynxBaseContext implements ExceptionHa
     return false;
   }
 
+  public boolean getEnableAutoNonFlatten() {
+    if (null != mPageConfig) {
+      return mPageConfig.getEnableAutoNonFlatten();
+    }
+    return false;
+  }
+
   /**
    * @brief switch for enable CreateViewAsync
    */

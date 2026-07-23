@@ -160,6 +160,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
     ENABLE_ELEMENT_API_NEW_REGISTRATION,
     ENABLE_HARMONY_TEXT_CUSTOM_EMOJI,
     ENABLE_ELEMENT_INVOKE_UI_METHOD_PENDING_TASK,
+    ENABLE_AUTO_NON_FLATTEN,
     ENABLE_FIBER_UPDATE_METADATA,
     JS_COVERAGE_PAGE_SAMPLING_BASIS_POINTS,
     // Please add new enum values above
@@ -340,6 +341,8 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
              "enable_harmony_text_custom_emoji"},
             {Key::ENABLE_ELEMENT_INVOKE_UI_METHOD_PENDING_TASK,
              "enable_element_invoke_ui_method_pending_task"},
+            // NOLINT(harmony-trail-key): Android-only configuration.
+            {Key::ENABLE_AUTO_NON_FLATTEN, "enable_auto_non_flatten"},
             {Key::ENABLE_FIBER_UPDATE_METADATA, "enable_fiber_update_metadata"},
             // NOLINT(harmony-trail-key): Android-only configuration.
             {Key::JS_COVERAGE_PAGE_SAMPLING_BASIS_POINTS,
@@ -520,6 +523,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
   bool EnableHarmonyTextCustomEmoji();
   bool EnableElementApiNewRegistration();
   bool EnableElementInvokeUIMethodPendingTask();
+  bool EnableAutoNonFlatten();
   bool EnableFiberUpdateMetaData();
   static constexpr uint32_t kJSCoverageSamplingBasisPointsMax = 10000;
   // Returns the JS coverage page sampling rate in basis points. 0 disables

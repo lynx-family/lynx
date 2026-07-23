@@ -987,6 +987,15 @@ class LynxConfigDecoder final {
           LynxEnv::GetInstance().EnableElementInvokeUIMethodPendingTask());
     }
 
+    if (doc.HasMember(config::kEnableAutoNonFlatten) &&
+        doc[config::kEnableAutoNonFlatten].IsBool()) {
+      page_config->SetEnableAutoNonFlatten(
+          doc[config::kEnableAutoNonFlatten].GetBool());
+    } else {
+      page_config->SetEnableAutoNonFlatten(
+          LynxEnv::GetInstance().EnableAutoNonFlatten());
+    }
+
     if (doc.HasMember(config::kEnableSkipEmptyPatch) &&
         doc[config::kEnableSkipEmptyPatch].IsBool()) {
       page_config->SetEnableSkipEmptyPatch(
