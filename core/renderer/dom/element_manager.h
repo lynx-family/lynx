@@ -844,6 +844,11 @@ class ElementManager : public LayoutScheduler::LayoutSchedulerImpl {
     return config_ && config_->GetEnableUnifyFixedBehavior();
   }
 
+  bool GetEnableAutoNonFlatten() const {
+    return config_ && config_->IsAutoNonFlattenPlatformSupported() &&
+           config_->GetEnableAutoNonFlatten();
+  }
+
   void UpdateFixedNodeSet(SLNode *node, bool is_insert) {
     if (node == nullptr) {
       return;
