@@ -12,6 +12,10 @@ const char* Config::Platform() {
   return "windows";
 #elif defined(__APPLE__)
   return "macOS";
+#elif defined(ANDROID)
+  return "Android";
+#elif defined(__linux__)
+  return "Linux";
 #else
   return "unknown";
 #endif

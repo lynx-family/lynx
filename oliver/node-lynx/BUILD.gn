@@ -48,10 +48,6 @@ source_set("node_lynx_native") {
     "native/headless_lynx_view_node.cc",
   ]
 
-  if (!enable_unittests) {
-    sources += [ "../../platform/embedder/lynx_ui_renderer_mock.cc" ]
-  }
-
   configs += [ "../../oliver:lynx_oliver_config" ]
 
   include_dirs = [
@@ -80,13 +76,6 @@ source_set("node_lynx_native") {
       "native/windowed_lynx_view_mac.mm",
     ]
     deps += [ ":node_lynx_darwin_error_codes" ]
-  }
-
-  if (is_linux) {
-    sources += [
-      "../../core/services/event_report/event_tracker_platform_impl.cc",
-      "../../platform/embedder/resource/js_source_loader_desktop.cc",
-    ]
   }
 }
 
