@@ -87,6 +87,7 @@ public class PageConfig {
       "enableDispatchCustomEventForUI";
   private static final String KEY_ENABLE_NATIVE_INTERACTION = "enableNativeInteraction";
   private static final String KEY_SYNC_X_ELEMENT_REGISTRY = "syncXElementRegistry";
+  private static final String KEY_ENABLE_AUTO_NON_FLATTEN = "enableAutoNonFlatten";
 
   private boolean autoExpose = true;
   private boolean enableEventThrough;
@@ -152,6 +153,7 @@ public class PageConfig {
   private boolean mEnableDispatchCustomEventForUI = false;
   private boolean mEnableNativeInteraction = false;
   private boolean mSyncXElementRegistry = false;
+  private boolean mEnableAutoNonFlatten = false;
 
   public PageConfig(ReadableMap map) {
     autoExpose = true;
@@ -401,6 +403,10 @@ public class PageConfig {
       if (map.hasKey(KEY_SYNC_X_ELEMENT_REGISTRY)) {
         mSyncXElementRegistry = map.getBoolean(KEY_SYNC_X_ELEMENT_REGISTRY);
       }
+
+      if (map.hasKey(KEY_ENABLE_AUTO_NON_FLATTEN)) {
+        mEnableAutoNonFlatten = map.getBoolean(KEY_ENABLE_AUTO_NON_FLATTEN);
+      }
     }
   }
 
@@ -646,6 +652,10 @@ public class PageConfig {
 
   public boolean getEnableNativeInteraction() {
     return mEnableNativeInteraction;
+  }
+
+  public boolean getEnableAutoNonFlatten() {
+    return mEnableAutoNonFlatten;
   }
 
   public boolean getSyncXElementRegistry() {

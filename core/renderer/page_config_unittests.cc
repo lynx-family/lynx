@@ -153,6 +153,32 @@ TEST(PageConfigTest, EnableElementInvokeUIMethodPendingTask) {
       LynxEnv::Key::ENABLE_ELEMENT_INVOKE_UI_METHOD_PENDING_TASK);
 }
 
+TEST(PageConfigTest, EnableAutoNonFlatten) {
+  auto& env = LynxEnv::GetInstance();
+  env.external_env_map_.erase(LynxEnv::Key::ENABLE_AUTO_NON_FLATTEN);
+
+  rapidjson::Document empty_doc;
+  empty_doc.Parse("{}");
+  std::shared_ptr<PageConfig> default_config = std::make_shared<PageConfig>();
+  LynxConfigDecoder::DecodePageConfig(default_config, empty_doc, "");
+  EXPECT_FALSE(default_config->GetEnableAutoNonFlatten());
+
+  env.external_env_map_[LynxEnv::Key::ENABLE_AUTO_NON_FLATTEN] = "true";
+  std::shared_ptr<PageConfig> settings_config = std::make_shared<PageConfig>();
+  LynxConfigDecoder::DecodePageConfig(settings_config, empty_doc, "");
+  EXPECT_TRUE(settings_config->GetEnableAutoNonFlatten());
+
+  rapidjson::Document explicit_false_doc;
+  explicit_false_doc.Parse("{\"enableAutoNonFlatten\": false}");
+  std::shared_ptr<PageConfig> explicit_false_config =
+      std::make_shared<PageConfig>();
+  LynxConfigDecoder::DecodePageConfig(explicit_false_config, explicit_false_doc,
+                                      "");
+  EXPECT_FALSE(explicit_false_config->GetEnableAutoNonFlatten());
+
+  env.external_env_map_.erase(LynxEnv::Key::ENABLE_AUTO_NON_FLATTEN);
+}
+
 TEST(PageConfigTest, EnableComponentAsyncDecode) {
   CHECK_CONFIG_VALUE(EnableComponentAsyncDecode, false, true, false);
 }
