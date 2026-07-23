@@ -129,6 +129,7 @@ constexpr const char* kEnableTransformedTouchPosition =
     "enableTransformedTouchPosition";
 constexpr const char* kEnableNewSticky = "enableNewSticky";
 constexpr const char* kSyncXElementRegistry = "syncXElementRegistry";
+constexpr const char* kEnableAutoNonFlatten = "enableAutoNonFlatten";
 
 }  // namespace
 
@@ -256,11 +257,14 @@ base::android::JavaOnlyMap TasmPlatformInvokerAndroid::ConvertToJavaOnlyMap(
   java_config.PushBoolean(kEnableNewSticky, config->GetEnableNewSticky());
   java_config.PushBoolean(kSyncXElementRegistry,
                           config->GetSyncXElementRegistry());
+  java_config.PushBoolean(kEnableAutoNonFlatten,
+                          config->GetEnableAutoNonFlatten());
   return java_config;
 }
 
 void TasmPlatformInvokerAndroid::OnPageConfigDecoded(
     const std::shared_ptr<tasm::PageConfig>& config) {
+  config->SetAutoNonFlattenPlatformSupported(true);
   if (config->NeedPostToPlatform()) {
     base::android::JavaOnlyMap java_config = ConvertToJavaOnlyMap(config);
     Java_TasmPlatformInvoker_onPageConfigDecoded(

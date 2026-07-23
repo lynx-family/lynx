@@ -2005,6 +2005,16 @@ enableElementInvokeUIMethodPendingTask:
     - Android
     - HarmonyOS
     - iOS
+enableAutoNonFlatten:
+  description: Controls whether Android automatically creates platform views for nodes with view-dependent attributes or CSS properties and for direct children of containers that cannot render flattened children. When disabled, these cases keep the legacy flatten behavior unless the page explicitly disables flattening.
+  defaultValue: 'false'
+  valueType: bool
+  readSettings: true
+  readNative: true
+  author: liuzhenyue
+  since: '4.2'
+  supportPlatform:
+    - Android
 enableSkipEmptyPatch:
   description: Controls whether the unified pixel pipeline short-circuits when FE declares an empty patch. When enabled, FiberFlushElementTree skips resolve-target accumulation and onLayoutReady registration for patches marked as empty; when disabled, empty patches follow the normal pipeline path regardless of the emptyPatch flag.
   defaultValue: 'true'
