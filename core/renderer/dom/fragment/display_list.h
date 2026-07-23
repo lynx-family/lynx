@@ -125,6 +125,9 @@ typedef struct DisplayListItem {
       float y;
       float w;
       float h;
+      int32_t overflow_x;
+      int32_t overflow_y;
+      int32_t is_layout_only;
     } begin;
     struct {
       uint32_t color;
@@ -209,6 +212,9 @@ static_assert(offsetof(DisplayListItem, payload.begin.x) == 12);
 static_assert(offsetof(DisplayListItem, payload.begin.y) == 16);
 static_assert(offsetof(DisplayListItem, payload.begin.w) == 20);
 static_assert(offsetof(DisplayListItem, payload.begin.h) == 24);
+static_assert(offsetof(DisplayListItem, payload.begin.overflow_x) == 28);
+static_assert(offsetof(DisplayListItem, payload.begin.overflow_y) == 32);
+static_assert(offsetof(DisplayListItem, payload.begin.is_layout_only) == 36);
 static_assert(offsetof(DisplayListItem, payload.fill.color) == 4);
 static_assert(offsetof(DisplayListItem, payload.fill.clip_index) == 8);
 static_assert(offsetof(DisplayListItem, payload.draw_view.view_id) == 4);

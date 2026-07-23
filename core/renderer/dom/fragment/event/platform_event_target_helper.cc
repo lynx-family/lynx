@@ -42,6 +42,24 @@ void CopyRect(float res[4], const float rect[4]) {
   std::memmove(res, rect, sizeof(float) * 4);
 }
 
+void MapPointWithTransform(float point[2],
+                           const fml::RefPtr<PlatformEventTarget>& target) {
+  if (target != nullptr && target->Transform() != nullptr) {
+    target->Transform()->mapPoint(point, point);
+  }
+}
+
+void MapPointWithInverseTransform(
+    float point[2], const fml::RefPtr<PlatformEventTarget>& target) {
+  if (target == nullptr || target->Transform() == nullptr) {
+    return;
+  }
+  transforms::Matrix44 inverse;
+  if (target->Transform()->invert(&inverse)) {
+    inverse.mapPoint(point, point);
+  }
+}
+
 void SetUserInteractionEnabled(PlatformEventTarget* target,
                                const lepus::Value& value) {
   target->SetUserInteractionEnabled(
@@ -499,36 +517,38 @@ PlatformEventTargetHelper::ReconstructEventTargetTreeRecursively(
   auto children_renderer = page_renderer->Children();
   size_t child_renderer_idx = 0, child_renderer_size = children_renderer.size();
   const auto& display_list = page_renderer->GetDisplayList();
+  DisplayListReader reader(display_list);
 
-  if (display_list.GetContentItemsSize() == 0) {
+  if (!reader.HasNext()) {
     return nullptr;
   }
 
   // the top of the stack is always the parent event target.
   std::stack<fml::RefPtr<PlatformEventTarget>> target_stack;
   fml::RefPtr<PlatformEventTarget> root_event_target = nullptr;
-
-  DisplayListReader reader(display_list);
   while (reader.HasNext()) {
     const auto& item = reader.Next();
     switch (item.type) {
       // crate the event target.
       case DisplayListOpType::kBegin: {
-        int sign = item.payload.begin.id;
-        auto type = static_cast<PlatformRendererType>(item.payload.begin.type);
-        float left = item.payload.begin.x;
-        float top = item.payload.begin.y;
-        float width = item.payload.begin.w;
-        float height = item.payload.begin.h;
+        const auto& begin = item.payload.begin;
+        const int sign = begin.id;
+        const auto type = static_cast<PlatformRendererType>(begin.type);
         auto event_target = fml::MakeRefCounted<PlatformEventTarget>(
-            this, tree_root_id, sign, left, top, width, height);
+            this, tree_root_id, sign, begin.x, begin.y, begin.w, begin.h);
         event_target->SetPlatformRendererType(type);
         event_target->SetScrollContainer(IsScrollContainer(type, sign));
+        event_target->SetOverflow(begin.overflow_x != 0, begin.overflow_y != 0);
+        event_target->SetLayoutOnly(begin.is_layout_only != 0);
         ApplyEventBundle(event_target,
                          platform_ref_->GetPlatformEventBundle(sign));
         event_targets_[sign] = event_target;
         if (root_event_target == nullptr) {
           root_event_target = event_target;
+          if (const auto* transform = page_renderer->GetTransform();
+              transform != nullptr) {
+            root_event_target->SetTransform(transform->data.transform);
+          }
         }
         target_stack.push(event_target);
         break;
@@ -622,7 +642,7 @@ void PlatformEventTargetHelper::ConvertPointFromAncestorToDescendant(
     res[1] -= current_target->Top();
     res[0] += current_target->OffsetXForCalcPosition();
     res[1] += current_target->OffsetYForCalcPosition();
-    // TODO(hexionghui): add transform support.
+    MapPointWithInverseTransform(res, current_target);
     current_ancestor = current_target;
   }
 }
@@ -636,7 +656,7 @@ void PlatformEventTargetHelper::ConvertPointFromDescendantToAncestor(
   }
 
   CopyPoint(res, point);
-  // TODO(hexionghui): add transform support for descendant.
+  MapPointWithTransform(res, descendant);
 
   auto current_descendant = descendant;
   while (current_descendant != nullptr && current_descendant->ParentTarget() &&
@@ -650,7 +670,7 @@ void PlatformEventTargetHelper::ConvertPointFromDescendantToAncestor(
     current_descendant = current_descendant->ParentTarget();
     res[0] -= current_descendant->ScrollOffsetX();
     res[1] -= current_descendant->ScrollOffsetY();
-    // TODO(hexionghui): add transform support.
+    MapPointWithTransform(res, current_descendant);
   }
 }
 

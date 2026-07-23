@@ -38,6 +38,11 @@ class DisplayListBuilder {
   // Begin a new fragment
   DisplayListBuilder& Begin(int id, PlatformRendererType type, float x, float y,
                             float width, float height);
+  // Extended form used by Fragment Layer Renderer to preserve state for
+  // PlatformEventTarget hit testing.
+  DisplayListBuilder& Begin(int id, PlatformRendererType type, float x, float y,
+                            float width, float height, bool overflow_x,
+                            bool overflow_y, bool is_layout_only = false);
 
   // End the current fragment
   DisplayListBuilder& End();

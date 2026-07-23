@@ -41,6 +41,7 @@ class PlatformRendererImpl : public PlatformRenderer {
   void UpdateAttributes(const fml::RefPtr<PropBundle>& attributes,
                         bool tends_to_flatten) override;
   const DisplayList& GetDisplayList() const { return display_list_; }
+  const SubtreeProperty* GetTransform() const { return transform_.get(); }
   void UpdateLayoutMetrics(float left, float top, float width, float height,
                            const float* paddings, const float* margins,
                            const float* borders);

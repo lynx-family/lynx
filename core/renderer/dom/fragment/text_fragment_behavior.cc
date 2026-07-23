@@ -10,6 +10,7 @@
 #include "base/include/log/logging.h"
 #include "core/event/custom_event.h"
 #include "core/event/event_dispatcher.h"
+#include "core/renderer/css/computed_css_style.h"
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/dom/fiber/text_element.h"
 #include "core/renderer/dom/fragment/fragment.h"
@@ -53,11 +54,14 @@ void TextFragmentBehavior::OnUpdateLayout(
 
 void TextFragmentBehavior::OnDraw(DisplayListBuilder& builder) {
   const auto& layout_info = fragment_->LayoutResult();
+  const auto* computed_style = fragment_->element()->computed_css_style();
   builder.Begin(fragment_->id(), GetType(),
                 layout_info.layout_result.padding_[starlight::Direction::kLeft],
                 layout_info.layout_result.padding_[starlight::Direction::kTop],
                 layout_info.layout_result.size_.width_,
-                layout_info.layout_result.size_.height_);
+                layout_info.layout_result.size_.height_,
+                computed_style->IsOverflowX(), computed_style->IsOverflowY(),
+                fragment_->ShouldSyncLayoutOnlyToEventTarget());
   builder.DrawText(fragment_->id(), fragment_->DefineBorderBox(builder));
   builder.End();
 }
