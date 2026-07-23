@@ -1,0 +1,33 @@
+name: Periodic Jobs
+
+on:
+  schedule:
+    - cron: '0 19 * * *'
+  workflow_dispatch:
+jobs:
+  windows-explorer-build-x86:
+    runs-on: lynx-windows-2022-large
+    steps:
+      - name: Configure Git
+        shell: PowerShell
+        run: |
+          git config --global core.autocrlf false
+          git config --global core.eol lf
+          git config --global http.sslBackend "schannel"
+        working-directory: ./
+      - name: Download Source
+        uses: actions/checkout@v6
+        with:
+          path: lynx
+      - name: Python Setup
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+      - name: Install Common Dependencies
+        uses: ./lynx/.github/actions/windows-common-deps
+        with:
+          target: 'clay'
+      - name: Build windows Explorer
+        uses: ./lynx/.github/actions/windows-explorer-build
+        with:
+          build-arch: x86
