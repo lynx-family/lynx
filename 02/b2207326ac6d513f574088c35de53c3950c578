@@ -1,0 +1,21 @@
+e2e/lynx-e2e-mvp/src/ios-app-controller.ts
+  s_cef4d630f9299d::t_040c7a960ac3b7 1-94
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "02b2207326ac6d513f574088c35de53c3950c578",
+  "prompts": {},
+  "sessions": {
+    "s_cef4d630f9299d": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f8e4d-f8ba-7141-af53-0d9ebc22b90d",
+        "model": "unknown"
+      },
+      "human_author": "tangyongjie <tangyongjie@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}
