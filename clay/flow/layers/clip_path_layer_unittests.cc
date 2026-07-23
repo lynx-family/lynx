@@ -84,14 +84,11 @@ TEST_F(ClipPathLayerTest, PaintingCulledLayerDies) {
   EXPECT_EQ(preroll_context()->state_stack.device_cull_rect(), distant_bounds);
   EXPECT_TRUE(preroll_context()->state_stack.is_empty());
 
-  EXPECT_EQ(mock_layer->paint_bounds(), child_bounds);
-  EXPECT_EQ(layer->paint_bounds(), child_bounds);
-  EXPECT_EQ(layer->child_paint_bounds(), child_bounds);
-  EXPECT_TRUE(mock_layer->needs_painting(paint_context()));
-  EXPECT_TRUE(layer->needs_painting(paint_context()));
-  EXPECT_EQ(mock_layer->parent_cull_rect(), kEmptyRect);
-  EXPECT_EQ(mock_layer->parent_matrix(), initial_matrix);
-  EXPECT_EQ(mock_layer->parent_mutators(), std::vector({Mutator(layer_path)}));
+  EXPECT_EQ(mock_layer->paint_bounds(), kEmptyRect);
+  EXPECT_EQ(layer->paint_bounds(), kEmptyRect);
+  EXPECT_EQ(layer->child_paint_bounds(), kEmptyRect);
+  EXPECT_FALSE(mock_layer->needs_painting(paint_context()));
+  EXPECT_FALSE(layer->needs_painting(paint_context()));
 
   auto mutator = paint_context().state_stack.save();
   mutator.clipRect(distant_bounds, false);

@@ -19,13 +19,15 @@ DiffContext::DiffContext(skity::Vec2 frame_size,
                          double frame_device_pixel_ratio,
                          PaintRegionMap& this_frame_paint_region_map,
                          const PaintRegionMap& last_frame_paint_region_map,
-                         bool has_raster_cache)
+                         bool has_raster_cache,
+                         uint64_t retained_preroll_generation)
     : rects_(std::make_shared<std::vector<skity::Rect>>()),
       frame_size_(frame_size),
       frame_device_pixel_ratio_(frame_device_pixel_ratio),
       this_frame_paint_region_map_(this_frame_paint_region_map),
       last_frame_paint_region_map_(last_frame_paint_region_map),
-      has_raster_cache_(has_raster_cache) {}
+      has_raster_cache_(has_raster_cache),
+      retained_preroll_generation_(retained_preroll_generation) {}
 
 void DiffContext::BeginSubtree() {
   state_stack_.push_back(state_);

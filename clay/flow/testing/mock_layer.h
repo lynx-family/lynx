@@ -47,6 +47,7 @@ class MockLayer : public Layer {
   const MutatorsStack& parent_mutators() { return parent_mutators_; }
   const skity::Matrix& parent_matrix() { return parent_matrix_; }
   const skity::Rect& parent_cull_rect() { return parent_cull_rect_; }
+  size_t preroll_count() const { return preroll_count_; }
 
   bool IsReplacing(DiffContext* context, const Layer* layer) const override;
   void Diff(DiffContext* context, const Layer* old_layer) override;
@@ -139,6 +140,7 @@ class MockLayer : public Layer {
   SkPath fake_paint_path_;
   SkPaint fake_paint_;
   std::optional<skity::Matrix> expected_paint_matrix_;
+  size_t preroll_count_ = 0;
 
   static constexpr int kParentHasPlatformView = 1 << 0;
   static constexpr int kParentHasDrawableImageLayer = 1 << 1;

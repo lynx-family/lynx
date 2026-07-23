@@ -257,7 +257,9 @@ SkityRecorderCanvas::SkityRecorderCanvas(const skity::Rect& bounds,
                                          fml::RefPtr<GPUUnrefQueue> unref_queue)
     : unref_queue_(unref_queue),
       picture_recorder_(std::make_unique<skity::PictureRecorder>()) {
-  picture_recorder_->BeginRecording(bounds);
+  skity::DisplayListBuildOptions options;
+  options.build_rtree = true;
+  picture_recorder_->BeginRecording(bounds, options);
   canvas_ = picture_recorder_->GetRecordingCanvas();
 }
 
