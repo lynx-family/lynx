@@ -1,6 +1,6 @@
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 
-$__version__ = "0.3.147"
+$__version__ = "0.3.148"
 
 if ($null -eq $env:HABITAT_VERSION) { 
     $HABITAT_VERSION = $__version__
