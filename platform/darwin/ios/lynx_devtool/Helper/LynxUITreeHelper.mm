@@ -22,19 +22,27 @@
 }
 
 - (CGRect)getRectToWindow {
-  CGRect res;
+  CGRect res = CGRectZero;
   __strong typeof(_uiOwner) uiOwner = _uiOwner;
   if (uiOwner == nil) {
     return res;
   }
   LynxUI* ui = [uiOwner findUIBySign:[uiOwner getRootSign]];
   if (ui != NULL) {
-    CGRect re = [ui getRectToWindow];
-    int scale = UIScreen.mainScreen.scale;
-    res.origin.x = re.origin.x * scale;
-    res.origin.y = re.origin.y * scale;
-    res.size.width = re.size.width * scale;
-    res.size.height = re.size.height * scale;
+    res = [ui getRectToWindow];
+  }
+  if (CGRectIsEmpty(res)) {
+    UIView* rootView = [[uiOwner uiContext] rootView];
+    if (rootView != nil) {
+      res = [rootView convertRect:rootView.bounds toView:nil];
+    }
+  }
+  if (!CGRectIsEmpty(res)) {
+    CGFloat scale = UIScreen.mainScreen.scale;
+    res.origin.x *= scale;
+    res.origin.y *= scale;
+    res.size.width *= scale;
+    res.size.height *= scale;
   }
   return res;
 }

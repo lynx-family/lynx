@@ -3,6 +3,7 @@
 // LICENSE file in the root directory of this source tree.
 
 #import <Lynx/LynxRootUI.h>
+#import <Lynx/LynxUIContext.h>
 #import <LynxDevtool/LynxUITreeHelper.h>
 #import <OCMock/OCMock.h>
 #import <XCTest/XCTest.h>
@@ -17,6 +18,7 @@ extern NSString* const ScreenshotModeFullScreen;
 @implementation LynxUITreeHelperUnitTest {
   LynxUITreeHelper* _uiTreeHelper;
   LynxUIOwner* _uiOwner;
+  LynxUIContext* _uiContext;
 }
 
 - (void)setUp {
@@ -25,12 +27,28 @@ extern NSString* const ScreenshotModeFullScreen;
   _uiTreeHelper = [[LynxUITreeHelper alloc] init];
   _uiTreeHelper = OCMPartialMock(_uiTreeHelper);
   _uiOwner = OCMClassMock([LynxUIOwner class]);
+  _uiContext = OCMClassMock([LynxUIContext class]);
   [_uiTreeHelper attachLynxUIOwner:_uiOwner];
 }
 
 - (void)tearDown {
   _uiTreeHelper = nil;
   _uiOwner = nil;
+  _uiContext = nil;
+}
+
+- (void)testGetRectToWindowFallbackToRootViewWhenRootUIRectIsEmpty {
+  UIView* rootView = [[UIView alloc] initWithFrame:CGRectMake(10, 20, 100, 200)];
+  OCMStub([_uiOwner getRootSign]).andReturn(1);
+  OCMStub([_uiOwner findUIBySign:1]).andReturn(nil);
+  OCMStub([_uiOwner uiContext]).andReturn(_uiContext);
+  OCMStub([_uiContext rootView]).andReturn(rootView);
+
+  CGRect rect = [_uiTreeHelper getRectToWindow];
+  CGFloat scale = UIScreen.mainScreen.scale;
+
+  XCTAssertEqualWithAccuracy(rect.size.width, 100 * scale, 0.001);
+  XCTAssertEqualWithAccuracy(rect.size.height, 200 * scale, 0.001);
 }
 
 @end
