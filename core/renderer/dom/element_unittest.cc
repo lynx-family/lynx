@@ -86,6 +86,18 @@ TEST_F(ElementTest, CheckHasFilterProps) {
 
   element->CheckHasNonFlattenCSSProps(CSSPropertyID::kPropertyIDFilter);
   EXPECT_TRUE(element->has_non_flatten_attrs_);
+
+  const std::vector<CSSPropertyID> non_flatten_css_props = {
+      CSSPropertyID::kPropertyIDOffsetDistance,
+      CSSPropertyID::kPropertyIDOffsetPath,
+      CSSPropertyID::kPropertyIDOffsetRotate,
+      CSSPropertyID::kPropertyIDPerspective};
+  for (auto id : non_flatten_css_props) {
+    auto css_element = manager->CreateFiberElement("view");
+    css_element->SetAttributeHolder(comp.get()->attribute_holder());
+    css_element->CheckHasNonFlattenCSSProps(id);
+    EXPECT_TRUE(css_element->has_non_flatten_attrs_);
+  }
 }
 
 TEST_F(ElementTest, CheckWillDestroy) {
