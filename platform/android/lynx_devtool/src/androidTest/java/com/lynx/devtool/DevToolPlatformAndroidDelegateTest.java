@@ -10,6 +10,9 @@ import static org.mockito.Mockito.when;
 import android.app.Application;
 import android.content.Context;
 import android.view.View;
+import android.view.inputmethod.BaseInputConnection;
+import android.view.inputmethod.EditorInfo;
+import android.view.inputmethod.InputConnection;
 import android.widget.EditText;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
@@ -61,5 +64,41 @@ public class DevToolPlatformAndroidDelegateTest {
     mPlatformDelegate.insertText("b");
 
     assertEquals("abd", editText.getText().toString());
+  }
+
+  @Test
+  public void insertTextFinishesComposingText() {
+    ComposingEditText editText = new ComposingEditText(mContext);
+    when(mLynxView.findFocus()).thenReturn(editText);
+
+    mPlatformDelegate.insertText("b");
+
+    assertEquals("b", editText.getText().toString());
+    assertEquals(-1, BaseInputConnection.getComposingSpanStart(editText.getText()));
+    assertEquals(-1, BaseInputConnection.getComposingSpanEnd(editText.getText()));
+  }
+
+  private static class ComposingEditText extends EditText {
+    ComposingEditText(Context context) {
+      super(context);
+    }
+
+    @Override
+    public InputConnection onCreateInputConnection(EditorInfo outAttrs) {
+      return new BaseInputConnection(this, true) {
+        @Override
+        public boolean commitText(CharSequence text, int newCursorPosition) {
+          ComposingEditText.this.getText().append(text);
+          BaseInputConnection.setComposingSpans(ComposingEditText.this.getText());
+          return true;
+        }
+
+        @Override
+        public boolean finishComposingText() {
+          BaseInputConnection.removeComposingSpans(ComposingEditText.this.getText());
+          return true;
+        }
+      };
+    }
   }
 }

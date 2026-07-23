@@ -5,6 +5,7 @@ package com.lynx.devtool;
 
 import android.text.TextUtils;
 import android.view.View;
+import android.view.inputmethod.BaseInputConnection;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputConnection;
 import android.widget.EditText;
@@ -392,6 +393,8 @@ public class DevToolPlatformAndroidDelegate {
     EditText editText = (EditText) focusedView;
     InputConnection inputConnection = editText.onCreateInputConnection(new EditorInfo());
     if (inputConnection != null && inputConnection.commitText(text, 1)) {
+      inputConnection.finishComposingText();
+      BaseInputConnection.removeComposingSpans(editText.getText());
       return;
     }
 
@@ -399,12 +402,14 @@ public class DevToolPlatformAndroidDelegate {
     int selectionEnd = editText.getSelectionEnd();
     if (selectionStart < 0 || selectionEnd < 0) {
       editText.getText().append(text);
+      BaseInputConnection.removeComposingSpans(editText.getText());
       return;
     }
     int textLength = editText.getText().length();
     int start = Math.min(textLength, Math.max(0, Math.min(selectionStart, selectionEnd)));
     int end = Math.min(textLength, Math.max(0, Math.max(selectionStart, selectionEnd)));
     editText.getText().replace(start, end, text);
+    BaseInputConnection.removeComposingSpans(editText.getText());
   }
 
   @CalledByNative
