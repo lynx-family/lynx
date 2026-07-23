@@ -158,7 +158,7 @@ class TestRunner:
 
                     # There is a time cost from processing the cdp message for opening the page to updating the session_id. 
                     # To avoid the disorder of the session_id, add a waiting time before case run.
-                    time.sleep(1)
+                    time.sleep(2)
                     if self._case_run:
                         case.run(self._test, self._platform)
 

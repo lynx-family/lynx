@@ -210,7 +210,7 @@ jobs:
       - name: Install Common Dependencies
         uses: ./lynx/.github/actions/common-deps
       - name: Install iOS Dependencies
-        uses: nick-fields/retry@v2
+        uses: nick-fields/retry@v4
         with:
           timeout_minutes: 20
           max_attempts: 3
@@ -633,7 +633,7 @@ jobs:
             exit 1
           fi
       - name: Run Android E2E Test
-        uses: nick-fields/retry@v3
+        uses: nick-fields/retry@v4
         with:
           max_attempts: 2
           retry_wait_seconds: 5
@@ -872,7 +872,7 @@ jobs:
 
   ios-e2e-test:
     timeout-minutes: 60
-    needs: [darwin-impact-check, ios-explorer-build]
+    needs: [ios-explorer-build, darwin-impact-check]
     if: ${{ needs.darwin-impact-check.outputs.darwin == 'true' }}
     env:
       APPIUM_TEST_SERVER_PORT: 4723
@@ -891,7 +891,7 @@ jobs:
           sdkVersion=$(awk '{ sub(/iphonesimulator/,""); print $0 }' sdk.txt)
           echo "SDK_VERSION=$sdkVersion" >> $GITHUB_ENV
       - name: Build WebDriverAgent
-        uses: nick-fields/retry@v3
+        uses: nick-fields/retry@v4
         with:
           max_attempts: 2
           retry_wait_seconds: 5
@@ -971,7 +971,7 @@ jobs:
             exit 1
           fi
       - name: Run iOS E2E Test
-        uses: nick-fields/retry@v3
+        uses: nick-fields/retry@v4
         with:
           max_attempts: 2
           retry_wait_seconds: 5

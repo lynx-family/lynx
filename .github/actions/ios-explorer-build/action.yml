@@ -17,7 +17,7 @@ runs:
     - name: Install Common Dependencies
       uses: ./lynx/.github/actions/common-deps
     - name: Install iOS Dependencies
-      uses: nick-fields/retry@v2
+      uses: nick-fields/retry@v4
       with:
         timeout_minutes: 20
         max_attempts: 3
