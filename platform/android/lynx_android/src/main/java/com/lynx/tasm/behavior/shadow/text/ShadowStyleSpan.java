@@ -25,8 +25,9 @@ public class ShadowStyleSpan extends CharacterStyle {
 
     // make sure blurRadius in range (0, 25]
     // solve this https://t.wtturl.cn/NxU4vLm/
+    blurRadius = Math.max(0.01f, blurRadius);
     if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.M) {
-      blurRadius = Math.min(Math.max(0, blurRadius), 25.f);
+      blurRadius = Math.min(blurRadius, 25.f);
     }
 
     textPaint.setShadowLayer(
