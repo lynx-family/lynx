@@ -85,6 +85,12 @@ public class PlatformRendererContextTest {
     when(mockBodyView.getView()).thenReturn(mockBodyView);
   }
 
+  private static Object getField(Object target, String fieldName) throws Exception {
+    Field field = target.getClass().getDeclaredField(fieldName);
+    field.setAccessible(true);
+    return field.get(target);
+  }
+
   @Test
   public void testConstructorWithRootView() {
     assertNotNull(rendererContext);
@@ -121,6 +127,13 @@ public class PlatformRendererContextTest {
     ReadableMapBuffer paintInfo = mock(ReadableMapBuffer.class);
     when(paintInfo.getInt(1)).thenReturn(IMAGE_MODE_ASPECT_FILL);
     when(paintInfo.getString(2, null)).thenReturn(null);
+    when(paintInfo.getBoolean(3, false)).thenReturn(true);
+    when(paintInfo.getString(5, null)).thenReturn("#ff0000");
+    when(paintInfo.getString(6, null)).thenReturn("1px 2px 3px 4px");
+    when(paintInfo.getDouble(7, 1.0)).thenReturn(2.0);
+    when(paintInfo.getBoolean(8, false)).thenReturn(true);
+    when(paintInfo.getBoolean(9, true)).thenReturn(false);
+    when(paintInfo.getInt(10, 0)).thenReturn(3);
 
     rendererContext.createImage(7, null, paintInfo, 100, 60, 0, 11, false);
 
@@ -130,7 +143,15 @@ public class PlatformRendererContextTest {
 
     Field modeField = LynxImageManager.class.getDeclaredField("mMode");
     modeField.setAccessible(true);
-    assertSame(ScalingUtils.ScaleType.CENTER_CROP, modeField.get(imageManagerCaptor.getValue()));
+    LynxImageManager imageManager = imageManagerCaptor.getValue();
+    assertSame(ScalingUtils.ScaleType.CENTER_CROP, modeField.get(imageManager));
+    assertEquals(true, getField(imageManager, "mAutoSize"));
+    assertEquals("#ff0000", getField(imageManager, "mTintColor"));
+    assertEquals("1px 2px 3px 4px", getField(imageManager, "mCapInsets"));
+    assertEquals("2.0", getField(imageManager, "mCapInsetsScale"));
+    assertEquals(true, getField(imageManager, "mSkipRedirection"));
+    assertEquals(false, getField(imageManager, "mAutoPlay"));
+    assertEquals(3, getField(imageManager, "mLoopCount"));
   }
 
   @Test

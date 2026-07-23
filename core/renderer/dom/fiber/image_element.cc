@@ -6,6 +6,7 @@
 
 #include <memory>
 
+#include "base/include/string/string_number_convert.h"
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/dom/fiber/text_props.h"
 #include "core/renderer/dom/fragment/fragment.h"
@@ -17,6 +18,13 @@ namespace tasm {
 namespace {
 constexpr char kImageMode[] = "mode";
 constexpr char kImageBlurRadius[] = "blur-radius";
+constexpr char kImagePlaceholder[] = "placeholder";
+constexpr char kImageTintColor[] = "tint-color";
+constexpr char kImageCapInsets[] = "cap-insets";
+constexpr char kImageCapInsetsScale[] = "cap-insets-scale";
+constexpr char kImageSkipRedirection[] = "skip-redirection";
+constexpr char kImageAutoplay[] = "autoplay";
+constexpr char kImageLoopCount[] = "loop-count";
 
 BASE_STATIC_STRING_DECL(kModeAspectFit, "aspectFit");
 BASE_STATIC_STRING_DECL(kModeAspectFill, "aspectFill");
@@ -33,6 +41,17 @@ ImageFitMode ResolveImageFitMode(const base::String& mode) {
     return ImageFitMode::kCenter;
   }
   return ImageFitMode::kScaleToFill;
+}
+
+float ResolveCapInsetsScale(const lepus::Value& value) {
+  if (value.IsNumber()) {
+    return static_cast<float>(value.Number());
+  }
+  float scale = 1.f;
+  if (value.IsString() && base::StringToFloat(value.StdString(), scale)) {
+    return scale;
+  }
+  return 1.f;
 }
 }  // namespace
 
@@ -91,7 +110,8 @@ void ImageElement::SetAttributeInternal(const base::String& key,
 void ImageElement::ProcessAttributeForLayoutInElement(
     const base::String& key, const lepus::Value& value) {
   if (key.IsEqual(kImageAutoSize)) {
-    has_auto_size_ = value.Bool();
+    has_auto_size_ = value.IsBool() && value.Bool();
+    paint_info_.auto_size = has_auto_size_;
   } else if (key.IsEqual(kSrc)) {
     url_ = value.String();
   } else if (key.IsEqual(kImageMode)) {
@@ -100,6 +120,22 @@ void ImageElement::ProcessAttributeForLayoutInElement(
   } else if (key.IsEqual(kImageBlurRadius)) {
     paint_info_.blur_radius =
         value.IsString() ? value.String() : base::String();
+  } else if (key.IsEqual(kImagePlaceholder)) {
+    paint_info_.placeholder =
+        value.IsString() ? value.String() : base::String();
+  } else if (key.IsEqual(kImageTintColor)) {
+    paint_info_.tint_color = value.IsString() ? value.String() : base::String();
+  } else if (key.IsEqual(kImageCapInsets)) {
+    paint_info_.cap_insets = value.IsString() ? value.String() : base::String();
+  } else if (key.IsEqual(kImageCapInsetsScale)) {
+    paint_info_.cap_insets_scale = ResolveCapInsetsScale(value);
+  } else if (key.IsEqual(kImageSkipRedirection)) {
+    paint_info_.skip_redirection = value.IsBool() && value.Bool();
+  } else if (key.IsEqual(kImageAutoplay)) {
+    paint_info_.autoplay = !value.IsBool() || value.Bool();
+  } else if (key.IsEqual(kImageLoopCount)) {
+    paint_info_.loop_count =
+        value.IsNumber() ? static_cast<int32_t>(value.Number()) : 0;
   }
 }
 
@@ -108,10 +144,27 @@ void ImageElement::ResetAttribute(const base::String& key) {
     attr_map_[key] = lepus::Value();
     if (key.IsEqual(kSrc)) {
       url_ = base::String();
+    } else if (key.IsEqual(kImageAutoSize)) {
+      has_auto_size_ = false;
+      paint_info_.auto_size = false;
     } else if (key.IsEqual(kImageMode)) {
       paint_info_.mode = ImageFitMode::kScaleToFill;
     } else if (key.IsEqual(kImageBlurRadius)) {
       paint_info_.blur_radius = base::String();
+    } else if (key.IsEqual(kImagePlaceholder)) {
+      paint_info_.placeholder = base::String();
+    } else if (key.IsEqual(kImageTintColor)) {
+      paint_info_.tint_color = base::String();
+    } else if (key.IsEqual(kImageCapInsets)) {
+      paint_info_.cap_insets = base::String();
+    } else if (key.IsEqual(kImageCapInsetsScale)) {
+      paint_info_.cap_insets_scale = 1.f;
+    } else if (key.IsEqual(kImageSkipRedirection)) {
+      paint_info_.skip_redirection = false;
+    } else if (key.IsEqual(kImageAutoplay)) {
+      paint_info_.autoplay = true;
+    } else if (key.IsEqual(kImageLoopCount)) {
+      paint_info_.loop_count = 0;
     }
   }
   FiberElement::ResetAttribute(key);

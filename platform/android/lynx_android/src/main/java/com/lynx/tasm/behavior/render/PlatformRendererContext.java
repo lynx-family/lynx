@@ -71,6 +71,14 @@ public class PlatformRendererContext implements TextMeasurerProvider {
 
   private static final int IMAGE_PAINT_INFO_MODE = 1;
   private static final int IMAGE_PAINT_INFO_BLUR_RADIUS = 2;
+  private static final int IMAGE_PAINT_INFO_AUTO_SIZE = 3;
+  private static final int IMAGE_PAINT_INFO_PLACEHOLDER = 4;
+  private static final int IMAGE_PAINT_INFO_TINT_COLOR = 5;
+  private static final int IMAGE_PAINT_INFO_CAP_INSETS = 6;
+  private static final int IMAGE_PAINT_INFO_CAP_INSETS_SCALE = 7;
+  private static final int IMAGE_PAINT_INFO_SKIP_REDIRECTION = 8;
+  private static final int IMAGE_PAINT_INFO_AUTOPLAY = 9;
+  private static final int IMAGE_PAINT_INFO_LOOP_COUNT = 10;
 
   WeakReference<UIBody.UIBodyView> mRootView = null;
 
@@ -651,6 +659,16 @@ public class PlatformRendererContext implements TextMeasurerProvider {
     if (paintInfo != null) {
       imageManager.setMode(paintInfo.getInt(IMAGE_PAINT_INFO_MODE));
       imageManager.setBlurRadius(paintInfo.getString(IMAGE_PAINT_INFO_BLUR_RADIUS, null));
+      imageManager.setAutoSize(paintInfo.getBoolean(IMAGE_PAINT_INFO_AUTO_SIZE, false));
+      imageManager.setPlaceholder(paintInfo.getString(IMAGE_PAINT_INFO_PLACEHOLDER, null));
+      imageManager.setTintColor(paintInfo.getString(IMAGE_PAINT_INFO_TINT_COLOR, null));
+      imageManager.setCapInsets(paintInfo.getString(IMAGE_PAINT_INFO_CAP_INSETS, null));
+      imageManager.setCapInsetsScale(
+          Double.toString(paintInfo.getDouble(IMAGE_PAINT_INFO_CAP_INSETS_SCALE, 1.0)));
+      imageManager.setSkipRedirection(
+          paintInfo.getBoolean(IMAGE_PAINT_INFO_SKIP_REDIRECTION, false));
+      imageManager.setAutoPlay(paintInfo.getBoolean(IMAGE_PAINT_INFO_AUTOPLAY, true));
+      imageManager.setLoopCount(paintInfo.getInt(IMAGE_PAINT_INFO_LOOP_COUNT, 0));
     }
     imageManager.onLayoutUpdated(width, height, 0, 0, 0, 0);
     UIBody.UIBodyView rootView = mRootView.get();

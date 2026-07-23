@@ -2388,6 +2388,7 @@ public protocol LynxImageProcessor-p : <NSObject> {
 }
 
 public class LynxImageShadowNode : LynxShadowNode {
+  public void LynxImageShadowNode::setImageSize:(CGSize size);
 }
 
 public protocol LynxImpressionParentView-p : <NSObject> {

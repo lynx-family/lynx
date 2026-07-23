@@ -46,7 +46,7 @@ typedef NS_OPTIONS(NSInteger, LynxRequestOptions) {
 @end
 
 @interface LynxImageShadowNode : LynxShadowNode
-
+- (void)setImageSize:(CGSize)size;
 @end
 
 NS_ASSUME_NONNULL_END

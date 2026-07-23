@@ -1405,7 +1405,20 @@ public class LynxImageManager implements Drawable.Callback {
   }
 
   public void justSizeIfNeeded() {
-    if (mImageWidth == 0 || mImageHeight == 0 || !mAutoSize || mUI == null) {
+    if (mImageWidth == 0 || mImageHeight == 0 || !mAutoSize) {
+      return;
+    }
+    if (mUI == null) {
+      final int imageWidth = mImageWidth;
+      final int imageHeight = mImageHeight;
+      final int viewWidth = mViewWidth;
+      final int viewHeight = mViewHeight;
+      mContext.findShadowNodeAndRunTask(getEventSign(), (node) -> {
+        if (node instanceof AutoSizeImage) {
+          ((AutoSizeImage) node)
+              .justSizeIfNeeded(true, imageWidth, imageHeight, viewWidth, viewHeight);
+        }
+      });
       return;
     }
     if (mAutoSizeShadowNode == null) {
