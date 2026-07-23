@@ -1,0 +1,53 @@
+clay/shell/platform/android/platform_view_android.cc
+  s_73e1c9cfd4327d::t_a8789b2dcdbbaf 315-316
+clay/shell/platform/android/platform_view_android.h
+  s_73e1c9cfd4327d::t_c218d7d9226243 97-98
+clay/shell/platform/harmony/platform_view_harmony.h
+  s_73e1c9cfd4327d::t_911ecd87ac19d0 83-91
+clay/shell/platform/harmony/platform_view_harmony_napi.h
+  s_73e1c9cfd4327d::t_22cd8e60289517 59-61,110-112
+lynx/clay/lynx_adaptor/ui_delegate_clay.cc
+  s_73e1c9cfd4327d::t_c0527e4e79c7a3 13,61-65
+lynx/clay/shell/common/engine.cc
+  s_73e1c9cfd4327d::t_516425c241711b 365-367
+lynx/clay/shell/common/engine.h
+  s_73e1c9cfd4327d::t_ef70c209c06888 57-58,163-164
+lynx/clay/shell/common/platform_view.h
+  s_73e1c9cfd4327d::t_43804a9ca6a732 24,338-339
+lynx/clay/shell/common/shell.cc
+  s_73e1c9cfd4327d::t_e970f308ac5c99 1029-1030,1033,1035
+lynx/clay/shell/common/shell.h
+  s_73e1c9cfd4327d::t_f276280ed81602 326-327
+lynx/clay/ui/component/editable/input_ng_view.h
+  s_73e1c9cfd4327d::t_9f5117adfc2e64 20-26
+lynx/clay/ui/component/page_view.h
+  s_73e1c9cfd4327d::t_8084bae04f42f2 221,525-526
+lynx/clay/ui/platform/keyboard_bridge.h
+  s_73e1c9cfd4327d::t_ed48cdd71d0b3d 27-28,38
+lynx/clay/ui/render_delegate.h
+  s_73e1c9cfd4327d::t_6e4370531c5634 16,42-43
+lynx/clay/ui/testing/ui_test.cc
+  s_73e1c9cfd4327d::t_6dbdf40bb6646a 24-25
+platform/harmony/clay/src/main/ets/ClayUIRenderer.ets
+  s_73e1c9cfd4327d::t_f526733d704642 94-97
+platform/harmony/clay/src/main/ets/types/libclay/index.d.ts
+  s_73e1c9cfd4327d::t_b5b141f90885c3 44-48,60
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "bdf1598cdbe946452c6b1bcbb92cba9aa92e1097",
+  "prompts": {},
+  "sessions": {
+    "s_73e1c9cfd4327d": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f60c5-49dd-7b83-885b-dbbb9f121b6b",
+        "model": "unknown"
+      },
+      "human_author": "liangruijie.030116 <liangruijie.030116@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

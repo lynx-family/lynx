@@ -1,0 +1,59 @@
+ai/skills/e2e-debug-analyzer/agents/openai.yaml
+  s_6a549976764f00::t_7910e77fe71269 1-7
+ai/skills/e2e-debug-analyzer/references/analyzer-report-template.zh.md
+  s_6a549976764f00::t_ab8fe862e31ca1 1-174
+ai/skills/e2e-debug-review/references/review-report-template.zh.md
+  s_82fda60df949e5::t_e2e8faafb1de89 1-199
+  s_82fda60df949e5::t_7a50f6ba6b4fcf 200
+ai/skills/e2e-debug-workflow/agents/openai.yaml
+  s_6a549976764f00::t_fec3a85e09ca79 1-7
+ai/skills/e2e-debug/references/environment-profile-template.md
+  s_6a549976764f00::t_89df6ee83b9cc5 1-92
+ai/skills/e2e-debug-analyzer/SKILL.md
+  s_6a549976764f00::t_4b160f4415fb1e 1-670
+ai/skills/e2e-debug-workflow/SKILL.md
+  s_82fda60df949e5::t_6a0ec17fa6ebdf 1-202
+ai/skills/e2e-debug/SKILL.md
+  s_6a549976764f00::t_6edf464ebcd827 1-591
+ai/skills/e2e-debug/agents/openai.yaml
+  s_6a549976764f00::t_42221e301c0a9c 1-7
+ai/skills/e2e-debug-review/agents/openai.yaml
+  s_6a549976764f00::t_977321e6890dfc 1-7
+ai/skills/e2e-debug/references/debug-report-template.md
+  s_6a549976764f00::t_1a70f1305f9174 1-172
+ai/skills/e2e-debug/references/debug-report-template.zh.md
+  s_6a549976764f00::t_0dc4a0c2906bda 1-171
+ai/skills/e2e-debug-review/SKILL.md
+  s_82fda60df949e5::t_2b7a1119a8afb3 1-344
+ai/skills/e2e-debug-analyzer/references/analyzer-report-template.md
+  s_6a549976764f00::t_97383f7112bb7d 1-174
+ai/skills/e2e-debug-review/references/review-report-template.md
+  s_82fda60df949e5::t_8515a479a9307f 1-108
+  s_82fda60df949e5::t_0386eca07a65df 109
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "fe7ded978135300517fb3255e85522d2f3aaacc3",
+  "prompts": {},
+  "sessions": {
+    "s_6a549976764f00": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f4712-64e1-7ef2-bbe2-626e8dcd5f9d",
+        "model": "unknown"
+      },
+      "human_author": "liangruijie.030116 <liangruijie.030116@bytedance.com>"
+    },
+    "s_82fda60df949e5": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f5fb8-e10a-7162-942b-e6e54c550c2e",
+        "model": "unknown"
+      },
+      "human_author": "liangruijie.030116 <liangruijie.030116@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

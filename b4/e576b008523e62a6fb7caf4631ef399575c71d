@@ -1,0 +1,27 @@
+testing/lynx-platform-tests/test_script/androidlynxtest/case_sets/lynx_e2e_mvp.py
+  s_fd8a403563b39c::t_214e7f8abf614b 76
+  h_dc1658ba751399 61-63,68,73,75,77-78
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "b4e576b008523e62a6fb7caf4631ef399575c71d",
+  "prompts": {},
+  "humans": {
+    "h_dc1658ba751399": {
+      "author": "tangyongjie <tangyongjie@bytedance.com>"
+    }
+  },
+  "sessions": {
+    "s_fd8a403563b39c": {
+      "agent_id": {
+        "tool": "trae-cue",
+        "id": "ai_tab-icr-11282a0d-1308-48ce-8180-1b2a5db051f4",
+        "model": "default"
+      },
+      "human_author": "tangyongjie <tangyongjie@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

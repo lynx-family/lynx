@@ -1,0 +1,32 @@
+lynx/core/template_bundle/lynx_template_bundle_converter.cc
+  s_c2565c06895e42::t_0d1c53cdfff917 5-9,21-22,24-27,29
+lynx/core/template_bundle/BUILD.gn
+  s_c2565c06895e42::t_028480b0d98c1d 23-26,28-30
+lynx/core/template_bundle/lynx_template_bundle_converter_impl.cc
+  s_c2565c06895e42::t_55ed1322e30406 1-189
+core/template_bundle/lynx_template_bundle_converter.cc
+  s_c2565c06895e42::t_8704de0172a04c 68-70
+  s_c2565c06895e42::t_7ea791e1467ef2 2-4
+  s_c2565c06895e42::t_bfdf85736c0d32 5-67,73-74
+  s_c2565c06895e42::t_d6f79b995b0c72 1
+  s_c2565c06895e42::t_30bd5287157e77 71-72
+  s_c2565c06895e42::t_4b22aeead0bb45 75-77
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "6c18609444b35b29c7072f3aea434f63f522b6e8",
+  "prompts": {},
+  "sessions": {
+    "s_c2565c06895e42": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a5f1b1904130cb513f0e554",
+        "model": "openrouter-2o__max"
+      },
+      "human_author": "liyanbo.monster <liyanbo.monster@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}
