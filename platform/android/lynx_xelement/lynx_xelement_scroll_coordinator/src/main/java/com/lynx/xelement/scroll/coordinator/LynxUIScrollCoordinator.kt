@@ -289,6 +289,7 @@ open class LynxUIScrollCoordinator(
   }
 
   override fun destroy() {
+    coordinatorLayout.releaseSlotTracking()
     super.destroy()
     coordinatorLayout.getAppBarLayout().setScrollListener(null)
   }

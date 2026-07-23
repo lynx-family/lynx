@@ -60,12 +60,30 @@ class ScrollCoordinatorLayout(
   private var clampingSlotBoundary = false
   private val slotScrollChangedListener =
     ViewTreeObserver.OnScrollChangedListener { cachedNonScrollableRoot = null }
+  private val offsetStateRestorer =
+    AppBarLayout.OnOffsetChangedListener { _, offset ->
+      if (offset != appBarLayoutView.topAndBottomOffset) {
+        dispatchOffsetUpdates()
+      }
+    }
 
   init {
     appBarLayoutView.addOnOffsetChangedListener(
       AppBarLayout.OnOffsetChangedListener { _, _ ->
         if (!clampingSlotBoundary) {
           clampNonScrollableSlotBoundary()
+        }
+      },
+    )
+    collapsingToolbarView.addOnAttachStateChangeListener(
+      object : View.OnAttachStateChangeListener {
+        override fun onViewAttachedToWindow(view: View) {
+          appBarLayoutView.removeOnOffsetChangedListener(offsetStateRestorer)
+          appBarLayoutView.addOnOffsetChangedListener(offsetStateRestorer)
+        }
+
+        override fun onViewDetachedFromWindow(view: View) {
+          appBarLayoutView.removeOnOffsetChangedListener(offsetStateRestorer)
         }
       },
     )
@@ -575,6 +593,10 @@ class ScrollCoordinatorLayout(
       updateSlotView(null)
     }
     removeView(view)
+  }
+
+  internal fun releaseSlotTracking() {
+    updateSlotView(null)
   }
 
   override fun getLayoutResId(): Int {
