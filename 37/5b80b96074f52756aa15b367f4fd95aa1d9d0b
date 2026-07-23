@@ -1,0 +1,16 @@
+dependencies/DEPS.lynxtron
+  h_dc1658ba751399 761-791
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "375b80b96074f52756aa15b367f4fd95aa1d9d0b",
+  "prompts": {},
+  "humans": {
+    "h_dc1658ba751399": {
+      "author": "tangyongjie <tangyongjie@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}
