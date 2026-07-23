@@ -670,6 +670,10 @@ bool LynxEnv::EnableElementInvokeUIMethodPendingTask() {
   return GetBoolEnv(Key::ENABLE_ELEMENT_INVOKE_UI_METHOD_PENDING_TASK, false);
 }
 
+bool LynxEnv::EnableAutoNonFlatten() {
+  return GetBoolEnv(Key::ENABLE_AUTO_NON_FLATTEN, false);
+}
+
 bool LynxEnv::EnableFiberUpdateMetaData() {
   return GetBoolEnv(Key::ENABLE_FIBER_UPDATE_METADATA, false);
 }
