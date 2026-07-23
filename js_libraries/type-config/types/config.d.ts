@@ -153,6 +153,17 @@ export interface Config {
   enableJsBindingApiThrowException?: boolean;
 
   /**
+   * Controls whether layout-only nodes are excluded as hit-test targets in Fragment Layer Render while their non-layout-only descendants remain eligible. When disabled, layout-only nodes keep the existing PlatformEventTarget hit-test behavior.
+   *
+   * Supported platform: Android, HarmonyOS, iOS
+   *
+   * Since: LynxSDK 4.0
+   *
+   * @defaultValue false
+   */
+  enableLayoutOnlyEventThrough?: boolean;
+
+  /**
    * Controls whether list nodes are created through the newer Radon diff list architecture. When enabled, renderer functions can build RadonDiffListNode2 and decoder falls back to the settings value if the page omits it; when disabled, runtime keeps the older list architecture.
    *
    * Supported platform: Android, iOS

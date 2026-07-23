@@ -386,6 +386,53 @@ TEST_F(FragmentTest, UpdatePaintingNodeUsesCurrentFlattenStateForLayer) {
   EXPECT_FALSE(props->GetPropsMap().at(kTendsToFlattenInitDataKey).Bool());
 }
 
+TEST_F(FragmentTest, DrawFullSyncsOverflowToBeginOperation) {
+  auto element = manager->CreateFiberView();
+  element->set_is_layout_only(true);
+  Fragment fragment(element.get());
+  fragment.SetBehavior(std::make_unique<RecordingFragmentBehavior>(&fragment));
+
+  starlight::LayoutResultForRendering layout;
+  layout.size_ = FloatSize(100.f, 100.f);
+  fragment.UpdateLayout(layout);
+  element->computed_css_style()->origin_overflow_ =
+      starlight::ComputedCSSStyle::OVERFLOW_X;
+
+  DisplayListBuilder builder;
+  fragment.DrawFull(builder);
+  DisplayList display_list = builder.Build();
+  DisplayListReader reader(display_list);
+
+  ASSERT_TRUE(reader.HasNext());
+  const auto& begin = reader.Next();
+  ASSERT_EQ(begin.type, DisplayListOpType::kBegin);
+  EXPECT_EQ(begin.payload.begin.overflow_x, 1);
+  EXPECT_EQ(begin.payload.begin.overflow_y, 0);
+  EXPECT_EQ(begin.payload.begin.is_layout_only, 0);
+}
+
+TEST_F(FragmentTest, DrawFullSyncsLayoutOnlyWhenPageConfigEnabled) {
+  auto element = manager->CreateFiberView();
+  element->set_is_layout_only(true);
+  Fragment fragment(element.get());
+  fragment.SetBehavior(std::make_unique<RecordingFragmentBehavior>(&fragment));
+
+  starlight::LayoutResultForRendering layout;
+  layout.size_ = FloatSize(100.f, 100.f);
+  fragment.UpdateLayout(layout);
+
+  manager->GetConfig()->SetEnableLayoutOnlyEventThrough(true);
+  DisplayListBuilder builder;
+  fragment.DrawFull(builder);
+  DisplayList display_list = builder.Build();
+  DisplayListReader reader(display_list);
+
+  ASSERT_TRUE(reader.HasNext());
+  const auto& begin = reader.Next();
+  ASSERT_EQ(begin.type, DisplayListOpType::kBegin);
+  EXPECT_EQ(begin.payload.begin.is_layout_only, 1);
+}
+
 TEST_F(FragmentTest, ReusedEventTargetTreeRefreshesScrollOffsetForHitTest) {
   auto root_renderer = fml::MakeRefCounted<TestPlatformRenderer>(
       kRootId, PlatformRendererType::kPage);
@@ -427,6 +474,128 @@ TEST_F(FragmentTest, ReusedEventTargetTreeRefreshesScrollOffsetForHitTest) {
   hit_target = reused_root->HitTest(point);
   ASSERT_NE(hit_target, nullptr);
   EXPECT_EQ(hit_target->Sign(), 2);
+}
+
+TEST_F(FragmentTest, PlatformEventTargetHitTestAccountsForTransform) {
+  auto root_renderer = fml::MakeRefCounted<TestPlatformRenderer>(
+      kRootId, PlatformRendererType::kPage);
+  DisplayListBuilder root_builder;
+  root_builder
+      .Begin(kRootId, PlatformRendererType::kPage, 0.f, 0.f, 200.f, 100.f)
+      .DrawView(1, 0.f, 0.f)
+      .End();
+  root_renderer->UpdateDisplayList(root_builder.Build());
+
+  auto child_renderer =
+      fml::MakeRefCounted<TestPlatformRenderer>(1, PlatformRendererType::kView);
+  transforms::Matrix44 transform;
+  transform.preTranslate(40.f, 0.f, 0.f);
+  DisplayListBuilder child_builder;
+  child_builder.Begin(1, PlatformRendererType::kView, 20.f, 0.f, 20.f, 20.f)
+      .End()
+      .Transform(transform);
+  child_renderer->UpdateDisplayList(child_builder.Build());
+  root_renderer->AddChild(child_renderer);
+
+  TestNativePaintingCtxPlatformRef platform_ref;
+  platform_ref.renderers_.insert_or_assign(kRootId, root_renderer);
+  platform_ref.renderers_.insert_or_assign(1, child_renderer);
+
+  auto root_target = platform_ref.ReconstructEventTargetTreeRecursively();
+  ASSERT_NE(root_target, nullptr);
+  auto child_target = platform_ref.GetEventTargetHelper()->GetEventTarget(1);
+  ASSERT_NE(child_target, nullptr);
+  ASSERT_NE(child_target->Transform(), nullptr);
+
+  float root_point[2] = {65.f, 5.f};
+  auto hit_target = root_target->HitTest(root_point);
+  ASSERT_NE(hit_target, nullptr);
+  EXPECT_EQ(hit_target->Sign(), 1);
+
+  float child_point[2] = {0.f, 0.f};
+  platform_ref.GetEventTargetHelper()->ConvertPointFromAncestorToDescendant(
+      child_point, root_target, child_target, root_point);
+  EXPECT_FLOAT_EQ(child_point[0], 5.f);
+  EXPECT_FLOAT_EQ(child_point[1], 5.f);
+
+  float converted_root_point[2] = {0.f, 0.f};
+  platform_ref.GetEventTargetHelper()->ConvertPointFromDescendantToAncestor(
+      converted_root_point, child_target, root_target, child_point);
+  EXPECT_FLOAT_EQ(converted_root_point[0], root_point[0]);
+  EXPECT_FLOAT_EQ(converted_root_point[1], root_point[1]);
+}
+
+TEST_F(FragmentTest,
+       PlatformEventTargetHitTestDescendsIntoOverflowVisibleChild) {
+  auto root_renderer = fml::MakeRefCounted<TestPlatformRenderer>(
+      kRootId, PlatformRendererType::kPage);
+  DisplayListBuilder builder;
+  builder.Begin(kRootId, PlatformRendererType::kPage, 0.f, 0.f, 100.f, 100.f)
+      .Begin(1, PlatformRendererType::kView, 0.f, 0.f, 20.f, 20.f, true, true)
+      .Begin(2, PlatformRendererType::kView, 30.f, 0.f, 10.f, 10.f)
+      .End()
+      .End()
+      .End();
+  root_renderer->UpdateDisplayList(builder.Build());
+
+  TestNativePaintingCtxPlatformRef platform_ref;
+  platform_ref.renderers_.insert_or_assign(kRootId, root_renderer);
+
+  auto root_target = platform_ref.ReconstructEventTargetTreeRecursively();
+  ASSERT_NE(root_target, nullptr);
+  auto overflow_target = platform_ref.GetEventTargetHelper()->GetEventTarget(1);
+  ASSERT_NE(overflow_target, nullptr);
+  EXPECT_TRUE(overflow_target->OverflowX());
+  EXPECT_TRUE(overflow_target->OverflowY());
+
+  float point[2] = {35.f, 5.f};
+  auto hit_target = root_target->HitTest(point);
+  ASSERT_NE(hit_target, nullptr);
+  EXPECT_EQ(hit_target->Sign(), 2);
+}
+
+TEST_F(FragmentTest,
+       PlatformEventTargetHitTestSkipsLayoutOnlyButKeepsDescendants) {
+  auto root_renderer = fml::MakeRefCounted<TestPlatformRenderer>(
+      kRootId, PlatformRendererType::kPage);
+  DisplayListBuilder builder;
+  builder.Begin(kRootId, PlatformRendererType::kPage, 0.f, 0.f, 100.f, 100.f)
+      .Begin(3, PlatformRendererType::kView, 0.f, 0.f, 100.f, 100.f)
+      .End()
+      .Begin(1, PlatformRendererType::kView, 0.f, 0.f, 20.f, 20.f, true, true,
+             true)
+      .Begin(4, PlatformRendererType::kView, 0.f, 0.f, 20.f, 20.f, true, true,
+             true)
+      .Begin(2, PlatformRendererType::kView, 30.f, 0.f, 10.f, 10.f)
+      .End()
+      .End()
+      .End()
+      .End();
+  root_renderer->UpdateDisplayList(builder.Build());
+
+  TestNativePaintingCtxPlatformRef platform_ref;
+  platform_ref.renderers_.insert_or_assign(kRootId, root_renderer);
+
+  auto root_target = platform_ref.ReconstructEventTargetTreeRecursively();
+  ASSERT_NE(root_target, nullptr);
+  auto layout_only_target =
+      platform_ref.GetEventTargetHelper()->GetEventTarget(1);
+  ASSERT_NE(layout_only_target, nullptr);
+  EXPECT_TRUE(layout_only_target->IsLayoutOnly());
+  auto nested_layout_only_target =
+      platform_ref.GetEventTargetHelper()->GetEventTarget(4);
+  ASSERT_NE(nested_layout_only_target, nullptr);
+  EXPECT_TRUE(nested_layout_only_target->IsLayoutOnly());
+
+  float descendant_point[2] = {35.f, 5.f};
+  auto hit_target = root_target->HitTest(descendant_point);
+  ASSERT_NE(hit_target, nullptr);
+  EXPECT_EQ(hit_target->Sign(), 2);
+
+  float event_through_point[2] = {5.f, 5.f};
+  hit_target = root_target->HitTest(event_through_point);
+  ASSERT_NE(hit_target, nullptr);
+  EXPECT_EQ(hit_target->Sign(), 3);
 }
 
 TEST_F(FragmentTest, ValidExposureEventPropsBypassEqualCheck) {

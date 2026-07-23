@@ -37,6 +37,11 @@ Fragment* Fragment::fragment_parent() const {
   return static_cast<Fragment*>(parent());
 }
 
+bool Fragment::ShouldSyncLayoutOnlyToEventTarget() const {
+  return element()->element_manager()->GetEnableLayoutOnlyEventThrough() &&
+         element()->IsLayoutOnly();
+}
+
 bool Fragment::CreateLayerIfNeeded(const fml::RefPtr<PropBundle>& init_data) {
   if (element()->is_wrapper() || has_platform_renderer_) {
     // If the fragment has a platform renderer, it means that the fragment
@@ -1171,14 +1176,16 @@ void Fragment::DrawFull(DisplayListBuilder& display_list_builder) {
   }
 
   box_recorder_.Reset();
-  display_list_builder.Begin(id(),
-                             behavior_ == nullptr
-                                 ? PlatformRendererType::kUnknown
-                                 : behavior_->GetType(),
-                             layout_info_.layout_result.offset_.X(),
-                             layout_info_.layout_result.offset_.Y(),
-                             layout_info_.layout_result.size_.width_,
-                             layout_info_.layout_result.size_.height_);
+  const auto* computed_style = element()->computed_css_style();
+  display_list_builder.Begin(
+      id(),
+      behavior_ == nullptr ? PlatformRendererType::kUnknown
+                           : behavior_->GetType(),
+      layout_info_.layout_result.offset_.X(),
+      layout_info_.layout_result.offset_.Y(),
+      layout_info_.layout_result.size_.width_,
+      layout_info_.layout_result.size_.height_, computed_style->IsOverflowX(),
+      computed_style->IsOverflowY(), ShouldSyncLayoutOnlyToEventTarget());
 
   if (event_bundle_dirty_) {
     painting_context()->impl()->CastToNativeCtx()->UpdatePlatformEventBundle(
@@ -1255,13 +1262,16 @@ void Fragment::Draw() {
     // Begin/End so the platform layer receives an update and clears any stale
     // content / sublayers / event-target state instead of keeping the previous
     // frame.
+    const auto* computed_style = element()->computed_css_style();
     builder.Begin(id(),
                   behavior_ == nullptr ? PlatformRendererType::kUnknown
                                        : behavior_->GetType(),
                   layout_info_.layout_result.offset_.X(),
                   layout_info_.layout_result.offset_.Y(),
                   layout_info_.layout_result.size_.width_,
-                  layout_info_.layout_result.size_.height_);
+                  layout_info_.layout_result.size_.height_,
+                  computed_style->IsOverflowX(), computed_style->IsOverflowY(),
+                  ShouldSyncLayoutOnlyToEventTarget());
     builder.End();
   }
 

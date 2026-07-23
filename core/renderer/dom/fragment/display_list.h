@@ -115,6 +115,9 @@ typedef struct DisplayListItem {
       float y;
       float w;
       float h;
+      int32_t overflow_x;
+      int32_t overflow_y;
+      int32_t is_layout_only;
     } begin;
     struct {
       uint32_t color;
@@ -205,6 +208,12 @@ static_assert(offsetof(DisplayListItem, payload.begin.w) == 20,
               "begin.w must be at offset 20");
 static_assert(offsetof(DisplayListItem, payload.begin.h) == 24,
               "begin.h must be at offset 24");
+static_assert(offsetof(DisplayListItem, payload.begin.overflow_x) == 28,
+              "begin.overflow_x must be at offset 28");
+static_assert(offsetof(DisplayListItem, payload.begin.overflow_y) == 32,
+              "begin.overflow_y must be at offset 32");
+static_assert(offsetof(DisplayListItem, payload.begin.is_layout_only) == 36,
+              "begin.is_layout_only must be at offset 36");
 
 // Fill payload offsets
 static_assert(offsetof(DisplayListItem, payload.fill.color) == 4,

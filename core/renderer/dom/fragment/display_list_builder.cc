@@ -29,6 +29,14 @@ void DisplayListBuilder::Reserve(int32_t capacity) {
 DisplayListBuilder& DisplayListBuilder::Begin(int id, PlatformRendererType type,
                                               float x, float y, float width,
                                               float height) {
+  return Begin(id, type, x, y, width, height, false, false, false);
+}
+
+DisplayListBuilder& DisplayListBuilder::Begin(int id, PlatformRendererType type,
+                                              float x, float y, float width,
+                                              float height, bool overflow_x,
+                                              bool overflow_y,
+                                              bool is_layout_only) {
   display_list_.AddOperation(DisplayListOpType::kBegin, id,
                              static_cast<int32_t>(type), x, y, width, height);
   DisplayListItem item{};
@@ -39,6 +47,9 @@ DisplayListBuilder& DisplayListBuilder::Begin(int id, PlatformRendererType type,
   item.payload.begin.y = y;
   item.payload.begin.w = width;
   item.payload.begin.h = height;
+  item.payload.begin.overflow_x = static_cast<int32_t>(overflow_x);
+  item.payload.begin.overflow_y = static_cast<int32_t>(overflow_y);
+  item.payload.begin.is_layout_only = static_cast<int32_t>(is_layout_only);
   display_list_.AppendItem(item);
   return *this;
 }

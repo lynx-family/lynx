@@ -18,7 +18,7 @@ describe('type-config index', () => {
     expect(compilerOptionsKeys).toEqual([]);
   });
   it('should have correct configKeys', () => {
-    expect(configKeys.length).toBe(31);
+    expect(configKeys.length).toBe(32);
     expect(configKeys).toEqual([
       'disableLongpressAfterScroll',
       'enableA11y',
@@ -33,6 +33,7 @@ describe('type-config index', () => {
       'enableFlexBasisZeroPercent',
       'enableGridPlacementShorthands',
       'enableJsBindingApiThrowException',
+      'enableLayoutOnlyEventThrough',
       'enableListNewArchitecture',
       'enableMultiTouch',
       'enableNativeList',
