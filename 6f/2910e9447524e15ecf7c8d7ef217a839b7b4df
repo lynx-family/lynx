@@ -1,0 +1,118 @@
+e2e/lynx-e2e-mvp/src/android-app-controller.ts
+  s_bc2dfdc372a653::t_c6c76177c557ba 78-80,84-96,98 gitai:{"mixed_line_ranges":[],"operations":[{"operation_id":"6a60962d7dad67aaaa5efdfd","tool_type":"agent","tool_id":"SearchReplace","line_ranges":[{"Range":[78,80]},{"Range":[84,96]},{"Single":98}]}]}
+  s_bc2dfdc372a653::t_7173a3b21a4f2a 81 gitai:{"mixed_line_ranges":[],"operations":[{"operation_id":"6a6096407dad67aaaa5efe00","tool_type":"agent","tool_id":"SearchReplace","line_ranges":[{"Single":81}]}]}
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "6f2910e9447524e15ecf7c8d7ef217a839b7b4df",
+  "prompts": {},
+  "humans": {
+    "h_dc1658ba751399": {
+      "author": "tangyongjie <tangyongjie@bytedance.com>"
+    }
+  },
+  "sessions": {
+    "s_bc2dfdc372a653": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a6069937dad67aaaa5efc32",
+        "model": "gemini-3.1-pro__dev"
+      },
+      "human_author": "tangyongjie <tangyongjie@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {
+    "e2e/lynx-e2e-mvp/src/android-app-controller.ts": [
+      {
+        "hash": "s_bc2dfdc372a653::t_c6c76177c557ba",
+        "line_ranges": [
+          {
+            "Range": [
+              78,
+              80
+            ]
+          },
+          {
+            "Range": [
+              84,
+              96
+            ]
+          },
+          {
+            "Single": 98
+          }
+        ],
+        "mixed_line_ranges": [],
+        "operations": [
+          {
+            "operation_id": "6a60962d7dad67aaaa5efdfd",
+            "tool_type": "agent",
+            "tool_id": "SearchReplace",
+            "line_ranges": [
+              {
+                "Range": [
+                  78,
+                  80
+                ]
+              },
+              {
+                "Range": [
+                  84,
+                  96
+                ]
+              },
+              {
+                "Single": 98
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "hash": "s_bc2dfdc372a653::t_7173a3b21a4f2a",
+        "line_ranges": [
+          {
+            "Single": 81
+          }
+        ],
+        "mixed_line_ranges": [],
+        "operations": [
+          {
+            "operation_id": "6a6096407dad67aaaa5efe00",
+            "tool_type": "agent",
+            "tool_id": "SearchReplace",
+            "line_ranges": [
+              {
+                "Single": 81
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "remote_transcripts": {
+    "s_bc2dfdc372a653": {
+      "tool": "trae",
+      "conversation_id": "6a6069937dad67aaaa5efc32",
+      "session_id": "6a6069937dad67aaaa5efc32",
+      "status": "remote_only",
+      "message": "Remote transcript resolution is not implemented yet for TRAE prompts."
+    },
+    "s_bc2dfdc372a653::t_7173a3b21a4f2a": {
+      "tool": "trae",
+      "conversation_id": "6a6069937dad67aaaa5efc32",
+      "session_id": "6a6069937dad67aaaa5efc32",
+      "status": "remote_only",
+      "message": "Remote transcript resolution is not implemented yet for TRAE prompts."
+    },
+    "s_bc2dfdc372a653::t_c6c76177c557ba": {
+      "tool": "trae",
+      "conversation_id": "6a6069937dad67aaaa5efc32",
+      "session_id": "6a6069937dad67aaaa5efc32",
+      "status": "remote_only",
+      "message": "Remote transcript resolution is not implemented yet for TRAE prompts."
+    }
+  }
+}

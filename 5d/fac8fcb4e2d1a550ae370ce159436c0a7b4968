@@ -1,0 +1,34 @@
+lynx/core/public/pipeline_option.h
+  h_4d36f4d76420fe 117-119
+lynx/js_libraries/type-element-api/types/element-api.d.ts
+  h_4d36f4d76420fe 290
+lynx/core/runtime/lepus/bindings/renderer_functions.cc
+  s_b351e4b18099ae::t_1f4e68008787e9 5225
+  h_4d36f4d76420fe 5250
+  s_b351e4b18099ae::t_c39c78dfd7bf4a 5226-5228
+lynx/core/template_bundle/template_codec/binary_decoder/lynx_config.yml
+  h_4d36f4d76420fe 1989,2011
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "5dfac8fcb4e2d1a550ae370ce159436c0a7b4968",
+  "prompts": {},
+  "humans": {
+    "h_4d36f4d76420fe": {
+      "author": "yangguangzhao <yangguangzhao.solace@bytedance.com>"
+    }
+  },
+  "sessions": {
+    "s_b351e4b18099ae": {
+      "agent_id": {
+        "tool": "trae-cue",
+        "id": "ai_tab-icr-76fe04c9-6520-4cc1-baa5-23038e890799",
+        "model": "default"
+      },
+      "human_author": "yangguangzhao <yangguangzhao.solace@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}
