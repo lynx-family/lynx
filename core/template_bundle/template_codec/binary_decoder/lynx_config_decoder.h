@@ -986,6 +986,15 @@ class LynxConfigDecoder final {
       page_config->SetEnableElementInvokeUIMethodPendingTask(
           LynxEnv::GetInstance().EnableElementInvokeUIMethodPendingTask());
     }
+
+    if (doc.HasMember(config::kEnableAutoNonFlatten) &&
+        doc[config::kEnableAutoNonFlatten].IsBool()) {
+      page_config->SetEnableAutoNonFlatten(
+          doc[config::kEnableAutoNonFlatten].GetBool());
+    } else {
+      page_config->SetEnableAutoNonFlatten(
+          LynxEnv::GetInstance().EnableAutoNonFlatten());
+    }
   };
 };
 }  // namespace tasm
