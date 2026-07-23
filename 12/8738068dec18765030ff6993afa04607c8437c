@@ -1,0 +1,23 @@
+lynx/clay/ui/component/text/text_selection_unittests.cc
+  s_cf0766d88f03f9::t_2052a7b0379b12 1-143
+lynx/clay/ui/component/text/text_view.h
+  s_cf0766d88f03f9::t_bd35c1f1be3651 29,120-121,141-144,168-169
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "128738068dec18765030ff6993afa04607c8437c",
+  "prompts": {},
+  "sessions": {
+    "s_cf0766d88f03f9": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f89f4-edd6-7f21-af89-592fe0a37ea5",
+        "model": "unknown"
+      },
+      "human_author": "liangruijie.030116 <liangruijie.030116@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}
