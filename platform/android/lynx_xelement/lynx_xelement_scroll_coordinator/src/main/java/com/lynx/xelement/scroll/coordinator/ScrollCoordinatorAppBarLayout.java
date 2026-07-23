@@ -3,6 +3,7 @@
 // LICENSE file in the root directory of this source tree.
 package com.lynx.xelement.scroll.coordinator;
 
+import android.animation.ValueAnimator;
 import android.content.Context;
 import android.util.AttributeSet;
 import android.view.MotionEvent;
@@ -77,6 +78,7 @@ public class ScrollCoordinatorAppBarLayout
     private boolean isFlinging;
     private boolean shouldBlockNestedScroll;
     private Field cachedFlingRunnableField;
+    private Field cachedOffsetAnimatorField;
     private Method scrollMethod;
     private Method getDownNestedScrollRange;
     private Method updateAccessibilityActions;
@@ -200,6 +202,14 @@ public class ScrollCoordinatorAppBarLayout
       }
     }
 
+    private Field getOffsetAnimatorField() throws NoSuchFieldException {
+      if (cachedOffsetAnimatorField == null) {
+        cachedOffsetAnimatorField =
+            AppBarLayout.Behavior.class.getSuperclass().getDeclaredField("offsetAnimator");
+      }
+      return cachedOffsetAnimatorField;
+    }
+
     protected void stopAppBarLayoutFling(AppBarLayout appBarLayout) {
       try {
         Field flingRunnableField = getFlingRunnableField();
@@ -220,6 +230,13 @@ public class ScrollCoordinatorAppBarLayout
           if (overScroller != null && !overScroller.isFinished()) {
             overScroller.abortAnimation();
           }
+        }
+
+        Field offsetAnimatorField = getOffsetAnimatorField();
+        offsetAnimatorField.setAccessible(true);
+        ValueAnimator offsetAnimator = (ValueAnimator) offsetAnimatorField.get(this);
+        if (offsetAnimator != null) {
+          offsetAnimator.cancel();
         }
       } catch (NoSuchFieldException e) {
         e.printStackTrace();

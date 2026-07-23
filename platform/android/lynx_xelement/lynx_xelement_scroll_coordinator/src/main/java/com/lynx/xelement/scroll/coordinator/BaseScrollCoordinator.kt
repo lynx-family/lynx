@@ -66,6 +66,10 @@ abstract class BaseScrollCoordinator<
     coordinatorLayout.getAppBarLayout().addOnOffsetChangedListener(
       object : AppBarLayout.OnOffsetChangedListener {
         override fun onOffsetChanged(layout: AppBarLayout?, offset: Int) {
+          val behavior = (layout?.layoutParams as? CoordinatorLayout.LayoutParams)?.behavior
+          if (behavior is AppBarLayout.Behavior && offset != behavior.topAndBottomOffset) {
+            return
+          }
           onAppBarOffsetChanged(layout, offset)
           if (abs(lastOffset - offset) > getHeaderTapSlopSize()) {
             recognizeGesturere()
