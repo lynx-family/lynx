@@ -4,6 +4,7 @@
 
 #include "core/renderer/dom/fragment/event/platform_event_target.h"
 
+#include <algorithm>
 #include <cstring>
 #include <utility>
 
@@ -30,6 +31,16 @@ void PlatformEventTarget::RefreshScrollOffset() {
   UpdateScrollOffsetIfNeeded();
 }
 
+void PlatformEventTarget::SetTransform(const float transform[16]) {
+  if (transform == nullptr) {
+    transform_.reset();
+    return;
+  }
+  std::array<float, 16> matrix;
+  std::copy_n(transform, matrix.size(), matrix.begin());
+  (*transform_).Matrix(matrix);
+}
+
 void PlatformEventTarget::UpdateScrollOffsetIfNeeded() {
   if (scroll_offset_updated_ || !is_scroll_container_) {
     return;
@@ -48,7 +59,7 @@ fml::RefPtr<PlatformEventTarget> PlatformEventTarget::HitTest(float point[2]) {
   fml::RefPtr<PlatformEventTarget> target = nullptr;
   const auto& children = ChildrenTargets();
   int children_size = static_cast<int>(children.size());
-  int sibling_target_idx = 0;
+  int target_idx = -1;
   float child_point[2] = {0.f};
   float target_point[2] = {point[0], point[1]};
   // find hit_target by traversing the sibling nodes in reverse.
@@ -61,19 +72,22 @@ fml::RefPtr<PlatformEventTarget> PlatformEventTarget::HitTest(float point[2]) {
                             point);
     if (child->ContainsPoint(child_point)) {
       memcpy(target_point, child_point, sizeof(float) * 2);
-      sibling_target_idx = i + 1;
+      target_idx = i;
       target = child;
       break;
     }
   }
 
-  auto hit_target = target ? target->HitTest(target_point)
-                           : fml::RefPtr<PlatformEventTarget>(this);
+  auto hit_target =
+      target ? target->HitTest(target_point)
+             : (is_layout_only_ ? nullptr
+                                : fml::RefPtr<PlatformEventTarget>(this));
   // when a node has pointer-events:none set, the hit_target needs to be found
   // again.
   if (!hit_target ||
       hit_target->PointerEvents() == LynxPointerEventsValue::kNone) {
-    for (int i = sibling_target_idx; i < children_size; ++i) {
+    hit_target = nullptr;
+    for (int i = target_idx - 1; i >= 0; --i) {
       auto sibling_target = children[i];
       if (!sibling_target || !sibling_target->ShouldHitTest()) {
         continue;
@@ -85,12 +99,17 @@ fml::RefPtr<PlatformEventTarget> PlatformEventTarget::HitTest(float point[2]) {
         continue;
       }
       hit_target = sibling_target->HitTest(sibling_point);
-      if (hit_target) {
+      if (hit_target &&
+          hit_target->PointerEvents() != LynxPointerEventsValue::kNone) {
         break;
       }
+      hit_target = nullptr;
     }
   }
-  return hit_target ? hit_target : fml::RefPtr<PlatformEventTarget>(this);
+  if (hit_target) {
+    return hit_target;
+  }
+  return is_layout_only_ ? nullptr : fml::RefPtr<PlatformEventTarget>(this);
 }
 
 bool PlatformEventTarget::ShouldHitTest() const {
@@ -105,11 +124,21 @@ void PlatformEventTarget::GetPointInTarget(
       point);
 }
 
-bool PlatformEventTarget::ContainsPoint(float point[2]) const {
+bool PlatformEventTarget::ContainsPoint(float point[2]) {
   float x = point[0];
   float y = point[1];
   if (x >= 0.f && x <= Width() && y >= 0.f && y <= Height()) {
     return true;
+  }
+  if (overflow_x_ && !overflow_y_ && (y < 0.f || y > Height())) {
+    return false;
+  }
+  if (overflow_y_ && !overflow_x_ && (x < 0.f || x > Width())) {
+    return false;
+  }
+  if (overflow_x_ || overflow_y_) {
+    auto hit_target = HitTest(point);
+    return hit_target != nullptr && hit_target.get() != this;
   }
   return false;
 }

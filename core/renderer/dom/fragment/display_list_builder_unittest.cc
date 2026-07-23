@@ -49,6 +49,28 @@ TEST_F(DisplayListBuilderTest, BeginOperation) {
   EXPECT_FALSE(reader.HasNext());
 }
 
+TEST_F(DisplayListBuilderTest, BeginOperationWithHitTestState) {
+  builder_->Begin(0, PlatformRendererType::kView, 10.0f, 20.0f, 100.0f, 200.0f,
+                  true, false, true);
+
+  DisplayList display_list = builder_->Build();
+  DisplayListReader reader(display_list);
+  ASSERT_TRUE(reader.HasNext());
+  const auto& item = reader.Next();
+  EXPECT_EQ(item.type, DisplayListOpType::kBegin);
+  EXPECT_EQ(item.payload.begin.id, 0);
+  EXPECT_EQ(item.payload.begin.type,
+            static_cast<int32_t>(PlatformRendererType::kView));
+  EXPECT_FLOAT_EQ(item.payload.begin.x, 10.0f);
+  EXPECT_FLOAT_EQ(item.payload.begin.y, 20.0f);
+  EXPECT_FLOAT_EQ(item.payload.begin.w, 100.0f);
+  EXPECT_FLOAT_EQ(item.payload.begin.h, 200.0f);
+  EXPECT_EQ(item.payload.begin.overflow_x, 1);
+  EXPECT_EQ(item.payload.begin.overflow_y, 0);
+  EXPECT_EQ(item.payload.begin.is_layout_only, 1);
+  EXPECT_FALSE(reader.HasNext());
+}
+
 TEST_F(DisplayListBuilderTest, EndOperation) {
   builder_->End();
 
