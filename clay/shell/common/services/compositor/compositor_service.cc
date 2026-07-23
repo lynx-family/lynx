@@ -38,12 +38,12 @@ BackgroundSubmit PrepareBackgroundSubmit(
   // macOS background submit starts from the raster thread, so it must not be
   // wrapped in a CATransaction. Overlay submits still stay in PresenterService
   // on the platform thread.
-  background_frame.set_submit_info({.present_with_transaction = false});
+  background_frame.set_present_with_transaction(false);
   bool did_encode = background_frame.Encode();
   return {.did_encode = did_encode,
           .submit_info = background_frame.PrepareSubmit()};
 #else
-  background_frame.set_submit_info({.present_with_transaction = true});
+  background_frame.set_present_with_transaction(true);
   bool did_encode = background_frame.Encode();
   submit_infos.push_back(background_frame.PrepareSubmit());
   return {.did_encode = did_encode};
@@ -140,7 +140,7 @@ bool CompositorService::SubmitFrame(
     // Overlay submits stay in PresenterService on the platform thread. On
     // macOS, PresenterServiceMac batches them with CALayer mutations in one
     // CATransaction.
-    frame->set_submit_info({.present_with_transaction = true});
+    frame->set_present_with_transaction(true);
     did_encode &= frame->Encode();
 
     platform_overlays[overlay_data.view_id] = overlay_data;

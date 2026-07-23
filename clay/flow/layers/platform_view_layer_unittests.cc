@@ -63,9 +63,10 @@ TEST_F(PlatformViewLayerTest, ClippedPlatformViewDoesNotComposite) {
   parent_clip_layer->Preroll(preroll_context());
   EXPECT_FALSE(preroll_context()->has_platform_view);
   EXPECT_TRUE(compositor_state.GetCompositionOrder().empty());
-  EXPECT_EQ(layer->paint_bounds(),
-            skity::Rect::MakeSize({layer_size.x, layer_size.y})
-                .MakeOffset(layer_offset.x, layer_offset.y));
+  // The disjoint parent and child clips quick-reject the entire subtree before
+  // the platform view is visited during preroll, so its paint bounds remain
+  // empty.
+  EXPECT_EQ(layer->paint_bounds(), skity::Rect::MakeEmpty());
   EXPECT_FALSE(layer->subtree_has_platform_view());
   EXPECT_FALSE(child_clip_layer->subtree_has_platform_view());
   EXPECT_FALSE(parent_clip_layer->subtree_has_platform_view());

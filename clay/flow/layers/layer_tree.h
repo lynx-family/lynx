@@ -69,6 +69,11 @@ class LayerTree {
   const PaintRegionMap& paint_region_map() const { return paint_region_map_; }
   PaintRegionMap& paint_region_map() { return paint_region_map_; }
 
+  void BeginRetainedPreroll();
+  uint64_t retained_preroll_generation() const {
+    return retained_preroll_generation_;
+  }
+
   // The number of frame intervals missed after which the compositor must
   // trace the rasterized picture to a trace file. Specify 0 to disable all
   // tracing
@@ -167,6 +172,7 @@ class LayerTree {
   bool has_platform_view_layer_ = false;
 
   PaintRegionMap paint_region_map_;
+  uint64_t retained_preroll_generation_ = 0;
 
   std::vector<RasterCacheItem*> raster_cache_items_;
 

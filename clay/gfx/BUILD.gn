@@ -125,6 +125,10 @@ if (enable_unittests) {
       "testing_utils.h",
     ]
 
+    if (enable_skity) {
+      sources += [ "paint_recorder_skity_unittests.cc" ]
+    }
+
     deps = [
       ":gfx",
       ":gfx_fixtures",

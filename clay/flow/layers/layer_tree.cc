@@ -7,6 +7,8 @@
 
 #include "clay/flow/layers/layer_tree.h"
 
+#include <atomic>
+
 #include "base/include/fml/time/time_point.h"
 #include "base/trace/native/trace_event.h"
 #include "clay/flow/embedded_views.h"
@@ -21,6 +23,19 @@
 #include "clay/gfx/skity_to_skia_utils.h"
 
 namespace clay {
+
+namespace {
+
+uint64_t NextRetainedPrerollGeneration() {
+  static std::atomic<uint64_t> next_generation(1);
+  uint64_t generation;
+  do {
+    generation = next_generation.fetch_add(1);
+  } while (generation == 0);
+  return generation;
+}
+
+}  // namespace
 
 LayerTree::LayerTree(const skity::Vec2& frame_size, float device_pixel_ratio)
     : frame_size_(frame_size),
@@ -98,13 +113,25 @@ bool LayerTree::Preroll(CompositorContext::ScopedFrame& frame,
       .drawable_image_registry       = frame.context().drawable_image_registry(),
       .frame_device_pixel_ratio      = device_pixel_ratio_,
       .raster_cached_entries         = &raster_cache_items_,
-      .request_new_frame             = request_new_frame_
+      .request_new_frame             = request_new_frame_,
+      .retained_preroll_generation   = retained_preroll_generation_
       // clang-format on
   };
 
+  const size_t raster_cache_entry_count_before = raster_cache_items_.size();
   root_layer_->Preroll(&context);
+  root_layer_->SavePrerollSummary(context, raster_cache_entry_count_before);
+  retained_preroll_generation_ = 0;
 
   return context.surface_needs_readback;
+}
+
+void LayerTree::BeginRetainedPreroll() {
+  if (!root_layer_) {
+    FML_DLOG(ERROR) << "The scene did not specify any layers to preroll.";
+    return;
+  }
+  retained_preroll_generation_ = NextRetainedPrerollGeneration();
 }
 
 void LayerTree::TryToRasterCache(
