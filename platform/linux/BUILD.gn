@@ -9,7 +9,7 @@ shared_library("linux") {
 
   sources = [
     "../embedder/lynx_ui_renderer_mock.cc",
-    "lynx_platform_fallbacks.cc",
+    # "lynx_platform_fallbacks.cc",
   ]
 
   deps = [ ":lynx_linux_group" ]

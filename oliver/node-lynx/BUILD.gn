@@ -81,13 +81,6 @@ source_set("node_lynx_native") {
     ]
     deps += [ ":node_lynx_darwin_error_codes" ]
   }
-
-  if (is_linux) {
-    sources += [
-      "../../core/services/event_report/event_tracker_platform_impl.cc",
-      "../../platform/embedder/resource/js_source_loader_desktop.cc",
-    ]
-  }
 }
 
 oliver_node_lib("create_node_lynx") {

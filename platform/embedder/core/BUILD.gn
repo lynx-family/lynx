@@ -23,7 +23,7 @@ lynx_core_source_set("renderer") {
   ]
 
   if (!enable_unittests) {
-    if (is_win || is_mac) {
+    if (is_win || is_mac || is_linux) {
       sources += [ "../../../core/services/event_report/embedder/event_tracker_platform_embedder_impl.cc" ]
     }
   }
