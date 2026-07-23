@@ -5,6 +5,7 @@
 #include "devtool/lynx_devtool/agent/inspector_tasm_executor.h"
 
 #include <algorithm>
+#include <cmath>
 #include <queue>
 #include <unordered_map>
 #include <unordered_set>
@@ -236,8 +237,10 @@ Json::Value ConvertBoxModelToJson(const std::vector<double>& box_model,
     return Json::Value();
   }
   Json::Value model(Json::ValueType::objectValue);
-  model["width"] = box_model[0] / layouts_unit_per_px * screen_scale_factor;
-  model["height"] = box_model[1] / layouts_unit_per_px * screen_scale_factor;
+  model["width"] = static_cast<int>(
+      std::round(box_model[0] / layouts_unit_per_px * screen_scale_factor));
+  model["height"] = static_cast<int>(
+      std::round(box_model[1] / layouts_unit_per_px * screen_scale_factor));
   model["content"] = Json::Value(Json::ValueType::arrayValue);
   for (int i = 2; i <= 9; ++i) {
     model["content"].append(box_model[i] / layouts_unit_per_px *
