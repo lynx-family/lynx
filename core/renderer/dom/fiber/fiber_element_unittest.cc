@@ -18580,6 +18580,24 @@ TEST_P(FiberElementTest, TestCheckFlattenRelatedProp) {
   page->CheckFlattenRelatedProp("overlap", lepus::Value("xxx"));
   EXPECT_TRUE(page->has_non_flatten_attrs_);
 
+  const std::vector<std::string> non_flatten_attrs = {
+      "text-selection",
+      "custom-context-menu",
+      "custom-text-selection",
+      "selection-background-color",
+      "selection-handle-color",
+      "selection-handle-size",
+      "hardware-layer",
+      "shared-element",
+      "pan-intercept-direction",
+      "pan-intercept-scope",
+      "lynx-test-tag"};
+  for (const auto& attr : non_flatten_attrs) {
+    page->has_non_flatten_attrs_ = false;
+    page->CheckFlattenRelatedProp(attr, lepus::Value("xxx"));
+    EXPECT_TRUE(page->has_non_flatten_attrs_);
+  }
+
   page->has_non_flatten_attrs_ = false;
   page->CheckFlattenRelatedProp("exposure-scene", lepus::Value());
   EXPECT_FALSE(page->has_non_flatten_attrs_);
