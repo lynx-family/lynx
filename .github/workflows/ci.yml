@@ -455,11 +455,8 @@ jobs:
           abi-list: x86,arm64-v8a
           build-params: -PIntegrationTest
 
-  windows-explorer-build:
+  windows-explorer-build-x64:
     runs-on: lynx-windows-2022-large
-    strategy:
-      matrix:
-        arch: [x86, x64]
     steps:
       - name: Configure Git
         shell: PowerShell
@@ -483,7 +480,7 @@ jobs:
       - name: Build windows Explorer
         uses: ./lynx/.github/actions/windows-explorer-build
         with:
-          build-arch: ${{ matrix.arch }}
+          build-arch: x64
 
   android-sdk-release:
     timeout-minutes: 60
