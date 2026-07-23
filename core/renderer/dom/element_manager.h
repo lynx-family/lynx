@@ -486,6 +486,10 @@ class ElementManager : public LayoutScheduler::LayoutSchedulerImpl {
     return enable_layout_only_;
   }
 
+  bool GetEnableLayoutOnlyEventThrough() const {
+    return config_ && config_->GetEnableLayoutOnlyEventThrough();
+  }
+
   bool GetEnableComponentLayoutOnly() {
     if (config_) {
       return config_->GetEnableComponentLayoutOnly();

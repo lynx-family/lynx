@@ -20,6 +20,7 @@ const configKeys = [
   'enableFlexBasisZeroPercent',
   'enableGridPlacementShorthands',
   'enableJsBindingApiThrowException',
+  'enableLayoutOnlyEventThrough',
   'enableListNewArchitecture',
   'enableMultiTouch',
   'enableNativeList',
