@@ -2005,3 +2005,13 @@ enableElementInvokeUIMethodPendingTask:
     - Android
     - HarmonyOS
     - iOS
+enableAutoNonFlatten:
+  description: Controls whether Android automatically creates platform views for nodes with view-dependent attributes or CSS properties and for direct children of containers that cannot render flattened children. When disabled, these cases keep the legacy flatten behavior unless the page explicitly disables flattening.
+  defaultValue: 'false'
+  valueType: bool
+  readSettings: true
+  readNative: true
+  author: liuzhenyue
+  since: '4.1'
+  supportPlatform:
+    - Android
