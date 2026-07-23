@@ -1,0 +1,108 @@
+lynx/platform/android/lynx_devtool/src/main/java/com/lynx/devtool/DevToolPlatformAndroidDelegate.java
+  s_3c0aa9419d0d0d::t_9fe0e16eea304a 6,9,12,396,399-400,408,415-425 gitai:{"mixed_line_ranges":[],"operations":[{"operation_id":"6a61972a3439eec6d56e2f77","tool_type":"agent","tool_id":"apply_patch","line_ranges":[{"Single":6},{"Single":9},{"Single":12},{"Single":396},{"Range":[399,400]},{"Single":408},{"Range":[415,425]}]}]}
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "0537fc2796d618bb51c374b526ea94490f6a1e84",
+  "prompts": {},
+  "sessions": {
+    "s_3c0aa9419d0d0d": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a4f397cc2d0de288444ce7f",
+        "model": "gpt-5.5__dev"
+      },
+      "human_author": "gaohanqing <gaohanqing@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {
+    "lynx/platform/android/lynx_devtool/src/main/java/com/lynx/devtool/DevToolPlatformAndroidDelegate.java": [
+      {
+        "hash": "s_3c0aa9419d0d0d::t_9fe0e16eea304a",
+        "line_ranges": [
+          {
+            "Single": 6
+          },
+          {
+            "Single": 9
+          },
+          {
+            "Single": 12
+          },
+          {
+            "Single": 396
+          },
+          {
+            "Range": [
+              399,
+              400
+            ]
+          },
+          {
+            "Single": 408
+          },
+          {
+            "Range": [
+              415,
+              425
+            ]
+          }
+        ],
+        "mixed_line_ranges": [],
+        "operations": [
+          {
+            "operation_id": "6a61972a3439eec6d56e2f77",
+            "tool_type": "agent",
+            "tool_id": "apply_patch",
+            "line_ranges": [
+              {
+                "Single": 6
+              },
+              {
+                "Single": 9
+              },
+              {
+                "Single": 12
+              },
+              {
+                "Single": 396
+              },
+              {
+                "Range": [
+                  399,
+                  400
+                ]
+              },
+              {
+                "Single": 408
+              },
+              {
+                "Range": [
+                  415,
+                  425
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "remote_transcripts": {
+    "s_3c0aa9419d0d0d": {
+      "tool": "trae",
+      "conversation_id": "6a4f397cc2d0de288444ce7f",
+      "session_id": "6a4f397cc2d0de288444ce7f",
+      "status": "remote_only",
+      "message": "Remote transcript resolution is not implemented yet for TRAE prompts."
+    },
+    "s_3c0aa9419d0d0d::t_9fe0e16eea304a": {
+      "tool": "trae",
+      "conversation_id": "6a4f397cc2d0de288444ce7f",
+      "session_id": "6a4f397cc2d0de288444ce7f",
+      "status": "remote_only",
+      "message": "Remote transcript resolution is not implemented yet for TRAE prompts."
+    }
+  }
+}
