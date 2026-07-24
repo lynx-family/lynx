@@ -1,0 +1,14 @@
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "2423e5b371be6f6386b5d6d40717bc99355f1e78",
+  "prompts": {},
+  "humans": {
+    "h_60092a9f9e5d37": {
+      "author": "wujintian <wujintian@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

@@ -1,0 +1,28 @@
+.codebase/rule_engine.yaml
+  h_5d55ae48d5699d 38-39
+.cq/workflows/periodic-tasks.yml
+  h_5d55ae48d5699d 1
+.cq/workflows/deploy.yml
+  h_5d55ae48d5699d 1
+testing/tools/run_host_test_prepare.py
+  h_5d55ae48d5699d 29,31,33,35,38,40,42,47,49,52,54,56
+lynx/.github/workflows/publish-release.yml
+  h_5d55ae48d5699d 29
+lynx/core/renderer/tasm/config.h
+  h_5d55ae48d5699d 27
+.cq/workflows/regress.yml
+  h_5d55ae48d5699d 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ec47a38303314debe511539f012072364152b684",
+  "prompts": {},
+  "humans": {
+    "h_5d55ae48d5699d": {
+      "author": "wujunao <wujunao@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

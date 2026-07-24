@@ -1,0 +1,27 @@
+.cq/workflows/periodic-tasks.yml
+  s_31ba0d6521f78c::t_ca5c938dda1c66 1052
+  h_7a1e47632c7d77 1053-1153
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "0ab0aa62a6b03236ce462204ae3f8baaa28e13af",
+  "prompts": {},
+  "humans": {
+    "h_7a1e47632c7d77": {
+      "author": "gaohanqing <gaohanqing@bytedance.com>"
+    }
+  },
+  "sessions": {
+    "s_31ba0d6521f78c": {
+      "agent_id": {
+        "tool": "trae-cue",
+        "id": "ai_tab-icr-b430f169-5d5f-421f-a06c-b33f51cfce33",
+        "model": "default"
+      },
+      "human_author": null
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

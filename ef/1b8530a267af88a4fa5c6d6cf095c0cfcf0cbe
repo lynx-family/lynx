@@ -1,0 +1,18 @@
+.cq/pipelines/GithubCQTest.yml
+  h_7a1e47632c7d77 28
+.cq/pipelines/RunExternalCI.yml
+  h_7a1e47632c7d77 17,27
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "ef1b8530a267af88a4fa5c6d6cf095c0cfcf0cbe",
+  "prompts": {},
+  "humans": {
+    "h_7a1e47632c7d77": {
+      "author": "gaohanqing <gaohanqing@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

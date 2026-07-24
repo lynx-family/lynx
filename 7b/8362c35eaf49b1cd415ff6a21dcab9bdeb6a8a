@@ -1,0 +1,107 @@
+testing/lynx-platform-tests/test_script/case_sets/scrollview/scrollview_issue_6846.py
+  h_dc1658ba751399 14
+testing/lynx-platform-tests/test_script/case_sets/scrollview/scrollview_basic.py
+  s_d4cf0fba0f6bcf::t_b2e19f02b228cd 12-13
+testing/lynx-platform-tests/test_script/case_sets/scrollview/rtl.py
+  s_c519defdbbc189::t_62c50002022278 10-11
+testing/lynx-platform-tests/test_script/lynxlib/test_runner/plugins/pc_mobile_diff_plugin.py
+  h_dc1658ba751399 58-71,111
+testing/lynx-platform-tests/test_script/case_sets/scrollview/scroll_into_view.py
+  s_13e0f6bd732ecd::t_7ee01dee528d02 10-11
+testing/lynx-platform-tests/test_script/case_sets/image/border-width.py
+  s_bf8582f935c627::t_77528443c3bc45 10
+.cq/pipelines/windows-vs-android-e2e-component-test.yml
+  h_dc1658ba751399 32
+testing/lynx-platform-tests/test_script/case_sets/image/placeholder_n_loop_count.py
+  s_c8e426d52d2409::t_d33869e03d223b 15
+.cq/workflows/periodic-tasks.yml
+  s_56cf9c6b47c130::t_f05167d5b1cb5a 948-955,977-978
+.cq/pipelines/pc-vs-mobile-e2e-test-reporter.yml
+  h_dc1658ba751399 35-37
+  s_56cf9c6b47c130::t_e9e7d32fae8b11 39-42
+.cq/pipelines/windows-vs-android-e2e-css-test.yml
+  s_56cf9c6b47c130::t_262c7871ee66b5 1-40
+testing/lynx-platform-tests/test_script/case_sets/scrollview/scrollview_clip.py
+  s_4d2f9c4e0139b8::t_86601eeeadc65d 10-11
+testing/lynx-platform-tests/test_script/case_sets/scrollview/scrollview_padding.py
+  s_11a21e163b5861::t_ba31f35aac4e4b 11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7b8362c35eaf49b1cd415ff6a21dcab9bdeb6a8a",
+  "prompts": {},
+  "humans": {
+    "h_dc1658ba751399": {
+      "author": "tangyongjie <tangyongjie@bytedance.com>"
+    }
+  },
+  "sessions": {
+    "s_11a21e163b5861": {
+      "agent_id": {
+        "tool": "trae-cue",
+        "id": "ai_tab-icr-5784f366-c096-44b4-9d02-c3f8f486b4d9",
+        "model": "default"
+      },
+      "human_author": null
+    },
+    "s_13e0f6bd732ecd": {
+      "agent_id": {
+        "tool": "trae-cue",
+        "id": "ai_tab-icr-ead2f82b-8a16-4c6c-888c-58634a9945a0",
+        "model": "default"
+      },
+      "human_author": null
+    },
+    "s_4d2f9c4e0139b8": {
+      "agent_id": {
+        "tool": "trae-cue",
+        "id": "ai_tab-icr-3214fa5d-157c-43de-a158-d85b12c77909",
+        "model": "default"
+      },
+      "human_author": null
+    },
+    "s_56cf9c6b47c130": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a3143f1876122c85f1a06ff",
+        "model": "gemini-3.1-pro__dev"
+      },
+      "human_author": "tangyongjie <tangyongjie@bytedance.com>"
+    },
+    "s_bf8582f935c627": {
+      "agent_id": {
+        "tool": "trae-cue",
+        "id": "ai_tab-icr-16092d8b-a9db-487f-a5c9-8e67e510a828",
+        "model": "default"
+      },
+      "human_author": null
+    },
+    "s_c519defdbbc189": {
+      "agent_id": {
+        "tool": "trae-cue",
+        "id": "ai_tab-icr-f4944e22-a76b-4d7d-b229-92fcc9e2c28f",
+        "model": "default"
+      },
+      "human_author": null
+    },
+    "s_c8e426d52d2409": {
+      "agent_id": {
+        "tool": "trae-cue",
+        "id": "ai_tab-icr-7a96f7bc-9f66-47bc-8136-08b2aa22bf71",
+        "model": "default"
+      },
+      "human_author": null
+    },
+    "s_d4cf0fba0f6bcf": {
+      "agent_id": {
+        "tool": "trae-cue",
+        "id": "ai_tab-icr-cec757f6-6ff1-4102-8470-dd0eaaa8c1b4",
+        "model": "default"
+      },
+      "human_author": null
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

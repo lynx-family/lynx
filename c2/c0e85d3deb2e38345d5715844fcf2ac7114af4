@@ -1,0 +1,50 @@
+lynx/platform/harmony/lynx_devtool/src/main/ets/jsbridge/LynxWebSocketModule.ets
+  s_a741ef8972e277::t_10cdb7c8e68b9b 12-19,21,25,30,32,40-41,57-58,67-69,71-78,80-83,87,93-95,97,100,107-109,118-120,123,151-161
+  s_a741ef8972e277::t_102e6bda8902bb 162
+  s_a741ef8972e277::t_86372c1f4f3391 46-47
+platform/harmony/xelement/src/main/ets/ui/UIAudioPlayer.ets
+  s_a741ef8972e277::t_98719f64cf1a4f 110
+lynx/core/resource/lynx_info_reporter_helper_harmony.cc
+  s_a741ef8972e277::t_a933dc79fe9e58 55-62,77
+lynx/platform/harmony/lynx_services/lynx_image_service/src/main/cpp/image_service_harmony.cc
+  s_a741ef8972e277::t_27e3cc7fd06e4d 79-80
+  s_a741ef8972e277::t_4af122f0a7b74d 28,73-78
+lynx/core/resource/lynx_info_reporter_helper_harmony.h
+  s_a741ef8972e277::t_5c880849633f91 30-33
+lynx/platform/harmony/lynx_harmony/src/main/cpp/text/emoji_resource_manager.cc
+  s_a741ef8972e277::t_a3eab3eebcc5e8 96-98
+  s_a741ef8972e277::t_88e1ffb48ba38d 99-100
+lynx/core/services/event_report/harmony/event_tracker_platform_impl.cc
+  s_a741ef8972e277::t_6af08bd0f9a6ec 23-37,48
+lynx/platform/harmony/lynx_xelement/webview/src/main/ets/UIWebView.ets
+  s_a741ef8972e277::t_bab8240379e323 78-80,198,204-209,305-310
+lynx/platform/harmony/lynx_devtool/src/main/ets/logbox/LogBox.ets
+  s_a741ef8972e277::t_97e102d7684620 393
+lynx/platform/harmony/lynx_services/lynx_image_service/src/main/cpp/image_service_harmony.h
+  s_a741ef8972e277::t_d2370743631066 31
+platform/harmony/xelement/src/main/ets/ui/overlay/OverlayContentSlot.ets
+  s_a741ef8972e277::t_b07990a3b5308b 191,224-226,228-229
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "c2c0e85d3deb2e38345d5715844fcf2ac7114af4",
+  "prompts": {},
+  "humans": {
+    "h_58c1328e5c9f51": {
+      "author": "lijianchao <lijianchao.lgzy@bytedance.com>"
+    }
+  },
+  "sessions": {
+    "s_a741ef8972e277": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a58b145e3dfbe9402285ab3",
+        "model": "gpt-5.4__dev"
+      },
+      "human_author": "lijianchao <lijianchao.lgzy@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

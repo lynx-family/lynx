@@ -1,0 +1,51 @@
+core/runtime/rts/binding/c_api/renderer_function_ng_c_api.cc
+  s_7bbd46f49633e1::t_129e02a458e697 81-82,1500,1503
+core/runtime/rts/binding/c_api/renderer_function_ng_c_api.h
+  s_7bbd46f49633e1::t_659242ea018d07 409-413
+core/runtime/rts/binding/c_api/renderer_function_ng_c_api_unittest.cc
+  s_7bbd46f49633e1::t_082eb542a1ea28 16-17,343-344
+core/runtime/rts/binding/impls/renderer_function_ng.cc
+  s_7bbd46f49633e1::t_05958cfe3171f9 6,8,11-13,15,21-81,84-105
+lynx/core/shell/runtime/mts/mts_runtime.h
+  s_7bbd46f49633e1::t_35893cec3e8183 56-57
+lynx/platform/android/lynx_xelement/lynx_xelement_input/src/main/java/com/lynx/xelement/input/LynxUIBaseInput.kt
+  s_7bbd46f49633e1::t_902c9dc05473e2 223-226,228-229,231-232
+lynx/platform/android/lynx_xelement/lynx_xelement_input/src/main/java/com/lynx/xelement/input/LynxUIInput.kt
+  s_7bbd46f49633e1::t_265cf4fd2945b5 20-23,27-32
+lynx/platform/android/lynx_xelement/lynx_xelement_input/src/main/res/values/styles.xml
+  s_7bbd46f49633e1::t_bfa65fc936077e 1-20
+lynx/platform/darwin/ios/lynx_xelement/input/LynxUIInput.m
+  s_7bbd46f49633e1::t_ecdb1e5a3e1cba 13-19,171-173
+lynx/platform/darwin/ios/lynx_xelement/input/LynxUITextArea.m
+  s_7bbd46f49633e1::t_7f3c18bbc87656 14-20,306-308
+lynx/platform/harmony/lynx_xelement/input/ui_base_input.cc
+  s_7bbd46f49633e1::t_fb315a37b08f07 175,177,737-744,746-753
+lynx/platform/harmony/lynx_xelement/input/ui_base_input.h
+  s_7bbd46f49633e1::t_0ac38faeb21c41 35,43,119
+lynx/platform/harmony/lynx_xelement/input/ui_input.cc
+  s_7bbd46f49633e1::t_d777678eb7b866 165-166,169-171
+lynx/platform/harmony/lynx_xelement/input/ui_textarea.cc
+  s_7bbd46f49633e1::t_4a95bc93cc62a8 190,204-206
+platform/android/lynx_xelement/lynx_xelement_input/build.gradle
+  s_7bbd46f49633e1::t_acdb37d0b84c57 28-30
+platform/android/lynx_xelement/lynx_xelement_input/src/main/java/com/lynx/xelement/input/LynxUIInputNG.kt
+  s_7bbd46f49633e1::t_f6bdbcc6c97c2c 5-6,15-30
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.5",
+  "base_commit_sha": "4e0561e45c6458835332c1a63dfa3f84b2efef21",
+  "prompts": {},
+  "sessions": {
+    "s_7bbd46f49633e1": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f22fc-a556-7970-a17d-572ae3acd869",
+        "model": "unknown"
+      },
+      "human_author": "fangzheyuan <fangzheyuan@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

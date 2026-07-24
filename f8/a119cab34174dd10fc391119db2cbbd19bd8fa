@@ -1,0 +1,16 @@
+lynx/platform/embedder/lynx_devtool/logbox/debug_resource_store.cc
+  h_c7499b019d31b1 7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f8a119cab34174dd10fc391119db2cbbd19bd8fa",
+  "prompts": {},
+  "humans": {
+    "h_c7499b019d31b1": {
+      "author": "chenyouhui.duke <chenyouhui.duke@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

@@ -1,0 +1,16 @@
+lynx/third_party/napi/BUILD.gn
+  h_aeff19c41d4423 164
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "3191f76d9221086884ee3c3f7af034f5e4197cf8",
+  "prompts": {},
+  "humans": {
+    "h_aeff19c41d4423": {
+      "author": "yuyang.1024 <yuyang.1024@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

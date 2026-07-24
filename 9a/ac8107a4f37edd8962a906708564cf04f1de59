@@ -1,0 +1,34 @@
+e2e/lynx-e2e-mvp/README.md
+  s_66b7e6fbbd9bc8::t_4e5d06b5dae357 43-44
+e2e/lynx-e2e-mvp/package.json
+  s_66b7e6fbbd9bc8::t_af6b212bc28619 27
+e2e/lynx-e2e-mvp/scripts/check-runtime.mjs
+  s_66b7e6fbbd9bc8::t_15477290a79164 6,11-12
+e2e/lynx-e2e-mvp/scripts/node18-crypto-polyfill.cjs
+  s_66b7e6fbbd9bc8::t_c7f831df270295 1-9
+testing/lynx-platform-tests/test_script/androidlynxtest/case_sets/lynx_e2e_mvp.py
+  s_66b7e6fbbd9bc8::t_6af7660ab9684c 38-43,47
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "9aac8107a4f37edd8962a906708564cf04f1de59",
+  "prompts": {},
+  "humans": {
+    "h_dc1658ba751399": {
+      "author": "tangyongjie <tangyongjie@bytedance.com>"
+    }
+  },
+  "sessions": {
+    "s_66b7e6fbbd9bc8": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f8478-a507-73b1-998f-733caaccaa13",
+        "model": "unknown"
+      },
+      "human_author": "tangyongjie <tangyongjie@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

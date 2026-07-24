@@ -1,0 +1,38 @@
+lynx/platform/darwin/common/lynx_devtool/LynxDevToolFrameCapturer.h
+  s_7c1b4058feda51::t_db16a33aad56f9 27
+lynx/platform/darwin/common/lynx_devtool/Helper/LynxScreenCastHelper.mm
+  s_7c1b4058feda51::t_88ee12a654482f 349
+  s_7c1b4058feda51::t_06fae17d469ccb 325-330
+  s_7c1b4058feda51::t_39f7c2cd68016a 314
+  s_7c1b4058feda51::t_029fdd4145511f 346-348,350-351,353-354,364-367,369
+  s_7c1b4058feda51::t_e1be102b7afb21 104
+  s_7c1b4058feda51::t_fb768b1492f241 12
+  s_7c1b4058feda51::t_1060b0477769bc 46-66,78
+  s_7c1b4058feda51::t_c475bed427ab1e 355-363,368
+  s_7c1b4058feda51::t_13eda037500603 434-438
+  s_7c1b4058feda51::t_36a2634f52a41e 42
+  s_7c1b4058feda51::t_6e874b89658e8a 440-441
+  s_7c1b4058feda51::t_061c21430732b3 430
+  s_7c1b4058feda51::t_74d8c7f5360eda 334-335
+  s_7c1b4058feda51::t_35e7ed4d1a5951 510
+lynx/platform/darwin/common/lynx_devtool/LynxDevToolFrameCapturer.mm
+  s_7c1b4058feda51::t_af5918ba9b339f 72-73,75-78,81-82,86
+  s_7c1b4058feda51::t_2d2545795ab50d 74
+  s_7c1b4058feda51::t_6414a89af68625 87-88
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.5",
+  "base_commit_sha": "b52e77edb4d35785e977a6599b795e61b06e5b9a",
+  "prompts": {},
+  "sessions": {
+    "s_7c1b4058feda51": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_0e7537eabffeBwGeUS1OhDO4kG",
+        "model": "c_o_new_thinking__dev"
+      },
+      "human_author": "Qingyu Wang <wangqingyu.c0l1n@bytedance.com>"
+    }
+  }
+}

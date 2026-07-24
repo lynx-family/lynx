@@ -1,0 +1,39 @@
+lynx/core/shell/lynx_shell.cc
+  s_de3378bf4e6ccd::t_972808893d2695 431-432
+lynx/devtool/lynx_devtool/tracing/platform/memory_trace_plugin_darwin.mm
+  h_aeff19c41d4423 7-9,58
+lynx/devtool/lynx_devtool/tracing/platform/memory_trace_plugin_android.cc
+  h_aeff19c41d4423 8-10
+  s_b3b0cd73ac4504::t_6c1f4289570f89 78
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "7e6e462150d80ffb85597726889307c4a37b172c",
+  "prompts": {},
+  "humans": {
+    "h_aeff19c41d4423": {
+      "author": "yuyang.1024 <yuyang.1024@bytedance.com>"
+    }
+  },
+  "sessions": {
+    "s_b3b0cd73ac4504": {
+      "agent_id": {
+        "tool": "trae-cue",
+        "id": "ai_tab-icr-92990151-1538-4457-aaf0-42bdf100adcd",
+        "model": "default"
+      },
+      "human_author": null
+    },
+    "s_de3378bf4e6ccd": {
+      "agent_id": {
+        "tool": "trae-cue",
+        "id": "ai_tab-icr-38b3e106-f77b-4a49-b866-d1fe15a387e9",
+        "model": "default"
+      },
+      "human_author": null
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

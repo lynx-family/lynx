@@ -1,0 +1,36 @@
+platform/embedder/plugin/krypton/public/krypton_extension_module_creator.h
+  s_2bbed6c2f9a1a1::t_9fe86c7957c745 5-6
+  h_c7499b019d31b1 8-13
+  s_b8d4999e512422::t_1f3183aba89fc7 15
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "12c9d822afb9585bc9ed0319d1eb2402d6bcdc18",
+  "prompts": {},
+  "humans": {
+    "h_c7499b019d31b1": {
+      "author": "chenyouhui.duke <chenyouhui.duke@bytedance.com>"
+    }
+  },
+  "sessions": {
+    "s_2bbed6c2f9a1a1": {
+      "agent_id": {
+        "tool": "trae-cue",
+        "id": "ai_tab-icr-d6f84fba-d481-4a3b-b5ac-9297ad6ad258",
+        "model": "default"
+      },
+      "human_author": "chenyouhui.duke <chenyouhui.duke@bytedance.com>"
+    },
+    "s_b8d4999e512422": {
+      "agent_id": {
+        "tool": "trae-cue",
+        "id": "ai_tab-icr-6a6972ff-c238-48bd-85d4-d3150150bae0",
+        "model": "default"
+      },
+      "human_author": "chenyouhui.duke <chenyouhui.duke@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

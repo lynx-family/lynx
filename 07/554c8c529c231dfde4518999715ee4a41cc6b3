@@ -1,0 +1,27 @@
+e2e/lynx-e2e-mvp/src/ios-app-controller.ts
+  s_a6337f287197d6::t_0e652a24f921c5 40-66,95,106,111
+e2e/lynx-e2e-mvp/src/protocol.ts
+  s_a6337f287197d6::t_c50abe0545e8d4 35-39,96
+e2e/lynx-e2e-mvp/tests/mvp.test.ts
+  s_a6337f287197d6::t_1a163b46e32be8 126-129,150-153
+testing/lynx-platform-tests/test_script/ioslynxtest/case_sets/lynx_e2e_mvp.py
+  s_a6337f287197d6::t_37e1677d2c0be0 9,33-43,116-130
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "07554c8c529c231dfde4518999715ee4a41cc6b3",
+  "prompts": {},
+  "sessions": {
+    "s_a6337f287197d6": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f9356-c918-7bd0-81c5-c408bd42642e",
+        "model": "unknown"
+      },
+      "human_author": "tangyongjie <tangyongjie@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}
