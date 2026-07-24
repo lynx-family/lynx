@@ -101,10 +101,10 @@ class AndroidCrashObserver(CrashObserver):
 
     def action(self, target: Target):
         if not target.has_crash():
-            Log.info(f"The {target.nam} did not crash, skipping stack check")
+            Log.info(f"The {target.name} did not crash, skipping stack check")
             return
         if target.symbol is None:
-            Log.warning(f"The {target.nam} not found symbol path, skipping stack check")
+            Log.warning(f"The {target.name} not found symbol path, skipping stack check")
             return
         if not os.path.exists(target.symbol):
             Log.warning(f"The symbol file not found, skipping stack check")
