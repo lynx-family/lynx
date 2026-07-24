@@ -55,16 +55,16 @@ static constexpr char kTypeSetFetchDebugInfo[] = "SetFetchDebugInfo";
 
 LynxDevToolNG::LynxDevToolNG(bool debuggable)
     : devtool_mediator_(std::make_shared<LynxDevToolMediator>()) {
-  static std::once_flag flag;
-  std::call_once(flag, [] {
-    auto& global_dispatcher =
-        lynx::devtool::AbstractDevTool::GetGlobalMessageDispatcherInstance();
+  auto& global_dispatcher =
+      lynx::devtool::AbstractDevTool::GetGlobalMessageDispatcherInstance();
+  const bool enabled = lynx::tasm::LynxEnv::GetInstance().IsDevToolEnabled() ||
+                       lynx::tasm::LynxEnv::GetInstance().IsDebugModeEnabled();
+  static std::once_flag global_domain_agents_flag;
+  RegisterGlobalDomainAgentsIfEnabled(global_dispatcher,
+                                      global_domain_agents_flag, enabled);
 
-    if (lynx::tasm::LynxEnv::GetInstance().IsDevToolEnabled() ||
-        lynx::tasm::LynxEnv::GetInstance().IsDebugModeEnabled()) {
-      RegisterGlobalDomainAgents(global_dispatcher);
-    }
-
+  static std::once_flag common_handlers_and_proxies_flag;
+  std::call_once(common_handlers_and_proxies_flag, [&global_dispatcher] {
     global_dispatcher.RegisterMessageHandler(
         kTypeGetStopAtEntry, std::make_unique<StopAtEntryHandler>());
     global_dispatcher.RegisterMessageHandler(
@@ -85,8 +85,7 @@ LynxDevToolNG::LynxDevToolNG(bool debuggable)
 #endif
 #endif
   });
-  if (lynx::tasm::LynxEnv::GetInstance().IsDevToolEnabled() ||
-      lynx::tasm::LynxEnv::GetInstance().IsDebugModeEnabled()) {
+  if (enabled) {
     RegisterInstanceDomainAgents();
   } else if (debuggable) {
     std::unordered_set<std::string> activated_domains =
@@ -98,6 +97,17 @@ LynxDevToolNG::LynxDevToolNG(bool debuggable)
 }
 
 LynxDevToolNG::~LynxDevToolNG() { devtool_mediator_->Destroy(); }
+
+void LynxDevToolNG::RegisterGlobalDomainAgentsIfEnabled(
+    DevToolMessageDispatcher& global_dispatcher,
+    std::once_flag& registration_flag, bool enabled) {
+  if (!enabled) {
+    return;
+  }
+  std::call_once(registration_flag, [&global_dispatcher] {
+    RegisterGlobalDomainAgents(global_dispatcher);
+  });
+}
 
 int32_t LynxDevToolNG::Attach(const std::string& url) {
   int32_t session_id = AbstractDevTool::Attach(url);
