@@ -64,7 +64,12 @@ std::shared_ptr<tasm::TemplateData> TemplateDataHarmony::GenerateTemplateData(
     std::future<lepus::Value> future = promise.get_future();
     auto async_task = fml::MakeRefCounted<base::OnceTask<lepus::Value>>(
         [result, promise = std::move(promise)]() mutable {
-          promise.set_value(lepus::Value::Clone(result));
+          auto cloned_result = lepus::Value::Clone(result);
+          // Release the source value before making the cloned result visible.
+          // Once set_value() wakes the consumer, the source dictionary may be
+          // mutated and must no longer be retained by this worker task.
+          result = lepus::Value();
+          promise.set_value(std::move(cloned_result));
         },
         std::move(future));
 
