@@ -1,0 +1,23 @@
+e2e/lynx-e2e-mvp/tests/device.smoke.test.ts
+  s_c698a8fa465f5e::t_b4f713dd8e4b4a 40
+  s_c698a8fa465f5e::t_9249c8debc38c3 38-39
+  s_c698a8fa465f5e::t_cbe7b59ad8f42d 41-43
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "5b46483bffd7862cec811036eaab4e59414bcf9f",
+  "prompts": {},
+  "sessions": {
+    "s_c698a8fa465f5e": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a607b9d7dad67aaaa5efd07",
+        "model": "gemini-3.1-pro__dev"
+      },
+      "human_author": "tangyongjie <tangyongjie@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

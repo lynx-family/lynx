@@ -1,0 +1,51 @@
+e2e/lynx-e2e-mvp/src/ios-app-controller.ts
+  s_cef4d630f9299d::t_040c7a960ac3b7 1-94
+e2e/lynx-e2e-mvp/tests/gif-controls.demo.test.ts
+  h_dc1658ba751399 11,21-26,28,31-33,37-39,52-58,63-64
+e2e/lynx-e2e-mvp/README.md
+  s_cef4d630f9299d::t_5c32e514e6baf8 74-111,188-189
+e2e/lynx-e2e-mvp/TECHNICAL_DESIGN.md
+  s_cef4d630f9299d::t_d8ad76447c75d9 28,224-226,299
+e2e/lynx-e2e-mvp/src/default-connector.ts
+  s_cef4d630f9299d::t_8295a7d666c67e 144,154
+e2e/lynx-e2e-mvp/tests/mvp.test.ts
+  s_cef4d630f9299d::t_693efa8e680f29 8-12,66-105
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "eadce0659e45a96efc083a25ea299f68f2e1b9e1",
+  "prompts": {},
+  "humans": {
+    "h_dc1658ba751399": {
+      "author": "tangyongjie <tangyongjie@bytedance.com>"
+    }
+  },
+  "sessions": {
+    "s_cef4d630f9299d": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f8e4d-f8ba-7141-af53-0d9ebc22b90d",
+        "model": "unknown"
+      },
+      "human_author": "tangyongjie <tangyongjie@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {
+    "s_2aa2d0f81a8c9d": {
+      "tool": "trae",
+      "conversation_id": "6a6315297dad67aaaa5f06b4",
+      "session_id": "6a6315297dad67aaaa5f06b4",
+      "status": "remote_only",
+      "message": "Remote transcript resolution is not implemented yet for TRAE prompts."
+    },
+    "s_2aa2d0f81a8c9d::t_f5c5b398064f2a": {
+      "tool": "trae",
+      "conversation_id": "6a6315297dad67aaaa5f06b4",
+      "session_id": "6a6315297dad67aaaa5f06b4",
+      "status": "remote_only",
+      "message": "Remote transcript resolution is not implemented yet for TRAE prompts."
+    }
+  }
+}

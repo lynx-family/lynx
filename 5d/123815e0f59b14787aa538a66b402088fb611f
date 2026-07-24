@@ -1,0 +1,26 @@
+testing/lynx-platform-tests/test_script/androidlynxtest/case_sets/lynx_e2e_mvp.py
+  s_90ecc465ac68d4::t_d05e3cf9074191 102-132
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "5d123815e0f59b14787aa538a66b402088fb611f",
+  "prompts": {},
+  "humans": {
+    "h_dc1658ba751399": {
+      "author": "tangyongjie <tangyongjie@bytedance.com>"
+    }
+  },
+  "sessions": {
+    "s_90ecc465ac68d4": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f88cc-c747-76d0-a951-642be2bc762c",
+        "model": "unknown"
+      },
+      "human_author": "tangyongjie <tangyongjie@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

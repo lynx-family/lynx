@@ -1,0 +1,30 @@
+.cq/pipelines/android-e2e-mvp-test.yml
+  h_dc1658ba751399 1-32
+.cq/workflows/regress.yml
+  h_dc1658ba751399 365-375
+testing/lynx-platform-tests/test_script/androidlynxtest/case_sets/lynx_e2e_mvp.py
+  s_66b7e6fbbd9bc8::t_45ace3622af06b 1-44
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "cd13bb3c70d36ae57b5be9198beee9cc519576af",
+  "prompts": {},
+  "humans": {
+    "h_dc1658ba751399": {
+      "author": "tangyongjie <tangyongjie@bytedance.com>"
+    }
+  },
+  "sessions": {
+    "s_66b7e6fbbd9bc8": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f8478-a507-73b1-998f-733caaccaa13",
+        "model": "unknown"
+      },
+      "human_author": "tangyongjie <tangyongjie@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}
