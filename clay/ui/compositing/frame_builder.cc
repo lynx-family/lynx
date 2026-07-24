@@ -80,7 +80,6 @@ FrameBuilder::~FrameBuilder() = default;
 void FrameBuilder::Reset() {
   // Clear the composited layer stack.
   layer_stack_.clear();
-  has_platform_view_layer_ = false;
   // Add a TransformLayer as the root layer again.
   PushLayer(std::make_shared<clay::TransformLayer>());
 }
@@ -103,7 +102,6 @@ std::unique_ptr<Picture> FrameBuilder::GeneratePicture(
 }
 
 void FrameBuilder::BuildFrame(PendingLayer* root_layer) {
-  has_platform_view_layer_ = false;
   if (!root_layer) {
     layer_tree_.reset();
     return;
@@ -119,7 +117,6 @@ void FrameBuilder::BuildFrame(PendingLayer* root_layer) {
 void FrameBuilder::BuildSubtreeFrame(PendingLayer* root_layer) {
   // The root layer may be a sub layer of the current page.
   // Use this function to avoid dcheck failure.
-  has_platform_view_layer_ = false;
   if (!root_layer) {
     layer_tree_.reset();
     return;
@@ -141,7 +138,6 @@ void FrameBuilder::FinishBuild() {
   layer_tree_ =
       std::make_unique<clay::LayerTree>(frame_size_, device_pixel_ratio_);
   layer_tree_->set_root_layer(RootLayer());
-  layer_tree_->SetHasPlatformViewLayer(has_platform_view_layer_);
   layer_tree_->SetAnimationHost(std::move(animation_host_));
 }
 
@@ -381,7 +377,6 @@ void FrameBuilder::AddDrawableImage(double dx, double dy, double width,
 
 void FrameBuilder::AddPlatformView(double dx, double dy, double width,
                                    double height, int64_t view_id) {
-  has_platform_view_layer_ = true;
   auto layer = std::make_unique<clay::PlatformViewLayer>(
       skity::Vec2(dx, dy), skity::Vec2(width, height), view_id);
   AddLayer(std::move(layer));
@@ -432,9 +427,6 @@ void FrameBuilder::PopLayer() {
 }
 
 void FrameBuilder::AddRetained(std::shared_ptr<clay::Layer> engine_layer) {
-  if (engine_layer && engine_layer->subtree_has_platform_view()) {
-    has_platform_view_layer_ = true;
-  }
   AddLayer(engine_layer);
   CopyRasterAnimationsFromRetained(engine_layer);
 }
@@ -454,7 +446,6 @@ void FrameBuilder::CopyRasterAnimationsFromRetained(
 
 void FrameBuilder::PushExternalViewLayer(const ElementId& element_id,
                                          const skity::Vec2& size) {
-  has_platform_view_layer_ = true;
   auto layer = std::make_unique<clay::ExternalViewLayer>(element_id, size);
   PushLayer(std::move(layer));
 }

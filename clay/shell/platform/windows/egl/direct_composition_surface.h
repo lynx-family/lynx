@@ -18,7 +18,6 @@
 #include <wrl/client.h>
 
 #include <memory>
-#include <optional>
 #include <vector>
 
 #include "clay/fml/logging.h"
@@ -53,18 +52,11 @@ class DirectCompositionSurface : public WindowSurface {
 
   void SetDamageRegion(const clay::Rect& region) override;
 
-  void SetPresentDamageRegion(const clay::Rect& region) override;
-
-  std::optional<clay::Rect> GetDamageRegion() const override;
-
-  bool RequiresYAxisFlip() const override { return true; }
-
   uint32_t buffer_count() const override { return 2; }
 
  private:
   bool SetDrawRectangle(const clay::Rect& rectangle);
-  bool ReleaseDrawTexture(bool will_discard,
-                          bool* released_draw_texture = nullptr);
+  bool ReleaseDrawTexture(bool will_discard);
   Microsoft::WRL::ComPtr<ID3D11Device> QueryD3D11DeviceObjectFromANGLE(
       EGLDisplay egl_display);
   bool IsSwapChainTearingSupported();
@@ -77,6 +69,7 @@ class DirectCompositionSurface : public WindowSurface {
   // outside of a BeginDraw/EndDraw pair.
   EGLSurface real_surface_ = 0;
 
+  clay::Rect swap_rect_;
   bool has_alpha_ = true;
   bool first_swap_ = true;
 

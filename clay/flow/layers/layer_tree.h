@@ -96,11 +96,6 @@ class LayerTree {
   bool DoAnimations();
   bool HasAnimations() const;
 
-  bool HasPlatformViewLayer() const { return has_platform_view_layer_; }
-  void SetHasPlatformViewLayer(bool has_platform_view_layer) {
-    has_platform_view_layer_ = has_platform_view_layer;
-  }
-
   // When a layer_tree from ui get consumed by the Raster Thread. It shouldn't
   // be drawn in time to avoid repeat swap-buffer. Inside we will postpone it
   // until the next Raster thread rendering triggered by the compositor
@@ -164,8 +159,6 @@ class LayerTree {
   uint32_t rasterizer_tracing_threshold_;
   bool checkerboard_raster_cache_images_;
   bool checkerboard_offscreen_layers_;
-  bool has_platform_view_layer_ = false;
-
   PaintRegionMap paint_region_map_;
 
   std::vector<RasterCacheItem*> raster_cache_items_;

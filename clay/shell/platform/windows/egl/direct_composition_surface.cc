@@ -18,14 +18,14 @@ RECT ToRECT(const clay::Rect& rect) {
   return r;
 }
 
-clay::Rect FlipYAxis(const clay::Rect& rect, int height) {
-  return {rect.x(), height - rect.MaxY(), rect.width(), rect.height()};
-}
-
 }  // namespace
 
 namespace clay {
 namespace egl {
+
+// If damage_rect / full_chrome_rect >= kForceFullDamageThreshold, present
+// the swap chain with full damage.
+static constexpr float kForceFullDamageThreshold = 0.6f;
 
 DirectCompositionSurface::DirectCompositionSurface(
     EGLDisplay display, EGLContext context, EGLConfig config,
@@ -33,10 +33,6 @@ DirectCompositionSurface::DirectCompositionSurface(
     Microsoft::WRL::ComPtr<IDCompositionDevice2> device, int width, int height)
     : WindowSurface(display, context, config, window, width, height),
       dcomp_device_(device) {
-  // DirectComposition renders into DXGI swap-chain backbuffers wrapped as
-  // temporary EGL pbuffers. EGL_BUFFER_AGE_EXT on those pbuffers does not
-  // describe the DXGI backbuffer age, so use Surface's manual buffer history.
-  supports_buffer_age_ = false;
   d3d11_device_ = QueryD3D11DeviceObjectFromANGLE(display);
 }
 
@@ -55,23 +51,12 @@ bool DirectCompositionSurface::Initialize() {
     return false;
   }
 
-  if (!dcomp_device_) {
-    FML_LOG(ERROR) << "DirectComposition device is null.";
-    return false;
-  }
-  if (!d3d11_device_) {
-    FML_LOG(ERROR) << "D3D11 device queried from ANGLE is null.";
-    return false;
-  }
+  FML_DCHECK(dcomp_device_);
 
   HRESULT hr;
   Microsoft::WRL::ComPtr<IDCompositionDesktopDevice> desktop_device;
-  hr = dcomp_device_.As(&desktop_device);
-  if (FAILED(hr) || !desktop_device) {
-    FML_LOG(ERROR) << "Query IDCompositionDesktopDevice failed with error 0x"
-                   << std::hex << hr;
-    return false;
-  }
+  dcomp_device_.As(&desktop_device);
+  FML_DCHECK(desktop_device);
 
   hr = desktop_device->CreateTargetForHwnd(
       static_cast<HWND>(child_window_->window()), TRUE, &dcomp_target_);
@@ -80,16 +65,9 @@ bool DirectCompositionSurface::Initialize() {
                    << hr;
     return false;
   }
-  hr = dcomp_device_->CreateVisual(&dcomp_root_visual_);
-  if (FAILED(hr) || !dcomp_root_visual_) {
-    FML_LOG(ERROR) << "CreateVisual failed with error 0x" << std::hex << hr;
-    return false;
-  }
-  hr = dcomp_target_->SetRoot(dcomp_root_visual_.Get());
-  if (FAILED(hr)) {
-    FML_LOG(ERROR) << "SetRoot failed with error 0x" << std::hex << hr;
-    return false;
-  }
+  dcomp_device_->CreateVisual(&dcomp_root_visual_);
+  FML_DCHECK(dcomp_root_visual_);
+  dcomp_target_->SetRoot(dcomp_root_visual_.Get());
   // A visual inherits the interpolation mode of the parent visual by default.
   // If no visuals set the interpolation mode, the default for the entire visual
   // tree is nearest neighbor interpolation.
@@ -102,8 +80,8 @@ bool DirectCompositionSurface::Initialize() {
 
   default_surface_ =
       eglCreatePbufferSurface(display_, config_, pbuffer_attribs);
-  if (default_surface_ == EGL_NO_SURFACE) {
-    WINDOWS_LOG_EGL_ERROR;
+  if (!default_surface_) {
+    FML_LOG(ERROR) << "eglCreatePbufferSurface failed with error ";
     return false;
   }
 
@@ -154,12 +132,9 @@ bool DirectCompositionSurface::MakeCurrent() {
 }
 
 bool DirectCompositionSurface::SwapBuffers() {
-  bool released_draw_texture = false;
-  bool swap_result = ReleaseDrawTexture(false, &released_draw_texture);
-  if (swap_result && released_draw_texture) {
-    AddDamageRegionWithManualBufferRotation(*pending_present_damage_region_);
-  }
-  pending_present_damage_region_.reset();
+  bool swap_result = ReleaseDrawTexture(false);
+  AddDamageRegion(swap_rect_);
+  swap_rect_.Clear();
   return swap_result;
 }
 
@@ -169,8 +144,11 @@ bool DirectCompositionSurface::Resize(int width, int height) {
     size_ = {width, height};
   }
   child_window_->Resize(width, height);
-  first_swap_ = true;
-  pending_present_damage_region_.reset();
+  if (!Surface::Destroy()) {
+    FML_LOG(ERROR) << "Surface resize failed to destroy surface";
+    return false;
+  }
+  is_valid_ = true;
   // This will release indirect references to swap chain (|real_surface_|) by
   // binding |default_surface_| as the default framebuffer.
   if (!ReleaseDrawTexture(true /* will_discard */)) return false;
@@ -181,6 +159,8 @@ bool DirectCompositionSurface::Resize(int width, int height) {
     DXGI_FORMAT format = DXGI_FORMAT_B8G8R8A8_UNORM;
     UINT flags =
         IsSwapChainTearingSupported() ? DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING : 0;
+    Microsoft::WRL::ComPtr<ID3D11DeviceContext> context;
+    d3d11_device_->GetImmediateContext(&context);
     HRESULT hr =
         swap_chain_->ResizeBuffers(count, width, height, format, flags);
     if (!SUCCEEDED(hr)) {
@@ -193,62 +173,26 @@ bool DirectCompositionSurface::Resize(int width, int height) {
       // This regresses performance but not correctness.
       FML_LOG(ERROR) << "Surface resize failed to set vsync";
     }
+    return true;
   }
-  return true;
+  // Next SetDrawRectangle call will recreate the swap chain or surface.
+  swap_chain_.Reset();
+  return false;
 }
 
 const EGLSurface& DirectCompositionSurface::GetHandle() const {
   return real_surface_ ? real_surface_ : default_surface_;
 }
 
-std::optional<clay::Rect> DirectCompositionSurface::GetDamageRegion() const {
-  uint32_t age = buffers_[current_buffer_index_].age;
-  if (age == 0) {
-    return std::nullopt;
-  }
-
-  --age;
-  clay::Rect res = {};
-  for (size_t i = 0; i < buffers_.size(); i++) {
-    if (buffers_[i].age > 0 && buffers_[i].age <= age) {
-      res.Unite(buffers_[i].damage);
-    }
-  }
-  return res;
-}
-
 void DirectCompositionSurface::SetDamageRegion(const clay::Rect& region) {
-  clay::Rect full_rect(size_);
-  clay::Rect logical_damage_rect = region;
-  if (first_swap_ || !swap_chain_ || logical_damage_rect.IsEmpty()) {
-    logical_damage_rect = full_rect;
-  } else {
-    logical_damage_rect.Intersect(full_rect);
-    if (logical_damage_rect.IsEmpty()) {
-      logical_damage_rect = full_rect;
-    }
-  }
-
-  clay::Rect draw_rect = FlipYAxis(logical_damage_rect, size_.height());
-  if (!SetDrawRectangle(draw_rect)) {
-    return;
-  }
+  SetDrawRectangle(region);
   if (::eglMakeCurrent(display_, GetHandle(), GetHandle(), context_) !=
       EGL_TRUE) {
     WINDOWS_LOG_EGL_ERROR;
   }
 }
 
-void DirectCompositionSurface::SetPresentDamageRegion(
-    const clay::Rect& region) {
-  pending_present_damage_region_ = region;
-}
-
-bool DirectCompositionSurface::ReleaseDrawTexture(bool will_discard,
-                                                  bool* released_draw_texture) {
-  if (released_draw_texture) {
-    *released_draw_texture = false;
-  }
+bool DirectCompositionSurface::ReleaseDrawTexture(bool will_discard) {
   EGLSurface egl_surface = real_surface_;
   real_surface_ = nullptr;
 
@@ -258,57 +202,31 @@ bool DirectCompositionSurface::ReleaseDrawTexture(bool will_discard,
       EGL_TRUE) {
     LogEGLError("Failed to make current in ReleaseDrawTexture");
     if (egl_surface) {
-      if (eglDestroySurface(display_, egl_surface) != EGL_TRUE) {
-        LogEGLError("Failed to destroy draw surface in ReleaseDrawTexture");
-      }
+      eglDestroySurface(display_, egl_surface);
       egl_surface = nullptr;
     }
     return false;
   }
 
   if (egl_surface) {
-    if (eglDestroySurface(display_, egl_surface) != EGL_TRUE) {
-      LogEGLError("Failed to destroy draw surface in ReleaseDrawTexture");
-      return false;
-    }
+    eglDestroySurface(display_, egl_surface);
     egl_surface = nullptr;
   }
 
-  HRESULT hr;
+  HRESULT hr, device_removed_reason;
   if (draw_texture_) {
-    if (released_draw_texture) {
-      *released_draw_texture = true;
-    }
     draw_texture_.Reset();
 
     if (!will_discard) {
-      if (!swap_chain_) {
-        FML_LOG(ERROR) << "Cannot present DirectComposition surface without a "
-                          "swap chain.";
-        return false;
-      }
-      const clay::Rect full_rect(size_);
-      clay::Rect logical_present_rect =
-          pending_present_damage_region_.value_or(full_rect);
-      if (first_swap_ || !pending_present_damage_region_.has_value()) {
-        logical_present_rect = full_rect;
-      } else {
-        logical_present_rect.Intersect(full_rect);
-      }
-      pending_present_damage_region_ = logical_present_rect;
-
       const bool use_swap_chain_tearing = IsSwapChainTearingSupported();
       UINT interval =
           first_swap_ || !vsync_enabled() || use_swap_chain_tearing ? 0 : 1;
       UINT flags = use_swap_chain_tearing ? DXGI_PRESENT_ALLOW_TEARING : 0;
 
       DXGI_PRESENT_PARAMETERS params = {};
-      clay::Rect present_rect = FlipYAxis(logical_present_rect, size_.height());
-      RECT dirty_rect = ToRECT(present_rect);
-      if (!present_rect.IsEmpty()) {
-        params.DirtyRectsCount = 1;
-        params.pDirtyRects = &dirty_rect;
-      }
+      RECT dirty_rect = ToRECT(swap_rect_);
+      params.DirtyRectsCount = 1;
+      params.pDirtyRects = &dirty_rect;
 
       hr = swap_chain_->Present1(interval, flags, &params);
       if (FAILED(hr) && hr != DXGI_STATUS_OCCLUDED) {
@@ -373,32 +291,14 @@ bool DirectCompositionSurface::SetDrawRectangle(const clay::Rect& rectangle) {
 
   DXGI_FORMAT dxgi_format = DXGI_FORMAT_B8G8R8A8_UNORM;
 
-  if (!swap_chain_) {
-    if (!d3d11_device_) {
-      FML_LOG(ERROR) << "Cannot create DirectComposition swap chain without a "
-                        "D3D11 device.";
-      return false;
-    }
+  if (!swap_chain_ &&
+      ((!false || dxgi_format == DXGI_FORMAT_R10G10B10A2_UNORM))) {
     Microsoft::WRL::ComPtr<IDXGIDevice> dxgi_device;
-    HRESULT hr = d3d11_device_.As(&dxgi_device);
-    if (FAILED(hr) || !dxgi_device) {
-      FML_LOG(ERROR) << "Query IDXGIDevice failed with error 0x" << std::hex
-                     << hr;
-      return false;
-    }
+    d3d11_device_.As(&dxgi_device);
     Microsoft::WRL::ComPtr<IDXGIAdapter> dxgi_adapter;
-    hr = dxgi_device->GetAdapter(&dxgi_adapter);
-    if (FAILED(hr) || !dxgi_adapter) {
-      FML_LOG(ERROR) << "GetAdapter failed with error 0x" << std::hex << hr;
-      return false;
-    }
+    dxgi_device->GetAdapter(&dxgi_adapter);
     Microsoft::WRL::ComPtr<IDXGIFactory2> dxgi_factory;
-    hr = dxgi_adapter->GetParent(IID_PPV_ARGS(&dxgi_factory));
-    if (FAILED(hr) || !dxgi_factory) {
-      FML_LOG(ERROR) << "GetParent IDXGIFactory2 failed with error 0x"
-                     << std::hex << hr;
-      return false;
-    }
+    dxgi_adapter->GetParent(IID_PPV_ARGS(&dxgi_factory));
 
     DXGI_SWAP_CHAIN_DESC1 desc = {};
     desc.Width = width();
@@ -414,27 +314,23 @@ bool DirectCompositionSurface::SetDrawRectangle(const clay::Rect& rectangle) {
     desc.Flags =
         IsSwapChainTearingSupported() ? DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING : 0;
 
-    hr = dxgi_factory->CreateSwapChainForComposition(d3d11_device_.Get(), &desc,
-                                                     nullptr, &swap_chain_);
+    HRESULT hr = dxgi_factory->CreateSwapChainForComposition(
+        d3d11_device_.Get(), &desc, nullptr, &swap_chain_);
     first_swap_ = true;
-    if (FAILED(hr) || !swap_chain_) {
+    if (FAILED(hr)) {
       FML_LOG(ERROR) << "CreateSwapChainForComposition failed. "
                      << "hr=0x" << std::hex << hr
                      << ", d3d11_device_=" << d3d11_device_.Get()
                      << ", swap_chain_=" << swap_chain_.Get();
       return false;
     }
-    hr = dcomp_root_visual_->SetContent(swap_chain_.Get());
-    if (FAILED(hr)) {
-      FML_LOG(ERROR) << "SetContent failed with error 0x" << std::hex << hr;
-      return false;
-    }
+    dcomp_root_visual_->SetContent(swap_chain_.Get());
   }
-  HRESULT hr = swap_chain_->GetBuffer(0, IID_PPV_ARGS(&draw_texture_));
-  if (FAILED(hr) || !draw_texture_) {
-    FML_LOG(ERROR) << "GetBuffer failed with error 0x" << std::hex << hr;
-    return false;
-  }
+  swap_rect_ = rectangle;
+
+  swap_chain_->GetBuffer(0, IID_PPV_ARGS(&draw_texture_));
+
+  FML_DCHECK(draw_texture_);
 
   std::vector<EGLint> pbuffer_attribs = {
       EGL_WIDTH, static_cast<EGLint>(width()), EGL_HEIGHT,

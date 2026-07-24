@@ -24,7 +24,6 @@
 #include "clay/shell/platform/windows/window_binding_handler_delegate.h"
 #include "clay/shell/platform/windows/window_mouse_drop_handler.h"
 #include "clay/shell/platform/windows/window_move_handler.h"
-#include "skity/geometry/matrix.hpp"
 
 namespace clay {
 // ID for the window frame buffer.
@@ -93,15 +92,7 @@ class FlutterWindowsView : public WindowBindingHandlerDelegate,
 
   void SetDamageRegion(const clay::Rect& region);
 
-  void SetPresentDamageRegion(const clay::Rect& region);
-
   std::optional<clay::Rect> GetDamageRegion();
-
-  bool RequiresSurfaceYAxisFlip() const;
-
-  int SurfaceHeight() const;
-
-  skity::Matrix GetSurfaceTransformation() const;
 
   // Sets the cursor that should be used when the mouse is over the Flutter
   // content. See mouse_cursor.dart for the values and meanings of

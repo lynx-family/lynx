@@ -260,9 +260,6 @@ class FlutterWindowsEngine : public PlatformViewEmbedderDelegate,
   bool GLContextFBOResetAfterPresent() const override;
 
   // |GPUSurfaceGLDelegate|
-  skity::Matrix GLContextSurfaceTransformation() const override;
-
-  // |GPUSurfaceGLDelegate|
   GLProcResolver GetGLProcResolver() const override;
 
   // |GPUSurfaceGLDelegate|

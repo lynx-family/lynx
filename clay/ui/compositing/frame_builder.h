@@ -149,7 +149,6 @@ class FrameBuilder {
   fml::RefPtr<GPUUnrefQueue> unref_queue_;
   std::vector<std::shared_ptr<clay::ContainerLayer>> layer_stack_;
   std::shared_ptr<clay::AnimationHost> animation_host_;
-  bool has_platform_view_layer_ = false;
 };
 
 }  // namespace clay
