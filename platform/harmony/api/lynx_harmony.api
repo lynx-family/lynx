@@ -328,6 +328,7 @@ export class LynxContext implements IContext {
   public getComponentSnapshot(id: string, options: componentSnapshot.SnapshotOptions): Promise<image.PixelMap>;
   public getComponentSnapshotSync(id: string, options: componentSnapshot.SnapshotOptions): image.PixelMap | undefined;
   public canConsumeTouchEvent(x: number, y: number): boolean;
+  public canConsumeTouchEventAtRoot(x: number, y: number, content: NativeContent): boolean;
   public updateRootTarget(content: NativeContent): void;
   public getPageDataByKey(keys: string[]): void;
   public getPageDataByKeyAsync(keys: string[], callback: (data: Object | null) => void): void;
@@ -626,6 +627,7 @@ export class UIOwner {
   requestLayout(): void;
   keyboardStatusChanged(height: number): void;
   canConsumeTouchEvent(x: number, y: number): boolean;
+  canConsumeTouchEventAtRoot(x: number, y: number, content: NativeContent): boolean;
   updateRootTarget(node: NativeContent): void;
   setLynxImageConfig(config: Object): void;
   onEnterForeground(): void;
@@ -645,7 +647,7 @@ export class UIBase {
   setFocusedUI(): void;
   unsetFocusedUI(): void;
   setChildrenManagementFuncs(insertChild: Function, removeChild: Function): void;
-  attachGestureToNode(node: NativeContent): void;
+  attachGestureToNode(node: NativeContent, level: number): void;
   reuseNativeContent(node: NativeContent): void;
   detachGestureFromNode(node: NativeContent): void;
 }
@@ -1140,6 +1142,7 @@ export interface IContext {
   getMediaResourceFetcher(): LynxMediaResourceFetcher | undefined;
   getDensity(): number;
   canConsumeTouchEvent(x: number, y: number): boolean;
+  canConsumeTouchEventAtRoot(x: number, y: number, content: NativeContent): boolean;
   updateRootTarget(content: NativeContent): void;
 }
 

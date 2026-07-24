@@ -118,9 +118,12 @@ class EventDispatcher {
   ConsumeSlideDirection ShouldConsumeSlideEvent();
 
   void AttachGesturesToRoot(UIBase* root);
+  void AttachGesturesToOverlayRoot(UIBase* root, int32_t level);
   void DetachGesturesFromRoot(UIBase* root);
 
   bool CanConsumeTouchEvent(float point[2]);
+
+  bool CanConsumeTouchEventAtRoot(float point[2], UIBase* root);
 
   // TODO(hexionghui): replace it with HitTestMode.BLOCK_DESCENDANTS
   void UpdateNativeInteractionEnabledForTree(UIBase* root);
@@ -178,6 +181,9 @@ class EventDispatcher {
                       float page_point[2]);
 
   void GetPagePoint(float page_point[2], float node_point[2]);
+
+  void GetEventPagePoint(float page_point[2], const ArkUI_UIInputEvent* event,
+                         size_t index, float point_scale = 1.f);
 
   void AddTargetTouchMap(lepus::Value& target_touch_map,
                          const ArkUI_UIInputEvent* event);
@@ -249,6 +255,14 @@ class EventDispatcher {
 
   void InspectHitTarget(EventTarget* active_target);
 
+  void ActivateOverlayHitTestRoot(UIBase* root, int32_t level);
+
+  void DeactivateOverlayHitTestRoot(UIBase* root);
+
+  void RestoreHitTestRoot();
+
+  void UpdateOverlayPassThroughState(UIBase* root, bool can_consume);
+
   void ApplyHitTargetStyle(std::weak_ptr<EventTarget> active_target,
                            int active_sign,
                            const std::string& inline_style_response,
@@ -260,8 +274,24 @@ class EventDispatcher {
 
   struct WeakFlag;
 
+  struct ActiveOverlayHitTestRoot {
+    std::weak_ptr<UIBase> root;
+    int32_t level{0};
+    uint64_t activation_order{0};
+    bool pass_through{false};
+  };
+
   UIOwner* ui_owner_{nullptr};
+  // Root used to dispatch the current touch sequence.
   std::weak_ptr<UIBase> root_target_;
+  // Root used by canConsumeTouchEvent pre-checks.
+  std::weak_ptr<UIBase> hit_test_root_;
+  // Page root restored after all overlay roots are detached.
+  std::weak_ptr<UIBase> fallback_hit_test_root_;
+  // Visible overlay roots with their stacking and pass-through states.
+  std::vector<ActiveOverlayHitTestRoot> active_overlay_hit_test_roots_;
+  // Tie-breaker for overlay roots at the same level.
+  uint64_t overlay_activation_order_{0};
   std::weak_ptr<EventTarget> first_active_target_;
   std::weak_ptr<EventTarget> focused_target_;
   std::unordered_map<int, EventTargetDetail> active_target_finger_map_;

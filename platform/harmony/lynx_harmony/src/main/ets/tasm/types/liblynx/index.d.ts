@@ -271,6 +271,8 @@ export class UIOwner {
 
   canConsumeTouchEvent(x: number, y: number): boolean;
 
+  canConsumeTouchEventAtRoot(x: number, y: number, content: NativeContent): boolean;
+
   updateRootTarget(node: NativeContent): void;
 
   setLynxImageConfig(config?: Object): void;
@@ -314,7 +316,7 @@ export class UIBase {
 
   setChildrenManagementFuncs(insertChild: Function, removeChild: Function): void;
 
-  attachGestureToNode(node: NativeContent): void;
+  attachGestureToNode(node: NativeContent, level?: number): void;
 
   reuseNativeContent(node: NativeContent): void;
 

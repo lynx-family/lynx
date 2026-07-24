@@ -7,6 +7,7 @@
 #include <deviceinfo.h>
 #include <dlfcn.h>
 
+#include <algorithm>
 #include <atomic>
 #include <chrono>
 #include <cmath>
@@ -357,6 +358,12 @@ void EventDispatcher::AttachGesturesToRoot(UIBase* root) {
     return;
   }
   root_target_ = root->weak_from_this();
+  if (root->IsRoot()) {
+    fallback_hit_test_root_ = root->weak_from_this();
+    if (active_overlay_hit_test_roots_.empty()) {
+      hit_test_root_ = root->weak_from_this();
+    }
+  }
   if (long_press_gesture_) {
     NodeManager::Instance().AddGestureToNode(
         root->RootNode(), long_press_gesture_, PARALLEL, NORMAL_GESTURE_MASK);
@@ -400,6 +407,14 @@ void EventDispatcher::AttachGesturesToRoot(UIBase* root) {
       this);
 }
 
+void EventDispatcher::AttachGesturesToOverlayRoot(UIBase* root, int32_t level) {
+  if (ui_owner_->Destroyed() || !root->RootNode()) {
+    return;
+  }
+  AttachGesturesToRoot(root);
+  ActivateOverlayHitTestRoot(root, level);
+}
+
 void EventDispatcher::DetachGesturesFromRoot(UIBase* root) {
   if (!root || !root->RootNode()) {
     return;
@@ -436,6 +451,14 @@ void EventDispatcher::DetachGesturesFromRoot(UIBase* root) {
   if (root_target_.lock().get() == root) {
     root_target_.reset();
   }
+  if (root->IsOverlayContent()) {
+    if (fallback_hit_test_root_.lock().get() == root) {
+      auto* page_root = ui_owner_->Root();
+      fallback_hit_test_root_ =
+          page_root ? page_root->weak_from_this() : std::weak_ptr<UIBase>();
+    }
+    DeactivateOverlayHitTestRoot(root);
+  }
 }
 
 void EventDispatcher::InitTouchEnv(const ArkUI_UIInputEvent* event) {
@@ -444,9 +467,8 @@ void EventDispatcher::InitTouchEnv(const ArkUI_UIInputEvent* event) {
     if (!IsActiveFinger(event, i)) {
       continue;
     }
-    float page_point[2] = {OH_ArkUI_PointerEvent_GetXByIndex(event, i),
-                           OH_ArkUI_PointerEvent_GetYByIndex(event, i)};
-    GetPagePoint(page_point, page_point);
+    float page_point[2] = {0.f};
+    GetEventPagePoint(page_point, event, i);
     EventTarget* best_hittest_target = FindTarget(page_point);
     if (best_hittest_target == nullptr) {
       continue;
@@ -611,9 +633,8 @@ void EventDispatcher::OnTouchMove(const ArkUI_UIInputEvent* event) {
   float pre_page_point[2] = {0.f};
   for (size_t i = 0; i < num; ++i) {
     int pointer_id = OH_ArkUI_PointerEvent_GetPointerId(event, i);
-    float page_point[2] = {OH_ArkUI_PointerEvent_GetXByIndex(event, i),
-                           OH_ArkUI_PointerEvent_GetYByIndex(event, i)};
-    GetPagePoint(page_point, page_point);
+    float page_point[2] = {0.f};
+    GetEventPagePoint(page_point, event, i);
     if (auto touch_target = active_target_finger_map_.find(pointer_id);
         touch_target != active_target_finger_map_.end()) {
       touch_target->second.GetPrePoint(pre_page_point);
@@ -790,7 +811,26 @@ EventTarget* EventDispatcher::FindTarget(float point[2]) {
   if (root_target_.expired()) {
     return nullptr;
   }
-  return root_target_.lock()->HitTest(point);
+  auto root = root_target_.lock();
+  if (!root->IsOverlayContent()) {
+    std::vector<UIBase*> excluded_roots;
+    for (auto it = active_overlay_hit_test_roots_.begin();
+         it != active_overlay_hit_test_roots_.end();) {
+      auto overlay = it->root.lock();
+      if (!overlay) {
+        it = active_overlay_hit_test_roots_.erase(it);
+        continue;
+      }
+      if (it->pass_through && overlay->Parent()) {
+        excluded_roots.push_back(overlay->Parent());
+      }
+      ++it;
+    }
+    if (!excluded_roots.empty()) {
+      return root->HitTestExcluding(point, excluded_roots);
+    }
+  }
+  return root->HitTest(point);
 }
 
 bool EventDispatcher::CanRespondTap(EventTarget* active_target) {
@@ -860,6 +900,16 @@ void EventDispatcher::GetPagePoint(float page_point[2], float node_point[2]) {
   }
 }
 
+void EventDispatcher::GetEventPagePoint(float page_point[2],
+                                        const ArkUI_UIInputEvent* event,
+                                        size_t index, float point_scale) {
+  // ArkUI events are local to the receiving root. GetPagePoint retains the
+  // coordinate conversion for events forwarded by the legacy overlay path.
+  page_point[0] = OH_ArkUI_PointerEvent_GetXByIndex(event, index) / point_scale;
+  page_point[1] = OH_ArkUI_PointerEvent_GetYByIndex(event, index) / point_scale;
+  GetPagePoint(page_point, page_point);
+}
+
 void EventDispatcher::GetEventPointOffset(float point_offset[2]) const {
   point_offset[0] = has_event_point_offset_ ? event_point_offset_[0] : 0.f;
   point_offset[1] = has_event_point_offset_ ? event_point_offset_[1] : 0.f;
@@ -882,9 +932,8 @@ void EventDispatcher::AddTargetTouchMap(lepus::Value& target_touch_map,
       }
 
       std::string target_sign = std::to_string(active_target->Sign());
-      float page_point[2] = {OH_ArkUI_PointerEvent_GetXByIndex(event, i),
-                             OH_ArkUI_PointerEvent_GetYByIndex(event, i)};
-      GetPagePoint(page_point, page_point);
+      float page_point[2] = {0.f};
+      GetEventPagePoint(page_point, event, i);
       float target_point[2] = {page_point[0], page_point[1]};
       GetTargetPoint(active_target, target_point, page_point);
       float client_point[2] = {
@@ -1177,8 +1226,8 @@ void EventDispatcher::PrepareChildEventPointOffset(
   float raw_page_point[2] = {
       OH_ArkUI_PointerEvent_GetXByIndex(event, 0) / scale,
       OH_ArkUI_PointerEvent_GetYByIndex(event, 0) / scale};
-  float page_point[2] = {raw_page_point[0], raw_page_point[1]};
-  GetPagePoint(page_point, page_point);
+  float page_point[2] = {0.f};
+  GetEventPagePoint(page_point, event, 0, scale);
   float target_point[2] = {page_point[0], page_point[1]};
   GetTargetPoint(active_target, target_point, page_point);
   point_offset[0] = target_point[0] - raw_page_point[0];
@@ -1509,10 +1558,8 @@ void EventDispatcher::DispatchSingleTouchEvent(
       (name == TouchEvent::TAP || name == TouchEvent::LONGPRESS)
           ? ui_owner_->Context()->ScaledDensity()
           : 1;
-  float page_point[2] = {
-      OH_ArkUI_PointerEvent_GetXByIndex(event, 0) / scaled_density,
-      OH_ArkUI_PointerEvent_GetYByIndex(event, 0) / scaled_density};
-  GetPagePoint(page_point, page_point);
+  float page_point[2] = {0.f};
+  GetEventPagePoint(page_point, event, 0, scaled_density);
   float target_point[2] = {page_point[0], page_point[1]};
   GetTargetPoint(active_target, target_point, page_point);
   float client_point[2] = {
@@ -1687,15 +1734,32 @@ ConsumeSlideDirection EventDispatcher::ShouldConsumeSlideEvent() {
 void EventDispatcher::UpdateRootTarget(UIBase* root) {
   if (root) {
     root_target_ = root->weak_from_this();
+    fallback_hit_test_root_ = root->weak_from_this();
+    if (root->IsOverlayContent() || active_overlay_hit_test_roots_.empty()) {
+      hit_test_root_ = root->weak_from_this();
+    } else {
+      RestoreHitTestRoot();
+    }
   }
 }
 
 bool EventDispatcher::CanConsumeTouchEvent(float point[2]) {
-  if (root_target_.expired() || ui_owner_->Destroyed()) {
+  auto root = hit_test_root_.lock();
+  if (!root) {
+    RestoreHitTestRoot();
+    root = hit_test_root_.lock();
+  }
+  return CanConsumeTouchEventAtRoot(point, root.get());
+}
+
+bool EventDispatcher::CanConsumeTouchEventAtRoot(float point[2], UIBase* root) {
+  if (ui_owner_->Destroyed()) {
     return false;
   }
 
-  auto root = root_target_.lock();
+  auto retained_root =
+      root ? root->weak_from_this().lock() : root_target_.lock();
+  root = retained_root.get();
   if (!root || !root->RootNode()) {
     return false;
   }
@@ -1711,14 +1775,16 @@ bool EventDispatcher::CanConsumeTouchEvent(float point[2]) {
       base::FloatsLarger(page_y, node_point_y) ||
       base::FloatsLarger(node_point_x, page_x + root->width_) ||
       base::FloatsLarger(node_point_y, page_y + root->height_)) {
+    UpdateOverlayPassThroughState(root, false);
     return false;
   }
 
   point[0] = node_point_x - page_x;
   point[1] = node_point_y - page_y;
 
-  EventTarget* active_target = FindTarget(point);
+  EventTarget* active_target = root->HitTest(point);
   if (active_target == nullptr) {
+    UpdateOverlayPassThroughState(root, false);
     return false;
   }
   float target_point[2] = {point[0], point[1]};
@@ -1726,9 +1792,86 @@ bool EventDispatcher::CanConsumeTouchEvent(float point[2]) {
       active_target->HasUI()
           ? static_cast<UIBase*>(active_target)
           : static_cast<UIBase*>(active_target->FirstUITarget());
-  LynxUIHelper::ConvertPointFromAncestorToDescendant(target_point, root.get(),
+  LynxUIHelper::ConvertPointFromAncestorToDescendant(target_point, root,
                                                      target_ui, point);
-  return !active_target->EventThrough(target_point);
+  bool can_consume = !active_target->EventThrough(target_point);
+  UpdateOverlayPassThroughState(root, can_consume);
+  return can_consume;
+}
+
+void EventDispatcher::ActivateOverlayHitTestRoot(UIBase* root, int32_t level) {
+  active_overlay_hit_test_roots_.erase(
+      std::remove_if(active_overlay_hit_test_roots_.begin(),
+                     active_overlay_hit_test_roots_.end(),
+                     [root](const ActiveOverlayHitTestRoot& candidate) {
+                       auto retained = candidate.root.lock();
+                       return !retained || retained.get() == root;
+                     }),
+      active_overlay_hit_test_roots_.end());
+  active_overlay_hit_test_roots_.push_back(
+      {root->weak_from_this(), level, ++overlay_activation_order_, false});
+  RestoreHitTestRoot();
+}
+
+void EventDispatcher::DeactivateOverlayHitTestRoot(UIBase* root) {
+  active_overlay_hit_test_roots_.erase(
+      std::remove_if(active_overlay_hit_test_roots_.begin(),
+                     active_overlay_hit_test_roots_.end(),
+                     [root](const ActiveOverlayHitTestRoot& candidate) {
+                       auto retained = candidate.root.lock();
+                       return !retained || retained.get() == root;
+                     }),
+      active_overlay_hit_test_roots_.end());
+  if (hit_test_root_.lock().get() == root) {
+    RestoreHitTestRoot();
+  }
+}
+
+void EventDispatcher::UpdateOverlayPassThroughState(UIBase* root,
+                                                    bool can_consume) {
+  if (!root || !root->IsOverlayContent()) {
+    return;
+  }
+  for (auto& candidate : active_overlay_hit_test_roots_) {
+    auto retained = candidate.root.lock();
+    if (retained.get() != root || candidate.pass_through == !can_consume) {
+      continue;
+    }
+    candidate.pass_through = !can_consume;
+    LOGI("EventDispatcher overlay pass-through changed: sign="
+         << (root->Parent() ? root->Parent()->Sign() : -1)
+         << ", pass_through=" << candidate.pass_through)
+    return;
+  }
+}
+
+void EventDispatcher::RestoreHitTestRoot() {
+  active_overlay_hit_test_roots_.erase(
+      std::remove_if(active_overlay_hit_test_roots_.begin(),
+                     active_overlay_hit_test_roots_.end(),
+                     [](const ActiveOverlayHitTestRoot& candidate) {
+                       return candidate.root.expired();
+                     }),
+      active_overlay_hit_test_roots_.end());
+  auto top =
+      std::max_element(active_overlay_hit_test_roots_.begin(),
+                       active_overlay_hit_test_roots_.end(),
+                       [](const ActiveOverlayHitTestRoot& lhs,
+                          const ActiveOverlayHitTestRoot& rhs) {
+                         return lhs.level < rhs.level ||
+                                (lhs.level == rhs.level &&
+                                 lhs.activation_order < rhs.activation_order);
+                       });
+  if (top != active_overlay_hit_test_roots_.end()) {
+    hit_test_root_ = top->root;
+    return;
+  }
+  if (auto fallback = fallback_hit_test_root_.lock()) {
+    hit_test_root_ = fallback;
+    return;
+  }
+  auto* root = ui_owner_->Root();
+  hit_test_root_ = root ? root->weak_from_this() : std::weak_ptr<UIBase>();
 }
 
 void EventDispatcher::UpdateNativeInteractionEnabledForTree(UIBase* root) {

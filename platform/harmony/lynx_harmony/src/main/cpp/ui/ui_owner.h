@@ -129,6 +129,7 @@ class UIOwner {
   void SetFocusedTarget(const std::weak_ptr<EventTarget>& focused_target);
   void UnsetFocusedTarget(const std::weak_ptr<EventTarget>& focused_target);
   void AttachGesturesToRoot(UIBase* root);
+  void AttachGesturesToOverlayRoot(UIBase* root, int32_t level);
   void DetachGesturesFromRoot(UIBase* root);
   void OnGestureRecognized(UIBase* ui);
   void OnGestureRecognizedWithSign(int sign);
@@ -174,6 +175,8 @@ class UIOwner {
   void SetVelocityToGestureArena(float velocity_x, float velocity_y);
 
   bool CanConsumeTouchEvent(float point[2]);
+
+  bool CanConsumeTouchEventAtRoot(float point[2], UIBase* root);
 
   void UpdateRootTarget(UIBase* root);
 
@@ -228,6 +231,8 @@ class UIOwner {
   static napi_value Destroy(napi_env, napi_callback_info info);
   static napi_value RequestLayout(napi_env env, napi_callback_info info);
   static napi_value CanConsumeTouchEvent(napi_env env, napi_callback_info info);
+  static napi_value CanConsumeTouchEventAtRoot(napi_env env,
+                                               napi_callback_info info);
   static napi_value KeyboardStatusChanged(napi_env env,
                                           napi_callback_info info);
   static napi_value UpdateRootTarget(napi_env env, napi_callback_info info);
