@@ -71,7 +71,7 @@ void DevToolEnvEmbedder::SetDevToolSwitch(std::string key, bool value) {
     settings.SetLongPressMenuEnabled(value);
   } else if (key == tasm::LynxEnv::kLynxEnableLaunchRecord) {
     settings.SetLaunchRecordEnabled(value);
-#if (OS_WIN || OS_OSX) && JS_ENGINE_TYPE == 0
+#if (OS_WIN || OS_OSX || OS_LINUX) && JS_ENGINE_TYPE == 0
   } else if (key == tasm::LynxEnv::kLynxEnableV8) {
     settings.SetV8Enabled(value);
 #endif
@@ -94,7 +94,7 @@ bool DevToolEnvEmbedder::GetDevToolSwitch(std::string key) const {
     return settings.IsLongPressMenuEnabled();
   } else if (key == tasm::LynxEnv::kLynxEnableLaunchRecord) {
     return settings.IsLaunchRecordEnabled();
-#if (OS_WIN || OS_OSX) && JS_ENGINE_TYPE == 0
+#if (OS_WIN || OS_OSX || OS_LINUX) && JS_ENGINE_TYPE == 0
   } else if (key == tasm::LynxEnv::kLynxEnableV8) {
     return settings.IsV8Enabled();
 #endif

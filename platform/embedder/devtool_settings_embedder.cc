@@ -26,7 +26,7 @@ void DevToolSettingsEmbedder::SyncToNative() {
                       IsLongPressMenuEnabled());
   SyncBooleanToNative(tasm::LynxEnv::kLynxEnableLaunchRecord,
                       IsLaunchRecordEnabled());
-#if (OS_WIN || OS_OSX) && JS_ENGINE_TYPE == 0
+#if (OS_WIN || OS_OSX || OS_LINUX) && JS_ENGINE_TYPE == 0
   SyncBooleanToNative(tasm::LynxEnv::kLynxEnableV8, IsV8Enabled());
 #endif
 }
@@ -115,7 +115,7 @@ void DevToolSettingsEmbedder::SetLaunchRecordEnabled(bool enabled) {
   SyncBooleanToNative(tasm::LynxEnv::kLynxEnableLaunchRecord, enabled);
 }
 
-#if (OS_WIN || OS_OSX) && JS_ENGINE_TYPE == 0
+#if (OS_WIN || OS_OSX || OS_LINUX) && JS_ENGINE_TYPE == 0
 /**
  * Persistence: true
  * Sync to Native: true
