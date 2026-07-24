@@ -37,7 +37,7 @@ class DevToolSettingsEmbedder {
   bool IsLaunchRecordEnabled() const;
   void SetLaunchRecordEnabled(bool enabled);
 
-#if (OS_WIN || OS_OSX) && JS_ENGINE_TYPE == 0
+#if (OS_WIN || OS_OSX || OS_LINUX) && JS_ENGINE_TYPE == 0
   bool IsV8Enabled() const;
   void SetV8Enabled(bool enabled);
 #endif
