@@ -75,6 +75,9 @@ export abstract class LynxWebViewNodeController extends NodeController implement
   abstract makeWebViewNode(context: UIContext, javaScriptProxy: JavaScriptProxy,
     javaScriptOnDocumentEnd: Array<ScriptItem>): FrameNode | null;
 
+  dispose(): void {
+  }
+
   constructor(webviewParams: WebViewParams) {
     super();
     this.webviewParams = webviewParams;
@@ -192,10 +195,17 @@ export class LynxDefaultWebViewNodeController extends LynxWebViewNodeController 
 
   makeWebViewNode(context: UIContext, javaScriptProxy: JavaScriptProxy,
     javaScriptOnDocumentEnd: Array<ScriptItem>): FrameNode | null {
+    this.dispose();
     this.webviewNode = new BuilderNode(context);
     this.webviewNode.build(wrapBuilder<[LynxDefaultWebViewInitParams]>(lynxDefaultWebViewBuilder),
       new LynxDefaultWebViewInitParams(this, javaScriptProxy, javaScriptOnDocumentEnd));
     return this.webviewNode.getFrameNode();
+  }
+
+  override dispose(): void {
+    this.webviewNode?.update(undefined);
+    this.webviewNode?.dispose();
+    this.webviewNode = null;
   }
 }
 
@@ -291,6 +301,12 @@ export class UIWebView extends UIBase {
 
   sendEvent(name: string, params: Object) {
     super.sendCustomEvent(name, params, 'detail');
+  }
+
+  override dispose(): void {
+    this.webviewNodeController?.dispose();
+    this.webviewNodeController = undefined;
+    super.dispose();
   }
 }
 
