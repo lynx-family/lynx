@@ -81,6 +81,7 @@ class SkityCanvas : public GraphicsCanvas {
   skity::Canvas* GetGrCanvas() override { return canvas_; }
 
   void OnDrawDynamicTextBlobsStart() override;
+  void OnDrawDynamicTextBlob() override;
   void OnDrawDynamicTextBlobsEnd() override;
 
   using GraphicsCanvas::ClipPath;

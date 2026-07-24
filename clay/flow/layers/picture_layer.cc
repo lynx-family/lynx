@@ -77,14 +77,12 @@ void PictureLayer::Diff(DiffContext* context, const Layer* old_layer) {
                Compare(dummy_statistics, this, prev));
 #endif
   }
-#ifndef ENABLE_SKITY
   if (HasAnimationRunning()) {
     context->MarkSubtreeHasRasterAnimation();
     if (!context->IsSubtreeDirty()) {
       context->MarkSubtreeDirty(context->GetOldLayerPaintRegion(old_layer));
     }
   }
-#endif  //   ENABLE_SKITY
   if (has_lazy_image_) {
     context->MarkSubtreeHasDeferredImage();
     if (!context->IsSubtreeDirty()) {
