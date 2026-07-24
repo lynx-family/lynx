@@ -21,6 +21,13 @@ namespace lynx {
 namespace devtool {
 namespace testing {
 
+class TestGlobalMessageDispatcher : public DevToolMessageDispatcher {
+ public:
+  std::shared_ptr<MessageSender> GetSender() const override { return nullptr; }
+
+  void RemoveAgent(const std::string& name) { agent_map_.erase(name); }
+};
+
 class LynxDevToolNGTest : public ::testing::Test {
  public:
   LynxDevToolNGTest() {}
@@ -60,6 +67,24 @@ TEST_F(LynxDevToolNGTest, GlobalMessageHandler) {
   EXPECT_EQ(it->second, get_fetch_debug_info_handler);
   it = global_dispatcher.handler_map_.find(kTypeSetFetchDebugInfo);
   EXPECT_EQ(it->second, set_fetch_debug_info_handler);
+}
+
+TEST_F(LynxDevToolNGTest, RegisterGlobalDomainAgentsAfterDevToolIsEnabled) {
+  TestGlobalMessageDispatcher dispatcher;
+  std::once_flag registration_flag;
+
+  LynxDevToolNG::RegisterGlobalDomainAgentsIfEnabled(dispatcher,
+                                                     registration_flag, false);
+  EXPECT_EQ(dispatcher.GetAgent("Memory"), nullptr);
+
+  LynxDevToolNG::RegisterGlobalDomainAgentsIfEnabled(dispatcher,
+                                                     registration_flag, true);
+  ASSERT_NE(dispatcher.GetAgent("Memory"), nullptr);
+  dispatcher.RemoveAgent("Memory");
+
+  LynxDevToolNG::RegisterGlobalDomainAgentsIfEnabled(dispatcher,
+                                                     registration_flag, true);
+  EXPECT_EQ(dispatcher.GetAgent("Memory"), nullptr);
 }
 
 TEST_F(LynxDevToolNGTest, AttachSetsMediatorAttached) {
