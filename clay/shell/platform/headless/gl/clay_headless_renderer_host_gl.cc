@@ -216,11 +216,11 @@ class HostGLRenderer {
     GLint previous_unpack_alignment = 4;
     GLint previous_viewport[4] = {0, 0, 0, 0};
     GLfloat previous_clear_color[4] = {0.0f, 0.0f, 0.0f, 0.0f};
-    GLboolean previous_color_mask[4] = {GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE};
-    GLboolean previous_blend = gl_is_enabled_(GL_BLEND);
-    GLboolean previous_depth_test = gl_is_enabled_(GL_DEPTH_TEST);
-    GLboolean previous_stencil_test = gl_is_enabled_(GL_STENCIL_TEST);
-    GLboolean previous_scissor_test = gl_is_enabled_(GL_SCISSOR_TEST);
+    GLint previous_color_mask[4] = {GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE};
+    GLint previous_blend = GL_FALSE;
+    GLint previous_depth_test = GL_FALSE;
+    GLint previous_stencil_test = GL_FALSE;
+    GLint previous_scissor_test = GL_FALSE;
     VertexAttribState previous_position_attrib;
     VertexAttribState previous_tex_coord_attrib;
 
@@ -233,11 +233,17 @@ class HostGLRenderer {
     gl_get_integerv_(GL_ARRAY_BUFFER_BINDING, &previous_array_buffer);
     gl_get_integerv_(GL_UNPACK_ALIGNMENT, &previous_unpack_alignment);
     gl_get_integerv_(GL_VIEWPORT, previous_viewport);
-    gl_get_float_v_(GL_COLOR_CLEAR_VALUE, previous_clear_color);
-    gl_get_boolean_v_(GL_COLOR_WRITEMASK, previous_color_mask);
+    if (gl_get_float_v_) {
+      gl_get_float_v_(GL_COLOR_CLEAR_VALUE, previous_clear_color);
+    }
+    gl_get_integerv_(GL_COLOR_WRITEMASK, previous_color_mask);
+    gl_get_integerv_(GL_BLEND, &previous_blend);
+    gl_get_integerv_(GL_DEPTH_TEST, &previous_depth_test);
+    gl_get_integerv_(GL_STENCIL_TEST, &previous_stencil_test);
+    gl_get_integerv_(GL_SCISSOR_TEST, &previous_scissor_test);
     gl_active_texture_(GL_TEXTURE0);
     gl_get_integerv_(GL_TEXTURE_BINDING_2D, &previous_texture0_binding);
-    if (!supports_vertex_array_object_) {
+    if (!supports_vertex_array_object_ && supports_vertex_attrib_state_query_) {
       SaveVertexAttrib(kAttribLocationPosition, &previous_position_attrib);
       SaveVertexAttrib(kAttribLocationTexCoord, &previous_tex_coord_attrib);
     }
@@ -329,7 +335,7 @@ class HostGLRenderer {
                          static_cast<GLuint>(previous_framebuffer));
     if (supports_vertex_array_object_) {
       gl_bind_vertex_array_(static_cast<GLuint>(previous_vertex_array));
-    } else {
+    } else if (supports_vertex_attrib_state_query_) {
       RestoreVertexAttrib(kAttribLocationPosition, previous_position_attrib);
       RestoreVertexAttrib(kAttribLocationTexCoord, previous_tex_coord_attrib);
     }
@@ -342,10 +348,14 @@ class HostGLRenderer {
     gl_pixel_store_i_(GL_UNPACK_ALIGNMENT, previous_unpack_alignment);
     gl_viewport_(previous_viewport[0], previous_viewport[1],
                  previous_viewport[2], previous_viewport[3]);
-    gl_clear_color_(previous_clear_color[0], previous_clear_color[1],
-                    previous_clear_color[2], previous_clear_color[3]);
-    gl_color_mask_(previous_color_mask[0], previous_color_mask[1],
-                   previous_color_mask[2], previous_color_mask[3]);
+    if (gl_get_float_v_) {
+      gl_clear_color_(previous_clear_color[0], previous_clear_color[1],
+                      previous_clear_color[2], previous_clear_color[3]);
+    }
+    gl_color_mask_(static_cast<GLboolean>(previous_color_mask[0]),
+                   static_cast<GLboolean>(previous_color_mask[1]),
+                   static_cast<GLboolean>(previous_color_mask[2]),
+                   static_cast<GLboolean>(previous_color_mask[3]));
     RestoreCapability(GL_BLEND, previous_blend);
     RestoreCapability(GL_DEPTH_TEST, previous_depth_test);
     RestoreCapability(GL_STENCIL_TEST, previous_stencil_test);
@@ -422,9 +432,7 @@ class HostGLRenderer {
   using GLGetVertexAttribivProc = void (*)(GLuint, GLenum, GLint*);
   using GLGetVertexAttribPointervProc = void (*)(GLuint, GLenum, void**);
   using GLGetIntegervProc = void (*)(GLenum, GLint*);
-  using GLGetBooleanvProc = void (*)(GLenum, GLboolean*);
   using GLGetFloatvProc = void (*)(GLenum, GLfloat*);
-  using GLIsEnabledProc = GLboolean (*)(GLenum);
   using GLEnableProc = void (*)(GLenum);
   using GLDisableProc = void (*)(GLenum);
   using GLColorMaskProc = void (*)(GLboolean, GLboolean, GLboolean, GLboolean);
@@ -527,14 +535,12 @@ class HostGLRenderer {
     gl_get_vertex_attrib_pointer_v_ =
         ResolveGLFunction<GLGetVertexAttribPointervProc>(
             resolver_, "glGetVertexAttribPointerv");
+    supports_vertex_attrib_state_query_ =
+        gl_get_vertex_attrib_iv_ && gl_get_vertex_attrib_pointer_v_;
     gl_get_integerv_ =
         ResolveGLFunction<GLGetIntegervProc>(resolver_, "glGetIntegerv");
-    gl_get_boolean_v_ =
-        ResolveGLFunction<GLGetBooleanvProc>(resolver_, "glGetBooleanv");
     gl_get_float_v_ =
         ResolveGLFunction<GLGetFloatvProc>(resolver_, "glGetFloatv");
-    gl_is_enabled_ =
-        ResolveGLFunction<GLIsEnabledProc>(resolver_, "glIsEnabled");
     gl_enable_ = ResolveGLFunction<GLEnableProc>(resolver_, "glEnable");
     gl_disable_ = ResolveGLFunction<GLDisableProc>(resolver_, "glDisable");
     gl_color_mask_ =
@@ -557,12 +563,9 @@ class HostGLRenderer {
         !gl_gen_buffers_ || !gl_delete_buffers_ || !gl_buffer_data_ ||
         !gl_bind_framebuffer_ || !gl_viewport_ ||
         !gl_enable_vertex_attrib_array_ || !gl_disable_vertex_attrib_array_ ||
-        !gl_vertex_attrib_pointer_ || !gl_draw_arrays_ ||
-        !gl_get_vertex_attrib_iv_ || !gl_get_vertex_attrib_pointer_v_ ||
-        !gl_get_integerv_ || !gl_bind_buffer_ || !gl_get_boolean_v_ ||
-        !gl_get_float_v_ || !gl_is_enabled_ || !gl_enable_ || !gl_disable_ ||
-        !gl_color_mask_ || !gl_pixel_store_i_ || !gl_clear_ ||
-        !gl_clear_color_) {
+        !gl_vertex_attrib_pointer_ || !gl_draw_arrays_ || !gl_get_integerv_ ||
+        !gl_bind_buffer_ || !gl_enable_ || !gl_disable_ || !gl_color_mask_ ||
+        !gl_pixel_store_i_ || !gl_clear_ || !gl_clear_color_) {
       FML_LOG(ERROR) << "Failed to resolve GL functions for HostGLRenderer";
       return false;
     }
@@ -644,7 +647,7 @@ class HostGLRenderer {
     return true;
   }
 
-  void RestoreCapability(GLenum capability, GLboolean enabled) {
+  void RestoreCapability(GLenum capability, GLint enabled) {
     if (enabled) {
       gl_enable_(capability);
     } else {
@@ -754,6 +757,7 @@ class HostGLRenderer {
   bool repeat_tex_coord_dirty_ = true;
   std::vector<uint8_t> packed_pixels_;
   bool supports_vertex_array_object_ = false;
+  bool supports_vertex_attrib_state_query_ = false;
 
   GLCreateShaderProc gl_create_shader_ = nullptr;
   GLShaderSourceProc gl_shader_source_ = nullptr;
@@ -791,9 +795,7 @@ class HostGLRenderer {
   GLGetVertexAttribivProc gl_get_vertex_attrib_iv_ = nullptr;
   GLGetVertexAttribPointervProc gl_get_vertex_attrib_pointer_v_ = nullptr;
   GLGetIntegervProc gl_get_integerv_ = nullptr;
-  GLGetBooleanvProc gl_get_boolean_v_ = nullptr;
   GLGetFloatvProc gl_get_float_v_ = nullptr;
-  GLIsEnabledProc gl_is_enabled_ = nullptr;
   GLEnableProc gl_enable_ = nullptr;
   GLDisableProc gl_disable_ = nullptr;
   GLColorMaskProc gl_color_mask_ = nullptr;
