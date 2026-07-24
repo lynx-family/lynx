@@ -201,6 +201,65 @@ TEST_F(FillFunctionDebugInfoTest, NonObjectVarDefEntry) {
   if (!LEPUS_IsGCMode(ctx_)) lepus_free(ctx_, func_list);
 }
 
+TEST_F(FillFunctionDebugInfoTest, CompactSchemaRestoresSourceFromRootSource) {
+  const char* root_source =
+      "let a = 1;\n"
+      "function target() { return a; }\n";
+  LEPUSValue top_func = CompileSource(root_source);
+  ASSERT_FALSE(LEPUS_IsException(top_func));
+
+  uint32_t func_size = 0;
+  LEPUSFunctionBytecode** func_list =
+      GetDebuggerAllFunction(ctx_, top_func, &func_size);
+  ASSERT_NE(func_list, nullptr);
+
+  LEPUSFunctionBytecode* b = nullptr;
+  for (uint32_t i = 0; i < func_size; ++i) {
+    if (func_list[i] && GetFunctionDebugId(func_list[i]) != 0) {
+      b = func_list[i];
+      break;
+    }
+  }
+  ASSERT_NE(b, nullptr);
+
+  const std::string function_source = "function target() { return a; }";
+  const auto function_source_offset =
+      std::string(root_source).find(function_source);
+  ASSERT_NE(function_source_offset, std::string::npos);
+  rapidjson::Document doc;
+  doc.SetObject();
+  auto& a = doc.GetAllocator();
+  doc.AddMember("v", 2, a);
+  doc.AddMember("fn", 1, a);
+
+  rapidjson::Value entry(rapidjson::kObjectType);
+  entry.AddMember("id", GetFunctionDebugId(b), a);
+  entry.AddMember("ln", 2, a);
+  entry.AddMember("cn", static_cast<int64_t>(0), a);
+  entry.AddMember("pll", 0, a);
+  rapidjson::Value pc2line_buf(rapidjson::kArrayType);
+  entry.AddMember("plb", std::move(pc2line_buf), a);
+  entry.AddMember("fsl", static_cast<int32_t>(function_source.length()), a);
+  entry.AddMember("fso", static_cast<int32_t>(function_source_offset), a);
+
+  rapidjson::Value arr(rapidjson::kArrayType);
+  arr.PushBack(std::move(entry), a);
+  doc.AddMember("fi", std::move(arr), a);
+
+  FillFunctionBytecodeDebugInfo(ctx_, b, doc, root_source);
+
+  EXPECT_EQ(GetFunctionDebugSourceLen(ctx_, b),
+            static_cast<int32_t>(function_source.length()));
+  const char* restored_source = GetFunctionDebugSource(ctx_, b);
+  ASSERT_NE(restored_source, nullptr);
+  EXPECT_EQ(std::string(restored_source), function_source);
+  EXPECT_EQ(GetFunctionDebugSourceOffset(ctx_, b),
+            static_cast<int32_t>(function_source_offset));
+
+  LEPUS_FreeValue(ctx_, top_func);
+  if (!LEPUS_IsGCMode(ctx_)) lepus_free(ctx_, func_list);
+}
+
 }  // namespace
 }  // namespace debug
 }  // namespace lynx
