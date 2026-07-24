@@ -390,6 +390,7 @@ class NativeBridge {
       request.downloadFile(this.context, { url: name, filePath: logboxDir }).then((data: request.DownloadTask) => {
         let downloadTask: request.DownloadTask = data;
         let downloadFinishCallback = () => {
+          downloadTask.off("complete", downloadFinishCallback);
           let content = this.readFileContent(logboxDir);
           this.sendResult(callbackId, content);
         };
