@@ -9,6 +9,7 @@
 
 #include "core/runtime/lepus/bytecode_generator.h"
 #include "core/runtime/lepusng/quick_context.h"
+#include "core/template_bundle/template_codec/binary_encoder/encode_util.h"
 #include "devtool/js_inspect/quickjs/quickjs_internal/interface.h"
 #include "third_party/rapidjson/document.h"
 
@@ -36,6 +37,26 @@ class QuickjsDebugInfoVarDefTest : public ::testing::Test {
     return QuickjsDebugInfoBuilder::BuildJsDebugInfo(
         qctx.context(), qctx.GetTopLevelFunction(), src,
         /*debuginfo_outside=*/true, var_defs_outside);
+  }
+
+  rapidjson::Document BuildDebugInfoThroughBuilder(const std::string& src,
+                                                   const std::string& sdk) {
+    QuickContext qctx;
+    qctx.set_debuginfo_outside(true);
+    std::string err = BytecodeGenerator::GenerateBytecode(&qctx, src, sdk);
+    EXPECT_TRUE(err.empty()) << "Compile error: " << err;
+
+    tasm::LepusDebugInfo info;
+    info.debug_info_.source_code = src;
+    info.debug_info_.top_level_function = qctx.GetTopLevelFunction();
+
+    QuickjsDebugInfoBuilder builder;
+    builder.AddDebugInfo("lepus.js", info, &qctx);
+
+    rapidjson::Document doc;
+    auto value = builder.TakeDebugInfo();
+    doc.CopyFrom(value, doc.GetAllocator());
+    return doc;
   }
 };
 
@@ -466,6 +487,200 @@ TEST_F(QuickjsDebugInfoVarDefTest, EmptyFunction_NoVarDefKey) {
           << "Function 'empty' with no vars should not have 'vd'";
     }
   }
+}
+
+TEST_F(QuickjsDebugInfoVarDefTest, CompactSchemaUsesShortKeys) {
+  QuickContext qctx;
+  qctx.set_debuginfo_outside(true);
+  std::string src =
+      "function foo(a) {\n"
+      "  let local = a + 1;\n"
+      "  return local;\n"
+      "}\n";
+  std::string err = BytecodeGenerator::GenerateBytecode(&qctx, src, "4.2");
+  ASSERT_TRUE(err.empty()) << "Compile error: " << err;
+
+  std::string json_str = QuickjsDebugInfoBuilder::BuildJsDebugInfo(
+      qctx.context(), qctx.GetTopLevelFunction(), src,
+      /*debuginfo_outside=*/true, /*var_defs_outside=*/true,
+      /*compact_debug_info=*/true);
+
+  rapidjson::Document doc;
+  doc.Parse(json_str.c_str());
+  ASSERT_FALSE(doc.HasParseError());
+  ASSERT_TRUE(doc.HasMember("v"));
+  EXPECT_EQ(doc["v"].GetInt(), 2);
+  EXPECT_TRUE(doc.HasMember("fs"));
+  EXPECT_TRUE(doc.HasMember("el"));
+  EXPECT_TRUE(doc.HasMember("fn"));
+  ASSERT_TRUE(doc.HasMember("fi"));
+  ASSERT_TRUE(doc["fi"].IsArray());
+  EXPECT_FALSE(doc.HasMember("function_source"));
+  EXPECT_FALSE(doc.HasMember("function_number"));
+  EXPECT_FALSE(doc.HasMember("function_info"));
+
+  ASSERT_GT(doc["fi"].Size(), 1u);
+  const auto& child = doc["fi"][1];
+  EXPECT_TRUE(child.HasMember("id"));
+  EXPECT_TRUE(child.HasMember("n"));
+  EXPECT_TRUE(child.HasMember("ln"));
+  EXPECT_TRUE(child.HasMember("cn"));
+  EXPECT_TRUE(child.HasMember("lc"));
+  EXPECT_TRUE(child.HasMember("pll"));
+  EXPECT_TRUE(child.HasMember("plb"));
+  EXPECT_TRUE(child.HasMember("pci"));
+  EXPECT_TRUE(child.HasMember("fsl"));
+  EXPECT_TRUE(child.HasMember("fso"));
+  EXPECT_FALSE(child.HasMember("function_id"));
+  EXPECT_FALSE(child.HasMember("function_name"));
+  EXPECT_FALSE(child.HasMember("line_number"));
+  EXPECT_FALSE(child.HasMember("column_number"));
+  EXPECT_FALSE(child.HasMember("function_source"));
+  EXPECT_FALSE(child.HasMember("function_source_offset"));
+  EXPECT_FALSE(child.HasMember("fs"));
+  ASSERT_TRUE(child["fso"].IsInt());
+  ASSERT_TRUE(child["fsl"].IsInt());
+  int32_t source_offset = child["fso"].GetInt();
+  int32_t source_len = child["fsl"].GetInt();
+  ASSERT_GE(source_offset, 0);
+  ASSERT_GE(source_len, 0);
+  size_t source_offset_size = static_cast<size_t>(source_offset);
+  size_t source_len_size = static_cast<size_t>(source_len);
+  ASSERT_LE(source_offset_size + source_len_size, src.size());
+  EXPECT_EQ(src.substr(source_offset, source_len),
+            "function foo(a) {\n"
+            "  let local = a + 1;\n"
+            "  return local;\n"
+            "}");
+
+  if (child["lc"].IsArray() && child["lc"].Size() > 0) {
+    EXPECT_TRUE(child["lc"][0].HasMember("l"));
+    EXPECT_TRUE(child["lc"][0].HasMember("c"));
+    EXPECT_FALSE(child["lc"][0].HasMember("line"));
+    EXPECT_FALSE(child["lc"][0].HasMember("column"));
+  }
+}
+
+TEST_F(QuickjsDebugInfoVarDefTest, CompactSchemaSourceOffsetsMatchRootSource) {
+  QuickContext qctx;
+  qctx.set_debuginfo_outside(true);
+  std::string src =
+      "const prefix = 1;\n"
+      "class Base {}\n"
+      "class Derived extends Base {}\n"
+      "function outer(a) {\n"
+      "  const arrow = (b) => b + a;\n"
+      "  class Box {\n"
+      "    constructor(value) {\n"
+      "      this.value = value;\n"
+      "    }\n"
+      "    method(delta) {\n"
+      "      return arrow(this.value + delta);\n"
+      "    }\n"
+      "  }\n"
+      "  return new Box(prefix).method(2);\n"
+      "}\n"
+      "outer(3);\n";
+  std::string err = BytecodeGenerator::GenerateBytecode(&qctx, src, "4.2");
+  ASSERT_TRUE(err.empty()) << "Compile error: " << err;
+
+  std::string json_str = QuickjsDebugInfoBuilder::BuildJsDebugInfo(
+      qctx.context(), qctx.GetTopLevelFunction(), src,
+      /*debuginfo_outside=*/true, /*var_defs_outside=*/true,
+      /*compact_debug_info=*/true);
+
+  rapidjson::Document doc;
+  doc.Parse(json_str.c_str());
+  ASSERT_FALSE(doc.HasParseError());
+  ASSERT_TRUE(doc.HasMember("fi"));
+  ASSERT_TRUE(doc["fi"].IsArray());
+
+  auto expect_source = [&](const std::string& expected_source) {
+    SCOPED_TRACE(expected_source);
+    auto expected_offset = src.find(expected_source);
+    ASSERT_NE(expected_offset, std::string::npos);
+    bool found = false;
+    for (const auto& function_info : doc["fi"].GetArray()) {
+      if (!function_info.HasMember("fso") || !function_info.HasMember("fsl")) {
+        continue;
+      }
+      int32_t source_offset = function_info["fso"].GetInt();
+      int32_t source_len = function_info["fsl"].GetInt();
+      ASSERT_GE(source_offset, 0);
+      ASSERT_GE(source_len, 0);
+      ASSERT_LE(
+          static_cast<size_t>(source_offset) + static_cast<size_t>(source_len),
+          src.size());
+      if (source_offset == static_cast<int32_t>(expected_offset) &&
+          source_len == static_cast<int32_t>(expected_source.length())) {
+        EXPECT_EQ(src.substr(source_offset, source_len), expected_source);
+        EXPECT_FALSE(function_info.HasMember("fs"));
+        found = true;
+        break;
+      }
+    }
+    EXPECT_TRUE(found);
+  };
+
+  expect_source("class Base {}");
+  expect_source("class Derived extends Base {}");
+  expect_source(
+      "function outer(a) {\n"
+      "  const arrow = (b) => b + a;\n"
+      "  class Box {\n"
+      "    constructor(value) {\n"
+      "      this.value = value;\n"
+      "    }\n"
+      "    method(delta) {\n"
+      "      return arrow(this.value + delta);\n"
+      "    }\n"
+      "  }\n"
+      "  return new Box(prefix).method(2);\n"
+      "}");
+  expect_source("(b) => b + a");
+  expect_source(
+      "class Box {\n"
+      "    constructor(value) {\n"
+      "      this.value = value;\n"
+      "    }\n"
+      "    method(delta) {\n"
+      "      return arrow(this.value + delta);\n"
+      "    }\n"
+      "  }");
+  expect_source(
+      "method(delta) {\n"
+      "      return arrow(this.value + delta);\n"
+      "    }");
+}
+
+TEST_F(QuickjsDebugInfoVarDefTest, AddDebugInfoUsesCompactSchemaFromSdk42) {
+  std::string src =
+      "function foo() {\n"
+      "  return 1;\n"
+      "}\n";
+
+  rapidjson::Document sdk41_doc = BuildDebugInfoThroughBuilder(src, "4.1");
+  ASSERT_TRUE(sdk41_doc.HasMember("lepus.js"));
+  const auto& sdk41_entry = sdk41_doc["lepus.js"];
+  EXPECT_FALSE(sdk41_entry.HasMember("v"));
+  EXPECT_TRUE(sdk41_entry.HasMember("function_source"));
+  EXPECT_TRUE(sdk41_entry.HasMember("function_number"));
+  EXPECT_TRUE(sdk41_entry.HasMember("function_info"));
+  EXPECT_FALSE(sdk41_entry.HasMember("fs"));
+  EXPECT_FALSE(sdk41_entry.HasMember("fn"));
+  EXPECT_FALSE(sdk41_entry.HasMember("fi"));
+
+  rapidjson::Document sdk42_doc = BuildDebugInfoThroughBuilder(src, "4.2");
+  ASSERT_TRUE(sdk42_doc.HasMember("lepus.js"));
+  const auto& sdk42_entry = sdk42_doc["lepus.js"];
+  ASSERT_TRUE(sdk42_entry.HasMember("v"));
+  EXPECT_EQ(sdk42_entry["v"].GetInt(), 2);
+  EXPECT_TRUE(sdk42_entry.HasMember("fs"));
+  EXPECT_TRUE(sdk42_entry.HasMember("fn"));
+  EXPECT_TRUE(sdk42_entry.HasMember("fi"));
+  EXPECT_FALSE(sdk42_entry.HasMember("function_source"));
+  EXPECT_FALSE(sdk42_entry.HasMember("function_number"));
+  EXPECT_FALSE(sdk42_entry.HasMember("function_info"));
 }
 
 }  // namespace lepus

@@ -130,6 +130,9 @@ class LepusNGDebugger {
 // unit-test coverage; production callers go through LepusNGDebugger.
 void FillFunctionBytecodeDebugInfo(LEPUSContext* ctx, LEPUSFunctionBytecode* b,
                                    rapidjson::Value& debug_info);
+void FillFunctionBytecodeDebugInfo(LEPUSContext* ctx, LEPUSFunctionBytecode* b,
+                                   rapidjson::Value& debug_info,
+                                   const std::string& root_source);
 
 }  // namespace debug
 }  // namespace lynx

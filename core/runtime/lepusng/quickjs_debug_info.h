@@ -42,21 +42,24 @@ class QuickjsDebugInfoBuilder {
   static std::string BuildJsDebugInfo(LEPUSContext *, LEPUSValue,
                                       const std::string &,
                                       bool debuginfo_outside,
-                                      bool var_defs_outside = false);
+                                      bool var_defs_outside = false,
+                                      bool compact_debug_info = false);
 
   static rapidjson::Value BuildJsDebugInfo(LEPUSContext *ctx, LEPUSValue,
                                            const std::string &,
                                            rapidjson::Document::AllocatorType &,
                                            bool debuginfo_outside,
-                                           bool var_defs_outside = false);
+                                           bool var_defs_outside = false,
+                                           bool compact_debug_info = false);
 
  private:
   static rapidjson::Value BuildFunctionInfo(
       LEPUSContext *, LEPUSFunctionBytecode *, bool is_top_level,
-      bool var_defs_outside, rapidjson::Document::AllocatorType &);
+      bool var_defs_outside, bool compact_debug_info,
+      rapidjson::Document::AllocatorType &);
   static rapidjson::Value GetFunctionLineAndColInfo(
       LEPUSContext *, const LEPUSFunctionBytecode *,
-      rapidjson::Document::AllocatorType &);
+      rapidjson::Document::AllocatorType &, bool compact_debug_info);
 
   rapidjson::Document document_;
   rapidjson::Value template_debug_data_{rapidjson::kObjectType};
