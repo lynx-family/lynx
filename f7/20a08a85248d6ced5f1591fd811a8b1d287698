@@ -1,0 +1,35 @@
+lynx/tools/rtf/core/target/observer.py
+  s_bfc8053fc365d2::t_834f709c4d9e42 104
+  s_fce3a24e6d662f::t_ca984cfb433d30 107
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "f720a08a85248d6ced5f1591fd811a8b1d287698",
+  "prompts": {},
+  "humans": {
+    "h_7a1e47632c7d77": {
+      "author": "gaohanqing <gaohanqing@bytedance.com>"
+    }
+  },
+  "sessions": {
+    "s_bfc8053fc365d2": {
+      "agent_id": {
+        "tool": "trae-cue",
+        "id": "ai_tab-icr-216ccdbc-66d7-4de7-a4b6-03fa3fb14d51",
+        "model": "default"
+      },
+      "human_author": "gaohanqing <gaohanqing@bytedance.com>"
+    },
+    "s_fce3a24e6d662f": {
+      "agent_id": {
+        "tool": "trae-cue",
+        "id": "ai_tab-icr-865e991b-6aa1-4840-a4de-c636c7bc6af6",
+        "model": "default"
+      },
+      "human_author": "gaohanqing <gaohanqing@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}
