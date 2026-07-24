@@ -78,6 +78,7 @@ class GraphicsCanvas {
   }
 
   virtual void OnDrawDynamicTextBlobsStart() {}
+  virtual void OnDrawDynamicTextBlob() {}
   virtual void OnDrawDynamicTextBlobsEnd() {}
 
   virtual bool QuickReject(const skity::Rect& rect) = 0;

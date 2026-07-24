@@ -202,12 +202,7 @@ void SkityCanvas::DrawTextBlob(const fml::RefPtr<TextBlob>& blob, float x,
     return;
   }
   canvas_->DrawTextBlob(skity_text_blob, x, y, paint.gr_object());
-  if (start_draw_dynamic_text_blobs_) {
-    skity::RecordedOpOffset offset = canvas_->GetLastOpOffset();
-    FML_DCHECK(offset.IsValid());
-    dynamic_ops_.emplace_back(
-        std::make_pair(clay::DynamicOpType::kSetTextColor, offset));
-  }
+  OnDrawDynamicTextBlob();
 }
 
 void SkityCanvas::DrawPicture(const Picture* picture) {
@@ -221,6 +216,16 @@ skity::Matrix SkityCanvas::GetTotalMatrix() {
 
 void SkityCanvas::OnDrawDynamicTextBlobsStart() {
   start_draw_dynamic_text_blobs_ = true;
+}
+
+void SkityCanvas::OnDrawDynamicTextBlob() {
+  if (!start_draw_dynamic_text_blobs_) {
+    return;
+  }
+  skity::RecordedOpOffset offset = canvas_->GetLastOpOffset();
+  FML_DCHECK(offset.IsValid());
+  dynamic_ops_.emplace_back(
+      std::make_pair(clay::DynamicOpType::kSetTextColor, offset));
 }
 
 void SkityCanvas::OnDrawDynamicTextBlobsEnd() {

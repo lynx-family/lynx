@@ -21,6 +21,37 @@
 
 namespace txt {
 
+#ifdef ENABLE_SKITY
+namespace {
+
+// TTText paints directly to skity::Canvas, so notify GraphicsCanvas after the
+// main text blob is drawn. This keeps the text paint discoverable by Clay's
+// raster color animation without changing TTText's rendering behavior.
+class ClaySkityCanvasHelper final : public tttext::SkityCanvasHelper {
+ public:
+  explicit ClaySkityCanvasHelper(clay::GraphicsCanvas* canvas)
+      : tttext::SkityCanvasHelper(canvas->GetGrCanvas()), canvas_(canvas) {}
+
+  void DrawGlyphs(const tttext::ITypefaceHelper* font, uint32_t glyph_count,
+                  const uint16_t* glyphs, const char* text,
+                  uint32_t text_bytes, float ox, float oy, float* pos_x,
+                  float* pos_y, tttext::Painter* painter) override {
+    if (glyph_count == 0) {
+      return;
+    }
+    tttext::SkityCanvasHelper::DrawGlyphs(
+        font, glyph_count, glyphs, text, text_bytes, ox, oy, pos_x, pos_y,
+        painter);
+    canvas_->OnDrawDynamicTextBlob();
+  }
+
+ private:
+  clay::GraphicsCanvas* canvas_;
+};
+
+}  // namespace
+#endif
+
 class TTShapeRun : public tttext::RunDelegate {
  public:
   TTShapeRun(const PlaceholderRun& span, const tttext::Style& style) {
@@ -165,7 +196,7 @@ void ParagraphTTText::Paint(SkCanvas* canvas, double x, double y) {
 void ParagraphTTText::Paint(clay::GraphicsCanvas* canvas, double x, double y) {
   canvas->Save();
   canvas->Translate(x, y);
-  tttext::SkityCanvasHelper helper(canvas->GetGrCanvas());
+  ClaySkityCanvasHelper helper(canvas);
   tttext::LayoutDrawer drawer(&helper);
   drawer.DrawLayoutPage(region_.get());
   canvas->Restore();
