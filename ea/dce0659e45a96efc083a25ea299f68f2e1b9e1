@@ -1,0 +1,28 @@
+e2e/lynx-e2e-mvp/tests/gif-controls.demo.test.ts
+  h_dc1658ba751399 11,21-26,28,31-33,37-39,52-58,63-64
+e2e/lynx-e2e-mvp/src/ios-app-controller.ts
+  s_cef4d630f9299d::t_040c7a960ac3b7 1-94
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "eadce0659e45a96efc083a25ea299f68f2e1b9e1",
+  "prompts": {},
+  "humans": {
+    "h_dc1658ba751399": {
+      "author": "tangyongjie <tangyongjie@bytedance.com>"
+    }
+  },
+  "sessions": {
+    "s_cef4d630f9299d": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f8e4d-f8ba-7141-af53-0d9ebc22b90d",
+        "model": "unknown"
+      },
+      "human_author": "tangyongjie <tangyongjie@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}
