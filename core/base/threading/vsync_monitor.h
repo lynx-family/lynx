@@ -11,12 +11,14 @@
 
 #include "base/include/closure.h"
 #include "base/include/fml/task_runner.h"
+#include "core/base/lynx_export.h"
 #include "core/public/vsync_monitor_platform_impl.h"
 
 namespace lynx {
 namespace base {
 
-class VSyncMonitor : public std::enable_shared_from_this<VSyncMonitor> {
+class LYNX_EXPORT_FOR_DEVTOOL VSyncMonitor
+    : public std::enable_shared_from_this<VSyncMonitor> {
  public:
   using Callback = base::MoveOnlyClosure<void, int64_t, int64_t>;
 

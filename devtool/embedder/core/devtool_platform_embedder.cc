@@ -76,6 +76,11 @@ class DevtoolPlatformImpl : public lynx::devtool::DevToolPlatformFacade {
     embedder->EmulateTouch(input);
   }
 
+  std::shared_ptr<input::InputEventTarget> GetInputEventTarget() override {
+    auto embedder = weak_embedder_.lock();
+    return embedder ? embedder->GetInputEventTarget() : nullptr;
+  }
+
   std::vector<float> GetRectToWindow() const override { return {}; }
 
   std::string GetLynxVersion() const override {
@@ -318,6 +323,11 @@ void DevtoolPlatformEmbedder::EmulateTouch(
   proxy_->EmulateTouch(input->type_, input->x_, input->y_, input->button_,
                        input->delta_x_, input->delta_y_, input->modifiers_,
                        input->click_count_);
+}
+
+std::shared_ptr<input::InputEventTarget>
+DevtoolPlatformEmbedder::GetInputEventTarget() const {
+  return proxy_ ? proxy_->GetInputEventTarget() : nullptr;
 }
 
 std::string DevtoolPlatformEmbedder::GetLynxUITree() {
