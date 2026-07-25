@@ -57,6 +57,9 @@ domains:
       - name: setStyleTexts
         origin: standard
         source: devtool/lynx_devtool/agent/domain_agent/inspector_css_agent_ng.cc
+      - name: setSupportsText
+        origin: standard
+        source: devtool/lynx_devtool/agent/domain_agent/inspector_css_agent_ng.cc
       - name: startRuleUsageTracking
         origin: standard
         source: devtool/lynx_devtool/agent/domain_agent/inspector_css_agent_ng.cc
@@ -325,6 +328,34 @@ domains:
       - name: transferData
         origin: lynx-extension
         source: devtool/lynx_devtool/agent/domain_agent/inspector_lynx_agent_ng.cc
+  - name: LynxSetting
+    origin: lynx-extension
+    scope: global
+    methods:
+      - name: clearMockValues
+        origin: lynx-extension
+        source: devtool/lynx_devtool/agent/domain_agent/inspector_lynx_setting_agent.cc
+      - name: fetchLatest
+        origin: lynx-extension
+        source: devtool/lynx_devtool/agent/domain_agent/inspector_lynx_setting_agent.cc
+      - name: getFetchInfo
+        origin: lynx-extension
+        source: devtool/lynx_devtool/agent/domain_agent/inspector_lynx_setting_agent.cc
+      - name: getLayeredValues
+        origin: lynx-extension
+        source: devtool/lynx_devtool/agent/domain_agent/inspector_lynx_setting_agent.cc
+      - name: getValue
+        origin: lynx-extension
+        source: devtool/lynx_devtool/agent/domain_agent/inspector_lynx_setting_agent.cc
+      - name: getValues
+        origin: lynx-extension
+        source: devtool/lynx_devtool/agent/domain_agent/inspector_lynx_setting_agent.cc
+      - name: removeMockValue
+        origin: lynx-extension
+        source: devtool/lynx_devtool/agent/domain_agent/inspector_lynx_setting_agent.cc
+      - name: setMockValue
+        origin: lynx-extension
+        source: devtool/lynx_devtool/agent/domain_agent/inspector_lynx_setting_agent.cc
   - name: Memory
     origin: standard
     scope: global-and-instance
@@ -466,6 +497,12 @@ domains:
         origin: standard
         source: third_party/quickjs/src/src/inspector/protocols.cc
       - name: globalLexicalScopeNames
+        origin: standard
+        source: third_party/quickjs/src/src/inspector/protocols.cc
+      - name: releaseObject
+        origin: standard
+        source: third_party/quickjs/src/src/inspector/protocols.cc
+      - name: releaseObjectGroup
         origin: standard
         source: third_party/quickjs/src/src/inspector/protocols.cc
       - name: runScript

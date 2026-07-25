@@ -358,9 +358,9 @@ def check_manifest(
         for line in difflib.unified_diff(
             actual.splitlines(),
             expected.splitlines(),
-            from_file=repo_relative_path(paths, paths.manifest),
-            to_file=f"{repo_relative_path(paths, paths.manifest)} (expected)",
-            line_term="",
+            fromfile=repo_relative_path(paths, paths.manifest),
+            tofile=f"{repo_relative_path(paths, paths.manifest)} (expected)",
+            lineterm="",
         ):
             print(line, file=sys.stderr)
         failed = True
