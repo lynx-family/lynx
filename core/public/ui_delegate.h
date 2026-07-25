@@ -23,6 +23,9 @@
 #include "core/public/perf_controller_proxy.h"
 
 namespace lynx {
+namespace input {
+class InputEventTarget;
+}  // namespace input
 namespace tasm {
 using TakeSnapshotCompletedCallback =
     std::function<void(const std::string&, float timestamp, float device_width,
@@ -93,6 +96,10 @@ class UIDelegate {
 
   // Whether enable native list for the different renderer backend.
   virtual bool EnableNativeList() const { return false; }
+
+  virtual std::shared_ptr<input::InputEventTarget> GetInputEventTarget() {
+    return nullptr;
+  }
 
   // WeakFlag is used to create a weak reference to the UIDelegate instance.
   // This allows checking if the UIDelegate is still alive before accessing it.

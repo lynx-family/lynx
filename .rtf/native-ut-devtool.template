@@ -85,6 +85,12 @@ targets({
         "builder":'build_for_agent_test',
         "args":["--gtest_filter=\"-*DISABLE*\""]
     },
+    "input_unittests_exec": {
+        "cwd": ".",
+        "owners":["shangguansiyang"],
+        "coverage": True,
+        "enable_parallel":True,
+    },
     "js_debug_unittest_exec": {
         "cwd": ".",
         "owners":["ZhaoSongGOO"],
