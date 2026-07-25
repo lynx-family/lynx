@@ -1,0 +1,21 @@
+summary: Clears all platform Lynx setting mock values.
+parameters: []
+returns:
+  - name: result
+    type: object
+    description: Platform-defined result object returned by the Lynx setting backend.
+events: []
+notes:
+  - Dispatches on the DevTool task runner and forwards the request to GlobalDevToolPlatformFacade::HandleLynxSetting.
+  - The forwarded request contains method LynxSetting.clearMockValues and empty key and value fields.
+  - The C++ handler only requires the platform result JSON to parse as an object. It does not define additional result fields.
+  - Platform errors are returned as CDP error responses with the platform-provided message.
+  - If the platform returns invalid JSON or a non-object result, the response is a CDP error with message Invalid LynxSetting result JSON.
+examples:
+  - title: Clear mock values
+    request:
+      id: 1
+      method: LynxSetting.clearMockValues
+    response:
+      id: 1
+      result: {}

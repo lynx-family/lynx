@@ -1,0 +1,42 @@
+summary: Sets one platform Lynx setting mock value.
+parameters:
+  - name: key
+    type: string
+    description: Non-empty setting key whose mock value should be set.
+  - name: value
+    type: string
+    description: Mock value string forwarded to the platform Lynx setting backend.
+returns:
+  - name: result
+    type: object
+    description: Platform-defined result object returned by the Lynx setting backend.
+events: []
+notes:
+  - Dispatches on the DevTool task runner and forwards the request to GlobalDevToolPlatformFacade::HandleLynxSetting.
+  - The forwarded request contains method LynxSetting.setMockValue, params.key, and params.value.
+  - 'The C++ handler rejects missing, non-string, or empty params.key with message Invalid params: expected string key.'
+  - 'The C++ handler rejects missing or non-string params.value with message Invalid params: expected string mock value.'
+  - The C++ handler only requires the platform result JSON to parse as an object. It does not define additional result fields.
+  - Platform errors are returned as CDP error responses with the platform-provided message.
+examples:
+  - title: Set a mock value
+    request:
+      id: 1
+      method: LynxSetting.setMockValue
+      params:
+        key: feature_key
+        value: enabled
+    response:
+      id: 1
+      result: {}
+  - title: Non-string mock value
+    request:
+      id: 2
+      method: LynxSetting.setMockValue
+      params:
+        key: feature_key
+        value: true
+    response:
+      id: 2
+      error:
+        message: 'Invalid params: expected string mock value'
