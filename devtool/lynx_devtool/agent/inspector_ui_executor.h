@@ -7,6 +7,7 @@
 #include <memory>
 #include <unordered_map>
 
+#include "base/include/closure.h"
 #include "core/renderer/starlight/layout/layout_object.h"
 #include "core/shell/lynx_shell.h"
 #include "devtool/base_devtool/native/public/message_sender.h"
@@ -16,6 +17,7 @@
 namespace lynx {
 namespace devtool {
 
+class InputRequestHandler;
 class LynxDevToolMediator;
 
 class InspectorUIExecutor
@@ -27,6 +29,7 @@ class InspectorUIExecutor
 
   void SetDevToolPlatformFacade(
       const std::shared_ptr<DevToolPlatformFacade>& devtool_platform_facade);
+  void ResetInputHandler();
   void SetShell(lynx::shell::LynxShell* shell);
   bool ShellIsDestroyed() { return shell_ == nullptr; }
 
@@ -69,6 +72,7 @@ class InspectorUIExecutor
   // Input domain
   DECLARE_DEVTOOL_METHOD(EmulateTouchFromMouseEvent)
   DECLARE_DEVTOOL_METHOD(InsertText)
+  DECLARE_DEVTOOL_METHOD(SynthesizeTapGesture)
 
   // event
  public:
@@ -104,9 +108,17 @@ class InspectorUIExecutor
   std::weak_ptr<LynxDevToolMediator> devtool_mediator_wp_;
 
  private:
+  // Runs `task` on the UI thread: immediately when already on the UI runner,
+  // otherwise posted; falls back to running it synchronously before the UI
+  // runner is ready. Used to keep the input handler's UI-thread-bound gesture
+  // controller confined to the UI thread without repeating the dispatch at
+  // every caller.
+  void RunOnUIThreadOrNow(lynx::base::closure task);
+
   bool uitree_enabled_;
   bool uitree_use_compression_;
   int uitree_compression_threshold_;
+  std::unique_ptr<InputRequestHandler> input_request_handler_;
   std::unordered_map<int32_t, SLNode*> layout_objects_;
 };
 

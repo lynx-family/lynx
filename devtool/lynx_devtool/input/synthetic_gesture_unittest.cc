@@ -307,7 +307,7 @@ TEST(SyntheticGestureControllerTest, WaitsForAckBeforeStartingNextGesture) {
   thread.GetTaskRunner()->PostSyncTask([&controller]() { controller.reset(); });
 }
 
-TEST(SyntheticGestureControllerTest, FailsTimedOutAckAndStartsNextGesture) {
+TEST(SyntheticGestureControllerTest, FailedAckCancelsRemainingGestures) {
   auto target = std::make_shared<RecordingInputEventTarget>();
   target->defer_processing_ = true;
   fml::Thread thread("synthetic_gesture_ack_timeout_test");
@@ -323,8 +323,7 @@ TEST(SyntheticGestureControllerTest, FailsTimedOutAckAndStartsNextGesture) {
     controller->QueueSyntheticGesture(
         std::make_unique<SyntheticTapGesture>(12.f, 24.f, 0,
                                               PointerSourceType::kTouch),
-        [&first_completion, &target](SyntheticGestureResult result) {
-          target->defer_processing_ = false;
+        [&first_completion](SyntheticGestureResult result) {
           first_completion.set_value(result);
         });
     controller->QueueSyntheticGesture(
@@ -344,18 +343,16 @@ TEST(SyntheticGestureControllerTest, FailsTimedOutAckAndStartsNextGesture) {
   ASSERT_EQ(first_result.wait_for(std::chrono::seconds(1)),
             std::future_status::ready);
   EXPECT_EQ(first_result.get(), SyntheticGestureResult::kFailed);
+  // The second gesture must be cancelled (failed) rather than started, so no
+  // further synthetic input is injected.
   ASSERT_EQ(second_result.wait_for(std::chrono::seconds(1)),
             std::future_status::ready);
-  EXPECT_EQ(second_result.get(), SyntheticGestureResult::kDone);
+  EXPECT_EQ(second_result.get(), SyntheticGestureResult::kFailed);
 
   const auto events = target->Events();
-  ASSERT_EQ(events.size(), 4u);
+  ASSERT_EQ(events.size(), 2u);
   EXPECT_FLOAT_EQ(events[0].pointers[0].x, 12.f);
-  EXPECT_FLOAT_EQ(events[2].pointers[0].x, 36.f);
 
-  thread.GetTaskRunner()->PostSyncTask(
-      [&target]() { target->CompleteNextProcessing(true); });
-  EXPECT_EQ(target->EventCount(), 4u);
   thread.GetTaskRunner()->PostSyncTask([&controller]() { controller.reset(); });
 }
 

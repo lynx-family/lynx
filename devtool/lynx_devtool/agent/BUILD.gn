@@ -76,6 +76,8 @@ devtool_agent_ng_sources = [
   "agent_defines.h",
   "console_message_manager.cc",
   "console_message_manager.h",
+  "input_request_handler.cc",
+  "input_request_handler.h",
   "inspector_default_executor.cc",
   "inspector_default_executor.h",
   "inspector_element_observer_impl.cc",
