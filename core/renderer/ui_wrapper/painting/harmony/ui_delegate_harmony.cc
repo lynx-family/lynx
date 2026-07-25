@@ -635,19 +635,6 @@ int UIDelegateHarmony::SetUIStyle(int id, const std::string& name,
   return -1;
 }
 
-void UIDelegateHarmony::EmulateTouch(const std::string& event_type, int x,
-                                     int y, const std::string& button,
-                                     float delta_x, float delta_y,
-                                     int modifiers, int click_count) {
-  auto lynx_context = lynx_context_.lock();
-  if (!lynx_context) {
-    return;
-  }
-  emulated_touch_dispatcher_.EmulateTouch(lynx_context, event_type, x, y,
-                                          button, delta_x, delta_y, modifiers,
-                                          click_count);
-}
-
 }  // namespace harmony
 }  // namespace tasm
 }  // namespace lynx

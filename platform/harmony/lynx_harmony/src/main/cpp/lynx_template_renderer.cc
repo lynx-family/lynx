@@ -42,6 +42,7 @@
 #include "core/shell/runtime/bts/lynx_bts_runtime_proxy_impl.h"
 #include "core/shell/runtime/common/module_delegate_impl.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/base/base_trace_backend.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/devtool/harmony_input_event_target.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/lynx_white_board_harmony.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/text/emoji_resource_manager.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_new_image.h"
@@ -98,6 +99,9 @@ LynxTemplateRenderer::LynxTemplateRenderer(napi_env env, napi_value js_this,
 
 LynxTemplateRenderer::~LynxTemplateRenderer() {
   LOGI("~TemplateRenderer");
+  if (input_event_target_) {
+    input_event_target_->Shutdown();
+  }
   int32_t instance_id = GetInstanceId();
   if (weak_flag_) {
     weak_flag_->renderer.store(nullptr, std::memory_order_release);
@@ -136,11 +140,18 @@ void LynxTemplateRenderer::SetUpLynxShell(
     std::unique_ptr<ModuleFactoryHarmony> main_thread_module_factory,
     LynxRuntimeWrapper* runtime_wrapper, LynxWhiteBoard* white_board,
     bool enable_multi_async_thread) {
+  if (input_event_target_) {
+    input_event_target_->Shutdown();
+    input_event_target_.reset();
+  }
   ui_delegate_ = ui_delegate;
   resource_loader_ = resource_loader;
   is_host_renderer_ = is_host_renderer;
   if (is_host_renderer_) {
     lynx_context_ = GetHarmonyLynxContext();
+    input_event_target_ =
+        std::make_shared<tasm::harmony::HarmonyInputEventTarget>(
+            lynx_context_.lock());
     SyncInspectorOwnerToLynxContext();
     SyncWindowInfoToLynxContext();
   } else {
@@ -2353,11 +2364,16 @@ void LynxTemplateRenderer::EmulateTouch(const std::string& event_type, int x,
                                         int y, const std::string& button,
                                         float delta_x, float delta_y,
                                         int modifiers, int click_count) {
-  if (!ui_delegate_) {
+  if (!input_event_target_) {
     return;
   }
-  ui_delegate_->EmulateTouch(event_type, x, y, button, delta_x, delta_y,
-                             modifiers, click_count);
+  input_event_target_->EmulateTouchFromMouseEvent(
+      event_type, x, y, button, delta_x, delta_y, modifiers, click_count);
+}
+
+std::shared_ptr<input::InputEventTarget>
+LynxTemplateRenderer::GetInputEventTarget() {
+  return input_event_target_;
 }
 
 void LynxTemplateRenderer::DispatchMessageEvent(const Json::Value& message) {}
