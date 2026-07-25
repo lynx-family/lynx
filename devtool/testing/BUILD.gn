@@ -28,6 +28,7 @@ group("devtool_ng_unit_test") {
     ":devtool_agent_unittest_exec",
     ":devtool_base_unittest_exec",
     ":devtoolng_unittest_exec",
+    "../lynx_devtool/agent/input:input_unittests_exec",
     "../lynx_devtool/message_handler:message_handler_unittest_exec",
     "../lynx_devtool/shared_data:shared_data_unittest_exec",
   ]

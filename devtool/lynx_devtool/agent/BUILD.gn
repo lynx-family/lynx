@@ -126,6 +126,7 @@ devtool_source_set("agent") {
   sources = devtool_agent_shared_sources + devtool_agent_ng_sources
   deps = [
     "../../../base/src:base_log_headers",
+    "input",
     "//third_party/zlib",
   ]
   public_configs = [ ":common_config" ]
