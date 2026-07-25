@@ -169,6 +169,12 @@ lynx_base_source_set("base_log") {
   deps = [ "../../third_party/rapidjson:rapidjson" ]
 }
 
+lynx_base_source_set("base_core_headers") {
+  public = base_core_public_headers
+  sources = base_core_public_headers
+  public_deps = [ ":base_log_headers" ]
+}
+
 lynx_base_source_set("time_utils") {
   visibility = [
     ":*",

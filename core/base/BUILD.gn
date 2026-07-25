@@ -129,6 +129,17 @@ if (enable_unittests) {
 
 # base_shared_sources end
 
+lynx_core_source_set("vsync_monitor_headers") {
+  sources = [
+    "lynx_export.h",
+    "threading/vsync_monitor.h",
+  ]
+  public_deps = [
+    "../../base/src:base_core_headers",
+    "../public",
+  ]
+}
+
 lynx_core_source_set("base") {
   libs = []
   sources = []

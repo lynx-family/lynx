@@ -613,6 +613,11 @@ void LynxTemplateRenderer::EmulateTouch(const std::string& event_type, int x,
   }
 }
 
+std::shared_ptr<input::InputEventTarget>
+LynxTemplateRenderer::GetInputEventTarget() {
+  return ui_delegate_ ? ui_delegate_->GetInputEventTarget() : nullptr;
+}
+
 std::shared_ptr<shell::LynxRuntimeProxy> LynxTemplateRenderer::GetRuntimeProxy()
     const {
   return runtime_proxy_;
