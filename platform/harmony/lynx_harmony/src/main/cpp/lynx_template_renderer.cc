@@ -41,7 +41,9 @@
 #include "core/shell/perf_controller_proxy_impl.h"
 #include "core/shell/runtime/bts/lynx_bts_runtime_proxy_impl.h"
 #include "core/shell/runtime/common/module_delegate_impl.h"
+#include "devtool/lynx_devtool/agent/input/input_event_target.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/base/base_trace_backend.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/devtool/harmony_input_event_dispatcher.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/lynx_white_board_harmony.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/text/emoji_resource_manager.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_new_image.h"
@@ -85,6 +87,49 @@ void PrepareEnvWidthScreenSize(int width, int height, float density,
   starlight::ComputedCSSStyle::SAFE_AREA_INSET_LEFT_ = 0;
   starlight::ComputedCSSStyle::SAFE_AREA_INSET_RIGHT_ = 0;
 }
+
+class HarmonyInputEventTarget : public input::InputEventTarget {
+ public:
+  explicit HarmonyInputEventTarget(
+      const std::shared_ptr<tasm::harmony::LynxContext>& lynx_context)
+      : lynx_context_(lynx_context) {}
+
+  ~HarmonyInputEventTarget() override {
+    input_event_dispatcher_.Shutdown(lynx_context_.lock());
+  }
+
+  input::PointerCapabilities GetPointerCapabilities() const override {
+    input::PointerCapabilities capabilities;
+    auto lynx_context = lynx_context_.lock();
+    capabilities.supports_touch =
+        lynx_context && lynx_context->HasWindowInfo() &&
+        tasm::harmony::HarmonyInputEventDispatcher::IsAvailable();
+    if (capabilities.supports_touch) {
+      capabilities.default_source_type = input::PointerSourceType::kTouch;
+    }
+    return capabilities;
+  }
+
+  bool InjectPointerEvent(const input::PointerEvent& event) override {
+    auto lynx_context = lynx_context_.lock();
+    return lynx_context &&
+           input_event_dispatcher_.InjectPointerEvent(lynx_context, event);
+  }
+
+  void WaitForInputProcessed(std::function<void(bool)> callback) override {
+    auto lynx_context = lynx_context_.lock();
+    if (!lynx_context) {
+      callback(false);
+      return;
+    }
+    input_event_dispatcher_.WaitForInputProcessed(lynx_context,
+                                                  std::move(callback));
+  }
+
+ private:
+  std::weak_ptr<tasm::harmony::LynxContext> lynx_context_;
+  tasm::harmony::HarmonyInputEventDispatcher input_event_dispatcher_;
+};
 
 }  // namespace
 
@@ -141,10 +186,13 @@ void LynxTemplateRenderer::SetUpLynxShell(
   is_host_renderer_ = is_host_renderer;
   if (is_host_renderer_) {
     lynx_context_ = GetHarmonyLynxContext();
+    input_event_target_ =
+        std::make_shared<HarmonyInputEventTarget>(lynx_context_.lock());
     SyncInspectorOwnerToLynxContext();
     SyncWindowInfoToLynxContext();
   } else {
     lynx_context_.reset();
+    input_event_target_.reset();
   }
 
   float w = width / display_density_;
@@ -2358,6 +2406,11 @@ void LynxTemplateRenderer::EmulateTouch(const std::string& event_type, int x,
   }
   ui_delegate_->EmulateTouch(event_type, x, y, button, delta_x, delta_y,
                              modifiers, click_count);
+}
+
+std::shared_ptr<input::InputEventTarget>
+LynxTemplateRenderer::GetInputEventTarget() {
+  return input_event_target_;
 }
 
 void LynxTemplateRenderer::DispatchMessageEvent(const Json::Value& message) {}

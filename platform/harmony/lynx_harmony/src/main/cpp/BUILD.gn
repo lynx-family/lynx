@@ -26,6 +26,8 @@ lynx_core_source_set("cpp") {
     "base/base_trace_backend.h",
     "devtool/harmony_emulated_touch_dispatcher.cc",
     "devtool/harmony_emulated_touch_dispatcher.h",
+    "devtool/harmony_input_event_dispatcher.cc",
+    "devtool/harmony_input_event_dispatcher.h",
     "devtool_lifecycle_harmony.cc",
     "devtool_lifecycle_harmony.h",
     "devtool_settings_harmony.cc",
@@ -261,7 +263,10 @@ lynx_core_source_set("cpp") {
     "ui/utils/ui_sticky_scroller.h",
   ]
 
-  deps = [ ":static_task_napi_bridge" ]
+  deps = [
+    ":static_task_napi_bridge",
+    "../../../../../../devtool/lynx_devtool/agent/input:input_types",
+  ]
 
   configs = [ ":harmony_public_config" ]
   libs = [
