@@ -15,6 +15,10 @@
 
 namespace lynx {
 namespace devtool {
+namespace input {
+class InputEventTarget;
+class SyntheticGestureController;
+}  // namespace input
 
 class LynxDevToolMediator;
 
@@ -69,6 +73,7 @@ class InspectorUIExecutor
   // Input domain
   DECLARE_DEVTOOL_METHOD(EmulateTouchFromMouseEvent)
   DECLARE_DEVTOOL_METHOD(InsertText)
+  DECLARE_DEVTOOL_METHOD(SynthesizeTapGesture)
 
   // event
  public:
@@ -107,6 +112,9 @@ class InspectorUIExecutor
   bool uitree_enabled_;
   bool uitree_use_compression_;
   int uitree_compression_threshold_;
+  std::weak_ptr<input::InputEventTarget> synthetic_gesture_target_;
+  std::shared_ptr<input::SyntheticGestureController>
+      synthetic_gesture_controller_;
   std::unordered_map<int32_t, SLNode*> layout_objects_;
 };
 

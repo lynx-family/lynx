@@ -150,6 +150,7 @@ class LynxDevToolMediator
   // Input domain -> ui executor
   DECLARE_DEVTOOL_METHOD(EmulateTouchFromMouseEvent)
   DECLARE_DEVTOOL_METHOD(InsertText)
+  DECLARE_DEVTOOL_METHOD(SynthesizeTapGesture)
 
   // Inspector domain -> devtools executor
   DECLARE_DEVTOOL_METHOD(InspectorEnable)
@@ -232,6 +233,9 @@ class LynxDevToolMediator
   }
   std::shared_ptr<InspectorDefaultExecutor> GetDevToolExecutor() {
     return devtool_executor_;
+  }
+  const lynx::fml::RefPtr<lynx::fml::TaskRunner>& GetUITaskRunner() const {
+    return ui_task_runner_;
   }
   const std::shared_ptr<lynx::devtool::InspectorJavaScriptDebuggerImpl>&
   GetJSDebugger() {
