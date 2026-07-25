@@ -16,6 +16,9 @@
 #include "devtool/lynx_devtool/base/screen_metadata.h"
 
 namespace lynx {
+namespace input {
+class InputEventTarget;
+}  // namespace input
 namespace devtool {
 
 class LynxDevToolMediator;
@@ -148,6 +151,12 @@ class DevToolPlatformFacade
  protected:
   virtual bool SupportsOverlayBoxModel() const { return false; }
 
+ public:
+  virtual std::shared_ptr<input::InputEventTarget> GetInputEventTarget() {
+    return nullptr;
+  }
+
+ protected:
   // This function is shared across multiple platforms and retrieves box model
   // information from a TASM-thread snapshot plus UI-thread transform.
   std::vector<double> GetBoxModelInGeneralPlatform(

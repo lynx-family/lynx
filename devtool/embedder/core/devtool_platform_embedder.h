@@ -16,6 +16,10 @@
 
 namespace lynx {
 
+namespace input {
+class InputEventTarget;
+}  // namespace input
+
 namespace tasm {
 class TemplateData;
 }  // namespace tasm
@@ -68,6 +72,7 @@ class DevtoolPlatformEmbedder
   void GetLynxScreenShot();
 
   void EmulateTouch(std::shared_ptr<lynx::devtool::MouseEvent> input);
+  std::shared_ptr<input::InputEventTarget> GetInputEventTarget() const;
 
  public:
   void SendScreenCast(const std::string& data,
