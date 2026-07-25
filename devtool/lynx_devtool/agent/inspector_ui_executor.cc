@@ -4,14 +4,18 @@
 
 #include "devtool/lynx_devtool/agent/inspector_ui_executor.h"
 
-#include <regex>
+#include <atomic>
+#include <cmath>
+#include <limits>
+#include <utility>
 
 #include "core/renderer/dom/element_manager.h"
 #include "core/runtime/lepus/json_parser.h"
 #include "devtool/base_devtool/native/public/devtool_status.h"
+#include "devtool/lynx_devtool/agent/input/input_event_target.h"
+#include "devtool/lynx_devtool/agent/input/synthetic_gesture.h"
 #include "devtool/lynx_devtool/agent/inspector_util.h"
 #include "devtool/lynx_devtool/agent/lynx_devtool_mediator.h"
-#include "devtool/lynx_devtool/element/element_inspector.h"
 #include "devtool/lynx_devtool/element/helper_util.h"
 
 namespace lynx {
@@ -22,6 +26,93 @@ namespace devtool {
 extern const char* kLynxLocalUrl;
 extern const char* kLynxSecurityOrigin;
 extern const char* kLynxMimeType;
+
+namespace {
+
+constexpr int kDefaultTapDurationMs = 50;
+constexpr int kDefaultTapCount = 1;
+constexpr int kMaxSyntheticTapCount = 200;
+constexpr int64_t kMaxSyntheticTapSequenceDurationMs = 10000;
+
+class TapGestureResponse {
+ public:
+  TapGestureResponse(std::shared_ptr<lynx::devtool::MessageSender> sender,
+                     int64_t id, int tap_count)
+      : sender_(std::move(sender)), id_(id), remaining_(tap_count) {}
+
+  void OnGestureResult(input::SyntheticGestureResult result) {
+    if (result != input::SyntheticGestureResult::kDone) {
+      if (!responded_.exchange(true)) {
+        sender_->SendErrorResponse(id_, "Input.synthesizeTapGesture failed");
+      }
+      return;
+    }
+    if (remaining_.fetch_sub(1) == 1 && !responded_.exchange(true)) {
+      sender_->SendOKResponse(id_);
+    }
+  }
+
+ private:
+  std::shared_ptr<lynx::devtool::MessageSender> sender_;
+  int64_t id_;
+  std::atomic<int> remaining_;
+  std::atomic<bool> responded_{false};
+};
+
+bool ParseFiniteFloat(const Json::Value& value, float* result) {
+  if (!result || !value.isNumeric()) {
+    return false;
+  }
+  const double parsed = value.asDouble();
+  if (!std::isfinite(parsed) ||
+      parsed < -static_cast<double>(std::numeric_limits<float>::max()) ||
+      parsed > static_cast<double>(std::numeric_limits<float>::max())) {
+    return false;
+  }
+  *result = static_cast<float>(parsed);
+  return true;
+}
+
+const char* SourceTypeToString(input::PointerSourceType source_type) {
+  switch (source_type) {
+    case input::PointerSourceType::kDefault:
+      return "default";
+    case input::PointerSourceType::kTouch:
+      return "touch";
+    case input::PointerSourceType::kMouse:
+      return "mouse";
+  }
+  return "unknown";
+}
+
+bool ParseGestureSourceType(const Json::Value& params,
+                            input::PointerSourceType* source_type) {
+  if (!source_type) {
+    return false;
+  }
+  if (!params.isMember("gestureSourceType") ||
+      params["gestureSourceType"].isNull()) {
+    *source_type = input::PointerSourceType::kDefault;
+    return true;
+  }
+  if (!params["gestureSourceType"].isString()) {
+    return false;
+  }
+
+  const std::string value = params["gestureSourceType"].asString();
+  if (value == "default") {
+    *source_type = input::PointerSourceType::kDefault;
+  } else if (value == "touch") {
+    *source_type = input::PointerSourceType::kTouch;
+  } else if (value == "mouse") {
+    *source_type = input::PointerSourceType::kMouse;
+  } else {
+    return false;
+  }
+  return true;
+}
+
+}  // namespace
 
 InspectorUIExecutor::InspectorUIExecutor(
     const std::shared_ptr<LynxDevToolMediator>& devtool_mediator)
@@ -36,6 +127,10 @@ InspectorUIExecutor::~InspectorUIExecutor() {
 
 void InspectorUIExecutor::SetDevToolPlatformFacade(
     const std::shared_ptr<DevToolPlatformFacade>& devtool_platform_facade) {
+  if (devtool_platform_facade_ != devtool_platform_facade) {
+    synthetic_gesture_target_.reset();
+    synthetic_gesture_controller_.reset();
+  }
   devtool_platform_facade_ = devtool_platform_facade;
 }
 
@@ -709,6 +804,112 @@ void InspectorUIExecutor::InsertText(
   response["result"] = content;
   response["id"] = message["id"].asInt64();
   sender->SendMessage("CDP", response);
+}
+
+void InspectorUIExecutor::SynthesizeTapGesture(
+    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
+    const Json::Value& message) {
+  const int64_t id = message["id"].asInt64();
+  const Json::Value& params = message["params"];
+  float x = 0.f;
+  float y = 0.f;
+  if (!params.isObject() || !ParseFiniteFloat(params["x"], &x) ||
+      !ParseFiniteFloat(params["y"], &y)) {
+    sender->SendErrorResponse(
+        id, "Invalid params: expected finite numeric x and y");
+    return;
+  }
+
+  if (!devtool_platform_facade_) {
+    sender->SendErrorResponse(id, "Input target is unavailable");
+    return;
+  }
+
+  auto target = devtool_platform_facade_->GetInputEventTarget();
+  if (!target) {
+    sender->SendErrorResponse(id,
+                              "Not implemented: Input.synthesizeTapGesture");
+    return;
+  }
+
+  input::PointerSourceType source_type = input::PointerSourceType::kDefault;
+  if (!ParseGestureSourceType(params, &source_type)) {
+    sender->SendErrorResponse(
+        id,
+        "Invalid params: expected gestureSourceType default, touch, or mouse");
+    return;
+  }
+
+  const auto capabilities = target->GetPointerCapabilities();
+  if (source_type == input::PointerSourceType::kDefault) {
+    source_type = capabilities.default_source_type;
+  }
+  if (source_type == input::PointerSourceType::kDefault ||
+      !capabilities.Supports(source_type)) {
+    sender->SendErrorResponse(
+        id, std::string("Not implemented: Input.synthesizeTapGesture source ") +
+                SourceTypeToString(source_type));
+    return;
+  }
+
+  if (params.isMember("duration") &&
+      (!params["duration"].isInt() || params["duration"].asInt() < 0)) {
+    sender->SendErrorResponse(
+        id, "Invalid params: duration must be a non-negative integer");
+    return;
+  }
+  if (params.isMember("tapCount") &&
+      (!params["tapCount"].isInt() || params["tapCount"].asInt() < 0)) {
+    sender->SendErrorResponse(
+        id, "Invalid params: tapCount must be a non-negative integer");
+    return;
+  }
+
+  const int duration_ms = params.isMember("duration")
+                              ? params["duration"].asInt()
+                              : kDefaultTapDurationMs;
+  const int tap_count = params.isMember("tapCount") ? params["tapCount"].asInt()
+                                                    : kDefaultTapCount;
+  if (tap_count == 0) {
+    sender->SendOKResponse(id);
+    return;
+  }
+  if (tap_count > kMaxSyntheticTapCount) {
+    sender->SendErrorResponse(id, "Invalid params: tapCount exceeds 200");
+    return;
+  }
+
+  const int64_t sequence_duration_ms =
+      static_cast<int64_t>(duration_ms) * tap_count;
+  if (sequence_duration_ms > kMaxSyntheticTapSequenceDurationMs) {
+    sender->SendErrorResponse(
+        id, "Invalid params: tap sequence duration exceeds 10000 ms");
+    return;
+  }
+
+  auto devtool_mediator = devtool_mediator_wp_.lock();
+  const auto task_runner =
+      devtool_mediator ? devtool_mediator->GetUITaskRunner() : nullptr;
+  if (!task_runner) {
+    sender->SendErrorResponse(id, "Input UI task runner is unavailable");
+    return;
+  }
+
+  auto controller_target = synthetic_gesture_target_.lock();
+  if (!synthetic_gesture_controller_ || controller_target != target) {
+    synthetic_gesture_target_ = target;
+    synthetic_gesture_controller_ =
+        input::SyntheticGestureController::Create(target, task_runner);
+  }
+  auto response = std::make_shared<TapGestureResponse>(sender, id, tap_count);
+  for (int tap_index = 0; tap_index < tap_count; ++tap_index) {
+    synthetic_gesture_controller_->QueueSyntheticGesture(
+        std::make_unique<input::SyntheticTapGesture>(x, y, duration_ms,
+                                                     source_type),
+        [response](input::SyntheticGestureResult result) {
+          response->OnGestureResult(result);
+        });
+  }
 }
 
 // end input protocol

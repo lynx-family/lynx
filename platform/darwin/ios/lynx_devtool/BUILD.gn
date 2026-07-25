@@ -236,6 +236,8 @@ subspec_target("Native") {
   }
   deps = [
     "../../../../devtool/lynx_devtool/agent",
+    "../../../../devtool/lynx_devtool/agent/input",
+    "../../../../devtool/lynx_devtool/agent/input:input_types",
     "../../../../devtool/lynx_devtool/base",
     "../../../../devtool/lynx_devtool/common",
     "../../../../devtool/lynx_devtool/config",

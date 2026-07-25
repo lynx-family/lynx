@@ -6,20 +6,74 @@
 #define DEVTOOL_TESTING_MOCK_DEVTOOL_PLATFORM_FACADE_MOCK_H_
 
 #include <memory>
+#include <mutex>
 #include <string>
 #include <unordered_map>
 #include <vector>
 
 #include "devtool/base_devtool/native/public/devtool_status.h"
 #include "devtool/lynx_devtool/agent/devtool_platform_facade.h"
+#include "devtool/lynx_devtool/agent/input/input_event_target.h"
 #include "devtool/lynx_devtool/base/mouse_event.h"
 
 namespace lynx {
 namespace testing {
 
+class InputEventTargetMock : public input::InputEventTarget {
+ public:
+  input::PointerCapabilities GetPointerCapabilities() const override {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return capabilities_;
+  }
+
+  bool InjectPointerEvent(const input::PointerEvent& event) override {
+    std::lock_guard<std::mutex> lock(mutex_);
+    events_.push_back(event);
+    return injection_result_;
+  }
+
+  void WaitForInputProcessed(std::function<void(bool)> callback) override {
+    bool result = true;
+    {
+      std::lock_guard<std::mutex> lock(mutex_);
+      result = processing_result_;
+    }
+    callback(result);
+  }
+
+  void SetCapabilities(const input::PointerCapabilities& capabilities) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    capabilities_ = capabilities;
+  }
+
+  void SetInjectionResult(bool result) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    injection_result_ = result;
+  }
+
+  void SetProcessingResult(bool result) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    processing_result_ = result;
+  }
+
+  std::vector<input::PointerEvent> Events() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return events_;
+  }
+
+ private:
+  mutable std::mutex mutex_;
+  input::PointerCapabilities capabilities_{input::PointerSourceType::kTouch,
+                                           true, false};
+  bool injection_result_ = true;
+  bool processing_result_ = true;
+  std::vector<input::PointerEvent> events_;
+};
+
 class DevToolPlatformFacadeMock : public lynx::devtool::DevToolPlatformFacade {
  public:
-  DevToolPlatformFacadeMock() = default;
+  DevToolPlatformFacadeMock()
+      : input_event_target_(std::make_shared<InputEventTargetMock>()) {}
   ~DevToolPlatformFacadeMock() override = default;
 
   int FindNodeIdForLocation(float x, float y,
@@ -51,6 +105,9 @@ class DevToolPlatformFacadeMock : public lynx::devtool::DevToolPlatformFacade {
   void EmulateTouch(std::shared_ptr<lynx::devtool::MouseEvent> input) override {
   }
   void InsertText(const std::string& text) override { inserted_text_ = text; }
+  std::shared_ptr<input::InputEventTarget> GetInputEventTarget() override {
+    return input_event_target_;
+  }
 
   std::string GetDebugInfoByUrl(const std::string& url) override {
     return devtool::DevToolStatus::NO_DEBUG_INFO_FOUND_BY_URL;
@@ -79,6 +136,7 @@ class DevToolPlatformFacadeMock : public lynx::devtool::DevToolPlatformFacade {
   std::vector<std::vector<float>> transform_value_inputs_;
   std::vector<float> transform_value_response_;
   bool supports_overlay_box_model_ = false;
+  std::shared_ptr<InputEventTargetMock> input_event_target_;
 
  protected:
   bool SupportsOverlayBoxModel() const override {
