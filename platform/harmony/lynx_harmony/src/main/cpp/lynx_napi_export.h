@@ -51,6 +51,7 @@ void LynxNapiInit(napi_env env, napi_value exports) {
   lynx::shell::EmbedderPlatformHarmony::Init(env, exports);
   lynx::tasm::harmony::JSShadowNode::Init(env, exports);
   lynx::tasm::harmony::JSUIBase::Init(env, exports);
+  // TODO(yangguangzhao): Add frame init here.
   lynx::tasm::harmony::NativeNodeContent::Init(env, exports);
   lynx::tasm::harmony::LynxTrailHubImplHarmony::Init(env, exports);
   lynx::trace::TraceControllerHarmony::Init(env, exports);

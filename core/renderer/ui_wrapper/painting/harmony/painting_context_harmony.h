@@ -16,6 +16,7 @@
 
 namespace lynx {
 namespace tasm {
+class LynxTemplateBundle;
 
 class PaintingContextHarmonyRef : public PaintingCtxPlatformRef {
  public:
@@ -64,6 +65,8 @@ class PaintingContextHarmonyRef : public PaintingCtxPlatformRef {
   void UpdateExtraData(
       int32_t id,
       const fml::RefPtr<fml::RefCountedThreadSafeStorage>& platform_bundle);
+  void SetFrameAppBundle(int32_t id,
+                         std::shared_ptr<LynxTemplateBundle> bundle);
   void InvokeUIMethod(int32_t id, const std::string& method,
                       tasm::PropBundleHarmony* args, int32_t callback_id);
   void InvokeUIMethod(
@@ -130,6 +133,8 @@ class PaintingContextHarmony : public PaintingCtxPlatformImpl {
   bool IsFlatten(base::MoveOnlyClosure<bool, bool> func) override;
   void UpdatePlatformExtraBundle(int32_t id,
                                  PlatformExtraBundle* bundle) override;
+  void SetFrameAppBundle(
+      int32_t id, const std::shared_ptr<LynxTemplateBundle>& bundle) override;
   bool NeedAnimationProps() override;
 
   void InvokeUIMethod(int32_t id, const std::string& method,
