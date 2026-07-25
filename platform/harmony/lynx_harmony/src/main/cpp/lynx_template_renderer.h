@@ -33,6 +33,10 @@
 
 namespace lynx {
 
+namespace input {
+class InputEventTarget;
+}  // namespace input
+
 namespace runtime {
 
 namespace js {
@@ -49,6 +53,7 @@ class LynxTemplateBundle;
 class TemplateData;
 class PageConfig;
 namespace harmony {
+class HarmonyInputEventTarget;
 class LynxContext;
 }  // namespace harmony
 }  // namespace tasm
@@ -150,6 +155,7 @@ class LynxTemplateRenderer : public devtool::LynxDevToolProxy {
   void EmulateTouch(const std::string& event_type, int x, int y,
                     const std::string& button, float delta_x, float delta_y,
                     int modifiers, int click_count) override;
+  std::shared_ptr<input::InputEventTarget> GetInputEventTarget() override;
 
   void DispatchMessageEvent(const Json::Value& message) override;
 
@@ -275,6 +281,7 @@ class LynxTemplateRenderer : public devtool::LynxDevToolProxy {
   int32_t window_top_px_{0};
   std::shared_ptr<LynxResourceLoaderHarmony> resource_loader_;
   std::weak_ptr<tasm::harmony::LynxContext> lynx_context_;
+  std::shared_ptr<tasm::harmony::HarmonyInputEventTarget> input_event_target_;
   std::shared_ptr<WeakFlag> weak_flag_;
   std::recursive_mutex inspector_owner_mutex_;
   std::atomic<devtool::LynxInspectorOwner*> inspector_owner_{nullptr};
