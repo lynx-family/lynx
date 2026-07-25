@@ -33,6 +33,9 @@
 #endif  // ENABLE_INSPECTOR
 
 namespace lynx {
+namespace input {
+class InputEventTarget;
+}  // namespace input
 namespace tasm {
 class WhiteBoard;
 }
@@ -255,6 +258,7 @@ class LynxTemplateRenderer : public devtool::LynxDevToolProxy {
   void EmulateTouch(const std::string& event_type, int x, int y,
                     const std::string& button, float delta_x, float delta_y,
                     int modifiers, int click_count) override;
+  std::shared_ptr<input::InputEventTarget> GetInputEventTarget() override;
 
   std::shared_ptr<shell::LynxRuntimeProxy> GetRuntimeProxy() const;
   std::shared_ptr<runtime::js::LynxModuleManager> GetModuleManager() const;

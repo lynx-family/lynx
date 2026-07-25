@@ -19,6 +19,10 @@ class Value;
 
 namespace lynx {
 
+namespace input {
+class InputEventTarget;
+}  // namespace input
+
 namespace tasm {
 class TemplateData;
 }  // namespace tasm
@@ -50,6 +54,10 @@ class LynxDevToolProxy {
                             const std::string& button, float delta_x,
                             float delta_y, int modifiers, int click_count) = 0;
   virtual void DispatchMessageEvent(const Json::Value& message) = 0;
+
+  virtual std::shared_ptr<input::InputEventTarget> GetInputEventTarget() {
+    return nullptr;
+  }
 };
 }  // namespace devtool
 }  // namespace lynx
