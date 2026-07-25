@@ -54,6 +54,10 @@ void LynxDevToolMediator::Init(
     lynx::shell::LynxShell* shell,
     const std::shared_ptr<LynxDevToolNG>& lynx_devtool_ng) {
   devtool_wp_ = lynx_devtool_ng;
+  if (ui_executor_) {
+    ui_executor_->ResetInputHandler();
+  }
+
   auto* runners = shell->GetRunners();
   tasm::TemplateAssembler* tasm = shell->GetTasm();
   tasm_task_runner_ = runners->GetTASMTaskRunner();
@@ -781,6 +785,10 @@ void LynxDevToolMediator::HideHighlight(
 }
 
 void LynxDevToolMediator::Destroy() {
+  if (ui_executor_) {
+    ui_executor_->ResetInputHandler();
+  }
+
   // Must be called before destructing, because in the destructor of
   // InspectorJavaScriptDebuggerImpl, we will post a task to the JS thread by
   // using the weak_ptr of LynxDevToolMediator saved in it.
@@ -1227,6 +1235,14 @@ void LynxDevToolMediator::InsertText(
     const Json::Value& message) {
   RunOnUIThread([sender, message, executor = ui_executor_] {
     executor->InsertText(sender, message);
+  });
+}
+
+void LynxDevToolMediator::SynthesizeTapGesture(
+    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
+    const Json::Value& message) {
+  RunOnUIThread([sender, message, executor = ui_executor_] {
+    executor->SynthesizeTapGesture(sender, message);
   });
 }
 

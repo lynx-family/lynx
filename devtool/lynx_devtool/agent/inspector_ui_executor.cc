@@ -4,12 +4,15 @@
 
 #include "devtool/lynx_devtool/agent/inspector_ui_executor.h"
 
+#include <utility>
+
+#include "base/include/fml/task_runner.h"
 #include "core/renderer/dom/element_manager.h"
 #include "core/runtime/lepus/json_parser.h"
 #include "devtool/base_devtool/native/public/devtool_status.h"
+#include "devtool/lynx_devtool/agent/input_request_handler.h"
 #include "devtool/lynx_devtool/agent/inspector_util.h"
 #include "devtool/lynx_devtool/agent/lynx_devtool_mediator.h"
-#include "devtool/lynx_devtool/element/element_inspector.h"
 #include "devtool/lynx_devtool/element/helper_util.h"
 
 namespace lynx {
@@ -35,15 +38,39 @@ InspectorUIExecutor::InspectorUIExecutor(
     : shell_(nullptr),
       devtool_mediator_wp_(devtool_mediator),
       uitree_use_compression_(false),
-      uitree_compression_threshold_(10240) {}
+      uitree_compression_threshold_(10240),
+      input_request_handler_(
+          std::make_unique<InputRequestHandler>(devtool_mediator)) {}
 
 InspectorUIExecutor::~InspectorUIExecutor() {
   LOGI("~InspectorUIExecutor this: " << this);
 }
 
+void InspectorUIExecutor::RunOnUIThreadOrNow(lynx::base::closure task) {
+  auto mediator = devtool_mediator_wp_.lock();
+  const auto task_runner = mediator ? mediator->GetUITaskRunner() : nullptr;
+  if (task_runner) {
+    fml::TaskRunner::RunNowOrPostTask(task_runner, std::move(task));
+  } else {
+    task();
+  }
+}
+
 void InspectorUIExecutor::SetDevToolPlatformFacade(
     const std::shared_ptr<DevToolPlatformFacade>& devtool_platform_facade) {
   devtool_platform_facade_ = devtool_platform_facade;
+  // The facade is stored synchronously; only the gesture controller reset that
+  // a facade change triggers needs to run on the UI thread.
+  if (input_request_handler_->SetDevToolPlatformFacade(
+          devtool_platform_facade)) {
+    auto self = shared_from_this();
+    RunOnUIThreadOrNow([self]() { self->input_request_handler_->Reset(); });
+  }
+}
+
+void InspectorUIExecutor::ResetInputHandler() {
+  auto self = shared_from_this();
+  RunOnUIThreadOrNow([self]() { self->input_request_handler_->Reset(); });
 }
 
 void InspectorUIExecutor::SetShell(lynx::shell::LynxShell* shell) {
@@ -690,39 +717,19 @@ void InspectorUIExecutor::getAllPerformanceEntries(
 void InspectorUIExecutor::EmulateTouchFromMouseEvent(
     const std::shared_ptr<lynx::devtool::MessageSender>& sender,
     const Json::Value& message) {
-  Json::Value response(Json::ValueType::objectValue);
-  Json::Value content(Json::ValueType::objectValue);
-  Json::Value params = message["params"];
-
-  std::shared_ptr<MouseEvent> input = std::make_shared<MouseEvent>();
-  input->button_ = params["button"].asString();
-  input->click_count_ = params["clickCount"].asInt();
-  input->delta_x_ = params["deltaX"].asFloat();
-  input->delta_y_ = params["deltaY"].asFloat();
-  input->modifiers_ = params["modifiers"].asInt();
-  input->type_ = params["type"].asString();
-  input->x_ = params["x"].asInt();
-  input->y_ = params["y"].asInt();
-  devtool_platform_facade_->EmulateTouch(input);
-  response["result"] = content;
-  response["id"] = message["id"].asInt64();
-  sender->SendMessage("CDP", response);
+  input_request_handler_->EmulateTouchFromMouseEvent(sender, message);
 }
 
 void InspectorUIExecutor::InsertText(
     const std::shared_ptr<lynx::devtool::MessageSender>& sender,
     const Json::Value& message) {
-  Json::Value response(Json::ValueType::objectValue);
-  Json::Value content(Json::ValueType::objectValue);
-  Json::Value params = message["params"];
+  input_request_handler_->InsertText(sender, message);
+}
 
-  CHECK_NULL_AND_LOG_RETURN(devtool_platform_facade_,
-                            "devtool_platform_facade_ is null");
-  devtool_platform_facade_->InsertText(params["text"].asString());
-
-  response["result"] = content;
-  response["id"] = message["id"].asInt64();
-  sender->SendMessage("CDP", response);
+void InspectorUIExecutor::SynthesizeTapGesture(
+    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
+    const Json::Value& message) {
+  input_request_handler_->SynthesizeTapGesture(sender, message);
 }
 
 // end input protocol
