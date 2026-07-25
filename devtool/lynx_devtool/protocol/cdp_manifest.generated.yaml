@@ -258,6 +258,9 @@ domains:
       - name: insertText
         origin: standard
         source: devtool/lynx_devtool/agent/domain_agent/inspector_input_agent.cc
+      - name: synthesizeTapGesture
+        origin: standard
+        source: devtool/lynx_devtool/agent/domain_agent/inspector_input_agent.cc
   - name: Inspector
     origin: standard
     scope: instance

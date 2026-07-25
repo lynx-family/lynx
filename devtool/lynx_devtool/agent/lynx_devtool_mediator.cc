@@ -1127,6 +1127,17 @@ void LynxDevToolMediator::InsertText(
   });
 }
 
+void LynxDevToolMediator::SynthesizeTapGesture(
+    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
+    const Json::Value& message) {
+  if (!RunOnUIThread([sender, message, executor = ui_executor_] {
+        executor->SynthesizeTapGesture(sender, message);
+      })) {
+    sender->SendErrorResponse(message["id"].asInt64(),
+                              "Input UI task runner is unavailable");
+  }
+}
+
 void LynxDevToolMediator::InspectorEnable(
     const std::shared_ptr<lynx::devtool::MessageSender>& sender,
     const Json::Value& message) {

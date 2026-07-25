@@ -29,6 +29,7 @@ source_set("devtool_mock") {
     "../../../core/renderer/dom:dom",
     "../../../third_party/jsoncpp",
     "../../lynx_devtool/agent:agent",
+    "../../lynx_devtool/agent/input:input_types",
     "../../lynx_devtool/base:base",
     "../../lynx_devtool/config:config",
     "../../lynx_devtool/element:element",
