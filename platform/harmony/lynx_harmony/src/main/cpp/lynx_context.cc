@@ -87,6 +87,7 @@ LynxContext::GetCAPINodeInfoMap() {
           {"scroll-view", {UIScroll::Make}},
           {"bounce-view", {UIBounce::Make}},
           {"scroll-view-new-arch", {LynxUIScrollView::Make}},
+          // TODO(yangguangzhao): Add frame support here.
       }};
   return *kNodeTypeInfoMap;
 }

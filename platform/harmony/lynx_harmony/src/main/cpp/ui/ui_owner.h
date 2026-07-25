@@ -7,6 +7,7 @@
 
 #include <node_api.h>
 
+#include <cstdint>
 #include <functional>
 #include <memory>
 #include <string>
@@ -26,6 +27,8 @@
 
 namespace lynx {
 namespace tasm {
+class LynxTemplateBundle;
+
 namespace harmony {
 class UIRoot;
 class GestureArenaManager;
@@ -77,6 +80,8 @@ class UIOwner {
   void UpdateExtraData(
       int sign,
       const fml::RefPtr<fml::RefCountedThreadSafeStorage>& extra_data);
+  void SetFrameAppBundle(int sign,
+                         std::shared_ptr<tasm::LynxTemplateBundle> bundle);
   int32_t GetTagInfo(const std::string& tag) const;
   UIBase* FindUIBySign(int sign) const;
   UIBase* FindUIByIdSelector(const std::string& id_selector) const;
@@ -102,6 +107,7 @@ class UIOwner {
   UIRoot* Root();
 
   void CreateNodeContent(UIBase* ui) const;
+  napi_value CreateFrameHost(napi_value native_frame, int sign) const;
 
   void AddUIToExposedMap(UIBase* ui, std::string unique_id,
                          lepus::Value extra_data, bool is_custom_event);
@@ -276,6 +282,7 @@ class UIOwner {
   napi_ref on_avoid_keyboard_callback_{nullptr};
   napi_ref js_get_node_type_{nullptr};
   napi_ref on_resource_load_callback_{nullptr};
+  napi_ref js_create_frame_host_{nullptr};
 
   std::shared_ptr<LynxContext> context_{nullptr};
   std::unique_ptr<EventDispatcher> event_dispatcher_ =

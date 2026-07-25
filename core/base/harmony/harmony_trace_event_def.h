@@ -39,6 +39,33 @@ inline constexpr const char* const
 inline constexpr const char* const LOAD_JS_SOURCE = "LoadJSSource";
 inline constexpr const char* const BASE_TEXT_SHADOW_NODE_LOAD_FONT_FAMILY =
     "BaseTextShadowNode::LoadFontFamily";
+inline constexpr const char* const FRAME_SHADOW_NODE_MEASURE =
+    "FrameShadowNode.measure";
+inline constexpr const char* const FRAME_SHADOW_NODE_UPDATE_INTRINSIC_SIZE =
+    "FrameIntrinsicTrace.FrameShadowNode.updateIntrinsicContentSize";
+inline constexpr const char* const LYNX_FRAME_VIEW_DESTROY =
+    "LynxFrameView.destroy";
+inline constexpr const char* const LYNX_FRAME_VIEW_SET_INIT_DATA =
+    "LynxFrameView.setInitData";
+inline constexpr const char* const LYNX_FRAME_VIEW_SET_GLOBAL_PROPS =
+    "LynxFrameView.setGlobalProps";
+inline constexpr const char* const LYNX_FRAME_VIEW_UPDATE_LAYOUT =
+    "LynxFrameView.updateLayout";
+inline constexpr const char* const LYNX_FRAME_VIEW_SET_INTRINSIC_CONTENT_SIZE =
+    "LynxFrameView.setIntrinsicContentSize";
+inline constexpr const char* const LYNX_FRAME_VIEW_SET_LAYOUT_MODE =
+    "LynxFrameView.setLayoutMode";
+inline constexpr const char* const UI_FRAME_SET_FRAME_APP_BUNDLE =
+    "UIFrame.setFrameAppBundle";
+inline constexpr const char* const UI_FRAME_UPDATE_PROPS =
+    "UIFrame.updateProps";
+inline constexpr const char* const UI_FRAME_SET_SRC = "UIFrame.setSrc";
+inline constexpr const char* const UI_FRAME_CREATE_FRAME_HOST =
+    "UIFrame.createFrameHost";
+inline constexpr const char* const UI_FRAME_HOST_READY = "UIFrame.onHostReady";
+inline constexpr const char* const UI_FRAME_TRY_LOAD_BUNDLE =
+    "UIFrame.tryLoadBundle";
+inline constexpr const char* const UI_FRAME_LOAD_BUNDLE = "UIFrame.loadBundle";
 inline constexpr const char* const IMAGE_SHADOW_NODE_MEASURE =
     "ImageShadowNode::Measure";
 inline constexpr const char* const IMAGE_SHADOW_NODE_JUST_SIZE =

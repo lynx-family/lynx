@@ -34,6 +34,8 @@ class LynxTemplateBundleHarmony {
   static napi_value InitWithOption(napi_env env, napi_callback_info info);
   static napi_value PostJsCacheGenerationTask(napi_env env,
                                               napi_callback_info info);
+  static napi_value CreateFromNative(napi_env env,
+                                     const tasm::LynxTemplateBundle& bundle);
 
   napi_value AsyncParseTemplate(napi_env env,
                                 std::vector<uint8_t>& template_buffer);
