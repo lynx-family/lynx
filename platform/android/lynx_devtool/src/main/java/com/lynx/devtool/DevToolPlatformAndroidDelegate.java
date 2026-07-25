@@ -12,10 +12,12 @@ import android.widget.Toast;
 import androidx.annotation.Keep;
 import com.lynx.devtool.helper.EmulateTouchHelper;
 import com.lynx.devtool.helper.LepusDebugInfoHelper;
+import com.lynx.devtool.helper.PointerEventDispatcher;
 import com.lynx.devtool.helper.ScreenCapturer;
 import com.lynx.devtool.helper.ScreenCastHelper;
 import com.lynx.devtool.helper.UITreeHelper;
 import com.lynx.devtoolwrapper.IDevToolDelegate;
+import com.lynx.devtoolwrapper.ScreenshotMode;
 import com.lynx.react.bridge.Callback;
 import com.lynx.react.bridge.JavaOnlyMap;
 import com.lynx.recorder.LynxDebugInfoRecorder;
@@ -38,6 +40,9 @@ public class DevToolPlatformAndroidDelegate {
 
   // EmulateTouch
   private EmulateTouchHelper mTouchHelper;
+
+  // Synthetic pointer event injection.
+  private PointerEventDispatcher mInputEventDispatcher;
 
   // PageReload
   private PageReloadHelper mReloadHelper;
@@ -70,6 +75,7 @@ public class DevToolPlatformAndroidDelegate {
     mFacadePtr = nativeCreateDevToolPlatformFacade();
 
     mTouchHelper = new EmulateTouchHelper(mLynxView);
+    mInputEventDispatcher = new PointerEventDispatcher(mLynxView);
 
     mReloadHelper = null;
 
@@ -311,6 +317,9 @@ public class DevToolPlatformAndroidDelegate {
     if (mTouchHelper != null) {
       mTouchHelper.attach(lynxView);
     }
+    if (mInputEventDispatcher != null) {
+      mInputEventDispatcher.attach(lynxView);
+    }
   }
 
   public String getLepusDebugInfoUrl(String fileName) {
@@ -329,6 +338,9 @@ public class DevToolPlatformAndroidDelegate {
   }
 
   public void destroy() {
+    if (mInputEventDispatcher != null) {
+      mInputEventDispatcher.detach();
+    }
     if (mFacadePtr != 0) {
       nativeDestroyDevToolPlatformFacade(mFacadePtr);
     }
@@ -347,6 +359,40 @@ public class DevToolPlatformAndroidDelegate {
       mTouchHelper.emulateTouch(type, (int) (x * scale + 0.5f), (int) (y * scale + 0.5f),
           deltaX * scale + 0.5f, deltaY * scale + 0.5f, button, mDevToolDelegate);
     }
+  }
+
+  @CalledByNative
+  public boolean injectPointerEvent(final int type, final float x, final float y,
+      final float deltaX, final float deltaY, final int pointerId, final int modifiers,
+      final long timestampUs) {
+    LynxView lynxView = mLynxView.get();
+    if (mInputEventDispatcher == null || lynxView == null || lynxView.getLynxContext() == null
+        || mDevToolDelegate == null) {
+      return false;
+    }
+
+    float scale = lynxView.getLynxContext().getResources().getDisplayMetrics().density;
+    float localX = x * scale;
+    float localY = y * scale;
+    float localDeltaX = deltaX * scale;
+    float localDeltaY = deltaY * scale;
+    if (!isFinite(localX) || !isFinite(localY) || !isFinite(localDeltaX)
+        || !isFinite(localDeltaY)) {
+      return false;
+    }
+    if (mDevToolDelegate.getActualScreenshotMode().equals(
+            ScreenshotMode.SCREEN_SHOT_MODE_FULL_SCREEN)) {
+      int[] outLocation = new int[2];
+      lynxView.getLocationOnScreen(outLocation);
+      localX -= outLocation[0];
+      localY -= outLocation[1];
+    }
+    return mInputEventDispatcher.injectPointerEvent(
+        type, localX, localY, localDeltaX, localDeltaY, pointerId, modifiers, timestampUs);
+  }
+
+  private static boolean isFinite(float value) {
+    return !Float.isNaN(value) && !Float.isInfinite(value);
   }
 
   @CalledByNative

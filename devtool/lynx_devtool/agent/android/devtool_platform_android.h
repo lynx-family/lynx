@@ -40,6 +40,7 @@ class DevToolPlatformAndroid : public DevToolPlatformFacade {
   void EmulateTouch(std::shared_ptr<lynx::devtool::MouseEvent> input) override;
   void Focus(int node_id) override;
   void InsertText(const std::string& text) override;
+  std::shared_ptr<input::InputEventTarget> GetInputEventTarget() override;
 
   std::vector<float> GetRectToWindow() const override;
   std::string GetLynxVersion() const override;
@@ -66,6 +67,7 @@ class DevToolPlatformAndroid : public DevToolPlatformFacade {
  private:
   std::mutex mutex_;
   lynx::base::android::ScopedWeakGlobalJavaRef<jobject> weak_android_delegate_;
+  std::shared_ptr<input::InputEventTarget> input_event_target_;
 };
 
 }  // namespace devtool
