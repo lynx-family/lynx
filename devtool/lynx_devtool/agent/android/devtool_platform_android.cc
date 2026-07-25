@@ -8,6 +8,7 @@
 
 #include "core/base/android/jni_helper.h"
 #include "devtool/base_devtool/native/public/devtool_status.h"
+#include "devtool/lynx_devtool/agent/input/input_event_target.h"
 #include "devtool/lynx_devtool/agent/inspector_util.h"
 #include "devtool/lynx_devtool/agent/lynx_devtool_mediator.h"
 #include "devtool/lynx_devtool/base/screen_metadata.h"
@@ -134,8 +135,86 @@ void SendCDPEvent(JNIEnv* env, jobject jcaller, jlong facadePtr,
 
 namespace lynx {
 namespace devtool {
+namespace {
+
+enum class AndroidPointerEventType : jint {
+  kDown = 0,
+  kMove = 1,
+  kUp = 2,
+  kCancel = 3,
+  kScroll = 4,
+};
+
+bool ToAndroidPointerEventType(input::PointerEventType event_type,
+                               AndroidPointerEventType* android_type) {
+  if (!android_type) {
+    return false;
+  }
+  switch (event_type) {
+    case input::PointerEventType::kDown:
+      *android_type = AndroidPointerEventType::kDown;
+      return true;
+    case input::PointerEventType::kMove:
+      *android_type = AndroidPointerEventType::kMove;
+      return true;
+    case input::PointerEventType::kUp:
+      *android_type = AndroidPointerEventType::kUp;
+      return true;
+    case input::PointerEventType::kCancel:
+      *android_type = AndroidPointerEventType::kCancel;
+      return true;
+    case input::PointerEventType::kScroll:
+      *android_type = AndroidPointerEventType::kScroll;
+      return true;
+  }
+  return false;
+}
+
+class AndroidInputEventTarget : public input::InputEventTarget {
+ public:
+  AndroidInputEventTarget(JNIEnv* env, jobject owner)
+      : weak_android_delegate_(env, owner) {}
+
+  input::PointerCapabilities GetPointerCapabilities() const override {
+    input::PointerCapabilities capabilities;
+    capabilities.default_source_type = input::PointerSourceType::kTouch;
+    capabilities.supports_touch = true;
+    return capabilities;
+  }
+
+  bool InjectPointerEvent(const input::PointerEvent& event) override {
+    if (event.source_type != input::PointerSourceType::kTouch ||
+        event.pointers.size() != 1) {
+      return false;
+    }
+    const auto* pointer = event.FindPointer(event.changed_pointer_id);
+    AndroidPointerEventType event_type;
+    if (!pointer || !ToAndroidPointerEventType(event.type, &event_type)) {
+      return false;
+    }
+
+    JNIEnv* env = lynx::base::android::AttachCurrentThread();
+    lynx::base::android::ScopedLocalJavaRef<jobject> ref(
+        weak_android_delegate_);
+    if (ref.IsNull()) {
+      return false;
+    }
+    return Java_DevToolPlatformAndroidDelegate_injectPointerEvent(
+               env, ref.Get(), static_cast<jint>(event_type), pointer->x,
+               pointer->y, event.delta_x, event.delta_y, pointer->id,
+               event.modifiers, event.timestamp_us) == JNI_TRUE;
+  }
+
+ private:
+  lynx::base::android::ScopedWeakGlobalJavaRef<jobject> weak_android_delegate_;
+};
+
+}  // namespace
+
 DevToolPlatformAndroid::DevToolPlatformAndroid(JNIEnv* env, jobject owner)
-    : weak_android_delegate_(env, owner) {}
+    : weak_android_delegate_(env, owner),
+      input_event_target_(
+          std::make_shared<AndroidInputEventTarget>(env, owner)) {}
 
 int DevToolPlatformAndroid::FindNodeIdForLocation(
     float x, float y, std::string screen_shot_mode) {
@@ -222,6 +301,11 @@ void DevToolPlatformAndroid::EmulateTouch(
 
   Java_DevToolPlatformAndroidDelegate_emulateTouch(
       env, ref.Get(), type.Get(), x, y, deltaX, deltaY, button.Get());
+}
+
+std::shared_ptr<input::InputEventTarget>
+DevToolPlatformAndroid::GetInputEventTarget() {
+  return input_event_target_;
 }
 
 void DevToolPlatformAndroid::Focus(int node_id) {
