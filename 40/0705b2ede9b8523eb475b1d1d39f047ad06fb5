@@ -1,0 +1,40 @@
+lynx/core/runtime/js/jsi/quickjs/quickjs_helper.cc
+  h_aeff19c41d4423 6
+lynx/devtool/lynx_devtool/tracing/platform/memory_trace_plugin_android.cc
+  h_aeff19c41d4423 34-35,73
+lynx/base/trace/native/trace_defines.h
+  h_aeff19c41d4423 10,13
+lynx/core/shell/runtime/mts/mts_runtime_pool.cc
+  h_aeff19c41d4423 151
+lynx/core/runtime/js/jsi/quickjs/quickjs_runtime_wrapper.cc
+  h_aeff19c41d4423 42
+lynx/core/runtime/lepusng/quick_context.cc
+  h_aeff19c41d4423 568
+lynx/devtool/lynx_devtool/tracing/platform/memory_trace_plugin_darwin.mm
+  h_aeff19c41d4423 17,54
+lynx/core/runtime/js/runtime_manager.cc
+  h_aeff19c41d4423 84
+lynx/core/shell/lynx_shell.cc
+  h_aeff19c41d4423 456,858
+lynx/devtool/lynx_devtool/tracing/platform/memory_trace_plugin_darwin.h
+  h_aeff19c41d4423 34
+cspell.config.yml
+  h_aeff19c41d4423 681,1172-1173
+lynx/base/trace/native/platform/darwin/trace_controller_darwin.h
+  h_aeff19c41d4423 9
+lynx/devtool/lynx_devtool/tracing/platform/memory_trace_plugin_android.h
+  h_aeff19c41d4423 39
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "400705b2ede9b8523eb475b1d1d39f047ad06fb5",
+  "prompts": {},
+  "humans": {
+    "h_aeff19c41d4423": {
+      "author": "yuyang.1024 <yuyang.1024@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

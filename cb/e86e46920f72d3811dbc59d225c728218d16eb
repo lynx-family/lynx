@@ -1,0 +1,59 @@
+ai/reports/e2e-debug-analyzer/text-inline-truncation-android-clay-analyzer.md
+  s_eebccbd3a85287::t_c4587040c3bf7a 1-268
+ai/reports/e2e-debug-analyzer/text-inline-truncation-android-clay-analyzer.zh.md
+  s_eebccbd3a85287::t_4354d12be86165 1-210
+ai/reports/e2e-debug/environment-profile.md
+  s_eebccbd3a85287::t_b9d68211d08bbd 1-65
+ai/skills/e2e-debug-analyzer/SKILL.md
+  s_eebccbd3a85287::t_5cc9a05ff61a8f 218-225,262-272,582-593,688-689
+ai/skills/e2e-debug-analyzer/references/analyzer-report-template.md
+  s_eebccbd3a85287::t_25f9f45176a960 96-108
+ai/skills/e2e-debug-analyzer/references/analyzer-report-template.zh.md
+  s_eebccbd3a85287::t_d2d827b475538d 98-110
+ai/skills/e2e-debug-review/SKILL.md
+  s_eebccbd3a85287::t_54841c981c3b93 138-154,182-184,253-254
+ai/skills/e2e-debug-review/references/review-report-template.md
+  s_eebccbd3a85287::t_d4d43e46c62b70 72-80
+ai/skills/e2e-debug-review/references/review-report-template.zh.md
+  s_eebccbd3a85287::t_c13471c7ecefc4 72-80
+ai/skills/e2e-debug-workflow/SKILL.md
+  s_eebccbd3a85287::t_3ed18478b6905f 77-80,131-134
+lynx/clay/ui/component/text/text_view.cc
+  s_eebccbd3a85287::t_a94045143f34f9 120-124
+lynx/clay/ui/component/text/text_view.h
+  s_eebccbd3a85287::t_2aea712f1119c6 40
+lynx/clay/ui/rendering/render_box.cc
+  s_eebccbd3a85287::t_da6fc8ad7cbe46 11,20-37,110-145
+lynx/clay/ui/rendering/render_box.h
+  s_eebccbd3a85287::t_3fa185426d1521 114-116
+lynx/clay/ui/rendering/render_container.cc
+  s_eebccbd3a85287::t_1f69d61526a279 7,21-25
+lynx/clay/ui/rendering/text/render_text.cc
+  s_eebccbd3a85287::t_5d482623d1add9 89,117,125-146,154-155
+lynx/clay/ui/rendering/text/render_text.h
+  s_eebccbd3a85287::t_bb02d2e4006e88 91-93,106-107,118
+lynx/clay/ui/shadow/text_render.cc
+  s_eebccbd3a85287::t_339c71ed41508f 415-417,775-776,842-843,855,857,883
+lynx/clay/ui/shadow/text_render.h
+  s_eebccbd3a85287::t_dbb2175583d04f 106
+testing/lynx-platform-tests/test_script/resources/android/clay_inline_truncation_1.png
+  s_eebccbd3a85287::t_55ff181afa7b1c 2-3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "cbe86e46920f72d3811dbc59d225c728218d16eb",
+  "prompts": {},
+  "sessions": {
+    "s_eebccbd3a85287": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f7d9e-5684-7c50-a924-639f369efbb7",
+        "model": "unknown"
+      },
+      "human_author": "liangruijie.030116 <liangruijie.030116@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}
