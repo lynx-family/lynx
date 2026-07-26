@@ -1,0 +1,37 @@
+lynx/platform/harmony/lynx_harmony/src/main/cpp/ui/ui_new_image.cc
+  s_57e8a8adb6d440::t_55fa6764550d29 59-73,102-109,313-316,320,485-487,490-499
+lynx/platform/harmony/lynx_harmony/src/main/cpp/ui/ui_new_image.h
+  s_57e8a8adb6d440::t_25b0239639b7e2 21-36,41-45,51,113,118
+platform/harmony/BUILD.gn
+  s_57e8a8adb6d440::t_b1de6509efbc7a 123
+platform/harmony/core/entry.cc
+  s_57e8a8adb6d440::t_7276d1c9c2e53a 10,34
+platform/harmony/core/ui/image/BUILD.gn
+  s_57e8a8adb6d440::t_d2a0b39ae40d89 1-31
+platform/harmony/core/ui/svg_image_delegate.cc
+  s_57e8a8adb6d440::t_8b22a625ba4022 1-413
+platform/harmony/core/ui/svg_image_delegate.h
+  s_57e8a8adb6d440::t_eb23d0c66fb9b9 1-87
+platform/harmony/oh-package.json5
+  s_57e8a8adb6d440::t_804a3749d29d0d 54
+platform/harmony/xelement/oh-package.json5
+  s_57e8a8adb6d440::t_7b5304230f7876 12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "6a5bb95d99221aef53fae4dcbf90c37b9345ab05",
+  "prompts": {},
+  "sessions": {
+    "s_57e8a8adb6d440": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f840f-5379-7df0-a84f-cc7104dd5ad8",
+        "model": "unknown"
+      },
+      "human_author": "hujing.1 <hujing.1@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}
