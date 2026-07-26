@@ -10,6 +10,8 @@ lynx_core_source_set("binary_encoder") {
     "//${lynx_dir}/core/template_bundle/template_codec/binary_encoder/template_binary_writer.h",
     "csr_element_binary_writer.cc",
     "csr_element_binary_writer.h",
+    "encode_tracer.cc",
+    "encode_tracer.h",
     "encode_util.cc",
     "encode_util.h",
     "encoder.cc",

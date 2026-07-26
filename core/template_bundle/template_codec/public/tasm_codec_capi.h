@@ -34,6 +34,7 @@ typedef struct {
   char* lepus_debug;      // Lepus debug info, caller must free
   char* section_size;     // Section size info, caller must free
   char* css_diagnostics;  // CSS diagnostics, caller must free
+  char* trace;            // JSON-serialized encode durations, caller must free
 } TasmEncodeResult;
 
 //! Result of decode operation.

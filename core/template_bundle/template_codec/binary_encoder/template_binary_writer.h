@@ -18,6 +18,7 @@
 #include "core/template_bundle/template_codec/binary_encoder/csr_element_binary_writer.h"
 #include "core/template_bundle/template_codec/binary_encoder/css_encoder/css_keyframes_token.h"
 #include "core/template_bundle/template_codec/binary_encoder/css_encoder/css_parser.h"
+#include "core/template_bundle/template_codec/binary_encoder/encode_tracer.h"
 #include "core/template_bundle/template_codec/binary_encoder/encode_util.h"
 #include "core/template_bundle/template_codec/header_ext_info.h"
 #include "core/template_bundle/template_codec/moulds.h"
@@ -89,6 +90,9 @@ class TemplateBinaryWriter : public CSRElementBinaryWriter {
     return section_size_info_;
   }
   uint32_t HeaderSize() const { return header_size_; }
+  void SetEncodeTracer(EncodeTracer* encode_tracer) {
+    encode_tracer_ = encode_tracer;
+  }
 
   const std::unordered_map<
       std::string,
@@ -222,6 +226,7 @@ class TemplateBinaryWriter : public CSRElementBinaryWriter {
   rapidjson::Value* custom_sections_{nullptr};
 
   StyleObjectParser* style_object_parser_;
+  EncodeTracer* encode_tracer_{nullptr};
 };
 
 }  // namespace tasm

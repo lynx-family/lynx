@@ -21,6 +21,7 @@
 #include "core/runtime/lepusng/quick_context.h"
 #include "core/shell/runtime/mts/mts_runtime.h"
 #include "core/template_bundle/template_codec/binary_encoder/css_encoder/css_parser.h"
+#include "core/template_bundle/template_codec/binary_encoder/encode_tracer.h"
 #include "core/template_bundle/template_codec/binary_encoder/encode_util.h"
 #include "core/template_bundle/template_codec/binary_encoder/repack_binary_reader.h"
 #include "core/template_bundle/template_codec/binary_encoder/repack_binary_writer.h"
@@ -259,7 +260,7 @@ std::unique_ptr<StyleObjectParser> ParserStyleObject(
 std::unique_ptr<TemplateBinaryWriter> EncodeTemplate(
     CSSParser* css_parser, StyleObjectParser* style_object_parser,
     SourceGenerator* ttml_parser, runtime::MTSRuntime* vm_context,
-    EncoderOptions& encoder_options) {
+    EncoderOptions& encoder_options, EncodeTracer* trace) {
   if (!encoder_options.generator_options_.silence_) {
     printf("    encoding...\n");
     printf("engine version:%s\n", targetSdkVersion);
@@ -287,6 +288,7 @@ std::unique_ptr<TemplateBinaryWriter> EncodeTemplate(
       encoder_options.generator_options_.js_code_,
       &encoder_options.generator_options_.custom_sections_,
       encoder_options.generator_options_.enable_debug_info_);
+  encoder->SetEncodeTracer(trace);
   try {
     size_t binary_size = encoder->Encode();
     if (binary_size == 0) {
@@ -372,7 +374,8 @@ std::pair<std::vector<uint8_t>, std::string> GenerateEncodeResult(
   return std::make_pair(buffer, section_size);
 }
 
-lynx::tasm::EncodeResult EncodeInner(const std::string& options_str) {
+lynx::tasm::EncodeResult EncodeInner(const std::string& options_str,
+                                     EncodeTracer* trace) {
   // To ensure the stability of the compiled output in concurrent scenarios,
   // reset before each compilation. TODO: Address instability in multithreading
   // scenarios
@@ -380,7 +383,11 @@ lynx::tasm::EncodeResult EncodeInner(const std::string& options_str) {
 
   // Parse input str to json object
   rapidjson::Document options;
-  if (options.Parse(options_str).HasParseError()) {
+  {
+    TASM_ENCODE_TRACE_SCOPE(trace, ParseJSON);
+    options.Parse(options_str);
+  }
+  if (options.HasParseError()) {
     std::stringstream ss;
     ss << "Parse '" << options_str << "' error. Source is not valid json file. "
        << options.GetParseErrorMsg()
@@ -389,14 +396,25 @@ lynx::tasm::EncodeResult EncodeInner(const std::string& options_str) {
   }
 
   // step 0: get encode options
-  EncoderOptions encoder_options = MetaFactory::GetEncoderOptions(options);
+  EncoderOptions encoder_options = [&]() {
+    TASM_ENCODE_TRACE_SCOPE(trace, ParseEncodeOptions);
+    return MetaFactory::GetEncoderOptions(options);
+  }();
   IF_FAIL_RETURN
 
   // step 1: parser ttss
-  auto css_parser = ParserCSS(encoder_options);
+  std::unique_ptr<CSSParser> css_parser;
+  {
+    TASM_ENCODE_TRACE_SCOPE(trace, ParseCSS);
+    css_parser = ParserCSS(encoder_options);
+  }
   IF_FAIL_RETURN
 
-  auto style_object_parser = ParserStyleObject(encoder_options);
+  std::unique_ptr<StyleObjectParser> style_object_parser;
+  {
+    TASM_ENCODE_TRACE_SCOPE(trace, ParseStyleObject);
+    style_object_parser = ParserStyleObject(encoder_options);
+  }
   IF_FAIL_RETURN
 
   // step 2: compile ttml
@@ -414,16 +432,19 @@ lynx::tasm::EncodeResult EncodeInner(const std::string& options_str) {
   // step 3: init vm context
   runtime::ContextType ctx_type = GetContextType(encoder_options);
   std::shared_ptr<lynx::runtime::MTSRuntime> vm_context;
-
   if (ctx_type == runtime::ContextType::VMContextType ||
       ctx_type == runtime::ContextType::LepusNGContextType) {
     vm_context = GetVMContent(encoder_options, ctx_type);
   }
 
   // step 4: encode template
-  std::unique_ptr<TemplateBinaryWriter> encoder =
-      EncodeTemplate(css_parser.get(), style_object_parser.get(),
-                     ttml_parser.get(), vm_context.get(), encoder_options);
+  std::unique_ptr<TemplateBinaryWriter> encoder;
+  {
+    TASM_ENCODE_TRACE_SCOPE(trace, EncodeTemplate);
+    encoder = EncodeTemplate(css_parser.get(), style_object_parser.get(),
+                             ttml_parser.get(), vm_context.get(),
+                             encoder_options, trace);
+  }
 
   IF_FAIL_RETURN
 
@@ -592,12 +613,27 @@ std::string quickjsCheck(const std::string& sourceFileOrigin) {
 }
 
 lynx::tasm::EncodeResult encode(const std::string& options_str) {
+  return encode(options_str, false);
+}
+
+lynx::tasm::EncodeResult encode(const std::string& options_str,
+                                bool enable_trace) {
+  std::unique_ptr<EncodeTracer> trace;
+  if (enable_trace) {
+    trace = std::make_unique<EncodeTracer>();
+  }
+
+  EncodeResult result;
   try {
-    return EncodeInner(options_str);
+    result = EncodeInner(options_str, trace.get());
   } catch (const lynx::lepus::Exception& e) {
     std::string err_str = MakeErrorResult(e.message().c_str(), "", "");
-    return CreateErrorResult(err_str.c_str());
+    result = CreateErrorResult(err_str.c_str());
   }
+  if (trace != nullptr) {
+    result.trace = trace->Finish();
+  }
+  return result;
 }
 
 lynx::tasm::EncodeResult encode_ssr(const uint8_t* ptr, size_t buf_len,

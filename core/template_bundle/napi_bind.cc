@@ -37,7 +37,16 @@ class TASMAddon : public Napi::Addon<TASMAddon> {
   Napi::Value EncodeNapi(const Napi::CallbackInfo& info) {
     Napi::Env env = info.Env();
     std::string options = info[0].As<Napi::String>();
-    auto res = lynx::tasm::codec::Encode(options);
+    bool enable_trace = false;
+    if (info.Length() > 1 && !info[1].IsUndefined()) {
+      if (!info[1].IsBoolean()) {
+        Napi::TypeError::New(env, "enableTrace must be a boolean")
+            .ThrowAsJavaScriptException();
+        return env.Null();
+      }
+      enable_trace = info[1].As<Napi::Boolean>().Value();
+    }
+    auto res = lynx::tasm::codec::Encode(options, enable_trace);
     Napi::Object obj = Napi::Object::New(env);
     Napi::Buffer<uint8_t> buffer =
         Napi::Buffer<uint8_t>::New(env, res.buffer.size());
@@ -52,6 +61,7 @@ class TASMAddon : public Napi::Addon<TASMAddon> {
     obj.Set("error_msg", res.error_msg);
     obj.Set("section_size", res.section_size);
     obj.Set("css_diagnostics", res.css_diagnostics);
+    obj.Set("trace", res.trace);
     return obj;
   }
 

@@ -3,7 +3,9 @@
 // LICENSE file in the root directory of this source tree.
 
 /* eslint-disable */
-export function encode(code: any): Promise<EncodeResult>;
+export function encode(code: any, enableTrace?: boolean): EncodeResult;
+export function encode_napi(code: any, enableTrace?: boolean): EncodeResult;
+export function encode_wasm(code: any, enableTrace?: boolean): Promise<EncodeResult>;
 export function lepusCheck(
   code: string,
   targetSdkVersion?: string,
@@ -16,9 +18,14 @@ export interface EncodeResult {
   lepus_debug: string;
   error_msg: string;
   section_size: string;
+  /** JSON-serialized encode phase durations, or an empty string when disabled. */
+  trace: string;
 }
 export function supportNapi(binary?: string): boolean;
-export function getEncodeMode(binary?: string): (options: any) => Promise<EncodeResult>;
+export function getEncodeMode(binary?: string): (
+  options: any,
+  enableTrace?: boolean
+) => EncodeResult | Promise<EncodeResult>;
 export function encrypt(token: string): string;
 export function decrypt(token: string): string;
 export function encrypt_wasm(token: string): Promise<string>;

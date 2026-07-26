@@ -19,6 +19,8 @@ struct EncodeResult {
   std::string lepus_debug;
   std::string section_size;
   std::string css_diagnostics;
+  // JSON-serialized encode phase durations in microseconds.
+  std::string trace;
 };
 
 struct DecodeResult {
