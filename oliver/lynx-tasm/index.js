@@ -27,12 +27,45 @@ function disposeClassHandle(handle) {
   handle.delete();
 }
 
-async function encode_wasm(options) {
+function printEncodeTrace(trace, enableTrace) {
+  if (enableTrace !== true || !trace) {
+    return;
+  }
+
+  try {
+    const events = JSON.parse(trace);
+    if (!Array.isArray(events)) {
+      console.warn('[TASM Encode Trace] Invalid trace payload.');
+      return;
+    }
+
+    const rows = events
+      .map(({name, duration_us, dur}) => {
+        const durationUs = Number(duration_us ?? dur);
+        return {
+          name,
+          duration_us: Number(durationUs.toFixed(3)),
+          duration_ms: Number((durationUs / 1000).toFixed(3)),
+        };
+      })
+      .sort((a, b) => b.duration_us - a.duration_us);
+    console.log('[TASM Encode Trace]');
+    console.table(rows);
+  } catch (error) {
+    console.warn(`[TASM Encode Trace] Failed to parse trace: ${error.message}`);
+  }
+}
+
+async function encode_wasm(options, enableTrace = false) {
   const m = await createModule();
   /** @type {import('./index').EncodeResult} */
-  const res = m._encode(JSON.stringify(options))
+  const optionsString = JSON.stringify(options);
+  const res = enableTrace === true
+    ? m._encodeWithTrace(optionsString)
+    : m._encode(optionsString);
   const bufferHandle = res.buffer;
   try {
+    printEncodeTrace(res.trace, enableTrace);
     if (res.status !== 0) {
       throw new Error(`encode error: ${res.error_msg}`);
     }
@@ -42,6 +75,7 @@ async function encode_wasm(options) {
       lepus_code: res.lepus_code,
       lepus_debug: res.lepus_debug,
       section_size: res.section_size,
+      trace: res.trace,
     };
     const uint8array = new Uint8Array(bufferHandle.size());
     for (let i = 0; i < bufferHandle.size(); i++) {
@@ -64,9 +98,10 @@ async function encode_wasm(options) {
     disposeClassHandle(res);
   }
 }
-function encode_napi(options) {
+function encode_napi(options, enableTrace = false) {
   const lepus = require(`./build/${process.platform}/Release/lepus.node`);
-  const res = lepus.encode(JSON.stringify({...options}));
+  const res = lepus.encode(JSON.stringify({...options}), enableTrace === true);
+  printEncodeTrace(res.trace, enableTrace);
   if (res.status !== 0) {
     throw new Error(`encode error: ${res.error_msg}`);
   }

@@ -72,6 +72,7 @@ TasmEncodeResult* Tasm_Encode(const char* options_json) {
   result->lepus_debug = CopyString(cpp_result.lepus_debug);
   result->section_size = CopyString(cpp_result.section_size);
   result->css_diagnostics = CopyString(cpp_result.css_diagnostics);
+  result->trace = CopyString(cpp_result.trace);
 
   return result;
 }
@@ -122,6 +123,9 @@ void Tasm_FreeEncodeResult(TasmEncodeResult* result) {
   if (result->css_diagnostics) {
     free(result->css_diagnostics);
   }
+  if (result->trace) {
+    free(result->trace);
+  }
   free(result);
 }
 
@@ -150,6 +154,10 @@ namespace codec {
 
 EncodeResult Encode(const std::string& options_json) {
   return lynx::tasm::encode(options_json);
+}
+
+EncodeResult Encode(const std::string& options_json, bool enable_trace) {
+  return lynx::tasm::encode(options_json, enable_trace);
 }
 
 DecodeResult Decode(const uint8_t* data, size_t len) {

@@ -41,7 +41,8 @@ EMSCRIPTEN_BINDINGS(encode) {
       .field("lepus_debug", &lynx::tasm::codec::EncodeResult::lepus_debug)
       .field("section_size", &lynx::tasm::codec::EncodeResult::section_size)
       .field("css_diagnostics",
-             &lynx::tasm::codec::EncodeResult::css_diagnostics);
+             &lynx::tasm::codec::EncodeResult::css_diagnostics)
+      .field("trace", &lynx::tasm::codec::EncodeResult::trace);
   emscripten::value_object<lynx::tasm::codec::DecodeResult>("DecodeResult")
       .field("status", &lynx::tasm::codec::DecodeResult::status)
       .field("result", &lynx::tasm::codec::DecodeResult::result)
@@ -49,6 +50,11 @@ EMSCRIPTEN_BINDINGS(encode) {
   function("_encode",
            emscripten::optional_override([](const std::string& options_str) {
              return lynx::tasm::codec::Encode(options_str);
+           }),
+           emscripten::allow_raw_pointers());
+  function("_encodeWithTrace",
+           emscripten::optional_override([](const std::string& options_str) {
+             return lynx::tasm::codec::Encode(options_str, true);
            }),
            emscripten::allow_raw_pointers());
   function("_quickjsCheck", &lynx::tasm::quickjsCheck,

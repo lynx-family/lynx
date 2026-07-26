@@ -114,40 +114,52 @@ size_t TemplateBinaryWriter::Encode() {
 
   // common encode logic for flexible and node flexible template
   auto common_encode_func = [this]() {
-    // Encode css section
-    EncodeCSSDescriptor();
-
-    if (compile_options_.enable_simple_styling_) {
-      // Encode simple styling objects.
-      EncodeSimpleStyleObjects();
+    {
+      TASM_ENCODE_TRACE_SCOPE(encode_tracer_, EncodeCSS);
+      // Encode css section
+      EncodeCSSDescriptor();
+      if (compile_options_.enable_simple_styling_) {
+        // Encode simple styling objects.
+        EncodeSimpleStyleObjects();
+      }
     }
 
-    // Encode JS section
-    if (compile_options_.encode_quickjs_bytecode_) {
-      EncodeJsBytecode();
-    } else {
-      SerializeJSSource();
+    {
+      TASM_ENCODE_TRACE_SCOPE(encode_tracer_, EncodeJS);
+      // Encode JS section
+      if (compile_options_.encode_quickjs_bytecode_) {
+        EncodeJsBytecode();
+      } else {
+        SerializeJSSource();
+      }
     }
 
     if (compile_options_.enable_fiber_arch_) {
       // Encode page config
       EncodeConfig();
 
-      // Encode Lepus Code
-      EncodeLepusSection();
+      {
+        TASM_ENCODE_TRACE_SCOPE(encode_tracer_, EncodeLepus);
+        // Encode Lepus Code
+        EncodeLepusSection();
+        // Encode Lepus Chunk
+        EncodeLepusChunkSection();
+      }
 
-      // Encode Lepus Chunk
-      EncodeLepusChunkSection();
-
-      // Encode Element Template
-      EncodeElementTemplateSection();
-
-      // Encode Parsed Styles, for Style Extraction
-      EncodeParsedStylesSection();
+      {
+        TASM_ENCODE_TRACE_SCOPE(encode_tracer_, EncodeElements);
+        // Encode Element Template
+        EncodeElementTemplateSection();
+        // Encode Parsed Styles, for Style Extraction
+        EncodeParsedStylesSection();
+      }
     }
 
-    // Encode Custom Sections Section
-    EncodeCustomSection();
+    {
+      TASM_ENCODE_TRACE_SCOPE(encode_tracer_, EncodeCustomSections);
+      // Encode Custom Sections Section
+      EncodeCustomSection();
+    }
   };
 
   if (compile_options_.enable_flexible_template_) {

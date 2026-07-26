@@ -19,6 +19,8 @@ enum EncodeSSRError {
 };
 
 lynx::tasm::EncodeResult encode(const std::string& options_str);
+lynx::tasm::EncodeResult encode(const std::string& options_str,
+                                bool enable_trace);
 std::string quickjsCheck(const std::string& source);
 lynx::tasm::EncodeResult encode_ssr(const uint8_t* ptr, size_t buf_len,
                                     const std::string& mixin_data);

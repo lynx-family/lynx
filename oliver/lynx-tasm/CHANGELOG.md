@@ -1,4 +1,7 @@
 # CHANGELOG
+# 0.0.49
+* Add optional encode performance tracing to NAPI and WASM APIs, returning per-stage durations in `EncodeResult.trace`.
+
 # 0.0.48
 *  Skip unsupported patterns in TypeSpecification instead of throwing for lepus bytecode optimization
 

@@ -31,6 +31,13 @@ using DecodeResult = lynx::tasm::DecodeResult;
 //! @return EncodeResult with encoded data.
 EncodeResult Encode(const std::string& options_json);
 
+//! Encode template bundle with optional per-call performance tracing.
+//!
+//! @param options_json JSON string containing encode options.
+//! @param enable_trace Whether to return encode trace events.
+//! @return EncodeResult with encoded data and an optional trace.
+EncodeResult Encode(const std::string& options_json, bool enable_trace);
+
 //! Decode template bundle from binary data.
 //!
 //! @param data Pointer to binary data.
