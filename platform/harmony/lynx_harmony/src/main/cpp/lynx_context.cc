@@ -18,6 +18,7 @@
 #include "platform/harmony/lynx_harmony/src/main/cpp/event/gesture_event.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/event/lynx_event.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/event/touch_event.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/shadow_node/frame_shadow_node.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/shadow_node/image_shadow_node.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/shadow_node/inline_placeholder_shadow_node.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/shadow_node/inline_text_shadow_node.h"
@@ -28,6 +29,7 @@
 #include "platform/harmony/lynx_harmony/src/main/cpp/shadow_node/text_shadow_node.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/scroll/lynx_ui_scroll_view.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_bounce.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_frame.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_image.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_list.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_new_image.h"
@@ -87,7 +89,8 @@ LynxContext::GetCAPINodeInfoMap() {
           {"scroll-view", {UIScroll::Make}},
           {"bounce-view", {UIBounce::Make}},
           {"scroll-view-new-arch", {LynxUIScrollView::Make}},
-          // TODO(yangguangzhao): Add frame support here.
+          {"frame",
+           {UIFrame::Make, FrameShadowNode::Make, LayoutNodeType::CUSTOM}},
       }};
   return *kNodeTypeInfoMap;
 }

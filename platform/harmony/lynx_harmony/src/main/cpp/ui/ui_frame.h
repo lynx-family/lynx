@@ -30,8 +30,6 @@ class UIFrame : public UIView {
     return new UIFrame(context, sign, tag);
   }
 
-  static napi_value Init(napi_env env, napi_value exports);
-  static napi_value New(napi_env env, napi_callback_info info);
   static napi_value OnHostReady(napi_env env, napi_callback_info info);
   static napi_value OnIntrinsicSizeChanged(napi_env env, napi_callback_info info);
 

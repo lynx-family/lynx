@@ -88,6 +88,8 @@ export interface LynxViewBuilder {
   fitContentHeight?: boolean;
   experimentalFixFitContent?: boolean;
   skipOffTreeViewportUpdate?: boolean;
+  onCreate?: (context: LynxContext) => void;
+  onReuse?: (context: LynxContext) => boolean;
   beforeLoadTemplate?: (context: LynxContext) => void;
   threadMode?: ThreadStrategyForRendering;
   backgroundRuntimeOptions?: LynxBackgroundRuntimeOptions;
@@ -233,6 +235,12 @@ export struct LynxView {
     this.fitContentHeight = builder.fitContentHeight ?? false;
     this.experimentalFixFitContent = builder.experimentalFixFitContent ?? false;
     this.skipOffTreeViewportUpdate = builder.skipOffTreeViewportUpdate ?? false;
+    if (builder.onCreate !== undefined) {
+      this.onCreate = builder.onCreate;
+    }
+    if (builder.onReuse !== undefined) {
+      this.onReuse = builder.onReuse;
+    }
     this.beforeLoadTemplate = builder.beforeLoadTemplate ?? ((context: LynxContext) => {
     });
     this.threadMode = builder.threadMode ?? ThreadStrategyForRendering.ALL_ON_UI;
@@ -245,6 +253,38 @@ export struct LynxView {
       LynxServiceCenter.getService<ILynxTrailService>(LynxServiceType.Trail)?.parseLynxView(this);
       this.reInitTemplateRenderer(this.hasLoadSource());
     }
+  }
+
+  /**
+   * Creates a LynxViewBuilder populated with the current LynxView configuration.
+   */
+  getLynxViewBuilder(): LynxViewBuilder {
+    return {
+      genericResourceFetcher: this.genericResourceFetcher,
+      mediaResourceFetcher: this.mediaResourceFetcher,
+      templateResourceFetcher: this.templateResourceFetcher,
+      modules: this.modules,
+      sendableModules: this.sendableModules,
+      behaviors: this.behaviors,
+      screenSize: this.screenSize,
+      uiRendererCreator: this.uiRendererCreator,
+      backgroundRuntime: this.backgroundRuntime,
+      platformConfig: this.platformConfig,
+      clients: this.clients,
+      fitContentWidth: this.fitContentWidth,
+      fitContentHeight: this.fitContentHeight,
+      experimentalFixFitContent: this.experimentalFixFitContent,
+      skipOffTreeViewportUpdate: this.skipOffTreeViewportUpdate,
+      onCreate: this.onCreate,
+      onReuse: this.onReuse,
+      beforeLoadTemplate: this.beforeLoadTemplate,
+      threadMode: this.threadMode,
+      backgroundRuntimeOptions: this.backgroundRuntimeOptions,
+      enableAirStrictMode: this.enableAirStrictMode,
+      lynxImageConfig: this.lynxImageConfig,
+      fontScale: this.fontScale,
+      colorScheme: this.colorScheme,
+    };
   }
 
   private hasLoadSource(): boolean {

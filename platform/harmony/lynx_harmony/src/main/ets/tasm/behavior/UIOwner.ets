@@ -13,6 +13,7 @@ import { LynxContext } from '../LynxContext';
 import { DrawEndTimingFrameCallback } from '../performance/DrawEndTimingFrameCallback';
 import { PerformanceController } from '../performance/PerformanceController';
 import { LynxResourceLoadInfo, LynxViewClient } from '../LynxViewClient';
+import { FrameHost } from './frame/FrameHost';
 
 export class UIOwner {
   native: lynx.UIOwner;
@@ -30,12 +31,12 @@ export class UIOwner {
     TraceEvent.beginSection(TraceCategory.Lynx, TraceEventDef.UIOWNER_INIT);
     this.behaviors = behaviors;
     this.perfController = perfCollector;
+    this.uiContext = uiContext;
+    this.lynxContext = lynxContext;
     this.native = new lynx.UIOwner(this, this.create, uiContext, this.createNativeContent, this.startFluencyTrace,
       this.stopFluencyTrace, this.getNodeType, this.postDrawEndTimingFrameCallback, this.onAvoidKeyboardCallback,
-      this.onResourceLoaded);
-    this.uiContext = uiContext;
+      this.onResourceLoaded, this.createFrameHost);
     this.id = this.native.getId();
-    this.lynxContext = lynxContext;
     this.clients = this.lynxContext.getLynxViewClient();
     if (this.lynxContext.getLynxImageConfig() !== undefined) {
       this.native.setLynxImageConfig(this.lynxContext.getLynxImageConfig());
@@ -115,6 +116,10 @@ export class UIOwner {
     let content = new NodeContent();
     let nodeContent = new lynx.NativeContent(content);
     return nodeContent;
+  }
+
+  createFrameHost(nativeFrame: lynx.UIFrame, _sign: number): FrameHost {
+    return new FrameHost(this.lynxContext, this.uiContext, nativeFrame);
   }
 
   destroy() {

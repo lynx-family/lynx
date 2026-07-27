@@ -186,6 +186,7 @@ export abstract class LynxNodeController extends NodeController {
 
 @Component export class LynxView {
   initWithBuilder(builder: LynxViewBuilder): void;
+  getLynxViewBuilder(): LynxViewBuilder;
   ensureTemplateRendererAndLoadTemplate(): void;
   reInitTemplateRenderer(shouldLoadTemplate: boolean): void;
   onEnterForeground(): void;
@@ -259,6 +260,8 @@ export interface LynxViewBuilder {
   fitContentHeight?: boolean;
   experimentalFixFitContent?: boolean;
   skipOffTreeViewportUpdate?: boolean;
+  onCreate?: (context: LynxContext) => void;
+  onReuse?: (context: LynxContext) => boolean;
   beforeLoadTemplate?: (context: LynxContext) => void;
   threadMode?: ThreadStrategyForRendering;
   backgroundRuntimeOptions?: LynxBackgroundRuntimeOptions;
@@ -297,6 +300,7 @@ export class LynxContext implements IContext {
   sendGlobalEvent(name: string, params: Object[]): void;
   public callJSFunction(moduleName: string, method: string, params: Object[]): void;
   public initWithBuilder(builder: LynxViewBuilder): void;
+  public getLynxViewBuilder(): LynxViewBuilder;
   public setSessionStorageItem(key: string, value: TemplateData): void;
   public getSessionStorageItem(key: string, callback: SessionStorageCallback): void;
   public subscribeSessionStorage(key: string, callback: SessionStorageCallback): number;
@@ -622,6 +626,7 @@ export class ShadowNode {
 
 export class UIOwner {
   constructor(ref: Object, create: Function, uiContext: UIContext, createNodeContent: Function, startFluencyTrace: Function, stopFluencyTrace: Function, getNodeType: (string) => number, postDrawEndTimingFrameCallback: Function, onAvoidKeyboardCallback: Function, onResourceLoaded: Function);
+  constructor(ref: Object, create: Function, uiContext: UIContext, createNodeContent: Function, startFluencyTrace: Function, stopFluencyTrace: Function, getNodeType: (string) => number, postDrawEndTimingFrameCallback: Function, onAvoidKeyboardCallback: Function, onResourceLoaded: Function, createFrameHost: (nativeFrame: UIFrame, sign: number) => Object);
   attachPageRoot(content: NativeContent): void;
   getId(): string;
   destroy(id: string): void;

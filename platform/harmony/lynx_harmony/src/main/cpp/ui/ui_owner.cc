@@ -729,9 +729,10 @@ napi_value UIOwner::Constructor(napi_env env, napi_callback_info info) {
    * 7 - postDrawEndTimingFrameCallback function ref
    * 8 - onAvoidKeyboardCallback function ref
    * 9 - OnResourceLoadCallback function ref
+   * 10 - createFrameHost function ref
    */
-  size_t argc = 10;
-  napi_value argv[argc];
+  size_t argc = 11;
+  napi_value argv[11] = {nullptr};
   owner->env_ = env;
   napi_get_cb_info(env, info, &argc, argv, &js_object, nullptr);
   napi_create_reference(env, argv[0], 0, &owner->js_this_);
@@ -745,6 +746,13 @@ napi_value UIOwner::Constructor(napi_env env, napi_callback_info info) {
                         &owner->post_draw_end_timing_frame_callback_);
   napi_create_reference(env, argv[8], 0, &owner->on_avoid_keyboard_callback_);
   napi_create_reference(env, argv[9], 0, &owner->on_resource_load_callback_);
+  if (argc > 10 && argv[10]) {
+    napi_valuetype create_frame_host_type;
+    napi_typeof(env, argv[10], &create_frame_host_type);
+    if (create_frame_host_type == napi_function) {
+      napi_create_reference(env, argv[10], 1, &owner->js_create_frame_host_);
+    }
+  }
   napi_wrap(
       env, js_object, owner,
       [](napi_env env, void* data, void* hint) -> void {}, nullptr, nullptr);
