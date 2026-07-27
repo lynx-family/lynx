@@ -74,30 +74,6 @@ UIFrame::UIFrame(LynxContext* context, int sign, const std::string& tag)
 
 UIFrame::~UIFrame() { OnDestroy(); }
 
-napi_value UIFrame::Init(napi_env env, napi_value exports) {
-#define DECLARE_NAPI_FUNCTION(name, func) \
-  {(name), nullptr, (func), nullptr, nullptr, nullptr, napi_default, nullptr}
-
-  napi_property_descriptor properties[] = {
-      DECLARE_NAPI_FUNCTION("onHostReady", OnHostReady),
-      DECLARE_NAPI_FUNCTION("onIntrinsicSizeChanged", OnIntrinsicSizeChanged),
-  };
-#undef DECLARE_NAPI_FUNCTION
-
-  napi_value cons;
-  napi_define_class(env, "UIFrame", NAPI_AUTO_LENGTH, New, nullptr,
-                    sizeof(properties) / sizeof(properties[0]), properties,
-                    &cons);
-  napi_set_named_property(env, exports, "UIFrame", cons);
-  return exports;
-}
-
-napi_value UIFrame::New(napi_env env, napi_callback_info info) {
-  napi_value js_this;
-  napi_get_cb_info(env, info, nullptr, nullptr, &js_this, nullptr);
-  return js_this;
-}
-
 napi_value UIFrame::OnHostReady(napi_env env, napi_callback_info info) {
   napi_value js_this;
   size_t argc = 0;
@@ -265,9 +241,9 @@ void UIFrame::OnPropUpdate(const std::string& name, const lepus::Value& value) {
     global_props_ = has_global_props_ ? value : lepus::Value();
     global_props_dirty_ = true;
   } else if (name == "auto-width") {
-    auto_width_ = ReadBool(value, auto_width_);
+    auto_width_ = value.IsNil() ? false : ReadBool(value, auto_width_);
   } else if (name == "auto-height") {
-    auto_height_ = ReadBool(value, auto_height_);
+    auto_height_ = value.IsNil() ? false : ReadBool(value, auto_height_);
   }
 }
 
