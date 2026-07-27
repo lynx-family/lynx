@@ -1,0 +1,111 @@
+core/template_bundle/lynx_template_bundle_converter.cc
+  s_c2565c06895e42::t_da931151154695 78
+  s_c2565c06895e42::t_4b22aeead0bb45 75-77
+  s_c2565c06895e42::t_bfdf85736c0d32 5-67,73-74
+  s_c2565c06895e42::t_d6f79b995b0c72 1
+  s_c2565c06895e42::t_7ea791e1467ef2 2-4
+  s_c2565c06895e42::t_30bd5287157e77 71-72
+  s_c2565c06895e42::t_8704de0172a04c 68-70
+core/runtime/rts/rts_context_bundle.h
+  s_c2565c06895e42::t_473163f7f4a359 1-63
+core/runtime/rts/native_runtime/native_context.h
+  s_c2565c06895e42::t_d97a9eb600e3ff 18
+lynx/core/template_bundle/BUILD.gn
+  s_c2565c06895e42::t_028480b0d98c1d 23-26,28-30
+lynx/core/runtime/BUILD.gn
+  s_c2565c06895e42::t_5732cc69d81f49 16-18
+  s_c2565c06895e42::t_695af4131ad164 19-20
+testing/lynx/tasm/BUILD.gn
+  s_c2565c06895e42::t_1dc19ef4ab37d5 13 gitai:{"mixed_line_ranges":[],"operations":[{"operation_id":"6a66fc61796ca209bd977e77","tool_type":"agent","tool_id":"Edit","line_ranges":[{"Single":13}]}]}
+core/runtime/rts/BUILD.gn
+  s_c2565c06895e42::t_e396f03a521278 171
+  s_c2565c06895e42::t_eafdc92b9eaa83 127
+  s_c2565c06895e42::t_bbddfe0de6f24a 177
+  s_c2565c06895e42::t_4a26bd7c7313a9 121
+core/runtime/rts/rts_runtime/rts_context.h
+  s_c2565c06895e42::t_3ceb6d964dd1b5 19
+core/runtime/mts_context_factory.cc
+  s_c2565c06895e42::t_93a850f6a5ab7e 62,71
+  s_c2565c06895e42::t_88a1bb28fb6148 5-6,8,13,49,63,65,70,74,105,108
+oliver/lynx-tasm/BUILD.gn
+  s_c2565c06895e42::t_9e6487d01e942d 176
+lynx/core/template_bundle/lynx_template_bundle_converter_impl.cc
+  s_c2565c06895e42::t_55ed1322e30406 1-189
+lynx/core/template_bundle/lynx_template_bundle_converter.cc
+  s_c2565c06895e42::t_0d1c53cdfff917 5-9,21-22,24-27,29
+dependencies/DEPS.tasm
+  s_c2565c06895e42::t_39a9581488e3fb 61
+core/runtime/lepus/base_binary_reader.cc
+  h_f3ed92d6628256 67-69
+  s_c2565c06895e42::t_6dd8aab9be73cb 45-66,70-71,499-500,502
+  s_c2565c06895e42::t_20c48f69ec4043 40
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "195153a6a220be442055c208b77be47bfadf5819",
+  "prompts": {},
+  "humans": {
+    "h_f3ed92d6628256": {
+      "author": "liyanbo.monster <liyanbo.monster@bytedance.com>"
+    }
+  },
+  "sessions": {
+    "s_c2565c06895e42": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a5f1b1904130cb513f0e554",
+        "model": "openrouter-1o__dev"
+      },
+      "human_author": null
+    }
+  },
+  "attestation_metadata": {
+    "testing/lynx/tasm/BUILD.gn": [
+      {
+        "hash": "s_c2565c06895e42::t_1dc19ef4ab37d5",
+        "line_ranges": [
+          {
+            "Single": 13
+          }
+        ],
+        "mixed_line_ranges": [],
+        "operations": [
+          {
+            "operation_id": "6a66fc61796ca209bd977e77",
+            "tool_type": "agent",
+            "tool_id": "Edit",
+            "line_ranges": [
+              {
+                "Single": 13
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "remote_transcripts": {
+    "s_c2565c06895e42": {
+      "tool": "trae",
+      "conversation_id": "6a5f1b1904130cb513f0e554",
+      "session_id": "6a5f1b1904130cb513f0e554",
+      "status": "remote_only",
+      "message": "Remote transcript resolution is not implemented yet for TRAE prompts."
+    },
+    "s_c2565c06895e42::t_1dc19ef4ab37d5": {
+      "tool": "trae",
+      "conversation_id": "6a5f1b1904130cb513f0e554",
+      "session_id": "6a5f1b1904130cb513f0e554",
+      "status": "remote_only",
+      "message": "Remote transcript resolution is not implemented yet for TRAE prompts."
+    },
+    "s_c2565c06895e42::t_d65e51bcafce10": {
+      "tool": "trae",
+      "conversation_id": "6a5f1b1904130cb513f0e554",
+      "session_id": "6a5f1b1904130cb513f0e554",
+      "status": "remote_only",
+      "message": "Remote transcript resolution is not implemented yet for TRAE prompts."
+    }
+  }
+}
