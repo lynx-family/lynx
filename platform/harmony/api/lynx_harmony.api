@@ -258,6 +258,7 @@ export interface LynxViewBuilder {
   fitContentWidth?: boolean;
   fitContentHeight?: boolean;
   experimentalFixFitContent?: boolean;
+  skipOffTreeViewportUpdate?: boolean;
   beforeLoadTemplate?: (context: LynxContext) => void;
   threadMode?: ThreadStrategyForRendering;
   backgroundRuntimeOptions?: LynxBackgroundRuntimeOptions;
