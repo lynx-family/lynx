@@ -1,0 +1,49 @@
+e2e/lynx-e2e-mvp/vendor/devtool-connector/dist/index.js
+  s_a6337f287197d6::t_cb3cd3ef6aec71 143,145,151-152,154,157,159-162,164,174
+  s_a6337f287197d6::t_df083d2c5b891b 473-480
+testing/lynx-platform-tests/test_script/ioslynxtest/case_sets/lynx_e2e_mvp.py
+  s_a6337f287197d6::t_8cb67923841f8b 44-46
+  s_a6337f287197d6::t_1665c0c7376cb3 40,42-43,66-69,71-74,76,78-82
+  s_a6337f287197d6::t_6e2f2ac5002436 32-34,38
+  s_a6337f287197d6::t_37e1677d2c0be0 47-64
+e2e/lynx-e2e-mvp/vendor/devtool-connector/src/transport/ios-bdc.ts
+  s_a6337f287197d6::t_7f96a0f9cba3f6 343,347-354,359-365,367,374-380,543-552,563-570,574,579-582,586
+  s_a6337f287197d6::t_442b6498ae5675 573
+  s_a6337f287197d6::t_df05c55c0653af 575-578
+  s_a6337f287197d6::t_a627c596e3b9ad 583-585
+  s_a6337f287197d6::t_990b93d2df9e02 592
+e2e/lynx-e2e-mvp/vendor/devtool-connector/src/index.ts
+  s_a6337f287197d6::t_9757242288aed0 187-192,194,202-203,205,212-219,226-231,235-242,252-253,692,694,697,699,701,704,711,713,715
+  s_a6337f287197d6::t_9a84788f4b080d 689-691
+  s_a6337f287197d6::t_36ec52e2e8d8e1 693
+  s_a6337f287197d6::t_221b5210d70651 695-696
+  s_a6337f287197d6::t_2b2d9c45a172f9 698
+  s_a6337f287197d6::t_e07e1a7078de8c 700
+  s_a6337f287197d6::t_f4bd96f36afa4c 702-703
+  s_a6337f287197d6::t_3601ddea672762 705-707
+  s_a6337f287197d6::t_db88dff5083b9e 712
+  s_a6337f287197d6::t_0d727231e86559 714
+  s_a6337f287197d6::t_8f43c8a2d9d087 716
+  s_a6337f287197d6::t_ae5d679b1185f6 708
+e2e/lynx-e2e-mvp/vendor/devtool-connector/dist/563.js
+  s_a6337f287197d6::t_1e4021c0b26c46 14286,14290-14291,14295,14297,14303,14403,14414
+  s_a6337f287197d6::t_35fa2aee97c31b 14417-14418,14421
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "e4ed269e2d714ed21d1baab544d803f2a8f0332f",
+  "prompts": {},
+  "sessions": {
+    "s_a6337f287197d6": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f9356-c918-7bd0-81c5-c408bd42642e",
+        "model": "unknown"
+      },
+      "human_author": "tangyongjie <tangyongjie@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

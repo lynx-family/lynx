@@ -1,0 +1,16 @@
+lynx/devtool/embedder/core/screen_cast_helper_embedder.cc
+  h_c7499b019d31b1 73
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "d01c7455af6b68baba054a4f0ffc4600bef790b6",
+  "prompts": {},
+  "humans": {
+    "h_c7499b019d31b1": {
+      "author": "chenyouhui.duke <chenyouhui.duke@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}
