@@ -78,6 +78,7 @@ class PropBundleDarwin : public PropBundle {
   void SetPropsByID(CSSPropertyID id, const uint32_t* data, size_t size) override;
 
   void ResetEventHandler() override;
+  void ResetGestureDetector() override;
   fml::RefPtr<PropBundle> ShallowCopy() override;
 
   inline NSDictionary* dictionary() { return [propMap copy]; }

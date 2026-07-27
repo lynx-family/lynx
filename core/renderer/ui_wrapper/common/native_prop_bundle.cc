@@ -97,6 +97,10 @@ void NativePropBundle::SetGestureDetector(const GestureDetector& detector) {
 
 void NativePropBundle::ResetEventHandler() {}
 
+void NativePropBundle::ResetGestureDetector() {
+  gesture_detector_map_ = GestureMap();
+}
+
 void NativePropBundle::SetPropsByID(CSSPropertyID id, const uint8_t* data,
                                     size_t size) {
   auto array = lepus::Value(lepus::CArray::Create());
