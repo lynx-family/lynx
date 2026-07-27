@@ -10355,6 +10355,7 @@ public class com::lynx::tasm::TemplateBundleOption :  {
 
 public class com::lynx::tasm::TemplateData :  {
   public static TemplateData com.lynx.tasm.TemplateData.fromMap(Map< String, Object > data);
+  public static TemplateData com.lynx.tasm.TemplateData.createForStaticPage(@NonNull Map< String, Object > data);
   public static TemplateData com.lynx.tasm.TemplateData.empty();
   public static TemplateData com.lynx.tasm.TemplateData.fromString(String json);
   public static TemplateData com.lynx.tasm.TemplateData.fromNativeDataPtr(long nativePtr);

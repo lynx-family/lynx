@@ -39,6 +39,17 @@ export class TemplateData {
   readOnly: boolean = false;
 
   /**
+   * Creates a `TemplateData` for static-page loading without converting the supplied platform data
+   * to Lepus. The caller must not mutate it after this call.
+   * @apidoc
+   * @param input Platform data used by the static page.
+   * @return A `TemplateData` that retains the supplied platform data.
+   */
+  static createForStaticPage(input: Record<string, Object>): TemplateData {
+    return new StaticPageTemplateData(input);
+  }
+
+  /**
    * Input data in string, key-value or json format and return the parsed `TemplateData` object.
    * @apidoc
    * @param input String, key-value or json type data.
@@ -84,6 +95,28 @@ export class TemplateData {
       LLog.d(TAG, 'TemplateData merge error: ' + e);
     }
   }
+}
+
+class StaticPageTemplateData extends TemplateData {
+  private readonly platformData: Record<string, Object>;
+
+  constructor(input: Record<string, Object>) {
+    super();
+    this.platformData = input;
+    this.readOnly = true;
+  }
+
+  override get data(): Record<string, Object> {
+    return this.platformData;
+  }
+
+  override merge(data?: string | Record<string, Object> | Object): void {
+    LLog.e(TAG, 'merge is not supported for static-page data');
+  }
+}
+
+export function isForStaticPage(data?: TemplateData): boolean {
+  return data instanceof StaticPageTemplateData;
 }
 
 /**
