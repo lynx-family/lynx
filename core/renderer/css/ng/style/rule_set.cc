@@ -103,7 +103,7 @@ void RuleSet::MatchOwnStyles(StyleNode* node, unsigned level,
   MatchKey(node, node->idSelector().str(), id_rules_, level, output);
 }
 
-void RuleSet::AddStyleRule(fml::RefPtr<StyleRule> rule) {
+void RuleSet::AddStyleRule(fml::RefPtr<StyleRule> rule, CascadeLayer* layer) {
   if (rule == nullptr) return;
 
   uint32_t position = rule_count_;
@@ -113,7 +113,7 @@ void RuleSet::AddStyleRule(fml::RefPtr<StyleRule> rule) {
 
   for (unsigned selector_index = 0; selector_index != UINT_MAX;
        selector_index = rule->IndexOfNextSelectorAfter(selector_index)) {
-    RuleData rule_data(rule, selector_index, position);
+    RuleData rule_data(rule, selector_index, position, layer);
     ++rule_count_;
     AddToRuleSetInternal(rule->SelectorAt(selector_index), rule_data);
     if (!fragment_) continue;

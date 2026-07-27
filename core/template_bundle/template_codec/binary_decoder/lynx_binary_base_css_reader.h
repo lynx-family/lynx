@@ -84,7 +84,8 @@ class LynxBinaryBaseCSSReader : public lepus::BaseBinaryReader,
   bool DecodeConditionRuleData(SharedCSSFragment* fragment,
                                const CSSParserConfigs& parser_config,
                                uint8_t rule_type,
-                               fml::RefPtr<css::ConditionRule>* out_rule);
+                               fml::RefPtr<css::ConditionRule>* out_rule,
+                               css::CascadeLayer* layer = nullptr);
   bool DecodeCSSKeyframesRule(SharedCSSFragment* fragment,
                               const CSSParserConfigs& parser_config);
   bool DecodeKeyframesRuleData(const CSSParserConfigs& parser_config,
@@ -97,7 +98,8 @@ class LynxBinaryBaseCSSReader : public lepus::BaseBinaryReader,
 
   bool DecodeCSSLayerRule(SharedCSSFragment* fragment,
                           const CSSParserConfigs& parser_config,
-                          uint8_t rule_type);
+                          uint8_t rule_type,
+                          css::CascadeLayer* parent_layer = nullptr);
 
   bool DecodeCSSValue(tasm::CSSValue*);
   bool DecodeCSSValue(tasm::CSSValue* result, bool enable_css_parser,

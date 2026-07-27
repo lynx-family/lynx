@@ -290,8 +290,9 @@ void SharedCSSFragment::AddStyleRule(
       std::move(selector_arr), std::move(parse_token)));
 }
 
-void SharedCSSFragment::AddStyleRule(fml::RefPtr<css::StyleRule> rule) {
-  rule_set_->AddStyleRule(std::move(rule));
+void SharedCSSFragment::AddStyleRule(fml::RefPtr<css::StyleRule> rule,
+                                     css::CascadeLayer* layer) {
+  rule_set_->AddStyleRule(std::move(rule), layer);
 }
 
 void SharedCSSFragment::AddConditionRule(

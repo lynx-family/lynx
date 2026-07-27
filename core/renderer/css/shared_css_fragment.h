@@ -12,6 +12,7 @@
 
 #include "core/renderer/css/css_fragment.h"
 #include "core/renderer/css/ng/invalidation/rule_invalidation_set.h"
+#include "core/renderer/css/ng/style/cascade_layer.h"
 #include "core/renderer/css/ng/style/condition_rule.h"
 
 namespace lynx {
@@ -108,9 +109,19 @@ class SharedCSSFragment : public CSSFragment {
                              const fml::RefPtr<CSSParseToken>& parse_token);
   void AddStyleRule(std::unique_ptr<css::LynxCSSSelector[]> selector_arr,
                     fml::RefPtr<CSSParseToken> parse_token);
-  void AddStyleRule(fml::RefPtr<css::StyleRule> rule);
+  void AddStyleRule(fml::RefPtr<css::StyleRule> rule,
+                    css::CascadeLayer* layer = nullptr);
   void AddConditionRule(fml::RefPtr<css::ConditionRule> condition_rule);
   bool HasIdSelector() override { return !id_map_.empty(); }
+
+  css::CascadeLayer* GetOrCreateRootLayer() {
+    if (!root_layer_) {
+      root_layer_ = std::make_unique<css::CascadeLayer>();
+    }
+    return root_layer_.get();
+  }
+
+  css::CascadeLayer* root_layer() const { return root_layer_.get(); }
 
  protected:
   friend class TemplateBinaryReader;
@@ -141,6 +152,7 @@ class SharedCSSFragment : public CSSFragment {
   // Initialize the RuleInvalidationSet only when the CSS invalidation is
   // enabled
   std::unique_ptr<css::RuleInvalidationSet> rule_invalidation_set_;
+  std::unique_ptr<css::CascadeLayer> root_layer_;
 };
 
 }  // namespace tasm

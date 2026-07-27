@@ -29,8 +29,9 @@ class ConditionRule : public fml::RefCountedThreadSafeStorage {
   RuleSet& GetRuleSet() { return rule_set_; }
   const RuleSet& GetRuleSet() const { return rule_set_; }
 
-  void AddStyleRule(fml::RefPtr<StyleRule> rule) {
-    rule_set_.AddStyleRule(std::move(rule));
+  void AddStyleRule(fml::RefPtr<StyleRule> rule,
+                    CascadeLayer* layer = nullptr) {
+    rule_set_.AddStyleRule(std::move(rule), layer);
   }
 
   void SetMediaQueries(fml::RefPtr<const MediaQuerySet> queries) {
