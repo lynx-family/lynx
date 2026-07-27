@@ -1,0 +1,28 @@
+e2e/lynx-e2e-mvp/src/default-connector.ts
+  s_90ecc465ac68d4::t_b84563e9c99b17 1,4-47,71-93
+e2e/lynx-e2e-mvp/tests/mvp.test.ts
+  s_90ecc465ac68d4::t_41cf4686c956b0 8,61-85
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "52ed83176b8ac5971a6b316ed8460d26ac54bdc5",
+  "prompts": {},
+  "humans": {
+    "h_dc1658ba751399": {
+      "author": "tangyongjie <tangyongjie@bytedance.com>"
+    }
+  },
+  "sessions": {
+    "s_90ecc465ac68d4": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f88cc-c747-76d0-a951-642be2bc762c",
+        "model": "unknown"
+      },
+      "human_author": "tangyongjie <tangyongjie@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

@@ -1,0 +1,38 @@
+lynx/core/runtime/js/runtime_manager.cc
+  s_2d6f9190dc4d28::t_1421cb992ee56d 529
+  h_dc1658ba751399 55
+  s_9b879d368ffaae::t_6e8c15fa6cdae8 62
+tools/gn_tools/gn.py
+  h_dc1658ba751399 291
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "b489618a58017d3232b2a2718916db0bb5a9e215",
+  "prompts": {},
+  "humans": {
+    "h_dc1658ba751399": {
+      "author": "tangyongjie <tangyongjie@bytedance.com>"
+    }
+  },
+  "sessions": {
+    "s_2d6f9190dc4d28": {
+      "agent_id": {
+        "tool": "trae-cue",
+        "id": "ai_tab-icr-34e123d6-ab4a-4581-b4e1-59180e236af7",
+        "model": "default"
+      },
+      "human_author": null
+    },
+    "s_9b879d368ffaae": {
+      "agent_id": {
+        "tool": "trae-cue",
+        "id": "ai_tab-icr-3a8d4fc3-87bb-41f8-b76f-ac08210c329d",
+        "model": "default"
+      },
+      "human_author": null
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}
