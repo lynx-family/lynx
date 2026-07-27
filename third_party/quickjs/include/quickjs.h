@@ -768,6 +768,14 @@ void PrepareQJSDebuggerForSharedContext(LEPUSContext *ctx, void **funcs,
                                         int32_t callback_size,
                                         bool devtool_connect);
 
+typedef enum LEPUSGCMemoryPolicyLevel {
+  LEPUS_GC_MEMORY_POLICY_MIN_MEMORY = 0,
+  LEPUS_GC_MEMORY_POLICY_LOW_MEMORY = 1,
+  LEPUS_GC_MEMORY_POLICY_BALANCED = 2,
+  LEPUS_GC_MEMORY_POLICY_HIGH_PERFORMANCE = 3,
+  LEPUS_GC_MEMORY_POLICY_MAX_PERFORMANCE = 4,
+} LEPUSGCMemoryPolicyLevel;
+
 // <Primjs end>
 
 LEPUSRuntime *LEPUS_NewRuntime(void);
@@ -778,6 +786,9 @@ LEPUSRuntime *LEPUS_NewRuntimeWithMode(uint32_t mode);
 void LEPUS_SetOptLepusNGPackageSize(LEPUSRuntime *rt, int enable);
 void LEPUS_SetRuntimeInfo(LEPUSRuntime *rt, const char *info);
 void LEPUS_SetMemoryLimit(LEPUSRuntime *rt, size_t limit);
+/* Must be called from the owning thread of rt. */
+int LEPUS_SetGCMemoryPolicyLevel(LEPUSRuntime *rt,
+                                 LEPUSGCMemoryPolicyLevel level);
 void LEPUS_SetGCThreshold(LEPUSRuntime *rt, size_t gc_threshold);
 LEPUSRuntime *LEPUS_NewRuntime2(const struct LEPUSMallocFunctions *mf,
                                 void *opaque, uint32_t mode);

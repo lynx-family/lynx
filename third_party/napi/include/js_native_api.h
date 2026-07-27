@@ -569,6 +569,8 @@ struct napi_env__ {
   napi_status (*napi_get_value_bigint_words)(napi_env env, napi_value value,
                                              int* sign_bit, size_t* word_count,
                                              uint64_t* words);
+
+  napi_status (*napi_detach_arraybuffer)(napi_env env, napi_value arraybuffer);
 };
 
 #ifdef ENABLE_CODECACHE

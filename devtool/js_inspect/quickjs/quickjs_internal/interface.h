@@ -112,7 +112,13 @@ int GetFunctionBytecodeLen(LEPUSFunctionBytecode *b);
 
 int32_t GetFunctionDebugSourceLen(LEPUSContext *ctx, LEPUSFunctionBytecode *b);
 
+int32_t GetFunctionDebugSourceOffset(LEPUSContext *ctx,
+                                     LEPUSFunctionBytecode *b);
+
 const char *GetFunctionDebugSource(LEPUSContext *ctx, LEPUSFunctionBytecode *b);
+
+void SetFunctionDebugSourceOffset(LEPUSFunctionBytecode *b,
+                                  int32_t source_offset);
 
 void SetFunctionDebugSource(LEPUSContext *ctx, LEPUSFunctionBytecode *b,
                             const char *source, int32_t source_len);

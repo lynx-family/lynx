@@ -301,6 +301,8 @@ NAPI_ADAPTER_EXTERN napi_status napi_create_external_arraybuffer_primjs(
     napi_finalize finalize_cb, void* finalize_hint, napi_value* result);
 NAPI_ADAPTER_EXTERN napi_status napi_get_arraybuffer_info_primjs(
     napi_env env, napi_value arraybuffer, void** data, size_t* byte_length);
+NAPI_ADAPTER_EXTERN napi_status
+napi_detach_arraybuffer_primjs(napi_env env, napi_value arraybuffer);
 
 // TypedArray APIs
 NAPI_ADAPTER_EXTERN napi_status napi_is_typedarray_primjs(napi_env env,
