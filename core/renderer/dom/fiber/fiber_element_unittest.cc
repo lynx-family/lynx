@@ -392,6 +392,20 @@ TEST_P(FiberElementTest, GetPropBundleForRecordingBuildsCurrentSnapshot) {
   EXPECT_NE(events.find("tap"), events.end());
 }
 
+TEST_P(FiberElementTest, ResolvingEmptyGestureMapResetsPropBundle) {
+  auto view = manager->CreateFiberView();
+  view->SetGestureDetector(
+      1, GestureDetectorImpl(1, GestureType::LONG_PRESS, {}, {}));
+  view->RemoveGestureDetector(1);
+
+  view->PreparePropBundleIfNeed();
+  manager->ResolveGestures(view->data_model_.get(), view.get());
+
+  auto* prop_bundle = static_cast<PropBundleMock*>(view->prop_bundle_.get());
+  ASSERT_NE(prop_bundle, nullptr);
+  EXPECT_TRUE(prop_bundle->GestureDetectorsWereReset());
+}
+
 TEST_P(FiberElementTest, ElementInitTest0) {
   manager->GetLynxEnvConfig().font_scale_ = 1.3f;
   manager->GetLynxEnvConfig().font_scale_sp_only_ = false;
