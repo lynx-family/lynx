@@ -12,7 +12,7 @@ lynx_core_source_set("resource") {
     "lynx_resource_loader_embedder.cc",
     "lynx_resource_loader_embedder.h",
   ]
-  if (is_win) {
+  if (is_win || is_linux) {
     sources += [ "js_source_loader_desktop.cc" ]
   } else if (is_mac) {
     sources += [ "js_source_loader_desktop.mm" ]

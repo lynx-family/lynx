@@ -42,6 +42,8 @@ lynx_core_source_set("jscache") {
     ]
   } else if (is_apple) {
     sources += [ "ios/js_cache_manager_darwin.mm" ]
+  } else if (is_linux) {
+    sources += [ "linux/js_cache_manager_linux.cc" ]
   }
   deps = [
     "../../../../third_party/rapidjson",
