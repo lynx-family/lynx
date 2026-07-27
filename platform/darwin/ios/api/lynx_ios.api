@@ -3837,6 +3837,7 @@ public class LynxTemplateData : NSObject {
   public NSArray * LynxTemplateData()::copyUpdateActions();
   public lynx::lepus::Value LynxTemplateData()::getDataForJSThread();
   public LynxTemplateData * LynxTemplateData()::getTemplateDataForJSThread();
+  public instancetype LynxTemplateData::createForStaticPage:(NSDictionary< NSString *, id > *dictionary);
   public NSString* LynxTemplateData()::processorName processorName;
 }
 
@@ -5882,6 +5883,9 @@ public enum LynxFeature {
 
 
   public std::unique_ptr< lynx::runtime::js::cache::BytecodeGenerateCallback > CreateBytecodeGenerateCallback(LynxBytecodeResponseBlock _Nullable callback);
+
+  public NS_ASSUME_NONNULL_BEGIN FOUNDATION_EXPORT LynxTemplateData * LynxCreateStaticPageTemplateData(NSDictionary< NSString *, id > *dictionary);
+  public FOUNDATION_EXPORT BOOL LynxTemplateDataIsForStaticPage(LynxTemplateData *_Nullable data);
 
   public std::shared_ptr< lynx::tasm::LynxTemplateBundle > LynxGetRawTemplateBundle(LynxTemplateBundle *bundle);
   public LynxTemplateBundle * ConstructTemplateBundleFromNative(lynx::tasm::LynxTemplateBundle bundle);

@@ -32,7 +32,7 @@ import org.json.JSONObject;
  * It is used to store the data types accepted by Lynx at runtime
  * and can be constructed using either a string or a map type.
  */
-public final class TemplateData {
+public class TemplateData {
   private static final String TAG = "LynxTemplateData";
 
   /**
@@ -139,6 +139,23 @@ public final class TemplateData {
     TemplateData result = new TemplateData(data);
     TraceEvent.endSection(TraceEventDef.TEMPLATE_DATA_FROM_MAP);
     return result;
+  }
+
+  /**
+   * @apidoc
+   * @brief Creates a `TemplateData` for static-page loading without converting the supplied
+   *     platform data to Lepus.
+   * @param data Platform data used by the static page. The caller must not mutate it after this
+   *     call.
+   * @return A `TemplateData` that retains the supplied platform data.
+   */
+  @NonNull
+  public static TemplateData createForStaticPage(@NonNull Map<String, Object> data) {
+    return new StaticPageTemplateData(data);
+  }
+
+  static boolean isForStaticPage(TemplateData data) {
+    return data instanceof StaticPageTemplateData;
   }
 
   /**
@@ -275,6 +292,11 @@ public final class TemplateData {
    */
   public void updateWithTemplateData(TemplateData diff) {
     if (diff == null) {
+      return;
+    }
+
+    if (isForStaticPage(diff)) {
+      LLog.e(TAG, "updateWithTemplateData is not supported for static-page data");
       return;
     }
 
@@ -495,7 +517,7 @@ public final class TemplateData {
     mData.put(key, value);
   }
 
-  private TemplateData() {
+  TemplateData() {
     LynxEnv.inst();
     mProcessorName = null;
   }

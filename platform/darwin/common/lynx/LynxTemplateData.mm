@@ -8,6 +8,7 @@
 #import <sys/utsname.h>
 
 #import <LynxBase/LynxLog.h>
+#import "LynxStaticPageTemplateData.h"
 #include "base/include/value/array.h"
 #include "base/include/value/byte_array.h"
 #include "core/renderer/data/lynx_view_data_manager.h"
@@ -204,8 +205,17 @@ lynx::lepus::Value* LynxGetLepusValueFromTemplateData(LynxTemplateData* data) {
   return [self initWithDictionary:dictionary useBoolLiterals:DEFAULT_USE_BOOL_LITERALS];
 }
 
++ (instancetype)createForStaticPage:(NSDictionary<NSString*, id>*)dictionary {
+  return LynxCreateStaticPageTemplateData(dictionary);
+}
+
 - (void)updateWithTemplateData:(LynxTemplateData*)inputData {
   if (inputData == nil) {
+    return;
+  }
+
+  if (LynxTemplateDataIsForStaticPage(inputData)) {
+    _LogE(@"updateWithTemplateData is not supported for static-page data");
     return;
   }
 
@@ -433,6 +443,9 @@ std::shared_ptr<lynx::tasm::TemplateData> ConvertLynxTemplateDataToTemplateData(
     LynxTemplateData* data) {
   if (!data) {
     return nullptr;
+  }
+  if (LynxTemplateDataIsForStaticPage(data)) {
+    return std::make_shared<lynx::tasm::TemplateData>();
   }
   return std::make_shared<lynx::tasm::TemplateData>(
       *LynxGetLepusValueFromTemplateData(data), data.isReadOnly,
