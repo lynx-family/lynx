@@ -1075,6 +1075,83 @@ TEST_F_UI(TextTest, InlineTruncationHeightOverflowReportsHiddenText) {
   EXPECT_GT(lines.back().ellipsis_count, 0);
 }
 
+TEST_F_UI(TextTest, InlineTruncationHeightOverflowUsesLastFullyVisibleLine) {
+  auto inline_truncation_node = std::make_unique<InlineTruncationShadowNode>(
+      owner_, std::string("inline-truncation"), -1);
+  auto inline_text_node = std::make_unique<InlineTextShadowNode>(
+      owner_, std::string("inline-text"), -1);
+  auto inline_raw_text_shadow_node =
+      std::make_unique<RawTextShadowNode>(owner_, std::string("raw-text"), -1);
+  inline_raw_text_shadow_node->SetText("...");
+  inline_text_node->AddChild(inline_raw_text_shadow_node.get());
+  inline_truncation_node->AddChild(inline_text_node.get());
+  text_shadow_node_->AddChild(inline_truncation_node.get());
+  const std::string text =
+      "first visible line\nsecond visible line\nthird hidden line";
+  raw_text_shadow_node_->SetText(text);
+  TextRender text_render(text_shadow_node_.get());
+  text_render.SetUpdateFlag(TextUpdateFlag::kUpdateFlagChildren);
+  MeasureConstraint unconstrained{1000, MeasureMode::kDefinite, std::nullopt,
+                                  MeasureMode::kIndefinite};
+  auto context = text_shadow_node_->CreateLayoutContext(unconstrained);
+  text_render.BuildTextLayout(unconstrained, &context);
+
+  ASSERT_NE(text_render.GetCacheParagraph(), nullptr);
+  const auto line_metrics = text_render.GetCacheParagraph()->GetLineMetrics();
+  ASSERT_EQ(line_metrics.size(), 3u);
+  MeasureConstraint two_line_constraint{
+      1000, MeasureMode::kDefinite,
+      static_cast<float>(line_metrics[1].baseline + line_metrics[1].descent),
+      MeasureMode::kDefinite};
+  auto two_line_context =
+      text_shadow_node_->CreateLayoutContext(two_line_constraint);
+
+  text_render.HandleInlineTruncation(two_line_constraint, &two_line_context);
+
+  EXPECT_TRUE(inline_truncation_node->IfNeedMount());
+  EXPECT_GT(raw_text_shadow_node_->GetEndIndex(), line_metrics[1].start_index);
+  EXPECT_LE(raw_text_shadow_node_->GetEndIndex(), line_metrics[1].end_index);
+}
+
+TEST_F_UI(TextTest, HeightEllipsisRebuildsWhenConstraintChanges) {
+  text_shadow_node_->SetTextOverflow(TextOverflow::kEllipsis);
+  raw_text_shadow_node_->SetText("first line\nsecond line\nthird line");
+  TextRender text_render(text_shadow_node_.get());
+  text_render.SetUpdateFlag(TextUpdateFlag::kUpdateFlagChildren);
+  MeasureConstraint unconstrained{500, MeasureMode::kDefinite, std::nullopt,
+                                  MeasureMode::kIndefinite};
+  auto unconstrained_context =
+      text_shadow_node_->CreateLayoutContext(unconstrained);
+  text_render.BuildTextLayout(unconstrained, &unconstrained_context);
+
+  ASSERT_NE(text_render.GetCacheParagraph(), nullptr);
+  const auto full_line_metrics =
+      text_render.GetCacheParagraph()->GetLineMetrics();
+  ASSERT_EQ(full_line_metrics.size(), 3u);
+  MeasureConstraint one_line_constraint{
+      500, MeasureMode::kDefinite,
+      static_cast<float>(full_line_metrics.front().baseline +
+                         full_line_metrics.front().descent),
+      MeasureMode::kDefinite};
+  auto one_line_context =
+      text_shadow_node_->CreateLayoutContext(one_line_constraint);
+  text_render.Measure(one_line_constraint, &one_line_context);
+
+  ASSERT_NE(text_render.GetCacheParagraph(), nullptr);
+  EXPECT_TRUE(text_render.GetCacheParagraph()->DidExceedMaxLines());
+  EXPECT_EQ(text_render.GetCacheParagraph()->GetLineMetrics().size(), 1u);
+
+  MeasureConstraint expanded_constraint{500, MeasureMode::kDefinite, 1000,
+                                        MeasureMode::kDefinite};
+  auto expanded_context =
+      text_shadow_node_->CreateLayoutContext(expanded_constraint);
+  text_render.Measure(expanded_constraint, &expanded_context);
+
+  ASSERT_NE(text_render.GetCacheParagraph(), nullptr);
+  EXPECT_FALSE(text_render.GetCacheParagraph()->DidExceedMaxLines());
+  EXPECT_EQ(text_render.GetCacheParagraph()->GetLineMetrics().size(), 3u);
+}
+
 TEST_F_UI(TextTest, InlineTruncationFitsNestedTextAndViewAfterEmoji) {
   MeasureConstraint constraint{260, MeasureMode::kDefinite, 100,
                                MeasureMode::kDefinite};
