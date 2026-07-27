@@ -7,6 +7,7 @@
 
 #include <memory>
 
+#include "core/renderer/css/ng/style/cascade_layer.h"
 #include "core/renderer/css/ng/style/style_rule.h"
 
 namespace lynx {
@@ -18,11 +19,12 @@ struct RuleData {
   static constexpr size_t kPositionBits = 19;
 
   RuleData(const fml::RefPtr<StyleRule>& rule, unsigned selector_index,
-           unsigned position)
+           unsigned position, CascadeLayer* layer = nullptr)
       : rule_(rule),
         selector_index_(selector_index),
         position_(position),
-        specificity_(Selector().Specificity()) {}
+        specificity_(Selector().Specificity()),
+        layer_(layer) {}
 
   const LynxCSSSelector& Selector() const {
     return rule_->SelectorAt(selector_index_);
@@ -36,11 +38,14 @@ struct RuleData {
 
   unsigned Specificity() const { return specificity_; }
 
+  CascadeLayer* Layer() const { return layer_; }
+
  private:
   fml::RefPtr<StyleRule> rule_;
   unsigned selector_index_ : kSelectorIndexBits;
   unsigned position_ : kPositionBits;
   unsigned specificity_;
+  CascadeLayer* layer_ = nullptr;
 };
 
 }  // namespace css

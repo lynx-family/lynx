@@ -318,7 +318,8 @@ bool LynxBinaryBaseCSSReader::DecodeCSSConditionRule(
 
 bool LynxBinaryBaseCSSReader::DecodeConditionRuleData(
     SharedCSSFragment* fragment, const CSSParserConfigs& parser_config,
-    uint8_t rule_type, fml::RefPtr<css::ConditionRule>* out_rule) {
+    uint8_t rule_type, fml::RefPtr<css::ConditionRule>* out_rule,
+    css::CascadeLayer* layer) {
   std::string condition;
   fml::RefPtr<const css::MediaQuerySet> media_queries;
   fml::RefPtr<const css::SupportsConditionNode> supports_condition;
@@ -357,7 +358,7 @@ bool LynxBinaryBaseCSSReader::DecodeConditionRuleData(
         fml::RefPtr<css::StyleRule> rule;
         ERROR_UNLESS(DecodeStyleRuleData(fragment, parser_config, &rule));
         if (rule) {
-          condition_rule->AddStyleRule(std::move(rule));
+          condition_rule->AddStyleRule(std::move(rule), layer);
         }
         break;
       }
@@ -436,7 +437,7 @@ bool LynxBinaryBaseCSSReader::DecodeFontFaceRuleData(
 
 bool LynxBinaryBaseCSSReader::DecodeCSSLayerRule(
     SharedCSSFragment* fragment, const CSSParserConfigs& parser_config,
-    uint8_t rule_type) {
+    uint8_t rule_type, css::CascadeLayer* parent_layer) {
   // Wire format (the leading rule-type byte and payload-length u32 were
   // already consumed by the outer switch in DecodeCSSRules):
   //   - name_segment_count : compact u32
@@ -448,22 +449,31 @@ bool LynxBinaryBaseCSSReader::DecodeCSSLayerRule(
   //       N x { type byte + payload_size u32 + child payload }
   //
   DECODE_COMPACT_U32(name_segment_count);
+  std::vector<std::string> name_segments;
+  name_segments.reserve(name_segment_count);
   for (size_t i = 0; i < name_segment_count; ++i) {
     DECODE_STDSTR(segment);
-    (void)segment;
+    name_segments.push_back(std::move(segment));
   }
   DECODE_COMPACT_U32(layer_position);
   (void)layer_position;
 
+  // Locate or create the target layer node in the fragment's layer tree.
+  css::CascadeLayer* root = fragment->GetOrCreateRootLayer();
+  css::CascadeLayer* base_layer = parent_layer ? parent_layer : root;
+  css::CascadeLayer* target_layer =
+      name_segments.empty()
+          ? base_layer->GetOrAddSubLayer({std::string()})  // anonymous layer
+          : base_layer->GetOrAddSubLayer(name_segments);
+
   if (rule_type != static_cast<uint8_t>(CSSRuleType::kLayerBlock)) {
-    // Statement form has no children.
+    // Statement form: only registers the layer name for ordering purposes.
     return true;
   }
 
   DECODE_COMPACT_U32(child_count);
   for (size_t i = 0; i < child_count; ++i) {
     DECODE_U8(child_type);
-    // Read the payload length so we can skip unknown child rule types.
     DECODE_U32(child_payload_size);
     size_t next_child_offset = Offset() + child_payload_size;
 
@@ -471,30 +481,46 @@ bool LynxBinaryBaseCSSReader::DecodeCSSLayerRule(
       case CSSRuleType::kStyle: {
         fml::RefPtr<css::StyleRule> rule;
         ERROR_UNLESS(DecodeStyleRuleData(fragment, parser_config, &rule));
+        if (rule) {
+          fragment->AddStyleRule(std::move(rule), target_layer);
+        }
         break;
       }
       case CSSRuleType::kMedia:
       case CSSRuleType::kSupports: {
         fml::RefPtr<css::ConditionRule> condition_rule;
         ERROR_UNLESS(DecodeConditionRuleData(fragment, parser_config,
-                                             child_type, &condition_rule));
+                                             child_type, &condition_rule,
+                                             target_layer));
+        if (condition_rule) {
+          fragment->AddConditionRule(std::move(condition_rule));
+        }
         break;
       }
       case CSSRuleType::kKeyframes: {
         base::String name;
         fml::RefPtr<CSSKeyframesToken> token;
         ERROR_UNLESS(DecodeKeyframesRuleData(parser_config, &name, &token));
+        if (token) {
+          fragment->keyframes_.emplace(std::move(name), std::move(token));
+        }
         break;
       }
       case CSSRuleType::kFontFace: {
         std::string family;
         std::vector<std::shared_ptr<CSSFontFaceRule>> token_list;
         ERROR_UNLESS(DecodeFontFaceRuleData(&family, &token_list));
+        if (!family.empty()) {
+          auto& dst = fragment->fontfaces_[family];
+          dst.insert(dst.end(), std::make_move_iterator(token_list.begin()),
+                     std::make_move_iterator(token_list.end()));
+        }
         break;
       }
       case CSSRuleType::kLayerBlock:
       case CSSRuleType::kLayerStatement:
-        ERROR_UNLESS(DecodeCSSLayerRule(fragment, parser_config, child_type));
+        ERROR_UNLESS(DecodeCSSLayerRule(fragment, parser_config, child_type,
+                                        target_layer));
         break;
       default:
         break;

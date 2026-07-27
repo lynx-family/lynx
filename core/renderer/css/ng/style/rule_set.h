@@ -66,7 +66,7 @@ class RuleSet {
 
   void Merge(const RuleSet& rule_set);
 
-  void AddStyleRule(fml::RefPtr<StyleRule> rule);
+  void AddStyleRule(fml::RefPtr<StyleRule> rule, CascadeLayer* layer = nullptr);
 
   void AddConditionRule(fml::RefPtr<ConditionRule> rule);
 
