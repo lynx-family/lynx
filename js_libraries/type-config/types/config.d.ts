@@ -10,6 +10,17 @@
 
 export interface Config {
   /**
+   * Decodes a page-level desktop mouse-event compatibility switch intended for W3C-aligned semantics on macOS and Windows. Runtime behavior depends on downstream desktop event handling consuming the stored PageConfig value.
+   *
+   * Supported platform: macOS, Windows
+   *
+   * Since: LynxSDK 3.8
+   *
+   * @defaultValue false
+   */
+  alignMouseEventWithW3C?: boolean;
+
+  /**
    * Controls iOS long-press recognition after scroll gestures. When enabled, Lynx requires long press to wait for a decelerating scroll view pan recognizer to fail, suppressing long press during inertial scrolling.
    *
    * Supported platform: iOS
@@ -85,6 +96,17 @@ export interface Config {
    * @defaultValue false
    */
   enableEndGestureAtLastFingerUp?: boolean;
+
+  /**
+   * Controls whether runtime uses the refactored event-listener and dispatch path. When enabled, element decode, Radon event processing, and touch dispatch use the newer listener registration flow that supports rebinding and interception; when disabled, runtime stays on the legacy event hookup path. If the field is omitted, decoder falls back to the settings source.
+   *
+   * Supported platform: Android, HarmonyOS, iOS
+   *
+   * Since: LynxSDK 3.5
+   *
+   * @defaultValue false
+   */
+  enableEventHandleRefactor?: boolean;
 
   /**
    * Controls whether touches on the root area can pass through the Lynx page instead of being consumed by Lynx. When enabled, root touch dispatch returns false and overlay or host views underneath can receive the event; when disabled, Lynx keeps normal touch consumption.

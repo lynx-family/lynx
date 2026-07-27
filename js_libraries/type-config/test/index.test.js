@@ -18,8 +18,9 @@ describe('type-config index', () => {
     expect(compilerOptionsKeys).toEqual([]);
   });
   it('should have correct configKeys', () => {
-    expect(configKeys.length).toBe(32);
+    expect(configKeys.length).toBe(34);
     expect(configKeys).toEqual([
+      'alignMouseEventWithW3C',
       'disableLongpressAfterScroll',
       'enableA11y',
       'enableAccessibilityElement',
@@ -27,6 +28,7 @@ describe('type-config index', () => {
       'enableCSSInlineVariables',
       'enableCSSRule',
       'enableEndGestureAtLastFingerUp',
+      'enableEventHandleRefactor',
       'enableEventThrough',
       'enableFetchAPIStandardStreaming',
       'enableFixedNew',
