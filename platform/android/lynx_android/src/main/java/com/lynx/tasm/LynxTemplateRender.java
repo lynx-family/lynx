@@ -303,6 +303,7 @@ public class LynxTemplateRender
   private AtomicInteger mEmbeddedPipelineCounter = new AtomicInteger(0);
 
   private TemplateData mTemplateData = TemplateData.fromMap(new HashMap<>());
+  @Nullable private volatile StaticPageHost mStaticPageHost;
   @Nullable private LynxEngine mLynxEngineRef;
 
   private LynxModuleFactory mMainThreadModuleFactory;
@@ -1670,6 +1671,14 @@ public class LynxTemplateRender
       return;
     }
 
+    // Static-page direct data has no standard-data fallback, so a failed preparation must stop
+    // this load.
+    boolean isLoadPreparationSuccessful = prepareStaticPageLoad(metaData);
+    if (!isLoadPreparationSuccessful) {
+      onTraceEventEnd(eventName);
+      return;
+    }
+
     if (metaData.getLoadMode() == LynxLoadMode.PRE_PAINTING) {
       if (mBodyView != null) {
         mBodyView.setShouldInterceptRequestLayout(true);
@@ -1696,7 +1705,7 @@ public class LynxTemplateRender
     setUrl(metaData.getUrl());
     renderWithLoadMeta(metaData, timingOption);
     LLog.i(TAG, formatLynxMessage("renderTemplate"));
-    if (metaData.initialData != null) {
+    if (mStaticPageHost == null && metaData.initialData != null) {
       postRenderOrUpdateData(metaData.initialData);
     }
     onTraceEventEnd(eventName);
@@ -1724,12 +1733,14 @@ public class LynxTemplateRender
         }
       }
 
-      // update GlobalProps, take globalProps in lynxViewGroup into consideration
-      if (mLynxViewGroup != null) {
-        this.updateGlobalProps(mLynxViewGroup.getGlobalProps());
-      }
-      if (loadMeta.isGlobalPropsValid()) {
-        this.updateGlobalProps(loadMeta.getGlobalProps());
+      if (mStaticPageHost == null) {
+        // update GlobalProps, take globalProps in lynxViewGroup into consideration
+        if (mLynxViewGroup != null) {
+          this.updateGlobalProps(mLynxViewGroup.getGlobalProps());
+        }
+        if (loadMeta.isGlobalPropsValid()) {
+          this.updateGlobalProps(loadMeta.getGlobalProps());
+        }
       }
     }
   }
@@ -1993,6 +2004,12 @@ public class LynxTemplateRender
           com.lynx.tasm.performance.timing.TimingConstants.UPDATE_DATA_START, "");
     }
     TemplateData data = meta.getUpdatedData();
+    TemplateData updatedGlobalPropsInput = meta.getUpdatedGlobalProps();
+    if (shouldHandleStaticPageMetaData(data, updatedGlobalPropsInput)) {
+      handleStaticPageMetaData(data, updatedGlobalPropsInput);
+      onTraceEventEnd(TraceEventDef.TEMPLATE_RENDER_UPDATE_META_DATE);
+      return;
+    }
     if (mLynxContext != null && mLogicExecutor != null && data != null) {
       data.setEnableJSData(false);
       mTemplateData.updateWithTemplateData(data);
@@ -2034,14 +2051,14 @@ public class LynxTemplateRender
     }
 
     TemplateData updatedGlobalProps = null;
-    if (meta.getUpdatedGlobalProps() != null) {
+    if (updatedGlobalPropsInput != null) {
       // globalProps in merged in platform.
       // if passing globalProps is nil means globalProps should not be updated, pass
       // nil downwards.
       // if passing globalProps is not nil means globalProps should be updated, pass
       // merged
       // globalProps downwards.
-      internalMergeGlobalPropsSafely(meta.getUpdatedGlobalProps());
+      internalMergeGlobalPropsSafely(updatedGlobalPropsInput);
       updatedGlobalProps = globalProps;
     }
     if (mNativePtr != 0) {
@@ -2050,6 +2067,109 @@ public class LynxTemplateRender
     postRenderOrUpdateData(data);
     postRenderOrUpdateData(updatedGlobalProps);
     onTraceEventEnd(TraceEventDef.TEMPLATE_RENDER_UPDATE_META_DATE);
+  }
+
+  private boolean shouldHandleStaticPageMetaData(
+      @Nullable TemplateData data, @Nullable TemplateData globalPropsUpdate) {
+    return mStaticPageHost != null || TemplateData.isForStaticPage(data)
+        || TemplateData.isForStaticPage(globalPropsUpdate);
+  }
+
+  private void handleStaticPageMetaData(
+      @Nullable TemplateData data, @Nullable TemplateData globalPropsUpdate) {
+    synchronized (this) {
+      if (mHasDestroy || mDestroying) {
+        return;
+      }
+      if ((data != null && !TemplateData.isForStaticPage(data))
+          || (globalPropsUpdate != null && !TemplateData.isForStaticPage(globalPropsUpdate))) {
+        LLog.e(TAG, "Static page direct data cannot be mixed with standard TemplateData");
+        return;
+      }
+
+      StaticPageHost host = mStaticPageHost;
+      if (host == null) {
+        if (mHasPageStart) {
+          LLog.e(TAG, "Static page direct metadata must be set before loadTemplate");
+          return;
+        }
+        host = new StaticPageHost(this::runOnTasmThread);
+        mStaticPageHost = host;
+      }
+
+      Map<String, Object> mergedGlobalProps = host.updateMetaData(data, globalPropsUpdate);
+      if (globalPropsUpdate != null) {
+        globalProps = TemplateData.createForStaticPage(mergedGlobalProps);
+        if (mDevTool != null) {
+          mDevTool.onGlobalPropsChanged(globalProps);
+        }
+      }
+    }
+  }
+
+  /**
+   * Prepares the platform-side host for a static-page direct load. This is a no-op for a standard
+   * Lynx load.
+   *
+   * @return {@code true} when preparation is not needed or succeeds. {@code false} when this is a
+   *     static-page direct load but its platform host or input cannot be prepared. The caller must
+   *     stop because direct data intentionally has no standard Lynx data fallback, and continuing
+   *     would run the load with missing data or an incomplete host binding.
+   */
+  private boolean prepareStaticPageLoad(LynxLoadMeta loadMeta) {
+    TemplateData initialData = loadMeta.getInitialData();
+    TemplateData loadGlobalProps = loadMeta.isGlobalPropsValid() ? loadMeta.getGlobalProps() : null;
+    TemplateData groupGlobalProps = mLynxViewGroup == null ? null : mLynxViewGroup.getGlobalProps();
+    StaticPageHost host = mStaticPageHost;
+    if (host == null && !TemplateData.isForStaticPage(initialData)
+        && !TemplateData.isForStaticPage(loadGlobalProps)
+        && !TemplateData.isForStaticPage(groupGlobalProps)) {
+      return true;
+    }
+
+    synchronized (this) {
+      if (mHasDestroy || mDestroying) {
+        return false;
+      }
+      host = mStaticPageHost;
+      if (host != null && host.isRegistered()) {
+        LLog.e(TAG, "Repeated loadTemplate is not supported for a static page direct load");
+        return false;
+      }
+      if (!StaticPageHost.isStaticPageDataOrNull(initialData)
+          || !StaticPageHost.isStaticPageDataOrNull(globalProps)
+          || !StaticPageHost.isStaticPageDataOrNull(groupGlobalProps)
+          || !StaticPageHost.isStaticPageDataOrNull(loadGlobalProps)) {
+        LLog.e(TAG, "Static page direct data cannot be mixed with standard TemplateData");
+        return false;
+      }
+      if (mThreadStrategyForRendering == ThreadStrategyForRendering.MOST_ON_TASM
+          || mEnableReuseEngine || mEnableCacheEngine
+          || loadMeta.getLoadMode() == LynxLoadMode.RENDER_SSR
+          || loadMeta.getLoadMode() == LynxLoadMode.HYDRATE_SSR) {
+        LLog.e(TAG, "Static page direct data does not support the current rendering configuration");
+        return false;
+      }
+      int instanceId = mLynxContext.getInstanceId();
+      if (instanceId < 0) {
+        LLog.e(TAG, "Static page direct data requires a valid Lynx instance id");
+        return false;
+      }
+
+      if (host == null) {
+        host = new StaticPageHost(this::runOnTasmThread);
+        mStaticPageHost = host;
+      }
+      Map<String, Object> registeredGlobalProps =
+          host.register(instanceId, initialData, globalProps, groupGlobalProps, loadGlobalProps);
+      globalProps = registeredGlobalProps == null
+          ? null
+          : TemplateData.createForStaticPage(registeredGlobalProps);
+      if (mDevTool != null && globalProps != null) {
+        mDevTool.onGlobalPropsChanged(globalProps);
+      }
+      return true;
+    }
   }
 
   /**
@@ -2471,6 +2591,13 @@ public class LynxTemplateRender
     String eventName = "LynxTemplateRender.destroy";
     onTraceEventBegin(eventName);
 
+    StaticPageHost staticPageHost;
+    synchronized (this) {
+      mDestroying = true;
+      staticPageHost = mStaticPageHost;
+      mStaticPageHost = null;
+    }
+
     // When destroy the page, we need send disexposure events before JSRuntime
     // destroyed to ensure
     // the front end can receive events.
@@ -2479,6 +2606,9 @@ public class LynxTemplateRender
       int instanceId = mLynxContext.getInstanceId();
       LynxFrameRecorder.inst().stopRecording(instanceId);
       LynxFrameRecorder.inst().clearFrameCallback(instanceId);
+    }
+    if (staticPageHost != null) {
+      staticPageHost.clear();
     }
     recycleUpdatedDataList();
     recycleGlobalPropsSafely();
@@ -3680,6 +3810,13 @@ public class LynxTemplateRender
       if (!UIThreadUtils.isOnUiThread()) {
         LLog.e(TAG, "detachEngineFromUIThread should be called on ui thread, url: " + mUrl);
         return;
+      }
+      synchronized (this) {
+        if (mThreadStrategyForRendering == ThreadStrategyForRendering.ALL_ON_UI
+            && mStaticPageHost != null && mStaticPageHost.isRegistered()) {
+          LLog.e(TAG, "Static page direct load does not support switching to MOST_ON_TASM");
+          return;
+        }
       }
       if (checkEngineFallbackAndLoad(true)) {
         onThreadStrategyUpdated();

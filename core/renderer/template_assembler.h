@@ -565,7 +565,19 @@ class TemplateAssembler final : public TemplateEntryHolder,
     delegate_.OnShouldSendEventToMainThreadChanged(enable);
   }
 
-  bool ShouldPostDataToJs() const {
+  bool IsRTSRuntime(const std::shared_ptr<runtime::MTSRuntime>& context) const {
+    return context &&
+           (context->IsRTSContext() || context->IsRTSNativeContext());
+  }
+
+  bool ShouldPostDataToJs(
+      const std::shared_ptr<runtime::MTSRuntime>& context) const {
+    // RTS VM and native runtimes execute the static page app without a JS app
+    // runtime, so posting data to JS would only create an unused runtime
+    // bundle and task.
+    if (UNLIKELY(IsRTSRuntime(context))) {
+      return false;
+    }
     // currently, only air&air_fiber mode should not post data to js
     // Or EmbeddedMode is On, but logic executor has not been set.
     if (page_config_) {
