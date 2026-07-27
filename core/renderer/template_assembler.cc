@@ -549,7 +549,7 @@ TemplateData TemplateAssembler::OnRenderTemplate(
       tasm::timing::kSetInitDataStart);
   if (!data.GetValue().IsEmpty()) {
     TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS, TEMPLATE_ENTRY_SET_INIT_DATA);
-    if (ShouldPostDataToJs() && !EnableDataProcessorOnJs()) {
+    if (ShouldPostDataToJs(card->GetVm()) && !EnableDataProcessorOnJs()) {
       card->SetInitData(GenerateTemplateDataPostedToJs(data));
     }
   } else {
@@ -1027,7 +1027,7 @@ void TemplateAssembler::LoadTemplateInternal(
     // here.
     DidDecodeTemplate(template_data, card,
                       (EnableDataProcessorOnJs() || js_posted_before_vm) &&
-                          ShouldPostDataToJs(),
+                          ShouldPostDataToJs(context),
                       pipeline_options);
   }
 
@@ -1079,7 +1079,7 @@ void TemplateAssembler::LoadTemplateInternal(
     auto data =
         OnRenderTemplate(template_data, card,
                          !EnableDataProcessorOnJs() && !js_posted_before_vm &&
-                             ShouldPostDataToJs(),
+                             ShouldPostDataToJs(card->GetVm()),
                          pipeline_options);
 
     // render template
