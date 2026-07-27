@@ -4,6 +4,7 @@
 #ifndef CORE_RUNTIME_JS_JSI_QUICKJS_QUICKJS_RUNTIME_H_
 #define CORE_RUNTIME_JS_JSI_QUICKJS_QUICKJS_RUNTIME_H_
 
+#include <cstdint>
 #include <memory>
 #include <set>
 #include <string>
@@ -224,6 +225,8 @@ class QuickjsRuntime : public Runtime, public JSIObserver {
   std::string description_;
   std::unique_ptr<QuickjsInspectorManager> inspector_manager_;
   JSIObserver *observer_ = nullptr;
+  // Captured once to keep the sampling configuration stable for this runtime.
+  const uint32_t js_coverage_page_sampling_basis_points_;
 };
 
 }  // namespace js
