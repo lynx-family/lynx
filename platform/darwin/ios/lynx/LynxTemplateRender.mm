@@ -46,8 +46,10 @@
 #import "LynxIntersectionObserverModule.h"
 #import "LynxResourceModule.h"
 #import "LynxSSRHelper.h"
+#import "LynxStaticPageTemplateData.h"
 #import "LynxTemplateBundle+Converter.h"
 #import "LynxTemplateRender+Protected.h"
+#import "LynxTemplateRender+StaticPage.h"
 #import "LynxTextInfoModule.h"
 #import "LynxTimingConstants.h"
 #import "LynxTraceEventDef.h"
@@ -224,7 +226,11 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
     [self setUpFrame:builder.frame];
 
     /// setup globalProps with lynxViewGroup
-    [self updateGlobalPropsWithTemplateData:_lynxViewGroup.globalProps];
+    if (LynxTemplateDataIsForStaticPage(_lynxViewGroup.globalProps)) {
+      _globalProps = _lynxViewGroup.globalProps;
+    } else {
+      [self updateGlobalPropsWithTemplateData:_lynxViewGroup.globalProps];
+    }
 
     /// Timing
     _initEndTiming = [[NSDate date] timeIntervalSince1970] * 1000 * 1000;
@@ -443,6 +449,7 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
   shell_->ClearPipelineTimingInfo();
   // remove generic info
   [LynxEventReporter removeGenericInfo:_context.instanceId];
+  [self destroyStaticPageHost];
   int32_t lastInstanceId = _context.instanceId;
   _context.instanceId = kUnknownInstanceId;
   shell_->Destroy();
@@ -475,17 +482,22 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
 
 // TODO(huangweiwu): maybe we need remove this method..
 - (void)clearForDestroy {
+  @synchronized(self) {
+    _isDestroyed = YES;
+  }
   [self unregisterMemoryUsageFetcherIfNeeded];
   [_lynxUIRenderer reset];
   [_lynxViewGroup
       destroyForInstance:[NSString
                              stringWithUTF8String:std::to_string(_context.instanceId).c_str()]];
+  [self destroyStaticPageHost];
   [LynxEventReporter clearCacheForInstanceId:_context.instanceId];
   _context.instanceId = kUnknownInstanceId;
   shell_->Destroy();
 }
 
 - (void)dealloc {
+  [self destroyStaticPageHost];
   [self unregisterMemoryUsageFetcherIfNeeded];
   if (_lynxEngine == nil) {
     [_lynxUIRenderer reset];
@@ -522,6 +534,14 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
 #pragma mark - Load Template
 
 - (void)loadTemplate:(nonnull LynxLoadMeta*)meta {
+  // Static-page direct data has no standard-data fallback, so a failed preparation must stop this
+  // load.
+  BOOL isLoadPreparationSuccessful = [self prepareStaticPageLoadWithInitialData:meta.initialData
+                                                                    globalProps:meta.globalProps
+                                                                       loadMode:meta.loadMode];
+  if (!isLoadPreparationSuccessful) {
+    return;
+  }
   if (meta.loadMode & LynxLoadModePrePainting) {
     _enablePrePainting = YES;
   }
@@ -544,7 +564,7 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
     [self setPlatformConfig:[_originLynxViewConfig objectForKey:KEY_LYNX_PLATFORM_CONFIG]];
   }
 
-  if (meta.globalProps) {
+  if (meta.globalProps && !_staticPageHost) {
     [self updateGlobalPropsWithTemplateData:meta.globalProps];
   }
 
@@ -916,6 +936,10 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
 - (void)updateMetaData:(LynxUpdateMeta*)meta {
   if (_context && _context.isEmbeddedModeOn) {
     [self markTiming:lynx::tasm::timing::kUpdateTriggeredByNative pipelineID:nil];
+  }
+  if ([self shouldHandleStaticPageMetaData:meta.data globalProps:meta.globalProps]) {
+    [self handleStaticPageMetaData:meta.data globalProps:meta.globalProps];
+    return;
   }
   if (meta.data) {
     [_devTool onUpdateDataWithTemplateData:meta.data];
@@ -1973,6 +1997,13 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
   if (![NSThread isMainThread]) {
     _LogE(@"detachEngineFromUIThread should be called on ui thread, url: %@", _url);
     return;
+  }
+  @synchronized(self) {
+    if (_threadStrategyForRendering == LynxThreadStrategyForRenderAllOnUI &&
+        [self isStaticPageHostRegistered]) {
+      _LogE(@"Static page direct load does not support switching to MOST_ON_TASM");
+      return;
+    }
   }
   switch (_threadStrategyForRendering) {
     case LynxThreadStrategyForRenderAllOnUI:
