@@ -16,11 +16,10 @@
 #import <XElement/LynxUIScrollCoordinatorToolbar.h>
 #import <XElement/LynxUIViewPager.h>
 #import <XElement/UIScrollView+ScrollCoordinator.h>
-#import <objc/runtime.h>
 
 static const CGFloat kScrollByEpsilon = 0.1f;
 
-static Class LynxScrollCoordinatorLookupClass(const char *name) { return objc_lookUpClass(name); }
+static Class LynxScrollCoordinatorLookupClass(NSString *name) { return NSClassFromString(name); }
 
 @protocol LynxUIScrollCoordinatorInternalDelegate <NSObject>
 
@@ -120,10 +119,12 @@ static Class LynxScrollCoordinatorLookupClass(const char *name) { return objc_lo
 }
 
 - (BOOL)checkAllowList:(UIScrollView *)scrollview {
-  for (Class cls in @[
-         LynxScrollCoordinatorLookupClass("LynxUICollectionView"),
-         LynxScrollCoordinatorLookupClass("LynxScrollView")
-       ]) {
+  NSMutableArray *classes = [NSMutableArray array];
+  Class collectionViewClass = LynxScrollCoordinatorLookupClass(@"LynxUICollectionView");
+  if (collectionViewClass) [classes addObject:collectionViewClass];
+  Class scrollViewClass = LynxScrollCoordinatorLookupClass(@"LynxScrollView");
+  if (scrollViewClass) [classes addObject:scrollViewClass];
+  for (Class cls in classes) {
     if ([scrollview isKindOfClass:cls] && [self checkVisibleVerticalScrollView:scrollview]) {
       return YES;
     }
@@ -135,10 +136,9 @@ static Class LynxScrollCoordinatorLookupClass(const char *name) { return objc_lo
   if ([self.uiDelegate shouldIgnoreNestedScrollView:scrollview]) {
     return YES;
   }
-  for (Class cls in @[ LynxScrollCoordinatorLookupClass("LynxViewPager") ]) {
-    if ([scrollview isKindOfClass:cls]) {
-      return YES;
-    }
+  Class cls = LynxScrollCoordinatorLookupClass(@"LynxViewPager");
+  if (cls && [scrollview isKindOfClass:cls]) {
+    return YES;
   }
   return NO;
 }
@@ -931,8 +931,10 @@ LYNX_UI_METHOD(scrollBy) {
     if ([self isViewPagerUI:lynxUI]) {
       return YES;
     }
-    if ([lynxUI isKindOfClass:LynxScrollCoordinatorLookupClass("LynxUICollection")] ||
-        [lynxUI isKindOfClass:LynxScrollCoordinatorLookupClass("AbsLynxUIScroller")] ||
+    Class collectionClass = LynxScrollCoordinatorLookupClass(@"LynxUICollection");
+    Class scrollerClass = LynxScrollCoordinatorLookupClass(@"AbsLynxUIScroller");
+    if ((collectionClass && [lynxUI isKindOfClass:collectionClass]) ||
+        (scrollerClass && [lynxUI isKindOfClass:scrollerClass]) ||
         [lynxUI.view isKindOfClass:UIScrollView.class]) {
       if (lynxUI.view.frame.size.height >=
           self.slot.view.frame.size.height * self.scrollViewFilter) {
