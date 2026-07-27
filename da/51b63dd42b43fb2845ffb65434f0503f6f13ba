@@ -1,0 +1,32 @@
+.cq/workflows/periodic-tasks.yml
+  s_9db8dfa4f8288b::t_cf84c28951b438 355-358,360,362-365
+  h_7a1e47632c7d77 359,361
+.cq/scripts/harmony_example_run_screenshot_arm64.sh
+  s_9db8dfa4f8288b::t_f8a76f087f512d 1-145
+.cq/pipelines/harmony-example-run-screenshot-arm64.yml
+  s_9db8dfa4f8288b::t_2404678510d6bf 46,51-59
+  s_9db8dfa4f8288b::t_1a23386cb2ba22 1-45,47-50,60-68
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "da51b63dd42b43fb2845ffb65434f0503f6f13ba",
+  "prompts": {},
+  "humans": {
+    "h_7a1e47632c7d77": {
+      "author": "gaohanqing <gaohanqing@bytedance.com>"
+    }
+  },
+  "sessions": {
+    "s_9db8dfa4f8288b": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a66c3163439eec6d56e42fc",
+        "model": "gpt-5.5__dev"
+      },
+      "human_author": "gaohanqing <gaohanqing@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}
