@@ -1,0 +1,25 @@
+e2e/lynx-e2e-mvp/vendor/devtool-connector/dist/index.js
+  s_a6337f287197d6::t_12c4337a21ce1e 461-467,470-475
+e2e/lynx-e2e-mvp/vendor/devtool-connector/src/index.ts
+  s_a6337f287197d6::t_7ca1ce8733f32a 682-724
+testing/lynx-platform-tests/test_script/ioslynxtest/case_sets/lynx_e2e_mvp.py
+  s_a6337f287197d6::t_ab2d6cc4815eb2 41-43,58-61,66-72,78-90,103-122,131-146,231-234
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "cded88ff5583dc6ae814e58436e00c2455e9dd4e",
+  "prompts": {},
+  "sessions": {
+    "s_a6337f287197d6": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f9356-c918-7bd0-81c5-c408bd42642e",
+        "model": "unknown"
+      },
+      "human_author": "tangyongjie <tangyongjie@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}
