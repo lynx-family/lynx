@@ -7,6 +7,7 @@ const compilerOptionsKeys = [];
 
 /** @type {string[]} */
 const configKeys = [
+  'alignMouseEventWithW3C',
   'disableLongpressAfterScroll',
   'enableA11y',
   'enableAccessibilityElement',
@@ -14,6 +15,7 @@ const configKeys = [
   'enableCSSInlineVariables',
   'enableCSSRule',
   'enableEndGestureAtLastFingerUp',
+  'enableEventHandleRefactor',
   'enableEventThrough',
   'enableFetchAPIStandardStreaming',
   'enableFixedNew',
