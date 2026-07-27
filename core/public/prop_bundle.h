@@ -40,6 +40,7 @@ class PropBundle : public fml::RefCountedThreadSafeStorage {
   virtual void SetEventHandler(const pub::Value& event) = 0;
   virtual void SetGestureDetector(const GestureDetector& detector) = 0;
   virtual void ResetEventHandler() = 0;
+  virtual void ResetGestureDetector() {}
   virtual bool Contains(const char* key) const = 0;
 
   // styles.

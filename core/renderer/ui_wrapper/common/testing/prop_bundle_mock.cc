@@ -71,6 +71,10 @@ void PropBundleMock::SetGestureDetector(const GestureDetector& detector) {}
 
 void PropBundleMock::ResetEventHandler() {}
 
+void PropBundleMock::ResetGestureDetector() {
+  gesture_detectors_were_reset_ = true;
+}
+
 void PropBundleMock::SetPropsByID(CSSPropertyID id, const uint8_t* data,
                                   size_t size) {
   auto array = lepus::Value(lepus::CArray::Create());
@@ -98,6 +102,10 @@ const std::map<std::string, lepus::Value>& PropBundleMock::GetPropsMap() const {
 const std::unordered_set<std::string>& PropBundleMock::GetEventHandlers()
     const {
   return event_handler_;
+}
+
+bool PropBundleMock::GestureDetectorsWereReset() const {
+  return gesture_detectors_were_reset_;
 }
 
 fml::RefPtr<PropBundle> PropBundleCreatorDefault::CreatePropBundle() {
