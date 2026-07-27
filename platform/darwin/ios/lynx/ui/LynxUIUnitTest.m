@@ -2,6 +2,8 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+#import <Lynx/LynxBaseGestureHandler.h>
+#import <Lynx/LynxGestureDetectorDarwin.h>
 #import <Lynx/LynxPropsProcessor.h>
 #import <Lynx/LynxUI+Internal.h>
 #import <Lynx/LynxUI+Private.h>
@@ -11,8 +13,10 @@
 #import <XCTest/XCTest.h>
 #import <malloc/malloc.h>
 #include <objc/runtime.h>
+#import "LynxGestureArenaManager.h"
 #import "LynxUI+Gesture.h"
 #import "LynxUI+Private.h"
+#import "LynxUIContext+Internal.h"
 #import "LynxUIUnitTestUtils.h"
 
 @implementation LynxUI (Test)
@@ -107,6 +111,54 @@
   XCTAssertTrue([ui getMemberScrollY] == 0.0f);
   XCTAssertTrue([ui getGestureDetectorMap].count == 0);
   XCTAssertTrue([ui getGestureHandlers].count == 0);
+}
+
+- (void)testGestureDetectorsRefreshHandlersAndSupportClearing {
+  LynxUIView *ui = [[LynxUIView alloc] initWithView:nil];
+  LynxUIMockContext *mockContext = [LynxUIUnitTestUtils initUIMockContextWithUI:ui];
+  [mockContext.mockUIContext setEnableNewGesture:YES];
+  LynxUIOwner *uiOwner = OCMClassMock([LynxUIOwner class]);
+  LynxGestureArenaManager *manager = OCMPartialMock([[LynxGestureArenaManager alloc] init]);
+  mockContext.mockUIContext.uiOwner = uiOwner;
+  OCMStub([uiOwner gestureArenaManager]).andReturn(manager);
+
+  LynxGestureDetectorDarwin *firstDetector =
+      [[LynxGestureDetectorDarwin alloc] initWithGestureID:1
+                                               gestureType:LynxGestureTypeLongPress
+                                      gestureCallbackNames:@[ @"onStart" ]
+                                               relationMap:@{}];
+  NSDictionary *firstDetectorMap = @{@1 : firstDetector};
+  OCMExpect([manager registerGestureDetectors:1 detectorMap:firstDetectorMap]);
+  [ui setGestureDetectors:[NSSet setWithObject:firstDetector]];
+
+  LynxBaseGestureHandler *firstHandler = [ui getGestureHandlers].allValues.firstObject;
+  XCTAssertEqual(firstHandler.gestureDetector.gestureID, 1);
+  [firstHandler begin];
+
+  LynxGestureDetectorDarwin *secondDetector =
+      [[LynxGestureDetectorDarwin alloc] initWithGestureID:2
+                                               gestureType:LynxGestureTypeLongPress
+                                      gestureCallbackNames:@[ @"onStart" ]
+                                               relationMap:@{}];
+  NSDictionary *secondDetectorMap = @{@2 : secondDetector};
+  OCMExpect([manager unregisterGestureDetectors:1 detectorMap:firstDetectorMap]);
+  OCMExpect([manager registerGestureDetectors:1 detectorMap:secondDetectorMap]);
+  [ui setGestureDetectors:[NSSet setWithObject:secondDetector]];
+
+  XCTAssertEqual(firstHandler.status, LynxGestureHandlerStateCancel);
+  LynxBaseGestureHandler *secondHandler = [ui getGestureHandlers].allValues.firstObject;
+  XCTAssertEqual(secondHandler.gestureDetector.gestureID, 2);
+  [secondHandler activate];
+
+  OCMExpect([manager unregisterGestureDetectors:1 detectorMap:secondDetectorMap]);
+  OCMExpect([manager removeMember:ui detectorMap:@{}]);
+  [ui setGestureDetectors:[NSSet set]];
+
+  XCTAssertEqual(secondHandler.status, LynxGestureHandlerStateCancel);
+  XCTAssertEqual([ui getGestureDetectorMap].count, 0);
+  XCTAssertEqual([ui getGestureHandlers].count, 0);
+  XCTAssertEqual([ui getGestureArenaMemberId], 0);
+  OCMVerifyAll(manager);
 }
 
 void printAllIvarDetails(Class cls) {

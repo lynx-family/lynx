@@ -44,6 +44,7 @@ class NativePropBundle : public PropBundle {
   void SetGestureDetector(const GestureDetector& detector) override;
   bool Contains(const char* key) const override;
   void ResetEventHandler() override;
+  void ResetGestureDetector() override;
   fml::RefPtr<PropBundle> ShallowCopy() override;
 
   void SetNullPropsByID(CSSPropertyID id) override {

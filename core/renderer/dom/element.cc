@@ -1123,6 +1123,12 @@ void Element::ResetEventHandlers() {
   has_event_listener_ = false;
 }
 
+void Element::ResetGestureDetectors() {
+  if (prop_bundle_ != nullptr) {
+    prop_bundle_->ResetGestureDetector();
+  }
+}
+
 ElementContainer* Element::element_container_impl() {
   return static_cast<ElementContainer*>(element_container());
 }

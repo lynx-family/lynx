@@ -61,6 +61,7 @@ PropBundleDarwin::PropBundleDarwin(const NativePropBundle& prop_bundle) {
   // Copy gesture detectors if present
   const auto& gesture_detectors = prop_bundle.GetGestureDetectors();
   if (gesture_detectors.has_value()) {
+    ResetGestureDetector();
     for (const auto& [gesture_id, detector] : *gesture_detectors) {
       if (detector) {
         SetGestureDetector(*detector);
@@ -218,6 +219,14 @@ void PropBundleDarwin::SetPropsByID(CSSPropertyID key_id, const uint32_t* data, 
 void PropBundleDarwin::ResetEventHandler() {
   [eventSet removeAllObjects];
   [lepusEventSet removeAllObjects];
+}
+
+void PropBundleDarwin::ResetGestureDetector() {
+  if (!gestureDetectorSet) {
+    gestureDetectorSet = [[NSMutableSet alloc] init];
+  } else {
+    [gestureDetectorSet removeAllObjects];
+  }
 }
 
 void PropBundleDarwin::AssembleMap(NSMutableDictionary* map, const char* key,

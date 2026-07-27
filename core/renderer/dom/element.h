@@ -456,6 +456,7 @@ class Element : public lepus::RefCounted,
   // For event handler
   virtual void SetEventHandler(const base::String& name, EventHandler* handler);
   virtual void ResetEventHandlers();
+  void ResetGestureDetectors();
 
   /**
    * Element API for adding js event
