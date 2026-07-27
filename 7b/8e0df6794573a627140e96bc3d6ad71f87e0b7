@@ -1,0 +1,26 @@
+lynx/platform/embedder/lynx_devtool/BUILD.gn
+  s_0ad1af951ad991::t_33f73605defc47 45
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7b8e0df6794573a627140e96bc3d6ad71f87e0b7",
+  "prompts": {},
+  "humans": {
+    "h_c7499b019d31b1": {
+      "author": "chenyouhui.duke <chenyouhui.duke@bytedance.com>"
+    }
+  },
+  "sessions": {
+    "s_0ad1af951ad991": {
+      "agent_id": {
+        "tool": "trae-cue",
+        "id": "ai_tab-icr-c9116ab5-7425-4b95-9bf3-abe459c9f58a",
+        "model": "default"
+      },
+      "human_author": "chenyouhui.duke <chenyouhui.duke@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

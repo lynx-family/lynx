@@ -1,0 +1,57 @@
+lynx/devtool/base_devtool/darwin/ios/logbox/DevToolLogBox.mm
+  h_c7499b019d31b1 8-9
+lynx/devtool/base_devtool/darwin/ios/logbox/DevToolLogBoxEnv.h
+  s_8833a64243ee0c::t_5223ff300c0028 11
+  s_d2592f73d50ea4::t_ba8236ab26336b 7-9 gitai:{"mixed_line_ranges":[{"Single":8}],"operations":[]}
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1ccb04bc008b4c2656042127d5a06a7c6ec97e23",
+  "prompts": {},
+  "humans": {
+    "h_c7499b019d31b1": {
+      "author": "chenyouhui.duke <chenyouhui.duke@bytedance.com>"
+    }
+  },
+  "sessions": {
+    "s_8833a64243ee0c": {
+      "agent_id": {
+        "tool": "trae-cue",
+        "id": "ai_tab-icr-ffa3bbda-3b84-4fef-9c26-cc27f2f8e9e9",
+        "model": "default"
+      },
+      "human_author": "chenyouhui.duke <chenyouhui.duke@bytedance.com>"
+    },
+    "s_d2592f73d50ea4": {
+      "agent_id": {
+        "tool": "trae-cue",
+        "id": "ai_tab-icr-05dd0c3a-b096-44d5-bd60-5d023ed58e4e",
+        "model": "default"
+      },
+      "human_author": "chenyouhui.duke <chenyouhui.duke@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {
+    "lynx/devtool/base_devtool/darwin/ios/logbox/DevToolLogBoxEnv.h": [
+      {
+        "hash": "s_d2592f73d50ea4::t_ba8236ab26336b",
+        "line_ranges": [
+          {
+            "Range": [
+              7,
+              9
+            ]
+          }
+        ],
+        "mixed_line_ranges": [
+          {
+            "Single": 8
+          }
+        ],
+        "operations": []
+      }
+    ]
+  },
+  "remote_transcripts": {}
+}

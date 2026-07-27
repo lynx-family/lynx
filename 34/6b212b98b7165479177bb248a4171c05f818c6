@@ -1,0 +1,28 @@
+e2e/lynx-e2e-mvp/src/default-connector.ts
+  s_90ecc465ac68d4::t_eec432a3e6cbe0 1-2,4-14,16-21,24-39,42-58,60-99,104-125,127-129,132,142,144,146-158
+testing/lynx-platform-tests/test_script/androidlynxtest/case_sets/lynx_e2e_mvp.py
+  s_90ecc465ac68d4::t_31dc9a35f8eede 68-70,74-80,191-196,235
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "346b212b98b7165479177bb248a4171c05f818c6",
+  "prompts": {},
+  "humans": {
+    "h_dc1658ba751399": {
+      "author": "tangyongjie <tangyongjie@bytedance.com>"
+    }
+  },
+  "sessions": {
+    "s_90ecc465ac68d4": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f88cc-c747-76d0-a951-642be2bc762c",
+        "model": "unknown"
+      },
+      "human_author": "tangyongjie <tangyongjie@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

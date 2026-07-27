@@ -1,0 +1,30 @@
+.cq/pipelines/ios-e2e-mvp-test.yml
+  h_dc1658ba751399 1-30
+.cq/workflows/regress.yml
+  h_dc1658ba751399 376-386
+testing/lynx-platform-tests/test_script/ioslynxtest/case_sets/lynx_e2e_mvp.py
+  s_a6337f287197d6::t_be26f220419984 1-122
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "8e38ef77f185e6a2120e6c980df4f43b8cd3478e",
+  "prompts": {},
+  "humans": {
+    "h_dc1658ba751399": {
+      "author": "tangyongjie <tangyongjie@bytedance.com>"
+    }
+  },
+  "sessions": {
+    "s_a6337f287197d6": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f9356-c918-7bd0-81c5-c408bd42642e",
+        "model": "unknown"
+      },
+      "human_author": "tangyongjie <tangyongjie@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

@@ -1,0 +1,35 @@
+e2e/lynx-e2e-mvp/src/android-app-controller.ts
+  s_bc2dfdc372a653::t_7173a3b21a4f2a 76
+  s_bc2dfdc372a653::t_c6c76177c557ba 79-80,82-83,85-86
+  s_90ecc465ac68d4::t_791576d2f166e5 81,84
+  s_bc2dfdc372a653::t_cea152670780cf 77-78
+e2e/lynx-e2e-mvp/tests/mvp.test.ts
+  s_90ecc465ac68d4::t_41cf4686c956b0 62
+  s_90ecc465ac68d4::t_16b0fec222f6ca 63-65
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "9b2d0f2fc6f6a2b9c657fda4ad04ad7503aec608",
+  "prompts": {},
+  "sessions": {
+    "s_90ecc465ac68d4": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f88cc-c747-76d0-a951-642be2bc762c",
+        "model": "unknown"
+      },
+      "human_author": "tangyongjie <tangyongjie@bytedance.com>"
+    },
+    "s_bc2dfdc372a653": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a6069937dad67aaaa5efc32",
+        "model": "gemini-3.1-pro__dev"
+      },
+      "human_author": "tangyongjie <tangyongjie@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

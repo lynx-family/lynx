@@ -1,0 +1,77 @@
+lynx/platform/harmony/lynx_harmony/src/main/cpp/ui/scroll/lynx_ui_scroll_view_internal.h
+  s_d9174f3ef39f5a::t_dd14f5e034bc2e 21-22,62-67,87
+lynx/platform/harmony/lynx_harmony/src/main/cpp/ui/scroll/lynx_ui_scroll_view_internal.cc
+  s_d9174f3ef39f5a::t_5796fab82b450f 209-211,227-264,301-312
+lynx/platform/android/lynx_android/src/android_test/java/com/lynx/tasm/behavior/ui/scroll/base/LynxBaseScrollViewScrollingTest.java
+  s_d9174f3ef39f5a::t_949fd3e178c167 78-88
+lynx/platform/darwin/ios/lynx/event/LynxKeyboardAvoidingScrollController.m
+  s_d9174f3ef39f5a::t_6ab4907441c418 1-422
+lynx/platform/darwin/ios/lynx/event/LynxKeyboardEventDispatcher.m
+  s_d9174f3ef39f5a::t_1b197f89e46d49 9-11
+  s_d9174f3ef39f5a::t_107abd56c8c797 34,81-87,97,107-108,124-135,144,161,181,218-231,240-246,276-318
+lynx/platform/harmony/lynx_harmony/src/main/cpp/ui/ui_owner.h
+  s_d9174f3ef39f5a::t_3a4f0594db2fc2 232-233,236-272,275,280-283,289-290,326,328,331-336
+lynx/platform/android/lynx_android/src/android_test/java/com/lynx/tasm/behavior/ui/scroll/LynxUIScrollViewTest.java
+  s_d9174f3ef39f5a::t_8f716cf19d830c 173-185
+lynx/platform/android/lynx_android/src/main/java/com/lynx/tasm/behavior/ui/scroll/LynxUIScrollViewInternal.java
+  s_d9174f3ef39f5a::t_973ca2cd9df5c4 370-372
+lynx/platform/darwin/ios/lynx/ui/scroll_view/LynxUIScrollerUnitTest.m
+  s_d9174f3ef39f5a::t_c684b27c810730 7,69-92
+lynx/platform/darwin/ios/lynx/event/LynxKeyboardAvoidingScrollController.h
+  s_d9174f3ef39f5a::t_83dedce7c7f762 1-44
+lynx/platform/darwin/ios/lynx/BUILD.gn
+  s_d9174f3ef39f5a::t_61845e8c71e4f7 197-198
+lynx/platform/darwin/ios/lynx/ui/scroll_view/LynxUIScroller.m
+  s_d9174f3ef39f5a::t_113e912f4be737 375
+lynx/platform/android/api/lynx_android.api
+  s_d9174f3ef39f5a::t_72de9302944f7a 273-274,4288-4290
+lynx/platform/harmony/lynx_harmony/src/main/cpp/ui/ui_owner.cc
+  s_d9174f3ef39f5a::t_f9e1ca05263b39 11,503-511,520-522,528,541,549,553-556,563,567-570,580,594,597,606,610-618,637-1035,1046-1048,1064-1071,1073-1076,1079,1081,1083-1090,1094-1097,1105-1106,1207,1211,1215-1218,1738-1739,1742-1752,1761-1767
+lynx/platform/harmony/api/lynx_harmony.api
+  s_d9174f3ef39f5a::t_edf660b7f8b09f 229,261,628,1229
+lynx/platform/darwin/ios/lynx/ui/scroll_view/LynxScrollView.m
+  s_d9174f3ef39f5a::t_f79072fb9f2616 10-13
+lynx/platform/android/lynx_android/src/main/java/com/lynx/tasm/behavior/KeyboardEvent.java
+  s_d9174f3ef39f5a::t_d4ac5696f7f2ad 212,227-236,378-399,458,463-471,500-502,526-527,586-651,774-775,778,819-820,948-952,966,978
+  s_d9174f3ef39f5a::t_f6c2d9f0b05e79 1060,1226
+lynx/platform/android/lynx_android/src/main/java/com/lynx/tasm/behavior/ui/scroll/base/LynxBaseScrollViewScrolling.java
+  s_d9174f3ef39f5a::t_db4e1b4a4969f2 36-37,81-92
+lynx/platform/harmony/lynx_harmony/src/main/cpp/ui/utils/base_scroll_container.h
+  s_d9174f3ef39f5a::t_2e459b121b6b09 38-42,74
+lynx/platform/harmony/lynx_harmony/src/main/cpp/ui/ui_base.h
+  s_d9174f3ef39f5a::t_336ae4ff9af71d 169-173
+lynx/platform/harmony/lynx_harmony/src/main/cpp/ui/utils/base_scroll_container.cc
+  s_d9174f3ef39f5a::t_f83a8048a463a2 7-8,142-165
+lynx/platform/darwin/ios/api/lynx_ios.api
+  s_d9174f3ef39f5a::t_ff79e9cd0395a4 3499
+lynx/platform/darwin/ios/lynx/public/ui/scroll_view/LynxScrollView.h
+  s_d9174f3ef39f5a::t_23e1af0cdfeae3 20
+lynx/platform/android/lynx_android/src/main/java/com/lynx/tasm/behavior/KeyboardAvoidingScrollController.java
+  s_d9174f3ef39f5a::t_a8f77d3087fce9 1-769
+lynx/platform/android/lynx_android/src/main/java/com/lynx/tasm/behavior/ui/scroll/AndroidScrollView.java
+  s_d9174f3ef39f5a::t_4e25d7fb1e2b67 65,699-706
+lynx/platform/android/lynx_android/src/main/java/com/lynx/tasm/behavior/ui/scroll/UIScrollView.java
+  s_d9174f3ef39f5a::t_d060bcaccd84e9 401-405
+lynx/platform/android/lynx_xelement/lynx_xelement_input/src/main/java/com/lynx/xelement/input/LynxUIBaseInput.kt
+  s_d9174f3ef39f5a::t_c9218c2e2cda76 519,550-556
+lynx/platform/android/lynx_xelement/lynx_xelement_input/src/main/java/com/lynx/xelement/input/LynxUITextArea.kt
+  s_d9174f3ef39f5a::t_0932ed228e2b4b 41-45,92,136,162,185
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "608d87f20b3373a7d78ccd20a40f882aef7b1f96",
+  "prompts": {},
+  "sessions": {
+    "s_d9174f3ef39f5a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f27ed-f70d-7e60-aaa6-6b56a5b23bb9",
+        "model": "unknown"
+      },
+      "human_author": "mooface <xiamengfei.moonface@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

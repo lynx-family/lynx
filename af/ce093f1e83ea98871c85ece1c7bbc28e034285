@@ -1,0 +1,41 @@
+e2e/lynx-e2e-mvp/src/android-app-controller.ts
+  s_90ecc465ac68d4::t_791576d2f166e5 82
+  s_bc2dfdc372a653::t_7173a3b21a4f2a 72,92
+  s_bc2dfdc372a653::t_c6c76177c557ba 85,96-98
+  s_bc2dfdc372a653::t_3bd317ac7e6526 73-74
+  s_90ecc465ac68d4::t_12fde4889ddef9 79-81
+  s_bc2dfdc372a653::t_7845f218b6c102 86-91
+  s_bc2dfdc372a653::t_bebe236b030a6f 95
+  s_bc2dfdc372a653::t_0302b8208a8594 99-101
+e2e/lynx-e2e-mvp/tests/mvp.test.ts
+  s_90ecc465ac68d4::t_41cf4686c956b0 62
+  s_90ecc465ac68d4::t_16b0fec222f6ca 63-65,89-90
+  s_90ecc465ac68d4::t_33ec1898eb3b05 66-68,86-88
+  s_90ecc465ac68d4::t_a89f8392457f9d 91-93
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "afce093f1e83ea98871c85ece1c7bbc28e034285",
+  "prompts": {},
+  "sessions": {
+    "s_90ecc465ac68d4": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f88cc-c747-76d0-a951-642be2bc762c",
+        "model": "unknown"
+      },
+      "human_author": "tangyongjie <tangyongjie@bytedance.com>"
+    },
+    "s_bc2dfdc372a653": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a6069937dad67aaaa5efc32",
+        "model": "gemini-3.1-pro__dev"
+      },
+      "human_author": "tangyongjie <tangyongjie@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

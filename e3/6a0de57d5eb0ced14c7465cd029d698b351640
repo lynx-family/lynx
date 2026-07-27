@@ -1,0 +1,45 @@
+platform/darwin/macos/BUILD.gn
+  h_c7499b019d31b1 63 gitai:{"mixed_line_ranges":[{"Single":63}],"operations":[]}
+core/platform/windows/BUILD.gn
+  s_80b08fbfd18205::t_132e326c90d003 129
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e36a0de57d5eb0ced14c7465cd029d698b351640",
+  "prompts": {},
+  "humans": {
+    "h_c7499b019d31b1": {
+      "author": "chenyouhui.duke <chenyouhui.duke@bytedance.com>"
+    }
+  },
+  "sessions": {
+    "s_80b08fbfd18205": {
+      "agent_id": {
+        "tool": "trae-cue",
+        "id": "ai_tab-icr-a5fd1368-ce57-4f72-b373-5dcc6c9612f0",
+        "model": "default"
+      },
+      "human_author": "chenyouhui.duke <chenyouhui.duke@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {
+    "platform/darwin/macos/BUILD.gn": [
+      {
+        "hash": "h_c7499b019d31b1",
+        "line_ranges": [
+          {
+            "Single": 63
+          }
+        ],
+        "mixed_line_ranges": [
+          {
+            "Single": 63
+          }
+        ],
+        "operations": []
+      }
+    ]
+  },
+  "remote_transcripts": {}
+}

@@ -1,0 +1,16 @@
+testing/lynx-platform-tests/test_script/androidlynxtest/case_sets/lynx_e2e_mvp.py
+  h_dc1658ba751399 22-25,33-37,39-40,42-44
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "da60b329de794e8e936f62a994ce11fe3f0141f3",
+  "prompts": {},
+  "humans": {
+    "h_dc1658ba751399": {
+      "author": "tangyongjie <tangyongjie@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

@@ -1,0 +1,21 @@
+testing/lynx-platform-tests/test_script/case_sets/native_list_part2/list_animation_delete.py
+  s_66a02440eee005::t_fe0bc0dbbe22dc 12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "5754bba8ff01c6c7141ec29d1a812454712e0793",
+  "prompts": {},
+  "sessions": {
+    "s_66a02440eee005": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f49e3-7f8e-7f93-a7ae-b8ff29344f0f",
+        "model": "unknown"
+      },
+      "human_author": "liangruijie.030116 <liangruijie.030116@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

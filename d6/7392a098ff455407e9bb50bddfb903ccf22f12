@@ -1,0 +1,16 @@
+tools/bits_package/macos/krypton_extension_build_macos.sh
+  h_c7499b019d31b1 83
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d67392a098ff455407e9bb50bddfb903ccf22f12",
+  "prompts": {},
+  "humans": {
+    "h_c7499b019d31b1": {
+      "author": "chenyouhui.duke <chenyouhui.duke@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

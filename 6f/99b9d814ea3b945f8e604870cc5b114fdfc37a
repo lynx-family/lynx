@@ -1,0 +1,20 @@
+lynx/platform/embedder/devtool_settings_embedder.cc
+  h_dc1658ba751399 29,118
+lynx/platform/embedder/devtool_settings_embedder.h
+  h_dc1658ba751399 40
+lynx/platform/embedder/lynx_devtool/devtool_env_embedder.cc
+  h_dc1658ba751399 74,97
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "6f99b9d814ea3b945f8e604870cc5b114fdfc37a",
+  "prompts": {},
+  "humans": {
+    "h_dc1658ba751399": {
+      "author": "tangyongjie <tangyongjie@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

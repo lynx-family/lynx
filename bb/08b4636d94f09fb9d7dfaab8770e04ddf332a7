@@ -1,0 +1,16 @@
+lynx/third_party/weak-node-api/package.json
+  h_60092a9f9e5d37 8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "bb08b4636d94f09fb9d7dfaab8770e04ddf332a7",
+  "prompts": {},
+  "humans": {
+    "h_60092a9f9e5d37": {
+      "author": "wujintian <wujintian@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

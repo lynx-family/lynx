@@ -1,0 +1,29 @@
+lynx/core/animation/css_keyframe_manager.cc
+  0a009f64ef04bc41 330,333
+lynx/core/animation/keyframed_animation_curve.h
+  0a009f64ef04bc41 306-307
+lynx/core/animation/keyframed_animation_curve.cc
+  0a009f64ef04bc41 884,887-892,894,932,934,937-948,951
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "fe12be463f224b623b035375bd888d43e2278c23",
+  "prompts": {
+    "0a009f64ef04bc41": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a0587416af5bacee25f1694",
+        "model": "c_o_new_thinking__dev"
+      },
+      "human_author": "baiqiang <baiqiang@bytedance.com>",
+      "messages": [],
+      "total_additions": 27,
+      "total_deletions": 45,
+      "accepted_lines": 27,
+      "overriden_lines": 0
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}
