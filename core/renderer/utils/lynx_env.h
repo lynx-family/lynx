@@ -161,6 +161,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
     ENABLE_HARMONY_TEXT_CUSTOM_EMOJI,
     ENABLE_ELEMENT_INVOKE_UI_METHOD_PENDING_TASK,
     ENABLE_FIBER_UPDATE_METADATA,
+    JS_COVERAGE_PAGE_SAMPLING_BASIS_POINTS,
     // Please add new enum values above
     END_MARK,  // Keep this as the last enum value, and do not use
   };
@@ -340,6 +341,9 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
             {Key::ENABLE_ELEMENT_INVOKE_UI_METHOD_PENDING_TASK,
              "enable_element_invoke_ui_method_pending_task"},
             {Key::ENABLE_FIBER_UPDATE_METADATA, "enable_fiber_update_metadata"},
+            // NOLINT(harmony-trail-key): Android-only configuration.
+            {Key::JS_COVERAGE_PAGE_SAMPLING_BASIS_POINTS,
+             "js_coverage_page_sampling_basis_points"},
         });
     auto it = (*env_key_to_string_map).find(key);
     DCHECK(it != (*env_key_to_string_map).end());
@@ -517,6 +521,10 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
   bool EnableElementApiNewRegistration();
   bool EnableElementInvokeUIMethodPendingTask();
   bool EnableFiberUpdateMetaData();
+  // Returns the JS coverage page sampling rate in basis points. 0 disables
+  // coverage, 10000 samples every page, and N gives each page an N / 10000
+  // sampling probability. Invalid values fall back to 0.
+  uint32_t GetJSCoveragePageSamplingBasisPoints();
 
   LynxEnv(const LynxEnv&) = delete;
   LynxEnv& operator=(const LynxEnv&) = delete;

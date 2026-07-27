@@ -673,5 +673,15 @@ bool LynxEnv::EnableElementInvokeUIMethodPendingTask() {
 bool LynxEnv::EnableFiberUpdateMetaData() {
   return GetBoolEnv(Key::ENABLE_FIBER_UPDATE_METADATA, false);
 }
+
+uint32_t LynxEnv::GetJSCoveragePageSamplingBasisPoints() {
+  constexpr int kMaxBasisPoints = 10000;
+  const auto basis_points =
+      GetLongEnv(Key::JS_COVERAGE_PAGE_SAMPLING_BASIS_POINTS, 0);
+  if (basis_points < 0 || basis_points > kMaxBasisPoints) {
+    return 0;
+  }
+  return static_cast<uint32_t>(basis_points);
+}
 }  // namespace tasm
 }  // namespace lynx

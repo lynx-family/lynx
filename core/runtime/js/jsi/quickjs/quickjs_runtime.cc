@@ -12,6 +12,7 @@
 #include "base/include/timer/time_utils.h"
 #include "base/trace/native/trace_event.h"
 #include "core/base/threading/task_runner_manufactor.h"
+#include "core/renderer/utils/lynx_env.h"
 #include "core/runtime/js/bytecode/js_cache_manager.h"
 #include "core/runtime/js/bytecode/js_cache_tracker.h"
 #include "core/runtime/js/bytecode/quickjs/bytecode/quickjs_bytecode_provider.h"
@@ -54,7 +55,10 @@ void reportLepusToCStringError(Runtime &rt, const std::string &func_name,
 }
 }  // namespace
 
-QuickjsRuntime::QuickjsRuntime() : quickjs_runtime_wrapper_(nullptr) {
+QuickjsRuntime::QuickjsRuntime()
+    : quickjs_runtime_wrapper_(nullptr),
+      js_coverage_page_sampling_basis_points_(
+          tasm::LynxEnv::GetInstance().GetJSCoveragePageSamplingBasisPoints()) {
 #if !defined(LYNX_UNIT_TEST) || !LYNX_UNIT_TEST || \
     defined(QUICKJS_CACHE_UNITTEST)
   static std::once_flag clear_cache_flag;
