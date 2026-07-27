@@ -29,6 +29,8 @@ common_lynx_shared_sources = [
   "LynxSSRHelper.m",
   "LynxScreenMetrics.m",
   "LynxServiceInfo.m",
+  "LynxStaticPageTemplateData.h",
+  "LynxStaticPageTemplateData.mm",
   "LynxSubErrorCode.m",
   "LynxTemplateBundle+Converter.h",
   "LynxTemplateBundle.mm",
