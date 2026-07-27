@@ -10064,6 +10064,16 @@ public class com::lynx::tasm::behavior::shadow::text::StaticLayoutCompat :  {
   public static StaticLayout com.lynx.tasm.behavior.shadow.text.StaticLayoutCompat.get(CharSequence source, int bufstart, int bufend, TextPaint paint, int outerwidth, Layout.Alignment align, float spacingmult, float spacingadd, boolean includepad, TextUtils.TruncateAt ellipsize, int maxLines, TextDirectionHeuristic directionHeuristic);
 }
 
+public class com::lynx::tasm::StaticPageHost :  {
+  public static boolean com.lynx.tasm.StaticPageHost.attach(int instanceId, @NonNull StaticPageInstance instance);
+}
+
+public interface com::lynx::tasm::StaticPageInstance {
+  public void com.lynx.tasm.StaticPageInstance.renderPage(@NonNull Map< String, Object > data, @Nullable Map< String, Object > globalProps);
+  public void com.lynx.tasm.StaticPageInstance.updateMetaData( @Nullable Map< String, Object > data, @Nullable Map< String, Object > globalProps);
+  public void com.lynx.tasm.StaticPageInstance.destroy();
+}
+
 public class com::lynx::tasm::behavior::ui::LynxBaseUI::Sticky : RectF {
 }
 

@@ -3960,11 +3960,24 @@ public class LynxTemplateRender : NSObject, <LynxTemplateRenderProtocol>, <Templ
   public LynxLifecycleDispatcher * LynxTemplateRender()::getLifecycleDispatcher();
   public void LynxTemplateRender(Helper)::setUpWithBuilder:screenSize:(LynxViewBuilder *builder, [screenSize] CGSize screenSize);
   public void LynxTemplateRender(Helper)::reset:(int32_t lastInstanceId);
+  public BOOL LynxTemplateRender(StaticPage)::prepareStaticPageLoadWithInitialData:globalProps:loadMode:(nullable LynxTemplateData *initialData, [globalProps] nullable LynxTemplateData *loadGlobalProps, [loadMode] LynxLoadMode loadMode);
+  public void LynxTemplateRender(StaticPage)::handleStaticPageMetaData:globalProps:(nullable LynxTemplateData *data, [globalProps] nullable LynxTemplateData *globalProps);
+  public BOOL LynxTemplateRender(StaticPage)::shouldHandleStaticPageMetaData:globalProps:(nullable LynxTemplateData *data, [globalProps] nullable LynxTemplateData *globalProps);
+  public BOOL LynxTemplateRender(StaticPage)::isStaticPageHostRegistered();
+  public void LynxTemplateRender(StaticPage)::destroyStaticPageHost();
 }
 
 public interface LynxTemplateRender(Helper) {
   public void LynxTemplateRender(Helper)::setUpWithBuilder:screenSize:(LynxViewBuilder *builder,[screenSize] CGSize screenSize);
   public void LynxTemplateRender(Helper)::reset:(int32_t lastInstanceId);
+}
+
+public interface LynxTemplateRender(StaticPage) {
+  public BOOL LynxTemplateRender(StaticPage)::prepareStaticPageLoadWithInitialData:globalProps:loadMode:(nullable LynxTemplateData *initialData,[globalProps] nullable LynxTemplateData *loadGlobalProps,[loadMode] LynxLoadMode loadMode);
+  public void LynxTemplateRender(StaticPage)::handleStaticPageMetaData:globalProps:(nullable LynxTemplateData *data,[globalProps] nullable LynxTemplateData *globalProps);
+  public BOOL LynxTemplateRender(StaticPage)::shouldHandleStaticPageMetaData:globalProps:(nullable LynxTemplateData *data,[globalProps] nullable LynxTemplateData *globalProps);
+  public BOOL LynxTemplateRender(StaticPage)::isStaticPageHostRegistered();
+  public void LynxTemplateRender(StaticPage)::destroyStaticPageHost();
 }
 
 public protocol LynxTemplateRenderDelegate-p : <NSObject> {
@@ -5757,6 +5770,21 @@ public class ShareElementPair : NSObject {
   public void ShareElementPair::backToOrigin();
 }
 
+public class StaticPageHost : NSObject {
+  public BOOL StaticPageHost::attach:instance:(int32_t instanceId,[instance] attach(_:instance:) NS_SWIFT_NAME);
+  public instancetype StaticPageHost()::initWithTaskDispatcher:(StaticPageTaskDispatcher taskDispatcher);
+  public nullable NSDictionary< NSString *, id > * StaticPageHost()::registerInstanceId:data:globalProps:(int32_t instanceId, [data] nullable NSDictionary< NSString *, id > *data, [globalProps] nullable NSDictionary< NSString *, id > *globalProps);
+  public BOOL StaticPageHost()::isRegistered();
+  public void StaticPageHost()::updateMetaData:globalProps:(nullable NSDictionary< NSString *, id > *data, [globalProps] nullable NSDictionary< NSString *, id > *globalProps);
+  public void StaticPageHost()::clear();
+}
+
+public protocol StaticPageInstance-p : <NSObject> {
+  public void StaticPageInstance-p::renderPage:globalProps:(id data,[globalProps] nullable id globalProps);
+  public void StaticPageInstance-p::updateMetaData:globalProps:(nullable id data,[globalProps] nullable id globalProps);
+  public void StaticPageInstance-p::destroy();
+}
+
 public class SyncedTimeHelper : NSObject {
   public CFTimeInterval SyncedTimeHelper::getSyncedTime();
   public instancetype SyncedTimeHelper::sharedInstance();
@@ -6828,6 +6856,8 @@ public enum LynxSizeValueType {
   LynxSizeValueTypeDevicePt
 }
 
+
+  public NS_ASSUME_NONNULL_BEGIN typedef void(^ StaticPageTaskDispatcher) (dispatch_block_t task) StaticPageTaskDispatcher;
 
 public enum LynxFPSRecordState {
   LynxFPSRecordStateNone

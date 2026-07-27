@@ -36,6 +36,7 @@
 @class LynxLifecycleDispatcher;
 @class LynxViewGroup;
 @class LynxTemplateRenderMemoryUsageFetcher;
+@class StaticPageHost;
 typedef NS_ENUM(NSInteger, LynxBooleanOption);
 
 @protocol LynxDynamicComponentFetcher;
@@ -126,6 +127,7 @@ NS_ASSUME_NONNULL_BEGIN
 
   BOOL _enableGenericResourceFetcher;
   BOOL _debuggable;
+  StaticPageHost* _staticPageHost;
 }
 
 - (lynx::runtime::js::ModuleFactoryDarwin*)getModuleFactory;
