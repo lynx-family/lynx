@@ -83,6 +83,65 @@ public class TemplateDataTest {
   }
 
   @Test
+  public void createForStaticPage() {
+    Map<String, Object> map = new HashMap<>();
+    map.put("title", "static");
+
+    TemplateData templateData = TemplateData.createForStaticPage(map);
+
+    assertTrue(TemplateData.isForStaticPage(templateData));
+    assertTrue(templateData.isReadOnly());
+    assertTrue(templateData.checkIsLegalData());
+    assertSame(map, templateData.toMap());
+    assertEquals(0, templateData.getNativePtr());
+
+    templateData.flush();
+    assertEquals(0, templateData.getNativePtr());
+
+    templateData.put("title", "updated");
+    templateData.updateData(Collections.singletonMap("subtitle", "ignored"));
+    assertEquals("static", templateData.toMap().get("title"));
+    assertFalse(templateData.toMap().containsKey("subtitle"));
+
+    TemplateData deepClone = templateData.deepClone();
+    TemplateData shallowClone = templateData.shallowClone();
+    assertTrue(TemplateData.isForStaticPage(deepClone));
+    assertTrue(TemplateData.isForStaticPage(shallowClone));
+    assertSame(map, deepClone.toMap());
+    assertSame(map, shallowClone.toMap());
+
+    templateData.recycle();
+    deepClone.recycle();
+    shallowClone.recycle();
+  }
+
+  @Test
+  public void createEmptyForStaticPage() {
+    TemplateData standard = TemplateData.empty();
+    TemplateData staticPage =
+        TemplateData.createForStaticPage(Collections.<String, Object>emptyMap());
+
+    assertTrue(standard.isEmpty());
+    assertTrue(staticPage.isEmpty());
+    assertFalse(TemplateData.isForStaticPage(standard));
+    assertTrue(TemplateData.isForStaticPage(staticPage));
+  }
+
+  @Test
+  public void rejectMixedStaticPageUpdate() {
+    TemplateData standard = TemplateData.fromMap(Collections.singletonMap("standard", "value"));
+    TemplateData staticPage =
+        TemplateData.createForStaticPage(Collections.singletonMap("static", "value"));
+
+    standard.updateWithTemplateData(staticPage);
+    staticPage.updateWithTemplateData(standard);
+
+    assertEquals(Collections.singletonMap("standard", "value"), standard.toMap());
+    assertEquals("value", staticPage.toMap().get("static"));
+    assertFalse(staticPage.toMap().containsKey("standard"));
+  }
+
+  @Test
   public void toMap() {
     Map<String, Object> map = new HashMap<>();
     map.put("a", "1");

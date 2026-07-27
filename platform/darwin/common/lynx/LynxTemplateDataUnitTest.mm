@@ -4,6 +4,7 @@
 
 #import <Lynx/LynxTemplateData+Converter.h>
 #import <XCTest/XCTest.h>
+#import "LynxStaticPageTemplateData.h"
 #include "base/include/value/base_value.h"
 #include "base/include/value/byte_array.h"
 #include "base/include/value/table.h"
@@ -50,6 +51,56 @@
   XCTAssertTrue(value->GetProperty("b").IsNil());
 
   XCTAssertTrue([@{@"a" : @"1"} isEqual:[templateData dictionary]]);
+}
+
+- (void)testCreateForStaticPage {
+  NSDictionary* dictionary = @{@"title" : @"static"};
+  LynxTemplateData* data = [LynxTemplateData createForStaticPage:dictionary];
+
+  XCTAssertTrue(LynxTemplateDataIsForStaticPage(data));
+  XCTAssertTrue(data.isReadOnly);
+  XCTAssertTrue(data.checkIsLegalData);
+  XCTAssertEqual(dictionary, data.dictionary);
+
+  auto* nativeData = LynxGetLepusValueFromTemplateData(data);
+  XCTAssertTrue(nativeData->IsTable());
+  XCTAssertEqual(0u, nativeData->Table()->size());
+
+  auto convertedData = ConvertLynxTemplateDataToTemplateData(data);
+  XCTAssertNotEqual(nullptr, convertedData);
+  XCTAssertTrue(convertedData->GetValue().IsEmpty());
+
+  [data updateObject:@"updated" forKey:@"title"];
+  [data updateWithDictionary:@{@"subtitle" : @"ignored"}];
+  XCTAssertEqual(dictionary, data.dictionary);
+
+  LynxTemplateData* clone = [data deepClone];
+  XCTAssertTrue(LynxTemplateDataIsForStaticPage(clone));
+  XCTAssertEqual(dictionary, clone.dictionary);
+}
+
+- (void)testCreateEmptyForStaticPage {
+  LynxTemplateData* data = [LynxTemplateData createForStaticPage:@{}];
+
+  XCTAssertTrue(LynxTemplateDataIsForStaticPage(data));
+  XCTAssertTrue(data.checkIsLegalData);
+  XCTAssertEqual(0u, data.dictionary.count);
+
+  auto* nativeData = LynxGetLepusValueFromTemplateData(data);
+  XCTAssertTrue(nativeData->IsTable());
+  XCTAssertEqual(0u, nativeData->Table()->size());
+}
+
+- (void)testRejectMixedStaticPageUpdate {
+  LynxTemplateData* standard =
+      [[LynxTemplateData alloc] initWithDictionary:@{@"standard" : @"value"}];
+  LynxTemplateData* staticPage = [LynxTemplateData createForStaticPage:@{@"static" : @"value"}];
+
+  [standard updateWithTemplateData:staticPage];
+  [staticPage updateWithTemplateData:standard];
+
+  XCTAssertEqualObjects(@{@"standard" : @"value"}, standard.dictionary);
+  XCTAssertEqualObjects(@{@"static" : @"value"}, staticPage.dictionary);
 }
 
 - (void)testLong {

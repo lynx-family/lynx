@@ -151,6 +151,7 @@ export class UISVG extends UIBase {
 
 export class TemplateData {
   constructor(input: string | Record<string, Object> | Object, processor: string);
+  static createForStaticPage(input: Record<string, Object>): TemplateData;
   merge(data: string | Record<string, Object> | Object): void;
   processor: string; = ''
   readOnly: boolean; = false

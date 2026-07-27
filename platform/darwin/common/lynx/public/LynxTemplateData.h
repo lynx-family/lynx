@@ -35,6 +35,16 @@
 - (instancetype)initWithDictionary:(NSDictionary *)dictionary;
 
 /**
+ * @apidoc
+ * @brief Creates a `LynxTemplateData` for static-page loading without converting the supplied
+ * platform data to Lepus.
+ * @param dictionary Platform data used by the static page. The caller must not mutate it after this
+ * call.
+ * @return A `LynxTemplateData` that retains the supplied platform data.
+ */
++ (instancetype)createForStaticPage:(NSDictionary<NSString *, id> *)dictionary;
+
+/**
  * Init a TemplateData with a json/dictionary
  * @param useBoolLiterals if useBoolLiterals, convert @YES/@NO to lepus bool true/false, else to
  * lepus number 1/0
