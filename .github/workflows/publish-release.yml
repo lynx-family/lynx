@@ -344,10 +344,10 @@ jobs:
         uses: actions/setup-python@v6
         with:
           python-version: '3.13'
-      - name: Set up Ruby + specify Bundler version
+      - name: Set up Ruby
         uses: ruby/setup-ruby@v1
         with:
-          ruby-version: '2.6.10'
+          ruby-version: '4.0.5'
       - name: Install Common Dependencies
         uses: ./lynx/.github/actions/common-deps
         with:
