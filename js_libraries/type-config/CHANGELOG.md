@@ -1,5 +1,17 @@
 # CHANGELOG
 
+## 4.1.3
+
+### Patch Changes
+
+- Add `alignMouseEventWithW3C` to the exported `Config` type and `configKeys` runtime constant.
+
+## 4.1.2
+
+### Patch Changes
+
+- Add `enableEventHandleRefactor` to the exported `Config` type and `configKeys` runtime constant.
+
 ## 4.1.1
 
 ### Patch Changes

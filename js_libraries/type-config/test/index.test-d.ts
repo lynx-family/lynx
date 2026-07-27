@@ -11,6 +11,7 @@ import { Config, CompilerOptions } from '../types/index';
 describe('Test Config Types', () => {
   it('should have correct Config type', () => {
     expectTypeOf<Config>().toBeObject();
+    expectTypeOf<Config>().toHaveProperty('alignMouseEventWithW3C').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('disableLongpressAfterScroll').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('enableA11y').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('enableAccessibilityElement').toEqualTypeOf<boolean | undefined>();
@@ -18,6 +19,7 @@ describe('Test Config Types', () => {
     expectTypeOf<Config>().toHaveProperty('enableCSSInlineVariables').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('enableCSSRule').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('enableEndGestureAtLastFingerUp').toEqualTypeOf<boolean | undefined>();
+    expectTypeOf<Config>().toHaveProperty('enableEventHandleRefactor').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('enableEventThrough').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('enableFetchAPIStandardStreaming').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('enableFixedNew').toEqualTypeOf<boolean | undefined>();
