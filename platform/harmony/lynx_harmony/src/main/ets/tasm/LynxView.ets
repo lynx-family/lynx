@@ -87,6 +87,7 @@ export interface LynxViewBuilder {
   fitContentWidth?: boolean;
   fitContentHeight?: boolean;
   experimentalFixFitContent?: boolean;
+  skipOffTreeViewportUpdate?: boolean;
   beforeLoadTemplate?: (context: LynxContext) => void;
   threadMode?: ThreadStrategyForRendering;
   backgroundRuntimeOptions?: LynxBackgroundRuntimeOptions;
@@ -231,6 +232,7 @@ export struct LynxView {
     this.fitContentWidth = builder.fitContentWidth ?? false;
     this.fitContentHeight = builder.fitContentHeight ?? false;
     this.experimentalFixFitContent = builder.experimentalFixFitContent ?? false;
+    this.skipOffTreeViewportUpdate = builder.skipOffTreeViewportUpdate ?? false;
     this.beforeLoadTemplate = builder.beforeLoadTemplate ?? ((context: LynxContext) => {
     });
     this.threadMode = builder.threadMode ?? ThreadStrategyForRendering.ALL_ON_UI;
