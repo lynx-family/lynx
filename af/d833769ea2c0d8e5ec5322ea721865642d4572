@@ -1,0 +1,26 @@
+e2e/lynx-e2e-mvp/tsconfig.json
+  s_549c246aea5b58::t_e1296c2670b0dc 1-13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "afd833769ea2c0d8e5ec5322ea721865642d4572",
+  "prompts": {},
+  "humans": {
+    "h_dc1658ba751399": {
+      "author": "tangyongjie <tangyongjie@bytedance.com>"
+    }
+  },
+  "sessions": {
+    "s_549c246aea5b58": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f7ef5-4ab6-7812-afca-ed4204ded6b9",
+        "model": "unknown"
+      },
+      "human_author": "tangyongjie <tangyongjie@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

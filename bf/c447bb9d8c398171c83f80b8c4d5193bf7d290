@@ -1,0 +1,62 @@
+e2e/lynx-e2e-mvp/src/page.ts
+  s_0f3e625852cb78::t_86b29eb2d2a3ca 87-96,103-108,110,112
+  s_0f3e625852cb78::t_9aa03ae838d5e3 5,7
+  s_0f3e625852cb78::t_da483b4a89c79a 97-102
+testing/lynx-platform-tests/test_script/androidlynxtest/case_sets/lynx_e2e_mvp.py
+  s_630b087187b9b7::t_3fddb2cc36a1b7 239
+e2e/lynx-e2e-mvp/tests/gif-controls.demo.test.ts
+  h_dc1658ba751399 1-149
+e2e/lynx-e2e-mvp/tests/device.smoke.test.ts
+  s_0f3e625852cb78::t_e653b16697da6f 56,58,62-64
+  h_dc1658ba751399 57,59-61
+e2e/lynx-e2e-mvp/package.json
+  s_5bff220db87939::t_bb4de4dec80a9a 15
+  s_cf336347e1db52::t_dc029cae1ea33e 16
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "bfc447bb9d8c398171c83f80b8c4d5193bf7d290",
+  "prompts": {},
+  "humans": {
+    "h_dc1658ba751399": {
+      "author": "tangyongjie <tangyongjie@bytedance.com>"
+    }
+  },
+  "sessions": {
+    "s_0f3e625852cb78": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a61c4dc7dad67aaaa5f0182",
+        "model": "gemini-3.1-pro__dev"
+      },
+      "human_author": "tangyongjie <tangyongjie@bytedance.com>"
+    },
+    "s_5bff220db87939": {
+      "agent_id": {
+        "tool": "trae-cue",
+        "id": "ai_tab-icr-6886207e-67a6-49cc-948e-a84428d2fbb8",
+        "model": "default"
+      },
+      "human_author": "tangyongjie <tangyongjie@bytedance.com>"
+    },
+    "s_630b087187b9b7": {
+      "agent_id": {
+        "tool": "trae-cue",
+        "id": "ai_tab-icr-b885ed5d-2e8f-4743-bf6a-8a5d23e33c97",
+        "model": "default"
+      },
+      "human_author": null
+    },
+    "s_cf336347e1db52": {
+      "agent_id": {
+        "tool": "trae-cue",
+        "id": "ai_tab-icr-e174ebf3-c22e-4348-acbd-e6429c9094a5",
+        "model": "default"
+      },
+      "human_author": "tangyongjie <tangyongjie@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}
