@@ -820,6 +820,12 @@ jobs:
           path: lynx
       - name: Install Common Dependencies
         uses: ./lynx/.github/actions/common-deps
+      - name: Install brew runtime dependencies
+        run: brew install openssl@3 readline libyaml gmp
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '4.0.5'
       - name: Prepare cocoapods publish source
         run: |-
           source tools/envsetup.sh
