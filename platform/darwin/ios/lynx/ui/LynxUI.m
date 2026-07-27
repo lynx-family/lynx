@@ -1259,23 +1259,32 @@ static CGFloat LynxDecodeAutoOffsetRotateAngle(CGFloat rotate) {
 }
 
 - (void)setGestureDetectors:(NSSet<LynxGestureDetectorDarwin*>*)detectors {
-  // Check if detectors are provided and not empty.
-  if (detectors == nil || detectors.count == 0) {
+  if (detectors == nil) {
     return;
   }
 
-  // Initialize a dictionary to store gesture detectors.
   NSMutableDictionary<NSNumber*, LynxGestureDetectorDarwin*>* gestureMap =
       [NSMutableDictionary dictionary];
-
-  // Populate the gesture map with detectors using their IDs as keys.
   for (LynxGestureDetectorDarwin* detector in detectors) {
     NSNumber* key = @(detector.gestureID);
     gestureMap[key] = detector;
   }
 
-  // Update the gesture map and trigger the gestureDidSet method.
+  if (self.context.enableNewGesture) {
+    LynxGestureArenaManager* manager = [self getGestureArenaManager];
+    if ([manager isMemberExist:[self getGestureArenaMemberId]]) {
+      [manager unregisterGestureDetectors:[self getGestureArenaMemberId] detectorMap:_gestureMap];
+    }
+  }
+
   _gestureMap = gestureMap;
+  for (LynxBaseGestureHandler* handler in _gestureHandlers.allValues) {
+    if (handler.status == LynxGestureHandlerStateBegin ||
+        handler.status == LynxGestureHandlerStateActive) {
+      [handler fail];
+    }
+  }
+  _gestureHandlers = nil;
   [self gestureDidSet];
 }
 
@@ -1288,10 +1297,18 @@ static CGFloat LynxDecodeAutoOffsetRotateAngle(CGFloat rotate) {
   }
 
   LynxGestureArenaManager* manager = [self getGestureArenaManager];
+  if (_gestureMap.count == 0) {
+    if ([manager isMemberExist:[self getGestureArenaMemberId]]) {
+      [manager removeMember:self detectorMap:_gestureMap];
+      _gestureArenaMemberId = 0;
+    }
+    return;
+  }
+
   if (![manager isMemberExist:[self getGestureArenaMemberId]]) {
     _gestureArenaMemberId = [manager addMember:self];
-    [manager registerGestureDetectors:_gestureArenaMemberId detectorMap:_gestureMap];
   }
+  [manager registerGestureDetectors:_gestureArenaMemberId detectorMap:_gestureMap];
 }
 - (float)getScrollX __attribute__((deprecated("Do not use this after lynx 2.5"))) {
   return 0;

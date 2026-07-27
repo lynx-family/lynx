@@ -34,6 +34,7 @@ class PropBundleMock : public PropBundle {
   void SetGestureDetector(const GestureDetector& detector) override;
   bool Contains(const char* key) const override;
   void ResetEventHandler() override;
+  void ResetGestureDetector() override;
 
   void SetNullPropsByID(CSSPropertyID id) override {
     auto property_name = CSSProperty::GetPropertyNameCStr(id);
@@ -79,8 +80,10 @@ class PropBundleMock : public PropBundle {
 
   const std::map<std::string, lepus::Value>& GetPropsMap() const;
   const std::unordered_set<std::string>& GetEventHandlers() const;
+  bool GestureDetectorsWereReset() const;
 
  private:
+  bool gesture_detectors_were_reset_ = false;
   std::unordered_set<std::string> event_handler_;
   std::map<std::string, lepus::Value> props_;
 };

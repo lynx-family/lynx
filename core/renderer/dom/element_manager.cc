@@ -667,6 +667,7 @@ void ElementManager::ResolveEvents(AttributeHolder *node, Element *element) {
 
 // resolve gesture detector from attribute holder
 void ElementManager::ResolveGestures(AttributeHolder *node, Element *element) {
+  element->ResetGestureDetectors();
   for (const auto &gesture : node->gesture_detectors()) {
     element->SetGestureDetector(gesture.first, gesture.second.get());
   }
