@@ -49,6 +49,16 @@ class CompositorState {
     return view_params_;
   }
 
+  std::unordered_map<int64_t, std::unique_ptr<EmbedderViewSlice>>&
+  GetOverlaySlices() {
+    return overlay_slices_;
+  }
+
+  std::unordered_map<int64_t, std::unique_ptr<OverlayViewParams>>&
+  GetOverlayViewParams() {
+    return overlay_view_params_;
+  }
+
  private:
   skity::Vec2 frame_size_;
 

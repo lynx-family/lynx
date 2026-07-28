@@ -37,22 +37,50 @@ bool CompositorService::SubmitFrame(
 
   had_hybrid_composited_ = true;
 
-  // TODO(haoyoufeng.aji) support external overlay views
   bool did_encode = true;
   std::unordered_map<int64_t, OverlayData> platform_overlays;
   std::vector<std::pair<SurfaceFrame::SubmitCallback, SurfaceFrame::SubmitInfo>>
       submit_infos;
   submit_infos.reserve(compositor_state->GetCompositionOrder().size() + 1);
-  std::unordered_map<int64_t, skity::Rect> view_rects;
+  std::unordered_map<int64_t, skity::Rect> embedded_view_rects;
+  std::unordered_map<int64_t, skity::Rect> overlay_view_rects;
+  std::vector<int64_t> embedded_composition_order;
+  auto& embedded_slices = compositor_state->GetSlices();
+  auto& overlay_slices = compositor_state->GetOverlaySlices();
+  auto& embedded_params = compositor_state->GetViewParams();
+  auto& overlay_params = compositor_state->GetOverlayViewParams();
 
+  embedded_composition_order.reserve(
+      compositor_state->GetCompositionOrder().size());
   for (int64_t view_id : compositor_state->GetCompositionOrder()) {
-    view_rects[view_id] =
-        compositor_state->GetViewParams()[view_id]->finalBoundingRect();
+    auto embedded_param = embedded_params.find(view_id);
+    if (embedded_param != embedded_params.end() && embedded_param->second) {
+      embedded_composition_order.push_back(view_id);
+      embedded_view_rects.emplace(view_id,
+                                  embedded_param->second->finalBoundingRect());
+      continue;
+    }
+
+    auto overlay_param = overlay_params.find(view_id);
+    auto overlay_slice = overlay_slices.find(view_id);
+    if (overlay_param == overlay_params.end() || !overlay_param->second ||
+        overlay_slice == overlay_slices.end() || !overlay_slice->second) {
+      continue;
+    }
+    overlay_view_rects.emplace(view_id, overlay_param->second->bounds());
   }
 
-  std::unordered_map<int64_t, skity::Rect> overlay_layers = SliceViews(
-      background_frame->GetCanvas(), compositor_state->GetCompositionOrder(),
-      compositor_state->GetSlices(), view_rects);
+  std::unordered_map<int64_t, skity::Rect> overlay_layers =
+      SliceViews(background_frame->GetCanvas(), embedded_composition_order,
+                 embedded_slices, embedded_view_rects);
+
+  for (const auto& [view_id, rect] : overlay_view_rects) {
+    skity::Rect rounded_rect = rect;
+    rounded_rect.RoundOut();
+    if (!rounded_rect.IsEmpty()) {
+      overlay_layers.emplace(view_id, rounded_rect);
+    }
+  }
 
   // background frame must come first since it's the "current" surface
   background_frame->set_submit_info({.present_with_transaction = true});
@@ -79,11 +107,22 @@ bool CompositorService::SubmitFrame(
       continue;
     }
     auto& [_, overlay_rect] = *it;
+    const bool is_overlay_view =
+        overlay_view_rects.find(view_id) != overlay_view_rects.end();
+    auto& slices = is_overlay_view ? overlay_slices : embedded_slices;
+    auto slice = slices.find(view_id);
+    if (slice == slices.end() || slice->second == nullptr) {
+      continue;
+    }
+
     CompositorSurface& compositor_surface = GetCompositorSurface();
+    skity::Vec2 frame_size = compositor_state->GetFrameSize();
+    if (is_overlay_view) {
+      frame_size = skity::Vec2{overlay_rect.Width(), overlay_rect.Height()};
+    }
 
     std::unique_ptr<SurfaceFrame> frame =
-        compositor_surface.surface->AcquireFrame(
-            compositor_state->GetFrameSize());
+        compositor_surface.surface->AcquireFrame(frame_size);
 
     // If frame is null, AcquireFrame already printed out an error message.
     if (!frame) {
@@ -97,7 +136,10 @@ bool CompositorService::SubmitFrame(
         skity::Rect::MakeWH(overlay_rect.Width(), overlay_rect.Height()));
     CANVAS_CLEAR(overlay_canvas, clay::Color::kTransparent());
     CANVAS_TRANSLATE(overlay_canvas, -overlay_rect.X(), -overlay_rect.Y());
-    compositor_state->GetSlices()[view_id]->render_into(overlay_canvas);
+    if (is_overlay_view) {
+      slice->second->end_recording();
+    }
+    slice->second->render_into(overlay_canvas);
     CANVAS_RESTORE_TO_COUNT(overlay_canvas, restore_count);
 
     frame->set_submit_info({.present_with_transaction = true});
