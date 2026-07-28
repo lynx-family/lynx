@@ -1,0 +1,16 @@
+lynx/.github/workflows/ci.yml
+  h_4d36f4d76420fe 332-439
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.5",
+  "base_commit_sha": "0a8a64f9c5ce1148e0982269aece75f6209e9619",
+  "prompts": {},
+  "humans": {
+    "h_4d36f4d76420fe": {
+      "author": "yangguangzhao <yangguangzhao.solace@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

@@ -1,0 +1,102 @@
+testing/lynx-platform-tests/test_script/androidlynxtest/case_sets/lynx_e2e_mvp.py
+  s_90ecc465ac68d4::t_31dc9a35f8eede 68-70,74-80,191-196,235
+  s_bc2dfdc372a653::t_9c6ec34d8f4e1b 181,203-206
+  s_66b7e6fbbd9bc8::t_6af7660ab9684c 240
+  s_66b7e6fbbd9bc8::t_45ace3622af06b 1-23,28-30,95-98,113,127,143,148-150,246-248
+  s_bc2dfdc372a653::t_3085fa89f740f2 233-234,236-237
+  s_90ecc465ac68d4::t_5c2bf7502da035 115,120,129,134,145,155,162,185,188-190,197-202,209-210
+  s_90ecc465ac68d4::t_d05e3cf9074191 212-231
+  s_66b7e6fbbd9bc8::t_c445a085b6695e 108,112,114,122,126,164-179,232
+  s_eda2458672e260::t_3102f0310605fd 102
+  h_dc1658ba751399 24-27,31-65,99-101,211,238,241-245
+  s_bc2dfdc372a653::t_155321e8c3e7a2 72,81-92
+  s_66b7e6fbbd9bc8::t_d35adaae8bac93 109-111
+  s_90ecc465ac68d4::t_950eac63b0fe79 116-119
+  s_66b7e6fbbd9bc8::t_aac05d8c49bc6c 123-125
+  s_90ecc465ac68d4::t_a9c70dce178f68 130-133
+  s_90ecc465ac68d4::t_c6ce6f3c92401f 156-161
+  s_90ecc465ac68d4::t_2ff91761ab0282 186-187
+.cq/workflows/regress.yml
+  h_dc1658ba751399 365-375
+e2e/lynx-e2e-mvp/src/default-connector.ts
+  s_90ecc465ac68d4::t_b84563e9c99b17 9-10,22
+  s_976dcfe426eba2::t_325f1534fcf736 24-25
+  s_90ecc465ac68d4::t_eec432a3e6cbe0 3-8,11-21,23
+  s_976dcfe426eba2::t_d1197b69f31d9a 26-28
+.cq/pipelines/android-e2e-mvp-test.yml
+  h_dc1658ba751399 1-32
+e2e/lynx-e2e-mvp/README.md
+  h_dc1658ba751399 43 gitai:{"mixed_line_ranges":[{"Single":43}],"operations":[]}
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "13a9a70c355b54c3e76b59269d367e45ebb7e2ab",
+  "prompts": {},
+  "humans": {
+    "h_dc1658ba751399": {
+      "author": "tangyongjie <tangyongjie@bytedance.com>"
+    }
+  },
+  "sessions": {
+    "s_66b7e6fbbd9bc8": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f8478-a507-73b1-998f-733caaccaa13",
+        "model": "unknown"
+      },
+      "human_author": "tangyongjie <tangyongjie@bytedance.com>"
+    },
+    "s_90ecc465ac68d4": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f88cc-c747-76d0-a951-642be2bc762c",
+        "model": "unknown"
+      },
+      "human_author": "tangyongjie <tangyongjie@bytedance.com>"
+    },
+    "s_976dcfe426eba2": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f87f6-5a58-7a60-be85-807d255c4124",
+        "model": "unknown"
+      },
+      "human_author": "tangyongjie <tangyongjie@bytedance.com>"
+    },
+    "s_bc2dfdc372a653": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a6069937dad67aaaa5efc32",
+        "model": "gemini-3.1-pro__dev"
+      },
+      "human_author": "tangyongjie <tangyongjie@bytedance.com>"
+    },
+    "s_eda2458672e260": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a5f6ac47dad67aaaa5efc20",
+        "model": "gemini-3.1-pro__dev"
+      },
+      "human_author": null
+    }
+  },
+  "attestation_metadata": {
+    "e2e/lynx-e2e-mvp/README.md": [
+      {
+        "hash": "h_dc1658ba751399",
+        "line_ranges": [
+          {
+            "Single": 43
+          }
+        ],
+        "mixed_line_ranges": [
+          {
+            "Single": 43
+          }
+        ],
+        "operations": []
+      }
+    ]
+  },
+  "remote_transcripts": {}
+}

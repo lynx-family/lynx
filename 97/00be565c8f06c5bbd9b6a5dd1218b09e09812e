@@ -1,0 +1,28 @@
+lynx/js_libraries/node-lynx/test/render_gallery.js
+  h_4d36f4d76420fe 91-92,95
+lynx/oliver/build_gn.py
+  s_93aee9110a7cd3::t_2939030d3935ca 139
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "9700be565c8f06c5bbd9b6a5dd1218b09e09812e",
+  "prompts": {},
+  "humans": {
+    "h_4d36f4d76420fe": {
+      "author": "yangguangzhao <yangguangzhao.solace@bytedance.com>"
+    }
+  },
+  "sessions": {
+    "s_93aee9110a7cd3": {
+      "agent_id": {
+        "tool": "trae-cue",
+        "id": "ai_tab-icr-6aec4d75-d922-442d-863f-af747900a1be",
+        "model": "default"
+      },
+      "human_author": "yangguangzhao <yangguangzhao.solace@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

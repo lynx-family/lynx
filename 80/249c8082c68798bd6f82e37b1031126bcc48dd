@@ -1,0 +1,42 @@
+lynx/clay/ui/shadow/text_render.cc
+  s_df8a2f5a8b1344::t_db4e23fb27fe14 332
+  s_df8a2f5a8b1344::t_0ba1d2a6a1d8d6 762-787,789,792-815
+  s_df8a2f5a8b1344::t_6eebfee5815bc2 788,790-791
+lynx/clay/ui/component/text/text_view.cc
+  s_df8a2f5a8b1344::t_98df0e73fb8860 116-120
+lynx/clay/ui/shadow/text_render.h
+  s_df8a2f5a8b1344::t_486969a3afb9be 83-85
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "80249c8082c68798bd6f82e37b1031126bcc48dd",
+  "prompts": {},
+  "sessions": {
+    "s_df8a2f5a8b1344": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a631233b6483ad9b7b67862",
+        "model": "openrouter-3o__dev"
+      },
+      "human_author": null
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {
+    "s_df8a2f5a8b1344": {
+      "tool": "trae",
+      "conversation_id": "6a631233b6483ad9b7b67862",
+      "session_id": "6a631233b6483ad9b7b67862",
+      "status": "remote_only",
+      "message": "Remote transcript resolution is not implemented yet for TRAE prompts."
+    },
+    "s_df8a2f5a8b1344::t_83cf5140a017fe": {
+      "tool": "trae",
+      "conversation_id": "6a631233b6483ad9b7b67862",
+      "session_id": "6a631233b6483ad9b7b67862",
+      "status": "remote_only",
+      "message": "Remote transcript resolution is not implemented yet for TRAE prompts."
+    }
+  }
+}

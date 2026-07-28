@@ -1,0 +1,46 @@
+platform/embedder/plugin/krypton/BUILD.gn
+  s_53abf7b7a3f750::t_b2455d47027513 87-91
+  h_c7499b019d31b1 46-47
+config.gni
+  h_c7499b019d31b1 85 gitai:{"mixed_line_ranges":[{"Single":85}],"operations":[]}
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "034d2b366a4816c713858e06e4997e0bf3bdc9a6",
+  "prompts": {},
+  "humans": {
+    "h_c7499b019d31b1": {
+      "author": "chenyouhui.duke <chenyouhui.duke@bytedance.com>"
+    }
+  },
+  "sessions": {
+    "s_53abf7b7a3f750": {
+      "agent_id": {
+        "tool": "trae-cue",
+        "id": "ai_tab-icr-f80e12f3-db31-420e-a67c-560cf389d96e",
+        "model": "default"
+      },
+      "human_author": "chenyouhui.duke <chenyouhui.duke@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {
+    "config.gni": [
+      {
+        "hash": "h_c7499b019d31b1",
+        "line_ranges": [
+          {
+            "Single": 85
+          }
+        ],
+        "mixed_line_ranges": [
+          {
+            "Single": 85
+          }
+        ],
+        "operations": []
+      }
+    ]
+  },
+  "remote_transcripts": {}
+}

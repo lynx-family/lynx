@@ -1,0 +1,38 @@
+lynx/clay/ui/component/text/text_view.cc
+  s_df8a2f5a8b1344::t_98df0e73fb8860 116-118
+lynx/clay/ui/shadow/text_render.cc
+  s_cb742fcc6020e5::t_e86404dcd99522 309
+  s_df8a2f5a8b1344::t_0ba1d2a6a1d8d6 313,767-793,795-821
+  s_df8a2f5a8b1344::t_6eebfee5815bc2 794
+  s_df8a2f5a8b1344::t_db4e23fb27fe14 337
+  s_df8a2f5a8b1344::t_7b706fe8ee0afa 310-312
+lynx/clay/ui/shadow/text_render.h
+  s_cb742fcc6020e5::t_e4295a07ad3a1e 10,108
+  s_df8a2f5a8b1344::t_486969a3afb9be 84-86
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "5790c570554758f73a6da3d909ec84e77770b365",
+  "prompts": {},
+  "sessions": {
+    "s_cb742fcc6020e5": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fa389-f8d7-7d33-a16b-386ed6331576",
+        "model": "unknown"
+      },
+      "human_author": "liangruijie.030116 <liangruijie.030116@bytedance.com>"
+    },
+    "s_df8a2f5a8b1344": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a631233b6483ad9b7b67862",
+        "model": "openrouter-3o__dev"
+      },
+      "human_author": null
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

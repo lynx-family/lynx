@@ -1,0 +1,16 @@
+lynx/core/runtime/js/bindings/modules/harmony/platform_module_manager.cc
+  h_15058dd2ac5afb 163,165-167,169-192,194-200
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8cfc5da6db8857d5dd5033ba23ffcfa14a2a3174",
+  "prompts": {},
+  "humans": {
+    "h_15058dd2ac5afb": {
+      "author": "zhoushijie <zhoushijie.0523@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

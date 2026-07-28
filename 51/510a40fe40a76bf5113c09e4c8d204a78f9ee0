@@ -1,0 +1,92 @@
+core/runtime/lepus/base_binary_reader.cc
+  h_c7499b019d31b1 24
+dependencies/DEPS.lynxtron
+  s_872b472aa8b2e4::t_419d5cb14c7f57 1120
+  s_a3b2cf1f58748d::t_bb1bd456c9fe25 1127
+core/runtime/lepus/mts_context_factory_impl.cc
+  s_3168e0e0d18b85::t_3c5c53320b4c43 35
+  s_544725ece520bf::t_21f8b68e96f0b1 24
+  s_d1b2d582aef98d::t_558e764eccd340 44 gitai:{"mixed_line_ranges":[{"Single":44}],"operations":[]}
+  s_7f67054bc861ec::t_7fb805da9b633b 43
+  h_c7499b019d31b1 36,42
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "51510a40fe40a76bf5113c09e4c8d204a78f9ee0",
+  "prompts": {},
+  "humans": {
+    "h_c7499b019d31b1": {
+      "author": "chenyouhui.duke <chenyouhui.duke@bytedance.com>"
+    }
+  },
+  "sessions": {
+    "s_3168e0e0d18b85": {
+      "agent_id": {
+        "tool": "trae-cue",
+        "id": "ai_tab-icr-c1cfe853-7948-4e92-86ab-3c9ecb7b53e1",
+        "model": "default"
+      },
+      "human_author": "chenyouhui.duke <chenyouhui.duke@bytedance.com>"
+    },
+    "s_544725ece520bf": {
+      "agent_id": {
+        "tool": "trae-cue",
+        "id": "ai_tab-icr-a1c35074-d071-4c70-8d2e-e9d55a79d2ba",
+        "model": "default"
+      },
+      "human_author": "chenyouhui.duke <chenyouhui.duke@bytedance.com>"
+    },
+    "s_7f67054bc861ec": {
+      "agent_id": {
+        "tool": "trae-cue",
+        "id": "ai_tab-icr-cd7dc2f6-ae90-441c-b5a3-a6434b5522ef",
+        "model": "default"
+      },
+      "human_author": "chenyouhui.duke <chenyouhui.duke@bytedance.com>"
+    },
+    "s_872b472aa8b2e4": {
+      "agent_id": {
+        "tool": "trae-cue",
+        "id": "ai_tab-icr-bffd236f-85d8-48fc-9ed7-797a8bd066fd",
+        "model": "default"
+      },
+      "human_author": "chenyouhui.duke <chenyouhui.duke@bytedance.com>"
+    },
+    "s_a3b2cf1f58748d": {
+      "agent_id": {
+        "tool": "trae-cue",
+        "id": "ai_tab-icr-39370155-36da-44f2-aac2-88b5a2c77e47",
+        "model": "default"
+      },
+      "human_author": "chenyouhui.duke <chenyouhui.duke@bytedance.com>"
+    },
+    "s_d1b2d582aef98d": {
+      "agent_id": {
+        "tool": "trae-cue",
+        "id": "ai_tab-icr-2bdf0e7b-d89a-4e3b-88c4-56976e973b76",
+        "model": "default"
+      },
+      "human_author": "chenyouhui.duke <chenyouhui.duke@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {
+    "core/runtime/lepus/mts_context_factory_impl.cc": [
+      {
+        "hash": "s_d1b2d582aef98d::t_558e764eccd340",
+        "line_ranges": [
+          {
+            "Single": 44
+          }
+        ],
+        "mixed_line_ranges": [
+          {
+            "Single": 44
+          }
+        ],
+        "operations": []
+      }
+    ]
+  },
+  "remote_transcripts": {}
+}

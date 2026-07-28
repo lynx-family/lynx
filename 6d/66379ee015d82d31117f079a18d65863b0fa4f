@@ -1,0 +1,59 @@
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "6d66379ee015d82d31117f079a18d65863b0fa4f",
+  "prompts": {},
+  "sessions": {
+    "s_044ebad8fc1435": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f60d2-4a15-73d0-9f40-945c60ed19dd",
+        "model": "unknown"
+      },
+      "human_author": "liangruijie.030116 <liangruijie.030116@bytedance.com>"
+    },
+    "s_66a02440eee005": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f49e3-7f8e-7f93-a7ae-b8ff29344f0f",
+        "model": "unknown"
+      },
+      "human_author": "liangruijie.030116 <liangruijie.030116@bytedance.com>"
+    },
+    "s_6a549976764f00": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f4712-64e1-7ef2-bbe2-626e8dcd5f9d",
+        "model": "unknown"
+      },
+      "human_author": "liangruijie.030116 <liangruijie.030116@bytedance.com>"
+    },
+    "s_73e1c9cfd4327d": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f60c5-49dd-7b83-885b-dbbb9f121b6b",
+        "model": "unknown"
+      },
+      "human_author": "liangruijie.030116 <liangruijie.030116@bytedance.com>"
+    },
+    "s_82fda60df949e5": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f5fb8-e10a-7162-942b-e6e54c550c2e",
+        "model": "unknown"
+      },
+      "human_author": "liangruijie.030116 <liangruijie.030116@bytedance.com>"
+    },
+    "s_f1a54f7017c726": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a54deb767581c0c6d0e80f4",
+        "model": "gpt-5.6-terra__dev"
+      },
+      "human_author": "liangruijie.030116 <liangruijie.030116@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

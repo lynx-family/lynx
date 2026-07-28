@@ -1,0 +1,45 @@
+platform/harmony/lynx_devtool/BUILD.gn
+  s_337487a73a2a7a::t_c3b21a2b68e18e 14-19 gitai:{"mixed_line_ranges":[{"Single":18}],"operations":[]}
+tools/harmony_rts_runtime_regression.sh
+  s_337487a73a2a7a::t_496c37b18af133 1-258
+platform/harmony/script/build.py
+  s_337487a73a2a7a::t_4c845c8dd04eb2 226
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d698effb7dcc85dc75bb9e77abf2668bbff135f3",
+  "prompts": {},
+  "sessions": {
+    "s_337487a73a2a7a": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a30cab0997b5d1b6a748682",
+        "model": "gpt-5.4"
+      },
+      "human_author": "xuze <xuze@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {
+    "platform/harmony/lynx_devtool/BUILD.gn": [
+      {
+        "hash": "s_337487a73a2a7a::t_c3b21a2b68e18e",
+        "line_ranges": [
+          {
+            "Range": [
+              14,
+              19
+            ]
+          }
+        ],
+        "mixed_line_ranges": [
+          {
+            "Single": 18
+          }
+        ],
+        "operations": []
+      }
+    ]
+  },
+  "remote_transcripts": {}
+}

@@ -1,0 +1,18 @@
+.cq/pipelines/RunExternalCI.yml
+  h_7a1e47632c7d77 17,27
+lynx/.github/workflows/ci.yml
+  h_7a1e47632c7d77 229
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "5681fd476514ec26272b44125d96304f91e24e49",
+  "prompts": {},
+  "humans": {
+    "h_7a1e47632c7d77": {
+      "author": "gaohanqing <gaohanqing@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

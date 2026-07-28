@@ -1,0 +1,18 @@
+relax/BUILD.gn
+  h_c7499b019d31b1 26
+dependencies/DEPS.lynxtron
+  h_c7499b019d31b1 1115-1132
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "81ce00e586071d711d93b55348d418ee353f95bc",
+  "prompts": {},
+  "humans": {
+    "h_c7499b019d31b1": {
+      "author": "chenyouhui.duke <chenyouhui.duke@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}
