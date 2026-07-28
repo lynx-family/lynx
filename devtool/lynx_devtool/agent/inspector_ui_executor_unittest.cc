@@ -131,6 +131,11 @@ TEST_F(InspectorUIExecutorTest, StartScreencastTest) {
     ui_executor_->StartScreencast(message_sender_, message);
     EXPECT_EQ(devtool::MockReceiver::GetInstance().received_message_.second,
               "{\n   \"id\" : 31,\n   \"result\" : {}\n}\n");
+    ASSERT_EQ(facade->screen_cast_requests_.size(), 1U);
+    EXPECT_EQ(facade->screen_cast_requests_.back().format_, "jpeg");
+    EXPECT_EQ(facade->screen_cast_requests_.back().quality_, 100);
+    EXPECT_EQ(facade->screen_cast_requests_.back().type_,
+              devtool::ScreenshotType::JPEG);
   }
 
   {
@@ -143,6 +148,11 @@ TEST_F(InspectorUIExecutorTest, StartScreencastTest) {
     ui_executor_->StartScreencast(message_sender_, message);
     EXPECT_EQ(devtool::MockReceiver::GetInstance().received_message_.second,
               "{\n   \"id\" : 32,\n   \"result\" : {}\n}\n");
+    ASSERT_EQ(facade->screen_cast_requests_.size(), 2U);
+    EXPECT_EQ(facade->screen_cast_requests_.back().format_, "jpeg");
+    EXPECT_EQ(facade->screen_cast_requests_.back().quality_, 80);
+    EXPECT_EQ(facade->screen_cast_requests_.back().type_,
+              devtool::ScreenshotType::JPEG);
   }
 
   {
@@ -159,6 +169,14 @@ TEST_F(InspectorUIExecutorTest, StartScreencastTest) {
     ui_executor_->StartScreencast(message_sender_, message);
     EXPECT_EQ(devtool::MockReceiver::GetInstance().received_message_.second,
               "{\n   \"id\" : 33,\n   \"result\" : {}\n}\n");
+    ASSERT_EQ(facade->screen_cast_requests_.size(), 3U);
+    EXPECT_EQ(facade->screen_cast_requests_.back().format_, "png");
+    EXPECT_EQ(facade->screen_cast_requests_.back().quality_, 100);
+    EXPECT_EQ(facade->screen_cast_requests_.back().max_width_, 720U);
+    EXPECT_EQ(facade->screen_cast_requests_.back().max_height_, 1280U);
+    EXPECT_EQ(facade->screen_cast_requests_.back().every_nth_frame_, 2);
+    EXPECT_EQ(facade->screen_cast_requests_.back().type_,
+              devtool::ScreenshotType::PNG);
   }
 }
 

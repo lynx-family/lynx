@@ -4,6 +4,8 @@
 
 #include "devtool/testing/mock/devtool_platform_facade_mock.h"
 
+#include <utility>
+
 namespace lynx {
 namespace testing {
 int DevToolPlatformFacadeMock::FindNodeIdForLocation(
@@ -53,7 +55,9 @@ std::vector<float> DevToolPlatformFacadeMock::GetTransformValue(
 }
 
 void DevToolPlatformFacadeMock::StartScreenCast(
-    devtool::ScreenshotRequest request) {}
+    devtool::ScreenshotRequest request) {
+  screen_cast_requests_.push_back(std::move(request));
+}
 void DevToolPlatformFacadeMock::StopScreenCast() {}
 void DevToolPlatformFacadeMock::OnAckReceived() {}
 void DevToolPlatformFacadeMock::GetLynxScreenShot() {}

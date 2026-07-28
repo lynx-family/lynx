@@ -17,6 +17,8 @@ static int const kCardPreviewMaxHeight = 800;
 
 NSString* const ScreenshotModeLynxView = @"lynxview";
 NSString* const ScreenshotModeFullScreen = @"fullscreen";
+static NSString* const kScreenshotFormatJPEG = @"jpeg";
+static NSString* const kScreenshotFormatPNG = @"png";
 
 // Delay for 1500ms to allow time for rendering remote resources
 int const ScreenshotPreviewDelayTime = 1500;
@@ -34,7 +36,8 @@ int const ScreenshotPreviewDelayTime = 1500;
 - (void)startCapture:(int)quality
                width:(int)max_width
               height:(int)max_height
-                mode:(NSString*)screenshot_mode;
+                mode:(NSString*)screenshot_mode
+              format:(NSString*)format;
 
 - (void)stopCapture;
 - (void)onAckReceived;
@@ -48,6 +51,7 @@ int const ScreenshotPreviewDelayTime = 1500;
   BOOL enabled_;
   BOOL ack_received_;
   ScreenshotMode screenshot_mode_;
+  NSString* format_;
 
   __weak DevToolPlatformDarwinDelegate* _platformDelegate;
   __weak LynxView* _lynxView;
@@ -74,6 +78,7 @@ int const ScreenshotPreviewDelayTime = 1500;
     enabled_ = NO;
     ack_received_ = NO;
     screenshot_mode_ = ScreenshotModeFullScreen;
+    format_ = kScreenshotFormatJPEG;
 
     _lynxView = root;
     _platformDelegate = platformDelegate;
@@ -171,8 +176,12 @@ int const ScreenshotPreviewDelayTime = 1500;
   }
 }
 
-- (NSString*)Get1xJPEGBytesFromUIImage:(UIImage*)uiimage withQuality:(int)quality {
-  NSData* data = UIImageJPEGRepresentation(uiimage, quality / 100.0);
+- (NSString*)Get1xImageBytesFromUIImage:(UIImage*)uiimage
+                            withQuality:(int)quality
+                                 format:(NSString*)format {
+  NSData* data = [format isEqualToString:kScreenshotFormatPNG]
+                     ? UIImagePNGRepresentation(uiimage)
+                     : UIImageJPEGRepresentation(uiimage, quality / 100.0);
   NSString* str = [data base64EncodedStringWithOptions:0];
   return str;
 }
@@ -231,17 +240,21 @@ int const ScreenshotPreviewDelayTime = 1500;
   return [self createImageOfView:view];
 }
 
-- (NSString*)Get1xJPEGBytesFromUIImage:(NSImage*)uiimage withQuality:(int)quality {
+- (NSString*)Get1xImageBytesFromUIImage:(NSImage*)uiimage
+                            withQuality:(int)quality
+                                 format:(NSString*)format {
   CGFloat width = uiimage.size.width;
   CGFloat height = uiimage.size.height;
   [uiimage lockFocus];
   NSBitmapImageRep* bits =
       [[NSBitmapImageRep alloc] initWithFocusedViewRect:NSMakeRect(0, 0, width, height)];
   [uiimage unlockFocus];
+  BOOL usePNG = [format isEqualToString:kScreenshotFormatPNG];
   NSDictionary* imageProps =
-      [NSDictionary dictionaryWithObject:[NSNumber numberWithFloat:quality / 100.0]
-                                  forKey:NSImageCompressionFactor];
-  NSData* data = [bits representationUsingType:NSJPEGFileType properties:imageProps];
+      usePNG ? @{} : @{NSImageCompressionFactor : [NSNumber numberWithFloat:quality / 100.0]};
+  NSData* data =
+      [bits representationUsingType:(usePNG ? NSBitmapImageFileTypePNG : NSBitmapImageFileTypeJPEG)
+                         properties:imageProps];
   NSString* str = [data base64EncodedStringWithOptions:0];
   return str;
 }
@@ -281,12 +294,15 @@ int const ScreenshotPreviewDelayTime = 1500;
 - (void)startCapture:(int)quality
                width:(int)max_width
               height:(int)max_height
-                mode:(NSString*)screenshot_mode {
+                mode:(NSString*)screenshot_mode
+              format:(NSString*)format {
   quality_ = quality;
   max_width_ = max_width;
   max_height_ = max_height;
   enabled_ = YES;
   screenshot_mode_ = screenshot_mode;
+  format_ =
+      [format isEqualToString:kScreenshotFormatPNG] ? kScreenshotFormatPNG : kScreenshotFormatJPEG;
   [self attachView:_lynxView];
   [self startFrameViewTrace];
   // manually trigger first snapshot
@@ -366,12 +382,13 @@ int const ScreenshotPreviewDelayTime = 1500;
   int max_width = isPreview ? kCardPreviewMaxWidth : max_width_;
   int max_height = isPreview ? kCardPreviewMaxHeight : max_height_;
   int quality = isPreview ? kCardPreviewQuality : quality_;
+  NSString* format = isPreview ? kScreenshotFormatJPEG : format_;
   scalling = [self getScallingFromWidth:original_width
                                  height:original_height
                                maxWidth:max_width
                               maxHeight:max_height];
   image = [self scaleImage:image toScale:scalling];
-  return [self Get1xJPEGBytesFromUIImage:image withQuality:quality];
+  return [self Get1xImageBytesFromUIImage:image withQuality:quality format:format];
 }
 
 - (void)onNewSnapshot:(NSString*)data {
@@ -398,6 +415,7 @@ int const ScreenshotPreviewDelayTime = 1500;
   int max_width_;
   int quality_;
   ScreenshotMode screenshot_mode_;
+  NSString* format_;
 
   LynxScreenCapture* _screenCapture;
 }
@@ -417,12 +435,15 @@ int const ScreenshotPreviewDelayTime = 1500;
 - (void)startCasting:(int)quality
                width:(int)max_width
               height:(int)max_height
-                mode:(NSString*)screenshot_mode {
+                mode:(NSString*)screenshot_mode
+              format:(NSString*)format {
   _screencast_enabled = YES;
   quality_ = quality;
   max_width_ = max_width;
   max_height_ = max_height;
   screenshot_mode_ = screenshot_mode;
+  format_ =
+      [format isEqualToString:kScreenshotFormatPNG] ? kScreenshotFormatPNG : kScreenshotFormatJPEG;
   if (!_paused) {
     [self startScreencastInternal];
   }
@@ -431,7 +452,11 @@ int const ScreenshotPreviewDelayTime = 1500;
 - (void)startScreencastInternal {
   __strong typeof(_platformDelegate) platformDelegate = _platformDelegate;
   [platformDelegate dispatchScreencastVisibilityChanged:YES];
-  [_screenCapture startCapture:quality_ width:max_width_ height:max_height_ mode:screenshot_mode_];
+  [_screenCapture startCapture:quality_
+                         width:max_width_
+                        height:max_height_
+                          mode:screenshot_mode_
+                        format:format_];
 }
 
 - (void)stopCasting {

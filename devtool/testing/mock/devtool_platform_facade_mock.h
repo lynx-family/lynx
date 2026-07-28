@@ -73,6 +73,7 @@ class DevToolPlatformFacadeMock : public lynx::devtool::DevToolPlatformFacade {
   std::unordered_map<std::string, bool> devtools_switch_;
   std::string inserted_text_;
   std::vector<devtool::InspectorBoxModelQuery> box_model_queries_;
+  std::vector<devtool::ScreenshotRequest> screen_cast_requests_;
   std::vector<double> box_model_response_;
   std::vector<int> transform_value_ids_;
   std::vector<std::vector<float>> transform_value_inputs_;
