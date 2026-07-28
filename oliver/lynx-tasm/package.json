@@ -15,6 +15,7 @@
     "build/**/*.node",
     "build-dll/liblepus.dylib",
     "cli.js",
+    "decode_detail.js",
     "index.js",
     "index.d.ts",
     "lepus.js",

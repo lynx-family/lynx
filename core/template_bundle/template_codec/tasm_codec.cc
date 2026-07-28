@@ -6,10 +6,13 @@
 
 #include <cstdlib>
 #include <cstring>
+#include <string>
+#include <vector>
 
 #include "core/template_bundle/lynx_template_bundle_converter.h"
 #include "core/template_bundle/template_codec/binary_encoder/encoder.h"
 #include "core/template_bundle/template_codec/public/tasm_codec_capi.h"
+#include "core/template_bundle/template_codec/template_binary_info.h"
 
 namespace {
 
@@ -172,6 +175,10 @@ DecodeResult Decode(const uint8_t* data, size_t len) {
   out.result = lynx::tasm::LynxTemplateBundleConverter::
       ConvertTemplateBundleToSerializedString(bundle);
   return out;
+}
+
+DecodeResult DecodeTemplateBinaryInfo(const uint8_t* data, size_t len) {
+  return DecodeTemplateBinaryInfoImpl(data, len);
 }
 
 }  // namespace codec

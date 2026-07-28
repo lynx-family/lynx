@@ -38,6 +38,13 @@ EncodeResult Encode(const std::string& options_json);
 //! @return DecodeResult with decoded result.
 DecodeResult Decode(const uint8_t* data, size_t len);
 
+//! Decode template binary section and content attribution information.
+//!
+//! @param data Pointer to binary data.
+//! @param len Length of binary data in bytes.
+//! @return DecodeResult whose result is a JSON string with binary information.
+DecodeResult DecodeTemplateBinaryInfo(const uint8_t* data, size_t len);
+
 }  // namespace codec
 }  // namespace tasm
 }  // namespace lynx

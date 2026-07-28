@@ -2,6 +2,8 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+#include <utility>
+
 #include "core/template_bundle/template_codec/binary_encoder/encoder.h"
 #include "core/template_bundle/template_codec/public/tasm_codec.h"
 #include "napi.h"
@@ -23,6 +25,9 @@ class TASMAddon : public Napi::Addon<TASMAddon> {
                            napi_enumerable),
             InstanceMethod("encrypt", &TASMAddon::EncryptNapi, napi_enumerable),
             InstanceMethod("decrypt", &TASMAddon::DecryptNapi, napi_enumerable),
+            InstanceMethod("decode_template_binary_info",
+                           &TASMAddon::DecodeTemplateBinaryInfoNapi,
+                           napi_enumerable),
         });
   }
 
@@ -120,6 +125,31 @@ class TASMAddon : public Napi::Addon<TASMAddon> {
       obj.Set("error_msg", res.error_msg);
       return obj;
     }
+  }
+
+  Napi::Value DecodeTemplateBinaryInfoNapi(const Napi::CallbackInfo& info) {
+    Napi::Env env = info.Env();
+    napi_status status;
+    uint8_t* buffer_ptr;
+    size_t buffer_length;
+    Napi::Object obj = Napi::Object::New(env);
+    status = napi_get_buffer_info(
+        env, info[0], reinterpret_cast<void**>(&buffer_ptr), &buffer_length);
+    if (status != napi_ok) {
+      obj.Set("status", -1);
+      obj.Set("error_msg", "Invalid Buffer!");
+      return obj;
+    }
+    auto res =
+        lynx::tasm::codec::DecodeTemplateBinaryInfo(buffer_ptr, buffer_length);
+    if (res.status == 0) {
+      obj.Set("status", 0);
+      obj.Set("result", std::move(res.result));
+      return obj;
+    }
+    obj.Set("status", -1);
+    obj.Set("error_msg", res.error_msg);
+    return obj;
   }
 };
 

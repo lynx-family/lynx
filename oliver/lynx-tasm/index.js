@@ -4,6 +4,9 @@
 
 const path = require('path');
 const fs = require('fs');
+const {
+  createTemplateDecodeDetailApi,
+} = require('./decode_detail');
 
 function supportNapi(){
   return process.platform === 'darwin' || (process.platform === 'linux' && process.arch === "x64")
@@ -15,6 +18,27 @@ function createModule() {
   // codec operations that need stable binary output.
   // eslint-disable-next-line @typescript-eslint/no-var-requires
   return require('./lepus')();
+}
+
+function loadNapiBinding() {
+  const candidates = [];
+  if (process.platform === 'darwin') {
+    if (process.arch === 'x64') {
+      candidates.push(`./build/${process.platform}/Release/x64/lepus.node`);
+    } else if (process.arch === 'arm64') {
+      candidates.push(`./build/${process.platform}/Release/arm64/lepus.node`);
+    }
+  }
+  candidates.push(`./build/${process.platform}/Release/lepus.node`);
+  for (const p of candidates) {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      return require(p);
+    } catch (e) {
+    }
+  }
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  return require(`./build/${process.platform}/Release/lepus.node`);
 }
 
 function disposeClassHandle(handle) {
@@ -65,7 +89,7 @@ async function encode_wasm(options) {
   }
 }
 function encode_napi(options) {
-  const lepus = require(`./build/${process.platform}/Release/lepus.node`);
+  const lepus = loadNapiBinding();
   const res = lepus.encode(JSON.stringify({...options}));
   if (res.status !== 0) {
     throw new Error(`encode error: ${res.error_msg}`);
@@ -89,13 +113,13 @@ function getEncodeMode(os) {
 }
 
 function encrypt(plain) {
-  const lepus = require(`./build/${process.platform}/Release/lepus.node`);
+  const lepus = loadNapiBinding();
   const res = lepus.encrypt(plain);
   return res
 }
 
 function decrypt(cipher) {
-  const lepus = require(`./build/${process.platform}/Release/lepus.node`);
+  const lepus = loadNapiBinding();
   const res = lepus.decrypt(cipher);
   return res
 }
@@ -119,8 +143,8 @@ async function decrypt_wasm(plain) {
 }
 
 function decode_napi(templateJS) {
-  const templateArray = Uint8Array.from(templateJS);
-  const lepus = require(`./build/${process.platform}/Release/lepus.node`);
+  const templateArray = toTemplateBuffer(templateJS);
+  const lepus = loadNapiBinding();
   const res = lepus.decode(templateArray);
   if (res.status !== 0) {
     throw new Error(`decode error: ${res.error_msg}`);
@@ -153,6 +177,50 @@ async function decode_wasm(buffer) {
   }
 }
 
+function decodeBinaryInfoNapi(templateJS) {
+  const templateArray = toTemplateBuffer(templateJS);
+  const lepus = loadNapiBinding();
+  const res = lepus.decode_template_binary_info(templateArray);
+  if (res.status !== 0) {
+    throw new Error(`template binary info decode error: ${res.error_msg}`);
+  }
+  return JSON.parse(res.result);
+}
+
+function decodeWasmJson(Module, buffer, methodName, errorPrefix) {
+  const byteArray = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
+  const byteArrayLength = byteArray.length;
+  const byteArrayPtr = Module._malloc(byteArrayLength);
+  Module.HEAPU8.set(byteArray, byteArrayPtr);
+  const res = Module[methodName](byteArrayPtr, byteArrayLength);
+  Module._free(byteArrayPtr);
+  try {
+    if (res.status !== 0) {
+      throw new Error(`${errorPrefix} error: ${res.result || res.error_msg}`);
+    }
+    return JSON.parse(res.result);
+  } finally {
+    disposeClassHandle(res);
+  }
+}
+
+function toTemplateBuffer(templateJS) {
+  return Buffer.isBuffer(templateJS) ? templateJS : Buffer.from(templateJS);
+}
+
+const {
+  decode_detail,
+  decode_detail_napi,
+  decode_detail_wasm,
+} = createTemplateDecodeDetailApi({
+  supportNapi,
+  createModule,
+  decodeNapi: decode_napi,
+  decodeBinaryInfoNapi,
+  decodeWasmJson,
+  toTemplateBuffer,
+});
+
 let encode = encode_napi;
 module.exports = {
   supportNapi,
@@ -166,5 +234,8 @@ module.exports = {
   encrypt_wasm,
   decrypt_wasm,
   decode_napi,
-  decode_wasm
+  decode_wasm,
+  decode_detail,
+  decode_detail_napi,
+  decode_detail_wasm
 };

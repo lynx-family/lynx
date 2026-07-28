@@ -29,6 +29,16 @@ lynx::tasm::codec::DecodeResult DecodeForWasm(uintptr_t binary_ptr,
   return res;
 }
 
+lynx::tasm::codec::DecodeResult DecodeTemplateBinaryInfoForWasm(
+    uintptr_t binary_ptr, size_t length) {
+  auto res = lynx::tasm::codec::DecodeTemplateBinaryInfo(
+      reinterpret_cast<const uint8_t*>(binary_ptr), length);
+  if (res.status != 0 && res.result.empty()) {
+    res.result = res.error_msg;
+  }
+  return res;
+}
+
 }  // namespace
 
 EMSCRIPTEN_BINDINGS(encode) {
@@ -65,6 +75,12 @@ EMSCRIPTEN_BINDINGS(encode) {
       "_decode",
       emscripten::optional_override([](uintptr_t binaryPtr, size_t length) {
         return DecodeForWasm(binaryPtr, length);
+      }),
+      emscripten::allow_raw_pointers());
+  function(
+      "_decode_template_binary_info",
+      emscripten::optional_override([](uintptr_t binaryPtr, size_t length) {
+        return DecodeTemplateBinaryInfoForWasm(binaryPtr, length);
       }),
       emscripten::allow_raw_pointers());
 }

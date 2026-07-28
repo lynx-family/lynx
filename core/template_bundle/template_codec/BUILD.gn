@@ -78,7 +78,11 @@ lynx_core_source_set("tasm_codec_facade") {
     "public/tasm_codec_capi.h",
     "public/tasm_codec_types.h",
     "tasm_codec.cc",
+    "template_binary_info.cc",
+    "template_binary_info.h",
   ]
+
+  deps = [ "../../../third_party/rapidjson:rapidjson" ]
 
   public_deps = [
     ":template_decoder",
