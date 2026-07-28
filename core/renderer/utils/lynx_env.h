@@ -521,6 +521,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
   bool EnableElementApiNewRegistration();
   bool EnableElementInvokeUIMethodPendingTask();
   bool EnableFiberUpdateMetaData();
+  static constexpr uint32_t kJSCoverageSamplingBasisPointsMax = 10000;
   // Returns the JS coverage page sampling rate in basis points. 0 disables
   // coverage, 10000 samples every page, and N gives each page an N / 10000
   // sampling probability. Invalid values fall back to 0.

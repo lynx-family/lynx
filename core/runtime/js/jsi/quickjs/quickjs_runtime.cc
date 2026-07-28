@@ -6,6 +6,7 @@
 
 #include <chrono>
 #include <limits>
+#include <random>
 #include <utility>
 #include <vector>
 
@@ -53,12 +54,42 @@ void reportLepusToCStringError(Runtime &rt, const std::string &func_name,
   LOGE(error);
   rt.reportJSIException(BUILD_JSI_NATIVE_EXCEPTION(error));
 }
+
+bool SampleJSCoverageForPage() {
+  // This function is called once while constructing a QuickjsRuntime. The
+  // returned page-level decision is stored as a bool for the lifetime of the
+  // runtime, so scripts on the same page consistently use the same evaluation
+  // path without reading the environment or sampling again.
+  //
+  // A basis point is 1 / 10000: 0 disables coverage, 10000 enables it for
+  // every page, and an intermediate value N samples N out of 10000 pages.
+  const uint32_t basis_points =
+      tasm::LynxEnv::GetInstance().GetJSCoveragePageSamplingBasisPoints();
+
+  // Keep the two common rollout endpoints deterministic and avoid touching
+  // the random source at all when sampling is fully disabled or enabled.
+  if (basis_points == 0) {
+    return false;
+  }
+  if (basis_points >= tasm::LynxEnv::kJSCoverageSamplingBasisPointsMax) {
+    return true;
+  }
+
+  // Seed one pseudo-random engine per JS thread from the platform entropy
+  // source, then reuse it across runtime constructions to keep sampling
+  // inexpensive and avoid synchronization. uniform_int_distribution maps its
+  // output to [0, 9999] without modulo bias, giving exactly
+  // basis_points / 10000 sampling probability.
+  thread_local std::mt19937 random_engine(std::random_device{}());
+  std::uniform_int_distribution<uint32_t> distribution(
+      0, tasm::LynxEnv::kJSCoverageSamplingBasisPointsMax - 1);
+  return distribution(random_engine) < basis_points;
+}
 }  // namespace
 
 QuickjsRuntime::QuickjsRuntime()
     : quickjs_runtime_wrapper_(nullptr),
-      js_coverage_page_sampling_basis_points_(
-          tasm::LynxEnv::GetInstance().GetJSCoveragePageSamplingBasisPoints()) {
+      enable_js_coverage_(SampleJSCoverageForPage()) {
 #if !defined(LYNX_UNIT_TEST) || !LYNX_UNIT_TEST || \
     defined(QUICKJS_CACHE_UNITTEST)
   static std::once_flag clear_cache_flag;
@@ -157,7 +188,8 @@ base::expected<Value, JSINativeException> QuickjsRuntime::evaluateJavaScript(
   auto eval_res = QuickjsHelper::evalBuf(
       this, context_->getContext(),
       reinterpret_cast<const char *>(buffer->data()), buffer->size(),
-      filename.c_str(), LEPUS_EVAL_TYPE_GLOBAL, start_line_offset);
+      filename.c_str(), LEPUS_EVAL_TYPE_GLOBAL, start_line_offset,
+      enable_js_coverage_);
   if (!eval_res.has_value()) {
     LOGE("QuickjsRuntime::evaluateJavaScript failed:"
          << eval_res.error().ToString());

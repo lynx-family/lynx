@@ -222,7 +222,8 @@ std::string QuickjsHelper::getErrorMessage(LEPUSContext *ctx,
 
 base::expected<Value, JSINativeException> QuickjsHelper::evalBuf(
     QuickjsRuntime *rt, LEPUSContext *ctx, const char *buf, size_t buf_len,
-    const char *filename, int eval_flags, int start_line_offset) {
+    const char *filename, int eval_flags, int start_line_offset,
+    bool enable_js_coverage) {
 #ifdef OS_IOS
   if (!(tasm::LynxEnv::GetInstance().IsDevToolEnabled() ||
         rt->GetPageOptions().GetDebuggable()) &&
@@ -230,8 +231,16 @@ base::expected<Value, JSINativeException> QuickjsHelper::evalBuf(
     eval_flags |= LEPUS_EVAL_FLAG_STRIP;
   }
 #endif
-  LEPUSValue val =
-      LEPUS_Eval2(ctx, buf, buf_len, filename, eval_flags, start_line_offset);
+  LEPUSValue val;
+  if (enable_js_coverage) {
+    // TODO: Replace this fallback with LEPUS_Eval2_WITH_COVERAGE after the
+    // PrimJS API lands.
+    val =
+        LEPUS_Eval2(ctx, buf, buf_len, filename, eval_flags, start_line_offset);
+  } else {
+    val =
+        LEPUS_Eval2(ctx, buf, buf_len, filename, eval_flags, start_line_offset);
+  }
   auto maybe_error = QuickjsException::TryCatch(*rt, val);
   if (maybe_error.has_value()) {
     LOGE("evalBuf failed:" << filename);
