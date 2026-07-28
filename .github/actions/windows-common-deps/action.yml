@@ -112,12 +112,23 @@ runs:
       shell: pwsh
       working-directory: lynx
       run: |
+        New-Item -ItemType Directory -Force -Path (Split-Path -Parent $env:HABITAT_STAT_FILE) | Out-Null
         if ([string]::IsNullOrEmpty("${{ inputs.target }}")) {
-            powershell.exe -Command "& .\tools\hab.ps1 sync ."
+            .\tools\hab.ps1 --stat-output $env:HABITAT_STAT_FILE sync .
         } else {
-            powershell.exe -Command "& .\tools\hab.ps1 sync . --target ${{ inputs.target }}"
+            .\tools\hab.ps1 --stat-output $env:HABITAT_STAT_FILE sync . --target ${{ inputs.target }}
         }
         if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       env:
         HABITAT_CONCURRENCY: ${{ inputs.concurrency }}
+        HABITAT_STAT_FILE: ${{ runner.temp }}/habitat-stats/habitat_session.jsonl
         npm_config_store_dir: ${{ steps.npm-cache-dir.outputs.NPM_CACHE_DIR }}
+
+    - name: Upload Habitat statistics
+      if: ${{ always() }}
+      continue-on-error: true
+      uses: lynx-infra/upload-artifact@332ec52e99f7cbf1fbbdc9bcc09280d49147d092
+      with:
+        name: habitat-stats-${{ github.job }}-${{ strategy.job-index || 0 }}-${{ github.run_attempt }}
+        path: ${{ runner.temp }}/habitat-stats/habitat_session.jsonl
+        if-no-files-found: warn
