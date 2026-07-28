@@ -1786,35 +1786,15 @@ void Element::CheckFlattenRelatedProp(const base::String& key,
                                       const lepus::Value& value) {
   constexpr const static char* kFlatten = "flatten";
 
-  // Keys whose mere presence forces the node to be non-flatten. The first four
-  // are generic; the rest are Android-only attributes whose capability relies
-  // on a real platform View, so the node must be non-flatten to behave
-  // correctly.
-  constexpr const static std::array<const char*, 15> kNonFlattenKeys = {
-      "name",
-      "native-interaction-enabled",
-      // TODO(hexionghui): remove this latter.
-      "user-interaction-enabled",
-      "overlap",
-      "text-selection",
-      "custom-context-menu",
-      "custom-text-selection",
-      "selection-background-color",
-      "selection-handle-color",
-      "selection-handle-size",
-      "hardware-layer",
-      "shared-element",
-      "pan-intercept-direction",
-      "pan-intercept-scope",
-      "lynx-test-tag",
-  };
-  // Intentionally NOT added here:
-  // - "android-consume-hover-event": only takes effect when accessibility is
-  //   enabled, and in accessibility helper mode the node is already forced
-  //   non-flatten globally, so adding it here would be redundant.
-  // - "blur-sampling" / "android-enable-auto-blur": both only take effect when
-  //   `filter: blur(...)` is set, and `filter` already makes the node
-  //   non-flatten via CheckHasNonFlattenCSSProps, so they add nothing.
+  constexpr const static char* kName = "name";
+  constexpr const static char* kNativeInteractionEnabled =
+      "native-interaction-enabled";
+
+  // TODO(hexionghui): remove this latter.
+  constexpr const static char* kUserInteractionEnabled =
+      "user-interaction-enabled";
+
+  constexpr const static char* kOverLap = "overlap";
 
   // TODO(hexionghui): remove this latter.
   constexpr const static char* kExposureScene = "exposure-scene";
@@ -1837,9 +1817,8 @@ void Element::CheckFlattenRelatedProp(const base::String& key,
   if (has_non_flatten_attrs_ || !config_flatten_) return;
 
   const static auto check_key = [](const base::String& key) {
-    return std::any_of(
-        kNonFlattenKeys.begin(), kNonFlattenKeys.end(),
-        [&key](const char* candidate) { return key.IsEqual(candidate); });
+    return key.IsEqual(kName) || key.IsEqual(kNativeInteractionEnabled) ||
+           key.IsEqual(kUserInteractionEnabled) || key.IsEqual(kOverLap);
   };
 
   const static auto check_key_and_value = [](const base::String& key,
@@ -2020,19 +1999,12 @@ void Element::CheckHasNonFlattenCSSProps(CSSPropertyID id) {
       id == CSSPropertyID::kPropertyIDTransform ||
       id == CSSPropertyID::kPropertyIDTransformOrigin ||
       id == CSSPropertyID::kPropertyIDMaskImage ||
-      id == CSSPropertyID::kPropertyIDOffsetDistance ||
-      id == CSSPropertyID::kPropertyIDOffsetPath ||
-      id == CSSPropertyID::kPropertyIDOffsetRotate ||
-      id == CSSPropertyID::kPropertyIDPerspective ||
       (id >= CSSPropertyID::kPropertyIDOutline &&
        id <= CSSPropertyID::kPropertyIDOutlineWidth) ||
       (id >= CSSPropertyID::kPropertyIDLayoutAnimationCreateDuration &&
        id <= CSSPropertyID::kPropertyIDLayoutAnimationUpdateDelay)) {
     has_non_flatten_attrs_ = true;
   }
-  // Intentionally NOT handled here: enter/exit/pause/resume-transition-name.
-  // These hero-transition properties are deprecated, so we do not force their
-  // nodes to be non-flatten.
 }
 
 void Element::CheckFixedSticky(CSSPropertyID id, const tasm::CSSValue& value) {
