@@ -58,7 +58,7 @@ LayoutResult TextShadowNode::Measure(float width, MeasureMode width_mode,
   HandleWhiteSpace();
   MeasureChildrenNode(width, width_mode, height, height_mode, final_measure);
   paragraph_builder_ = std::make_unique<ParagraphBuilderHarmony>(
-      paragraph_style_.get(), font_collection_.get());
+      paragraph_style_.get(), font_collection_.get(), GetOwner());
   origin_char_count_ = ellipsis_count_ = 0;
   inline_truncation_shadow_node_ = FindInlineTruncationNode();
   if (inline_truncation_shadow_node_ == nullptr &&
@@ -149,8 +149,8 @@ fml::RefPtr<ParagraphHarmony> TextShadowNode::HandleTextOverflowAndTruncation(
     need_truncation = false;
   } else {
     auto truncation_paragraph_builder =
-        std::make_unique<ParagraphBuilderHarmony>(paragraph_style_.get(),
-                                                  font_collection_.get());
+        std::make_unique<ParagraphBuilderHarmony>(
+            paragraph_style_.get(), font_collection_.get(), GetOwner());
     truncation_paragraph = LayoutNode(
         inline_truncation_shadow_node_, truncation_paragraph_builder.get(),
         width, width_mode, height, height_mode, final_measure);
@@ -165,7 +165,7 @@ fml::RefPtr<ParagraphHarmony> TextShadowNode::HandleTextOverflowAndTruncation(
     }
     paragraph_style_->SetTextMaxLines(truncation_line_index + 1);
     paragraph_builder_ = std::make_unique<ParagraphBuilderHarmony>(
-        paragraph_style_.get(), font_collection_.get());
+        paragraph_style_.get(), font_collection_.get(), GetOwner());
     AppendToParagraph(*paragraph_builder_, width * ScaleDensity(),
                       height * ScaleDensity());
     paragraph = paragraph_builder_->CreateParagraph(font_collection_, width);

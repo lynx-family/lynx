@@ -209,7 +209,7 @@ void ParagraphBuilderHarmony::AddTextToTypographyBuilder(
 
 bool ParagraphBuilderHarmony::TryAddEmojiPlaceholder(std::string_view name) {
   auto& emoji_resource_manager = EmojiResourceManager::GetInstance();
-  if (!emoji_resource_manager.GetEmojiImage(name)) {
+  if (!emoji_resource_manager.GetEmojiImage(name, owner_)) {
     return false;
   }
   const float emoji_size = CurrentEmojiPlaceholderSize();

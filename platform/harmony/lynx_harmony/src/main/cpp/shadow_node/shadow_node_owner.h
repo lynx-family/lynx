@@ -8,6 +8,7 @@
 #include <node_api.h>
 
 #include <memory>
+#include <mutex>
 #include <string>
 #include <unordered_map>
 
@@ -101,6 +102,15 @@ class ShadowNodeOwner : public std::enable_shared_from_this<ShadowNodeOwner> {
   void NotifySystemFontUpdated();
   void SetTriggerLayoutCallback(base::closure callback);
 
+  bool TryMarkEmojiResourcesFetched() {
+    std::lock_guard<std::mutex> lock(emoji_resources_mutex_);
+    if (emoji_resources_fetched_) {
+      return false;
+    }
+    emoji_resources_fetched_ = true;
+    return true;
+  }
+
  private:
   ShadowNode* CreateJSShadowNode(int sign, const std::string& tag,
                                  PropBundleHarmony* props);
@@ -130,6 +140,8 @@ class ShadowNodeOwner : public std::enable_shared_from_this<ShadowNodeOwner> {
   float root_width_{0.f};
   float root_height_{0.f};
   bool destroyed_{false};
+  std::mutex emoji_resources_mutex_;
+  bool emoji_resources_fetched_{false};
 };
 }  // namespace harmony
 }  // namespace tasm

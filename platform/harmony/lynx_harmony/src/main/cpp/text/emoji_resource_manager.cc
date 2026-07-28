@@ -13,9 +13,12 @@
 
 #include "base/include/log/logging.h"
 #include "base/include/platform/harmony/napi_util.h"
+#include "base/trace/native/trace_event.h"
+#include "core/base/harmony/harmony_trace_event_def.h"
 #include "core/base/threading/task_runner_manufactor.h"
 #include "core/renderer/utils/lynx_env.h"
 #include "core/resource/lynx_resource_loader_harmony.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/shadow_node/shadow_node_owner.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/base/lynx_image_constants.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/base/lynx_image_helper.h"
 
@@ -26,7 +29,6 @@ namespace harmony {
 namespace {
 
 static constexpr const char* kGetEmojiResourcesMethod = "getEmojiResources";
-// Emoji names that should be decoded after the resource list is loaded.
 // Keep this list small because each entry may trigger an async image decode.
 static constexpr std::string_view kCommonEmojiNames[] = {
     "\xE7\xAC\x91\xE8\x84\xB8",  // smile face
@@ -81,87 +83,47 @@ EmojiResourceManager& EmojiResourceManager::GetInstance() {
 
 void EmojiResourceManager::SetEmojiResourceFetcher(napi_env env,
                                                    napi_value fetcher) {
-  if (!env || !fetcher) {
-    return;
-  }
-
-  napi_valuetype value_type = napi_undefined;
-  if (napi_typeof(env, fetcher, &value_type) != napi_ok ||
-      value_type != napi_object) {
-    return;
-  }
-
-  std::lock_guard<std::mutex> lock(mutex_);
   if (fetcher_ref_) {
     return;
   }
   fetcher_env_ = env;
-  if (napi_create_reference(env, fetcher, 1, &fetcher_ref_) != napi_ok ||
-      !fetcher_ref_) {
-    fetcher_env_ = nullptr;
-    fetcher_ref_ = nullptr;
-    return;
-  }
+  napi_create_reference(env, fetcher, 1, &fetcher_ref_);
 }
 
-bool EmojiResourceManager::EnsureEmojiResourcesLoaded() {
+void EmojiResourceManager::PreloadCommonEmojiResources() {
   if (!LynxEnv::GetInstance().EnableHarmonyTextCustomEmoji()) {
-    return false;
+    return;
   }
 
-  napi_env fetcher_env = nullptr;
-  napi_ref fetcher_ref = nullptr;
   {
-    std::lock_guard<std::mutex> lock(mutex_);
+    std::lock_guard<std::mutex> lock(image_cache_mutex_);
     if (!image_cache_.empty()) {
-      return true;
-    }
-    if (!fetcher_env_ || !fetcher_ref_) {
-      return false;
-    }
-    fetcher_env = fetcher_env_;
-    fetcher_ref = fetcher_ref_;
-  }
-
-  bool loaded = false;
-  std::unordered_map<std::string, std::unique_ptr<EmojiImage>> images;
-  base::closure fetch_resources = [this, fetcher_env, fetcher_ref, &loaded,
-                                   &images] {
-    napi_value fetcher = nullptr;
-    if (napi_get_reference_value(fetcher_env, fetcher_ref, &fetcher) !=
-            napi_ok ||
-        !fetcher) {
       return;
     }
-    loaded = FetchEmojiResourcesFromFetcher(fetcher_env, fetcher, images);
-  };
-
-  auto ui_runner = base::UIThread::GetRunner();
-  if (ui_runner) {
-    ui_runner->PostSyncTask(std::move(fetch_resources));
-  } else {
-    fetch_resources();
   }
-  if (!loaded) {
-    return false;
+
+  std::unordered_map<std::string, std::unique_ptr<EmojiImage>> images;
+  if (!FetchEmojiResources(images)) {
+    return;
   }
 
   {
-    std::lock_guard<std::mutex> lock(mutex_);
-    image_cache_ = std::move(images);
+    std::lock_guard<std::mutex> lock(image_cache_mutex_);
+    if (image_cache_.empty()) {
+      image_cache_ = std::move(images);
+    }
   }
-
   DecodeCommonEmojiImages();
-  return true;
 }
 
 void EmojiResourceManager::DecodeCommonEmojiImages() {
   for (auto name : kCommonEmojiNames) {
-    GetEmojiImage(name);
+    GetEmojiImage(name, nullptr);
   }
 }
 
-EmojiImage* EmojiResourceManager::GetEmojiImage(std::string_view name) {
+EmojiImage* EmojiResourceManager::GetEmojiImage(std::string_view name,
+                                                ShadowNodeOwner* owner) {
   if (name.empty()) {
     return nullptr;
   }
@@ -169,7 +131,7 @@ EmojiImage* EmojiResourceManager::GetEmojiImage(std::string_view name) {
 
   EmojiImage* cached_image = nullptr;
   {
-    std::lock_guard<std::mutex> lock(mutex_);
+    std::lock_guard<std::mutex> lock(image_cache_mutex_);
     auto cache_it = image_cache_.find(name_key);
     if (cache_it != image_cache_.end()) {
       cached_image = cache_it->second.get();
@@ -180,12 +142,11 @@ EmojiImage* EmojiResourceManager::GetEmojiImage(std::string_view name) {
     return cached_image;
   }
 
-  if (!EnsureEmojiResourcesLoaded()) {
+  if (!TryFetchForOwner(owner)) {
     return nullptr;
   }
-
   {
-    std::lock_guard<std::mutex> lock(mutex_);
+    std::lock_guard<std::mutex> lock(image_cache_mutex_);
     auto cache_it = image_cache_.find(name_key);
     if (cache_it != image_cache_.end()) {
       cached_image = cache_it->second.get();
@@ -207,7 +168,7 @@ bool EmojiResourceManager::DecodeEmojiImageIfNeeded(
   EmojiResourceInfo info;
   std::string name_key(name);
   {
-    std::lock_guard<std::mutex> lock(mutex_);
+    std::lock_guard<std::mutex> lock(image_cache_mutex_);
     if (image->DrawPixelMap()) {
       return true;
     }
@@ -232,18 +193,11 @@ bool EmojiResourceManager::DecodeEmojiImageIfNeeded(
         } else {
           decoded_image = DecodeImageByPath(info.image_uri);
         }
-
-        auto complete_decode = [this, name_key,
-                                decoded_image =
-                                    std::move(decoded_image)]() mutable {
-          CompleteDecodeEmojiImage(name_key, std::move(decoded_image));
-        };
-        auto ui_runner = base::UIThread::GetRunner();
-        if (ui_runner) {
-          ui_runner->PostTask(std::move(complete_decode));
-        } else {
-          complete_decode();
-        }
+        base::UIThread::GetRunner()->PostTask(
+            [this, name_key,
+             decoded_image = std::move(decoded_image)]() mutable {
+              CompleteDecodeEmojiImage(name_key, std::move(decoded_image));
+            });
       },
       base::ConcurrentTaskType::NORMAL_PRIORITY);
   return false;
@@ -253,7 +207,7 @@ void EmojiResourceManager::CompleteDecodeEmojiImage(
     std::string name, std::unique_ptr<EmojiImage> decoded_image) {
   std::vector<base::closure> ready_callbacks;
   {
-    std::lock_guard<std::mutex> lock(mutex_);
+    std::lock_guard<std::mutex> lock(image_cache_mutex_);
     auto cache_it = image_cache_.find(name);
     if (cache_it == image_cache_.end()) {
       return;
@@ -306,6 +260,42 @@ bool EmojiResourceManager::FetchEmojiResourcesFromFetcher(
   }
 
   return ReadEmojiResources(env, resources_value, images);
+}
+
+bool EmojiResourceManager::FetchEmojiResources(
+    std::unordered_map<std::string, std::unique_ptr<EmojiImage>>& images)
+    const {
+  bool loaded = false;
+  base::closure fetch_task = [&images, &loaded, this] {
+    napi_value fetcher = nullptr;
+    napi_get_reference_value(fetcher_env_, fetcher_ref_, &fetcher);
+    loaded = FetchEmojiResourcesFromFetcher(fetcher_env_, fetcher, images);
+  };
+
+  TRACE_EVENT(LYNX_TRACE_CATEGORY,
+              EMOJI_RESOURCE_MANAGER_FETCH_EMOJI_RESOURCES);
+  base::UIThread::GetRunner()->PostSyncTask(std::move(fetch_task));
+  return loaded && !images.empty();
+}
+
+bool EmojiResourceManager::TryFetchForOwner(ShadowNodeOwner* owner) {
+  if (!LynxEnv::GetInstance().EnableHarmonyTextCustomEmoji() || !owner ||
+      !owner->TryMarkEmojiResourcesFetched()) {
+    return false;
+  }
+
+  std::unordered_map<std::string, std::unique_ptr<EmojiImage>> images;
+  if (!FetchEmojiResources(images)) {
+    return false;
+  }
+
+  {
+    std::lock_guard<std::mutex> lock(image_cache_mutex_);
+    for (auto& [name, image] : images) {
+      image_cache_.emplace(name, std::move(image));
+    }
+  }
+  return true;
 }
 
 bool EmojiResourceManager::ReadEmojiResources(

@@ -877,7 +877,7 @@ napi_value LynxTemplateRenderer::SetEmojiResourceFetcher(
 napi_value LynxTemplateRenderer::PreloadCommonEmojiResources(
     napi_env env, napi_callback_info info) {
   tasm::harmony::EmojiResourceManager::GetInstance()
-      .EnsureEmojiResourcesLoaded();
+      .PreloadCommonEmojiResources();
   return nullptr;
 }
 

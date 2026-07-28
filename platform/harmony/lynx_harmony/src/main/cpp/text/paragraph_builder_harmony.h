@@ -22,14 +22,18 @@ namespace lynx {
 namespace tasm {
 namespace harmony {
 
+class ShadowNodeOwner;
+
 class ParagraphBuilderHarmony {
  public:
   ParagraphBuilderHarmony(ParagraphStyleHarmony* para_style,
-                          FontCollectionHarmony* font_collection)
+                          FontCollectionHarmony* font_collection,
+                          ShadowNodeOwner* owner = nullptr)
       : builder_(OH_Drawing_CreateTypographyHandler(
             para_style->GetRawStruct(), font_collection->GetRawStruct())),
         paragraph_style_(para_style),
-        font_collection_(font_collection) {}
+        font_collection_(font_collection),
+        owner_(owner) {}
 
   ~ParagraphBuilderHarmony() {
     if (builder_) {
@@ -113,6 +117,7 @@ class ParagraphBuilderHarmony {
   OH_Drawing_TypographyCreate* builder_;
   ParagraphStyleHarmony* paragraph_style_;
   FontCollectionHarmony* font_collection_;
+  ShadowNodeOwner* owner_;
 
   // white-space:nowrap and after break, ignore all action when true
   bool text_no_wrap_and_after_break_{false};

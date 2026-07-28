@@ -24,6 +24,8 @@ namespace lynx {
 namespace tasm {
 namespace harmony {
 
+class ShadowNodeOwner;
+
 struct EmojiResourceInfo {
   std::string image_uri;
   uint32_t resource_id{0};
@@ -52,8 +54,8 @@ class EmojiResourceManager {
   ~EmojiResourceManager() = default;
 
   void SetEmojiResourceFetcher(napi_env env, napi_value fetcher);
-  bool EnsureEmojiResourcesLoaded();
-  EmojiImage* GetEmojiImage(std::string_view name);
+  void PreloadCommonEmojiResources();
+  EmojiImage* GetEmojiImage(std::string_view name, ShadowNodeOwner* owner);
   bool DecodeEmojiImageIfNeeded(std::string_view name, EmojiImage* image,
                                 base::closure ready_callback = nullptr);
 
@@ -63,6 +65,9 @@ class EmojiResourceManager {
   EmojiResourceManager& operator=(const EmojiResourceManager&) = delete;
 
   void DecodeCommonEmojiImages();
+  bool FetchEmojiResources(
+      std::unordered_map<std::string, std::unique_ptr<EmojiImage>>& images)
+      const;
   bool FetchEmojiResourcesFromFetcher(
       napi_env env, napi_value fetcher,
       std::unordered_map<std::string, std::unique_ptr<EmojiImage>>& images)
@@ -73,10 +78,11 @@ class EmojiResourceManager {
           parsed_images) const;
   std::unique_ptr<EmojiImage> DecodeImageByPath(const std::string& image_uri);
   std::unique_ptr<EmojiImage> DecodeImageByResourceId(uint32_t resource_id);
+  bool TryFetchForOwner(ShadowNodeOwner* owner);
   void CompleteDecodeEmojiImage(std::string name,
                                 std::unique_ptr<EmojiImage> decoded_image);
 
-  mutable std::mutex mutex_;
+  mutable std::mutex image_cache_mutex_;
   napi_env fetcher_env_{nullptr};
   napi_ref fetcher_ref_{nullptr};
   std::unordered_map<std::string, std::unique_ptr<EmojiImage>> image_cache_;

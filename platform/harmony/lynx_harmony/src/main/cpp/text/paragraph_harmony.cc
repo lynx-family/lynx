@@ -24,7 +24,7 @@ void DrawInlineEmoji(OH_Drawing_Canvas* canvas, const InlineEmojiInfo& emoji,
                      float left, float top,
                      const std::weak_ptr<UIBase>& emoji_invalidate_target) {
   auto& emoji_resource_manager = EmojiResourceManager::GetInstance();
-  auto* image = emoji_resource_manager.GetEmojiImage(emoji.name);
+  auto* image = emoji_resource_manager.GetEmojiImage(emoji.name, nullptr);
   if (!image) {
     return;
   }

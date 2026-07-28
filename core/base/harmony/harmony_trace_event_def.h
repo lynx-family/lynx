@@ -16,6 +16,9 @@ inline constexpr const char* const NAPI_CONVERT_HELPER_JSON_TO_LEPUS_VALUE =
 inline constexpr const char* const SETUP_ARK_TS_RUNTIME = "SetupArkTSRuntime";
 inline constexpr const char* const FONT_FACE_PARSE_AND_ADD_SRC =
     "FontFace::ParseAndAddSrc";
+inline constexpr const char* const
+    EMOJI_RESOURCE_MANAGER_FETCH_EMOJI_RESOURCES =
+        "EmojiResourceManager::FetchEmojiResources";
 inline constexpr const char* const LEPUS_VALUE_TO_NAPI_VALUE =
     "LepusValueToNapiValue";
 inline constexpr const char* const CALL_JSB_ON_ARK_TS = "CallJSBOnArkTS";
