@@ -60,6 +60,36 @@ class InspectorUIExecutorTest : public ::testing::Test {
     devtool_mediator_->ui_task_runner_ = ui_thread_->GetTaskRunner();
   }
 
+  using UITreeMethod = void (devtool::InspectorUIExecutor::*)(
+      const std::shared_ptr<devtool::MessageSender>&, const Json::Value&);
+
+  void ExpectDisabledUITreeError(UITreeMethod method, int64_t id) {
+    devtool::MockReceiver::GetInstance().ResetAll();
+    Json::Value message;
+    message["id"] = id;
+
+    (ui_executor_.get()->*method)(message_sender_, message);
+
+    Json::Value response;
+    Json::Reader reader;
+    ASSERT_TRUE(reader.parse(
+        devtool::MockReceiver::GetInstance().received_message_.second, response,
+        false));
+    EXPECT_EQ(response["id"].asInt64(), id);
+    EXPECT_EQ(response["error"]["code"].asInt(), devtool::kInspectorErrorCode);
+    EXPECT_EQ(response["error"]["message"].asString(), "UITree is not enabled");
+  }
+
+  void ExpectDisabledUITreeNotificationIgnored(UITreeMethod method) {
+    devtool::MockReceiver::GetInstance().ResetAll();
+    Json::Value message;
+
+    (ui_executor_.get()->*method)(message_sender_, message);
+
+    EXPECT_TRUE(
+        devtool::MockReceiver::GetInstance().received_message_.second.empty());
+  }
+
  private:
   std::shared_ptr<devtool::InspectorUIExecutor> ui_executor_;
   std::shared_ptr<devtool::LynxDevToolMediator> devtool_mediator_;
@@ -67,6 +97,21 @@ class InspectorUIExecutorTest : public ::testing::Test {
   std::shared_ptr<testing::LynxDevToolNGMock> devtools_ng_;
   std::unique_ptr<fml::Thread> ui_thread_;
 };
+
+TEST_F(InspectorUIExecutorTest, DisabledUITreeMethodsReplyOnlyToRequests) {
+  ASSERT_FALSE(ui_executor_->uitree_enabled_);
+  const std::vector<UITreeMethod> methods = {
+      &devtool::InspectorUIExecutor::GetLynxUITree,
+      &devtool::InspectorUIExecutor::GetUIInfoForNode,
+      &devtool::InspectorUIExecutor::SetUIStyle,
+  };
+
+  int64_t id = 101;
+  for (auto method : methods) {
+    ExpectDisabledUITreeError(method, id++);
+    ExpectDisabledUITreeNotificationIgnored(method);
+  }
+}
 
 TEST_F(InspectorUIExecutorTest, PageReloadTest) {
   LOGI("InspectorUIExecutorTest PageReloadTest start");
