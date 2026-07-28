@@ -1,0 +1,60 @@
+lynx/clay/ui/rendering/text/render_text.cc
+  s_1371e445c9bf70::t_8686592a6ea022 219
+  s_1371e445c9bf70::t_8aa7aaf1a9f13a 228-230
+lynx/clay/ui/component/text/text_view.cc
+  s_1371e445c9bf70::t_e523fd86094378 958,966,979,981,983
+  s_1371e445c9bf70::t_f4dc2203063148 288
+  s_1371e445c9bf70::t_735a1439da613d 980,985-987
+  s_1371e445c9bf70::t_06e7ffa2c8d61b 923-930
+  s_1371e445c9bf70::t_eddc0619b724b6 316-317,333
+  s_1371e445c9bf70::t_5465ee375e2932 959,977-978
+  s_1371e445c9bf70::t_87d9f8256f7aeb 315
+  s_1371e445c9bf70::t_0440c10f96687b 962-963,967-973,975
+  s_1371e445c9bf70::t_0ce5b337bc8819 369-371,375-384,405,411-414,422,426,428-431,440-444,469-470,474-477,481,483,1063,1065
+  s_1371e445c9bf70::t_765deef0279576 991
+  s_8ba3cde8751dd0::t_ca0e3938a927a6 372-374
+  s_1371e445c9bf70::t_86d23b12537385 285,287,471,473
+  s_1371e445c9bf70::t_fb172fc8777955 964-965
+  s_1371e445c9bf70::t_bb9824455c7647 461,465,467-468
+  s_1371e445c9bf70::t_aa4af009478c5b 956
+  s_1371e445c9bf70::t_0e070b53fa0bc9 960-961
+  s_1371e445c9bf70::t_3a6a2a38bfeadc 286,332,388-401,410,437,472,575-577,1054,1064
+  s_1371e445c9bf70::t_970b552116e08c 955
+  s_1371e445c9bf70::t_a7c22a6c8cfc1b 463-464,466
+  s_1371e445c9bf70::t_5253028d5133e7 974,976
+  s_1371e445c9bf70::t_e4622f34968bee 951
+  s_1371e445c9bf70::t_4ddf10dd16f626 952
+  s_1371e445c9bf70::t_2d2e9508598df6 462
+  s_1371e445c9bf70::t_be8ceaf40dab6a 821-842,852-855,865-870,874-877
+lynx/clay/ui/component/text/text_view.h
+  s_1371e445c9bf70::t_47fc8e594f8f56 128,179
+  s_1371e445c9bf70::t_0de7d16c0edd78 126-127,153-155
+  s_1371e445c9bf70::t_7e4815727ff573 125
+  s_1371e445c9bf70::t_c59a481a08aa6d 124
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1765047f99ff6634942a3e4504e71ae559ea9457",
+  "prompts": {},
+  "sessions": {
+    "s_1371e445c9bf70": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a2a770a03e7dd0f39df78ca",
+        "model": "gpt-5.5__dev"
+      },
+      "human_author": null
+    },
+    "s_8ba3cde8751dd0": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a4b22a1022e8681d8be0389",
+        "model": "gpt-5.5__dev"
+      },
+      "human_author": null
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}
