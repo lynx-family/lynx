@@ -2,6 +2,7 @@
   "name": "@lynx/lynx",
   "license": "Apache-2.0",
   "devDependencies": {
+    "@ohos/hypium": "1.0.21"
   },
   "main": "Index.ets",
   "version": "@param:dependencies.lynx_version",

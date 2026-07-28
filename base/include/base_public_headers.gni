@@ -10,6 +10,7 @@ base_log_public_headers_list = [
   "debug/lynx_error.h",
   "log/alog_wrapper.h",
   "log/log_stream.h",
+  "log/log_context.h",
   "log/logging.h",
 ]
 if (!is_win) {
