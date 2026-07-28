@@ -1,0 +1,51 @@
+cspell.config.yml
+  s_3101666001455b::t_5abee16c0918c6 1763
+lynx/explorer/harmony/hvigor/hvigor-config.json5
+  s_3101666001455b::t_6dd1f40d1dbcb9 4,22
+lynx/explorer/harmony/hvigorconfig.ts
+  s_3101666001455b::t_3f457a3ccec78d 1-10
+lynx/explorer/harmony/lynx_explorer/hvigorfile.ts
+  s_3101666001455b::t_5102a5c1014cd4 5
+lynx/platform/harmony/api/lynx_harmony.api
+  s_3101666001455b::t_b03681ea716d5f 1359-1379
+lynx/platform/harmony/lynx_harmony/src/main/ets/Index.ets
+  s_3101666001455b::t_e2541e51861d43 152-155
+lynx/platform/harmony/lynx_harmony/src/main/ets/library/LynxLibraryRegistry.ets
+  s_3101666001455b::t_4eba1b9703a12b 1-186
+lynx/platform/harmony/lynx_harmony/src/main/ets/tasm/LynxBackgroundRuntime.ets
+  s_3101666001455b::t_0da2217cfb411f 19,47
+lynx/platform/harmony/lynx_harmony/src/main/ets/tasm/LynxView.ets
+  s_3101666001455b::t_4b996d99740062 51,293-294
+lynx/platform/harmony/lynx_harmony/src/main/ets/tasm/behavior/HarmonyUIRenderer.ets
+  s_3101666001455b::t_04fd75b3e6f740 149,151-154,157,159
+lynx/platform/harmony/lynx_library_plugin/README.md
+  s_3101666001455b::t_d1c67225a4b174 1-38
+lynx/platform/harmony/lynx_library_plugin/package.json
+  s_3101666001455b::t_3dd65da68fa7bd 1-32
+lynx/platform/harmony/lynx_library_plugin/src/core.js
+  s_3101666001455b::t_014d17ccc8102a 1-1109
+lynx/platform/harmony/lynx_library_plugin/src/index.d.ts
+  s_3101666001455b::t_915d1603441bfd 1-17
+lynx/platform/harmony/lynx_library_plugin/src/index.js
+  s_3101666001455b::t_d89b723679f91e 1-29
+lynx/platform/harmony/lynx_library_plugin/test/core.test.js
+  s_3101666001455b::t_d862dfd8526fd9 1-602
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "933af9ae97bb7385edea0897f672771cca4b2ba3",
+  "prompts": {},
+  "sessions": {
+    "s_3101666001455b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f60e2-38d8-7493-890d-2c3b53d1485e",
+        "model": "unknown"
+      },
+      "human_author": "jianliang00 <wangjianliang0@126.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}
