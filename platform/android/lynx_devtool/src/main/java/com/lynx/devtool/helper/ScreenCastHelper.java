@@ -28,7 +28,7 @@ public class ScreenCastHelper {
   }
 
   public void startCasting(int quality, int maxWidth, int maxHeight, String screenShotMode,
-      IDevToolDelegate devToolDelegate) {
+      String format, IDevToolDelegate devToolDelegate) {
     mScreencastEnabled = true;
     DevToolPlatformAndroidDelegate platformDelegate = mPlatformDelegate.get();
     if (platformDelegate != null) {
@@ -36,8 +36,8 @@ public class ScreenCastHelper {
     }
     ScreenCapturer.getInstance().attachView(mLynxView.get());
     ScreenCapturer.getInstance().setDevToolDelegate(devToolDelegate);
-    ScreenCapturer.getInstance().startCapture(
-        maxWidth, maxHeight, quality, screenShotMode, new ScreenCapturer.ScreenshotListener() {
+    ScreenCapturer.getInstance().startCapture(maxWidth, maxHeight, quality, screenShotMode, format,
+        new ScreenCapturer.ScreenshotListener() {
           @Override
           public void onNewScreenshotBitmapData(String screenData, long timeCost) {
             ScreenCapturer.ScreenMetadata metadata =
