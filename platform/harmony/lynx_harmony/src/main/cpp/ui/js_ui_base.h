@@ -37,6 +37,9 @@ class JSUIBase : public UIBase {
   void OnNodeReady() override;
   void RemoveChild(UIBase* child) override;
   bool Focusable() override;
+  bool IsScrollable() override;
+  float ScrollX() override;
+  float ScrollY() override;
   void OnFocusChange(bool has_focus, bool is_focus_transition) override;
   bool ShouldHitTest() override;
   JSUIBase(LynxContext* context, ArkUI_NodeHandle node, int sign,
@@ -69,6 +72,7 @@ class JSUIBase : public UIBase {
   static napi_value SetFrameNode(napi_env env, napi_callback_info info);
   static napi_value SetFocusedUI(napi_env env, napi_callback_info info);
   static napi_value UnsetFocusedUI(napi_env env, napi_callback_info info);
+  static napi_value GestureRecognized(napi_env env, napi_callback_info info);
   static napi_value SetChildrenManagementFuncs(napi_env env,
                                                napi_callback_info);
   static napi_value AttachGestureToNode(napi_env env, napi_callback_info info);
@@ -92,6 +96,9 @@ class JSUIBase : public UIBase {
   napi_ref js_dispose_{nullptr};
   napi_ref js_focus_change_{nullptr};
   napi_ref js_focusable_{nullptr};
+  napi_ref js_is_scrollable_{nullptr};
+  napi_ref js_scroll_x_{nullptr};
+  napi_ref js_scroll_y_{nullptr};
   napi_ref js_insert_child_{nullptr};
   napi_ref js_remove_child_{nullptr};
   napi_ref js_update_extra_data_{nullptr};
