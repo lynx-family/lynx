@@ -14,6 +14,7 @@ source_set("common") {
   sources = [
     "context_options.cc",
     "context_options.h",
+    "default_font_manager_initializer.h",
     "devtools_instrumentation.cc",
     "devtools_instrumentation.h",
     "display.cc",
@@ -85,6 +86,10 @@ source_set("common") {
 
   if (enable_clay_standalone) {
     sources += [ "services/initialize_service.cc" ]
+  }
+
+  if (is_win) {
+    sources += [ "default_font_manager_initializer.cc" ]
   }
 
   if (is_win || is_mac || is_headless) {

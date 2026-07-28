@@ -57,6 +57,7 @@ class ShadowNodeOwner {
   void ClearNodes();
 
   void MarkDirty(ShadowNode* node) const;
+  bool InvalidateLaidOutTextNodes();
   ClayLayoutStyles GetLayoutStyles(ShadowNode* node) const;
   MeasureResult MeasureNativeNode(ShadowNode* node,
                                   const MeasureConstraint& constraint) const;

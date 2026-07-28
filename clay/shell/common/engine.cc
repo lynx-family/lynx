@@ -163,6 +163,14 @@ void Engine::SetupDefaultFontManager() {
       settings_.font_initialization_data);
 }
 
+void Engine::OnDefaultFontManagerReady() {
+  TRACE_EVENT("clay", "Engine::OnDefaultFontManagerReady");
+
+  if (view_context_ && view_context_->InvalidateLaidOutTextNodes()) {
+    ScheduleLayout();
+  }
+}
+
 bool Engine::DispatchPointerEvent(std::vector<clay::PointerEvent> events) {
   return page_view_->DispatchPointerEvent(std::move(events));
 }

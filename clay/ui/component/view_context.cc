@@ -429,6 +429,10 @@ void ViewContext::SetShadowNodeAttribute(int id, const char* attr,
 
 void ViewContext::ScheduleLayout() { shadow_node_owner_->ScheduleLayout(); }
 
+bool ViewContext::InvalidateLaidOutTextNodes() {
+  return shadow_node_owner_->InvalidateLaidOutTextNodes();
+}
+
 void ViewContext::Alignment(int id) {
   auto node = shadow_node_owner_->GetNode(id);
   if (node) {
