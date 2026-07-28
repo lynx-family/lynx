@@ -32,7 +32,8 @@ class ScreenCastHelper : public FrameCapturerEmbedder,
   void OnFrameChanged() override;
   void TakeSnapshotAsync(tasm::TakeSnapshotCompletedCallback callback) override;
 
-  void StartCapture(int32_t quality, int32_t max_width, int32_t max_height);
+  void StartCapture(int32_t quality, int32_t max_width, int32_t max_height,
+                    const std::string& format);
   void PauseCapture();
   void ContinueCapture();
   void StopCapture();
@@ -52,6 +53,7 @@ class ScreenCastHelper : public FrameCapturerEmbedder,
   int32_t max_height_;
   int32_t max_width_;
   int32_t quality_;
+  std::string format_;
   devtool::LynxDevToolProxy* embedder_proxy_{nullptr};
   std::weak_ptr<DevtoolPlatformEmbedder> weak_platform_embedder_;
 };
@@ -61,15 +63,18 @@ ScreenCastHelper::ScreenCastHelper(
     : max_height_(0),
       max_width_(0),
       quality_(0),
+      format_("jpeg"),
       weak_platform_embedder_(platform_embedder) {}
 
 ScreenCastHelper::~ScreenCastHelper(){};
 
 void ScreenCastHelper::StartCapture(int32_t quality, int32_t max_width,
-                                    int32_t max_height) {
+                                    int32_t max_height,
+                                    const std::string& format) {
   quality_ = quality;
   max_width_ = max_width;
   max_height_ = max_height;
+  format_ = format;
   ClearSnapshotCache();
   StartFrameViewTrace();
 }
@@ -124,7 +129,7 @@ void ScreenCastHelper::TakeSnapshotAsync(
 
         embedder_proxy->TakeSnapshot(
             sp_self->max_width_, sp_self->max_height_, sp_self->quality_,
-            sp_self->GetScreenScaleFactor(),
+            sp_self->format_, sp_self->GetScreenScaleFactor(),
             ScreenshotThreadManager::GetScreenshotRunner(),
             std::move(callback));
       });
@@ -160,12 +165,13 @@ ScreenCastHelperEmbedder::~ScreenCastHelperEmbedder() {
 }
 
 void ScreenCastHelperEmbedder::StartCasting(int32_t quality, int32_t max_width,
-                                            int32_t max_height) {
+                                            int32_t max_height,
+                                            const std::string& format) {
   auto platform_embedder = weak_platform_embedder_.lock();
   if (platform_embedder) {
     platform_embedder->DispatchScreencastVisibilityChanged(true);
   }
-  screen_cast_helper_->StartCapture(quality, max_width, max_height);
+  screen_cast_helper_->StartCapture(quality, max_width, max_height, format);
 }
 
 void ScreenCastHelperEmbedder::ContinueCasting() {

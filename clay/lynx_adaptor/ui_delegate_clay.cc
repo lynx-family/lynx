@@ -120,7 +120,8 @@ void UIDelegateClay::SetEnableFluencyMonitor(bool enable) {
 }
 
 void UIDelegateClay::TakeSnapshot(
-    size_t max_width, size_t max_height, int quality, float screen_scale_factor,
+    size_t max_width, size_t max_height, int quality, const std::string& format,
+    float screen_scale_factor,
     const lynx::fml::RefPtr<lynx::fml::TaskRunner>& screenshot_runner,
     TakeSnapshotCompletedCallback callback) {
   auto page_view = view_context_->GetPageView();
@@ -132,7 +133,8 @@ void UIDelegateClay::TakeSnapshot(
   request.max_height_ = max_height;
   request.quality_ = quality;
   request.type_ =
-      quality >= 100 ? clay::ScreenshotType::PNG : clay::ScreenshotType::JPEG;
+      format == "png" ? clay::ScreenshotType::PNG : clay::ScreenshotType::JPEG;
+  request.format_ = format;
   request.task_runner_ = screenshot_runner;
   request.screen_scale_factor_ = screen_scale_factor;
   request.is_sync_ = false;

@@ -48,7 +48,7 @@ class DevtoolPlatformImpl : public lynx::devtool::DevToolPlatformFacade {
     auto embedder = weak_embedder_.lock();
     CHECK_NULL_AND_LOG_RETURN(embedder, "embedder is null");
     embedder->StartCasting(request.quality_, request.max_width_,
-                           request.max_height_);
+                           request.max_height_, request.format_);
   }
 
   void StopScreenCast() override {
@@ -214,9 +214,10 @@ int DevtoolPlatformEmbedder::FindNodeIdForLocation(float x, float y) {
 }
 
 void DevtoolPlatformEmbedder::StartCasting(int32_t quality, int32_t max_width,
-                                           int32_t max_height) {
+                                           int32_t max_height,
+                                           const std::string& format) {
   CHECK_NULL_AND_LOG_RETURN(cast_helper_, "cast_helper_ is null");
-  cast_helper_->StartCasting(quality, max_width, max_height);
+  cast_helper_->StartCasting(quality, max_width, max_height, format);
 }
 
 void DevtoolPlatformEmbedder::StopCasting() {

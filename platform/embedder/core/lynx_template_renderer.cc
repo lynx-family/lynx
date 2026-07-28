@@ -581,10 +581,11 @@ double LynxTemplateRenderer::GetScreenScaleFactor() {
 }
 
 void LynxTemplateRenderer::TakeSnapshot(
-    size_t max_width, size_t max_height, int quality, float screen_scale_factor,
+    size_t max_width, size_t max_height, int quality, const std::string& format,
+    float screen_scale_factor,
     const lynx::fml::RefPtr<lynx::fml::TaskRunner>& screenshot_runner,
     tasm::TakeSnapshotCompletedCallback callback) {
-  ui_delegate_->TakeSnapshot(max_width, max_height, quality,
+  ui_delegate_->TakeSnapshot(max_width, max_height, quality, format,
                              screen_scale_factor, screenshot_runner,
                              std::move(callback));
 }

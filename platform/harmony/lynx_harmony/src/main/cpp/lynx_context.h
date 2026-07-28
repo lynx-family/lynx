@@ -88,7 +88,8 @@ class LynxContext {
 
   void TakeScreenShot(size_t max_width, size_t max_height, int quality,
                       const fml::RefPtr<fml::TaskRunner>& screenshot_runner,
-                      TakeSnapshotCompletedCallback callback);
+                      TakeSnapshotCompletedCallback callback,
+                      const std::string& format = "jpeg");
 
   void ResetUIOwner() { ui_owner_ = nullptr; }
 

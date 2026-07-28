@@ -39,7 +39,8 @@ class DevtoolPlatformEmbedder
 
   int FindNodeIdForLocation(float x, float y);
 
-  void StartCasting(int32_t quality, int32_t max_width, int32_t max_height);
+  void StartCasting(int32_t quality, int32_t max_width, int32_t max_height,
+                    const std::string& format);
 
   void StopCasting();
 

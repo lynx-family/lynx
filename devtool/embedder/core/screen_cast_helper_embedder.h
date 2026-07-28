@@ -6,6 +6,7 @@
 #define DEVTOOL_EMBEDDER_CORE_SCREEN_CAST_HELPER_EMBEDDER_H_
 
 #include <memory>
+#include <string>
 
 namespace lynx {
 namespace devtool {
@@ -20,7 +21,8 @@ class ScreenCastHelperEmbedder {
       const std::shared_ptr<DevtoolPlatformEmbedder>& platform_embedder);
   ~ScreenCastHelperEmbedder();
 
-  void StartCasting(int32_t quality, int32_t max_width, int32_t max_height);
+  void StartCasting(int32_t quality, int32_t max_width, int32_t max_height,
+                    const std::string& format);
   void StopCasting();
   void ContinueCasting();
   void PauseCasting();

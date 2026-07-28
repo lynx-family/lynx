@@ -49,6 +49,7 @@ class EmbedderPlatformHarmony {
   int32_t GetInstanceId() const;
 
   void TakeSnapshot(size_t max_width, size_t max_height, int quality,
+                    const std::string& format,
                     const fml::RefPtr<fml::TaskRunner>& screenshot_runner,
                     tasm::TakeSnapshotCompletedCallback callback);
 
@@ -100,6 +101,7 @@ class EmbedderPlatformHarmony {
 
   void TakeScreenShot(
       size_t max_width, size_t max_height, int32_t quality,
+      const std::string& format,
       base::MoveOnlyClosure<void, CallbackHandler::ScreenShotResponse>
           callback);
 
