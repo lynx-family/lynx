@@ -1,0 +1,32 @@
+{
+  "name": "@lynx/lynx-library-plugin",
+  "version": "0.1.0",
+  "description": "HarmonyOS Hvigor plugin for Lynx library Autolink",
+  "license": "Apache-2.0",
+  "main": "./src/index.js",
+  "types": "./src/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.d.ts",
+      "require": "./src/index.js",
+      "default": "./src/index.js"
+    }
+  },
+  "files": [
+    "README.md",
+    "src"
+  ],
+  "scripts": {
+    "test": "node --test"
+  },
+  "devDependencies": {
+    "json5": "^2.2.3"
+  },
+  "peerDependencies": {
+    "@ohos/hvigor": ">=5.0.0",
+    "@ohos/hvigor-ohos-plugin": ">=5.0.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

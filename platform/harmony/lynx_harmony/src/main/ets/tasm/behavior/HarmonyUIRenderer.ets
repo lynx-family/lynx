@@ -146,13 +146,17 @@ export class HarmonyUIRenderer implements LynxUIRenderer {
     perfController: PerformanceController) {
     TraceEvent.beginSection(TraceCategory.Lynx, TraceEventDef.TEMPLATE_RENDER_INIT);
 
+    const mergedBehaviors: BehaviorRegistryMap = new Map();
     BUILTIN_BEHAVIORS.forEach((value, key) => {
-      behaviors.set(key, value);
+      mergedBehaviors.set(key, value);
+    });
+    behaviors.forEach((value, key) => {
+      mergedBehaviors.set(key, value);
     });
     // todo(renzhongyue): context here and contextDelegate in UIBase should be merged, they do the same thing.
-    this.uiOwner = new UIOwner(behaviors, uiContext, context, perfController);
+    this.uiOwner = new UIOwner(mergedBehaviors, uiContext, context, perfController);
     context.setUIOwner(this.uiOwner);
-    this.shadowNodeOwner = new ShadowNodeOwner(context, behaviors, rootSize);
+    this.shadowNodeOwner = new ShadowNodeOwner(context, mergedBehaviors, rootSize);
 
     TraceEvent.beginSection(TraceCategory.Lynx, TraceEventDef.TEMPLATE_RENDER_CREATE_TASM);
     this.embedderPlatform =
@@ -267,4 +271,3 @@ export class HarmonyUIRenderer implements LynxUIRenderer {
     this.uiOwner.onEnterBackground();
   }
 }
-

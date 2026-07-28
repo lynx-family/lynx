@@ -149,6 +149,10 @@ export { MessageHandler } from './devtool_wrapper/MessageHandler'
 
 export {LynxBackgroundRuntime, LynxBackgroundRuntimeClient} from './tasm/LynxBackgroundRuntime'
 
+export {
+  LynxLibraryInitializer, LynxLibraryProvider, LynxLibraryProviderEntry, LynxLibraryRegistry
+} from './library/LynxLibraryRegistry'
+
 export { LynxImageConfig } from './tasm/image/LynxImageConfig'
 
 export { LynxImageLoadInfo } from './tasm/image/LynxImageLoadInfo'

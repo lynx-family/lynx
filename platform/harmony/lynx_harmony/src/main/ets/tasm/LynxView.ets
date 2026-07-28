@@ -48,6 +48,7 @@ import { ILogBox } from '../devtool_wrapper/ILogBox';
 import { LynxDevTool } from '../devtool_wrapper/LynxDevTool';
 import { ILynxDevToolService } from './service/ILynxDevToolService';
 import { LynxImageConfig } from './image/LynxImageConfig';
+import { registerGlobalLynxModules } from '../library/LynxLibraryRegistry';
 
 export enum MeasureMode {
   INDEFINITE = 0,
@@ -329,6 +330,8 @@ export struct LynxView {
       this.genericResourceFetcher = this.genericResourceFetcher ?? this.backgroundRuntime.genericResourceFetcher;
       this.mediaResourceFetcher = this.mediaResourceFetcher ?? this.backgroundRuntime.mediaResourceFetcher;
       this.templateResourceFetcher = this.templateResourceFetcher ?? this.backgroundRuntime.templateResourceFetcher;
+    } else {
+      registerGlobalLynxModules(this.moduleManager);
     }
 
     this.modules.forEach((v, k) => {
