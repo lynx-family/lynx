@@ -39,7 +39,8 @@ struct ScreenshotRequest {
         max_height_(0),
         quality_(100),
         type_(ScreenshotType::JPEG),
-        screen_scale_factor_(1.0) {}
+        screen_scale_factor_(1.0),
+        format_("jpeg") {}
 
   size_t max_width_;
   size_t max_height_;

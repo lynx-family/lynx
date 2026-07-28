@@ -93,7 +93,8 @@ class DevToolPlatformDarwin : public DevToolPlatformFacade {
       [darwin startCasting:request.quality_
                      width:(int)request.max_width_
                     height:(int)request.max_height_
-                      mode:[NSString stringWithCString:mode.c_str()]];
+                      mode:[NSString stringWithUTF8String:mode.c_str()]
+                    format:[NSString stringWithUTF8String:request.format_.c_str()]];
     }
   }
 
@@ -419,12 +420,13 @@ class DevToolPlatformDarwin : public DevToolPlatformFacade {
 - (void)startCasting:(int)quality
                width:(int)max_width
               height:(int)max_height
-                mode:(NSString*)screenshot_mode {
+                mode:(NSString*)screenshot_mode
+              format:(NSString*)format {
   __strong typeof(_lynxView) lynxView = _lynxView;
   NSString* mode = [lynxView.templateRender.lynxUIRenderer isFullScreenShotSupported]
                        ? screenshot_mode
                        : @"lynxview";
-  [_castHelper startCasting:quality width:max_width height:max_height mode:mode];
+  [_castHelper startCasting:quality width:max_width height:max_height mode:mode format:format];
 }
 
 - (void)sendScreenCast:(NSString*)data

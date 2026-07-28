@@ -111,8 +111,16 @@ void InspectorUIExecutor::StartScreencast(
   Json::Value content(Json::ValueType::objectValue);
   Json::Value params = message["params"];
   ScreenshotRequest screen_request;
-  screen_request.format_ = params["format"].asString();
-  screen_request.quality_ = params["quality"].asInt();
+  if (params["format"].isString()) {
+    std::string format = params["format"].asString();
+    if (format == "png") {
+      screen_request.format_ = format;
+      screen_request.type_ = ScreenshotType::PNG;
+    }
+  }
+  if (params["quality"].isInt()) {
+    screen_request.quality_ = params["quality"].asInt();
+  }
   screen_request.max_width_ = params["maxWidth"].asInt();
   screen_request.max_height_ = params["maxHeight"].asInt();
   screen_request.every_nth_frame_ = params["everyNthFrame"].asInt();

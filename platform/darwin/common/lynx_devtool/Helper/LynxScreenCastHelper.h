@@ -22,7 +22,8 @@ typedef NSString* ScreenshotMode;
 - (void)startCasting:(int)quality
                width:(int)max_width
               height:(int)max_height
-                mode:(NSString*)screenshot_mode;
+                mode:(NSString*)screenshot_mode
+              format:(NSString*)format;
 
 - (void)stopCasting;
 - (void)continueCasting;
