@@ -99,11 +99,22 @@ runs:
       shell: bash
       working-directory: lynx
       run: |
+        mkdir -p "$(dirname "$HABITAT_STAT_FILE")"
         if [[ "${{ inputs.target }}" == "" ]]; then
-          tools/hab sync .
+          tools/hab --stat-output "$HABITAT_STAT_FILE" sync .
         else
-          tools/hab sync . --target ${{ inputs.target }}
+          tools/hab --stat-output "$HABITAT_STAT_FILE" sync . --target ${{ inputs.target }}
         fi
       env:
         HABITAT_CONCURRENCY: ${{ inputs.concurrency }}
+        HABITAT_STAT_FILE: ${{ runner.temp }}/habitat-stats/habitat_session.jsonl
         npm_config_store_dir: ~/.local/share/pnpm/store
+
+    - name: Upload Habitat statistics
+      if: ${{ always() }}
+      continue-on-error: true
+      uses: lynx-infra/upload-artifact@332ec52e99f7cbf1fbbdc9bcc09280d49147d092
+      with:
+        name: habitat-stats-${{ github.job }}-${{ strategy.job-index || 0 }}-${{ github.run_attempt }}
+        path: ${{ runner.temp }}/habitat-stats/habitat_session.jsonl
+        if-no-files-found: warn
