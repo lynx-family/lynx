@@ -323,6 +323,7 @@ void CEFWebview::OnMethodInvoked(
     });
     cookie_manager->SetCookie(set_cookie_method.url, set_cookie_method.cookie,
                               set_callback);
+    return;
   } else if (strcmp(method, kMethodCookiesRemove) == 0) {
     std::string name = attrs.GetProperty(kCookieName).StdString();
     auto cookie_manager = CefCookieManager::GetGlobalManager(nullptr);
