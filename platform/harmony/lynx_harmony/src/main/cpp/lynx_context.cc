@@ -839,11 +839,11 @@ void LynxContext::RegisterNodeInfo(const std::string& node_name,
 void LynxContext::TakeScreenShot(
     size_t max_width, size_t max_height, int quality,
     const fml::RefPtr<fml::TaskRunner>& screenshot_runner,
-    TakeSnapshotCompletedCallback callback) {
+    TakeSnapshotCompletedCallback callback, const std::string& format) {
   std::shared_lock<std::shared_mutex> guard(embedder_shared_mutex_);
   if (embedder_) {
-    embedder_->TakeSnapshot(max_width, max_height, quality, screenshot_runner,
-                            callback);
+    embedder_->TakeSnapshot(max_width, max_height, quality, format,
+                            screenshot_runner, callback);
   }
 }
 

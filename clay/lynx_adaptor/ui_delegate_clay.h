@@ -7,6 +7,7 @@
 
 #include <memory>
 #include <optional>
+#include <string>
 #include <vector>
 
 #include "clay/lynx_adaptor/lynx_event_dispatcher.h"
@@ -54,7 +55,7 @@ class UIDelegateClay : public UIDelegate {
 
   void TakeSnapshot(
       size_t max_width, size_t max_height, int quality,
-      float screen_scale_factor,
+      const std::string& format, float screen_scale_factor,
       const lynx::fml::RefPtr<lynx::fml::TaskRunner>& screenshot_runner,
       TakeSnapshotCompletedCallback callback) override;
 

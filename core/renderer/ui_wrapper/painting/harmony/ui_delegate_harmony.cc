@@ -309,12 +309,13 @@ void UIDelegateHarmony::OnPageConfigDecoded(
 }
 
 void UIDelegateHarmony::TakeSnapshot(
-    size_t max_width, size_t max_height, int quality, float screen_scale_factor,
+    size_t max_width, size_t max_height, int quality, const std::string& format,
+    float screen_scale_factor,
     const lynx::fml::RefPtr<lynx::fml::TaskRunner>& screenshot_runner,
     TakeSnapshotCompletedCallback callback) {
   if (!platform_) return;
-  platform_->TakeSnapshot(max_width, max_height, quality, screenshot_runner,
-                          std::move(callback));
+  platform_->TakeSnapshot(max_width, max_height, quality, format,
+                          screenshot_runner, std::move(callback));
 }
 
 int UIDelegateHarmony::GetNodeForLocation(int x, int y) {

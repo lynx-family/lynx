@@ -159,11 +159,11 @@ int32_t EmbedderPlatformHarmony::GetInstanceId() const {
 }
 
 void EmbedderPlatformHarmony::TakeSnapshot(
-    size_t max_width, size_t max_height, int quality,
+    size_t max_width, size_t max_height, int quality, const std::string& format,
     const fml::RefPtr<fml::TaskRunner>& screenshot_runner,
     tasm::TakeSnapshotCompletedCallback callback) {
   TakeScreenShot(
-      max_width, max_height, quality,
+      max_width, max_height, quality, format,
       [self = weak_factory_.GetWeakPtr(),
        screenshot_runner = std::move(screenshot_runner),
        callback =
@@ -185,17 +185,19 @@ void EmbedderPlatformHarmony::TakeSnapshot(
 
 void EmbedderPlatformHarmony::TakeScreenShot(
     size_t max_width, size_t max_height, int32_t quality,
+    const std::string& format,
     base::MoveOnlyClosure<void, CallbackHandler::ScreenShotResponse> callback) {
   base::NapiHandleScope scope(env_);
-  napi_value call_args[4];
+  napi_value call_args[5];
   auto* callback_handler = new CallbackHandler(std::move(callback));
   napi_create_int32(env_, quality, &call_args[1]);
   napi_create_int32(env_, max_width, &call_args[2]);
   napi_create_int32(env_, max_height, &call_args[3]);
+  napi_create_string_utf8(env_, format.c_str(), format.length(), &call_args[4]);
   napi_create_function(env_, "callback", 9,
                        CallbackHandler::HandleScreenShotCallback,
                        callback_handler, &call_args[0]);
-  base::NapiUtil::InvokeJsMethod(env_, capi_embedder_ref_, "takeScreenShot", 4,
+  base::NapiUtil::InvokeJsMethod(env_, capi_embedder_ref_, "takeScreenShot", 5,
                                  call_args, nullptr);
 }
 

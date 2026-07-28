@@ -73,7 +73,7 @@ class UIDelegate {
   virtual void OnPageConfigDecoded(const std::shared_ptr<PageConfig>& config) {}
   virtual void TakeSnapshot(
       size_t max_width, size_t max_height, int quality,
-      float screen_scale_factor,
+      const std::string& format, float screen_scale_factor,
       const lynx::fml::RefPtr<lynx::fml::TaskRunner>& screenshot_runner,
       TakeSnapshotCompletedCallback callback) {}
   virtual int GetNodeForLocation(int x, int y) { return -1; }

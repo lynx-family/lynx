@@ -238,7 +238,7 @@ class LynxTemplateRenderer : public devtool::LynxDevToolProxy {
   double GetScreenScaleFactor() override;
   void TakeSnapshot(
       size_t max_width, size_t max_height, int quality,
-      float screen_scale_factor,
+      const std::string& format, float screen_scale_factor,
       const lynx::fml::RefPtr<lynx::fml::TaskRunner>& screenshot_runner,
       tasm::TakeSnapshotCompletedCallback callback) override;
   int GetNodeForLocation(int x, int y) override;

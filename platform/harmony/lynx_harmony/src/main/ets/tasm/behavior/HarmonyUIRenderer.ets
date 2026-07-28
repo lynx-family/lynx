@@ -185,7 +185,7 @@ export class HarmonyUIRenderer implements LynxUIRenderer {
     EmbedderPlatform.updateRefreshRate(refreshRate);
   }
 
-  async getScreenShot(quality: number, maxWidth: number, maxHeight: number) {
+  async getScreenShot(quality: number, maxWidth: number, maxHeight: number, format: string = "jpeg") {
     let pixelMap: image.PixelMap | undefined;
     let imagePackerApi: image.ImagePacker | undefined;
     try {
@@ -223,7 +223,7 @@ export class HarmonyUIRenderer implements LynxUIRenderer {
       if (postSnapshotScale !== 1) {
         pixelMap.scaleSync(postSnapshotScale, postSnapshotScale);
       }
-      const packOpts: image.PackingOption = { format: "image/png", quality: quality };
+      const packOpts: image.PackingOption = { format: `image/${format}`, quality: quality };
       const data = await imagePackerApi.packing(pixelMap, packOpts);
       const response: DevtoolResult = {
         result: data,
@@ -242,8 +242,9 @@ export class HarmonyUIRenderer implements LynxUIRenderer {
   }
 
   // Called by native
-  takeScreenShot(callback: AsyncCallback<DevtoolResult>, quality: number, maxWidth: number, maxHeight: number) {
-    this.getScreenShot(quality, maxWidth, maxHeight).then(result => callback(undefined, result))
+  takeScreenShot(callback: AsyncCallback<DevtoolResult>, quality: number, maxWidth: number, maxHeight: number,
+    format: string = "jpeg") {
+    this.getScreenShot(quality, maxWidth, maxHeight, format).then(result => callback(undefined, result))
       .catch((err: BusinessError) => callback(err, undefined));
   }
 
@@ -267,4 +268,3 @@ export class HarmonyUIRenderer implements LynxUIRenderer {
     this.uiOwner.onEnterBackground();
   }
 }
-

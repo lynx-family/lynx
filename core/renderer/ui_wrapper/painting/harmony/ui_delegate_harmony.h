@@ -59,7 +59,7 @@ class UIDelegateHarmony : public UIDelegate {
 
   void TakeSnapshot(
       size_t max_width, size_t max_height, int quality,
-      float screen_scale_factor,
+      const std::string& format, float screen_scale_factor,
       const lynx::fml::RefPtr<lynx::fml::TaskRunner>& screenshot_runner,
       TakeSnapshotCompletedCallback callback) override;
 
