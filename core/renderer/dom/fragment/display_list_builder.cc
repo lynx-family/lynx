@@ -30,8 +30,6 @@ void DisplayListBuilder::Reserve(int32_t capacity) {
 DisplayListBuilder& DisplayListBuilder::Begin(int id, PlatformRendererType type,
                                               float x, float y, float width,
                                               float height) {
-  display_list_.AddOperation(DisplayListOpType::kBegin, id,
-                             static_cast<int32_t>(type), x, y, width, height);
   DisplayListItem item{};
   item.type = DisplayListOpType::kBegin;
   item.payload.begin.id = id;
@@ -45,7 +43,6 @@ DisplayListBuilder& DisplayListBuilder::Begin(int id, PlatformRendererType type,
 }
 
 DisplayListBuilder& DisplayListBuilder::End() {
-  display_list_.AddOperation(DisplayListOpType::kEnd);
   DisplayListItem item{};
   item.type = DisplayListOpType::kEnd;
   display_list_.AppendItem(item);
@@ -54,8 +51,6 @@ DisplayListBuilder& DisplayListBuilder::End() {
 
 DisplayListBuilder& DisplayListBuilder::Fill(uint32_t color,
                                              int32_t clip_index) {
-  display_list_.AddOperation(DisplayListOpType::kFill,
-                             static_cast<int32_t>(color), clip_index);
   DisplayListItem item{};
   item.type = DisplayListOpType::kFill;
   item.payload.fill.color = color;
@@ -66,8 +61,6 @@ DisplayListBuilder& DisplayListBuilder::Fill(uint32_t color,
 
 DisplayListBuilder& DisplayListBuilder::DrawView(int view_id, float offset_x,
                                                  float offset_y) {
-  display_list_.AddOperation(DisplayListOpType::kDrawView, view_id, offset_x,
-                             offset_y);
   DisplayListItem item{};
   item.type = DisplayListOpType::kDrawView;
   item.payload.draw_view.view_id = view_id;
@@ -95,8 +88,6 @@ void DisplayListBuilder::Clear() { display_list_ = DisplayList(); }
 
 DisplayListBuilder& DisplayListBuilder::DrawImage(
     const fml::RefPtr<PaintImage>& image, int32_t box_index) {
-  display_list_.AddOperation(DisplayListOpType::kImage, image->image_key_,
-                             box_index);
   DisplayListItem item{};
   item.type = DisplayListOpType::kImage;
   item.payload.image.image_id = image->image_key_;
@@ -108,7 +99,6 @@ DisplayListBuilder& DisplayListBuilder::DrawImage(
 
 DisplayListBuilder& DisplayListBuilder::DrawText(int text_id,
                                                  int32_t box_index) {
-  display_list_.AddOperation(DisplayListOpType::kText, text_id, box_index);
   DisplayListItem item{};
   item.type = DisplayListOpType::kText;
   item.payload.text.text_id = text_id;
@@ -120,15 +110,6 @@ DisplayListBuilder& DisplayListBuilder::DrawText(int text_id,
 DisplayListBuilder& DisplayListBuilder::Border(
     int32_t out_index, int32_t inner_index,
     const starlight::BordersData& border) {
-  display_list_.AddOperation(DisplayListOpType::kBorder, out_index, inner_index,
-                             static_cast<int32_t>(border.color_top),
-                             static_cast<int32_t>(border.color_right),
-                             static_cast<int32_t>(border.color_bottom),
-                             static_cast<int32_t>(border.color_left),
-                             static_cast<int32_t>(border.style_top),
-                             static_cast<int32_t>(border.style_right),
-                             static_cast<int32_t>(border.style_bottom),
-                             static_cast<int32_t>(border.style_left));
   DisplayListItem item{};
   item.type = DisplayListOpType::kBorder;
   item.payload.border.out_index = out_index;
@@ -146,17 +127,6 @@ DisplayListBuilder& DisplayListBuilder::Border(
 }
 
 DisplayListBuilder& DisplayListBuilder::ClipRect(const RoundedRectangle& rect) {
-  if (rect.HasRadius()) {
-    display_list_.AddOperation(
-        DisplayListOpType::kClipRect, rect.GetX(), rect.GetY(), rect.GetWidth(),
-        rect.GetHeight(), rect.GetRadiusXTopLeft(), rect.GetRadiusYTopLeft(),
-        rect.GetRadiusXTopRight(), rect.GetRadiusYTopRight(),
-        rect.GetRadiusXBottomRight(), rect.GetRadiusYBottomRight(),
-        rect.GetRadiusXBottomLeft(), rect.GetRadiusYBottomLeft());
-  } else {
-    display_list_.AddOperation(DisplayListOpType::kClipRect, rect.GetX(),
-                               rect.GetY(), rect.GetWidth(), rect.GetHeight());
-  }
   DisplayListItem item{};
   item.type = DisplayListOpType::kClipRect;
   item.payload.clip_rect.x = rect.GetX();
@@ -182,18 +152,6 @@ DisplayListBuilder& DisplayListBuilder::ClipRect(const RoundedRectangle& rect) {
 
 DisplayListBuilder& DisplayListBuilder::RecordBoxModel(
     const RoundedRectangle& rect, int32_t& index) {
-  if (rect.HasRadius()) {
-    display_list_.AddOperation(
-        DisplayListOpType::kRecordBox, rect.GetX(), rect.GetY(),
-        rect.GetWidth(), rect.GetHeight(), rect.GetRadiusXTopLeft(),
-        rect.GetRadiusYTopLeft(), rect.GetRadiusXTopRight(),
-        rect.GetRadiusYTopRight(), rect.GetRadiusXBottomRight(),
-        rect.GetRadiusYBottomRight(), rect.GetRadiusXBottomLeft(),
-        rect.GetRadiusYBottomLeft());
-  } else {
-    display_list_.AddOperation(DisplayListOpType::kRecordBox, rect.GetX(),
-                               rect.GetY(), rect.GetWidth(), rect.GetHeight());
-  }
   DisplayListItem item{};
   item.type = DisplayListOpType::kRecordBox;
   item.payload.record_box.x = rect.GetX();
@@ -240,9 +198,6 @@ DisplayListBuilder& DisplayListBuilder::BoxShadow(int32_t shadow_box_index,
                                                   uint32_t color,
                                                   float blur_radius,
                                                   BoxShadowClipMode clip_mode) {
-  display_list_.AddOperation(DisplayListOpType::kBoxShadow, shadow_box_index,
-                             clip_box_index, static_cast<int32_t>(color),
-                             blur_radius, static_cast<int32_t>(clip_mode));
   DisplayListItem item{};
   item.type = DisplayListOpType::kBoxShadow;
   item.payload.box_shadow.shadow_box_index = shadow_box_index;
