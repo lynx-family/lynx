@@ -164,7 +164,7 @@ TEST_F(FragmentTest, ReusedEventTargetTreeRefreshesScrollOffsetForHitTest) {
   DisplayListBuilder root_builder;
   root_builder
       .Begin(kRootId, PlatformRendererType::kPage, 0.f, 0.f, 100.f, 100.f)
-      .DrawView(1)
+      .DrawView(1, 0.f, 0.f)
       .End();
   root_renderer->UpdateDisplayList(root_builder.Build());
 
@@ -483,6 +483,19 @@ TEST_F(FragmentTest, TestUpdateLayoutAndDefineBoxAndDrawImage) {
   EXPECT_EQ(ops[3], static_cast<int32_t>(DisplayListOpType::kImage));
   EXPECT_EQ(ints[6], 2);
   EXPECT_EQ(ints[7], 0);
+}
+
+TEST_F(FragmentTest, ImageModesNormalizeToCreationTimeIntegers) {
+  EXPECT_EQ(
+      ImageFragmentBehavior::ResolveImageMode(base::String("scaleToFill")), 0);
+  EXPECT_EQ(ImageFragmentBehavior::ResolveImageMode(base::String("aspectFit")),
+            1);
+  EXPECT_EQ(ImageFragmentBehavior::ResolveImageMode(base::String("aspectFill")),
+            2);
+  EXPECT_EQ(ImageFragmentBehavior::ResolveImageMode(base::String("center")), 3);
+  EXPECT_EQ(ImageFragmentBehavior::ResolveImageMode(base::String()), 0);
+  EXPECT_EQ(
+      ImageFragmentBehavior::ResolveImageMode(base::String("unsupported")), 0);
 }
 
 TEST_F(FragmentTest, TestCheckRootIfNeedClipBounds) {

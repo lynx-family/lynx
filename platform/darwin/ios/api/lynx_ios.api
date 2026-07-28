@@ -2309,6 +2309,7 @@ public class LynxImageManager : NSObject {
   public void LynxImageManager::setTarget:(UIImageView *view);
   public void LynxImageManager::setSign:(NSInteger sign);
   public void LynxImageManager::setEventMask:(NSInteger eventMask);
+  public void LynxImageManager::setMode:(int32_t mode);
   public void LynxImageManager::reset();
 }
 
@@ -3230,6 +3231,7 @@ public class LynxRenderer : NSObject {
   public void LynxRenderer()::detachHostDecorationLayers();
   public void LynxRenderer()::reattachHostDecorationLayers();
   public void LynxRenderer()::syncHostDecorationLayers();
+  public void LynxRenderer()::updateLayoutOffsetIfNeeded:(CGPoint offset);
   public void LynxRenderer()::applySubtreeProperties:count:(const lynx::tasm::SubtreeProperty *properties, [count] size_t count);
   public void LynxRenderer()::applyTransform:(const float *transform);
   public void LynxRenderer()::applyOpacity:(float opacity);
@@ -3239,7 +3241,7 @@ public class LynxRendererContext : NSObject {
   public UIView<LUIBodyView>* LynxRendererContext::bodyView bodyView;
   public LynxUIContext* LynxRendererContext::uiContext uiContext;
   public LynxTextRenderManager* LynxRendererContext::textRenderManager textRenderManager;
-  public void LynxRendererContext::createImageManager:withSourceURL:andPlaceholderURL:eventMask:(int32_t imageManagerID,[withSourceURL] LynxURL *sourceURL,[andPlaceholderURL] LynxURL *placeholderURL,[eventMask] int32_t eventMask);
+  public void LynxRendererContext::createImageManager:withSourceURL:andPlaceholderURL:mode:eventMask:(int32_t imageManagerID,[withSourceURL] LynxURL *sourceURL,[andPlaceholderURL] LynxURL *placeholderURL,[mode] int32_t mode,[eventMask] int32_t eventMask);
   public LynxImageManager * LynxRendererContext::imageManagerForID:(int32_t imageManagerID);
   public void LynxRendererContext::updateTextBundle:withBundle:(int32_t textID,[withBundle] void *bundle);
   public void LynxRendererContext::destroyTextBundle:(int32_t textID);

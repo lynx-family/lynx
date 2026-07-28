@@ -14,12 +14,32 @@
 namespace lynx {
 namespace tasm {
 
+namespace {
+constexpr char kImageMode[] = "mode";
+}  // namespace
+
 ImageElement::ImageElement(ElementManager* manager, const base::String& tag)
     : FiberElement(manager, tag) {
   if (element_manager_ == nullptr) {
     return;
   }
+
+  if (element_manager_->IsFragmentLayerRenderModeOn()) {
+    SetDefaultOverflow(element_manager_->GetDefaultTextOverflow());
+  }
+
   element_manager_->IncreaseImageElementCount();
+}
+
+void ImageElement::AttachToElementManager(
+    ElementManager* manager,
+    const std::shared_ptr<CSSStyleSheetManager>& style_manager,
+    bool keep_element_id) {
+  FiberElement::AttachToElementManager(manager, style_manager, keep_element_id);
+
+  if (element_manager_->IsFragmentLayerRenderModeOn()) {
+    SetDefaultOverflow(manager->GetDefaultTextOverflow());
+  }
 }
 
 void ImageElement::OnNodeAdded(FiberElement* child) {
@@ -56,12 +76,19 @@ void ImageElement::ProcessAttributeForLayoutInElement(
     has_auto_size_ = value.Bool();
   } else if (key.IsEqual(kSrc)) {
     url_ = value.String();
+  } else if (key.IsEqual(kImageMode)) {
+    mode_ = value.IsString() ? value.String() : base::String();
   }
 }
 
 void ImageElement::ResetAttribute(const base::String& key) {
   if (EnableLayoutInElementMode()) {
     attr_map_[key] = lepus::Value();
+    if (key.IsEqual(kSrc)) {
+      url_ = base::String();
+    } else if (key.IsEqual(kImageMode)) {
+      mode_ = base::String();
+    }
   }
   FiberElement::ResetAttribute(key);
 }

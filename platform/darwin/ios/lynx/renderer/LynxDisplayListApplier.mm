@@ -6,10 +6,12 @@
 #import <Lynx/LynxBackgroundUtils.h>
 #import <Lynx/LynxContext+Internal.h>
 #import <Lynx/LynxImageLoader.h>
+#import <Lynx/LynxRenderer+Internal.h>
 #import <Lynx/LynxRendererContext.h>
 #import <Lynx/LynxRendererHost.h>
 #import <Lynx/LynxTextLayer.h>
 #import <Lynx/LynxUIContext.h>
+#import <Lynx/UIView+Lynx.h>
 #import "LynxDisplayListApplier+Internal.h"
 #import "LynxTextraLayer.h"
 
@@ -19,6 +21,39 @@
 
 using namespace lynx;
 using namespace lynx::tasm;
+
+namespace {
+
+// Renderer hosts need renderer callbacks and decoration-layer synchronization.
+// Legacy LynxUI-backed views have no renderer, so update only their host
+// geometry here.
+bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
+  if (view == nil) {
+    return false;
+  }
+
+  CALayer *layer = view.layer;
+  if (CATransform3DIsIdentity(layer.transform)) {
+    CGRect frame = view.frame;
+    if (CGPointEqualToPoint(frame.origin, offset)) {
+      return false;
+    }
+    frame.origin = offset;
+    [view setFrame:frame];
+    return true;
+  }
+
+  BOOL anchorPointChanged = !CGPointEqualToPoint(layer.anchorPoint, CGPointZero);
+  BOOL positionChanged = !CGPointEqualToPoint(layer.position, offset);
+  if (!anchorPointChanged && !positionChanged) {
+    return false;
+  }
+  layer.anchorPoint = CGPointZero;
+  layer.position = offset;
+  return true;
+}
+
+}  // namespace
 
 @interface LynxDisplayListApplier ()
 
@@ -174,15 +209,28 @@ using namespace lynx::tasm;
         break;
       }
       case DisplayListOpType::kDrawView: {
-        if (int_count == 1) {
-          [[maybe_unused]] auto view_id = [self nextContentInt];
-        }
+        auto view_id = [self nextContentInt];
+        auto offset_x = [self nextContentFloat];
+        auto offset_y = [self nextContentFloat];
         if (static_cast<NSUInteger>(view_index) < hostSubviewsSnapshot.count) {
           refView = hostSubviewsSnapshot[view_index++];
           _refLayer = refView.layer;
         } else {
           refView = nil;
           _refLayer = nil;
+        }
+        LynxRenderer *renderer = nil;
+        if ([refView conformsToProtocol:@protocol(LynxRendererHost)]) {
+          renderer = ((UIView<LynxRendererHost> *)refView).renderer;
+        }
+        NSNumber *refViewSign = refView.lynxSign;
+        BOOL rendererSignMatches = renderer != nil && renderer.sign == view_id;
+        BOOL legacyViewSignMatches =
+            renderer == nil && refViewSign != nil && refViewSign.intValue == view_id;
+        if (rendererSignMatches) {
+          [renderer updateLayoutOffsetIfNeeded:CGPointMake(offset_x, offset_y)];
+        } else if (legacyViewSignMatches) {
+          UpdateLegacyViewLayoutOffsetIfNeeded(refView, CGPointMake(offset_x, offset_y));
         }
         break;
       }
@@ -215,7 +263,10 @@ using namespace lynx::tasm;
       case DisplayListOpType::kImage: {
         if (int_count >= 2) {
           auto image_id = [self nextContentInt];
-          [[maybe_unused]] auto box_index = [self nextContentInt];
+          auto box_index = [self nextContentInt];
+          if (box_index < 0 || static_cast<size_t>(box_index) >= box_array_.size()) {
+            break;
+          }
           LynxImageManager *imageManager = [self imageManagerForID:image_id];
 
           UIImageView *imageView = [self createImageView];
@@ -225,6 +276,9 @@ using namespace lynx::tasm;
           rect.origin.x += left_offset_;
           rect.origin.y += top_offset_;
           [imageView setFrame:rect];
+          if (box.HasRadius()) {
+            [self applyRoundedRect:box toLayer:imageView.layer];
+          }
 
           [imageManager setTarget:imageView];
 

@@ -112,8 +112,8 @@ class NativePaintingCtxAndroid : public PaintingCtxPlatformImpl,
   void UpdatePlatformEventBundle(int32_t id,
                                  PlatformEventBundle bundle) override;
 
-  void CreateImage(int id, base::String src, float width, float height,
-                   int32_t event_mask = 0) override;
+  void CreateImage(int id, base::String src, int32_t mode, float width,
+                   float height, int32_t event_mask = 0) override;
 
   void UpdateTextBundle(int id, intptr_t bundle) override;
 

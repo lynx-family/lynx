@@ -301,9 +301,11 @@ public class DisplayListApplierTest {
    * <p>Test Data Layout:
    * <pre>
    * ops = {0, 3}                    // OP_BEGIN, OP_DRAW_VIEW
-   * iArgv = {2, 4, 0, 1, 1, 0, 123}   // param counts: (2int,4float),
-   *                                    // (id=0,type=kView), (1int,0float),
-   * viewId=123 fArgv = {0f, 0f, 100f, 50f}    // x=0, y=0, width=100, height=50 for OP_BEGIN
+   * iArgv = {2, 4, 0, 1, 1, 2, 123} // param counts: (2int,4float),
+   *                                  // (id=0,type=kView), (1int,2float),
+   *                                  // viewId=123
+   * fArgv = {0f, 0f, 100f, 50f, 15f, 26f}
+   *                                     // bounds, offsetX=15, offsetY=26
    * </pre>
    *
    * <p>Expected Behavior:
@@ -316,8 +318,8 @@ public class DisplayListApplierTest {
   @Test
   public void testOpDrawView() {
     testDisplayList.ops = new int[] {0, 3}; // OP_BEGIN, OP_DRAW_VIEW
-    testDisplayList.iArgv = new int[] {2, 4, 0, VIEW_TYPE, 1, 0, 123}; // intParamCounts
-    testDisplayList.fArgv = new float[] {0f, 0f, 100f, 50f}; // bounds for OP_BEGIN
+    testDisplayList.iArgv = new int[] {2, 4, 0, VIEW_TYPE, 1, 2, 123}; // param counts and int args
+    testDisplayList.fArgv = new float[] {0f, 0f, 100f, 50f, 15f, 26f}; // bounds and offset
 
     displayListApplier.setDisplayList(testDisplayList);
     displayListApplier.drawTillNextView(mockCanvas);

@@ -3,17 +3,23 @@
 // LICENSE file in the root directory of this source tree.
 
 #import <Lynx/LynxDisplayListApplier+Internal.h>
+#import <Lynx/LynxImageManager.h>
 #import <Lynx/LynxRenderer.h>
 #import <Lynx/LynxRendererContext.h>
 #import <Lynx/LynxRendererHost.h>
 #import <Lynx/LynxTextLayer.h>
 #import <Lynx/LynxTextRenderManager.h>
+#import <Lynx/UIView+Lynx.h>
 #import <OCMock/OCMock.h>
 #import <XCTest/XCTest.h>
 #include "core/public/platform_renderer_type.h"
 #include "core/renderer/dom/fragment/display_list.h"
 
 using namespace lynx::tasm;
+
+@interface LynxImageManager (LynxDisplayListApplierUnitTest)
+- (void)setMode:(int32_t)mode;
+@end
 
 namespace {
 constexpr int32_t kViewType = static_cast<int32_t>(PlatformRendererType::kView);
@@ -44,6 +50,18 @@ constexpr int32_t kViewType = static_cast<int32_t>(PlatformRendererType::kView);
 
 - (UIView *)view {
   return self;
+}
+
+@end
+
+@interface LynxCountingRenderer : LynxRenderer
+@property(nonatomic, assign) NSInteger setFrameCount;
+@end
+
+@implementation LynxCountingRenderer
+
+- (void)onSetFrame:(CGRect)frame {
+  self.setFrameCount++;
 }
 
 @end
@@ -137,9 +155,9 @@ constexpr int32_t kViewType = static_cast<int32_t>(PlatformRendererType::kView);
   [[mockLayer expect] insertSublayer:[OCMArg any] atIndex:0];
 
   // 4. kDrawView
-  // int_count=1 (view_id)
+  // int_count=1 (view_id), float_count=2 (offset_x, offset_y)
   // Should update _refLayer to mockSubView.layer
-  list.AddOperation(DisplayListOpType::kDrawView, 123);
+  list.AddOperation(DisplayListOpType::kDrawView, 123, 10.0f, 20.0f);
 
   // 5. Another kRecordBox and kFill to test _refLayer logic
   // This time _refLayer should be mockSubView.layer
@@ -173,21 +191,104 @@ constexpr int32_t kViewType = static_cast<int32_t>(PlatformRendererType::kView);
   // Verify no crash
 }
 
-- (void)testDrawViewWithIntCountNotOne {
-  id mockUIView = OCMClassMock([LynxMockView class]);
-  id mockSubView = OCMClassMock([UIView class]);
-  id mockContext = OCMClassMock([LynxRendererContext class]);
-  [[[mockUIView stub] andReturn:@[ mockSubView ]] subviews];
+- (void)testDrawViewUpdatesOnlyChangedOffsetWithoutReapplyingCurrentOffset {
+  LynxMockView *host = [[LynxMockView alloc] initWithRendererContext:nil];
+  [host createRendererWithSign:1 andContext:nil];
+  LynxMockView *child = [[LynxMockView alloc] initWithRendererContext:nil];
+  child.frame = CGRectMake(1.0f, 2.0f, 12.0f, 13.0f);
+  LynxCountingRenderer *childRenderer = [[LynxCountingRenderer alloc] initWithRenderHost:child
+                                                                                 andSign:2
+                                                                              andContext:nil];
+  child.renderer = childRenderer;
+  [host addSubview:child];
 
-  LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:mockUIView
-                                                                      andContext:mockContext];
-
+  LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:host
+                                                                      andContext:nil];
   DisplayList list;
-  // kDrawView with int_count=0 -> should NOT consume extra int
-  list.AddOperation(DisplayListOpType::kDrawView, 0);
+  list.AddOperation(DisplayListOpType::kBegin, 1, kViewType, 0.0f, 0.0f, 100.0f, 100.0f);
+  list.AddOperation(DisplayListOpType::kBegin, 3, kViewType, 10.0f, 20.0f, 50.0f, 50.0f);
+  list.AddOperation(DisplayListOpType::kDrawView, 2, 15.0f, 26.0f);
+  list.AddOperation(DisplayListOpType::kEnd);
+  list.AddOperation(DisplayListOpType::kEnd);
 
   [applier applyDisplayList:&list];
-  // Verify execution completes (index advanced correctly)
+  [applier applyDisplayList:&list];
+
+  XCTAssertTrue(CGRectEqualToRect(child.frame, CGRectMake(15.0f, 26.0f, 12.0f, 13.0f)));
+  XCTAssertEqual(childRenderer.setFrameCount, 1);
+}
+
+- (void)testDrawViewUsesTopLeftAnchorForTransformedChild {
+  LynxMockView *host = [[LynxMockView alloc] initWithRendererContext:nil];
+  [host createRendererWithSign:1 andContext:nil];
+  LynxMockView *child = [[LynxMockView alloc] initWithRendererContext:nil];
+  child.frame = CGRectMake(1.0f, 2.0f, 12.0f, 13.0f);
+  child.layer.anchorPoint = CGPointMake(0.5f, 0.5f);
+  child.layer.transform = CATransform3DMakeScale(2.0f, 2.0f, 1.0f);
+  LynxCountingRenderer *childRenderer = [[LynxCountingRenderer alloc] initWithRenderHost:child
+                                                                                 andSign:2
+                                                                              andContext:nil];
+  child.renderer = childRenderer;
+  [host addSubview:child];
+
+  LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:host
+                                                                      andContext:nil];
+  DisplayList list;
+  list.AddOperation(DisplayListOpType::kBegin, 1, kViewType, 0.0f, 0.0f, 100.0f, 100.0f);
+  list.AddOperation(DisplayListOpType::kDrawView, 2, 15.0f, 26.0f);
+  list.AddOperation(DisplayListOpType::kEnd);
+
+  [applier applyDisplayList:&list];
+  [applier applyDisplayList:&list];
+
+  XCTAssertTrue(CGPointEqualToPoint(child.layer.anchorPoint, CGPointZero));
+  XCTAssertTrue(CGPointEqualToPoint(child.layer.position, CGPointMake(15.0f, 26.0f)));
+  XCTAssertTrue(CGSizeEqualToSize(child.layer.bounds.size, CGSizeMake(12.0f, 13.0f)));
+  XCTAssertEqual(childRenderer.setFrameCount, 1);
+}
+
+- (void)testDrawViewUpdatesLegacyViewOffset {
+  LynxMockView *host = [[LynxMockView alloc] initWithRendererContext:nil];
+  [host createRendererWithSign:1 andContext:nil];
+  UIView *child = [[UIView alloc] initWithFrame:CGRectMake(1.0f, 2.0f, 12.0f, 13.0f)];
+  child.lynxSign = @2;
+  [host addSubview:child];
+
+  LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:host
+                                                                      andContext:nil];
+  DisplayList list;
+  list.AddOperation(DisplayListOpType::kBegin, 1, kViewType, 0.0f, 0.0f, 100.0f, 100.0f);
+  list.AddOperation(DisplayListOpType::kDrawView, 2, 15.0f, 26.0f);
+  list.AddOperation(DisplayListOpType::kEnd);
+
+  [applier applyDisplayList:&list];
+  [applier applyDisplayList:&list];
+
+  XCTAssertTrue(CGRectEqualToRect(child.frame, CGRectMake(15.0f, 26.0f, 12.0f, 13.0f)));
+}
+
+- (void)testDrawViewUsesTopLeftAnchorForTransformedLegacyView {
+  LynxMockView *host = [[LynxMockView alloc] initWithRendererContext:nil];
+  [host createRendererWithSign:1 andContext:nil];
+  UIView *child = [[UIView alloc] initWithFrame:CGRectMake(1.0f, 2.0f, 12.0f, 13.0f)];
+  child.lynxSign = @2;
+  child.layer.anchorPoint = CGPointMake(0.5f, 0.5f);
+  child.layer.transform = CATransform3DMakeScale(2.0f, 2.0f, 1.0f);
+  [host addSubview:child];
+
+  LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:host
+                                                                      andContext:nil];
+  DisplayList list;
+  list.AddOperation(DisplayListOpType::kBegin, 1, kViewType, 0.0f, 0.0f, 100.0f, 100.0f);
+  list.AddOperation(DisplayListOpType::kDrawView, 2, 15.0f, 26.0f);
+  list.AddOperation(DisplayListOpType::kEnd);
+
+  [applier applyDisplayList:&list];
+  [applier applyDisplayList:&list];
+
+  XCTAssertTrue(CGPointEqualToPoint(child.layer.anchorPoint, CGPointZero));
+  XCTAssertTrue(CGPointEqualToPoint(child.layer.position, CGPointMake(15.0f, 26.0f)));
+  XCTAssertTrue(CGSizeEqualToSize(child.layer.bounds.size, CGSizeMake(12.0f, 13.0f)));
 }
 
 - (void)testProcessContentOperationsWithUnknownOp {
@@ -474,6 +575,75 @@ constexpr int32_t kViewType = static_cast<int32_t>(PlatformRendererType::kView);
   XCTAssertNotNil(layer.mask);
   XCTAssertTrue([layer.mask isKindOfClass:[CAShapeLayer class]]);
   XCTAssertTrue(((CAShapeLayer *)layer.mask).path != nil);
+}
+
+- (void)testImageAppliesRoundedContentBox {
+  LynxMockView *view = [[LynxMockView alloc] initWithFrame:CGRectMake(0, 0, 100, 100)];
+  LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:view
+                                                                      andContext:nil];
+
+  DisplayList list;
+  list.AddOperation(DisplayListOpType::kRecordBox, 10.0f, 12.0f, 40.0f, 50.0f, 6.0f, 6.0f, 6.0f,
+                    6.0f, 6.0f, 6.0f, 6.0f, 6.0f);
+  list.AddOperation(DisplayListOpType::kImage, 123, 0);
+
+  [applier applyDisplayList:&list];
+
+  UIImageView *imageView = (UIImageView *)view.subviews.firstObject;
+  XCTAssertNotNil(imageView);
+  XCTAssertTrue(CGRectEqualToRect(imageView.frame, CGRectMake(10.0f, 12.0f, 40.0f, 50.0f)));
+  XCTAssertEqualWithAccuracy(imageView.layer.cornerRadius, 6.0f, 0.001f);
+  XCTAssertTrue(imageView.layer.masksToBounds);
+}
+
+- (void)testImageAppliesNonUniformRoundedContentBox {
+  LynxMockView *view = [[LynxMockView alloc] initWithFrame:CGRectMake(0, 0, 100, 100)];
+  LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:view
+                                                                      andContext:nil];
+
+  DisplayList list;
+  list.AddOperation(DisplayListOpType::kRecordBox, 10.0f, 12.0f, 40.0f, 50.0f, 2.0f, 3.0f, 4.0f,
+                    5.0f, 6.0f, 7.0f, 8.0f, 9.0f);
+  list.AddOperation(DisplayListOpType::kImage, 123, 0);
+
+  [applier applyDisplayList:&list];
+
+  UIImageView *imageView = (UIImageView *)view.subviews.firstObject;
+  XCTAssertNotNil(imageView);
+  XCTAssertEqualWithAccuracy(imageView.layer.cornerRadius, 0.0f, 0.001f);
+  XCTAssertFalse(imageView.layer.masksToBounds);
+  XCTAssertNotNil(imageView.layer.mask);
+  XCTAssertTrue([imageView.layer.mask isKindOfClass:[CAShapeLayer class]]);
+  XCTAssertTrue(((CAShapeLayer *)imageView.layer.mask).path != NULL);
+}
+
+- (void)testImageManagerAppliesFitModeToTarget {
+  NSDictionary<NSNumber *, NSNumber *> *expectations = @{
+    @0 : @(UIViewContentModeScaleToFill),
+    @1 : @(UIViewContentModeScaleAspectFit),
+    @2 : @(UIViewContentModeScaleAspectFill),
+    @3 : @(UIViewContentModeCenter),
+  };
+
+  for (NSNumber *mode in expectations) {
+    LynxImageManager *imageManager = [[LynxImageManager alloc] initWithContext:nil];
+    [imageManager setMode:mode.intValue];
+    UIImageView *imageView = [UIImageView new];
+    [imageManager setTarget:imageView];
+    XCTAssertEqual(imageView.contentMode,
+                   static_cast<UIViewContentMode>(expectations[mode].integerValue));
+  }
+
+  LynxImageManager *defaultManager = [[LynxImageManager alloc] initWithContext:nil];
+  UIImageView *defaultView = [UIImageView new];
+  [defaultManager setTarget:defaultView];
+  XCTAssertEqual(defaultView.contentMode, UIViewContentModeScaleToFill);
+
+  LynxImageManager *invalidManager = [[LynxImageManager alloc] initWithContext:nil];
+  [invalidManager setMode:-1];
+  UIImageView *invalidView = [UIImageView new];
+  [invalidManager setTarget:invalidView];
+  XCTAssertEqual(invalidView.contentMode, UIViewContentModeScaleToFill);
 }
 
 - (void)testBeginWithMatchingSign {

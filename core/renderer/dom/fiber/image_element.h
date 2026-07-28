@@ -6,6 +6,7 @@
 #define CORE_RENDERER_DOM_FIBER_IMAGE_ELEMENT_H_
 
 #include <cstdint>
+#include <memory>
 
 #include "core/renderer/dom/fiber/fiber_element.h"
 #include "core/renderer/dom/fiber/platform_types.h"
@@ -29,7 +30,13 @@ class ImageElement : public FiberElement {
 
   void ConvertToInlineElement() override;
 
-  const base::String& src() { return url_; }
+  void AttachToElementManager(
+      ElementManager* manager,
+      const std::shared_ptr<CSSStyleSheetManager>& style_manager,
+      bool keep_element_id) override;
+
+  const base::String& src() const { return url_; }
+  const base::String& mode() const { return mode_; }
 
   void ResetAttribute(const base::String& key) override;
 
@@ -54,6 +61,7 @@ class ImageElement : public FiberElement {
   AttrUMap attr_map_;
   bool has_auto_size_{false};
   base::String url_;
+  base::String mode_;
 
  private:
   template <OSType type>

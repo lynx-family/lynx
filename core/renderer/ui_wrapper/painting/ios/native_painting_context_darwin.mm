@@ -280,8 +280,8 @@ void NativePaintingCtxDarwin::UpdatePlatformEventBundle(int32_t id, PlatformEven
   });
 }
 
-void NativePaintingCtxDarwin::CreateImage(int id, base::String src, float width, float height,
-                                          int32_t event_mask) {
+void NativePaintingCtxDarwin::CreateImage(int id, base::String src, int32_t mode, float width,
+                                          float height, int32_t event_mask) {
   LynxURL *sourceUrl = [[LynxURL alloc] init];
   sourceUrl.url = [[NSURL alloc] initWithString:[[NSString alloc] initWithUTF8String:src.c_str()]];
   sourceUrl.imageSize = CGSizeMake(width, height);
@@ -289,6 +289,7 @@ void NativePaintingCtxDarwin::CreateImage(int id, base::String src, float width,
   [context_->GetRendererContext() createImageManager:id
                                        withSourceURL:sourceUrl
                                    andPlaceholderURL:nil
+                                                mode:mode
                                            eventMask:event_mask];
 }
 
