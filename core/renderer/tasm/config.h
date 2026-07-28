@@ -24,7 +24,7 @@
 #define DEFAULT_FONT_SIZE_DP 14
 #define DEFAULT_FONT_SCALE 1.f
 
-#define LYNX_VERSION tasm::V_4_1  // need updated when release lynx
+#define LYNX_VERSION tasm::V_4_2  // need updated when release lynx
 #define LYNX_TASM_MAX_SUPPORTED_VERSION \
   tasm::V_3_9  // need updated when release @lynx-js/tasm
 #define MIN_SUPPORTED_LYNX_VERSION tasm::V_1_0  // updated when break change
@@ -99,6 +99,7 @@
 #define LYNX_VERSION_3_9 tasm::V_3_9
 #define LYNX_VERSION_4_0 tasm::V_4_0
 #define LYNX_VERSION_4_1 tasm::V_4_1
+#define LYNX_VERSION_4_2 tasm::V_4_2
 
 #define LYNX_LEPUS_VERSION "2.3.0"
 
