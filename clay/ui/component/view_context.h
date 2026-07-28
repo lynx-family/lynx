@@ -139,6 +139,7 @@ class ViewContext : public std::enable_shared_from_this<ViewContext> {
                               const clay::Value& value);
 
   void ScheduleLayout();
+  bool InvalidateLaidOutTextNodes();
 
   void Alignment(int id);
 
