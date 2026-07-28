@@ -223,6 +223,7 @@ void LynxTemplateRenderer::SetUpLynxShell(
   }
   engine_proxy_ =
       std::make_shared<shell::LynxEngineProxyImpl>(shell_->GetEngineActor());
+  runtime_proxy_.reset();
   if (enable_js) {
     if (runtime_wrapper) {
       if (auto module_manager = runtime_wrapper->GetModuleManager().lock()) {
