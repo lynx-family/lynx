@@ -4,6 +4,31 @@
 import("../../config.gni")
 import("../test.gni")
 
+if (is_android) {
+  group("lynx_test_jni_files") {
+    exec_script(
+        "//tools_shared/jni_generator/generate_and_register_jni_files.py",
+        [
+          "-root",
+          rebase_path("../.."),
+          "-path",
+          rebase_path("./android/jni_configs.yml"),
+        ])
+    public_deps = [ "android:build" ]
+  }
+
+  source_set("lynx_android_unittests_jni") {
+    sources = [
+      "android/display_list_item_buffer_test.cc",
+      "android/native_display_list_builder.cc",
+    ]
+    deps = [
+      ":lynx_test_jni_files",
+      "../../core/renderer/dom/fragment:display_list",
+    ]
+  }
+}
+
 group("lynx_test") {
   testonly = true
   deps = [
