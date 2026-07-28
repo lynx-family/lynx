@@ -24,9 +24,11 @@ void ExternalViewLayer::Preroll(PrerollContext* context) {
   set_subtree_has_platform_view(true);
   MutatorsStack mutators;
   context->state_stack.fill(&mutators);
-  std::unique_ptr<OverlayViewParams> params =
-      std::make_unique<OverlayViewParams>(
+  const skity::Rect overlay_bounds =
+      context->state_stack.transform_4x4().MapRect(
           skity::Rect::MakeWH(size_.x, size_.y));
+  std::unique_ptr<OverlayViewParams> params =
+      std::make_unique<OverlayViewParams>(overlay_bounds);
   context->compositor_state->PrerollOverlayView(element_id_.view_id(),
                                                 std::move(params));
 }
