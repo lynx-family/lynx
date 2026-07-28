@@ -151,9 +151,11 @@ public class DevToolPlatformAndroidDelegate {
   }
 
   @CalledByNative
-  public void startCasting(int quality, int max_width, int max_height, String screenshot_mode) {
+  public void startCasting(
+      int quality, int max_width, int max_height, String screenshot_mode, String format) {
     if (mCastHelper != null) {
-      mCastHelper.startCasting(quality, max_width, max_height, screenshot_mode, mDevToolDelegate);
+      mCastHelper.startCasting(
+          quality, max_width, max_height, screenshot_mode, format, mDevToolDelegate);
     }
   }
 

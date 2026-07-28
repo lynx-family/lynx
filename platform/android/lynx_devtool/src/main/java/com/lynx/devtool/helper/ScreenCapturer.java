@@ -6,6 +6,7 @@ package com.lynx.devtool.helper;
 import android.graphics.Bitmap;
 import android.graphics.Matrix;
 import android.os.HandlerThread;
+import android.util.Base64;
 import android.util.DisplayMetrics;
 import android.view.Choreographer;
 import android.view.View;
@@ -27,6 +28,7 @@ public class ScreenCapturer extends FrameCapturer {
     private int mMaxHeight;
     private int mQuality;
     private String mScreenshotMode;
+    private String mFormat;
   }
 
   public static class ScreenMetadata {
@@ -44,6 +46,8 @@ public class ScreenCapturer extends FrameCapturer {
   }
 
   private static final String TAG = "ScreenCapturer";
+  private static final String FORMAT_JPEG = "jpeg";
+  private static final String FORMAT_PNG = "png";
   private static final ScreenCapturer mInstance = new ScreenCapturer();
 
   private static final int CARD_PREVIEW_QUALITY = 100;
@@ -111,11 +115,12 @@ public class ScreenCapturer extends FrameCapturer {
   }
 
   public void startCapture(int maxWidth, int maxHeight, int quality, String screenShotMode,
-      ScreenshotListener listener) {
+      String format, ScreenshotListener listener) {
     mScreenRequest.mMaxWidth = maxWidth;
     mScreenRequest.mMaxHeight = maxHeight;
     mScreenRequest.mQuality = quality;
     mScreenRequest.mScreenshotMode = screenShotMode;
+    mScreenRequest.mFormat = normalizeFormat(format);
     mScreenshotListener = listener;
     mIsEnabled = true;
     addResetDirtyStatusCallBack();
@@ -165,7 +170,15 @@ public class ScreenCapturer extends FrameCapturer {
     int quality = isPreview ? CARD_PREVIEW_QUALITY : mScreenRequest.mQuality;
     int maxWidth = isPreview ? CARD_PREVIEW_MAX_WIDTH : mScreenRequest.mMaxWidth;
     int maxHeight = isPreview ? CARD_PREVIEW_MAX_HEIGHT : mScreenRequest.mMaxHeight;
-    return BitmapUtils.bitmapToBase64WithQuality(scaleImage(bitmap, maxWidth, maxHeight), quality);
+    String format = isPreview ? FORMAT_JPEG : mScreenRequest.mFormat;
+    Bitmap.CompressFormat compressFormat =
+        FORMAT_PNG.equals(format) ? Bitmap.CompressFormat.PNG : Bitmap.CompressFormat.JPEG;
+    return BitmapUtils.bitmapToBase64(
+        scaleImage(bitmap, maxWidth, maxHeight), compressFormat, quality, Base64.NO_WRAP);
+  }
+
+  private String normalizeFormat(String format) {
+    return FORMAT_PNG.equalsIgnoreCase(format) ? FORMAT_PNG : FORMAT_JPEG;
   }
 
   public void onScreenshotBitmapReady(Bitmap bitmap) {

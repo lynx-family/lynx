@@ -306,9 +306,12 @@ void DevToolPlatformAndroid::StartScreenCast(ScreenshotRequest request) {
       lynx::devtool::DevToolStatus::SCREENSHOT_MODE_FULLSCREEN);
   auto jni_mode =
       lynx::base::android::JNIConvertHelper::ConvertToJNIStringUTF(env, mode);
+  auto jni_format =
+      lynx::base::android::JNIConvertHelper::ConvertToJNIStringUTF(
+          env, request.format_);
   Java_DevToolPlatformAndroidDelegate_startCasting(
       env, ref.Get(), request.quality_, request.max_width_, request.max_height_,
-      jni_mode.Get());
+      jni_mode.Get(), jni_format.Get());
 }
 
 void DevToolPlatformAndroid::StopScreenCast() {
