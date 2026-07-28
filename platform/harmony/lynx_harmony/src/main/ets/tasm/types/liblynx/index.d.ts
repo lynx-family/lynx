@@ -287,7 +287,8 @@ export class UIBase {
     layout: Function, invokeUIMethod: Function, dispose: Function, focusChange: Function, focusable: Function,
     onNodeReady: Function,
     customLayout: boolean, updateExtraData: Function,
-    needWindowStateChangeEvent: boolean, onEnterForeground: Function, onEnterBackground: Function);
+    needWindowStateChangeEvent: boolean, onEnterForeground: Function, onEnterBackground: Function,
+    isScrollable: Function, scrollX: Function, scrollY: Function);
 
   static getUIFromNativeContent(nativeContent: NativeContent): Object | undefined;
 
@@ -313,6 +314,8 @@ export class UIBase {
   setFocusedUI(): void;
 
   unsetFocusedUI(): void;
+
+  gestureRecognized(): void;
 
   setChildrenManagementFuncs(insertChild: Function, removeChild: Function): void;
 

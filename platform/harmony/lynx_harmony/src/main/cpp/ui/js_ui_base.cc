@@ -105,7 +105,7 @@ void JSUIBase::SetFrameNode(ArkUI_NodeHandle frame_node) {
 }
 
 napi_value JSUIBase::Constructor(napi_env env, napi_callback_info info) {
-  size_t argc = 17;
+  size_t argc = 20;
   /** 0 - js ref
    *  1 - context ptr array
    *  2 - FrameNode napi_value
@@ -123,6 +123,9 @@ napi_value JSUIBase::Constructor(napi_env env, napi_callback_info info) {
    *  14 - need_window_state_change_event bool
    *  15 - onEnterForeground func ref
    *  16 - onEnterBackground func ref
+   *  17 - isScrollable func ref
+   *  18 - scrollX func ref
+   *  19 - scrollY func ref
    */
   napi_value argv[argc];
   napi_value js_this;
@@ -155,6 +158,9 @@ napi_value JSUIBase::Constructor(napi_env env, napi_callback_info info) {
   napi_create_reference(env, argv[13], 1, &ui->js_update_extra_data_);
   napi_create_reference(env, argv[15], 1, &ui->js_on_enter_foreground_);
   napi_create_reference(env, argv[16], 1, &ui->js_on_enter_background_);
+  napi_create_reference(env, argv[17], 1, &ui->js_is_scrollable_);
+  napi_create_reference(env, argv[18], 1, &ui->js_scroll_x_);
+  napi_create_reference(env, argv[19], 1, &ui->js_scroll_y_);
 
   napi_wrap(
       env, js_this, ui, [](napi_env env, void* data, void*) {}, nullptr,
@@ -383,6 +389,9 @@ JSUIBase::~JSUIBase() {
   napi_delete_reference(env_, js_node_ready_);
   napi_delete_reference(env_, js_update_);
   napi_delete_reference(env_, js_focusable_);
+  napi_delete_reference(env_, js_is_scrollable_);
+  napi_delete_reference(env_, js_scroll_x_);
+  napi_delete_reference(env_, js_scroll_y_);
   if (HasCustomizedLayout()) {
     napi_delete_reference(env_, js_insert_child_);
     napi_delete_reference(env_, js_remove_child_);
@@ -467,6 +476,7 @@ napi_value JSUIBase::Init(napi_env env, napi_value exports) {
       DECLARE_NAPI_FUNCTION("setFrameNode", SetFrameNode),
       DECLARE_NAPI_FUNCTION("setFocusedUI", SetFocusedUI),
       DECLARE_NAPI_FUNCTION("unsetFocusedUI", UnsetFocusedUI),
+      DECLARE_NAPI_FUNCTION("gestureRecognized", GestureRecognized),
       DECLARE_NAPI_FUNCTION("setChildrenManagementFuncs",
                             SetChildrenManagementFuncs),
       DECLARE_NAPI_FUNCTION("attachGestureToNode", AttachGestureToNode),
@@ -567,6 +577,66 @@ bool JSUIBase::Focusable() {
   return focusable;
 }
 
+bool JSUIBase::IsScrollable() {
+  base::NapiHandleScope scope(env_);
+  napi_value js_recv = base::NapiUtil::GetReferenceNapiValue(env_, js_ref_);
+  napi_value is_scrollable =
+      base::NapiUtil::GetReferenceNapiValue(env_, js_is_scrollable_);
+  if (!js_recv || !is_scrollable) {
+    return UIBase::IsScrollable();
+  }
+  napi_value result{nullptr};
+  if (napi_call_function(env_, js_recv, is_scrollable, 0, nullptr, &result) !=
+      napi_ok) {
+    return UIBase::IsScrollable();
+  }
+  bool scrollable = false;
+  if (napi_get_value_bool(env_, result, &scrollable) != napi_ok) {
+    return UIBase::IsScrollable();
+  }
+  return scrollable;
+}
+
+float JSUIBase::ScrollX() {
+  base::NapiHandleScope scope(env_);
+  napi_value js_recv = base::NapiUtil::GetReferenceNapiValue(env_, js_ref_);
+  napi_value scroll_x =
+      base::NapiUtil::GetReferenceNapiValue(env_, js_scroll_x_);
+  if (!js_recv || !scroll_x) {
+    return UIBase::ScrollX();
+  }
+  napi_value result{nullptr};
+  if (napi_call_function(env_, js_recv, scroll_x, 0, nullptr, &result) !=
+      napi_ok) {
+    return UIBase::ScrollX();
+  }
+  double offset = 0;
+  if (napi_get_value_double(env_, result, &offset) != napi_ok) {
+    return UIBase::ScrollX();
+  }
+  return static_cast<float>(offset);
+}
+
+float JSUIBase::ScrollY() {
+  base::NapiHandleScope scope(env_);
+  napi_value js_recv = base::NapiUtil::GetReferenceNapiValue(env_, js_ref_);
+  napi_value scroll_y =
+      base::NapiUtil::GetReferenceNapiValue(env_, js_scroll_y_);
+  if (!js_recv || !scroll_y) {
+    return UIBase::ScrollY();
+  }
+  napi_value result{nullptr};
+  if (napi_call_function(env_, js_recv, scroll_y, 0, nullptr, &result) !=
+      napi_ok) {
+    return UIBase::ScrollY();
+  }
+  double offset = 0;
+  if (napi_get_value_double(env_, result, &offset) != napi_ok) {
+    return UIBase::ScrollY();
+  }
+  return static_cast<float>(offset);
+}
+
 void JSUIBase::OnFocusChange(bool has_focus, bool is_focus_transition) {
   base::NapiHandleScope scope(env_);
   size_t argc = 2;
@@ -605,6 +675,20 @@ napi_value JSUIBase::UnsetFocusedUI(napi_env env, napi_callback_info info) {
     return nullptr;
   }
   ui->context_->UnsetFocusedTarget(ui->WeakTarget());
+  return nullptr;
+}
+
+napi_value JSUIBase::GestureRecognized(napi_env env, napi_callback_info info) {
+  size_t argc = 0;
+  napi_value js_this;
+  napi_get_cb_info(env, info, &argc, nullptr, &js_this, nullptr);
+  JSUIBase* ui;
+  const napi_status status =
+      napi_unwrap(env, js_this, reinterpret_cast<void**>(&ui));
+  if (status != napi_ok || !ui) {
+    return nullptr;
+  }
+  ui->UIBase::GestureRecognized();
   return nullptr;
 }
 

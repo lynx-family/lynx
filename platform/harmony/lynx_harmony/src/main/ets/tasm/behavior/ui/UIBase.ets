@@ -54,6 +54,18 @@ export abstract class UIBase {
     return false;
   }
 
+  isScrollable(): boolean {
+    return false;
+  }
+
+  scrollX(): number {
+    return 0;
+  }
+
+  scrollY(): number {
+    return 0;
+  }
+
   updateExtraData(data: Object): void {
   }
 
@@ -81,7 +93,7 @@ export abstract class UIBase {
         this.dispose,
         this.focusChange, this.focusable, this.onNodeReady, this.hasCustomizedLayout(), this.updateExtraData,
         this.needWindowStateChangeEvent(),
-        this.onEnterForeground, this.onEnterBackground);
+        this.onEnterForeground, this.onEnterBackground, this.isScrollable, this.scrollX, this.scrollY);
     TraceEvent.endSection(TraceCategory.Lynx, TraceEventDef.UIBASE_CREATE_NATIVE_UI);
     this.nativeUI.setFrameNode(this.getFrameNode(this.uiContext!));
   }
@@ -152,6 +164,10 @@ export abstract class UIBase {
 
   unsetFocusedUI() {
     this.nativeUI?.unsetFocusedUI();
+  }
+
+  gestureRecognized() {
+    this.nativeUI?.gestureRecognized();
   }
 
   px2vpIfNeeded(px: number, defaultValue: number = 0): number {

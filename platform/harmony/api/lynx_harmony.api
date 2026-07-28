@@ -536,6 +536,9 @@ export abstract class UIBase {
   setSign(sign: number, tag: string): void;
   hasCustomizedLayout(): boolean;
   focusable(): boolean;
+  isScrollable(): boolean;
+  scrollX(): number;
+  scrollY(): number;
   updateExtraData(data: Object): void;
   attachToNative(uiContext: UIContext, context: number[]): void;
   sendGlobalEvent(name: string, params: Object[]): void;
@@ -547,6 +550,7 @@ export abstract class UIBase {
   onNodeReady(): void;
   setFocusedUI(): void;
   unsetFocusedUI(): void;
+  gestureRecognized(): void;
   px2vpIfNeeded(px: number, defaultValue: number): number;
   value2vpIfNeeded(value: number | string, defaultValue: number): number;
   abstract layout(x: number, y: number, width: number, height: number, paddingLeft: number, paddingTop: number, paddingRight: number, paddingBottom: number, marginLeft: number, marginTop: number, marginRight: number, marginBottom: number, sticky: number[]): void;
@@ -637,7 +641,7 @@ export class UIOwner {
 }
 
 export class UIBase {
-  constructor(ref: Object, context: number[], node: FrameNode | null, sign: number, tag: string, update: Function, layout: Function, invokeUIMethod: Function, dispose: Function, focusChange: Function, focusable: Function, onNodeReady: Function, customLayout: boolean, updateExtraData: Function, needWindowStateChangeEvent: boolean, onEnterForeground: Function, onEnterBackground: Function);
+  constructor(ref: Object, context: number[], node: FrameNode | null, sign: number, tag: string, update: Function, layout: Function, invokeUIMethod: Function, dispose: Function, focusChange: Function, focusable: Function, onNodeReady: Function, customLayout: boolean, updateExtraData: Function, needWindowStateChangeEvent: boolean, onEnterForeground: Function, onEnterBackground: Function, isScrollable: Function, scrollX: Function, scrollY: Function);
   static getUIFromNativeContent(nativeContent: NativeContent): Object | undefined;
   static getContentSize(nativeContent: NativeContent): [number, number];
   getChildren(): ArrayBuffer;
@@ -648,6 +652,7 @@ export class UIBase {
   findShadowNodeBySign(sign: number): number[] | undefined;
   setFocusedUI(): void;
   unsetFocusedUI(): void;
+  gestureRecognized(): void;
   setChildrenManagementFuncs(insertChild: Function, removeChild: Function): void;
   attachGestureToNode(node: NativeContent, level: number): void;
   reuseNativeContent(node: NativeContent): void;
