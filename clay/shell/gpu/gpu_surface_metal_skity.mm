@@ -84,6 +84,7 @@ GPUSurfaceMetalSkity::GPUSurfaceMetalSkity(GPUSurfaceMetalDelegate* delegate,
       render_to_surface_(render_to_surface) {
 #if defined(OS_OSX)
   context_->SetEnableSimpleShapePipeline(true);
+  context_->EnableRenderTargetCache(false);
 #endif
 }
 
