@@ -1,6 +1,7 @@
 {
   "modelVersion": "5.0.0",
   "dependencies": {
+    "@lynx/lynx-library-plugin": "file:../../../platform/harmony/lynx_library_plugin"
   },
   "execution": {
     // "analyze": "default",                    /* Define the build analyze mode. Value: [ "default" | "verbose" | false ]. Default: "default" */

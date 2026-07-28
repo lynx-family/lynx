@@ -1368,6 +1368,27 @@ export class LynxBackgroundRuntime extends lynx.LynxRuntimeWrapper {
   templateResourceFetcher(): LynxTemplateResourceFetcher;
 }
 
+export class LynxLibraryRegistry {
+  constructor(packageName: string);
+  registerBehavior(name: string, behavior: Behavior): void;
+  registerModule(name: string, wrapper: ModuleClassWrapper): void;
+  registerService(serviceType: LynxServiceType, service: IServiceProvider): void;
+  registerInitializer(initializer: LynxLibraryInitializer): void;
+  static setupGlobal(entries: LynxLibraryProviderEntry[]): void;
+}
+
+export interface LynxLibraryProvider {
+  register(registry: LynxLibraryRegistry): void;
+}
+
+export interface LynxLibraryProviderEntry {
+  packageName: string;
+  provider: LynxLibraryProvider;
+}
+
+export type LynxLibraryInitializer = () => void {
+}
+
 export interface LynxImageConfig {
   enableImageLoadCallback?: boolean;
   enableRedirectUrl?: boolean;
