@@ -358,6 +358,7 @@ if (enable_unittests) {
       "hybrid_map_unittest.cc",
       "linked_hash_map_unittest.cc",
       "log/log_stream_unittest.cc",
+      "log/logging_unittest.cc",
       "lynx_actor_unittest.cc",
       "notification_center_unittest.cc",
       "path_utils_unittest.cc",

@@ -2944,6 +2944,15 @@ public protocol LynxLogBoxProtocol-p : <NSObject> {
   public void LynxLogBoxProtocol-p::destroy();
 }
 
+public class LynxLogContext : NSObject {
+  public int64_t LynxLogContext::viewId viewId;
+  public int64_t LynxLogContext::engineId engineId;
+  public int64_t LynxLogContext::runtimeId runtimeId;
+  public instancetype LynxLogContext::NS_UNAVAILABLE();
+  public instancetype LynxLogContext::initWithViewId:engineId:runtimeId:(int64_t viewId,[engineId] int64_t engineId,[runtimeId] int64_t runtimeId);
+  public instancetype LynxLogContext::NS_UNAVAILABLE();
+}
+
 public protocol LynxLogicExecutor-p : <NSObject> {
   public void LynxLogicExecutor-p::onLynxEvent:event:(LynxView *lynxView,[event] NSDictionary *event);
   public void LynxLogicExecutor-p::destroy();
