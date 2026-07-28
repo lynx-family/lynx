@@ -128,6 +128,7 @@ class Engine : public clay::RenderDelegate, public clay::Recyclable {
 
   void SetViewportMetrics(const ViewportMetrics& metrics);
   void SetupDefaultFontManager();
+  void OnDefaultFontManagerReady();
   bool DispatchPointerEvent(std::vector<clay::PointerEvent> events);
   void DispatchKeyEvent(std::unique_ptr<clay::KeyEvent> event,
                         std::function<void(bool /* handled */)> callback);
