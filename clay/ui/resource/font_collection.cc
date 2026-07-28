@@ -54,6 +54,10 @@ void FontCollection::SetupDefaultFontManager(
   collection_->SetupDefaultFontManager(font_initialization_data);
 }
 
+void FontCollection::SetDefaultFontManager(GrFontMgrPtr font_manager) {
+  collection_->SetDefaultFontManager(std::move(font_manager));
+}
+
 void FontCollection::RegisterAssetFont(const std::string& family_name,
                                        const std::string& asset_path) {
   if (!asset_font_manager_) {
