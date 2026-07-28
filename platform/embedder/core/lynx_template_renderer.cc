@@ -166,26 +166,26 @@ void LynxTemplateRenderer::Reset(bool wait_for_runtime_detach) {
                                     devtool::LynxDevToolSetModule::Create);
   module_manager_->SetModuleFactory(std::move(devtool_module_factory_));
 #endif
-  auto on_runtime_actor_created = [this](auto& actor) {
-    auto module_delegate = std::make_shared<shell::ModuleDelegateImpl>(
-        shell_->GetRuntimeActor(), shell_->GetFacadeActor());
-    module_manager_->initBindingPtr(module_manager_, module_delegate);
-    runtime_proxy_ = std::make_shared<shell::LynxBTSRuntimeProxyImpl>(actor);
-    module_manager_->runtime_proxy = runtime_proxy_;
-    if (runtime_proxy_callback_) {
-      // There's cases that need to inject runtime life cycle before JSRuntime
-      // creating, so add an early callback here.
-      // e.g. inject JSB `LynxRecorderReplayDataModule` for testbench.
-      runtime_proxy_callback_(engine_proxy_, runtime_proxy_, module_manager_,
-                              shell_->GetRunners()->GetJSTaskRunner());
-    }
-  };
 
   if (settings_.global_props) {
     shell_->UpdateGlobalProps(*settings_.global_props);
   }
 
   if (settings_.enable_js) {
+    auto on_runtime_actor_created = [this](auto& actor) {
+      auto module_delegate = std::make_shared<shell::ModuleDelegateImpl>(
+          shell_->GetRuntimeActor(), shell_->GetFacadeActor());
+      module_manager_->initBindingPtr(module_manager_, module_delegate);
+      runtime_proxy_ = std::make_shared<shell::LynxBTSRuntimeProxyImpl>(actor);
+      module_manager_->runtime_proxy = runtime_proxy_;
+      if (runtime_proxy_callback_) {
+        // There's cases that need to inject runtime life cycle before JSRuntime
+        // creating, so add an early callback here.
+        // e.g. inject JSB `LynxRecorderReplayDataModule` for testbench.
+        runtime_proxy_callback_(engine_proxy_, runtime_proxy_, module_manager_,
+                                shell_->GetRunners()->GetJSTaskRunner());
+      }
+    };
     auto runtime_flags = shell::CalcRuntimeFlags(
         false, settings_.use_quickjs, false, settings_.enable_bytecode);
     shell_->InitRuntime(settings_.group_id, settings_.resource_loader,
