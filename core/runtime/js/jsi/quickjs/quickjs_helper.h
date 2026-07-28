@@ -71,7 +71,8 @@ class QuickjsHelper {
 
   static base::expected<Value, JSINativeException> evalBuf(
       QuickjsRuntime* rt, LEPUSContext* ctx, const char* buf, size_t buf_len,
-      const char* filename, int eval_flags, int start_line_offset);
+      const char* filename, int eval_flags, int start_line_offset,
+      bool enable_js_coverage);
   static base::expected<Value, JSINativeException> evalBin(
       QuickjsRuntime* rt, LEPUSContext* ctx, const char* buf, size_t buf_len,
       const char* filename, int eval_flags);
