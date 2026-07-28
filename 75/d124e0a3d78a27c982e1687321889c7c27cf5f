@@ -1,0 +1,49 @@
+explorer/harmony/hvigor/hvigor-config.json5
+  s_3101666001455b::t_add500b99c7830 4,22
+explorer/harmony/hvigorconfig.ts
+  s_3101666001455b::t_c81dd2378e6f9e 1-10
+explorer/harmony/lynx_explorer/hvigorfile.ts
+  s_3101666001455b::t_a396205dfdee6a 5
+platform/harmony/api/lynx_harmony.api
+  s_3101666001455b::t_f202f15a63562d 1358-1378
+platform/harmony/lynx_harmony/src/main/ets/Index.ets
+  s_3101666001455b::t_a81cd5ee5519e4 152-155
+platform/harmony/lynx_harmony/src/main/ets/library/LynxLibraryRegistry.ets
+  s_3101666001455b::t_5726b1f018fafd 1-186
+platform/harmony/lynx_harmony/src/main/ets/tasm/LynxBackgroundRuntime.ets
+  s_3101666001455b::t_6dad5015e739fb 19,47
+platform/harmony/lynx_harmony/src/main/ets/tasm/LynxView.ets
+  s_3101666001455b::t_f00f746bab9849 51,291-292
+platform/harmony/lynx_harmony/src/main/ets/tasm/behavior/HarmonyUIRenderer.ets
+  s_3101666001455b::t_74a3b11037fc95 149,151-154,157,159
+platform/harmony/lynx_library_plugin/README.md
+  s_3101666001455b::t_975b2eab279443 1-38
+platform/harmony/lynx_library_plugin/package.json
+  s_3101666001455b::t_7673a55b83e371 1-32
+platform/harmony/lynx_library_plugin/src/core.js
+  s_3101666001455b::t_e932005eb5915b 1-1109
+platform/harmony/lynx_library_plugin/src/index.d.ts
+  s_3101666001455b::t_9f5507ad8a2602 1-17
+platform/harmony/lynx_library_plugin/src/index.js
+  s_3101666001455b::t_38f4700a2e5639 1-29
+platform/harmony/lynx_library_plugin/test/core.test.js
+  s_3101666001455b::t_65dc58ae738c8a 1-602
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "75d124e0a3d78a27c982e1687321889c7c27cf5f",
+  "prompts": {},
+  "sessions": {
+    "s_3101666001455b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f60e2-38d8-7493-890d-2c3b53d1485e",
+        "model": "unknown"
+      },
+      "human_author": "jianliang00 <wangjianliang0@126.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}
