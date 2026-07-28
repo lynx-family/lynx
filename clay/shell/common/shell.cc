@@ -26,6 +26,7 @@
 #include "clay/flow/frame_timings.h"
 #include "clay/flow/layers/layer_tree.h"
 #include "clay/gfx/shared_image/shared_image_sink.h"
+#include "clay/shell/common/default_font_manager_initializer.h"
 #include "clay/shell/common/services/animation_event_service_impl.h"
 #include "clay/shell/common/services/sync_compositor_service.h"
 #include "clay/ui/common/frame_timing_collector.h"
@@ -559,12 +560,18 @@ bool Shell::Setup(std::unique_ptr<PlatformView> platform_view,
 
   // Setup the time-consuming default font manager right after engine created.
   if (!settings_.prefetched_default_font_manager) {
+#if defined(OS_WIN)
+    DefaultFontManagerInitializer::Instance().Request(
+        weak_engine_, task_runners_.GetIOTaskRunner(),
+        task_runners_.GetUITaskRunner(), settings_.font_initialization_data);
+#else
     fml::TaskRunner::RunNowOrPostTask(task_runners_.GetUITaskRunner(),
                                       [engine = weak_engine_] {
                                         if (engine) {
                                           engine->SetupDefaultFontManager();
                                         }
                                       });
+#endif  // defined(OS_WIN)
   }
 
   // Create FrameTimingCollector and set to engine
