@@ -3,7 +3,7 @@ solutions = [
     {
         'name': '.',
         'deps_file': 'dependencies/DEPS',
-        'url': '',
+        'url': 'git@github.com:lynx-family/lynx.git',
         'target_deps_files': {
             'clay': 'dependencies/DEPS.clay',
             'dev': 'dependencies/DEPS.dev',
