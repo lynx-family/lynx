@@ -92,7 +92,7 @@ void LynxEnv::SetGroupedEnv(
 
 long LynxEnv::GetLongEnv(Key key, int default_value, EnvType type) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, LYNX_ENV_GET_LONG_ENV, "key",
-              static_cast<uint64_t>(key));
+              GetEnvKeyString(key));
   std::optional<std::string> string_result = GetStringEnv(key, type);
   if (!string_result.has_value() || (*string_result).empty()) {
     return default_value;
@@ -132,7 +132,7 @@ bool LynxEnv::GetBoolEnv(const std::string& key, bool default_value) {
 
 bool LynxEnv::GetBoolEnv(Key key, bool default_value, EnvType type) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, LYNX_ENV_GET_BOOL_ENV, "key",
-              static_cast<uint64_t>(key));
+              GetEnvKeyString(key));
   std::optional<std::string> string_result = GetStringEnv(key, type);
   if (!string_result.has_value() || (*string_result).empty()) {
     return default_value;
@@ -142,7 +142,7 @@ bool LynxEnv::GetBoolEnv(Key key, bool default_value, EnvType type) {
 
 std::optional<std::string> LynxEnv::GetStringEnv(Key key, EnvType type) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, LYNX_ENV_GET_STRING_ENV, "key",
-              static_cast<uint64_t>(key));
+              GetEnvKeyString(key));
   std::optional<std::string> result = std::nullopt;
   switch (type) {
     case EnvType::EXTERNAL: {
@@ -383,7 +383,7 @@ int64_t LynxEnv::GetV8HeapSize() {
 
 std::optional<std::string> LynxEnv::GetExternalEnv(Key key) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, LYNX_ENV_GET_EXTERNAL_ENV, "key",
-              static_cast<uint64_t>(key));
+              GetEnvKeyString(key));
   {
     std::lock_guard lock(external_env_mutex_);
     auto env_it = external_env_map_.find(key);
