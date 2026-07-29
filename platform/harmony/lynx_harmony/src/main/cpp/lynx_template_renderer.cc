@@ -134,7 +134,8 @@ void LynxTemplateRenderer::SetUpLynxShell(
     std::string bytecode_source_url, bool enable_js,
     std::unique_ptr<ModuleFactoryHarmony> jsbridge_module_factory,
     std::unique_ptr<ModuleFactoryHarmony> main_thread_module_factory,
-    LynxRuntimeWrapper* runtime_wrapper, LynxWhiteBoard* white_board) {
+    LynxRuntimeWrapper* runtime_wrapper, LynxWhiteBoard* white_board,
+    std::optional<bool> enable_multi_async_thread) {
   ui_delegate_ = ui_delegate;
   resource_loader_ = resource_loader;
   is_host_renderer_ = is_host_renderer;
@@ -163,6 +164,11 @@ void LynxTemplateRenderer::SetUpLynxShell(
       enable_js_group_thread ? js_group_thread_name : "";
   shell_option.enable_js_group_thread_ = enable_js_group_thread;
   shell_option.enable_js_ = enable_js;
+  if (enable_multi_async_thread.has_value()) {
+    shell_option.enable_multi_tasm_thread_ = enable_multi_async_thread.value();
+    shell_option.enable_multi_layout_thread_ =
+        enable_multi_async_thread.value();
+  }
   shell_option.instance_id_ =
       runtime_wrapper ? runtime_wrapper->RuntimeStandalone().GetRuntimeId()
                       : -1;
@@ -915,8 +921,8 @@ napi_value LynxTemplateRenderer::NativeAttach(napi_env env,
 napi_value LynxTemplateRenderer::NativeReset(napi_env env,
                                              napi_callback_info info) {
   napi_value js_this;
-  size_t argc = 19;
-  napi_value args[19] = {nullptr};
+  size_t argc = 20;
+  napi_value args[20] = {nullptr};
   napi_get_cb_info(env, info, &argc, args, &js_this, nullptr);
 
   // UIDelegate
@@ -991,6 +997,17 @@ napi_value LynxTemplateRenderer::NativeReset(napi_env env,
     napi_unwrap(env, args[18], reinterpret_cast<void**>(&white_board));
   }
 
+  std::optional<bool> enable_multi_async_thread;
+  if (argc > 19) {
+    napi_valuetype type = napi_undefined;
+    if (napi_typeof(env, args[19], &type) == napi_ok && type == napi_boolean) {
+      bool enabled = false;
+      if (napi_get_value_bool(env, args[19], &enabled) == napi_ok) {
+        enable_multi_async_thread = enabled;
+      }
+    }
+  }
+
   LynxTemplateRenderer* obj = nullptr;
   napi_status status =
       napi_unwrap(env, js_this, reinterpret_cast<void**>(&obj));
@@ -1013,7 +1030,7 @@ napi_value LynxTemplateRenderer::NativeReset(napi_env env,
       std::move(preload_js_paths), enable_bytecode,
       std::move(bytecode_source_url), enable_js,
       std::move(jsbridge_module_factory), std::move(main_thread_module_factory),
-      runtime_wrapper, white_board);
+      runtime_wrapper, white_board, enable_multi_async_thread);
   return nullptr;
 }
 
