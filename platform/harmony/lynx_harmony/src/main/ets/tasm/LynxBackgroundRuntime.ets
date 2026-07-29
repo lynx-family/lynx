@@ -57,8 +57,9 @@ export class LynxBackgroundRuntime extends lynx.LynxRuntimeWrapper {
       this.backgroundRuntimeOptions.enableJSGroupThread(),
       this.backgroundRuntimeOptions.getPreloadJSPath(),
       this.backgroundRuntimeOptions.enableBytecode, this.backgroundRuntimeOptions.bytecodeSourceUrl,  convertModuleArgs(this.moduleManager),
-      convertModuleArgs(this.sendableModuleManager), data?.templateData?.processor, data?.templateData?.data, data?.templateData?.readOnly,
-      data?.globalProps?.data);
+      convertModuleArgs(this.sendableModuleManager), data?.templateData?.processor,
+      data?.templateData?.getDataForNative(), data?.templateData?.readOnly,
+      data?.globalProps?.getDataForNative());
   }
 
   addLifecycleClient(client: LynxBackgroundRuntimeClient) {
@@ -135,7 +136,7 @@ export class LynxBackgroundRuntime extends lynx.LynxRuntimeWrapper {
     if (!key || !value) {
       return;
     }
-    this.nativeSetSessionStorageItem(key, value.data);
+    this.nativeSetSessionStorageItem(key, value.getDataForNative());
   }
 
   getSessionStorageItem(key: string, callback: SessionStorageCallback): void {

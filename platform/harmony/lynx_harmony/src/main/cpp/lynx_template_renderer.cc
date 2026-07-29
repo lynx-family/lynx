@@ -1253,7 +1253,7 @@ napi_value LynxTemplateRenderer::UpdateGlobalProps(napi_env env,
   }
 
   lepus_value global_props =
-      base::NapiConvertHelper::JSONToLepusValue(env, args[0]);
+      tasm::TemplateDataHarmony::GenerateLepusValue(env, args[0]);
   obj->UpdateGlobalProps(std::move(global_props));
 
   return nullptr;
@@ -1277,7 +1277,7 @@ napi_value LynxTemplateRenderer::UpdateMetaData(napi_env env,
       env, args[1], args[2], args[0]);
 
   lepus_value global_props =
-      base::NapiConvertHelper::JSONToLepusValue(env, args[3]);
+      tasm::TemplateDataHarmony::GenerateLepusValue(env, args[3]);
   shell::LynxUpdateMode update_mode = shell::LynxUpdateMode::UPDATE;
   if (argc >= 5) {
     napi_valuetype type;
@@ -1353,7 +1353,7 @@ napi_value LynxTemplateRenderer::ReloadTemplate(napi_env env,
       env, args[1], args[2], args[0]);
 
   lepus_value global_props =
-      base::NapiConvertHelper::JSONToLepusValue(env, args[3]);
+      tasm::TemplateDataHarmony::GenerateLepusValue(env, args[3]);
 
   obj->ResetTimingBeforeReload();
   auto pipeline_options = obj->ProcessLoadTemplateTimingOption(

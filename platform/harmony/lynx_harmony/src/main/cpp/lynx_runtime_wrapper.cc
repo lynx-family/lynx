@@ -295,7 +295,7 @@ napi_value LynxRuntimeWrapper::NativeCreate(napi_env env,
       env, args[11], args[12], args[10]);
 
   lepus_value global_props =
-      base::NapiConvertHelper::JSONToLepusValue(env, args[13]);
+      tasm::TemplateDataHarmony::GenerateLepusValue(env, args[13]);
 
   // LynxTemplateRenderer
   LynxRuntimeWrapper* wrapper = new LynxRuntimeWrapper(

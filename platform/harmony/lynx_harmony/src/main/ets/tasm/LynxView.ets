@@ -812,9 +812,10 @@ export struct LynxView {
     timingOption.setTiming(TimingConstants.RELOAD_BUNDLE_START, nowStartTimestamp);
     this.onPageStarted(LynxPipelineOrigin.LynxReload);
     timingOption.setTiming(TimingConstants.FFI_START, Date.now());
-    this.templateRenderer.reloadTemplate(this.metaData.templateData?.processor, this.metaData.templateData?.data,
+    this.templateRenderer.reloadTemplate(this.metaData.templateData?.processor,
+      this.metaData.templateData?.getDataForNative(),
       this.metaData.templateData?.readOnly,
-      this.metaData.globalProps?.data, timingOption.toRecord());
+      this.metaData.globalProps?.getDataForNative(), timingOption.toRecord());
     TraceEvent.endSection(TraceCategory.Lynx, TraceEventDef.LYNX_VIEW_RELOAD);
   }
 
@@ -933,21 +934,21 @@ export struct LynxView {
     TraceEvent.beginSection(TraceCategory.Lynx, TraceEventDef.LYNX_VIEW_LOAD);
     this.onPageStarted(LynxPipelineOrigin.LynxFirstScreen);
     if (this.metaData.globalProps !== undefined) {
-      this.templateRenderer.updateGlobalProps(this.metaData.globalProps?.data);
+      this.templateRenderer.updateGlobalProps(this.metaData.globalProps.getDataForNative());
     }
 
     if (bundle) {
       timingOption.setTiming(TimingConstants.FFI_START, Date.now())
       this.templateRenderer.loadTemplateBundle(this.url, bundle,
         this.metaData.templateData?.processor,
-        this.metaData.templateData?.data,
+        this.metaData.templateData?.getDataForNative(),
         this.metaData.templateData?.readOnly, this.loadOption?.isEnableDumpElement(),
         timingOption.toRecord())
     } else if (buffer) {
       timingOption.setTiming(TimingConstants.FFI_START, Date.now())
       this.templateRenderer.loadTemplate(this.url, buffer,
         this.metaData.templateData?.processor,
-        this.metaData.templateData?.data,
+        this.metaData.templateData?.getDataForNative(),
         this.metaData.templateData?.readOnly, this.loadOption?.isEnableRecycleTemplateBundle(),
         timingOption.toRecord());
     }

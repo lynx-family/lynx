@@ -150,8 +150,9 @@ export class UISVG extends UIBase {
 }
 
 export class TemplateData {
-  constructor(input: string | Record<string, Object> | Object, processor: string);
+  constructor(input: string | Record<string, Object> | Object, processor: string, enableNativeData: boolean);
   static createForStaticPage(input: Record<string, Object>): TemplateData;
+  getDataForNative(): Object | string | undefined;
   merge(data: string | Record<string, Object> | Object): void;
   processor: string; = ''
   readOnly: boolean; = false

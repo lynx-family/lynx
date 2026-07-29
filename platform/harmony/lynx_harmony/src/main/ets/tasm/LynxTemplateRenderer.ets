@@ -261,7 +261,7 @@ export class LynxTemplateRenderer extends lynx.LynxTemplateRenderer {
     if (!key || !value) {
       return;
     }
-    this.nativeSetSessionStorageItem(key, value.data);
+    this.nativeSetSessionStorageItem(key, value.getDataForNative());
   }
 
   getSessionStorageItem(key: string, callback: SessionStorageCallback) {
