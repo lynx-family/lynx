@@ -50,6 +50,7 @@ import com.lynx.tasm.behavior.ui.MeaningfulPaintingArea;
 import com.lynx.tasm.behavior.ui.UIBody;
 import com.lynx.tasm.behavior.ui.UIBody.UIBodyView;
 import com.lynx.tasm.behavior.ui.UIGroup;
+import com.lynx.tasm.behavior.ui.transfer.UITransfer;
 import com.lynx.tasm.core.LynxEngineProxy;
 import com.lynx.tasm.core.VSyncMonitor;
 import com.lynx.tasm.element.LynxElement;
@@ -107,6 +108,7 @@ public class LynxView extends UIBodyView implements ILynxSecurityTarget {
 
   private boolean isInPrePainting = false;
   private boolean mDestroyed = false;
+  private final LynxTransferManager mTransferManager = new LynxTransferManager();
 
   public LynxView(Context context) {
     super(context);
@@ -206,6 +208,25 @@ public class LynxView extends UIBodyView implements ILynxSecurityTarget {
       return mLynxTemplateRender.getLynxContext();
     }
     return null;
+  }
+
+  public void registerTransferListener(@NonNull LynxTransferListener listener) {
+    mTransferManager.registerTransferListener(listener);
+  }
+
+  public void unregisterTransferListener(@NonNull LynxTransferListener listener) {
+    mTransferManager.unregisterTransferListener(listener);
+  }
+
+  @RestrictTo(RestrictTo.Scope.LIBRARY_GROUP)
+  public boolean dispatchTransferCreate(
+      @NonNull String id, @NonNull UITransfer owner, @NonNull View view) {
+    return mTransferManager.dispatchTransferCreate(id, owner, view);
+  }
+
+  @RestrictTo(RestrictTo.Scope.LIBRARY_GROUP)
+  public void dispatchTransferRemove(@NonNull String id, @NonNull View view) {
+    mTransferManager.dispatchTransferRemove(id, view);
   }
 
   public void reloadAndInit() {
@@ -1296,6 +1317,8 @@ public class LynxView extends UIBodyView implements ILynxSecurityTarget {
     if (mKeyboardEvent != null && mKeyboardEvent.isStart()) {
       mKeyboardEvent.stop();
     }
+
+    mTransferManager.clearTransfers();
 
     if (mLynxTemplateRender != null) {
       HeroTransitionManager.inst().onLynxViewDestroy(this);
