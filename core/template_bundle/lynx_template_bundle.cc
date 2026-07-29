@@ -7,7 +7,9 @@
 #include <algorithm>
 
 #include "core/renderer/simple_styling/style_object.h"
+#include "core/runtime/js/runtime_constant.h"
 #include "core/runtime/lepus/binary_input_stream.h"
+#include "core/runtime/lepusng/quick_context.h"
 #include "core/template_bundle/template_codec/binary_decoder/element_binary_reader.h"
 #include "core/template_bundle/template_codec/binary_decoder/lynx_binary_lazy_reader_delegate.h"
 #include "core/template_bundle/template_codec/binary_decoder/lynx_binary_reader.h"
@@ -48,6 +50,55 @@ std::string LynxTemplateBundle::FromBinaryGreedy(
     return reader.error_message_;
   }
   *this = reader.GetTemplateBundle();
+  return "";
+}
+
+std::string LynxTemplateBundle::Build(
+    const std::string &main_thread_script,
+    const std::string &background_thread_script,
+    const std::string &template_url) {
+  if (main_thread_script.empty()) {
+    return "mainThreadScript must not be empty";
+  }
+
+  total_size_ = static_cast<uint32_t>(main_thread_script.size() +
+                                      background_thread_script.size());
+  is_lepusng_binary_ = true;
+  context_type_ = runtime::ContextType::LepusNGContextType;
+  target_sdk_version_ = Config::GetCurrentLynxVersion();
+  app_type_ = APP_TYPE_CARD;
+  enable_css_parser_ = true;
+  enable_css_variable_ = true;
+
+  compile_options_.target_sdk_version_ = target_sdk_version_;
+  compile_options_.template_debug_url_ = template_url;
+  compile_options_.enable_lepus_ng_ = true;
+  compile_options_.enable_css_parser_ = true;
+  compile_options_.enable_css_variable_ = true;
+  compile_options_.enable_fiber_arch_ = true;
+  compile_options_.arch_option_ = FIBER_ARCH;
+  compile_options_.front_end_dsl_ = FRON_END_DSL_REACT;
+  compile_options_.context_type_ = CONTEXT_TYPE_LEPUS_NG;
+
+  page_configs_ = std::make_shared<PageConfig>();
+  page_configs_->SetTargetSDKVersion(target_sdk_version_);
+  page_configs_->SetEnableLepusNG(true);
+  page_configs_->SetEnableFiberArch(true);
+  page_configs_->SetEnableCSSParser(true);
+  page_configs_->SetDSL(PackageInstanceDSL::REACT);
+  page_configs_->SetOriginalConfig("{}");
+
+  auto context_bundle = std::make_shared<lepus::QuickContextBundle>();
+  context_bundle->source() = main_thread_script;
+  context_bundle_ = std::move(context_bundle);
+
+  if (!background_thread_script.empty()) {
+    js_bundle_.AddJsContent(
+        runtime::kAppServiceJSName,
+        runtime::js::JsContent(background_thread_script,
+                               runtime::js::JsContent::Type::SOURCE));
+  }
+
   return "";
 }
 

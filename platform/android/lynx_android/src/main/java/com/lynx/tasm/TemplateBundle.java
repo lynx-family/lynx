@@ -172,6 +172,27 @@ public final class TemplateBundle implements ILynxSecurityTarget {
     return result;
   }
 
+  private static int safeLength(@Nullable String value) {
+    return value == null ? 0 : value.length();
+  }
+
+  static TemplateBundle build(@Nullable String mainThreadScript,
+      @Nullable String backgroundThreadScript, @Nullable String url) {
+    TemplateBundle result = new TemplateBundle();
+    int length = safeLength(mainThreadScript) + safeLength(backgroundThreadScript);
+    if (!checkIfEnvPrepared()) {
+      result.initialize(0, length, url, "Lynx Env is not prepared", null);
+      return result;
+    }
+
+    // 0: string, error message
+    // 1: ReadableMap, pageConfig
+    Object[] options = new Object[2];
+    long ptr = nativeBuildTemplateBundle(mainThreadScript, backgroundThreadScript, url, options);
+    result.initialize(ptr, length, url, (String) options[0], (ReadableMap) options[1]);
+    return result;
+  }
+
   /**
    * @apidoc
    * @brief Input Lynx Bundle binary content and return the parsed `TemplateBundle` object.
@@ -452,6 +473,8 @@ public final class TemplateBundle implements ILynxSecurityTarget {
       byte[] temp, Object[] options, boolean skipCSS, long devToolPoolPtr);
   private static native long nativeParseTemplateFromByteBuffer(
       ByteBuffer bytes, Object[] options, boolean skipCSS, long devToolPoolPtr);
+  private static native long nativeBuildTemplateBundle(
+      String mainThreadScript, String backgroundThreadScript, String url, Object[] options);
   private static native void nativeReleaseBundle(long ptr);
   private static native Object nativeGetExtraInfo(long ptr);
   private static native boolean nativeGetContainsElementTree(long ptr);

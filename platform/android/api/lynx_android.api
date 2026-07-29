@@ -10345,6 +10345,13 @@ public class com::lynx::tasm::TemplateBundle : com.lynx.tasm.service.security.IL
   public static TemplateBundle com.lynx.tasm.TemplateBundle.fromTemplate(byte[] template, TemplateBundleOption option);
 }
 
+public class com::lynx::tasm::TemplateBundleBuilder :  {
+  public static TemplateBundleBuilder com.lynx.tasm.TemplateBundleBuilder.create();
+  public TemplateBundleBuilder com.lynx.tasm.TemplateBundleBuilder.main(@Nullable String script);
+  public TemplateBundleBuilder com.lynx.tasm.TemplateBundleBuilder.background(@Nullable String script);
+  public TemplateBundle com.lynx.tasm.TemplateBundleBuilder.build();
+}
+
 public class com::lynx::tasm::TemplateBundleOption :  {
   public int com.lynx.tasm.TemplateBundleOption.getContextPoolSize();
   public String com.lynx.tasm.TemplateBundleOption.getUrl();

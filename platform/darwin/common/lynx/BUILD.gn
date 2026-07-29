@@ -34,6 +34,7 @@ common_lynx_shared_sources = [
   "LynxSubErrorCode.m",
   "LynxTemplateBundle+Converter.h",
   "LynxTemplateBundle.mm",
+  "LynxTemplateBundleBuilder.mm",
   "LynxTemplateBundleOption.m",
   "LynxTemplateData.mm",
   "LynxTemplateRenderDelegateExternal.m",

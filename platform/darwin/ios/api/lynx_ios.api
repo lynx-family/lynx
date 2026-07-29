@@ -3826,6 +3826,13 @@ public class LynxTemplateBundle : NSObject, <LynxSecurityTarget> {
   public instancetype _Nullable LynxTemplateBundle::_swiftTemplateBundleWithTemplate:option:(nonnull NSData *tem,[option] init(template:option:) NS_SWIFT_NAME);
 }
 
+public class LynxTemplateBundleBuilder : NSObject {
+  public nonnull instancetype LynxTemplateBundleBuilder::create();
+  public nonnull instancetype LynxTemplateBundleBuilder::main:(main(_:) NS_SWIFT_NAME);
+  public nonnull instancetype LynxTemplateBundleBuilder::background:(background(_:) NS_SWIFT_NAME);
+  public nullable LynxTemplateBundle * LynxTemplateBundleBuilder::build();
+}
+
 public class LynxTemplateBundleOption : NSObject {
   public int LynxTemplateBundleOption::contextPoolSize contextPoolSize;
   public BOOL LynxTemplateBundleOption::enableContextAutoRefill enableContextAutoRefill;

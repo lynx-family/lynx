@@ -305,8 +305,11 @@ class QuickContextBundle final : public runtime::ContextBundle {
 
   std::vector<uint8_t>& lepus_code() { return lepusng_code_; }
   uint64_t& lepusng_code_len() { return lepusng_code_len_; }
+  std::string& source() { return source_; }
+  const std::string& source() const { return source_; }
 
  private:
+  std::string source_{};
   std::vector<uint8_t> lepusng_code_{};
   uint64_t lepusng_code_len_{0};
   friend class QuickContextDecoder;

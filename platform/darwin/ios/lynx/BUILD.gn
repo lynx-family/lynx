@@ -451,6 +451,7 @@ subspec_target("UnitTests") {
     "../../common/lynx/LynxEnvUnitTest.mm",
     "../../common/lynx/LynxErrorUnitTest.m",
     "../../common/lynx/LynxResourceLoaderDarwinUnitTest.mm",
+    "../../common/lynx/LynxTemplateBundleBuilderUnitTest.mm",
     "../../common/lynx/LynxTemplateDataUnitTest.mm",
     "../../common/lynx/LynxViewClientUnitTest.mm",
     "../../common/lynx/base/LynxComponentRegistryUnitTest.m",
