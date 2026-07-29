@@ -6,7 +6,9 @@ import lynx from 'liblynx.so';
 import { BuilderNode, FrameNode, UIContext } from '@kit.ArkUI';
 import { LynxContext } from '../../LynxContext';
 import { LynxView, LynxViewBuilder } from '../../LynxView';
+import { LynxViewClient } from '../../LynxViewClient';
 import { LynxUpdateMeta, MetaData, TemplateData } from '../../MetaData';
+import { PerformanceEntry } from '../../gen/performance/performanceobserver/PerformanceEntry';
 import { TemplateBundle } from '../../TemplateBundle';
 
 type MetaInput = Record<string, Object> | Object;
@@ -18,6 +20,21 @@ function createTemplateData(value: MetaInput | undefined): TemplateData | undefi
 function areaSize(value: ESObject): number {
   const size = Number(value);
   return Number.isFinite(size) ? Math.max(0, size) : 0;
+}
+
+class FramePerformanceClient extends LynxViewClient {
+  private readonly native: lynx.UIFrame;
+
+  constructor(native: lynx.UIFrame) {
+    super();
+    this.native = native;
+  }
+
+  override onPerformanceEvent(entry: PerformanceEntry): void {
+    if (entry.entryType === 'pipeline' && entry.name === 'loadBundle') {
+      this.native.onLoadMetrics(entry.toRecord());
+    }
+  }
 }
 
 class FrameHostBuildParams {
@@ -61,11 +78,13 @@ export class FrameHost {
   private childContext?: LynxContext;
   private childBuilt: boolean = false;
   private enableMultiAsyncThread: boolean = true;
+  private readonly performanceClient: FramePerformanceClient;
 
   constructor(parentContext: LynxContext, uiContext: UIContext, nativeFrame: lynx.UIFrame) {
     this.parentContext = parentContext;
     this.uiContext = uiContext;
     this.native = nativeFrame;
+    this.performanceClient = new FramePerformanceClient(nativeFrame);
     this.builderNode = new BuilderNode<[FrameHostBuildParams]>(this.uiContext);
     this.builderNode.build(wrapBuilder<[FrameHostBuildParams]>(buildFrameHost),
       new FrameHostBuildParams(this, false, false, false));
@@ -84,7 +103,7 @@ export class FrameHost {
     // away from the host), its client list (host observers must not receive the
     // frame page's events), or its onCreate (it belongs to the host context).
     builder.backgroundRuntime = undefined;
-    builder.clients = [];
+    builder.clients = [this.performanceClient];
     builder.enableMultiAsyncThread = this.enableMultiAsyncThread;
     builder.onCreate = (context: LynxContext) => {
       this.onChildContextReady(context);
