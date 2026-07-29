@@ -89,4 +89,35 @@
   XCTAssertFalse(sawIncompleteState->load(std::memory_order_relaxed));
 }
 
+- (void)testInitCompletionHandlerRunsOnMainThreadAfterInitCompleted {
+  XCTestExpectation *completionExpectation =
+      [self expectationWithDescription:@"LynxEnv initialization completion"];
+  XCTestExpectation *mainQueueDrainedExpectation =
+      [self expectationWithDescription:@"main queue drained"];
+  dispatch_semaphore_t initReturned = dispatch_semaphore_create(0);
+  LynxEnv *env = [LynxEnv alloc];
+  auto completionCount = std::make_shared<std::atomic_int>(0);
+  auto completionSawInitCompleted = std::make_shared<std::atomic_bool>(false);
+
+  dispatch_async(dispatch_get_global_queue(QOS_CLASS_DEFAULT, 0), ^{
+    [env init:^{
+      completionSawInitCompleted->store([env isInitCompleted], std::memory_order_relaxed);
+      completionCount->fetch_add(1, std::memory_order_relaxed);
+      long waitResult =
+          dispatch_semaphore_wait(initReturned, dispatch_time(DISPATCH_TIME_NOW, 5 * NSEC_PER_SEC));
+      XCTAssertEqual(waitResult, 0);
+      XCTAssertTrue(NSThread.isMainThread);
+      [completionExpectation fulfill];
+    }];
+    dispatch_semaphore_signal(initReturned);
+    dispatch_async(dispatch_get_main_queue(), ^{
+      [mainQueueDrainedExpectation fulfill];
+    });
+  });
+
+  [self waitForExpectations:@[ completionExpectation, mainQueueDrainedExpectation ] timeout:10];
+  XCTAssertEqual(completionCount->load(std::memory_order_relaxed), 1);
+  XCTAssertTrue(completionSawInitCompleted->load(std::memory_order_relaxed));
+}
+
 @end

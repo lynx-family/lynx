@@ -11,11 +11,13 @@ import static org.junit.Assert.assertTrue;
 import android.app.Application;
 import androidx.test.core.app.ApplicationProvider;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
+import com.lynx.tasm.utils.UIThreadUtils;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -112,6 +114,53 @@ public class LynxEnvTest {
 
     mEnv.mHasInitCompleted = true;
     assertTrue(mEnv.isInitCompleted());
+  }
+
+  @Test
+  public void initCompletionHandlerSeesInitCompletedOnInitialInit() throws Exception {
+    Application application = ApplicationProvider.getApplicationContext();
+    CountDownLatch callbackLatch = new CountDownLatch(1);
+    AtomicBoolean callbackSawInitCompleted = new AtomicBoolean(false);
+
+    mEnv.init(application, System::loadLibrary, null, null, null, () -> {
+      callbackSawInitCompleted.set(mEnv.isInitCompleted());
+      callbackLatch.countDown();
+    });
+
+    assertTrue(callbackLatch.await(5, TimeUnit.SECONDS));
+    assertTrue(callbackSawInitCompleted.get());
+  }
+
+  @Test
+  public void initCompletionHandlerRunsOnMainThreadAfterInitCompleted() throws Exception {
+    mEnv.hasInit.set(true);
+    mEnv.mIsNativeLibraryLoaded = true;
+    mEnv.mIsNativeUIThreadInited = true;
+    mEnv.mHasInitCompleted = true;
+    Application application = ApplicationProvider.getApplicationContext();
+    CountDownLatch callbackLatch = new CountDownLatch(1);
+    CountDownLatch mainQueueDrainedLatch = new CountDownLatch(1);
+    AtomicBoolean callbackRanOnMainThread = new AtomicBoolean(false);
+    AtomicBoolean callbackSawInitCompleted = new AtomicBoolean(false);
+    AtomicInteger callbackCount = new AtomicInteger(0);
+
+    Thread initThread = new Thread(() -> {
+      mEnv.init(application, null, null, null, null, () -> {
+        callbackCount.incrementAndGet();
+        callbackRanOnMainThread.set(UIThreadUtils.isOnUiThread());
+        callbackSawInitCompleted.set(mEnv.isInitCompleted());
+        callbackLatch.countDown();
+      });
+    });
+    initThread.start();
+    initThread.join();
+
+    UIThreadUtils.runOnUiThread(mainQueueDrainedLatch::countDown);
+    assertTrue(callbackLatch.await(5, TimeUnit.SECONDS));
+    assertTrue(mainQueueDrainedLatch.await(5, TimeUnit.SECONDS));
+    assertEquals(1, callbackCount.get());
+    assertTrue(callbackRanOnMainThread.get());
+    assertTrue(callbackSawInitCompleted.get());
   }
 
   private void resetLynxEnvReadyState() {
