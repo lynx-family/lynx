@@ -4,7 +4,7 @@
 
 import lynx from 'liblynx.so';
 import { BuilderNode, FrameNode, UIContext } from '@kit.ArkUI';
-import { LynxContext } from '../../LynxContext';
+import { LynxContext, setUIOwnerCreatedCallback } from '../../LynxContext';
 import { LynxView, LynxViewBuilder } from '../../LynxView';
 import { LynxViewClient } from '../../LynxViewClient';
 import { LynxUpdateMeta, MetaData, TemplateData } from '../../MetaData';
@@ -78,6 +78,7 @@ export class FrameHost {
   private childContext?: LynxContext;
   private childBuilt: boolean = false;
   private enableMultiAsyncThread: boolean = true;
+  private lastForegroundState?: boolean;
   private readonly performanceClient: FramePerformanceClient;
 
   constructor(parentContext: LynxContext, uiContext: UIContext, nativeFrame: lynx.UIFrame) {
@@ -146,9 +147,29 @@ export class FrameHost {
     this.childContext?.updateViewport(width, widthMode, height, heightMode);
   }
 
+  onEnterForeground(): void {
+    this.lastForegroundState = true;
+    this.childContext?.onEnterForeground();
+  }
+
+  onEnterBackground(): void {
+    this.lastForegroundState = false;
+    this.childContext?.onEnterBackground();
+  }
+
   onChildContextReady(context: LynxContext): void {
     this.childContext = context;
+    setUIOwnerCreatedCallback(context, (uiOwner) => {
+      if (this.childContext === context) {
+        this.native.onHostReady(uiOwner.native);
+      }
+    });
     this.native.onHostReady();
+    if (this.lastForegroundState === true) {
+      context.onEnterForeground();
+    } else if (this.lastForegroundState === false) {
+      context.onEnterBackground();
+    }
   }
 
   onChildAreaChanged(width: number, height: number): void {
@@ -156,7 +177,11 @@ export class FrameHost {
   }
 
   dispose(): void {
+    if (this.childContext) {
+      setUIOwnerCreatedCallback(this.childContext, undefined);
+    }
     this.childContext = undefined;
+    this.lastForegroundState = undefined;
     this.builderNode?.dispose();
     this.builderNode = undefined;
   }

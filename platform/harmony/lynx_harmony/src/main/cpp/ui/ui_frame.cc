@@ -26,6 +26,7 @@
 #include "platform/harmony/lynx_harmony/src/main/cpp/shadow_node/shadow_node_owner.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/base/node_manager.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_owner.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_root.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/utils/lynx_unit_utils.h"
 
 namespace lynx {
@@ -95,10 +96,18 @@ UIFrame::~UIFrame() { OnDestroy(); }
 
 napi_value UIFrame::OnHostReady(napi_env env, napi_callback_info info) {
   napi_value js_this;
-  size_t argc = 0;
-  napi_get_cb_info(env, info, &argc, nullptr, &js_this, nullptr);
+  size_t argc = 1;
+  napi_value argv[1] = {nullptr};
+  napi_get_cb_info(env, info, &argc, argv, &js_this, nullptr);
+  UIOwner* child_owner = nullptr;
+  if (argc > 0 && argv[0]) {
+    napi_valuetype type = napi_undefined;
+    if (napi_typeof(env, argv[0], &type) == napi_ok && type == napi_object) {
+      napi_unwrap(env, argv[0], reinterpret_cast<void**>(&child_owner));
+    }
+  }
   if (auto frame = GetFrameFromNapiThis(env, js_this)) {
-    frame->HandleHostReady();
+    frame->HandleHostReady(child_owner);
   }
   return nullptr;
 }
@@ -209,18 +218,38 @@ void UIFrame::OnDestroy() {
   }
   TRACE_EVENT(LYNX_TRACE_CATEGORY, LYNX_FRAME_VIEW_DESTROY, "url", src_);
   destroyed_ = true;
+  DetachChildPageUI();
   DisposeFrameHost();
   pending_bundle_.reset();
 }
 
-void UIFrame::HandleHostReady() {
+void UIFrame::OnEnterForeground() {
+  if (!destroyed_ && frame_host_ref_) {
+    CallHostMethod("onEnterForeground", 0, nullptr);
+  }
+}
+
+void UIFrame::OnEnterBackground() {
+  if (!destroyed_ && frame_host_ref_) {
+    CallHostMethod("onEnterBackground", 0, nullptr);
+  }
+}
+
+void UIFrame::HandleHostReady(UIOwner* child_owner) {
   if (destroyed_) {
+    return;
+  }
+  if (child_owner) {
+    AttachChildUIOwner(child_owner);
+  }
+  const bool was_ready = child_context_ready_;
+  child_context_ready_ = true;
+  if (was_ready) {
     return;
   }
   TRACE_EVENT_INSTANT(LYNX_TRACE_CATEGORY, UI_FRAME_HOST_READY, "url", src_,
                       "loaded", loaded_, "props_updated", props_updated_,
                       "has_bundle", static_cast<bool>(pending_bundle_));
-  child_context_ready_ = true;
   UpdateHostConfiguration();
   UpdateHostViewport();
   TryLoadBundle();
@@ -531,6 +560,56 @@ void UIFrame::UpdateHostViewport() {
   CallHostMethod("updateViewport", 4, argv);
 }
 
+void UIFrame::AttachChildUIOwner(UIOwner* child_owner) {
+  DetachChildPageUI();
+  std::weak_ptr<UIBase> weak_frame = weak_from_this();
+  child_owner->SetAttachLynxPageUICallback(
+      [weak_frame = std::move(weak_frame)](UIBase* child_root) {
+        auto frame = weak_frame.lock();
+        if (!frame || frame->Tag() != kTag) {
+          return;
+        }
+        static_cast<UIFrame*>(frame.get())->AttachChildPageUI(child_root);
+      });
+}
+
+void UIFrame::AttachChildPageUI(UIBase* child_root) {
+  if (destroyed_ || !child_root || !child_root->IsRoot() || !context_) {
+    return;
+  }
+  UIBase* parent_root = context_->Root();
+  if (!parent_root) {
+    return;
+  }
+  DetachChildPageUI();
+  if (!parent_root->ChildrenLynxPageUI()) {
+    parent_root->SetChildrenLynxPageUI(EventTarget::LynxPageUIMap{});
+  }
+  auto* children = parent_root->ChildrenLynxPageUI();
+  if (!children) {
+    return;
+  }
+  child_lynx_page_ui_ = child_root->WeakTarget();
+  (*children)[this] = child_lynx_page_ui_;
+  child_root->SetParentLynxPageUI(parent_root->WeakTarget());
+}
+
+void UIFrame::DetachChildPageUI() {
+  UIBase* parent_root = context_ ? context_->Root() : nullptr;
+  if (parent_root) {
+    if (auto* children = parent_root->ChildrenLynxPageUI()) {
+      children->erase(this);
+    }
+  }
+  if (auto child_root = child_lynx_page_ui_.lock()) {
+    auto current_parent = child_root->ParentLynxPageUI().lock();
+    if (!parent_root || current_parent.get() == parent_root) {
+      child_root->SetParentLynxPageUI({});
+    }
+  }
+  child_lynx_page_ui_.reset();
+}
+
 std::optional<float> UIFrame::ParsePresetLength(
     const lepus::Value& value) const {
   if (!context_ || !value.IsString()) {
@@ -623,6 +702,7 @@ void UIFrame::ResetLoadedState() {
   child_context_ready_ = child_context_ready_ && frame_host_ref_;
   // The bundle may arrive before src. Keep it pending so UpdateProps() can
   // consume it after all props for the new src have been applied.
+  DetachChildPageUI();
   has_intrinsic_size_ = false;
   intrinsic_width_ = 0.f;
   intrinsic_height_ = 0.f;
