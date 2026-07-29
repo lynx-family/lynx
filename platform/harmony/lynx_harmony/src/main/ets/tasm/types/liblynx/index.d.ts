@@ -128,7 +128,7 @@ export class LynxTemplateRenderer {
     jsGroupThreadName: string, useQuickjs: boolean, enableJSGroupThread: boolean, preloadJSPaths: string[], enableBytecode: boolean,
     bytecodeSourceUrl: string, enableJSRuntime: boolean, moduleManagerArgs: Object[],
     sendableModuleManagerArgs: Object[], backgroundRuntime: NativeLynxBackgroundRuntime,
-    whiteBoard?: LynxWhiteBoard): void;
+    whiteBoard?: LynxWhiteBoard, enableMultiAsyncThread?: boolean): void;
 
   nativeDetach(): void;
 
