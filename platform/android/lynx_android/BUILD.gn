@@ -114,6 +114,7 @@ group("lynx_android_lib") {
     public_deps += [
       "../../../core/base:gtest_lynx_base_android",
       "../../../core/renderer/utils:gtest_renderer_utils_android",
+      "../../../testing/lynx:lynx_android_unittests_jni",
       "//third_party/googletest:gtest_sources",
       "//third_party/googletest_custom:gtest_custom",
     ]
