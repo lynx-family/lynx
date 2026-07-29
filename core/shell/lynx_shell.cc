@@ -985,13 +985,20 @@ void LynxShell::UpdateFontScale(float scale) {
   engine_actor_->Act([scale](auto& engine) { engine->UpdateFontScale(scale); });
 }
 
-void LynxShell::UpdateColorScheme(int scheme) {
-  engine_actor_->Act(
-      [scheme](auto& engine) { engine->UpdateColorScheme(scheme); });
+void LynxShell::UpdateColorScheme(int scheme, bool use_act_lite) {
+  auto update_color_scheme = [scheme](auto& engine) {
+    engine->UpdateColorScheme(scheme);
+  };
+  if (use_act_lite) {
+    engine_actor_->ActLite(std::move(update_color_scheme));
+  } else {
+    engine_actor_->Act(std::move(update_color_scheme));
+  }
 }
 
 void LynxShell::SetFontScale(float scale) {
-  engine_actor_->Act([scale](auto& engine) { engine->SetFontScale(scale); });
+  engine_actor_->ActLite(
+      [scale](auto& engine) { engine->SetFontScale(scale); });
 }
 
 void LynxShell::SetPlatformConfig(std::string platform_config_json_string) {
@@ -1697,7 +1704,7 @@ void LynxShell::ResetTimingBeforeReload() const {
 void LynxShell::SetInspectorElementObserver(
     const std::shared_ptr<tasm::InspectorElementObserver>&
         inspector_element_observer) {
-  engine_actor_->Act([inspector_element_observer](auto& engine) {
+  engine_actor_->ActLite([inspector_element_observer](auto& engine) {
     engine->SetInspectorElementObserver(inspector_element_observer);
   });
 }

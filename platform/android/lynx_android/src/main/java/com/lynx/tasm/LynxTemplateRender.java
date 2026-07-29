@@ -475,12 +475,14 @@ public class LynxTemplateRender
     if (mLynxViewBuilder.mLynxImageConfig != null) {
       mLynxContext.setLynxImageConfig(mLynxViewBuilder.mLynxImageConfig);
     }
-    // TODO(chenyouhui): Move this function call to a more appropriate place.
-    ILynxExtensionService extensionService =
-        LynxServiceCenter.inst().getService(ILynxExtensionService.class);
-    if (extensionService != null) {
-      extensionService.onLynxViewSetup(mLynxContext, mLynxRuntimeOptions.getLynxGroup(),
-          mLynxViewConfigProvider.getBehaviorRegistry());
+    if (mEnableJSRuntime) {
+      // TODO(chenyouhui): Move this function call to a more appropriate place.
+      ILynxExtensionService extensionService =
+          LynxServiceCenter.inst().getService(ILynxExtensionService.class);
+      if (extensionService != null) {
+        extensionService.onLynxViewSetup(mLynxContext, mLynxRuntimeOptions.getLynxGroup(),
+            mLynxViewConfigProvider.getBehaviorRegistry());
+      }
     }
     LynxEnv.inst().initNativeUIThread();
     init(context);
@@ -1181,7 +1183,9 @@ public class LynxTemplateRender
       nativeSetFontScale(mNativePtr, mNativeLifecycle, mFontScale);
     }
     LynxColorScheme colorScheme = mLynxViewConfigProvider.getColorScheme();
-    nativeUpdateColorScheme(mNativePtr, mNativeLifecycle, colorScheme.id());
+    if (colorScheme != LynxColorScheme.LIGHT) {
+      nativeUpdateColorScheme(mNativePtr, mNativeLifecycle, colorScheme.id(), true);
+    }
     nativeOnLynxEngineCreated(mNativePtr, lynxUIRenderer().getUIDelegatePtr());
 
     TraceEvent.endSection(TraceEventDef.TEMPLATE_RENDER_CREATE_TASM);
@@ -2459,7 +2463,7 @@ public class LynxTemplateRender
     if (!checkIfEnvPrepared() || mNativePtr == 0 || scheme == null) {
       return;
     }
-    nativeUpdateColorScheme(mNativePtr, mNativeLifecycle, scheme.id());
+    nativeUpdateColorScheme(mNativePtr, mNativeLifecycle, scheme.id(), false);
   }
 
   public void destroy() {
@@ -4547,7 +4551,8 @@ public class LynxTemplateRender
 
   private static native void nativeUpdateFontScale(long ptr, long lifecycle, float scale);
 
-  private static native void nativeUpdateColorScheme(long ptr, long lifecycle, int scheme);
+  private static native void nativeUpdateColorScheme(
+      long ptr, long lifecycle, int scheme, boolean useActLite);
 
   // layout
   private static native void nativeUpdateViewport(long ptr, long lifecycle, int width,
