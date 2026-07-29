@@ -506,10 +506,10 @@ void NativePaintingCtxAndroid::ReconstructEventTargetTreeRecursively() {
 }
 
 void NativePaintingCtxAndroid::CreateImage(int id, base::String src,
-                                           float width, float height,
-                                           int32_t event_mask) {
+                                           int32_t mode, float width,
+                                           float height, int32_t event_mask) {
   if (view_manager_) {
-    view_manager_->CreateImage(id, src, width, height, event_mask);
+    view_manager_->CreateImage(id, src, mode, width, height, event_mask);
   }
 }
 

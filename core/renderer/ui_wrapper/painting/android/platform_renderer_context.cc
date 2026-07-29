@@ -111,8 +111,8 @@ void PlatformRendererContext::DestroyPlatformRenderer(int32_t target) {
 }
 
 void PlatformRendererContext::CreateImage(int32_t id, base::String src,
-                                          float width, float height,
-                                          int32_t event_mask) {
+                                          int32_t mode, float width,
+                                          float height, int32_t event_mask) {
   base::android::ScopedLocalJavaRef<jobject> local_ref(java_ref_);
   if (local_ref.IsNull()) {
     return;
@@ -121,7 +121,7 @@ void PlatformRendererContext::CreateImage(int32_t id, base::String src,
   auto j_src =
       base::android::JNIConvertHelper::ConvertToJNIStringUTF(env, src.c_str());
   Java_PlatformRendererContext_createImage(
-      env, local_ref.Get(), id, j_src.Get(), static_cast<int>(width),
+      env, local_ref.Get(), id, j_src.Get(), mode, static_cast<int>(width),
       static_cast<int>(height), static_cast<int>(event_mask));
 }
 

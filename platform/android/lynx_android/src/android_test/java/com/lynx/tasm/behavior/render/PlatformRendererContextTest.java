@@ -20,18 +20,24 @@ import com.lynx.tasm.behavior.LynxContext;
 import com.lynx.tasm.behavior.ui.LynxBaseUI;
 import com.lynx.tasm.behavior.ui.PropBundle;
 import com.lynx.tasm.behavior.ui.UIBody;
+import com.lynx.tasm.behavior.ui.image.LynxImageManager;
+import com.lynx.tasm.image.ScalingUtils;
+import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.mockito.junit.MockitoJUnitRunner;
 
 @RunWith(MockitoJUnitRunner.class)
 public class PlatformRendererContextTest {
+  private static final int IMAGE_MODE_ASPECT_FILL = 2;
+
   @Mock private LynxContext mockLynxContext;
   @Mock private Resources mockResources;
   @Mock private DisplayMetrics mockDisplayMetrics;
@@ -87,6 +93,19 @@ public class PlatformRendererContextTest {
     UIBody.UIBodyView newBodyView = mock(UIBody.UIBodyView.class);
     rendererContext.setRootView(newBodyView);
     assertEquals(newBodyView, rendererContext.mRootView.get());
+  }
+
+  @Test
+  public void testCreateImageInitializesImageManagerWithMode() throws Exception {
+    rendererContext.createImage(7, null, IMAGE_MODE_ASPECT_FILL, 100, 60, 0);
+
+    ArgumentCaptor<LynxImageManager> imageManagerCaptor =
+        ArgumentCaptor.forClass(LynxImageManager.class);
+    verify(mockBodyView).registerImageAccordingToNodeIndex(eq(7), imageManagerCaptor.capture());
+
+    Field modeField = LynxImageManager.class.getDeclaredField("mMode");
+    modeField.setAccessible(true);
+    assertSame(ScalingUtils.ScaleType.CENTER_CROP, modeField.get(imageManagerCaptor.getValue()));
   }
 
   @Test

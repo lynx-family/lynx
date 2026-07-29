@@ -9,6 +9,10 @@
 
 static const NSInteger kFlagImageLoadEvent = 1 << 0;
 static const NSInteger kFlagImageErrorEvent = 1 << 1;
+static const int32_t kImageModeScaleToFill = 0;
+static const int32_t kImageModeAspectFit = 1;
+static const int32_t kImageModeAspectFill = 2;
+static const int32_t kImageModeCenter = 3;
 static NSString* const kLynxImageEventLoad = @"load";
 static NSString* const kLynxImageEventError = @"error";
 
@@ -22,6 +26,7 @@ static NSString* const kLynxImageEventError = @"error";
   float _viewHeight;
   NSInteger _sign;
   NSInteger _eventMask;
+  UIViewContentMode _contentMode;
 }
 
 - (instancetype)initWithContext:(LynxUIContext*)context {
@@ -29,6 +34,7 @@ static NSString* const kLynxImageEventError = @"error";
   if (self) {
     _context = context;
     _sign = -1;
+    _contentMode = UIViewContentModeScaleToFill;
     _cancelBlocks = [NSMutableDictionary new];
     _images = [NSMutableDictionary new];
   }
@@ -41,6 +47,24 @@ static NSString* const kLynxImageEventError = @"error";
 
 - (void)setEventMask:(NSInteger)eventMask {
   _eventMask = eventMask;
+}
+
+- (void)setMode:(int32_t)mode {
+  switch (mode) {
+    case kImageModeAspectFit:
+      _contentMode = UIViewContentModeScaleAspectFit;
+      break;
+    case kImageModeAspectFill:
+      _contentMode = UIViewContentModeScaleAspectFill;
+      break;
+    case kImageModeCenter:
+      _contentMode = UIViewContentModeCenter;
+      break;
+    case kImageModeScaleToFill:
+    default:
+      _contentMode = UIViewContentModeScaleToFill;
+      break;
+  }
 }
 
 - (void)sendCustomEvent:(NSString*)name withParams:(NSDictionary*)params {
@@ -116,6 +140,7 @@ static NSString* const kLynxImageEventError = @"error";
 
 - (void)setTarget:(UIImageView*)view {
   _imageView = view;
+  _imageView.contentMode = _contentMode;
 
   // Try set source image first.
   if (_images[@(LynxImageRequestSrc)] != nil) {

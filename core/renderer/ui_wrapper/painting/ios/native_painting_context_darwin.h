@@ -119,7 +119,7 @@ class NativePaintingCtxDarwin : public PaintingCtxPlatformImpl, public NativePai
 
   void UpdatePlatformEventBundle(int32_t id, PlatformEventBundle bundle) override;
 
-  void CreateImage(int id, base::String src, float width, float height,
+  void CreateImage(int id, base::String src, int32_t mode, float width, float height,
                    int32_t event_mask = 0) override;
 
 #pragma endregion  // NativePaintingContext

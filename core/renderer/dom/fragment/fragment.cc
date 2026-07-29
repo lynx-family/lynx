@@ -996,7 +996,12 @@ void Fragment::Draw() {
 
 void Fragment::Draw(DisplayListBuilder& display_list_builder) {
   if (has_platform_renderer_) {
-    display_list_builder.DrawView(id());
+    // A platform child is not drawn through the parent's nested Begin stack.
+    // Pass its final local offset so DrawView can update the native child
+    // position without changing the size owned by the child's display list.
+    display_list_builder.DrawView(
+        id(), layout_info_.layout_result.offset_.X() + render_offset_[0],
+        layout_info_.layout_result.offset_.Y() + render_offset_[1]);
     // The view got its own display list.
     Draw();
     return;

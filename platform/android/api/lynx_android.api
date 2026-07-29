@@ -5865,6 +5865,7 @@ public class com::lynx::tasm::behavior::ui::image::LynxImageManager : Drawable.C
   public void com.lynx.tasm.behavior.ui.image.LynxImageManager.setCapInsets(String capInsets);
   public void com.lynx.tasm.behavior.ui.image.LynxImageManager.setCapInsetsBackUp(String capInsetsBackUp);
   public void com.lynx.tasm.behavior.ui.image.LynxImageManager.setMode(@Nullable String mode);
+  public void com.lynx.tasm.behavior.ui.image.LynxImageManager.setMode(int mode);
   public void com.lynx.tasm.behavior.ui.image.LynxImageManager.setBlurRadius(String radius);
   public void com.lynx.tasm.behavior.ui.image.LynxImageManager.setAutoSize(boolean autoSize);
   public void com.lynx.tasm.behavior.ui.image.LynxImageManager.setLoopCount(int count);
@@ -8702,7 +8703,6 @@ public class com::lynx::tasm::behavior::render::PlatformRendererContext : com.ly
   public void com.lynx.tasm.behavior.render.PlatformRendererContext.updatePlatformRendererSubtreeProperties(int sign, ByteBuffer buffer, int count);
   public void com.lynx.tasm.behavior.render.PlatformRendererContext.updatePlatformExtraData(int sign, Object extraData);
   public LynxImageManager com.lynx.tasm.behavior.render.PlatformRendererContext.getImage(int sign);
-  public void com.lynx.tasm.behavior.render.PlatformRendererContext.createImage(int sign, String src, int width, int height, int eventMask);
   public void com.lynx.tasm.behavior.render.PlatformRendererContext.destroyImage(int sign);
   public void com.lynx.tasm.behavior.render.PlatformRendererContext.updateTextBundle(int sign, long textBundle);
   public void com.lynx.tasm.behavior.render.PlatformRendererContext.destroyTextBundle(final int sign);

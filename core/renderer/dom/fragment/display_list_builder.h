@@ -42,8 +42,8 @@ class DisplayListBuilder {
   // Fill with color
   DisplayListBuilder& Fill(uint32_t color, int32_t clip_index = -1);
 
-  // Draw a view
-  DisplayListBuilder& DrawView(int view_id);
+  // Draw a view at its final position relative to the platform parent.
+  DisplayListBuilder& DrawView(int view_id, float offset_x, float offset_y);
 
   // Apply transform
   DisplayListBuilder& Transform(const transforms::Matrix44& matrix);
