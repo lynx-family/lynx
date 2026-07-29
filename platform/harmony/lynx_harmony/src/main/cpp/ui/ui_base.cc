@@ -348,23 +348,28 @@ void UIBase::UpdateLayout(float left, float top, float width, float height,
   SendLayoutChangeEvent();
 }
 
+lepus::Value UIBase::BuildLayoutChangeEventDetail() {
+  float result[4] = {0, 0, width_, height_};
+  auto detail = lepus::Dictionary::Create();
+  GetBoundingClientRect(result);
+  detail->SetValue("id", id_selector_);
+  detail->SetValue("left", result[0]);
+  detail->SetValue("top", result[1]);
+  detail->SetValue("right", result[2]);
+  detail->SetValue("bottom", result[3]);
+  detail->SetValue("width", result[2] - result[0]);
+  detail->SetValue("height", result[3] - result[1]);
+  detail->SetValue("dataset", dataset_);
+  return lepus::Value(std::move(detail));
+}
+
 void UIBase::SendLayoutChangeEvent() {
-  if (has_layout_change_event_) {
-    float result[4] = {0, 0, width_, height_};
-    auto ret = lepus::Dictionary::Create();
-    GetBoundingClientRect(result);
-    ret->SetValue("id", id_selector_);
-    ret->SetValue("left", result[0]);
-    ret->SetValue("top", result[1]);
-    ret->SetValue("right", result[2]);
-    ret->SetValue("bottom", result[3]);
-    ret->SetValue("width", result[2] - result[0]);
-    ret->SetValue("height", result[3] - result[1]);
-    ret->SetValue("dataset", dataset_);
-    CustomEvent layout_change_event = {sign_, "layoutchange", "detail",
-                                       lepus::Value(std::move(ret))};
-    context_->SendEvent(layout_change_event);
+  if (!has_layout_change_event_) {
+    return;
   }
+  CustomEvent layout_change_event = {sign_, "layoutchange", "detail",
+                                     BuildLayoutChangeEventDetail()};
+  context_->SendEvent(layout_change_event);
 }
 
 void UIBase::SetParent(UIBase* parent) { parent_ = parent; }
