@@ -97,6 +97,13 @@ typedef NS_ENUM(NSInteger, LynxMemoryPressureLevel) {
 + (instancetype)sharedInstance;
 
 /**
+ * Initializes LynxEnv and invokes the completion handler asynchronously on the main thread.
+ *
+ * When the completion handler is invoked, `isInitCompleted` returns `YES`.
+ */
+- (instancetype)init:(nullable dispatch_block_t)completionHandler;
+
+/**
  * Returns whether LynxEnv initialization has completed successfully.
  *
  * This method is safe to call from any thread. It returns true only after the singleton

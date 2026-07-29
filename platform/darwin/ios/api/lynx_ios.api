@@ -1484,6 +1484,7 @@ public class LynxEnv : NSObject {
   public BOOL enableJSDebug LynxEnv::__attribute__((deprecated("Use unified flag enableDevtoolDebug")));
   public BOOL enableDevtoolDebug LynxEnv::__attribute__((deprecated("Use devtoolEnabled")));
   public BOOL enableLogBox LynxEnv::__attribute__((deprecated("Use logBoxEnabled")));
+  public instancetype LynxEnv::init:(nullable dispatch_block_t completionHandler);
   public BOOL LynxEnv::isInitCompleted();
   public void LynxEnv::prepareConfig:(LynxConfig *config);
   public void LynxEnv::reportModuleCustomError:(NSString *error);

@@ -111,6 +111,10 @@ static void LynxClaySetup() {
 }
 
 - (instancetype)init {
+  return [self init:nil];
+}
+
+- (instancetype)init:(nullable dispatch_block_t)completionHandler {
   self = [super init];
   if (self) {
     init_flow_completed_.store(false, std::memory_order_release);
@@ -134,6 +138,12 @@ static void LynxClaySetup() {
     init_flow_completed_.store(true, std::memory_order_release);
   }
   _LogI(@"LynxEnv: init success");
+  if (self && completionHandler) {
+    // Always enqueue the callback to avoid invoking it inline. When initialization starts off the
+    // main thread, this block is also enqueued after the native UI thread initialization block,
+    // which guarantees isInitCompleted is true in the callback.
+    dispatch_async(dispatch_get_main_queue(), completionHandler);
+  }
   return self;
 }
 
