@@ -1622,7 +1622,7 @@ void Fragment::UpdateBorderRadiusAccordingToLayoutInfo() {
             starlight::NLengthToLayoutUnit(border->radius_y_bottom_left, height)
                 .ToFloat(),
     };
-    layout_info_.border_radius_info = std::move(border_radius_info);
+    layout_info_.SetBorderRadiusInfo(std::move(border_radius_info));
   } else {
     layout_info_.border_radius_info = std::nullopt;
   }

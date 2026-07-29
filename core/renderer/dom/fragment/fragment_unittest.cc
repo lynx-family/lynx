@@ -1100,6 +1100,38 @@ TEST_F(FragmentTest, RoundedRectGeneratesClipPathOpParams) {
   EXPECT_FLOAT_EQ(clip_rect.radii[7], 24.f - 4.f);
 }
 
+TEST_F(FragmentTest, UpdateLayoutNormalizesOversizedBorderRadii) {
+  auto element = manager->CreateFiberView();
+  Fragment fragment(element.get());
+
+  auto* layout_style = element->computed_css_style()->GetLayoutComputedStyle();
+  layout_style->surround_data_.border_data_ = starlight::BordersData();
+  auto& border = *layout_style->surround_data_.border_data_;
+  const auto radius = starlight::NLength::MakeUnitNLength(9999.f);
+  border.radius_x_top_left = radius;
+  border.radius_y_top_left = radius;
+  border.radius_x_top_right = radius;
+  border.radius_y_top_right = radius;
+  border.radius_x_bottom_right = radius;
+  border.radius_y_bottom_right = radius;
+  border.radius_x_bottom_left = radius;
+  border.radius_y_bottom_left = radius;
+
+  starlight::LayoutResultForRendering layout;
+  layout.size_ = FloatSize(382.f, 44.f);
+  fragment.UpdateLayout(layout);
+
+  const auto& radii = *fragment.LayoutResult().border_radius_info;
+  EXPECT_FLOAT_EQ(radii.x_top_left, 22.f);
+  EXPECT_FLOAT_EQ(radii.y_top_left, 22.f);
+  EXPECT_FLOAT_EQ(radii.x_top_right, 22.f);
+  EXPECT_FLOAT_EQ(radii.y_top_right, 22.f);
+  EXPECT_FLOAT_EQ(radii.x_bottom_right, 22.f);
+  EXPECT_FLOAT_EQ(radii.y_bottom_right, 22.f);
+  EXPECT_FLOAT_EQ(radii.x_bottom_left, 22.f);
+  EXPECT_FLOAT_EQ(radii.y_bottom_left, 22.f);
+}
+
 TEST_F(FragmentTest, TestUpdateLayoutAndDefineBoxAndDrawImage) {
   auto element = manager->CreateFiberImage("image");
   element->SetAttributeInternal("src", lepus::Value("image-src://"));
