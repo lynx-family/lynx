@@ -745,8 +745,11 @@ public class AndroidScrollView
       if (mPanInterceptDescendants) {
         return true;
       }
-      if (mUIScrollView.mPreferenceConsumeGesture) {
-        requestDisallowInterceptTouchEvent(true);
+      if (mUIScrollView.mPreferenceConsumeGesture && getParent() != null) {
+        // Note: requestDisallowInterceptTouchEvent will cause the invoking view not invoke
+        // onInterceptTouchEvent in the next motion event, so we should let parent invoke
+        // requestDisallowInterceptTouchEvent.
+        getParent().requestDisallowInterceptTouchEvent(true);
       }
       if (isNotIncludeNativeGesture()) {
         return false;
