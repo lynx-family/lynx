@@ -40,16 +40,6 @@ class GlobalDevtoolPlatformCommon
     return nullptr;
   }
 
-  lynx::trace::TracePlugin* GetFPSTracePlugin() override { return nullptr; }
-
-  lynx::trace::TracePlugin* GetFrameViewTracePlugin() override {
-    return nullptr;
-  }
-
-  lynx::trace::TracePlugin* GetInstanceTracePlugin() override {
-    return nullptr;
-  }
-
   std::string GetLynxVersion() override {
     return lynx::tasm::Config::GetCurrentLynxVersion();
   }

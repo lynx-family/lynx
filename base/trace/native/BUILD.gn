@@ -93,24 +93,14 @@ if (enable_trace != "perfetto") {
 }
 
 if (enable_trace == "perfetto") {
-  trace_public_headers += [ "instance_counter_trace.h" ]
   trace_shared_sources += [
-    "instance_counter_trace.cc",
-    "instance_counter_trace.h",
     "trace_controller_impl.cc",
     "trace_controller_impl.h",
     "track_event_wrapper.cc",
   ]
 } else if (enable_trace == "systrace") {
-  trace_public_headers += [
-    "trace_event_utils_systrace.h",
-    "instance_counter_trace.h",
-  ]
-  trace_shared_sources += [
-    "instance_counter_trace.cc",
-    "instance_counter_trace.h",
-    "trace_event_utils_systrace.h",
-  ]
+  trace_public_headers += [ "trace_event_utils_systrace.h" ]
+  trace_shared_sources += [ "trace_event_utils_systrace.h" ]
 
   if (is_android) {
     trace_shared_sources += [ "trace_event_utils_systrace_android.cc" ]

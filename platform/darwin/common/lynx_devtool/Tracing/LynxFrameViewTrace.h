@@ -8,6 +8,5 @@
 @interface LynxFrameViewTrace : LynxDevToolFrameCapturer <FrameCapturerDelegate>
 
 + (instancetype)shareInstance;
-- (intptr_t)getFrameViewTracePlugin;
 
 @end

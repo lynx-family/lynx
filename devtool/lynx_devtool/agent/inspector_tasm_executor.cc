@@ -784,9 +784,6 @@ void InspectorTasmExecutor::OnElementNodeAdded(lynx::tasm::Element* ptr) {
 
   if (ElementInspector::SelectorTag(ptr) == "page") {
     element_root_ = ptr;
-#if LYNX_ENABLE_TRACING
-    lynx::base::tracing::InstanceCounterTraceImpl::InitNodeCounter();
-#endif
   } else {
     // For Radon diff test case as follows:
     // class Condition extends Component<{ condition: boolean,
@@ -864,9 +861,6 @@ void InspectorTasmExecutor::OnElementNodeAdded(lynx::tasm::Element* ptr) {
           true);
     }
   }
-#if LYNX_ENABLE_TRACING
-  lynx::base::tracing::InstanceCounterTraceImpl::IncrementNodeCounter(ptr);
-#endif
 }
 
 void InspectorTasmExecutor::OnElementNodeRemoved(Element* ptr) {
@@ -887,10 +881,6 @@ void InspectorTasmExecutor::OnElementNodeRemoved(Element* ptr) {
                     ElementInspector::NodeId(remove_element), "",
                     ElementInspector::NodeId(parent));
   }
-
-#if LYNX_ENABLE_TRACING
-  lynx::base::tracing::InstanceCounterTraceImpl::DecrementNodeCounter(ptr);
-#endif
 }
 
 // not used yet

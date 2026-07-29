@@ -7,10 +7,6 @@
 #include "core/runtime/js/jsi/v8/v8_exception.h"
 #include "core/runtime/js/jsi/v8/v8_runtime.h"
 
-#if ENABLE_TRACE_PERFETTO || ENABLE_TRACE_SYSTRACE
-#include "base/trace/native/instance_counter_trace.h"
-#endif
-
 namespace lynx {
 namespace runtime {
 namespace js {
@@ -245,14 +241,6 @@ std::optional<Value> V8Helper::call(V8Runtime* rt, const Function& f,
 
   v8::MaybeLocal<v8::Value> result = func->CallAsFunction(
       context, target_object, static_cast<int>(nArgs), args);
-#if ENABLE_TRACE_PERFETTO || ENABLE_TRACE_SYSTRACE
-  if (isolate) {
-    v8::HeapStatistics heapStatistics;
-    isolate->GetHeapStatistics(&heapStatistics);
-    lynx::trace::InstanceCounterTrace::JsHeapMemoryUsedTrace(
-        heapStatistics.used_heap_size());
-  }
-#endif
   if (try_catch.HasCaught()) {
     // Actually there is no need to check if try_catch.Exception() is empty
     // handle. Since v8 will only return an empty handle when HasCaught() is
@@ -294,14 +282,6 @@ std::optional<Value> V8Helper::callAsConstructor(V8Runtime* rt,
   v8::MaybeLocal<v8::Value> result =
       v8obj->CallAsConstructor(context, nArgs, args);
 
-#if ENABLE_TRACE_PERFETTO || ENABLE_TRACE_SYSTRACE
-  if (isolate) {
-    v8::HeapStatistics heapStatistics;
-    isolate->GetHeapStatistics(&heapStatistics);
-    lynx::trace::InstanceCounterTrace::JsHeapMemoryUsedTrace(
-        heapStatistics.used_heap_size());
-  }
-#endif
   if (!V8Exception::ReportExceptionIfNeeded(*rt, trycatch) ||
       result.IsEmpty()) {
     return std::optional<Value>();

@@ -84,9 +84,6 @@ class GlobalDevToolPlatformFacade
 
   // The following functions are used for tracing agent.
   virtual lynx::trace::TraceController* GetTraceController() = 0;
-  virtual lynx::trace::TracePlugin* GetFPSTracePlugin() = 0;
-  virtual lynx::trace::TracePlugin* GetFrameViewTracePlugin() = 0;
-  virtual lynx::trace::TracePlugin* GetInstanceTracePlugin() = 0;
   virtual std::string GetLynxVersion() { return ""; }
 
   virtual std::string GetSystemModelName() { return ""; }

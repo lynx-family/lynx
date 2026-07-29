@@ -9,9 +9,6 @@
 
 #import <Lynx/LynxTraceController.h>
 #import <LynxDevtool/LynxDeviceInfoHelper.h>
-#import <LynxDevtool/LynxFPSTrace.h>
-#import <LynxDevtool/LynxFrameViewTrace.h>
-#import <LynxDevtool/LynxInstanceTrace.h>
 #import <LynxDevtool/LynxMemoryController.h>
 #include <memory>
 #include <mutex>
@@ -108,33 +105,6 @@ class GlobalDevToolPlatformDarwin : public GlobalDevToolPlatformFacade {
     }
   }
 
-  lynx::trace::TracePlugin* GetFPSTracePlugin() override {
-    intptr_t res = [GlobalDevToolPlatformDarwinDelegate getFPSTracePlugin];
-    if (res) {
-      return reinterpret_cast<lynx::trace::TracePlugin*>(res);
-    } else {
-      return nullptr;
-    }
-  }
-
-  lynx::trace::TracePlugin* GetFrameViewTracePlugin() override {
-    intptr_t res = [GlobalDevToolPlatformDarwinDelegate getFrameViewTracePlugin];
-    if (res) {
-      return reinterpret_cast<lynx::trace::TracePlugin*>(res);
-    } else {
-      return nullptr;
-    }
-  }
-
-  lynx::trace::TracePlugin* GetInstanceTracePlugin() override {
-    intptr_t res = [GlobalDevToolPlatformDarwinDelegate getInstanceTracePlugin];
-    if (res) {
-      return reinterpret_cast<lynx::trace::TracePlugin*>(res);
-    } else {
-      return nullptr;
-    }
-  }
-
   std::string GetLynxVersion() override {
     return [[LynxDeviceInfoHelper getLynxVersion] UTF8String];
   }
@@ -170,18 +140,6 @@ GlobalDevToolPlatformFacade& GlobalDevToolPlatformFacade::GetInstance() {
 
 + (intptr_t)getTraceController {
   return [[LynxTraceController sharedInstance] getTraceController];
-}
-
-+ (intptr_t)getFPSTracePlugin {
-  return [[LynxFPSTrace shareInstance] getFPSTracePlugin];
-}
-
-+ (intptr_t)getFrameViewTracePlugin {
-  return [[LynxFrameViewTrace shareInstance] getFrameViewTracePlugin];
-}
-
-+ (intptr_t)getInstanceTracePlugin {
-  return [[LynxInstanceTrace shareInstance] getInstanceTracePlugin];
 }
 
 + (std::string)getSystemModelName {
