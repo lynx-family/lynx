@@ -196,7 +196,7 @@ class LynxShell {
 
   void UpdateFontScale(float scale);
 
-  void UpdateColorScheme(int scheme);
+  void UpdateColorScheme(int scheme, bool use_act_lite = false);
 
   void SetFontScale(float scale);
 
