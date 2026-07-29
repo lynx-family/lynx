@@ -224,11 +224,11 @@ class RenderObject : public AbstractNode {
   void SetMarginBottom(float bottom) { box_data_.SetMarginBottom(bottom); }
 
   void SetBorders(const BordersData& borders_data);
-  bool HasBorder() const { return border_.has_value(); }
+  bool HasBorder() const { return border_ != nullptr; }
   const BordersData& Border() const { return *border_; }
   BordersData& MutableBorder() {
-    if (!border_.has_value()) {
-      border_ = std::make_optional<BordersData>(BordersData());
+    if (!border_) {
+      border_ = std::make_unique<BordersData>();
     }
     return *border_;
   }
@@ -243,11 +243,11 @@ class RenderObject : public AbstractNode {
   }
 
   void SetOutline(const OutlineData& outline_data);
-  bool HasOutline() const { return outline_.has_value(); }
+  bool HasOutline() const { return outline_ != nullptr; }
   const OutlineData& Outline() const { return *outline_; }
   OutlineData& MutableOutline() {
-    if (!outline_.has_value()) {
-      outline_ = std::make_optional<OutlineData>(OutlineData());
+    if (!outline_) {
+      outline_ = std::make_unique<OutlineData>();
     }
     return *outline_;
   }
@@ -264,19 +264,19 @@ class RenderObject : public AbstractNode {
 
   void SetShadow(const Shadow& shadow);
   void SetShadows(std::vector<Shadow>&& shadows);
-  bool HasShadow() const { return shadows_.has_value() && !shadows_->empty(); }
+  bool HasShadow() const { return shadows_ && !shadows_->empty(); }
   const std::vector<Shadow>& Shadows() const { return *shadows_; }
 
   void SetBackgroundColor(const Color& color,
                           bool skip_update_for_raster_animation = false);
   void SetBackgroundData(const BackgroundData& background_data);
-  bool HasBackground() const { return background_data_.has_value(); }
+  bool HasBackground() const { return background_data_ != nullptr; }
   const BackgroundData& Background() const { return *background_data_; }
   void ResizeBackground(size_t size);
   void ResizeMask(size_t size);
   void ClearMask();
 
-  bool HasMask() const { return mask_data_.has_value(); }
+  bool HasMask() const { return mask_data_ != nullptr; }
   const MaskData& Mask() const { return *mask_data_; }
 
   virtual void DecodeImages();
@@ -317,10 +317,8 @@ class RenderObject : public AbstractNode {
                               bool is_from_animation = false);
   void SetTransformOrigin(const FloatPoint& origin);
   void SetPerspective(float value);
-  bool HasTransform() const {
-    return transform_.has_value() && !transform_->IsIdentity();
-  }
-  bool HasOffsetTransform() const { return offset_transform_.has_value(); }
+  bool HasTransform() const { return transform_ && !transform_->IsIdentity(); }
+  bool HasOffsetTransform() const { return offset_transform_ != nullptr; }
   bool HasTransformOperations() const;
   const TransformOperations& GetTransformOperations() const {
     return *transform_;
@@ -329,7 +327,7 @@ class RenderObject : public AbstractNode {
     return *offset_transform_;
   }
   Transform GetTransform() const {
-    return transform_.has_value() ? (*transform_).Apply() : Transform();
+    return transform_ ? transform_->Apply() : Transform();
   }
   const FloatPoint& GetTransformOrigin() const { return transform_origin_; }
   bool HasPerspective() const { return perspective_.has_value(); }
@@ -587,13 +585,13 @@ class RenderObject : public AbstractNode {
   // The width/height of the contents + borders + padding.  The left/top
   // location is relative to our container (which is not always our parent).
   BoxData box_data_;
-  std::optional<BackgroundData> background_data_;
-  std::optional<MaskData> mask_data_;
-  std::optional<BordersData> border_;
-  std::optional<OutlineData> outline_;
-  std::optional<std::vector<Shadow>> shadows_;
-  std::optional<TransformOperations> offset_transform_;
-  std::optional<TransformOperations> transform_;
+  std::unique_ptr<BackgroundData> background_data_;
+  std::unique_ptr<MaskData> mask_data_;
+  std::unique_ptr<BordersData> border_;
+  std::unique_ptr<OutlineData> outline_;
+  std::unique_ptr<std::vector<Shadow>> shadows_;
+  std::unique_ptr<TransformOperations> offset_transform_;
+  std::unique_ptr<TransformOperations> transform_;
   std::optional<float> perspective_;
   FloatPoint transform_origin_;
   std::optional<float> opacity_ = std::nullopt;

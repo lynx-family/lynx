@@ -24,18 +24,18 @@ namespace clay {
 static const float kOffsetRotateAuto = -1024.0f;
 static const float kFloatEpsilon = 0.00001f;
 
-#define ENSURE_BACKGROUND()                                    \
-  do {                                                         \
-    if (!background_data_.has_value()) {                       \
-      background_data_ = std::make_optional<BackgroundData>(); \
-    }                                                          \
+#define ENSURE_BACKGROUND()                                  \
+  do {                                                       \
+    if (!background_data_) {                                 \
+      background_data_ = std::make_unique<BackgroundData>(); \
+    }                                                        \
   } while (false)
 
-#define ENSURE_MASKIMAGE()                         \
-  do {                                             \
-    if (!mask_data_.has_value()) {                 \
-      mask_data_ = std::make_optional<MaskData>(); \
-    }                                              \
+#define ENSURE_MASKIMAGE()                       \
+  do {                                           \
+    if (!mask_data_) {                           \
+      mask_data_ = std::make_unique<MaskData>(); \
+    }                                            \
   } while (false)
 
 class BackgroundOrMaskImageClient : public ImageResourceClient {
@@ -198,12 +198,12 @@ void RenderObject::SetPaddingBottom(float bottom) {
 }
 
 void RenderObject::SetBorders(const BordersData& borders_data) {
-  border_ = std::make_optional<BordersData>(borders_data);
+  border_ = std::make_unique<BordersData>(borders_data);
   MarkNeedsPaint();
 }
 
 void RenderObject::SetOutline(const OutlineData& outline_data) {
-  outline_ = std::make_optional<OutlineData>(outline_data);
+  outline_ = std::make_unique<OutlineData>(outline_data);
   MarkNeedsPaint();
 }
 
@@ -226,8 +226,8 @@ void RenderObject::SetDisplayNone(bool display_none) {
 }
 
 void RenderObject::SetShadow(const Shadow& shadow) {
-  if (!shadows_.has_value()) {
-    shadows_ = std::make_optional<std::vector<Shadow>>();
+  if (!shadows_) {
+    shadows_ = std::make_unique<std::vector<Shadow>>();
   }
 
   shadows_->push_back(shadow);
@@ -235,8 +235,8 @@ void RenderObject::SetShadow(const Shadow& shadow) {
 }
 
 void RenderObject::SetShadows(std::vector<Shadow>&& shadows) {
-  if (!shadows_.has_value() || shadows != shadows_) {
-    shadows_ = std::move(shadows);
+  if (!shadows_ || *shadows_ != shadows) {
+    shadows_ = std::make_unique<std::vector<Shadow>>(std::move(shadows));
     MarkNeedsPaint();
   }
 }
@@ -251,7 +251,7 @@ FloatRect RenderObject::GetFrameRectEx() const {
 
   if (HasShadow()) {
     // Union a series of shadows with BoxRect.
-    for (const auto& shadow : shadows_.value()) {
+    for (const auto& shadow : *shadows_) {
       if (shadow.inset) {
         continue;
       }
@@ -353,7 +353,7 @@ FloatPoint RenderObject::PaintOffsetEx() const {
 }
 
 void RenderObject::SetBackgroundData(const BackgroundData& background_data) {
-  background_data_ = std::make_optional<BackgroundData>();
+  background_data_ = std::make_unique<BackgroundData>();
   background_data_->background_color = background_data.background_color;
   background_data_->images.resize(background_data.background_images.size());
   for (const auto& bg : background_data.background_images) {
@@ -563,7 +563,7 @@ void RenderObject::SetImageFilterMode(FilterMode mode) {
 }
 
 bool RenderObject::HasTransformOperations() const {
-  return transform_.has_value();
+  return transform_ != nullptr;
 }
 
 void RenderObject::SetTransformOperations(const TransformOperations& transform,
@@ -581,7 +581,7 @@ void RenderObject::SetTransformOperations(const TransformOperations& transform,
       parent->DirtyChildrenPaintingOrder();
     }
   }
-  transform_ = transform;
+  transform_ = std::make_unique<TransformOperations>(transform);
   if (!HasTransform()) {
     // Resets transform_ to identity and needs mark dirty to repaint.
     MarkNeedsPaint();
@@ -925,7 +925,8 @@ void RenderObject::UpdateOffsetTransform(const skity::Matrix& matrix) {
   TransformOperations transform_ops;
   transform_ops.AppendMatrix(transform);
 
-  offset_transform_ = transform_ops;
+  offset_transform_ =
+      std::make_unique<TransformOperations>(std::move(transform_ops));
 }
 
 void RenderObject::ClearClipPath() {
