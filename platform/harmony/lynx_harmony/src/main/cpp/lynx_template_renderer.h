@@ -11,6 +11,7 @@
 #include <cstdint>
 #include <memory>
 #include <mutex>
+#include <optional>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -165,8 +166,8 @@ class LynxTemplateRenderer : public devtool::LynxDevToolProxy {
       bool enable_bytecode, std::string bytecode_source_url, bool enable_js,
       std::unique_ptr<ModuleFactoryHarmony> jsbridge_module_factory,
       std::unique_ptr<ModuleFactoryHarmony> main_thread_module_factory,
-      LynxRuntimeWrapper* runtime_wrapper,
-      LynxWhiteBoard* white_board = nullptr);
+      LynxRuntimeWrapper* runtime_wrapper, LynxWhiteBoard* white_board,
+      std::optional<bool> enable_multi_async_thread);
 
   static napi_value Init(napi_env env, napi_value exports);
   static napi_value GetBaseTraceBackend(napi_env env, napi_callback_info info);

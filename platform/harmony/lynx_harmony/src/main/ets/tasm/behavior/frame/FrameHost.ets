@@ -4,9 +4,11 @@
 
 import lynx from 'liblynx.so';
 import { BuilderNode, FrameNode, UIContext } from '@kit.ArkUI';
-import { LynxContext } from '../../LynxContext';
+import { LynxContext, setUIOwnerCreatedCallback } from '../../LynxContext';
 import { LynxView, LynxViewBuilder } from '../../LynxView';
+import { LynxViewClient } from '../../LynxViewClient';
 import { LynxUpdateMeta, MetaData, TemplateData } from '../../MetaData';
+import { PerformanceEntry } from '../../gen/performance/performanceobserver/PerformanceEntry';
 import { TemplateBundle } from '../../TemplateBundle';
 
 type MetaInput = Record<string, Object> | Object;
@@ -18,6 +20,21 @@ function createTemplateData(value: MetaInput | undefined): TemplateData | undefi
 function areaSize(value: ESObject): number {
   const size = Number(value);
   return Number.isFinite(size) ? Math.max(0, size) : 0;
+}
+
+class FramePerformanceClient extends LynxViewClient {
+  private readonly native: lynx.UIFrame;
+
+  constructor(native: lynx.UIFrame) {
+    super();
+    this.native = native;
+  }
+
+  override onPerformanceEvent(entry: PerformanceEntry): void {
+    if (entry.entryType === 'pipeline' && entry.name === 'loadBundle') {
+      this.native.onLoadMetrics(entry.toRecord());
+    }
+  }
 }
 
 class FrameHostBuildParams {
@@ -60,11 +77,15 @@ export class FrameHost {
   private builderNode?: BuilderNode<[FrameHostBuildParams]>;
   private childContext?: LynxContext;
   private childBuilt: boolean = false;
+  private enableMultiAsyncThread?: boolean;
+  private lastForegroundState?: boolean;
+  private readonly performanceClient: FramePerformanceClient;
 
   constructor(parentContext: LynxContext, uiContext: UIContext, nativeFrame: lynx.UIFrame) {
     this.parentContext = parentContext;
     this.uiContext = uiContext;
     this.native = nativeFrame;
+    this.performanceClient = new FramePerformanceClient(nativeFrame);
     this.builderNode = new BuilderNode<[FrameHostBuildParams]>(this.uiContext);
     this.builderNode.build(wrapBuilder<[FrameHostBuildParams]>(buildFrameHost),
       new FrameHostBuildParams(this, false, false, false));
@@ -83,7 +104,10 @@ export class FrameHost {
     // away from the host), its client list (host observers must not receive the
     // frame page's events), or its onCreate (it belongs to the host context).
     builder.backgroundRuntime = undefined;
-    builder.clients = [];
+    builder.clients = [this.performanceClient];
+    if (this.enableMultiAsyncThread !== undefined) {
+      builder.enableMultiAsyncThread = this.enableMultiAsyncThread;
+    }
     builder.onCreate = (context: LynxContext) => {
       this.onChildContextReady(context);
     };
@@ -93,7 +117,7 @@ export class FrameHost {
     return builder;
   }
 
-  updateAutoSize(autoWidth: boolean, autoHeight: boolean): void {
+  updateConfiguration(autoWidth: boolean, autoHeight: boolean, enableMultiAsyncThread?: boolean): void {
     const changed = this.autoWidth !== autoWidth || this.autoHeight !== autoHeight;
     const needsBuild = !this.childBuilt;
     if (!changed && !needsBuild) {
@@ -101,6 +125,9 @@ export class FrameHost {
     }
     this.autoWidth = autoWidth;
     this.autoHeight = autoHeight;
+    if (needsBuild) {
+      this.enableMultiAsyncThread = enableMultiAsyncThread;
+    }
     this.childBuilt = true;
     this.builderNode?.update(new FrameHostBuildParams(this, true, autoWidth, autoHeight));
   }
@@ -122,9 +149,29 @@ export class FrameHost {
     this.childContext?.updateViewport(width, widthMode, height, heightMode);
   }
 
+  onEnterForeground(): void {
+    this.lastForegroundState = true;
+    this.childContext?.onEnterForeground();
+  }
+
+  onEnterBackground(): void {
+    this.lastForegroundState = false;
+    this.childContext?.onEnterBackground();
+  }
+
   onChildContextReady(context: LynxContext): void {
     this.childContext = context;
+    setUIOwnerCreatedCallback(context, (uiOwner) => {
+      if (this.childContext === context) {
+        this.native.onHostReady(uiOwner.native);
+      }
+    });
     this.native.onHostReady();
+    if (this.lastForegroundState === true) {
+      context.onEnterForeground();
+    } else if (this.lastForegroundState === false) {
+      context.onEnterBackground();
+    }
   }
 
   onChildAreaChanged(width: number, height: number): void {
@@ -132,7 +179,11 @@ export class FrameHost {
   }
 
   dispose(): void {
+    if (this.childContext) {
+      setUIOwnerCreatedCallback(this.childContext, undefined);
+    }
     this.childContext = undefined;
+    this.lastForegroundState = undefined;
     this.builderNode?.dispose();
     this.builderNode = undefined;
   }

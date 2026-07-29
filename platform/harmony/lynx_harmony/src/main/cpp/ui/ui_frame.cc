@@ -8,6 +8,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
 #include <utility>
 
 #include "base/include/float_comparison.h"
@@ -25,6 +26,8 @@
 #include "platform/harmony/lynx_harmony/src/main/cpp/shadow_node/shadow_node_owner.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/base/node_manager.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_owner.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_root.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/ui/utils/lynx_unit_utils.h"
 
 namespace lynx {
 namespace tasm {
@@ -33,6 +36,8 @@ namespace {
 
 constexpr int32_t kMeasureModeIndefinite = 0;
 constexpr int32_t kMeasureModeDefinite = 1;
+constexpr char kLoadMetricsEvent[] = "loadmetrics";
+constexpr char kFrameEventModeStandard[] = "standard";
 // Half-pixel dead-zone for intrinsic size changes. Deliberately coarser than
 // base::EPSILON so sub-pixel jitter from the host does not trigger relayout.
 constexpr float kIntrinsicSizeEpsilon = 0.5f;
@@ -54,8 +59,23 @@ bool ReadBool(const lepus::Value& value, bool fallback) {
   return fallback;
 }
 
-bool IsValidMetaDataValue(const lepus::Value& value) {
-  return value.IsObject();
+bool TakeMetaDataValue(const lepus::Value& input, lepus::Value& output) {
+  if (input.IsInt64()) {
+    std::unique_ptr<lepus::Value> transferred_value(
+        reinterpret_cast<lepus::Value*>(input.Int64()));
+    if (!transferred_value || !transferred_value->IsObject()) {
+      output = lepus::Value();
+      return false;
+    }
+    output = std::move(*transferred_value);
+    return true;
+  }
+  if (!input.IsObject()) {
+    output = lepus::Value();
+    return false;
+  }
+  output = input;
+  return true;
 }
 
 bool IsNapiNumber(napi_env env, napi_value value) {
@@ -76,10 +96,18 @@ UIFrame::~UIFrame() { OnDestroy(); }
 
 napi_value UIFrame::OnHostReady(napi_env env, napi_callback_info info) {
   napi_value js_this;
-  size_t argc = 0;
-  napi_get_cb_info(env, info, &argc, nullptr, &js_this, nullptr);
+  size_t argc = 1;
+  napi_value argv[1] = {nullptr};
+  napi_get_cb_info(env, info, &argc, argv, &js_this, nullptr);
+  UIOwner* child_owner = nullptr;
+  if (argc > 0 && argv[0]) {
+    napi_valuetype type = napi_undefined;
+    if (napi_typeof(env, argv[0], &type) == napi_ok && type == napi_object) {
+      napi_unwrap(env, argv[0], reinterpret_cast<void**>(&child_owner));
+    }
+  }
   if (auto frame = GetFrameFromNapiThis(env, js_this)) {
-    frame->HandleHostReady();
+    frame->HandleHostReady(child_owner);
   }
   return nullptr;
 }
@@ -105,6 +133,21 @@ napi_value UIFrame::OnIntrinsicSizeChanged(napi_env env,
   }
   frame->HandleIntrinsicSizeChanged(static_cast<float>(width),
                                     static_cast<float>(height));
+  return nullptr;
+}
+
+napi_value UIFrame::OnLoadMetrics(napi_env env, napi_callback_info info) {
+  napi_value js_this;
+  size_t argc = 1;
+  napi_value argv[1] = {nullptr};
+  if (napi_get_cb_info(env, info, &argc, argv, &js_this, nullptr) != napi_ok ||
+      argc < 1 || !argv[0]) {
+    return nullptr;
+  }
+  if (auto frame = GetFrameFromNapiThis(env, js_this)) {
+    frame->HandleLoadMetrics(
+        base::NapiConvertHelper::ConvertToLepusValue(env, argv[0]));
+  }
   return nullptr;
 }
 
@@ -144,7 +187,8 @@ void UIFrame::UpdateProps(PropBundleHarmony* props) {
   CreateFrameHost();
   UIView::UpdateProps(props);
   props_updated_ = true;
-  UpdateHostAutoSize();
+  UpdateHostConfiguration();
+  UpdateHostViewport();
   UpdateHostMetaDataIfNeeded();
   TryLoadBundle();
 }
@@ -162,6 +206,7 @@ void UIFrame::UpdateLayout(float left, float top, float width, float height,
   content_width_ =
       std::max(0.f, width - horizontal_padding - horizontal_border);
   content_height_ = std::max(0.f, height - vertical_padding - vertical_border);
+  has_content_layout_ = true;
   TRACE_EVENT(LYNX_TRACE_CATEGORY, LYNX_FRAME_VIEW_UPDATE_LAYOUT, "url", src_,
               "width", content_width_, "height", content_height_);
   UpdateHostViewport();
@@ -173,19 +218,38 @@ void UIFrame::OnDestroy() {
   }
   TRACE_EVENT(LYNX_TRACE_CATEGORY, LYNX_FRAME_VIEW_DESTROY, "url", src_);
   destroyed_ = true;
+  DetachChildPageUI();
   DisposeFrameHost();
   pending_bundle_.reset();
 }
 
-void UIFrame::HandleHostReady() {
+void UIFrame::OnEnterForeground() {
+  if (!destroyed_ && frame_host_ref_) {
+    CallHostMethod("onEnterForeground", 0, nullptr);
+  }
+}
+
+void UIFrame::OnEnterBackground() {
+  if (!destroyed_ && frame_host_ref_) {
+    CallHostMethod("onEnterBackground", 0, nullptr);
+  }
+}
+
+void UIFrame::HandleHostReady(UIOwner* child_owner) {
   if (destroyed_) {
+    return;
+  }
+  if (child_owner) {
+    AttachChildUIOwner(child_owner);
+  }
+  const bool was_ready = child_context_ready_;
+  child_context_ready_ = true;
+  if (was_ready) {
     return;
   }
   TRACE_EVENT_INSTANT(LYNX_TRACE_CATEGORY, UI_FRAME_HOST_READY, "url", src_,
                       "loaded", loaded_, "props_updated", props_updated_,
                       "has_bundle", static_cast<bool>(pending_bundle_));
-  child_context_ready_ = true;
-  UpdateHostAutoSize();
   UpdateHostViewport();
   TryLoadBundle();
 }
@@ -196,7 +260,8 @@ void UIFrame::HandleIntrinsicSizeChanged(float width, float height) {
   }
   width = std::max(0.f, width);
   height = std::max(0.f, height);
-  if (std::abs(intrinsic_width_ - width) < kIntrinsicSizeEpsilon &&
+  if (has_intrinsic_size_ &&
+      std::abs(intrinsic_width_ - width) < kIntrinsicSizeEpsilon &&
       std::abs(intrinsic_height_ - height) < kIntrinsicSizeEpsilon) {
     return;
   }
@@ -205,6 +270,7 @@ void UIFrame::HandleIntrinsicSizeChanged(float width, float height) {
               intrinsic_height_, "width", width, "height", height);
   intrinsic_width_ = width;
   intrinsic_height_ = height;
+  has_intrinsic_size_ = true;
 
   if (context_) {
     context_->FindShadowNodeAndRunTask(
@@ -215,6 +281,25 @@ void UIFrame::HandleIntrinsicSizeChanged(float width, float height) {
           }
         });
   }
+  SendLayoutChangeEvent();
+}
+
+void UIFrame::HandleLoadMetrics(const lepus::Value& entry) {
+  if (destroyed_ || !entry.IsObject()) {
+    return;
+  }
+  const auto events = EventSet();
+  if (std::find(events.begin(), events.end(), kLoadMetricsEvent) ==
+      events.end()) {
+    return;
+  }
+  auto detail = lepus::Dictionary::Create();
+  detail->SetValue("url", src_);
+  detail->SetValue("mode", kFrameEventModeStandard);
+  detail->SetValue("entry", entry);
+  CustomEvent event{Sign(), kLoadMetricsEvent, "detail",
+                    lepus::Value(std::move(detail))};
+  context_->SendEvent(event);
 }
 
 void UIFrame::OnPropUpdate(const std::string& name, const lepus::Value& value) {
@@ -229,22 +314,46 @@ void UIFrame::OnPropUpdate(const std::string& name, const lepus::Value& value) {
       ResetLoadedState();
     }
   } else if (name == "data") {
+    const bool valid = TakeMetaDataValue(value, frame_data_);
     TRACE_EVENT_INSTANT(LYNX_TRACE_CATEGORY, LYNX_FRAME_VIEW_SET_INIT_DATA,
-                        "url", src_, "valid", IsValidMetaDataValue(value));
-    has_frame_data_ = IsValidMetaDataValue(value);
-    frame_data_ = has_frame_data_ ? value : lepus::Value();
+                        "url", src_, "valid", valid);
+    has_frame_data_ = valid;
     frame_data_dirty_ = true;
   } else if (name == "global-props") {
+    const bool valid = TakeMetaDataValue(value, global_props_);
     TRACE_EVENT_INSTANT(LYNX_TRACE_CATEGORY, LYNX_FRAME_VIEW_SET_GLOBAL_PROPS,
-                        "url", src_, "valid", IsValidMetaDataValue(value));
-    has_global_props_ = IsValidMetaDataValue(value);
-    global_props_ = has_global_props_ ? value : lepus::Value();
+                        "url", src_, "valid", valid);
+    has_global_props_ = valid;
     global_props_dirty_ = true;
   } else if (name == "auto-width") {
     auto_width_ = value.IsNil() ? false : ReadBool(value, auto_width_);
   } else if (name == "auto-height") {
     auto_height_ = value.IsNil() ? false : ReadBool(value, auto_height_);
+  } else if (name == "preset-width") {
+    preset_width_ = ParsePresetLength(value);
+  } else if (name == "preset-height") {
+    preset_height_ = ParsePresetLength(value);
+  } else if (name == "enable-multi-async-thread") {
+    if (value.IsBool() || value.IsString() || value.IsNumber()) {
+      enable_multi_async_thread_ = ReadBool(value, false);
+    } else {
+      enable_multi_async_thread_.reset();
+    }
   }
+}
+
+lepus::Value UIFrame::BuildLayoutChangeEventDetail() {
+  lepus::Value detail = UIView::BuildLayoutChangeEventDetail();
+  auto table = detail.Table();
+  if (!table) {
+    return detail;
+  }
+  table->SetValue("frameUrl", src_);
+  if (has_intrinsic_size_) {
+    table->SetValue("intrinsicWidth", intrinsic_width_);
+    table->SetValue("intrinsicHeight", intrinsic_height_);
+  }
+  return detail;
 }
 
 void UIFrame::CreateFrameHost() {
@@ -357,6 +466,7 @@ napi_value UIFrame::CreateNativeFrameValue() {
   napi_property_descriptor properties[] = {
       DECLARE_NAPI_FUNCTION("onHostReady", OnHostReady),
       DECLARE_NAPI_FUNCTION("onIntrinsicSizeChanged", OnIntrinsicSizeChanged),
+      DECLARE_NAPI_FUNCTION("onLoadMetrics", OnLoadMetrics),
   };
 #undef DECLARE_NAPI_FUNCTION
 
@@ -410,43 +520,130 @@ void UIFrame::TryLoadBundle() {
   }
 }
 
-void UIFrame::UpdateHostAutoSize() {
+void UIFrame::UpdateHostConfiguration() {
   if (!frame_host_ref_) {
     return;
   }
   base::NapiHandleScope scope(env_);
   napi_value auto_width;
   napi_value auto_height;
+  napi_value enable_multi_async_thread;
   napi_get_boolean(env_, auto_width_, &auto_width);
   napi_get_boolean(env_, auto_height_, &auto_height);
-  napi_value argv[2] = {auto_width, auto_height};
-  CallHostMethod("updateAutoSize", 2, argv);
+  if (enable_multi_async_thread_.has_value()) {
+    napi_get_boolean(env_, enable_multi_async_thread_.value(),
+                     &enable_multi_async_thread);
+  } else {
+    napi_get_undefined(env_, &enable_multi_async_thread);
+  }
+  napi_value argv[3] = {auto_width, auto_height, enable_multi_async_thread};
+  CallHostMethod("updateConfiguration", 3, argv);
 }
 
 void UIFrame::UpdateHostViewport() {
   if (!child_context_ready_) {
     return;
   }
+  const float viewport_width =
+      has_content_layout_ ? content_width_ : preset_width_.value_or(0.f);
+  const float viewport_height =
+      has_content_layout_ ? content_height_ : preset_height_.value_or(0.f);
   TRACE_EVENT(LYNX_TRACE_CATEGORY, LYNX_FRAME_VIEW_SET_LAYOUT_MODE, "url", src_,
-              "width", content_width_, "width_mode",
+              "width", viewport_width, "width_mode",
               auto_width_ ? kMeasureModeIndefinite : kMeasureModeDefinite,
-              "height", content_height_, "height_mode",
+              "height", viewport_height, "height_mode",
               auto_height_ ? kMeasureModeIndefinite : kMeasureModeDefinite);
   base::NapiHandleScope scope(env_);
   napi_value width;
   napi_value width_mode;
   napi_value height;
   napi_value height_mode;
-  napi_create_double(env_, content_width_, &width);
+  napi_create_double(env_, viewport_width, &width);
   napi_create_int32(env_,
                     auto_width_ ? kMeasureModeIndefinite : kMeasureModeDefinite,
                     &width_mode);
-  napi_create_double(env_, content_height_, &height);
+  napi_create_double(env_, viewport_height, &height);
   napi_create_int32(
       env_, auto_height_ ? kMeasureModeIndefinite : kMeasureModeDefinite,
       &height_mode);
   napi_value argv[4] = {width, width_mode, height, height_mode};
   CallHostMethod("updateViewport", 4, argv);
+}
+
+void UIFrame::AttachChildUIOwner(UIOwner* child_owner) {
+  DetachChildPageUI();
+  std::weak_ptr<UIBase> weak_frame = weak_from_this();
+  child_owner->SetAttachLynxPageUICallback(
+      [weak_frame = std::move(weak_frame)](UIBase* child_root) {
+        auto frame = weak_frame.lock();
+        if (!frame || frame->Tag() != kTag) {
+          return;
+        }
+        static_cast<UIFrame*>(frame.get())->AttachChildPageUI(child_root);
+      });
+}
+
+void UIFrame::AttachChildPageUI(UIBase* child_root) {
+  if (destroyed_ || !child_root || !child_root->IsRoot() || !context_) {
+    return;
+  }
+  UIBase* parent_root = context_->Root();
+  if (!parent_root) {
+    return;
+  }
+  DetachChildPageUI();
+  if (!parent_root->ChildrenLynxPageUI()) {
+    parent_root->SetChildrenLynxPageUI(EventTarget::LynxPageUIMap{});
+  }
+  auto* children = parent_root->ChildrenLynxPageUI();
+  if (!children) {
+    return;
+  }
+  child_lynx_page_ui_ = child_root->WeakTarget();
+  (*children)[this] = child_lynx_page_ui_;
+  child_root->SetParentLynxPageUI(parent_root->WeakTarget());
+}
+
+void UIFrame::DetachChildPageUI() {
+  UIBase* parent_root = context_ ? context_->Root() : nullptr;
+  if (parent_root) {
+    if (auto* children = parent_root->ChildrenLynxPageUI()) {
+      children->erase(this);
+    }
+  }
+  if (auto child_root = child_lynx_page_ui_.lock()) {
+    auto current_parent = child_root->ParentLynxPageUI().lock();
+    if (!parent_root || current_parent.get() == parent_root) {
+      child_root->SetParentLynxPageUI({});
+    }
+  }
+  child_lynx_page_ui_.reset();
+}
+
+std::optional<float> UIFrame::ParsePresetLength(
+    const lepus::Value& value) const {
+  if (!context_ || !value.IsString()) {
+    return std::nullopt;
+  }
+  const std::string input = value.StdString();
+  const bool is_rpx =
+      input.size() >= 3 && input.compare(input.size() - 3, 3, "rpx") == 0;
+  const bool is_ppx =
+      input.size() >= 3 && input.compare(input.size() - 3, 3, "ppx") == 0;
+  const bool is_px =
+      input.size() >= 2 && input.compare(input.size() - 2, 2, "px") == 0;
+  if (!is_rpx && (!is_px || is_ppx)) {
+    return std::nullopt;
+  }
+  float screen_size[2] = {0.f, 0.f};
+  context_->ScreenSize(screen_size);
+  const float parsed = LynxUnitUtils::ToVPFromUnitValue(
+      input, screen_size[0], context_->DevicePixelRatio(),
+      std::numeric_limits<float>::quiet_NaN());
+  if (!std::isfinite(parsed) || parsed < 0.f) {
+    return std::nullopt;
+  }
+  return parsed;
 }
 
 void UIFrame::UpdateHostMetaDataIfNeeded() {
@@ -522,6 +719,8 @@ void UIFrame::ResetLoadedState() {
   child_context_ready_ = child_context_ready_ && frame_host_ref_;
   // The bundle may arrive before src. Keep it pending so UpdateProps() can
   // consume it after all props for the new src have been applied.
+  DetachChildPageUI();
+  has_intrinsic_size_ = false;
   intrinsic_width_ = 0.f;
   intrinsic_height_ = 0.f;
 }
