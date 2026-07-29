@@ -96,6 +96,13 @@ typedef NS_ENUM(NSInteger, LynxMemoryPressureLevel) {
 
 + (instancetype)sharedInstance;
 
+/**
+ * Initializes LynxEnv and invokes the completion handler asynchronously on the main thread.
+ *
+ * When the completion handler is invoked, `isInitCompleted` returns `YES`.
+ */
+- (instancetype)init:(nullable dispatch_block_t)completionHandler;
+
 - (void)prepareConfig:(LynxConfig *)config;
 - (void)reportModuleCustomError:(NSString *)error;
 - (void)onPiperInvoked:(NSString *)module

@@ -101,6 +101,10 @@ static void LynxClaySetup() {
 }
 
 - (instancetype)init {
+  return [self init:nil];
+}
+
+- (instancetype)init:(nullable dispatch_block_t)completionHandler {
   self = [super init];
   if (self) {
     external_env_mutex_ = std::unique_ptr<fml::SharedMutex>(fml::SharedMutex::Create());
@@ -122,6 +126,12 @@ static void LynxClaySetup() {
     LynxClaySetup();
   }
   _LogI(@"LynxEnv: init success");
+  if (self && completionHandler) {
+    // Always enqueue the callback to avoid invoking it inline. When initialization starts off the
+    // main thread, this block is also enqueued after the native UI thread initialization block,
+    // which guarantees isInitCompleted is true in the callback.
+    dispatch_async(dispatch_get_main_queue(), completionHandler);
+  }
   return self;
 }
 
