@@ -215,7 +215,7 @@ public class LynxEnv {
    */
   public synchronized void init(Application context, INativeLibraryLoader nativeLibraryLoader,
       AbsTemplateProvider templateProvider, BehaviorBundle behaviorBundle) {
-    init(context, nativeLibraryLoader, templateProvider, behaviorBundle, null);
+    init(context, nativeLibraryLoader, templateProvider, behaviorBundle, null, null);
   }
 
   /**
@@ -227,6 +227,24 @@ public class LynxEnv {
   public synchronized void init(Application context, INativeLibraryLoader nativeLibraryLoader,
       AbsTemplateProvider templateProvider, BehaviorBundle behaviorBundle,
       @Nullable IDynamicHandler dynamicHandler) {
+    init(context, nativeLibraryLoader, templateProvider, behaviorBundle, dynamicHandler, null);
+  }
+
+  /**
+   * Lynx Env init, need call before use LynxView.
+   *
+   * <p>The completion handler is invoked asynchronously on the main thread after initialization
+   * completes successfully. {@link #isInitCompleted()} returns true when the handler is invoked.
+   * If initialization has already completed, the handler is still invoked asynchronously.
+   */
+  public synchronized void init(Application context, INativeLibraryLoader nativeLibraryLoader,
+      AbsTemplateProvider templateProvider, BehaviorBundle behaviorBundle,
+      @Nullable IDynamicHandler dynamicHandler, @Nullable Runnable completionHandler) {
+    // LLog can be called only after setting hasInit as true, otherwise, there will
+    // be a circular
+    // dependency
+    LLog.i(TAG, "LynxEnv start init");
+
     // ensure services are initialized (the host may not call it)
     LynxServiceCenter.inst().initialize(context);
 
@@ -345,6 +363,14 @@ public class LynxEnv {
 
     // add native memory listener
     registerNativeMemoryPressureCallback();
+
+    dispatchInitCompletionHandler(completionHandler);
+  }
+
+  private void dispatchInitCompletionHandler(@Nullable Runnable completionHandler) {
+    if (completionHandler != null) {
+      UIThreadUtils.runOnUiThread(completionHandler);
+    }
   }
 
   private void registerNativeMemoryPressureCallback() {
