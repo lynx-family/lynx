@@ -467,8 +467,8 @@ public class UIList extends AbsLynxList<RecyclerView> {
         return true;
       }
 
-      if (mPreferenceConsumeGesture) {
-        requestDisallowInterceptTouchEvent(true);
+      if (mPreferenceConsumeGesture && getParent() != null) {
+        getParent().requestDisallowInterceptTouchEvent(true);
       }
 
       UIList list = mWeakUIList.get();
