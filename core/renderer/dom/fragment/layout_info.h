@@ -28,7 +28,10 @@ struct BorderRadiusInfo {
 
 struct LayoutInfoForDraw {
   starlight::LayoutResultForRendering layout_result;
+  // Border radii normalized against the border box.
   base::flex_optional<BorderRadiusInfo> border_radius_info;
+
+  void SetBorderRadiusInfo(BorderRadiusInfo radii);
 
   float GetBorderBoxX() const { return 0; }
 
