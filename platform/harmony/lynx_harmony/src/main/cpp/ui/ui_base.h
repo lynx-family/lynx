@@ -351,6 +351,8 @@ class LYNX_EXPORT UIBase : public std::enable_shared_from_this<UIBase>,
                               const std::string& inline_value) {}
   virtual UIStickyScroller* AsUIStickyScroller() { return nullptr; }
   virtual void SetImageRendering(const lepus::Value& value);
+  virtual lepus::Value BuildLayoutChangeEventDetail();
+  void SendLayoutChangeEvent();
   bool NeedDrawNode();
   bool NeedDraw(ArkUI_NodeHandle node);
   void SetAccessibilityLabelDirtyFlag();
@@ -515,7 +517,6 @@ class LYNX_EXPORT UIBase : public std::enable_shared_from_this<UIBase>,
   void SetAccessibilityId(const lepus::Value& value);
   void SetCrossLanguageOption(const lepus::Value& value);
   void OnNodeReadyForAccessibility();
-  void SendLayoutChangeEvent();
   bool IsImportantForAccessibility();
   ArkUI_NodeType GetAccessibilityType(const std::string& traits);
   void Base64EncodeTask(
