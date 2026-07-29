@@ -11,6 +11,7 @@
 
 #include "base/include/fml/platform/harmony/message_loop_harmony.h"
 #include "base/trace/native/platform/harmony/trace_controller_harmony.h"
+#include "core/renderer/data/harmony/template_data_harmony.h"
 #include "core/renderer/dom/harmony/lynx_template_bundle_harmony.h"
 #include "core/renderer/utils/harmony/lynx_trail_hub_impl_harmony.h"
 #include "core/resource/lynx_info_reporter_helper_harmony.h"
@@ -40,6 +41,7 @@
 #endif
 
 void LynxNapiInit(napi_env env, napi_value exports) {
+  lynx::tasm::NativeTemplateDataHarmony::Init(env, exports);
   lynx::harmony::LynxTemplateRenderer::Init(env, exports);
   lynx::harmony::LynxWhiteBoard::Init(env, exports);
   lynx::tasm::PropBundleHarmony::Init(env);

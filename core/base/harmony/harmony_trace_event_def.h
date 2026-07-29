@@ -140,6 +140,8 @@ inline constexpr const char* const NODE_MANAGER_MEASURE_NODE =
     "NodeManager::MeasureNode";
 inline constexpr const char* const NODE_MANAGER_LAYOUT_NODE =
     "NodeManager::LayoutNode";
+inline constexpr const char* const NATIVE_TEMPLATE_DATA_NEW =
+    "NativeTemplateData::New";
 #endif  // #if ENABLE_TRACE_PERFETTO || ENABLE_TRACE_SYSTRACE
 
 #endif  // CORE_BASE_HARMONY_HARMONY_TRACE_EVENT_DEF_H_

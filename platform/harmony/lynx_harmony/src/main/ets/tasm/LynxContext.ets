@@ -198,8 +198,8 @@ export class LynxContext implements IContext {
         return;
       }
 
-      this.renderer?.updateMetaData(data.templateData?.processor, data.templateData?.data, data.templateData?.readOnly,
-        data.globalProps?.data, updateMode);
+      this.renderer?.updateMetaData(data.templateData?.processor, data.templateData?.getDataForNative(),
+        data.templateData?.readOnly, data.globalProps?.getDataForNative(), updateMode);
     } else {
       this.lynxView?.metaData.merge(data);
     }
@@ -283,9 +283,9 @@ export class LynxContext implements IContext {
     timingOption.setTiming(TimingConstants.RELOAD_BUNDLE_START, loadBundleStartTimestamp);
     timingOption.setTiming(TimingConstants.FFI_START, Date.now());
     this.renderer?.reloadTemplate(data.templateData?.processor,
-      data.templateData?.data,
+      data.templateData?.getDataForNative(),
       data.templateData?.readOnly,
-      data.globalProps?.data,
+      data.globalProps?.getDataForNative(),
       timingOption.toRecord());
     TraceEvent.endSection(TraceCategory.Lynx, TraceEventDef.CONTEXT_RELOAD);
   }

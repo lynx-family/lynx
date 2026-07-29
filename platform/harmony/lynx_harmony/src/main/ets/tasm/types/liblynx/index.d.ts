@@ -118,6 +118,10 @@ export class DevToolSettingsHarmony {
   static syncBooleanToNative: (key: string, value: boolean) => void;
 }
 
+export class NativeTemplateData {
+  constructor(data?: Object | string);
+}
+
 export class LynxTemplateRenderer {
   constructor();
 
