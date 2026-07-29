@@ -291,6 +291,8 @@ export class UIFrame {
   onHostReady(): void;
 
   onIntrinsicSizeChanged(width: number, height: number): void;
+
+  onLoadMetrics(entry: Record<string, Object>): void;
 }
 
 export class UIBase {
