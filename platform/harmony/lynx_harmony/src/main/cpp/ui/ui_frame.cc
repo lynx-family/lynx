@@ -54,8 +54,23 @@ bool ReadBool(const lepus::Value& value, bool fallback) {
   return fallback;
 }
 
-bool IsValidMetaDataValue(const lepus::Value& value) {
-  return value.IsObject();
+bool TakeMetaDataValue(const lepus::Value& input, lepus::Value& output) {
+  if (input.IsInt64()) {
+    std::unique_ptr<lepus::Value> transferred_value(
+        reinterpret_cast<lepus::Value*>(input.Int64()));
+    if (!transferred_value || !transferred_value->IsObject()) {
+      output = lepus::Value();
+      return false;
+    }
+    output = std::move(*transferred_value);
+    return true;
+  }
+  if (!input.IsObject()) {
+    output = lepus::Value();
+    return false;
+  }
+  output = input;
+  return true;
 }
 
 bool IsNapiNumber(napi_env env, napi_value value) {
@@ -229,16 +244,16 @@ void UIFrame::OnPropUpdate(const std::string& name, const lepus::Value& value) {
       ResetLoadedState();
     }
   } else if (name == "data") {
+    const bool valid = TakeMetaDataValue(value, frame_data_);
     TRACE_EVENT_INSTANT(LYNX_TRACE_CATEGORY, LYNX_FRAME_VIEW_SET_INIT_DATA,
-                        "url", src_, "valid", IsValidMetaDataValue(value));
-    has_frame_data_ = IsValidMetaDataValue(value);
-    frame_data_ = has_frame_data_ ? value : lepus::Value();
+                        "url", src_, "valid", valid);
+    has_frame_data_ = valid;
     frame_data_dirty_ = true;
   } else if (name == "global-props") {
+    const bool valid = TakeMetaDataValue(value, global_props_);
     TRACE_EVENT_INSTANT(LYNX_TRACE_CATEGORY, LYNX_FRAME_VIEW_SET_GLOBAL_PROPS,
-                        "url", src_, "valid", IsValidMetaDataValue(value));
-    has_global_props_ = IsValidMetaDataValue(value);
-    global_props_ = has_global_props_ ? value : lepus::Value();
+                        "url", src_, "valid", valid);
+    has_global_props_ = valid;
     global_props_dirty_ = true;
   } else if (name == "auto-width") {
     auto_width_ = value.IsNil() ? false : ReadBool(value, auto_width_);
