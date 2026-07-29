@@ -60,6 +60,7 @@ export class FrameHost {
   private builderNode?: BuilderNode<[FrameHostBuildParams]>;
   private childContext?: LynxContext;
   private childBuilt: boolean = false;
+  private enableMultiAsyncThread: boolean = true;
 
   constructor(parentContext: LynxContext, uiContext: UIContext, nativeFrame: lynx.UIFrame) {
     this.parentContext = parentContext;
@@ -84,6 +85,7 @@ export class FrameHost {
     // frame page's events), or its onCreate (it belongs to the host context).
     builder.backgroundRuntime = undefined;
     builder.clients = [];
+    builder.enableMultiAsyncThread = this.enableMultiAsyncThread;
     builder.onCreate = (context: LynxContext) => {
       this.onChildContextReady(context);
     };
@@ -93,7 +95,7 @@ export class FrameHost {
     return builder;
   }
 
-  updateAutoSize(autoWidth: boolean, autoHeight: boolean): void {
+  updateConfiguration(autoWidth: boolean, autoHeight: boolean, enableMultiAsyncThread: boolean): void {
     const changed = this.autoWidth !== autoWidth || this.autoHeight !== autoHeight;
     const needsBuild = !this.childBuilt;
     if (!changed && !needsBuild) {
@@ -101,6 +103,9 @@ export class FrameHost {
     }
     this.autoWidth = autoWidth;
     this.autoHeight = autoHeight;
+    if (needsBuild) {
+      this.enableMultiAsyncThread = enableMultiAsyncThread;
+    }
     this.childBuilt = true;
     this.builderNode?.update(new FrameHostBuildParams(this, true, autoWidth, autoHeight));
   }
