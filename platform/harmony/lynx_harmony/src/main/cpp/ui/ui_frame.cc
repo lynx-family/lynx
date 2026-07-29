@@ -35,6 +35,8 @@ namespace {
 
 constexpr int32_t kMeasureModeIndefinite = 0;
 constexpr int32_t kMeasureModeDefinite = 1;
+constexpr char kLoadMetricsEvent[] = "loadmetrics";
+constexpr char kFrameEventModeStandard[] = "standard";
 // Half-pixel dead-zone for intrinsic size changes. Deliberately coarser than
 // base::EPSILON so sub-pixel jitter from the host does not trigger relayout.
 constexpr float kIntrinsicSizeEpsilon = 0.5f;
@@ -122,6 +124,21 @@ napi_value UIFrame::OnIntrinsicSizeChanged(napi_env env,
   }
   frame->HandleIntrinsicSizeChanged(static_cast<float>(width),
                                     static_cast<float>(height));
+  return nullptr;
+}
+
+napi_value UIFrame::OnLoadMetrics(napi_env env, napi_callback_info info) {
+  napi_value js_this;
+  size_t argc = 1;
+  napi_value argv[1] = {nullptr};
+  if (napi_get_cb_info(env, info, &argc, argv, &js_this, nullptr) != napi_ok ||
+      argc < 1 || !argv[0]) {
+    return nullptr;
+  }
+  if (auto frame = GetFrameFromNapiThis(env, js_this)) {
+    frame->HandleLoadMetrics(
+        base::NapiConvertHelper::ConvertToLepusValue(env, argv[0]));
+  }
   return nullptr;
 }
 
@@ -237,6 +254,24 @@ void UIFrame::HandleIntrinsicSizeChanged(float width, float height) {
         });
   }
   SendLayoutChangeEvent();
+}
+
+void UIFrame::HandleLoadMetrics(const lepus::Value& entry) {
+  if (destroyed_ || !entry.IsObject()) {
+    return;
+  }
+  const auto events = EventSet();
+  if (std::find(events.begin(), events.end(), kLoadMetricsEvent) ==
+      events.end()) {
+    return;
+  }
+  auto detail = lepus::Dictionary::Create();
+  detail->SetValue("url", src_);
+  detail->SetValue("mode", kFrameEventModeStandard);
+  detail->SetValue("entry", entry);
+  CustomEvent event{Sign(), kLoadMetricsEvent, "detail",
+                    lepus::Value(std::move(detail))};
+  context_->SendEvent(event);
 }
 
 void UIFrame::OnPropUpdate(const std::string& name, const lepus::Value& value) {
@@ -395,6 +430,7 @@ napi_value UIFrame::CreateNativeFrameValue() {
   napi_property_descriptor properties[] = {
       DECLARE_NAPI_FUNCTION("onHostReady", OnHostReady),
       DECLARE_NAPI_FUNCTION("onIntrinsicSizeChanged", OnIntrinsicSizeChanged),
+      DECLARE_NAPI_FUNCTION("onLoadMetrics", OnLoadMetrics),
   };
 #undef DECLARE_NAPI_FUNCTION
 
