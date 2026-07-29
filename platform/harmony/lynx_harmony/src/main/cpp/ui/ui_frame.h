@@ -9,6 +9,7 @@
 #include <node_api.h>
 
 #include <memory>
+#include <optional>
 #include <string>
 
 #include "base/include/value/base_value.h"
@@ -42,6 +43,7 @@ class UIFrame : public UIView {
 
   void HandleHostReady();
   void HandleIntrinsicSizeChanged(float width, float height);
+  void BuildLayoutChangeEventDetail(lepus::Dictionary& detail);
 
  private:
   struct FrameHostCreationResult {
@@ -60,6 +62,7 @@ class UIFrame : public UIView {
   void UpdateHostAutoSize();
   void UpdateHostViewport();
   void UpdateHostMetaDataIfNeeded();
+  std::optional<float> ParsePresetLength(const lepus::Value& value) const;
   bool CallHostMethod(const char* method, size_t argc, napi_value* argv,
                       napi_value* result = nullptr);
   napi_value CreateNativeFrameValue();
@@ -81,10 +84,14 @@ class UIFrame : public UIView {
   bool global_props_dirty_{false};
   bool auto_width_{false};
   bool auto_height_{false};
+  std::optional<float> preset_width_;
+  std::optional<float> preset_height_;
   bool props_updated_{false};
   bool child_context_ready_{false};
   bool loaded_{false};
   bool destroyed_{false};
+  bool has_content_layout_{false};
+  bool has_intrinsic_size_{false};
   float content_width_{0.f};
   float content_height_{0.f};
   float intrinsic_width_{0.f};
