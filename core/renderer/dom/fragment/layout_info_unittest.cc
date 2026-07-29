@@ -45,7 +45,7 @@ TEST_F(LayoutInfoForDrawTest, BorderPaddingContentBoxesAndRadii) {
   radii.y_bottom_right = 14.0f;
   radii.x_bottom_left = 15.0f;
   radii.y_bottom_left = 16.0f;
-  info.border_radius_info = radii;
+  info.SetBorderRadiusInfo(radii);
 
   // Border box
   auto border_rect = info.GenerateBorderRectangle();
@@ -113,10 +113,69 @@ TEST_F(LayoutInfoForDrawTest, RadiiClampToZeroWhenNegative) {
 
   BorderRadiusInfo radii;
   radii.x_top_left = 5.0f;  // smaller than border+padding => clamp to 0
-  info.border_radius_info = radii;
+  info.SetBorderRadiusInfo(radii);
 
   auto content_rect = info.GenerateContentRectangle();
   EXPECT_FLOAT_EQ(content_rect.GetRadiusXTopLeft(), 0.0f);
+}
+
+TEST_F(LayoutInfoForDrawTest, OversizedUniformRadiiAreNormalized) {
+  LayoutInfoForDraw info;
+  info.layout_result.size_.width_ = 382.0f;
+  info.layout_result.size_.height_ = 44.0f;
+  info.layout_result.border_[starlight::Direction::kLeft] = 2.0f;
+  info.layout_result.border_[starlight::Direction::kTop] = 2.0f;
+  info.layout_result.border_[starlight::Direction::kRight] = 2.0f;
+  info.layout_result.border_[starlight::Direction::kBottom] = 2.0f;
+  info.layout_result.padding_[starlight::Direction::kLeft] = 3.0f;
+  info.layout_result.padding_[starlight::Direction::kTop] = 3.0f;
+  info.layout_result.padding_[starlight::Direction::kRight] = 3.0f;
+  info.layout_result.padding_[starlight::Direction::kBottom] = 3.0f;
+
+  BorderRadiusInfo radii;
+  radii.x_top_left = radii.y_top_left = 9999.0f;
+  radii.x_top_right = radii.y_top_right = 9999.0f;
+  radii.x_bottom_right = radii.y_bottom_right = 9999.0f;
+  radii.x_bottom_left = radii.y_bottom_left = 9999.0f;
+  info.SetBorderRadiusInfo(radii);
+
+  const auto border_rect = info.GenerateBorderRectangle();
+  EXPECT_FLOAT_EQ(border_rect.GetRadiusXTopLeft(), 22.0f);
+  EXPECT_FLOAT_EQ(border_rect.GetRadiusYTopLeft(), 22.0f);
+  EXPECT_FLOAT_EQ(border_rect.GetRadiusXBottomRight(), 22.0f);
+  EXPECT_FLOAT_EQ(border_rect.GetRadiusYBottomRight(), 22.0f);
+
+  const auto padding_rect = info.GeneratePaddingRectangle();
+  EXPECT_FLOAT_EQ(padding_rect.GetRadiusXTopLeft(), 20.0f);
+  EXPECT_FLOAT_EQ(padding_rect.GetRadiusYTopLeft(), 20.0f);
+
+  const auto content_rect = info.GenerateContentRectangle();
+  EXPECT_FLOAT_EQ(content_rect.GetRadiusXTopLeft(), 17.0f);
+  EXPECT_FLOAT_EQ(content_rect.GetRadiusYTopLeft(), 17.0f);
+}
+
+TEST_F(LayoutInfoForDrawTest, EllipticalRadiiUseOneScaleFactor) {
+  LayoutInfoForDraw info;
+  info.layout_result.size_.width_ = 100.0f;
+  info.layout_result.size_.height_ = 50.0f;
+
+  BorderRadiusInfo radii;
+  radii.x_top_left = 80.0f;
+  radii.y_top_left = 40.0f;
+  radii.x_top_right = 40.0f;
+  radii.y_top_right = 10.0f;
+  radii.x_bottom_right = 10.0f;
+  radii.y_bottom_right = 10.0f;
+  radii.x_bottom_left = 10.0f;
+  radii.y_bottom_left = 30.0f;
+  info.SetBorderRadiusInfo(radii);
+
+  const auto border_rect = info.GenerateBorderRectangle();
+  const float scale = 50.0f / 70.0f;
+  EXPECT_NEAR(border_rect.GetRadiusXTopLeft(), 80.0f * scale, 0.001f);
+  EXPECT_NEAR(border_rect.GetRadiusYTopLeft(), 40.0f * scale, 0.001f);
+  EXPECT_NEAR(border_rect.GetRadiusXTopRight(), 40.0f * scale, 0.001f);
+  EXPECT_NEAR(border_rect.GetRadiusYBottomLeft(), 30.0f * scale, 0.001f);
 }
 
 TEST_F(LayoutInfoForDrawTest, NoBorderRadiusInfo) {

@@ -26,7 +26,9 @@ static LayoutInfoForDraw MakeInfo(
   info.layout_result.padding_[starlight::Direction::kTop] = pt;
   info.layout_result.padding_[starlight::Direction::kRight] = pr;
   info.layout_result.padding_[starlight::Direction::kBottom] = pb;
-  info.border_radius_info = radii;
+  if (radii.has_value()) {
+    info.SetBorderRadiusInfo(*radii);
+  }
   return info;
 }
 
