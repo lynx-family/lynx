@@ -161,7 +161,7 @@ void UIFrame::UpdateProps(PropBundleHarmony* props) {
   CreateFrameHost();
   UIView::UpdateProps(props);
   props_updated_ = true;
-  UpdateHostAutoSize();
+  UpdateHostConfiguration();
   UpdateHostViewport();
   UpdateHostMetaDataIfNeeded();
   TryLoadBundle();
@@ -270,6 +270,12 @@ void UIFrame::OnPropUpdate(const std::string& name, const lepus::Value& value) {
     preset_width_ = ParsePresetLength(value);
   } else if (name == "preset-height") {
     preset_height_ = ParsePresetLength(value);
+  } else if (name == "enable-multi-async-thread") {
+    if (value.IsBool() || value.IsString() || value.IsNumber()) {
+      enable_multi_async_thread_ = ReadBool(value, false);
+    } else {
+      enable_multi_async_thread_.reset();
+    }
   }
 }
 
@@ -450,17 +456,24 @@ void UIFrame::TryLoadBundle() {
   }
 }
 
-void UIFrame::UpdateHostAutoSize() {
+void UIFrame::UpdateHostConfiguration() {
   if (!frame_host_ref_) {
     return;
   }
   base::NapiHandleScope scope(env_);
   napi_value auto_width;
   napi_value auto_height;
+  napi_value enable_multi_async_thread;
   napi_get_boolean(env_, auto_width_, &auto_width);
   napi_get_boolean(env_, auto_height_, &auto_height);
-  napi_value argv[2] = {auto_width, auto_height};
-  CallHostMethod("updateAutoSize", 2, argv);
+  if (enable_multi_async_thread_.has_value()) {
+    napi_get_boolean(env_, enable_multi_async_thread_.value(),
+                     &enable_multi_async_thread);
+  } else {
+    napi_get_undefined(env_, &enable_multi_async_thread);
+  }
+  napi_value argv[3] = {auto_width, auto_height, enable_multi_async_thread};
+  CallHostMethod("updateConfiguration", 3, argv);
 }
 
 void UIFrame::UpdateHostViewport() {
