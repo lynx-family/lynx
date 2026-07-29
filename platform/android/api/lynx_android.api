@@ -5267,6 +5267,7 @@ public class com::lynx::tasm::LynxEnv :  {
   public static void com.lynx.tasm.LynxEnv.setGlobalBytecodeGenerateCallback(LynxBytecodeCallback callback);
   public synchronized void com.lynx.tasm.LynxEnv.init(Application context, INativeLibraryLoader nativeLibraryLoader, AbsTemplateProvider templateProvider, BehaviorBundle behaviorBundle);
   public synchronized void com.lynx.tasm.LynxEnv.init(Application context, INativeLibraryLoader nativeLibraryLoader, AbsTemplateProvider templateProvider, BehaviorBundle behaviorBundle, @Nullable IDynamicHandler dynamicHandler);
+  public synchronized void com.lynx.tasm.LynxEnv.init(Application context, INativeLibraryLoader nativeLibraryLoader, AbsTemplateProvider templateProvider, BehaviorBundle behaviorBundle, @Nullable IDynamicHandler dynamicHandler, @Nullable Runnable completionHandler);
   public void com.lynx.tasm.LynxEnv.lazyInitIfNeeded();
   public void com.lynx.tasm.LynxEnv.warmClass();
   public void com.lynx.tasm.LynxEnv.registerModule(String name, Class<? extends LynxModule > module);
