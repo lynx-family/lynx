@@ -69,9 +69,10 @@ napi_value GetData(napi_env env, napi_callback_info info) {
   lynx_napi_get_instance_data(env, LYNX_NAPI_ENV_LYNX_VIEW_TAG, &context);
   std::shared_ptr<TestBenchReplayDataModule> m =
       ReplayDataModulesHolder::GetInstance().GetDataModule(context);
-  if (m) {
+  std::string data_string;
+  if (m && m->GetDataIfReady(&data_string)) {
     napi_value data = nullptr;
-    napi_create_string_utf8(env, m->GetData().c_str(), NAPI_AUTO_LENGTH, &data);
+    napi_create_string_utf8(env, data_string.c_str(), NAPI_AUTO_LENGTH, &data);
     napi_call_function(env, thiz, argv[0], 1, &data, nullptr);
   }
   return nullptr;
@@ -105,22 +106,45 @@ void TestBenchReplayDataModule::BindContext(void* context) {
 }
 
 void TestBenchReplayDataModule::SetJsbIgnoredInfo(const std::string& data) {
+  std::lock_guard<std::mutex> lock(mutex_);
   jsb_ignored_info_ = data;
 }
 
 void TestBenchReplayDataModule::SetJsbSettings(const std::string& data) {
+  std::lock_guard<std::mutex> lock(mutex_);
   jsb_settings_ = data;
 }
 
 void TestBenchReplayDataModule::SetFunctionCall(const std::string& data) {
+  std::lock_guard<std::mutex> lock(mutex_);
   function_call_ = data;
 }
 
 void TestBenchReplayDataModule::SetCallbackData(const std::string& data) {
+  std::lock_guard<std::mutex> lock(mutex_);
   callback_data_ = data;
 }
 
+void TestBenchReplayDataModule::Reset() {
+  std::lock_guard<std::mutex> lock(mutex_);
+  ready_ = false;
+  jsb_ignored_info_.clear();
+  jsb_settings_.clear();
+  function_call_.clear();
+  callback_data_.clear();
+}
+
+void TestBenchReplayDataModule::MarkReady() {
+  std::lock_guard<std::mutex> lock(mutex_);
+  ready_ = true;
+}
+
 std::string TestBenchReplayDataModule::GetRecordData() {
+  std::lock_guard<std::mutex> lock(mutex_);
+  return GetRecordDataLocked();
+}
+
+std::string TestBenchReplayDataModule::GetRecordDataLocked() {
   rapidjson::Document dom;
   dom.Parse(function_call_);
   if (dom.HasParseError() || !dom.IsArray()) {
@@ -221,22 +245,38 @@ std::string TestBenchReplayDataModule::GetRecordData() {
 }
 
 std::string TestBenchReplayDataModule::GetJsbIgnoredInfo() {
+  std::lock_guard<std::mutex> lock(mutex_);
   return jsb_ignored_info_;
 }
 
 std::string TestBenchReplayDataModule::GetJsbSettings() {
+  std::lock_guard<std::mutex> lock(mutex_);
   return jsb_settings_;
 }
 
 std::string TestBenchReplayDataModule::GetData() {
+  std::lock_guard<std::mutex> lock(mutex_);
+  return GetDataLocked();
+}
+
+bool TestBenchReplayDataModule::GetDataIfReady(std::string* data) {
+  std::lock_guard<std::mutex> lock(mutex_);
+  if (!ready_ || data == nullptr) {
+    return false;
+  }
+  *data = GetDataLocked();
+  return true;
+}
+
+std::string TestBenchReplayDataModule::GetDataLocked() {
   rapidjson::Document dom;
   dom.SetObject();
   auto& allocator = dom.GetAllocator();
-  dom.AddMember(rapidjson::StringRef("RecordData"), GetRecordData(), allocator);
-  dom.AddMember(rapidjson::StringRef("JsbIgnoredInfo"), GetJsbIgnoredInfo(),
+  dom.AddMember(rapidjson::StringRef("RecordData"), GetRecordDataLocked(),
                 allocator);
-  dom.AddMember(rapidjson::StringRef("JsbSettings"), GetJsbSettings(),
+  dom.AddMember(rapidjson::StringRef("JsbIgnoredInfo"), jsb_ignored_info_,
                 allocator);
+  dom.AddMember(rapidjson::StringRef("JsbSettings"), jsb_settings_, allocator);
   return ToJson(dom);
 }
 
