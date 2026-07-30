@@ -6,6 +6,7 @@
 #define DEVTOOL_LYNX_DEVTOOL_ELEMENT_HELPER_UTIL_H_
 
 #include "core/inspector/style_sheet.h"
+#include "core/renderer/css/css_property.h"
 #include "core/shell/lynx_shell.h"
 #include "devtool/lynx_devtool/element/inspector_css_helper.h"
 #include "third_party/jsoncpp/include/json/json.h"
@@ -196,7 +197,10 @@ InspectorStyleSheet StyleTextParser(T ptr, std::string text,
 
   // check IsAnimationLegal
   for (auto& pair : temp_map) {
-    if (pair.first.find("animation") != std::string::npos) {
+    if (lynx::tasm::CSSProperty::IsCustomProperty(pair.second.name_.c_str(),
+                                                  pair.second.name_.length())) {
+      pair.second.parsed_ok_ = true;
+    } else if (pair.first.find("animation") != std::string::npos) {
       std::string animation_name = "";
       if (pair.first == "animation-name") {
         animation_name = pair.second.value_;

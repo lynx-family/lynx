@@ -35,6 +35,7 @@
 #include "base/include/compiler_specific.h"
 #include "base/include/string/string_number_convert.h"
 #include "base/include/string/string_utils.h"
+#include "core/renderer/css/parser/css_string_parser.h"
 #include "core/renderer/css/unit_handler.h"
 
 namespace lynx {
@@ -397,11 +398,21 @@ bool InspectorCSSHelper::IsSupportedProp(lynx::tasm::CSSPropertyID id) {
 
 bool InspectorCSSHelper::IsLegal(const std::string& name,
                                  const std::string& value) {
-  lynx::tasm::StyleMap output;
+  const auto id = lynx::tasm::CSSProperty::GetPropertyID(name);
+  if (!lynx::tasm::CSSProperty::IsPropertyValid(id)) {
+    return false;
+  }
+
   lynx::tasm::CSSParserConfigs configs;
-  return lynx::tasm::UnitHandler::Process(
-      lynx::tasm::CSSProperty::GetPropertyID(name), lynx::lepus::Value(value),
-      output, configs);
+  lynx::tasm::CSSStringParser variable_parser{
+      value.c_str(), static_cast<uint32_t>(value.length()), configs};
+  if (variable_parser.ParseVariable().IsVariable()) {
+    return true;
+  }
+
+  lynx::tasm::StyleMap output;
+  return lynx::tasm::UnitHandler::Process(id, lynx::lepus::Value(value), output,
+                                          configs);
 }
 
 bool InspectorCSSHelper::IsAnimationLegal(const std::string& name,

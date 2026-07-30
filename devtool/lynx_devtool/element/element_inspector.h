@@ -6,6 +6,7 @@
 #define DEVTOOL_LYNX_DEVTOOL_ELEMENT_ELEMENT_INSPECTOR_H_
 
 #include <tuple>
+#include <unordered_map>
 #include <vector>
 
 #include "base/include/fml/memory/ref_ptr.h"
@@ -29,6 +30,9 @@ class CSSFragment;
 
 namespace lynx {
 namespace devtool {
+
+using CSSVariableSnapshot = std::unordered_map<lynx::tasm::AttributeHolder*,
+                                               lynx::tasm::CSSVariableMap>;
 
 class ElementInspector {
  public:
@@ -268,13 +272,15 @@ class ElementInspector {
   static Element* GetParentComponentElementFromDataModel(Element* element);
   static Element* GetChildElementForComponentRemoveView(Element* element);
 
-  static void Flush(Element* element);
+  static void Flush(Element* element,
+                    const CSSVariableSnapshot* variable_snapshot = nullptr);
   static void InitStyleRoot(const lynx::base::any& data);
   static void InitStyleRootWithElement(Element* element);
   static void SetStyleRoot(const lynx::base::any& data);
 
   static std::unordered_map<std::string, std::string> GetCssByStyleMap(
-      Element* element, const lynx::tasm::StyleMap& style_map);
+      Element* element, const lynx::tasm::StyleMap& style_map,
+      const CSSVariableSnapshot* variable_snapshot = nullptr);
   static std::unordered_map<std::string, std::string> GetCssVariableByMap(
       const lynx::tasm::CSSVariableMap& style_variables);
   static std::unordered_map<std::string, std::string> GetCSSByName(
@@ -283,6 +289,9 @@ class ElementInspector {
       Element* element, lynx::tasm::CSSParseToken* token);
   static std::vector<lynx::devtool::InspectorStyleSheet> GetMatchedStyleSheet(
       Element* element);
+  static lynx::devtool::InspectorStyleSheet ResolveStyleSheetForComputedStyle(
+      Element* element,
+      const lynx::devtool::InspectorStyleSheet& inspector_style_sheet);
   static lynx::devtool::LynxDoubleMapString GetAnimationByName(
       Element* element, std::string name);
   static lynx::devtool::InspectorStyleSheet GetStyleSheetByName(
@@ -330,9 +339,11 @@ class ElementInspector {
       Element* element);
 
   static void SetPropsAccordingToStyleSheet(
-      Element* element, const lynx::devtool::InspectorStyleSheet& style_sheet);
-  static void SetPropsForCascadedStyleSheet(Element* element,
-                                            const std::string& rule);
+      Element* element, const lynx::devtool::InspectorStyleSheet& style_sheet,
+      const CSSVariableSnapshot* variable_snapshot = nullptr);
+  static void SetPropsForCascadedStyleSheet(
+      Element* element, const std::string& rule,
+      const CSSVariableSnapshot* variable_snapshot = nullptr);
   static void AdjustStyleSheet(Element* element);
   static void DeleteStyleFromInlineStyleSheet(Element* element,
                                               const std::string& name);

@@ -99,6 +99,92 @@ std::shared_ptr<lynx::tasm::SharedCSSFragment> CreateSelectorCSSFragment(
   return fragment;
 }
 
+std::shared_ptr<lynx::tasm::SharedCSSFragment>
+CreateSplitTokenSelectorCSSFragment(
+    const std::string& selector, lynx::tasm::CSSPropertyID property_id,
+    const std::string& value,
+    fml::RefPtr<lynx::tasm::CSSParseToken>* shared_token,
+    fml::RefPtr<lynx::tasm::CSSParseToken>* matched_token) {
+  *shared_token = CreateParseToken(property_id, value);
+  *matched_token = CreateParseToken(property_id, value);
+
+  auto sheet = std::make_shared<lynx::tasm::CSSSheet>(selector);
+  (*matched_token)->sheets().emplace_back(sheet);
+
+  lynx::tasm::CSSParserTokenMap token_map;
+  token_map.insert(std::make_pair(selector, *shared_token));
+
+  const std::vector<int32_t> dependent_ids;
+  lynx::tasm::CSSKeyframesTokenMap keyframes;
+  lynx::tasm::CSSFontFaceRuleMap font_faces;
+  auto fragment = std::make_shared<lynx::tasm::SharedCSSFragment>(
+      1, dependent_ids, token_map, keyframes, font_faces);
+  fragment->SetEnableCSSSelector();
+  fragment->AddStyleRule(CreateSelectorArray(selector), *matched_token);
+  return fragment;
+}
+
+std::shared_ptr<lynx::tasm::SharedCSSFragment> CreateCustomPropertyCSSFragment(
+    const std::string& selector, const std::string& name,
+    const std::string& value) {
+  lynx::tasm::CSSParserConfigs parser_configs;
+  auto token = fml::MakeRefCounted<lynx::tasm::CSSParseToken>(parser_configs);
+  lynx::tasm::CSSVariableMap variables;
+  variables.insert_or_assign(lynx::base::String(name),
+                             lynx::base::String(value));
+  token->SetStyleVariables(std::move(variables));
+  token->MarkParsed();
+
+  auto sheet = std::make_shared<lynx::tasm::CSSSheet>(selector);
+  token->sheets().emplace_back(sheet);
+
+  lynx::tasm::CSSParserTokenMap token_map;
+  token_map.insert(std::make_pair(selector, token));
+
+  const std::vector<int32_t> dependent_ids;
+  lynx::tasm::CSSKeyframesTokenMap keyframes;
+  lynx::tasm::CSSFontFaceRuleMap font_faces;
+  auto fragment = std::make_shared<lynx::tasm::SharedCSSFragment>(
+      1, dependent_ids, token_map, keyframes, font_faces);
+  fragment->SetEnableCSSSelector();
+  fragment->AddStyleRule(CreateSelectorArray(selector), token);
+  return fragment;
+}
+
+std::shared_ptr<lynx::tasm::SharedCSSFragment>
+CreateSplitTokenCustomPropertyCSSFragment(
+    const std::string& selector, const std::string& name,
+    const std::string& value,
+    fml::RefPtr<lynx::tasm::CSSParseToken>* shared_token,
+    fml::RefPtr<lynx::tasm::CSSParseToken>* matched_token) {
+  lynx::tasm::CSSParserConfigs parser_configs;
+  *shared_token =
+      fml::MakeRefCounted<lynx::tasm::CSSParseToken>(parser_configs);
+  *matched_token =
+      fml::MakeRefCounted<lynx::tasm::CSSParseToken>(parser_configs);
+  for (const auto& token : {*shared_token, *matched_token}) {
+    lynx::tasm::CSSVariableMap variables;
+    variables.insert_or_assign(lynx::base::String(name),
+                               lynx::base::String(value));
+    token->SetStyleVariables(std::move(variables));
+    token->MarkParsed();
+  }
+
+  auto sheet = std::make_shared<lynx::tasm::CSSSheet>(selector);
+  (*matched_token)->sheets().emplace_back(sheet);
+
+  lynx::tasm::CSSParserTokenMap token_map;
+  token_map.insert(std::make_pair(selector, *shared_token));
+  const std::vector<int32_t> dependent_ids;
+  lynx::tasm::CSSKeyframesTokenMap keyframes;
+  lynx::tasm::CSSFontFaceRuleMap font_faces;
+  auto fragment = std::make_shared<lynx::tasm::SharedCSSFragment>(
+      1, dependent_ids, token_map, keyframes, font_faces);
+  fragment->SetEnableCSSSelector();
+  fragment->AddStyleRule(CreateSelectorArray(selector), *matched_token);
+  return fragment;
+}
+
 struct MediaRuleForTest {
   std::string selector;
   lynx::tasm::CSSPropertyID property_id;
@@ -226,6 +312,50 @@ TEST_F(ElementHelperTest, StyleTextParserTest) {
   EXPECT_EQ(parsed.media_range_.end_line_, 2);
   EXPECT_EQ(parsed.media_range_.start_column_, 0);
   EXPECT_EQ(parsed.media_range_.end_column_, 19);
+
+  auto parsed_custom_properties =
+      lynx::devtool::StyleTextParser(element.get(),
+                                     "--theme:red;/* --disabled-theme:blue; */"
+                                     "--animation-token:ease;",
+                                     style_sheet);
+  auto theme = parsed_custom_properties.css_properties_.find("--theme");
+  ASSERT_NE(theme, parsed_custom_properties.css_properties_.end());
+  EXPECT_TRUE(theme->second.parsed_ok_);
+  EXPECT_FALSE(theme->second.disabled_);
+
+  auto disabled_theme =
+      parsed_custom_properties.css_properties_.find("--disabled-theme");
+  ASSERT_NE(disabled_theme, parsed_custom_properties.css_properties_.end());
+  EXPECT_TRUE(disabled_theme->second.parsed_ok_);
+  EXPECT_TRUE(disabled_theme->second.disabled_);
+
+  auto animation_token =
+      parsed_custom_properties.css_properties_.find("--animation-token");
+  ASSERT_NE(animation_token, parsed_custom_properties.css_properties_.end());
+  EXPECT_TRUE(animation_token->second.parsed_ok_);
+
+  auto parsed_variable_properties = lynx::devtool::StyleTextParser(
+      element.get(),
+      "color:var(--text-color);"
+      "/* background-color:var(--background-color); */"
+      "unknown-property:var(--unknown);",
+      style_sheet);
+  auto color = parsed_variable_properties.css_properties_.find("color");
+  ASSERT_NE(color, parsed_variable_properties.css_properties_.end());
+  EXPECT_TRUE(color->second.parsed_ok_);
+  EXPECT_FALSE(color->second.disabled_);
+
+  auto disabled_background =
+      parsed_variable_properties.css_properties_.find("background-color");
+  ASSERT_NE(disabled_background,
+            parsed_variable_properties.css_properties_.end());
+  EXPECT_TRUE(disabled_background->second.parsed_ok_);
+  EXPECT_TRUE(disabled_background->second.disabled_);
+
+  auto unknown_property =
+      parsed_variable_properties.css_properties_.find("unknown-property");
+  ASSERT_NE(unknown_property, parsed_variable_properties.css_properties_.end());
+  EXPECT_FALSE(unknown_property->second.parsed_ok_);
 }
 
 TEST_F(ElementHelperTest, GetDocumentBodyFromNodeTest) {
@@ -810,6 +940,336 @@ TEST_F(ElementHelperTest,
 }
 
 TEST_F(ElementHelperTest,
+       SetSelectorStyleTextsLegacyPipelineSyncsCustomProperties) {
+  auto page = manager->CreateFiberPage("page", 0);
+  lynx::devtool::ElementInspector::InitForInspector(
+      std::make_tuple(page.get()));
+  fml::RefPtr<lynx::tasm::CSSParseToken> shared_variable_token;
+  fml::RefPtr<lynx::tasm::CSSParseToken> matched_variable_token;
+  auto selector_fragment = CreateSplitTokenCustomPropertyCSSFragment(
+      ".theme.primary", "--size", "100px", &shared_variable_token,
+      &matched_variable_token);
+  lynx::tasm::CSSParserConfigs parser_configs;
+  auto consumer_token =
+      fml::MakeRefCounted<lynx::tasm::CSSParseToken>(parser_configs);
+  consumer_token->SetAttribute(lynx::tasm::CSSPropertyID::kPropertyIDHeight,
+                               ParseVariableValue("var(--size, 10px)"));
+  consumer_token->MarkParsed();
+  auto consumer_sheet = std::make_shared<lynx::tasm::CSSSheet>(".consumer");
+  consumer_token->sheets().emplace_back(consumer_sheet);
+  selector_fragment->AddStyleRule(CreateSelectorArray(".consumer"),
+                                  consumer_token);
+  page->style_sheet_ = std::make_unique<lynx::tasm::CSSFragmentDecorator>(
+      selector_fragment.get());
+
+  lynx::base::String component_id("21");
+  int32_t css_id = 100;
+  lynx::base::String entry_name("__Card__");
+  lynx::base::String component_name("TestComp");
+  lynx::base::String path("/index/components/TestComp");
+  auto component = manager->CreateFiberComponent(
+      component_id, css_id, entry_name, component_name, path);
+  component->style_sheet_ = std::make_unique<lynx::tasm::CSSFragmentDecorator>(
+      selector_fragment.get());
+  lynx::devtool::ElementInspector::InitForInspector(
+      std::make_tuple(component.get()));
+  page->InsertNode(component);
+
+  auto styled_element = manager->CreateFiberElement("view");
+  styled_element->SetParentComponentUniqueIdForFiber(
+      static_cast<int64_t>(component->impl_id()));
+  styled_element->SetClasses({"theme", "primary"});
+  component->InsertNode(styled_element);
+  lynx::devtool::ElementInspector::InitForInspector(
+      std::make_tuple(styled_element.get()));
+
+  auto consumer = manager->CreateFiberElement("view");
+  consumer->SetParentComponentUniqueIdForFiber(
+      static_cast<int64_t>(component->impl_id()));
+  consumer->SetClass("consumer");
+  styled_element->InsertNode(consumer);
+  lynx::devtool::ElementInspector::InitForInspector(
+      std::make_tuple(consumer.get()));
+
+  auto style_root = manager->CreateFiberElement("stylevalue");
+  lynx::devtool::ElementInspector::InitForInspector(
+      std::make_tuple(style_root.get()));
+  lynx::devtool::ElementInspector::SetStyleRoot(
+      std::make_tuple(style_root.get(), style_root.get()));
+  lynx::devtool::ElementInspector::SetStyleRoot(
+      std::make_tuple(styled_element.get(), style_root.get()));
+  lynx::devtool::ElementInspector::SetStyleRoot(
+      std::make_tuple(consumer.get(), style_root.get()));
+
+  lynx::tasm::CSSVariableMap initial_variables;
+  initial_variables.insert_or_assign(lynx::base::String("--size"),
+                                     lynx::base::String("100px"));
+  styled_element->data_model()->UpdateCSSVariable(std::move(initial_variables),
+                                                  nullptr);
+  InspectorStyleSheet initial_consumer_style;
+  CSSPropertyDetail initial_height{};
+  initial_height.name_ = "height";
+  initial_height.value_ = "var(--size, 10px)";
+  initial_height.parsed_ok_ = true;
+  initial_consumer_style.css_properties_.emplace(initial_height.name_,
+                                                 std::move(initial_height));
+  lynx::devtool::ElementInspector::SetPropsAccordingToStyleSheet(
+      consumer.get(), initial_consumer_style);
+  EXPECT_NE(consumer->data_model()->css_variable_related().find(
+                lynx::base::String("--size")),
+            consumer->data_model()->css_variable_related().end());
+
+  auto matched_styles = lynx::devtool::ElementInspector::GetMatchedStyleSheet(
+      styled_element.get());
+  ASSERT_EQ(matched_styles.size(), 1U);
+  auto initial_sheet = matched_styles[0];
+  ASSERT_FALSE(initial_sheet.empty);
+
+  lynx::devtool::ElementHelper::SetStyleTexts(page.get(), style_root.get(),
+                                              "--size:200px;",
+                                              initial_sheet.style_value_range_);
+
+  const auto& updated_variables =
+      styled_element->data_model()->css_variables_map();
+  auto size_it = updated_variables.find(lynx::base::String("--size"));
+  ASSERT_NE(size_it, updated_variables.end());
+  EXPECT_EQ(size_it->second.str(), "200px");
+
+  auto updated_sheet = lynx::devtool::ElementInspector::GetStyleSheetByName(
+      styled_element.get(), ".theme.primary");
+  lynx::devtool::ElementHelper::SetStyleTexts(page.get(), style_root.get(),
+                                              "/* --size:200px; */",
+                                              updated_sheet.style_value_range_);
+
+  auto disabled_sheet = lynx::devtool::ElementInspector::GetStyleSheetByName(
+      styled_element.get(), ".theme.primary");
+  auto disabled_size = disabled_sheet.css_properties_.find("--size");
+  ASSERT_NE(disabled_size, disabled_sheet.css_properties_.end());
+  EXPECT_TRUE(disabled_size->second.disabled_);
+  EXPECT_TRUE(matched_variable_token->GetStyleVariables().empty());
+  EXPECT_EQ(styled_element->data_model()->css_variables_map().count(
+                lynx::base::String("--size")),
+            0U);
+  lynx::devtool::ElementInspector::RecordStyleSheetSourceToken(
+      style_root.get(), disabled_sheet, shared_variable_token);
+
+  lynx::devtool::ElementHelper::SetStyleTexts(
+      page.get(), style_root.get(), "--size:200px;",
+      disabled_sheet.style_value_range_);
+
+  auto reenabled_sheet = lynx::devtool::ElementInspector::GetStyleSheetByName(
+      styled_element.get(), ".theme.primary");
+  auto reenabled_size = reenabled_sheet.css_properties_.find("--size");
+  ASSERT_NE(reenabled_size, reenabled_sheet.css_properties_.end());
+  EXPECT_FALSE(reenabled_size->second.disabled_);
+  EXPECT_TRUE(reenabled_size->second.parsed_ok_);
+  auto runtime_size = styled_element->data_model()->css_variables_map().find(
+      lynx::base::String("--size"));
+  ASSERT_NE(runtime_size,
+            styled_element->data_model()->css_variables_map().end());
+  EXPECT_EQ(runtime_size->second.str(), "200px");
+  auto matched_size = matched_variable_token->GetStyleVariables().find(
+      lynx::base::String("--size"));
+  ASSERT_NE(matched_size, matched_variable_token->GetStyleVariables().end());
+  EXPECT_EQ(matched_size->second.str(), "200px");
+  auto shared_size = shared_variable_token->GetStyleVariables().find(
+      lynx::base::String("--size"));
+  ASSERT_NE(shared_size, shared_variable_token->GetStyleVariables().end());
+  EXPECT_EQ(shared_size->second.str(), "100px");
+}
+
+TEST_F(ElementHelperTest,
+       SetSelectorStyleTextsNewPipelineReenablesCustomProperties) {
+  manager->enable_new_styling_pipeline_ = true;
+
+  auto page = manager->CreateFiberPage("page", 0);
+  lynx::devtool::ElementInspector::InitForInspector(
+      std::make_tuple(page.get()));
+  auto selector_fragment =
+      CreateCustomPropertyCSSFragment(".theme", "--size", "100px");
+  lynx::tasm::CSSParserConfigs parser_configs;
+  auto consumer_token =
+      fml::MakeRefCounted<lynx::tasm::CSSParseToken>(parser_configs);
+  consumer_token->SetAttribute(lynx::tasm::CSSPropertyID::kPropertyIDHeight,
+                               ParseVariableValue("var(--size, 10px)"));
+  consumer_token->MarkParsed();
+  auto consumer_sheet = std::make_shared<lynx::tasm::CSSSheet>(".consumer");
+  consumer_token->sheets().emplace_back(consumer_sheet);
+  selector_fragment->AddStyleRule(CreateSelectorArray(".consumer"),
+                                  consumer_token);
+  page->style_sheet_ = std::make_unique<lynx::tasm::CSSFragmentDecorator>(
+      selector_fragment.get());
+
+  auto component = manager->CreateFiberComponent(
+      lynx::base::String("21"), 100, lynx::base::String("__Card__"),
+      lynx::base::String("TestComp"), lynx::base::String("/TestComp"));
+  component->style_sheet_ = std::make_unique<lynx::tasm::CSSFragmentDecorator>(
+      selector_fragment.get());
+  lynx::devtool::ElementInspector::InitForInspector(
+      std::make_tuple(component.get()));
+  page->InsertNode(component);
+
+  auto element = manager->CreateFiberElement("view");
+  element->SetParentComponentUniqueIdForFiber(
+      static_cast<int64_t>(component->impl_id()));
+  element->SetClass("theme");
+  component->InsertNode(element);
+  lynx::devtool::ElementInspector::InitForInspector(
+      std::make_tuple(element.get()));
+
+  auto consumer = manager->CreateFiberElement("view");
+  consumer->SetParentComponentUniqueIdForFiber(
+      static_cast<int64_t>(component->impl_id()));
+  consumer->SetClass("consumer");
+  element->InsertNode(consumer);
+  lynx::devtool::ElementInspector::InitForInspector(
+      std::make_tuple(consumer.get()));
+
+  auto style_root = manager->CreateFiberElement("stylevalue");
+  lynx::devtool::ElementInspector::InitForInspector(
+      std::make_tuple(style_root.get()));
+  lynx::devtool::ElementInspector::SetStyleRoot(
+      std::make_tuple(style_root.get(), style_root.get()));
+  lynx::devtool::ElementInspector::SetStyleRoot(
+      std::make_tuple(element.get(), style_root.get()));
+
+  auto matched_styles =
+      lynx::devtool::ElementInspector::GetMatchedStyleSheet(element.get());
+  ASSERT_EQ(matched_styles.size(), 1U);
+  auto style_sheet = matched_styles[0];
+
+  lynx::devtool::ElementHelper::SetStyleTexts(page.get(), style_root.get(),
+                                              "--size:200px;",
+                                              style_sheet.style_value_range_);
+  auto computed_variables =
+      element->computed_css_style()->GetCustomProperties();
+  ASSERT_NE(computed_variables, nullptr);
+  EXPECT_NE(computed_variables->find(lynx::base::String("--size")),
+            computed_variables->end());
+  auto consumer_height =
+      consumer->computed_css_style()->GetResolvedValues().find(
+          lynx::tasm::CSSPropertyID::kPropertyIDHeight);
+  ASSERT_NE(consumer_height,
+            consumer->computed_css_style()->GetResolvedValues().end());
+  EXPECT_EQ(lynx::tasm::CSSDecoder::CSSValueToString(
+                lynx::tasm::CSSPropertyID::kPropertyIDHeight,
+                consumer_height->second),
+            "200px");
+  style_sheet =
+      lynx::devtool::ElementInspector::GetMatchedStyleSheet(element.get())[0];
+  lynx::devtool::ElementHelper::SetStyleTexts(page.get(), style_root.get(),
+                                              "/* --size:200px; */",
+                                              style_sheet.style_value_range_);
+  computed_variables = element->computed_css_style()->GetCustomProperties();
+  EXPECT_TRUE(computed_variables == nullptr ||
+              computed_variables->find(lynx::base::String("--size")) ==
+                  computed_variables->end());
+  consumer_height = consumer->computed_css_style()->GetResolvedValues().find(
+      lynx::tasm::CSSPropertyID::kPropertyIDHeight);
+  ASSERT_NE(consumer_height,
+            consumer->computed_css_style()->GetResolvedValues().end());
+  EXPECT_EQ(lynx::tasm::CSSDecoder::CSSValueToString(
+                lynx::tasm::CSSPropertyID::kPropertyIDHeight,
+                consumer_height->second),
+            "10px");
+  style_sheet =
+      lynx::devtool::ElementInspector::GetMatchedStyleSheet(element.get())[0];
+  lynx::devtool::ElementHelper::SetStyleTexts(page.get(), style_root.get(),
+                                              "--size:200px;",
+                                              style_sheet.style_value_range_);
+  computed_variables = element->computed_css_style()->GetCustomProperties();
+  ASSERT_NE(computed_variables, nullptr);
+  EXPECT_NE(computed_variables->find(lynx::base::String("--size")),
+            computed_variables->end());
+  consumer_height = consumer->computed_css_style()->GetResolvedValues().find(
+      lynx::tasm::CSSPropertyID::kPropertyIDHeight);
+  ASSERT_NE(consumer_height,
+            consumer->computed_css_style()->GetResolvedValues().end());
+  EXPECT_EQ(lynx::tasm::CSSDecoder::CSSValueToString(
+                lynx::tasm::CSSPropertyID::kPropertyIDHeight,
+                consumer_height->second),
+            "200px");
+
+  auto token = selector_fragment->GetSharedCSSStyle(".theme");
+  ASSERT_NE(token, nullptr);
+  auto variable = token->GetStyleVariables().find(lynx::base::String("--size"));
+  ASSERT_NE(variable, token->GetStyleVariables().end());
+  EXPECT_EQ(variable->second.str(), "200px");
+  auto runtime_variable = element->data_model()->css_variables_map().find(
+      lynx::base::String("--size"));
+  ASSERT_NE(runtime_variable, element->data_model()->css_variables_map().end());
+  EXPECT_EQ(runtime_variable->second.str(), "200px");
+}
+
+TEST_F(ElementHelperTest,
+       UpdateMatchedCSSVariablesForDevToolInvalidatesEqualVariableValue) {
+  auto parent = manager->CreateFiberElement("view");
+  auto child = manager->CreateFiberElement("view");
+  parent->InsertNode(child);
+
+  lynx::tasm::CSSVariableMap variables;
+  variables.insert_or_assign(lynx::base::String("--brand"),
+                             lynx::base::String("blue"));
+  parent->data_model()->UpdateCSSVariable(variables, nullptr);
+  ASSERT_TRUE(child->CollectCustomProperties(child->data_model()));
+  ASSERT_NE(child->GetInheritedProperty().custom_properties_, nullptr);
+
+  parent->dirty_ = 0;
+  child->dirty_ = 0;
+  parent->UpdateMatchedCSSVariablesForDevTool(std::move(variables));
+
+  EXPECT_TRUE(parent->dirty_ & lynx::tasm::Element::kDirtyRefreshCSSVariables);
+  EXPECT_TRUE(child->StyleDirty());
+  EXPECT_EQ(child->GetInheritedProperty().custom_properties_, nullptr);
+}
+
+TEST_F(ElementHelperTest,
+       SetPropsAccordingToStyleSheetResolvesCSSVariableValue) {
+  auto parent = manager->CreateFiberElement("view");
+  auto element = manager->CreateFiberElement("view");
+  parent->InsertNode(element);
+  lynx::tasm::CSSVariableMap variables;
+  variables.insert_or_assign(lynx::base::String("--main-height"),
+                             lynx::base::String("100px"));
+  parent->data_model()->UpdateCSSVariable(std::move(variables), nullptr);
+  ASSERT_EQ(element->data_model()
+                ->GetCSSVariableValue(lynx::base::String("--main-height"))
+                .str(),
+            "100px");
+
+  InspectorStyleSheet style_sheet;
+  CSSPropertyDetail height{};
+  height.name_ = "height";
+  height.value_ = "var(--main-height)";
+  height.parsed_ok_ = true;
+  style_sheet.css_properties_.emplace(height.name_, std::move(height));
+
+  ElementInspector::SetPropsAccordingToStyleSheet(element.get(), style_sheet);
+
+  const auto& related = element->data_model()->css_variable_related();
+  auto height_variable = related.find(lynx::base::String("--main-height"));
+  ASSERT_NE(height_variable, related.end());
+  EXPECT_EQ(height_variable->second.str(), "100px");
+
+  CSSVariableSnapshot variable_snapshot;
+  lynx::tasm::CSSVariableMap edited_variables;
+  edited_variables.insert_or_assign(lynx::base::String("--main-height"),
+                                    lynx::base::String("200px"));
+  variable_snapshot.insert_or_assign(parent->data_model(),
+                                     std::move(edited_variables));
+  ElementInspector::SetPropsAccordingToStyleSheet(element.get(), style_sheet,
+                                                  &variable_snapshot);
+
+  height_variable = related.find(lynx::base::String("--main-height"));
+  ASSERT_NE(height_variable, related.end());
+  EXPECT_EQ(height_variable->second.str(), "200px");
+  EXPECT_EQ(element->data_model()
+                ->GetCSSVariableValue(lynx::base::String("--main-height"))
+                .str(),
+            "100px");
+}
+
+TEST_F(ElementHelperTest,
        SetInlineStyleTextsNewPipelineSyncsAndClearsInlineVariables) {
   manager->enable_new_styling_pipeline_ = true;
   lynx::base::AutoReset<bool> css_inline_config(
@@ -944,8 +1404,11 @@ TEST_F(ElementHelperTest,
   auto page = manager->CreateFiberPage("page", 0);
   lynx::devtool::ElementInspector::InitForInspector(
       std::make_tuple(page.get()));
-  auto selector_fragment = CreateSelectorCSSFragment(
-      ".card .title", lynx::tasm::CSSPropertyID::kPropertyIDWidth, "10px");
+  fml::RefPtr<lynx::tasm::CSSParseToken> shared_token;
+  fml::RefPtr<lynx::tasm::CSSParseToken> matched_token;
+  auto selector_fragment = CreateSplitTokenSelectorCSSFragment(
+      ".card .title", lynx::tasm::CSSPropertyID::kPropertyIDWidth, "10px",
+      &shared_token, &matched_token);
   page->style_sheet_ = std::make_unique<lynx::tasm::CSSFragmentDecorator>(
       selector_fragment.get());
 
@@ -993,20 +1456,40 @@ TEST_F(ElementHelperTest,
       styled_element.get(), ".card .title");
   ASSERT_FALSE(initial_sheet.empty);
 
+  ASSERT_NE(shared_token, nullptr);
+  ASSERT_NE(matched_token, nullptr);
+  ASSERT_NE(shared_token.get(), matched_token.get());
+  auto stale_token =
+      CreateParseToken(lynx::tasm::CSSPropertyID::kPropertyIDWidth, "10px");
+  lynx::devtool::ElementInspector::RecordStyleSheetSourceToken(
+      style_root.get(), initial_sheet, stale_token);
+
   lynx::devtool::ElementHelper::SetStyleTexts(page.get(), style_root.get(),
                                               "width:20px;",
                                               initial_sheet.style_value_range_);
 
-  auto token = styled_element->GetRelatedCSSFragment()->GetSharedCSSStyle(
-      ".card .title");
-  ASSERT_NE(token, nullptr);
-
-  const auto& attributes = token->GetAttributes();
+  const auto& attributes = matched_token->GetAttributes();
   auto width_it = attributes.find(lynx::tasm::CSSPropertyID::kPropertyIDWidth);
   ASSERT_TRUE(width_it != attributes.end());
   EXPECT_EQ(lynx::tasm::CSSDecoder::CSSValueToString(
                 lynx::tasm::CSSPropertyID::kPropertyIDWidth, width_it->second),
             "20px");
+  const auto& shared_attributes = shared_token->GetAttributes();
+  auto shared_width =
+      shared_attributes.find(lynx::tasm::CSSPropertyID::kPropertyIDWidth);
+  ASSERT_TRUE(shared_width != shared_attributes.end());
+  EXPECT_EQ(
+      lynx::tasm::CSSDecoder::CSSValueToString(
+          lynx::tasm::CSSPropertyID::kPropertyIDWidth, shared_width->second),
+      "10px");
+  const auto& stale_attributes = stale_token->GetAttributes();
+  auto stale_width =
+      stale_attributes.find(lynx::tasm::CSSPropertyID::kPropertyIDWidth);
+  ASSERT_TRUE(stale_width != stale_attributes.end());
+  EXPECT_EQ(
+      lynx::tasm::CSSDecoder::CSSValueToString(
+          lynx::tasm::CSSPropertyID::kPropertyIDWidth, stale_width->second),
+      "10px");
 }
 
 TEST_F(ElementHelperTest,
@@ -1140,6 +1623,25 @@ TEST_F(ElementHelperTest,
           style_root.get(), second_updated_sheet);
   ASSERT_NE(second_recorded_token, nullptr);
   EXPECT_EQ(second_recorded_token.get(), second_token.get());
+
+  lynx::devtool::ElementHelper::SetStyleTexts(
+      page.get(), style_root.get(), "width:50px;",
+      second_updated_sheet.style_value_range_);
+
+  first_width_it = first_token->GetAttributes().find(
+      lynx::tasm::CSSPropertyID::kPropertyIDWidth);
+  ASSERT_TRUE(first_width_it != first_token->GetAttributes().end());
+  EXPECT_EQ(
+      lynx::tasm::CSSDecoder::CSSValueToString(
+          lynx::tasm::CSSPropertyID::kPropertyIDWidth, first_width_it->second),
+      "20px");
+  second_width_it = second_token->GetAttributes().find(
+      lynx::tasm::CSSPropertyID::kPropertyIDWidth);
+  ASSERT_TRUE(second_width_it != second_token->GetAttributes().end());
+  EXPECT_EQ(
+      lynx::tasm::CSSDecoder::CSSValueToString(
+          lynx::tasm::CSSPropertyID::kPropertyIDWidth, second_width_it->second),
+      "50px");
 }
 
 TEST_F(ElementHelperTest,
@@ -1249,6 +1751,18 @@ TEST_F(ElementHelperTest,
   auto font_it = css.find("font-family");
   ASSERT_TRUE(font_it != css.end());
   EXPECT_EQ(font_it->second, "PingFang");
+
+  CSSVariableSnapshot variable_snapshot;
+  lynx::tasm::CSSVariableMap devtool_variables;
+  devtool_variables.insert_or_assign(lynx::base::String("--font"),
+                                     lynx::base::String("DevToolFont"));
+  variable_snapshot.insert_or_assign(element->data_model(),
+                                     std::move(devtool_variables));
+  css = lynx::devtool::ElementInspector::GetCssByStyleMap(
+      element.get(), style_map, &variable_snapshot);
+  font_it = css.find("font-family");
+  ASSERT_TRUE(font_it != css.end());
+  EXPECT_EQ(font_it->second, "DevToolFont");
 }
 
 TEST_F(ElementHelperTest, InitStyleSheetTest) {
@@ -1543,6 +2057,180 @@ TEST_F(ElementHelperTest, GetMatchedStyleSheetTest) {
   auto width_iter = res2[0].css_properties_.find("width");
   ASSERT_NE(width_iter, res2[0].css_properties_.end());
   EXPECT_EQ(width_iter->second.value_, "10px");
+
+  auto variable_token = selector_fragment->GetSharedCSSStyle("view");
+  ASSERT_NE(variable_token, nullptr);
+  lynx::tasm::StyleMap variable_attributes;
+  variable_attributes.insert_or_assign(
+      lynx::tasm::CSSPropertyID::kPropertyIDHeight,
+      ParseVariableValue("var(--main-height)"));
+  variable_token->SetAttributes(std::move(variable_attributes));
+  lynx::devtool::ElementInspector::GetStyleSheetMap(style_root.get()).clear();
+
+  lynx::tasm::CSSVariableMap variables;
+  variables.insert_or_assign(lynx::base::String("--main-height"),
+                             lynx::base::String("200px"));
+  styled_element->data_model()->UpdateCSSVariable(std::move(variables),
+                                                  nullptr);
+  auto initial_variable_styles =
+      lynx::devtool::ElementInspector::GetMatchedStyleSheet(
+          styled_element.get());
+  ASSERT_EQ(initial_variable_styles.size(), 1U);
+  auto initial_height =
+      initial_variable_styles[0].css_properties_.find("height");
+  ASSERT_NE(initial_height, initial_variable_styles[0].css_properties_.end());
+  EXPECT_EQ(initial_height->second.value_, "var(--main-height)");
+  EXPECT_EQ(initial_height->second.text_, "height:var(--main-height);");
+  auto initial_computed_style =
+      lynx::devtool::ElementInspector::ResolveStyleSheetForComputedStyle(
+          styled_element.get(), initial_variable_styles[0]);
+  EXPECT_EQ(
+      initial_computed_style.css_properties_.find("height")->second.value_,
+      "200px");
+
+  variables.insert_or_assign(lynx::base::String("--main-height"),
+                             lynx::base::String("300px"));
+  styled_element->data_model()->UpdateCSSVariable(std::move(variables),
+                                                  nullptr);
+  auto updated_variable_styles =
+      lynx::devtool::ElementInspector::GetMatchedStyleSheet(
+          styled_element.get());
+  ASSERT_EQ(updated_variable_styles.size(), 1U);
+  auto updated_height =
+      updated_variable_styles[0].css_properties_.find("height");
+  ASSERT_NE(updated_height, updated_variable_styles[0].css_properties_.end());
+  EXPECT_EQ(updated_height->second.value_, "var(--main-height)");
+  EXPECT_EQ(updated_height->second.text_, "height:var(--main-height);");
+  auto updated_computed_style =
+      lynx::devtool::ElementInspector::ResolveStyleSheetForComputedStyle(
+          styled_element.get(), updated_variable_styles[0]);
+  EXPECT_EQ(
+      updated_computed_style.css_properties_.find("height")->second.value_,
+      "300px");
+
+  lynx::tasm::CSSValue legacy_variable("{{--main-height}}",
+                                       lynx::tasm::CSSValuePattern::STRING,
+                                       lynx::tasm::CSSValueType::VARIABLE);
+  legacy_variable.SetDefaultValue(lynx::base::String("120px"));
+  lynx::lepus::Value legacy_default_map(lynx::lepus::Dictionary::Create());
+  legacy_default_map.Table()->SetValue("--main-height",
+                                       lynx::lepus::Value("120px"));
+  legacy_variable.SetDefaultValueMap(std::move(legacy_default_map));
+  ASSERT_TRUE(legacy_variable.ToVarReference());
+  ASSERT_TRUE(legacy_variable.NeedsVariableResolution());
+  variable_attributes.clear();
+  variable_attributes.insert_or_assign(
+      lynx::tasm::CSSPropertyID::kPropertyIDHeight, std::move(legacy_variable));
+  variable_token->SetAttributes(std::move(variable_attributes));
+  lynx::devtool::ElementInspector::GetStyleSheetMap(style_root.get()).clear();
+
+  auto legacy_variable_styles =
+      lynx::devtool::ElementInspector::GetMatchedStyleSheet(
+          styled_element.get());
+  ASSERT_EQ(legacy_variable_styles.size(), 1U);
+  auto legacy_height = legacy_variable_styles[0].css_properties_.find("height");
+  ASSERT_NE(legacy_height, legacy_variable_styles[0].css_properties_.end());
+  EXPECT_EQ(legacy_height->second.value_, "var(--main-height,120px)");
+  EXPECT_EQ(legacy_height->second.text_, "height:var(--main-height,120px);");
+
+  auto cached_legacy_sheet = legacy_variable_styles[0];
+  auto cached_legacy_height =
+      cached_legacy_sheet.css_properties_.find("height");
+  ASSERT_NE(cached_legacy_height, cached_legacy_sheet.css_properties_.end());
+  cached_legacy_height->second.value_ = "{{--main-height}}";
+  cached_legacy_height->second.text_ = "height:{{--main-height}};";
+  cached_legacy_sheet.css_text_ = "height:{{--main-height}};";
+  cached_legacy_sheet.style_value_range_.end_column_ =
+      cached_legacy_sheet.style_value_range_.start_column_ +
+      static_cast<int>(cached_legacy_sheet.css_text_.size());
+  lynx::devtool::ElementInspector::GetStyleSheetMap(style_root.get()).clear();
+  lynx::devtool::ElementInspector::GetStyleSheetMap(style_root.get())
+      .insert({"view", cached_legacy_sheet});
+
+  auto cached_legacy_styles =
+      lynx::devtool::ElementInspector::GetMatchedStyleSheet(
+          styled_element.get());
+  ASSERT_EQ(cached_legacy_styles.size(), 1U);
+  auto normalized_height =
+      cached_legacy_styles[0].css_properties_.find("height");
+  ASSERT_NE(normalized_height, cached_legacy_styles[0].css_properties_.end());
+  EXPECT_EQ(normalized_height->second.value_, "var(--main-height,120px)");
+  EXPECT_EQ(normalized_height->second.text_,
+            "height:var(--main-height,120px);");
+  EXPECT_EQ(cached_legacy_styles[0].css_text_,
+            "height:var(--main-height,120px);");
+  EXPECT_EQ(normalized_height->second.property_range_.end_column_,
+            cached_legacy_styles[0].style_value_range_.end_column_);
+
+  auto duplicate_legacy_sheet = cached_legacy_sheet;
+  auto winning_height =
+      duplicate_legacy_sheet.css_properties_.find("height")->second;
+  auto earlier_height = winning_height;
+  earlier_height.value_ = "{{--earlier-height}}";
+  earlier_height.text_ = "height:{{--earlier-height}};";
+  duplicate_legacy_sheet.css_properties_.clear();
+  duplicate_legacy_sheet.css_properties_.emplace("height",
+                                                 std::move(earlier_height));
+  duplicate_legacy_sheet.css_properties_.emplace("height",
+                                                 std::move(winning_height));
+  duplicate_legacy_sheet.property_order_ = {"height", "height"};
+  duplicate_legacy_sheet.css_text_ =
+      "height:{{--earlier-height}};height:{{--main-height}};";
+  duplicate_legacy_sheet.style_value_range_.end_column_ =
+      duplicate_legacy_sheet.style_value_range_.start_column_ +
+      static_cast<int>(duplicate_legacy_sheet.css_text_.size());
+  lynx::devtool::ElementInspector::GetStyleSheetMap(style_root.get()).clear();
+  lynx::devtool::ElementInspector::GetStyleSheetMap(style_root.get())
+      .insert({"view", duplicate_legacy_sheet});
+
+  auto duplicate_legacy_styles =
+      lynx::devtool::ElementInspector::GetMatchedStyleSheet(
+          styled_element.get());
+  ASSERT_EQ(duplicate_legacy_styles.size(), 1U);
+  auto duplicate_height_range =
+      duplicate_legacy_styles[0].css_properties_.equal_range("height");
+  size_t earlier_declaration_count = 0;
+  size_t winning_declaration_count = 0;
+  for (auto it = duplicate_height_range.first;
+       it != duplicate_height_range.second; ++it) {
+    if (it->second.value_ == "{{--earlier-height}}") {
+      ++earlier_declaration_count;
+    } else if (it->second.value_ == "var(--main-height,120px)") {
+      ++winning_declaration_count;
+    }
+  }
+  EXPECT_EQ(earlier_declaration_count, 1U);
+  EXPECT_EQ(winning_declaration_count, 1U);
+  EXPECT_EQ(duplicate_legacy_styles[0].css_text_,
+            "height:{{--earlier-height}};"
+            "height:var(--main-height,120px);");
+
+  lynx::tasm::CSSValue legacy_padding("{{--padding-y}} {{--padding-x}}",
+                                      lynx::tasm::CSSValuePattern::STRING,
+                                      lynx::tasm::CSSValueType::VARIABLE);
+  lynx::lepus::Value padding_default_map(lynx::lepus::Dictionary::Create());
+  padding_default_map.Table()->SetValue("--padding-y",
+                                        lynx::lepus::Value("8px"));
+  padding_default_map.Table()->SetValue("--padding-x",
+                                        lynx::lepus::Value("12px"));
+  legacy_padding.SetDefaultValueMap(std::move(padding_default_map));
+  ASSERT_TRUE(legacy_padding.ToVarReference());
+  variable_attributes.clear();
+  variable_attributes.insert_or_assign(
+      lynx::tasm::CSSPropertyID::kPropertyIDPadding, std::move(legacy_padding));
+  variable_token->SetAttributes(std::move(variable_attributes));
+  lynx::devtool::ElementInspector::GetStyleSheetMap(style_root.get()).clear();
+
+  auto legacy_padding_styles =
+      lynx::devtool::ElementInspector::GetMatchedStyleSheet(
+          styled_element.get());
+  ASSERT_EQ(legacy_padding_styles.size(), 1U);
+  auto legacy_padding_property =
+      legacy_padding_styles[0].css_properties_.find("padding");
+  ASSERT_NE(legacy_padding_property,
+            legacy_padding_styles[0].css_properties_.end());
+  EXPECT_EQ(legacy_padding_property->second.value_,
+            "var(--padding-y,8px) var(--padding-x,12px)");
 }
 
 TEST_F(ElementHelperTest,

@@ -4,6 +4,7 @@
 
 #include "devtool/lynx_devtool/element/element_helper.h"
 
+#include <algorithm>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -15,8 +16,11 @@
 #include "core/renderer/css/css_decoder.h"
 #include "core/renderer/css/css_parser_token.h"
 #include "core/renderer/css/css_property.h"
+#include "core/renderer/css/ng/media_query/media_query_evaluator.h"
+#include "core/renderer/css/ng/supports/supports_evaluator.h"
 #include "core/renderer/css/parser/css_string_parser.h"
 #include "core/renderer/css/unit_handler.h"
+#include "core/renderer/dom/style_resolver.h"
 #include "devtool/lynx_devtool/agent/inspector_util.h"
 #include "devtool/lynx_devtool/element/helper_util.h"
 #include "devtool/lynx_devtool/element/inspector_css_helper.h"
@@ -407,7 +411,7 @@ void CollectStyleSheetSourcesForNewPipeline(
   }
 }
 
-void SyncSelectorStyleTokenForNewPipeline(
+void SyncSelectorStyleTokenForDevTool(
     Element* element, const fml::RefPtr<lynx::tasm::CSSParseToken>& token,
     const InspectorStyleSheet& style_sheet) {
   CHECK_NULL_AND_LOG_RETURN(element, "element is null");
@@ -421,6 +425,216 @@ void SyncSelectorStyleTokenForNewPipeline(
   token->SetAttributes(std::move(parsed_styles));
   token->SetImportantAttributes(std::move(important_styles));
   token->SetStyleVariables(std::move(css_vars));
+}
+
+void CollectCustomPropertiesForLegacyPipeline(
+    const InspectorStyleSheet& style_sheet,
+    lynx::tasm::CSSVariableMap& normal_variables,
+    lynx::tasm::CSSVariableMap& important_variables) {
+  auto collect_property = [&](const CSSPropertyDetail& property) {
+    if (property.disabled_ || !property.parsed_ok_ ||
+        !lynx::tasm::CSSProperty::IsCustomProperty(
+            property.name_.c_str(),
+            static_cast<uint32_t>(property.name_.length()))) {
+      return;
+    }
+
+    std::string value;
+    const bool important =
+        StripTrailingImportantForDevtool(property.value_, &value);
+    auto& variables = important ? important_variables : normal_variables;
+    variables.insert_or_assign(
+        lynx::base::String(property.name_.c_str(),
+                           static_cast<uint32_t>(property.name_.length())),
+        lynx::base::String(value.c_str(),
+                           static_cast<uint32_t>(value.length())));
+  };
+
+  std::unordered_map<std::string, size_t> consumed_properties;
+  for (const auto& name : style_sheet.property_order_) {
+    auto iter_range = style_sheet.css_properties_.equal_range(name);
+    auto it = iter_range.first;
+    const auto consumed_count = consumed_properties[name]++;
+    for (size_t i = 0; it != iter_range.second && i < consumed_count;
+         ++i, ++it) {
+    }
+    if (it != iter_range.second) {
+      collect_property(it->second);
+    }
+  }
+
+  if (style_sheet.property_order_.empty()) {
+    for (const auto& property : style_sheet.css_properties_) {
+      collect_property(property.second);
+    }
+  }
+}
+
+void CollectCustomPropertiesForLegacyElement(
+    Element* element, lynx::tasm::CSSVariableMap& normal_variables,
+    lynx::tasm::CSSVariableMap& important_variables) {
+  auto collect = [&](const std::string& selector) {
+    if (!selector.empty()) {
+      CollectCustomPropertiesForLegacyPipeline(
+          ElementInspector::GetStyleSheetByName(element, selector),
+          normal_variables, important_variables);
+    }
+  };
+  auto collect_cascade = [&](const std::string& selector) {
+    if (!ElementInspector::IsStyleRootHasCascadeStyle(element)) {
+      return;
+    }
+    for (Element* parent = element->parent(); parent != nullptr;
+         parent = parent->parent()) {
+      for (const auto& parent_class : ElementInspector::ClassOrder(parent)) {
+        collect(selector + parent_class);
+      }
+    }
+    for (Element* parent = element->parent(); parent != nullptr;
+         parent = parent->parent()) {
+      collect(selector + ElementInspector::SelectorId(parent));
+    }
+  };
+
+  collect("*");
+  collect(ElementInspector::SelectorTag(element));
+  for (const auto& class_name : ElementInspector::ClassOrder(element)) {
+    collect(class_name);
+    collect_cascade(class_name);
+  }
+  const auto id = ElementInspector::SelectorId(element);
+  collect(id);
+  if (!id.empty()) {
+    collect_cascade(id);
+  }
+}
+
+lynx::tasm::CSSVariableMap CollectMatchedCustomPropertiesForDevTool(
+    Element* element) {
+  CHECK_NULL_AND_LOG_RETURN_VALUE(element, "element is null", {});
+  auto* holder = element->data_model();
+  CHECK_NULL_AND_LOG_RETURN_VALUE(holder, "data_model is null", {});
+
+  lynx::tasm::CSSVariableMap normal_variables;
+  if (IsNewStylingPipelineEnabled(element)) {
+    auto* style_sheet = element->GetRelatedCSSFragment();
+    auto media_evaluator = lynx::tasm::StyleResolver::BuildMediaQueryEvaluator(
+        element->element_manager(), element);
+    auto supports_evaluator = std::make_unique<lynx::css::SupportsEvaluator>(
+        element->element_manager()->GetCSSParserConfigs());
+    auto matched_rules = lynx::tasm::StyleResolver::GetCSSMatchedRule(
+        holder, style_sheet, media_evaluator.get(), supports_evaluator.get());
+    for (const auto& matched : matched_rules) {
+      auto token = matched.Data()->Rule()->Token();
+      if (token == nullptr) {
+        continue;
+      }
+      for (const auto& [name, value] : token->GetStyleVariables()) {
+        normal_variables.insert_or_assign(name, value);
+      }
+    }
+    return normal_variables;
+  }
+
+  lynx::tasm::CSSVariableMap important_variables;
+  if (ElementInspector::IsEnableCSSSelector(element)) {
+    for (const auto& style_sheet :
+         ElementInspector::GetMatchedStyleSheet(element)) {
+      CollectCustomPropertiesForLegacyPipeline(style_sheet, normal_variables,
+                                               important_variables);
+    }
+  } else {
+    CollectCustomPropertiesForLegacyElement(element, normal_variables,
+                                            important_variables);
+  }
+  for (auto& [name, value] : important_variables) {
+    normal_variables.insert_or_assign(name, std::move(value));
+  }
+
+  return normal_variables;
+}
+
+void SyncMatchedCustomPropertiesForDevTool(Element* element) {
+  CHECK_NULL_AND_LOG_RETURN(element, "element is null");
+  element->UpdateMatchedCSSVariablesForDevTool(
+      CollectMatchedCustomPropertiesForDevTool(element));
+}
+
+fml::RefPtr<lynx::tasm::CSSParseToken> ResolveMatchedSourceTokenForDevTool(
+    const std::vector<Element*>& elements, const std::string& selector,
+    unsigned position,
+    const fml::RefPtr<lynx::tasm::CSSParseToken>& cached_token) {
+  std::vector<fml::RefPtr<lynx::tasm::CSSParseToken>> matched_tokens;
+  std::vector<fml::RefPtr<lynx::tasm::CSSParseToken>> position_tokens;
+  std::vector<fml::RefPtr<lynx::tasm::CSSParseToken>>
+      cached_fragment_position_tokens;
+  auto record_unique = [](auto& tokens, const auto& token) {
+    const bool already_recorded = std::any_of(
+        tokens.begin(), tokens.end(), [&token](const auto& candidate) {
+          return candidate.get() == token.get();
+        });
+    if (!already_recorded) {
+      tokens.push_back(token);
+    }
+  };
+  for (Element* element : elements) {
+    auto* fragment = element->GetRelatedCSSFragment();
+    const auto fragment_cached_token =
+        fragment == nullptr ? nullptr : fragment->GetSharedCSSStyle(selector);
+    const bool belongs_to_cached_fragment =
+        cached_token != nullptr && fragment_cached_token != nullptr &&
+        fragment_cached_token.get() == cached_token.get();
+    auto media_evaluator = lynx::tasm::StyleResolver::BuildMediaQueryEvaluator(
+        element->element_manager(), element);
+    auto supports_evaluator = std::make_unique<lynx::css::SupportsEvaluator>(
+        element->element_manager()->GetCSSParserConfigs());
+    auto matched_rules = lynx::tasm::StyleResolver::GetCSSMatchedRule(
+        element->data_model(), element->GetRelatedCSSFragment(),
+        media_evaluator.get(), supports_evaluator.get());
+    for (const auto& matched : matched_rules) {
+      auto token = matched.Data()->Rule()->Token();
+      if (token == nullptr ||
+          matched.Data()->Selector().ToString() != selector) {
+        continue;
+      }
+      if (cached_token != nullptr && token.get() == cached_token.get()) {
+        return cached_token;
+      }
+      if (matched.Position() == position) {
+        record_unique(position_tokens, token);
+        if (belongs_to_cached_fragment) {
+          record_unique(cached_fragment_position_tokens, token);
+        }
+      }
+      record_unique(matched_tokens, token);
+    }
+  }
+  if (cached_fragment_position_tokens.size() == 1) {
+    return cached_fragment_position_tokens.front();
+  }
+  if (position_tokens.size() == 1) {
+    return position_tokens.front();
+  }
+  if (matched_tokens.size() == 1) {
+    return matched_tokens.front();
+  }
+
+  std::vector<fml::RefPtr<lynx::tasm::CSSParseToken>> shared_tokens;
+  for (Element* element : elements) {
+    auto* fragment = element->GetRelatedCSSFragment();
+    if (fragment == nullptr) {
+      continue;
+    }
+    auto token = fragment->GetSharedCSSStyle(selector);
+    if (token == nullptr) {
+      continue;
+    }
+    if (cached_token != nullptr && token.get() == cached_token.get()) {
+      return cached_token;
+    }
+    record_unique(shared_tokens, token);
+  }
+  return shared_tokens.size() == 1 ? shared_tokens.front() : cached_token;
 }
 
 }  // namespace
@@ -761,29 +975,28 @@ Json::Value ElementHelper::GetBackGroundColorsOfNode(Element* ptr) {
       const std::vector<InspectorStyleSheet>& match_rules =
           ElementInspector::GetMatchedStyleSheet(ptr);
       for (const InspectorStyleSheet& match : match_rules) {
-        ReplaceDefaultComputedStyle(dict, match.css_properties_);
+        ReplaceDefaultComputedStyle(
+            dict,
+            ElementInspector::ResolveStyleSheetForComputedStyle(ptr, match)
+                .css_properties_);
       }
     } else {
-      ReplaceDefaultComputedStyle(
-          dict,
-          ElementInspector::GetStyleSheetByName(ptr, "*").css_properties_);
-      ReplaceDefaultComputedStyle(
-          dict,
-          ElementInspector::GetStyleSheetByName(ptr, "body *").css_properties_);
-      for (size_t i = 0; i < ElementInspector::ClassOrder(ptr).size(); ++i) {
+      auto replace_rule = [ptr, &dict](const InspectorStyleSheet& style_sheet) {
         ReplaceDefaultComputedStyle(
-            dict, ElementInspector::GetStyleSheetByName(
-                      ptr, ElementInspector::ClassOrder(ptr)[i])
+            dict, ElementInspector::ResolveStyleSheetForComputedStyle(
+                      ptr, style_sheet)
                       .css_properties_);
+      };
+      replace_rule(ElementInspector::GetStyleSheetByName(ptr, "*"));
+      replace_rule(ElementInspector::GetStyleSheetByName(ptr, "body *"));
+      for (size_t i = 0; i < ElementInspector::ClassOrder(ptr).size(); ++i) {
+        replace_rule(ElementInspector::GetStyleSheetByName(
+            ptr, ElementInspector::ClassOrder(ptr)[i]));
       }
-      ReplaceDefaultComputedStyle(dict,
-                                  ElementInspector::GetStyleSheetByName(
-                                      ptr, ElementInspector::SelectorTag(ptr))
-                                      .css_properties_);
-      ReplaceDefaultComputedStyle(dict,
-                                  ElementInspector::GetStyleSheetByName(
-                                      ptr, ElementInspector::SelectorId(ptr))
-                                      .css_properties_);
+      replace_rule(ElementInspector::GetStyleSheetByName(
+          ptr, ElementInspector::SelectorTag(ptr)));
+      replace_rule(ElementInspector::GetStyleSheetByName(
+          ptr, ElementInspector::SelectorId(ptr)));
     }
     ReplaceDefaultComputedStyle(
         dict, ElementInspector::GetInlineStyleSheet(ptr).css_properties_);
@@ -1140,27 +1353,28 @@ void ElementHelper::SetSelectorStyleTexts(Element* root, Element* ptr,
       InspectorStyleSheet modified_style_sheet =
           StyleTextParser(ptr, text, cur_style_sheet);
       const bool enable_new_styling_pipeline = IsNewStylingPipelineEnabled(ptr);
-      auto source_token = enable_new_styling_pipeline
-                              ? ElementInspector::GetStyleSheetSourceToken(
-                                    style_root, cur_style_sheet)
-                              : nullptr;
+      std::vector<Element*> ptr_vec =
+          ElementInspector::SelectElementAll(root, selector_name);
+      auto source_token = ElementInspector::GetStyleSheetSourceToken(
+          style_root, cur_style_sheet);
+      source_token = ResolveMatchedSourceTokenForDevTool(
+          ptr_vec, selector_name, cur_style_sheet.position_, source_token);
       if (enable_new_styling_pipeline) {
         ElementInspector::EraseStyleSheetSourceToken(style_root,
                                                      cur_style_sheet);
         iter->second = modified_style_sheet;
         if (source_token != nullptr) {
-          SyncSelectorStyleTokenForNewPipeline(root ? root : ptr, source_token,
-                                               modified_style_sheet);
+          SyncSelectorStyleTokenForDevTool(root ? root : ptr, source_token,
+                                           modified_style_sheet);
           ElementInspector::RecordStyleSheetSourceToken(
               style_root, modified_style_sheet, source_token);
         } else {
           LOGE("new pipeline devtool selector edit has no source token: "
                << selector_name);
         }
-        std::vector<Element*> ptr_vec =
-            ElementInspector::SelectElementAll(root, selector_name);
         for (Element* temp_ptr : ptr_vec) {
-          temp_ptr->MarkStyleDirty();
+          SyncMatchedCustomPropertiesForDevTool(temp_ptr);
+          temp_ptr->MarkStyleDirty(true);
         }
         Element* flush_root =
             GetFlushRootForStyleMutation(root ? root : ptr, nullptr);
@@ -1168,9 +1382,35 @@ void ElementHelper::SetSelectorStyleTexts(Element* root, Element* ptr,
       } else {
         ElementInspector::SetStyleSheetByName(ptr, selector_name,
                                               modified_style_sheet);
-        std::vector<Element*> ptr_vec;
-        GetElementPtrMatchingStyleSheet(ptr_vec, root, selector_name);
-        for (Element* temp_ptr : ptr_vec) ElementInspector::Flush(temp_ptr);
+        if (source_token != nullptr) {
+          SyncSelectorStyleTokenForDevTool(root ? root : ptr, source_token,
+                                           modified_style_sheet);
+          ElementInspector::EraseStyleSheetSourceToken(style_root,
+                                                       cur_style_sheet);
+          ElementInspector::RecordStyleSheetSourceToken(
+              style_root, modified_style_sheet, source_token);
+        }
+        ptr_vec = ElementInspector::SelectElementAll(root ? root : ptr,
+                                                     selector_name);
+        CSSVariableSnapshot variable_snapshot;
+        variable_snapshot.reserve(ptr_vec.size());
+        for (Element* temp_ptr : ptr_vec) {
+          auto variables = CollectMatchedCustomPropertiesForDevTool(temp_ptr);
+          variable_snapshot.insert_or_assign(temp_ptr->data_model(),
+                                             std::move(variables));
+        }
+        for (Element* temp_ptr : ptr_vec) {
+          temp_ptr->UpdateMatchedCSSVariablesForDevTool(
+              variable_snapshot.at(temp_ptr->data_model()));
+        }
+        for (Element* temp_ptr : ptr_vec) {
+          ElementInspector::Flush(temp_ptr, &variable_snapshot);
+        }
+        for (Element* temp_ptr : ptr_vec) {
+          temp_ptr->UpdateMatchedCSSVariablesForDevTool(
+              variable_snapshot.at(temp_ptr->data_model()));
+        }
+        FlushFiberStyleMutation(GetFlushRootForStyleMutation(root, nullptr));
       }
       break;
     }
