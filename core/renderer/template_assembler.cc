@@ -2651,11 +2651,12 @@ void TemplateAssembler::OnScreenMetricsSet(float width, float height,
       lepus::Value(height * env_config.PhysicalPixelsPerLayoutUnit()));
   lepus::Value result;
   if (EnableFiberArch()) {
-    result =
-        FindEntry(tasm::DEFAULT_ENTRY_NAME)
-            ->GetVm()
-            ->Call(BASE_STATIC_STRING(kProcessData), input,
-                   lepus::Value(BASE_STATIC_STRING(SCREEN_METRICS_OVERRIDER)));
+    auto& context = FindEntry(tasm::DEFAULT_ENTRY_NAME)->GetVm();
+    if (context != nullptr) {
+      result = context->Call(
+          BASE_STATIC_STRING(kProcessData), input,
+          lepus::Value(BASE_STATIC_STRING(SCREEN_METRICS_OVERRIDER)));
+    }
   } else if (page_proxy() != nullptr) {
     result = page_proxy()->OnScreenMetricsSet(input);
   }
