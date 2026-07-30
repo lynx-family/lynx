@@ -247,10 +247,6 @@ static BOOL IsTruthyParam(id value) {
     [params setObject:value forKey:propsKey];
   }
 
-#if HAS_SPARKLING
-  [params setObject:self.params ?: @{} forKey:@"queryItems"];
-#endif
-
   LynxTemplateData *globalProps = [[LynxTemplateData alloc] initWithDictionary:params];
   return globalProps;
 }
@@ -342,11 +338,7 @@ static BOOL IsTruthyParam(id value) {
   [self.view addSubview:lynxView];
   self.lynxView = lynxView;
 
-  LynxTemplateData *globalProps = [self getGlobalPropsForScreenSize:screenSize];
-#if HAS_SPARKLING
-  [globalProps updateObject:containerID forKey:@"containerID"];
-#endif
-  [lynxView updateGlobalPropsWithTemplateData:globalProps];
+  [lynxView updateGlobalPropsWithTemplateData:[self getGlobalPropsForScreenSize:screenSize]];
 
   LynxTemplateData *initData =
       [[LynxTemplateData alloc] initWithDictionary:@{@"mockData" : @"Hello Lynx Explorer"}];
