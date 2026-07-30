@@ -5,6 +5,7 @@
 #include "devtool/lynx_devtool/element/element_inspector.h"
 
 #include <cstdint>
+#include <functional>
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -17,6 +18,8 @@
 #include "core/renderer/css/ng/media_query/media_query_evaluator.h"
 #include "core/renderer/css/ng/style/condition_rule.h"
 #include "core/renderer/css/ng/supports/supports_evaluator.h"
+#include "core/renderer/css/parser/css_string_parser.h"
+#include "core/renderer/css/unit_handler.h"
 #include "core/renderer/dom/fiber/component_element.h"
 #include "core/renderer/dom/selector/fiber_element_selector.h"
 #include "core/renderer/dom/style_resolver.h"
@@ -178,8 +181,268 @@ StyleSheetSourceTokenMap(Element* style_root) {
 }
 
 bool ShouldRecordStyleSheetSourceToken(Element* element) {
-  return element != nullptr && element->element_manager() != nullptr &&
-         element->element_manager()->EnableNewStylingPipeline();
+  return element != nullptr && element->element_manager() != nullptr;
+}
+
+std::string SerializeLegacyVariableFormat(const std::string& format,
+                                          const lepus::Value& default_value_map,
+                                          const base::String& default_value,
+                                          int depth = 0) {
+  if (depth >= 10) {
+    return format;
+  }
+
+  std::string result;
+  size_t cursor = 0;
+  size_t reference_count = 0;
+  while (cursor < format.size()) {
+    const size_t start = format.find("{{", cursor);
+    if (start == std::string::npos) {
+      result.append(format, cursor);
+      break;
+    }
+    const size_t end = format.find("}}", start + 2);
+    if (end == std::string::npos) {
+      result.append(format, cursor);
+      break;
+    }
+
+    result.append(format, cursor, start - cursor);
+    const std::string name = format.substr(start + 2, end - start - 2);
+    result.append("var(").append(name);
+
+    base::String fallback;
+    if (default_value_map.IsTable()) {
+      const auto& table = default_value_map.Table();
+      if (auto it = table->find(name); it != table->end()) {
+        fallback = it->second.String();
+      }
+    } else if (reference_count == 0 &&
+               format.find("{{", end + 2) == std::string::npos) {
+      fallback = default_value;
+    }
+    if (!fallback.empty()) {
+      result.append(",").append(SerializeLegacyVariableFormat(
+          fallback.str(), default_value_map, base::String(), depth + 1));
+    }
+    result.push_back(')');
+
+    ++reference_count;
+    cursor = end + 2;
+  }
+  return result;
+}
+
+std::string GetAuthoredVariableValue(const lynx::tasm::CSSValue& value) {
+  const auto& authored_value = value.AsStdString();
+  if (authored_value.find("{{") == std::string::npos) {
+    return authored_value;
+  }
+
+  const auto* references = value.GetVarReferences();
+  if (references != nullptr && !references->empty()) {
+    std::string result;
+    size_t cursor = 0;
+    for (const auto& reference : *references) {
+      if (reference.start < cursor || reference.end > authored_value.size() ||
+          reference.start >= reference.end) {
+        return authored_value;
+      }
+
+      result.append(authored_value, cursor, reference.start - cursor);
+      const size_t name_start =
+          reference.start + reference.offset + reference.name_start;
+      if (name_start >= authored_value.size() ||
+          reference.name_end <= reference.name_start ||
+          reference.name_end - reference.name_start >
+              authored_value.size() - name_start) {
+        return authored_value;
+      }
+      result.append("var(").append(authored_value, name_start,
+                                   reference.name_end - reference.name_start);
+      if (!reference.fallback.empty()) {
+        result.append(",").append(SerializeLegacyVariableFormat(
+            reference.fallback.str(), lepus::Value(), base::String()));
+      }
+      result.push_back(')');
+      cursor = reference.end;
+    }
+    result.append(authored_value, cursor);
+    return result;
+  }
+
+  return SerializeLegacyVariableFormat(
+      authored_value, value.GetDefaultValueMapOpt(), value.GetDefaultValue());
+}
+
+void RebuildInspectorStyleSheetText(InspectorStyleSheet* style_sheet) {
+  if (style_sheet == nullptr || style_sheet->property_order_.empty()) {
+    return;
+  }
+
+  std::unordered_map<std::string, size_t> consumed_properties;
+  std::string css_text;
+  int property_start_column = style_sheet->style_value_range_.start_column_;
+  for (const auto& name : style_sheet->property_order_) {
+    auto range = style_sheet->css_properties_.equal_range(name);
+    auto it = range.first;
+    const auto consumed_count = consumed_properties[name]++;
+    for (size_t i = 0; it != range.second && i < consumed_count; ++i, ++it) {
+    }
+    if (it == range.second) {
+      continue;
+    }
+
+    auto& property = it->second;
+    property.property_range_.start_line_ =
+        style_sheet->style_value_range_.start_line_;
+    property.property_range_.end_line_ =
+        style_sheet->style_value_range_.start_line_;
+    property.property_range_.start_column_ = property_start_column;
+    property_start_column += static_cast<int>(property.text_.size());
+    property.property_range_.end_column_ = property_start_column;
+    css_text.append(property.text_);
+  }
+
+  style_sheet->css_text_ = std::move(css_text);
+  style_sheet->style_value_range_.end_line_ =
+      style_sheet->style_value_range_.start_line_;
+  style_sheet->style_value_range_.end_column_ = property_start_column;
+}
+
+void NormalizeAuthoredVariableProperties(
+    lynx::tasm::CSSParseToken* token,
+    InspectorStyleSheet* inspector_style_sheet) {
+  if (token == nullptr || inspector_style_sheet == nullptr) {
+    return;
+  }
+
+  bool changed = false;
+  for (const auto& [id, value] : token->GetAttributes()) {
+    if (!value.IsVariable()) {
+      continue;
+    }
+
+    const auto name = CSSProperty::GetPropertyName(id).str();
+    const auto& raw_authored_value = value.AsStdString();
+    const auto authored_value = GetAuthoredVariableValue(value);
+    auto range = inspector_style_sheet->css_properties_.equal_range(name);
+    for (auto it = range.first; it != range.second; ++it) {
+      auto& property = it->second;
+      if (property.value_ != raw_authored_value ||
+          property.value_.find("{{") == std::string::npos) {
+        continue;
+      }
+      property.value_ = authored_value;
+      property.text_ = property.name_ + ":" + authored_value + ";";
+      changed = true;
+    }
+  }
+
+  if (changed) {
+    RebuildInspectorStyleSheetText(inspector_style_sheet);
+  }
+}
+
+base::String GetCSSVariableValueForDevTool(
+    AttributeHolder* holder, const base::String& key,
+    const CSSVariableSnapshot* variable_snapshot) {
+  while (holder != nullptr) {
+    const auto& js_variables = holder->css_variable_from_js();
+    if (auto it = js_variables.find(key); it != js_variables.end()) {
+      return it->second;
+    }
+
+    if (variable_snapshot != nullptr) {
+      const auto snapshot_it = variable_snapshot->find(holder);
+      if (snapshot_it != variable_snapshot->end()) {
+        if (auto it = snapshot_it->second.find(key);
+            it != snapshot_it->second.end()) {
+          return it->second;
+        }
+        holder = static_cast<AttributeHolder*>(holder->HolderParent());
+        continue;
+      }
+    }
+
+    {
+      const auto& matched_variables = holder->css_variables_map();
+      if (auto it = matched_variables.find(key);
+          it != matched_variables.end()) {
+        return it->second;
+      }
+    }
+    holder = static_cast<AttributeHolder*>(holder->HolderParent());
+  }
+  return base::String();
+}
+
+void ResolveCSSVariablesForDevTool(
+    Element* element, StyleMap& styles,
+    const CSSVariableSnapshot* variable_snapshot) {
+  auto* holder = element->data_model();
+  if (holder == nullptr) {
+    return;
+  }
+
+  lynx::tasm::CustomPropertiesMap custom_properties;
+  std::function<void(const lynx::tasm::CSSValue&)> collect_dependencies;
+  collect_dependencies = [&](const lynx::tasm::CSSValue& css_value) {
+    lynx::tasm::CustomPropertiesMap empty_properties;
+    lynx::tasm::CSSValue::Substitution(
+        css_value, empty_properties, 10,
+        [&](const base::String& name, const base::String&) {
+          if (custom_properties.find(name) != custom_properties.end()) {
+            return;
+          }
+          auto raw_value =
+              GetCSSVariableValueForDevTool(holder, name, variable_snapshot);
+          if (raw_value.empty()) {
+            return;
+          }
+          lynx::tasm::CSSParserConfigs variable_configs;
+          lynx::tasm::CSSStringParser parser{
+              raw_value.c_str(), static_cast<uint32_t>(raw_value.length()),
+              variable_configs};
+          auto parsed_value = parser.ParseVariable();
+          if (!parser.HasMetVarToken()) {
+            parsed_value = lynx::tasm::CSSValue(
+                raw_value, lynx::tasm::CSSValuePattern::STRING,
+                lynx::tasm::CSSValueType::DEFAULT);
+          }
+          auto [it, inserted] =
+              custom_properties.insert_or_assign(name, std::move(parsed_value));
+          if (inserted && it->second.IsVariable()) {
+            collect_dependencies(it->second);
+          }
+        });
+  };
+
+  for (const auto& [_, value] : styles) {
+    if (value.IsVariable()) {
+      collect_dependencies(value);
+    }
+  }
+
+  auto record_dependency = [holder](const base::String& name,
+                                    const base::String& value) {
+    holder->AddCSSVariableRelated(name, value);
+  };
+  lynx::tasm::CSSValue::SubstituteAll(custom_properties, 10, record_dependency);
+  StyleMap resolved_styles;
+  resolved_styles.reserve(styles.size());
+  const auto& configs = element->element_manager()->GetCSSParserConfigs();
+  for (const auto& [id, value] : styles) {
+    if (value.IsVariable()) {
+      auto resolved = lynx::tasm::CSSValue::SubstitutionResolved(
+          value, custom_properties, record_dependency);
+      lynx::tasm::UnitHandler::Process(id, Value(std::move(resolved)),
+                                       resolved_styles, configs);
+    } else {
+      resolved_styles.insert_or_assign(id, value);
+    }
+  }
+  styles = std::move(resolved_styles);
 }
 
 }  // namespace
@@ -516,7 +779,8 @@ Element* ElementInspector::GetChildElementForComponentRemoveView(
   return nullptr;
 }
 
-void ElementInspector::Flush(Element* element) {
+void ElementInspector::Flush(Element* element,
+                             const CSSVariableSnapshot* variable_snapshot) {
   if (HasDataModel(element)) {
     auto* inspector_attribute = element->inspector_attribute();
     CHECK_NULL_AND_LOG_RETURN(inspector_attribute,
@@ -542,25 +806,30 @@ void ElementInspector::Flush(Element* element) {
       const std::vector<InspectorStyleSheet>& match_rules =
           GetMatchedStyleSheet(element);
       for (const auto& style : match_rules) {
-        SetPropsAccordingToStyleSheet(element, style);
+        SetPropsAccordingToStyleSheet(element, style, variable_snapshot);
       }
     } else {
-      SetPropsAccordingToStyleSheet(element, GetStyleSheetByName(element, "*"));
+      SetPropsAccordingToStyleSheet(element, GetStyleSheetByName(element, "*"),
+                                    variable_snapshot);
       SetPropsAccordingToStyleSheet(
-          element, GetStyleSheetByName(element, SelectorTag(element)));
+          element, GetStyleSheetByName(element, SelectorTag(element)),
+          variable_snapshot);
       for (const auto& name : inspector_attribute->class_order_) {
-        SetPropsAccordingToStyleSheet(element,
-                                      GetStyleSheetByName(element, name));
-        SetPropsForCascadedStyleSheet(element, name);
+        SetPropsAccordingToStyleSheet(
+            element, GetStyleSheetByName(element, name), variable_snapshot);
+        SetPropsForCascadedStyleSheet(element, name, variable_snapshot);
       }
       if (!SelectorId(element).empty()) {
         SetPropsAccordingToStyleSheet(
-            element, GetStyleSheetByName(element, SelectorId(element)));
-        SetPropsForCascadedStyleSheet(element, SelectorId(element));
+            element, GetStyleSheetByName(element, SelectorId(element)),
+            variable_snapshot);
+        SetPropsForCascadedStyleSheet(element, SelectorId(element),
+                                      variable_snapshot);
       }
     }
 
-    SetPropsAccordingToStyleSheet(element, GetInlineStyleSheet(element));
+    SetPropsAccordingToStyleSheet(element, GetInlineStyleSheet(element),
+                                  variable_snapshot);
 
     // Need to call OnPatchFinish() since some css styles will be updated there
     // e.g. margin calculation may rely on font-size configuration
@@ -603,23 +872,42 @@ void ElementInspector::SetStyleRoot(const any& data) {
 }
 
 std::unordered_map<std::string, std::string> ElementInspector::GetCssByStyleMap(
-    Element* element, const StyleMap& style_map) {
+    Element* element, const StyleMap& style_map,
+    const CSSVariableSnapshot* variable_snapshot) {
   std::unordered_map<std::string, std::string> res;
   for (const auto& pair : style_map) {
     const auto& name = lynx::tasm::CSSProperty::GetPropertyName(pair.first);
 
     if (pair.second.GetValueType() == lynx::tasm::CSSValueType::VARIABLE) {
       String property;
+      if (element != nullptr && pair.second.NeedsVariableResolution()) {
+        // DevTool overrides are written to AttributeHolder before the next
+        // style flush. Resolve from there so the protocol does not expose stale
+        // ComputedCSSStyle values in that interval.
+        StyleMap variable_style;
+        variable_style.insert_or_assign(pair.first, pair.second);
+        ResolveCSSVariablesForDevTool(element, variable_style,
+                                      variable_snapshot);
+        auto resolved = variable_style.find(pair.first);
+        if (resolved != variable_style.end()) {
+          auto resolved_value = lynx::tasm::CSSDecoder::CSSValueToString(
+              pair.first, resolved->second);
+          if (!resolved_value.empty()) {
+            res[name.str()] = std::move(resolved_value);
+            continue;
+          }
+        }
+      }
       if (element != nullptr && element->element_manager() != nullptr &&
           element->element_manager()->EnableNewStylingPipeline()) {
         // New styling pipeline: resolved custom properties live in
         // ComputedCSSStyle, not AttributeHolder.
         const lynx::tasm::CustomPropertiesMap* custom_properties = nullptr;
-        if (element->base_css_style() != nullptr) {
-          custom_properties = element->base_css_style()->GetCustomProperties();
-        } else if (element->computed_css_style() != nullptr) {
+        if (element->computed_css_style() != nullptr) {
           custom_properties =
               element->computed_css_style()->GetCustomProperties();
+        } else if (element->base_css_style() != nullptr) {
+          custom_properties = element->base_css_style()->GetCustomProperties();
         }
         if (custom_properties != nullptr) {
           property = lynx::tasm::CSSValue::SubstitutionResolved(
@@ -628,7 +916,7 @@ std::unordered_map<std::string, std::string> ElementInspector::GetCssByStyleMap(
           property = pair.second.GetDefaultValue();
         }
       } else {
-        // Legacy pipeline: use AttributeHolder's css_variables_.
+        // Legacy {{...}} variable syntax.
         Value value_expr = pair.second.GetValue();
         property = pair.second.GetDefaultValue();
         auto default_value_map = pair.second.GetDefaultValueMapOpt();
@@ -677,11 +965,41 @@ ElementInspector::GetCSSByParseToken(Element* element,
   CHECK_NULL_AND_LOG_RETURN_VALUE(token, "token is null", res);
   const StyleMap& style_map = token->GetAttributes();
   res = GetCssByStyleMap(element, style_map);
+  for (const auto& [id, value] : style_map) {
+    if (value.IsVariable()) {
+      res[CSSProperty::GetPropertyName(id).str()] =
+          GetAuthoredVariableValue(value);
+    }
+  }
   const CSSVariableMap& css_variable_map = token->GetStyleVariables();
   std::unordered_map<std::string, std::string> css_variable =
       GetCssVariableByMap(css_variable_map);
   res.insert(css_variable.begin(), css_variable.end());
   return res;
+}
+
+InspectorStyleSheet ElementInspector::ResolveStyleSheetForComputedStyle(
+    Element* element, const InspectorStyleSheet& inspector_style_sheet) {
+  InspectorStyleSheet resolved_style_sheet = inspector_style_sheet;
+  auto source_token =
+      GetStyleSheetSourceToken(StyleRoot(element), inspector_style_sheet);
+  if (source_token == nullptr) {
+    return resolved_style_sheet;
+  }
+
+  const auto resolved_properties =
+      GetCssByStyleMap(element, source_token->GetAttributes());
+  for (const auto& [name, value] : resolved_properties) {
+    auto range = resolved_style_sheet.css_properties_.equal_range(name);
+    for (auto it = range.first; it != range.second; ++it) {
+      auto& property = it->second;
+      if (!property.disabled_ && property.parsed_ok_) {
+        property.value_ = value;
+        break;
+      }
+    }
+  }
+  return resolved_style_sheet;
 }
 
 std::vector<lynx::devtool::InspectorStyleSheet>
@@ -782,6 +1100,7 @@ ElementInspector::GetMatchedStyleSheet(Element* element) {
               }
               RecordStyleSheetSourceToken(style_root, field, matched_token);
             }
+            NormalizeAuthoredVariableProperties(matched_token.get(), &field);
             if (auto media_it = token_media_map.find(matched_token.get());
                 media_it != token_media_map.end()) {
               field.media_text_ = media_it->second.text;
@@ -881,13 +1200,16 @@ lynx::devtool::InspectorStyleSheet ElementInspector::GetStyleSheetByName(
       for (auto iter = range.first; iter != range.second; ++iter) {
         auto source_token = GetStyleSheetSourceToken(style_root, iter->second);
         if (source_token != nullptr && source_token.get() == token.get()) {
-          return iter->second;
+          res = iter->second;
+          NormalizeAuthoredVariableProperties(token.get(), &res);
+          return res;
         }
       }
     }
     res = map.find(name)->second;
     if (token != nullptr && map.count(name) == 1) {
       RecordStyleSheetSourceToken(style_root, res, token);
+      NormalizeAuthoredVariableProperties(token.get(), &res);
     }
   } else {
     std::unordered_map<std::string, std::string> css =
@@ -1174,7 +1496,8 @@ ElementInspector::GetEventMapFromAttributeHolder(Element* element) {
 }
 
 void ElementInspector::SetPropsAccordingToStyleSheet(
-    Element* element, const lynx::devtool::InspectorStyleSheet& style_sheet) {
+    Element* element, const lynx::devtool::InspectorStyleSheet& style_sheet,
+    const CSSVariableSnapshot* variable_snapshot) {
   CHECK_NULL_AND_LOG_RETURN(element, "element is null");
   auto* element_manager = element->element_manager();
   CHECK_NULL_AND_LOG_RETURN(element_manager, "element_manager is null");
@@ -1182,24 +1505,43 @@ void ElementInspector::SetPropsAccordingToStyleSheet(
   auto configs = element_manager->GetCSSParserConfigs();
   styles.reserve(style_sheet.css_properties_.size());
   for (const auto& pair : style_sheet.css_properties_) {
-    if (pair.second.parsed_ok_ && !pair.second.disabled_) {
-      auto id = CSSProperty::GetPropertyID(pair.second.name_);
-      lynx::tasm::UnitHandler::Process(id, Value(pair.second.value_), styles,
+    const auto& property = pair.second;
+    if (!property.parsed_ok_ || property.disabled_ ||
+        CSSProperty::IsCustomProperty(
+            property.name_.c_str(),
+            static_cast<uint32_t>(property.name_.length()))) {
+      continue;
+    }
+    auto id = CSSProperty::GetPropertyID(property.name_);
+    lynx::tasm::CSSParserConfigs variable_configs;
+    lynx::tasm::CSSStringParser parser{
+        property.value_.c_str(),
+        static_cast<uint32_t>(property.value_.length()), variable_configs};
+    auto css_value = parser.ParseVariable();
+    if (parser.HasMetVarToken()) {
+      styles.insert_or_assign(id, std::move(css_value));
+    } else {
+      lynx::tasm::UnitHandler::Process(id, Value(property.value_), styles,
                                        configs);
     }
+  }
+  if (element->data_model() != nullptr) {
+    ResolveCSSVariablesForDevTool(element, styles, variable_snapshot);
   }
   element->ConsumeStyle(styles);
 }
 
-void ElementInspector::SetPropsForCascadedStyleSheet(Element* element,
-                                                     const std::string& rule) {
+void ElementInspector::SetPropsForCascadedStyleSheet(
+    Element* element, const std::string& rule,
+    const CSSVariableSnapshot* variable_snapshot) {
   if (IsStyleRootHasCascadeStyle(element)) {
     Element* parent = element->parent();
     while (parent) {
       for (const auto& parent_name : ClassOrder(parent)) {
         auto style_sheet = GetStyleSheetByName(element, rule + parent_name);
         if (!style_sheet.empty) {
-          SetPropsAccordingToStyleSheet(element, style_sheet);
+          SetPropsAccordingToStyleSheet(element, style_sheet,
+                                        variable_snapshot);
         }
       }
       parent = parent->parent();
@@ -1211,7 +1553,8 @@ void ElementInspector::SetPropsForCascadedStyleSheet(Element* element,
         auto style_sheet =
             GetStyleSheetByName(element, rule + SelectorId(parent));
         if (!style_sheet.empty) {
-          SetPropsAccordingToStyleSheet(element, style_sheet);
+          SetPropsAccordingToStyleSheet(element, style_sheet,
+                                        variable_snapshot);
         }
       }
       parent = parent->parent();

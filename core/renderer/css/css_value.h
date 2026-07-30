@@ -206,6 +206,12 @@ class LYNX_EXPORT_FOR_DEVTOOL CSSValue {
   }
 
   void SetVarReferences(base::Vector<VarReference> var_references);
+  const base::Vector<VarReference>* GetVarReferences() const {
+    if (!optionals_.HasValue<VarReferenceField>()) {
+      return nullptr;
+    }
+    return &optionals_.Get<VarReferenceField>();
+  }
   bool NeedsVariableResolution() const { return needs_variable_resolution_; }
 
   bool IsVariable() const { return is_variable_; }

@@ -483,28 +483,27 @@ ComputedStyleMap BuildComputedStyleMap(tasm::Element* ptr) {
     const std::vector<InspectorStyleSheet>& match_rules =
         ElementInspector::GetMatchedStyleSheet(ptr);
     for (const InspectorStyleSheet& match : match_rules) {
-      ReplaceDefaultComputedStyle(dict, match.css_properties_);
+      ReplaceDefaultComputedStyle(
+          dict, ElementInspector::ResolveStyleSheetForComputedStyle(ptr, match)
+                    .css_properties_);
     }
   } else {
-    ReplaceDefaultComputedStyle(
-        dict, ElementInspector::GetStyleSheetByName(ptr, "*").css_properties_);
-    ReplaceDefaultComputedStyle(
-        dict,
-        ElementInspector::GetStyleSheetByName(ptr, "body *").css_properties_);
+    auto replace_rule = [ptr, &dict](const InspectorStyleSheet& style_sheet) {
+      ReplaceDefaultComputedStyle(
+          dict,
+          ElementInspector::ResolveStyleSheetForComputedStyle(ptr, style_sheet)
+              .css_properties_);
+    };
+    replace_rule(ElementInspector::GetStyleSheetByName(ptr, "*"));
+    replace_rule(ElementInspector::GetStyleSheetByName(ptr, "body *"));
     for (size_t i = 0; i < ElementInspector::ClassOrder(ptr).size(); ++i) {
-      ReplaceDefaultComputedStyle(dict,
-                                  ElementInspector::GetStyleSheetByName(
-                                      ptr, ElementInspector::ClassOrder(ptr)[i])
-                                      .css_properties_);
+      replace_rule(ElementInspector::GetStyleSheetByName(
+          ptr, ElementInspector::ClassOrder(ptr)[i]));
     }
-    ReplaceDefaultComputedStyle(dict,
-                                ElementInspector::GetStyleSheetByName(
-                                    ptr, ElementInspector::SelectorId(ptr))
-                                    .css_properties_);
-    ReplaceDefaultComputedStyle(dict,
-                                ElementInspector::GetStyleSheetByName(
-                                    ptr, ElementInspector::SelectorTag(ptr))
-                                    .css_properties_);
+    replace_rule(ElementInspector::GetStyleSheetByName(
+        ptr, ElementInspector::SelectorId(ptr)));
+    replace_rule(ElementInspector::GetStyleSheetByName(
+        ptr, ElementInspector::SelectorTag(ptr)));
   }
   ReplaceDefaultComputedStyle(
       dict, ElementInspector::GetInlineStyleSheet(ptr).css_properties_);

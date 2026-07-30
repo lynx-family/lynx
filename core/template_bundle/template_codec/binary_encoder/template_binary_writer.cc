@@ -16,6 +16,7 @@
 #include <map>
 #include <memory>
 #include <set>
+#include <string_view>
 #include <unordered_map>
 #include <utility>
 
@@ -341,7 +342,10 @@ void TemplateBinaryWriter::EncodeCustomSection() {
         start = end;
       },
       [](const auto& left, const auto& right) {
-        return left.name.GetString() < right.name.GetString();
+        return std::string_view(left.name.GetString(),
+                                left.name.GetStringLength()) <
+               std::string_view(right.name.GetString(),
+                                right.name.GetStringLength());
       });
 
   start = stream()->size();

@@ -1469,6 +1469,9 @@ class Element : public lepus::RefCounted,
    */
   void UpdateCSSVariable(const lepus::Value& variables,
                          std::shared_ptr<PipelineOptions>& pipeline_option);
+  // The caller batches the pipeline flush after updating all matched elements.
+  LYNX_EXPORT_FOR_DEVTOOL void UpdateMatchedCSSVariablesForDevTool(
+      CSSVariableMap variables);
 
   /**
    * Element API for removing all inline styles.

@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <array>
 #include <deque>
+#include <functional>
 #include <memory>
 #include <stack>
 #include <string>
@@ -4053,6 +4054,7 @@ void Element::RecursivelyMarkChildrenCSSVariableDirty(
 void Element::RecursivelyMarkCustomPropertiesDirty() {
   for (const auto &child : scoped_children_) {
     if (!child->is_raw_text()) {
+      child->MarkCustomPropertiesDirty();
       child->MarkStyleDirty(false);
     }
     child->RecursivelyMarkCustomPropertiesDirty();
@@ -4397,6 +4399,40 @@ void Element::UpdateCSSVariable(
   } else {
     element_manager()->OnPatchFinish(pipeline_option, this);
   }
+}
+
+void Element::UpdateMatchedCSSVariablesForDevTool(CSSVariableMap variables) {
+  const bool has_matched_variables = !variables.empty();
+  CSSVariableMap changed_variables;
+  data_model()->UpdateCSSVariable(std::move(variables), &changed_variables);
+  for (const auto &related_variable : data_model()->css_variable_related()) {
+    const auto &name = related_variable.first;
+    if (changed_variables.find(name) != changed_variables.end()) {
+      continue;
+    }
+    auto current = data_model()->css_variables_map().find(name);
+    changed_variables.insert_or_assign(
+        name, current == data_model()->css_variables_map().end()
+                  ? base::String()
+                  : current->second);
+  }
+  if (changed_variables.empty() && !has_matched_variables) {
+    return;
+  }
+
+  const auto &invalidated_variables = changed_variables.empty()
+                                          ? data_model()->css_variables_map()
+                                          : changed_variables;
+  auto table = lepus::Dictionary::Create();
+  for (const auto &[name, value] : invalidated_variables) {
+    table->SetValue(name, value);
+  }
+  auto css_variable_updated = lepus::Value(std::move(table));
+
+  MarkCustomPropertiesDirty();
+  MarkRefreshCSSStyles();
+  RecursivelyMarkChildrenCSSVariableDirty(css_variable_updated);
+  RecursivelyMarkCustomPropertiesDirty();
 }
 
 void Element::SetFontSize(const tasm::CSSValue &value) {
