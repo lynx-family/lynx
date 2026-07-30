@@ -7,15 +7,23 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
+typedef NS_ENUM(NSInteger, LynxDevToolPointerEventType) {
+  LynxDevToolPointerEventTypeDown,
+  LynxDevToolPointerEventTypeMove,
+  LynxDevToolPointerEventTypeUp,
+  LynxDevToolPointerEventTypeCancel,
+  LynxDevToolPointerEventTypeScroll,
+};
+
 @interface LynxEmulateTouchHelper : NSObject
 
 @property(nonatomic, weak) LynxView *lynxView;
 @property(nonatomic, assign) Boolean mouseWheelFlag;
 @property(nonatomic, assign) CGPoint last;
-@property(nonatomic, copy) dispatch_block_t task;
+@property(nonatomic, copy, nullable) dispatch_block_t task;
 @property(nonatomic, assign) int deltaScale;
-@property(nonatomic, strong) UITouch *touch;
-@property(nonatomic, strong) UIEvent *event;
+@property(nonatomic, strong, nullable) UITouch *touch;
+@property(nonatomic, strong, nullable) UIEvent *event;
 
 - (nonnull instancetype)initWithLynxView:(LynxView *)view;
 
@@ -30,6 +38,17 @@ NS_ASSUME_NONNULL_BEGIN
       screenshotMode:(NSString *)screenshotMode;
 
 - (void)attachLynxView:(nonnull LynxView *)lynxView;
+@end
+
+@interface LynxEmulateTouchHelper (PointerEventInjection)
+
+- (BOOL)injectPointerEvent:(LynxDevToolPointerEventType)type
+               coordinateX:(CGFloat)x
+               coordinateY:(CGFloat)y
+                    deltaX:(CGFloat)dx
+                    deltaY:(CGFloat)dy
+            screenshotMode:(NSString *)screenshotMode;
+
 @end
 
 NS_ASSUME_NONNULL_END
