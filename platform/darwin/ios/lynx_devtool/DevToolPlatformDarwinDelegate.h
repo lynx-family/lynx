@@ -9,6 +9,7 @@
 #import <Lynx/LynxView+Internal.h>
 
 #include "devtool/lynx_devtool/agent/devtool_platform_facade.h"
+#include "devtool/lynx_devtool/agent/input/input_event.h"
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -97,6 +98,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (void)emulateTouch:(std::shared_ptr<lynx::devtool::MouseEvent>)input;
 - (void)insertText:(nullable NSString *)text;
+- (BOOL)injectPointerEvent:(const lynx::input::PointerEvent &)event;
 - (void)emulateTouch:(nonnull NSString *)type
          coordinateX:(int)x
          coordinateY:(int)y
