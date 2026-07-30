@@ -111,6 +111,7 @@ std::unique_ptr<SurfaceFrame> GPUSurfaceGLSkity::AcquireFrame(
 
   SurfaceFrame::FramebufferInfo framebuffer_info;
 
+  const auto root_surface_transformation = GetRootTransformation();
   std::shared_ptr<skity::GPUSurface> gpu_surface = AcquireRenderSurface(size);
 
   SurfaceFrame::EncodeCallback encode_callback =
@@ -139,6 +140,9 @@ std::unique_ptr<SurfaceFrame> GPUSurfaceGLSkity::AcquireFrame(
   auto frame = std::make_unique<SurfaceFrame>(
       std::shared_ptr<skity::GPUSurface>(gpu_surface), framebuffer_info,
       encode_callback, submit_callback, size, std::move(context_switch));
+  if (auto* canvas = frame->GetCanvas()) {
+    canvas->SetMatrix(root_surface_transformation);
+  }
 
   frame->SetPreparedCallback(
       [weak = weak_factory_.GetWeakPtr()](std::optional<skity::Rect> damage) {

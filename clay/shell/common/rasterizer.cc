@@ -413,8 +413,7 @@ RasterStatus Rasterizer::DrawToSurfaceUnsafe(
 
     std::unique_ptr<FrameDamage> damage;
     if (frame->framebuffer_info().supports_partial_repaint) {
-      // FIXME(haoyoufeng.aji) : partial repaint with platform view present
-      bool force_full_repaint = true;
+      bool force_full_repaint = layer_tree.HasPlatformViewLayer();
 
       damage = std::make_unique<FrameDamage>();
       if (frame->framebuffer_info().existing_damage && !force_full_repaint) {

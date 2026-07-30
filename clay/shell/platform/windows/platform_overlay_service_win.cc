@@ -16,6 +16,17 @@
 #include "clay/shell/platform/windows/egl/manager.h"
 
 namespace clay {
+namespace {
+
+clay::Rect RoundOutDamageRect(const skity::Rect& damage_rect) {
+  int left = static_cast<int>(std::floor(damage_rect.Left()));
+  int top = static_cast<int>(std::floor(damage_rect.Top()));
+  int right = static_cast<int>(std::ceil(damage_rect.Right()));
+  int bottom = static_cast<int>(std::ceil(damage_rect.Bottom()));
+  return {left, top, right - left, bottom - top};
+}
+
+}  // namespace
 
 PlatformOverlayWin::PlatformOverlayWin(
     FlutterWindowsEngine* engine,
@@ -81,11 +92,11 @@ void PlatformOverlayWin::PrepareSurface(const OverlayData& data) {
 
 std::unique_ptr<GLContextResult> PlatformOverlayWin::GLContextMakeCurrent() {
   auto view = manager_->GetView(view_id_.load());
-  if (!view) {
+  auto* overlay_view = view ? view->GetView() : nullptr;
+  if (!overlay_view) {
     return std::make_unique<GLContextDefaultResult>(false);
   }
-  return std::make_unique<GLContextDefaultResult>(
-      view->GetView()->MakeCurrent());
+  return std::make_unique<GLContextDefaultResult>(overlay_view->MakeCurrent());
 }
 
 bool PlatformOverlayWin::GLContextClearCurrent() {
@@ -98,34 +109,43 @@ bool PlatformOverlayWin::GLContextClearCurrent() {
 void PlatformOverlayWin::GLContextSetDamageRegion(
     const std::optional<skity::Rect>& region) {
   auto view = manager_->GetView(view_id_.load());
-  if (!region.has_value() || !view) {
+  auto* overlay_view = view ? view->GetView() : nullptr;
+  if (!region.has_value() || !overlay_view) {
     return;
   }
-  skity::Rect damage_rect = region.value();
-  int left = static_cast<int>(std::floor(damage_rect.Left()));
-  int top = static_cast<int>(std::floor(damage_rect.Top()));
-  int right = static_cast<int>(std::ceil(damage_rect.Right()));
-  int bottom = static_cast<int>(std::ceil(damage_rect.Bottom()));
-  view->GetView()->SetDamageRegion({left, top, right - left, bottom - top});
+  overlay_view->SetDamageRegion(RoundOutDamageRect(*region));
 }
 
 bool PlatformOverlayWin::GLContextPresent(const GLPresentInfo& present_info) {
   auto view = manager_->GetView(view_id_.load());
-  if (view) {
-    return view->GetView()->SwapBuffers();
+  auto* overlay_view = view ? view->GetView() : nullptr;
+  if (overlay_view) {
+    if (present_info.frame_damage.has_value()) {
+      overlay_view->SetPresentDamageRegion(
+          RoundOutDamageRect(*present_info.frame_damage));
+    }
+    return overlay_view->SwapBuffers();
   }
   return false;
 }
 
 GLFBOInfo PlatformOverlayWin::GLContextFBO(GLFrameInfo frame_info) const {
   auto view = manager_->GetView(view_id_.load());
-  if (!view) {
+  auto* overlay_view = view ? view->GetView() : nullptr;
+  if (!overlay_view) {
     return {.fbo_id = kWindowFrameBufferID, .existing_damage = std::nullopt};
   }
-  auto damage_rect = view->GetView()->GetDamageRegion();
-  return {.fbo_id = view->GetView()->GetFrameBufferId(frame_info.width,
-                                                      frame_info.height),
+  auto damage_rect = overlay_view->GetDamageRegion();
+  return {.fbo_id = overlay_view->GetFrameBufferId(frame_info.width,
+                                                   frame_info.height),
           .existing_damage = damage_rect};
+}
+
+skity::Matrix PlatformOverlayWin::GLContextSurfaceTransformation() const {
+  auto view = manager_->GetView(view_id_.load());
+  auto* overlay_view = view ? view->GetView() : nullptr;
+  return overlay_view ? overlay_view->GetSurfaceTransformation()
+                      : skity::Matrix();
 }
 
 void PlatformOverlayWin::DisplayOverlaySurface(int x, int y, int width,
