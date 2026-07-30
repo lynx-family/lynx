@@ -141,6 +141,8 @@ class EventDispatcher {
 
   void InitTouchEnv(const ArkUI_UIInputEvent* event);
 
+  void RetainTextEventTargetRoot(EventTarget* target);
+
   void ResetTouchEnv(const ArkUI_UIInputEvent* event);
 
   EmulatedTouchPoint CreateEmulatedTouchPoint(int x, int y);
@@ -295,6 +297,11 @@ class EventDispatcher {
   std::weak_ptr<EventTarget> first_active_target_;
   std::weak_ptr<EventTarget> focused_target_;
   std::unordered_map<int, EventTargetDetail> active_target_finger_map_;
+  // TextEventTarget is owned by ParagraphHarmony instead of UIOwner. Retain
+  // each hit target's text root for the current touch sequence so paragraph
+  // rebuilds do not invalidate touch, pseudo, or click targets.
+  std::unordered_map<EventTarget*, std::shared_ptr<EventTarget>>
+      retained_text_event_targets_;
   std::vector<std::weak_ptr<EventTarget>> event_target_chain_;
   std::deque<std::weak_ptr<EventTarget>> click_target_chain_;
   std::unordered_set<int> gesture_recognized_target_set_;
