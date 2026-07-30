@@ -5,6 +5,9 @@
 #ifndef PLATFORM_EMBEDDER_LYNX_RECORDER_TEST_BENCH_ACTION_MANAGER_H_
 #define PLATFORM_EMBEDDER_LYNX_RECORDER_TEST_BENCH_ACTION_MANAGER_H_
 
+#include <atomic>
+#include <cstdint>
+#include <functional>
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -25,17 +28,23 @@ typedef struct ReplayAction {
   int64_t interval;
 } ReplayAction;
 
-using ResizeCallback = std::function<void(int width, int height)>;
+using ResizeCallback = std::function<void(double width, double height)>;
 using FetchCallback = std::function<void(
     const std::string& url, std::function<void(const std::string& result)>)>;
+using ReplayTaskScheduler =
+    std::function<void(std::function<void()> task, int64_t delay_ms)>;
+using ReplayCompleteCallback = std::function<void()>;
 
-class TestBenchActionManager {
+class TestBenchActionManager
+    : public std::enable_shared_from_this<TestBenchActionManager> {
  public:
   TestBenchActionManager(std::shared_ptr<lynx::pub::LynxView> view,
                          ResizeCallback resize_callback);
   ~TestBenchActionManager() = default;
 
   void SetFetchCallback(FetchCallback fetch_callback);
+  void SetTaskScheduler(ReplayTaskScheduler task_scheduler);
+  void SetReplayCompleteCallback(ReplayCompleteCallback complete_callback);
 
   void StartWithUrl(const std::string& url);
 
@@ -46,6 +55,8 @@ class TestBenchActionManager {
   void HandleRecordFileData(const std::string& result);
   bool CheckFile(const rapidjson::Value& action_list);
   void HandleActionList(const rapidjson::Value& action_list);
+  void DispatchAction(const ReplayAction& action, uint64_t replay_generation);
+  void DispatchReplayComplete(int64_t delay_ms, uint64_t replay_generation);
   void DoAction(const ReplayAction& action);
 
   // action function
@@ -66,8 +77,11 @@ class TestBenchActionManager {
   std::shared_ptr<lynx::pub::LynxView> lynx_view_;
   ResizeCallback resize_callback_;
   FetchCallback fetch_callback_;
+  ReplayTaskScheduler task_scheduler_;
+  ReplayCompleteCallback replay_complete_callback_;
   std::unique_ptr<embedder::TestBenchReplayConfig> replay_config_;
   std::shared_ptr<TestBenchReplayDataModule> data_module_;
+  std::atomic<uint64_t> replay_generation_{0};
 
   std::string preloaded_source_;
   std::string component_list_;

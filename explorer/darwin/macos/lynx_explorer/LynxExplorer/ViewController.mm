@@ -327,8 +327,9 @@ std::vector<uint8_t> ConvertNSBinary(NSData *binary) {
 #if ENABLE_TESTBENCH_REPLAY
   if (_isTestBenchReplay) {
     _testBenchActionManager = std::make_shared<lynx::embedder::TestBenchActionManager>(
-        _lynxView,
-        [self](int width, int height) { [self.view setFrame:NSMakeRect(0, 0, width, height)]; });
+        _lynxView, [self](double width, double height) {
+          [self.view setFrame:NSMakeRect(0, 0, width, height)];
+        });
     _testBenchActionManager->SetFetchCallback(
         [](const std::string &url_str, std::function<void(const std::string &result)> callback) {
           NSString *ns_string = [NSString stringWithUTF8String:url_str.c_str()];
