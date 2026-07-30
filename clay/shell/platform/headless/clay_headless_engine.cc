@@ -63,6 +63,10 @@ bool ClayHeadlessEngine::RunEngine(
   if (icu_data_path) {
     settings.icu_data_path = icu_data_path;
   }
+  if (renderer_config) {
+    settings.enable_software_rendering =
+        renderer_config->type == kClayRendererTypeSoftware;
+  }
 
   ClayTaskRunnerDescription platform_task_runner = {};
   platform_task_runner.struct_size = sizeof(ClayTaskRunnerDescription);
