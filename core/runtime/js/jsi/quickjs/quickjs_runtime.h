@@ -33,6 +33,7 @@ class QuickjsRuntime : public Runtime, public JSIObserver {
   JSRuntimeType type() override { return JSRuntimeType::quickjs; }
 
   void InitRuntime(std::shared_ptr<JSIContext> sharedContext) override;
+  void BeforeDestroy() override;
   // Supress gc pause when the mode is true.
   void SetGCPauseSuppressionMode(bool mode) override;
   bool GetGCPauseSuppressionMode() override;
@@ -217,6 +218,8 @@ class QuickjsRuntime : public Runtime, public JSIObserver {
       cache::JsCacheErrorCode &error_code);
 
   bool IsJavaScriptBytecode(const std::shared_ptr<const Buffer> &buffer);
+
+  void DumpCoverage();
 
  private:
   std::shared_ptr<QuickjsRuntimeInstance> quickjs_runtime_wrapper_;

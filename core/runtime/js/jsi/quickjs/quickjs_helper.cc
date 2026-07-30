@@ -237,10 +237,9 @@ base::expected<Value, JSINativeException> QuickjsHelper::evalBuf(
 #endif
   LEPUSValue val;
   if (enable_js_coverage) {
-    // TODO: Replace this fallback with LEPUS_Eval2_WITH_COVERAGE after the
-    // PrimJS API lands.
-    val =
-        LEPUS_Eval2(ctx, buf, buf_len, filename, eval_flags, start_line_offset);
+    val = LEPUS_Eval_WITH_COVERAGE(ctx, buf, buf_len, filename, eval_flags,
+                                   start_line_offset,
+                                   static_cast<int32_t>(rt->getRuntimeId()));
   } else {
     val =
         LEPUS_Eval2(ctx, buf, buf_len, filename, eval_flags, start_line_offset);
