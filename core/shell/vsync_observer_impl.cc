@@ -13,9 +13,6 @@ void VSyncObserverImpl::RequestVSync() {
   if (has_pending_vsync_request_) {
     return;
   }
-  if (!runtime_actor_ || !vsync_monitor_) {
-    return;
-  }
   has_pending_vsync_request_ = true;
   vsync_monitor_->AsyncRequestVSync(
       [this](int64_t frame_start_time, int64_t frame_end_time) {

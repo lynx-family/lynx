@@ -39,9 +39,6 @@ JSProxyDarwin::JSProxyDarwin(const std::shared_ptr<LynxActor<BTSRuntime>>& actor
       js_group_thread_name_(js_group_thread_name) {}
 
 void JSProxyDarwin::RunOnJSThread(dispatch_block_t task) {
-  if (!actor_) {
-    return;
-  }
   actor_->Act([task](auto&) { task(); });
 }
 

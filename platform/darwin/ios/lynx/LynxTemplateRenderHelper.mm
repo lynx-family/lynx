@@ -196,19 +196,15 @@ bool HasNativePaintingCtxPlatformRef(lynx::tasm::PaintingCtxPlatformImpl* painti
   [_devTool onTemplateAssemblerCreated:(intptr_t)shell_.get()];
 
   // Runtime
-  std::shared_ptr<lynx::shell::JSProxyDarwin> js_proxy;
   if (_lynxViewGroup.logicExecutor == nil) {
-    [self setUpLynxContextWithLastInstanceId:lastInstanceId];
-    auto native_module_manager = [self setUpModuleManager];
-    if (_enableJSRuntime) {
-      [self setUpRuntimeWithModuleManager:native_module_manager];
-      const auto& actor = shell_->GetRuntimeActor();
-      auto runtime_instance_id = actor ? actor->GetInstanceId() : 0;
-      js_proxy = lynx::shell::JSProxyDarwin::Create(actor, self, runtime_instance_id,
-                                                    [_runtimeOptions groupThreadName]);
-      [_context setJSProxy:js_proxy];
-    }
+    [self setUpRuntimeWithLastInstanceId:lastInstanceId];
   }
+
+  const auto& actor = shell_->GetRuntimeActor();
+  auto runtime_instance_id = actor ? actor->GetInstanceId() : 0;
+  auto js_proxy = lynx::shell::JSProxyDarwin::Create(actor, self, runtime_instance_id,
+                                                     [_runtimeOptions groupThreadName]);
+  [_context setJSProxy:js_proxy];
 
   auto perf_proxy =
       std::make_shared<lynx::shell::PerfControllerProxyImpl>(shell_->GetPerfControllerActor());
@@ -256,9 +252,13 @@ bool HasNativePaintingCtxPlatformRef(lynx::tasm::PaintingCtxPlatformImpl* painti
                   }];
 }
 
-- (void)setUpRuntimeWithModuleManager:
-    (const std::shared_ptr<lynx::pub::LynxNativeModuleManager>&)native_module_manager {
+- (void)setUpRuntimeWithLastInstanceId:(int32_t)lastInstanceId {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, TEMPLATE_RENDER_SETUP_RUNTIME);
+
+  [self setUpLynxContextWithLastInstanceId:lastInstanceId];
+
+  auto native_module_manager = [self setUpModuleManager];
+
   // Attach runtime
   if (_runtime) {
     shell_->AttachRuntime();
@@ -397,11 +397,8 @@ bool HasNativePaintingCtxPlatformRef(lynx::tasm::PaintingCtxPlatformImpl* painti
       // Set modulefactory shared ptr to lynxviewgroup config
       [_lynxViewGroup.config setSharedModuleFactoryPtr:module_factory];
     }
-    if (!_enableJSRuntime) {
-      return nullptr;
-    }
     // Create NativeModuleManager related to platform call, JSModuleManager
-    // related to JS FFI (JSI, NAPI, Lepus) in BTSRuntime
+    // related to JS FFI (JSI, NAPI, Lepus) in LynxRuntime
     std::shared_ptr<lynx::pub::LynxNativeModuleManager> native_module_manager =
         std::make_shared<lynx::pub::LynxNativeModuleManager>();
     native_module_manager->SetPlatformModuleFactory(module_factory);
@@ -474,11 +471,8 @@ bool HasNativePaintingCtxPlatformRef(lynx::tasm::PaintingCtxPlatformImpl* painti
   [self setUpBuiltModuleWithFactory:module_factory.get()];
   [self setUpLepusModulesWithFactory:module_factory.get()];
 
-  if (!_enableJSRuntime) {
-    return nullptr;
-  }
   // Create NativeModuleManager related to platform call, JSModuleManager
-  // related to JS FFI (JSI, NAPI, Lepus) in BTSRuntime
+  // related to JS FFI (JSI, NAPI, Lepus) in LynxRuntime
   std::shared_ptr<lynx::pub::LynxNativeModuleManager> native_module_manager =
       std::make_shared<lynx::pub::LynxNativeModuleManager>();
   native_module_manager->SetPlatformModuleFactory(module_factory);
