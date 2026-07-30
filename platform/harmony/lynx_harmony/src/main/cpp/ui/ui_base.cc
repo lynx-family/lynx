@@ -37,6 +37,7 @@
 #include "platform/harmony/lynx_harmony/src/main/cpp/gesture/handler/base_gesture_handler.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/lynx_context.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/base/node_manager.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_frame.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_owner.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_root.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/utils/lynx_ui_helper.h"
@@ -361,6 +362,12 @@ void UIBase::SendLayoutChangeEvent() {
     ret->SetValue("width", result[2] - result[0]);
     ret->SetValue("height", result[3] - result[1]);
     ret->SetValue("dataset", dataset_);
+    // Only UIFrame needs extra layoutchange detail. Adding a virtual method to
+    // UIBase would increase binary size; use a type check until more subclasses
+    // share this need, at which point a virtual override is more appropriate.
+    if (tag_ == UIFrame::kTag) {
+      static_cast<UIFrame*>(this)->BuildLayoutChangeEventDetail(*ret);
+    }
     CustomEvent layout_change_event = {sign_, "layoutchange", "detail",
                                        lepus::Value(std::move(ret))};
     context_->SendEvent(layout_change_event);

@@ -9,6 +9,7 @@
 #include <node_api.h>
 
 #include <memory>
+#include <optional>
 #include <string>
 
 #include "base/include/value/base_value.h"
@@ -32,6 +33,7 @@ class UIFrame : public UIView {
 
   static napi_value OnHostReady(napi_env env, napi_callback_info info);
   static napi_value OnIntrinsicSizeChanged(napi_env env, napi_callback_info info);
+  static napi_value OnLoadMetrics(napi_env env, napi_callback_info info);
 
   void SetFrameAppBundle(std::shared_ptr<tasm::LynxTemplateBundle> bundle);
   void UpdateProps(PropBundleHarmony* props) override;
@@ -42,6 +44,8 @@ class UIFrame : public UIView {
 
   void HandleHostReady();
   void HandleIntrinsicSizeChanged(float width, float height);
+  void BuildLayoutChangeEventDetail(lepus::Dictionary& detail);
+  void HandleLoadMetrics(const lepus::Value& entry);
 
  private:
   struct FrameHostCreationResult {
@@ -57,9 +61,10 @@ class UIFrame : public UIView {
   void CreateFrameHost();
   void DisposeFrameHost();
   void TryLoadBundle();
-  void UpdateHostAutoSize();
+  void UpdateHostConfiguration();
   void UpdateHostViewport();
   void UpdateHostMetaDataIfNeeded();
+  std::optional<float> ParsePresetLength(const lepus::Value& value) const;
   bool CallHostMethod(const char* method, size_t argc, napi_value* argv,
                       napi_value* result = nullptr);
   napi_value CreateNativeFrameValue();
@@ -81,10 +86,15 @@ class UIFrame : public UIView {
   bool global_props_dirty_{false};
   bool auto_width_{false};
   bool auto_height_{false};
+  std::optional<float> preset_width_;
+  std::optional<float> preset_height_;
+  std::optional<bool> enable_multi_async_thread_;
   bool props_updated_{false};
   bool child_context_ready_{false};
   bool loaded_{false};
   bool destroyed_{false};
+  bool has_content_layout_{false};
+  bool has_intrinsic_size_{false};
   float content_width_{0.f};
   float content_height_{0.f};
   float intrinsic_width_{0.f};
