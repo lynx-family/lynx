@@ -718,5 +718,5 @@ The required coverage is:
 - A pending refresh is replayed after the current snapshot completes, without
   duplicating the marker outside the map.
 - Hybrid-composition overlay validation follows
-  `ios_hybrid_composition_spec.md`, including local drawable/view agreement and
-  wrapper placement and clipping.
+  `ios_hybrid_composition_spec.md`, including backing-surface/view size-policy
+  agreement and wrapper placement and clipping.
