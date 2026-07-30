@@ -81,4 +81,21 @@ TEST_F_UI(TextAreaNGViewTest, enableScrollBar) {
   EXPECT_EQ(text_area->editable_scroll_wrapper_->child_count(), 1u);
 }
 
+TEST_F_UI(TextAreaNGViewTest, invalidEditingRanges) {
+  TextAreaNGView *text_area = new TextAreaNGView(-1, page_.get());
+  page_->AddChild(text_area);
+  text_area->SetBound(0, 0, 200, 200);
+
+  text_area->editable_view_->UpdateEditingState(
+      "a\xf0\x9f\x98\x80g", TextSelection(99, 100, Affinity::kDownstream),
+      TextRange(1, 99), Affinity::kDownstream);
+
+  const auto &value = text_area->editable_view_->GetTextEditingValue();
+  EXPECT_EQ(value.GetU16Length(), 4u);
+  EXPECT_EQ(value.selection(), TextRange(4));
+  EXPECT_EQ(value.composing_range(), TextRange(0));
+  EXPECT_FALSE(value.composing());
+  Layout();
+}
+
 };  // namespace clay

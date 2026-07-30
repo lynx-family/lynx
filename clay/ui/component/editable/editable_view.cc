@@ -1541,8 +1541,11 @@ std::shared_ptr<TextSpan> EditableView::BuildTextSpan(TextStyle style) {
 #if defined(CLAY_ENABLE_TTTEXT)
   text_submit += u"\n";
 #endif
-  auto selection = text_editing_value.selection();
   auto composing = text_editing_value.composing_range();
+  if (composing.end() > text_editing_value.GetU16Length()) {
+    FML_DLOG(WARNING) << "Ignoring composing range outside editable text.";
+    return std::make_shared<TextSpan>(text_submit, style);
+  }
   std::vector<std::shared_ptr<TextSpan>> text_spans;
   text_spans.push_back(std::make_shared<TextSpan>(
       text_submit.substr(0, composing.start()), style));
