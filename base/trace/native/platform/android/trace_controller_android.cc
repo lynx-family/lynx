@@ -26,6 +26,7 @@ bool RegisterJNIForTraceController(JNIEnv* env) {
 }  // namespace lynxtrace
 
 static constexpr int kInvalidTraceSessionId = -1;
+static constexpr uint64_t kBytesPerKB = 1024;
 
 // static
 jlong CreateTraceController(JNIEnv* env, jobject jcaller) {
@@ -44,7 +45,8 @@ jlong CreateTraceController(JNIEnv* env, jobject jcaller) {
 jint StartTracing(JNIEnv* env, jobject jcaller, jlong ptr, jint buffer_size,
                   jobjectArray include_categories,
                   jobjectArray exclude_categories, jstring trace_file,
-                  jboolean enableSystrace, jboolean enableCompress) {
+                  jboolean enableSystrace, jboolean enableCompress,
+                  jboolean enableMemoryTrace, jboolean forceGC) {
   auto* controller = reinterpret_cast<lynx::trace::TraceController*>(ptr);
   if (controller) {
     auto trace_config = std::make_shared<lynx::trace::TraceConfig>();
@@ -57,9 +59,9 @@ jint StartTracing(JNIEnv* env, jobject jcaller, jlong ptr, jint buffer_size,
     trace_config->buffer_size = buffer_size;
     trace_config->enable_systrace = enableSystrace == JNI_TRUE;
     trace_config->enable_compress = enableCompress == JNI_TRUE;
-    int session_id = controller->StartTracing(trace_config);
-
-    return session_id;
+    trace_config->enable_memory_trace = enableMemoryTrace == JNI_TRUE;
+    trace_config->memory_trace_force_gc = forceGC == JNI_TRUE;
+    return controller->StartTracing(trace_config);
   }
   return kInvalidTraceSessionId;
 }
@@ -100,6 +102,24 @@ void TraceControllerDelegateAndroid::SetIsTracingStarted(
   JNIEnv* env = lynx::base::android::AttachCurrentThread();
   Java_TraceController_setIsTracingStarted(env, weak_owner_.Get(),
                                            is_tracing_started);
+}
+
+std::vector<std::string> TraceControllerDelegateAndroid::GetMemoryStats() {
+  JNIEnv* env = lynx::base::android::AttachCurrentThread();
+  auto ref = Java_TraceController_getMemoryStats(env, weak_owner_.Get());
+  auto raw_stats = lynx::base::android::JNIConvertHelper::
+      ConvertJavaStringArrayToStringVector(env, ref.Get());
+  std::vector<std::string> memory_stats;
+  for (size_t i = 0; i + 1 < raw_stats.size(); i += 2) {
+    if (raw_stats[i] == "summary.code" ||
+        raw_stats[i] == "summary.total-swap") {
+      continue;
+    }
+    memory_stats.emplace_back(raw_stats[i]);
+    memory_stats.emplace_back(
+        std::to_string(std::stoull(raw_stats[i + 1]) * kBytesPerKB));
+  }
+  return memory_stats;
 }
 
 }  // namespace trace

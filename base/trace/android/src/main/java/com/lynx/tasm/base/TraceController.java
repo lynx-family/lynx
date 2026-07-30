@@ -8,6 +8,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.Build;
+import android.os.Debug;
 import android.os.Environment;
 import android.os.Trace;
 import android.text.TextUtils;
@@ -49,6 +50,8 @@ public class TraceController {
   private static final String FILE_EXTRA = "file";
   private static final String BUFFER_SIZE_EXTRA = "buffer";
   private static final String ENABLE_COMPRESS = "enableCompress";
+  private static final String ENABLE_MEMORY_TRACE = "enableMemoryTrace";
+  private static final String FORCE_GC = "forceGC";
   private static final String TAG = "Lynx startup trace";
   private static final int DEFAULT_BUFFER_SIZE = 40960; // kb
 
@@ -98,7 +101,7 @@ public class TraceController {
   public String startTrace() {
     File file = getFile();
     String fileName = file.getPath();
-    startTracing(DEFAULT_BUFFER_SIZE, null, null, fileName, false, false);
+    startTracing(DEFAULT_BUFFER_SIZE, null, null, fileName, false, false, false, false);
     String logMessage = "Trace started at: " + fileName;
     Toast.makeText(mContext, logMessage, Toast.LENGTH_SHORT).show();
     Log.i(TAG, logMessage);
@@ -120,7 +123,7 @@ public class TraceController {
   public void startTracing(CompleteCallback callback, String config) {
     mCompleteCallbacks.add(callback);
     String traceFile = generateTracingFileName();
-    startTracing(DEFAULT_BUFFER_SIZE, null, null, traceFile, false, false);
+    startTracing(DEFAULT_BUFFER_SIZE, null, null, traceFile, false, false, false, false);
   }
 
   public void startTracing(CompleteCallback callback, Map<String, String> config) {
@@ -128,6 +131,8 @@ public class TraceController {
     String traceFile = generateTracingFileName();
     Boolean enableSystrace = false;
     Boolean enableCompress = false;
+    Boolean enableMemoryTrace = false;
+    Boolean forceGC = false;
     int bufferSize = DEFAULT_BUFFER_SIZE;
     if (config.containsKey("trace_file")) {
       traceFile = config.get("trace_file");
@@ -141,7 +146,14 @@ public class TraceController {
     if (config.containsKey("enable_compress")) {
       enableCompress = Boolean.parseBoolean(config.get("enable_compress"));
     }
-    startTracing(bufferSize, null, null, traceFile, enableSystrace, enableCompress);
+    if (config.containsKey("enable_memory_trace")) {
+      enableMemoryTrace = Boolean.parseBoolean(config.get("enable_memory_trace"));
+    }
+    if (config.containsKey("force_gc")) {
+      forceGC = Boolean.parseBoolean(config.get("force_gc"));
+    }
+    startTracing(bufferSize, null, null, traceFile, enableSystrace, enableCompress,
+        enableMemoryTrace, forceGC);
   }
 
   public void stopTracing() {
@@ -181,6 +193,32 @@ public class TraceController {
     return mContext.getExternalFilesDir(null).getPath();
   }
 
+  @CalledByNative
+  private String[] getMemoryStats() {
+    try {
+      Debug.MemoryInfo memoryInfo = new Debug.MemoryInfo();
+      Debug.getMemoryInfo(memoryInfo);
+
+      Map<String, String> stats;
+      String totalPssKey = "summary.total-pss";
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+        stats = memoryInfo.getMemoryStats();
+      } else {
+        stats = new HashMap<String, String>();
+        stats.put(totalPssKey, Integer.toString(memoryInfo.getTotalPss()));
+      }
+      List<String> memoryStats = new ArrayList<>();
+      for (Map.Entry<String, String> entry : stats.entrySet()) {
+        memoryStats.add(entry.getKey());
+        memoryStats.add(entry.getValue());
+      }
+      return memoryStats.toArray(new String[0]);
+    } catch (Exception e) {
+      Log.w(TAG, "failed to get memory stats", e);
+      return new String[0];
+    }
+  }
+
   private File getFile() {
     int pid = android.os.Process.myPid();
     SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd-HHmmss", Locale.US);
@@ -216,8 +254,8 @@ public class TraceController {
   }
 
   protected void startTracing(int bufferSize, String[] includeCategories,
-      String[] excludeCategories, String traceFile, boolean enableSystrace,
-      boolean enableCompress) {
+      String[] excludeCategories, String traceFile, boolean enableSystrace, boolean enableCompress,
+      boolean enableMemoryTrace, boolean forceGC) {
     if (mTracingStarted) {
       Toast.makeText(mContext, "Trace already started, please stop it first", Toast.LENGTH_SHORT)
           .show();
@@ -229,8 +267,9 @@ public class TraceController {
     }
     mTracingStarted = true;
     traceFilePath = traceFile.isEmpty() ? getFile().getPath() : traceFile;
-    tracingSession = nativeStartTracing(mNativeTraceController, bufferSize, includeCategories,
-        excludeCategories, traceFilePath, enableSystrace, enableCompress);
+    tracingSession =
+        nativeStartTracing(mNativeTraceController, bufferSize, includeCategories, excludeCategories,
+            traceFilePath, enableSystrace, enableCompress, enableMemoryTrace, forceGC);
     Map<String, String> args = new HashMap<>();
     args.put("Version", BuildConfig.VERSION);
     TraceEvent.instant(TraceEvent.CATEGORY_VITALS, "Version", args);
@@ -284,13 +323,15 @@ public class TraceController {
         int bufferSize = intent.getIntExtra(BUFFER_SIZE_EXTRA, DEFAULT_BUFFER_SIZE);
 
         boolean enableCompress = intent.getBooleanExtra(ENABLE_COMPRESS, false);
+        boolean enableMemoryTrace = intent.getBooleanExtra(ENABLE_MEMORY_TRACE, false);
+        boolean forceGC = intent.getBooleanExtra(FORCE_GC, false);
 
         if (filename == null) {
           filename = generateTracingFileName();
         }
 
         startTracing(bufferSize, categories != null ? categories.split(",") : null, null, filename,
-            false, enableCompress);
+            false, enableCompress, enableMemoryTrace, forceGC);
         String logMessage = "Trace started at: " + filename;
         Toast.makeText(context, logMessage, Toast.LENGTH_SHORT).show();
         Log.i(TAG, logMessage);
@@ -304,7 +345,8 @@ public class TraceController {
 
   private native long nativeCreateTraceController();
   private native int nativeStartTracing(long ptr, int bufferSize, String[] includeCategories,
-      String[] excludeCategories, String traceFile, boolean enableSystrace, boolean enableCompress);
+      String[] excludeCategories, String traceFile, boolean enableSystrace, boolean enableCompress,
+      boolean enableMemoryTrace, boolean forceGC);
   private native void nativeStopTracing(long ptr, int sessionId);
   private native void nativeStartStartupTracingIfNeeded(long ptr);
 }

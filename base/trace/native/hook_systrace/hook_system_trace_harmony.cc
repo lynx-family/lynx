@@ -106,9 +106,11 @@ void HookSystemTrace::UninstallSystemTraceHooks() {
   xhook_refresh(0);
 }
 
-void HookSystemTrace::Install() {
+void HookSystemTrace::Install(const SetupConfig &config) {
   InstallSystemTraceHooks();
-  cpu_info_trace_.DispatchBegin();
+  if (config.cpu_trace_enabled) {
+    cpu_info_trace_.DispatchBegin();
+  }
 }
 
 void HookSystemTrace::Uninstall() {

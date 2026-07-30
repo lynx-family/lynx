@@ -13,6 +13,8 @@ if (enable_trace == "perfetto") {
     "hook_systrace/cpu_info_trace.cc",
     "hook_systrace/cpu_info_trace.h",
     "hook_systrace/hook_system_trace.h",
+    "hook_systrace/memory_info_trace.cc",
+    "hook_systrace/memory_info_trace.h",
   ]
 
   if (is_android) {
