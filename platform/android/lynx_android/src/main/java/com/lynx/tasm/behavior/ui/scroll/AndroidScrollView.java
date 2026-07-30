@@ -52,6 +52,7 @@ public class AndroidScrollView
   private Boolean mConsumeGesture = null;
   // whether to intercept gestures to parents and children's gesture
   private Boolean mInterceptGesture = null;
+  private boolean mHasSetPanInterceptAncestors = false;
   private UIScrollView mUIScrollView;
   private LinearLayout mLinearLayout;
   private boolean isLinearLayoutExist = false;
@@ -725,6 +726,13 @@ public class AndroidScrollView
 
   @Override
   public boolean dispatchTouchEvent(MotionEvent ev) {
+    if (getParent() != null) {
+      if (mPanInterceptAncestors) {
+        getParent().requestDisallowInterceptTouchEvent(true);
+      } else if (mHasSetPanInterceptAncestors) {
+        getParent().requestDisallowInterceptTouchEvent(false);
+      }
+    }
     if (mUIScrollView.isEnableNewGesture()) {
       if (Boolean.FALSE.equals(mConsumeGesture)) {
         return true;
@@ -737,6 +745,14 @@ public class AndroidScrollView
       }
     }
     return super.dispatchTouchEvent(ev);
+  }
+
+  @Override
+  public void setPanInterceptAncestors(boolean panInterceptAncestors) {
+    super.setPanInterceptAncestors(panInterceptAncestors);
+    if (panInterceptAncestors) {
+      mHasSetPanInterceptAncestors = true;
+    }
   }
 
   @Override
