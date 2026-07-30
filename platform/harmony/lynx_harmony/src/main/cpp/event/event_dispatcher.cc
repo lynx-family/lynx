@@ -478,6 +478,7 @@ void EventDispatcher::InitTouchEnv(const ArkUI_UIInputEvent* event) {
     ShowMessageOnConsole("EventDispatcher: hit the target with sign = " +
                              std::to_string(best_hittest_target->Sign()),
                          runtime::CONSOLE_LOG_INFO);
+    RetainTextEventTargetRoot(best_hittest_target);
     if (IsPrimaryInput(event, OH_ArkUI_PointerEvent_GetPointerId(event, i))) {
       InspectHitTarget(best_hittest_target);
       first_finger_down_point_[0] = 0;
@@ -496,6 +497,26 @@ void EventDispatcher::InitTouchEnv(const ArkUI_UIInputEvent* event) {
     active_target_finger_map_.insert_or_assign(
         OH_ArkUI_PointerEvent_GetPointerId(event, i),
         EventTargetDetail(best_hittest_target->WeakTarget(), page_point));
+  }
+}
+
+void EventDispatcher::RetainTextEventTargetRoot(EventTarget* target) {
+  std::shared_ptr<EventTarget> retained_root;
+  while (target != nullptr && !target->HasUI()) {
+    auto retained_target = target->WeakTarget().lock();
+    if (!retained_target) {
+      return;
+    }
+    auto* parent = target->ParentTarget();
+    retained_root = std::move(retained_target);
+    if (parent == target) {
+      break;
+    }
+    target = parent;
+  }
+  if (retained_root) {
+    retained_text_event_targets_.insert_or_assign(retained_root.get(),
+                                                  std::move(retained_root));
   }
 }
 
@@ -538,6 +559,7 @@ void EventDispatcher::InitTouchEnv(const EmulatedTouchPoint& point) {
   }
   LOGI("EventDispatcher InitTouchEnv synthetic hit target: "
        << best_hittest_target->Sign())
+  RetainTextEventTargetRoot(best_hittest_target);
   first_finger_down_point_[0] = 0;
   first_finger_down_point_[1] = 0;
   first_active_target_ = best_hittest_target->WeakTarget();
@@ -1059,6 +1081,9 @@ void EventDispatcher::OnGestureRecognizedWithSign(int sign) {
 }
 
 void EventDispatcher::HandleTouchDown(const ArkUI_UIInputEvent* event) {
+  if (active_target_finger_map_.empty()) {
+    retained_text_event_targets_.clear();
+  }
   InitTouchEnv(event);
   if (EventThrough()) {
     ResetTouchEnv(event);
@@ -1491,6 +1516,7 @@ void EventDispatcher::EmulateTouch(const std::string& event_type, int x, int y,
     DeactivatePseudoStatus(PseudoStatus::kAll);
     active_target_finger_map_.clear();
     first_active_target_.reset();
+    retained_text_event_targets_.clear();
     has_touch_moved_ = false;
     InitTouchEnv(point);
     if (EventThrough()) {
