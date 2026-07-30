@@ -36,6 +36,12 @@ namespace lynx {
 namespace tasm {
 namespace harmony {
 
+namespace {
+
+constexpr char kScreenShotModeFullScreen[] = "fullscreen";
+
+}  // namespace
+
 struct NumSpec {
   const char* key;
   ArkUI_NodeAttributeType attr;
@@ -315,20 +321,39 @@ void UIDelegateHarmony::TakeSnapshot(
     TakeSnapshotCompletedCallback callback) {
   if (!platform_) return;
   platform_->TakeSnapshot(max_width, max_height, quality, format,
-                          screenshot_runner, std::move(callback));
+                          screenshot_runner, std::move(callback),
+                          GetActualScreenshotMode());
 }
 
 int UIDelegateHarmony::GetNodeForLocation(int x, int y) {
   auto lynx_context = lynx_context_.lock();
   if (lynx_context) {
     auto root = lynx_context->GetUIOwner()->Root();
-    float pos[2] = {
-        static_cast<float>(x) / root->GetContext()->ScaledDensity(),
-        static_cast<float>(y) / root->GetContext()->ScaledDensity()};
+    if (!root) {
+      return 0;
+    }
+    float scaled_density = root->GetContext()->ScaledDensity();
+    if (scaled_density <= 0.f) {
+      scaled_density = 1.f;
+    }
+    float local_x = static_cast<float>(x);
+    float local_y = static_cast<float>(y);
+    if (GetActualScreenshotMode() == kScreenShotModeFullScreen) {
+      ArkUI_IntOffset root_offset = {0, 0};
+      OH_ArkUI_NodeUtils_GetPositionWithTranslateInWindow(root->GetProxyNode(),
+                                                          &root_offset);
+      local_x -= root_offset.x;
+      local_y -= root_offset.y;
+    }
+    float pos[2] = {local_x / scaled_density, local_y / scaled_density};
     tasm::harmony::EventTarget* ui = root->HitTest(pos);
     return ui ? ui->Sign() : 0;
   }
   return 0;
+}
+
+void UIDelegateHarmony::SetScreenshotMode(const std::string& screen_shot_mode) {
+  screen_shot_mode_ = screen_shot_mode;
 }
 
 std::vector<float> UIDelegateHarmony::GetTransformValue(
@@ -342,6 +367,12 @@ std::vector<float> UIDelegateHarmony::GetTransformValue(
   auto ui = lynx_context->GetUIOwner()->FindUIBySign(id);
   if (!ui) {
     return {};
+  }
+  ArkUI_IntOffset root_offset = {0, 0};
+  auto root = lynx_context->GetUIOwner()->Root();
+  if (root) {
+    OH_ArkUI_NodeUtils_GetPositionWithTranslateInWindow(root->GetProxyNode(),
+                                                        &root_offset);
   }
   for (int i = 0; i < 4; ++i) {
     if (i == 0) {
@@ -387,6 +418,10 @@ std::vector<float> UIDelegateHarmony::GetTransformValue(
           pad_border_margin_layout[BoxModelOffset::MARGIN_BOTTOM] -
               pad_border_margin_layout[BoxModelOffset::LAYOUT_BOTTOM],
           point);
+    }
+    for (int j = 0; j < 8; j += 2) {
+      point[j] += root_offset.x;
+      point[j + 1] += root_offset.y;
     }
     res[i * 8] = point[0];
     res[i * 8 + 1] = point[1];
@@ -643,9 +678,9 @@ void UIDelegateHarmony::EmulateTouch(const std::string& event_type, int x,
   if (!lynx_context) {
     return;
   }
-  emulated_touch_dispatcher_.EmulateTouch(lynx_context, event_type, x, y,
-                                          button, delta_x, delta_y, modifiers,
-                                          click_count);
+  emulated_touch_dispatcher_.EmulateTouch(
+      lynx_context, event_type, x, y, button, delta_x, delta_y, modifiers,
+      click_count, GetActualScreenshotMode() == kScreenShotModeFullScreen);
 }
 
 }  // namespace harmony

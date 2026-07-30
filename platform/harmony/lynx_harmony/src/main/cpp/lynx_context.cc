@@ -843,7 +843,7 @@ void LynxContext::TakeScreenShot(
   std::shared_lock<std::shared_mutex> guard(embedder_shared_mutex_);
   if (embedder_) {
     embedder_->TakeSnapshot(max_width, max_height, quality, format,
-                            screenshot_runner, callback);
+                            screenshot_runner, callback, "lynxview");
   }
 }
 

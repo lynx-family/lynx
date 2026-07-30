@@ -20,6 +20,8 @@ const TAG = 'HarmonyUIRenderer';
 const COMPONENT_SNAPSHOT_MAX_SIZE = 8191;
 const COMPONENT_SNAPSHOT_TILE_SIZE = 2048;
 const BYTES_PER_32_BIT_PIXEL = 4;
+const SCREEN_SHOT_MODE_FULL_SCREEN = 'fullscreen';
+const SCREEN_SHOT_MODE_LYNX_VIEW = 'lynxview';
 
 function getScaleToMaxWidth(imageWidth: number, maxWidth: number): number {
   if (imageWidth <= 0) {
@@ -137,6 +139,7 @@ async function getTiledComponentSnapshot(componentId: string, uiContext: UIConte
 
 export class HarmonyUIRenderer implements LynxUIRenderer {
   private embedderPlatform: EmbedderPlatform;
+  private lynxContext: LynxContext;
   uiOwner: UIOwner;
   private shadowNodeOwner: ShadowNodeOwner;
 
@@ -146,6 +149,7 @@ export class HarmonyUIRenderer implements LynxUIRenderer {
     perfController: PerformanceController) {
     TraceEvent.beginSection(TraceCategory.Lynx, TraceEventDef.TEMPLATE_RENDER_INIT);
 
+    this.lynxContext = context;
     const mergedBehaviors: BehaviorRegistryMap = new Map();
     BUILTIN_BEHAVIORS.forEach((value, key) => {
       mergedBehaviors.set(key, value);
@@ -189,31 +193,57 @@ export class HarmonyUIRenderer implements LynxUIRenderer {
     EmbedderPlatform.updateRefreshRate(refreshRate);
   }
 
-  async getScreenShot(quality: number, maxWidth: number, maxHeight: number, format: string = "jpeg") {
+  private async getWindowSnapshot(): Promise<image.PixelMap | undefined> {
+    try {
+      const windowPromise = this.lynxContext.getCurrentWindow();
+      if (windowPromise === undefined) {
+        return undefined;
+      }
+      const win = await windowPromise;
+      return await win.snapshot();
+    } catch (e) {
+      LLog.d(TAG, "Devtool takeScreenShot window snapshot fail " + stringifyError(e));
+      return undefined;
+    }
+  }
+
+  async getScreenShot(quality: number, maxWidth: number, maxHeight: number, format: string = "jpeg",
+    screenShotMode: string = SCREEN_SHOT_MODE_LYNX_VIEW) {
     let pixelMap: image.PixelMap | undefined;
     let imagePackerApi: image.ImagePacker | undefined;
     try {
+      const snapshotMode = screenShotMode === SCREEN_SHOT_MODE_FULL_SCREEN
+        ? SCREEN_SHOT_MODE_FULL_SCREEN
+        : SCREEN_SHOT_MODE_LYNX_VIEW;
+      if (snapshotMode === SCREEN_SHOT_MODE_FULL_SCREEN) {
+        pixelMap = await this.getWindowSnapshot();
+        if (pixelMap === undefined) {
+          throw new Error("Devtool fullscreen window snapshot failed");
+        }
+      }
       const componentId = this.uiOwner.getId();
       let imageWidth = 0;
       let imageHeight = 0;
       const uiContext = this.uiOwner.uiContext;
-      try {
-        const componentInfo = uiContext?.getComponentUtils().getRectangleById(componentId);
-        imageWidth = Math.ceil(componentInfo?.size.width ?? 0);
-        imageHeight = Math.ceil(componentInfo?.size.height ?? 0);
-      } catch (e) {
-        LLog.d(TAG, "Devtool takeScreenShot get component info fail " + stringifyError(e));
-      }
-      if (shouldUseTiledSnapshot(imageWidth, imageHeight)) {
-        try {
-          pixelMap = await getTiledComponentSnapshot(componentId, uiContext, imageWidth, imageHeight);
-        } catch (e) {
-          LLog.d(TAG, "Devtool takeScreenShot tiled snapshot fail " + stringifyError(e));
-        }
-      }
       if (pixelMap === undefined) {
-        const snapshotScale = getComponentSnapshotScale(imageWidth, imageHeight);
-        pixelMap = await getComponentSnapshotPixelMap(componentId, uiContext, { scale: snapshotScale });
+        try {
+          const componentInfo = uiContext?.getComponentUtils().getRectangleById(componentId);
+          imageWidth = Math.ceil(componentInfo?.size.width ?? 0);
+          imageHeight = Math.ceil(componentInfo?.size.height ?? 0);
+        } catch (e) {
+          LLog.d(TAG, "Devtool takeScreenShot get component info fail " + stringifyError(e));
+        }
+        if (shouldUseTiledSnapshot(imageWidth, imageHeight)) {
+          try {
+            pixelMap = await getTiledComponentSnapshot(componentId, uiContext, imageWidth, imageHeight);
+          } catch (e) {
+            LLog.d(TAG, "Devtool takeScreenShot tiled snapshot fail " + stringifyError(e));
+          }
+        }
+        if (pixelMap === undefined) {
+          const snapshotScale = getComponentSnapshotScale(imageWidth, imageHeight);
+          pixelMap = await getComponentSnapshotPixelMap(componentId, uiContext, { scale: snapshotScale });
+        }
       }
       imagePackerApi = image.createImagePacker();
       const imageInfo = pixelMap.getImageInfoSync();
@@ -247,8 +277,9 @@ export class HarmonyUIRenderer implements LynxUIRenderer {
 
   // Called by native
   takeScreenShot(callback: AsyncCallback<DevtoolResult>, quality: number, maxWidth: number, maxHeight: number,
-    format: string = "jpeg") {
-    this.getScreenShot(quality, maxWidth, maxHeight, format).then(result => callback(undefined, result))
+    format: string = "jpeg", screenShotMode: string = SCREEN_SHOT_MODE_LYNX_VIEW) {
+    this.getScreenShot(quality, maxWidth, maxHeight, format, screenShotMode)
+      .then(result => callback(undefined, result))
       .catch((err: BusinessError) => callback(err, undefined));
   }
 

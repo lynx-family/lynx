@@ -449,9 +449,17 @@ export struct LynxView {
       Math.round(properties.windowRect.top));
   }
 
+  getCurrentWindow(): Promise<window.Window> {
+    if (this.currentWindow !== undefined) {
+      return Promise.resolve(this.currentWindow);
+    }
+    return this.windowStage ? this.windowStage.getMainWindow() : window.getLastWindow(getContext(this));
+  }
+
   aboutToAppear() {
     TraceEvent.beginSection(TraceCategory.Lynx, TraceEventDef.LYNX_VIEW_CREATE);
     this.hasAppeared = true;
+    this.currentWindow = undefined;
     LynxServiceCenter.getService<ILynxTrailService>(LynxServiceType.Trail)?.parseLynxView(this);
     this.nodeController =
       this.uiRendererCreator ? this.uiRendererCreator.createNodeController() : new CAPINodeController()
@@ -463,7 +471,7 @@ export struct LynxView {
     if (this.onCreate) {
       this.onCreate(this.context)
     }
-    (this.windowStage ? this.windowStage.getMainWindow() : window.getLastWindow(getContext(this))).then((win) => {
+    this.getCurrentWindow().then((win) => {
       this.currentWindow = win;
       this.syncWindowInfoToNative(win);
       this.keyboardHeightChangeCallback = (height: number) => {

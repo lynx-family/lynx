@@ -194,6 +194,7 @@ export abstract class LynxNodeController extends NodeController {
   onEnterForeground(): void;
   onEnterBackground(): void;
   prepareForLoadTemplate(): void;
+  getCurrentWindow(): Promise<window.Window>;
   aboutToAppear(): void;
   aboutToDisappear(): void;
   aboutToReuse(params: Record<string, ESObject>): void;
@@ -300,6 +301,7 @@ export class LynxContext implements IContext {
   public alignNativeNode(sign: number, left: number, top: number): void;
   setRenderer(renderer: LynxTemplateRenderer): void;
   setLynxView(lynxView: LynxView): void;
+  getCurrentWindow(): Promise<window.Window> | undefined;
   sendGlobalEvent(name: string, params: Object[]): void;
   getLynxElementRoot(callback: LynxElementCallback<LynxElement | null>): void;
   public callJSFunction(moduleName: string, method: string, params: Object[]): void;

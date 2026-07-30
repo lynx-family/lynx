@@ -64,6 +64,10 @@ class UIDelegateHarmony : public UIDelegate {
       TakeSnapshotCompletedCallback callback) override;
 
   int GetNodeForLocation(int x, int y) override;
+  void SetScreenshotMode(const std::string& screen_shot_mode);
+  const std::string& GetActualScreenshotMode() const {
+    return screen_shot_mode_;
+  }
 
   std::vector<float> GetTransformValue(
       int id, const std::vector<float>& pad_border_margin_layout) override;
@@ -98,6 +102,7 @@ class UIDelegateHarmony : public UIDelegate {
   std::weak_ptr<LynxContext> lynx_context_;
   HarmonyEmulatedTouchDispatcher emulated_touch_dispatcher_;
   shell::EmbedderPlatformHarmony* platform_ = nullptr;
+  std::string screen_shot_mode_ = "lynxview";
 
   float screen_width_ = 0.f;
   float screen_height_ = 0.f;
