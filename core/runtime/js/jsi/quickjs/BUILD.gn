@@ -29,6 +29,9 @@ unittest_set("quickjs_unittests_testset") {
     "quickjs_helper_unittest.cc",
     "quickjs_runtime_unittest.cc",
   ]
+  if (is_mac || is_linux) {
+    sources += [ "quickjs_coverage_unittest.cc" ]
+  }
   sources += jscache_quickjs_unittest_sources
 
   configs = [ "../../bytecode:jscache_config" ]
