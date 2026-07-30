@@ -122,6 +122,7 @@ bool LynxBinaryBaseCSSReader::DecodeCSSFragment(SharedCSSFragment* fragment,
 
   if (compile_options_.enable_css_rule_) {
     ERROR_UNLESS(DecodeCSSRules(fragment));
+    fragment->SetEnableCSSRule(true);
     return true;
   }
 

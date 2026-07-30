@@ -5,6 +5,7 @@
 #ifndef CORE_RENDERER_CSS_CSS_FRAGMENT_DECORATOR_H_
 #define CORE_RENDERER_CSS_CSS_FRAGMENT_DECORATOR_H_
 
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <vector>
@@ -55,6 +56,7 @@ class CSSFragmentDecorator : public CSSFragment {
 
   bool enable_css_selector() override;
   bool enable_css_invalidation() override;
+  bool enable_css_rule() override;
 
   bool HasPseudoRules() override;
   bool HasAdjacentSiblingRules() override;
@@ -76,6 +78,8 @@ class CSSFragmentDecorator : public CSSFragment {
   void ForEachUnresolvedFontFaceMap(ForEachFontFaceMapVisitor visitor,
                                     void* cb_data) override;
   void ForEachRuleSet(ForEachRuleSetVisitor visitor, void* cb_data) override;
+
+  std::shared_ptr<const css::CascadeLayerMap> GetCascadeLayerMap() override;
 
   void CollectInvalidationSetsForId(css::InvalidationLists& lists,
                                     const std::string& id) override;

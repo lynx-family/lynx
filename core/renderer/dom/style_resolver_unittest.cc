@@ -7,6 +7,10 @@
 
 #include "core/renderer/dom/style_resolver.h"
 
+#include <array>
+#include <atomic>
+#include <thread>
+
 #include "base/include/auto_reset.h"
 #include "core/base/threading/task_runner_manufactor.h"
 #include "core/renderer/css/css_property.h"
@@ -14,6 +18,7 @@
 #include "core/renderer/css/ng/parser/css_tokenizer.h"
 #include "core/renderer/css/ng/selector/css_parser_context.h"
 #include "core/renderer/css/ng/selector/css_selector_parser.h"
+#include "core/renderer/css/ng/style/cascade_layer_map.h"
 #include "core/renderer/css/parser/css_string_parser.h"
 #include "core/renderer/css/shared_css_fragment.h"
 #include "core/renderer/dom/element_manager.h"
@@ -770,6 +775,146 @@ class MockCSSFragment : public tasm::SharedCSSFragment {
  private:
   bool enable_css_selector_mock_ = true;
 };
+
+TEST_F(CSSPatchingTest, CascadeLayerMapInvalidatesAfterClearAndReAdoption) {
+  auto intrinsic_fragment = std::make_unique<MockCSSFragment>();
+  intrinsic_fragment->SetEnableCSSSelector(true);
+  CSSFragmentDecorator decorator(intrinsic_fragment.get(), manager.get());
+
+  auto first_fragment = std::make_unique<MockCSSFragment>();
+  first_fragment->SetEnableCSSSelector(true);
+  first_fragment->SetEnableCSSRule(true);
+  auto* first_layer =
+      first_fragment->GetOrCreateRootLayer()->GetOrAddSubLayer({"first"});
+  auto first_wrapper = fml::AdoptRef<MockSharedCSSFragmentWrapper>(
+      new MockSharedCSSFragmentWrapper());
+  first_wrapper->fragment_ = std::move(first_fragment);
+  manager->AdoptStyleSheet(first_wrapper);
+
+  auto first_map = decorator.GetCascadeLayerMap();
+  ASSERT_NE(first_map, nullptr);
+  EXPECT_EQ(first_map->GetLayerOrder(first_layer), 0u);
+
+  manager->ClearAdoptedStyleSheets();
+
+  auto second_fragment = std::make_unique<MockCSSFragment>();
+  second_fragment->SetEnableCSSSelector(true);
+  second_fragment->SetEnableCSSRule(true);
+  auto* second_layer =
+      second_fragment->GetOrCreateRootLayer()->GetOrAddSubLayer({"second"});
+  auto second_wrapper = fml::AdoptRef<MockSharedCSSFragmentWrapper>(
+      new MockSharedCSSFragmentWrapper());
+  second_wrapper->fragment_ = std::move(second_fragment);
+  manager->AdoptStyleSheet(second_wrapper);
+
+  auto second_map = decorator.GetCascadeLayerMap();
+  ASSERT_NE(second_map, nullptr);
+  EXPECT_EQ(second_map->GetLayerOrder(second_layer), 0u);
+}
+
+TEST_F(CSSPatchingTest,
+       CascadeLayerMapIsSharedByDecoratorsInSameElementManager) {
+  auto intrinsic_fragment = std::make_unique<MockCSSFragment>();
+  intrinsic_fragment->SetEnableCSSSelector(true);
+  // A fragment can only carry a layer tree when decoded from the css-rule wire
+  // format, so mirror that invariant here (matches the enable_css_rule() gate
+  // in GetCascadeLayerMap).
+  intrinsic_fragment->SetEnableCSSRule(true);
+  auto* layer =
+      intrinsic_fragment->GetOrCreateRootLayer()->GetOrAddSubLayer({"base"});
+
+  CSSFragmentDecorator first(intrinsic_fragment.get(), manager.get());
+  CSSFragmentDecorator second(intrinsic_fragment.get(), manager.get());
+
+  auto first_map = first.GetCascadeLayerMap();
+  auto second_map = second.GetCascadeLayerMap();
+  ASSERT_NE(first_map, nullptr);
+  EXPECT_EQ(first_map.get(), second_map.get());
+  EXPECT_EQ(first_map->GetLayerOrder(layer), 0u);
+}
+
+TEST_F(CSSPatchingTest, CascadeLayerMapCachesNoLayerResult) {
+  auto intrinsic_fragment = std::make_unique<MockCSSFragment>();
+  intrinsic_fragment->SetEnableCSSSelector(true);
+
+  CSSFragmentDecorator first(intrinsic_fragment.get(), manager.get());
+  CSSFragmentDecorator second(intrinsic_fragment.get(), manager.get());
+
+  EXPECT_EQ(first.GetCascadeLayerMap(), nullptr);
+  EXPECT_EQ(second.GetCascadeLayerMap(), nullptr);
+  ASSERT_EQ(manager->cascade_layer_map_cache_.size(), 1u);
+  EXPECT_EQ(manager->cascade_layer_map_cache_.at(intrinsic_fragment.get()),
+            nullptr);
+}
+
+TEST_F(CSSPatchingTest, CSSFragmentDecoratorForwardsEnableCSSRule) {
+  auto intrinsic_fragment = std::make_unique<MockCSSFragment>();
+  intrinsic_fragment->SetEnableCSSRule(true);
+
+  CSSFragmentDecorator decorator(intrinsic_fragment.get(), manager.get());
+
+  EXPECT_TRUE(decorator.enable_css_rule());
+}
+
+TEST_F(CSSPatchingTest, CascadeLayerMapMergesSharedDependencyOnce) {
+  // A base stylesheet that declares one named layer and one anonymous layer.
+  // Both the intrinsic fragment and an adopted fragment @import this base, so
+  // its RuleSet is reachable from two roots within a single build. The map must
+  // merge it exactly once: an anonymous layer creates a fresh canonical node on
+  // every merge, so a duplicate merge would spawn an orphan node and shift the
+  // global order count.
+  auto base_fragment = std::make_unique<MockCSSFragment>();
+  base_fragment->SetEnableCSSSelector(true);
+  base_fragment->SetEnableCSSRule(true);
+  auto* base_root = base_fragment->GetOrCreateRootLayer();
+  auto* base_named = base_root->GetOrAddSubLayer({"base"});
+  auto* base_anon = base_root->GetOrAddSubLayer({std::string()});
+
+  auto intrinsic_fragment = std::make_unique<MockCSSFragment>();
+  intrinsic_fragment->SetEnableCSSSelector(true);
+  intrinsic_fragment->SetEnableCSSRule(true);
+  intrinsic_fragment->rule_set()->Merge(*base_fragment->rule_set());
+
+  auto adopted_fragment = std::make_unique<MockCSSFragment>();
+  adopted_fragment->SetEnableCSSSelector(true);
+  adopted_fragment->SetEnableCSSRule(true);
+  adopted_fragment->rule_set()->Merge(*base_fragment->rule_set());
+  auto adopted_wrapper = fml::AdoptRef<MockSharedCSSFragmentWrapper>(
+      new MockSharedCSSFragmentWrapper());
+  adopted_wrapper->fragment_ = std::move(adopted_fragment);
+  manager->AdoptStyleSheet(adopted_wrapper);
+
+  CSSFragmentDecorator decorator(intrinsic_fragment.get(), manager.get());
+  auto map = decorator.GetCascadeLayerMap();
+  ASSERT_NE(map, nullptr);
+
+  // Post-order over the deduped canonical tree: base(0), anonymous(1), root
+  // implicit. If the shared dependency were merged twice, the anonymous layer
+  // would occupy a second slot and push these orders apart.
+  EXPECT_EQ(map->GetLayerOrder(base_named), 0u);
+  EXPECT_EQ(map->GetLayerOrder(base_anon), 1u);
+  EXPECT_EQ(map->GetLayerOrder(base_root),
+            css::CascadeLayer::kImplicitOuterLayerOrder);
+}
+
+TEST_F(CSSPatchingTest, InvalidateCascadeLayerMapCacheClearsCache) {
+  // Simulates the replaceStyleSheetById / removeStyleSheetById path: the
+  // intrinsic fragment behind a cached entry is freed, so the layer map cache
+  // keyed on that raw pointer must be dropped to avoid returning a stale map if
+  // a new fragment reuses the address.
+  auto intrinsic_fragment = std::make_unique<MockCSSFragment>();
+  intrinsic_fragment->SetEnableCSSSelector(true);
+  intrinsic_fragment->SetEnableCSSRule(true);
+  intrinsic_fragment->GetOrCreateRootLayer()->GetOrAddSubLayer({"base"});
+
+  CSSFragmentDecorator decorator(intrinsic_fragment.get(), manager.get());
+  ASSERT_NE(decorator.GetCascadeLayerMap(), nullptr);
+  ASSERT_EQ(manager->cascade_layer_map_cache_.size(), 1u);
+
+  manager->InvalidateCascadeLayerMapCache();
+
+  EXPECT_TRUE(manager->cascade_layer_map_cache_.empty());
+}
 
 TEST_F(CSSPatchingTest, AdoptedStylesheets_MergeLogic) {
   auto fiber_element =

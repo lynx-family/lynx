@@ -130,6 +130,9 @@ class RuleSet {
     }
   }
 
+  const std::vector<const RuleSet*>& deps() const { return deps_; }
+  tasm::SharedCSSFragment* fragment() const { return fragment_; }
+
  private:
   bool AddToRuleSetInternal(const LynxCSSSelector& component,
                             const RuleData& rule);

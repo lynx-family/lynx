@@ -6,11 +6,13 @@
 #define CORE_RENDERER_DOM_ELEMENT_MANAGER_H_
 
 #include <atomic>
+#include <cstdint>
 #include <functional>
 #include <limits>
 #include <list>
 #include <map>
 #include <memory>
+#include <mutex>
 #include <optional>
 #include <shared_mutex>
 #include <string>
@@ -54,6 +56,9 @@ namespace lynx {
 namespace base {
 class VSyncMonitor;
 }  // namespace base
+namespace css {
+class CascadeLayerMap;
+}  // namespace css
 namespace runtime {
 class MTSRuntime;
 }  // namespace runtime
@@ -455,11 +460,13 @@ class ElementManager : public LayoutScheduler::LayoutSchedulerImpl {
   void AdoptStyleSheet(fml::RefPtr<tasm::SharedCSSFragmentWrapper> wrapper) {
     std::unique_lock<std::shared_mutex> lock(adopted_style_sheets_mutex_);
     adopted_stylesheets_.push_back(std::move(wrapper));
+    cascade_layer_map_cache_.clear();
   }
 
   void ClearAdoptedStyleSheets() {
     std::unique_lock<std::shared_mutex> lock(adopted_style_sheets_mutex_);
     adopted_stylesheets_.clear();
+    cascade_layer_map_cache_.clear();
   }
 
   // Iterates adopted stylesheets under a shared lock without copying.
@@ -483,6 +490,13 @@ class ElementManager : public LayoutScheduler::LayoutSchedulerImpl {
     std::shared_lock<std::shared_mutex> lock(adopted_style_sheets_mutex_);
     return !adopted_stylesheets_.empty();
   }
+
+  std::shared_ptr<const css::CascadeLayerMap> GetCascadeLayerMap(
+      CSSFragment *intrinsic_style_sheet);
+
+  // Call when an intrinsic fragment is freed (stylesheet replace/remove) so a
+  // new fragment reusing its address cannot hit a stale entry.
+  void InvalidateCascadeLayerMapCache();
 
   // Returns a copy under the shared lock.
   std::vector<fml::RefPtr<tasm::SharedCSSFragmentWrapper>>
@@ -1527,6 +1541,12 @@ class ElementManager : public LayoutScheduler::LayoutSchedulerImpl {
   // Adopted stylesheets for runtime CSS adoption with highest cascade priority
   mutable std::shared_mutex adopted_style_sheets_mutex_;
   std::vector<fml::RefPtr<tasm::SharedCSSFragmentWrapper>> adopted_stylesheets_;
+
+  // Cascade-layer maps are shared by decorators with the same intrinsic
+  // stylesheet and cleared whenever adopted stylesheets change.
+  std::unordered_map<const CSSFragment *,
+                     std::shared_ptr<const css::CascadeLayerMap>>
+      cascade_layer_map_cache_;
 
   // Intrinsic CSSFragment pointers whose font-face maps have already been
   // resolved in this ElementManager. Used by CSSFragmentDecorator to avoid
