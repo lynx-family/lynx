@@ -6,6 +6,7 @@
 #define BASE_TRACE_NATIVE_PLATFORM_DARWIN_TRACE_CONTROLLER_DARWIN_H_
 
 #include <string>
+#include <vector>
 
 #include "base/trace/native/trace_controller.h"
 #include "base/trace/native/trace_export.h"
@@ -20,6 +21,8 @@ class TRACE_EXPORT TraceControllerDelegateDarwin
   virtual ~TraceControllerDelegateDarwin() = default;
 
   std::string GenerateTracingFileDir() override;
+
+  std::vector<std::string> GetMemoryStats() override;
 
  private:
   TraceControllerDelegateDarwin(const TraceControllerDelegateDarwin&) = delete;

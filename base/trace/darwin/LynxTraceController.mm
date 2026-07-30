@@ -42,12 +42,11 @@ static LynxTraceController *lynxTraceController = nil;
 }
 
 - (void)startTracing:(completeBlockType)completeBlock config:(NSDictionary *)config {
-  static int const kDefaultBufferSize = 40960;
   if (completeBlock != nullptr) {
     [_completeBlocks addObject:completeBlock];
   }
   if (_traceController != nullptr) {
-    int bufferSize = kDefaultBufferSize;
+    int bufferSize = lynx::trace::TraceConfig::kDefaultBufferSize;
     if ([config valueForKey:@"buffer_size"] != nil) {
       bufferSize = [config[@"buffer_size"] intValue];
     }
@@ -59,6 +58,12 @@ static LynxTraceController *lynxTraceController = nil;
 
     if ([config valueForKey:@"enable_compress"] != nil) {
       trace_config->enable_compress = [config[@"enable_compress"] boolValue];
+    }
+    if ([config valueForKey:@"enable_memory_trace"] != nil) {
+      trace_config->enable_memory_trace = [config[@"enable_memory_trace"] boolValue];
+    }
+    if ([config valueForKey:@"force_gc"] != nil) {
+      trace_config->memory_trace_force_gc = [config[@"force_gc"] boolValue];
     }
     trace_config->included_categories = {"*"};
     trace_config->excluded_categories = {"*"};

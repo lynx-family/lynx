@@ -67,12 +67,14 @@ class TraceControllerImpl : public TraceController {
   std::string GetStartupTracingConfig() override;
   std::string GetStartupTracingFilePath() override;
   bool IsTracingStarted() override;
+  std::shared_ptr<TraceConfig> GetLastSessionTraceConfig() override;
 
  private:
   TracingSession& CreateNewSession(const std::shared_ptr<TraceConfig> config);
 
   std::string GenerateTraceFilePath(const std::string& file_dir);
 
+  TracingSession* last_session_{nullptr};
   std::map<int, std::unique_ptr<TracingSession>> tracing_sessions_;
   std::mutex mutex_;
   std::map<std::string, TracePlugin*> trace_plugins_;

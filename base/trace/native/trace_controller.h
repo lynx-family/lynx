@@ -19,15 +19,18 @@ namespace trace {
 enum class RuntimeProfilerType { v8 = 0, quickjs };
 
 struct TRACE_EXPORT TraceConfig {
-  const uint32_t kDefaultBufferSize = 40960;  // kb
+  static constexpr uint32_t kDefaultBufferSize = 40960;  // kb
+  static constexpr uint32_t kDefaultFileWritePeriodMs = 3000;
+  static constexpr uint32_t kMemoryTraceFileWritePeriodMs = 300;
   enum RecordMode {
     RECORD_AS_MUCH_AS_POSSIBLE,
     RECORD_UNTIL_FULL,
     RECORD_CONTINUOUSLY,
     ECHO_TO_CONSOLE
   } record_mode;
-  bool enable_systrace;
   uint32_t buffer_size;
+  uint32_t file_write_period_ms;
+  bool enable_systrace;
   bool is_startup_tracing;
   std::vector<std::string> included_categories;
   std::vector<std::string> excluded_categories;
@@ -35,14 +38,22 @@ struct TRACE_EXPORT TraceConfig {
   int32_t js_profile_interval;
   RuntimeProfilerType js_profile_type;
   bool enable_compress;
+  bool enable_memory_trace;
+  bool memory_trace_force_gc;
+  bool auto_take_snapshot;
+  std::string auto_take_snapshot_group_id;
   TraceConfig()
       : record_mode(RECORD_AS_MUCH_AS_POSSIBLE),
-        enable_systrace(false),
         buffer_size(kDefaultBufferSize),
+        file_write_period_ms(kDefaultFileWritePeriodMs),
+        enable_systrace(false),
         is_startup_tracing(false),
         js_profile_interval(-1),
         js_profile_type(RuntimeProfilerType::quickjs),
-        enable_compress(false) {}
+        enable_compress(false),
+        enable_memory_trace(false),
+        memory_trace_force_gc(false),
+        auto_take_snapshot(true) {}
 };
 
 // DispatchBegin()/DispatchEnd() of TracePlugin that injected into
@@ -68,6 +79,7 @@ class TRACE_EXPORT TraceController {
     virtual void RefreshATraceTags() = 0;
     virtual void SetIsTracingStarted(bool is_tracing_started) = 0;
 #endif  // BASE_TRACE_NATIVE_TRACE_CONTROLLER_H_
+    virtual std::vector<std::string> GetMemoryStats() { return {}; }
   };
 
   TraceController() = default;
@@ -83,6 +95,7 @@ class TRACE_EXPORT TraceController {
   void SetDelegate(std::unique_ptr<Delegate> delegate) {
     delegate_ = std::move(delegate);
   }
+  Delegate* GetDelegate() const { return delegate_.get(); }
 
   virtual int StartTracing(const std::shared_ptr<TraceConfig>& config) {
     return -1;
@@ -106,6 +119,9 @@ class TRACE_EXPORT TraceController {
   virtual std::string GetStartupTracingConfig() { return ""; }
   virtual std::string GetStartupTracingFilePath() { return ""; }
   virtual bool IsTracingStarted() { return false; }
+  virtual std::shared_ptr<TraceConfig> GetLastSessionTraceConfig() {
+    return nullptr;
+  }
 
  protected:
   std::unique_ptr<Delegate> delegate_ = nullptr;
