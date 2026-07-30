@@ -182,11 +182,40 @@ uint32_t FlutterWindowsView::GetFrameBufferId(size_t width, size_t height) {
 }
 
 void FlutterWindowsView::SetDamageRegion(const clay::Rect& region) {
+  if (!surface_) {
+    return;
+  }
   surface_->SetDamageRegion(region);
 }
 
+void FlutterWindowsView::SetPresentDamageRegion(const clay::Rect& region) {
+  if (!surface_) {
+    return;
+  }
+  surface_->SetPresentDamageRegion(region);
+}
+
 std::optional<clay::Rect> FlutterWindowsView::GetDamageRegion() {
+  if (!surface_) {
+    return std::nullopt;
+  }
   return surface_->GetDamageRegion();
+}
+
+bool FlutterWindowsView::RequiresSurfaceYAxisFlip() const {
+  return surface_ && surface_->RequiresYAxisFlip();
+}
+
+int FlutterWindowsView::SurfaceHeight() const {
+  return surface_ ? surface_->height() : 0;
+}
+
+skity::Matrix FlutterWindowsView::GetSurfaceTransformation() const {
+  if (!RequiresSurfaceYAxisFlip()) {
+    return skity::Matrix();
+  }
+  return skity::Matrix(1.0f, 0.0f, 0.0f, 0.0f, -1.0f,
+                       static_cast<float>(SurfaceHeight()), 0.0f, 0.0f, 1.0f);
 }
 
 void FlutterWindowsView::UpdateFlutterCursor(clay::CursorTypes cursor_type) {
@@ -700,9 +729,18 @@ void FlutterWindowsView::CreateRenderSurface() {
   if (engine_ && engine_->egl_manager()) {
     PhysicalWindowBounds bounds = binding_handler_->GetPhysicalWindowBounds();
     bool enable_vsync = binding_handler_->NeedsVSync();
+    const bool is_implicit_view = view_id_ == kImplicitViewId;
+    // Keep the implicit view compatible with Win32 window capture while
+    // retaining DirectComposition for overlay views.
+    const auto surface_type =
+        is_implicit_view
+            ? egl::GLImplementationType::kAngleEGL
+            : egl::GLImplementationType::kAngleEGLDirectComposition;
+    const HWND surface_window = is_implicit_view
+                                    ? GetWindowHandle()
+                                    : std::get<HWND>(*GetRenderTarget());
     surface_ = engine_->egl_manager()->CreateWindowSurface(
-        egl::GLImplementationType::kAngleEGL, GetWindowHandle(), bounds.width,
-        bounds.height);
+        surface_type, surface_window, bounds.width, bounds.height);
     UpdateVsync(engine_, surface_.get(), enable_vsync);
     resize_target_width_ = bounds.width;
     resize_target_height_ = bounds.height;
