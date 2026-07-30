@@ -31,8 +31,7 @@ class DevtoolPlatformImpl : public lynx::devtool::DevToolPlatformFacade {
     weak_embedder_ = embedder;
   }
 
-  int FindNodeIdForLocation(float x, float y,
-                            std::string screen_shot_mode) override {
+  int FindNodeIdForLocation(float x, float y, std::string) override {
     auto embedder = weak_embedder_.lock();
     CHECK_NULL_AND_LOG_RETURN_VALUE(embedder, "embedder is null", 0);
     return embedder->FindNodeIdForLocation(x, y);
@@ -204,6 +203,12 @@ void DevtoolPlatformEmbedder::AttachProxy(devtool::LynxDevToolProxy* proxy) {
   if (reload_helper_) {
     reload_helper_->AttachProxy(proxy);
   }
+  if (proxy_ &&
+      proxy_->SetScreenshotMode(DevToolStatus::SCREENSHOT_MODE_LYNXVIEW)) {
+    DevToolStatus::GetInstance().SetStatus(
+        DevToolStatus::kDevToolStatusKeyScreenShotMode,
+        proxy_->GetActualScreenshotMode());
+  }
 }
 
 DevtoolPlatformEmbedder::~DevtoolPlatformEmbedder() {}
@@ -217,6 +222,13 @@ void DevtoolPlatformEmbedder::StartCasting(int32_t quality, int32_t max_width,
                                            int32_t max_height,
                                            const std::string& format) {
   CHECK_NULL_AND_LOG_RETURN(cast_helper_, "cast_helper_ is null");
+  if (proxy_) {
+    std::string requested_screen_shot_mode =
+        DevToolStatus::GetInstance().GetStatus(
+            DevToolStatus::kDevToolStatusKeyScreenShotMode,
+            DevToolStatus::SCREENSHOT_MODE_LYNXVIEW);
+    proxy_->SetScreenshotMode(requested_screen_shot_mode);
+  }
   cast_helper_->StartCasting(quality, max_width, max_height, format);
 }
 

@@ -131,7 +131,7 @@ HarmonyEmulatedTouchDispatcher::~HarmonyEmulatedTouchDispatcher() {
 void HarmonyEmulatedTouchDispatcher::EmulateTouch(
     const std::shared_ptr<LynxContext>& context, const std::string& event_type,
     int x, int y, const std::string& button, float delta_x, float delta_y,
-    int modifiers, int click_count) {
+    int modifiers, int click_count, bool use_window_coordinates) {
   (void)modifiers;
   (void)click_count;
   if (!context) {
@@ -139,18 +139,19 @@ void HarmonyEmulatedTouchDispatcher::EmulateTouch(
     return;
   }
   context->RunOnUIThread([alive = alive_, context, event_type, x, y, button,
-                          delta_x, delta_y, this]() {
+                          delta_x, delta_y, use_window_coordinates, this]() {
     if (!alive || !*alive) {
       return;
     }
     EmulateTouchOnUIThread(context.get(), event_type, x, y, button, delta_x,
-                           delta_y);
+                           delta_y, use_window_coordinates);
   });
 }
 
 void HarmonyEmulatedTouchDispatcher::EmulateTouchOnUIThread(
     LynxContext* context, const std::string& event_type, int x, int y,
-    const std::string& button, float delta_x, float delta_y) {
+    const std::string& button, float delta_x, float delta_y,
+    bool use_window_coordinates) {
   (void)button;
   (void)delta_x;
   (void)delta_y;
@@ -161,8 +162,10 @@ void HarmonyEmulatedTouchDispatcher::EmulateTouchOnUIThread(
     if (emulated_touch_active_) {
       CancelActiveTouch(context, event_time_us);
     }
-    if (InjectTouch(context, TOUCH_ACTION_DOWN, x, y, event_time_us)) {
+    if (InjectTouch(context, TOUCH_ACTION_DOWN, x, y, event_time_us,
+                    use_window_coordinates)) {
       emulated_touch_active_ = true;
+      emulated_touch_uses_window_coordinates_ = use_window_coordinates;
       emulated_touch_x_ = x;
       emulated_touch_y_ = y;
     }
@@ -170,7 +173,8 @@ void HarmonyEmulatedTouchDispatcher::EmulateTouchOnUIThread(
     if (!emulated_touch_active_) {
       return;
     }
-    if (InjectTouch(context, TOUCH_ACTION_MOVE, x, y, event_time_us)) {
+    if (InjectTouch(context, TOUCH_ACTION_MOVE, x, y, event_time_us,
+                    emulated_touch_uses_window_coordinates_)) {
       emulated_touch_x_ = x;
       emulated_touch_y_ = y;
     }
@@ -178,8 +182,10 @@ void HarmonyEmulatedTouchDispatcher::EmulateTouchOnUIThread(
     if (!emulated_touch_active_) {
       return;
     }
-    if (InjectTouch(context, TOUCH_ACTION_UP, x, y, event_time_us)) {
+    if (InjectTouch(context, TOUCH_ACTION_UP, x, y, event_time_us,
+                    emulated_touch_uses_window_coordinates_)) {
       emulated_touch_active_ = false;
+      emulated_touch_uses_window_coordinates_ = false;
       emulated_touch_x_ = x;
       emulated_touch_y_ = y;
     }
@@ -188,14 +194,26 @@ void HarmonyEmulatedTouchDispatcher::EmulateTouchOnUIThread(
 
 bool HarmonyEmulatedTouchDispatcher::InjectTouch(LynxContext* context,
                                                  int32_t action, int x, int y,
-                                                 int64_t event_time_us) {
+                                                 int64_t event_time_us,
+                                                 bool use_window_coordinates) {
   int32_t display_x = 0;
   int32_t display_y = 0;
   int32_t window_x = 0;
   int32_t window_y = 0;
-  if (!ToEventPoint(context, x, y, &display_x, &display_y, &window_x,
-                    &window_y)) {
-    return false;
+  if (use_window_coordinates) {
+    if (!context || !context->HasWindowInfo()) {
+      LOGE("InjectTouch: window info is not available");
+      return false;
+    }
+    window_x = x;
+    window_y = y;
+    display_x = context->WindowLeftPx() + x;
+    display_y = context->WindowTopPx() + y;
+  } else {
+    if (!ToEventPoint(context, x, y, &display_x, &display_y, &window_x,
+                      &window_y)) {
+      return false;
+    }
   }
 
   auto* input_api = GetOhInputTouchEventApi();
@@ -270,8 +288,10 @@ void HarmonyEmulatedTouchDispatcher::CancelActiveTouch(LynxContext* context,
     return;
   }
   InjectTouch(context, TOUCH_ACTION_CANCEL, emulated_touch_x_,
-              emulated_touch_y_, event_time_us);
+              emulated_touch_y_, event_time_us,
+              emulated_touch_uses_window_coordinates_);
   emulated_touch_active_ = false;
+  emulated_touch_uses_window_coordinates_ = false;
 }
 
 }  // namespace harmony

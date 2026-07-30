@@ -50,6 +50,8 @@ class LynxDevToolProxy {
                             const std::string& button, float delta_x,
                             float delta_y, int modifiers, int click_count) = 0;
   virtual void DispatchMessageEvent(const Json::Value& message) = 0;
+  virtual bool SetScreenshotMode(const std::string&) { return false; }
+  virtual std::string GetActualScreenshotMode() { return "lynxview"; }
 };
 }  // namespace devtool
 }  // namespace lynx

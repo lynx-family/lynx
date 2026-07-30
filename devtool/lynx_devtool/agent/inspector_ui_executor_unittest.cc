@@ -124,6 +124,9 @@ TEST_F(InspectorUIExecutorTest, StartScreencastTest) {
       std::make_shared<testing::DevToolPlatformFacadeMock>();
   ui_executor_->SetDevToolPlatformFacade(facade);
   EXPECT_EQ(ui_executor_->devtool_platform_facade_.get(), facade.get());
+  std::string original_screen_shot_mode =
+      devtool::DevToolStatus::GetInstance().GetStatus(
+          devtool::DevToolStatus::kDevToolStatusKeyScreenShotMode);
 
   {
     Json::Value message;
@@ -164,7 +167,7 @@ TEST_F(InspectorUIExecutorTest, StartScreencastTest) {
     params["maxWidth"] = 720;
     params["maxHeight"] = 1280;
     params["everyNthFrame"] = 2;
-    params["mode"] = "lynxview";
+    params["mode"] = "fullscreen";
     message["params"] = params;
     ui_executor_->StartScreencast(message_sender_, message);
     EXPECT_EQ(devtool::MockReceiver::GetInstance().received_message_.second,
@@ -178,6 +181,10 @@ TEST_F(InspectorUIExecutorTest, StartScreencastTest) {
     EXPECT_EQ(facade->screen_cast_requests_.back().type_,
               devtool::ScreenshotType::PNG);
   }
+
+  devtool::DevToolStatus::GetInstance().SetStatus(
+      devtool::DevToolStatus::kDevToolStatusKeyScreenShotMode,
+      original_screen_shot_mode);
 }
 
 TEST_F(InspectorUIExecutorTest, InsertTextTest) {

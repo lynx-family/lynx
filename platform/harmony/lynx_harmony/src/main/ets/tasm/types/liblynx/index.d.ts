@@ -186,7 +186,8 @@ export class LynxTemplateRenderer {
 
   scrollStopped(containerSign: number): void;
 
-  takeScreenShot(callback: AsyncCallback<DevtoolResult>, quality: number, maxWidth: number, maxHeight: number, format?: string): void;
+  takeScreenShot(callback: AsyncCallback<DevtoolResult>, quality: number, maxWidth: number, maxHeight: number,
+    format?: string, screenShotMode?: string): void;
 
   getAllTimingInfo(): object;
 

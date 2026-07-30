@@ -22,7 +22,7 @@ import {
   LynxViewClient,
   TemplateBundle
 } from '../Index';
-import { componentUtils, componentSnapshot } from '@kit.ArkUI';
+import { componentUtils, componentSnapshot, window } from '@kit.ArkUI';
 import { image } from '@kit.ImageKit';
 import { IContext } from './IContext';
 import { LynxExtensionModule } from '../extension/LynxExtensionModule';
@@ -103,6 +103,10 @@ export class LynxContext implements IContext {
 
   setLynxView(lynxView?: LynxView) {
     this.lynxView = lynxView;
+  }
+
+  getCurrentWindow(): Promise<window.Window> | undefined {
+    return this.lynxView?.getCurrentWindow();
   }
 
   /**

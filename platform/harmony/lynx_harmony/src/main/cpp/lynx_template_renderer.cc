@@ -2243,6 +2243,26 @@ int LynxTemplateRenderer::GetNodeForLocation(int x, int y) {
   return ui_delegate_->GetNodeForLocation(x, y);
 }
 
+bool LynxTemplateRenderer::SetScreenshotMode(
+    const std::string& screen_shot_mode) {
+  if (!is_host_renderer_ || !ui_delegate_) {
+    return false;
+  }
+  const std::string actual_screen_shot_mode =
+      screen_shot_mode == "fullscreen" ? "fullscreen" : "lynxview";
+  static_cast<tasm::harmony::UIDelegateHarmony*>(ui_delegate_)
+      ->SetScreenshotMode(actual_screen_shot_mode);
+  return true;
+}
+
+std::string LynxTemplateRenderer::GetActualScreenshotMode() {
+  if (!is_host_renderer_ || !ui_delegate_) {
+    return "lynxview";
+  }
+  return static_cast<tasm::harmony::UIDelegateHarmony*>(ui_delegate_)
+      ->GetActualScreenshotMode();
+}
+
 std::vector<float> LynxTemplateRenderer::GetTransformValue(
     int id, const std::vector<float>& pad_border_margin_layout) {
   return ui_delegate_->GetTransformValue(id, pad_border_margin_layout);

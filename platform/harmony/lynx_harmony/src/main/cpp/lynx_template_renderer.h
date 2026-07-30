@@ -139,6 +139,8 @@ class LynxTemplateRenderer : public devtool::LynxDevToolProxy {
       const lynx::fml::RefPtr<lynx::fml::TaskRunner>& screenshot_runner,
       tasm::TakeSnapshotCompletedCallback callback) override;
   int GetNodeForLocation(int x, int y) override;
+  bool SetScreenshotMode(const std::string& screen_shot_mode) override;
+  std::string GetActualScreenshotMode() override;
   std::vector<float> GetTransformValue(
       int id, const std::vector<float>& pad_border_margin_layout) override;
 
