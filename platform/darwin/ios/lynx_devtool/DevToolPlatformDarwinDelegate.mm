@@ -2,12 +2,16 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 #import <LynxDevtool/DevToolPlatformDarwinDelegate.h>
+#include <cmath>
 #include <vector>
 
 #import <BaseDevTool/DevToolToast.h>
 #import <Lynx/LynxPageReloadHelper+Internal.h>
 #import <Lynx/LynxTemplateData+Converter.h>
 #import <Lynx/LynxTemplateRender+Internal.h>
+#import <Lynx/LynxTouchEvent.h>
+#import <Lynx/LynxUI.h>
+#import <Lynx/LynxUIKitAPIAdapter.h>
 #import <Lynx/LynxUIRenderer.h>
 #import <Lynx/LynxUIRendererProtocol.h>
 #import <LynxDevtool/ConsoleDelegateManager.h>
@@ -21,17 +25,74 @@
 
 #include "devtool/base_devtool/native/public/devtool_status.h"
 #include "devtool/lynx_devtool/agent/devtool_platform_facade.h"
+#include "devtool/lynx_devtool/agent/input/input_event_target.h"
 
 @interface DevToolPlatformDarwinDelegate ()
 - (nullable UIView*)firstResponderInView:(nullable UIView*)view;
+- (NSString*)effectiveScreenshotMode;
+@end
+
+@interface LynxEmulateTouchHelper (PointerEventLifecycle)
+- (void)cancelCurrentPointerSequence;
 @end
 
 #pragma mark - DevToolPlatformDarwin
 namespace lynx {
 namespace devtool {
+namespace {
+bool ToDarwinPointerEventType(input::PointerEventType type,
+                              LynxDevToolPointerEventType* darwin_type) {
+  if (!darwin_type) {
+    return false;
+  }
+  switch (type) {
+    case input::PointerEventType::kDown:
+      *darwin_type = LynxDevToolPointerEventTypeDown;
+      return true;
+    case input::PointerEventType::kMove:
+      *darwin_type = LynxDevToolPointerEventTypeMove;
+      return true;
+    case input::PointerEventType::kUp:
+      *darwin_type = LynxDevToolPointerEventTypeUp;
+      return true;
+    case input::PointerEventType::kCancel:
+      *darwin_type = LynxDevToolPointerEventTypeCancel;
+      return true;
+    case input::PointerEventType::kScroll:
+      *darwin_type = LynxDevToolPointerEventTypeScroll;
+      return true;
+  }
+  return false;
+}
+
+class DarwinInputEventTarget : public input::InputEventTarget {
+ public:
+  explicit DarwinInputEventTarget(DevToolPlatformDarwinDelegate* delegate) : delegate_(delegate) {}
+
+  input::PointerCapabilities GetPointerCapabilities() const override {
+    input::PointerCapabilities capabilities;
+    capabilities.default_source_type = input::PointerSourceType::kTouch;
+    capabilities.supports_touch = true;
+    return capabilities;
+  }
+
+  bool InjectPointerEvent(const input::PointerEvent& event) override {
+    if (event.source_type != input::PointerSourceType::kTouch || event.pointers.size() != 1) {
+      return false;
+    }
+    __strong typeof(delegate_) delegate = delegate_;
+    return delegate != nil && [delegate injectPointerEvent:event];
+  }
+
+ private:
+  __weak DevToolPlatformDarwinDelegate* delegate_;
+};
+}  // namespace
+
 class DevToolPlatformDarwin : public DevToolPlatformFacade {
  public:
-  DevToolPlatformDarwin(DevToolPlatformDarwinDelegate* darwin) { _darwin = darwin; }
+  explicit DevToolPlatformDarwin(DevToolPlatformDarwinDelegate* darwin)
+      : _darwin(darwin), input_event_target_(std::make_shared<DarwinInputEventTarget>(darwin)) {}
 
   int FindNodeIdForLocation(float x, float y, std::string screen_shot_mode) override {
     __strong typeof(_darwin) darwin = _darwin;
@@ -230,6 +291,10 @@ class DevToolPlatformDarwin : public DevToolPlatformFacade {
     }
   }
 
+  std::shared_ptr<input::InputEventTarget> GetInputEventTarget() override {
+    return input_event_target_;
+  }
+
   void InsertText(const std::string& text) override {
     __strong typeof(_darwin) darwin = _darwin;
     if (darwin != nil) {
@@ -306,6 +371,7 @@ class DevToolPlatformDarwin : public DevToolPlatformFacade {
 
  private:
   __weak DevToolPlatformDarwinDelegate* _darwin;
+  std::shared_ptr<input::InputEventTarget> input_event_target_;
 };
 }  // namespace devtool
 }  // namespace lynx
@@ -334,6 +400,10 @@ class DevToolPlatformDarwin : public DevToolPlatformFacade {
   void (^_devtoolCallback)(NSDictionary*);
 
   std::shared_ptr<lynx::devtool::DevToolPlatformFacade> devtool_platform_facade_;
+  NSString* _effectiveScreenshotMode;
+  NSInteger _injectedTouchTargetTag;
+  CGPoint _injectedTouchStartPoint;
+  BOOL _injectedTouchMoved;
 }
 
 - (nonnull instancetype)initWithLynxView:(nullable LynxView*)view {
@@ -342,6 +412,8 @@ class DevToolPlatformDarwin : public DevToolPlatformFacade {
   _lynxView = view;
   _debugInfoRecorder = nil;
   _touchHelper = [[LynxEmulateTouchHelper alloc] initWithLynxView:view];
+  _injectedTouchTargetTag = -1;
+  _injectedTouchMoved = NO;
 
   _castHelper = [[LynxScreenCastHelper alloc] initWithLynxView:view withPlatformDelegate:self];
 
@@ -352,6 +424,12 @@ class DevToolPlatformDarwin : public DevToolPlatformFacade {
   _lepusDebugInfoHelper = [[LepusDebugInfoHelper alloc] init];
 
   return self;
+}
+
+- (void)dealloc {
+  if ([_touchHelper respondsToSelector:@selector(cancelCurrentPointerSequence)]) {
+    [_touchHelper cancelCurrentPointerSequence];
+  }
 }
 
 - (void)attachLynxUIOwner:(nullable LynxUIOwner*)owner {
@@ -376,7 +454,10 @@ class DevToolPlatformDarwin : public DevToolPlatformFacade {
 
 - (int)findNodeIdForLocationWithX:(float)x withY:(float)y mode:(NSString*)mode {
   __strong typeof(_lynxView) lynxView = _lynxView;
-  return [lynxView.templateRender.lynxUIRenderer findNodeIdForLocationWithX:x withY:y mode:mode];
+  NSString* effectiveMode = _effectiveScreenshotMode.length > 0 ? _effectiveScreenshotMode : mode;
+  return [lynxView.templateRender.lynxUIRenderer findNodeIdForLocationWithX:x
+                                                                      withY:y
+                                                                       mode:effectiveMode];
 }
 
 - (NSString*)getDebugInfoByUrl:(NSString*)url {
@@ -412,6 +493,11 @@ class DevToolPlatformDarwin : public DevToolPlatformFacade {
 }
 
 - (void)attachLynxView:(LynxView*)lynxView {
+  if ([_touchHelper respondsToSelector:@selector(cancelCurrentPointerSequence)]) {
+    [_touchHelper cancelCurrentPointerSequence];
+  }
+  _injectedTouchTargetTag = -1;
+  _injectedTouchMoved = NO;
   _lynxView = lynxView;
   [_castHelper attachLynxView:lynxView];
   [_touchHelper attachLynxView:lynxView];
@@ -423,10 +509,30 @@ class DevToolPlatformDarwin : public DevToolPlatformFacade {
                 mode:(NSString*)screenshot_mode
               format:(NSString*)format {
   __strong typeof(_lynxView) lynxView = _lynxView;
-  NSString* mode = [lynxView.templateRender.lynxUIRenderer isFullScreenShotSupported]
-                       ? screenshot_mode
-                       : @"lynxview";
-  [_castHelper startCasting:quality width:max_width height:max_height mode:mode format:format];
+  NSString* requestedMode = screenshot_mode.length > 0 ? screenshot_mode : ScreenshotModeFullScreen;
+  _effectiveScreenshotMode = [lynxView.templateRender.lynxUIRenderer isFullScreenShotSupported]
+                                 ? [requestedMode copy]
+                                 : ScreenshotModeLynxView;
+  // Keep shared inspector coordinate consumers aligned with the actual capture mode.
+  lynx::devtool::DevToolStatus::GetInstance().SetStatus(
+      lynx::devtool::DevToolStatus::kDevToolStatusKeyScreenShotMode,
+      [_effectiveScreenshotMode UTF8String]);
+  [_castHelper startCasting:quality
+                      width:max_width
+                     height:max_height
+                       mode:_effectiveScreenshotMode
+                     format:format];
+}
+
+- (NSString*)effectiveScreenshotMode {
+  if (_effectiveScreenshotMode.length > 0) {
+    return _effectiveScreenshotMode;
+  }
+  std::string mode = lynx::devtool::DevToolStatus::GetInstance().GetStatus(
+      lynx::devtool::DevToolStatus::kDevToolStatusKeyScreenShotMode,
+      lynx::devtool::DevToolStatus::SCREENSHOT_MODE_FULLSCREEN);
+  NSString* result = [NSString stringWithCString:mode.c_str() encoding:NSUTF8StringEncoding];
+  return result.length > 0 ? result : ScreenshotModeFullScreen;
 }
 
 - (void)sendScreenCast:(NSString*)data
@@ -607,6 +713,115 @@ class DevToolPlatformDarwin : public DevToolPlatformFacade {
   }
 }
 
+- (BOOL)injectPointerEvent:(const lynx::input::PointerEvent&)inputEvent {
+  __strong typeof(_lynxView) lynxView = _lynxView;
+  if (lynxView == nil) {
+    return NO;
+  }
+  const auto* pointer = inputEvent.FindPointer(inputEvent.changed_pointer_id);
+  LynxDevToolPointerEventType darwinType;
+  if (pointer == nullptr || !std::isfinite(pointer->x) || !std::isfinite(pointer->y) ||
+      !std::isfinite(inputEvent.delta_x) || !std::isfinite(inputEvent.delta_y) ||
+      !lynx::devtool::ToDarwinPointerEventType(inputEvent.type, &darwinType)) {
+    return NO;
+  }
+
+  const CGFloat x = pointer->x;
+  const CGFloat y = pointer->y;
+  NSString* screenshotMode = [self effectiveScreenshotMode];
+  if ([_touchHelper respondsToSelector:@selector
+                    (injectPointerEvent:coordinateX:coordinateY:deltaX:deltaY:screenshotMode:)] &&
+      [_touchHelper injectPointerEvent:darwinType
+                           coordinateX:x
+                           coordinateY:y
+                                deltaX:inputEvent.delta_x
+                                deltaY:inputEvent.delta_y
+                        screenshotMode:screenshotMode]) {
+    return YES;
+  }
+
+  NSString* eventName = nil;
+  switch (inputEvent.type) {
+    case lynx::input::PointerEventType::kDown:
+      if (_injectedTouchTargetTag > 0) {
+        return NO;
+      }
+      _injectedTouchTargetTag = [self findNodeIdForLocationWithX:x withY:y mode:screenshotMode];
+      if (_injectedTouchTargetTag <= 0) {
+        _injectedTouchTargetTag = -1;
+        return NO;
+      }
+      _injectedTouchStartPoint = CGPointMake(pointer->x, pointer->y);
+      _injectedTouchMoved = NO;
+      eventName = LynxEventTouchStart;
+      break;
+    case lynx::input::PointerEventType::kMove: {
+      const CGFloat dx = pointer->x - _injectedTouchStartPoint.x;
+      const CGFloat dy = pointer->y - _injectedTouchStartPoint.y;
+      _injectedTouchMoved = _injectedTouchMoved || dx * dx + dy * dy > 25.f;
+      eventName = LynxEventTouchMove;
+      break;
+    }
+    case lynx::input::PointerEventType::kUp:
+      eventName = LynxEventTouchEnd;
+      break;
+    case lynx::input::PointerEventType::kCancel:
+      eventName = LynxEventTouchCancel;
+      break;
+    case lynx::input::PointerEventType::kScroll:
+      return NO;
+  }
+  if (_injectedTouchTargetTag <= 0) {
+    return NO;
+  }
+
+  id<LynxUIRendererProtocol> renderer = lynxView.templateRender.lynxUIRenderer;
+  UIView* rootView = [renderer eventHandlerRootView];
+  LynxUI* target = [renderer findUIBySign:_injectedTouchTargetTag];
+  if (rootView == nil || target == nil) {
+    _injectedTouchTargetTag = -1;
+    _injectedTouchMoved = NO;
+    return NO;
+  }
+
+  CGPoint clientPoint = CGPointMake(x, y);
+  CGPoint pagePoint;
+  NSString* lynxViewMode =
+      [NSString stringWithCString:lynx::devtool::DevToolStatus::SCREENSHOT_MODE_LYNXVIEW
+                         encoding:NSUTF8StringEncoding];
+  if ([screenshotMode isEqualToString:lynxViewMode]) {
+    pagePoint = clientPoint;
+    clientPoint = [rootView convertPoint:pagePoint toView:nil];
+  } else {
+    pagePoint = [[LynxUIKitAPIAdapter getKeyWindow] convertPoint:clientPoint toView:rootView];
+  }
+  CGPoint viewPoint = [rootView convertPoint:pagePoint toView:target.view];
+  LynxTouchEvent* event = [[LynxTouchEvent alloc] initWithName:eventName
+                                                     targetTag:_injectedTouchTargetTag
+                                                   clientPoint:clientPoint
+                                                     pagePoint:pagePoint
+                                                     viewPoint:viewPoint];
+  event.eventTarget = target;
+  event.timestamp = [[NSDate date] timeIntervalSince1970];
+  [lynxView sendTouchEvent:event];
+  if (inputEvent.type == lynx::input::PointerEventType::kUp && !_injectedTouchMoved) {
+    LynxTouchEvent* tapEvent = [[LynxTouchEvent alloc] initWithName:LynxEventTap
+                                                          targetTag:_injectedTouchTargetTag
+                                                        clientPoint:clientPoint
+                                                          pagePoint:pagePoint
+                                                          viewPoint:viewPoint];
+    tapEvent.eventTarget = target;
+    tapEvent.timestamp = event.timestamp;
+    [lynxView sendTouchEvent:tapEvent];
+  }
+  if (inputEvent.type == lynx::input::PointerEventType::kUp ||
+      inputEvent.type == lynx::input::PointerEventType::kCancel) {
+    _injectedTouchTargetTag = -1;
+    _injectedTouchMoved = NO;
+  }
+  return YES;
+}
+
 - (nullable UIView*)firstResponderInView:(nullable UIView*)view {
   if (view == nil) {
     return nil;
@@ -632,9 +847,6 @@ class DevToolPlatformDarwin : public DevToolPlatformFacade {
            modifiers:(int)modifiers
           clickCount:(int)clickCount {
   if (_touchHelper != nil) {
-    std::string mode = lynx::devtool::DevToolStatus::GetInstance().GetStatus(
-        lynx::devtool::DevToolStatus::kDevToolStatusKeyScreenShotMode,
-        lynx::devtool::DevToolStatus::SCREENSHOT_MODE_FULLSCREEN);
     [_touchHelper emulateTouch:type
                    coordinateX:x
                    coordinateY:y
@@ -643,7 +855,7 @@ class DevToolPlatformDarwin : public DevToolPlatformFacade {
                         deltaY:dy
                      modifiers:modifiers
                     clickCount:clickCount
-                screenshotMode:[NSString stringWithCString:mode.c_str()]];
+                screenshotMode:[self effectiveScreenshotMode]];
   }
 }
 
