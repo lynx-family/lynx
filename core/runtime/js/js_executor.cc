@@ -42,6 +42,9 @@ void JSExecutor::Destroy() {
   // Destroy the runtime in the JS thread
   LOGI("JSExecutor::Destroy");
 
+  if (js_runtime_) {
+    js_runtime_->BeforeDestroy();
+  }
   js_runtime_.Reset();
 }
 
