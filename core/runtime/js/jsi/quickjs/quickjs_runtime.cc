@@ -4,7 +4,6 @@
 
 #include "core/runtime/js/jsi/quickjs/quickjs_runtime.h"
 
-#include <chrono>
 #include <limits>
 #include <random>
 #include <utility>
@@ -28,6 +27,7 @@
 #include "core/runtime/profile/quickjs/quickjs_runtime_profiler.h"
 #include "core/runtime/trace/runtime_trace_event_def.h"
 #include "core/services/event_report/event_tracker.h"
+#include "core/services/event_report/event_tracker_platform_impl.h"
 #include "core/services/performance/memory_monitor/memory_monitor.h"
 #include "core/services/watch_dog/watch_dog.h"
 #include "quickjs/include/quickjs.h"
@@ -108,6 +108,48 @@ QuickjsRuntime::~QuickjsRuntime() {
   context_->Release();
   context_.reset();
   LOGI("LYNX free quickjs context");
+}
+
+void QuickjsRuntime::BeforeDestroy() { DumpCoverage(); }
+
+void QuickjsRuntime::DumpCoverage() {
+  if (!enable_js_coverage_) {
+    return;
+  }
+
+  const int32_t instance_id = static_cast<int32_t>(getRuntimeId());
+  size_t dump_length = 0;
+  const uint64_t dump_start_us = base::CurrentTimeMicroseconds();
+  const char *coverage_dump =
+      JS_GetCoverageDumpString(getJSContext(), instance_id, &dump_length);
+  const int dump_duration_ms = static_cast<int>(
+      (base::CurrentTimeMicroseconds() - dump_start_us) / 1000);
+  if (!coverage_dump) {
+    LOGE("Failed to dump JS coverage for runtime: " << instance_id);
+    return;
+  }
+  if (dump_length == 0) {
+    JS_FreeCoverageDumpString(coverage_dump);
+    return;
+  }
+
+  tasm::report::EventTrackerPlatformImpl::GetReportTaskRunner()->PostTask(
+      [coverage_dump, dump_length, dump_duration_ms, instance_id,
+       page_url = GetPageUrl()]() {
+        static constexpr char kJSCoverageEventName[] = "lynxsdk_bts_coverage";
+        static constexpr char kJSCoverageDataKey[] = "data";
+        static constexpr char kJSCoverageDumpDurationKey[] = "dump_duration_ms";
+
+        tasm::report::MoveOnlyEvent event;
+        event.SetName(kJSCoverageEventName);
+        event.SetProps(kJSCoverageDataKey,
+                       std::string(coverage_dump, dump_length));
+        event.SetProps(kJSCoverageDumpDurationKey, dump_duration_ms);
+        event.SetProps(tasm::report::kPropURL, page_url);
+        tasm::report::EventTrackerPlatformImpl::OnEvent(instance_id,
+                                                        std::move(event));
+        JS_FreeCoverageDumpString(coverage_dump);
+      });
 }
 
 void QuickjsRuntime::InitRuntime(std::shared_ptr<JSIContext> sharedContext) {
@@ -238,7 +280,16 @@ std::unique_ptr<const PreparedJavaScript> QuickjsRuntime::prepareJavaScript(
     return ret;
   }
   // TODO(zhenziqi) consider compile js files in this function
-  cache = GetBytecode(buffer, source_url);
+  // Coverage instrumentation is generated for the sampled runtime while
+  // compiling source and must not be reused by another page. Keep `cache` null
+  // for sampled pages, while retaining `buffer` as Source() in the
+  // QuickjsJavaScriptPreparation below. evaluatePreparedJavaScript() will then
+  // skip Bytecode(), fall through to Source(), and compile it through
+  // LEPUS_Eval_WITH_COVERAGE. This path neither reads nor generates a shared
+  // bytecode cache.
+  if (!enable_js_coverage_) {
+    cache = GetBytecode(buffer, source_url);
+  }
   cache::JsCacheTracker::OnPrepareJS(
       JSRuntimeType::quickjs, source_url, false,
       cache ? cache::JsScriptType::LOCAL_BINARY : cache::JsScriptType::SOURCE,

@@ -284,6 +284,9 @@ enum class JSRuntimeType { v8 = 0, jsc, quickjs, jsvm };
 class LYNX_EXPORT Runtime {
  public:
   virtual void InitRuntime(std::shared_ptr<JSIContext> sharedContext) = 0;
+  // Called on the owning JS thread during explicit page destruction, while
+  // the runtime and its context are still valid.
+  virtual void BeforeDestroy() {}
   virtual JSRuntimeType type() = 0;
   virtual void SetGCPauseSuppressionMode(bool mode){};
   virtual bool GetGCPauseSuppressionMode() { return false; };
