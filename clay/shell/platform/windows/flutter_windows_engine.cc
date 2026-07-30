@@ -48,6 +48,14 @@ static int64_t SnapToNextTick(int64_t value, int64_t tick_phase,
   return value + offset;
 }
 
+clay::Rect RoundOutDamageRect(const skity::Rect& damage_rect) {
+  int left = static_cast<int>(std::floor(damage_rect.Left()));
+  int top = static_cast<int>(std::floor(damage_rect.Top()));
+  int right = static_cast<int>(std::ceil(damage_rect.Right()));
+  int bottom = static_cast<int>(std::ceil(damage_rect.Bottom()));
+  return {left, top, right - left, bottom - top};
+}
+
 }  // namespace
 
 FlutterWindowsEngine::FlutterWindowsEngine(const FlutterProjectBundle& project)
@@ -693,17 +701,16 @@ void FlutterWindowsEngine::GLContextSetDamageRegion(
   if (!region.has_value() || !view_) {
     return;
   }
-  skity::Rect damage_rect = region.value();
-  int left = static_cast<int>(std::floor(damage_rect.Left()));
-  int top = static_cast<int>(std::floor(damage_rect.Top()));
-  int right = static_cast<int>(std::ceil(damage_rect.Right()));
-  int bottom = static_cast<int>(std::ceil(damage_rect.Bottom()));
-  view_->SetDamageRegion({left, top, right - left, bottom - top});
+  view_->SetDamageRegion(RoundOutDamageRect(*region));
 }
 
 bool FlutterWindowsEngine::GLContextPresent(const GLPresentInfo& present_info) {
   if (!view_) {
     return false;
+  }
+  if (present_info.frame_damage.has_value()) {
+    view_->SetPresentDamageRegion(
+        RoundOutDamageRect(*present_info.frame_damage));
   }
   return view_->SwapBuffers();
 }
@@ -722,6 +729,10 @@ bool FlutterWindowsEngine::GLContextFBOResetAfterPresent() const {
   return true;
 }
 
+skity::Matrix FlutterWindowsEngine::GLContextSurfaceTransformation() const {
+  return view_ ? view_->GetSurfaceTransformation() : skity::Matrix();
+}
+
 GPUSurfaceGLDelegate::GLProcResolver FlutterWindowsEngine::GetGLProcResolver()
     const {
   return [](const char* name) -> void* {
@@ -734,9 +745,9 @@ SurfaceFrame::FramebufferInfo FlutterWindowsEngine::GLContextFramebufferInfo()
   auto info = SurfaceFrame::FramebufferInfo{};
   info.supports_readback = true;
   info.supports_partial_repaint = true;
-  // Unspecified damage (nullopt) invokes full-frame rasterization (no partial
-  // redraw); use an empty skity::Rect to indicate no existing damage.
-  info.existing_damage = skity::Rect();
+  // Leave existing_damage unspecified here so GPUSurfaceGLSkity can use the
+  // surface-specific damage returned by GLContextFBO().
+  info.existing_damage = std::nullopt;
   return info;
 }
 

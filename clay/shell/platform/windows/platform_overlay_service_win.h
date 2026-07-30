@@ -35,6 +35,7 @@ class PlatformOverlayWin final : public PlatformOverlay,
       const std::optional<skity::Rect>& region) override;
   bool GLContextPresent(const GLPresentInfo& present_info) override;
   GLFBOInfo GLContextFBO(GLFrameInfo frame_info) const override;
+  skity::Matrix GLContextSurfaceTransformation() const override;
   void BringToFront() const;
   void RemoveFromParent() const;
   void DisplayOverlaySurface(int x, int y, int width, int height);
