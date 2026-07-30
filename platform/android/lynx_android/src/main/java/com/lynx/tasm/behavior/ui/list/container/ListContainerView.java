@@ -69,6 +69,7 @@ public class ListContainerView extends NestedScrollContainerView
   private boolean mForceCanScroll = false;
   private boolean mPanInterceptSelf = false;
   private boolean mPanInterceptAncestors = false;
+  private boolean mHasSetPanInterceptAncestors = false;
   private boolean mPanInterceptDescendants = false;
   private boolean mInNonTouchNestedScroll = false;
   private float mMaxFlingDistanceRatio = -1;
@@ -311,6 +312,13 @@ public class ListContainerView extends NestedScrollContainerView
 
   @Override
   public boolean dispatchTouchEvent(MotionEvent ev) {
+    if (getParent() != null) {
+      if (mPanInterceptAncestors) {
+        getParent().requestDisallowInterceptTouchEvent(true);
+      } else if (mHasSetPanInterceptAncestors) {
+        getParent().requestDisallowInterceptTouchEvent(false);
+      }
+    }
     if (mUiListContainer == null) {
       return super.dispatchTouchEvent(ev);
     }
@@ -693,6 +701,9 @@ public class ListContainerView extends NestedScrollContainerView
 
   public void setPanInterceptAncestors(boolean panInterceptAncestors) {
     mPanInterceptAncestors = panInterceptAncestors;
+    if (panInterceptAncestors) {
+      mHasSetPanInterceptAncestors = true;
+    }
   }
 
   public void setPanInterceptDescendants(boolean panInterceptDescendants) {

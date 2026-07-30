@@ -271,6 +271,7 @@ public class com::lynx::tasm::behavior::ui::scroll::AndroidScrollView : com.lynx
   public int com.lynx.tasm.behavior.ui.scroll.AndroidScrollView.getContentWidth();
   public int com.lynx.tasm.behavior.ui.scroll.AndroidScrollView.getContentHeight();
   public boolean com.lynx.tasm.behavior.ui.scroll.AndroidScrollView.dispatchTouchEvent(MotionEvent ev);
+  public void com.lynx.tasm.behavior.ui.scroll.AndroidScrollView.setPanInterceptAncestors(boolean panInterceptAncestors);
   public boolean com.lynx.tasm.behavior.ui.scroll.AndroidScrollView.onInterceptTouchEvent(MotionEvent ev);
   public boolean com.lynx.tasm.behavior.ui.scroll.AndroidScrollView.dispatchNestedScroll(int dxConsumed, int dyConsumed, int dxUnconsumed, int dyUnconsumed, int[] offsetInWindow);
   public boolean com.lynx.tasm.behavior.ui.scroll.AndroidScrollView.dispatchNestedScroll(int dxConsumed, int dyConsumed, int dxUnconsumed, int dyUnconsumed, int[] offsetInWindow, int type);

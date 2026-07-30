@@ -270,6 +270,7 @@ public class UIList extends AbsLynxList<RecyclerView> {
     private boolean mIsDownEventHandled = true;
     private boolean mPanInterceptSelf = false;
     private boolean mPanInterceptAncestors = false;
+    private boolean mHasSetPanInterceptAncestors = false;
     private boolean mPanInterceptDescendants = false;
 
     public PrivateRecyclerView(Context context, UIList ui) {
@@ -496,6 +497,13 @@ public class UIList extends AbsLynxList<RecyclerView> {
 
     @Override
     public boolean dispatchTouchEvent(MotionEvent ev) {
+      if (getParent() != null) {
+        if (mPanInterceptAncestors) {
+          getParent().requestDisallowInterceptTouchEvent(true);
+        } else if (mHasSetPanInterceptAncestors) {
+          getParent().requestDisallowInterceptTouchEvent(false);
+        }
+      }
       UIList list = mWeakUIList.get();
       if (list == null) {
         return super.dispatchTouchEvent(ev);
@@ -587,6 +595,9 @@ public class UIList extends AbsLynxList<RecyclerView> {
 
     public void setPanInterceptAncestors(boolean panInterceptAncestors) {
       mPanInterceptAncestors = panInterceptAncestors;
+      if (panInterceptAncestors) {
+        mHasSetPanInterceptAncestors = true;
+      }
     }
 
     public void setPanInterceptDescendants(boolean panInterceptDescendants) {
