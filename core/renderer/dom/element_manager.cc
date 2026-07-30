@@ -6,17 +6,20 @@
 
 #include <array>
 #include <memory>
+#include <mutex>
 #include <utility>
 #include <vector>
 
 #include "base/include/debug/lynx_assert.h"
 #include "base/include/log/logging.h"
+#include "base/include/vector.h"
 #include "base/trace/native/trace_event.h"
 #include "core/base/threading/vsync_monitor.h"
 #include "core/renderer/css/computed_css_style.h"
 #include "core/renderer/css/css_color.h"
 #include "core/renderer/css/css_selector_constants.h"
 #include "core/renderer/css/dynamic_css_styles_manager.h"
+#include "core/renderer/css/ng/style/cascade_layer_map.h"
 #include "core/renderer/css/parser/css_string_parser.h"
 #include "core/renderer/css/parser/length_handler.h"
 #include "core/renderer/dom/element_layout_node_manager.h"
@@ -53,6 +56,34 @@ constexpr const static char *kEventDomSizeKey = "dom_size";
 namespace lynx {
 namespace tasm {
 namespace {
+
+// Rule sets visited while collecting layer trees. The set is small (intrinsic
+// + deps + adopted fragments), so a linear flat set with inline storage avoids
+// per-collect heap allocation.
+using VisitedRuleSets = base::InlineLinearFlatSet<const css::RuleSet *, 8>;
+
+// Merges every reachable fragment's layer tree into |map|, creating |map|
+// lazily on the first fragment that declares an @layer.
+void CollectLayerTreesFromRuleSet(const css::RuleSet *rule_set,
+                                  VisitedRuleSets &visited,
+                                  std::shared_ptr<css::CascadeLayerMap> &map) {
+  if (!rule_set || !visited.insert(rule_set).second) {
+    // Dedup shared deps: merging a fragment twice would duplicate its anonymous
+    // layers (each merge makes a new node) and skew layer order.
+    return;
+  }
+  for (const auto *dep : rule_set->deps()) {
+    CollectLayerTreesFromRuleSet(dep, visited, map);
+  }
+  if (auto *fragment = rule_set->fragment()) {
+    if (fragment->root_layer()) {
+      if (!map) {
+        map = std::make_shared<css::CascadeLayerMap>();
+      }
+      map->MergeLayerTree(fragment->root_layer());
+    }
+  }
+}
 
 void PostTaskBatchToConcurrentLoop(
     const std::shared_ptr<base::Vector<base::closure>> &batch) {
@@ -192,6 +223,49 @@ ElementManager::~ElementManager() {
   if (platform_layout_context_) {
     platform_layout_context_->Destroy();
   }
+}
+
+std::shared_ptr<const css::CascadeLayerMap> ElementManager::GetCascadeLayerMap(
+    CSSFragment *intrinsic_style_sheet) {
+  {
+    std::shared_lock<std::shared_mutex> lock(adopted_style_sheets_mutex_);
+    auto it = cascade_layer_map_cache_.find(intrinsic_style_sheet);
+    if (it != cascade_layer_map_cache_.end()) {
+      return it->second;
+    }
+  }
+
+  // A cache miss upgrades to the exclusive lock. Recheck after the upgrade
+  // because another reader may have built the same map first.
+  std::unique_lock<std::shared_mutex> lock(adopted_style_sheets_mutex_);
+  auto it = cascade_layer_map_cache_.find(intrinsic_style_sheet);
+  if (it != cascade_layer_map_cache_.end()) {
+    return it->second;
+  }
+
+  std::shared_ptr<css::CascadeLayerMap> map;
+  VisitedRuleSets visited;
+  const auto collect_if_css_rule = [&visited, &map](CSSFragment *fragment) {
+    if (fragment && fragment->enable_css_rule()) {
+      CollectLayerTreesFromRuleSet(fragment->rule_set(), visited, map);
+    }
+  };
+  collect_if_css_rule(intrinsic_style_sheet);
+  for (const auto &wrapper : adopted_stylesheets_) {
+    if (wrapper) {
+      collect_if_css_rule(wrapper->fragment_.get());
+    }
+  }
+  if (map) {
+    map->ComputeLayerOrder();
+  }
+  return cascade_layer_map_cache_.emplace(intrinsic_style_sheet, std::move(map))
+      .first->second;
+}
+
+void ElementManager::InvalidateCascadeLayerMapCache() {
+  std::unique_lock<std::shared_mutex> lock(adopted_style_sheets_mutex_);
+  cascade_layer_map_cache_.clear();
 }
 
 void ElementManager::ReportElementStatistic() {

@@ -59,6 +59,7 @@
 #include "core/renderer/utils/test/text_utils_mock.h"
 #include "core/runtime/js/bindings/java_script_element.h"
 #include "core/runtime/lepus/bindings/renderer_functions.h"
+#include "core/runtime/lepus/bindings/style/shared_css_fragment_wrapper.h"
 #include "core/runtime/lepus/bytecode_generator.h"
 #include "core/runtime/lepus/js_object.h"
 #include "core/runtime/lepusng/jsvalue_helper.h"
@@ -485,6 +486,10 @@ TEST_P(FiberElementTest, LoadStyleSheetUsesBundleCSSRuleConfig) {
 
   ASSERT_TRUE(result.IsRefCounted());
   EXPECT_EQ(result.RefCounted()->GetRefType(), lepus::RefType::kCSSFragment);
+  auto wrapper =
+      fml::static_ref_ptr_cast<SharedCSSFragmentWrapper>(result.RefCounted());
+  ASSERT_TRUE(wrapper);
+  EXPECT_TRUE(wrapper->fragment_->enable_css_rule());
 }
 
 TEST_P(FiberElementTest, TestSetOverflow) {

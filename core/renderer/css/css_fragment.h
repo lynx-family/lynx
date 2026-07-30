@@ -22,6 +22,10 @@
 #include "core/renderer/css/ng/style/rule_set.h"
 
 namespace lynx {
+namespace css {
+class CascadeLayerMap;
+}  // namespace css
+
 namespace tasm {
 
 struct PseudoNotContent {
@@ -75,6 +79,8 @@ class CSSFragment {
 
   virtual bool enable_css_selector() = 0;
   virtual bool enable_css_invalidation() = 0;
+  // Whether this fragment was decoded from the CSS-rule wire format.
+  virtual bool enable_css_rule() { return false; }
 
   virtual void CollectInvalidationSetsForId(css::InvalidationLists& lists,
                                             const std::string& id) = 0;
@@ -153,6 +159,12 @@ class CSSFragment {
     if (auto* rs = rule_set()) {
       visitor(rs, cb_data);
     }
+  }
+
+  // Decorator overrides to merge intrinsic + deps + adopted layer trees with
+  // caching. Callers retain the returned snapshot while reading it.
+  virtual std::shared_ptr<const css::CascadeLayerMap> GetCascadeLayerMap() {
+    return nullptr;
   }
 
   bool HasFontFacesResolved() const { return has_font_faces_resolved_; }

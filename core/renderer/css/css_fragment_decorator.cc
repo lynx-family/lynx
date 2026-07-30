@@ -8,6 +8,8 @@
 
 #include "base/include/no_destructor.h"
 #include "base/trace/native/trace_event.h"
+#include "core/renderer/css/ng/style/cascade_layer_map.h"
+#include "core/renderer/css/shared_css_fragment.h"
 #include "core/renderer/dom/element_manager.h"
 
 namespace lynx {
@@ -238,6 +240,10 @@ bool CSSFragmentDecorator::enable_css_invalidation() {
          intrinsic_style_sheets_->enable_css_invalidation();
 }
 
+bool CSSFragmentDecorator::enable_css_rule() {
+  return intrinsic_style_sheets_ && intrinsic_style_sheets_->enable_css_rule();
+}
+
 template <typename Predicate>
 bool CSSFragmentDecorator::HasInAdopted(Predicate pred) {
   bool found = false;
@@ -391,6 +397,14 @@ void CSSFragmentDecorator::ForEachRuleSet(ForEachRuleSetVisitor visitor,
     }
     return true;
   });
+}
+
+std::shared_ptr<const css::CascadeLayerMap>
+CSSFragmentDecorator::GetCascadeLayerMap() {
+  if (!element_manager_) {
+    return nullptr;
+  }
+  return element_manager_->GetCascadeLayerMap(intrinsic_style_sheets_);
 }
 
 void CSSFragmentDecorator::CollectInvalidationSetsForId(

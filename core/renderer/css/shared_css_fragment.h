@@ -47,6 +47,7 @@ class SharedCSSFragment : public CSSFragment {
   inline bool enable_css_invalidation() override {
     return enable_css_invalidation_;
   }
+  inline bool enable_css_rule() override { return enable_css_rule_; }
   inline const std::vector<int32_t>& dependent_ids() { return dependent_ids_; }
   const CSSParserTokenMap& css() override { return css_; }
   css::RuleSet* rule_set() override { return rule_set_.get(); }
@@ -65,6 +66,7 @@ class SharedCSSFragment : public CSSFragment {
   void SetEnableClassMerge(bool class_merge) {
     enable_class_merge_ = class_merge;
   }
+  void SetEnableCSSRule(bool enable) { enable_css_rule_ = enable; }
 
   // Enabled in CSS selector only
   void SetEnableCSSInvalidation() { enable_css_invalidation_ = true; }
@@ -133,6 +135,7 @@ class SharedCSSFragment : public CSSFragment {
   bool enable_class_merge_ = false;
   bool enable_css_selector_ = false;
   bool enable_css_invalidation_ = false;
+  bool enable_css_rule_ = false;
   bool has_pseudo_not_style_ = false;
 
   std::vector<int32_t> dependent_ids_;

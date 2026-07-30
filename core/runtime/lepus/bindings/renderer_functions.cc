@@ -1411,7 +1411,9 @@ void ModifyStyleSheetByIdHelper(
   // After replacement/deletion above the CSSFragment held by FiberElement will
   // become a wild ptr, need clear all style_sheet of entire tree
   // so that replaced CSSFragment can be re-obtained
-  auto root = tasm->page_proxy()->element_manager()->root();
+  const auto& element_manager = tasm->page_proxy()->element_manager();
+  element_manager->InvalidateCascadeLayerMapCache();
+  auto root = element_manager->root();
   if (root) {
     root->ApplyFunctionRecursive([](auto element) {
       element->ResetStyleSheet();

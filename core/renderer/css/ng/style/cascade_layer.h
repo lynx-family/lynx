@@ -41,7 +41,6 @@ class CascadeLayer {
     return current;
   }
 
- private:
   // Find an existing direct child with the given name, or create one.
   // Anonymous layers (empty name) always create a new child.
   CascadeLayer* GetOrAddDirectSubLayer(const std::string& name) {
@@ -56,6 +55,7 @@ class CascadeLayer {
     return sub_layers_.back().get();
   }
 
+ private:
   std::string name_;
   std::vector<std::unique_ptr<CascadeLayer>> sub_layers_;
   uint16_t order_ = kImplicitOuterLayerOrder;
