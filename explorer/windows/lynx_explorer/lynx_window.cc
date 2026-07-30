@@ -235,9 +235,10 @@ LynxWindow::LynxWindow(unsigned int origin_x, unsigned int origin_y,
     auto dpi = GetDpiForHWND(window_handle_) / 96.f;
     test_bench_action_manager_ =
         std::make_shared<lynx::embedder::TestBenchActionManager>(
-            lynx_view_, [this, dpi](int width, int height) {
-              MoveWindow(window_handle_, 10, 10, std::round(width * dpi),
-                         std::round(height * dpi), TRUE);
+            lynx_view_, [this, dpi](double width, double height) {
+              MoveWindow(window_handle_, 10, 10,
+                         static_cast<int>(std::round(width * dpi)),
+                         static_cast<int>(std::round(height * dpi)), TRUE);
             });
     test_bench_action_manager_->SetFetchCallback(
         [](const std::string &url_str,

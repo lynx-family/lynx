@@ -7,6 +7,7 @@
 
 #include <functional>
 #include <memory>
+#include <mutex>
 #include <string>
 
 #include "platform/embedder/public/capi/lynx_native_module_capi.h"
@@ -33,16 +34,24 @@ class TestBenchReplayDataModule
   void SetJsbSettings(const std::string& data);
   void SetFunctionCall(const std::string& data);
   void SetCallbackData(const std::string& data);
+  void Reset();
+  void MarkReady();
 
   std::string GetRecordData();
   std::string GetJsbIgnoredInfo();
   std::string GetJsbSettings();
 
   std::string GetData();
+  bool GetDataIfReady(std::string* data);
 
  private:
+  std::string GetRecordDataLocked();
+  std::string GetDataLocked();
+
   void* context_ = nullptr;
 
+  mutable std::mutex mutex_;
+  bool ready_ = false;
   std::string jsb_ignored_info_;
   std::string jsb_settings_;
   std::string function_call_;

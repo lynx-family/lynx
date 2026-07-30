@@ -6,6 +6,7 @@
 #define PLATFORM_EMBEDDER_PLUGIN_CEF_SRC_MACOS_NSAPPLICATION_HANDLINGSENDEVENT_H_
 
 #import <Cocoa/Cocoa.h>
+#include "include/base/cef_build.h"
 #include "include/cef_application_mac.h"
 
 // It's required by cef.

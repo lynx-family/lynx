@@ -109,6 +109,7 @@ LYNX_EXTERN_C bool cef_extension_module_initialize() {
   CefSettings settings;
   settings.external_message_pump = true;
   settings.no_sandbox = true;
+  settings.windowless_rendering_enabled = true;
 
   CefRefPtr<CEFWebviewApp> app(new CEFWebviewApp);
 

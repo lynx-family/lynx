@@ -4,9 +4,10 @@
 
 #include "platform/embedder/lynx_recorder/test_bench_action_manager.h"
 
-#include <cmath>
+#include <algorithm>
 #include <future>
 #include <memory>
+#include <utility>
 
 #include "platform/embedder/lynx_recorder/test_bench_utils.h"
 
@@ -25,13 +26,28 @@ void TestBenchActionManager::SetFetchCallback(FetchCallback fetch_callback) {
   fetch_callback_ = fetch_callback;
 }
 
+void TestBenchActionManager::SetTaskScheduler(
+    ReplayTaskScheduler task_scheduler) {
+  task_scheduler_ = std::move(task_scheduler);
+}
+
+void TestBenchActionManager::SetReplayCompleteCallback(
+    ReplayCompleteCallback complete_callback) {
+  replay_complete_callback_ = std::move(complete_callback);
+}
+
 void TestBenchActionManager::StartWithUrl(const std::string& url) {
   if (url.empty()) {
     return;
   }
-  if (!replay_config_) {
-    replay_config_ = std::make_unique<embedder::TestBenchReplayConfig>();
-  }
+  replay_generation_.fetch_add(1, std::memory_order_relaxed);
+  data_module_->Reset();
+  preloaded_source_.clear();
+  component_list_.clear();
+  template_bundle_param_.clear();
+  global_props_.reset();
+  template_bundle_.reset();
+  replay_config_ = std::make_unique<embedder::TestBenchReplayConfig>();
   replay_config_->InitWithProductUrl(url);
   if (replay_config_->GetSourceUrl().empty()) {
     FetchRecordFile(replay_config_->GetUrl());
@@ -91,7 +107,8 @@ void TestBenchActionManager::HandleRecordFileData(const std::string& result) {
     if (config.HasMember("jsbIgnoredInfo")) {
       result_json = ToJson(config["jsbIgnoredInfo"]);
       data_module_->SetJsbIgnoredInfo(result_json);
-    } else if (config.HasMember("jsbSettings")) {
+    }
+    if (config.HasMember("jsbSettings")) {
       result_json = ToJson(config["jsbSettings"]);
       data_module_->SetJsbSettings(result_json);
     }
@@ -107,6 +124,7 @@ void TestBenchActionManager::HandleRecordFileData(const std::string& result) {
   if (dom.HasMember("Component List")) {
     component_list_ = ToJson(dom["Component List"]);
   }
+  data_module_->MarkReady();
 
   if (dom.HasMember("Action List")) {
     rapidjson::Value& action_list = dom["Action List"];
@@ -142,6 +160,11 @@ bool TestBenchActionManager::CheckFile(const rapidjson::Value& action_list) {
 void TestBenchActionManager::HandleActionList(
     const rapidjson::Value& action_list) {
   if (action_list.GetType() == rapidjson::kArrayType) {
+    bool has_replay_start_time = false;
+    int64_t replay_start_time = 0;
+    int64_t replay_end_interval = 0;
+    const uint64_t replay_generation =
+        replay_generation_.load(std::memory_order_relaxed);
     for (rapidjson::SizeType i = 0; i < action_list.Size(); i++) {
       const rapidjson::Value& obj = action_list[i];
       std::string function_name_str;
@@ -155,12 +178,16 @@ void TestBenchActionManager::HandleActionList(
       if (!replay_config_->CheckCanMockFuncName(function_name_str)) {
         continue;
       }
+      if (function_name_str.compare("SendBubbleEvent") == 0 &&
+          !replay_config_->GetReplayGesture()) {
+        continue;
+      }
       int64_t record_time = 0;
       if (obj.HasMember("Record Time") && obj["Record Time"].IsString()) {
         std::string record_time_str = obj["Record Time"].GetString();
         int record_time_value = 0;
         StringToInt(record_time_str, &record_time_value, 10);
-        record_time = record_time_value * 1000;
+        record_time = static_cast<int64_t>(record_time_value) * 1000;
       }
       if (obj.HasMember("RecordMillisecond") &&
           obj["RecordMillisecond"].IsInt64()) {
@@ -173,13 +200,69 @@ void TestBenchActionManager::HandleActionList(
       if (function_name_str.compare("fromTemplate") == 0) {
         param = template_bundle_param_;
       }
+      if (!has_replay_start_time) {
+        has_replay_start_time = true;
+        replay_start_time = record_time;
+      }
       ReplayAction replay_action;
+      replay_action.interval =
+          std::max<int64_t>(record_time - replay_start_time, 0);
       replay_action.function_id =
           replay_config_->GetCanMockFuncId(function_name_str);
       replay_action.params = param;
-      DoAction(replay_action);
+      replay_end_interval =
+          std::max(replay_end_interval, replay_action.interval);
+      DispatchAction(replay_action, replay_generation);
     }
+    DispatchReplayComplete(
+        replay_end_interval +
+            std::max<int64_t>(replay_config_->GetDelayEndInterval(), 0),
+        replay_generation);
   }
+}
+
+void TestBenchActionManager::DispatchAction(const ReplayAction& action,
+                                            uint64_t replay_generation) {
+  if (action.interval <= 0 || !task_scheduler_) {
+    DoAction(action);
+    return;
+  }
+
+  std::weak_ptr<TestBenchActionManager> weak_self = weak_from_this();
+  task_scheduler_(
+      [weak_self, replay_generation, action]() {
+        std::shared_ptr<TestBenchActionManager> self = weak_self.lock();
+        if (!self || self->replay_generation_.load(std::memory_order_relaxed) !=
+                         replay_generation) {
+          return;
+        }
+        self->DoAction(action);
+      },
+      action.interval);
+}
+
+void TestBenchActionManager::DispatchReplayComplete(
+    int64_t delay_ms, uint64_t replay_generation) {
+  if (!replay_complete_callback_) {
+    return;
+  }
+  std::weak_ptr<TestBenchActionManager> weak_self = weak_from_this();
+  auto complete = [weak_self, replay_generation]() {
+    std::shared_ptr<TestBenchActionManager> self = weak_self.lock();
+    if (!self || self->replay_generation_.load(std::memory_order_relaxed) !=
+                     replay_generation) {
+      return;
+    }
+    ReplayCompleteCallback callback = self->replay_complete_callback_;
+    if (callback) {
+      callback();
+    }
+  };
+  if (delay_ms <= 0 || !task_scheduler_) {
+    complete();
+    return;
+  }
+  task_scheduler_(std::move(complete), delay_ms);
 }
 
 void TestBenchActionManager::DoAction(const ReplayAction& action) {
@@ -234,16 +317,15 @@ void TestBenchActionManager::InitialLynxView(const std::string& param) {
   if (dom.HasParseError()) {
     return;
   }
-  int preferred_layout_height = 0;
-  int preferred_layout_width = 0;
+  double preferred_layout_height = 0;
+  double preferred_layout_width = 0;
   if (dom.HasMember("preferredLayoutHeight") &&
-      dom["preferredLayoutHeight"].IsFloat()) {
-    preferred_layout_height =
-        std::round(dom["preferredLayoutHeight"].GetFloat());
+      dom["preferredLayoutHeight"].IsNumber()) {
+    preferred_layout_height = dom["preferredLayoutHeight"].GetDouble();
   }
   if (dom.HasMember("preferredLayoutWidth") &&
-      dom["preferredLayoutWidth"].IsFloat()) {
-    preferred_layout_width = std::round(dom["preferredLayoutWidth"].GetFloat());
+      dom["preferredLayoutWidth"].IsNumber()) {
+    preferred_layout_width = dom["preferredLayoutWidth"].GetDouble();
   }
   if (preferred_layout_height == 0 || preferred_layout_width == 0) {
     return;
@@ -375,18 +457,24 @@ void TestBenchActionManager::SendGlobalEvent(const std::string& param) {
   if (dom.HasParseError()) {
     return;
   }
-  std::string event_name;
-  if (dom.IsArray() && dom.Size() == 2) {
-    if (dom[0].IsString()) {
-      event_name = dom[0].GetString();
-    }
-    if (event_name.compare("exposure") == 0 ||
-        event_name.compare("disexposure") == 0) {
-      return;
-    }
-    std::string params = ToJson(dom[1]);
-    lynx_view_->SendGlobalEvent(event_name, params);
+  const rapidjson::Value* arguments = nullptr;
+  if (dom.IsObject() && dom.HasMember("arguments") &&
+      dom["arguments"].IsArray()) {
+    arguments = &dom["arguments"];
+  } else if (dom.IsArray()) {
+    arguments = &dom;
   }
+
+  if (!arguments || arguments->Size() != 2 || !(*arguments)[0].IsString()) {
+    return;
+  }
+
+  const std::string event_name = (*arguments)[0].GetString();
+  if (event_name.compare("exposure") == 0 ||
+      event_name.compare("disexposure") == 0) {
+    return;
+  }
+  lynx_view_->SendGlobalEvent(event_name, ToJson((*arguments)[1]));
 }
 
 void TestBenchActionManager::ReloadTemplate(const std::string& param) {
