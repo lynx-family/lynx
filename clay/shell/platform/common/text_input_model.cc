@@ -36,10 +36,15 @@ TextInputModel::TextInputModel(const std::string& text,
                                const TextRange& composing_range, bool composing,
                                clay::Affinity selection_affinity)
     : text_{lynx::base::U8StringToU16(text)},
-      selection_{selection_range},
-      composing_range_{composing_range},
-      composing_(composing),
-      selection_affinity_{selection_affinity} {}
+      selection_affinity_{selection_affinity} {
+  const size_t text_length = text_.length();
+  selection_ = TextRange(std::min(selection_range.base(), text_length),
+                         std::min(selection_range.extent(), text_length));
+  if (composing && composing_range.end() <= text_length) {
+    composing_range_ = composing_range;
+    composing_ = !composing_range.collapsed();
+  }
+}
 
 bool TextInputModel::SetText(const std::string& text,
                              const TextRange& selection,
