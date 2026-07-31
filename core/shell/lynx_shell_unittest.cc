@@ -17,6 +17,7 @@
 #include "core/renderer/utils/lynx_env.h"
 #include "core/services/performance/memory_monitor/memory_monitor.h"
 #include "core/services/performance/memory_monitor/memory_record.h"
+#include "core/services/timing_handler/timing_constants.h"
 #include "core/shell/lynx_shell_builder.h"
 #include "core/shell/testing/mock_native_facade.h"
 #include "core/shell/testing/mock_runner_manufactor.h"
@@ -149,6 +150,25 @@ TEST_F(LynxShellTest, OnUpdateDataWithoutChange) {
   ASSERT_TRUE(*facade_);
 }
 
+TEST_F(LynxShellTest, EmbeddedTimingForwardsLoadBundleEndToPlatform) {
+  tasm::PageOptions page_options;
+  page_options.SetEmbeddedMode(tasm::EmbeddedMode::EMBEDDED_MODE_BASE);
+  tasm_mediator_->SetPageOptions(page_options);
+
+  constexpr uint64_t kTimestampUs = 123456;
+  const std::string pipeline_id = "pipeline-id";
+  tasm::Timing timing(pipeline_id);
+  timing.timings_.insert_if_absent(tasm::timing::kLoadBundleEnd, kTimestampUs);
+
+  tasm_mediator_->SetTiming(std::move(timing));
+  arwe_->Wait();
+
+  EXPECT_TRUE(*facade_);
+  EXPECT_EQ(std::any_cast<std::string>((*facade_)["timing_key"]),
+            tasm::timing::kLoadBundleEnd);
+  EXPECT_EQ(std::any_cast<uint64_t>((*facade_)["timestamp_us"]), kTimestampUs);
+  EXPECT_EQ(std::any_cast<std::string>((*facade_)["pipeline_id"]), pipeline_id);
+}
 TEST_F(LynxShellTest, GetAllPerformanceEntries) {
   auto& env = lynx::tasm::LynxEnv::GetInstance();
   env.SetBoolLocalEnv(lynx::tasm::LynxEnv::kLynxDebugEnabled, true);

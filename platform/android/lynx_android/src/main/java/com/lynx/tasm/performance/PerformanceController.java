@@ -68,6 +68,7 @@ public class PerformanceController implements IMemoryMonitor, ITimingCollector {
    */
   public void setEmbeddedMode(boolean useEmbeddedMode) {
     mUseEmbeddedMode = useEmbeddedMode;
+    ensureEmbeddedCollectorInitialized();
   }
 
   public boolean isEmbeddedMode() {
@@ -81,6 +82,7 @@ public class PerformanceController implements IMemoryMonitor, ITimingCollector {
     if (isEmbeddedMode() && mEmbeddedTimingCollector == null) {
       mEmbeddedTimingCollector = new EmbeddedTimingCollector();
       mEmbeddedTimingCollector.setObserver(mObserver);
+      mEmbeddedTimingCollector.setInstanceId(mInstanceId);
     }
   }
 
@@ -129,6 +131,9 @@ public class PerformanceController implements IMemoryMonitor, ITimingCollector {
 
   public void setInstanceId(int instanceId) {
     mInstanceId = instanceId;
+    if (mEmbeddedTimingCollector != null) {
+      mEmbeddedTimingCollector.setInstanceId(instanceId);
+    }
   }
 
   public int getInstanceId() {
@@ -399,6 +404,25 @@ public class PerformanceController implements IMemoryMonitor, ITimingCollector {
         reporter.onPerformanceEvent(newEntry);
       }
     }
+  }
+
+  /**
+   * Sets a timing value forwarded by the native embedded-mode pipeline.
+   * This method must be called on the UI thread.
+   *
+   * @param key The timing key.
+   * @param usTimestamp The timing timestamp in microseconds.
+   * @param pipelineID The pipeline ID associated with the timing value.
+   */
+  @UiThread
+  @RestrictTo(RestrictTo.Scope.LIBRARY)
+  public void setEmbeddedTiming(String key, long usTimestamp, String pipelineID) {
+    if (!isEmbeddedMode() || key == null) {
+      return;
+    }
+    makeTraceEventInstant(MARK_TIMING, key, usTimestamp, pipelineID);
+    ensureEmbeddedCollectorInitialized();
+    mEmbeddedTimingCollector.markTiming(key, usTimestamp);
   }
 
   @AnyThread
