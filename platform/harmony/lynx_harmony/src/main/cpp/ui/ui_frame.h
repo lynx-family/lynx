@@ -33,7 +33,6 @@ class UIFrame : public UIView {
 
   static napi_value OnHostReady(napi_env env, napi_callback_info info);
   static napi_value OnIntrinsicSizeChanged(napi_env env, napi_callback_info info);
-  static napi_value OnLoadMetrics(napi_env env, napi_callback_info info);
 
   void SetFrameAppBundle(std::shared_ptr<tasm::LynxTemplateBundle> bundle);
   void UpdateProps(PropBundleHarmony* props) override;
@@ -45,7 +44,6 @@ class UIFrame : public UIView {
   void HandleHostReady();
   void HandleIntrinsicSizeChanged(float width, float height);
   void BuildLayoutChangeEventDetail(lepus::Dictionary& detail);
-  void HandleLoadMetrics(const lepus::Value& entry);
 
  private:
   struct FrameHostCreationResult {
