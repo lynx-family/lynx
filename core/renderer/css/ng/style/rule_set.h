@@ -40,10 +40,13 @@ struct MatchedRule {
   const RuleData* Data() const { return rule_data_; }
   uint64_t Position() const { return position_; }
   unsigned Specificity() const { return rule_data_->Specificity(); }
+  uint16_t LayerOrder() const { return layer_order_; }
+  void SetLayerOrder(uint16_t order) { layer_order_ = order; }
 
  private:
   const RuleData* rule_data_;
   uint64_t position_;
+  uint16_t layer_order_ = CascadeLayer::kImplicitOuterLayerOrder;
 };
 
 using CompactRuleDataVector = base::InlineVector<RuleData, 2>;
