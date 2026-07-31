@@ -20,7 +20,7 @@ napi_value TestGlobalJSB(napi_env env, napi_callback_info info) {
   return r;
 }
 
-void ExampleLynxRuntimeLifecycleObserver::OnRuntimeAttach(napi_env napi_env) {
+void ExampleLynxRuntimeLifecycleObserver::OnRuntimeAttach(napi_env napi_env, const char*) {
   napi_handle_scope scope = nullptr;
   napi_open_handle_scope(napi_env, &scope);
   napi_value global;

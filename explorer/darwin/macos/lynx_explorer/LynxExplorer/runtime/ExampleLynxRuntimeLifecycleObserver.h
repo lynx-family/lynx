@@ -15,7 +15,7 @@ namespace example {
 class ExampleLynxRuntimeLifecycleObserver
     : public pub::LynxRuntimeLifecycleObserver {
  public:
-  void OnRuntimeAttach(napi_env env) override;
+  void OnRuntimeAttach(napi_env env, const char* runtime_type) override;
   void OnRuntimeDetach() override;
 };
 }  // namespace example
