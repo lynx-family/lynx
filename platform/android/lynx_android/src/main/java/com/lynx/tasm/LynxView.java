@@ -938,7 +938,7 @@ public class LynxView extends UIBodyView implements ILynxSecurityTarget {
    */
   public void resetData(TemplateData data) {
     checkAccessFromNonUiThread("resetData");
-    LLog.i(TAG, "resetData with json in " + data.toString());
+    LLog.i(TAG, "resetData with json in " + String.valueOf(data));
     if (mLynxTemplateRender == null) {
       return;
     }
