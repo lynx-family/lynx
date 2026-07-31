@@ -9726,13 +9726,13 @@ public class com::lynx::tasm::utils::RunOnceRunnable : Runnable {
 }
 
 public interface com::lynx::jsbridge::RuntimeLifecycleListener {
-  public void com.lynx.jsbridge.RuntimeLifecycleListener.onRuntimeAttach(long napiEnv);
+  public void com.lynx.jsbridge.RuntimeLifecycleListener.onRuntimeAttach(long napiEnv, String runtimeType);
   public void com.lynx.jsbridge.RuntimeLifecycleListener.onRuntimeDetach();
 }
 
 public class com::lynx::jsbridge::RuntimeLifecycleListenerDelegate : com.lynx.jsbridge.RuntimeLifecycleListener {
   public com.lynx.jsbridge.RuntimeLifecycleListenerDelegate.RuntimeLifecycleListenerDelegate( @NonNull WeakReference< LynxContext > lynxContext, @NonNull RuntimeLifecycleListener listener);
-  public void com.lynx.jsbridge.RuntimeLifecycleListenerDelegate.onRuntimeAttach(long napiEnv);
+  public void com.lynx.jsbridge.RuntimeLifecycleListenerDelegate.onRuntimeAttach(long napiEnv, String runtimeType);
   public void com.lynx.jsbridge.RuntimeLifecycleListenerDelegate.onRuntimeDetach();
 }
 
