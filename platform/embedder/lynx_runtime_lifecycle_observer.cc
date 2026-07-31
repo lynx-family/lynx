@@ -68,7 +68,8 @@ LynxRuntimeLifecycleListenerDelegate::LynxRuntimeLifecycleListenerDelegate()
 
 LynxRuntimeLifecycleListenerDelegate::LynxRuntimeLifecycleListenerDelegate(
     lynx_runtime_lifecycle_observer_t* observer,
-    std::function<void(napi_env env)> on_attach_callback)
+    std::function<void(napi_env env, const char* runtime_type)>
+        on_attach_callback)
     : RuntimeLifecycleListenerDelegate(
           RuntimeLifecycleListenerDelegate::DelegateType::FULL),
       observer_(observer),
@@ -96,13 +97,15 @@ void LynxRuntimeLifecycleListenerDelegate::OnAppEnterForeground() {}
 
 void LynxRuntimeLifecycleListenerDelegate::OnAppEnterBackground() {}
 
-void LynxRuntimeLifecycleListenerDelegate::OnRuntimeAttach(void* env) {
+void LynxRuntimeLifecycleListenerDelegate::OnRuntimeAttach(
+    void* env, const char* runtime_type) {
   env_holder_->OnRuntimeAttach(static_cast<napi_env>(env));
   if (observer_ && observer_->attach_callback) {
-    observer_->attach_callback(observer_, static_cast<napi_env>(env));
+    observer_->attach_callback(observer_, static_cast<napi_env>(env),
+                               runtime_type);
   }
   if (on_attach_callback_) {
-    on_attach_callback_(static_cast<napi_env>(env));
+    on_attach_callback_(static_cast<napi_env>(env), runtime_type);
   }
 }
 

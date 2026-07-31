@@ -423,7 +423,11 @@ void BTSRuntime::RegisterNapiModules() {
   TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS,
               RUNTIME_LIFECYCLE_OBSERVER_RUNTIME_ATTACH);
   napi_env env = static_cast<napi_env>(napi_environment_->proxy()->Env());
-  lifecycle_observer_->OnRuntimeAttach(static_cast<void*>(env));
+  auto* js_runtime = GetJSRuntimeWeak().Lock();
+  const char* runtime_type =
+      js_runtime ? lynx::runtime::js::JSRuntimeTypeToString(js_runtime->type())
+                 : "";
+  lifecycle_observer_->OnRuntimeAttach(static_cast<void*>(env), runtime_type);
   auto& factory = js_executor_->GetModuleManager()->GetExtensionModuleFactory();
   if (factory) {
     factory->OnRuntimeAttach(static_cast<void*>(env),
