@@ -30,10 +30,10 @@ public class RuntimeLifecycleListenerDelegate implements RuntimeLifecycleListene
   }
 
   @CalledByNative
-  public void onRuntimeAttach(long napiEnv) {
+  public void onRuntimeAttach(long napiEnv, String runtimeType) {
     if (mListener != null) {
       try {
-        mListener.onRuntimeAttach(napiEnv);
+        mListener.onRuntimeAttach(napiEnv, runtimeType);
       } catch (Exception e) {
         onError(e);
       }

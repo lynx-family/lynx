@@ -20,7 +20,7 @@ class ExampleLynxRuntimeLifecycleObserver
   explicit ExampleLynxRuntimeLifecycleObserver(uint64_t token_id = 0)
       : token_id_(token_id) {}
 
-  void OnRuntimeAttach(napi_env env) override;
+  void OnRuntimeAttach(napi_env env, const char* runtime_type) override;
   void OnRuntimeDetach() override;
 
  private:
