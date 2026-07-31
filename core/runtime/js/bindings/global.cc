@@ -23,21 +23,7 @@ namespace js {
 static Value GetSystemInfo(Runtime& rt) {
   BASE_STATIC_STRING_DECL(kOSVersion, "osVersion");
   BASE_STATIC_STRING_DECL(kRuntimeType, "runtimeType");
-  const char* runtime_type = "";
-  switch (rt.type()) {
-    case JSRuntimeType::v8:
-      runtime_type = "v8";
-      break;
-    case JSRuntimeType::jsc:
-      runtime_type = "jsc";
-      break;
-    case JSRuntimeType::quickjs:
-      runtime_type = "quickjs";
-      break;
-    case JSRuntimeType::jsvm:
-      runtime_type = "jsvm";
-      break;
-  }
+  const char* runtime_type = JSRuntimeTypeToString(rt.type());
 
   lepus::Value system_info = tasm::GenerateSystemInfo(nullptr);
 
