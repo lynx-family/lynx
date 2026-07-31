@@ -4,7 +4,7 @@
 
 import lynx from 'liblynx.so';
 import { BuilderNode, FrameNode, UIContext } from '@kit.ArkUI';
-import { LynxContext } from '../../LynxContext';
+import { LynxContext, setUIOwnerCreatedCallback } from '../../LynxContext';
 import { LynxView, LynxViewBuilder } from '../../LynxView';
 import { LynxViewClient } from '../../LynxViewClient';
 import { LynxUpdateMeta, MetaData, TemplateData } from '../../MetaData';
@@ -148,6 +148,11 @@ export class FrameHost {
 
   onChildContextReady(context: LynxContext): void {
     this.childContext = context;
+    setUIOwnerCreatedCallback(context, (uiOwner) => {
+      if (this.childContext === context) {
+        this.native.onHostReady(uiOwner.native);
+      }
+    });
     this.native.onHostReady();
   }
 
@@ -156,6 +161,9 @@ export class FrameHost {
   }
 
   dispose(): void {
+    if (this.childContext) {
+      setUIOwnerCreatedCallback(this.childContext, undefined);
+    }
     this.childContext = undefined;
     this.builderNode?.dispose();
     this.builderNode = undefined;

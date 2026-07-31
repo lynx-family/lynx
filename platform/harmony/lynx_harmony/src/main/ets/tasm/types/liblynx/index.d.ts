@@ -285,7 +285,7 @@ export class UIOwner {
 }
 
 export class UIFrame {
-  onHostReady(): void;
+  onHostReady(childOwner?: UIOwner): void;
 
   onIntrinsicSizeChanged(width: number, height: number): void;
 

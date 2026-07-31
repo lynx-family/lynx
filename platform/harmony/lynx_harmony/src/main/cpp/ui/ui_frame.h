@@ -42,7 +42,7 @@ class UIFrame : public UIView {
                     uint32_t node_index) override;
   void OnDestroy() override;
 
-  void HandleHostReady();
+  void HandleHostReady(UIOwner* child_owner);
   void HandleIntrinsicSizeChanged(float width, float height);
   void BuildLayoutChangeEventDetail(lepus::Dictionary& detail);
   void HandleLoadMetrics(const lepus::Value& entry);
@@ -64,6 +64,9 @@ class UIFrame : public UIView {
   void UpdateHostConfiguration();
   void UpdateHostViewport();
   void UpdateHostMetaDataIfNeeded();
+  void AttachChildUIOwner(UIOwner* child_owner);
+  void AttachChildPageUI(UIBase* child_root);
+  void DetachChildPageUI();
   std::optional<float> ParsePresetLength(const lepus::Value& value) const;
   bool CallHostMethod(const char* method, size_t argc, napi_value* argv,
                       napi_value* result = nullptr);
@@ -99,6 +102,7 @@ class UIFrame : public UIView {
   float content_height_{0.f};
   float intrinsic_width_{0.f};
   float intrinsic_height_{0.f};
+  std::weak_ptr<EventTarget> child_lynx_page_ui_;
 };
 
 }  // namespace harmony

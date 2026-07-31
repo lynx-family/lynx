@@ -76,6 +76,7 @@ export class LynxContext implements IContext {
 
   public setUIOwner(uiOwner?: UIOwner) {
     this.uiOwner = uiOwner;
+    updateUIOwnerBridge(this, uiOwner);
   }
 
   public measureNativeNode(sign: number, width: number, widthMode: number, height: number, heightMode: number,
@@ -476,6 +477,7 @@ export class LynxContext implements IContext {
   }
 
   aboutToDisappear() {
+    setUIOwnerCreatedCallback(this, undefined);
     this.setLynxView(undefined);
     this.setRenderer(undefined);
     this.setUIOwner(undefined);
@@ -483,5 +485,32 @@ export class LynxContext implements IContext {
     this.setGenericResourceFetcher(undefined);
     this.setMediaResourceFetcher(undefined);
     this.setExtensionModule(undefined);
+  }
+}
+
+type UIOwnerCreatedCallback = (uiOwner: UIOwner) => void;
+
+const uiOwnerCreatedCallbacks: WeakMap<LynxContext, UIOwnerCreatedCallback> = new WeakMap();
+const currentUIOwners: WeakMap<LynxContext, UIOwner> = new WeakMap();
+
+function updateUIOwnerBridge(context: LynxContext, uiOwner?: UIOwner): void {
+  if (!uiOwner) {
+    currentUIOwners.delete(context);
+    return;
+  }
+  currentUIOwners.set(context, uiOwner);
+  uiOwnerCreatedCallbacks.get(context)?.(uiOwner);
+}
+
+export function setUIOwnerCreatedCallback(context: LynxContext, callback?: UIOwnerCreatedCallback): void {
+  if (!callback) {
+    uiOwnerCreatedCallbacks.delete(context);
+    currentUIOwners.delete(context);
+    return;
+  }
+  uiOwnerCreatedCallbacks.set(context, callback);
+  const uiOwner = currentUIOwners.get(context);
+  if (uiOwner) {
+    callback(uiOwner);
   }
 }
