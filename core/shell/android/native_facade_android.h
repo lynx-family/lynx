@@ -51,6 +51,9 @@ class NativeFacadeAndroid : public NativeFacade {
                       const lepus::Value& update_timing,
                       const std::string& update_flag) override;
 
+  void SetEmbeddedTiming(const std::string& timing_key, uint64_t timestamp_us,
+                         const std::string& pipeline_id) override;
+
   void OnDynamicComponentPerfReady(const lepus::Value& perf_info) override;
 
   void OnConfigUpdated(const lepus::Value& data) override;

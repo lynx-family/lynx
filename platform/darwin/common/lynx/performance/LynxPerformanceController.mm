@@ -3,11 +3,11 @@
 // LICENSE file in the root directory of this source tree.
 
 #import <Lynx/LynxFSPTracer+Native.h>
+#import <Lynx/LynxMemoryMonitorProtocol.h>
 #import <Lynx/LynxPerformanceEntryConverter.h>
 #import <Lynx/LynxService.h>
 #import <Lynx/LynxServiceEventReporterProtocol.h>
 #import "LynxEmbeddedTimingCollector.h"
-#import "LynxMemoryMonitorProtocol.h"
 #import "LynxPerformanceController+Native.h"
 #include "base/trace/native/trace_event.h"
 #include "core/services/timing_handler/timing_handler.h"
@@ -18,6 +18,10 @@
 
 using namespace lynx::shell;
 using namespace lynx::tasm;
+
+@interface LynxEmbeddedTimingCollector (Internal)
+- (void)setInstanceId:(int32_t)instanceId;
+@end
 
 std::unique_ptr<std::unordered_map<std::string, std::string>> ConvertNSDictToUnorderedMap(
     NSDictionary<NSString*, NSString*>* _Nullable nsDict) {
@@ -51,12 +55,19 @@ std::unique_ptr<std::unordered_map<std::string, std::string>> ConvertNSDictToUno
 - (void)setNativeActor:(const std::shared_ptr<PerformanceControllerActor>&)nativeActor {
   _nativeWeakActorPtr = nativeActor;
   [_fspTracer setNativeActor:nativeActor];
+  if (nativeActor) {
+    [_embeddedCollector setInstanceId:nativeActor->GetInstanceId()];
+  }
 }
 
 - (void)setEmbeddedModeEnabled:(BOOL)enabled {
   _embeddedModeEnabled = enabled;
   if (enabled) {
     _embeddedCollector = [[LynxEmbeddedTimingCollector alloc] initWithObserver:_observer];
+    auto actorPtr = _nativeWeakActorPtr.lock();
+    if (actorPtr) {
+      [_embeddedCollector setInstanceId:actorPtr->GetInstanceId()];
+    }
   }
 }
 

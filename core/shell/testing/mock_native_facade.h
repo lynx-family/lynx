@@ -42,6 +42,9 @@ struct MockNativeFacade : public NativeFacadeEmptyImpl {
 
   void OnTasmFinishByNative() override;
 
+  void SetEmbeddedTiming(const std::string& timing_key, uint64_t timestamp_us,
+                         const std::string& pipeline_id) override;
+
   void ReportError(const base::LynxError& error) override;
 
   void OnModuleMethodInvoked(const std::string& module,

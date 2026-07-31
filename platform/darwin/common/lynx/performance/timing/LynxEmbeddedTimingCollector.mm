@@ -3,15 +3,23 @@
 // LICENSE file in the root directory of this source tree.
 
 #import "LynxEmbeddedTimingCollector.h"
+#import <Lynx/LynxEventReporter.h>
 #import <Lynx/LynxPerformanceEntryConverter.h>
 #include "core/services/timing_handler/timing_constants.h"
+
+static NSString* const kEmbeddedPerformanceEntryPipelineEvent =
+    @"lynxsdk_performance_entry_pipeline";
+static NSString* const kEmbeddedLynxFCP = @"lynxFcp";
 
 @interface LynxEmbeddedTimingCollector ()
 
 @property(nonatomic, assign) uint64_t loadBundleStartUs;
+@property(nonatomic, assign) uint64_t loadBundleEndUs;
 @property(nonatomic, assign) uint64_t paintEndUs;
 @property(nonatomic, strong) NSMutableArray<NSNumber*>* updateDataStartUsList;
 @property(nonatomic, assign) BOOL hasEmitLoadBundleEvent;
+@property(nonatomic, assign) BOOL hasReportedLoadBundleEvent;
+@property(nonatomic, assign) int32_t instanceId;
 
 @end
 
@@ -22,13 +30,23 @@
     _observer = observer;
     _updateDataStartUsList = [NSMutableArray array];
     _hasEmitLoadBundleEvent = NO;
+    _hasReportedLoadBundleEvent = NO;
+    _instanceId = kUnknownInstanceId;
   }
   return self;
+}
+
+- (void)setInstanceId:(int32_t)instanceId {
+  _instanceId = instanceId;
 }
 
 - (void)setTiming:(uint64_t)timestamp key:(NSString*)key {
   if ([key isEqualToString:@(lynx::tasm::timing::kLoadBundleStart)]) {
     self.loadBundleStartUs = timestamp;
+  } else if ([key isEqualToString:@(lynx::tasm::timing::kLoadBundleEnd)]) {
+    self.loadBundleEndUs = timestamp;
+    [self emitLoadBundleObserverIfReady];
+    [self reportLoadBundleIfReady];
   } else if ([key isEqualToString:@(lynx::tasm::timing::kUpdateTriggeredByNative)]) {
     [self.updateDataStartUsList addObject:@(timestamp)];
   } else if ([key isEqualToString:@(lynx::tasm::timing::kPaintEnd)]) {
@@ -38,27 +56,53 @@
 }
 
 - (void)onPaintEnd {
-  [self emitLoadBundleIfReady];
+  [self emitLoadBundleObserverIfReady];
   [self emitUpdateDataIfReady];
+  [self reportLoadBundleIfReady];
 }
 
-- (void)emitLoadBundleIfReady {
+- (void)emitLoadBundleObserverIfReady {
   if (self.hasEmitLoadBundleEvent) {
     return;
   }
-  if (self.loadBundleStartUs == 0 || self.paintEndUs == 0) {
+  if (self.loadBundleStartUs == 0 || self.paintEndUs < self.loadBundleStartUs) {
     return;
   }
   self.hasEmitLoadBundleEvent = YES;
+  double loadBundleStartMs = (double)self.loadBundleStartUs / 1000.0;
+  double paintEndMs = (double)self.paintEndUs / 1000.0;
   NSDictionary* entryDict = @{
     @(lynx::tasm::timing::kEntryType) : @(lynx::tasm::timing::kEntryTypePipeline),
     @(lynx::tasm::timing::kEntryName) : @(lynx::tasm::timing::kLoadBundle),
-    @(lynx::tasm::timing::kLoadBundleStart) : @((double)self.loadBundleStartUs / 1000.0),
-    @(lynx::tasm::timing::kPipelineStart) : @((double)self.loadBundleStartUs / 1000.0),
-    @(lynx::tasm::timing::kPaintEnd) : @((double)self.paintEndUs / 1000.0)
+    @(lynx::tasm::timing::kLoadBundleStart) : @(loadBundleStartMs),
+    @(lynx::tasm::timing::kPipelineStart) : @(loadBundleStartMs),
+    @(lynx::tasm::timing::kPaintEnd) : @(paintEndMs)
   };
   LynxPerformanceEntry* entry = [LynxPerformanceEntryConverter makePerformanceEntry:entryDict];
   [_observer onPerformanceEvent:entry];
+}
+
+- (void)reportLoadBundleIfReady {
+  if (self.hasReportedLoadBundleEvent || self.loadBundleStartUs == 0 ||
+      self.loadBundleEndUs < self.loadBundleStartUs || self.paintEndUs < self.loadBundleEndUs) {
+    return;
+  }
+  self.hasReportedLoadBundleEvent = YES;
+  uint64_t loadBundleStartUs = self.loadBundleStartUs;
+  uint64_t loadBundleEndUs = self.loadBundleEndUs;
+  uint64_t paintEndUs = self.paintEndUs;
+  int32_t instanceId = self.instanceId;
+  [LynxEventReporter onEvent:kEmbeddedPerformanceEntryPipelineEvent
+                  instanceId:instanceId
+                propsBuilder:^NSDictionary<NSString*, NSObject*>* {
+                  return @{
+                    @(lynx::tasm::timing::kEntryType) : @(lynx::tasm::timing::kEntryTypePipeline),
+                    @(lynx::tasm::timing::kEntryName) : @(lynx::tasm::timing::kLoadBundle),
+                    kEmbeddedLynxFCP : @((double)(paintEndUs - loadBundleStartUs) / 1000.0),
+                    @(lynx::tasm::timing::kLoadBundle) :
+                        @((double)(loadBundleEndUs - loadBundleStartUs) / 1000.0)
+                  };
+                }];
 }
 
 - (void)emitUpdateDataIfReady {
