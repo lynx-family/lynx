@@ -20,4 +20,6 @@ typedef void (^LynxMemoryUsageResultCallback)(NSString* resultJson, NSString* er
 - (void)queryAllMemoryUsageWithTimeoutMs:(int64_t)timeoutMs
                                 callback:(LynxMemoryUsageResultCallback)callback;
 
+- (intptr_t)getMemoryTracePlugin;
+
 @end

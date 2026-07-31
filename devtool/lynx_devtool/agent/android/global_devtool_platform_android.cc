@@ -213,6 +213,13 @@ lynx::trace::TracePlugin* GlobalDevToolPlatformAndroid::GetFPSTracePlugin() {
   return reinterpret_cast<lynx::trace::TracePlugin*>(res);
 }
 
+lynx::trace::TracePlugin* GlobalDevToolPlatformAndroid::GetMemoryTracePlugin() {
+  JNIEnv* env = lynx::base::android::AttachCurrentThread();
+  intptr_t res =
+      Java_GlobalDevToolPlatformAndroidDelegate_getMemoryTracePlugin(env);
+  return reinterpret_cast<lynx::trace::TracePlugin*>(res);
+}
+
 lynx::trace::TracePlugin*
 GlobalDevToolPlatformAndroid::GetFrameViewTracePlugin() {
   JNIEnv* env = lynx::base::android::AttachCurrentThread();

@@ -32,3 +32,5 @@ jni_class_configs:
       macro: ENABLE_TRACE_PERFETTO || ENABLE_TRACE_SYSTRACE
     - java: platform/android/lynx_devtool/src/main/java/com/lynx/devtool/tracing/InstanceTrace.java
       macro: ENABLE_TRACE_PERFETTO || ENABLE_TRACE_SYSTRACE
+    - java: platform/android/lynx_devtool/src/main/java/com/lynx/devtool/tracing/MemoryTrace.java
+      macro: ENABLE_TRACE_PERFETTO || ENABLE_TRACE_SYSTRACE

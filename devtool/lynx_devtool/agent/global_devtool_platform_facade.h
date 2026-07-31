@@ -87,6 +87,7 @@ class GlobalDevToolPlatformFacade
   virtual lynx::trace::TracePlugin* GetFPSTracePlugin() = 0;
   virtual lynx::trace::TracePlugin* GetFrameViewTracePlugin() = 0;
   virtual lynx::trace::TracePlugin* GetInstanceTracePlugin() = 0;
+  virtual lynx::trace::TracePlugin* GetMemoryTracePlugin() = 0;
   virtual std::string GetLynxVersion() { return ""; }
 
   virtual std::string GetSystemModelName() { return ""; }

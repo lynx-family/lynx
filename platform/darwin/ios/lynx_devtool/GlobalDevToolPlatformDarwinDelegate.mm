@@ -181,6 +181,15 @@ class GlobalDevToolPlatformDarwin : public GlobalDevToolPlatformFacade {
     }
   }
 
+  lynx::trace::TracePlugin* GetMemoryTracePlugin() override {
+    intptr_t res = [GlobalDevToolPlatformDarwinDelegate getMemoryTracePlugin];
+    if (res) {
+      return reinterpret_cast<lynx::trace::TracePlugin*>(res);
+    } else {
+      return nullptr;
+    }
+  }
+
   std::string GetLynxVersion() override {
     return [[LynxDeviceInfoHelper getLynxVersion] UTF8String];
   }
@@ -235,6 +244,10 @@ GlobalDevToolPlatformFacade& GlobalDevToolPlatformFacade::GetInstance() {
 
 + (intptr_t)getInstanceTracePlugin {
   return [[LynxInstanceTrace shareInstance] getInstanceTracePlugin];
+}
+
++ (intptr_t)getMemoryTracePlugin {
+  return [[LynxMemoryController shareInstance] getMemoryTracePlugin];
 }
 
 + (std::string)getSystemModelName {

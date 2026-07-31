@@ -1,0 +1,26 @@
+summary: Take snapshot of MTS or BTS virtual machines of page with given URL.
+parameters:
+  - name: url
+    type: string
+    description: The url of page to take snapshot.
+  - name: type
+    type: string
+    description: Type of the snapshot to take. 'bts' or 'mts'.
+returns: []
+events: []
+notes:
+  - Dispatches through LynxGlobalDevToolMediator on the global DevTool task runner.
+  - Returns an empty OK response when tracing session is active and params.url and params.type are present.
+  - Returns a CDP error with message 'Argument error' when url or type parameter is missing.
+  - Returns a CDP error with message 'Tracing is not started' when tracing session is not active.
+  - If the global mediator has no default task runner, the current handler does not send an explicit CDP response.
+examples:
+  - title: Take snapshot of page with given URL
+    request:
+      id: 1
+      method: Tracing.takeVMSnapshotByUrl
+      params:
+        config: '{"url":"https://xxx/template.js","type":"bts"}'
+    response:
+      id: 1
+      result: {}
