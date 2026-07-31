@@ -21,6 +21,7 @@
 #include "core/renderer/css/ng/matcher/selector_matcher.h"
 #include "core/renderer/css/ng/media_query/media_query_evaluator.h"
 #include "core/renderer/css/ng/media_query/media_values.h"
+#include "core/renderer/css/ng/style/cascade_layer_map.h"
 #include "core/renderer/css/ng/supports/supports_evaluator.h"
 #include "core/renderer/css/parser/css_string_parser.h"
 #include "core/renderer/css/unit_handler.h"
@@ -795,6 +796,9 @@ void StyleResolver::SetCSSVariableToNode(const CSSVariableMap& matched) {
 
 static bool CompareRules(const css::MatchedRule& matched_rule1,
                          const css::MatchedRule& matched_rule2) {
+  if (matched_rule1.LayerOrder() != matched_rule2.LayerOrder())
+    return matched_rule1.LayerOrder() < matched_rule2.LayerOrder();
+
   unsigned specificity1 = matched_rule1.Specificity();
   unsigned specificity2 = matched_rule2.Specificity();
   if (specificity1 != specificity2) return specificity1 < specificity2;
@@ -835,6 +839,21 @@ StyleResolver::MatchedVector<css::MatchedRule> StyleResolver::GetCSSMatchedRule(
                                 c->supports_evaluator);
         },
         &ctx);
+
+    // Skip when no matched rule belongs to an explicit layer
+    std::shared_ptr<const css::CascadeLayerMap> layer_map;
+    bool layer_map_queried = false;
+    for (auto& rule : matched_rules) {
+      if (auto* layer = rule.Data()->Layer()) {
+        if (!layer_map_queried) {
+          layer_map = style_sheet->GetCascadeLayerMap();
+          layer_map_queried = true;
+        }
+        if (layer_map) {
+          rule.SetLayerOrder(layer_map->GetLayerOrder(layer));
+        }
+      }
+    }
   }
 
   base::InsertionSort(matched_rules.data(), matched_rules.size(), CompareRules);
@@ -887,10 +906,43 @@ void StyleResolver::GetCSSStyleNew(AttributeHolder* node,
   auto matched_rules = GetCSSMatchedRule(
       node, style_sheet, media_query_evaluator.get(), supports_evaluator.get());
 
-  for (const auto& matched : matched_rules) {
-    if (matched.Data()->Rule()->Token() != nullptr) {
-      auto* token = matched.Data()->Rule()->Token().get();
-      MergeToken(token);
+  if (!matched_rules.empty() &&
+      matched_rules[0].LayerOrder() !=
+          css::CascadeLayer::kImplicitOuterLayerOrder) {
+    // Merge normal declarations forward (winner sorts last). !important only
+    // reverses the layer dimension, handled by the grouped traversal below.
+    for (const auto& matched : matched_rules) {
+      if (matched.Data()->Rule()->Token() != nullptr) {
+        auto* token = matched.Data()->Rule()->Token().get();
+        MergeHigherPriorityCSSStyle(token->GetAttributes());
+        SetCSSVariableToNode(token->GetStyleVariables());
+      }
+    }
+    // !important reverses layer priority but keeps specificity/source order.
+    // Equal-layer rules are contiguous (CompareRules sorts by layer first), so
+    // walk layer groups back-to-front, each group front-to-back.
+    for (auto group_end = matched_rules.end();
+         group_end != matched_rules.begin();) {
+      auto group_begin = group_end - 1;
+      const auto layer_order = group_begin->LayerOrder();
+      while (group_begin != matched_rules.begin() &&
+             (group_begin - 1)->LayerOrder() == layer_order) {
+        --group_begin;
+      }
+      for (auto it = group_begin; it != group_end; ++it) {
+        if (it->Data()->Rule()->Token() != nullptr) {
+          auto* token = it->Data()->Rule()->Token().get();
+          MergeHigherPriorityImportantCSSStyle(token->GetImportantAttributes());
+        }
+      }
+      group_end = group_begin;
+    }
+  } else {
+    for (const auto& matched : matched_rules) {
+      if (matched.Data()->Rule()->Token() != nullptr) {
+        auto* token = matched.Data()->Rule()->Token().get();
+        MergeToken(token);
+      }
     }
   }
 }

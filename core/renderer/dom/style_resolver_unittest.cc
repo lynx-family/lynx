@@ -773,8 +773,22 @@ class MockCSSFragment : public tasm::SharedCSSFragment {
     }
   }
 
+  std::shared_ptr<const css::CascadeLayerMap> GetCascadeLayerMap() override {
+    return cascade_layer_map_;
+  }
+
+  void SetCascadeLayerMap(const css::CascadeLayerMap* map) {
+    if (map == nullptr) {
+      cascade_layer_map_.reset();
+      return;
+    }
+    cascade_layer_map_ = std::shared_ptr<const css::CascadeLayerMap>(
+        map, [](const css::CascadeLayerMap*) {});
+  }
+
  private:
   bool enable_css_selector_mock_ = true;
+  std::shared_ptr<const css::CascadeLayerMap> cascade_layer_map_;
 };
 
 TEST_F(CSSPatchingTest, CascadeLayerMapInvalidatesAfterClearAndReAdoption) {
@@ -2811,6 +2825,368 @@ TEST_F(CSSPatchingTest,
   ExpectPxStyle(resolved_style_map, CSSPropertyID::kPropertyIDWidth, 48);
   ExpectPxStyle(final_style->GetResolvedValues(),
                 CSSPropertyID::kPropertyIDWidth, 48);
+}
+
+// --- Cascade Layer sorting & !important reversal tests ---
+
+TEST_F(CSSPatchingTest, CascadeLayer_LayerOrderOverridesSpecificity) {
+  // Rule in a higher layer order wins over a rule with higher specificity
+  // in a lower layer order.
+  auto fiber_element =
+      fml::AdoptRef<Element>(new Element(manager.get(), "view"));
+  auto* attribute_holder = fiber_element->data_model();
+  attribute_holder->set_tag("view");
+  attribute_holder->SetIdSelector("view-id");
+  base::String class_name("view-class");
+  ClassList class_list;
+  class_list.emplace_back(class_name);
+  attribute_holder->SetClasses(std::move(class_list));
+
+  auto mock_fragment = std::make_unique<MockCSSFragment>();
+  mock_fragment->SetEnableCSSSelector(true);
+
+  // Build layer tree: @layer base, theme;
+  auto* root_layer = mock_fragment->GetOrCreateRootLayer();
+  auto* layer_base = root_layer->GetOrAddSubLayer({"base"});
+  auto* layer_theme = root_layer->GetOrAddSubLayer({"theme"});
+
+  css::CascadeLayerMap layer_map;
+  layer_map.MergeLayerTree(root_layer);
+  layer_map.ComputeLayerOrder();
+  mock_fragment->SetCascadeLayerMap(&layer_map);
+
+  CSSParserConfigs configs;
+
+  // Rule 1: "#view-id" in layer "base" (high specificity 1,0,0, low layer)
+  auto rule1_tokens = fml::MakeRefCounted<CSSParseToken>(configs);
+  rule1_tokens.get()->raw_attributes_[CSSPropertyID::kPropertyIDFontSize] =
+      CSSValue(lepus::Value(10.0), CSSValuePattern::PX);
+  auto rule1_selector = std::make_unique<css::LynxCSSSelector[]>(1);
+  rule1_selector[0].SetMatch(css::LynxCSSSelector::kId);
+  rule1_selector[0].SetValue("view-id");
+  rule1_selector[0].SetLastInTagHistory(true);
+  rule1_selector[0].SetLastInSelectorList(true);
+  auto rule1 = fml::MakeRefCounted<css::StyleRule>(std::move(rule1_selector),
+                                                   rule1_tokens);
+  mock_fragment->AddStyleRule(rule1, layer_base);
+
+  // Rule 2: ".view-class" in layer "theme" (lower specificity 0,1,0, higher
+  // layer)
+  auto rule2_tokens = fml::MakeRefCounted<CSSParseToken>(configs);
+  rule2_tokens.get()->raw_attributes_[CSSPropertyID::kPropertyIDFontSize] =
+      CSSValue(lepus::Value(20.0), CSSValuePattern::PX);
+  auto rule2_selector = std::make_unique<css::LynxCSSSelector[]>(1);
+  rule2_selector[0].SetMatch(css::LynxCSSSelector::kClass);
+  rule2_selector[0].SetValue("view-class");
+  rule2_selector[0].SetLastInTagHistory(true);
+  rule2_selector[0].SetLastInSelectorList(true);
+  auto rule2 = fml::MakeRefCounted<css::StyleRule>(std::move(rule2_selector),
+                                                   rule2_tokens);
+  mock_fragment->AddStyleRule(rule2, layer_theme);
+
+  // Resolve style
+  StyleMap result;
+  CSSVariableMap changed_css_vars;
+  fiber_element->style_resolver_.ResolveStyle(result, mock_fragment.get(),
+                                              &changed_css_vars);
+
+  // Higher layer order (theme) should win despite lower specificity.
+  auto it = result.find(CSSPropertyID::kPropertyIDFontSize);
+  ASSERT_TRUE(it != result.end());
+  EXPECT_EQ(it->second.AsNumber(), 20.0);
+}
+
+TEST_F(CSSPatchingTest, CascadeLayer_SameLayerFallsBackToSpecificity) {
+  // Rules in the same layer: higher specificity wins.
+  auto fiber_element =
+      fml::AdoptRef<Element>(new Element(manager.get(), "view"));
+  auto* attribute_holder = fiber_element->data_model();
+  attribute_holder->set_tag("view");
+  attribute_holder->SetIdSelector("view-id");
+  base::String class_name("view-class");
+  ClassList class_list;
+  class_list.emplace_back(class_name);
+  attribute_holder->SetClasses(std::move(class_list));
+
+  auto mock_fragment = std::make_unique<MockCSSFragment>();
+  mock_fragment->SetEnableCSSSelector(true);
+
+  auto* root_layer = mock_fragment->GetOrCreateRootLayer();
+  auto* layer_base = root_layer->GetOrAddSubLayer({"base"});
+
+  css::CascadeLayerMap layer_map;
+  layer_map.MergeLayerTree(root_layer);
+  layer_map.ComputeLayerOrder();
+  mock_fragment->SetCascadeLayerMap(&layer_map);
+
+  CSSParserConfigs configs;
+
+  // Rule 1: ".view-class" in layer "base" (specificity 0,1,0)
+  auto rule1_tokens = fml::MakeRefCounted<CSSParseToken>(configs);
+  rule1_tokens.get()->raw_attributes_[CSSPropertyID::kPropertyIDFontSize] =
+      CSSValue(lepus::Value(10.0), CSSValuePattern::PX);
+  auto rule1_selector = std::make_unique<css::LynxCSSSelector[]>(1);
+  rule1_selector[0].SetMatch(css::LynxCSSSelector::kClass);
+  rule1_selector[0].SetValue("view-class");
+  rule1_selector[0].SetLastInTagHistory(true);
+  rule1_selector[0].SetLastInSelectorList(true);
+  auto rule1 = fml::MakeRefCounted<css::StyleRule>(std::move(rule1_selector),
+                                                   rule1_tokens);
+  mock_fragment->AddStyleRule(rule1, layer_base);
+
+  // Rule 2: "#view-id" in layer "base" (specificity 1,0,0)
+  auto rule2_tokens = fml::MakeRefCounted<CSSParseToken>(configs);
+  rule2_tokens.get()->raw_attributes_[CSSPropertyID::kPropertyIDFontSize] =
+      CSSValue(lepus::Value(30.0), CSSValuePattern::PX);
+  auto rule2_selector = std::make_unique<css::LynxCSSSelector[]>(1);
+  rule2_selector[0].SetMatch(css::LynxCSSSelector::kId);
+  rule2_selector[0].SetValue("view-id");
+  rule2_selector[0].SetLastInTagHistory(true);
+  rule2_selector[0].SetLastInSelectorList(true);
+  auto rule2 = fml::MakeRefCounted<css::StyleRule>(std::move(rule2_selector),
+                                                   rule2_tokens);
+  mock_fragment->AddStyleRule(rule2, layer_base);
+
+  StyleMap result;
+  CSSVariableMap changed_css_vars;
+  fiber_element->style_resolver_.ResolveStyle(result, mock_fragment.get(),
+                                              &changed_css_vars);
+
+  // Same layer: higher specificity (#view-id) wins.
+  auto it = result.find(CSSPropertyID::kPropertyIDFontSize);
+  ASSERT_TRUE(it != result.end());
+  EXPECT_EQ(it->second.AsNumber(), 30.0);
+}
+
+TEST_F(CSSPatchingTest, CascadeLayer_ImportantReversesLayerOrder) {
+  // !important declarations reverse layer priority: lower layer order wins.
+  auto fiber_element =
+      fml::AdoptRef<Element>(new Element(manager.get(), "view"));
+  auto* attribute_holder = fiber_element->data_model();
+  attribute_holder->set_tag("view");
+  base::String class_name("view-class");
+  ClassList class_list;
+  class_list.emplace_back(class_name);
+  attribute_holder->SetClasses(std::move(class_list));
+
+  auto mock_fragment = std::make_unique<MockCSSFragment>();
+  mock_fragment->SetEnableCSSSelector(true);
+
+  // @layer base, theme;
+  auto* root_layer = mock_fragment->GetOrCreateRootLayer();
+  auto* layer_base = root_layer->GetOrAddSubLayer({"base"});
+  auto* layer_theme = root_layer->GetOrAddSubLayer({"theme"});
+
+  css::CascadeLayerMap layer_map;
+  layer_map.MergeLayerTree(root_layer);
+  layer_map.ComputeLayerOrder();
+  mock_fragment->SetCascadeLayerMap(&layer_map);
+
+  CSSParserConfigs configs;
+
+  // Rule 1: ".view-class" in layer "base" with !important width
+  auto rule1_tokens = fml::MakeRefCounted<CSSParseToken>(configs);
+  rule1_tokens.get()
+      ->raw_important_attributes_[CSSPropertyID::kPropertyIDWidth] =
+      CSSValue(lepus::Value(100.0), CSSValuePattern::PX);
+  auto rule1_selector = std::make_unique<css::LynxCSSSelector[]>(1);
+  rule1_selector[0].SetMatch(css::LynxCSSSelector::kClass);
+  rule1_selector[0].SetValue("view-class");
+  rule1_selector[0].SetLastInTagHistory(true);
+  rule1_selector[0].SetLastInSelectorList(true);
+  auto rule1 = fml::MakeRefCounted<css::StyleRule>(std::move(rule1_selector),
+                                                   rule1_tokens);
+  mock_fragment->AddStyleRule(rule1, layer_base);
+
+  // Rule 2: ".view-class" in layer "theme" with !important width
+  auto rule2_tokens = fml::MakeRefCounted<CSSParseToken>(configs);
+  rule2_tokens.get()
+      ->raw_important_attributes_[CSSPropertyID::kPropertyIDWidth] =
+      CSSValue(lepus::Value(200.0), CSSValuePattern::PX);
+  auto rule2_selector = std::make_unique<css::LynxCSSSelector[]>(1);
+  rule2_selector[0].SetMatch(css::LynxCSSSelector::kClass);
+  rule2_selector[0].SetValue("view-class");
+  rule2_selector[0].SetLastInTagHistory(true);
+  rule2_selector[0].SetLastInSelectorList(true);
+  auto rule2 = fml::MakeRefCounted<css::StyleRule>(std::move(rule2_selector),
+                                                   rule2_tokens);
+  mock_fragment->AddStyleRule(rule2, layer_theme);
+
+  StyleMap result;
+  CSSVariableMap changed_css_vars;
+  fiber_element->style_resolver_.ResolveStyle(result, mock_fragment.get(),
+                                              &changed_css_vars);
+
+  // !important reverses: lower layer (base) wins over higher layer (theme).
+  auto it = result.find(CSSPropertyID::kPropertyIDWidth);
+  ASSERT_TRUE(it != result.end());
+  EXPECT_EQ(it->second.AsNumber(), 100.0);
+}
+
+TEST_F(CSSPatchingTest, CascadeLayer_ImportantSameLayerKeepsSpecificity) {
+  // Regression: within a single layer, two !important rules of different
+  // specificity must still resolve by specificity (importance reverses only the
+  // layer dimension, not specificity). Mirrors the box-e demo case.
+  auto fiber_element =
+      fml::AdoptRef<Element>(new Element(manager.get(), "view"));
+  auto* attribute_holder = fiber_element->data_model();
+  attribute_holder->set_tag("view");
+  attribute_holder->SetIdSelector("view-id");
+  base::String class_name("view-class");
+  ClassList class_list;
+  class_list.emplace_back(class_name);
+  attribute_holder->SetClasses(std::move(class_list));
+
+  auto mock_fragment = std::make_unique<MockCSSFragment>();
+  mock_fragment->SetEnableCSSSelector(true);
+
+  auto* root_layer = mock_fragment->GetOrCreateRootLayer();
+  auto* layer_base = root_layer->GetOrAddSubLayer({"base"});
+
+  css::CascadeLayerMap layer_map;
+  layer_map.MergeLayerTree(root_layer);
+  layer_map.ComputeLayerOrder();
+  mock_fragment->SetCascadeLayerMap(&layer_map);
+
+  CSSParserConfigs configs;
+
+  // Rule 1: ".view-class" (specificity 0,1,0) !important width 100.
+  auto rule1_tokens = fml::MakeRefCounted<CSSParseToken>(configs);
+  rule1_tokens.get()
+      ->raw_important_attributes_[CSSPropertyID::kPropertyIDWidth] =
+      CSSValue(lepus::Value(100.0), CSSValuePattern::PX);
+  auto rule1_selector = std::make_unique<css::LynxCSSSelector[]>(1);
+  rule1_selector[0].SetMatch(css::LynxCSSSelector::kClass);
+  rule1_selector[0].SetValue("view-class");
+  rule1_selector[0].SetLastInTagHistory(true);
+  rule1_selector[0].SetLastInSelectorList(true);
+  auto rule1 = fml::MakeRefCounted<css::StyleRule>(std::move(rule1_selector),
+                                                   rule1_tokens);
+  mock_fragment->AddStyleRule(rule1, layer_base);
+
+  // Rule 2: "#view-id" (specificity 1,0,0) !important width 200.
+  auto rule2_tokens = fml::MakeRefCounted<CSSParseToken>(configs);
+  rule2_tokens.get()
+      ->raw_important_attributes_[CSSPropertyID::kPropertyIDWidth] =
+      CSSValue(lepus::Value(200.0), CSSValuePattern::PX);
+  auto rule2_selector = std::make_unique<css::LynxCSSSelector[]>(1);
+  rule2_selector[0].SetMatch(css::LynxCSSSelector::kId);
+  rule2_selector[0].SetValue("view-id");
+  rule2_selector[0].SetLastInTagHistory(true);
+  rule2_selector[0].SetLastInSelectorList(true);
+  auto rule2 = fml::MakeRefCounted<css::StyleRule>(std::move(rule2_selector),
+                                                   rule2_tokens);
+  mock_fragment->AddStyleRule(rule2, layer_base);
+
+  StyleMap result;
+  CSSVariableMap changed_css_vars;
+  fiber_element->style_resolver_.ResolveStyle(result, mock_fragment.get(),
+                                              &changed_css_vars);
+
+  // Same layer, both !important: higher specificity (#view-id, 200) wins.
+  auto it = result.find(CSSPropertyID::kPropertyIDWidth);
+  ASSERT_TRUE(it != result.end());
+  EXPECT_EQ(it->second.AsNumber(), 200.0);
+}
+
+TEST_F(CSSPatchingTest,
+       CascadeLayer_ImportantSameLayerSameSpecificityKeepsSourceOrder) {
+  // Regression: within a single layer, two equally specific !important rules
+  // must resolve by source order (later wins), not reversed.
+  auto fiber_element =
+      fml::AdoptRef<Element>(new Element(manager.get(), "view"));
+  auto* attribute_holder = fiber_element->data_model();
+  attribute_holder->set_tag("view");
+  base::String class_name("view-class");
+  ClassList class_list;
+  class_list.emplace_back(class_name);
+  attribute_holder->SetClasses(std::move(class_list));
+
+  auto mock_fragment = std::make_unique<MockCSSFragment>();
+  mock_fragment->SetEnableCSSSelector(true);
+
+  auto* root_layer = mock_fragment->GetOrCreateRootLayer();
+  auto* layer_base = root_layer->GetOrAddSubLayer({"base"});
+
+  css::CascadeLayerMap layer_map;
+  layer_map.MergeLayerTree(root_layer);
+  layer_map.ComputeLayerOrder();
+  mock_fragment->SetCascadeLayerMap(&layer_map);
+
+  CSSParserConfigs configs;
+
+  // Rule 1: ".view-class" declared first, !important width 100.
+  auto rule1_tokens = fml::MakeRefCounted<CSSParseToken>(configs);
+  rule1_tokens.get()
+      ->raw_important_attributes_[CSSPropertyID::kPropertyIDWidth] =
+      CSSValue(lepus::Value(100.0), CSSValuePattern::PX);
+  auto rule1_selector = std::make_unique<css::LynxCSSSelector[]>(1);
+  rule1_selector[0].SetMatch(css::LynxCSSSelector::kClass);
+  rule1_selector[0].SetValue("view-class");
+  rule1_selector[0].SetLastInTagHistory(true);
+  rule1_selector[0].SetLastInSelectorList(true);
+  auto rule1 = fml::MakeRefCounted<css::StyleRule>(std::move(rule1_selector),
+                                                   rule1_tokens);
+  mock_fragment->AddStyleRule(rule1, layer_base);
+
+  // Rule 2: ".view-class" declared later, !important width 200.
+  auto rule2_tokens = fml::MakeRefCounted<CSSParseToken>(configs);
+  rule2_tokens.get()
+      ->raw_important_attributes_[CSSPropertyID::kPropertyIDWidth] =
+      CSSValue(lepus::Value(200.0), CSSValuePattern::PX);
+  auto rule2_selector = std::make_unique<css::LynxCSSSelector[]>(1);
+  rule2_selector[0].SetMatch(css::LynxCSSSelector::kClass);
+  rule2_selector[0].SetValue("view-class");
+  rule2_selector[0].SetLastInTagHistory(true);
+  rule2_selector[0].SetLastInSelectorList(true);
+  auto rule2 = fml::MakeRefCounted<css::StyleRule>(std::move(rule2_selector),
+                                                   rule2_tokens);
+  mock_fragment->AddStyleRule(rule2, layer_base);
+
+  StyleMap result;
+  CSSVariableMap changed_css_vars;
+  fiber_element->style_resolver_.ResolveStyle(result, mock_fragment.get(),
+                                              &changed_css_vars);
+
+  // Same layer and specificity: later source order (200) wins.
+  auto it = result.find(CSSPropertyID::kPropertyIDWidth);
+  ASSERT_TRUE(it != result.end());
+  EXPECT_EQ(it->second.AsNumber(), 200.0);
+}
+
+TEST_F(CSSPatchingTest, CascadeLayer_NoLayerFastPath) {
+  // When no @layer is used, GetCascadeLayerMap() returns nullptr and the
+  // original path is used (no layer order comparison).
+  auto fiber_element =
+      fml::AdoptRef<Element>(new Element(manager.get(), "view"));
+  auto* attribute_holder = fiber_element->data_model();
+  attribute_holder->set_tag("view");
+  attribute_holder->SetIdSelector("view-id");
+
+  auto mock_fragment = std::make_unique<MockCSSFragment>();
+  mock_fragment->SetEnableCSSSelector(true);
+  // No layer map set -> GetCascadeLayerMap() returns nullptr.
+
+  CSSParserConfigs configs;
+
+  auto rule1_tokens = fml::MakeRefCounted<CSSParseToken>(configs);
+  rule1_tokens.get()->raw_attributes_[CSSPropertyID::kPropertyIDFontSize] =
+      CSSValue(lepus::Value(42.0), CSSValuePattern::PX);
+  auto rule1_selector = std::make_unique<css::LynxCSSSelector[]>(1);
+  rule1_selector[0].SetMatch(css::LynxCSSSelector::kId);
+  rule1_selector[0].SetValue("view-id");
+  rule1_selector[0].SetLastInTagHistory(true);
+  rule1_selector[0].SetLastInSelectorList(true);
+  mock_fragment->AddStyleRule(std::move(rule1_selector), rule1_tokens);
+
+  StyleMap result;
+  CSSVariableMap changed_css_vars;
+  fiber_element->style_resolver_.ResolveStyle(result, mock_fragment.get(),
+                                              &changed_css_vars);
+
+  auto it = result.find(CSSPropertyID::kPropertyIDFontSize);
+  ASSERT_TRUE(it != result.end());
+  EXPECT_EQ(it->second.AsNumber(), 42.0);
 }
 
 }  // namespace testing
