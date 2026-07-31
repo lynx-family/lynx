@@ -36,6 +36,8 @@ class InspectorTracingAgent : public CDPDomainAgentBase {
                                const Json::Value& message);
   void GetStartupTracingFile(const std::shared_ptr<MessageSender>& sender,
                              const Json::Value& message);
+  void TakeVMSnapshotByUrl(const std::shared_ptr<MessageSender>& sender,
+                           const Json::Value& message);
 };
 
 }  // namespace devtool

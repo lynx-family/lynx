@@ -19,13 +19,7 @@ int FileStream::Open(const std::string& file, std::ios::openmode mode) {
   return next_handle++;
 }
 
-void FileStream::Close(int handle) {
-  auto item = streams_.find(handle);
-  if (item == streams_.end()) {
-    return;
-  }
-  streams_.erase(item);
-}
+void FileStream::Close(int handle) { streams_.erase(handle); }
 
 int FileStream::Read(int handle, char* buf, size_t size) {
   auto item = streams_.find(handle);

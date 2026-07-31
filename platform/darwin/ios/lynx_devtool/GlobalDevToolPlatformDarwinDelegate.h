@@ -28,6 +28,7 @@ typedef void (^GlobalDevToolLynxSettingCallback)(NSString* resultJson,
 + (intptr_t)getFPSTracePlugin;
 + (intptr_t)getFrameViewTracePlugin;
 + (intptr_t)getInstanceTracePlugin;
++ (intptr_t)getMemoryTracePlugin;
 
 + (std::string)getSystemModelName;
 

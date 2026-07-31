@@ -21,6 +21,8 @@ devtool_source_set("tracing") {
       "platform/frameview_trace_plugin_android.h",
       "platform/instance_trace_plugin_android.cc",
       "platform/instance_trace_plugin_android.h",
+      "platform/memory_trace_plugin_android.cc",
+      "platform/memory_trace_plugin_android.h",
     ]
   } else if (is_ios) {
     sources += [
@@ -30,6 +32,8 @@ devtool_source_set("tracing") {
       "platform/frameview_trace_plugin_darwin.mm",
       "platform/instance_trace_plugin_darwin.h",
       "platform/instance_trace_plugin_darwin.mm",
+      "platform/memory_trace_plugin_darwin.h",
+      "platform/memory_trace_plugin_darwin.mm",
     ]
   }
   deps = [ "../../../base/src:base_log_headers" ]

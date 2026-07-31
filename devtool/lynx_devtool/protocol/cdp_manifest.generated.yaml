@@ -553,6 +553,9 @@ domains:
       - name: start
         origin: standard
         source: devtool/lynx_devtool/agent/domain_agent/inspector_tracing_agent.cc
+      - name: takeVMSnapshotByUrl
+        origin: lynx-extension
+        source: devtool/lynx_devtool/agent/domain_agent/inspector_tracing_agent.cc
   - name: UITree
     origin: lynx-extension
     scope: instance

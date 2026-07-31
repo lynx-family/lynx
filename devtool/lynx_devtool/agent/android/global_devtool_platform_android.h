@@ -30,6 +30,7 @@ class GlobalDevToolPlatformAndroid : public GlobalDevToolPlatformFacade {
   lynx::trace::TracePlugin* GetFPSTracePlugin() override;
   lynx::trace::TracePlugin* GetFrameViewTracePlugin() override;
   lynx::trace::TracePlugin* GetInstanceTracePlugin() override;
+  lynx::trace::TracePlugin* GetMemoryTracePlugin() override;
   std::string GetLynxVersion() override;
 #endif
 
