@@ -3344,6 +3344,10 @@ public class LynxTemplateRender
 
     public TASMCallback() {}
 
+    void setEmbeddedTiming(String key, long usTimestamp, String pipelineID) {
+      mPerformanceController.setEmbeddedTiming(key, usTimestamp, pipelineID);
+    }
+
     @Override
     public void onLoaded(int templateSize) {
       LLog.i(TAG, "TASMCallback.onLoaded");

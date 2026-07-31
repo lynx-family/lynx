@@ -105,6 +105,16 @@ void NativeFacadeDarwin::OnTimingUpdate(const lepus::Value& timing_info,
             updateTiming:lynx::tasm::convertLepusValueToNSObject(update_timing)];
 }
 
+void NativeFacadeDarwin::SetEmbeddedTiming(const std::string& timing_key, uint64_t timestamp_us,
+                                           const std::string& pipeline_id) {
+  __strong id<TemplateRenderCallbackProtocol> render = _render;
+  NSString* pipelineID =
+      pipeline_id.empty() ? nil : [NSString stringWithUTF8String:pipeline_id.c_str()];
+  [render setTiming:timestamp_us
+                key:[NSString stringWithUTF8String:timing_key.c_str()]
+         pipelineID:pipelineID];
+}
+
 void NativeFacadeDarwin::OnDynamicComponentPerfReady(const lepus::Value& perf_info) {
   __strong id<TemplateRenderCallbackProtocol> render = _render;
   [render onDynamicComponentPerf:lynx::tasm::convertLepusValueToNSObject(perf_info)];
