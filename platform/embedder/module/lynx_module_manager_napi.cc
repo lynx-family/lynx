@@ -30,7 +30,7 @@ class EmbedderRuntimeLifecycleListenerDelegate
   void OnRuntimeInit(int64_t runtime_id) override {}
   void OnAppEnterForeground() override {}
   void OnAppEnterBackground() override {}
-  void OnRuntimeAttach(void* env) override {
+  void OnRuntimeAttach(void* env, const char*) override {
     if (auto module_manager = module_manager_.lock()) {
       module_manager->OnRuntimeAttach(Napi::Env(static_cast<napi_env>(env)));
     }

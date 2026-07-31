@@ -4,7 +4,7 @@
 package com.lynx.jsbridge;
 
 public interface RuntimeLifecycleListener {
-  void onRuntimeAttach(long napiEnv);
+  void onRuntimeAttach(long napiEnv, String runtimeType);
 
   void onRuntimeDetach();
 }

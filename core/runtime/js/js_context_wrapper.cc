@@ -148,7 +148,9 @@ void SharedJSContextWrapper::InitNapi(
     napi_environment_->Attach();
   }
   lifecycle_observer_ = std::make_unique<RuntimeLifecycleObserverImpl>();
-  lifecycle_observer_->OnRuntimeAttach(napi_environment_->proxy()->Env());
+  lifecycle_observer_->OnRuntimeAttach(
+      napi_environment_->proxy()->Env(),
+      runtime::js::JSRuntimeTypeToString(runtime->type()));
   TRACE_EVENT_END(LYNX_TRACE_CATEGORY_VITALS);
 #endif
 }
