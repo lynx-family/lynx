@@ -135,6 +135,9 @@ void UIOwner::CreateUI(int sign, const std::string& tag,
 
   bool is_root_ui = ui->IsRoot();
   ui_holder_[sign] = is_root_ui ? root_ : std::shared_ptr<UIBase>(ui);
+  if (is_root_ui) {
+    root_ui_created_ = true;
+  }
   if (ui->NeedWindowStateChangeEvent()) {
     window_state_listeners_.insert(ui);
   }
@@ -248,6 +251,9 @@ void UIOwner::OnNodeRemovedRecursively(UIBase* root) {
 void UIOwner::DestroySubTree(UIBase* root) {
   for (auto* child : root->Children()) {
     DestroySubTree(child);
+  }
+  if (root == root_.get()) {
+    root_ui_created_ = false;
   }
   root->OnDestroy();
   root->RemoveFromParent();
@@ -484,6 +490,9 @@ void UIOwner::AttachPageRoot(NativeNodeContent* content) {
 
 void UIOwner::SetAttachLynxPageUICallback(AttachLynxPageUICallback callback) {
   attach_lynx_page_ui_callback_ = std::move(callback);
+  if (attach_lynx_page_ui_callback_ && root_ui_created_ && root_) {
+    attach_lynx_page_ui_callback_(root_.get());
+  }
 }
 
 void UIOwner::UpdateExtraData(
@@ -813,6 +822,7 @@ napi_value UIOwner::Destroy(napi_env env, napi_callback_info info) {
   obj->last_intrinsic_content_width_ = 0.f;
   obj->last_intrinsic_content_height_ = 0.f;
   obj->attach_lynx_page_ui_callback_ = nullptr;
+  obj->root_ui_created_ = false;
   obj->root_ = nullptr;
   napi_delete_reference(env, obj->js_create_);
   napi_delete_reference(env, obj->js_create_node_content_);

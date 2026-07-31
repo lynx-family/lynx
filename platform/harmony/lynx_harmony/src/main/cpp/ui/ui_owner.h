@@ -294,6 +294,7 @@ class UIOwner {
   // ark_ui_context into the lynxContext.
   ArkUI_ContextHandle ark_ui_context_{nullptr};
   std::shared_ptr<UIBase> root_{nullptr};
+  bool root_ui_created_{false};
   AttachLynxPageUICallback attach_lynx_page_ui_callback_;
 
   std::shared_ptr<base::VSyncMonitor> vsync_monitor_{nullptr};

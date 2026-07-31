@@ -78,6 +78,10 @@ export class LynxContext implements IContext {
     this.uiOwner = uiOwner;
   }
 
+  public getUIOwner(): UIOwner | undefined {
+    return this.uiOwner;
+  }
+
   public measureNativeNode(sign: number, width: number, widthMode: number, height: number, heightMode: number,
     finalMeasure: boolean) {
     TraceEvent.beginSection(TraceCategory.Lynx, TraceEventDef.CONTEXT_MEASURE_NATIVE);
