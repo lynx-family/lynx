@@ -1230,11 +1230,6 @@ LEPUSValue LEPUS_Eval(LEPUSContext *ctx, const char *input, size_t input_len,
 LEPUSValue LEPUS_Eval2(LEPUSContext *ctx, const char *input, size_t input_len,
                        const char *filename, int eval_flags,
                        int start_line_number);
-// A not negative runtime_id enables coverage instrumentation and collection.
-LEPUSValue LEPUS_Eval_WITH_COVERAGE(LEPUSContext *ctx, const char *input,
-                                    size_t input_len, const char *filename,
-                                    int eval_flags, int start_line_number,
-                                    int32_t runtime_id);
 #define LEPUS_EVAL_BINARY_LOAD_ONLY (1 << 0) /* only load the module */
 LEPUSValue LEPUS_EvalBinary(LEPUSContext *ctx, const uint8_t *buf,
                             size_t buf_len, int flags);
@@ -1728,13 +1723,6 @@ void *LEPUS_GetGCObserver(LEPUSRuntime *rt);
 // If heap profiler or debugger is not enabled, nullptr will be returned.
 const char *js_profile_take_heap_snapshot(LEPUSContext *ctx);
 void js_profile_free_heap_snapshot(const char *snapshot);
-
-// Coverage `ranges` are encoded as [startOffset, endOffset, count] tuples.
-// The returned NUL-terminated buffer is not managed by the VM or GC and
-// remains valid until it is released with JS_FreeCoverageDumpString().
-const char *JS_GetCoverageDumpString(LEPUSContext *ctx, int32_t runtime_id,
-                                     size_t *length);
-void JS_FreeCoverageDumpString(const char *dump);
 // <Primjs end>
 
 #undef lepus_unlikely
