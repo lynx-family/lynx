@@ -398,6 +398,13 @@ public class NativeFacade implements EventEmitter.LynxEventReporter {
   }
 
   @CalledByNative
+  private void setEmbeddedTiming(String key, long usTimestamp, String pipelineID) {
+    if (mCallback instanceof LynxTemplateRender.TASMCallback) {
+      ((LynxTemplateRender.TASMCallback) mCallback).setEmbeddedTiming(key, usTimestamp, pipelineID);
+    }
+  }
+
+  @CalledByNative
   private void onDynamicComponentPerfReady(ReadableMap perf) {
     if (mCallback != null) {
       mCallback.onDynamicComponentPerfReady(perf.asHashMap());

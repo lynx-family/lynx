@@ -1715,6 +1715,7 @@ public class com::lynx::tasm::EmbeddedMode :  {
 
 public class com::lynx::tasm::performance::timing::EmbeddedTimingCollector :  {
   public void com.lynx.tasm.performance.timing.EmbeddedTimingCollector.setObserver(WeakReference< IPerformanceObserver > observer);
+  public void com.lynx.tasm.performance.timing.EmbeddedTimingCollector.setInstanceId(int instanceId);
   public boolean com.lynx.tasm.performance.timing.EmbeddedTimingCollector.hasEmitLoadBundleEvent();
   public boolean com.lynx.tasm.performance.timing.EmbeddedTimingCollector.hasPendingUpdateEvent();
   public void com.lynx.tasm.performance.timing.EmbeddedTimingCollector.markTiming(String key, long usTimestamp);
@@ -8720,6 +8721,7 @@ public class com::lynx::tasm::performance::PerformanceController : com.lynx.tasm
   public void com.lynx.tasm.performance.PerformanceController.setNeedMarkPaintEndTiming(String pipelineId);
   public void com.lynx.tasm.performance.PerformanceController.setFSPTimingInfo(long usTimestamp, Map< String, String > detail);
   public void com.lynx.tasm.performance.PerformanceController.setExtraTiming(TimingHandler.ExtraTimingInfo extraTiming);
+  public void com.lynx.tasm.performance.PerformanceController.setEmbeddedTiming(String key, long usTimestamp, String pipelineID);
   public JavaOnlyArray com.lynx.tasm.performance.PerformanceController.getPendingPaintEndPipelineIds();
   public static boolean com.lynx.tasm.performance.PerformanceController.isMemoryMonitorEnabled();
   public static long com.lynx.tasm.performance.PerformanceController.getMemoryAcquisitionDelaySec();

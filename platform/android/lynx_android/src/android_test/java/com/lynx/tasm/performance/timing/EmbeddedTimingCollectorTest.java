@@ -62,6 +62,22 @@ public class EmbeddedTimingCollectorTest {
     assertEquals(TimingConstants.LOAD_BUNDLE, observer.mEntries.get(0).name);
   }
 
+  @Test
+  public void emitsLoadBundleWhenNativeTimingsArriveOutOfOrder() {
+    EmbeddedTimingCollector collector = new EmbeddedTimingCollector();
+    RecordingObserver observer = new RecordingObserver();
+    collector.setObserver(new WeakReference<>(observer));
+
+    collector.markTiming(TimingConstants.PAINT_END, 2000);
+    collector.markTiming(TimingConstants.LOAD_BUNDLE_START, 1000);
+    assertTrue(observer.mEntries.isEmpty());
+
+    collector.markTiming("loadBundleEnd", 2500);
+
+    assertEquals(1, observer.mEntries.size());
+    assertEquals(TimingConstants.LOAD_BUNDLE, observer.mEntries.get(0).name);
+  }
+
   private static class RecordingObserver extends LynxViewClientV2 {
     private final List<PerformanceEntry> mEntries = new ArrayList<>();
 
