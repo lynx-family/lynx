@@ -120,10 +120,10 @@ static Class LynxScrollCoordinatorLookupClass(NSString *name) { return NSClassFr
 
 - (BOOL)checkAllowList:(UIScrollView *)scrollview {
   NSMutableArray *classes = [NSMutableArray array];
-  Class cls1 = LynxScrollCoordinatorLookupClass(@"LynxUICollectionView");
-  if (cls1) [classes addObject:cls1];
-  Class cls2 = LynxScrollCoordinatorLookupClass(@"LynxScrollView");
-  if (cls2) [classes addObject:cls2];
+  Class collectionViewClass = LynxScrollCoordinatorLookupClass(@"LynxUICollectionView");
+  if (collectionViewClass) [classes addObject:collectionViewClass];
+  Class scrollViewClass = LynxScrollCoordinatorLookupClass(@"LynxScrollView");
+  if (scrollViewClass) [classes addObject:scrollViewClass];
   for (Class cls in classes) {
     if ([scrollview isKindOfClass:cls] && [self checkVisibleVerticalScrollView:scrollview]) {
       return YES;
