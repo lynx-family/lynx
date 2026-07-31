@@ -78,16 +78,19 @@ void RuntimeLifecycleObserverImpl::OnAppEnterBackground() {
   }
 }
 
-void RuntimeLifecycleObserverImpl::OnRuntimeAttach(void* env) {
+void RuntimeLifecycleObserverImpl::OnRuntimeAttach(void* env,
+                                                   const char* runtime_type) {
+  runtime_type = runtime_type ? runtime_type : "";
   napi_env current_napi_env = static_cast<napi_env>(env);
   LOGI("[Runtime] RuntimeLifecycleObserverImpl::OnRuntimeAttach:"
-       << current_napi_env);
+       << current_napi_env << ", runtime_type: " << runtime_type);
   auto op = LifecycleState::ATTACH;
   event_record_.emplace_back(op);
   args_env_ = current_napi_env;
+  args_runtime_type_ = runtime_type;
   for (auto& pair : delegates_) {
     if (!(pair.second & op)) {
-      pair.first->OnRuntimeAttach(current_napi_env);
+      pair.first->OnRuntimeAttach(current_napi_env, args_runtime_type_);
       pair.second |= op;
     }
   }
@@ -117,7 +120,8 @@ void RuntimeLifecycleObserverImpl::NotifyListenerChanged() {
             pair.first->OnRuntimeInit(args_runtime_id_);
             break;
           case LifecycleState::ATTACH:
-            pair.first->OnRuntimeAttach(static_cast<napi_env>(args_env_));
+            pair.first->OnRuntimeAttach(static_cast<napi_env>(args_env_),
+                                        args_runtime_type_);
             break;
           case LifecycleState::DETACH:
             pair.first->OnRuntimeDetach();

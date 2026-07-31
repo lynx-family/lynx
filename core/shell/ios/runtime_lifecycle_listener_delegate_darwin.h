@@ -5,12 +5,12 @@
 #ifndef CORE_SHELL_IOS_RUNTIME_LIFECYCLE_LISTENER_DELEGATE_DARWIN_H_
 #define CORE_SHELL_IOS_RUNTIME_LIFECYCLE_LISTENER_DELEGATE_DARWIN_H_
 
+#import <Lynx/LynxErrorReceiverProtocol.h>
 #import <Lynx/LynxRuntimeLifecycleListener.h>
 #import <Lynx/LynxView.h>
 
 #include <memory>
 
-#import "LynxErrorReceiverProtocol.h"
 #include "core/public/vsync_observer_interface.h"
 #include "core/runtime/js/runtime_lifecycle_listener_delegate.h"
 #include "third_party/binding/napi/shim/shim_napi.h"
@@ -34,7 +34,7 @@ class RuntimeLifecycleListenerDelegateDarwin
   void OnRuntimeInit(int64_t runtime_id) final{};
   void OnAppEnterForeground() final{};
   void OnAppEnterBackground() final{};
-  void OnRuntimeAttach(void* env) override;
+  void OnRuntimeAttach(void* env, const char* runtime_type) override;
   void OnRuntimeDetach() override;
 
  private:

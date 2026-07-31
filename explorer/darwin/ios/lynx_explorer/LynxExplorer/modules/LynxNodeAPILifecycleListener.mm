@@ -14,7 +14,7 @@
   return self;
 }
 
-- (void)onRuntimeAttach:(void *)napiEnv {
+- (void)onRuntimeAttach:(void *)napiEnv runtimeType:(const char *)runtimeType {
   [LynxNodeAPIModule putEnv:napiEnv forToken:self.token];
 }
 
