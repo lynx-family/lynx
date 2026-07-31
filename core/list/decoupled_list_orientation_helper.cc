@@ -61,7 +61,7 @@ class VerticalOrientationHelper : public ListOrientationHelper {
                ? item_holder->height() +
                      item_holder->GetMargin(list::FrameDirection::kTop) +
                      item_holder->GetMargin(list::FrameDirection::kBottom) +
-                     item_holder->top_inset()
+                     item_holder->main_axis_gap()
                : 0.f;
   }
 
@@ -78,7 +78,7 @@ class VerticalOrientationHelper : public ListOrientationHelper {
     return item_holder
                ? item_holder->top() -
                      item_holder->GetMargin(list::FrameDirection::kTop) -
-                     item_holder->top_inset()
+                     item_holder->main_axis_gap()
                : 0.f;
   }
 
@@ -161,7 +161,7 @@ class HorizontalOrientationHelper : public ListOrientationHelper {
                ? item_holder->width() +
                      item_holder->GetMargin(list::FrameDirection::kLeft) +
                      item_holder->GetMargin(list::FrameDirection::kRight) +
-                     item_holder->top_inset()
+                     item_holder->main_axis_gap()
                : 0.f;
   }
 
@@ -175,9 +175,11 @@ class HorizontalOrientationHelper : public ListOrientationHelper {
   }
 
   float GetDecoratedStart(const ItemHolder* item_holder) const override {
-    return item_holder ? item_holder->left() -
-                             item_holder->GetMargin(list::FrameDirection::kLeft)
-                       : 0.f;
+    return item_holder
+               ? item_holder->left() -
+                     item_holder->GetMargin(list::FrameDirection::kLeft) -
+                     item_holder->main_axis_gap()
+               : 0.f;
   }
 
   float GetDecoratedEnd(const ItemHolder* item_holder) const override {

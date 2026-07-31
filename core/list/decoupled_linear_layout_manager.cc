@@ -615,11 +615,11 @@ void LinearLayoutManager::LayoutInvalidItemHolder(int first_invalid_index) {
         if (item_holder->index() >= first_invalid_index) {
           item_holder->SetOrientation(orientation());
           if (item_holder->index() > 0) {
-            item_holder->SetTopInset(main_axis_gap_);
+            item_holder->SetMainAxisGap(main_axis_gap_);
           } else {
             offset += list_orientation_helper_->GetStartAfterPadding();
           }
-          offset += item_holder->top_inset();
+          offset += item_holder->main_axis_gap();
           float main_axis = 0.f, cross_axis = 0.f;
           main_axis =
               offset +
@@ -687,7 +687,7 @@ void LinearLayoutManager::LayoutChunk(LayoutChunkResult& result,
       } else {
         // fill to start
         top = layout_state.next_layout_offset_ - result.consumed_ +
-              item_holder->top_inset() +
+              item_holder->main_axis_gap() +
               item_holder->GetMargin(FrameDirection::kTop);
       }
     } else {
@@ -701,7 +701,7 @@ void LinearLayoutManager::LayoutChunk(LayoutChunkResult& result,
       } else {
         // fill to start
         left = layout_state.next_layout_offset_ - result.consumed_ +
-               item_holder->top_inset() +
+               item_holder->main_axis_gap() +
                item_holder->GetMargin(FrameDirection::kLeft);
       }
     }
@@ -719,9 +719,10 @@ void LinearLayoutManager::UpdateLayoutStateToFillStart(
   // anchor_info.coordinate_ is the top value of anchor item holder, which is
   // including main axis gap. For example, item_holder's height == 100 and
   // main_axis_gap == 10, the top value of item_holder_1 is 110.
-  float top_inset =
-      anchor_info.item_holder_ ? anchor_info.item_holder_->top_inset() : 0.f;
-  float offset = anchor_info.start_offset_ - top_inset;
+  float main_axis_gap = anchor_info.item_holder_
+                            ? anchor_info.item_holder_->main_axis_gap()
+                            : 0.f;
+  float offset = anchor_info.start_offset_ - main_axis_gap;
   int index = anchor_info.index_ +
               static_cast<int32_t>(LayoutDirection::kLayoutToStart);
   // Update layout state.

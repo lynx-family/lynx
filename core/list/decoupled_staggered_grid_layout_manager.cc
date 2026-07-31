@@ -528,25 +528,25 @@ float StaggeredGridLayoutManager::CalculateMainAxisPosition(
   if (item_holder->item_full_span()) {
     // Handle full_span items
     main_axis_position = *std::max_element(end_lines.begin(), end_lines.end());
-    float top_inset = 0.f;
+    float main_axis_gap = 0.f;
 
     if (item_index > 0) {
-      top_inset = main_axis_gap_;
+      main_axis_gap = main_axis_gap_;
     } else {
       main_axis_position += list_orientation_helper_->GetStartAfterPadding();
     }
-    // update top inset
-    item_holder->SetTopInset(top_inset);
-    // Note: After updating top_inset, we can get new item_size because
-    // item_size contains the top_inset of item holder.
+    // Update main-axis gap.
+    item_holder->SetMainAxisGap(main_axis_gap);
+    // Note: After updating main_axis_gap, we can get new item_size because
+    // item_size contains the main_axis_gap of item holder.
     item_size = list_orientation_helper_->GetDecoratedMeasurement(item_holder);
     // Update end_lines and end_indexes.
     std::fill(end_lines.begin(), end_lines.end(),
               main_axis_position + item_size);
     std::fill(end_indexes.begin(), end_indexes.end(), item_index);
     layout_state.is_end_full_span_ = true;
-    // Note: don't forget to add top_inset to main_axis_position.
-    main_axis_position += top_inset;
+    // Note: don't forget to add main_axis_gap to main_axis_position.
+    main_axis_position += main_axis_gap;
     item_holder->SetItemColIndex(0);
     for (auto& info : column_indexes_) {
       info.push_back(item_index);
@@ -555,26 +555,26 @@ float StaggeredGridLayoutManager::CalculateMainAxisPosition(
     int min_span_index =
         GetMinEndSpanItemInfoForEndLines(layout_state).span_index_;
     main_axis_position = end_lines[min_span_index];
-    // Only add topInset to non_zero item_holder
-    // When layout_manager changed, the previous top_inset setting should be
-    // overrided
-    float top_inset = 0;
+    // Only add main-axis gap to non-zero item_holder.
+    // When the layout manager changes, the previous main_axis_gap setting
+    // should be overridden.
+    float main_axis_gap = 0.f;
     if (end_lines[min_span_index] > 0) {
-      top_inset = main_axis_gap_;
+      main_axis_gap = main_axis_gap_;
     } else {
       main_axis_position += list_orientation_helper_->GetStartAfterPadding();
     }
-    // update top inset
-    item_holder->SetTopInset(top_inset);
-    // Note: After updating top_inset, we can get new item_size because
-    // item_size contains the top_inset of item holder.
+    // Update main-axis gap.
+    item_holder->SetMainAxisGap(main_axis_gap);
+    // Note: After updating main_axis_gap, we can get new item_size because
+    // item_size contains the main_axis_gap of item holder.
     item_size = list_orientation_helper_->GetDecoratedMeasurement(item_holder);
     // Update end_lines and end_indexes.
     end_lines[min_span_index] = main_axis_position + item_size;
     end_indexes[min_span_index] = item_index;
     layout_state.is_end_full_span_ = false;
-    // Note: don't forget to add top_inset to main_axis_position.
-    main_axis_position += top_inset;
+    // Note: don't forget to add main_axis_gap to main_axis_position.
+    main_axis_position += main_axis_gap;
     item_holder->SetItemColIndex(min_span_index);
     column_indexes_[min_span_index].push_back(item_index);
   }

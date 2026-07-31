@@ -180,7 +180,7 @@ void GridLayoutManager::LayoutChunk(LayoutChunkResult& result,
   float main_offset = 0.f, cross_offset = 0.f;
   if (LayoutDirection::kLayoutToStart == layout_state.layout_direction_) {
     main_offset = layout_state.next_layout_offset_ - max_size +
-                  max_item_holder->top_inset();
+                  max_item_holder->main_axis_gap();
   } else {
     main_offset = layout_state.next_layout_offset_;
   }
@@ -256,9 +256,10 @@ void GridLayoutManager::UpdateLayoutStateToFillStart(
   // anchor_info.coordinate_ is the top value of anchor item holder, which is
   // including main axis gap. For example, item_holder's height == 100 and
   // main_axis_gap == 10, the top value of item_holder_1 is 110.
-  float top_inset =
-      anchor_info.item_holder_ ? anchor_info.item_holder_->top_inset() : 0.f;
-  float offset = anchor_info.start_offset_ - top_inset;
+  float main_axis_gap = anchor_info.item_holder_
+                            ? anchor_info.item_holder_->main_axis_gap()
+                            : 0.f;
+  float offset = anchor_info.start_offset_ - main_axis_gap;
   // calculate the index of the first column in the row of anchor.
   int first_col_index = anchor_info.index_;
   ItemHolder* item_holder =
@@ -373,7 +374,7 @@ void GridLayoutManager::LayoutInvalidItemHolder(int first_invalid_index) {
               main_axis_gap_ +
               list_orientation_helper_->GetItemHolderMainMargin(item_holder);
           // add main_axis_gap to item_holder
-          item_holder->SetTopInset(main_axis_gap_);
+          item_holder->SetMainAxisGap(main_axis_gap_);
           cross_axis =
               list_orientation_helper_->GetStartAfterPaddingInOther() +
               list_orientation_helper_->GetItemHolderCrossMargin(item_holder);
@@ -393,7 +394,7 @@ void GridLayoutManager::LayoutInvalidItemHolder(int first_invalid_index) {
                 prev_item_holder->top();
           }
           cross_axis += cross_axis_gap_;
-          item_holder->SetTopInset(prev_item_holder->top_inset());
+          item_holder->SetMainAxisGap(prev_item_holder->main_axis_gap());
         }
       } else {
         // this is the first item_holder
