@@ -54,7 +54,8 @@ class LynxRuntimeLifecycleListenerDelegate
   LynxRuntimeLifecycleListenerDelegate();
   explicit LynxRuntimeLifecycleListenerDelegate(
       lynx_runtime_lifecycle_observer_t* observer,
-      std::function<void(napi_env env)> on_attach_callback = nullptr);
+      std::function<void(napi_env env, const char* runtime_type)>
+          on_attach_callback = nullptr);
 
   ~LynxRuntimeLifecycleListenerDelegate() override;
 
@@ -65,13 +66,14 @@ class LynxRuntimeLifecycleListenerDelegate
   void OnRuntimeInit(int64_t runtime_id) override;
   void OnAppEnterForeground() override;
   void OnAppEnterBackground() override;
-  void OnRuntimeAttach(void* env) override;
+  void OnRuntimeAttach(void* env, const char* runtime_type) override;
   void OnRuntimeDetach() override;
 
  private:
   lynx_runtime_lifecycle_observer_t* observer_ = nullptr;
   std::shared_ptr<NapiEnvHolder> env_holder_;
-  std::function<void(napi_env env)> on_attach_callback_ = nullptr;
+  std::function<void(napi_env env, const char* runtime_type)>
+      on_attach_callback_ = nullptr;
 };
 
 }  // namespace embedder

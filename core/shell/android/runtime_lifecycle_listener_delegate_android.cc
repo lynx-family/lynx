@@ -5,6 +5,7 @@
 #include "core/shell/android/runtime_lifecycle_listener_delegate_android.h"
 
 #include "base/include/log/logging.h"
+#include "base/include/platform/android/jni_convert_helper.h"
 #include "platform/android/lynx_android/src/main/jni/gen/RuntimeLifecycleListenerDelegate_jni.h"
 #include "platform/android/lynx_android/src/main/jni/gen/RuntimeLifecycleListenerDelegate_register_jni.h"
 
@@ -26,11 +27,15 @@ RuntimeLifecycleListenerDelegateAndroid::
       impl_(env, delegate) {}
 
 void RuntimeLifecycleListenerDelegateAndroid::OnRuntimeAttach(
-    void* current_napi_env) {
+    void* current_napi_env, const char* runtime_type) {
   JNIEnv* env = base::android::AttachCurrentThread();
+  runtime_type = runtime_type ? runtime_type : "";
+  auto java_runtime_type =
+      base::android::JNIConvertHelper::ConvertToJNIStringUTF(env, runtime_type);
   Java_RuntimeLifecycleListenerDelegate_onRuntimeAttach(
       env, impl_.Get(),
-      reinterpret_cast<jlong>(static_cast<napi_env>(current_napi_env)));
+      reinterpret_cast<jlong>(static_cast<napi_env>(current_napi_env)),
+      java_runtime_type.Get());
 }
 
 void RuntimeLifecycleListenerDelegateAndroid::OnRuntimeDetach() {

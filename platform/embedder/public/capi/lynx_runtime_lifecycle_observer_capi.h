@@ -18,7 +18,7 @@ typedef struct lynx_runtime_lifecycle_observer_t
 // Define a function pointer type for the runtime attach callback.
 // This callback is invoked when the runtime is attached.
 typedef void (*runtime_attach_callback)(lynx_runtime_lifecycle_observer_t*,
-                                        napi_env);
+                                        napi_env, const char* runtime_type);
 
 // Define a function pointer type for the runtime detach callback.
 // This callback is invoked when the runtime is detached.
