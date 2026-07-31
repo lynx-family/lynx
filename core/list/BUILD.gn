@@ -88,6 +88,7 @@ if (disable_list_platform_implementation) {
     "decoupled_list_container_impl_unittest.cc",
     "decoupled_list_event_manager_unittest.cc",
     "decoupled_list_layout_manager_unittest.cc",
+    "decoupled_list_orientation_helper_unittest.cc",
     "decoupled_staggered_grid_layout_manager_unittest.cc",
     "testing/fiber_diff_info.h",
     "testing/mock_list_element.h",

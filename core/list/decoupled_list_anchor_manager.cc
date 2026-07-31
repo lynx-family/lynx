@@ -80,7 +80,7 @@ void ListAnchorManager::AdjustAnchorInfoAfterLayout(AnchorInfo& anchor_info) {
       } else {
         anchor_info.start_alignment_delta_ =
             list_orientation_helper_->GetMeasurement() +
-            anchor_info.item_holder_->top_inset();
+            anchor_info.item_holder_->main_axis_gap();
         float adjusted_content_offset =
             list_orientation_helper_->GetStart(anchor_info.item_holder_) -
             anchor_info.start_alignment_delta_;

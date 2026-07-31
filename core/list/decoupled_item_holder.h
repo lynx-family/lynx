@@ -97,7 +97,7 @@ class ItemHolder : public fml::EnableWeakFromThis<ItemHolder> {
   void SetItemFullSpan(bool item_full_span) {
     item_full_span_ = item_full_span;
   }
-  void SetTopInset(float top_inset) { top_inset_ = top_inset; }
+  void SetMainAxisGap(float main_axis_gap) { main_axis_gap_ = main_axis_gap; }
   void SetTop(float top) { top_ = top; }
   void SetLeft(float left) { left_ = left; }
   void SetEstimatedSize(float estimated_size) {
@@ -128,7 +128,7 @@ class ItemHolder : public fml::EnableWeakFromThis<ItemHolder> {
   int item_col_index() const { return item_col_index_; }
   int item_span_size() const { return item_span_size_; }
   bool item_full_span() const { return item_full_span_; }
-  float top_inset() const { return top_inset_; }
+  float main_axis_gap() const { return main_axis_gap_; }
   float left() const { return left_; }
   float top() const { return top_; }
   float height() const;
@@ -207,7 +207,7 @@ class ItemHolder : public fml::EnableWeakFromThis<ItemHolder> {
   float width_{kInvalidDimensionSize};
   float height_{kInvalidDimensionSize};
   // The ItemHolder's main axis-gap.
-  float top_inset_{0.f};
+  float main_axis_gap_{0.f};
   // The container's size in main axis.
   float container_size_{kInvalidDimensionSize};
   // The ItemHolder's estimated size (ppx).
