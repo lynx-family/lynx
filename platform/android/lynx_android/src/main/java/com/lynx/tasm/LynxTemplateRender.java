@@ -671,6 +671,7 @@ public class LynxTemplateRender
       eventSender.setWeakContext(mLynxContext);
       mModuleFactory.registerModule(LynxFetchModule.NAME, LynxFetchModule.class, eventSender);
     }
+    mNativeFacade.setModuleFactory(mModuleFactory);
   }
 
   private void tryReuseLynxEngineFromPool() {
@@ -3893,7 +3894,6 @@ public class LynxTemplateRender
   }
 
   private void initPiperInternal() {
-    mNativeFacade.setModuleFactory(mModuleFactory);
     boolean useQuickJSEngine = mLynxRuntimeOptions.useQuickJSEngine();
     if (useQuickJSEngine) {
       LLog.i(TAG, "force use quick js engine");
