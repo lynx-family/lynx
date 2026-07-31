@@ -209,6 +209,20 @@ void NativeFacadeAndroid::OnTimingUpdate(const lepus::Value& timing_info,
       j_update_timing_map.jni_object(), j_update_flag.Get());
 }
 
+void NativeFacadeAndroid::SetEmbeddedTiming(const std::string& timing_key,
+                                            uint64_t timestamp_us,
+                                            const std::string& pipeline_id) {
+  ScopedLocalJavaRef<jobject> local_ref(jni_object_);
+  if (local_ref.IsNull()) return;
+  JNIEnv* env = AttachCurrentThread();
+  auto j_timing_key = JNIConvertHelper::ConvertToJNIStringUTF(env, timing_key);
+  auto j_pipeline_id =
+      JNIConvertHelper::ConvertToJNIStringUTF(env, pipeline_id);
+  Java_NativeFacade_setEmbeddedTiming(env, local_ref.Get(), j_timing_key.Get(),
+                                      static_cast<jlong>(timestamp_us),
+                                      j_pipeline_id.Get());
+}
+
 void NativeFacadeAndroid::OnDynamicComponentPerfReady(
     const lepus::Value& perf_info) {
   ScopedLocalJavaRef<jobject> local_ref(jni_object_);
