@@ -141,6 +141,10 @@ def run_cp_so(output_path, args, abi):
 def run_package_har(module_name, module_path, verbose):
     if verbose:
         print(f'===== start run package {module_name} =====')
+    if module_name == 'lynx':
+        # Hvigor requires the configured native header directory to exist even
+        # when the current package does not contain public native headers.
+        os.makedirs(os.path.join(module_path, 'include'), exist_ok=True)
     cmd = f'hvigorw assembleHar --mode module -p module={module_name}@default -p product=default -p buildMode=debug --no-daemon'
     if verbose:
         print(f'run command {cmd}')
