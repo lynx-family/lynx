@@ -5,6 +5,7 @@
 #ifndef CORE_SHELL_NATIVE_FACADE_H_
 #define CORE_SHELL_NATIVE_FACADE_H_
 
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -71,6 +72,10 @@ class NativeFacade {
   virtual void OnTimingUpdate(const lepus::Value& timing_info,
                               const lepus::Value& update_timing,
                               const std::string& update_flag) = 0;
+
+  virtual void SetEmbeddedTiming(const std::string& timing_key,
+                                 uint64_t timestamp_us,
+                                 const std::string& pipeline_id) {}
 
   virtual void OnDynamicComponentPerfReady(const lepus::Value& perf_info) = 0;
 

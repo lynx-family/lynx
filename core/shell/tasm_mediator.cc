@@ -19,6 +19,7 @@
 #include "core/runtime/js/runtime_constant.h"
 #include "core/runtime/lepus/tasks/lepus_callback_manager.h"
 #include "core/services/performance/js_blocking_monitor/js_blocking_monitor.h"
+#include "core/services/timing_handler/timing_constants.h"
 #include "core/services/watch_dog/watch_dog.h"
 #include "core/shell/common/shell_trace_event_def.h"
 #include "core/shell/lynx_actor_specialization.h"
@@ -168,6 +169,22 @@ void TasmMediator::OnRunPipelineFinished() {
 }
 
 void TasmMediator::SetTiming(tasm::Timing timing) {
+  if (IsEmbeddedModeOn()) {
+    for (const auto& timing_entry : timing.timings_) {
+      if (timing_entry.first != tasm::timing::kLoadBundleEnd) {
+        continue;
+      }
+      const auto timing_key = timing_entry.first;
+      const auto timestamp_us = timing_entry.second;
+      facade_actor_->ActAsync(
+          [timing_key, timestamp_us,
+           pipeline_id = timing.pipeline_id_](auto& facade) {
+            facade->SetEmbeddedTiming(timing_key, timestamp_us, pipeline_id);
+          });
+      break;
+    }
+    return;
+  }
   if (!perf_actor_) {
     return;
   }
