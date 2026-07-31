@@ -39,6 +39,8 @@ bool EvaluatePreloadSources(
     Runtime& runtime,
     std::vector<std::pair<std::string, std::shared_ptr<Buffer>>>& sources);
 
+const char* JSRuntimeTypeToString(JSRuntimeType type);
+
 using JSValueCircularArray = base::InlineVector<Object, 32>;
 
 std::optional<lepus_value> ParseJSValue(

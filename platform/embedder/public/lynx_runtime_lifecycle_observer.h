@@ -45,15 +45,15 @@ class LynxRuntimeLifecycleObserver
         });
 
     lynx_runtime_lifecycle_observer_bind_attach_callback(
-        observer_,
-        [](lynx_runtime_lifecycle_observer_t* observer, napi_env env) {
+        observer_, [](lynx_runtime_lifecycle_observer_t* observer, napi_env env,
+                      const char* runtime_type) {
           std::weak_ptr<LynxRuntimeLifecycleObserver>* weak_ptr =
               reinterpret_cast<std::weak_ptr<LynxRuntimeLifecycleObserver>*>(
                   lynx_runtime_lifecycle_observer_get_user_data(observer));
           std::shared_ptr<LynxRuntimeLifecycleObserver> shared_observer =
               weak_ptr ? weak_ptr->lock() : nullptr;
           if (shared_observer) {
-            shared_observer->OnRuntimeAttach(env);
+            shared_observer->OnRuntimeAttach(env, runtime_type);
           }
         });
     lynx_runtime_lifecycle_observer_bind_detach_callback(
@@ -75,8 +75,9 @@ class LynxRuntimeLifecycleObserver
    * Derived classes can override this method to perform custom operations
    * when the runtime attaches.
    * @param env The Napi environment.
+   * @param runtime_type The JS runtime type.
    */
-  virtual void OnRuntimeAttach(napi_env env) {}
+  virtual void OnRuntimeAttach(napi_env env, const char* runtime_type) {}
 
   /**
    * @apidoc
