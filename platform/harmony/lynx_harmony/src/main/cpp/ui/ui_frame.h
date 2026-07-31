@@ -59,7 +59,7 @@ class UIFrame : public UIView {
   void CreateFrameHost();
   void DisposeFrameHost();
   void TryLoadBundle();
-  void UpdateHostConfiguration();
+  void UpdateHostAutoSize();
   void UpdateHostViewport();
   void UpdateHostMetaDataIfNeeded();
   std::optional<float> ParsePresetLength(const lepus::Value& value) const;
@@ -86,7 +86,6 @@ class UIFrame : public UIView {
   bool auto_height_{false};
   std::optional<float> preset_width_;
   std::optional<float> preset_height_;
-  bool enable_multi_async_thread_{true};
   bool props_updated_{false};
   bool child_context_ready_{false};
   bool loaded_{false};

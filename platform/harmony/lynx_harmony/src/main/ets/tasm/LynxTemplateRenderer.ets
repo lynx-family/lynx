@@ -37,7 +37,6 @@ export class LynxTemplateRenderer extends lynx.LynxTemplateRenderer {
   private lynxDevTool?: LynxDevTool;
   private moduleManager: LynxModuleManager;
   private sendableModuleManager: SendableLynxModuleManager;
-  private readonly enableMultiAsyncThread: boolean;
   private hasDestroyed = false;
   private displayInfo = LynxEnv.getDisplayInfo().clone();
 
@@ -49,7 +48,6 @@ export class LynxTemplateRenderer extends lynx.LynxTemplateRenderer {
     enableJSRuntime: boolean,
     moduleManager: LynxModuleManager,
     sendableModuleManager: SendableLynxModuleManager,
-    enableMultiAsyncThread?: boolean,
     screenSize?: Size) {
     super();
     this.clients = clients;
@@ -62,7 +60,6 @@ export class LynxTemplateRenderer extends lynx.LynxTemplateRenderer {
     this.lynxView = lynxView;
     this.moduleManager = moduleManager;
     this.sendableModuleManager = sendableModuleManager;
-    this.enableMultiAsyncThread = enableMultiAsyncThread ?? true;
     if (screenSize) {
       LLog.i(TAG, `screen size, w: ${screenSize.width}, h: ${screenSize.height}`);
       this.displayInfo.updateDisplayInfo(screenSize.width, screenSize.height);
@@ -87,8 +84,7 @@ export class LynxTemplateRenderer extends lynx.LynxTemplateRenderer {
       this.backgroundRuntimeOptions.enableBytecode, this.backgroundRuntimeOptions.bytecodeSourceUrl,
       this.enableJSRuntime,
       convertModuleArgs(this.moduleManager),
-      convertModuleArgs(this.sendableModuleManager), this.lynxView?.backgroundRuntime, whiteBoard,
-      this.enableMultiAsyncThread);
+      convertModuleArgs(this.sendableModuleManager), this.lynxView?.backgroundRuntime, whiteBoard);
   }
 
   aboutToDisappear() {
