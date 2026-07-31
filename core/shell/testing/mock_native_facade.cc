@@ -48,6 +48,16 @@ void MockNativeFacade::OnTasmFinishByNative() {
   arwe->Signal();
 }
 
+void MockNativeFacade::SetEmbeddedTiming(const std::string& timing_key,
+                                         uint64_t timestamp_us,
+                                         const std::string& pipeline_id) {
+  result.on_correct_thread = IsOnUIThread();
+  result["timing_key"] = timing_key;
+  result["timestamp_us"] = timestamp_us;
+  result["pipeline_id"] = pipeline_id;
+  arwe->Signal();
+}
+
 void MockNativeFacade::ReportError(const base::LynxError& error) {
   result.on_correct_thread = IsOnUIThread();
   result["error_code"] = error.error_code_;
