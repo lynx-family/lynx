@@ -16,6 +16,88 @@ interface MTSParsedFrames {
   callerInfo: string;
 }
 
+const COMPACT_DEBUG_INFO_VERSION = 2;
+
+const ROOT_DEBUG_INFO_KEYS = {
+  function_source: 'fs',
+  end_line_num: 'el',
+  function_number: 'fn',
+  function_info: 'fi',
+} as const;
+
+const FUNCTION_DEBUG_INFO_KEYS = {
+  function_id: 'id',
+  function_name: 'n',
+  file_name: 'f',
+  line_number: 'ln',
+  column_number: 'cn',
+  pc2line_len: 'pll',
+  pc2line_buf: 'plb',
+  pc2caller_info: 'pci',
+  function_source_len: 'fsl',
+  function_source_offset: 'fso',
+  function_source: 'fs',
+} as const;
+
+const LINE_COL_DEBUG_INFO_KEYS = {
+  line: 'l',
+  column: 'c',
+} as const;
+
+function getDebugInfoValue(debugInfo: any, key: string, compactKey: string): any {
+  return debugInfo?.[compactKey] ?? debugInfo?.[key];
+}
+
+function normalizeDebugInfoKeys(debugInfo: any, keyMap: Record<string, string>): any {
+  if (!debugInfo || typeof debugInfo !== 'object') {
+    return debugInfo;
+  }
+  const normalizedDebugInfo = { ...debugInfo };
+  for (const key of Object.keys(keyMap)) {
+    const compactKey = keyMap[key];
+    const value = getDebugInfoValue(debugInfo, key, compactKey);
+    if (value !== undefined) {
+      normalizedDebugInfo[key] = value;
+    }
+  }
+  return normalizedDebugInfo;
+}
+
+function normalizeFunctionDebugInfo(functionInfo: any): any {
+  const normalizedFunctionInfo = normalizeDebugInfoKeys(functionInfo, FUNCTION_DEBUG_INFO_KEYS);
+  if (!normalizedFunctionInfo || typeof normalizedFunctionInfo !== 'object') {
+    console.error('Failed to normalize function debug info caused by invalid function info');
+    return null;
+  }
+
+  const lineCol = getDebugInfoValue(functionInfo, 'line_col', 'lc');
+  if (Array.isArray(lineCol)) {
+    normalizedFunctionInfo.line_col = lineCol.map((position: any) => normalizeDebugInfoKeys(position, LINE_COL_DEBUG_INFO_KEYS));
+  }
+
+  return normalizedFunctionInfo;
+}
+
+function normalizeLepusNGDebugInfoEntry(debugInfoEntry: any): any {
+  const version = Number.isInteger(debugInfoEntry?.v) ? debugInfoEntry.v : null;
+  if (version !== null && version > COMPACT_DEBUG_INFO_VERSION) {
+    console.error(`Unsupported debug-info schema version: ${version}`);
+    return null;
+  }
+
+  const normalizedDebugInfoEntry = normalizeDebugInfoKeys(debugInfoEntry, ROOT_DEBUG_INFO_KEYS);
+  if (!normalizedDebugInfoEntry || typeof normalizedDebugInfoEntry !== 'object') {
+    console.error('Failed to normalize debug info caused by invalid debug info entry');
+    return null;
+  }
+
+  const functionInfoList = normalizedDebugInfoEntry.function_info;
+  if (Array.isArray(functionInfoList)) {
+    normalizedDebugInfoEntry.function_info = functionInfoList.map((functionInfo: any) => normalizeFunctionDebugInfo(functionInfo));
+  }
+  return normalizedDebugInfoEntry;
+}
+
 class MTSResourceProvider implements IResourceProvider {
   resourceMap: Map<string, any>;
 
@@ -98,18 +180,19 @@ export class MTSErrorParser implements IErrorParser {
   }
 
   getCallerInfo(functionId: number | null, pcIndex: number | null, functionInfoList: any): string {
-    if (!functionId || !pcIndex) {
-      console.log('Failed to get caller info caused by invalid function id or pc index');
+    if (functionId == null || pcIndex == null) {
+      console.error('Failed to get caller info caused by invalid function id or pc index');
       return '';
     }
     if (functionInfoList) {
       const functionInfo = functionInfoList.find((info: any) => info.function_id == functionId);
-      if (functionInfo && functionInfo.pc2caller_info && pcIndex in functionInfo.pc2caller_info) {
-        return functionInfo.pc2caller_info[pcIndex];
+      const callerInfo = functionInfo?.pc2caller_info;
+      if (callerInfo && pcIndex in callerInfo) {
+        return callerInfo[pcIndex];
       }
-      console.log('Cannot find field pc2caller_info in debug info');
+      console.error('Cannot find field pc2caller_info in debug info');
     }
-    console.log('Failed to get caller info');
+    console.error('Failed to get caller info');
     return '';
   }
 
@@ -132,7 +215,7 @@ export class MTSErrorParser implements IErrorParser {
       }
       const debugInfoJson = parseJsonStringSafely(debugInfo);
       if (!debugInfoJson) {
-        console.log('Failed to parse main thread js error caused by invalid debug info');
+        console.error('Failed to parse main thread js error caused by invalid debug info');
         parsedFrames.push(frame);
         continue;
       }
@@ -156,8 +239,9 @@ export class MTSErrorParser implements IErrorParser {
         parsedFrames.push(frame);
         continue;
       }
-      if (fInfo.line_col && fInfo.line_col.length > pcIndex) {
-        const pos = fInfo.line_col[pcIndex];
+      const lineCol = fInfo.line_col;
+      if (lineCol && lineCol.length > pcIndex) {
+        const pos = lineCol[pcIndex];
         frame.lineNumber = pos.line ?? frame.lineNumber;
         frame.columnNumber = pos.column ?? frame.columnNumber;
       } else if (fInfo.line_col_info && fInfo.line_col_info.line_col && fInfo.line_col_info.line_col.length > pcIndex) {
@@ -201,6 +285,7 @@ export class MTSErrorParser implements IErrorParser {
       }
     }
 
+    debugInfoEntry = normalizeLepusNGDebugInfoEntry(debugInfoEntry);
     let functionInfoList = null;
     let functionSource = null;
     if (debugInfoEntry) {
