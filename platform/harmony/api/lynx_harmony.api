@@ -295,6 +295,7 @@ export class LynxContext implements IContext {
   public prefetchFont(uri: string, callback: (code: number, msg: string) => void): void;
   public setShadowNodeOwner(nodeOwner: ShadowNodeOwner): void;
   public setUIOwner(uiOwner: UIOwner): void;
+  public getUIOwner(): UIOwner | undefined;
   public measureNativeNode(sign: number, width: number, widthMode: number, height: number, heightMode: number, finalMeasure: boolean): void;
   public alignNativeNode(sign: number, left: number, top: number): void;
   setRenderer(renderer: LynxTemplateRenderer): void;

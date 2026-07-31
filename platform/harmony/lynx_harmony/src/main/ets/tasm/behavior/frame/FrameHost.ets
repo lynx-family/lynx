@@ -135,6 +135,10 @@ export class FrameHost {
     }
     this.childContext.loadTemplate(src, bundle, undefined,
       new MetaData(createTemplateData(data), createTemplateData(globalProps)));
+    const childOwner = this.childContext.getUIOwner();
+    if (childOwner) {
+      this.native.attachChildUIOwner(childOwner.native);
+    }
   }
 
   updateMetaData(data?: MetaInput, globalProps?: MetaInput): void {
