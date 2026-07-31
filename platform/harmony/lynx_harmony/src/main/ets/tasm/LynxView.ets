@@ -97,7 +97,6 @@ export interface LynxViewBuilder {
   lynxImageConfig?: LynxImageConfig;
   fontScale?: number;
   colorScheme?: ColorScheme;
-  enableMultiAsyncThread?: boolean;
 }
 
 @Builder
@@ -203,7 +202,6 @@ export struct LynxView {
   private loadingID: number = 0;
   private fontScale: number = 1.0;
   private colorScheme: ColorScheme = ColorScheme.LIGHT;
-  private enableMultiAsyncThread: boolean = true;
   onCreate: (context: LynxContext) => void = ((context: LynxContext) => {
   });
   onReuse: (context: LynxContext) => boolean = ((context: LynxContext) => {
@@ -251,7 +249,6 @@ export struct LynxView {
     this.lynxImageConfig = builder.lynxImageConfig;
     this.fontScale = builder.fontScale ?? 1.0;
     this.colorScheme = builder.colorScheme ?? ColorScheme.LIGHT;
-    this.enableMultiAsyncThread = builder.enableMultiAsyncThread ?? true;
     if (this.hasAppeared) {
       LynxServiceCenter.getService<ILynxTrailService>(LynxServiceType.Trail)?.parseLynxView(this);
       this.reInitTemplateRenderer(this.hasLoadSource());
@@ -287,7 +284,6 @@ export struct LynxView {
       lynxImageConfig: this.lynxImageConfig,
       fontScale: this.fontScale,
       colorScheme: this.colorScheme,
-      enableMultiAsyncThread: this.enableMultiAsyncThread,
     };
   }
 
@@ -357,7 +353,7 @@ export struct LynxView {
       new LynxTemplateRenderer(this.clients, providers, !this.uiRendererCreator,
         this.uiRendererCreator ? ThreadStrategyForRendering.ALL_ON_UI : this.threadMode,
         this.backgroundRuntimeOptions, this, !this.enableAirStrictMode,
-        this.moduleManager, this.sendableModuleManager, this.enableMultiAsyncThread, this.screenSize);
+        this.moduleManager, this.sendableModuleManager, this.screenSize);
     if (this.platformConfig) {
       this.templateRenderer.setPlatformConfig(this.platformConfig);
     }

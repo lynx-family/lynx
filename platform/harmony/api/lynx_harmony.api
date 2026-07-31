@@ -270,7 +270,6 @@ export interface LynxViewBuilder {
   lynxImageConfig?: LynxImageConfig;
   fontScale?: number;
   colorScheme?: ColorScheme;
-  enableMultiAsyncThread?: boolean;
 }
 
 export enum MeasureMode {
