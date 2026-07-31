@@ -9,6 +9,8 @@
 #include <utility>
 #include <vector>
 
+#include "base/include/fml/message_loop.h"
+#include "base/include/fml/time/timer.h"
 #include "base/include/timer/time_utils.h"
 #include "base/trace/native/trace_event.h"
 #include "core/base/threading/task_runner_manufactor.h"
@@ -110,7 +112,23 @@ QuickjsRuntime::~QuickjsRuntime() {
   LOGI("LYNX free quickjs context");
 }
 
-void QuickjsRuntime::BeforeDestroy() { DumpCoverage(); }
+void QuickjsRuntime::BeforeDestroy() {
+  coverage_dump_timer_.reset();
+  DumpCoverage();
+}
+
+void QuickjsRuntime::StartCoverageDumpTimer() {
+  if (!enable_js_coverage_) {
+    return;
+  }
+
+  if (!coverage_dump_timer_) {
+    coverage_dump_timer_ = std::make_unique<fml::RepeatingTimer>(
+        fml::MessageLoop::GetCurrent().GetTaskRunner());
+  }
+  coverage_dump_timer_->Start(fml::TimeDelta::FromSeconds(60 * 60),
+                              [this]() { DumpCoverage(); });
+}
 
 void QuickjsRuntime::DumpCoverage() {
   if (!enable_js_coverage_) {
@@ -133,15 +151,22 @@ void QuickjsRuntime::DumpCoverage() {
     return;
   }
 
+  if (coverage_id_.empty()) {
+    coverage_id_ = std::to_string(instance_id) + "_" +
+                   std::to_string(base::CurrentSystemTimeMicroseconds());
+  }
+
   tasm::report::EventTrackerPlatformImpl::GetReportTaskRunner()->PostTask(
       [coverage_dump, dump_length, dump_duration_ms, instance_id,
-       page_url = GetPageUrl()]() {
+       coverage_id = coverage_id_, page_url = GetPageUrl()]() {
         static constexpr char kJSCoverageEventName[] = "lynxsdk_bts_coverage";
+        static constexpr char kJSCoverageIdKey[] = "coverage_id";
         static constexpr char kJSCoverageDataKey[] = "data";
         static constexpr char kJSCoverageDumpDurationKey[] = "dump_duration_ms";
 
         tasm::report::MoveOnlyEvent event;
         event.SetName(kJSCoverageEventName);
+        event.SetProps(kJSCoverageIdKey, coverage_id);
         event.SetProps(kJSCoverageDataKey,
                        std::string(coverage_dump, dump_length));
         event.SetProps(kJSCoverageDumpDurationKey, dump_duration_ms);
@@ -158,6 +183,7 @@ void QuickjsRuntime::InitRuntime(std::shared_ptr<JSIContext> sharedContext) {
   context_ = std::static_pointer_cast<QuickjsContextWrapper>(sharedContext);
   gc_flag_ = LEPUS_IsGCMode(getJSContext());
   quickjs_runtime_wrapper_->AddObserver(this);
+  StartCoverageDumpTimer();
 }
 
 std::shared_ptr<VMInstance> QuickjsRuntime::getSharedVM() {

@@ -10,10 +10,12 @@
 #include <string>
 #include <utility>
 
+#include "base/include/fml/message_loop.h"
 #define private public
 #include "core/renderer/utils/lynx_env.h"
 #undef private
 
+#include "core/renderer/tasm/testing/event_tracker_mock.h"
 #include "core/runtime/js/jsi/quickjs/quickjs_runtime.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
@@ -21,6 +23,7 @@ namespace {
 
 thread_local std::string g_coverage_dump_for_testing;
 thread_local int32_t g_coverage_runtime_id_for_testing = -1;
+thread_local int g_coverage_dump_call_count_for_testing = 0;
 
 }  // namespace
 
@@ -44,6 +47,7 @@ __attribute__((weak)) LEPUSValue LEPUS_Eval_WITH_COVERAGE(
 __attribute__((weak)) const char* JS_GetCoverageDumpString(LEPUSContext*,
                                                            int32_t runtime_id,
                                                            size_t* length) {
+  ++g_coverage_dump_call_count_for_testing;
   if (runtime_id != g_coverage_runtime_id_for_testing ||
       g_coverage_dump_for_testing.empty()) {
     return nullptr;
@@ -118,6 +122,7 @@ class CoverageRuntimeDelegate : public JSRuntimeDelegate {
 }  // namespace
 
 TEST(QuickjsRuntimeCoverageTest, SourceBypassesCacheAndProducesCoverageDump) {
+  fml::MessageLoop::EnsureInitializedForCurrentThread();
   ScopedJSCoverageSamplingEnv sampling_env(
       std::to_string(tasm::LynxEnv::kJSCoverageSamplingBasisPointsMax));
   auto runtime_delegate = std::make_shared<CoverageRuntimeDelegate>();
@@ -162,6 +167,65 @@ TEST(QuickjsRuntimeCoverageTest, SourceBypassesCacheAndProducesCoverageDump) {
   EXPECT_NE(std::string(coverage_dump, dump_length).find(kSourceUrl),
             std::string::npos);
   JS_FreeCoverageDumpString(coverage_dump);
+}
+
+TEST(QuickjsRuntimeCoverageTest, CoverageIdIsCreatedOnFirstDumpAndStaysStable) {
+  fml::MessageLoop::EnsureInitializedForCurrentThread();
+  ScopedJSCoverageSamplingEnv sampling_env(
+      std::to_string(tasm::LynxEnv::kJSCoverageSamplingBasisPointsMax));
+  auto runtime = std::make_unique<QuickjsRuntime>();
+
+  auto vm = runtime->createVM(nullptr);
+  auto context = runtime->createContext(vm);
+  constexpr int32_t kRuntimeId = 43;
+  JSRuntimeExternalParams external_params;
+  external_params.runtime_id = kRuntimeId;
+  runtime->SetExternalParams(std::move(external_params));
+  runtime->InitRuntime(context);
+
+  const auto result = runtime->evaluateJavaScript(
+      std::make_shared<StringBuffer>("globalThis.coverageIdTest = true;"),
+      "coverage-id.js");
+  ASSERT_TRUE(result.has_value());
+
+  // Exercise repeated dumps through the public lifecycle hook so the test
+  // validates reported behavior without exposing QuickjsRuntime internals.
+  auto report_event = tasm::report::EventTrackerWaitableEvent::Await();
+  report_event->Reset();
+  runtime->BeforeDestroy();
+  report_event->Wait();
+  ASSERT_EQ(tasm::report::EventTrackerWaitableEvent::stack_.size(), 1u);
+  const auto first_dump_props =
+      tasm::report::EventTrackerWaitableEvent::stack_.front().GetStringProps();
+  const auto first_coverage_id = first_dump_props.find("coverage_id");
+  ASSERT_NE(first_coverage_id, first_dump_props.end());
+  EXPECT_FALSE(first_coverage_id->second.empty());
+  EXPECT_EQ(first_coverage_id->second.find(std::to_string(kRuntimeId) + "_"),
+            0u);
+
+  report_event->Reset();
+  runtime->BeforeDestroy();
+  report_event->Wait();
+  ASSERT_EQ(tasm::report::EventTrackerWaitableEvent::stack_.size(), 1u);
+  const auto second_dump_props =
+      tasm::report::EventTrackerWaitableEvent::stack_.front().GetStringProps();
+  const auto second_coverage_id = second_dump_props.find("coverage_id");
+  ASSERT_NE(second_coverage_id, second_dump_props.end());
+  EXPECT_EQ(second_coverage_id->second, first_coverage_id->second);
+}
+
+TEST(QuickjsRuntimeCoverageTest, CoverageDisabledRuntimeDoesNotDumpCoverage) {
+  fml::MessageLoop::EnsureInitializedForCurrentThread();
+  ScopedJSCoverageSamplingEnv sampling_env("0");
+  auto runtime = std::make_unique<QuickjsRuntime>();
+
+  auto vm = runtime->createVM(nullptr);
+  auto context = runtime->createContext(vm);
+  runtime->InitRuntime(context);
+
+  g_coverage_dump_call_count_for_testing = 0;
+  runtime->BeforeDestroy();
+  EXPECT_EQ(g_coverage_dump_call_count_for_testing, 0);
 }
 
 }  // namespace test

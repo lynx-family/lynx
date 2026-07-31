@@ -24,6 +24,9 @@
 #include "core/runtime/js/jsi/quickjs/quickjs_runtime_wrapper.h"
 
 namespace lynx {
+namespace fml {
+class RepeatingTimer;
+}
 namespace runtime {
 namespace js {
 class QuickjsRuntime : public Runtime, public JSIObserver {
@@ -219,6 +222,7 @@ class QuickjsRuntime : public Runtime, public JSIObserver {
 
   bool IsJavaScriptBytecode(const std::shared_ptr<const Buffer> &buffer);
 
+  void StartCoverageDumpTimer();
   void DumpCoverage();
 
  private:
@@ -229,6 +233,9 @@ class QuickjsRuntime : public Runtime, public JSIObserver {
   JSIObserver *observer_ = nullptr;
   // Keep one page-level sampling decision for all scripts in this runtime.
   const bool enable_js_coverage_;
+  // Created by the first successful dump and reused by this page runtime.
+  std::string coverage_id_;
+  std::unique_ptr<fml::RepeatingTimer> coverage_dump_timer_;
 };
 
 }  // namespace js
