@@ -149,8 +149,6 @@ export { MessageHandler } from './devtool_wrapper/MessageHandler'
 
 export {LynxBackgroundRuntime, LynxBackgroundRuntimeClient} from './tasm/LynxBackgroundRuntime'
 
-export { RuntimeLifecycleListener } from './jsbridge/RuntimeLifecycleListener'
-
 export { LynxImageConfig } from './tasm/image/LynxImageConfig'
 
 export { LynxImageLoadInfo } from './tasm/image/LynxImageLoadInfo'
