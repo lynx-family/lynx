@@ -9,7 +9,6 @@
 #include <unordered_map>
 #include <vector>
 
-#include "base/include/notification_center.h"
 #include "core/public/page_options.h"
 #include "core/runtime/common/js_error_reporter.h"
 #include "core/runtime/mts_context.h"
@@ -292,9 +291,7 @@ class QuickContext : private LEPUSRuntimeData,
   std::string debug_source_;
 
 #if ENABLE_TRACE_PERFETTO
-  bool force_report_memory_info_{false};
   std::shared_ptr<runtime::profile::RuntimeProfiler> runtime_profiler_;
-  std::unique_ptr<base::NotificationCallback> notification_callback_;
 #endif
 };
 

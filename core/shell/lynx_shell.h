@@ -472,7 +472,6 @@ class LynxShell {
 
   base::ThreadStrategyForRendering current_strategy_;
 
-  std::string url_;
   std::string js_group_thread_name_;
   bool enable_js_group_thread_;
   tasm::PageOptions page_options_;
@@ -511,8 +510,6 @@ class LynxShell {
       std::shared_ptr<tasm::PropBundleCreator> prop_bundle_creator,
       std::unique_ptr<lynx::pub::LynxNativeModuleManager>
           native_module_manager);
-
-  void RegisterNotificationCallbacks();
 
   std::weak_ptr<runtime::js::JsBundleHolder> GetWeakJsBundleHolder();
   LynxEngineBuildOptions engine_build_options_;

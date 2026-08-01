@@ -7,9 +7,7 @@
 #include <utility>
 
 #include "base/include/no_destructor.h"
-#include "base/trace/native/trace_controller.h"
 #include "core/base/threading/thread_merger.h"
-#include "core/base/trace/trace_event_def.h"
 #include "core/public/jsb/native_module_factory.h"
 #include "core/renderer/dom/lynx_get_ui_result.h"
 #include "core/renderer/dom/vdom/radon/node_select_options.h"
@@ -21,7 +19,6 @@
 #include "core/runtime/js/bindings/modules/lynx_module_manager.h"
 #include "core/runtime/js/js_bundle_holder.h"
 #include "core/runtime/js/runtime_constant.h"
-#include "core/runtime/js/runtime_manager.h"
 #include "core/services/event_report/event_tracker.h"
 #include "core/services/feature_count/feature_counter.h"
 #include "core/services/feature_count/global_feature_counter.h"
@@ -427,35 +424,10 @@ void LynxShell::Destroy() {
         tasm::report::FeatureCounter::Instance()->ClearAndReport(instance_id);
       });
   if (runtime_actor_) {
-#if ENABLE_TRACE_PERFETTO
-    [[maybe_unused]] auto group_id =
-        runtime_actor_->Impl() ? runtime_actor_->Impl()->GetGroupId() : "";
-#endif
-
     runtime_actor_->ActAsync(
         [instance_id = runtime_actor_->GetInstanceId()](auto& runtime) {
           DestroyRuntime(instance_id, runtime);
         });
-
-#if ENABLE_TRACE_PERFETTO
-    // Execute after runtime destroyed.
-    if (auto config =
-            trace::TraceController::Instance()->GetLastSessionTraceConfig();
-        config && config->enable_memory_trace) {
-      if (config->auto_take_snapshot && !group_id.empty() &&
-          !runtime::RuntimeManager::IsSingleJSContext(group_id) &&
-          (config->auto_take_snapshot_group_id.empty() ||
-           config->auto_take_snapshot_group_id == group_id)) {
-        base::NotificationCallback::Notify(
-            runtime::kScheduleVMSnapshot,
-            reinterpret_cast<intptr_t>(group_id.c_str()));
-      }
-      if (config->memory_trace_force_gc) {
-        lynx::base::NotificationCallback::Notify(
-            LYNX_TRACE_MEMORY_PLUGIN_GC_NOTIFICATION, 0);
-      }
-    }
-#endif
   }
 
   if (enable_async_hydration_) {
@@ -640,8 +612,6 @@ void LynxShell::LoadTemplate(
     const std::string& url, std::vector<uint8_t> source,
     std::shared_ptr<tasm::PipelineOptions> pipeline_options,
     const std::shared_ptr<tasm::TemplateData>& template_data) {
-  url_ = url;
-
   // TODO(zhangkaijie.9): remove pipeline_option and create it in TemplateRender
   if (!pipeline_options) {
     pipeline_options = std::make_shared<tasm::PipelineOptions>();
@@ -713,15 +683,39 @@ void LynxShell::LoadTemplate(
     }
   });
 
-  RegisterNotificationCallbacks();
+  if (!memory_pressure_callback_) {
+    memory_pressure_callback_ = std::make_unique<base::NotificationCallback>(
+        base::MEMORY_PRESSURE_NOTIFICATION,
+        [engine_actor = engine_actor_](const std::string& tag, intptr_t data) {
+          auto level = static_cast<base::MemoryPressureLevel>(data);
+          engine_actor->Act([level](auto& engine) {
+            TRACE_EVENT(LYNX_TRACE_CATEGORY, LYNX_SHELL_TRIGGER_VM_GC);
+            engine->TriggerVmGC();
+
+            auto core_event = fml::MakeRefCounted<runtime::MessageEvent>(
+                runtime::kMessageEventTypeOnLowMemory,
+                runtime::ContextProxy::Type::kNative,
+                runtime::ContextProxy::Type::kCoreContext,
+                std::make_unique<pub::ValueImplLepus>(
+                    lepus::Value(static_cast<int>(level))));
+            (void)engine->DispatchMessageEvent(std::move(core_event));
+
+            auto js_event = fml::MakeRefCounted<runtime::MessageEvent>(
+                runtime::kMessageEventTypeOnLowMemory,
+                runtime::ContextProxy::Type::kNative,
+                runtime::ContextProxy::Type::kJSContext,
+                std::make_unique<pub::ValueImplLepus>(
+                    lepus::Value(static_cast<int>(level))));
+            (void)engine->DispatchMessageEvent(std::move(js_event));
+          });
+        });
+  }
 }
 
 void LynxShell::LoadTemplateBundle(
     const std::string& url, tasm::LynxTemplateBundle template_bundle,
     std::shared_ptr<tasm::PipelineOptions> pipeline_options,
     const std::shared_ptr<tasm::TemplateData>& template_data) {
-  url_ = url;
-
   // TODO(zhangkaijie.9): remove pipeline_option and create it in TemplateRender
   if (!pipeline_options) {
     pipeline_options = std::make_shared<tasm::PipelineOptions>();
@@ -739,143 +733,6 @@ void LynxShell::LoadTemplateBundle(
         engine->LoadTemplateBundle(url, std::move(template_bundle),
                                    template_data, std::move(pipeline_options));
       });
-
-  RegisterNotificationCallbacks();
-}
-
-void LynxShell::RegisterNotificationCallbacks() {
-  if (!memory_pressure_callback_) {
-    memory_pressure_callback_ = std::make_unique<base::NotificationCallback>(
-        base::NotificationCallback::CallbackList{
-            {base::MEMORY_PRESSURE_NOTIFICATION,
-             [engine_actor = engine_actor_](const std::string& tag,
-                                            intptr_t data) {
-               auto level = static_cast<base::MemoryPressureLevel>(data);
-               engine_actor->Act([level](auto& engine) {
-                 TRACE_EVENT(LYNX_TRACE_CATEGORY, LYNX_SHELL_TRIGGER_VM_GC);
-                 engine->TriggerVmGC();
-
-                 auto core_event = fml::MakeRefCounted<runtime::MessageEvent>(
-                     runtime::kMessageEventTypeOnLowMemory,
-                     runtime::ContextProxy::Type::kNative,
-                     runtime::ContextProxy::Type::kCoreContext,
-                     std::make_unique<pub::ValueImplLepus>(
-                         lepus::Value(static_cast<int>(level))));
-                 (void)engine->DispatchMessageEvent(std::move(core_event));
-
-                 auto js_event = fml::MakeRefCounted<runtime::MessageEvent>(
-                     runtime::kMessageEventTypeOnLowMemory,
-                     runtime::ContextProxy::Type::kNative,
-                     runtime::ContextProxy::Type::kJSContext,
-                     std::make_unique<pub::ValueImplLepus>(
-                         lepus::Value(static_cast<int>(level))));
-                 (void)engine->DispatchMessageEvent(std::move(js_event));
-               });
-             }}
-#if ENABLE_TRACE_PERFETTO
-            ,
-            {runtime::kTakeVMSnapshotByUrl,
-             [this](const std::string& tag, [[maybe_unused]] intptr_t data) {
-               intptr_t* payload = reinterpret_cast<intptr_t*>(data);
-               const char* url = reinterpret_cast<const char*>(payload[0]);
-               if (this->url_ != url) {
-                 return;
-               }
-               const char* type = reinterpret_cast<const char*>(payload[1]);
-               if (std::strcmp(type, "bts") == 0) {
-                 this->runtime_actor_->Act([&](auto& rt) {
-                   const auto& group_id = rt->GetGroupId();
-                   auto bts_js_executor = rt->GetJSExecutor();
-                   if (bts_js_executor) {
-                     auto bts_rt = bts_js_executor->GetJSRuntime().Lock();
-                     if (bts_rt) {
-                       std::string identifier;
-                       if (runtime::RuntimeManager::IsSingleJSContext(
-                               group_id)) {
-                         identifier = "instance_" +
-                                      std::to_string(this->instance_id_) +
-                                      "(single bts)";
-                       } else {
-                         identifier = group_id + "(shared bts)";
-                       }
-                       intptr_t payload[3] = {
-                           reinterpret_cast<intptr_t>(
-                               bts_rt->getSharedContext().get()),
-                           reinterpret_cast<intptr_t>(identifier.c_str()),
-                           static_cast<intptr_t>(false)};
-                       base::NotificationCallback::Notify(
-                           runtime::kBTSTakeVMSnapshot,
-                           reinterpret_cast<intptr_t>(payload));
-                     }
-                   }
-                 });
-               } else if (std::strcmp(type, "mts") == 0) {
-                 this->engine_actor_->Act([&](auto& engine) {
-                   auto default_entry = engine->GetTasm()->FindTemplateEntry(
-                       tasm::DEFAULT_ENTRY_NAME);
-                   if (default_entry) {
-                     auto mts_vm = default_entry->GetVm();
-                     if (mts_vm) {
-                       std::string identifier =
-                           "instance_" + std::to_string(this->instance_id_) +
-                           "(mts)";
-                       intptr_t payload[2] = {
-                           reinterpret_cast<intptr_t>(mts_vm->GetMTSContext()),
-                           reinterpret_cast<intptr_t>(identifier.c_str())};
-                       base::NotificationCallback::Notify(
-                           runtime::kMTSTakeVMSnapshot,
-                           reinterpret_cast<intptr_t>(payload));
-                     }
-                   }
-                 });
-               }
-             }},
-            {LYNX_ON_TRACE_BEGIN_NOTIFICATION,
-             [this](const std::string& tag, [[maybe_unused]] intptr_t data) {
-               // Add trace record to supplement information about pages that
-               // existed before the trace started.
-               this->perf_controller_actor_->ActAsync([](auto& performance) {
-                 performance->GetMemoryMonitor().ReportMemory(true);
-               });
-
-               this->engine_actor_->Act([&](auto& engine) {
-                 auto default_entry = engine->GetTasm()->FindTemplateEntry(
-                     tasm::DEFAULT_ENTRY_NAME);
-                 if (default_entry) {
-                   auto mts_vm = default_entry->GetVm();
-                   if (mts_vm) {
-                     TRACE_EVENT_INSTANT(
-                         LYNX_TRACE_CATEGORY, LYNX_PAGE_USES_MTS_VM,
-                         "instance_id", this->instance_id_, "url", this->url_,
-                         "desc",
-                         mts_vm->GetMTSContext()->GetDebugDescription());
-                     base::NotificationCallback::Notify(
-                         runtime::kMTSReportMemoryInfo, 0);
-                   }
-                 }
-               });
-
-               this->runtime_actor_->Act([&](auto& rt) {
-                 const auto& group_id = rt->GetGroupId();
-                 auto bts_js_executor = rt->GetJSExecutor();
-                 if (bts_js_executor) {
-                   auto bts_rt = bts_js_executor->GetJSRuntime().Lock();
-                   if (bts_rt) {
-                     TRACE_EVENT_INSTANT(
-                         LYNX_TRACE_CATEGORY, LYNX_PAGE_USES_BTS_VM, "group_id",
-                         group_id, "instance_id", this->instance_id_, "url",
-                         this->url_, "desc",
-                         bts_rt->getSharedVM()->GetDebugDescription(), "ptr",
-                         bts_rt->getSharedVM().get());
-                     base::NotificationCallback::Notify(
-                         runtime::kBTSReportMemoryInfo, 0);
-                   }
-                 }
-               });
-             }}
-#endif
-        });
-  }
 }
 
 void LynxShell::MarkDirty() {

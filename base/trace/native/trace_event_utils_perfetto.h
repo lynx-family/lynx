@@ -438,18 +438,6 @@ inline void TraceCounter(const char* category,
   TraceEventImplementation(category, track, TraceEventType::TYPE_COUNTER, 0,
                            counter, nullptr);
 }
-template <typename... Arguments>
-inline void TraceCounter(const char* category,
-                         const lynx::perfetto::CounterTrack& track,
-                         uint64_t counter, const char* key,
-                         Arguments&&... args) {
-  TraceEventImplementation(category, track, TraceEventType::TYPE_COUNTER, 0,
-                           counter, [&](lynx::perfetto::EventContext ctx) {
-                             WriteTraceEventArgs(
-                                 std::move(ctx), key,
-                                 std::forward<Arguments>(args)...);
-                           });
-}
 
 inline void TraceCounter(const char* category,
                          const lynx::perfetto::CounterTrack& track,
@@ -460,18 +448,6 @@ inline void TraceCounter(const char* category,
                            [&](lynx::perfetto::EventContext ctx) {
                              WriteTraceEventArgs(std::move(ctx), callback);
                            });
-}
-template <typename... Arguments>
-inline void TraceCounter(const char* category,
-                         const lynx::perfetto::CounterTrack& track,
-                         uint64_t timestamp, uint64_t counter, const char* key,
-                         Arguments&&... args) {
-  TraceEventImplementation(
-      category, track, TraceEventType::TYPE_COUNTER, timestamp, counter,
-      [&](lynx::perfetto::EventContext ctx) {
-        WriteTraceEventArgs(std::move(ctx), key,
-                            std::forward<Arguments>(args)...);
-      });
 }
 
 inline void TraceCounter(const char* category,

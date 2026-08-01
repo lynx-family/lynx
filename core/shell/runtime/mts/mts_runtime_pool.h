@@ -12,10 +12,6 @@
 #include <utility>
 
 #include "base/include/vector.h"
-#if ENABLE_TRACE_PERFETTO
-#include "base/include/notification_center.h"
-#include "core/runtime/js/runtime_constant.h"
-#endif
 #include "core/shell/runtime/mts/mts_runtime.h"
 #include "core/template_bundle/template_codec/binary_decoder/page_config.h"
 #include "core/template_bundle/template_codec/compile_options.h"
@@ -68,11 +64,7 @@ class MTSRuntimePool : public std::enable_shared_from_this<MTSRuntimePool> {
   // The local pool in TemplateBundle hold context_bundle_ and have no need to
   // check settings.
   MTSRuntimePool(runtime::ContextType context_type, bool disable_tracing_gc)
-      : context_type_(context_type), disable_tracing_gc_(disable_tracing_gc) {
-#if ENABLE_TRACE_PERFETTO
-    InitReportPoolState();
-#endif
-  }
+      : context_type_(context_type), disable_tracing_gc_(disable_tracing_gc) {}
 
   MTSRuntimePool(runtime::ContextType context_type, bool disable_tracing_gc,
                  const std::shared_ptr<runtime::ContextBundle>& context_bundle,
@@ -90,11 +82,7 @@ class MTSRuntimePool : public std::enable_shared_from_this<MTSRuntimePool> {
         enable_element_api_new_registration_(
             page_configs ? page_configs->GetEnableElementApiNewRegistration()
                          : false),
-        debug_info_url_(compile_options.template_debug_url_) {
-#if ENABLE_TRACE_PERFETTO
-    InitReportPoolState();
-#endif
-  }
+        debug_info_url_(compile_options.template_debug_url_) {}
 
   void AddMTSRuntimeSafely(int32_t count);
 
@@ -116,13 +104,6 @@ class MTSRuntimePool : public std::enable_shared_from_this<MTSRuntimePool> {
 
   std::shared_ptr<devtool::DevToolPool> devtool_pool_;
   std::string debug_info_url_;
-
-#if ENABLE_TRACE_PERFETTO
-  int32_t pool_instance_id_;
-  std::unique_ptr<base::NotificationCallback> report_pool_state_;
-  void InitReportPoolState();
-  void ReportPoolState();
-#endif
 };
 
 }  // namespace shell

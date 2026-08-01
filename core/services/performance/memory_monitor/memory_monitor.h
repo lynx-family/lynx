@@ -8,7 +8,6 @@
 #include <string>
 #include <unordered_map>
 
-#include "base/include/fml/time/time_point.h"
 #include "base/include/log/logging.h"
 #include "core/services/event_report/event_tracker.h"
 #include "core/services/performance/memory_monitor/memory_record.h"
@@ -94,13 +93,6 @@ class MemoryMonitor {
   PerformanceEventSender* sender_;
   std::unordered_map<MemoryCategory, MemoryRecord> memory_records_;
   int64_t last_reported_size_bytes_ = 0;
-
-#if ENABLE_TRACE_PERFETTO
-  // When Lynx Trace captures memory data, the threshold for VM to report memory
-  // changes is relatively small. Adding time control helps prevent excessive
-  // events from being written to the trace file.
-  fml::TimePoint last_trace_event_time_;
-#endif
 };
 
 }  // namespace performance

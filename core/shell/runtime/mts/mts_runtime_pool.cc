@@ -6,7 +6,6 @@
 
 #include "core/base/threading/task_runner_manufactor.h"
 #include "core/devtool_wrapper/devtool_pool.h"
-#include "core/runtime/trace/runtime_trace_event_def.h"
 #include "core/services/performance/memory_monitor/memory_monitor.h"
 
 namespace lynx {
@@ -30,8 +29,6 @@ std::shared_ptr<MTSRuntimePool> MTSRuntimePool::Create(
 
 MTSRuntimePool::~MTSRuntimePool() {
   is_destroying_.store(true, std::memory_order_release);
-  TRACE_EVENT_INSTANT(LYNX_TRACE_CATEGORY, MTS_VM_POOL_STATE_EVENT,
-                      "pool_instance_id", pool_instance_id_, "destroyed", "1");
 }
 
 void MTSRuntimePool::FillPool(int32_t count) {
@@ -107,10 +104,6 @@ void MTSRuntimePool::AddMTSRuntimeSafely(int32_t count) {
   for (auto& r : temp_mts_runtimes) {
     mts_runtimes_.emplace_back(std::move(r));
   }
-
-#if ENABLE_TRACE_PERFETTO
-  ReportPoolState();
-#endif
 }
 
 std::shared_ptr<runtime::MTSRuntime> MTSRuntimePool::TakeMTSRuntimeSafely() {
@@ -137,31 +130,6 @@ std::shared_ptr<runtime::MTSRuntime> MTSRuntimePool::TakeMTSRuntimeSafely() {
 void MTSRuntimePool::SetEnableAutoGenerate(bool enable) {
   enable_auto_generate_ = enable;
 }
-
-#if ENABLE_TRACE_PERFETTO
-void MTSRuntimePool::InitReportPoolState() {
-  static std::atomic<int32_t> id{0};
-  pool_instance_id_ = id++;
-  report_pool_state_ = std::make_unique<base::NotificationCallback>(
-      LYNX_ON_TRACE_BEGIN_NOTIFICATION,
-      [&](const std::string& tag, intptr_t data) { ReportPoolState(); });
-}
-
-void MTSRuntimePool::ReportPoolState() {
-  TRACE_EVENT_INSTANT(LYNX_TRACE_CATEGORY, MTS_VM_POOL_STATE_EVENT,
-                      [&](lynx::perfetto::EventContext ctx) {
-                        ctx.event()->add_debug_annotations(
-                            "pool_instance_id",
-                            std::to_string(pool_instance_id_));
-                        int index = 0;
-                        for (auto& vm_inst : mts_runtimes_) {
-                          ctx.event()->add_debug_annotations(
-                              std::string("id_") + std::to_string(index++),
-                              vm_inst->GetMTSContext()->GetDebugDescription());
-                        }
-                      });
-}
-#endif
 
 }  // namespace shell
 }  // namespace lynx
