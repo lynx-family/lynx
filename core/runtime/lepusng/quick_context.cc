@@ -18,6 +18,7 @@
 #include "core/renderer/utils/lynx_env.h"
 #include "core/renderer/utils/value_utils.h"
 #include "core/runtime/common/js_error_reporter.h"
+#include "core/runtime/js/jsi/quickjs/quickjs_helper.h"
 #include "core/runtime/js/runtime_constant.h"
 #include "core/runtime/lepus/exception.h"
 #include "core/runtime/lepus/js_object.h"
@@ -560,6 +561,42 @@ QuickContext::QuickContext(runtime::MTSRuntime* runtime_private,
   // data associated with debugger need to be initialized
   gc_flag_ = LEPUS_IsGCModeRT(runtime_);
   LEPUS_SetGCObserver(runtime_, static_cast<GCObserver*>(this));
+
+#if ENABLE_TRACE_PERFETTO
+  notification_callback_ = std::make_unique<base::NotificationCallback>(
+      base::NotificationCallback::CallbackList{
+          {LYNX_ON_TRACE_BEGIN_NOTIFICATION,
+           [this](const std::string& tag, intptr_t data) {
+             if (this->runtime_) {
+               LEPUS_SetGCInfoThreshold(
+                   this->runtime_,
+                   lynx::runtime::kMemoryReportDeltaThresholdInTrace);
+             }
+           }},
+          {runtime::kMTSReportMemoryInfo,
+           [this](const std::string& tag, intptr_t data) {
+             if (this->runtime_) {
+               this->force_report_memory_info_ = true;
+               LEPUS_ReportGCInfo(this->runtime_);
+             }
+           }},
+          {runtime::kMTSTakeVMSnapshot,
+           [this](const std::string& tag, intptr_t data) {
+             intptr_t* payload = reinterpret_cast<intptr_t*>(data);
+             MTSContext* ctx = reinterpret_cast<MTSContext*>(payload[0]);
+             if (ctx == static_cast<MTSContext*>(this)) {
+               const char* identifier =
+                   reinterpret_cast<const char*>(payload[1]);
+               runtime::js::detail::QuickjsHelper::TakeHeapSnapshot(
+                   this->lepus_context_, identifier);
+             }
+           }}});
+
+  if (trace::TraceController::Instance()->IsTracingStarted()) {
+    LEPUS_SetGCInfoThreshold(runtime_,
+                             lynx::runtime::kMemoryReportDeltaThresholdInTrace);
+  }
+#endif
 }
 
 QuickContext::~QuickContext() {
@@ -576,6 +613,23 @@ QuickContext::~QuickContext() {
 }
 
 void QuickContext::OnGC(std::string mem_info) {
+#if ENABLE_TRACE_PERFETTO
+  if (trace::TraceController::Instance()->IsTracingStarted()) {
+    auto usage = runtime::js::detail::QuickjsHelper::GetMemoryUsage(runtime_);
+    std::unordered_map<std::string, std::string> info{
+        {lynx::runtime::kRawRuntimeMemoryInfo, std::move(mem_info)},
+        {lynx::runtime::kRawRuntimeBaseMemoryInfo,
+         std::to_string(usage.base_size)},
+        {lynx::runtime::kRawRuntimePageRssMemoryInfo,
+         std::to_string(usage.page_rss_size)}};
+    if (force_report_memory_info_) {
+      info[lynx::runtime::kForceReportMemoryInfo] = "1";
+      force_report_memory_info_ = false;
+    }
+    OnContextGC(std::move(info));
+    return;
+  }
+#endif
   OnContextGC({{lynx::runtime::kRawRuntimeMemoryInfo, std::move(mem_info)}});
 }
 
@@ -680,7 +734,7 @@ bool QuickContext::ExecuteBinaryInternal(Value* ret_val) {
 }
 
 std::string QuickContext::GetDebugDescription() const {
-  return std::string("quickjs(") + (LEPUS_IsGCModeRT(runtime_) ? "gc)" : "rc)");
+  return runtime::js::detail::QuickjsHelper::GetDebugDescription(runtime_);
 }
 
 void QuickContext::TriggerVmGC() {
