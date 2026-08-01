@@ -784,9 +784,13 @@ void BTSRuntime::OnJSSourcePrepared(
 }
 
 void BTSRuntime::Destroy() {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, BTS_RUNTIME_DESTROY, INSTANCE_ID,
+              instance_id_);
+
   if (state_ == State::kNotStarted || state_ == State::kDestroying) {
     return;
   }
+
   LOGI("LynxRuntime::Destroy, runtime_id: " << GetRuntimeId()
                                             << " this: " << this);
   state_ = State::kDestroying;

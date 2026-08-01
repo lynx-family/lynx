@@ -9,6 +9,7 @@
 #include <memory>
 #include <utility>
 
+#include "base/trace/native/trace_controller.h"
 #include "base/trace/native/trace_event.h"
 #include "core/renderer/utils/lynx_env.h"
 #include "core/runtime/js/runtime_constant.h"
@@ -180,11 +181,8 @@ MemoryMonitor::~MemoryMonitor() {
   memory_records_.clear();
   bool enable = Enable();
   if (enable) {
-    ReportMemory();
+    ReportMemory(true);
   }
-  LOGI("[memory_monitor.h] ~MemoryMonitor, this:"
-       << this << ", Enable:" << enable
-       << ", MemoryChangeThresholdMb:" << MemoryChangeThresholdMb());
 }
 
 void MemoryMonitor::AllocateMemory(MemoryRecord&& record) {
@@ -279,6 +277,25 @@ void MemoryMonitor::ReportMemory(bool force_report) {
   if (factory == nullptr) {
     return;
   }
+
+  // Throttle reporting: only report if memory change exceeds the threshold.
+  int64_t memory_report_threshold_bytes =
+      static_cast<int64_t>(MemoryChangeThresholdMb()) * 1024 * 1024;
+#if ENABLE_TRACE_PERFETTO
+  if (trace::TraceController::Instance()->IsTracingStarted()) {
+    auto now = fml::TimePoint::Now();
+    // When trace is started, the threshold is lowered to ensure more accurate
+    // data.
+    memory_report_threshold_bytes =
+        lynx::runtime::kMemoryReportDeltaThresholdInTrace;
+
+    if (!force_report && (now - last_trace_event_time_).ToMilliseconds() < 25) {
+      return;
+    }
+    last_trace_event_time_ = now;
+  }
+#endif
+
   auto entry_map = factory->CreateMap();
   entry_map->PushStringToMap(kPerformanceEventType, kMemoryEntryType);
   entry_map->PushStringToMap(kPerformanceEventName, kMemoryEntryType);
@@ -302,9 +319,6 @@ void MemoryMonitor::ReportMemory(bool force_report) {
     }
     entry_map->PushValueToMap(kDetail, std::move(detail));
   }
-  // Throttle reporting: only report if memory change exceeds the threshold.
-  static int64_t memory_report_threshold_bytes =
-      static_cast<int64_t>(MemoryChangeThresholdMb()) * 1024 * 1024;
   if (!force_report &&
       (size_bytes > 0 && std::abs(size_bytes - last_reported_size_bytes_) <
                              memory_report_threshold_bytes)) {

@@ -1523,6 +1523,28 @@ inline constexpr const char* const TRIGGER_LEPUS_BRIDGE_ASYNC =
 inline constexpr const char* const TRIGGER_COMPONENT_EVENT =
     "TriggerComponentEvent";
 
+/**
+ * @trace_description: Trace event of BTSRuntime::Destroy() function.
+ */
+inline constexpr const char* const BTS_RUNTIME_DESTROY = "BTSRuntime::Destroy";
+
+/**
+ * @trace_description: A event to report current status of background
+ * thread scripting engine pool.
+ */
+inline constexpr const char* const BTS_VM_POOL_STATE_EVENT =
+    "bts_vm_pool_state";
+/**
+ * @trace_description: A event to report current status of main
+ * thread scripting engine pool.
+ */
+inline constexpr const char* const MTS_VM_POOL_STATE_EVENT =
+    "mts_vm_pool_state";
+/**
+ * @trace_description: A event to report that global GC triggered.
+ */
+inline constexpr const char* const RUN_GC_EVENT = "RunGC";
+
 #endif  // #if ENABLE_TRACE_PERFETTO || ENABLE_TRACE_SYSTRACE
 
 #endif  // CORE_RUNTIME_TRACE_RUNTIME_TRACE_EVENT_DEF_H_

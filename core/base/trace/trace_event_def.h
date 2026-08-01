@@ -89,6 +89,9 @@ static constexpr const char* const
     LYNX_CLAY_CUSTOM_BEHAVIOR_SUPPORT_SYNC_UI_CONTEXT_COMPATIBILITY =
         "LynxClayCustomBehaviorSupport::SyncUIContextCompatibility";
 
+static constexpr const char* const LYNX_PAGE_USES_BTS_VM = "page_uses_bts_vm";
+static constexpr const char* const LYNX_PAGE_USES_MTS_VM = "page_uses_mts_vm";
+
 #endif  // #if ENABLE_TRACE_PERFETTO || ENABLE_TRACE_SYSTRACE
 
 #endif  // CORE_BASE_TRACE_TRACE_EVENT_DEF_H_

@@ -36,6 +36,7 @@ void LynxDebugAnnotation::set_int_value(int64_t value) {}
 void LynxDebugAnnotation::set_double_value(double value) {}
 void LynxDebugAnnotation::set_string_value(const char* data, size_t size) {}
 void LynxDebugAnnotation::set_string_value(const std::string& value) {}
+void LynxDebugAnnotation::set_pointer_value(uint64_t value) {}
 
 void LynxDebugAnnotation::set_legacy_json_value(const std::string& value) {}
 
