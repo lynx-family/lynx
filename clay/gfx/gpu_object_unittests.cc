@@ -160,6 +160,32 @@ TEST_F(GpuObjectTest, AutoPendingDrain) {
   ASSERT_EQ(dtor_task_queue_id, unref_task_runner()->GetTaskQueueId());
 }
 
+TEST_F(GpuObjectTest, UnrefStartsAutoPendingDrainAfterDelay) {
+  constexpr auto drain_delay = fml::TimeDelta::FromMilliseconds(8);
+  fml::RefPtr<GPUUnrefQueue> delayed_unref_queue;
+  std::promise<bool> queue_created;
+  unref_task_runner()->PostTask([&]() {
+    delayed_unref_queue = fml::MakeRefCounted<GPUUnrefQueue>(
+        unref_task_runner(), false, drain_delay);
+    queue_created.set_value(true);
+  });
+  queue_created.get_future().wait();
+
+  std::shared_ptr<fml::AutoResetWaitableEvent> latch =
+      std::make_shared<fml::AutoResetWaitableEvent>();
+  fml::TaskQueueId dtor_task_queue_id(0);
+  auto object = fml::MakeRefCounted<TestGPUObject>(latch, &dtor_task_queue_id);
+  {
+    clay::GPUObject<TestGPUObject> gpu_object(std::move(object),
+                                              delayed_unref_queue);
+  }
+
+  // Unref should start auto draining without an explicit call to
+  // StartAutoPendingDrain or Drain.
+  latch->Wait();
+  ASSERT_EQ(dtor_task_queue_id, unref_task_runner()->GetTaskQueueId());
+}
+
 TEST_F(GpuObjectTest, ObjectResetTwice) {
   std::shared_ptr<fml::AutoResetWaitableEvent> latch =
       std::make_shared<fml::AutoResetWaitableEvent>();
