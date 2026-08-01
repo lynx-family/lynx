@@ -29,6 +29,32 @@ target_paths = [
     os.path.join(root_path, 'platform', 'harmony', 'lynx_devtool', 'src', 'main', 'resources', 'rawfile', 'logbox'),
     os.path.join(root_path, 'platform', 'darwin', 'macos', 'lynx_devtool', 'assets', 'logbox'),
 ]
+# The resource builders are cross-platform, so an Android build may run both
+# this script and devtool/lynx_devtool/resources/lynx-error-parser/build.py.
+# Their Android and iOS outputs use separate BaseDevtool and LynxDevtool
+# directories, but their Harmony outputs share the LogBox directory above:
+# this script owns the LogBox bundle, while the other script independently
+# owns lynx-error-parser.js. A module dependency does not necessarily order
+# these subprocess-backed resource tasks, and other build entry points have
+# their own dependency graphs. Deleting the shared directory can therefore
+# race with the parser writer or remove its completed output. Keep cleanup
+# ownership-based; if this resource pipeline is redesigned, prefer separate
+# staging directories followed by an explicit assembly step.
+preserved_target_items = {
+    target_paths[2]: {"lynx-error-parser.js"},
+}
+
+
+def clear_target_path(target_path):
+    os.makedirs(target_path, exist_ok=True)
+    for item in os.listdir(target_path):
+        if item in preserved_target_items.get(target_path, set()):
+            continue
+        item_path = os.path.join(target_path, item)
+        if os.path.isdir(item_path):
+            shutil.rmtree(item_path)
+        else:
+            os.remove(item_path)
 
 def git_root_dir():
     command = ['git', 'rev-parse', '--show-toplevel']
@@ -54,11 +80,8 @@ def build():
     if output and os.path.exists(output):
         target_paths.append(output)
 
-    # Remove existing target directories and create new ones
     for target_path in target_paths:
-        if os.path.exists(target_path):
-            shutil.rmtree(target_path)
-        os.makedirs(target_path, exist_ok=True)
+        clear_target_path(target_path)
 
     # Copy the contents of the distribution directory to all target directories
     for item in os.listdir(dist_path):
