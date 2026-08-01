@@ -50,6 +50,8 @@ class GlobalDevtoolPlatformCommon
     return nullptr;
   }
 
+  lynx::trace::TracePlugin* GetMemoryTracePlugin() override { return nullptr; }
+
   std::string GetLynxVersion() override {
     return lynx::tasm::Config::GetCurrentLynxVersion();
   }

@@ -11,6 +11,10 @@
 #import <DebugRouter/DebugRouter.h>
 #endif
 
+#if ENABLE_TRACE_PERFETTO || ENABLE_TRACE_SYSTRACE
+#import "tracing/platform/memory_trace_plugin_darwin.h"
+#endif
+
 namespace {
 
 NSString* LynxDevtoolSafeString(NSString* value) { return value ?: @""; }
@@ -125,7 +129,11 @@ NSString* LynxDevtoolGlobalMemoryUsageToJSONString(LynxGlobalMemoryUsageResult* 
 
 }  // namespace
 
-@implementation LynxMemoryController
+@implementation LynxMemoryController {
+#if ENABLE_TRACE_PERFETTO || ENABLE_TRACE_SYSTRACE
+  std::unique_ptr<lynx::trace::MemoryTracePluginDarwin> _memory_trace_plugin;
+#endif
+}
 
 + (instancetype)shareInstance {
   static LynxMemoryController* instance;
@@ -134,6 +142,15 @@ NSString* LynxDevtoolGlobalMemoryUsageToJSONString(LynxGlobalMemoryUsageResult* 
     instance = [[self alloc] init];
   });
   return instance;
+}
+
+- (id)init {
+  if (self = [super init]) {
+#if ENABLE_TRACE_PERFETTO || ENABLE_TRACE_SYSTRACE
+    _memory_trace_plugin = std::make_unique<lynx::trace::MemoryTracePluginDarwin>();
+#endif
+  }
+  return self;
 }
 
 - (void)uploadImageInfo:(NSDictionary*)data {
@@ -183,5 +200,12 @@ NSString* LynxDevtoolGlobalMemoryUsageToJSONString(LynxGlobalMemoryUsageResult* 
     NSString* reason = exception.reason ?: @"unknown error";
     callback(@"{}", [@"Failed to query Lynx memory usage: " stringByAppendingString:reason]);
   }
+}
+
+- (intptr_t)getMemoryTracePlugin {
+#if ENABLE_TRACE_PERFETTO || ENABLE_TRACE_SYSTRACE
+  return reinterpret_cast<intptr_t>(_memory_trace_plugin.get());
+#endif
+  return 0;
 }
 @end

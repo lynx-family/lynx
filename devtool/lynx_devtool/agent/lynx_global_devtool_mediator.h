@@ -5,6 +5,9 @@
 #ifndef DEVTOOL_LYNX_DEVTOOL_AGENT_LYNX_GLOBAL_DEVTOOL_MEDIATOR_H_
 #define DEVTOOL_LYNX_DEVTOOL_AGENT_LYNX_GLOBAL_DEVTOOL_MEDIATOR_H_
 
+#include <memory>
+
+#include "base/include/notification_center.h"
 #include "core/base/threading/task_runner_manufactor.h"
 #include "devtool/base_devtool/native/public/message_sender.h"
 #include "devtool/lynx_devtool/agent/agent_defines.h"
@@ -49,6 +52,7 @@ class LynxGlobalDevToolMediator : public LynxDevToolMediatorBase {
   DECLARE_DEVTOOL_METHOD(SetStartupTracingConfig)
   DECLARE_DEVTOOL_METHOD(GetStartupTracingConfig)
   DECLARE_DEVTOOL_METHOD(GetStartupTracingFile)
+  DECLARE_DEVTOOL_METHOD(TakeVMSnapshotByUrl)
 
   // System Info domain
   DECLARE_DEVTOOL_METHOD(SystemInfoGetInfo)
@@ -60,6 +64,9 @@ class LynxGlobalDevToolMediator : public LynxDevToolMediatorBase {
   friend class lynx::base::NoDestructor<LynxGlobalDevToolMediator>;
   LynxGlobalDevToolMediator();
   ~LynxGlobalDevToolMediator() = default;
+
+ private:
+  std::unique_ptr<base::NotificationCallback> tracing_notification_callback_;
 };
 
 }  // namespace devtool

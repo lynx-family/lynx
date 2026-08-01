@@ -26,6 +26,7 @@
         _ZN4lynx8perfetto19LynxDebugAnnotation21set_legacy_json_valueERKNSt6__ndk112basic_stringIcNS2_11char_traitsIcEENS2_9allocatorIcEEEE;
         _ZN4lynx8perfetto19LynxDebugAnnotation14set_bool_valueEb;
         _ZN4lynx8perfetto19LynxDebugAnnotation16set_string_valueEPKc?;
+        _ZN4lynx8perfetto19LynxDebugAnnotation17set_pointer_valueE?;
         _ZN4lynx8perfetto19LynxDebugAnnotation8set_nameERKNSt6__ndk112basic_stringIcNS2_11char_traitsIcEENS2_9allocatorIcEEEE;
         _ZN4lynx8perfetto19LynxDebugAnnotation16set_string_valueERKNSt6__ndk112basic_stringIcNS2_11char_traitsIcEENS2_9allocatorIcEEEE;
         _ZN4lynx8perfetto22TrackEvent_LegacyEvent11set_bind_idE?;

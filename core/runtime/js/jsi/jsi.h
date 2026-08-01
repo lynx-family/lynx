@@ -32,12 +32,14 @@
 #include "base/include/log/logging.h"
 #include "base/include/value/base_string.h"
 #include "base/include/vector.h"
+#include "base/trace/native/trace_event.h"
 #include "core/base/lynx_export.h"
 #include "core/base/memory/unsafe_owning_ptr.h"
 #include "core/build/gen/lynx_sub_error_code.h"
 #include "core/inspector/console_message_postman.h"
 #include "core/inspector/observer/inspector_runtime_observer_ng.h"
 #include "core/public/page_options.h"
+#include "core/runtime/js/runtime_constant.h"
 #include "core/services/watch_dog/watch_dog.h"
 
 #define BUILD_JSI_NATIVE_EXCEPTION(message) \
@@ -1730,10 +1732,10 @@ class JSRuntimeDelegate {
 };
 
 class VMInstance {
-  // VMInstance createVM(StartupData data);
-  // static VMInstance createVM();
  public:
-  virtual ~VMInstance() = default;
+  virtual ~VMInstance() {
+    TRACE_EVENT_INSTANT(LYNX_TRACE_CATEGORY, kDestroyVMInstance, "ptr", this);
+  }
   virtual JSRuntimeType GetRuntimeType() const = 0;
   virtual std::string GetDebugDescription() const = 0;
 };

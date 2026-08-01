@@ -30,6 +30,8 @@ devtool_source_set("build") {
     "gen/LynxDevToolNGDelegate_register_jni.h",
     "gen/LynxInspectorOwner_jni.h",
     "gen/LynxInspectorOwner_register_jni.h",
+    "gen/MemoryTrace_jni.h",
+    "gen/MemoryTrace_register_jni.h",
     "gen/RecorderController_jni.h",
     "gen/RecorderController_register_jni.h",
     "gen/lynx_devtool_so_load.cc",
