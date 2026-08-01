@@ -83,7 +83,18 @@ constexpr const char kMessageEventTypeUpdateGlobalProps[] =
 constexpr const char kMessageEventTypeRemoveComponents[] = "__RemoveComponents";
 
 constexpr char kRawRuntimeMemoryInfo[] = "raw_memory_info_json_str";
+constexpr char kRawRuntimePageRssMemoryInfo[] = "page_rss_usage";
+constexpr char kRawRuntimeBaseMemoryInfo[] = "base_usage";
 constexpr char kForceReportMemoryInfo[] = "force_report_memory_info";
+constexpr char kMTSReportMemoryInfo[] = "mts_report_memory_info";
+constexpr char kBTSReportMemoryInfo[] = "bts_report_memory_info";
+constexpr char kScheduleVMSnapshot[] = "schedule_vm_snapshot";
+constexpr char kBTSTakeVMSnapshot[] = "bts_take_vm_snapshot";
+constexpr char kMTSTakeVMSnapshot[] = "mts_take_vm_snapshot";
+constexpr char kTakeVMSnapshotByUrl[] = "take_vm_snapshot_by_url";
+constexpr char kVMSnapshotCaptured[] = "vm_snapshot_captured";
+constexpr char kDestroyVMInstance[] = "destroy_vm_instance";
+constexpr size_t kMemoryReportDeltaThresholdInTrace = 128 * 1024;
 
 /**
  * @name: enableMicrotaskPromisePolyfill

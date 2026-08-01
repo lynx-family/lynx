@@ -4,7 +4,9 @@
 #ifndef CORE_RUNTIME_JS_RUNTIME_MANAGER_H_
 #define CORE_RUNTIME_JS_RUNTIME_MANAGER_H_
 
+#include <cstdint>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <unordered_map>
 #include <utility>
@@ -75,8 +77,6 @@ class LYNX_EXPORT_FOR_DEVTOOL RuntimeManager
   static RuntimeManager* Instance();
   typedef std::unordered_map<std::string, std::shared_ptr<JSContextWrapper>>
       Shared_Context_Map;
-  typedef std::vector<std::shared_ptr<NoneSharedJSContextWrapper>>
-      None_Shared_Context_List;
 
   ~RuntimeManager() override;
 
@@ -121,6 +121,8 @@ class LYNX_EXPORT_FOR_DEVTOOL RuntimeManager
       bool force_use_lightweight_js_engine, bool use_shared_context,
       const tasm::PageOptions& page_options);
 #if ENABLE_TRACE_PERFETTO
+  void TakeVMSnapshot(const std::string& group_id, bool initial);
+  void ScheduleVMSnapshot(const std::string& group_id);
   std::shared_ptr<profile::RuntimeProfiler> MakeRuntimeProfiler(
       std::shared_ptr<runtime::js::JSIContext> js_context,
       bool force_use_lightweight_js_engine,
@@ -154,6 +156,14 @@ class LYNX_EXPORT_FOR_DEVTOOL RuntimeManager
   std::vector<base::UnsafeWeakPtr<runtime::js::Runtime>> weak_runtimes_;
   fml::RefPtr<fml::TaskRunner> memory_task_runner_;
   base::NotificationCallback memory_pressure_callback_;
+
+  // These two member variables are only used in snapshot-related methods when
+  // the ENABLE_TRACE_PERFETTO macro is enabled. However, RuntimeManager is an
+  // exported class, and including member variables in a macro could lead to a
+  // crash.
+  std::mutex pending_vm_snapshot_mutex_;
+  std::unique_ptr<std::unordered_map<std::string, uint64_t>>
+      pending_vm_snapshot_tasks_;
 };
 
 }  // namespace runtime
