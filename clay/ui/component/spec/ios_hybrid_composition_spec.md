@@ -26,8 +26,8 @@ view.
 The implementation keeps these concerns separate:
 
 - finding the visible overlay slice
-- selecting the backing-surface size for each overlay
-- mapping global Clay coordinates into the rendered surface
+- rendering that slice into a local backing surface
+- mapping global Clay coordinates into the local surface
 - positioning and clipping the UIKit wrapper
 
 ## 2. Terms
@@ -35,16 +35,17 @@ The implementation keeps these concerns separate:
 - `overlay_rect`
   - The visible Clay region presented by one overlay surface.
   - It is expressed in global Clay canvas coordinates and physical pixels.
-- full-frame backing surface
-  - A GPU surface whose size equals `CompositorState::GetFrameSize()`.
 - local backing surface
   - A GPU surface whose size equals `overlay_rect.size`.
-- backing-surface policy
-  - A regular hybrid-composition slice uses a full-frame backing surface.
-  - An explicit system-overlay view uses a local backing surface.
+  - Its local origin `(0, 0)` represents `overlay_rect.origin` in the global
+    Clay canvas.
+- presentation kind
+  - `kPlatformView` represents content sliced above an embedded UIKit view.
+  - `kOverlayLayer` represents content that explicitly owns an overlay layer.
+  - The kind remains internal to `EmbeddedViewParams`; `OverlayData` does not
+    need to carry it because all overlays use the same local surface mapping.
 - overlay view
-  - The `FlutterOverlayView` whose `CAMetalLayer` presents the selected backing
-    surface.
+  - The `FlutterOverlayView` whose `CAMetalLayer` presents the local surface.
 - overlay wrapper
   - A UIKit view that owns placement and clipping in the selected host.
 
@@ -77,16 +78,14 @@ Normative meaning:
 OverlayData.rect == overlay_rect == visible intersection in global coordinates
 ```
 
-When content represented by the overlay slice is removed from the background
-canvas, the same visible rect is used for the difference clip.
+When `EmbeddedViewParams` explicitly requires an overlay layer, its final
+bounding rect becomes the overlay rect. The same rect is removed from the
+background canvas with a difference clip.
 
-An explicit system-overlay entry obtains its visible rect directly from the
-overlay view bounds instead of a platform-view intersection and uses a local
-backing surface.
-
-Backing allocation must not be encoded by replacing the visible rect with a
-full-frame rect. Doing that would remove unrelated background content and
-break multiple platform-view composition.
+The presentation kind only determines how `SliceViews(...)` obtains the visible
+rect. It must not be encoded by replacing that rect with a full-frame rect.
+Doing that would remove unrelated background content and break multiple
+platform-view composition.
 
 Primary code paths:
 
@@ -94,52 +93,39 @@ Primary code paths:
 - `lynx/clay/flow/view_slicer.cc`
 - `lynx/clay/flow/view_slicer_unittests.cc`
 
-## 4. Backing-Surface Mapping
+## 4. Local Surface Mapping
 
-Every overlay keeps `overlay_rect` as the visible global region. The compositor
-selects its backing size from the presentation kind and applies this canvas
-mapping:
+Every overlay request uses one local mapping:
 
 ```text
-surface_size = selected_backing_size
+surface_size = overlay_rect.size
 surface_clip = (0, 0, overlay_rect.width, overlay_rect.height)
 canvas_translation = -overlay_rect.origin
 ```
 
-The backing size is:
-
-```text
-regular HC slice:       surface_size = CompositorState::GetFrameSize()
-explicit system overlay: surface_size = overlay_rect.size
-```
-
 The recorded slice keeps global Clay coordinates. The translation moves the
-requested global region to the backing surface origin before rasterization.
-With a full-frame backing, only the top-left `overlay_rect.size` portion is
-populated. With a local backing, that portion is the complete surface.
+requested global region to the local surface origin before rasterization.
 
-These values and the UIKit overlay-view frame form one geometry contract:
+These values form one geometry contract:
 
 ```text
 surface allocation <-> canvas clip <-> canvas translation
-                   <-> overlay-view frame
 ```
 
 Changing only one value causes stretching, misplaced pixels, or an empty
 overlay.
 
-`CompositorService` applies the mapping as follows:
+The mapping is platform independent and remains in `CompositorService`:
 
-1. select the backing-surface policy from the presentation kind
-2. acquire a surface with the selected size
-3. clip to `overlay_rect.size` at the surface origin
-4. translate by `-overlay_rect.origin`
-5. render the slice into the translated canvas
+1. acquire a surface with `overlay_rect.size`
+2. clip to the local surface bounds
+3. translate by `-overlay_rect.origin`
+4. render the slice into the translated canvas
 
-A full-frame backing remains stable when only the overlay rect changes. A local
-backing is not recreated when only the global origin changes because
-`AcquireFrame(...)` receives width and height; an actual width or height change
-can resize its drawable.
+A local surface is not recreated when only the global origin changes because
+`AcquireFrame(...)` receives width and height. A width or height change can
+resize the drawable. Opacity and visibility changes do not change allocation
+geometry.
 
 Primary code paths:
 
@@ -153,33 +139,33 @@ Primary code paths:
 `PresenterServiceIOS::UpdateOverlay(...)` maps physical Clay geometry into the
 UIKit hierarchy.
 
-For a regular hybrid-composition platform view, the wrapper frame is the
-visible slice converted to points:
+For both a regular hybrid-composition platform view and a registered
+system-overlay host, the wrapper frame is the visible slice converted to
+points:
 
 ```text
 wrapper.frame = overlay_rect / UIScreen.scale
 ```
 
-The wrapper exposes and clips the visible slice.
+The host selection is independent from this geometry conversion. A regular
+hybrid-composition overlay is attached to the Flutter view, while a system
+overlay is attached to its registered host. The system host reports offset
+`(0, 0)` and its own dimensions back to Clay, so its explicit overlay rect
+converted to points is equal to the host bounds.
 
-For a registered system-overlay host, the wrapper is attached to that host and
-uses the host bounds. Its local surface and inner overlay view both match the
-wrapper:
-
-```text
-system_overlay_view.frame = overlay_view_wrapper.bounds
-```
-
-For a regular hybrid-composition slice, the parent is the Flutter view. The
-inner overlay view matches the Flutter view while the wrapper clips and places
-the visible slice:
+In both cases the inner overlay view describes exactly the wrapper-local
+surface:
 
 ```text
-overlay_view.frame = (0, 0, flutter_view.bounds.width, flutter_view.bounds.height)
+overlay_view.frame = overlay_view_wrapper.bounds
 ```
 
-`use_system_overlay` therefore selects both the host geometry and the backing
-size contract already chosen by the compositor.
+The Metal drawable and the overlay view therefore have matching aspect ratios
+and coordinate ownership. The wrapper controls placement and clipping; the
+inner view does not reintroduce global frame coordinates.
+
+`GetSystemOverlayHostView(...)` selects the UIKit host. It does not select a
+separate wrapper-frame or backing-surface policy.
 
 Primary code paths:
 
@@ -189,39 +175,36 @@ Primary code paths:
 
 ## 6. Geometry Examples
 
-### 6.1 Visible slice with a full-frame backing
+### 6.1 Platform-view slice
 
 For a three-times-scale device:
 
 ```text
 overlay_rect:       (0, 1984, 1206, 296) px
 screen scale:       3
-full frame size:    (1206, 2556) px
-surface size:       (1206, 2556) px
+surface size:       (1206, 296) px
 wrapper frame:      (0, 661.33, 402, 98.67) pt
-overlay view frame: (0, 0, 402, 852) pt
+overlay view frame: (0, 0, 402, 98.67) pt
 canvas translation: (0, -1984) px
 ```
 
-The requested slice is rendered into the top-left portion of the full-frame
-drawable. The wrapper clips that portion and places it at the slice's global
-screen position.
+The local drawable fills the local overlay view without UIKit scaling it to a
+different region. The wrapper places the resulting slice at its global screen
+position.
 
-### 6.2 System overlay with a local backing
+### 6.2 System overlay
 
-For a two-times-scale device with an `828 x 1792 px` system-overlay host:
+For a two-times-scale device with an `828 x 1792 px` host:
 
 ```text
 overlay_rect:       (0, 0, 828, 1792) px
-screen scale:       2
 surface size:       (828, 1792) px
 wrapper frame:      (0, 0, 414, 896) pt
 overlay view frame: (0, 0, 414, 896) pt
-canvas translation: (0, 0) px
 ```
 
-The local drawable, registered system-overlay host, wrapper, and inner view
-describe the same region.
+The surface is still local. It is full-window only because the system host's
+own local bounds cover the complete window.
 
 ## 7. Failure Modes
 
@@ -237,19 +220,7 @@ Cause:
 - UIKit scales an `overlay_rect`-sized drawable across a view representing a
   different region
 
-### 7.2 Full-frame drawable with a slice-sized overlay view
-
-Symptoms:
-
-- content is compressed into a thin strip
-- the whole page appears inside one overlay slice
-
-Cause:
-
-- UIKit scales a full-frame drawable into the wrapper-local slice instead of
-  clipping a full-frame overlay view
-
-### 7.3 Inconsistent canvas mapping
+### 7.2 Inconsistent canvas mapping
 
 Symptoms:
 
@@ -258,10 +229,10 @@ Symptoms:
 
 Cause:
 
-- the overlay canvas does not use both the local clip and
+- the local surface does not use both the local clip and
   `-overlay_rect.origin` translation
 
-### 7.4 Full-frame `overlay_rect`
+### 7.3 Full-frame `overlay_rect`
 
 Symptoms:
 
@@ -275,19 +246,15 @@ Cause:
 ## 8. Invariants
 
 - `OverlayData.rect` represents visible content in global Clay coordinates.
-- background difference clipping uses the same visible rect when the overlay
-  slice is removed from the background.
-- backing-surface allocation follows the regular-HC versus explicit
-  system-overlay presentation kind.
-- the overlay canvas clips to `overlay_rect.size` at the surface origin.
+- background difference clipping uses the same visible rect.
+- every overlay backing surface uses `overlay_rect.size`.
+- the overlay canvas clips to local surface bounds.
 - the overlay canvas translates by `-overlay_rect.origin`.
-- a regular HC inner overlay view matches the Flutter view bounds.
-- a system-overlay inner view matches its wrapper bounds.
+- the iOS overlay view uses its wrapper's local bounds.
 - the UIKit wrapper owns host selection, placement, and clipping.
-- raster allocation and UIKit presentation must agree on the presentation
-  kind's backing size.
-- moving a same-sized local overlay does not require a new backing allocation.
-- changing a local overlay's width or height may resize the drawable.
+- presentation kind does not change the local surface coordinate contract.
+- moving a same-sized overlay does not require a new backing allocation.
+- actual width or height changes may resize the drawable.
 - platform overlay geometry must not leak into map or marker implementations.
 - component-specific scale or offset workarounds must not compensate for a
   broken generic overlay geometry contract.
@@ -299,17 +266,11 @@ Required shared tests:
 - `SliceViews(...)` returns only the actual intersection rect.
 - explicit overlay-layer presentation uses the node's final bounds.
 - multiple platform views preserve independent visible overlay rects.
-- clip and translation render the requested global slice at surface origin.
-- both full-frame and local backing-surface policies preserve the visible
-  overlay geometry.
+- local clip and translation render the requested global slice at local origin.
 
 Required iOS runtime checks:
 
-- compare parent bounds, wrapper frame, overlay view frame, and
-  `CAMetalLayer.drawableSize`
-- verify a full-frame drawable uses a full-frame inner view inside a clipping
-  wrapper
-- verify a system-overlay local drawable uses a matching local inner view
+- compare wrapper frame, overlay view frame, and `CAMetalLayer.drawableSize`
 - verify content at the top, center, and bottom of the screen
 - verify a same-sized moving overlay remains aligned
 - verify a real width or height change resizes without stretching
