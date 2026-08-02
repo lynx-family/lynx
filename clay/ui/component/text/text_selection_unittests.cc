@@ -2,7 +2,11 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+#include <array>
 #include <memory>
+#include <optional>
+#include <string>
+#include <utility>
 
 #include "clay/fml/icu_util.h"
 #include "clay/ui/component/text/text_paragraph_builder.h"
@@ -16,6 +20,16 @@ namespace clay {
 namespace {
 
 constexpr float kCustomSelectionHandleSize = 40.f;
+
+// Other UI suites may build paragraphs before TextSelectionTest runs. Load ICU
+// before any test constructs or lays out a paragraph.
+class TextSelectionEnvironment : public ::testing::Environment {
+ public:
+  void SetUp() override { fml::icu::InitializeICU("icudtl.dat"); }
+};
+
+::testing::Environment* const kTextSelectionEnvironment =
+    ::testing::AddGlobalTestEnvironment(new TextSelectionEnvironment());
 
 float GetNumber(const clay::Value& value) {
   if (value.IsFloat()) {
@@ -36,9 +50,17 @@ float GetNumber(const clay::Value& value) {
   return 0.f;
 }
 
-std::unique_ptr<txt::Paragraph> CreateParagraph(const std::u16string& text) {
+bool IsNumber(const clay::Value& value) {
+  return value.IsFloat() || value.IsDouble() || value.IsInt() ||
+         value.IsUint() || value.IsLong();
+}
+
+std::unique_ptr<txt::Paragraph> CreateParagraph(
+    const std::u16string& text,
+    std::optional<TextDirection> direction = std::nullopt) {
   TextStyle style;
   style.font_size = 50.f;
+  style.text_direction = direction;
   auto builder = std::make_unique<TextParagraphBuilder>(true, style);
   builder->PushStyle(style);
   builder->AddText(text);
@@ -48,10 +70,34 @@ std::unique_ptr<txt::Paragraph> CreateParagraph(const std::u16string& text) {
   return paragraph;
 }
 
+void ExpectPositiveRect(const clay::Value::Map& rect) {
+  for (const char* key :
+       {"left", "right", "top", "bottom", "width", "height"}) {
+    const auto it = rect.find(key);
+    ASSERT_NE(it, rect.end()) << key;
+    ASSERT_TRUE(IsNumber(it->second)) << key;
+  }
+  EXPECT_LT(GetNumber(rect.at("left")), GetNumber(rect.at("right")));
+  EXPECT_LT(GetNumber(rect.at("top")), GetNumber(rect.at("bottom")));
+  EXPECT_GT(GetNumber(rect.at("width")), 0.f);
+  EXPECT_GT(GetNumber(rect.at("height")), 0.f);
+}
+
+void ExpectRectContains(const clay::Value::Map& outer,
+                        const clay::Value::Map& inner) {
+  for (const char* key : {"left", "right", "top", "bottom"}) {
+    ASSERT_NE(outer.find(key), outer.end()) << "outer." << key;
+    ASSERT_NE(inner.find(key), inner.end()) << "inner." << key;
+  }
+  EXPECT_LE(GetNumber(outer.at("left")), GetNumber(inner.at("left")));
+  EXPECT_LE(GetNumber(outer.at("top")), GetNumber(inner.at("top")));
+  EXPECT_GE(GetNumber(outer.at("right")), GetNumber(inner.at("right")));
+  EXPECT_GE(GetNumber(outer.at("bottom")), GetNumber(inner.at("bottom")));
+}
+
 class TextSelectionTest : public UITest {
  protected:
   void UISetUp() override {
-    fml::icu::InitializeICU("icudtl.dat");
     text_view_ = std::make_unique<TextView>(1, page_.get());
   }
 
@@ -120,6 +166,180 @@ TEST_F_UI(TextSelectionTest, GetTextLineRectsReturnsForwardSelectionRects) {
   EXPECT_LT(line_rects.front().left(), line_rects.front().right());
   EXPECT_LT(line_rects.back().left(), line_rects.back().right());
 }
+
+TEST_F_UI(TextSelectionTest, GetTextBoundingRectReturnsMultilinePublicSchema) {
+  const std::u16string text = u"hello world\nhello world";
+  text_view_->SetParagraph(CreateParagraph(text), text);
+
+  bool callback_invoked = false;
+  InvokeUIMethod(
+      text_view_.get(), "getTextBoundingRect",
+      {{"start", clay::Value(0)},
+       {"end", clay::Value(static_cast<int>(text.length()))}},
+      [&callback_invoked](LynxUIMethodResult code, const clay::Value& data) {
+        callback_invoked = true;
+        ASSERT_EQ(code, LynxUIMethodResult::kSuccess);
+        ASSERT_TRUE(data.IsMap());
+        const auto& result = data.GetMap();
+        ASSERT_NE(result.find("boundingRect"), result.end());
+        ASSERT_NE(result.find("boxes"), result.end());
+        ASSERT_TRUE(result.at("boundingRect").IsMap());
+        ASSERT_TRUE(result.at("boxes").IsArray());
+        const auto& bounding_rect = result.at("boundingRect").GetMap();
+        const auto& boxes = result.at("boxes").GetArray();
+        ASSERT_EQ(boxes.size(), 2u);
+        ExpectPositiveRect(bounding_rect);
+        for (const auto& box : boxes) {
+          ASSERT_TRUE(box.IsMap());
+          ExpectPositiveRect(box.GetMap());
+          ExpectRectContains(bounding_rect, box.GetMap());
+        }
+      });
+
+  EXPECT_TRUE(callback_invoked);
+}
+
+TEST_F_UI(TextSelectionTest, GetTextBoundingRectRejectsInvalidRanges) {
+  const std::u16string text = u"hello";
+  text_view_->SetParagraph(CreateParagraph(text), text);
+  const std::array<std::pair<int, int>, 5> invalid_ranges = {
+      std::pair{-1, 2}, std::pair{2, 2}, std::pair{4, 2}, std::pair{0, 6},
+      std::pair{-1, -1}};
+
+  LynxUIMethodResult missing_args_code = LynxUIMethodResult::kUnknown;
+  bool missing_args_callback_invoked = false;
+  InvokeUIMethod(text_view_.get(), "getTextBoundingRect", {},
+                 [&missing_args_code, &missing_args_callback_invoked](
+                     LynxUIMethodResult code, const clay::Value& data) {
+                   missing_args_code = code;
+                   missing_args_callback_invoked = true;
+                 });
+  EXPECT_TRUE(missing_args_callback_invoked);
+  EXPECT_EQ(missing_args_code, LynxUIMethodResult::kParamInvalid);
+
+  for (const auto& [start, end] : invalid_ranges) {
+    LynxUIMethodResult callback_code = LynxUIMethodResult::kUnknown;
+    bool callback_invoked = false;
+    InvokeUIMethod(text_view_.get(), "getTextBoundingRect",
+                   {{"start", clay::Value(start)}, {"end", clay::Value(end)}},
+                   [&callback_code, &callback_invoked](
+                       LynxUIMethodResult code, const clay::Value& data) {
+                     callback_code = code;
+                     callback_invoked = true;
+                   });
+
+    EXPECT_TRUE(callback_invoked) << "range [" << start << ", " << end << ")";
+    EXPECT_EQ(callback_code, LynxUIMethodResult::kParamInvalid)
+        << "range [" << start << ", " << end << ")";
+  }
+}
+
+#if defined(CLAY_ENABLE_SKSHAPER)
+TEST_F_UI(TextSelectionTest,
+          SkParagraphGetTextBoundingRectHandlesRtlAndEmojiUtf16Range) {
+  const std::u16string text = u"\u05d0\u05d1\U0001F600\u05d2\u05d3";
+  text_view_->SetParagraph(CreateParagraph(text, TextDirection::kRtl), text);
+
+  bool callback_invoked = false;
+  InvokeUIMethod(
+      text_view_.get(), "getTextBoundingRect",
+      {{"start", clay::Value(2)}, {"end", clay::Value(4)}},
+      [&callback_invoked](LynxUIMethodResult code, const clay::Value& data) {
+        callback_invoked = true;
+        ASSERT_EQ(code, LynxUIMethodResult::kSuccess);
+        ASSERT_TRUE(data.IsMap());
+        const auto& result = data.GetMap();
+        ASSERT_NE(result.find("boundingRect"), result.end());
+        ASSERT_NE(result.find("boxes"), result.end());
+        ASSERT_TRUE(result.at("boundingRect").IsMap());
+        ASSERT_TRUE(result.at("boxes").IsArray());
+        const auto& bounding_rect = result.at("boundingRect").GetMap();
+        const auto& boxes = result.at("boxes").GetArray();
+        ASSERT_FALSE(boxes.empty());
+        ExpectPositiveRect(bounding_rect);
+        for (const auto& box : boxes) {
+          ASSERT_TRUE(box.IsMap());
+          ExpectPositiveRect(box.GetMap());
+          ExpectRectContains(bounding_rect, box.GetMap());
+        }
+      });
+
+  EXPECT_TRUE(callback_invoked);
+
+  text_view_->GetRenderText()->SetSelection(TextRange(2, 4));
+  EXPECT_TRUE(text_view_->GetRenderText()->GetSelectionString() ==
+              u"\U0001F600");
+}
+#endif
+
+TEST_F_UI(TextSelectionTest, SelectionChangeEventReportsForwardUtf16Range) {
+  const std::u16string text = u"A\U0001F600\u4e2dB";
+  text_view_->SetParagraph(CreateParagraph(text), text);
+  int event_count = 0;
+  int last_view_id = -1;
+  std::string last_event_name;
+  clay::Value::Map last_payload;
+  custom_event_callback_ = [&](int view_id, const char* event_name,
+                               clay::Value::Map payload) {
+    ++event_count;
+    last_view_id = view_id;
+    last_event_name = event_name;
+    last_payload = std::move(payload);
+  };
+
+  text_view_->SetAttribute("text-selection", clay::Value(true));
+  text_view_->GetRenderText()->SetSelection(TextRange(1, 4));
+
+  ASSERT_EQ(event_count, 1);
+  EXPECT_EQ(last_view_id, 1);
+  EXPECT_EQ(last_event_name, "selectionchange");
+  EXPECT_EQ(GetNumber(last_payload.at("start")), 1.f);
+  EXPECT_EQ(GetNumber(last_payload.at("end")), 4.f);
+  EXPECT_EQ(last_payload.at("direction").GetString(), "forward");
+}
+
+TEST_F_UI(TextSelectionTest,
+          CustomTextSelectionBeforeEnableSuppressesBuiltInGesture) {
+  const std::u16string text = u"custom selection";
+  text_view_->SetParagraph(CreateParagraph(text), text);
+  int event_count = 0;
+  custom_event_callback_ = [&](int, const char*, clay::Value::Map) {
+    ++event_count;
+  };
+
+  text_view_->SetAttribute("custom-text-selection", clay::Value(true));
+  text_view_->SetAttribute("text-selection", clay::Value(true));
+
+  EXPECT_FALSE(
+      text_view_->HasDragGestureRecognizer(ScrollDirection::kHorizontal));
+  EXPECT_FALSE(
+      text_view_->HasDragGestureRecognizer(ScrollDirection::kVertical));
+  EXPECT_FALSE(text_view_->HasLongPressGestureRecognizer());
+  text_view_->GetRenderText()->SetSelection(TextRange(0, text.length()));
+  EXPECT_EQ(event_count, 1);
+}
+
+#if !defined(OS_ANDROID) && !defined(OS_IOS)
+TEST_F_UI(TextSelectionTest, TextSelectionEnableDisableTogglesBuiltInGesture) {
+  EXPECT_FALSE(
+      text_view_->HasDragGestureRecognizer(ScrollDirection::kHorizontal));
+  EXPECT_FALSE(
+      text_view_->HasDragGestureRecognizer(ScrollDirection::kVertical));
+
+  text_view_->SetAttribute("text-selection", clay::Value(true));
+
+  EXPECT_TRUE(
+      text_view_->HasDragGestureRecognizer(ScrollDirection::kHorizontal));
+  EXPECT_TRUE(text_view_->HasDragGestureRecognizer(ScrollDirection::kVertical));
+
+  text_view_->SetAttribute("text-selection", clay::Value(false));
+
+  EXPECT_FALSE(
+      text_view_->HasDragGestureRecognizer(ScrollDirection::kHorizontal));
+  EXPECT_FALSE(
+      text_view_->HasDragGestureRecognizer(ScrollDirection::kVertical));
+}
+#endif
 
 TEST_F_UI(TextSelectionTest, SetSelectionHandleSizeRebuildsVisibleHandles) {
   const std::u16string text = u"hello world";
