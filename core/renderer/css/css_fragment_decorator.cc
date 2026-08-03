@@ -306,16 +306,11 @@ bool CSSFragmentDecorator::HasAdjacentSiblingRules() {
   });
 }
 
-bool CSSFragmentDecorator::HasMediaQueryRules() {
-  return GetConditionRuleFlags() & css::RuleSet::kHasMediaQuery;
-}
-
-uint8_t CSSFragmentDecorator::GetConditionRuleFlags() {
-  uint8_t flags = CSSFragment::GetConditionRuleFlags();
-  ForEachAdoptedFragment([&flags](CSSFragment& fragment) {
-    flags |= fragment.GetConditionRuleFlags();
-    return true;
-  });
+uint8_t CSSFragmentDecorator::GetFeatureFlags() {
+  uint8_t flags = CSSFragment::GetFeatureFlags();
+  if (element_manager_) {
+    flags |= element_manager_->GetAdoptedFeatureFlags();
+  }
   return flags;
 }
 

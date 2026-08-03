@@ -774,7 +774,12 @@ class MockCSSFragment : public tasm::SharedCSSFragment {
   }
 
   std::shared_ptr<const css::CascadeLayerMap> GetCascadeLayerMap() override {
+    ++cascade_layer_map_get_count_;
     return cascade_layer_map_;
+  }
+
+  int cascade_layer_map_get_count() const {
+    return cascade_layer_map_get_count_;
   }
 
   void SetCascadeLayerMap(const css::CascadeLayerMap* map) {
@@ -788,6 +793,7 @@ class MockCSSFragment : public tasm::SharedCSSFragment {
 
  private:
   bool enable_css_selector_mock_ = true;
+  int cascade_layer_map_get_count_ = 0;
   std::shared_ptr<const css::CascadeLayerMap> cascade_layer_map_;
 };
 
@@ -929,6 +935,112 @@ TEST_F(CSSPatchingTest, InvalidateCascadeLayerMapCacheClearsCache) {
   manager->InvalidateCascadeLayerMapCache();
 
   EXPECT_TRUE(manager->cascade_layer_map_cache_.empty());
+}
+
+// HasCascadeLayers is the O(1) gate StyleResolver uses to skip the cascade
+// layer-order pass. It must stay false when nothing declares @layer.
+TEST_F(CSSPatchingTest, HasCascadeLayersFalseWithoutLayers) {
+  auto intrinsic_fragment = std::make_unique<MockCSSFragment>();
+  intrinsic_fragment->SetEnableCSSSelector(true);
+  intrinsic_fragment->SetEnableCSSRule(true);
+
+  CSSFragmentDecorator decorator(intrinsic_fragment.get(), manager.get());
+  EXPECT_FALSE(decorator.HasCascadeLayers());
+}
+
+TEST_F(CSSPatchingTest, HasCascadeLayersTrueForIntrinsicLayer) {
+  auto intrinsic_fragment = std::make_unique<MockCSSFragment>();
+  intrinsic_fragment->SetEnableCSSSelector(true);
+  intrinsic_fragment->SetEnableCSSRule(true);
+  intrinsic_fragment->GetOrCreateRootLayer()->GetOrAddSubLayer({"base"});
+
+  CSSFragmentDecorator decorator(intrinsic_fragment.get(), manager.get());
+  EXPECT_TRUE(decorator.HasCascadeLayers());
+}
+
+TEST_F(CSSPatchingTest, HasCascadeLayersTrueForMergedDependency) {
+  auto dependency_fragment = std::make_unique<MockCSSFragment>();
+  dependency_fragment->SetEnableCSSSelector(true);
+  dependency_fragment->SetEnableCSSRule(true);
+  dependency_fragment->GetOrCreateRootLayer()->GetOrAddSubLayer({"base"});
+
+  auto intrinsic_fragment = std::make_unique<MockCSSFragment>();
+  intrinsic_fragment->SetEnableCSSSelector(true);
+  intrinsic_fragment->SetEnableCSSRule(true);
+  intrinsic_fragment->rule_set()->Merge(*dependency_fragment->rule_set());
+
+  CSSFragmentDecorator decorator(intrinsic_fragment.get(), manager.get());
+  EXPECT_TRUE(decorator.HasCascadeLayers());
+}
+
+TEST_F(CSSPatchingTest, FeatureFlagsUseCachedAdoptedFlags) {
+  auto intrinsic_fragment = std::make_unique<MockCSSFragment>();
+  intrinsic_fragment->SetEnableCSSSelector(true);
+  intrinsic_fragment->rule_set()->AddFeatureFlag(css::RuleSet::kHasMediaQuery);
+
+  CSSFragmentDecorator decorator(intrinsic_fragment.get(), manager.get());
+  EXPECT_EQ(decorator.GetFeatureFlags(), css::RuleSet::kHasMediaQuery);
+
+  auto adopted_fragment = std::make_unique<MockCSSFragment>();
+  adopted_fragment->SetEnableCSSSelector(true);
+  adopted_fragment->rule_set()->AddFeatureFlag(css::RuleSet::kHasSupports);
+  auto adopted_wrapper = fml::AdoptRef<MockSharedCSSFragmentWrapper>(
+      new MockSharedCSSFragmentWrapper());
+  adopted_wrapper->fragment_ = std::move(adopted_fragment);
+  manager->AdoptStyleSheet(adopted_wrapper);
+
+  const uint8_t expected_flags =
+      css::RuleSet::kHasMediaQuery | css::RuleSet::kHasSupports;
+  EXPECT_EQ(manager->GetAdoptedFeatureFlags(), css::RuleSet::kHasSupports);
+  EXPECT_EQ(decorator.GetFeatureFlags(), expected_flags);
+
+  manager->ClearAdoptedStyleSheets();
+  EXPECT_EQ(manager->GetAdoptedFeatureFlags(), css::RuleSet::kNoFeatures);
+  EXPECT_EQ(decorator.GetFeatureFlags(), css::RuleSet::kHasMediaQuery);
+}
+
+TEST_F(CSSPatchingTest, FeatureFlagsIncludeMergedDependency) {
+  auto dependency_fragment = std::make_unique<MockCSSFragment>();
+  dependency_fragment->SetEnableCSSSelector(true);
+  dependency_fragment->rule_set()->AddFeatureFlag(css::RuleSet::kHasSupports);
+
+  auto intrinsic_fragment = std::make_unique<MockCSSFragment>();
+  intrinsic_fragment->SetEnableCSSSelector(true);
+  intrinsic_fragment->rule_set()->AddFeatureFlag(css::RuleSet::kHasMediaQuery);
+  intrinsic_fragment->rule_set()->Merge(*dependency_fragment->rule_set());
+
+  EXPECT_EQ(intrinsic_fragment->GetFeatureFlags(),
+            css::RuleSet::kHasMediaQuery | css::RuleSet::kHasSupports);
+}
+
+// The layer may live only in an adopted stylesheet (e.g. injected via
+// customSections) while the intrinsic fragment declares none. The decorator
+// must still report true so the layer-order pass runs.
+TEST_F(CSSPatchingTest, HasCascadeLayersTrueForAdoptedOnlyLayer) {
+  auto intrinsic_fragment = std::make_unique<MockCSSFragment>();
+  intrinsic_fragment->SetEnableCSSSelector(true);
+  intrinsic_fragment->SetEnableCSSRule(true);
+
+  CSSFragmentDecorator decorator(intrinsic_fragment.get(), manager.get());
+  ASSERT_FALSE(decorator.HasCascadeLayers());
+
+  auto adopted_fragment = std::make_unique<MockCSSFragment>();
+  adopted_fragment->SetEnableCSSSelector(true);
+  adopted_fragment->SetEnableCSSRule(true);
+  adopted_fragment->GetOrCreateRootLayer()->GetOrAddSubLayer({"adopted"});
+  auto adopted_wrapper = fml::AdoptRef<MockSharedCSSFragmentWrapper>(
+      new MockSharedCSSFragmentWrapper());
+  adopted_wrapper->fragment_ = std::move(adopted_fragment);
+  manager->AdoptStyleSheet(adopted_wrapper);
+
+  EXPECT_TRUE(manager->HasAdoptedCascadeLayers());
+  EXPECT_EQ(manager->GetAdoptedFeatureFlags(), css::RuleSet::kHasCascadeLayers);
+  EXPECT_TRUE(decorator.HasCascadeLayers());
+
+  manager->ClearAdoptedStyleSheets();
+  EXPECT_FALSE(manager->HasAdoptedCascadeLayers());
+  EXPECT_EQ(manager->GetAdoptedFeatureFlags(), css::RuleSet::kNoFeatures);
+  EXPECT_FALSE(decorator.HasCascadeLayers());
 }
 
 TEST_F(CSSPatchingTest, AdoptedStylesheets_MergeLogic) {
@@ -3155,8 +3267,7 @@ TEST_F(CSSPatchingTest,
 }
 
 TEST_F(CSSPatchingTest, CascadeLayer_NoLayerFastPath) {
-  // When no @layer is used, GetCascadeLayerMap() returns nullptr and the
-  // original path is used (no layer order comparison).
+  // Without @layer, the fast path must not request a layer-map snapshot.
   auto fiber_element =
       fml::AdoptRef<Element>(new Element(manager.get(), "view"));
   auto* attribute_holder = fiber_element->data_model();
@@ -3187,6 +3298,7 @@ TEST_F(CSSPatchingTest, CascadeLayer_NoLayerFastPath) {
   auto it = result.find(CSSPropertyID::kPropertyIDFontSize);
   ASSERT_TRUE(it != result.end());
   EXPECT_EQ(it->second.AsNumber(), 42.0);
+  EXPECT_EQ(mock_fragment->cascade_layer_map_get_count(), 0);
 }
 
 }  // namespace testing

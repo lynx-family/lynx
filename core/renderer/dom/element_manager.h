@@ -458,14 +458,25 @@ class ElementManager : public LayoutScheduler::LayoutSchedulerImpl {
   // Writers (Adopt/Clear) take an exclusive lock.
   // Readers (Get) take a shared lock.
   void AdoptStyleSheet(fml::RefPtr<tasm::SharedCSSFragmentWrapper> wrapper) {
+    const uint8_t feature_flags = (wrapper && wrapper->fragment_)
+                                      ? wrapper->fragment_->GetFeatureFlags()
+                                      : css::RuleSet::kNoFeatures;
     std::unique_lock<std::shared_mutex> lock(adopted_style_sheets_mutex_);
     adopted_stylesheets_.push_back(std::move(wrapper));
+    if (feature_flags) {
+      const uint8_t existing_flags =
+          adopted_feature_flags_.load(std::memory_order_relaxed);
+      adopted_feature_flags_.store(existing_flags | feature_flags,
+                                   std::memory_order_release);
+    }
     cascade_layer_map_cache_.clear();
   }
 
   void ClearAdoptedStyleSheets() {
     std::unique_lock<std::shared_mutex> lock(adopted_style_sheets_mutex_);
     adopted_stylesheets_.clear();
+    adopted_feature_flags_.store(css::RuleSet::kNoFeatures,
+                                 std::memory_order_release);
     cascade_layer_map_cache_.clear();
   }
 
@@ -489,6 +500,18 @@ class ElementManager : public LayoutScheduler::LayoutSchedulerImpl {
   bool HasAdoptedStyleSheets() const {
     std::shared_lock<std::shared_mutex> lock(adopted_style_sheets_mutex_);
     return !adopted_stylesheets_.empty();
+  }
+
+  // These flags are updated with adopted_stylesheets_ so style resolution can
+  // avoid taking its lock and scanning the list in feature fast paths.
+  bool HasAdoptedCascadeLayers() const {
+    return GetAdoptedFeatureFlags() & css::RuleSet::kHasCascadeLayers;
+  }
+
+  // Returns the OR-ed feature flags of adopted stylesheets without taking
+  // adopted_style_sheets_mutex_.
+  uint8_t GetAdoptedFeatureFlags() const {
+    return adopted_feature_flags_.load(std::memory_order_acquire);
   }
 
   std::shared_ptr<const css::CascadeLayerMap> GetCascadeLayerMap(
@@ -1541,6 +1564,7 @@ class ElementManager : public LayoutScheduler::LayoutSchedulerImpl {
   // Adopted stylesheets for runtime CSS adoption with highest cascade priority
   mutable std::shared_mutex adopted_style_sheets_mutex_;
   std::vector<fml::RefPtr<tasm::SharedCSSFragmentWrapper>> adopted_stylesheets_;
+  std::atomic<uint8_t> adopted_feature_flags_{css::RuleSet::kNoFeatures};
 
   // Cascade-layer maps are shared by decorators with the same intrinsic
   // stylesheet and cleared whenever adopted stylesheets change.

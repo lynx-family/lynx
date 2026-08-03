@@ -26,7 +26,10 @@ RuleSet::RuleSet(tasm::SharedCSSFragment* fragment) : fragment_(fragment) {}
 
 RuleSet::~RuleSet() = default;
 
-void RuleSet::Merge(const RuleSet& rule_set) { deps_.push_back(&rule_set); }
+void RuleSet::Merge(const RuleSet& rule_set) {
+  deps_.push_back(&rule_set);
+  feature_flags_ |= rule_set.GetFeatureFlags();
+}
 
 static void MatchKey(StyleNode* node, const CompactRuleDataVector& list,
                      unsigned level, base::Vector<MatchedRule>& matched) {
@@ -126,10 +129,10 @@ void RuleSet::AddStyleRule(fml::RefPtr<StyleRule> rule, CascadeLayer* layer) {
 void RuleSet::AddConditionRule(fml::RefPtr<ConditionRule> rule) {
   if (rule == nullptr) return;
   if (rule->HasStructuredMediaQuery()) {
-    condition_rule_flags_ |= kHasMediaQuery;
+    feature_flags_ |= kHasMediaQuery;
   }
   if (rule->HasStructuredSupportsRules()) {
-    condition_rule_flags_ |= kHasSupports;
+    feature_flags_ |= kHasSupports;
   }
   condition_rules_.emplace_back(std::move(rule));
 }

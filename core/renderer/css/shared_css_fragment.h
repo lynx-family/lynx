@@ -119,6 +119,7 @@ class SharedCSSFragment : public CSSFragment {
   css::CascadeLayer* GetOrCreateRootLayer() {
     if (!root_layer_) {
       root_layer_ = std::make_unique<css::CascadeLayer>();
+      rule_set_->AddFeatureFlag(css::RuleSet::kHasCascadeLayers);
     }
     return root_layer_.get();
   }
