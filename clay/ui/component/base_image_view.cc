@@ -11,7 +11,6 @@
 #include <utility>
 #include <vector>
 
-#include "base/include/fml/make_copyable.h"
 #include "base/include/fml/memory/ref_counted.h"
 #include "base/include/string/string_number_convert.h"
 #include "base/include/string/string_utils.h"
@@ -29,10 +28,6 @@
 #include "clay/ui/component/page_view.h"
 #include "clay/ui/painter/image_painter.h"
 #include "clay/ui/shadow/image_shadow_node.h"
-
-#ifndef LYNX_ENABLE_CLAY_NATIVE_LIST
-#include "clay/ui/component/list/base_list_view.h"
-#endif
 
 #ifdef ENABLE_SKITY
 #include "clay/gfx/image/base_image.h"
@@ -527,33 +522,6 @@ void BaseImageView::FetchSource() {
 
         // Give real image size rather than the paint size.
         self->NotifyLoadSuccess(resource->GetWidth(), resource->GetHeight());
-
-        if (self->prevent_loading_on_list_scroll_) {
-#ifndef LYNX_ENABLE_CLAY_NATIVE_LIST
-          auto parent_list = self->Parent();
-          while (parent_list && !parent_list->Is<BaseListView>()) {
-            parent_list = parent_list->Parent();
-          }
-          if (parent_list) {
-            static_cast<BaseListView*>(parent_list)
-                ->PostLowPriorityTask(fml::MakeCopyable(
-                    [self, hit_cache,
-                     resource = std::move(resource)]() mutable {
-                      if (!self) {
-                        return;
-                      }
-
-                      if (!hit_cache) {
-                        self->TriggerTransitionIfNeeded();
-                      }
-
-                      RenderImage* render_image = self->GetRenderImage();
-                      render_image->SetImage(std::move(resource));
-                    }));
-            return;
-          }
-#endif
-        }
 
         if (!hit_cache) {
           self->TriggerTransitionIfNeeded();
