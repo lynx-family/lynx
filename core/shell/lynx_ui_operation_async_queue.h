@@ -36,6 +36,7 @@ class LynxUIOperationAsyncQueue
   virtual void MarkDirty() override;
   virtual uint32_t GetNativeUpdateDataOrder() override;
   virtual uint32_t UpdateNativeUpdateDataOrder() override;
+  virtual void ResetNativeUpdateDataOrder() override;
   virtual bool IsInFlush() override { return is_in_flush_; }
   virtual bool FlushPendingOperations() override;
 

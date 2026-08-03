@@ -60,6 +60,7 @@ class LynxUIOperationQueue {
   }
   virtual uint32_t GetNativeUpdateDataOrder() { return 0; }
   virtual uint32_t UpdateNativeUpdateDataOrder() { return 0; }
+  virtual void ResetNativeUpdateDataOrder() {}
   virtual bool IsInFlush() { return false; }
   virtual bool FlushPendingOperations() { return false; }
 

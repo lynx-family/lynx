@@ -39,6 +39,7 @@ class DynamicUIOperationQueue : public UIOperationQueueInterface {
   void SetPageOptions(const tasm::PageOptions& options);
   uint32_t GetNativeUpdateDataOrder();
   uint32_t UpdateNativeUpdateDataOrder();
+  void ResetNativeUpdateDataOrder();
   // TODO(chenyouhui): Remove this interface after migrating all Enqueue logic
   // to PaintingContext
   void Enqueue(base::closure operation) override;
