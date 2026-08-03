@@ -9,6 +9,6 @@
     "liblynxbase.so": "file:./src/cpp/types/liblynxbase",
   },
   "repository": "https://github.com/lynx-family/lynx",
-  "author": "lynx",
+  "author": "Lynx Authors <lynx.authors@gmail.com> (https://github.com/lynx-family/lynx)",
   "description": "Lynx Base"
 }
