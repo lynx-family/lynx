@@ -213,8 +213,8 @@ void TemplateBinaryWriter::EncodeCustomSection() {
   uint32_t end = 0;
   CustomSectionHeaders route;
 
-  base::SortedForEach(
-      custom_sections_->GetObject(),
+  std::for_each(
+      custom_sections_->MemberBegin(), custom_sections_->MemberEnd(),
       [this, &descriptor_offset, &route, &start, &end](const auto& it) {
         auto custom_section = lynx::lepus::jsonValueTolepusValue(it.value);
         auto section_table = custom_section.Table();
@@ -339,9 +339,6 @@ void TemplateBinaryWriter::EncodeCustomSection() {
                            CustomSectionHeader{lepus::Value(custom_section),
                                                Range(start, end)});
         start = end;
-      },
-      [](const auto& left, const auto& right) {
-        return left.name.GetString() < right.name.GetString();
       });
 
   start = stream()->size();
