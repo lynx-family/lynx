@@ -11,6 +11,8 @@
 #include <utility>
 
 #include "base/harmony/napi_convert_helper.h"
+#include "base/include/fml/message_loop.h"
+#include "base/include/fml/platform/harmony/message_loop_harmony.h"
 #include "base/include/platform/harmony/napi_util.h"
 #include "core/renderer/data/harmony/template_data_harmony.h"
 #include "core/renderer/dom/harmony/lynx_template_bundle_harmony.h"
@@ -110,7 +112,14 @@ RuntimeLifecycleListenerDelegateHarmony::
 void RuntimeLifecycleListenerDelegateHarmony::OnRuntimeAttach(
     void* env_ptr, const char* runtime_type) {
   if (listener_ && listener_->on_runtime_attach) {
-    listener_->on_runtime_attach(listener_->user_data, env_ptr, runtime_type);
+    void* platform_loop = nullptr;
+    auto& loop_impl = fml::MessageLoop::GetCurrent().GetLoopImpl();
+    if (loop_impl) {
+      platform_loop = static_cast<fml::MessageLoopHarmony*>(loop_impl.get())
+                          ->GetPlatformLoop();
+    }
+    listener_->on_runtime_attach(listener_->user_data, env_ptr, runtime_type,
+                                 platform_loop);
   }
 }
 
