@@ -8,5 +8,5 @@
     "@lynx/lynx_base": "@param:dependencies.lynx_version",
   },
   "repository": "https://github.com/lynx-family/lynx",
-  "author": "lynx"
+  "author": "Lynx Authors <lynx.authors@gmail.com> (https://github.com/lynx-family/lynx)"
 }
