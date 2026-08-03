@@ -11,6 +11,7 @@ export * from './page';
 export * from './scroll-view';
 export * from './text';
 export * from './view';
+export * from './cover-view';
 export * from './input';
 export * from './textarea';
 export * from './title-bar-view';

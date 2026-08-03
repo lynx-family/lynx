@@ -1,5 +1,8 @@
 # CHANGELOG
 
+## 4.2.3
+- Add `<cover-view>` element types for desktop.
+
 ## 4.2.2
 - Add `experimental-android-enable-new-overflow` typing for `<scroll-view>`.
 
