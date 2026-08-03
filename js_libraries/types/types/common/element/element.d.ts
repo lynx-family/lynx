@@ -13,6 +13,7 @@ import { PageProps } from './page';
 import { ScrollViewProps, ScrollViewUIMethods } from './scroll-view';
 import { TextProps, TextUIMethods } from './text';
 import { ViewProps } from './view';
+import { CoverViewProps } from './cover-view';
 import { InputProps, InputUIMethods } from './input';
 import { TextAreaProps, TextAreaUIMethods } from './textarea';
 import { FrameProps } from './frame';
@@ -67,6 +68,7 @@ export interface IntrinsicElements {
   'scroll-view': ScrollViewProps;
   'text': TextProps;
   'view': ViewProps;
+  'cover-view': CoverViewProps;
   'raw-text': StandardProps & { text: number | string };
   'input': InputProps;
   'textarea': TextAreaProps;
@@ -106,6 +108,7 @@ declare module 'react' {
       'scroll-view': ScrollViewProps;
       'text': TextProps;
       'view': ViewProps;
+      'cover-view': CoverViewProps;
       'raw-text': StandardProps & { text: number | string };
       'input': InputProps;
       'textarea': TextAreaProps;
