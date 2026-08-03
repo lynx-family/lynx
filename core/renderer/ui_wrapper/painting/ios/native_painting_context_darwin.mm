@@ -27,6 +27,7 @@
 #import <Lynx/LynxComponentRegistry.h>
 #import <Lynx/LynxShadowNodeOwner.h>
 #import <Lynx/LynxUIOwner+Private.h>
+#import <Lynx/LynxURL.h>
 #include <cstdint>
 
 namespace lynx {
