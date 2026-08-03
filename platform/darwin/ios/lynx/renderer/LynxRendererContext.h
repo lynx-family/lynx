@@ -2,11 +2,16 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#import <Lynx/LUIBodyView.h>
-#import <Lynx/LynxImageManager.h>
-#import <Lynx/LynxTextRenderManager.h>
-#import <Lynx/LynxUIContext.h>
-#import <Lynx/LynxURL.h>
+#import <Foundation/Foundation.h>
+
+@protocol LUIBodyView;
+
+@class LynxImageManager;
+@class LynxTextRenderManager;
+@class LynxUIContext;
+@class LynxURL;
+@class UIView;
+
 @interface LynxRendererContext : NSObject
 
 @property(nonatomic, weak) UIView<LUIBodyView> *bodyView;

@@ -429,6 +429,10 @@ subspec_target("lynx") {
     "public/LynxView.h",
     "public/LynxView+Internal.h",
     "public/LynxServiceProtocol.h",
+    "renderer/LynxContainerView.h",
+    "renderer/LynxRenderer.h",
+    "renderer/LynxRendererContext.h",
+    "renderer/LynxRendererHost.h",
 
     # Extension module headers
     "LynxTemplateRender+Internal.h",
