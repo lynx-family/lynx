@@ -3,7 +3,7 @@
   "version": "@param:dependencies.lynx_version",
   "description": "Lynx DevTool",
   "main": "src/main/ets/Index.ets",
-  "author": "lynx",
+  "author": "Lynx Authors <lynx.authors@gmail.com> (https://github.com/lynx-family/lynx)",
   "license": "Apache-2.0",
   "dependencies": {
     "@lynx/lynx": "@param:dependencies.lynx_version",

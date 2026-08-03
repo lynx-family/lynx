@@ -11,6 +11,6 @@
     "@lynx/gfx": "@param:dependencies.lynx_version",
   },
   "repository": "https://github.com/lynx-family/lynx",
-  "author": "lynx",
+  "author": "Lynx Authors <lynx.authors@gmail.com> (https://github.com/lynx-family/lynx)",
   "description": "A Powerful Cross-Platform Framework that builds native Apps with Web technologies"
 }
