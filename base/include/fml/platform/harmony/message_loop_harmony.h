@@ -22,6 +22,7 @@ namespace fml {
 class MessageLoopHarmony : public MessageLoopImpl {
  public:
   BASE_EXPORT void SetupNapiCallback(napi_env env);
+  void* GetPlatformLoop() const { return static_cast<void*>(looper_); }
 
  private:
   uv_loop_t* looper_;
