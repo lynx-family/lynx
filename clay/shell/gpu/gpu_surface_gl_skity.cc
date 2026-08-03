@@ -113,10 +113,12 @@ std::unique_ptr<SurfaceFrame> GPUSurfaceGLSkity::AcquireFrame(
 
   const auto root_surface_transformation = GetRootTransformation();
   std::shared_ptr<skity::GPUSurface> gpu_surface = AcquireRenderSurface(size);
+  if (!gpu_surface) {
+    return nullptr;
+  }
 
   SurfaceFrame::EncodeCallback encode_callback =
       [weak = weak_factory_.GetWeakPtr()](const SurfaceFrame& surface_frame,
-
                                           skity::Canvas* canvas) {
         if (!canvas) {
           FML_LOG(ERROR) << "Canvas is null during submit";
@@ -193,6 +195,10 @@ std::shared_ptr<skity::GPUSurface> GPUSurfaceGLSkity::AcquireRenderSurface(
   GLFrameInfo frame_info = {static_cast<uint32_t>(size.x),
                             static_cast<uint32_t>(size.y)};
   const GLFBOInfo fbo_info = delegate_->GLContextFBO(frame_info);
+  if (fbo_info.fbo_id < 0) {
+    FML_LOG(ERROR) << "Invalid FBO id: " << fbo_info.fbo_id;
+    return nullptr;
+  }
 
   fbo_id_ = fbo_info.fbo_id;
   existing_damage_ = fbo_info.existing_damage;
@@ -213,8 +219,12 @@ std::shared_ptr<skity::GPUSurface> GPUSurfaceGLSkity::AcquireRenderSurface(
   desc.has_stencil_attachment = true;
   desc.surface_type = skity::GLSurfaceType::kFramebuffer;
 
-  gpu_surface_map_[fbo_info.fbo_id] = gpu_context_->CreateSurface(&desc);
-  gpu_surface_ = gpu_surface_map_[fbo_info.fbo_id];
+  gpu_surface_ = gpu_context_->CreateSurface(&desc);
+  if (!gpu_surface_) {
+    FML_LOG(ERROR) << "Could not create Skity onscreen surface.";
+    return nullptr;
+  }
+  gpu_surface_map_[fbo_info.fbo_id] = gpu_surface_;
 
   return gpu_surface_;
 }
