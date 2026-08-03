@@ -491,6 +491,9 @@ class LynxShell {
 
  private:
   friend class LynxEngineWrapper;
+  void ResetNativeUpdateDataOrderForLoad(
+      const std::shared_ptr<tasm::PipelineOptions>& pipeline_options);
+
   void BuildLynxEngine(
       std::unique_ptr<TasmPlatformInvoker> tasm_platform_invoker,
       std::unique_ptr<lynx::tasm::LayoutCtxPlatformImpl>

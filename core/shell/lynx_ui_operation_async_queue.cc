@@ -159,5 +159,9 @@ uint32_t LynxUIOperationAsyncQueue::UpdateNativeUpdateDataOrder() {
   native_update_data_order_++;
   return native_update_data_order_;
 }
+
+void LynxUIOperationAsyncQueue::ResetNativeUpdateDataOrder() {
+  native_update_data_order_ = 0;
+}
 }  // namespace shell
 }  // namespace lynx
