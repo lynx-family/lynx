@@ -9,7 +9,9 @@
 #import <Lynx/LynxRendererContext.h>
 #import <Lynx/LynxResourceRequest.h>
 #import <Lynx/LynxSubErrorCode.h>
+#import <Lynx/LynxUIContext.h>
 #import <ServalSVG/SrSVG.h>
+#import <UIKit/UIKit.h>
 
 @interface LynxSVGRenderer () {
   NSString *_src;

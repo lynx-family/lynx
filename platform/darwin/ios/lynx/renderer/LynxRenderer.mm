@@ -9,6 +9,7 @@
 #import <Lynx/LynxRendererContext.h>
 #import <Lynx/LynxRendererHost.h>
 #import <QuartzCore/QuartzCore.h>
+#import <UIKit/UIView.h>
 
 #import "LynxFilterUtil.h"
 
