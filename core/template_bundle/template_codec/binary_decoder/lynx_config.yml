@@ -1827,6 +1827,18 @@ enableReuseLoadScriptExports:
     - Android
     - HarmonyOS
     - iOS
+enableSharedContextModules:
+  description: Controls whether modules loaded through `lynx.requireModuleAsync` are shared across cards running in the same shared-context LynxGroup. When enabled, the JS app caches async module exports at the JS-context level so every card in the group receives the same module instance; when disabled, each card evaluates its own copy.
+  defaultValue: 'false'
+  valueType: bool
+  syncTo:
+    - script
+  author: upupming
+  since: '3.6'
+  supportPlatform:
+    - Android
+    - HarmonyOS
+    - iOS
 enableCSSInlineVariables:
   description: Controls whether runtime treats inline style values as CSS variables and resolves them through the inline-variable path. When enabled, decoded page config turns on inline CSS variable support for runtime CSS readers and style resolution; when disabled, inline style values are handled as ordinary static styles. If the field is omitted, the setting can still be driven by native or settings fallback.
   defaultValue: 'false'

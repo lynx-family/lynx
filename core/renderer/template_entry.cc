@@ -272,6 +272,8 @@ bool TemplateEntry::InitWithPageConfigger(PageConfigger* configger,
       (page_config_val != TernaryBool::UNDEFINE_VALUE)
           ? (page_config_val == TernaryBool::TRUE_VALUE)
           : LynxEnv::GetInstance().EnableFetchAPIStreamingStandard());
+
+  SetEnableSharedContextModules(page_config->GetEnableSharedContextModules());
   return true;
 }
 
@@ -574,6 +576,7 @@ TasmRuntimeBundle TemplateEntry::CreateTasmRuntimeBundle() {
           enable_microtask_promise_polyfill_,
           enable_reuse_load_script_exports_,
           enable_fetch_api_standard_,
+          enable_shared_context_modules_,
           template_bundle().custom_sections_};
 }
 

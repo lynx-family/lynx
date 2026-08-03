@@ -31,7 +31,7 @@ struct TasmRuntimeBundle {
       bool enable_microtask_promise_polyfill,
       bool enable_reuse_load_script_exports,
       bool enable_fetch_api_standard_streaming,
-      const lepus::Value& custom_sections)
+      bool enable_shared_context_modules, const lepus::Value& custom_sections)
       : name(name),
         target_sdk_version(target_sdk_version),
         support_component_js(support_component_js),
@@ -47,6 +47,7 @@ struct TasmRuntimeBundle {
         enable_reuse_load_script_exports(enable_reuse_load_script_exports),
         enable_fetch_api_standard_streaming(
             enable_fetch_api_standard_streaming),
+        enable_shared_context_modules(enable_shared_context_modules),
         custom_sections(custom_sections) {}
 
   // move only
@@ -70,6 +71,7 @@ struct TasmRuntimeBundle {
   bool enable_microtask_promise_polyfill;
   bool enable_reuse_load_script_exports;
   bool enable_fetch_api_standard_streaming;
+  bool enable_shared_context_modules{false};
 
   lepus::Value custom_sections{};
 };

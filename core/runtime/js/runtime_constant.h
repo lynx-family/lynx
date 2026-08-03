@@ -114,6 +114,16 @@ constexpr const char kEnableFetchAPIStandardStreaming[] =
     "enableFetchAPIStandardStreaming";
 
 /**
+ * @name: enableSharedContextModules
+ * @description: Share modules loaded via lynx.requireModuleAsync across cards
+ * in the same shared-context LynxGroup.
+ * @platform: Both
+ * @supportVersion: 3.6
+ **/
+constexpr const char kEnableSharedContextModules[] =
+    "enableSharedContextModules";
+
+/**
  * @name: enableReleaseAppInstance
  * @description: Use for controlling hooks module appInstance release on
  * component/app destroy.
