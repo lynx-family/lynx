@@ -4927,8 +4927,14 @@ void FiberElement::OnPseudoStatusChanged(PseudoState prev_status,
           // pseudo-dependent inherited properties (e.g. color) are removed
           // from parsed_styles_map_, avoiding missing inherited values.
           // Cf. self-mark in PrepareForCreateOrUpdate().
+          //
+          // Note: no eager subtree invalidation here. Children are marked
+          // during flush only if an inherited value actually changes (via
+          // children_propagate_inherited_styles_flag_ in the legacy pipeline,
+          // or HasInheritedPropertyMutation in the new styling pipeline), so
+          // pseudo rules that cannot change inherited styles (e.g. opacity
+          // only) cost O(1) instead of an O(subtree) traversal.
           MarkDirtyLite(kDirtyPropagateInherited);
-          InvalidateChildrenInheritedStylesRecursively();
         }
       }
       InvalidateChildren(invalidation_set);
