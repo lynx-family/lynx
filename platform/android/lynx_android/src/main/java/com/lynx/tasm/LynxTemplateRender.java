@@ -260,6 +260,8 @@ public class LynxTemplateRender
   private AbsTemplateProvider mTemplateProvider;
 
   private boolean mEnableSyncFlush;
+  private boolean mHasSubmittedViewport = false;
+  private boolean mHasFragmentLayerRenderSyncFlushed = false;
 
   private boolean mForceLayoutOnBackgroundThread =
       LynxEnv.inst().shouldForceLayoutOnBackgroundThread();
@@ -2239,9 +2241,17 @@ public class LynxTemplateRender
       maybeSyncLayoutResultDuringLayoutOnBackgroundThread(widthMeasureSpec, heightMeasureSpec);
     } else {
       if (mEnableSyncFlush) {
-        syncFlush();
+        if ((mEmbeddedMode & EmbeddedMode.FRAGMENT_LAYER_RENDER) > 0) {
+          // `reload` becomes true once load starts. Reuse it so Fragment Layer only attempts an
+          // automatic sync flush in the first onMeasure after the initial load.
+          if (reload && !mHasFragmentLayerRenderSyncFlushed) {
+            mHasFragmentLayerRenderSyncFlushed = true;
+            doSyncFlush();
+          }
+        } else {
+          syncFlush();
+        }
       }
-
       updateViewport(widthMeasureSpec, heightMeasureSpec);
       // if not has first screen means first layout not finish
       // need pending for layout finish avoid first screen show nothing
@@ -2416,6 +2426,8 @@ public class LynxTemplateRender
     // TODO: sync and async mode / should post to thread if not work on ui thread
     nativeUpdateViewport(mNativePtr, mNativeLifecycle, width, widthMode, height, heightMode,
         mLynxContext.getScreenMetrics().density, mLynxUIRender.getUIDelegatePtr(), needLayout);
+    // UNSPECIFIED maps to an indefinite native viewport and still counts as a submission.
+    mHasSubmittedViewport = true;
     mPreWidthMeasureSpec = widthMeasureSpec;
     mPreHeightMeasureSpec = heightMeasureSpec;
   }
@@ -3494,9 +3506,22 @@ public class LynxTemplateRender
   }
 
   public void syncFlush() {
+    if ((mEmbeddedMode & EmbeddedMode.FRAGMENT_LAYER_RENDER) > 0) {
+      LLog.i(TAG, "Skip syncFlush in Fragment Layer.");
+      return;
+    }
+    doSyncFlush();
+  }
+
+  private void doSyncFlush() {
     String eventName = "LynxTemplateRender.syncFlush";
     onTraceEventBegin(eventName);
     UIThreadUtils.assertOnUiThread();
+    if (mEmbeddedMode > 0 && !mHasSubmittedViewport) {
+      LLog.i(TAG, "Skip syncFlush without a submitted viewport.");
+      onTraceEventEnd(eventName);
+      return;
+    }
     if (mAsyncRender && !mIsDestroyed.get()) {
       LLog.i(TAG, "syncFlush wait layout finish");
       if (mNativePtr != 0) {
