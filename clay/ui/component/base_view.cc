@@ -34,10 +34,6 @@
 #include "clay/ui/component/inline_image_view.h"
 #include "clay/ui/component/intersection_observer.h"
 #ifdef ENABLE_ACCESSIBILITY
-#ifndef LYNX_ENABLE_CLAY_NATIVE_LIST
-#include "clay/ui/component/list/base_list_view.h"
-#include "clay/ui/component/list/list_wrapper.h"
-#endif
 #include "clay/ui/component/list/list_container/list_container_view.h"
 #include "clay/ui/component/list/list_container/list_container_wrapper.h"
 #include "clay/ui/component/scroll_wrapper.h"
@@ -104,14 +100,6 @@ BaseView* A11yScrollTargetForSemantics(BaseView* view) {
   if (view->Is<ScrollView>()) {
     return view;
   }
-#ifndef LYNX_ENABLE_CLAY_NATIVE_LIST
-  if (view->Is<ListWrapper>()) {
-    return static_cast<ListWrapper*>(view)->GetListView();
-  }
-  if (view->Is<BaseListView>()) {
-    return view;
-  }
-#endif
   return nullptr;
 }
 
@@ -143,11 +131,6 @@ int32_t A11yScrollTargetActions(BaseView* target) {
   if (target->Is<ScrollView>()) {
     return static_cast<ScrollView*>(target)->GetSemanticsActions();
   }
-#ifndef LYNX_ENABLE_CLAY_NATIVE_LIST
-  if (target->Is<BaseListView>()) {
-    return static_cast<BaseListView*>(target)->GetSemanticsActions();
-  }
-#endif
   return 0;
 }
 
@@ -158,11 +141,6 @@ int32_t A11yScrollTargetFlags(BaseView* target) {
   if (target->Is<ScrollView>()) {
     return static_cast<ScrollView*>(target)->GetSemanticsFlags();
   }
-#ifndef LYNX_ENABLE_CLAY_NATIVE_LIST
-  if (target->Is<BaseListView>()) {
-    return static_cast<BaseListView*>(target)->GetSemanticsFlags();
-  }
-#endif
   return 0;
 }
 
@@ -175,11 +153,6 @@ float A11yScrollPosition(BaseView* target) {
     return scroll_view->CanScrollY() ? scroll_view->GetScrollOffset().y()
                                      : scroll_view->GetScrollOffset().x();
   }
-#ifndef LYNX_ENABLE_CLAY_NATIVE_LIST
-  if (target->Is<BaseListView>()) {
-    return static_cast<BaseListView*>(target)->GetScrollbarScrollOffset();
-  }
-#endif
   return 0.f;
 }
 
@@ -193,15 +166,6 @@ float A11yScrollExtentMax(BaseView* target) {
                ? scroll_view->GetRenderScroll()->MaxScrollHeight()
                : scroll_view->GetRenderScroll()->MaxScrollWidth();
   }
-#ifndef LYNX_ENABLE_CLAY_NATIVE_LIST
-  if (target->Is<BaseListView>()) {
-    auto* list_view = static_cast<BaseListView*>(target);
-    const float viewport_length = list_view->CanDragScrollOnY()
-                                      ? list_view->Height()
-                                      : list_view->Width();
-    return std::max(0.f, list_view->GetTotalScrollLength() - viewport_length);
-  }
-#endif
   return 0.f;
 }
 #endif
@@ -512,14 +476,7 @@ void BaseView::ScrollToMiddle(BaseView* target_view) {
   if (Is<ListContainerView>()) {
     should_propagate =
         static_cast<ListContainerView*>(this)->OnScrollToMiddle(target_view);
-  }
-#ifndef LYNX_ENABLE_CLAY_NATIVE_LIST
-  else if (Is<BaseListView>()) {
-    should_propagate =
-        static_cast<BaseListView*>(this)->OnScrollToMiddle(target_view);
-  }
-#endif
-  else if (Is<ScrollView>()) {
+  } else if (Is<ScrollView>()) {
     should_propagate =
         static_cast<ScrollView*>(this)->OnScrollToMiddle(target_view);
   }
@@ -3978,15 +3935,6 @@ int32_t BaseView::GetSemanticsActions() const {
                          scroll_view->CanScrollX(), scroll_view->CanScrollY());
       break;
     }
-#ifndef LYNX_ENABLE_CLAY_NATIVE_LIST
-    if (parent->Is<BaseListView>()) {
-      auto* list_view = static_cast<BaseListView*>(parent);
-      add_scroll_actions(list_view->GetScrollableDirection(),
-                         list_view->CanDragScrollOnX(),
-                         list_view->CanDragScrollOnY());
-      break;
-    }
-#endif
   }
   return actions;
 }
@@ -3999,13 +3947,6 @@ int32_t BaseView::GetSemanticsFlags() const {
           SemanticsNode::SemanticsFlag::kHasImplicitScrolling);
       break;
     }
-#ifndef LYNX_ENABLE_CLAY_NATIVE_LIST
-    if (parent->Is<BaseListView>()) {
-      flags |= static_cast<int32_t>(
-          SemanticsNode::SemanticsFlag::kHasImplicitScrolling);
-      break;
-    }
-#endif
   }
   return flags;
 }
