@@ -6,10 +6,12 @@
 #import <Lynx/LynxBackgroundUtils.h>
 #import <Lynx/LynxContext+Internal.h>
 #import <Lynx/LynxImageLoader.h>
+#import <Lynx/LynxImageManager.h>
 #import <Lynx/LynxRenderer+Internal.h>
 #import <Lynx/LynxRendererContext.h>
 #import <Lynx/LynxRendererHost.h>
 #import <Lynx/LynxTextLayer.h>
+#import <Lynx/LynxTextRenderManager.h>
 #import <Lynx/LynxUIContext.h>
 #import <Lynx/UIView+Lynx.h>
 #import "LynxDisplayListApplier+Internal.h"
