@@ -623,6 +623,19 @@ void LynxShell::DestroyRuntime(int32_t instance_id,
 
 bool LynxShell::IsDestroyed() { return is_destroyed_; }
 
+void LynxShell::ResetNativeUpdateDataOrderForLoad(
+    const std::shared_ptr<tasm::PipelineOptions>& pipeline_options) {
+  // Pre-load updates without a real pipeline can leave the native order ahead
+  // of the first load in any rendering mode. Limit the reset to embedded mode
+  // while validating the behavior, and remove this guard once it is proven
+  // safe for all modes.
+  if (!page_options_.IsEmbeddedModeOn()) {
+    return;
+  }
+  ui_operation_queue_->ResetNativeUpdateDataOrder();
+  pipeline_options->native_update_data_order_ = 0;
+}
+
 void LynxShell::LoadTemplate(
     const std::string& url, std::vector<uint8_t> source,
     std::shared_ptr<tasm::PipelineOptions> pipeline_options,
@@ -636,6 +649,8 @@ void LynxShell::LoadTemplate(
                     pipeline_options->pipeline_origin,
                     pipeline_options->pipeline_start_timestamp);
   }
+
+  ResetNativeUpdateDataOrderForLoad(pipeline_options);
 
   bool need_to_merge_back = false;
   if (hydration_pending_ && enable_async_hydration_) {
@@ -740,6 +755,8 @@ void LynxShell::LoadTemplateBundle(
                     pipeline_options->pipeline_origin,
                     pipeline_options->pipeline_start_timestamp);
   }
+
+  ResetNativeUpdateDataOrderForLoad(pipeline_options);
 
   EnsureTemplateDataThreadSafe(template_data);
   engine_actor_->Act(

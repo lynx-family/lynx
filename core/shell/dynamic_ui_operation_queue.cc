@@ -94,6 +94,10 @@ uint32_t DynamicUIOperationQueue::UpdateNativeUpdateDataOrder() {
   return impl_->UpdateNativeUpdateDataOrder();
 }
 
+void DynamicUIOperationQueue::ResetNativeUpdateDataOrder() {
+  impl_->ResetNativeUpdateDataOrder();
+}
+
 void DynamicUIOperationQueue::CreateImpl() {
   impl_ = is_engine_async_
               ? std::make_shared<shell::LynxUIOperationAsyncQueue>(ui_runner_,

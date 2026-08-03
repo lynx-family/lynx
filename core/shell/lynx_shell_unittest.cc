@@ -86,6 +86,27 @@ class LynxShellTest : public ::testing::Test {
   std::shared_ptr<fml::AutoResetWaitableEvent> arwe_;
 };
 
+TEST_F(LynxShellTest, ResetLoadOrderOnlyForEmbeddedMode) {
+  shell_->ui_operation_queue_->is_engine_async_ = true;
+  shell_->ui_operation_queue_->CreateImpl();
+  ASSERT_EQ(shell_->ui_operation_queue_->UpdateNativeUpdateDataOrder(), 1u);
+  ASSERT_EQ(shell_->ui_operation_queue_->UpdateNativeUpdateDataOrder(), 2u);
+
+  auto pipeline_options = std::make_shared<tasm::PipelineOptions>();
+  pipeline_options->native_update_data_order_ = 42;
+  shell_->ResetNativeUpdateDataOrderForLoad(pipeline_options);
+  EXPECT_EQ(shell_->ui_operation_queue_->GetNativeUpdateDataOrder(), 2u);
+  EXPECT_EQ(pipeline_options->native_update_data_order_, 42u);
+
+  tasm::PageOptions page_options;
+  page_options.SetEmbeddedMode(tasm::EmbeddedMode::EMBEDDED_MODE_BASE);
+  shell_->page_options_ = page_options;
+  shell_->ResetNativeUpdateDataOrderForLoad(pipeline_options);
+  EXPECT_EQ(shell_->ui_operation_queue_->GetNativeUpdateDataOrder(), 0u);
+  EXPECT_EQ(pipeline_options->native_update_data_order_, 0u);
+  EXPECT_EQ(shell_->ui_operation_queue_->UpdateNativeUpdateDataOrder(), 1u);
+}
+
 // for async operation, use arwe wait for result
 TEST_F(LynxShellTest, OnTemplateLoaded) {
   std::string url = "url";
