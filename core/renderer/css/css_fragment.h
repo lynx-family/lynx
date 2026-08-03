@@ -117,13 +117,17 @@ class CSSFragment {
     return rs && rs->HasAdjacentSiblingRules();
   }
 
-  virtual bool HasMediaQueryRules() {
-    return GetConditionRuleFlags() & css::RuleSet::kHasMediaQuery;
+  virtual bool HasCascadeLayers() {
+    return GetFeatureFlags() & css::RuleSet::kHasCascadeLayers;
   }
 
-  virtual uint8_t GetConditionRuleFlags() {
+  virtual bool HasMediaQueryRules() {
+    return GetFeatureFlags() & css::RuleSet::kHasMediaQuery;
+  }
+
+  virtual uint8_t GetFeatureFlags() {
     auto* rs = rule_set();
-    return rs ? rs->GetConditionRuleFlags() : 0;
+    return rs ? rs->GetFeatureFlags() : css::RuleSet::kNoFeatures;
   }
 
   bool HasPseudoStyle() { return !pseudo_map().empty(); }

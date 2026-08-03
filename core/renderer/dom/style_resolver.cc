@@ -810,9 +810,9 @@ bool StyleResolver::FragmentsHasMediaQueries(CSSFragment* style_sheet) {
   return style_sheet && style_sheet->HasMediaQueryRules();
 }
 
-uint8_t StyleResolver::GetConditionRuleFlags(CSSFragment* style_sheet) {
-  if (!style_sheet) return css::RuleSet::kNoConditionRules;
-  return style_sheet->GetConditionRuleFlags();
+uint8_t StyleResolver::GetFeatureFlags(CSSFragment* style_sheet) {
+  if (!style_sheet) return css::RuleSet::kNoFeatures;
+  return style_sheet->GetFeatureFlags();
 }
 
 StyleResolver::MatchedVector<css::MatchedRule> StyleResolver::GetCSSMatchedRule(
@@ -840,17 +840,23 @@ StyleResolver::MatchedVector<css::MatchedRule> StyleResolver::GetCSSMatchedRule(
         },
         &ctx);
 
-    // Skip when no matched rule belongs to an explicit layer
-    std::shared_ptr<const css::CascadeLayerMap> layer_map;
-    bool layer_map_queried = false;
-    for (auto& rule : matched_rules) {
-      if (auto* layer = rule.Data()->Layer()) {
-        if (!layer_map_queried) {
-          layer_map = style_sheet->GetCascadeLayerMap();
-          layer_map_queried = true;
-        }
-        if (layer_map) {
-          rule.SetLayerOrder(layer_map->GetLayerOrder(layer));
+    // Cascade layers are rare; skip the whole layer-order pass unless this
+    // stylesheet (or an adopted one) actually declares @layer. The cached
+    // HasCascadeLayers() gate is O(1), so the no-layer path avoids scanning
+    // matched rules and adopted stylesheets.
+    if (style_sheet->HasCascadeLayers()) {
+      // Skip when no matched rule belongs to an explicit layer
+      std::shared_ptr<const css::CascadeLayerMap> layer_map;
+      bool layer_map_queried = false;
+      for (auto& rule : matched_rules) {
+        if (auto* layer = rule.Data()->Layer()) {
+          if (!layer_map_queried) {
+            layer_map = style_sheet->GetCascadeLayerMap();
+            layer_map_queried = true;
+          }
+          if (layer_map) {
+            rule.SetLayerOrder(layer_map->GetLayerOrder(layer));
+          }
         }
       }
     }
@@ -893,7 +899,7 @@ StyleResolver::BuildMediaQueryEvaluator(ElementManager* element_manager,
 
 void StyleResolver::GetCSSStyleNew(AttributeHolder* node,
                                    CSSFragment* style_sheet) {
-  const uint8_t flags = GetConditionRuleFlags(style_sheet);
+  const uint8_t flags = GetFeatureFlags(style_sheet);
   std::unique_ptr<css::MediaQueryEvaluator> media_query_evaluator;
   if (flags & css::RuleSet::kHasMediaQuery) {
     media_query_evaluator = BuildMediaQueryEvaluator(manager(), element());

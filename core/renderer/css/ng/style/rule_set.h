@@ -95,31 +95,30 @@ class RuleSet {
     return false;
   }
 
+  bool HasCascadeLayers() const {
+    return GetFeatureFlags() & kHasCascadeLayers;
+  }
+
   // True when this rule set (or any merged dep) contains at least one
   // ConditionRule carrying a parsed @media query set. Callers can use this
   // as an O(1) gate to decide whether constructing a MediaQueryEvaluator is
   // worthwhile before invoking MatchStyles.
-  bool HasMediaQueryRules() const {
-    return GetConditionRuleFlags() & kHasMediaQuery;
-  }
+  bool HasMediaQueryRules() const { return GetFeatureFlags() & kHasMediaQuery; }
 
-  bool HasSupportsRules() const {
-    return GetConditionRuleFlags() & kHasSupports;
-  }
+  bool HasSupportsRules() const { return GetFeatureFlags() & kHasSupports; }
 
-  enum ConditionRuleFlags : uint8_t {
-    kNoConditionRules = 0,
-    kHasMediaQuery = 1 << 0,
-    kHasSupports = 1 << 1,
+  enum FeatureFlags : uint8_t {
+    kNoFeatures = 0,
+    kHasCascadeLayers = 1 << 0,
+    kHasMediaQuery = 1 << 1,
+    kHasSupports = 1 << 2,
   };
 
-  uint8_t GetConditionRuleFlags() const {
-    uint8_t flags = condition_rule_flags_;
-    for (const auto* dep : deps_) {
-      flags |= dep->GetConditionRuleFlags();
-    }
-    return flags;
+  void AddFeatureFlag(FeatureFlags feature_flag) {
+    feature_flags_ |= feature_flag;
   }
+
+  uint8_t GetFeatureFlags() const { return feature_flags_; }
 
   template <typename ForEachConditionalRuleVisitor>
   void ForEachConditionRule(ForEachConditionalRuleVisitor&& visitor) const {
@@ -157,7 +156,7 @@ class RuleSet {
   tasm::SharedCSSFragment* fragment_ = nullptr;
   unsigned rule_count_ = 0;
   bool has_adjacent_sibling_rules_ = false;
-  uint8_t condition_rule_flags_ = kNoConditionRules;
+  uint8_t feature_flags_ = kNoFeatures;
 };
 
 }  // namespace css

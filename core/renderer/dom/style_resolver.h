@@ -52,7 +52,7 @@ class StyleResolver {
                            Element* owning_element);
 
   static bool FragmentsHasMediaQueries(CSSFragment* style_sheet);
-  static uint8_t GetConditionRuleFlags(CSSFragment* style_sheet);
+  static uint8_t GetFeatureFlags(CSSFragment* style_sheet);
 
   void ResolveStyle(StyleMap& result, CSSFragment* fragment,
                     CSSVariableMap* changed_css_vars = nullptr);

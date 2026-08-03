@@ -712,7 +712,7 @@ ElementInspector::GetMatchedStyleSheet(Element* element) {
   }
 
   std::unique_ptr<css::SupportsEvaluator> supports_evaluator;
-  if (style_sheet->GetConditionRuleFlags() & css::RuleSet::kHasSupports) {
+  if (style_sheet->GetFeatureFlags() & css::RuleSet::kHasSupports) {
     if (auto* mgr = element->element_manager()) {
       supports_evaluator =
           std::make_unique<css::SupportsEvaluator>(mgr->GetCSSParserConfigs());
