@@ -680,13 +680,18 @@ void Shell::SetupOutputSurface(bool reuse_existing_surface) {
                            engine = engine_->GetWeakPtr(),
                            reuse_existing_surface](auto& impl) mutable {
     bool success = false;
-    if (reuse_existing_surface && impl.GetRasterizer()->HasSurface()) {
-      success =
-          impl.GetRasterizer()->DrawLastLayerTree() == RasterStatus::kSuccess;
-    } else {
+    auto* rasterizer = impl.GetRasterizer();
+    if (reuse_existing_surface && rasterizer->HasSurface() &&
+        rasterizer->GetLastLayerTree()) {
+      success = rasterizer->DrawLastLayerTree() == RasterStatus::kSuccess;
+    }
+    if (!success) {
       if (auto surface = output_surface->CreateGPUSurface();
           surface && surface->IsValid()) {
-        impl.GetRasterizer()->Setup(std::move(surface));
+        if (rasterizer->HasSurface()) {
+          rasterizer->Teardown();
+        }
+        rasterizer->Setup(std::move(surface));
         success = true;
       }
     }
