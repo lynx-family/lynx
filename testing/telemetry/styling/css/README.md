@@ -11,8 +11,11 @@ the Fiber styling and restyle pipeline:
   resolution costs.
 - `fiber_restyle_benchmark`: end-to-end class and CSS-variable mutations from
   invalidation through style resolution, including legacy/new styling
-  pipelines, representative parallel traversal, rule volume, and adopted
-  stylesheets.
+  pipelines, representative parallel traversal, rule volume, adopted
+  stylesheets, and `:active` pseudo-class changes. The pseudo-class cases run
+  with CSS inline variables and CSS inheritance enabled; they cover direct,
+  direct non-inherited (`background-color`), sparse descendant, and
+  inherited-style restyles.
 
 The synthetic trees and selectors are deterministic. The main tree sizes are
 127, 1023, and 4095 nodes; sparse cases target every eighth node. Setup,
@@ -90,4 +93,5 @@ pass/fail threshold.
 Useful filters for quicker iteration include
 `--benchmark_filter=BM_FiberClassInvalidation`,
 `--benchmark_filter=BM_SelectorMatcherDescendant`, and
-`--benchmark_filter=BM_FiberRestyleClass/NewDescendantSparse`.
+`--benchmark_filter=BM_FiberRestyleClass/NewDescendantSparse`. To run the
+pseudo-class cases, use `--benchmark_filter=BM_FiberRestylePseudoState`.

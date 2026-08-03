@@ -9,6 +9,7 @@
 #include <utility>
 
 #include "benchmark/benchmark.h"
+#include "core/renderer/css/css_color.h"
 #include "core/runtime/lepus/bindings/style/shared_css_fragment_wrapper.h"
 #include "testing/telemetry/styling/css/styling_benchmark_support.h"
 
@@ -20,11 +21,31 @@ namespace bs = benchmark_support;
 
 enum class ClassScenario { kSelf, kDescendantSparse, kWholeSubtree };
 enum class VariableScenario { kSparse, kDense, kUnrelated };
+enum class PseudoScenario {
+  kSelf,
+  kNonInheritedSelf,
+  kDescendantSparse,
+  kInheritedSubtree,
+};
 
 StyleMap WidthStyle(double width) {
   StyleMap styles;
   styles.insert_or_assign(CSSPropertyID::kPropertyIDWidth,
                           CSSValue(width, CSSValuePattern::PX));
+  return styles;
+}
+
+StyleMap ColorStyle(uint32_t color) {
+  StyleMap styles;
+  styles.insert_or_assign(CSSPropertyID::kPropertyIDColor,
+                          CSSValue(color, CSSValuePattern::NUMBER));
+  return styles;
+}
+
+StyleMap BackgroundColorStyle(uint32_t color) {
+  StyleMap styles;
+  styles.insert_or_assign(CSSPropertyID::kPropertyIDBackgroundColor,
+                          CSSValue(color, CSSValuePattern::NUMBER));
   return styles;
 }
 
@@ -35,11 +56,26 @@ bool HasWidth(bs::BenchmarkFiberElement& element, double expected) {
          value.AsNumber() == expected;
 }
 
+bool HasColor(bs::BenchmarkFiberElement& element) {
+  return element.GetElementStyle(CSSPropertyID::kPropertyIDColor).has_value();
+}
+
+bool HasBackgroundColor(bs::BenchmarkFiberElement& element) {
+  return element.GetElementStyle(CSSPropertyID::kPropertyIDBackgroundColor)
+      .has_value();
+}
+
 void ChangeClass(bs::FiberTree& tree, const char* class_name) {
   const ClassList old_classes = tree.root()->classes();
   ClassList new_classes = {base::String(class_name)};
   tree.root()->OnClassChanged(old_classes, new_classes);
   tree.root()->SetClasses(std::move(new_classes));
+}
+
+void ChangePseudoState(bs::FiberTree& tree, bool active) {
+  tree.root()->OnPseudoStatusChanged(
+      active ? kPseudoStateNone : kPseudoStateActive,
+      active ? kPseudoStateActive : kPseudoStateNone);
 }
 
 bs::BenchmarkFiberElement* FirstDescendantTarget(bs::FiberTree& tree,
@@ -64,6 +100,134 @@ size_t DescendantTargetCount(size_t node_count, size_t target_stride) {
     result += i % target_stride == 0 ? 1 : 0;
   }
   return result;
+}
+
+void BM_FiberRestylePseudoState(benchmark::State& state, bool new_pipeline,
+                                PseudoScenario scenario) {
+  const size_t node_count = static_cast<size_t>(state.range(0));
+  const size_t target_stride =
+      scenario == PseudoScenario::kDescendantSparse ? 8 : 0;
+
+  // BenchmarkEnvironment explicitly enables CSS inline variables and CSS
+  // inheritance so pseudo-class invalidation uses the production styling
+  // configuration. The inherited scenario exercises the latter directly.
+  bs::BenchmarkEnvironment env(new_pipeline);
+  auto fragment = bs::CreateFragment(bs::kBenchmarkCSSId);
+  switch (scenario) {
+    case PseudoScenario::kSelf:
+      bs::AddRule(*fragment, "view", WidthStyle(10));
+      bs::AddRule(*fragment, ":active", WidthStyle(20));
+      break;
+    case PseudoScenario::kNonInheritedSelf:
+      bs::AddRule(*fragment, ":active", BackgroundColorStyle(CSSColor::White));
+      break;
+    case PseudoScenario::kDescendantSparse:
+      bs::AddRule(*fragment, ".target", WidthStyle(10));
+      bs::AddRule(*fragment, ":active .target", WidthStyle(20));
+      break;
+    case PseudoScenario::kInheritedSubtree:
+      bs::AddRule(*fragment, ":active", ColorStyle(CSSColor::White));
+      break;
+  }
+
+  auto tree =
+      bs::BuildBalancedTree(*env.element_manager, node_count, target_stride);
+  auto style_sheet_manager =
+      bs::InstallIntrinsicStyleSheet(*tree.page, std::move(fragment));
+  benchmark::DoNotOptimize(style_sheet_manager.get());
+
+  bs::BenchmarkFiberElement* verification_target = tree.root();
+  if (scenario == PseudoScenario::kDescendantSparse) {
+    verification_target = FirstDescendantTarget(tree, target_stride);
+  }
+  auto* inheritance_target = scenario == PseudoScenario::kInheritedSubtree
+                                 ? tree.nodes[1].get()
+                                 : nullptr;
+  auto* non_inherited_child = scenario == PseudoScenario::kNonInheritedSelf
+                                  ? tree.nodes[1].get()
+                                  : nullptr;
+  if (verification_target == nullptr ||
+      (scenario == PseudoScenario::kInheritedSubtree &&
+       inheritance_target == nullptr) ||
+      (scenario == PseudoScenario::kNonInheritedSelf &&
+       non_inherited_child == nullptr)) {
+    state.SkipWithError("pseudo-state fixture has no verification target");
+    return;
+  }
+
+  tree.page->FlushActionsAsRoot();
+  if (scenario == PseudoScenario::kInheritedSubtree) {
+    if (HasColor(*inheritance_target)) {
+      state.SkipWithError("inactive pseudo state unexpectedly inherited color");
+      return;
+    }
+  } else if (scenario == PseudoScenario::kNonInheritedSelf) {
+    if (HasBackgroundColor(*verification_target) ||
+        HasBackgroundColor(*non_inherited_child)) {
+      state.SkipWithError(
+          "inactive pseudo state unexpectedly retained background color");
+      return;
+    }
+  } else if (!HasWidth(*verification_target, 10)) {
+    state.SkipWithError("initial pseudo-state style did not resolve width");
+    return;
+  }
+
+  ChangePseudoState(tree, true);
+  tree.page->FlushActionsAsRoot();
+  if (scenario == PseudoScenario::kInheritedSubtree) {
+    if (!HasColor(*inheritance_target)) {
+      state.SkipWithError("active pseudo state did not inherit color");
+      return;
+    }
+  } else if (scenario == PseudoScenario::kNonInheritedSelf) {
+    if (!HasBackgroundColor(*verification_target) ||
+        HasBackgroundColor(*non_inherited_child)) {
+      state.SkipWithError(
+          "active pseudo state did not isolate background color to self");
+      return;
+    }
+  } else if (!HasWidth(*verification_target, 20)) {
+    state.SkipWithError("active pseudo state did not resolve width");
+    return;
+  }
+
+  ChangePseudoState(tree, false);
+  tree.page->FlushActionsAsRoot();
+  if (scenario == PseudoScenario::kInheritedSubtree) {
+    if (HasColor(*inheritance_target)) {
+      state.SkipWithError("inactive pseudo state retained inherited color");
+      return;
+    }
+  } else if (scenario == PseudoScenario::kNonInheritedSelf) {
+    if (HasBackgroundColor(*verification_target) ||
+        HasBackgroundColor(*non_inherited_child)) {
+      state.SkipWithError("inactive pseudo state retained background color");
+      return;
+    }
+  } else if (!HasWidth(*verification_target, 10)) {
+    state.SkipWithError("inactive pseudo state did not restore width");
+    return;
+  }
+
+  bool activate_next = true;
+  for (auto _ : state) {
+    ChangePseudoState(tree, activate_next);
+    tree.page->FlushActionsAsRoot();
+    benchmark::DoNotOptimize(verification_target->computed_css_style());
+    activate_next = !activate_next;
+  }
+
+  size_t affected_nodes = 1;
+  if (scenario == PseudoScenario::kDescendantSparse) {
+    affected_nodes = DescendantTargetCount(node_count, target_stride);
+  } else if (scenario == PseudoScenario::kInheritedSubtree) {
+    affected_nodes = node_count;
+  }
+  state.counters["Nodes"] = static_cast<double>(node_count);
+  state.counters["AffectedNodes"] = static_cast<double>(affected_nodes);
+  state.counters["NewPipeline"] = new_pipeline ? 1 : 0;
+  state.SetItemsProcessed(state.iterations() * affected_nodes);
 }
 
 void BM_FiberRestyleClass(benchmark::State& state, bool new_pipeline,
@@ -332,6 +496,28 @@ void BM_FiberRestyleAdoptedStylesheets(benchmark::State& state,
       ->Arg(4095)                                                          \
       ->UseRealTime()
 
+#define REGISTER_SERIAL_PSEUDO(name, pipeline, scenario)                  \
+  BENCHMARK_CAPTURE(BM_FiberRestylePseudoState, name, pipeline, scenario) \
+      ->Arg(127)                                                          \
+      ->Arg(1023)                                                         \
+      ->Arg(4095)                                                         \
+      ->UseRealTime()
+
+REGISTER_SERIAL_PSEUDO(LegacySelf, false, PseudoScenario::kSelf);
+REGISTER_SERIAL_PSEUDO(NewSelf, true, PseudoScenario::kSelf);
+REGISTER_SERIAL_PSEUDO(LegacyNonInheritedSelf, false,
+                       PseudoScenario::kNonInheritedSelf);
+REGISTER_SERIAL_PSEUDO(NewNonInheritedSelf, true,
+                       PseudoScenario::kNonInheritedSelf);
+REGISTER_SERIAL_PSEUDO(LegacyDescendantSparse, false,
+                       PseudoScenario::kDescendantSparse);
+REGISTER_SERIAL_PSEUDO(NewDescendantSparse, true,
+                       PseudoScenario::kDescendantSparse);
+REGISTER_SERIAL_PSEUDO(LegacyInheritedSubtree, false,
+                       PseudoScenario::kInheritedSubtree);
+REGISTER_SERIAL_PSEUDO(NewInheritedSubtree, true,
+                       PseudoScenario::kInheritedSubtree);
+
 REGISTER_SERIAL_CLASS(LegacySelf, false, ClassScenario::kSelf);
 REGISTER_SERIAL_CLASS(NewSelf, true, ClassScenario::kSelf);
 REGISTER_SERIAL_CLASS(LegacyDescendantSparse, false,
@@ -402,6 +588,7 @@ BENCHMARK_CAPTURE(BM_FiberRestyleAdoptedStylesheets, New, true)
     ->UseRealTime();
 
 #undef REGISTER_SERIAL_CLASS
+#undef REGISTER_SERIAL_PSEUDO
 #undef REGISTER_SERIAL_VARIABLE
 
 }  // namespace

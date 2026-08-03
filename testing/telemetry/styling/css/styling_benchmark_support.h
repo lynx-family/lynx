@@ -24,6 +24,7 @@
 #include "core/renderer/css/shared_css_fragment.h"
 #include "core/renderer/dom/element.h"
 #include "core/renderer/dom/element_manager.h"
+#include "core/renderer/dom/element_manager_delegate.h"
 #include "core/renderer/dom/fiber/page_element.h"
 #include "core/renderer/pipeline/pipeline_context.h"
 #include "core/template_bundle/template_codec/binary_decoder/page_config.h"
@@ -146,6 +147,51 @@ class NoOpDelegate : public ElementManager::Delegate {
                                int element_count) override {}
 };
 
+class NoOpElementManagerDelegate : public ElementManagerDelegate {
+ public:
+  void LoadFrameBundle(const std::string& src, FrameElement* element) override {
+  }
+  void DidFrameBundleLoaded(
+      const LazyBundleLoader::CallBackInfo& callback_info) override {}
+  void OnFrameRemoved(FrameElement* element) override {}
+
+  PipelineContext* GetCurrentPipelineContext() override { return nullptr; }
+
+  PipelineContext* CreateAndUpdateCurrentPipelineContext(
+      const std::shared_ptr<PipelineOptions>& pipeline_options,
+      bool is_major_updated) override {
+    return nullptr;
+  }
+
+  void SendGlobalEvent(const std::string& event,
+                       const lepus::Value& info) override {}
+  void TriggerLepusGlobalEvent(const std::string& event,
+                               const lepus::Value& info) override {}
+  event::DispatchEventResult DispatchMessageEvent(
+      fml::RefPtr<runtime::MessageEvent> event) override {
+    return {event::EventCancelType::kNotCanceled, false};
+  }
+  bool EnableEventHandleRefactor() const override { return false; }
+  bool SupportComponentJS() const override { return false; }
+  runtime::MTSRuntime* GetDefaultEntryRuntime() const override {
+    return nullptr;
+  }
+  runtime::MTSRuntime* GetEntryRuntime(
+      const std::string& entry_name) const override {
+    return nullptr;
+  }
+  std::string GetDefaultEntryLogicalName() const override { return {}; }
+  EventResult FireElementWorkletAndRequestResolve(
+      const std::string& component_id, const std::string& entry_name,
+      const lepus::Value& callback, const lepus::Value& event_detail,
+      const std::shared_ptr<worklet::LepusApiHandler>& task_handler,
+      int32_t element_id,
+      std::shared_ptr<PipelineOptions>& pipeline_options) override {
+    return static_cast<EventResult>(0);
+  }
+  void OnLayoutAfter(PipelineLayoutData& data) override {}
+};
+
 struct BenchmarkEnvironment {
   explicit BenchmarkEnvironment(bool new_styling_pipeline = false,
                                 bool level_order_parallel = false) {
@@ -153,9 +199,11 @@ struct BenchmarkEnvironment {
                                   kBenchmarkLayoutsUnitPerPx,
                                   kBenchmarkPhysicalPixelsPerLayoutUnit);
     delegate = std::make_unique<NoOpDelegate>();
+    element_manager_delegate = std::make_unique<NoOpElementManagerDelegate>();
     element_manager = std::make_unique<ElementManager>(
         std::make_unique<NoOpPaintingContext>(), delegate.get(),
         lynx_env_config);
+    element_manager->SetElementManagerDelegate(element_manager_delegate.get());
 
     config = std::make_shared<PageConfig>();
     config->SetEnableFiberArch(true);
@@ -169,6 +217,7 @@ struct BenchmarkEnvironment {
     element_manager->SetEnableLevelOrderTraversing(level_order_parallel);
   }
 
+  std::unique_ptr<NoOpElementManagerDelegate> element_manager_delegate;
   std::unique_ptr<ElementManager> element_manager;
   std::unique_ptr<NoOpDelegate> delegate;
   std::shared_ptr<PageConfig> config;
