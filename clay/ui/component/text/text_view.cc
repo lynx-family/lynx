@@ -496,7 +496,9 @@ void TextView::getTextBoundingRect(const LynxModuleValues& args,
 
 void TextView::getSelectedText(const LynxUIMethodCallback& callback) {
   auto text = lynx::base::U16StringToU8(GetRenderText()->GetSelectionString());
-  callback(LynxUIMethodResult::kSuccess, clay::Value(std::move(text)));
+  clay::Value::Map result;
+  result["selectedText"] = clay::Value(std::move(text));
+  callback(LynxUIMethodResult::kSuccess, clay::Value(std::move(result)));
 }
 
 RenderText* TextView::GetRenderText() {
