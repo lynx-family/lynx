@@ -8,6 +8,7 @@
 #import <Lynx/LynxRendererContext.h>
 #import <Lynx/LynxRendererHost.h>
 #import <QuartzCore/QuartzCore.h>
+#import <UIKit/UIView.h>
 
 @implementation LynxRenderer {
   __weak UIView<LynxRendererHost>* _host;

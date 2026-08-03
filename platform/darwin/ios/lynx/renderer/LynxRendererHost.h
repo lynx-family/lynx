@@ -3,12 +3,11 @@
 // LICENSE file in the root directory of this source tree.
 
 #import <Foundation/Foundation.h>
-#import <Lynx/LynxRenderer.h>
 #import <Lynx/LynxUIMethodProcessor.h>
-#import <UIKit/UIKit.h>
 
 @class LynxRenderer;
 @class LynxRendererContext;
+@class UIView;
 
 @protocol LynxRendererHost <NSObject>
 
