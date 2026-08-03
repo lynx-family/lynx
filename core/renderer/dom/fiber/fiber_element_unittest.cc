@@ -9352,6 +9352,85 @@ TEST_P(FiberElementTest, TestPseudoStatusChangeInheritance) {
   EXPECT_FALSE(deactivated_color.has_value());
 }
 
+TEST_P(FiberElementTest, TestPseudoStatusChangeInheritanceLegacyPipeline) {
+  // Legacy-pipeline counterpart of TestPseudoStatusChangeInheritance: with
+  // the new styling pipeline disabled, inherited styles must still re-flow
+  // to children when a pseudo rule with an inheritable property (e.g. color)
+  // toggles, driven by the flush-time children_propagate_inherited_styles_flag_
+  // propagation rather than any eager subtree invalidation.
+  manager->config_->SetEnableCSSInheritance(true);
+
+  CSSParserConfigs configs;
+  CSSParserTokenMap indexTokensMap;
+  CSSParserTokenMap pseudo_map;
+  {
+    auto tokens = fml::MakeRefCounted<CSSParseToken>(configs);
+    tokens.get()->raw_attributes_[CSSPropertyID::kPropertyIDOpacity] =
+        CSSValue(lepus::Value(1.0), CSSValuePattern::STRING);
+    std::string key = ".test";
+    auto& sheets = tokens->sheets();
+    sheets.emplace_back(std::make_shared<CSSSheet>(key));
+    indexTokensMap.insert(std::make_pair(key, tokens));
+  }
+  {
+    auto tokens = fml::MakeRefCounted<CSSParseToken>(configs);
+    tokens.get()->raw_attributes_[CSSPropertyID::kPropertyIDColor] =
+        CSSValue(lepus::Value("white"), CSSValuePattern::STRING);
+    std::string key = ".test:active";
+    auto& sheets = tokens->sheets();
+    sheets.emplace_back(std::make_shared<CSSSheet>(key));
+    pseudo_map.emplace(key, tokens);
+    indexTokensMap.insert(std::make_pair(key, tokens));
+  }
+
+  const std::vector<int32_t> dependent_ids;
+  CSSKeyframesTokenMap keyframes;
+  CSSFontFaceRuleMap fontfaces;
+  auto indexFragment = std::make_shared<SharedCSSFragment>(
+      1, dependent_ids, indexTokensMap, keyframes, fontfaces);
+  indexFragment->MarkHasTouchPseudoToken();
+  indexFragment->pseudo_map_ = pseudo_map;
+
+  auto page = manager->CreateFiberPage("page", 11);
+  base::String component_id("21");
+  int32_t css_id = 100;
+  base::String entry_name("__Card__");
+  base::String component_name("TestComp");
+  base::String path("/index/components/TestComp");
+  auto comp = manager->CreateFiberComponent(component_id, css_id, entry_name,
+                                            component_name, path);
+  comp->style_sheet_ =
+      std::make_unique<CSSFragmentDecorator>(indexFragment.get());
+  page->InsertNode(comp);
+
+  auto parent = manager->CreateFiberView();
+  parent->SetParentComponentUniqueIdForFiber(
+      static_cast<int64_t>(comp->impl_id()));
+  comp->InsertNode(parent);
+  parent->SetClass(base::String("test"));
+
+  auto child = manager->CreateFiberView();
+  child->SetParentComponentUniqueIdForFiber(
+      static_cast<int64_t>(comp->impl_id()));
+  parent->InsertNode(child);
+
+  page->FlushActionsAsRoot();
+
+  parent->OnPseudoStatusChanged(kPseudoStateNone, kPseudoStateActive);
+
+  // Inherited styles must still re-flow to children after flush.
+  page->FlushActionsAsRoot();
+  auto activated_color =
+      child->GetElementStyle(CSSPropertyID::kPropertyIDColor);
+  EXPECT_TRUE(activated_color.has_value());
+
+  parent->OnPseudoStatusChanged(kPseudoStateActive, kPseudoStateNone);
+  page->FlushActionsAsRoot();
+  auto deactivated_color =
+      child->GetElementStyle(CSSPropertyID::kPropertyIDColor);
+  EXPECT_FALSE(deactivated_color.has_value());
+}
+
 TEST_P(FiberElementTest, RemoveIntergenerationalChild) {
   //===test fixed element =====//
   // normal case
