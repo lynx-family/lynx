@@ -18,6 +18,7 @@ import com.lynx.devtoolwrapper.LynxDevtoolGlobalHelper;
 import com.lynx.explorer.LynxViewShellActivity;
 import com.lynx.explorer.scan.QRScanActivity;
 import com.lynx.explorer.shell.TemplateDispatcher;
+import com.lynx.explorer.utils.QueryMapUtils;
 import com.lynx.react.bridge.JavaOnlyMap;
 import com.lynx.react.bridge.WritableMap;
 import com.lynx.tasm.LynxEnv;
@@ -31,7 +32,15 @@ public class LynxModuleAdapter {
   private LynxDevtoolCardListener mListener = new LynxDevtoolCardListener() {
     @Override
     public void open(String url) {
-      startFromUrlSingleTop(url);
+      QueryMapUtils queryMap = new QueryMapUtils();
+      queryMap.parse(url);
+      if (queryMap.contains("group")) {
+        // Cards opened into a shared-context group must not clear existing
+        // cards: stack a new activity so multiple cards stay alive together.
+        TemplateDispatcher.dispatchUrl(mContext, url, Intent.FLAG_ACTIVITY_NEW_TASK);
+      } else {
+        startFromUrlSingleTop(url);
+      }
     }
   };
 

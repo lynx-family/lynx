@@ -9,6 +9,7 @@
 #endif
 #import <Lynx/LynxBackgroundRuntime.h>
 #import <Lynx/LynxEnv.h>
+#import <Lynx/LynxGroup.h>
 #import <Lynx/LynxProviderRegistry.h>
 #import <Lynx/LynxView+Identify.h>
 #import <Lynx/LynxView.h>
@@ -280,6 +281,25 @@ static BOOL IsTruthyParam(id value) {
   return globalProps;
 }
 
+// Named shared-context groups. Cards opened with the same `group=<name>` query
+// param share one LynxGroup, and thus one background JS context.
++ (LynxGroup *)sharedContextGroupWithName:(NSString *)name {
+  static NSMutableDictionary<NSString *, LynxGroup *> *groups;
+  static dispatch_once_t onceToken;
+  dispatch_once(&onceToken, ^{
+    groups = [NSMutableDictionary new];
+  });
+  @synchronized(groups) {
+    LynxGroup *group = groups[name];
+    if (!group) {
+      group = [[LynxGroup alloc] initWithName:name];
+      groups[name] = group;
+      NSLog(@"Created shared-context LynxGroup name=%@ id=%@", name, group.identification);
+    }
+    return group;
+  }
+}
+
 - (void)loadLynxViewWithUrl:(NSString *)url templateData:(NSData *)data {
   CGSize screenSize = [self screenSizeForCurrentBounds];
   CGRect lynxViewFrame = [self lynxViewFrameForScreenSize:screenSize];
@@ -324,6 +344,10 @@ static BOOL IsTruthyParam(id value) {
     builder.templateResourceFetcher = [[DemoTemplateResourceFetcher alloc] init];
     builder.mediaResourceFetcher = [[DemoMediaResourceFetcher alloc] init];
     [builder setThreadStrategyForRender:threadStrategy];
+    NSString *groupName = [self.params valueForKey:@"group"];
+    if ([groupName isKindOfClass:NSString.class] && groupName.length > 0) {
+      builder.group = [LynxViewShellViewController sharedContextGroupWithName:groupName];
+    }
   }];
 #if HAS_SPARKLING
   lynxView.containerID = containerID;

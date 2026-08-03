@@ -10,12 +10,14 @@ import android.content.pm.ActivityInfo;
 import android.content.res.AssetManager;
 import android.content.res.Configuration;
 import android.graphics.Color;
+import android.graphics.drawable.GradientDrawable;
 import android.os.Build;
 import android.os.Bundle;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.Display;
 import android.view.DisplayCutout;
+import android.view.Gravity;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
@@ -33,6 +35,7 @@ import com.lynx.explorer.provider.DemoMediaResourceFetcher;
 import com.lynx.explorer.provider.DemoTemplateResourceFetcher;
 import com.lynx.explorer.utils.QueryMapUtils;
 import com.lynx.tasm.LynxBooleanOption;
+import com.lynx.tasm.LynxGroup;
 import com.lynx.tasm.LynxView;
 import com.lynx.tasm.LynxViewBuilder;
 import com.lynx.tasm.TemplateData;
@@ -63,6 +66,20 @@ public class LynxViewShellActivity extends AppCompatActivity {
   private String mFrontendTheme;
   private TimingHandler.ExtraTimingInfo extraTimingInfo = new TimingHandler.ExtraTimingInfo();
 
+  // Named shared-context groups. Cards opened with the same `group=<name>` query
+  // param share one LynxGroup, and thus one background JS context.
+  private static final Map<String, LynxGroup> sNamedGroups = new HashMap<>();
+
+  private static synchronized LynxGroup getOrCreateNamedGroup(String name) {
+    LynxGroup group = sNamedGroups.get(name);
+    if (group == null) {
+      group = new LynxGroup.LynxGroupBuilder().setGroupName(name).build();
+      sNamedGroups.put(name, group);
+      Log.d(TAG, "Created shared-context LynxGroup name=" + name + " id=" + group.getID());
+    }
+    return group;
+  }
+
   @Override
   protected void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
@@ -91,6 +108,36 @@ public class LynxViewShellActivity extends AppCompatActivity {
     extraTimingInfo.mContainerInitEnd = System.currentTimeMillis();
 
     openTargetUrl(url);
+
+    // Card pages cover the homepage, leaving no entry to open another page
+    // while keeping this one alive in the back stack. Add a floating button
+    // that stacks a fresh homepage on top.
+    if (!HOME_PAGE_URL.equals(url)) {
+      addOpenNewPageButton();
+    }
+  }
+
+  private void addOpenNewPageButton() {
+    TextView button = new TextView(this);
+    button.setText("+");
+    button.setTextSize(24);
+    button.setTextColor(Color.WHITE);
+    button.setGravity(Gravity.CENTER);
+    button.setIncludeFontPadding(false);
+    GradientDrawable background = new GradientDrawable();
+    background.setShape(GradientDrawable.OVAL);
+    background.setColor(Color.parseColor("#803B82F6"));
+    button.setBackground(background);
+
+    float density = getResources().getDisplayMetrics().density;
+    int size = (int) (44 * density);
+    int margin = (int) (20 * density);
+    FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(size, size);
+    params.gravity = Gravity.BOTTOM | Gravity.END;
+    params.setMargins(0, 0, margin, margin * 3);
+
+    button.setOnClickListener(v -> startActivity(new Intent(this, LynxViewShellActivity.class)));
+    mLynxContainer.addView(button, params);
   }
 
   @Override
@@ -275,6 +322,10 @@ public class LynxViewShellActivity extends AppCompatActivity {
     }
 
     boolean enableNapiAddon = queryMap.getBoolean("enable_napi_addon", false);
+
+    if (queryMap.contains("group")) {
+      builder.setLynxGroup(getOrCreateNamedGroup(queryMap.getString("group")));
+    }
 
     LynxView lynxView = builder.build(this);
     if (enableNapiAddon) {
