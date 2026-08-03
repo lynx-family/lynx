@@ -1,13 +1,9 @@
 # CHANGELOG
 
-## 4.2.2
-- Add `experimental-android-enable-new-overflow` typing for `<scroll-view>`.
-
-## 4.2.1
-- Add Harmony support metadata for `maxSnapCount` on the `item-snap` property for `<list>`.
-
 ## 4.2.0
 - Add `box-shadow` to `transition-property` typings.
+- Add Harmony support metadata for `maxSnapCount` on the `item-snap` property for `<list>`.
+- Add `experimental-android-enable-new-overflow` typing for `<scroll-view>`.
 
 ## 4.1.0
 - Introduce experimental `<video>` element types.
