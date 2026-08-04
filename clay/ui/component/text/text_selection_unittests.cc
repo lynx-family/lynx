@@ -3,12 +3,15 @@
 // LICENSE file in the root directory of this source tree.
 
 #include <array>
+#include <initializer_list>
+#include <list>
 #include <memory>
 #include <optional>
 #include <string>
 #include <utility>
 
 #include "clay/fml/icu_util.h"
+#include "clay/ui/component/text/inline_text_view.h"
 #include "clay/ui/component/text/text_paragraph_builder.h"
 #include "clay/ui/component/text/text_view.h"
 #include "clay/ui/lynx_module/lynx_ui_method_types.h"
@@ -57,7 +60,8 @@ bool IsNumber(const clay::Value& value) {
 
 std::unique_ptr<txt::Paragraph> CreateParagraph(
     const std::u16string& text,
-    std::optional<TextDirection> direction = std::nullopt) {
+    std::optional<TextDirection> direction = std::nullopt,
+    float width = 1000.f) {
   TextStyle style;
   style.font_size = 50.f;
   style.text_direction = direction;
@@ -65,6 +69,33 @@ std::unique_ptr<txt::Paragraph> CreateParagraph(
   builder->PushStyle(style);
   builder->AddText(text);
   builder->Pop();
+  auto paragraph = Build(std::move(builder));
+  paragraph->Layout(width);
+  return paragraph;
+}
+
+std::unique_ptr<txt::Paragraph> CreateParagraph(const std::u16string& text,
+                                                float width) {
+  return CreateParagraph(text, std::nullopt, width);
+}
+
+std::unique_ptr<txt::Paragraph> CreateParagraph(
+    std::initializer_list<std::u16string> runs) {
+  TextStyle base_style;
+  base_style.font_size = 50.f;
+  auto builder = std::make_unique<TextParagraphBuilder>(true, base_style);
+  constexpr Color kRunColors[] = {
+      Color::kBlack(), Color::kRed(),     Color::kGreen(),
+      Color::kBlue(),  Color::kMagenta(), Color::kCyan(),
+  };
+  size_t index = 0;
+  for (const auto& run : runs) {
+    TextStyle run_style = base_style;
+    run_style.text_color = kRunColors[index++ % std::size(kRunColors)];
+    builder->PushStyle(run_style);
+    builder->AddText(run);
+    builder->Pop();
+  }
   auto paragraph = Build(std::move(builder));
   paragraph->Layout(1000);
   return paragraph;
@@ -499,5 +530,190 @@ TEST_F_UI(TextSelectionTest, SetTextSelectionHidesVisualStartHandle) {
   ASSERT_NE(text_view_->end_selection_handle_, nullptr);
   EXPECT_EQ(text_view_->end_selection_handle_->GetHandleType(), kRight);
 }
+
+#if defined(OS_WIN) || defined(OS_OSX)
+TEST_F_UI(TextSelectionTest, SelectWordSupportsMixedChineseEnglishAndEmoji) {
+  const std::u16string text =
+      u"\u4E2D\u6587 mixed \U0001F642 emoji \u6D4B\u8BD5 \U0001F680 end";
+  text_view_->SetParagraph(CreateParagraph(text), text);
+
+  auto first_chinese_boundary = text_view_->SelectWord(1);
+  EXPECT_GE(first_chinese_boundary.start(), 0u);
+  EXPECT_LE(first_chinese_boundary.start(), 1u);
+  EXPECT_EQ(first_chinese_boundary.end(), 2u);
+  EXPECT_EQ(text_view_->SelectWord(2, Affinity::kUpstream),
+            first_chinese_boundary);
+  EXPECT_EQ(text_view_->SelectWord(5), TextRange(3, 8));
+  EXPECT_EQ(text_view_->SelectWord(8, Affinity::kUpstream), TextRange(3, 8));
+  EXPECT_EQ(text_view_->SelectWord(9), TextRange(9, 11));
+  EXPECT_EQ(text_view_->SelectWord(11, Affinity::kUpstream), TextRange(9, 11));
+  auto second_chinese_boundary = text_view_->SelectWord(19);
+  EXPECT_GE(second_chinese_boundary.start(), 18u);
+  EXPECT_LE(second_chinese_boundary.start(), 19u);
+  EXPECT_EQ(second_chinese_boundary.end(), 20u);
+  EXPECT_EQ(text_view_->SelectWord(20, Affinity::kUpstream),
+            second_chinese_boundary);
+  EXPECT_EQ(text_view_->SelectWord(21), TextRange(21, 23));
+  EXPECT_EQ(text_view_->SelectWord(23, Affinity::kUpstream), TextRange(21, 23));
+}
+
+TEST_F_UI(TextSelectionTest, SelectWordCrossesNestedInlineTextBoundaries) {
+  // The English and Chinese words are each split into separate styled runs.
+  // Their middle/end runs are also represented by nested InlineTextViews,
+  // matching the event-routing hierarchy used by TextUpdateBundle.
+  const std::u16string text =
+      u"\u524D\u7F00 selection\U0001F642 \u4E2D\u6587 \u540E\u7F00";
+  auto paragraph =
+      CreateParagraph({u"\u524D\u7F00 ", u"sel", u"ect", u"ion", u"\U0001F642 ",
+                       u"\u4E2D", u"\u6587", u" \u540E\u7F00"});
+  auto* paragraph_ptr = paragraph.get();
+  text_view_->SetParagraph(std::move(paragraph), text);
+
+  auto english_boxes = paragraph_ptr->GetRectsForRange(
+      7, 8, txt::Paragraph::RectHeightStyle::kTight,
+      txt::Paragraph::RectWidthStyle::kTight);
+  auto chinese_boxes = paragraph_ptr->GetRectsForRange(
+      16, 17, txt::Paragraph::RectHeightStyle::kTight,
+      txt::Paragraph::RectWidthStyle::kTight);
+  ASSERT_FALSE(english_boxes.empty());
+  ASSERT_FALSE(chinese_boxes.empty());
+
+  auto english_outer =
+      std::make_unique<InlineTextView>(2, text_view_->page_view());
+  auto english_inner =
+      std::make_unique<InlineTextView>(3, text_view_->page_view());
+  auto chinese_outer =
+      std::make_unique<InlineTextView>(4, text_view_->page_view());
+  auto chinese_inner =
+      std::make_unique<InlineTextView>(5, text_view_->page_view());
+  std::list<TextRange> english_outer_ranges{TextRange(3, 12)};
+  std::list<TextRange> english_inner_ranges{TextRange(6, 9)};
+  std::list<TextRange> chinese_outer_ranges{TextRange(15, 17)};
+  std::list<TextRange> chinese_inner_ranges{TextRange(16, 17)};
+  english_outer->SetTextRange(english_outer_ranges);
+  english_inner->SetTextRange(english_inner_ranges);
+  chinese_outer->SetTextRange(chinese_outer_ranges);
+  chinese_inner->SetTextRange(chinese_inner_ranges);
+  text_view_->AddChild(english_outer.get());
+  english_outer->AddChild(english_inner.get());
+  text_view_->AddChild(chinese_outer.get());
+  chinese_outer->AddChild(chinese_inner.get());
+
+  const auto& english_rect = english_boxes.front().rect;
+  FloatPoint english_point((english_rect.Left() + english_rect.Right()) / 2,
+                           (english_rect.Top() + english_rect.Bottom()) / 2);
+  EXPECT_EQ(text_view_->GetViewAtPosition(english_point, english_point),
+            english_inner.get());
+  EXPECT_EQ(text_view_->SelectWord(7), TextRange(3, 12));
+  EXPECT_EQ(text_view_->GetRenderText()->GetSelectionString(), u"selection");
+
+  const auto& chinese_rect = chinese_boxes.front().rect;
+  FloatPoint chinese_point((chinese_rect.Left() + chinese_rect.Right()) / 2,
+                           (chinese_rect.Top() + chinese_rect.Bottom()) / 2);
+  EXPECT_EQ(text_view_->GetViewAtPosition(chinese_point, chinese_point),
+            chinese_inner.get());
+  auto chinese_boundary = text_view_->SelectWord(16);
+  EXPECT_GE(chinese_boundary.start(), 15u);
+  EXPECT_LE(chinese_boundary.start(), 16u);
+  EXPECT_EQ(chinese_boundary.end(), 17u);
+  auto chinese_selection = text_view_->GetRenderText()->GetSelectionString();
+  EXPECT_TRUE(chinese_selection == u"\u4E2D\u6587" ||
+              chinese_selection == u"\u6587");
+
+  // The adjacent surrogate-pair emoji must remain a separate boundary.
+  EXPECT_EQ(text_view_->SelectWord(12), TextRange(12, 14));
+  EXPECT_EQ(text_view_->GetRenderText()->GetSelectionString(), u"\U0001F642");
+
+  english_outer->RemoveChild(english_inner.get());
+  chinese_outer->RemoveChild(chinese_inner.get());
+  text_view_->RemoveChild(english_outer.get());
+  text_view_->RemoveChild(chinese_outer.get());
+}
+
+TEST_F_UI(TextSelectionTest, SelectLineSelectsVisualLine) {
+  const std::u16string text =
+      u"\u4E2D\u6587 mixed \U0001F642 emoji \u6D4B\u8BD5 \U0001F680 end";
+  text_view_->SetParagraph(CreateParagraph(text), text);
+
+  EXPECT_EQ(text_view_->SelectLine(5), TextRange(0, 27));
+}
+
+TEST_F_UI(TextSelectionTest, SelectLineSelectsWrappedContinuationUnderPointer) {
+  const std::u16string text = u"first second third fourth fifth sixth";
+  text_view_->SetParagraph(CreateParagraph(text, 260.f), text);
+
+  auto* painter = text_view_->GetRenderText()->GetPainter();
+  const auto& lines = painter->GetParagraph()->GetLineMetrics();
+  ASSERT_GE(lines.size(), 2u);
+  ASSERT_EQ(lines[0].end_index, lines[1].start_index);
+
+  const size_t continuation_start = lines[1].start_index;
+  const auto boxes =
+      painter->GetRectsForRange(static_cast<int>(continuation_start),
+                                static_cast<int>(continuation_start + 1));
+  ASSERT_FALSE(boxes.empty());
+  const auto& first_glyph = boxes.front().rect;
+  const auto glyph_pos = painter->GetGlyphPositionAtCoordinate(
+      first_glyph.left() + 0.1f, first_glyph.Center().y());
+  ASSERT_EQ(glyph_pos.first, continuation_start);
+  ASSERT_EQ(glyph_pos.second, Affinity::kDownstream);
+
+  EXPECT_EQ(text_view_->SelectLine(glyph_pos.first, Affinity::kUpstream),
+            TextRange(lines[0].start_index, lines[0].end_index));
+  EXPECT_EQ(text_view_->SelectLine(glyph_pos.first, glyph_pos.second),
+            TextRange(lines[1].start_index, lines[1].end_index));
+}
+
+TEST_F_UI(TextSelectionTest, SelectParagraphIgnoresVisualWrapping) {
+  const std::u16string text = u"first second third fourth fifth sixth";
+  text_view_->SetParagraph(CreateParagraph(text, 260.f), text);
+
+  const auto& lines = text_view_->GetRenderText()
+                          ->GetPainter()
+                          ->GetParagraph()
+                          ->GetLineMetrics();
+  ASSERT_GE(lines.size(), 2u);
+  EXPECT_EQ(
+      text_view_->SelectParagraph(lines[1].start_index, Affinity::kDownstream),
+      TextRange(0, text.size()));
+}
+
+TEST_F_UI(TextSelectionTest, SelectParagraphUsesHardBreakBoundaries) {
+  const std::u16string text =
+      u"first paragraph\nsecond \U0001F642 paragraph\r\nthird";
+  text_view_->SetParagraph(CreateParagraph(text), text);
+
+  EXPECT_EQ(text_view_->SelectParagraph(3), TextRange(0, 16));
+  EXPECT_EQ(text_view_->GetRenderText()->GetSelectionString(),
+            u"first paragraph\n");
+  EXPECT_EQ(text_view_->SelectParagraph(23), TextRange(16, 37));
+  EXPECT_EQ(text_view_->GetRenderText()->GetSelectionString(),
+            u"second \U0001F642 paragraph\r\n");
+  EXPECT_EQ(text_view_->SelectParagraph(text.size()),
+            TextRange(37, text.size()));
+  EXPECT_EQ(text_view_->GetRenderText()->GetSelectionString(), u"third");
+}
+
+TEST_F_UI(TextSelectionTest, SelectParagraphRespectsBreakAffinity) {
+  const std::u16string text = u"first\nsecond";
+  text_view_->SetParagraph(CreateParagraph(text), text);
+
+  EXPECT_EQ(text_view_->SelectParagraph(6, Affinity::kUpstream),
+            TextRange(0, 6));
+  EXPECT_EQ(text_view_->SelectParagraph(6, Affinity::kDownstream),
+            TextRange(6, text.size()));
+}
+
+TEST_F_UI(TextSelectionTest, SelectParagraphSupportsEmptyAndUnicodeParagraphs) {
+  const std::u16string text = u"first\u2028\u2029last";
+  text_view_->SetParagraph(CreateParagraph(text), text);
+
+  EXPECT_EQ(text_view_->SelectParagraph(3), TextRange(0, 6));
+  EXPECT_EQ(text_view_->SelectParagraph(6, Affinity::kDownstream),
+            TextRange(6, 7));
+  EXPECT_EQ(text_view_->SelectParagraph(7, Affinity::kDownstream),
+            TextRange(7, text.size()));
+}
+#endif
 
 }  // namespace clay
