@@ -54,6 +54,7 @@ import com.lynx.tasm.utils.UIThreadUtils;
 import com.lynx.tasm.utils.UnitUtils;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class UIScrollView extends AbsLynxUIScroll<AndroidScrollView> implements IScrollSticky {
@@ -62,6 +63,7 @@ public class UIScrollView extends AbsLynxUIScroll<AndroidScrollView> implements 
   protected static final String LynxScrollViewInitialScrollIndex = "initialScrollIndex";
   private static final String ACCESSIBILITY_TAG = "LynxAccessibilityScrollView";
   private static final String EVENT_CONTENT_SIZE_CHANGED = "contentsizechanged";
+  private static final String EVENT_SNAP = "snap";
   static final int INVALID_INDEX = -1;
   private boolean mEnableScrollY;
   private boolean mEnableScrollToUpperEvent;
@@ -470,9 +472,12 @@ public class UIScrollView extends AbsLynxUIScroll<AndroidScrollView> implements 
 
   @Override
   public void destroy() {
-    super.destroy();
     mScrollToCallback = null;
-    mView.clearOnScrollListener();
+    if (mView != null) {
+      mView.clearOnScrollListener();
+      mView.setScrollSnapHelper(null);
+    }
+    super.destroy();
   }
 
   @Override
@@ -696,6 +701,114 @@ public class UIScrollView extends AbsLynxUIScroll<AndroidScrollView> implements 
     }
   }
 
+  @LynxProp(name = "item-snap")
+  public void setItemSnap(@Nullable ReadableMap params) {
+    if (mView == null) {
+      return;
+    }
+    if (params == null || params.size() == 0) {
+      mView.setScrollSnapHelper(null);
+    } else {
+      mView.setScrollSnapHelper(new ScrollSnapHelper(params, createScrollSnapHooks()));
+    }
+  }
+
+  private ScrollSnapHelper.ScrollContainerHooks createScrollSnapHooks() {
+    return new ScrollSnapHelper.ScrollContainerHooks() {
+      @Override
+      public int getCurrentOffset() {
+        if (!mEnableScrollY && isRtl()) {
+          // Android starts a horizontal RTL scroll-view at its maximum physical scrollX. Convert
+          // it to the logical offset used by ScrollSnapHelper, where the first item starts at zero.
+          // For example, contentWidth = 900 and viewportWidth = 300 give maxOffset = 600. The first
+          // screen has physical scrollX = 600, so its logical offset is 600 - 600 = 0. After
+          // scrolling left to physical scrollX = 300, its logical offset is 600 - 300 = 300.
+          return getMaxOffset() - mView.getRealScrollX();
+        } else {
+          return mEnableScrollY ? mView.getRealScrollY() : mView.getRealScrollX();
+        }
+      }
+
+      @Override
+      public int getMinOffset() {
+        return 0;
+      }
+
+      @Override
+      public int getMaxOffset() {
+        return Math.max(getScrollRange(), 0);
+      }
+
+      @Override
+      public int getViewportSize() {
+        return UIScrollView.this.getViewportSize();
+      }
+
+      @Override
+      public List<ScrollSnapHelper.SnapItem> getSnapItems() {
+        List<ScrollSnapHelper.SnapItem> snapItems = new ArrayList<>();
+        for (int childIndex = 0; childIndex < mChildren.size(); childIndex++) {
+          LynxBaseUI child = mChildren.get(childIndex);
+          if (child == null || child instanceof UIBounceView) {
+            continue;
+          }
+          int start = mEnableScrollY ? child.getTop() : child.getLeft();
+          if (!mEnableScrollY && isRtl()) {
+            // Measure from the content's right edge so snap-item starts increase in logical order.
+            start = mView.getContentWidth() - child.getLeft() - child.getWidth();
+          }
+          int size = mEnableScrollY ? child.getHeight() : child.getWidth();
+          // Keep the source child index for the snap event. Bounce views are not candidates but
+          // still occupy a child position, and zero-sized children preserve following positions.
+          snapItems.add(new ScrollSnapHelper.SnapItem(childIndex, start, size));
+        }
+        return snapItems;
+      }
+
+      @Nullable
+      @Override
+      public ScrollSnapHelper.SnapItem getAdjacentSnapItem(int index, boolean forward) {
+        // Scroll-view keeps every child available, so no virtual candidate needs resolving.
+        return null;
+      }
+
+      @Override
+      public void willSnapTo(int index, int currentOffset, int targetOffset) {
+        if (getEvents() != null && getEvents().containsKey(EVENT_SNAP)) {
+          int currentOffsetX = mView.getRealScrollX();
+          int currentOffsetY = mView.getRealScrollY();
+          int targetOffsetX = currentOffsetX;
+          int targetOffsetY = currentOffsetY;
+          if (mEnableScrollY) {
+            currentOffsetY = currentOffset;
+            targetOffsetY = targetOffset;
+          } else if (isRtl()) {
+            // ScrollSnapHelper uses logical RTL offsets that increase from the content's right
+            // edge, while Android scrollX uses physical offsets that increase from the left edge.
+            // Convert the logical offsets back to physical scrollX values before dispatching the
+            // snap event.
+            int maxOffset = getMaxOffset();
+            currentOffsetX = maxOffset - currentOffset;
+            targetOffsetX = maxOffset - targetOffset;
+          } else {
+            currentOffsetX = currentOffset;
+            targetOffsetX = targetOffset;
+          }
+          LynxDetailEvent event = new LynxDetailEvent(getSign(), EVENT_SNAP);
+          event.addDetail("position", index);
+          event.addDetail("currentScrollLeft", PixelUtils.pxToDip(currentOffsetX));
+          event.addDetail("currentScrollTop", PixelUtils.pxToDip(currentOffsetY));
+          event.addDetail("targetScrollLeft", PixelUtils.pxToDip(targetOffsetX));
+          event.addDetail("targetScrollTop", PixelUtils.pxToDip(targetOffsetY));
+          mContext.getEventEmitter().sendCustomEvent(event);
+        }
+      }
+
+      @Override
+      public void handleError(String message) {}
+    };
+  }
+
   @LynxProp(name = "initial-scroll-to-index")
   public void setInitialScrollToIndex(@Nullable Integer value) {
     if (value == null) {
@@ -845,7 +958,6 @@ public class UIScrollView extends AbsLynxUIScroll<AndroidScrollView> implements 
     if (events.containsKey(LynxScrollEvent.EVENT_SCROLL)) {
       mEnableScrollEvent = true;
     }
-
     if (events.containsKey(LynxScrollEvent.EVENT_SCROLL_START)) {
       mEnableScrollStartEvent = true;
     }
