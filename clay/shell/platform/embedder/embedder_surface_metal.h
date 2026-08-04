@@ -48,7 +48,8 @@ class EmbedderSurfaceMetal final : public EmbedderSurface,
   bool IsValid() const override;
 
   // |OutputSurface|
-  std::unique_ptr<Surface> CreateGPUSurface(clay::GrContext* context) override;
+  std::unique_ptr<Surface> CreateGPUSurface(
+      clay::GrContextPtr context) override;
 
   // |OutputSurface|
   clay::GrContextPtr GetMainGrContext() override;

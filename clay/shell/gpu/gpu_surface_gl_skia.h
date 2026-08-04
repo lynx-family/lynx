@@ -47,6 +47,8 @@ class GPUSurfaceGLSkia : public Surface {
   // |Surface|
   GrDirectContext* GetContext() override;
 
+  clay::GrContextPtr GetContextPtr() override;
+
   // |Surface|
   std::unique_ptr<GLContextResult> MakeRenderContextCurrent() override;
 

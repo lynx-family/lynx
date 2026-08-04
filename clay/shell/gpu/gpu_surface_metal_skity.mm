@@ -246,11 +246,12 @@ std::unique_ptr<SurfaceFrame> GPUSurfaceMetalSkity::AcquireFrameFromMTLTexture(
     return true;
   };
 
-  // This code path is only used on Mac platform, which ensures rasterizer teardown before shell,
-  // thus safe to capture this.
-  auto submit_callback = [this, texture_lifetime](const SurfaceFrame::SubmitInfo&) -> bool {
+  // The submit callback may outlive the raster-thread surface. The platform
+  // overlay retained by PresentFrame keeps the delegate alive until submit.
+  const GPUSurfaceMetalDelegate* delegate = delegate_;
+  auto submit_callback = [delegate, texture_lifetime](const SurfaceFrame::SubmitInfo&) -> bool {
     TRACE_EVENT("clay", "GPUSurfaceMetal::PresentTexture");
-    return delegate_->PresentTexture(texture_lifetime->texture_info());
+    return delegate->PresentTexture(texture_lifetime->texture_info());
   };
 
   SurfaceFrame::FramebufferInfo framebuffer_info;
@@ -282,6 +283,9 @@ skity::Matrix GPUSurfaceMetalSkity::GetRootTransformation() const {
 
 // |Surface|
 skity::GPUContext* GPUSurfaceMetalSkity::GetContext() { return context_.get(); }
+
+// |Surface|
+clay::GrContextPtr GPUSurfaceMetalSkity::GetContextPtr() { return context_; }
 
 // |Surface|
 std::unique_ptr<GLContextResult> GPUSurfaceMetalSkity::MakeRenderContextCurrent() {

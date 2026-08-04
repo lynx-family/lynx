@@ -71,7 +71,7 @@ EmbedderSurfaceMetal::~EmbedderSurfaceMetal() = default;
 
 bool EmbedderSurfaceMetal::IsValid() const { return valid_; }
 
-std::unique_ptr<Surface> EmbedderSurfaceMetal::CreateGPUSurface(clay::GrContext* context)
+std::unique_ptr<Surface> EmbedderSurfaceMetal::CreateGPUSurface(clay::GrContextPtr context)
     API_AVAILABLE(ios(13.0)) {
 #ifndef ENABLE_SKITY
   if (@available(iOS 13.0, *)) {
@@ -82,8 +82,8 @@ std::unique_ptr<Surface> EmbedderSurfaceMetal::CreateGPUSurface(clay::GrContext*
     return nullptr;
   }
 
-  auto surface = std::make_unique<GPUSurfaceMetalSkia>(
-      this, context ? sk_ref_sp(context) : main_context_, MsaaSampleCount::kNone, true);
+  auto surface = std::make_unique<GPUSurfaceMetalSkia>(this, context ? context : main_context_,
+                                                       MsaaSampleCount::kNone, true);
 
   if (!surface->IsValid()) {
     return nullptr;
@@ -94,9 +94,8 @@ std::unique_ptr<Surface> EmbedderSurfaceMetal::CreateGPUSurface(clay::GrContext*
   if (!IsValid()) {
     return nullptr;
   }
-  auto surface = std::make_unique<GPUSurfaceMetalSkity>(
-      this, context ? std::shared_ptr<clay::GrContext>(context) : main_context_,
-      GetSkityMetalMsaaSampleCount(), true);
+  auto surface = std::make_unique<GPUSurfaceMetalSkity>(this, context ? context : main_context_,
+                                                        GetSkityMetalMsaaSampleCount(), true);
 
   if (!surface->IsValid()) {
     return nullptr;

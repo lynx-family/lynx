@@ -37,10 +37,10 @@ class SurfaceGLImpl : public clay::OutputSurface,
 
   // |OutputSurface|
   std::unique_ptr<clay::Surface> CreateGPUSurface(
-      clay::GrContext* context) override {
+      clay::GrContextPtr context) override {
     const bool render_to_surface = true;
     return std::make_unique<clay::GPUSurfaceGLSkia>(
-        context ? sk_ref_sp(context) : GetMainGrContext(),
+        context ? context : GetMainGrContext(),
         this,              // GPU surface GL delegate
         render_to_surface  // render to surface
     );

@@ -33,7 +33,7 @@ class EmbedderSurfaceGL final : public EmbedderSurface,
   bool IsValid() const override;
 
   // |OutputSurface|
-  std::unique_ptr<Surface> CreateGPUSurface(clay::GrContext*) override;
+  std::unique_ptr<Surface> CreateGPUSurface(clay::GrContextPtr) override;
 
   // |OutputSurface|
   clay::GrContextPtr GetMainGrContext() override;

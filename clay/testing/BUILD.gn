@@ -93,8 +93,48 @@ if (enable_unittests) {
 
     if (shell_enable_metal) {
       sources += [ "test_metal_surface_unittests.cc" ]
-
       deps += [ ":metal" ]
+    }
+  }
+
+  if (is_mac && shell_enable_metal) {
+    executable("gpu_surface_metal_unittests") {
+      testonly = true
+
+      sources = [
+        "../shell/common/services/compositor/platform_overlay_service_fallback.cc",
+        "../shell/common/services/compositor/presenter_service_fallback.cc",
+        "../shell/common/services/initialize_service.cc",
+        "gpu_surface_metal_unittests.h",
+      ]
+
+      if (enable_skity) {
+        sources += [ "gpu_surface_metal_skity_unittests.mm" ]
+      } else {
+        sources += [ "gpu_surface_metal_skia_unittests.mm" ]
+      }
+
+      deps = [
+        ":testing",
+        ":testing_fixtures",
+        "../../base/src:base_static",
+        "../../base/trace/native:trace",
+        "../shell/gpu:gpu_surface_metal",
+      ]
+
+      if (enable_skity) {
+        deps += [
+          "../shell/platform/common/desktop/codec",
+          "../shell/platform/common/desktop/svg",
+        ]
+      }
+
+      frameworks = [
+        "AppKit.framework",
+        "ApplicationServices.framework",
+        "CoreGraphics.framework",
+        "CoreText.framework",
+      ]
     }
   }
 }

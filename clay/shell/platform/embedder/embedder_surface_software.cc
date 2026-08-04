@@ -35,7 +35,7 @@ bool EmbedderSurfaceSoftware::IsValid() const { return valid_; }
 
 // |OutputSurface|
 std::unique_ptr<Surface> EmbedderSurfaceSoftware::CreateGPUSurface(
-    clay::GrContext*) {
+    clay::GrContextPtr) {
   if (!IsValid()) {
     return nullptr;
   }

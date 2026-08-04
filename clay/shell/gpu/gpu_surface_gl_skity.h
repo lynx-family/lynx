@@ -53,6 +53,8 @@ class GPUSurfaceGLSkity : public Surface {
   // |Surface|
   skity::GPUContext* GetContext() override;
 
+  clay::GrContextPtr GetContextPtr() override;
+
  private:
   std::shared_ptr<skity::GPUSurface> AcquireRenderSurface(
       const skity::Vec2& size);
