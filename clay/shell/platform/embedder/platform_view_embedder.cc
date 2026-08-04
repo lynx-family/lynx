@@ -66,21 +66,30 @@ void PlatformViewEmbedder::NotifyDestroyed() {
         auto gr_context = surface->GetMainGrContext();
         if (gr_context) {
 #ifndef ENABLE_SKITY
-          bool has_released = false;
+          bool has_handled_context = false;
 #ifdef SHELL_ENABLE_GL
           if (gr_context->backend() == GrBackendApi::kOpenGL) {
             auto surface_gl = static_cast<EmbedderSurfaceGL*>(surface);
             auto status = static_cast<GPUSurfaceGLDelegate*>(surface_gl)
                               ->GLContextMakeCurrent();
             if (status->GetResult()) {
+#if OS_WIN
+              // Releasing resources synchronizes outstanding GPU work with
+              // glFinish, which can crash in the driver during teardown.
+              gr_context->abandonContext();
+#else
               gr_context->releaseResourcesAndAbandonContext();
+#endif
               static_cast<GPUSurfaceGLDelegate*>(surface_gl)
                   ->GLContextClearCurrent();
-              has_released = true;
+            } else {
+              // Without a current GL context, backend cleanup is unsafe.
+              gr_context->abandonContext();
             }
+            has_handled_context = true;
           }
 #endif
-          if (!has_released) {
+          if (!has_handled_context) {
             gr_context->releaseResourcesAndAbandonContext();
           }
 #endif
