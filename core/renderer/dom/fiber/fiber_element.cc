@@ -456,9 +456,11 @@ Element::SampleAnimationOverridesForNewPipeline(
     css_keyframe_manager_ =
         std::make_unique<animation::CSSKeyframeManager>(this);
   }
-  const bool force_rebuild_keyframes = has_keyframe_props_changed_;
+  const bool force_rebuild_keyframes =
+      has_keyframe_props_changed_ || keyframe_rules_changed_;
   if (css_keyframe_manager_ == nullptr && force_rebuild_keyframes) {
     has_keyframe_props_changed_ = false;
+    keyframe_rules_changed_ = false;
   }
   if (css_transition_manager_ == nullptr && css_keyframe_manager_ == nullptr) {
     return {};
@@ -492,6 +494,7 @@ Element::SampleAnimationOverridesForNewPipeline(
         new_base_style.GetCustomProperties());
     if (force_rebuild_keyframes) {
       has_keyframe_props_changed_ = false;
+      keyframe_rules_changed_ = false;
     }
     auto keyframe_sample =
         css_keyframe_manager_->CollectAnimationUpdatesForNewPipeline(
@@ -1709,6 +1712,7 @@ void Element::HandleKeyframePropsChange() {
               });
   if (!enable_new_animator()) {
     ResolveAndFlushKeyframes();
+    keyframe_rules_changed_ = false;
   } else {
     SetDataToNativeKeyframeAnimator();
   }

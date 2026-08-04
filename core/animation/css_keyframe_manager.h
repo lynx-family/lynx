@@ -86,7 +86,8 @@ class CSSKeyframeManager : public AnimationDelegate {
       base::Vector<starlight::AnimationData>& anim_data);
 
   void SetAnimationDataAndPlay(
-      base::Vector<starlight::AnimationData>& anim_data);
+      base::Vector<starlight::AnimationData>& anim_data,
+      bool force_rebuild = false);
 
   void SyncAnimationDataForNewPipeline(
       base::Vector<starlight::AnimationData>& anim_data,

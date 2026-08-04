@@ -1112,6 +1112,11 @@ class Element : public lepus::RefCounted,
   // return true indicates current style is keyframe related
   bool CheckKeyframeProps(CSSPropertyID id);
 
+  // Schedules animation data processing and records that the resolved
+  // @keyframes rules or their style inputs, rather than only animation
+  // properties, have changed.
+  void MarkKeyframeRulesDirty();
+
   void CheckHasNonFlattenCSSProps(CSSPropertyID id);
   void CheckFixedSticky(CSSPropertyID id, const tasm::CSSValue& value);
 
@@ -2124,6 +2129,7 @@ class Element : public lepus::RefCounted,
 
   bool has_transition_props_changed_{false};
   bool has_keyframe_props_changed_{false};
+  bool keyframe_rules_changed_{false};
   bool has_non_flatten_attrs_{false};
 
   bool enable_class_change_transmit_{false};

@@ -14,6 +14,7 @@
 #include <vector>
 
 #include "base/include/auto_reset.h"
+#include "core/animation/css_keyframe_manager.h"
 #include "core/animation/css_transition_manager.h"
 #include "core/base/threading/task_runner_manufactor.h"
 #include "core/base/threading/vsync_monitor.h"
@@ -22,13 +23,18 @@
 #include "core/renderer/css/computed_css_style_css_text_helper.h"
 #include "core/renderer/css/css_color.h"
 #include "core/renderer/css/css_decoder.h"
+#include "core/renderer/css/css_fragment_decorator.h"
+#include "core/renderer/css/css_keyframes_token.h"
 #include "core/renderer/css/css_style_utils.h"
 #include "core/renderer/css/css_value.h"
 #include "core/renderer/css/ng/parser/css_parser_token_range.h"
 #include "core/renderer/css/ng/parser/css_tokenizer.h"
 #include "core/renderer/css/ng/selector/css_parser_context.h"
 #include "core/renderer/css/ng/selector/css_selector_parser.h"
+#include "core/renderer/css/ng/style/condition_rule.h"
+#include "core/renderer/css/ng/supports/supports_condition.h"
 #include "core/renderer/css/parser/css_string_parser.h"
+#include "core/renderer/css/shared_css_fragment.h"
 #include "core/renderer/dom/element.h"
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/dom/fiber/component_element.h"
@@ -110,6 +116,28 @@ void UpdateLeftKeyframesForTest(Element* element, const base::String& name,
   CSSParserConfigs configs;
   starlight::CSSStyleUtils::UpdateCSSKeyframes(
       *element->keyframes_map_, name, lepus::Value(keyframes), configs);
+}
+
+fml::RefPtr<SharedCSSFragmentWrapper> MakeAdoptedOpacityKeyframesStyleSheet(
+    const base::String& name, double from, double to) {
+  CSSParserConfigs configs;
+  auto token = fml::MakeRefCounted<CSSKeyframesToken>(configs);
+  CSSKeyframesContent content;
+  auto from_style = std::make_shared<StyleMap>();
+  from_style->insert_or_assign(CSSPropertyID::kPropertyIDOpacity,
+                               CSSValue(from, CSSValuePattern::NUMBER));
+  content.insert({0.0f, std::move(from_style)});
+  auto to_style = std::make_shared<StyleMap>();
+  to_style->insert_or_assign(CSSPropertyID::kPropertyIDOpacity,
+                             CSSValue(to, CSSValuePattern::NUMBER));
+  content.insert({1.0f, std::move(to_style)});
+  token->SetKeyframesContent(std::move(content));
+
+  CSSKeyframesTokenMap keyframes;
+  keyframes.insert({name, std::move(token)});
+  auto fragment = std::make_unique<SharedCSSFragment>();
+  fragment->SetKeyFramesRuleMap(std::move(keyframes));
+  return fml::AdoptRef(new SharedCSSFragmentWrapper(std::move(fragment)));
 }
 
 bool StyleMapHasValue(const StyleMap& style_map, CSSPropertyID id,
@@ -489,6 +517,546 @@ TEST_P(FiberElementTest, LoadStyleSheetUsesBundleCSSRuleConfig) {
       fml::static_ref_ptr_cast<SharedCSSFragmentWrapper>(result.RefCounted());
   ASSERT_TRUE(wrapper);
   EXPECT_TRUE(wrapper->fragment_->enable_css_rule());
+}
+
+TEST_P(FiberElementTest,
+       ReplaceStyleSheetsValidatesArraysAndReplacesResolvedStyles) {
+  auto make_wrapper = [](double font_size) {
+    auto fragment = std::make_unique<SharedCSSFragment>();
+    fragment->SetEnableCSSInvalidation();
+    fragment->SetEnableCSSSelector();
+
+    CSSParserConfigs configs;
+    auto token = fml::MakeRefCounted<CSSParseToken>(configs);
+    token->raw_attributes_[CSSPropertyID::kPropertyIDFontSize] =
+        CSSValue(lepus::Value(font_size), CSSValuePattern::PX);
+    auto selector = std::make_unique<css::LynxCSSSelector[]>(1);
+    selector[0].SetMatch(css::LynxCSSSelector::kTag);
+    selector[0].SetValue("view");
+    selector[0].SetLastInTagHistory(true);
+    selector[0].SetLastInSelectorList(true);
+    fragment->AddStyleRule(std::move(selector), std::move(token));
+
+    return fml::AdoptRef(new SharedCSSFragmentWrapper(std::move(fragment)));
+  };
+  auto old_wrapper = make_wrapper(10.0);
+  auto first_wrapper = make_wrapper(20.0);
+  auto second_wrapper = make_wrapper(30.0);
+  manager->AdoptStyleSheet(old_wrapper);
+
+  auto page = manager->CreateFiberPage("0", 0);
+  auto child = manager->CreateFiberView();
+  page->InsertNode(child);
+  ASSERT_NE(page->GetRelatedCSSFragment(), nullptr);
+  ASSERT_NE(child->GetRelatedCSSFragment(), nullptr);
+  ASSERT_NE(page->style_sheet_, nullptr);
+  ASSERT_NE(child->style_sheet_, nullptr);
+  auto* const page_style_sheet = page->style_sheet_.get();
+  auto* const child_style_sheet = child->style_sheet_.get();
+  page->ResetAllDirtyBits();
+  child->ResetAllDirtyBits();
+
+  auto lepus_ctx = runtime::MTSRuntime::CreateContext(
+      runtime::ContextType::LepusNGContextType);
+  ASSERT_TRUE(lepus_ctx);
+  lepus_ctx->Initialize();
+  lepus_ctx->SetGlobalData(
+      BASE_STATIC_STRING(tasm::kTemplateAssembler),
+      lepus::Value(static_cast<runtime::MTSRuntime::Delegate*>(tasm.get())));
+  auto* mts_ctx = runtime::MTSRuntime::ToQuickContext(lepus_ctx.get());
+  ASSERT_TRUE(mts_ctx);
+
+  const auto expect_unchanged = [&] {
+    const auto adopted_sheets = manager->GetAdoptedStyleSheets();
+    ASSERT_EQ(adopted_sheets.size(), 1u);
+    EXPECT_EQ(adopted_sheets[0].get(), old_wrapper.get());
+    EXPECT_NE(page->style_sheet_, nullptr);
+    EXPECT_NE(child->style_sheet_, nullptr);
+    EXPECT_FALSE(page->StyleDirty());
+    EXPECT_FALSE(child->StyleDirty());
+  };
+
+  // A real QuickJS sparse array has a hole at index 1, so validation must not
+  // replace the current stylesheet table with its defined entries.
+  lepus::Value sparse_sheets =
+      MK_JS_LEPUS_VALUE(mts_ctx->context(), LEPUS_NewArray(mts_ctx->context()));
+  sparse_sheets.SetProperty(0, lepus::Value(first_wrapper));
+  sparse_sheets.SetProperty(2, lepus::Value(second_wrapper));
+  ASSERT_TRUE(sparse_sheets.IsJSArray());
+  ASSERT_EQ(sparse_sheets.GetLength(), 3);
+  lepus::Value sparse_argv[] = {std::move(sparse_sheets)};
+  auto result = ::lynx::tasm::RendererFunctions::ReplaceStyleSheets(
+      mts_ctx, sparse_argv, static_cast<int>(std::size(sparse_argv)));
+  EXPECT_TRUE(result.IsNil());
+  expect_unchanged();
+
+  lepus::Value invalid_sheets =
+      MK_JS_LEPUS_VALUE(mts_ctx->context(), LEPUS_NewArray(mts_ctx->context()));
+  invalid_sheets.SetProperty(0, lepus::Value(old_wrapper));
+  invalid_sheets.SetProperty(1, lepus::Value(1));
+  ASSERT_TRUE(invalid_sheets.IsJSArray());
+  lepus::Value invalid_argv[] = {std::move(invalid_sheets)};
+  result = ::lynx::tasm::RendererFunctions::ReplaceStyleSheets(
+      mts_ctx, invalid_argv, static_cast<int>(std::size(invalid_argv)));
+  EXPECT_TRUE(result.IsNil());
+  expect_unchanged();
+
+  lepus::Value non_array_argv[] = {lepus::Value(1)};
+  result = ::lynx::tasm::RendererFunctions::ReplaceStyleSheets(
+      mts_ctx, non_array_argv, static_cast<int>(std::size(non_array_argv)));
+  EXPECT_TRUE(result.IsNil());
+  expect_unchanged();
+
+  result =
+      ::lynx::tasm::RendererFunctions::ReplaceStyleSheets(mts_ctx, nullptr, 0);
+  EXPECT_TRUE(result.IsNil());
+  expect_unchanged();
+
+  lepus::Value extra_argv[] = {lepus::Value(1), lepus::Value(2)};
+  result = ::lynx::tasm::RendererFunctions::ReplaceStyleSheets(
+      mts_ctx, extra_argv, static_cast<int>(std::size(extra_argv)));
+  EXPECT_TRUE(result.IsNil());
+  expect_unchanged();
+
+  // Construct a real QuickJS Array, rather than passing the CArray test helper
+  // used by the native-only validation cases above.
+  lepus::Value replacement_sheets =
+      MK_JS_LEPUS_VALUE(mts_ctx->context(), LEPUS_NewArray(mts_ctx->context()));
+  replacement_sheets.SetProperty(0, lepus::Value(first_wrapper));
+  replacement_sheets.SetProperty(1, lepus::Value(second_wrapper));
+  replacement_sheets.SetProperty(2, lepus::Value(first_wrapper));
+  ASSERT_TRUE(replacement_sheets.IsJSArray());
+  lepus::Value replacement_argv[] = {std::move(replacement_sheets)};
+  result = ::lynx::tasm::RendererFunctions::ReplaceStyleSheets(
+      mts_ctx, replacement_argv, static_cast<int>(std::size(replacement_argv)));
+  EXPECT_TRUE(result.IsNil());
+
+  const auto adopted_sheets = manager->GetAdoptedStyleSheets();
+  ASSERT_EQ(adopted_sheets.size(), 3u);
+  EXPECT_EQ(adopted_sheets[0].get(), first_wrapper.get());
+  EXPECT_EQ(adopted_sheets[1].get(), second_wrapper.get());
+  EXPECT_EQ(adopted_sheets[2].get(), first_wrapper.get());
+  EXPECT_EQ(page->style_sheet_.get(), page_style_sheet);
+  EXPECT_EQ(child->style_sheet_.get(), child_style_sheet);
+  EXPECT_TRUE(page->StyleDirty());
+  EXPECT_TRUE(child->StyleDirty());
+  EXPECT_TRUE(child_style_sheet->enable_css_selector());
+  EXPECT_TRUE(child_style_sheet->enable_css_invalidation());
+
+  StyleMap resolved_styles;
+  CSSVariableMap changed_css_vars;
+  child->style_resolver_.ResolveStyle(resolved_styles, child_style_sheet,
+                                      &changed_css_vars);
+  auto font_size = resolved_styles.find(CSSPropertyID::kPropertyIDFontSize);
+  ASSERT_NE(font_size, resolved_styles.end());
+  EXPECT_EQ(font_size->second.AsNumber(), 20.0);
+
+  // CArray follows the same ordered, duplicate-preserving contract as a
+  // JavaScript Array.
+  auto carray_sheets = lepus::CArray::Create();
+  carray_sheets->emplace_back(lepus::Value(second_wrapper));
+  carray_sheets->emplace_back(lepus::Value(first_wrapper));
+  carray_sheets->emplace_back(lepus::Value(second_wrapper));
+  lepus::Value carray_argv[] = {lepus::Value(std::move(carray_sheets))};
+  result = ::lynx::tasm::RendererFunctions::ReplaceStyleSheets(
+      mts_ctx, carray_argv, static_cast<int>(std::size(carray_argv)));
+  EXPECT_TRUE(result.IsNil());
+  const auto carray_adopted_sheets = manager->GetAdoptedStyleSheets();
+  ASSERT_EQ(carray_adopted_sheets.size(), 3u);
+  EXPECT_EQ(carray_adopted_sheets[0].get(), second_wrapper.get());
+  EXPECT_EQ(carray_adopted_sheets[1].get(), first_wrapper.get());
+  EXPECT_EQ(carray_adopted_sheets[2].get(), second_wrapper.get());
+
+  resolved_styles.clear();
+  changed_css_vars.clear();
+  child->style_resolver_.ResolveStyle(resolved_styles, child_style_sheet,
+                                      &changed_css_vars);
+  font_size = resolved_styles.find(CSSPropertyID::kPropertyIDFontSize);
+  ASSERT_NE(font_size, resolved_styles.end());
+  EXPECT_EQ(font_size->second.AsNumber(), 30.0);
+
+  page->ResetAllDirtyBits();
+  child->ResetAllDirtyBits();
+  auto invalid_carray = lepus::CArray::Create();
+  invalid_carray->emplace_back(lepus::Value(first_wrapper));
+  invalid_carray->emplace_back(lepus::Value(1));
+  lepus::Value invalid_carray_argv[] = {
+      lepus::Value(std::move(invalid_carray))};
+  result = ::lynx::tasm::RendererFunctions::ReplaceStyleSheets(
+      mts_ctx, invalid_carray_argv,
+      static_cast<int>(std::size(invalid_carray_argv)));
+  EXPECT_TRUE(result.IsNil());
+  const auto unchanged_sheets = manager->GetAdoptedStyleSheets();
+  ASSERT_EQ(unchanged_sheets.size(), 3u);
+  EXPECT_EQ(unchanged_sheets[0].get(), second_wrapper.get());
+  EXPECT_EQ(unchanged_sheets[1].get(), first_wrapper.get());
+  EXPECT_EQ(unchanged_sheets[2].get(), second_wrapper.get());
+  EXPECT_FALSE(page->StyleDirty());
+  EXPECT_FALSE(child->StyleDirty());
+
+  // An empty replacement removes the adopted rule and restores the empty
+  // intrinsic stylesheet baseline.
+  auto empty_sheets = lepus::CArray::Create();
+  lepus::Value empty_argv[] = {lepus::Value(std::move(empty_sheets))};
+  result = ::lynx::tasm::RendererFunctions::ReplaceStyleSheets(
+      mts_ctx, empty_argv, static_cast<int>(std::size(empty_argv)));
+  EXPECT_TRUE(result.IsNil());
+  EXPECT_TRUE(manager->GetAdoptedStyleSheets().empty());
+
+  resolved_styles.clear();
+  changed_css_vars.clear();
+  EXPECT_FALSE(child_style_sheet->enable_css_selector());
+  EXPECT_FALSE(child_style_sheet->enable_css_invalidation());
+  child->style_resolver_.ResolveStyle(resolved_styles, child_style_sheet,
+                                      &changed_css_vars);
+  EXPECT_EQ(resolved_styles.find(CSSPropertyID::kPropertyIDFontSize),
+            resolved_styles.end());
+}
+
+TEST_P(FiberElementTest,
+       AdoptedOnlyStyleSheetClassChangeInvalidatesMatchingDescendant) {
+  manager->enable_new_styling_pipeline_ = false;
+  auto config = std::make_shared<PageConfig>();
+  config->SetEnableFiberArch(true);
+  config->SetEnableStandardCSSSelector(true);
+  manager->SetConfig(config);
+
+  auto adopted_fragment = std::make_unique<SharedCSSFragment>();
+  adopted_fragment->SetEnableCSSInvalidation();
+  adopted_fragment->SetEnableCSSSelector();
+  CSSParserConfigs configs;
+  auto token = fml::MakeRefCounted<CSSParseToken>(configs);
+  token->SetAttribute(CSSPropertyID::kPropertyIDWidth,
+                      CSSValue(42, CSSValuePattern::PX));
+  token->MarkParsed();
+  auto selector = std::make_unique<css::LynxCSSSelector[]>(2);
+  selector[0].SetValue("target");
+  selector[0].SetMatch(css::LynxCSSSelector::MatchType::kClass);
+  selector[0].SetRelation(css::LynxCSSSelector::RelationType::kDescendant);
+  selector[0].SetLastInTagHistory(false);
+  selector[0].SetLastInSelectorList(false);
+  selector[1].SetValue("ancestor");
+  selector[1].SetMatch(css::LynxCSSSelector::MatchType::kClass);
+  selector[1].SetLastInTagHistory(true);
+  selector[1].SetLastInSelectorList(true);
+  adopted_fragment->AddStyleRule(std::move(selector), std::move(token));
+  manager->AdoptStyleSheet(
+      fml::AdoptRef(new SharedCSSFragmentWrapper(std::move(adopted_fragment))));
+
+  auto page = manager->CreateFiberPage("page", 0);
+  manager->SetFiberPageElement(page);
+  page->style_sheet_ = std::make_unique<CSSFragmentDecorator>(nullptr, manager);
+  page->MarkAttached();
+  auto parent = manager->CreateFiberView();
+  parent->parent_component_element_ = page.get();
+  auto child = manager->CreateFiberView();
+  child->parent_component_element_ = page.get();
+  child->SetClasses(ClassList{base::String("target")});
+  parent->InsertNode(child);
+  page->InsertNode(parent);
+  page->FlushActionsAsRoot();
+
+  ASSERT_FALSE(StyleMapHasValue(child->parsed_styles_map_,
+                                CSSPropertyID::kPropertyIDWidth,
+                                CSSValue(42, CSSValuePattern::PX)));
+  ASSERT_FALSE(child->StyleDirty());
+
+  const ClassList old_classes = parent->classes();
+  parent->SetClasses(ClassList{base::String("ancestor")});
+  EXPECT_FALSE(child->StyleDirty());
+  parent->OnClassChanged(old_classes, parent->classes());
+  page->FlushActionsAsRoot();
+
+  EXPECT_TRUE(StyleMapHasValue(child->parsed_styles_map_,
+                               CSSPropertyID::kPropertyIDWidth,
+                               CSSValue(42, CSSValuePattern::PX)));
+}
+
+TEST_P(FiberElementTest,
+       AdoptedKeyframeReplacementRebuildsRulesWithoutRestartingPropUpdates) {
+  manager->enable_new_styling_pipeline_ = false;
+  manager->AdoptStyleSheet(
+      MakeAdoptedOpacityKeyframesStyleSheet(base::String("fade"), 0.2, 0.4));
+
+  auto page = manager->CreateFiberPage("page", 0);
+  manager->SetFiberPageElement(page);
+  page->style_sheet_ = std::make_unique<CSSFragmentDecorator>(nullptr, manager);
+  auto element = manager->CreateFiberView();
+  element->parent_component_element_ = page.get();
+  element->enable_new_animator_ = true;
+  element->SetRawInlineStyles(
+      "opacity: 1; animation: fade 1000ms linear forwards;");
+  page->InsertNode(element);
+  page->FlushActionsAsRoot();
+
+  ASSERT_NE(element->css_keyframe_manager_, nullptr);
+  auto animation_it =
+      element->css_keyframe_manager_->animations_map_.find("fade");
+  ASSERT_NE(animation_it,
+            element->css_keyframe_manager_->animations_map_.end());
+  auto initial_animation = animation_it->second;
+
+  element->SetRawInlineStyles(
+      "opacity: 1; animation: fade 2000ms linear forwards;");
+  page->FlushActionsAsRoot();
+  animation_it = element->css_keyframe_manager_->animations_map_.find("fade");
+  ASSERT_NE(animation_it,
+            element->css_keyframe_manager_->animations_map_.end());
+  EXPECT_EQ(animation_it->second.get(), initial_animation.get());
+  EXPECT_EQ(animation_it->second->get_animation_data().duration, 2000);
+
+  manager->PauseAllAnimations();
+  manager->ReplaceAdoptedStyleSheets(
+      {MakeAdoptedOpacityKeyframesStyleSheet(base::String("fade"), 0.8, 0.9)});
+  ASSERT_TRUE(element->has_keyframe_props_changed_);
+  ASSERT_TRUE(element->keyframe_rules_changed_);
+  page->FlushActionsAsRoot();
+  EXPECT_TRUE(element->keyframe_rules_changed_);
+  animation_it = element->css_keyframe_manager_->animations_map_.find("fade");
+  ASSERT_NE(animation_it,
+            element->css_keyframe_manager_->animations_map_.end());
+  EXPECT_EQ(animation_it->second.get(), initial_animation.get());
+
+  manager->ResumeAllAnimations();
+  EXPECT_FALSE(element->keyframe_rules_changed_);
+
+  animation_it = element->css_keyframe_manager_->animations_map_.find("fade");
+  ASSERT_NE(animation_it,
+            element->css_keyframe_manager_->animations_map_.end());
+  EXPECT_NE(animation_it->second.get(), initial_animation.get());
+  auto* model =
+      animation_it->second->keyframe_effect()->GetKeyframeModelByCurveType(
+          animation::AnimationCurve::CurveType::OPACITY);
+  ASSERT_NE(model, nullptr);
+  auto* curve = static_cast<animation::KeyframedOpacityAnimationCurve*>(
+      model->animation_curve());
+  ASSERT_EQ(2u, curve->keyframes_.size());
+  auto* from_keyframe =
+      static_cast<animation::OpacityKeyframe*>(curve->keyframes_[0].get());
+  EXPECT_FLOAT_EQ(0.8f, from_keyframe->Value());
+}
+
+TEST_P(FiberElementTest,
+       AdoptedConditionalStyleSheetsResolveAndRestoreIntrinsicBaseline) {
+  manager->GetLynxEnvConfig().UpdateViewport(500, SLMeasureModeDefinite, 800,
+                                             SLMeasureModeDefinite);
+
+  const auto make_token = [](CSSPropertyID property, double value,
+                             CSSValuePattern pattern) {
+    CSSParserConfigs configs;
+    auto token = fml::MakeRefCounted<CSSParseToken>(configs);
+    token->SetAttribute(property, CSSValue(value, pattern));
+    token->MarkParsed();
+    return token;
+  };
+  const auto make_class_rule = [&](CSSPropertyID property, double value,
+                                   CSSValuePattern pattern) {
+    auto selector = std::make_unique<css::LynxCSSSelector[]>(1);
+    selector[0].SetValue("conditional");
+    selector[0].SetMatch(css::LynxCSSSelector::MatchType::kClass);
+    selector[0].SetLastInTagHistory(true);
+    selector[0].SetLastInSelectorList(true);
+    return fml::MakeRefCounted<css::StyleRule>(
+        std::move(selector), make_token(property, value, pattern));
+  };
+  const auto make_min_width_condition = [](SharedCSSFragment* fragment,
+                                           float min_width) {
+    auto feature =
+        css::MediaFeature(css::MediaFeatureId::kMinWidth, "min-width",
+                          css::MediaFeatureOperator::kNone,
+                          css::MediaFeatureValue::Dimension(
+                              min_width, css::MediaFeatureUnit::kPixels));
+    auto feature_node =
+        fml::MakeRefCounted<css::MediaQueryFeatureExpNode>(feature);
+    auto media_query = fml::MakeRefCounted<css::MediaQuery>(
+        css::MediaQueryRestrictor::kNone, css::MediaQuery::kTypeAll,
+        std::move(feature_node));
+    std::vector<fml::RefPtr<const css::MediaQuery>> queries;
+    queries.push_back(std::move(media_query));
+    auto condition = fml::MakeRefCounted<css::ConditionRule>(fragment);
+    condition->SetMediaQueries(
+        fml::MakeRefCounted<css::MediaQuerySet>(std::move(queries)));
+    return condition;
+  };
+
+  auto intrinsic_fragment = std::make_unique<SharedCSSFragment>();
+  intrinsic_fragment->SetEnableCSSSelector();
+  intrinsic_fragment->AddStyleRule(make_class_rule(
+      CSSPropertyID::kPropertyIDFontSize, 10, CSSValuePattern::PX));
+
+  auto adopted_fragment = std::make_unique<SharedCSSFragment>();
+  adopted_fragment->SetEnableCSSSelector();
+  auto matching_media = make_min_width_condition(adopted_fragment.get(), 400);
+  matching_media->AddStyleRule(make_class_rule(CSSPropertyID::kPropertyIDWidth,
+                                               100, CSSValuePattern::PX));
+  adopted_fragment->AddConditionRule(std::move(matching_media));
+  auto nonmatching_media =
+      make_min_width_condition(adopted_fragment.get(), 600);
+  nonmatching_media->AddStyleRule(make_class_rule(
+      CSSPropertyID::kPropertyIDHeight, 200, CSSValuePattern::PX));
+  adopted_fragment->AddConditionRule(std::move(nonmatching_media));
+
+  auto matching_supports =
+      fml::MakeRefCounted<css::ConditionRule>(adopted_fragment.get());
+  matching_supports->SetSupportsCondition(
+      fml::MakeRefCounted<css::SupportsDeclNode>("width", "1px", false));
+  matching_supports->AddStyleRule(make_class_rule(
+      CSSPropertyID::kPropertyIDOpacity, 0.5, CSSValuePattern::NUMBER));
+  adopted_fragment->AddConditionRule(std::move(matching_supports));
+  auto nonmatching_supports =
+      fml::MakeRefCounted<css::ConditionRule>(adopted_fragment.get());
+  nonmatching_supports->SetSupportsCondition(
+      fml::MakeRefCounted<css::SupportsGeneralEnclosedNode>("unknown()"));
+  nonmatching_supports->AddStyleRule(make_class_rule(
+      CSSPropertyID::kPropertyIDColor, 0, CSSValuePattern::STRING));
+  adopted_fragment->AddConditionRule(std::move(nonmatching_supports));
+
+  auto adopted_wrapper =
+      fml::AdoptRef(new SharedCSSFragmentWrapper(std::move(adopted_fragment)));
+  manager->AdoptStyleSheet(adopted_wrapper);
+
+  auto element = manager->CreateFiberView();
+  element->SetClasses(ClassList{base::String("conditional")});
+  CSSFragmentDecorator decorator(intrinsic_fragment.get(), manager);
+  const auto resolve = [&] {
+    StyleMap styles;
+    CSSVariableMap changed_css_vars;
+    element->style_resolver_.ResolveStyle(styles, &decorator,
+                                          &changed_css_vars);
+    return styles;
+  };
+
+  auto styles = resolve();
+  EXPECT_TRUE(StyleMapHasValue(styles, CSSPropertyID::kPropertyIDFontSize,
+                               CSSValue(10, CSSValuePattern::PX)));
+  EXPECT_TRUE(StyleMapHasValue(styles, CSSPropertyID::kPropertyIDWidth,
+                               CSSValue(100, CSSValuePattern::PX)));
+  EXPECT_TRUE(StyleMapHasValue(styles, CSSPropertyID::kPropertyIDOpacity,
+                               CSSValue(0.5, CSSValuePattern::NUMBER)));
+  EXPECT_FALSE(StyleMapHasValue(styles, CSSPropertyID::kPropertyIDHeight,
+                                CSSValue(200, CSSValuePattern::PX)));
+  EXPECT_FALSE(StyleMapHasValue(styles, CSSPropertyID::kPropertyIDColor,
+                                CSSValue(0, CSSValuePattern::STRING)));
+
+  auto replacement_fragment = std::make_unique<SharedCSSFragment>();
+  replacement_fragment->SetEnableCSSSelector();
+  replacement_fragment->AddStyleRule(make_class_rule(
+      CSSPropertyID::kPropertyIDHeight, 44, CSSValuePattern::PX));
+  auto replacement_wrapper = fml::AdoptRef(
+      new SharedCSSFragmentWrapper(std::move(replacement_fragment)));
+  manager->ReplaceAdoptedStyleSheets({replacement_wrapper});
+
+  styles = resolve();
+  EXPECT_TRUE(StyleMapHasValue(styles, CSSPropertyID::kPropertyIDFontSize,
+                               CSSValue(10, CSSValuePattern::PX)));
+  EXPECT_TRUE(StyleMapHasValue(styles, CSSPropertyID::kPropertyIDHeight,
+                               CSSValue(44, CSSValuePattern::PX)));
+  EXPECT_FALSE(StyleMapHasValue(styles, CSSPropertyID::kPropertyIDWidth,
+                                CSSValue(100, CSSValuePattern::PX)));
+  EXPECT_FALSE(StyleMapHasValue(styles, CSSPropertyID::kPropertyIDOpacity,
+                                CSSValue(0.5, CSSValuePattern::NUMBER)));
+
+  manager->ClearAdoptedStyleSheets();
+  styles = resolve();
+  EXPECT_TRUE(StyleMapHasValue(styles, CSSPropertyID::kPropertyIDFontSize,
+                               CSSValue(10, CSSValuePattern::PX)));
+  EXPECT_FALSE(StyleMapHasValue(styles, CSSPropertyID::kPropertyIDHeight,
+                                CSSValue(44, CSSValuePattern::PX)));
+}
+
+TEST_P(FiberElementTest,
+       StyleSheetMutationsRefreshDetachedCachedLegacyElementOnReinsert) {
+  manager->enable_new_styling_pipeline_ = false;
+  auto config = std::make_shared<PageConfig>();
+  config->SetEnableFiberArch(true);
+  config->SetEnableStandardCSSSelector(true);
+  manager->SetConfig(config);
+  const auto make_wrapper = [](double width) {
+    auto fragment = std::make_unique<SharedCSSFragment>();
+    fragment->SetEnableCSSSelector();
+    CSSParserConfigs configs;
+    auto token = fml::MakeRefCounted<CSSParseToken>(configs);
+    token->SetAttribute(CSSPropertyID::kPropertyIDWidth,
+                        CSSValue(width, CSSValuePattern::PX));
+    token->MarkParsed();
+    auto selector = std::make_unique<css::LynxCSSSelector[]>(1);
+    selector[0].SetValue("cached");
+    selector[0].SetMatch(css::LynxCSSSelector::MatchType::kClass);
+    selector[0].SetLastInTagHistory(true);
+    selector[0].SetLastInSelectorList(true);
+    fragment->AddStyleRule(std::move(selector), std::move(token));
+    return fml::AdoptRef(new SharedCSSFragmentWrapper(std::move(fragment)));
+  };
+
+  auto old_wrapper = make_wrapper(10);
+  auto appended_wrapper = make_wrapper(20);
+  auto replacement_wrapper = make_wrapper(30);
+  manager->AdoptStyleSheet(old_wrapper);
+
+  auto page = manager->CreateFiberPage("page", 0);
+  manager->SetFiberPageElement(page);
+  page->MarkAttached();
+  auto intrinsic_fragment = std::make_unique<SharedCSSFragment>();
+  intrinsic_fragment->SetEnableCSSSelector();
+  page->style_sheet_ =
+      std::make_unique<CSSFragmentDecorator>(intrinsic_fragment.get(), manager);
+  auto* const page_style_sheet = page->style_sheet_.get();
+  auto child = manager->CreateFiberView();
+  child->parent_component_element_ = page.get();
+  child->SetClasses(ClassList{base::String("cached")});
+  page->InsertNode(child);
+  page->FlushActionsAsRoot();
+  ASSERT_TRUE(StyleMapHasValue(child->parsed_styles_map_,
+                               CSSPropertyID::kPropertyIDWidth,
+                               CSSValue(10, CSSValuePattern::PX)));
+
+  page->RemoveNode(child);
+  page->FlushActionsAsRoot();
+  child->ResetAllDirtyBits();
+
+  auto lepus_ctx = runtime::MTSRuntime::CreateContext(
+      runtime::ContextType::LepusNGContextType);
+  ASSERT_TRUE(lepus_ctx);
+  lepus_ctx->Initialize();
+  lepus_ctx->SetGlobalData(
+      BASE_STATIC_STRING(tasm::kTemplateAssembler),
+      lepus::Value(static_cast<runtime::MTSRuntime::Delegate*>(tasm.get())));
+  auto* mts_ctx = runtime::MTSRuntime::ToQuickContext(lepus_ctx.get());
+  ASSERT_TRUE(mts_ctx);
+
+  lepus::Value adopt_argv[] = {lepus::Value(appended_wrapper)};
+  auto result = ::lynx::tasm::RendererFunctions::AdoptStyleSheet(
+      mts_ctx, adopt_argv, static_cast<int>(std::size(adopt_argv)));
+  EXPECT_TRUE(result.IsNil());
+  EXPECT_EQ(page->style_sheet_.get(), page_style_sheet);
+  EXPECT_TRUE(child->StyleDirty());
+
+  page->InsertNode(child);
+  page->FlushActionsAsRoot();
+
+  EXPECT_TRUE(StyleMapHasValue(child->parsed_styles_map_,
+                               CSSPropertyID::kPropertyIDWidth,
+                               CSSValue(20, CSSValuePattern::PX)));
+
+  page->RemoveNode(child);
+  page->FlushActionsAsRoot();
+  child->ResetAllDirtyBits();
+
+  auto replacement_sheets = lepus::CArray::Create();
+  replacement_sheets->emplace_back(lepus::Value(replacement_wrapper));
+  lepus::Value argv[] = {lepus::Value(std::move(replacement_sheets))};
+  result = ::lynx::tasm::RendererFunctions::ReplaceStyleSheets(
+      mts_ctx, argv, static_cast<int>(std::size(argv)));
+  EXPECT_TRUE(result.IsNil());
+  EXPECT_EQ(page->style_sheet_.get(), page_style_sheet);
+  EXPECT_TRUE(child->StyleDirty());
+
+  page->InsertNode(child);
+  page->FlushActionsAsRoot();
+
+  EXPECT_TRUE(StyleMapHasValue(child->parsed_styles_map_,
+                               CSSPropertyID::kPropertyIDWidth,
+                               CSSValue(30, CSSValuePattern::PX)));
 }
 
 TEST_P(FiberElementTest, TestSetOverflow) {

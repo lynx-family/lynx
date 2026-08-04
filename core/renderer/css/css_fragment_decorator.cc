@@ -231,13 +231,15 @@ GET_PARSER_TOKEN_STYLE(Universal)
 #undef GET_PARSER_TOKEN_STYLE
 
 bool CSSFragmentDecorator::enable_css_selector() {
-  return intrinsic_style_sheets_ &&
-         intrinsic_style_sheets_->enable_css_selector();
+  return (intrinsic_style_sheets_ &&
+          intrinsic_style_sheets_->enable_css_selector()) ||
+         (element_manager_ && element_manager_->HasAdoptedCSSSelector());
 }
 
 bool CSSFragmentDecorator::enable_css_invalidation() {
-  return intrinsic_style_sheets_ &&
-         intrinsic_style_sheets_->enable_css_invalidation();
+  return (intrinsic_style_sheets_ &&
+          intrinsic_style_sheets_->enable_css_invalidation()) ||
+         (element_manager_ && element_manager_->HasAdoptedCSSInvalidation());
 }
 
 bool CSSFragmentDecorator::enable_css_rule() {
