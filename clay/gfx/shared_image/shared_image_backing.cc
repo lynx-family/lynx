@@ -83,6 +83,17 @@ std::unique_ptr<FenceSync> SharedImageBacking::GetFenceSync() {
   return std::move(fence_sync_);
 }
 
+void SharedImageBacking::SetFrameDamage(
+    std::optional<skity::Rect> frame_damage) {
+  std::lock_guard<std::mutex> lock(frame_damage_mutex_);
+  frame_damage_ = frame_damage;
+}
+
+std::optional<skity::Rect> SharedImageBacking::GetFrameDamage() const {
+  std::lock_guard<std::mutex> lock(frame_damage_mutex_);
+  return frame_damage_;
+}
+
 fml::RefPtr<SharedImageBacking> SharedImageBacking::Create(
     BackingType type, PixelFormat pixel_format, skity::Vec2 size,
     std::optional<GraphicsMemoryHandle> gfx_handle) {

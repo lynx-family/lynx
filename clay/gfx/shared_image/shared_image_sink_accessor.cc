@@ -132,7 +132,8 @@ SharedImageSinkAccessor::TryAcquireBack(const skity::Vec2& size) {
   return std::make_tuple(back_repr_, buffer_age, status);
 }
 
-bool SharedImageSinkAccessor::SwapBack() {
+bool SharedImageSinkAccessor::SwapBack(
+    std::optional<skity::Rect> frame_damage) {
   if (!back_repr_) {
     return false;
   }
@@ -141,7 +142,7 @@ bool SharedImageSinkAccessor::SwapBack() {
     return false;
   }
   std::unique_ptr<FenceSync> fence = back_repr_->ProduceFence();
-  if (!sink_->SwapBack(std::move(fence))) {
+  if (!sink_->SwapBack(std::move(fence), frame_damage)) {
     return false;
   }
   back_repr_ = nullptr;
