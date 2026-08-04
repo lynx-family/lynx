@@ -14,13 +14,19 @@ namespace lynx {
 namespace runtime {
 namespace js {
 JSVMRuntimeInstance::~JSVMRuntimeInstance() {
-  JSVM_CALL_NO_ENV(OH_JSVM_CloseVMScope, vm_, vm_scope_);
-  JSVM_CALL_NO_ENV(OH_JSVM_DestroyVM, vm_);
+  if (vm_scope_) {
+    JSVM_CALL_NO_ENV(OH_JSVM_CloseVMScope, vm_, vm_scope_);
+  }
+  if (vm_) {
+    JSVM_CALL_NO_ENV(OH_JSVM_DestroyVM, vm_);
+  }
 }
 
 void JSVMRuntimeInstance::InitInstance() {
+  // Initialize JSVM once per process, but create a VM for each runtime
+  // instance.
   static std::once_flag flag;
-  std::call_once(flag, [this]() {
+  std::call_once(flag, []() {
     LOGI("lynx JSVMRuntimeInstance::InitInstance");
     enum class JSVMInitMode {
       kDefault,
@@ -46,13 +52,13 @@ void JSVMRuntimeInstance::InitInstance() {
         break;
     }
     InitializeJSVM(&initOptions);
-
-    JSVM_CreateVMOptions options;
-    memset(&options, 0, sizeof(options));
-    JSVM_CALL_NO_ENV(OH_JSVM_CreateVM, &options, &vm_);
-
-    JSVM_CALL_NO_ENV(OH_JSVM_OpenVMScope, vm_, &vm_scope_);
   });
+
+  JSVM_CreateVMOptions options;
+  memset(&options, 0, sizeof(options));
+  JSVM_CALL_NO_ENV(OH_JSVM_CreateVM, &options, &vm_);
+
+  JSVM_CALL_NO_ENV(OH_JSVM_OpenVMScope, vm_, &vm_scope_);
 }
 }  // namespace js
 }  // namespace runtime
