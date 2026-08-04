@@ -83,6 +83,7 @@ class TextPainter {
                                         VerticalDirection direction);
 
   TextRange GetLineRangeForPosition(size_t position);
+  TextRange GetLineRangeForPosition(size_t position, Affinity affinity);
 
   bool CanPaint() const { return paragraph_ != nullptr; }
   void Paint(GraphicsContext* context, double x_offset = 0,
