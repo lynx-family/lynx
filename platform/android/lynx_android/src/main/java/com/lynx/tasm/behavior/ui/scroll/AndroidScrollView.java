@@ -19,6 +19,7 @@ import android.widget.HorizontalScrollView;
 import android.widget.LinearLayout;
 import android.widget.OverScroller;
 import android.widget.ScrollView;
+import androidx.annotation.Nullable;
 import androidx.core.math.MathUtils;
 import androidx.core.view.ViewCompat;
 import com.lynx.react.bridge.ReadableMap;
@@ -73,6 +74,7 @@ public class AndroidScrollView
   private Rect mClipRect;
 
   private SmoothScrollRunnable mSmoothScrollRunnable = null;
+  private ScrollSnapHelper mScrollSnapHelper = null;
   private boolean mNeedAutoScroll = false;
   private boolean mBlockDescendantFocusability = false;
   private int mAutoScrollRate = 0;
@@ -387,13 +389,13 @@ public class AndroidScrollView
         if (ev.getAction() == MotionEvent.ACTION_UP) {
           isUserDragging = false;
           mHandleTouchMove = false;
+          snapAfterDragIfNeeded();
           mUIScrollView.scrollToBounce(true);
           // Note: stopNestedScroll() should be invoked after super#onTouchEvent() for handling
           // fling.
           this.stopNestedScroll(ViewCompat.TYPE_TOUCH);
         } else if (ev.getAction() == MotionEvent.ACTION_DOWN) {
-          isUserDragging = true;
-          mUIScrollView.recognizeGestureInternal(mScrollState);
+          handleUserTouchDown();
         } else if (ev.getAction() == MotionEvent.ACTION_CANCEL) {
           mHandleTouchMove = false;
           this.stopNestedScroll(ViewCompat.TYPE_TOUCH);
@@ -1061,7 +1063,11 @@ public class AndroidScrollView
 
   @Override
   public void fling(int velocityY) {
-    super.fling(velocityY);
+    // UIScrollView also uses fling(0) to stop an animation before folding a bounce view. Keep that
+    // command on the platform path; zero-velocity item snapping is started explicitly on ACTION_UP.
+    if (velocityY == 0 || !snapToTarget(velocityY)) {
+      super.fling(velocityY);
+    }
     if (mScrollState == SCROLL_STATE_DRAGGING) {
       notifyStateChange(SCROLL_STATE_FLING);
     }
@@ -1120,6 +1126,11 @@ public class AndroidScrollView
         notifyStateChange(SCROLL_STATE_FLING);
       }
       triggerOnFling(velocityX);
+      // UIScrollView also uses fling(0) to stop an animation before folding a bounce view. Keep
+      // that command on the platform path; zero-velocity item snapping is handled on ACTION_UP.
+      if (velocityX != 0 && snapToTarget(velocityX)) {
+        return;
+      }
       // By default HorizontalScrollView will request focus after fling,
       // which will cause focus loss even if ignore-focus is set.
       // Override fling implementation to eliminate this behavior.
@@ -1280,8 +1291,7 @@ public class AndroidScrollView
           mHandleTouchMove = false;
           mUIScrollView.scrollToBounce(true);
         } else if (ev.getAction() == MotionEvent.ACTION_DOWN) {
-          isUserDragging = true;
-          mUIScrollView.recognizeGestureInternal(mScrollState);
+          handleUserTouchDown();
         } else if (ev.getAction() == MotionEvent.ACTION_CANCEL) {
           mHandleTouchMove = false;
         }
@@ -1293,6 +1303,9 @@ public class AndroidScrollView
               "CustomHorizontalScrollView onTouchEvent: " + ev.getAction() + ", "
                   + exception.getMessage());
         } finally {
+          if (ev.getAction() == MotionEvent.ACTION_UP) {
+            snapAfterDragIfNeeded();
+          }
           return res;
         }
       } else {
@@ -1383,6 +1396,76 @@ public class AndroidScrollView
       }
       return res;
     }
+  }
+
+  /** Sets or clears the item-snap target helper for this scroll container. */
+  void setScrollSnapHelper(@Nullable ScrollSnapHelper scrollSnapHelper) {
+    mScrollSnapHelper = scrollSnapHelper;
+  }
+
+  /**
+   * Snaps a completed drag that did not produce a platform fling.
+   *
+   * <p>A non-zero-velocity release is handled by {@link #fling(int)} or
+   * {@link CustomHorizontalScrollView#fling(int)}. If the state is still dragging after the
+   * platform handles {@link MotionEvent#ACTION_UP}, select the nearest snap item with zero
+   * velocity.
+   */
+  private void snapAfterDragIfNeeded() {
+    if (mScrollState == SCROLL_STATE_DRAGGING && snapToTarget(0)) {
+      notifyStateChange(SCROLL_STATE_FLING);
+    }
+  }
+
+  /** Handles a user touch that may interrupt an in-progress item-snap animation. */
+  private void handleUserTouchDown() {
+    isUserDragging = true;
+    if (mScrollSnapHelper != null && mScrollState == SCROLL_STATE_FLING) {
+      // The platform stops the smooth-scroll on ACTION_DOWN, but it does not update our scroll
+      // state. Restore DRAGGING so a later low-velocity ACTION_UP can snap to the nearest item.
+      notifyStateChange(SCROLL_STATE_DRAGGING);
+      // notifyStateChange already invokes gesture recognition through the scroll-state listener.
+      // Return here to avoid recognizing the same gesture twice.
+      return;
+    }
+    mUIScrollView.recognizeGestureInternal(mScrollState);
+  }
+
+  /**
+   * Selects and starts scrolling to an item-snap target.
+   *
+   * @param velocity physical Android velocity on the active scroll axis
+   * @return {@code true} when item-snap is enabled and therefore consumes the platform fling
+   */
+  private boolean snapToTarget(int velocity) {
+    if (mScrollSnapHelper == null) {
+      return false;
+    }
+
+    int normalizedVelocity = velocity;
+    if (isHorizontal && mUIScrollView.isRtl()) {
+      // In horizontal RTL, increasing physical scrollX moves toward decreasing logical offsets.
+      normalizedVelocity = -velocity;
+    }
+    ScrollSnapHelper.SnapTarget target = mScrollSnapHelper.findSnapTarget(normalizedVelocity);
+    if (!target.hasTarget()) {
+      // Item-snap owns the release even when there is no candidate in the requested direction.
+      return true;
+    }
+    int targetX = getRealScrollX();
+    int targetY = getRealScrollY();
+    if (isHorizontal) {
+      targetX = target.targetOffset;
+      if (mUIScrollView.isRtl()) {
+        // Convert the helper's logical target back to Android's physical scrollX. For example,
+        // maxOffset = 600 and logical target = 200 produce physical scrollX = 600 - 200 = 400.
+        targetX = Math.max(mUIScrollView.getScrollRange(), 0) - target.targetOffset;
+      }
+    } else {
+      targetY = target.targetOffset;
+    }
+    setScrollTo(targetX, targetY, true);
+    return true;
   }
 
   private void triggerOnScrollStop() {

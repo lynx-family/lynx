@@ -40,6 +40,9 @@ const NSInteger kScrollEdgeThreshold = 1;
 const NSInteger kInvalidBounceDistance = -1;
 const NSInteger kScrollToCallBackNonChange = -1;
 static const CGFloat SCROLL_BY_EPSILON = 0.1f;
+static const CGFloat kInvalidItemSnapFactor = -1.f;
+static const CGFloat kDefaultItemSnapOffset = 0.f;
+static const NSInteger kDefaultItemSnapMaxCount = 1;
 
 typedef void (^LynxUIScrollToCallBack)(int code, id _Nullable data);
 typedef void (^ScrollReadyBlock)(void);
@@ -154,7 +157,9 @@ static NSString *const kScrollReadyScrollToIndexKey = @"scroll-to-index";
   BOOL _nestedUpdated;
   BOOL _stickyDirty;
   LynxUIScrollToCallBack _scrollToCallBack;
-
+  CGFloat _itemSnapFactor;
+  CGFloat _itemSnapOffset;
+  NSInteger _itemSnapMaxCount;
   // For list native storage
   NSInteger _listSign;
   // value may not be the latest as reused UI with same prop will not update propMap. Instead, it
@@ -199,6 +204,9 @@ static Class<LynxScrollViewUIDelegate> kUIDelegate = nil;
     self.firstRender = YES;
     [self ensureUpdateContentSize];
     _propMap = [[LynxPropertyDiffMap alloc] init];
+    _itemSnapFactor = kInvalidItemSnapFactor;
+    _itemSnapOffset = kDefaultItemSnapOffset;
+    _itemSnapMaxCount = kDefaultItemSnapMaxCount;
   }
   return self;
 }
@@ -968,6 +976,72 @@ static Class<LynxScrollViewUIDelegate> kUIDelegate = nil;
   if ([self.view stopDeceleratingIfNecessaryWithTargetContentOffset:targetContentOffset]) {
     return;
   }
+  if (_itemSnapFactor != kInvalidItemSnapFactor) {
+    NSMutableArray<UIView *> *snapItemViews = [NSMutableArray array];
+    NSMutableArray<NSNumber *> *snapItemChildIndices = [NSMutableArray array];
+    for (NSUInteger childIndex = 0; childIndex < self.children.count; childIndex++) {
+      LynxUI *child = self.children[childIndex];
+      if ([child isKindOfClass:LynxBounceView.class] || child.view == nil) {
+        continue;
+      }
+      CGFloat itemSize =
+          self.enableScrollY ? CGRectGetHeight(child.view.frame) : CGRectGetWidth(child.view.frame);
+      if (itemSize < 0.f) {
+        continue;
+      }
+      [snapItemViews addObject:child.view];
+      // The calculator uses this array's consecutive ordinal, while the event needs the original
+      // child position so bounce views do not shift the reported position.
+      [snapItemChildIndices addObject:@(childIndex)];
+    }
+    if (snapItemViews.count == 0) {
+      return;
+    }
+    CGPoint currentContentOffset = scrollView.contentOffset;
+    __weak typeof(self) weakSelf = self;
+    CGPoint targetOffset = [scrollView targetContentOffset:*targetContentOffset
+        withScrollingVelocity:velocity
+        withVisibleItems:snapItemViews
+        getIndexFromView:^NSInteger(UIView *view) {
+          NSUInteger index = [snapItemViews indexOfObjectIdenticalTo:view];
+          return index == NSNotFound ? -1 : (NSInteger)index;
+        }
+        getViewRectAtIndex:^CGRect(NSInteger index) {
+          if (index < 0 || index >= (NSInteger)snapItemViews.count) {
+            return CGRectNull;
+          }
+          return snapItemViews[index].frame;
+        }
+        vertical:self.enableScrollY
+        rtl:self.isRtl
+        factor:_itemSnapFactor
+        offset:_itemSnapOffset
+        maxSnapCount:_itemSnapMaxCount
+        callback:^(NSInteger position, CGPoint offset) {
+          __strong typeof(weakSelf) strongSelf = weakSelf;
+          if (!strongSelf || ![strongSelf.eventSet objectForKey:LynxEventSnap]) {
+            return;
+          }
+          // `position` is the consecutive index in snapItemViews. Map it back to the original
+          // child index so excluded bounce views do not shift the event position.
+          NSInteger childIndex = position;
+          if (position >= 0 && position < (NSInteger)snapItemChildIndices.count) {
+            childIndex = snapItemChildIndices[position].integerValue;
+          }
+          [strongSelf.context.eventEmitter
+              sendCustomEvent:[[LynxDetailEvent alloc]
+                                  initWithName:LynxEventSnap
+                                    targetSign:strongSelf.sign
+                                        detail:@{
+                                          @"position" : @(childIndex),
+                                          @"currentScrollLeft" : @(currentContentOffset.x),
+                                          @"currentScrollTop" : @(currentContentOffset.y),
+                                          @"targetScrollLeft" : @(offset.x),
+                                          @"targetScrollTop" : @(offset.y),
+                                        }]];
+        }];
+    *targetContentOffset = targetOffset;
+  }
 }
 
 - (void)scrollViewDidEndDragging:(UIScrollView *)scrollView willDecelerate:(BOOL)decelerate {
@@ -1144,6 +1218,38 @@ LYNX_PROPS_GROUP_DECLARE(LYNX_PROP_DECLARE("ios-block-gesture-class", setIosBloc
                          LYNX_PROP_DECLARE("force-can-scroll", setForceCanScroll, BOOL),
                          LYNX_PROP_DECLARE("ios-recognized-view-tag", setIosRecognizedViewTag,
                                            BOOL))
+
+LYNX_PROP_SETTER("item-snap", setItemSnap, NSDictionary *) {
+  if (requestReset || ![value isKindOfClass:NSDictionary.class] || value.count == 0) {
+    _itemSnapFactor = kInvalidItemSnapFactor;
+    _itemSnapOffset = kDefaultItemSnapOffset;
+    _itemSnapMaxCount = kDefaultItemSnapMaxCount;
+    self.view.decelerationRate = UIScrollViewDecelerationRateNormal;
+    return;
+  }
+  // TODO: Add report error for invalid value.
+  CGFloat factor = [value[@"factor"] doubleValue];
+  if (!isfinite(factor) || factor < 0.f || factor > 1.f) {
+    factor = 0.f;
+  }
+  CGFloat offset = [value[@"offset"] doubleValue];
+  if (!isfinite(offset)) {
+    offset = 0.f;
+  }
+  NSInteger maxSnapCount = kDefaultItemSnapMaxCount;
+  id maxSnapCountValue = value[@"maxSnapCount"];
+  if (maxSnapCountValue) {
+    maxSnapCount = [maxSnapCountValue integerValue];
+    if (maxSnapCount < kDefaultItemSnapMaxCount) {
+      maxSnapCount = kDefaultItemSnapMaxCount;
+    }
+  }
+  _itemSnapFactor = factor;
+  _itemSnapOffset = offset;
+  _itemSnapMaxCount = maxSnapCount;
+  self.view.pagingEnabled = NO;
+  self.view.decelerationRate = UIScrollViewDecelerationRateFast;
+}
 
 /**
  * @name: force-can-scroll
