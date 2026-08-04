@@ -20,20 +20,6 @@ namespace lynx {
 namespace runtime {
 namespace js {
 
-const char* JSRuntimeTypeToString(JSRuntimeType type) {
-  switch (type) {
-    case JSRuntimeType::v8:
-      return "v8";
-    case JSRuntimeType::jsc:
-      return "jsc";
-    case JSRuntimeType::quickjs:
-      return "quickjs";
-    case JSRuntimeType::jsvm:
-      return "jsvm";
-  }
-  return "";
-}
-
 bool EvaluatePreloadSources(
     Runtime& runtime,
     std::vector<std::pair<std::string, std::shared_ptr<Buffer>>>& sources) {

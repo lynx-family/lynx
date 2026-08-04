@@ -34,8 +34,7 @@ extern "C" {
 typedef struct {
   int32_t size;
   void* user_data;
-  void (*on_runtime_attach)(void* user_data, void* napi_env,
-                            const char* runtime_type);
+  void (*on_runtime_attach)(void* user_data, void* napi_env);
   void (*on_runtime_detach)(void* user_data);
 } LynxRuntimeLifecycleListener;
 

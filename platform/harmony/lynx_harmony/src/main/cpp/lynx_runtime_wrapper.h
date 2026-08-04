@@ -62,7 +62,7 @@ class RuntimeLifecycleListenerDelegateHarmony
   void OnRuntimeInit(int64_t runtime_id) override {}
   void OnAppEnterForeground() override {}
   void OnAppEnterBackground() override {}
-  void OnRuntimeAttach(void* env, const char* runtime_type) override;
+  void OnRuntimeAttach(void* env) override;
   void OnRuntimeDetach() override;
 
  private:

@@ -8,10 +8,9 @@ NS_ASSUME_NONNULL_BEGIN
 /**
  * Callback when napi environment prepared.
  * @param env Napi env in Lynx.*
- * @param runtimeType JS runtime type in Lynx.
  */
 
-- (void)onRuntimeAttach:(void* _Nonnull)env runtimeType:(const char* _Nonnull)runtimeType;
+- (void)onRuntimeAttach:(void* _Nonnull)env;
 
 /**
  * on runtime detached

@@ -12,9 +12,9 @@
 namespace lynx {
 namespace shell {
 
-void RuntimeLifecycleListenerDelegateDarwin::OnRuntimeAttach(void *env, const char *runtime_type) {
+void RuntimeLifecycleListenerDelegateDarwin::OnRuntimeAttach(void *env) {
   @try {
-    [_listener onRuntimeAttach:env runtimeType:runtime_type];
+    [_listener onRuntimeAttach:env];
   } @catch (NSException *exception) {
     OnError(exception);
   }

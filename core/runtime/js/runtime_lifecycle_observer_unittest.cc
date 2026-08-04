@@ -42,13 +42,9 @@ class MockListener : public RuntimeLifecycleListenerDelegate {
   MOCK_METHOD(void, OnAppEnterForeground, (), (override));
   MOCK_METHOD(void, OnAppEnterBackground, (), (override));
   MOCK_METHOD(void, OnRuntimeDetach, (), (override));
-  void OnRuntimeAttach(void* env, const char* runtime_type) override {
-    is_attach_called = true;
-    runtime_type_ = runtime_type;
-  }
+  void OnRuntimeAttach(void* env) override { is_attach_called = true; }
 
   bool is_attach_called{false};
-  const char* runtime_type_{nullptr};
 };
 
 TEST(RuntimeLifecycleObserver, FullListener) {
@@ -69,13 +65,12 @@ TEST(RuntimeLifecycleObserver, FullListener) {
 
   observer->OnRuntimeInit(1);
   observer->OnRuntimeCreate(mock_vsync);
-  observer->OnRuntimeAttach(nullptr, "quickjs");
+  observer->OnRuntimeAttach(nullptr);
   observer->OnRuntimeDetach();
   observer->OnAppEnterBackground();
   observer->OnAppEnterForeground();
 
   EXPECT_TRUE(listener_ptr->is_attach_called);
-  EXPECT_STREQ("quickjs", listener_ptr->runtime_type_);
 
   // add after event emit
   auto listener_after = std::make_unique<MockListener>(
@@ -88,7 +83,6 @@ TEST(RuntimeLifecycleObserver, FullListener) {
   EXPECT_CALL(*listener_after, OnAppEnterBackground()).Times(1);
   observer->AddEventListener(std::move(listener_after));
   EXPECT_TRUE(listener_after_ptr->is_attach_called);
-  EXPECT_STREQ("quickjs", listener_after_ptr->runtime_type_);
 }
 
 TEST(RuntimeLifecycleObserver, PartListener) {
@@ -109,13 +103,12 @@ TEST(RuntimeLifecycleObserver, PartListener) {
 
   observer->OnRuntimeInit(1);
   observer->OnRuntimeCreate(mock_vsync);
-  observer->OnRuntimeAttach(nullptr, "quickjs");
+  observer->OnRuntimeAttach(nullptr);
   observer->OnRuntimeDetach();
   observer->OnAppEnterBackground();
   observer->OnAppEnterForeground();
 
   EXPECT_TRUE(listener_ptr->is_attach_called);
-  EXPECT_STREQ("quickjs", listener_ptr->runtime_type_);
 
   // add after event emit
   auto listener_after = std::make_unique<MockListener>(
@@ -128,7 +121,6 @@ TEST(RuntimeLifecycleObserver, PartListener) {
   EXPECT_CALL(*listener_after, OnAppEnterBackground()).Times(0);
   observer->AddEventListener(std::move(listener_after));
   EXPECT_TRUE(listener_after_ptr->is_attach_called);
-  EXPECT_STREQ("quickjs", listener_after_ptr->runtime_type_);
 }
 
 }  // namespace testing

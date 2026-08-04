@@ -107,10 +107,9 @@ RuntimeLifecycleListenerDelegateHarmony::
           RuntimeLifecycleListenerDelegate::DelegateType::PART),
       listener_(listener) {}
 
-void RuntimeLifecycleListenerDelegateHarmony::OnRuntimeAttach(
-    void* env_ptr, const char* runtime_type) {
+void RuntimeLifecycleListenerDelegateHarmony::OnRuntimeAttach(void* env_ptr) {
   if (listener_ && listener_->on_runtime_attach) {
-    listener_->on_runtime_attach(listener_->user_data, env_ptr, runtime_type);
+    listener_->on_runtime_attach(listener_->user_data, env_ptr);
   }
 }
 

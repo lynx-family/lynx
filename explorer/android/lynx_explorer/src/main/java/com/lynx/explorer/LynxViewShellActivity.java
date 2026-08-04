@@ -280,7 +280,7 @@ public class LynxViewShellActivity extends AppCompatActivity {
     if (enableNapiAddon) {
       lynxView.addRuntimeLifecycleListener(new com.lynx.jsbridge.RuntimeLifecycleListener() {
         @Override
-        public void onRuntimeAttach(long napiEnv, String runtimeType) {
+        public void onRuntimeAttach(long napiEnv) {
           com.lynx.explorer.modules.LynxNodeAPIModule.putEnv(lynxView.getLynxContext(), napiEnv);
         }
 

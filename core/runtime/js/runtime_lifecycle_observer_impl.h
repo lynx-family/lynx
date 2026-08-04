@@ -29,7 +29,7 @@ class RuntimeLifecycleObserverImpl : public RuntimeLifecycleObserver {
   void OnRuntimeInit(int64_t runtime_id) override;
   void OnAppEnterForeground() override;
   void OnAppEnterBackground() override;
-  void OnRuntimeAttach(void* env, const char* runtime_type) override;
+  void OnRuntimeAttach(void* env) override;
   void OnRuntimeDetach() override;
 
   void AddEventListener(
@@ -54,7 +54,6 @@ class RuntimeLifecycleObserverImpl : public RuntimeLifecycleObserver {
   std::shared_ptr<IVSyncObserver> args_vsync_observer_;
   int64_t args_runtime_id_;
   void* args_env_;
-  const char* args_runtime_type_ = "";
 };
 
 }  // namespace runtime
