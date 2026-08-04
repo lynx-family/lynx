@@ -9769,6 +9769,17 @@ public class com::lynx::tasm::behavior::ui::list::ScrollContainerDrawHelper :  {
   public Path com.lynx.tasm.behavior.ui.list.ScrollContainerDrawHelper.getClipPath(@NonNull final View scroller);
 }
 
+public interface com::lynx::tasm::behavior::ui::scroll::ScrollSnapHelper::ScrollContainerHooks {
+  public int com.lynx.tasm.behavior.ui.scroll.ScrollSnapHelper.ScrollContainerHooks.getCurrentOffset();
+  public int com.lynx.tasm.behavior.ui.scroll.ScrollSnapHelper.ScrollContainerHooks.getMinOffset();
+  public int com.lynx.tasm.behavior.ui.scroll.ScrollSnapHelper.ScrollContainerHooks.getMaxOffset();
+  public int com.lynx.tasm.behavior.ui.scroll.ScrollSnapHelper.ScrollContainerHooks.getViewportSize();
+  public List< SnapItem > com.lynx.tasm.behavior.ui.scroll.ScrollSnapHelper.ScrollContainerHooks.getSnapItems();
+  public SnapItem com.lynx.tasm.behavior.ui.scroll.ScrollSnapHelper.ScrollContainerHooks.getAdjacentSnapItem(int index, boolean forward);
+  public void com.lynx.tasm.behavior.ui.scroll.ScrollSnapHelper.ScrollContainerHooks.willSnapTo(int index, int currentOffset, int targetOffset);
+  public void com.lynx.tasm.behavior.ui.scroll.ScrollSnapHelper.ScrollContainerHooks.handleError(String message);
+}
+
 public interface com::lynx::tasm::behavior::ui::scroll::ScrollContentScreenshotController {
   public int com.lynx.tasm.behavior.ui.scroll.ScrollContentScreenshotController.getScrollX();
   public int com.lynx.tasm.behavior.ui.scroll.ScrollContentScreenshotController.getScrollY();
@@ -9790,6 +9801,12 @@ public class com::lynx::tasm::LynxViewClient::ScrollInfo :  {
   public String com.lynx.tasm.LynxViewClient.ScrollInfo.mScrollMonitorTag mScrollMonitorTag;
   public com.lynx.tasm.LynxViewClient.ScrollInfo.ScrollInfo(View view, String tagName, String scrollMonitorTag);
   public String com.lynx.tasm.LynxViewClient.ScrollInfo.toString();
+}
+
+public class com::lynx::tasm::behavior::ui::scroll::ScrollSnapHelper :  {
+  public com.lynx.tasm.behavior.ui.scroll.ScrollSnapHelper.ScrollSnapHelper(ReadableMap params, ScrollContainerHooks hooks);
+  public com.lynx.tasm.behavior.ui.scroll.ScrollSnapHelper.ScrollSnapHelper(double alignmentFactor, int alignmentOffset, int maxSnapCount, ScrollContainerHooks hooks);
+  public SnapTarget com.lynx.tasm.behavior.ui.scroll.ScrollSnapHelper.findSnapTarget(int velocity);
 }
 
 public interface com::lynx::tasm::behavior::ui::ScrollStateChangeListener {
@@ -9975,6 +9992,16 @@ public class com::lynx::tasm::utils::SizeValue :  {
   public com.lynx.tasm.utils.SizeValue.SizeValue();
   public float com.lynx.tasm.utils.SizeValue.convertToDevicePx(float fullSize);
   public static SizeValue com.lynx.tasm.utils.SizeValue.fromCSSString(String valueStr);
+}
+
+public class com::lynx::tasm::behavior::ui::scroll::ScrollSnapHelper::SnapItem :  {
+  public com.lynx.tasm.behavior.ui.scroll.ScrollSnapHelper.SnapItem.SnapItem(int index, int start, int size);
+}
+
+public class com::lynx::tasm::behavior::ui::scroll::ScrollSnapHelper::SnapTarget :  {
+  public final int com.lynx.tasm.behavior.ui.scroll.ScrollSnapHelper.SnapTarget.index index;
+  public final int com.lynx.tasm.behavior.ui.scroll.ScrollSnapHelper.SnapTarget.targetOffset targetOffset;
+  public boolean com.lynx.tasm.behavior.ui.scroll.ScrollSnapHelper.SnapTarget.hasTarget();
 }
 
 public class com::lynx::tasm::behavior::ui::utils::Spacing :  {
@@ -11533,6 +11560,7 @@ public class com::lynx::tasm::behavior::ui::scroll::UIScrollView : com.lynx.tasm
   public void com.lynx.tasm.behavior.ui.scroll.UIScrollView.scrollToIndex(int index);
   public void com.lynx.tasm.behavior.ui.scroll.UIScrollView.setScrollOrientation(String scrollOrientation);
   public void com.lynx.tasm.behavior.ui.scroll.UIScrollView.setEnableNestedScroll(boolean nestedScroll);
+  public void com.lynx.tasm.behavior.ui.scroll.UIScrollView.setItemSnap(@Nullable ReadableMap params);
   public void com.lynx.tasm.behavior.ui.scroll.UIScrollView.setInitialScrollToIndex(@Nullable Integer value);
   public void com.lynx.tasm.behavior.ui.scroll.UIScrollView.setInitialScrollOffset(@Nullable Integer value);
   public void com.lynx.tasm.behavior.ui.scroll.UIScrollView.setFadingEdgeLength(String fadingEdgeLength);
