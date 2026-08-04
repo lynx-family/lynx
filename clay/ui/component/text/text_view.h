@@ -81,6 +81,11 @@ class TextView : public WithTypeInfo<TextView, BaseTextView>,
   void PerformCancelSelection();
 
   TextRange SelectWord(size_t pos);
+  TextRange SelectWord(size_t pos, Affinity affinity);
+  TextRange SelectLine(size_t pos);
+  TextRange SelectLine(size_t pos, Affinity affinity);
+  TextRange SelectParagraph(size_t pos);
+  TextRange SelectParagraph(size_t pos, Affinity affinity);
 
   void OnSelectionChanged(int selection_start, int selection_end);
 
@@ -144,6 +149,7 @@ class TextView : public WithTypeInfo<TextView, BaseTextView>,
   FRIEND_TEST(TextSelectionTest, SetTextSelectionHidesVisualStartHandle);
   FRIEND_TEST(TextSelectionTest,
               SetAttributeUpdatesVisibleSelectionHandleColors);
+  FRIEND_TEST(TextSelectionTest, SelectWordCrossesNestedInlineTextBoundaries);
 
   void UpdateSelectionHandleLayout(SelectionHandleView* handle);
 
@@ -156,7 +162,11 @@ class TextView : public WithTypeInfo<TextView, BaseTextView>,
   bool ClickOnText(size_t glyph_index, const FloatPoint& point_by_paragraph,
                    txt::Paragraph* paragraph);
   bool is_text_selection_ = false;
-#if defined(OS_ANDROID) || defined(OS_IOS)
+#if defined(OS_WIN) || defined(OS_OSX)
+  MultiTapGestureRecognizer* multi_tap_recognizer_ = nullptr;
+  DragGestureRecognizer* drag_recognizer_ = nullptr;
+  FloatPoint drag_start_point_;
+#elif defined(OS_ANDROID) || defined(OS_IOS)
   MultiTapGestureRecognizer* double_tap_recognizer_ = nullptr;
   LongPressGestureRecognizer* long_press_recognizer_ = nullptr;
 #else

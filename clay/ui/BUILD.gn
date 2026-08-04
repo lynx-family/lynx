@@ -229,5 +229,11 @@ if (enable_unittests) {
       "../testing:skia",
       "//third_party/skia/modules/skparagraph:skparagraph",
     ]
+    if (is_mac) {
+      public_deps += [
+        "../shell/common:platform_overlay_service_fallback",
+        "../shell/common:presenter_service_fallback",
+      ]
+    }
   }
 }

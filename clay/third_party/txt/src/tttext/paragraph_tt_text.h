@@ -12,11 +12,12 @@
 #include <textra/paragraph_style.h>
 #include "clay/gfx/graphics_canvas.h"
 #ifdef ENABLE_SKITY
-#include "tttext/tttext_headers.h"
+#include "clay/third_party/txt/src/tttext/tttext_headers.h"
 #else
 #include "third_party/textlayout/textra/public/textra/platform/skia/skia_painter.h"
 #endif
-#include "txt/paragraph.h"
+#include "clay/third_party/txt/src/tttext/tttext_index_mapper.h"
+#include "clay/third_party/txt/src/txt/paragraph.h"
 
 namespace ttoffice {
 namespace tttext {
@@ -95,11 +96,14 @@ class ParagraphTTText : public Paragraph {
   tttext::WriteDirection GetResolvedWriteDirection() const;
 
  private:
+  friend class ParagraphTTTextTest_KeepsIndexesInSyncForEmbeddedNull_Test;
+
   std::shared_ptr<FontCollection> font_collection_;
   std::unique_ptr<tttext::Paragraph> paragraph_;
   std::unique_ptr<tttext::LayoutRegion> region_;
   std::vector<LineMetrics> line_metrics_;
   std::vector<size_t> placeholder_pos_;
+  TTTextIndexMapper index_mapper_;
   bool need_trim_space_ = false;
 #ifdef ENABLE_SKITY
   skity::Paint sk_paint_;

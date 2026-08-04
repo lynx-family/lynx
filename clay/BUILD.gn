@@ -189,6 +189,10 @@ group("unittests") {
       "ui:clay_unittests",
     ]
 
+    if (clay_enable_tttext) {
+      public_deps += [ "third_party/txt:paragraph_tt_text_unittests" ]
+    }
+
     if (use_net_loader) {
       public_deps += [ "net:net_unittests" ]
     }

@@ -52,6 +52,36 @@ uint32_t AddTag(uint32_t value, uint32_t tag) { return value | tag; }
 
 uint32_t RemoveTag(uint32_t value, uint32_t tag) { return value & ~tag; }
 
+bool IsHighSurrogate(char16_t code_unit) {
+  return code_unit >= 0xD800 && code_unit <= 0xDBFF;
+}
+
+bool IsLowSurrogate(char16_t code_unit) {
+  return code_unit >= 0xDC00 && code_unit <= 0xDFFF;
+}
+
+bool IsParagraphSeparator(char16_t code_unit) {
+  return code_unit == u'\n' || code_unit == u'\r' || code_unit == u'\u2028' ||
+         code_unit == u'\u2029';
+}
+
+#if defined(OS_WIN) || defined(OS_OSX)
+TextRange ExpandToSurrogatePairBoundaries(const std::u16string& text,
+                                          const TextRange& range) {
+  size_t start = std::min(range.start(), text.size());
+  size_t end = std::min(range.end(), text.size());
+  if (start > 0 && start < text.size() && IsLowSurrogate(text[start]) &&
+      IsHighSurrogate(text[start - 1])) {
+    --start;
+  }
+  if (end > 0 && end < text.size() && IsHighSurrogate(text[end - 1]) &&
+      IsLowSurrogate(text[end])) {
+    ++end;
+  }
+  return TextRange(start, end);
+}
+#endif
+
 bool IsHandledByTextShadowNode(KeywordID kw) {
   switch (kw) {
     case KeywordID::kFontSize:
@@ -247,7 +277,12 @@ void TextView::UpdateHotKeyTag(LogicalKeyboardKey key_code, bool is_up) {
 }
 
 void TextView::ClearGestureRecognizers() {
-#if defined(OS_ANDROID) || defined(OS_IOS)
+#if defined(OS_WIN) || defined(OS_OSX)
+  RemoveGestureRecognizer(multi_tap_recognizer_);
+  multi_tap_recognizer_ = nullptr;
+  RemoveGestureRecognizer(drag_recognizer_);
+  drag_recognizer_ = nullptr;
+#elif defined(OS_ANDROID) || defined(OS_IOS)
   RemoveGestureRecognizer(long_press_recognizer_);
   RemoveGestureRecognizer(double_tap_recognizer_);
   double_tap_recognizer_ = nullptr;
@@ -290,7 +325,61 @@ void TextView::HandleWinCtrlAndMacCommandHotKey(LogicalKeyboardKey key_code) {
 
 void TextView::ResetGestureRecognizers() {
   ClearGestureRecognizers();
-#if defined(OS_ANDROID) || defined(OS_IOS)
+#if defined(OS_WIN) || defined(OS_OSX)
+  auto multi_tap_recognizer = std::make_unique<MultiTapGestureRecognizer>(
+      page_view()->gesture_manager());
+  multi_tap_recognizer->SetDelegate(this);
+  multi_tap_recognizer_ = multi_tap_recognizer.get();
+  multi_tap_recognizer->SetMultiTapCallback([this](const PointerEvent& up_event,
+                                                   int tap_counts) {
+    auto point = GetPointBySelf(up_event.position);
+    point.Move(-BorderLeft() - PaddingLeft(), -BorderTop() - PaddingTop());
+    RequestFocus();
+    auto render_text = GetRenderText();
+    auto glyph_pos = render_text->GetPainter()->GetGlyphPositionAtCoordinate(
+        point.x(), point.y());
+    if (tap_counts == 1) {
+      render_text->SetSelection(TextRange(glyph_pos.first, glyph_pos.first));
+#ifndef ENABLE_CLAY_LITE
+      selection_start_pos_ = glyph_pos.first;
+      selection_end_pos_ = glyph_pos.first;
+#endif
+    } else if (tap_counts == 2) {
+      auto range = SelectWord(glyph_pos.first, glyph_pos.second);
+#ifndef ENABLE_CLAY_LITE
+      selection_start_pos_ = range.start();
+      selection_end_pos_ = range.end();
+#endif
+    } else if (tap_counts >= 3) {
+      auto range = SelectParagraph(glyph_pos.first, glyph_pos.second);
+#ifndef ENABLE_CLAY_LITE
+      selection_start_pos_ = range.start();
+      selection_end_pos_ = range.end();
+#endif
+    }
+  });
+  auto drag_recognizer =
+      std::make_unique<DragGestureRecognizer>(page_view()->gesture_manager());
+  drag_recognizer->SetDelegate(this);
+  drag_recognizer->SetTouchSlop(1);
+  drag_recognizer_ = drag_recognizer.get();
+  drag_recognizer->SetDragDownCallback([this](const PointerEvent& event) {
+    RequestFocus();
+    drag_start_point_ = event.position;
+  });
+  drag_recognizer->SetDragStartCallback([this](const FloatPoint& event) {
+    PerformBeginSelection(drag_start_point_);
+    PerformMoveSelection(event);
+  });
+  drag_recognizer->SetDragUpdateCallback(
+      [this](const FloatPoint& event, const FloatSize& delta) {
+        PerformMoveSelection(event);
+      });
+  drag_recognizer->SetDragCancelCallback(
+      [this]() { PerformCancelSelection(); });
+  AddGestureRecognizer(std::move(drag_recognizer));
+  AddGestureRecognizer(std::move(multi_tap_recognizer));
+#elif defined(OS_ANDROID) || defined(OS_IOS)
 #ifndef ENABLE_CLAY_LITE
   auto double_tap_recognizer = std::make_unique<MultiTapGestureRecognizer>(
       page_view()->gesture_manager());
@@ -356,13 +445,89 @@ void TextView::ResetGestureRecognizers() {
 TextRange TextView::SelectWord(size_t pos) {
   auto painter = GetRenderText()->GetPainter();
   auto word_range = painter->GetWordBoundary(pos);
+#if defined(OS_WIN) || defined(OS_OSX)
+  word_range =
+      ExpandToSurrogatePairBoundaries(GetRenderText()->GetText(), word_range);
+#endif
   GetRenderText()->SetSelection(word_range);
   return word_range;
 }
 
+TextRange TextView::SelectWord(size_t pos, Affinity affinity) {
+  const auto& text = GetRenderText()->GetText();
+  if (affinity == Affinity::kUpstream && pos > 0) {
+    --pos;
+    if (pos > 0 && pos < text.size() && IsLowSurrogate(text[pos]) &&
+        IsHighSurrogate(text[pos - 1])) {
+      --pos;
+    }
+  }
+  return SelectWord(pos);
+}
+
+TextRange TextView::SelectLine(size_t pos) {
+  return SelectLine(pos, Affinity::kUpstream);
+}
+
+TextRange TextView::SelectLine(size_t pos, Affinity affinity) {
+  auto line_range =
+      GetRenderText()->GetPainter()->GetLineRangeForPosition(pos, affinity);
+  GetRenderText()->SetSelection(line_range);
+  return line_range;
+}
+
+TextRange TextView::SelectParagraph(size_t pos) {
+  return SelectParagraph(pos, Affinity::kUpstream);
+}
+
+TextRange TextView::SelectParagraph(size_t pos, Affinity affinity) {
+  const auto& text = GetRenderText()->GetText();
+  if (text.empty()) {
+    TextRange empty_range(0, 0);
+    GetRenderText()->SetSelection(empty_range);
+    return empty_range;
+  }
+
+  size_t offset = std::min(pos, text.size());
+  if (affinity == Affinity::kUpstream && offset > 0) {
+    --offset;
+  } else if (offset == text.size()) {
+    --offset;
+  }
+  if (offset > 0 && text[offset] == u'\n' && text[offset - 1] == u'\r') {
+    --offset;
+  }
+
+  size_t start = offset;
+  while (start > 0 && !IsParagraphSeparator(text[start - 1])) {
+    --start;
+  }
+
+  size_t end = offset;
+  while (end < text.size() && !IsParagraphSeparator(text[end])) {
+    ++end;
+  }
+  if (end < text.size()) {
+    if (text[end] == u'\r' && end + 1 < text.size() && text[end + 1] == u'\n') {
+      end += 2;
+    } else {
+      ++end;
+    }
+  }
+
+  TextRange paragraph_range(start, end);
+  GetRenderText()->SetSelection(paragraph_range);
+  return paragraph_range;
+}
+
 void TextView::PerformBeginSelection(FloatPoint point) {
 #ifndef ENABLE_CLAY_LITE
+#if defined(OS_WIN) || defined(OS_OSX)
+  point = GetPointBySelf(point);
+  point.Move(-BorderLeft() - PaddingLeft(), -BorderTop() - PaddingTop());
+#else
   point -= BoundsRelativeTo(nullptr).location();
+#endif
   selection_start_pos_ =
       GetRenderText()
           ->GetPainter()
@@ -377,7 +542,12 @@ void TextView::PerformBeginSelection(FloatPoint point) {
 void TextView::PerformMoveSelection(FloatPoint point,
                                     SelectionHandleView* handle_bar) {
 #ifndef ENABLE_CLAY_LITE
+#if defined(OS_WIN) || defined(OS_OSX)
+  point = GetPointBySelf(point);
+  point.Move(-BorderLeft() - PaddingLeft(), -BorderTop() - PaddingTop());
+#else
   point -= BoundsRelativeTo(nullptr).location();
+#endif
   selection_end_pos_ = GetRenderText()
                            ->GetPainter()
                            ->GetGlyphPositionAtCoordinate(point.x(), point.y())

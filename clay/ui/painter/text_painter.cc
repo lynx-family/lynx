@@ -188,15 +188,27 @@ double TextPainter::GetUpDownLineHeightForPosition(
 }
 
 TextRange TextPainter::GetLineRangeForPosition(size_t position) {
+  return GetLineRangeForPosition(position, Affinity::kUpstream);
+}
+
+TextRange TextPainter::GetLineRangeForPosition(size_t position,
+                                               Affinity affinity) {
   if (!paragraph_) {
     return {};
   }
-  for (const auto& metrics : paragraph_->GetLineMetrics()) {
+  const auto& lines = paragraph_->GetLineMetrics();
+  for (size_t i = 0; i < lines.size(); ++i) {
+    const auto& metrics = lines[i];
     if (position > metrics.end_index) {
       continue;
     }
     // Assume metrics are incremental.
     if (position >= metrics.start_index) {
+      if (position == metrics.end_index &&
+          metrics.end_including_newline == metrics.end_index &&
+          affinity == Affinity::kDownstream && i + 1 < lines.size()) {
+        return TextRange{lines[i + 1].start_index, lines[i + 1].end_index};
+      }
       return TextRange{metrics.start_index, metrics.end_index};
     }
     break;
