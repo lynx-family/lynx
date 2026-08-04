@@ -43,6 +43,11 @@ LYNX_EXTERN_C void lynx_view_builder_set_font_scale(
   builder->font_scale = scale;
 }
 
+LYNX_EXTERN_C void lynx_view_builder_set_enable_js_runtime(
+    lynx_view_builder_t* builder, bool enable) {
+  builder->enable_js_runtime = enable;
+}
+
 LYNX_EXTERN_C void lynx_view_builder_set_icu_data_path(
     lynx_view_builder_t* builder, const char* icu_data_path) {
   builder->icu_data_path = icu_data_path ? icu_data_path : "";

@@ -109,6 +109,7 @@ LYNX_EXTERN_C lynx_view_t* lynx_view_create(lynx_view_builder_t* builder,
   settings.viewport_size.cx = builder->frame.width;
   settings.viewport_size.cy = builder->frame.height;
   settings.device_pixel_ratio = builder->screen_size.pixel_ratio;
+  settings.enable_js = builder->enable_js_runtime;
   auto resource_loader =
       std::make_shared<lynx::embedder::LynxResourceLoaderEmbedder>();
   settings.resource_loader = resource_loader;
@@ -418,8 +419,10 @@ LYNX_EXTERN_C void lynx_view_release(lynx_view_t* view) {
   view->user_data = nullptr;
 #if ENABLE_NAPI_BINDING
   // Detach napi modules.
-  view->lynx_module_manager->Detach();
-  view->lynx_module_manager.reset();
+  if (view->lynx_module_manager) {
+    view->lynx_module_manager->Detach();
+    view->lynx_module_manager.reset();
+  }
   view->extension_factory_->OnLynxViewDestroy();
 #endif
 #if ENABLE_INSPECTOR && LYNX_ENABLE_LOGBOX

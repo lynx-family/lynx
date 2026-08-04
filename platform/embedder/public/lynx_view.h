@@ -62,6 +62,11 @@ class LynxView {
       return *this;
     }
 
+    Builder& SetEnableJSRuntime(bool enable) {
+      lynx_view_builder_set_enable_js_runtime(builder_, enable);
+      return *this;
+    }
+
     Builder& SetICUDataPath(const std::string& icu_data_path) {
       lynx_view_builder_set_icu_data_path(builder_, icu_data_path.c_str());
       return *this;

@@ -46,6 +46,10 @@ LYNX_CAPI_EXPORT void lynx_view_builder_set_frame(lynx_view_builder_t*,
 LYNX_CAPI_EXPORT void lynx_view_builder_set_font_scale(lynx_view_builder_t*,
                                                        const float& scale);
 
+// Controls whether the LynxView creates and runs a JavaScript runtime.
+LYNX_CAPI_EXPORT void lynx_view_builder_set_enable_js_runtime(
+    lynx_view_builder_t*, bool enable);
+
 // Sets the ICU data path for the LynxView being built. This function allows you
 // to specify the path to the ICU (International Components for Unicode) data
 // file that the LynxView will use for Unicode-related operations such as text

@@ -30,6 +30,7 @@ struct lynx_view_builder_t {
     float height = 0;
   } frame;
   float font_scale = 1.0;
+  bool enable_js_runtime = true;
   std::string icu_data_path;
   std::string webview2_fixed_runtime_path;
   lynx_group_t* group = nullptr;
