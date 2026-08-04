@@ -25,7 +25,7 @@ struct CompositorSurface {
 class CompositorService
     : public clay::Service<CompositorService, clay::Owner::kRaster> {
  public:
-  bool SubmitFrame(clay::GrContext* context,
+  bool SubmitFrame(clay::GrContextPtr context,
                    std::unique_ptr<SurfaceFrame> background_frame,
                    std::unique_ptr<CompositorState> compositor_state);
 
@@ -39,7 +39,7 @@ class CompositorService
   void OnDestroy() override;
 
   void CreateMissingSurfaces(size_t required_surfaces,
-                             clay::GrContext* context);
+                             clay::GrContextPtr context);
 
   CompositorSurface& GetCompositorSurface();
 

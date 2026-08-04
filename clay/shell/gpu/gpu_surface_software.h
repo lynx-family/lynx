@@ -37,6 +37,8 @@ class GPUSurfaceSoftware : public Surface {
   // |Surface|
   clay::GrContext* GetContext() override;
 
+  clay::GrContextPtr GetContextPtr() override;
+
  private:
   GPUSurfaceSoftwareDelegate* delegate_;
   // TODO(38466): Refactor GPU surface APIs take into account the fact that an

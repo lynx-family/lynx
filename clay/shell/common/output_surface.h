@@ -33,7 +33,7 @@ class OutputSurface : public fml::RefCountedThreadSafe<OutputSurface> {
 #endif
 
   virtual std::unique_ptr<Surface> CreateGPUSurface(
-      clay::GrContext* gr_context = nullptr) = 0;
+      clay::GrContextPtr gr_context = nullptr) = 0;
 
   virtual bool IsValid() const = 0;
 

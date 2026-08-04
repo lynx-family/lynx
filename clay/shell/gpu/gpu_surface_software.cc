@@ -98,4 +98,6 @@ clay::GrContext* GPUSurfaceSoftware::GetContext() {
   return nullptr;
 }
 
+clay::GrContextPtr GPUSurfaceSoftware::GetContextPtr() { return nullptr; }
+
 }  // namespace clay

@@ -491,7 +491,8 @@ RasterStatus Rasterizer::DrawToSurfaceUnsafe(
         frame_timings_recorder->RecordFrameTime(
             FrameTimingKey::kSubmitFrameStart);
       }
-      compositor_service_->SubmitFrame(surface_->GetContext(), std::move(frame),
+      compositor_service_->SubmitFrame(surface_->GetContextPtr(),
+                                       std::move(frame),
                                        std::move(compositor_state));
       if (frame_timings_recorder) {
         frame_timings_recorder->RecordFrameTime(

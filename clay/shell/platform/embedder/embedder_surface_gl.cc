@@ -72,18 +72,17 @@ SurfaceFrame::FramebufferInfo EmbedderSurfaceGL::GLContextFramebufferInfo()
 
 // |OutputSurface|
 std::unique_ptr<Surface> EmbedderSurfaceGL::CreateGPUSurface(
-    clay::GrContext* context) {
+    clay::GrContextPtr context) {
 #ifndef ENABLE_SKITY
   const bool render_to_surface = true;
   return std::make_unique<GPUSurfaceGLSkia>(
-      context ? sk_ref_sp(context) : GetMainGrContext(),
+      context ? context : GetMainGrContext(),
       this,              // GPU surface GL delegate
       render_to_surface  // render to surface
   );
 #else
   return std::make_unique<GPUSurfaceGLSkity>(
-      this,
-      context ? std::shared_ptr<clay::GrContext>(context) : GetMainGrContext());
+      this, context ? context : GetMainGrContext());
 #endif  // ENABLE_SKITY
 }
 

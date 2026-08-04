@@ -33,6 +33,9 @@ class Surface {
   virtual skity::Matrix GetRootTransformation() const = 0;
   virtual clay::GrContext* GetContext() = 0;
 
+  // Returns a strong reference for surfaces which share the rendering context.
+  virtual clay::GrContextPtr GetContextPtr() = 0;
+
   virtual std::unique_ptr<GLContextResult> MakeRenderContextCurrent();
 
   virtual bool ClearRenderContext();

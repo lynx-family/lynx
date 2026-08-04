@@ -72,7 +72,7 @@ bool SubmitBackgroundOnRasterIfNeeded(bool did_encode,
 }  // namespace
 
 bool CompositorService::SubmitFrame(
-    clay::GrContext* context, std::unique_ptr<SurfaceFrame> background_frame,
+    clay::GrContextPtr context, std::unique_ptr<SurfaceFrame> background_frame,
     std::unique_ptr<CompositorState> compositor_state) {
   TRACE_EVENT("clay", "CompositorService::SubmitFrame");
 
@@ -215,7 +215,7 @@ void CompositorService::OnDestroy() {
 }
 
 void CompositorService::CreateMissingSurfaces(size_t required_surfaces,
-                                              clay::GrContext* context) {
+                                              clay::GrContextPtr context) {
   if (required_surfaces <= compositor_surfaces_.size()) {
     return;
   }

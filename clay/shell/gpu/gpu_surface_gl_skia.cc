@@ -377,6 +377,8 @@ sk_sp<SkSurface> GPUSurfaceGLSkia::AcquireRenderSurface(
 // |Surface|
 GrDirectContext* GPUSurfaceGLSkia::GetContext() { return context_.get(); }
 
+clay::GrContextPtr GPUSurfaceGLSkia::GetContextPtr() { return context_; }
+
 // |Surface|
 std::unique_ptr<GLContextResult> GPUSurfaceGLSkia::MakeRenderContextCurrent() {
   return delegate_->GLContextMakeCurrent();

@@ -174,6 +174,8 @@ skity::GPUContext* GPUSurfaceGLSkity::GetContext() {
   return gpu_context_.get();
 }
 
+clay::GrContextPtr GPUSurfaceGLSkity::GetContextPtr() { return gpu_context_; }
+
 std::shared_ptr<skity::GPUSurface> GPUSurfaceGLSkity::AcquireRenderSurface(
     const skity::Vec2& size) {
   const uint64_t current_surface_generation =

@@ -57,6 +57,9 @@ class GPUSurfaceMetalSkity : public Surface {
   skity::GPUContext* GetContext() override;
 
   // |Surface|
+  clay::GrContextPtr GetContextPtr() override;
+
+  // |Surface|
   std::unique_ptr<GLContextResult> MakeRenderContextCurrent() override;
 
   // |Surface|

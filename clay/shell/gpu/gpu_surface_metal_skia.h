@@ -63,6 +63,9 @@ class SK_API_AVAILABLE_CA_METAL_LAYER GPUSurfaceMetalSkia : public Surface {
   GrDirectContext* GetContext() override;
 
   // |Surface|
+  clay::GrContextPtr GetContextPtr() override;
+
+  // |Surface|
   std::unique_ptr<GLContextResult> MakeRenderContextCurrent() override;
 
   // |Surface|

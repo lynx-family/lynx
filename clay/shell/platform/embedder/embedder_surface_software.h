@@ -39,7 +39,7 @@ class EmbedderSurfaceSoftware final : public EmbedderSurface,
   bool IsValid() const override;
 
   // |OutputSurface|
-  std::unique_ptr<Surface> CreateGPUSurface(clay::GrContext*) override;
+  std::unique_ptr<Surface> CreateGPUSurface(clay::GrContextPtr) override;
 
   // |GPUSurfaceSoftwareDelegate|
   clay::GrSurfacePtr AcquireBackingStore(const skity::Vec2& size) override;
