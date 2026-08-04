@@ -32,6 +32,7 @@ public class LynxSnapHelper {
   private static final int INVALID_INDEX = -1;
   private static final int DEFAULT_MAX_SNAP_COUNT = 1;
   private static final double FLING_DISTANCE_GAIN = 1.0d;
+  private static final double EXTRA_DISTANCE_VELOCITY_THRESHOLD = 2000.0d;
   private static final double VELOCITY_TO_VIEWPORT_RATIO = 2.0d;
   private LynxSnapHooks mSnapHooks = null;
   private boolean mIsVertical = true;
@@ -335,13 +336,15 @@ public class LynxSnapHelper {
   private int calculateEffectiveFlingDistance(int velocity, int viewportSize) {
     // This is not OverScroller's physical fling distance. It is a heuristic distance for
     // choosing snap candidates.
-    // First, normalize velocity by viewport size:
-    //   normalizedVelocity = abs(velocity) / (viewportSize * 2)
+    // First, normalize the velocity above the extra-distance threshold by viewport size:
+    //   normalizedVelocity = max(abs(velocity) - 2000, 0) / (viewportSize * 2)
     // For the same velocity, a smaller viewport produces a larger normalized value, while a
     // larger viewport produces a smaller one. For example, with velocity = 3000:
-    //   viewportSize = 500  -> normalizedVelocity = 3000 / 1000 = 3
-    //   viewportSize = 1000 -> normalizedVelocity = 3000 / 2000 = 1.5
-    double normalizedVelocity = Math.abs(velocity) / (viewportSize * VELOCITY_TO_VIEWPORT_RATIO);
+    //   viewportSize = 500  -> normalizedVelocity = 1000 / 1000 = 1
+    //   viewportSize = 1000 -> normalizedVelocity = 1000 / 2000 = 0.5
+    double normalizedVelocity =
+        Math.max(Math.abs(velocity) - EXTRA_DISTANCE_VELOCITY_THRESHOLD, 0.0d)
+        / (viewportSize * VELOCITY_TO_VIEWPORT_RATIO);
 
     // Then, use log1p(x), which means ln(1 + x), to compress high velocities. A linear
     // mapping would double the distance when velocity doubles, making fast flings skip too many
