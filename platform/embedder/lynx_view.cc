@@ -4,6 +4,7 @@
 
 #include <memory>
 
+#include "core/renderer/data/lynx_view_data_manager.h"
 #include "core/runtime/lepus/json_parser.h"
 #include "core/shell/runtime/bts/lynx_bts_runtime_proxy_impl.h"
 #include "platform/embedder/fetcher/lynx_generic_resource_fetcher_priv.h"
@@ -49,6 +50,33 @@ void SetupLogBoxWrapper(lynx_view_t* view, NativeWindow parent) {
 
 }  // namespace
 #endif
+
+namespace {
+
+std::shared_ptr<lynx::tasm::TemplateData> MergeGlobalProps(
+    const std::shared_ptr<lynx::tasm::TemplateData>& old_global_props,
+    const std::shared_ptr<lynx::tasm::TemplateData>& new_global_props) {
+  if (!new_global_props) {
+    return old_global_props;
+  }
+
+  auto merged_global_props = std::make_shared<lynx::tasm::TemplateData>(
+      old_global_props
+          ? lynx::lepus::Value::Clone(old_global_props->GetValue())
+          : lynx::lepus::Value::Clone(new_global_props->GetValue()),
+      old_global_props ? old_global_props->IsReadOnly()
+                       : new_global_props->IsReadOnly(),
+      old_global_props ? old_global_props->PreprocessorName()
+                       : new_global_props->PreprocessorName());
+  if (!old_global_props) {
+    return merged_global_props;
+  }
+  lynx::tasm::LynxViewDataManager::UpdateData(merged_global_props->value(),
+                                              new_global_props->GetValue());
+  return merged_global_props;
+}
+
+}  // namespace
 
 LYNX_EXTERN_C lynx_view_t* lynx_view_create(lynx_view_builder_t* builder,
                                             void* user_data) {
@@ -260,14 +288,15 @@ LYNX_EXTERN_C void lynx_view_load_template(lynx_view_t* view,
 
 LYNX_EXTERN_C void lynx_view_update_data(lynx_view_t* view,
                                          lynx_update_meta_t* update_meta) {
-  if (!update_meta->update_data) {
+  if (!update_meta->update_data && !update_meta->global_props) {
     return;
   }
   if (update_meta->global_props) {
-    view->global_props = update_meta->global_props;
+    view->global_props =
+        MergeGlobalProps(view->global_props, update_meta->global_props);
   }
   view->lynx_template_renderer->UpdateMetaData(
-      update_meta->update_data, view->global_props
+      update_meta->update_data, update_meta->global_props
                                     ? view->global_props->GetValue()
                                     : lynx::lepus::Value());
 }
