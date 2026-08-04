@@ -1476,7 +1476,7 @@ static CGFloat LynxDecodeAutoOffsetRotateAngle(CGFloat rotate) {
                                      top:(float)top
                                   bottom:(float)bottom {
   TransOffset res;
-  UIView* root_view = [[UIApplication sharedApplication] keyWindow];
+  UIView* root_view = self.view.window;
   CALayer* layer = self.view.layer;
   CGFloat width = layer.bounds.size.width;
   CGFloat height = layer.bounds.size.height;

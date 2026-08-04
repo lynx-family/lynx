@@ -8,6 +8,7 @@
 #import <Lynx/LynxServiceSystemInvokeProtocol.h>
 #import <Lynx/LynxTextRenderer.h>
 #import <Lynx/LynxTextView.h>
+#import <Lynx/LynxUIKitAPIAdapter.h>
 #import <Lynx/LynxUIText.h>
 #import <Lynx/LynxWeakProxy.h>
 
@@ -555,11 +556,7 @@ static const float kResponseTouchRadius = 20.f;
   }
 
   UIMenuController *menu = [UIMenuController sharedMenuController];
-  if (@available(iOS 13.0, *)) {
-    [menu hideMenuFromView:self];
-  } else {
-    [menu setMenuVisible:NO animated:YES];
-  }
+  [LynxUIKitAPIAdapter hideMenuController:menu fromView:self];
   self.menuShowing = NO;
 }
 
@@ -589,12 +586,7 @@ static const float kResponseTouchRadius = 20.f;
   rect.origin.x += self.border.left + self.padding.left;
   rect.origin.y += self.border.top + self.padding.top;
 
-  if (@available(iOS 13.0, *)) {
-    [menu showMenuFromView:self rect:rect];
-  } else {
-    [menu setTargetRect:rect inView:self];
-    [menu setMenuVisible:YES animated:YES];
-  }
+  [LynxUIKitAPIAdapter showMenuController:menu fromView:self rect:rect];
   [menu update];
 
   self.menuShowing = YES;

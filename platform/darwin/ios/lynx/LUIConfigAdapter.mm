@@ -147,17 +147,17 @@
   return _config->GetTrailNewImage() == lynx::tasm::TernaryBool::TRUE_VALUE;
 }
 
-- (BOOL)enableTextGradientOpt {
+- (bool)enableTextGradientOpt {
   return _config->GetEnableTextGradientOpt() == lynx::tasm::TernaryBool::UNDEFINE_VALUE
              ? [[LynxEnv sharedInstance] enableTextGradientOpt]
              : _config->GetEnableTextGradientOpt() == lynx::tasm::TernaryBool::TRUE_VALUE;
 }
 
-- (BOOL)enableExposureWhenReload {
+- (bool)enableExposureWhenReload {
   return _config->GetEnableExposureWhenReload();
 }
 
-- (BOOL)enableiOSAnimationLayerForExposure {
+- (bool)enableiOSAnimationLayerForExposure {
   return _config->GetEnableiOSAnimationLayerForExposure();
 }
 

@@ -35,7 +35,7 @@ typedef NS_ENUM(NSInteger, LynxRadialCenterType) {
 - (instancetype)initWithColors:(NSArray<NSNumber*>*)colors stops:(NSArray<NSNumber*>*)stops;
 - (void)draw:(CGContextRef)context withPath:(CGPathRef)path;
 - (void)draw:(CGContextRef)context withRect:(CGRect)pathRect;
-- (BOOL)isEqualTo:(LynxGradient*)rhs;
+- (BOOL)isEqualTo:(nullable LynxGradient*)rhs;
 @end
 
 @interface LynxLinearGradient : LynxGradient

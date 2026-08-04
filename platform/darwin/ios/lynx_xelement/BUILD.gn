@@ -54,6 +54,7 @@ podspec_target("XElement_podspec") {
   deps = [
     ":AnimaX",
     ":Behavior",
+    ":BehaviorCore",
     ":BlurView",
     ":Input",
     ":Markdown",
@@ -337,12 +338,23 @@ subspec_target("Markdown") {
 
 subspec_target("Behavior") {
   sources = [
+    "behavior/LynxUIMarkdownAutoRegistry.h",
+    "behavior/LynxUIMarkdownAutoRegistry.m",
+  ]
+  public_header_files = [ "behavior/LynxUIMarkdownAutoRegistry.h" ]
+
+  dependency = [
+    "XElement/BehaviorCore",
+    "XElement/Markdown",
+  ]
+}
+
+subspec_target("BehaviorCore") {
+  sources = [
     "behavior/LynxUIBlurViewAutoRegistry.h",
     "behavior/LynxUIBlurViewAutoRegistry.m",
     "behavior/LynxUIInputAutoRegistry.h",
     "behavior/LynxUIInputAutoRegistry.m",
-    "behavior/LynxUIMarkdownAutoRegistry.h",
-    "behavior/LynxUIMarkdownAutoRegistry.m",
     "behavior/LynxUIOverlayAutoRegistry.h",
     "behavior/LynxUIOverlayAutoRegistry.m",
     "behavior/LynxUIRefreshAutoRegistry.h",
@@ -362,7 +374,6 @@ subspec_target("Behavior") {
   ]
   public_header_files = [
     "behavior/LynxUIBlurViewAutoRegistry.h",
-    "behavior/LynxUIMarkdownAutoRegistry.h",
     "behavior/LynxUIInputAutoRegistry.h",
     "behavior/LynxUIOverlayAutoRegistry.h",
     "behavior/LynxUIRefreshAutoRegistry.h",
@@ -378,7 +389,6 @@ subspec_target("Behavior") {
   dependency += [
     "XElement/BlurView",
     "XElement/Input",
-    "XElement/Markdown",
     "XElement/Overlay",
     "XElement/ScrollCoordinator",
     "XElement/ViewPager",

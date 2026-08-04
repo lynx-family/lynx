@@ -803,6 +803,40 @@ jobs:
           name: ios-explorer-build-${{ matrix.arch }}
           path: '${{ github.workspace }}/lynx/LynxExplorer-${{ matrix.arch }}.app.tar.gz'
 
+  ios-catalyst-explorer-build:
+    needs: [darwin-impact-check]
+    if: ${{ needs.darwin-impact-check.outputs.darwin == 'true' }}
+    timeout-minutes: 60
+    runs-on: lynx-darwin-15.6.1-medium
+    strategy:
+      matrix:
+        arch: [arm64, x86_64]
+    steps:
+      - name: Download Source
+        uses: actions/checkout@v6
+        with:
+          path: lynx
+      - name: Setup CocoaPods cache
+        uses: lynx-infra/cache@5c6160a6a4c7fca80a2f3057bb9dfc9513fcb732
+        with:
+          path: |
+            ~/.cocoapods/repos/trunk
+            ~/Library/Caches/CocoaPods
+          key: cocoapods-ios-explorer-${{ runner.os }}-${{ hashFiles('lynx/explorer/darwin/ios/lynx_explorer/Podfile') }}
+          restore-keys: |
+            cocoapods-ios-explorer-${{ runner.os }}-
+      - name: Build Mac Catalyst Explorer App
+        uses: ./lynx/.github/actions/ios-catalyst-explorer-build
+        with:
+          build-arch: ${{ matrix.arch }}
+          build-params: '--mac-catalyst'
+      - name: Upload artifact
+        uses: lynx-infra/upload-artifact@332ec52e99f7cbf1fbbdc9bcc09280d49147d092
+        continue-on-error: true
+        with:
+          name: ios-catalyst-explorer-build-${{ matrix.arch }}
+          path: '${{ github.workspace }}/lynx/LynxExplorer-catalyst-${{ matrix.arch }}.app.tar.gz'
+
   ios-integration-test:
     needs: [darwin-impact-check]
     if: ${{ needs.darwin-impact-check.outputs.darwin == 'true' }}

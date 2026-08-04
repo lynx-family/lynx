@@ -360,7 +360,7 @@ static const NSInteger kInvalidViewPagerIndex = -1;
 - (void)insertChild:(id)child atIndex:(NSInteger)index {
   [super insertChild:child atIndex:index];
   if ([child isKindOfClass:LynxUIViewPagerItem.class]) {
-    [[child view] removeFromSuperview];
+    [[(LynxUIViewPagerItem *)child view] removeFromSuperview];
     self.shouldReloadData = YES;
   }
 }
