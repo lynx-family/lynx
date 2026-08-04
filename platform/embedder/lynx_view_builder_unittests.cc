@@ -16,6 +16,7 @@ TEST(LynxViewBuilder, Create) {
   lynx_view_builder_set_screen_size(builder, 100, 200, 1.0);
   lynx_view_builder_set_frame(builder, 0, 0, 100, 200);
   lynx_view_builder_set_font_scale(builder, 1.0);
+  lynx_view_builder_set_enable_js_runtime(builder, false);
 
   lynx_group_t* group = lynx_group_create("group");
   lynx_view_builder_set_lynx_group(builder, group);
@@ -35,6 +36,7 @@ TEST(LynxViewBuilder, Create) {
   EXPECT_EQ(builder->frame.width, 100);
   EXPECT_EQ(builder->frame.height, 200);
   EXPECT_EQ(builder->font_scale, 1.0);
+  EXPECT_FALSE(builder->enable_js_runtime);
   EXPECT_EQ(builder->group, group);
   EXPECT_EQ(builder->native_modules.size(), 1);
 
