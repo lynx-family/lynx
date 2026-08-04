@@ -95,6 +95,7 @@ lynx_core_source_set("embedder") {
   deps = [
     ":public_headers",
     "../../core:lynx_native",
+    "../../core/renderer/data:data",
     "./core:renderer",
     "./lynx_service:lynx_service",
     "./resource:resource",
