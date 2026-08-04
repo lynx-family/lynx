@@ -701,6 +701,8 @@ static const CGFloat kLynxItemSnapMillisecondsPerSecond = 1000.0;
   LynxItemSnapCandidate *bestCandidate = firstCandidate;
   CGFloat bestDistance = ABS(firstCandidate.offset - projectedOffset);
   for (LynxItemSnapCandidate *candidate in sortedCandidates) {
+    // TODO: Use rawIndex once candidates retain the original child index. `position` is a dense
+    // snap-candidate ordinal and does not count skipped children such as bounce views.
     NSInteger snapCount = ABS(candidate.position - firstCandidate.position) + 1;
     if (snapCount > maxSnapCount) {
       continue;
