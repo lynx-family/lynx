@@ -175,6 +175,7 @@ class PageView : public BaseView,
 
   GrDataPtr TakeScreenshotHardware(
       ScreenshotRequest screenshot_request = ScreenshotRequest());
+  std::unique_ptr<LayerTree> BuildSnapshotLayerTree();
 
   Size physical_size() const { return physical_size_; }
   Size logical_size() const { return size_; }
