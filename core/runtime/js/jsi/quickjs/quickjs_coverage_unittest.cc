@@ -11,19 +11,39 @@
 #include <utility>
 
 #include "base/include/fml/message_loop.h"
+#include "core/base/threading/task_runner_manufactor.h"
 #define private public
 #include "core/renderer/utils/lynx_env.h"
 #undef private
 
 #include "core/renderer/tasm/testing/event_tracker_mock.h"
 #include "core/runtime/js/jsi/quickjs/quickjs_runtime.h"
+#include "core/services/event_report/event_tracker_platform_impl.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
+#include "third_party/modp_b64/modp_b64.h"
+#include "third_party/zlib/zlib.h"
 
 namespace {
 
 thread_local std::string g_coverage_dump_for_testing;
 thread_local int32_t g_coverage_runtime_id_for_testing = -1;
 thread_local int g_coverage_dump_call_count_for_testing = 0;
+
+void DrainPendingCacheAndReportTasks() {
+  // QuickjsRuntime may enqueue cache cleanup during construction. Drain both
+  // queues so its event cannot replace the coverage event in the single-entry
+  // EventTracker mock while these tests inspect the reported properties.
+  fml::AutoResetWaitableEvent cache_tasks_finished;
+  lynx::base::TaskRunnerManufactor::PostTaskToConcurrentLoop(
+      [&cache_tasks_finished]() { cache_tasks_finished.Signal(); },
+      lynx::base::ConcurrentTaskType::NORMAL_PRIORITY);
+  cache_tasks_finished.Wait();
+
+  fml::AutoResetWaitableEvent report_tasks_finished;
+  lynx::tasm::report::EventTrackerPlatformImpl::GetReportTaskRunner()->PostTask(
+      [&report_tasks_finished]() { report_tasks_finished.Signal(); });
+  report_tasks_finished.Wait();
+}
 
 }  // namespace
 
@@ -190,6 +210,7 @@ TEST(QuickjsRuntimeCoverageTest, CoverageIdIsCreatedOnFirstDumpAndStaysStable) {
 
   // Exercise repeated dumps through the public lifecycle hook so the test
   // validates reported behavior without exposing QuickjsRuntime internals.
+  DrainPendingCacheAndReportTasks();
   auto report_event = tasm::report::EventTrackerWaitableEvent::Await();
   report_event->Reset();
   runtime->BeforeDestroy();
@@ -212,6 +233,53 @@ TEST(QuickjsRuntimeCoverageTest, CoverageIdIsCreatedOnFirstDumpAndStaysStable) {
   const auto second_coverage_id = second_dump_props.find("coverage_id");
   ASSERT_NE(second_coverage_id, second_dump_props.end());
   EXPECT_EQ(second_coverage_id->second, first_coverage_id->second);
+}
+
+TEST(QuickjsRuntimeCoverageTest, ReportedDataIsCompressedAndBase64Encoded) {
+  fml::MessageLoop::EnsureInitializedForCurrentThread();
+  ScopedJSCoverageSamplingEnv sampling_env(
+      std::to_string(tasm::LynxEnv::kJSCoverageSamplingBasisPointsMax));
+  auto runtime = std::make_unique<QuickjsRuntime>();
+
+  auto vm = runtime->createVM(nullptr);
+  auto context = runtime->createContext(vm);
+  constexpr int32_t kRuntimeId = 44;
+  JSRuntimeExternalParams external_params;
+  external_params.runtime_id = kRuntimeId;
+  runtime->SetExternalParams(std::move(external_params));
+  runtime->InitRuntime(context);
+
+  const auto result = runtime->evaluateJavaScript(
+      std::make_shared<StringBuffer>("globalThis.coverageEncodingTest = true;"),
+      "coverage-encoding.js");
+  ASSERT_TRUE(result.has_value());
+
+  DrainPendingCacheAndReportTasks();
+  auto report_event = tasm::report::EventTrackerWaitableEvent::Await();
+  report_event->Reset();
+  runtime->BeforeDestroy();
+  report_event->Wait();
+  ASSERT_EQ(tasm::report::EventTrackerWaitableEvent::stack_.size(), 1u);
+
+  const auto& props =
+      tasm::report::EventTrackerWaitableEvent::stack_.front().GetStringProps();
+  const auto data = props.find("data");
+  ASSERT_NE(data, props.end());
+
+  std::string compressed_data = data->second;
+  lynx_modp_b64_decode(compressed_data);
+  ASSERT_FALSE(compressed_data.empty());
+
+  constexpr size_t kDecodedDumpCapacity = 4096;
+  std::string decoded_dump(kDecodedDumpCapacity, '\0');
+  uLong decoded_size = static_cast<uLong>(decoded_dump.size());
+  ASSERT_EQ(
+      uncompress(reinterpret_cast<Bytef*>(decoded_dump.data()), &decoded_size,
+                 reinterpret_cast<const Bytef*>(compressed_data.data()),
+                 static_cast<uLong>(compressed_data.size())),
+      Z_OK);
+  decoded_dump.resize(decoded_size);
+  EXPECT_NE(decoded_dump.find("coverage-encoding.js"), std::string::npos);
 }
 
 TEST(QuickjsRuntimeCoverageTest, CoverageDisabledRuntimeDoesNotDumpCoverage) {

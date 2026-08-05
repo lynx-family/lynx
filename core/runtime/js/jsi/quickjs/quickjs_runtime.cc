@@ -5,6 +5,7 @@
 #include "core/runtime/js/jsi/quickjs/quickjs_runtime.h"
 
 #include <limits>
+#include <optional>
 #include <random>
 #include <utility>
 #include <vector>
@@ -33,6 +34,8 @@
 #include "core/services/performance/memory_monitor/memory_monitor.h"
 #include "core/services/watch_dog/watch_dog.h"
 #include "quickjs/include/quickjs.h"
+#include "third_party/modp_b64/modp_b64.h"
+#include "third_party/zlib/zlib.h"
 #ifdef OS_IOS
 #include "gc/trace-gc.h"
 #else
@@ -86,6 +89,32 @@ bool SampleJSCoverageForPage() {
   std::uniform_int_distribution<uint32_t> distribution(
       0, tasm::LynxEnv::kJSCoverageSamplingBasisPointsMax - 1);
   return distribution(random_engine) < basis_points;
+}
+
+std::optional<std::string> CompressAndEncodeJSCoverage(const char *data,
+                                                       size_t size) {
+  if (size > std::numeric_limits<uLong>::max()) {
+    return std::nullopt;
+  }
+
+  uLong compressed_size = compressBound(static_cast<uLong>(size));
+  std::vector<Bytef> compressed_data(compressed_size);
+  if (compress(compressed_data.data(), &compressed_size,
+               reinterpret_cast<const Bytef *>(data),
+               static_cast<uLong>(size)) != Z_OK ||
+      compressed_size > MODP_B64_MAX_INPUT_LEN) {
+    return std::nullopt;
+  }
+
+  std::string encoded_data(lynx_modp_b64_encode_len(compressed_size), '\0');
+  const size_t encoded_size = lynx_modp_b64_encode(
+      encoded_data.data(),
+      reinterpret_cast<const char *>(compressed_data.data()), compressed_size);
+  if (encoded_size == MODP_B64_ERROR) {
+    return std::nullopt;
+  }
+  encoded_data.resize(encoded_size);
+  return encoded_data;
 }
 }  // namespace
 
@@ -164,16 +193,23 @@ void QuickjsRuntime::DumpCoverage() {
         static constexpr char kJSCoverageDataKey[] = "data";
         static constexpr char kJSCoverageDumpDurationKey[] = "dump_duration_ms";
 
+        std::unique_ptr<const char, decltype(&JS_FreeCoverageDumpString)>
+            coverage_dump_holder(coverage_dump, JS_FreeCoverageDumpString);
+        auto encoded_data =
+            CompressAndEncodeJSCoverage(coverage_dump, dump_length);
+        if (!encoded_data) {
+          LOGE("Failed to compress JS coverage for runtime: " << instance_id);
+          return;
+        }
+
         tasm::report::MoveOnlyEvent event;
         event.SetName(kJSCoverageEventName);
         event.SetProps(kJSCoverageIdKey, coverage_id);
-        event.SetProps(kJSCoverageDataKey,
-                       std::string(coverage_dump, dump_length));
+        event.SetProps(kJSCoverageDataKey, *encoded_data);
         event.SetProps(kJSCoverageDumpDurationKey, dump_duration_ms);
         event.SetProps(tasm::report::kPropURL, page_url);
         tasm::report::EventTrackerPlatformImpl::OnEvent(instance_id,
                                                         std::move(event));
-        JS_FreeCoverageDumpString(coverage_dump);
       });
 }
 
