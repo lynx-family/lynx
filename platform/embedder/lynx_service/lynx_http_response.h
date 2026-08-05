@@ -30,7 +30,8 @@ struct lynx_http_response_t {
   bool completed = false;
 };
 
-lynx_http_response_t* lynx_http_response_create(HttpResponseCallback callback);
+LYNX_EXTERN_C LYNX_CAPI_EXPORT lynx_http_response_t* lynx_http_response_create(
+    HttpResponseCallback callback);
 
 void lynx_http_response_wrap(lynx_http_response_t* response,
                              lynx_http_response_t* target);

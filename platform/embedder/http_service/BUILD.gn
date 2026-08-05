@@ -1,0 +1,27 @@
+# Copyright 2025 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("../../../core/Lynx.gni")
+
+# A reusable, open-source HTTP service backed by each platform's native system
+# networking library (WinHTTP on Windows, NSURLSession on macOS/iOS). Desktop
+# embedder apps depend on this target and register LynxHttpServiceImpl to
+# enable JS fetch() without reimplementing the transport per app.
+lynx_core_source_set("http_service") {
+  sources = [ "lynx_http_service_impl.h" ]
+
+  if (is_win) {
+    sources += [ "lynx_http_service_impl_win.cc" ]
+    libs = [ "winhttp.lib" ]
+  } else if (is_mac || is_ios) {
+    sources += [ "lynx_http_service_impl_darwin.mm" ]
+    frameworks = [ "Foundation.framework" ]
+  }
+
+  public_configs = [
+    "../:public_api",
+    "../:config",
+  ]
+  deps = [ "../:public_headers" ]
+}
