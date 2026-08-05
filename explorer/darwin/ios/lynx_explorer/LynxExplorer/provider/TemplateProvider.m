@@ -8,7 +8,8 @@
 
 - (void)loadTemplateWithUrl:(NSString*)url onComplete:(LynxTemplateLoadBlock)callback {
   // Try loading as a local bundle from the Resource directory first.
-  // Sparkling passes bare bundle names like "homepage.lynx.bundle".
+  // Sparkling passes bundle names like "showcase/menu/main.lynx.bundle"
+  // or bare names like "homepage.lynx.bundle".
   if ([url hasSuffix:@".bundle"]) {
     NSString* bundleName = [url stringByDeletingPathExtension];
     NSString* bundlePath = [[NSBundle mainBundle] pathForResource:bundleName

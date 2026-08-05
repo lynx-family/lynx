@@ -48,6 +48,73 @@ NSString *const HOMEPAGE_URL = @"file://lynx?local://homepage.lynx.bundle?fullsc
 
 @implementation AppDelegate
 
++ (BOOL)isDarkMode {
+  if (@available(iOS 13.0, *)) {
+    return UITraitCollection.currentTraitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
+  }
+  return NO;
+}
+
+/// Appends theme-aware query params (bar_color, title_color, back_button_style)
+/// to a legacy URL if they are not already present.
++ (NSString *)appendThemeParams:(NSString *)url {
+  BOOL isDark = [self isDarkMode];
+  NSMutableString *result = [url mutableCopy];
+  // In legacy URLs like "file://lynx?local://X.bundle?params", the first ?
+  // is part of the scheme, not a query separator. Check for params after the
+  // bundle path by looking past the LOCAL_URL_PREFIX.
+  BOOL hasParams;
+  if ([url hasPrefix:LOCAL_URL_PREFIX]) {
+    hasParams = [[url substringFromIndex:LOCAL_URL_PREFIX.length] containsString:@"?"];
+  } else {
+    hasParams = [url containsString:@"?"];
+  }
+  NSString *sep = hasParams ? @"&" : @"?";
+  if (![url containsString:@"bar_color="]) {
+    [result appendFormat:@"%@bar_color=%@", sep, isDark ? @"181D25" : @"F0F2F5"];
+    sep = @"&";
+  }
+  if (![url containsString:@"title_color="]) {
+    [result appendFormat:@"%@title_color=%@", sep, isDark ? @"FFFFFF" : @"000000"];
+    sep = @"&";
+  }
+  if (![url containsString:@"back_button_style="]) {
+    [result appendFormat:@"%@back_button_style=%@", sep, isDark ? @"dark" : @"light"];
+  }
+  return result;
+}
+
+/// Converts a lynx://lynxview_page?bundle=X&k=v URL to file://lynx?local://X?k=v.
+/// Returns nil if the URL is not a valid lynxview_page deeplink.
+/// Additional query params (e.g., title, bar_color) are forwarded as-is.
++ (NSString *)legacyUrlFromDeeplink:(NSURL *)url {
+  if (![[url scheme] isEqualToString:@"lynx"] || ![[url host] isEqualToString:@"lynxview_page"]) {
+    return nil;
+  }
+  NSURLComponents *components = [NSURLComponents componentsWithURL:url resolvingAgainstBaseURL:NO];
+  NSString *bundle = nil;
+  NSMutableArray<NSURLQueryItem *> *remaining = [NSMutableArray array];
+  for (NSURLQueryItem *item in components.queryItems) {
+    if ([item.name isEqualToString:@"bundle"]) {
+      bundle = item.value;
+    } else {
+      [remaining addObject:item];
+    }
+  }
+  if (bundle.length == 0) {
+    return nil;
+  }
+  NSMutableString *legacyUrl = [NSMutableString stringWithFormat:@"%@%@", LOCAL_URL_PREFIX, bundle];
+  if (remaining.count > 0) {
+    NSMutableArray<NSString *> *pairs = [NSMutableArray array];
+    for (NSURLQueryItem *item in remaining) {
+      [pairs addObject:[NSString stringWithFormat:@"%@=%@", item.name, item.value ?: @""]];
+    }
+    [legacyUrl appendFormat:@"?%@", [pairs componentsJoinedByString:@"&"]];
+  }
+  return legacyUrl;
+}
+
 - (BOOL)application:(UIApplication *)application
     didFinishLaunchingWithOptions:(NSDictionary *)launchOptions {
   InstallPrimJSWeakNodeApiBridge();
@@ -82,8 +149,23 @@ NSString *const HOMEPAGE_URL = @"file://lynx?local://homepage.lynx.bundle?fullsc
     return YES;
   }
 
-  [[TasmDispatcher sharedInstance] openTargetUrl:HOMEPAGE_URL];
-  return YES;
+  // On cold launch via deeplink, open the deeplink target instead of homepage.
+  NSURL *launchUrl = launchOptions[UIApplicationLaunchOptionsURLKey];
+  NSString *deeplinkTarget = launchUrl ? [AppDelegate legacyUrlFromDeeplink:launchUrl] : nil;
+  if (deeplinkTarget) {
+    deeplinkTarget = [AppDelegate appendThemeParams:deeplinkTarget];
+  }
+
+  // On cold launch via Quick Action, open the shortcut target instead of homepage.
+  UIApplicationShortcutItem *shortcut = launchOptions[UIApplicationLaunchOptionsShortcutItemKey];
+  if (!deeplinkTarget && shortcut) {
+    deeplinkTarget = [self urlForShortcutItem:shortcut];
+  }
+
+  [[TasmDispatcher sharedInstance] openTargetUrl:deeplinkTarget ?: HOMEPAGE_URL];
+  // Return NO when launched via shortcut to prevent performActionForShortcutItem:
+  // from being called redundantly.
+  return (shortcut == nil);
 }
 
 - (void)openCard:(NSString *)url {
@@ -118,7 +200,33 @@ NSString *const HOMEPAGE_URL = @"file://lynx?local://homepage.lynx.bundle?fullsc
     }
   }
 
+  // Handle lynx://lynxview_page?bundle=<name> deeplinks.
+  NSString *deeplinkTarget = [AppDelegate legacyUrlFromDeeplink:url];
+  if (deeplinkTarget) {
+    [self openCard:[AppDelegate appendThemeParams:deeplinkTarget]];
+    return YES;
+  }
+
   return NO;
+}
+
+- (NSString *)urlForShortcutItem:(UIApplicationShortcutItem *)item {
+  if ([item.type isEqualToString:@"com.lynx.explorer.showcase"]) {
+    return [AppDelegate appendThemeParams:@"file://lynx?local://showcase/menu/main.lynx.bundle"];
+  }
+  return nil;
+}
+
+- (void)application:(UIApplication *)application
+    performActionForShortcutItem:(UIApplicationShortcutItem *)shortcutItem
+               completionHandler:(void (^)(BOOL))completionHandler {
+  NSString *url = [self urlForShortcutItem:shortcutItem];
+  if (url) {
+    [self openCard:url];
+    completionHandler(YES);
+    return;
+  }
+  completionHandler(NO);
 }
 
 @end
