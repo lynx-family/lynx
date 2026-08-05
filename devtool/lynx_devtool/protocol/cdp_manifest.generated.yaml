@@ -20,54 +20,71 @@ domains:
     methods:
       - name: addRule
         origin: standard
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_css_agent_ng.cc
       - name: createStyleSheet
         origin: standard
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_css_agent_ng.cc
       - name: disable
         origin: standard
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_css_agent_ng.cc
       - name: enable
         origin: standard
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_css_agent_ng.cc
       - name: getBackgroundColors
         origin: standard
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_css_agent_ng.cc
       - name: getComputedStyleForNode
         origin: standard
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_css_agent_ng.cc
       - name: getInlineStylesForNode
         origin: standard
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_css_agent_ng.cc
       - name: getMatchedStylesForNode
         origin: standard
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_css_agent_ng.cc
       - name: getMediaQueries
         origin: standard
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_css_agent_ng.cc
       - name: getStyleSheetText
         origin: standard
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_css_agent_ng.cc
       - name: setMediaText
         origin: standard
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_css_agent_ng.cc
       - name: setStyleSheetText
         origin: standard
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_css_agent_ng.cc
       - name: setStyleTexts
         origin: standard
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_css_agent_ng.cc
       - name: setSupportsText
         origin: standard
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_css_agent_ng.cc
       - name: startRuleUsageTracking
         origin: standard
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_css_agent_ng.cc
       - name: stopRuleUsageTracking
         origin: standard
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_css_agent_ng.cc
       - name: updateRuleUsageTracking
         origin: lynx-extension
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_css_agent_ng.cc
   - name: Component
     origin: lynx-extension
@@ -75,6 +92,7 @@ domains:
     methods:
       - name: uselessUpdate
         origin: lynx-extension
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_component_agent.cc
   - name: DOM
     origin: standard
@@ -82,90 +100,119 @@ domains:
     methods:
       - name: copyTo
         origin: standard
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_dom_agent_ng.cc
       - name: describeNode
         origin: standard
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_dom_agent_ng.cc
       - name: disable
         origin: standard
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_dom_agent_ng.cc
       - name: disableDomTree
         origin: lynx-extension
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_dom_agent_ng.cc
       - name: discardSearchResults
         origin: standard
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_dom_agent_ng.cc
       - name: enable
         origin: standard
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_dom_agent_ng.cc
       - name: enableDomTree
         origin: lynx-extension
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_dom_agent_ng.cc
       - name: focus
         origin: standard
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_dom_agent_ng.cc
       - name: getAttributes
         origin: standard
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_dom_agent_ng.cc
       - name: getBoxModel
         origin: standard
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_dom_agent_ng.cc
       - name: getDocument
         origin: standard
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_dom_agent_ng.cc
       - name: getDocumentWithBoxModel
         origin: lynx-extension
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_dom_agent_ng.cc
       - name: getNodeForLocation
         origin: standard
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_dom_agent_ng.cc
       - name: getOriginalNodeIndex
         origin: lynx-extension
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_dom_agent_ng.cc
       - name: getOuterHTML
         origin: standard
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_dom_agent_ng.cc
       - name: getSearchResults
         origin: standard
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_dom_agent_ng.cc
       - name: innerText
         origin: lynx-extension
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_dom_agent_ng.cc
       - name: markUndoableState
         origin: standard
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_dom_agent_ng.cc
       - name: moveTo
         origin: standard
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_dom_agent_ng.cc
       - name: performSearch
         origin: standard
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_dom_agent_ng.cc
       - name: pushNodesByBackendIdsToFrontend
         origin: standard
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_dom_agent_ng.cc
       - name: querySelector
         origin: standard
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_dom_agent_ng.cc
       - name: querySelectorAll
         origin: standard
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_dom_agent_ng.cc
       - name: removeNode
         origin: standard
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_dom_agent_ng.cc
       - name: requestChildNodes
         origin: standard
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_dom_agent_ng.cc
       - name: scrollIntoViewIfNeeded
         origin: standard
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_dom_agent_ng.cc
       - name: setAttributesAsText
         origin: standard
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_dom_agent_ng.cc
       - name: setInspectedNode
         origin: standard
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_dom_agent_ng.cc
       - name: setOuterHTML
         origin: standard
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_dom_agent_ng.cc
   - name: Debugger
     origin: standard
@@ -173,63 +220,83 @@ domains:
     methods:
       - name: continueToLocation
         origin: standard
+        since: '4.1'
         source: third_party/quickjs/src/src/inspector/protocols.cc
       - name: disable
         origin: standard
+        since: '4.1'
         source: third_party/quickjs/src/src/inspector/protocols.cc
       - name: enable
         origin: standard
+        since: '4.1'
         source: third_party/quickjs/src/src/inspector/protocols.cc
       - name: evaluateOnCallFrame
         origin: standard
+        since: '4.1'
         source: third_party/quickjs/src/src/inspector/protocols.cc
       - name: getPossibleBreakpoints
         origin: standard
+        since: '4.1'
         source: third_party/quickjs/src/src/inspector/protocols.cc
       - name: getScriptSource
         origin: standard
+        since: '4.1'
         source: third_party/quickjs/src/src/inspector/protocols.cc
       - name: pause
         origin: standard
+        since: '4.1'
         source: third_party/quickjs/src/src/inspector/protocols.cc
       - name: removeBreakpoint
         origin: standard
+        since: '4.1'
         source: third_party/quickjs/src/src/inspector/protocols.cc
       - name: resume
         origin: standard
+        since: '4.1'
         source: third_party/quickjs/src/src/inspector/protocols.cc
       - name: setAsyncCallStackDepth
         origin: standard
+        since: '4.1'
         source: third_party/quickjs/src/src/inspector/protocols.cc
       - name: setBreakpoint
         origin: standard
+        since: '4.1'
         source: third_party/quickjs/src/src/inspector/protocols.cc
       - name: setBreakpointByUrl
         origin: standard
+        since: '4.1'
         source: third_party/quickjs/src/src/inspector/protocols.cc
       - name: setBreakpointsActive
         origin: standard
+        since: '4.1'
         source: third_party/quickjs/src/src/inspector/protocols.cc
       - name: setPauseOnExceptions
         origin: standard
+        since: '4.1'
         source: third_party/quickjs/src/src/inspector/protocols.cc
       - name: setSkipAllPauses
         origin: standard
+        since: '4.1'
         source: third_party/quickjs/src/src/inspector/protocols.cc
       - name: setVariableValue
         origin: standard
+        since: '4.1'
         source: third_party/quickjs/src/src/inspector/protocols.cc
       - name: stepInto
         origin: standard
+        since: '4.1'
         source: third_party/quickjs/src/src/inspector/protocols.cc
       - name: stepOut
         origin: standard
+        since: '4.1'
         source: third_party/quickjs/src/src/inspector/protocols.cc
       - name: stepOver
         origin: standard
+        since: '4.1'
         source: third_party/quickjs/src/src/inspector/protocols.cc
       - name: stopAtEntry
         origin: lynx-extension
+        since: '4.1'
         source: third_party/quickjs/src/src/inspector/protocols.cc
   - name: HeapProfiler
     origin: standard
@@ -237,6 +304,7 @@ domains:
     methods:
       - name: takeHeapSnapshot
         origin: standard
+        since: '4.1'
         source: third_party/quickjs/src/src/inspector/protocols.cc
   - name: IO
     origin: standard
@@ -244,9 +312,11 @@ domains:
     methods:
       - name: close
         origin: standard
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_io_agent.cc
       - name: read
         origin: standard
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_io_agent.cc
   - name: Input
     origin: standard
@@ -254,9 +324,11 @@ domains:
     methods:
       - name: emulateTouchFromMouseEvent
         origin: standard
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_input_agent.cc
       - name: insertText
         origin: standard
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_input_agent.cc
   - name: Inspector
     origin: standard
@@ -264,9 +336,11 @@ domains:
     methods:
       - name: detached
         origin: lynx-extension
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_agent.cc
       - name: enable
         origin: standard
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_agent.cc
   - name: LayerTree
     origin: standard
@@ -274,12 +348,15 @@ domains:
     methods:
       - name: compositingReasons
         origin: standard
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_layer_tree_agent_ng.cc
       - name: disable
         origin: standard
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_layer_tree_agent_ng.cc
       - name: enable
         origin: standard
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_layer_tree_agent_ng.cc
   - name: Log
     origin: standard
@@ -287,12 +364,15 @@ domains:
     methods:
       - name: clear
         origin: standard
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_log_agent.cc
       - name: disable
         origin: standard
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_log_agent.cc
       - name: enable
         origin: standard
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_log_agent.cc
   - name: Lynx
     origin: lynx-extension
@@ -300,33 +380,43 @@ domains:
     methods:
       - name: getComponentId
         origin: lynx-extension
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_lynx_agent_ng.cc
       - name: getData
         origin: lynx-extension
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_lynx_agent_ng.cc
       - name: getProperties
         origin: lynx-extension
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_lynx_agent_ng.cc
       - name: getRectToWindow
         origin: lynx-extension
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_lynx_agent_ng.cc
       - name: getScreenshot
         origin: lynx-extension
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_lynx_agent_ng.cc
       - name: getVersion
         origin: lynx-extension
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_lynx_agent_ng.cc
       - name: getViewLocationOnScreen
         origin: lynx-extension
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_lynx_agent_ng.cc
       - name: sendVMEvent
         origin: lynx-extension
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_lynx_agent_ng.cc
       - name: setTraceMode
         origin: lynx-extension
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_lynx_agent_ng.cc
       - name: transferData
         origin: lynx-extension
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_lynx_agent_ng.cc
   - name: LynxSetting
     origin: lynx-extension
@@ -334,27 +424,35 @@ domains:
     methods:
       - name: clearMockValues
         origin: lynx-extension
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_lynx_setting_agent.cc
       - name: fetchLatest
         origin: lynx-extension
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_lynx_setting_agent.cc
       - name: getFetchInfo
         origin: lynx-extension
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_lynx_setting_agent.cc
       - name: getLayeredValues
         origin: lynx-extension
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_lynx_setting_agent.cc
       - name: getValue
         origin: lynx-extension
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_lynx_setting_agent.cc
       - name: getValues
         origin: lynx-extension
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_lynx_setting_agent.cc
       - name: removeMockValue
         origin: lynx-extension
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_lynx_setting_agent.cc
       - name: setMockValue
         origin: lynx-extension
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_lynx_setting_agent.cc
   - name: Memory
     origin: standard
@@ -362,12 +460,15 @@ domains:
     methods:
       - name: getAllMemoryUsage
         origin: lynx-extension
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_memory_agent.cc
       - name: startTracing
         origin: lynx-extension
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_memory_agent.cc
       - name: stopTracing
         origin: lynx-extension
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_memory_agent.cc
   - name: Overlay
     origin: standard
@@ -375,9 +476,11 @@ domains:
     methods:
       - name: hideHighlight
         origin: standard
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_overlay_agent_ng.cc
       - name: highlightNode
         origin: standard
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_overlay_agent_ng.cc
   - name: Page
     origin: standard
@@ -385,33 +488,43 @@ domains:
     methods:
       - name: canEmulate
         origin: lynx-extension
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_page_agent_ng.cc
       - name: canScreencast
         origin: lynx-extension
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_page_agent_ng.cc
       - name: enable
         origin: standard
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_page_agent_ng.cc
       - name: getResourceContent
         origin: standard
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_page_agent_ng.cc
       - name: getResourceTree
         origin: standard
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_page_agent_ng.cc
       - name: navigate
         origin: standard
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_page_agent_ng.cc
       - name: reload
         origin: standard
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_page_agent_ng.cc
       - name: screencastFrameAck
         origin: standard
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_page_agent_ng.cc
       - name: startScreencast
         origin: standard
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_page_agent_ng.cc
       - name: stopScreencast
         origin: standard
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_page_agent_ng.cc
   - name: Performance
     origin: standard
@@ -419,15 +532,19 @@ domains:
     methods:
       - name: disable
         origin: standard
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_performance_agent.cc
       - name: enable
         origin: standard
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_performance_agent.cc
       - name: getAllPerformanceEntries
         origin: lynx-extension
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_performance_agent.cc
       - name: getAllTimingInfo
         origin: lynx-extension
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_performance_agent.cc
   - name: Profiler
     origin: standard
@@ -435,18 +552,23 @@ domains:
     methods:
       - name: disable
         origin: standard
+        since: '4.1'
         source: third_party/quickjs/src/src/inspector/protocols.cc
       - name: enable
         origin: standard
+        since: '4.1'
         source: third_party/quickjs/src/src/inspector/protocols.cc
       - name: setSamplingInterval
         origin: standard
+        since: '4.1'
         source: third_party/quickjs/src/src/inspector/protocols.cc
       - name: start
         origin: standard
+        since: '4.1'
         source: third_party/quickjs/src/src/inspector/protocols.cc
       - name: stop
         origin: standard
+        since: '4.1'
         source: third_party/quickjs/src/src/inspector/protocols.cc
   - name: Recording
     origin: lynx-extension
@@ -454,9 +576,11 @@ domains:
     methods:
       - name: end
         origin: lynx-extension
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_testbench_recorder_agent.cc
       - name: start
         origin: lynx-extension
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_testbench_recorder_agent.cc
   - name: Replay
     origin: lynx-extension
@@ -464,9 +588,11 @@ domains:
     methods:
       - name: end
         origin: lynx-extension
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_testbench_replay_agent.cc
       - name: start
         origin: lynx-extension
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_testbench_replay_agent.cc
   - name: Runtime
     origin: standard
@@ -474,42 +600,55 @@ domains:
     methods:
       - name: callFunctionOn
         origin: standard
+        since: '4.1'
         source: third_party/quickjs/src/src/inspector/protocols.cc
       - name: compileScript
         origin: standard
+        since: '4.1'
         source: third_party/quickjs/src/src/inspector/protocols.cc
       - name: disable
         origin: standard
+        since: '4.1'
         source: third_party/quickjs/src/src/inspector/protocols.cc
       - name: discardConsoleEntries
         origin: standard
+        since: '4.1'
         source: third_party/quickjs/src/src/inspector/protocols.cc
       - name: enable
         origin: standard
+        since: '4.1'
         source: third_party/quickjs/src/src/inspector/protocols.cc
       - name: evaluate
         origin: standard
+        since: '4.1'
         source: third_party/quickjs/src/src/inspector/protocols.cc
       - name: getHeapUsage
         origin: standard
+        since: '4.1'
         source: third_party/quickjs/src/src/inspector/protocols.cc
       - name: getProperties
         origin: standard
+        since: '4.1'
         source: third_party/quickjs/src/src/inspector/protocols.cc
       - name: globalLexicalScopeNames
         origin: standard
+        since: '4.1'
         source: third_party/quickjs/src/src/inspector/protocols.cc
       - name: releaseObject
         origin: standard
+        since: '4.1'
         source: third_party/quickjs/src/src/inspector/protocols.cc
       - name: releaseObjectGroup
         origin: standard
+        since: '4.1'
         source: third_party/quickjs/src/src/inspector/protocols.cc
       - name: runScript
         origin: standard
+        since: '4.1'
         source: third_party/quickjs/src/src/inspector/protocols.cc
       - name: setAsyncCallStackDepth
         origin: standard
+        since: '4.1'
         source: third_party/quickjs/src/src/inspector/protocols.cc
   - name: SystemInfo
     origin: standard
@@ -517,6 +656,7 @@ domains:
     methods:
       - name: getInfo
         origin: standard
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/system_info_agent.cc
   - name: Template
     origin: lynx-extension
@@ -524,15 +664,19 @@ domains:
     methods:
       - name: getTemplateJs
         origin: lynx-extension
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_template_agent.cc
       - name: templateApi
         origin: lynx-extension
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_template_agent.cc
       - name: templateConfigInfo
         origin: lynx-extension
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_template_agent.cc
       - name: templateData
         origin: lynx-extension
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_template_agent.cc
   - name: Tracing
     origin: standard
@@ -540,21 +684,27 @@ domains:
     methods:
       - name: end
         origin: standard
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_tracing_agent.cc
       - name: getStartupTracingConfig
         origin: lynx-extension
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_tracing_agent.cc
       - name: getStartupTracingFile
         origin: lynx-extension
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_tracing_agent.cc
       - name: setStartupTracingConfig
         origin: lynx-extension
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_tracing_agent.cc
       - name: start
         origin: standard
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_tracing_agent.cc
       - name: takeVMSnapshotByUrl
         origin: lynx-extension
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_tracing_agent.cc
   - name: UITree
     origin: lynx-extension
@@ -562,18 +712,23 @@ domains:
     methods:
       - name: disable
         origin: lynx-extension
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_ui_tree_agent.cc
       - name: enable
         origin: lynx-extension
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_ui_tree_agent.cc
       - name: getLynxUITree
         origin: lynx-extension
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_ui_tree_agent.cc
       - name: getUIInfoForNode
         origin: lynx-extension
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_ui_tree_agent.cc
       - name: setUIStyle
         origin: lynx-extension
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_ui_tree_agent.cc
   - name: WhiteBoard
     origin: lynx-extension
@@ -581,19 +736,25 @@ domains:
     methods:
       - name: clear
         origin: lynx-extension
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_white_board_agent.cc
       - name: disable
         origin: lynx-extension
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_white_board_agent.cc
       - name: enable
         origin: lynx-extension
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_white_board_agent.cc
       - name: getSharedData
         origin: lynx-extension
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_white_board_agent.cc
       - name: removeSharedData
         origin: lynx-extension
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_white_board_agent.cc
       - name: setSharedData
         origin: lynx-extension
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_white_board_agent.cc
