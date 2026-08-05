@@ -94,13 +94,23 @@ class NetLoaderManager {
   };
   using NetLoaderWaiters = std::vector<NetWaiterEntity>;
 
-  NetLoaderWaiters TakeWaiters(const std::string& uri);
+  struct NetRequestGroup {
+    size_t owner_request_seq;
+    NetLoaderWaiters waiters;
+  };
+
+  NetLoaderWaiters TakeWaiters(const std::string& uri,
+                               size_t owner_request_seq);
 
   fml::RefPtr<NetDiskCache> disk_cache_;
   fml::RefPtr<fml::TaskRunner> task_runner_;
 
   size_t current_request_seq_ = 0;
-  std::unordered_map<std::string, NetLoaderWaiters> waiters_;
+  // A URL may start a replacement physical request before the canceled
+  // request finishes asynchronously. Keep the physical owner and its logical
+  // waiters in one group so a stale completion cannot consume the replacement
+  // request's callbacks.
+  std::unordered_map<std::string, NetRequestGroup> request_groups_;
   std::unordered_map<size_t, std::unique_ptr<HttpResourceFetcher>>
       running_fetchers_;
 
