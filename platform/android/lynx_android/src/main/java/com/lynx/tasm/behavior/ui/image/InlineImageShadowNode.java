@@ -6,6 +6,8 @@ package com.lynx.tasm.behavior.ui.image;
 import androidx.annotation.Nullable;
 import com.lynx.tasm.LynxError;
 import com.lynx.tasm.behavior.LynxContext;
+import com.lynx.tasm.behavior.LynxProp;
+import com.lynx.tasm.behavior.PropsConstants;
 import com.lynx.tasm.behavior.shadow.text.AbsInlineImageShadowNode;
 import com.lynx.tasm.behavior.ui.text.AbsInlineImageSpan;
 import com.lynx.tasm.utils.UIThreadUtils;
@@ -73,5 +75,10 @@ public class InlineImageShadowNode extends AbsInlineImageShadowNode {
   public void onAfterUpdateTransaction() {
     mLynxImageManager.updateRedirectCheckResult();
     markDirty();
+  }
+
+  @LynxProp(name = PropsConstants.LOOP_COUNT)
+  public void setLoopCount(int count) {
+    mLynxImageManager.setLoopCount(count);
   }
 }

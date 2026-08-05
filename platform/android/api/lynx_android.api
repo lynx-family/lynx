@@ -3110,6 +3110,7 @@ public class com::lynx::tasm::behavior::ui::image::InlineImageShadowNode : com.l
   public void com.lynx.tasm.behavior.ui.image.InlineImageShadowNode.setMode(String mode);
   public AbsInlineImageSpan com.lynx.tasm.behavior.ui.image.InlineImageShadowNode.generateInlineImageSpan();
   public void com.lynx.tasm.behavior.ui.image.InlineImageShadowNode.onAfterUpdateTransaction();
+  public void com.lynx.tasm.behavior.ui.image.InlineImageShadowNode.setLoopCount(int count);
 }
 
 public class com::lynx::tasm::behavior::ui::image::InlineImageSpan : com.lynx.tasm.behavior.ui.text.AbsInlineImageSpan {
