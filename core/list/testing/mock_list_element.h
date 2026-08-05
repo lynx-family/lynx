@@ -66,7 +66,11 @@ class MockListElement : public ElementDelegate {
                std::unique_ptr<pub::Value> param),
               (override));
   void UpdateScrollInfo(float estimated_offset, bool smooth,
-                        bool scrolling) override {}
+                        bool scrolling) override {
+    last_scroll_info_offset_ = estimated_offset;
+    last_scroll_info_smooth_ = smooth;
+    last_scroll_info_scrolling_ = scrolling;
+  }
   void ComponentAtIndexes(std::unique_ptr<pub::Value> index_array,
                           std::unique_ptr<pub::Value> operation_id_array,
                           bool enable_reuse_notification = false) {}
@@ -105,6 +109,9 @@ class MockListElement : public ElementDelegate {
   bool is_rtl_{false};
   bool is_attached_{true};
   bool is_debug_mode_{false};
+  float last_scroll_info_offset_{0.f};
+  bool last_scroll_info_smooth_{false};
+  bool last_scroll_info_scrolling_{false};
   float width_{500.f};
   float height_{500.f};
   std::array<float, 4> paddings_{0.f, 0.f, 0.f, 0.f};
