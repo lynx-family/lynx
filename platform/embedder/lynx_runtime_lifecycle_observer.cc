@@ -101,8 +101,7 @@ void LynxRuntimeLifecycleListenerDelegate::OnRuntimeAttach(
     void* env, const char* runtime_type) {
   env_holder_->OnRuntimeAttach(static_cast<napi_env>(env));
   if (observer_ && observer_->attach_callback) {
-    observer_->attach_callback(observer_, static_cast<napi_env>(env),
-                               runtime_type);
+    observer_->attach_callback(observer_, static_cast<napi_env>(env));
   }
   if (on_attach_callback_) {
     on_attach_callback_(static_cast<napi_env>(env), runtime_type);
