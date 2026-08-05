@@ -1,6 +1,6 @@
 name: publish ios sdk
 
-description: package ios source code, upload the zip source, and publish the podspec file to cocoapods
+description: package ios source code, upload the zip source, and publish the podspec file to the private specs repo
 
 inputs:
   version:
@@ -15,12 +15,22 @@ inputs:
     required: false
     type: string
     default: 'all'
-  cocoapods_trunk_token:
-    description: The secret key of the sdk to publish
+  specs_repo_app_token:
+    description: The GitHub App installation token scoped to the private specs repo
     type: string
   github_token:
     description: The github token
     type: string
+  specs_repo_url:
+    required: false
+    description: The private specs repo URL.
+    type: string
+    default: 'https://github.com/lynx-family/Specs.git'
+  specs_repo_name:
+    required: false
+    description: The local CocoaPods repo name for the private specs repo.
+    type: string
+    default: 'lynx-specs'
   storage_type:
     required: false
     description: The zip storage backend. Supported values are github_release and s3.
@@ -51,14 +61,17 @@ runs:
         replacesArtifacts: true
         allowUpdates: true
         body: ''
-    - name: Publish to CocoaPods Repo
+    - name: Publish to private CocoaPods Specs Repo
       env:
-        COCOAPODS_TRUNK_TOKEN: ${{ inputs.cocoapods_trunk_token }}
+        SPECS_REPO_GITHUB_APP_TOKEN: ${{ inputs.specs_repo_app_token }}
       shell: bash
       run: |-
         cd $GITHUB_WORKSPACE/lynx
         source tools/envsetup.sh
         git config --global user.name "lynx.authors"
         git config --global user.email "lynx.authors@users.noreply.github.com"
-        python3 tools/ios_tools/skip_pod_lint.py --source public
-        python3 tools/ios_tools/cocoapods_publish_helper.py --publish --component ${{ inputs.component }}
+        python3 tools/ios_tools/cocoapods_publish_helper.py \
+          --publish \
+          --component "${{ inputs.component }}" \
+          --repo-name "${{ inputs.specs_repo_name }}" \
+          --repo-url "${{ inputs.specs_repo_url }}"
