@@ -1217,6 +1217,22 @@ RENDERER_FUNCTION_CC(FiberRemoveEventListener) {
   RETURN_UNDEFINED();
 }
 
+RENDERER_FUNCTION_CC(FiberRemoveEventListeners) {
+  // parameter size = 1
+  // [0] RefCounted -> element
+  CHECK_ARGC_GE(FiberRemoveEventListeners, 1);
+  CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(arg0, 0, RefCounted,
+                                        FiberRemoveEventListeners);
+
+  auto element = fml::static_ref_ptr_cast<Element>(arg0->RefCounted());
+
+  // sync event sets to the platform
+  element->RemoveAllEvents();
+  element->GetEventListenerMap()->RemoveAll();
+
+  RETURN_UNDEFINED();
+}
+
 RENDERER_FUNCTION_CC(FiberCreateEvent) {
   // parameter size = 4
   // [0] Number -> type
@@ -4543,7 +4559,7 @@ RENDERER_FUNCTION_CC(FiberSetEvents) {
   auto* manager = element->element_manager();
   if (manager != nullptr && manager->EnableEventHandleRefactor()) {
     auto event_listener_map = element->GetEventListenerMap();
-    event_listener_map->Clear();
+    event_listener_map->RemoveAll();
   }
 
   element->RemoveAllEvents();

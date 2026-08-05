@@ -73,8 +73,8 @@ TEST_F(EventListenerMapTest, TestEventListenerMapTest0) {
   EXPECT_EQ(static_cast<MockEventListener*>((*vec_ptr)[1].get())->GetContent(),
             "3");
 
-  // clear
-  map_->Clear();
+  // remove all
+  map_->RemoveAll();
   EXPECT_TRUE(map_->IsEmpty());
   EXPECT_FALSE(map_->Contains("test"));
   vec_ptr = map_->Find("test");
@@ -82,6 +82,38 @@ TEST_F(EventListenerMapTest, TestEventListenerMapTest0) {
   EXPECT_FALSE(map_->Remove(
       "test", std::make_unique<MockEventListener>(
                   EventListener::Type::kJSClosureEventListener, "1")));
+}
+
+TEST_F(EventListenerMapTest, RemoveEventTypeMarksListenersAsRemoved) {
+  auto listener_1 = std::make_shared<MockEventListener>(
+      EventListener::Type::kJSClosureEventListener, "1");
+  auto listener_2 = std::make_shared<MockEventListener>(
+      EventListener::Type::kJSClosureEventListener, "2");
+  map_->Add("test", listener_1);
+  map_->Add("test", listener_2);
+
+  EXPECT_TRUE(map_->Remove("test"));
+
+  EXPECT_TRUE(listener_1->removed());
+  EXPECT_TRUE(listener_2->removed());
+  EXPECT_TRUE(map_->IsEmpty());
+}
+
+TEST_F(EventListenerMapTest, RemoveAllMarksListenersAsRemoved) {
+  auto listener_1 = std::make_shared<MockEventListener>(
+      EventListener::Type::kJSClosureEventListener, "1");
+  auto listener_2 = std::make_shared<MockEventListener>(
+      EventListener::Type::kJSClosureEventListener, "2");
+  map_->Add("test-1", listener_1);
+  map_->Add("test-2", listener_2);
+
+  map_->RemoveAll();
+
+  EXPECT_TRUE(listener_1->removed());
+  EXPECT_TRUE(listener_2->removed());
+  EXPECT_TRUE(map_->IsEmpty());
+  EXPECT_FALSE(map_->Contains("test-1"));
+  EXPECT_FALSE(map_->Contains("test-2"));
 }
 
 }  // namespace test

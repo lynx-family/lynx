@@ -150,7 +150,7 @@ TEST_P(ContextProxyInJSTest, ContextProxyInJSAddEventListenerTest) {
   app_->context_proxy_vector_[static_cast<int32_t>(
                                   runtime::ContextProxy::Type::kCoreContext)]
       ->GetEventListenerMap()
-      ->Clear();
+      ->RemoveAll();
   function(R"--(
     function test() {
       lynx.getCoreContext().addEventListener();
@@ -212,7 +212,7 @@ TEST_P(ContextProxyInJSTest, ContextProxyInJSRemoveEventListenerTest) {
   app_->context_proxy_vector_[static_cast<int32_t>(
                                   runtime::ContextProxy::Type::kCoreContext)]
       ->GetEventListenerMap()
-      ->Clear();
+      ->RemoveAll();
   eval(R"--(
     globalThis.onEvent = (e)=>{};
     globalThis.onEvent_1 = (e)=>{};

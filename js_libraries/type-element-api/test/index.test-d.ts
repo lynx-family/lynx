@@ -11,6 +11,14 @@ import type {
   SerializedTemplateInstance,
   SerializableValue,
   SerializedTypedTemplateInstance,
+  ElementEvent,
+  ElementEventBindType,
+  ElementEventCallback,
+  ElementEventClosureType,
+  ElementEventOptions,
+  ElementEventRef,
+  ElementEventType,
+  ElementEventListenerOptions,
 } from '../types/index';
 
 describe('Test Animation Types', () => {
@@ -121,5 +129,42 @@ describe('Test Element API Types', () => {
     assertType<SerializedTemplateInstance[][] | null | undefined>(serializedTyped.elementSlots);
     assertType<Record<string, any> | null | undefined>(serializedTyped.options);
     assertType<number | string>(serializedTyped.uid);
+  });
+
+  it('should test event api signatures', () => {
+    const element = {} as ElementRef;
+    const callback = ((event: ElementEvent) => {
+      assertType<ElementEventRef | undefined>(event.ref);
+    }) as ElementEventCallback;
+    const listenerOptions: ElementEventListenerOptions = {
+      capture: true,
+      once: true,
+      passive: true,
+      signal: false,
+      closure_type: 0 as ElementEventClosureType.NONE,
+      bind_type: 2 as ElementEventBindType.CAPTURE,
+    };
+    const eventOptions: ElementEventOptions = {
+      capture: false,
+      bubbles: true,
+      cancelable: true,
+      composed: true,
+    };
+
+    expectTypeOf<typeof __AddEventListener>().toBeCallableWith(element, 'tap', callback, listenerOptions);
+    expectTypeOf<typeof __AddEventListener>().toBeCallableWith(element, 'tap', 'onTap', {
+      closure_type: 3 as ElementEventClosureType.CLIENT,
+      bind_type: 1 as ElementEventBindType.BUBBLE,
+    });
+    expectTypeOf<typeof __RemoveEventListener>().toBeCallableWith(element, 'tap', callback, listenerOptions);
+    expectTypeOf<typeof __RemoveEventListeners>().toBeCallableWith(element);
+    expectTypeOf<typeof __CreateEvent>().toBeCallableWith(8 as ElementEventType.CUSTOM, 'ready', eventOptions, { value: 1 });
+    expectTypeOf<typeof __CreateEvent>().returns.toEqualTypeOf<ElementEventRef>();
+
+    const event = {} as ElementEventRef;
+    expectTypeOf<typeof __DispatchEvent>().toBeCallableWith(element, event);
+    expectTypeOf<typeof __DispatchEvent>().returns.toBeBoolean();
+    expectTypeOf<typeof __StopPropagation>().toBeCallableWith(event);
+    expectTypeOf<typeof __StopImmediatePropagation>().toBeCallableWith(event);
   });
 });

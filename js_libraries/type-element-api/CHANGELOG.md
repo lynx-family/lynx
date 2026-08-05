@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## 0.0.10
+
+### Patch Changes
+
+- Add Element event listener and dispatch API declarations.
+
 ## 0.0.9
 
 ### Patch Changes

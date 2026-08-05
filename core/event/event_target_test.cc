@@ -123,8 +123,8 @@ TEST_F(EventTargetTest, TestEventTargetTest0) {
   EXPECT_EQ(static_cast<MockEventListener*>((*vec_ptr)[1].get())->GetContent(),
             "3");
 
-  // clear
-  map->Clear();
+  // remove all
+  map->RemoveAll();
   EXPECT_TRUE(map->IsEmpty());
   EXPECT_FALSE(map->Contains("test"));
   vec_ptr = map->Find("test");

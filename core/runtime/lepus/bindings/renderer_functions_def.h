@@ -154,6 +154,7 @@
   V(FiberOnCleanUp)                     \
   V(FiberAddEventListener)              \
   V(FiberRemoveEventListener)           \
+  V(FiberRemoveEventListeners)          \
   V(FiberCreateEvent)                   \
   V(FiberDispatchEvent)                 \
   V(FiberStopPropagation)               \

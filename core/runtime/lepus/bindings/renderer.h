@@ -256,6 +256,8 @@ constexpr static const char* kCFunctionAsyncResolveElement =
 constexpr static const char* kCFunctionAddEventListener = "__AddEventListener";
 constexpr static const char* kCFunctionFiberRemoveEventListener =
     "__RemoveEventListener";
+constexpr static const char* kCFunctionFiberRemoveEventListeners =
+    "__RemoveEventListeners";
 constexpr static const char* kCFunctionCreateEvent = "__CreateEvent";
 constexpr static const char* kCFunctionDispatchEvent = "__DispatchEvent";
 constexpr static const char* kCFunctionStopPropagation = "__StopPropagation";

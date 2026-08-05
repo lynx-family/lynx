@@ -55,6 +55,7 @@ using EventListenerVector =
 class EventListenerMap {
  public:
   void Clear();
+  void RemoveAll();
   bool IsEmpty() const;
   bool Contains(const std::string& type) const;
 
