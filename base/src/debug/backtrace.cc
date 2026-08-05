@@ -6,25 +6,43 @@
 
 #include <cstdlib>
 #include <mutex>
-#include <utility>
 
 namespace lynx {
 namespace base {
 namespace debug {
 
-static BacktraceDelegate* g_backtrace_delegate = nullptr;
-static std::mutex g_backtrace_delegate_mutex;
-void SetBacktraceDelegate(BacktraceDelegate* delegate) {
-  std::lock_guard<std::mutex> lock(g_backtrace_delegate_mutex);
-  if (g_backtrace_delegate) {
-    delete g_backtrace_delegate;
-  }
-  g_backtrace_delegate = delegate;
+namespace {
+
+std::mutex& GetBacktraceDelegateMutex() {
+  static std::mutex mutex;
+  return mutex;
 }
+
+BacktraceDelegate*& GetBacktraceDelegate() {
+  static BacktraceDelegate* delegate = nullptr;
+  return delegate;
+}
+
+}  // namespace
+
+void SetBacktraceDelegate(BacktraceDelegate* delegate) {
+  std::lock_guard<std::mutex> lock(GetBacktraceDelegateMutex());
+  auto& current = GetBacktraceDelegate();
+  if (current == delegate) {
+    return;
+  }
+  current = delegate;
+}
+
 // IOS
 std::string GetBacktraceInfo(std::string& error_message) {
-  if (g_backtrace_delegate) {
-    std::string traceInfo = g_backtrace_delegate->TraceLog(error_message, 2);
+  BacktraceDelegate* delegate = nullptr;
+  {
+    std::lock_guard<std::mutex> lock(GetBacktraceDelegateMutex());
+    delegate = GetBacktraceDelegate();
+  }
+  if (delegate) {
+    std::string traceInfo = delegate->TraceLog(error_message, 2);
     if (!traceInfo.empty()) {
       return traceInfo;
     }

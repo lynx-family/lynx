@@ -26,6 +26,11 @@ class FunctionBacktraceDelegate : public BacktraceDelegate {
     return std::string();
   }
 };
+
+FunctionBacktraceDelegate& GetSharedFunctionBacktraceDelegate() {
+  static FunctionBacktraceDelegate delegate;
+  return delegate;
+}
 }  // namespace debug
 }  // namespace base
 }  // namespace lynx
@@ -36,6 +41,6 @@ void LynxSetBacktraceFunction(LynxBacktraceFunction backtraceFunction) {
   sLynxBacktraceFunction = backtraceFunction;
 // we can get backtrace with symbol in debug without Heimdallr
 #ifndef DEBUG
-  lynx::base::debug::SetBacktraceDelegate(new lynx::base::debug::FunctionBacktraceDelegate);
+  lynx::base::debug::SetBacktraceDelegate(&lynx::base::debug::GetSharedFunctionBacktraceDelegate());
 #endif
 }
