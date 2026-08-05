@@ -3,6 +3,7 @@
 # Licensed under the Apache License Version 2.0 that can be found in the
 # LICENSE file in the root directory of this source tree.
 
+import base64
 import json
 import os
 import subprocess
@@ -183,44 +184,153 @@ class CocoapodsPublishHelperTest(unittest.TestCase):
         )
         self.assertNotIn('sk', request['headers']['Authorization'])
 
+    def test_get_specs_repo_app_token_requires_explicit_token(self):
+        with mock.patch.dict(os.environ, {}, clear=True):
+            with self.assertRaisesRegex(ValueError, 'SPECS_REPO_GITHUB_APP_TOKEN is required'):
+                helper.get_specs_repo_app_token()
+
+    def test_validate_publish_options_requires_repo_token_env(self):
+        with mock.patch.dict(os.environ, {}, clear=True):
+            with self.assertRaisesRegex(
+                    ValueError,
+                    '--publish requires SPECS_REPO_GITHUB_APP_TOKEN environment variable'):
+                helper.validate_publish_options()
+
+    def test_build_git_auth_env_uses_in_memory_extraheader(self):
+        token = 'secret-token'
+        with mock.patch.dict(os.environ, {}, clear=True):
+            env = helper.build_git_auth_env(
+                'https://github.com/lynx-family/Specs.git',
+                token,
+            )
+
+        expected_auth_value = base64.b64encode(f'x-access-token:{token}'.encode('utf8')).decode('ascii')
+        self.assertEqual(env['GIT_CONFIG_COUNT'], '1')
+        self.assertEqual(
+            env['GIT_CONFIG_KEY_0'],
+            'http.https://github.com/lynx-family/Specs.git.extraheader',
+        )
+        self.assertEqual(
+            env['GIT_CONFIG_VALUE_0'],
+            f'AUTHORIZATION: basic {expected_auth_value}',
+        )
+
+    def test_build_git_auth_env_rejects_non_https_url(self):
+        with self.assertRaisesRegex(ValueError, 'Only https specs repo URLs are supported'):
+            helper.build_git_auth_env('git@github.com:lynx-family/Specs.git', 'secret-token')
+
+    def test_check_version_published_checks_remote_specs_repo_state(self):
+        self.write_podspec_json('Lynx', {'version': '1.2.3'})
+
+        with mock.patch.object(helper, 'get_specs_repo_branch', return_value='main'), \
+                mock.patch.object(
+                    helper.subprocess,
+                    'check_output',
+                    side_effect=['', ''],
+                ) as check_output:
+            self.assertTrue(
+                helper.check_version_published(
+                    'Lynx',
+                    Path('/tmp/lynx-specs'),
+                    {'GIT_CONFIG_COUNT': '1'},
+                )
+            )
+
+        self.assertEqual(
+            check_output.call_args_list,
+            [
+                mock.call(
+                    ['git', '-C', '/tmp/lynx-specs', 'fetch', '--quiet', 'origin', 'main'],
+                    text=True,
+                    stderr=subprocess.STDOUT,
+                    env={'GIT_CONFIG_COUNT': '1'},
+                ),
+                mock.call(
+                    ['git', '-C', '/tmp/lynx-specs', 'cat-file', '-e', 'FETCH_HEAD:Lynx/1.2.3/Lynx.podspec.json'],
+                    text=True,
+                    stderr=subprocess.STDOUT,
+                ),
+            ],
+        )
+
+    def test_check_version_published_returns_false_when_remote_spec_missing(self):
+        self.write_podspec_json('Lynx', {'version': '1.2.3'})
+
+        with mock.patch.object(helper, 'get_specs_repo_branch', return_value='main'), \
+                mock.patch.object(
+                    helper.subprocess,
+                    'check_output',
+                    side_effect=[
+                        '',
+                        subprocess.CalledProcessError(1, 'git cat-file'),
+                    ],
+                ):
+            self.assertFalse(
+                helper.check_version_published(
+                    'Lynx',
+                    Path('/tmp/lynx-specs'),
+                    {'GIT_CONFIG_COUNT': '1'},
+                )
+            )
+
     def test_publish_component_skips_existing_pod_version(self):
         self.write_podspec_json('Lynx', {'version': '1.2.3'})
 
-        with mock.patch.object(helper, 'is_pod_version_published', return_value=True), \
+        with mock.patch.object(helper, 'check_version_published', return_value=True), \
                 mock.patch.object(helper, 'run_command') as run_command:
-            helper.publish_component('Lynx', None)
+            helper.publish_component(
+                'Lynx',
+                None,
+                'lynx-specs',
+                Path('/tmp/lynx-specs'),
+                {'GIT_CONFIG_COUNT': '1'},
+            )
 
         run_command.assert_not_called()
 
     def test_publish_component_treats_confirmed_version_after_failure_as_success(self):
         self.write_podspec_json('Lynx', {'version': '1.2.3'})
 
-        with mock.patch.object(helper, 'is_pod_version_published',
+        with mock.patch.object(helper, 'check_version_published',
                                side_effect=[False, True]), \
                 mock.patch.object(helper, 'run_command',
-                                  side_effect=subprocess.CalledProcessError(1, 'pod trunk push')), \
+                                  side_effect=subprocess.CalledProcessError(1, 'pod repo push')), \
                 mock.patch.object(helper.time, 'sleep') as sleep:
-            helper.publish_component('Lynx', None)
+            helper.publish_component(
+                'Lynx',
+                None,
+                'lynx-specs',
+                Path('/tmp/lynx-specs'),
+                {'GIT_CONFIG_COUNT': '1'},
+            )
 
         sleep.assert_not_called()
 
     def test_publish_component_retries_with_exponential_backoff(self):
         self.write_podspec_json('Lynx', {'version': '1.2.3'})
 
-        with mock.patch.object(helper, 'is_pod_version_published', return_value=False), \
+        with mock.patch.object(helper, 'check_version_published', return_value=False), \
                 mock.patch.object(
                     helper,
                     'run_command',
                     side_effect=[
-                        subprocess.CalledProcessError(1, 'pod trunk push'),
-                        subprocess.CalledProcessError(1, 'pod trunk push'),
+                        subprocess.CalledProcessError(1, 'pod repo push'),
+                        subprocess.CalledProcessError(1, 'pod repo push'),
                         None,
                     ],
                 ) as run_command, \
+                mock.patch.object(helper, 'push_specs_repo') as push_specs_repo, \
                 mock.patch.object(helper.time, 'sleep') as sleep:
-            helper.publish_component('Lynx', None)
+            helper.publish_component(
+                'Lynx',
+                None,
+                'lynx-specs',
+                Path('/tmp/lynx-specs'),
+                {'GIT_CONFIG_COUNT': '1'},
+            )
 
         self.assertEqual(run_command.call_count, 3)
+        push_specs_repo.assert_called_once_with(Path('/tmp/lynx-specs'), {'GIT_CONFIG_COUNT': '1'})
         sleep.assert_has_calls([
             mock.call(helper.PUBLISH_RETRY_INITIAL_DELAY_SECONDS),
             mock.call(helper.PUBLISH_RETRY_INITIAL_DELAY_SECONDS * 2),
@@ -229,44 +339,67 @@ class CocoapodsPublishHelperTest(unittest.TestCase):
     def test_publish_component_raises_after_retry_attempts(self):
         self.write_podspec_json('Lynx', {'version': '1.2.3'})
 
-        with mock.patch.object(helper, 'is_pod_version_published', return_value=False), \
+        with mock.patch.object(helper, 'check_version_published', return_value=False), \
                 mock.patch.object(helper, 'run_command',
-                                  side_effect=subprocess.CalledProcessError(1, 'pod trunk push')), \
+                                  side_effect=subprocess.CalledProcessError(1, 'pod repo push')), \
                 mock.patch.object(helper.time, 'sleep') as sleep, \
                 self.assertRaises(subprocess.CalledProcessError):
-            helper.publish_component('Lynx', None)
+            helper.publish_component(
+                'Lynx',
+                None,
+                'lynx-specs',
+                Path('/tmp/lynx-specs'),
+                {'GIT_CONFIG_COUNT': '1'},
+            )
 
         self.assertEqual(sleep.call_count, helper.PUBLISH_RETRY_ATTEMPTS - 1)
 
-    def test_build_publish_command_quotes_shell_arguments(self):
-        command = helper.build_publish_command(
-            'Lynx Kit',
-            'trunk,private specs; echo injected',
+    def test_publish_component_uses_local_only_before_native_git_push(self):
+        self.write_podspec_json('Lynx Kit', {'version': '1.2.3'})
+
+        with mock.patch.object(helper, 'check_version_published', return_value=False), \
+                mock.patch.object(helper, 'run_command') as run_command, \
+                mock.patch.object(helper, 'push_specs_repo') as push_specs_repo:
+            helper.publish_component(
+                'Lynx Kit',
+                'trunk,private specs; echo injected',
+                'lynx specs',
+                Path('/tmp/lynx-specs'),
+                {'GIT_CONFIG_COUNT': '1'},
+            )
+
+        command = run_command.call_args_list[0].args[0]
+        self.assertIn("pod repo push 'lynx specs' 'Lynx Kit.podspec.json'", command)
+        self.assertIn('--local-only', command)
+        self.assertIn(" --sources='trunk,private specs; echo injected'", command)
+        push_specs_repo.assert_called_once_with(Path('/tmp/lynx-specs'), {'GIT_CONFIG_COUNT': '1'})
+
+    def test_push_specs_repo_pushes_current_branch_with_auth_env(self):
+        with mock.patch.object(helper, 'get_specs_repo_branch', return_value='main'), \
+                mock.patch.object(helper, 'run_command') as run_command:
+            helper.push_specs_repo(Path('/tmp/lynx-specs'), {'GIT_CONFIG_COUNT': '1'})
+
+        run_command.assert_called_once_with(
+            'git -C /tmp/lynx-specs push origin HEAD:main',
+            env={'GIT_CONFIG_COUNT': '1'},
         )
 
-        self.assertIn(
-            "pod trunk push 'Lynx Kit.podspec.json' --verbose",
-            command,
-        )
-        self.assertIn(
-            " --sources='trunk,private specs; echo injected'",
-            command,
-        )
+    def test_ensure_specs_repo_adds_missing_repo_with_auth_env(self):
+        home = Path(self.temp_dir.name) / 'home'
 
-    def test_is_pod_version_published_ignores_decode_failure(self):
-        bad_encoding = UnicodeDecodeError(
-            'utf-8',
-            b'\xff',
-            0,
-            1,
-            'invalid start byte',
+        with mock.patch.object(helper.Path, 'home', return_value=home), \
+                mock.patch.object(helper, 'run_command') as run_command:
+            repo_path = helper.ensure_specs_repo(
+                'lynx-specs',
+                'https://github.com/lynx-family/Specs.git',
+                {'GIT_CONFIG_COUNT': '1'},
+            )
+
+        self.assertEqual(repo_path, home / '.cocoapods' / 'repos' / 'lynx-specs')
+        run_command.assert_called_once_with(
+            'bundle exec pod repo add lynx-specs https://github.com/lynx-family/Specs.git',
+            env={'GIT_CONFIG_COUNT': '1'},
         )
-
-        with mock.patch.object(helper, 'urlopen') as urlopen, \
-                mock.patch.object(helper.json, 'load', side_effect=bad_encoding):
-            urlopen.return_value.__enter__.return_value = object()
-
-            self.assertFalse(helper.is_pod_version_published('Lynx', '1.2.3'))
 
 
 if __name__ == '__main__':
