@@ -124,7 +124,19 @@ void ListContainerImpl::UpdateContentOffsetAndSizeToPlatform(
 void ListContainerImpl::UpdateScrollInfo(float estimated_offset, bool smooth,
                                          bool scrolling) {
   if (smooth) {
-    list_delegate_->UpdateScrollInfo(estimated_offset, smooth, scrolling);
+    float platform_estimated_offset = estimated_offset;
+    // List layout uses logical offsets, while native horizontal scroll views
+    // use physical offsets. Convert at the platform boundary with the content
+    // size from the same layout pass that produced estimated_offset.
+    if (IsRTL() && list_layout_manager_ &&
+        list_layout_manager_->CanScrollHorizontally()) {
+      platform_estimated_offset =
+          std::max(list_layout_manager_->content_size() -
+                       list_layout_manager_->GetWidth() - estimated_offset,
+                   0.f);
+    }
+    list_delegate_->UpdateScrollInfo(platform_estimated_offset, smooth,
+                                     scrolling);
   }
 }
 
