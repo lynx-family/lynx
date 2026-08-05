@@ -115,6 +115,58 @@ export interface GestureConfig {
   config?: Record<string, unknown>;
 }
 
+export enum ElementEventClosureType {
+  NONE = 0,
+  JS = 1,
+  CORE = 2,
+  CLIENT = 3,
+}
+
+export enum ElementEventBindType {
+  NONE = 0,
+  BUBBLE = 1,
+  CAPTURE = 2,
+  CAPTURE_CATCH = 3,
+  BUBBLE_CATCH = 4,
+  GLOBAL_BIND = 5,
+}
+
+export enum ElementEventType {
+  NONE = 0,
+  TOUCH = 1,
+  KEYBOARD = 2,
+  WHEEL = 3,
+  POINTER = 4,
+  UI = 5,
+  MOUSE = 6,
+  MESSAGE = 7,
+  CUSTOM = 8,
+}
+
+export interface ElementEventRef extends Record<string, unknown> { }
+
+export interface ElementEvent extends Record<string, unknown> {
+  ref?: ElementEventRef;
+}
+
+export type ElementEventCallback = (event: ElementEvent) => void;
+
+export interface ElementEventListenerOptions {
+  capture?: boolean;
+  once?: boolean;
+  passive?: boolean;
+  signal?: boolean;
+  closure_type?: ElementEventClosureType.NONE | ElementEventClosureType.CORE | ElementEventClosureType.CLIENT;
+  bind_type?: ElementEventBindType;
+}
+
+export interface ElementEventOptions {
+  capture?: boolean;
+  bubbles?: boolean;
+  cancelable?: boolean;
+  composed?: boolean;
+}
+
 export type SerializableValue = any;
 
 export type SerializedTemplateInstance =
@@ -242,6 +294,35 @@ declare global {
   function __GetEvent(node: ElementRef, name: string, type: string): Record<string, any>;
 
   function __GetEvents(node: ElementRef): Record<string, Record<string, any>>;
+
+  function __AddEventListener(
+    node: ElementRef,
+    name: string,
+    callback: ElementEventCallback | string,
+    options: ElementEventListenerOptions,
+  ): void;
+
+  function __RemoveEventListener(
+    node: ElementRef,
+    name: string,
+    callback: ElementEventCallback | string,
+    options: ElementEventListenerOptions,
+  ): void;
+
+  function __RemoveEventListeners(node: ElementRef): void;
+
+  function __CreateEvent(
+    type: ElementEventType,
+    name: string,
+    options: ElementEventOptions,
+    detail: Record<string, unknown>,
+  ): ElementEventRef;
+
+  function __DispatchEvent(node: ElementRef, event: ElementEventRef): boolean;
+
+  function __StopPropagation(event: ElementEventRef): void;
+
+  function __StopImmediatePropagation(event: ElementEventRef): void;
 
   function __AddDataset(node: ElementRef, key: string, value: unknown): void;
 

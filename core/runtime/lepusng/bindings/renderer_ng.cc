@@ -466,6 +466,7 @@ const runtime::RenderBindingFunction* Renderer::GetBuiltinFunctionsForFiber(
     /* 130 */ {kCFunctionRemoveNodeFromElementTemplate, &RendererFunctions::FiberRemoveNodeFromElementTemplate, true, true},
     /* 131 */ {kCFunctionSerializeElementTemplate, &RendererFunctions::FiberSerializeElementTemplate, true, true},
     /* 132 */ {kCFunctionCreateTypedElementTemplate, &RendererFunctions::FiberCreateTypedElementTemplate, true, true},
+    /* 133 */ {kCFunctionFiberRemoveEventListeners, &RendererFunctions::FiberRemoveEventListeners, true, true},
   };
   // clang-format on
   size = sizeof(kFuncs) / sizeof(kFuncs[0]);

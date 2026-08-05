@@ -42,7 +42,24 @@
 namespace lynx {
 namespace event {
 
-void EventListenerMap::Clear() { map_.clear(); }
+namespace {
+
+void MarkAllListenersRemoved(EventListenerVector& listeners) {
+  for (auto& listener : listeners) {
+    listener->set_removed(true);
+  }
+}
+
+}  // namespace
+
+void EventListenerMap::Clear() { RemoveAll(); }
+
+void EventListenerMap::RemoveAll() {
+  for (auto& pair : map_) {
+    MarkAllListenersRemoved(pair.second);
+  }
+  map_.clear();
+}
 
 bool EventListenerMap::IsEmpty() const {
   if (map_.empty()) {
@@ -103,6 +120,7 @@ bool EventListenerMap::Remove(const std::string& type) {
   if (!vector || vector->empty()) {
     return false;
   }
+  MarkAllListenersRemoved(*vector);
   vector->clear_and_shrink();
   return true;
 }

@@ -50,6 +50,7 @@
 #include "core/renderer/dom/list_component_info.h"
 #include "core/renderer/dom/testing/fiber_element_test.h"
 #include "core/renderer/dom/testing/fiber_mock_painting_context.h"
+#include "core/renderer/events/closure_event_listener.h"
 #include "core/renderer/simple_styling/style_object.h"
 #include "core/renderer/starlight/types/layout_attribute.h"
 #include "core/renderer/tasm/react/testing/mock_painting_context.h"
@@ -14735,6 +14736,61 @@ TEST_P(FiberElementTest, FiberAddWorkletEventUsesRegisterContextName) {
   auto it = page->lepus_event_map().find(kTap);
   ASSERT_NE(it, page->lepus_event_map().end());
   EXPECT_EQ(context, it->second->lepus_context());
+}
+
+TEST_P(FiberElementTest, FiberRemoveEventListenersRemovesAllEvents) {
+  auto element = manager->CreateFiberView();
+  element->SetJSEventHandler("tap", base::String(), base::String());
+  element->SetJSEventHandler("focus", base::String(), base::String());
+  element->SetJSEventHandler("longpress", tasm::kGlobalBind, base::String());
+  element->AddEventListener(
+      "tap",
+      std::make_unique<event::ClosureEventListener>([](lepus::Value) {}));
+  element->AddEventListener(
+      "focus",
+      std::make_unique<event::ClosureEventListener>([](lepus::Value) {}));
+
+  ASSERT_FALSE(element->event_map().empty());
+  ASSERT_FALSE(element->global_bind_event_map().empty());
+  ASSERT_FALSE(element->GetEventListenerMap()->IsEmpty());
+
+  lepus::Value args[] = {lepus::Value(element)};
+  RendererFunctions::FiberRemoveEventListeners(nullptr, args, 1);
+
+  EXPECT_TRUE(element->event_map().empty());
+  EXPECT_TRUE(element->global_bind_event_map().empty());
+  EXPECT_TRUE(element->GetEventListenerMap()->IsEmpty());
+}
+
+TEST_P(FiberElementTest,
+       FiberRemoveEventListenersStopsRemainingListenersDuringDispatch) {
+  auto page = manager->CreateFiberPage("page", 0);
+  manager->SetFiberPageElement(page);
+  auto element = manager->CreateFiberView();
+  page->InsertNode(element);
+  int first_listener_call_count = 0;
+  int second_listener_call_count = 0;
+  element->AddEventListener(
+      "tap", std::make_unique<event::ClosureEventListener>(
+                 [element, &first_listener_call_count](lepus::Value) {
+                   ++first_listener_call_count;
+                   lepus::Value args[] = {lepus::Value(element)};
+                   RendererFunctions::FiberRemoveEventListeners(nullptr, args,
+                                                                1);
+                 }));
+  element->AddEventListener("tap",
+                            std::make_unique<event::ClosureEventListener>(
+                                [&second_listener_call_count](lepus::Value) {
+                                  ++second_listener_call_count;
+                                }));
+
+  auto event = fml::MakeRefCounted<event::TouchEvent>("tap");
+  auto result = event::EventDispatcher::DispatchEvent(*element, event);
+
+  EXPECT_TRUE(result.consumed);
+  EXPECT_EQ(first_listener_call_count, 1);
+  EXPECT_EQ(second_listener_call_count, 0);
+  EXPECT_TRUE(element->GetEventListenerMap()->IsEmpty());
 }
 
 TEST_P(FiberElementTest, EventTest1) {
