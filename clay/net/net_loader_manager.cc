@@ -105,17 +105,18 @@ size_t NetLoaderManager::Request(const std::string& uri,
     request_seq = current_request_seq_;
     callback.SetRequestSeq(request_seq);
 
-    auto iter = waiters_.find(uri);
-    if (iter != waiters_.end()) {
+    auto iter = request_groups_.find(uri);
+    if (iter != request_groups_.end()) {
       NET_LOG << " add to pending requests " << uri << " seq "
               << current_request_seq_;
-      iter->second.push_back({request_seq, callback});
+      iter->second.waiters.push_back({request_seq, callback});
       return request_seq;
     }
 
     NET_LOG << " insert a new request " << uri << " seq "
             << current_request_seq_;
-    waiters_.insert({uri, {{request_seq, callback}}});
+    request_groups_.emplace(
+        uri, NetRequestGroup{request_seq, {{request_seq, callback}}});
   }
 
   // 1. Make a cache key by uri
@@ -171,9 +172,10 @@ size_t NetLoaderManager::RequestWithFetcher(
     request_seq = current_request_seq_;
     callback.SetRequestSeq(request_seq);
 
-    auto iter = waiters_.find(uri);
-    if (iter == waiters_.end()) {
-      waiters_.insert({uri, {{request_seq, callback}}});
+    auto iter = request_groups_.find(uri);
+    if (iter == request_groups_.end()) {
+      request_groups_.emplace(
+          uri, NetRequestGroup{request_seq, {{request_seq, callback}}});
     } else {
       return kInvalidRequestSeq;
     }
@@ -225,7 +227,7 @@ void NetLoaderManager::NotifyLowMemory() {
 void NetLoaderManager::Clear() {
   {
     std::scoped_lock lock(waiters_mutex_);
-    waiters_.clear();
+    request_groups_.clear();
   }
   {
     std::scoped_lock lock(response_mutex_);
@@ -234,30 +236,35 @@ void NetLoaderManager::Clear() {
 }
 
 void NetLoaderManager::CancelBySeq(size_t seq) {
-  // Iterate all pending entry.
   std::unique_lock lock(waiters_mutex_);
 
-  auto runner_iter = running_fetchers_.find(seq);
-  std::string url;
-  if (runner_iter != running_fetchers_.end()) {
-    // Cancel should trigger OnFailed callback
-    runner_iter->second->Cancel();
-    url = runner_iter->second->Url();
-  }
+  std::string canceled_url;
+  auto it = request_groups_.begin();
 
-  auto it = waiters_.begin();
+  while (it != request_groups_.end()) {
+    NetRequestGroup& group = it->second;
+    size_t old_size = group.waiters.size();
+    group.waiters.erase(
+        std::remove_if(group.waiters.begin(), group.waiters.end(),
+                       [seq](const NetWaiterEntity& entity) {
+                         return entity.request_seq == seq;
+                       }),
+        group.waiters.end());
+    if (group.waiters.size() != old_size) {
+      if (group.waiters.empty()) {
+        canceled_url = it->first;
+        size_t owner_request_seq = group.owner_request_seq;
+        // Retire this waiter generation before canceling. The physical request
+        // may report failure asynchronously after a new group for the same URL
+        // has already been created.
+        request_groups_.erase(it);
 
-  while (it != waiters_.end()) {
-    NetLoaderWaiters& waiter = it->second;
-    size_t old_size = waiter.size();
-    waiter.erase(std::remove_if(waiter.begin(), waiter.end(),
-                                [seq](const NetWaiterEntity& entity) {
-                                  return entity.request_seq == seq;
-                                }),
-                 waiter.end());
-    if (waiter.size() != old_size) {
-      if (waiter.empty()) {
-        waiters_.erase(it);
+        auto runner_iter = running_fetchers_.find(owner_request_seq);
+        if (runner_iter != running_fetchers_.end()) {
+          // Cancel is asynchronous. TakeWaiters() will reject its eventual
+          // callback because this request group has already been retired.
+          runner_iter->second->Cancel();
+        }
       }
       break;
     } else {
@@ -267,22 +274,24 @@ void NetLoaderManager::CancelBySeq(size_t seq) {
 
   lock.unlock();
   std::unique_lock response_lock(response_mutex_);
-  if (!url.empty() && response_by_uri_.find(url) != response_by_uri_.end()) {
-    response_by_uri_.erase(url);
+  if (!canceled_url.empty()) {
+    response_by_uri_.erase(canceled_url);
   }
 }
 
 NetLoaderManager::NetLoaderWaiters NetLoaderManager::TakeWaiters(
-    const std::string& uri) {
+    const std::string& uri, size_t owner_request_seq) {
   NetLoaderWaiters uri_waiters;
 
   {
     std::scoped_lock lock(waiters_mutex_);
 
-    auto iter = waiters_.find(uri);
-    if (iter != waiters_.end()) {
-      uri_waiters = std::move(iter->second);
-      waiters_.erase(iter);
+    auto iter = request_groups_.find(uri);
+    bool owner_matches = iter != request_groups_.end() &&
+                         iter->second.owner_request_seq == owner_request_seq;
+    if (owner_matches) {
+      uri_waiters = std::move(iter->second.waiters);
+      request_groups_.erase(iter);
     }
   }
   return uri_waiters;
@@ -291,7 +300,7 @@ NetLoaderManager::NetLoaderWaiters NetLoaderManager::TakeWaiters(
 void NetLoaderManager::OnSucceeded(const std::string& uri, size_t request_seq,
                                    RawResource&& resource,
                                    bool from_disk_cache) {
-  NetLoaderWaiters uri_waiters = TakeWaiters(uri);
+  NetLoaderWaiters uri_waiters = TakeWaiters(uri, request_seq);
   for (auto& waiter : uri_waiters) {
     waiter.callback.OnSucceeded(resource);
   }
@@ -330,23 +339,51 @@ void NetLoaderManager::OnSucceeded(const std::string& uri, size_t request_seq,
 
 void NetLoaderManager::OnFailed(const std::string& uri, size_t request_seq,
                                 int failed_time, const std::string& reason) {
+  {
+    std::scoped_lock lock(waiters_mutex_);
+    auto group_iter = request_groups_.find(uri);
+    if (group_iter == request_groups_.end() ||
+        group_iter->second.owner_request_seq != request_seq) {
+      // This physical request belongs to a canceled or replaced generation.
+      // Only clean up its own fetcher; never retry it or notify the current
+      // waiter group for the same URL.
+      running_fetchers_.erase(request_seq);
+      return;
+    }
+  }
+
   if (failed_time < HttpResourceFetcher::kMaxRetryTime) {
-    // Fetch resource
-    FML_LOG(WARNING) << "Failed to fetch " << uri << " for " << reason
-                     << " . Going to retry.";
     auto fetcher = HttpResourceFetcherFactory::CreateFetcher(
         host_net_loader_, url::Uri(uri), request_seq, failed_time + 1);
-    auto fetcher_ptr = fetcher.get();
-    {
-      std::scoped_lock lock(waiters_mutex_);
-      running_fetchers_.erase(request_seq);
-      running_fetchers_.emplace(request_seq, std::move(fetcher));
-    }
-    fetcher_ptr->Load();
+    if (fetcher) {
+      auto fetcher_ptr = fetcher.get();
+      bool request_still_active = false;
+      {
+        std::scoped_lock lock(waiters_mutex_);
+        auto group_iter = request_groups_.find(uri);
+        request_still_active =
+            group_iter != request_groups_.end() &&
+            group_iter->second.owner_request_seq == request_seq;
+        if (request_still_active) {
+          running_fetchers_.erase(request_seq);
+          running_fetchers_.emplace(request_seq, std::move(fetcher));
+        } else {
+          running_fetchers_.erase(request_seq);
+        }
+      }
 
-    return;
+      if (!request_still_active) {
+        return;
+      }
+
+      FML_LOG(WARNING) << "Failed to fetch " << uri << " for " << reason
+                       << " . Going to retry.";
+      fetcher_ptr->Load();
+      return;
+    }
   }
-  NetLoaderWaiters uri_waiters = TakeWaiters(uri);
+
+  NetLoaderWaiters uri_waiters = TakeWaiters(uri, request_seq);
   for (auto& waiter : uri_waiters) {
     waiter.callback.OnFailed(reason);
   }
