@@ -51,6 +51,10 @@
 #include "clay/ui/component/keywords.h"
 #include "clay/ui/component/map_marker_view.h"
 #ifdef ENABLE_ACCESSIBILITY
+#ifndef LYNX_ENABLE_CLAY_NATIVE_LIST
+#include "clay/ui/component/list/base_list_view.h"
+#include "clay/ui/component/list/list_wrapper.h"
+#endif
 #include "clay/ui/component/list/list_container/list_container_wrapper.h"
 #include "clay/ui/component/scroll_view.h"
 #include "clay/ui/component/scroll_wrapper.h"
@@ -114,6 +118,14 @@ BaseView* FindA11yScrollTarget(BaseView* view) {
     if (current->Is<ScrollView>()) {
       return current;
     }
+#ifndef LYNX_ENABLE_CLAY_NATIVE_LIST
+    if (current->Is<ListWrapper>()) {
+      return static_cast<ListWrapper*>(current)->GetListView();
+    }
+    if (current->Is<BaseListView>()) {
+      return current;
+    }
+#endif
   }
   return nullptr;
 }
@@ -127,6 +139,11 @@ float A11yScrollPosition(BaseView* target) {
     return scroll_view->CanScrollY() ? scroll_view->GetScrollOffset().y()
                                      : scroll_view->GetScrollOffset().x();
   }
+#ifndef LYNX_ENABLE_CLAY_NATIVE_LIST
+  if (target->Is<BaseListView>()) {
+    return static_cast<BaseListView*>(target)->GetScrollbarScrollOffset();
+  }
+#endif
   return 0.f;
 }
 

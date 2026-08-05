@@ -23,6 +23,9 @@
 #include "clay/ui/gesture/gesture_manager.h"
 #include "clay/ui/gesture/scrollable_direction.h"
 #include "clay/ui/gesture/tap_gesture_recognizer.h"
+#ifndef LYNX_ENABLE_CLAY_NATIVE_LIST
+#include "clay/ui/component/list/list_wrapper.h"
+#endif
 
 namespace clay {
 
@@ -489,7 +492,13 @@ NestedScrollable* NestedScrollable::GetScrollable(BaseView* view) {
   } else if (view->Is<ScrollWrapper>()) {
     // TODO(liuguoliang): common method to find scrollable view
     return static_cast<ScrollWrapper*>(view)->GetScrollView();
-  } else if (view->Is<ListContainerWrapper>()) {
+  }
+#ifndef LYNX_ENABLE_CLAY_NATIVE_LIST
+  else if (view->Is<ListWrapper>()) {
+    return static_cast<ListWrapper*>(view)->GetListView();
+  }
+#endif
+  else if (view->Is<ListContainerWrapper>()) {
     return static_cast<ListContainerWrapper*>(view)->GetListContainerView();
   }
   return nullptr;

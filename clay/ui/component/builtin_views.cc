@@ -16,6 +16,10 @@
 #endif  // OS_IOS
 #endif  // ENABLE_CLAY_LITE
 
+#ifndef LYNX_ENABLE_CLAY_NATIVE_LIST
+#include "clay/ui/component/list/list_wrapper.h"
+#endif  // LYNX_ENABLE_CLAY_NATIVE_LIST
+
 #include "clay/ui/component/image_view.h"
 #include "clay/ui/component/list/list_container/list_container_wrapper.h"
 #include "clay/ui/component/list/list_item_view.h"
@@ -55,7 +59,11 @@ REGISTER_CLAY_ELEMENT("scroll-view", ScrollWrapper, void);
 REGISTER_CLAY_ELEMENT("x-scroll-view", ScrollWrapper, void);
 REGISTER_CLAY_ELEMENT("component", Component, void);
 REGISTER_CLAY_ELEMENT("list-item", ListItemView, void);
+#ifndef LYNX_ENABLE_CLAY_NATIVE_LIST
+REGISTER_CLAY_ELEMENT("list", ListWrapper, void);
+#else
 REGISTER_CLAY_ELEMENT("list", ListContainerWrapper, void);
+#endif
 REGISTER_CLAY_ELEMENT("list-container", ListContainerWrapper, void);
 
 #ifndef ENABLE_CLAY_LITE

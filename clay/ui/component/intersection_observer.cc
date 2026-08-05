@@ -16,6 +16,10 @@
 #include "clay/ui/component/page_view.h"
 #include "clay/ui/component/scroll_view.h"
 
+#ifndef LYNX_ENABLE_CLAY_NATIVE_LIST
+#include "clay/ui/component/list/base_list_view.h"
+#endif
+
 namespace clay {
 
 namespace utils = attribute_utils;
@@ -87,7 +91,11 @@ FloatRect ComputeIntersection(BaseView* target_view, BaseView* root,
       parent_rect = relative_rect;
     } else {
       if (parent->GetOverflow() == CSSProperty::OVERFLOW_HIDDEN ||
-          parent->Is<ScrollView>() || ui_clip_enabled) {
+          parent->Is<ScrollView>() ||
+#ifndef LYNX_ENABLE_CLAY_NATIVE_LIST
+          parent->Is<BaseListView>() ||
+#endif
+          ui_clip_enabled) {
         parent_rect = BoundingRectWithScroll(parent);
       }
     }
