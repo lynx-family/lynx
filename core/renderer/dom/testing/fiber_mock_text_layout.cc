@@ -388,6 +388,9 @@ void TextLayoutMock::AppendImageProps(ImageElement* image_element, size_t start,
   props->AddProp(kPropImageSrc);
   props->AddProp(image_element->src().c_str());
 
+  props->AddProp(kPropImageLoopCount);
+  props->AddProp(image_element->paint_info().loop_count);
+
   // mode
   // TBD
 
