@@ -182,8 +182,26 @@ jobs:
     needs: get-version
     if: ${{ !contains(needs.get-version.outputs.version, '-nightly.') }}
     strategy:
+      fail-fast: false
       matrix:
-        arch: [arm64, x86_64]
+        include:
+          # We ship 4 iOS Explorer apps: arm64/x86_64 x {no +sparkling, +sparkling}.
+          # Each is build-validated in CI (ci.yml ios-explorer-build) so we never
+          # release an .app that CI has not compiled.
+          # No +sparkling (original) -- keep the existing artifact name for backward compatibility.
+          - arch: arm64
+            sparkling_mode: disable_sparkling
+            artifact_suffix: ''
+          - arch: x86_64
+            sparkling_mode: disable_sparkling
+            artifact_suffix: ''
+          # +sparkling builds -- same arch coverage; distinguished by the -sparkling filename suffix.
+          - arch: arm64
+            sparkling_mode: enable_sparkling
+            artifact_suffix: '-sparkling'
+          - arch: x86_64
+            sparkling_mode: enable_sparkling
+            artifact_suffix: '-sparkling'
     steps:
       - name: Download Source
         uses: actions/checkout@v6
@@ -195,12 +213,18 @@ jobs:
         uses: ./lynx/.github/actions/ios-explorer-build
         with:
           build-arch: ${{ matrix.arch }}
+          sparkling-mode: ${{ matrix.sparkling_mode }}
+      - name: Name Sparkling artifact distinctly
+        if: ${{ matrix.artifact_suffix != '' }}
+        run: |
+          mv "${{ github.workspace }}/lynx/LynxExplorer-${{ matrix.arch }}.app.tar.gz" \
+             "${{ github.workspace }}/lynx/LynxExplorer-${{ matrix.arch }}${{ matrix.artifact_suffix }}.app.tar.gz"
       - name: push explorer to release
         uses: ncipollo/release-action@v1
         with:
           tag: ${{ needs.get-version.outputs.version }}
           token: ${{ secrets.GITHUB_TOKEN }}
-          artifacts: '${{ github.workspace }}/lynx/LynxExplorer-${{ matrix.arch }}.app.tar.gz'
+          artifacts: '${{ github.workspace }}/lynx/LynxExplorer-${{ matrix.arch }}${{ matrix.artifact_suffix }}.app.tar.gz'
           allowUpdates: true
           body: ''
 
