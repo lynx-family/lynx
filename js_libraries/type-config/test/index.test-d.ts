@@ -28,6 +28,7 @@ describe('Test Config Types', () => {
     expectTypeOf<Config>().toHaveProperty('enableJsBindingApiThrowException').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('enableLayoutOnlyEventThrough').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('enableListNewArchitecture').toEqualTypeOf<boolean | undefined>();
+    expectTypeOf<Config>().toHaveProperty('enableMouseDragScroll').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('enableMultiTouch').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('enableNativeList').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('enableNewGesture').toEqualTypeOf<boolean | undefined>();

@@ -144,17 +144,29 @@ class MockEventDelegate : public clay::EventDelegate {
 
 void UITest::DispatchDragEvent(FloatPoint start, FloatPoint end, bool fling,
                                float steps, float interval_ms) {
+  DispatchDragEvent(start, end, PointerEvent::DeviceType::kTouch, fling, steps,
+                    interval_ms);
+}
+
+void UITest::DispatchDragEvent(FloatPoint start, FloatPoint end,
+                               PointerEvent::DeviceType device, bool fling,
+                               float steps, float interval_ms) {
   int64_t interval = interval_ms * 1000;
   int64_t timestamp = fml::TimePoint::Now().ToEpochDelta().ToMicroseconds();
-  page_->DispatchPointerEvent({CreatePointer(
-      0, PointerEvent::EventType::kDownEvent, start, {}, timestamp)});
+  auto dispatch = [this, device](PointerEvent::EventType type,
+                                 FloatPoint position, FloatPoint delta,
+                                 int64_t event_timestamp) {
+    auto event = CreatePointer(0, type, position, delta, event_timestamp);
+    event.device = device;
+    page_->DispatchPointerEvent({event});
+  };
+  dispatch(PointerEvent::EventType::kDownEvent, start, {}, timestamp);
   FloatPoint last = start;
   for (int i = 1; i <= steps; i++) {
     timestamp += interval;
     auto point = FloatPoint::Lerp(start, end, static_cast<float>(i) / steps);
-    page_->DispatchPointerEvent(
-        {CreatePointer(0, PointerEvent::EventType::kMoveEvent, point,
-                       point - last, timestamp)});
+    dispatch(PointerEvent::EventType::kMoveEvent, point, point - last,
+             timestamp);
     last = point;
   }
   if (!fling) {
@@ -162,13 +174,11 @@ void UITest::DispatchDragEvent(FloatPoint start, FloatPoint end, bool fling,
     // is 0. See `VelocityTracker::GetVelocityEstimate`
     for (int i = 0; i < 20; i++) {
       timestamp += interval;
-      page_->DispatchPointerEvent({CreatePointer(
-          0, PointerEvent::EventType::kMoveEvent, end, end - last, timestamp)});
+      dispatch(PointerEvent::EventType::kMoveEvent, end, end - last, timestamp);
     }
   }
   timestamp += interval;
-  page_->DispatchPointerEvent({CreatePointer(
-      0, PointerEvent::EventType::kUpEvent, end, {}, timestamp)});
+  dispatch(PointerEvent::EventType::kUpEvent, end, {}, timestamp);
 }
 
 void UITest::Layout() { page_->GetLayoutController()->Layout(); }

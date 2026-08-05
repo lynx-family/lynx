@@ -26,8 +26,10 @@ export interface CompilerOptions {
    * {{ option.desc }}
    *
    {% endif %}
-    {% if option.support_platform %}
-   * Supported platform: {{ option.support_platform | map('string') | join(", ") }}
+    {% if option.platform_tags %}
+   {% for tag in option.platform_tags %}
+   * {{ tag }}
+   {% endfor %}
    *
    {% endif %}
    {% if option.since %}

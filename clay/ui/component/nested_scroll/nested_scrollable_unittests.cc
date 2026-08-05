@@ -116,6 +116,36 @@ TEST_F_UI(NestedScrollableTest, SimpleScroll) {
   EXPECT_EQ(scrollable->scroll_offset_, 50);
 }
 
+TEST_F_UI(NestedScrollableTest, MouseDragDoesNotScroll) {
+  page_->SetEnableMouseDragScroll(false);
+  TestScrollable* scrollable = new TestScrollable(page_.get(), 100);
+  page_->AddChild(scrollable);
+
+  DispatchDragEvent({50, 50}, {50, 0}, PointerEvent::DeviceType::kMouse);
+
+  EXPECT_EQ(scrollable->scroll_offset_, 0);
+}
+
+TEST_F_UI(NestedScrollableTest, MouseDragScrollEnabledByPageConfig) {
+  page_->SetEnableMouseDragScroll(true);
+  TestScrollable* scrollable = new TestScrollable(page_.get(), 100);
+  page_->AddChild(scrollable);
+
+  DispatchDragEvent({50, 50}, {50, 0}, PointerEvent::DeviceType::kMouse);
+
+  EXPECT_EQ(scrollable->scroll_offset_, 50);
+}
+
+TEST_F_UI(NestedScrollableTest, TrackpadDragScrollsWhenMouseDragDisabled) {
+  page_->SetEnableMouseDragScroll(false);
+  TestScrollable* scrollable = new TestScrollable(page_.get(), 100);
+  page_->AddChild(scrollable);
+
+  DispatchDragEvent({50, 50}, {50, 0}, PointerEvent::DeviceType::kTrackpad);
+
+  EXPECT_EQ(scrollable->scroll_offset_, 50);
+}
+
 TEST_F_UI(NestedScrollableTest, NestedDrag) {
   TestScrollable* scrollable1 = new TestScrollable(page_.get(), 100);
   page_->AddChild(scrollable1);

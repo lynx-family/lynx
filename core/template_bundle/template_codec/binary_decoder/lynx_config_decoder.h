@@ -918,6 +918,15 @@ class LynxConfigDecoder final {
           doc[config::kAlignMouseEventWithW3C].GetBool());
     }
 
+    if (doc.HasMember(config::kEnableMouseDragScroll) &&
+        doc[config::kEnableMouseDragScroll].IsBool()) {
+      page_config->SetEnableMouseDragScroll(
+          doc[config::kEnableMouseDragScroll].GetBool());
+    } else if (lynx::tasm::Config::IsHigherOrEqual(target_sdk_version,
+                                                   LYNX_VERSION_4_3)) {
+      page_config->SetEnableMouseDragScroll(false);
+    }
+
     if (doc.HasMember(config::kEnableDisexposureWhenBackground) &&
         doc[config::kEnableDisexposureWhenBackground].IsBool()) {
       page_config->SetEnableDisexposureWhenBackground(

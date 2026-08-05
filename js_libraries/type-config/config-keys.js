@@ -24,6 +24,7 @@ const configKeys = [
   'enableJsBindingApiThrowException',
   'enableLayoutOnlyEventThrough',
   'enableListNewArchitecture',
+  'enableMouseDragScroll',
   'enableMultiTouch',
   'enableNativeList',
   'enableNewGesture',
