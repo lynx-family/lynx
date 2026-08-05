@@ -44,6 +44,7 @@ class MTSRuntimePool : public std::enable_shared_from_this<MTSRuntimePool> {
   MTSRuntimePool& operator=(MTSRuntimePool&&) = delete;
 
   void FillPool(int32_t count);
+  void FillPoolSync(int32_t count);
 
   std::shared_ptr<runtime::MTSRuntime> TakeMTSRuntimeSafely();
 

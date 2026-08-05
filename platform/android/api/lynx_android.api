@@ -5216,6 +5216,10 @@ public enum com::lynx::tasm::LynxEngine::LynxEngineState {
 
 public class com::lynx::tasm::LynxEnv :  {
   public final String com.lynx.tasm.LynxEnv.SP_NAME SP_NAME;
+  public final int com.lynx.tasm.LynxEnv.MTS_CONTEXT_TYPE_VM MTS_CONTEXT_TYPE_VM;
+  public final int com.lynx.tasm.LynxEnv.MTS_CONTEXT_TYPE_LEPUS_NG MTS_CONTEXT_TYPE_LEPUS_NG;
+  public final int com.lynx.tasm.LynxEnv.MTS_CONTEXT_TYPE_RTS MTS_CONTEXT_TYPE_RTS;
+  public final int com.lynx.tasm.LynxEnv.MTS_CONTEXT_TYPE_RTS_NATIVE MTS_CONTEXT_TYPE_RTS_NATIVE;
   public static LynxEnv com.lynx.tasm.LynxEnv.inst();
   public static void com.lynx.tasm.LynxEnv.setLazyInitializer(Initializer initializer);
   public static int com.lynx.tasm.LynxEnv.getIntFromExternalEnv(LynxEnvKey key, int defaultValue);
@@ -5355,6 +5359,7 @@ public class com::lynx::tasm::LynxEnv :  {
   public boolean com.lynx.tasm.LynxEnv.isFspScreenshotEnabled();
   public void com.lynx.tasm.LynxEnv.enableFspScreenshot(boolean value);
   public void com.lynx.tasm.LynxEnv.initNativeUIThread();
+  public void com.lynx.tasm.LynxEnv.prepareLynxGlobalPoolByContextType(@MTSContextType int contextType, int count);
   public boolean com.lynx.tasm.LynxEnv.tryToLoadV8Bridge(boolean unused);
   public void com.lynx.tasm.LynxEnv.forceDisableQuickJsCache();
   public void com.lynx.tasm.LynxEnv.trimMemory(@MemoryPressureLevel int pressure);
@@ -8151,6 +8156,9 @@ public class com::lynx::tasm::behavior::ui::swiper::ModeCarryTransformer : com.l
 public class com::lynx::tasm::behavior::ui::swiper::ModeCoverFlowTransformer : com.lynx.tasm.behavior.ui.swiper.ViewPager.PageTransformer {
   public void com.lynx.tasm.behavior.ui.swiper.ModeCoverFlowTransformer.transformPage(ViewPager viewPager, View page, boolean isVertical, int offset);
   public void com.lynx.tasm.behavior.ui.swiper.ModeCoverFlowTransformer.reset(View page);
+}
+
+public interface com::lynx::tasm::LynxEnv::MTSContextType {
 }
 
 public interface com::lynx::react::bridge::NativeArrayInterface {
