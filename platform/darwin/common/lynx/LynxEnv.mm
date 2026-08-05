@@ -40,6 +40,7 @@
 #include "core/base/darwin/lynx_env_darwin.h"
 #include "core/base/lynx_trace_categories.h"
 #include "core/renderer/css/computed_css_style.h"
+#include "core/renderer/lynx_global_pool.h"
 #include "core/renderer/tasm/config.h"
 #include "core/renderer/utils/devtool_lifecycle.h"
 #include "core/renderer/utils/lynx_env.h"
@@ -97,6 +98,16 @@ static void LynxClaySetup() {
   });
 
   return _instance;
+}
+
++ (void)prepareGlobalMTSRuntimePoolWithContextType:(LynxMTSContextType)contextType
+                                             count:(NSInteger)count {
+  if (contextType < LynxMTSContextTypeVM || contextType > LynxMTSContextTypeRTSNative ||
+      count <= 0) {
+    return;
+  }
+  lynx::tasm::LynxGlobalPool::GetInstance().PreparePool(
+      static_cast<lynx::runtime::ContextType>(contextType), static_cast<int32_t>(count));
 }
 
 - (instancetype)init {
