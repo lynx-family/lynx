@@ -107,6 +107,31 @@ TEST(PageConfigTest, EnableEventTargetInfoNodeIndex) {
   EXPECT_TRUE(page_config->GetEnableEventTargetInfoNodeIndex());
 }
 
+TEST(PageConfigTest, EnableMouseDragScroll) {
+  rapidjson::Document empty_doc;
+  empty_doc.Parse(R"({})");
+
+  std::shared_ptr<PageConfig> legacy_config = std::make_shared<PageConfig>();
+  EXPECT_TRUE(legacy_config->GetEnableMouseDragScroll());
+  LynxConfigDecoder::DecodePageConfig(legacy_config, empty_doc, "4.1");
+  EXPECT_TRUE(legacy_config->GetEnableMouseDragScroll());
+
+  std::shared_ptr<PageConfig> version_4_2_config =
+      std::make_shared<PageConfig>();
+  LynxConfigDecoder::DecodePageConfig(version_4_2_config, empty_doc, "4.2");
+  EXPECT_TRUE(version_4_2_config->GetEnableMouseDragScroll());
+
+  std::shared_ptr<PageConfig> fixed_config = std::make_shared<PageConfig>();
+  LynxConfigDecoder::DecodePageConfig(fixed_config, empty_doc, "4.3");
+  EXPECT_FALSE(fixed_config->GetEnableMouseDragScroll());
+
+  rapidjson::Document explicit_doc;
+  explicit_doc.Parse(R"({"enableMouseDragScroll":true})");
+  std::shared_ptr<PageConfig> explicit_config = std::make_shared<PageConfig>();
+  LynxConfigDecoder::DecodePageConfig(explicit_config, explicit_doc, "4.3");
+  EXPECT_TRUE(explicit_config->GetEnableMouseDragScroll());
+}
+
 TEST(PageConfigTest, EnableFrontendCustomEventBubbleCompatible) {
   std::shared_ptr<PageConfig> default_config = std::make_shared<PageConfig>();
   EXPECT_TRUE(default_config->GetEnableFrontendCustomEventBubbleCompatible());

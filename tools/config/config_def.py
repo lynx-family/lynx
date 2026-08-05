@@ -77,6 +77,7 @@ class Config:
         self.since = since
         self.deprecated = deprecated
         self.support_platform = support_platform
+        self.platform_tags = self._build_platform_tags(support_platform)
 
         if self.value_type == "bool" or self.value_type == "boolean":
             self.value_type = "bool"
@@ -176,14 +177,37 @@ class Config:
         return True
 
     def _check_support_platform(self) -> bool:
-        _support_platform_set = {"iOS", "Android", "HarmonyOS", "macOS", "Windows"}
         if not self.support_platform:
             return True
         for platform in self.support_platform:
-            if platform not in _support_platform_set:
+            if platform not in self._PLATFORM_TAG_MAP:
                 print(
-                    f"Config {self.name} supportPlatform field '{self.support_platform}' is invalid, please ensure it is in {list(_support_platform_set)}.",
+                    f"Config {self.name} supportPlatform field '{self.support_platform}' is invalid, please ensure it is in {list(self._PLATFORM_TAG_MAP)}.",
                     file=sys.stderr,
                 )
                 return False
         return True
+
+    # Maps a supportPlatform value to its TSDoc block tag, matching the tag
+    # convention defined in oliver/type-lynx/tsdoc.json. macOS and Windows are
+    # Clay-only (self-rendered) platforms, while ClayAndroid and ClayIOS allow
+    # configs to distinguish Clay from other renderers on mobile platforms.
+    _PLATFORM_TAG_MAP = {
+        "iOS": "@iOS",
+        "Android": "@Android",
+        "HarmonyOS": "@Harmony",
+        "macOS": "@ClayMacOS",
+        "Windows": "@ClayWindows",
+        "ClayAndroid": "@ClayAndroid",
+        "ClayIOS": "@ClayIOS",
+    }
+
+    def _build_platform_tags(self, support_platform) -> list[str]:
+        if not support_platform:
+            return []
+        tags: list[str] = []
+        for platform in support_platform:
+            tag = self._PLATFORM_TAG_MAP.get(platform)
+            if tag and tag not in tags:
+                tags.append(tag)
+        return tags

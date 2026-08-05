@@ -543,12 +543,7 @@ void NestedScrollable::DispatchMouseWheelEvent(const PointerEvent& event) {
 
 bool NestedScrollable::IsPointerAllowed(
     const GestureRecognizer& gesture_recognizer, const PointerEvent& event) {
-  return event.device == PointerEvent::DeviceType::kTouch ||
-         event.device == PointerEvent::DeviceType::kTrackpad
-#if defined(ENABLE_HEADLESS)
-         || event.device == PointerEvent::DeviceType::kMouse
-#endif
-      ;
+  return page_view()->IsPointerAllowedForDragScroll(event);
 }
 
 }  // namespace clay

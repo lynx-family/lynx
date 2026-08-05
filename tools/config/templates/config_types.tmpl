@@ -16,8 +16,10 @@ export interface Config {
    * {{ config.desc }}
    *
    {% endif %}
-   {% if config.support_platform %}
-   * Supported platform: {{ config.support_platform | map('string') | join(", ") }}
+   {% if config.platform_tags %}
+   {% for tag in config.platform_tags %}
+   * {{ tag }}
+   {% endfor %}
    {% endif %}
    {% if config.since %}
    *

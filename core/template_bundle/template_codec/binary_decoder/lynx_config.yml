@@ -1912,6 +1912,21 @@ alignMouseEventWithW3C:
     - macOS
     - Windows
   export: true
+enableMouseDragScroll:
+  description: Controls whether dragging scrollable content with a mouse scrolls the container on Clay platforms. When disabled, mouse wheel and scrollbar scrolling remain available. For target SDK 4.3 and above, the default override is disabled.
+  defaultValue: 'true'
+  valueType: bool
+  versionOverrides:
+    - minSDKVersion: LYNX_VERSION_4_3
+      value: 'false'
+  author: zhixuan
+  since: '4.3'
+  supportPlatform:
+    - ClayAndroid
+    - ClayIOS
+    - macOS
+    - Windows
+  export: true
 enableDisexposureWhenBackground:
   description: Controls whether iOS sends `disexposure` events when the Lynx view enters the background. When enabled, `LynxUIExposure` emits `disexposure` during background transitions; when disabled, backgrounding does not trigger that extra event.
   defaultValue: 'true'

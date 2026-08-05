@@ -493,6 +493,16 @@ class PageView : public BaseView,
   void SetAlignMouseEventWithW3C(bool is_aligned) {
     align_mouse_event_with_w3c_ = is_aligned;
   }
+  bool EnableMouseDragScroll() const { return enable_mouse_drag_scroll_; }
+  void SetEnableMouseDragScroll(bool enabled) {
+    enable_mouse_drag_scroll_ = enabled;
+  }
+  bool IsPointerAllowedForDragScroll(const PointerEvent& event) const {
+    return event.device == PointerEvent::DeviceType::kTouch ||
+           event.device == PointerEvent::DeviceType::kTrackpad ||
+           (event.device == PointerEvent::DeviceType::kMouse &&
+            enable_mouse_drag_scroll_);
+  }
 
   uint8_t DefaultOverflow() const { return default_overflow_; }
   void SetDefaultOverflow(uint8_t overflow) { default_overflow_ = overflow; }
@@ -651,6 +661,7 @@ class PageView : public BaseView,
 
   std::unique_ptr<GestureHandlerDispatcher> gesture_handler_dispatcher_;
   bool align_mouse_event_with_w3c_ = false;
+  bool enable_mouse_drag_scroll_ = true;
   uint8_t default_overflow_ = CSSProperty::OVERFLOW_XY;
 
   TapGestureRecognizer* tap_gesture_recognizer_ = nullptr;

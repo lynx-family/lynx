@@ -32,6 +32,10 @@ class UITest : public ::testing::Test {
   void DispatchDragEvent(FloatPoint start, FloatPoint end, bool fling = false,
                          float steps = 10,
                          float interval_ms = 1000.0f / 120.0f);
+  void DispatchDragEvent(FloatPoint start, FloatPoint end,
+                         PointerEvent::DeviceType device, bool fling = false,
+                         float steps = 10,
+                         float interval_ms = 1000.0f / 120.0f);
   void DispatchTouchPadEvent(FloatPoint from, FloatPoint to, int event_num);
 
   void Layout();
