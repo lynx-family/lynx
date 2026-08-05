@@ -14,7 +14,7 @@ import re
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable
+from typing import Iterable, Optional
 
 
 UPSTREAM_ROOT = "https://chromedevtools.github.io/devtools-protocol/tot"
@@ -31,6 +31,10 @@ PRIMJS_FUNCTION_RE = re.compile(
     re.MULTILINE,
 )
 PRIMJS_METHOD_RE = re.compile(rf'\{{\s*"({METHOD_NAME_PATTERN})"\s*,')
+LYNX_VERSION_RE = re.compile(
+    r"^#define\s+LYNX_VERSION\s+tasm::V_([0-9]+)_([0-9]+)\b",
+    re.MULTILINE,
+)
 REGISTER_FUNCTION_RE = re.compile(
     r"void\s+LynxDevToolNG::Register(Global|Instance)DomainAgents\s*\([^)]*\)\s*\{",
     re.MULTILINE,
@@ -50,6 +54,7 @@ class Paths:
     domain_agent_dir: Path
     registration_source: Path
     primjs_protocols_source: Path
+    lynx_config_source: Path
 
 
 @dataclass(frozen=True)
@@ -57,6 +62,15 @@ class LocalMethod:
     domain: str
     method: str
     source: str
+
+
+@dataclass(frozen=True)
+class ExistingManifest:
+    domains: set[str]
+    methods: set[tuple[str, str]]
+    events: set[tuple[str, str]]
+    method_since: dict[tuple[str, str], str]
+    event_since: dict[tuple[str, str], str]
 
 
 class MetadataError(Exception):
@@ -77,7 +91,16 @@ def main() -> int:
         upstream_methods = load_upstream_methods(paths.upstream_schema)
         local_methods = scan_local_methods(paths)
         scopes = scan_domain_scopes(paths.registration_source)
-        manifest_text = build_manifest(paths, local_methods, scopes, upstream_methods)
+        existing_manifest = load_existing_manifest(paths.manifest)
+        current_lynx_version = scan_current_lynx_version(paths.lynx_config_source)
+        manifest_text = build_manifest(
+            paths,
+            local_methods,
+            scopes,
+            upstream_methods,
+            existing_manifest,
+            current_lynx_version,
+        )
 
         if args.write:
             paths.manifest.write_text(manifest_text, encoding="utf-8")
@@ -119,6 +142,7 @@ def get_paths() -> Paths:
         / "src"
         / "inspector"
         / "protocols.cc",
+        lynx_config_source=source_root / "core" / "renderer" / "tasm" / "config.h",
     )
 
 
@@ -154,6 +178,90 @@ def load_upstream_methods(schema_path: Path) -> dict[str, set[str]]:
         }
         upstream[domain] = methods
     return upstream
+
+
+def load_existing_manifest(manifest_path: Path) -> ExistingManifest:
+    """Read prior generated metadata so new writes can preserve `since` history."""
+
+    domains: set[str] = set()
+    methods: set[tuple[str, str]] = set()
+    events: set[tuple[str, str]] = set()
+    method_since: dict[tuple[str, str], str] = {}
+    event_since: dict[tuple[str, str], str] = {}
+
+    if not manifest_path.exists():
+        return ExistingManifest(
+            domains=domains,
+            methods=methods,
+            events=events,
+            method_since=method_since,
+            event_since=event_since,
+        )
+
+    current_domain: Optional[str] = None
+    current_section: Optional[str] = None
+    current_entry: Optional[tuple[str, str]] = None
+
+    for line in manifest_path.read_text(encoding="utf-8").splitlines():
+        domain_match = re.fullmatch(r"  - name: (.+)", line)
+        if domain_match:
+            current_domain = parse_yaml_scalar(domain_match.group(1))
+            domains.add(current_domain)
+            current_section = None
+            current_entry = None
+            continue
+
+        if current_domain is None:
+            continue
+
+        section_match = re.fullmatch(r"    (methods|events):", line)
+        if section_match:
+            current_section = section_match.group(1)
+            current_entry = None
+            continue
+
+        entry_match = re.fullmatch(r"      - name: (.+)", line)
+        if entry_match and current_section:
+            current_entry = (
+                current_domain,
+                parse_yaml_scalar(entry_match.group(1)),
+            )
+            if current_section == "methods":
+                methods.add(current_entry)
+            else:
+                events.add(current_entry)
+            continue
+
+        entry_since_match = re.fullmatch(r"        since: (.+)", line)
+        if entry_since_match and current_section and current_entry:
+            since = parse_yaml_scalar(entry_since_match.group(1))
+            if current_section == "methods":
+                method_since[current_entry] = since
+            else:
+                event_since[current_entry] = since
+
+    return ExistingManifest(
+        domains=domains,
+        methods=methods,
+        events=events,
+        method_since=method_since,
+        event_since=event_since,
+    )
+
+
+def scan_current_lynx_version(source_file: Path) -> str:
+    """Return LYNX_VERSION from config.h as the manifest version string."""
+
+    if not source_file.exists():
+        raise MetadataError(f"missing Lynx version source: {source_file}")
+
+    text = source_file.read_text(encoding="utf-8")
+    match = LYNX_VERSION_RE.search(text)
+    if not match:
+        raise MetadataError(
+            f"cannot find LYNX_VERSION in {source_file}; expected tasm::V_<major>_<minor>"
+        )
+    return f"{int(match.group(1))}.{int(match.group(2))}"
 
 
 def scan_local_methods(paths: Paths) -> list[LocalMethod]:
@@ -268,6 +376,8 @@ def build_manifest(
     local_methods: list[LocalMethod],
     scopes: dict[str, str],
     upstream_methods: dict[str, set[str]],
+    existing_manifest: ExistingManifest,
+    current_lynx_version: str,
 ) -> str:
     domains: dict[str, list[LocalMethod]] = {}
     for method in local_methods:
@@ -304,21 +414,56 @@ def build_manifest(
             [
                 f"  - name: {yaml_scalar(domain)}",
                 f"    origin: {domain_origin}",
+            ]
+        )
+        lines.extend(
+            [
                 f"    scope: {scopes[domain]}",
                 "    methods:",
             ]
         )
         for method in sorted(domains[domain], key=lambda item: item.method):
             method_origin = classify_method(method, upstream_methods)
+            method_since = entry_since(
+                key=(method.domain, method.method),
+                existing_entries=existing_manifest.methods,
+                existing_since=existing_manifest.method_since,
+                current_lynx_version=current_lynx_version,
+            )
             lines.extend(
                 [
                     f"      - name: {yaml_scalar(method.method)}",
                     f"        origin: {method_origin}",
-                    f"        source: {yaml_scalar(method.source)}",
+                    f"        since: {yaml_quoted_string(method_since)}",
                 ]
             )
+            lines.append(f"        source: {yaml_scalar(method.source)}")
     lines.append("")
     return "\n".join(lines)
+
+
+def entry_since(
+    key,
+    existing_entries,
+    existing_since,
+    current_lynx_version: str,
+) -> str:
+    """Preserve known history, and assign current Lynx version to new entries."""
+
+    if key in existing_since:
+        return existing_since[key]
+    if key not in existing_entries:
+        return current_lynx_version
+    raise MetadataError(
+        f"existing manifest entry {format_manifest_entry_key(key)} "
+        "is missing mandatory `since`"
+    )
+
+
+def format_manifest_entry_key(key) -> str:
+    if isinstance(key, tuple):
+        return ".".join(key)
+    return key
 
 
 def classify_method(
@@ -336,6 +481,27 @@ def yaml_scalar(value: str) -> str:
     if re.fullmatch(r"[A-Za-z0-9_./:#-]+", value):
         return value
     return json.dumps(value)
+
+
+def yaml_quoted_string(value: str) -> str:
+    return "'" + value.replace("'", "''") + "'"
+
+
+def parse_yaml_scalar(value: str) -> str:
+    value = value.strip()
+    if len(value) >= 2 and value[0] == value[-1] == '"':
+        try:
+            loaded = json.loads(value)
+        except json.JSONDecodeError as exc:
+            raise MetadataError(
+                f"invalid generated YAML string scalar: {value}"
+            ) from exc
+        if not isinstance(loaded, str):
+            raise MetadataError(f"expected generated YAML string scalar: {value}")
+        return loaded
+    if len(value) >= 2 and value[0] == value[-1] == "'":
+        return value[1:-1].replace("''", "'")
+    return value
 
 
 def check_manifest(

@@ -210,9 +210,11 @@ domains:
     methods:
       - name: getDocument
         origin: standard
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_dom_agent_ng.cc
       - name: getDocumentWithBoxModel
         origin: lynx-extension
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_dom_agent_ng.cc
   - name: Recording
     origin: lynx-extension
@@ -220,6 +222,7 @@ domains:
     methods:
       - name: start
         origin: lynx-extension
+        since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_recording_agent_ng.cc
   - name: Runtime
     origin: standard
@@ -227,9 +230,11 @@ domains:
     methods:
       - name: evaluate
         origin: standard
+        since: '4.1'
         source: third_party/quickjs/src/src/inspector/protocols.cc
       - name: getHeapUsage
         origin: standard
+        since: '4.1'
         source: third_party/quickjs/src/src/inspector/protocols.cc
 ```
 
@@ -239,6 +244,10 @@ Rules:
 - Do not store per-domain or per-method upstream URLs.
 - Do not store `domains.sources`.
 - Do not store per-method runtime availability fields.
+- Do not store domain-level `since`; domains are grouping namespaces.
+- `methods[].since` is mandatory.
+- Future `events[].since` is mandatory.
+- Store `since` as a single-quoted string, such as `'4.1'`, not as a YAML number.
 - Website docs own global prose for PrimJS MTS/BTS behavior and V8 delegated behavior.
 - Derive standard CDP links from `upstreamRoot`:
   - Domain page: `<upstreamRoot>/<Domain>/`
