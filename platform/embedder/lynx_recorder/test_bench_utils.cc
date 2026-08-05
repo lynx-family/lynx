@@ -21,6 +21,15 @@ static const std::string BASE64_CHARS =
     "abcdefghijklmnopqrstuvwxyz"
     "0123456789+/";
 
+namespace {
+
+bool IsJsonWhitespace(char character) {
+  return character == ' ' || character == '\t' || character == '\n' ||
+         character == '\r';
+}
+
+}  // namespace
+
 std::string TestBenchDecode(const std::string& encoded) {
   std::string out_put;
   int in_len = encoded.size();
@@ -105,6 +114,25 @@ std::vector<uint8_t> TestBenchDecompress(const std::vector<uint8_t>& data) {
     return std::vector<uint8_t>();
   }
   return out_data;
+}
+
+size_t FindRawJsonStart(const std::string& record_file) {
+  size_t position = 0;
+  constexpr unsigned char kUtf8Bom[] = {0xEF, 0xBB, 0xBF};
+  if (record_file.size() >= sizeof(kUtf8Bom) &&
+      static_cast<unsigned char>(record_file[0]) == kUtf8Bom[0] &&
+      static_cast<unsigned char>(record_file[1]) == kUtf8Bom[1] &&
+      static_cast<unsigned char>(record_file[2]) == kUtf8Bom[2]) {
+    position = sizeof(kUtf8Bom);
+  }
+  while (position < record_file.size() &&
+         IsJsonWhitespace(record_file[position])) {
+    ++position;
+  }
+  if (position < record_file.size() && record_file[position] == '{') {
+    return position;
+  }
+  return std::string::npos;
 }
 
 bool StringToInt(const std::string& input, int* output, uint8_t base) {
