@@ -352,14 +352,25 @@ jobs:
         uses: ./lynx/.github/actions/common-deps
         with:
           cache-backend: github
+      - name: Create Specs repo GitHub App token
+        id: specs_app_token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ vars.SPECS_REPO_APP_ID }}
+          private-key: ${{ secrets.SPECS_REPO_APP_PRIVATE_KEY }}
+          owner: lynx-family
+          repositories: Specs
+          permission-contents: write
       - name: Publish iOS SDK
         uses: ./lynx/.github/actions/ios-sdk-publish
         with:
           version: ${{ needs.get-version.outputs.version }}
           tag: ${{ needs.get-version.outputs.version }}
           storage_type: ${{ needs.get-version.outputs.ios_storage_type }}
-          cocoapods_trunk_token: ${{ secrets.COCOAPODS_TRUNK_TOKEN }}
+          specs_repo_app_token: ${{ steps.specs_app_token.outputs.token }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
+          specs_repo_url: https://github.com/lynx-family/Specs.git
+          specs_repo_name: lynx-specs
           component: all
       - name: Publish iOS dev SDK
         uses: ./lynx/.github/actions/ios-sdk-publish
@@ -369,8 +380,10 @@ jobs:
           version: ${{ needs.get-version.outputs.version }}-dev
           tag: ${{ needs.get-version.outputs.version }}
           storage_type: ${{ needs.get-version.outputs.ios_storage_type }}
-          cocoapods_trunk_token: ${{ secrets.COCOAPODS_TRUNK_TOKEN }}
+          specs_repo_app_token: ${{ steps.specs_app_token.outputs.token }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
+          specs_repo_url: https://github.com/lynx-family/Specs.git
+          specs_repo_name: lynx-specs
           component: all
 
   cocoapods-lynx-library-publish:
