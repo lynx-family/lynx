@@ -28,6 +28,13 @@ typedef NS_ENUM(NSInteger, LynxMemoryPressureLevel) {
   LynxMemoryPressureLevelCritical = 2,
 };
 
+typedef NS_ENUM(NSInteger, LynxMTSContextType) {
+  LynxMTSContextTypeVM = 0,
+  LynxMTSContextTypeLepusNG = 1,
+  LynxMTSContextTypeRTS = 2,
+  LynxMTSContextTypeRTSNative = 3,
+};
+
 @class LynxConfig;
 @class LynxLifecycleDispatcher;
 @protocol LynxViewLifecycle;
@@ -95,6 +102,9 @@ typedef NS_ENUM(NSInteger, LynxMemoryPressureLevel) {
 @property(nonatomic, readonly) BOOL switchRunloopThread;
 
 + (instancetype)sharedInstance;
+
++ (void)prepareGlobalMTSRuntimePoolWithContextType:(LynxMTSContextType)contextType
+                                             count:(NSInteger)count;
 
 /**
  * Initializes LynxEnv and invokes the completion handler asynchronously on the main thread.
