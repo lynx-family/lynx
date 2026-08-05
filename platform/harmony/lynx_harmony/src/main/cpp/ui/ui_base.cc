@@ -1612,7 +1612,16 @@ void UIBase::SetBlockNativeEventAreas(const lepus::Value& value) {
 
 void UIBase::SetConsumeSlideEvent(const lepus::Value& value) {
   if (value.IsNumber()) {
-    consume_slide_event_ = static_cast<ConsumeSlideDirection>(value.Number());
+    const double direction = value.Number();
+    if (std::isfinite(direction) &&
+        direction >= static_cast<double>(ConsumeSlideDirection::kNone) &&
+        direction <= static_cast<double>(ConsumeSlideDirection::kAll) &&
+        direction == std::trunc(direction)) {
+      consume_slide_event_ =
+          static_cast<ConsumeSlideDirection>(static_cast<int>(direction));
+    } else {
+      consume_slide_event_ = ConsumeSlideDirection::kNone;
+    }
     return;
   }
   if (!value.IsArrayOrJSArray()) {
@@ -1775,6 +1784,7 @@ void UIBase::SetConsumeSlideEvent(const lepus::Value& value) {
     consume_slide_event_ = ConsumeSlideDirection::kLeft;
     return;
   }
+  consume_slide_event_ = ConsumeSlideDirection::kNone;
 }
 
 void UIBase::SetEnableTouchPseudoPropagation(const lepus::Value& value) {
