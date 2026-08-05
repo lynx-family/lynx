@@ -13,6 +13,7 @@ import android.text.TextUtils;
 import android.view.WindowManager;
 import android.view.inputmethod.InputMethodManager;
 import androidx.annotation.AnyThread;
+import androidx.annotation.IntDef;
 import androidx.annotation.Keep;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -66,6 +67,8 @@ import com.lynx.tasm.service.ILynxTrailService;
 import com.lynx.tasm.service.LynxServiceCenter;
 import com.lynx.tasm.utils.DisplayMetricsHolder;
 import com.lynx.tasm.utils.UIThreadUtils;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
@@ -83,6 +86,18 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class LynxEnv {
   protected static final String TAG = "LynxEnv";
   public static final String SP_NAME = "lynx_env_config";
+  public static final int MTS_CONTEXT_TYPE_VM = 0;
+  public static final int MTS_CONTEXT_TYPE_LEPUS_NG = 1;
+  public static final int MTS_CONTEXT_TYPE_RTS = 2;
+  public static final int MTS_CONTEXT_TYPE_RTS_NATIVE = 3;
+
+  @IntDef({MTS_CONTEXT_TYPE_VM, MTS_CONTEXT_TYPE_LEPUS_NG, MTS_CONTEXT_TYPE_RTS,
+      MTS_CONTEXT_TYPE_RTS_NATIVE})
+  @Retention(RetentionPolicy.SOURCE)
+  public @interface MTSContextType {}
+
+  private static final int CONCURRENT_TASK_NORMAL_PRIORITY = 1;
+  private static final int MTS_CONTEXT_POOL_DEFAULT_SIZE = -1;
   private static final String AUTOLINK_GENERATED_CLASS_NAME =
       "com.lynx.tasm.library.LynxAutolinkGenerated";
   private static final String AUTOLINK_SETUP_GLOBAL_METHOD = "setupGlobal";
@@ -1641,8 +1656,20 @@ public class LynxEnv {
   }
 
   protected void initNativeGlobalPool() {
-    if (mIsNativeLibraryLoaded) {
-      nativePrepareLynxGlobalPool();
+    prepareLynxGlobalPoolByContextType(MTS_CONTEXT_TYPE_LEPUS_NG, MTS_CONTEXT_POOL_DEFAULT_SIZE);
+  }
+
+  public void prepareLynxGlobalPoolByContextType(@MTSContextType int contextType, int count) {
+    if (!mIsNativeLibraryLoaded) {
+      return;
+    }
+    if (contextType == MTS_CONTEXT_TYPE_RTS_NATIVE) {
+      runJavaTaskOnConcurrentLoop(
+          ()
+              -> nativePrepareLynxGlobalPoolByContextTypeOnJavaThread(contextType, count),
+          CONCURRENT_TASK_NORMAL_PRIORITY);
+    } else {
+      nativePrepareLynxGlobalPoolByContextType(contextType, count);
     }
   }
 
@@ -1720,6 +1747,9 @@ public class LynxEnv {
   }
 
   protected static native void nativePrepareLynxGlobalPool();
+  protected static native void nativePrepareLynxGlobalPoolByContextType(int contextType, int count);
+  protected static native void nativePrepareLynxGlobalPoolByContextTypeOnJavaThread(
+      int contextType, int count);
   private static native void nativeClearBytecode(String bytecodeSourceUrl, boolean useV8);
   private static native void nativeSetGlobalBytecodeGenerateCallback(LynxBytecodeCallback callback);
   private static native void nativeOnMemoryPressure(int pressure);

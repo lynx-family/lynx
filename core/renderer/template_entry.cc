@@ -61,10 +61,18 @@ bool TemplateEntry::ConstructContext(
   bool enable_rts = context_bundle.IsRTS();
   bool enable_rts_native = context_bundle.IsRTSNative();
   auto source_type = LepusContextSourceType::kFromRuntime;
-  // RTSNative bypasses the local context pool.
   bool enable_use_context_pool =
-      !enable_rts_native &&
-      (use_context_pool || template_bundle().EnableUseContextPool());
+      use_context_pool || template_bundle().EnableUseContextPool();
+  runtime::ContextType vm_context_type;
+  if (enable_rts_native) {
+    vm_context_type = runtime::ContextType::RTSNativeContextType;
+  } else if (enable_rts) {
+    vm_context_type = runtime::ContextType::RTSContextType;
+  } else {
+    vm_context_type = is_lepusng_binary
+                          ? runtime::ContextType::LepusNGContextType
+                          : runtime::ContextType::VMContextType;
+  }
   if (enable_use_context_pool) {
     // 1. try to take context for local pool
     if (template_bundle().mts_runtime_pool_) {
@@ -72,14 +80,16 @@ bool TemplateEntry::ConstructContext(
     }
     if (vm_context_) {
       source_type = LepusContextSourceType::kFromLocalPool;
-    } else if (is_lepusng_binary && !disable_tracing_gc) {
-      // 2. if is lepus ng and not disable tracing gc, could try to take context
-      // for global pool
-      vm_context_ = LynxGlobalPool::GetInstance()
-                        .GetQuickContextPool()
-                        .TakeMTSRuntimeSafely();
-      source_type =
-          vm_context_ ? LepusContextSourceType::kFromGlobalPool : source_type;
+    } else if ((is_lepusng_binary && !disable_tracing_gc) ||
+               enable_rts_native || enable_rts) {
+      // 2. Try to take context from the global pool.
+      auto* global_pool =
+          LynxGlobalPool::GetInstance().GetPool(vm_context_type);
+      if (global_pool != nullptr) {
+        vm_context_ = global_pool->TakeMTSRuntimeSafely();
+        source_type =
+            vm_context_ ? LepusContextSourceType::kFromGlobalPool : source_type;
+      }
     }
   }
   static const bool enable_report_mts_context_event =
@@ -100,18 +110,6 @@ bool TemplateEntry::ConstructContext(
   // 3. construct a context at runtime
   if (!vm_context_) {
     uint32_t mode = tasm::performance::MemoryMonitor::ScriptingEngineMode();
-
-    runtime::ContextType vm_context_type;
-    if (enable_rts_native) {
-      vm_context_type = runtime::ContextType::RTSNativeContextType;
-    } else if (enable_rts) {
-      vm_context_type = runtime::ContextType::RTSContextType;
-    } else {
-      vm_context_type = is_lepusng_binary
-                            ? runtime::ContextType::LepusNGContextType
-                            : runtime::ContextType::VMContextType;
-    }
-
     vm_context_ = runtime::MTSRuntime::CreateContext(
         vm_context_type, disable_tracing_gc, mode, page_options);
   }
