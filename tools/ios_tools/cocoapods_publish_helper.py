@@ -4,6 +4,7 @@
 # LICENSE file in the root directory of this source tree.
 
 import argparse
+import base64
 import datetime
 import hashlib
 import hmac
@@ -14,9 +15,9 @@ import subprocess
 import time
 import json
 import shlex
-from urllib.error import HTTPError, URLError
+from pathlib import Path
 from urllib.parse import quote
-from urllib.request import urlopen
+from urllib.parse import urlsplit
 from skip_pod_lint import skip_pod_lint
 
 STORAGE_TYPE_GITHUB_RELEASE = 'github_release'
@@ -28,17 +29,38 @@ S3_REGION_ENV = 'REPO_LYNX_ARTIFACTS_S3_REGION'
 S3_UPLOAD_DOMAIN_ENV = 'REPO_LYNX_ARTIFACTS_S3_UPLOAD_DOMAIN'
 S3_PUBLIC_DOMAIN_ENV = 'REPO_LYNX_ARTIFACTS_S3_PUBLIC_DOMAIN'
 S3_PATH_PREFIX_ENV = 'REPO_LYNX_ARTIFACTS_S3_PATH_PREFIX'
-COCOAPODS_TRUNK_API = 'https://trunk.cocoapods.org/api/v1'
+DEFAULT_SPECS_REPO_NAME = 'lynx-specs'
+DEFAULT_SPECS_REPO_URL = 'https://github.com/lynx-family/Specs.git'
+SPECS_REPO_GITHUB_APP_TOKEN_ENV = 'SPECS_REPO_GITHUB_APP_TOKEN'
 PUBLISH_RETRY_ATTEMPTS = 3
 PUBLISH_RETRY_INITIAL_DELAY_SECONDS = 30
 
-def run_command(command, check=True):
+def run_command(command, check=True, env=None):
     # When the "command" is a multi-line command, only the status of the last line of the command is checked.
     # Therefore, it is necessary to add "set -e" to ensure that any error in any line of the command will cause the script to exit immediately.
     command = 'set -e\n' + command
 
     print(f'run command: {command}')
-    subprocess.run(['bash', '-c', command], stderr=subprocess.STDOUT, check=check, text=True)
+    subprocess.run(['bash', '-c', command], stderr=subprocess.STDOUT, check=check, text=True, env=env)
+
+def get_specs_repo_app_token():
+    token = os.environ.get(SPECS_REPO_GITHUB_APP_TOKEN_ENV)
+    if not token:
+        raise ValueError(f'{SPECS_REPO_GITHUB_APP_TOKEN_ENV} is required to access the private specs repo')
+    return token
+
+def build_git_auth_env(repo_url, token):
+    parsed = urlsplit(repo_url)
+    if parsed.scheme != 'https':
+        raise ValueError('Only https specs repo URLs are supported with GitHub App token authentication')
+
+    env = os.environ.copy()
+    config_index = int(env.get('GIT_CONFIG_COUNT', '0') or '0')
+    auth_value = base64.b64encode(f'x-access-token:{token}'.encode('utf8')).decode('ascii')
+    env['GIT_CONFIG_COUNT'] = str(config_index + 1)
+    env[f'GIT_CONFIG_KEY_{config_index}'] = f'http.{repo_url}.extraheader'
+    env[f'GIT_CONFIG_VALUE_{config_index}'] = f'AUTHORIZATION: basic {auth_value}'
+    return env
 
 def get_podspec_version(component):
     with open(f"{component}.podspec.json", 'r', encoding='utf8') as f:
@@ -53,33 +75,6 @@ def get_selected_podspec_names(src_dir, component):
             if component == podspec_name or component == 'all':
                 podspec_names.append(podspec_name)
     return podspec_names
-
-def is_pod_version_published(component, version):
-    component_path = quote(component, safe='')
-    version_path = quote(version, safe='')
-    url = f'{COCOAPODS_TRUNK_API}/pods/{component_path}/versions/{version_path}'
-
-    try:
-        with urlopen(url, timeout=15) as response:
-            content = json.load(response)
-            return bool(content.get('data_url'))
-    except HTTPError as e:
-        if e.code != 404:
-            print(f'Unable to check CocoaPods trunk for {component} {version}: HTTP {e.code}')
-        return False
-    except (URLError, TimeoutError) as e:
-        print(f'Unable to check CocoaPods trunk for {component} {version}: {e}')
-        return False
-    except (json.JSONDecodeError, UnicodeDecodeError) as e:
-        print(f'Unable to parse CocoaPods trunk response for {component} {version}: {e}')
-        return False
-
-def build_publish_command(component, sources):
-    podspec_json = shlex.quote(f'{component}.podspec.json')
-    command = f'COCOAPODS_TRUNK_TOKEN=$COCOAPODS_TRUNK_TOKEN bundle exec pod trunk push {podspec_json} --verbose --skip-import-validation --allow-warnings --skip-tests'
-    if sources is not None:
-        command += f' --sources={shlex.quote(sources)}'
-    return command
 
 def wait_before_publish_retry(component, version, attempt, delay_seconds):
     print(
@@ -141,6 +136,10 @@ def validate_storage_type_options(storage_type):
         validate_s3_storage_options()
     elif storage_type != STORAGE_TYPE_GITHUB_RELEASE:
         raise ValueError(f'Unsupported storage type: {storage_type}')
+
+def validate_publish_options():
+    if not os.environ.get(SPECS_REPO_GITHUB_APP_TOKEN_ENV):
+        raise ValueError(f'--publish requires {SPECS_REPO_GITHUB_APP_TOKEN_ENV} environment variable')
 
 def set_http_pod_source(component, source_url):
     with open(f"{component}.podspec.json", 'r', encoding='utf8') as f:
@@ -254,7 +253,7 @@ def upload_zip_sources_to_s3(src_dir, component):
 
         object_key = build_s3_object_key(path_prefix, version, zip_filename)
         source_url = build_s3_public_url(bucket, public_domain, object_key)
-        # CocoaPods trunk downloads source URLs without workflow credentials.
+        # CocoaPods clients download source URLs without workflow credentials.
         # Keep this bucket or prefix publicly readable before publishing.
         print(f'Uploading {zip_filename} to {source_url}')
         upload_file_to_s3(zip_path, bucket, region, upload_domain, object_key, access_key, secret_key)
@@ -342,22 +341,82 @@ def pod_lint_component(component, local_pod_source_name):
     # podspec.json will write the current directory path into itself
     run_command(f'bundle exec pod spec lint {component}.podspec.json --sources=trunk,{local_pod_source_name} --verbose --skip-import-validation --allow-warnings --skip-tests')
 
-def publish_component(component, sources):
+def get_specs_repo_branch(repo_path):
+    return subprocess.check_output(
+        ['git', '-C', str(repo_path), 'rev-parse', '--abbrev-ref', 'HEAD'],
+        text=True,
+    ).strip()
+
+def published_spec_relpath(component, version):
+    return f'{component}/{version}/{component}.podspec.json'
+
+def ensure_specs_repo(repo_name, repo_url, git_auth_env):
+    repo_path = Path.home() / '.cocoapods' / 'repos' / repo_name
+
+    if repo_path.exists():
+        run_command(f'git -C {shlex.quote(str(repo_path))} remote set-url origin {shlex.quote(repo_url)}')
+        run_command(f'bundle exec pod repo update {shlex.quote(repo_name)}', env=git_auth_env)
+        return repo_path
+
+    run_command(
+        f'bundle exec pod repo add {shlex.quote(repo_name)} {shlex.quote(repo_url)}',
+        env=git_auth_env,
+    )
+    return repo_path
+
+def check_version_published(component, repo_path, git_auth_env):
     version = get_podspec_version(component)
-    command = build_publish_command(component, sources)
+    print(f'Checking if {component} version {version} is already published...')
+    branch = get_specs_repo_branch(repo_path)
+    spec_relpath = published_spec_relpath(component, version)
+    try:
+        subprocess.check_output(
+            ['git', '-C', str(repo_path), 'fetch', '--quiet', 'origin', branch],
+            text=True,
+            stderr=subprocess.STDOUT,
+            env=git_auth_env,
+        )
+        subprocess.check_output(
+            ['git', '-C', str(repo_path), 'cat-file', '-e', f'FETCH_HEAD:{spec_relpath}'],
+            text=True,
+            stderr=subprocess.STDOUT,
+        )
+        print(f'Version {version} of {component} is already published on origin/{branch}. Skipping.')
+        return True
+    except subprocess.CalledProcessError:
+        return False
+
+def push_specs_repo(repo_path, git_auth_env):
+    branch = get_specs_repo_branch(repo_path)
+    run_command(
+        f'git -C {shlex.quote(str(repo_path))} push origin HEAD:{shlex.quote(branch)}',
+        env=git_auth_env,
+    )
+
+def publish_component(component, sources, repo_name, repo_path, git_auth_env):
+    version = get_podspec_version(component)
+    command = (
+        f'bundle exec pod repo push {shlex.quote(repo_name)} '
+        f'{shlex.quote(f"{component}.podspec.json")} '
+        '--local-only --verbose --skip-import-validation --allow-warnings --skip-tests'
+    )
+    if sources is not None:
+        command += f' --sources={shlex.quote(sources)}'
+
     delay_seconds = PUBLISH_RETRY_INITIAL_DELAY_SECONDS
 
     for attempt in range(1, PUBLISH_RETRY_ATTEMPTS + 1):
-        if is_pod_version_published(component, version):
-            print(f'Skip {component} {version}; it is already published to CocoaPods trunk.')
+        if check_version_published(component, repo_path, git_auth_env):
             return
 
         try:
-            run_command(command)
+            print(f'Attempt {attempt} to publish {component}')
+            run_command(command, env=git_auth_env)
+            push_specs_repo(repo_path, git_auth_env)
             return
         except subprocess.CalledProcessError:
-            if is_pod_version_published(component, version):
-                print(f'Treat {component} {version} as published after CocoaPods trunk confirmed it.')
+            if check_version_published(component, repo_path, git_auth_env):
+                print(f'Treat {component} {version} as published after private specs repo confirmed it.')
                 return
 
             if attempt == PUBLISH_RETRY_ATTEMPTS:
@@ -366,20 +425,24 @@ def publish_component(component, sources):
             wait_before_publish_retry(component, version, attempt, delay_seconds)
             delay_seconds *= 2
 
+def publish_to_specs_repo(component, sources, repo_name, repo_url):
+    print(f'Start publish {component} to specs repo {repo_url}')
+    token = get_specs_repo_app_token()
+    git_auth_env = build_git_auth_env(repo_url, token)
+    repo_path = ensure_specs_repo(repo_name, repo_url, git_auth_env)
+    skip_pod_lint('private')
 
-def publish_to_cocoapods(component, sources):
-    print(f'Start publish {component} to cocoapods')
     if component == 'all':
         # publish in order: LynxServiceAPI -> LynxBase -> Lynx -> BaseDevtool -> LynxDevtool -> LynxService
-        publish_component('LynxServiceAPI', sources)
-        publish_component('LynxBase', sources)
-        publish_component('Lynx', sources)
-        publish_component('BaseDevtool', sources)
-        publish_component('LynxDevtool', sources)
-        publish_component('LynxService', sources)
-        publish_component('XElement', sources)
+        publish_component('LynxServiceAPI', sources, repo_name, repo_path, git_auth_env)
+        publish_component('LynxBase', sources, repo_name, repo_path, git_auth_env)
+        publish_component('Lynx', sources, repo_name, repo_path, git_auth_env)
+        publish_component('BaseDevtool', sources, repo_name, repo_path, git_auth_env)
+        publish_component('LynxDevtool', sources, repo_name, repo_path, git_auth_env)
+        publish_component('LynxService', sources, repo_name, repo_path, git_auth_env)
+        publish_component('XElement', sources, repo_name, repo_path, git_auth_env)
     else:
-        publish_component(component, sources)
+        publish_component(component, sources, repo_name, repo_path, git_auth_env)
 
 
 def publish_to_local(component, local_source_name):
@@ -400,9 +463,9 @@ def publish_to_local(component, local_source_name):
 def main():
     """
     usage: 1. 'python3 cocoapods_publish_helper.py --prepare-source --version <version> --component <component>'
-           2. 'python3 cocoapods_publish_helper.py --publish --component <component> --sources <sources>'
+           2. 'SPECS_REPO_GITHUB_APP_TOKEN=<token> python3 cocoapods_publish_helper.py --publish --component <component> --sources <sources>'
     like : 1. python3 publish_pod_to_cocoapods.py --prepare-source --version 0.0.1 --component Lynx
-           2. python3 publish_pod_to_cocoapods.py --publish --component Lynx --sources 'https://cdn.cocoapods.org'
+           2. SPECS_REPO_GITHUB_APP_TOKEN=<token> python3 publish_pod_to_cocoapods.py --publish --component Lynx --repo-url 'https://github.com/lynx-family/Specs.git'
     """
     parser = argparse.ArgumentParser()
     parser.add_argument('--component', type=str, help='the component to publish', required=True)
@@ -413,12 +476,16 @@ def main():
     parser.add_argument('--tag', type=str, help='the release tag of lynx', required=False)
     parser.add_argument('--version', type=str, help='the pod version of lynx', required=False)
     parser.add_argument(
-        "--publish", action="store_true", help="Publish to cocoapods"
+        "--publish",
+        action="store_true",
+        help=f"Publish to specs repo with pod repo push --local-only and native git push (requires {SPECS_REPO_GITHUB_APP_TOKEN_ENV} environment variable)",
     )
     parser.add_argument('--sources', type=str, help='the cocoapods sources', required=False)
     parser.add_argument('--pod_lint', action="store_true", help='Run pod lint')
     parser.add_argument('--publish_local', type=str, help='Publish pod to local source')
     parser.add_argument('--storage-type', default=STORAGE_TYPE_GITHUB_RELEASE, help='The zip storage backend used by --prepare-source')
+    parser.add_argument('--repo-name', type=str, default=DEFAULT_SPECS_REPO_NAME, help='The private specs repo name used by --publish')
+    parser.add_argument('--repo-url', type=str, default=DEFAULT_SPECS_REPO_URL, help='The private specs repo URL used by --publish')
 
     args = parser.parse_args()
     if args.prepare_source:
@@ -432,7 +499,11 @@ def main():
         except ValueError as error:
             parser.error(str(error))
     elif args.publish:
-        publish_to_cocoapods(args.component, args.sources)
+        try:
+            validate_publish_options()
+            publish_to_specs_repo(args.component, args.sources, args.repo_name, args.repo_url)
+        except ValueError as error:
+            parser.error(str(error))
     elif args.pod_lint:
         run_pod_lint(args.component)
     elif args.publish_local:
