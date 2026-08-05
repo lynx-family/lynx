@@ -1289,9 +1289,12 @@ LYNX_UI_METHOD(scrollToPosition) {
         self.verticalOrientation ? (estimatedOffset > self.view.contentOffset.y)
                                  : (estimatedOffset > self.view.contentOffset.x);
 
-    CGPoint target =
-        CGPointMake(self.verticalOrientation ? self.view.contentOffset.x : estimatedOffset,
-                    self.verticalOrientation ? estimatedOffset : self.view.contentOffset.y);
+    CGPoint target = self.view.contentOffset;
+    if (self.verticalOrientation) {
+      target.y = estimatedOffset;
+    } else {
+      target.x = self.isRtl ? [self contentOffsetXRTL:estimatedOffset] : estimatedOffset;
+    }
 
     if (smooth && !CGPointEqualToPoint(self.view.contentOffset, target)) {
       [self setScrollState:LynxListScrollStateScrollAnimation];

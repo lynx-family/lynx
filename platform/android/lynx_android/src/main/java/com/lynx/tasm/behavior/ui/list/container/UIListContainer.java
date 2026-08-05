@@ -1171,15 +1171,20 @@ public class UIListContainer extends UISimpleView<ListContainerView>
 
   public void updateScrollInfo(boolean smooth, float estimatedOffset, boolean scrolling) {
     // ListElement flush scrolling to platform
-    mScrollingEstimatedOffset = (int) estimatedOffset;
+    int targetOffset = (int) estimatedOffset;
+    if (!mIsVertical && isRtl()) {
+      // ListElement reports horizontal offsets in logical coordinates. Convert to Android's
+      // physical scrollX before using the value for the scroll target and animation hook.
+      targetOffset = mView.contentOffsetXRTL(estimatedOffset);
+    }
+    mScrollingEstimatedOffset = targetOffset;
     if (!scrolling) {
       // Scroll will begin !
       if (mView.getCustomScrollHook() != mCustomScrollHook) {
         mView.setCustomScrollHook(mCustomScrollHook);
       }
       // Trigger scroll
-      mView.smoothScrollTo(
-          mIsVertical ? 0 : (int) estimatedOffset, mIsVertical ? (int) estimatedOffset : 0);
+      mView.smoothScrollTo(mIsVertical ? 0 : targetOffset, mIsVertical ? targetOffset : 0);
     }
   }
 
