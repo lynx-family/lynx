@@ -36,6 +36,13 @@ class LYNX_EXPORT_FOR_DEVTOOL NativeModuleFactory {
     return itr->second();
   };
 
+  // Provides an optional caller-defined runtime context to this factory. The
+  // context is opaque to NativeModuleFactory and remains owned by the caller.
+  virtual void AttachOpaqueContext(void* context) {}
+
+  // Detaches the same opaque context before the caller invalidates it.
+  virtual void DetachOpaqueContext(void* context) {}
+
   virtual void Register(const std::string& name, ModuleCreator creator) {
     std::lock_guard<std::mutex> lock(mutex_);
     creators_.emplace(name, std::move(creator));

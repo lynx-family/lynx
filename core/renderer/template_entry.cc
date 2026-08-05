@@ -413,6 +413,7 @@ void TemplateEntry::RegisterBuiltin() {
 
 void TemplateEntry::SetTemplateAssembler(TemplateAssembler* assembler) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, TEMPLATE_ENTRY_SET_TEMPLATE_ASSEMBLER);
+  vm_context_->SetDelegate(assembler);
   // kTemplateAssembler may has been set by context pool, reset it here
   vm_context_->ResetGlobalData(
       BASE_STATIC_STRING(tasm::kTemplateAssembler),

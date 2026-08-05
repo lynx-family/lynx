@@ -35,6 +35,24 @@ class MockNativeModule : public runtime::LynxNativeModule {
   std::string name_;
 };
 
+class MockOpaqueContextModuleFactory : public runtime::NativeModuleFactory {
+ public:
+  void AttachOpaqueContext(void* context) override {
+    attached_context_ = context;
+    ++attach_count_;
+  }
+
+  void DetachOpaqueContext(void* context) override {
+    detached_context_ = context;
+    ++detach_count_;
+  }
+
+  void* attached_context_ = nullptr;
+  void* detached_context_ = nullptr;
+  int attach_count_ = 0;
+  int detach_count_ = 0;
+};
+
 class LynxNativeModuleManagerTest : public ::testing::Test {
  protected:
   LynxNativeModuleManagerTest() = default;
@@ -77,6 +95,46 @@ TEST_F(LynxNativeModuleManagerTest, GetModuleWithPlatformFactory) {
 
 TEST_F(LynxNativeModuleManagerTest, GetRecordId) {
   EXPECT_EQ(native_module_manager_->record_id_, 12345);
+}
+
+TEST_F(LynxNativeModuleManagerTest, ForwardsOpaqueContext) {
+  auto native_factory = std::make_unique<MockOpaqueContextModuleFactory>();
+  auto* native_factory_ptr = native_factory.get();
+  native_module_manager_->SetModuleFactory(std::move(native_factory));
+
+  auto* context = reinterpret_cast<void*>(0x1);
+  native_module_manager_->AttachOpaqueContext(context);
+  native_module_manager_->DetachOpaqueContext(context);
+
+  EXPECT_EQ(native_factory_ptr->attached_context_, context);
+  EXPECT_EQ(native_factory_ptr->detached_context_, context);
+  EXPECT_EQ(native_factory_ptr->attach_count_, 1);
+  EXPECT_EQ(native_factory_ptr->detach_count_, 1);
+}
+
+TEST_F(LynxNativeModuleManagerTest, IsolatesOpaqueContextsByManager) {
+  LynxNativeModuleManager first_manager;
+  auto first_factory = std::make_unique<MockOpaqueContextModuleFactory>();
+  auto* first_factory_ptr = first_factory.get();
+  first_manager.SetModuleFactory(std::move(first_factory));
+
+  LynxNativeModuleManager second_manager;
+  auto second_factory = std::make_unique<MockOpaqueContextModuleFactory>();
+  auto* second_factory_ptr = second_factory.get();
+  second_manager.SetModuleFactory(std::move(second_factory));
+
+  auto* first_context = reinterpret_cast<void*>(0x1);
+  auto* second_context = reinterpret_cast<void*>(0x2);
+  first_manager.AttachOpaqueContext(first_context);
+  second_manager.AttachOpaqueContext(second_context);
+
+  EXPECT_EQ(first_factory_ptr->attached_context_, first_context);
+  EXPECT_EQ(second_factory_ptr->attached_context_, second_context);
+
+  first_manager.DetachOpaqueContext(first_context);
+  EXPECT_EQ(first_factory_ptr->detached_context_, first_context);
+  EXPECT_EQ(second_factory_ptr->detach_count_, 0);
+  EXPECT_EQ(second_factory_ptr->attached_context_, second_context);
 }
 
 }  // namespace pub

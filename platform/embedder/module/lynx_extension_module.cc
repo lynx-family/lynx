@@ -283,16 +283,23 @@ ExtensionModuleImpl::InvokeMethod(const std::string& method_name,
 }
 
 void ExtensionModuleImpl::SetupNapiModule() {
-  if (c_module_->napi_creator && env_ && !napi_module_) {
-    auto exports = Napi::Object::New(env_);
-    napi_value ret_exports =
-        c_module_->napi_creator(env_, exports, "", c_module_->user_data);
-    napi_module_ = std::make_unique<LynxNativeModuleNAPI>(env_, ret_exports);
-    methods_ = napi_module_->AdoptMethods();
-
-  } else {
+  if (!SetupNapiModuleWithEnv(env_)) {
     LOGE("ExtensionModuleImpl SetupNapiModule failed");
   }
+}
+
+bool ExtensionModuleImpl::SetupNapiModuleWithEnv(void* opaque_env) {
+  auto env = static_cast<napi_env>(opaque_env);
+  if (c_module_->napi_creator && env && !napi_module_) {
+    env_ = env;
+    auto exports = Napi::Object::New(env);
+    napi_value ret_exports =
+        c_module_->napi_creator(env, exports, "", c_module_->user_data);
+    napi_module_ = std::make_unique<LynxNativeModuleNAPI>(env, ret_exports);
+    methods_ = napi_module_->AdoptMethods();
+    return true;
+  }
+  return false;
 }
 
 void ExtensionModuleImpl::SetDelegate(

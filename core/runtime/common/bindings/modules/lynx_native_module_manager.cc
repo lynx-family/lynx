@@ -27,6 +27,18 @@ std::shared_ptr<runtime::LynxNativeModule> LynxNativeModuleManager::GetModule(
   return native_module;
 }
 
+void LynxNativeModuleManager::AttachOpaqueContext(void *context) {
+  for (const auto &module_factory : module_factories_) {
+    module_factory->AttachOpaqueContext(context);
+  }
+}
+
+void LynxNativeModuleManager::DetachOpaqueContext(void *context) {
+  for (const auto &module_factory : module_factories_) {
+    module_factory->DetachOpaqueContext(context);
+  }
+}
+
 void LynxNativeModuleManager::SetPlatformModuleFactory(
     std::shared_ptr<runtime::NativeModuleFactory> module_factory) {
   platform_module_factory_ = std::move(module_factory);

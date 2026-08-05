@@ -263,6 +263,10 @@ if (enable_unittests) {
       "lynx_view_unittests.cc",
     ]
 
+    if (enable_napi_binding) {
+      sources += [ "module/extension_module_factory_impl_unittest.cc" ]
+    }
+
     deps = [
       ":embedder",
       "../../base/src:base_static",
