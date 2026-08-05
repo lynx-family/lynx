@@ -5,6 +5,7 @@
 #ifndef PLATFORM_EMBEDDER_LYNX_RECORDER_TEST_BENCH_UTILS_H_
 #define PLATFORM_EMBEDDER_LYNX_RECORDER_TEST_BENCH_UTILS_H_
 
+#include <cstddef>
 #include <string>
 #include <vector>
 
@@ -22,6 +23,8 @@ const std::string TEST_BENCH_URL_PREFIX = "sslocal://arkview?";
 std::string TestBenchDecode(const std::string& encoded);
 
 std::vector<uint8_t> TestBenchDecompress(const std::vector<uint8_t>& data);
+
+size_t FindRawJsonStart(const std::string& record_file);
 
 bool StringToInt(const std::string& input, int* output, uint8_t base = 10);
 

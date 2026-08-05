@@ -262,6 +262,7 @@ if (enable_unittests) {
       "../../testing/utils:gtest_custom_init",
       "../../testing/utils:gtest_main",
       "./fetcher:fetcher_unittests",
+      "./lynx_recorder:lynx_recorder_unittests",
       "./lynx_service:lynx_service_unittests",
     ]
 

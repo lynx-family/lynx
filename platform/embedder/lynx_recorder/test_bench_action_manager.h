@@ -46,7 +46,9 @@ class TestBenchActionManager
   void SetTaskScheduler(ReplayTaskScheduler task_scheduler);
   void SetReplayCompleteCallback(ReplayCompleteCallback complete_callback);
 
-  void StartWithUrl(const std::string& url);
+  void StartWithUrl(const std::string& url,
+                    std::shared_ptr<lynx::pub::LynxTemplateData>
+                        default_global_props = nullptr);
 
  private:
   void FetchPreloadedSource(const std::string& url);
