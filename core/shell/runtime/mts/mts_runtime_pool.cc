@@ -50,6 +50,13 @@ void MTSRuntimePool::FillPool(int32_t count) {
       base::ConcurrentTaskType::NORMAL_PRIORITY);
 }
 
+void MTSRuntimePool::FillPoolSync(int32_t count) {
+  if (count <= 0 || is_destroying_.load(std::memory_order_acquire)) {
+    return;
+  }
+  AddMTSRuntimeSafely(count);
+}
+
 void MTSRuntimePool::AddMTSRuntimeSafely(int32_t count) {
   if (is_destroying_.load(std::memory_order_acquire)) {
     return;
