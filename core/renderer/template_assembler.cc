@@ -240,6 +240,7 @@ TemplateAssembler::TemplateAssembler(
 TemplateAssembler::~TemplateAssembler() {
   LOGI(GetLogContext() << " TemplateAssembler::Release url:" << url_
                        << " this:" << this);
+  ForEachEntry([](const auto& entry) { entry->DetachNapiEnvironment(); });
 };
 
 void TemplateAssembler::TriggerVmGC() {
@@ -1676,6 +1677,18 @@ void TemplateAssembler::OnScriptingEnd() {
   if (context->GetOptions()->created_in_on_scripting_start_) {
     context->GetOptions()->created_in_on_scripting_start_ = false;
     RunPixelPipeline();
+  }
+}
+
+void TemplateAssembler::OnNapiEnvironmentAttached(void* env) {
+  if (lepus_module_manager_ != nullptr) {
+    lepus_module_manager_->AttachOpaqueContext(env);
+  }
+}
+
+void TemplateAssembler::OnNapiEnvironmentDetached(void* env) {
+  if (lepus_module_manager_ != nullptr) {
+    lepus_module_manager_->DetachOpaqueContext(env);
   }
 }
 

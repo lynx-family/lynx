@@ -56,5 +56,54 @@ void ExtensionModuleFactoryImpl::OnLynxViewCreate(
   }
 }
 
+void LynxMTSExtensionModuleFactoryNAPI::AttachOpaqueContext(void* context) {
+  env_.store(context, std::memory_order_release);
+}
+
+void LynxMTSExtensionModuleFactoryNAPI::DetachOpaqueContext(void* context) {
+  auto expected_env = context;
+  env_.compare_exchange_strong(expected_env, nullptr,
+                               std::memory_order_acq_rel);
+}
+
+void LynxMTSExtensionModuleFactoryNAPI::Detach() {
+  std::lock_guard<std::mutex> lock(mutex_);
+  extension_module_creators_.clear();
+  env_.store(nullptr, std::memory_order_release);
+  is_detached_ = true;
+}
+
+std::shared_ptr<runtime::LynxNativeModule>
+LynxMTSExtensionModuleFactoryNAPI::CreateModule(const std::string& name) {
+  auto env = env_.load(std::memory_order_acquire);
+  if (env == nullptr) {
+    return nullptr;
+  }
+
+  std::tuple<extension_module_creator, bool, void*> creator_info;
+  {
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (is_detached_) {
+      return nullptr;
+    }
+    auto creator = extension_module_creators_.find(name);
+    if (creator == extension_module_creators_.end()) {
+      return nullptr;
+    }
+    creator_info = creator->second;
+  }
+
+  lynx_extension_module_t* c_module =
+      std::get<0>(creator_info)(std::get<2>(creator_info));
+  if (c_module == nullptr) {
+    return nullptr;
+  }
+  auto module = std::make_shared<ExtensionModuleImpl>(c_module);
+  if (!module->SetupNapiModuleWithEnv(env)) {
+    return nullptr;
+  }
+  return module;
+}
+
 }  // namespace embedder
 }  // namespace lynx

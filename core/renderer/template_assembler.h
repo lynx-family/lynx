@@ -326,6 +326,8 @@ class TemplateAssembler final : public TemplateEntryHolder,
   void ReportError(base::LynxError error) override;
   void OnScriptingStart() override;
   void OnScriptingEnd() override;
+  void OnNapiEnvironmentAttached(void* env) override;
+  void OnNapiEnvironmentDetached(void* env) override;
 
   void ReportGCTimingEvent(const char* start, const char* end) override;
 

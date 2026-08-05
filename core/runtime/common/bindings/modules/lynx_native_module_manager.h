@@ -48,6 +48,13 @@ class LynxNativeModuleManager {
 
   std::shared_ptr<runtime::LynxNativeModule> GetModule(const std::string &name);
 
+  // Forwards an optional caller-defined runtime context to every registered
+  // factory. The manager treats the context as opaque and does not own it.
+  void AttachOpaqueContext(void *context);
+
+  // Forwards detachment before the caller invalidates the opaque context.
+  void DetachOpaqueContext(void *context);
+
   // Set ModuleFactory and Used for create Module
   virtual void SetModuleFactory(
       std::unique_ptr<runtime::NativeModuleFactory> module_factory) {

@@ -30,6 +30,9 @@ struct lynx_view_t {
 #if ENABLE_NAPI_BINDING
   std::shared_ptr<lynx::embedder::LynxModuleManagerNAPI> lynx_module_manager =
       nullptr;
+  lynx::embedder::LynxMTSModuleFactoryNAPI* mts_module_factory = nullptr;
+  lynx::embedder::LynxMTSExtensionModuleFactoryNAPI*
+      mts_extension_module_factory = nullptr;
   std::shared_ptr<lynx::embedder::ExtensionModuleFactoryImpl>
       extension_factory_ = nullptr;
 #endif

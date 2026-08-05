@@ -70,6 +70,8 @@ class MTSRuntime : private MTSContextHolder,
 
     virtual void OnScriptingStart() = 0;
     virtual void OnScriptingEnd() = 0;
+    virtual void OnNapiEnvironmentAttached(void* env) {}
+    virtual void OnNapiEnvironmentDetached(void* env) {}
   };
 
   class ScriptingScope {
@@ -101,6 +103,7 @@ class MTSRuntime : private MTSContextHolder,
       const tasm::PageOptions& page_options = tasm::PageOptions());
 
   Delegate* GetDelegate();
+  void SetDelegate(Delegate* delegate) { delegate_ = delegate; }
 
   // virtual interface
   void Initialize();

@@ -20,6 +20,7 @@
 #include "core/public/ui_delegate.h"
 #include "core/public/vsync_monitor_platform_impl.h"
 #include "core/renderer/data/template_data.h"
+#include "core/runtime/common/bindings/modules/lynx_native_module_manager.h"
 #include "core/runtime/js/bindings/modules/lynx_module_manager.h"
 #include "core/shell/lynx_engine_proxy_impl.h"
 #include "core/shell/lynx_entity_id_generator.h"
@@ -96,6 +97,8 @@ using RuntimeProxyCallback =
                        std::shared_ptr<shell::LynxRuntimeProxy>,
                        std::shared_ptr<runtime::js::LynxModuleManager>,
                        const fml::RefPtr<fml::TaskRunner>&)>;
+using NativeModuleManagerCreator =
+    std::function<std::unique_ptr<pub::LynxNativeModuleManager>()>;
 
 class LynxTemplateRenderer : public devtool::LynxDevToolProxy {
  public:
@@ -119,6 +122,9 @@ class LynxTemplateRenderer : public devtool::LynxDevToolProxy {
     std::shared_ptr<tasm::WhiteBoard> white_board = nullptr;
     std::shared_ptr<base::VSyncMonitorPlatformImpl>
         vsync_monitor_platform_impl = nullptr;
+    // Creates the native module manager for each MTS shell construction,
+    // including renderer resets.
+    NativeModuleManagerCreator native_module_manager_creator = nullptr;
   };
 
   LynxTemplateRenderer(

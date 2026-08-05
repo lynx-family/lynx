@@ -81,6 +81,7 @@ class ExtensionModuleImpl : public runtime::LynxExtensionModule {
   void SetDelegate(
       std::weak_ptr<runtime::LynxNativeModule::Delegate> delegate) override;
   void SetupNapiModule();
+  bool SetupNapiModuleWithEnv(void* env);
 
   runtime::IVSyncObserver* VSyncObserver() { return vsync_observer_.get(); }
 

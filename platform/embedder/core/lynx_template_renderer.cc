@@ -167,6 +167,10 @@ void LynxTemplateRenderer::Reset(bool wait_for_runtime_detach) {
       settings_.enable_js_group_thread ? settings_.group_id : "";
   shell_option.enable_js_group_thread_ = settings_.enable_js_group_thread;
   shell_option.enable_js_ = settings_.enable_js;
+  // The manager belongs to this MTS shell and is recreated on every Reset().
+  auto native_module_manager = settings_.native_module_manager_creator
+                                   ? settings_.native_module_manager_creator()
+                                   : nullptr;
   shell_.reset(
       shell::LynxShellBuilder()
           .SetNativeFacade(std::move(native_facade))
@@ -188,6 +192,7 @@ void LynxTemplateRenderer::Reset(bool wait_for_runtime_detach) {
           .SetTasmPlatformInvoker(std::make_unique<TasmPlatformInvokerImpl>(
               weak_flag_->weak_from_this()))
           .SetPerformanceControllerPlatform(std::move(perf_controller_ptr_))
+          .SetNativeModuleManager(std::move(native_module_manager))
           .build());
 
   engine_proxy_ =

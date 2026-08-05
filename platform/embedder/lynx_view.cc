@@ -160,6 +160,7 @@ LYNX_EXTERN_C lynx_view_t* lynx_view_create(lynx_view_builder_t* builder,
   lynx::embedder::GlobalModuleRegistry::GetInstance()
       .MergeWithInstanceExtensionModuleMap(builder->extension_modules_,
                                            extension_module_creators);
+  auto mts_extension_module_creators = extension_module_creators;
   view->extension_factory_ =
       std::make_shared<lynx::embedder::ExtensionModuleFactoryImpl>(
           std::move(extension_module_creators));
@@ -171,19 +172,40 @@ LYNX_EXTERN_C lynx_view_t* lynx_view_create(lynx_view_builder_t* builder,
             view->custom_vsync_monitor);
   }
 
-  auto lynx_template_renderer = std::make_unique<
-      lynx::embedder::LynxTemplateRenderer>(
-      settings, ui_delegate, nullptr, nullptr,
 #if ENABLE_NAPI_BINDING
+  std::unordered_map<std::string, std::pair<napi_module_creator, void*>>
+      mts_module_creators;
+  lynx::embedder::GlobalModuleRegistry::GetInstance()
+      .MergeWithInstanceModuleMap(builder->native_modules, mts_module_creators);
+  // Create a view-scoped native module manager for each MTS shell. Native NAPI
+  // modules are registered before extension NAPI modules to preserve priority.
+  settings.native_module_manager_creator =
+      [view, module_creators = std::move(mts_module_creators),
+       extension_module_creators =
+           std::move(mts_extension_module_creators)]() mutable {
+        auto manager = std::make_unique<lynx::pub::LynxNativeModuleManager>();
+        // Register the MTS native NAPI module factory first.
+        auto factory =
+            std::make_unique<lynx::embedder::LynxMTSModuleFactoryNAPI>(
+                view, module_creators);
+        view->mts_module_factory = factory.get();
+        manager->SetModuleFactory(std::move(factory));
+        // Register the MTS extension NAPI module factory as the fallback.
+        auto extension_factory =
+            std::make_unique<lynx::embedder::LynxMTSExtensionModuleFactoryNAPI>(
+                extension_module_creators);
+        view->mts_extension_module_factory = extension_factory.get();
+        manager->SetModuleFactory(std::move(extension_factory));
+        return manager;
+      };
+  lynx::embedder::RuntimeProxyCallback runtime_proxy_callback =
       [view, native_modules = builder->native_modules](
           std::shared_ptr<lynx::shell::LynxEngineProxy>,
           std::shared_ptr<lynx::shell::LynxRuntimeProxy> proxy,
           std::shared_ptr<lynx::runtime::js::LynxModuleManager> module_manager,
           const fml::RefPtr<fml::TaskRunner>& js_runner) {
-        // napi NativeModuleFactory.
         std::unordered_map<std::string, std::pair<napi_module_creator, void*>>
             module_creators;
-        // Merge global modules into instance modules.
         lynx::embedder::GlobalModuleRegistry::GetInstance()
             .MergeWithInstanceModuleMap(native_modules, module_creators);
         view->lynx_module_manager =
@@ -193,11 +215,15 @@ LYNX_EXTERN_C lynx_view_t* lynx_view_create(lynx_view_builder_t* builder,
         view->lynx_module_manager->SetupRuntimeLifecycleListener(proxy);
         module_manager->SetExtensionModuleFactory(view->extension_factory_);
         view->extension_factory_->OnRuntimeInit(js_runner);
-      }
+      };
 #else
-      nullptr
+  lynx::embedder::RuntimeProxyCallback runtime_proxy_callback = nullptr;
 #endif
-  );
+
+  auto lynx_template_renderer =
+      std::make_unique<lynx::embedder::LynxTemplateRenderer>(
+          settings, ui_delegate, nullptr, nullptr,
+          std::move(runtime_proxy_callback));
   view->lynx_template_renderer = std::move(lynx_template_renderer);
 #if ENABLE_INSPECTOR
   view->lynx_template_renderer->SetTemplateRendererEventSimulationProxy(
@@ -453,6 +479,14 @@ LYNX_EXTERN_C void lynx_view_release(lynx_view_t* view) {
     view->lynx_module_manager->Detach();
     view->lynx_module_manager.reset();
   }
+  if (view->mts_module_factory) {
+    view->mts_module_factory->Detach();
+  }
+  if (view->mts_extension_module_factory) {
+    view->mts_extension_module_factory->Detach();
+  }
+  view->mts_module_factory = nullptr;
+  view->mts_extension_module_factory = nullptr;
   view->extension_factory_->OnLynxViewDestroy();
 #endif
 #if ENABLE_INSPECTOR && LYNX_ENABLE_LOGBOX

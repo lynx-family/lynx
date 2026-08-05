@@ -5,6 +5,7 @@
 #ifndef PLATFORM_EMBEDDER_MODULE_EXTENSION_MODULE_FACTORY_IMPL_H_
 #define PLATFORM_EMBEDDER_MODULE_EXTENSION_MODULE_FACTORY_IMPL_H_
 
+#include <atomic>
 #include <memory>
 #include <string>
 #include <tuple>
@@ -35,6 +36,31 @@ class ExtensionModuleFactoryImpl : public runtime::ExtensionModuleFactory {
   void OnLynxViewCreate(tasm::UIDelegate* ui_delegate) override {}
 
  private:
+  std::unordered_map<std::string,
+                     std::tuple<extension_module_creator, bool, void*>>
+      extension_module_creators_;
+};
+
+// Creates only the NAPI surface of extension modules for MTS. Extension module
+// lifecycle callbacks remain owned by the BTS extension module factory.
+class LynxMTSExtensionModuleFactoryNAPI : public runtime::NativeModuleFactory {
+ public:
+  LynxMTSExtensionModuleFactoryNAPI(
+      std::unordered_map<std::string,
+                         std::tuple<extension_module_creator, bool, void*>>
+          extension_module_creators)
+      : extension_module_creators_(std::move(extension_module_creators)) {}
+
+  void AttachOpaqueContext(void* context) override;
+  void DetachOpaqueContext(void* context) override;
+  void Detach();
+
+  std::shared_ptr<runtime::LynxNativeModule> CreateModule(
+      const std::string& name) override;
+
+ private:
+  std::atomic<void*> env_{nullptr};
+  bool is_detached_ = false;
   std::unordered_map<std::string,
                      std::tuple<extension_module_creator, bool, void*>>
       extension_module_creators_;

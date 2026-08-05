@@ -20,6 +20,11 @@ NapiLoaderUI::NapiLoaderUI(runtime::MTSRuntime* context) : context_(context) {}
 
 void NapiLoaderUI::OnAttach(Napi::Env env) {
   SetNapiEnvToLEPUSContext(env);
+  auto* delegate = context_->GetDelegate();
+  if (delegate != nullptr) {
+    delegate->OnNapiEnvironmentAttached(
+        reinterpret_cast<void*>(static_cast<napi_env>(env)));
+  }
 
   // Set Lynx To Napi Env
   lynx_ = LepusLynx::Create(
@@ -35,6 +40,10 @@ void NapiLoaderUI::OnDetach(Napi::Env env) {
   auto use_env = static_cast<napi_env>(env);
   if (!use_env) {
     return;
+  }
+  auto* delegate = context_->GetDelegate();
+  if (delegate != nullptr) {
+    delegate->OnNapiEnvironmentDetached(reinterpret_cast<void*>(use_env));
   }
   auto& map = NapiEnvToContextMap();
   auto iter = map.find(use_env);
