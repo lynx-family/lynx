@@ -68,17 +68,13 @@ class KeyframesManager {
   std::unique_ptr<KeyframesManager> CloneForRasterAnimation(
       ClayAnimationPropertyType type, AnimatorTarget* target) const;
 
-  // whether the animator of a certain type has called its `OnAnimationStart`.
-  bool StartListenersNotified(ClayAnimationPropertyType type) const;
-
   const std::vector<KeyframeAnimation>& animations() const {
     return animations_;
   }
 
   void UpdateAnimator(ValueAnimator* animator, AnimationData data);
 
-  // Avoid access to KeyframesManager of AnimationLayer in UI Thread, may cause
-  // multi-threading issues.
+  // Preserves animator listener state across LayerTree replacements.
   void SyncProperties(KeyframesManager* manager);
 
  private:

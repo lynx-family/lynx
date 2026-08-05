@@ -24,6 +24,31 @@ PointerEvent CreateDownPointer(float x, float y) {
 
 class BaseViewTest : public UITest {};
 
+class CountingInvalidationView final : public BaseView {
+ public:
+  explicit CountingInvalidationView(PageView* page)
+      : BaseView(-1, "counting_view", std::make_unique<RenderContainer>(),
+                 page) {}
+
+  void Invalidate() override { ++invalidation_count_; }
+
+  int invalidation_count() const { return invalidation_count_; }
+
+ private:
+  int invalidation_count_ = 0;
+};
+
+TEST_F_UI(BaseViewTest, StableRasterAnimationStateDoesNotInvalidate) {
+  page_->SetRasterAnimationEnabled(true);
+  CountingInvalidationView view(page_.get());
+
+  ASSERT_FALSE(
+      view.render_object()->HasAnimation(ClayAnimationPropertyType::kOpacity));
+  view.UpdateKeyframesRasterAnimation();
+
+  EXPECT_EQ(view.invalidation_count(), 0);
+}
+
 TEST_F_UI(BaseViewTest, DestroyUnregistersGestureArenaMember) {
   auto view = std::make_unique<View>(1, page_.get());
   GestureMap detectors;

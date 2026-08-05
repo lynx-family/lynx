@@ -127,15 +127,6 @@ void TransitionManager::SetEventHandler(AnimationEventHandler* event_handler) {
   event_handler_ = event_handler;
 }
 
-bool TransitionManager::StartListenersNotified(
-    ClayAnimationPropertyType type) const {
-  if (auto iter = active_transitions_.find(type);
-      iter != active_transitions_.end()) {
-    return !iter->second.first->StartListenersCalled();
-  }
-  return true;
-}
-
 std::unique_ptr<TransitionManager> TransitionManager::CloneForRasterAnimation(
     ClayAnimationPropertyType type, AnimatorTarget* target) const {
   std::unique_ptr<TransitionManager> clone;
@@ -176,7 +167,7 @@ void TransitionManager::SyncProperties(TransitionManager* manager) {
   for (auto& transition : active_transitions_) {
     if (auto prev_transition =
             manager->active_transitions_.find(transition.first);
-        prev_transition != active_transitions_.end()) {
+        prev_transition != manager->active_transitions_.end()) {
       transition.second.first->SetStartListenersCalled(
           prev_transition->second.first->StartListenersCalled());
     }
