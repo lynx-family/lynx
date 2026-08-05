@@ -47,6 +47,30 @@ TEST_F(ListContainerImplTest, Constructor) {
                         kDefaultPhysicalPixelsPerLayoutUnit));
 }
 
+TEST_F(ListContainerImplTest, ConvertHorizontalRTLScrollInfoToPlatformOffset) {
+  mock_list_element_->is_rtl_ = true;
+  mock_list_element_->width_ = 300.f;
+  list_layout_manager_->SetOrientation(Orientation::kHorizontal);
+  list_layout_manager_->ResetContentOffsetAndContentSize(0.f, 1000.f);
+
+  list_container_impl_->UpdateScrollInfo(200.f, true, false);
+
+  EXPECT_FLOAT_EQ(mock_list_element_->last_scroll_info_offset_, 500.f);
+  EXPECT_TRUE(mock_list_element_->last_scroll_info_smooth_);
+  EXPECT_FALSE(mock_list_element_->last_scroll_info_scrolling_);
+}
+
+TEST_F(ListContainerImplTest, KeepLogicalScrollInfoWithoutHorizontalRTL) {
+  list_layout_manager_->ResetContentOffsetAndContentSize(0.f, 1000.f);
+
+  list_container_impl_->UpdateScrollInfo(200.f, true, true);
+  EXPECT_FLOAT_EQ(mock_list_element_->last_scroll_info_offset_, 200.f);
+
+  mock_list_element_->is_rtl_ = true;
+  list_container_impl_->UpdateScrollInfo(300.f, true, true);
+  EXPECT_FLOAT_EQ(mock_list_element_->last_scroll_info_offset_, 300.f);
+}
+
 TEST_LIST_CONTAINER_RESOLVE_PROP(CustomListName) {
   LIST_CONTAINER_DEFINE_PROP_VALUE(CustomListName, String,
                                    kPropValueListContainer);

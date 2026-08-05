@@ -187,8 +187,7 @@ void ListLayoutManager::ScrollToPosition(int index, float offset, int align,
   if (smooth) {
     float target_offset =
         list_anchor_manager_->CalculateTargetScrollingOffset(item_holder);
-    list_container_->list_delegate()->UpdateScrollInfo(target_offset, smooth,
-                                                       false);
+    list_container_->UpdateScrollInfo(target_offset, smooth, false);
   } else {
     // scroll to index by layout, by initial-scroll-index
     // is_non_smooth_scroll_ will block layout_complete event
@@ -298,8 +297,7 @@ void ListLayoutManager::FlushScrollInfoToPlatformIfNeeded() {
       }
       float target_offset =
           list_anchor_manager_->CalculateTargetScrollingOffset(item_holder);
-      list_container_->list_delegate()->UpdateScrollInfo(target_offset, true,
-                                                         true);
+      list_container_->UpdateScrollInfo(target_offset, true, true);
     } else {
       list_anchor_manager_->ResetScrollInfo();
     }
