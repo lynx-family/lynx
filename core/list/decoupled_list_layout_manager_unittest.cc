@@ -117,5 +117,49 @@ TEST_F(ListLayoutManagerTest, InitLayoutAttrs) {
                                 1000.f));
 }
 
+TEST_F(ListLayoutManagerTest,
+       SmoothScrollToPositionConvertsHorizontalRTLOffsetAtContainerBoundary) {
+  InitFiberDataSource();
+  mock_list_element_->is_rtl_ = true;
+  mock_list_element_->width_ = 300.f;
+  list_layout_manager_->SetOrientation(Orientation::kHorizontal);
+  list_layout_manager_->CreateOrUpdateListAnchorManager();
+  list_layout_manager_->ResetContentOffsetAndContentSize(0.f, 1000.f);
+
+  ItemHolder* item_holder = list_container_impl_->GetItemHolderForIndex(0);
+  ASSERT_NE(item_holder, nullptr);
+  item_holder->SetLeft(200.f);
+
+  list_layout_manager_->ScrollToPosition(
+      0, 0.f, static_cast<int>(ScrollingInfoAlignment::kTop), true);
+
+  EXPECT_FLOAT_EQ(mock_list_element_->last_scroll_info_offset_, 500.f);
+  EXPECT_TRUE(mock_list_element_->last_scroll_info_smooth_);
+  EXPECT_FALSE(mock_list_element_->last_scroll_info_scrolling_);
+}
+
+TEST_F(ListLayoutManagerTest,
+       FlushSmoothScrollInfoConvertsHorizontalRTLOffsetAtContainerBoundary) {
+  InitFiberDataSource();
+  mock_list_element_->is_rtl_ = true;
+  mock_list_element_->width_ = 300.f;
+  list_layout_manager_->SetOrientation(Orientation::kHorizontal);
+  list_layout_manager_->CreateOrUpdateListAnchorManager();
+  list_layout_manager_->ResetContentOffsetAndContentSize(0.f, 1000.f);
+
+  ItemHolder* item_holder = list_container_impl_->GetItemHolderForIndex(0);
+  ASSERT_NE(item_holder, nullptr);
+  item_holder->SetLeft(200.f);
+  list_layout_manager_->list_anchor_manager_->InitScrollToPositionParam(
+      item_holder, 0, 0.f, static_cast<int>(ScrollingInfoAlignment::kTop),
+      true);
+
+  list_layout_manager_->FlushScrollInfoToPlatformIfNeeded();
+
+  EXPECT_FLOAT_EQ(mock_list_element_->last_scroll_info_offset_, 500.f);
+  EXPECT_TRUE(mock_list_element_->last_scroll_info_smooth_);
+  EXPECT_TRUE(mock_list_element_->last_scroll_info_scrolling_);
+}
+
 }  // namespace list
 }  // namespace lynx
