@@ -1553,6 +1553,7 @@ public class LynxEnv : NSObject {
   public NSString * LynxEnv()::_stringFromExternalEnv:(NSString *key);
   public void LynxEnv()::updateExternalEnvCacheForKey:withValue:(NSString *key, [withValue] NSString *value);
   public instancetype LynxEnv::sharedInstance();
+  public void LynxEnv::prepareGlobalMTSRuntimePoolWithContextType:count:(LynxMTSContextType contextType,[count] NSInteger count);
   public NSString *_Nonnull LynxEnv::getSSRApiVersion();
   public void LynxEnv::clearBytecode:(nonnull NSString *bytecodeSourceUrl);
   public void LynxEnv::setGlobalBytecodeGenerateCallback:(nullable LynxBytecodeResponseBlock callback);
@@ -6444,6 +6445,13 @@ public enum LynxMemoryPressureLevel {
   LynxMemoryPressureLevelNone
   LynxMemoryPressureLevelModerate
   LynxMemoryPressureLevelCritical
+}
+
+public enum LynxMTSContextType {
+  LynxMTSContextTypeVM
+  LynxMTSContextTypeLepusNG
+  LynxMTSContextTypeRTS
+  LynxMTSContextTypeRTSNative
 }
 
 

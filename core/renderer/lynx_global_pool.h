@@ -6,6 +6,8 @@
 #define CORE_RENDERER_LYNX_GLOBAL_POOL_H_
 
 #include <memory>
+#include <mutex>
+#include <unordered_map>
 
 #include "base/include/no_destructor.h"
 #include "core/shell/runtime/mts/mts_runtime_pool.h"
@@ -15,7 +17,8 @@ namespace tasm {
 
 /**
  * A singleton class to store the global native cache.
- * Currently only contains quick_context_pool.
+ * Contains global pools for MTS runtimes that can be prepared before pages
+ * claim them.
  */
 class LynxGlobalPool {
  public:
@@ -29,15 +32,21 @@ class LynxGlobalPool {
 
   // Only called when LynxEnv is initialized
   void PreparePool();
+  void PreparePool(runtime::ContextType context_type, int32_t count);
+  void PreparePoolSync(runtime::ContextType context_type, int32_t count);
 
-  shell::MTSRuntimePool& GetQuickContextPool() { return *quick_context_pool_; }
+  shell::MTSRuntimePool& GetQuickContextPool() {
+    return *GetPool(runtime::ContextType::LepusNGContextType);
+  }
+  shell::MTSRuntimePool* GetPool(runtime::ContextType context_type);
 
  private:
-  LynxGlobalPool()
-      : quick_context_pool_(shell::MTSRuntimePool::Create(
-            runtime::ContextType::LepusNGContextType, false)){};
+  LynxGlobalPool() = default;
 
-  std::shared_ptr<shell::MTSRuntimePool> quick_context_pool_;
+  std::mutex context_pools_mutex_;
+  std::unordered_map<runtime::ContextType,
+                     std::shared_ptr<shell::MTSRuntimePool>>
+      context_pools_;
 
   friend class base::NoDestructor<LynxGlobalPool>;
 };
