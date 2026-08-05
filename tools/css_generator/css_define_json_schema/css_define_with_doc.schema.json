@@ -191,7 +191,9 @@
         "enum": [
           "ios",
           "android",
+          "harmony",
           "clay_android",
+          "clay_ios",
           "clay_macos",
           "clay_windows",
           "web_lynx"
@@ -325,6 +327,10 @@
     "type": {
       "type": "string"
     },
+    "allow_unitless_number": {
+      "type": "boolean",
+      "description": "Whether TypeScript inline style values may use a JavaScript number for this length property. This does not describe general CSS parser support."
+    },
     "default_value": {
       "type": "string"
     },
@@ -407,16 +413,13 @@
             "type": "string"
           },
           "level": {
-            "type": "array",
-            "items": {
-              "type": "string",
-              "enum": [
-                "tip",
-                "info",
-                "warning",
-                "danger"
-              ]
-            }
+            "type": "string",
+            "enum": [
+              "tip",
+              "info",
+              "warning",
+              "danger"
+            ]
           }
         },
         "required": [

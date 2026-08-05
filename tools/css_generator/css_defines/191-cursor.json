@@ -52,6 +52,10 @@
       },
       "default": {
         "__compat": {
+          "status": {
+            "deprecated": false,
+            "experimental": false
+          },
           "support": {
             "android": {
               "version_added": false
@@ -82,6 +86,10 @@
       },
       "none": {
         "__compat": {
+          "status": {
+            "deprecated": false,
+            "experimental": false
+          },
           "support": {
             "android": {
               "version_added": false
@@ -112,6 +120,10 @@
       },
       "context-menu": {
         "__compat": {
+          "status": {
+            "deprecated": false,
+            "experimental": false
+          },
           "support": {
             "android": {
               "version_added": false
@@ -142,6 +154,10 @@
       },
       "help": {
         "__compat": {
+          "status": {
+            "deprecated": false,
+            "experimental": false
+          },
           "support": {
             "android": {
               "version_added": false
@@ -172,6 +188,10 @@
       },
       "pointer": {
         "__compat": {
+          "status": {
+            "deprecated": false,
+            "experimental": false
+          },
           "support": {
             "android": {
               "version_added": false
@@ -202,6 +222,10 @@
       },
       "progress": {
         "__compat": {
+          "status": {
+            "deprecated": false,
+            "experimental": false
+          },
           "support": {
             "android": {
               "version_added": false
@@ -232,6 +256,10 @@
       },
       "wait": {
         "__compat": {
+          "status": {
+            "deprecated": false,
+            "experimental": false
+          },
           "support": {
             "android": {
               "version_added": false
@@ -262,6 +290,10 @@
       },
       "crosshair": {
         "__compat": {
+          "status": {
+            "deprecated": false,
+            "experimental": false
+          },
           "support": {
             "android": {
               "version_added": false
@@ -292,6 +324,10 @@
       },
       "text": {
         "__compat": {
+          "status": {
+            "deprecated": false,
+            "experimental": false
+          },
           "support": {
             "android": {
               "version_added": false
@@ -322,6 +358,10 @@
       },
       "vertical-text": {
         "__compat": {
+          "status": {
+            "deprecated": false,
+            "experimental": false
+          },
           "support": {
             "android": {
               "version_added": false
@@ -352,6 +392,10 @@
       },
       "alias": {
         "__compat": {
+          "status": {
+            "deprecated": false,
+            "experimental": false
+          },
           "support": {
             "android": {
               "version_added": false
@@ -382,6 +426,10 @@
       },
       "copy": {
         "__compat": {
+          "status": {
+            "deprecated": false,
+            "experimental": false
+          },
           "support": {
             "android": {
               "version_added": false
@@ -412,6 +460,10 @@
       },
       "move": {
         "__compat": {
+          "status": {
+            "deprecated": false,
+            "experimental": false
+          },
           "support": {
             "android": {
               "version_added": false
@@ -442,6 +494,10 @@
       },
       "no-drop": {
         "__compat": {
+          "status": {
+            "deprecated": false,
+            "experimental": false
+          },
           "support": {
             "android": {
               "version_added": false
@@ -472,6 +528,10 @@
       },
       "not-allowed": {
         "__compat": {
+          "status": {
+            "deprecated": false,
+            "experimental": false
+          },
           "support": {
             "android": {
               "version_added": false
@@ -502,6 +562,10 @@
       },
       "grab": {
         "__compat": {
+          "status": {
+            "deprecated": false,
+            "experimental": false
+          },
           "support": {
             "android": {
               "version_added": false
@@ -532,6 +596,10 @@
       },
       "grabbing": {
         "__compat": {
+          "status": {
+            "deprecated": false,
+            "experimental": false
+          },
           "support": {
             "android": {
               "version_added": false
@@ -562,6 +630,10 @@
       },
       "col-resize": {
         "__compat": {
+          "status": {
+            "deprecated": false,
+            "experimental": false
+          },
           "support": {
             "android": {
               "version_added": false
@@ -592,6 +664,10 @@
       },
       "row-resize": {
         "__compat": {
+          "status": {
+            "deprecated": false,
+            "experimental": false
+          },
           "support": {
             "android": {
               "version_added": false
@@ -622,6 +698,10 @@
       },
       "n-resize": {
         "__compat": {
+          "status": {
+            "deprecated": false,
+            "experimental": false
+          },
           "support": {
             "android": {
               "version_added": false
@@ -652,6 +732,10 @@
       },
       "e-resize": {
         "__compat": {
+          "status": {
+            "deprecated": false,
+            "experimental": false
+          },
           "support": {
             "android": {
               "version_added": false
@@ -682,6 +766,10 @@
       },
       "s-resize": {
         "__compat": {
+          "status": {
+            "deprecated": false,
+            "experimental": false
+          },
           "support": {
             "android": {
               "version_added": false
@@ -712,6 +800,10 @@
       },
       "w-resize": {
         "__compat": {
+          "status": {
+            "deprecated": false,
+            "experimental": false
+          },
           "support": {
             "android": {
               "version_added": false
@@ -742,6 +834,10 @@
       },
       "ne-resize": {
         "__compat": {
+          "status": {
+            "deprecated": false,
+            "experimental": false
+          },
           "support": {
             "android": {
               "version_added": false
@@ -772,6 +868,10 @@
       },
       "nw-resize": {
         "__compat": {
+          "status": {
+            "deprecated": false,
+            "experimental": false
+          },
           "support": {
             "android": {
               "version_added": false
@@ -802,6 +902,10 @@
       },
       "se-resize": {
         "__compat": {
+          "status": {
+            "deprecated": false,
+            "experimental": false
+          },
           "support": {
             "android": {
               "version_added": false
@@ -832,6 +936,10 @@
       },
       "sw-resize": {
         "__compat": {
+          "status": {
+            "deprecated": false,
+            "experimental": false
+          },
           "support": {
             "android": {
               "version_added": false
@@ -862,6 +970,10 @@
       },
       "ew-resize": {
         "__compat": {
+          "status": {
+            "deprecated": false,
+            "experimental": false
+          },
           "support": {
             "android": {
               "version_added": false
@@ -892,6 +1004,10 @@
       },
       "ns-resize": {
         "__compat": {
+          "status": {
+            "deprecated": false,
+            "experimental": false
+          },
           "support": {
             "android": {
               "version_added": false
@@ -922,6 +1038,10 @@
       },
       "nesw-resize": {
         "__compat": {
+          "status": {
+            "deprecated": false,
+            "experimental": false
+          },
           "support": {
             "android": {
               "version_added": false
@@ -952,6 +1072,10 @@
       },
       "nwse-resize": {
         "__compat": {
+          "status": {
+            "deprecated": false,
+            "experimental": false
+          },
           "support": {
             "android": {
               "version_added": false

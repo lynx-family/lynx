@@ -1,0 +1,12 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "baseUrl": "..",
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "noEmit": true,
+    "rootDir": "..",
+    "skipLibCheck": true
+  },
+  "include": ["./enable-strict.d.ts", "./index.tsx"]
+}

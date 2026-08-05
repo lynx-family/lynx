@@ -10,9 +10,9 @@ This package serves as the source of truth for all CSS APIs defined in the Lynx 
     - [Property vs Attribute](#property-vs-attribute)
     - [Vendor Prefix](#vendor-prefix)
     - [Adding a New Property](#adding-a-new-property)
-  - [TypeScript Type Generation](#typescript-type-generation)
-    - [Type Generation Rules](#type-generation-rules)
-    - [Build Process](#build-process)
+  - [TypeScript type generation](#typescript-type-generation)
+    - [Type generation rules](#type-generation-rules)
+    - [Build process](#build-process)
     - [Usage](#usage)
   - [Schema](#schema)
   - [Tutorial: Implementing a CSS Property](#tutorial-implementing-a-css-property)
@@ -51,34 +51,31 @@ Once you have decided to add a new property, you can follow the steps below:
    1. [Parser](../../core/renderer/css/parser/background_box_handler.h): The parser function is used to parse the value of the property.
    2. [ComputedCSSStyle](../../core/renderer/css/computed_css_style.cc): The setter and getter functions should be manually implemented according to the output of parser. If the property will be consumed by the platform UI layer, you have to add it to the macro `FOREACH_PLATFORM_PROPERTY` in the header file.
 
-## TypeScript Type Generation
+## TypeScript type generation
 
-### Type Generation Rules
+CSS definitions generate `js_libraries/types/types/common/csstype.generated.d.ts`, which exports `LynxCSSProperties`, `Shorthands`, and `Longhands`.
 
-The type definitions in `js_libraries/types/types/common/csstype.d.ts` are automatically generated from CSS define files in the `css_defines` directory. The generation process follows these rules:
+The stable, handwritten `js_libraries/types/types/common/csstype.d.ts` façade composes generated strict values, standard values from `csstype`, and the versioned `csstype-legacy-compat.d.ts` snapshot. The generator writes only the generated declaration. It never overwrites the façade or its compatibility policy.
 
-1. For enum types (properties with `"type": "enum"`):
-   - Uses the `values` array to generate a union type of string literals
-   - Example: `display?: 'none' | 'flex' | 'grid' | 'linear' | 'relative' | 'block' | 'auto';`
+### Type generation rules
 
-2. For properties with keywords:
-   - Uses the `keywords` array to generate a union type of string literals
-   - Adds `(string & {})` for open-ended string types
-   - Example: `animationTimingFunction?: 'linear' | 'ease-in' | 'ease-out' | ... | (string & {});`
+The generator validates every CSS definition against the schema before it writes output. It then applies these rules:
 
-3. For other types:
-   - Uses `string` type
-   - Example: `color?: string;`
+1. `number` and `integer` definitions use `number`.
+2. Enum values use a union of string literals from the `values` array.
+3. Length definitions use `string`. They also use `number` when `allow_unitless_number` is `true` for that property.
+4. Keywords use a closed union of string literals.
+5. Other definitions use `string`.
 
-### Build Process
+### Build process
 
-The build process generates TypeScript type definitions and copies them to the types package:
+The build process generates the strict declaration and copies that file to the types package:
 
-1. `npm run gen:types` - Generates types in the `dist/` directory (gitignored)
-2. `npm run copy:types` - Copies generated types to `js_libraries/types/types/common/`
-3. `npm run build` - Runs both steps in sequence
+1. `npm run gen:types` generates `dist/csstype.generated.d.ts`.
+2. `npm run copy:types` copies only `csstype.generated.d.ts` to `js_libraries/types/types/common/`.
+3. `npm run build` runs both steps in sequence.
 
-Note: The `dist/` directory is gitignored because it's an intermediate build artifact. The final types are always in `js_libraries/types/types/common/csstype.d.ts`.
+Git ignores the intermediate `dist/` build directory. The build leaves the handwritten `csstype.d.ts` façade unchanged.
 
 ### Usage
 
@@ -89,10 +86,10 @@ npm run validate
 # Test validation with invalid CSS defines
 npm run test
 
-# Generate types and copy to types package
+# Generate and copy the strict declaration
 npm run build
 
-# Generate types in dist/ for testing (without copying)
+# Generate dist/csstype.generated.d.ts without copying it
 npm run gen:types
 ```
 

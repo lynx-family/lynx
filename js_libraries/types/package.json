@@ -1,6 +1,6 @@
 {
   "name": "@lynx-js/types",
-  "version": "4.2.0",
+  "version": "4.4.0",
   "description": "",
   "keywords": [
     "lynx",
@@ -15,7 +15,8 @@
   "types": "types/index.d.ts",
   "main": "types/index.d.ts",
   "scripts": {
-    "test": "vitest --typecheck --run && tsc --noEmit"
+    "test": "vitest --typecheck --run && tsc --noEmit && pnpm test:strict",
+    "test:strict": "tsc --noEmit --project test-strict/tsconfig.json"
   },
   "exports": {
     ".": {
@@ -38,6 +39,9 @@
     },
     "./props": {
       "types": "./types/common/props.d.ts"
+    },
+    "./strict": {
+      "types": "./types/common/strict.d.ts"
     }
   },
   "typesVersions": {
@@ -56,6 +60,9 @@
       ],
       "props": [
         "./types/common/props.d.ts"
+      ],
+      "strict": [
+        "./types/common/strict.d.ts"
       ],
       "main-thread": [
         "./types/main-thread/index.d.ts"
