@@ -4,15 +4,31 @@
 
 #include "devtool/js_inspect/lepus/lepus_internal/lepus_inspected_context_provider.h"
 
+#include <atomic>
+
 #include "base/include/log/logging.h"
 #include "devtool/js_inspect/lepus/lepus_internal/lepusng/lepusng_inspected_context_impl.h"
 
 namespace lepus_inspector {
 
+namespace {
+std::atomic<LepusInspectedContextProvider::Factory> g_factory{nullptr};
+}  // namespace
+
+LepusInspectedContextProvider::Factory
+LepusInspectedContextProvider::RegisterFactory(Factory factory) {
+  return g_factory.exchange(factory, std::memory_order_acq_rel);
+}
+
 std::shared_ptr<LepusInspectedContext>
 LepusInspectedContextProvider::GetInspectedContext(
     lynx::runtime::MTSContext* context, LepusInspectorNGImpl* inspector,
     const std::string& name) {
+  auto factory = g_factory.load(std::memory_order_acquire);
+  if (factory) {
+    return factory(context, inspector, name);
+  }
+  // Default open-source implementation: LepusNG only.
   auto inspected_context =
       std::make_shared<LepusNGInspectedContextImpl>(inspector, context, name);
   LOGI("lepus debug: create LepusNGInspectedContextImpl " << inspected_context);

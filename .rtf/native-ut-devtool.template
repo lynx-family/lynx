@@ -109,4 +109,10 @@ targets({
         "coverage": True,
         "enable_parallel":True,
     },
+    "lepusng_debugger_unittest_exec": {
+        "cwd": ".",
+        "owners":["guoyingfan.io"],
+        "coverage": True,
+        "enable_parallel":True,
+    },
 })
