@@ -1279,6 +1279,41 @@ void Shell::ScreenshotAsync(ScreenshotData::ScreenshotType screenshot_type,
   });
 }
 
+void Shell::ScreenshotAsyncFromLayerTree(
+    ScreenshotData::ScreenshotType screenshot_type, uint32_t background_color,
+    std::function<void(ScreenshotData)> callback,
+    std::unique_ptr<LayerTree> layer_tree) {
+  if (!layer_tree) {
+    ScreenshotAsync(screenshot_type, background_color, std::move(callback));
+    return;
+  }
+
+  fml::RefPtr<fml::TaskRunner> platform_task_runner =
+      task_runners_.GetPlatformTaskRunner();
+  rasterizer_service_.Act([callback = std::move(callback), screenshot_type,
+                           background_color, platform_task_runner,
+                           layer_tree = std::move(layer_tree),
+                           screenshot = screenshot](auto& impl) mutable {
+    bool expected = true;
+    if (!screenshot->compare_exchange_strong(expected, false)) {
+      return;
+    }
+    ScreenshotData result;
+    if (layer_tree) {
+      if (auto* rasterizer = impl.GetRasterizer()) {
+        result = rasterizer->ScreenshotLayerTree(
+            screenshot_type, false, background_color, layer_tree.get());
+      }
+    }
+    platform_task_runner->PostTask(
+        fml::MakeCopyable([callback = std::move(callback),
+                           result = std::move(result), screenshot]() mutable {
+          callback(std::move(result));
+          screenshot->store(true);
+        }));
+  });
+}
+
 void Shell::MakeRasterSnapshot(
     std::unique_ptr<clay::LayerTree> layer_tree,
     std::function<void(fml::RefPtr<clay::PaintImage>)> callback) {

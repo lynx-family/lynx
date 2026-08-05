@@ -50,6 +50,7 @@
 #include "clay/ui/component/intersection_observer.h"
 #include "clay/ui/component/keywords.h"
 #include "clay/ui/component/map_marker_view.h"
+#include "clay/ui/compositing/pending_layer.h"
 #ifdef ENABLE_ACCESSIBILITY
 #include "clay/ui/component/list/list_container/list_container_wrapper.h"
 #include "clay/ui/component/scroll_view.h"
@@ -1366,10 +1367,36 @@ GrDataPtr PageView::TakeScreenshotHardware(
   clay::Puppet<clay::Owner::kPlatform, clay::ScreenshotService>
       screenshot_service =
           service_manager_->GetService<clay::ScreenshotService>();
-  return screenshot_service->TakeScreenshotHardware(screenshot_request);
+  std::unique_ptr<LayerTree> layer_tree;
+  if (!screenshot_request.is_sync_ &&
+      (screenshot_request.type_ == ScreenshotType::PNG ||
+       screenshot_request.type_ == ScreenshotType::JPEG)) {
+    layer_tree = BuildSnapshotLayerTree();
+  }
+  return screenshot_service->TakeScreenshotHardware(screenshot_request,
+                                                    std::move(layer_tree));
 #else
   return nullptr;
 #endif
+}
+
+std::unique_ptr<LayerTree> PageView::BuildSnapshotLayerTree() {
+  if (physical_size_.IsEmpty() || width_ <= 0 || height_ <= 0 ||
+      !first_meaningful_layout_) {
+    return nullptr;
+  }
+
+  auto* page_layer = render_object()->GetLayer();
+  auto retained_root = page_layer ? page_layer->ReuseLayer() : nullptr;
+  if (!retained_root) {
+    return nullptr;
+  }
+
+  auto layer_tree = std::make_unique<LayerTree>(
+      skity::Vec2{physical_size_.width(), physical_size_.height()},
+      metrics_.device_pixel_ratio);
+  layer_tree->set_root_layer(std::move(retained_root));
+  return layer_tree;
 }
 
 void PageView::AddToKeyboardHostView(BaseView* keyboard_view) {

@@ -223,6 +223,11 @@ class Rasterizer final : public Stopwatch::RefreshRateUpdater,
       ScreenshotData::ScreenshotType type, bool base64_encode,
       uint32_t background_color = Color::kTransparent().Value());
 
+  ScreenshotData ScreenshotLayerTree(ScreenshotData::ScreenshotType type,
+                                     bool base64_encode,
+                                     uint32_t background_color,
+                                     LayerTree* layer_tree);
+
   //----------------------------------------------------------------------------
   /// @brief      Sets a callback that will be executed when the next layer tree
   ///             in rendered to the on-screen surface. This is used by

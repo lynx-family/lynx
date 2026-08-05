@@ -255,6 +255,11 @@ class Shell final : public PlatformView::Delegate,
                        uint32_t background_color,
                        std::function<void(ScreenshotData)> callback);
 
+  void ScreenshotAsyncFromLayerTree(
+      ScreenshotData::ScreenshotType type, uint32_t background_color,
+      std::function<void(ScreenshotData)> callback,
+      std::unique_ptr<LayerTree> layer_tree);
+
   //----------------------------------------------------------------------------
   /// @brief      Pauses the calling thread until the first frame is presented.
   ///

@@ -558,7 +558,13 @@ RasterStatus Rasterizer::DrawToSurfaceUnsafe(
 ScreenshotData Rasterizer::ScreenshotLastLayerTree(
     ScreenshotData::ScreenshotType type, bool base64_encode,
     uint32_t background_color) {
-  auto* layer_tree = GetLastLayerTree();
+  return ScreenshotLayerTree(type, base64_encode, background_color,
+                             GetLastLayerTree());
+}
+
+ScreenshotData Rasterizer::ScreenshotLayerTree(
+    ScreenshotData::ScreenshotType type, bool base64_encode,
+    uint32_t background_color, LayerTree* layer_tree) {
   return TakeScreenshotWithBase64(layer_tree, type, surface_.get(),
                                   compositor_context_.get(), base64_encode,
                                   background_color);
