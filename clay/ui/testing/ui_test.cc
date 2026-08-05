@@ -94,10 +94,19 @@ class MockEventDelegate : public clay::EventDelegate {
                              float page_x, float page_y, int64_t timestamp,
                              clay::Value& additional_params) override {}
   void OnAnimationEvent(const std::string& event_name,
-                        const char* animation_name, int view_id) override {}
+                        const char* animation_name, int view_id) override {
+    if (uitest_->animation_event_callback_) {
+      uitest_->animation_event_callback_(event_name, animation_name, view_id);
+    }
+  }
   void OnTransitionEvent(const std::string& event_name,
                          const char* animation_name, int view_id,
-                         ClayAnimationPropertyType type) override {}
+                         ClayAnimationPropertyType type) override {
+    if (uitest_->transition_event_callback_) {
+      uitest_->transition_event_callback_(event_name, animation_name, view_id,
+                                          type);
+    }
+  }
   void OnFocusChanged(int view_id, bool focus) override {}
   void OnHoverChanged(int view_id, bool hover) override {}
   void OnDragDropEvent(const std::string& event_name, int view_id,

@@ -112,30 +112,20 @@ bool KeyframesManager::HasAnimationForType(
   return false;
 }
 
-bool KeyframesManager::StartListenersNotified(
-    ClayAnimationPropertyType type) const {
-  for (auto& animation : animations_) {
-    if (auto iter = animation.keyframes_map.find(type);
-        iter != animation.keyframes_map.end()) {
-      return !animation.animator->StartListenersCalled();
-    }
-  }
-  return true;
-}
-
 void KeyframesManager::SyncProperties(KeyframesManager* manager) {
   if (manager == nullptr) {
     return;
   }
-  // For every type of raster animation, `KeyframesManager` will be cloned each
-  // time. And we don't need to compare type here. Besides when raster
-  // animation get changed in its process (e.g. a new animation with a
-  // longer duration) ,it won't invoke new animation event (e.g.
-  // onAnimationStart).
   for (auto& animation : animations_) {
-    for (auto& kv : animation.keyframes_map) {
+    auto previous =
+        std::find_if(manager->animations_.begin(), manager->animations_.end(),
+                     [&animation](const KeyframeAnimation& candidate) {
+                       return candidate.animator->GetAnimationName() ==
+                              animation.animator->GetAnimationName();
+                     });
+    if (previous != manager->animations_.end()) {
       animation.animator->SetStartListenersCalled(
-          manager->StartListenersNotified(kv.first));
+          previous->animator->StartListenersCalled());
     }
   }
 }
@@ -155,9 +145,9 @@ std::unique_ptr<KeyframesManager> KeyframesManager::CloneForRasterAnimation(
       if (!IsMixedAnimation(animation)) {
         clone_animation.animator->AddListener(clone_keyframe_set.get());
       }
-      clone_animation.listener =
-          std::make_unique<KeyframeListener>(clone.get());
-      clone_animation.animator->AddListener(clone_animation.listener.get());
+      // CSS lifecycle events are dispatched by the UI-side logical animator.
+      // A multi-property animation creates one raster clone per property, so
+      // raster clones must not dispatch events.
       clone_animation.animator->AddUpdateListener(clone_keyframe_set.get());
       clone_animation.keyframes_map.emplace(type,
                                             std::move(clone_keyframe_set));

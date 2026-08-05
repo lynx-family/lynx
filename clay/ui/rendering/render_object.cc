@@ -446,13 +446,14 @@ void RenderObject::SetMaskImage(size_t index,
 #endif  // ENABLE_SKITY
 
 void RenderObject::SetBackgroundColor(const Color& color,
-                                      bool skip_update_for_raster_animation) {
+                                      bool defer_invalidation) {
   ENSURE_BACKGROUND();
-  if (background_data_->background_color == color) {
-    return;
+  const bool value_changed = background_data_->background_color != color;
+  if (value_changed) {
+    background_data_->background_color = color;
   }
-  background_data_->background_color = color;
-  if (!skip_update_for_raster_animation) {
+  if (ResolvePropertyInvalidation(ClayAnimationPropertyType::kBackgroundColor,
+                                  value_changed, defer_invalidation)) {
     MarkNeedsPaint();
   }
 }
@@ -567,30 +568,32 @@ bool RenderObject::HasTransformOperations() const {
 }
 
 void RenderObject::SetTransformOperations(const TransformOperations& transform,
-                                          bool is_from_animation) {
-  if (transform_ &&
-      transform_->ApproximatelyEqual(
-          transform, TransformOperations::kApproximatelyEqualTolerance)) {
-    return;
-  }
-  float translate_z = transform.GetTranslateZ();
-  if (std::abs(translate_z_ - translate_z) > 1e-6) {
-    // translate_z_ changes.
-    translate_z_ = translate_z;
-    if (auto* parent = static_cast<RenderObject*>(Parent())) {
-      parent->DirtyChildrenPaintingOrder();
+                                          bool defer_invalidation) {
+  const bool value_changed =
+      !transform_ ||
+      !transform_->ApproximatelyEqual(
+          transform, TransformOperations::kApproximatelyEqualTolerance);
+  if (value_changed) {
+    float translate_z = transform.GetTranslateZ();
+    if (std::abs(translate_z_ - translate_z) > 1e-6) {
+      // translate_z_ changes.
+      translate_z_ = translate_z;
+      if (auto* parent = static_cast<RenderObject*>(Parent())) {
+        parent->DirtyChildrenPaintingOrder();
+      }
     }
+    transform_ = transform;
   }
-  transform_ = transform;
   if (!HasTransform()) {
     // Resets transform_ to identity and needs mark dirty to repaint.
-    MarkNeedsPaint();
-  } else {
-    // Don't dirty this node, only update transform effect.
-    // Don't ever update transform effect while using rasterizer animation
-    if (!is_from_animation) {
-      MarkNeedsEffect();
+    if (ResolvePropertyInvalidation(ClayAnimationPropertyType::kTransform,
+                                    value_changed, false)) {
+      MarkNeedsPaint();
     }
+  } else if (ResolvePropertyInvalidation(ClayAnimationPropertyType::kTransform,
+                                         value_changed, defer_invalidation)) {
+    // Don't dirty this node, only update transform effect.
+    MarkNeedsEffect();
   }
 }
 
@@ -646,23 +649,41 @@ void RenderObject::SetTransformOrigin(const FloatPoint& origin) {
   MarkNeedsEffect();
 }
 
-void RenderObject::SetOpacity(float opacity, bool is_from_animation) {
-  if (opacity_.has_value() && opacity_.value() == opacity) {
-    return;
+void RenderObject::SetOpacity(float opacity, bool defer_invalidation) {
+  const bool value_changed =
+      !opacity_.has_value() || opacity_.value() != opacity;
+  if (value_changed) {
+    opacity_ = opacity;
   }
-
-  opacity_ = opacity;
   if (!HasOpacity()) {
     // The latest opacity is 1.0, which means it changes from translucent to
     // opaque and needs mark dirty to repaint.
-    MarkNeedsPaint();
-  } else {
-    // Don't dirty this node, only update opacity effect.
-    // Don't ever update opacity effect while using rasterizer animation
-    if (!is_from_animation) {
-      MarkNeedsEffect();
+    if (ResolvePropertyInvalidation(ClayAnimationPropertyType::kOpacity,
+                                    value_changed, false)) {
+      MarkNeedsPaint();
     }
+  } else if (ResolvePropertyInvalidation(ClayAnimationPropertyType::kOpacity,
+                                         value_changed, defer_invalidation)) {
+    // Don't dirty this node, only update opacity effect.
+    MarkNeedsEffect();
   }
+}
+
+bool RenderObject::ResolvePropertyInvalidation(ClayAnimationPropertyType type,
+                                               bool value_changed,
+                                               bool defer_invalidation) {
+  if (defer_invalidation) {
+    if (value_changed) {
+      AnimationPropertySet(deferred_invalidation_properties_, type);
+    }
+    return false;
+  }
+
+  const bool should_invalidate =
+      value_changed ||
+      AnimationPropertyTest(deferred_invalidation_properties_, type);
+  AnimationPropertyUnset(deferred_invalidation_properties_, type);
+  return should_invalidate;
 }
 
 void RenderObject::ClearFilter() {

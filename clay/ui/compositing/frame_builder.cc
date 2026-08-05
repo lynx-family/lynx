@@ -49,14 +49,12 @@ void InitializeAnimationMutator(RenderObject* owner,
     FML_DCHECK(owner->GetKeyframesManager() != nullptr);
     if (auto manager = owner->GetKeyframesManager()->CloneForRasterAnimation(
             type, mutator)) {
-      manager->SetEventHandler(mutator);
       mutator->AddKeyframesManager(std::move(manager));
     }
   } else if (owner->HasTransition(type)) {
     FML_DCHECK(owner->GetTransitionManager() != nullptr);
     if (auto manager = owner->GetTransitionManager()->CloneForRasterAnimation(
             type, mutator)) {
-      manager->SetEventHandler(mutator);
       mutator->AddTransitionManager(std::move(manager));
     }
   }

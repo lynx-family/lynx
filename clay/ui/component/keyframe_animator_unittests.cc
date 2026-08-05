@@ -14,6 +14,7 @@
 #include "clay/gfx/style/length.h"
 #include "clay/public/value.h"
 #include "clay/ui/component/base_view.h"
+#include "clay/ui/component/component_constants.h"
 #include "clay/ui/rendering/render_container.h"
 #include "clay/ui/testing/ui_test.h"
 #include "third_party/googletest/googlemock/include/gmock/gmock.h"
@@ -72,6 +73,21 @@ class FixedSizeAnimatorTarget : public AnimatorTarget {
 
  private:
   FloatSize percentage_resolution_size_;
+};
+
+class RecordingAnimationEventHandler : public AnimationEventHandler {
+ public:
+  void OnAnimationEvent(const AnimationParams& params) override {
+    animation_events.push_back(params.event_type);
+  }
+
+  void OnTransitionEvent(const AnimationParams& params,
+                         ClayAnimationPropertyType) override {
+    transition_events.push_back(params.event_type);
+  }
+
+  std::vector<ClayEventType> animation_events;
+  std::vector<ClayEventType> transition_events;
 };
 
 Value MakeCalcLengthValue(double percent, double fixed) {
@@ -201,6 +217,32 @@ Value CreateKeyFrameData2() {
 
 Value CreateKeyFrameData3() {
   return MakeOpacityTestKeyframes({{0, 0.3}, {100, 1.0}});
+}
+
+Value CreateAnimationEventKeyframes() {
+  Value::Map move_start;
+  move_start.emplace("transform", MakeTranslateXCalcValue(0.0, 0.0));
+  Value::Map move_end;
+  move_end.emplace("transform", MakeTranslateXCalcValue(0.0, 100.0));
+  Value::Map move_keyframes;
+  move_keyframes.emplace("0.000000", Value(std::move(move_start)));
+  move_keyframes.emplace("1.000000", Value(std::move(move_end)));
+
+  Value::Map color_keyframes;
+  color_keyframes.emplace("0.000000",
+                          Value{{"background-color", Value{0xffff0000u}}});
+  color_keyframes.emplace("1.000000",
+                          Value{{"background-color", Value{0xff0000ffu}}});
+
+  Value::Map opacity_keyframes;
+  opacity_keyframes.emplace("0.000000", Value{{"opacity", Value{0.1}}});
+  opacity_keyframes.emplace("1.000000", Value{{"opacity", Value{1.0}}});
+
+  Value::Map keyframes;
+  keyframes.emplace("mymove", Value(std::move(move_keyframes)));
+  keyframes.emplace("mycolor", Value(std::move(color_keyframes)));
+  keyframes.emplace("myopacity", Value(std::move(opacity_keyframes)));
+  return Value(std::move(keyframes));
 }
 
 }  // namespace
@@ -642,6 +684,154 @@ TEST_F_UI(KeyFrameTest, AnimationEndEvent) {
   }
 
   animator->RemoveListener(&mock_listener);
+}
+
+TEST_F_UI(KeyFrameTest, RasterAnimationEventsRemainUIOwned) {
+  page_->SetRasterAnimationEnabled(true);
+  animator_view_->AddEventCallback(event_attr::kEventAnimationStart);
+  animator_view_->AddEventCallback(event_attr::kEventAnimationEnd);
+
+  std::vector<std::string> events;
+  animation_event_callback_ = [&events](const std::string& event_name,
+                                        const char* animation_name, int) {
+    events.emplace_back(event_name + ":" + animation_name);
+  };
+
+  AnimationData initial_move{"mymove",
+                             2000,
+                             0,
+                             TimingFunctionData(),
+                             1,
+                             ClayAnimationFillModeType::kBoth,
+                             ClayAnimationDirectionType::kNormal,
+                             ClayAnimationPlayStateType::kRunning};
+  AnimationData move = initial_move;
+  move.duration = 2300;
+  AnimationData color = move;
+  color.name = "mycolor";
+  color.duration = 1000;
+  AnimationData opacity = move;
+  opacity.name = "myopacity";
+  opacity.duration = 700;
+
+  page_->SetKeyframesData(CreateAnimationEventKeyframes());
+  animator_view_->SetBound(0, 0, 100, 100);
+  animator_view_->SetAnimation({initial_move});
+  animator_view_->OnNodeReady();
+  page_->GetAnimationHandler()->DoAnimationFrame(10000);
+  page_->GetAnimationHandler()->DoAnimationFrame(11000);
+  animator_view_->SetAnimation({move, color, opacity});
+  animator_view_->OnNodeReady();
+
+  EXPECT_THAT(events, ::testing::ElementsAre("animationstart:mymove",
+                                             "animationstart:mycolor",
+                                             "animationstart:myopacity"));
+
+  RecordingAnimationEventHandler raster_events;
+  FixedSizeAnimatorTarget transform_target(FloatSize(100.f, 100.f));
+  FixedSizeAnimatorTarget color_target(FloatSize(100.f, 100.f));
+  FixedSizeAnimatorTarget opacity_target(FloatSize(100.f, 100.f));
+  auto transform_manager =
+      animator_view_->KeyframesMgr()->CloneForRasterAnimation(
+          ClayAnimationPropertyType::kTransform, &transform_target);
+  auto color_manager = animator_view_->KeyframesMgr()->CloneForRasterAnimation(
+      ClayAnimationPropertyType::kBackgroundColor, &color_target);
+  auto opacity_manager =
+      animator_view_->KeyframesMgr()->CloneForRasterAnimation(
+          ClayAnimationPropertyType::kOpacity, &opacity_target);
+  ASSERT_NE(transform_manager, nullptr);
+  ASSERT_NE(color_manager, nullptr);
+  ASSERT_NE(opacity_manager, nullptr);
+  for (auto* manager :
+       {transform_manager.get(), color_manager.get(), opacity_manager.get()}) {
+    manager->SetEventHandler(&raster_events);
+    manager->animations().front().animator->DoAnimationFrame(11000);
+    EXPECT_TRUE(manager->animations().front().animator->StartListenersCalled());
+  }
+  EXPECT_TRUE(raster_events.animation_events.empty());
+
+  FixedSizeAnimatorTarget replacement_target(FloatSize(100.f, 100.f));
+  auto replacement_manager =
+      animator_view_->KeyframesMgr()->CloneForRasterAnimation(
+          ClayAnimationPropertyType::kOpacity, &replacement_target);
+  ASSERT_NE(replacement_manager, nullptr);
+  replacement_manager->SyncProperties(opacity_manager.get());
+  ASSERT_EQ(replacement_manager->animations().size(), 1u);
+  EXPECT_TRUE(replacement_manager->animations()
+                  .front()
+                  .animator->StartListenersCalled());
+  replacement_manager->SetEventHandler(&raster_events);
+  replacement_manager->animations().front().animator->DoAnimationFrame(11700);
+  transform_manager->animations().front().animator->DoAnimationFrame(13300);
+  color_manager->animations().front().animator->DoAnimationFrame(12000);
+  EXPECT_TRUE(raster_events.animation_events.empty());
+
+  page_->GetAnimationHandler()->DoAnimationFrame(11000);
+  page_->GetAnimationHandler()->DoAnimationFrame(11700);
+  page_->GetAnimationHandler()->DoAnimationFrame(12000);
+  page_->GetAnimationHandler()->DoAnimationFrame(12300);
+
+  EXPECT_THAT(events, ::testing::ElementsAre(
+                          "animationstart:mymove", "animationstart:mycolor",
+                          "animationstart:myopacity", "animationend:myopacity",
+                          "animationend:mycolor", "animationend:mymove"));
+}
+
+TEST_F_UI(KeyFrameTest, RasterTransitionEventsRemainUIOwned) {
+  page_->SetRasterAnimationEnabled(true);
+  animator_view_->AddEventCallback(event_attr::kEventTransitionStart);
+  animator_view_->AddEventCallback(event_attr::kEventTransitionEnd);
+
+  std::vector<std::string> events;
+  transition_event_callback_ = [&events](const std::string& event_name,
+                                         const char*, int,
+                                         ClayAnimationPropertyType type) {
+    events.emplace_back(event_name + ":" +
+                        std::to_string(static_cast<int>(type)));
+  };
+
+  TransitionData transition;
+  transition.property = ClayAnimationPropertyType::kOpacity;
+  transition.duration = 160;
+  animator_view_->SetTransition({transition});
+  animator_view_->OnNodeReady();
+  animator_view_->SetOpacity(1.f);
+
+  const std::string opacity_type =
+      std::to_string(static_cast<int>(ClayAnimationPropertyType::kOpacity));
+  EXPECT_THAT(events,
+              ::testing::ElementsAre("transitionstart:" + opacity_type));
+
+  RecordingAnimationEventHandler raster_events;
+  FixedSizeAnimatorTarget raster_target(FloatSize(100.f, 100.f));
+  auto raster_manager =
+      animator_view_->TransitionMgr()->CloneForRasterAnimation(
+          ClayAnimationPropertyType::kOpacity, &raster_target);
+  ASSERT_NE(raster_manager, nullptr);
+  raster_manager->SetEventHandler(&raster_events);
+  auto raster_animators = raster_manager->GetRunningAnimators();
+  ASSERT_EQ(raster_animators.size(), 1u);
+  raster_animators.front()->DoAnimationFrame(0);
+  EXPECT_TRUE(raster_animators.front()->StartListenersCalled());
+  EXPECT_TRUE(raster_events.transition_events.empty());
+
+  FixedSizeAnimatorTarget replacement_target(FloatSize(100.f, 100.f));
+  auto replacement_manager =
+      animator_view_->TransitionMgr()->CloneForRasterAnimation(
+          ClayAnimationPropertyType::kOpacity, &replacement_target);
+  ASSERT_NE(replacement_manager, nullptr);
+  replacement_manager->SyncProperties(raster_manager.get());
+  replacement_manager->SetEventHandler(&raster_events);
+  auto replacement_animators = replacement_manager->GetRunningAnimators();
+  ASSERT_EQ(replacement_animators.size(), 1u);
+  EXPECT_TRUE(replacement_animators.front()->StartListenersCalled());
+  replacement_animators.front()->DoAnimationFrame(160);
+  EXPECT_TRUE(raster_events.transition_events.empty());
+
+  page_->GetAnimationHandler()->DoAnimationFrame(0);
+  page_->GetAnimationHandler()->DoAnimationFrame(160);
+  EXPECT_THAT(events, ::testing::ElementsAre("transitionstart:" + opacity_type,
+                                             "transitionend:" + opacity_type));
 }
 
 TEST_F_UI(KeyFrameTest, ShorterSameNameUpdateAfterEndDoesNotRestart) {
