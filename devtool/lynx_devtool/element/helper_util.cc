@@ -314,6 +314,14 @@ void MergeCSSStyle(Json::Value& res,
         style_sheet.supports_range_.end_column_;
     rule["supports"].append(supports_item);
   }
+  if (!style_sheet.layers_.empty()) {
+    rule["layers"] = Json::Value(Json::ValueType::arrayValue);
+    for (const auto& layer : style_sheet.layers_) {
+      Json::Value layer_item(Json::ValueType::objectValue);
+      layer_item["text"] = layer;
+      rule["layers"].append(std::move(layer_item));
+    }
+  }
   rule["origin"] = "regular";
   rule["selectorList"] = Json::Value(Json::ValueType::objectValue);
   rule["selectorList"]["text"] = style_name;

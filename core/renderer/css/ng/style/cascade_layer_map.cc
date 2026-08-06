@@ -4,6 +4,8 @@
 
 #include "core/renderer/css/ng/style/cascade_layer_map.h"
 
+#include <algorithm>
+
 #include "base/include/log/logging.h"
 
 namespace lynx {
@@ -24,6 +26,7 @@ void CascadeLayerMap::MergeSubLayers(CascadeLayer* local_node,
     CascadeLayer* canonical_child =
         canonical_node->GetOrAddDirectSubLayer(local_child->GetName());
     local_to_canonical_[local_child.get()] = canonical_child;
+    canonical_parent_.try_emplace(canonical_child, canonical_node);
     MergeSubLayers(local_child.get(), canonical_child);
   }
 }
@@ -51,6 +54,29 @@ uint16_t CascadeLayerMap::GetLayerOrder(CascadeLayer* layer) const {
     return CascadeLayer::kImplicitOuterLayerOrder;
   }
   return static_cast<CascadeLayer*>(it->second)->GetOrder();
+}
+
+std::vector<std::string> CascadeLayerMap::GetLayerPath(
+    const CascadeLayer* layer) const {
+  std::vector<std::string> path;
+  if (!layer || !canonical_root_) {
+    return path;
+  }
+  auto it = local_to_canonical_.find(const_cast<CascadeLayer*>(layer));
+  if (it == local_to_canonical_.end() || it->second == canonical_root_.get()) {
+    return path;
+  }
+
+  auto* current = static_cast<CascadeLayer*>(it->second);
+  while (current && current != canonical_root_.get()) {
+    path.push_back(current->GetName());
+    auto parent_it = canonical_parent_.find(current);
+    current = parent_it == canonical_parent_.end()
+                  ? nullptr
+                  : static_cast<CascadeLayer*>(parent_it->second);
+  }
+  std::reverse(path.begin(), path.end());
+  return path;
 }
 
 }  // namespace css

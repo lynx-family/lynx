@@ -16,6 +16,7 @@
 #include "core/renderer/css/css_decoder.h"
 #include "core/renderer/css/css_property.h"
 #include "core/renderer/css/ng/media_query/media_query_evaluator.h"
+#include "core/renderer/css/ng/style/cascade_layer_map.h"
 #include "core/renderer/css/ng/style/condition_rule.h"
 #include "core/renderer/css/ng/supports/supports_evaluator.h"
 #include "core/renderer/css/parser/css_string_parser.h"
@@ -1081,12 +1082,20 @@ ElementInspector::GetMatchedStyleSheet(Element* element) {
   auto matched_rules = lynx::tasm::StyleResolver::GetCSSMatchedRule(
       attribute_holder, style_sheet, media_evaluator.get(),
       supports_evaluator.get());
+  std::shared_ptr<const css::CascadeLayerMap> layer_map;
+  if (style_sheet->HasCascadeLayers()) {
+    layer_map = style_sheet->GetCascadeLayerMap();
+  }
   for (const auto& matched : matched_rules) {
     auto matched_token = matched.Data()->Rule()->Token();
     if (matched_token != nullptr) {
       std::string name = matched.Data()->Selector().ToString();
+      std::vector<std::string> layers;
+      if (layer_map) {
+        layers = layer_map->GetLayerPath(matched.Data()->Layer());
+      }
       if (style_root != nullptr) {
-        auto map = GetStyleSheetMap(style_root);
+        auto& map = GetStyleSheetMap(style_root);
         auto range = map.equal_range(name);
         auto iter = range.first;
         for (; iter != range.second; ++iter) {
@@ -1111,6 +1120,8 @@ ElementInspector::GetMatchedStyleSheet(Element* element) {
               field.supports_text_ = supports_it->second.text;
               field.supports_range_ = supports_it->second.range;
             }
+            field.layers_ = layers;
+            iter->second.layers_ = layers;
             res.push_back(field);
             break;
           }
@@ -1137,6 +1148,7 @@ ElementInspector::GetMatchedStyleSheet(Element* element) {
               style_sheet.supports_text_ = supports_it->second.text;
               style_sheet.supports_range_ = supports_it->second.range;
             }
+            style_sheet.layers_ = layers;
             res.push_back(style_sheet);
             inspector_attribute->style_sheet_map_.insert({name, style_sheet});
             inspector_attribute->node_value_ =

@@ -198,6 +198,58 @@ TEST(HelperUtilTest, MergeCSSStyleSerializesMediaRule) {
   EXPECT_EQ(media[0]["range"]["endColumn"].asInt(), 19);
 }
 
+TEST(HelperUtilTest, MergeCSSStyleSerializesCascadeLayersOuterToInner) {
+  lynx::devtool::InspectorStyleSheet style_sheet;
+  style_sheet.empty = false;
+  style_sheet.origin_ = "regular";
+  style_sheet.style_sheet_id_ = "12";
+  style_sheet.style_name_ = ".card";
+  style_sheet.css_text_ = "width:10px;";
+  style_sheet.style_name_range_ = {1, 1, 0, 5};
+  style_sheet.style_value_range_ = {1, 1, 6, 17};
+  style_sheet.layers_ = {"framework", "components"};
+
+  Json::Value result(Json::ValueType::arrayValue);
+  lynx::devtool::MergeCSSStyle(result, style_sheet, true);
+
+  ASSERT_TRUE(result.isArray());
+  ASSERT_EQ(result.size(), 1U);
+  const Json::Value& layers = result[0]["rule"]["layers"];
+  ASSERT_TRUE(layers.isArray());
+  ASSERT_EQ(layers.size(), 2U);
+  EXPECT_EQ(layers[0]["text"].asString(), "framework");
+  EXPECT_EQ(layers[1]["text"].asString(), "components");
+}
+
+TEST(HelperUtilTest, MergeCSSStyleOmitsEmptyCascadeLayers) {
+  lynx::devtool::InspectorStyleSheet style_sheet;
+  style_sheet.empty = false;
+  style_sheet.origin_ = "regular";
+  style_sheet.style_name_ = ".card";
+
+  Json::Value result(Json::ValueType::arrayValue);
+  lynx::devtool::MergeCSSStyle(result, style_sheet, true);
+
+  ASSERT_EQ(result.size(), 1U);
+  EXPECT_FALSE(result[0]["rule"].isMember("layers"));
+}
+
+TEST(HelperUtilTest, MergeCSSStyleSerializesAnonymousCascadeLayer) {
+  lynx::devtool::InspectorStyleSheet style_sheet;
+  style_sheet.empty = false;
+  style_sheet.origin_ = "regular";
+  style_sheet.style_name_ = ".card";
+  style_sheet.layers_ = {"framework", ""};
+
+  Json::Value result(Json::ValueType::arrayValue);
+  lynx::devtool::MergeCSSStyle(result, style_sheet, true);
+
+  const Json::Value& layers = result[0]["rule"]["layers"];
+  ASSERT_EQ(layers.size(), 2U);
+  EXPECT_EQ(layers[0]["text"].asString(), "framework");
+  EXPECT_EQ(layers[1]["text"].asString(), "");
+}
+
 TEST(HelperUtilTest, StyleTextParserPreservesMediaInfo) {
   lynx::devtool::InspectorStyleSheet pre_style;
   pre_style.empty = false;
@@ -216,6 +268,22 @@ TEST(HelperUtilTest, StyleTextParserPreservesMediaInfo) {
   EXPECT_EQ(parsed.media_range_.end_line_, 0);
   EXPECT_EQ(parsed.media_range_.start_column_, 0);
   EXPECT_EQ(parsed.media_range_.end_column_, 19);
+}
+
+TEST(HelperUtilTest, StyleTextParserPreservesCascadeLayers) {
+  lynx::devtool::InspectorStyleSheet pre_style;
+  pre_style.empty = false;
+  pre_style.origin_ = "regular";
+  pre_style.style_sheet_id_ = "12";
+  pre_style.style_name_ = ".card";
+  pre_style.style_name_range_ = {1, 1, 0, 5};
+  pre_style.layers_ = {"framework", "components"};
+
+  auto parsed = lynx::devtool::StyleTextParser<lynx::tasm::Element*>(
+      nullptr, "width:20px", pre_style);
+
+  const std::vector<std::string> expected{"framework", "components"};
+  EXPECT_EQ(expected, parsed.layers_);
 }
 
 TEST(HelperUtilTest, ReplaceDefaultComputedStyleTest) {
