@@ -314,12 +314,10 @@ bool HasNativePaintingCtxPlatformRef(lynx::tasm::PaintingCtxPlatformImpl* painti
   [LynxEventReporter updateGenericInfo:@(_threadStrategyForRendering)
                                    key:kPropThreadMode
                             instanceId:_context.instanceId];
-  if (_enableJSRuntime) {
-    // TODO(chenyouhui): Move this function call to a more appropriate place.
-    [LynxService(LynxServiceExtensionProtocol) onLynxViewSetup:_context
-                                                         group:_runtimeOptions.group
-                                                        config:_config];
-  }
+  // TODO(chenyouhui): Move this function call to a more appropriate place.
+  [LynxService(LynxServiceExtensionProtocol) onLynxViewSetup:_context
+                                                       group:_runtimeOptions.group
+                                                      config:_config];
 }
 
 - (std::shared_ptr<lynx::runtime::js::ModuleFactoryDarwin>)setUpMainThreadModuleFactory {
@@ -550,6 +548,7 @@ bool HasNativePaintingCtxPlatformRef(lynx::tasm::PaintingCtxPlatformImpl* painti
 
 - (void)setUpUIRendererWithBuilder:(LynxViewBuilder*)builder screenSize:(CGSize)screenSize {
   _context = [[LynxContext alloc] initWithContainerView:_containerView];
+  _context.enableJSRuntime = _enableJSRuntime;
   [_context setEmbeddedMode:_embeddedMode];
   [self setUpResourceProviderWithBuilder:builder];
   _lynxUIRenderer = [builder.uiRendererCreator createUIRendererWithContext:_context
