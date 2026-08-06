@@ -61,8 +61,8 @@ public abstract class TemplateDispatcher {
     return dispatcher.getLoader();
   }
 
-  public static void dispatchUrl(Context ctx, String url) {
-    dispatchUrl(ctx, url, Intent.FLAG_ACTIVITY_NEW_TASK);
+  public static boolean dispatchUrl(Context ctx, String url) {
+    return dispatchUrl(ctx, url, Intent.FLAG_ACTIVITY_NEW_TASK);
   }
 
   protected void pageRedirection(String url, Context ctx, int activityLaunchFlags,
@@ -71,11 +71,12 @@ public abstract class TemplateDispatcher {
     intent.addFlags(activityLaunchFlags);
 
     intent.putExtra(LynxViewShellActivity.URL_KEY, url);
+    intent.putExtra("explorer_coordinated", true);
     intent.putExtra(TemplateLoader.class.getSimpleName(), entry.getKey());
     ctx.startActivity(intent);
   }
 
-  public static void dispatchUrl(Context ctx, String url, int activityLaunchFlags) {
+  public static boolean dispatchUrl(Context ctx, String url, int activityLaunchFlags) {
     for (Map.Entry<String, TemplateDispatcher> entry : sDispatchers.entrySet()) {
       TemplateDispatcher dispatcher = entry.getValue();
       if (dispatcher.checkUrl(url)) {
@@ -87,9 +88,10 @@ public abstract class TemplateDispatcher {
         if (oldActivity != null) {
           oldActivity.finish();
         }
-        return;
+        return true;
       }
     }
     Log.e(TAG, "cannot find loader for url:" + url);
+    return false;
   }
 }

@@ -27,14 +27,21 @@ import androidx.appcompat.widget.Toolbar;
 import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsControllerCompat;
 import com.lynx.explorer.input.LynxExplorerInput;
+import com.lynx.explorer.loading.ExplorerLoadingView;
 import com.lynx.explorer.modules.LynxSettingManager;
 import com.lynx.explorer.provider.DemoGenericResourceFetcher;
 import com.lynx.explorer.provider.DemoMediaResourceFetcher;
 import com.lynx.explorer.provider.DemoTemplateResourceFetcher;
+import com.lynx.explorer.routing.RequestedRuntime;
+import com.lynx.explorer.routing.RouteCoordinator;
+import com.lynx.explorer.routing.RouteResult;
+import com.lynx.explorer.routing.RouteSource;
+import com.lynx.explorer.sparkling.ExplorerRuntimePreferences;
 import com.lynx.explorer.utils.QueryMapUtils;
 import com.lynx.tasm.LynxBooleanOption;
 import com.lynx.tasm.LynxView;
 import com.lynx.tasm.LynxViewBuilder;
+import com.lynx.tasm.LynxViewClient;
 import com.lynx.tasm.TemplateData;
 import com.lynx.tasm.ThreadStrategyForRendering;
 import com.lynx.tasm.TimingHandler;
@@ -61,6 +68,8 @@ public class LynxViewShellActivity extends AppCompatActivity {
   private ViewGroup mLynxContainer;
   private LynxView mLynxView;
   private String mFrontendTheme;
+  private boolean mIsHomepage;
+  private ExplorerLoadingView mLoadingView;
   private TimingHandler.ExtraTimingInfo extraTimingInfo = new TimingHandler.ExtraTimingInfo();
 
   @Override
@@ -73,6 +82,16 @@ public class LynxViewShellActivity extends AppCompatActivity {
 
     // Check for initial URL from intent extra / data, used by automation.
     String initialUrl = intent.getStringExtra("lynx_initial_url");
+    if (initialUrl != null && !initialUrl.isEmpty()
+        && !intent.getBooleanExtra("explorer_coordinated", false)) {
+      RouteResult result =
+          RouteCoordinator.open(this, initialUrl, RequestedRuntime.AUTOMATIC, RouteSource.STARTUP);
+      if (!result.getAccepted()) {
+        Log.e(TAG, result.getCode() + ": " + result.getMessage());
+      }
+      finish();
+      return;
+    }
     if (initialUrl == null || initialUrl.isEmpty()) {
       initialUrl = intent.getStringExtra(URL_KEY);
     }
@@ -222,6 +241,7 @@ public class LynxViewShellActivity extends AppCompatActivity {
       Log.i(TAG, "openTargetUrl failed: url is null.");
       return;
     }
+    mIsHomepage = url.contains("homepage.lynx.bundle");
 
     LynxViewBuilder builder = new LynxViewBuilder();
     builder.addBehaviors(new ImageBehavior().create());
@@ -277,6 +297,36 @@ public class LynxViewShellActivity extends AppCompatActivity {
     boolean enableNapiAddon = queryMap.getBoolean("enable_napi_addon", false);
 
     LynxView lynxView = builder.build(this);
+    mLoadingView = new ExplorerLoadingView(this);
+    mLoadingView.showDownloading("Lynx");
+    mLynxContainer.addView(mLoadingView,
+        new FrameLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+    final String retryUrl = url;
+    lynxView.addLynxViewClient(new LynxViewClient() {
+      @Override
+      public void onLoadSuccess() {
+        mLoadingView.showRendering("Lynx");
+      }
+
+      @Override
+      public void onFirstScreen() {
+        mLoadingView.setVisibility(View.GONE);
+      }
+
+      @Override
+      public void onLoadFailed(String message) {
+        mLoadingView.showError(message, () -> {
+          if (mLynxView != null) {
+            mLynxView.destroy();
+            mLynxView = null;
+          }
+          mLynxContainer.removeAllViews();
+          openTargetUrl(retryUrl);
+          return kotlin.Unit.INSTANCE;
+        });
+      }
+    });
     if (enableNapiAddon) {
       lynxView.addRuntimeLifecycleListener(new com.lynx.jsbridge.RuntimeLifecycleListener() {
         @Override
@@ -293,14 +343,16 @@ public class LynxViewShellActivity extends AppCompatActivity {
     lynxView.updateGlobalProps(getGlobalProps(this, queryMap));
     extraTimingInfo.mPrepareTemplateStart = System.currentTimeMillis();
 
+    mLynxView = lynxView;
     renderLynxViewWithUrl(lynxView, url);
     mLynxContainer.addView(lynxView,
         new FrameLayout.LayoutParams(queryMap.getInt("width", ViewGroup.LayoutParams.MATCH_PARENT),
             queryMap.getInt("height", ViewGroup.LayoutParams.MATCH_PARENT)));
-    mLynxView = lynxView;
+    mLoadingView.bringToFront();
   }
 
   private void renderLynxViewWithUrl(LynxView lynxView, String url) {
+    final String originalUrl = url;
     // Add a mock initData as example.
     Map<String, Object> initData = new HashMap<>();
     initData.put("mockData", "Hello Lynx Explorer");
@@ -318,6 +370,11 @@ public class LynxViewShellActivity extends AppCompatActivity {
         url = strs[0];
       }
       byte[] templateBundleData = readFileFromAssets(this, url);
+      if (templateBundleData == null) {
+        showLoadErrorWithRetry("The bundle asset could not be read.", originalUrl);
+        return;
+      }
+      mLoadingView.showRendering("Lynx");
       extraTimingInfo.mPrepareTemplateEnd = System.currentTimeMillis();
       lynxView.setExtraTiming(extraTimingInfo);
       lynxView.renderTemplateWithBaseUrl(templateBundleData, initData, url);
@@ -328,12 +385,30 @@ public class LynxViewShellActivity extends AppCompatActivity {
     } else if (url.startsWith("assets://")) {
       url = url.substring("assets://".length());
       byte[] templateBundleData = readFileFromAssets(this, url);
+      if (templateBundleData == null) {
+        showLoadErrorWithRetry("The bundle asset could not be read.", originalUrl);
+        return;
+      }
+      mLoadingView.showRendering("Lynx");
       extraTimingInfo.mPrepareTemplateEnd = System.currentTimeMillis();
       lynxView.setExtraTiming(extraTimingInfo);
       lynxView.renderTemplateWithBaseUrl(templateBundleData, initData, url);
     } else {
       Log.i(TAG, "openTargetUrl failed: not supported url.");
+      showLoadErrorWithRetry("The bundle URL is not supported.", originalUrl);
     }
+  }
+
+  private void showLoadErrorWithRetry(String message, String retryUrl) {
+    mLoadingView.showError(message, () -> {
+      if (mLynxView != null) {
+        mLynxView.destroy();
+        mLynxView = null;
+      }
+      mLynxContainer.removeAllViews();
+      openTargetUrl(retryUrl);
+      return kotlin.Unit.INSTANCE;
+    });
   }
   private TemplateData getGlobalProps(Context context, QueryMapUtils queryMap) {
     DisplayMetrics displayMetrics = DisplayMetricsHolder.getRealScreenDisplayMetrics(context);
@@ -352,7 +427,7 @@ public class LynxViewShellActivity extends AppCompatActivity {
     String preferredTheme = getStorageItem("preferredTheme");
     globalProps.put("preferredTheme", preferredTheme);
 
-    if (mFrontendTheme == "dark") {
+    if ("dark".equals(mFrontendTheme)) {
       globalProps.put("frontendTheme", "dark");
     } else {
       globalProps.put("frontendTheme", "light");
@@ -382,6 +457,14 @@ public class LynxViewShellActivity extends AppCompatActivity {
     globalProps.put("sparklingAvailable", false);
     globalProps.put("sparklingNavigation", false);
     globalProps.remove("containerID");
+    if (mIsHomepage) {
+      globalProps.put("explorerSupportsExplicitRouteOwnership", true);
+      globalProps.put("explorerSupportsSparklingContainer", BuildConfig.ENABLE_SPARKLING);
+      globalProps.put("explorerPreferredContainer", ExplorerRuntimePreferences.read(this));
+      if (BuildConfig.ENABLE_SPARKLING) {
+        globalProps.put("explorerSparklingVersion", BuildConfig.SPARKLING_VERSION);
+      }
+    }
 
     return TemplateData.fromMap(globalProps);
   }
