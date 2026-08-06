@@ -8,6 +8,7 @@ import android.graphics.RectF;
 import android.view.View;
 import com.lynx.markdown.Constants;
 import com.lynx.markdown.MarkdownValuePack;
+import com.lynx.markdown.ServalMarkdownView;
 import com.lynx.react.bridge.Callback;
 import com.lynx.react.bridge.JavaOnlyArray;
 import com.lynx.react.bridge.JavaOnlyMap;
@@ -23,12 +24,13 @@ import com.lynx.tasm.behavior.ui.UIGroup;
 import com.lynx.tasm.behavior.ui.utils.LynxUIHelper;
 import com.lynx.xelement.markdown.adaptor.LynxMarkdownBundle;
 import com.lynx.xelement.markdown.adaptor.LynxMarkdownView;
-import com.lynx.xelement.markdown.adaptor.LynxServalViewWrapper;
+import com.lynx.xelement.markdown.adaptor.MarkdownResourceContext;
 import java.util.ArrayList;
 
 public class LynxUIMarkdown extends UIGroup<LynxMarkdownView> {
-  private LynxMarkdownBundle mBundle;
-  private LynxServalViewWrapper mMarkdown;
+  private ServalMarkdownView mMarkdown;
+  private LynxUIMarkdownShadowNode mShadowNode;
+  private MarkdownResourceContext mResourceContext;
 
   public LynxUIMarkdown(LynxContext context) {
     this(context, null);
@@ -47,10 +49,18 @@ public class LynxUIMarkdown extends UIGroup<LynxMarkdownView> {
   public void updateExtraData(Object extraData) {
     super.updateExtraData(extraData);
     if (extraData instanceof LynxMarkdownBundle) {
-      mBundle = (LynxMarkdownBundle) extraData;
-      mMarkdown = mBundle.mMarkdownView;
-      mView.setBundle(mBundle);
+      LynxMarkdownBundle bundle = (LynxMarkdownBundle) extraData;
+      mShadowNode = bundle.mShadowNode;
+      mResourceContext = bundle.mResourceContext;
+      updateContentOffset();
+      mMarkdown = mView.setBundle(bundle);
     }
+  }
+
+  @Override
+  public void onLayoutUpdated() {
+    super.onLayoutUpdated();
+    updateContentOffset();
   }
 
   @Override
@@ -62,7 +72,7 @@ public class LynxUIMarkdown extends UIGroup<LynxMarkdownView> {
   }
 
   private boolean ensureMarkdownReady(Callback callback) {
-    if (mMarkdown == null) {
+    if (mMarkdown == null || mShadowNode == null) {
       callback.invoke(LynxUIMethodConstants.NO_UI_FOR_NODE);
       return false;
     }
@@ -84,6 +94,23 @@ public class LynxUIMarkdown extends UIGroup<LynxMarkdownView> {
       return Constants.CHAR_RANGE_TYPE_PARAGRAPH;
     }
     return Constants.CHAR_RANGE_TYPE_CHAR;
+  }
+
+  private int getContentLeftOffset() {
+    return getPaddingLeft() + getBorderLeftWidth();
+  }
+
+  private int getContentTopOffset() {
+    return getPaddingTop() + getBorderTopWidth();
+  }
+
+  private void updateContentOffset() {
+    int left = getContentLeftOffset();
+    int top = getContentTopOffset();
+    if (mResourceContext != null) {
+      mResourceContext.setContentOffset(left, top);
+    }
+    mView.setContentOffset(left, top);
   }
 
   private int[] getSelectionRange(
@@ -150,9 +177,15 @@ public class LynxUIMarkdown extends UIGroup<LynxMarkdownView> {
     if (!ensureMarkdownReady(callback)) {
       return;
     }
-    mMarkdown.pauseAnimation();
+    mMarkdown.pauseRenderUpdate();
+    int animationStep = mMarkdown.getRenderedAnimationStep();
+    if (!mShadowNode.pauseAnimation()) {
+      mMarkdown.resumeRenderUpdate();
+      callback.invoke(LynxUIMethodConstants.NO_UI_FOR_NODE);
+      return;
+    }
     JavaOnlyMap result = new JavaOnlyMap();
-    result.put("animationStep", mMarkdown.getAnimationStep());
+    result.put("animationStep", animationStep);
     callback.invoke(LynxUIMethodConstants.SUCCESS, result);
   }
 
@@ -162,12 +195,9 @@ public class LynxUIMarkdown extends UIGroup<LynxMarkdownView> {
       return;
     }
     int animationStep = params == null ? -1 : params.getInt("animationStep", -1);
-    if (animationStep >= 0) {
-      mMarkdown.resumeAnimation(animationStep);
-    } else {
-      mMarkdown.resumeAnimation();
-    }
-    callback.invoke(LynxUIMethodConstants.SUCCESS);
+    boolean success = mShadowNode.resumeAnimation(animationStep);
+    mMarkdown.resumeRenderUpdate();
+    callback.invoke(success ? LynxUIMethodConstants.SUCCESS : LynxUIMethodConstants.NO_UI_FOR_NODE);
   }
 
   @LynxUIMethod
@@ -214,14 +244,10 @@ public class LynxUIMarkdown extends UIGroup<LynxMarkdownView> {
       return;
     }
     float density = getLynxContext().getScreenMetrics().density;
-    float startX =
-        (float) (params.getDouble("startX", 0) * density - getPaddingLeft() - getBorderLeftWidth());
-    float startY =
-        (float) (params.getDouble("startY", 0) * density - getPaddingTop() - getBorderTopWidth());
-    float endX =
-        (float) (params.getDouble("endX", 0) * density - getPaddingLeft() - getBorderLeftWidth());
-    float endY =
-        (float) (params.getDouble("endY", 0) * density - getPaddingTop() - getBorderTopWidth());
+    float startX = (float) (params.getDouble("startX", 0) * density - getContentLeftOffset());
+    float startY = (float) (params.getDouble("startY", 0) * density - getContentTopOffset());
+    float endX = (float) (params.getDouble("endX", 0) * density - getContentLeftOffset());
+    float endY = (float) (params.getDouble("endY", 0) * density - getContentTopOffset());
     int selectionType = toSelectionRangeType(params.getString("selectionTextType", ""));
     int[] range = getSelectionRange(startX, startY, endX, endY, selectionType);
     if (range == null) {
@@ -314,14 +340,10 @@ public class LynxUIMarkdown extends UIGroup<LynxMarkdownView> {
     RectF safeTextRect = textRect == null ? new RectF() : textRect;
     JavaOnlyMap map = new JavaOnlyMap();
     float density = getLynxContext().getScreenMetrics().density;
-    map.putDouble("left",
-        (safeTextRect.left + getPaddingLeft() + getBorderLeftWidth() + lineBox.left) / density);
-    map.putDouble(
-        "top", (safeTextRect.top + getPaddingTop() + getBorderTopWidth() + lineBox.top) / density);
-    map.putDouble("right",
-        (safeTextRect.left + getPaddingLeft() + getBorderLeftWidth() + lineBox.right) / density);
-    map.putDouble("bottom",
-        (safeTextRect.top + getPaddingTop() + getBorderTopWidth() + lineBox.bottom) / density);
+    map.putDouble("left", (safeTextRect.left + getContentLeftOffset() + lineBox.left) / density);
+    map.putDouble("top", (safeTextRect.top + getContentTopOffset() + lineBox.top) / density);
+    map.putDouble("right", (safeTextRect.left + getContentLeftOffset() + lineBox.right) / density);
+    map.putDouble("bottom", (safeTextRect.top + getContentTopOffset() + lineBox.bottom) / density);
     map.putDouble("width", lineBox.width() / density);
     map.putDouble("height", lineBox.height() / density);
     return map;
@@ -331,8 +353,8 @@ public class LynxUIMarkdown extends UIGroup<LynxMarkdownView> {
     RectF safeTextRect = textRect == null ? new RectF() : textRect;
     JavaOnlyMap map = new JavaOnlyMap();
     float density = getLynxContext().getScreenMetrics().density;
-    map.putDouble("x", (safeTextRect.left + getPaddingLeft() + getBorderLeftWidth() + x) / density);
-    map.putDouble("y", (safeTextRect.top + getPaddingTop() + getBorderTopWidth() + y) / density);
+    map.putDouble("x", (safeTextRect.left + getContentLeftOffset() + x) / density);
+    map.putDouble("y", (safeTextRect.top + getContentTopOffset() + y) / density);
     map.putDouble("radius", radius / density);
     return map;
   }
@@ -359,5 +381,8 @@ public class LynxUIMarkdown extends UIGroup<LynxMarkdownView> {
   public void destroy() {
     super.destroy();
     mView.destroy();
+    mMarkdown = null;
+    mShadowNode = null;
+    mResourceContext = null;
   }
 }

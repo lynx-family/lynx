@@ -23,6 +23,8 @@ public class MarkdownResourceLoader implements IResourceLoader {
   private final MarkdownResourceContext mHost;
   private final HashMap<String, MarkdownImageResource> mImageCache = new HashMap<>();
   private final HashMap<String, MarkdownInlineViewHandle> mInlineViewHandles = new HashMap<>();
+  private WeakReference<Drawable.Callback> mDrawableCallback = new WeakReference<>(null);
+  private boolean mReleased = false;
   private boolean mEnableImageDownSampling = false;
   private boolean mImageSyncLoad = false;
 
@@ -38,7 +40,22 @@ public class MarkdownResourceLoader implements IResourceLoader {
     mImageSyncLoad = syncLoad;
   }
 
+  public void setDrawableCallback(@Nullable Drawable.Callback callback) {
+    if (mReleased) {
+      return;
+    }
+    mDrawableCallback = new WeakReference<>(callback);
+    for (MarkdownImageResource image : mImageCache.values()) {
+      image.getDrawable(callback);
+    }
+  }
+
   public void release() {
+    if (mReleased) {
+      return;
+    }
+    mReleased = true;
+    mDrawableCallback.clear();
     for (MarkdownImageResource image : mImageCache.values()) {
       image.release();
     }
@@ -52,12 +69,15 @@ public class MarkdownResourceLoader implements IResourceLoader {
     if (TextUtils.isEmpty(source) || context == null) {
       return null;
     }
+    if (mReleased) {
+      return null;
+    }
     MarkdownImageResource image = mImageCache.get(source);
     if (image == null) {
       image = new MarkdownImageResource(source, mEnableImageDownSampling, mImageSyncLoad, mHost);
       mImageCache.put(source, image);
     }
-    return image.getDrawable(mHost.getDrawableCallback());
+    return image.getDrawable(mDrawableCallback.get());
   }
 
   @Override

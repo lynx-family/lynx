@@ -3,7 +3,6 @@
 // LICENSE file in the root directory of this source tree.
 package com.lynx.xelement.markdown.adaptor;
 
-import android.graphics.drawable.Drawable;
 import androidx.annotation.Nullable;
 import com.lynx.tasm.behavior.LynxContext;
 import com.lynx.tasm.behavior.shadow.AlignContext;
@@ -13,11 +12,15 @@ import com.lynx.tasm.behavior.shadow.ShadowNode;
 public interface MarkdownResourceContext {
   @Nullable LynxContext getLynxContext();
 
-  @Nullable Drawable.Callback getDrawableCallback();
-
   @Nullable MeasureContext getMeasureContext();
 
   @Nullable AlignContext getAlignContext();
+
+  void setContentOffset(int left, int top);
+
+  int getContentLeftOffset();
+
+  int getContentTopOffset();
 
   int getChildCount();
 

@@ -4,28 +4,88 @@
 package com.lynx.xelement.markdown.adaptor;
 
 import android.content.Context;
+import android.graphics.drawable.Drawable;
 import android.view.Choreographer;
+import com.lynx.markdown.MarkdownMeasurer;
+import com.lynx.markdown.ServalMarkdownView;
 import com.lynx.tasm.behavior.ui.view.AndroidView;
+import com.lynx.xelement.markdown.LynxUIMarkdownShadowNode;
+
 public class LynxMarkdownView extends AndroidView {
-  private LynxServalViewWrapper mMarkdownView;
+  private ServalMarkdownView mMarkdownView;
+  private MarkdownMeasurer mMarkdownMeasurer;
+  private LynxUIMarkdownShadowNode mShadowNode;
+  private MarkdownResourceLoader mResourceLoader;
   private Choreographer.FrameCallback mFrameCallback = null;
+  private int mMeasuredWidth;
+  private int mMeasuredHeight;
+  private int mContentLeftOffset;
+  private int mContentTopOffset;
+
   public LynxMarkdownView(Context context) {
     super(context);
     setWillNotDraw(true);
   }
 
-  public void setBundle(LynxMarkdownBundle bundle) {
+  public ServalMarkdownView setBundle(LynxMarkdownBundle bundle) {
+    if (bundle == null || bundle.mMarkdownMeasurer == null) {
+      return mMarkdownView;
+    }
     if (mFrameCallback == null) {
       mFrameCallback = this::onVSync;
       Choreographer.getInstance().postFrameCallback(mFrameCallback);
     }
-    if (bundle != null && bundle.mMarkdownView != mMarkdownView) {
+    boolean viewChanged = bundle.mMarkdownMeasurer != mMarkdownMeasurer;
+    if (viewChanged) {
       if (mMarkdownView != null) {
         removeView(mMarkdownView);
+        mMarkdownView.destroy();
       }
-      mMarkdownView = bundle.mMarkdownView;
-      addView(bundle.mMarkdownView);
+      setDrawableCallbackOnLayoutThread(null);
+      mMarkdownMeasurer = bundle.mMarkdownMeasurer;
+      mShadowNode = bundle.mShadowNode;
+      mResourceLoader = bundle.mResourceLoader;
+      mMarkdownView = new ServalMarkdownView(getContext(), false);
+      mMarkdownView.setMarkdownMeasurer(mMarkdownMeasurer);
+      mMarkdownView.disableInternalVSync(true);
+      addView(mMarkdownView);
+      setDrawableCallbackOnLayoutThread(mMarkdownView);
     }
+    mMeasuredWidth = bundle.mMeasuredWidth;
+    mMeasuredHeight = bundle.mMeasuredHeight;
+    layoutMarkdownView();
+    return mMarkdownView;
+  }
+
+  public void setContentOffset(int left, int top) {
+    if (mContentLeftOffset == left && mContentTopOffset == top) {
+      return;
+    }
+    mContentLeftOffset = left;
+    mContentTopOffset = top;
+    layoutMarkdownView();
+  }
+
+  private void layoutMarkdownView() {
+    if (mMarkdownView == null) {
+      return;
+    }
+    mMarkdownView.layout(mContentLeftOffset, mContentTopOffset, mContentLeftOffset + mMeasuredWidth,
+        mContentTopOffset + mMeasuredHeight);
+  }
+
+  private void setDrawableCallbackOnLayoutThread(Drawable.Callback callback) {
+    LynxUIMarkdownShadowNode shadowNode = mShadowNode;
+    MarkdownResourceLoader resourceLoader = mResourceLoader;
+    if (shadowNode != null && resourceLoader != null) {
+      shadowNode.runOnLayoutThread(() -> resourceLoader.setDrawableCallback(callback));
+    }
+  }
+
+  @Override
+  protected void onLayout(boolean changed, int left, int top, int right, int bottom) {
+    super.onLayout(changed, left, top, right, bottom);
+    layoutMarkdownView();
   }
 
   private void onVSync(long time) {
@@ -39,8 +99,20 @@ public class LynxMarkdownView extends AndroidView {
   }
 
   public void destroy() {
+    if (mFrameCallback != null) {
+      Choreographer.getInstance().removeFrameCallback(mFrameCallback);
+    }
     mFrameCallback = null;
-    mMarkdownView.destroy();
+    setDrawableCallbackOnLayoutThread(null);
+    mResourceLoader = null;
+    mShadowNode = null;
+    if (mMarkdownView != null) {
+      mMarkdownView.destroy();
+      mMarkdownView = null;
+    }
+    mMarkdownMeasurer = null;
+    mMeasuredWidth = 0;
+    mMeasuredHeight = 0;
   }
 
   @Override

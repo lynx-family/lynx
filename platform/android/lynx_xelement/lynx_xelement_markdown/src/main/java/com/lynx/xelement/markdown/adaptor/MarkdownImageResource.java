@@ -49,7 +49,7 @@ public class MarkdownImageResource {
 
   @Nullable
   public Drawable getDrawable(@Nullable Drawable.Callback callback) {
-    if (mDrawable != null && callback != null) {
+    if (mDrawable != null) {
       mDrawable.setCallback(callback);
     }
     return mDrawable;
@@ -121,9 +121,7 @@ public class MarkdownImageResource {
                                         .build();
       mDraweeHolder.setController(controller);
       mDrawable = mDraweeHolder.getTopLevelDrawable();
-      Drawable.Callback callback = mHost.getDrawableCallback();
-      if (mDrawable != null && callback != null) {
-        mDrawable.setCallback(callback);
+      if (mDrawable != null) {
         mDrawable.draw(new Canvas());
       }
     } finally {
