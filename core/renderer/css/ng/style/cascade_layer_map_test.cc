@@ -74,6 +74,40 @@ TEST(CascadeLayerMapTest, NestedLayers_PostOrderDFS) {
   EXPECT_EQ(CascadeLayer::kImplicitOuterLayerOrder, map.GetLayerOrder(&root));
 }
 
+TEST(CascadeLayerMapTest, GetLayerPathReturnsCanonicalNamesOuterToInner) {
+  CascadeLayer root1;
+  auto* components1 = root1.GetOrAddSubLayer({"framework", "components"});
+
+  CascadeLayer root2;
+  auto* components2 = root2.GetOrAddSubLayer({"framework", "components"});
+
+  CascadeLayerMap map;
+  map.MergeLayerTree(&root1);
+  map.MergeLayerTree(&root2);
+  map.ComputeLayerOrder();
+
+  const std::vector<std::string> expected{"framework", "components"};
+  EXPECT_EQ(expected, map.GetLayerPath(components1));
+  EXPECT_EQ(expected, map.GetLayerPath(components2));
+  EXPECT_TRUE(map.GetLayerPath(&root1).empty());
+  EXPECT_TRUE(map.GetLayerPath(nullptr).empty());
+
+  CascadeLayer unrelated("unrelated");
+  EXPECT_TRUE(map.GetLayerPath(&unrelated).empty());
+}
+
+TEST(CascadeLayerMapTest, GetLayerPathPreservesAnonymousLayer) {
+  CascadeLayer root;
+  auto* anonymous = root.GetOrAddSubLayer({"framework", ""});
+
+  CascadeLayerMap map;
+  map.MergeLayerTree(&root);
+  map.ComputeLayerOrder();
+
+  const std::vector<std::string> expected{"framework", ""};
+  EXPECT_EQ(expected, map.GetLayerPath(anonymous));
+}
+
 TEST(CascadeLayerMapTest, MultipleFragments_SameNameMerge) {
   // Fragment 1: @layer foo { @layer bar; }
   CascadeLayer root1;

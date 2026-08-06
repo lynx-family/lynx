@@ -6,8 +6,11 @@
 #define CORE_RENDERER_CSS_NG_STYLE_CASCADE_LAYER_MAP_H_
 
 #include <memory>
+#include <string>
 #include <unordered_map>
+#include <vector>
 
+#include "core/base/lynx_export.h"
 #include "core/renderer/css/ng/style/cascade_layer.h"
 
 namespace lynx {
@@ -32,6 +35,11 @@ class CascadeLayerMap {
   // implicit outer layer (highest normal priority).
   uint16_t GetLayerOrder(CascadeLayer* layer) const;
 
+  // Returns canonical layer names from the outermost layer to the innermost.
+  // The implicit outer layer and unknown local nodes return an empty path.
+  LYNX_EXPORT_FOR_DEVTOOL std::vector<std::string> GetLayerPath(
+      const CascadeLayer* layer) const;
+
   bool IsEmpty() const { return canonical_root_ == nullptr; }
 
  private:
@@ -41,6 +49,7 @@ class CascadeLayerMap {
   std::unique_ptr<CascadeLayer> canonical_root_;
   // Maps each local CascadeLayer* (from any fragment) to its canonical node.
   std::unordered_map<void*, void*> local_to_canonical_;
+  std::unordered_map<void*, void*> canonical_parent_;
 };
 
 }  // namespace css

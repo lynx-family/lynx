@@ -99,6 +99,32 @@ std::shared_ptr<lynx::tasm::SharedCSSFragment> CreateSelectorCSSFragment(
   return fragment;
 }
 
+std::shared_ptr<lynx::tasm::SharedCSSFragment> CreateLayeredCSSFragment(
+    const std::string& selector, lynx::tasm::CSSPropertyID property_id,
+    const std::string& value, const std::vector<std::string>& layer_path) {
+  auto token = CreateParseToken(property_id, value);
+
+  auto sheet = std::make_shared<lynx::tasm::CSSSheet>(selector);
+  token->sheets().emplace_back(sheet);
+
+  lynx::tasm::CSSParserTokenMap token_map;
+  token_map.insert(std::make_pair(selector, token));
+
+  const std::vector<int32_t> dependent_ids;
+  lynx::tasm::CSSKeyframesTokenMap keyframes;
+  lynx::tasm::CSSFontFaceRuleMap font_faces;
+  auto fragment = std::make_shared<lynx::tasm::SharedCSSFragment>(
+      1, dependent_ids, token_map, keyframes, font_faces);
+  fragment->SetEnableCSSSelector();
+  fragment->SetEnableCSSRule(true);
+
+  auto* layer = fragment->GetOrCreateRootLayer()->GetOrAddSubLayer(layer_path);
+  fragment->AddStyleRule(fml::MakeRefCounted<lynx::css::StyleRule>(
+                             CreateSelectorArray(selector), token),
+                         layer);
+  return fragment;
+}
+
 std::shared_ptr<lynx::tasm::SharedCSSFragment>
 CreateSplitTokenSelectorCSSFragment(
     const std::string& selector, lynx::tasm::CSSPropertyID property_id,
@@ -190,6 +216,7 @@ struct MediaRuleForTest {
   lynx::tasm::CSSPropertyID property_id;
   std::string value;
   std::string media_text;
+  std::vector<std::string> layer_path;
 };
 
 std::shared_ptr<lynx::tasm::SharedCSSFragment> CreateMediaCSSFragment(
@@ -215,12 +242,20 @@ std::shared_ptr<lynx::tasm::SharedCSSFragment> CreateMediaCSSFragment(
 
   size_t index = 0;
   for (const auto& rule : rules) {
+    lynx::css::CascadeLayer* layer = nullptr;
+    if (!rule.layer_path.empty()) {
+      fragment->SetEnableCSSRule(true);
+      layer =
+          fragment->GetOrCreateRootLayer()->GetOrAddSubLayer(rule.layer_path);
+    }
     auto condition_rule =
         fml::MakeRefCounted<lynx::css::ConditionRule>(fragment.get());
     condition_rule->SetMediaQueries(
         lynx::css::MediaQueryParser::ParseMediaQuerySet(rule.media_text));
-    condition_rule->AddStyleRule(fml::MakeRefCounted<lynx::css::StyleRule>(
-        CreateSelectorArray(rule.selector), tokens[index++]));
+    condition_rule->AddStyleRule(
+        fml::MakeRefCounted<lynx::css::StyleRule>(
+            CreateSelectorArray(rule.selector), tokens[index++]),
+        layer);
     fragment->AddConditionRule(std::move(condition_rule));
   }
 
@@ -772,8 +807,11 @@ TEST_F(ElementHelperTest, GetMatchedStylesForNodeReportsActiveMediaRules) {
       std::make_tuple(page.get()));
 
   auto fragment = CreateMediaCSSFragment({
-      {".active-media", lynx::tasm::CSSPropertyID::kPropertyIDWidth, "10px",
-       "(min-width: 1000px)"},
+      {".active-media",
+       lynx::tasm::CSSPropertyID::kPropertyIDWidth,
+       "10px",
+       "(min-width: 1000px)",
+       {"responsive", "desktop"}},
       {".inactive-media", lynx::tasm::CSSPropertyID::kPropertyIDHeight, "20px",
        "(max-width: 10px)"},
   });
@@ -784,8 +822,8 @@ TEST_F(ElementHelperTest, GetMatchedStylesForNodeReportsActiveMediaRules) {
   lynx::base::String path("/index/components/TestComp");
   auto component = manager->CreateFiberComponent(component_id, 100, entry_name,
                                                  component_name, path);
-  component->style_sheet_ =
-      std::make_unique<lynx::tasm::CSSFragmentDecorator>(fragment.get());
+  component->style_sheet_ = std::make_unique<lynx::tasm::CSSFragmentDecorator>(
+      fragment.get(), manager.get());
   lynx::devtool::ElementInspector::InitForInspector(
       std::make_tuple(component.get()));
   page->InsertNode(component);
@@ -826,6 +864,85 @@ TEST_F(ElementHelperTest, GetMatchedStylesForNodeReportsActiveMediaRules) {
   EXPECT_EQ(rule["media"][0]["range"]["startColumn"].asInt(), 0);
   EXPECT_EQ(rule["media"][0]["range"]["endColumn"].asInt(),
             static_cast<int>(std::string("(min-width: 1000px)").length()));
+  ASSERT_TRUE(rule["layers"].isArray());
+  ASSERT_EQ(rule["layers"].size(), 2U);
+  EXPECT_EQ(rule["layers"][0]["text"].asString(), "responsive");
+  EXPECT_EQ(rule["layers"][1]["text"].asString(), "desktop");
+}
+
+TEST_F(ElementHelperTest, GetMatchedStylesForNodeReportsCascadeLayers) {
+  manager->enable_new_styling_pipeline_ = true;
+
+  auto page = manager->CreateFiberPage("page", 0);
+  lynx::devtool::ElementInspector::InitForInspector(
+      std::make_tuple(page.get()));
+
+  auto fragment = CreateLayeredCSSFragment(
+      ".layered", lynx::tasm::CSSPropertyID::kPropertyIDWidth, "10px",
+      {"framework", "components"});
+
+  lynx::base::String component_id("21");
+  lynx::base::String entry_name("__Card__");
+  lynx::base::String component_name("TestComp");
+  lynx::base::String path("/index/components/TestComp");
+  auto component = manager->CreateFiberComponent(component_id, 100, entry_name,
+                                                 component_name, path);
+  component->style_sheet_ = std::make_unique<lynx::tasm::CSSFragmentDecorator>(
+      fragment.get(), manager.get());
+  lynx::devtool::ElementInspector::InitForInspector(
+      std::make_tuple(component.get()));
+  page->InsertNode(component);
+
+  auto styled_element = manager->CreateFiberElement("view");
+  styled_element->SetParentComponentUniqueIdForFiber(
+      static_cast<int64_t>(component->impl_id()));
+  styled_element->data_model()->SetClass("layered");
+  lynx::devtool::ElementInspector::InitForInspector(
+      std::make_tuple(styled_element.get()));
+  component->InsertNode(styled_element);
+
+  auto style_root = manager->CreateFiberElement("stylevalue");
+  lynx::devtool::ElementInspector::InitForInspector(
+      std::make_tuple(style_root.get()));
+  lynx::devtool::ElementInspector::SetStyleRoot(
+      std::make_tuple(style_root.get(), style_root.get()));
+  lynx::devtool::ElementInspector::SetStyleRoot(
+      std::make_tuple(styled_element.get(), style_root.get()));
+
+  Json::Value matched = lynx::devtool::ElementHelper::GetMatchedStylesForNode(
+      styled_element.get());
+
+  ASSERT_TRUE(matched["matchedCSSRules"].isArray());
+  ASSERT_EQ(matched["matchedCSSRules"].size(), 1U);
+  const Json::Value& rule = matched["matchedCSSRules"][0]["rule"];
+  EXPECT_EQ(rule["selectorList"]["text"].asString(), ".layered");
+  ASSERT_TRUE(rule["layers"].isArray());
+  ASSERT_EQ(rule["layers"].size(), 2U);
+  EXPECT_EQ(rule["layers"][0]["text"].asString(), "framework");
+  EXPECT_EQ(rule["layers"][1]["text"].asString(), "components");
+
+  auto initial_sheet = lynx::devtool::ElementInspector::GetStyleSheetByName(
+      styled_element.get(), ".layered");
+  ASSERT_FALSE(initial_sheet.empty);
+  const std::vector<std::string> expected_layers{"framework", "components"};
+  EXPECT_EQ(initial_sheet.layers_, expected_layers);
+
+  lynx::devtool::ElementHelper::SetStyleTexts(page.get(), style_root.get(),
+                                              "width:20px;",
+                                              initial_sheet.style_value_range_);
+
+  auto edited_sheet = lynx::devtool::ElementInspector::GetStyleSheetByName(
+      styled_element.get(), ".layered");
+  EXPECT_EQ(edited_sheet.layers_, expected_layers);
+
+  Json::Value matched_after_edit =
+      lynx::devtool::ElementHelper::GetMatchedStylesForNode(
+          styled_element.get());
+  const Json::Value& layers_after_edit =
+      matched_after_edit["matchedCSSRules"][0]["rule"]["layers"];
+  ASSERT_EQ(layers_after_edit.size(), 2U);
+  EXPECT_EQ(layers_after_edit[0]["text"].asString(), "framework");
+  EXPECT_EQ(layers_after_edit[1]["text"].asString(), "components");
 }
 
 TEST_F(ElementHelperTest, SetStyleTextsTest) {
@@ -1668,6 +1785,7 @@ TEST_F(ElementHelperTest,
       1, std::vector<int32_t>{}, token_map, lynx::tasm::CSSKeyframesTokenMap{},
       lynx::tasm::CSSFontFaceRuleMap{});
   adopted_fragment->SetEnableCSSSelector();
+  adopted_fragment->SetEnableCSSRule(true);
 
   lynx::css::CSSParserContext context;
   lynx::css::CSSTokenizer tokenizer(".adopted");
@@ -1681,7 +1799,12 @@ TEST_F(ElementHelperTest,
       std::make_unique<lynx::css::LynxCSSSelector[]>(flattened_size);
   lynx::css::CSSSelectorParser::AdoptSelectorVector(
       selector_vector, selector_arr.get(), flattened_size);
-  adopted_fragment->AddStyleRule(std::move(selector_arr), adopted_token);
+  auto* adopted_layer =
+      adopted_fragment->GetOrCreateRootLayer()->GetOrAddSubLayer(
+          {"runtime", "theme"});
+  adopted_fragment->AddStyleRule(fml::MakeRefCounted<lynx::css::StyleRule>(
+                                     std::move(selector_arr), adopted_token),
+                                 adopted_layer);
 
   auto wrapper = fml::AdoptRef(
       new lynx::tasm::SharedCSSFragmentWrapper(std::move(adopted_fragment)));
@@ -1705,6 +1828,15 @@ TEST_F(ElementHelperTest,
       lynx::devtool::ElementInspector::GetMatchedStyleSheet(element.get());
   ASSERT_EQ(matched_styles.size(), 1U);
   EXPECT_EQ(matched_styles[0].style_name_, ".adopted");
+  const std::vector<std::string> expected_layers{"runtime", "theme"};
+  EXPECT_EQ(matched_styles[0].layers_, expected_layers);
+
+  Json::Value matched =
+      lynx::devtool::ElementHelper::GetMatchedStylesForNode(element.get());
+  const Json::Value& layers = matched["matchedCSSRules"][0]["rule"]["layers"];
+  ASSERT_EQ(layers.size(), 2U);
+  EXPECT_EQ(layers[0]["text"].asString(), "runtime");
+  EXPECT_EQ(layers[1]["text"].asString(), "theme");
 
   auto initial_sheet = lynx::devtool::ElementInspector::GetStyleSheetByName(
       element.get(), ".adopted");
@@ -1723,6 +1855,14 @@ TEST_F(ElementHelperTest,
   EXPECT_EQ(lynx::tasm::CSSDecoder::CSSValueToString(
                 lynx::tasm::CSSPropertyID::kPropertyIDWidth, width_it->second),
             "20px");
+
+  Json::Value matched_after_edit =
+      lynx::devtool::ElementHelper::GetMatchedStylesForNode(element.get());
+  const Json::Value& layers_after_edit =
+      matched_after_edit["matchedCSSRules"][0]["rule"]["layers"];
+  ASSERT_EQ(layers_after_edit.size(), 2U);
+  EXPECT_EQ(layers_after_edit[0]["text"].asString(), "runtime");
+  EXPECT_EQ(layers_after_edit[1]["text"].asString(), "theme");
 }
 
 TEST_F(ElementHelperTest,
