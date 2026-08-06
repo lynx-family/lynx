@@ -76,6 +76,7 @@ class ShadowNodeOwner : public std::enable_shared_from_this<ShadowNodeOwner> {
   void SetContext(const std::shared_ptr<LynxContext>& context);
 
   LynxContext* Context() const { return context_.get(); }
+  std::weak_ptr<LynxContext> GetWeakContext() const { return context_; }
 
   ShadowNode* FindShadowNodeBySign(int sign) const;
 
