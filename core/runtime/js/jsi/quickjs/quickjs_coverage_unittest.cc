@@ -2,6 +2,7 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+#include <cstdint>
 #include <cstdlib>
 #include <cstring>
 #include <memory>
@@ -200,8 +201,10 @@ TEST(QuickjsRuntimeCoverageTest, CoverageIdIsCreatedOnFirstDumpAndStaysStable) {
   const auto first_coverage_id = first_dump_props.find("coverage_id");
   ASSERT_NE(first_coverage_id, first_dump_props.end());
   EXPECT_FALSE(first_coverage_id->second.empty());
-  EXPECT_EQ(first_coverage_id->second.find(std::to_string(kRuntimeId) + "_"),
-            0u);
+  EXPECT_EQ(
+      first_coverage_id->second.find(
+          std::to_string(reinterpret_cast<uintptr_t>(runtime.get())) + "_"),
+      0u);
 
   report_event->Reset();
   runtime->BeforeDestroy();

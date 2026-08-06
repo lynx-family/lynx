@@ -4,6 +4,7 @@
 
 #include "core/runtime/js/jsi/quickjs/quickjs_runtime.h"
 
+#include <cstdint>
 #include <limits>
 #include <random>
 #include <utility>
@@ -152,7 +153,7 @@ void QuickjsRuntime::DumpCoverage() {
   }
 
   if (coverage_id_.empty()) {
-    coverage_id_ = std::to_string(instance_id) + "_" +
+    coverage_id_ = std::to_string(reinterpret_cast<uintptr_t>(this)) + "_" +
                    std::to_string(base::CurrentSystemTimeMicroseconds());
   }
 
