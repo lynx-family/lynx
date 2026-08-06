@@ -17,6 +17,8 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, readonly) BOOL replayGesture;
 // whether restrict the height of lynxView, when size overflow screen. false by default.
 @property(nonatomic, readonly) BOOL heightLimit;
+// Whether the replay view should cover the complete recorded screen viewport.
+@property(nonatomic, readonly) BOOL edgeToEdge;
 @property(nonatomic, readonly) BOOL enablePreDecode;
 @property(nonatomic, readonly) NSInteger thread_mode;
 // To ensure the stability of the e2e test, a delay is provided, in milliseconds.

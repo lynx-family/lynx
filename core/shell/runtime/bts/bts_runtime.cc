@@ -43,6 +43,7 @@
 
 #if ENABLE_TESTBENCH_RECORDER
 #include "core/services/recorder/native_module_recorder.h"
+#include "core/services/recorder/testbench_base_recorder.h"
 #endif
 
 #ifdef USE_PRIMJS_NAPI
@@ -323,6 +324,10 @@ void BTSRuntime::ReadPreloadJSSource(
   for (auto&& path : preload_js_paths) {
     std::string res = delegate_->LoadJSSource(path);
     if (res.length() > 0) {
+#if ENABLE_TESTBENCH_RECORDER
+      tasm::recorder::TestBenchBaseRecorder::GetInstance().RecordPreloadScript(
+          path, res, record_id_);
+#endif
       ret.emplace_back(
           std::move(path),
           std::make_shared<runtime::js::StringBuffer>(std::move(res)));

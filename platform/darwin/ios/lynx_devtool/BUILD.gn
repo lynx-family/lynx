@@ -137,6 +137,7 @@ bundle_data("LynxDebugResources") {
     "assets/lynx_core_dev.js",
     "assets/switchPage",
     "lynx_recorder/lynx_recorder.js",
+    "lynx_recorder/lynx_recorder_load_script_bootstrap.js",
   ]
   outputs = [ "{{bundle_resources_dir}}/{{source_file_part}}" ]
 }

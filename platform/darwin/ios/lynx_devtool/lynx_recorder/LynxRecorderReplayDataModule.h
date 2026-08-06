@@ -3,7 +3,7 @@
 // LICENSE file in the root directory of this source tree.
 
 #import <Foundation/Foundation.h>
-#import <Lynx/LynxModule.h>
+#import <Lynx/LynxContextModule.h>
 
 NS_ASSUME_NONNULL_BEGIN
 @protocol LynxRecorderReplayDataProvider <NSObject>
@@ -20,7 +20,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (NSDictionary *)getSharedData;
 @end
 
-@interface LynxRecorderReplayDataModule : NSObject <LynxModule>
+@interface LynxRecorderReplayDataModule : NSObject <LynxContextModule>
 - (id)initWithParam:(id)param;
 @end
 

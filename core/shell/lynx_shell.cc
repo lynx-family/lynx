@@ -305,6 +305,9 @@ void LynxShell::BuildEngineActor(
       instance_id_, engine_build_options_.enable_unified_pipeline_,
       page_options_);
   tasm->SetEnableBTSRuntime(enable_runtime_);
+#if ENABLE_TESTBENCH_RECORDER
+  tasm->SetRecordID(reinterpret_cast<int64_t>(this));
+#endif
   tasm->SetEnableLayoutOnly(engine_build_options_.enable_layout_only_);
   if (engine_build_options_.lazy_bundle_loader_ != nullptr) {
     tasm->SetLazyBundleLoader(engine_build_options_.lazy_bundle_loader_);
@@ -581,9 +584,13 @@ void LynxShell::InitRuntime(
 
 #if ENABLE_TESTBENCH_RECORDER
   const int64_t record_id = reinterpret_cast<int64_t>(this);
+  layout_actor_->ActLite(
+      [record_id](auto& layout) { layout->SetRecordId(record_id); });
   if (native_module_manager != nullptr) {
     native_module_manager->SetRecordID(record_id);
   }
+  tasm::recorder::LynxViewInitRecorder::GetInstance().RecordThreadStrategy(
+      static_cast<int32_t>(current_strategy_), record_id, enable_runtime_);
 #endif
   std::shared_ptr<base::VSyncMonitor> vsync_monitor;
   if (vsync_monitor_platform_impl) {
