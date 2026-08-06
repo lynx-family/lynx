@@ -478,6 +478,38 @@ jobs:
           abi-list: x86,arm64-v8a
           build-params: -PIntegrationTest
 
+  android-explorer-test:
+    runs-on: lynx-ubuntu-22.04-large
+    timeout-minutes: 60
+    steps:
+      - name: Download Source
+        uses: actions/checkout@v6
+        with:
+          path: lynx
+      - name: Python Setup
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+      - name: Install Common Dependencies
+        uses: ./lynx/.github/actions/common-deps
+        with:
+          target: sparkling
+      - name: Setup gradle cache
+        uses: lynx-infra/cache@5c6160a6a4c7fca80a2f3057bb9dfc9513fcb732
+        with:
+          path: ~/.gradle/caches/modules-2
+          key: gradle-android-explorer-build
+      - name: Test Explorer App
+        run: |-
+          cd $GITHUB_WORKSPACE/lynx
+          source tools/envsetup.sh
+          pushd explorer/android
+          ./gradlew :LynxExplorer:testWithoutSparklingNoasanDebugUnitTest \
+            :LynxExplorer:testWithSparklingNoasanDebugUnitTest \
+            :LynxExplorer:verifySparklingAndroidRuntimeSmokeTestArtifacts \
+            -Penable_trace=perfetto -PabiList=x86,arm64-v8a --no-daemon -PIntegrationTest
+          popd
+
   windows-explorer-build-x64:
     runs-on: lynx-windows-2022-large
     steps:

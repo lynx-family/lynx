@@ -100,7 +100,7 @@ handle_options() {
 SKIP_CARD_BUILD=false
 INTEGRATION_TEST=false
 SPARKLING_MODE=${SPARKLING_MODE:-disable_sparkling}
-SPARKLING_SOURCE_ROOT=${SPARKLING_SOURCE_ROOT:-generated/sparkling-source}
+SPARKLING_SOURCE_ROOT=${SPARKLING_SOURCE_ROOT:-../../../generated/sparkling-source}
 
 handle_options "$@"
 
@@ -118,8 +118,8 @@ export SPARKLING_SOURCE_ROOT
 enable_trace_param=$([ "$enable_trace" == true ] && echo "--enable-trace" || echo "")
 
 if [[ "$SPARKLING_MODE" == "enable_sparkling" ]]; then
-    python3 "$script_dir/scripts/sync_sparkling_source.py" \
-        --manifest "$script_dir/sparkling-source.json" \
+    python3 "$root_dir/explorer/scripts/sync_sparkling_source.py" \
+        --manifest "$root_dir/explorer/sparkling-source.json" \
         --source-root "$SPARKLING_SOURCE_ROOT"
 fi
 
@@ -151,7 +151,7 @@ pod install
 python3 "$script_dir/scripts/verify_sparkling_ownership.py" \
     --mode "$SPARKLING_MODE" \
     --lockfile "$script_dir/Podfile.lock" \
-    --manifest "$script_dir/sparkling-source.json" \
+    --manifest "$root_dir/explorer/sparkling-source.json" \
     --source-root "$SPARKLING_SOURCE_ROOT" \
     --lynx-root "$root_dir"
 popd

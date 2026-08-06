@@ -77,7 +77,7 @@ end
 
 sparkling_pod_paths = {}
 if sparkling_mode == 'enable_sparkling'
-  manifest_path = File.join(__dir__, 'sparkling-source.json')
+  manifest_path = File.expand_path('../../../sparkling-source.json', __dir__)
   begin
     sparkling_manifest = JSON.parse(File.read(manifest_path))
   rescue Errno::ENOENT, JSON::ParserError => e
@@ -106,7 +106,7 @@ if sparkling_mode == 'enable_sparkling'
 
   source_root_value = ENV['SPARKLING_SOURCE_ROOT']
   if source_root_value.nil? || source_root_value.empty?
-    source_root_value = File.join(__dir__, 'generated/sparkling-source')
+    source_root_value = File.expand_path('../../../generated/sparkling-source', __dir__)
   end
   sparkling_source_root = File.expand_path(source_root_value, __dir__)
   forbidden_reason = forbidden_source_reason.call(sparkling_source_root)
@@ -115,7 +115,7 @@ if sparkling_mode == 'enable_sparkling'
   end
   unless File.directory?(sparkling_source_root)
     raise "Sparkling source checkout is missing at #{sparkling_source_root}; " \
-          'run scripts/sync_sparkling_source.py first'
+          'run explorer/scripts/sync_sparkling_source.py first'
   end
   real_source_root = File.realpath(sparkling_source_root)
 

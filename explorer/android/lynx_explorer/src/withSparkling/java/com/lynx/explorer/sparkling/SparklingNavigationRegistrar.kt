@@ -6,15 +6,15 @@ package com.lynx.explorer.sparkling
 import android.app.Activity
 import android.app.Application
 import android.content.Context
-import com.tiktok.sparkling.Sparkling
-import com.tiktok.sparkling.SparklingContext
+import com.lynx.explorer.routing.RequestedRuntime
+import com.lynx.explorer.routing.RouteCoordinator
+import com.lynx.explorer.routing.RouteSource
 import com.tiktok.sparkling.hybridkit.utils.GlobalPropsUtils
 import com.tiktok.sparkling.method.registry.core.BridgePlatformType
 import com.tiktok.sparkling.method.registry.core.IBridgeContext
 import com.tiktok.sparkling.method.registry.core.SparklingBridgeManager
 import com.tiktok.sparkling.method.registry.core.model.context.ContextProviderFactory
 import com.tiktok.sparkling.method.router.close.RouterCloseMethod
-import com.tiktok.sparkling.method.router.open.RouterOpenMethod
 import com.tiktok.sparkling.method.router.utils.AbsRouteOpenHandler
 import com.tiktok.sparkling.method.router.utils.IHostRouterDepend
 import com.tiktok.sparkling.method.router.utils.RouterProvider
@@ -22,7 +22,8 @@ import com.tiktok.sparkling.method.router.utils.RouterProvider
 object SparklingNavigationRegistrar {
   @JvmStatic
   fun install(application: Application) {
-    SparklingBridgeManager.registerIDLMethod(RouterOpenMethod::class.java, BridgePlatformType.LYNX)
+    SparklingBridgeManager.registerIDLMethod(
+        ExplorerRouterOpenMethod::class.java, BridgePlatformType.LYNX)
     SparklingBridgeManager.registerIDLMethod(RouterCloseMethod::class.java, BridgePlatformType.LYNX)
     RouterProvider.hostRouterDepend = ExplorerRouterDepend(application)
     GlobalPropsUtils.Companion.instance.setStableProps(
@@ -48,10 +49,13 @@ object SparklingNavigationRegistrar {
       if (scheme.isBlank()) {
         return false
       }
-      val sparklingContext = SparklingContext()
-      sparklingContext.scheme = scheme
       val launchContext = context ?: bridgeContext?.context ?: application
-      return Sparkling.build(launchContext.applicationContext, sparklingContext).navigate()
+      return RouteCoordinator.open(
+          launchContext,
+          scheme,
+          RequestedRuntime.SPARKLING,
+          RouteSource.SPARKLING_ROUTER,
+          extraParams["extra"] as? Map<*, *>).accepted
     }
 
     override fun closeView(
@@ -60,6 +64,10 @@ object SparklingNavigationRegistrar {
         containerID: String?,
         animated: Boolean?): Boolean {
       val activity = bridgeContext?.ownerActivity ?: return false
+      if (!containerID.isNullOrEmpty()) {
+        val ownerID = bridgeContext.containerID
+        if (ownerID != containerID) return false
+      }
       activity.runOnUiThread {
         if (!activity.isFinishing) {
           activity.finish()

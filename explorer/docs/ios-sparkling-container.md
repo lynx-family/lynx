@@ -247,11 +247,11 @@ For a local `+sparkling` build, use Node 22 and pnpm 10.26.0, sync the pinned so
 then build its official playground before running `bundle_install.sh`:
 
 ```bash
-python3 scripts/sync_sparkling_source.py \
-  --manifest sparkling-source.json \
-  --source-root generated/sparkling-source
-pnpm --dir generated/sparkling-source install --frozen-lockfile
-pnpm --dir generated/sparkling-source --filter sparkling-playground build
+python3 ../../../scripts/sync_sparkling_source.py \
+  --manifest ../../../sparkling-source.json \
+  --source-root ../../../generated/sparkling-source
+pnpm --dir ../../../generated/sparkling-source install --frozen-lockfile
+pnpm --dir ../../../generated/sparkling-source --filter sparkling-playground build
 bash bundle_install.sh --sparkling-mode enable_sparkling
 ```
 

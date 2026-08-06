@@ -1,5 +1,8 @@
 # Lynx Explorer
 
+Platform container integration: [Android Sparkling](docs/android-sparkling-container.md)
+and [iOS Sparkling](docs/ios-sparkling-container.md).
+
 The official app for testing and exploring Lynx. It is featured in Lynx Quick Start Guide at <https://lynxjs.org/guide/start/quick-start.html>.
 
 The dir consists of two main parts:
