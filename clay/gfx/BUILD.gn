@@ -139,4 +139,21 @@ if (enable_unittests) {
       "../testing:testing_lib",
     ]
   }
+
+  if (enable_skity) {
+    executable("animated_image_unittests") {
+      testonly = true
+
+      sources = [
+        "image/animated_image_player.cc",
+        "image/animated_image_player_unittests.cc",
+      ]
+
+      deps = [
+        ":gfx_fixtures",
+        "../../base/src:base_static",
+        "../testing",
+      ]
+    }
+  }
 }

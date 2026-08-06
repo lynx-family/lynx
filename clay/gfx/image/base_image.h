@@ -39,7 +39,7 @@ class BaseImage : public std::enable_shared_from_this<BaseImage> {
   fml::RefPtr<GraphicsImage> GetGraphicsImage() const {
     return gpu_image_.object();
   }
-  size_t GetGraphicsImageAllocSize() const {
+  virtual size_t GetGraphicsImageAllocSize() const {
     return gpu_image_.object() ? gpu_image_.object()->width() *
                                      gpu_image_.object()->height() * 4
                                : 0;
@@ -60,7 +60,7 @@ class BaseImage : public std::enable_shared_from_this<BaseImage> {
   bool IsMipmapped() const { return mipmapped_; }
   bool HasResized() const;
 
-  std::unique_ptr<BaseImageInstance> NewInstance();
+  virtual std::unique_ptr<BaseImageInstance> NewInstance();
   virtual void OnInstanceCreated(BaseImageInstance* instance);
   virtual void OnInstanceDestroyed(BaseImageInstance* instance);
 
