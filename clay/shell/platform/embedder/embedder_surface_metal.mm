@@ -28,10 +28,15 @@ namespace clay {
 namespace {
 
 #ifdef ENABLE_SKITY
-constexpr MsaaSampleCount GetSkityMetalMsaaSampleCount() {
+constexpr MsaaSampleCount GetSkityMetalMsaaSampleCount(bool enable_partial_repaint) {
 #if defined(OS_OSX)
-  return MsaaSampleCount::kFour;
+  // Skity uses a memoryless MSAA attachment and resolves it into the target
+  // texture. It cannot load the previous contents of that resolve texture at
+  // the beginning of a partially repainted frame, so use a single-sample
+  // target when the previous framebuffer contents need to be retained.
+  return enable_partial_repaint ? MsaaSampleCount::kNone : MsaaSampleCount::kFour;
 #else
+  (void)enable_partial_repaint;
   return MsaaSampleCount::kNone;
 #endif
 }
@@ -62,8 +67,9 @@ clay::GrContextPtr EmbedderSurfaceMetal::GetMainGrContext() { return main_contex
 #ifdef ENABLE_SKITY
 std::optional<OutputSurface::SkityPrecompileConfig> EmbedderSurfaceMetal::GetSkityPrecompileConfig()
     const {
+  const auto msaa_sample_count = GetSkityMetalMsaaSampleCount(delegate_->EnablePartialRepaint());
   return SkityPrecompileConfig{skity::PrecompileColorType::kBGRA,
-                               GetSkityMetalMsaaSampleCount() != MsaaSampleCount::kNone};
+                               msaa_sample_count != MsaaSampleCount::kNone};
 }
 #endif  // ENABLE_SKITY
 
@@ -94,8 +100,9 @@ std::unique_ptr<Surface> EmbedderSurfaceMetal::CreateGPUSurface(clay::GrContextP
   if (!IsValid()) {
     return nullptr;
   }
-  auto surface = std::make_unique<GPUSurfaceMetalSkity>(this, context ? context : main_context_,
-                                                        GetSkityMetalMsaaSampleCount(), true);
+  auto surface = std::make_unique<GPUSurfaceMetalSkity>(
+      this, context ? context : main_context_,
+      GetSkityMetalMsaaSampleCount(delegate_->EnablePartialRepaint()), true);
 
   if (!surface->IsValid()) {
     return nullptr;
