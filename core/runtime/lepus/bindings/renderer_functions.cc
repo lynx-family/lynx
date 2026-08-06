@@ -3214,6 +3214,177 @@ RENDERER_FUNCTION_CC(FiberInsertElementBefore) {
   RETURN(lepus::Value(std::move(child)));
 }
 
+RENDERER_FUNCTION_CC(FiberInsertElementAt) {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_INSERT_ELEMENT_AT);
+  // parameter size = 3
+  // [0] Element -> parent element
+  // [1] Element -> child element
+  // [2] Number -> index
+  CHECK_ARGC_GE(FiberInsertElementAt, 3);
+  CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(arg0, 0, RefCounted,
+                                        FiberInsertElementAt);
+  CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(arg1, 1, RefCounted,
+                                        FiberInsertElementAt);
+  CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(arg2, 2, Number, FiberInsertElementAt);
+
+  auto parent = GetFiberElementFromValue(*arg0);
+  auto child = GetFiberElementFromValue(*arg1);
+  if (parent == nullptr || child == nullptr) {
+    ElementAPIError("FiberInsertElementAt parent and child should be Element");
+    RETURN_UNDEFINED();
+  }
+
+  const auto index = static_cast<int32_t>(arg2->Number());
+  const int64_t child_count = static_cast<int64_t>(parent->GetChildCount());
+  if (index < 0 || static_cast<int64_t>(index) > child_count) {
+    ElementAPIError(
+        "FiberInsertElementAt index is out of bounds, index: %d, size: %lld",
+        index, static_cast<long long>(child_count));
+    RETURN_UNDEFINED();
+  }
+
+  parent->InsertNode(child, index);
+  ON_NODE_ADDED(child);
+  RETURN_UNDEFINED();
+}
+
+RENDERER_FUNCTION_CC(FiberRemoveElementsAt) {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_REMOVE_ELEMENTS_AT);
+  // parameter size = 3
+  // [0] Element -> parent element
+  // [1] Number -> index
+  // [2] Number -> count
+  CHECK_ARGC_GE(FiberRemoveElementsAt, 3);
+  CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(arg0, 0, RefCounted,
+                                        FiberRemoveElementsAt);
+  CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(arg1, 1, Number, FiberRemoveElementsAt);
+  CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(arg2, 2, Number, FiberRemoveElementsAt);
+
+  auto parent = GetFiberElementFromValue(*arg0);
+  if (parent == nullptr) {
+    ElementAPIError("FiberRemoveElementsAt parent should be Element");
+    RETURN_UNDEFINED();
+  }
+
+  const auto index = static_cast<int32_t>(arg1->Number());
+  const auto count = static_cast<int32_t>(arg2->Number());
+  const int64_t child_count = static_cast<int64_t>(parent->GetChildCount());
+  const int64_t range_end =
+      static_cast<int64_t>(index) + static_cast<int64_t>(count);
+  if (index < 0 || count < 0 || static_cast<int64_t>(index) > child_count ||
+      range_end > child_count) {
+    ElementAPIError(
+        "FiberRemoveElementsAt range is out of bounds, index: %d, count: %d, "
+        "size: %lld",
+        index, count, static_cast<long long>(child_count));
+    RETURN_UNDEFINED();
+  }
+
+  base::InlineVector<fml::RefPtr<Element>, 16> removed_elements;
+  for (int32_t offset = 0; offset < count; ++offset) {
+    const auto child_index =
+        static_cast<size_t>(static_cast<int64_t>(index) + offset);
+    auto* child = parent->GetChildAt(child_index);
+    if (child == nullptr) {
+      ElementAPIError(
+          "FiberRemoveElementsAt failed to resolve the complete child range");
+      RETURN_UNDEFINED();
+    }
+    removed_elements.emplace_back(fml::RefPtr<Element>(child));
+  }
+
+  for (const auto& child : removed_elements) {
+    ON_NODE_REMOVED(child);
+    parent->RemoveNode(child);
+  }
+  RETURN_UNDEFINED();
+}
+
+RENDERER_FUNCTION_CC(FiberMoveElements) {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_MOVE_ELEMENTS);
+  // parameter size = 4
+  // [0] Element -> parent element
+  // [1] Number -> source index in the pre-change sequence
+  // [2] Number -> destination index in the pre-change sequence
+  // [3] Number -> count
+  CHECK_ARGC_GE(FiberMoveElements, 4);
+  CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(arg0, 0, RefCounted, FiberMoveElements);
+  CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(arg1, 1, Number, FiberMoveElements);
+  CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(arg2, 2, Number, FiberMoveElements);
+  CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(arg3, 3, Number, FiberMoveElements);
+
+  auto parent = GetFiberElementFromValue(*arg0);
+  if (parent == nullptr) {
+    ElementAPIError("FiberMoveElements parent should be Element");
+    RETURN_UNDEFINED();
+  }
+
+  const auto from = static_cast<int32_t>(arg1->Number());
+  const auto to = static_cast<int32_t>(arg2->Number());
+  const auto count = static_cast<int32_t>(arg3->Number());
+  const int64_t child_count = static_cast<int64_t>(parent->GetChildCount());
+  const int64_t source_end =
+      static_cast<int64_t>(from) + static_cast<int64_t>(count);
+  if (from < 0 || to < 0 || count < 0 ||
+      static_cast<int64_t>(from) > child_count ||
+      static_cast<int64_t>(to) > child_count || source_end > child_count) {
+    ElementAPIError(
+        "FiberMoveElements range is out of bounds, from: %d, to: %d, count: "
+        "%d, size: %lld",
+        from, to, count, static_cast<long long>(child_count));
+    RETURN_UNDEFINED();
+  }
+
+  if (count == 0 || from == to || static_cast<int64_t>(to) == source_end) {
+    RETURN_UNDEFINED();
+  }
+  if (from < to && static_cast<int64_t>(to) < source_end) {
+    ElementAPIError(
+        "FiberMoveElements destination overlaps the source range, from: %d, "
+        "to: %d, count: %d",
+        from, to, count);
+    RETURN_UNDEFINED();
+  }
+
+  const int64_t destination =
+      from > to ? static_cast<int64_t>(to)
+                : static_cast<int64_t>(to) - static_cast<int64_t>(count);
+  const int64_t destination_end = destination + static_cast<int64_t>(count);
+  if (destination < 0 || destination > child_count - count ||
+      destination_end - 1 > std::numeric_limits<int32_t>::max()) {
+    ElementAPIError(
+        "FiberMoveElements destination is out of bounds, from: %d, to: %d, "
+        "count: %d, destination: %lld, size: %lld",
+        from, to, count, static_cast<long long>(destination),
+        static_cast<long long>(child_count));
+    RETURN_UNDEFINED();
+  }
+
+  base::InlineVector<fml::RefPtr<Element>, 16> moving_elements;
+  for (int32_t offset = 0; offset < count; ++offset) {
+    const auto child_index =
+        static_cast<size_t>(static_cast<int64_t>(from) + offset);
+    auto* child = parent->GetChildAt(child_index);
+    if (child == nullptr) {
+      ElementAPIError(
+          "FiberMoveElements failed to resolve the complete source range");
+      RETURN_UNDEFINED();
+    }
+    moving_elements.emplace_back(fml::RefPtr<Element>(child));
+  }
+
+  for (const auto& child : moving_elements) {
+    ON_NODE_REMOVED(child);
+    parent->RemoveNode(child, false);
+  }
+  for (int32_t offset = 0; offset < count; ++offset) {
+    const auto& child = moving_elements[offset];
+    parent->InsertNode(child, static_cast<int32_t>(destination + offset));
+    ON_NODE_ADDED(child);
+  }
+  RETURN_UNDEFINED();
+}
+
 RENDERER_FUNCTION_CC(FiberFirstElement) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_FIRST_ELEMENT);
   // parameter size = 1
