@@ -297,6 +297,8 @@ declare global {
 
   function __SetEvents(node: ElementRef, events: Record<string, unknown>[] | undefined): void;
 
+  function __SetModifierToElement(node: ElementRef, modifier: object | null | undefined): void;
+
   function __GetEvent(node: ElementRef, name: string, type: string): Record<string, any>;
 
   function __GetEvents(node: ElementRef): Record<string, Record<string, any>>;
