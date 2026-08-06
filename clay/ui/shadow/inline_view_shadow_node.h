@@ -30,6 +30,8 @@ class InlineViewShadowNode : public ShadowNode {
 
   int placeholder_index() const { return placeholder_index_; }
 
+  bool OccupiesFullLine() const { return occupies_full_line_; }
+
   void ResetTextLayout();
 
   void SetBaselineOffset(double baseline_offset) override {
@@ -44,6 +46,8 @@ class InlineViewShadowNode : public ShadowNode {
   size_t start_glyph_ = 0;
   size_t end_glyph_ = 0;
   double baseline_offset_ = 0.f;
+  double measured_baseline_ = 0.f;
+  bool occupies_full_line_ = false;
 };
 
 }  // namespace clay

@@ -73,6 +73,8 @@ class LayoutContextText : public LayoutContext {
     return text_.size() + placeholder_num_;
   }
 
+  bool IsAtLineStart() const { return text_.empty() || text_.back() == u'\n'; }
+
   size_t TextSizeIncludingPlaceholdersInUtf32();
 
   void AddInlineEmojiInfo(int placeholder_id, InlineEmojiBitmap&& bitmap) {

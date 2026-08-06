@@ -15,13 +15,17 @@ TextUpdateBundle::~TextUpdateBundle() {}
 void TextUpdateBundle::UpdateExtraData(BaseView* view) {
   if (view && view->Is<TextView>() && paragraph_) {
     auto text_view = static_cast<TextView*>(view);
+    auto* render_text = text_view->GetRenderText();
     text_view->ClearInlineIndexes();
-    for (auto info : info_) {
-      auto info_view = text_view->page_view()->FindViewByViewId(info.id);
-      auto parent_view =
-          text_view->page_view()->FindViewByViewId(info.parent_id);
+    for (auto& info : info_) {
+      auto page_view = text_view->page_view();
+      if (!page_view || !page_view->GetViewContext()) {
+        continue;
+      }
+      auto info_view = page_view->FindViewByViewId(info.id);
+      auto parent_view = page_view->FindViewByViewId(info.parent_id);
       if (!info_view || !parent_view) {
-        break;
+        continue;
       }
       if (info.need_mount) {
         if (info.placeholder_index.value_or(-1) >= 0) {
@@ -46,15 +50,33 @@ void TextUpdateBundle::UpdateExtraData(BaseView* view) {
         if (info.range_) {
           if (info_view->Is<InlineTextView>()) {
             auto render_object = info_view->render_object();
-            static_cast<RenderInlineText*>(render_object)->ClearTextBox();
-            for (auto range : info.range_.value()) {
-              auto boxes = paragraph_->GetRectsForRange(
-                  range.start(), range.end(),
-                  txt::Paragraph::RectHeightStyle::kTight,
-                  txt::Paragraph::RectWidthStyle::kTight);
-              for (auto& box : boxes) {
-                static_cast<RenderInlineText*>(render_object)
-                    ->AddTextBox(box.rect);
+            auto* render_inline_text =
+                static_cast<RenderInlineText*>(render_object);
+            render_inline_text->ClearTextBox();
+            if (info.use_inline_view_layout_box && info.view_style) {
+              render_inline_text->SetParagraphPaintSource(nullptr);
+              render_inline_text->AddTextBox(skity::Rect::MakeLTRB(
+                  info.view_style->padding_left, info.view_style->padding_top,
+                  info.view_style->width - info.view_style->padding_right,
+                  info.view_style->height - info.view_style->padding_bottom));
+              if (info.inline_view_paragraph) {
+                render_inline_text->SetParagraph(
+                    std::move(info.inline_view_paragraph),
+                    info.inline_view_text);
+              } else {
+                render_inline_text->ClearParagraph();
+              }
+            } else {
+              render_inline_text->ClearParagraph();
+              render_inline_text->SetParagraphPaintSource(render_text);
+              for (auto range : info.range_.value()) {
+                auto boxes = paragraph_->GetRectsForRange(
+                    range.start(), range.end(),
+                    txt::Paragraph::RectHeightStyle::kTight,
+                    txt::Paragraph::RectWidthStyle::kTight);
+                for (auto& box : boxes) {
+                  render_inline_text->AddTextBox(box.rect);
+                }
               }
             }
             static_cast<InlineTextView*>(info_view)->SetTextRange(

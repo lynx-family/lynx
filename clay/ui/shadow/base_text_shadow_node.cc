@@ -569,7 +569,15 @@ void BaseTextShadowNode::TextLayout(LayoutContext* context) {
 }
 
 void BaseTextShadowNode::ProcessChildLayout(LayoutContext* context) {
-  for (ShadowNode* child : children_) {
+  auto* text_context = static_cast<LayoutContextText*>(context);
+  for (size_t index = 0; index < children_.size(); ++index) {
+    ShadowNode* child = children_[index];
+    const bool occupies_full_line =
+        child->IsInlineViewShadowNode() &&
+        static_cast<InlineViewShadowNode*>(child)->OccupiesFullLine();
+    if (occupies_full_line && !text_context->IsAtLineStart()) {
+      text_context->AddText(u"\n");
+    }
     if (child->IsInlineTextShadowNode() || child->IsInlineImageShadowNode()) {
       child->UpdateLayoutStylesFromLynx();
     }
@@ -583,6 +591,20 @@ void BaseTextShadowNode::ProcessChildLayout(LayoutContext* context) {
     if (child->MarginRight() > 0.f || child->PaddingRight() > 0.f) {
       static_cast<LayoutContextText*>(context)->AddFakePlaceholder(
           child->MarginRight() + child->PaddingRight());
+    }
+    if (occupies_full_line) {
+      bool next_starts_with_newline = false;
+      if (index + 1 < children_.size() &&
+          children_[index + 1]->IsBaseTextShadowNode()) {
+        auto* next_text =
+            static_cast<BaseTextShadowNode*>(children_[index + 1]);
+        auto raw_text = next_text->GetRawText();
+        next_starts_with_newline =
+            !raw_text.empty() && raw_text.front() == u'\n';
+      }
+      if (!next_starts_with_newline) {
+        text_context->AddText(u"\n");
+      }
     }
   }
 }

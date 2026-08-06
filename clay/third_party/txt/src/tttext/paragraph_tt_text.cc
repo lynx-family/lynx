@@ -324,6 +324,15 @@ void ParagraphTTText::UpdateForegroundPaint(size_t start,
 void ParagraphTTText::AddPlaceholder(tttext::Style& style,
                                      PlaceholderRun& span,
                                      bool is_float) {
+  // An inline placeholder is a replaced element and must be allowed to expand
+  // its line box beyond the specified line height. TTText's exact rule clamps
+  // object runs as well as glyph runs, which can move a tall placeholder above
+  // the preceding line and leave following lines overlapping it.
+  auto& paragraph_style = paragraph_->GetParagraphStyle();
+  if (paragraph_style.GetLineHeightRule() == tttext::RulerType::kExact) {
+    paragraph_style.SetLineHeightInPxAtLeast(
+        paragraph_style.GetLineHeightInPx());
+  }
   auto delegate = std::make_unique<TTShapeRun>(span, style);
   placeholder_pos_.push_back(paragraph_->GetCharCount());
   paragraph_->AddShapeRun(&style, std::move(delegate), is_float);
