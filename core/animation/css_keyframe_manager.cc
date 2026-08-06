@@ -313,6 +313,7 @@ void CSSKeyframeManager::SetAnimationDataAndPlayInternal(
       // Update an existing animation, add it to temp_active_animations_map_ and
       // delete it from animations_map_;
       if (force_rebuild) {
+        const auto origin = animation->second->GetOrigin();
         if (use_new_pipeline_cleanup) {
           PrepareAnimationRemoval(animation->second, new_base_resolved_styles,
                                   new_underlying_layout_only_styles);
@@ -320,7 +321,7 @@ void CSSKeyframeManager::SetAnimationDataAndPlayInternal(
           animation->second->Destroy();
         }
         auto recreated_animation =
-            CreateAnimation(data, new_base_custom_properties);
+            CreateAnimation(data, new_base_custom_properties, origin);
         if (recreated_animation != nullptr) {
           temp_active_animations_map_[data.name] = recreated_animation;
         }
@@ -334,6 +335,7 @@ void CSSKeyframeManager::SetAnimationDataAndPlayInternal(
       if (animation->second->GetState() == Animation::State::kStop &&
           HasNoSampleableKeyframes(animation->second,
                                    has_custom_property_keyframes)) {
+        const auto origin = animation->second->GetOrigin();
         if (use_new_pipeline_cleanup) {
           PrepareAnimationRemoval(animation->second, new_base_resolved_styles,
                                   new_underlying_layout_only_styles);
@@ -341,7 +343,7 @@ void CSSKeyframeManager::SetAnimationDataAndPlayInternal(
           animation->second->Destroy();
         }
         auto recreated_animation =
-            CreateAnimation(data, new_base_custom_properties);
+            CreateAnimation(data, new_base_custom_properties, origin);
         if (recreated_animation != nullptr) {
           temp_active_animations_map_[data.name] = recreated_animation;
         }
@@ -726,9 +728,17 @@ bool CSSKeyframeManager::NeedsFutureTickForNewPipeline() const {
          has_running_animation(temp_keep_animations_map_);
 }
 
+Animation::Origin CSSKeyframeManager::ResolveAnimationOrigin(
+    const starlight::AnimationData& data) const {
+  return element_->HasImperativeAnimationMetadata(data.name)
+             ? Animation::Origin::kWebAnimation
+             : Animation::Origin::kCSSAnimation;
+}
+
 std::shared_ptr<Animation> CSSKeyframeManager::CreateAnimation(
     starlight::AnimationData& data,
-    const tasm::CustomPropertiesMap* base_custom_properties) {
+    const tasm::CustomPropertiesMap* base_custom_properties,
+    std::optional<Animation::Origin> origin) {
   // 1. create animation & keyframe_effect according to animation data
   auto animation = std::make_shared<Animation>(data.name);
   animation->set_animation_data(data);
@@ -743,6 +753,8 @@ std::shared_ptr<Animation> CSSKeyframeManager::CreateAnimation(
   animation->SetKeyframeEffect(std::move(keyframe_effect));
   animation->BindDelegate(this);
   animation->BindElement(this->element());
+  animation->SetOrigin(origin.has_value() ? *origin
+                                          : ResolveAnimationOrigin(data));
   // 2. create keyframe Models& animation Curves according to CSS keyframe
   // tokens
   MakeKeyframeModel(animation.get(), data.name, base_custom_properties);

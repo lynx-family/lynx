@@ -2,7 +2,9 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+#include <chrono>
 #include <memory>
+#include <thread>
 
 #include "core/animation/css_keyframe_manager.h"
 #include "core/animation/keyframe_effect.h"
@@ -773,6 +775,166 @@ TEST_F(AnimationTest, TestDurationZero) {
     test_animation->Destroy();
     EXPECT_TRUE(tasm_mediator->only_received_animation_cancel_event());
   }
+}
+
+// CDP Animation: each Animation gets a stable, process-unique numeric id that
+// is never reused, so records cleared on navigation can never collide with
+// fresh ids.
+TEST_F(AnimationTest, IdIsUniqueAndNonZero) {
+  auto a1 = InitTestAnimation();
+  auto a2 = InitTestAnimation();
+  EXPECT_GT(a1->id(), 0);
+  EXPECT_GT(a2->id(), 0);
+  EXPECT_NE(a1->id(), a2->id());
+}
+
+// CDP Animation: the origin tags an animation's entry point so the Inspector
+// can map it to CSSAnimation / CSSTransition / WebAnimation. It defaults to
+// CSSAnimation (CSS @keyframes) and is settable by the manager.
+TEST_F(AnimationTest, OriginDefaultsToCSSAnimationAndIsSettable) {
+  auto a = InitTestAnimation();
+  EXPECT_EQ(a->GetOrigin(), animation::Animation::Origin::kCSSAnimation);
+  a->SetOrigin(animation::Animation::Origin::kCSSTransition);
+  EXPECT_EQ(a->GetOrigin(), animation::Animation::Origin::kCSSTransition);
+  a->SetOrigin(animation::Animation::Origin::kWebAnimation);
+  EXPECT_EQ(a->GetOrigin(), animation::Animation::Origin::kWebAnimation);
+}
+
+// CDP Animation.getCurrentTime: the timeline time is zero before the animation
+// has a real start time.
+TEST_F(AnimationTest, GetCurrentTimeIsZeroBeforeStart) {
+  auto a = InitTestAnimation();
+  EXPECT_EQ(a->GetCurrentTime(), fml::TimeDelta::Zero());
+
+  a->Pause();
+  EXPECT_EQ(a->GetCurrentTime(), fml::TimeDelta::Zero());
+  EXPECT_EQ(a->GetState(), animation::Animation::State::kPause);
+}
+
+// Pausing snapshots currentTime immediately. Inspector queries must remain
+// stable before the animation receives another frame, and replaying a stopped
+// animation must replace the old snapshot.
+TEST_F(AnimationTest, GetCurrentTimeRemainsFrozenWhilePaused) {
+  auto a = InitTestAnimation();
+  auto data = InitAnimationData(lynx::base::String("test_animation"), 3000, 0,
+                                starlight::TimingFunctionData(), 1,
+                                starlight::AnimationFillModeType::kBoth,
+                                starlight::AnimationDirectionType::kNormal,
+                                starlight::AnimationPlayStateType::kRunning);
+  a->UpdateAnimationData(data);
+  a->Play(false);
+
+  auto start_time = fml::TimePoint::FromEpochDelta(
+      fml::TimeDelta::FromSecondsF(1000000000.0));
+  a->SampleAt(start_time);
+  std::this_thread::sleep_for(std::chrono::milliseconds(2));
+  EXPECT_GT(a->GetCurrentTime(), fml::TimeDelta::Zero());
+  a->Pause();
+
+  const auto first_pause_current_time = a->GetCurrentTime();
+  EXPECT_EQ(a->GetState(), animation::Animation::State::kPause);
+  std::this_thread::sleep_for(std::chrono::milliseconds(2));
+  EXPECT_EQ(a->GetCurrentTime(), first_pause_current_time);
+  EXPECT_EQ(a->GetState(), animation::Animation::State::kPause);
+
+  a->Play(false);
+  const auto current_time_at_resume = a->GetCurrentTime();
+  std::this_thread::sleep_for(std::chrono::milliseconds(2));
+  EXPECT_GT(a->GetCurrentTime(), current_time_at_resume);
+  a->Pause();
+
+  a->Stop();
+  a->Play(false);
+  EXPECT_EQ(a->GetCurrentTime(), fml::TimeDelta::Zero());
+  auto restart_time = start_time + fml::TimeDelta::FromSecondsF(1.0);
+  a->SampleAt(restart_time);
+  std::this_thread::sleep_for(std::chrono::milliseconds(2));
+  a->Pause();
+
+  const auto second_pause_current_time = a->GetCurrentTime();
+  EXPECT_GT(second_pause_current_time, fml::TimeDelta::Zero());
+  std::this_thread::sleep_for(std::chrono::milliseconds(2));
+  EXPECT_EQ(a->GetCurrentTime(), second_pause_current_time);
+}
+
+// Stopping snapshots currentTime for explicit stops, natural completion, and
+// destruction. Inspector queries must remain stable in the terminal state.
+TEST_F(AnimationTest, GetCurrentTimeRemainsFrozenAfterStop) {
+  const auto start_time = fml::TimePoint::FromEpochDelta(
+      fml::TimeDelta::FromSecondsF(1000000000.0));
+  auto start_animation = [this, start_time]() {
+    auto animation = InitTestAnimation();
+    auto data = InitAnimationData(lynx::base::String("test_animation"), 3000, 0,
+                                  starlight::TimingFunctionData(), 1,
+                                  starlight::AnimationFillModeType::kBoth,
+                                  starlight::AnimationDirectionType::kNormal,
+                                  starlight::AnimationPlayStateType::kRunning);
+    animation->UpdateAnimationData(data);
+    animation->Play(false);
+    auto frame_time = start_time;
+    animation->SampleAt(frame_time);
+    std::this_thread::sleep_for(std::chrono::milliseconds(2));
+    return animation;
+  };
+
+  {
+    auto animation = start_animation();
+    animation->Stop();
+    const auto stopped_current_time = animation->GetCurrentTime();
+    EXPECT_GT(stopped_current_time, fml::TimeDelta::Zero());
+    std::this_thread::sleep_for(std::chrono::milliseconds(2));
+    EXPECT_EQ(animation->GetCurrentTime(), stopped_current_time);
+  }
+
+  {
+    auto animation = start_animation();
+    auto finish_time = start_time + fml::TimeDelta::FromSecondsF(4.0);
+    animation->SampleAt(finish_time);
+    EXPECT_EQ(animation->GetState(), animation::Animation::State::kStop);
+    const auto stopped_current_time = animation->GetCurrentTime();
+    EXPECT_GT(stopped_current_time, fml::TimeDelta::Zero());
+    std::this_thread::sleep_for(std::chrono::milliseconds(2));
+    EXPECT_EQ(animation->GetCurrentTime(), stopped_current_time);
+  }
+
+  {
+    auto animation = start_animation();
+    animation->Destroy();
+    EXPECT_EQ(animation->GetState(), animation::Animation::State::kStop);
+    const auto stopped_current_time = animation->GetCurrentTime();
+    EXPECT_GT(stopped_current_time, fml::TimeDelta::Zero());
+    std::this_thread::sleep_for(std::chrono::milliseconds(2));
+    EXPECT_EQ(animation->GetCurrentTime(), stopped_current_time);
+  }
+}
+
+// CDP Animation.getCurrentTime is strictly read-only: querying it must not
+// advance, pause, restart, or otherwise mutate the animation's state, either
+// before start or after the first frame.
+TEST_F(AnimationTest, GetCurrentTimeIsReadOnly) {
+  auto a = InitTestAnimation();
+  auto data = InitAnimationData(lynx::base::String("test_animation"), 3000, 0,
+                                starlight::TimingFunctionData(), 1,
+                                starlight::AnimationFillModeType::kBoth,
+                                starlight::AnimationDirectionType::kNormal,
+                                starlight::AnimationPlayStateType::kRunning);
+  a->UpdateAnimationData(data);
+
+  // Before start: the query must not change state.
+  auto state_before = a->GetState();
+  EXPECT_EQ(a->GetCurrentTime(), fml::TimeDelta::Zero());
+  EXPECT_EQ(a->GetState(), state_before);
+
+  a->Play(false);
+  fml::TimePoint t0 =
+      fml::TimePoint::FromEpochDelta(fml::TimeDelta::FromSecondsF(1.0));
+  a->DoFrame(t0);
+
+  // After the first frame: current time is non-negative and the query must not
+  // mutate state.
+  auto state_after_start = a->GetState();
+  EXPECT_GE(a->GetCurrentTime(), fml::TimeDelta::Zero());
+  EXPECT_EQ(a->GetState(), state_after_start);
 }
 
 }  // namespace testing

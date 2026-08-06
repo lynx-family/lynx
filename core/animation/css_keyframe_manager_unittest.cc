@@ -528,6 +528,8 @@ TEST_F(CSSKeyframeManagerTest, HasTwoSameAnimation) {
       starlight::AnimationPlayStateType::kRunning));
   test_manager->SetAnimationDataAndPlay(animation_data);
   EXPECT_TRUE(test_manager->animations_map().count(base::String("test")));
+  EXPECT_EQ(animation::Animation::Origin::kCSSAnimation,
+            test_manager->animations_map()[base::String("test")]->GetOrigin());
   EXPECT_TRUE(test_manager->animations_map()[base::String("test")]
                   ->get_animation_data()
                   .duration == 3000);
