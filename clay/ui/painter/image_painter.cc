@@ -300,7 +300,7 @@ void ImagePainter::PaintImage(GraphicsContext* context,
   if (!image_data.image_resource->GetImage()) {
     return;
   }
-  image_data.image_resource->GetImage()->Upload(
+  image_data.image_resource->Upload(
       context->GetUnrefQueue(),
       Size{static_cast<int>(
                render_box_->GetRenderer()->ConvertTo<kPixelTypePhysical>(
@@ -574,7 +574,7 @@ void ImagePainter::PaintBackgroundImage(GraphicsContext* context,
     if (!image_resource->GetImage()) {
       return;
     }
-    image_resource->GetImage()->Upload(
+    image_resource->Upload(
         context->GetUnrefQueue(),
         Size{static_cast<int>(
                  render_box_->GetRenderer()->ConvertTo<kPixelTypePhysical>(
@@ -823,7 +823,7 @@ void ImagePainter::PaintSingleMaskImage(
     if (!image_resource->GetImage()) {
       return;
     }
-    image_resource->GetImage()->Upload(
+    image_resource->Upload(
         unref_queue,
         Size{static_cast<int>(
                  render_box_->GetRenderer()->ConvertTo<kPixelTypePhysical>(

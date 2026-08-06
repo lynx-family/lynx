@@ -20,8 +20,7 @@ BackgroundImage::BackgroundImage(const BackgroundImage& background_image) {
         *background_image.image_resource_.get());
 
 #else
-    image_resource_ = std::make_unique<BaseImageInstance>(
-        *background_image.image_resource_.get());
+    image_resource_ = background_image.image_resource_->Clone();
 #endif  // ENABLE_SKITY
   }
   if (background_image.gradient_.has_value()) {

@@ -15,13 +15,18 @@ BaseImageInstance::BaseImageInstance(std::shared_ptr<BaseImage> image)
 
 BaseImageInstance::BaseImageInstance(const BaseImageInstance& other)
     : image_(other.image_),
-      animation_frame_callback_(other.animation_frame_callback_) {
+      animation_frame_callback_(other.animation_frame_callback_),
+      visible_callback_(other.visible_callback_) {
   if (image_) {
     image_->OnInstanceCreated(this);
   }
 }
 
 BaseImageInstance::~BaseImageInstance() { image_->OnInstanceDestroyed(this); }
+
+std::unique_ptr<BaseImageInstance> BaseImageInstance::Clone() const {
+  return std::make_unique<BaseImageInstance>(*this);
+}
 
 int BaseImageInstance::GetWidth() const { return image_->GetWidth(); }
 
@@ -33,6 +38,11 @@ size_t BaseImageInstance::GetGraphicsImageAllocSize() const {
 
 fml::RefPtr<GraphicsImage> BaseImageInstance::GetGraphicsImage() const {
   return image_->GetGraphicsImage();
+}
+
+void BaseImageInstance::Upload(fml::RefPtr<GPUUnrefQueue> unref_queue,
+                               Size size) const {
+  image_->Upload(std::move(unref_queue), size);
 }
 
 void BaseImageInstance::SetAnimationFrameCallback(std::function<void()> func) {

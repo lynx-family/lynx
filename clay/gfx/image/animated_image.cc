@@ -6,7 +6,7 @@
 
 #include <utility>
 
-#include "clay/gfx/graphics_context.h"
+#include "clay/fml/logging.h"
 
 namespace clay {
 
@@ -18,38 +18,127 @@ std::shared_ptr<AnimatedImage> AnimatedImage::Make(
   image->type_ = ImageType::kAnimated;
   image->image_fetcher_ = image_fetcher;
   image->url_ = std::move(url);
-  image->image_ = platform_image;
-  image->frame_timer_ = std::make_unique<fml::OneshotTimer>(task_runner);
-  image->orig_info_ = ImageInfo::makeWH(platform_image->GetWidth(),
-                                        platform_image->GetHeight());
+  image->image_ = std::move(platform_image);
+  image->task_runner_ = std::move(task_runner);
+  image->orig_info_ =
+      ImageInfo::makeWH(image->image_->GetWidth(), image->image_->GetHeight());
   return image;
 }
 
+std::unique_ptr<BaseImageInstance> AnimatedImage::NewInstance() {
+  return std::make_unique<AnimatedImageInstance>(
+      std::static_pointer_cast<AnimatedImage>(shared_from_this()));
+}
+
+size_t AnimatedImage::GetGraphicsImageAllocSize() const {
+  if (orig_info_.width() <= 0 || orig_info_.height() <= 0) {
+    return 0;
+  }
+  // The current-frame texture belongs to AnimatedImageInstance. Use a
+  // first-frame estimate here so the shared PlatformImage remains cacheable
+  // after its last instance is released.
+  return static_cast<size_t>(orig_info_.width()) *
+         static_cast<size_t>(orig_info_.height()) * 4;
+}
+
 void AnimatedImage::Upload(fml::RefPtr<GPUUnrefQueue> unref_queue, Size size) {
-  if (!unref_queue || !unref_queue->GetContext()) {
-    FML_LOG(ERROR) << "AnimatedImage::Upload: unref_queue or context is null";
+  (void)unref_queue;
+  (void)size;
+  FML_DLOG(ERROR)
+      << "AnimatedImage::Upload must be called through AnimatedImageInstance";
+}
+
+AnimatedImageInstance::AnimatedImageInstance(
+    std::shared_ptr<AnimatedImage> image)
+    : BaseImageInstance(image) {
+  player_ = std::make_unique<AnimatedImagePlayer>(
+      image->image_->CreateAnimation(), image->task_runner_,
+      [this] { OnFrameChanged(); }, [this] { return IsVisible(); });
+  if (!player_->IsValid()) {
+    FML_LOG(ERROR) << "AnimatedImageInstance: failed to create animation";
     return;
   }
-  if (!is_running_) {
-    OnNotifyAnimationFrame();
+  player_->SetLoopCount(loop_count_);
+  player_->SetAutoPlay(auto_play_);
+}
+
+AnimatedImageInstance::AnimatedImageInstance(const AnimatedImageInstance& other)
+    : BaseImageInstance(other),
+      auto_play_(other.auto_play_),
+      loop_count_(other.loop_count_) {
+  auto image = std::static_pointer_cast<AnimatedImage>(image_);
+  player_ = std::make_unique<AnimatedImagePlayer>(
+      image->image_->CreateAnimation(), image->task_runner_,
+      [this] { OnFrameChanged(); }, [this] { return IsVisible(); });
+  if (!player_->IsValid()) {
+    FML_LOG(ERROR) << "AnimatedImageInstance: failed to clone animation";
+    return;
   }
-  if (!gpu_image_.object()) {
-    if (render_info_.isEmpty()) {
-      render_info_ = orig_info_;
-    }
-    bool need_mipmapped = IsMipmapped() && HasResized();
-    auto image = skity::Image::MakeDeferredTextureImage(
-        skity::Texture::FormatFromColorType(image_->GetColorType()),
-        render_info_.width(), render_info_.height(), image_->GetAlphaType());
-    gpu_image_ = GPUObject(GraphicsImage::Make(image), unref_queue);
-    unref_queue->GetTaskRunner()->PostTask([context = unref_queue->GetContext(),
-                                            image, render_info = render_info_,
-                                            mipmapped = need_mipmapped,
-                                            weak = weak_from_this()]() {
-      if (auto self = std::static_pointer_cast<AnimatedImage>(weak.lock())) {
-        auto pixmap = self->image_->ToBitmap(render_info);
+  player_->SetLoopCount(loop_count_);
+  player_->SetAutoPlay(auto_play_);
+}
+
+AnimatedImageInstance::~AnimatedImageInstance() { player_.reset(); }
+
+std::unique_ptr<BaseImageInstance> AnimatedImageInstance::Clone() const {
+  return std::make_unique<AnimatedImageInstance>(*this);
+}
+
+size_t AnimatedImageInstance::GetGraphicsImageAllocSize() const {
+  return gpu_image_.object()
+             ? gpu_image_.object()->width() * gpu_image_.object()->height() * 4
+             : 0;
+}
+
+fml::RefPtr<GraphicsImage> AnimatedImageInstance::GetGraphicsImage() const {
+  return gpu_image_.object();
+}
+
+void AnimatedImageInstance::Upload(fml::RefPtr<GPUUnrefQueue> unref_queue,
+                                   Size size) const {
+  (void)size;
+  if (!unref_queue || !unref_queue->GetContext()) {
+    FML_LOG(ERROR)
+        << "AnimatedImageInstance::Upload: unref_queue or context is null";
+    return;
+  }
+  if (!player_ || !player_->IsValid()) {
+    return;
+  }
+  player_->EnsureAnimationScheduled();
+  auto image_resource = std::static_pointer_cast<AnimatedImage>(image_);
+  ImageInfo render_info = image_resource->render_info_;
+  if (render_info.isEmpty()) {
+    render_info = image_resource->orig_info_;
+  }
+  if (gpu_image_.object() && uploaded_info_ == render_info) {
+    return;
+  }
+  gpu_image_.reset();
+  bool need_mipmapped =
+      image_resource->IsMipmapped() && image_resource->HasResized();
+  auto image = skity::Image::MakeDeferredTextureImage(
+      skity::Texture::FormatFromColorType(
+          image_resource->image_->GetColorType()),
+      render_info.width(), render_info.height(),
+      image_resource->image_->GetAlphaType());
+  if (!image) {
+    return;
+  }
+  gpu_image_ = GPUObject(GraphicsImage::Make(image), unref_queue);
+  uploaded_info_ = render_info;
+  std::weak_ptr<int> weak_lifetime = lifetime_;
+  auto animation = player_->GetAnimation();
+  unref_queue->GetTaskRunner()->PostTask(
+      [context = unref_queue->GetContext(), image, render_info,
+       mipmapped = need_mipmapped, weak_lifetime,
+       animation = std::move(animation)]() {
+        if (weak_lifetime.expired()) {
+          return;
+        }
+        auto pixmap = animation->ToBitmap(render_info);
         if (!pixmap) {
-          FML_LOG(ERROR) << "AnimatedImage::Upload: Bitmap is null";
+          FML_LOG(ERROR) << "AnimatedImageInstance::Upload: Bitmap is null";
           return;
         }
         skity::TextureDescriptor desc{};
@@ -64,83 +153,51 @@ void AnimatedImage::Upload(fml::RefPtr<GPUUnrefQueue> unref_queue, Size size) {
           texture->DeferredUploadImage(std::move(pixmap));
           image->SetTexture(texture);
         }
-      }
-    });
+      });
+}
+
+void AnimatedImageInstance::SetAutoPlay(bool auto_play) {
+  auto_play_ = auto_play;
+  if (player_) {
+    player_->SetAutoPlay(auto_play_);
   }
 }
 
-void AnimatedImage::NextFrame() {
-  if (image_->GetDuration() <= 0) {
-    return;
+void AnimatedImageInstance::SetLoopCount(int loop_count) {
+  loop_count_ = loop_count;
+  if (player_) {
+    player_->SetLoopCount(loop_count_);
   }
-  frame_timer_->Start(fml::TimeDelta::FromMilliseconds(image_->GetDuration()),
-                      [weak = weak_from_this()] {
-                        if (auto self = weak.lock()) {
-                          auto animated_image =
-                              static_cast<AnimatedImage*>(self.get());
-                          animated_image->image_->DrawFrame([animated_image] {
-                            animated_image->OnNotifyAnimationFrame();
-                          });
-                        }
-                      });
 }
 
-void AnimatedImage::SetAutoPlay(bool auto_play) {
-  image_->SetAutoPlay(auto_play);
-}
-void AnimatedImage::SetLoopCount(int loop_count) {
-  image_->SetLoopCount(loop_count);
-}
-void AnimatedImage::StartAnimate() {
-  StopAnimation();
-  image_->StartAnimation();
-  OnNotifyAnimationFrame();
-}
-void AnimatedImage::StopAnimation() { image_->StopAnimation(); }
-void AnimatedImage::PauseAnimation() { image_->PauseAnimation(); }
-void AnimatedImage::ResumeAnimation() {
-  image_->ResumeAnimation();
-  OnNotifyAnimationFrame();
+void AnimatedImageInstance::StartAnimate() {
+  if (player_) {
+    player_->StartAnimation();
+  }
 }
 
-void AnimatedImage::OnNotifyAnimationFrame() {
-  if (!IsAnyInstanceVisible()) {
-    is_running_ = false;
-    return;
+void AnimatedImageInstance::StopAnimation() {
+  if (player_) {
+    player_->StopAnimation();
   }
-  for (auto& instance : instances_) {
-    instance->OnNotifyAnimationFrame();
+}
+
+void AnimatedImageInstance::PauseAnimation() {
+  if (player_) {
+    player_->PauseAnimation();
   }
-  NextFrame();
+}
+
+void AnimatedImageInstance::ResumeAnimation() {
+  if (player_) {
+    player_->ResumeAnimation();
+  }
+}
+
+void AnimatedImageInstance::OnFrameChanged() {
   gpu_image_.reset();
-  is_running_ = true;
-}
-
-void AnimatedImage::OnInstanceCreated(BaseImageInstance* instance) {
-  BaseImage::OnInstanceCreated(instance);
-  if (instances_.size() <= 1) {
-    StartAnimate();
-  }
-}
-
-void AnimatedImage::OnInstanceDestroyed(BaseImageInstance* instance) {
-  BaseImage::OnInstanceDestroyed(instance);
-  if (instances_.empty()) {
-    StopAnimation();
-    frame_timer_->Stop();
-  }
-}
-
-bool AnimatedImage::IsAnyInstanceVisible() const {
-  if (instances_.empty()) {
-    return false;
-  }
-  for (auto& instance : instances_) {
-    if (instance->IsVisible()) {
-      return true;
-    }
-  }
-  return false;
+  uploaded_info_ = ImageInfo();
+  BaseImageInstance::OnNotifyAnimationFrame();
 }
 
 }  // namespace clay

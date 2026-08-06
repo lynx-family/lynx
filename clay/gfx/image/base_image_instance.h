@@ -8,6 +8,8 @@
 #include <memory>
 #include <utility>
 
+#include "clay/gfx/geometry/size.h"
+#include "clay/gfx/gpu_object.h"
 #include "clay/gfx/image/graphics_image.h"
 
 namespace clay {
@@ -18,13 +20,23 @@ class BaseImageInstance {
   explicit BaseImageInstance(std::shared_ptr<BaseImage> image);
   BaseImageInstance(const BaseImageInstance& other);
   BaseImageInstance& operator=(const BaseImageInstance& other) = delete;
-  ~BaseImageInstance();
+  virtual ~BaseImageInstance();
+
+  virtual std::unique_ptr<BaseImageInstance> Clone() const;
 
   std::shared_ptr<BaseImage> GetImage() const { return image_; }
   int GetWidth() const;
   int GetHeight() const;
-  size_t GetGraphicsImageAllocSize() const;
-  fml::RefPtr<GraphicsImage> GetGraphicsImage() const;
+  virtual size_t GetGraphicsImageAllocSize() const;
+  virtual fml::RefPtr<GraphicsImage> GetGraphicsImage() const;
+  virtual void Upload(fml::RefPtr<GPUUnrefQueue> unref_queue, Size size) const;
+
+  virtual void SetAutoPlay(bool auto_play) {}
+  virtual void SetLoopCount(int loop_count) {}
+  virtual void StartAnimate() {}
+  virtual void StopAnimation() {}
+  virtual void PauseAnimation() {}
+  virtual void ResumeAnimation() {}
 
   void SetAnimationFrameCallback(std::function<void()> func);
   void SetVisibleCallback(std::function<bool()> func);
