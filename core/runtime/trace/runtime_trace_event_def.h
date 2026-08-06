@@ -1034,6 +1034,11 @@ inline constexpr const char* const FIBER_SET_PARSED_STYLES =
  */
 inline constexpr const char* const FIBER_ADD_EVENT = "FiberAddEvent";
 /**
+ * @trace_description: Apply a Compose Modifier chain to a Fiber element.
+ */
+inline constexpr const char* const FIBER_SET_MODIFIER_TO_ELEMENT =
+    "FiberSetModifierToElement";
+/**
  * @trace_description: Create a gesture detector instance for a Fiber element.
  */
 inline constexpr const char* const CREATE_GESTURE_DETECTOR =

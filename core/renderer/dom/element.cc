@@ -245,6 +245,7 @@ Element::Element(const Element& element, bool clone_resolved_props)
       updated_attr_map_(element.updated_attr_map_),
       builtin_attr_map_(element.builtin_attr_map_),
       reset_attr_vec_(element.reset_attr_vec_),
+      modifier_attribute_names_(element.modifier_attribute_names_),
       part_id_(element.part_id_) {
   if (element.base_css_style() != nullptr) {
     base_css_style_ = std::make_unique<starlight::ComputedCSSStyle>(
@@ -925,6 +926,30 @@ void Element::SetAttribute(const base::String& key, const lepus::Value& value,
     }
   }
   MarkDirty(kDirtyAttr);
+}
+
+void Element::SetModifierAttribute(const base::String& key,
+                                   const lepus::Value& value) {
+  // Drop any pending reset for this key: ConsumeAllAttributes applies updates
+  // before resets, so a stale reset would wipe the value we set this frame.
+  if (!value.IsEmpty() && reset_attr_vec_.has_value()) {
+    auto& reset_attributes = *reset_attr_vec_;
+    reset_attributes.erase(
+        std::remove(reset_attributes.begin(), reset_attributes.end(), key),
+        reset_attributes.end());
+  }
+  SetAttribute(key, value);
+  modifier_attribute_names_->insert(key);
+}
+
+void Element::RemoveAllModifierAttributes() {
+  if (!modifier_attribute_names_.has_value()) {
+    return;
+  }
+  for (const auto& key : *modifier_attribute_names_) {
+    SetAttribute(key, lepus::Value());
+  }
+  modifier_attribute_names_.reset();
 }
 
 void Element::SetBuiltinAttribute(ElementBuiltInAttributeEnum key,
