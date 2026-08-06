@@ -24,6 +24,10 @@
                                                               forKey:@"heightLimit"
                                                         defaultValue:NO];
 
+    _edgeToEdge = [LynxRecorderURLAnalyzer getQueryBooleanParameter:baseURL
+                                                             forKey:@"edgeToEdge"
+                                                       defaultValue:NO];
+
     _enablePreDecode = [LynxRecorderURLAnalyzer getQueryBooleanParameter:baseURL
                                                                   forKey:@"enablePreDecode"
                                                             defaultValue:NO];
@@ -108,7 +112,7 @@
         initWithObjects:@"setGlobalProps", @"initialLynxView", @"loadTemplate", @"sendEventDarwin",
                         @"updateDataByPreParsedData", @"sendGlobalEvent", @"reloadTemplate",
                         @"updateConfig", @"loadTemplateBundle", @"updateMetaData",
-                        @"switchEngineFromUIThread", @"updateFontScale", nil];
+                        @"switchEngineFromUIThread", @"updateFontScale", @"callJSModule", nil];
     _reloadFuncName = [[NSSet alloc]
         initWithObjects:@"sendGlobalEvent", @"updateDataByPreParsedData", @"sendEventDarwin", nil];
 

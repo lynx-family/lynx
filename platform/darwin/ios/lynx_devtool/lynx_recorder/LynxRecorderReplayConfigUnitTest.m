@@ -50,4 +50,10 @@
   XCTAssertEqual([self configWithQuery:@"&embedded_mode=5"].embeddedMode, 5);
 }
 
+- (void)testCallJSModuleReplaysBeforeFirstScreen {
+  LynxRecorderReplayConfig *config = [self configWithQuery:@""];
+  XCTAssertTrue([config.canMockFuncName containsObject:@"callJSModule"]);
+  XCTAssertFalse([config.reloadFuncName containsObject:@"callJSModule"]);
+}
+
 @end

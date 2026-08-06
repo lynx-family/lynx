@@ -781,6 +781,18 @@ subspec_target("Recorder") {
   }
 }
 
+# Keep the recorder available to explicit host integrations without adding it
+# to Lynx's default subspec graph.
+subspec_target("TestBenchRecorder") {
+  header_mappings_dir = "."
+  libraries = [ "stdc++" ]
+  deps = [ "../../../../core/services/recorder" ]
+  dependency = [ "Lynx/Native" ]
+  pod_target_xcconfig = {
+    GCC_PREPROCESSOR_DEFINITIONS = [ "ENABLE_TESTBENCH_RECORDER=1" ]
+  }
+}
+
 # TODO(zhixuan): migrate zlib
 subspec_target("zlib") {
   compiler_flags = [

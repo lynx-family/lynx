@@ -143,6 +143,10 @@
   }
 
   self->record_id = ptr;
+  // Engine reuse can attach DevTool before the new TASM is available.
+  if (self->record_id != 0 && _devtoolNG != nil && [_devtoolNG isAttachToDebugRouter]) {
+    [self initRecord];
+  }
 }
 
 - (void)onMTSRuntimeCreated:(intptr_t)devtool_pool_ptr {
