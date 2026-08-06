@@ -1,4 +1,8 @@
 # CHANGELOG
+
+# 0.0.51
+* update supported lynx version to 4.2
+
 # 0.0.50
 * Optimize lepusNG external debugInfo size
 
