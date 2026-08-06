@@ -498,13 +498,22 @@ export abstract class LynxGenericResourceFetcher implements LynxResourceProvider
 export abstract class LynxMediaResourceFetcher implements LynxResourceProvider {
   abstract shouldRedirectUrl(request: LynxResourceRequest): string;
   isLocalResource(url: string): LynxOptionalBool;
-  shouldRedirectUrlAsync(request: LynxResourceRequest, callback: AsyncCallback<string | Array<string>>): void;
+  shouldRedirectUrlAsync(request: LynxResourceRequest, callback: AsyncCallback<LynxRedirectCallbackResult>): void;
+}
+
+export interface LynxRedirectResult {
+  url: string;
+  fallbackUrls?: Array<string>;
+  fileCacheName?: string;
 }
 
 export enum LynxOptionalBool {
   TRUE
   FALSE
   UNDEFINED
+}
+
+export type LynxRedirectCallbackResult = string | LynxRedirectResult {
 }
 
 export abstract class LynxTemplateResourceFetcher implements LynxResourceProvider {

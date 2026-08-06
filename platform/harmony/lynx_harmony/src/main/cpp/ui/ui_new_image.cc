@@ -388,15 +388,14 @@ void UINewImage::LoadImageWithTransform(const std::string& url,
           }
           auto ui_image = std::static_pointer_cast<UINewImage>(self);
           if (ui_image->src_ == url) {
+            std::string image_url = url;
             if (!response.path.empty()) {
               ui_image->redirected_src_ = response.path;
-              ui_image->LoadImageFromService(
-                  response.path, placeholder,
-                  std::move(response.fallback_paths));
-            } else {
-              ui_image->LoadImageFromService(
-                  url, placeholder, std::move(response.fallback_paths));
+              image_url = response.path;
             }
+            ui_image->LoadImageFromService(image_url, placeholder,
+                                           std::move(response.fallback_paths),
+                                           std::move(response.file_cache_name));
           }
         });
   } else {
@@ -542,7 +541,8 @@ void UINewImage::SetEvents(const std::vector<lepus::Value>& events) {
 
 void UINewImage::LoadImageFromService(const std::string& url,
                                       const std::string& placeholder,
-                                      std::vector<std::string> fallback_urls) {
+                                      std::vector<std::string> fallback_urls,
+                                      std::string file_cache_name) {
 #if ENABLE_TRACE_PERFETTO || ENABLE_TRACE_SYSTRACE
   OH_ArkUI_NodeUtils_AddCustomProperty(node_, "rawSrc", src_.c_str());
   OH_ArkUI_NodeUtils_AddCustomProperty(node_, "src", url.c_str());
@@ -563,6 +563,7 @@ void UINewImage::LoadImageFromService(const std::string& url,
       .url = url,
       .placeholder = placeholder,
       .fallback_urls = std::move(fallback_urls),
+      .file_cache_name = std::move(file_cache_name),
   };
   using ImageEffect = LynxImageEffectProcessor::ImageEffect;
   std::vector<std::unique_ptr<ImageProcessor>> processors;

@@ -601,12 +601,24 @@ LynxResourceLoaderHarmony::CallbackHandler::HandlePathRequestCallback(
     callback_handler->path_callback_(response);
     delete callback_handler;
   } else {
-    if (base::NapiUtil::IsArray(env, argv[1])) {
-      base::NapiUtil::ConvertToArrayString(env, argv[1],
-                                           response.fallback_paths);
-      if (!response.fallback_paths.empty()) {
-        response.path = std::move(response.fallback_paths.front());
-        response.fallback_paths.erase(response.fallback_paths.begin());
+    if (base::NapiUtil::NapiIsType(env, argv[1], napi_object) &&
+        !base::NapiUtil::IsArray(env, argv[1])) {
+      napi_value url = nullptr;
+      if (GetNamedProperty(env, argv[1], "url", &url) &&
+          base::NapiUtil::NapiIsType(env, url, napi_string)) {
+        response.path = base::NapiUtil::ConvertToString(env, url);
+      }
+      napi_value fallback_urls = nullptr;
+      if (GetNamedProperty(env, argv[1], "fallbackUrls", &fallback_urls) &&
+          base::NapiUtil::IsArray(env, fallback_urls)) {
+        base::NapiUtil::ConvertToArrayString(env, fallback_urls,
+                                             response.fallback_paths);
+      }
+      napi_value file_cache_name = nullptr;
+      if (GetNamedProperty(env, argv[1], "fileCacheName", &file_cache_name) &&
+          base::NapiUtil::NapiIsType(env, file_cache_name, napi_string)) {
+        response.file_cache_name =
+            base::NapiUtil::ConvertToString(env, file_cache_name);
       }
     } else {
       response.path = base::NapiUtil::ConvertToString(env, argv[1]);

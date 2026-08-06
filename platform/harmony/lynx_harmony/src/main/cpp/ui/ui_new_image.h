@@ -117,7 +117,8 @@ class UINewImage : public UIBase,
   bool LoadImage();
   void LoadImageFromService(const std::string& url,
                             const std::string& placeholder,
-                            std::vector<std::string> fallback_urls = {});
+                            std::vector<std::string> fallback_urls = {},
+                            std::string file_cache_name = {});
   void LoadImageWithTransform(const std::string& url,
                               const std::string& placeholder);
 
