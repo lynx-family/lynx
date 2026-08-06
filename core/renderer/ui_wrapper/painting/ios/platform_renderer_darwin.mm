@@ -305,10 +305,10 @@ void PlatformRendererDarwin::InitializeUIView(const fml::RefPtr<PropBundle>& ini
         break;
       }
       case PlatformRendererType::kPage: {
-        if (!InitializeUIOwnerRenderer(GetExtendedRendererTagName(), init_data)) {
-          _view =
-              context_ != nullptr ? (UIView<LynxRendererHost>*)context_->GetContainerView() : nil;
-        }
+        // In FLR mode the page root is the LynxView itself. It must not go
+        // through the legacy UIOwner fallback, which would wrongly create a
+        // root LynxUI for it.
+        _view = context_ != nullptr ? (UIView<LynxRendererHost>*)context_->GetContainerView() : nil;
         break;
       }
       default:
