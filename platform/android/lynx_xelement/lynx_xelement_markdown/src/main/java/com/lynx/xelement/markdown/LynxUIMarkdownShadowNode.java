@@ -3,13 +3,14 @@
 // LICENSE file in the root directory of this source tree.
 package com.lynx.xelement.markdown;
 
-import android.graphics.drawable.Drawable;
 import android.os.Handler;
 import android.os.Looper;
 import android.view.Choreographer;
+import android.view.View;
 import androidx.annotation.Nullable;
 import com.lynx.markdown.Constants;
 import com.lynx.markdown.Markdown;
+import com.lynx.markdown.MarkdownMeasurer;
 import com.lynx.markdown.MarkdownValuePack;
 import com.lynx.react.bridge.ReadableArray;
 import com.lynx.react.bridge.ReadableMap;
@@ -26,28 +27,30 @@ import com.lynx.tasm.behavior.shadow.NativeLayoutNodeRef;
 import com.lynx.tasm.behavior.shadow.ShadowNode;
 import com.lynx.tasm.utils.UIThreadUtils;
 import com.lynx.xelement.markdown.adaptor.LynxMarkdownBundle;
-import com.lynx.xelement.markdown.adaptor.LynxServalViewWrapper;
 import com.lynx.xelement.markdown.adaptor.MarkdownEventContext;
 import com.lynx.xelement.markdown.adaptor.MarkdownEventListener;
 import com.lynx.xelement.markdown.adaptor.MarkdownResourceContext;
 import com.lynx.xelement.markdown.adaptor.MarkdownResourceLoader;
-import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.HashMap;
 
 public class LynxUIMarkdownShadowNode
     extends ShadowNode implements CustomMeasureFunc, MarkdownResourceContext, MarkdownEventContext {
-  private LynxServalViewWrapper mMarkdown;
-  private final LynxMarkdownBundle mBundle = new LynxMarkdownBundle();
+  private MarkdownMeasurer mMarkdownMeasurer;
   private final MarkdownResourceLoader mResourceLoader = new MarkdownResourceLoader(this);
   private final MarkdownEventListener mEventListener = new MarkdownEventListener(this);
   private MeasureContext mMeasureContext;
   private AlignContext mAlignContext;
+  private int mMeasuredWidth;
+  private int mMeasuredHeight;
+  private volatile int mContentLeftOffset;
+  private volatile int mContentTopOffset;
   private String mContent = "";
   private String mContentID = "";
   private final Looper mLayoutLooper;
   private Handler mLayoutHandler;
   private Choreographer.FrameCallback mFrameCallback;
+
   public LynxUIMarkdownShadowNode() {
     Markdown.ensureInitialized();
     setCustomMeasureFunc(this);
@@ -59,21 +62,16 @@ public class LynxUIMarkdownShadowNode
   @Override
   public void setContext(LynxContext context) {
     super.setContext(context);
-    ensureMarkdownView();
-  }
-  private @Nullable LynxServalViewWrapper ensureMarkdownView() {
-    if (mMarkdown == null && mContext != null) {
-      mMarkdown = new LynxServalViewWrapper(mContext, this);
-      mMarkdown.setResourceLoader(mResourceLoader);
-      mMarkdown.setEventListener(mEventListener);
-      mMarkdown.disableInternalVSync(true);
-      if (mLayoutLooper != null) {
-        mFrameCallback = this::onVSync;
-        Choreographer.getInstance().postFrameCallback(mFrameCallback);
-      }
-      mBundle.mMarkdownView = mMarkdown;
+    if (mMarkdownMeasurer != null || context == null) {
+      return;
     }
-    return mMarkdown;
+    mMarkdownMeasurer = new MarkdownMeasurer(context);
+    mMarkdownMeasurer.setResourceLoader(mResourceLoader);
+    mMarkdownMeasurer.setEventListener(mEventListener);
+    mMarkdownMeasurer.setRequestMeasureCallback(this::markDirty);
+    if (mLayoutLooper != null) {
+      startLayoutFrame();
+    }
   }
   private boolean isChildDirty() {
     boolean isChildDirty = false;
@@ -92,24 +90,31 @@ public class LynxUIMarkdownShadowNode
   @Override
   public MeasureResult measure(MeasureParam param, MeasureContext context) {
     mMeasureContext = context;
-    LynxServalViewWrapper markdown = ensureMarkdownView();
+    MarkdownMeasurer markdown = mMarkdownMeasurer;
     if (markdown == null) {
+      mMeasuredWidth = 0;
+      mMeasuredHeight = 0;
       return new MeasureResult(0, 0, 0);
     }
     if (isChildDirty()) {
       markdown.markDirty();
     }
-    long result = markdown.measure((int) param.mWidth, param.mWidthMode.intValue(),
-        (int) param.mHeight, param.mHeightMode.intValue());
+    int widthMeasureSpec = View.MeasureSpec.makeMeasureSpec(
+        (int) param.mWidth, Constants.ConvertToMeasureMode(param.mWidthMode.intValue()));
+    int heightMeasureSpec = View.MeasureSpec.makeMeasureSpec(
+        (int) param.mHeight, Constants.ConvertToMeasureMode(param.mHeightMode.intValue()));
+    long result = markdown.measure(widthMeasureSpec, heightMeasureSpec);
     int width = MarkdownValuePack.unpackMeasureResultWidth(result);
     int height = MarkdownValuePack.unpackMeasureResultHeight(result);
     int baseline = MarkdownValuePack.unpackMeasureResultBaseline(result);
+    mMeasuredWidth = width;
+    mMeasuredHeight = height;
     return new MeasureResult(width, height, baseline);
   }
   @Override
   public void align(AlignParam param, AlignContext context) {
     mAlignContext = context;
-    LynxServalViewWrapper markdown = ensureMarkdownView();
+    MarkdownMeasurer markdown = mMarkdownMeasurer;
     if (markdown != null) {
       markdown.align((int) param.getLeftOffset(), (int) param.getTopOffset());
     }
@@ -117,52 +122,55 @@ public class LynxUIMarkdownShadowNode
   @Nullable
   @Override
   public Object getExtraBundle() {
-    mBundle.mMarkdownView = mMarkdown;
-    return mBundle;
+    return new LynxMarkdownBundle(
+        mMarkdownMeasurer, this, this, mResourceLoader, mMeasuredWidth, mMeasuredHeight);
   }
   @Override
   protected void onDestroy() {
+    stopLayoutFrame();
     super.onDestroy();
     mResourceLoader.release();
     mMeasureContext = null;
     mAlignContext = null;
-    if (mMarkdown != null) {
-      mMarkdown.destroy();
-      mMarkdown = null;
+    if (mMarkdownMeasurer != null) {
+      mMarkdownMeasurer.setRequestMeasureCallback(null);
+      mMarkdownMeasurer.setResourceLoader(null);
+      mMarkdownMeasurer.setEventListener(null);
+      mMarkdownMeasurer.destroy();
+      mMarkdownMeasurer = null;
     }
-    mBundle.mMarkdownView = null;
   }
   @LynxProp(name = "text-selection", defaultBoolean = false)
   public void setEnableTextSelection(boolean enable) {
-    LynxServalViewWrapper markdown = ensureMarkdownView();
+    MarkdownMeasurer markdown = mMarkdownMeasurer;
     if (markdown != null) {
       markdown.setBooleanProp(Constants.MARKDOWN_PROPS_ENABLE_TEXT_SELECTION, enable);
     }
   }
   @LynxProp(name = "selection-background-color", defaultInt = 0)
   public void setSelectionBackgroundColor(int color) {
-    LynxServalViewWrapper markdown = ensureMarkdownView();
+    MarkdownMeasurer markdown = mMarkdownMeasurer;
     if (markdown != null) {
       markdown.setColorProp(Constants.MARKDOWN_PROPS_SELECTION_HIGHLIGHT_COLOR, color);
     }
   }
   @LynxProp(name = "selection-handle-color", defaultInt = 0)
   public void setSelectionHandleColor(int color) {
-    LynxServalViewWrapper markdown = ensureMarkdownView();
+    MarkdownMeasurer markdown = mMarkdownMeasurer;
     if (markdown != null) {
       markdown.setColorProp(Constants.MARKDOWN_PROPS_SELECTION_HANDLE_COLOR, color);
     }
   }
   @LynxProp(name = "selection-handle-size", defaultInt = 0)
   public void setSelectionHandleSize(int size) {
-    LynxServalViewWrapper markdown = ensureMarkdownView();
+    MarkdownMeasurer markdown = mMarkdownMeasurer;
     if (markdown != null) {
       markdown.setNumberProp(Constants.MARKDOWN_PROPS_SELECTION_HANDLE_SIZE, size);
     }
   }
   @LynxProp(name = "markdown-effect")
   public void setMarkdownEffect(ReadableMap map) {
-    LynxServalViewWrapper markdown = ensureMarkdownView();
+    MarkdownMeasurer markdown = mMarkdownMeasurer;
     if (markdown != null) {
       HashMap<String, Object> value = map == null ? null : map.asHashMap();
       markdown.setObjectProp(Constants.MARKDOWN_PROPS_MARKDOWN_EFFECT, value);
@@ -171,7 +179,7 @@ public class LynxUIMarkdownShadowNode
 
   @LynxProp(name = "text-mark-attachments")
   public void setTextMarkAttachments(ReadableArray array) {
-    LynxServalViewWrapper markdown = ensureMarkdownView();
+    MarkdownMeasurer markdown = mMarkdownMeasurer;
     if (markdown != null) {
       ArrayList<Object> value = array == null ? null : array.asArrayList();
       markdown.setArrayProp(Constants.MARKDOWN_PROPS_TEXT_MARK_ATTACHMENTS, value);
@@ -193,7 +201,7 @@ public class LynxUIMarkdownShadowNode
 
   @LynxProp(name = "content")
   public void setContent(String content) {
-    LynxServalViewWrapper markdown = ensureMarkdownView();
+    MarkdownMeasurer markdown = mMarkdownMeasurer;
     mContent = content == null ? "" : content;
     if (markdown != null) {
       markdown.setContent(mContent);
@@ -207,7 +215,7 @@ public class LynxUIMarkdownShadowNode
 
   @LynxProp(name = "animation-type")
   public void setAnimationType(String type) {
-    LynxServalViewWrapper markdown = ensureMarkdownView();
+    MarkdownMeasurer markdown = mMarkdownMeasurer;
     if (markdown != null) {
       int animationType = "typewriter".equals(type) ? Constants.ANIMATION_TYPE_TYPEWRITER
                                                     : Constants.ANIMATION_TYPE_NONE;
@@ -218,7 +226,7 @@ public class LynxUIMarkdownShadowNode
 
   @LynxProp(name = "animation-velocity")
   public void setAnimationVelocity(float velocity) {
-    LynxServalViewWrapper markdown = ensureMarkdownView();
+    MarkdownMeasurer markdown = mMarkdownMeasurer;
     if (markdown != null) {
       markdown.setAnimationVelocity(velocity >= 0 ? velocity : 1f);
     }
@@ -227,7 +235,7 @@ public class LynxUIMarkdownShadowNode
 
   @LynxProp(name = "markdown-style")
   public void setStyleSheet(ReadableMap style) {
-    LynxServalViewWrapper markdown = ensureMarkdownView();
+    MarkdownMeasurer markdown = mMarkdownMeasurer;
     if (markdown != null) {
       HashMap<String, Object> value = style == null ? null : style.asHashMap();
       markdown.setStyle(value);
@@ -237,7 +245,7 @@ public class LynxUIMarkdownShadowNode
 
   @LynxProp(name = "text-maxline")
   public void setTextMaxLine(int maxLine) {
-    LynxServalViewWrapper markdown = ensureMarkdownView();
+    MarkdownMeasurer markdown = mMarkdownMeasurer;
     if (markdown != null) {
       markdown.setNumberProp(Constants.MARKDOWN_PROPS_TEXT_MAXLINE, maxLine);
     }
@@ -246,7 +254,7 @@ public class LynxUIMarkdownShadowNode
 
   @LynxProp(name = "content-complete")
   public void setContentComplete(boolean complete) {
-    LynxServalViewWrapper markdown = ensureMarkdownView();
+    MarkdownMeasurer markdown = mMarkdownMeasurer;
     if (markdown != null) {
       markdown.setBooleanProp(Constants.MARKDOWN_PROPS_CONTENT_COMPLETE, complete);
     }
@@ -255,7 +263,7 @@ public class LynxUIMarkdownShadowNode
 
   @LynxProp(name = "typewriter-dynamic-height")
   public void setTypewriterAutoHeight(boolean dynamicHeight) {
-    LynxServalViewWrapper markdown = ensureMarkdownView();
+    MarkdownMeasurer markdown = mMarkdownMeasurer;
     if (markdown != null) {
       markdown.setBooleanProp(Constants.MARKDOWN_PROPS_TYPEWRITER_DYNAMIC_HEIGHT, dynamicHeight);
     }
@@ -264,7 +272,7 @@ public class LynxUIMarkdownShadowNode
 
   @LynxProp(name = "initial-animation-step")
   public void setInitialAnimationStep(int step) {
-    LynxServalViewWrapper markdown = ensureMarkdownView();
+    MarkdownMeasurer markdown = mMarkdownMeasurer;
     if (markdown != null) {
       markdown.setInitialAnimationStep(step);
     }
@@ -273,7 +281,7 @@ public class LynxUIMarkdownShadowNode
 
   @LynxProp(name = "markdown-max-height")
   public void setMarkdownMaxHeight(float height) {
-    LynxServalViewWrapper markdown = ensureMarkdownView();
+    MarkdownMeasurer markdown = mMarkdownMeasurer;
     if (markdown != null) {
       markdown.setNumberProp(Constants.MARKDOWN_PROPS_MARKDOWN_MAX_HEIGHT, height);
     }
@@ -282,7 +290,7 @@ public class LynxUIMarkdownShadowNode
 
   @LynxProp(name = "content-range")
   public void setMarkdownContentRange(ReadableArray array) {
-    LynxServalViewWrapper markdown = ensureMarkdownView();
+    MarkdownMeasurer markdown = mMarkdownMeasurer;
     if (markdown == null || array == null) {
       return;
     }
@@ -297,7 +305,7 @@ public class LynxUIMarkdownShadowNode
 
   @LynxProp(name = "exposure-tags")
   public void setExposureTags(ReadableArray array) {
-    LynxServalViewWrapper markdown = ensureMarkdownView();
+    MarkdownMeasurer markdown = mMarkdownMeasurer;
     if (markdown != null) {
       ArrayList<Object> value = array == null ? null : array.asArrayList();
       markdown.setArrayProp(Constants.MARKDOWN_PROPS_EXPOSURE_TAGS, value);
@@ -306,7 +314,7 @@ public class LynxUIMarkdownShadowNode
 
   @LynxProp(name = "animation-frame-rate")
   public void setAnimationFrameRate(float frameRate) {
-    LynxServalViewWrapper markdown = ensureMarkdownView();
+    MarkdownMeasurer markdown = mMarkdownMeasurer;
     if (markdown != null) {
       markdown.setNumberProp(Constants.MARKDOWN_PROPS_ANIMATION_FRAME_RATE, frameRate);
     }
@@ -314,7 +322,7 @@ public class LynxUIMarkdownShadowNode
 
   @LynxProp(name = "typewriter-height-transition-duration")
   public void setTypewriterHeightTransitionDuration(float duration) {
-    LynxServalViewWrapper markdown = ensureMarkdownView();
+    MarkdownMeasurer markdown = mMarkdownMeasurer;
     if (markdown != null) {
       markdown.setNumberProp(
           Constants.MARKDOWN_PROPS_TYPEWRITER_HEIGHT_TRANSITION_DURATION, duration);
@@ -323,7 +331,7 @@ public class LynxUIMarkdownShadowNode
 
   @LynxProp(name = "typewriter-height-transition-prefetch")
   public void setTypewriterHeightTransitionPrefetch(boolean prefetch) {
-    LynxServalViewWrapper markdown = ensureMarkdownView();
+    MarkdownMeasurer markdown = mMarkdownMeasurer;
     if (markdown != null) {
       markdown.setBooleanProp(
           Constants.MARKDOWN_PROPS_TYPEWRITER_HEIGHT_TRANSITION_PREFETCH, prefetch);
@@ -332,7 +340,7 @@ public class LynxUIMarkdownShadowNode
 
   @LynxProp(name = "allow-break-around-punctuation")
   public void setAllowBreakAroundPunctuation(boolean allow) {
-    LynxServalViewWrapper markdown = ensureMarkdownView();
+    MarkdownMeasurer markdown = mMarkdownMeasurer;
     if (markdown != null) {
       markdown.setBooleanProp(Constants.MARKDOWN_PROPS_ALLOW_BREAK_AROUND_PUNCTUATION, allow);
     }
@@ -345,7 +353,7 @@ public class LynxUIMarkdownShadowNode
 
   @Override
   public String getParseEndContentID() {
-    return mMarkdown != null ? mMarkdown.getContentID() : mContentID;
+    return mContentID;
   }
 
   @Override
@@ -359,11 +367,6 @@ public class LynxUIMarkdownShadowNode
   }
 
   @Override
-  public @Nullable Drawable.Callback getDrawableCallback() {
-    return ensureMarkdownView();
-  }
-
-  @Override
   public @Nullable MeasureContext getMeasureContext() {
     return mMeasureContext;
   }
@@ -374,34 +377,88 @@ public class LynxUIMarkdownShadowNode
   }
 
   @Override
+  public void setContentOffset(int left, int top) {
+    mContentLeftOffset = left;
+    mContentTopOffset = top;
+  }
+
+  @Override
+  public int getContentLeftOffset() {
+    return mContentLeftOffset;
+  }
+
+  @Override
+  public int getContentTopOffset() {
+    return mContentTopOffset;
+  }
+
+  public boolean pauseAnimation() {
+    MarkdownMeasurer markdown = mMarkdownMeasurer;
+    if (isDestroyed() || markdown == null) {
+      return false;
+    }
+    runOnLayoutThread(() -> {
+      MarkdownMeasurer currentMarkdown = mMarkdownMeasurer;
+      if (!isDestroyed() && currentMarkdown != null) {
+        currentMarkdown.pauseAnimation();
+      }
+    });
+    return true;
+  }
+
+  public boolean resumeAnimation(int animationStep) {
+    if (isDestroyed() || mMarkdownMeasurer == null) {
+      return false;
+    }
+    runOnLayoutThread(() -> {
+      MarkdownMeasurer markdown = mMarkdownMeasurer;
+      if (isDestroyed() || markdown == null) {
+        return;
+      }
+      if (animationStep >= 0) {
+        markdown.resumeAnimation(animationStep);
+      } else {
+        markdown.resumeAnimation();
+      }
+    });
+    return true;
+  }
+
+  @Override
   public void onFontLoaded(String family, int weight, int style) {
-    if (isDestroyed()) {
-      return;
-    }
-    LynxServalViewWrapper markdown = ensureMarkdownView();
-    if (markdown != null) {
-      markdown.onFontLoaded(family, weight, style);
-    }
+    runOnLayoutThread(() -> {
+      if (isDestroyed()) {
+        return;
+      }
+      MarkdownMeasurer markdown = mMarkdownMeasurer;
+      if (markdown != null) {
+        markdown.onFontLoaded(family, weight, style);
+      }
+    });
   }
 
   @Override
   public void onImageLoaded(String url) {
-    if (isDestroyed()) {
-      return;
-    }
-    LynxServalViewWrapper markdown = ensureMarkdownView();
-    if (markdown != null) {
-      markdown.onImageLoaded(url);
-    }
+    runOnLayoutThread(() -> {
+      if (isDestroyed()) {
+        return;
+      }
+      MarkdownMeasurer markdown = mMarkdownMeasurer;
+      if (markdown != null) {
+        markdown.onImageLoaded(url);
+      }
+    });
   }
 
   @Override
   public void onImageLoadError(String source, @Nullable Throwable throwable) {
-    if (isDestroyed() || mContext == null) {
-      return;
-    }
-    String message = throwable == null ? "failed to load image" : throwable.getMessage();
-    mContext.reportResourceError(source, "image", message);
+    runOnLayoutThread(() -> {
+      if (isDestroyed() || mContext == null) {
+        return;
+      }
+      String message = throwable == null ? "failed to load image" : throwable.getMessage();
+      mContext.reportResourceError(source, "image", message);
+    });
   }
 
   public void runOnLayoutThread(Runnable runnable) {
@@ -421,14 +478,30 @@ public class LynxUIMarkdownShadowNode
     }
   }
 
+  private void startLayoutFrame() {
+    if (mFrameCallback != null) {
+      return;
+    }
+    mFrameCallback = this::onVSync;
+    Choreographer.getInstance().postFrameCallback(mFrameCallback);
+  }
+
+  private void stopLayoutFrame() {
+    if (mFrameCallback != null) {
+      Choreographer.getInstance().removeFrameCallback(mFrameCallback);
+      mFrameCallback = null;
+    }
+  }
+
   private void onVSync(long time) {
     if (mFrameCallback == null) {
       return;
     }
-    LynxServalViewWrapper view = ensureMarkdownView();
-    if (view != null) {
-      view.onLayoutFrame(time);
+    if (mMarkdownMeasurer != null) {
+      mMarkdownMeasurer.onLayoutFrame(time);
     }
-    Choreographer.getInstance().postFrameCallback(mFrameCallback);
+    if (mFrameCallback != null) {
+      Choreographer.getInstance().postFrameCallback(mFrameCallback);
+    }
   }
 }

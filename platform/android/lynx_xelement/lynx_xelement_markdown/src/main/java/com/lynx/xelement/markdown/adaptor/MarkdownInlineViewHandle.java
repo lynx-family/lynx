@@ -38,12 +38,6 @@ public class MarkdownInlineViewHandle implements IMarkdownViewHandle {
   }
 
   @Override
-  public void requestMeasure() {}
-
-  @Override
-  public void requestAlign() {}
-
-  @Override
   public void requestDraw() {}
 
   @Override
@@ -72,6 +66,8 @@ public class MarkdownInlineViewHandle implements IMarkdownViewHandle {
     mLeft = left;
     mTop = top;
     AlignParam alignParam = new AlignParam();
+    // Native alignment uses the markdown node's content box as its coordinate origin, so Lynx
+    // applies the parent's padding and border while converting this position to the UI frame.
     alignParam.setLeftOffset(left);
     alignParam.setTopOffset(top);
     AlignContext alignContext = mHost.getAlignContext();
@@ -92,10 +88,8 @@ public class MarkdownInlineViewHandle implements IMarkdownViewHandle {
 
   @Override
   public long getPosition() {
-    LynxBaseUI ui = getUI();
-    if (ui != null) {
-      return MarkdownValuePack.packIntPair(ui.getLeft(), ui.getTop());
-    }
+    // Serval coordinates are relative to the markdown content box, while the Lynx UI position also
+    // contains the parent's padding and border offset.
     return MarkdownValuePack.packIntPair(mLeft, mTop);
   }
 
@@ -116,8 +110,8 @@ public class MarkdownInlineViewHandle implements IMarkdownViewHandle {
     mTop = top;
     LynxBaseUI ui = getUI();
     if (ui != null) {
-      ui.setLeft(left);
-      ui.setTop(top);
+      ui.setLeft(left + mHost.getContentLeftOffset());
+      ui.setTop(top + mHost.getContentTopOffset());
     }
   }
 
