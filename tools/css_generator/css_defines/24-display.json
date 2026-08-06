@@ -42,6 +42,11 @@
       "value": "auto",
       "version": "2.0",
       "desc": "lynx: flex, w3c block"
+    },
+    {
+      "value": "box",
+      "version": "4.2",
+      "desc": "Stack children in one content box and align them with justify-items/align-items or justify-self/align-self"
     }
   ],
   "compat_data": {
@@ -237,5 +242,5 @@
     }
   },
   "is_shorthand": false,
-  "formal_syntax": "flex | linear | none | grid | relative"
+  "formal_syntax": "flex | linear | none | grid | relative | box"
 }

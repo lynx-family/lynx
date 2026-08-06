@@ -894,11 +894,11 @@ export interface Properties {
   /**
    * In Lynx, the `display` only determines the internal display type of the element (how to layout the child elements), and does not determine the external display type (whether the element is considered a block-level element or an inline-level element).
    *
-   * **Syntax**: `flex | linear | none | grid | relative`
+   * **Syntax**: `flex | linear | none | grid | relative | box`
    *
    * @see https://lynxjs.org/api/css/properties/display
    */
-  display?: 'flex' | 'grid' | 'linear' | 'none' | 'relative' | undefined;
+  display?: 'box' | 'flex' | 'grid' | 'linear' | 'none' | 'relative' | undefined;
   /**
    * The overflow property specifies whether to clip the content when the content of an element is too big.
    *

@@ -65,6 +65,8 @@ static bool ToDisplayType(std::string_view str, int& result) {
     type = DisplayType::kBlock;
   } else if (str == "auto") {
     type = DisplayType::kAuto;
+  } else if (str == "box") {
+    type = DisplayType::kBox;
   } else {
     return false;
   }

@@ -1,5 +1,8 @@
 # CHANGELOG
 
+## 4.3.3
+- Add `box` to the supported `display` values.
+
 ## 4.3.2
 - Add `android-overlay-scope` to `<overlay>` typings.
 
