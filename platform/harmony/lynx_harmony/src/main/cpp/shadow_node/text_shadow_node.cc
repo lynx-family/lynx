@@ -559,7 +559,11 @@ void TextShadowNode::DispatchLayoutEvent() {
 
   CustomEvent event{Signature(), kLayout, kDetail.str(),
                     lepus::Value(std::move(param))};
-  context_->RunOnUIThread([this, event]() { context_->SendEvent(event); });
+  context_->RunOnUIThread([weak_context = owner_->GetWeakContext(), event]() {
+    if (auto context = weak_context.lock()) {
+      context->SendEvent(event);
+    }
+  });
 }
 
 bool TextShadowNode::IsTextOverflow(ParagraphHarmony* paragraph,
