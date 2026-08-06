@@ -80,6 +80,7 @@ struct LynxPathResponse {
   // Fallback paths to be used when the primary path is invalid or fails to
   // download.
   std::vector<std::string> fallback_paths;
+  std::string file_cache_name;
 
   bool Success() const { return err_code == 0; }
 };

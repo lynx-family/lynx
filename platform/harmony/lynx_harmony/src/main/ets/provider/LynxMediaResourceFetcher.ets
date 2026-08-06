@@ -12,6 +12,14 @@ export enum LynxOptionalBool {
   UNDEFINED
 }
 
+export interface LynxRedirectResult {
+  url: string;
+  fallbackUrls?: Array<string>;
+  fileCacheName?: string;
+}
+
+export type LynxRedirectCallbackResult = string | LynxRedirectResult;
+
 /**
  * `LynxMediaResourceFetcher` is defined inside LynxEngine and
  * injected from outside to implement the path redirection capability
@@ -43,13 +51,14 @@ export abstract class LynxMediaResourceFetcher implements LynxResourceProvider {
 
   /**
    * `LynxEngine` redirects the image URL asynchronously by calling this method internally.
-   * The redirected URL, or an array of URLs including fallback URLs, should be returned via the callback.
+   * The redirected URL or a redirect result with fallback URLs and file cache name
+   * should be returned via the callback.
    *
    * @apidoc
    * @param request Request to be redirected.
-   * @param callback The callback used to return the target URL string or an array of URL strings (primary URL and fallback URLs).
+   * @param callback The callback used to return the target URL string or a redirect result.
    */
-  shouldRedirectUrlAsync(request: LynxResourceRequest, callback: AsyncCallback<string | Array<string>>) {
+  shouldRedirectUrlAsync(request: LynxResourceRequest, callback: AsyncCallback<LynxRedirectCallbackResult>) {
     callback(undefined, request.url);
   }
 

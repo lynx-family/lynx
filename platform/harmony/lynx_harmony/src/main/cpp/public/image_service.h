@@ -42,6 +42,7 @@ struct ImageRequestInfo {
   std::vector<std::unique_ptr<ImageProcessor>> processors;
   std::unordered_map<std::string, std::string> custom_param;
   std::vector<std::string> fallback_urls;
+  std::string file_cache_name;
 };
 
 enum class LynxImageOrigin : int32_t {

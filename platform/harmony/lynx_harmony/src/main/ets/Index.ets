@@ -32,7 +32,8 @@ export {
 } from './provider/LynxGenericResourceFetcher'
 
 export {
-  LynxMediaResourceFetcher, LynxOptionalBool
+  LynxMediaResourceFetcher, LynxOptionalBool, LynxRedirectResult,
+  LynxRedirectCallbackResult
 } from './provider/LynxMediaResourceFetcher'
 
 export { LynxTemplateResourceFetcher, TemplateProviderResult } from './provider/LynxTemplateResourceFetcher'
