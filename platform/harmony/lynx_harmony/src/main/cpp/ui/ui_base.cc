@@ -1480,7 +1480,7 @@ void UIBase::SetFilter(const lepus::Value& value) {
 }
 
 void UIBase::SetPointerEvents(const lepus::Value& value) {
-  if (value.IsNumber()) {
+  if (value.IsNumber() || value.IsEmpty()) {
     int int_value = value.Number();
     if (int_value >= static_cast<int>(LynxPointerEventsValue::kAuto) &&
         int_value < static_cast<int>(LynxPointerEventsValue::kUnset)) {
