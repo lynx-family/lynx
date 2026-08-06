@@ -156,6 +156,9 @@ constexpr static const char* kCFunctionAppendElement = "__AppendElement";
 constexpr static const char* kCFunctionRemoveElement = "__RemoveElement";
 constexpr static const char* kCFunctionInsertElementBefore =
     "__InsertElementBefore";
+constexpr static const char* kCFunctionInsertElementAt = "__InsertElementAt";
+constexpr static const char* kCFunctionRemoveElementsAt = "__RemoveElementsAt";
+constexpr static const char* kCFunctionMoveElements = "__MoveElements";
 constexpr static const char* kCFunctionFirstElement = "__FirstElement";
 constexpr static const char* kCFunctionLastElement = "__LastElement";
 constexpr static const char* kCFunctionNextElement = "__NextElement";

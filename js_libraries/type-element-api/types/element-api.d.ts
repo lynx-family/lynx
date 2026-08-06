@@ -195,6 +195,12 @@ declare global {
 
   function __InsertElementBefore(parent: ElementRef, current: ElementRef, marker?: ElementRef): ElementRef;
 
+  function __InsertElementAt(parent: ElementRef, current: ElementRef, index: number): void;
+
+  function __RemoveElementsAt(parent: ElementRef, index: number, count: number): void;
+
+  function __MoveElements(parent: ElementRef, from: number, to: number, count: number): void;
+
   function __SwapElement(left: ElementRef, right: ElementRef): void;
 
   function __ReplaceElement(newElement: ElementRef, oldElement: ElementRef): void;
