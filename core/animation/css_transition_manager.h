@@ -92,6 +92,11 @@ class CSSTransitionManager : public CSSKeyframeManager {
   bool IsShouldTransitionType(starlight::AnimationPropertyType type);
 
  protected:
+  Animation::Origin ResolveAnimationOrigin(
+      const starlight::AnimationData&) const override {
+    return Animation::Origin::kCSSTransition;
+  }
+
   base::LinearFlatMap<unsigned int, starlight::AnimationData> transition_data_;
   base::LinearFlatMap<base::String, tasm::CSSKeyframesContent> keyframe_tokens_;
   base::LinearFlatSet<unsigned int> property_types_;

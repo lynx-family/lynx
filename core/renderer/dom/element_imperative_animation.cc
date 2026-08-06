@@ -51,10 +51,12 @@ void Element::RemoveOwnedImperativeAnimationKeyframe(
   }
 }
 
-void Element::RecordImperativeAnimationStart(
-    ImperativeAnimationState::Source source, const base::String& js_name,
-    const base::String& animation_name, bool owns_generated_keyframe,
-    const StyleMap& timing_styles) {
+void Element::RecordImperativeAnimationStart(ImperativeAnimationSource source,
+                                             const base::String& js_name,
+                                             const base::String& animation_name,
+                                             bool owns_generated_keyframe,
+                                             const StyleMap& timing_styles) {
+  imperative_animation_metadata_->RecordStart(source, js_name, animation_name);
   if (!ShouldTrackImperativeAnimationsForNewPipeline()) {
     return;
   }
@@ -71,7 +73,7 @@ void Element::RecordImperativeAnimationStart(
 }
 
 void Element::UpdateImperativeAnimationPlayState(
-    ImperativeAnimationState::Source source, const base::String& name,
+    ImperativeAnimationSource source, const base::String& name,
     const StyleMap& timing_styles, bool paused) {
   if (!ShouldTrackImperativeAnimationsForNewPipeline()) {
     return;
@@ -80,8 +82,11 @@ void Element::UpdateImperativeAnimationPlayState(
                                               paused);
 }
 
-void Element::CancelImperativeAnimation(ImperativeAnimationState::Source source,
+void Element::CancelImperativeAnimation(ImperativeAnimationSource source,
                                         const base::String& name) {
+  if (auto* metadata = imperative_animation_metadata_.get()) {
+    metadata->Cancel(source, name);
+  }
   if (!ShouldTrackImperativeAnimationsForNewPipeline()) {
     return;
   }
@@ -89,8 +94,11 @@ void Element::CancelImperativeAnimation(ImperativeAnimationState::Source source,
       imperative_animation_state_.Cancel(source, name));
 }
 
-void Element::FinishImperativeAnimation(ImperativeAnimationState::Source source,
+void Element::FinishImperativeAnimation(ImperativeAnimationSource source,
                                         const base::String& name) {
+  if (auto* metadata = imperative_animation_metadata_.get()) {
+    metadata->Finish(source, name);
+  }
   if (!ShouldTrackImperativeAnimationsForNewPipeline()) {
     return;
   }
@@ -99,6 +107,7 @@ void Element::FinishImperativeAnimation(ImperativeAnimationState::Source source,
 }
 
 void Element::ClearImperativeAnimationsForStyleAnimationUpdate() {
+  imperative_animation_metadata_.reset();
   if (!ShouldTrackImperativeAnimationsForNewPipeline()) {
     return;
   }
@@ -133,6 +142,13 @@ bool Element::HasImperativeAnimations() const {
     return false;
   }
   return imperative_animation_state_.HasRecords();
+}
+
+bool Element::HasImperativeAnimationMetadata(
+    const base::String& animation_name) const {
+  const auto* metadata = imperative_animation_metadata_.get();
+  return (metadata && metadata->HasAnimationName(animation_name)) ||
+         imperative_animation_state_.HasAnimationName(animation_name);
 }
 
 void Element::ClearImperativeAnimationState() {

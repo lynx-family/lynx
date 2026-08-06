@@ -1285,6 +1285,8 @@ void Element::Animate(const lepus::Value& args,
   auto& parser_configs = element_manager()->GetCSSParserConfigs();
   const bool track_imperative_animations =
       ShouldTrackImperativeAnimationsForNewPipeline();
+  const bool had_pending_keyframe_effect_rebuild =
+      needs_keyframe_effect_rebuild_;
   switch (op) {
     case runtime::js::JavaScriptElement::AnimationOperation::START: {
       if (args.GetLength() != 4) {
@@ -1351,40 +1353,32 @@ void Element::Animate(const lepus::Value& args,
         }
         UnitHandler::Process(id, value, styles, parser_configs);
       }
-      if (track_imperative_animations) {
-        RecordImperativeAnimationStart(
-            ImperativeAnimationState::Source::kAnimate, js_name, animate_name,
-            owns_generated_keyframe, styles);
-      }
+      RecordImperativeAnimationStart(ImperativeAnimationSource::kAnimate,
+                                     js_name, animate_name,
+                                     owns_generated_keyframe, styles);
       break;
     }
     case runtime::js::JavaScriptElement::AnimationOperation::PAUSE: {
       BASE_STATIC_STRING_DECL(kPaused, "paused");
       UnitHandler::Process(kPropertyIDAnimationPlayState, lepus::Value(kPaused),
                            styles, parser_configs);
-      if (track_imperative_animations) {
-        UpdateImperativeAnimationPlayState(
-            ImperativeAnimationState::Source::kAnimate,
-            args.GetProperty(1).String(), styles, true);
-      }
+      UpdateImperativeAnimationPlayState(ImperativeAnimationSource::kAnimate,
+                                         args.GetProperty(1).String(), styles,
+                                         true);
       break;
     }
     case runtime::js::JavaScriptElement::AnimationOperation::PLAY: {
       BASE_STATIC_STRING_DECL(kRunning, "running");
       UnitHandler::Process(kPropertyIDAnimationPlayState,
                            lepus::Value(kRunning), styles, parser_configs);
-      if (track_imperative_animations) {
-        UpdateImperativeAnimationPlayState(
-            ImperativeAnimationState::Source::kAnimate,
-            args.GetProperty(1).String(), styles, false);
-      }
+      UpdateImperativeAnimationPlayState(ImperativeAnimationSource::kAnimate,
+                                         args.GetProperty(1).String(), styles,
+                                         false);
       break;
     }
     case runtime::js::JavaScriptElement::AnimationOperation::CANCEL: {
-      if (track_imperative_animations) {
-        CancelImperativeAnimation(ImperativeAnimationState::Source::kAnimate,
-                                  args.GetProperty(1).String());
-      }
+      CancelImperativeAnimation(ImperativeAnimationSource::kAnimate,
+                                args.GetProperty(1).String());
       BASE_STATIC_STRING_DECL(kRunning, "running");
       UnitHandler::Process(kPropertyIDAnimationPlayState,
                            lepus::Value(kRunning), styles, parser_configs);
@@ -1399,16 +1393,17 @@ void Element::Animate(const lepus::Value& args,
       break;
     }
     case runtime::js::JavaScriptElement::AnimationOperation::FINISH: {
-      if (track_imperative_animations) {
-        FinishImperativeAnimation(ImperativeAnimationState::Source::kAnimate,
-                                  args.GetProperty(1).String());
-      }
+      FinishImperativeAnimation(ImperativeAnimationSource::kAnimate,
+                                args.GetProperty(1).String());
       break;
     }
     default:
       break;
   }
   ConsumeStyle(styles);
+  needs_keyframe_effect_rebuild_ =
+      had_pending_keyframe_effect_rebuild ||
+      op == runtime::js::JavaScriptElement::AnimationOperation::START;
   element_manager_->OnFinishUpdateProps(this, pipeline_option);
 }
 
@@ -1434,6 +1429,8 @@ void Element::AnimateV2(const lepus::Value& args,
   auto& parser_configs = element_manager()->GetCSSParserConfigs();
   const bool track_imperative_animations =
       ShouldTrackImperativeAnimationsForNewPipeline();
+  const bool had_pending_keyframe_effect_rebuild =
+      needs_keyframe_effect_rebuild_;
   switch (op) {
     case runtime::js::JavaScriptElement::AnimationOperation::START: {
       if (args.GetLength() != 4) {
@@ -1477,11 +1474,9 @@ void Element::AnimateV2(const lepus::Value& args,
         }
         UnitHandler::Process(id, value, styles, parser_configs);
       }
-      if (track_imperative_animations) {
-        RecordImperativeAnimationStart(
-            ImperativeAnimationState::Source::kAnimateV2, js_name, animate_name,
-            owns_generated_keyframe, styles);
-      }
+      RecordImperativeAnimationStart(ImperativeAnimationSource::kAnimateV2,
+                                     js_name, animate_name,
+                                     owns_generated_keyframe, styles);
       break;
     }
     case runtime::js::JavaScriptElement::AnimationOperation::PAUSE: {
@@ -1495,11 +1490,9 @@ void Element::AnimateV2(const lepus::Value& args,
       UnitHandler::Process(kPropertyIDAnimationName,
                            lepus::Value(args.GetProperty(1).StdString()),
                            styles, parser_configs);
-      if (track_imperative_animations) {
-        UpdateImperativeAnimationPlayState(
-            ImperativeAnimationState::Source::kAnimateV2,
-            args.GetProperty(1).String(), styles, true);
-      }
+      UpdateImperativeAnimationPlayState(ImperativeAnimationSource::kAnimateV2,
+                                         args.GetProperty(1).String(), styles,
+                                         true);
       break;
     }
     case runtime::js::JavaScriptElement::AnimationOperation::PLAY: {
@@ -1513,18 +1506,14 @@ void Element::AnimateV2(const lepus::Value& args,
       UnitHandler::Process(kPropertyIDAnimationName,
                            lepus::Value(args.GetProperty(1).StdString()),
                            styles, parser_configs);
-      if (track_imperative_animations) {
-        UpdateImperativeAnimationPlayState(
-            ImperativeAnimationState::Source::kAnimateV2,
-            args.GetProperty(1).String(), styles, false);
-      }
+      UpdateImperativeAnimationPlayState(ImperativeAnimationSource::kAnimateV2,
+                                         args.GetProperty(1).String(), styles,
+                                         false);
       break;
     }
     case runtime::js::JavaScriptElement::AnimationOperation::CANCEL: {
-      if (track_imperative_animations) {
-        CancelImperativeAnimation(ImperativeAnimationState::Source::kAnimateV2,
-                                  args.GetProperty(1).String());
-      }
+      CancelImperativeAnimation(ImperativeAnimationSource::kAnimateV2,
+                                args.GetProperty(1).String());
       BASE_STATIC_STRING_DECL(kRunning, "running");
       UnitHandler::Process(kPropertyIDAnimationPlayState,
                            lepus::Value(kRunning), styles, parser_configs);
@@ -1539,10 +1528,8 @@ void Element::AnimateV2(const lepus::Value& args,
       break;
     }
     case runtime::js::JavaScriptElement::AnimationOperation::FINISH: {
-      if (track_imperative_animations) {
-        FinishImperativeAnimation(ImperativeAnimationState::Source::kAnimateV2,
-                                  args.GetProperty(1).String());
-      }
+      FinishImperativeAnimation(ImperativeAnimationSource::kAnimateV2,
+                                args.GetProperty(1).String());
       break;
     }
     default:
@@ -1554,6 +1541,9 @@ void Element::AnimateV2(const lepus::Value& args,
     computed_css_style()->AppendAnimatedAnimationValue(styles);
     has_keyframe_props_changed_ = true;
   }
+  needs_keyframe_effect_rebuild_ =
+      had_pending_keyframe_effect_rebuild ||
+      op == runtime::js::JavaScriptElement::AnimationOperation::START;
   element_manager_->OnFinishUpdateProps(this, pipeline_option);
 }
 
@@ -2052,6 +2042,9 @@ bool Element::CheckTransitionProps(CSSPropertyID id) {
 
 bool Element::CheckKeyframeProps(CSSPropertyID id) {
   if (CSSProperty::IsKeyframeProps(id)) {
+    if (id != kPropertyIDAnimationPlayState) {
+      needs_keyframe_effect_rebuild_ = true;
+    }
     has_keyframe_props_changed_ = true;
     has_non_flatten_attrs_ = true;
     return true;
@@ -3162,6 +3155,7 @@ void Element::VerifyKeyframePropsChangedHandling() {
     // keyframe_props is not handled properly in this flow
     DCHECK(!has_keyframe_props_changed_);
     has_keyframe_props_changed_ = false;
+    needs_keyframe_effect_rebuild_ = false;
   }
 }
 
@@ -3201,9 +3195,8 @@ void Element::SetDefaultOverflow(bool visible) {
 }
 
 void Element::DestroyPlatformNode() {
-  if (ShouldTrackImperativeAnimationsForNewPipeline()) {
-    ClearImperativeAnimationState();
-  }
+  imperative_animation_metadata_.reset();
+  ClearImperativeAnimationState();
   if (element_container() && has_painting_node_) {
     element_container()->Destroy();
   }

@@ -43,6 +43,7 @@
 #include "core/renderer/dom/attribute_holder.h"
 #include "core/renderer/dom/base_element_container.h"
 #include "core/renderer/dom/element_property.h"
+#include "core/renderer/dom/imperative_animation_metadata.h"
 #include "core/renderer/dom/imperative_animation_state.h"
 #include "core/renderer/dom/selector/selector_item.h"
 #include "core/renderer/dom/style_resolver.h"
@@ -335,6 +336,10 @@ class Element : public lepus::RefCounted,
   SLNode* slnode() const { return sl_node_.get(); }
 
   ElementManager* element_manager() const { return element_manager_; }
+
+  // Returns true when imperative metadata or retained new-pipeline state owns
+  // |animation_name|. Used to classify a newly created Animation's origin.
+  bool HasImperativeAnimationMetadata(const base::String& animation_name) const;
   Element* parent() const { return parent_; }
   Element* next_sibling() const { return Sibling(1); }
   Element* previous_sibling() const { return Sibling(-1); }
@@ -2067,17 +2072,18 @@ class Element : public lepus::RefCounted,
   inline void MarkRequireFlush() { flush_required_ = true; }
 
   bool ShouldTrackImperativeAnimationsForNewPipeline() const;
-  void RecordImperativeAnimationStart(ImperativeAnimationState::Source source,
+  void RecordImperativeAnimationStart(ImperativeAnimationSource source,
                                       const base::String& js_name,
                                       const base::String& animation_name,
                                       bool owns_generated_keyframe,
                                       const StyleMap& timing_styles);
-  void UpdateImperativeAnimationPlayState(
-      ImperativeAnimationState::Source source, const base::String& name,
-      const StyleMap& timing_styles, bool paused);
-  void CancelImperativeAnimation(ImperativeAnimationState::Source source,
+  void UpdateImperativeAnimationPlayState(ImperativeAnimationSource source,
+                                          const base::String& name,
+                                          const StyleMap& timing_styles,
+                                          bool paused);
+  void CancelImperativeAnimation(ImperativeAnimationSource source,
                                  const base::String& name);
-  void FinishImperativeAnimation(ImperativeAnimationState::Source source,
+  void FinishImperativeAnimation(ImperativeAnimationSource source,
                                  const base::String& name);
   void ClearImperativeAnimationsForStyleAnimationUpdate();
   void ReplayImperativeAnimationsToStyle(
@@ -2162,6 +2168,9 @@ class Element : public lepus::RefCounted,
 
   bool has_transition_props_changed_{false};
   bool has_keyframe_props_changed_{false};
+  // Play-state-only updates still need to sync animation data, but should not
+  // rebuild the keyframe effect or replace the Animation object.
+  bool needs_keyframe_effect_rebuild_{false};
   bool is_applying_animation_style_{false};
   bool has_non_flatten_attrs_{false};
 
@@ -2281,6 +2290,12 @@ class Element : public lepus::RefCounted,
   base::auto_create_optional<CSSKeyframesTokenMap> keyframes_map_;
   // Save increase key of the Animate API.
   base::String will_removed_keyframe_name_;
+  // Source identity used by both styling pipelines to classify a newly created
+  // Animation. It does not own runtime timing or fill state.
+  base::auto_create_optional<ImperativeAnimationMetadata>
+      imperative_animation_metadata_;
+  // Runtime timing, replay, and cleanup state used only by the new styling
+  // pipeline.
   ImperativeAnimationState imperative_animation_state_;
   // for global-bind event
   base::auto_create_optional<base::LinearFlatSet<std::string>>

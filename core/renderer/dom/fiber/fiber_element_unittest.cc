@@ -17901,6 +17901,7 @@ TEST_P(FiberElementTest,
   fiber_element->css_keyframe_manager_ =
       std::make_unique<animation::CSSKeyframeManager>(fiber_element.get());
   fiber_element->has_keyframe_props_changed_ = true;
+  fiber_element->needs_keyframe_effect_rebuild_ = true;
 
   const StyleMap new_underlying_layout_only_styles;
   fiber_element->SampleAnimationOverridesForNewPipeline(
@@ -17908,6 +17909,7 @@ TEST_P(FiberElementTest,
       previous_final_style);
 
   EXPECT_FALSE(fiber_element->has_keyframe_props_changed_);
+  EXPECT_FALSE(fiber_element->needs_keyframe_effect_rebuild_);
 }
 
 TEST_P(FiberElementTest,
@@ -17929,6 +17931,7 @@ TEST_P(FiberElementTest,
       fiber_element->platform_css_style_.get();
 
   fiber_element->has_keyframe_props_changed_ = true;
+  fiber_element->needs_keyframe_effect_rebuild_ = true;
 
   const StyleMap new_underlying_layout_only_styles;
   fiber_element->SampleAnimationOverridesForNewPipeline(
@@ -17936,6 +17939,7 @@ TEST_P(FiberElementTest,
       previous_final_style);
 
   EXPECT_FALSE(fiber_element->has_keyframe_props_changed_);
+  EXPECT_FALSE(fiber_element->needs_keyframe_effect_rebuild_);
 }
 
 TEST_P(FiberElementTest, NewStylingNewAnimatorTickRequestsTargetedResolve) {
@@ -20648,6 +20652,23 @@ TEST_P(FiberElementTest,
   element->AnimateV2(lepus::Value(start_args), pipeline_option);
 
   page->FlushActionsAsRoot();
+  ASSERT_NE(nullptr, element->css_keyframe_manager_);
+  auto animation = element->css_keyframe_manager_->animations_map_["fade"];
+  const auto animation_id = animation->id();
+  for (auto operation :
+       {runtime::js::JavaScriptElement::AnimationOperation::PAUSE,
+        runtime::js::JavaScriptElement::AnimationOperation::PLAY}) {
+    auto args = lepus::CArray::Create();
+    args->set(0, lepus::Value(static_cast<int32_t>(operation)));
+    args->set(1, lepus::Value("fade"));
+    auto operation_pipeline_option = std::make_shared<PipelineOptions>();
+    element->AnimateV2(lepus::Value(args), operation_pipeline_option);
+    page->FlushActionsAsRoot();
+    EXPECT_EQ(animation,
+              element->css_keyframe_manager_->animations_map_["fade"]);
+    EXPECT_EQ(animation_id,
+              element->css_keyframe_manager_->animations_map_["fade"]->id());
+  }
   element->platform_css_style_->SetValue(CSSPropertyID::kPropertyIDOpacity,
                                          CSSValue(0.8, CSSValuePattern::NUMBER),
                                          false);
@@ -20677,6 +20698,125 @@ TEST_P(FiberElementTest,
       CSSProperty::GetPropertyNameCStr(CSSPropertyID::kPropertyIDOpacity));
   ASSERT_NE(opacity_it, props.end());
   EXPECT_NEAR(opacity_it->second.Number(), 0.2, 1e-6);
+}
+
+TEST_P(FiberElementTest, ImperativeAnimationOriginAcrossStylingPipelines) {
+  int32_t page_id = 11;
+  for (const bool enable_new_styling_pipeline : {false, true}) {
+    for (const bool use_animate_v2 : {false, true}) {
+      SCOPED_TRACE(::testing::Message()
+                   << "enable_new_styling_pipeline="
+                   << enable_new_styling_pipeline
+                   << ", use_animate_v2=" << use_animate_v2);
+      manager->enable_new_styling_pipeline_ = enable_new_styling_pipeline;
+      auto page = manager->CreateFiberPage("page", page_id++);
+      manager->SetFiberPageElement(page);
+      auto element = manager->CreateFiberView();
+      element->enable_new_animator_ = true;
+      page->InsertNode(element);
+      page->FlushActionsAsRoot();
+
+      auto run_animation_operation = [&](const lepus::Value& args) {
+        auto pipeline_option = std::make_shared<PipelineOptions>();
+        pipeline_option->enable_unified_pixel_pipeline = true;
+        if (use_animate_v2) {
+          element->AnimateV2(args, pipeline_option);
+        } else {
+          element->Animate(args, pipeline_option);
+        }
+      };
+
+      auto start_args = lepus::CArray::Create();
+      start_args->set(
+          0, lepus::Value(static_cast<int32_t>(
+                 runtime::js::JavaScriptElement::AnimationOperation::START)));
+      start_args->set(1, lepus::Value("fade"));
+      auto keyframes = lepus::Dictionary::Create();
+      auto from_keyframe = lepus::Dictionary::Create();
+      from_keyframe->SetValue("opacity", lepus::Value("0.2"));
+      keyframes->SetValue("0%", lepus::Value(std::move(from_keyframe)));
+      auto to_keyframe = lepus::Dictionary::Create();
+      to_keyframe->SetValue("opacity", lepus::Value("0.8"));
+      keyframes->SetValue("100%", lepus::Value(std::move(to_keyframe)));
+      start_args->set(2, lepus::Value(std::move(keyframes)));
+      auto animation_data = lepus::Dictionary::Create();
+      animation_data->SetValue("name", lepus::Value("fade"));
+      animation_data->SetValue("duration", lepus::Value(2000));
+      animation_data->SetValue("fill", lepus::Value("forwards"));
+      animation_data->SetValue("play-state", lepus::Value("running"));
+      start_args->set(3, lepus::Value(std::move(animation_data)));
+      run_animation_operation(lepus::Value(start_args));
+
+      if (enable_new_styling_pipeline) {
+        ASSERT_EQ(nullptr, element->css_keyframe_manager_);
+      } else {
+        EXPECT_FALSE(element->imperative_animation_state_.HasRecords());
+        element->SetDataToNativeKeyframeAnimator(false);
+      }
+
+      for (const auto operation :
+           {runtime::js::JavaScriptElement::AnimationOperation::PAUSE,
+            runtime::js::JavaScriptElement::AnimationOperation::PLAY}) {
+        auto operation_args = lepus::CArray::Create();
+        operation_args->set(0, lepus::Value(static_cast<int32_t>(operation)));
+        operation_args->set(1, lepus::Value("fade"));
+        run_animation_operation(lepus::Value(operation_args));
+        if (!enable_new_styling_pipeline) {
+          element->SetDataToNativeKeyframeAnimator(false);
+          EXPECT_EQ(
+              operation ==
+                      runtime::js::JavaScriptElement::AnimationOperation::PAUSE
+                  ? animation::Animation::State::kPause
+                  : animation::Animation::State::kPlay,
+              element->css_keyframe_manager_->animations_map_["fade"]
+                  ->GetState());
+        }
+      }
+
+      auto finish_args = lepus::CArray::Create();
+      finish_args->set(
+          0, lepus::Value(static_cast<int32_t>(
+                 runtime::js::JavaScriptElement::AnimationOperation::FINISH)));
+      finish_args->set(1, lepus::Value("fade"));
+      run_animation_operation(lepus::Value(finish_args));
+
+      EXPECT_FALSE(element->imperative_animation_metadata_->HasAnimationName(
+          base::String("fade")));
+      EXPECT_EQ(enable_new_styling_pipeline,
+                element->imperative_animation_state_.HasAnimationName(
+                    base::String("fade")));
+
+      if (enable_new_styling_pipeline) {
+        auto reduce_task = element->PrepareForCreateOrUpdate();
+        reduce_task();
+      }
+
+      ASSERT_NE(nullptr, element->css_keyframe_manager_);
+      auto animation_iter =
+          element->css_keyframe_manager_->animations_map_.find("fade");
+      ASSERT_NE(animation_iter,
+                element->css_keyframe_manager_->animations_map_.end());
+      EXPECT_EQ(animation::Animation::Origin::kWebAnimation,
+                animation_iter->second->GetOrigin());
+
+      auto cancel_args = lepus::CArray::Create();
+      cancel_args->set(
+          0, lepus::Value(static_cast<int32_t>(
+                 runtime::js::JavaScriptElement::AnimationOperation::CANCEL)));
+      cancel_args->set(1, lepus::Value("fade"));
+      run_animation_operation(lepus::Value(cancel_args));
+      if (enable_new_styling_pipeline) {
+        auto reduce_task = element->PrepareForCreateOrUpdate();
+        reduce_task();
+      } else {
+        element->SetDataToNativeKeyframeAnimator(false);
+      }
+      EXPECT_FALSE(element->imperative_animation_state_.HasAnimationName(
+          base::String("fade")));
+      EXPECT_EQ(element->css_keyframe_manager_->animations_map_.end(),
+                element->css_keyframe_manager_->animations_map_.find("fade"));
+    }
+  }
 }
 
 TEST_P(FiberElementTest,

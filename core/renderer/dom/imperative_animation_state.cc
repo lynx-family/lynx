@@ -72,8 +72,8 @@ bool ImperativeAnimationState::MatchesName(const Record& record,
 }
 
 bool ImperativeAnimationState::MatchesIdentity(
-    const Record& record, Source source, const base::String& js_name,
-    const base::String& animation_name) {
+    const Record& record, ImperativeAnimationSource source,
+    const base::String& js_name, const base::String& animation_name) {
   if (record.source != source) {
     return false;
   }
@@ -84,19 +84,19 @@ bool ImperativeAnimationState::MatchesIdentity(
 }
 
 bool ImperativeAnimationState::ShouldReplaceOnStart(
-    const Record& record, Source source, const base::String& js_name,
-    const base::String& animation_name) {
+    const Record& record, ImperativeAnimationSource source,
+    const base::String& js_name, const base::String& animation_name) {
   if (record.source != source) {
     return false;
   }
-  if (source == Source::kAnimate) {
+  if (source == ImperativeAnimationSource::kAnimate) {
     return true;
   }
   return MatchesIdentity(record, source, js_name, animation_name);
 }
 
 ImperativeAnimationState::Mutation ImperativeAnimationState::RecordStart(
-    Source source, const base::String& js_name,
+    ImperativeAnimationSource source, const base::String& js_name,
     const base::String& animation_name, bool owns_generated_keyframe,
     const StyleMap& timing_styles, CSSKeyframesToken* keyframes_token) {
   Mutation mutation;
@@ -131,7 +131,7 @@ ImperativeAnimationState::Mutation ImperativeAnimationState::RecordStart(
   return mutation;
 }
 
-void ImperativeAnimationState::UpdatePlayState(Source source,
+void ImperativeAnimationState::UpdatePlayState(ImperativeAnimationSource source,
                                                const base::String& name,
                                                const StyleMap& timing_styles,
                                                bool paused) {
@@ -147,7 +147,7 @@ void ImperativeAnimationState::UpdatePlayState(Source source,
 }
 
 ImperativeAnimationState::Mutation ImperativeAnimationState::Cancel(
-    Source source, const base::String& name) {
+    ImperativeAnimationSource source, const base::String& name) {
   Mutation mutation;
   for (auto iter = records_.begin(); iter != records_.end();) {
     if (!MatchesIdentity(*iter, source, name, name)) {
@@ -162,7 +162,7 @@ ImperativeAnimationState::Mutation ImperativeAnimationState::Cancel(
 }
 
 ImperativeAnimationState::Mutation ImperativeAnimationState::Finish(
-    Source source, const base::String& name) {
+    ImperativeAnimationSource source, const base::String& name) {
   Mutation mutation;
   for (auto iter = records_.begin(); iter != records_.end();) {
     if (!MatchesIdentity(*iter, source, name, name)) {
