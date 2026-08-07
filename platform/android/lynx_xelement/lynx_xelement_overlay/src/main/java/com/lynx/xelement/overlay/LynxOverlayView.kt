@@ -46,7 +46,10 @@ class LynxOverlayView(context: LynxContext, val proxy: LynxUIOverlay) : UIGroup<
         const val EVENT_REQUEST_CLOSE = "requestclose"
         const val EVENT_OVERLAY_MOVED = "overlaymoved"
         const val EVENT_OVERLAY_TOUCH = "overlaytouch"
-
+        private const val NAVIGATION_BAR_STYLE_AUTO = "auto"
+        private const val NAVIGATION_BAR_STYLE_LIGHT = "light"
+        private const val NAVIGATION_BAR_STYLE_DARK = "dark"
+        private const val NAVIGATION_BAR_STYLE_TRANSPARENT = "transparent"
     }
 
     private var mEventState = 0 //state 0-begin, 1-move, 2-up
@@ -57,6 +60,7 @@ class LynxOverlayView(context: LynxContext, val proxy: LynxUIOverlay) : UIGroup<
     private var mEventsPassThroughHasBeenSet = false
     private var mStatusBarTranslucentStyle: String = LynxUIOverlay.PROP_STATUS_BAR_TRANSLUCENT_STYLE_DARK
     private var mLazyInitContext = false
+    private var mNavigationBarStyle = NAVIGATION_BAR_STYLE_AUTO
 
     private var mId: String? = null
     private var mNestScrollId: String? = null
@@ -216,6 +220,43 @@ class LynxOverlayView(context: LynxContext, val proxy: LynxUIOverlay) : UIGroup<
     override fun createView(context: Context?): AndroidView = AndroidView(context)
 
     override fun getTouchEventDispatcher() : TouchEventDispatcher? {return mEventDispatcher}
+
+    @LynxProp(name = LynxUIOverlay.PROP_ANDROID_NAVIGATION_BAR_STYLE)
+    fun setAndroidNavigationBarStyle(style: String?) {
+        mNavigationBarStyle = style ?: NAVIGATION_BAR_STYLE_AUTO
+        if (mDialog.isShowing) {
+            applyAndroidNavigationBarStyle()
+        }
+    }
+
+    internal fun applyAndroidNavigationBarStyle() {
+        val dialogWindow = mDialog.window ?: return
+        val activityWindow = ContextUtils.getActivity(lynxContext)?.window ?: return
+        dialogWindow.navigationBarColor = when (mNavigationBarStyle) {
+            NAVIGATION_BAR_STYLE_LIGHT -> Color.WHITE
+            NAVIGATION_BAR_STYLE_DARK -> Color.BLACK
+            NAVIGATION_BAR_STYLE_TRANSPARENT -> Color.TRANSPARENT
+            else -> activityWindow.navigationBarColor
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            dialogWindow.isNavigationBarContrastEnforced =
+                if (mNavigationBarStyle == NAVIGATION_BAR_STYLE_TRANSPARENT) {
+                    false
+                } else {
+                    activityWindow.isNavigationBarContrastEnforced
+                }
+        }
+        val lightBackground = when (mNavigationBarStyle) {
+            NAVIGATION_BAR_STYLE_LIGHT -> true
+            NAVIGATION_BAR_STYLE_DARK -> false
+            else -> WindowCompat.getInsetsController(activityWindow, activityWindow.decorView)
+                ?.isAppearanceLightNavigationBars
+        }
+        if (lightBackground != null) {
+            WindowCompat.getInsetsController(dialogWindow, dialogWindow.decorView)
+                ?.isAppearanceLightNavigationBars = lightBackground
+        }
+    }
 
     override fun eventThrough(x: Float, y: Float): Boolean {
         // If mEventThrough == Enable, let the res be true. Otherwise, return false.
@@ -675,6 +716,7 @@ class LynxOverlayView(context: LynxContext, val proxy: LynxUIOverlay) : UIGroup<
                             }
                         }
                         mDialog.show()
+                        applyAndroidNavigationBarStyle()
                         if (mDialog.isShowing) {
                             setPlatformEventRootActive(true)
                         }

@@ -16,12 +16,17 @@ let a;
   <overlay level={1} />;
   <overlay mode="window" />;
   <overlay mode="page" />;
+  <overlay android-navigation-bar-style="auto" />;
+  <overlay android-navigation-bar-style="light" />;
+  <overlay android-navigation-bar-style="dark" />;
+  <overlay android-navigation-bar-style="transparent" />;
   <overlay visible={false} level={2} mode="top" />;
 
   assertType<boolean | undefined>(a as IntrinsicElements['overlay']['visible']);
   assertType<1 | 2 | 3 | 4 | undefined>(a as IntrinsicElements['overlay']['level']);
   assertType<boolean | undefined>(a as IntrinsicElements['overlay']['ios-enable-swipe-back']);
   assertType<'window' | 'top' | 'page' | string | undefined>(a as IntrinsicElements['overlay']['mode']);
+  assertType<'auto' | 'light' | 'dark' | 'transparent' | undefined>(a as IntrinsicElements['overlay']['android-navigation-bar-style']);
 
   expectError(() => {
     // @ts-expect-error type error
@@ -30,6 +35,8 @@ let a;
     <overlay level={5} />;
     // @ts-expect-error type error
     <overlay mode={true} />;
+    // @ts-expect-error type error
+    <overlay android-navigation-bar-style="invalid" />;
     // @ts-expect-error type error
     <overlay ios-enable-swipe-back={'text'} />;
   });

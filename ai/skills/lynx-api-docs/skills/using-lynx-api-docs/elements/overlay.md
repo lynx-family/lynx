@@ -41,6 +41,7 @@ Android:
 - `android-hide-navigation-bar`
 - `android-container-popup-tag`
 - `android-adapt-edge-to-edge`
+- `android-navigation-bar-style`: `auto` inherits the host Activity navigation bar and is the default. `light` uses a white background with dark system controls, `dark` uses a black background with light system controls, and `transparent` removes the background while inheriting the host Activity control appearance. Missing and invalid values behave as `auto`.
 - `android-set-soft-input-mode`
 - `android-native-event-pass`
 
