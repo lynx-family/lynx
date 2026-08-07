@@ -176,6 +176,11 @@ class LynxContext {
 
   bool EnableEventThrough();
 
+  void SetEnableEventThroughInheritFromPage(
+      bool enable_event_through_inherit_from_page);
+
+  bool EnableEventThroughInheritFromPage();
+
   void SetEnableHarmonyVisibleAreaChangeForExposure(
       bool enable_harmony_visible_area_change_for_exposure);
 
@@ -406,6 +411,7 @@ class LynxContext {
 
   std::optional<lepus::Value> keyframes_;
   bool enable_event_through_{false};
+  bool enable_event_through_inherit_from_page_{false};
   bool enable_harmony_visible_area_change_for_exposure_{false};
   bool enable_exposure_when_reload_{false};
   bool enable_transformed_touch_position_{false};

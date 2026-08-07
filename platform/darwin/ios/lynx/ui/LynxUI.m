@@ -3271,8 +3271,9 @@ LYNX_PROP_DEFINE("event-through", setEventThrough, BOOL) {
   } else {
     id<LynxEventTarget> parent = [self parentTarget];
     if (parent != nil) {
-      // when parent is root ui, return false.
-      if ([parent isKindOfClass:[LynxRootUI class]]) {
+      // By default, event-through inheritance stops before the page node.
+      if ([parent isKindOfClass:[LynxRootUI class]] &&
+          !self.context.enableEventThroughInheritFromPage) {
         isEventThrough = NO;
       } else {
         CGPoint targetPoint = point;

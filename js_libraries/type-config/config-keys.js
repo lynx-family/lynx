@@ -17,6 +17,7 @@ const configKeys = [
   'enableEndGestureAtLastFingerUp',
   'enableEventHandleRefactor',
   'enableEventThrough',
+  'enableEventThroughInheritFromPage',
   'enableFetchAPIStandardStreaming',
   'enableFixedNew',
   'enableFlexBasisZeroPercent',

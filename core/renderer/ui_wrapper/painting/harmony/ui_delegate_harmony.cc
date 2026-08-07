@@ -304,6 +304,8 @@ void UIDelegateHarmony::OnPageConfigDecoded(
       ui_owner_->SetEnableSyncXElementRegistry();
     }
     lynx_context->SetEnableEventThrough(config->GetEnableEventThrough());
+    lynx_context->SetEnableEventThroughInheritFromPage(
+        config->GetEnableEventThroughInheritFromPage());
     lynx_context->SetEnableHarmonyVisibleAreaChangeForExposure(
         config->GetEnableHarmonyVisibleAreaChangeForExposure());
     lynx_context->SetEnableMultiTouch(config->GetEnableMultiTouch());

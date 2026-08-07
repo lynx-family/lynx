@@ -1457,6 +1457,13 @@ public abstract class LynxContext extends LynxBaseContext implements ExceptionHa
     return false;
   }
 
+  public boolean enableEventThroughInheritFromPage() {
+    if (null != mPageConfig) {
+      return mPageConfig.enableEventThroughInheritFromPage();
+    }
+    return false;
+  }
+
   public boolean getEnableNewIntersectionObserver() {
     if (null != mPageConfig) {
       return mPageConfig.getEnableNewIntersectionObserver();

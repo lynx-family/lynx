@@ -2820,7 +2820,8 @@ bool UIBase::EventThrough(float point[2]) {
   } else {
     EventTarget* parent = this->ParentTarget();
     if (parent) {
-      if (parent == context_->Root()) {
+      if (parent == context_->Root() &&
+          !context_->EnableEventThroughInheritFromPage()) {
         is_event_through = false;
       } else {
         float target_point[2] = {point[0], point[1]};

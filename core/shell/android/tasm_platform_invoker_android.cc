@@ -58,6 +58,8 @@ namespace {
 constexpr const char* kPageVersion = "pageVersion";
 constexpr const char* kAutoExpose = "autoExpose";
 constexpr const char* kEnableEventThrough = "enableEventThrough";
+constexpr const char* kEnableEventThroughInheritFromPage =
+    "enableEventThroughInheritFromPage";
 constexpr const char* kUseNewImage = "useNewImage";
 constexpr const char* kAsyncRedirectUrl = "asyncRedirect";
 constexpr const char* kSyncImageAttach = "syncImageAttach";
@@ -142,6 +144,8 @@ base::android::JavaOnlyMap TasmPlatformInvokerAndroid::ConvertToJavaOnlyMap(
   java_config.PushBoolean(kAutoExpose, config->GetAutoExpose());
   java_config.PushString(kPageVersion, config->GetVersion());
   java_config.PushBoolean(kEnableEventThrough, config->GetEnableEventThrough());
+  java_config.PushBoolean(kEnableEventThroughInheritFromPage,
+                          config->GetEnableEventThroughInheritFromPage());
   tasm::TernaryBool use_new_image = config->GetUseNewImage();
   if (use_new_image != tasm::TernaryBool::UNDEFINE_VALUE) {
     java_config.PushBoolean(kUseNewImage,

@@ -3703,8 +3703,8 @@ public abstract class LynxBaseUI
       isEventThrough = false;
     } else if (parent() != null) {
       EventTarget parent = parent();
-      // when parent is root ui, return false.
-      if (parent instanceof UIBody) {
+      // By default, event-through inheritance stops before the page node.
+      if (parent instanceof UIBody && !mContext.enableEventThroughInheritFromPage()) {
         isEventThrough = false;
       } else {
         float targetX = x, targetY = y;

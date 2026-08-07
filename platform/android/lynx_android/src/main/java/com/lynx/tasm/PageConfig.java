@@ -23,6 +23,8 @@ public class PageConfig {
   private static final String KEY_AUTO_EXPOSE = "autoExpose";
   private static final String KEY_PAGE_VERSION = "pageVersion";
   private static final String KEY_EVENT_THROUGH = "enableEventThrough";
+  private static final String KEY_EVENT_THROUGH_INHERIT_FROM_PAGE =
+      "enableEventThroughInheritFromPage";
   private static final String KEY_DEFAULT_OVERFLOW_VISIBLE = "defaultOverflowVisible";
   private static final String KEY_ASYNC_REDIRECT = "asyncRedirect";
   private static final String KEY_SYNC_IMAGE_ATTACH = "syncImageAttach";
@@ -91,6 +93,7 @@ public class PageConfig {
 
   private boolean autoExpose = true;
   private boolean enableEventThrough;
+  private boolean enableEventThroughInheritFromPage;
   private boolean defaultOverflowVisible;
   private String pageVersion;
   private boolean asyncRedirect;
@@ -169,6 +172,9 @@ public class PageConfig {
       }
       if (map.hasKey(KEY_EVENT_THROUGH)) {
         enableEventThrough = map.getBoolean(KEY_EVENT_THROUGH);
+      }
+      if (map.hasKey(KEY_EVENT_THROUGH_INHERIT_FROM_PAGE)) {
+        enableEventThroughInheritFromPage = map.getBoolean(KEY_EVENT_THROUGH_INHERIT_FROM_PAGE);
       }
       if (map.hasKey(KEY_DEFAULT_OVERFLOW_VISIBLE)) {
         defaultOverflowVisible = map.getBoolean(KEY_DEFAULT_OVERFLOW_VISIBLE);
@@ -424,6 +430,10 @@ public class PageConfig {
 
   public boolean enableEventThrough() {
     return enableEventThrough;
+  }
+
+  public boolean enableEventThroughInheritFromPage() {
+    return enableEventThroughInheritFromPage;
   }
 
   public String getPageVersion() {

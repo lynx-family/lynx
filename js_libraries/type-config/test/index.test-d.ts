@@ -21,6 +21,7 @@ describe('Test Config Types', () => {
     expectTypeOf<Config>().toHaveProperty('enableEndGestureAtLastFingerUp').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('enableEventHandleRefactor').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('enableEventThrough').toEqualTypeOf<boolean | undefined>();
+    expectTypeOf<Config>().toHaveProperty('enableEventThroughInheritFromPage').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('enableFetchAPIStandardStreaming').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('enableFixedNew').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('enableFlexBasisZeroPercent').toEqualTypeOf<boolean | undefined>();

@@ -14,6 +14,9 @@
 #import <Lynx/LynxTemplateRender+Internal.h>
 #import <Lynx/LynxTouchHandler+Internal.h>
 #import <Lynx/LynxTouchHandler.h>
+#import <Lynx/LynxUI+Internal.h>
+#import <Lynx/LynxUIContext+Internal.h>
+#import <Lynx/LynxUIContext.h>
 #import <Lynx/LynxUIView.h>
 #import <Lynx/LynxView+Internal.h>
 #import <Lynx/LynxWeakProxy.h>
@@ -164,6 +167,23 @@
   XCTAssertFalse([childUI eventThrough:CGPointZero]);
   [LynxPropsProcessor updateProp:@YES withKey:@"event-through" forUI:parentUI];
   XCTAssertTrue([childUI eventThrough:CGPointZero]);
+}
+
+- (void)testEventThroughInheritsFromPageOnlyWhenEnabled {
+  LynxRootUI* rootUI = [[LynxRootUI alloc] initWithLynxView:(LynxView*)[UIView new]];
+  LynxUIView* childUI = [[LynxUIView alloc] initWithView:[UIView new]];
+  [rootUI insertChild:childUI atIndex:0];
+  [LynxPropsProcessor updateProp:@YES withKey:@"event-through" forUI:rootUI];
+
+  XCTAssertFalse([childUI eventThrough:CGPointZero]);
+
+  LynxUIContext* mockContext = OCMClassMock([LynxUIContext class]);
+  OCMStub([mockContext enableEventThroughInheritFromPage]).andReturn(YES);
+  childUI.context = mockContext;
+  XCTAssertTrue([childUI eventThrough:CGPointZero]);
+
+  [LynxPropsProcessor updateProp:@NO withKey:@"event-through" forUI:childUI];
+  XCTAssertFalse([childUI eventThrough:CGPointZero]);
 }
 
 - (void)testEventThroughActiveRegions {

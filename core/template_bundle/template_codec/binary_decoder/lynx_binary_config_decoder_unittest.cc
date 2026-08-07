@@ -220,6 +220,15 @@ TEST_F(LynxBinaryConfigDecoderTest, EnableLayoutOnlyEventThrough) {
   EXPECT_TRUE(page_config_->GetEnableLayoutOnlyEventThrough());
 }
 
+TEST_F(LynxBinaryConfigDecoderTest, EnableEventThroughInheritFromPage) {
+  EXPECT_FALSE(page_config_->GetEnableEventThroughInheritFromPage());
+
+  config_decoder_->DecodePageConfig(
+      "{\n  \"enableEventThroughInheritFromPage\" : true\n}", page_config_);
+
+  EXPECT_TRUE(page_config_->GetEnableEventThroughInheritFromPage());
+}
+
 TEST_F(LynxBinaryConfigDecoderTest, ReadDebugMetadataUrl) {
   config_decoder_->DecodePageConfig(
       "{\n  \"debugMetadataUrl\" : \"https://example.com/debug-info.json\"\n}",

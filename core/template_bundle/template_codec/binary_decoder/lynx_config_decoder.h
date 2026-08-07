@@ -313,6 +313,12 @@ class LynxConfigDecoder final {
           doc[config::kEnableEventThrough].GetBool());
     }
 
+    if (doc.HasMember(config::kEnableEventThroughInheritFromPage) &&
+        doc[config::kEnableEventThroughInheritFromPage].IsBool()) {
+      page_config->SetEnableEventThroughInheritFromPage(
+          doc[config::kEnableEventThroughInheritFromPage].GetBool());
+    }
+
     if (doc.HasMember(config::kEnableLayoutOnlyEventThrough) &&
         doc[config::kEnableLayoutOnlyEventThrough].IsBool()) {
       page_config->SetEnableLayoutOnlyEventThrough(
