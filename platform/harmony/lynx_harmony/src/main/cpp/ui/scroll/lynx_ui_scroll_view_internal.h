@@ -80,6 +80,7 @@ class LynxUIScrollViewInternal : public UIView, LynxBaseScrollViewDelegate {
   float upper_threshold_{0.f};
   float lower_threshold_{0.f};
   float last_content_offset_[2]{0.f};
+  float last_content_size_[2]{0.f};
   std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration>
       last_update_time_{std::chrono::steady_clock::now()};
   std::vector<base::MoveOnlyClosure<void, LynxUIScrollViewInternal*>*>* first_render_block_array_{

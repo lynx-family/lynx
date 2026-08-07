@@ -140,6 +140,7 @@
 @property(nonatomic, strong) LynxUIScrollViewEventHelper *eventHelper;
 @property(nonatomic, strong) NSMutableArray<LynxNodeReadyBlock> *firstRenderBlockArray;
 @property(nonatomic, assign) BOOL enableSticky;
+@property(nonatomic, assign) CGSize lastContentSize;
 @end
 
 @implementation LynxUIScrollViewInternal
@@ -359,6 +360,14 @@ LYNX_PROP_DEFINE("scroll-event-throttle", setScrollEventThrottle, NSNumber *) {
         contentSize.height += obj.frame.size.height + obj.margin.top + obj.margin.bottom;
       }];
   [self.view setScrollContentSize:contentSize];
+  if (!CGSizeEqualToSize(contentSize, _lastContentSize)) {
+    [_eventHelper sendScrollEvent:@"contentsizechanged"
+                           params:@{
+                             @"scrollWidth" : @(contentSize.width),
+                             @"scrollHeight" : @(contentSize.height),
+                           }];
+    _lastContentSize = contentSize;
+  }
   [self flushFirstRenderOperations];
   [_eventHelper updateScrollPosition];
 }
