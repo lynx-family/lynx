@@ -422,6 +422,13 @@ bool UINewImage::LoadImage() {
   auto weak_self = weak_from_this();
   std::string final_src =
       LynxImageHelper::GetRedirectUrl(src_, context_->GetResourceLoader());
+  if (weak_self.expired()) {
+    LOGE(
+        "UIImage was destroyed during the first synchronous ArkTS call to "
+        "ShouldRedirectUrl");
+    return false;
+  }
+
   std::string final_placeholder = LynxImageHelper::GetRedirectUrl(
       placeholder_, context_->GetResourceLoader());
   if (weak_self.expired()) {
