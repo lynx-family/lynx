@@ -207,6 +207,15 @@ void LynxUIScrollViewInternal::FinishLayoutOperation() {
         child->height_ + child->margin_top_ + child->margin_bottom_;
   }
   scroll_view_->SetScrollContentSize(content_size);
+  if (content_size[0] != last_content_size_[0] ||
+      content_size[1] != last_content_size_[1]) {
+    auto params = lepus::Dictionary::Create();
+    params->SetValue("scrollWidth", content_size[0]);
+    params->SetValue("scrollHeight", content_size[1]);
+    SendScrollEvent("contentsizechanged", lepus_value(params));
+    last_content_size_[0] = content_size[0];
+    last_content_size_[1] = content_size[1];
+  }
   FlushFirstRenderOperations();
   UpdateScrollPosition();
 }
