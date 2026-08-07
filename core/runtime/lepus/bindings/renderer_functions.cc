@@ -2284,6 +2284,7 @@ RENDERER_FUNCTION_CC(CreateComponentByName) {
   auto component = new RadonComponent(self->page_proxy(), tid, nullptr,
                                       self->style_sheet_manager(entry_name),
                                       mould, context, component_instance_id);
+  component->SetTasm(self);
   component->SetEntryName(entry_name);
   component->SetDSL(self->GetPageConfig()->GetDSL());
   component->SetName(arg0->String());
@@ -2391,6 +2392,7 @@ RENDERER_FUNCTION_CC(CreateDynamicVirtualComponent) {
     }
   }
 
+  comp->SetTasm(self);
   auto* base = static_cast<RadonBase*>(comp.release());
   RETURN(lepus::Value(base));
 }
@@ -4540,15 +4542,15 @@ RENDERER_FUNCTION_CC(FiberConsumeGesture) {
 }
 
 // The function accepts two parameters, the 0th is element and the 1st is Array
-// composited by evnet object, which must contain three keys: name, type, and
-// function. When this function is executed, the element's all events will be
-// deleted first, and then the array will be traversed to add corresponding
-// events.
+// composited by event object, which must contain name and type, plus one of
+// function or piperEventContent. When this function is executed, the element's
+// all events will be deleted first, and then the array will be traversed to add
+// corresponding events.
 RENDERER_FUNCTION_CC(FiberSetEvents) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_SET_EVENTS);
   // parameter size = 2
   // [0] RefCounted -> element
-  // [1] Array -> events : [{name, type, function}]
+  // [1] Array -> events : [{name, type, function | piperEventContent}]
   CHECK_ARGC_GE(FiberSetEvents, 2);
   CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(arg0, 0, RefCounted, FiberSetEvents);
   CONVERT_ARG(callbacks, 1);
@@ -4576,10 +4578,12 @@ RENDERER_FUNCTION_CC(FiberSetEvents) {
     BASE_STATIC_STRING_DECL(kName, "name");
     BASE_STATIC_STRING_DECL(kType, "type");
     BASE_STATIC_STRING_DECL(kFunction, "function");
+    BASE_STATIC_STRING_DECL(kPiperEventContent, "piperEventContent");
 
     const auto& name = value.GetProperty(kName);
     const auto& type = value.GetProperty(kType);
     const auto& callback = value.GetProperty(kFunction);
+    const auto& piper_event_content = value.GetProperty(kPiperEventContent);
 
     if (!name.IsString()) {
       LOGW("FiberSetEvents' "
@@ -4594,13 +4598,41 @@ RENDERER_FUNCTION_CC(FiberSetEvents) {
       return;
     }
 
-    if (callback.IsString() || callback.IsCallable() || callback.IsObject()) {
+    if (piper_event_content.IsArrayOrJSArray()) {
+      std::vector<std::pair<base::String, lepus::Value>> piper_events;
+      bool is_valid_piper_event = true;
+      ForEachLepusValue(
+          piper_event_content,
+          [&is_valid_piper_event, &piper_events](const lepus::Value&,
+                                                 const lepus::Value& content) {
+            const auto& piper_function_name = content.GetProperty(
+                BASE_STATIC_STRING(PiperEventContent::kPiperFunctionName));
+            const auto& piper_function_args = content.GetProperty(
+                BASE_STATIC_STRING(PiperEventContent::kPiperFuncArgs));
+            if (!piper_function_name.IsString()) {
+              is_valid_piper_event = false;
+              return;
+            }
+            piper_events.emplace_back(piper_function_name.String(),
+                                      piper_function_args);
+          });
+      if (!is_valid_piper_event) {
+        LOGW("FiberSetEvents' " << value.Number()
+                                << " piperEventContent must contain a string "
+                                   "piperFunctionName.");
+        return;
+      }
+      element->FiberAddPiperEvent(type.String(), name.String(),
+                                  std::move(piper_events));
+    } else if (callback.IsString() || callback.IsCallable() ||
+               callback.IsObject()) {
       element->FiberAddEvent(type.String(), name.String(), callback,
                              context_name);
     } else {
       LOGW("FiberSetEvents' " << value.Number()
                               << " parameter must contain callback, and "
-                                 "callback must be string or callable.");
+                                 "callback must be string, callable, or "
+                                 "piperEventContent.");
     }
   });
 
@@ -5818,8 +5850,10 @@ RENDERER_FUNCTION_CC(FiberCreateElementWithProperties) {
       if (param_3.IsArrayOrJSArray()) {
         auto callbacks = param_3;
         element->RemoveAllEvents();
+        auto* lepus_context = LEPUS_CONTEXT();
+        const std::string context_name = lepus_context->name();
 
-        ForEachLepusValue(callbacks, [element, LEPUS_MTS_CONTEXT()](
+        ForEachLepusValue(callbacks, [element, context_name, lepus_context](
                                          const lepus::Value& index,
                                          const lepus::Value& value) {
           BASE_STATIC_STRING_DECL(kName, "name");
@@ -5840,27 +5874,15 @@ RENDERER_FUNCTION_CC(FiberCreateElementWithProperties) {
                  << value.Number()
                  << " parameter must contain type, and type must be string.");
           }
-          if (callback.IsString()) {
-            element->SetJSEventHandler(name.String(), type.String(),
-                                       callback.String());
-          } else if (callback.IsCallable()) {
-            element->SetLepusEventHandler(name.String(), type.String(),
-                                          lepus::Value(), callback);
-          } else if (callback.IsObject()) {
-            BASE_STATIC_STRING_DECL(kValue, "value");
-
-            const auto& obj_type = callback.GetProperty(kType).String().str();
-            const auto& value = callback.GetProperty(kValue);
-            if (obj_type == tasm::kWorklet) {
-              // worklet event
-              element->SetWorkletEventHandler(name.String(), type.String(),
-                                              value, LEPUS_CONTEXT());
-            }
-
+          if (callback.IsString() || callback.IsCallable() ||
+              callback.IsObject()) {
+            element->FiberAddEvent(type.String(), name.String(), callback,
+                                   context_name, lepus_context);
           } else {
             LOGW("FiberSetEvents' " << value.Number()
                                     << " parameter must contain callback, and "
-                                       "callback must be string or callable.");
+                                       "callback must be string, callable, or "
+                                       "object.");
           }
         });
       } else if (!param_3.IsEmpty()) {
