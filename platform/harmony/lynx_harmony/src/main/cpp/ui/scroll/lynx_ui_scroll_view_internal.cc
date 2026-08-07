@@ -171,6 +171,18 @@ void LynxUIScrollViewInternal::UpdateScrollPosition() {
 
   at_upper_ = at_upper;
   at_lower_ = at_lower;
+
+  bool is_upper_edge = scroll_offset <= scroll_range[0];
+  bool is_lower_edge = scroll_offset >= scroll_range[1];
+  if (is_upper_edge) {
+    SendScrollEvent("scrolltoupperedge", lepus_value());
+  }
+  if (is_lower_edge) {
+    SendScrollEvent("scrolltoloweredge", lepus_value());
+  }
+  if (!is_upper_edge && !is_lower_edge) {
+    SendScrollEvent("scrolltonormalstate", lepus_value());
+  }
 }
 
 void LynxUIScrollViewInternal::InsertNode(UIBase* child, int index) {
