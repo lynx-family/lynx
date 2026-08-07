@@ -6,6 +6,7 @@ package com.lynx.tasm.performance.timing;
 
 import androidx.annotation.RestrictTo;
 import com.lynx.react.bridge.JavaOnlyMap;
+import com.lynx.tasm.LynxViewClientGroupV2;
 import com.lynx.tasm.performance.IPerformanceObserver;
 import com.lynx.tasm.performance.performanceobserver.PerformanceEntry;
 import com.lynx.tasm.performance.performanceobserver.PerformanceEntryConverter;
@@ -52,8 +53,9 @@ public class EmbeddedTimingCollector {
         break;
       case TimingConstants.PAINT_END:
         mPaintEndUs = usTimestamp;
-        emitLoadBundleIfReady();
-        emitUpdateDataIfReady();
+        IPerformanceObserver observer = getObserver();
+        emitLoadBundleIfReady(observer);
+        emitUpdateDataIfReady(observer);
         break;
       default:
         // Ignore other timing points in embedded mode
@@ -64,21 +66,17 @@ public class EmbeddedTimingCollector {
   /**
    * Emit timing event if all required data is available
    */
-  private void emitLoadBundleIfReady() {
+  private void emitLoadBundleIfReady(IPerformanceObserver observer) {
     if (mHasEmitLoadBundleEvent) {
-      return;
-    }
-    if (mObserver == null) {
-      return;
-    }
-    IPerformanceObserver observer = mObserver.get();
-    if (observer == null) {
       return;
     }
     if (mLoadBundleStartUs < 0 || mPaintEndUs < 0) {
       return;
     }
     mHasEmitLoadBundleEvent = true;
+    if (observer == null) {
+      return;
+    }
 
     JavaOnlyMap entryMap = new JavaOnlyMap();
     entryMap.put("entryType", "pipeline");
@@ -90,15 +88,11 @@ public class EmbeddedTimingCollector {
     observer.onPerformanceEvent(entry);
   }
 
-  private void emitUpdateDataIfReady() {
-    if (mObserver == null) {
-      return;
-    }
-    IPerformanceObserver observer = mObserver.get();
+  private void emitUpdateDataIfReady(IPerformanceObserver observer) {
     if (observer == null) {
+      mUpdateDataStartUsList.clear();
       return;
     }
-
     ArrayList<Long> updateDataStartUsList = new ArrayList<>(mUpdateDataStartUsList);
     mUpdateDataStartUsList.clear();
     for (Long updateDataStartUs : updateDataStartUsList) {
@@ -111,5 +105,14 @@ public class EmbeddedTimingCollector {
       PerformanceEntry entry = PerformanceEntryConverter.makePerformanceEntry(entryMap);
       observer.onPerformanceEvent(entry);
     }
+  }
+
+  private IPerformanceObserver getObserver() {
+    IPerformanceObserver observer = mObserver == null ? null : mObserver.get();
+    if (observer instanceof LynxViewClientGroupV2
+        && !((LynxViewClientGroupV2) observer).hasClients()) {
+      return null;
+    }
+    return observer;
   }
 }

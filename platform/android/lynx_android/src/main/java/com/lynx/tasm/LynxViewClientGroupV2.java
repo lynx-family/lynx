@@ -5,11 +5,9 @@ package com.lynx.tasm;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.annotation.RestrictTo;
 import com.lynx.tasm.eventreport.LynxEventReporter;
 import com.lynx.tasm.performance.performanceobserver.PerformanceEntry;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
 import org.json.JSONObject;
 
@@ -29,6 +27,11 @@ public class LynxViewClientGroupV2 extends LynxViewClientV2 {
 
   public void removeClient(LynxViewClientV2 client) {
     mClients.remove(client);
+  }
+
+  @RestrictTo(RestrictTo.Scope.LIBRARY)
+  public boolean hasClients() {
+    return !mClients.isEmpty();
   }
 
   @Override
