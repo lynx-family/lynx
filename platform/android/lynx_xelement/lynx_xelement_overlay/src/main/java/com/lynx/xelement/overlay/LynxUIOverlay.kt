@@ -39,6 +39,7 @@ open class LynxUIOverlay(context: LynxContext, params: Any?): UIGroup<AndroidVie
         const val PROP_ANDROID_HIDE_NAVIGATION_BAR = "android-hide-navigation-bar";
         const val PROP_CONTAINER_POPUP_TAG = "android-container-popup-tag"
         const val PROP_ADAPT_EDGE_TO_EDGE = "android-adapt-edge-to-edge"
+        const val PROP_ANDROID_NAVIGATION_BAR_STYLE = "android-navigation-bar-style"
     }
 
     private val mOverlayView = LynxOverlayView(context, this)
