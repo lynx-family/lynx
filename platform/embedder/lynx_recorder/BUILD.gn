@@ -27,18 +27,3 @@ lynx_core_source_set("lynx_recorder") {
 
   configs = [ "../../../../lynx/platform/embedder:public_api" ]
 }
-
-if (enable_unittests) {
-  lynx_core_source_set("lynx_recorder_unittests") {
-    testonly = true
-    sources = [
-      "test_bench_utils.cc",
-      "test_bench_utils.h",
-      "test_bench_utils_unittest.cc",
-    ]
-    deps = [
-      "//third_party/googletest:gtest",
-      "//third_party/zlib:zlib",
-    ]
-  }
-}
