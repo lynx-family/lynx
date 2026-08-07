@@ -10,15 +10,29 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
+import android.app.Application;
+import android.content.Context;
+import androidx.test.ext.junit.runners.AndroidJUnit4;
+import androidx.test.platform.app.InstrumentationRegistry;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 
+@RunWith(AndroidJUnit4.class)
 public class StaticPageHostTest {
   private static final int INSTANCE_ID = 42;
+
+  @Before
+  public void setUp() {
+    Context context =
+        InstrumentationRegistry.getInstrumentation().getTargetContext().getApplicationContext();
+    LynxEnv.inst().init((Application) context, null, null, null, null);
+  }
 
   @Test
   public void renderKeepsFirstDataByReference() throws Exception {
@@ -92,7 +106,7 @@ public class StaticPageHostTest {
   }
 
   @Test
-  public void registerPreservesGlobalPropsPrecedence() {
+  public void registerAcceptsStandardGlobalPropsAndPreservesPrecedence() {
     StaticPageHost host = new StaticPageHost(Runnable::run);
     HashMap<String, Object> currentGlobalProps = new HashMap<>();
     currentGlobalProps.put("loadOrder", "current");
@@ -107,8 +121,8 @@ public class StaticPageHostTest {
 
     host.updateMetaData(null, staticPageData(pendingGlobalProps));
     Map<String, Object> registeredGlobalProps =
-        host.register(INSTANCE_ID, null, staticPageData(currentGlobalProps),
-            staticPageData(groupGlobalProps), staticPageData(loadGlobalProps));
+        host.register(INSTANCE_ID, null, standardData(currentGlobalProps),
+            standardData(groupGlobalProps), standardData(loadGlobalProps));
 
     assertEquals("load", registeredGlobalProps.get("loadOrder"));
     assertEquals("metadata", registeredGlobalProps.get("pending"));
@@ -145,6 +159,10 @@ public class StaticPageHostTest {
 
   private static TemplateData staticPageData(Map<String, Object> data) {
     return TemplateData.createForStaticPage(data);
+  }
+
+  private static TemplateData standardData(Map<String, Object> data) {
+    return TemplateData.fromMap(data);
   }
 
   private static class RecordingPageInstance implements StaticPageInstance {
