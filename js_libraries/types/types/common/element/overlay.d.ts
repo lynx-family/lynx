@@ -63,6 +63,14 @@ export interface OverlayProps extends Omit<StandardProps, 'binderror'> {
   visible?: boolean;
 
   /**
+   * Sets the Android navigation bar background and contrasting system-bar appearance. `auto` inherits the host Activity navigation bar.
+   * @Android
+   * @since 4.1
+   * @defaultValue 'auto'
+   */
+  'android-navigation-bar-style'?: 'auto' | 'light' | 'dark' | 'transparent';
+
+  /**
    * Introduces the concept of layers, which are divided into four levels. The larger the layer, the closer it is to the bottom. By default, it is the first level. The layers are arranged in order from 1 to 4. The displayed layer is specified and is not affected by the order of display. Within each layer, the arrangement is based on the 'last in, first out' logic. The layer cannot be dynamically adjusted when the overlay is displayed, and can only be adjusted when it is hidden.     * @Android
    * @iOS
    * @Android
