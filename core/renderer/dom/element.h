@@ -532,7 +532,12 @@ class Element : public lepus::RefCounted,
 
   void FiberAddEvent(const base::String& type, const base::String& name,
                      const lepus::Value& callback,
-                     const std::string& context_name);
+                     const std::string& context_name,
+                     runtime::MTSRuntime* lepus_context = nullptr,
+                     const lepus::Value& lepus_script = lepus::Value());
+  void FiberAddPiperEvent(
+      const base::String& type, const base::String& name,
+      std::vector<std::pair<base::String, lepus::Value>> piper_event_content);
 
   /**
    * Element API for adding config.
