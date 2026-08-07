@@ -7860,6 +7860,7 @@ public class com::lynx::tasm::LynxViewClientGroupV2 : com.lynx.tasm.LynxViewClie
   public void com.lynx.tasm.LynxViewClientGroupV2.setInstanceId(int id);
   public void com.lynx.tasm.LynxViewClientGroupV2.addClient(LynxViewClientV2 client);
   public void com.lynx.tasm.LynxViewClientGroupV2.removeClient(LynxViewClientV2 client);
+  public boolean com.lynx.tasm.LynxViewClientGroupV2.hasClients();
   public void com.lynx.tasm.LynxViewClientGroupV2.onPageStarted(@Nullable LynxView lynxView, @NonNull LynxPipelineInfo info);
   public void com.lynx.tasm.LynxViewClientGroupV2.onPerformanceEvent(@NonNull PerformanceEntry entry);
   public void com.lynx.tasm.LynxViewClientGroupV2.onResourceLoaded(@NonNull LynxResourceLoadInfo info);
