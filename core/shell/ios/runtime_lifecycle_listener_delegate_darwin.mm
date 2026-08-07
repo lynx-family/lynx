@@ -14,7 +14,11 @@ namespace shell {
 
 void RuntimeLifecycleListenerDelegateDarwin::OnRuntimeAttach(void *env, const char *runtime_type) {
   @try {
-    [_listener onRuntimeAttach:env runtimeType:runtime_type];
+    if ([_listener respondsToSelector:@selector(onRuntimeAttach:runtimeType:)]) {
+      [_listener onRuntimeAttach:env runtimeType:runtime_type];
+    } else if ([_listener respondsToSelector:@selector(onRuntimeAttach:)]) {
+      [_listener onRuntimeAttach:env];
+    }
   } @catch (NSException *exception) {
     OnError(exception);
   }
