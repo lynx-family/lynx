@@ -75,6 +75,9 @@ class ElementManagerDelegate {
   virtual void TriggerLepusGlobalEvent(const std::string &event,
                                        const lepus::Value &info) = 0;
 
+  virtual void TriggerLepusBridgeAsync(const std::string &method_name,
+                                       const lepus::Value &arguments) {}
+
   // Call for dispatching message event.
   virtual event::DispatchEventResult DispatchMessageEvent(
       fml::RefPtr<runtime::MessageEvent> event) = 0;
@@ -92,7 +95,8 @@ class ElementManagerDelegate {
 
   virtual EventResult FireElementWorkletAndRequestResolve(
       const std::string &component_id, const std::string &entry_name,
-      const lepus::Value &callback, const lepus::Value &event_detail,
+      const lepus::Value &callback, const lepus::Value &script,
+      const lepus::Value &event_detail,
       const std::shared_ptr<worklet::LepusApiHandler> &task_handler,
       int32_t element_id,
       std::shared_ptr<PipelineOptions> &pipeline_options) = 0;
