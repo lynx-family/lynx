@@ -5,18 +5,21 @@
 NS_ASSUME_NONNULL_BEGIN
 
 @protocol LynxRuntimeLifecycleListener <NSObject>
-/**
- * Callback when napi environment prepared.
- * @param env Napi env in Lynx.*
- * @param runtimeType JS runtime type in Lynx.
- */
-
-- (void)onRuntimeAttach:(void* _Nonnull)env runtimeType:(const char* _Nonnull)runtimeType;
 
 /**
  * on runtime detached
  */
 - (void)onRuntimeDetach;
+
+/**
+ * Callback when napi environment prepared.
+ * @param env Napi env in Lynx.*
+ * @param runtimeType JS runtime type in Lynx.
+ */
+@optional
+- (void)onRuntimeAttach:(void* _Nonnull)env runtimeType:(const char* _Nonnull)runtimeType;
+- (void)onRuntimeAttach:(void* _Nonnull)env;
+
 @end
 
 NS_ASSUME_NONNULL_END
