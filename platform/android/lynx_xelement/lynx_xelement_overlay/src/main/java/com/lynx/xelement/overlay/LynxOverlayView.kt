@@ -101,6 +101,10 @@ class LynxOverlayView(context: LynxContext, val proxy: LynxUIOverlay) : UIGroup<
         mDialog?.window?.setDimAmount(0f)
         mOverlayContainer.addView(mView, ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
         mDialog?.setContentView(mOverlayContainer, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+        mDialog?.window?.navigationBarColor = Color.TRANSPARENT
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            mDialog?.window?.isNavigationBarContrastEnforced = false
+        }
         mDialog?.setOnKeyListener { _, keyCode, event ->
             if (keyCode == KeyEvent.KEYCODE_BACK && event.action == KeyEvent.ACTION_DOWN) {
                 requestDialogClose()
