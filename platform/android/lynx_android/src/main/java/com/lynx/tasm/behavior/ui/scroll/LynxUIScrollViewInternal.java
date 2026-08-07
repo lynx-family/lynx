@@ -106,6 +106,18 @@ public class LynxUIScrollViewInternal
 
     mAtUpper = atUpper;
     mAtLower = atLower;
+
+    boolean isUpperEdge = scrollOffset <= scrollRange[0];
+    boolean isLowerEdge = scrollOffset >= scrollRange[1];
+    if (isUpperEdge) {
+      sendScrollEvent("scrolltoupperedge", null);
+    }
+    if (isLowerEdge) {
+      sendScrollEvent("scrolltoloweredge", null);
+    }
+    if (!isUpperEdge && !isLowerEdge) {
+      sendScrollEvent("scrolltonormalstate", null);
+    }
   }
 
   private void updateSticky() {

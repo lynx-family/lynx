@@ -105,6 +105,19 @@
 
   _atUpper = atUpper;
   _atLower = atLower;
+
+  BOOL isUpperEdge = scrollOffset <= scrollRange[0];
+  BOOL isLowerEdge = scrollOffset >= scrollRange[1];
+  if (isUpperEdge) {
+    [self sendScrollEvent:@"scrolltoupperedge" params:nil];
+  }
+  if (isLowerEdge) {
+    [self sendScrollEvent:@"scrolltoloweredge" params:nil];
+  }
+  if (!isUpperEdge && !isLowerEdge) {
+    [self sendScrollEvent:@"scrolltonormalstate" params:nil];
+  }
+
   [self updateSticky:[scrollView getScrollOffset]];
 }
 
