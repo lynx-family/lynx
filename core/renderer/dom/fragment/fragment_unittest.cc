@@ -674,6 +674,22 @@ TEST_F(FragmentTest,
   EXPECT_EQ(hit_target->Sign(), 3);
 }
 
+TEST_F(FragmentTest, PlatformEventTargetInheritsEventThroughFromPage) {
+  auto root_target = fml::MakeRefCounted<PlatformEventTarget>(
+      nullptr, kRootId, kRootId, 0.f, 0.f, 100.f, 100.f);
+  auto child_target = fml::MakeRefCounted<PlatformEventTarget>(
+      nullptr, kRootId, 1, 0.f, 0.f, 100.f, 100.f);
+  root_target->SetEventThrough(LynxEventPropStatus::kEnable);
+  root_target->AddChildTarget(child_target);
+
+  float point[2] = {10.f, 10.f};
+  EXPECT_FALSE(child_target->EventThrough(point));
+  EXPECT_TRUE(child_target->EventThrough(point, true));
+
+  child_target->SetEventThrough(LynxEventPropStatus::kDisable);
+  EXPECT_FALSE(child_target->EventThrough(point, true));
+}
+
 TEST_F(FragmentTest, ValidExposureEventPropsBypassEqualCheck) {
   auto element = manager->CreateFiberText("text");
   Fragment fragment(element.get());

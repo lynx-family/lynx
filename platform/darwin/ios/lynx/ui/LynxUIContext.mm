@@ -274,6 +274,7 @@
   [self setEnableEventRefactor:config.enableEventRefactor];
   [self setEnableA11yIDMutationObserver:config.enableA11yIDMutationObserver];
   [self setEnableEventThrough:config.enableEventThrough];
+  [self setEnableEventThroughInheritFromPage:config.enableEventThroughInheritFromPage];
   [self setEnableBackgroundShapeLayer:config.enableBackgroundShapeLayer];
   [self setEnableExposureUIMargin:config.enableExposureUIMargin];
   [self setEnableTextLanguageAlignment:config.enableTextLanguageAlignment];
@@ -350,6 +351,10 @@
 
 - (void)setEnableEventThrough:(BOOL)enable {
   _enableEventThrough = enable;
+}
+
+- (void)setEnableEventThroughInheritFromPage:(BOOL)enable {
+  _enableEventThroughInheritFromPage = enable;
 }
 
 - (void)setEnableBackgroundShapeLayer:(BOOL)enable {

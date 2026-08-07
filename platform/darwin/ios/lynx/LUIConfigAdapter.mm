@@ -44,6 +44,10 @@
   return _config->GetEnableEventThrough();
 }
 
+- (bool)enableEventThroughInheritFromPage {
+  return _config->GetEnableEventThroughInheritFromPage();
+}
+
 - (bool)enableExposureUIMargin {
   return _config->GetEnableExposureUIMargin();
 }

@@ -12,6 +12,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, assign) BOOL imageMonitorEnabled;
 @property(nonatomic, assign) BOOL devtoolEnabled;
 @property(nonatomic, assign) BOOL fixNewImageDownSampling;
+@property(nonatomic, readonly) BOOL enableEventThroughInheritFromPage;
 @property(nonatomic, strong, readwrite) LynxScrollFluency *fluencyInnerListener;
 
 - (void)setUIConfig:(id<LUIConfig>)config;
@@ -23,6 +24,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)setEnableEventRefactor:(BOOL)enable;
 - (void)setEnableA11yIDMutationObserver:(BOOL)enable;
 - (void)setEnableEventThrough:(BOOL)enable;
+- (void)setEnableEventThroughInheritFromPage:(BOOL)enable;
 - (void)setEnableBackgroundShapeLayer:(BOOL)enable;
 - (void)setEnableFiberArch:(BOOL)enable;
 - (void)setEnableNewGesture:(BOOL)enable;

@@ -299,6 +299,16 @@ void LynxContext::SetEnableEventThrough(bool enable_event_through) {
 
 bool LynxContext::EnableEventThrough() { return enable_event_through_; }
 
+void LynxContext::SetEnableEventThroughInheritFromPage(
+    bool enable_event_through_inherit_from_page) {
+  enable_event_through_inherit_from_page_ =
+      enable_event_through_inherit_from_page;
+}
+
+bool LynxContext::EnableEventThroughInheritFromPage() {
+  return enable_event_through_inherit_from_page_;
+}
+
 void LynxContext::SetEnableHarmonyVisibleAreaChangeForExposure(
     bool enable_harmony_visible_area_change_for_exposure) {
   enable_harmony_visible_area_change_for_exposure_ =

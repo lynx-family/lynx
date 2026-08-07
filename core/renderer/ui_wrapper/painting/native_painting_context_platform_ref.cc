@@ -205,7 +205,8 @@ bool NativePaintingCtxPlatformRef::DispatchPlatformInputEvent(
     return false;
   }
   return event_handler_->OnInputEvent(event_target_tree, int_event_data,
-                                      float_event_data);
+                                      float_event_data,
+                                      EnableEventThroughInheritFromPage());
 }
 
 void NativePaintingCtxPlatformRef::DispatchPlatformLongPress() {
@@ -232,7 +233,15 @@ bool NativePaintingCtxPlatformRef::IsPlatformEventTargetEventThrough(
   float target_point[2] = {root_point[0], root_point[1]};
   event_target_helper_->ConvertPointFromAncestorToDescendant(
       target_point, event_target_tree, hit_target, root_point);
-  return hit_target->EventThrough(target_point);
+  return hit_target->EventThrough(target_point,
+                                  EnableEventThroughInheritFromPage());
+}
+
+bool NativePaintingCtxPlatformRef::EnableEventThroughInheritFromPage() const {
+  auto *engine = engine_actor_ ? engine_actor_->Impl() : nullptr;
+  auto *tasm = engine ? engine->GetTasm() : nullptr;
+  auto config = tasm ? tasm->GetPageConfig() : nullptr;
+  return config && config->GetEnableEventThroughInheritFromPage();
 }
 
 int NativePaintingCtxPlatformRef::GetPlatformEventHandlerState() {

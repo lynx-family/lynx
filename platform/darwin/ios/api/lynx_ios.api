@@ -187,6 +187,7 @@ public protocol LUIConfig-p : <NSObject> {
   public bool LUIConfig-p::enableEventRefactor();
   public bool LUIConfig-p::enableA11yIDMutationObserver();
   public bool LUIConfig-p::enableEventThrough();
+  public bool LUIConfig-p::enableEventThroughInheritFromPage();
   public bool LUIConfig-p::enableBackgroundShapeLayer();
   public bool LUIConfig-p::enableExposureUIMargin();
   public bool LUIConfig-p::enableTextLanguageAlignment();
@@ -4796,6 +4797,7 @@ public class LynxUIContext : NSObject {
   public BOOL LynxUIContext()::imageMonitorEnabled imageMonitorEnabled;
   public BOOL LynxUIContext()::devtoolEnabled devtoolEnabled;
   public BOOL LynxUIContext()::fixNewImageDownSampling fixNewImageDownSampling;
+  public BOOL LynxUIContext()::enableEventThroughInheritFromPage enableEventThroughInheritFromPage;
   public LynxScrollFluency* LynxUIContext()::fluencyInnerListener fluencyInnerListener;
   public instancetype LynxUIContext::initWithScreenMetrics:(LynxScreenMetrics *screenMetrics);
   public void LynxUIContext::updateScreenSize:(CGSize screenSize);
@@ -4827,6 +4829,7 @@ public class LynxUIContext : NSObject {
   public void LynxUIContext()::setEnableEventRefactor:(BOOL enable);
   public void LynxUIContext()::setEnableA11yIDMutationObserver:(BOOL enable);
   public void LynxUIContext()::setEnableEventThrough:(BOOL enable);
+  public void LynxUIContext()::setEnableEventThroughInheritFromPage:(BOOL enable);
   public void LynxUIContext()::setEnableBackgroundShapeLayer:(BOOL enable);
   public void LynxUIContext()::setEnableFiberArch:(BOOL enable);
   public void LynxUIContext()::setEnableNewGesture:(BOOL enable);

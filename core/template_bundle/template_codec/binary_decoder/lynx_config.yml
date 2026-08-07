@@ -863,6 +863,17 @@ enableEventThrough:
     - HarmonyOS
     - iOS
   export: true
+enableEventThroughInheritFromPage:
+  description: Controls whether descendants whose event-through value is undefined can inherit event-through from the page node. When disabled, event-through inheritance stops before the page node to preserve the legacy behavior.
+  defaultValue: 'false'
+  valueType: bool
+  author: hexionghui
+  since: '4.3'
+  supportPlatform:
+    - Android
+    - HarmonyOS
+    - iOS
+  export: true
 enableLayoutOnlyEventThrough:
   description: Controls whether layout-only nodes are excluded as hit-test targets in Fragment Layer Render while their non-layout-only descendants remain eligible. When disabled, layout-only nodes keep the existing PlatformEventTarget hit-test behavior.
   defaultValue: 'false'

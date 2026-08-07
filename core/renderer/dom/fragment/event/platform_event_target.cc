@@ -278,12 +278,14 @@ LynxPseudoStatus PlatformEventTarget::GetPseudoStatus() const {
 
 bool PlatformEventTarget::TouchPseudoPropagation() const { return true; }
 
-bool PlatformEventTarget::EventThrough(float point[2]) const {
-  return EventThroughInternal(point, true);
+bool PlatformEventTarget::EventThrough(float point[2],
+                                       bool enable_inherit_from_page) const {
+  return EventThroughInternal(point, true, enable_inherit_from_page);
 }
 
 bool PlatformEventTarget::EventThroughInternal(
-    float point[2], bool include_events_pass_through) const {
+    float point[2], bool include_events_pass_through,
+    bool enable_inherit_from_page) const {
   bool is_event_through = false;
   if (event_through_ == LynxEventPropStatus::kEnable) {
     is_event_through = true;
@@ -291,7 +293,8 @@ bool PlatformEventTarget::EventThroughInternal(
     is_event_through = false;
   } else {
     auto parent = ParentTarget();
-    if (parent != nullptr && parent.get() != this && !parent->IsPageRoot()) {
+    if (parent != nullptr && parent.get() != this &&
+        (enable_inherit_from_page || !parent->IsPageRoot())) {
       float parent_point[2] = {point[0], point[1]};
       if (target_helper_ != nullptr) {
         auto self = fml::RefPtr<PlatformEventTarget>(
@@ -299,7 +302,8 @@ bool PlatformEventTarget::EventThroughInternal(
         target_helper_->ConvertPointFromDescendantToAncestor(parent_point, self,
                                                              parent, point);
       }
-      is_event_through = parent->EventThroughInternal(parent_point, false);
+      is_event_through = parent->EventThroughInternal(parent_point, false,
+                                                      enable_inherit_from_page);
     }
   }
 

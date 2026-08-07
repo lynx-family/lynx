@@ -4998,6 +4998,7 @@ public class abstract com::lynx::tasm::behavior::LynxContext : com.lynx.tasm.beh
   public void com.lynx.tasm.behavior.LynxContext.onAttachedToWindow();
   public boolean com.lynx.tasm.behavior.LynxContext.getEnableFlattenTranslateZ();
   public boolean com.lynx.tasm.behavior.LynxContext.enableEventThrough();
+  public boolean com.lynx.tasm.behavior.LynxContext.enableEventThroughInheritFromPage();
   public boolean com.lynx.tasm.behavior.LynxContext.getEnableNewIntersectionObserver();
   public boolean com.lynx.tasm.behavior.LynxContext.getEnableNewSticky();
   public boolean com.lynx.tasm.behavior.LynxContext.getEnableNativeInteraction();
@@ -8578,6 +8579,7 @@ public class com::lynx::tasm::PageConfig :  {
   public void com.lynx.tasm.PageConfig.setCssAlignWithLegacyW3c(boolean mCssAlignWithLegacyW3c);
   public boolean com.lynx.tasm.PageConfig.isAutoExpose();
   public boolean com.lynx.tasm.PageConfig.enableEventThrough();
+  public boolean com.lynx.tasm.PageConfig.enableEventThroughInheritFromPage();
   public String com.lynx.tasm.PageConfig.getPageVersion();
   public boolean com.lynx.tasm.PageConfig.getDefaultOverflowVisible();
   public boolean com.lynx.tasm.PageConfig.isAsyncRedirect();

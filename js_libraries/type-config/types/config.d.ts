@@ -131,6 +131,19 @@ export interface Config {
   enableEventThrough?: boolean;
 
   /**
+   * Controls whether descendants whose event-through value is undefined can inherit event-through from the page node. When disabled, event-through inheritance stops before the page node to preserve the legacy behavior.
+   *
+   * @Android
+   * @Harmony
+   * @iOS
+   *
+   * Since: LynxSDK 4.3
+   *
+   * @defaultValue false
+   */
+  enableEventThroughInheritFromPage?: boolean;
+
+  /**
    * Controls standard HTTP streaming support for the Lynx Fetch API. When enabled through page or native config, Fetch requests use the standard streaming response path; when disabled or unset, Fetch keeps the non-standard streaming fallback unless a legacy streaming flag is present.
    *
    * @Android

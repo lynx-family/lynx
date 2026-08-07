@@ -15,6 +15,7 @@ import android.graphics.Rect;
 import com.lynx.react.bridge.JavaOnlyMap;
 import com.lynx.tasm.PageConfig;
 import com.lynx.tasm.behavior.LynxContext;
+import com.lynx.tasm.behavior.event.EventTarget;
 import com.lynx.tasm.behavior.ui.view.UIView;
 import com.lynx.testing.base.TestingUtils;
 import org.junit.After;
@@ -41,6 +42,12 @@ public class LynxBaseUITest {
   private void setEnableNativeInteraction(boolean enable) {
     JavaOnlyMap pageConfig = new JavaOnlyMap();
     pageConfig.putBoolean("enableNativeInteraction", enable);
+    mContext.onPageConfigDecoded(new PageConfig(pageConfig));
+  }
+
+  private void setEnableEventThroughInheritFromPage(boolean enable) {
+    JavaOnlyMap pageConfig = new JavaOnlyMap();
+    pageConfig.putBoolean("enableEventThroughInheritFromPage", enable);
     mContext.onPageConfigDecoded(new PageConfig(pageConfig));
   }
 
@@ -150,5 +157,21 @@ public class LynxBaseUITest {
     UIView ui = new UIView(mContext);
 
     assertTrue(ui.nativeInteractionEnabled);
+  }
+
+  @Test
+  public void eventThroughInheritsFromPageOnlyWhenEnabled() {
+    UIBody root = new UIBody(mContext, new UIBody.UIBodyView(mContext));
+    UIView child = new UIView(mContext);
+    root.insertChild(child, 0);
+    root.mEventThrough = EventTarget.EnableStatus.Enable;
+
+    assertFalse(child.eventThrough(0.f, 0.f));
+
+    setEnableEventThroughInheritFromPage(true);
+    assertTrue(child.eventThrough(0.f, 0.f));
+
+    child.mEventThrough = EventTarget.EnableStatus.Disable;
+    assertFalse(child.eventThrough(0.f, 0.f));
   }
 }

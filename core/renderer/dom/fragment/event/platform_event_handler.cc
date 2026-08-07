@@ -45,8 +45,10 @@ PlatformEventHandler::PlatformEventTargetDetail::Target() {
 
 bool PlatformEventHandler::OnInputEvent(
     fml::RefPtr<PlatformEventTarget> target_tree, int int_event_data[],
-    float float_event_data[]) {
+    float float_event_data[], bool enable_event_through_inherit_from_page) {
   target_tree_ = target_tree;
+  enable_event_through_inherit_from_page_ =
+      enable_event_through_inherit_from_page;
   event_handler_state_ = kStateNone;
   // int_event_data: [event_type, action_type, event_source, pointer_count, ...]
   int event_type = int_event_data[0];
@@ -179,7 +181,8 @@ bool PlatformEventHandler::EventThrough() {
   float target_point[2] = {first_pointer_down_point_[0],
                            first_pointer_down_point_[1]};
   GetTargetPoint(first_target_, target_point, first_pointer_down_point_);
-  return first_target_->EventThrough(target_point);
+  return first_target_->EventThrough(target_point,
+                                     enable_event_through_inherit_from_page_);
 }
 
 int PlatformEventHandler::EventHandlerState() { return event_handler_state_; }

@@ -190,7 +190,8 @@ class PlatformEventTarget
   LynxPseudoStatus GetPseudoStatus() const;
   bool TouchPseudoPropagation() const;
 
-  bool EventThrough(float point[2]) const;
+  bool EventThrough(float point[2],
+                    bool enable_inherit_from_page = false) const;
   bool IgnoreFocus() const;
   LynxPointerEventsValue PointerEvents() const;
   bool BlockNativeEvent(float point[2]) const;
@@ -261,8 +262,8 @@ class PlatformEventTarget
 
  private:
   void UpdateScrollOffsetIfNeeded();
-  bool EventThroughInternal(float point[2],
-                            bool include_events_pass_through) const;
+  bool EventThroughInternal(float point[2], bool include_events_pass_through,
+                            bool enable_inherit_from_page) const;
   bool HitEventThroughActiveRegions(float point[2]) const;
   float ConvertEventThroughSizeValue(const EventThroughSizeValue& value,
                                      bool is_horizontal) const;

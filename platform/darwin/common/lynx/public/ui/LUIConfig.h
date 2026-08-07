@@ -11,6 +11,7 @@
 - (bool)enableEventRefactor;
 - (bool)enableA11yIDMutationObserver;
 - (bool)enableEventThrough;
+- (bool)enableEventThroughInheritFromPage;
 - (bool)enableBackgroundShapeLayer;
 - (bool)enableExposureUIMargin;
 - (bool)enableTextLanguageAlignment;
