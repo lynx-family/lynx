@@ -47,6 +47,19 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)init)
   _moduleFactoryPtr->registerModule(module, param);
 }
 
+- (void)registerModule:(Class<LynxModule>)module withName:(NSString *)name {
+  [self registerModule:module withName:name param:nil];
+}
+
+- (void)registerModule:(Class<LynxModule>)module withName:(NSString *)name param:(id)param {
+  std::shared_ptr<lynx::runtime::js::ModuleFactoryDarwin> lockPtr =
+      _sharedModuleFactoryWeakPtr.lock();
+  if (lockPtr) {
+    lockPtr->registerModule(name, module, param);
+  }
+  _moduleFactoryPtr->registerModule(name, module, param);
+}
+
 - (void)registerMethodAuth:(LynxMethodBlock)authBlock {
   _moduleFactoryPtr->registerMethodAuth(authBlock);
 }

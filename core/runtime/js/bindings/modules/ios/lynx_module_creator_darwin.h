@@ -19,6 +19,7 @@
 
 @property(nonatomic, readwrite, strong) Class<LynxModule> moduleClass;
 @property(nonatomic, readwrite, strong) id param;
+@property(nonatomic, readwrite, copy) NSString *moduleName;
 @property(nonatomic, readwrite, weak) NSString *namescope;
 
 @end

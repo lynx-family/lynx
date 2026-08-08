@@ -82,7 +82,9 @@ std::shared_ptr<LynxNativeModule> ModuleFactoryDarwin::CreateModule(const std::s
       [instance setExtraData:lynxModuleExtraData_];
     }
     // create lynx module darwin
-    std::shared_ptr<LynxModuleDarwin> moduleDarwin = std::make_shared<LynxModuleDarwin>(instance);
+    NSString *moduleName = wrapper.moduleName ?: str;
+    std::shared_ptr<LynxModuleDarwin> moduleDarwin =
+        std::make_shared<LynxModuleDarwin>(instance, moduleName);
     moduleDarwin->SetMethodAuth(methodAuthBlocks_);
     moduleDarwin->SetMethodSession(methodSessionBlocks_);
     moduleDarwin->SetContextFinder(module_creator_->CurrentContextFinder());
@@ -108,14 +110,23 @@ std::shared_ptr<LynxNativeModule> ModuleFactoryDarwin::CreateModule(const std::s
 void ModuleFactoryDarwin::registerModule(Class<LynxModule> cls) { registerModule(cls, nil); }
 
 void ModuleFactoryDarwin::registerModule(Class<LynxModule> cls, id param) {
+  registerModule([cls name], cls, param);
+}
+
+void ModuleFactoryDarwin::registerModule(NSString *name, Class<LynxModule> cls) {
+  registerModule(name, cls, nil);
+}
+
+void ModuleFactoryDarwin::registerModule(NSString *name, Class<LynxModule> cls, id param) {
   LynxModuleWrapper *wrapper = [[LynxModuleWrapper alloc] init];
   wrapper.moduleClass = cls;
   wrapper.param = param;
+  wrapper.moduleName = name;
   if (param && [param isKindOfClass:[NSDictionary class]] &&
       [((NSDictionary *)param) objectForKey:@"namescope"]) {
     wrapper.namescope = [((NSDictionary *)param) objectForKey:@"namescope"];
   }
-  modulesClasses_[[cls name]] = wrapper;
+  modulesClasses_[name] = wrapper;
   _LogI(@"NativeModule: LynxModule, module: %@ registered with param (address): %p", cls, param);
 }
 
