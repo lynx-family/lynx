@@ -1021,17 +1021,56 @@ RENDERER_FUNCTION_CC(AdoptStyleSheet) {
   auto& manager = tasm->page_proxy()->element_manager();
   manager->AdoptStyleSheet(wrapper);
 
-  // Mark all elements as style dirty to trigger re-resolution
-  auto root = manager->root();
-  if (root) {
-    root->ApplyFunctionRecursive(
-        [](auto element) { element->MarkStyleDirty(false); });
-  }
-
   RETURN_UNDEFINED();
 }
 
-RENDERER_FUNCTION_CC(ReplaceStyleSheets) { RETURN_UNDEFINED(); }
+RENDERER_FUNCTION_CC(ReplaceStyleSheets) {
+  if (argc != 1) {
+    RETURN_UNDEFINED();
+  }
+  CONVERT_ARG(arg0, 0);
+  if (!arg0->IsArrayOrJSArray()) {
+    RETURN_UNDEFINED();
+  }
+  const int sheet_count = arg0->GetLength();
+  if (sheet_count < 0) {
+    RETURN_UNDEFINED();
+  }
+
+  std::vector<fml::RefPtr<SharedCSSFragmentWrapper>> wrappers;
+  bool valid = true;
+  tasm::ForEachLepusValue(
+      *arg0, [&wrappers, &valid](const auto&, const auto& value) {
+        if (!value.IsRefCounted()) {
+          valid = false;
+          return;
+        }
+        const auto& ref_counted = value.RefCounted();
+        if (!ref_counted ||
+            ref_counted->GetRefType() != lepus::RefType::kCSSFragment) {
+          valid = false;
+          return;
+        }
+        auto wrapper = fml::RefPtr<SharedCSSFragmentWrapper>(
+            static_cast<SharedCSSFragmentWrapper*>(ref_counted.get()));
+        if (!wrapper || !wrapper->fragment_) {
+          valid = false;
+          return;
+        }
+        wrappers.push_back(std::move(wrapper));
+      });
+  if (!valid || wrappers.size() != static_cast<size_t>(sheet_count)) {
+    RETURN_UNDEFINED();
+  }
+
+  auto* tasm = GET_TASM_POINTER();
+  if (!tasm) RETURN_UNDEFINED();
+
+  auto& manager = tasm->page_proxy()->element_manager();
+  manager->ReplaceAdoptedStyleSheets(std::move(wrappers));
+
+  RETURN_UNDEFINED();
+}
 
 /* NativeModule Lynx API END */
 

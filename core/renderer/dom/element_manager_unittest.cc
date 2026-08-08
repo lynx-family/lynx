@@ -559,6 +559,15 @@ class MockSharedCSSFragmentWrapper : public tasm::SharedCSSFragmentWrapper {
   std::unique_ptr<tasm::SharedCSSFragment> fragment_;
 };
 
+fml::RefPtr<tasm::SharedCSSFragmentWrapper> MakeAdoptedStyleSheet(
+    css::RuleSet::FeatureFlags feature_flag) {
+  auto fragment = std::make_unique<tasm::SharedCSSFragment>();
+  fragment->SetEnableCSSInvalidation();
+  fragment->SetEnableCSSSelector();
+  fragment->rule_set()->AddFeatureFlag(feature_flag);
+  return fml::AdoptRef(new tasm::SharedCSSFragmentWrapper(std::move(fragment)));
+}
+
 TEST_F(ElementManagerTest, AdoptStyleSheet_Basic) {
   // Create a mock wrapper
   auto wrapper = fml::AdoptRef<MockSharedCSSFragmentWrapper>(
@@ -574,6 +583,68 @@ TEST_F(ElementManagerTest, AdoptStyleSheet_Basic) {
   const auto& adopted_sheets = manager->GetAdoptedStyleSheets();
   EXPECT_EQ(adopted_sheets.size(), 1);
   EXPECT_EQ(adopted_sheets[0].get(), wrapper.get());
+}
+
+TEST_F(ElementManagerTest,
+       ReplaceAdoptedStyleSheets_PreservesOrderDuplicatesAndRecomputesState) {
+  auto old_wrapper = MakeAdoptedStyleSheet(css::RuleSet::kHasCascadeLayers);
+  auto first_wrapper = MakeAdoptedStyleSheet(css::RuleSet::kHasMediaQuery);
+  auto second_wrapper = MakeAdoptedStyleSheet(css::RuleSet::kHasSupports);
+  manager->AdoptStyleSheet(old_wrapper);
+  EXPECT_EQ(manager->GetAdoptedFeatureFlags(), css::RuleSet::kHasCascadeLayers);
+  EXPECT_TRUE(manager->HasAdoptedCSSSelector());
+  EXPECT_TRUE(manager->HasAdoptedCSSInvalidation());
+  manager->cascade_layer_map_cache_.emplace(nullptr, nullptr);
+
+  manager->ReplaceAdoptedStyleSheets(
+      {first_wrapper, second_wrapper, first_wrapper});
+
+  const auto adopted_sheets = manager->GetAdoptedStyleSheets();
+  ASSERT_EQ(adopted_sheets.size(), 3u);
+  EXPECT_EQ(adopted_sheets[0].get(), first_wrapper.get());
+  EXPECT_EQ(adopted_sheets[1].get(), second_wrapper.get());
+  EXPECT_EQ(adopted_sheets[2].get(), first_wrapper.get());
+  EXPECT_EQ(manager->GetAdoptedFeatureFlags(),
+            css::RuleSet::kHasMediaQuery | css::RuleSet::kHasSupports);
+  EXPECT_TRUE(manager->HasAdoptedCSSSelector());
+  EXPECT_TRUE(manager->HasAdoptedCSSInvalidation());
+  EXPECT_TRUE(manager->cascade_layer_map_cache_.empty());
+
+  manager->ReplaceAdoptedStyleSheets({second_wrapper});
+  ASSERT_EQ(manager->GetAdoptedStyleSheets().size(), 1u);
+  EXPECT_EQ(manager->GetAdoptedStyleSheets()[0].get(), second_wrapper.get());
+  EXPECT_EQ(manager->GetAdoptedFeatureFlags(), css::RuleSet::kHasSupports);
+  EXPECT_TRUE(manager->HasAdoptedCSSSelector());
+  EXPECT_TRUE(manager->HasAdoptedCSSInvalidation());
+
+  manager->ReplaceAdoptedStyleSheets({});
+  EXPECT_TRUE(manager->GetAdoptedStyleSheets().empty());
+  EXPECT_EQ(manager->GetAdoptedFeatureFlags(), css::RuleSet::kNoFeatures);
+  EXPECT_FALSE(manager->HasAdoptedCSSSelector());
+  EXPECT_FALSE(manager->HasAdoptedCSSInvalidation());
+}
+
+TEST_F(ElementManagerTest,
+       AdoptedStyleSheetMutations_ClearKeyframesAndEnableTouchPseudo) {
+  auto wrapper = MakeAdoptedStyleSheet(css::RuleSet::kNoFeatures);
+  wrapper->fragment_->MarkHasTouchPseudoToken();
+  constexpr char kKeyframesId[] = "__lynx_unique_1_fade";
+  manager->SetResolvedKeyframes(kKeyframesId);
+
+  manager->AdoptStyleSheet(wrapper);
+
+  EXPECT_FALSE(manager->CheckResolvedKeyframes(kKeyframesId));
+  EXPECT_TRUE(manager->push_touch_pseudo_flag_);
+
+  manager->PatchEventRelatedInfo();
+  EXPECT_FALSE(manager->push_touch_pseudo_flag_);
+  manager->SetResolvedKeyframes(kKeyframesId);
+  manager->ReplaceAdoptedStyleSheets(
+      {MakeAdoptedStyleSheet(css::RuleSet::kNoFeatures)});
+  EXPECT_FALSE(manager->CheckResolvedKeyframes(kKeyframesId));
+  // Touch pseudo event updates are enable-only. A replacement without a touch
+  // pseudo must not schedule another enable update.
+  EXPECT_FALSE(manager->push_touch_pseudo_flag_);
 }
 
 TEST_F(ElementManagerTest, AdoptStyleSheet_Multiple) {
@@ -650,18 +721,32 @@ TEST_F(ElementManagerTest, AdoptedStylesheets_IntegrationWithFiberElement) {
   base::String component_id("test-component");
   int32_t css_id = 100;
   auto root = manager->CreateFiberPage(component_id, css_id);
+  root->computed_css_style()->animation_data().emplace_back();
+  ASSERT_TRUE(root->computed_css_style()->HasAnimation());
+  root->has_keyframe_props_changed_ = false;
+  root->keyframe_rules_changed_ = false;
+  root->ResetAllDirtyBits();
 
   auto wrapper = fml::AdoptRef<MockSharedCSSFragmentWrapper>(
       new MockSharedCSSFragmentWrapper());
   manager->AdoptStyleSheet(wrapper);
 
   EXPECT_EQ(manager->GetAdoptedStyleSheets().size(), 1);
+  EXPECT_TRUE(root->StyleDirty());
+  EXPECT_TRUE(root->has_keyframe_props_changed_);
+  EXPECT_TRUE(root->keyframe_rules_changed_);
 
   const auto& adopted_sheets = manager->GetAdoptedStyleSheets();
   EXPECT_FALSE(adopted_sheets.empty());
 
+  root->ResetAllDirtyBits();
+  root->has_keyframe_props_changed_ = false;
+  root->keyframe_rules_changed_ = false;
   manager->ClearAdoptedStyleSheets();
   EXPECT_TRUE(manager->GetAdoptedStyleSheets().empty());
+  EXPECT_TRUE(root->StyleDirty());
+  EXPECT_TRUE(root->has_keyframe_props_changed_);
+  EXPECT_TRUE(root->keyframe_rules_changed_);
 }
 
 TEST_F(ElementManagerTest, AdoptedStylesheets_MultipleAdoption) {

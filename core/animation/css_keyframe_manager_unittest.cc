@@ -962,6 +962,37 @@ TEST_F(CSSKeyframeManagerTest,
   EXPECT_FLOAT_EQ(0.8f, from_keyframe->Value());
 }
 
+TEST_F(CSSKeyframeManagerTest, ForceRebuildRecreatesUnchangedAnimationCurves) {
+  auto test_element = InitElement();
+  auto test_manager = InitTestKeyframeManager(test_element.get());
+  base::Vector<starlight::AnimationData> animation_data;
+  animation_data.emplace_back(InitAnimationData(
+      base::String("test"), 2000, 0, starlight::TimingFunctionData(), 1,
+      starlight::AnimationFillModeType::kBoth,
+      starlight::AnimationDirectionType::kNormal,
+      starlight::AnimationPlayStateType::kRunning));
+
+  UpdateOpacityKeyframes(test_element.get(), base::String("test"), 0.2, 0.4);
+  test_manager->SetAnimationDataAndPlay(animation_data);
+  ASSERT_TRUE(test_manager->animations_map().count(base::String("test")));
+
+  UpdateOpacityKeyframes(test_element.get(), base::String("test"), 0.8, 0.9);
+  test_manager->SetAnimationDataAndPlay(animation_data, true);
+
+  ASSERT_TRUE(test_manager->animations_map().count(base::String("test")));
+  auto* model = test_manager->animations_map()[base::String("test")]
+                    ->keyframe_effect()
+                    ->GetKeyframeModelByCurveType(
+                        animation::AnimationCurve::CurveType::OPACITY);
+  ASSERT_NE(nullptr, model);
+  auto* curve = static_cast<animation::KeyframedOpacityAnimationCurve*>(
+      model->animation_curve());
+  ASSERT_EQ(2U, curve->keyframes_.size());
+  auto* from_keyframe =
+      static_cast<animation::OpacityKeyframe*>(curve->keyframes_[0].get());
+  EXPECT_FLOAT_EQ(0.8f, from_keyframe->Value());
+}
+
 TEST_F(
     CSSKeyframeManagerTest,
     NewPipelineForceRebuildRecreatesAnimationCurvesWhenAnimationDataChanges) {

@@ -126,6 +126,15 @@ class NodeManager {
 
   size_t NodeCount() { return node_map_.size(); }
 
+  template <typename Visitor>
+  void ForEachElement(Visitor &&visitor) {
+    for (const auto &[_, element] : node_map_) {
+      if (element) {
+        visitor(element);
+      }
+    }
+  }
+
   int32_t GetTotalMemoryUsage() const {
     if (node_map_.empty()) {
       return 0;
@@ -455,29 +464,36 @@ class ElementManager : public LayoutScheduler::LayoutSchedulerImpl {
   }
 
   // Thread-safe adopted stylesheet accessors using a read-write lock.
-  // Writers (Adopt/Clear) take an exclusive lock.
+  // Writers (Adopt/Clear/Replace) take an exclusive lock.
   // Readers (Get) take a shared lock.
   void AdoptStyleSheet(fml::RefPtr<tasm::SharedCSSFragmentWrapper> wrapper) {
-    const uint8_t feature_flags = (wrapper && wrapper->fragment_)
-                                      ? wrapper->fragment_->GetFeatureFlags()
-                                      : css::RuleSet::kNoFeatures;
-    std::unique_lock<std::shared_mutex> lock(adopted_style_sheets_mutex_);
-    adopted_stylesheets_.push_back(std::move(wrapper));
-    if (feature_flags) {
-      const uint8_t existing_flags =
-          adopted_feature_flags_.load(std::memory_order_relaxed);
-      adopted_feature_flags_.store(existing_flags | feature_flags,
-                                   std::memory_order_release);
+    {
+      std::unique_lock<std::shared_mutex> lock(adopted_style_sheets_mutex_);
+      adopted_stylesheets_.push_back(std::move(wrapper));
+      cascade_layer_map_cache_.clear();
     }
-    cascade_layer_map_cache_.clear();
+    OnAdoptedStyleSheetsChanged();
   }
 
   void ClearAdoptedStyleSheets() {
-    std::unique_lock<std::shared_mutex> lock(adopted_style_sheets_mutex_);
-    adopted_stylesheets_.clear();
-    adopted_feature_flags_.store(css::RuleSet::kNoFeatures,
-                                 std::memory_order_release);
-    cascade_layer_map_cache_.clear();
+    {
+      std::unique_lock<std::shared_mutex> lock(adopted_style_sheets_mutex_);
+      adopted_stylesheets_.clear();
+      cascade_layer_map_cache_.clear();
+    }
+    OnAdoptedStyleSheetsChanged();
+  }
+
+  // Replaces the adopted stylesheets as one transaction. The replacement keeps
+  // caller order and duplicate wrappers intact.
+  void ReplaceAdoptedStyleSheets(
+      std::vector<fml::RefPtr<tasm::SharedCSSFragmentWrapper>> wrappers) {
+    {
+      std::unique_lock<std::shared_mutex> lock(adopted_style_sheets_mutex_);
+      adopted_stylesheets_ = std::move(wrappers);
+      cascade_layer_map_cache_.clear();
+    }
+    OnAdoptedStyleSheetsChanged();
   }
 
   // Iterates adopted stylesheets under a shared lock without copying.
@@ -514,9 +530,16 @@ class ElementManager : public LayoutScheduler::LayoutSchedulerImpl {
     return adopted_feature_flags_.load(std::memory_order_acquire);
   }
 
+  bool HasAdoptedCSSSelector() const {
+    return has_adopted_css_selector_.load(std::memory_order_acquire);
+  }
+
+  bool HasAdoptedCSSInvalidation() const {
+    return has_adopted_css_invalidation_.load(std::memory_order_acquire);
+  }
+
   std::shared_ptr<const css::CascadeLayerMap> GetCascadeLayerMap(
       CSSFragment *intrinsic_style_sheet);
-
   // Call when an intrinsic fragment is freed (stylesheet replace/remove) so a
   // new fragment reusing its address cannot hit a stale entry.
   void InvalidateCascadeLayerMapCache();
@@ -1398,6 +1421,10 @@ class ElementManager : public LayoutScheduler::LayoutSchedulerImpl {
   std::shared_ptr<InspectorElementObserver> inspector_element_observer_;
 
  private:
+  // Refreshes every derived stylesheet state and schedules all live elements
+  // to resolve against the current adopted sheet list.
+  void OnAdoptedStyleSheetsChanged();
+
   /**
    * a special onPatchFinish function for fiber
    * @param option options for onPatchFinish
@@ -1570,6 +1597,8 @@ class ElementManager : public LayoutScheduler::LayoutSchedulerImpl {
   mutable std::shared_mutex adopted_style_sheets_mutex_;
   std::vector<fml::RefPtr<tasm::SharedCSSFragmentWrapper>> adopted_stylesheets_;
   std::atomic<uint8_t> adopted_feature_flags_{css::RuleSet::kNoFeatures};
+  std::atomic<bool> has_adopted_css_selector_{false};
+  std::atomic<bool> has_adopted_css_invalidation_{false};
 
   // Cascade-layer maps are shared by decorators with the same intrinsic
   // stylesheet and cleared whenever adopted stylesheets change.

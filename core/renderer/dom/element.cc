@@ -2018,6 +2018,11 @@ bool Element::CheckKeyframeProps(CSSPropertyID id) {
   return false;
 }
 
+void Element::MarkKeyframeRulesDirty() {
+  keyframe_rules_changed_ = true;
+  CheckKeyframeProps(CSSPropertyID::kPropertyIDAnimation);
+}
+
 void Element::CheckHasNonFlattenCSSProps(CSSPropertyID id) {
   if (has_non_flatten_attrs_) {
     // never change has_non_flatten_attrs_ to false again
@@ -2213,7 +2218,8 @@ void Element::SetDataToNativeKeyframeAnimator(bool from_resume) {
     return;
   }
   // keyframe animation
-  if (!has_keyframe_props_changed_ && !from_resume) {
+  if (!has_keyframe_props_changed_ && !keyframe_rules_changed_ &&
+      !from_resume) {
     return;
   }
 
@@ -2222,7 +2228,8 @@ void Element::SetDataToNativeKeyframeAnimator(bool from_resume) {
         std::make_unique<animation::CSSKeyframeManager>(this);
   }
   css_keyframe_manager_->SetAnimationDataAndPlay(
-      computed_css_style()->animation_data());
+      computed_css_style()->animation_data(), keyframe_rules_changed_);
+  keyframe_rules_changed_ = false;
 }
 
 void Element::SetDataToNativeTransitionAnimator() {
@@ -3100,6 +3107,11 @@ void Element::VerifyKeyframePropsChangedHandling() {
     // keyframe_props is not handled properly in this flow
     DCHECK(!has_keyframe_props_changed_);
     has_keyframe_props_changed_ = false;
+    keyframe_rules_changed_ = false;
+  }
+  if (keyframe_rules_changed_ && !element_manager_->IsPause()) {
+    DCHECK(!keyframe_rules_changed_);
+    keyframe_rules_changed_ = false;
   }
 }
 

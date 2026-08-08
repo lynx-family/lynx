@@ -248,8 +248,8 @@ void CSSKeyframeManager::TickAllAnimation(fml::TimePoint& frame_time) {
 }
 
 void CSSKeyframeManager::SetAnimationDataAndPlay(
-    base::Vector<starlight::AnimationData>& anim_data) {
-  SetAnimationDataAndPlayInternal(anim_data, false, true, false);
+    base::Vector<starlight::AnimationData>& anim_data, bool force_rebuild) {
+  SetAnimationDataAndPlayInternal(anim_data, force_rebuild, true, false);
 }
 
 void CSSKeyframeManager::SetAnimationDataAndPlayInternal(

@@ -224,6 +224,46 @@ ElementManager::~ElementManager() {
   }
 }
 
+void ElementManager::OnAdoptedStyleSheetsChanged() {
+  // The render pipeline serializes stylesheet mutations and style resolution,
+  // so rebuild all derived state directly from the current sheet list.
+  uint8_t feature_flags = css::RuleSet::kNoFeatures;
+  bool has_css_selector = false;
+  bool has_css_invalidation = false;
+  bool has_touch_pseudo_token = false;
+  {
+    std::shared_lock<std::shared_mutex> lock(adopted_style_sheets_mutex_);
+    for (const auto &wrapper : adopted_stylesheets_) {
+      if (!wrapper || !wrapper->fragment_) {
+        continue;
+      }
+      feature_flags |= wrapper->fragment_->GetFeatureFlags();
+      has_css_selector |= wrapper->fragment_->enable_css_selector();
+      has_css_invalidation |= wrapper->fragment_->enable_css_invalidation();
+      has_touch_pseudo_token |= wrapper->fragment_->HasTouchPseudoToken();
+    }
+    adopted_feature_flags_.store(feature_flags, std::memory_order_release);
+    has_adopted_css_selector_.store(has_css_selector,
+                                    std::memory_order_release);
+    has_adopted_css_invalidation_.store(has_css_invalidation,
+                                        std::memory_order_release);
+  }
+
+  if (has_touch_pseudo_token) {
+    UpdateTouchPseudoStatus(true);
+  }
+  resolved_keyframes_set_.clear();
+  node_manager_->ForEachElement([](Element *element) {
+    element->MarkStyleDirty(false);
+    // The animation declaration can remain unchanged while an adopted
+    // @keyframes rule changes. Ordinary adopted rules can also change custom
+    // properties or base values used to build existing keyframe curves.
+    if (element->computed_css_style()->HasAnimation()) {
+      element->MarkKeyframeRulesDirty();
+    }
+  });
+}
+
 std::shared_ptr<const css::CascadeLayerMap> ElementManager::GetCascadeLayerMap(
     CSSFragment *intrinsic_style_sheet) {
   {
