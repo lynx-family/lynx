@@ -70,6 +70,7 @@ unittest_set("lepus_testset") {
     "../../../testing/lynx/tasm/databinding/databinding_test.cc",
     "../../../testing/lynx/tasm/databinding/element_dump_helper.cc",
     "../../../testing/lynx/tasm/databinding/mock_replayer_component_loader.cc",
+    "../lepusng/quick_context_unittest.cc",
     "../lepusng/quickjs_debug_info_unittest.cc",
     "../lepusng/quickjs_promise_unittest.cc",
     "../lepusng/quickjs_stack_size_unittest.cc",

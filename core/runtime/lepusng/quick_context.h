@@ -7,6 +7,7 @@
 #include <memory>
 #include <string>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 #include "base/include/notification_center.h"
@@ -261,6 +262,8 @@ class QuickContext : private LEPUSRuntimeData,
  private:
   static LEPUSLepusRefCallbacks GetLepusRefCall();
 
+  bool DeSerializeSource(const std::string& source, bool reuse_context,
+                         Value* ret, const char* file_name);
   bool ExecuteBinaryInternal(Value* ret);
 
   LEPUSValue GetProperty(const std::string& name, LEPUSValue this_obj);
@@ -308,8 +311,11 @@ class QuickContextBundle final : public runtime::ContextBundle {
 
   std::vector<uint8_t>& lepus_code() { return lepusng_code_; }
   uint64_t& lepusng_code_len() { return lepusng_code_len_; }
+  void SetSource(std::string source) { source_ = std::move(source); }
+  const std::string& source() const { return source_; }
 
  private:
+  std::string source_{};
   std::vector<uint8_t> lepusng_code_{};
   uint64_t lepusng_code_len_{0};
   friend class QuickContextDecoder;
