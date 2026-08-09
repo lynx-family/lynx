@@ -34,6 +34,10 @@ class LynxUIRendererImpl : public LynxUIRenderer {
   void EmulateMouseEvent(const char* event_name, float x, float y,
                          float delta_x, float delta_y) override;
 
+  void Focus(int node_id) override;
+
+  void InsertText(const std::string& text) override;
+
   void InjectBubbleEvent(const char* params) override;
 
   void RegisterNativeView(const char* name, lynx_native_view_creator creator,

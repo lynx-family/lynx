@@ -23,6 +23,47 @@ namespace lynx {
 namespace embedder {
 
 namespace {
+class CallbackEventSimulationProxy final
+    : public pub::LynxEventSimulationProxy {
+ public:
+  CallbackEventSimulationProxy(lynx_emulate_touch_fn emulate_touch_callback,
+                               lynx_focus_fn focus_callback,
+                               lynx_insert_text_fn insert_text_callback,
+                               void* context)
+      : emulate_touch_callback_(emulate_touch_callback),
+        focus_callback_(focus_callback),
+        insert_text_callback_(insert_text_callback),
+        context_(context) {}
+
+  void EmulateTouch(const std::string& event_type, int x, int y,
+                    const std::string& button, float delta_x, float delta_y,
+                    int modifiers, int click_count) override {
+    if (emulate_touch_callback_) {
+      emulate_touch_callback_(context_, event_type.c_str(), x, y,
+                              button.c_str(), delta_x, delta_y, modifiers,
+                              click_count);
+    }
+  }
+
+  void Focus(int node_id) override {
+    if (focus_callback_) {
+      focus_callback_(context_, node_id);
+    }
+  }
+
+  void InsertText(const std::string& text) override {
+    if (insert_text_callback_) {
+      insert_text_callback_(context_, text.c_str());
+    }
+  }
+
+ private:
+  lynx_emulate_touch_fn emulate_touch_callback_;
+  lynx_focus_fn focus_callback_;
+  lynx_insert_text_fn insert_text_callback_;
+  void* context_;
+};
+
 void PrepareEnvWidthScreenSize(int width, int height, float density,
                                float ratio) {
   tasm::Config::InitializeVersion("1.0");
@@ -614,6 +655,31 @@ void LynxTemplateRenderer::EmulateTouch(const std::string& event_type, int x,
   if (event_proxy_) {
     event_proxy_->EmulateTouch(event_type, x, y, button, delta_x, delta_y,
                                modifiers, click_count);
+  }
+}
+
+void LynxTemplateRenderer::SetEventSimulationCallbacks(
+    lynx_emulate_touch_fn emulate_touch_callback, lynx_focus_fn focus_callback,
+    lynx_insert_text_fn insert_text_callback, void* context) {
+  if (emulate_touch_callback || focus_callback || insert_text_callback) {
+    SetTemplateRendererEventSimulationProxy(
+        std::make_unique<CallbackEventSimulationProxy>(
+            emulate_touch_callback, focus_callback, insert_text_callback,
+            context));
+  } else {
+    event_proxy_.reset();
+  }
+}
+
+void LynxTemplateRenderer::Focus(int node_id) {
+  if (event_proxy_) {
+    event_proxy_->Focus(node_id);
+  }
+}
+
+void LynxTemplateRenderer::InsertText(const std::string& text) {
+  if (event_proxy_) {
+    event_proxy_->InsertText(text);
   }
 }
 

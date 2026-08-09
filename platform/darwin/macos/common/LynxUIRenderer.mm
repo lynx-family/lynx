@@ -4,6 +4,7 @@
 
 #import "platform/darwin/macos/common/LynxUIRenderer.h"
 #include "clay/common/service/service_manager.h"
+#include "clay/fml/logging.h"
 #include "clay/lynx_adaptor/native_module/lynx_module_factory.h"
 #include "clay/lynx_adaptor/native_platform_view.h"
 #include "clay/lynx_adaptor/native_view_service_embedder.h"
@@ -11,6 +12,7 @@
 #include "clay/net/loader/resource_loader_creator_service.h"
 #include "clay/shell/common/services/instrumentation_service.h"
 #include "clay/shell/platform/darwin/macos/framework/Source/ClayViewProvider_Internal.h"
+#import "clay/shell/platform/darwin/macos/framework/Source/FlutterTextInputPlugin.h"
 #include "clay/ui/component/view_context.h"
 #include "core/base/threading/task_runner_manufactor.h"
 #include "platform/embedder/lynx_view_clients.h"
@@ -339,6 +341,43 @@ void LynxUIRendererImpl::EmulateMouseEvent(const char* event_name, float x, floa
 
   LynxUIRendererMac* lynx_ui_renderer = (__bridge LynxUIRendererMac*)lynx_ui_renderer_;
   DispatchEmulatedMouseEvent(lynx_ui_renderer, event_name, x, y);
+}
+
+void LynxUIRendererImpl::Focus(int node_id) {
+  if (!lynx_ui_renderer_) {
+    return;
+  }
+  LynxUIRendererMac* lynx_ui_renderer = (__bridge LynxUIRendererMac*)lynx_ui_renderer_;
+  auto* view_context =
+      reinterpret_cast<clay::ViewContext*>(lynx_ui_renderer.clayViewProvider.clayViewContext);
+  if (!view_context) {
+    return;
+  }
+  view_context->InvokeUIMethod(node_id, "focus", {},
+                               [node_id](clay::LynxUIMethodResult code, clay::Value) {
+                                 if (code != clay::LynxUIMethodResult::kSuccess) {
+                                   FML_LOG(WARNING) << "DOM.focus failed for nodeId: " << node_id
+                                                    << ", code: " << static_cast<int>(code);
+                                 }
+                               });
+}
+
+void LynxUIRendererImpl::InsertText(const std::string& text) {
+  if (!lynx_ui_renderer_) {
+    return;
+  }
+  NSString* ns_text = [[NSString alloc] initWithBytes:text.data()
+                                               length:text.size()
+                                             encoding:NSUTF8StringEncoding];
+  if (!ns_text) {
+    return;
+  }
+  LynxUIRendererMac* lynx_ui_renderer = (__bridge LynxUIRendererMac*)lynx_ui_renderer_;
+  FlutterTextInputPlugin* text_input_plugin = lynx_ui_renderer.clayViewProvider.textInputPlugin;
+  if (![text_input_plugin isFirstResponder]) {
+    return;
+  }
+  [text_input_plugin insertText:ns_text replacementRange:NSMakeRange(NSNotFound, 0)];
 }
 
 void LynxUIRendererImpl::InjectBubbleEvent(const char* params) {

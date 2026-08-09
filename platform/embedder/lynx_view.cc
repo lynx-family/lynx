@@ -16,6 +16,7 @@
 #include "platform/embedder/lynx_service/lynx_service_center_priv.h"
 #include "platform/embedder/lynx_update_meta_priv.h"
 #include "platform/embedder/lynx_view_builder_priv.h"
+#include "platform/embedder/lynx_view_event_simulation_proxy.h"
 #if ENABLE_INSPECTOR && LYNX_ENABLE_LOGBOX
 #include "platform/embedder/lynx_devtool/devtool_env_embedder.h"
 #endif
@@ -52,6 +53,35 @@ void SetupLogBoxWrapper(lynx_view_t* view, NativeWindow parent) {
 #endif
 
 namespace {
+
+class LynxViewEventSimulationTargetImpl final
+    : public lynx::embedder::LynxViewEventSimulationTarget {
+ public:
+  explicit LynxViewEventSimulationTargetImpl(lynx_view_t* view) : view_(view) {}
+
+  int GetNodeForLocation(int x, int y) override {
+    return view_->lynx_template_renderer->GetNodeForLocation(x, y);
+  }
+
+  void SendTouchEvent(const std::string& name, int tag, int x, int y) override {
+    view_->lynx_template_renderer->SendTouchEvent(name, tag, x, y, x, y, x, y);
+  }
+
+  void EmulateMouseEvent(const std::string& event_name, float x, float y,
+                         float delta_x, float delta_y) override {
+    view_->lynx_ui_renderer->EmulateMouseEvent(event_name.c_str(), x, y,
+                                               delta_x, delta_y);
+  }
+
+  void Focus(int node_id) override { view_->lynx_ui_renderer->Focus(node_id); }
+
+  void InsertText(const std::string& text) override {
+    view_->lynx_ui_renderer->InsertText(text);
+  }
+
+ private:
+  lynx_view_t* view_;
+};
 
 std::shared_ptr<lynx::tasm::TemplateData> MergeGlobalProps(
     const std::shared_ptr<lynx::tasm::TemplateData>& old_global_props,
@@ -174,6 +204,11 @@ LYNX_EXTERN_C lynx_view_t* lynx_view_create(lynx_view_builder_t* builder,
 #endif
   );
   view->lynx_template_renderer = std::move(lynx_template_renderer);
+#if ENABLE_INSPECTOR
+  view->lynx_template_renderer->SetTemplateRendererEventSimulationProxy(
+      std::make_unique<lynx::embedder::LynxViewEventSimulationProxy>(
+          std::make_unique<LynxViewEventSimulationTargetImpl>(view)));
+#endif
   view->lynx_view_clients =
       std::make_unique<lynx::embedder::LynxViewClients>(view);
   view->lynx_ui_renderer->AddClient(view->lynx_view_clients.get());
@@ -439,38 +474,18 @@ LYNX_EXTERN_C void lynx_view_release(lynx_view_t* view) {
   delete view;
 }
 
-namespace {
-class CallbackEventSimulationProxy
-    : public lynx::pub::LynxEventSimulationProxy {
- public:
-  CallbackEventSimulationProxy(lynx_emulate_touch_fn cb, void* ctx)
-      : callback_(cb), context_(ctx) {}
-
-  void EmulateTouch(const std::string& event_type, int x, int y,
-                    const std::string& button, float delta_x, float delta_y,
-                    int modifiers, int click_count) override {
-    if (callback_) {
-      callback_(context_, event_type.c_str(), x, y, button.c_str(), delta_x,
-                delta_y, modifiers, click_count);
-    }
-  }
-
- private:
-  lynx_emulate_touch_fn callback_;
-  void* context_;
-};
-}  // namespace
-
 LYNX_EXTERN_C void lynx_view_set_event_simulation_proxy(
     lynx_view_t* view, lynx_emulate_touch_fn callback, void* context) {
-  if (callback) {
-    view->event_simulation_proxy =
-        std::make_unique<CallbackEventSimulationProxy>(callback, context);
-  } else {
-    view->event_simulation_proxy.reset();
-  }
-  view->lynx_template_renderer->SetTemplateRendererEventSimulationProxy(
-      view->event_simulation_proxy.get());
+  view->lynx_template_renderer->SetEventSimulationCallbacks(callback, nullptr,
+                                                            nullptr, context);
+}
+
+LYNX_EXTERN_C void lynx_view_set_event_simulation_callbacks(
+    lynx_view_t* view, lynx_emulate_touch_fn emulate_touch_callback,
+    lynx_focus_fn focus_callback, lynx_insert_text_fn insert_text_callback,
+    void* context) {
+  view->lynx_template_renderer->SetEventSimulationCallbacks(
+      emulate_touch_callback, focus_callback, insert_text_callback, context);
 }
 
 LYNX_EXTERN_C void lynx_view_send_touch_event(lynx_view_t* view,

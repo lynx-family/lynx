@@ -80,6 +80,8 @@ lynx_core_source_set("embedder") {
     "lynx_view_client_priv.h",
     "lynx_view_clients.cc",
     "lynx_view_clients.h",
+    "lynx_view_event_simulation_proxy.cc",
+    "lynx_view_event_simulation_proxy.h",
     "lynx_view_priv.h",
     "lynx_vsync_monitor.cc",
     "lynx_vsync_monitor_priv.h",
@@ -253,6 +255,7 @@ if (enable_unittests) {
       "lynx_value_unittest.cc",
       "lynx_view_builder_unittests.cc",
       "lynx_view_client_unittests.cc",
+      "lynx_view_event_simulation_proxy_unittest.cc",
       "lynx_view_unittests.cc",
     ]
 

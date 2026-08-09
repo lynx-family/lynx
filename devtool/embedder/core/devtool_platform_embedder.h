@@ -68,6 +68,8 @@ class DevtoolPlatformEmbedder
   void GetLynxScreenShot();
 
   void EmulateTouch(std::shared_ptr<lynx::devtool::MouseEvent> input);
+  void Focus(int node_id);
+  void InsertText(const std::string& text);
 
  public:
   void SendScreenCast(const std::string& data,

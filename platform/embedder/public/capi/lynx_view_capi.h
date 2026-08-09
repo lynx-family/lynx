@@ -158,11 +158,20 @@ typedef void (*lynx_emulate_touch_fn)(void* context, const char* event_type,
                                       int x, int y, const char* button,
                                       float delta_x, float delta_y,
                                       int modifiers, int click_count);
+typedef void (*lynx_focus_fn)(void* context, int node_id);
+typedef void (*lynx_insert_text_fn)(void* context, const char* text);
 
 // Set event simulation proxy for devtool. The callback will be invoked to
 // emulate touch/mouse events. Pass NULL callback to clear the proxy.
 LYNX_CAPI_EXPORT void lynx_view_set_event_simulation_proxy(
     lynx_view_t* view, lynx_emulate_touch_fn callback, void* context);
+
+// Set all event simulation callbacks for devtool. This additive API preserves
+// the touch-only setter above for existing C API consumers.
+LYNX_CAPI_EXPORT void lynx_view_set_event_simulation_callbacks(
+    lynx_view_t* view, lynx_emulate_touch_fn emulate_touch_callback,
+    lynx_focus_fn focus_callback, lynx_insert_text_fn insert_text_callback,
+    void* context);
 
 LYNX_CAPI_EXPORT void lynx_view_send_touch_event(lynx_view_t* view,
                                                  const char* name, int32_t id,
