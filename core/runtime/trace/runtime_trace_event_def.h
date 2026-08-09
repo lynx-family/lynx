@@ -1337,6 +1337,12 @@ inline constexpr const char* const QUICK_CONTEXT_EXECUTE = "LepusNG.Execute";
 inline constexpr const char* const QUICK_CONTEXT_DO_SERIALIZE =
     "LepusNG.DeSerialize";
 /**
+ * @trace_description: Deserialize LepusNG from @args{fileName} source code. The
+ * source code size is @args{sourceSize} bytes.
+ */
+inline constexpr const char* const QUICK_CONTEXT_DESERIALIZE_SOURCE =
+    "LepusNG.DeSerializeSource";
+/**
  * @trace_description: Evaluate LepusNG binary payload in QuickContext.
  */
 inline constexpr const char* const QUICK_CONTEXT_EVAL_BINARY =
