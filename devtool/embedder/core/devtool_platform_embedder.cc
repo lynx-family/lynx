@@ -75,6 +75,18 @@ class DevtoolPlatformImpl : public lynx::devtool::DevToolPlatformFacade {
     embedder->EmulateTouch(input);
   }
 
+  void Focus(int node_id) override {
+    auto embedder = weak_embedder_.lock();
+    CHECK_NULL_AND_LOG_RETURN(embedder, "embedder is null");
+    embedder->Focus(node_id);
+  }
+
+  void InsertText(const std::string& text) override {
+    auto embedder = weak_embedder_.lock();
+    CHECK_NULL_AND_LOG_RETURN(embedder, "embedder is null");
+    embedder->InsertText(text);
+  }
+
   std::vector<float> GetRectToWindow() const override { return {}; }
 
   std::string GetLynxVersion() const override {
@@ -331,6 +343,16 @@ void DevtoolPlatformEmbedder::EmulateTouch(
   proxy_->EmulateTouch(input->type_, input->x_, input->y_, input->button_,
                        input->delta_x_, input->delta_y_, input->modifiers_,
                        input->click_count_);
+}
+
+void DevtoolPlatformEmbedder::Focus(int node_id) {
+  CHECK_NULL_AND_LOG_RETURN(proxy_, "proxy_ is null");
+  proxy_->Focus(node_id);
+}
+
+void DevtoolPlatformEmbedder::InsertText(const std::string& text) {
+  CHECK_NULL_AND_LOG_RETURN(proxy_, "proxy_ is null");
+  proxy_->InsertText(text);
 }
 
 std::string DevtoolPlatformEmbedder::GetLynxUITree() {

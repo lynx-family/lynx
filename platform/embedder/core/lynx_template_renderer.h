@@ -28,6 +28,7 @@
 #include "core/shell/lynx_shell_builder.h"
 #include "core/shell/perf_controller_proxy_impl.h"
 #include "core/shell/runtime/bts/lynx_bts_runtime_proxy_impl.h"
+#include "platform/embedder/public/capi/lynx_view_capi.h"
 #include "platform/embedder/public/lynx_event_simulation_proxy.h"
 #include "third_party/jsoncpp/include/json/json.h"
 #if ENABLE_INSPECTOR
@@ -258,6 +259,8 @@ class LynxTemplateRenderer : public devtool::LynxDevToolProxy {
   void EmulateTouch(const std::string& event_type, int x, int y,
                     const std::string& button, float delta_x, float delta_y,
                     int modifiers, int click_count) override;
+  void Focus(int node_id) override;
+  void InsertText(const std::string& text) override;
 
   std::shared_ptr<shell::LynxRuntimeProxy> GetRuntimeProxy() const;
   std::shared_ptr<runtime::js::LynxModuleManager> GetModuleManager() const;
@@ -268,9 +271,25 @@ class LynxTemplateRenderer : public devtool::LynxDevToolProxy {
     LynxTemplateRenderer* renderer;
   };
 
+  void SetEventSimulationCallbacks(lynx_emulate_touch_fn emulate_touch_callback,
+                                   lynx_focus_fn focus_callback,
+                                   lynx_insert_text_fn insert_text_callback,
+                                   void* context);
+
   void SetTemplateRendererEventSimulationProxy(
       pub::LynxEventSimulationProxy* event_proxy) {
-    event_proxy_ = event_proxy;
+    if (event_proxy) {
+      // Legacy embedders retain ownership of proxies passed by raw pointer.
+      event_proxy_ = std::shared_ptr<pub::LynxEventSimulationProxy>(
+          event_proxy, [](pub::LynxEventSimulationProxy*) {});
+    } else {
+      event_proxy_.reset();
+    }
+  }
+
+  void SetTemplateRendererEventSimulationProxy(
+      std::unique_ptr<pub::LynxEventSimulationProxy> event_proxy) {
+    event_proxy_ = std::move(event_proxy);
   }
 
   void DispatchMessageEvent(const Json::Value& message) override;
@@ -305,9 +324,7 @@ class LynxTemplateRenderer : public devtool::LynxDevToolProxy {
 #if ENABLE_INSPECTOR
   std::unique_ptr<devtool::DevtoolsEmbedder> devtools_;
 #endif  // ENABLE_INSPECTOR
-  // Owned adapter when set via C-callback; raw pointer when set via C++ API
-  // (caller guarantees lifetime).
-  pub::LynxEventSimulationProxy* event_proxy_ = nullptr;
+  std::shared_ptr<pub::LynxEventSimulationProxy> event_proxy_;
   devtool::LynxInspectorOwner* inspector_owner_ = nullptr;
 };
 

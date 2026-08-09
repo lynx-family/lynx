@@ -5,6 +5,7 @@
 #define PLATFORM_EMBEDDER_LYNX_UI_RENDERER_H_
 
 #include <memory>
+#include <string>
 
 #include "core/public/ui_delegate.h"
 #include "platform/embedder/lynx_view_builder_priv.h"
@@ -56,6 +57,10 @@ class LynxUIRenderer {
 
   virtual void EmulateMouseEvent(const char* event_name, float x, float y,
                                  float delta_x, float delta_y) {}
+
+  virtual void Focus(int node_id) {}
+
+  virtual void InsertText(const std::string& text) {}
 
   virtual void InjectBubbleEvent(const char* params) {}
 

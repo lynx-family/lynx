@@ -339,7 +339,7 @@ class LynxView {
       std::shared_ptr<LynxEventSimulationProxy> proxy) {
     event_proxy_ = std::move(proxy);
     if (event_proxy_) {
-      lynx_view_set_event_simulation_proxy(
+      lynx_view_set_event_simulation_callbacks(
           lynx_view_,
           [](void* ctx, const char* event_type, int x, int y,
              const char* button, float delta_x, float delta_y, int modifiers,
@@ -348,9 +348,17 @@ class LynxView {
                 event_type, x, y, button, delta_x, delta_y, modifiers,
                 click_count);
           },
+          [](void* ctx, int node_id) {
+            static_cast<LynxEventSimulationProxy*>(ctx)->Focus(node_id);
+          },
+          [](void* ctx, const char* text) {
+            static_cast<LynxEventSimulationProxy*>(ctx)->InsertText(text ? text
+                                                                         : "");
+          },
           event_proxy_.get());
     } else {
-      lynx_view_set_event_simulation_proxy(lynx_view_, nullptr, nullptr);
+      lynx_view_set_event_simulation_callbacks(lynx_view_, nullptr, nullptr,
+                                               nullptr, nullptr);
     }
   }
 
