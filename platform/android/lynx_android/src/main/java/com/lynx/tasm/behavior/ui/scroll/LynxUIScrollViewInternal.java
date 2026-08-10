@@ -415,9 +415,9 @@ public class LynxUIScrollViewInternal
         "scrollLeft", PixelUtils.pxToDip(scrollView.getScrollOffsetHorizontally()));
     scrollEventDetail.put("scrollTop", PixelUtils.pxToDip(scrollView.getScrollOffsetVertically()));
     scrollEventDetail.put(
-        "scrollHeight", PixelUtils.pxToDip(scrollView.getScrollRangeVertically()[1]));
+        "scrollHeight", PixelUtils.pxToDip(scrollView.getScrollRangeVertically()[1] + getHeight()));
     scrollEventDetail.put(
-        "scrollWidth", PixelUtils.pxToDip(scrollView.getScrollRangeHorizontally()[1]));
+        "scrollWidth", PixelUtils.pxToDip(scrollView.getScrollRangeHorizontally()[1] + getWidth()));
     scrollEventDetail.put(
         "isDragging", scrollView.currentScrollState() == LynxBaseScrollView.SCROLL_STATE_DRAGGING);
     scrollEventDetail.put("scrollState", scrollView.currentScrollState());

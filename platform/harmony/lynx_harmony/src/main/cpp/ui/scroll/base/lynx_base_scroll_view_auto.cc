@@ -13,6 +13,13 @@ void LynxBaseScrollView::GetScrollOffset(float scroll_offset[2]) {
       node_, NODE_SCROLL_OFFSET, &scroll_offset[0], &scroll_offset[1]);
 }
 
+void LynxBaseScrollView::GetScrollContentSize(float content_size[2]) {
+  NodeManager::Instance().GetAttributeValues(scroll_content_, NODE_WIDTH,
+                                             &content_size[0]);
+  NodeManager::Instance().GetAttributeValues(scroll_content_, NODE_HEIGHT,
+                                             &content_size[1]);
+}
+
 void LynxBaseScrollView::SetScrollContentSize(float content_size[2]) {
   if (vertical_) {
     SetScrollContentSizeVertically(content_size[1]);
@@ -87,7 +94,7 @@ void LynxBaseScrollView::GetScrollRange(float range[4]) {
   float scroll_range_horizontal[2]{0.f};
   GetScrollRangeHorizontally(scroll_range_horizontal);
   float scroll_range_vertical[2]{0.f};
-  GetScrollRangeVertically(scroll_range_horizontal);
+  GetScrollRangeVertically(scroll_range_vertical);
 
   range[0] = scroll_range_horizontal[0];
   range[1] = scroll_range_horizontal[1];

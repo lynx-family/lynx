@@ -256,15 +256,15 @@ void LynxUIScrollViewInternal::FlushFirstRenderOperations() {
 void LynxUIScrollViewInternal::SendScrollEvent(const char* name,
                                                lepus::Value params) {
   auto scroll_event_detail = lepus::Dictionary::Create();
+  float content_size[2] = {0, 0};
+  scroll_view_->GetScrollContentSize(content_size);
   // scroll_event->SetValue("direction", IsHorizontal() ? "left" : "bottom");
   scroll_event_detail->SetValue("scrollLeft",
                                 scroll_view_->GetScrollOffsetHorizontally());
   scroll_event_detail->SetValue("scrollTop",
                                 scroll_view_->GetScrollOffsetVertically());
-  float scroll_range[4]{0.f};
-  scroll_view_->GetScrollRange(scroll_range);
-  scroll_event_detail->SetValue("scrollHeight", scroll_range[3]);
-  scroll_event_detail->SetValue("scrollWidth", scroll_range[1]);
+  scroll_event_detail->SetValue("scrollHeight", content_size[1]);
+  scroll_event_detail->SetValue("scrollWidth", content_size[0]);
   scroll_event_detail->SetValue("isDragging", scroll_view_->Dragging());
   scroll_event_detail->SetValue("scrollState",
                                 scroll_view_->CurrentScrollState());

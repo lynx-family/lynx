@@ -456,6 +456,9 @@ public class LynxBaseScrollViewNested
 
   private int doBounce(
       int delta, int scrollOffset, int[] scrollRange, int type, boolean isVertical) {
+    if (delta == 0) {
+      return 0;
+    }
     int lefts = 0;
     if (isBouncingForwards(scrollOffset, scrollRange)) {
       if (delta >= 0) {

@@ -29,6 +29,23 @@ public class LynxBaseScrollViewNestedTest {
   private LynxBaseScrollView mChildScrollView;
   private FrameLayout mParentWrapper;
 
+  private static class CountingScrollDelegate
+      implements LynxBaseScrollViewScrolling.ScrollDelegate {
+    private int scrollEventCount = 0;
+
+    @Override
+    public void onScrollStateChanged(int from, int to) {}
+
+    @Override
+    public void scrollViewDidScroll(LynxBaseScrollViewScrolling scrollView) {
+      scrollEventCount++;
+    }
+
+    void reset() {
+      scrollEventCount = 0;
+    }
+  }
+
   @Before
   public void setUp() {
     mContext = TestingUtils.getLynxContext();
@@ -164,5 +181,30 @@ public class LynxBaseScrollViewNestedTest {
 
     // The parent should consume the remaining 50.
     assertEquals(150, mParentScrollView.getScrollY());
+  }
+
+  @Test
+  public void testZeroDeltaDoesNotChangeBouncingOffset() {
+    CountingScrollDelegate delegate = new CountingScrollDelegate();
+    mChildScrollView.setScrollDelegate(delegate);
+    mChildScrollView.mIsVertical = true;
+    mChildScrollView.mHeight = 1221;
+    mChildScrollView.setScrollContentSizeVertically(3206);
+    mChildScrollView.enableBounces(true);
+
+    mChildScrollView.scrollToUnlimitedVertically(-172);
+    delegate.reset();
+    assertArrayEquals(
+        new int[] {0, 0}, mChildScrollView.dispatchScroll(0, 0, TYPE_TOUCH, null, null));
+    assertEquals(-172, mChildScrollView.getScrollY());
+    assertEquals(0, delegate.scrollEventCount);
+
+    int lowerBound = mChildScrollView.getScrollRangeVertically()[1];
+    mChildScrollView.scrollToUnlimitedVertically(lowerBound + 172);
+    delegate.reset();
+    assertArrayEquals(
+        new int[] {0, 0}, mChildScrollView.dispatchScroll(0, 0, TYPE_TOUCH, null, null));
+    assertEquals(lowerBound + 172, mChildScrollView.getScrollY());
+    assertEquals(0, delegate.scrollEventCount);
   }
 }
