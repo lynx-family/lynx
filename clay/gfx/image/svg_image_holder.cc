@@ -94,11 +94,13 @@ void SVGImageHolder::CreateSVGDOM(GrDataPtr data) {
 }
 
 fml::RefPtr<GraphicsImage> SVGImageHolder::GetGraphicsImage() const {
+  fml::SharedLock lock(*mutex_);
   return svg_image_wrapper_ ? svg_image_wrapper_->GetGraphicsImage() : nullptr;
 }
 
 void SVGImageHolder::SetGraphicsImage(
     fml::RefPtr<GraphicsImageWrapper> image_wrapper) {
+  fml::UniqueLock lock(*mutex_);
   svg_image_wrapper_ = image_wrapper;
 }
 }  // namespace clay

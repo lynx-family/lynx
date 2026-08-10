@@ -65,9 +65,8 @@ class SVGImageHolder : public fml::RefCountedThreadSafe<SVGImageHolder> {
 
   void CreateSVGDOM(GrDataPtr data);
   size_t GetAllocationSize() const {
-    return svg_image_wrapper_ ? svg_image_wrapper_->GetGraphicsImage()
-                                    ->GetApproximateByteSize()
-                              : 0;
+    auto graphics_image = GetGraphicsImage();
+    return graphics_image ? graphics_image->GetApproximateByteSize() : 0;
   }
 
  private:
