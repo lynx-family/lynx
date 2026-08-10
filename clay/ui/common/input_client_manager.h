@@ -38,21 +38,32 @@ class InputClientManager {
                              const char* selection_affinity, const char* text,
                              uint64_t selection_extent,
                              uint64_t composing_base) {
-    if (text_input_callbacks_.find(client_id) == text_input_callbacks_.end()) {
+    auto it = text_input_callbacks_.find(client_id);
+    if (it == text_input_callbacks_.end()) {
       FML_LOG(ERROR) << "InputClientManager: client_id not found";
       return;
     }
-    text_input_callbacks_[client_id].on_update_edit_state(
-        selection_base, composing_extent, selection_affinity, text,
-        selection_extent, composing_base);
+    if (!it->second.on_update_edit_state) {
+      FML_LOG(ERROR)
+          << "InputClientManager: update edit state callback not set";
+      return;
+    }
+    it->second.on_update_edit_state(selection_base, composing_extent,
+                                    selection_affinity, text, selection_extent,
+                                    composing_base);
   }
 
   void InvokePerformAction(int client_id) {
-    if (text_input_callbacks_.find(client_id) == text_input_callbacks_.end()) {
+    auto it = text_input_callbacks_.find(client_id);
+    if (it == text_input_callbacks_.end()) {
       FML_LOG(ERROR) << "InputClientManager: client_id not found";
       return;
     }
-    text_input_callbacks_[client_id].on_perform_action();
+    if (!it->second.on_perform_action) {
+      FML_LOG(ERROR) << "InputClientManager: perform action callback not set";
+      return;
+    }
+    it->second.on_perform_action();
   }
 
  private:

@@ -396,10 +396,12 @@ void ClayHeadlessEngine::SendKeyEvent(const ClayKeyEvent* event,
           bool enter_key_up = w & 1;
           if (!handled && enter_key_up) {
             auto* self = reinterpret_cast<ClayHeadlessEngine*>(w & ~1);
-            self->engine_->GetShell()
-                .GetEngine()
-                ->GetPageView()
-                ->OnPlatformPerformInputAction(self->client_id_);
+            if (self->client_id_ != -1) {
+              self->engine_->GetShell()
+                  .GetEngine()
+                  ->GetPageView()
+                  ->OnPlatformPerformInputAction(self->client_id_);
+            }
           }
         },
         reinterpret_cast<void*>(params));
