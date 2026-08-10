@@ -1,0 +1,23 @@
+# Copyright 2026 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("../../../testing/test.gni")
+import("../../Lynx.gni")
+
+lynx_core_source_set("lynxml_parser") {
+  sources = [
+    "lynxml_parser.cc",
+    "lynxml_parser.h",
+  ]
+}
+
+unittest_set("lynxml_parser_testset") {
+  sources = [ "lynxml_parser_unittest.cc" ]
+  public_deps = [ ":lynxml_parser" ]
+}
+
+unittest_exec("lynxml_parser_unittest_exec") {
+  sources = []
+  deps = [ ":lynxml_parser_testset" ]
+}
