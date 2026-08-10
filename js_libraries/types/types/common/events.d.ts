@@ -207,6 +207,31 @@ export interface BaseKeyEvent<T> extends BaseEventOrig<{}, T> {
    * @PC 
    */
   key: string;
+  /**
+   * Whether the key is being held down and is automatically repeating.
+   * @PC
+   */
+  repeat: boolean;
+  /**
+   * Whether the Alt key is pressed.
+   * @PC
+   */
+  altKey: boolean;
+  /**
+   * Whether the Shift key is pressed.
+   * @PC
+   */
+  shiftKey: boolean;
+  /**
+   * Whether the Control key is pressed.
+   * @PC
+   */
+  ctrlKey: boolean;
+  /**
+   * Whether the Meta key is pressed.
+   * @PC
+   */
+  metaKey: boolean;
 }
 
 export interface KeyEvent extends BaseKeyEvent<Target> {}
