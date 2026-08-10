@@ -94,6 +94,8 @@ class LynxBaseScrollView : public LynxBaseScrollViewVertical,
 
   void GetScrollOffset(float scroll_offset[2]) override;
 
+  void GetScrollContentSize(float content_size[2]);
+
   void SetScrollContentSize(float content_size[2]) override;
 
   void ScrollByUnlimited(float delta[2]) override;
