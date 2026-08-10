@@ -5,12 +5,16 @@ package com.lynx.tasm.behavior.ui.scroll;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import com.lynx.react.bridge.Callback;
 import com.lynx.react.bridge.JavaOnlyMap;
+import com.lynx.tasm.EventEmitter;
 import com.lynx.tasm.LynxEventEmitter;
 import com.lynx.tasm.LynxTemplateRender;
 import com.lynx.tasm.LynxView;
@@ -21,11 +25,15 @@ import com.lynx.tasm.behavior.LynxUIOwner;
 import com.lynx.tasm.behavior.ui.UIBody;
 import com.lynx.tasm.behavior.ui.image.UIImage;
 import com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewScroller;
+import com.lynx.tasm.event.LynxCustomEvent;
+import com.lynx.tasm.event.LynxScrollEvent;
+import com.lynx.tasm.utils.PixelUtils;
 import com.lynx.testing.base.TestingUtils;
 import java.util.HashMap;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.ArgumentCaptor;
 
 @RunWith(AndroidJUnit4.class)
 public class LynxUIScrollViewTest {
@@ -151,6 +159,31 @@ public class LynxUIScrollViewTest {
     mUIScrollView.setScrollEventThrottle(500);
     // This would normally be verified by checking the frequency of "scroll" events.
     // For this test, we just ensure it doesn't crash.
+  }
+
+  @Test
+  public void scrollEventUsesCurrentContentSize() {
+    EventEmitter eventEmitter = mock(EventEmitter.class);
+    mContext.setEventEmitter(eventEmitter);
+    mUIScrollView.getView().setScrollContentSize(new int[] {200, 520});
+
+    mUIScrollView.scrollViewDidScroll(mUIScrollView.getView());
+
+    ArgumentCaptor<LynxCustomEvent> eventCaptor = ArgumentCaptor.forClass(LynxCustomEvent.class);
+    verify(eventEmitter, atLeastOnce()).sendCustomEvent(eventCaptor.capture());
+    LynxCustomEvent scrollEvent = null;
+    for (LynxCustomEvent event : eventCaptor.getAllValues()) {
+      if (LynxScrollEvent.EVENT_SCROLL.equals(event.getName())) {
+        scrollEvent = event;
+        break;
+      }
+    }
+
+    assertNotNull(scrollEvent);
+    assertEquals(PixelUtils.pxToDip(200),
+        ((Number) scrollEvent.eventParams().get("scrollWidth")).floatValue(), 0f);
+    assertEquals(PixelUtils.pxToDip(520),
+        ((Number) scrollEvent.eventParams().get("scrollHeight")).floatValue(), 0f);
   }
 
   @Test
