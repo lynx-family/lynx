@@ -513,7 +513,9 @@ bool PaintingContextClay::OnEnableRasterAnimation() {
 std::unique_ptr<lynx::pub::Value> PaintingContextClay::GetTextInfo(
     const std::string& content, const pub::Value& info) {
   auto rk_info = ValueConverter::CreateClayValue(info);
-  auto result = clay::TextRender::GetTextInfo(content.c_str(), rk_info);
+  auto* page_view = view_context_ ? view_context_->GetPageView() : nullptr;
+  auto result =
+      clay::TextRender::GetTextInfo(content.c_str(), rk_info, page_view);
   return std::make_unique<ClayValue>(std::move(result));
 }
 
