@@ -131,6 +131,11 @@ void PlatformRendererDarwin::OnUpdateDisplayList(DisplayList display_list) {
           CGRect layout_frame = CGRectMake(x + display_list_.GetRenderOffset()[0],
                                            y + display_list_.GetRenderOffset()[1], w, h);
           layout_frame = ResolveLayoutFrame(layout_frame);
+          if (GetPlatformRendererType() == PlatformRendererType::kPage) {
+            // Page is placed by it parent on platform layer. Should not be moved by display list.
+            // Use the frame from parent view instead.
+            layout_frame.origin = view.frame.origin;
+          }
           UpdateUIOwnerLayout(CGRectMake(x, y, w, h));
           LynxCUIApplyLayoutFrame(view, layout_frame);
           [[view renderer] onSetFrame:layout_frame];
