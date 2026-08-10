@@ -3,22 +3,17 @@
 // LICENSE file in the root directory of this source tree.
 
 #import <Foundation/Foundation.h>
+#import <UIKit/UIKit.h>
 
 NS_ASSUME_NONNULL_BEGIN
 
-/// Deprecated compatibility facade. All logic is forwarded to the installed
-/// RouteCoordinator (`LXRouteCoordinator`); new callers should route through it
-/// directly. Kept only for older native / E2E callers during migration.
 @interface TasmDispatcher : NSObject
 
 + (instancetype)sharedInstance;
-/// Compatibility facade for older native callers. Routing and navigation are
-/// owned by the installed RouteCoordinator.
-- (void)openTargetUrl:(NSString*)sourceUrl
-    __attribute__((deprecated("Use LXRouteCoordinator openModuleURL: routing.")));
-/// Replaces the current top controller for existing E2E callers.
-- (void)openTargetUrlSingleTop:(NSString*)sourceUrl
-    __attribute__((deprecated("Use LXRouteCoordinator openModuleURL: routing.")));
+// open a new LynxView with ShellViewController
+- (void)openTargetUrl:(NSString*)sourceUrl;
+// for e2e testing
+- (void)openTargetUrlSingleTop:(NSString*)sourceUrl;
 
 @end
 

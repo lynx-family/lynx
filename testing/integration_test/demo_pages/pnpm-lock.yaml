@@ -55,24 +55,7 @@ importers:
       '@lynx-js/rspeedy': 0.9.3
       '@types/react': 18.3.18
       prettier: 3.4.2
-
-  nav-basic:
-    specifiers:
-      '@lynx-js/react': 0.105.0
-      '@lynx-js/react-rsbuild-plugin': 0.9.8
-      '@lynx-js/rspeedy': 0.9.3
-      '@types/react': ^18.3.2
-      prettier: 3.4.2
-      sparkling-navigation: 2.1.0-rc.12
-    dependencies:
-      '@lynx-js/react': 0.105.0_@types+react@18.3.18
-      sparkling-navigation: 2.1.0-rc.12
-    devDependencies:
-      '@lynx-js/react-rsbuild-plugin': 0.9.8_@lynx-js+react@0.105.0
-      '@lynx-js/rspeedy': 0.9.3
-      '@types/react': 18.3.18
-      prettier: 3.4.2
-
+  
   video:
     specifiers:
       '@lynx-js/qrcode-rsbuild-plugin': ^0.3.3
@@ -2782,16 +2765,6 @@ packages:
     resolution: {integrity: sha512-l3BikUxvPOcn5E74dZiq5BGsTb5yEwhaTSzccU6t4sDOH8NWJCstKO5QT2CvtFoK6F0saL7p9xHAqHOlCPJygA==}
     engines: {node: '>= 8'}
     dev: true
-
-  /sparkling-method/2.1.0-rc.12:
-    resolution: {integrity: sha512-TfSMzFS66MYJWZG4Drn5gNCMtDqkJIvVNHhVu6DIyVxjFhIgdRiXqYsDwLh8VIQlHnTQnuNmONVEtHPzsEWaFw==}
-    dev: false
-
-  /sparkling-navigation/2.1.0-rc.12:
-    resolution: {integrity: sha512-kAQ5jZsjAixrQuoCBiiojY4jNxyilrhP/ZAjg9DvCmqdOQME73rC1+BR8zax1cyxLeAaa0fxcztAS6exA78qnA==}
-    dependencies:
-      sparkling-method: 2.1.0-rc.12
-    dev: false
 
   /statuses/1.5.0:
     resolution: {integrity: sha512-OpZ3zP+jT1PI7I8nemJX4AKmAX070ZkYPVWV/AaKTJl+tXCTGyVdC1a4SL8RUQYEwk/f34ZX8UTykN68FwrqAA==}

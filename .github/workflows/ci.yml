@@ -188,146 +188,53 @@ jobs:
           source tools/envsetup.sh
           tools/rtf/rtf native-ut run --names devtool
 
-  ios-unittests-disable-sparkling:
-    name: ios-unittests-check (disable_sparkling)
-    needs: [darwin-impact-check]
-    if: ${{ needs.darwin-impact-check.outputs.darwin == 'true' }}
-    timeout-minutes: 60
-    runs-on: lynx-darwin-15.6.1-medium
-    env:
-      SPARKLING_MODE: disable_sparkling
-    steps:
-      - name: Download Source
-        uses: actions/checkout@v6
-        with:
-          path: lynx
-      - name: Setup CocoaPods cache
-        uses: lynx-infra/cache@5c6160a6a4c7fca80a2f3057bb9dfc9513fcb732
-        with:
-          path: |
-            ~/.cocoapods/repos/trunk
-            ~/Library/Caches/CocoaPods
-          key: cocoapods-ios-explorer-${{ runner.os }}-${{ hashFiles('lynx/explorer/darwin/ios/lynx_explorer/Podfile') }}
-          restore-keys: |
-            cocoapods-ios-explorer-${{ runner.os }}-
-      - name: Install Common Dependencies
-        uses: ./lynx/.github/actions/common-deps
-      - name: Install iOS Dependencies
-        uses: nick-fields/retry@v4
-        with:
-          timeout_minutes: 20
-          max_attempts: 3
-          command: |
-            set -e
-            cd $GITHUB_WORKSPACE/lynx
-            source tools/envsetup.sh
-            pushd explorer/darwin/ios/lynx_explorer
-            git config --global url."https://github.com/".insteadOf "git@github.com:"
-            bash bundle_install.sh --skip-card-build --sparkling-mode "$SPARKLING_MODE"
-            popd
-      - name: Run Unittests
-        run: |
-          set -e
-          source tools/envsetup.sh
-          pushd explorer/darwin/ios/lynx_explorer
-          xcodebuild -showsdks | grep -Eo -m 1 "iphonesimulator([0-9]{1,}\.)+[0-9]{1,}" > sdk.txt
-          sdkVersion=$(awk '{ sub(/iphonesimulator/,""); print $0 }' sdk.txt)
-          echo $sdkVersion > sdk.txt
-          SIMULATOR_ID=$(xcrun simctl list devices | grep -E "iPhone" | grep -v "unavailable" | head -1 | grep -Eo "[0-9A-F-]{36}")
-          xcodebuild build-for-testing ARCHS=arm64 -workspace LynxExplorer.xcworkspace -scheme LynxExplorerTests -enableCodeCoverage YES -configuration Debug -sdk iphonesimulator$(cat sdk.txt) COMPILER_INDEX_STORE_ENABLE=NO -derivedDataPath iOSCoreBuild/DerivedData -destination "platform=iOS Simulator,id=$SIMULATOR_ID" SYMROOT=`pwd`/Build/Products -testPlan UTTest
-          chmod u+x xctestrunner
-          ./xctestrunner --xctestrun `pwd`/Build/Products/LynxExplorerTests_UTTest_iphonesimulator$(cat sdk.txt)-arm64.xctestrun --work_dir `pwd` --output_dir `pwd`/iOSCoreBuild/DerivedData test --id $SIMULATOR_ID --platform ios_simulator
-          popd
-
-  ios-unittests-enable-sparkling:
-    name: ios-unittests-check (enable_sparkling)
-    needs: [darwin-impact-check]
-    if: ${{ needs.darwin-impact-check.outputs.darwin == 'true' }}
-    timeout-minutes: 60
-    runs-on: lynx-darwin-15.6.1-medium
-    env:
-      SPARKLING_MODE: enable_sparkling
-    steps:
-      - name: Download Source
-        uses: actions/checkout@v6
-        with:
-          path: lynx
-      - name: Setup CocoaPods cache
-        uses: lynx-infra/cache@5c6160a6a4c7fca80a2f3057bb9dfc9513fcb732
-        with:
-          path: |
-            ~/.cocoapods/repos/trunk
-            ~/Library/Caches/CocoaPods
-          key: cocoapods-ios-explorer-${{ runner.os }}-${{ hashFiles('lynx/explorer/darwin/ios/lynx_explorer/Podfile') }}
-          restore-keys: |
-            cocoapods-ios-explorer-${{ runner.os }}-
-      - name: Install Common Dependencies
-        uses: ./lynx/.github/actions/common-deps
-      - name: Set up Sparkling Go Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-      - name: Set up Sparkling Go pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 10.26.0
-      - name: Build official Sparkling Go bundles
-        shell: bash
-        run: |-
-          set -euo pipefail
-          source_root="$GITHUB_WORKSPACE/lynx/explorer/darwin/ios/lynx_explorer/generated/sparkling-source"
-          python3 "$GITHUB_WORKSPACE/lynx/explorer/darwin/ios/lynx_explorer/scripts/sync_sparkling_source.py" \
-            --manifest "$GITHUB_WORKSPACE/lynx/explorer/darwin/ios/lynx_explorer/sparkling-source.json" \
-            --source-root "$source_root"
-          pnpm --dir "$source_root" install --frozen-lockfile
-          pnpm --dir "$source_root" --filter sparkling-playground build
-      - name: Install iOS Dependencies
-        uses: nick-fields/retry@v4
-        with:
-          timeout_minutes: 20
-          max_attempts: 3
-          command: |
-            set -e
-            cd $GITHUB_WORKSPACE/lynx
-            source tools/envsetup.sh
-            pushd explorer/darwin/ios/lynx_explorer
-            git config --global url."https://github.com/".insteadOf "git@github.com:"
-            bash bundle_install.sh --skip-card-build --sparkling-mode "$SPARKLING_MODE"
-            popd
-      - name: Run Unittests
-        run: |
-          set -e
-          source tools/envsetup.sh
-          pushd explorer/darwin/ios/lynx_explorer
-          xcodebuild -showsdks | grep -Eo -m 1 "iphonesimulator([0-9]{1,}\.)+[0-9]{1,}" > sdk.txt
-          sdkVersion=$(awk '{ sub(/iphonesimulator/,""); print $0 }' sdk.txt)
-          echo $sdkVersion > sdk.txt
-          SIMULATOR_ID=$(xcrun simctl list devices | grep -E "iPhone" | grep -v "unavailable" | head -1 | grep -Eo "[0-9A-F-]{36}")
-          xcodebuild build-for-testing ARCHS=arm64 -workspace LynxExplorer.xcworkspace -scheme LynxExplorerTests -enableCodeCoverage YES -configuration Debug -sdk iphonesimulator$(cat sdk.txt) COMPILER_INDEX_STORE_ENABLE=NO -derivedDataPath iOSCoreBuild/DerivedData -destination "platform=iOS Simulator,id=$SIMULATOR_ID" SYMROOT=`pwd`/Build/Products -testPlan UTTest
-          chmod u+x xctestrunner
-          ./xctestrunner --xctestrun `pwd`/Build/Products/LynxExplorerTests_UTTest_iphonesimulator$(cat sdk.txt)-arm64.xctestrun --work_dir `pwd` --output_dir `pwd`/iOSCoreBuild/DerivedData test --id $SIMULATOR_ID --platform ios_simulator
-          popd
-
   ios-unittests-check:
-    name: ios-unittests-check
-    needs:
-      [
-        darwin-impact-check,
-        ios-unittests-disable-sparkling,
-        ios-unittests-enable-sparkling,
-      ]
-    if: ${{ always() && needs.darwin-impact-check.outputs.darwin == 'true' }}
-    timeout-minutes: 5
-    runs-on: lynx-ubuntu-22.04-medium
+    needs: [darwin-impact-check]
+    if: ${{ needs.darwin-impact-check.outputs.darwin == 'true' }}
+    timeout-minutes: 60
+    runs-on: lynx-darwin-15.6.1-medium
     steps:
-      - name: Require both iOS unit-test modes
-        working-directory: ${{ github.workspace }}
+      - name: Download Source
+        uses: actions/checkout@v6
+        with:
+          path: lynx
+      - name: Setup CocoaPods cache
+        uses: lynx-infra/cache@5c6160a6a4c7fca80a2f3057bb9dfc9513fcb732
+        with:
+          path: |
+            ~/.cocoapods/repos/trunk
+            ~/Library/Caches/CocoaPods
+          key: cocoapods-ios-explorer-${{ runner.os }}-${{ hashFiles('lynx/explorer/darwin/ios/lynx_explorer/Podfile') }}
+          restore-keys: |
+            cocoapods-ios-explorer-${{ runner.os }}-
+      - name: Install Common Dependencies
+        uses: ./lynx/.github/actions/common-deps
+      - name: Install iOS Dependencies
+        uses: nick-fields/retry@v4
+        with:
+          timeout_minutes: 20
+          max_attempts: 3
+          command: |
+            set -e
+            cd $GITHUB_WORKSPACE/lynx
+            source tools/envsetup.sh
+            pushd explorer/darwin/ios/lynx_explorer
+            git config --global url."https://github.com/".insteadOf "git@github.com:"
+            bash bundle_install.sh --skip-card-build
+            popd
+      - name: Run Unittests
         run: |
-          if [[ "${{ needs.ios-unittests-disable-sparkling.result }}" != "success" || \
-                "${{ needs.ios-unittests-enable-sparkling.result }}" != "success" ]]; then
-            echo "Both disable_sparkling and enable_sparkling iOS unit-test jobs must succeed." >&2
-            exit 1
-          fi
+          set -e
+          source tools/envsetup.sh
+          pushd explorer/darwin/ios/lynx_explorer
+          xcodebuild -showsdks | grep -Eo -m 1 "iphonesimulator([0-9]{1,}\.)+[0-9]{1,}" > sdk.txt
+          sdkVersion=$(awk '{ sub(/iphonesimulator/,""); print $0 }' sdk.txt)
+          echo $sdkVersion > sdk.txt
+          SIMULATOR_ID=$(xcrun simctl list devices | grep -E "iPhone" | grep -v "unavailable" | head -1 | grep -Eo "[0-9A-F-]{36}")
+          xcodebuild build-for-testing ARCHS=arm64 -workspace LynxExplorer.xcworkspace -scheme LynxExplorerTests -enableCodeCoverage YES -configuration Debug -sdk iphonesimulator$(cat sdk.txt) COMPILER_INDEX_STORE_ENABLE=NO -derivedDataPath iOSCoreBuild/DerivedData -destination "platform=iOS Simulator,id=$SIMULATOR_ID" SYMROOT=`pwd`/Build/Products -testPlan UTTest
+          chmod u+x xctestrunner
+          ./xctestrunner --xctestrun `pwd`/Build/Products/LynxExplorerTests_UTTest_iphonesimulator$(cat sdk.txt)-arm64.xctestrun --work_dir `pwd` --output_dir `pwd`/iOSCoreBuild/DerivedData test --id $SIMULATOR_ID --platform ios_simulator
+          popd
 
   cocoapods-lynx-library-build:
     timeout-minutes: 10
@@ -863,57 +770,13 @@ jobs:
         uses: ./lynx/.github/actions/harmony-explorer-build
 
   ios-explorer-build:
-    name: ios-explorer-build (${{ matrix.check_name }})
     needs: [darwin-impact-check]
     if: ${{ needs.darwin-impact-check.outputs.darwin == 'true' }}
-    timeout-minutes: 90
+    timeout-minutes: 60
     runs-on: lynx-darwin-15.6.1-medium
     strategy:
-      fail-fast: false
       matrix:
-        # We build exactly what we ship + what e2e consumes, so nothing is
-        # released or exercised without a build check. Rows 1-4 are the four
-        # artifacts publish-release.yml ships: arm64/x86_64 x {no +sparkling,
-        # +sparkling}, all Debug simulator. Building each here guarantees every
-        # released .app actually compiles and links.
-        #  - The +sparkling rows link the pinned Sparkling pods and compile the
-        #    `#if canImport(Sparkling)` branches; the no-+sparkling rows compile
-        #    the `#else` branches a +sparkling build never sees, and are the
-        #    original .app we still ship -- so +sparkling can NOT replace them.
-        #  - Row 2 (arm64 Debug +sparkling) is also the artifact ios-e2e-test
-        #    downloads. LegacyContainerLauncher is compiled unconditionally, so that
-        #    one +sparkling build already exercises the legacy routing path at
-        #    runtime -- which is why e2e only needs this single build.
-        include:
-          # No +sparkling (original) -- shipped as LynxExplorer-arm64.app; also
-          # guards the `#else` compile path. Historical artifact name kept.
-          - arch: arm64
-            check_name: arm64
-            configuration: Debug
-            sparkling_mode: disable_sparkling
-            artifact_name: ios-explorer-build-arm64
-            run_smoke: true
-          # +sparkling -- the artifact ios-e2e-test downloads (runtime covers legacy too).
-          - arch: arm64
-            check_name: arm64-Debug-enable_sparkling
-            configuration: Debug
-            sparkling_mode: enable_sparkling
-            artifact_name: ios-explorer-build-arm64-Debug-enable_sparkling
-            run_smoke: true
-          # No +sparkling, Intel -- build-validate the shipped LynxExplorer-x86_64.app.
-          - arch: x86_64
-            check_name: x86_64
-            configuration: Debug
-            sparkling_mode: disable_sparkling
-            artifact_name: ios-explorer-build-x86_64
-            run_smoke: false
-          # +sparkling · Intel -- build-validate the shipped LynxExplorer-x86_64-sparkling.app.
-          - arch: x86_64
-            check_name: x86_64-Debug-enable_sparkling
-            configuration: Debug
-            sparkling_mode: enable_sparkling
-            artifact_name: ios-explorer-build-x86_64-Debug-enable_sparkling
-            run_smoke: false
+        arch: [arm64, x86_64]
     steps:
       - name: Download Source
         uses: actions/checkout@v6
@@ -932,25 +795,13 @@ jobs:
         uses: ./lynx/.github/actions/ios-explorer-build
         with:
           build-arch: ${{ matrix.arch }}
-          configuration: ${{ matrix.configuration }}
-          sparkling-mode: ${{ matrix.sparkling_mode }}
           build-params: '--integration-test'
-      - name: Run Sparkling simulator smoke
-        if: ${{ matrix.run_smoke }}
-        run: |-
-          explorer_dir="$GITHUB_WORKSPACE/lynx/explorer/darwin/ios/lynx_explorer"
-          app_path="$explorer_dir/iOSCoreBuild/DerivedData-${{ matrix.configuration }}-${{ matrix.sparkling_mode }}-${{ matrix.arch }}/Build/Products/${{ matrix.configuration }}-iphonesimulator/LynxExplorer.app"
-          "$explorer_dir/scripts/run_sparkling_smoke.sh" \
-            --mode "${{ matrix.sparkling_mode }}" \
-            --app "$app_path"
       - name: upload artifact
         uses: lynx-infra/upload-artifact@332ec52e99f7cbf1fbbdc9bcc09280d49147d092
         continue-on-error: true
         with:
-          name: ${{ matrix.artifact_name }}
-          path: |
-            ${{ github.workspace }}/lynx/LynxExplorer-${{ matrix.arch }}.app.tar.gz
-            ${{ github.workspace }}/lynx/LynxExplorer-${{ matrix.arch }}-${{ matrix.configuration }}-${{ matrix.sparkling_mode }}.linkmap.txt
+          name: ios-explorer-build-${{ matrix.arch }}
+          path: '${{ github.workspace }}/lynx/LynxExplorer-${{ matrix.arch }}.app.tar.gz'
 
   ios-integration-test:
     needs: [darwin-impact-check]
@@ -1026,7 +877,7 @@ jobs:
           xcodebuild -workspace Hello-Lynx-OC.xcworkspace/ -scheme Hello-Lynx-OC CODE_SIGNING_ALLOWED=NO build
 
   ios-e2e-test:
-    timeout-minutes: 120
+    timeout-minutes: 60
     needs: [ios-explorer-build, darwin-impact-check]
     if: ${{ needs.darwin-impact-check.outputs.darwin == 'true' }}
     env:
@@ -1086,7 +937,7 @@ jobs:
       - name: Download Explorer App
         uses: lynx-infra/download-artifact@79d9914484f933089c2840552cf439bac85debad
         with:
-          name: ios-explorer-build-arm64-Debug-enable_sparkling
+          name: ios-explorer-build-arm64
           path: lynx/explorer/darwin/ios/lynx_explorer/build_temp
       - name: Install Explorer App
         run: |
@@ -1130,10 +981,7 @@ jobs:
         with:
           max_attempts: 2
           retry_wait_seconds: 5
-          # Core and Sparkling execute serially in one retry attempt. Preserve
-          # the historical core budget while giving the added suite its own
-          # headroom; the job budget still accommodates two complete attempts.
-          timeout_minutes: 45
+          timeout_minutes: 20
           command: |
             set -e
             pushd $GITHUB_WORKSPACE/lynx
@@ -1142,9 +990,7 @@ jobs:
             export server_port=$APPIUM_TEST_SERVER_PORT
             export platform=ios
             export APPIUM_isHeadless=True
-            unset test_case_name
             python3 manage.py runtest ios_test.core
-            python3 manage.py runtest ios_test.sparkling
             echo "TASK_STATUS=success" >> $GITHUB_OUTPUT
             popd
             popd
