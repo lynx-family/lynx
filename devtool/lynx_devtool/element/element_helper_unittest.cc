@@ -880,6 +880,7 @@ TEST_F(ElementHelperTest, GetMatchedStylesForNodeReportsCascadeLayers) {
   auto fragment = CreateLayeredCSSFragment(
       ".layered", lynx::tasm::CSSPropertyID::kPropertyIDWidth, "10px",
       {"framework", "components"});
+  fragment->GetOrCreateRootLayer()->GetOrAddSubLayer({"unused"});
 
   lynx::base::String component_id("21");
   lynx::base::String entry_name("__Card__");
@@ -920,6 +921,21 @@ TEST_F(ElementHelperTest, GetMatchedStylesForNodeReportsCascadeLayers) {
   ASSERT_EQ(rule["layers"].size(), 2U);
   EXPECT_EQ(rule["layers"][0]["text"].asString(), "framework");
   EXPECT_EQ(rule["layers"][1]["text"].asString(), "components");
+
+  const Json::Value layer_tree =
+      lynx::devtool::ElementHelper::GetLayersForNode(styled_element.get());
+  const Json::Value& root_layer = layer_tree["rootLayer"];
+  EXPECT_EQ(root_layer["name"].asString(), "implicit outer layer");
+  EXPECT_EQ(root_layer["order"].asUInt(), 3U);
+  ASSERT_EQ(root_layer["subLayers"].size(), 2U);
+  EXPECT_EQ(root_layer["subLayers"][0]["name"].asString(), "framework");
+  EXPECT_EQ(root_layer["subLayers"][0]["order"].asUInt(), 1U);
+  ASSERT_EQ(root_layer["subLayers"][0]["subLayers"].size(), 1U);
+  EXPECT_EQ(root_layer["subLayers"][0]["subLayers"][0]["name"].asString(),
+            "components");
+  EXPECT_EQ(root_layer["subLayers"][0]["subLayers"][0]["order"].asUInt(), 0U);
+  EXPECT_EQ(root_layer["subLayers"][1]["name"].asString(), "unused");
+  EXPECT_EQ(root_layer["subLayers"][1]["order"].asUInt(), 2U);
 
   auto initial_sheet = lynx::devtool::ElementInspector::GetStyleSheetByName(
       styled_element.get(), ".layered");

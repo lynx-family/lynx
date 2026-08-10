@@ -36,6 +36,8 @@ class InspectorCSSAgentNG : public CDPDomainAgentBase {
                const Json::Value& message);
   void GetMatchedStylesForNode(const std::shared_ptr<MessageSender>& sender,
                                const Json::Value& message);
+  void GetLayersForNode(const std::shared_ptr<MessageSender>& sender,
+                        const Json::Value& message);
   void GetComputedStyleForNode(const std::shared_ptr<MessageSender>& sender,
                                const Json::Value& message);
   void GetInlineStylesForNode(const std::shared_ptr<MessageSender>& sender,

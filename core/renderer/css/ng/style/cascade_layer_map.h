@@ -40,6 +40,9 @@ class CascadeLayerMap {
   LYNX_EXPORT_FOR_DEVTOOL std::vector<std::string> GetLayerPath(
       const CascadeLayer* layer) const;
 
+  // Returns the merged canonical root, or nullptr before any tree is merged.
+  const CascadeLayer* GetRootLayer() const { return canonical_root_.get(); }
+
   bool IsEmpty() const { return canonical_root_ == nullptr; }
 
  private:

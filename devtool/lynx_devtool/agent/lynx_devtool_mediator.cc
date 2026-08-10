@@ -566,6 +566,17 @@ void LynxDevToolMediator::GetMatchedStylesForNode(
   }
 }
 
+void LynxDevToolMediator::GetLayersForNode(
+    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
+    const Json::Value& message) {
+  if (tasm_task_runner_) {
+    RunOnTaskRunner(tasm_task_runner_,
+                    [element_executor = element_executor_, sender, message]() {
+                      element_executor->GetLayersForNode(sender, message);
+                    });
+  }
+}
+
 void LynxDevToolMediator::GetComputedStyleForNode(
     const std::shared_ptr<lynx::devtool::MessageSender>& sender,
     const Json::Value& message) {

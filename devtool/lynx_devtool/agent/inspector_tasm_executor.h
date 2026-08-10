@@ -127,6 +127,7 @@ class InspectorTasmExecutor
   DECLARE_DEVTOOL_METHOD(CSS_Enable)
   DECLARE_DEVTOOL_METHOD(CSS_Disable)
   DECLARE_DEVTOOL_METHOD(GetMatchedStylesForNode)
+  DECLARE_DEVTOOL_METHOD(GetLayersForNode)
   DECLARE_DEVTOOL_METHOD(GetComputedStyleForNode)
   DECLARE_DEVTOOL_METHOD(GetInlineStylesForNode)
   DECLARE_DEVTOOL_METHOD(SetStyleTexts)
