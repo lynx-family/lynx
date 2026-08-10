@@ -42,10 +42,8 @@ class ImageServiceNode : public tasm::harmony::ImageNode {
 
  private:
   std::shared_ptr<ImageKnifePro::ImageKnifeNode> image_knife_node_;
-  std::shared_ptr<ImageKnifePro::ImageKnifeOption> image_knife_option_;
+  std::shared_ptr<ImageKnifePro::OnLoadCallBack> image_knife_load_listener_;
   std::shared_ptr<ImageKnifePro::AnimatorOption> image_knife_animator_option_;
-  std::weak_ptr<tasm::harmony::ImageLoadListener> load_listener_;
-  std::weak_ptr<tasm::harmony::AnimationListener> animation_listener_;
   ImageServiceHarmony* service_;
 };
 
