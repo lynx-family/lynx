@@ -425,12 +425,22 @@ function noop() {}
   <view
     bindkeydown={(e: BaseKeyEvent<Target>) => {
       assertType<string>(e.key);
+      assertType<boolean>(e.repeat);
+      assertType<boolean>(e.altKey);
+      assertType<boolean>(e.shiftKey);
+      assertType<boolean>(e.ctrlKey);
+      assertType<boolean>(e.metaKey);
     }}
   />;
 
   <view
     bindkeyup={(e: BaseKeyEvent<Target>) => {
       assertType<string>(e.key);
+      assertType<boolean>(e.repeat);
+      assertType<boolean>(e.altKey);
+      assertType<boolean>(e.shiftKey);
+      assertType<boolean>(e.ctrlKey);
+      assertType<boolean>(e.metaKey);
     }}
   />;
 

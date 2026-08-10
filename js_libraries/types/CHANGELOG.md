@@ -1,5 +1,8 @@
 # CHANGELOG
 
+## 4.3.0
+- Add missing `repeat`, `altKey`, `shiftKey`, `ctrlKey`, and `metaKey` fields to `BaseKeyEvent`.
+
 ## 4.2.1
 - Add `android-navigation-bar-style` to `<overlay>` typings.
 
