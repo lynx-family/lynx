@@ -20,9 +20,12 @@ class PlatformImage : public std::enable_shared_from_this<PlatformImage> {
 
   virtual int GetWidth() = 0;
   virtual int GetHeight() = 0;
+  virtual skity::ColorType GetColorType() = 0;
+  virtual skity::AlphaType GetAlphaType() = 0;
   virtual int64_t GetDuration() = 0;
 
-  virtual std::shared_ptr<skity::Pixmap> ToBitmap() = 0;
+  virtual std::shared_ptr<skity::Pixmap> ToBitmap(
+      const ImageInfo& render_info) = 0;
 
   virtual void DrawFrame(std::function<void()> on_frame_changed) = 0;
   virtual bool IsAnimated() = 0;
