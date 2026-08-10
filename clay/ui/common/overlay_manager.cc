@@ -168,7 +168,10 @@ bool OverlayManager::DispatchKeyEvent(const KeyEvent* event) {
 bool OverlayManager::HitTest(const PointerEvent& event, HitTestResult& result,
                              bool& is_pass_through,
                              PointerEvent& converted_position) {
+  is_pass_through = false;
   bool found_visible_overlay = false;
+  bool found_pass_through_overlay = false;
+  bool pass_through_from_system_overlay = false;
   Point pass_through_offset;
   for (auto it = overlays_.rbegin(); it != overlays_.rend(); ++it) {
     auto overlay = *it;
@@ -180,22 +183,37 @@ bool OverlayManager::HitTest(const PointerEvent& event, HitTestResult& result,
       touch_offset = overlay->GetTouchOffset();
       if (!found_visible_overlay) {
         found_visible_overlay = true;
+        pass_through_from_system_overlay = overlay->IsSystemOverlay();
         pass_through_offset = touch_offset;
       }
     }
     auto overlay_event = overlay->ShouldChangeOffset()
                              ? ConvertToOverlayHitEvent(event, touch_offset)
                              : event;
+    // Hit test each overlay independently because OverlayView::HitTest uses
+    // the current result to distinguish a pass-through surface from a child.
+    HitTestResult current_result;
+    bool current_pass_through = false;
     auto overlay_result =
-        overlay->HitTest(overlay_event, result, is_pass_through);
-    if (overlay_result) {
+        overlay->HitTest(overlay_event, current_result, current_pass_through);
+    auto overlay_target =
+        current_result.empty() ? nullptr : current_result.front().get();
+    bool should_continue_hit_test = overlay_result && current_pass_through &&
+                                    overlay_target &&
+                                    overlay_target->ShouldPassEventToNative();
+    result.splice(result.end(), current_result);
+    found_pass_through_overlay |= current_pass_through;
+    if (overlay_result && !should_continue_hit_test) {
       return true;
     }
   }
-  if (found_visible_overlay && is_pass_through) {
+  is_pass_through = found_pass_through_overlay;
+  if (found_visible_overlay && found_pass_through_overlay) {
     converted_position = event;
-    converted_position.position.Move(pass_through_offset.x(),
-                                     pass_through_offset.y());
+    if (!pass_through_from_system_overlay) {
+      converted_position.position.Move(pass_through_offset.x(),
+                                       pass_through_offset.y());
+    }
   }
   return false;
 }
@@ -239,7 +257,8 @@ BaseView* OverlayManager::GetTopViewToAcceptEvent(
     int platform_try_hit_id) {
   FML_DCHECK(relative_position);
   bool found_visible_overlay = false;
-  Point offset;
+  bool pass_through_from_system_overlay = false;
+  Point pass_through_offset;
   for (auto it = overlays_.rbegin(); it != overlays_.rend(); ++it) {
     auto overlay = *it;
     if (!overlay->Visible()) {
@@ -250,8 +269,8 @@ BaseView* OverlayManager::GetTopViewToAcceptEvent(
       touch_offset = overlay->GetTouchOffset();
       if (!found_visible_overlay) {
         found_visible_overlay = true;
-        // only record top one
-        offset = touch_offset;
+        pass_through_from_system_overlay = overlay->IsSystemOverlay();
+        pass_through_offset = touch_offset;
       }
     }
     auto overlay_position =
@@ -269,9 +288,11 @@ BaseView* OverlayManager::GetTopViewToAcceptEvent(
     }
   }
   if (found_visible_overlay) {
-    // when pass to flutter view to comsume , should convert cordinate
-    is_pass_through = found_visible_overlay;
-    converted_position.Move(offset.x(), offset.y());
+    is_pass_through = true;
+    converted_position = position;
+    if (!pass_through_from_system_overlay) {
+      converted_position.Move(pass_through_offset.x(), pass_through_offset.y());
+    }
   }
   return nullptr;
 }
