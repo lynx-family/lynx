@@ -2072,12 +2072,22 @@ void PageView::OnPlatformUpdateEditState(int client_id, uint64_t selection_base,
                                          const char* text,
                                          uint64_t selection_extent,
                                          uint64_t composing_base) {
+  if (!input_client_manager_) {
+    FML_LOG(ERROR)
+        << "PageView: update edit state without an input client manager";
+    return;
+  }
   input_client_manager_->InvokeUpdateEditState(
       client_id, selection_base, composing_extent, selection_affinity, text,
       selection_extent, composing_base);
 }
 
 void PageView::OnPlatformPerformInputAction(int client_id) {
+  if (!input_client_manager_) {
+    FML_LOG(ERROR)
+        << "PageView: perform input action without an input client manager";
+    return;
+  }
   input_client_manager_->InvokePerformAction(client_id);
 }
 
