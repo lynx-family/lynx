@@ -129,6 +129,7 @@ struct MediaRuleForTest {
   tasm::CSSPropertyID property_id;
   std::string value;
   std::string media_text;
+  std::vector<std::string> layer_path;
 };
 
 struct SupportsRuleForTest {
@@ -159,12 +160,20 @@ std::shared_ptr<tasm::SharedCSSFragment> CreateMediaCSSFragment(
 
   size_t index = 0;
   for (const auto& rule : rules) {
+    css::CascadeLayer* layer = nullptr;
+    if (!rule.layer_path.empty()) {
+      fragment->SetEnableCSSRule(true);
+      layer =
+          fragment->GetOrCreateRootLayer()->GetOrAddSubLayer(rule.layer_path);
+    }
     auto condition_rule =
         fml::MakeRefCounted<css::ConditionRule>(fragment.get());
     condition_rule->SetMediaQueries(
         css::MediaQueryParser::ParseMediaQuerySet(rule.media_text));
-    condition_rule->AddStyleRule(fml::MakeRefCounted<css::StyleRule>(
-        CreateSelectorArray(rule.selector), tokens[index++]));
+    condition_rule->AddStyleRule(
+        fml::MakeRefCounted<css::StyleRule>(CreateSelectorArray(rule.selector),
+                                            tokens[index++]),
+        layer);
     fragment->AddConditionRule(std::move(condition_rule));
   }
 
@@ -262,7 +271,7 @@ MediaQueryTestDom BuildMediaQueryTestDom(
       lynx::base::String("TestComp"),
       lynx::base::String("/index/components/TestComp"));
   dom.component->style_sheet_ =
-      std::make_unique<tasm::CSSFragmentDecorator>(dom.fragment.get());
+      std::make_unique<tasm::CSSFragmentDecorator>(dom.fragment.get(), manager);
   devtool::ElementInspector::InitForInspector(
       std::make_tuple(dom.component.get()));
   dom.page->InsertNode(dom.component);
@@ -480,6 +489,82 @@ TEST_F(InspectorTasmExecutorTest, LayerTreeDisableCase) {
   EXPECT_TRUE(is_valid_json);
   EXPECT_EQ(res["id"], 6);
   EXPECT_FALSE(element_executor_->layer_tree_enabled_);
+}
+
+TEST_F(InspectorTasmExecutorTest, GetLayersForNodeReturnsCanonicalLayerTree) {
+  auto dom = BuildMediaQueryTestDom(manager_.get(),
+                                    {{".layered",
+                                      tasm::CSSPropertyID::kPropertyIDWidth,
+                                      "10px",
+                                      "(min-width: 1000px)",
+                                      {"framework", "components"}}});
+  dom.fragment->GetOrCreateRootLayer()->GetOrAddSubLayer({"unused"});
+  element_executor_->element_root_ = dom.element.get();
+
+  auto response_sender = std::make_shared<RecordingMessageSender>();
+  Json::Value message(Json::ValueType::objectValue);
+  message["id"] = 100;
+  message["params"]["nodeId"] =
+      devtool::ElementInspector::NodeId(dom.element.get());
+  element_executor_->GetLayersForNode(response_sender, message);
+
+  ASSERT_EQ(response_sender->json_messages_.size(), 1U);
+  const Json::Value& response = response_sender->json_messages_[0].second;
+  EXPECT_EQ(response["id"].asInt(), 100);
+  EXPECT_TRUE(response["error"].isNull());
+  const Json::Value& root_layer = response["result"]["rootLayer"];
+  EXPECT_EQ(root_layer["name"].asString(), "implicit outer layer");
+  EXPECT_EQ(root_layer["order"].asUInt(), 3U);
+  ASSERT_EQ(root_layer["subLayers"].size(), 2U);
+  EXPECT_EQ(root_layer["subLayers"][0]["name"].asString(), "framework");
+  EXPECT_EQ(root_layer["subLayers"][0]["order"].asUInt(), 1U);
+  ASSERT_EQ(root_layer["subLayers"][0]["subLayers"].size(), 1U);
+  EXPECT_EQ(root_layer["subLayers"][0]["subLayers"][0]["name"].asString(),
+            "components");
+  EXPECT_EQ(root_layer["subLayers"][0]["subLayers"][0]["order"].asUInt(), 0U);
+  EXPECT_EQ(root_layer["subLayers"][1]["name"].asString(), "unused");
+  EXPECT_EQ(root_layer["subLayers"][1]["order"].asUInt(), 2U);
+}
+
+TEST_F(InspectorTasmExecutorTest,
+       GetLayersForNodeHandlesNodesWithoutLayersAndErrors) {
+  auto dom = BuildMediaQueryTestDom(
+      manager_.get(), {{".plain", tasm::CSSPropertyID::kPropertyIDWidth, "10px",
+                        "(min-width: 1000px)"}});
+  element_executor_->element_root_ = dom.element.get();
+  auto response_sender = std::make_shared<RecordingMessageSender>();
+
+  Json::Value node_without_layers(Json::ValueType::objectValue);
+  node_without_layers["id"] = 101;
+  node_without_layers["params"]["nodeId"] =
+      devtool::ElementInspector::NodeId(dom.element.get());
+  element_executor_->GetLayersForNode(response_sender, node_without_layers);
+  ASSERT_EQ(response_sender->json_messages_.size(), 1U);
+  const Json::Value& root_layer =
+      response_sender->json_messages_[0].second["result"]["rootLayer"];
+  EXPECT_EQ(root_layer["name"].asString(), "implicit outer layer");
+  EXPECT_EQ(root_layer["order"].asUInt(), 0U);
+  EXPECT_FALSE(root_layer.isMember("subLayers"));
+
+  response_sender->json_messages_.clear();
+  Json::Value invalid_params(Json::ValueType::objectValue);
+  invalid_params["id"] = 102;
+  element_executor_->GetLayersForNode(response_sender, invalid_params);
+  ASSERT_EQ(response_sender->json_messages_.size(), 1U);
+  EXPECT_EQ(response_sender->json_messages_[0].second["error"]["code"].asInt(),
+            devtool::kInvalidParams);
+
+  response_sender->json_messages_.clear();
+  Json::Value missing_node(Json::ValueType::objectValue);
+  missing_node["id"] = 103;
+  missing_node["params"]["nodeId"] = 999999;
+  element_executor_->GetLayersForNode(response_sender, missing_node);
+  ASSERT_EQ(response_sender->json_messages_.size(), 1U);
+  EXPECT_EQ(response_sender->json_messages_[0].second["error"]["code"].asInt(),
+            devtool::kServerError);
+  EXPECT_EQ(
+      response_sender->json_messages_[0].second["error"]["message"].asString(),
+      "Node is not an Element");
 }
 
 TEST_F(InspectorTasmExecutorTest, GetMediaQueriesReturnsMediaRules) {

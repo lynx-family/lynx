@@ -21,6 +21,8 @@ InspectorCSSAgentNG::InspectorCSSAgentNG(
 
   functions_map_["CSS.getMatchedStylesForNode"] =
       &InspectorCSSAgentNG::GetMatchedStylesForNode;
+  functions_map_["CSS.getLayersForNode"] =
+      &InspectorCSSAgentNG::GetLayersForNode;
   functions_map_["CSS.getComputedStyleForNode"] =
       &InspectorCSSAgentNG::GetComputedStyleForNode;
   functions_map_["CSS.getInlineStylesForNode"] =
@@ -76,6 +78,11 @@ void InspectorCSSAgentNG::Disable(const std::shared_ptr<MessageSender>& sender,
 void InspectorCSSAgentNG::GetMatchedStylesForNode(
     const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
   devtool_mediator_->GetMatchedStylesForNode(sender, message);
+}
+
+void InspectorCSSAgentNG::GetLayersForNode(
+    const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
+  devtool_mediator_->GetLayersForNode(sender, message);
 }
 
 void InspectorCSSAgentNG::GetComputedStyleForNode(

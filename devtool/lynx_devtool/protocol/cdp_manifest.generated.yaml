@@ -46,6 +46,10 @@ domains:
         origin: standard
         since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_css_agent_ng.cc
+      - name: getLayersForNode
+        origin: standard
+        since: '4.2'
+        source: devtool/lynx_devtool/agent/domain_agent/inspector_css_agent_ng.cc
       - name: getMatchedStylesForNode
         origin: standard
         since: '4.1'

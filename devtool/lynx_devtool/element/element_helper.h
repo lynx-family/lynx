@@ -32,6 +32,7 @@ class ElementHelper {
   static Json::Value GetDocumentBodyFromNode(Element* ptr, int depth = -1);
   static void SetJsonValueOfNode(Element* ptr, Json::Value& value);
   static Json::Value GetMatchedStylesForNode(Element* ptr);
+  static Json::Value GetLayersForNode(Element* ptr);
   static Json::Value GetKeyframesRulesForNode(Element* ptr);
   static std::pair<bool, Json::Value> GetKeyframesRule(const std::string& name,
                                                        Element* ptr);

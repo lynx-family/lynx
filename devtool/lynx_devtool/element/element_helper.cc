@@ -14,9 +14,11 @@
 #include "core/inspector/style_sheet.h"
 #include "core/public/pipeline_option.h"
 #include "core/renderer/css/css_decoder.h"
+#include "core/renderer/css/css_fragment.h"
 #include "core/renderer/css/css_parser_token.h"
 #include "core/renderer/css/css_property.h"
 #include "core/renderer/css/ng/media_query/media_query_evaluator.h"
+#include "core/renderer/css/ng/style/cascade_layer_map.h"
 #include "core/renderer/css/ng/supports/supports_evaluator.h"
 #include "core/renderer/css/parser/css_string_parser.h"
 #include "core/renderer/css/unit_handler.h"
@@ -158,6 +160,24 @@ bool StripTrailingImportantForDevtool(std::string_view value,
   // "important" + optional trailing ws.
   stripped_value->assign(value.data(), value_end);
   return true;
+}
+
+Json::Value BuildLayerData(const css::CascadeLayer* layer,
+                           unsigned int& layer_count) {
+  Json::Value data(Json::ValueType::objectValue);
+  data["name"] = layer->GetName();
+  data["order"] = layer->GetOrder();
+  ++layer_count;
+
+  const auto& sub_layers = layer->GetDirectSubLayers();
+  if (!sub_layers.empty()) {
+    Json::Value children(Json::ValueType::arrayValue);
+    for (const auto& child : sub_layers) {
+      children.append(BuildLayerData(child.get(), layer_count));
+    }
+    data["subLayers"] = std::move(children);
+  }
+  return data;
 }
 
 bool HasCSSVariableTokenForDevtool(
@@ -793,6 +813,36 @@ Json::Value ElementHelper::GetMatchedStylesForNode(Element* ptr) {
     error["message"] = Json::Value("Node is not an Element");
     content["error"] = error;
   }
+  return content;
+}
+
+Json::Value ElementHelper::GetLayersForNode(Element* ptr) {
+  Json::Value root_layer(Json::ValueType::objectValue);
+  root_layer["name"] = "implicit outer layer";
+  root_layer["order"] = 0;
+
+  if (ptr != nullptr) {
+    auto* style_sheet = ptr->GetRelatedCSSFragment();
+    if (style_sheet != nullptr && style_sheet->HasCascadeLayers()) {
+      auto layer_map = style_sheet->GetCascadeLayerMap();
+      const css::CascadeLayer* root =
+          layer_map != nullptr ? layer_map->GetRootLayer() : nullptr;
+      if (root != nullptr) {
+        unsigned int layer_count = 0;
+        Json::Value sub_layers(Json::ValueType::arrayValue);
+        for (const auto& child : root->GetDirectSubLayers()) {
+          sub_layers.append(BuildLayerData(child.get(), layer_count));
+        }
+        root_layer["order"] = layer_count;
+        if (!sub_layers.empty()) {
+          root_layer["subLayers"] = std::move(sub_layers);
+        }
+      }
+    }
+  }
+
+  Json::Value content(Json::ValueType::objectValue);
+  content["rootLayer"] = std::move(root_layer);
   return content;
 }
 

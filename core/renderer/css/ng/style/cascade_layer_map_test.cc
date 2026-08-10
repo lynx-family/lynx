@@ -12,6 +12,7 @@ namespace css {
 TEST(CascadeLayerMapTest, EmptyByDefault) {
   CascadeLayerMap map;
   EXPECT_TRUE(map.IsEmpty());
+  EXPECT_EQ(nullptr, map.GetRootLayer());
   EXPECT_EQ(CascadeLayer::kImplicitOuterLayerOrder, map.GetLayerOrder(nullptr));
 }
 
@@ -31,6 +32,8 @@ TEST(CascadeLayerMapTest, SingleFragmentSingleLayer) {
   map.ComputeLayerOrder();
 
   EXPECT_FALSE(map.IsEmpty());
+  ASSERT_NE(nullptr, map.GetRootLayer());
+  EXPECT_EQ(1U, map.GetRootLayer()->GetDirectSubLayers().size());
   uint16_t foo_order = map.GetLayerOrder(foo);
   uint16_t root_order = map.GetLayerOrder(&root);
   EXPECT_LT(foo_order, root_order);

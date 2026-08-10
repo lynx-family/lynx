@@ -2125,6 +2125,34 @@ void InspectorTasmExecutor::GetMatchedStylesForNode(
   sender->SendMessage("CDP", response);
 }
 
+void InspectorTasmExecutor::GetLayersForNode(
+    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
+    const Json::Value& message) {
+  Json::Value response(Json::ValueType::objectValue);
+  response["id"] = message["id"].asInt64();
+
+  const Json::Value& params = message["params"];
+  if (!params.isObject() || !params.isMember("nodeId") ||
+      (!params["nodeId"].isInt() && !params["nodeId"].isUInt())) {
+    response["error"]["code"] = kInvalidParams;
+    response["error"]["message"] =
+        "CSS.getLayersForNode requires a numeric nodeId parameter.";
+    sender->SendMessage("CDP", response);
+    return;
+  }
+
+  Element* ptr = GetElementById(params["nodeId"].asInt());
+  if (ptr == nullptr || ptr->IsDetached()) {
+    response["error"]["code"] = kServerError;
+    response["error"]["message"] = "Node is not an Element";
+    sender->SendMessage("CDP", response);
+    return;
+  }
+
+  response["result"] = ElementHelper::GetLayersForNode(ptr);
+  sender->SendMessage("CDP", response);
+}
+
 void InspectorTasmExecutor::GetComputedStyleForNode(
     const std::shared_ptr<lynx::devtool::MessageSender>& sender,
     const Json::Value& message) {
