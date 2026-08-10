@@ -422,11 +422,17 @@ fml::RefPtr<SVGImageHolder> ImageProducer::GetSVGFrame() const {
 
 bool ImageProducer::SVGFrameReady() const {
 #if defined(ENABLE_SVG)
-  if (svg_frame_ && svg_frame_->GetSVGDOM() && svg_frame_->GetGraphicsImage() &&
-      IMAGE_DIMENSION(svg_frame_->GetGraphicsImage()->dimensions()) ==
-          render_info_.dimensions()) {
-    return true;
+  if (!svg_frame_ || !svg_frame_->GetSVGDOM()) {
+    return false;
   }
+
+  auto graphics_image = svg_frame_->GetGraphicsImage();
+  if (!graphics_image) {
+    return false;
+  }
+
+  return IMAGE_DIMENSION(graphics_image->dimensions()) ==
+         render_info_.dimensions();
 #endif
   return false;
 }
