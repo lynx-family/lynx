@@ -46,6 +46,8 @@ class OverlayView : public WithTypeInfo<OverlayView, BaseView> {
 
   virtual bool ShouldChangeOffset() const { return false; }
 
+  virtual bool IsSystemOverlay() const { return false; }
+
   bool CanEventsPassThroughToViewsBehind() const override {
     return pass_events_through_;
   }

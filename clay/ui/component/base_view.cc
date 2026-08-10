@@ -2765,6 +2765,11 @@ bool BaseView::HitTestChildren(const PointerEvent& event,
   RebuildSortedChildrenIfNeeded();
   for (auto it = sorted_children_.rbegin(); it != sorted_children_.rend();
        ++it) {
+    // Independent subtrees (currently overlays) are hit-tested separately by
+    // OverlayManager.
+    if ((*it)->IsIndependentSubViewTree()) {
+      continue;
+    }
     if ((*it)->HitTest(event, result)) {
       return true;  // if a view is hit, skip hitting its siblings
     }
@@ -2967,8 +2972,7 @@ BaseView* BaseView::GetTopViewToAcceptEvent(const FloatPoint& position,
       return nullptr;
     }
     *relative_position = point_by_self;
-    return CanEventThrough().has_value() && CanEventThrough().value() ? nullptr
-                                                                      : this;
+    return ShouldPassEventToNativeInherited(this) ? nullptr : this;
   }
   return nullptr;
 }
