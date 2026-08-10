@@ -1154,10 +1154,46 @@ LEPUSValue QuickContext::SearchGlobalData(const std::string& name) {
   return lepus_val;
 }
 
+bool QuickContext::DeSerializeSource(const std::string& source,
+                                     bool reuse_context, Value* ret,
+                                     const char* file_name) {
+  const char* source_file_name = file_name ? file_name : "main-thread.js";
+  TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS, QUICK_CONTEXT_DESERIALIZE_SOURCE,
+              "sourceSize", source.size(), "fileName", source_file_name);
+
+  if (reuse_context) {
+    Value eval_result;
+    return EvalBuf(source.data(), source.size(), ret ? *ret : eval_result,
+                   source_file_name);
+  }
+
+  if (!use_lepus_strict_mode_) {
+    LEPUS_SetNoStrictMode(context());
+  }
+  SetDebugSourceCode(source);
+  LEPUSValue val =
+      LEPUS_Eval(context(), source.data(), source.size(), source_file_name,
+                 LEPUS_EVAL_FLAG_COMPILE_ONLY | LEPUS_EVAL_TYPE_GLOBAL);
+
+  if (LEPUS_IsException(val)) {
+    std::string msg = GetExceptionMessage();
+    LOGE("QuickContext deserialize source error " << msg);
+    return false;
+  }
+  SetTopLevelFunction(val);
+  PrepareInspector(file_name);
+  return true;
+}
+
 bool QuickContext::DeSerialize(const runtime::ContextBundle& bundle,
                                bool reuse_context, Value* ret,
                                const char* file_name) {
   const auto& quick_bundle = static_cast<const QuickContextBundle&>(bundle);
+  if (!quick_bundle.source().empty()) {
+    return DeSerializeSource(quick_bundle.source(), reuse_context, ret,
+                             file_name);
+  }
+
   TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS, QUICK_CONTEXT_DO_SERIALIZE,
               "bytecodeSize", quick_bundle.lepusng_code_len_);
 

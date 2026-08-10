@@ -3498,9 +3498,7 @@ void BaseView::OnAnimationEvent(const AnimationParams& animation_params) {
       return;
   }
 
-  if (has_event && !(page_view_->IsRasterAnimationEnabled() &&
-                     page_view_->GetKeyframesMap(
-                         animation_params.animation_name) != nullptr)) {
+  if (has_event) {
     page_view()->DispatchAnimationEvent(animation_params, GetCallbackId());
   }
 }
@@ -3559,8 +3557,7 @@ void BaseView::OnTransitionEvent(const AnimationParams& animation_params,
     FlushBoundsTransitionEndTasks(true);
   }
 #endif
-  if (has_event && !(page_view_->IsRasterAnimationEnabled() &&
-                     IsRasterAnimationProperty(property_type))) {
+  if (has_event) {
     page_view()->DispatchTransitionEvent(animation_params, GetCallbackId(),
                                          property_type);
   }
@@ -3728,7 +3725,7 @@ void BaseView::UpdateKeyframesRasterAnimation() {
        &raster_animation_changed](ClayAnimationPropertyType type) {
         bool has_animation = KeyframesMgr()->HasAnimationForType(type);
         raster_animation_changed =
-            (render_object_->HasAnimation(type) == has_animation) ||
+            (render_object_->HasAnimation(type) != has_animation) ||
             raster_animation_changed;
         render_object_->MarkHasAnimation(type, has_animation);
         if (has_animation && !keyframes_manager_set) {

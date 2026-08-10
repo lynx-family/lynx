@@ -49,7 +49,6 @@ class TransitionManager {
   void SetEventHandler(AnimationEventHandler* event_handler);
   std::vector<ValueAnimator*> GetRunningAnimators();
 
-  bool StartListenersNotified(ClayAnimationPropertyType type) const;
   std::unique_ptr<TransitionManager> CloneForRasterAnimation(
       ClayAnimationPropertyType type, AnimatorTarget* target) const;
 
@@ -98,8 +97,9 @@ class TransitionListener : public AnimatorListenerAdapter {
 
   std::unique_ptr<TransitionListener> CloneForRasterAnimation(
       TransitionManager* manager) const {
+    // The UI-side transition remains the lifecycle event owner.
     return std::make_unique<TransitionListener>(manager, type_, old_value_,
-                                                new_value_, notify_events_);
+                                                new_value_, false);
   }
 
  private:

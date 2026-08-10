@@ -31,6 +31,7 @@ public class LynxUIScrollViewInternal
   private int mLowerThreshold = 0;
   private boolean mAtUpper = false;
   private boolean mAtLower = false;
+  private int[] mLastContentSize = {0, 0};
 
   @Override
   public void onScrollStateChanged(int from, int to) {
@@ -106,6 +107,18 @@ public class LynxUIScrollViewInternal
 
     mAtUpper = atUpper;
     mAtLower = atLower;
+
+    boolean isUpperEdge = scrollOffset <= scrollRange[0];
+    boolean isLowerEdge = scrollOffset >= scrollRange[1];
+    if (isUpperEdge) {
+      sendScrollEvent("scrolltoupperedge", null);
+    }
+    if (isLowerEdge) {
+      sendScrollEvent("scrolltoloweredge", null);
+    }
+    if (!isUpperEdge && !isLowerEdge) {
+      sendScrollEvent("scrolltonormalstate", null);
+    }
   }
 
   private void updateSticky() {
@@ -367,10 +380,22 @@ public class LynxUIScrollViewInternal
       contentWidth = Math.max(contentWidth,
           child.getWidth() + child.getLeft() + child.getMarginRight() + mPaddingRight);
     }
-    mView.setScrollContentSize(new int[] {contentWidth, contentHeight});
+    setContentSize(contentWidth, contentHeight);
     flushFirstRenderOperations();
     updateScrollPosition();
     super.measure();
+  }
+
+  private void setContentSize(int contentWidth, int contentHeight) {
+    mView.setScrollContentSize(new int[] {contentWidth, contentHeight});
+    if (contentWidth != mLastContentSize[0] || contentHeight != mLastContentSize[1]) {
+      HashMap<String, Object> params = new HashMap<>();
+      params.put("scrollWidth", PixelUtils.pxToDip(contentWidth));
+      params.put("scrollHeight", PixelUtils.pxToDip(contentHeight));
+      sendScrollEvent("contentsizechanged", params);
+      mLastContentSize[0] = contentWidth;
+      mLastContentSize[1] = contentHeight;
+    }
   }
 
   private void flushFirstRenderOperations() {

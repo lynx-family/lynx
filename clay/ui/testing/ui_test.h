@@ -57,6 +57,11 @@ class UITest : public ::testing::Test {
   std::function<void(int, const char*, clay::Value::Map)>
       custom_event_callback_;
   std::function<void(const std::string&, int)> touch_event_callback_;
+  std::function<void(const std::string&, const char*, int)>
+      animation_event_callback_;
+  std::function<void(const std::string&, const char*, int,
+                     ClayAnimationPropertyType)>
+      transition_event_callback_;
   MOCK_METHOD(void, OnCustomEvent,
               (std::string event_name, const clay::Value::Map& params), ());
 

@@ -149,14 +149,24 @@ class LynxLibraryAutolinkTest < Minitest::Test
 
       assert_includes addon_use, '#if __has_include(<DemoAddon/addon_use.h>)'
       assert_includes addon_use, '#include <DemoAddon/addon_use.h>'
-      assert_includes addon_use, 'void LynxGeneratedNodeAPIAddonUse(void) {}'
+      assert_includes addon_use, '#include <LynxWeakNodeAPI/primjs_weak_node_api_installer.h>'
+      assert_includes addon_use, '#include <PrimJS/primjs_weak_node_api_provider.h>'
+      assert_includes addon_use,
+                      'PrimJSInstallWeakNodeApiRawPtrHostProvider('
+      assert_includes addon_use, 'PrimJSGetWeakNodeApiRawPtrHost);'
+      assert_includes addon_use, 'SetupWeakNodeApiEnv();'
+      assert_includes addon_use, 'extern void _napi_register_xx_demo_addon(void);'
+      assert_includes addon_use, '_napi_register_xx_demo_addon();'
+      assert_includes addon_use, 'void LynxGeneratedNodeAPIAddonUse(void) {'
+      assert_includes addon_use, 'LynxSetupWeakNodeAPI();'
       assert_includes implementation, 'extern void LynxGeneratedNodeAPIAddonUse(void);'
       assert_includes implementation, 'LynxGeneratedNodeAPIAddonUse();'
       assert_includes podspec,
                       "s.source_files = 'LynxGeneratedLibraryRegistry.{h,m}', 'LynxGeneratedNodeAPIAddonUse.mm'"
-      assert_includes podspec, "s.dependency 'LynxWeakNodeAPI'"
+      assert_includes podspec, "s.dependency 'LynxWeakNodeAPI/primjs_bridge'"
+      assert_includes podspec, "s.dependency 'PrimJS/napi/adapter'"
       assert_includes podspec, "s.dependency 'DemoAddon'"
-      assert_includes podspec, 'PrimJS/src/napi'
+      refute_includes podspec, 'PrimJS/src/napi/js_native_api'
     end
   end
 
@@ -191,14 +201,18 @@ class LynxLibraryAutolinkTest < Minitest::Test
   end
 
   def test_manifest_rejects_invalid_node_api_addon_name
-    Dir.mktmpdir do |dir|
-      package_dir = write_library(dir, 'bad-addon', 'BadAddon')
-      File.write(File.join(package_dir, 'lynx.lib.json'), <<~JSON)
-        {"platforms":{"ios":{"nodeApiAddons":[{"name":"@scope/bad"}]}}}
-      JSON
+    ['@scope/bad', 'demo-addon', 'foo.bar', '1addon'].each do |name|
+      Dir.mktmpdir do |dir|
+        package_dir = write_library(dir, 'bad-addon', 'BadAddon')
+        File.write(File.join(package_dir, 'lynx.lib.json'), <<~JSON)
+          {"platforms":{"ios":{"nodeApiAddons":[{"name":"#{name}"}]}}}
+        JSON
 
-      error = assert_raises(RuntimeError) { Lynx::Library::Autolink.scan(dir) }
-      assert_includes error.message, 'nodeApiAddons[0].name'
+        error = assert_raises(RuntimeError) { Lynx::Library::Autolink.scan(dir) }
+        assert_includes error.message, 'nodeApiAddons[0].name'
+        assert_includes error.message,
+                        'expected a C identifier matching [A-Za-z_][A-Za-z0-9_]*'
+      end
     end
   end
 

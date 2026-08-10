@@ -171,6 +171,18 @@ void LynxUIScrollViewInternal::UpdateScrollPosition() {
 
   at_upper_ = at_upper;
   at_lower_ = at_lower;
+
+  bool is_upper_edge = scroll_offset <= scroll_range[0];
+  bool is_lower_edge = scroll_offset >= scroll_range[1];
+  if (is_upper_edge) {
+    SendScrollEvent("scrolltoupperedge", lepus_value());
+  }
+  if (is_lower_edge) {
+    SendScrollEvent("scrolltoloweredge", lepus_value());
+  }
+  if (!is_upper_edge && !is_lower_edge) {
+    SendScrollEvent("scrolltonormalstate", lepus_value());
+  }
 }
 
 void LynxUIScrollViewInternal::InsertNode(UIBase* child, int index) {
@@ -207,6 +219,15 @@ void LynxUIScrollViewInternal::FinishLayoutOperation() {
         child->height_ + child->margin_top_ + child->margin_bottom_;
   }
   scroll_view_->SetScrollContentSize(content_size);
+  if (content_size[0] != last_content_size_[0] ||
+      content_size[1] != last_content_size_[1]) {
+    auto params = lepus::Dictionary::Create();
+    params->SetValue("scrollWidth", content_size[0]);
+    params->SetValue("scrollHeight", content_size[1]);
+    SendScrollEvent("contentsizechanged", lepus_value(params));
+    last_content_size_[0] = content_size[0];
+    last_content_size_[1] = content_size[1];
+  }
   FlushFirstRenderOperations();
   UpdateScrollPosition();
 }

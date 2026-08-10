@@ -36,7 +36,9 @@ void TestBenchActionManager::SetReplayCompleteCallback(
   replay_complete_callback_ = std::move(complete_callback);
 }
 
-void TestBenchActionManager::StartWithUrl(const std::string& url) {
+void TestBenchActionManager::StartWithUrl(
+    const std::string& url,
+    std::shared_ptr<lynx::pub::LynxTemplateData> default_global_props) {
   if (url.empty()) {
     return;
   }
@@ -45,7 +47,7 @@ void TestBenchActionManager::StartWithUrl(const std::string& url) {
   preloaded_source_.clear();
   component_list_.clear();
   template_bundle_param_.clear();
-  global_props_.reset();
+  global_props_ = std::move(default_global_props);
   template_bundle_.reset();
   replay_config_ = std::make_unique<embedder::TestBenchReplayConfig>();
   replay_config_->InitWithProductUrl(url);
@@ -85,6 +87,11 @@ void TestBenchActionManager::FetchRecordFile(const std::string& url) {
   std::string record_file = fetch_future.get();
   if (record_file.empty()) {
     // Handle error.
+    return;
+  }
+  size_t raw_json_start = FindRawJsonStart(record_file);
+  if (raw_json_start != std::string::npos) {
+    HandleRecordFileData(record_file.substr(raw_json_start));
     return;
   }
   std::string decode_result = TestBenchDecode(record_file);

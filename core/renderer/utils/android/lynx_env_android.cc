@@ -7,6 +7,7 @@
 #include <string>
 #include <utility>
 
+#include "base/include/log/logging.h"
 #include "base/include/memory/memory_pressure_level.h"
 #include "base/include/notification_center.h"
 #include "core/base/android/jni_helper.h"
@@ -39,6 +40,31 @@ jstring GetSSRApiVersion(JNIEnv* env, jobject jcaller) {
 
 void PrepareLynxGlobalPool(JNIEnv* env, jclass jcaller) {
   lynx::tasm::LynxGlobalPool::GetInstance().PreparePool();
+}
+
+void PrepareLynxGlobalPoolByContextType(JNIEnv* env, jclass jcaller,
+                                        jint context_type, jint count) {
+  if (context_type < lynx::runtime::ContextType::VMContextType ||
+      context_type > lynx::runtime::ContextType::RTSNativeContextType) {
+    LOGE("PrepareLynxGlobalPoolByContextType invalid context type: "
+         << context_type);
+    return;
+  }
+  lynx::tasm::LynxGlobalPool::GetInstance().PreparePool(
+      static_cast<lynx::runtime::ContextType>(context_type), count);
+}
+
+void PrepareLynxGlobalPoolByContextTypeOnJavaThread(JNIEnv* env, jclass jcaller,
+                                                    jint context_type,
+                                                    jint count) {
+  if (context_type < lynx::runtime::ContextType::VMContextType ||
+      context_type > lynx::runtime::ContextType::RTSNativeContextType) {
+    LOGE("PrepareLynxGlobalPoolByContextTypeOnJavaThread invalid context type: "
+         << context_type);
+    return;
+  }
+  lynx::tasm::LynxGlobalPool::GetInstance().PreparePoolSync(
+      static_cast<lynx::runtime::ContextType>(context_type), count);
 }
 
 void SetLocalEnv(JNIEnv* env, jobject jcaller, jstring key, jstring value) {

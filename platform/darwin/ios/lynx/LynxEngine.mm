@@ -3,9 +3,9 @@
 // LICENSE file in the root directory of this source tree.
 
 #import "LynxEngine.h"
+#import <Lynx/LynxTemplateRender+Internal.h>
 #import <Lynx/LynxTemplateRender.h>
 #import "LynxEnginePool.h"
-#import "LynxTemplateRender+Internal.h"
 #include "core/shell/lynx_engine_wrapper.h"
 
 @implementation LynxEngine {
@@ -61,6 +61,7 @@
     [self.engineQueueRef removeObject:self];
   }
   self.engineState = LynxEngineStateDestroyed;
+  engine_wrapper_->DestroyEngine();
 }
 
 @end

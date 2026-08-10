@@ -2088,11 +2088,10 @@ public class LynxTemplateRender
         LLog.e(TAG, "Repeated loadTemplate is not supported for a static page direct load");
         return false;
       }
-      if (!StaticPageHost.isStaticPageDataOrNull(initialData)
-          || !StaticPageHost.isStaticPageDataOrNull(globalProps)
-          || !StaticPageHost.isStaticPageDataOrNull(groupGlobalProps)
-          || !StaticPageHost.isStaticPageDataOrNull(loadGlobalProps)) {
-        LLog.e(TAG, "Static page direct data cannot be mixed with standard TemplateData");
+      // Page data has no standard-data fallback. Global props may use standard TemplateData and are
+      // materialized once when the direct load is registered.
+      if (!StaticPageHost.isStaticPageDataOrNull(initialData)) {
+        LLog.e(TAG, "Static page direct load requires static page initial data");
         return false;
       }
       if (mThreadStrategyForRendering == ThreadStrategyForRendering.MOST_ON_TASM
@@ -2118,6 +2117,8 @@ public class LynxTemplateRender
           ? null
           : TemplateData.createForStaticPage(registeredGlobalProps);
       if (mDevTool != null && globalProps != null) {
+        // Static-page loading skips the standard global-props update path. Report the final merged
+        // value so DevTool observes the same load-time global props.
         mDevTool.onGlobalPropsChanged(globalProps);
       }
       return true;

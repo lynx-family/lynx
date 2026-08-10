@@ -121,7 +121,7 @@ class RenderObject : public AbstractNode {
   virtual float ScrollLeft() const { return 0.0f; }
   virtual float ScrollTop() const { return 0.0f; }
   void ClearFilter();
-  void SetOpacity(float opacity, bool is_from_animation = false);
+  void SetOpacity(float opacity, bool defer_invalidation = false);
   void SetBlurRadius(float radius);
   void AppendGrayScale(float scale);
   void SetBackdropBlurRadius(float radius);
@@ -267,8 +267,7 @@ class RenderObject : public AbstractNode {
   bool HasShadow() const { return shadows_.has_value() && !shadows_->empty(); }
   const std::vector<Shadow>& Shadows() const { return *shadows_; }
 
-  void SetBackgroundColor(const Color& color,
-                          bool skip_update_for_raster_animation = false);
+  void SetBackgroundColor(const Color& color, bool defer_invalidation = false);
   void SetBackgroundData(const BackgroundData& background_data);
   bool HasBackground() const { return background_data_.has_value(); }
   const BackgroundData& Background() const { return *background_data_; }
@@ -314,7 +313,7 @@ class RenderObject : public AbstractNode {
   FilterMode ImageFilterMode() const { return image_filter_mode_; }
 
   void SetTransformOperations(const TransformOperations& transform,
-                              bool is_from_animation = false);
+                              bool defer_invalidation = false);
   void SetTransformOrigin(const FloatPoint& origin);
   void SetPerspective(float value);
   bool HasTransform() const {
@@ -555,6 +554,11 @@ class RenderObject : public AbstractNode {
 
   void UpdateOffsetTransform(const skity::Matrix& matrix);
 
+  // Returns whether the property must invalidate now. Deferred invalidations
+  // are remembered until the next non-deferred update.
+  bool ResolvePropertyInvalidation(ClayAnimationPropertyType type,
+                                   bool value_changed, bool defer_invalidation);
+
   ElementId id_{-1};
 
   // Whether this render object repaints separately from its parent.
@@ -567,6 +571,8 @@ class RenderObject : public AbstractNode {
   // Whether this render object's paint effect is updated, if needs_paint_ is
   // false, we only update effects and reuse the last draw recording.
   bool needs_effect_ = false;
+  ClayAnimationPropertyType deferred_invalidation_properties_ =
+      ClayAnimationPropertyType::kNone;
 
   bool visible_ = true;
   bool display_none_ = false;
