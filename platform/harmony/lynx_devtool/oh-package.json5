@@ -5,6 +5,7 @@
   "main": "src/main/ets/Index.ets",
   "author": "Lynx Authors <lynx.authors@gmail.com> (https://github.com/lynx-family/lynx)",
   "license": "Apache-2.0",
+  "repository": "https://github.com/lynx-family/lynx",
   "dependencies": {
     "@lynx/lynx": "@param:dependencies.lynx_version",
     "@lynx/lynx_base": "@param:dependencies.lynx_version",
