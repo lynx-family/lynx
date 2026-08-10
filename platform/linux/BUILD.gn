@@ -20,9 +20,11 @@ shared_library("linux") {
 group("lynx_linux_group") {
   deps = [
     "../../base/src:base_static",
+    "../../clay/fml",
     "../../clay/lynx_adaptor:lynx_adaptor",
     "../../clay/shell/platform/embedder:embedder",
     "../embedder:embedder",
+    "../embedder/lynx_service",
   ]
   if (enable_napi_binding) {
     deps += [
@@ -34,6 +36,8 @@ group("lynx_linux_group") {
     if (jsengine_type == "v8") {
       deps += [
         "../../core/runtime/common/napi:napi_binding_v8",
+        "../../core/runtime/profile/v8:v8_profile",
+        "../../devtool/lynx_devtool/js_debug:lynx_v8_bridge",
         "../../third_party/napi:v8",
       ]
     }
