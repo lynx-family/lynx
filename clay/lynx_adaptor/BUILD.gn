@@ -5,6 +5,54 @@
 import("../common/config.gni")
 import("./native_module/build.gni")
 
+if (enable_unittests) {
+  # Keep adaptor objects in an archive so UI tests only link the API surface
+  # they exercise. A source_set would also force-link platform implementations.
+  static_library("lynx_adaptor_for_unittests") {
+    testonly = true
+    sources = [
+      "base_def.h",
+      "clay_value.cc",
+      "clay_value.h",
+      "layout_context_clay.cc",
+      "layout_context_clay.h",
+      "lynx_event_dispatcher.cc",
+      "lynx_event_dispatcher.h",
+      "painting_context_clay.cc",
+      "painting_context_clay.h",
+      "perf_controller_clay.cc",
+      "perf_controller_clay.h",
+      "platform_extra_bundle_clay.h",
+      "prop_bundle_impl.cc",
+      "prop_bundle_impl.h",
+      "ui_delegate_clay.cc",
+      "ui_delegate_clay.h",
+      "value_converter.cc",
+      "value_converter.h",
+    ]
+    sources += rebase_path(clay_native_module_sources, "", "native_module")
+
+    # lynx_websocket_module.cc requires boringssl
+    include_dirs = [ "//third_party/boringssl/src/include" ]
+
+    public_configs = [
+      "../../clay:config",
+      "../../core:lynx_public_config",
+      "../../platform/embedder:public_api",
+    ]
+
+    public_deps = [
+      "../fml:fml",
+      "../ui:ui",
+    ]
+
+    defines = []
+    if (is_mac || is_android || is_ios) {
+      defines += [ "TRACE_EVENT_HIDE_MACROS" ]
+    }
+  }
+}
+
 source_set("resource_loader_embedder") {
   sources = [
     "resource_loader_embedder.cc",

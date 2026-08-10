@@ -1255,4 +1255,96 @@ TEST_F_UI(TextTest, RebuildsInlineViewLayoutAfterHiddenToggle) {
   owner_->SetLayoutDelegate(nullptr);
 }
 
+TEST_F_UI(TextTest, GetTextInfoUsesPageViewPixelConversion) {
+  struct TextInfoResult {
+    double width;
+    std::vector<std::string> content;
+  };
+
+  auto get_text_info = [&](const std::string& text, double pixel_ratio,
+                           const char* font_size, const char* max_width) {
+    auto metrics = page_->GetViewportMetrics();
+    metrics.device_pixel_ratio = pixel_ratio;
+    page_->SetViewportMetrics(metrics);
+
+    clay::Value::Map params;
+    params.emplace("pixelRatio", clay::Value(pixel_ratio));
+    params.emplace("fontSize", clay::Value(font_size));
+    params.emplace("maxLine", clay::Value(20));
+    if (max_width) {
+      params.emplace("maxWidth", clay::Value(max_width));
+    }
+
+    auto result = TextRender::GetTextInfo(
+        text.c_str(), clay::Value(std::move(params)), page_.get());
+    const auto& result_map = result.GetMap();
+    TextInfoResult text_info{result_map.at("width").GetDouble(), {}};
+    for (const auto& line : result_map.at("content").GetArray()) {
+      text_info.content.emplace_back(line.GetString());
+    }
+    return text_info;
+  };
+
+  const std::string short_text = "logical pixels";
+  const auto short_result = get_text_info(short_text, 1.0, "20px", nullptr);
+  const auto high_dpr_short_result =
+      get_text_info(short_text, 2.5, "20px", nullptr);
+  EXPECT_DOUBLE_EQ(short_result.width, high_dpr_short_result.width);
+  EXPECT_EQ(short_result.content, high_dpr_short_result.content);
+
+  const auto default_font_result = get_text_info(short_text, 1.0, "", nullptr);
+  const auto high_dpr_default_font_result =
+      get_text_info(short_text, 2.5, "", nullptr);
+  EXPECT_DOUBLE_EQ(default_font_result.width,
+                   high_dpr_default_font_result.width);
+  EXPECT_EQ(default_font_result.content, high_dpr_default_font_result.content);
+
+  const std::string long_text =
+      "one two three four five six seven eight nine ten eleven twelve";
+  const auto wrapped_result = get_text_info(long_text, 1.0, "20px", "80px");
+  const auto high_dpr_wrapped_result =
+      get_text_info(long_text, 2.5, "20px", "80px");
+  EXPECT_DOUBLE_EQ(wrapped_result.width, high_dpr_wrapped_result.width);
+  EXPECT_EQ(wrapped_result.content, high_dpr_wrapped_result.content);
+}
+
+TEST_F_UI(TextTest, PhysicalPixelConversionUsesDevicePixelRatio) {
+  class PhysicalPixelHelper : public PixelHelper<kPixelTypePhysical> {
+   public:
+    float DevicePixelRatio() const override { return 2.5f; }
+  } pixel_helper;
+
+  const auto physical_font_size =
+      pixel_helper.ConvertFrom<kPixelTypeLogical>(20.0);
+  const auto physical_max_width =
+      pixel_helper.ConvertFrom<kPixelTypeLogical>(80.0);
+  EXPECT_DOUBLE_EQ(physical_font_size, 50.0);
+  EXPECT_DOUBLE_EQ(physical_max_width, 200.0);
+
+  auto get_text_info = [](double font_size, double max_width) {
+    clay::Value::Map params;
+    params.emplace("fontSize", clay::Value(std::to_string(font_size) + "px"));
+    params.emplace("maxWidth", clay::Value(std::to_string(max_width) + "px"));
+    params.emplace("maxLine", clay::Value(20));
+    auto result = TextRender::GetTextInfo(
+        "one two three four five six seven eight nine ten eleven twelve",
+        clay::Value(std::move(params)));
+
+    const auto& result_map = result.GetMap();
+    std::vector<std::string> content;
+    for (const auto& line : result_map.at("content").GetArray()) {
+      content.emplace_back(line.GetString());
+    }
+    return std::make_pair(result_map.at("width").GetDouble(),
+                          std::move(content));
+  };
+
+  const auto logical_result = get_text_info(20.0, 80.0);
+  const auto physical_result =
+      get_text_info(physical_font_size, physical_max_width);
+  EXPECT_EQ(logical_result.second, physical_result.second);
+  EXPECT_NEAR(pixel_helper.ConvertTo<kPixelTypeLogical>(physical_result.first),
+              logical_result.first, 1e-4);
+}
+
 }  // namespace clay
