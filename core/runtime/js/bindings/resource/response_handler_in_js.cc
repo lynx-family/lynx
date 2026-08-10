@@ -42,18 +42,23 @@ Value ResponseHandlerInJS::get(Runtime* rt, const PropNameID& name) {
 
 void ResponseHandlerInJS::AddResourceListener(
     base::MoveOnlyClosure<void, tasm::BundleResourceInfo> closure) {
-  promise_->AddCallback(
-      [native_app = native_app_, closure = std::move(closure)](
-          tasm::BundleResourceInfo bundle_info) mutable {
-        auto* ptr = native_app.Lock();
-        if (ptr && !ptr->IsDestroying()) {
-          ptr->GetDelegate().InvokeResponsePromiseCallback(
-              [bundle_info = std::move(bundle_info),
-               closure = std::move(closure)]() mutable {
-                closure(std::move(bundle_info));
-              });
-        }
-      });
+  promise_->AddCallback([delegate = &delegate_, native_app = native_app_,
+                         closure = std::move(closure)](
+                            tasm::BundleResourceInfo bundle_info) mutable {
+    // The promise may be resolved on a resource-loading thread. Dispatch to
+    // the JS thread before accessing the single-thread-only App weak pointer.
+    // The delegate remains valid while the lazy-bundle callback can run, as
+    // guaranteed by LazyBundleLoader.
+    delegate->InvokeResponsePromiseCallback(
+        [native_app = std::move(native_app),
+         bundle_info = std::move(bundle_info),
+         closure = std::move(closure)]() mutable {
+          auto* ptr = native_app.Lock();
+          if (ptr && !ptr->IsDestroying()) {
+            closure(std::move(bundle_info));
+          }
+        });
+  });
 }
 
 Value ResponseHandlerInJS::WaitingForResponse(Runtime& rt) {
