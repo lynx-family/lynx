@@ -10,13 +10,6 @@
  */
 
 import type { BaseEvent, StandardProps } from '@lynx-js/types';
-import type { ContainerRequest } from '@explorer/lib';
-
-interface ExplorerRouteResult {
-  success: boolean;
-  code: string;
-  message: string;
-}
 
 declare global {
   declare module '*.png?inline';
@@ -25,17 +18,10 @@ declare global {
     ExplorerModule: {
       openScan(): void;
       openSchema(url: string): void;
-      openRoute?(
-        url: string,
-        container: ContainerRequest,
-        callback: (result: ExplorerRouteResult) => void
-      ): void;
       getSettingInfo(): Record<string, unknown>;
       setThreadMode(index: number): void;
       saveThemePreferences(key: string, value: string): void;
-      saveToLocalStorage(key: string, value: string): void;
-      readFromLocalStorage(key: string): string | undefined;
-      navigateBack?(callback: (result: ExplorerRouteResult) => void): void;
+      navigateBack?(): void;
     };
     LynxNodeAPI?: {
       requireNodeAddon(addonName: string): void;
@@ -65,9 +51,6 @@ declare module '@lynx-js/types' {
     safeAreaBottom?: number;
     safeAreaLeft?: number;
     safeAreaRight?: number;
-    explorerSupportsSparklingContainer?: boolean;
-    explorerQRContainerPreference?: string;
-    explorerPreferredContainer?: 'legacy' | 'sparkling';
   }
 
   interface IntrinsicElements extends Lynx.IntrinsicElements {
