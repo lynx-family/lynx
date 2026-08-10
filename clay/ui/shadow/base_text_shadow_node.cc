@@ -9,6 +9,7 @@
 #include <codecvt>
 #include <cstdint>
 #include <limits>
+#include <map>
 #include <memory>
 #include <string_view>
 #include <utility>
@@ -112,6 +113,12 @@ void BaseTextShadowNode::SetAttribute(KeywordID kw, const char* attr_c,
       break;
     case KeywordID::kFontStyle:
       SetFontStyle(static_cast<FontStyle>(utils::GetInt(value)));
+      break;
+    case KeywordID::kFontVariationSettings:
+      SetFontVariations(value);
+      break;
+    case KeywordID::kFontOpticalSizing:
+      SetFontOpticalSizing(value);
       break;
     case KeywordID::kLineHeight: {
       double line_height = 0.f;
@@ -349,6 +356,42 @@ void BaseTextShadowNode::SetFontStyle(FontStyle font_style) {
     MarkDirty();
   }
 }
+
+void BaseTextShadowNode::SetFontVariations(const clay::Value& value) {
+  EnsureDefaultStyle();
+  std::optional<std::map<std::string, float>> variations;
+  if (!utils::IsNullOrInvalid(value) && value.IsArray()) {
+    variations.emplace();
+    const auto& array = utils::GetArray(value);
+    for (size_t i = 0; i + 1 < array.size(); i += 2) {
+      std::string axis;
+      double axis_value = 0.0;
+      if (utils::TryGetString(array[i], axis) && axis.size() == 4 &&
+          utils::TryGetNum(array[i + 1], axis_value)) {
+        (*variations)[std::move(axis)] = static_cast<float>(axis_value);
+      }
+    }
+  }
+  if (text_style_->font_variations != variations) {
+    text_style_->font_variations = std::move(variations);
+    MarkDirty();
+  }
+}
+
+void BaseTextShadowNode::SetFontOpticalSizing(const clay::Value& value) {
+  EnsureDefaultStyle();
+  std::optional<bool> optical_sizing;
+  if (!utils::IsNullOrInvalid(value)) {
+    // FontOpticalSizingType::kNone is 0 and kAuto is 1 in the shared CSS
+    // parser. Keep the Clay layer independent from the core style enum.
+    optical_sizing = utils::GetInt(value) == 1;
+  }
+  if (text_style_->font_optical_sizing != optical_sizing) {
+    text_style_->font_optical_sizing = optical_sizing;
+    MarkDirty();
+  }
+}
+
 void BaseTextShadowNode::SetTextColor(const Color& text_color) {
   EnsureDefaultStyle();
   if (text_style_->text_color != text_color) {

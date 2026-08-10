@@ -259,6 +259,17 @@ void ApplyTextStyle(const TextStyle& clay_style, txt::TextStyle& txt_style) {
     txt_style.font_style = ToTxtFontStyle(clay_style.font_style.value());
   }
 
+  if (clay_style.font_variations) {
+    txt_style.font_variations = txt::FontVariations();
+    for (const auto& [axis, value] : *clay_style.font_variations) {
+      txt_style.font_variations.SetAxisValue(axis, value);
+    }
+  }
+
+  if (clay_style.font_optical_sizing) {
+    txt_style.font_optical_sizing = *clay_style.font_optical_sizing;
+  }
+
   if (clay_style.font_size) {
     txt_style.font_size = clay_style.font_size.value();
   }

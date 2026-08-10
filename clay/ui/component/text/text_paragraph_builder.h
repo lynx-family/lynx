@@ -31,6 +31,10 @@ class TextParagraphBuilder {
   void AddText(const std::u16string& text);
   void AddPlaceholder(txt::PlaceholderRun& placeholder);
 
+#if defined(CLAY_UNIT_TESTS)
+  const txt::TextStyle& PeekStyleForTesting() { return builder_->PeekStyle(); }
+#endif
+
  private:
   friend std::unique_ptr<txt::Paragraph> Build(
       std::unique_ptr<TextParagraphBuilder> builder);

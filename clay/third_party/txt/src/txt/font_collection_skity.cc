@@ -9,6 +9,7 @@
 #include <list>
 #include <memory>
 #include <set>
+#include <sstream>
 #include <string>
 #include <unordered_map>
 #include <utility>
@@ -84,7 +85,8 @@ void FontCollection::DisableFontFallback() {
 
 void FontCollection::ClearFontFamilyCache() {}
 
-tttext::FontmgrCollection FontCollection::GetIFontCollection() {
+tttext::FontmgrCollection FontCollection::GetIFontCollection(
+    const std::shared_ptr<DynamicFontManager>& dynamic_font_manager) {
   tttext::FontmgrCollection collection(nullptr);
 
   assert(default_font_manager_ != nullptr);
@@ -107,7 +109,89 @@ tttext::FontmgrCollection FontCollection::GetIFontCollection() {
         std::make_shared<tttext::SkityFontManager>(asset_font_manager_));
 #endif
   }
+  if (dynamic_font_manager != nullptr) {
+#if OS_IOS
+    collection.SetDynamicFontManager(
+        std::make_shared<tttext::SkityFontManagerCoreText>(
+            dynamic_font_manager));
+#else
+    collection.SetDynamicFontManager(
+        std::make_shared<tttext::SkityFontManager>(dynamic_font_manager));
+#endif
+  }
   return collection;
+}
+
+FontCollection::VariationFontFamilies FontCollection::GetVariationFontFamilies(
+    const std::vector<std::string>& font_families,
+    const skity::FontStyle& font_style,
+    const FontVariations& font_variations,
+    const std::shared_ptr<DynamicFontManager>& dynamic_font_manager) {
+  VariationFontFamilies result;
+  result.font_families.reserve(std::max<size_t>(font_families.size(), 1));
+  if (!dynamic_font_manager || font_variations.GetAxisValues().empty()) {
+    result.font_families = font_families;
+    return result;
+  }
+
+  const auto match_typeface = [&](const std::string& family) {
+    const auto match = [&](const std::shared_ptr<skity::FontManager>& manager) {
+      if (!manager) {
+        return std::shared_ptr<skity::Typeface>();
+      }
+      if (family == tttext::FontmgrCollection::kDefaultFontFamily) {
+        return manager->GetDefaultTypeface(font_style);
+      }
+      return manager->MatchFamilyStyle(family.c_str(), font_style);
+    };
+
+    auto typeface = match(asset_font_manager_);
+    return typeface ? typeface : match(default_font_manager_);
+  };
+
+  const auto register_variation =
+      [&](const std::shared_ptr<skity::Typeface>& base_typeface) {
+        return dynamic_font_manager->GetOrCreateVariation(
+            base_typeface, font_variations.GetAxisValues());
+      };
+
+  const auto set_primary_style = [&](const auto& variation) {
+    if (!variation) {
+      return;
+    }
+    result.font_style = variation->font_style;
+    result.overrides_weight = variation->overrides_weight;
+    result.overrides_width = variation->overrides_width;
+    result.overrides_slant = variation->overrides_slant;
+  };
+
+  if (font_families.empty()) {
+    if (default_font_manager_) {
+      auto variation = register_variation(
+          default_font_manager_->GetDefaultTypeface(font_style));
+      set_primary_style(variation);
+      if (variation) {
+        result.font_families.emplace_back(variation->family_name);
+      }
+    }
+    return result;
+  }
+
+  bool resolved_primary_typeface = false;
+  for (const auto& family : font_families) {
+    auto base_typeface = match_typeface(family);
+    auto variation = register_variation(base_typeface);
+    if (!resolved_primary_typeface && base_typeface) {
+      resolved_primary_typeface = true;
+      set_primary_style(variation);
+    }
+    if (variation) {
+      result.font_families.emplace_back(variation->family_name);
+    } else {
+      result.font_families.emplace_back(family);
+    }
+  }
+  return result;
 }
 
 }  // namespace txt

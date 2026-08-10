@@ -6,6 +6,7 @@
 #define CLAY_THIRD_PARTY_TXT_SRC_TXT_FONT_COLLECTION_SKITY_H_
 
 #include <memory>
+#include <optional>
 #include <set>
 #include <string>
 #include <unordered_map>
@@ -22,6 +23,14 @@ namespace txt {
 // Macro Notice: enable_skity implies enable enable_tttext
 class FontCollection : public std::enable_shared_from_this<FontCollection> {
  public:
+  struct VariationFontFamilies {
+    std::vector<std::string> font_families;
+    std::optional<skity::FontStyle> font_style;
+    bool overrides_weight = false;
+    bool overrides_width = false;
+    bool overrides_slant = false;
+  };
+
   FontCollection();
 
   ~FontCollection();
@@ -31,7 +40,6 @@ class FontCollection : public std::enable_shared_from_this<FontCollection> {
   void SetupDefaultFontManager(uint32_t font_initialization_data);
   void SetDefaultFontManager(std::shared_ptr<skity::FontManager> font_manager);
   void SetAssetFontManager(std::shared_ptr<skity::FontManager> font_manager);
-  // void SetDynamicFontManager(sk_sp<SkFontMgr> font_manager);
   // void SetTestFontManager(sk_sp<SkFontMgr> font_manager);
 
   // Do not provide alternative fonts that can match characters which are
@@ -42,7 +50,14 @@ class FontCollection : public std::enable_shared_from_this<FontCollection> {
   void ClearFontFamilyCache();
 
   // Construct a Skia text layout FontCollection based on this collection.
-  tttext::FontmgrCollection GetIFontCollection();
+  tttext::FontmgrCollection GetIFontCollection(
+      const std::shared_ptr<DynamicFontManager>& dynamic_font_manager);
+
+  VariationFontFamilies GetVariationFontFamilies(
+      const std::vector<std::string>& font_families,
+      const skity::FontStyle& font_style,
+      const FontVariations& font_variations,
+      const std::shared_ptr<DynamicFontManager>& dynamic_font_manager);
 
  private:
   struct FamilyKey {
@@ -61,7 +76,6 @@ class FontCollection : public std::enable_shared_from_this<FontCollection> {
 
   std::shared_ptr<skity::FontManager> default_font_manager_;
   std::shared_ptr<skity::FontManager> asset_font_manager_;
-  // sk_sp<SkFontMgr> dynamic_font_manager_;
   // sk_sp<SkFontMgr> test_font_manager_;
 
   std::unordered_map<std::string, std::vector<std::string>>

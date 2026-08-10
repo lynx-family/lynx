@@ -124,14 +124,22 @@ class TTShapeRun : public tttext::RunDelegate {
 
 namespace {
 
+#ifdef ENABLE_SKITY
+std::optional<tttext::FontInfo> ResolveFontInfo(
+    const std::shared_ptr<FontCollection>& font_collection,
+    const tttext::Style& style,
+    const std::shared_ptr<DynamicFontManager>& variation_font_manager) {
+#else
 std::optional<tttext::FontInfo> ResolveFontInfo(
     const std::shared_ptr<FontCollection>& font_collection,
     const tttext::Style& style) {
+#endif
   if (font_collection == nullptr || style.GetTextSize() <= 0) {
     return std::nullopt;
   }
 #ifdef ENABLE_SKITY
-  auto tt_font_collection = font_collection->GetIFontCollection();
+  auto tt_font_collection =
+      font_collection->GetIFontCollection(variation_font_manager);
   auto* tt_font_collection_ptr = &tt_font_collection;
 #else
   auto tt_font_collection = font_collection->CreateTTFontCollection();
@@ -150,10 +158,20 @@ std::optional<tttext::FontInfo> ResolveFontInfo(
 
 }  // namespace
 
+#ifdef ENABLE_SKITY
+ParagraphTTText::ParagraphTTText(
+    std::shared_ptr<FontCollection> font_collection,
+    const tttext::ParagraphStyle& paragraph_style,
+    std::shared_ptr<DynamicFontManager> variation_font_manager)
+    : font_collection_(font_collection),
+      variation_font_manager_(std::move(variation_font_manager))
+#else
 ParagraphTTText::ParagraphTTText(
     std::shared_ptr<FontCollection> font_collection,
     const tttext::ParagraphStyle& paragraph_style)
-    : font_collection_(font_collection) {
+    : font_collection_(font_collection)
+#endif
+{
   paragraph_ = tttext::Paragraph::Create();
   paragraph_->SetParagraphStyle(&paragraph_style);
 }
@@ -201,7 +219,8 @@ bool ParagraphTTText::DidExceedMaxLines() {
 
 void ParagraphTTText::Layout(double width) {
 #if defined(ENABLE_SKITY)
-  auto i_font_collection = font_collection_->GetIFontCollection();
+  auto i_font_collection =
+      font_collection_->GetIFontCollection(variation_font_manager_);
   tttext::TextLayout layout(&i_font_collection, tttext::kSelfRendering);
 #else
   auto i_font_collection = font_collection_->CreateTTFontCollection();
@@ -229,6 +248,13 @@ void ParagraphTTText::Layout(double width) {
       tttext::LayoutMode::kAtMost);
   tttext::TTTextContext context;
   context.SetEnableSystemFontAdjust(false);
+#if defined(ENABLE_SKITY)
+  if (variation_font_manager_ && variation_font_manager_->HasVariations()) {
+    // Dynamic aliases are paragraph-local. Do not let TextLayout's shared
+    // shape cache retain a result resolved through another paragraph manager.
+    context.EnableFeature(tttext::FeatureOption::kDisableShapeCache, true);
+  }
+#endif
   if (need_trim_space_) {
     context.EnableFeature(ttoffice::tttext::FeatureOption::kTrimLineTailSpace,
                           false);
@@ -445,7 +471,12 @@ void ParagraphTTText::UpdateForegroundPaint(size_t start,
 void ParagraphTTText::AddPlaceholder(tttext::Style& style,
                                      PlaceholderRun& span,
                                      bool is_float) {
+#ifdef ENABLE_SKITY
+  auto font_info =
+      ResolveFontInfo(font_collection_, style, variation_font_manager_);
+#else
   auto font_info = ResolveFontInfo(font_collection_, style);
+#endif
   auto delegate = std::make_unique<TTShapeRun>(span, style, font_info);
   placeholder_pos_.push_back(paragraph_->GetCharCount());
   index_mapper_.AppendText(u"\uFFFC");

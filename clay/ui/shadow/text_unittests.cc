@@ -1,6 +1,9 @@
 // Copyright 2023 The Lynx Authors. All rights reserved.
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
+// cspell:words slnt wght
+
+#define CLAY_UNIT_TESTS 1
 
 #include <initializer_list>
 #include <limits>
@@ -19,6 +22,7 @@
 #include "clay/third_party/txt/src/txt/platform.h"
 #include "clay/ui/common/measure_constraint.h"
 #include "clay/ui/component/text/raw_text_view.h"
+#include "clay/ui/component/text/text_paragraph_builder.h"
 #include "clay/ui/resource/font_collection.h"
 #include "clay/ui/shadow/inline_image_shadow_node.h"
 #include "clay/ui/shadow/inline_text_shadow_node.h"
@@ -335,6 +339,79 @@ TEST_F_UI(TextTest, FontAndShadowSettersPreserveStyleMetadata) {
   EXPECT_EQ(text_shadow_node_->text_style_->background_color,
             Color(0xffabcdef));
   EXPECT_EQ(text_shadow_node_->text_style_->text_shadows, expected_shadows);
+}
+
+TEST_F_UI(TextTest, FontVariationAttributesPropagateToTxtStyle) {
+  const auto make_variations = []() {
+    clay::Value::Array values;
+    values.emplace_back("slnt");
+    values.emplace_back(0.0);
+    values.emplace_back("wdth");
+    values.emplace_back(150.0);
+    values.emplace_back("wght");
+    values.emplace_back(715.0);
+    values.emplace_back("opsz");
+    values.emplace_back(12.0);
+    return values;
+  };
+
+  text_shadow_node_->SetAttribute("font-variation-settings",
+                                  clay::Value(make_variations()));
+  text_shadow_node_->SetAttribute("font-optical-sizing",
+                                  clay::Value(static_cast<uint32_t>(1)));
+  text_shadow_node_->SetFontSize(24.f);
+
+  ASSERT_TRUE(text_shadow_node_->text_style_->font_variations.has_value());
+  const auto& clay_variations =
+      *text_shadow_node_->text_style_->font_variations;
+  EXPECT_EQ(clay_variations.at("slnt"), 0.f);
+  EXPECT_EQ(clay_variations.at("wdth"), 150.f);
+  EXPECT_EQ(clay_variations.at("wght"), 715.f);
+  EXPECT_EQ(clay_variations.at("opsz"), 12.f);
+  ASSERT_TRUE(text_shadow_node_->text_style_->font_optical_sizing.has_value());
+  EXPECT_TRUE(*text_shadow_node_->text_style_->font_optical_sizing);
+
+  TextParagraphBuilder builder(true, text_shadow_node_->text_style_);
+  builder.PushStyle(*text_shadow_node_->text_style_);
+  const auto& txt_style = builder.PeekStyleForTesting();
+  const auto resolved_variations = txt_style.GetResolvedFontVariations();
+  const auto& axes = resolved_variations.GetAxisValues();
+  EXPECT_EQ(axes.at("slnt"), 0.f);
+  EXPECT_EQ(axes.at("wdth"), 150.f);
+  EXPECT_EQ(axes.at("wght"), 715.f);
+  EXPECT_FLOAT_EQ(axes.at("opsz"), static_cast<float>(txt_style.font_size));
+  builder.Pop();
+
+  text_shadow_node_->SetAttribute("font-optical-sizing",
+                                  clay::Value(static_cast<uint32_t>(0)));
+  TextParagraphBuilder no_optical_builder(true, text_shadow_node_->text_style_);
+  no_optical_builder.PushStyle(*text_shadow_node_->text_style_);
+  EXPECT_FLOAT_EQ(no_optical_builder.PeekStyleForTesting()
+                      .GetResolvedFontVariations()
+                      .GetAxisValues()
+                      .at("opsz"),
+                  12.f);
+  no_optical_builder.Pop();
+  text_shadow_node_->SetAttribute("font-optical-sizing",
+                                  clay::Value(static_cast<uint32_t>(1)));
+
+  text_shadow_node_->OnLayout(100.f, TextMeasureMode::kDefinite, 100.f,
+                              TextMeasureMode::kDefinite, {}, {});
+  EXPECT_FALSE(text_shadow_node_->IsDirty());
+  text_shadow_node_->SetAttribute("font-variation-settings",
+                                  clay::Value(make_variations()));
+  EXPECT_FALSE(text_shadow_node_->IsDirty());
+
+  text_shadow_node_->SetAttribute("font-variation-settings",
+                                  clay::Value(clay::Value::Array{}));
+  EXPECT_TRUE(text_shadow_node_->text_style_->font_variations.has_value());
+  EXPECT_TRUE(text_shadow_node_->text_style_->font_variations->empty());
+
+  text_shadow_node_->SetAttribute("font-variation-settings",
+                                  clay::Value::Null());
+  EXPECT_FALSE(text_shadow_node_->text_style_->font_variations.has_value());
+  text_shadow_node_->SetAttribute("font-optical-sizing", clay::Value::Null());
+  EXPECT_FALSE(text_shadow_node_->text_style_->font_optical_sizing.has_value());
 }
 
 TEST_F_UI(TextTest, TextGradientAndSolidColorUpdatePaintState) {

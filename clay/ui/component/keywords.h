@@ -88,6 +88,8 @@ enum class KeywordID {
   kTextOverflow,
   kFontWeight,
   kFontStyle,
+  kFontVariationSettings,
+  kFontOpticalSizing,
   kLineHeight,
   kLineSpacing,
   kWhiteSpace,

@@ -24,6 +24,14 @@ namespace txt {
 
 TextStyle::TextStyle() : font_families(GetDefaultFontFamilies()) {}
 
+FontVariations TextStyle::GetResolvedFontVariations() const {
+  FontVariations variations = font_variations;
+  if (font_optical_sizing) {
+    variations.SetAxisValue("opsz", static_cast<float>(font_size));
+  }
+  return variations;
+}
+
 bool TextStyle::equals(const TextStyle& other) const {
   if (color != other.color)
     return false;
@@ -38,6 +46,10 @@ bool TextStyle::equals(const TextStyle& other) const {
   if (font_weight != other.font_weight)
     return false;
   if (font_style != other.font_style)
+    return false;
+  if (font_variations.GetAxisValues() != other.font_variations.GetAxisValues())
+    return false;
+  if (font_optical_sizing != other.font_optical_sizing)
     return false;
   if (letter_spacing != other.letter_spacing)
     return false;
