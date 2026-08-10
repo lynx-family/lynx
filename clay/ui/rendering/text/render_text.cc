@@ -210,12 +210,12 @@ void RenderText::SetAllSelection() {
 void RenderText::PaintSelection(GraphicsContext* context) {
   class Paint paint;
   paint.setColor(kSelectionColor);
-  auto text_boxes =
-      painter_->GetRectsForRange(std::min(select_start_, select_end_),
-                                 std::max(select_start_, select_end_),
-                                 RectHeightStyle::kMax, RectWidthStyle::kMax);
+  auto text_boxes = painter_->GetRectsForRange(
+      std::min(select_start_, select_end_),
+      std::max(select_start_, select_end_), RectHeightStyle::kLineBox,
+      RectWidthStyle::kMax);
   clay::GrPath path;
-  for (auto box : text_boxes) {
+  for (const auto& box : text_boxes) {
     PATH_ADD_RECT(path, box.rect);
   }
   context->DrawPath(path, paint);

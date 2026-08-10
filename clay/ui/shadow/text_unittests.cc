@@ -40,7 +40,7 @@ class TestLayoutDelegate : public LayoutDelegate {
   }
   ClayMeasureOutput OnMeasureNativeNode(int32_t, float, int, float,
                                         int) override {
-    return {measure_width, measure_height, 0.f};
+    return {measure_width, measure_height, measure_baseline};
   }
   ClayLayoutStyles OnGetLayoutStyles(int32_t) override {
     return ClayLayoutStyles();
@@ -55,10 +55,18 @@ class TestLayoutDelegate : public LayoutDelegate {
 
   float measure_width = 0.f;
   float measure_height = 0.f;
+  float measure_baseline = 0.f;
   int align_count = 0;
   int32_t last_aligned_id = 0;
   float last_top = -1.f;
   float last_left = -1.f;
+};
+
+class TestTextShadowNode : public TextShadowNode {
+ public:
+  using TextShadowNode::TextShadowNode;
+
+  txt::Paragraph* paragraph() { return GetCacheParagraph(); }
 };
 
 class TextTest : public UITest {
@@ -1177,6 +1185,320 @@ TEST_F_UI(TextTest, SingleLineVerticalAlignMapsTopCenterAndBottom) {
     ASSERT_TRUE(text_shadow_node_->text_style_->align_type.has_value());
     EXPECT_EQ(text_shadow_node_->text_style_->align_type.value(), expected);
     EXPECT_EQ(text_shadow_node_->text_style_->enable_text_bounds, true);
+  }
+}
+
+TEST_F_UI(TextTest, InlineTextRangeRectTracksLengthVerticalAlign) {
+  TextStyle paragraph_style;
+  paragraph_style.font_size = 18.f;
+  TextStyle anchor_style = paragraph_style;
+  anchor_style.font_size = 40.f;
+  TextStyle aligned_style = paragraph_style;
+  aligned_style.font_size = 20.f;
+
+  auto build_paragraph = [&](const TextStyle& middle_style) {
+    auto builder =
+        std::make_unique<TextParagraphBuilder>(true, paragraph_style);
+    builder->PushStyle(anchor_style);
+    builder->AddText(u"Ag ");
+    builder->Pop();
+    builder->PushStyle(middle_style);
+    builder->AddText(u"aligned text");
+    builder->Pop();
+    builder->PushStyle(anchor_style);
+    builder->AddText(u" Ag");
+    builder->Pop();
+    auto paragraph = Build(std::move(builder));
+    paragraph->Layout(1000.f);
+    return paragraph;
+  };
+
+  auto normal_paragraph = build_paragraph(aligned_style);
+  aligned_style.align_type = kVerticalAlignLength;
+  aligned_style.baseline_shift = -20.f;
+  auto shifted_paragraph = build_paragraph(aligned_style);
+
+  const auto normal_aligned = normal_paragraph->GetRectsForRange(
+      3, 15, txt::Paragraph::RectHeightStyle::kTight,
+      txt::Paragraph::RectWidthStyle::kTight);
+  const auto shifted_aligned = shifted_paragraph->GetRectsForRange(
+      3, 15, txt::Paragraph::RectHeightStyle::kTight,
+      txt::Paragraph::RectWidthStyle::kTight);
+  ASSERT_EQ(normal_aligned.size(), 1u);
+  ASSERT_EQ(shifted_aligned.size(), 1u);
+  EXPECT_NEAR(shifted_aligned.front().rect.Top(),
+              normal_aligned.front().rect.Top() - 20.f, 1.01f);
+}
+
+TEST_F_UI(TextTest, RangeRectUnionsMixedVerticalAlignRuns) {
+  TextStyle paragraph_style;
+  paragraph_style.font_size = 18.f;
+  TextStyle raised_style = paragraph_style;
+  raised_style.align_type = kVerticalAlignLength;
+  raised_style.baseline_shift = -20.f;
+  TextStyle lowered_style = paragraph_style;
+  lowered_style.align_type = kVerticalAlignLength;
+  lowered_style.baseline_shift = 20.f;
+
+  auto builder = std::make_unique<TextParagraphBuilder>(true, paragraph_style);
+  builder->PushStyle(paragraph_style);
+  builder->AddText(u"before ");
+  builder->Pop();
+  builder->PushStyle(raised_style);
+  builder->AddText(u"UP");
+  builder->Pop();
+  builder->PushStyle(paragraph_style);
+  builder->AddText(u" middle ");
+  builder->Pop();
+  builder->PushStyle(lowered_style);
+  builder->AddText(u"DOWN");
+  builder->Pop();
+  builder->PushStyle(paragraph_style);
+  builder->AddText(u" after");
+  builder->Pop();
+  auto paragraph = Build(std::move(builder));
+  paragraph->Layout(1000.f);
+
+  const auto raised =
+      paragraph->GetRectsForRange(7, 9, txt::Paragraph::RectHeightStyle::kTight,
+                                  txt::Paragraph::RectWidthStyle::kTight);
+  const auto lowered = paragraph->GetRectsForRange(
+      17, 21, txt::Paragraph::RectHeightStyle::kTight,
+      txt::Paragraph::RectWidthStyle::kTight);
+  const auto whole_range = paragraph->GetRectsForRange(
+      0, 27, txt::Paragraph::RectHeightStyle::kTight,
+      txt::Paragraph::RectWidthStyle::kTight);
+  ASSERT_EQ(raised.size(), 1u);
+  ASSERT_EQ(lowered.size(), 1u);
+  ASSERT_FALSE(whole_range.empty());
+  auto whole_bounds = whole_range.front().rect;
+  for (size_t i = 1; i < whole_range.size(); ++i) {
+    whole_bounds.Join(whole_range[i].rect);
+  }
+  EXPECT_NEAR(whole_bounds.Top(), raised.front().rect.Top(), 0.01f);
+  EXPECT_NEAR(whole_bounds.Bottom(), lowered.front().rect.Bottom(), 0.01f);
+}
+
+TEST_F_UI(TextTest,
+          LargeInlineTextLengthVerticalAlignExpandsExactMultilineLine) {
+  TextStyle paragraph_style;
+  paragraph_style.font_size = 18.f;
+  paragraph_style.line_height = 32.f;
+  TextStyle shifted_style = paragraph_style;
+  shifted_style.font_size = 42.f;
+  shifted_style.align_type = kVerticalAlignLength;
+
+  for (const float shift : {-20.f, 20.f}) {
+    SCOPED_TRACE(shift);
+    shifted_style.baseline_shift = shift;
+    auto builder =
+        std::make_unique<TextParagraphBuilder>(true, paragraph_style);
+    builder->PushStyle(paragraph_style);
+    builder->AddText(u"first line\nbefore ");
+    builder->Pop();
+    builder->PushStyle(shifted_style);
+    builder->AddText(u"BIG");
+    builder->Pop();
+    builder->PushStyle(paragraph_style);
+    builder->AddText(u" after\nlast line");
+    builder->Pop();
+    auto paragraph = Build(std::move(builder));
+    paragraph->Layout(1000.f);
+
+    const auto& lines = paragraph->GetLineMetrics();
+    ASSERT_EQ(lines.size(), 3u);
+    const auto shifted_boxes = paragraph->GetRectsForRange(
+        18, 21, txt::Paragraph::RectHeightStyle::kTight,
+        txt::Paragraph::RectWidthStyle::kTight);
+    ASSERT_EQ(shifted_boxes.size(), 1u);
+
+    const auto& shifted = shifted_boxes.front().rect;
+    const float previous_line_bottom = lines[0].baseline + lines[0].descent;
+    const float containing_line_top = lines[1].baseline - lines[1].ascent;
+    const float containing_line_bottom = lines[1].baseline + lines[1].descent;
+    const float next_line_top = lines[2].baseline - lines[2].ascent;
+    EXPECT_GE(shifted.Top(), containing_line_top);
+    EXPECT_LE(shifted.Bottom(), containing_line_bottom);
+    EXPECT_LE(previous_line_bottom, containing_line_top);
+    EXPECT_LE(containing_line_bottom, next_line_top);
+    EXPECT_GT(lines[1].height, paragraph_style.line_height.value());
+  }
+}
+
+TEST_F_UI(TextTest, TallInlineViewDoesNotOverlapPreviousLine) {
+  TestLayoutDelegate delegate;
+  delegate.measure_width = 340.f;
+  delegate.measure_height = 160.f;
+  delegate.measure_baseline = 120.f;
+  owner_->SetLayoutDelegate(&delegate);
+
+  TestTextShadowNode text(owner_, "text", 1);
+  text.SetFontSize(18.f);
+  text.SetLineHeight(30.f);
+  RawTextShadowNode heading(owner_, "raw-text", 2);
+  heading.SetText("heading\n");
+  RawTextShadowNode before(owner_, "raw-text", 3);
+  before.SetText("before ");
+  InlineViewShadowNode inline_view(owner_, "view", 4);
+  RawTextShadowNode after(owner_, "raw-text", 5);
+  after.SetText(" after\ntail");
+  text.AddChild(&heading);
+  text.AddChild(&before);
+  text.AddChild(&inline_view);
+  text.AddChild(&after);
+
+  MeasureConstraint constraint{760.f, MeasureMode::kDefinite, 600.f,
+                               MeasureMode::kAtMost};
+  auto result = text.Measure(constraint);
+  ASSERT_NE(text.paragraph(), nullptr);
+  const auto& lines = text.paragraph()->GetLineMetrics();
+  ASSERT_GE(lines.size(), 3u);
+  auto placeholder_boxes = text.paragraph()->GetRectsForRange(
+      inline_view.StartGlyph(), inline_view.EndGlyph(),
+      txt::Paragraph::RectHeightStyle::kTight,
+      txt::Paragraph::RectWidthStyle::kTight);
+  ASSERT_EQ(placeholder_boxes.size(), 1u);
+  const float first_line_bottom = lines[0].baseline + lines[0].descent;
+  EXPECT_GE(placeholder_boxes.front().rect.Top(), first_line_bottom);
+  EXPECT_GE(result.height, placeholder_boxes.front().rect.Bottom());
+  owner_->SetLayoutDelegate(nullptr);
+}
+
+TEST_F_UI(TextTest, TallInlineViewVerticalAlignStaysWithinItsLine) {
+  struct TestCase {
+    const char* name;
+    VerticalAlignType type;
+    float value;
+  };
+  const TestCase test_cases[] = {
+      {"baseline", kVerticalAlignBaseline, 0.f},
+      {"top", kVerticalAlignTop, 0.f},
+      {"middle", kVerticalAlignMiddle, 0.f},
+      {"bottom", kVerticalAlignBottom, 0.f},
+      {"text-top", kVerticalAlignTextTop, 0.f},
+      {"text-bottom", kVerticalAlignTextBottom, 0.f},
+      {"sub", kVerticalAlignSub, 0.f},
+      {"super", kVerticalAlignSuper, 0.f},
+      {"positive-length", kVerticalAlignLength, 20.f},
+      {"negative-length", kVerticalAlignLength, -20.f},
+      {"positive-percent", kVerticalAlignPercent, 50.f},
+      {"negative-percent", kVerticalAlignPercent, -50.f},
+  };
+
+  TestLayoutDelegate delegate;
+  delegate.measure_width = 80.f;
+  delegate.measure_height = 100.f;
+  delegate.measure_baseline = 70.f;
+  owner_->SetLayoutDelegate(&delegate);
+
+  for (const auto& test_case : test_cases) {
+    SCOPED_TRACE(test_case.name);
+    TestTextShadowNode text(owner_, "text", 1);
+    text.SetFontSize(18.f);
+    text.SetLineHeight(30.f);
+    RawTextShadowNode heading(owner_, "raw-text", 2);
+    heading.SetText("heading\n");
+    RawTextShadowNode before(owner_, "raw-text", 3);
+    before.SetText("before ");
+    InlineViewShadowNode inline_view(owner_, "view", 4);
+    inline_view.SetVerticalAlign(test_case.type, test_case.value);
+    RawTextShadowNode after(owner_, "raw-text", 5);
+    after.SetText(" after\ntail");
+    text.AddChild(&heading);
+    text.AddChild(&before);
+    text.AddChild(&inline_view);
+    text.AddChild(&after);
+
+    MeasureConstraint constraint{400.f, MeasureMode::kDefinite, 500.f,
+                                 MeasureMode::kAtMost};
+    text.Measure(constraint);
+    ASSERT_NE(text.paragraph(), nullptr);
+    const auto& lines = text.paragraph()->GetLineMetrics();
+    ASSERT_EQ(lines.size(), 3u);
+    const auto placeholder_boxes = text.paragraph()->GetRectsForRange(
+        inline_view.StartGlyph(), inline_view.EndGlyph(),
+        txt::Paragraph::RectHeightStyle::kTight,
+        txt::Paragraph::RectWidthStyle::kTight);
+    ASSERT_EQ(placeholder_boxes.size(), 1u);
+
+    const auto& placeholder = placeholder_boxes.front().rect;
+    const float previous_line_bottom = lines[0].baseline + lines[0].descent;
+    const float containing_line_top = lines[1].baseline - lines[1].ascent;
+    const float containing_line_bottom = lines[1].baseline + lines[1].descent;
+    const float next_line_top = lines[2].baseline - lines[2].ascent;
+    EXPECT_GE(placeholder.Top(), previous_line_bottom);
+    EXPECT_GE(placeholder.Top(), containing_line_top);
+    EXPECT_LE(placeholder.Bottom(), containing_line_bottom);
+    EXPECT_LE(placeholder.Bottom(), next_line_top);
+    if (test_case.type == kVerticalAlignBaseline) {
+      EXPECT_NEAR(lines[1].baseline - placeholder.Top(),
+                  delegate.measure_baseline, 0.01f);
+    } else if (test_case.type == kVerticalAlignTop) {
+      EXPECT_NEAR(placeholder.Top(), containing_line_top, 0.01f);
+    } else if (test_case.type == kVerticalAlignMiddle) {
+      EXPECT_NEAR((placeholder.Top() + placeholder.Bottom()) / 2.f,
+                  (containing_line_top + containing_line_bottom) / 2.f, 0.01f);
+    } else if (test_case.type == kVerticalAlignBottom) {
+      EXPECT_NEAR(placeholder.Bottom(), containing_line_bottom, 0.01f);
+    }
+  }
+  owner_->SetLayoutDelegate(nullptr);
+}
+
+TEST_F_UI(TextTest, TallInlineImageVerticalAlignStaysWithinItsLine) {
+  struct TestCase {
+    const char* name;
+    VerticalAlignType type;
+    float value;
+  };
+  const TestCase test_cases[] = {
+      {"baseline", kVerticalAlignBaseline, 0.f},
+      {"middle", kVerticalAlignMiddle, 0.f},
+      {"positive-length", kVerticalAlignLength, 20.f},
+      {"negative-length", kVerticalAlignLength, -20.f},
+  };
+
+  for (const auto& test_case : test_cases) {
+    SCOPED_TRACE(test_case.name);
+    TestTextShadowNode text(owner_, "text", 1);
+    text.SetFontSize(18.f);
+    text.SetLineHeight(30.f);
+    RawTextShadowNode heading(owner_, "raw-text", 2);
+    heading.SetText("heading\n");
+    RawTextShadowNode before(owner_, "raw-text", 3);
+    before.SetText("before ");
+    InlineImageShadowNode inline_image(owner_, "inline-image", 4);
+    inline_image.SetWidth(80.f);
+    inline_image.SetHeight(100.f);
+    inline_image.SetVerticalAlign(test_case.type, test_case.value);
+    RawTextShadowNode after(owner_, "raw-text", 5);
+    after.SetText(" after\ntail");
+    text.AddChild(&heading);
+    text.AddChild(&before);
+    text.AddChild(&inline_image);
+    text.AddChild(&after);
+
+    MeasureConstraint constraint{400.f, MeasureMode::kDefinite, 500.f,
+                                 MeasureMode::kAtMost};
+    text.Measure(constraint);
+    ASSERT_NE(text.paragraph(), nullptr);
+    const auto& lines = text.paragraph()->GetLineMetrics();
+    ASSERT_FALSE(lines.empty());
+    const auto placeholder_boxes = text.paragraph()->GetRectsForPlaceholders();
+    ASSERT_EQ(placeholder_boxes.size(), 1u);
+
+    const auto& placeholder = placeholder_boxes.front().rect;
+    bool is_inside_line = false;
+    for (const auto& line : lines) {
+      const float line_top = line.baseline - line.ascent;
+      const float line_bottom = line.baseline + line.descent;
+      if (placeholder.Top() >= line_top - 0.01f &&
+          placeholder.Bottom() <= line_bottom + 0.01f) {
+        is_inside_line = true;
+        break;
+      }
+    }
+    EXPECT_TRUE(is_inside_line);
   }
 }
 

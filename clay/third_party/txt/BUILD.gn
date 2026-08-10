@@ -448,6 +448,7 @@ if (enable_unittests) {
 
       deps = [
                ":txt",
+               "../../testing:testing_fixtures",
                "../../testing:testing_lib",
              ] + txt_common_executable_deps
 
