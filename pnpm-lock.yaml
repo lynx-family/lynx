@@ -143,18 +143,12 @@ importers:
     specifiers:
       '@lynx-js/react': 0.107.0
       '@lynx-js/types': 3.3.0
-      '@types/react': 18.3.18
       sparkling-navigation: 2.1.0-rc.12
-      typescript: 5.8.3
-      vitest: 2.1.9
     dependencies:
-      '@lynx-js/react': 0.107.0_smdqjdvvdjbjwyrr673xzocrfm
+      '@lynx-js/react': 0.107.0_@lynx-js+types@3.3.0
       sparkling-navigation: 2.1.0-rc.12
     devDependencies:
       '@lynx-js/types': 3.3.0
-      '@types/react': 18.3.18
-      typescript: 5.8.3
-      vitest: 2.1.9
 
   explorer/showcase:
     specifiers:
@@ -1918,6 +1912,19 @@ packages:
       '@lynx-js/types': link:js_libraries/types
       '@types/react': 18.3.18
       preact: /@hongzhiyuan/preact/10.24.0-319c684e
+
+  /@lynx-js/react/0.107.0_@lynx-js+types@3.3.0:
+    resolution: {integrity: sha512-nheLQcObZ1cjHo4OTiejJ2+0ceAlhxm3qeEDkFXgG81DnAqApxKkqCCSz43r7oAZ1qx0XHVIufb9PnMxoGv0eQ==}
+    peerDependencies:
+      '@lynx-js/types': '*'
+      '@types/react': ^18
+    peerDependenciesMeta:
+      '@lynx-js/types':
+        optional: true
+    dependencies:
+      '@lynx-js/types': 3.3.0
+      preact: /@hongzhiyuan/preact/10.24.0-319c684e
+    dev: false
 
   /@lynx-js/react/0.107.0_smdqjdvvdjbjwyrr673xzocrfm:
     resolution: {integrity: sha512-nheLQcObZ1cjHo4OTiejJ2+0ceAlhxm3qeEDkFXgG81DnAqApxKkqCCSz43r7oAZ1qx0XHVIufb9PnMxoGv0eQ==}

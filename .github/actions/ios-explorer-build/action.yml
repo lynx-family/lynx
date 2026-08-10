@@ -6,18 +6,6 @@ inputs:
   build-arch:
     description: The architecture of explorer we are building. It could be x86_64,arm64
     required: true
-  configuration:
-    description: The Xcode configuration. It must be Debug or Release.
-    required: false
-    default: Debug
-  sdk:
-    description: The Apple SDK to build against. It must be iphonesimulator or iphoneos.
-    required: false
-    default: iphonesimulator
-  sparkling-mode:
-    description: Build with pinned Sparkling sources enable_sparkling or disable_sparkling.
-    required: false
-    default: disable_sparkling
   build-params:
     description: The build params of explorer we are building.
     required: false
@@ -26,63 +14,10 @@ inputs:
 runs:
   using: composite
   steps:
-    - name: Validate Explorer build inputs
-      shell: bash
-      env:
-        BUILD_ARCH: ${{ inputs.build-arch }}
-        BUILD_SDK: ${{ inputs.sdk }}
-        CONFIGURATION: ${{ inputs.configuration }}
-        SPARKLING_MODE: ${{ inputs.sparkling-mode }}
-      run: |-
-        set -euo pipefail
-        case "$BUILD_ARCH" in
-          arm64 | x86_64) ;;
-          *) echo "error: build-arch must be arm64 or x86_64" >&2; exit 2 ;;
-        esac
-        case "$CONFIGURATION" in
-          Debug | Release) ;;
-          *) echo "error: configuration must be Debug or Release" >&2; exit 2 ;;
-        esac
-        case "$BUILD_SDK" in
-          iphonesimulator | iphoneos) ;;
-          *) echo "error: sdk must be iphonesimulator or iphoneos" >&2; exit 2 ;;
-        esac
-        if [[ "$BUILD_SDK" == iphoneos && "$BUILD_ARCH" != arm64 ]]; then
-          echo "error: iphoneos builds require arm64" >&2
-          exit 2
-        fi
-        case "$SPARKLING_MODE" in
-          enable_sparkling | disable_sparkling) ;;
-          *) echo "error: sparkling-mode must be enable_sparkling or disable_sparkling" >&2; exit 2 ;;
-        esac
     - name: Install Common Dependencies
       uses: ./lynx/.github/actions/common-deps
-    - name: Set up Sparkling Go Node
-      if: ${{ inputs.sparkling-mode == 'enable_sparkling' }}
-      uses: actions/setup-node@v4
-      with:
-        node-version: '22'
-    - name: Set up Sparkling Go pnpm
-      if: ${{ inputs.sparkling-mode == 'enable_sparkling' }}
-      uses: pnpm/action-setup@v4
-      with:
-        version: 10.26.0
-    - name: Build official Sparkling Go bundles
-      if: ${{ inputs.sparkling-mode == 'enable_sparkling' }}
-      shell: bash
-      run: |-
-        set -euo pipefail
-        source_root="$GITHUB_WORKSPACE/lynx/explorer/darwin/ios/lynx_explorer/generated/sparkling-source"
-        python3 "$GITHUB_WORKSPACE/lynx/explorer/darwin/ios/lynx_explorer/scripts/sync_sparkling_source.py" \
-          --manifest "$GITHUB_WORKSPACE/lynx/explorer/darwin/ios/lynx_explorer/sparkling-source.json" \
-          --source-root "$source_root"
-        pnpm --dir "$source_root" install --frozen-lockfile
-        pnpm --dir "$source_root" --filter sparkling-playground build
     - name: Install iOS Dependencies
       uses: nick-fields/retry@v4
-      env:
-        BUILD_PARAMS: ${{ inputs.build-params }}
-        SPARKLING_MODE: ${{ inputs.sparkling-mode }}
       with:
         timeout_minutes: 20
         max_attempts: 3
@@ -92,99 +27,14 @@ runs:
           source tools/envsetup.sh
           pushd explorer/darwin/ios/lynx_explorer
           git config --global url."https://github.com/".insteadOf "git@github.com:"
-          build_params=()
-          if [[ -n "$BUILD_PARAMS" ]]; then
-            read -r -a build_params <<< "$BUILD_PARAMS"
-          fi
-          bash bundle_install.sh "${build_params[@]}" --sparkling-mode "$SPARKLING_MODE"
+          bash bundle_install.sh ${{ inputs.build-params }}
           popd
     - name: Build Explorer App
       shell: bash
-      env:
-        BUILD_ARCH: ${{ inputs.build-arch }}
-        BUILD_SDK: ${{ inputs.sdk }}
-        CONFIGURATION: ${{ inputs.configuration }}
-        SPARKLING_MODE: ${{ inputs.sparkling-mode }}
       run: |-
-        set -euo pipefail
         cd $GITHUB_WORKSPACE/lynx
-        # tools/envsetup.sh references optional toolchain vars (ANDROID_HOME,
-        # COMMANDLINE_TOOL_BASE_DIR, ...) that are unset on iOS runners, so it is
-        # not nounset-safe. Disable nounset only while sourcing it.
-        set +u
         source tools/envsetup.sh
-        set -u
         pushd explorer/darwin/ios/lynx_explorer
-        build_identity="$CONFIGURATION-$SPARKLING_MODE-$BUILD_ARCH"
-        if [[ "$BUILD_SDK" != iphonesimulator ]]; then
-          build_identity+="-$BUILD_SDK"
-        fi
-        derived_data="$PWD/iOSCoreBuild/DerivedData-$build_identity"
-        app_path="$derived_data/Build/Products/$CONFIGURATION-$BUILD_SDK/LynxExplorer.app"
-        link_map="$PWD/iOSCoreBuild/LinkMaps/"
-        link_map+="LynxExplorer-$build_identity.txt"
-        result_bundle="$PWD/iOSCoreBuild/"
-        result_bundle+="Results-$build_identity.xcresult"
-        mkdir -p "$(dirname "$link_map")"
-        rm -rf "$result_bundle"
-        code_signing_args=()
-        if [[ "$BUILD_SDK" == iphoneos ]]; then
-          code_signing_args+=(CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO)
-        fi
-        xcodebuild \
-          -workspace LynxExplorer.xcworkspace \
-          -scheme LynxExplorer \
-          -configuration ${{ inputs.configuration }} \
-          -arch "$BUILD_ARCH" \
-          -archivePath build/LynxExplorer.xcarchive \
-          -derivedDataPath "$derived_data" \
-          -resultBundlePath "$result_bundle" \
-          -showBuildTimingSummary \
-          -sdk "$BUILD_SDK" \
-          ${code_signing_args[@]+"${code_signing_args[@]}"} \
-          LD_GENERATE_MAP_FILE=YES \
-          LD_MAP_FILE_PATH='$(TARGET_TEMP_DIR)/$(PRODUCT_NAME)-LinkMap-$(CURRENT_ARCH).txt' \
-          -jobs 24 \
-          build
-
-        link_map_candidates=()
-        while IFS= read -r candidate; do
-          link_map_candidates+=("$candidate")
-        done < <(
-          find "$derived_data/Build/Intermediates.noindex" \
-            -type f \
-            -path "*/LynxExplorer.build/LynxExplorer-LinkMap-$BUILD_ARCH.txt" \
-            -print
-        )
-        if [[ ${#link_map_candidates[@]} -ne 1 ]]; then
-          echo "error: expected one LynxExplorer link map, found ${#link_map_candidates[@]}" >&2
-          find "$derived_data/Build/Intermediates.noindex" -type f -name '*LinkMap*' -print >&2
-          exit 1
-        fi
-        cp "${link_map_candidates[0]}" "$link_map"
-
-        python3 scripts/verify_sparkling_ownership.py \
-          --mode "$SPARKLING_MODE" \
-          --lockfile "$PWD/Podfile.lock" \
-          --manifest "$PWD/sparkling-source.json" \
-          --source-root "${SPARKLING_SOURCE_ROOT:-generated/sparkling-source}" \
-          --lynx-root "$GITHUB_WORKSPACE/lynx"
-        python3 scripts/verify_linked_frameworks.py \
-          --mode "$SPARKLING_MODE" \
-          --app "$app_path" \
-          --link-map "$link_map" \
-          --derived-data "$derived_data" \
-          --lynx-root "$GITHUB_WORKSPACE/lynx"
-
-        preserved_link_map="$GITHUB_WORKSPACE/lynx/LynxExplorer-$BUILD_ARCH-"
-        preserved_link_map+="$CONFIGURATION-$SPARKLING_MODE"
-        app_archive="$GITHUB_WORKSPACE/lynx/LynxExplorer-$BUILD_ARCH"
-        if [[ "$BUILD_SDK" != iphonesimulator ]]; then
-          preserved_link_map+="-$BUILD_SDK"
-          app_archive+="-$CONFIGURATION-$SPARKLING_MODE-$BUILD_SDK"
-        fi
-        preserved_link_map+=".linkmap.txt"
-        app_archive+=".app.tar.gz"
-        cp "$link_map" "$preserved_link_map"
-        tar -C "$app_path" -czvf "$app_archive" .
+        xcodebuild -workspace LynxExplorer.xcworkspace -scheme LynxExplorer -configuration Debug -arch ${{ inputs.build-arch }} -archivePath build/LynxExplorer.xcarchive -derivedDataPath iOSCoreBuild/DerivedData -resultBundlePath results_bundle -showBuildTimingSummary -sdk iphonesimulator LD_GENERATE_MAP_FILE=YES LD_MAP_FILE_PATH=Build/linkmap.txt -jobs 24 build
         popd
+        tar --strip-components 10 -czvf LynxExplorer-${{ inputs.build-arch }}.app.tar.gz explorer/darwin/ios/lynx_explorer/iOSCoreBuild/DerivedData/Build/Products/Debug-iphonesimulator/LynxExplorer.app

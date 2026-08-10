@@ -5,55 +5,14 @@
 export {
   isSparkling,
   isSparklingAvailable,
-  supportsExplicitRouteOwnership,
-  supportsSparklingContainer,
   openSchema,
-  openWithSparkling,
   navigateTo,
   navigateBack,
 } from './navigation';
-export {
-  SPARKLING_GO_EXTENSION_ID,
-  SPARKLING_GO_ROOT_SCHEME,
-  getAvailableExtensions,
-  launchExtension,
-} from './extensions';
-export type {
-  ExplorerExtension,
-  ExplorerExtensionCapabilities,
-} from './extensions';
-
-export type { ContainerRequest } from './navigation';
-
-export {
-  getPreferredContainer,
-  setPreferredContainer,
-} from './containerPreference';
-export type { PreferredContainer } from './containerPreference';
 
 export { AppContextProvider, useTheme, useSafeArea } from './context';
 
-export {
-  getRecentSessions,
-  addRecentSession,
-  clearRecentSessions,
-  getRecentUrls,
-  addRecentUrl,
-  clearRecentUrls,
-} from './recentHistory';
-export type { LaunchSession, LaunchSessionSource } from './recentHistory';
-export {
-  parseLaunchCommand,
-  setCommandBoolean,
-  setCommandTheme,
-  retargetLaunchCommand,
-  runtimeRequiredByURL,
-} from './launchCommand';
-export type {
-  LaunchCommand,
-  ExplorerRuntime,
-  CommandTheme,
-} from './launchCommand';
+export { getRecentUrls, addRecentUrl, clearRecentUrls } from './recentHistory';
 
 export type {
   ThemePreference,

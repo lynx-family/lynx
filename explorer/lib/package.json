@@ -4,18 +4,11 @@
   "license": "Apache-2.0",
   "private": true,
   "main": "index.ts",
-  "scripts": {
-    "test": "vitest --run",
-    "typecheck": "tsc --noEmit"
-  },
   "dependencies": {
     "@lynx-js/react": "0.107.0",
     "sparkling-navigation": "2.1.0-rc.12"
   },
   "devDependencies": {
-    "@lynx-js/types": "3.3.0",
-    "@types/react": "18.3.18",
-    "typescript": "5.8.3",
-    "vitest": "2.1.9"
+    "@lynx-js/types": "3.3.0"
   }
 }
