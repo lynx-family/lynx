@@ -22,6 +22,7 @@
 #include "clay/ui/common/attribute_utils.h"
 #include "clay/ui/common/isolate.h"
 #include "clay/ui/component/inline_image_view.h"
+#include "clay/ui/component/page_view.h"
 #include "clay/ui/component/text/layout_context.h"
 #include "clay/ui/component/text/text_paragraph_builder.h"
 #include "clay/ui/component/text/text_style.h"
@@ -151,25 +152,30 @@ static bool InlineTruncationTextBoxesFit(txt::Paragraph* paragraph,
   return true;
 }
 
-clay::Value TextRender::GetTextInfo(const char* text,
-                                    const clay::Value& params) {
+clay::Value TextRender::GetTextInfo(const char* text, const clay::Value& params,
+                                    const PageView* page_view) {
   const auto& info = utils::GetMap(params);
   TextStyle text_style;
-  auto pixel_ratio = utils::GetInt(utils::GetMapItem(info, "pixelRatio"));
-  if (pixel_ratio == 0) {
-    pixel_ratio = 1;
+  double fallback_pixel_ratio = 1.0;
+  if (!page_view) {
+    fallback_pixel_ratio = utils::GetDouble(
+        utils::GetMapItem(info, "pixelRatio"), fallback_pixel_ratio);
+    if (!std::isfinite(fallback_pixel_ratio) || fallback_pixel_ratio <= 0) {
+      fallback_pixel_ratio = 1.0;
+    }
   }
   auto font_size_str = utils::GetCString(utils::GetMapItem(info, "fontSize"));
   char* endptr;
   double num = std::strtod(font_size_str.c_str(), &endptr);
   if (endptr == font_size_str.c_str()) {
-    // TODO(ZhuChengCheng) There may be problems here:
-    // The front end receive this size with unit 'px', which should be the same
-    // meaning in the css, i.e. measuring precess. thus, the unit here shuld be
-    // the same as the platform unit, i.e. Android px, iOS pt.
-    text_style.font_size = kDefaultFontSizeInDip * pixel_ratio;
+    text_style.font_size =
+        page_view
+            ? page_view->ConvertFrom<kPixelTypeLogical>(kDefaultFontSizeInDip)
+            : kDefaultFontSizeInDip * fallback_pixel_ratio;
   } else {
-    text_style.font_size = num * pixel_ratio;
+    text_style.font_size = page_view
+                               ? page_view->ConvertFrom<kPixelTypeLogical>(num)
+                               : num * fallback_pixel_ratio;
   }
   double layout_width = std::numeric_limits<double>::max();
   auto it_max_width = info.find("maxWidth");
@@ -178,6 +184,10 @@ clay::Value TextRender::GetTextInfo(const char* text,
     layout_width = std::strtod(layout_width_str.c_str(), &endptr);
     if (endptr == layout_width_str.c_str()) {
       layout_width = std::numeric_limits<double>::max();
+    } else if (page_view) {
+      layout_width = page_view->ConvertFrom<kPixelTypeLogical>(layout_width);
+    } else {
+      layout_width *= fallback_pixel_ratio;
     }
   }
 
@@ -200,8 +210,12 @@ clay::Value TextRender::GetTextInfo(const char* text,
     content_array[i] = std::move(value);
   }
   clay::Value::Map ret;
-  ret.emplace("width", clay::Value(std::min(
-                           layout_width, paragraph->GetMaxIntrinsicWidth())));
+  auto measured_width =
+      std::min(layout_width, paragraph->GetMaxIntrinsicWidth());
+  ret.emplace("width",
+              clay::Value(page_view ? page_view->ConvertTo<kPixelTypeLogical>(
+                                          measured_width)
+                                    : measured_width / fallback_pixel_ratio));
   ret.emplace("content", clay::Value(std::move(content_array)));
   return clay::Value(std::move(ret));
 }
