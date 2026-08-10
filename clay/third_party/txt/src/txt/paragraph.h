@@ -20,8 +20,8 @@
 
 #include <vector>
 
-#include "line_metrics.h"
-#include "paragraph_style.h"
+#include "clay/third_party/txt/src/txt/line_metrics.h"
+#include "clay/third_party/txt/src/txt/paragraph_style.h"
 #include "skity/geometry/rect.hpp"
 
 class SkCanvas;
@@ -59,7 +59,12 @@ class Paragraph {
     kIncludeLineSpacingBottom,
 
     // Calculate boxes based on the strut's metrics.
-    kStrut
+    kStrut,
+
+    // Use the logical line box stored in LineMetrics. Unlike kMax, this keeps
+    // line-height leading independent from the glyphs/runs covered by the
+    // requested range. Keep this after the SkParagraph-compatible values.
+    kLineBox
   };
 
   enum class RectWidthStyle {
