@@ -127,7 +127,8 @@ void LynxEngine::UpdateDataByParsedData(
   tasm::UpdatePageOption update_page_option;
   update_page_option.from_native = true;
   update_page_option.native_update_data_order_ = native_update_data_order;
-  tasm_->UpdateDataByPreParsedData(data, update_page_option, pipeline_options);
+  tasm_->UpdateMetaData(data, lepus::Value(), update_page_option,
+                        pipeline_options);
 }
 
 void LynxEngine::UpdateMetaData(
@@ -154,7 +155,8 @@ void LynxEngine::ResetDataByParsedData(
   update_page_option.from_native = true;
   update_page_option.reset_page_data = true;
   update_page_option.native_update_data_order_ = native_update_data_order;
-  tasm_->UpdateDataByPreParsedData(data, update_page_option, pipeline_options);
+  tasm_->UpdateMetaData(data, lepus::Value(), update_page_option,
+                        pipeline_options);
 }
 
 void LynxEngine::ReloadTemplate(
@@ -185,7 +187,10 @@ void LynxEngine::UpdateGlobalProps(
   tasm::timing::LongTaskMonitor::Scope longTaskScope(
       tasm_->GetPageOptions(), tasm::timing::kUpdateDataByNativeTask,
       tasm::timing::kTaskNameLynxEngineUpdateGlobalProps);
-  tasm_->UpdateGlobalProps(global_props, true, pipeline_options);
+  tasm::UpdatePageOption update_page_option;
+  update_page_option.from_native = true;
+  tasm_->UpdateMetaData(nullptr, global_props, update_page_option,
+                        pipeline_options);
 }
 
 void LynxEngine::UpdateFontScale(float scale) {

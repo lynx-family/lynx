@@ -33,6 +33,7 @@
 #include "core/renderer/dom/vdom/radon/radon_lazy_component.h"
 #include "core/renderer/dom/vdom/radon/radon_node.h"
 #include "core/renderer/dom/vdom/radon/radon_page.h"
+#include "core/renderer/mts_renderer.h"
 #include "core/renderer/pipeline/pipeline_context.h"
 #include "core/renderer/pipeline/pipeline_lifecycle.h"
 #include "core/renderer/pipeline/pipeline_scope.h"
@@ -235,6 +236,7 @@ TemplateAssembler::TemplateAssembler(
       &element_manager_delegate_);
   auto card = std::make_shared<TemplateEntry>();
   InsertEntry(DEFAULT_ENTRY_NAME, std::move(card));
+  mts_renderer_ = CreateMTSRenderer(*this, false);
 }
 
 TemplateAssembler::~TemplateAssembler() {
@@ -251,10 +253,6 @@ void TemplateAssembler::TriggerVmGC() {
 void TemplateAssembler::UpdateGlobalProps(
     const lepus::Value& data, bool need_render,
     std::shared_ptr<PipelineOptions>& pipeline_options) {
-#if ENABLE_TESTBENCH_RECORDER
-  tasm::recorder::TemplateAssemblerRecorder::RecordSetGlobalProps(data,
-                                                                  record_id_);
-#endif
   TRACE_EVENT(LYNX_TRACE_CATEGORY, LYNX_UPDATE_GLOBAL_PROPS,
               [&need_render, &data](lynx::perfetto::EventContext ctx) {
                 ctx.event()->add_debug_annotations("need_render",
@@ -264,40 +262,23 @@ void TemplateAssembler::UpdateGlobalProps(
               });
   PipelineScope pipeline_scope(this, pipeline_options);
   LOGI("UpdateGlobalProps " << data.GetLength() << " this: " << this);
-  global_props_ = data;
+  UpdateGlobalPropsState(data);
+
+  UpdatePageOption update_page_option;
+  mts_renderer_->UpdateMetaData(nullptr, &global_props_, need_render,
+                                update_page_option, pipeline_options);
+}
+
+void TemplateAssembler::UpdateGlobalPropsState(
+    const lepus::Value& global_props) {
+#if ENABLE_TESTBENCH_RECORDER
+  tasm::recorder::TemplateAssemblerRecorder::RecordSetGlobalProps(global_props,
+                                                                  record_id_);
+#endif
+  global_props_ = global_props;
   if (template_loaded_) {
-    NotifyGlobalPropsChanged(data);
-    UpdateGlobalPropsToContext(data);
-  }
-
-  if (EnableFiberArch()) {
-    // In fiber now, we need to make sure to
-    // call kUpdateGlobalProps to trigger mts pipeline.
-    // Actually, with updateMetaData, updateGlobalProps
-    // TODO(nihao.royal): may be optimized here.
-    if (!template_loaded_) {
-      return;
-    }
-    auto& context = FindEntry(DEFAULT_ENTRY_NAME)->GetVm();
-    if (context == nullptr) {
-      LOGE("TemplateAssembler::UpdateGlobalProps since the context is null!!");
-      return;
-    }
-    DispatchEventFromEngineToCoreContext(
-        context, kUpdateGlobalProps,
-        runtime::kMessageEventTypeUpdateGlobalProps, data);
-  } else {
-    // Update `__globalProps` for LazyBundle, used only in Radon.
-    ForEachEntry([card_entry = this->FindEntry(DEFAULT_ENTRY_NAME).get(),
-                  &global_props = this->global_props_](const auto& entry) {
-      if (entry.get() != card_entry) {
-        entry->GetVm()->UpdateTopLevelVariable(kGlobalPropsKey, global_props);
-      }
-    });
-
-    need_render =
-        need_render && template_loaded_ && !page_proxy_.IsServerSideRendering();
-    page_proxy_.UpdateGlobalProps(global_props_, need_render, pipeline_options);
+    NotifyGlobalPropsChanged(global_props);
+    UpdateGlobalPropsToContext(global_props);
   }
 }
 
@@ -578,14 +559,7 @@ TemplateData TemplateAssembler::OnRenderTemplate(
 void TemplateAssembler::RenderTemplate(
     const std::shared_ptr<TemplateEntry>& card, const TemplateData& data,
     std::shared_ptr<PipelineOptions>& pipeline_options) {
-  if (EnableFiberArch()) {
-    RenderTemplateForFiber(card, data, pipeline_options);
-  } else {
-    UpdatePageOption update_page_option;
-    update_page_option.update_first_time = true;
-    page_proxy_.UpdateInLoadTemplate(data.GetValue(), update_page_option,
-                                     pipeline_options);
-  }
+  mts_renderer_->Load(card, data, pipeline_options);
 
   bool enable_parallel_element =
       page_proxy()->element_manager()->GetEnableParallelElement();
@@ -646,140 +620,8 @@ void TemplateAssembler::RenderTemplate(
 void TemplateAssembler::UpdateTemplate(
     const TemplateData& data, const UpdatePageOption& update_page_option,
     std::shared_ptr<PipelineOptions>& pipeline_options) {
-  if (EnableFiberArch()) {
-    if (update_page_option.reload_template ||
-        pipeline_options->need_timestamps) {
-      tasm::TimingCollector::Instance()->Mark(tasm::timing::kCreateVdomStart);
-    }
-
-    auto options = update_page_option.ToLepusValue();
-    options.SetProperty(BASE_STATIC_STRING(kPipelineOptions),
-                        PipelineOptionsToLepusValue(pipeline_options));
-    if (pre_painting_) {
-      options.SetProperty(BASE_STATIC_STRING(kTriggerLifeCycle),
-                          lepus::Value(true));
-    }
-    if (EnableDataProcessorOnJs()) {
-      options.SetProperty(BASE_STATIC_STRING(kProcessorName),
-                          lepus::Value(data.PreprocessorName()));
-    }
-
-    auto& context = FindEntry(tasm::DEFAULT_ENTRY_NAME)->GetVm();
-    DispatchEventFromEngineToCoreContext(context, kUpdatePage,
-                                         runtime::kMessageEventTypeUpdatePage,
-                                         data.GetValue(), std::move(options));
-
-    if (!update_page_option.reload_template &&
-        pipeline_options->need_timestamps) {
-      tasm::TimingCollector::Instance()->Mark(tasm::timing::kCreateVdomEnd);
-      tasm::TimingCollector::Instance()->Mark(tasm::timing::kMtsRenderEnd);
-    }
-
-  } else {
-    if (UpdateGlobalDataInternal(data.GetValue(), update_page_option,
-                                 pipeline_options)) {
-      // Currently, only client updateData, client resetData, and JS root
-      // component setData updates trigger the OnDataUpdated callback.
-      if ((update_page_option.from_native &&
-           !update_page_option.reload_template &&
-           !update_page_option.reload_from_js) ||
-          (update_page_option.from_native &&
-           update_page_option.reset_page_data)) {
-        delegate_.OnDataUpdated();
-      }
-    }
-  }
-}
-
-void TemplateAssembler::RenderTemplateForFiber(
-    const std::shared_ptr<TemplateEntry>& card, const TemplateData& data,
-    std::shared_ptr<PipelineOptions>& pipeline_options) {
-  tasm::TimingCollector::Instance()->Mark(tasm::timing::kCreateVdomStart);
-
-  pipeline_options->is_first_screen = true;
-
-  lepus::Value render_options(lepus::Dictionary::Create());
-  if (EnableDataProcessorOnJs()) {
-    auto kProcessorName_str = BASE_STATIC_STRING(kProcessorName);
-    render_options.SetProperty(kProcessorName_str,
-                               lepus::Value(data.PreprocessorName()));
-    if (!cache_data_.empty()) {
-      auto kData_str = BASE_STATIC_STRING(kData);
-      auto kCacheData_str = BASE_STATIC_STRING(kCacheData);
-      auto cache_data = lepus::CArray::Create();
-      for (const auto& data : cache_data_) {
-        lepus::Value data_obj(lepus::Dictionary::Create());
-        data_obj.SetProperty(kData_str, data->GetValue());
-        data_obj.SetProperty(kProcessorName_str,
-                             lepus::Value(data->PreprocessorName()));
-        cache_data->emplace_back(std::move(data_obj));
-      }
-      render_options.SetProperty(kCacheData_str,
-                                 lepus::Value(std::move(cache_data)));
-    }
-  }
-  render_options.SetProperty(BASE_STATIC_STRING(kPreLoadTemplate),
-                             lepus::Value(pre_painting_));
-  render_options.SetProperty(BASE_STATIC_STRING(kPipelineOptions),
-                             PipelineOptionsToLepusValue(pipeline_options));
-
-  fml::RefPtr<Element> element_cache = card->TryToGetElementCache();
-  if (element_cache.get()) {
-    TreeResolver::AttachRootToElementManager(
-        element_cache, page_proxy()->element_manager().get(),
-        style_sheet_manager(DEFAULT_ENTRY_NAME), true);
-    render_options.SetProperty(BASE_STATIC_STRING(kInitPage),
-                               lepus::Value(element_cache));
-  }
-
-  // No need to re-render nodes during SSR
-  if (!page_proxy_.IsWaitingSSRHydrate()) {
-    auto& context = card->GetVm();
-    DispatchEventFromEngineToCoreContext(
-        context, kRenderPage, runtime::kMessageEventTypeRenderPage,
-        data.GetValue(), std::move(render_options));
-  } else {
-    // When Hydrating SSR page, the extreme_parsed_style flag has to be cleared
-    // to make element do full CSS resolving when the classes is updated after
-    // hydrated.
-    page_proxy()->element_manager()->ClearExtremeParsedStyles();
-    if (page_proxy()->HydrateByRootPage()) {
-      auto css_manager = FindEntry(DEFAULT_ENTRY_NAME)->GetStyleSheetManager();
-      auto* page_element = page_proxy()->element_manager()->GetPageElement();
-      if (page_element) {
-        page_element->ResetSheetRecursively(css_manager);
-      }
-
-      auto& context = card->GetVm();
-
-      auto page_ref = page_proxy()->element_manager()->GetPageElementRef();
-      render_options.SetProperty(BASE_STATIC_STRING(kInitPage),
-                                 lepus::Value(page_ref));
-
-      DispatchEventFromEngineToCoreContext(
-          context, kRenderPage, runtime::kMessageEventTypeRenderPage,
-          data.GetValue(), std::move(render_options));
-    }
-  }
-
-  tasm::TimingCollector::Instance()->Mark(tasm::timing::kCreateVdomEnd);
-  tasm::TimingCollector::Instance()->Mark(tasm::timing::kMtsRenderEnd);
-
-  HandleSimpleStyleFontFaces(card);
-
-  HandleSimpleStyleKeyframes(card);
-
-  // TODO(nihao.royal): use `enable_unified_pixel_pipeline` to switch multi
-  // behaviours. After `RunPixelPipeline` is unified, we may remove the
-  // redundant logic here.
-  if (pipeline_options->enable_unified_pixel_pipeline) {
-    this->GetCurrentPipelineContext()->RequestResolve();
-  } else {
-    page_proxy()->element_manager()->OnPatchFinish(pipeline_options);
-    if (page_proxy()->element_manager()->GetEnableDumpElementTree()) {
-      DumpElementTree(card);
-    }
-  }
+  mts_renderer_->UpdateMetaData(&data, nullptr, false, update_page_option,
+                                pipeline_options);
 }
 
 void TemplateAssembler::HandleSimpleStyleFontFaces(
@@ -1179,16 +1021,7 @@ void TemplateAssembler::ReloadTemplate(
   TemplateData data = ProcessTemplateData(template_data, true);
 
   // destroy old components
-  if (EnableFiberArch()) {
-    if (card && card->GetVm()) {
-      auto& context = card->GetVm();
-      DispatchEventFromEngineToCoreContext(
-          context, kRemoveComponents,
-          runtime::kMessageEventTypeRemoveComponents);
-    }
-  } else {
-    page_proxy_.RemoveOldComponentBeforeReload();
-  }
+  mts_renderer_->Reset(card);
 
   // destroy card and create card
   delegate_.OnJSAppReload(GenerateTemplateDataPostedToJs(data),
@@ -1257,17 +1090,7 @@ void TemplateAssembler::ReloadFromJS(
     }
 
     // destroy old components
-    if (EnableFiberArch()) {
-      if (card && card->GetVm()) {
-        auto& context = card->GetVm();
-        DispatchEventFromEngineToCoreContext(
-            context, kRemoveComponents,
-            runtime::kMessageEventTypeRemoveComponents);
-      }
-    } else {
-      // trigger old components's unmount lifecycle;
-      page_proxy_.RemoveOldComponentBeforeReload();
-    }
+    mts_renderer_->Reset(card);
 
     TemplateData data(task.data_, false);
     // destroy card and create card instance
@@ -1586,6 +1409,8 @@ void TemplateAssembler::SetPageConfig(
 
     page_config_->DecodePageConfigFromJsonStringWhileUndefined(
         platform_config_json_string_);
+    mts_renderer_ =
+        CreateMTSRenderer(*this, page_config_->GetEnableFiberArch());
     // pass page config to android/iOS side after VM->Execute()
     // see `SetPageConfig` called by `LoadTemplate/LoadComponent`
     // in template_assembler.cc
@@ -2242,26 +2067,13 @@ void TemplateAssembler::UpdateMetaData(
   bool global_props_changed = !global_props.IsNil();
   bool data_changed = template_data != nullptr;
 
-  // In fiber mode, when both data and globalProps are updated together,
-  // use the combined event if the env switch is enabled and frontend registered
-  // __UpdateMetaData. This avoids triggering two separate renders (one for
-  // updateGlobalProps, one for updateData -> UpdateTemplate).
-  if (template_loaded_ && global_props_changed && data_changed &&
-      EnableFiberArch() && LynxEnv::GetInstance().EnableFiberUpdateMetaData()) {
-    auto engine_context_proxy =
-        GetContextProxy(runtime::ContextProxy::Type::kEngine);
-    if (engine_context_proxy &&
-        engine_context_proxy->HasEventListener(kUpdateMetaData)) {
-      TemplateData data = ProcessTemplateData(template_data, false);
-      auto& context = FindEntry(DEFAULT_ENTRY_NAME)->GetVm();
-      if (context != nullptr) {
-        lepus::Value options = update_page_option.ToLepusValue();
-        DispatchEventFromEngineToCoreContext(context, kUpdateMetaData,
-                                             kUpdateMetaData, data.GetValue(),
-                                             global_props, options);
-      }
-      return;
-    }
+  if (global_props_changed && data_changed &&
+      mts_renderer_->CanUpdateMetaDataAtomically()) {
+    UpdateGlobalPropsState(global_props);
+    TemplateData data = ProcessTemplateData(template_data, false);
+    mts_renderer_->UpdateMetaData(&data, &global_props, false,
+                                  update_page_option, pipeline_options);
+    return;
   }
 
   if (global_props_changed) {
@@ -3384,88 +3196,10 @@ TemplateData TemplateAssembler::ProcessTemplateData(
     return data;
   }
 
-  if (EnableFiberArch()) {
-    data = ProcessTemplateDataForFiber(template_data, is_first_screen);
-  } else {
-    data = ProcessTemplateDataForRadon(template_data, is_first_screen);
-  }
+  data = mts_renderer_->ProcessData(template_data, is_first_screen);
 
   tasm::TimingCollector::Instance()->MarkFrameworkTiming(
       tasm::timing::kDataProcessorEnd);
-
-  return data;
-}
-
-TemplateData TemplateAssembler::ProcessTemplateDataForFiber(
-    const std::shared_ptr<TemplateData>& template_data, bool is_first_screen) {
-  TemplateData data;
-  data.SetReadOnly(template_data ? template_data->IsReadOnly() : false);
-
-  // Call processData function with template data and processor name. If the
-  // result is object, let data be the result. Otherwise, let data be template
-  // data.
-  const auto& res =
-      FindEntry(tasm::DEFAULT_ENTRY_NAME)
-          ->GetVm()
-          ->Call(BASE_STATIC_STRING(kProcessData),
-                 template_data ? template_data->GetValue() : lepus::Value(),
-                 template_data ? lepus::Value(template_data->PreprocessorName())
-                               : lepus::Value(base::String()));
-  if (res.IsObject()) {
-    data.SetValue(res);
-  } else if (template_data) {
-    data.SetValue(template_data->GetValue());
-  }
-
-  return data;
-}
-
-TemplateData TemplateAssembler::ProcessTemplateDataForRadon(
-    const std::shared_ptr<TemplateData>& template_data, bool is_first_screen) {
-  TemplateData data;
-  data.SetReadOnly(false);
-
-  std::string processor_name;
-  if (template_data != nullptr || global_props_.IsObject() ||
-      !page_proxy_.GetDefaultPageData().IsEmpty()) {
-    if (template_data != nullptr) {
-      data.SetValue(template_data->GetValue());
-      data.SetPreprocessorName(template_data->PreprocessorName());
-      data.SetReadOnly(template_data->IsReadOnly());
-    } else {
-      data.SetValue(lepus::Value(lepus::Dictionary::Create()));
-    }
-
-    if (!page_proxy_.GetDefaultPageData().IsEmpty()) {
-      if (data.GetValue().IsEmpty()) {
-        data.SetValue(lepus::Value(lepus::Dictionary::Create()));
-      }
-      ForEachLepusValue(
-          page_proxy_.GetDefaultPageData(),
-          [&data](const lepus::Value& key, const lepus::Value& value) {
-            auto key_str = key.String();
-            if (data.GetValue().GetProperty(key_str).IsEmpty()) {
-              data.value().SetProperty(key_str, value);
-            }
-          });
-    }
-    if (page_proxy_.HasSSRRadonPage()) {
-      // TODO(zhixuan): Support diff global props for ssr.
-      page_proxy_.DiffHydrationData(data.GetValue());
-    }
-
-    // Only exec the following code on first screen.
-    // In PrePainting Mode, globalProps should also be attached to avoid bk
-    is_first_screen |= pre_painting_;
-    if (!page_proxy_.GetEnableRemoveComponentExtraData() &&
-        global_props_.IsObject() && is_first_screen) {
-      // Backward Compatible, should be deleted later. (@nihao.royal)
-      // globalProps should be visited through the second param in DataProcessor
-      data.value().SetProperty(BASE_STATIC_STRING(kGlobalPropsKey),
-                               global_props_);
-    }
-    ExecuteDataProcessor(data);
-  }
 
   return data;
 }
