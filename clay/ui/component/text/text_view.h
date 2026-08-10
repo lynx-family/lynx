@@ -152,6 +152,7 @@ class TextView : public WithTypeInfo<TextView, BaseTextView>,
                                     int platform_try_hit_id = -1) override;
   BaseView* GetViewAtPosition(const FloatPoint& point_by_paragraph,
                               const FloatPoint& point_by_page,
+                              FloatPoint* relative_position,
                               int platform_try_hit_id = -1);
   bool ClickOnText(size_t glyph_index, const FloatPoint& point_by_paragraph,
                    txt::Paragraph* paragraph);
