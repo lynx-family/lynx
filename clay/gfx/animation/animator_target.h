@@ -47,6 +47,9 @@ class AnimatorTarget {
 
   virtual AnimationHandler* GetAnimationHandler() { return nullptr; }
   virtual bool IsVisibleForAnimationTick() { return true; }
+  virtual bool CanRunAnimationOnRaster(ClayAnimationPropertyType type) const {
+    return false;
+  }
   virtual bool HasAnimationEvent(ClayEventType event_type) const {
     return false;
   }

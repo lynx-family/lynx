@@ -60,6 +60,20 @@ TEST_F(BoxPainterTest, Background) {
   EXPECT_EQ(graphics_owner_.mock_canvas().draw_calls(), expected_draw_calls);
 }
 
+TEST_F(BoxPainterTest, TransparentRasterAnimatedBackgroundKeepsDynamicOp) {
+  render_box_->SetID(1);
+  render_box_->SetBackgroundData(BackgroundData());
+  render_box_->MarkHasAnimation(ClayAnimationPropertyType::kBackgroundColor,
+                                true);
+
+  BoxPainter box_painter(render_box_.get());
+  box_painter.Paint(&graphics_owner_.mock_context(), FloatPoint());
+  auto picture = graphics_owner_.mock_context().FinishRecording();
+
+  ASSERT_NE(picture->picture(), nullptr);
+  EXPECT_FALSE(picture->picture()->GetDynamicOps().empty());
+}
+
 TEST_F(BoxPainterTest, SimpleBorder) {
   BordersData border_data;
   border_data.width_top_ = 10.f;

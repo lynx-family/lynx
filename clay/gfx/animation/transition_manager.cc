@@ -64,6 +64,16 @@ std::vector<ValueAnimator*> TransitionManager::GetRunningAnimators() {
   return animators;
 }
 
+std::vector<ValueAnimator*> TransitionManager::GetStartedAnimators() {
+  std::vector<ValueAnimator*> animators;
+  for (const auto& [type, transition] : active_transitions_) {
+    if (transition.first->IsStarted()) {
+      animators.push_back(transition.first.get());
+    }
+  }
+  return animators;
+}
+
 void TransitionManager::EndAllAnimators() {
   for (auto& it : active_transitions_) {
     ValueAnimator* animator = it.second.first.get();

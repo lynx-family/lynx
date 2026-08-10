@@ -24,21 +24,40 @@ bool IsSame(const AnimationData& lhs, const AnimationData& rhs) {
                   rhs.duration, rhs.delay, rhs.direction);
 }
 
-// Returns true when the view has both raster animation and UI animation
-bool IsMixedAnimation(const KeyframesManager::KeyframeAnimation& animation) {
-  bool has_raster_animation = false;
-  bool has_ui_animation = false;
-  for (auto& [type, keyframe] : animation.keyframes_map) {
-    if (IsRasterAnimationProperty(type)) {
-      has_raster_animation = true;
-    } else {
-      has_ui_animation = true;
-    }
-    if (has_raster_animation && has_ui_animation) {
-      return true;
-    }
+bool CanRunLifecycleOnly(const KeyframesManager::KeyframeAnimation& animation,
+                         const AnimatorTarget* target) {
+  if (!target || animation.keyframes_map.empty()) {
+    return false;
   }
-  return false;
+  return std::all_of(animation.keyframes_map.begin(),
+                     animation.keyframes_map.end(),
+                     [target](const auto& keyframes) {
+                       return target->CanRunAnimationOnRaster(keyframes.first);
+                     });
+}
+
+template <typename KeyframeSetType, typename ValueType>
+bool SampleKeyframePresentationValue(
+    const std::vector<KeyframesManager::KeyframeAnimation>& animations,
+    ClayAnimationPropertyType type, int64_t current_time, ValueType& value) {
+  bool has_value = false;
+  for (const auto& animation : animations) {
+    if (!animation.animator->IsPreparedForPresentation()) {
+      continue;
+    }
+    auto keyframes = animation.keyframes_map.find(type);
+    if (keyframes == animation.keyframes_map.end()) {
+      continue;
+    }
+    auto fraction = animation.animator->GetPresentationFraction(current_time);
+    if (!fraction.has_value()) {
+      continue;
+    }
+    value = static_cast<const KeyframeSetType*>(keyframes->second.get())
+                ->GetValue(*fraction);
+    has_value = true;
+  }
+  return has_value;
 }
 
 std::vector<AnimationData> NormalizeAnimationData(
@@ -112,6 +131,27 @@ bool KeyframesManager::HasAnimationForType(
   return false;
 }
 
+bool KeyframesManager::GetPresentationValue(ClayAnimationPropertyType type,
+                                            int64_t current_time,
+                                            float& value) const {
+  return SampleKeyframePresentationValue<FloatKeyframeSet>(animations_, type,
+                                                           current_time, value);
+}
+
+bool KeyframesManager::GetPresentationValue(ClayAnimationPropertyType type,
+                                            int64_t current_time,
+                                            Color& value) const {
+  return SampleKeyframePresentationValue<ColorKeyframeSet>(animations_, type,
+                                                           current_time, value);
+}
+
+bool KeyframesManager::GetPresentationValue(ClayAnimationPropertyType type,
+                                            int64_t current_time,
+                                            TransformOperations& value) const {
+  return SampleKeyframePresentationValue<TransformKeyframeSet>(
+      animations_, type, current_time, value);
+}
+
 void KeyframesManager::SyncProperties(KeyframesManager* manager) {
   if (manager == nullptr) {
     return;
@@ -142,9 +182,7 @@ std::unique_ptr<KeyframesManager> KeyframesManager::CloneForRasterAnimation(
       clone_animation.animator->SetAnimationTarget(target);
       std::unique_ptr<KeyframeSet> clone_keyframe_set =
           iter->second->Clone(clone.get());
-      if (!IsMixedAnimation(animation)) {
-        clone_animation.animator->AddListener(clone_keyframe_set.get());
-      }
+      clone_animation.animator->AddListener(clone_keyframe_set.get());
       // CSS lifecycle events are dispatched by the UI-side logical animator.
       // A multi-property animation creates one raster clone per property, so
       // raster clones must not dispatch events.
@@ -201,6 +239,10 @@ void KeyframesManager::StartAnimations(const std::vector<AnimationData>& data) {
                             animation.keyframes_map,
                             &animation.has_percentage_values)) {
         continue;
+      }
+      if (CanRunLifecycleOnly(animation, target_)) {
+        animation.animator->SetFrameUpdateMode(
+            ValueAnimator::FrameUpdateMode::kLifecycleOnly);
       }
       new_animations.push_back(std::move(animation));
     }

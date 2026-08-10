@@ -398,8 +398,13 @@ bool PageView::BeginFrame(
     ScopedTimingRecorder scoped_animation_timing(
         *recorder, FrameTimingKey::kDoAnimationStart,
         FrameTimingKey::kDoAnimationEnd);
-    bool has_visible_animation = animation_handler_->DoAnimationFrame(
-        recorder->GetVsyncTargetTime().ToEpochDelta().ToMilliseconds());
+    const int64_t frame_time =
+        recorder->GetVsyncTargetTime().ToEpochDelta().ToMilliseconds();
+    const bool lifecycle_only =
+        std::exchange(lifecycle_animation_frame_pending_, false) &&
+        animation_handler_->IsLifecycleCallbackDue(frame_time);
+    bool has_visible_animation =
+        animation_handler_->DoAnimationFrame(frame_time, lifecycle_only);
     if (has_visible_animation) {
       RequestNewFrame();
     }
@@ -1460,6 +1465,8 @@ void PageView::RequestNewFrame() {
 }
 
 void PageView::SetupAnimationCallback() {
+  animation_handler_->SetCurrentTimeCallback(
+      []() { return fml::TimePoint::Now().ToEpochDelta().ToMilliseconds(); });
   animation_handler_->SetAnimationCallback([this](int64_t delay) {
     if (delay < 0) {
       RequestNewFrame();
@@ -1475,6 +1482,7 @@ void PageView::SetupAnimationCallback() {
             return;
           }
           auto* page_view = static_cast<PageView*>(weak.get());
+          page_view->lifecycle_animation_frame_pending_ = true;
           page_view->RequestNewFrame();
         },
         fml::TimeDelta::FromMilliseconds(delay));

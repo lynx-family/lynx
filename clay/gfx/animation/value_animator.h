@@ -24,6 +24,7 @@
 
 #include <forward_list>
 #include <memory>
+#include <optional>
 
 #include "clay/gfx/animation/animation_data.h"
 #include "clay/gfx/animation/animation_handler.h"
@@ -44,6 +45,11 @@ class AnimatorTarget;
 class ValueAnimator : public Animator,
                       public AnimationHandler::AnimationFrameCallback {
  public:
+  enum class FrameUpdateMode {
+    kUpdateValues,
+    kLifecycleOnly,
+  };
+
   ~ValueAnimator() override;
   ValueAnimator() = default;
   explicit ValueAnimator(const AnimationData& animation_data);
@@ -287,6 +293,11 @@ class ValueAnimator : public Animator,
    */
   float GetAnimatedFraction();
 
+  // Samples the value-facing fraction at |current_time| without advancing the
+  // animator or notifying update listeners. Returns nullopt when the animation
+  // does not contribute a presentation value in the current fill phase.
+  std::optional<float> GetPresentationFraction(int64_t current_time) const;
+
   void SetCurrentPlayTime(int64_t play_time);
   void SetCurrentFraction(float fraction);
 
@@ -301,6 +312,9 @@ class ValueAnimator : public Animator,
   // or null to use the default handler.
   void SetAnimationHandler(AnimationHandler* animation_handler);
   void SetAnimationTarget(AnimatorTarget* target) { target_ = target; }
+
+  void SetFrameUpdateMode(FrameUpdateMode mode) { frame_update_mode_ = mode; }
+  FrameUpdateMode GetFrameUpdateMode() const { return frame_update_mode_; }
 
   // CSS keyframe animations keep ended forwards/both animators for fill mode.
   // Do not let a later rolled-back frame timestamp restart their lifecycle.
@@ -342,6 +356,7 @@ class ValueAnimator : public Animator,
   virtual std::unique_ptr<ValueAnimator> Clone() const;
 
   bool StartListenersCalled() const { return start_listeners_called_; }
+  bool IsPreparedForPresentation() const { return animation_prepared_; }
 
   void SetStartListenersCalled(bool start_listeners_called) {
     start_listeners_called_ = start_listeners_called;
@@ -370,13 +385,15 @@ class ValueAnimator : public Animator,
  private:
   void InitAnimation();
   void Reset();
-  int GetCurrentIteration(float fraction);
-  float GetCurrentIterationFraction(float fraction, bool in_reverse);
-  float ClampFraction(float fraction);
-  bool ShouldPlayBackward(int iteration, bool in_reverse);
+  int GetCurrentIteration(float fraction) const;
+  float GetCurrentIterationFraction(float fraction, bool in_reverse) const;
+  float ClampFraction(float fraction) const;
+  bool ShouldPlayBackward(int iteration, bool in_reverse) const;
   int64_t GetCurrentPlayTime();
 
   void NotifyStartListeners();
+  void PrepareAnimation();
+  void ApplyBackwardsFill(bool update_values);
   void Start(bool play_backwards);
 
   // the remove param is used to solved to keyframe animation stop when
@@ -508,6 +525,10 @@ class ValueAnimator : public Animator,
    */
   bool start_listeners_called_ = false;
 
+  // Tracks whether listeners have prepared values needed before the first
+  // animation sample. This is separate from the active-phase start event.
+  bool animation_prepared_ = false;
+
   /**
    * Flag that denotes whether the animation is set up and ready to go. Used to
    * set up animation that has not yet been started.
@@ -558,6 +579,8 @@ class ValueAnimator : public Animator,
   bool suppress_self_pulse_requested_ = false;
 
   bool use_monotonic_frame_time_ = false;
+
+  FrameUpdateMode frame_update_mode_ = FrameUpdateMode::kUpdateValues;
 
   /**
    * The time interpolator to be used. The elapsed fraction of the animation

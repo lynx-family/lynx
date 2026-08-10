@@ -175,7 +175,7 @@ void ValueAnimator::SetCurrentFraction(float fraction) {
  * fraction will be in the range of [0, repeat_count_ + 1]. Both current
  * iteration and fraction in the current iteration can be derived from it.
  */
-int ValueAnimator::GetCurrentIteration(float fraction) {
+int ValueAnimator::GetCurrentIteration(float fraction) const {
   fraction = ClampFraction(fraction);
   // If the overall fraction is a positive integer, we consider the current
   // iteration to be complete. In other words, the fraction for the current
@@ -195,7 +195,7 @@ int ValueAnimator::GetCurrentIteration(float fraction) {
  * to 0.f.
  */
 float ValueAnimator::GetCurrentIterationFraction(float fraction,
-                                                 bool in_reverse) {
+                                                 bool in_reverse) const {
   fraction = ClampFraction(fraction);
   int iteration = GetCurrentIteration(fraction);
   float currentFraction = fraction - iteration;
@@ -210,7 +210,7 @@ float ValueAnimator::GetCurrentIterationFraction(float fraction,
  * @param fraction fraction to be clamped
  * @return fraction clamped into the range of [0, repeat_count_ + 1]
  */
-float ValueAnimator::ClampFraction(float fraction) {
+float ValueAnimator::ClampFraction(float fraction) const {
   if (HasNoIterations()) {
     return 0.f;
   }
@@ -227,7 +227,7 @@ float ValueAnimator::ClampFraction(float fraction) {
  * based on 1) whether the entire animation is being reversed, 2) repeat mode
  * applied to the current iteration.
  */
-bool ValueAnimator::ShouldPlayBackward(int iteration, bool in_reverse) {
+bool ValueAnimator::ShouldPlayBackward(int iteration, bool in_reverse) const {
   if (iteration > 0 &&
       (repeat_mode_ == kAlternate || repeat_mode_ == kAlternateReverse) &&
       (iteration < (repeat_count_ + 1) || repeat_count_ == kInfinite)) {
@@ -265,7 +265,8 @@ int64_t ValueAnimator::GetCurrentPlayTime() {
     durationScale = 1.f;
   }
   return static_cast<int64_t>(
-      (GetAnimationHandler()->GetCurrentAnimationTime() - start_time_) /
+      (GetAnimationHandler()->GetCurrentAnimationTimeForControl() -
+       start_time_) /
       durationScale);
 }
 
@@ -287,11 +288,32 @@ void ValueAnimator::SetInterpolator(std::unique_ptr<Interpolator> value) {
 
 void ValueAnimator::NotifyStartListeners() {
   if (!start_listeners_called_) {
+    PrepareAnimation();
     start_listeners_called_ = true;
     std::forward_list<AnimatorListener*> tmp_listeners = listeners_;
     for (AnimatorListener* listener : tmp_listeners) {
       listener->OnAnimationStart(*this);
     }
+  }
+}
+
+void ValueAnimator::PrepareAnimation() {
+  InitAnimation();
+  if (animation_prepared_) {
+    return;
+  }
+  animation_prepared_ = true;
+  std::forward_list<AnimatorListener*> tmp_listeners = listeners_;
+  for (AnimatorListener* listener : tmp_listeners) {
+    listener->OnAnimationPrepare(*this);
+  }
+}
+
+void ValueAnimator::ApplyBackwardsFill(bool update_values) {
+  PrepareAnimation();
+  overall_fraction_ = 0.f;
+  if (update_values) {
+    AnimateValue(GetCurrentIterationFraction(0.f, reversing_));
   }
 }
 
@@ -327,6 +349,7 @@ void ValueAnimator::Start(bool play_backwards) {
   end_listeners_called_ = false;
   paused_ = false;
   running_ = false;
+  animation_prepared_ = false;
   animation_end_requested_ = false;
   // Resets last_frame_time_ when Start() is called, so that if the animation
   // was running, calling Start() would put the animation in the
@@ -338,7 +361,8 @@ void ValueAnimator::Start(bool play_backwards) {
   AddAnimationCallback(0);
 
   const bool should_apply_initial_value =
-      !self_pulse_ || ShouldReceiveAnimationFrame(0, nullptr);
+      !self_pulse_ || (frame_update_mode_ == FrameUpdateMode::kUpdateValues &&
+                       ShouldReceiveAnimationFrame(0, nullptr));
   if (start_delay_ == 0 || seek_fraction_ >= 0 || reversing_) {
     // If there's no start delay, init the animation and notify start listeners
     // right away to be consistent with the previous behavior. Otherwise,
@@ -357,8 +381,14 @@ void ValueAnimator::Start(bool play_backwards) {
   }
 
   if (self_pulse_ && !should_apply_initial_value) {
-    // Hidden self-pulsing animations do not request an initial value update.
-    // Keep lifecycle scheduling in the animation frame time domain.
+    // Animations that skip UI value updates still use the UI animation time
+    // domain for lifecycle events.
+    if (frame_update_mode_ == FrameUpdateMode::kLifecycleOnly) {
+      // The handler may have an old timestamp from before UI vsync was
+      // suspended. The first frame requested by AddAnimationCallback is the
+      // authoritative start of this animation.
+      return;
+    }
     int64_t current_time = GetAnimationHandler()->GetCurrentAnimationTime();
     if (current_time < 0) {
       const int64_t scaled_start_delay = GetScaledStartDelay();
@@ -387,11 +417,10 @@ void ValueAnimator::Cancel() {
   // Only cancel if the animation is actually running or has been started and is
   // about to run Only notify listeners if the animator has actually started
   if ((started_ || running_) && !end_listeners_called_) {
-    if (!running_) {
-      // If it's not yet running, then start listeners weren't called. Call them
-      // now.
-      NotifyStartListeners();
-    }
+    // Internal listeners may need the underlying value for cleanup, but a
+    // delayed animation that never reached its active phase must not emit a
+    // synthetic animationstart before animationcancel.
+    PrepareAnimation();
     std::forward_list<AnimatorListener*> tmp_listeners = listeners_;
     for (AnimatorListener* listener : tmp_listeners) {
       listener->OnAnimationCancel(*this);
@@ -429,7 +458,8 @@ void ValueAnimator::Resume() {
     return;
   }
 
-  int64_t current_time = GetAnimationHandler()->GetCurrentAnimationTime();
+  int64_t current_time =
+      GetAnimationHandler()->GetCurrentAnimationTimeForControl();
   if (current_time < 0) {
     current_time = last_frame_time_ >= 0 ? last_frame_time_ : start_time_;
   }
@@ -448,7 +478,7 @@ void ValueAnimator::Resume() {
   RemoveAnimationCallback();
   AddAnimationCallback(0);
   if (!ShouldReceiveAnimationFrame(current_time, nullptr)) {
-    GetAnimationHandler()->ScheduleLifecycleCallback(current_time);
+    GetAnimationHandler()->RescheduleLifecycleCallback(current_time);
   }
 }
 
@@ -456,7 +486,7 @@ void ValueAnimator::Pause() {
   bool previouslyPaused = paused_;
   Animator::Pause();
   if (!previouslyPaused && paused_) {
-    pause_time_ = GetAnimationHandler()->GetCurrentAnimationTime();
+    pause_time_ = GetAnimationHandler()->GetCurrentAnimationTimeForControl();
     if (pause_time_ < 0) {
       pause_time_ = last_frame_time_ >= 0 ? last_frame_time_ : start_time_;
     }
@@ -467,6 +497,7 @@ void ValueAnimator::Pause() {
     if (!target_ || target_->IsVisibleForAnimationTick()) {
       DoAnimationFrame(pause_time_);
     }
+    GetAnimationHandler()->RescheduleLifecycleCallback(pause_time_);
   }
 }
 
@@ -476,7 +507,8 @@ bool ValueAnimator::IsStarted() { return started_; }
 
 void ValueAnimator::Reverse() {
   if (IsPulsingInternal()) {
-    int64_t current_time = GetAnimationHandler()->GetCurrentAnimationTime();
+    int64_t current_time =
+        GetAnimationHandler()->GetCurrentAnimationTimeForControl();
     int64_t current_play_time = current_time - start_time_;
     int64_t timeLeft = GetScaledDuration() - current_play_time;
     start_time_ = current_time - timeLeft;
@@ -510,6 +542,7 @@ std::unique_ptr<ValueAnimator> ValueAnimator::Clone() const {
   clone->running_ = running_;
   clone->started_ = started_;
   clone->start_listeners_called_ = false;
+  clone->animation_prepared_ = false;
   clone->initialized_ = initialized_;
   clone->animation_end_requested_ = animation_end_requested_;
   clone->duration_ = duration_;
@@ -531,6 +564,7 @@ void ValueAnimator::Reset() {
   running_ = false;
   started_ = false;
   start_listeners_called_ = false;
+  animation_prepared_ = false;
   last_frame_time_ = -1;
   first_frame_time_ = -1;
   start_time_ = -1;
@@ -584,7 +618,7 @@ void ValueAnimator::EndAnimation(bool remove) {
  */
 void ValueAnimator::StartAnimation() {
   animation_end_requested_ = false;
-  InitAnimation();
+  PrepareAnimation();
   running_ = true;
   if (seek_fraction_ >= 0) {
     overall_fraction_ = seek_fraction_;
@@ -628,8 +662,6 @@ bool ValueAnimator::AnimateBasedOnTime(int64_t current_time,
             ? static_cast<float>(current_time - start_time_) / scaledDuration
             : 1.f;
     float lastFraction = overall_fraction_;
-    bool newIteration =
-        static_cast<int>(fraction) > static_cast<int>(lastFraction);
     bool lastIterationFinished =
         (fraction >= repeat_count_ + 1) && (repeat_count_ != kInfinite);
     if (HasNoIterations()) {
@@ -637,13 +669,22 @@ bool ValueAnimator::AnimateBasedOnTime(int64_t current_time,
     } else if (scaledDuration == 0) {
       // 0 duration animator, ignore the repeat count and skip to the end
       done = true;
-    } else if (newIteration && !lastIterationFinished) {
-      // Time to repeat
-      for (auto l : listeners_) {
-        l->OnAnimationRepeat(*this);
+    } else {
+      const int64_t first_crossed_iteration =
+          static_cast<int64_t>(std::floor(lastFraction)) + 1;
+      int64_t last_crossed_iteration =
+          static_cast<int64_t>(std::floor(fraction));
+      if (repeat_count_ != kInfinite) {
+        last_crossed_iteration = std::min(last_crossed_iteration,
+                                          static_cast<int64_t>(repeat_count_));
       }
-    } else if (lastIterationFinished) {
-      done = true;
+      for (int64_t iteration = first_crossed_iteration;
+           iteration <= last_crossed_iteration; ++iteration) {
+        for (auto l : listeners_) {
+          l->OnAnimationRepeat(*this);
+        }
+      }
+      done = lastIterationFinished;
     }
     overall_fraction_ = ClampFraction(fraction);
     if (update_values) {
@@ -738,7 +779,15 @@ bool ValueAnimator::ShouldReceiveAnimationFrame(int64_t current_time,
   if (!started_ || animation_end_requested_ || paused_) {
     return false;
   }
-  if (!target_ || target_->IsVisibleForAnimationTick()) {
+  if (frame_update_mode_ == FrameUpdateMode::kLifecycleOnly &&
+      start_time_ < 0) {
+    // Establish the authoritative UI timeline once before relying on delayed
+    // lifecycle callbacks. DoAnimationFrame suppresses value updates in this
+    // mode.
+    return true;
+  }
+  if (frame_update_mode_ == FrameUpdateMode::kUpdateValues &&
+      (!target_ || target_->IsVisibleForAnimationTick())) {
     return true;
   }
   if (end_listeners_called_) {
@@ -776,7 +825,7 @@ bool ValueAnimator::ShouldReceiveAnimationFrame(int64_t current_time,
     end_time = lifecycle_start_time + scaled_duration * (repeat_count_ + 1);
   }
 
-  if (repeat_count_ != 0 &&
+  if (repeat_count_ != 0 && target_ &&
       target_->HasAnimationEvent(kClayEventTypeAnimationRepeat)) {
     int64_t next_iteration =
         static_cast<int64_t>(std::floor(overall_fraction_)) + 1;
@@ -822,17 +871,23 @@ void ValueAnimator::CommitStartTimeOnSkippedFrame(int64_t frame_time) {
  */
 bool ValueAnimator::DoAnimationFrame(int64_t frame_time, bool update_values) {
   frame_time = ClampFrameTime(frame_time);
+  update_values =
+      update_values && frame_update_mode_ == FrameUpdateMode::kUpdateValues;
   if (!update_values) {
     if (started_ && !animation_end_requested_ && !end_listeners_called_) {
       CommitStartTimeOnSkippedFrame(frame_time);
 
       bool fill_backwards = fill_mode_ & kBackward;
       if (!running_) {
-        if (!fill_backwards && start_time_ > frame_time &&
-            seek_fraction_ == -1) {
+        if (start_time_ > frame_time && seek_fraction_ == -1) {
+          if (fill_backwards) {
+            ApplyBackwardsFill(false);
+          }
           return false;
         }
         StartAnimation();
+      } else {
+        PrepareAnimation();
       }
 
       last_frame_time_ = frame_time;
@@ -874,9 +929,13 @@ bool ValueAnimator::DoAnimationFrame(int64_t frame_time, bool update_values) {
       pause_time_ = frame_time;
     }
 
-    if (pause_time_ >= start_time_ || fill_backwards) {
-      running_ = true;
+    if (pause_time_ >= start_time_) {
+      if (!running_) {
+        StartAnimation();
+      }
       AnimateBasedOnTime(std::max(pause_time_, start_time_));
+    } else if (fill_backwards) {
+      ApplyBackwardsFill(true);
     }
     return false;
   }
@@ -885,16 +944,21 @@ bool ValueAnimator::DoAnimationFrame(int64_t frame_time, bool update_values) {
     // If not running, that means the animation is in the start delay phase of a
     // forward running animation. In the case of reversing, we want to run start
     // delay in the end.
-    if (!fill_backwards && start_time_ > frame_time && seek_fraction_ == -1) {
+    if (start_time_ > frame_time && seek_fraction_ == -1) {
       // This is when no seek fraction is set during start delay. If developers
       // change the seek fraction during the delay, animation will start from
       // the seeked position right away.
+      if (fill_backwards) {
+        ApplyBackwardsFill(true);
+        last_frame_time_ = frame_time;
+      }
       return false;
-    } else {
-      // If running_ is not set by now, that means non-zero start delay,
-      // no seeking, not reversing. At this point, start delay has passed.
-      StartAnimation();
     }
+    // If running_ is not set by now, that means non-zero start delay,
+    // no seeking, not reversing. At this point, start delay has passed.
+    StartAnimation();
+  } else {
+    PrepareAnimation();
   }
 
   if (!start_listeners_called_) {
@@ -990,6 +1054,53 @@ float ValueAnimator::GetAnimatedFraction() {
   }
 }
 
+std::optional<float> ValueAnimator::GetPresentationFraction(
+    int64_t current_time) const {
+  if ((!started_ && !running_) || animation_end_requested_) {
+    return std::nullopt;
+  }
+
+  int64_t sample_time =
+      paused_ && pause_time_ >= 0 ? pause_time_ : current_time;
+  float overall_fraction = 0.f;
+  if (start_time_ < 0) {
+    if (!running_ && !(fill_mode_ & kBackward)) {
+      return std::nullopt;
+    }
+  } else if (sample_time < start_time_) {
+    if (!(fill_mode_ & kBackward)) {
+      return std::nullopt;
+    }
+  } else {
+    const int64_t scaled_duration = GetScaledDuration();
+    if (HasNoIterations()) {
+      overall_fraction = 0.f;
+    } else if (scaled_duration <= 0) {
+      overall_fraction = repeat_count_ == kInfinite ? 1.f : repeat_count_ + 1.f;
+    } else {
+      overall_fraction =
+          static_cast<float>(sample_time - start_time_) / scaled_duration;
+    }
+
+    const bool finished =
+        repeat_count_ != kInfinite &&
+        (HasNoIterations() || overall_fraction >= repeat_count_ + 1.f);
+    if (finished && !(fill_mode_ & kForwards)) {
+      return std::nullopt;
+    }
+  }
+
+  overall_fraction = ClampFraction(overall_fraction);
+  float fraction = GetCurrentIterationFraction(overall_fraction, reversing_);
+  if (interpolator_) {
+    fraction = interpolator_->Interpolate(fraction);
+  }
+  if (repeat_mode_ == kReverse || repeat_mode_ == kAlternateReverse) {
+    fraction = 1.f - fraction;
+  }
+  return fraction;
+}
+
 // Return the number of animations currently running.
 int ValueAnimator::GetCurrentAnimationsCount() {
   return GetAnimationHandler()->GetAnimationCount();
@@ -1078,6 +1189,7 @@ void ValueAnimator::RestartAnimationIfNeeded(int64_t current_time) {
   if (has_reached_start && !has_finished && end_listeners_called_) {
     running_ = true;
     start_listeners_called_ = false;
+    animation_prepared_ = false;
     end_listeners_called_ = false;
     // When the fillmode changes from forwards to non-forwards we need to
     // set view value with original_value_

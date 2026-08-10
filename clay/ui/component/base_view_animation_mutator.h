@@ -50,6 +50,7 @@ class BaseViewAnimationMutator : public AnimatorTarget,
 
   AnimationHandler* GetAnimationHandler() override;
   bool IsVisibleForAnimationTick() override;
+  bool CanRunAnimationOnRaster(ClayAnimationPropertyType type) const override;
   bool HasAnimationEvent(ClayEventType event_type) const override;
 
   FloatSize PercentageResolutionSize() override;
