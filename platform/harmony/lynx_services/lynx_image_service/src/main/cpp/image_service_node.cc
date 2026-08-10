@@ -44,11 +44,11 @@ static tasm::harmony::LynxImageOrigin GetImageOrigin(
 
 ImageServiceNode::ImageServiceNode(ImageServiceHarmony* service)
     : ImageNode(), service_(service) {
-  image_knife_option_ = std::make_shared<ImageKnifePro::ImageKnifeOption>();
+  auto option = std::make_shared<ImageKnifePro::ImageKnifeOption>();
   image_knife_animator_option_ =
       std::make_shared<ImageKnifePro::AnimatorOption>();
   image_knife_node_ =
-      ImageKnifePro::ImageKnifeNode::CreateImageKnifeNode(image_knife_option_);
+      ImageKnifePro::ImageKnifeNode::CreateImageKnifeNode(std::move(option));
 }
 
 ImageServiceNode::~ImageServiceNode() { image_knife_node_->DisposeNode(); }
@@ -86,35 +86,33 @@ void ImageServiceNode::UpdateImageSource(
 }
 
 void ImageServiceNode::FetchImage(tasm::harmony::ImageRequestInfo info) {
-  image_knife_option_->objectFit = info.mode;
-  image_knife_option_->downSampling =
+  // ImageKnife retains options for asynchronous requests. Use a new instance
+  // so updating this request cannot mutate an in-flight request.
+  auto option = std::make_shared<ImageKnifePro::ImageKnifeOption>();
+  option->onLoadListener = image_knife_load_listener_;
+
+  option->objectFit = info.mode;
+  option->downSampling =
       info.downsampling ? ImageKnifePro::DownSamplingStrategy::FIT_CENTER_MEMORY
                         : ImageKnifePro::DownSamplingStrategy::DEFAULT;
-  UpdateImageSource(service_, image_knife_option_, info.url,
-                    image_knife_option_->loadSrc);
-  UpdateImageSource(service_, image_knife_option_, info.placeholder,
-                    image_knife_option_->placeholderSrc);
-  image_knife_option_->fallbackUrls = std::move(info.fallback_urls);
-  image_knife_option_->fileCacheName = std::move(info.file_cache_name);
-  if (info.processors.empty()) {
-    image_knife_option_->transformation = nullptr;
-  } else {
-    image_knife_option_->transformation =
+  UpdateImageSource(service_, option, info.url, option->loadSrc);
+  UpdateImageSource(service_, option, info.placeholder, option->placeholderSrc);
+  option->fallbackUrls = std::move(info.fallback_urls);
+  option->fileCacheName = std::move(info.file_cache_name);
+  if (!info.processors.empty()) {
+    option->transformation =
         std::make_shared<ImageTransform>(std::move(info.processors));
   }
-  image_knife_node_->Update(image_knife_option_);
+
+  image_knife_node_->Update(std::move(option));
 }
 
 void ImageServiceNode::InitImageLoadListener(
     const std::weak_ptr<tasm::harmony::ImageLoadListener>& listener) {
-  if (!load_listener_.expired()) {
-    return;
-  }
-  load_listener_ = listener;
-  image_knife_option_->onLoadListener =
+  image_knife_load_listener_ =
       std::make_shared<ImageKnifePro::OnLoadCallBack>();
-  image_knife_option_->onLoadListener->onLoadSuccess =
-      [weak_listener = load_listener_](const ImageKnifePro::ImageInfo& info) {
+  image_knife_load_listener_->onLoadSuccess =
+      [weak_listener = listener](const ImageKnifePro::ImageInfo& info) {
         auto listener = weak_listener.lock();
         if (!listener) {
           return;
@@ -128,9 +126,9 @@ void ImageServiceNode::InitImageLoadListener(
           listener->OnImageMonitorInfo(monitorInfo);
         }
       };
-  image_knife_option_->onLoadListener->onLoadFailed =
-      [weak_listener = load_listener_](const std::string& err,
-                                       const ImageKnifePro::ImageInfo& info) {
+  image_knife_load_listener_->onLoadFailed =
+      [weak_listener = listener](const std::string& err,
+                                 const ImageKnifePro::ImageInfo& info) {
         auto listener = weak_listener.lock();
         if (!listener) {
           return;
@@ -142,28 +140,21 @@ void ImageServiceNode::InitImageLoadListener(
 
 void ImageServiceNode::InitAnimationListener(
     const std::weak_ptr<tasm::harmony::AnimationListener>& listener) {
-  if (!animation_listener_.expired()) {
-    return;
-  }
-  animation_listener_ = listener;
-  image_knife_animator_option_->onStart = [weak_listener =
-                                               animation_listener_]() {
+  image_knife_animator_option_->onStart = [weak_listener = listener]() {
     auto listener = weak_listener.lock();
     if (!listener) {
       return;
     }
     listener->OnAnimationStart();
   };
-  image_knife_animator_option_->onFinish = [weak_listener =
-                                                animation_listener_]() {
+  image_knife_animator_option_->onFinish = [weak_listener = listener]() {
     auto listener = weak_listener.lock();
     if (!listener) {
       return;
     }
     listener->OnAnimationFinish();
   };
-  image_knife_animator_option_->onRepeat = [weak_listener =
-                                                animation_listener_]() {
+  image_knife_animator_option_->onRepeat = [weak_listener = listener]() {
     auto listener = weak_listener.lock();
     if (!listener) {
       return;
