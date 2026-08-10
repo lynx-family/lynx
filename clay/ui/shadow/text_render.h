@@ -20,6 +20,7 @@
 
 namespace clay {
 
+class PageView;
 class TextShadowNode;
 
 struct LineInfo {
@@ -85,7 +86,8 @@ class TextRender {
                               ShadowLayoutContextMeasure* context);
   void ProcessTruncationContent(size_t& display_glyph_num, ShadowNode* node);
 
-  static clay::Value GetTextInfo(const char* text, const clay::Value& params);
+  static clay::Value GetTextInfo(const char* text, const clay::Value& params,
+                                 const PageView* page_view = nullptr);
 
   static void MeasureText(const std::string& text, bool show_content,
                           const std::optional<double>& max_width,

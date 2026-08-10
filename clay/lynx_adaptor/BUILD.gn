@@ -5,6 +5,36 @@
 import("../common/config.gni")
 import("./native_module/build.gni")
 
+if (enable_unittests) {
+  static_library("get_text_info_unittest_support") {
+    testonly = true
+    sources = [
+      "clay_value.cc",
+      "native_module/lynx_text_info_module.cc",
+      "painting_context_clay.cc",
+      "perf_controller_clay.cc",
+      "prop_bundle_impl.cc",
+      "value_converter.cc",
+    ]
+
+    public_configs = [
+      "../../clay:config",
+      "../../core:lynx_public_config",
+      "../../platform/embedder:public_api",
+    ]
+
+    public_deps = [
+      "../fml:fml",
+      "../ui:ui",
+    ]
+
+    defines = []
+    if (is_mac || is_android || is_ios) {
+      defines += [ "TRACE_EVENT_HIDE_MACROS" ]
+    }
+  }
+}
+
 source_set("resource_loader_embedder") {
   sources = [
     "resource_loader_embedder.cc",
