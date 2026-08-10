@@ -25,12 +25,6 @@ Contains the native Windows apps that integrated Lynx. See [Windows Build Guide]
 ### darwin/macos/
 Contains the native macOS apps that integrated Lynx. See [macOS Build Guide](darwin/macos/README.md) for instructions.
 
-## Sparkling containers on iOS
-
-The iOS Explorer's optional full-Sparkling launch path, container classification,
-Legacy parameter mapping, source ownership, and route-entry inventory are
-documented in [Use Sparkling containers in iOS Lynx Explorer](docs/ios-sparkling-container.md).
-
 ## Developing the Bundled Lynx Projects
 
 If you already have a built Lynx Explorer app (or any other Lynx-integrated environment), you can focus on developing the Lynx screens that run inside it. There are currently two screens: 

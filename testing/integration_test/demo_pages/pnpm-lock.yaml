@@ -56,40 +56,6 @@ importers:
       '@types/react': 18.3.18
       prettier: 3.4.2
 
-  nav-basic:
-    specifiers:
-      '@lynx-js/react': 0.105.0
-      '@lynx-js/react-rsbuild-plugin': 0.9.8
-      '@lynx-js/rspeedy': 0.9.3
-      '@types/react': ^18.3.2
-      prettier: 3.4.2
-      sparkling-navigation: 2.1.0-rc.12
-    dependencies:
-      '@lynx-js/react': 0.105.0_@types+react@18.3.18
-      sparkling-navigation: 2.1.0-rc.12
-    devDependencies:
-      '@lynx-js/react-rsbuild-plugin': 0.9.8_@lynx-js+react@0.105.0
-      '@lynx-js/rspeedy': 0.9.3
-      '@types/react': 18.3.18
-      prettier: 3.4.2
-
-  video:
-    specifiers:
-      '@lynx-js/qrcode-rsbuild-plugin': ^0.3.3
-      '@lynx-js/react': 0.105.0
-      '@lynx-js/react-rsbuild-plugin': 0.9.8
-      '@lynx-js/rspeedy': 0.9.3
-      '@types/react': ^18.3.2
-      prettier: 3.4.2
-    dependencies:
-      '@lynx-js/react': 0.105.0_@types+react@18.3.18
-    devDependencies:
-      '@lynx-js/qrcode-rsbuild-plugin': 0.3.3
-      '@lynx-js/react-rsbuild-plugin': 0.9.8_@lynx-js+react@0.105.0
-      '@lynx-js/rspeedy': 0.9.3
-      '@types/react': 18.3.18
-      prettier: 3.4.2
-
 packages:
 
   /@babel/code-frame/7.26.2:
@@ -596,7 +562,6 @@ packages:
     resolution: {integrity: sha512-xleG9XJp6BoURNhSrbz9Wnig2I3xQxKj3Sk/MynPYXMGVBF9wUbgUpvrdIlm5wenwxGpLftpPdXkI9bkf6+5JQ==}
     cpu: [arm64]
     os: [linux]
-    libc: [glibc]
     requiresBuild: true
     dev: true
     optional: true
@@ -605,7 +570,6 @@ packages:
     resolution: {integrity: sha512-P27mxcL0cu5wBDFjoQrvRIpisraoA+hmVuOoeCvC/FT7aUIfLNzt94eCLZqAtZ7J7kNFoDXgJwCx3gAf1D0JdA==}
     cpu: [arm64]
     os: [linux]
-    libc: [musl]
     requiresBuild: true
     dev: true
     optional: true
@@ -614,7 +578,6 @@ packages:
     resolution: {integrity: sha512-vDXC/29U26uYaSNJ9wttdykz+VPU6qbpBMHjS6aQWtp3kUYnI3w11f4HvzZYr9c1UbfQBFemljBuz/3elQPrNQ==}
     cpu: [x64]
     os: [linux]
-    libc: [glibc]
     requiresBuild: true
     dev: true
     optional: true
@@ -623,7 +586,6 @@ packages:
     resolution: {integrity: sha512-utNCoMVmveoGxVuswugsKpyToP5wAk/8tN5CiuWgNsnYc8szFfXEENJet1x1YmxB8C+TqqbiNpsgwba5ckNFdw==}
     cpu: [x64]
     os: [linux]
-    libc: [musl]
     requiresBuild: true
     dev: true
     optional: true
@@ -948,7 +910,7 @@ packages:
     engines: {node: ^6 || ^7 || ^8 || ^9 || ^10 || ^11 || ^12 || >=13.7}
     hasBin: true
     dependencies:
-      caniuse-lite: 1.0.30001715
+      caniuse-lite: 1.0.30001692
       electron-to-chromium: 1.5.109
       node-releases: 2.0.19
       update-browserslist-db: 1.1.3_browserslist@4.24.4
@@ -989,9 +951,13 @@ packages:
     resolution: {integrity: sha512-bsTwuIg/BZZK/vreVTYYbSWoe2F+71P7K5QGEX+pT250DZbfU1MQ5prOKpPR+LL6uWKK3KMwMCAS74QB3Um1uw==}
     dependencies:
       browserslist: 4.24.4
-      caniuse-lite: 1.0.30001715
+      caniuse-lite: 1.0.30001692
       lodash.memoize: 4.1.2
       lodash.uniq: 4.5.0
+    dev: true
+
+  /caniuse-lite/1.0.30001692:
+    resolution: {integrity: sha512-A95VKan0kdtrsnMubMKxEKUKImOPSuCpYgxSQBo036P5YYgVIcOYJEgt/txJWqObiRQeISNCfef9nvlQ0vbV7A==}
     dev: true
 
   /caniuse-lite/1.0.30001715:
@@ -2782,16 +2748,6 @@ packages:
     resolution: {integrity: sha512-l3BikUxvPOcn5E74dZiq5BGsTb5yEwhaTSzccU6t4sDOH8NWJCstKO5QT2CvtFoK6F0saL7p9xHAqHOlCPJygA==}
     engines: {node: '>= 8'}
     dev: true
-
-  /sparkling-method/2.1.0-rc.12:
-    resolution: {integrity: sha512-TfSMzFS66MYJWZG4Drn5gNCMtDqkJIvVNHhVu6DIyVxjFhIgdRiXqYsDwLh8VIQlHnTQnuNmONVEtHPzsEWaFw==}
-    dev: false
-
-  /sparkling-navigation/2.1.0-rc.12:
-    resolution: {integrity: sha512-kAQ5jZsjAixrQuoCBiiojY4jNxyilrhP/ZAjg9DvCmqdOQME73rC1+BR8zax1cyxLeAaa0fxcztAS6exA78qnA==}
-    dependencies:
-      sparkling-method: 2.1.0-rc.12
-    dev: false
 
   /statuses/1.5.0:
     resolution: {integrity: sha512-OpZ3zP+jT1PI7I8nemJX4AKmAX070ZkYPVWV/AaKTJl+tXCTGyVdC1a4SL8RUQYEwk/f34ZX8UTykN68FwrqAA==}

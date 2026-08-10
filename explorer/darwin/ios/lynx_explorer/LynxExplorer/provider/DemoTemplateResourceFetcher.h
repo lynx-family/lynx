@@ -2,7 +2,7 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#import <Lynx/LynxTemplateResourceFetcher.h>
+#import "LynxTemplateResourceFetcher.h"
 
 @interface DemoTemplateResourceFetcher : NSObject <LynxTemplateResourceFetcher>
 

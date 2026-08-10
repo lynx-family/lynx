@@ -9,6 +9,8 @@ NS_ASSUME_NONNULL_BEGIN
 
 @interface UIHelper : NSObject
 
++ (UIViewController *)getTopViewController;
+
 + (UIColor *)colorWithHexString:(NSString *)hexString;
 
 @end

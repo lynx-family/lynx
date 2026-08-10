@@ -1,34 +1,36 @@
 // Copyright 2024 The Lynx Authors. All rights reserved.
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
-// cspell:ignore containerid containertype explorersupportsexplicitrouteownership
-// cspell:ignore explorersupportssparklingcontainer sparklingavailable
-// cspell:ignore explorersparklingversion sparklingnavigation spkcontainerid spkpipe
 
 #import "LynxViewShellViewController.h"
+#if __has_include("Sparkling-umbrella.h")
+#import "Sparkling-umbrella.h"
+#define HAS_SPARKLING 1
+#endif
 #import <Lynx/LynxEnv.h>
 #import <Lynx/LynxProviderRegistry.h>
+#import <Lynx/LynxView+Identify.h>
 #import <Lynx/LynxView.h>
 #import "DemoGenericResourceFetcher.h"
 #import "DemoMediaResourceFetcher.h"
 #import "DemoTemplateResourceFetcher.h"
+#import "LynxExplorer-Swift.h"
 #import "LynxExplorerInput.h"
-#import "LynxExplorerSwiftInterop.h"
 #import "LynxSettingManager.h"
 #import "UIHelper.h"
 
-NSString *const kParamHiddenNav = @"hidden_nav";
-NSString *const kParamFullScreen = @"fullscreen";
-NSString *const kParamTitle = @"title";
-NSString *const kParamTitleColor = @"title_color";
-NSString *const kParamBarColor = @"bar_color";
-NSString *const kParamBackButtonStyle = @"back_button_style";
+const NSString *const kParamHiddenNav = @"hidden_nav";
+const NSString *const kParamFullScreen = @"fullscreen";
+const NSString *const kParamTitle = @"title";
+const NSString *const kParamTitleColor = @"title_color";
+const NSString *const kParamBarColor = @"bar_color";
+const NSString *const kParamBackButtonStyle = @"back_button_style";
 NSString *const kBackButtonStyleLight = @"light";
 NSString *const kBackButtonStyleDark = @"dark";
 NSString *const kBackButtonImageLight = @"back_light";
 NSString *const kBackButtonImageDark = @"back_dark";
 
-@interface LynxViewShellViewController () <LynxViewLifecycle> {
+@interface LynxViewShellViewController () {
   LynxExtraTiming *extraTiming;
 }
 
@@ -38,170 +40,14 @@ NSString *const kBackButtonImageDark = @"back_dark";
 @property(nonatomic, strong) UIColor *titleColor;
 @property(nonatomic, strong) UIColor *barColor;
 @property(nonatomic, strong) UIView *previousViewControllerView;
-@property(nonatomic, strong) LXRouteCoordinator *interactiveBackCoordinator;
-@property(nonatomic, assign) BOOL interactiveBackReserved;
 @property(nonatomic, copy) NSString *frontendTheme;
-@property(nonatomic, strong) LynxView *lynxView;
-@property(nonatomic, strong) ExplorerLegacyLoadingView *loadingView;
-@property(nonatomic, strong) UIView *statusView;
-@property(nonatomic, strong) UIView *barView;
-@property(nonatomic, strong) UILabel *titleLabel;
-@property(nonatomic, assign) CGSize currentScreenMetricsSize;
-@property(nonatomic, assign) CGSize currentViewportSize;
-@property(nonatomic, assign) UIEdgeInsets currentSafeAreaInsets;
 
 @end
 
 @implementation LynxViewShellViewController
 
-// Reserved-capability checks use the shared +[ExplorerReservedKeys
-// isReservedCapabilityKey:] (Swift) so this boundary stays in lockstep with
-// GlobalPropsMerger and LegacyContainerLauncher.
-
-static NSString *LegacyGlobalPropKey(NSString *key) {
-  NSUInteger leadingUnderline = 0;
-  while (leadingUnderline < key.length && [key characterAtIndex:leadingUnderline] == '_') {
-    leadingUnderline++;
-  }
-  NSString *trimmedKey = [key substringFromIndex:leadingUnderline];
-  if (trimmedKey.length == 0) {
-    return key;
-  }
-
-  NSArray<NSString *> *parts = [trimmedKey componentsSeparatedByString:@"_"];
-  NSMutableString *propsKey = [NSMutableString stringWithString:parts[0]];
-  for (NSUInteger index = 1; index < parts.count; index++) {
-    NSString *part = parts[index];
-    if (part.length == 0) {
-      continue;
-    }
-    NSString *capitalizedPart =
-        [part stringByReplacingCharactersInRange:NSMakeRange(0, 1)
-                                      withString:[part substringToIndex:1].uppercaseString];
-    [propsKey appendString:capitalizedPart];
-  }
-  return propsKey;
-}
-
-- (BOOL)hasExplicitViewportSize {
-  return [self.params.allKeys containsObject:@"height"] &&
-         [self.params.allKeys containsObject:@"width"];
-}
-
-- (CGSize)screenSizeForCurrentBounds {
-  if ([self hasExplicitViewportSize]) {
-    NSNumber *width = [self.params objectForKey:@"width"];    // Physical pixel
-    NSNumber *height = [self.params objectForKey:@"height"];  // Physical pixel
-    CGFloat realScale = [[UIScreen mainScreen] scale];
-    return CGSizeMake([width intValue] / realScale, [height intValue] / realScale);
-  }
-  return self.view.bounds.size;
-}
-
-- (CGFloat)statusBarHeight {
-  CGFloat statusBarHeight = [UIApplication sharedApplication].statusBarFrame.size.height;
-  if (statusBarHeight > 0) {
-    return statusBarHeight;
-  }
-  return [self statusBarHeightForCurrentLayout];
-}
-
-- (CGFloat)statusBarHeightForCurrentLayout {
-  if (@available(iOS 13.0, *)) {
-    UIWindowScene *windowScene = self.view.window.windowScene;
-    CGFloat statusBarHeight = windowScene.statusBarManager.statusBarFrame.size.height;
-    if (statusBarHeight > 0) {
-      return statusBarHeight;
-    }
-  }
-  CGFloat statusBarHeight = [UIApplication sharedApplication].statusBarFrame.size.height;
-  if (statusBarHeight > 0) {
-    return statusBarHeight;
-  }
-  return [self isNotchScreen] ? 44 : 20;
-}
-
-- (UIEdgeInsets)safeAreaInsetsForCurrentLayout {
-  if (@available(iOS 11.0, *)) {
-    UIEdgeInsets safeAreaInsets = self.view.safeAreaInsets;
-    if (!UIEdgeInsetsEqualToEdgeInsets(safeAreaInsets, UIEdgeInsetsZero)) {
-      return safeAreaInsets;
-    }
-    UIWindow *window = self.view.window;
-    if (window) {
-      safeAreaInsets = window.safeAreaInsets;
-      if (!UIEdgeInsetsEqualToEdgeInsets(safeAreaInsets, UIEdgeInsetsZero)) {
-        return safeAreaInsets;
-      }
-    }
-  }
-  return UIEdgeInsetsMake([self statusBarHeightForCurrentLayout], 0, [self isNotchScreen] ? 34 : 0,
-                          0);
-}
-
-- (CGFloat)navigationBarHeight {
-  return self.navigationController.navigationBar.frame.size.height;
-}
-
-- (CGRect)lynxViewFrameForScreenSize:(CGSize)screenSize {
-  CGFloat y = 0;
-  CGFloat height = screenSize.height;
-  if (!self.fullScreen) {
-    CGFloat statusBarHeight = [self statusBarHeight];
-    y += statusBarHeight;
-    height -= statusBarHeight;
-    if (!self.hiddenNav) {
-      CGFloat navigationBarHeight = [self navigationBarHeight];
-      y += navigationBarHeight;
-      height -= navigationBarHeight;
-    }
-  }
-  return CGRectMake(0, y, screenSize.width, MAX(height, 0));
-}
-
-- (void)layoutNavigationForScreenSize:(CGSize)screenSize {
-  CGFloat statusH = [self statusBarHeight];
-  CGFloat navH = [self navigationBarHeight];
-
-  self.statusView.frame = CGRectMake(0, 0, screenSize.width, statusH);
-  self.barView.frame = CGRectMake(0, statusH, screenSize.width, navH);
-  self.titleLabel.frame = CGRectMake(navH, 0, MAX(screenSize.width - 2 * navH, 0), navH);
-}
-
-- (void)updateLynxViewLayoutIfNeeded {
-  if (!self.lynxView) {
-    return;
-  }
-
-  CGSize screenSize = [self screenSizeForCurrentBounds];
-  CGRect lynxViewFrame = [self lynxViewFrameForScreenSize:screenSize];
-  CGSize viewportSize = lynxViewFrame.size;
-  UIEdgeInsets safeAreaInsets = [self safeAreaInsetsForCurrentLayout];
-
-  [self layoutNavigationForScreenSize:screenSize];
-  self.lynxView.frame = lynxViewFrame;
-  [self.loadingView updateFrame:lynxViewFrame];
-
-  if (CGSizeEqualToSize(self.currentScreenMetricsSize, screenSize) &&
-      CGSizeEqualToSize(self.currentViewportSize, viewportSize) &&
-      UIEdgeInsetsEqualToEdgeInsets(self.currentSafeAreaInsets, safeAreaInsets)) {
-    return;
-  }
-
-  self.currentScreenMetricsSize = screenSize;
-  self.currentViewportSize = viewportSize;
-  self.currentSafeAreaInsets = safeAreaInsets;
-  [self.lynxView updateScreenMetricsWithWidth:screenSize.width height:screenSize.height];
-  [self.lynxView updateViewportWithPreferredLayoutWidth:viewportSize.width
-                                  preferredLayoutHeight:viewportSize.height];
-  [self.lynxView updateGlobalPropsWithTemplateData:[self getGlobalPropsForScreenSize:screenSize]];
-}
-
 - (id)init {
   if (self = [super init]) {
-    self.params = @{};
-    self.commonGlobalProps = @{};
-    self.pageGlobalProps = @{};
     self.hiddenNav = NO;
     self.fullScreen = NO;
     self.backButtonImageName = kBackButtonImageLight;
@@ -214,30 +60,8 @@ static NSString *LegacyGlobalPropKey(NSString *key) {
   return self;
 }
 
-- (instancetype)initWithLegacySourceURL:(NSString *)sourceURL
-                             parameters:(NSDictionary<NSString *, id> *)parameters {
-  self = [self init];
-  if (self) {
-    LocalBundleResult localResult =
-        [DemoTemplateResourceFetcher readLocalBundleFromResource:sourceURL];
-    if (localResult.isLocalScheme) {
-      self.url = localResult.url;
-      self.data = localResult.data;
-    } else {
-      self.url = sourceURL;
-      self.data = nil;
-    }
-    self.params = [parameters copy];
-  }
-  return self;
-}
-
 - (void)viewDidLoad {
   [super viewDidLoad];
-  [[NSNotificationCenter defaultCenter] addObserver:self
-                                           selector:@selector(explorerThemePreferenceDidChange:)
-                                               name:@"ExplorerThemePreferenceDidChange"
-                                             object:nil];
   extraTiming = [[LynxExtraTiming alloc] init];
   extraTiming.openTime = [[NSDate date] timeIntervalSince1970] * 1000;
   // Do any additional setup after loading the view.
@@ -250,21 +74,6 @@ static NSString *LegacyGlobalPropKey(NSString *key) {
   [self loadLynxViewWithUrl:self.url templateData:self.data];
 }
 
-- (void)dealloc {
-  [[NSNotificationCenter defaultCenter] removeObserver:self];
-}
-
-- (void)explorerThemePreferenceDidChange:(NSNotification *)notification {
-  if (self.lynxView == nil) {
-    return;
-  }
-  CGSize screenSize = self.currentScreenMetricsSize;
-  if (CGSizeEqualToSize(screenSize, CGSizeZero)) {
-    screenSize = UIScreen.mainScreen.bounds.size;
-  }
-  [self.lynxView updateGlobalPropsWithTemplateData:[self getGlobalPropsForScreenSize:screenSize]];
-}
-
 - (void)viewWillAppear:(BOOL)animated {
   [super viewWillAppear:animated];
   [self.navigationController setNavigationBarHidden:YES animated:NO];
@@ -272,85 +81,62 @@ static NSString *LegacyGlobalPropKey(NSString *key) {
 
 - (LynxTemplateData *)getGlobalPropsFromParams {
   NSMutableDictionary *params = [NSMutableDictionary dictionary];
-  for (NSString *key in self.commonGlobalProps) {
-    if (![ExplorerReservedKeys isReservedCapabilityKey:key]) {
-      [params setObject:self.commonGlobalProps[key] forKey:key];
-    }
-  }
   for (NSString *key in self.params) {
-    if ([ExplorerReservedKeys isReservedCapabilityKey:key]) {
+    id value = self.params[key];
+
+    // 1. remove redundant '_'
+    NSUInteger leadingUnderline = 0;
+    while (leadingUnderline < key.length && [key characterAtIndex:leadingUnderline] == '_') {
+      leadingUnderline++;
+    }
+    NSString *trimmedKey = [key substringFromIndex:leadingUnderline];
+    if (trimmedKey.length == 0) {
+      [params setObject:value forKey:key];
       continue;
     }
-    id value = self.params[key];
-    [params setObject:value forKey:LegacyGlobalPropKey(key)];
-  }
-  for (NSString *key in self.pageGlobalProps) {
-    if (![ExplorerReservedKeys isReservedCapabilityKey:key]) {
-      [params setObject:self.pageGlobalProps[key] forKey:key];
+
+    // 2. split by underscores and convert to camel case
+    NSArray<NSString *> *parts = [trimmedKey componentsSeparatedByString:@"_"];
+    NSMutableString *propsKey = [NSMutableString stringWithString:parts[0]];
+
+    for (NSUInteger i = 1; i < parts.count; i++) {
+      NSString *part = parts[i];
+      if (part.length == 0) {
+        continue;
+      }
+      NSString *capitalizedPart =
+          [part stringByReplacingCharactersInRange:NSMakeRange(0, 1)
+                                        withString:[part substringToIndex:1].uppercaseString];
+      [propsKey appendString:capitalizedPart];
     }
+    [params setObject:value forKey:propsKey];
   }
 
   LynxTemplateData *globalProps = [[LynxTemplateData alloc] initWithDictionary:params];
   return globalProps;
 }
 
-- (LynxTemplateData *)initialTemplateData {
-  NSDictionary<NSString *, id> *data = self.launchInitialData;
-  if (!data) {
-    data = @{@"mockData" : @"Hello Lynx Explorer"};
-  }
-  return [[LynxTemplateData alloc] initWithDictionary:data];
-}
-
-- (LynxTemplateData *)getGlobalPropsForScreenSize:(CGSize)screenSize {
-  LynxTemplateData *globalProps = [self getGlobalPropsFromParams];
-  [globalProps updateBool:[LXRouteCoordinator supportsExplicitRouteOwnership]
-                   forKey:@"explorerSupportsExplicitRouteOwnership"];
-  [globalProps updateBool:[LXRouteCoordinator supportsSparklingContainer]
-                   forKey:@"explorerSupportsSparklingContainer"];
-  NSString *preferredContainer =
-      [[NSUserDefaults standardUserDefaults] stringForKey:@"preferredContainer"];
-  if (preferredContainer.length == 0) {
-    preferredContainer =
-        [[NSUserDefaults standardUserDefaults] stringForKey:@"qrContainerPreference"];
-  }
-  if (![preferredContainer isEqualToString:@"sparkling"]) {
-    preferredContainer = @"legacy";
-  }
-  [globalProps updateObject:preferredContainer forKey:@"explorerPreferredContainer"];
-  NSString *sparklingVersion = [LXRouteCoordinator sparklingVersion];
-  if (sparklingVersion.length > 0) {
-    [globalProps updateObject:sparklingVersion forKey:@"explorerSparklingVersion"];
-  }
-  [globalProps updateBool:[self isNotchScreen] forKey:@"isNotchScreen"];
-  [globalProps updateDouble:screenSize.height forKey:@"screenHeight"];
-  [globalProps updateDouble:screenSize.width forKey:@"screenWidth"];
-  UIEdgeInsets safeAreaInsets = [self safeAreaInsetsForCurrentLayout];
-  [globalProps updateDouble:safeAreaInsets.top forKey:@"safeAreaTop"];
-  [globalProps updateDouble:safeAreaInsets.bottom forKey:@"safeAreaBottom"];
-  [globalProps updateDouble:safeAreaInsets.left forKey:@"safeAreaLeft"];
-  [globalProps updateDouble:safeAreaInsets.right forKey:@"safeAreaRight"];
-
-  NSString *theme = @"Light";
-  if ([UIScreen mainScreen].traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) {
-    theme = @"Dark";
-  }
-  [globalProps updateObject:theme forKey:@"theme"];
-  [globalProps updateObject:self.frontendTheme forKey:@"frontendTheme"];
-
-  NSString *preferredTheme = [self getStorageItem:@"preferredTheme"];
-  if (preferredTheme) {
-    [globalProps updateObject:preferredTheme forKey:@"preferredTheme"];
-  }
-  return globalProps;
-}
-
 - (void)loadLynxViewWithUrl:(NSString *)url templateData:(NSData *)data {
-  CGSize screenSize = [self screenSizeForCurrentBounds];
-  CGRect lynxViewFrame = [self lynxViewFrameForScreenSize:screenSize];
+  CGRect screenFrame = self.view.frame;
+  CGRect statusRect = [[UIApplication sharedApplication] statusBarFrame];
+  CGRect navRect = self.navigationController.navigationBar.frame;
+
+  // Specify LynxView width and height according to the query parameters.
+  CGSize screenSize = CGSizeZero;
+  if ([[_params allKeys] containsObject:@"height"] && [[_params allKeys] containsObject:@"width"]) {
+    NSNumber *width = [_params objectForKey:@"width"];    // Physical pixel
+    NSNumber *height = [_params objectForKey:@"height"];  // Physical pixel
+    CGFloat realScale = [[UIScreen mainScreen] scale];
+    screenSize = CGSizeMake([width intValue] / realScale, [height intValue] / realScale);
+  } else {
+    screenSize = screenFrame.size;
+  }
   LynxThreadStrategyForRender threadStrategy =
       [LynxSettingManager sharedDataHandler].threadStrategy;
 
+#if HAS_SPARKLING
+  NSString *containerID = [[NSUUID UUID] UUIDString];
+#endif
   LynxView *lynxView = [[LynxView alloc] initWithBuilderBlock:^(LynxViewBuilder *builder) {
     builder.config =
         [[LynxConfig alloc] initWithProvider:[LynxEnv sharedInstance].config.templateProvider];
@@ -359,6 +145,10 @@ static NSString *LegacyGlobalPropKey(NSString *key) {
     builder.fetcher = nil;
     // for homepage only
     [builder.config registerUI:LynxExplorerInput.class withName:@"explorer-input"];
+#if HAS_SPARKLING
+    // Register Sparkling spkPipe module with pre-generated containerID
+    [SPKServiceRegistrar setupLynxPipeWithConfig:builder.config containerID:containerID];
+#endif
     // Add fetchers
     builder.enableGenericResourceFetcher = true;
     builder.genericResourceFetcher = [[DemoGenericResourceFetcher alloc] init];
@@ -366,50 +156,81 @@ static NSString *LegacyGlobalPropKey(NSString *key) {
     builder.mediaResourceFetcher = [[DemoMediaResourceFetcher alloc] init];
     [builder setThreadStrategyForRender:threadStrategy];
   }];
-  lynxView.preferredLayoutWidth = lynxViewFrame.size.width;
+#if HAS_SPARKLING
+  lynxView.containerID = containerID;
+#endif
+  lynxView.preferredLayoutWidth = screenSize.width;
   [lynxView setExtraTiming:extraTiming];
+#if HAS_SPARKLING
+  // Connect Sparkling MethodPipe execution engine to this LynxView
+  [SPKServiceRegistrar connectPipeTo:lynxView];
+#endif
 
-  lynxView.preferredLayoutHeight = lynxViewFrame.size.height;
+  if (self.fullScreen) {
+    lynxView.preferredLayoutHeight = screenSize.height;
+  } else if (self.hiddenNav) {
+    lynxView.preferredLayoutHeight = screenSize.height - statusRect.size.height;
+  } else {
+    lynxView.preferredLayoutHeight =
+        screenSize.height - statusRect.size.height - navRect.size.height;
+  }
   lynxView.layoutWidthMode = LynxViewSizeModeExact;
   lynxView.layoutHeightMode = LynxViewSizeModeExact;
-  lynxView.enableAutoLayout = YES;
   [self.view addSubview:lynxView];
-  self.lynxView = lynxView;
-  [lynxView addLifecycleClient:self];
 
-  ExplorerLegacyLoadingView *loadingView =
-      [[ExplorerLegacyLoadingView alloc] initWithParentView:self.view frame:lynxViewFrame];
-  self.loadingView = loadingView;
-  [loadingView showDownloading];
+  CGRect screenRect = [[UIScreen mainScreen] bounds];
+  CGFloat screenWidth = screenRect.size.width;
+  CGFloat screenHeight = screenRect.size.height;
+  LynxTemplateData *globalProps = [self getGlobalPropsFromParams];
+  [globalProps updateBool:[self isNotchScreen] forKey:@"isNotchScreen"];
+  [globalProps updateDouble:screenHeight forKey:@"screenHeight"];
+  [globalProps updateDouble:screenWidth forKey:@"screenWidth"];
+  if (@available(iOS 11.0, *)) {
+    UIWindow *window = UIApplication.sharedApplication.keyWindow;
+    UIEdgeInsets safeAreaInsets = window.safeAreaInsets;
+    [globalProps updateDouble:safeAreaInsets.top forKey:@"safeAreaTop"];
+    [globalProps updateDouble:safeAreaInsets.bottom forKey:@"safeAreaBottom"];
+  } else {
+    [globalProps updateDouble:0 forKey:@"safeAreaTop"];
+    [globalProps updateDouble:0 forKey:@"safeAreaBottom"];
+  }
+  NSString *theme = @"Light";
+  if ([UIScreen mainScreen].traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) {
+    theme = @"Dark";
+  }
+  [globalProps updateObject:theme forKey:@"theme"];
+  [globalProps updateObject:self.frontendTheme forKey:@"frontendTheme"];
 
-  [lynxView updateGlobalPropsWithTemplateData:[self getGlobalPropsForScreenSize:screenSize]];
+  // Add the preferred theme from user defaults
+  NSString *preferredTheme = [self getStorageItem:@"preferredTheme"];
+  if (preferredTheme) {
+    [globalProps updateObject:preferredTheme forKey:@"preferredTheme"];
+  }
 
-  LynxTemplateData *initData = [self initialTemplateData];
+  [lynxView updateGlobalPropsWithTemplateData:globalProps];
+
+  LynxTemplateData *initData =
+      [[LynxTemplateData alloc] initWithDictionary:@{@"mockData" : @"Hello Lynx Explorer"}];
   if (self.data) {
     [lynxView loadTemplate:data withURL:url initData:initData];
   } else {
     [lynxView loadTemplateFromURL:url initData:initData];
   }
   [lynxView triggerLayout];
-  [self updateLynxViewLayoutIfNeeded];
-}
 
-- (void)lynxViewDidStartLoading:(LynxView *)view {
-  // This callback fires before a remote template has finished downloading.
-  // Keep the transfer stage visible until Lynx confirms the template load.
-}
-
-- (void)lynxView:(LynxView *)view didLoadFinishedWithUrl:(NSString *)url {
-  [self.loadingView showRendering];
-}
-
-- (void)lynxViewDidFirstScreen:(LynxView *)view {
-  [self.loadingView finish];
-  self.loadingView = nil;
-}
-
-- (void)lynxView:(LynxView *)view didLoadFailedWithUrl:(NSString *)url error:(NSError *)error {
-  [self.loadingView showError:error.localizedDescription];
+  CGRect lynxViewFrame;
+  if (self.fullScreen) {
+    lynxViewFrame =
+        CGRectMake(0, 0, lynxView.intrinsicContentSize.width, lynxView.intrinsicContentSize.height);
+  } else if (self.hiddenNav) {
+    lynxViewFrame = CGRectMake(0, statusRect.size.height, lynxView.intrinsicContentSize.width,
+                               lynxView.intrinsicContentSize.height);
+  } else {
+    lynxViewFrame =
+        CGRectMake(0, statusRect.size.height + navRect.size.height,
+                   lynxView.intrinsicContentSize.width, lynxView.intrinsicContentSize.height);
+  }
+  lynxView.frame = lynxViewFrame;
 }
 
 - (void)parseParameters {
@@ -423,8 +244,7 @@ static NSString *LegacyGlobalPropKey(NSString *key) {
   if ([paramKeys containsObject:kParamTitle]) {
     id title = [self.params objectForKey:kParamTitle];
     if ([title isKindOfClass:[NSString class]]) {
-      // LaunchDescriptorParser owns the single percent-decoding boundary.
-      self.navTitle = title;
+      self.navTitle = [title stringByRemovingPercentEncoding];
     }
   }
   if ([paramKeys containsObject:kParamTitleColor]) {
@@ -472,7 +292,6 @@ static NSString *LegacyGlobalPropKey(NSString *key) {
   UIView *statusView = [[UIView alloc] initWithFrame:CGRectMake(0, 0, screenSize.width, statusH)];
   statusView.backgroundColor = self.barColor;
   [self.view addSubview:statusView];
-  self.statusView = statusView;
 
   if (self.hiddenNav) {
     return;
@@ -480,7 +299,6 @@ static NSString *LegacyGlobalPropKey(NSString *key) {
   // create custom navigation bar
   UIView *barView = [[UIView alloc] initWithFrame:CGRectMake(0, statusH, screenSize.width, navH)];
   barView.backgroundColor = self.barColor;
-  self.barView = barView;
 
   UIButton *goBackButton = [[UIButton alloc] initWithFrame:CGRectMake(0, 0, navH, navH)];
   UIImage *backImage = [self scaleImage:[UIImage imageNamed:self.backButtonImageName]
@@ -494,7 +312,6 @@ static NSString *LegacyGlobalPropKey(NSString *key) {
   titleLabel.text = self.navTitle;
   titleLabel.textColor = self.titleColor;
   titleLabel.textAlignment = NSTextAlignmentCenter;
-  self.titleLabel = titleLabel;
 
   [barView addSubview:goBackButton];
   [barView addSubview:titleLabel];
@@ -502,7 +319,7 @@ static NSString *LegacyGlobalPropKey(NSString *key) {
 }
 
 - (BOOL)shouldAutorotate {
-  return YES;
+  return NO;
 }
 
 - (UIInterfaceOrientationMask)supportedInterfaceOrientations {
@@ -514,17 +331,12 @@ static NSString *LegacyGlobalPropKey(NSString *key) {
       return UIInterfaceOrientationMaskLandscape;
     }
   }
-  return UIInterfaceOrientationMaskAll;
+  return UIInterfaceOrientationMaskAllButUpsideDown;
 }
 
 - (void)viewWillLayoutSubviews {
   [super viewWillLayoutSubviews];
   [self setNavigationStatus];
-}
-
-- (void)viewDidLayoutSubviews {
-  [super viewDidLayoutSubviews];
-  [self updateLynxViewLayoutIfNeeded];
 }
 
 - (void)setNavigationStatus {
@@ -538,28 +350,19 @@ static NSString *LegacyGlobalPropKey(NSString *key) {
   progress = fminf(fmaxf(progress, 0.0), 1.0);
 
   switch (state) {
-    case UIGestureRecognizerStateBegan: {
+    case UIGestureRecognizerStateBegan:
       if (self.navigationController.viewControllers.count > 1) {
-        LXRouteCoordinator *coordinator = [LXRouteCoordinator currentBridge];
-        if (coordinator == nil || ![coordinator beginInteractiveCloseFromHost]) {
-          break;
-        }
-        self.interactiveBackCoordinator = coordinator;
-        self.interactiveBackReserved = YES;
         UIViewController *previousVC = [self.navigationController.viewControllers
             objectAtIndex:self.navigationController.viewControllers.count - 2];
         self.previousViewControllerView = previousVC.view;
         [self.view.superview insertSubview:self.previousViewControllerView belowSubview:self.view];
-        CGRect previousFrame = self.view.bounds;
-        previousFrame.origin.x = -self.view.bounds.size.width * 0.3;
-        self.previousViewControllerView.frame = previousFrame;
+        self.previousViewControllerView.frame = CGRectMake(0, 0, 0, self.view.bounds.size.height);
       }
       break;
-    }
     case UIGestureRecognizerStateChanged: {
-      if (self.interactiveBackReserved && self.previousViewControllerView && translation.x >= 0) {
+      if (self.previousViewControllerView && translation.x >= 0) {
         CGRect previousFrame = self.previousViewControllerView.frame;
-        previousFrame.origin.x = -self.view.bounds.size.width * 0.3 * (1.0 - progress);
+        previousFrame.size.width = self.view.bounds.size.width * progress;
         self.previousViewControllerView.frame = previousFrame;
 
         CGRect currentFrame = self.view.frame;
@@ -569,7 +372,7 @@ static NSString *LegacyGlobalPropKey(NSString *key) {
       break;
     }
     case UIGestureRecognizerStateEnded: {
-      if (self.interactiveBackReserved && self.previousViewControllerView) {
+      if (self.previousViewControllerView) {
         // get velocity of gesture
         CGPoint velocity = [gesture velocityInView:self.view];
         CGFloat flingVelocity = 1000;
@@ -578,7 +381,7 @@ static NSString *LegacyGlobalPropKey(NSString *key) {
           [UIView animateWithDuration:0.15
               animations:^{
                 CGRect previousFrame = self.previousViewControllerView.frame;
-                previousFrame.origin.x = 0;
+                previousFrame.size.width = self.view.bounds.size.width;
                 self.previousViewControllerView.frame = previousFrame;
 
                 CGRect currentFrame = self.view.frame;
@@ -586,66 +389,34 @@ static NSString *LegacyGlobalPropKey(NSString *key) {
                 self.view.frame = currentFrame;
               }
               completion:^(BOOL finished) {
-                if ([self.interactiveBackCoordinator commitInteractiveCloseFromHost]) {
-                  self.interactiveBackReserved = NO;
-                  self.interactiveBackCoordinator = nil;
-                  self.previousViewControllerView = nil;
-                } else {
-                  [self restoreInteractiveBackStateAnimated:YES];
-                }
+                [self.navigationController popViewControllerAnimated:NO];
               }];
         } else {
-          [self restoreInteractiveBackStateAnimated:YES];
+          [UIView animateWithDuration:0.15
+              animations:^{
+                CGRect previousFrame = self.previousViewControllerView.frame;
+                previousFrame.size.width = 0;
+                self.previousViewControllerView.frame = previousFrame;
+
+                CGRect currentFrame = self.view.frame;
+                currentFrame.origin.x = 0;
+                self.view.frame = currentFrame;
+              }
+              completion:^(BOOL finished) {
+                [self.previousViewControllerView removeFromSuperview];
+                self.previousViewControllerView = nil;
+              }];
         }
-      } else if (self.interactiveBackReserved) {
-        [self restoreInteractiveBackStateAnimated:YES];
       }
       break;
     }
-    case UIGestureRecognizerStateCancelled:
-    case UIGestureRecognizerStateFailed:
-      [self restoreInteractiveBackStateAnimated:YES];
-      break;
     default:
       break;
   }
 }
 
 - (void)backButtonTapped {
-  LXRouteCoordinator *coordinator = [LXRouteCoordinator currentBridge];
-  [coordinator closeAnimated:YES
-                    callback:^(__unused id payload){
-                    }];
-}
-
-- (void)restoreInteractiveBackStateAnimated:(BOOL)animated {
-  if (self.interactiveBackReserved) {
-    [self.interactiveBackCoordinator endInteractiveCloseFromHostCompleted:NO];
-    self.interactiveBackReserved = NO;
-    self.interactiveBackCoordinator = nil;
-  }
-  if (self.previousViewControllerView == nil) {
-    return;
-  }
-  void (^animations)(void) = ^{
-    CGRect previousFrame = self.previousViewControllerView.frame;
-    previousFrame.origin.x = -self.view.bounds.size.width * 0.3;
-    self.previousViewControllerView.frame = previousFrame;
-
-    CGRect currentFrame = self.view.frame;
-    currentFrame.origin.x = 0;
-    self.view.frame = currentFrame;
-  };
-  void (^completion)(BOOL) = ^(__unused BOOL finished) {
-    [self.previousViewControllerView removeFromSuperview];
-    self.previousViewControllerView = nil;
-  };
-  if (animated) {
-    [UIView animateWithDuration:0.15 animations:animations completion:completion];
-  } else {
-    animations();
-    completion(YES);
-  }
+  [self.navigationController popViewControllerAnimated:YES];
 }
 
 - (UIImage *)scaleImage:(UIImage *)image size:(CGSize)size {
@@ -658,12 +429,9 @@ static NSString *LegacyGlobalPropKey(NSString *key) {
 
 - (BOOL)isNotchScreen {
   if (@available(iOS 11.0, *)) {
-    UIEdgeInsets safeAreaInsets = self.view.window.safeAreaInsets;
-    if (UIEdgeInsetsEqualToEdgeInsets(safeAreaInsets, UIEdgeInsetsZero)) {
-      safeAreaInsets = self.view.safeAreaInsets;
-    }
-    return safeAreaInsets.top > 20 || safeAreaInsets.bottom > 0 || safeAreaInsets.left > 0 ||
-           safeAreaInsets.right > 0;
+    UIWindow *window = UIApplication.sharedApplication.keyWindow;
+    UIEdgeInsets safeAreaInsets = window.safeAreaInsets;
+    return safeAreaInsets.top > 20;
   }
 
   return NO;

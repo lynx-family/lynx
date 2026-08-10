@@ -9,47 +9,40 @@ import AutoDarkIcon from '@assets/images/auto-dark.png?inline';
 import AutoLightIcon from '@assets/images/auto.png?inline';
 import DarkDarkIcon from '@assets/images/dark-dark.png?inline';
 import DarkLightIcon from '@assets/images/dark.png?inline';
+import ForwardDarkIcon from '@assets/images/forward-dark.png?inline';
+import ForwardIcon from '@assets/images/forward.png?inline';
 import LightDarkIcon from '@assets/images/light-dark.png?inline';
 import LightLightIcon from '@assets/images/light.png?inline';
 import {
-  getAvailableExtensions,
   navigateTo,
+  isSparklingAvailable,
   useTheme,
   useSafeArea,
-  supportsSparklingContainer,
-  getPreferredContainer,
-  setPreferredContainer,
 } from '@explorer/lib';
-import type { PreferredContainer, ThemePreference } from '@explorer/lib';
-import ListRow from '@components/list-row';
-import BrandIcon from '@components/brand-icon';
+import type { ThemePreference } from '@explorer/lib';
 
 const THEMES: ThemePreference[] = ['Auto', 'Light', 'Dark'];
-const RUNTIMES: Array<{ value: PreferredContainer; label: string }> = [
-  { value: 'legacy', label: 'Lynx' },
-  { value: 'sparkling', label: 'Sparkling' },
-];
 
 interface SettingsPageProps {
   showPage: boolean;
 }
 
-const DESKTOP_DEVTOOL_SWITCH_PARAMS = { width: 420, height: 720 } as const;
+const DESKTOP_DEVTOOL_SWITCH_PARAMS = {
+  width: 420,
+  height: 720,
+} as const;
 
 export default function SettingsPage(props: SettingsPageProps) {
   const { preference, resolved, setPreference, withTheme } = useTheme();
   const safeArea = useSafeArea();
   const [listAsyncRender, setListAsyncRender] = useState(false);
-  const [, setRuntimeRevision] = useState(0);
-  const sparklingSupported = supportsSparklingContainer();
-  const preferredRuntime = getPreferredContainer();
-  const sparklingExtension = getAvailableExtensions()[0];
   const platform = lynx.__globalProps.platform as string | undefined;
 
   const icons = {
     Auto: { dark: AutoDarkIcon, light: AutoLightIcon },
     Dark: { dark: DarkDarkIcon, light: DarkLightIcon },
     Light: { dark: LightDarkIcon, light: LightLightIcon },
+    Forward: { dark: ForwardDarkIcon, light: ForwardIcon },
   } as const;
 
   const openDevtoolSwitchPage = () => {
@@ -60,223 +53,141 @@ export default function SettingsPage(props: SettingsPageProps) {
     );
   };
 
-  const updatePreferredRuntime = (value: PreferredContainer) => {
-    'background only';
-    setPreferredContainer(value);
-    setRuntimeRevision((revision) => revision + 1);
-  };
+  const getIcon = (name: keyof typeof icons) => icons[name][resolved];
 
-  const selectionControl = (selected: boolean) => (
-    <view
-      className={
-        selected
-          ? withTheme('radio-button-container-active')
-          : withTheme('radio-button-container-inactive')
-      }
-    >
-      {selected ? <view className={withTheme('radio-button-active')} /> : null}
-    </view>
-  );
-
-  if (!props.showPage) return <></>;
+  if (!props.showPage) {
+    return <></>;
+  }
 
   const navigatorHeight = 48 + safeArea.bottom;
-  const horizontalSafeArea = safeArea.left + safeArea.right;
-  const screenWidth = Number(lynx.__globalProps.screenWidth || 0);
-  const screenHeight = Number(lynx.__globalProps.screenHeight || 0);
-  const landscape = screenWidth > 0 && screenWidth > screenHeight;
-  const rowHeight = landscape ? '36px' : '44px';
-
-  const ownershipHeader = (title: string, description: string) => (
-    <view className="ownership-header">
-      <text className={withTheme('ownership-title')}>{title}</text>
-      <text className={withTheme('ownership-description')}>{description}</text>
-    </view>
-  );
-
-  const appearanceGroup = () => (
-    <>
-      {ownershipHeader('App', 'Shared by every runtime')}
-      <view className={withTheme('settings-group')}>
-        <view className="settings-group-label">
-          <text className={withTheme('settings-group-label-text')}>
-            Appearance
-          </text>
-        </view>
-        {THEMES.map((theme, index) => (
-          <ListRow
-            key={theme}
-            className={`option-item ${index > 0 ? 'settings-row-divider' : ''}`}
-            size="compact"
-            style={{ height: rowHeight }}
-            onTap={() => setPreference(theme)}
-            accessibilityLabel={`Set app appearance to ${theme}`}
-            leading={
-              <image src={icons[theme][resolved]} className="option-icon" />
-            }
-            title={<text className={withTheme('list-row-title')}>{theme}</text>}
-            trailing={selectionControl(preference === theme)}
-          />
-        ))}
-        {sparklingSupported ? (
-          <>
-            <view className="settings-group-label settings-group-label--divided">
-              <text className={withTheme('settings-group-label-text')}>
-                Default Runtime
-              </text>
-            </view>
-            {RUNTIMES.map((runtime, index) => (
-              <ListRow
-                key={runtime.value}
-                className={`option-item ${
-                  index > 0 ? 'settings-row-divider' : ''
-                }`}
-                size="compact"
-                style={{ height: rowHeight }}
-                onTap={() => updatePreferredRuntime(runtime.value)}
-                accessibilityLabel={`Use ${runtime.label} as the default runtime`}
-                title={
-                  <text className={withTheme('list-row-title')}>
-                    {runtime.label}
-                  </text>
-                }
-                trailing={selectionControl(preferredRuntime === runtime.value)}
-              />
-            ))}
-          </>
-        ) : null}
-      </view>
-    </>
-  );
-
-  const developerGroup = () => (
-    <>
-      {ownershipHeader('Developer', 'Explorer-owned diagnostics and rendering')}
-      <view className={withTheme('settings-group')}>
-        <ListRow
-          className="option-item"
-          size="compact"
-          style={{ height: rowHeight }}
-          onTap={openDevtoolSwitchPage}
-          accessibilityLabel="Lynx DevTool Switches"
-          title={
-            <text className={withTheme('list-row-title')}>
-              DevTool Switches
-            </text>
-          }
-          showChevron={true}
-        />
-        <ListRow
-          className="option-item settings-row-divider"
-          size="compact"
-          style={{ height: rowHeight }}
-          onTap={() => {
-            NativeModules.ExplorerModule.setThreadMode(
-              !listAsyncRender ? 1 : 0
-            );
-            setListAsyncRender(!listAsyncRender);
-          }}
-          accessibilityLabel="List Async Render"
-          title={
-            <text className={withTheme('list-row-title')}>
-              List Async Render
-            </text>
-          }
-          trailing={selectionControl(listAsyncRender)}
-        />
-      </view>
-    </>
-  );
-
-  const runtimeGroup = () => (
-    <>
-      {ownershipHeader('Runtime', 'Installed engines and extensions')}
-      <view className={withTheme('settings-group')}>
-        <ListRow
-          className="option-item"
-          size="compact"
-          style={{ height: rowHeight }}
-          accessibilityLabel={`Lynx Engine ${SystemInfo.engineVersion}`}
-          leading={
-            <BrandIcon
-              brand="lynx"
-              color={resolved === 'dark' ? '#FFFFFF' : '#111113'}
-              className="runtime-icon runtime-icon--lynx"
-            />
-          }
-          title={
-            <text className={withTheme('list-row-title')}>Lynx Engine</text>
-          }
-          trailing={
-            <text className={withTheme('info-value')}>
-              {SystemInfo.engineVersion}
-            </text>
-          }
-        />
-        {sparklingSupported && sparklingExtension ? (
-          <ListRow
-            className="option-item settings-row-divider"
-            size="compact"
-            style={{ height: rowHeight }}
-            accessibilityLabel={`Sparkling extension ${
-              sparklingExtension.version ?? 'installed'
-            }`}
-            leading={<BrandIcon brand="sparkling" className="runtime-icon" />}
-            title={
-              <text className={withTheme('list-row-title')}>Sparkling</text>
-            }
-            trailing={
-              <text className="sparkling-version">
-                {sparklingExtension.version
-                  ? `v${sparklingExtension.version}`
-                  : 'Installed'}
-              </text>
-            }
-          />
-        ) : null}
-      </view>
-    </>
-  );
 
   return (
-    <scroll-view
-      scroll-y
+    <view
       clip-radius="true"
       className={withTheme('page')}
       style={{ height: `calc(100% - ${navigatorHeight}px)` }}
     >
       <view
-        className="safe-area-content"
-        style={{
-          marginLeft: `${safeArea.left}px`,
-          marginRight: `${safeArea.right}px`,
-          width: `calc(100% - ${horizontalSafeArea}px)`,
-        }}
+        className="page-header"
+        style={{ marginTop: `${Math.max(safeArea.top, 10)}px` }}
+      >
+        <text className={withTheme('title')}>Settings</text>
+      </view>
+
+      <view style="margin: 0px 5% 0px 5%; height: 5%">
+        <text className={withTheme('sub-title')}>Theme</text>
+      </view>
+      <view className={withTheme('theme')}>
+        {THEMES.map((theme) => {
+          return (
+            <view
+              key={theme}
+              className="option-item"
+              bindtap={() => setPreference(theme)}
+              accessibility-element={true}
+              accessibility-label={`Set Theme ${theme}`}
+              accessibility-traits="button"
+            >
+              <image
+                src={getIcon(theme as keyof typeof icons)}
+                className="option-icon"
+              />
+              <text className={withTheme('text')}>{theme}</text>
+              <view
+                className={
+                  preference === theme
+                    ? withTheme('radio-button-container-active')
+                    : withTheme('radio-button-container-inactive')
+                }
+              >
+                {preference === theme ? (
+                  <view className={withTheme('radio-button-active')} />
+                ) : (
+                  <view className={withTheme('radio-button')} />
+                )}
+              </view>
+            </view>
+          );
+        })}
+      </view>
+
+      <view style="margin: 3% 5% 0px 5%; height: 5%">
+        <text className={withTheme('sub-title')}>DevTool</text>
+      </view>
+      <view
+        className={withTheme('devtool')}
+        bindtap={openDevtoolSwitchPage}
+        accessibility-element={true}
+        accessibility-label="Lynx DevTool Switches"
+        accessibility-traits="button"
+      >
+        <text className={withTheme('text')} accessibility-element={false}>
+          Lynx DevTool Switches
+        </text>
+        <view style="margin: auto 5% auto auto; justify-content: center">
+          <image src={getIcon('Forward')} className="forward-icon" />
+        </view>
+      </view>
+
+      <view style="margin: 3% 5% 0px 5%; height: 5%">
+        <text className={withTheme('sub-title')}>Render Strategy</text>
+      </view>
+      <view
+        className={withTheme('theme')}
+        style="height: 8%;justify-content:center"
       >
         <view
-          className="page-header"
-          style={{ marginTop: `${Math.max(safeArea.top, 10)}px` }}
+          className="option-item"
+          bindtap={() => {
+            NativeModules.ExplorerModule.setThreadMode(
+              !listAsyncRender ? 1 : 0
+            );
+            setListAsyncRender(!listAsyncRender);
+          }}
+          accessibility-element={true}
+          accessibility-label={'List Async Render'}
+          accessibility-traits="button"
         >
-          <text className={withTheme('title')}>Settings</text>
-        </view>
-
-        {landscape ? (
-          <view className="settings-columns">
-            <view className="settings-column">{appearanceGroup()}</view>
-            <view className="settings-column">
-              {developerGroup()}
-              {runtimeGroup()}
-            </view>
+          <text className={withTheme('text')}>
+            {'Enable List Async Render'}
+          </text>
+          <view
+            className={
+              listAsyncRender
+                ? withTheme('radio-button-container-active')
+                : withTheme('radio-button-container-inactive')
+            }
+          >
+            {listAsyncRender ? (
+              <view className={withTheme('radio-button-active')} />
+            ) : (
+              <view className={withTheme('radio-button')} />
+            )}
           </view>
-        ) : (
-          <>
-            {appearanceGroup()}
-            {developerGroup()}
-            {runtimeGroup()}
-          </>
-        )}
-        <view style={{ height: `${navigatorHeight}px` }} />
+        </view>
       </view>
-    </scroll-view>
+
+      <view style="margin: 3% 5% 0px 5%; height: 5%">
+        <text className={withTheme('sub-title')}>System Info</text>
+      </view>
+      <view className={withTheme('info-section')}>
+        <view className="info-row">
+          <text className={withTheme('text')}>Lynx Engine</text>
+          <text className={withTheme('info-value')}>
+            {SystemInfo.engineVersion}
+          </text>
+        </view>
+        <view className="info-row">
+          <text className={withTheme('text')}>Sparkling</text>
+          <text
+            className={`${withTheme('info-value')} ${
+              isSparklingAvailable() ? 'sparkling-active' : 'sparkling-inactive'
+            }`}
+          >
+            {isSparklingAvailable() ? 'Active' : 'N/A'}
+          </text>
+        </view>
+      </view>
+    </view>
   );
 }

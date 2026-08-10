@@ -22,7 +22,5 @@
 		<key>NSAllowsArbitraryLoads</key>
 		<true/>
 	</dict>
-	<key>NSCameraUsageDescription</key>
-	<string>Lynx Explorer uses the camera to scan Lynx page QR codes.</string>
 </dict>
 </plist>
