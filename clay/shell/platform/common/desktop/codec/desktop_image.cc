@@ -3,6 +3,7 @@
 // LICENSE file in the root directory of this source tree.
 #include "clay/shell/platform/common/desktop/codec/desktop_image.h"
 
+#include <limits>
 #include <memory>
 #include <utility>
 #include <vector>
@@ -34,6 +35,8 @@ DesktopImage::DesktopImage(std::shared_ptr<skity::Codec> codec)
       height_ = current_pixmap_->Height();
       current_pixmap_->SetColorInfo(skity::AlphaType::kPremul_AlphaType,
                                     current_pixmap_->GetColorType());
+      color_type_ = current_pixmap_->GetColorType();
+      alpha_type_ = current_pixmap_->GetAlphaType();
       decoder_ = codec_->DecodeMultiFrame();
       if (decoder_) {
         is_animated_ = true;
@@ -46,14 +49,43 @@ DesktopImage::DesktopImage(std::shared_ptr<skity::Codec> codec)
 DesktopImage::~DesktopImage() {}
 int DesktopImage::GetWidth() { return width_; }
 int DesktopImage::GetHeight() { return height_; }
+skity::ColorType DesktopImage::GetColorType() { return color_type_; }
+skity::AlphaType DesktopImage::GetAlphaType() { return alpha_type_; }
 
 int64_t DesktopImage::GetDuration() { return current_frame_duration_; }
 
-std::shared_ptr<skity::Pixmap> DesktopImage::ToBitmap() {
-  if (!current_pixmap_ && !is_animated_ && width_ > 0 && height_ > 0) {
-    current_pixmap_ = codec_->Decode();
+std::shared_ptr<skity::Pixmap> DesktopImage::ToBitmap(
+    const ImageInfo& render_info) {
+  std::shared_ptr<skity::Pixmap> pixmap;
+  {
+    std::scoped_lock lock(pixmap_mutex_);
+    if (!current_pixmap_ && !is_animated_ && width_ > 0 && height_ > 0) {
+      current_pixmap_ = codec_->Decode();
+    }
+    pixmap = is_animated_ ? current_pixmap_ : std::move(current_pixmap_);
   }
-  return is_animated_ ? current_pixmap_ : std::move(current_pixmap_);
+  if (!pixmap || render_info.width() <= 0 || render_info.height() <= 0) {
+    return pixmap;
+  }
+  auto target_width = static_cast<uint32_t>(render_info.width());
+  auto target_height = static_cast<uint32_t>(render_info.height());
+  if (pixmap->Width() == target_width && pixmap->Height() == target_height) {
+    return pixmap;
+  }
+
+  auto image = skity::Image::MakeImage(pixmap);
+  if (!image) {
+    return pixmap;
+  }
+  auto scaled_pixmap = std::make_shared<skity::Pixmap>(
+      target_width, target_height, pixmap->GetAlphaType(),
+      pixmap->GetColorType());
+  if (!image->ScalePixels(scaled_pixmap, nullptr,
+                          skity::SamplingOptions(skity::FilterMode::kLinear,
+                                                 skity::MipmapMode::kNone))) {
+    return pixmap;
+  }
+  return scaled_pixmap;
 }
 void DesktopImage::DrawFrame(std::function<void()> on_frame_changed) {
   if (is_playing_ && is_animated_ && decoder_) {
@@ -112,6 +144,7 @@ void DesktopImage::ResumeAnimation() {
 }
 
 void DesktopImage::DrawFrameInternal() {
+  std::scoped_lock lock(pixmap_mutex_);
   auto frame_info = decoder_->GetFrameInfo(current_frame_index_++);
   current_pixmap_ = decoder_->DecodeFrame(frame_info, current_pixmap_);
   current_frame_duration_ = frame_info->GetDuration();

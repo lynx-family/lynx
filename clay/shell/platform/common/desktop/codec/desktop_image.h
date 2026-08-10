@@ -5,6 +5,7 @@
 #define CLAY_SHELL_PLATFORM_COMMON_DESKTOP_CODEC_DESKTOP_IMAGE_H_
 
 #include <memory>
+#include <mutex>
 #include <tuple>
 
 #include "clay/gfx/image/image_info.h"
@@ -20,8 +21,11 @@ class DesktopImage : public PlatformImage {
   // PlatformImage implementation
   int GetWidth() override;
   int GetHeight() override;
+  skity::ColorType GetColorType() override;
+  skity::AlphaType GetAlphaType() override;
   int64_t GetDuration() override;
-  std::shared_ptr<skity::Pixmap> ToBitmap() override;
+  std::shared_ptr<skity::Pixmap> ToBitmap(
+      const ImageInfo& render_info) override;
   void DrawFrame(std::function<void()> on_frame_changed) override;
   bool IsAnimated() override;
   void SetAutoPlay(bool auto_play) override;
@@ -43,9 +47,12 @@ class DesktopImage : public PlatformImage {
   int32_t current_frame_index_;
   int32_t current_frame_duration_;
   int frame_loop_count_;
+  skity::ColorType color_type_ = skity::ColorType::kUnknown;
+  skity::AlphaType alpha_type_ = skity::AlphaType::kUnknown_AlphaType;
   std::shared_ptr<skity::Codec> codec_;
   std::shared_ptr<skity::Pixmap> current_pixmap_;
   std::shared_ptr<skity::MultiFrameDecoder> decoder_;
+  std::mutex pixmap_mutex_;
 };
 }  // namespace clay
 #endif  // CLAY_SHELL_PLATFORM_COMMON_DESKTOP_CODEC_DESKTOP_IMAGE_H_
