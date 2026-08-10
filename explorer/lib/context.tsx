@@ -34,26 +34,11 @@ interface AppContextValue {
   safeArea: SafeAreaContext;
 }
 
-interface ExplorerCoreContext {
-  addEventListener(
-    eventName: string,
-    listener: (event: { data?: Record<string, unknown> }) => void
-  ): void;
-  removeEventListener(
-    eventName: string,
-    listener: (event: { data?: Record<string, unknown> }) => void
-  ): void;
-}
-
 // ---------------------------------------------------------------------------
 // Context
 // ---------------------------------------------------------------------------
 
 const AppContext = createContext<AppContextValue>(null!);
-const AppContextValueProvider = (AppContext.Provider as unknown) as (props: {
-  value: AppContextValue;
-  children: any;
-}) => JSX.Element;
 
 // ---------------------------------------------------------------------------
 // Provider
@@ -135,22 +120,12 @@ export function AppContextProvider(props: { children: any }) {
   useEffect(() => {
     const syncSafeArea = (data?: Record<string, unknown>) => {
       Object.assign(lynx.__globalProps, data || {});
-      const nextTheme = data?.preferredTheme;
-      if (
-        nextTheme === 'Auto' ||
-        nextTheme === 'Light' ||
-        nextTheme === 'Dark'
-      ) {
-        setPreferenceState(nextTheme);
-      }
       setSafeArea(getSafeArea());
     };
     const listener = (event: { data?: Record<string, unknown> }) => {
       syncSafeArea(event.data);
     };
-    const coreContext = (lynx as typeof lynx & {
-      getCoreContext(): ExplorerCoreContext;
-    }).getCoreContext();
+    const coreContext = lynx.getCoreContext();
     coreContext.addEventListener('__NotifyGlobalPropsUpdated', listener);
     syncSafeArea();
     return () => {
@@ -159,14 +134,14 @@ export function AppContextProvider(props: { children: any }) {
   }, []);
 
   return (
-    <AppContextValueProvider
+    <AppContext.Provider
       value={{
         theme: { preference, resolved, setPreference, withTheme },
         safeArea,
       }}
     >
       {props.children}
-    </AppContextValueProvider>
+    </AppContext.Provider>
   );
 }
 

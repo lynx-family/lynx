@@ -3,21 +3,13 @@
 // LICENSE file in the root directory of this source tree.
 
 #import "ScanViewController.h"
-#import "../LynxExplorerSwiftInterop.h"
+#import "TasmDispatcher.h"
 
-static NSString *const kPreferredContainerKey = @"preferredContainer";
-static NSString *const kLegacyQRContainerPreferenceKey = @"qrContainerPreference";
-static NSString *const kQRContainerPreferenceLegacy = @"legacy";
-static NSString *const kQRContainerPreferenceSparkling = @"sparkling";
-
-@interface ScanViewController () <UIAdaptivePresentationControllerDelegate,
-                                  UIPopoverPresentationControllerDelegate>
+@interface ScanViewController ()
 
 @property(nonatomic, strong) AVCaptureSession *captureSession;
 @property(nonatomic, strong) AVCaptureVideoPreviewLayer *captureLayer;
 @property(nonatomic, strong) UIView *sanFrameView;
-@property(nonatomic, copy) NSString *pendingScanResult;
-@property(nonatomic, assign) BOOL presentingContainerChoice;
 
 @end
 
@@ -27,27 +19,8 @@ static NSString *const kQRContainerPreferenceSparkling = @"sparkling";
   [super viewDidLoad];
   self.edgesForExtendedLayout = UIRectEdgeNone;
   self.navigationItem.title = @"Scan";
-  self.navigationItem.leftBarButtonItem =
-      [[UIBarButtonItem alloc] initWithTitle:@"Back"
-                                       style:UIBarButtonItemStylePlain
-                                      target:self
-                                      action:@selector(backButtonTapped)];
 
   [self prepareForScan];
-}
-
-- (LXRouteCoordinator *)routeCoordinator {
-  return [LXRouteCoordinator currentBridge];
-}
-
-- (void)backButtonTapped {
-  LXRouteCoordinator *coordinator = [self routeCoordinator];
-  if (coordinator == nil) {
-    return;
-  }
-  [coordinator closeAnimated:YES
-                    callback:^(__unused id payload){
-                    }];
 }
 
 - (void)prepareForScan {
@@ -76,7 +49,8 @@ static NSString *const kQRContainerPreferenceSparkling = @"sparkling";
 - (void)viewWillAppear:(BOOL)animated {
   [super viewWillAppear:animated];
   [self.navigationController setNavigationBarHidden:NO];
-  [self resumeScanning];
+  [self.view.layer addSublayer:_captureLayer];
+  [_captureSession startRunning];
 }
 
 - (void)viewDidDisappear:(BOOL)animated {
@@ -86,94 +60,20 @@ static NSString *const kQRContainerPreferenceSparkling = @"sparkling";
   [_captureSession stopRunning];
 }
 
-- (void)viewDidLayoutSubviews {
-  [super viewDidLayoutSubviews];
-  self.captureLayer.frame = self.view.layer.bounds;
-}
-
-- (void)resumeScanning {
-  if (self.captureLayer != nil && self.captureLayer.superlayer == nil) {
-    [self.view.layer insertSublayer:self.captureLayer atIndex:0];
-  }
-  if (self.captureSession != nil && !self.captureSession.isRunning) {
-    [self.captureSession startRunning];
-  }
-}
-
 - (void)captureOutput:(AVCaptureOutput *)captureOutput
     didOutputMetadataObjects:(NSArray *)metadataObjects
               fromConnection:(AVCaptureConnection *)connection {
-  if (self.presentingContainerChoice || metadataObjects.count == 0) {
-    return;
-  }
-
-  AVMetadataMachineReadableCodeObject *metadataObject = metadataObjects.firstObject;
-  NSString *result = metadataObject.stringValue;
-  if (result.length == 0) {
-    [self resumeScanning];
-    return;
-  }
-
-  self.presentingContainerChoice = YES;
-  self.pendingScanResult = result;
-  [self.captureLayer removeFromSuperlayer];
-  [self.captureSession stopRunning];
-
-  NSString *preference =
-      [[NSUserDefaults standardUserDefaults] stringForKey:kPreferredContainerKey];
-  if (preference.length == 0) {
-    preference =
-        [[NSUserDefaults standardUserDefaults] stringForKey:kLegacyQRContainerPreferenceKey];
-  }
-  if ([preference isEqualToString:kQRContainerPreferenceLegacy]) {
-    [self openScannedURL:result container:LXRequestedContainerLegacy];
-  } else if ([preference isEqualToString:kQRContainerPreferenceSparkling] &&
-             [LXRouteCoordinator supportsSparklingContainer]) {
-    [self openScannedURL:result container:LXRequestedContainerSparkling];
-  } else {
-    [self openScannedURL:result container:LXRequestedContainerLegacy];
+  [_captureLayer removeFromSuperlayer];
+  [_captureSession stopRunning];
+  if (metadataObjects.count > 0) {
+    AVMetadataMachineReadableCodeObject *metadataObject = [metadataObjects objectAtIndex:0];
+    NSString *result = metadataObject.stringValue;
+    [self pushLynxViewShellVCWithUrl:result];
   }
 }
 
-- (void)openScannedURL:(NSString *)url container:(LXRequestedContainer)container {
-  LXRouteCoordinator *coordinator = [LXRouteCoordinator currentBridge];
-  if (coordinator == nil) {
-    [self resetPendingScanAndResume];
-    return;
-  }
-
-  __weak typeof(self) weakSelf = self;
-  [coordinator openScannerURL:url
-           requestedContainer:container
-                     callback:^(id payload) {
-                       NSDictionary *result =
-                           [payload isKindOfClass:NSDictionary.class] ? payload : nil;
-                       if (![result[@"success"] boolValue]) {
-                         [weakSelf resetPendingScanAndResume];
-                       }
-                     }];
-}
-
-- (void)resetPendingScanAndResume {
-  self.presentingContainerChoice = NO;
-  self.pendingScanResult = nil;
-  [self resumeScanning];
-}
-
-#pragma mark - UIAdaptivePresentationControllerDelegate
-
-// Invoked when the container-choice sheet is dismissed interactively (e.g. a
-// swipe-to-dismiss) without the user picking a container. Drop the pending scan
-// and resume the capture session so scanning keeps working.
-- (void)presentationControllerDidDismiss:(UIPresentationController *)presentationController {
-  [self resetPendingScanAndResume];
-}
-
-#pragma mark - UIPopoverPresentationControllerDelegate
-
-- (void)popoverPresentationControllerDidDismissPopover:
-    (UIPopoverPresentationController *)popoverPresentationController {
-  [self resetPendingScanAndResume];
+- (void)pushLynxViewShellVCWithUrl:(NSString *)url {
+  [[TasmDispatcher sharedInstance] openTargetUrl:url];
 }
 
 @end
