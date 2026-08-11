@@ -2,8 +2,10 @@
 # Licensed under the Apache License Version 2.0 that can be found in the
 # LICENSE file in the root directory of this source tree.
 
+import("//build/config/templates/templates.gni")
 import("../../config.gni")
 import("../../oliver/oliver.gni")
+import("../../tools/gperf/gperf.gni")
 import("../testing/testing.gni")
 import("common/build.gni")
 import("component/build.gni")
@@ -40,6 +42,59 @@ config("ui_defines") {
 
     cflags = [ "-Wno-c99-designator" ]
   }
+}
+
+keywords_input = "component/keywords.in"
+keywords_header = "$root_gen_dir/clay/ui/component/keywords.h"
+keywords_source = "$root_gen_dir/clay/ui/component/keywords.cc"
+keywords_header_template = "../tools/keywords_codegen/keywords.h.template"
+keywords_generator = "../tools/keywords_codegen/generate_keywords.py"
+
+keywords_generator_args = [
+  "--gperf",
+  rebase_path(gperf_executable, root_build_dir),
+  "--input",
+  rebase_path(keywords_input, root_build_dir),
+  "--header-template",
+  rebase_path(keywords_header_template, root_build_dir),
+  "--header-output",
+  rebase_path(keywords_header, root_build_dir),
+  "--source-output",
+  rebase_path(keywords_source, root_build_dir),
+]
+
+exec_script(keywords_generator,
+            keywords_generator_args,
+            "",
+            [
+              gperf_executable,
+              gperf_runner,
+              keywords_generator,
+              keywords_header_template,
+              keywords_input,
+            ])
+
+action("generate_keywords") {
+  script = keywords_generator
+  inputs = [
+    gperf_executable,
+    gperf_runner,
+    keywords_header_template,
+    keywords_input,
+  ]
+  outputs = [
+    keywords_header,
+    keywords_source,
+  ]
+  args = keywords_generator_args
+}
+
+source_set("keywords") {
+  sources = [
+    "$root_gen_dir/clay/ui/component/keywords.cc",
+    "$root_gen_dir/clay/ui/component/keywords.h",
+  ]
+  deps = [ ":generate_keywords" ]
 }
 
 source_set("ui") {
@@ -104,6 +159,7 @@ source_set("ui") {
   }
 
   public_deps = [
+    ":keywords",
     "../fml:fml",
     "../net:net",
     "../third_party/txt",
