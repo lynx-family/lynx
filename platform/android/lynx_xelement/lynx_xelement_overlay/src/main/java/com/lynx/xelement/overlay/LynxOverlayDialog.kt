@@ -7,10 +7,10 @@ package com.lynx.xelement.overlay
 import android.app.Activity
 import android.app.Dialog
 import android.content.Context
-import android.graphics.Point
 import android.graphics.PointF
 import android.os.Bundle
 import android.view.MotionEvent
+import android.view.View
 import android.view.ViewGroup
 import android.widget.EditText
 import androidx.fragment.app.DialogFragment
@@ -36,6 +36,8 @@ class LynxOverlayDialog(context: Context, private val overlay: LynxOverlayView):
 
     private var touchEventListener: TouchEventListener? = null
     private var skipNativeDispatchForCurrentGesture = false
+    private var passThroughTarget: PassThroughTarget? = null
+    private var lastPassThroughEvent: MotionEvent? = null
 
     var containerPopupTag: String? = null
 
@@ -47,6 +49,16 @@ class LynxOverlayDialog(context: Context, private val overlay: LynxOverlayView):
 
     interface TouchEventListener {
         fun dispatchTouchEvent(ev: MotionEvent): Boolean
+    }
+
+    private sealed class PassThroughTarget {
+        data class Overlay(val dialog: LynxOverlayDialog) : PassThroughTarget()
+        data class HostActivity(val activity: Activity, val decorView: View) : PassThroughTarget()
+        data class HostDialog(
+            val owner: DialogFragment,
+            val dialog: Dialog,
+            val decorView: View
+        ) : PassThroughTarget()
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -61,7 +73,15 @@ class LynxOverlayDialog(context: Context, private val overlay: LynxOverlayView):
     // call super.dispatchTouchEvent. Otherwise, call LynxOverlayManager.dispatchTouchEvent.
     override fun dispatchTouchEvent(ev: MotionEvent): Boolean {
         if (ev.actionMasked == MotionEvent.ACTION_DOWN) {
+            cancelPassThroughGesture()
             skipNativeDispatchForCurrentGesture = false
+        } else if (passThroughTarget != null) {
+            if (touchEventListener?.dispatchTouchEvent(ev) == true) {
+                cancelPassThroughGesture()
+                innerDispatchTouchEvent(ev)
+                return false
+            }
+            return dispatchPassThroughTouchEvent(ev)
         }
         try {
             if (touchEventListener?.dispatchTouchEvent(ev) == true) {
@@ -137,8 +157,216 @@ class LynxOverlayDialog(context: Context, private val overlay: LynxOverlayView):
         return super.dispatchTouchEvent(ev);
     }
 
+    internal fun dispatchPassThroughTouchEvent(event: MotionEvent): Boolean {
+        if (event.actionMasked == MotionEvent.ACTION_DOWN) {
+            clearPassThroughTarget()
+            for (dialog in LynxOverlayManager.getPresentedOverlaysBelow(this)) {
+                val mappedEvent = obtainEventForTarget(event, dialog.window?.decorView) ?: continue
+                val consumed = dialog.innerDispatchTouchEvent(mappedEvent)
+                if (consumed) {
+                    passThroughTarget = PassThroughTarget.Overlay(dialog)
+                    rememberPassThroughEvent(event)
+                    val handled = dialog.superDispatchTouchEvent(mappedEvent)
+                    mappedEvent.recycle()
+                    return handled
+                }
+                mappedEvent.recycle()
+            }
+            if (overlay.isFragmentScoped()) {
+                val target = resolveFragmentScopeTarget() ?: return false
+                passThroughTarget = target
+                rememberPassThroughEvent(event)
+                return finishPassThroughEvent(event, dispatchToTarget(target, event))
+            }
+            return dispatchTouchEventToBelowContainer(event)
+        }
+
+        val target = passThroughTarget
+        if (target == null) {
+            return if (overlay.isFragmentScoped()) {
+                false
+            } else {
+                dispatchTouchEventToBelowContainer(event)
+            }
+        }
+        if (!isTargetValid(target)) {
+            cancelPassThroughGesture()
+            return false
+        }
+        rememberPassThroughEvent(event)
+        return finishPassThroughEvent(event, dispatchToTarget(target, event))
+    }
+
+    internal fun cancelPassThroughGesture() {
+        val target = passThroughTarget
+        val lastEvent = lastPassThroughEvent
+        passThroughTarget = null
+        lastPassThroughEvent = null
+        if (target != null &&
+            lastEvent != null &&
+            lastEvent.actionMasked != MotionEvent.ACTION_UP &&
+            lastEvent.actionMasked != MotionEvent.ACTION_CANCEL) {
+            val cancelEvent = MotionEvent.obtain(lastEvent)
+            cancelEvent.action = MotionEvent.ACTION_CANCEL
+            dispatchToTarget(target, cancelEvent)
+            cancelEvent.recycle()
+        }
+        lastEvent?.recycle()
+        skipNativeDispatchForCurrentGesture = false
+    }
+
+    internal fun cancelPassThroughGestureTargeting(dialog: LynxOverlayDialog) {
+        val target = passThroughTarget
+        if (target is PassThroughTarget.Overlay && target.dialog === dialog) {
+            cancelPassThroughGesture()
+        }
+    }
+
+    internal fun isPresentationActive(): Boolean {
+        return overlay.isPresentationActive()
+    }
+
+    internal fun isFragmentScoped(): Boolean {
+        return overlay.isFragmentScoped()
+    }
+
+    internal fun acceptsManualTouchDispatch(): Boolean {
+        return !overlay.isNativeEventPassEnabled()
+    }
+
+    internal fun isSameHost(other: LynxOverlayDialog): Boolean {
+        val activity = overlay.getHostActivity()
+        val otherActivity = other.overlay.getHostActivity()
+        val windowToken = overlay.getHostWindowToken()
+        val otherWindowToken = other.overlay.getHostWindowToken()
+        return activity != null &&
+            activity === otherActivity &&
+            windowToken != null &&
+            windowToken == otherWindowToken
+    }
+
+    private fun resolveFragmentScopeTarget(): PassThroughTarget? {
+        if (!overlay.isFragmentScopeActive()) {
+            return null
+        }
+        val owner = overlay.getFragmentOwner() ?: return null
+        val hostWindowToken = overlay.getHostWindowToken() ?: return null
+        val dialogFragment = nearestDialogFragment(owner)
+        if (dialogFragment != null) {
+            val dialog = dialogFragment.dialog ?: return null
+            val decorView = dialog.window?.decorView ?: return null
+            if (!dialog.isShowing || decorView.windowToken != hostWindowToken) {
+                return null
+            }
+            return PassThroughTarget.HostDialog(dialogFragment, dialog, decorView)
+        }
+        val activity = owner.activity ?: return null
+        val decorView = activity.window?.decorView ?: return null
+        if (decorView.windowToken != hostWindowToken) {
+            return null
+        }
+        return PassThroughTarget.HostActivity(activity, decorView)
+    }
+
+    private fun isTargetValid(target: PassThroughTarget): Boolean {
+        return when (target) {
+            is PassThroughTarget.Overlay ->
+                target.dialog.acceptsManualTouchDispatch() &&
+                    LynxOverlayManager.isPresentedOnSameHost(this, target.dialog)
+            is PassThroughTarget.HostActivity ->
+                overlay.isFragmentScopeActive() &&
+                    overlay.getFragmentOwner()?.let { owner ->
+                        nearestDialogFragment(owner) == null && owner.activity === target.activity
+                    } == true &&
+                    target.decorView.windowToken != null &&
+                    target.decorView.windowToken == overlay.getHostWindowToken()
+            is PassThroughTarget.HostDialog ->
+                overlay.isFragmentScopeActive() &&
+                    overlay.getFragmentOwner()?.let { owner ->
+                        nearestDialogFragment(owner) === target.owner
+                    } == true &&
+                    target.owner.dialog === target.dialog &&
+                    target.dialog.isShowing &&
+                    target.decorView.windowToken != null &&
+                    target.decorView.windowToken == overlay.getHostWindowToken()
+        }
+    }
+
+    private fun nearestDialogFragment(owner: Fragment): DialogFragment? {
+        var fragment: Fragment? = owner
+        while (fragment != null) {
+            if (fragment is DialogFragment) {
+                return fragment
+            }
+            fragment = fragment.parentFragment
+        }
+        return null
+    }
+
+    private fun dispatchToTarget(target: PassThroughTarget, event: MotionEvent): Boolean {
+        return when (target) {
+            is PassThroughTarget.Overlay -> {
+                val mappedEvent =
+                    obtainEventForTarget(event, target.dialog.window?.decorView) ?: return false
+                target.dialog.innerDispatchTouchEvent(mappedEvent)
+                val handled = target.dialog.superDispatchTouchEvent(mappedEvent)
+                mappedEvent.recycle()
+                handled
+            }
+            is PassThroughTarget.HostActivity -> {
+                val mappedEvent = obtainEventForTarget(event, target.decorView) ?: return false
+                val handled = target.activity.dispatchTouchEvent(mappedEvent)
+                mappedEvent.recycle()
+                handled
+            }
+            is PassThroughTarget.HostDialog -> {
+                val mappedEvent = obtainEventForTarget(event, target.decorView) ?: return false
+                val handled = target.dialog.dispatchTouchEvent(mappedEvent)
+                mappedEvent.recycle()
+                handled
+            }
+        }
+    }
+
+    private fun obtainEventForTarget(event: MotionEvent, targetDecorView: View?): MotionEvent? {
+        val sourceDecorView = window?.decorView ?: return null
+        targetDecorView ?: return null
+        val sourceLocation = IntArray(2)
+        val targetLocation = IntArray(2)
+        sourceDecorView.getLocationOnScreen(sourceLocation)
+        targetDecorView.getLocationOnScreen(targetLocation)
+        return MotionEvent.obtain(event).apply {
+            offsetLocation(
+                (sourceLocation[0] - targetLocation[0]).toFloat(),
+                (sourceLocation[1] - targetLocation[1]).toFloat()
+            )
+        }
+    }
+
+    private fun rememberPassThroughEvent(event: MotionEvent) {
+        lastPassThroughEvent?.recycle()
+        lastPassThroughEvent = MotionEvent.obtain(event)
+    }
+
+    private fun finishPassThroughEvent(event: MotionEvent, handled: Boolean): Boolean {
+        if (event.actionMasked == MotionEvent.ACTION_UP ||
+            event.actionMasked == MotionEvent.ACTION_CANCEL) {
+            clearPassThroughTarget()
+        }
+        return handled
+    }
+
+    private fun clearPassThroughTarget() {
+        passThroughTarget = null
+        lastPassThroughEvent?.recycle()
+        lastPassThroughEvent = null
+    }
+
     //when event-pass-through is true, the event will dispatch to below container
     fun dispatchTouchEventToBelowContainer(event: MotionEvent): Boolean {
+        if (overlay.isFragmentScoped()) {
+            return false
+        }
         val activity = ContextUtils.getActivity(overlay.lynxContext)
         return if (!containerPopupTag.isNullOrEmpty()) {
             val point = PointF(event.rawX, event.rawY)
@@ -274,6 +502,7 @@ class LynxOverlayDialog(context: Context, private val overlay: LynxOverlayView):
     }
 
     override fun dismiss() {
+        cancelPassThroughGesture()
         if (!isInvalidContext(context)) {
             super.dismiss()
         }
