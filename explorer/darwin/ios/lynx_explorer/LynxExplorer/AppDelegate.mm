@@ -3,9 +3,8 @@
 // LICENSE file in the root directory of this source tree.
 
 #import "AppDelegate.h"
-#if __has_include("Sparkling-umbrella.h")
+#if HAS_SPARKLING
 #import "Sparkling-umbrella.h"
-#define HAS_SPARKLING 1
 #endif
 #import "LynxDebugger.h"
 #import "LynxExplorer-Swift.h"

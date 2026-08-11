@@ -4,7 +4,7 @@
 
 import Foundation
 
-#if canImport(SparklingMethod)
+#if HAS_SPARKLING
 import Lynx
 import SparklingMethod
 import Sparkling_Router

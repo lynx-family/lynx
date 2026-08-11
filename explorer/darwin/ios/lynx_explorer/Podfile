@@ -5,8 +5,57 @@ lynx_root = File.expand_path('../../../..', __dir__)
 lynx_library_plugin_dir = File.join(lynx_root, 'tools/ios_tools/cocoapods-lynx-library/lib')
 $LOAD_PATH.unshift lynx_library_plugin_dir
 load File.join(lynx_library_plugin_dir, 'cocoapods_plugin.rb')
+load File.join(__dir__, 'scripts/generate_sparkling_podspecs.rb')
 
 platform :ios, '12.0'
+
+def parse_sparkling_ios_flag(value)
+  return nil if value.nil? || value.empty?
+
+  case value.downcase
+  when '1', 'true', 'yes'
+    true
+  when '0', 'false', 'no'
+    false
+  else
+    raise Pod::Informative, 'ENABLE_SPARKLING_IOS must be 1 or 0'
+  end
+end
+
+def xcconfig_tokens(value)
+  value.to_s.split(/\s+/).reject(&:empty?)
+end
+
+def remove_xcconfig_token(xcconfig, key, token)
+  tokens = xcconfig_tokens(xcconfig.attributes[key])
+  tokens.delete(token)
+  xcconfig.attributes[key] = tokens.empty? ? '$(inherited)' : tokens.join(' ')
+end
+
+def add_xcconfig_token(xcconfig, key, token)
+  tokens = xcconfig_tokens(xcconfig.attributes[key])
+  tokens << '$(inherited)' if tokens.empty?
+  tokens << token unless tokens.include?(token)
+  xcconfig.attributes[key] = tokens.join(' ')
+end
+
+sparkling_pod_names = ['Sparkling', 'SparklingMethod', 'Sparkling-Router']
+sparkling_output_dir = File.join(__dir__, 'generated/sparkling-podspecs')
+sparkling_flag = parse_sparkling_ios_flag(ENV['ENABLE_SPARKLING_IOS'])
+sparkling_missing = SparklingPodspecOverlays.missing_requirements(
+  :lynx_root => lynx_root,
+  :pod_names => sparkling_pod_names
+)
+
+enable_sparkling_ios = if sparkling_flag.nil?
+  !ENV['GITHUB_ACTIONS'] && sparkling_missing.empty?
+else
+  sparkling_flag
+end
+
+if enable_sparkling_ios && !sparkling_missing.empty?
+  raise Pod::Informative, "ENABLE_SPARKLING_IOS=1 requires installed Sparkling packages:\n  - #{sparkling_missing.join("\n  - ")}"
+end
 
 install!'cocoapods',:deterministic_uuids=>false,
                     :lock_pod_sources=>false,
@@ -18,6 +67,20 @@ post_install do |installer|
   installer.pod_target_subprojects.flat_map { |p| p.targets }.each do |t|
     t.build_configurations.each do |c|
       c.build_settings['CODE_SIGNING_ALLOWED'] = "NO"
+    end
+  end
+
+  installer.aggregate_targets.each do |aggregate_target|
+    next unless aggregate_target.name == 'Pods-LynxExplorer'
+
+    aggregate_target.xcconfigs.each do |_configuration, xcconfig|
+      remove_xcconfig_token(xcconfig, 'GCC_PREPROCESSOR_DEFINITIONS', 'HAS_SPARKLING=1')
+      remove_xcconfig_token(xcconfig, 'SWIFT_ACTIVE_COMPILATION_CONDITIONS', 'HAS_SPARKLING')
+      if enable_sparkling_ios
+        add_xcconfig_token(xcconfig, 'GCC_PREPROCESSOR_DEFINITIONS', 'HAS_SPARKLING=1')
+        add_xcconfig_token(xcconfig, 'SWIFT_ACTIVE_COMPILATION_CONDITIONS', 'HAS_SPARKLING')
+      end
+      xcconfig.save_as(aggregate_target.xcconfig_path(_configuration))
     end
   end
 end
@@ -81,35 +144,18 @@ target 'LynxExplorer' do
   pod 'DebugRouter/MessageTransceiverEnable', '5.0.15'
   pod 'MJRefresh', '3.6.1'
 
-  # Sparkling SDK — pods sourced from npm packages in node_modules.
-  # Requires Swift 5.10+ (Xcode 15.3+). Skipped on GitHub Actions OSS CI which
-  # uses Xcode 15.1. All Sparkling ObjC/Swift code is guarded by
-  # #if HAS_SPARKLING / #if canImport(SparklingMethod).
-  node_modules = File.join(lynx_root, 'node_modules')
+  # Sparkling SDK — pods sourced from generated local podspec overlays with
+  # symlinks back to npm package sources. Requires Swift 5.10+ (Xcode 15.3+),
+  # so OSS CI keeps it disabled with ENABLE_SPARKLING_IOS=0 until the CI
+  # toolchain is updated.
+  if enable_sparkling_ios
+    sparkling_pods = SparklingPodspecOverlays.generate!(
+      :lynx_root => lynx_root,
+      :output_dir => sparkling_output_dir,
+      :pod_names => sparkling_pod_names
+    )
 
-  sparkling_pods = {
-    'Sparkling'        => File.join(node_modules, '@sparklingjs', 'runtime', 'ios'),
-    'SparklingMethod'  => File.join(node_modules, 'sparkling-method', 'ios'),
-    'Sparkling-Router' => File.join(node_modules, 'sparkling-navigation', 'ios'),
-  }
-
-  sparkling_available = File.exist?(File.join(sparkling_pods['SparklingMethod'], 'SparklingMethod.podspec'))
-  sparkling_available = false if ENV['GITHUB_ACTIONS'] # OSS CI uses Xcode 15.1 / Swift 5.9
-
-  if sparkling_available
-    # The Sparkling podspecs pin Lynx/Framework to a released version (e.g. 3.6.0),
-    # but LynxExplorer builds Lynx from local source (version 0.0.1). We strip
-    # Lynx/LynxBase/LynxServiceAPI version pins from podspecs before resolution.
-    sparkling_pods.each_value do |pod_dir|
-      Dir.glob(File.join(pod_dir, '*.podspec')).each do |spec|
-        content = File.read(spec)
-        patched = content
-          .gsub(/(dependency\s+['"](?:Lynx|LynxBase|LynxServiceAPI)(?:\/\w+)?['"])\s*,\s*['"][^'"]+['"]/, '\1')
-        File.write(spec, patched) if patched != content
-      end
-    end
-
-    pod 'Sparkling', :path => sparkling_pods['Sparkling']
+    pod 'Sparkling/Utils', :path => sparkling_pods['Sparkling']
     pod 'SparklingMethod', :path => sparkling_pods['SparklingMethod'],
         :subspecs => ['Lynx', 'DIProvider', 'Debug']
     pod 'Sparkling-Router', :path => sparkling_pods['Sparkling-Router']
