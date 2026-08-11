@@ -13,6 +13,7 @@
 #include "base/include/value/base_value.h"
 #include "base/include/value/ref_counted_class.h"
 #include "base/include/value/table.h"
+#include "base/include/vector.h"
 #include "core/runtime/lepusng/quick_context.h"
 #include "core/shell/runtime/mts/mts_runtime.h"
 
@@ -24,30 +25,33 @@ LEPUSValue LEPUSValueHelper::TableToJsValue(LEPUSContext* ctx,
                                             bool deep_convert) {
   size_t idx = 0;
   int size = static_cast<int>(table.size());
-  const char* keys[size];
-  LEPUSValue values[size];
+  // Avoid VLA on the stack: large tables can overflow the stack.
+  // InlineVector keeps small allocations inline and falls back to the heap.
+  base::InlineVector<const char*, 8> keys(static_cast<size_t>(size));
+  base::InlineVector<LEPUSValue, 8> values(static_cast<size_t>(size));
   HandleScope func_scope(LEPUS_GetRuntime(ctx));
-  func_scope.PushLEPUSValueArrayHandle(values, size);
+  func_scope.PushLEPUSValueArrayHandle(values.data(), size);
   table.for_each([&](const auto& key, const auto& value) {
     keys[idx] = key.c_str();
     values[idx] = ToJsValue(ctx, value, deep_convert);
     ++idx;
   });
-  return LEPUS_NewObjectWithArgs(ctx, size, keys, values);
+  return LEPUS_NewObjectWithArgs(ctx, size, keys.data(), values.data());
 }
 
 LEPUSValue LEPUSValueHelper::ArrayToJsValue(LEPUSContext* ctx,
                                             const CArray& array,
                                             bool deep_convert) {
   size_t idx = 0, size = array.vec_.size();
-  LEPUSValue values[size];
+  // Avoid VLA on the stack: large arrays can overflow the stack.
+  base::InlineVector<LEPUSValue, 8> values(size);
   HandleScope func_scope(LEPUS_GetRuntime(ctx));
-  func_scope.PushLEPUSValueArrayHandle(values, static_cast<int>(size));
+  func_scope.PushLEPUSValueArrayHandle(values.data(), static_cast<int>(size));
   while (idx < size) {
     values[idx] = ToJsValue(ctx, array.vec_[idx], deep_convert);
     ++idx;
   }
-  return LEPUS_NewArrayWithArgs(ctx, static_cast<int>(size), values);
+  return LEPUS_NewArrayWithArgs(ctx, static_cast<int>(size), values.data());
 }
 
 LEPUSValue LEPUSValueHelper::RefCountedToJSValue(
