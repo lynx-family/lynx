@@ -67,8 +67,9 @@ class TTShapeRun : public tttext::RunDelegate {
       ascent_ = -std::max(0.f, middle + static_cast<float>(span.height) / 2.f);
       descent_ = std::max(0.f, -middle + static_cast<float>(span.height) / 2.f);
     } else {
-      ascent_ = -span.height;
-      descent_ = 0;
+      const float baseline = static_cast<float>(span.baseline_offset);
+      ascent_ = -baseline;
+      descent_ = static_cast<float>(span.height) - baseline;
     }
     advance_ = span.width;
   }
