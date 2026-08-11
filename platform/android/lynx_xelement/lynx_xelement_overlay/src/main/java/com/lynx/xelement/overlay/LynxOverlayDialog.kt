@@ -11,6 +11,7 @@ import android.graphics.Point
 import android.graphics.PointF
 import android.os.Bundle
 import android.view.MotionEvent
+import android.view.View
 import android.view.ViewGroup
 import android.widget.EditText
 import androidx.fragment.app.DialogFragment
@@ -55,6 +56,12 @@ class LynxOverlayDialog(context: Context, private val overlay: LynxOverlayView):
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT
         )
+    }
+
+    override fun show() {
+        super.show()
+        // Dialog.show() does not restore a DecorView hidden before the previous dismiss.
+        window?.decorView?.visibility = View.VISIBLE
     }
 
     // Override dialog's dispatchTouchEvent, if dialog needs to consume,
@@ -149,7 +156,7 @@ class LynxOverlayDialog(context: Context, private val overlay: LynxOverlayView):
             val offsetY = getBelowContainerHeightOffset().toFloat()
             event.offsetLocation(-offsetX, -offsetY)
             val handled = if (fragment is DialogFragment) {
-                fragment.dialog.dispatchTouchEvent(event) ?: false
+                fragment.dialog?.dispatchTouchEvent(event) ?: false
             } else {
                 // For regular fragments, we need to convert screen coordinates to fragment view coordinates
                 fragment.view?.let { fragmentView ->
