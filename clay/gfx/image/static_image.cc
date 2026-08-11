@@ -3,44 +3,11 @@
 // LICENSE file in the root directory of this source tree.
 #include "clay/gfx/image/static_image.h"
 
-#include <algorithm>
 #include <memory>
 
 #include "clay/fml/logging.h"
 #include "clay/gfx/graphics_context.h"
 #include "clay/gfx/skity_to_skia_utils.h"
-
-namespace {
-
-std::shared_ptr<skity::Pixmap> ScaleImage(std::shared_ptr<skity::Pixmap> pixmap,
-                                          clay::ImageInfo render_info) {
-  int image_width = pixmap->Width();
-  int image_height = pixmap->Height();
-
-  if (image_width == render_info.width() &&
-      image_height == render_info.height()) {
-    return pixmap;
-  }
-
-  auto image = skity::Image::MakeImage(pixmap);
-  if (!image) {
-    return pixmap;
-  }
-
-  std::shared_ptr<skity::Pixmap> scaled_pixmap =
-      std::make_shared<skity::Pixmap>(render_info.width(), render_info.height(),
-                                      pixmap->GetAlphaType(),
-                                      pixmap->GetColorType());
-
-  if (!image->ScalePixels(scaled_pixmap, nullptr,
-                          skity::SamplingOptions(skity::FilterMode::kLinear,
-                                                 skity::MipmapMode::kNone))) {
-    return pixmap;
-  }
-
-  return scaled_pixmap;
-}
-}  // namespace
 
 namespace clay {
 std::shared_ptr<StaticImage> StaticImage::Make(
@@ -63,36 +30,33 @@ void StaticImage::Upload(fml::RefPtr<GPUUnrefQueue> unref_queue, Size size) {
   }
 
   if (!gpu_image_.object()) {
-    auto pixmap = image_->ToBitmap();
-    if (!pixmap) {
-      FML_LOG(ERROR) << "StaticImage::Upload: Bitmap is null";
-      return;
-    }
-
     if (render_info_.isEmpty()) {
       render_info_ = orig_info_;
     }
 
     auto image = skity::Image::MakeDeferredTextureImage(
-        skity::Texture::FormatFromColorType(pixmap->GetColorType()),
-        render_info_.width(), render_info_.height(), pixmap->GetAlphaType());
+        skity::Texture::FormatFromColorType(image_->GetColorType()),
+        render_info_.width(), render_info_.height(), image_->GetAlphaType());
     gpu_image_ = GPUObject(GraphicsImage::Make(image), unref_queue);
     unref_queue->GetTaskRunner()->PostTask(
-        [context = unref_queue->GetContext(), image, pixmap,
-         render_info = render_info_, mipmapped = mipmapped_,
-         weak = weak_from_this()]() {
-          if (auto self = weak.lock()) {
-            auto final_pixmap = ScaleImage(pixmap, render_info);
+        [context = unref_queue->GetContext(), image, render_info = render_info_,
+         mipmapped = mipmapped_, weak = weak_from_this()]() {
+          if (auto self = std::static_pointer_cast<StaticImage>(weak.lock())) {
+            auto pixmap = self->image_->ToBitmap(render_info);
+            if (!pixmap) {
+              FML_LOG(ERROR) << "StaticImage::Upload: Bitmap is null";
+              return;
+            }
             skity::TextureDescriptor desc{};
-            desc.format = skity::Texture::FormatFromColorType(
-                final_pixmap->GetColorType());
-            desc.width = final_pixmap->Width();
-            desc.height = final_pixmap->Height();
-            desc.alpha_type = final_pixmap->GetAlphaType();
+            desc.format =
+                skity::Texture::FormatFromColorType(pixmap->GetColorType());
+            desc.width = pixmap->Width();
+            desc.height = pixmap->Height();
+            desc.alpha_type = pixmap->GetAlphaType();
             desc.mipmapped = mipmapped;
             auto texture = context->CreateTextureWithDesc(&desc);
             if (texture) {
-              texture->DeferredUploadImage(std::move(final_pixmap));
+              texture->DeferredUploadImage(std::move(pixmap));
               image->SetTexture(texture);
             }
           }
