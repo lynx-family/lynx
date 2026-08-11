@@ -4,6 +4,9 @@
 
 import("../../common/config.gni")
 
+keywords_header = "$root_gen_dir/clay/ui/component/keywords.h"
+keywords_source = "$root_gen_dir/clay/ui/component/keywords.cc"
+
 ui_component_sources = [
   "base_image_view.cc",
   "base_image_view.h",
@@ -43,8 +46,6 @@ ui_component_sources = [
   "isolated_gesture_detector.h",
   "key_event_handler.cc",
   "key_event_handler.h",
-  "keywords.cc",
-  "keywords.h",
   "layout_controller.cc",
   "layout_controller.h",
   "list/list_common/layout_types.cc",
@@ -133,6 +134,8 @@ ui_component_sources = [
   "view_registry.h",
   "view_tree_observer.cc",
   "view_tree_observer.h",
+  keywords_header,
+  keywords_source,
 ]
 
 if (is_mac || is_win) {
