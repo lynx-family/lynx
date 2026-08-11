@@ -36,15 +36,19 @@ import napi_utilities
 MODULE_PATH, _ = os.path.split(os.path.realpath(__file__))
 THIRD_PARTY_DIR = os.path.normpath(
     os.path.join(MODULE_PATH, os.pardir, 'third_party'))
+PY_DEPS_DIR = os.path.normpath(
+    os.path.join(MODULE_PATH, os.pardir, os.pardir, os.pardir, 'py_deps'))
 TEMPLATES_DIR = os.path.normpath(
     os.path.join(MODULE_PATH, os.pardir, 'templates'))
 
-# jinja2 is in chromium's third_party directory.
+# Prefer Lynx's shared Python dependencies, while retaining idl-codegen's
+# third_party directory for dependencies that have not migrated yet.
 # Insert at 1 so at front to override system libraries, and
 # after path[0] == invoking script dir
 sys.path.insert(1, THIRD_PARTY_DIR)
+sys.path.insert(1, PY_DEPS_DIR)
 import jinja2
-from jinja2.filters import make_attrgetter, environmentfilter
+from jinja2.filters import make_attrgetter
 
 
 def generate_indented_conditional(code, conditional):
@@ -90,7 +94,7 @@ def runtime_enabled_if(code, name):
     return generate_indented_conditional(code, function)
 
 
-@environmentfilter
+@jinja2.pass_environment
 def do_stringify_key_group_by(environment, value, attribute):
     expr = make_attrgetter(environment, attribute)
     key = lambda item: '' if expr(item) is None else str(expr(item))
