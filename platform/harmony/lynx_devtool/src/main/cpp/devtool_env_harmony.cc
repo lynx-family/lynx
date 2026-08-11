@@ -89,11 +89,6 @@ bool DevToolEnvHarmony::InitPreferences() {
     (void)OH_PreferencesOption_Destroy(option);
     return false;
   }
-  ret = OH_PreferencesOption_SetBundleName(option, "com.lynx");
-  if (ret != PREFERENCES_OK) {
-    (void)OH_PreferencesOption_Destroy(option);
-    return false;
-  }
   int errCode = PREFERENCES_OK;
   preference_ = OH_Preferences_Open(option, &errCode);
   (void)OH_PreferencesOption_Destroy(option);
