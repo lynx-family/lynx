@@ -92,6 +92,16 @@ TEST(LengthHandler, Process) {
   EXPECT_EQ(css_value.GetNumber(), 10);
 }
 
+TEST(LengthHandler, NumericLengthUsesPxPattern) {
+  auto impl = lepus::Value(10);
+  CSSValue css_value;
+  CSSParserConfigs configs;
+
+  EXPECT_TRUE(LengthHandler::Process(impl, css_value, configs));
+  EXPECT_TRUE(css_value.IsPx());
+  EXPECT_EQ(css_value.GetNumber(), 10);
+}
+
 TEST(LengthHandler, TextDecorationPatternLengths) {
   StyleMap output;
   CSSParserConfigs configs;
