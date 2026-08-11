@@ -433,6 +433,7 @@ subspec_target("UnitTests") {
     HEADER_SEARCH_PATHS = [ "//TARGET_BUILD_DIR/Lynx/Lynx/gen/Lynx" ]
   }
   sources = [
+    "../../../../core/renderer/ui_wrapper/painting/ios/painting_context_darwin_UnitTest.mm",
     "../../../../core/value_wrapper/darwin/value_impl_darwin_unittest.mm",
     "../../common/lynx/LynxEnvUnitTest.mm",
     "../../common/lynx/LynxErrorUnitTest.m",

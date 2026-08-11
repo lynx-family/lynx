@@ -247,6 +247,12 @@ void NativePaintingCtxDarwin::FinishLayoutOperation(
         }
       });
 
+  if (options->need_timestamps && !options->pipeline_id.empty()) {
+    Enqueue([ref = platform_ref_, pipeline_id = options->pipeline_id]() {
+      ref->SetNeedMarkPaintEndTiming(pipeline_id);
+    });
+  }
+
   if (queue_ != nullptr &&
       options->native_update_data_order_ == queue_->GetNativeUpdateDataOrder()) {
     queue_->UpdateStatus(shell::UIOperationStatus::LAYOUT_FINISH);

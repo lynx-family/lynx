@@ -31,6 +31,8 @@ class NativePaintingCtxPlatformDarwinRef : public NativePaintingCtxPlatformRef {
   void GetScreenSize(float size[2]) override;
   LynxRendererContext* GetRendererContext();
 
+  void SetNeedMarkPaintEndTiming(const tasm::PipelineID& pipeline_id) override;
+
   void SetPerformanceController(LynxPerformanceController* controller) {
     perf_controller_ = controller;
   }
