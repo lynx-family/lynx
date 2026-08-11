@@ -32,6 +32,8 @@ class InlineViewShadowNode : public ShadowNode {
 
   void ResetTextLayout();
 
+  void SetMeasuredBaseline(float baseline) { measured_baseline_ = baseline; }
+
   void SetBaselineOffset(double baseline_offset) override {
     baseline_offset_ = baseline_offset;
   }
@@ -44,6 +46,7 @@ class InlineViewShadowNode : public ShadowNode {
   size_t start_glyph_ = 0;
   size_t end_glyph_ = 0;
   double baseline_offset_ = 0.f;
+  float measured_baseline_ = 0.f;
 };
 
 }  // namespace clay

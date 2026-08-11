@@ -61,10 +61,11 @@ static bool HasInlineTruncationShadowNode(ShadowNode* node) {
   return false;
 }
 
-static bool InlineTruncationTextBoxFits(
-    const txt::Paragraph::TextBox& box, double layout_width,
-    double visible_bottom, double target_line_top, double target_line_bottom,
-    std::optional<double>& first_box_top, bool require_same_top) {
+static bool InlineTruncationTextBoxFits(const txt::Paragraph::TextBox& box,
+                                        double layout_width,
+                                        double visible_bottom,
+                                        double target_line_top,
+                                        double target_line_bottom) {
   if (box.rect.Width() <= kLayoutTolerance &&
       box.rect.Height() <= kLayoutTolerance) {
     return true;
@@ -77,15 +78,6 @@ static bool InlineTruncationTextBoxFits(
       box.rect.Top() > target_line_bottom + kLayoutTolerance) {
     return false;
   }
-  if (require_same_top) {
-    if (first_box_top.has_value() &&
-        std::abs(box.rect.Top() - first_box_top.value()) > kLayoutTolerance) {
-      return false;
-    }
-    if (!first_box_top.has_value()) {
-      first_box_top = box.rect.Top();
-    }
-  }
   return true;
 }
 
@@ -93,8 +85,7 @@ static bool InlineTruncationTextBoxesFit(txt::Paragraph* paragraph,
                                          ShadowNode* node, double layout_width,
                                          double visible_bottom,
                                          double target_line_top,
-                                         double target_line_bottom,
-                                         std::optional<double>& first_box_top) {
+                                         double target_line_bottom) {
   if (!paragraph || !node) {
     return false;
   }
@@ -116,8 +107,7 @@ static bool InlineTruncationTextBoxesFit(txt::Paragraph* paragraph,
           txt::Paragraph::RectWidthStyle::kTight);
       for (const auto& box : boxes) {
         if (!InlineTruncationTextBoxFits(box, layout_width, visible_bottom,
-                                         target_line_top, target_line_bottom,
-                                         first_box_top, true)) {
+                                         target_line_top, target_line_bottom)) {
           return false;
         }
       }
@@ -146,8 +136,7 @@ static bool InlineTruncationTextBoxesFit(txt::Paragraph* paragraph,
     }
     for (const auto& box : boxes) {
       if (!InlineTruncationTextBoxFits(box, layout_width, visible_bottom,
-                                       target_line_top, target_line_bottom,
-                                       first_box_top, false)) {
+                                       target_line_top, target_line_bottom)) {
         return false;
       }
     }
@@ -156,7 +145,7 @@ static bool InlineTruncationTextBoxesFit(txt::Paragraph* paragraph,
   for (auto* child : node->GetChildren()) {
     if (!InlineTruncationTextBoxesFit(paragraph, child, layout_width,
                                       visible_bottom, target_line_top,
-                                      target_line_bottom, first_box_top)) {
+                                      target_line_bottom)) {
       return false;
     }
   }
@@ -884,11 +873,9 @@ void TextRender::HandleInlineTruncation(const MeasureConstraint& constraint,
               visible_line.baseline - visible_line.ascent;
           const double target_line_bottom =
               visible_line.baseline + visible_line.descent;
-          std::optional<double> first_box_top;
           return InlineTruncationTextBoxesFit(
               cache_paragraph_.get(), truncation_node, prev_layout_width_,
-              visible_bottom, target_line_top, target_line_bottom,
-              first_box_top);
+              visible_bottom, target_line_top, target_line_bottom);
         };
 
         size_t visible_glyph_num = max_visible_glyph_num;
