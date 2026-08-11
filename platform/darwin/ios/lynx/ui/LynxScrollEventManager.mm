@@ -42,7 +42,7 @@ NSString *const LynxEventSnap = @"snap";
 }
 
 - (BOOL)eventBound:(NSString *)name {
-  return [self.eventSet objectForKey:name];
+  return [self.eventSet objectForKey:name] != nil;
 }
 
 - (void)sendScrollEvent:(NSString *)name scrollView:(UIScrollView *)scrollView {

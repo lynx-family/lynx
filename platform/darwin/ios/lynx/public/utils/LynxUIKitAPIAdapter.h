@@ -13,6 +13,9 @@
 // Get the window collection of the current application.
 + (NSArray<UIWindow *> *)getWindows;
 
+// Get all windows across the application's connected scenes.
++ (NSArray<UIWindow *> *)getAllWindows;
+
 // Get the main window of the current application.
 + (UIWindow *)getKeyWindow;
 
@@ -21,5 +24,9 @@
 
 // Get the status bar position information of the current application.
 + (CGRect)getStatusBarFrame;
+
+// Show or hide the shared edit menu using APIs available on the current platform.
++ (void)hideMenuController:(UIMenuController *)menu fromView:(UIView *)view;
++ (void)showMenuController:(UIMenuController *)menu fromView:(UIView *)view rect:(CGRect)rect;
 
 @end

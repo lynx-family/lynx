@@ -4,6 +4,7 @@
 
 #import <Lynx/CALayer+LynxHeroTransition.h>
 #import <Lynx/LynxHeroTransition.h>
+#import <Lynx/LynxUIKitAPIAdapter.h>
 #import <Lynx/UIView+LynxHeroTransition.h>
 #import <Lynx/UIViewController+LynxHeroTransition.h>
 
@@ -346,7 +347,7 @@
   [lynxUI.animationManager setAnimation:lynxUI.view.lynxHeroConfig.enterTransitionName];
   pair.duration = lynxUI.view.lynxHeroConfig.enterTransitionName.duration;
   if (!pair.crossPage) {
-    UIWindow *window = [[UIApplication sharedApplication] keyWindow];
+    UIWindow *window = [LynxUIKitAPIAdapter getForegroundKeyWindow];
     CGPoint fromPoint = [window convertPoint:fromView.layer.position fromView:fromView.superview];
     [window addSubview:toView];
     toView.frame = fromView.frame;
@@ -366,7 +367,7 @@
   [lynxUI.animationManager setAnimation:lynxUI.view.lynxHeroConfig.enterTransitionName];
   pair.duration = lynxUI.view.lynxHeroConfig.enterTransitionName.duration;
   if (!pair.crossPage) {
-    UIWindow *window = [[UIApplication sharedApplication] keyWindow];
+    UIWindow *window = [LynxUIKitAPIAdapter getForegroundKeyWindow];
     CGPoint fromPoint = [window convertPoint:fromView.layer.position fromView:fromView.superview];
     [window addSubview:toView];
     toView.frame = fromView.frame;

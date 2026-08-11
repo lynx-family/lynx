@@ -4,6 +4,7 @@
 
 #import <Lynx/LynxKeyboardEventDispatcher.h>
 #include <Lynx/LynxLog.h>
+#import <Lynx/LynxUIKitAPIAdapter.h>
 #import <Lynx/LynxWeakProxy.h>
 #import <UIKit/UIKit.h>
 #include <math.h>
@@ -387,7 +388,7 @@ static const CGFloat kLynxKeyboardAvoidEpsilon = 0.5;
   // Get the KeyboardWindow
   UIWindow *keyboardWindow = nil;
   int systemVersion = [[UIDevice currentDevice] systemVersion].intValue;
-  for (UIWindow *window in [[UIApplication sharedApplication] windows]) {
+  for (UIWindow *window in [LynxUIKitAPIAdapter getAllWindows]) {
     NSString *windowName = NSStringFromClass(window.class);
     if (systemVersion < 9) {
       // UITextEffectsWindow

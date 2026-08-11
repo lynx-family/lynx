@@ -23,6 +23,22 @@
   return nil;
 }
 
++ (NSArray<UIWindow *> *)getAllWindows {
+  if (@available(iOS 13.0, *)) {
+    NSMutableArray<UIWindow *> *windows = [NSMutableArray array];
+    for (UIScene *scene in [UIApplication sharedApplication].connectedScenes) {
+      if ([scene isKindOfClass:[UIWindowScene class]]) {
+        [windows addObjectsFromArray:((UIWindowScene *)scene).windows];
+      }
+    }
+    return windows;
+  }
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+  return [UIApplication sharedApplication].windows;
+#pragma clang diagnostic pop
+}
+
 + (UIWindow *)getKeyWindow {
   if (@available(iOS 15.0, *)) {
     for (UIScene *scene in [UIApplication sharedApplication].connectedScenes) {
@@ -78,6 +94,31 @@
     return [[UIApplication sharedApplication] statusBarFrame];
 #pragma clang diagnostic pop
   }
+}
+
++ (void)hideMenuController:(UIMenuController *)menu fromView:(UIView *)view {
+#if TARGET_OS_MACCATALYST
+  [menu hideMenuFromView:view];
+#else
+  if (@available(iOS 13.0, *)) {
+    [menu hideMenuFromView:view];
+  } else {
+    [menu setMenuVisible:NO animated:YES];
+  }
+#endif
+}
+
++ (void)showMenuController:(UIMenuController *)menu fromView:(UIView *)view rect:(CGRect)rect {
+#if TARGET_OS_MACCATALYST
+  [menu showMenuFromView:view rect:rect];
+#else
+  if (@available(iOS 13.0, *)) {
+    [menu showMenuFromView:view rect:rect];
+  } else {
+    [menu setTargetRect:rect inView:view];
+    [menu setMenuVisible:YES animated:YES];
+  }
+#endif
 }
 
 @end

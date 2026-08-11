@@ -54,19 +54,27 @@ target 'LynxExplorer' do
     :output_dir => File.join(__dir__, 'generated/lynx-library')
   )
 
-  pod 'AnimaX', '1.0.1-alpha.13', :subspecs => [
-    'Core',
-    'Framework',
-    'Textra',
-    'RenderBackend/Skity',
-  ]
-  pod 'skity', '1.1.0-alpha.3'
-  pod 'LynxTextra', '0.1.5'
+  if ENV['LYNX_EXPLORER_MAC_CATALYST'] == '1'
+    # LynxTextra does not currently ship a Mac Catalyst slice. Keep all
+    # XElement behaviors except Markdown, which is its only consumer here.
+    pod 'XElement', :path => '../../../..', :subspecs => [
+      'BehaviorCore',
+    ]
+  else
+    pod 'AnimaX', '1.0.1-alpha.13', :subspecs => [
+      'Core',
+      'Framework',
+      'Textra',
+      'RenderBackend/Skity',
+    ]
+    pod 'skity', '1.1.0-alpha.3'
+    pod 'LynxTextra', '0.1.5'
 
-  pod 'XElement', :path => '../../../..', :subspecs => [
-    'AnimaX',
-    'Behavior',
-  ]
+    pod 'XElement', :path => '../../../..', :subspecs => [
+      'AnimaX',
+      'Behavior',
+    ]
+  end
 
   pod 'PrimJS', '4.2.0-alpha.0', :subspecs => ['quickjs', 'napi']
   pod 'LynxWeakNodeAPI', '0.0.6', :subspecs => ['core', 'primjs_bridge']

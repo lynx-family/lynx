@@ -11,6 +11,18 @@
 #import <Lynx/LynxUIUnitUtils.h>
 #import "LynxTraceEventDef.h"
 
+@interface LynxTextLayoutManager ()
+
+- (void)lynx_showCGGlyphs:(const CGGlyph *)glyphs
+                positions:(const CGPoint *)positions
+                    count:(NSInteger)glyphCount
+                     font:(UIFont *)font
+               textMatrix:(CGAffineTransform)textMatrix
+               attributes:(NSDictionary<NSAttributedStringKey, id> *)attributes
+                inContext:(CGContextRef)graphicsContext;
+
+@end
+
 @implementation LynxTextLayoutManager
 
 - (void)drawTextClipMaskWithFont:(UIFont *_Nonnull)font
@@ -46,6 +58,15 @@
   ///
   CGContextTranslateCTM(maskContext, -_overflowOffset.x + adjustOffset->x,
                         -_overflowOffset.y + adjustOffset->y);
+#if TARGET_OS_MACCATALYST
+  [super showCGGlyphs:glyphs
+            positions:positions
+                count:glyphCount
+                 font:font
+           textMatrix:*textMatrix
+           attributes:mutableAttr
+            inContext:maskContext];
+#else
   [super showCGGlyphs:glyphs
             positions:positions
                 count:glyphCount
@@ -53,9 +74,27 @@
                matrix:*textMatrix
            attributes:mutableAttr
             inContext:maskContext];
+#endif
   CGFontRelease(fontRef);
 }
 
+#if TARGET_OS_MACCATALYST
+- (void)showCGGlyphs:(const CGGlyph *)glyphs
+           positions:(const CGPoint *)positions
+               count:(NSInteger)glyphCount
+                font:(UIFont *)font
+          textMatrix:(CGAffineTransform)textMatrix
+          attributes:(NSDictionary<NSAttributedStringKey, id> *)attributes
+           inContext:(CGContextRef)graphicsContext {
+  [self lynx_showCGGlyphs:glyphs
+                positions:positions
+                    count:glyphCount
+                     font:font
+               textMatrix:textMatrix
+               attributes:attributes
+                inContext:graphicsContext];
+}
+#else
 - (void)showCGGlyphs:(const CGGlyph *)glyphs
            positions:(const CGPoint *)positions
                count:(NSUInteger)glyphCount
@@ -63,6 +102,23 @@
               matrix:(CGAffineTransform)textMatrix
           attributes:(NSDictionary<NSAttributedStringKey, id> *)attributes
            inContext:(CGContextRef)graphicsContext {
+  [self lynx_showCGGlyphs:glyphs
+                positions:positions
+                    count:glyphCount
+                     font:font
+               textMatrix:textMatrix
+               attributes:attributes
+                inContext:graphicsContext];
+}
+#endif
+
+- (void)lynx_showCGGlyphs:(const CGGlyph *)glyphs
+                positions:(const CGPoint *)positions
+                    count:(NSInteger)glyphCount
+                     font:(UIFont *)font
+               textMatrix:(CGAffineTransform)textMatrix
+               attributes:(NSDictionary<NSAttributedStringKey, id> *)attributes
+                inContext:(CGContextRef)graphicsContext {
   BOOL isFirstCallbackInCurrentDraw = (self.glyphCount == 0);
   if (isFirstCallbackInCurrentDraw && glyphCount > 0) {
     self.preEndPosition = positions[0];
@@ -81,6 +137,15 @@
 
       [mutableAttr setObject:[UIColor clearColor] forKey:NSForegroundColorAttributeName];
 
+#if TARGET_OS_MACCATALYST
+      [super showCGGlyphs:glyphs
+                positions:positions
+                    count:glyphCount
+                     font:font
+               textMatrix:textMatrix
+               attributes:mutableAttr
+                inContext:graphicsContext];
+#else
       [super showCGGlyphs:glyphs
                 positions:positions
                     count:glyphCount
@@ -88,6 +153,7 @@
                    matrix:textMatrix
                attributes:mutableAttr
                 inContext:graphicsContext];
+#endif
 
       [mutableAttr removeObjectForKey:NSShadowAttributeName];
       if (color) {
@@ -183,6 +249,15 @@
     CGContextRestoreGState(graphicsContext);
     LYNX_TRACE_END_SECTION(LYNX_TRACE_CATEGORY_WRAPPER)
   } else {
+#if TARGET_OS_MACCATALYST
+    [super showCGGlyphs:glyphs
+              positions:positions
+                  count:glyphCount
+                   font:font
+             textMatrix:textMatrix
+             attributes:attributes
+              inContext:graphicsContext];
+#else
     [super showCGGlyphs:glyphs
               positions:positions
                   count:glyphCount
@@ -190,6 +265,7 @@
                  matrix:textMatrix
              attributes:attributes
               inContext:graphicsContext];
+#endif
   }
 }
 

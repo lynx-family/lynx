@@ -66,6 +66,21 @@ cd explorer/darwin/ios/lynx_explorer
 2. After step 1, `LynxExplorer.xcworkspace` will be generated in the lynx_explorer directory. Open `LynxExplorer.xcworkspace` by Xcode.
 3. Select `LynxExplorer` to execute the build in Xcode.
 
+## Build the Mac Catalyst App
+
+Install the Catalyst-compatible project dependencies, then build the iOS
+Explorer app from the `lynx_explorer` directory:
+
+```shell
+./bundle_install.sh --mac-catalyst
+./build_macos_catalyst.sh arm64
+```
+
+The app is generated at
+`iOSCoreBuild/DerivedData-Catalyst-arm64/Build/Products/Debug-maccatalyst/LynxExplorer.app`.
+Use `x86_64` instead of `arm64` to verify the Intel Catalyst build; its output
+is kept separately under `DerivedData-Catalyst-x86_64`.
+
 ## Troubleshooting
 
 ### Using a Personal Team to Run on Device
@@ -76,4 +91,3 @@ By default, the project doesn't configure the "Team" for signing. If you want to
 2. Navigate to "Signing & Capabilities", and select your Personal Team under the "Team" dropdown.
 3. Update the "Bundle Identifier" from `com.lynx.LynxExplorer` to a unique identifier like `com.<your-name>.LynxExplorer`. This step ensures the identifier is unique and available for your use.
 4. Enable the "Automatically manage signing" option to allow Xcode to handle the app signing process automatically.
-

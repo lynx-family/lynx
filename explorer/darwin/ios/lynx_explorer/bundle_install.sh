@@ -16,6 +16,7 @@ usage() {
     echo " --skip-card-build  Skip card build task"
     echo " --integration-test  Build integration test demo pages"
     echo " --disable-trace    Disable trace"
+    echo " --mac-catalyst     Install dependencies for a Mac Catalyst build"
 }
 
 build_card_resources() {
@@ -53,6 +54,9 @@ handle_options() {
                 ;;
             --disable-trace)
                 enable_trace=false
+                ;;
+            --mac-catalyst)
+                export LYNX_EXPLORER_MAC_CATALYST=1
                 ;;
             *)
                 usage
