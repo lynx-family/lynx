@@ -21,6 +21,7 @@ import com.lynx.tasm.base.LLog
 import com.lynx.tasm.behavior.LynxContext
 import com.lynx.tasm.behavior.LynxProp
 import com.lynx.tasm.behavior.PropsConstants
+import com.lynx.tasm.behavior.StylesDiffMap
 import com.lynx.tasm.behavior.TouchEventDispatcher
 import com.lynx.tasm.behavior.event.EventTarget
 import com.lynx.tasm.behavior.event.EventTarget.EnableStatus
@@ -52,8 +53,24 @@ class LynxOverlayView(context: LynxContext, val proxy: LynxUIOverlay) : UIGroup<
         private const val NAVIGATION_BAR_STYLE_TRANSPARENT = "transparent"
     }
 
+    private enum class OverlayScope {
+        GLOBAL,
+        FRAGMENT
+    }
+
+    private enum class PresentationState {
+        DISMISSED,
+        SUSPENDED,
+        PRESENTED,
+        DESTROYED
+    }
+
     private var mEventState = 0 //state 0-begin, 1-move, 2-up
     private var mVisible = false
+    private var mOverlayScope = OverlayScope.GLOBAL
+    private var mAppliedOverlayScope = OverlayScope.GLOBAL
+    private var mPresentationState = PresentationState.DISMISSED
+    private var mShowEventSentForVisibleCycle = false
     private var mStatusBarTranslucent = true
     private var mIsCutOutMode = true
     private var mEventsPassThrough = true
@@ -78,6 +95,28 @@ class LynxOverlayView(context: LynxContext, val proxy: LynxUIOverlay) : UIGroup<
     private var mIntercept : Boolean? = null
 
     private val mDialog = LynxOverlayDialog(context, this)
+    private val mFragmentScope = FragmentOverlayScope(
+        proxy.view,
+        object : FragmentOverlayScope.Listener {
+            override fun onFragmentScopeChanged() {
+                reconcilePresentation()
+            }
+
+            override fun onFragmentViewDestroyed() {
+                if (mVisible) {
+                    dismissDialog(false)
+                }
+            }
+
+            override fun onFragmentOwnerNotFound() {
+                LLog.w(
+                    TAG,
+                    "owner_not_found: overlay proxy is not owned by an attached Fragment view"
+                )
+                reconcilePresentation()
+            }
+        }
+    )
     private var mOverlayContainer = object : AndroidView(context) {
         override fun onLayout(changed: Boolean, l: Int, t: Int, r: Int, b: Int) {
             // layout overlay when dialog decor view onLayout
@@ -304,6 +343,7 @@ class LynxOverlayView(context: LynxContext, val proxy: LynxUIOverlay) : UIGroup<
 
     @LynxProp(name = LynxUIOverlay.PROP_VISIBLE)
     fun setVisible(visible: Dynamic) {
+        val wasVisible = mVisible
         when (visible.type) {
             ReadableType.String -> {
                 mVisible = visible.asString()!!.toBoolean()
@@ -312,12 +352,27 @@ class LynxOverlayView(context: LynxContext, val proxy: LynxUIOverlay) : UIGroup<
                 mVisible = visible.asBoolean()
             }
         }
-
-        if (mVisible) {
-            show()
-        } else {
-            hide()
+        if (!wasVisible && mVisible) {
+            mShowEventSentForVisibleCycle = false
         }
+    }
+
+    @LynxProp(name = LynxUIOverlay.PROP_ANDROID_OVERLAY_SCOPE)
+    fun setAndroidOverlayScope(scope: String?) {
+        mOverlayScope = when (scope) {
+            null, "", "global" -> OverlayScope.GLOBAL
+            "fragment" -> OverlayScope.FRAGMENT
+            else -> {
+                LLog.w(TAG, "Unknown android-overlay-scope '$scope'; using global scope")
+                OverlayScope.GLOBAL
+            }
+        }
+    }
+
+    override fun afterPropsUpdated(props: StylesDiffMap?) {
+        super.afterPropsUpdated(props)
+        applyOverlayScope()
+        reconcilePresentation()
     }
 
     /**
@@ -659,22 +714,68 @@ class LynxOverlayView(context: LynxContext, val proxy: LynxUIOverlay) : UIGroup<
         mPlatformEventRootActive = active
     }
 
-    private fun cleanupDialogDismiss(sendDismissEvent: Boolean) {
-        if (mDialogDismissCleaned) {
+    private fun applyOverlayScope() {
+        if (mPresentationState == PresentationState.DESTROYED) {
             return
         }
-        mDialogDismissCleaned = true
-        if (mPlatformEventRootActive) {
-            setPlatformEventRootActive(false)
+        if (mAppliedOverlayScope == mOverlayScope) {
+            return
         }
-        if (sendDismissEvent) {
-            sendEventWithoutParam(EVENT_DISMISS)
+        dismissDialog(false)
+        mFragmentScope.stop()
+        mAppliedOverlayScope = mOverlayScope
+    }
+
+    internal fun onProxyParentChanged() {
+        var ancestor = proxy.parentBaseUI
+        while (ancestor != null) {
+            if (ancestor is LynxUI<*> && mFragmentScope.updateProxyView(ancestor.view)) {
+                return
+            }
+            ancestor = ancestor.parentBaseUI
         }
-        LynxOverlayManager.removeGlobalId(mId)
+    }
+
+    private fun reconcilePresentation() {
+        if (mPresentationState == PresentationState.DESTROYED) {
+            return
+        }
+        if (!mVisible) {
+            mFragmentScope.stop()
+            dismissDialog(true)
+            mShowEventSentForVisibleCycle = false
+            return
+        }
+        if (mAppliedOverlayScope == OverlayScope.FRAGMENT) {
+            mFragmentScope.start()
+            if (!mFragmentScope.isActive) {
+                suspendDialog()
+                return
+            }
+        }
+        presentDialog()
+    }
+
+    private fun registerPresentationObservers() {
+        if (mObserver != null) {
+            return
+        }
+        mObserver = mOverlayContainer.viewTreeObserver
+        mGlobalLayoutListener =
+            ViewTreeObserver.OnGlobalLayoutListener { lynxContext.exposure?.requestCheckUI() }
+        mObserver?.addOnGlobalLayoutListener(mGlobalLayoutListener)
+        mScrollChangedListener =
+            ViewTreeObserver.OnScrollChangedListener { lynxContext.exposure?.requestCheckUI() }
+        mObserver?.addOnScrollChangedListener(mScrollChangedListener)
+        mDrawListener = ViewTreeObserver.OnDrawListener { lynxContext.exposure?.requestCheckUI() }
+        mObserver?.addOnDrawListener(mDrawListener)
+    }
+
+    private fun unregisterPresentationObservers() {
         val observer = if (mObserver?.isAlive == true) {
             mObserver
         } else {
-            mOverlayContainer.viewTreeObserver?.takeIf { it.isAlive }
+            mOverlayContainer.viewTreeObserver.takeIf { it.isAlive }
         }
         observer?.let {
             mGlobalLayoutListener?.let { listener ->
@@ -693,51 +794,137 @@ class LynxOverlayView(context: LynxContext, val proxy: LynxUIOverlay) : UIGroup<
         mDrawListener = null
     }
 
-    private fun show() {
-        val activity = ContextUtils.getActivity(lynxContext)
+    private fun activatePresentationResources() {
+        if (!mPlatformEventRootActive) {
+            setPlatformEventRootActive(true)
+        }
+        registerPresentationObservers()
+    }
+
+    private fun deactivatePresentationResources() {
+        if (mPlatformEventRootActive) {
+            setPlatformEventRootActive(false)
+        }
+        unregisterPresentationObservers()
+    }
+
+    private fun presentDialog() {
+        if (mPresentationState == PresentationState.PRESENTED) {
+            return
+        }
+        val activity = getHostActivity()
         if (mLazyInitContext) {
             changeCurrentContextToDialog(mDialog, activity)
         }
-        if (activity != null) {
-            if (!(activity.isFinishing) && !LynxOverlayManager.containsGlobalId(mId)) {
-                try {
-                    mId = LynxOverlayManager.addGlobalId(mDialog)
-                    val errorCode = mDialog.checkContextErrorCode(activity)
-                    if (errorCode >= 0) {
-                        mDialogDismissCleaned = false
-                        mDialog.setOnDismissListener {
-                            if (!mVisible) {
-                                cleanupDialogDismiss(true)
-                            }
-                        }
-                        mDialog.setOnCancelListener {
-                            if (!mVisible) {
-                                cleanupDialogDismiss(true)
-                            }
-                        }
-                        mDialog.show()
-                        applyAndroidNavigationBarStyle()
-                        if (mDialog.isShowing) {
-                            setPlatformEventRootActive(true)
-                        }
-                    }
-                    sendShowOverlayEvent(errorCode, activity)
-                    mObserver = mOverlayContainer?.viewTreeObserver
-                    mGlobalLayoutListener = ViewTreeObserver.OnGlobalLayoutListener { lynxContext?.exposure?.requestCheckUI() }
-                    mObserver?.addOnGlobalLayoutListener(mGlobalLayoutListener)
-                    mScrollChangedListener = ViewTreeObserver.OnScrollChangedListener { lynxContext?.exposure?.requestCheckUI() }
-                    mObserver?.addOnScrollChangedListener(mScrollChangedListener)
-                    mDrawListener = ViewTreeObserver.OnDrawListener { lynxContext?.exposure?.requestCheckUI() }
-                    mObserver?.addOnDrawListener(mDrawListener)
-                } catch (e: WindowManager.BadTokenException) {
-                    LLog.w(TAG, e.toString())
-                } catch (e: RuntimeException) {
-                    LLog.w(TAG, e.toString())
+        if (activity == null) {
+            if (mAppliedOverlayScope == OverlayScope.GLOBAL) {
+                sendShowOverlayEvent(
+                    LynxOverlayDialog.ERROR_CODE_NOT_ACTIVITY_CONTEXT,
+                    lynxContext.baseContext
+                )
+            }
+            mPresentationState = PresentationState.SUSPENDED
+            return
+        }
+        val errorCode = mDialog.checkContextErrorCode(activity)
+        if (errorCode != LynxOverlayDialog.ERROR_CODE_VALID) {
+            if (mAppliedOverlayScope == OverlayScope.GLOBAL &&
+                errorCode != LynxOverlayDialog.ERROR_CODE_IS_FINISHING) {
+                sendShowOverlayEvent(errorCode, activity)
+            }
+            mPresentationState = PresentationState.SUSPENDED
+            return
+        }
+        try {
+            if (!LynxOverlayManager.containsGlobalId(mId)) {
+                mId = LynxOverlayManager.addGlobalId(mDialog)
+                mDialogDismissCleaned = false
+                mDialog.setOnDismissListener {
+                    handleUnexpectedDialogDismiss()
+                }
+                mDialog.setOnCancelListener {
+                    handleUnexpectedDialogDismiss()
                 }
             }
-        } else {
-            sendShowOverlayEvent(LynxOverlayDialog.ERROR_CODE_NOT_ACTIVITY_CONTEXT, lynxContext?.baseContext)
+            mDialog.show()
+            applyAndroidNavigationBarStyle()
+            if (mDialog.isShowing) {
+                mPresentationState = PresentationState.PRESENTED
+                activatePresentationResources()
+                if (!mShowEventSentForVisibleCycle) {
+                    mShowEventSentForVisibleCycle = true
+                    sendShowOverlayEvent(errorCode, activity)
+                }
+            }
+        } catch (error: WindowManager.BadTokenException) {
+            LLog.w(TAG, error.toString())
+            cleanupDialogSession()
+            mPresentationState = PresentationState.SUSPENDED
+        } catch (error: RuntimeException) {
+            LLog.w(TAG, error.toString())
+            cleanupDialogSession()
+            mPresentationState = PresentationState.SUSPENDED
         }
+    }
+
+    private fun handleUnexpectedDialogDismiss() {
+        if (mVisible || mDialogDismissCleaned) {
+            return
+        }
+        if (mShowEventSentForVisibleCycle) {
+            sendEventWithoutParam(EVENT_DISMISS)
+        }
+        cleanupDialogSession()
+        mPresentationState = PresentationState.DISMISSED
+        mShowEventSentForVisibleCycle = false
+    }
+
+    private fun suspendDialog() {
+        if (mPresentationState == PresentationState.DESTROYED ||
+            mPresentationState == PresentationState.SUSPENDED) {
+            return
+        }
+        if (mPresentationState == PresentationState.PRESENTED) {
+            deactivatePresentationResources()
+            try {
+                mDialog.hide()
+            } catch (error: RuntimeException) {
+                LLog.w(TAG, error.toString())
+            }
+        }
+        mPresentationState = PresentationState.SUSPENDED
+    }
+
+    private fun dismissDialog(sendDismissEvent: Boolean) {
+        if (mPresentationState == PresentationState.DESTROYED) {
+            return
+        }
+        val shouldSendDismissEvent =
+            sendDismissEvent && mShowEventSentForVisibleCycle
+        if (shouldSendDismissEvent) {
+            sendEventWithoutParam(EVENT_DISMISS)
+        }
+        cleanupDialogSession()
+        try {
+            mDialog.dismiss()
+        } catch (error: WindowManager.BadTokenException) {
+            LLog.w(TAG, error.toString())
+        } catch (error: RuntimeException) {
+            LLog.w(TAG, error.toString())
+        }
+        mPresentationState = PresentationState.DISMISSED
+    }
+
+    private fun cleanupDialogSession() {
+        deactivatePresentationResources()
+        LynxOverlayManager.removeGlobalId(mId)
+        mId = null
+        mDialogDismissCleaned = true
+    }
+
+    private fun show() {
+        applyOverlayScope()
+        reconcilePresentation()
     }
 
     private fun changeCurrentContextToDialog(dialog: LynxOverlayDialog, activity: Activity?) {
@@ -753,21 +940,15 @@ class LynxOverlayView(context: LynxContext, val proxy: LynxUIOverlay) : UIGroup<
     }
 
     private fun hide() {
-        if (mDialog.isShowing) {
-            try {
-                cleanupDialogDismiss(true)
-                mDialog.dismiss()
-            } catch (e: WindowManager.BadTokenException) {
-                LLog.w(TAG, e.toString())
-            } catch (e: RuntimeException) {
-                LLog.w(TAG, e.toString())
-            }
+        dismissDialog(true)
+        if (mAppliedOverlayScope == OverlayScope.GLOBAL) {
+            mShowEventSentForVisibleCycle = false
         }
     }
 
     fun needHandleEvent(x: Float, y: Float): Boolean {
         // when the overlay is invisible, will not handle any events
-        if (!mVisible) {
+        if (!mVisible || mPresentationState != PresentationState.PRESENTED) {
             return false
         }
         if (lynxContext.isFragmentLayerRenderOn &&
@@ -811,11 +992,34 @@ class LynxOverlayView(context: LynxContext, val proxy: LynxUIOverlay) : UIGroup<
         return mVisible
     }
 
+    internal fun isPresentationActive(): Boolean {
+        return mPresentationState == PresentationState.PRESENTED &&
+            mDialog.isShowing &&
+            mDialog.window?.decorView?.visibility == View.VISIBLE
+    }
+
+    internal fun isFragmentScoped(): Boolean {
+        return mAppliedOverlayScope == OverlayScope.FRAGMENT
+    }
+
+    internal fun getHostActivity(): Activity? {
+        return if (isFragmentScoped()) {
+            mFragmentScope.owner?.activity
+        } else {
+            ContextUtils.getActivity(lynxContext)
+        }
+    }
+
     override fun setParent(parent: UIParent?) {
         super.setParent(parent)
         // if parent is null, it means the overlay will be removed
         if (parent == null) {
-            hide()
+            if (mAppliedOverlayScope == OverlayScope.FRAGMENT) {
+                mFragmentScope.stop()
+                dismissDialog(false)
+            } else {
+                hide()
+            }
         } else {
             if (mVisible) {
                 // when re-attach overlay, show component when visible property is true
@@ -829,6 +1033,10 @@ class LynxOverlayView(context: LynxContext, val proxy: LynxUIOverlay) : UIGroup<
         if (mEnableOverlayMoved) {
             mVelocityTracker = VelocityTracker.obtain()
         }
+        if (mAppliedOverlayScope == OverlayScope.FRAGMENT && mVisible) {
+            mFragmentScope.reevaluate()
+            reconcilePresentation()
+        }
     }
 
     override fun onDetach() {
@@ -841,7 +1049,10 @@ class LynxOverlayView(context: LynxContext, val proxy: LynxUIOverlay) : UIGroup<
             }
             mVelocityTracker = null
         }
-        if(!mAlwaysShow) {
+        if (mAppliedOverlayScope == OverlayScope.FRAGMENT && mVisible) {
+            mFragmentScope.reevaluate()
+            reconcilePresentation()
+        } else if(!mAlwaysShow) {
             hide()
         }
     }
@@ -851,16 +1062,11 @@ class LynxOverlayView(context: LynxContext, val proxy: LynxUIOverlay) : UIGroup<
     }
 
     override fun destroy() {
-        if (mDialog.isShowing) {
-            try {
-                cleanupDialogDismiss(false)
-                mDialog.dismiss()
-            } catch (e: WindowManager.BadTokenException) {
-                LLog.w(TAG, e.toString())
-            } catch (e: RuntimeException) {
-                LLog.w(TAG, e.toString())
-            }
+        mFragmentScope.stop()
+        if (mPresentationState != PresentationState.DESTROYED) {
+            dismissDialog(false)
         }
+        mPresentationState = PresentationState.DESTROYED
         super.destroy()
     }
 
@@ -920,7 +1126,8 @@ class LynxOverlayView(context: LynxContext, val proxy: LynxUIOverlay) : UIGroup<
 
     override fun layout() {
         super.layout()
-        if (mShouldOffsetBoundingRect && mDialog.isShowing) {
+        if (mShouldOffsetBoundingRect &&
+            mPresentationState == PresentationState.PRESENTED) {
             syncPlatformEventRootOffset()
         } else if (mShouldOffsetBoundingRect) {
             updateOffsetDescendantRectToLynxView()
