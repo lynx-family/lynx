@@ -95,6 +95,12 @@ class AttributeHolder : public fml::RefCountedThreadSafeStorage,
     OnStyleChange();
   }
 
+  void SetInlineStyle(CSSPropertyID id, const lepus::Value& value,
+                      const CSSParserConfigs& configs) {
+    UnitHandler::Process(id, value, inline_styles_, configs);
+    OnStyleChange();
+  }
+
   void SetInlineStyle(CSSPropertyID id, const tasm::CSSValue& value) {
     inline_styles_.insert_or_assign(id, value);
     OnStyleChange();

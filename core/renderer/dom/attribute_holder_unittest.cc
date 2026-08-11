@@ -19,6 +19,19 @@ class AttributeHolderTest : public ::testing::Test {
   void SetUp() override {}
 };
 
+TEST_F(AttributeHolderTest, NumericInlineStylePreservesValueType) {
+  AttributeHolder holder;
+  CSSParserConfigs configs;
+
+  holder.SetInlineStyle(CSSPropertyID::kPropertyIDWidth, lepus::Value(10),
+                        configs);
+
+  auto style = holder.inline_styles().find(CSSPropertyID::kPropertyIDWidth);
+  ASSERT_NE(style, holder.inline_styles().end());
+  EXPECT_TRUE(style->second.IsPx());
+  EXPECT_EQ(style->second.GetNumber(), 10);
+}
+
 TEST_F(AttributeHolderTest, ContainsSelector) {
   RadonNode node(nullptr, "my_tag", 0);
   node.SetIdSelector("my_id");
