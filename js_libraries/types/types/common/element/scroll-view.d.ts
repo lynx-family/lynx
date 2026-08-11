@@ -14,9 +14,10 @@ import {
   ScrollToUpperEvent,
   ScrollToUpperEdgeEvent,
   ScrollToLowerEdgeEvent,
+  ScrollbarProps,
 } from './common';
 
-export interface ScrollViewProps extends StandardProps {
+export interface ScrollViewProps extends StandardProps, ScrollbarProps {
   /**
    * Replacement of scroll-x and scroll-y
    * @defaultValue 'vertical'

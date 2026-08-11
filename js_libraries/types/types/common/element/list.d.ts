@@ -4,6 +4,7 @@
 
 import { BaseEvent, BaseMethod, EventHandler, Callback } from '../events';
 import { StandardProps } from '../props';
+import { ScrollbarProps } from './common';
 
 /**
  * The scroll state of the list.
@@ -410,7 +411,7 @@ export interface ListItemSnapAlignment {
 /**
  * list. A list does not support adaptive height and the 'height' property must be specified for the <list> tag in order to set its height.
  */
-export interface ListProps extends StandardProps {
+export interface ListProps extends StandardProps, ScrollbarProps {
   /**
    * Sets the scrolling direction and layout direction.
    * @defaultValue 'vertical'
