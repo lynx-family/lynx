@@ -4,119 +4,151 @@
 
 @import '../shared';
 
-.theme__dark {
-  @include box;
-  flex-direction: column;
-  margin-bottom: 12px;
-  height: 132px;
-  background: var(--box-dark);
+.ownership-header {
+  display: flex;
+  flex-direction: row;
+  align-items: baseline;
+  width: 90%;
+  margin: 18px 5% 8px;
 }
 
-.theme__light {
+@mixin ownership-title {
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 18px;
+}
+
+.ownership-title__light {
+  @include ownership-title;
+  color: var(--text-light);
+}
+
+.ownership-title__dark {
+  @include ownership-title;
+  color: var(--text-dark);
+}
+
+@mixin ownership-description {
+  margin-left: auto;
+  font-size: 10px;
+  line-height: 14px;
+}
+
+.ownership-description__light {
+  @include ownership-description;
+  color: #7a8089;
+}
+
+.ownership-description__dark {
+  @include ownership-description;
+  color: #989faa;
+}
+
+@mixin settings-group {
   @include box;
   flex-direction: column;
-  margin-bottom: 12px;
-  height: 132px;
+  overflow: hidden;
+}
+
+.settings-group__light {
+  @include settings-group;
   background: var(--box-light);
 }
 
-.option-item {
+.settings-group__dark {
+  @include settings-group;
+  background: var(--box-dark);
+}
+
+.settings-group-label {
   display: flex;
-  height: 44px;
+  align-items: flex-end;
+  height: 28px;
+  margin: 0 16px;
+  padding-bottom: 4px;
+}
+
+.settings-group-label--divided,
+.settings-row-divider {
+  border-width: 1px 0 0;
+  border-color: #8a90991f;
+}
+
+@mixin settings-group-label-text {
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 14px;
+}
+
+.settings-group-label-text__light {
+  @include settings-group-label-text;
+  color: #7a8089;
+}
+
+.settings-group-label-text__dark {
+  @include settings-group-label-text;
+  color: #989faa;
+}
+
+.option-item {
+  margin: 0;
 }
 
 .option-icon {
   width: 16px;
   height: 16px;
-  margin-left: 5%;
-  margin-top: auto;
-  margin-bottom: auto;
 }
 
-.radio-button-container {
+.runtime-icon {
+  width: 18px;
+  height: 18px;
+  border-radius: 5px;
+}
+
+.runtime-icon--lynx {
+  width: 17px;
+  border-radius: 0;
+}
+
+.radio-button-container-active__light,
+.radio-button-container-active__dark,
+.radio-button-container-inactive__light,
+.radio-button-container-inactive__dark {
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 50%;
-  padding: 2px;
-  height: 18px;
   width: 18px;
-  margin-right: 5%;
-  margin-left: auto;
-  margin-top: auto;
-  margin-bottom: auto;
-}
-
-.radio-button {
-  display: flex;
+  height: 18px;
+  padding: 2px;
   border-radius: 50%;
-  width: 11px;
-  height: 11px;
-}
-
-.radio-button-container-active__light {
-  @extend .radio-button-container;
-  border: 1px solid #ff351a;
-}
-
-.radio-button-container-inactive__light {
-  @extend .radio-button-container;
   border: 1px solid #d9d9d9;
 }
 
-.radio-button-active__light {
-  @extend .radio-button;
-  background: #ff351a;
+.radio-button-container-active__light {
+  border-color: #ff351a;
 }
 
 .radio-button-container-active__dark {
-  @extend .radio-button-container;
-  border: 1px solid #ff6448;
+  border-color: #ff6448;
 }
 
 .radio-button-container-inactive__dark {
-  @extend .radio-button-container;
-  border: 1px solid #ffffff29;
+  border-color: #ffffff29;
+}
+
+.radio-button-active__light,
+.radio-button-active__dark {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+}
+
+.radio-button-active__light {
+  background: #ff351a;
 }
 
 .radio-button-active__dark {
-  @extend .radio-button;
   background: #ff6448;
-}
-
-.devtool__light {
-  @include box;
-  height: 48px;
-  justify-content: center;
-  background: var(--box-light);
-}
-
-.devtool__dark {
-  @include box;
-  height: 48px;
-  justify-content: center;
-  background: var(--box-dark);
-}
-
-.info-section__light {
-  @include box;
-  flex-direction: column;
-  margin-bottom: 16px;
-  padding: 8px 0;
-  background: var(--box-light);
-}
-
-.info-section__dark {
-  @include box;
-  flex-direction: column;
-  margin-bottom: 16px;
-  padding: 8px 0;
-  background: var(--box-dark);
-}
-
-.info-row {
-  display: flex;
-  height: 40px;
 }
 
 .settings-columns {
@@ -131,28 +163,26 @@
   width: 50%;
 }
 
-.info-value__light {
-  line-height: 18px;
-  font-size: 15px;
-  margin-left: auto;
-  margin-right: 5%;
+@mixin info-value {
   align-self: center;
+  font-size: 13px;
+  line-height: 18px;
+}
+
+.info-value__light {
+  @include info-value;
   color: var(--sub-title-light);
 }
 
 .info-value__dark {
-  line-height: 18px;
-  font-size: 15px;
-  margin-left: auto;
-  margin-right: 5%;
-  align-self: center;
+  @include info-value;
   color: var(--sub-title-dark);
 }
 
-.sparkling-active {
-  color: #34c759;
-}
-
-.sparkling-inactive {
-  color: #ff3b30;
+.sparkling-version {
+  align-self: center;
+  color: #e10543;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 16px;
 }

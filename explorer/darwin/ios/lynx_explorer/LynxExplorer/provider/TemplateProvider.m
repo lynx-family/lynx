@@ -6,22 +6,73 @@
 
 @implementation TemplateProvider
 
-- (void)loadTemplateWithUrl:(NSString*)url onComplete:(LynxTemplateLoadBlock)callback {
-  // Try loading as a local bundle from the Resource directory first.
-  // Sparkling passes bare bundle names like "homepage.lynx.bundle".
-  if ([url hasSuffix:@".bundle"]) {
-    NSString* bundleName = [url stringByDeletingPathExtension];
-    NSString* bundlePath = [[NSBundle mainBundle] pathForResource:bundleName
-                                                           ofType:@"bundle"
-                                                      inDirectory:@"Resource"];
-    if (bundlePath) {
-      NSData* data = [NSData dataWithContentsOfFile:bundlePath];
-      if (data) {
-        dispatch_async(dispatch_get_main_queue(), ^{
-          callback(data, nil);
-        });
-        return;
+- (nullable NSString*)localBundlePathForURL:(NSString*)url {
+  if (![url hasSuffix:@".bundle"] || [url hasPrefix:@"/"]) {
+    return nil;
+  }
+
+  NSString* relativePath = url;
+  while ([relativePath hasPrefix:@"./"]) {
+    relativePath = [relativePath substringFromIndex:2];
+  }
+  if ([relativePath hasPrefix:@"Resource/"]) {
+    relativePath = [relativePath substringFromIndex:@"Resource/".length];
+  }
+  for (NSString* component in relativePath.pathComponents) {
+    if ([component isEqualToString:@".."] || [component isEqualToString:@"/"]) {
+      return nil;
+    }
+  }
+
+  NSString* resourceRoot = [[NSBundle mainBundle] pathForResource:@"Resource" ofType:nil];
+  if (!resourceRoot) {
+    return nil;
+  }
+  NSString* standardizedRoot = resourceRoot.stringByStandardizingPath;
+  NSString* candidate =
+      [[standardizedRoot stringByAppendingPathComponent:relativePath] stringByStandardizingPath];
+  NSString* rootPrefix = [standardizedRoot stringByAppendingString:@"/"];
+  if (![candidate hasPrefix:rootPrefix]) {
+    return nil;
+  }
+  NSFileManager* fileManager = [NSFileManager defaultManager];
+  if ([fileManager fileExistsAtPath:candidate]) {
+    return candidate;
+  }
+
+  // Upstream extension packages commonly navigate to sibling bundles by bare
+  // name. Resolve such a name only when exactly one installed extension owns
+  // it, avoiding an implicit or order-dependent cross-extension collision.
+  if (relativePath.pathComponents.count == 1) {
+    NSString* extensionsRoot = [standardizedRoot stringByAppendingPathComponent:@"extensions"];
+    NSArray<NSString*>* extensionNames =
+        [fileManager contentsOfDirectoryAtPath:extensionsRoot error:nil] ?: @[];
+    NSMutableArray<NSString*>* matches = [NSMutableArray new];
+    for (NSString* extensionName in extensionNames) {
+      NSString* extensionCandidate = [[extensionsRoot stringByAppendingPathComponent:extensionName]
+          stringByAppendingPathComponent:relativePath];
+      if ([fileManager fileExistsAtPath:extensionCandidate]) {
+        [matches addObject:extensionCandidate];
       }
+    }
+    if (matches.count == 1) {
+      return matches.firstObject;
+    }
+  }
+  return nil;
+}
+
+- (void)loadTemplateWithUrl:(NSString*)url onComplete:(LynxTemplateLoadBlock)callback {
+  // Sparkling uses both bare bundle names and namespaced relative paths.
+  // Resolve them inside Resource without allowing a path to escape that root.
+  NSString* bundlePath = [self localBundlePathForURL:url];
+  if (bundlePath) {
+    NSData* data = [NSData dataWithContentsOfFile:bundlePath];
+    if (data) {
+      dispatch_async(dispatch_get_main_queue(), ^{
+        callback(data, nil);
+      });
+      return;
     }
   }
 
