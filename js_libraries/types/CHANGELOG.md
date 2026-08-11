@@ -1,5 +1,8 @@
 # CHANGELOG
 
+## 4.2.2
+- Add `android-overlay-scope` to `<overlay>` typings.
+
 ## 4.2.1
 - Add `android-navigation-bar-style` to `<overlay>` typings.
 
