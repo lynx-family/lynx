@@ -9,6 +9,7 @@ import android.view.MotionEvent
 import com.lynx.react.bridge.JavaOnlyArray
 import com.lynx.devtoolwrapper.DevToolOverlayDelegate
 import com.lynx.devtoolwrapper.OverlayService
+import com.lynx.tasm.base.LLog
 
 //This manager will retain all overlay when is showing, and when it dismiss, it will removed by this manager.
 object LynxOverlayManager {
@@ -16,6 +17,7 @@ object LynxOverlayManager {
     data class OverlayData(val id: String, val dialog: LynxOverlayDialog)
 
     private const val DEFAULT_OVERLAY_ID_PREFIX = "default_overlay_id_"
+    private const val TAG = "overlay"
     //Within the GLOBAL_OVERLAYS list, elements with smaller indices have their dialogNG positioned above those with larger indices
     private val GLOBAL_OVERLAYS = mutableListOf<OverlayData>()
     private val ACTIVE_DIALOGS = mutableSetOf<LynxOverlayDialog>()
@@ -106,15 +108,29 @@ object LynxOverlayManager {
     }
 
     internal fun setGlobalIdActive(id: String?, active: Boolean) {
-        val dialog = GLOBAL_OVERLAYS.firstOrNull { it.id == id }?.dialog ?: return
+        val overlay = GLOBAL_OVERLAYS.firstOrNull { it.id == id } ?: return
+        if (ACTIVE_DIALOGS.contains(overlay.dialog) == active) {
+            return
+        }
         if (active) {
-            ACTIVE_DIALOGS.add(dialog)
-        } else {
-            ACTIVE_DIALOGS.remove(dialog)
+            ACTIVE_DIALOGS.add(overlay.dialog)
+            warnIfFragmentOwnersOverlap(overlay.dialog)
+            return
+        }
+        ACTIVE_DIALOGS.remove(overlay.dialog)
+        overlay.dialog.cancelPassThroughGesture()
+        GLOBAL_OVERLAYS.map { it.dialog }.forEach {
+            it.cancelPassThroughGestureTargeting(overlay.dialog)
         }
     }
 
     fun dispatchTouchEvent(ev: MotionEvent, overlay:LynxOverlayDialog): Boolean {
+        if (overlay.isFragmentScoped() ||
+            GLOBAL_OVERLAYS.any {
+                ACTIVE_DIALOGS.contains(it.dialog) && it.dialog.isFragmentScoped()
+            }) {
+            return overlay.dispatchPassThroughTouchEvent(ev)
+        }
         val activeOverlays = visibleOverlays()
         activeOverlays.forEach {
             if (it.dialog.innerDispatchTouchEvent(ev) && overlay != it.dialog) {
@@ -130,6 +146,56 @@ object LynxOverlayManager {
         }
 
         return false
+    }
+
+    private fun warnIfFragmentOwnersOverlap(dialog: LynxOverlayDialog) {
+        if (!dialog.isFragmentScoped()) {
+            return
+        }
+        val hasConflictingOwner = ACTIVE_DIALOGS.any {
+            it !== dialog &&
+                it.isFragmentScoped() &&
+                dialog.isSameHost(it) &&
+                !dialog.hasSameFragmentOwner(it)
+        }
+        if (hasConflictingOwner) {
+            LLog.w(
+                TAG,
+                "Multiple Fragment-scoped overlay owners are active in the same host window"
+            )
+        }
+    }
+
+    internal fun cancelGesturesTargeting(target: LynxOverlayDialog) {
+        GLOBAL_OVERLAYS.map { it.dialog }.forEach {
+            it.cancelPassThroughGestureTargeting(target)
+        }
+    }
+
+    internal fun getPresentedOverlaysBelow(source: LynxOverlayDialog): List<LynxOverlayDialog> {
+        val sourceIndex = GLOBAL_OVERLAYS.indexOfFirst { it.dialog === source }
+        if (sourceIndex < 0) {
+            return emptyList()
+        }
+        return GLOBAL_OVERLAYS
+            .subList(sourceIndex + 1, GLOBAL_OVERLAYS.size)
+            .filter {
+                ACTIVE_DIALOGS.contains(it.dialog) &&
+                    it.dialog.isPresentationActive() &&
+                    it.dialog.acceptsManualTouchDispatch() &&
+                    source.isSameHost(it.dialog)
+            }
+            .map { it.dialog }
+    }
+
+    internal fun isPresentedOnSameHost(
+        source: LynxOverlayDialog,
+        target: LynxOverlayDialog
+    ): Boolean {
+        val data = GLOBAL_OVERLAYS.firstOrNull { it.dialog === target } ?: return false
+        return ACTIVE_DIALOGS.contains(data.dialog) &&
+            target.isPresentationActive() &&
+            source.isSameHost(target)
     }
 
     private fun visibleOverlays(): List<OverlayData> {
