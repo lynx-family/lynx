@@ -29,14 +29,19 @@ void InlineViewShadowNode::TextLayout(LayoutContext* context) {
   TextParagraphBuilder* builder =
       static_cast<LayoutContextText*>(context)->builder();
   builder->PushStyle(text_style_.value());
+  const auto vertical_align = GetVerticalAlign();
+  const bool use_measured_baseline =
+      vertical_align.has_value() &&
+      vertical_align->type == kVerticalAlignBaseline &&
+      measured_baseline_ > 0.f;
+  const auto baseline = use_measured_baseline ? measured_baseline_ : Height();
   txt::PlaceholderRun placeholder(
       Width(), Height(), txt::PlaceholderAlignment::kBaseline,
-      txt::TextBaseline::kAlphabetic, Height() + baseline_offset_);
-  start_glyph_ =
-      static_cast<LayoutContextText*>(context)->TextSizeIncludingPlaceholders();
+      txt::TextBaseline::kAlphabetic, baseline + baseline_offset_);
+  auto* text_context = static_cast<LayoutContextText*>(context);
+  start_glyph_ = text_context->TextSizeIncludingPlaceholders();
   end_glyph_ = start_glyph_ + 1;
-  placeholder_index_ =
-      static_cast<LayoutContextText*>(context)->AddPlaceholder(placeholder);
+  placeholder_index_ = text_context->AddPlaceholder(placeholder);
   builder->Pop();
 }
 
