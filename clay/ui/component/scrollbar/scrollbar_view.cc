@@ -109,7 +109,7 @@ class ScrollbarThumb : public BaseView {
     AddGestureRecognizer(std::move(drag_recognizer));
   }
 
-  ScrollbarView::ThumbStatus status_;
+  ScrollbarView::ThumbStatus status_ = ScrollbarView::ThumbStatus::kIdle;
   OnDragCallback on_drag_;
   std::function<void(ScrollbarView::ThumbStatus)> on_status_change_;
   ScrollDirection direction_ = ScrollDirection::kVertical;
