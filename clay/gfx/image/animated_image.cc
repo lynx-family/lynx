@@ -34,32 +34,37 @@ void AnimatedImage::Upload(fml::RefPtr<GPUUnrefQueue> unref_queue, Size size) {
     OnNotifyAnimationFrame();
   }
   if (!gpu_image_.object()) {
-    auto pixmap = image_->ToBitmap();
-    if (!pixmap) {
-      return;
+    if (render_info_.isEmpty()) {
+      render_info_ = orig_info_;
     }
     auto image = skity::Image::MakeDeferredTextureImage(
-        skity::Texture::FormatFromColorType(pixmap->GetColorType()),
-        pixmap->Width(), pixmap->Height(), pixmap->GetAlphaType());
+        skity::Texture::FormatFromColorType(image_->GetColorType()),
+        render_info_.width(), render_info_.height(), image_->GetAlphaType());
     gpu_image_ = GPUObject(GraphicsImage::Make(image), unref_queue);
-    unref_queue->GetTaskRunner()->PostTask(
-        [context = unref_queue->GetContext(), image, pixmap,
-         mipmapped = mipmapped_, weak = weak_from_this()]() {
-          if (auto self = weak.lock()) {
-            skity::TextureDescriptor desc{};
-            desc.format =
-                skity::Texture::FormatFromColorType(pixmap->GetColorType());
-            desc.width = pixmap->Width();
-            desc.height = pixmap->Height();
-            desc.alpha_type = pixmap->GetAlphaType();
-            desc.mipmapped = mipmapped;
-            auto texture = context->CreateTextureWithDesc(&desc);
-            if (texture) {
-              texture->DeferredUploadImage(std::move(pixmap));
-              image->SetTexture(texture);
-            }
-          }
-        });
+    unref_queue->GetTaskRunner()->PostTask([context = unref_queue->GetContext(),
+                                            image, render_info = render_info_,
+                                            mipmapped = mipmapped_,
+                                            weak = weak_from_this()]() {
+      if (auto self = std::static_pointer_cast<AnimatedImage>(weak.lock())) {
+        auto pixmap = self->image_->ToBitmap(render_info);
+        if (!pixmap) {
+          FML_LOG(ERROR) << "AnimatedImage::Upload: Bitmap is null";
+          return;
+        }
+        skity::TextureDescriptor desc{};
+        desc.format =
+            skity::Texture::FormatFromColorType(pixmap->GetColorType());
+        desc.width = pixmap->Width();
+        desc.height = pixmap->Height();
+        desc.alpha_type = pixmap->GetAlphaType();
+        desc.mipmapped = mipmapped;
+        auto texture = context->CreateTextureWithDesc(&desc);
+        if (texture) {
+          texture->DeferredUploadImage(std::move(pixmap));
+          image->SetTexture(texture);
+        }
+      }
+    });
   }
 }
 
