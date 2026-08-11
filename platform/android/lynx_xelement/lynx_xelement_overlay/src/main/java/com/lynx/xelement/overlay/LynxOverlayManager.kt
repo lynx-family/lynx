@@ -18,6 +18,7 @@ object LynxOverlayManager {
     private const val DEFAULT_OVERLAY_ID_PREFIX = "default_overlay_id_"
     //Within the GLOBAL_OVERLAYS list, elements with smaller indices have their dialogNG positioned above those with larger indices
     private val GLOBAL_OVERLAYS = mutableListOf<OverlayData>()
+    private val ACTIVE_DIALOGS = mutableSetOf<LynxOverlayDialog>()
     private var sCurrentId = 0
 
     private fun generateDefaultId(): String {
@@ -41,7 +42,7 @@ object LynxOverlayManager {
 
     fun wrapEventParams(): JavaOnlyArray {
         return JavaOnlyArray().apply {
-            GLOBAL_OVERLAYS.forEach {
+            visibleOverlays().forEach {
                 pushString(it.id)
             }
         }
@@ -50,7 +51,7 @@ object LynxOverlayManager {
     // Returns arr where Dialogs at smaller indices correspond to dialogs positioned above those at larger indices.
     fun getGlobalOverlayView():ArrayList<Dialog>{
         val arr =  ArrayList<Dialog>();
-        GLOBAL_OVERLAYS.forEach{
+        visibleOverlays().forEach{
             arr.add(it.dialog);
         }
         return arr;
@@ -59,7 +60,7 @@ object LynxOverlayManager {
     // Returns arr where signs at smaller indices correspond to Dialogs positioned above those at larger indices.
     fun getAllVisibleOverlaySign():ArrayList<Int>{
         var arr = ArrayList<Int>();
-        GLOBAL_OVERLAYS.forEach{
+        visibleOverlays().forEach{
             arr.add(it.dialog.getSign());
         }
         return arr;
@@ -85,6 +86,7 @@ object LynxOverlayManager {
         id?.let {
             GLOBAL_OVERLAYS.forEach {
                 if (it.id == id) {
+                    ACTIVE_DIALOGS.remove(it.dialog)
                     GLOBAL_OVERLAYS.remove(it)
                     return
                 }
@@ -103,22 +105,35 @@ object LynxOverlayManager {
         return false
     }
 
+    internal fun setGlobalIdActive(id: String?, active: Boolean) {
+        val dialog = GLOBAL_OVERLAYS.firstOrNull { it.id == id }?.dialog ?: return
+        if (active) {
+            ACTIVE_DIALOGS.add(dialog)
+        } else {
+            ACTIVE_DIALOGS.remove(dialog)
+        }
+    }
 
     fun dispatchTouchEvent(ev: MotionEvent, overlay:LynxOverlayDialog): Boolean {
-        GLOBAL_OVERLAYS.forEach {
+        val activeOverlays = visibleOverlays()
+        activeOverlays.forEach {
             if (it.dialog.innerDispatchTouchEvent(ev) && overlay != it.dialog) {
                 // if overlay != it.dialog and it.dialog need handleTouchEvent, dispatch event to it.dialog
                 return it.dialog.superDispatchTouchEvent(ev)
             }
         }
         
-        GLOBAL_OVERLAYS.takeIf {
+        activeOverlays.takeIf {
             it.isNotEmpty()
         }?.let {
             return it[0].dialog.dispatchTouchEventToBelowContainer(ev)
         }
 
         return false
+    }
+
+    private fun visibleOverlays(): List<OverlayData> {
+        return GLOBAL_OVERLAYS.filter { ACTIVE_DIALOGS.contains(it.dialog) }
     }
 
 }
