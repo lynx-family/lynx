@@ -13,8 +13,6 @@
 
 namespace clay {
 
-class LayerTree;
-
 class ScreenshotService
     : public clay::Service<ScreenshotService, clay::Owner::kPlatform> {
  public:
@@ -23,8 +21,7 @@ class ScreenshotService
   void SetExternalScreenshotCallback(clay::ExternalScreenshotCallback callback);
 
   GrDataPtr TakeScreenshotHardware(
-      const clay::ScreenshotRequest& screenshot_request,
-      std::unique_ptr<LayerTree> layer_tree = nullptr);
+      const clay::ScreenshotRequest& screenshot_request);
 
  private:
   void OnInit(clay::ServiceManager&,

@@ -6,7 +6,6 @@
 
 #include <utility>
 
-#include "clay/flow/layers/layer_tree.h"
 #include "clay/shell/common/services/screenshot_encoder.h"
 #include "clay/shell/common/shell.h"
 #include "clay/ui/common/isolate.h"
@@ -28,8 +27,7 @@ void ScreenshotService::SetExternalScreenshotCallback(
 }
 
 GrDataPtr ScreenshotService::TakeScreenshotHardware(
-    const clay::ScreenshotRequest& request,
-    std::unique_ptr<LayerTree> layer_tree) {
+    const clay::ScreenshotRequest& request) {
   if (external_screenshot_callback_) {
     return TakeExternalScreenshot(request);
   }
@@ -51,10 +49,9 @@ GrDataPtr ScreenshotService::TakeScreenshotHardware(
                        "is no callback.";
     return nullptr;
   }
-  shell_->ScreenshotAsyncFromLayerTree(
+  shell_->ScreenshotAsync(
       ScreenshotData::ScreenshotType::UncompressedImage,
-      request.background_color_,
-      [request](ScreenshotData screenshot) {
+      request.background_color_, [request](ScreenshotData screenshot) {
         auto data = screenshot.data;
         if (!data) {
           return;
@@ -70,8 +67,7 @@ GrDataPtr ScreenshotService::TakeScreenshotHardware(
             request.callback_.value()(result.data, result.metadata);
           }
         });
-      },
-      std::move(layer_tree));
+      });
   return nullptr;
 }
 
