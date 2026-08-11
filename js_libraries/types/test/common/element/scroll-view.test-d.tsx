@@ -27,6 +27,42 @@ let a;
   <scroll-view scroll-bar-enable={true} />;
   assertType<boolean | undefined>(a as IntrinsicElements['scroll-view']['scroll-bar-enable']);
 
+  <scroll-view
+    enable-scrollbar={true}
+    scroll-bar-auto-hide={false}
+    scroll-bar-width={12}
+    scroll-bar-thumb-width={8}
+    scroll-bar-thumb-min-length={18}
+    scroll-bar-thumb-radius={4}
+    scroll-bar-thumb-color="#00000066"
+    scroll-bar-thumb-active-color="rgba(0, 0, 0, 0.8)"
+    scroll-bar-thumb-hover-color="rgba(0, 0, 0, 0.8)"
+    scroll-bar-track-color="transparent"
+    scroll-bar-auto-hide-delay={1000}
+  />;
+  assertType<boolean | undefined>(a as IntrinsicElements['scroll-view']['enable-scrollbar']);
+  assertType<boolean | undefined>(a as IntrinsicElements['scroll-view']['scroll-bar-auto-hide']);
+  assertType<number | undefined>(a as IntrinsicElements['scroll-view']['scroll-bar-width']);
+  assertType<number | undefined>(a as IntrinsicElements['scroll-view']['scroll-bar-thumb-width']);
+  assertType<number | undefined>(a as IntrinsicElements['scroll-view']['scroll-bar-thumb-min-length']);
+  assertType<number | undefined>(a as IntrinsicElements['scroll-view']['scroll-bar-thumb-radius']);
+  assertType<string | undefined>(a as IntrinsicElements['scroll-view']['scroll-bar-thumb-color']);
+  assertType<string | undefined>(a as IntrinsicElements['scroll-view']['scroll-bar-thumb-active-color']);
+  assertType<string | undefined>(a as IntrinsicElements['scroll-view']['scroll-bar-thumb-hover-color']);
+  assertType<string | undefined>(a as IntrinsicElements['scroll-view']['scroll-bar-track-color']);
+  assertType<number | undefined>(a as IntrinsicElements['scroll-view']['scroll-bar-auto-hide-delay']);
+
+  // @ts-expect-error
+  <scroll-view enable-scrollbar="true" />;
+  // @ts-expect-error
+  <scroll-view scroll-bar-width="12" />;
+  // @ts-expect-error
+  <scroll-view scroll-bar-thumb-color={12} />;
+  // @ts-expect-error
+  <scroll-view scroll-bar-thumb-active-color={12} />;
+  // @ts-expect-error
+  <scroll-view scroll-bar-auto-hide-delay="1000" />;
+
   <scroll-view upper-threshold={100} />;
   assertType<number | undefined>(a as IntrinsicElements['scroll-view']['upper-threshold']);
 

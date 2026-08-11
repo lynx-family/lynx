@@ -221,6 +221,42 @@ describe('ListItemProps type test', () => {
     });
   });
 
+  it('check scrollbar properties', () => {
+    assertType<ListProps>({
+      'enable-scrollbar': true,
+      'scroll-bar-auto-hide': false,
+      'scroll-bar-width': 12,
+      'scroll-bar-thumb-width': 8,
+      'scroll-bar-thumb-min-length': 18,
+      'scroll-bar-thumb-radius': 4,
+      'scroll-bar-thumb-color': '#00000066',
+      'scroll-bar-thumb-active-color': 'rgba(0, 0, 0, 0.8)',
+      'scroll-bar-thumb-hover-color': 'rgba(0, 0, 0, 0.8)',
+      'scroll-bar-track-color': 'transparent',
+      'scroll-bar-auto-hide-delay': 1000,
+    });
+    assertType<ListProps>({
+      // @ts-expect-error
+      'enable-scrollbar': 'true',
+    });
+    assertType<ListProps>({
+      // @ts-expect-error
+      'scroll-bar-thumb-min-length': '18',
+    });
+    assertType<ListProps>({
+      // @ts-expect-error
+      'scroll-bar-track-color': 0,
+    });
+    assertType<ListProps>({
+      // @ts-expect-error
+      'scroll-bar-thumb-hover-color': 0,
+    });
+    assertType<ListProps>({
+      // @ts-expect-error
+      'scroll-bar-auto-hide-delay': '1000',
+    });
+  });
+
   it('check experimental-recycle-sticky-item', () => {
     assertType<ListProps>({
       'experimental-recycle-sticky-item': true,
