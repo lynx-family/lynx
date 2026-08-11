@@ -178,8 +178,8 @@ class StyleResolver {
                               CSSVariableMap* changed_css_vars = nullptr,
                               size_t base_reserving_size = 0);
 
-  void MergeHigherPriorityCSSStyle(const StyleMap& matched);
-  void MergeHigherPriorityImportantCSSStyle(const StyleMap& matched);
+  void MergeHigherPriorityCSSStyle(CSSParseToken* token);
+  void MergeHigherPriorityImportantCSSStyle(CSSParseToken* token);
 
   void SetCSSVariableToNode(const CSSVariableMap& matched);
 
@@ -240,9 +240,11 @@ class StyleResolver {
   void ParsePseudoCSSTokensForFiber(Element* element, CSSFragment* fragment,
                                     const char* selector, StyleMap& map);
 
-  static thread_local MatchedVector<const StyleMap*> matched_style_map;
-  static thread_local MatchedVector<const StyleMap*>
-      matched_important_style_map;
+  // Keep tokens until cascade materialization so their lazy, cached parse is
+  // the only conversion from RawStyleMap to StyleMap.
+  static thread_local MatchedVector<CSSParseToken*> matched_style_tokens;
+  static thread_local MatchedVector<CSSParseToken*>
+      matched_important_style_tokens;
   static thread_local MatchedVector<const CSSVariableMap*> matched_variable_map;
 
   struct NewPipelineCollectedStyleInputs {
@@ -265,7 +267,7 @@ class StyleResolver {
   // applied, then clears them.
   void CollectMatchedRules(CSSFragment* style_sheet);
 
-  // Step 3.1: Parse matched_style_map and inline_style to style map. Step 3.2:
+  // Step 3.1: Parse matched tokens and inline_style to style map. Step 3.2:
   // Parse matched_variable_map and inline style to custom properties in
   // ComputedStyle. Shorthand to longhand also happened in this step. Output:
   // style map with highest priority style and custom_properties in
@@ -326,7 +328,8 @@ class StyleResolver {
   void CollectMatchedSpecifiedStyles(
       starlight::ComputedCSSStyle& new_style, StyleMap& result,
       size_t base_reserving_size,
-      const MatchedVector<const StyleMap*>& matched_style_maps);
+      const MatchedVector<CSSParseToken*>& matched_style_tokens,
+      bool important);
 
   /**
    * @brief Collects inline specified styles from the element.

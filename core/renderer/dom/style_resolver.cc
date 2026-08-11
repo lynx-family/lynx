@@ -202,10 +202,10 @@ void InsertStyleWithLogicalPropertyResolved(Element* element,
 }
 }  // namespace
 
-thread_local StyleResolver::MatchedVector<const StyleMap*>
-    StyleResolver::matched_style_map;
-thread_local StyleResolver::MatchedVector<const StyleMap*>
-    StyleResolver::matched_important_style_map;
+thread_local StyleResolver::MatchedVector<CSSParseToken*>
+    StyleResolver::matched_style_tokens;
+thread_local StyleResolver::MatchedVector<CSSParseToken*>
+    StyleResolver::matched_important_style_tokens;
 thread_local StyleResolver::MatchedVector<const CSSVariableMap*>
     StyleResolver::matched_variable_map;
 
@@ -662,30 +662,30 @@ void StyleResolver::DidCollectMatchedRules(AttributeHolder* holder,
                                            CSSVariableMap* changed_css_vars,
                                            size_t base_reserving_size) {
   {
-    auto& tls_matched_style_map = matched_style_map;
-    auto& tls_matched_important_style_map = matched_important_style_map;
+    auto& tls_matched_style_tokens = matched_style_tokens;
+    auto& tls_matched_important_style_tokens = matched_important_style_tokens;
 
     size_t normal_reserve = base_reserving_size;
     size_t important_reserve = 0;
-    for (auto matched_style_ptr : tls_matched_style_map) {
-      normal_reserve += matched_style_ptr->size();
+    for (auto* token : tls_matched_style_tokens) {
+      normal_reserve += token->GetAttributes().size();
     }
-    for (auto matched_style_ptr : tls_matched_important_style_map) {
-      important_reserve += matched_style_ptr->size();
+    for (auto* token : tls_matched_important_style_tokens) {
+      important_reserve += token->GetImportantAttributes().size();
     }
 
     result.reserve(normal_reserve);
     important_result.reserve(important_reserve);
 
-    for (auto matched_style_ptr : tls_matched_style_map) {
-      result.merge(*matched_style_ptr);
+    for (auto* token : tls_matched_style_tokens) {
+      result.merge(token->GetAttributes());
     }
-    tls_matched_style_map.clear();
+    tls_matched_style_tokens.clear();
 
-    for (auto matched_style_ptr : tls_matched_important_style_map) {
-      important_result.merge(*matched_style_ptr);
+    for (auto* token : tls_matched_important_style_tokens) {
+      important_result.merge(token->GetImportantAttributes());
     }
-    tls_matched_important_style_map.clear();
+    tls_matched_important_style_tokens.clear();
   }
 
   {
@@ -763,27 +763,26 @@ void StyleResolver::HandleCSSVariables(StyleMap& styles) {
   }
 }
 
-void StyleResolver::MergeHigherPriorityCSSStyle(const StyleMap& matched) {
-  if (matched.empty()) {
+void StyleResolver::MergeHigherPriorityCSSStyle(CSSParseToken* token) {
+  if (token == nullptr || token->raw_attributes().empty()) {
     return;
   }
-  matched_style_map.emplace_back(&matched);
+  matched_style_tokens.emplace_back(token);
 }
 
-void StyleResolver::MergeHigherPriorityImportantCSSStyle(
-    const StyleMap& matched) {
-  if (matched.empty()) {
+void StyleResolver::MergeHigherPriorityImportantCSSStyle(CSSParseToken* token) {
+  if (token == nullptr || token->raw_important_attributes().empty()) {
     return;
   }
-  matched_important_style_map.emplace_back(&matched);
+  matched_important_style_tokens.emplace_back(token);
 }
 
 void StyleResolver::MergeToken(CSSParseToken* token) {
   if (!token) {
     return;
   }
-  MergeHigherPriorityCSSStyle(token->GetAttributes());
-  MergeHigherPriorityImportantCSSStyle(token->GetImportantAttributes());
+  MergeHigherPriorityCSSStyle(token);
+  MergeHigherPriorityImportantCSSStyle(token);
   SetCSSVariableToNode(token->GetStyleVariables());
 }
 
@@ -920,7 +919,7 @@ void StyleResolver::GetCSSStyleNew(AttributeHolder* node,
     for (const auto& matched : matched_rules) {
       if (matched.Data()->Rule()->Token() != nullptr) {
         auto* token = matched.Data()->Rule()->Token().get();
-        MergeHigherPriorityCSSStyle(token->GetAttributes());
+        MergeHigherPriorityCSSStyle(token);
         SetCSSVariableToNode(token->GetStyleVariables());
       }
     }
@@ -938,7 +937,7 @@ void StyleResolver::GetCSSStyleNew(AttributeHolder* node,
       for (auto it = group_begin; it != group_end; ++it) {
         if (it->Data()->Rule()->Token() != nullptr) {
           auto* token = it->Data()->Rule()->Token().get();
-          MergeHigherPriorityImportantCSSStyle(token->GetImportantAttributes());
+          MergeHigherPriorityImportantCSSStyle(token);
         }
       }
       group_end = group_begin;
@@ -1773,8 +1772,8 @@ void StyleResolver::CollectMatchedRules(CSSFragment* style_sheet) {
   // Reuse the legacy TLS vectors and keep them alive through the new-pipeline
   // analysis pass. They are cleared after cascading-affecting properties are
   // fully applied.
-  matched_style_map.clear();
-  matched_important_style_map.clear();
+  matched_style_tokens.clear();
+  matched_important_style_tokens.clear();
   matched_variable_map.clear();
 
   if (style_sheet) {
@@ -1833,9 +1832,10 @@ void StyleResolver::CollectStaticStyleInputs(
   }
 
   CollectMatchedSpecifiedStyles(new_style, inputs.matched_styles,
-                                base_reserving_size, matched_style_map);
+                                base_reserving_size, matched_style_tokens,
+                                false);
   CollectMatchedSpecifiedStyles(new_style, inputs.matched_important_styles, 0,
-                                matched_important_style_map);
+                                matched_important_style_tokens, true);
   CollectMatchedCustomProperties(new_style);
   CollectInlineSpecifiedStyles(new_style, inputs.inline_styles, false);
   CollectInlineSpecifiedStyles(new_style, inputs.inline_important_styles, true);
@@ -1904,16 +1904,20 @@ void StyleResolver::ResolveCollectedStyleInputs(
 void StyleResolver::CollectMatchedSpecifiedStyles(
     starlight::ComputedCSSStyle& new_style, StyleMap& result,
     size_t base_reserving_size,
-    const MatchedVector<const StyleMap*>& matched_style_maps) {
+    const MatchedVector<CSSParseToken*>& matched_style_tokens, bool important) {
   auto* current_element = element();
 
-  for (auto matched_style_ptr : matched_style_maps) {
-    base_reserving_size += matched_style_ptr->size();
+  for (auto* token : matched_style_tokens) {
+    base_reserving_size +=
+        (important ? token->GetImportantAttributes() : token->GetAttributes())
+            .size();
   }
   result.reserve(base_reserving_size);
 
-  for (auto matched_style_ptr : matched_style_maps) {
-    for (const auto& [key, value] : *matched_style_ptr) {
+  for (auto* token : matched_style_tokens) {
+    const auto& matched =
+        important ? token->GetImportantAttributes() : token->GetAttributes();
+    for (const auto& [key, value] : matched) {
       InsertStyleWithLogicalPropertyResolved(current_element, new_style, key,
                                              value, result);
     }
@@ -2091,9 +2095,9 @@ void StyleResolver::ApplyCascadingAffectingProperties(
     const CustomPropertiesMap* custom_property_overrides,
     const StyleMap* property_overrides, CSSIDBitset* variable_dependent_ids) {
   auto* current_element = element();
-  const bool has_matched_rules = !matched_style_map.empty() ||
+  const bool has_matched_rules = !matched_style_tokens.empty() ||
                                  !matched_variable_map.empty() ||
-                                 !matched_important_style_map.empty();
+                                 !matched_important_style_tokens.empty();
   const auto& important_inline_styles =
       current_element->GetCurrentRawImportantInlineStyles();
   const bool has_reanalyzable_inputs =
@@ -2123,8 +2127,8 @@ void StyleResolver::ApplyCascadingAffectingProperties(
   // fully applied, because direction changes may retrigger
   // AnalyzeMatchedResult.
   if (has_matched_rules) {
-    matched_style_map.clear();
-    matched_important_style_map.clear();
+    matched_style_tokens.clear();
+    matched_important_style_tokens.clear();
     matched_variable_map.clear();
   }
 }

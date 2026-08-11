@@ -53,6 +53,21 @@ static CSSValue ParseVariableValue(const char* raw_value,
   return parser.ParseVariable();
 }
 
+class CountingCSSParseToken final : public CSSParseToken {
+ public:
+  explicit CountingCSSParseToken(const CSSParserConfigs& configs)
+      : CSSParseToken(configs) {}
+
+  const StyleMap& GetAttributes() override {
+    if (parser_state_.load() != ParseState::kParsed) {
+      ++parse_count_;
+    }
+    return CSSParseToken::GetAttributes();
+  }
+
+  int parse_count_{0};
+};
+
 // Mock implementation of SimpleStyleNode for testing
 class MockSimpleStyleNode : public lynx::style::SimpleStyleNode {
  public:
@@ -2006,21 +2021,24 @@ TEST_F(CSSPatchingTest,
   attribute_holder->set_tag("view");
   attribute_holder->SetClass("matched");
 
+  CSSParserConfigs configs;
+  auto stale_token = fml::MakeRefCounted<CSSParseToken>(configs);
   StyleMap stale_matched_styles;
   stale_matched_styles.insert_or_assign(CSSPropertyID::kPropertyIDHeight,
                                         CSSValue(999, CSSValuePattern::NUMBER));
+  stale_token->SetAttributes(std::move(stale_matched_styles));
   StyleMap stale_important_styles;
   stale_important_styles.insert_or_assign(
       CSSPropertyID::kPropertyIDOpacity,
       CSSValue(0.5, CSSValuePattern::NUMBER));
+  stale_token->SetImportantAttributes(std::move(stale_important_styles));
   CSSVariableMap stale_variables;
   stale_variables.insert_or_assign(base::String("--stale"),
                                    base::String("orange"));
-  StyleResolver::matched_style_map.push_back(&stale_matched_styles);
-  StyleResolver::matched_important_style_map.push_back(&stale_important_styles);
+  StyleResolver::matched_style_tokens.push_back(stale_token.get());
+  StyleResolver::matched_important_style_tokens.push_back(stale_token.get());
   StyleResolver::matched_variable_map.push_back(&stale_variables);
 
-  CSSParserConfigs configs;
   auto tokens = fml::MakeRefCounted<CSSParseToken>(configs);
   tokens->raw_attributes_[CSSPropertyID::kPropertyIDWidth] =
       CSSValue::MakePlainString("120px");
@@ -2041,16 +2059,17 @@ TEST_F(CSSPatchingTest,
   SharedCSSFragment fragment(1, dependent_ids, css_map, keyframes, fontfaces);
 
   element->style_resolver_.CollectMatchedRules(&fragment);
-  EXPECT_TRUE(StyleResolver::matched_important_style_map.empty());
-  ASSERT_EQ(StyleResolver::matched_style_map.size(), 1u);
+  EXPECT_TRUE(StyleResolver::matched_important_style_tokens.empty());
+  ASSERT_EQ(StyleResolver::matched_style_tokens.size(), 1u);
   ASSERT_EQ(StyleResolver::matched_variable_map.size(), 1u);
-  ExpectNoStyle(*StyleResolver::matched_style_map[0],
-                CSSPropertyID::kPropertyIDHeight);
+  EXPECT_EQ(StyleResolver::matched_style_tokens[0], tokens.get());
+  EXPECT_EQ(tokens->parser_state_.load(),
+            CSSParseToken::ParseState::kNotParsed);
   EXPECT_TRUE(StyleResolver::matched_variable_map[0]->find(base::String(
                   "--stale")) == StyleResolver::matched_variable_map[0]->end());
 
-  StyleResolver::matched_style_map.clear();
-  StyleResolver::matched_important_style_map.clear();
+  StyleResolver::matched_style_tokens.clear();
+  StyleResolver::matched_important_style_tokens.clear();
   StyleResolver::matched_variable_map.clear();
 }
 
@@ -2120,16 +2139,17 @@ TEST_F(CSSPatchingTest,
   auto fragment = MakeSelectorFragmentWithToken(".matched", token);
   element->style_resolver_.CollectMatchedRules(fragment.get());
 
-  ASSERT_EQ(StyleResolver::matched_style_map.size(), 1u);
-  ASSERT_EQ(StyleResolver::matched_important_style_map.size(), 1u);
+  ASSERT_EQ(StyleResolver::matched_style_tokens.size(), 1u);
+  ASSERT_EQ(StyleResolver::matched_important_style_tokens.size(), 1u);
   ASSERT_EQ(StyleResolver::matched_variable_map.size(), 1u);
-  ExpectPxStyle(*StyleResolver::matched_style_map[0],
+  ExpectPxStyle(StyleResolver::matched_style_tokens[0]->GetAttributes(),
                 CSSPropertyID::kPropertyIDWidth, 120);
-  ExpectPxStyle(*StyleResolver::matched_important_style_map[0],
+  ExpectPxStyle(StyleResolver::matched_important_style_tokens[0]
+                    ->GetImportantAttributes(),
                 CSSPropertyID::kPropertyIDHeight, 24);
 
-  StyleResolver::matched_style_map.clear();
-  StyleResolver::matched_important_style_map.clear();
+  StyleResolver::matched_style_tokens.clear();
+  StyleResolver::matched_important_style_tokens.clear();
   StyleResolver::matched_variable_map.clear();
 }
 
@@ -2159,10 +2179,13 @@ TEST_F(CSSPatchingTest,
   matched_styles.insert_or_assign(
       CSSPropertyID::kPropertyIDWidth,
       ParseVariableValue("var(--width)", manager->GetCSSParserConfigs()));
+  auto matched_token =
+      fml::MakeRefCounted<CSSParseToken>(manager->GetCSSParserConfigs());
+  matched_token->SetAttributes(std::move(matched_styles));
   CSSVariableMap matched_variables;
   matched_variables.insert_or_assign(base::String("--width"),
                                      base::String("24px"));
-  StyleResolver::matched_style_map.push_back(&matched_styles);
+  StyleResolver::matched_style_tokens.push_back(matched_token.get());
   StyleResolver::matched_variable_map.push_back(&matched_variables);
 
   starlight::ComputedCSSStyle style(*manager->platform_computed_css());
@@ -2177,7 +2200,7 @@ TEST_F(CSSPatchingTest,
       variable_dependent_ids.Has(CSSPropertyID::kPropertyIDHeight);
   const bool has_current_var_id =
       variable_dependent_ids.Has(CSSPropertyID::kPropertyIDWidth);
-  StyleResolver::matched_style_map.clear();
+  StyleResolver::matched_style_tokens.clear();
   StyleResolver::matched_variable_map.clear();
 
   ExpectPxStyle(result, CSSPropertyID::kPropertyIDWidth, 24);
@@ -2194,12 +2217,15 @@ TEST_F(CSSPatchingTest,
   StyleMap matched_styles;
   matched_styles.insert_or_assign(CSSPropertyID::kPropertyIDWidth,
                                   CSSValue(11, CSSValuePattern::PX));
-  StyleResolver::matched_style_map.push_back(&matched_styles);
+  auto matched_token =
+      fml::MakeRefCounted<CSSParseToken>(manager->GetCSSParserConfigs());
+  matched_token->SetAttributes(std::move(matched_styles));
+  StyleResolver::matched_style_tokens.push_back(matched_token.get());
   StyleMap matched_important_styles;
   matched_important_styles.insert_or_assign(CSSPropertyID::kPropertyIDHeight,
                                             CSSValue(18, CSSValuePattern::PX));
-  StyleResolver::matched_important_style_map.push_back(
-      &matched_important_styles);
+  matched_token->SetImportantAttributes(std::move(matched_important_styles));
+  StyleResolver::matched_important_style_tokens.push_back(matched_token.get());
   CSSVariableMap matched_variables;
   matched_variables.insert_or_assign(base::String("--matched"),
                                      base::String("red"));
@@ -2223,8 +2249,8 @@ TEST_F(CSSPatchingTest,
   ASSERT_TRUE(inline_value.has_value());
   EXPECT_EQ(inline_value.value().AsStdString(), "green");
 
-  StyleResolver::matched_style_map.clear();
-  StyleResolver::matched_important_style_map.clear();
+  StyleResolver::matched_style_tokens.clear();
+  StyleResolver::matched_important_style_tokens.clear();
   StyleResolver::matched_variable_map.clear();
 }
 
@@ -2256,26 +2282,76 @@ TEST_F(CSSPatchingTest,
   StyleMap low_priority;
   low_priority.insert_or_assign(CSSPropertyID::kPropertyIDWidth,
                                 CSSValue(10, CSSValuePattern::PX));
+  auto low_priority_token =
+      fml::MakeRefCounted<CSSParseToken>(manager->GetCSSParserConfigs());
+  low_priority_token->SetAttributes(std::move(low_priority));
   StyleMap high_priority;
   high_priority.insert_or_assign(CSSPropertyID::kPropertyIDWidth,
                                  CSSValue(20, CSSValuePattern::PX));
   high_priority.insert_or_assign(CSSPropertyID::kPropertyIDMarginInlineStart,
                                  CSSValue(7, CSSValuePattern::PX));
-  StyleResolver::matched_style_map.push_back(&low_priority);
-  StyleResolver::matched_style_map.push_back(&high_priority);
+  auto high_priority_token =
+      fml::MakeRefCounted<CSSParseToken>(manager->GetCSSParserConfigs());
+  high_priority_token->SetAttributes(std::move(high_priority));
+  StyleResolver::matched_style_tokens.push_back(low_priority_token.get());
+  StyleResolver::matched_style_tokens.push_back(high_priority_token.get());
 
   starlight::ComputedCSSStyle style(*manager->platform_computed_css());
   style.SetValue(CSSPropertyID::kPropertyIDDirection,
                  CSSValue(starlight::DirectionType::kRtl), false);
   StyleMap result;
   element->style_resolver_.CollectMatchedSpecifiedStyles(
-      style, result, 0, StyleResolver::matched_style_map);
+      style, result, 0, StyleResolver::matched_style_tokens, false);
 
   ExpectPxStyle(result, CSSPropertyID::kPropertyIDWidth, 20);
   ExpectNoStyle(result, CSSPropertyID::kPropertyIDMarginInlineStart);
   ExpectNoStyle(result, CSSPropertyID::kPropertyIDMarginLeft);
   ExpectPxStyle(result, CSSPropertyID::kPropertyIDMarginRight, 7);
-  StyleResolver::matched_style_map.clear();
+  StyleResolver::matched_style_tokens.clear();
+}
+
+TEST_F(CSSPatchingTest,
+       MatchedTokensParseOnceAndDropInvalidValuesBeforeCascadeMerge) {
+  auto element = manager->CreateFiberView();
+  CSSParserConfigs configs;
+
+  auto valid = fml::MakeRefCounted<CountingCSSParseToken>(configs);
+  valid->raw_attributes_[CSSPropertyID::kPropertyIDWidth] =
+      CSSValue::MakePlainString("10px");
+  valid->raw_important_attributes_[CSSPropertyID::kPropertyIDHeight] =
+      CSSValue::MakePlainString("20px");
+  auto invalid = fml::MakeRefCounted<CountingCSSParseToken>(configs);
+  invalid->raw_attributes_[CSSPropertyID::kPropertyIDWidth] =
+      CSSValue::MakePlainString("invalid");
+  invalid->raw_important_attributes_[CSSPropertyID::kPropertyIDHeight] =
+      CSSValue::MakePlainString("invalid");
+
+  element->style_resolver_.MergeToken(valid.get());
+  element->style_resolver_.MergeToken(invalid.get());
+  EXPECT_EQ(valid->parse_count_, 0);
+  EXPECT_EQ(invalid->parse_count_, 0);
+
+  StyleMap result;
+  StyleMap important_result;
+  element->style_resolver_.DidCollectMatchedRules(element->data_model(), result,
+                                                  important_result);
+
+  ExpectPxStyle(result, CSSPropertyID::kPropertyIDWidth, 10);
+  ExpectPxStyle(important_result, CSSPropertyID::kPropertyIDHeight, 20);
+  EXPECT_EQ(valid->parse_count_, 1);
+  EXPECT_EQ(invalid->parse_count_, 1);
+
+  element->style_resolver_.MergeToken(valid.get());
+  element->style_resolver_.MergeToken(invalid.get());
+  result.clear();
+  important_result.clear();
+  element->style_resolver_.DidCollectMatchedRules(element->data_model(), result,
+                                                  important_result);
+
+  ExpectPxStyle(result, CSSPropertyID::kPropertyIDWidth, 10);
+  ExpectPxStyle(important_result, CSSPropertyID::kPropertyIDHeight, 20);
+  EXPECT_EQ(valid->parse_count_, 1);
+  EXPECT_EQ(invalid->parse_count_, 1);
 }
 
 TEST_F(CSSPatchingTest,
@@ -2535,8 +2611,8 @@ TEST_F(CSSPatchingTest,
   EXPECT_EQ(style.GetDirection(), starlight::DirectionType::kRtl);
   ExpectNoStyle(result, CSSPropertyID::kPropertyIDMarginLeft);
   ExpectPxStyle(result, CSSPropertyID::kPropertyIDMarginRight, 6);
-  EXPECT_TRUE(StyleResolver::matched_style_map.empty());
-  EXPECT_TRUE(StyleResolver::matched_important_style_map.empty());
+  EXPECT_TRUE(StyleResolver::matched_style_tokens.empty());
+  EXPECT_TRUE(StyleResolver::matched_important_style_tokens.empty());
   EXPECT_TRUE(StyleResolver::matched_variable_map.empty());
 }
 
