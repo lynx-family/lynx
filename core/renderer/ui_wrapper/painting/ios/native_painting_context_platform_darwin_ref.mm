@@ -11,6 +11,7 @@
 
 #import <Lynx/LynxTemplateData+Converter.h>
 #import <Lynx/LynxUIOwner.h>
+#import "LynxTimingConstants.h"
 
 namespace lynx {
 namespace tasm {
@@ -63,6 +64,15 @@ LynxRendererContext* NativePaintingCtxPlatformDarwinRef::GetRendererContext() {
   return static_cast<PlatformRendererDarwinFactory*>(view_factory_.get())
       ->GetContext()
       ->GetRendererContext();
+}
+
+void NativePaintingCtxPlatformDarwinRef::SetNeedMarkPaintEndTiming(
+    const tasm::PipelineID& pipeline_id) {
+  LynxPerformanceController* performance_controller = perf_controller_;
+  NSString* pipeline_id_string = [NSString stringWithUTF8String:pipeline_id.c_str()];
+  dispatch_async(dispatch_get_main_queue(), ^{
+    [performance_controller markTiming:kTimingPaintEnd pipelineID:pipeline_id_string];
+  });
 }
 
 void NativePaintingCtxPlatformDarwinRef::UpdatePlatformRendererExtraBundle(
