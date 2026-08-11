@@ -1,0 +1,27 @@
+# Copyright 2026 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+if (is_win) {
+  import("//build/config/win/win.gni")
+}
+
+if (current_toolchain == host_toolchain) {
+  executable("clay_keywords_codegen") {
+    sources = [ "main.cc" ]
+
+    if (is_win) {
+      if (windows_runtime_library_mode == "md") {
+        libs = [ "msvcprt.lib" ]
+      } else if (windows_runtime_library_mode == "mt") {
+        libs = [ "libcpmt.lib" ]
+      }
+    }
+
+    # This binary is a build tool and is never shipped in Lynx artifacts.
+    if (is_debug) {
+      configs -= [ "//build/config:debug" ]
+      configs += [ "//build/config:release" ]
+    }
+  }
+}
