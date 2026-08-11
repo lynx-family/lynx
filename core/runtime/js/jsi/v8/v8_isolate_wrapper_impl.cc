@@ -16,6 +16,7 @@
 #elif defined(OS_OSX)
 #include "core/base/utils/paths_mac.h"
 #endif
+#include "core/services/performance/memory_monitor/global_memory_monitor.h"
 
 namespace lynx {
 namespace runtime {
@@ -23,6 +24,7 @@ namespace js {
 V8IsolateInstanceImpl::V8IsolateInstanceImpl() = default;
 
 V8IsolateInstanceImpl::~V8IsolateInstanceImpl() {
+  tasm::performance::GlobalMemoryMonitor::GetInstance().OnBtsVMDestroy(this);
   if (isolate_ != nullptr) {
     isolate_->Dispose();
     LOGI("lynx ~V8IsolateInstance");

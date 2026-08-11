@@ -5,11 +5,13 @@
 
 #include "base/include/log/logging.h"
 #include "core/renderer/tasm/config.h"
+#include "core/services/performance/memory_monitor/global_memory_monitor.h"
 
 namespace lynx {
 namespace runtime {
 namespace js {
 JSCContextGroupWrapper::~JSCContextGroupWrapper() {
+  tasm::performance::GlobalMemoryMonitor::GetInstance().OnBtsVMDestroy(this);
   if (group_ != nullptr) {
     JSContextGroupRelease(group_);
     group_ = nullptr;

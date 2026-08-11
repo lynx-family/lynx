@@ -9,6 +9,7 @@
 #include <unordered_map>
 #include <unordered_set>
 
+#include "base/include/fml/memory/js_memory_track_scope.h"
 #include "base/include/fml/message_loop.h"
 #include "base/include/log/logging.h"
 #include "base/include/no_destructor.h"
@@ -19,8 +20,11 @@
 #include "core/runtime/js/bindings/global.h"
 #include "core/runtime/js/js_executor.h"
 #include "core/runtime/js/jsi/jsi.h"
+#include "core/runtime/js/jsi/quickjs/quickjs_runtime_wrapper.h"
 #include "core/runtime/js/runtime_constant.h"
 #include "core/runtime/trace/runtime_trace_event_def.h"
+#include "core/services/performance/memory_monitor/global_memory_monitor.h"
+#include "core/shell/lynx_actor_specialization.h"
 
 #ifndef JS_ENGINE_TYPE
 // Default set JS_ENGINE_TYPE if not provided.
@@ -276,6 +280,19 @@ base::UnsafeOwningPtr<runtime::js::Runtime> RuntimeManager::CreateJSRuntime(
           } else {
             LOGI("use shared jscontext");
           }
+
+          if (vm->GetRuntimeType() == runtime::js::JSRuntimeType::quickjs) {
+            // Allocate a memory value statistics slot for the page that is
+            // about to be loaded in the virtual machine.
+            auto slot = std::static_pointer_cast<js::QuickjsRuntimeInstance>(vm)
+                            ->AllocatePageMemorySlot();
+            fml::MessageLoop::GetCurrent()
+                .GetTaskRunner()
+                ->SetInstanceMemorySlot(page_options.GetInstanceID(), slot);
+            tasm::performance::GlobalMemoryMonitor::GetInstance().WithInstance(
+                page_options.GetInstanceID(),
+                [slot](auto& state) { state.slot = slot; });
+          }
         }
       }
       TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS,
@@ -307,6 +324,20 @@ base::UnsafeOwningPtr<runtime::js::Runtime> RuntimeManager::CreateJSRuntime(
   EnsureConsolePostMan(js_context, executor, force_use_lightweight_js_engine,
                        page_options);
   js_runtime->InitRuntime(js_context);
+
+  tasm::performance::GlobalMemoryMonitor::GetInstance().WithInstance(
+      page_options.GetInstanceID(),
+      [group_id, type = js_runtime->type(),
+       vm_ptr = js_runtime->getSharedVM().get()](auto& state) {
+        state.group_id = group_id;
+        state.bts_runtime_type = type;
+        state.bts_known = true;
+        state.bts_vm = vm_ptr;
+      });
+
+  // The memory allocation subsequently generated in the JS VM by this method is
+  // considered a shared memory overhead. Such as evaluating js_pre_sources.
+  fml::JSMemoryTrackAsCommon vm_common_memory_scope;
 
   // none share context and first create share context.
   if (need_create_context_wrapper) {
@@ -469,15 +500,47 @@ std::shared_ptr<runtime::js::JSIContext> RuntimeManager::CreateJSIContext(
     runtime::js::Runtime& rt, const std::string& group_id) {
   std::shared_ptr<runtime::js::JSIContext> js_context;
   bool need_create_vm = false;
-  if (rt.type() == runtime::js::JSRuntimeType::jsc ||
-      rt.type() == runtime::js::JSRuntimeType::quickjs) {
+  if (!IsVMSharedAcrossGroups(rt.type())) {
     need_create_vm = true;
 #if JS_ENGINE_TYPE == 1 || JS_ENGINE_TYPE == 2
     auto vm_instance = VMInstancePool::Instance().TakeVMInstance(rt.type());
-    return rt.createContext(vm_instance == nullptr ? rt.createVM(nullptr)
-                                                   : vm_instance);
+    if (!vm_instance) {
+      vm_instance = rt.createVM(nullptr);
+    } else if (rt.type() == runtime::js::JSRuntimeType::quickjs) {
+      // VM instances in the pool are created in a non-JS thread and need to be
+      // bound to the current JS thread in order to track memory usage.
+      std::static_pointer_cast<js::QuickjsRuntimeInstance>(vm_instance)
+          ->RebindMemoryTrackSlot();
+    }
+
+    if (!IsSingleJSContext(group_id)) {
+      tasm::performance::GlobalMemoryMonitor::GetInstance().OnBtsVMCreate(
+          group_id, vm_instance);
+    }
+
+    if (rt.type() == runtime::js::JSRuntimeType::quickjs) {
+      // Allocate a memory value statistics slot for the page that is about to
+      // be loaded in the virtual machine.
+      auto slot =
+          std::static_pointer_cast<js::QuickjsRuntimeInstance>(vm_instance)
+              ->AllocatePageMemorySlot();
+      fml::MessageLoop::GetCurrent().GetTaskRunner()->SetInstanceMemorySlot(
+          rt.GetPageOptions().GetInstanceID(), slot);
+      tasm::performance::GlobalMemoryMonitor::GetInstance().WithInstance(
+          rt.GetPageOptions().GetInstanceID(),
+          [slot](auto& state) { state.slot = slot; });
+      fml::JSMemoryTrackAsCommon vm_common_memory_scope;
+      return rt.createContext(vm_instance);
+    } else {
+      return rt.createContext(vm_instance);
+    }
 #else
-    return rt.createContext(rt.createVM(nullptr));
+    auto vm_instance = rt.createVM(nullptr);
+    if (!IsSingleJSContext(group_id)) {
+      tasm::performance::GlobalMemoryMonitor::GetInstance().OnBtsVMCreate(
+          group_id, vm_instance);
+    }
+    return rt.createContext(vm_instance);
 #endif
   } else {
     need_create_vm = EnsureVM(rt);
@@ -498,8 +561,12 @@ void RuntimeManager::InitJSRuntimeCreatedType(bool need_create_vm,
 bool RuntimeManager::EnsureVM(runtime::js::Runtime& rt) {
   if (mVMContainer_.find(rt.type()) == mVMContainer_.end()) {
     runtime::js::StartupData* data = nullptr;
-
-    mVMContainer_.insert(std::make_pair(rt.type(), rt.createVM(data)));
+    auto it = mVMContainer_.insert(std::make_pair(rt.type(), rt.createVM(data)))
+                  .first;
+    // This VM is shared across groups. The monitor derives its reporting
+    // name from the runtime type and uses the VM object for local identity.
+    tasm::performance::GlobalMemoryMonitor::GetInstance().OnBtsVMCreate(
+        "", it->second);
     return true;
   }
   return false;

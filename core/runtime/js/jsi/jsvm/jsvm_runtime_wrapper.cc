@@ -9,11 +9,13 @@
 
 #include "core/runtime/js/jsi/jsvm/jsvm_creator.h"
 #include "core/runtime/js/jsi/jsvm/jsvm_util.h"
+#include "core/services/performance/memory_monitor/global_memory_monitor.h"
 
 namespace lynx {
 namespace runtime {
 namespace js {
 JSVMRuntimeInstance::~JSVMRuntimeInstance() {
+  tasm::performance::GlobalMemoryMonitor::GetInstance().OnBtsVMDestroy(this);
   if (vm_scope_) {
     JSVM_CALL_NO_ENV(OH_JSVM_CloseVMScope, vm_, vm_scope_);
   }

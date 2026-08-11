@@ -35,11 +35,19 @@ void PerformanceController::OnPerformanceEvent(
     std::unique_ptr<pub::Value> entry, EventType type) {
   entry->PushInt32ToMap("instanceId", instance_id_);
   auto entry_type = entry->GetValueForKey(kPerformanceEventType);
-  if (entry_type && entry_type->IsString() &&
-      IsDevtoolRecordedPerformanceEntry(entry_type->str()) &&
-      tasm::LynxEnv::GetInstance().IsDevToolEnabled()) {
-    performance_entries_.emplace_back(
-        pub::ValueUtils::ConvertValueToLepusValue(*entry));
+  if (entry_type && entry_type->IsString()) {
+    if (entry_type->str() == timing::kEntryTypePipeline) {
+      auto name = entry->GetValueForKey(kPerformanceEventName);
+      if (name && name->IsString() && name->str() == timing::kLoadBundle) {
+        memory_monitor_.OnFirstLoadComplete();
+      }
+    }
+
+    if (IsDevtoolRecordedPerformanceEntry(entry_type->str()) &&
+        tasm::LynxEnv::GetInstance().IsDevToolEnabled()) {
+      performance_entries_.emplace_back(
+          pub::ValueUtils::ConvertValueToLepusValue(*entry));
+    }
   }
   if ((type & kEventTypePlatform) && platform_impl_) {
     platform_impl_->OnPerformanceEvent(entry);
@@ -63,6 +71,7 @@ std::unique_ptr<pub::Value> PerformanceController::GetAllPerformanceEntries()
 }
 
 void PerformanceController::ResetStateBeforeReload() {
+  memory_monitor_.OnReload();
   timing_handler_.ResetTimingBeforeReload();
   performance_entries_.clear();
 }

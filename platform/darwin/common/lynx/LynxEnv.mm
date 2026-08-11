@@ -565,7 +565,7 @@ static BOOL gShouldEnableAllDevToolSessions = NO;
 }
 
 - (void)setEnableMemoryMonitor:(BOOL)value {
-  lynx::tasm::performance::MemoryMonitor::SetForceEnable(value);
+  lynx::tasm::performance::MemoryMonitor::ForceEnableForTesting();
 }
 
 - (BOOL)enableMemoryMonitor {

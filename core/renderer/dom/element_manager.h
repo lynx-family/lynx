@@ -1361,8 +1361,8 @@ class ElementManager : public LayoutScheduler::LayoutSchedulerImpl {
   }
 
   inline bool ShouldCollectMemory() {
-    return (!is_memory_collecting_ &&
-            tasm::performance::MemoryMonitor::Enable());
+    return !is_memory_collecting_ &&
+           tasm::performance::MemoryMonitor::GetSettings().tasm_element.enabled;
   }
 
   bool IsEmbeddedModeOn() const { return page_options_.IsEmbeddedModeOn(); }

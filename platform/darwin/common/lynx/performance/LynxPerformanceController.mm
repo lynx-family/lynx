@@ -169,7 +169,7 @@ std::unique_ptr<std::unordered_map<std::string, std::string>> ConvertNSDictToUno
 }
 
 + (BOOL)isMemoryMonitorEnabled {
-  return lynx::tasm::performance::MemoryMonitor::Enable();
+  return lynx::tasm::performance::MemoryMonitor::GetSettings().lynx_ui.enabled;
 }
 
 #pragma mark - LynxTimingCollectorProtocol

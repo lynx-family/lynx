@@ -38,7 +38,6 @@ class LynxShellTest : public ::testing::Test {
 
   void SetUp() override {
     base::UIThread::Init();
-    lynx::tasm::performance::MemoryMonitor::SetForceEnable(false);
     auto& env = lynx::tasm::LynxEnv::GetInstance();
     env.SetBoolLocalEnv(lynx::tasm::LynxEnv::kLynxDebugEnabled, false);
     env.SetBoolLocalEnv(lynx::tasm::LynxEnv::kLynxDevToolEnable, false);
@@ -81,7 +80,6 @@ class LynxShellTest : public ::testing::Test {
     shell_->OnEnterForeground();
 
     shell_ = nullptr;
-    lynx::tasm::performance::MemoryMonitor::SetForceEnable(false);
     auto& env = lynx::tasm::LynxEnv::GetInstance();
     env.SetBoolLocalEnv(lynx::tasm::LynxEnv::kLynxDebugEnabled, false);
     env.SetBoolLocalEnv(lynx::tasm::LynxEnv::kLynxDevToolEnable, false);

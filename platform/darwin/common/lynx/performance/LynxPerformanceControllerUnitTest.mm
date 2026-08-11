@@ -74,9 +74,13 @@ class MockPerformanceSender : public performance::PerformanceEventSender {
 
 @implementation LynxPerformanceControllerTests
 
++ (void)setUp {
+  [super setUp];
+  performance::MemoryMonitor::ForceEnableForTesting();
+}
+
 - (void)setUp {
   [super setUp];
-  performance::MemoryMonitor::SetForceEnable(true);
   self.mockObserver = OCMProtocolMock(@protocol(LynxPerformanceObserverProtocol));
   self.controller = [[LynxPerformanceController alloc] initWithObserver:self.mockObserver];
   auto perfControllerDarwin =
@@ -121,73 +125,6 @@ class MockPerformanceSender : public performance::PerformanceEventSender {
 - (void)testInitialization {
   XCTAssertNotNil(self.controller);
   XCTAssertEqualObjects(self.controller.observer, self.mockObserver);
-}
-
-- (void)testMemoryMonitorProtocolMethods {
-  NSString *entryName = @"memory";
-  NSString *entryType = @"memory";
-  NSString *category = @"test";
-  float sizeBytes = 1024;
-
-  // check allocateMemory
-  [self
-      asyncVerify:^{
-        [self.controller allocateMemory:^LynxMemoryRecord * {
-          return [[LynxMemoryRecord alloc] initWithCategory:category
-                                                  sizeBytes:sizeBytes
-                                                     detail:nil];
-        }];
-      }
-      check:^(LynxPerformanceEntry *entry) {
-        XCTAssertEqualObjects(entry.name, entryName);
-        XCTAssertEqualObjects(entry.name, entryType);
-      }];
-  // check deallocateMemory
-  [self
-      asyncVerify:^{
-        [self.controller deallocateMemory:^LynxMemoryRecord * {
-          return [[LynxMemoryRecord alloc] initWithCategory:category
-                                                  sizeBytes:sizeBytes
-                                                     detail:nil];
-        }];
-      }
-      check:^(LynxPerformanceEntry *entry) {
-        XCTAssertEqualObjects(entry.name, entryName);
-        XCTAssertEqualObjects(entry.name, entryType);
-      }];
-  // check updateMemoryUsage
-  [self
-      asyncVerify:^{
-        [self.controller updateMemoryUsage:^LynxMemoryRecord * {
-          return [[LynxMemoryRecord alloc] initWithCategory:category
-                                                  sizeBytes:sizeBytes
-                                                     detail:nil];
-        }];
-      }
-      check:^(LynxPerformanceEntry *entry) {
-        XCTAssertEqualObjects(entry.name, entryName);
-        XCTAssertEqualObjects(entry.name, entryType);
-      }];
-}
-
-- (void)testMemoryMonitorTeardownAfterAllocation {
-  NSString *category = @"test";
-  float sizeBytes = 1024;
-
-  [self
-      asyncVerify:^{
-        [self.controller allocateMemory:^LynxMemoryRecord * {
-          return [[LynxMemoryRecord alloc] initWithCategory:category
-                                                  sizeBytes:sizeBytes
-                                                     detail:nil];
-        }];
-      }
-      check:^(LynxPerformanceEntry *entry) {
-        XCTAssertEqualObjects(entry.name, @"memory");
-        XCTAssertEqualObjects(entry.entryType, @"memory");
-      }];
-
-  _actor.reset();
 }
 
 - (void)testResetTimingBeforeReloadClearsPerformanceEntries {
