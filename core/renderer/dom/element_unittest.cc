@@ -114,6 +114,19 @@ TEST_F(ElementTest, CheckHasFilterProps) {
   }
 }
 
+TEST_F(ElementTest, NumericStylePreservesValueTypeInDataModel) {
+  manager->dom_tree_enabled_ = true;
+
+  auto element = manager->CreateFiberElement("view");
+  element->SetStyle(CSSPropertyID::kPropertyIDWidth, lepus::Value(10));
+
+  auto style = element->data_model()->inline_styles().find(
+      CSSPropertyID::kPropertyIDWidth);
+  ASSERT_NE(style, element->data_model()->inline_styles().end());
+  EXPECT_TRUE(style->second.IsPx());
+  EXPECT_EQ(style->second.GetNumber(), 10);
+}
+
 TEST_F(ElementTest, CheckWillDestroy) {
   auto config = std::make_shared<PageConfig>();
   config->SetEnableFiberArch(true);

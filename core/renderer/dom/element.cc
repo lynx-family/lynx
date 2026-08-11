@@ -3252,10 +3252,7 @@ void Element::SetStyle(CSSPropertyID id, const lepus::Value& value) {
       if (value.IsEmpty()) {
         data_model()->ResetInlineStyle(id);
       } else {
-        data_model()->SetInlineStyle(id,
-                                     value.IsNumber()
-                                         ? std::to_string(value.Number())
-                                         : value.ToString(),
+        data_model()->SetInlineStyle(id, value,
                                      element_manager_->GetCSSParserConfigs());
       }
     }
