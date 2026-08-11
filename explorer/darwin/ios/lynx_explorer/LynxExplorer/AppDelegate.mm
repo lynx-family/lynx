@@ -90,7 +90,19 @@ NSString *const HOMEPAGE_URL = @"file://lynx?local://homepage.lynx.bundle?fullsc
   if ([url hasPrefix:LOCAL_URL_PREFIX]) {
     [[TasmDispatcher sharedInstance] openTargetUrlSingleTop:url];
   } else {
-    [self.navigationController popToRootViewControllerAnimated:YES];
+    // Cards opened into a shared-context group (`group=` query param) must
+    // not clear existing cards: keep the stack so cards stay alive together.
+    NSURLComponents *components = [NSURLComponents componentsWithString:url];
+    BOOL hasGroup = NO;
+    for (NSURLQueryItem *item in components.queryItems) {
+      if ([item.name isEqualToString:@"group"] && item.value.length > 0) {
+        hasGroup = YES;
+        break;
+      }
+    }
+    if (!hasGroup) {
+      [self.navigationController popToRootViewControllerAnimated:YES];
+    }
     [[TasmDispatcher sharedInstance] openTargetUrl:url];
   }
 }

@@ -501,6 +501,108 @@ export abstract class BaseApp<
 
   /**
    * @internal
+   * @static
+   * The LynxGroup level store backing cross-card module sharing.
+   *
+   * Modules loaded through `requireModuleAsync` are evaluated at most once
+   * per JS context: `descriptors` memoizes the module exports per requested
+   * path, and `instances` memoizes each bundler-chunk module by id so every
+   * card in a shared-context LynxGroup observes the same module instance.
+   * Sharing is opt-in per card through the `enableSharedContextModules`
+   * page config and needs no other runtime cooperation from bundles. In an
+   * isolated context both maps are private to the card, so behavior is
+   * unchanged.
+   *
+   * Only the async path shares: `requireModuleAsync` always loads external
+   * resources (script URLs), which are stable identities across cards. The
+   * sync `requireModule` also serves the template's own manifest scripts
+   * (`app-service.js`, wrapped background entries) whose side effects must
+   * run once per card, so it never shares.
+   */
+  private static _$sharedModuleDescriptors: Record<string, unknown> = {};
+  private static _$sharedChunkInstances: Record<string, { exports: unknown }> =
+    {};
+
+  /**
+   * @internal
+   * Look up the context-level shared exports for a `requireModuleAsync`
+   * request. Returns undefined when the path has not been shared yet.
+   */
+  protected static _$getSharedModuleExports(path: string): unknown {
+    return Object.prototype.hasOwnProperty.call(
+      BaseApp._$sharedModuleDescriptors,
+      path
+    )
+      ? BaseApp._$sharedModuleDescriptors[path]
+      : undefined;
+  }
+
+  /**
+   * @internal
+   * Share the exports of a `requireModuleAsync` request at the context
+   * level. Every async-loaded module shares: it is evaluated once per JS
+   * context and all cards observe the same exports.
+   *
+   * Bundler chunk descriptors (`{ ids, modules }`) additionally get their
+   * module factories wrapped so each chunk module is instantiated at most
+   * once per context. Note: sharing framework runtime chunks across live
+   * cards is only safe once framework-level card state is kept per card.
+   */
+  private static _$maybeShareModuleExports(
+    path: string,
+    exports: unknown
+  ): unknown {
+    const chunk = exports as {
+      ids?: unknown;
+      modules?: Record<string, unknown>;
+    } | null;
+    if (
+      !chunk ||
+      typeof chunk.modules !== 'object' ||
+      chunk.modules === null ||
+      !Array.isArray(chunk.ids)
+    ) {
+      // A plain module (no bundler chunk shape): its exports carry the state
+      // directly, so sharing the exports object per context suffices.
+      BaseApp._$sharedModuleDescriptors[path] = exports;
+      return exports;
+    }
+    const instances = BaseApp._$sharedChunkInstances;
+    const wrapFactory = (
+      moduleId: string,
+      factory: (...args: unknown[]) => unknown
+    ) =>
+      function (
+        this: unknown,
+        module: { exports: unknown },
+        moduleExports: unknown,
+        webpackRequire: unknown
+      ) {
+        if (Object.prototype.hasOwnProperty.call(instances, moduleId)) {
+          module.exports = instances[moduleId].exports;
+          return;
+        }
+        // Register before evaluating so circular imports within the shared
+        // scope observe the partially-initialized module, matching webpack
+        // semantics. Tracks CommonJS `module.exports` reassignment too.
+        instances[moduleId] = module;
+        factory.call(this, module, moduleExports, webpackRequire);
+      };
+    for (const moduleId of Object.keys(chunk.modules)) {
+      const factory = chunk.modules[moduleId];
+      if (typeof factory === 'function') {
+        chunk.modules[moduleId] = wrapFactory(
+          moduleId,
+          factory as (...args: unknown[]) => unknown
+        );
+      }
+    }
+    BaseApp._$sharedModuleDescriptors[path] = exports;
+    return exports;
+  }
+
+  /**
+   * @internal
    * Execute the loaded JS module ,  Called by {@link requireModule} & {@link requireModuleAsync}
    * @throws {UserRuntimeError} when loading or evaluating failed
    * @throws {Error} when executing failed
@@ -611,10 +713,33 @@ export abstract class BaseApp<
     path: string,
     callback: (error?: Error, exports?: T) => void
   ): void {
+    // Sharing is opt-in via the `enableSharedContextModules` page config. A
+    // card with the config off neither consumes nor contributes shared
+    // modules, even when it runs in a shared-context LynxGroup.
+    const enableSharedModules =
+      this.params?.pageConfigSubset?.enableSharedContextModules === true;
+    // A module already evaluated by another card in this JS context: hand
+    // out the same exports without re-fetching or re-evaluating.
+    const sharedExports = enableSharedModules
+      ? BaseApp._$getSharedModuleExports(path)
+      : undefined;
+    if (sharedExports !== undefined) {
+      callback(null, sharedExports as T);
+      return;
+    }
+    // Share successful results per context so every card in a shared-context
+    // LynxGroup observes the same module instance.
+    const finish = (ret: unknown): void =>
+      callback(
+        null,
+        (enableSharedModules
+          ? BaseApp._$maybeShareModuleExports(path, ret)
+          : ret) as T
+      );
     const init = BaseApp._$factoryCache[path];
     if (this.shouldUseModuleCache() && init) {
       // cache hit
-      callback(null, this._$executeInit<T>({ init }, { path }));
+      finish(this._$executeInit<T>({ init }, { path }));
       return;
     }
     // cache miss
@@ -639,8 +764,7 @@ export abstract class BaseApp<
     if (cache) {
       // cache hit
       try {
-        return callback(
-          null,
+        return finish(
           this._$executeInit(cache as BundleInitReturnObj, { path })
         );
       } catch (e) {
@@ -659,7 +783,7 @@ export abstract class BaseApp<
       }
 
       try {
-        return callback(null, this._$executeInit(exports, { path, cacheKey }));
+        return finish(this._$executeInit(exports, { path, cacheKey }));
       } catch (e) {
         return callback(e);
       }

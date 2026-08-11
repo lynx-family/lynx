@@ -862,6 +862,12 @@ class LynxConfigDecoder final {
           doc[config::kEnableReuseLoadScriptExports].GetBool());
     }
 
+    if (doc.HasMember(config::kEnableSharedContextModules) &&
+        doc[config::kEnableSharedContextModules].IsBool()) {
+      page_config->SetEnableSharedContextModules(
+          doc[config::kEnableSharedContextModules].GetBool());
+    }
+
     if (doc.HasMember(config::kEnableCSSInlineVariables) &&
         doc[config::kEnableCSSInlineVariables].IsBool()) {
       page_config->SetEnableCSSInlineVariables(

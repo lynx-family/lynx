@@ -2099,6 +2099,9 @@ void App::LoadApp(tasm::TasmRuntimeBundle bundle,
           *rt, runtime::kEnableFetchAPIStandardStreaming,
           card_bundle_.enable_fetch_api_standard_streaming) ||
       !page_config_subset.setProperty(
+          *rt, runtime::kEnableSharedContextModules,
+          card_bundle_.enable_shared_context_modules) ||
+      !page_config_subset.setProperty(
           *rt, runtime::kEnableReleaseAppInstance,
           tasm::LynxEnv::GetInstance().GetBoolEnv(
               tasm::LynxEnv::Key::ENABLE_RELEASE_APP_INSTANCE, true)) ||

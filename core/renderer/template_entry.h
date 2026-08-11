@@ -229,6 +229,10 @@ class TemplateEntry : public VmContextHolder, public CSSStyleSheetDelegate {
     enable_fetch_api_standard_ = enable;
   }
 
+  void SetEnableSharedContextModules(bool enable) {
+    enable_shared_context_modules_ = enable;
+  }
+
   TasmRuntimeBundle CreateTasmRuntimeBundle();
 
   virtual bool DecodeCSSFragmentById(int32_t fragmentId) override;
@@ -329,6 +333,7 @@ class TemplateEntry : public VmContextHolder, public CSSStyleSheetDelegate {
   bool enable_microtask_promise_polyfill_{false};
   bool enable_reuse_load_script_exports_{false};
   bool enable_fetch_api_standard_{false};
+  bool enable_shared_context_modules_{false};
 #if ENABLE_LEPUSNG_WORKLET
   std::unique_ptr<lynx::runtime::js::NapiEnvironment> napi_environment_;
 #endif
