@@ -1,7 +1,7 @@
 {
   "name": "flex-shrink",
   "id": 51,
-  "type": "number",
+  "type": "non-negative-number",
   "default_value": "1",
   "version": "1.0",
   "author": "wangzhixuan",

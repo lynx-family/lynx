@@ -42,15 +42,15 @@ def loadJson(file_path):
 def loadCSSDefinesJson(folder_path):
     # Get all json files in the folder.
     json_files = [
-        file for file in os.listdir(folder_path)
+        file
+        for file in os.listdir(folder_path)
         if file.endswith(".json") and file != "property_index.json"
     ]
 
     result = [{"count": len(json_files)}]
 
     for json_file in json_files:
-        with open(os.path.join(folder_path, json_file), "r",
-                  encoding="utf-8") as f:
+        with open(os.path.join(folder_path, json_file), "r", encoding="utf-8") as f:
             data = json.load(f)
             if "id" in data and "name" in data:
                 result.append({"id": data["id"], "name": data["name"]})
@@ -74,14 +74,13 @@ def check_and_get_defines():
     # with open(os.path.join('./', 'mid.json'), 'w', encoding='utf-8') as f:
     #     json.dump(mid_json, f, ensure_ascii=False, indent=4)
 
-    with open(os.path.join("./", "property_index.json"), "r",
-              encoding="utf-8") as f:
+    with open(os.path.join("./", "property_index.json"), "r", encoding="utf-8") as f:
         property_index = json.load(f)
 
     count = property_index[0]["count"]
 
     # Check 1: compare the intermediate json with property_index.json
-    if mid_json[1:count + 1] != property_index[1:count + 1]:
+    if mid_json[1 : count + 1] != property_index[1 : count + 1]:
         raise ValueError(
             "Failed: the benchmark property_index.json does not match the current state!"
         )
@@ -103,8 +102,7 @@ def check_and_get_defines():
         name_set.add(name)
 
     # Overwrite property_index.json when all check passed
-    with open(os.path.join("./", "property_index.json"), "w",
-              encoding="utf-8") as f:
+    with open(os.path.join("./", "property_index.json"), "w", encoding="utf-8") as f:
         json.dump(mid_json, f, ensure_ascii=False, indent=4)
 
     # Return combined_data
@@ -130,6 +128,7 @@ def sortJson(json_obj):
         "length": [],
         "time": [],
         "number": [],
+        "non-negative-number": [],
         "enum": [],
         "complex": [],
         "string": [],
@@ -147,10 +146,8 @@ def sortJson(json_obj):
 
 
 def genSource(sorted_css_objects):
-
     # enum type
-    enum_css_generator.genHandler("enum_handler.cc",
-                                  sorted_css_objects["enum"])
+    enum_css_generator.genHandler("enum_handler.cc", sorted_css_objects["enum"])
 
     # color type
     utils.genSimpleTypeHandler(
@@ -160,10 +157,15 @@ def genSource(sorted_css_objects):
     )
 
     # number type
+    number_objects = sorted(
+        sorted_css_objects["number"] + sorted_css_objects["non-negative-number"],
+        key=lambda value: value["id"],
+    )
     utils.genSimpleTypeHandler(
         utils.getRawParserPath() + "number_handler.h",
-        sorted_css_objects["number"],
+        number_objects,
         "number",
+        handler_by_type={"non-negative-number": "HandleNonNegative"},
     )
 
     # length type
@@ -174,8 +176,9 @@ def genSource(sorted_css_objects):
     )
 
     # time type
-    utils.genSimpleTypeHandler(utils.getRawParserPath() + "time_handler.h",
-                               sorted_css_objects["time"], "time")
+    utils.genSimpleTypeHandler(
+        utils.getRawParserPath() + "time_handler.h", sorted_css_objects["time"], "time"
+    )
 
     # string type
     utils.genSimpleTypeHandler(
@@ -185,8 +188,9 @@ def genSource(sorted_css_objects):
     )
 
     # bool type
-    utils.genSimpleTypeHandler(utils.getRawParserPath() + "bool_handler.h",
-                               sorted_css_objects["bool"], "bool")
+    utils.genSimpleTypeHandler(
+        utils.getRawParserPath() + "bool_handler.h", sorted_css_objects["bool"], "bool"
+    )
 
     # border-width type
     utils.genSimpleTypeHandler(
@@ -223,8 +227,7 @@ def genSource(sorted_css_objects):
 def checkJsonFileFormat():
     folder_path = Path("./css_defines")
     # with open('css_define_json_schema/css_define_with_doc.schema.json', encoding="utf-8") as f:
-    with open("css_define_json_schema/css_define.schema.json",
-              encoding="utf-8") as f:
+    with open("css_define_json_schema/css_define.schema.json", encoding="utf-8") as f:
         schema = json.load(f)
     validate = fastjsonschema.compile(schema)
     for file in folder_path.glob("*.json"):

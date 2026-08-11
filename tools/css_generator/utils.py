@@ -16,11 +16,11 @@ def underline2hump(text):
     for index, ch in enumerate(text):
         if index == 0:
             newstr[index] = ch.upper()
-        if (ch == '-'):
-            if (index + 1 < len(text)):
-                newstr[index] = ''
+        if ch == "-":
+            if index + 1 < len(text):
+                newstr[index] = ""
                 newstr[index + 1] = newstr[index + 1].upper()
-    return ''.join(newstr)
+    return "".join(newstr)
 
 
 def hump2underline(text):
@@ -33,35 +33,39 @@ def hump2underline(text):
 
 
 def genFilename(css_name):
-    return css_name.replace('-', '_') + "_handler"
+    return css_name.replace("-", "_") + "_handler"
 
 
-def genCommonHandlerRegister(css_objects_json):
+def genCommonHandlerRegister(css_objects_json, handler_by_type=None):
     property_template = string.Template(
-        "  array[kPropertyID${class_name}] = &Handle;\n")
+        "  array[kPropertyID${class_name}] = &${handler};\n"
+    )
+    handler_by_type = handler_by_type or {}
     properties_source = ""
     for val in css_objects_json:
-        class_name = underline2hump(val['name'])
+        class_name = underline2hump(val["name"])
+        handler = handler_by_type.get(val["type"], "Handle")
         properties_source += property_template.substitute(
-            class_name=class_name)
+            class_name=class_name, handler=handler
+        )
     return properties_source
 
 
 def writeToFile(filename, content):
-    with open(getParserPath() + filename, 'w+', encoding="utf-8") as f:
+    with open(getParserPath() + filename, "w+", encoding="utf-8") as f:
         f.write(content)
 
 
 def getHomePath():
-    return '../../'
+    return "../../"
 
 
 def getRawParserPath():
-    return 'core/renderer/css/parser/'
+    return "core/renderer/css/parser/"
 
 
 def getParserPath():
-    return getHomePath() + 'core/renderer/css/parser/'
+    return getHomePath() + "core/renderer/css/parser/"
 
 
 def getCSSStylePath():
@@ -70,24 +74,28 @@ def getCSSStylePath():
 
 # TODO(zhengsenyao): Change to path
 def getJavaStyleConstantPath():
-    return getHomePath(
-    ) + "platform/android/lynx_android/src/main/java/com/lynx/tasm/behavior/StyleConstants.java"
+    return (
+        getHomePath()
+        + "platform/android/lynx_android/src/main/java/com/lynx/tasm/behavior/StyleConstants.java"
+    )
 
 
 def getAutoGenJavaStyleConstantPath():
-    return getHomePath(
-    ) + "platform/android/lynx_android/src/main/java/com/lynx/tasm/behavior/AutoGenStyleConstants.java"
+    return (
+        getHomePath()
+        + "platform/android/lynx_android/src/main/java/com/lynx/tasm/behavior/AutoGenStyleConstants.java"
+    )
 
 
 # TODO(zhengsenyao): Change to path
 def getOCStyleConstantPath():
-    return getHomePath(
-    ) + "platform/darwin/common/lynx/public/base/LynxCSSType.h"
+    return getHomePath() + "platform/darwin/common/lynx/public/base/LynxCSSType.h"
 
 
 def getAutoGenOCStyleConstantPath():
-    return getHomePath(
-    ) + "platform/darwin/common/lynx/public/base/LynxAutoGenCSSType.h"
+    return (
+        getHomePath() + "platform/darwin/common/lynx/public/base/LynxAutoGenCSSType.h"
+    )
 
 
 def getCSSPropertyPath():
@@ -96,8 +104,10 @@ def getCSSPropertyPath():
 
 # TODO(zhengsenyao): Change to path
 def getJavaCSSPropertyPath():
-    return getHomePath(
-    ) + "platform/android/lynx_processor/src/main/java/com/lynx/tasm/behavior/PropertyIDConstants.java"
+    return (
+        getHomePath()
+        + "platform/android/lynx_processor/src/main/java/com/lynx/tasm/behavior/PropertyIDConstants.java"
+    )
 
 
 def getCSSDebugHeaderPath():
@@ -118,8 +128,7 @@ def getAutoGenCSSDebugSourcePath():
 
 def getCSSPropertyTestPath():
     # return getHomePath() + "core/renderer/css/css_property_unittest.cc"
-    return getHomePath(
-    ) + "core/renderer/css/css_property_auto_gen_unittest.cc"
+    return getHomePath() + "core/renderer/css/css_property_auto_gen_unittest.cc"
 
 
 def getCSSTypesPath():
@@ -130,23 +139,23 @@ def fillHandler(filename, contents, order=0):
     home_path = getParserPath()
     handler_path = home_path + filename
     order_acc = 0
-    with open(handler_path, 'r', encoding="utf-8") as fp:
+    with open(handler_path, "r", encoding="utf-8") as fp:
         lines = []
         insert_start_line_number = -1
         ignore_line_start = False
         for index, line in enumerate(fp):
-            if "// AUTO INSERT END, DON\'T CHANGE IT!" in line:
+            if "// AUTO INSERT END, DON'T CHANGE IT!" in line:
                 ignore_line_start = False
             if not ignore_line_start:
                 lines.append(line)
-            if "// AUTO INSERT, DON\'T CHANGE IT!" in line:
+            if "// AUTO INSERT, DON'T CHANGE IT!" in line:
                 if order_acc == order:
                     insert_start_line_number = index
                     ignore_line_start = True
                 order_acc += 1
     lines.insert(insert_start_line_number + 1, contents)
-    content = ''.join(lines)
-    with open(handler_path, 'w', encoding="utf-8") as fp:
+    content = "".join(lines)
+    with open(handler_path, "w", encoding="utf-8") as fp:
         fp.write(content)
     formatCode(handler_path)
 
@@ -157,21 +166,21 @@ def genGroupHandler(filename, object_jsons, order=0):
 
 
 def fillTemplate(handler_path, css_types):
-    with open(handler_path, 'r', encoding="utf-8") as fp:
+    with open(handler_path, "r", encoding="utf-8") as fp:
         lines = []
         insert_start_line_number = -1
         ignore_line_start = False
         for index, line in enumerate(fp):
-            if "// AUTO INSERT END, DON\'T CHANGE IT!\n" in line:
+            if "// AUTO INSERT END, DON'T CHANGE IT!\n" in line:
                 ignore_line_start = False
             if not ignore_line_start:
                 lines.append(line)
-            if "// AUTO INSERT, DON\'T CHANGE IT!\n" in line:
+            if "// AUTO INSERT, DON'T CHANGE IT!\n" in line:
                 insert_start_line_number = index
                 ignore_line_start = True
     lines.insert(insert_start_line_number + 1, css_types)
-    content = ''.join(lines)
-    with open(handler_path, 'w', encoding="utf-8") as fp:
+    content = "".join(lines)
+    with open(handler_path, "w", encoding="utf-8") as fp:
         fp.write(content)
     formatCode(handler_path)
 
@@ -181,7 +190,7 @@ def formatCode(file_path):
 
 
 def generate_macros(file_path):
-    macro_name = file_path.upper().replace('/', '_').replace('.', '_')
+    macro_name = file_path.upper().replace("/", "_").replace(".", "_")
     ifndef_macro = f"""#ifndef {macro_name}_
   """
     define_macro = f"""#define {macro_name}_
@@ -244,7 +253,7 @@ enum CSSPropertyID : int32_t {
 // AUTO INSERT END, DON'T CHANGE IT!
 
 """
-    with open(path, 'w', encoding="utf-8") as file:
+    with open(path, "w", encoding="utf-8") as file:
         file.seek(0, 0)
         file.write(copyright)
         file.write(prefix)
@@ -277,7 +286,7 @@ def genJavaPropId(path, css_types, css_java_constant_properties):
 
 """
 
-    with open(path, 'w', encoding="utf-8") as file:
+    with open(path, "w", encoding="utf-8") as file:
         file.seek(0, 0)
         file.write(copyright)
         file.write(prefix)
@@ -289,28 +298,32 @@ def genJavaPropId(path, css_types, css_java_constant_properties):
 
 
 def checkHandlerGenerated():
-    return (os.path.exists(getParserPath() + "color_handler.h")
-            and os.path.exists(getParserPath() + "number_handler.h")
-            and os.path.exists(getParserPath() + "length_handler.h")
-            and os.path.exists(getParserPath() + "time_handler.h")
-            and os.path.exists(getParserPath() + "timing_function_handler.h")
-            and
-            os.path.exists(getParserPath() + "animation_property_handler.h")
-            and os.path.exists(getParserPath() + "bool_handler.h")
-            and os.path.exists(getParserPath() + "border_width_handler.h")
-            and os.path.exists(getParserPath() + "border_style_handler.h")
-            and os.path.exists(getParserPath() + "string_handler.h"))
+    return (
+        os.path.exists(getParserPath() + "color_handler.h")
+        and os.path.exists(getParserPath() + "number_handler.h")
+        and os.path.exists(getParserPath() + "length_handler.h")
+        and os.path.exists(getParserPath() + "time_handler.h")
+        and os.path.exists(getParserPath() + "timing_function_handler.h")
+        and os.path.exists(getParserPath() + "animation_property_handler.h")
+        and os.path.exists(getParserPath() + "bool_handler.h")
+        and os.path.exists(getParserPath() + "border_width_handler.h")
+        and os.path.exists(getParserPath() + "border_style_handler.h")
+        and os.path.exists(getParserPath() + "string_handler.h")
+    )
 
 
 def checkAllFileGenerated():
-    return (checkHandlerGenerated() and os.path.exists(getCSSPropertyPath())
-            and os.path.exists(getCSSPropertyTestPath())
-            and os.path.exists(getJavaCSSPropertyPath())
-            and os.path.exists(getCSSTypesPath())
-            and os.path.exists(getAutoGenOCStyleConstantPath())
-            and os.path.exists(getAutoGenJavaStyleConstantPath())
-            and os.path.exists(getAutoGenCSSDebugHeaderPath())
-            and os.path.exists(getAutoGenCSSDebugSourcePath()))
+    return (
+        checkHandlerGenerated()
+        and os.path.exists(getCSSPropertyPath())
+        and os.path.exists(getCSSPropertyTestPath())
+        and os.path.exists(getJavaCSSPropertyPath())
+        and os.path.exists(getCSSTypesPath())
+        and os.path.exists(getAutoGenOCStyleConstantPath())
+        and os.path.exists(getAutoGenJavaStyleConstantPath())
+        and os.path.exists(getAutoGenCSSDebugHeaderPath())
+        and os.path.exists(getAutoGenCSSDebugSourcePath())
+    )
 
 
 def genTest(path, json_obj):
@@ -345,14 +358,15 @@ TEST(CSSProperty, Order) {
 
 """
     define_template = string.Template(
-        """  EXPECT_EQ(kPropertyID${name}, ${order});\n""")
+        """  EXPECT_EQ(kPropertyID${name}, ${order});\n"""
+    )
     test_str = ""
     for val in json_obj:
-        test_str += define_template.substitute(name=underline2hump(
-            val['name']),
-                                               order=val['id'])
+        test_str += define_template.substitute(
+            name=underline2hump(val["name"]), order=val["id"]
+        )
     test_str += "  EXPECT_EQ(kPropertyEnd, " + str(len(json_obj) + 1) + ");\n"
-    with open(path, 'w', encoding="utf-8") as file:
+    with open(path, "w", encoding="utf-8") as file:
         file.seek(0, 0)
         file.write(copyright)
         file.write(prefix)
@@ -394,7 +408,7 @@ namespace starlight {
 
 """
 
-    with open(path, 'w', encoding="utf-8") as file:
+    with open(path, "w", encoding="utf-8") as file:
         file.seek(0, 0)
         file.write(copyright)
         file.write(prefix)
@@ -425,7 +439,7 @@ def genOCLynxCSSType(path, css_types):
 
 """
 
-    with open(path, 'w', encoding="utf-8") as file:
+    with open(path, "w", encoding="utf-8") as file:
         file.seek(0, 0)
         file.write(copyright)
         file.write(prefix)
@@ -456,7 +470,7 @@ public interface AutoGenStyleConstants {
   }
 
 """
-    with open(path, 'w', encoding="utf-8") as file:
+    with open(path, "w", encoding="utf-8") as file:
         file.seek(0, 0)
         file.write(copyright)
         file.write(prefix)
@@ -502,7 +516,7 @@ class AutoGenCSSDecoder {
 #endif  // CORE_RENDERER_CSS_AUTO_GEN_CSS_DECODER_H_
 
 """
-    with open(path, 'w', encoding="utf-8") as file:
+    with open(path, "w", encoding="utf-8") as file:
         file.seek(0, 0)
         file.write(copyright)
         file.write(prefix)
@@ -547,7 +561,7 @@ using namespace lynx::tasm;       // NOLINT
 }  // namespace lynx
 
 """
-    with open(path, 'w', encoding="utf-8") as file:
+    with open(path, "w", encoding="utf-8") as file:
         file.seek(0, 0)
         file.write(copyright)
         file.write(prefix)
@@ -556,8 +570,8 @@ using namespace lynx::tasm;       // NOLINT
     formatCode(path)
 
 
-def genSimpleTypeHandler(raw_path, object_json, type):
-    source = genCommonHandlerRegister(object_json)
+def genSimpleTypeHandler(raw_path, object_json, type, handler_by_type=None):
+    source = genCommonHandlerRegister(object_json, handler_by_type)
 
     current_year = datetime.now().year
     copyright = f"""// Copyright {current_year} The Lynx Authors. All rights reserved.
@@ -566,31 +580,42 @@ def genSimpleTypeHandler(raw_path, object_json, type):
 
     """
     custom_content_switcher = {
-        "color": ("""
+        "color": (
+            """
 namespace ColorHandler {
-    """, """
+    """,
+            """
 }  // namespace ColorHandler
-    """, """
+    """,
+            """
   // AUTO INSERT END, DON'T CHANGE IT!
 }
 
 bool Process(const lepus::Value &input, CSSValue &css_value,
              const CSSParserConfigs &configs, bool is_text_color = false);
-    """),
-        "number": ("""
+    """,
+        ),
+        "number": (
+            """
 namespace NumberHandler {
-    """, """
+    """,
+            """
 }  // namespace NumberHandler
-    """, """
+    """,
+            """
   // AUTO INSERT END, DON'T CHANGE IT!
 }
 
-    """),
-        "length": ("""
+    """,
+        ),
+        "length": (
+            """
 namespace LengthHandler {
-    """, """
+    """,
+            """
 }  // namespace LengthHandler
-    """, """
+    """,
+            """
   // AUTO INSERT END, DON'T CHANGE IT!
 }
 
@@ -600,72 +625,101 @@ bool Handle(CSSPropertyID key, const lepus::Value &input, StyleMap &output,
 bool Process(const lepus::Value &input, CSSValue &css_value,
              const CSSParserConfigs &configs);
 
-    """),
-        "time": ("""
+    """,
+        ),
+        "time": (
+            """
 namespace TimeHandler {
-    """, """
+    """,
+            """
 }  // namespace TimeHandler 
-    """, """
+    """,
+            """
   // AUTO INSERT END, DON'T CHANGE IT!
 }
 
-    """),
-        "string": ("""
+    """,
+        ),
+        "string": (
+            """
 namespace StringHandler {
-    """, """
+    """,
+            """
 }  // namespace StringHandler 
-    """, """
+    """,
+            """
   // AUTO INSERT END, DON'T CHANGE IT!
 }
 
-    """),
-        "bool": ("""
+    """,
+        ),
+        "bool": (
+            """
 namespace BoolHandler {
-    """, """
+    """,
+            """
 }  // namespace BoolHandler 
-    """, """
+    """,
+            """
   // AUTO INSERT END, DON'T CHANGE IT!
 }
 
 bool Process(const lepus::Value& input, CSSValue& css_value,
              const CSSParserConfigs& configs, CSSPropertyID key);
-    """),
-        "border-width": ("""
+    """,
+        ),
+        "border-width": (
+            """
 namespace BorderWidthHandler {
-    """, """
+    """,
+            """
 }  // namespace BorderWidthHandler 
-    """, """
+    """,
+            """
   // AUTO INSERT END, DON'T CHANGE IT!
 }
 
-    """),
-        "border-style": ("""
+    """,
+        ),
+        "border-style": (
+            """
 namespace BorderStyleHandler {
-    """, """
+    """,
+            """
 }  // namespace BorderStyleHandler 
-    """, """
+    """,
+            """
   // AUTO INSERT END, DON'T CHANGE IT!
 }
 
-    """),
-        "timing-function": ("""
+    """,
+        ),
+        "timing-function": (
+            """
 namespace TimingFunctionHandler {
-    """, """
+    """,
+            """
 }  // namespace TimingFunctionHandler 
-    """, """
+    """,
+            """
   // AUTO INSERT END, DON'T CHANGE IT!
 }
 
-    """),
-        "animation-property": ("""
+    """,
+        ),
+        "animation-property": (
+            """
 namespace AnimationPropertyHandler {
-    """, """
+    """,
+            """
 }  // namespace AnimationPropertyHandler 
-    """, """
+    """,
+            """
   // AUTO INSERT END, DON'T CHANGE IT!
 }
 
-    """),
+    """,
+        ),
     }
     length_handler_header = """"""
     if type == "border-width":
@@ -683,10 +737,19 @@ namespace tasm {"""
 }  // namespace lynx
 
 """
+    custom_declaration = ""
+    if type == "number":
+        custom_declaration = """
+bool HandleNonNegative(CSSPropertyID key, const lepus::Value &input,
+                       StyleMap &output, const CSSParserConfigs &configs);
+"""
+
     prefix_declare = """
   
 HANDLER_DECLARE();
+"""
 
+    prefix_register = """
 HANDLER_REGISTER_IMPL_INL() {
   // AUTO INSERT, DON'T CHANGE IT!
   """
@@ -694,16 +757,26 @@ HANDLER_REGISTER_IMPL_INL() {
     ifndef_macro, define_macro, endif_macro = generate_macros(raw_path)
 
     prefix_namespace, suffix_namespace, custom_function = custom_content_switcher.get(
-        type, ("default", "default", "default"))
+        type, ("default", "default", "default")
+    )
     if prefix_namespace == "default" or suffix_namespace == "default":
         prefix_namespace = """bad type"""
         suffix_namespace = """bad type"""
         custom_function = """bad type"""
 
-    prefix = ifndef_macro + define_macro + length_handler_header + general_prefix + prefix_namespace + prefix_declare
+    prefix = (
+        ifndef_macro
+        + define_macro
+        + length_handler_header
+        + general_prefix
+        + prefix_namespace
+        + prefix_declare
+        + custom_declaration
+        + prefix_register
+    )
     suffix = custom_function + suffix_namespace + general_suffix + endif_macro
     path = getHomePath() + raw_path
-    with open(path, 'w', encoding="utf-8") as file:
+    with open(path, "w", encoding="utf-8") as file:
         file.seek(0, 0)
         file.write(copyright)
         file.write(prefix)
