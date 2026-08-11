@@ -29,11 +29,11 @@ static constexpr const char* kGetEmojiResourcesMethod = "getEmojiResources";
 // Emoji names that should be decoded after the resource list is loaded.
 // Keep this list small because each entry may trigger an async image decode.
 static constexpr std::string_view kCommonEmojiNames[] = {
-    "\xE7\xAC\x91\xE8\x84\xB8",  // smile face
-    "\xE6\xB5\x81\xE6\xB3\xAA",  // crying
-    "\xE5\xBE\xAE\xE7\xAC\x91",  // smile
-    "\xE6\x8D\x82\xE8\x84\xB8",  // facepalm
-    "\xE5\xAE\xB3\xE7\xBE\x9E",  // shy
+    "[\xE7\xAC\x91\xE8\x84\xB8]",  // smile face
+    "[\xE6\xB5\x81\xE6\xB3\xAA]",  // crying
+    "[\xE5\xBE\xAE\xE7\xAC\x91]",  // smile
+    "[\xE6\x8D\x82\xE8\x84\xB8]",  // facepalm
+    "[\xE5\xAE\xB3\xE7\xBE\x9E]",  // shy
 };
 
 bool StartsWith(std::string_view value, std::string_view prefix) {
