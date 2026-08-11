@@ -64,6 +64,7 @@ export interface OverlayProps extends Omit<StandardProps, 'binderror'> {
 
   /**
    * Sets the Android navigation bar background and contrasting system-bar appearance. `auto` inherits the host Activity navigation bar.
+   * When set to `transparent`, `android-adapt-edge-to-edge` must also be set to `true`.
    * @Android
    * @since 4.1
    * @defaultValue 'auto'
