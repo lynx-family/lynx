@@ -9,6 +9,14 @@
 namespace lynx {
 namespace binding {
 
+ObjectRef NapiObjectRefImpl::Elevate(Napi::ObjectReference& weak_reference) {
+  weak_reference.Ref();
+  Napi::ObjectReference strong_reference = std::move(weak_reference);
+  weak_reference.Reset(strong_reference.Value());
+  return ObjectRef(std::unique_ptr<ObjectRefImpl>(
+      new NapiObjectRefImpl(std::move(strong_reference))));
+}
+
 Object NapiObjectRefImpl::Get() const { return FromNAPI(ref_.Value()); }
 
 std::unique_ptr<ObjectRefImpl> NapiObjectRefImpl::Dup() {
