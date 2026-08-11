@@ -287,6 +287,7 @@ public class LynxTemplateRender
 
   private volatile NativeFacade mNativeFacade;
   private long mNativePtr = 0;
+  private volatile LynxLogContext mLogContext = LynxLogContext.UNAVAILABLE;
 
   @Keep @Nullable private LynxResourceLoader mLoader;
 
@@ -434,6 +435,7 @@ public class LynxTemplateRender
     }
 
     mHasEnvPrepared = LynxEnv.inst().isNativeLibraryLoaded();
+    ensureViewId();
     mVsyncAlignedFlushEnabled = VSYNC_ALIGNED_FLUSH_EXP_SWITCH
         && LynxEnv.inst().getVsyncAlignedFlushGlobalSwitch()
         && isThreadStrategySupportVsyncAlignedFlush();
@@ -993,6 +995,7 @@ public class LynxTemplateRender
     if (!checkIfEnvPrepared()) {
       return;
     }
+    ensureViewId();
     if (!mIsDestroyed.compareAndSet(true, false)) {
       return;
     }
@@ -1028,7 +1031,7 @@ public class LynxTemplateRender
     boolean enableVSyncAligned = mLynxViewConfigProvider.isEnableVSyncAlignedMessageLoop()
         || LynxEnv.inst().enableVSyncAlignedMessageLoopGlobal();
     setUpMainThreadModuleFactory();
-    mNativePtr = nativeCreate(runtimeWrapperPtr, mNativeFacade,
+    mNativePtr = nativeCreate(mLogContext.viewId, runtimeWrapperPtr, mNativeFacade,
         mPerformanceController.isEmbeddedMode() ? null : mPerformanceController, mLoader,
         mThreadStrategyForRendering.id(), mLynxViewConfigProvider.isEnableLayoutSafepoint(),
         mLynxViewBuilder.enableLayoutOnly, screenMetrics.widthPixels, screenMetrics.heightPixels,
@@ -1468,6 +1471,15 @@ public class LynxTemplateRender
 
   private boolean checkIfEnvPrepared() {
     return mHasEnvPrepared;
+  }
+
+  private synchronized void ensureViewId() {
+    if (mLogContext.viewId != LynxLogContext.UNAVAILABLE_ID
+        || !LynxEnv.inst().isNativeLibraryLoaded()) {
+      return;
+    }
+    mLogContext = new LynxLogContext(
+        nativeGenerateViewId(), LynxLogContext.UNAVAILABLE_ID, LynxLogContext.UNAVAILABLE_ID);
   }
 
   /**
@@ -4565,7 +4577,9 @@ public class LynxTemplateRender
     }
   }
 
-  private static native long nativeCreate(long runtimePtr, Object nativeFacade,
+  private static native long nativeGenerateViewId();
+
+  private static native long nativeCreate(long viewId, long runtimePtr, Object nativeFacade,
       Object performanceController, Object loader, int renderStrategy,
       boolean enableLayoutSafePoint, boolean enableLayoutOnly, int screenWidth, int screenHeight,
       float density, String locale, boolean enableJSRuntime, boolean enableMultiAsyncThread,

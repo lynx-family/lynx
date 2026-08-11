@@ -16,6 +16,7 @@
 #include <vector>
 
 #include "base/include/fml/memory/weak_ptr.h"
+#include "base/include/log/log_context.h"
 #include "base/include/value/base_value.h"
 #include "core/public/devtool/lynx_devtool_proxy.h"
 #include "core/public/devtool/lynx_inspector_owner.h"
@@ -168,9 +169,10 @@ class LynxTemplateRenderer : public devtool::LynxDevToolProxy {
       std::unique_ptr<ModuleFactoryHarmony> jsbridge_module_factory,
       std::unique_ptr<ModuleFactoryHarmony> main_thread_module_factory,
       LynxRuntimeWrapper* runtime_wrapper, LynxWhiteBoard* white_board,
-      bool enable_multi_async_thread);
+      bool enable_multi_async_thread, base::LynxEntityId view_id);
 
   static napi_value Init(napi_env env, napi_value exports);
+  static napi_value GenerateViewId(napi_env env, napi_callback_info info);
   static napi_value GetBaseTraceBackend(napi_env env, napi_callback_info info);
   static napi_value InitGlobalEnv(napi_env env, napi_callback_info info);
   static napi_value RegisterImageService(napi_env env, napi_callback_info info);

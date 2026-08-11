@@ -34,6 +34,7 @@
 @class LynxView;
 @class LynxViewBuilder;
 @class LynxLifecycleDispatcher;
+@class LynxLogContext;
 @class LynxViewGroup;
 @class LynxTemplateRenderMemoryUsageFetcher;
 @class StaticPageHost;
@@ -129,6 +130,8 @@ NS_ASSUME_NONNULL_BEGIN
   BOOL _debuggable;
   StaticPageHost* _staticPageHost;
 }
+
+@property(atomic, readwrite, strong) LynxLogContext* logContext;
 
 - (lynx::runtime::js::ModuleFactoryDarwin*)getModuleFactory;
 

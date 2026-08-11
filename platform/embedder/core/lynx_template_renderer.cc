@@ -51,6 +51,9 @@ LynxTemplateRenderer::LynxTemplateRenderer(
         perf_controller_ptr,
     RuntimeProxyCallback runtime_proxy_callback)
     : settings_(settings),
+      log_context_{shell::GenerateLynxEntityId(),
+                   base::kUnavailableLynxEntityId,
+                   base::kUnavailableLynxEntityId},
       ui_delegate_(ui_delegate),
       weak_flag_(std::make_shared<WeakFlag>(this)),
       preset_module_manager_(module_manager),
@@ -112,6 +115,7 @@ void LynxTemplateRenderer::Reset(bool wait_for_runtime_detach) {
   auto loader =
       std::make_shared<tasm::LazyBundleLoader>(settings_.resource_loader);
   shell::ShellOption shell_option;
+  shell_option.view_id_ = GetViewId();
   shell_option.js_group_thread_name_ =
       settings_.enable_js_group_thread ? settings_.group_id : "";
   shell_option.enable_js_group_thread_ = settings_.enable_js_group_thread;

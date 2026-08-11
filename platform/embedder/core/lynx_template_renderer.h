@@ -11,6 +11,7 @@
 #include <utility>
 #include <vector>
 
+#include "base/include/log/log_context.h"
 #include "core/public/devtool/lynx_devtool_proxy.h"
 #include "core/public/devtool/lynx_inspector_owner.h"
 #include "core/public/lynx_layout_proxy.h"
@@ -21,6 +22,7 @@
 #include "core/renderer/data/template_data.h"
 #include "core/runtime/js/bindings/modules/lynx_module_manager.h"
 #include "core/shell/lynx_engine_proxy_impl.h"
+#include "core/shell/lynx_entity_id_generator.h"
 #include "core/shell/lynx_layout_proxy_impl.h"
 #include "core/shell/lynx_shell.h"
 #include "core/shell/lynx_shell_builder.h"
@@ -132,6 +134,7 @@ class LynxTemplateRenderer : public devtool::LynxDevToolProxy {
   virtual ~LynxTemplateRenderer();
 
   int32_t GetInstanceId();
+  base::LynxEntityId GetViewId() const { return log_context_.view_id; }
 
   void Reset(bool wait_for_runtime_detach = true);
 
@@ -281,6 +284,7 @@ class LynxTemplateRenderer : public devtool::LynxDevToolProxy {
   void ClearGenericInfo(int32_t instance_id);
 
   Settings settings_;
+  base::LogContext log_context_;
   std::shared_ptr<shell::LynxEngineProxy> engine_proxy_;
   std::shared_ptr<shell::LynxRuntimeProxy> runtime_proxy_;
   std::shared_ptr<shell::PerfControllerProxy> perf_controller_proxy_;

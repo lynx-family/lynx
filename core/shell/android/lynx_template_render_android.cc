@@ -30,6 +30,7 @@
 #include "core/shell/event_tracker_proxy_impl.h"
 #include "core/shell/lynx_engine_proxy_impl.h"
 #include "core/shell/lynx_engine_wrapper.h"
+#include "core/shell/lynx_entity_id_generator.h"
 #include "core/shell/lynx_layout_proxy_impl.h"
 #include "core/shell/lynx_shell.h"
 #include "core/shell/lynx_shell_builder.h"
@@ -274,12 +275,16 @@ std::shared_ptr<lynx::tasm::TemplateData> ConvertToTemplateData(
 }
 }  // namespace
 
-jlong Create(JNIEnv* env, jclass jcaller, jlong runtime_wrapper_ptr,
-             jobject native_facade, jobject j_performance_controller,
-             jobject platform_loader, jint thread_strategy,
-             jboolean enable_layout_safe_point, jboolean enable_layout_only,
-             jint screen_width, jint screen_height, jfloat density,
-             jstring locale, jboolean enable_js,
+jlong GenerateViewId(JNIEnv* env, jclass jcaller) {
+  return static_cast<jlong>(lynx::shell::GenerateLynxEntityId());
+}
+
+jlong Create(JNIEnv* env, jclass jcaller, jlong view_id,
+             jlong runtime_wrapper_ptr, jobject native_facade,
+             jobject j_performance_controller, jobject platform_loader,
+             jint thread_strategy, jboolean enable_layout_safe_point,
+             jboolean enable_layout_only, jint screen_width, jint screen_height,
+             jfloat density, jstring locale, jboolean enable_js,
              jboolean enable_multi_async_thread,
              jboolean enable_pre_update_data,
              jboolean enable_vsync_aligned_msg_loop,
@@ -320,6 +325,7 @@ jlong Create(JNIEnv* env, jclass jcaller, jlong runtime_wrapper_ptr,
             env, module_factory));
   }
   lynx::shell::ShellOption shell_option;
+  shell_option.view_id_ = static_cast<lynx::base::LynxEntityId>(view_id);
   shell_option.enable_multi_tasm_thread_ = enable_multi_async_thread;
   shell_option.enable_multi_layout_thread_ = enable_multi_async_thread;
   shell_option.enable_js_ = enable_js;
