@@ -11,7 +11,11 @@ namespace lynx {
 namespace tasm {
 namespace NumberHandler {
 
-HANDLER_IMPL() {
+namespace {
+
+bool HandleInternal(CSSPropertyID key, const lepus::Value& input,
+                    StyleMap& output, const CSSParserConfigs& configs,
+                    bool non_negative) {
   double num = 0;
   if (input.IsNumber()) {
     num = input.Number();
@@ -28,8 +32,20 @@ HANDLER_IMPL() {
     CSS_HANDLER_FAIL_IF_NOT(false, configs.enable_css_strict_mode, TYPE_MUST_BE,
                             FLOAT_TYPE, STRING_OR_NUMBER_TYPE)
   }
+  CSS_HANDLER_FAIL_IF_NOT(
+      !non_negative || num >= 0, configs.enable_css_strict_mode,
+      NON_NEGATIVE_NUMBER_ERROR, CSSProperty::GetPropertyNameCStr(key))
   output.emplace_or_assign(key, num, CSSValuePattern::NUMBER);
   return true;
+}
+
+}  // namespace
+
+HANDLER_IMPL() { return HandleInternal(key, input, output, configs, false); }
+
+bool HandleNonNegative(CSSPropertyID key, const lepus::Value& input,
+                       StyleMap& output, const CSSParserConfigs& configs) {
+  return HandleInternal(key, input, output, configs, true);
 }
 
 }  // namespace NumberHandler

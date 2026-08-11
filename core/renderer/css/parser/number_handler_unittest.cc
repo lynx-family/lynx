@@ -41,6 +41,36 @@ TEST(NumberHandler, Handler) {
   EXPECT_EQ(output[id].GetNumber(), 0.99);
 }
 
+TEST(NumberHandler, NonNegative) {
+  auto id = CSSPropertyID::kPropertyIDFlexShrink;
+  StyleMap output;
+  CSSParserConfigs configs;
+
+  output.emplace_or_assign(id, 1, CSSValuePattern::NUMBER);
+  EXPECT_FALSE(UnitHandler::Process(id, lepus::Value("-1"), output, configs));
+  ASSERT_EQ(output.size(), 1);
+  EXPECT_EQ(output[id].GetNumber(), 1);
+
+  EXPECT_FALSE(UnitHandler::Process(id, lepus::Value(-2), output, configs));
+  ASSERT_EQ(output.size(), 1);
+  EXPECT_EQ(output[id].GetNumber(), 1);
+
+  EXPECT_TRUE(UnitHandler::Process(id, lepus::Value("0"), output, configs));
+  EXPECT_EQ(output[id].GetNumber(), 0);
+
+  output.emplace_or_assign(id, 1, CSSValuePattern::NUMBER);
+  EXPECT_TRUE(UnitHandler::Process(id, lepus::Value("-0"), output, configs));
+  EXPECT_EQ(output[id].GetNumber(), 0);
+
+  EXPECT_TRUE(UnitHandler::Process(id, lepus::Value(2), output, configs));
+  EXPECT_EQ(output[id].GetNumber(), 2);
+
+  auto generic_id = CSSPropertyID::kPropertyIDOrder;
+  EXPECT_TRUE(
+      UnitHandler::Process(generic_id, lepus::Value(-1), output, configs));
+  EXPECT_EQ(output[generic_id].GetNumber(), -1);
+}
+
 }  // namespace test
 
 }  // namespace tasm

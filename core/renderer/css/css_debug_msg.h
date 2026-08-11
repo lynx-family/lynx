@@ -33,6 +33,8 @@ constexpr char FORMAT_ERROR[] = "%s format error:%s";
 constexpr char EMPTY_ERROR[] = "%s is empty!";
 constexpr char SIZE_ERROR[] = "%s size error:%d";
 constexpr char TYPE_ERROR[] = "%s type error";
+constexpr char NON_NEGATIVE_NUMBER_ERROR[] =
+    "%s only accepts non-negative numbers";
 constexpr char CANNOT_REACH_METHOD[] = "method unreachable.";
 constexpr char SET_PROPERTY_ERROR[] = "set %s error.";
 }  // namespace tasm
