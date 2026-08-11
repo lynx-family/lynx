@@ -80,7 +80,8 @@ Harmony native overlay handling covers `visible`, `events-pass-through`, and `mo
 - Use `android-overlay-scope="fragment"` in single-Activity hosts when an overlay must suspend
   with its owning Fragment while still rendering outside the LynxView bounds. The owner must be
   discoverable through `FragmentManager.findFragment(View)`. Resolution failures do not fall back
-  to global scope.
+  to global scope. Pass-through gestures stay within the owning Fragment host, and
+  `android-container-popup-tag` is ignored in this mode.
 - Bind `dismissoverlay` when the page needs to synchronize state after native dismissal.
 - Treat Android window/status-bar props as Android-only.
 - Treat iOS margin-adjustment props as iOS-only.
