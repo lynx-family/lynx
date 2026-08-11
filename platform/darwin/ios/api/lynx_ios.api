@@ -3902,6 +3902,7 @@ public class LynxTemplateRender : NSObject, <LynxTemplateRenderProtocol>, <Templ
   public NSMutableDictionary<NSString*, id>* LynxTemplateRender::lepusModulesClasses lepusModulesClasses;
   public id<LynxResourceFetcher> LynxTemplateRender::resourceFetcher resourceFetcher;
   public id<LynxLogicExecutor> LynxTemplateRender::logicExecutor logicExecutor;
+  public LynxLogContext* LynxTemplateRender()::logContext logContext;
   public nullable id< LynxEventTarget > LynxTemplateRender::hitTestInEventHandler:withEvent:(CGPoint point,[withEvent] UIEvent *_Nonnull event);
   public void LynxTemplateRender::willMoveToWindow:(nonnull UIWindow *newWindow);
   public void LynxTemplateRender::setCustomizedLayoutInUIContext:(id< LynxListLayoutProtocol > _Nullable customizedListLayout);

@@ -2,6 +2,7 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+import lynx from 'liblynx.so';
 import { BusinessError } from '@ohos.base';
 import { LLog } from '../base/LLog';
 import { LynxTemplateRenderer } from './LynxTemplateRenderer';
@@ -151,6 +152,7 @@ class CAPINodeController extends LynxNodeController {
 
 @Component
 export struct LynxView {
+  private readonly viewId: number = lynx.generateViewId();
   genericResourceFetcher?: LynxGenericResourceFetcher;
   mediaResourceFetcher?: LynxMediaResourceFetcher;
   templateResourceFetcher?: LynxTemplateResourceFetcher;
@@ -356,7 +358,7 @@ export struct LynxView {
     let providers = [this.genericResourceFetcher, this.mediaResourceFetcher, this.templateResourceFetcher];
 
     this.templateRenderer =
-      new LynxTemplateRenderer(this.clients, providers, !this.uiRendererCreator,
+      new LynxTemplateRenderer(this.viewId, this.clients, providers, !this.uiRendererCreator,
         this.uiRendererCreator ? ThreadStrategyForRendering.ALL_ON_UI : this.threadMode,
         this.backgroundRuntimeOptions, this, !this.enableAirStrictMode,
         this.moduleManager, this.sendableModuleManager, this.enableMultiAsyncThread, this.screenSize);

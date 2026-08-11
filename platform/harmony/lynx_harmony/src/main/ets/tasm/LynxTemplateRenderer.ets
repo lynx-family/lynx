@@ -20,11 +20,13 @@ import { convertModuleArgs, LynxModuleManager, SendableLynxModuleManager } from 
 import { LynxLepusModule } from '../lepus/LynxLepusModule';
 import { LLog } from '../base/LLog';
 import { LynxElement, LynxElementCallback, LynxElementOwner } from './LynxElement';
+import { LynxLogContext } from './LynxLogContext';
 
 const TAG = 'LynxTemplateRenderer';
 
 
 export class LynxTemplateRenderer extends lynx.LynxTemplateRenderer {
+  private readonly logContext: LynxLogContext;
   private clients: LynxViewClient[];
   private url?: string;
   private perfController?: PerformanceController;
@@ -41,7 +43,7 @@ export class LynxTemplateRenderer extends lynx.LynxTemplateRenderer {
   private hasDestroyed = false;
   private displayInfo = LynxEnv.getDisplayInfo().clone();
 
-  constructor(clients: LynxViewClient[], providers: (LynxResourceProvider | undefined)[],
+  constructor(viewId: number, clients: LynxViewClient[], providers: (LynxResourceProvider | undefined)[],
     isHostRenderer: boolean,
     threadMode: ThreadStrategyForRendering,
     backgroundRuntimeOptions: LynxBackgroundRuntimeOptions,
@@ -52,6 +54,7 @@ export class LynxTemplateRenderer extends lynx.LynxTemplateRenderer {
     enableMultiAsyncThread?: boolean,
     screenSize?: Size) {
     super();
+    this.logContext = LynxLogContext.forView(viewId);
     this.clients = clients;
     this.providers = providers;
     this.isHostRenderer = isHostRenderer;
@@ -88,7 +91,7 @@ export class LynxTemplateRenderer extends lynx.LynxTemplateRenderer {
       this.enableJSRuntime,
       convertModuleArgs(this.moduleManager),
       convertModuleArgs(this.sendableModuleManager), this.lynxView?.backgroundRuntime, whiteBoard,
-      this.enableMultiAsyncThread);
+      this.enableMultiAsyncThread, this.logContext.viewId);
   }
 
   aboutToDisappear() {

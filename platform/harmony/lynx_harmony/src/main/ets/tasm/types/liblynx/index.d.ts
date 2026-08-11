@@ -30,6 +30,8 @@ export const parserTestBenchRecordData: (source: string) => string;
 
 export const notifyMemoryPressure: (pressure: number) => void;
 
+export const generateViewId: () => number;
+
 export class PaintingContext {
   static create(ref: Object, create: Function, update: Function, insert: Function, remove: Function, destroy: Function,
     layout: Function, flush: Function, layoutFinish: Function, updateContentSizeAndOffset: Function,
@@ -132,7 +134,7 @@ export class LynxTemplateRenderer {
     jsGroupThreadName: string, useQuickjs: boolean, enableJSGroupThread: boolean, preloadJSPaths: string[], enableBytecode: boolean,
     bytecodeSourceUrl: string, enableJSRuntime: boolean, moduleManagerArgs: Object[],
     sendableModuleManagerArgs: Object[], backgroundRuntime: NativeLynxBackgroundRuntime,
-    whiteBoard?: LynxWhiteBoard, enableMultiAsyncThread?: boolean): void;
+    whiteBoard: LynxWhiteBoard | undefined, enableMultiAsyncThread: boolean, viewId: number): void;
 
   nativeDetach(): void;
 

@@ -45,6 +45,7 @@
 #import "LynxFetchModule.h"
 #import "LynxGroup+Internal.h"
 #import "LynxIntersectionObserverModule.h"
+#import "LynxLogContext+Internal.h"
 #import "LynxResourceModule.h"
 #import "LynxSSRHelper.h"
 #import "LynxStaticPageTemplateData.h"
@@ -90,6 +91,7 @@
 #include "core/shell/ios/lynx_layout_proxy_darwin.h"
 #include "core/shell/ios/native_facade_darwin.h"
 #include "core/shell/ios/tasm_platform_invoker_darwin.h"
+#include "core/shell/lynx_entity_id_generator.h"
 #include "core/shell/lynx_shell_builder.h"
 #include "core/shell/runtime/common/module_delegate_impl.h"
 #include "core/value_wrapper/darwin/value_impl_darwin.h"
@@ -149,6 +151,9 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
                        containerView:(UIView<LUIBodyView>*)containerView {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, TEMPLATE_RENDER_INIT_WITH_BUILDER_BLOCK);
   if (self = [super init]) {
+    self.logContext = [[LynxLogContext alloc] initWithViewId:lynx::shell::GenerateLynxEntityId()
+                                                    engineId:lynx::base::kUnavailableLynxEntityId
+                                                   runtimeId:lynx::base::kUnavailableLynxEntityId];
     _initStartTiming = [[NSDate date] timeIntervalSince1970] * 1000 * 1000;
     _isMemoryCollecting = NO;
 

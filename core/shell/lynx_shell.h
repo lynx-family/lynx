@@ -13,6 +13,7 @@
 #include <utility>
 #include <vector>
 
+#include "base/include/log/log_context.h"
 #include "base/include/lynx_actor.h"
 #include "base/include/memory/memory_pressure_level.h"
 #include "base/include/notification_center.h"
@@ -73,6 +74,7 @@ struct ShellOption {
   bool enable_js_group_thread_{false};
   bool enable_vsync_aligned_msg_loop_{false};
   bool enable_async_hydration_{false};
+  base::LynxEntityId view_id_{base::kUnavailableLynxEntityId};
   int32_t instance_id_{kUnknownInstanceId};
   std::string js_group_thread_name_;
   tasm::PageOptions page_options_;

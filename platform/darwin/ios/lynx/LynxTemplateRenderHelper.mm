@@ -36,6 +36,7 @@
 #import <Lynx/LynxUIRenderer.h>
 #import <Lynx/LynxViewBuilder+Internal.h>
 #import <Lynx/PaintingContextProxy.h>
+#import "LynxLogContext+Internal.h"
 #import "LynxTraceEventDef.h"
 
 #include "base/include/lynx_actor.h"
@@ -511,6 +512,7 @@ bool HasNativePaintingCtxPlatformRef(lynx::tasm::PaintingCtxPlatformImpl* painti
 
 - (lynx::shell::ShellOption)setUpShellOption {
   lynx::shell::ShellOption option;
+  option.view_id_ = static_cast<lynx::base::LynxEntityId>(self.logContext.viewId);
   option.enable_js_ = self.enableJSRuntime;
   option.enable_js_group_thread_ = _enableJSGroupThread;
   if (_enableJSGroupThread) {

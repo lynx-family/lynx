@@ -35,6 +35,7 @@
 #include "core/shell/harmony/platform_call_back_harmony.h"
 #include "core/shell/harmony/tasm_platform_invoker_harmony.h"
 #include "core/shell/lynx_engine_proxy_impl.h"
+#include "core/shell/lynx_entity_id_generator.h"
 #include "core/shell/lynx_layout_proxy_impl.h"
 #include "core/shell/lynx_shell.h"
 #include "core/shell/lynx_shell_builder.h"
@@ -135,7 +136,7 @@ void LynxTemplateRenderer::SetUpLynxShell(
     std::unique_ptr<ModuleFactoryHarmony> jsbridge_module_factory,
     std::unique_ptr<ModuleFactoryHarmony> main_thread_module_factory,
     LynxRuntimeWrapper* runtime_wrapper, LynxWhiteBoard* white_board,
-    bool enable_multi_async_thread) {
+    bool enable_multi_async_thread, base::LynxEntityId view_id) {
   ui_delegate_ = ui_delegate;
   resource_loader_ = resource_loader;
   is_host_renderer_ = is_host_renderer;
@@ -166,6 +167,7 @@ void LynxTemplateRenderer::SetUpLynxShell(
   shell_option.enable_js_ = enable_js;
   shell_option.enable_multi_tasm_thread_ = enable_multi_async_thread;
   shell_option.enable_multi_layout_thread_ = enable_multi_async_thread;
+  shell_option.view_id_ = view_id;
   shell_option.instance_id_ =
       runtime_wrapper ? runtime_wrapper->RuntimeStandalone().GetRuntimeId()
                       : -1;
@@ -748,8 +750,16 @@ napi_value LynxTemplateRenderer::Init(napi_env env, napi_value exports) {
   NAPI_CREATE_FUNCTION(env, exports, "setCacheDirPath", SetCacheDirPath);
   NAPI_CREATE_FUNCTION(env, exports, "notifyMemoryPressure",
                        NotifyMemoryPressure);
+  NAPI_CREATE_FUNCTION(env, exports, "generateViewId", GenerateViewId);
 
   return exports;
+}
+
+napi_value LynxTemplateRenderer::GenerateViewId(napi_env env,
+                                                napi_callback_info info) {
+  napi_value result;
+  napi_create_int64(env, shell::GenerateLynxEntityId(), &result);
+  return result;
 }
 
 napi_value LynxTemplateRenderer::GetBaseTraceBackend(napi_env env,
@@ -916,8 +926,8 @@ napi_value LynxTemplateRenderer::NativeAttach(napi_env env,
 napi_value LynxTemplateRenderer::NativeReset(napi_env env,
                                              napi_callback_info info) {
   napi_value js_this;
-  size_t argc = 20;
-  napi_value args[20] = {nullptr};
+  size_t argc = 21;
+  napi_value args[21] = {nullptr};
   napi_get_cb_info(env, info, &argc, args, &js_this, nullptr);
 
   // UIDelegate
@@ -997,6 +1007,12 @@ napi_value LynxTemplateRenderer::NativeReset(napi_env env,
     napi_get_value_bool(env, args[19], &enable_multi_async_thread);
   }
 
+  int64_t view_id;
+  if (argc <= 20 || napi_get_value_int64(env, args[20], &view_id) != napi_ok) {
+    LOGE("LynxTemplateRenderer NativeReset requires a valid view ID.");
+    return nullptr;
+  }
+
   LynxTemplateRenderer* obj = nullptr;
   napi_status status =
       napi_unwrap(env, js_this, reinterpret_cast<void**>(&obj));
@@ -1019,7 +1035,8 @@ napi_value LynxTemplateRenderer::NativeReset(napi_env env,
       std::move(preload_js_paths), enable_bytecode,
       std::move(bytecode_source_url), enable_js,
       std::move(jsbridge_module_factory), std::move(main_thread_module_factory),
-      runtime_wrapper, white_board, enable_multi_async_thread);
+      runtime_wrapper, white_board, enable_multi_async_thread,
+      static_cast<base::LynxEntityId>(view_id));
   return nullptr;
 }
 
