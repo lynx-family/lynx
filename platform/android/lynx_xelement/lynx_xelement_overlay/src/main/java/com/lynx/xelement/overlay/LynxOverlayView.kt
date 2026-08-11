@@ -10,9 +10,11 @@ import android.content.Context
 import android.graphics.Color
 import android.graphics.Rect
 import android.os.Build
+import android.os.IBinder
 import android.view.*
 import androidx.annotation.RequiresApi
 import androidx.core.view.WindowCompat
+import androidx.fragment.app.Fragment
 import com.lynx.react.bridge.Dynamic
 import com.lynx.react.bridge.ReadableType
 import com.lynx.tasm.LynxError
@@ -75,6 +77,7 @@ class LynxOverlayView(context: LynxContext, val proxy: LynxUIOverlay) : UIGroup<
     private var mIsCutOutMode = true
     private var mEventsPassThrough = true
     private var mEventsPassThroughHasBeenSet = false
+    private var mNativeEventPassEnabled = false
     private var mStatusBarTranslucentStyle: String = LynxUIOverlay.PROP_STATUS_BAR_TRANSLUCENT_STYLE_DARK
     private var mLazyInitContext = false
     private var mNavigationBarStyle = NAVIGATION_BAR_STYLE_AUTO
@@ -89,6 +92,7 @@ class LynxOverlayView(context: LynxContext, val proxy: LynxUIOverlay) : UIGroup<
     private var mEnableOverlayTouch = false
     private var mDialogDismissCleaned = true
     private var mPlatformEventRootActive = false
+    private var mPresentedHostWindowToken: IBinder? = null
     private var mVelocityTracker: VelocityTracker? = null
     private var mLastX = 0.0f
     private var mLastY = 0.0f
@@ -589,7 +593,10 @@ class LynxOverlayView(context: LynxContext, val proxy: LynxUIOverlay) : UIGroup<
      **/
     @LynxProp(name = "android-native-event-pass")
     fun setNativeEventPass(enable : Boolean) {
+        mNativeEventPassEnabled = enable
         if (enable) {
+            mDialog.cancelPassThroughGesture()
+            LynxOverlayManager.cancelGesturesTargeting(mDialog)
             mDialog.window?.addFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE)
         } else {
             mDialog.window?.clearFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE)
@@ -802,6 +809,9 @@ class LynxOverlayView(context: LynxContext, val proxy: LynxUIOverlay) : UIGroup<
     }
 
     private fun deactivatePresentationResources() {
+        mDialog.cancelPassThroughGesture()
+        LynxOverlayManager.cancelGesturesTargeting(mDialog)
+        mPresentedHostWindowToken = null
         if (mPlatformEventRootActive) {
             setPlatformEventRootActive(false)
         }
@@ -849,6 +859,8 @@ class LynxOverlayView(context: LynxContext, val proxy: LynxUIOverlay) : UIGroup<
             mDialog.show()
             applyAndroidNavigationBarStyle()
             if (mDialog.isShowing) {
+                mPresentedHostWindowToken =
+                    proxy.view.windowToken ?: activity.window?.decorView?.windowToken
                 mPresentationState = PresentationState.PRESENTED
                 activatePresentationResources()
                 if (!mShowEventSentForVisibleCycle) {
@@ -1000,12 +1012,28 @@ class LynxOverlayView(context: LynxContext, val proxy: LynxUIOverlay) : UIGroup<
         return mAppliedOverlayScope == OverlayScope.FRAGMENT
     }
 
+    internal fun getFragmentOwner(): Fragment? {
+        return if (isFragmentScoped()) mFragmentScope.owner else null
+    }
+
+    internal fun isFragmentScopeActive(): Boolean {
+        return isFragmentScoped() && mFragmentScope.isActive
+    }
+
+    internal fun isNativeEventPassEnabled(): Boolean {
+        return mNativeEventPassEnabled
+    }
+
     internal fun getHostActivity(): Activity? {
         return if (isFragmentScoped()) {
             mFragmentScope.owner?.activity
         } else {
             ContextUtils.getActivity(lynxContext)
         }
+    }
+
+    internal fun getHostWindowToken(): IBinder? {
+        return mPresentedHostWindowToken ?: proxy.view.windowToken
     }
 
     override fun setParent(parent: UIParent?) {

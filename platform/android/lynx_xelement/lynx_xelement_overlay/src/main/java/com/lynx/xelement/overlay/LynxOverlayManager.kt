@@ -104,6 +104,14 @@ object LynxOverlayManager {
     }
 
     fun dispatchTouchEvent(ev: MotionEvent, overlay:LynxOverlayDialog): Boolean {
+        if (overlay.isFragmentScoped() ||
+            GLOBAL_OVERLAYS.any {
+                it.dialog.isFragmentScoped() &&
+                    it.dialog.isPresentationActive() &&
+                    overlay.isSameHost(it.dialog)
+            }) {
+            return overlay.dispatchPassThroughTouchEvent(ev)
+        }
         val activeOverlays = visibleOverlays()
         activeOverlays.forEach {
             if (it.dialog.innerDispatchTouchEvent(ev) && overlay != it.dialog) {
@@ -119,6 +127,36 @@ object LynxOverlayManager {
         }
 
         return false
+    }
+
+    internal fun cancelGesturesTargeting(target: LynxOverlayDialog) {
+        GLOBAL_OVERLAYS.forEach {
+            it.dialog.cancelPassThroughGestureTargeting(target)
+        }
+    }
+
+    internal fun getPresentedOverlaysBelow(source: LynxOverlayDialog): List<LynxOverlayDialog> {
+        val sourceIndex = GLOBAL_OVERLAYS.indexOfFirst { it.dialog === source }
+        if (sourceIndex < 0) {
+            return emptyList()
+        }
+        return GLOBAL_OVERLAYS
+            .subList(sourceIndex + 1, GLOBAL_OVERLAYS.size)
+            .filter {
+                it.dialog.isPresentationActive() &&
+                    it.dialog.acceptsManualTouchDispatch() &&
+                    source.isSameHost(it.dialog)
+            }
+            .map { it.dialog }
+    }
+
+    internal fun isPresentedOnSameHost(
+        source: LynxOverlayDialog,
+        target: LynxOverlayDialog
+    ): Boolean {
+        return GLOBAL_OVERLAYS.any { it.dialog === target } &&
+            target.isPresentationActive() &&
+            source.isSameHost(target)
     }
 
     private fun visibleOverlays(): List<OverlayData> {
