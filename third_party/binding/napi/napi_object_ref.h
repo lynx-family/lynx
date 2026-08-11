@@ -18,13 +18,16 @@ namespace binding {
 class NapiObjectRefImpl : public ObjectRefImpl {
  public:
   ~NapiObjectRefImpl() override = default;
+  static ObjectRef Elevate(Napi::ObjectReference& weak_reference);
   Object Get() const override;
   std::unique_ptr<ObjectRefImpl> Dup() override;
 
  private:
   friend class NapiObjectImpl;
   explicit NapiObjectRefImpl(Napi::Object object)
-    : ref_(Napi::Persistent(object)) {}
+      : ref_(Napi::Persistent(object)) {}
+  explicit NapiObjectRefImpl(Napi::ObjectReference&& reference)
+      : ref_(std::move(reference)) {}
 
   Napi::ObjectReference ref_;
 };
