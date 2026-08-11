@@ -22,6 +22,23 @@
 namespace lynx {
 namespace binding {
 
+namespace {
+
+class TestNapiBridge final : public NapiBridge {
+ public:
+  explicit TestNapiBridge(const Napi::CallbackInfo& info) : NapiBridge(info) {}
+  ~TestNapiBridge() override = default;
+};
+
+Napi::Value ObtainStrongRef(const Napi::CallbackInfo& info) {
+  auto* ref = static_cast<ObjectRef*>(info.Data());
+  TestNapiBridge bridge(info);
+  *ref = bridge.GetStrongRef();
+  return info.Env().Undefined();
+}
+
+}  // namespace
+
 #define AssertExp(exp) EXPECT_EQ(env_.RunScript(exp).ToBoolean().Value(), true);
 
 class NapiBindingTest : public ::testing::Test {
@@ -195,7 +212,26 @@ TEST_F(NapiBindingTest, ObjectRefAPITest) {
 }
 
 TEST_F(NapiBindingTest, ObjectRefBehaviorTest) {
-  // TODO(yuyifei): actually test the ref behavior.
+  ObjectRef ref;
+  {
+    Napi::HandleScope scope(env_);
+    Napi::Object object = Napi::Object::New(env_);
+    Napi::Function callback =
+        Napi::Function::New(env_, ObtainStrongRef, nullptr, &ref);
+
+    callback.Call(object, {});
+
+    ASSERT_FALSE(ref.IsEmpty());
+    EXPECT_EQ(ToNAPI(ref.Get()), object);
+  }
+
+  LEPUS_RunGC(rt_);
+  EXPECT_FALSE(ref.Get().IsEmpty());
+
+  ObjectRef clone = ref.Clone();
+  ref.Unref();
+  LEPUS_RunGC(rt_);
+  EXPECT_FALSE(clone.Get().IsEmpty());
 }
 
 TEST_F(NapiBindingTest, ValueToNapiValueTest) {

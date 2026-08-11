@@ -7,6 +7,7 @@
 #include "third_party/binding/common/object.h"
 #include "third_party/binding/common/object_ref.h"
 #include "third_party/binding/napi/napi_object.h"
+#include "third_party/binding/napi/napi_object_ref.h"
 
 #ifdef USE_PRIMJS_NAPI
 #include "third_party/napi/include/primjs_napi_defines.h"
@@ -25,7 +26,9 @@ Object NapiBridge::GetBaseObject() { return FromNAPI(weak_ref_.Value()); }
 
 Napi::Object NapiBridge::NapiObject() { return weak_ref_.Value(); }
 
-ObjectRef NapiBridge::GetStrongRef() { return GetBaseObject().AdoptRef(); }
+ObjectRef NapiBridge::GetStrongRef() {
+  return NapiObjectRefImpl::Elevate(weak_ref_);
+}
 
 Env NapiBridge::GetEnv() { return FromNAPI(env_); }
 
