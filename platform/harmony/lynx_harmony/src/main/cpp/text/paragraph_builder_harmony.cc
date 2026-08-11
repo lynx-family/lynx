@@ -141,11 +141,10 @@ void ParagraphBuilderHarmony::AddRichTypeText(std::string_view text) {
       return;
     }
 
-    std::string_view name = input.substr(left + 1, right - left - 1);
     std::string_view raw_text = input.substr(left, right - left + 1);
-    if (!name.empty() &&
-        name.find(rule.left_delimiter) == std::string_view::npos &&
-        TryAddEmojiPlaceholder(name)) {
+    if (raw_text.size() > 2 &&
+        raw_text.find(rule.left_delimiter, 1) == std::string_view::npos &&
+        TryAddEmojiPlaceholder(raw_text)) {
       pos = right + 1;
       continue;
     }
