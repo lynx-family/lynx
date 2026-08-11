@@ -137,6 +137,10 @@ class LynxOverlayDialog(context: Context, private val overlay: LynxOverlayView):
         return super.dispatchTouchEvent(ev);
     }
 
+    internal fun isPresentationActive(): Boolean {
+        return overlay.isPresentationActive()
+    }
+
     //when event-pass-through is true, the event will dispatch to below container
     fun dispatchTouchEventToBelowContainer(event: MotionEvent): Boolean {
         val activity = ContextUtils.getActivity(overlay.lynxContext)
