@@ -11,8 +11,8 @@ bindings_scripts_dir = get_path_info(".", "abspath")
 bindings_scripts_output_dir = get_path_info(".", "gen_dir")
 
 jinja_module_files = [
-  "//third_party/jinja2/__init__.py",
-  "//third_party/markupsafe/__init__.py",  # jinja2 dep
+  "//third_party/py_deps/jinja2/__init__.py",
+  "//third_party/py_deps/markupsafe/__init__.py",  # jinja2 dep
 ]
 
 idl_lexer_parser_files = get_path_info([
