@@ -858,6 +858,7 @@ enableEventThrough:
   valueType: bool
   author: rAY-ooo
   since: '1.4'
+  typePackageSince: '4.1.0'
   supportPlatform:
     - Android
     - HarmonyOS
