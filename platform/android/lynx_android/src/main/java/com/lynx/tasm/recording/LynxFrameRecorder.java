@@ -89,8 +89,7 @@ public final class LynxFrameRecorder {
 
   private static final LynxFrameRecorder sInstance = new LynxFrameRecorder();
 
-  private final ExecutorService mExecutor =
-      Executors.newSingleThreadExecutor(new RecorderThreadFactory());
+  private final ExecutorService mExecutor;
   private final ConcurrentHashMap<Integer, Integer> mRecordingSessions = new ConcurrentHashMap<>();
   private final ConcurrentHashMap<Integer, Integer> mStoppingSessions = new ConcurrentHashMap<>();
   private final ConcurrentHashMap<Integer, Integer> mInitialTreePendingSessions =
@@ -103,7 +102,13 @@ public final class LynxFrameRecorder {
   private final Map<Integer, RecorderTreeState> mTreeStates = new HashMap<>();
   private final AtomicInteger mNextSessionId = new AtomicInteger(1);
 
-  private LynxFrameRecorder() {}
+  private LynxFrameRecorder() {
+    this(new RecorderThreadFactory());
+  }
+
+  private LynxFrameRecorder(ThreadFactory threadFactory) {
+    mExecutor = Executors.newSingleThreadExecutor(threadFactory);
+  }
 
   public static LynxFrameRecorder inst() {
     return sInstance;
@@ -160,7 +165,6 @@ public final class LynxFrameRecorder {
     if (sessionId == null) {
       mFrames.remove(instanceId);
       mScreenDensities.remove(instanceId);
-      mExecutor.execute(() -> mTreeStates.remove(instanceId));
       return;
     }
     mStoppingSessions.put(instanceId, sessionId);

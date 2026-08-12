@@ -10,11 +10,13 @@ import static org.junit.Assert.assertTrue;
 
 import com.lynx.react.bridge.JavaOnlyMap;
 import com.lynx.tasm.behavior.ui.PropBundle;
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.json.JSONArray;
@@ -25,6 +27,25 @@ public class LynxFrameRecorderTest {
   private static final AtomicInteger sInstanceIds = new AtomicInteger(900000);
   private static final String LYNX_BYTE_REPLAY_MASK_PROP = "lynx-data-byte"
       + "replay-mask";
+
+  @Test
+  public void stopRecordingWithoutActiveSessionDoesNotStartExecutorThread() throws Exception {
+    AtomicInteger createdThreadCount = new AtomicInteger();
+    ThreadFactory threadFactory = runnable -> {
+      createdThreadCount.incrementAndGet();
+      Thread thread = new Thread(runnable);
+      thread.setDaemon(true);
+      return thread;
+    };
+    Constructor<LynxFrameRecorder> constructor =
+        LynxFrameRecorder.class.getDeclaredConstructor(ThreadFactory.class);
+    constructor.setAccessible(true);
+    LynxFrameRecorder recorder = constructor.newInstance(threadFactory);
+
+    recorder.stopRecording(sInstanceIds.incrementAndGet());
+
+    assertEquals(0, createdThreadCount.get());
+  }
 
   @Test
   public void pendingUIOperationsBeforeInitialTreeAreIgnored() throws Exception {
