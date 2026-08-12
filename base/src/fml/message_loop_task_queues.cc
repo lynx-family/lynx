@@ -50,27 +50,44 @@ MessageLoopTaskQueues::MessageLoopTaskQueues()
 MessageLoopTaskQueues::~MessageLoopTaskQueues() = default;
 
 void MessageLoopTaskQueues::Dispose(TaskQueueId queue_id) {
-  std::lock_guard guard(queue_mutex_);
-  const auto& queue_entry = queue_entries_.at(queue_id);
-  // TODO(zhengsenyao): Uncomment DCHECK code when DCHECK available.
-  // DCHECK(queue_entry->subsumed_by == _kUnmerged);
-  auto& subsumed_set = queue_entry->owner_of;
-  for (auto& subsumed : subsumed_set) {
-    queue_entries_.erase(subsumed);
+  // Destroy entries after releasing queue_mutex_ because observer/task-source
+  // teardown may re-enter MessageLoopTaskQueues via RegisterTask().
+  std::vector<std::unique_ptr<TaskQueueEntry>> entries_to_dispose;
+  {
+    std::lock_guard guard(queue_mutex_);
+    auto subsumed_set = std::move(queue_entries_.at(queue_id)->owner_of);
+    entries_to_dispose.reserve(subsumed_set.size() + 1);
+    // Preserve the old teardown order: destroy subsumed queues before the
+    // owner queue, and keep the subsumed destruction order stable.
+    entries_to_dispose.push_back(std::move(queue_entries_.at(queue_id)));
+    queue_entries_.erase(queue_id);
+    for (auto it = subsumed_set.rbegin(); it != subsumed_set.rend(); ++it) {
+      auto subsumed = *it;
+      entries_to_dispose.push_back(std::move(queue_entries_.at(subsumed)));
+      queue_entries_.erase(subsumed);
+    }
   }
-  // Erase owner queue_id at last to avoid &subsumed_set from being invalid
-  queue_entries_.erase(queue_id);
 }
 
 void MessageLoopTaskQueues::DisposeTasks(TaskQueueId queue_id) {
-  std::lock_guard guard(queue_mutex_);
-  const auto& queue_entry = queue_entries_.at(queue_id);
-  // TODO(zhengsenyao): Uncomment DCHECK code when DCHECK available.
-  // DCHECK(queue_entry->subsumed_by == _kUnmerged);
-  auto& subsumed_set = queue_entry->owner_of;
-  queue_entry->task_source->ShutDown();
-  for (auto& subsumed : subsumed_set) {
-    queue_entries_.at(subsumed)->task_source->ShutDown();
+  // Drain tasks under queue_mutex_, but destroy captured closures after
+  // unlocking to avoid deadlocking on re-entrant RegisterTask() calls.
+  std::vector<TaskSource::PendingTasks> pending_tasks;
+  {
+    std::lock_guard guard(queue_mutex_);
+    const auto& queue_entry = queue_entries_.at(queue_id);
+    // TODO(zhengsenyao): Uncomment DCHECK code when DCHECK available.
+    // DCHECK(queue_entry->subsumed_by == _kUnmerged);
+    auto& subsumed_set = queue_entry->owner_of;
+    pending_tasks.reserve(subsumed_set.size() + 1);
+    // Preserve the old task teardown order: destroy the owner queue tasks
+    // before the subsumed queue tasks, and keep subsumed teardown stable.
+    for (auto it = subsumed_set.rbegin(); it != subsumed_set.rend(); ++it) {
+      auto subsumed = *it;
+      pending_tasks.push_back(
+          queue_entries_.at(subsumed)->task_source->TakePendingTasks());
+    }
+    pending_tasks.push_back(queue_entry->task_source->TakePendingTasks());
   }
 }
 

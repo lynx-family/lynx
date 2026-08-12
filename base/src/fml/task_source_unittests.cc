@@ -6,6 +6,7 @@
 // LICENSE file in the root directory of this source tree.
 
 #include <atomic>
+#include <memory>
 #include <thread>
 
 #include "base/include/fml/macros.h"
@@ -93,6 +94,31 @@ TEST(TaskSourceTests, SimpleOrderingMultiTaskHeaps) {
   third_task.task.GetTask()();
   task_source.PopTask(third_task.task.GetTaskSourceGrade());
   ASSERT_EQ(value, 17);
+}
+
+TEST(TaskSourceTests, TakePendingTasksDefersTaskDestructionUntilReleased) {
+  struct DestructionFlag {
+    explicit DestructionFlag(bool* destroyed) : destroyed(destroyed) {}
+
+    bool* destroyed;
+
+    ~DestructionFlag() { *destroyed = true; }
+  };
+
+  TaskSource task_source(TaskQueueId(1));
+  bool destroyed = false;
+  task_source.RegisterTask(
+      {1, [flag = std::make_unique<DestructionFlag>(&destroyed)] {},
+       ChronoTicksSinceEpoch(), TaskSourceGrade::kUnspecified});
+
+  {
+    auto pending_tasks = task_source.TakePendingTasks();
+    ASSERT_EQ(pending_tasks.primary.size(), 1u);
+    ASSERT_FALSE(destroyed);
+    ASSERT_TRUE(task_source.IsEmpty());
+  }
+
+  ASSERT_TRUE(destroyed);
 }
 
 }  // namespace testing
