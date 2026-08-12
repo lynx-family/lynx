@@ -119,7 +119,7 @@ std::unique_ptr<KeyframeSet> FloatKeyframeSet::Clone(
   return to_return;
 }
 
-void FloatKeyframeSet::OnAnimationStart(Animator& animation) {
+void FloatKeyframeSet::OnAnimationPrepare(Animator& animation) {
   if (auto manager = GetKeyframesManager()) {
     manager->GetTarget()->GetProperty(Type(), original_value_);
   }
@@ -190,7 +190,7 @@ std::unique_ptr<KeyframeSet> ColorKeyframeSet::Clone(
   return to_return;
 }
 
-void ColorKeyframeSet::OnAnimationStart(Animator& animation) {
+void ColorKeyframeSet::OnAnimationPrepare(Animator& animation) {
   if (auto manager = GetKeyframesManager()) {
     manager->GetTarget()->GetProperty(Type(), original_value_);
   }
@@ -327,7 +327,7 @@ std::unique_ptr<KeyframeSet> TransformKeyframeSet::Clone(
   return to_return;
 }
 
-void TransformKeyframeSet::OnAnimationStart(Animator& animation) {
+void TransformKeyframeSet::OnAnimationPrepare(Animator& animation) {
   if (auto manager = GetKeyframesManager()) {
     manager->GetTarget()->GetProperty(Type(), original_value_);
   }
@@ -398,7 +398,7 @@ std::string FilterKeyframeSet::ToString() const { return "FilterKeyframeSet"; }
 #endif
 
 // AnimatorListenerAdapter overrides
-void FilterKeyframeSet::OnAnimationStart(Animator& animation) {
+void FilterKeyframeSet::OnAnimationPrepare(Animator& animation) {
   if (auto manager = GetKeyframesManager()) {
     manager->GetTarget()->GetProperty(Type(), original_value_);
   }
@@ -461,7 +461,7 @@ std::string BoxShadowKeyframeSet::ToString() const {
 }
 #endif
 
-void BoxShadowKeyframeSet::OnAnimationStart(Animator& animation) {
+void BoxShadowKeyframeSet::OnAnimationPrepare(Animator& animation) {
   if (auto manager = GetKeyframesManager()) {
     manager->GetTarget()->GetProperty(Type(), original_value_);
   }

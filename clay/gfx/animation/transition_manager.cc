@@ -57,7 +57,7 @@ bool TransitionManager::IsAnimationRunning(ClayAnimationPropertyType type) {
 std::vector<ValueAnimator*> TransitionManager::GetRunningAnimators() {
   std::vector<ValueAnimator*> animators;
   for (const auto& [type, transition] : active_transitions_) {
-    if (transition.first->IsRunning()) {
+    if (transition.first->IsStarted()) {
       animators.push_back(transition.first.get());
     }
   }

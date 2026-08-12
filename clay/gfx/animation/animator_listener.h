@@ -17,6 +17,10 @@ class ValueAnimator;
  */
 class AnimatorListener {
  public:
+  // Called before the animator applies its first value. Unlike
+  // OnAnimationStart(), this may happen during the delay phase when backwards
+  // fill is enabled.
+  virtual void OnAnimationPrepare(Animator& animation) {}
   virtual void OnAnimationStart(Animator& animation) = 0;
   virtual void OnAnimationEnd(Animator& animation) = 0;
   virtual void OnAnimationCancel(Animator& animation) = 0;

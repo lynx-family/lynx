@@ -44,6 +44,11 @@ class AnimatorTarget;
 class ValueAnimator : public Animator,
                       public AnimationHandler::AnimationFrameCallback {
  public:
+  enum class FrameUpdateMode {
+    kUpdateValues,
+    kLifecycleOnly,
+  };
+
   ~ValueAnimator() override;
   ValueAnimator() = default;
   explicit ValueAnimator(const AnimationData& animation_data);
@@ -302,6 +307,9 @@ class ValueAnimator : public Animator,
   void SetAnimationHandler(AnimationHandler* animation_handler);
   void SetAnimationTarget(AnimatorTarget* target) { target_ = target; }
 
+  void SetFrameUpdateMode(FrameUpdateMode mode) { frame_update_mode_ = mode; }
+  FrameUpdateMode GetFrameUpdateMode() const { return frame_update_mode_; }
+
   // CSS keyframe animations keep ended forwards/both animators for fill mode.
   // Do not let a later rolled-back frame timestamp restart their lifecycle.
   void SetUseMonotonicFrameTime(bool use_monotonic_frame_time) {
@@ -377,6 +385,8 @@ class ValueAnimator : public Animator,
   int64_t GetCurrentPlayTime();
 
   void NotifyStartListeners();
+  void PrepareAnimation();
+  void ApplyBackwardsFill(bool update_values);
   void Start(bool play_backwards);
 
   // the remove param is used to solved to keyframe animation stop when
@@ -508,6 +518,10 @@ class ValueAnimator : public Animator,
    */
   bool start_listeners_called_ = false;
 
+  // Tracks whether listeners have prepared values needed before the first
+  // animation sample. This is separate from the active-phase start event.
+  bool animation_prepared_ = false;
+
   /**
    * Flag that denotes whether the animation is set up and ready to go. Used to
    * set up animation that has not yet been started.
@@ -558,6 +572,8 @@ class ValueAnimator : public Animator,
   bool suppress_self_pulse_requested_ = false;
 
   bool use_monotonic_frame_time_ = false;
+
+  FrameUpdateMode frame_update_mode_ = FrameUpdateMode::kUpdateValues;
 
   /**
    * The time interpolator to be used. The elapsed fraction of the animation
