@@ -79,8 +79,9 @@ class DevToolPlatformFacadeMock : public lynx::devtool::DevToolPlatformFacade {
   }
   ~DevToolPlatformFacadeMock() override = default;
 
-  // Test helper to clear the registered input target, replacing the removed
-  // DevToolPlatformFacade::SetInputEventTarget setter.
+  // Test helper that clears both the registered input target and the mock's
+  // own reference to it. Prefer this over SetInputEventTarget(nullptr) so the
+  // mock's tracked pointer is released as well.
   void ResetInputEventTarget() {
     input_event_target_ = nullptr;
     mock_input_event_target_ = nullptr;

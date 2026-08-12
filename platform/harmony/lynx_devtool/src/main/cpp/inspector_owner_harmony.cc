@@ -26,6 +26,8 @@ napi_value InspectorOwnerHarmony::Init(napi_env env, napi_value exports) {
       DECLARE_NAPI_FUNCTION("getConsoleObject", GetConsoleObject),
       DECLARE_NAPI_FUNCTION("subscribeMessage", SubscribeMessage),
       DECLARE_NAPI_FUNCTION("unsubscribeMessage", UnsubscribeMessage),
+      DECLARE_NAPI_FUNCTION("updateInputWindowInfo", UpdateInputWindowInfo),
+      DECLARE_NAPI_FUNCTION("invalidateInputWindow", InvalidateInputWindow),
   };
 #undef DECLARE_NAPI_FUNCTION
 
@@ -210,6 +212,52 @@ napi_value InspectorOwnerHarmony::UnsubscribeMessage(napi_env env,
     owner_harmony_ptr->owner_->UnsubscribeMessage(type);
   }
 
+  return nullptr;
+}
+
+napi_value InspectorOwnerHarmony::UpdateInputWindowInfo(
+    napi_env env, napi_callback_info info) {
+  napi_value js_this;
+  size_t argc = 7;
+  napi_value args[7];
+  napi_get_cb_info(env, info, &argc, args, &js_this, nullptr);
+
+  InspectorOwnerHarmony *owner_harmony_ptr = nullptr;
+  napi_status status =
+      napi_unwrap(env, js_this, reinterpret_cast<void **>(&owner_harmony_ptr));
+  NAPI_THROW_IF_FAILED_NULL(
+      env, status, "InspectorOwnerHarmony UpdateInputWindowInfo failed!");
+  if (!owner_harmony_ptr || argc != std::size(args)) {
+    LOGE("Invalid arguments when updating the input window");
+    return nullptr;
+  }
+
+  HarmonyInputWindowInfo window_info;
+  window_info.window_id = base::NapiUtil::ConvertToInt32(env, args[0]);
+  window_info.display_id = base::NapiUtil::ConvertToInt32(env, args[1]);
+  window_info.left_px = base::NapiUtil::ConvertToInt32(env, args[2]);
+  window_info.top_px = base::NapiUtil::ConvertToInt32(env, args[3]);
+  window_info.width_px = base::NapiUtil::ConvertToInt32(env, args[4]);
+  window_info.height_px = base::NapiUtil::ConvertToInt32(env, args[5]);
+  window_info.pixel_ratio = base::NapiUtil::ConvertToFloat(env, args[6]);
+  owner_harmony_ptr->owner_->UpdateInputWindowInfo(window_info);
+  return nullptr;
+}
+
+napi_value InspectorOwnerHarmony::InvalidateInputWindow(
+    napi_env env, napi_callback_info info) {
+  napi_value js_this;
+  size_t argc = 0;
+  napi_get_cb_info(env, info, &argc, nullptr, &js_this, nullptr);
+
+  InspectorOwnerHarmony *owner_harmony_ptr = nullptr;
+  napi_status status =
+      napi_unwrap(env, js_this, reinterpret_cast<void **>(&owner_harmony_ptr));
+  NAPI_THROW_IF_FAILED_NULL(
+      env, status, "InspectorOwnerHarmony InvalidateInputWindow failed!");
+  if (owner_harmony_ptr) {
+    owner_harmony_ptr->owner_->InvalidateInputWindow();
+  }
   return nullptr;
 }
 

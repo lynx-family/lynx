@@ -404,7 +404,7 @@ domains:
         source: devtool/lynx_devtool/agent/domain_agent/inspector_input_agent.cc
       - name: synthesizeTapGesture
         origin: standard
-        since: '4.3'
+        since: '4.4'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_input_agent.cc
   - name: Inspector
     origin: standard
