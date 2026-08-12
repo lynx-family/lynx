@@ -3,6 +3,7 @@
 // LICENSE file in the root directory of this source tree.
 package com.lynx.xelement.input
 
+import android.graphics.Paint
 import android.os.Build
 import android.text.Layout
 import android.text.StaticLayout
@@ -14,8 +15,57 @@ import android.view.View
 import android.widget.EditText
 import com.lynx.tasm.behavior.shadow.text.StaticLayoutCompat
 import com.lynx.tasm.behavior.shadow.text.TextAttributes
+import java.lang.reflect.Method
 
 class LynxInputUtils() {
+    private data class LocaleLineHeightMethods(
+        val isLocalePreferredLineHeightForMinimumUsed: Method,
+        val getFontMetricsForLocale: Method,
+        val setMinimumFontMetrics: Method
+    )
+
+    companion object {
+        private const val API_LEVEL_35 = 35
+
+        // Resolve these public API 35 methods lazily to keep compileSdkVersion at 33.
+        private val localeLineHeightMethods by lazy {
+            if (Build.VERSION.SDK_INT < API_LEVEL_35) {
+                null
+            } else {
+                runCatching {
+                    LocaleLineHeightMethods(
+                        EditText::class.java.getMethod(
+                            "isLocalePreferredLineHeightForMinimumUsed"
+                        ),
+                        Paint::class.java.getMethod(
+                            "getFontMetricsForLocale",
+                            Paint.FontMetrics::class.java
+                        ),
+                        StaticLayout.Builder::class.java.getMethod(
+                            "setMinimumFontMetrics",
+                            Paint.FontMetrics::class.java
+                        )
+                    )
+                }.getOrNull()
+            }
+        }
+    }
+
+    private fun setLocalePreferredMinimumFontMetrics(
+        builder: StaticLayout.Builder,
+        editText: EditText
+    ) {
+        val methods = localeLineHeightMethods ?: return
+        runCatching {
+            if (methods.isLocalePreferredLineHeightForMinimumUsed.invoke(editText) != true) {
+                return@runCatching
+            }
+            val minimumFontMetrics = Paint.FontMetrics()
+            methods.getFontMetricsForLocale.invoke(editText.paint, minimumFontMetrics)
+            methods.setMinimumFontMetrics.invoke(builder, minimumFontMetrics)
+        }
+    }
+
     fun getLayoutInEditText(charSequence: CharSequence,
                             editText: EditText,
                             measuredWidth: Int,
@@ -47,6 +97,9 @@ class LynxInputUtils() {
                 .setIncludePad(editText.includeFontPadding)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
                 builder.setUseLineSpacingFromFallbacks(true)
+            }
+            if (Build.VERSION.SDK_INT >= API_LEVEL_35) {
+                setLocalePreferredMinimumFontMetrics(builder, editText)
             }
             return builder.build()
         } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR2) {
