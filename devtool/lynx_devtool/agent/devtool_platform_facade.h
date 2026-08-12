@@ -85,6 +85,11 @@ class DevToolPlatformFacade
     return input_event_target_;
   }
 
+  void SetInputEventTarget(
+      const std::shared_ptr<input::InputEventTarget>& input_event_target) {
+    input_event_target_ = input_event_target;
+  }
+
   const std::weak_ptr<InspectorJavaScriptDebuggerImpl>& GetJSDebugger() {
     return js_debugger_wp_;
   }

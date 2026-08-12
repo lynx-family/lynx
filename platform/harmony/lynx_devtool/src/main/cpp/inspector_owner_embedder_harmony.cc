@@ -8,6 +8,7 @@
 #include <string>
 
 #include "base/include/platform/harmony/napi_util.h"
+#include "devtool/lynx_devtool/agent/devtool_platform_facade.h"
 
 namespace lynx {
 namespace devtool {
@@ -15,6 +16,8 @@ namespace devtool {
 InspectorOwnerEmbedderHarmony::InspectorOwnerEmbedderHarmony(napi_env env,
                                                              napi_ref ref)
     : env_(env), ref_(ref) {}
+
+InspectorOwnerEmbedderHarmony::~InspectorOwnerEmbedderHarmony() { Destroy(); }
 
 void InspectorOwnerEmbedderHarmony::OnConsoleMessage(
     const std::string& message) {
@@ -69,7 +72,44 @@ void InspectorOwnerEmbedderHarmony::OnConsoleObject(const std::string& detail,
       });
 }
 
+void InspectorOwnerEmbedderHarmony::UpdateInputWindowInfo(
+    const HarmonyInputWindowInfo& window_info) {
+  if (input_event_target_) {
+    input_event_target_->UpdateWindowInfo(window_info);
+  }
+}
+
+void InspectorOwnerEmbedderHarmony::InvalidateInputWindow() {
+  if (input_event_target_) {
+    input_event_target_->InvalidateWindow();
+  }
+}
+
+void InspectorOwnerEmbedderHarmony::OnDevToolPlatformFacadeReady(
+    const std::shared_ptr<DevToolPlatformFacade>& facade) {
+  if (!facade) {
+    return;
+  }
+  platform_facade_ = facade;
+  if (!input_event_target_) {
+    input_event_target_ = std::make_shared<HarmonyInputEventTarget>(
+        CreateHarmonyTouchEventInjector());
+  }
+  facade->SetInputEventTarget(input_event_target_);
+}
+
+void InspectorOwnerEmbedderHarmony::ClearInputEventTarget() {
+  InvalidateInputWindow();
+  auto facade = platform_facade_.lock();
+  if (facade && facade->GetInputEventTarget() == input_event_target_) {
+    facade->SetInputEventTarget(nullptr);
+  }
+  platform_facade_.reset();
+  input_event_target_.reset();
+}
+
 void InspectorOwnerEmbedderHarmony::Destroy() {
+  ClearInputEventTarget();
   env_ = nullptr;
   ref_ = nullptr;
 }

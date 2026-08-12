@@ -1,0 +1,63 @@
+summary: Synthesizes one or more single-pointer tap sequences in the native window containing the LynxView.
+parameters:
+  - name: x
+    type: number
+    description: Finite horizontal logical coordinate relative to the left edge of the native window containing the LynxView.
+  - name: y
+    type: number
+    description: Finite vertical logical coordinate relative to the top edge of the native window containing the LynxView.
+  - name: duration
+    type: integer
+    optional: true
+    default: 50
+    minimum: 0
+    description: Minimum time in milliseconds between the pointer-down and pointer-up events of each tap.
+  - name: tapCount
+    type: integer
+    optional: true
+    default: 1
+    minimum: 0
+    maximum: 200
+    description: Number of independent tap sequences to perform. Passing 0 completes successfully without injecting an event.
+  - name: gestureSourceType
+    type: string
+    optional: true
+    default: default
+    enum: [default, touch, mouse]
+    description: Pointer source to request. The default value resolves to the preferred source reported by the current platform target.
+returns: []
+events: []
+notes:
+  - Lynx interprets x and y as window-local logical coordinates rather than the main-frame viewport CSS coordinates described by upstream CDP.
+  - Android and Harmony convert logical coordinates to native pixels using the window density or pixel ratio before injection. Darwin targets use window points only when an optional platform-specific pointer injection implementation is linked; otherwise they advertise no touch support.
+  - Coordinates are not absolute screen coordinates or physical screenshot pixels. Convert LynxView-local coordinates to the containing window coordinate space before sending the request.
+  - Injection is dispatched through the native window or root view. A native overlay above the LynxView can receive the tap, and the request cannot target content in a different native window.
+  - The target LynxView must be attached to a valid native window, and the point must fall inside that window. Otherwise the request fails.
+  - Explicitly requesting a pointer source that the current platform target does not advertise returns a CDP server error. Targets with native touch injection support normally resolve default to touch.
+  - Each tap is an independent single-pointer down/up sequence. tapCount does not create multiple simultaneous pointers.
+  - The actual elapsed duration may exceed duration because pointer injection is frame-driven. The request completes after every tap event has been accepted by the current platform target; it does not guarantee that the native UI or page script has consumed the event.
+  - The product of duration and tapCount must not exceed 10000 milliseconds.
+examples:
+  - title: Tap once with platform defaults
+    request:
+      id: 1
+      method: Input.synthesizeTapGesture
+      params:
+        x: 120
+        y: 240
+    response:
+      id: 1
+      result: {}
+  - title: Perform two touch taps
+    request:
+      id: 2
+      method: Input.synthesizeTapGesture
+      params:
+        x: 120
+        y: 240
+        duration: 100
+        tapCount: 2
+        gestureSourceType: touch
+    response:
+      id: 2
+      result: {}
