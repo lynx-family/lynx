@@ -53,6 +53,7 @@ class StyleRule : public fml::RefCountedThreadSafeStorage {
   }
 
   const auto& Token() { return token_; }
+  const auto& Token() const { return token_; }
 
   uint32_t Position() const { return position_; }
 

@@ -1,5 +1,8 @@
 # CHANGELOG
 
+# 0.0.52
+* Support serializing decoded CSS descriptors into CSS text.
+
 # 0.0.51
 * update supported lynx version to 4.2
 

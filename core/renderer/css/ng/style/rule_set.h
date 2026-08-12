@@ -8,6 +8,7 @@
 #include <memory>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 #include "base/include/fml/memory/ref_counted.h"
@@ -130,6 +131,40 @@ class RuleSet {
         visitor(*rule);
       }
     }
+  }
+
+  // A style rule can be indexed by several selector maps. Expose each rule
+  // once for consumers that need to serialize the decoded rule tree.
+  template <typename ForEachStyleRuleVisitor>
+  void ForEachStyleRule(ForEachStyleRuleVisitor&& visitor) const {
+    for (const auto* dep : deps_) {
+      dep->ForEachStyleRule(visitor);
+    }
+
+    std::unordered_set<const StyleRule*> visited;
+    auto visit = [&visitor, &visited](const CompactRuleDataVector& rules) {
+      for (const auto& rule_data : rules) {
+        const auto* rule = rule_data.Rule();
+        if (rule != nullptr && visited.insert(rule).second) {
+          visitor(*rule, rule_data.Layer());
+        }
+      }
+    };
+
+    for (const auto& entry : id_rules_) {
+      visit(entry.second);
+    }
+    for (const auto& entry : class_rules_) {
+      visit(entry.second);
+    }
+    for (const auto& entry : attr_rules_) {
+      visit(entry.second);
+    }
+    for (const auto& entry : tag_rules_) {
+      visit(entry.second);
+    }
+    visit(pseudo_rules_);
+    visit(universal_rules_);
   }
 
   const std::vector<const RuleSet*>& deps() const { return deps_; }

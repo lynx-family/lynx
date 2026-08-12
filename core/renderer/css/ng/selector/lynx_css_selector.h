@@ -147,6 +147,14 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxCSSSelector {
 
   void SetNth(int a, int b);
   bool MatchNth(unsigned count) const;
+  int NthAValue() const {
+    DCHECK(has_extra_data_);
+    return extra_data_->NthAValue();
+  }
+  int NthBValue() const {
+    DCHECK(has_extra_data_);
+    return extra_data_->NthBValue();
+  }
 
   bool IsAttributeSelector() const {
     return match_ >= kFirstAttributeSelectorMatch;

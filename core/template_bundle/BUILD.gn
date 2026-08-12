@@ -31,4 +31,5 @@ lynx_core_source_set("template_bundle_converter") {
               "lynx_template_bundle_converter_impl.cc",
             ] + template_bundle_converter_sources
   public_deps = [ ":template_bundle" ]
+  deps = [ "../renderer/css:css_decoder" ]
 }
