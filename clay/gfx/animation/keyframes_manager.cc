@@ -24,23 +24,6 @@ bool IsSame(const AnimationData& lhs, const AnimationData& rhs) {
                   rhs.duration, rhs.delay, rhs.direction);
 }
 
-// Returns true when the view has both raster animation and UI animation
-bool IsMixedAnimation(const KeyframesManager::KeyframeAnimation& animation) {
-  bool has_raster_animation = false;
-  bool has_ui_animation = false;
-  for (auto& [type, keyframe] : animation.keyframes_map) {
-    if (IsRasterAnimationProperty(type)) {
-      has_raster_animation = true;
-    } else {
-      has_ui_animation = true;
-    }
-    if (has_raster_animation && has_ui_animation) {
-      return true;
-    }
-  }
-  return false;
-}
-
 bool CanRunLifecycleOnly(const KeyframesManager::KeyframeAnimation& animation,
                          const AnimatorTarget* target) {
   if (!target || animation.keyframes_map.empty()) {
@@ -51,6 +34,30 @@ bool CanRunLifecycleOnly(const KeyframesManager::KeyframeAnimation& animation,
                      [target](const auto& keyframes) {
                        return target->CanRunAnimationOnRaster(keyframes.first);
                      });
+}
+
+template <typename KeyframeSetType, typename ValueType>
+bool SampleKeyframePresentationValue(
+    const std::vector<KeyframesManager::KeyframeAnimation>& animations,
+    ClayAnimationPropertyType type, int64_t current_time, ValueType& value) {
+  bool has_value = false;
+  for (const auto& animation : animations) {
+    if (!animation.animator->IsPreparedForPresentation()) {
+      continue;
+    }
+    auto keyframes = animation.keyframes_map.find(type);
+    if (keyframes == animation.keyframes_map.end()) {
+      continue;
+    }
+    auto fraction = animation.animator->GetPresentationFraction(current_time);
+    if (!fraction.has_value()) {
+      continue;
+    }
+    value = static_cast<const KeyframeSetType*>(keyframes->second.get())
+                ->GetValue(*fraction);
+    has_value = true;
+  }
+  return has_value;
 }
 
 std::vector<AnimationData> NormalizeAnimationData(
@@ -124,6 +131,27 @@ bool KeyframesManager::HasAnimationForType(
   return false;
 }
 
+bool KeyframesManager::GetPresentationValue(ClayAnimationPropertyType type,
+                                            int64_t current_time,
+                                            float& value) const {
+  return SampleKeyframePresentationValue<FloatKeyframeSet>(animations_, type,
+                                                           current_time, value);
+}
+
+bool KeyframesManager::GetPresentationValue(ClayAnimationPropertyType type,
+                                            int64_t current_time,
+                                            Color& value) const {
+  return SampleKeyframePresentationValue<ColorKeyframeSet>(animations_, type,
+                                                           current_time, value);
+}
+
+bool KeyframesManager::GetPresentationValue(ClayAnimationPropertyType type,
+                                            int64_t current_time,
+                                            TransformOperations& value) const {
+  return SampleKeyframePresentationValue<TransformKeyframeSet>(
+      animations_, type, current_time, value);
+}
+
 void KeyframesManager::SyncProperties(KeyframesManager* manager) {
   if (manager == nullptr) {
     return;
@@ -154,9 +182,7 @@ std::unique_ptr<KeyframesManager> KeyframesManager::CloneForRasterAnimation(
       clone_animation.animator->SetAnimationTarget(target);
       std::unique_ptr<KeyframeSet> clone_keyframe_set =
           iter->second->Clone(clone.get());
-      if (!IsMixedAnimation(animation)) {
-        clone_animation.animator->AddListener(clone_keyframe_set.get());
-      }
+      clone_animation.animator->AddListener(clone_keyframe_set.get());
       // CSS lifecycle events are dispatched by the UI-side logical animator.
       // A multi-property animation creates one raster clone per property, so
       // raster clones must not dispatch events.
@@ -171,18 +197,26 @@ std::unique_ptr<KeyframesManager> KeyframesManager::CloneForRasterAnimation(
 
 void KeyframesManager::UpdateAnimator(ValueAnimator* animator,
                                       AnimationData data) {
-  animator->SetAnimationData(data);
+  auto* handler = animator->GetAnimationHandler();
+  const int64_t current_time = handler->GetCurrentAnimationTime();
+  animator->UpdateAnimationData(data, current_time);
   if (data.play_state == ClayAnimationPlayStateType::kPaused) {
     animator->Pause();
   } else if (data.play_state == ClayAnimationPlayStateType::kRunning) {
     animator->Resume();
   }
-  animator->AddAnimationCallback(0);
+  if (animator->IsStarted()) {
+    animator->AddAnimationCallback(0);
+  }
+  // A retained animator is already registered, so adding it again does not
+  // account for lifecycle boundaries changed by the new timing data.
+  handler->RescheduleLifecycleCallback(current_time);
 }
 
 void KeyframesManager::StartAnimations(const std::vector<AnimationData>& data) {
   std::vector<KeyframeAnimation> old_animations = std::move(animations_);
   std::vector<KeyframeAnimation> new_animations;
+  std::unordered_set<ValueAnimator*> animators_to_start;
 
   for (auto item : data) {
     bool add_new_animation = true;
@@ -218,6 +252,7 @@ void KeyframesManager::StartAnimations(const std::vector<AnimationData>& data) {
         animation.animator->SetFrameUpdateMode(
             ValueAnimator::FrameUpdateMode::kLifecycleOnly);
       }
+      animators_to_start.insert(animation.animator.get());
       new_animations.push_back(std::move(animation));
     }
   }
@@ -230,8 +265,9 @@ void KeyframesManager::StartAnimations(const std::vector<AnimationData>& data) {
     }
   }
 
-  for (const auto& animation : animations_) {
-    if (animation.animator->IsStarted()) {
+  for (auto& animation : animations_) {
+    if (animators_to_start.find(animation.animator.get()) ==
+        animators_to_start.end()) {
       continue;
     }
     animation.animator->Start();
