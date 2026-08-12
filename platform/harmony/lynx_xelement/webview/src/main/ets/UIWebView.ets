@@ -59,6 +59,7 @@ export interface LynxWebViewLoader {
 export abstract class LynxWebViewNodeController extends NodeController implements LynxWebViewLoader {
   private jsBridge: LynxJSBridge = new LynxJSBridge(this);
   private webviewParams: WebViewParams;
+  private controllerAttached: boolean = false;
 
   abstract getController(): webview.WebviewController;
 
@@ -76,6 +77,19 @@ export abstract class LynxWebViewNodeController extends NodeController implement
     javaScriptOnDocumentEnd: Array<ScriptItem>): FrameNode | null;
 
   dispose(): void {
+    if (this.webviewParams.ui.webviewNodeController === this) {
+      this.webviewParams.ui.attached = false;
+    }
+    if (!this.controllerAttached) {
+      return;
+    }
+    this.controllerAttached = false;
+    try {
+      this.getController().deleteJavaScriptRegister("LynxJSBridge");
+    } catch (_) {
+      // The Web component may have already unregistered the proxy or detached
+      // its controller before it is disposed.
+    }
   }
 
   constructor(webviewParams: WebViewParams) {
@@ -96,12 +110,15 @@ export abstract class LynxWebViewNodeController extends NodeController implement
   }
 
   onControllerAttached(): void {
+    this.controllerAttached = true;
     this.webviewParams.ui.attached = true;
     this.webviewParams.ui.updateSrc(true, this.webviewParams.url, this.webviewParams.html);
   }
 
   aboutToDisappear(): void {
-    this.getController().deleteJavaScriptRegister("LynxJSBridge");
+    if (this.webviewParams.ui.webviewNodeController === this) {
+      this.webviewParams.ui.attached = false;
+    }
   }
 
   public onLoad(): void {
@@ -203,6 +220,7 @@ export class LynxDefaultWebViewNodeController extends LynxWebViewNodeController 
   }
 
   override dispose(): void {
+    super.dispose();
     this.webviewNode?.update(undefined);
     this.webviewNode?.dispose();
     this.webviewNode = null;
