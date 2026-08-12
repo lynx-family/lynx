@@ -3,12 +3,10 @@
 // LICENSE file in the root directory of this source tree.
 
 #import <XCTest/XCTest.h>
-#import <objc/runtime.h>
 
 #import <Lynx/LynxListHorizontalLayoutManager.h>
 #import <Lynx/LynxListLayoutManager.h>
 #import <Lynx/LynxListVerticalLayoutManager.h>
-#import <Lynx/LynxListViewLight.h>
 #import <Lynx/LynxUIListProtocol.h>
 
 @interface LynxListLayoutManagerUnitTest : XCTestCase
@@ -20,41 +18,49 @@
 @implementation LynxListLayoutManagerUnitTest
 
 - (void)setUp {
-  self.defaultSize = UIScreen.mainScreen.bounds.size;
+  self.defaultSize = CGSizeMake(390, 844);
+}
+
+- (void)prepareLayoutManager:(LynxListLayoutManager *)layoutManager {
+  LynxUIListInvalidationContext *generalPropsContext =
+      [[LynxUIListInvalidationContext alloc] initWithGeneralPropsUpdate];
+  generalPropsContext.numberOfColumns = 2;
+  generalPropsContext.layoutType = LynxListLayoutWaterfall;
+  [layoutManager updateBasicInvalidationContext:generalPropsContext
+                                         bounds:(CGRect){{0, 0}, self.defaultSize}];
+
+  NSArray<NSNumber *> *insertions = @[ @(0), @(1), @(2), @(3), @(4) ];
+  [layoutManager updateModelsWithInsertions:insertions];
+  NSMutableDictionary<NSNumber *, NSValue *> *modelUpdates = [NSMutableDictionary dictionary];
+  for (NSNumber *index in insertions) {
+    modelUpdates[index] = [NSValue valueWithCGRect:(CGRect){{0, 0}, self.defaultSize}];
+  }
+  [layoutManager updateModels:modelUpdates];
+}
+
+- (void)applyFullSpanItemToLayoutManager:(LynxListLayoutManager *)layoutManager {
+  LynxUIListInvalidationContext *fullSpanItemUpdateContext =
+      [[LynxUIListInvalidationContext alloc] initWithGeneralPropsUpdate];
+  fullSpanItemUpdateContext.fullSpanItems = @[ @(0) ];
+  [layoutManager updateBasicInvalidationContext:fullSpanItemUpdateContext
+                                         bounds:(CGRect){{0, 0}, self.defaultSize}];
 }
 
 - (void)testVerticalLayout {
   LynxListVerticalLayoutManager *verticalLayoutManger =
       [[LynxListVerticalLayoutManager alloc] init];
-  LynxListViewLight *view = [[LynxListViewLight alloc] init];
-  view.frame = CGRectMake(0, 0, self.defaultSize.width, self.defaultSize.height);
-  [view setLayout:verticalLayoutManger];
   XCTAssertTrue([verticalLayoutManger isVerticalLayout]);
-
-  LynxUIListInvalidationContext *generalPropsContext =
-      [[LynxUIListInvalidationContext alloc] initWithGeneralPropsUpdate];
-  generalPropsContext.numberOfColumns = 2;
-  generalPropsContext.layoutType = LynxListLayoutWaterfall;
-  [view dispatchInvalidationContext:generalPropsContext];
-
-  LynxUIListInvalidationContext *dataUpdate = [[LynxUIListInvalidationContext alloc] init];
-  dataUpdate.insertions = @[ @(0), @(1), @(2), @(3), @(4) ];
-  dataUpdate.listUpdateType = LynxListUpdateTypeDataUpdate;
-  [view dispatchInvalidationContext:dataUpdate];
+  [self prepareLayoutManager:verticalLayoutManger];
 
   // =============== test waterfall ===================
   [verticalLayoutManger layoutFrom:0 to:5];
   LynxListLayoutModelLight *model3 = [verticalLayoutManger attributesFromIndex:3];
-  NSLog(@"[testVerticalLayout] layout %@", verticalLayoutManger.models);
   XCTAssertTrue(CGRectEqualToRect(model3.frame,
                                   CGRectMake(self.defaultSize.width / 2, self.defaultSize.height,
                                              self.defaultSize.width / 2, self.defaultSize.height)));
 
   // =============== test fullspan ===================
-  LynxUIListInvalidationContext *fullSpanItemUpdateContext =
-      [[LynxUIListInvalidationContext alloc] initWithGeneralPropsUpdate];
-  fullSpanItemUpdateContext.fullSpanItems = @[ @(0) ];
-  [view dispatchInvalidationContext:fullSpanItemUpdateContext];
+  [self applyFullSpanItemToLayoutManager:verticalLayoutManger];
   [verticalLayoutManger layoutFrom:0 to:5];
   LynxListLayoutModelLight *model0 = [verticalLayoutManger attributesFromIndex:0];
   XCTAssertTrue(CGRectEqualToRect(
@@ -67,8 +73,6 @@
   // ================ test top cells ==================
   NSDictionary<NSNumber *, NSNumber *> *topCells =
       [verticalLayoutManger findWhichItemToDisplayOnTop];
-  NSLog(@"topCells: %@, layout.columnInfo: %@, contentOffset: %@", topCells,
-        verticalLayoutManger.layoutColumnInfo, NSStringFromCGPoint(view.contentOffset));
   XCTAssertEqual((NSInteger)topCells.count, 1);
   XCTAssertEqual(topCells[@(0)].integerValue, 0);
 }
@@ -82,21 +86,8 @@
 - (void)testHorizontalLayout {
   LynxListHorizontalLayoutManager *horizontalLayoutManager =
       [[LynxListHorizontalLayoutManager alloc] init];
-  LynxListViewLight *view = [[LynxListViewLight alloc] init];
-  view.frame = CGRectMake(0, 0, self.defaultSize.width, self.defaultSize.height);
-  [view setLayout:horizontalLayoutManager];
   XCTAssertFalse([horizontalLayoutManager isVerticalLayout]);
-
-  LynxUIListInvalidationContext *generalPropsContext =
-      [[LynxUIListInvalidationContext alloc] initWithGeneralPropsUpdate];
-  generalPropsContext.numberOfColumns = 2;
-  generalPropsContext.layoutType = LynxListLayoutWaterfall;
-  [view dispatchInvalidationContext:generalPropsContext];
-
-  LynxUIListInvalidationContext *dataUpdate = [[LynxUIListInvalidationContext alloc] init];
-  dataUpdate.insertions = @[ @(0), @(1), @(2), @(3), @(4) ];
-  dataUpdate.listUpdateType = LynxListUpdateTypeDataUpdate;
-  [view dispatchInvalidationContext:dataUpdate];
+  [self prepareLayoutManager:horizontalLayoutManager];
   [horizontalLayoutManager layoutFrom:0 to:5];
 
   // ================ test waterfall ===============
@@ -106,10 +97,7 @@
                                              self.defaultSize.width, self.defaultSize.height / 2)));
 
   // =============== test fullspan ===================
-  LynxUIListInvalidationContext *fullSpanItemUpdateContext =
-      [[LynxUIListInvalidationContext alloc] initWithGeneralPropsUpdate];
-  fullSpanItemUpdateContext.fullSpanItems = @[ @(0) ];
-  [view dispatchInvalidationContext:fullSpanItemUpdateContext];
+  [self applyFullSpanItemToLayoutManager:horizontalLayoutManager];
   [horizontalLayoutManager layoutFrom:0 to:5];
   LynxListLayoutModelLight *model0 = [horizontalLayoutManager attributesFromIndex:0];
   XCTAssertTrue(CGRectEqualToRect(
@@ -122,8 +110,6 @@
   // ================ test top cells ==================
   NSDictionary<NSNumber *, NSNumber *> *topCells =
       [horizontalLayoutManager findWhichItemToDisplayOnTop];
-  NSLog(@"topCells: %@, layout.columnInfo: %@, contentOffset: %@", topCells,
-        horizontalLayoutManager.layoutColumnInfo, NSStringFromCGPoint(view.contentOffset));
   XCTAssertEqual((NSInteger)topCells.count, 1);
   XCTAssertEqual(topCells[@(0)].integerValue, 0);
 }
