@@ -61,6 +61,11 @@ class MockPlatformImpl : public LayoutCtxPlatformImpl {
   void OnLayout(int id, float left, float top, float width, float height,
                 const std::array<float, 4>& paddings,
                 const std::array<float, 4>& borders) override {}
+  void UpdateRootSize(float width, float height) override {
+    root_width = width;
+    root_height = height;
+    ++update_root_size_count;
+  }
   void Destroy() override {}
 
   void SetFontFaces(const CSSFontFaceRuleMap&) override {}
@@ -69,6 +74,9 @@ class MockPlatformImpl : public LayoutCtxPlatformImpl {
   std::vector<int32_t> before_ids;
   std::vector<LayoutNodeOperation> inserted_layout_nodes;
   std::vector<LayoutNodeOperation> removed_layout_nodes;
+  float root_width = 0.f;
+  float root_height = 0.f;
+  int update_root_size_count = 0;
 };
 }  // namespace test
 }  // namespace tasm
