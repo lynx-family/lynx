@@ -22,6 +22,20 @@ unittest_exec("devtool_agent_unittest_exec") {
   deps = [ "agent:devtool_agent_testset" ]
 }
 
+if (is_mac || is_linux || is_win) {
+  unittest_set("harmony_input_event_target_testset") {
+    sources = [
+      "../../platform/harmony/lynx_devtool/src/main/cpp/harmony_input_event_target.cc",
+      "../../platform/harmony/lynx_devtool/src/main/cpp/harmony_input_event_target_unittest.cc",
+    ]
+  }
+
+  unittest_exec("harmony_input_event_target_unittests_exec") {
+    sources = []
+    deps = [ ":harmony_input_event_target_testset" ]
+  }
+}
+
 group("devtool_ng_unit_test") {
   testonly = true
   deps = [
@@ -32,4 +46,7 @@ group("devtool_ng_unit_test") {
     "../lynx_devtool/message_handler:message_handler_unittest_exec",
     "../lynx_devtool/shared_data:shared_data_unittest_exec",
   ]
+  if (is_mac || is_linux || is_win) {
+    deps += [ ":harmony_input_event_target_unittests_exec" ]
+  }
 }

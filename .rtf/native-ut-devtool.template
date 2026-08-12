@@ -97,6 +97,12 @@ targets({
         "coverage": True,
         "enable_parallel":True,
     },
+    "harmony_input_event_target_unittests_exec": {
+        "cwd": ".",
+        "owners":["shangguansiyang"],
+        "coverage": True,
+        "enable_parallel":True,
+    },
     "js_debug_unittest_exec": {
         "cwd": ".",
         "owners":["ZhaoSongGOO"],
