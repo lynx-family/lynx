@@ -32,6 +32,7 @@
 #include "core/shell/common/shell_trace_event_def.h"
 #include "core/shell/list_engine_proxy_impl.h"
 #include "core/shell/lynx_engine_wrapper.h"
+#include "core/shell/lynx_entity_id_generator.h"
 #include "core/shell/performance/native_memory_usage_query.h"
 #include "core/shell/runtime/bts/bts_runtime_mediator.h"
 #include "core/shell/runtime/bts/bts_runtime_standalone_helper.h"
@@ -49,6 +50,11 @@ bool DoAsyncHydration(base::ThreadStrategyForRendering strategy,
          !option.enable_vsync_aligned_msg_loop_ &&
          (tasm::Config::TrialAsyncHydration() ||
           option.enable_async_hydration_);
+}
+
+base::LynxEntityId RequiredViewId(const ShellOption& option) {
+  CHECK(option.view_id_ != base::kUnavailableLynxEntityId);
+  return option.view_id_;
 }
 
 base::ThreadStrategyForRendering MapThreadStrategyForTemporaryAsync(
@@ -135,6 +141,8 @@ LynxShell::LynxShell(base::ThreadStrategyForRendering strategy,
       instance_id_(shell_option.instance_id_ != kUnknownInstanceId
                        ? shell_option.instance_id_
                        : NextInstanceId()),
+      log_context_{RequiredViewId(shell_option), base::kUnavailableLynxEntityId,
+                   base::kUnavailableLynxEntityId},
       enable_runtime_(shell_option.enable_js_),
       tasm_operation_queue_(
           strategy == base::ThreadStrategyForRendering::ALL_ON_UI ||
@@ -178,10 +186,12 @@ void LynxShell::BuildLynxEngine(
   if (platform_layout_context) {
     platform_layout_context->SetLynxShell(this);
   }
-  BuildLayoutActor(!page_options_.IsLayoutInElementModeOn()
-                       ? std::move(platform_layout_context)
-                       : nullptr);
-  BuildEngineActor(std::move(tasm_platform_invoker),
+  log_context_.engine_id = GenerateLynxEntityId();
+  const auto engine_context = log_context_;
+  BuildLayoutActor(engine_context, !page_options_.IsLayoutInElementModeOn()
+                                       ? std::move(platform_layout_context)
+                                       : nullptr);
+  BuildEngineActor(engine_context, std::move(tasm_platform_invoker),
                    page_options_.IsLayoutInElementModeOn()
                        ? std::move(platform_layout_context)
                        : nullptr,
@@ -189,6 +199,7 @@ void LynxShell::BuildLynxEngine(
 }
 
 void LynxShell::BuildLayoutActor(
+    const base::LogContext& engine_context,
     std::unique_ptr<lynx::tasm::LayoutCtxPlatformImpl>
         platform_layout_context) {
   // create layout actor
@@ -208,12 +219,14 @@ void LynxShell::BuildLayoutActor(
   layout_mediator_ = layout_mediator.get();
   layout_actor_ = std::make_shared<LynxActor<tasm::LayoutContext>>(
       std::make_unique<lynx::tasm::LayoutContext>(
-          std::move(layout_mediator), std::move(platform_layout_context),
+          engine_context, std::move(layout_mediator),
+          std::move(platform_layout_context),
           engine_build_options_.lynx_env_config_, page_options_),
       runners_.GetLayoutTaskRunner(), instance_id_);
 }
 
 void LynxShell::BuildEngineActor(
+    const base::LogContext& engine_context,
     std::unique_ptr<TasmPlatformInvoker> tasm_platform_invoker,
     std::unique_ptr<lynx::tasm::LayoutCtxPlatformImpl> platform_layout_context,
     std::unique_ptr<lynx::tasm::PaintingCtxPlatformImpl> painting_context) {
@@ -253,7 +266,7 @@ void LynxShell::BuildEngineActor(
   tasm->EnablePreUpdateData(engine_build_options_.enable_pre_update_data_);
   auto lynx_engine = std::make_unique<lynx::shell::LynxEngine>(
       std::move(tasm), std::move(tasm_mediator), card_cached_data_mgr_,
-      instance_id_);
+      engine_context, instance_id_);
   engine_actor_ = std::make_shared<LynxActor<LynxEngine>>(
       std::move(lynx_engine), runners_.GetTASMTaskRunner(), instance_id_);
 }

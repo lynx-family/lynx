@@ -40,6 +40,7 @@ class LynxShellBuilderTest : public ::testing::Test {
     loader_ = std::make_shared<lynx::tasm::MockLazyBundleLoader>();
 
     option_ = std::make_unique<lynx::shell::ShellOption>();
+    option_->view_id_ = 17;
 
     shell_builder_ = std::make_unique<LynxShellBuilder>();
   }
@@ -89,6 +90,15 @@ TEST_F(LynxShellBuilderTest, LynxShellBuilderTotalTest) {
 
   shell_->runtime_actor_ = std::make_shared<LynxActor<BTSRuntime>>(
       nullptr, shell_->runners_.GetUITaskRunner());
+
+  const auto shell_context = shell_->GetLogContextSnapshot();
+  EXPECT_EQ(shell_context.view_id, option_->view_id_);
+  EXPECT_NE(shell_context.engine_id, base::kUnavailableLynxEntityId);
+  EXPECT_EQ(shell_context.runtime_id, base::kUnavailableLynxEntityId);
+  EXPECT_EQ(shell_->engine_actor_->Impl()->GetLogContext().engine_id,
+            shell_context.engine_id);
+  EXPECT_EQ(shell_->layout_actor_->Impl()->GetLogContext().engine_id,
+            shell_context.engine_id);
 
   // SetNativeFacade() test
   EXPECT_EQ(reinterpret_cast<intptr_t>(shell_->facade_actor_->Impl()), facade_);

@@ -208,8 +208,11 @@ void DataBindingShell::ResetTasm() {
       *delegate_.get(), std::move(manager), delegate_.get(), instance_id);
   tasm_ = tasm.get();
   engine_actor_ = std::make_shared<shell::LynxActor<shell::LynxEngine>>(
-      std::make_unique<shell::LynxEngine>(std::move(tasm), nullptr, nullptr,
-                                          shell::kUnknownInstanceId),
+      std::make_unique<shell::LynxEngine>(
+          std::move(tasm), nullptr, nullptr,
+          base::LogContext{base::kUnavailableLynxEntityId, 0,
+                           base::kUnavailableLynxEntityId},
+          shell::kUnknownInstanceId),
       fml::MakeRefCounted<MockTasmRunner>());
 
   tasm_->SetWhiteBoard(std::make_shared<WhiteBoard>());

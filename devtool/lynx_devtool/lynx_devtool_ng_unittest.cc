@@ -81,6 +81,7 @@ TEST_F(LynxDevToolNGTest, OnTasmCreatedInitializesMediator) {
   };
   lynx::tasm::LynxEnvConfig env_config(60, 90, 1.f, 1.f);
   lynx::shell::ShellOption option;
+  option.view_id_ = 19;
   std::unique_ptr<lynx::shell::LynxShell> shell(
       builder.SetNativeFacade(std::move(facade))
           .SetPaintingContextCreator(painting_context_creator)

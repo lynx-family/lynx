@@ -6,6 +6,7 @@
 
 #include <memory>
 
+#include "base/include/log/logging.h"
 #include "base/include/string/string_utils.h"
 #include "base/trace/native/trace_event.h"
 #include "core/base/threading/vsync_monitor.h"
@@ -53,6 +54,24 @@ inline std::string& GetCoreJS() {
 }
 
 }  // namespace
+
+LynxEngine::LynxEngine(
+    std::unique_ptr<tasm::TemplateAssembler> tasm,
+    std::unique_ptr<Delegate> delegate,
+    const std::shared_ptr<LynxCardCacheDataManager>& card_cached_data_mgr,
+    const base::LogContext& initial_context, int32_t instance_id)
+    : log_context_(initial_context),
+      tasm_(std::move(tasm)),
+      delegate_(std::move(delegate)),
+      card_cached_data_mgr_(card_cached_data_mgr),
+      instance_id_(instance_id) {
+  CHECK(log_context_.engine_id != base::kUnavailableLynxEntityId);
+}
+
+void LynxEngine::SetLogContext(const base::LogContext& context) {
+  CHECK(context.engine_id == log_context_.engine_id);
+  log_context_ = context;
+}
 
 LynxEngine::~LynxEngine() {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, LYNX_ENGINE_DESTRUCTOR);

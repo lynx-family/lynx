@@ -204,6 +204,9 @@ class LynxShell {
 
   void SetPlatformConfig(std::string platform_config_json_string);
 
+  base::LynxEntityId GetViewId() const { return log_context_.view_id; }
+  base::LogContext GetLogContextSnapshot() const { return log_context_; }
+
   void SetBindWithEngineWrapper(bool bind) { bind_with_engine_wrapper_ = bind; }
 
   void UpdateViewport(float width, int32_t width_mode, float height,
@@ -452,6 +455,7 @@ class LynxShell {
   std::shared_ptr<runtime::js::InspectorRuntimeObserverNG> runtime_observer_;
 
   const int32_t instance_id_;
+  base::LogContext log_context_;
 
   bool enable_runtime_ = true;
 
@@ -503,10 +507,12 @@ class LynxShell {
           platform_layout_context,
       std::unique_ptr<lynx::tasm::PaintingCtxPlatformImpl> painting_context);
 
-  void BuildLayoutActor(std::unique_ptr<lynx::tasm::LayoutCtxPlatformImpl>
+  void BuildLayoutActor(const base::LogContext& engine_context,
+                        std::unique_ptr<lynx::tasm::LayoutCtxPlatformImpl>
                             platform_layout_context);
 
   void BuildEngineActor(
+      const base::LogContext& engine_context,
       std::unique_ptr<TasmPlatformInvoker> tasm_platform_invoker,
       std::unique_ptr<lynx::tasm::LayoutCtxPlatformImpl>
           platform_layout_context,
