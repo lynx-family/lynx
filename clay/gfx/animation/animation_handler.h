@@ -5,6 +5,7 @@
 #ifndef CLAY_GFX_ANIMATION_ANIMATION_HANDLER_H_
 #define CLAY_GFX_ANIMATION_ANIMATION_HANDLER_H_
 
+#include <cstdint>
 #include <forward_list>
 #include <functional>
 #include <unordered_map>
@@ -64,9 +65,31 @@ class AnimationHandler {
   bool DoAnimationFrame(int64_t frame_time, bool lifecycle_only = false);
 
   void ScheduleLifecycleCallback(int64_t current_time);
+  void RescheduleLifecycleCallback(int64_t current_time) {
+    InvalidateLifecycleSchedule();
+    ScheduleLifecycleCallback(current_time);
+  }
 
-  // Return time in milliseconds
-  int64_t GetCurrentAnimationTime() { return last_frame_time_; }
+  uint64_t GetLifecycleScheduleId() const { return lifecycle_schedule_id_; }
+
+  bool IsLifecycleScheduleCurrent(uint64_t schedule_id) const {
+    return scheduled_lifecycle_time_ >= 0 &&
+           schedule_id == lifecycle_schedule_id_;
+  }
+
+  bool IsLifecycleCallbackDue(int64_t current_time,
+                              uint64_t schedule_id) const {
+    return IsLifecycleScheduleCurrent(schedule_id) &&
+           current_time >= scheduled_lifecycle_time_;
+  }
+
+  // Returns the timestamp of the most recent animation frame in milliseconds.
+  int64_t GetLastAnimationFrameTime() const { return last_frame_time_; }
+
+  // Returns the current monotonic time in milliseconds. UI controls and
+  // presentation queries use this while continuous UI vsync is suspended for
+  // raster animations.
+  int64_t GetCurrentAnimationTime() const;
 
   void SetAnimationCallback(std::function<void(int64_t)> animation_callback) {
     animation_callback_ = std::move(animation_callback);
@@ -76,7 +99,7 @@ class AnimationHandler {
     callback_delay_time_map_.clear();
     animation_callbacks_.clear();
     animation_callback_ = nullptr;
-    scheduled_lifecycle_time_ = -1;
+    InvalidateLifecycleSchedule();
   }
 
  private:
@@ -86,6 +109,10 @@ class AnimationHandler {
   };
 
   bool IsCallbackDue(AnimationFrameCallback* callback, int64_t current_time);
+  void InvalidateLifecycleSchedule() {
+    scheduled_lifecycle_time_ = -1;
+    ++lifecycle_schedule_id_;
+  }
   void ScheduleLifecycleCallbackAt(int64_t next_lifecycle_time,
                                    int64_t current_time);
   int GetCallbackSize() { return callback_delay_time_map_.size(); }
@@ -97,6 +124,7 @@ class AnimationHandler {
   bool callback_list_dirty_ = false;
   int64_t last_frame_time_ = -1;
   int64_t scheduled_lifecycle_time_ = -1;
+  uint64_t lifecycle_schedule_id_ = 0;
 };
 
 }  // namespace clay
