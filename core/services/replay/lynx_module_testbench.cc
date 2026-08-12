@@ -4,11 +4,13 @@
 
 #include "core/services/replay/lynx_module_testbench.h"
 
+#include <algorithm>
 #include <cmath>
-#include <limits>
+#include <sstream>
 #include <utility>
 #include <vector>
 
+#include "base/include/string/string_number_convert.h"
 #include "core/runtime/js/bindings/modules/module_interceptor.h"
 #include "core/runtime/js/jsi/jsi.h"
 #include "core/services/replay/lynx_callback_testbench.h"
@@ -26,6 +28,141 @@ std::string ModuleTestBench::kContainerID = "containerID";
 std::string ModuleTestBench::kRequestTime = "request_time";
 std::string ModuleTestBench::kFunction = "function";
 std::string ModuleTestBench::kNaN = "NaN";
+
+namespace {
+
+constexpr double kNumberMatchTolerance = 0.0000001;
+constexpr double kWeakMatchTimeWindowTolerance = 1000.0;
+
+bool NumbersEqual(double lhs, double rhs) {
+  return std::fabs(lhs - rhs) <= kNumberMatchTolerance;
+}
+
+bool IsQueryInstancesBetweenOperation(const rapidjson::Value &value) {
+  return value.IsObject() && value.HasMember("op") && value["op"].IsString() &&
+         std::string(value["op"].GetString()) == "query_instances_between";
+}
+
+bool WeakMatchNumbersEqual(double lhs, double rhs, const std::string *key,
+                           bool allow_query_instances_between_end_tolerance) {
+  if (NumbersEqual(lhs, rhs)) {
+    return true;
+  }
+  return allow_query_instances_between_end_tolerance && key != nullptr &&
+         *key == "end" && std::fabs(lhs - rhs) <= kWeakMatchTimeWindowTolerance;
+}
+
+bool MatchesRecordedNumberValue(const rapidjson::Value &value,
+                                double js_number) {
+  if (value.IsNumber()) {
+    return NumbersEqual(value.GetDouble(), js_number);
+  }
+  return value.IsString() && std::string(value.GetString()) == "NaN" &&
+         std::isnan(js_number);
+}
+
+std::string DescribeValue(Runtime &rt, const Value &value, int depth);
+
+std::string DescribeObject(Runtime &rt, const Object &object, int depth) {
+  if (depth <= 0) {
+    return "{...}";
+  }
+  if (object.isFunction(rt)) {
+    return "\"function\"";
+  }
+  if (object.isArray(rt)) {
+    auto array = object.getArray(rt);
+    auto size_opt = array.size(rt);
+    if (!size_opt) {
+      return "[]";
+    }
+    std::ostringstream oss;
+    oss << "[";
+    size_t size = *size_opt;
+    size_t limit = std::min<size_t>(size, 5);
+    for (size_t index = 0; index < limit; ++index) {
+      if (index > 0) {
+        oss << ", ";
+      }
+      auto item = array.getValueAtIndex(rt, index);
+      oss << (item ? DescribeValue(rt, *item, depth - 1) : "undefined");
+    }
+    if (size > limit) {
+      oss << ", ...";
+    }
+    oss << "]";
+    return oss.str();
+  }
+
+  auto names_opt = object.getPropertyNames(rt);
+  if (!names_opt) {
+    return "{}";
+  }
+  auto names = std::move(*names_opt);
+  auto size_opt = names.size(rt);
+  if (!size_opt) {
+    return "{}";
+  }
+  std::ostringstream oss;
+  oss << "{";
+  size_t size = *size_opt;
+  size_t limit = std::min<size_t>(size, 8);
+  for (size_t index = 0; index < limit; ++index) {
+    if (index > 0) {
+      oss << ", ";
+    }
+    auto name_value = names.getValueAtIndex(rt, index);
+    std::string name = name_value && name_value->isString()
+                           ? name_value->getString(rt).utf8(rt)
+                           : std::to_string(index);
+    oss << name << ":";
+    auto property = object.getProperty(rt, String::createFromUtf8(rt, name));
+    oss << (property ? DescribeValue(rt, *property, depth - 1) : "undefined");
+  }
+  if (size > limit) {
+    oss << ", ...";
+  }
+  oss << "}";
+  return oss.str();
+}
+
+std::string DescribeValue(Runtime &rt, const Value &value, int depth) {
+  switch (value.kind()) {
+    case Value::ValueKind::UndefinedKind:
+      return "undefined";
+    case Value::ValueKind::NullKind:
+      return "null";
+    case Value::ValueKind::BooleanKind:
+      return value.getBool() ? "true" : "false";
+    case Value::ValueKind::NumberKind: {
+      std::ostringstream oss;
+      oss << value.getNumber();
+      return oss.str();
+    }
+    case Value::ValueKind::StringKind:
+      return "\"" + value.getString(rt).utf8(rt) + "\"";
+    case Value::ValueKind::SymbolKind:
+      return "\"symbol\"";
+    case Value::ValueKind::ObjectKind:
+      return DescribeObject(rt, value.getObject(rt), depth);
+  }
+  return "\"unknown\"";
+}
+
+std::string DescribeArgs(Runtime &rt, const Value *args, size_t count) {
+  std::ostringstream oss;
+  oss << "argc=" << count << ", args=[";
+  for (size_t index = 0; index < count; ++index) {
+    if (index > 0) {
+      oss << ", ";
+    }
+    oss << DescribeValue(rt, args[index], 3);
+  }
+  oss << "]";
+  return oss.str();
+}
+
+}  // namespace
 
 void ModuleTestBench::Destroy() {}
 
@@ -218,12 +355,7 @@ void ModuleTestBench::ActionsForJsbMatchFailed(Runtime *rt, const Value *args,
       }
     }
   }
-  if (args->isString()) {
-    LOGI("Testbench Jsb match failed, more information: "
-         << args->getString(*rt).utf8(*rt));
-  } else {
-    LOGI("Testbench Jsb match failed");
-  }
+  LOGI("Testbench Jsb match failed, " << DescribeArgs(*rt, args, count));
 }
 
 bool ModuleTestBench::IsJsbIgnoredParams(const std::string &param) {
@@ -416,6 +548,182 @@ bool ModuleTestBench::sameKernel(Runtime *rt, const Value *arg,
   }
 }
 
+namespace {
+
+bool LooksLikeJsonString(const std::string &value) {
+  return !value.empty() && (value.front() == '{' || value.front() == '[');
+}
+
+bool JsonValueEqualsForWeakMatch(
+    const rapidjson::Value &runtime_value,
+    const rapidjson::Value &recorded_value,
+    const std::string *current_key = nullptr,
+    bool allow_query_instances_between_end_tolerance = false) {
+  if (runtime_value.GetType() != recorded_value.GetType()) {
+    if (runtime_value.IsNumber() && recorded_value.IsNumber()) {
+      return WeakMatchNumbersEqual(runtime_value.GetDouble(),
+                                   recorded_value.GetDouble(), current_key,
+                                   allow_query_instances_between_end_tolerance);
+    }
+    return false;
+  }
+  if (runtime_value.IsObject()) {
+    for (auto it = runtime_value.MemberBegin(); it != runtime_value.MemberEnd();
+         ++it) {
+      if (!it->name.IsString()) {
+        return false;
+      }
+      std::string name = it->name.GetString();
+      if (name == "callbackId") {
+        continue;
+      }
+      if (!recorded_value.HasMember(it->name.GetString()) ||
+          !JsonValueEqualsForWeakMatch(
+              it->value, recorded_value[it->name.GetString()], &name,
+              allow_query_instances_between_end_tolerance)) {
+        return false;
+      }
+    }
+    return true;
+  }
+  if (runtime_value.IsArray()) {
+    if (runtime_value.Size() != recorded_value.Size()) {
+      return false;
+    }
+    for (rapidjson::SizeType i = 0; i < runtime_value.Size(); ++i) {
+      if (!JsonValueEqualsForWeakMatch(
+              runtime_value[i], recorded_value[i], current_key,
+              allow_query_instances_between_end_tolerance)) {
+        return false;
+      }
+    }
+    return true;
+  }
+  if (runtime_value.IsString()) {
+    return std::string(runtime_value.GetString()) == recorded_value.GetString();
+  }
+  if (runtime_value.IsBool()) {
+    return runtime_value.GetBool() == recorded_value.GetBool();
+  }
+  if (runtime_value.IsNull()) {
+    return true;
+  }
+  if (runtime_value.IsNumber()) {
+    return WeakMatchNumbersEqual(runtime_value.GetDouble(),
+                                 recorded_value.GetDouble(), current_key,
+                                 allow_query_instances_between_end_tolerance);
+  }
+  return false;
+}
+
+bool JsonStringEqualsForWeakMatch(const std::string &runtime_json,
+                                  const std::string &recorded_json) {
+  rapidjson::Document runtime_dom;
+  rapidjson::Document recorded_dom;
+  runtime_dom.Parse(runtime_json.c_str());
+  recorded_dom.Parse(recorded_json.c_str());
+  if (runtime_dom.HasParseError() || recorded_dom.HasParseError()) {
+    return false;
+  }
+  bool allow_query_instances_between_end_tolerance =
+      IsQueryInstancesBetweenOperation(runtime_dom) &&
+      IsQueryInstancesBetweenOperation(recorded_dom);
+  return JsonValueEqualsForWeakMatch(
+      runtime_dom, recorded_dom, nullptr,
+      allow_query_instances_between_end_tolerance);
+}
+
+bool SameKernelIgnoringCallbackId(Runtime *rt, const Value *arg,
+                                  rapidjson::Value &value) {
+  switch (arg->kind()) {
+    case Value::ValueKind::StringKind: {
+      if (value.IsString()) {
+        std::string cc = value.GetString();
+        std::string js = arg->getString(*rt).utf8(*rt);
+        if (cc == js) {
+          return true;
+        }
+        if (LooksLikeJsonString(cc) && LooksLikeJsonString(js) &&
+            JsonStringEqualsForWeakMatch(js, cc)) {
+          return true;
+        }
+      }
+      return false;
+    }
+    case Value::ValueKind::ObjectKind: {
+      if (value.IsObject()) {
+        auto properties_opt = arg->getObject(*rt).getPropertyNames(*rt);
+        if (!properties_opt) {
+          return false;
+        }
+        for (int index = 0; index < properties_opt->size(*rt); index++) {
+          auto name_opt = properties_opt->getValueAtIndex(*rt, index);
+          if (!name_opt || !name_opt->isString()) {
+            return false;
+          }
+          std::string name = name_opt->getString(*rt).utf8(*rt);
+          if (name == "callbackId") {
+            continue;
+          }
+          if (!value.HasMember(name.c_str())) {
+            return false;
+          }
+          auto arg_value = arg->getObject(*rt).getProperty(*rt, name.c_str());
+          if (!arg_value || !SameKernelIgnoringCallbackId(
+                                rt, &(*arg_value), value[name.c_str()])) {
+            return false;
+          }
+        }
+        return true;
+      }
+      if (value.IsArray() && arg->getObject(*rt).isArray(*rt)) {
+        Array arr = arg->getObject(*rt).getArray(*rt);
+        if (value.Size() != arr.size(*rt)) {
+          return false;
+        }
+        for (int index = 0; index < arr.size(*rt); index++) {
+          auto arg_opt = arr.getValueAtIndex(*rt, index);
+          if (!arg_opt ||
+              !SameKernelIgnoringCallbackId(rt, &(*arg_opt), value[index])) {
+            return false;
+          }
+        }
+        return true;
+      }
+      if (arg->getObject(*rt).isFunction(*rt)) {
+        if (value.IsString() && std::string(value.GetString()) == "function") {
+          return true;
+        }
+      }
+      return false;
+    }
+    case Value::ValueKind::UndefinedKind:
+      return value.IsString() && std::string(value.GetString()) == "undefined";
+    case Value::ValueKind::NumberKind: {
+      return MatchesRecordedNumberValue(value, arg->getNumber());
+    }
+    case Value::ValueKind::NullKind:
+      return value.IsNull();
+    case Value::ValueKind::BooleanKind:
+      return value.IsBool() && value.GetBool() == arg->getBool();
+    case Value::ValueKind::SymbolKind:
+      return false;
+  }
+  return false;
+}
+
+bool IsSameArgsIgnoringCallbackId(Runtime *rt, const Value *args, size_t count,
+                                  rapidjson::Value &value) {
+  for (unsigned int index = 0; index < count; index++) {
+    if (!SameKernelIgnoringCallbackId(rt, args + index, value[index])) {
+      return false;
+    }
+  }
+  return true;
+}
+
+}  // namespace
+
 bool ModuleTestBench::isSameArgs(Runtime *rt, const Value *args, size_t count,
                                  rapidjson::Value &value) {
   for (unsigned int index = 0; index < count; index++) {
@@ -424,6 +732,82 @@ bool ModuleTestBench::isSameArgs(Runtime *rt, const Value *args, size_t count,
     }
   }
   return true;
+}
+
+bool ModuleTestBench::ExtractCallbackIdFromRuntimeArg(Runtime *rt,
+                                                      const Value &arg,
+                                                      double &callback_id) {
+  if (!arg.isObject()) {
+    return false;
+  }
+  Object object = arg.getObject(*rt);
+  auto callback_id_opt = object.getProperty(*rt, "callbackId");
+  if (!callback_id_opt) {
+    return false;
+  }
+  if (callback_id_opt->isNumber()) {
+    callback_id = callback_id_opt->getNumber();
+    return true;
+  }
+  if (callback_id_opt->isString()) {
+    return base::StringToDouble(callback_id_opt->getString(*rt).utf8(*rt),
+                                callback_id);
+  }
+  return false;
+}
+
+bool ModuleTestBench::ExtractCallbackIdFromRecordedArg(
+    const rapidjson::Value &arg, double &callback_id) {
+  if (!arg.IsObject() || !arg.HasMember("callbackId")) {
+    return false;
+  }
+  const rapidjson::Value &callback_id_value = arg["callbackId"];
+  if (callback_id_value.IsNumber()) {
+    callback_id = callback_id_value.GetDouble();
+    return true;
+  }
+  if (callback_id_value.IsString()) {
+    return base::StringToDouble(callback_id_value.GetString(), callback_id);
+  }
+  return false;
+}
+
+bool ModuleTestBench::IsAppletBridgeProtocolWeakMatch(
+    const MethodMetadata &method, Runtime *rt, const Value *args, size_t count,
+    rapidjson::Value &value) {
+  static constexpr const char *kAppletBridgeModule = "AppletBridgeModule";
+  static constexpr const char *kAppletBridgeMethod = "postMessage";
+  if (name_ != kAppletBridgeModule || method.name != kAppletBridgeMethod ||
+      count == 0) {
+    return false;
+  }
+  if (!value.HasMember("Params") || !value["Params"].HasMember("args")) {
+    return false;
+  }
+  rapidjson::Value &recorded_args = value["Params"]["args"];
+  if (!recorded_args.IsArray() || recorded_args.Size() == 0 ||
+      recorded_args.Size() != count) {
+    return false;
+  }
+
+  double runtime_callback_id = 0;
+  double recorded_callback_id = 0;
+  bool has_runtime_callback_id =
+      ExtractCallbackIdFromRuntimeArg(rt, args[0], runtime_callback_id);
+  bool has_recorded_callback_id =
+      ExtractCallbackIdFromRecordedArg(recorded_args[0], recorded_callback_id);
+  if (!has_runtime_callback_id || !has_recorded_callback_id) {
+    return false;
+  }
+
+  bool weak_matched =
+      IsSameArgsIgnoringCallbackId(rt, args, count, recorded_args);
+  if (weak_matched) {
+    LOGI("Testbench Jsb weak match success, runtimeCallbackId="
+         << runtime_callback_id
+         << ", recordedCallbackId=" << recorded_callback_id);
+  }
+  return weak_matched;
 }
 
 bool ModuleTestBench::isSameMethod(const MethodMetadata &method, Runtime *rt,
@@ -439,6 +823,10 @@ bool ModuleTestBench::isSameMethod(const MethodMetadata &method, Runtime *rt,
   size_t jArgc = method.argCount;
   if (cArgc != jArgc) {
     return false;
+  }
+
+  if (IsAppletBridgeProtocolWeakMatch(method, rt, args, count, value)) {
+    return true;
   }
 
   if (!isSameArgs(rt, args, count, value["Params"]["args"])) {

@@ -116,6 +116,8 @@ public class LynxRecorderActionManager {
     public JSONArray functionCall;
     // "Callback" field from record json file
     public JSONObject callbackData;
+    // "Action List" field from record json file
+    public JSONArray actionList;
     // replay additional info
     public JSONArray jsbIgnoredInfo;
     // "jsbSettings" field from record json file
@@ -128,6 +130,9 @@ public class LynxRecorderActionManager {
     }
     public JSONObject getCallbackData() {
       return callbackData;
+    }
+    public JSONArray getActionList() {
+      return actionList;
     }
     public JSONArray getJsbIgnoredInfo() {
       return jsbIgnoredInfo;
@@ -247,6 +252,7 @@ public class LynxRecorderActionManager {
   private float mRawFontScale;
   private String mSourceURL;
   private JSONObject mTemplateBundleParams;
+  private JSONObject mRecordedScripts;
   private TemplateBundle mTemplateBundle;
   private TemplateBundleOption mTemplateBundleOptions;
   private LynxRecorderReplayDataProviderInternal mDataProvider;
@@ -267,6 +273,7 @@ public class LynxRecorderActionManager {
     JSONObject callbackData;
     JSONArray componentList;
     JSONArray actionList;
+    JSONObject scripts;
   }
 
   private interface RecordedInputStreamProvider {
@@ -451,6 +458,9 @@ public class LynxRecorderActionManager {
           case "Action List":
             parsedRecordData.actionList = readJsonArrayOrNull(reader, key);
             break;
+          case "Scripts":
+            parsedRecordData.scripts = readJsonObjectOrNull(reader, key);
+            break;
           default:
             reader.skipValue();
             break;
@@ -546,11 +556,15 @@ public class LynxRecorderActionManager {
     if (parsedRecordData.sharedData != null) {
       mDataProvider.sharedData = parsedRecordData.sharedData;
     }
+    mRecordedScripts = parsedRecordData.scripts;
     if (parsedRecordData.functionCall != null) {
       mDataProvider.functionCall = parsedRecordData.functionCall;
     }
     if (parsedRecordData.callbackData != null) {
       mDataProvider.callbackData = parsedRecordData.callbackData;
+    }
+    if (parsedRecordData.actionList != null) {
+      mDataProvider.actionList = parsedRecordData.actionList;
     }
     if (parsedRecordData.componentList != null) {
       mockComponent(parsedRecordData.componentList);
@@ -1315,6 +1329,8 @@ public class LynxRecorderActionManager {
         addExtraComponent(builder);
         builder.registerModule(
             "LynxRecorderReplayDataModule", LynxRecorderReplayDataModule.class, mDataProvider);
+        builder.registerModule(
+            "LynxRecorderReplaySyncModule", LynxRecorderReplaySyncModule.class, mDataProvider);
         builder.registerModule("LynxRecorderOpenUrlModule", LynxRecorderOpenUrlModule.class);
         if (BuildConfig.enable_frozen_mode) {
           builder.setThreadStrategyForRendering(ThreadStrategyForRendering.ALL_ON_UI);
@@ -1326,6 +1342,7 @@ public class LynxRecorderActionManager {
         builder.setEmbeddedMode(mEmbeddedMode);
 
         LynxRecorderSourceProvider provider = new LynxRecorderSourceProvider();
+        provider.setOfflineScripts(mRecordedScripts);
         if (mConfig != null && mConfig.has("urlRedirect")) {
           provider.setUrlRedirect(mConfig.getJSONObject("urlRedirect"));
         }
@@ -1416,6 +1433,8 @@ public class LynxRecorderActionManager {
         addExtraComponent(builder);
         builder.registerModule(
             "LynxRecorderReplayDataModule", LynxRecorderReplayDataModule.class, mDataProvider);
+        builder.registerModule(
+            "LynxRecorderReplaySyncModule", LynxRecorderReplaySyncModule.class, mDataProvider);
         builder.registerModule("LynxRecorderOpenUrlModule", LynxRecorderOpenUrlModule.class);
         if (BuildConfig.enable_frozen_mode) {
           builder.setThreadStrategyForRendering(ThreadStrategyForRendering.ALL_ON_UI);
@@ -1424,6 +1443,7 @@ public class LynxRecorderActionManager {
         }
 
         LynxRecorderSourceProvider provider = new LynxRecorderSourceProvider();
+        provider.setOfflineScripts(mRecordedScripts);
         if (mConfig != null && mConfig.has("urlRedirect")) {
           provider.setUrlRedirect(mConfig.getJSONObject("urlRedirect"));
         }

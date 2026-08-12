@@ -6,6 +6,8 @@ package com.lynx.devtool.recorder;
 
 import static java.net.HttpURLConnection.HTTP_OK;
 
+import android.util.Base64;
+import android.util.Base64InputStream;
 import androidx.annotation.NonNull;
 import com.lynx.tasm.LynxEnv;
 import com.lynx.tasm.base.LLog;
@@ -13,11 +15,14 @@ import com.lynx.tasm.provider.LynxResourceCallback;
 import com.lynx.tasm.provider.LynxResourceProvider;
 import com.lynx.tasm.provider.LynxResourceRequest;
 import com.lynx.tasm.provider.LynxResourceResponse;
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
+import java.util.zip.InflaterInputStream;
 import org.json.JSONObject;
 
 public class LynxRecorderSourceProvider extends LynxResourceProvider<Object, byte[]> {
@@ -26,10 +31,16 @@ public class LynxRecorderSourceProvider extends LynxResourceProvider<Object, byt
   private static final String ASSETS_SCHEME = "assets://";
   private static final int HTTP_TIME_OUT = 5000; // milliseconds
   private JSONObject mUrlRedirect = null;
+  private JSONObject mOfflineScripts = null;
 
   public void setUrlRedirect(JSONObject urlRedirect) {
     mUrlRedirect = urlRedirect;
   }
+
+  public void setOfflineScripts(JSONObject offlineScripts) {
+    mOfflineScripts = offlineScripts;
+  }
+
   @Override
   public void request(@NonNull final LynxResourceRequest<Object> request,
       @NonNull final LynxResourceCallback<byte[]> callback) {
@@ -38,8 +49,12 @@ public class LynxRecorderSourceProvider extends LynxResourceProvider<Object, byt
     Throwable error = null;
     try {
       String requestUrl = request.getUrl();
+      data = requestFromOfflineScripts(requestUrl);
 
-      if (requestUrl.length() > ASSETS_SCHEME.length() && requestUrl.startsWith(ASSETS_SCHEME)) {
+      if (data != null) {
+        // Recorded scripts take priority over redirected/network fetches.
+      } else if (requestUrl.length() > ASSETS_SCHEME.length()
+          && requestUrl.startsWith(ASSETS_SCHEME)) {
         data = requestFromAssets(requestUrl.substring(ASSETS_SCHEME.length()));
       } else {
         if (mUrlRedirect != null && mUrlRedirect.has(requestUrl)) {
@@ -57,6 +72,31 @@ public class LynxRecorderSourceProvider extends LynxResourceProvider<Object, byt
     } else {
       LLog.i(TAG, "LynxRecorderSourceProvider request successfully");
       callback.onResponse(LynxResourceResponse.success(data));
+    }
+  }
+
+  private byte[] requestFromOfflineScripts(@NonNull String requestUrl) throws IOException {
+    if (mOfflineScripts == null || !mOfflineScripts.has(requestUrl)) {
+      return null;
+    }
+    String script = mOfflineScripts.optString(requestUrl, null);
+    if (script == null) {
+      return null;
+    }
+    return decodeRecordedScript(script);
+  }
+
+  private static byte[] decodeRecordedScript(@NonNull String script) throws IOException {
+    byte[] encoded = script.getBytes(StandardCharsets.UTF_8);
+    try (InputStream inputStream = new InflaterInputStream(
+             new Base64InputStream(new ByteArrayInputStream(encoded), Base64.DEFAULT))) {
+      return Utils.inputStreamToByteArray(inputStream);
+    } catch (IOException inflateError) {
+      try {
+        return Base64.decode(script, Base64.DEFAULT);
+      } catch (IllegalArgumentException decodeError) {
+        return script.getBytes(StandardCharsets.UTF_8);
+      }
     }
   }
 

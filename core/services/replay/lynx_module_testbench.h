@@ -95,6 +95,13 @@ class ModuleTestBench : public LynxJSIModule {
                     const Value* args, size_t count, rapidjson::Value& value);
   bool isSameArgs(Runtime* rt, const Value* args, size_t count,
                   rapidjson::Value& value);
+  bool IsAppletBridgeProtocolWeakMatch(const MethodMetadata& method,
+                                       Runtime* rt, const Value* args,
+                                       size_t count, rapidjson::Value& value);
+  bool ExtractCallbackIdFromRuntimeArg(Runtime* rt, const Value& arg,
+                                       double& callback_id);
+  bool ExtractCallbackIdFromRecordedArg(const rapidjson::Value& arg,
+                                        double& callback_id);
   bool sameKernel(Runtime* rt, const Value* args, rapidjson::Value& value);
   void syncToPlatform(const rapidjson::Value& moduleData,
                       const MethodMetadata& method, Runtime* rt,
