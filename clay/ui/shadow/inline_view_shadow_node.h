@@ -44,7 +44,6 @@ class InlineViewShadowNode : public ShadowNode {
   size_t start_glyph_ = 0;
   size_t end_glyph_ = 0;
   double baseline_offset_ = 0.f;
-  double measured_baseline_ = 0.f;
 };
 
 }  // namespace clay

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "clay/third_party/txt/src/skia/paragraph_skia.h"
+#include "paragraph_skia.h"
 
 #include <algorithm>
 #include <numeric>
@@ -134,34 +134,6 @@ std::vector<Paragraph::TextBox> ParagraphSkia::GetRectsForRange(
     size_t end,
     RectHeightStyle rect_height_style,
     RectWidthStyle rect_width_style) {
-  if (rect_height_style == RectHeightStyle::kLineBox) {
-    std::vector<Paragraph::TextBox> boxes;
-    for (const auto& line : GetLineMetrics()) {
-      const size_t line_end =
-          std::max(line.end_index, line.end_including_newline);
-      if (line.start_index >= end) {
-        break;
-      }
-      if (line_end <= start) {
-        continue;
-      }
-
-      const size_t range_start = std::max(start, line.start_index);
-      const size_t range_end = std::min(end, line_end);
-      const auto skia_boxes = paragraph_->getRectsForRange(
-          range_start, range_end, skt::RectHeightStyle::kTight,
-          static_cast<skt::RectWidthStyle>(rect_width_style));
-      const auto line_box = line.GetLineBox();
-      for (const auto& skia_box : skia_boxes) {
-        boxes.emplace_back(
-            skity::Rect::MakeLTRB(skia_box.rect.left(), line_box.Top(),
-                                  skia_box.rect.right(), line_box.Bottom()),
-            static_cast<TextDirection>(skia_box.direction));
-      }
-    }
-    return boxes;
-  }
-
   std::vector<skt::TextBox> skia_boxes = paragraph_->getRectsForRange(
       start, end, static_cast<skt::RectHeightStyle>(rect_height_style),
       static_cast<skt::RectWidthStyle>(rect_width_style));
