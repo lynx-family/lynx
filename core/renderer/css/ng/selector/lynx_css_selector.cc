@@ -207,7 +207,49 @@ const LynxCSSSelector* LynxCSSSelector::SerializeCompound(
       result += "::";
       result += selector->Value();
     } else if (selector->IsAttributeSelector()) {
-      // Attribute selectors are not supported
+      result.push_back('[');
+      result += selector->Attribute();
+      switch (selector->Match()) {
+        case kAttributeExact:
+          result += "=\"";
+          break;
+        case kAttributeSet:
+          break;
+        case kAttributeHyphen:
+          result += "|=\"";
+          break;
+        case kAttributeList:
+          result += "~=\"";
+          break;
+        case kAttributeContain:
+          result += "*=\"";
+          break;
+        case kAttributeBegin:
+          result += "^=\"";
+          break;
+        case kAttributeEnd:
+          result += "$=\"";
+          break;
+        default:
+          break;
+      }
+      if (selector->Match() != kAttributeSet) {
+        for (char character : selector->Value()) {
+          if (character == '\\' || character == '\"') {
+            result.push_back('\\');
+          }
+          result.push_back(character);
+        }
+        result.push_back('\"');
+        if (selector->AttributeMatch() ==
+            AttributeMatchType::kCaseInsensitive) {
+          result += " i";
+        } else if (selector->AttributeMatch() ==
+                   AttributeMatchType::kCaseSensitiveAlways) {
+          result += " s";
+        }
+      }
+      result.push_back(']');
     }
 
     if (selector->SelectorList()) {
@@ -219,6 +261,37 @@ const LynxCSSSelector* LynxCSSSelector::SerializeCompound(
         result += sub_selector->ToString();
       }
       result.push_back(')');
+    } else if (selector->Match() == kPseudoClass &&
+               selector->GetPseudoType() != kPseudoUnknown) {
+      if (selector->GetPseudoType() == kPseudoNthChild ||
+          selector->GetPseudoType() == kPseudoNthLastChild ||
+          selector->GetPseudoType() == kPseudoNthOfType ||
+          selector->GetPseudoType() == kPseudoNthLastOfType) {
+        result.push_back('(');
+        const int a = selector->NthAValue();
+        const int b = selector->NthBValue();
+        if (a == 0) {
+          result += std::to_string(b);
+        } else if (a == 1) {
+          result.push_back('n');
+        } else if (a == -1) {
+          result += "-n";
+        } else {
+          result += std::to_string(a);
+          result.push_back('n');
+        }
+        if (b > 0 && a != 0) {
+          result += "+";
+          result += std::to_string(b);
+        } else if (b < 0 && a != 0) {
+          result += std::to_string(b);
+        }
+        result.push_back(')');
+      } else if (!selector->Argument().empty()) {
+        result.push_back('(');
+        result += selector->Argument();
+        result.push_back(')');
+      }
     }
 
     if (selector->Relation() != kSubSelector) return selector;
