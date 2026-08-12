@@ -12,6 +12,7 @@ import com.lynx.tasm.behavior.ui.frame.UIFrame;
 import com.lynx.tasm.behavior.ui.list.UIList;
 import com.lynx.tasm.behavior.ui.list.UIListItem;
 import com.lynx.tasm.behavior.ui.list.container.UIListContainer;
+import com.lynx.tasm.behavior.ui.scroll.LynxUIScrollView;
 import com.lynx.tasm.behavior.ui.scroll.UIBounceView;
 import com.lynx.tasm.behavior.ui.scroll.UIScrollView;
 import com.lynx.tasm.behavior.ui.text.FlattenUIText;
@@ -75,6 +76,12 @@ public class BuiltInBehavior implements BehaviorBundle {
       @Override
       public LynxUI createUIWithParams(LynxContext context, Object params) {
         return new UIScrollView(context, params);
+      }
+    });
+    bc.add(new Behavior("scroll-view-new-arch", false, true) {
+      @Override
+      public LynxUI createUIWithParams(LynxContext context, Object params) {
+        return new LynxUIScrollView(context);
       }
     });
     bc.add(new Behavior("bounce-view", false, true) {
