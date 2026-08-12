@@ -123,15 +123,6 @@ void FloatKeyframeSet::OnAnimationPrepare(Animator& animation) {
   if (auto manager = GetKeyframesManager()) {
     manager->GetTarget()->GetProperty(Type(), original_value_);
   }
-}
-
-void FloatKeyframeSet::OnAnimationRemove(Animator& animation) {
-  if (auto manager = GetKeyframesManager()) {
-    manager->GetTarget()->SetProperty(Type(), original_value_, false);
-  }
-}
-
-void FloatKeyframeSet::OnAnimationUpdate(ValueAnimator& animation) {
   if (keyframes_.front()->GetFraction() > 0) {
     auto* interpolator = keyframes_.front()->GetInterpolator();
     AddKeyframe(
@@ -142,6 +133,15 @@ void FloatKeyframeSet::OnAnimationUpdate(ValueAnimator& animation) {
     AddKeyframe(
         FloatKeyframe::Create(1.f, original_value_, interpolator->Clone()));
   }
+}
+
+void FloatKeyframeSet::OnAnimationRemove(Animator& animation) {
+  if (auto manager = GetKeyframesManager()) {
+    manager->GetTarget()->SetProperty(Type(), original_value_, false);
+  }
+}
+
+void FloatKeyframeSet::OnAnimationUpdate(ValueAnimator& animation) {
   if (auto manager = GetKeyframesManager()) {
     float current_fraction = animation.GetAnimatedFraction();
     manager->GetTarget()->SetProperty(Type(), GetValue(current_fraction), true);
@@ -194,15 +194,6 @@ void ColorKeyframeSet::OnAnimationPrepare(Animator& animation) {
   if (auto manager = GetKeyframesManager()) {
     manager->GetTarget()->GetProperty(Type(), original_value_);
   }
-}
-
-void ColorKeyframeSet::OnAnimationRemove(Animator& animation) {
-  if (auto manager = GetKeyframesManager()) {
-    manager->GetTarget()->SetProperty(Type(), original_value_, false);
-  }
-}
-
-void ColorKeyframeSet::OnAnimationUpdate(ValueAnimator& animation) {
   if (keyframes_.front()->GetFraction() > 0) {
     auto* interpolator = keyframes_.front()->GetInterpolator();
     AddKeyframe(
@@ -213,6 +204,15 @@ void ColorKeyframeSet::OnAnimationUpdate(ValueAnimator& animation) {
     AddKeyframe(
         ColorKeyframe::Create(1.f, original_value_, interpolator->Clone()));
   }
+}
+
+void ColorKeyframeSet::OnAnimationRemove(Animator& animation) {
+  if (auto manager = GetKeyframesManager()) {
+    manager->GetTarget()->SetProperty(Type(), original_value_, false);
+  }
+}
+
+void ColorKeyframeSet::OnAnimationUpdate(ValueAnimator& animation) {
   if (auto manager = GetKeyframesManager()) {
     float current_fraction = animation.GetAnimatedFraction();
     manager->GetTarget()->SetProperty(Type(), GetValue(current_fraction), true);
@@ -331,15 +331,6 @@ void TransformKeyframeSet::OnAnimationPrepare(Animator& animation) {
   if (auto manager = GetKeyframesManager()) {
     manager->GetTarget()->GetProperty(Type(), original_value_);
   }
-}
-
-void TransformKeyframeSet::OnAnimationRemove(Animator& animation) {
-  if (auto manager = GetKeyframesManager()) {
-    manager->GetTarget()->SetProperty(Type(), original_value_, false);
-  }
-}
-
-void TransformKeyframeSet::OnAnimationUpdate(ValueAnimator& animation) {
   if (keyframes_.front()->GetFraction() > 0) {
     auto* interpolator = keyframes_.front()->GetInterpolator();
     AddKeyframe(
@@ -350,6 +341,15 @@ void TransformKeyframeSet::OnAnimationUpdate(ValueAnimator& animation) {
     AddKeyframe(
         TransformKeyframe::Create(1.f, original_value_, interpolator->Clone()));
   }
+}
+
+void TransformKeyframeSet::OnAnimationRemove(Animator& animation) {
+  if (auto manager = GetKeyframesManager()) {
+    manager->GetTarget()->SetProperty(Type(), original_value_, false);
+  }
+}
+
+void TransformKeyframeSet::OnAnimationUpdate(ValueAnimator& animation) {
   if (auto manager = GetKeyframesManager()) {
     float current_fraction = animation.GetAnimatedFraction();
     manager->GetTarget()->SetProperty(Type(), GetValue(current_fraction), true);
@@ -402,8 +402,6 @@ void FilterKeyframeSet::OnAnimationPrepare(Animator& animation) {
   if (auto manager = GetKeyframesManager()) {
     manager->GetTarget()->GetProperty(Type(), original_value_);
   }
-}
-void FilterKeyframeSet::OnAnimationUpdate(ValueAnimator& animation) {
   if (keyframes_.front()->GetFraction() > 0) {
     auto* interpolator = keyframes_.front()->GetInterpolator();
     AddKeyframe(
@@ -414,6 +412,8 @@ void FilterKeyframeSet::OnAnimationUpdate(ValueAnimator& animation) {
     AddKeyframe(
         FilterKeyframe::Create(1.f, original_value_, interpolator->Clone()));
   }
+}
+void FilterKeyframeSet::OnAnimationUpdate(ValueAnimator& animation) {
   if (auto manager = GetKeyframesManager()) {
     float current_fraction = animation.GetAnimatedFraction();
     manager->GetTarget()->SetProperty(Type(), GetValue(current_fraction));
@@ -465,8 +465,6 @@ void BoxShadowKeyframeSet::OnAnimationPrepare(Animator& animation) {
   if (auto manager = GetKeyframesManager()) {
     manager->GetTarget()->GetProperty(Type(), original_value_);
   }
-}
-void BoxShadowKeyframeSet::OnAnimationUpdate(ValueAnimator& animation) {
   if (keyframes_.front()->GetFraction() > 0) {
     auto* interpolator = keyframes_.front()->GetInterpolator();
     AddKeyframe(
@@ -477,6 +475,8 @@ void BoxShadowKeyframeSet::OnAnimationUpdate(ValueAnimator& animation) {
     AddKeyframe(
         BoxShadowKeyframe::Create(1.f, original_value_, interpolator->Clone()));
   }
+}
+void BoxShadowKeyframeSet::OnAnimationUpdate(ValueAnimator& animation) {
   if (auto manager = GetKeyframesManager()) {
     float current_fraction = animation.GetAnimatedFraction();
     manager->GetTarget()->SetProperty(Type(), GetValue(current_fraction));

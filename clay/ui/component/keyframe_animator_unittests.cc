@@ -5,6 +5,8 @@
 #include <memory>
 #include <vector>
 
+#include "base/include/auto_reset.h"
+#include "base/include/fml/time/time_point.h"
 #include "clay/gfx/animation/animation_data.h"
 #include "clay/gfx/animation/animator_target.h"
 #include "clay/gfx/animation/keyframe.h"
@@ -64,15 +66,33 @@ class MockAnimatorListener : public AnimatorListener {
 
 class FixedSizeAnimatorTarget : public AnimatorTarget {
  public:
-  explicit FixedSizeAnimatorTarget(FloatSize percentage_resolution_size)
-      : percentage_resolution_size_(percentage_resolution_size) {}
+  explicit FixedSizeAnimatorTarget(FloatSize percentage_resolution_size,
+                                   float opacity = 1.f)
+      : percentage_resolution_size_(percentage_resolution_size),
+        opacity_(opacity) {}
 
   FloatSize PercentageResolutionSize() override {
     return percentage_resolution_size_;
   }
 
+  void GetProperty(ClayAnimationPropertyType type, float& value) override {
+    if (type == ClayAnimationPropertyType::kOpacity) {
+      value = opacity_;
+    }
+  }
+
+  void SetProperty(ClayAnimationPropertyType type, float value,
+                   bool skip_update_for_raster_animation) override {
+    if (type == ClayAnimationPropertyType::kOpacity) {
+      opacity_ = value;
+    }
+  }
+
+  float opacity() const { return opacity_; }
+
  private:
   FloatSize percentage_resolution_size_;
+  float opacity_;
 };
 
 class RecordingAnimationEventHandler : public AnimationEventHandler {
@@ -269,6 +289,34 @@ Value CreateMixedRasterAndUiKeyframes() {
   keyframes.emplace("0.000000", Value(std::move(start)));
   keyframes.emplace("1.000000", Value(std::move(end)));
   return Value{{"mixed_test", Value(std::move(keyframes))}};
+}
+
+Value CreateMixedKeyframesWithMissingRasterEndpoints() {
+  Value::Array start_filter_op;
+  start_filter_op.emplace_back(
+      static_cast<int32_t>(ClayFilterType::kGrayScale));
+  start_filter_op.emplace_back(0.0);
+  Value::Array start_filter;
+  start_filter.emplace_back(Value{std::move(start_filter_op)});
+  Value::Map start;
+  start.emplace("filter", Value{std::move(start_filter)});
+
+  Value::Map middle;
+  middle.emplace("opacity", Value{0.8});
+
+  Value::Array end_filter_op;
+  end_filter_op.emplace_back(static_cast<int32_t>(ClayFilterType::kGrayScale));
+  end_filter_op.emplace_back(1.0);
+  Value::Array end_filter;
+  end_filter.emplace_back(Value{std::move(end_filter_op)});
+  Value::Map end;
+  end.emplace("filter", Value{std::move(end_filter)});
+
+  Value::Map keyframes;
+  keyframes.emplace("0.000000", Value(std::move(start)));
+  keyframes.emplace("0.500000", Value(std::move(middle)));
+  keyframes.emplace("1.000000", Value(std::move(end)));
+  return Value{{"mixed_missing_endpoints", Value(std::move(keyframes))}};
 }
 
 }  // namespace
@@ -882,6 +930,36 @@ TEST_F_UI(KeyFrameTest, MixedAnimationKeepsUiValueUpdates) {
             ValueAnimator::FrameUpdateMode::kUpdateValues);
 }
 
+TEST_F_UI(KeyFrameTest, MixedRasterClonePreparesMissingEndpointsAfterDelay) {
+  page_->SetRasterAnimationEnabled(true);
+  page_->SetKeyframesData(CreateMixedKeyframesWithMissingRasterEndpoints());
+  animator_view_->SetBound(0, 0, 100, 100);
+  AnimationData data = start_data_;
+  data.name = "mixed_missing_endpoints";
+  data.delay = 80;
+  data.fill_mode = ClayAnimationFillModeType::kNone;
+  animator_view_->SetAnimation({data});
+  animator_view_->OnNodeReady();
+
+  ASSERT_FALSE(animator_view_->KeyframesMgr()
+                   ->animations()
+                   .front()
+                   .animator->IsPreparedForPresentation());
+
+  FixedSizeAnimatorTarget raster_target(FloatSize(100.f, 100.f), 0.4f);
+  auto raster_manager = animator_view_->KeyframesMgr()->CloneForRasterAnimation(
+      ClayAnimationPropertyType::kOpacity, &raster_target);
+  ASSERT_NE(raster_manager, nullptr);
+  ValueAnimator* raster_animator =
+      raster_manager->animations().front().animator.get();
+
+  raster_animator->DoAnimationFrame(0);
+  raster_animator->DoAnimationFrame(80);
+  EXPECT_FLOAT_EQ(raster_target.opacity(), 0.4f);
+  raster_animator->DoAnimationFrame(160);
+  EXPECT_FLOAT_EQ(raster_target.opacity(), 0.8f);
+}
+
 TEST_F_UI(KeyFrameTest, RasterTransitionEventsRemainUIOwned) {
   page_->SetRasterAnimationEnabled(true);
   animator_view_->AddEventCallback(event_attr::kEventTransitionStart);
@@ -949,7 +1027,7 @@ TEST_F_UI(KeyFrameTest, RasterTransitionUsesLifecycleOnlyUiAnimator) {
   animator_view_->OnNodeReady();
   animator_view_->SetOpacity(1.f);
 
-  auto animators = animator_view_->TransitionMgr()->GetRunningAnimators();
+  auto animators = animator_view_->TransitionMgr()->GetStartedAnimators();
   ASSERT_EQ(animators.size(), 1u);
   EXPECT_EQ(animators.front()->GetFrameUpdateMode(),
             ValueAnimator::FrameUpdateMode::kLifecycleOnly);
@@ -973,7 +1051,7 @@ TEST_F_UI(KeyFrameTest, RasterTransitionCanBeClonedDuringDelay) {
   animator_view_->OnNodeReady();
   animator_view_->SetOpacity(1.f);
 
-  auto animators = animator_view_->TransitionMgr()->GetRunningAnimators();
+  auto animators = animator_view_->TransitionMgr()->GetStartedAnimators();
   ASSERT_EQ(animators.size(), 1u);
   EXPECT_TRUE(animators.front()->IsStarted());
   EXPECT_FALSE(animators.front()->IsRunning());
@@ -983,7 +1061,66 @@ TEST_F_UI(KeyFrameTest, RasterTransitionCanBeClonedDuringDelay) {
       animator_view_->TransitionMgr()->CloneForRasterAnimation(
           ClayAnimationPropertyType::kOpacity, &raster_target);
   ASSERT_NE(raster_manager, nullptr);
-  EXPECT_EQ(raster_manager->GetRunningAnimators().size(), 1u);
+  EXPECT_EQ(raster_manager->GetStartedAnimators().size(), 1u);
+}
+
+TEST_F_UI(KeyFrameTest, RasterTransitionRetargetsFromPresentationValue) {
+  page_->SetRasterAnimationEnabled(true);
+
+  TransitionData transition;
+  transition.property = ClayAnimationPropertyType::kOpacity;
+  transition.duration = 100000;
+  animator_view_->SetTransition({transition});
+  animator_view_->OnNodeReady();
+  animator_view_->SetOpacity(1.f);
+
+  const int64_t start_time =
+      fml::TimePoint::Now().ToEpochDelta().ToMilliseconds() - 50000;
+  page_->GetAnimationHandler()->DoAnimationFrame(start_time);
+  auto animators = animator_view_->TransitionMgr()->GetStartedAnimators();
+  ASSERT_EQ(animators.size(), 1u);
+  // Freeze the presentation state so retargeting and the verification below
+  // cannot observe different wall-clock samples.
+  animators.front()->Pause();
+  const float presentation_before_retarget = animator_view_->Opacity();
+  EXPECT_GT(presentation_before_retarget, 0.1f);
+
+  // Retarget to the unchanged UI-side underlying value. Before presentation
+  // sampling, this equality caused SetOpacity() to return without interrupting
+  // the raster transition.
+  animator_view_->SetOpacity(0.1f);
+  EXPECT_NEAR(animator_view_->Opacity(), presentation_before_retarget, 1e-5f);
+}
+
+TEST_F_UI(KeyFrameTest, HitTestUsesRasterTransformPresentationValue) {
+  page_->SetRasterAnimationEnabled(true);
+
+  animator_view_->SetBound(0, 0, 100, 100);
+  TransitionData transition;
+  transition.property = ClayAnimationPropertyType::kTransform;
+  transition.duration = 100000;
+  animator_view_->SetTransition({transition});
+  animator_view_->OnNodeReady();
+
+  TransformOperations target_transform;
+  target_transform.AppendTranslate(100.f, 0.f, 0.f);
+  animator_view_->SetTransform(target_transform, FloatPoint(0.f, 0.f));
+  const int64_t start_time =
+      fml::TimePoint::Now().ToEpochDelta().ToMilliseconds() - 50000;
+  page_->GetAnimationHandler()->DoAnimationFrame(start_time);
+  auto animators = animator_view_->TransitionMgr()->GetStartedAnimators();
+  ASSERT_EQ(animators.size(), 1u);
+  // GetPresentationTransform() and GetPointBySelf() sample independently.
+  // Pause the animator so both calls use the same presentation state.
+  animators.front()->Pause();
+
+  FloatPoint visual_point(50.f, 50.f);
+  animator_view_->GetPresentationTransform().TransformPoint(&visual_point);
+  EXPECT_GT(visual_point.x(), 50.f);
+
+  const FloatPoint local_point = animator_view_->GetPointBySelf(visual_point);
+  EXPECT_NEAR(local_point.x(), 50.f, 1e-4f);
+  EXPECT_NEAR(local_point.y(), 50.f, 1e-4f);
 }
 
 TEST_F_UI(KeyFrameTest, ShorterSameNameUpdateAfterEndDoesNotRestart) {
@@ -1032,6 +1169,157 @@ TEST_F_UI(KeyFrameTest, ShorterSameNameUpdateAfterEndDoesNotRestart) {
   animator->DoAnimationFrame(11500);
 
   animator->RemoveListener(&mock_listener);
+}
+
+TEST_F_UI(KeyFrameTest,
+          LifecycleOnlySameNameDurationExtensionReschedulesLifecycle) {
+  page_->SetRasterAnimationEnabled(true);
+  animator_view_->AddEventCallback(event_attr::kEventAnimationStart);
+  animator_view_->AddEventCallback(event_attr::kEventAnimationEnd);
+
+  const int64_t timeline_start_time =
+      fml::TimePoint::Now().ToEpochDelta().ToMilliseconds() - 150;
+  int64_t current_time = timeline_start_time;
+  auto* handler = page_->GetAnimationHandler();
+  std::vector<int64_t> scheduled_delays;
+  handler->SetAnimationCallback([&scheduled_delays](int64_t delay) {
+    scheduled_delays.push_back(delay);
+  });
+  struct CallbackCleanup {
+    AnimationHandler* handler;
+    ~CallbackCleanup() { handler->SetAnimationCallback(nullptr); }
+  } callback_cleanup{handler};
+
+  std::vector<std::string> events;
+  lynx::base::AutoReset<decltype(animation_event_callback_)>
+      event_callback_cleanup(
+          &animation_event_callback_,
+          [&events](const std::string& event_name, const char* animation_name,
+                    int) {
+            events.emplace_back(event_name + ":" + animation_name);
+          });
+
+  AnimationData initial_data{"opacity_test",
+                             100,
+                             0,
+                             TimingFunctionData(),
+                             1,
+                             ClayAnimationFillModeType::kBoth,
+                             ClayAnimationDirectionType::kNormal,
+                             ClayAnimationPlayStateType::kRunning};
+  page_->SetKeyframesData(CreateKeyFrameData3());
+  animator_view_->SetBound(0, 0, 100, 100);
+  animator_view_->SetAnimation({initial_data});
+  animator_view_->OnNodeReady();
+
+  ValueAnimator* animator =
+      animator_view_->KeyframesMgr()->animations().front().animator.get();
+  EXPECT_FALSE(handler->DoAnimationFrame(current_time));
+  current_time = timeline_start_time + 100;
+  EXPECT_FALSE(handler->DoAnimationFrame(current_time, true));
+  EXPECT_THAT(events, ::testing::ElementsAre("animationstart:opacity_test",
+                                             "animationend:opacity_test"));
+  EXPECT_TRUE(animator->IsStarted());
+
+  current_time = fml::TimePoint::Now().ToEpochDelta().ToMilliseconds();
+  const size_t scheduled_count = scheduled_delays.size();
+  AnimationData shorter_data = initial_data;
+  shorter_data.duration = 50;
+  animator_view_->SetAnimation({shorter_data});
+  animator_view_->OnNodeReady();
+
+  EXPECT_EQ(scheduled_delays.size(), scheduled_count);
+  EXPECT_THAT(events, ::testing::ElementsAre("animationstart:opacity_test",
+                                             "animationend:opacity_test"));
+  EXPECT_TRUE(animator->IsStarted());
+  EXPECT_EQ(handler->GetAnimationCount(), 1);
+  EXPECT_FALSE(handler->DoAnimationFrame(current_time, true));
+  EXPECT_THAT(events, ::testing::ElementsAre("animationstart:opacity_test",
+                                             "animationend:opacity_test"));
+  EXPECT_TRUE(animator->IsStarted());
+  EXPECT_EQ(handler->GetAnimationCount(), 1);
+
+  AnimationData longer_data = initial_data;
+  longer_data.duration = current_time - timeline_start_time + 1000;
+  animator_view_->SetAnimation({longer_data});
+  animator_view_->OnNodeReady();
+
+  ASSERT_EQ(animator_view_->KeyframesMgr()->animations().front().animator.get(),
+            animator);
+  ASSERT_FALSE(scheduled_delays.empty());
+  EXPECT_EQ(scheduled_delays.back(), 0);
+  EXPECT_THAT(events, ::testing::ElementsAre("animationstart:opacity_test",
+                                             "animationend:opacity_test"));
+
+  EXPECT_FALSE(handler->DoAnimationFrame(current_time, true));
+  EXPECT_THAT(events, ::testing::ElementsAre("animationstart:opacity_test",
+                                             "animationend:opacity_test",
+                                             "animationstart:opacity_test"));
+  current_time = timeline_start_time + longer_data.duration;
+  EXPECT_FALSE(handler->DoAnimationFrame(current_time, true));
+  EXPECT_THAT(events, ::testing::ElementsAre("animationstart:opacity_test",
+                                             "animationend:opacity_test",
+                                             "animationstart:opacity_test",
+                                             "animationend:opacity_test"));
+}
+
+TEST_F_UI(KeyFrameTest,
+          SameNamePausedFillRemovalDoesNotRestartRetainedAnimator) {
+  page_->SetRasterAnimationEnabled(true);
+  animator_view_->AddEventCallback(event_attr::kEventAnimationStart);
+  animator_view_->AddEventCallback(event_attr::kEventAnimationEnd);
+
+  const int64_t timeline_start_time =
+      fml::TimePoint::Now().ToEpochDelta().ToMilliseconds() - 150;
+  int64_t current_time = timeline_start_time;
+  auto* handler = page_->GetAnimationHandler();
+
+  std::vector<std::string> events;
+  lynx::base::AutoReset<decltype(animation_event_callback_)>
+      event_callback_cleanup(
+          &animation_event_callback_,
+          [&events](const std::string& event_name, const char* animation_name,
+                    int) {
+            events.emplace_back(event_name + ":" + animation_name);
+          });
+
+  AnimationData initial_data{"opacity_test",
+                             100,
+                             0,
+                             TimingFunctionData(),
+                             1,
+                             ClayAnimationFillModeType::kBoth,
+                             ClayAnimationDirectionType::kNormal,
+                             ClayAnimationPlayStateType::kRunning};
+  page_->SetKeyframesData(CreateKeyFrameData3());
+  animator_view_->SetBound(0, 0, 100, 100);
+  animator_view_->SetAnimation({initial_data});
+  animator_view_->OnNodeReady();
+
+  ValueAnimator* animator =
+      animator_view_->KeyframesMgr()->animations().front().animator.get();
+  EXPECT_FALSE(handler->DoAnimationFrame(current_time));
+  current_time = timeline_start_time + 100;
+  EXPECT_FALSE(handler->DoAnimationFrame(current_time, true));
+  EXPECT_THAT(events, ::testing::ElementsAre("animationstart:opacity_test",
+                                             "animationend:opacity_test"));
+  EXPECT_TRUE(animator->IsStarted());
+  EXPECT_EQ(handler->GetAnimationCount(), 1);
+
+  current_time = fml::TimePoint::Now().ToEpochDelta().ToMilliseconds();
+  AnimationData no_fill_data = initial_data;
+  no_fill_data.duration = 50;
+  no_fill_data.fill_mode = ClayAnimationFillModeType::kNone;
+  no_fill_data.play_state = ClayAnimationPlayStateType::kPaused;
+  animator_view_->SetAnimation({no_fill_data});
+  animator_view_->OnNodeReady();
+
+  ASSERT_EQ(animator_view_->KeyframesMgr()->animations().front().animator.get(),
+            animator);
+  EXPECT_THAT(events, ::testing::ElementsAre("animationstart:opacity_test",
+                                             "animationend:opacity_test"));
+  EXPECT_FALSE(animator->IsStarted());
+  EXPECT_EQ(handler->GetAnimationCount(), 0);
 }
 
 TEST_F_UI(KeyFrameTest, SameNameUpdateDoesNotRestartAfterFrameTimeRollback) {

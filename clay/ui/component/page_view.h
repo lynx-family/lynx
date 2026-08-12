@@ -592,6 +592,7 @@ class PageView : public BaseView,
   std::unique_ptr<LayoutController> layout_controller_;
   std::unique_ptr<FrameBuilder> frame_builder_;
   std::unique_ptr<AnimationHandler> animation_handler_;
+  uint64_t pending_lifecycle_wakeup_id_ = 0;
 #ifndef ENABLE_SKITY
   fml::RefPtr<ImageResourceFetcher> image_resource_fetcher_;
 #else
