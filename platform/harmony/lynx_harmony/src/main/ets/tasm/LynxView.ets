@@ -68,6 +68,16 @@ export enum ColorScheme {
   DARK = 1,
 }
 
+export enum EmbeddedMode {
+  UNSET = 0,
+  EMBEDDED_MODE_BASE = 1 << 0,
+  ENGINE_POOL = 1 << 1,
+  LAYOUT_IN_ELEMENT = 1 << 2,
+  FRAGMENT_LAYER_RENDER = 1 << 3,
+  USE_TEXT_SERVICE = 1 << 4,
+  EMBEDDED_MODE_ALL = EMBEDDED_MODE_BASE | ENGINE_POOL | LAYOUT_IN_ELEMENT
+}
+
 const TAG = 'LynxView';
 const DEFAULT_KEYBOARD_AVOID_ANIMATION_DURATION = 300;
 const KEYBOARD_ANIMATION_CURVE_PARAM_SIZE = 4;
@@ -98,6 +108,7 @@ export interface LynxViewBuilder {
   fontScale?: number;
   colorScheme?: ColorScheme;
   enableMultiAsyncThread?: boolean;
+  embeddedMode?: number;
 }
 
 @Builder
@@ -220,6 +231,7 @@ export struct LynxView {
   backgroundRuntimeOptions: LynxBackgroundRuntimeOptions = new LynxBackgroundRuntimeOptions();
   enableAirStrictMode? = false;
   lynxImageConfig?: LynxImageConfig;
+  embeddedMode: number = EmbeddedMode.UNSET;
 
   initWithBuilder(builder: LynxViewBuilder) {
     this.genericResourceFetcher = builder.genericResourceFetcher;
@@ -252,6 +264,7 @@ export struct LynxView {
     this.fontScale = builder.fontScale ?? 1.0;
     this.colorScheme = builder.colorScheme ?? ColorScheme.LIGHT;
     this.enableMultiAsyncThread = builder.enableMultiAsyncThread ?? true;
+    this.embeddedMode = builder.embeddedMode ?? EmbeddedMode.UNSET;
     if (this.hasAppeared) {
       LynxServiceCenter.getService<ILynxTrailService>(LynxServiceType.Trail)?.parseLynxView(this);
       this.reInitTemplateRenderer(this.hasLoadSource());
@@ -399,6 +412,8 @@ export struct LynxView {
 
     let providers = [this.genericResourceFetcher, this.mediaResourceFetcher, this.templateResourceFetcher];
     this.perfController = new PerformanceController();
+    this.perfController.setEmbeddedModeEnabled(
+      (this.embeddedMode & EmbeddedMode.EMBEDDED_MODE_BASE) > 0);
     if (this.uiRendererCreator) {
       this.uiRenderer =
         this.uiRendererCreator.createUIRenderer(this.context,
@@ -830,6 +845,9 @@ export struct LynxView {
     }
     let timingOption: TimingOption = new TimingOption(TimingConstants.LOAD_BUNDLE);
     let loadBundleStartTimestamp = Date.now();
+    if ((this.embeddedMode & EmbeddedMode.EMBEDDED_MODE_BASE) > 0) {
+      this.perfController?.markTiming(TimingConstants.LOAD_BUNDLE_START, '');
+    }
     timingOption.setTiming(TimingConstants.PIPELINE_START, loadBundleStartTimestamp);
     timingOption.setTiming(TimingConstants.LOAD_BUNDLE_START, loadBundleStartTimestamp);
     if (this.templateBundle) {

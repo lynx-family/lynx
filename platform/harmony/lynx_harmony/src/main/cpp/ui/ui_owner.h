@@ -43,6 +43,7 @@ class UIOwner {
   static napi_value Init(napi_env env, napi_value exports);
   void CreateUI(int sign, const std::string& tag,
                 PropBundleHarmony* painting_data, uint32_t node_index);
+  UIBase* CreateFragmentLayer(int sign);
   UIBase* CreateJSUI(int sign, const std::string& tag);
   void InsertUI(int parent, int child, int index);
   void RemoveUI(int parent, int child, int index, bool is_move);

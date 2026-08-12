@@ -38,6 +38,10 @@ class InlinePlaceholderShadowNode : public BaseTextShadowNode {
   int32_t Index() const { return placeholder_index_; }
   float CalcPlaceholderTopOffset(LineMetricsHarmony* line_metrics) const;
   void SetLineHeight(double height) { line_height_ = height; }
+  void SetIsInlineImage(bool is_inline_image) {
+    is_inline_image_ = is_inline_image;
+  }
+  bool IsInlineImage() const { return is_inline_image_; }
 
  private:
   OH_Drawing_PlaceholderVerticalAlignment CalcVerticalAlignValue(
@@ -47,6 +51,7 @@ class InlinePlaceholderShadowNode : public BaseTextShadowNode {
   float baseline_offset_{0.f};
   double line_height_{0.f};
   std::string id_selector_;
+  bool is_inline_image_{false};
 };
 
 }  // namespace harmony

@@ -36,6 +36,10 @@ if (!enable_unittests) {
     ui_wrapper_layout_shared_sources += [
       "harmony/layout_context_harmony.cc",
       "harmony/layout_context_harmony.h",
+      "harmony/text_layout_harmony.cc",
+      "harmony/text_layout_harmony.h",
+      "harmony/text_layout_manager_harmony.cc",
+      "harmony/text_layout_manager_harmony.h",
     ]
   } else if (is_ios) {
     ui_wrapper_layout_shared_sources += [

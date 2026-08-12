@@ -15,6 +15,7 @@
 #include "core/base/harmony/props_constant.h"
 #include "core/renderer/tasm/config.h"
 #include "core/style/color.h"
+#include "core/style/default_computed_style.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/font/font_face_manager.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/lynx_context.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/shadow_node/raw_text_shadow_node.h"
@@ -47,7 +48,10 @@ void BaseTextShadowNode::OnPropsUpdate(const std::string& name,
     text_props_->font_size = value.Number() * ScaleDensity();
     style_.SetFontSize(text_props_->font_size);
   } else if (base::StringEqual(attr, kLineHeight)) {
-    text_props_->line_height = value.Number() * ScaleDensity();
+    text_props_->line_height =
+        value.Number() == starlight::DefaultComputedStyle::DEFAULT_LINE_HEIGHT
+            ? kLineHeightNormal
+            : value.Number() * ScaleDensity();
   } else if (base::StringEqual(attr, kFontFamily)) {
     text_props_->font_family = value.StdString();
     SetRawFontFamilies(text_props_->font_family);

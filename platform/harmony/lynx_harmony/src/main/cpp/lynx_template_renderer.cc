@@ -21,6 +21,7 @@
 #include "base/trace/native/trace_event.h"
 #include "core/base/harmony/napi_convert_helper.h"
 #include "core/base/threading/task_runner_manufactor.h"
+#include "core/public/page_options.h"
 #include "core/renderer/data/harmony/template_data_harmony.h"
 #include "core/renderer/dom/harmony/lynx_template_bundle_harmony.h"
 #include "core/renderer/ui_wrapper/painting/harmony/ui_delegate_harmony.h"
@@ -135,7 +136,7 @@ void LynxTemplateRenderer::SetUpLynxShell(
     std::unique_ptr<ModuleFactoryHarmony> jsbridge_module_factory,
     std::unique_ptr<ModuleFactoryHarmony> main_thread_module_factory,
     LynxRuntimeWrapper* runtime_wrapper, LynxWhiteBoard* white_board,
-    bool enable_multi_async_thread) {
+    bool enable_multi_async_thread, int32_t embedded_mode) {
   ui_delegate_ = ui_delegate;
   resource_loader_ = resource_loader;
   is_host_renderer_ = is_host_renderer;
@@ -169,6 +170,25 @@ void LynxTemplateRenderer::SetUpLynxShell(
   shell_option.instance_id_ =
       runtime_wrapper ? runtime_wrapper->RuntimeStandalone().GetRuntimeId()
                       : -1;
+  shell_option.page_options_.SetInstanceID(shell_option.instance_id_);
+  auto mode = static_cast<tasm::EmbeddedMode>(embedded_mode);
+  shell_option.page_options_.SetEmbeddedMode(mode);
+  auto lynx_context =
+      static_cast<tasm::harmony::UIDelegateHarmony*>(ui_delegate_)
+          ->GetLynxContext();
+  if (lynx_context != nullptr) {
+    lynx_context->SetEmbeddedMode(mode);
+  }
+
+  std::unique_ptr<tasm::performance::PerformanceControllerPlatformImpl>
+      performance_controller_platform;
+  if (js_perf_controller_wrapper != nullptr) {
+    performance_controller_platform =
+        std::make_unique<tasm::performance::PerformanceControllerHarmony>(
+            std::shared_ptr<
+                tasm::performance::PerformanceControllerHarmonyJSWrapper>(
+                js_perf_controller_wrapper));
+  }
 
   auto invoker = std::make_unique<TasmPlatformInvokerHarmony>(
       weak_flag_->weak_from_this());
@@ -198,10 +218,7 @@ void LynxTemplateRenderer::SetUpLynxShell(
           .SetShellOption(shell_option)
           .SetTasmPlatformInvoker(std::move(invoker))
           .SetPerformanceControllerPlatform(
-              std::make_unique<tasm::performance::PerformanceControllerHarmony>(
-                  std::shared_ptr<
-                      tasm::performance::PerformanceControllerHarmonyJSWrapper>(
-                      js_perf_controller_wrapper)))
+              std::move(performance_controller_platform))
           .SetRuntimeActor(
               (runtime_wrapper != nullptr)
                   ? runtime_wrapper->RuntimeStandalone().GetRuntimeActor()
@@ -916,8 +933,8 @@ napi_value LynxTemplateRenderer::NativeAttach(napi_env env,
 napi_value LynxTemplateRenderer::NativeReset(napi_env env,
                                              napi_callback_info info) {
   napi_value js_this;
-  size_t argc = 20;
-  napi_value args[20] = {nullptr};
+  size_t argc = 21;
+  napi_value args[21] = {nullptr};
   napi_get_cb_info(env, info, &argc, args, &js_this, nullptr);
 
   // UIDelegate
@@ -939,9 +956,14 @@ napi_value LynxTemplateRenderer::NativeReset(napi_env env,
 
   // PerformanceController
   tasm::performance::PerformanceControllerHarmonyJSWrapper*
-      js_perf_controller_wrapper;
-  napi_unwrap(env, args[5],
-              reinterpret_cast<void**>(&js_perf_controller_wrapper));
+      js_perf_controller_wrapper = nullptr;
+  napi_valuetype perf_controller_type = napi_undefined;
+  napi_typeof(env, args[5], &perf_controller_type);
+  if (perf_controller_type != napi_undefined &&
+      perf_controller_type != napi_null) {
+    napi_unwrap(env, args[5],
+                reinterpret_cast<void**>(&js_perf_controller_wrapper));
+  }
 
   int thread_mode = 0;
   napi_get_value_int32(env, args[6], &thread_mode);
@@ -997,6 +1019,11 @@ napi_value LynxTemplateRenderer::NativeReset(napi_env env,
     napi_get_value_bool(env, args[19], &enable_multi_async_thread);
   }
 
+  int32_t embedded_mode = 0;
+  if (argc > 20) {
+    napi_get_value_int32(env, args[20], &embedded_mode);
+  }
+
   LynxTemplateRenderer* obj = nullptr;
   napi_status status =
       napi_unwrap(env, js_this, reinterpret_cast<void**>(&obj));
@@ -1019,7 +1046,7 @@ napi_value LynxTemplateRenderer::NativeReset(napi_env env,
       std::move(preload_js_paths), enable_bytecode,
       std::move(bytecode_source_url), enable_js,
       std::move(jsbridge_module_factory), std::move(main_thread_module_factory),
-      runtime_wrapper, white_board, enable_multi_async_thread);
+      runtime_wrapper, white_board, enable_multi_async_thread, embedded_mode);
   return nullptr;
 }
 

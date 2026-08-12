@@ -10,7 +10,7 @@ import { UIOwner } from './behavior/UIOwner';
 import { TraceCategory, TraceEvent } from '../base/TraceEvent';
 import { TraceEventDef } from '../base/TraceEventDef';
 import { LynxExtraTiming } from './performance/timing/LynxExtraTiming';
-import { ColorScheme, LynxView } from './LynxView';
+import { ColorScheme, EmbeddedMode, LynxView } from './LynxView';
 import { LynxReportEventPropValue } from './eventreport/ILynxEventReportObserver';
 import { LynxEventReporter } from './eventreport/LynxEventReporter';
 import {
@@ -107,6 +107,28 @@ export class LynxContext implements IContext {
 
   getCurrentWindow(): Promise<window.Window> | undefined {
     return this.lynxView?.getCurrentWindow();
+  }
+
+  public get embeddedMode(): number {
+    return this.lynxView?.embeddedMode ?? EmbeddedMode.UNSET;
+  }
+
+  public isEmbeddedModeOn(): boolean {
+    return (this.embeddedMode & EmbeddedMode.EMBEDDED_MODE_BASE) > 0;
+  }
+
+  public isLayoutInElementModeOn(): boolean {
+    return (this.embeddedMode &
+      (EmbeddedMode.LAYOUT_IN_ELEMENT | EmbeddedMode.FRAGMENT_LAYER_RENDER)) > 0;
+  }
+
+  public isFragmentLayerRenderOn(): boolean {
+    return (this.embeddedMode & EmbeddedMode.FRAGMENT_LAYER_RENDER) > 0;
+  }
+
+  public isTextServiceModeOn(): boolean {
+    return (this.embeddedMode &
+      (EmbeddedMode.USE_TEXT_SERVICE | EmbeddedMode.FRAGMENT_LAYER_RENDER)) > 0;
   }
 
   /**
@@ -223,6 +245,9 @@ export class LynxContext implements IContext {
         return;
       }
 
+      if (this.isEmbeddedModeOn()) {
+        this.renderer?.markTiming(TimingConstants.UPDATE_DATA_START);
+      }
       this.renderer?.updateMetaData(data.templateData?.processor, data.templateData?.getDataForNative(),
         data.templateData?.readOnly, data.globalProps?.getDataForNative(), updateMode);
     } else {

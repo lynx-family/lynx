@@ -103,7 +103,6 @@ class UIDelegateHarmony : public UIDelegate {
   HarmonyEmulatedTouchDispatcher emulated_touch_dispatcher_;
   shell::EmbedderPlatformHarmony* platform_ = nullptr;
   std::string screen_shot_mode_ = "lynxview";
-
   float screen_width_ = 0.f;
   float screen_height_ = 0.f;
   float device_pixel_ratio_ = 1.f;

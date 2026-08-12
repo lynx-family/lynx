@@ -80,21 +80,45 @@ void ImageDrawable::UpdateDrawCurrent(std::unique_ptr<LynxBaseImage> pixelmap) {
                                                MIPMAP_MODE_LINEAR);
   }
   UpdateDrawMatrix();
-  auto ui_base = ui_base_.lock();
-  if (ui_base) {
-    ui_base->Invalidate();
-  }
+  InvalidateSelf();
 }
 
-void ImageDrawable::UpdateDrawCurrent(std::shared_ptr<ImageData> image_data) {
+void ImageDrawable::UpdateDrawCurrent(std::shared_ptr<ImageData> image_data,
+                                      bool prepare_draw_resources) {
   pixel_maps_.reset();
   loop_duration_ = 0;
   if (!image_data || !image_data->Pixelmap()) {
     image_data_.reset();
     return;
   }
-  image_data_ = std::move(image_data);
+  image_data_.reset();
+  if (prepare_draw_resources) {
+    if (src_rect_) {
+      OH_Drawing_RectDestroy(src_rect_);
+      src_rect_ = nullptr;
+    }
+    DestroyMatrix();
+    OH_Pixelmap_ImageInfo* pixel_map_info = nullptr;
+    OH_PixelmapImageInfo_Create(&pixel_map_info);
+    OH_PixelmapNative_GetImageInfo(image_data->Pixelmap(), pixel_map_info);
+    OH_PixelmapImageInfo_GetWidth(pixel_map_info, &image_width_);
+    OH_PixelmapImageInfo_GetHeight(pixel_map_info, &image_height_);
+    OH_PixelmapImageInfo_Release(pixel_map_info);
+    if (image_width_ == 0 || image_height_ == 0) {
+      return;
+    }
+    src_rect_ = OH_Drawing_RectCreate(0, 0, image_width_, image_height_);
+    if (!sample_) {
+      sample_ = OH_Drawing_SamplingOptionsCreate(FILTER_MODE_LINEAR,
+                                                 MIPMAP_MODE_LINEAR);
+    }
+    if (!src_rect_ || !sample_) {
+      return;
+    }
+    UpdateDrawMatrix();
+  }
 
+  image_data_ = std::move(image_data);
   auto frame_count = image_data_->FrameCount();
   auto* delay_time_list = image_data_->DelayTimeList();
   if (frame_count > 1 && delay_time_list) {
@@ -103,15 +127,26 @@ void ImageDrawable::UpdateDrawCurrent(std::shared_ptr<ImageData> image_data) {
     }
   }
 
-  auto ui_base = ui_base_.lock();
-  if (ui_base) {
-    ui_base->Invalidate();
-  }
+  InvalidateSelf();
 }
 
-void ImageDrawable::UpdateMode(ImageDrawable::ImageMode mode) { mode_ = mode; }
+void ImageDrawable::UpdateMode(ImageDrawable::ImageMode mode) {
+  mode_ = mode;
+  UpdateDrawMatrix();
+}
 
 void ImageDrawable::Render(OH_Drawing_Canvas* canvas) {
+  if (image_data_) {
+    auto* pixel_map = GetCurrentPixelMap();
+    auto* draw_bitmap =
+        pixel_map ? OH_Drawing_PixelMapGetFromOhPixelMapNative(pixel_map)
+                  : nullptr;
+    DrawPixelMap(canvas, draw_bitmap);
+    if (draw_bitmap) {
+      OH_Drawing_PixelMapDissolve(draw_bitmap);
+    }
+    return;
+  }
   if (!pixel_maps_) {
     return;
   }
@@ -249,7 +284,15 @@ void ImageDrawable::UpdateTintColor(uint32_t tint_color) {
 }
 
 ImageDrawable::ImageDrawable(const std::weak_ptr<UIBase>& ui_base)
-    : ui_base_(ui_base) {
+    : ImageDrawable([weak_ui = ui_base] {
+        auto ui = weak_ui.lock();
+        if (ui) {
+          ui->Invalidate();
+        }
+      }) {}
+
+ImageDrawable::ImageDrawable(std::function<void()> invalidate_callback)
+    : invalidate_callback_(std::move(invalidate_callback)) {
   timer_task_manager_ = std::make_unique<base::TimedTaskManager>();
 }
 
@@ -370,9 +413,8 @@ OH_PixelmapNative* ImageDrawable::GetCurrentPixelMap() {
 }
 
 void ImageDrawable::InvalidateSelf() {
-  auto ui_base = ui_base_.lock();
-  if (ui_base) {
-    ui_base->Invalidate();
+  if (invalidate_callback_) {
+    invalidate_callback_();
   }
 }
 
@@ -381,10 +423,9 @@ void ImageDrawable::ScheduleNextFrame(uint64_t target_animation_time_ms) {
   const auto target_delay =
       expected_render_time_ms_ - base::CurrentTimeMilliseconds();
   timer_task_manager_->SetTimeout(
-      [weak_ui = ui_base_] {
-        auto ui = weak_ui.lock();
-        if (ui) {
-          ui->Invalidate();
+      [invalidate_callback = invalidate_callback_] {
+        if (invalidate_callback) {
+          invalidate_callback();
         }
       },
       target_delay);

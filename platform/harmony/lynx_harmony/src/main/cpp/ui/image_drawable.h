@@ -9,6 +9,7 @@
 #include <native_drawing/drawing_canvas.h>
 #include <native_drawing/drawing_pixel_map.h>
 
+#include <functional>
 #include <memory>
 #include <vector>
 
@@ -36,11 +37,13 @@ class ImageDrawable {
   };
 
   explicit ImageDrawable(const std::weak_ptr<UIBase>& ui_base);
+  explicit ImageDrawable(std::function<void()> invalidate_callback);
   void UpdateBounds(float left, float top, float width, float height,
                     float padding_left, float padding_top, float padding_right,
                     float padding_bottom, float scale_density);
   void UpdateDrawCurrent(std::unique_ptr<LynxBaseImage> pixelmap);
-  void UpdateDrawCurrent(std::shared_ptr<ImageData> image_data);
+  void UpdateDrawCurrent(std::shared_ptr<ImageData> image_data,
+                         bool prepare_draw_resources = false);
   void UpdateDrawMatrix();
   void UpdateMode(ImageMode mode);
   void UpdateImageRendering(starlight::ImageRenderingType);
@@ -69,7 +72,7 @@ class ImageDrawable {
   std::shared_ptr<ImageData> image_data_{nullptr};
   std::unique_ptr<base::TimedTaskManager> timer_task_manager_{nullptr};
   ImageMode mode_{ImageMode::kScaleToFill};
-  std::weak_ptr<UIBase> ui_base_;
+  std::function<void()> invalidate_callback_;
   std::vector<ImageAnimationListener*> image_anim_listeners_;
   OH_Drawing_Rect* src_rect_{nullptr};
   OH_Drawing_Rect* dst_rect_{nullptr};

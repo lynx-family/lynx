@@ -168,7 +168,7 @@ class LynxTemplateRenderer : public devtool::LynxDevToolProxy {
       std::unique_ptr<ModuleFactoryHarmony> jsbridge_module_factory,
       std::unique_ptr<ModuleFactoryHarmony> main_thread_module_factory,
       LynxRuntimeWrapper* runtime_wrapper, LynxWhiteBoard* white_board,
-      bool enable_multi_async_thread);
+      bool enable_multi_async_thread, int32_t embedded_mode);
 
   static napi_value Init(napi_env env, napi_value exports);
   static napi_value GetBaseTraceBackend(napi_env env, napi_callback_info info);

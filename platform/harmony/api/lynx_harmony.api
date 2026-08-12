@@ -244,6 +244,7 @@ export abstract class LynxNodeController extends NodeController {
   backgroundRuntimeOptions: LynxBackgroundRuntimeOptions; = new LynxBackgroundRuntimeOptions()
   enableAirStrictMode?: any; = false
   lynxImageConfig?: LynxImageConfig;
+  embeddedMode: number; = EmbeddedMode.UNSET
 }
 
 export interface LynxViewBuilder {
@@ -272,6 +273,7 @@ export interface LynxViewBuilder {
   fontScale?: number;
   colorScheme?: ColorScheme;
   enableMultiAsyncThread?: boolean;
+  embeddedMode?: number;
 }
 
 export enum MeasureMode {
@@ -290,6 +292,16 @@ export enum ColorScheme {
   DARK = 1
 }
 
+export enum EmbeddedMode {
+  UNSET = 0
+  EMBEDDED_MODE_BASE = 1 << 0
+  ENGINE_POOL = 1 << 1
+  LAYOUT_IN_ELEMENT = 1 << 2
+  FRAGMENT_LAYER_RENDER = 1 << 3
+  USE_TEXT_SERVICE = 1 << 4
+  EMBEDDED_MODE_ALL = EMBEDDED_MODE_BASE | ENGINE_POOL | LAYOUT_IN_ELEMENT
+}
+
 export class LynxContext implements IContext {
   constructor();
   findJSShadowNodeBySign(sign: number): Object | undefined;
@@ -302,6 +314,10 @@ export class LynxContext implements IContext {
   setRenderer(renderer: LynxTemplateRenderer): void;
   setLynxView(lynxView: LynxView): void;
   getCurrentWindow(): Promise<window.Window> | undefined;
+  public isEmbeddedModeOn(): boolean;
+  public isLayoutInElementModeOn(): boolean;
+  public isFragmentLayerRenderOn(): boolean;
+  public isTextServiceModeOn(): boolean;
   sendGlobalEvent(name: string, params: Object[]): void;
   getLynxElementRoot(callback: LynxElementCallback<LynxElement | null>): void;
   public callJSFunction(moduleName: string, method: string, params: Object[]): void;
@@ -350,6 +366,7 @@ export class LynxContext implements IContext {
   public getLynxViewClient(): LynxViewClient[] | undefined;
   aboutToDisappear(): void;
   screenMetrics(): LynxScreenMetrics;
+  embeddedMode(): number;
 }
 
 export type SessionStorageCallback = (value: Object | undefined) => void {

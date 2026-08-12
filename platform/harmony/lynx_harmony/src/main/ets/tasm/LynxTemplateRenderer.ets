@@ -7,8 +7,9 @@ import { LynxError } from './LynxError';
 import { LynxErrorLevel } from './gen/LynxSubErrorCode';
 import { LynxViewClient } from './LynxViewClient';
 import { LynxExtraTiming } from './performance/timing/LynxExtraTiming';
+import { TimingConstants } from './performance/timing/TimingConstants';
 import { LynxResourceProvider } from '../provider/LynxResourceProvider';
-import { LynxView, ThreadStrategyForRendering } from './LynxView';
+import { EmbeddedMode, LynxView, ThreadStrategyForRendering } from './LynxView';
 import { LynxBackgroundRuntimeOptions } from '../jsbridge/LynxBackgroundRuntimeOptions';
 import { LynxEnv } from './LynxEnv';
 import { TemplateBundle } from './TemplateBundle';
@@ -77,8 +78,13 @@ export class LynxTemplateRenderer extends lynx.LynxTemplateRenderer {
     if (this.backgroundRuntimeOptions.lynxGroup) {
       whiteBoard = this.backgroundRuntimeOptions.lynxGroup.getWhiteBoard();
     }
+    const embeddedMode = this.lynxView?.embeddedMode ?? 0;
+    const nativePerfController =
+      (embeddedMode & EmbeddedMode.EMBEDDED_MODE_BASE) > 0
+        ? undefined
+        : this.perfController.native;
     this.nativeReset(uiDelegate, this.providers, this.displayInfo.screenWidth, this.displayInfo.screenHeight,
-      this.isHostRenderer, this.perfController.native, this.threadMode,
+      this.isHostRenderer, nativePerfController, this.threadMode,
       this.backgroundRuntimeOptions.getGroupID(),
       this.backgroundRuntimeOptions.getJSGroupThreadName(),
       this.backgroundRuntimeOptions.useQuickJSEngine(),
@@ -88,7 +94,8 @@ export class LynxTemplateRenderer extends lynx.LynxTemplateRenderer {
       this.enableJSRuntime,
       convertModuleArgs(this.moduleManager),
       convertModuleArgs(this.sendableModuleManager), this.lynxView?.backgroundRuntime, whiteBoard,
-      this.enableMultiAsyncThread);
+      this.enableMultiAsyncThread,
+      embeddedMode);
   }
 
   aboutToDisappear() {
@@ -103,6 +110,9 @@ export class LynxTemplateRenderer extends lynx.LynxTemplateRenderer {
 
   // Called by native, EmbedderEngineClient
   onLoaded(url: string) {
+    if (((this.lynxView?.embeddedMode ?? EmbeddedMode.UNSET) & EmbeddedMode.EMBEDDED_MODE_BASE) > 0) {
+      this.perfController?.markTiming(TimingConstants.LOAD_BUNDLE_END, '');
+    }
     this.url = url;
     this.clients.forEach(client => client.onLoadSuccess(url));
     if (this.lynxView) {
@@ -191,6 +201,10 @@ export class LynxTemplateRenderer extends lynx.LynxTemplateRenderer {
 
   setTiming(timestamp: number, timingKey: string, pipelineID: string = '') {
     this.perfController?.setTiming(timestamp, timingKey, pipelineID);
+  }
+
+  markTiming(timingKey: string, pipelineID: string = '') {
+    this.perfController?.markTiming(timingKey, pipelineID);
   }
 
   setExtraTiming(extraTiming: LynxExtraTiming) {

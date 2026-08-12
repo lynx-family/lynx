@@ -42,6 +42,12 @@ namespace lynx {
 namespace tasm {
 namespace harmony {
 
+fml::RefPtr<fml::RefCountedThreadSafeStorage> LynxContext::GetTextLayout(
+    int32_t sign) const {
+  std::shared_lock<std::shared_mutex> guard(node_owner_shared_mutex_);
+  return node_owner_ != nullptr ? node_owner_->GetExtraBundle(sign) : nullptr;
+}
+
 std::unordered_map<std::string, LynxContext::NodeInfo>&
 LynxContext::GetCAPINodeInfoMap() {
   static base::NoDestructor<
