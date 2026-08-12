@@ -24,6 +24,7 @@
 
 #include <forward_list>
 #include <memory>
+#include <optional>
 
 #include "clay/gfx/animation/animation_data.h"
 #include "clay/gfx/animation/animation_handler.h"
@@ -292,6 +293,11 @@ class ValueAnimator : public Animator,
    */
   float GetAnimatedFraction();
 
+  // Samples the value-facing fraction at |current_time| without advancing the
+  // animator or notifying update listeners. Returns nullopt when the animation
+  // does not contribute a presentation value in the current fill phase.
+  std::optional<float> GetPresentationFraction(int64_t current_time) const;
+
   void SetCurrentPlayTime(int64_t play_time);
   void SetCurrentFraction(float fraction);
 
@@ -350,12 +356,14 @@ class ValueAnimator : public Animator,
   virtual std::unique_ptr<ValueAnimator> Clone() const;
 
   bool StartListenersCalled() const { return start_listeners_called_; }
+  bool IsPreparedForPresentation() const { return animation_prepared_; }
 
   void SetStartListenersCalled(bool start_listeners_called) {
     start_listeners_called_ = start_listeners_called;
   }
 
   void SetAnimationData(AnimationData animation_data);
+  void UpdateAnimationData(AnimationData animation_data, int64_t current_time);
 
   void AddAnimationCallback(int64_t delay);
 
@@ -378,10 +386,10 @@ class ValueAnimator : public Animator,
  private:
   void InitAnimation();
   void Reset();
-  int GetCurrentIteration(float fraction);
-  float GetCurrentIterationFraction(float fraction, bool in_reverse);
-  float ClampFraction(float fraction);
-  bool ShouldPlayBackward(int iteration, bool in_reverse);
+  int GetCurrentIteration(float fraction) const;
+  float GetCurrentIterationFraction(float fraction, bool in_reverse) const;
+  float ClampFraction(float fraction) const;
+  bool ShouldPlayBackward(int iteration, bool in_reverse) const;
   int64_t GetCurrentPlayTime();
 
   void NotifyStartListeners();

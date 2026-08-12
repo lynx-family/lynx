@@ -48,6 +48,11 @@ class TransitionManager {
   AnimatorTarget* GetTarget() const { return target_; }
   void SetEventHandler(AnimationEventHandler* event_handler);
   std::vector<ValueAnimator*> GetRunningAnimators();
+  std::vector<ValueAnimator*> GetStartedAnimators();
+
+  template <typename T>
+  bool GetPresentationValue(ClayAnimationPropertyType type,
+                            int64_t current_time, T& value) const;
 
   std::unique_ptr<TransitionManager> CloneForRasterAnimation(
       ClayAnimationPropertyType type, AnimatorTarget* target) const;
@@ -94,6 +99,9 @@ class TransitionListener : public AnimatorListenerAdapter {
   }
   void OnAnimationCancel(Animator& animation) override {}
   void SetNewValue(const T& value) { new_value_ = value; }
+  T GetValue(float fraction) const {
+    return TypeEvaluator<T>::Evaluate(fraction, old_value_, new_value_);
+  }
 
   std::unique_ptr<TransitionListener> CloneForRasterAnimation(
       TransitionManager* manager) const {
@@ -111,6 +119,25 @@ class TransitionListener : public AnimatorListenerAdapter {
 };
 
 template <typename T>
+bool TransitionManager::GetPresentationValue(ClayAnimationPropertyType type,
+                                             int64_t current_time,
+                                             T& value) const {
+  auto transition = active_transitions_.find(type);
+  if (transition == active_transitions_.end()) {
+    return false;
+  }
+  auto fraction =
+      transition->second.first->GetPresentationFraction(current_time);
+  if (!fraction.has_value()) {
+    return false;
+  }
+  value =
+      static_cast<const TransitionListener<T>*>(transition->second.second.get())
+          ->GetValue(*fraction);
+  return true;
+}
+
+template <typename T>
 bool TransitionManager::TransitionTo(ClayAnimationPropertyType type,
                                      const T& value) {
   return TransitionWithTiming(type, value, type, true);
@@ -120,12 +147,19 @@ template <typename T>
 bool TransitionManager::TransitionWithTiming(
     ClayAnimationPropertyType type, const T& value,
     ClayAnimationPropertyType timing_type, bool notify_events) {
+  T old_value;
+  bool has_presentation_value = false;
+  if (auto* handler = target_->GetAnimationHandler()) {
+    has_presentation_value = GetPresentationValue(
+        type, handler->GetCurrentAnimationTime(), old_value);
+  }
   // End current transition animation if there is one
   CancelAnimator(type);
   for (auto& transition : data_) {
     if (AnimationPropertyTest(transition.property, timing_type)) {
-      T old_value;
-      target_->GetProperty(type, old_value);
+      if (!has_presentation_value) {
+        target_->GetProperty(type, old_value);
+      }
       active_transitions_[type].second =
           std::make_unique<TransitionListener<T>>(this, type, old_value, value,
                                                   notify_events);
