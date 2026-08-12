@@ -287,11 +287,32 @@ void ValueAnimator::SetInterpolator(std::unique_ptr<Interpolator> value) {
 
 void ValueAnimator::NotifyStartListeners() {
   if (!start_listeners_called_) {
+    PrepareAnimation();
     start_listeners_called_ = true;
     std::forward_list<AnimatorListener*> tmp_listeners = listeners_;
     for (AnimatorListener* listener : tmp_listeners) {
       listener->OnAnimationStart(*this);
     }
+  }
+}
+
+void ValueAnimator::PrepareAnimation() {
+  InitAnimation();
+  if (animation_prepared_) {
+    return;
+  }
+  animation_prepared_ = true;
+  std::forward_list<AnimatorListener*> tmp_listeners = listeners_;
+  for (AnimatorListener* listener : tmp_listeners) {
+    listener->OnAnimationPrepare(*this);
+  }
+}
+
+void ValueAnimator::ApplyBackwardsFill(bool update_values) {
+  PrepareAnimation();
+  overall_fraction_ = 0.f;
+  if (update_values) {
+    AnimateValue(GetCurrentIterationFraction(0.f, reversing_));
   }
 }
 
@@ -327,6 +348,7 @@ void ValueAnimator::Start(bool play_backwards) {
   end_listeners_called_ = false;
   paused_ = false;
   running_ = false;
+  animation_prepared_ = false;
   animation_end_requested_ = false;
   // Resets last_frame_time_ when Start() is called, so that if the animation
   // was running, calling Start() would put the animation in the
@@ -338,7 +360,8 @@ void ValueAnimator::Start(bool play_backwards) {
   AddAnimationCallback(0);
 
   const bool should_apply_initial_value =
-      !self_pulse_ || ShouldReceiveAnimationFrame(0, nullptr);
+      !self_pulse_ || (frame_update_mode_ == FrameUpdateMode::kUpdateValues &&
+                       ShouldReceiveAnimationFrame(0, nullptr));
   if (start_delay_ == 0 || seek_fraction_ >= 0 || reversing_) {
     // If there's no start delay, init the animation and notify start listeners
     // right away to be consistent with the previous behavior. Otherwise,
@@ -357,10 +380,16 @@ void ValueAnimator::Start(bool play_backwards) {
   }
 
   if (self_pulse_ && !should_apply_initial_value) {
-    // Hidden self-pulsing animations do not request an initial value update.
-    // Keep lifecycle scheduling in the animation frame time domain.
+    // Animations that skip UI value updates still use the UI animation time
+    // domain for lifecycle events.
     int64_t current_time = GetAnimationHandler()->GetCurrentAnimationTime();
     if (current_time < 0) {
+      if (frame_update_mode_ == FrameUpdateMode::kLifecycleOnly) {
+        // AddAnimationCallback requested one frame to establish the first real
+        // UI timestamp. Committing zero here would make a raster clone appear
+        // to have started long before its first frame.
+        return;
+      }
       const int64_t scaled_start_delay = GetScaledStartDelay();
       current_time = scaled_start_delay < 0 ? -scaled_start_delay : 0;
     }
@@ -510,6 +539,7 @@ std::unique_ptr<ValueAnimator> ValueAnimator::Clone() const {
   clone->running_ = running_;
   clone->started_ = started_;
   clone->start_listeners_called_ = false;
+  clone->animation_prepared_ = false;
   clone->initialized_ = initialized_;
   clone->animation_end_requested_ = animation_end_requested_;
   clone->duration_ = duration_;
@@ -531,6 +561,7 @@ void ValueAnimator::Reset() {
   running_ = false;
   started_ = false;
   start_listeners_called_ = false;
+  animation_prepared_ = false;
   last_frame_time_ = -1;
   first_frame_time_ = -1;
   start_time_ = -1;
@@ -584,7 +615,7 @@ void ValueAnimator::EndAnimation(bool remove) {
  */
 void ValueAnimator::StartAnimation() {
   animation_end_requested_ = false;
-  InitAnimation();
+  PrepareAnimation();
   running_ = true;
   if (seek_fraction_ >= 0) {
     overall_fraction_ = seek_fraction_;
@@ -738,7 +769,15 @@ bool ValueAnimator::ShouldReceiveAnimationFrame(int64_t current_time,
   if (!started_ || animation_end_requested_ || paused_) {
     return false;
   }
-  if (!target_ || target_->IsVisibleForAnimationTick()) {
+  if (frame_update_mode_ == FrameUpdateMode::kLifecycleOnly &&
+      start_time_ < 0) {
+    // Establish the authoritative UI timeline once before relying on delayed
+    // lifecycle callbacks. DoAnimationFrame suppresses value updates in this
+    // mode.
+    return true;
+  }
+  if (frame_update_mode_ == FrameUpdateMode::kUpdateValues &&
+      (!target_ || target_->IsVisibleForAnimationTick())) {
     return true;
   }
   if (end_listeners_called_) {
@@ -776,7 +815,7 @@ bool ValueAnimator::ShouldReceiveAnimationFrame(int64_t current_time,
     end_time = lifecycle_start_time + scaled_duration * (repeat_count_ + 1);
   }
 
-  if (repeat_count_ != 0 &&
+  if (repeat_count_ != 0 && target_ &&
       target_->HasAnimationEvent(kClayEventTypeAnimationRepeat)) {
     int64_t next_iteration =
         static_cast<int64_t>(std::floor(overall_fraction_)) + 1;
@@ -822,17 +861,23 @@ void ValueAnimator::CommitStartTimeOnSkippedFrame(int64_t frame_time) {
  */
 bool ValueAnimator::DoAnimationFrame(int64_t frame_time, bool update_values) {
   frame_time = ClampFrameTime(frame_time);
+  update_values =
+      update_values && frame_update_mode_ == FrameUpdateMode::kUpdateValues;
   if (!update_values) {
     if (started_ && !animation_end_requested_ && !end_listeners_called_) {
       CommitStartTimeOnSkippedFrame(frame_time);
 
       bool fill_backwards = fill_mode_ & kBackward;
       if (!running_) {
-        if (!fill_backwards && start_time_ > frame_time &&
-            seek_fraction_ == -1) {
+        if (start_time_ > frame_time && seek_fraction_ == -1) {
+          if (fill_backwards) {
+            ApplyBackwardsFill(false);
+          }
           return false;
         }
         StartAnimation();
+      } else {
+        PrepareAnimation();
       }
 
       last_frame_time_ = frame_time;
@@ -874,9 +919,13 @@ bool ValueAnimator::DoAnimationFrame(int64_t frame_time, bool update_values) {
       pause_time_ = frame_time;
     }
 
-    if (pause_time_ >= start_time_ || fill_backwards) {
-      running_ = true;
+    if (pause_time_ >= start_time_) {
+      if (!running_) {
+        StartAnimation();
+      }
       AnimateBasedOnTime(std::max(pause_time_, start_time_));
+    } else if (fill_backwards) {
+      ApplyBackwardsFill(true);
     }
     return false;
   }
@@ -885,17 +934,24 @@ bool ValueAnimator::DoAnimationFrame(int64_t frame_time, bool update_values) {
     // If not running, that means the animation is in the start delay phase of a
     // forward running animation. In the case of reversing, we want to run start
     // delay in the end.
-    if (!fill_backwards && start_time_ > frame_time && seek_fraction_ == -1) {
+    if (start_time_ > frame_time && seek_fraction_ == -1) {
       // This is when no seek fraction is set during start delay. If developers
       // change the seek fraction during the delay, animation will start from
       // the seeked position right away.
+      if (fill_backwards) {
+        ApplyBackwardsFill(true);
+        last_frame_time_ = frame_time;
+      }
       return false;
-    } else {
-      // If running_ is not set by now, that means non-zero start delay,
-      // no seeking, not reversing. At this point, start delay has passed.
-      StartAnimation();
     }
+    // If running_ is not set by now, that means non-zero start delay,
+    // no seeking, not reversing. At this point, start delay has passed.
+    StartAnimation();
   }
+  // Preparation is target-specific. A raster animator cloned from an
+  // already-running UI animator inherits running_ but resets preparation, so
+  // always prepare it here. PrepareAnimation() is idempotent on normal frames.
+  PrepareAnimation();
 
   if (!start_listeners_called_) {
     NotifyStartListeners();
@@ -1078,6 +1134,7 @@ void ValueAnimator::RestartAnimationIfNeeded(int64_t current_time) {
   if (has_reached_start && !has_finished && end_listeners_called_) {
     running_ = true;
     start_listeners_called_ = false;
+    animation_prepared_ = false;
     end_listeners_called_ = false;
     // When the fillmode changes from forwards to non-forwards we need to
     // set view value with original_value_

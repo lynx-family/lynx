@@ -80,8 +80,20 @@ bool AnimationHandler::DoAnimationFrame(int64_t frame_time,
         continue;
       }
       const bool finished = current_callback->DoAnimationFrame(frame_time);
-      // DoAnimationFrame may remove itself, which nulls this list slot.
-      has_visible_callback |= callback != nullptr && !finished;
+      // DoAnimationFrame may remove itself, which nulls this list slot, or
+      // change its next update from a frame to a lifecycle wake-up.
+      if (callback != nullptr && !finished) {
+        int64_t next_time = -1;
+        const bool needs_next_frame =
+            current_callback->ShouldReceiveAnimationFrame(current_time,
+                                                          &next_time);
+        has_visible_callback |= needs_next_frame;
+        if (!needs_next_frame && next_time >= 0 &&
+            (next_lifecycle_time_to_schedule < 0 ||
+             next_time < next_lifecycle_time_to_schedule)) {
+          next_lifecycle_time_to_schedule = next_time;
+        }
+      }
       continue;
     }
 

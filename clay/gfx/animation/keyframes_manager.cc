@@ -41,6 +41,18 @@ bool IsMixedAnimation(const KeyframesManager::KeyframeAnimation& animation) {
   return false;
 }
 
+bool CanRunLifecycleOnly(const KeyframesManager::KeyframeAnimation& animation,
+                         const AnimatorTarget* target) {
+  if (!target || animation.keyframes_map.empty()) {
+    return false;
+  }
+  return std::all_of(animation.keyframes_map.begin(),
+                     animation.keyframes_map.end(),
+                     [target](const auto& keyframes) {
+                       return target->CanRunAnimationOnRaster(keyframes.first);
+                     });
+}
+
 std::vector<AnimationData> NormalizeAnimationData(
     const std::vector<AnimationData>& data) {
   std::vector<AnimationData> normalized;
@@ -201,6 +213,10 @@ void KeyframesManager::StartAnimations(const std::vector<AnimationData>& data) {
                             animation.keyframes_map,
                             &animation.has_percentage_values)) {
         continue;
+      }
+      if (CanRunLifecycleOnly(animation, target_)) {
+        animation.animator->SetFrameUpdateMode(
+            ValueAnimator::FrameUpdateMode::kLifecycleOnly);
       }
       new_animations.push_back(std::move(animation));
     }

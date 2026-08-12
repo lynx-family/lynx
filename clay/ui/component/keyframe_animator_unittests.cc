@@ -245,6 +245,32 @@ Value CreateAnimationEventKeyframes() {
   return Value(std::move(keyframes));
 }
 
+Value CreateMixedRasterAndUiKeyframes() {
+  Value::Array start_filter_op;
+  start_filter_op.emplace_back(
+      static_cast<int32_t>(ClayFilterType::kGrayScale));
+  start_filter_op.emplace_back(0.0);
+  Value::Array start_filter;
+  start_filter.emplace_back(Value{std::move(start_filter_op)});
+  Value::Map start;
+  start.emplace("opacity", Value{0.1});
+  start.emplace("filter", Value{std::move(start_filter)});
+
+  Value::Array end_filter_op;
+  end_filter_op.emplace_back(static_cast<int32_t>(ClayFilterType::kGrayScale));
+  end_filter_op.emplace_back(1.0);
+  Value::Array end_filter;
+  end_filter.emplace_back(Value{std::move(end_filter_op)});
+  Value::Map end;
+  end.emplace("opacity", Value{1.0});
+  end.emplace("filter", Value{std::move(end_filter)});
+
+  Value::Map keyframes;
+  keyframes.emplace("0.000000", Value(std::move(start)));
+  keyframes.emplace("1.000000", Value(std::move(end)));
+  return Value{{"mixed_test", Value(std::move(keyframes))}};
+}
+
 }  // namespace
 
 TEST_F_UI(KeyFrameTest, SetBoundCouplesTopWithHeightTransition) {
@@ -538,6 +564,44 @@ TEST_F_UI(KeyFrameTest, AnimationDelayCombineBackwards) {
   EXPECT_EQ(animator_view_->render_object()->Opacity(), 0.3f);
 }
 
+TEST_F_UI(KeyFrameTest, BackwardsFillStartsAfterDelay) {
+  page_->SetRasterAnimationEnabled(true);
+  animator_view_->AddEventCallback(event_attr::kEventAnimationStart);
+
+  std::vector<std::string> events;
+  animation_event_callback_ = [&events](const std::string& event_name,
+                                        const char* animation_name, int) {
+    events.emplace_back(event_name + ":" + animation_name);
+  };
+
+  AnimationData start_data{"opacity_test",
+                           240,
+                           120,
+                           TimingFunctionData(),
+                           1,
+                           ClayAnimationFillModeType::kBoth,
+                           ClayAnimationDirectionType::kNormal,
+                           ClayAnimationPlayStateType::kRunning};
+  page_->SetKeyframesData(CreateKeyFrameData3());
+  animator_view_->SetBound(0, 0, 100, 100);
+  animator_view_->SetAnimation({start_data});
+  animator_view_->OnNodeReady();
+
+  ValueAnimator* animator =
+      animator_view_->KeyframesMgr()->animations().front().animator.get();
+  animator->DoAnimationFrame(10000, false);
+  EXPECT_FALSE(animator->IsRunning());
+  EXPECT_TRUE(events.empty());
+
+  animator->DoAnimationFrame(10119, false);
+  EXPECT_FALSE(animator->IsRunning());
+  EXPECT_TRUE(events.empty());
+
+  animator->DoAnimationFrame(10120, false);
+  EXPECT_TRUE(animator->IsRunning());
+  EXPECT_THAT(events, ::testing::ElementsAre("animationstart:opacity_test"));
+}
+
 // Test for animation start event
 TEST_F_UI(KeyFrameTest, AnimationStartEvent) {
   AnimationData update_data1{"opacity_test",
@@ -777,6 +841,47 @@ TEST_F_UI(KeyFrameTest, RasterAnimationEventsRemainUIOwned) {
                           "animationend:mycolor", "animationend:mymove"));
 }
 
+TEST_F_UI(KeyFrameTest, PureRasterAnimationUsesLifecycleOnlyUiAnimator) {
+  page_->SetRasterAnimationEnabled(true);
+  page_->SetKeyframesData(CreateKeyFrameData3());
+  animator_view_->SetBound(0, 0, 100, 100);
+  animator_view_->SetAnimation({start_data_});
+  animator_view_->OnNodeReady();
+
+  ValueAnimator* animator =
+      animator_view_->KeyframesMgr()->animations().front().animator.get();
+  EXPECT_EQ(animator->GetFrameUpdateMode(),
+            ValueAnimator::FrameUpdateMode::kLifecycleOnly);
+  EXPECT_FLOAT_EQ(animator_view_->render_object()->Opacity(), 0.1f);
+
+  EXPECT_FALSE(page_->GetAnimationHandler()->DoAnimationFrame(10000));
+  EXPECT_FALSE(page_->GetAnimationHandler()->DoAnimationFrame(10080));
+  EXPECT_FLOAT_EQ(animator_view_->render_object()->Opacity(), 0.1f);
+
+  FixedSizeAnimatorTarget raster_target(FloatSize(100.f, 100.f));
+  auto raster_manager = animator_view_->KeyframesMgr()->CloneForRasterAnimation(
+      ClayAnimationPropertyType::kOpacity, &raster_target);
+  ASSERT_NE(raster_manager, nullptr);
+  ASSERT_EQ(raster_manager->animations().size(), 1u);
+  EXPECT_EQ(raster_manager->animations().front().animator->GetFrameUpdateMode(),
+            ValueAnimator::FrameUpdateMode::kUpdateValues);
+}
+
+TEST_F_UI(KeyFrameTest, MixedAnimationKeepsUiValueUpdates) {
+  page_->SetRasterAnimationEnabled(true);
+  page_->SetKeyframesData(CreateMixedRasterAndUiKeyframes());
+  animator_view_->SetBound(0, 0, 100, 100);
+  AnimationData data = start_data_;
+  data.name = "mixed_test";
+  animator_view_->SetAnimation({data});
+  animator_view_->OnNodeReady();
+
+  ValueAnimator* animator =
+      animator_view_->KeyframesMgr()->animations().front().animator.get();
+  EXPECT_EQ(animator->GetFrameUpdateMode(),
+            ValueAnimator::FrameUpdateMode::kUpdateValues);
+}
+
 TEST_F_UI(KeyFrameTest, RasterTransitionEventsRemainUIOwned) {
   page_->SetRasterAnimationEnabled(true);
   animator_view_->AddEventCallback(event_attr::kEventTransitionStart);
@@ -832,6 +937,53 @@ TEST_F_UI(KeyFrameTest, RasterTransitionEventsRemainUIOwned) {
   page_->GetAnimationHandler()->DoAnimationFrame(160);
   EXPECT_THAT(events, ::testing::ElementsAre("transitionstart:" + opacity_type,
                                              "transitionend:" + opacity_type));
+}
+
+TEST_F_UI(KeyFrameTest, RasterTransitionUsesLifecycleOnlyUiAnimator) {
+  page_->SetRasterAnimationEnabled(true);
+
+  TransitionData transition;
+  transition.property = ClayAnimationPropertyType::kOpacity;
+  transition.duration = 160;
+  animator_view_->SetTransition({transition});
+  animator_view_->OnNodeReady();
+  animator_view_->SetOpacity(1.f);
+
+  auto animators = animator_view_->TransitionMgr()->GetRunningAnimators();
+  ASSERT_EQ(animators.size(), 1u);
+  EXPECT_EQ(animators.front()->GetFrameUpdateMode(),
+            ValueAnimator::FrameUpdateMode::kLifecycleOnly);
+
+  EXPECT_FALSE(page_->GetAnimationHandler()->DoAnimationFrame(10000));
+  EXPECT_FALSE(page_->GetAnimationHandler()->DoAnimationFrame(10080));
+  EXPECT_FLOAT_EQ(animator_view_->render_object()->Opacity(), 0.1f);
+
+  EXPECT_FALSE(page_->GetAnimationHandler()->DoAnimationFrame(10160));
+  EXPECT_FLOAT_EQ(animator_view_->render_object()->Opacity(), 1.f);
+}
+
+TEST_F_UI(KeyFrameTest, RasterTransitionCanBeClonedDuringDelay) {
+  page_->SetRasterAnimationEnabled(true);
+
+  TransitionData transition;
+  transition.property = ClayAnimationPropertyType::kOpacity;
+  transition.duration = 160;
+  transition.delay = 80;
+  animator_view_->SetTransition({transition});
+  animator_view_->OnNodeReady();
+  animator_view_->SetOpacity(1.f);
+
+  auto animators = animator_view_->TransitionMgr()->GetRunningAnimators();
+  ASSERT_EQ(animators.size(), 1u);
+  EXPECT_TRUE(animators.front()->IsStarted());
+  EXPECT_FALSE(animators.front()->IsRunning());
+
+  FixedSizeAnimatorTarget raster_target(FloatSize(100.f, 100.f));
+  auto raster_manager =
+      animator_view_->TransitionMgr()->CloneForRasterAnimation(
+          ClayAnimationPropertyType::kOpacity, &raster_target);
+  ASSERT_NE(raster_manager, nullptr);
+  EXPECT_EQ(raster_manager->GetRunningAnimators().size(), 1u);
 }
 
 TEST_F_UI(KeyFrameTest, ShorterSameNameUpdateAfterEndDoesNotRestart) {

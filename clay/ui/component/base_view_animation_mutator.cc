@@ -6,6 +6,7 @@
 
 #include <string>
 
+#include "clay/gfx/animation/animation_properties_util.h"
 #include "clay/ui/component/base_view.h"
 
 namespace clay {
@@ -73,6 +74,11 @@ AnimationHandler* BaseViewAnimationMutator::GetAnimationHandler() {
 
 bool BaseViewAnimationMutator::IsVisibleForAnimationTick() {
   return view_->IsVisibleForAnimationTick();
+}
+
+bool BaseViewAnimationMutator::CanRunAnimationOnRaster(
+    ClayAnimationPropertyType type) const {
+  return view_->IsRasterAnimationEnabled() && IsRasterAnimationProperty(type);
 }
 
 bool BaseViewAnimationMutator::HasAnimationEvent(

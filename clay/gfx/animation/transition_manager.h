@@ -138,6 +138,10 @@ bool TransitionManager::TransitionWithTiming(
       animator->AddListener(active_transitions_[type].second.get());
       animator->SetAnimationHandler(target_->GetAnimationHandler());
       animator->SetAnimationTarget(target_);
+      if (target_->CanRunAnimationOnRaster(type)) {
+        animator->SetFrameUpdateMode(
+            ValueAnimator::FrameUpdateMode::kLifecycleOnly);
+      }
       animator->Start();
       return true;
     }

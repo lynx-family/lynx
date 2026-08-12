@@ -72,7 +72,7 @@ class FloatKeyframeSet : public KeyframeSet {
 #endif
 
   // AnimatorListenerAdapter overrides
-  void OnAnimationStart(Animator& animation) override;
+  void OnAnimationPrepare(Animator& animation) override;
   void OnAnimationUpdate(ValueAnimator& animation) override;
   void OnAnimationRemove(Animator& animation) override;
   /**
@@ -118,7 +118,7 @@ class ColorKeyframeSet : public KeyframeSet {
 #endif
 
   // AnimatorListenerAdapter overrides
-  void OnAnimationStart(Animator& animation) override;
+  void OnAnimationPrepare(Animator& animation) override;
   void OnAnimationUpdate(ValueAnimator& animation) override;
   void OnAnimationRemove(Animator& animation) override;
 
@@ -189,7 +189,7 @@ class TransformKeyframeSet : public KeyframeSet {
 #endif
 
   // AnimatorListenerAdapter overrides
-  void OnAnimationStart(Animator& animation) override;
+  void OnAnimationPrepare(Animator& animation) override;
   void OnAnimationUpdate(ValueAnimator& animation) override;
   void OnAnimationRemove(Animator& animation) override;
 
@@ -232,7 +232,7 @@ class FilterKeyframeSet : public KeyframeSet {
 #endif
 
   // AnimatorListenerAdapter overrides
-  void OnAnimationStart(Animator& animation) override;
+  void OnAnimationPrepare(Animator& animation) override;
   void OnAnimationUpdate(ValueAnimator& animation) override;
   void OnAnimationRemove(Animator& animation) override;
 
@@ -267,7 +267,7 @@ class BoxShadowKeyframeSet : public KeyframeSet {
 #endif
 
   // AnimatorListenerAdapter overrides
-  void OnAnimationStart(Animator& animation) override;
+  void OnAnimationPrepare(Animator& animation) override;
   void OnAnimationUpdate(ValueAnimator& animation) override;
   void OnAnimationRemove(Animator& animation) override;
 
