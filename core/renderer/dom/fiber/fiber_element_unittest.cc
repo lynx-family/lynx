@@ -2645,6 +2645,23 @@ TEST_P(FiberElementTest, TestMarkLayoutDirty) {
   EXPECT_TRUE(element0->sl_node_->is_dirty_);
 }
 
+TEST_P(FiberElementTest, PageElementLayoutUpdatesPlatformRootSize) {
+  manager->page_options_.embedded_mode_ = static_cast<EmbeddedMode>(
+      static_cast<int32_t>(manager->page_options_.embedded_mode_) |
+      static_cast<int32_t>(EmbeddedMode::LAYOUT_IN_ELEMENT));
+
+  auto page = manager->CreateFiberPage("page", 11);
+  page->FlushActionsAsRoot();
+  page->Layout(std::make_shared<PipelineOptions>());
+
+  auto* layout_context =
+      static_cast<test::MockPlatformImpl*>(manager->layout_context());
+  const auto& root_size = page->sl_node_->GetLayoutResult().size_;
+  EXPECT_FLOAT_EQ(layout_context->root_width, root_size.width_);
+  EXPECT_FLOAT_EQ(layout_context->root_height, root_size.height_);
+  EXPECT_EQ(layout_context->update_root_size_count, 1);
+}
+
 TEST_P(FiberElementTest,
        TestUpdateLayoutNodeAttributeWhenEnableLayoutInElement) {
   manager->page_options_.embedded_mode_ = static_cast<EmbeddedMode>(
