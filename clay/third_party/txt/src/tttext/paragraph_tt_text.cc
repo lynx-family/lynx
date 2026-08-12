@@ -139,22 +139,9 @@ void ParagraphTTText::Layout(double width) {
   auto i_font_collection = font_collection_->CreateTTFontCollection();
   tttext::TextLayout layout(i_font_collection.get(), tttext::kSelfRendering);
 #endif
-  auto& paragraph_style = paragraph_->GetParagraphStyle();
-  auto halign = paragraph_style.GetHorizontalAlign();
-  if (std::isnan(width)) {
-    FML_DCHECK(false) << "The TTText layout width must not be NaN.";
-    width = 0;
-  }
-  const bool is_unbounded =
-      std::isinf(width) ||
-      width >= static_cast<double>(std::numeric_limits<float>::max());
-  if (is_unbounded) {
-    paragraph_style.SetHorizontalAlign(
-        tttext::ParagraphHorizontalAlignment::kLeft);
-  }
-  auto layout_halign = paragraph_style.GetHorizontalAlign();
+  auto halign = paragraph_->GetParagraphStyle().GetHorizontalAlign();
   auto width_mode =
-      layout_halign == tttext::ParagraphHorizontalAlignment::kLeft
+      std::isinf(width) || halign == tttext::ParagraphHorizontalAlignment::kLeft
           ? tttext::LayoutMode::kAtMost
           : tttext::LayoutMode::kDefinite;
   region_ = std::make_unique<tttext::LayoutRegion>(
@@ -168,9 +155,6 @@ void ParagraphTTText::Layout(double width) {
   }
   tttext::LayoutResult result =
       layout.Layout(paragraph_.get(), region_.get(), context);
-  if (is_unbounded) {
-    paragraph_style.SetHorizontalAlign(halign);
-  }
   if (result != tttext::LayoutResult::kNormal &&
       result != tttext::LayoutResult::kBreakPage) {
     FML_DCHECK(false) << "TTText layout result is not normal!";
