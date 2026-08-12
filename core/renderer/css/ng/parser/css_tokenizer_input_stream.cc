@@ -21,7 +21,7 @@ void CSSTokenizerInputStream::AdvanceUntilNonWhitespace() {
     ++offset_;
 }
 
-double CSSTokenizerInputStream::GetDouble(unsigned start, unsigned end) const {
+double CSSTokenizerInputStream::GetDouble(size_t start, size_t end) const {
   DCHECK(start <= end && ((offset_ + end) <= string_length_));
   bool is_result_ok = false;
   double result = 0.0;
