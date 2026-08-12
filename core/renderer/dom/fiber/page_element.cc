@@ -159,6 +159,11 @@ void PageElement::Layout(const std::shared_ptr<PipelineOptions>& options) {
                          ? element_manager()->GetFixedNodeSet()
                          : nullptr);
 
+  if (auto* layout_context = element_manager()->layout_context()) {
+    const auto& root_size = sl_node_->GetLayoutResult().size_;
+    layout_context->UpdateRootSize(root_size.width_, root_size.height_);
+  }
+
   element_container()->AppendOptionsForTiming(options);
 
   element_container()->MarkLayoutUIOperationQueueFlushStartIfNeed();
