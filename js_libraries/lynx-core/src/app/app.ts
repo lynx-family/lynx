@@ -1305,6 +1305,22 @@ export abstract class BaseApp<
     // Kept for the engine's property lookup; frameworks no longer rely on it.
   }
 
+  callBeforePublishEvent(eventData?: any): void {
+    if (
+      this._aopManager._beforePublishEvent.getEventsSize(eventData.type) !== 0
+    ) {
+      const copyData = { ...eventData };
+      try {
+        this._aopManager._beforePublishEvent.emit(copyData.type, [copyData]);
+      } catch (e) {
+        this.handleUserError(e, {
+          by: 'callBeforePublishEvent',
+          type: (copyData as any).type,
+        });
+      }
+    }
+  }
+
   /**
    *  override by subclass
    * @param newData

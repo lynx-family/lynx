@@ -283,6 +283,27 @@ export class Lynx {
   ): void => {
     this.getApp().registerAppEventHandlers(handlers);
   };
+
+  /**
+   * The card's initial data as provided at load time. Frameworks used to
+   * read this off the injected `tt._params`.
+   */
+  getInitDataParams = (): { initData?: object; updateData?: object } => {
+    const params = this.getApp().params;
+    return { initData: params?.initData, updateData: params?.updateData };
+  };
+
+  /**
+   * Exports of an already-loaded dynamic component. Sanctioned accessor for
+   * what frameworks used to reach via `tt.getDynamicComponentExports`.
+   */
+  getDynamicComponentExports = (componentUrl: string): unknown =>
+    this.getApp().getDynamicComponentExports(componentUrl);
+
+  /** AOP hook invoked before an event is published to the framework. */
+  callBeforePublishEvent = (eventData?: unknown): void => {
+    this.getApp().callBeforePublishEvent(eventData);
+  };
   getJSContext = this.getNativeLynx().getJSContext;
   getUIContext = this.getNativeLynx().getUIContext;
   getNative = this.getNativeLynx().getNative;

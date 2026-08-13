@@ -89,8 +89,15 @@ public class LynxViewShellActivity extends AppCompatActivity {
       options.setLynxGroup(group);
       LynxBackgroundRuntime appRuntime =
           new LynxBackgroundRuntime(context.getApplicationContext(), options);
-      appRuntime.evaluateJavaScript(
-          "app-runtime-bootstrap.js", "console.info('[app-runtime] started for group " + name + "')");
+      // The standalone runtime loads scripts through the same loadScript
+      // wrapper protocol as cards; a bare script body would fail
+      // `_$executeInit`, so wrap the bootstrap in the AMD-style holder.
+      String bootstrap = "globalThis.initBundle=function(){"
+          + "console.info('[app-runtime] started for group " + name + "');"
+          + "return {};};";
+      // Leading slash: the JS-side loadScript normalizes relative paths to
+      // "/<path>" and the standalone script store matches keys exactly.
+      appRuntime.evaluateJavaScript("/app-runtime-bootstrap.js", bootstrap);
       sNamedAppRuntimes.put(name, appRuntime);
       Log.d(TAG, "Created standalone App runtime for group " + name);
     }

@@ -20,19 +20,4 @@ export class ReactApp extends BaseApp {
     );
   }
 
-  callBeforePublishEvent(eventData?: any): void {
-    if (
-      this._aopManager._beforePublishEvent.getEventsSize(eventData.type) !== 0
-    ) {
-      const copyData = { ...eventData };
-      try {
-        this._aopManager._beforePublishEvent.emit(copyData.type, [copyData]);
-      } catch (e) {
-        this.handleUserError(e, {
-          by: 'callBeforePublishEvent',
-          type: (copyData as any).type,
-        });
-      }
-    }
-  }
 }
