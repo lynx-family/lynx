@@ -60,6 +60,12 @@ void NativeFacadeHarmony::OnTimingUpdate(const lepus::Value& timing_info,
   //  renderer_->OnTimingUpdate(timing_info, update_timing, update_flag);
 }
 
+void NativeFacadeHarmony::SetEmbeddedTiming(const std::string& timing_key,
+                                            uint64_t timestamp_us,
+                                            const std::string& pipeline_id) {
+  renderer_->SetEmbeddedTiming(timing_key, timestamp_us, pipeline_id);
+}
+
 void NativeFacadeHarmony::OnDynamicComponentPerfReady(
     const lepus::Value& perf_info) {}
 

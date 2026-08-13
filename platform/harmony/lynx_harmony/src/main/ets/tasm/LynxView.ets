@@ -420,6 +420,8 @@ export struct LynxView {
 
     let providers = [this.genericResourceFetcher, this.mediaResourceFetcher, this.templateResourceFetcher];
     this.perfController = new PerformanceController();
+    this.perfController.setEmbeddedModeEnabled(
+      (this.embeddedMode & EmbeddedMode.EMBEDDED_MODE_BASE) > 0);
     if (this.uiRendererCreator) {
       this.uiRenderer =
         this.uiRendererCreator.createUIRenderer(this.context,
@@ -851,6 +853,9 @@ export struct LynxView {
     }
     let timingOption: TimingOption = new TimingOption(TimingConstants.LOAD_BUNDLE);
     let loadBundleStartTimestamp = Date.now();
+    if ((this.embeddedMode & EmbeddedMode.EMBEDDED_MODE_BASE) > 0) {
+      this.perfController?.markTiming(TimingConstants.LOAD_BUNDLE_START, '');
+    }
     timingOption.setTiming(TimingConstants.PIPELINE_START, loadBundleStartTimestamp);
     timingOption.setTiming(TimingConstants.LOAD_BUNDLE_START, loadBundleStartTimestamp);
     if (this.templateBundle) {

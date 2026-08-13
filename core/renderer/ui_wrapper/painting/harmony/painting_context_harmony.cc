@@ -293,6 +293,15 @@ void PaintingContextHarmony::FinishLayoutOperation(
     auto harmony_ref =
         std::static_pointer_cast<PaintingContextHarmonyRef>(platform_ref);
     harmony_ref->OnLayoutFinish(options->list_comp_id_, options->operation_id);
+    auto* ui_owner = harmony_ref->GetUIOwner();
+    auto* context = ui_owner != nullptr ? ui_owner->Context() : nullptr;
+    if (context != nullptr && context->IsLayoutInElementModeOn() &&
+        !options->need_timestamps) {
+      // The follow-up Layout-in-Element pipeline does not carry the timing
+      // flag, so request its paint-end callback as a fallback.
+      // TODO: Remove this once the timing flag is preserved across pipelines.
+      harmony_ref->SetNeedMarkPaintEndTiming(options->pipeline_id);
+    }
   });
 }
 
