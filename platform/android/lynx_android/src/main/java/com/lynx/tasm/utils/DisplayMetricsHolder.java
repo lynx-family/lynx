@@ -183,7 +183,7 @@ public class DisplayMetricsHolder {
     DisplayMetrics screenDisplayMetrics = new DisplayMetrics();
     DisplayMetrics windowDM = getWindowDisplayMetrics();
     if (windowDM != null) {
-      screenDisplayMetrics.setTo(getWindowDisplayMetrics());
+      screenDisplayMetrics.setTo(windowDM);
     }
     WindowManager wm = (WindowManager) context.getSystemService(Context.WINDOW_SERVICE);
     Assertions.assertNotNull(wm, "WindowManager is null!");

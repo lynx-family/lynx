@@ -167,6 +167,15 @@ public class LynxTemplateRender
         render.onErrorOccurred(error);
       }
     }
+
+    @Override
+    @RestrictTo(RestrictTo.Scope.LIBRARY)
+    public void runOnLayoutThread(Runnable runnable) {
+      LynxTemplateRender render = mRenderRef.get();
+      if (render != null) {
+        render.runOnLayoutThread(runnable);
+      }
+    }
   }
 
   private final TemplateAssembler mTemplateAssembler = new TemplateAssembler();
@@ -277,7 +286,9 @@ public class LynxTemplateRender
   private LynxGroup mGroup;
   private LynxEngineProxy mEngineProxy;
 
-  private LynxLayoutProxy mLayoutProxy;
+  // Serializes lazy layout proxy creation with native shell destruction.
+  private final Object mNativeShellLifecycleLock = new Object();
+  private volatile LynxLayoutProxy mLayoutProxy;
 
   private Map<Double, PlatformCallBack> platformCallBackMap = new HashMap<>();
 
@@ -311,9 +322,7 @@ public class LynxTemplateRender
   @Nullable private LynxEngine mLynxEngineRef;
 
   private LynxModuleFactory mMainThreadModuleFactory;
-  @NonNull
-  private final LynxMemoryUsageFetcher mMemoryUsageFetcher =
-      new LynxTemplateRenderMemoryUsageFetcher(this);
+  @Nullable private LynxMemoryUsageFetcher mMemoryUsageFetcher;
 
   @Keep
   public LynxTemplateRender(Context context, UIBodyView bodyView, LynxViewBuilder builder) {
@@ -451,11 +460,12 @@ public class LynxTemplateRender
     // compatibility, some caller still using its related interface.
     DisplayMetricsHolder.updateOrInitDisplayMetrics(context, mLynxViewConfigProvider.getDensity());
     DisplayMetrics screenMetrics = DisplayMetricsHolder.getScreenDisplayMetrics();
-    if (mLynxViewConfigProvider.getScreenWidth() != DisplayMetricsHolder.UNDEFINE_SCREEN_SIZE_VALUE
-        && mLynxViewConfigProvider.getScreenHeight()
-            != DisplayMetricsHolder.UNDEFINE_SCREEN_SIZE_VALUE) {
-      screenMetrics.widthPixels = mLynxViewConfigProvider.getScreenWidth();
-      screenMetrics.heightPixels = mLynxViewConfigProvider.getScreenHeight();
+    int screenWidth = mLynxViewConfigProvider.getScreenWidth();
+    int screenHeight = mLynxViewConfigProvider.getScreenHeight();
+    if (screenWidth != DisplayMetricsHolder.UNDEFINE_SCREEN_SIZE_VALUE
+        && screenHeight != DisplayMetricsHolder.UNDEFINE_SCREEN_SIZE_VALUE) {
+      screenMetrics.widthPixels = screenWidth;
+      screenMetrics.heightPixels = screenHeight;
     }
 
     // Prepare for env
@@ -4129,6 +4139,33 @@ public class LynxTemplateRender
     }
   }
 
+  private void runOnLayoutThread(Runnable runnable) {
+    if (runnable == null) {
+      return;
+    }
+    LynxLayoutProxy layoutProxy = getOrCreateLayoutProxy();
+    if (layoutProxy != null) {
+      layoutProxy.runOnLayoutThread(runnable);
+    }
+  }
+
+  @Nullable
+  private LynxLayoutProxy getOrCreateLayoutProxy() {
+    LynxLayoutProxy layoutProxy = mLayoutProxy;
+    if (layoutProxy != null) {
+      return layoutProxy;
+    }
+    synchronized (mNativeShellLifecycleLock) {
+      layoutProxy = mLayoutProxy;
+      if (layoutProxy == null && !mIsDestroyed.get() && mNativePtr != 0) {
+        layoutProxy = new LynxLayoutProxy(mNativePtr);
+        mLynxContext.setLayoutProxy(layoutProxy);
+        mLayoutProxy = layoutProxy;
+      }
+      return layoutProxy;
+    }
+  }
+
   private void initEngineAndLayoutProxies() {
     mEngineProxy = new LynxEngineProxy(mNativePtr);
     mNativeFacade.setEngineProxy(mEngineProxy);
@@ -4136,8 +4173,6 @@ public class LynxTemplateRender
       LLog.e(TAG, "mLynxContext is null, can not set LayoutProxy");
     } else {
       mLynxContext.setEngineProxy(mEngineProxy);
-      mLayoutProxy = new LynxLayoutProxy(mNativePtr);
-      mLynxContext.setLayoutProxy(mLayoutProxy);
     }
   }
 
@@ -4222,10 +4257,19 @@ public class LynxTemplateRender
   }
 
   private void registerMemoryUsageFetcherIfNeeded() {
+    if (EmbeddedMode.isBaseModeEnable(mEmbeddedMode)) {
+      return;
+    }
+    if (mMemoryUsageFetcher == null) {
+      mMemoryUsageFetcher = new LynxTemplateRenderMemoryUsageFetcher(this);
+    }
     LynxGlobalMemoryUsageCollector.getInstance().registerMemoryUsageFetcher(mMemoryUsageFetcher);
   }
 
   private void unregisterMemoryUsageFetcherIfNeeded() {
+    if (mMemoryUsageFetcher == null) {
+      return;
+    }
     LynxGlobalMemoryUsageCollector.getInstance().unregisterMemoryUsageFetcher(mMemoryUsageFetcher);
   }
 
@@ -4246,8 +4290,10 @@ public class LynxTemplateRender
   }
 
   private void destroyLynxEngine() {
-    if (!mIsDestroyed.compareAndSet(false, true)) {
-      return;
+    synchronized (mNativeShellLifecycleLock) {
+      if (!mIsDestroyed.compareAndSet(false, true)) {
+        return;
+      }
     }
     boolean shouldCacheLynxEngine = shouldCacheLynxEngine();
     unregisterMemoryUsageFetcherIfNeeded();
@@ -4291,8 +4337,10 @@ public class LynxTemplateRender
       mEngineProxy.destroy();
     }
 
-    if (mLayoutProxy != null) {
-      mLayoutProxy.destroy();
+    LynxLayoutProxy layoutProxy = mLayoutProxy;
+    mLayoutProxy = null;
+    if (layoutProxy != null) {
+      layoutProxy.destroy();
     }
     mTasmPlatformInvoker = null;
     mNativeFacade = null;
@@ -4321,15 +4369,18 @@ public class LynxTemplateRender
 
     @Override
     public void run() {
-      if ((mNativeLifecycle != 0) && (mNativePtr != 0)) {
-        if (nativeLifecycleTryTerminate(mNativeLifecycle)) {
-          nativeDestroy(mNativePtr);
-          mNativePtr = 0;
-          mNativeLifecycle = 0;
-          mRenderer = null;
-        } else {
-          // retry later
-          UIThreadUtils.runOnUiThread(this, 1);
+      LynxTemplateRender renderer = mRenderer;
+      if ((mNativeLifecycle != 0) && (mNativePtr != 0) && renderer != null) {
+        synchronized (renderer.mNativeShellLifecycleLock) {
+          if (nativeLifecycleTryTerminate(mNativeLifecycle)) {
+            nativeDestroy(mNativePtr);
+            mNativePtr = 0;
+            mNativeLifecycle = 0;
+            mRenderer = null;
+          } else {
+            // retry later
+            UIThreadUtils.runOnUiThread(this, 1);
+          }
         }
       }
       if (mNativeFacade != null) {
