@@ -6,14 +6,14 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#include "core/style/transform/quaternion.h"
+#include "gfx/geometry/quaternion.h"
 
 #include <cmath>
 
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 namespace lynx {
-namespace transforms {
+namespace gfx {
 namespace testing {
 
 namespace {
@@ -151,5 +151,5 @@ TEST(QuatTest, ConvertToEuler) {  // Z-Y-X Euler angles
 }
 
 }  // namespace testing
-}  // namespace transforms
+}  // namespace gfx
 }  // namespace lynx

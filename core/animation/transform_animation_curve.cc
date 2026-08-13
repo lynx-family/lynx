@@ -10,18 +10,33 @@
 
 #include <cmath>
 #include <limits>
+#include <optional>
 
 #include "base/include/log/logging.h"
 #include "base/trace/native/trace_event.h"
 #include "core/animation/animation_trace_event_def.h"
+#include "core/animation/css_keyframe_manager.h"
 #include "core/animation/keyframed_animation_curve.h"
-#include "core/renderer/css/transforms/transform_operations.h"
+#include "core/renderer/css/transforms/transform_operations_helper.h"
 #include "core/renderer/dom/element.h"
 #include "core/renderer/dom/element_manager.h"
 #include "gfx/animation/animation_utils.h"
 
 namespace lynx {
 namespace animation {
+
+namespace {
+
+std::optional<gfx::TransformOperations> ResolveTransformForElement(
+    const tasm::CSSValue& value, tasm::Element* element) {
+  const auto layout_result = element->layout_result();
+  return transforms::ResolveTransformOperations(
+      value, CSSKeyframeManager::GetLengthContext(element),
+      element->element_manager()->GetCSSParserConfigs(),
+      layout_result.size_.width_, layout_result.size_.height_);
+}
+
+}  // namespace
 
 //====== TransformValueAnimator begin =======
 std::unique_ptr<TransformKeyframe> TransformKeyframe::Create(
@@ -34,28 +49,27 @@ TransformKeyframe::TransformKeyframe(
     : gfx::Keyframe(time, std::move(timing_function)) {}
 
 void TransformKeyframe::NotifyElementSizeUpdated() {
-  if (value_) {
-    value_->NotifyElementSizeUpdated();
-  }
+  // Resolved calc() translations depend on the element's current size.
+  value_.reset();
 }
 
-// When view or font size has changed, mark the value 'AutoNLength'.
-void TransformKeyframe::NotifyUnitValuesUpdated(uint32_t type) {
-  if (value_) {
-    value_->NotifyUnitValuesUpdatedToAnimation(
-        static_cast<tasm::CSSValuePattern>(type));
-  }
+void TransformKeyframe::NotifyUnitValuesUpdated(uint32_t) {
+  // CSS unit dependency tracking belongs to the Lynx resolver. Re-resolve the
+  // raw CSS value on the next sample instead of leaking CSSValuePattern to gfx.
+  value_.reset();
 }
 
-transforms::TransformOperations
-TransformKeyframe::GetTransformKeyframeValueInElement(tasm::Element* element) {
+gfx::TransformOperations TransformKeyframe::GetTransformKeyframeValueInElement(
+    tasm::Element* element) {
   tasm::CSSValue transform =
       GetStyleInElement(tasm::kPropertyIDTransform, element);
   if (transform.IsArray()) {
-    return transforms::TransformOperations(element, transform);
-  } else {
-    return transforms::TransformOperations(element);
+    auto resolved = ResolveTransformForElement(transform, element);
+    if (resolved) {
+      return std::move(*resolved);
+    }
   }
+  return gfx::TransformOperations();
 }
 
 bool TransformKeyframe::SetValue(tasm::CSSPropertyID id,
@@ -71,8 +85,12 @@ bool TransformKeyframe::SetValue(tasm::CSSPropertyID id,
     return false;
   }
   if (element != nullptr) {
-    value_ = std::make_unique<transforms::TransformOperations>(
-        element, keyframe_transform_value);
+    auto resolved =
+        ResolveTransformForElement(keyframe_transform_value, element);
+    value_ =
+        resolved
+            ? std::make_unique<gfx::TransformOperations>(std::move(*resolved))
+            : nullptr;
   } else {
     value_.reset();
   }
@@ -82,7 +100,7 @@ bool TransformKeyframe::SetValue(tasm::CSSPropertyID id,
 
 bool TransformKeyframe::EnsureResolvedValue(tasm::CSSPropertyID id,
                                             tasm::Element* element) {
-  if (value_ && !value_->GetOperations().empty()) {
+  if (value_) {
     return true;
   }
   auto keyframe_transform_value =
@@ -90,8 +108,11 @@ bool TransformKeyframe::EnsureResolvedValue(tasm::CSSPropertyID id,
   if (!keyframe_transform_value.IsArray()) {
     return false;
   }
-  value_ = std::make_unique<transforms::TransformOperations>(
-      element, keyframe_transform_value);
+  auto resolved = ResolveTransformForElement(keyframe_transform_value, element);
+  if (!resolved) {
+    return false;
+  }
+  value_ = std::make_unique<gfx::TransformOperations>(std::move(*resolved));
   return true;
 }
 
@@ -128,7 +149,7 @@ tasm::CSSValue KeyframedTransformAnimationCurve::GetValue(
       static_cast<TransformKeyframe*>(keyframes_[i].get());
   TransformKeyframe* keyframe_next =
       static_cast<TransformKeyframe*>(keyframes_[i + 1].get());
-  auto transform_in_element = transforms::TransformOperations(nullptr);
+  auto transform_in_element = gfx::TransformOperations();
 
   if (std::fabs(progress - 0.0f) < std::numeric_limits<float>::epsilon()) {
     return keyframe->IsEmpty()
@@ -159,14 +180,18 @@ tasm::CSSValue KeyframedTransformAnimationCurve::GetValue(
     return keyframe_next->CSSValue();
   }
 
-  transforms::TransformOperations& start_transform =
+  gfx::TransformOperations& start_transform =
       keyframe->IsEmpty() ? transform_in_element : *keyframe->Value();
-  transforms::TransformOperations& end_transform =
+  gfx::TransformOperations& end_transform =
       keyframe_next->IsEmpty() ? transform_in_element : *keyframe_next->Value();
 
-  transforms::TransformOperations blended_result =
-      end_transform.Blend(start_transform, progress);
-  return blended_result.ToTransformRawValue();
+  const auto layout_result = element_->layout_result();
+  gfx::TransformOperations blended_result =
+      end_transform.Blend(start_transform, progress, layout_result.size_.width_,
+                          layout_result.size_.height_);
+  const auto& measure_context = CSSKeyframeManager::GetLengthContext(element_);
+  return transforms::ConvertToCSSValue(blended_result,
+                                       measure_context.layouts_unit_per_px_);
 }
 
 //====== TransformValueAnimator end =======

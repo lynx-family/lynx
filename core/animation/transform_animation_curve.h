@@ -16,11 +16,10 @@
 #include "base/include/fml/time/time_delta.h"
 #include "core/animation/animation_curve.h"
 #include "core/renderer/css/css_property.h"
-#include "core/renderer/css/transforms/transform_operations.h"
-#include "core/renderer/starlight/types/nlength.h"
 #include "gfx/animation/animation_keyframe.h"
 #include "gfx/animation/animation_utils.h"
 #include "gfx/animation/timing_function.h"
+#include "gfx/geometry/transform_operations.h"
 
 namespace lynx {
 
@@ -49,25 +48,19 @@ class KeyframedTransformAnimationCurve : public TransformAnimationCurve {
 //====Transform keyframe ====
 class TransformKeyframe : public lynx::gfx::Keyframe {
  public:
-  static transforms::TransformOperations GetTransformKeyframeValueInElement(
+  static gfx::TransformOperations GetTransformKeyframeValueInElement(
       tasm::Element*);
   static std::unique_ptr<TransformKeyframe> Create(
       fml::TimeDelta time,
       std::unique_ptr<lynx::gfx::TimingFunction> timing_function);
   ~TransformKeyframe() override = default;
 
-  void SetTransform(
-      std::unique_ptr<transforms::TransformOperations> transform) {
-    value_ = std::move(transform);
-    MarkNonEmpty();
-  }
-
   bool SetValue(tasm::CSSPropertyID id, const tasm::CSSValue& value,
                 tasm::Element* element);
 
   bool EnsureResolvedValue(tasm::CSSPropertyID id, tasm::Element* element);
 
-  const std::unique_ptr<transforms::TransformOperations>& Value() const {
+  const std::unique_ptr<gfx::TransformOperations>& Value() const {
     return value_;
   };
 
@@ -81,7 +74,7 @@ class TransformKeyframe : public lynx::gfx::Keyframe {
   tasm::CSSValue CSSValue() { return css_value_; }
 
  private:
-  std::unique_ptr<transforms::TransformOperations> value_;
+  std::unique_ptr<gfx::TransformOperations> value_;
   tasm::CSSValue css_value_;
 };
 

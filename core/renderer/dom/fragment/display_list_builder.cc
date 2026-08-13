@@ -13,7 +13,7 @@
 #include "core/renderer/starlight/style/borders_data.h"
 #include "core/renderer/ui_wrapper/painting/paint_image.h"
 #include "core/style/filter_data.h"
-#include "core/style/transform/matrix44.h"
+#include "gfx/geometry/matrix44.h"
 
 namespace lynx {
 namespace tasm {
@@ -82,8 +82,7 @@ DisplayListBuilder& DisplayListBuilder::DrawView(int view_id, float offset_x,
   return *this;
 }
 
-DisplayListBuilder& DisplayListBuilder::Transform(
-    const transforms::Matrix44& matrix) {
+DisplayListBuilder& DisplayListBuilder::Transform(const gfx::Matrix44& matrix) {
   SubtreeProperty prop;
   prop.type = DisplayListSubtreePropertyOpType::kTransform;
   // Matrix44 uses column-major storage (fMat[col][row]), which matches

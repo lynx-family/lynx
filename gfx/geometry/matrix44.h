@@ -6,19 +6,20 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#ifndef CORE_STYLE_TRANSFORM_MATRIX44_H_
-#define CORE_STYLE_TRANSFORM_MATRIX44_H_
+#ifndef GFX_GEOMETRY_MATRIX44_H_
+#define GFX_GEOMETRY_MATRIX44_H_
 
 #include <array>
 #include <string>
 
 #include "base/include/log/logging.h"
-#include "core/style/transform/quaternion.h"
+#include "gfx/geometry/quaternion.h"
+#include "gfx/gfx_export.h"
 
 namespace lynx {
-namespace transforms {
+namespace gfx {
 
-class Matrix44 {
+class GFX_EXPORT Matrix44 {
  public:
   constexpr Matrix44()
       : fMat{{1, 0, 0, 0}, {0, 1, 0, 0}, {0, 0, 1, 0}, {0, 0, 0, 1}},
@@ -139,6 +140,7 @@ class Matrix44 {
 
   void Skew(float angle_x, float angle_y);
 
+  // Replaces this matrix with column-major CSS matrix3d() values.
   void Matrix(const std::array<float, 16>& matrix_raw_value);
 
   void setConcat(const Matrix44& a, const Matrix44& b);
@@ -150,8 +152,7 @@ class Matrix44 {
    * Provides read-only access to the underlying 4x4 matrix data.
    *
    * @return A const pointer to the first element of the matrix in a contiguous
-   * memory layout. The matrix elements are stored in row-major order, suitable
-   * for direct use with APIs expecting a flat array of matrix elements. The
+   * memory layout. The matrix elements are stored in column-major order. The
    * caller must ensure that the Matrix44 instance outlives the use of the
    * returned pointer, as the pointer will become invalid if the Matrix44 object
    * is destroyed or modified.
@@ -191,7 +192,7 @@ class Matrix44 {
   double invert4x4Matrix(const float in_matrix[16], float out_matrix[16]) const;
 };
 
-}  // namespace transforms
+}  // namespace gfx
 }  // namespace lynx
 
-#endif  // CORE_STYLE_TRANSFORM_MATRIX44_H_
+#endif  // GFX_GEOMETRY_MATRIX44_H_

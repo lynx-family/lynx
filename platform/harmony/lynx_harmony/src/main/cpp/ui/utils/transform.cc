@@ -39,13 +39,13 @@ Transform::Transform(const lepus::Value& value) {
   }
 }
 
-transforms::Matrix44 Transform::GetTransformMatrix(
-    float width, float height, float scaled_density,
-    bool with_transform_origin) const {
-  transforms::Matrix44 result;
-  transforms::Matrix44 transform;
-  transforms::Matrix44 transform_origin;
-  transforms::Matrix44 transform_origin_reverse;
+gfx::Matrix44 Transform::GetTransformMatrix(float width, float height,
+                                            float scaled_density,
+                                            bool with_transform_origin) const {
+  gfx::Matrix44 result;
+  gfx::Matrix44 transform;
+  gfx::Matrix44 transform_origin;
+  gfx::Matrix44 transform_origin_reverse;
   if (with_transform_origin) {
     transform_origin.preTranslate(
         -transform_origin_.x.GetValue(width) * scaled_density,

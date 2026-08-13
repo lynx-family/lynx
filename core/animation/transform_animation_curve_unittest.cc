@@ -16,7 +16,6 @@
 #include "core/animation/keyframe_model.h"
 #include "core/animation/keyframed_animation_curve.h"
 #include "core/base/threading/task_runner_manufactor.h"
-#include "core/renderer/css/transforms/transform_operations.h"
 #include "core/renderer/dom/element.h"
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/dom/vdom/radon/radon_component.h"
@@ -83,12 +82,14 @@ class TransformAnimationCurveTest : public ::testing::Test {
   std::shared_ptr<::testing::NiceMock<lynx::tasm::test::MockTasmDelegate>>
       tasm_mediator;
 
-  void SetUp() override {
+  void ResetManager(float layouts_unit_per_px) {
     ::lynx::tasm::LynxEnvConfig lynx_env_config(
-        kWidth, kHeight, kDefaultLayoutsUnitPerPx,
+        kWidth, kHeight, layouts_unit_per_px,
         kDefaultPhysicalPixelsPerLayoutUnit);
-    tasm_mediator = std::make_shared<
-        ::testing::NiceMock<lynx::tasm::test::MockTasmDelegate>>();
+    if (!tasm_mediator) {
+      tasm_mediator = std::make_shared<
+          ::testing::NiceMock<lynx::tasm::test::MockTasmDelegate>>();
+    }
     manager = std::make_unique<lynx::tasm::ElementManager>(
         std::make_unique<::lynx::tasm::MockPaintingContext>(),
         tasm_mediator.get(), lynx_env_config);
@@ -96,6 +97,8 @@ class TransformAnimationCurveTest : public ::testing::Test {
     config->SetEnableZIndex(true);
     manager->SetConfig(config);
   }
+
+  void SetUp() override { ResetManager(kDefaultLayoutsUnitPerPx); }
 
   fml::RefPtr<lynx::tasm::Element> InitTestElement() {
     return manager->CreateFiberElement("view");
@@ -260,13 +263,10 @@ TEST_F(TransformAnimationCurveTest, GetTransformKeyframeValueInElement) {
   bool ret1 = lynx::tasm::UnitHandler::Process(id, impl1, output1, configs);
   EXPECT_TRUE(ret1);
   EXPECT_FALSE(output1.empty());
-  auto raw_value = output1[id];
   element1->ConsumeStyle(output1, nullptr);
   auto transform_in_element_1 =
       TransformKeyframe::GetTransformKeyframeValueInElement(element1.get());
-  transforms::TransformOperations operations(element1.get(), raw_value);
-  EXPECT_EQ(operations.size(), static_cast<size_t>(3));
-  EXPECT_EQ(transform_in_element_1.size(), operations.size());
+  EXPECT_EQ(transform_in_element_1.size(), static_cast<size_t>(3));
 }
 
 TEST_F(TransformAnimationCurveTest, SetValue) {
@@ -322,6 +322,44 @@ TEST_F(TransformAnimationCurveTest, SetValueWithoutElementDefersResolve) {
   EXPECT_TRUE(test_frame->EnsureResolvedValue(id, test_element));
   ASSERT_NE(test_frame->Value(), nullptr);
   EXPECT_EQ(test_frame->Value()->size(), static_cast<size_t>(1));
+}
+
+TEST_F(TransformAnimationCurveTest, NotificationsReResolveRawCSSValue) {
+  auto test_element_ptr = InitTestElement();
+  auto test_element = test_element_ptr.get();
+  test_element->UpdateLayout(0, 0, 100, 100, {0}, {0}, {0}, nullptr, 0);
+  auto test_frame = TransformKeyframe::Create(fml::TimeDelta(), nullptr);
+  auto id = lynx::tasm::CSSPropertyID::kPropertyIDTransform;
+  lynx::tasm::CSSParserConfigs configs;
+  lynx::tasm::StyleMap output;
+
+  EXPECT_TRUE(lynx::tasm::UnitHandler::Process(
+      id, lepus::Value("translateX(calc(10px + 50%))"), output, configs));
+  ASSERT_TRUE(output[id].IsArray());
+  ASSERT_TRUE(test_frame->SetValue(id, output[id], test_element));
+  ASSERT_NE(test_frame->Value(), nullptr);
+  ASSERT_EQ(test_frame->Value()->size(), 1u);
+  EXPECT_FLOAT_EQ(
+      test_frame->Value()->GetOperations()[0].translate.x.Resolve(100.0f),
+      60.0f);
+
+  test_element->UpdateLayout(0, 0, 200, 100, {0}, {0}, {0}, nullptr, 0);
+  test_frame->NotifyElementSizeUpdated();
+  EXPECT_EQ(test_frame->Value(), nullptr);
+  EXPECT_TRUE(test_frame->EnsureResolvedValue(id, test_element));
+  ASSERT_NE(test_frame->Value(), nullptr);
+  EXPECT_FLOAT_EQ(
+      test_frame->Value()->GetOperations()[0].translate.x.Resolve(200.0f),
+      110.0f);
+
+  test_frame->NotifyUnitValuesUpdated(
+      static_cast<uint32_t>(lynx::tasm::CSSValuePattern::PERCENT));
+  EXPECT_EQ(test_frame->Value(), nullptr);
+  EXPECT_TRUE(test_frame->EnsureResolvedValue(id, test_element));
+  ASSERT_NE(test_frame->Value(), nullptr);
+  EXPECT_FLOAT_EQ(
+      test_frame->Value()->GetOperations()[0].translate.x.Resolve(200.0f),
+      110.0f);
 }
 
 TEST_F(TransformAnimationCurveTest, CreateTransformAnimationCurve) {
@@ -402,6 +440,40 @@ TEST_F(TransformAnimationCurveTest, GetValue) {
   EXPECT_EQ(test_value3->get(0).Number(),
             (int)starlight::TransformType::kScale);
   EXPECT_FLOAT_EQ(test_value3->get(1).Number(), 1.1);
+}
+
+TEST_F(TransformAnimationCurveTest,
+       MatrixAnimationSerializesTranslationInCSSPixels) {
+  ResetManager(2.0f);
+  auto test_element_ptr = InitTestElement();
+  auto test_element = test_element_ptr.get();
+
+  auto curve = KeyframedTransformAnimationCurve::Create();
+  curve->type_ = AnimationCurve::CurveType::TRANSFORM;
+  curve->SetElement(test_element);
+
+  const auto id = lynx::tasm::CSSPropertyID::kPropertyIDTransform;
+  lynx::tasm::CSSParserConfigs configs;
+  const auto append_keyframe = [&](double time, const char* transform) {
+    lynx::tasm::StyleMap output;
+    EXPECT_TRUE(lynx::tasm::UnitHandler::Process(id, lepus::Value(transform),
+                                                 output, configs));
+    auto keyframe =
+        TransformKeyframe::Create(fml::TimeDelta::FromSecondsF(time), nullptr);
+    EXPECT_TRUE(keyframe->SetValue(id, output[id], test_element));
+    curve->AddKeyframe(std::move(keyframe));
+  };
+  append_keyframe(0.0, "matrix(1, 0, 0, 1, 10, 0)");
+  append_keyframe(1.0, "matrix(1, 0, 0, 1, 30, 0)");
+
+  fml::TimeDelta sample_time = fml::TimeDelta::FromSecondsF(0.5);
+  auto result = curve->GetValue(sample_time).GetValue().Array();
+  ASSERT_EQ(result->size(), 1u);
+  auto matrix = result->get(0).Array();
+  ASSERT_EQ(matrix->size(), 17u);
+  EXPECT_EQ(matrix->get(0).Number(),
+            static_cast<int>(starlight::TransformType::kMatrix3d));
+  EXPECT_FLOAT_EQ(matrix->get(13).Number(), 20.0f);
 }
 
 TEST_F(TransformAnimationCurveTest, MakeEmptyKeyframe) {

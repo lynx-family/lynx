@@ -23,7 +23,7 @@
 #include "clay/gfx/geometry/float_rounded_rect.h"
 #include "clay/gfx/geometry/path.h"
 #include "clay/gfx/geometry/transform.h"
-#include "clay/gfx/geometry/transform_operations.h"
+#include "clay/gfx/geometry/transform_value.h"
 #include "clay/gfx/rendering_backend.h"
 #include "clay/gfx/style/borders_data.h"
 #include "clay/ui/common/attribute_utils.h"
@@ -1918,7 +1918,7 @@ void BaseView::TransitionTo(ClayAnimationPropertyType type,
 }
 
 void BaseView::TransitionTo(ClayAnimationPropertyType type,
-                            const TransformOperations& value) {
+                            const TransformValue& value) {
   switch (type) {
     case ClayAnimationPropertyType::kTransform:
       if (IsTransitionAnimationReady() && TransitionMgr()->Enabled(type) &&
@@ -2021,21 +2021,27 @@ void BaseView::SetOffsetRotate(float rotate) {
   render_object()->SetOffsetRotate(rotate);
 }
 
-void BaseView::SetTransformOperations(const TransformOperations& value,
+void BaseView::SetTransformOperations(const TransformValue& value,
                                       bool is_from_animation) {
-  transform_ops_ = value;
 #ifdef ENABLE_ACCESSIBILITY
   Transform old_transform = GetTransform();
 #endif
+  transform_value_ = value;
   float old_translate_z = render_object()->GetTranslateZ();
   if (post_translation_.has_value()) {
-    TransformOperations transform;
-    transform.AppendTranslate(post_translation_->x(), post_translation_->y(),
-                              0);
-    transform.Append(value);
-    render_object()->SetTransformOperations(transform, is_from_animation);
+    lynx::gfx::TransformOperations transform;
+    transform.AppendTranslate(
+        {post_translation_->x(), lynx::gfx::LengthUnit::kNumber},
+        {post_translation_->y(), lynx::gfx::LengthUnit::kNumber},
+        {0.0f, lynx::gfx::LengthUnit::kNumber});
+    for (const auto& operation : value.visual_operations.GetOperations()) {
+      transform.Append(operation);
+    }
+    render_object()->SetTransformOperations(transform, value.stacking_z,
+                                            is_from_animation);
   } else {
-    render_object()->SetTransformOperations(transform_ops_, is_from_animation);
+    render_object()->SetTransformOperations(
+        value.visual_operations, value.stacking_z, is_from_animation);
   }
 #ifdef ENABLE_ACCESSIBILITY
   Transform new_transform = GetTransform();
@@ -2078,14 +2084,14 @@ void BaseView::SetFilterOperations(const FilterOperations& value) {
 }
 
 void BaseView::SetProperty(ClayAnimationPropertyType type,
-                           const TransformOperations& value,
+                           const TransformValue& value,
                            bool skip_update_for_raster_animation) {
   skip_update_for_raster_animation =
       skip_update_for_raster_animation && IsRasterAnimationEnabled();
-  switch (type)
-  case ClayAnimationPropertyType::kTransform: {
-    SetTransformOperations(value, skip_update_for_raster_animation);
-    break;
+  switch (type) {
+    case ClayAnimationPropertyType::kTransform:
+      SetTransformOperations(value, skip_update_for_raster_animation);
+      break;
     default: {
       FML_DLOG(ERROR) << "BaseView::SetProperty with unsupported type: "
                       << static_cast<int>(type);
@@ -2140,10 +2146,10 @@ void BaseView::GetProperty(ClayAnimationPropertyType type, Color& value) {
 }
 
 void BaseView::GetProperty(ClayAnimationPropertyType type,
-                           TransformOperations& value) {
+                           TransformValue& value) {
   switch (type) {
     case ClayAnimationPropertyType::kTransform:
-      value = transform_ops_;
+      value = transform_value_;
       break;
     default:
       FML_DLOG(ERROR) << "BaseView::GetProperty with unsupported type: "
@@ -2290,40 +2296,55 @@ void BaseView::SetTransition(const clay::Value::Array& array) {
   TransitionMgr()->UpdateData(transitions);
 }
 
-void BaseView::SetTransform(const TransformOperations& ops,
+void BaseView::SetTransform(const lynx::gfx::TransformOperations& operations,
                             const FloatPoint& origin) {
+  transform_raw_.reset();
+  gfx_transform_operations_ = operations;
+  SetResolvedTransform(ResolveTransform(operations, width_, height_), origin);
+}
+
+void BaseView::SetTransform(const TransformValue& value,
+                            const FloatPoint& origin) {
+  transform_raw_.reset();
+  gfx_transform_operations_.reset();
+  SetResolvedTransform(value, origin);
+}
+
+void BaseView::SetResolvedTransform(const TransformValue& value,
+                                    const FloatPoint& origin) {
   SetTransformOrigin(
       std::make_optional<TransformOrigin>(origin.x(), origin.y()));
 
-  TransformOperations old_ops;
-  GetProperty(ClayAnimationPropertyType::kTransform, old_ops);
+  TransformValue old_value;
+  GetProperty(ClayAnimationPropertyType::kTransform, old_value);
   constexpr float tolerance = 0.001;
-  if (old_ops.ApproximatelyEqual(ops, tolerance)) {
+  if (old_value.ApproximatelyEqual(value, tolerance)) {
     if (TransitionMgr()->IsAnimationRunning(
             ClayAnimationPropertyType::kTransform)) {
       TransitionMgr()->CancelAnimator(ClayAnimationPropertyType::kTransform);
     }
-    SetProperty(ClayAnimationPropertyType::kTransform, ops, false);
+    SetProperty(ClayAnimationPropertyType::kTransform, value, false);
     return;
   }
-  TransitionTo(ClayAnimationPropertyType::kTransform, ops);
+  TransitionTo(ClayAnimationPropertyType::kTransform, value);
 }
 
 void BaseView::SetTransform(const std::vector<TransformRaw>& transform_raw) {
   transform_raw_ = transform_raw;
-  auto ops = clay::TransformOperations(*transform_raw_, width_, height_);
-  TransformOperations old_ops;
-  GetProperty(ClayAnimationPropertyType::kTransform, old_ops);
+  gfx_transform_operations_.reset();
+  auto value = ResolveTransform(*transform_raw_, width_, height_);
+  TransformValue old_value;
+  GetProperty(ClayAnimationPropertyType::kTransform, old_value);
   constexpr float tolerance = 0.001;
-  if (old_ops.ApproximatelyEqual(ops, tolerance)) {
+  if (old_value.ApproximatelyEqual(value, tolerance)) {
     if (TransitionMgr()->IsAnimationRunning(
             ClayAnimationPropertyType::kTransform)) {
       TransitionMgr()->CancelAnimator(ClayAnimationPropertyType::kTransform);
     }
-    SetProperty(ClayAnimationPropertyType::kTransform, ops, false);
+    SetProperty(ClayAnimationPropertyType::kTransform, value, false);
     return;
   }
-  TransitionTo(ClayAnimationPropertyType::kTransform, ops);
+  TransitionTo(ClayAnimationPropertyType::kTransform, value);
 }
 
 void BaseView::SetTransformOrigin(std::optional<TransformOrigin> origin) {
@@ -2670,11 +2691,20 @@ void BaseView::OnContentSizeChanged(const FloatRect& old_rect,
                                ClayAnimationPropertyType::kTransform)) {
       transition_mgr_->UpdateAnimationValue(
           ClayAnimationPropertyType::kTransform,
-          clay::TransformOperations(*transform_raw_, width_, height_));
+          ResolveTransform(*transform_raw_, width_, height_));
     } else {
       SetProperty(ClayAnimationPropertyType::kTransform,
-                  clay::TransformOperations(*transform_raw_, width_, height_),
-                  false);
+                  ResolveTransform(*transform_raw_, width_, height_), false);
+    }
+  } else if (gfx_transform_operations_.has_value()) {
+    const auto value =
+        ResolveTransform(*gfx_transform_operations_, width_, height_);
+    if (transition_mgr_ && transition_mgr_->IsAnimationRunning(
+                               ClayAnimationPropertyType::kTransform)) {
+      transition_mgr_->UpdateAnimationValue(
+          ClayAnimationPropertyType::kTransform, value);
+    } else {
+      SetProperty(ClayAnimationPropertyType::kTransform, value, false);
     }
   }
 
@@ -2707,11 +2737,8 @@ bool BaseView::CanAcceptEvent() const {
     return false;
   }
   auto origin = GetTransformOrigin();
-  Transform transform(GetTransformOps()
-                          .Apply()
-                          .matrix()
-                          .PreTranslate(-origin.x(), -origin.y())
-                          .PostTranslate(origin.x(), origin.y()));
+  Transform transform(ApplyTransform(GetTransformOps(), 0.0f, origin.x(),
+                                     origin.y(), 0.0f, 0.0f));
   // If transform is not invertible, it means the view is not visible with
   // 2D transform.
   return transform.IsInvertible();
@@ -2994,11 +3021,8 @@ FloatPoint BaseView::GetPointBySelf(const FloatPoint& point_by_page) const {
   }
 
   auto origin = GetTransformOrigin();
-  Transform transform(GetTransformOps()
-                          .Apply()
-                          .matrix()
-                          .PreTranslate(-origin.x(), -origin.y())
-                          .PostTranslate(origin.x(), origin.y()));
+  Transform transform(ApplyTransform(GetTransformOps(), 0.0f, origin.x(),
+                                     origin.y(), 0.0f, 0.0f));
   if (!transform.IsIdentity()) {
     /*
      * transform direction:
@@ -3759,9 +3783,12 @@ bool BaseView::IsRasterAnimationEnabled() const {
 void BaseView::UpdateSticky(std::optional<StickyInfo> sticky) {
   if (!sticky.has_value()) {
     sticky_ = std::nullopt;
+    post_translation_.reset();
+    SetTransformOperations(transform_value_, false);
     return;
   }
   sticky_ = sticky;
+  post_translation_.emplace();
 
   if (Parent() && Parent()->Is<ScrollView>()) {
     static_cast<ScrollView*>(Parent())->EnableSticky();
@@ -3802,16 +3829,8 @@ void BaseView::CheckStickyOnParentScrollAndReset(int left, int top) {
       sticky_->offset_y = 0;
     }
   }
-  post_translation_->SetX(sticky_->offset_x);
-  post_translation_->SetY(sticky_->offset_y);
-  TransformOperations transform_ops;
-  transform_ops.AppendTranslate(sticky_->offset_x, sticky_->offset_y, 0);
-  transform_ops.Append(transform_ops_);
-  float old_translate_z = render_object()->GetTranslateZ();
-  render_object()->SetTransformOperations(transform_ops, false);
-  if (std::abs(render_object()->GetTranslateZ() - old_translate_z) > 1e-6) {
-    Parent()->DirtyChildrenPaintingOrder();
-  }
+  post_translation_.emplace(sticky_->offset_x, sticky_->offset_y);
+  SetTransformOperations(transform_value_, false);
 }
 #ifdef ENABLE_ACCESSIBILITY
 void BaseView::MarkRebuildSemanticsTree() {

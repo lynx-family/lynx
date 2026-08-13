@@ -231,10 +231,8 @@ lynx_css_runtime_sources = [
   "measure_context.h",
   "text_attributes.cc",
   "text_attributes.h",
-  "transforms/transform_operation.cc",
-  "transforms/transform_operation.h",
-  "transforms/transform_operations.cc",
-  "transforms/transform_operations.h",
+  "transforms/transform_operations_helper.cc",
+  "transforms/transform_operations_helper.h",
 ]
 lynx_css_runtime_sources_path =
     get_path_info(lynx_css_runtime_sources, "abspath")

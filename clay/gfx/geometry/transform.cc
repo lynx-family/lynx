@@ -146,7 +146,7 @@ void Transform::RotateAbout(const FloatVector3d& axis, double degrees) {
   float z = axis.z();
   double radians = DegToRad(degrees);
   // We always use separated x, y, z for the rotate transform animation.
-  // See TransformOperations::AppendRotate.
+  // See lynx::gfx::TransformOperations::AppendRotate.
   if (z == 1 && y == 0 && x == 0) {
     const auto matrix = EulerToMatrix(0, 0, radians);
     matrix_.PreConcat(matrix);

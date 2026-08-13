@@ -35,7 +35,7 @@ void BaseViewAnimationMutator::GetProperty(ClayAnimationPropertyType type,
 }
 
 void BaseViewAnimationMutator::GetProperty(ClayAnimationPropertyType type,
-                                           TransformOperations& value) {
+                                           TransformValue& value) {
   view_->GetProperty(type, value);
 }
 
@@ -57,7 +57,7 @@ void BaseViewAnimationMutator::SetProperty(
 }
 
 void BaseViewAnimationMutator::SetProperty(
-    ClayAnimationPropertyType type, const TransformOperations& value,
+    ClayAnimationPropertyType type, const TransformValue& value,
     bool skip_update_for_raster_animation) {
   view_->SetProperty(type, value, skip_update_for_raster_animation);
 }

@@ -16,9 +16,9 @@ namespace starlight {
 class BordersData;
 struct FilterData;
 }  // namespace starlight
-namespace transforms {
+namespace gfx {
 class Matrix44;
-}
+}  // namespace gfx
 namespace tasm {
 
 class PaintImage;
@@ -54,7 +54,7 @@ class DisplayListBuilder {
   DisplayListBuilder& DrawView(int view_id, float offset_x, float offset_y);
 
   // Apply transform
-  DisplayListBuilder& Transform(const transforms::Matrix44& matrix);
+  DisplayListBuilder& Transform(const gfx::Matrix44& matrix);
   DisplayListBuilder& Opacity(float alpha);
   DisplayListBuilder& Filter(const starlight::FilterData& filter);
 

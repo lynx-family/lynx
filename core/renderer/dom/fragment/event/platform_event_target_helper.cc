@@ -54,7 +54,7 @@ void MapPointWithInverseTransform(
   if (target == nullptr || target->Transform() == nullptr) {
     return;
   }
-  transforms::Matrix44 inverse;
+  gfx::Matrix44 inverse;
   if (target->Transform()->invert(&inverse)) {
     inverse.mapPoint(point, point);
   }

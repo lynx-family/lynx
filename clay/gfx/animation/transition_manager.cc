@@ -9,7 +9,7 @@
 #include "clay/gfx/animation/animation_data.h"
 #include "clay/gfx/animation/animator_listener_adapter.h"
 #include "clay/gfx/animation/interpolator.h"
-#include "clay/gfx/geometry/transform_operations.h"
+#include "clay/gfx/geometry/transform_value.h"
 
 namespace clay {
 
@@ -139,7 +139,7 @@ std::unique_ptr<TransitionManager> TransitionManager::CloneForRasterAnimation(
           static_cast<TransitionListener<float>*>(iter->second.second.get())
               ->CloneForRasterAnimation(clone.get());
     } else if (type == ClayAnimationPropertyType::kTransform) {
-      listener = static_cast<TransitionListener<TransformOperations>*>(
+      listener = static_cast<TransitionListener<TransformValue>*>(
                      iter->second.second.get())
                      ->CloneForRasterAnimation(clone.get());
     } else if (type == ClayAnimationPropertyType::kBackgroundColor ||

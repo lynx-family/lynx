@@ -3,11 +3,14 @@
 # LICENSE file in the root directory of this source tree.
 
 import("../config.gni")
+import("../testing/test.gni")
 import("animation/animation.gni")
+import("geometry/geometry.gni")
 
-gfx_public_headers = [ "gfx_export.h" ] + gfx_animation_headers
+gfx_public_headers =
+    [ "gfx_export.h" ] + gfx_animation_headers + gfx_geometry_headers
 
-gfx_source_files = gfx_animation_sources
+gfx_source_files = gfx_animation_sources + gfx_geometry_sources
 
 gfx_builds_shared_library = (is_android || is_harmony) && !is_headless
 
@@ -44,5 +47,19 @@ if (gfx_builds_shared_library) {
 } else {
   group("gfx") {
     public_deps = [ ":gfx_sources" ]
+  }
+}
+
+if (enable_unittests) {
+  unittest_exec("geometry_unittests_exec") {
+    sources = [
+      "geometry/quaternion_unittest.cc",
+      "geometry/transform_operation_unittest.cc",
+      "geometry/transform_operations_unittest.cc",
+    ]
+    deps = [
+      ":gfx_sources",
+      "//third_party/googletest:gtest",
+    ]
   }
 }

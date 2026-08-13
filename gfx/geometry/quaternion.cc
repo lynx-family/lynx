@@ -10,12 +10,12 @@
 #define _USE_MATH_DEFINES
 #endif
 
-#include "core/style/transform/quaternion.h"
+#include "gfx/geometry/quaternion.h"
 
 #include <cmath>
 
 namespace lynx {
-namespace transforms {
+namespace gfx {
 
 namespace {
 
@@ -76,5 +76,5 @@ Euler Quaternion::ConvertToEuler() const {  // Z-Y-X Euler angles
   return euler;
 }
 
-}  // namespace transforms
+}  // namespace gfx
 }  // namespace lynx

@@ -143,13 +143,13 @@ void FrameBuilder::FinishBuild() {
   layer_tree_->SetAnimationHost(std::move(animation_host_));
 }
 
-void FrameBuilder::PushTransformOperations(const TransformOperations& transform,
-                                           double origin_x, double origin_y,
-                                           double offset_x, double offset_y,
-                                           PendingLayer* old_layer) {
+void FrameBuilder::PushTransformOperations(
+    const lynx::gfx::TransformOperations& transform, double origin_x,
+    double origin_y, double offset_x, double offset_y, float perspective,
+    PendingLayer* old_layer) {
   auto layer = std::make_shared<clay::TransformLayer>(
       transform, skity::Vec2(origin_x, origin_y),
-      skity::Vec2(offset_x, offset_y));
+      skity::Vec2(offset_x, offset_y), perspective);
   PushLayer(layer);
 
   if (old_layer->ReuseLayer()) {

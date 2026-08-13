@@ -258,8 +258,20 @@ void RawTransformKeyframeSet::AddKeyframe(
         has_percentage_values_ |= op.values[0].IsRelative();
         has_percentage_values_ |= op.values[1].IsRelative();
         break;
-      default:
-        FML_LOG(ERROR) << "Unsupported transform type " << op.type;
+      case ClayTransformType::kNone:
+      case ClayTransformType::kTranslateZ:
+      case ClayTransformType::kRotate:
+      case ClayTransformType::kRotateX:
+      case ClayTransformType::kRotateY:
+      case ClayTransformType::kRotateZ:
+      case ClayTransformType::kScale:
+      case ClayTransformType::kScaleX:
+      case ClayTransformType::kScaleY:
+      case ClayTransformType::kSkew:
+      case ClayTransformType::kSkewX:
+      case ClayTransformType::kSkewY:
+      case ClayTransformType::kMatrix:
+      case ClayTransformType::kMatrix3d:
         break;
     }
   }
@@ -277,9 +289,9 @@ std::unique_ptr<KeyframeSet> RawTransformKeyframeSet::Clone(
         manager->GetTarget()->PercentageResolutionSize();
     to_return->AddKeyframe(TransformKeyframe::Create(
         keyframe->GetFraction(),
-        TransformOperations(keyframe->Operations(),
-                            percentage_resolution_size.width(),
-                            percentage_resolution_size.height()),
+        ResolveTransform(keyframe->Operations(),
+                         percentage_resolution_size.width(),
+                         percentage_resolution_size.height()),
         keyframe->GetInterpolator()->Clone()));
   }
 
@@ -356,7 +368,7 @@ void TransformKeyframeSet::OnAnimationUpdate(ValueAnimator& animation) {
   }
 }
 
-TransformOperations TransformKeyframeSet::GetValue(float fraction) const {
+TransformValue TransformKeyframeSet::GetValue(float fraction) const {
   return clay::GetValue(fraction, keyframes_);
 }
 

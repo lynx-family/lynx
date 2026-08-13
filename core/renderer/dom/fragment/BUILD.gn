@@ -43,6 +43,7 @@ lynx_core_source_set("fragment") {
   ]
   public_deps = [
     ":display_list",
+    "../../../../gfx:gfx",
     "../../css:css",
     "../../starlight:starlight",
   ]
@@ -63,6 +64,7 @@ lynx_core_source_set("display_list") {
     "rounded_rectangle.h",
   ]
   public_deps = [
+    "../../../../gfx:gfx",
     "../../../style:style",
     "../../starlight:starlight",
   ]

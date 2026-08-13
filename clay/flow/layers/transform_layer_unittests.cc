@@ -6,6 +6,9 @@
 // LICENSE file in the root directory of this source tree.
 
 #include "base/include/fml/macros.h"
+#include "clay/common/element_id.h"
+#include "clay/flow/animation/animation_host.h"
+#include "clay/flow/animation/animation_mutator.h"
 #include "clay/flow/layers/transform_layer.h"
 #include "clay/flow/testing/diff_context_test.h"
 #include "clay/flow/testing/layer_test.h"
@@ -110,6 +113,29 @@ TEST_F(TransformLayerTest, Simple) {
            MockCanvas::DrawCall{
                1, MockCanvas::DrawPathData{child_path, SkPaint()}},
            MockCanvas::DrawCall{1, MockCanvas::RestoreData{0}}}));
+}
+
+TEST_F(TransformLayerTest, RasterTransformIgnoresStackingZ) {
+  lynx::gfx::TransformOperations visual_operations;
+  visual_operations.AppendTranslate({10.0f, lynx::gfx::LengthUnit::kNumber},
+                                    {20.0f, lynx::gfx::LengthUnit::kNumber},
+                                    {0.0f, lynx::gfx::LengthUnit::kNumber});
+  auto layer = std::make_shared<TransformLayer>(
+      visual_operations, skity::Vec2{0.0f, 0.0f}, skity::Vec2{0.0f, 0.0f});
+  auto mutator = AnimationMutator::Create(
+      clay::ElementId(1), AnimationMutatorType::kTransform, layer.get());
+  TransformValue animated_value{visual_operations, 50.0f};
+  mutator->SetProperty(ClayAnimationPropertyType::kTransform, animated_value,
+                       true);
+
+  auto animation_host = std::make_shared<AnimationHost>();
+  animation_host->AddAnimationMutator(layer.get(), mutator);
+
+  EXPECT_FLOAT_EQ(mutator->asTransform()->stacking_z(), 50.0f);
+  const skity::Matrix matrix = layer->GetMatrix();
+  EXPECT_FLOAT_EQ(matrix.Get(0, 3), 10.0f);
+  EXPECT_FLOAT_EQ(matrix.Get(1, 3), 20.0f);
+  EXPECT_FLOAT_EQ(matrix.Get(2, 3), 0.0f);
 }
 
 TEST_F(TransformLayerTest, Nested) {

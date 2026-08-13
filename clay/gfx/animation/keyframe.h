@@ -14,8 +14,8 @@
 #include "clay/gfx/animation/interpolator.h"
 #include "clay/gfx/geometry/box_shadow_operations.h"
 #include "clay/gfx/geometry/filter_operations.h"
-#include "clay/gfx/geometry/transform_operations.h"
 #include "clay/gfx/geometry/transform_raw.h"
+#include "clay/gfx/geometry/transform_value.h"
 #include "clay/gfx/style/color.h"
 
 namespace clay {
@@ -157,17 +157,17 @@ class RawTransformKeyframe : public Keyframe {
 
 class TransformKeyframe : public Keyframe {
  public:
-  typedef TransformOperations ValueType;
+  typedef TransformValue ValueType;
 
   TransformKeyframe(const TransformKeyframe&) = delete;
   TransformKeyframe& operator=(const TransformKeyframe&) = delete;
 
   static std::unique_ptr<TransformKeyframe> Create(
-      float fraction, const TransformOperations& value,
+      float fraction, const TransformValue& value,
       std::unique_ptr<Interpolator> interpolator);
   ~TransformKeyframe() override;
 
-  const TransformOperations& Value() const;
+  const TransformValue& Value() const;
 
   std::unique_ptr<TransformKeyframe> Clone() const;
 
@@ -176,13 +176,13 @@ class TransformKeyframe : public Keyframe {
 #endif
 
  private:
-  TransformKeyframe(float fraction, const TransformOperations& value,
+  TransformKeyframe(float fraction, const TransformValue& value,
                     std::unique_ptr<Interpolator> interpolator);
 
   /**
    * The value of the animation at the time fraction_.
    */
-  TransformOperations value_;
+  TransformValue value_;
 };
 
 class FilterKeyframe : public Keyframe {

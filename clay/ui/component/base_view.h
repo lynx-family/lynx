@@ -24,9 +24,9 @@
 #include "clay/gfx/geometry/path.h"
 #include "clay/gfx/geometry/sticky_info.h"
 #include "clay/gfx/geometry/transform.h"
-#include "clay/gfx/geometry/transform_operations.h"
 #include "clay/gfx/geometry/transform_origin.h"
 #include "clay/gfx/geometry/transform_raw.h"
+#include "clay/gfx/geometry/transform_value.h"
 #include "clay/gfx/style/borders_data.h"
 #include "clay/gfx/style/length.h"
 #include "clay/gfx/style/outline_data.h"
@@ -279,7 +279,7 @@ class BaseView : public TypeIdentifiable<BaseView>,
   void TransitionTo(ClayAnimationPropertyType type, float value);
   void TransitionTo(ClayAnimationPropertyType type, const Color& value);
   void TransitionTo(ClayAnimationPropertyType type,
-                    const TransformOperations& ops);
+                    const TransformValue& value);
 
   const clay::Value& GetDataSet() { return data_set_; }
 
@@ -292,7 +292,9 @@ class BaseView : public TypeIdentifiable<BaseView>,
   void AppendTransition(const TransitionData& data);
   void SetTransition(const std::vector<TransitionData>& data);
   void SetTransition(const clay::Value::Array& array);
-  void SetTransform(const TransformOperations& ops, const FloatPoint& origin);
+  void SetTransform(const lynx::gfx::TransformOperations& operations,
+                    const FloatPoint& origin);
+  void SetTransform(const TransformValue& value, const FloatPoint& origin);
   void SetTransform(const std::vector<TransformRaw>& transform_row);
   void SetTransformOrigin(std::optional<TransformOrigin> origin);
   void SetTransformOrigin(const std::vector<Length>& array);
@@ -302,7 +304,9 @@ class BaseView : public TypeIdentifiable<BaseView>,
   void SetConsumeSlideEventDirection(const clay::Value::Array& array);
   void SetEnableNewAnimator(bool enable) { enable_new_animator_ = enable; }
   bool IsInteractable() const { return is_interactable_; }
-  const TransformOperations& GetTransformOps() const { return transform_ops_; }
+  const lynx::gfx::TransformOperations& GetTransformOps() const {
+    return transform_value_.visual_operations;
+  }
   FloatPoint GetTransformOrigin() const;
   Transform GetTransform() const;
 
@@ -607,15 +611,14 @@ class BaseView : public TypeIdentifiable<BaseView>,
   // AnimatorTarget related interfaces
   void GetProperty(ClayAnimationPropertyType type, float& value);
   void GetProperty(ClayAnimationPropertyType type, Color& value);
-  void GetProperty(ClayAnimationPropertyType type, TransformOperations& value);
+  void GetProperty(ClayAnimationPropertyType type, TransformValue& value);
   void GetProperty(ClayAnimationPropertyType type, FilterOperations& value);
   // SetProperty will modify value without triggering transition animation.
   virtual void SetProperty(ClayAnimationPropertyType type, float value,
                            bool skip_update_for_raster_animation);
   void SetProperty(ClayAnimationPropertyType type, const Color& value,
                    bool skip_update_for_raster_animation);
-  void SetProperty(ClayAnimationPropertyType type,
-                   const TransformOperations& value,
+  void SetProperty(ClayAnimationPropertyType type, const TransformValue& value,
                    bool skip_update_for_raster_animation);
   void SetProperty(ClayAnimationPropertyType type,
                    const FilterOperations& value);
@@ -683,8 +686,10 @@ class BaseView : public TypeIdentifiable<BaseView>,
 
   void UpdateCacheStrategy();
   void UpdateChildrenBounds();
-  void SetTransformOperations(const TransformOperations& operations,
+  void SetTransformOperations(const TransformValue& value,
                               bool is_from_animation);
+  void SetResolvedTransform(const TransformValue& value,
+                            const FloatPoint& origin);
 
   void UpdateRenderObjectTransformOrigin();
   void OnAnimationNodeReady();
@@ -756,11 +761,12 @@ class BaseView : public TypeIdentifiable<BaseView>,
   bool needs_layout_updated_ = false;
   int ignore_layout_request_count_ = 0;
   fml::WeakPtrFactory<BaseView> weak_factory_;
-  TransformOperations transform_ops_;
+  TransformValue transform_value_;
   FilterOperations color_matrix_ops_;
   BoxShadowOperations box_shadow_ops_;
   std::optional<TransformOrigin> transform_origin_;
   std::optional<std::vector<TransformRaw>> transform_raw_;
+  std::optional<lynx::gfx::TransformOperations> gfx_transform_operations_;
   std::optional<float> perspective_value_;
   std::optional<std::vector<std::string>> events_;
   std::unique_ptr<MouseCursor> cursor_ = nullptr;

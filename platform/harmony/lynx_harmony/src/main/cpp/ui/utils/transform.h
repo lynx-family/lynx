@@ -12,7 +12,7 @@
 
 #include "base/include/value/base_value.h"
 #include "core/renderer/starlight/style/css_type.h"
-#include "core/style/transform/matrix44.h"
+#include "gfx/geometry/matrix44.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/utils/platform_length.h"
 
 namespace lynx {
@@ -33,9 +33,9 @@ class Transform {
  public:
   constexpr static size_t kIndexTranslationZ = 14;
   explicit Transform(const lepus::Value& value);
-  transforms::Matrix44 GetTransformMatrix(
-      float width, float height, float scaled_density = 1.0f,
-      bool with_transform_origin = false) const;
+  gfx::Matrix44 GetTransformMatrix(float width, float height,
+                                   float scaled_density = 1.0f,
+                                   bool with_transform_origin = false) const;
   void SetTransformOrigin(const TransformOrigin& transform_origin);
   const std::vector<TransformRaw>& GetTransformRaw() const { return raw_; }
 

@@ -16,7 +16,7 @@
 #define NO_SANITIZE(A)
 #endif
 
-#include "core/style/transform/matrix44.h"
+#include "gfx/geometry/matrix44.h"
 
 #include <cmath>
 #include <cstring>
@@ -25,7 +25,7 @@
 #include "base/include/float_comparison.h"
 
 namespace lynx {
-namespace transforms {
+namespace gfx {
 static inline constexpr double DegToRad(double degrees) {
   return degrees * M_PI / 180.0;
 }
@@ -333,6 +333,7 @@ bool Matrix44::invert(Matrix44* inverse) const {
     return false;
   }
   memcpy(reinterpret_cast<float*>(inverse->fMat), tmp, sizeof(tmp));
+  inverse->recomputeTypeMask();
   return true;
 }
 
@@ -413,5 +414,5 @@ double Matrix44::invert4x4Matrix(const float in_matrix[16],
   return determinant;
 }
 
-}  // namespace transforms
+}  // namespace gfx
 }  // namespace lynx

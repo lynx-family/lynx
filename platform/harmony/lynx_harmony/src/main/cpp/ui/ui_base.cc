@@ -1090,7 +1090,7 @@ void UIBase::ApplyTransform() {
     return;
   }
 
-  transforms::Matrix44 matrix;
+  gfx::Matrix44 matrix;
   if (has_transform) {
     if (transform_origin_.has_value()) {
       transform_->SetTransformOrigin(transform_origin_.value());
@@ -1107,7 +1107,7 @@ void UIBase::ApplyTransform() {
 
   if (has_perspective) {
     float value = GetPerspectiveValue();
-    transforms::Matrix44 per_matrix{};
+    gfx::Matrix44 per_matrix{};
     per_matrix.setRC(3, 2, value);
     matrix.preConcat(per_matrix);
   }
@@ -2347,7 +2347,7 @@ void UIBase::GetTargetPoint(float target_point[2], float point[2],
   target_point[0] = point[0] - target_origin_rect[0] + scroll[0];
   target_point[1] = point[1] - target_origin_rect[1] + scroll[1];
   if (target_transform) {
-    transforms::Matrix44 invert_matrix;
+    gfx::Matrix44 invert_matrix;
     if (target_transform
             ->GetTransformMatrix(target_origin_rect[2], target_origin_rect[3],
                                  1.f, true)
@@ -3150,7 +3150,7 @@ void UIBase::UpdateOffsetPathCacheIfNeeded() {
   }
 }
 
-std::optional<transforms::Matrix44> UIBase::GetOffsetMatrix() const {
+std::optional<gfx::Matrix44> UIBase::GetOffsetMatrix() const {
   // No basic shape or no calculator instance means no offset-path effect.
   if (!offset_basic_shape_ || !lynx_offset_calculator_) {
     return std::nullopt;
@@ -3181,10 +3181,10 @@ std::optional<transforms::Matrix44> UIBase::GetOffsetMatrix() const {
   // Make sure the translation vector is not affected by rotation.
   // We want: v' = T * R * v (rotate around origin, then translate to path
   // point).
-  transforms::Matrix44 matrix;
+  gfx::Matrix44 matrix;
   matrix.setIdentity();
   matrix.preTranslate(state.x, state.y, 0);
-  transforms::Matrix44 rotate_matrix;
+  gfx::Matrix44 rotate_matrix;
   rotate_matrix.setRotateAboutZAxis(rotate);
   matrix.preConcat(rotate_matrix);
   return matrix;

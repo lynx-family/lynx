@@ -12,7 +12,7 @@
 
 #include "base/include/closure.h"
 #include "core/renderer/css/computed_css_style.h"
-#include "core/renderer/css/transforms/transform_operations.h"
+#include "core/renderer/css/transforms/transform_operations_helper.h"
 #include "core/renderer/dom/element.h"
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/dom/fragment/display_list_builder.h"
@@ -23,7 +23,7 @@
 #include "core/renderer/ui_wrapper/painting/native_painting_context.h"
 #include "core/renderer/ui_wrapper/painting/platform_renderer_impl.h"
 #include "core/renderer/utils/base/tasm_constants.h"
-#include "core/style/transform/matrix44.h"
+#include "gfx/geometry/matrix44.h"
 
 namespace lynx {
 namespace tasm {
@@ -939,18 +939,21 @@ void Fragment::DrawTransform(DisplayListBuilder& display_list_builder) {
     return;
   }
 
-  transforms::Matrix44 final_matrix;
+  gfx::Matrix44 final_matrix;
   if (!element()->computed_css_style()->HasTransform()) {
     display_list_builder.Transform(final_matrix);
     // Transform is reset to identity matrix.
     return;
   }
 
-  transforms::TransformOperations transform_ops(
-      layout_info_.layout_result,
-      *element()->computed_css_style()->GetTransformData());
-  transforms::Matrix44 matrix =
-      transform_ops.ApplyRemaining(0, layout_info_.layout_result);
+  gfx::TransformOperations transform_ops =
+      transforms::ConvertToGfxTransformOperations(
+          *element()->computed_css_style()->GetTransformData(),
+          layout_info_.layout_result.size_.width_,
+          layout_info_.layout_result.size_.height_);
+  gfx::Matrix44 matrix =
+      transform_ops.ApplyRemaining(0, layout_info_.layout_result.size_.width_,
+                                   layout_info_.layout_result.size_.height_);
 
   float origin_x = 0.5f * layout_info_.layout_result.size_.width_;
   float origin_y = 0.5f * layout_info_.layout_result.size_.height_;

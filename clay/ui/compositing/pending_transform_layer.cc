@@ -6,7 +6,7 @@
 
 #include <variant>
 
-#include "clay/gfx/geometry/transform_operations.h"
+#include "clay/gfx/geometry/transform_value.h"
 
 namespace clay {
 
@@ -15,11 +15,12 @@ PendingTransformLayer::PendingTransformLayer(const skity::Matrix& transform,
     : PendingOffsetLayer(offset), transform_(transform) {}
 
 PendingTransformLayer::PendingTransformLayer(
-    const TransformOperations& transform, const FloatPoint& origin,
-    const FloatPoint& offset)
+    const lynx::gfx::TransformOperations& transform, const FloatPoint& origin,
+    float perspective, const FloatPoint& offset)
     : PendingOffsetLayer(offset),
       transform_(transform),
-      transform_origin_(origin) {}
+      transform_origin_(origin),
+      perspective_(perspective) {}
 
 PendingTransformLayer::~PendingTransformLayer() = default;
 
@@ -33,10 +34,12 @@ void PendingTransformLayer::AddToFrame(FrameBuilder* builder,
       matrix.PreTranslate(total_offset.x(), total_offset.y());
     }
     builder->PushStaticTransform(matrix, this);
-  } else if (std::holds_alternative<TransformOperations>(transform_)) {
+  } else if (std::holds_alternative<lynx::gfx::TransformOperations>(
+                 transform_)) {
     builder->PushTransformOperations(
-        std::get<TransformOperations>(transform_), transform_origin_.x(),
-        transform_origin_.y(), total_offset.x(), total_offset.y(), this);
+        std::get<lynx::gfx::TransformOperations>(transform_),
+        transform_origin_.x(), transform_origin_.y(), total_offset.x(),
+        total_offset.y(), perspective_, this);
   } else {
     return;
   }
@@ -54,8 +57,11 @@ std::string PendingTransformLayer::ToString() const {
   skity::Matrix transform;
   if (std::holds_alternative<skity::Matrix>(transform_)) {
     transform = std::get<skity::Matrix>(transform_);
-  } else if (std::holds_alternative<TransformOperations>(transform_)) {
-    transform = std::get<TransformOperations>(transform_).Apply().matrix();
+  } else if (std::holds_alternative<lynx::gfx::TransformOperations>(
+                 transform_)) {
+    transform = ApplyTransform(
+        std::get<lynx::gfx::TransformOperations>(transform_), perspective_,
+        transform_origin_.x(), transform_origin_.y(), 0.0f, 0.0f);
   }
   ss << PendingOffsetLayer::ToString();
   ss << " translate=(" << transform.Get(0, 3) << "," << transform.Get(1, 3)

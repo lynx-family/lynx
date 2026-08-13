@@ -201,7 +201,7 @@ class TransformKeyframeSet : public KeyframeSet {
    * @param fraction The elapsed fraction of the animation
    * @return The animated value.
    */
-  TransformOperations GetValue(float fraction) const;
+  TransformValue GetValue(float fraction) const;
 
   void AddKeyframe(std::unique_ptr<TransformKeyframe> keyframe);
 
@@ -214,7 +214,7 @@ class TransformKeyframeSet : public KeyframeSet {
   // same time.
   Keyframes keyframes_;
 
-  TransformOperations original_value_ = TransformOperations();
+  TransformValue original_value_;
 };
 
 class FilterKeyframeSet : public KeyframeSet {

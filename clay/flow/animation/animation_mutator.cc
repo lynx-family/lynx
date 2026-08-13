@@ -174,14 +174,14 @@ void AnimationMutator::OnTransitionEvent(
 }
 
 void TransformMutator::GetProperty(ClayAnimationPropertyType type,
-                                   clay::TransformOperations& value) {
+                                   clay::TransformValue& value) {
   if (type == ClayAnimationPropertyType::kTransform) {
     value = transform_;
   }
 }
 
 void TransformMutator::SetProperty(ClayAnimationPropertyType type,
-                                   const clay::TransformOperations& value,
+                                   const clay::TransformValue& value,
                                    bool skip_update_for_raster_animation) {
   if (type == ClayAnimationPropertyType::kTransform) {
     transform_ = value;

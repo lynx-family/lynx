@@ -17,6 +17,7 @@
 #include "clay/gfx/animation/transition_manager.h"
 #include "clay/gfx/geometry/float_point.h"
 #include "clay/gfx/geometry/transform.h"
+#include "clay/gfx/geometry/transform_value.h"
 #include "clay/gfx/style/borders_data.h"
 #include "clay/gfx/style/box_data.h"
 #include "clay/gfx/style/outline_data.h"
@@ -312,7 +313,8 @@ class RenderObject : public AbstractNode {
   void SetImageFilterMode(FilterMode mode);
   FilterMode ImageFilterMode() const { return image_filter_mode_; }
 
-  void SetTransformOperations(const TransformOperations& transform,
+  void SetTransformOperations(const lynx::gfx::TransformOperations& transform,
+                              float stacking_z,
                               bool defer_invalidation = false);
   void SetTransformOrigin(const FloatPoint& origin);
   void SetPerspective(float value);
@@ -321,14 +323,17 @@ class RenderObject : public AbstractNode {
   }
   bool HasOffsetTransform() const { return offset_transform_.has_value(); }
   bool HasTransformOperations() const;
-  const TransformOperations& GetTransformOperations() const {
+  const lynx::gfx::TransformOperations& GetTransformOperations() const {
     return *transform_;
   }
-  const TransformOperations& GetOffsetTransformOperations() const {
+  const lynx::gfx::TransformOperations& GetOffsetTransformOperations() const {
     return *offset_transform_;
   }
   Transform GetTransform() const {
-    return transform_.has_value() ? (*transform_).Apply() : Transform();
+    return transform_.has_value()
+               ? Transform(
+                     ApplyTransform(*transform_, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f))
+               : Transform();
   }
   const FloatPoint& GetTransformOrigin() const { return transform_origin_; }
   bool HasPerspective() const { return perspective_.has_value(); }
@@ -598,8 +603,8 @@ class RenderObject : public AbstractNode {
   std::optional<BordersData> border_;
   std::optional<OutlineData> outline_;
   std::optional<std::vector<Shadow>> shadows_;
-  std::optional<TransformOperations> offset_transform_;
-  std::optional<TransformOperations> transform_;
+  std::optional<lynx::gfx::TransformOperations> offset_transform_;
+  std::optional<lynx::gfx::TransformOperations> transform_;
   std::optional<float> perspective_;
   FloatPoint transform_origin_;
   std::optional<float> opacity_ = std::nullopt;

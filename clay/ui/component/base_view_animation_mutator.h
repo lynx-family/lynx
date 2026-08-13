@@ -29,7 +29,7 @@ class BaseViewAnimationMutator : public AnimatorTarget,
   void GetProperty(ClayAnimationPropertyType type, float& value) override;
   void GetProperty(ClayAnimationPropertyType type, Color& value) override;
   void GetProperty(ClayAnimationPropertyType type,
-                   TransformOperations& value) override;
+                   TransformValue& value) override;
   void GetProperty(ClayAnimationPropertyType type,
                    FilterOperations& value) override;
 
@@ -37,8 +37,7 @@ class BaseViewAnimationMutator : public AnimatorTarget,
                    bool skip_update_for_raster_animation) override;
   void SetProperty(ClayAnimationPropertyType type, const Color& value,
                    bool skip_update_for_raster_animation) override;
-  void SetProperty(ClayAnimationPropertyType type,
-                   const TransformOperations& value,
+  void SetProperty(ClayAnimationPropertyType type, const TransformValue& value,
                    bool skip_update_for_raster_animation) override;
   void SetProperty(ClayAnimationPropertyType type,
                    const FilterOperations& value) override;

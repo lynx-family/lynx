@@ -113,6 +113,19 @@ Value MakeTranslateXCalcValue(double percent, double fixed) {
   transform.emplace_back(Value(std::move(op)));
   return Value(std::move(transform));
 }
+
+Value MakeTranslate3dValue(double x, double y, double z) {
+  Value::Array op;
+  op.emplace_back(static_cast<int32_t>(ClayTransformType::kTranslate3d));
+  for (double value : {x, y, z}) {
+    op.emplace_back(value);
+    op.emplace_back(static_cast<int32_t>(LengthUnit::kNum));
+  }
+
+  Value::Array transform;
+  transform.emplace_back(Value(std::move(op)));
+  return Value(std::move(transform));
+}
 }  // namespace
 
 TEST(TransformOperationsTest, TranslateYPercentageDetectionUsesFirstSlot) {
@@ -156,16 +169,135 @@ TEST_F_UI(KeyFrameTest, TransformKeyframeCalcResolvesOnClone) {
       static_cast<TransformKeyframeSet*>(cloned_keyframe_set.get());
 
   auto start_value = transform_set->GetValue(0.f);
-  ASSERT_EQ(start_value.size(), 1u);
-  EXPECT_FLOAT_EQ(start_value.at(0).translate.x, 110.f);
+  ASSERT_EQ(start_value.visual_operations.size(), 1u);
+  EXPECT_FLOAT_EQ(
+      start_value.visual_operations.GetOperations()[0].translate.x.value,
+      110.f);
 
   auto mid_value = transform_set->GetValue(0.5f);
-  ASSERT_EQ(mid_value.size(), 1u);
-  EXPECT_FLOAT_EQ(mid_value.at(0).translate.x, 120.f);
+  ASSERT_EQ(mid_value.visual_operations.size(), 1u);
+  EXPECT_FLOAT_EQ(
+      mid_value.visual_operations.GetOperations()[0].translate.x.value, 120.f);
 
   auto end_value = transform_set->GetValue(1.f);
-  ASSERT_EQ(end_value.size(), 1u);
-  EXPECT_FLOAT_EQ(end_value.at(0).translate.x, 130.f);
+  ASSERT_EQ(end_value.visual_operations.size(), 1u);
+  EXPECT_FLOAT_EQ(
+      end_value.visual_operations.GetOperations()[0].translate.x.value, 130.f);
+}
+
+TEST(TransformKeyframeTest, InterpolatesVisualTransformAndStackingZTogether) {
+  TransformRaw start_raw{};
+  start_raw.type = static_cast<int>(ClayTransformType::kTranslate3d);
+  start_raw.values[0] = Length(10.f, LengthUnit::kNum);
+  start_raw.values[1] = Length(20.f, LengthUnit::kNum);
+  start_raw.values[2] = Length(30.f, LengthUnit::kNum);
+
+  TransformRaw end_raw{};
+  end_raw.type = static_cast<int>(ClayTransformType::kTranslate3d);
+  end_raw.values[0] = Length(30.f, LengthUnit::kNum);
+  end_raw.values[1] = Length(40.f, LengthUnit::kNum);
+  end_raw.values[2] = Length(50.f, LengthUnit::kNum);
+
+  auto keyframe_set =
+      TransformKeyframeSet::Create(ClayAnimationPropertyType::kTransform);
+  keyframe_set->AddKeyframe(
+      TransformKeyframe::Create(0.f, ResolveTransform({start_raw}, 0.f, 0.f),
+                                Interpolator::CreateDefaultInterpolator()));
+  keyframe_set->AddKeyframe(
+      TransformKeyframe::Create(1.f, ResolveTransform({end_raw}, 0.f, 0.f),
+                                Interpolator::CreateDefaultInterpolator()));
+
+  TransformValue value = keyframe_set->GetValue(0.5f);
+  ASSERT_EQ(value.visual_operations.size(), 1u);
+  const auto& translate = value.visual_operations.GetOperations()[0].translate;
+  EXPECT_FLOAT_EQ(translate.x.value, 20.f);
+  EXPECT_FLOAT_EQ(translate.y.value, 30.f);
+  EXPECT_FLOAT_EQ(translate.z.value, 0.f);
+  EXPECT_FLOAT_EQ(value.stacking_z, 40.f);
+}
+
+TEST(TransformKeyframeTest, MissingEndpointsAndRemovalKeepCompleteValue) {
+  class TransformTarget : public FixedSizeAnimatorTarget {
+   public:
+    TransformTarget() : FixedSizeAnimatorTarget(FloatSize(0.f, 0.f)) {}
+
+    using AnimatorTarget::GetProperty;
+    using AnimatorTarget::SetProperty;
+
+    void GetProperty(ClayAnimationPropertyType,
+                     TransformValue& value) override {
+      value = value_;
+    }
+    void SetProperty(ClayAnimationPropertyType, const TransformValue& value,
+                     bool) override {
+      value_ = value;
+    }
+
+    TransformValue value_;
+  } target;
+  target.value_.visual_operations.AppendTranslate(
+      {5.f, lynx::gfx::LengthUnit::kNumber},
+      {6.f, lynx::gfx::LengthUnit::kNumber},
+      {0.f, lynx::gfx::LengthUnit::kNumber});
+  target.value_.stacking_z = 7.f;
+
+  KeyframesManager manager(&target);
+  auto keyframe_set =
+      TransformKeyframeSet::Create(ClayAnimationPropertyType::kTransform);
+  keyframe_set->SetKeyframesManager(&manager);
+  TransformValue middle;
+  middle.stacking_z = 20.f;
+  keyframe_set->AddKeyframe(TransformKeyframe::Create(
+      0.5f, middle, Interpolator::CreateDefaultInterpolator()));
+
+  ValueAnimator animation;
+  keyframe_set->OnAnimationStart(animation);
+  keyframe_set->OnAnimationUpdate(animation);
+  EXPECT_FLOAT_EQ(keyframe_set->GetValue(0.f).stacking_z, 7.f);
+  EXPECT_FLOAT_EQ(keyframe_set->GetValue(1.f).stacking_z, 7.f);
+
+  target.value_ = middle;
+  keyframe_set->OnAnimationRemove(animation);
+  EXPECT_TRUE(target.value_.visual_operations.ApproximatelyEqual(
+      keyframe_set->GetValue(0.f).visual_operations, 0.f));
+  EXPECT_FLOAT_EQ(target.value_.stacking_z, 7.f);
+}
+
+TEST_F_UI(KeyFrameTest,
+          RasterEnabledAnimationUpdatesVisualTransformAndStackingZ) {
+  page_->SetRasterAnimationEnabled(true);
+  animator_view_->SetBound(0, 0, 100, 100);
+
+  Value::Map start_properties;
+  start_properties.emplace("transform", MakeTranslate3dValue(10, 20, 30));
+  Value::Map end_properties;
+  end_properties.emplace("transform", MakeTranslate3dValue(30, 40, 50));
+  Value::Map keyframes;
+  keyframes.emplace("0.000000", Value(std::move(start_properties)));
+  keyframes.emplace("1.000000", Value(std::move(end_properties)));
+  page_->SetKeyframesData(
+      Value{{"transform_test", Value(std::move(keyframes))}});
+
+  AnimationData data{"transform_test",
+                     1000,
+                     -500,
+                     TimingFunctionData(),
+                     1,
+                     ClayAnimationFillModeType::kBoth,
+                     ClayAnimationDirectionType::kNormal,
+                     ClayAnimationPlayStateType::kPaused};
+  animator_view_->SetAnimation({data});
+  animator_view_->OnNodeReady();
+  animator_view_->GetAnimationHandler()->DoAnimationFrame(
+      fml::TimePoint::Now().ToEpochDelta().ToMilliseconds());
+
+  ASSERT_EQ(animator_view_->GetTransformOps().size(), 1u);
+  const auto& translate =
+      animator_view_->GetTransformOps().GetOperations()[0].translate;
+  EXPECT_FLOAT_EQ(translate.x.value, 20.f);
+  EXPECT_FLOAT_EQ(translate.y.value, 30.f);
+  EXPECT_FLOAT_EQ(translate.z.value, 0.f);
+  EXPECT_FLOAT_EQ(animator_view_->render_object()->GetTranslateZ(), 40.f);
 }
 
 TEST_F_UI(KeyFrameTest, TransitionStartsAfterNodeReady) {

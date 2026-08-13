@@ -22,6 +22,7 @@
 #include "clay/ui/component/scroll_view.h"
 #include "clay/ui/component/view_callback/list_container_event_callback_manager.h"
 #include "clay/ui/lynx_module/type_utils.h"
+#include "gfx/geometry/transform_operations.h"
 
 namespace clay {
 
@@ -404,7 +405,7 @@ void ListContainerView::UpdateStickyInfoForUpdatedChild(
 
 void ListContainerView::ResetStickyItem(Component* child) {
   if (child != nullptr) {
-    child->SetTransform(TransformOperations(), FloatPoint());
+    child->SetTransform(TransformValue(), FloatPoint());
   }
 };
 
@@ -499,16 +500,23 @@ void ListContainerView::UpdateStickyEnds(float offset_x, float offset_y) {
       }
     }
     if (sticky_end_item != nullptr) {
-      TransformOperations ops;
+      TransformValue value;
       if (is_vertical) {
-        ops.AppendTranslate(0, sticky_start_offset - sticky_end_item->Top(),
-                            std::numeric_limits<int>::max());
+        value.visual_operations.AppendTranslate(
+            {0.0f, lynx::gfx::LengthUnit::kNumber},
+            {sticky_start_offset - sticky_end_item->Top(),
+             lynx::gfx::LengthUnit::kNumber},
+            {0.0f, lynx::gfx::LengthUnit::kNumber});
       } else {
-        ops.AppendTranslate(sticky_start_offset - sticky_end_item->Left(), 0,
-                            std::numeric_limits<int>::max());
+        value.visual_operations.AppendTranslate(
+            {sticky_start_offset - sticky_end_item->Left(),
+             lynx::gfx::LengthUnit::kNumber},
+            {0.0f, lynx::gfx::LengthUnit::kNumber},
+            {0.0f, lynx::gfx::LengthUnit::kNumber});
       }
+      value.stacking_z = static_cast<float>(std::numeric_limits<int>::max());
 
-      sticky_end_item->SetTransform(ops, FloatPoint());
+      sticky_end_item->SetTransform(value, FloatPoint());
     }
   }
 }
@@ -604,16 +612,23 @@ void ListContainerView::UpdateStickyStarts(float offset_x, float offset_y) {
       }
     }
     if (sticky_start_item != nullptr) {
-      TransformOperations ops;
+      TransformValue value;
       if (is_vertical) {
-        ops.AppendTranslate(0, sticky_start_offset - sticky_start_item->Top(),
-                            std::numeric_limits<int>::max());
+        value.visual_operations.AppendTranslate(
+            {0.0f, lynx::gfx::LengthUnit::kNumber},
+            {sticky_start_offset - sticky_start_item->Top(),
+             lynx::gfx::LengthUnit::kNumber},
+            {0.0f, lynx::gfx::LengthUnit::kNumber});
       } else {
-        ops.AppendTranslate(sticky_start_offset - sticky_start_item->Left(), 0,
-                            std::numeric_limits<int>::max());
+        value.visual_operations.AppendTranslate(
+            {sticky_start_offset - sticky_start_item->Left(),
+             lynx::gfx::LengthUnit::kNumber},
+            {0.0f, lynx::gfx::LengthUnit::kNumber},
+            {0.0f, lynx::gfx::LengthUnit::kNumber});
       }
+      value.stacking_z = static_cast<float>(std::numeric_limits<int>::max());
 
-      sticky_start_item->SetTransform(ops, FloatPoint());
+      sticky_start_item->SetTransform(value, FloatPoint());
     }
   }
 }
@@ -1086,8 +1101,9 @@ size_t ListContainerView::GetVisibleItemsInfo(
     }
     auto item_rect = item->BoundsRelativeTo(this);
     if (is_sticky && !item->GetTransformOps().IsIdentity()) {
-      item_rect = FloatRect(item->GetTransformOps().Apply().matrix().MapRect(
-          static_cast<skity::Rect>(item_rect)));
+      item_rect = FloatRect(
+          ApplyTransform(item->GetTransformOps(), 0.0f, 0.0f, 0.0f, 0.0f, 0.0f)
+              .MapRect(static_cast<skity::Rect>(item_rect)));
     }
     if (!item_rect.Intersects(viewport)) {
       return;
