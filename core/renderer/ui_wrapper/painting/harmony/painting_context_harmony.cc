@@ -9,8 +9,12 @@
 #include <utility>
 #include <vector>
 
+#include "core/renderer/dom/element.h"
+#include "core/renderer/ui_wrapper/layout/harmony/text_layout_harmony.h"
+#include "core/renderer/ui_wrapper/layout/harmony/text_measurer_harmony.h"
 #include "core/shell/dynamic_ui_operation_queue.h"
 #include "core/value_wrapper/value_impl_lepus.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/text/paragraph_harmony.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/text/utils/text_utils.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_root.h"
 
@@ -184,6 +188,12 @@ void PaintingContextHarmonyRef::SetKeyframes(PropBundleHarmony* prop_bundle) {
 
 PaintingContextHarmony::PaintingContextHarmony(harmony::UIOwner* ui_owner) {
   platform_ref_ = std::make_shared<PaintingContextHarmonyRef>(ui_owner);
+  auto* context = ui_owner != nullptr ? ui_owner->Context() : nullptr;
+  if (context != nullptr && context->IsLayoutInElementModeOn()) {
+    text_measurer_ = std::make_unique<TextMeasurerHarmony>(context);
+    text_layout_impl_ =
+        std::make_unique<TextLayoutHarmony>(text_measurer_.get());
+  }
 }
 
 PaintingContextHarmony::~PaintingContextHarmony() = default;
@@ -245,13 +255,18 @@ void PaintingContextHarmony::UpdateLayout(
       config_.enable_new_sticky ? kNewStickyInfoCount : kLegacyStickyInfoCount;
   MAKE_UNIQUE_COPY(sticky, sticky_info_count)
 #undef MAKE_UNIQUE_COPY
+  auto paragraph =
+      text_measurer_ != nullptr ? text_measurer_->GetParagraph(tag) : nullptr;
   Enqueue([platform_ref = platform_ref_, tag, x, y, width, height,
            paddings = std::move(paddings_copy),
            margins = std::move(margins_copy), borders = std::move(borders_copy),
            sticky = std::move(sticky_copy), max_height, node_index,
-           display_none] {
+           display_none, paragraph] {
     auto harmony_ref =
         std::static_pointer_cast<PaintingContextHarmonyRef>(platform_ref);
+    if (paragraph != nullptr) {
+      harmony_ref->UpdateExtraData(tag, paragraph);
+    }
     harmony_ref->UpdateLayout(tag, x, y, width, height, paddings.get(),
                               margins.get(), borders.get(), sticky.get(),
                               max_height, node_index, display_none);

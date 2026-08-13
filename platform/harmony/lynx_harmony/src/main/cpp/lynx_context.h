@@ -26,6 +26,7 @@
 #include "core/public/lynx_extension_delegate.h"
 #include "core/public/lynx_resource_loader.h"
 #include "core/public/lynx_runtime_proxy.h"
+#include "core/public/page_options.h"
 #include "core/public/perf_controller_proxy.h"
 #include "core/public/ui_delegate.h"
 #include "core/renderer/tasm/config.h"
@@ -115,6 +116,19 @@ class LynxContext {
   }
 
   ArkUI_ContextHandle ArkUIContext() const { return ark_ui_context_; }
+
+  void SetEmbeddedMode(EmbeddedMode embedded_mode) {
+    embedded_mode_ = embedded_mode;
+  }
+
+  bool IsLayoutInElementModeOn() const {
+    return (embedded_mode_ & (EmbeddedMode::LAYOUT_IN_ELEMENT |
+                              EmbeddedMode::FRAGMENT_LAYER_RENDER)) > 0;
+  }
+
+  bool IsFragmentLayerRenderOn() const {
+    return (embedded_mode_ & EmbeddedMode::FRAGMENT_LAYER_RENDER) > 0;
+  }
 
   void SetWindowInfo(int32_t window_id, int32_t window_left_px,
                      int32_t window_top_px) {
@@ -388,6 +402,7 @@ class LynxContext {
   bool enable_text_overflow_{false};
   bool enable_new_sticky_{false};
   bool enable_harmony_new_overlay_{false};
+  EmbeddedMode embedded_mode_{EmbeddedMode::UNSET};
 
   std::shared_ptr<shell::ListEngineProxy> list_engine_proxy_{nullptr};
   std::shared_ptr<shell::LynxEngineProxy> engine_proxy_{nullptr};
