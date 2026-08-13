@@ -5,6 +5,7 @@
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/js_ui_base.h"
 
 #include <arkui/native_node_napi.h>
+#include <deviceinfo.h>
 #include <node_api.h>
 
 #include <string>
@@ -18,6 +19,10 @@
 namespace lynx {
 namespace tasm {
 namespace harmony {
+namespace {
+constexpr int kKeyEventSupportVersion = 14;
+constexpr int kAxisEventSupportVersion = 17;
+}  // namespace
 
 void JSUIBase::SetOverlayContent(UIBase* ui, bool is_overlay_content) {
   ui->SetIsOverlayContent(is_overlay_content);
@@ -27,6 +32,13 @@ void JSUIBase::SetOverlayContent(UIBase* ui, bool is_overlay_content) {
     manager.RegisterNodeEvent(ui->Node(), NODE_EVENT_ON_DETACH, ui);
     manager.RegisterNodeEvent(ui->Node(), NODE_ON_TOUCH_INTERCEPT, ui);
     manager.RegisterNodeEvent(ui->Node(), NODE_TOUCH_EVENT, ui);
+    manager.RegisterNodeEvent(ui->Node(), NODE_ON_MOUSE, ui);
+    if (OH_GetSdkApiVersion() >= kKeyEventSupportVersion) {
+      manager.RegisterNodeEvent(ui->Node(), NODE_ON_KEY_EVENT, ui);
+    }
+    if (OH_GetSdkApiVersion() >= kAxisEventSupportVersion) {
+      manager.RegisterNodeEvent(ui->Node(), NODE_ON_AXIS, ui);
+    }
     manager.AddNodeEventReceiver(ui->Node(), UIBase::EventReceiver);
     manager.AddNodeCustomEventReceiver(ui->Node(), UIBase::CustomEventReceiver);
   } else {
@@ -35,6 +47,13 @@ void JSUIBase::SetOverlayContent(UIBase* ui, bool is_overlay_content) {
                                           UIBase::CustomEventReceiver);
     manager.UnregisterNodeEvent(ui->Node(), NODE_TOUCH_EVENT);
     manager.UnregisterNodeEvent(ui->Node(), NODE_ON_TOUCH_INTERCEPT);
+    manager.UnregisterNodeEvent(ui->Node(), NODE_ON_MOUSE);
+    if (OH_GetSdkApiVersion() >= kKeyEventSupportVersion) {
+      manager.UnregisterNodeEvent(ui->Node(), NODE_ON_KEY_EVENT);
+    }
+    if (OH_GetSdkApiVersion() >= kAxisEventSupportVersion) {
+      manager.UnregisterNodeEvent(ui->Node(), NODE_ON_AXIS);
+    }
     manager.UnregisterNodeEvent(ui->Node(), NODE_EVENT_ON_ATTACH);
     manager.UnregisterNodeEvent(ui->Node(), NODE_EVENT_ON_DETACH);
   }

@@ -30,6 +30,8 @@ static std::vector<UIOverlay*>
                      // for OnDismiss event
 static constexpr int kDialogLevelModeSupportVersion = 15;
 static constexpr int kNodeUniqueIdSupportVersion = 20;
+static constexpr int kKeyEventSupportVersion = 14;
+static constexpr int kAxisEventSupportVersion = 17;
 
 static void* GetNodeUniqueIdFunc() {
   if (OH_GetSdkApiVersion() < kNodeUniqueIdSupportVersion) {
@@ -163,6 +165,13 @@ UIOverlay::~UIOverlay() {
   NodeManager::Instance().UnregisterNodeEvent(stack_, NODE_EVENT_ON_DETACH);
   NodeManager::Instance().UnregisterNodeEvent(stack_, NODE_ON_TOUCH_INTERCEPT);
   NodeManager::Instance().UnregisterNodeEvent(stack_, NODE_TOUCH_EVENT);
+  NodeManager::Instance().UnregisterNodeEvent(stack_, NODE_ON_MOUSE);
+  if (OH_GetSdkApiVersion() >= kKeyEventSupportVersion) {
+    NodeManager::Instance().UnregisterNodeEvent(stack_, NODE_ON_KEY_EVENT);
+  }
+  if (OH_GetSdkApiVersion() >= kAxisEventSupportVersion) {
+    NodeManager::Instance().UnregisterNodeEvent(stack_, NODE_ON_AXIS);
+  }
   NodeManager::Instance().DisposeNode(stack_);
   stack_ = nullptr;
 }
@@ -187,6 +196,13 @@ UIOverlay::UIOverlay(LynxContext* context, int sign, const std::string& tag)
       stack_, NODE_HIT_TEST_BEHAVIOR,
       static_cast<int32_t>(ARKUI_HIT_TEST_MODE_TRANSPARENT));
   NodeManager::Instance().RegisterNodeEvent(stack_, NODE_TOUCH_EVENT, this);
+  NodeManager::Instance().RegisterNodeEvent(stack_, NODE_ON_MOUSE, this);
+  if (OH_GetSdkApiVersion() >= kKeyEventSupportVersion) {
+    NodeManager::Instance().RegisterNodeEvent(stack_, NODE_ON_KEY_EVENT, this);
+  }
+  if (OH_GetSdkApiVersion() >= kAxisEventSupportVersion) {
+    NodeManager::Instance().RegisterNodeEvent(stack_, NODE_ON_AXIS, this);
+  }
   NodeManager::Instance().AddNodeEventReceiver(stack_, UIBase::EventReceiver);
   NodeManager::Instance().AddNodeCustomEventReceiver(
       stack_, UIBase::CustomEventReceiver);
@@ -241,9 +257,10 @@ void UIOverlay::FrameDidChanged() {
 }
 
 void UIOverlay::OnNodeEvent(ArkUI_NodeEvent* event) {
-  if (OH_ArkUI_NodeEvent_GetEventType(event) == NODE_ON_TOUCH_INTERCEPT) {
+  auto event_type = OH_ArkUI_NodeEvent_GetEventType(event);
+  if (event_type == NODE_ON_TOUCH_INTERCEPT) {
     context_->UpdateNativeInteractionEnabledForTree(this);
-  } else if (OH_ArkUI_NodeEvent_GetEventType(event) == NODE_TOUCH_EVENT) {
+  } else if (event_type == NODE_TOUCH_EVENT) {
     if (ArkUI_UIInputEvent* touch_event =
             OH_ArkUI_NodeEvent_GetInputEvent(event);
         OH_ArkUI_UIInputEvent_GetAction(touch_event) ==
@@ -276,10 +293,39 @@ void UIOverlay::OnNodeEvent(ArkUI_NodeEvent* event) {
     } else {
       context_->OnTouchEvent(OH_ArkUI_NodeEvent_GetInputEvent(event), this);
     }
-  } else if (OH_ArkUI_NodeEvent_GetEventType(event) == NODE_EVENT_ON_ATTACH) {
+  } else if (event_type == NODE_ON_MOUSE || event_type == NODE_ON_AXIS) {
+    auto* input_event = OH_ArkUI_NodeEvent_GetInputEvent(event);
+    bool dispatch_to_page = false;
+    if (OH_ArkUI_PointerEvent_GetPointerCount(input_event) > 0) {
+      float page_point[2] = {OH_ArkUI_PointerEvent_GetXByIndex(input_event, 0),
+                             OH_ArkUI_PointerEvent_GetYByIndex(input_event, 0)};
+      if (auto* target = UIBase::HitTest(page_point)) {
+        bool consumes_overlay = target == this;
+        float target_point[2] = {page_point[0], page_point[1]};
+        UIBase* target_ui = target->HasUI()
+                                ? static_cast<UIBase*>(target)
+                                : static_cast<UIBase*>(target->FirstUITarget());
+        LynxUIHelper::ConvertPointFromAncestorToDescendant(
+            target_point, this, target_ui, page_point);
+        dispatch_to_page = target->EventThrough(target_point) ||
+                           (is_event_pass_through_ && consumes_overlay);
+      }
+    }
+    UIBase* input_root = this;
+    if (dispatch_to_page) {
+      input_root = context_->Root();
+    }
+    if (event_type == NODE_ON_MOUSE) {
+      context_->OnMouseEvent(input_event, input_root, dispatch_to_page);
+    } else {
+      context_->OnAxisEvent(input_event, input_root, dispatch_to_page);
+    }
+  } else if (event_type == NODE_ON_KEY_EVENT) {
+    context_->OnKeyEvent(OH_ArkUI_NodeEvent_GetInputEvent(event));
+  } else if (event_type == NODE_EVENT_ON_ATTACH) {
     is_root_attached_ = true;
     context_->NotifyUIScroll();
-  } else if (OH_ArkUI_NodeEvent_GetEventType(event) == NODE_EVENT_ON_DETACH) {
+  } else if (event_type == NODE_EVENT_ON_DETACH) {
     is_root_attached_ = false;
     context_->NotifyUIScroll();
   }

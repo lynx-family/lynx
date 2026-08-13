@@ -15,6 +15,7 @@ namespace tasm {
 namespace harmony {
 class LynxEvent;
 class TouchEvent;
+class BubbleEvent;
 class CustomEvent;
 class UIOwner;
 
@@ -31,6 +32,8 @@ class EventEmitter {
 
  private:
   void SendTouchEvent(const TouchEvent& touch_event);
+
+  void SendBubbleEvent(const BubbleEvent& bubble_event);
 
   UIOwner* ui_owner_{nullptr};
   int64_t event_id_{0};

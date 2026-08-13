@@ -4,6 +4,7 @@
 
 #include "platform/harmony/lynx_harmony/src/main/cpp/event/event_dispatcher.h"
 
+#include <arkui/native_key_event.h>
 #include <deviceinfo.h>
 #include <dlfcn.h>
 
@@ -21,6 +22,7 @@
 #include "core/renderer/utils/devtool_lifecycle.h"
 #include "core/renderer/utils/lynx_env.h"
 #include "core/runtime/common/lynx_console_helper.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/event/bubble_event.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/event/event_emitter.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/event/touch_event.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/gesture/arena/gesture_arena_manager.h"
@@ -44,6 +46,164 @@ constexpr const char* kHitTargetStyle =
     "background-color:#9CC4E6;border-width:2px;border-color:red;";
 constexpr int64_t kCurrentLynxPageOnlyEventID =
     std::numeric_limits<int64_t>::min();
+constexpr int kKeyEventSupportVersion = 14;
+constexpr int kAxisActionSupportVersion = 15;
+constexpr int kModifierKeySupportVersion = 17;
+
+int64_t CurrentTimestampMilliseconds() {
+  return std::chrono::duration_cast<std::chrono::milliseconds>(
+             std::chrono::system_clock::now().time_since_epoch())
+      .count();
+}
+
+template <typename Function>
+Function LoadArkUIInputFunction(const char* name, int support_version) {
+  if (OH_GetSdkApiVersion() < support_version) {
+    return nullptr;
+  }
+  void* handle =
+      base::harmony::GetSharedObjectHandler(base::harmony::kAceNdkSoName);
+  if (!handle) {
+    return nullptr;
+  }
+  return reinterpret_cast<Function>(dlsym(handle, name));
+}
+
+using GetKeyEventType = ArkUI_KeyEventType (*)(const ArkUI_UIInputEvent*);
+using GetKeyCode = int32_t (*)(const ArkUI_UIInputEvent*);
+using GetKeyText = const char* (*)(const ArkUI_UIInputEvent*);
+using GetAxisAction = int32_t (*)(const ArkUI_UIInputEvent*);
+using GetModifierKeyStates = int32_t (*)(const ArkUI_UIInputEvent*, uint64_t*);
+
+GetKeyEventType KeyEventTypeFunction() {
+  static auto function = LoadArkUIInputFunction<GetKeyEventType>(
+      "OH_ArkUI_KeyEvent_GetType", kKeyEventSupportVersion);
+  return function;
+}
+
+GetKeyCode KeyCodeFunction() {
+  static auto function = LoadArkUIInputFunction<GetKeyCode>(
+      "OH_ArkUI_KeyEvent_GetKeyCode", kKeyEventSupportVersion);
+  return function;
+}
+
+GetKeyText KeyTextFunction() {
+  static auto function = LoadArkUIInputFunction<GetKeyText>(
+      "OH_ArkUI_KeyEvent_GetKeyText", kKeyEventSupportVersion);
+  return function;
+}
+
+GetAxisAction AxisActionFunction() {
+  static auto function = LoadArkUIInputFunction<GetAxisAction>(
+      "OH_ArkUI_AxisEvent_GetAxisAction", kAxisActionSupportVersion);
+  return function;
+}
+
+GetModifierKeyStates ModifierKeyStatesFunction() {
+  static auto function = LoadArkUIInputFunction<GetModifierKeyStates>(
+      "OH_ArkUI_UIInputEvent_GetModifierKeyStates", kModifierKeySupportVersion);
+  return function;
+}
+
+void AddModifierProperties(lepus::Dictionary* params,
+                           const ArkUI_UIInputEvent* event) {
+  uint64_t modifiers = 0;
+  auto get_modifier_key_states = ModifierKeyStatesFunction();
+  if (get_modifier_key_states) {
+    get_modifier_key_states(event, &modifiers);
+  }
+  params->SetValue("altKey", (modifiers & ARKUI_MODIFIER_KEY_ALT) != 0);
+  params->SetValue("ctrlKey", (modifiers & ARKUI_MODIFIER_KEY_CTRL) != 0);
+  params->SetValue("shiftKey", (modifiers & ARKUI_MODIFIER_KEY_SHIFT) != 0);
+  params->SetValue("metaKey", false);
+}
+
+int ToDOMMouseButton(int button) {
+  switch (button) {
+    case UI_MOUSE_EVENT_BUTTON_LEFT:
+      return 0;
+    case UI_MOUSE_EVENT_BUTTON_MIDDLE:
+      return 1;
+    case UI_MOUSE_EVENT_BUTTON_RIGHT:
+      return 2;
+    case UI_MOUSE_EVENT_BUTTON_BACK:
+      return 3;
+    case UI_MOUSE_EVENT_BUTTON_FORWARD:
+      return 4;
+    default:
+      return -1;
+  }
+}
+
+int ToDOMMouseButtonMask(int button) {
+  switch (button) {
+    case UI_MOUSE_EVENT_BUTTON_LEFT:
+      return 1;
+    case UI_MOUSE_EVENT_BUTTON_RIGHT:
+      return 2;
+    case UI_MOUSE_EVENT_BUTTON_MIDDLE:
+      return 4;
+    case UI_MOUSE_EVENT_BUTTON_BACK:
+      return 8;
+    case UI_MOUSE_EVENT_BUTTON_FORWARD:
+      return 16;
+    default:
+      return 0;
+  }
+}
+
+std::string PointerTypeForTool(int tool_type) {
+  switch (tool_type) {
+    case UI_INPUT_EVENT_TOOL_TYPE_PEN:
+      return "pen";
+    case UI_INPUT_EVENT_TOOL_TYPE_MOUSE:
+    case UI_INPUT_EVENT_TOOL_TYPE_TOUCHPAD:
+      return "mouse";
+    case UI_INPUT_EVENT_TOOL_TYPE_FINGER:
+    default:
+      return "touch";
+  }
+}
+
+std::string KeyTextForCode(int32_t key_code, const char* key_text) {
+  if (key_code == ARKUI_KEYCODE_ENTER) {
+    return "Enter";
+  }
+  if (key_code == ARKUI_KEYCODE_SPACE) {
+    return " ";
+  }
+  if (key_text && key_text[0] != '\0') {
+    return key_text;
+  }
+  switch (key_code) {
+    case ARKUI_KEYCODE_TAB:
+      return "Tab";
+    case ARKUI_KEYCODE_ESCAPE:
+      return "Escape";
+    case ARKUI_KEYCODE_DEL:
+      return "Backspace";
+    case ARKUI_KEYCODE_FORWARD_DEL:
+      return "Delete";
+    case ARKUI_KEYCODE_DPAD_LEFT:
+      return "ArrowLeft";
+    case ARKUI_KEYCODE_DPAD_RIGHT:
+      return "ArrowRight";
+    case ARKUI_KEYCODE_DPAD_UP:
+      return "ArrowUp";
+    case ARKUI_KEYCODE_DPAD_DOWN:
+      return "ArrowDown";
+    case ARKUI_KEYCODE_MOVE_HOME:
+      return "Home";
+    case ARKUI_KEYCODE_MOVE_END:
+      return "End";
+    case ARKUI_KEYCODE_PAGE_UP:
+      return "PageUp";
+    case ARKUI_KEYCODE_PAGE_DOWN:
+      return "PageDown";
+    default:
+      return "Unidentified";
+  }
+}
 
 uint64_t NextRequestId(std::atomic<uint64_t>& request_id) {
   return request_id.fetch_add(1, std::memory_order_relaxed) + 1;
@@ -473,13 +633,20 @@ void EventDispatcher::InitTouchEnv(const ArkUI_UIInputEvent* event) {
     if (best_hittest_target == nullptr) {
       continue;
     }
+    int pointer_id = OH_ArkUI_PointerEvent_GetPointerId(event, i);
+    if (!primary_pointer_id_.has_value()) {
+      primary_pointer_id_ = pointer_id;
+    }
+    int tool_type = OH_ArkUI_UIInputEvent_GetToolType(event);
+    pointer_tool_types_.insert_or_assign(pointer_id, tool_type);
+    primary_pointer_ids_by_tool_.try_emplace(tool_type, pointer_id);
     LOGI("EventDispatcher InitTouchEnv hit target: "
          << best_hittest_target->Sign())
     ShowMessageOnConsole("EventDispatcher: hit the target with sign = " +
                              std::to_string(best_hittest_target->Sign()),
                          runtime::CONSOLE_LOG_INFO);
     RetainTextEventTargetRoot(best_hittest_target);
-    if (IsPrimaryInput(event, OH_ArkUI_PointerEvent_GetPointerId(event, i))) {
+    if (IsPrimaryInput(event, pointer_id)) {
       InspectHitTarget(best_hittest_target);
       first_finger_down_point_[0] = 0;
       first_finger_down_point_[1] = 0;
@@ -495,7 +662,7 @@ void EventDispatcher::InitTouchEnv(const ArkUI_UIInputEvent* event) {
           first_finger_down_point_, root, target_ui, page_point);
     }
     active_target_finger_map_.insert_or_assign(
-        OH_ArkUI_PointerEvent_GetPointerId(event, i),
+        pointer_id,
         EventTargetDetail(best_hittest_target->WeakTarget(), page_point));
   }
 }
@@ -526,10 +693,24 @@ void EventDispatcher::ResetTouchEnv(const ArkUI_UIInputEvent* event) {
     if (!IsActiveFinger(event, i)) {
       continue;
     }
-    active_target_finger_map_.erase(
-        OH_ArkUI_PointerEvent_GetPointerId(event, i));
+    int pointer_id = OH_ArkUI_PointerEvent_GetPointerId(event, i);
+    active_target_finger_map_.erase(pointer_id);
+    auto tool_it = pointer_tool_types_.find(pointer_id);
+    if (tool_it != pointer_tool_types_.end()) {
+      int tool_type = tool_it->second;
+      pointer_tool_types_.erase(tool_it);
+      bool has_active_pointer_of_type = std::any_of(
+          pointer_tool_types_.begin(), pointer_tool_types_.end(),
+          [tool_type](const auto& entry) { return entry.second == tool_type; });
+      if (!has_active_pointer_of_type) {
+        primary_pointer_ids_by_tool_.erase(tool_type);
+      }
+    }
   }
   has_touch_moved_ = false;
+  if (active_target_finger_map_.empty()) {
+    primary_pointer_id_.reset();
+  }
 }
 
 EventDispatcher::EmulatedTouchPoint EventDispatcher::CreateEmulatedTouchPoint(
@@ -580,6 +761,9 @@ void EventDispatcher::InitTouchEnv(const EmulatedTouchPoint& point) {
 void EventDispatcher::ResetTouchEnv(const EmulatedTouchPoint& point) {
   active_target_finger_map_.erase(point.pointer_id);
   has_touch_moved_ = false;
+  if (active_target_finger_map_.empty()) {
+    primary_pointer_id_.reset();
+  }
 }
 
 void EventDispatcher::InitClickEnv() {
@@ -680,7 +864,8 @@ void EventDispatcher::OnTouchMove(const ArkUI_UIInputEvent* event) {
   }
 
   if (first_touch_changed) {
-    if (auto first_touch_target = active_target_finger_map_.find(0);
+    if (auto first_touch_target = active_target_finger_map_.find(
+            primary_pointer_id_.value_or(std::numeric_limits<int>::min()));
         first_touch_target != active_target_finger_map_.end()) {
       first_touch_target->second.GetPrePoint(pre_page_point);
       if (!click_target_chain_.empty()) {
@@ -886,7 +1071,7 @@ void EventDispatcher::UpdateFocusedTarget() {
     }
     active_target->OnFocusChange(
         true, focused_target != nullptr && focused_target->Focusable());
-    focused_target_ = first_active_target_;
+    SetFocusedTarget(first_active_target_);
   }
 }
 
@@ -930,6 +1115,174 @@ void EventDispatcher::GetEventPagePoint(float page_point[2],
   page_point[0] = OH_ArkUI_PointerEvent_GetXByIndex(event, index) / point_scale;
   page_point[1] = OH_ArkUI_PointerEvent_GetYByIndex(event, index) / point_scale;
   GetPagePoint(page_point, page_point);
+}
+
+EventDispatcher::InputEventPoint EventDispatcher::GetInputEventPoint(
+    EventTarget* target, const ArkUI_UIInputEvent* event, size_t index) {
+  InputEventPoint point;
+  GetEventPagePoint(point.page, event, index);
+  point.target[0] = point.page[0];
+  point.target[1] = point.page[1];
+  GetTargetPoint(target, point.target, point.page);
+  point.client[0] = OH_ArkUI_PointerEvent_GetWindowXByIndex(event, index);
+  point.client[1] = OH_ArkUI_PointerEvent_GetWindowYByIndex(event, index);
+  return point;
+}
+
+void EventDispatcher::DispatchPointerEvent(
+    const std::string& name, EventTarget* target,
+    const ArkUI_UIInputEvent* event, size_t index,
+    const std::string& pointer_type, bool is_primary, int button, int buttons) {
+  if (!target) {
+    return;
+  }
+  InputEventPoint point = GetInputEventPoint(target, event, index);
+  auto params = lepus::Dictionary::Create();
+  params->SetValue("type", name);
+  params->SetValue("pointerId",
+                   OH_ArkUI_PointerEvent_GetPointerId(event, index));
+  params->SetValue("pointerType", pointer_type);
+  params->SetValue("isPrimary", is_primary);
+  params->SetValue("button", button);
+  params->SetValue("buttons", buttons);
+  params->SetValue("x", point.target[0]);
+  params->SetValue("y", point.target[1]);
+  params->SetValue("pageX", point.page[0]);
+  params->SetValue("pageY", point.page[1]);
+  params->SetValue("clientX", point.client[0]);
+  params->SetValue("clientY", point.client[1]);
+  params->SetValue("timestamp", time_stamp_);
+  AddModifierProperties(params.get(), event);
+  BubbleEvent pointer_event(target->Sign(), name, LynxEventType::kPointer,
+                            lepus::Value(std::move(params)));
+  ui_owner_->SendEvent(pointer_event);
+}
+
+void EventDispatcher::DispatchTouchPointerEvents(
+    const std::string& name, const ArkUI_UIInputEvent* event, int button,
+    int buttons, const std::vector<int32_t>* pointer_ids) {
+  size_t pointer_count = OH_ArkUI_PointerEvent_GetPointerCount(event);
+  for (size_t index = 0; index < pointer_count; ++index) {
+    if (!pointer_ids && name != "pointercancel" &&
+        !IsActiveFinger(event, index)) {
+      continue;
+    }
+    int pointer_id = OH_ArkUI_PointerEvent_GetPointerId(event, index);
+    if (pointer_ids && std::find(pointer_ids->begin(), pointer_ids->end(),
+                                 pointer_id) == pointer_ids->end()) {
+      continue;
+    }
+    auto target_it = active_target_finger_map_.find(pointer_id);
+    if (target_it == active_target_finger_map_.end()) {
+      continue;
+    }
+    auto tool_it = pointer_tool_types_.find(pointer_id);
+    int tool_type = tool_it == pointer_tool_types_.end()
+                        ? OH_ArkUI_UIInputEvent_GetToolType(event)
+                        : tool_it->second;
+    auto target = target_it->second.ActiveTarget().lock();
+    DispatchPointerEvent(name, target.get(), event, index,
+                         PointerTypeForTool(tool_type),
+                         IsPrimaryPointer(pointer_id), button, buttons);
+  }
+}
+
+void EventDispatcher::DispatchMouseEvent(const std::string& name,
+                                         EventTarget* target,
+                                         const ArkUI_UIInputEvent* event,
+                                         int button, int buttons) {
+  if (!target) {
+    return;
+  }
+  InputEventPoint point = GetInputEventPoint(target, event, 0);
+  auto params = lepus::Dictionary::Create();
+  params->SetValue("type", name);
+  params->SetValue("button", button);
+  params->SetValue("buttons", buttons);
+  params->SetValue("scale", 1.f);
+  params->SetValue("x", point.target[0]);
+  params->SetValue("y", point.target[1]);
+  params->SetValue("pageX", point.page[0]);
+  params->SetValue("pageY", point.page[1]);
+  params->SetValue("clientX", point.client[0]);
+  params->SetValue("clientY", point.client[1]);
+  params->SetValue("identifier", OH_ArkUI_PointerEvent_GetPointerId(event, 0));
+  params->SetValue("timestamp", time_stamp_);
+  AddModifierProperties(params.get(), event);
+  BubbleEvent mouse_event(target->Sign(), name, LynxEventType::kMouse,
+                          lepus::Value(std::move(params)));
+  ui_owner_->SendEvent(mouse_event);
+}
+
+void EventDispatcher::DispatchWheelEvent(EventTarget* target,
+                                         const ArkUI_UIInputEvent* event) {
+  if (!target) {
+    return;
+  }
+  InputEventPoint point = GetInputEventPoint(target, event, 0);
+  auto params = lepus::Dictionary::Create();
+  params->SetValue("type", "wheel");
+  params->SetValue("x", point.target[0]);
+  params->SetValue("y", point.target[1]);
+  params->SetValue("pageX", point.page[0]);
+  params->SetValue("pageY", point.page[1]);
+  params->SetValue("clientX", point.client[0]);
+  params->SetValue("clientY", point.client[1]);
+  params->SetValue("deltaX", OH_ArkUI_AxisEvent_GetHorizontalAxisValue(event));
+  params->SetValue("deltaY", OH_ArkUI_AxisEvent_GetVerticalAxisValue(event));
+  params->SetValue("timestamp", time_stamp_);
+  AddModifierProperties(params.get(), event);
+  BubbleEvent wheel_event(target->Sign(), "wheel", LynxEventType::kWheel,
+                          lepus::Value(std::move(params)));
+  ui_owner_->SendEvent(wheel_event);
+}
+
+bool EventDispatcher::HasEventInChain(EventTarget* target,
+                                      const std::string& name) const {
+  while (target) {
+    const auto events = target->EventSet();
+    if (std::find(events.begin(), events.end(), name) != events.end()) {
+      return true;
+    }
+    EventTarget* parent = target->ParentTarget();
+    if (parent == target) {
+      break;
+    }
+    target = parent;
+  }
+  return false;
+}
+
+bool EventDispatcher::IsTextInputTarget(EventTarget* target) const {
+  if (!target) {
+    return false;
+  }
+  auto* ui_target = static_cast<UIBase*>(target->FirstUITarget());
+  if (!ui_target) {
+    return false;
+  }
+  const std::string& tag = ui_target->Tag();
+  return tag == "input" || tag == "textarea" || tag == "x-input" ||
+         tag == "x-textarea" || tag == "x-input-ng" || tag == "x-textarea-ng";
+}
+
+void EventDispatcher::DispatchActivationClick(EventTarget* target,
+                                              const InputEventPoint* point) {
+  if (!target || !HasEventInChain(target, TouchEvent::CLICK)) {
+    return;
+  }
+  TouchEvent click_event(target->Sign(), TouchEvent::CLICK);
+  if (point) {
+    float target_point[2] = {point->target[0], point->target[1]};
+    float page_point[2] = {point->page[0], point->page[1]};
+    float client_point[2] = {point->client[0], point->client[1]};
+    click_event.SetTargetPoint(target_point);
+    click_event.SetPagePoint(page_point);
+    click_event.SetClientPoint(client_point);
+  }
+  click_event.SetTimeStamp(time_stamp_);
+  click_event.SetTarget(target->WeakTarget());
+  ui_owner_->SendEvent(click_event);
 }
 
 void EventDispatcher::GetEventPointOffset(float point_offset[2]) const {
@@ -1095,10 +1448,28 @@ void EventDispatcher::HandleTouchDown(const ArkUI_UIInputEvent* event) {
     DispatchMultiTouchEvent(TouchEvent::START, target_touch_map, event);
   }
   OnTouchDown(event);
+  DispatchTouchPointerEvents("pointerdown", event, 0, 1);
   DispatchTouchEventToChildLynxPage(event);
 }
 
 void EventDispatcher::HandleTouchMove(const ArkUI_UIInputEvent* event) {
+  std::vector<int32_t> changed_pointer_ids;
+  size_t pointer_count = OH_ArkUI_PointerEvent_GetPointerCount(event);
+  for (size_t index = 0; index < pointer_count; ++index) {
+    int32_t pointer_id = OH_ArkUI_PointerEvent_GetPointerId(event, index);
+    auto target_it = active_target_finger_map_.find(pointer_id);
+    if (target_it == active_target_finger_map_.end()) {
+      continue;
+    }
+    float page_point[2] = {0.f, 0.f};
+    float previous_point[2] = {0.f, 0.f};
+    GetEventPagePoint(page_point, event, index);
+    target_it->second.GetPrePoint(previous_point);
+    if (base::FloatsNotEqual(page_point[0], previous_point[0]) ||
+        base::FloatsNotEqual(page_point[1], previous_point[1])) {
+      changed_pointer_ids.push_back(pointer_id);
+    }
+  }
   OnTouchMove(event);
   if (has_touch_moved_) {
     auto target_touch_map = lepus::Value(lepus::Dictionary::Create());
@@ -1109,6 +1480,7 @@ void EventDispatcher::HandleTouchMove(const ArkUI_UIInputEvent* event) {
       DispatchSingleTouchEvent(TouchEvent::MOVE, event);
     }
   }
+  DispatchTouchPointerEvents("pointermove", event, -1, 1, &changed_pointer_ids);
   DispatchTouchEventToChildLynxPage(event);
 }
 
@@ -1119,6 +1491,7 @@ void EventDispatcher::HandleTouchUp(const ArkUI_UIInputEvent* event) {
     DispatchMultiTouchEvent(TouchEvent::UP, target_touch_map, event);
   }
   OnTouchUp(event);
+  DispatchTouchPointerEvents("pointerup", event, 0, 0);
   ResetTouchEnv(event);
   DispatchTouchEventToChildLynxPage(event);
 }
@@ -1131,6 +1504,7 @@ void EventDispatcher::HandleTouchCancel(const ArkUI_UIInputEvent* event) {
   } else {
     DispatchSingleTouchEvent(TouchEvent::CANCEL, event);
   }
+  DispatchTouchPointerEvents("pointercancel", event, -1, 0);
   OnTouchCancel(event);
   ResetTouchEnv(event);
   DispatchTouchEventToChildLynxPage(event);
@@ -1220,13 +1594,20 @@ bool EventDispatcher::IsActiveFinger(const ArkUI_UIInputEvent* event,
          base::FloatsEqual(active_y, finger_y);
 }
 
-bool EventDispatcher::IsPrimaryInput(const ArkUI_UIInputEvent* event,
+bool EventDispatcher::IsPrimaryInput(const ArkUI_UIInputEvent*,
                                      int pointer_id) {
-  return pointer_id == 0 ||
-         OH_ArkUI_UIInputEvent_GetToolType(event) ==
-             UI_INPUT_EVENT_TOOL_TYPE_MOUSE ||
-         OH_ArkUI_UIInputEvent_GetToolType(event) ==
-             UI_INPUT_EVENT_TOOL_TYPE_PEN;
+  return primary_pointer_id_.has_value() &&
+         primary_pointer_id_.value() == pointer_id;
+}
+
+bool EventDispatcher::IsPrimaryPointer(int pointer_id) const {
+  auto tool_it = pointer_tool_types_.find(pointer_id);
+  if (tool_it == pointer_tool_types_.end()) {
+    return false;
+  }
+  auto primary_it = primary_pointer_ids_by_tool_.find(tool_it->second);
+  return primary_it != primary_pointer_ids_by_tool_.end() &&
+         primary_it->second == pointer_id;
 }
 
 bool EventDispatcher::ShouldDispatchInCurrentLynxPageOnly(UIBase* root) const {
@@ -1416,9 +1797,7 @@ void EventDispatcher::OnTouchEvent(const ArkUI_UIInputEvent* event,
   if (ui_owner_->Destroyed()) {
     return;
   }
-  time_stamp_ = std::chrono::duration_cast<std::chrono::milliseconds>(
-                    std::chrono::system_clock::now().time_since_epoch())
-                    .count();
+  time_stamp_ = CurrentTimestampMilliseconds();
   NodeManager::Instance().SetEventDispatcher(this);
   auto action = OH_ArkUI_UIInputEvent_GetAction(event);
   std::string event_name;
@@ -1489,6 +1868,203 @@ void EventDispatcher::OnTouchEvent(const ArkUI_UIInputEvent* event,
   DispatchTouchEventToGestureArena(event_name, event);
 }
 
+void EventDispatcher::OnMouseEvent(const ArkUI_UIInputEvent* event,
+                                   UIBase* root, bool from_overlay) {
+  if (ui_owner_->Destroyed() || !event || !root) {
+    return;
+  }
+  time_stamp_ = CurrentTimestampMilliseconds();
+  NodeManager::Instance().SetEventDispatcher(this);
+  from_overlay_ = from_overlay;
+  root_target_ = root->weak_from_this();
+
+  float page_point[2] = {0.f, 0.f};
+  GetEventPagePoint(page_point, event, 0);
+  auto target = FindTarget(page_point);
+  auto down_target = mouse_down_target_.lock();
+  EventTarget* event_target = target ? target : down_target.get();
+  int action = OH_ArkUI_MouseEvent_GetMouseAction(event);
+  int native_button = OH_ArkUI_MouseEvent_GetMouseButton(event);
+  int button = ToDOMMouseButton(native_button);
+  int button_mask = ToDOMMouseButtonMask(native_button);
+
+  if (event_target) {
+    InputEventPoint point = GetInputEventPoint(event_target, event, 0);
+    if (event_target->EventThrough(point.target)) {
+      if (action == UI_MOUSE_EVENT_ACTION_RELEASE) {
+        mouse_buttons_ &= ~button_mask;
+      } else if (action == UI_MOUSE_EVENT_ACTION_CANCEL) {
+        mouse_buttons_ = 0;
+      }
+      if (mouse_buttons_ == 0) {
+        mouse_down_target_.reset();
+        mouse_activation_button_ = -1;
+      }
+      return;
+    }
+  }
+
+  switch (action) {
+    case UI_MOUSE_EVENT_ACTION_PRESS: {
+      if (!target) {
+        return;
+      }
+      bool starts_activation = mouse_buttons_ == 0;
+      mouse_buttons_ |= button_mask;
+      if (starts_activation) {
+        mouse_down_target_ = target->WeakTarget();
+        mouse_activation_button_ = button;
+      }
+      DispatchPointerEvent("pointerdown", target, event, 0, "mouse", true,
+                           button, mouse_buttons_);
+      DispatchMouseEvent("mousedown", target, event, button, mouse_buttons_);
+      break;
+    }
+    case UI_MOUSE_EVENT_ACTION_MOVE: {
+      if (!target) {
+        return;
+      }
+      DispatchPointerEvent("pointermove", target, event, 0, "mouse", true, -1,
+                           mouse_buttons_);
+      DispatchMouseEvent("mousemove", target, event, -1, mouse_buttons_);
+      break;
+    }
+    case UI_MOUSE_EVENT_ACTION_RELEASE: {
+      mouse_buttons_ &= ~button_mask;
+      if (event_target) {
+        DispatchPointerEvent("pointerup", event_target, event, 0, "mouse", true,
+                             button, mouse_buttons_);
+        DispatchMouseEvent("mouseup", event_target, event, button,
+                           mouse_buttons_);
+      }
+      if (target && down_target && target == down_target.get() &&
+          mouse_activation_button_ == button && button == 0) {
+        InputEventPoint point = GetInputEventPoint(target, event, 0);
+        DispatchMouseEvent("mouseclick", target, event, button, mouse_buttons_);
+        DispatchActivationClick(target, &point);
+      }
+      if (mouse_buttons_ == 0) {
+        mouse_down_target_.reset();
+        mouse_activation_button_ = -1;
+      }
+      break;
+    }
+    case UI_MOUSE_EVENT_ACTION_CANCEL: {
+      if (event_target) {
+        DispatchPointerEvent("pointercancel", event_target, event, 0, "mouse",
+                             true, -1, 0);
+      }
+      mouse_buttons_ = 0;
+      mouse_down_target_.reset();
+      mouse_activation_button_ = -1;
+      break;
+    }
+    default:
+      break;
+  }
+}
+
+void EventDispatcher::OnAxisEvent(const ArkUI_UIInputEvent* event, UIBase* root,
+                                  bool from_overlay) {
+  if (ui_owner_->Destroyed() || !event || !root) {
+    return;
+  }
+  time_stamp_ = CurrentTimestampMilliseconds();
+  NodeManager::Instance().SetEventDispatcher(this);
+  from_overlay_ = from_overlay;
+  root_target_ = root->weak_from_this();
+
+  int action = UI_AXIS_EVENT_ACTION_NONE;
+  if (auto get_axis_action = AxisActionFunction()) {
+    action = get_axis_action(event);
+  }
+  if (action == UI_AXIS_EVENT_ACTION_END ||
+      action == UI_AXIS_EVENT_ACTION_CANCEL) {
+    axis_target_.reset();
+    return;
+  }
+
+  float page_point[2] = {0.f, 0.f};
+  GetEventPagePoint(page_point, event, 0);
+  if (action == UI_AXIS_EVENT_ACTION_BEGIN || axis_target_.expired()) {
+    if (auto* target = FindTarget(page_point)) {
+      axis_target_ = target->WeakTarget();
+    }
+  }
+  if (action == UI_AXIS_EVENT_ACTION_BEGIN) {
+    return;
+  }
+
+  auto target = axis_target_.lock();
+  if (!target) {
+    return;
+  }
+  InputEventPoint point = GetInputEventPoint(target.get(), event, 0);
+  if (!target->EventThrough(point.target)) {
+    DispatchWheelEvent(target.get(), event);
+  }
+  if (action == UI_AXIS_EVENT_ACTION_NONE) {
+    axis_target_.reset();
+  }
+}
+
+void EventDispatcher::OnKeyEvent(const ArkUI_UIInputEvent* event) {
+  if (ui_owner_->Destroyed() || !event) {
+    return;
+  }
+  time_stamp_ = CurrentTimestampMilliseconds();
+  auto get_key_type = KeyEventTypeFunction();
+  auto get_key_code = KeyCodeFunction();
+  auto get_key_text = KeyTextFunction();
+  if (!get_key_type || !get_key_code || !get_key_text) {
+    return;
+  }
+
+  ArkUI_KeyEventType key_type = get_key_type(event);
+  int32_t key_code = get_key_code(event);
+  bool was_pressed =
+      pressed_key_codes_.find(key_code) != pressed_key_codes_.end();
+  bool repeat = false;
+  std::string event_name;
+  if (key_type == ARKUI_KEY_EVENT_DOWN) {
+    repeat = !pressed_key_codes_.insert(key_code).second;
+    event_name = "keydown";
+  } else if (key_type == ARKUI_KEY_EVENT_LONG_PRESS) {
+    pressed_key_codes_.insert(key_code);
+    repeat = true;
+    event_name = "keydown";
+  } else if (key_type == ARKUI_KEY_EVENT_UP) {
+    event_name = "keyup";
+    pressed_key_codes_.erase(key_code);
+  } else {
+    return;
+  }
+
+  auto target = focused_target_.lock();
+  if (!target) {
+    return;
+  }
+  auto params = lepus::Dictionary::Create();
+  params->SetValue("type", event_name);
+  params->SetValue("key", KeyTextForCode(key_code, get_key_text(event)));
+  params->SetValue("repeat", repeat);
+  params->SetValue("timestamp", time_stamp_);
+  AddModifierProperties(params.get(), event);
+  BubbleEvent key_event(target->Sign(), event_name, LynxEventType::kKeyboard,
+                        lepus::Value(std::move(params)));
+  ui_owner_->SendEvent(key_event);
+
+  if (IsTextInputTarget(target.get())) {
+    return;
+  }
+  bool activate =
+      (key_code == ARKUI_KEYCODE_ENTER || key_code == ARKUI_KEYCODE_SPACE) &&
+      key_type == ARKUI_KEY_EVENT_UP && was_pressed;
+  if (activate) {
+    DispatchActivationClick(target.get());
+  }
+}
+
 void EventDispatcher::EmulateTouch(const std::string& event_type, int x, int y,
                                    const std::string& button, float delta_x,
                                    float delta_y, int modifiers,
@@ -1501,9 +2077,7 @@ void EventDispatcher::EmulateTouch(const std::string& event_type, int x, int y,
   if (ui_owner_->Destroyed()) {
     return;
   }
-  time_stamp_ = std::chrono::duration_cast<std::chrono::milliseconds>(
-                    std::chrono::system_clock::now().time_since_epoch())
-                    .count();
+  time_stamp_ = CurrentTimestampMilliseconds();
   NodeManager::Instance().SetEventDispatcher(this);
   from_overlay_ = false;
   if (auto* root = ui_owner_->Root()) {
@@ -1515,6 +2089,9 @@ void EventDispatcher::EmulateTouch(const std::string& event_type, int x, int y,
     ResetClickEnv();
     DeactivatePseudoStatus(PseudoStatus::kAll);
     active_target_finger_map_.clear();
+    primary_pointer_id_.reset();
+    pointer_tool_types_.clear();
+    primary_pointer_ids_by_tool_.clear();
     first_active_target_.reset();
     retained_text_event_targets_.clear();
     has_touch_moved_ = false;

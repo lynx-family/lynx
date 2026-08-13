@@ -4,6 +4,8 @@
 
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_root.h"
 
+#include <deviceinfo.h>
+
 #include <memory>
 #include <utility>
 
@@ -14,6 +16,11 @@
 namespace lynx {
 namespace tasm {
 namespace harmony {
+namespace {
+constexpr int kKeyEventSupportVersion = 14;
+constexpr int kAxisEventSupportVersion = 17;
+}  // namespace
+
 UIRoot::UIRoot(LynxContext* context, int sign, const std::string& tag)
     : UIView(context, ARKUI_NODE_STACK, sign, tag) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, UI_ROOT_CONSTRUCTOR);
@@ -44,6 +51,14 @@ UIRoot::UIRoot(LynxContext* context, int sign, const std::string& tag)
                                             this);
   NodeManager::Instance().RegisterNodeEvent(root_proxy_,
                                             NODE_ON_TOUCH_INTERCEPT, this);
+  NodeManager::Instance().RegisterNodeEvent(root_proxy_, NODE_ON_MOUSE, this);
+  if (OH_GetSdkApiVersion() >= kKeyEventSupportVersion) {
+    NodeManager::Instance().RegisterNodeEvent(root_proxy_, NODE_ON_KEY_EVENT,
+                                              this);
+  }
+  if (OH_GetSdkApiVersion() >= kAxisEventSupportVersion) {
+    NodeManager::Instance().RegisterNodeEvent(root_proxy_, NODE_ON_AXIS, this);
+  }
   NodeManager::Instance().RegisterNodeEvent(root_proxy_, NODE_EVENT_ON_ATTACH,
                                             this);
   NodeManager::Instance().RegisterNodeEvent(root_proxy_, NODE_EVENT_ON_DETACH,
@@ -70,6 +85,13 @@ UIRoot::~UIRoot() {
                                               NODE_TOUCH_EVENT);
   NodeManager::Instance().UnregisterNodeEvent(root_proxy_,
                                               NODE_ON_TOUCH_INTERCEPT);
+  NodeManager::Instance().UnregisterNodeEvent(root_proxy_, NODE_ON_MOUSE);
+  if (OH_GetSdkApiVersion() >= kKeyEventSupportVersion) {
+    NodeManager::Instance().UnregisterNodeEvent(root_proxy_, NODE_ON_KEY_EVENT);
+  }
+  if (OH_GetSdkApiVersion() >= kAxisEventSupportVersion) {
+    NodeManager::Instance().UnregisterNodeEvent(root_proxy_, NODE_ON_AXIS);
+  }
   NodeManager::Instance().UnregisterNodeEvent(root_proxy_,
                                               NODE_EVENT_ON_ATTACH);
   NodeManager::Instance().UnregisterNodeEvent(root_proxy_,
@@ -110,7 +132,13 @@ void UIRoot::OnNodeEvent(ArkUI_NodeEvent* event) {
                                  event_type == NODE_TOUCH_EVENT)) {
     return;
   }
-  if (event_type == NODE_EVENT_ON_VISIBLE_AREA_CHANGE) {
+  if (event_type == NODE_ON_MOUSE) {
+    context_->OnMouseEvent(OH_ArkUI_NodeEvent_GetInputEvent(event), this);
+  } else if (event_type == NODE_ON_AXIS) {
+    context_->OnAxisEvent(OH_ArkUI_NodeEvent_GetInputEvent(event), this);
+  } else if (event_type == NODE_ON_KEY_EVENT) {
+    context_->OnKeyEvent(OH_ArkUI_NodeEvent_GetInputEvent(event));
+  } else if (event_type == NODE_EVENT_ON_VISIBLE_AREA_CHANGE) {
     ArkUI_NodeComponentEvent* visible_event =
         OH_ArkUI_NodeEvent_GetNodeComponentEvent(event);
     is_root_visible_ = visible_event->data[0].i32;

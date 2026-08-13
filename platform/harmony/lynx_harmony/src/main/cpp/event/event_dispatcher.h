@@ -77,17 +77,26 @@ class EventDispatcher {
   void OnGestureRecognizedWithSign(int sign);
 
   void SetFocusedTarget(const std::weak_ptr<EventTarget>& focused_target) {
+    if (focused_target_.lock() != focused_target.lock()) {
+      pressed_key_codes_.clear();
+    }
     focused_target_ = focused_target;
   }
 
   void UnsetFocusedTarget(const std::weak_ptr<EventTarget>& focused_target) {
     if (focused_target_.lock() == focused_target.lock()) {
       focused_target_ = std::weak_ptr<EventTarget>();
+      pressed_key_codes_.clear();
     }
   }
 
   void OnTouchEvent(const ArkUI_UIInputEvent* event, UIBase* root,
                     bool from_overlay = false);
+  void OnMouseEvent(const ArkUI_UIInputEvent* event, UIBase* root,
+                    bool from_overlay = false);
+  void OnAxisEvent(const ArkUI_UIInputEvent* event, UIBase* root,
+                   bool from_overlay = false);
+  void OnKeyEvent(const ArkUI_UIInputEvent* event);
   void EmulateTouch(const std::string& event_type, int x, int y,
                     const std::string& button, float delta_x, float delta_y,
                     int modifiers, int click_count);
@@ -137,6 +146,12 @@ class EventDispatcher {
     float page_point[2] = {0.f, 0.f};
     float client_point[2] = {0.f, 0.f};
     int pointer_id = 0;
+  };
+
+  struct InputEventPoint {
+    float target[2]{0.f, 0.f};
+    float page[2]{0.f, 0.f};
+    float client[2]{0.f, 0.f};
   };
 
   void InitTouchEnv(const ArkUI_UIInputEvent* event);
@@ -211,6 +226,32 @@ class EventDispatcher {
 
   void HandleTouchCancel(const ArkUI_UIInputEvent* event);
 
+  void DispatchTouchPointerEvents(
+      const std::string& name, const ArkUI_UIInputEvent* event, int button,
+      int buttons, const std::vector<int32_t>* pointer_ids = nullptr);
+
+  void DispatchPointerEvent(const std::string& name, EventTarget* target,
+                            const ArkUI_UIInputEvent* event, size_t index,
+                            const std::string& pointer_type, bool is_primary,
+                            int button, int buttons);
+
+  void DispatchMouseEvent(const std::string& name, EventTarget* target,
+                          const ArkUI_UIInputEvent* event, int button,
+                          int buttons);
+
+  void DispatchWheelEvent(EventTarget* target, const ArkUI_UIInputEvent* event);
+
+  InputEventPoint GetInputEventPoint(EventTarget* target,
+                                     const ArkUI_UIInputEvent* event,
+                                     size_t index);
+
+  void DispatchActivationClick(EventTarget* target,
+                               const InputEventPoint* point = nullptr);
+
+  bool HasEventInChain(EventTarget* target, const std::string& name) const;
+
+  bool IsTextInputTarget(EventTarget* target) const;
+
   void ActivePseudoStatus();
 
   void DeactivatePseudoStatus(PseudoStatus status);
@@ -220,6 +261,8 @@ class EventDispatcher {
   bool IsActiveFinger(const ArkUI_UIInputEvent* event, size_t index);
 
   bool IsPrimaryInput(const ArkUI_UIInputEvent* event, int pointer_id);
+
+  bool IsPrimaryPointer(int pointer_id) const;
 
   bool ShouldDispatchInCurrentLynxPageOnly(UIBase* root) const;
 
@@ -302,6 +345,14 @@ class EventDispatcher {
   // rebuilds do not invalidate touch, pseudo, or click targets.
   std::unordered_map<EventTarget*, std::shared_ptr<EventTarget>>
       retained_text_event_targets_;
+  std::optional<int> primary_pointer_id_;
+  std::unordered_map<int, int> pointer_tool_types_;
+  std::unordered_map<int, int> primary_pointer_ids_by_tool_;
+  std::weak_ptr<EventTarget> mouse_down_target_;
+  std::weak_ptr<EventTarget> axis_target_;
+  std::unordered_set<int32_t> pressed_key_codes_;
+  int mouse_buttons_{0};
+  int mouse_activation_button_{-1};
   std::vector<std::weak_ptr<EventTarget>> event_target_chain_;
   std::deque<std::weak_ptr<EventTarget>> click_target_chain_;
   std::unordered_set<int> gesture_recognized_target_set_;
@@ -310,7 +361,7 @@ class EventDispatcher {
   bool first_touch_moved_{false};
   bool first_touch_outside_{false};
   bool from_overlay_{false};
-  long long time_stamp_{0};
+  int64_t time_stamp_{0};
   bool enable_multi_touch_{false};
   unsigned int tap_slop_{5};
   bool has_touch_pseudo_{false};

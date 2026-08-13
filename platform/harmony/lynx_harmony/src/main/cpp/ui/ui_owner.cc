@@ -1148,6 +1148,20 @@ void UIOwner::OnTouchEvent(const ArkUI_UIInputEvent* event, UIBase* root,
   event_dispatcher_->OnTouchEvent(event, root, from_overlay);
 }
 
+void UIOwner::OnMouseEvent(const ArkUI_UIInputEvent* event, UIBase* root,
+                           bool from_overlay) {
+  event_dispatcher_->OnMouseEvent(event, root, from_overlay);
+}
+
+void UIOwner::OnAxisEvent(const ArkUI_UIInputEvent* event, UIBase* root,
+                          bool from_overlay) {
+  event_dispatcher_->OnAxisEvent(event, root, from_overlay);
+}
+
+void UIOwner::OnKeyEvent(const ArkUI_UIInputEvent* event) {
+  event_dispatcher_->OnKeyEvent(event);
+}
+
 void UIOwner::EmulateTouch(const std::string& event_type, int x, int y,
                            const std::string& button, float delta_x,
                            float delta_y, int modifiers, int click_count) {
@@ -1253,6 +1267,10 @@ void UIOwner::HandleTouchEvent(const TouchEvent& touch_event) const {
 
 void UIOwner::HandleMultiTouchEvent(const TouchEvent& touch_event) const {
   context_->HandleMultiTouchEvent(touch_event);
+}
+
+void UIOwner::HandleBubbleEvent(const BubbleEvent& bubble_event) const {
+  context_->HandleBubbleEvent(bubble_event);
 }
 
 void UIOwner::HandleCustomEvent(const CustomEvent& custom_event) const {

@@ -8,6 +8,7 @@
 #include <utility>
 
 #include "core/value_wrapper/value_impl_lepus.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/event/bubble_event.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/event/custom_event.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/event/touch_event.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_owner.h"
@@ -33,16 +34,11 @@ void EventEmitter::SendEvent(const LynxEvent& event) {
       ui_owner_->HandleCustomEvent(static_cast<const CustomEvent&>(event));
       break;
     }
-    case LynxEventType::kMouse: {
-      // TODO(hexionghui): handle mouse event
-      break;
-    }
-    case LynxEventType::kWheel: {
-      // TODO(hexionghui): handle wheel event
-      break;
-    }
+    case LynxEventType::kPointer:
+    case LynxEventType::kMouse:
+    case LynxEventType::kWheel:
     case LynxEventType::kKeyboard: {
-      // TODO(hexionghui): handle keyboard event
+      SendBubbleEvent(static_cast<const BubbleEvent&>(event));
       break;
     }
     case LynxEventType::kNone:
@@ -50,6 +46,10 @@ void EventEmitter::SendEvent(const LynxEvent& event) {
       break;
     }
   }
+}
+
+void EventEmitter::SendBubbleEvent(const BubbleEvent& bubble_event) {
+  ui_owner_->HandleBubbleEvent(bubble_event);
 }
 
 void EventEmitter::SendTouchEvent(const TouchEvent& touch_event) {

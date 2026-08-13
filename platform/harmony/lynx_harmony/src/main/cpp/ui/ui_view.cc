@@ -4,6 +4,8 @@
 
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_view.h"
 
+#include <deviceinfo.h>
+
 #include <string>
 
 #include "base/include/log/logging.h"
@@ -13,6 +15,10 @@
 namespace lynx {
 namespace tasm {
 namespace harmony {
+namespace {
+constexpr int kKeyEventSupportVersion = 14;
+constexpr int kAxisEventSupportVersion = 17;
+}  // namespace
 
 UIBase* UIView::Make(LynxContext* context, int sign, const std::string& tag) {
   return new UIView(context, ARKUI_NODE_CUSTOM, sign, tag);
@@ -48,6 +54,12 @@ void UIView::OnNodeEvent(ArkUI_NodeEvent* event) {
       if (is_consume_event_) {
         context_->OnTouchEvent(input_event, this);
       }
+    } else if (OH_ArkUI_NodeEvent_GetEventType(event) == NODE_ON_MOUSE) {
+      context_->OnMouseEvent(OH_ArkUI_NodeEvent_GetInputEvent(event), this);
+    } else if (OH_ArkUI_NodeEvent_GetEventType(event) == NODE_ON_AXIS) {
+      context_->OnAxisEvent(OH_ArkUI_NodeEvent_GetInputEvent(event), this);
+    } else if (OH_ArkUI_NodeEvent_GetEventType(event) == NODE_ON_KEY_EVENT) {
+      context_->OnKeyEvent(OH_ArkUI_NodeEvent_GetInputEvent(event));
     } else if (OH_ArkUI_NodeEvent_GetEventType(event) == NODE_EVENT_ON_ATTACH) {
       is_root_attached_ = true;
       context_->NotifyUIScroll();
@@ -74,6 +86,13 @@ UIView::~UIView() {
     NodeManager::Instance().UnregisterNodeEvent(Node(), NODE_TOUCH_EVENT);
     NodeManager::Instance().UnregisterNodeEvent(Node(),
                                                 NODE_ON_TOUCH_INTERCEPT);
+    NodeManager::Instance().UnregisterNodeEvent(Node(), NODE_ON_MOUSE);
+    if (OH_GetSdkApiVersion() >= kKeyEventSupportVersion) {
+      NodeManager::Instance().UnregisterNodeEvent(Node(), NODE_ON_KEY_EVENT);
+    }
+    if (OH_GetSdkApiVersion() >= kAxisEventSupportVersion) {
+      NodeManager::Instance().UnregisterNodeEvent(Node(), NODE_ON_AXIS);
+    }
     NodeManager::Instance().UnregisterNodeEvent(Node(), NODE_EVENT_ON_ATTACH);
     NodeManager::Instance().UnregisterNodeEvent(Node(), NODE_EVENT_ON_DETACH);
   }

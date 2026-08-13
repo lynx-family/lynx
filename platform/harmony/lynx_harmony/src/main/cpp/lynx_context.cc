@@ -13,6 +13,7 @@
 #include "base/include/fml/task_runner.h"
 #include "core/resource/lynx_resource_loader_harmony.h"
 #include "core/shell/harmony/embedder_platform_harmony.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/event/bubble_event.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/event/custom_event.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/event/event_target.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/event/gesture_event.h"
@@ -204,6 +205,14 @@ void LynxContext::HandleMultiTouchEvent(const TouchEvent& touch_event) const {
   }
   engine_proxy_->SendTouchEvent(touch_event.Name(),
                                 PubLepusValue(touch_event.UITouchMap()));
+}
+
+void LynxContext::HandleBubbleEvent(const BubbleEvent& bubble_event) const {
+  if (!engine_proxy_) {
+    return;
+  }
+  engine_proxy_->SendBubbleEvent(bubble_event.Name(), bubble_event.ID(),
+                                 PubLepusValue(bubble_event.Params()));
 }
 
 void LynxContext::HandleCustomEvent(const CustomEvent& custom_event) const {
@@ -579,6 +588,29 @@ void LynxContext::OnTouchEvent(const ArkUI_UIInputEvent* event, UIBase* root,
     return;
   }
   ui_owner_->OnTouchEvent(event, root, from_overlay);
+}
+
+void LynxContext::OnMouseEvent(const ArkUI_UIInputEvent* event, UIBase* root,
+                               bool from_overlay) {
+  if (!ui_owner_) {
+    return;
+  }
+  ui_owner_->OnMouseEvent(event, root, from_overlay);
+}
+
+void LynxContext::OnAxisEvent(const ArkUI_UIInputEvent* event, UIBase* root,
+                              bool from_overlay) {
+  if (!ui_owner_) {
+    return;
+  }
+  ui_owner_->OnAxisEvent(event, root, from_overlay);
+}
+
+void LynxContext::OnKeyEvent(const ArkUI_UIInputEvent* event) {
+  if (!ui_owner_) {
+    return;
+  }
+  ui_owner_->OnKeyEvent(event);
 }
 
 void LynxContext::OnEventCapture(long target_id, bool is_catch,

@@ -33,6 +33,7 @@ namespace harmony {
 class UIRoot;
 class GestureArenaManager;
 class LynxImageConfig;
+class BubbleEvent;
 
 class UIOwner {
  public:
@@ -127,6 +128,11 @@ class UIOwner {
   void NotifyUIScroll();
   void OnTouchEvent(const ArkUI_UIInputEvent* event, UIBase* root,
                     bool from_overlay = false);
+  void OnMouseEvent(const ArkUI_UIInputEvent* event, UIBase* root,
+                    bool from_overlay = false);
+  void OnAxisEvent(const ArkUI_UIInputEvent* event, UIBase* root,
+                   bool from_overlay = false);
+  void OnKeyEvent(const ArkUI_UIInputEvent* event);
   void EmulateTouch(const std::string& event_type, int x, int y,
                     const std::string& button, float delta_x, float delta_y,
                     int modifiers, int click_count);
@@ -155,6 +161,7 @@ class UIOwner {
   }
   void HandleTouchEvent(const TouchEvent& touch_event) const;
   void HandleMultiTouchEvent(const TouchEvent& touch_event) const;
+  void HandleBubbleEvent(const BubbleEvent& bubble_event) const;
   void HandleCustomEvent(const CustomEvent& custom_event) const;
   void SendPseudoStatusEvent(int id, PseudoStatus pre_status,
                              PseudoStatus current_status) const;

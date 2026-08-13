@@ -30,6 +30,7 @@ lynx_core_source_set("cpp") {
     "devtool_lifecycle_harmony.h",
     "devtool_settings_harmony.cc",
     "devtool_settings_harmony.h",
+    "event/bubble_event.h",
     "event/custom_event.h",
     "event/event_dispatcher.cc",
     "event/event_dispatcher.h",

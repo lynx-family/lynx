@@ -14,7 +14,15 @@ namespace lynx {
 namespace tasm {
 namespace harmony {
 
-enum class LynxEventType { kNone, kTouch, kMouse, kWheel, kKeyboard, kCustom };
+enum class LynxEventType {
+  kNone,
+  kTouch,
+  kMouse,
+  kWheel,
+  kKeyboard,
+  kCustom,
+  kPointer
+};
 
 class LynxEvent {
  public:

@@ -48,6 +48,7 @@ namespace harmony {
 class ShadowNode;
 class LynxEvent;
 class TouchEvent;
+class BubbleEvent;
 class CustomEvent;
 class GestureEvent;
 class EventTarget;
@@ -153,6 +154,8 @@ class LynxContext {
   void HandleTouchEvent(const TouchEvent& touch_event) const;
 
   void HandleMultiTouchEvent(const TouchEvent& touch_event) const;
+
+  void HandleBubbleEvent(const BubbleEvent& bubble_event) const;
 
   void HandleCustomEvent(const CustomEvent& custom_event) const;
 
@@ -267,6 +270,14 @@ class LynxContext {
 
   void OnTouchEvent(const ArkUI_UIInputEvent* event, UIBase* root,
                     bool from_overlay = false);
+
+  void OnMouseEvent(const ArkUI_UIInputEvent* event, UIBase* root,
+                    bool from_overlay = false);
+
+  void OnAxisEvent(const ArkUI_UIInputEvent* event, UIBase* root,
+                   bool from_overlay = false);
+
+  void OnKeyEvent(const ArkUI_UIInputEvent* event);
 
   void OnEventCapture(long target_id, bool is_catch, int64_t event_id);
 
