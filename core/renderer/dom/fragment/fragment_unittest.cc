@@ -10,8 +10,10 @@
 #include <array>
 #include <memory>
 #include <string>
+#include <string_view>
 #include <unordered_map>
 #include <unordered_set>
+#include <utility>
 #include <vector>
 
 #include "base/include/fml/message_loop.h"
@@ -21,6 +23,8 @@
 #include "core/renderer/dom/fiber/view_element.h"
 #include "core/renderer/dom/fragment/display_list_builder.h"
 #include "core/renderer/dom/fragment/display_list_reader.h"
+#include "core/renderer/dom/fragment/event/platform_event_handler.h"
+#include "core/renderer/dom/fragment/event/platform_pointer_event.h"
 #include "core/renderer/dom/fragment/fragment_behavior.h"
 #include "core/renderer/dom/fragment/image_fragment_behavior.h"
 #include "core/renderer/lynx_env_config.h"
@@ -750,6 +754,67 @@ TEST_F(FragmentTest, ValidExposureEventPropsBypassEqualCheck) {
   fragment.event_bundle_dirty_ = false;
   fragment.ClearEventNames();
   EXPECT_FALSE(fragment.event_bundle_dirty_);
+}
+
+TEST_F(FragmentTest, InputEventNameMapping) {
+  const std::pair<std::string_view, PlatformEventName> events[] = {
+      {"pointerdown", PlatformEventName::kPointerDown},
+      {"pointermove", PlatformEventName::kPointerMove},
+      {"pointerup", PlatformEventName::kPointerUp},
+      {"pointercancel", PlatformEventName::kPointerCancel},
+      {"wheel", PlatformEventName::kWheel},
+      {"keydown", PlatformEventName::kKeyDown},
+      {"keyup", PlatformEventName::kKeyUp},
+  };
+  for (const auto& [name, event] : events) {
+    EXPECT_EQ(PlatformEventNameFromString(name), event);
+    EXPECT_EQ(PlatformEventNameToString(event), name);
+  }
+}
+
+TEST_F(FragmentTest, PlatformPointerEventMetadata) {
+  int int_data[] = {0, 2, 0, 2, kRootId};
+  float float_data[] = {7, 10, 20, 2, 1, -1, 1, 8, 30, 40, 1, 0, -1, 0};
+  PlatformPointerEvent event(int_data, float_data);
+
+  ASSERT_EQ(event.PointerCount(), 2);
+  EXPECT_EQ(event.PointerID()[0], 7);
+  EXPECT_EQ(event.PointerType()[0], 2);
+  EXPECT_EQ(event.IsPrimary()[0], 1);
+  EXPECT_EQ(event.Button()[1], -1);
+  EXPECT_EQ(event.Buttons()[1], 0);
+}
+
+TEST(PlatformEventHandlerTest, KeyUtf16Payload) {
+  int printable[] = {1, 0, 29, 0, kRootId, 1, 'a'};
+  int arrow_left[] = {1,   0,   21,  0,   kRootId, 9,   'A', 'r',
+                      'r', 'o', 'w', 'L', 'e',     'f', 't'};
+  int emoji[] = {1, 0, 29, 0, kRootId, 2, 0xD83D, 0xDE00};
+
+  EXPECT_EQ(PlatformEventHandler::DecodeKey(printable), "a");
+  EXPECT_EQ(PlatformEventHandler::DecodeKey(arrow_left), "ArrowLeft");
+  EXPECT_EQ(PlatformEventHandler::DecodeKey(emoji), "\xF0\x9F\x98\x80");
+}
+
+TEST(PlatformEventHandlerTest, ActivationRequiresMatchingKeyUp) {
+  TestNativePaintingCtxPlatformRef platform_ref;
+  PlatformEventHandler handler(&platform_ref);
+  handler.SetFocusedTarget(fml::MakeRefCounted<PlatformEventTarget>(
+      platform_ref.GetEventTargetHelper(), kRootId, 1, 0, 0, 1, 1));
+  float modifiers[] = {0, 0, 0, 0};
+  int enter_down[] = {1, 0, 66, 0, kRootId, 5, 'E', 'n', 't', 'e', 'r'};
+  int space_up[] = {1, 1, 62, 0, kRootId, 1, ' '};
+  int enter_up[] = {1, 1, 66, 0, kRootId, 5, 'E', 'n', 't', 'e', 'r'};
+  int enter_cancel[] = {1, 2, 66, 0, kRootId, 5, 'E', 'n', 't', 'e', 'r'};
+
+  handler.HandleKeyEvent(enter_down, modifiers);
+  handler.HandleKeyEvent(space_up, modifiers);
+  EXPECT_EQ(handler.pressed_activation_keys_.count(66), 1u);
+  handler.HandleKeyEvent(enter_cancel, modifiers);
+  EXPECT_TRUE(handler.pressed_activation_keys_.empty());
+  handler.HandleKeyEvent(enter_down, modifiers);
+  handler.HandleKeyEvent(enter_up, modifiers);
+  EXPECT_TRUE(handler.pressed_activation_keys_.empty());
 }
 
 TEST_F(FragmentTest, DrawBoxShadowWithOutsetShadow) {

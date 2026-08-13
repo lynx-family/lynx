@@ -12,10 +12,14 @@ PlatformPointerEvent::PlatformPointerEvent(int int_event_data[],
     : PlatformInputEvent(int_event_data, float_event_data) {
   pointer_count_ = int_event_data[3];
   for (int i = 0; i < pointer_count_; ++i) {
-    int offset = i * 3;
+    int offset = i * 7;
     pointer_id_.push_back(static_cast<int>(float_event_data[offset]));
     pointer_x_.push_back(float_event_data[offset + 1]);
     pointer_y_.push_back(float_event_data[offset + 2]);
+    pointer_type_.push_back(static_cast<int>(float_event_data[offset + 3]));
+    is_primary_.push_back(static_cast<int>(float_event_data[offset + 4]));
+    button_.push_back(static_cast<int>(float_event_data[offset + 5]));
+    buttons_.push_back(static_cast<int>(float_event_data[offset + 6]));
   }
 }
 

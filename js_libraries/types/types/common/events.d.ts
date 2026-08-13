@@ -105,6 +105,24 @@ export interface BaseTouchEvent<T> extends BaseEventOrig<any, T> {
 
 export interface TouchEvent extends BaseTouchEvent<Target> {}
 
+export type PointerType = 'mouse' | 'pen' | 'touch';
+
+export interface BasePointerEvent<T> extends BaseEventOrig<{}, T> {
+  pointerId: number;
+  pointerType: PointerType;
+  isPrimary: boolean;
+  button: number;
+  buttons: number;
+  x: number;
+  y: number;
+  pageX: number;
+  pageY: number;
+  clientX: number;
+  clientY: number;
+}
+
+export interface PointerEvent extends BasePointerEvent<Target> {}
+
 export interface BaseMouseEvent<T> extends BaseEventOrig<{}, T> {
   /** 
    * The currently pressed mouse button, if multiple buttons are pressed simultaneously, is the last one pressed. 
@@ -205,8 +223,13 @@ export interface BaseKeyEvent<T> extends BaseEventOrig<{}, T> {
   /** 
    * Button Name
    * @PC 
-   */
+  */
   key: string;
+  repeat?: boolean;
+  altKey?: boolean;
+  ctrlKey?: boolean;
+  shiftKey?: boolean;
+  metaKey?: boolean;
 }
 
 export interface KeyEvent extends BaseKeyEvent<Target> {}
@@ -673,6 +696,51 @@ export interface LynxEvent<T> {
    */
   TouchEnd?: EventHandler<BaseTouchEvent<T>>;
 
+  /**
+   * A pointer becomes active over the element.
+   * @Android
+   * @iOS
+   * @Harmony
+   * @PC
+   */
+  PointerDown?: EventHandler<BasePointerEvent<T>>;
+
+  /**
+   * An active pointer changes coordinates.
+   * @Android
+   * @iOS
+   * @Harmony
+   * @PC
+   */
+  PointerMove?: EventHandler<BasePointerEvent<T>>;
+
+  /**
+   * A pointer is no longer active.
+   * @Android
+   * @iOS
+   * @Harmony
+   * @PC
+   */
+  PointerUp?: EventHandler<BasePointerEvent<T>>;
+
+  /**
+   * An active pointer is canceled.
+   * @Android
+   * @iOS
+   * @Harmony
+   * @PC
+   */
+  PointerCancel?: EventHandler<BasePointerEvent<T>>;
+
+  /**
+   * The element is activated by a pointer, keyboard, or accessibility action.
+   * @Android
+   * @iOS
+   * @Harmony
+   * @PC
+   */
+  Click?: EventHandler<BaseCommonEvent<T>>;
+
   /** 
    * After touching the finger, if it leaves after more than 350ms and the event callback function is specified and triggered, the tap event will not be triggered. 
    * @Android
@@ -905,6 +973,11 @@ interface TouchStartProps<T> { bindtouchstart?: LynxEvent<T>['TouchStart']; catc
 interface TouchMoveProps<T> { bindtouchmove?: LynxEvent<T>['TouchMove']; catchtouchmove?: LynxEvent<T>['TouchMove']; 'capture-bindtouchmove'?: LynxEvent<T>['TouchMove']; 'capture-catchtouchmove'?: LynxEvent<T>['TouchMove']; 'global-bindtouchmove'?: LynxEvent<T>['TouchMove']; }
 interface TouchCancelProps<T> { bindtouchcancel?: LynxEvent<T>['TouchCancel']; catchtouchcancel?: LynxEvent<T>['TouchCancel']; 'capture-bindtouchcancel'?: LynxEvent<T>['TouchCancel']; 'capture-catchtouchcancel'?: LynxEvent<T>['TouchCancel']; 'global-bindtouchcancel'?: LynxEvent<T>['TouchCancel']; }
 interface TouchEndProps<T> { bindtouchend?: LynxEvent<T>['TouchEnd']; catchtouchend?: LynxEvent<T>['TouchEnd']; 'capture-bindtouchend'?: LynxEvent<T>['TouchEnd']; 'capture-catchtouchend'?: LynxEvent<T>['TouchEnd']; 'global-bindtouchend'?: LynxEvent<T>['TouchEnd']; }
+interface PointerDownProps<T> { bindpointerdown?: LynxEvent<T>['PointerDown']; catchpointerdown?: LynxEvent<T>['PointerDown']; 'capture-bindpointerdown'?: LynxEvent<T>['PointerDown']; 'capture-catchpointerdown'?: LynxEvent<T>['PointerDown']; 'global-bindpointerdown'?: LynxEvent<T>['PointerDown']; }
+interface PointerMoveProps<T> { bindpointermove?: LynxEvent<T>['PointerMove']; catchpointermove?: LynxEvent<T>['PointerMove']; 'capture-bindpointermove'?: LynxEvent<T>['PointerMove']; 'capture-catchpointermove'?: LynxEvent<T>['PointerMove']; 'global-bindpointermove'?: LynxEvent<T>['PointerMove']; }
+interface PointerUpProps<T> { bindpointerup?: LynxEvent<T>['PointerUp']; catchpointerup?: LynxEvent<T>['PointerUp']; 'capture-bindpointerup'?: LynxEvent<T>['PointerUp']; 'capture-catchpointerup'?: LynxEvent<T>['PointerUp']; 'global-bindpointerup'?: LynxEvent<T>['PointerUp']; }
+interface PointerCancelProps<T> { bindpointercancel?: LynxEvent<T>['PointerCancel']; catchpointercancel?: LynxEvent<T>['PointerCancel']; 'capture-bindpointercancel'?: LynxEvent<T>['PointerCancel']; 'capture-catchpointercancel'?: LynxEvent<T>['PointerCancel']; 'global-bindpointercancel'?: LynxEvent<T>['PointerCancel']; }
+interface ClickProps<T> { bindclick?: LynxEvent<T>['Click']; catchclick?: LynxEvent<T>['Click']; 'capture-bindclick'?: LynxEvent<T>['Click']; 'capture-catchclick'?: LynxEvent<T>['Click']; 'global-bindclick'?: LynxEvent<T>['Click']; }
 interface LongPressProps<T> { bindlongpress?: LynxEvent<T>['LongPress']; catchlongpress?: LynxEvent<T>['LongPress']; 'capture-bindlongpress'?: LynxEvent<T>['LongPress']; 'capture-catchlongpress'?: LynxEvent<T>['LongPress']; 'global-bindlongpress'?: LynxEvent<T>['LongPress']; }
 interface TransitionStartProps<T> { bindtransitionstart?: LynxEvent<T>['TransitionStart']; catchtransitionstart?: LynxEvent<T>['TransitionStart']; 'capture-bindtransitionstart'?: LynxEvent<T>['TransitionStart']; 'capture-catchtransitionstart'?: LynxEvent<T>['TransitionStart']; 'global-bindtransitionstart'?: LynxEvent<T>['TransitionStart']; }
 interface TransitionCancelProps<T> { bindtransitioncancel?: LynxEvent<T>['TransitionCancel']; catchtransitioncancel?: LynxEvent<T>['TransitionCancel']; 'capture-bindtransitioncancel'?: LynxEvent<T>['TransitionCancel']; 'capture-catchtransitioncancel'?: LynxEvent<T>['TransitionCancel']; 'global-bindtransitioncancel'?: LynxEvent<T>['TransitionCancel']; }
@@ -944,6 +1017,11 @@ export type LynxEventPropsBase<T> = BGLoadProps<T> &
   TouchMoveProps<T> &
   TouchCancelProps<T> &
   TouchEndProps<T> &
+  PointerDownProps<T> &
+  PointerMoveProps<T> &
+  PointerUpProps<T> &
+  PointerCancelProps<T> &
+  ClickProps<T> &
   LongPressProps<T> &
   TransitionStartProps<T> &
   TransitionCancelProps<T> &
@@ -976,6 +1054,7 @@ export type LynxEventPropsBase<T> = BGLoadProps<T> &
 export type LynxEventProps = LynxEventPropsBase<Target>;
 
 export interface ITouchEvent extends BaseTouchEvent<Target> {}
+export interface IPointerEvent extends BasePointerEvent<Target> {}
 export interface IMouseEvent extends BaseMouseEvent<Target> {}
 export interface IWheelEvent extends BaseWheelEvent<Target> {}
 export interface IKeyEvent extends BaseKeyEvent<Target> {}

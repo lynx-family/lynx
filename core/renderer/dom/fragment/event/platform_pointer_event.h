@@ -22,12 +22,20 @@ class PlatformPointerEvent : public PlatformInputEvent {
   const PointerIntVec& PointerID() const { return pointer_id_; }
   const PointerFloatVec& PointerX() const { return pointer_x_; }
   const PointerFloatVec& PointerY() const { return pointer_y_; }
+  const PointerIntVec& PointerType() const { return pointer_type_; }
+  const PointerIntVec& IsPrimary() const { return is_primary_; }
+  const PointerIntVec& Button() const { return button_; }
+  const PointerIntVec& Buttons() const { return buttons_; }
 
  private:
   int pointer_count_{0};
   PointerIntVec pointer_id_;
   PointerFloatVec pointer_x_;
   PointerFloatVec pointer_y_;
+  PointerIntVec pointer_type_;
+  PointerIntVec is_primary_;
+  PointerIntVec button_;
+  PointerIntVec buttons_;
 };
 
 }  // namespace tasm

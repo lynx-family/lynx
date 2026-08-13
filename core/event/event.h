@@ -184,6 +184,7 @@ class Event : public lepus::RefCounted {
   // Called before dispatching an event to handle the conflic and param.
   virtual bool HandleEventConflictAndParam() { return false; }
   bool IsCaptureBubbleEvent();
+  void MergeEventDetail(const lepus::Value& detail);
 
  protected:
   EventType event_type_{EventType::kNone};

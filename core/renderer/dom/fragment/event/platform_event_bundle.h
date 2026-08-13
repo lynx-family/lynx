@@ -104,6 +104,13 @@ enum class PlatformEventName : int32_t {
   kLongPress = 6,
   kUIAppear = 7,
   kUIDisappear = 8,
+  kPointerDown = 9,
+  kPointerMove = 10,
+  kPointerUp = 11,
+  kPointerCancel = 12,
+  kWheel = 13,
+  kKeyDown = 14,
+  kKeyUp = 15,
 };
 
 inline PlatformEventName PlatformEventNameFromString(std::string_view name) {
@@ -133,6 +140,27 @@ inline PlatformEventName PlatformEventNameFromString(std::string_view name) {
   }
   if (name == "uidisappear") {
     return PlatformEventName::kUIDisappear;
+  }
+  if (name == "pointerdown") {
+    return PlatformEventName::kPointerDown;
+  }
+  if (name == "pointermove") {
+    return PlatformEventName::kPointerMove;
+  }
+  if (name == "pointerup") {
+    return PlatformEventName::kPointerUp;
+  }
+  if (name == "pointercancel") {
+    return PlatformEventName::kPointerCancel;
+  }
+  if (name == "wheel") {
+    return PlatformEventName::kWheel;
+  }
+  if (name == "keydown") {
+    return PlatformEventName::kKeyDown;
+  }
+  if (name == "keyup") {
+    return PlatformEventName::kKeyUp;
   }
   return PlatformEventName::kUnknown;
 }
@@ -164,6 +192,27 @@ inline std::string_view PlatformEventNameToString(PlatformEventName name) {
   }
   if (name == PlatformEventName::kUIDisappear) {
     return "uidisappear";
+  }
+  if (name == PlatformEventName::kPointerDown) {
+    return "pointerdown";
+  }
+  if (name == PlatformEventName::kPointerMove) {
+    return "pointermove";
+  }
+  if (name == PlatformEventName::kPointerUp) {
+    return "pointerup";
+  }
+  if (name == PlatformEventName::kPointerCancel) {
+    return "pointercancel";
+  }
+  if (name == PlatformEventName::kWheel) {
+    return "wheel";
+  }
+  if (name == PlatformEventName::kKeyDown) {
+    return "keydown";
+  }
+  if (name == PlatformEventName::kKeyUp) {
+    return "keyup";
   }
   return "";
 }

@@ -41,8 +41,7 @@ void ClosureEventListener::Invoke(fml::RefPtr<event::Event> event) {
     closure_(
         pub::ValueUtils::ConvertValueToLepusValue(*message_event->message()));
   }
-  if (event->event_type() == event::Event::EventType::kTouchEvent ||
-      event->event_type() == event::Event::EventType::kCustomEvent) {
+  if (event->IsCaptureBubbleEvent()) {
     if (!event->target() || !event->current_target()) {
       LOGE(
           "ClosureEventListener::Invoke error: the target or current_target is "

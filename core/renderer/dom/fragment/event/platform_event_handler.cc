@@ -7,6 +7,8 @@
 #include <utility>
 
 #include "base/include/float_comparison.h"
+#include "base/include/string/string_utils.h"
+#include "core/event/keyboard_event.h"
 #include "core/event/touch_event.h"
 #include "core/renderer/dom/fragment/event/platform_event_target_helper.h"
 #include "core/renderer/dom/fragment/event/platform_input_event.h"
@@ -53,7 +55,8 @@ bool PlatformEventHandler::OnInputEvent(
   switch (event_type) {
     // pointer event
     case 0: {
-      // float_event_data: [pointer_id, pointer_x, pointer_y, ...]
+      // float_event_data: [pointer_id, pointer_x, pointer_y, pointer_type,
+      // is_primary, button, buttons, ...]
       auto pointer_event =
           PlatformPointerEvent(int_event_data, float_event_data);
       switch (pointer_event.ActionType()) {
@@ -76,9 +79,13 @@ bool PlatformEventHandler::OnInputEvent(
       }
       break;
     }
-    // TODO(hexionghui): support keyboard event
     case 1: {
-      break;
+      HandleKeyEvent(int_event_data, float_event_data);
+      return false;
+    }
+    case 2: {
+      HandleWheelEvent(int_event_data[1], float_event_data);
+      return false;
     }
     default:
       break;
@@ -123,7 +130,7 @@ void PlatformEventHandler::DispatchGestureEvent(const std::string& name,
                                                 float root_point[2]) {
   if (!first_target_) {
     LOGE(
-        "PlatformEventHandler::DispatchPointerEvent first_target_ is null for "
+        "PlatformEventHandler::DispatchTouchEvent first_target_ is null for "
         "event: " +
         name);
     return;
@@ -143,7 +150,7 @@ void PlatformEventHandler::DispatchGestureEvent(const std::string& name,
                                               gesture_event);
 }
 
-void PlatformEventHandler::DispatchPointerEvent(
+void PlatformEventHandler::DispatchTouchEvent(
     const std::string& name, const lepus::Value& target_pointer_map) {
   if (!first_target_) {
     LOGE(
@@ -163,12 +170,14 @@ void PlatformEventHandler::OnGestureRecognized(int sign) {
 void PlatformEventHandler::SetFocusedTarget(
     fml::RefPtr<PlatformEventTarget> focused_target) {
   focused_target_ = focused_target;
+  pressed_activation_keys_.clear();
 }
 
 void PlatformEventHandler::UnsetFocusedTarget(
     fml::RefPtr<PlatformEventTarget> focused_target) {
   if (focused_target_ == focused_target) {
     focused_target_ = nullptr;
+    pressed_activation_keys_.clear();
   }
 }
 
@@ -204,7 +213,8 @@ void PlatformEventHandler::InitPointerEnv(PlatformPointerEvent& event) {
          " y:" + std::to_string(pointer_y) + " target:" +
          (hit_target ? std::to_string(hit_target->Sign()) : "null"))
     float down_point[2] = {pointer_x, pointer_y};
-    if (pointer_id == 0) {
+    if (event.IsPrimary()[i] != 0) {
+      primary_pointer_id_ = pointer_id;
       first_target_ = hit_target;
       memcpy(first_pointer_down_point_, down_point, sizeof(float) * 2);
     }
@@ -216,7 +226,11 @@ void PlatformEventHandler::InitPointerEnv(PlatformPointerEvent& event) {
 void PlatformEventHandler::ResetPointerEnv(PlatformPointerEvent& event) {
   int num = event.PointerCount();
   for (int i = 0; i < num; ++i) {
-    target_pointer_map_.erase(event.PointerID()[i]);
+    int pointer_id = event.PointerID()[i];
+    target_pointer_map_.erase(pointer_id);
+    if (pointer_id == primary_pointer_id_) {
+      primary_pointer_id_ = -1;
+    }
   }
   has_pointer_moved_ = false;
 }
@@ -314,7 +328,7 @@ bool PlatformEventHandler::HasScrollContainerScrolledForTap() {
 void PlatformEventHandler::OnPointerDown(PlatformPointerEvent& event) {
   int num = event.PointerCount();
   for (int i = 0; i < num; ++i) {
-    if (event.PointerID()[i] == 0) {
+    if (event.PointerID()[i] == primary_pointer_id_) {
       gesture_recognized_target_set_.clear();
       event_target_chain_.clear();
       first_pointer_moved_ = false;
@@ -342,7 +356,7 @@ void PlatformEventHandler::OnPointerMove(PlatformPointerEvent& event) {
           base::FloatsNotEqual(page_point[1], pre_page_point[1])) {
         has_pointer_moved_ = true;
         target->second.SetPrePoint(page_point);
-        if (pointer_id == 0 && !first_pointer_moved_) {
+        if (pointer_id == primary_pointer_id_ && !first_pointer_moved_) {
           first_pointer_changed = true;
           float down_page_point[2] = {0.f};
           target->second.GetDownPoint(down_page_point);
@@ -359,7 +373,8 @@ void PlatformEventHandler::OnPointerMove(PlatformPointerEvent& event) {
   }
 
   if (first_pointer_changed) {
-    if (auto first_pointer_target = target_pointer_map_.find(0);
+    if (auto first_pointer_target =
+            target_pointer_map_.find(primary_pointer_id_);
         first_pointer_target != target_pointer_map_.end()) {
       first_pointer_target->second.GetPrePoint(pre_page_point);
       // check whether it exceeds the bounds of the node registered by the click
@@ -381,7 +396,7 @@ void PlatformEventHandler::OnPointerMove(PlatformPointerEvent& event) {
 void PlatformEventHandler::OnPointerUp(PlatformPointerEvent& event) {
   int num = event.PointerCount();
   for (int i = 0; i < num; ++i) {
-    if (event.PointerID()[i] == 0) {
+    if (event.PointerID()[i] == primary_pointer_id_) {
       ResetClickEnv();
       UpdateFocusedTarget();
       DeactivatePseudoStatus(LynxPseudoStatus::kAll);
@@ -393,7 +408,7 @@ void PlatformEventHandler::OnPointerUp(PlatformPointerEvent& event) {
 void PlatformEventHandler::OnPointerCancel(PlatformPointerEvent& event) {
   int num = event.PointerCount();
   for (int i = 0; i < num; ++i) {
-    if (event.PointerID()[i] == 0) {
+    if (event.PointerID()[i] == primary_pointer_id_) {
       ResetClickEnv();
       scroll_offset_for_tap_.clear();
       UpdateFocusedTarget();
@@ -411,24 +426,60 @@ void PlatformEventHandler::HandlePointerDown(PlatformPointerEvent& event) {
   }
   auto target_pointer_map = lepus::Value(lepus::Dictionary::Create());
   AddTargetPointerMap(target_pointer_map, event);
-  DispatchPointerEvent("touchstart", target_pointer_map);
+  DispatchTouchEvent("touchstart", target_pointer_map);
+  DispatchPointerEvents("pointerdown", event);
   OnPointerDown(event);
 }
 
 void PlatformEventHandler::HandlePointerMove(PlatformPointerEvent& event) {
+  std::unordered_set<int> changed_pointer_ids;
+  bool has_active_pointer = false;
+  for (int i = 0; i < event.PointerCount(); ++i) {
+    auto target = target_pointer_map_.find(event.PointerID()[i]);
+    if (target == target_pointer_map_.end()) {
+      continue;
+    }
+    has_active_pointer = true;
+    float pre_point[2];
+    target->second.GetPrePoint(pre_point);
+    if (base::FloatsNotEqual(event.PointerX()[i], pre_point[0]) ||
+        base::FloatsNotEqual(event.PointerY()[i], pre_point[1])) {
+      changed_pointer_ids.insert(event.PointerID()[i]);
+    }
+  }
+  if (!has_active_pointer) {
+    for (int i = 0; i < event.PointerCount(); ++i) {
+      if (event.Buttons()[i] != 0) {
+        continue;
+      }
+      int pointer_id = event.PointerID()[i];
+      float point[2] = {event.PointerX()[i], event.PointerY()[i]};
+      target_pointer_map_.insert_or_assign(
+          pointer_id,
+          PlatformEventTargetDetail(FindTarget(point[0], point[1]), point));
+      changed_pointer_ids.insert(pointer_id);
+    }
+    DispatchPointerEvents("pointermove", event, &changed_pointer_ids);
+    for (int pointer_id : changed_pointer_ids) {
+      target_pointer_map_.erase(pointer_id);
+    }
+    return;
+  }
   OnPointerMove(event);
   if (!has_pointer_moved_) {
     return;
   }
   auto target_pointer_map = lepus::Value(lepus::Dictionary::Create());
   AddTargetPointerMap(target_pointer_map, event);
-  DispatchPointerEvent("touchmove", target_pointer_map);
+  DispatchTouchEvent("touchmove", target_pointer_map);
+  DispatchPointerEvents("pointermove", event, &changed_pointer_ids);
 }
 
 void PlatformEventHandler::HandlePointerUp(PlatformPointerEvent& event) {
   auto target_pointer_map = lepus::Value(lepus::Dictionary::Create());
   AddTargetPointerMap(target_pointer_map, event);
-  DispatchPointerEvent("touchend", target_pointer_map);
+  DispatchTouchEvent("touchend", target_pointer_map);
+  DispatchPointerEvents("pointerup", event);
   OnPointerUp(event);
   ResetPointerEnv(event);
 }
@@ -436,7 +487,8 @@ void PlatformEventHandler::HandlePointerUp(PlatformPointerEvent& event) {
 void PlatformEventHandler::HandlePointerCancel(PlatformPointerEvent& event) {
   auto target_pointer_map = lepus::Value(lepus::Dictionary::Create());
   AddTargetPointerMap(target_pointer_map, event);
-  DispatchPointerEvent("touchcancel", target_pointer_map);
+  DispatchTouchEvent("touchcancel", target_pointer_map);
+  DispatchPointerEvents("pointercancel", event);
   OnPointerCancel(event);
   ResetPointerEnv(event);
 }
@@ -454,6 +506,7 @@ void PlatformEventHandler::UpdateFocusedTarget() {
   if (first_target_ && !first_target_->IgnoreFocus()) {
     if (focused_target_) {
       if (focused_target_ != first_target_) {
+        pressed_activation_keys_.clear();
         focused_target_->OnFocusChange(false, first_target_->Focusable());
       }
     }
@@ -610,6 +663,166 @@ void PlatformEventHandler::AddTargetPointerMap(lepus::Value& target_pointer_map,
       }
     }
   }
+}
+
+void PlatformEventHandler::DispatchPointerEvents(
+    const std::string& name, PlatformPointerEvent& event,
+    const std::unordered_set<int>* changed_pointer_ids) {
+  static constexpr const char* kPointerTypes[] = {"touch", "mouse", "pen"};
+  for (int i = 0; i < event.PointerCount(); ++i) {
+    int pointer_id = event.PointerID()[i];
+    if (changed_pointer_ids &&
+        changed_pointer_ids->find(pointer_id) == changed_pointer_ids->end()) {
+      continue;
+    }
+    auto pointer_target = target_pointer_map_.find(pointer_id);
+    if (pointer_target == target_pointer_map_.end()) {
+      continue;
+    }
+    auto target = pointer_target->second.Target();
+    if (!target) {
+      continue;
+    }
+
+    float root_point[2] = {event.PointerX()[i], event.PointerY()[i]};
+    float target_point[2] = {root_point[0], root_point[1]};
+    GetTargetPoint(target, target_point, root_point);
+    float page_point[2] = {root_point[0], root_point[1]};
+    platform_ref_->GetEventTargetHelper()
+        ->ConvertPointFromTargetToPageRootTarget(page_point, target_tree_,
+                                                 page_point);
+    float client_point[2] = {root_point[0], root_point[1]};
+    platform_ref_->GetEventTargetHelper()->ConvertPointFromTargetToScreen(
+        client_point, target_tree_, client_point);
+
+    auto params = lepus::Dictionary::Create();
+    float coordinate_scale =
+        platform_ref_->GetEventTargetHelper()->GetDevicePixelRatio();
+    if (coordinate_scale <= 0) {
+      coordinate_scale = 1;
+    }
+    int pointer_type = event.PointerType()[i];
+    if (pointer_type < 0 || pointer_type > 2) {
+      pointer_type = 0;
+    }
+    params->SetValue("pointerId", pointer_id);
+    params->SetValue("pointerType", kPointerTypes[pointer_type]);
+    params->SetValue("isPrimary", event.IsPrimary()[i] != 0);
+    params->SetValue("button", event.Button()[i]);
+    params->SetValue("buttons", event.Buttons()[i]);
+    params->SetValue("x", target_point[0] / coordinate_scale);
+    params->SetValue("y", target_point[1] / coordinate_scale);
+    params->SetValue("pageX", page_point[0] / coordinate_scale);
+    params->SetValue("pageY", page_point[1] / coordinate_scale);
+    params->SetValue("clientX", client_point[0] / coordinate_scale);
+    params->SetValue("clientY", client_point[1] / coordinate_scale);
+    auto pointer_event = fml::MakeRefCounted<event::Event>(
+        name, event.TimeStamp(), event::Event::EventType::kPointerEvent,
+        event::Event::Capture::kYes, event::Event::Bubbles::kYes,
+        event::Event::Cancelable::kYes, event::Event::ComposedMode::kScoped,
+        event::Event::PhaseType::kNone);
+    pointer_event->MergeEventDetail(lepus::Value(std::move(params)));
+    platform_ref_->GetEventEmitter()->SendEvent(target->Sign(),
+                                                std::move(pointer_event));
+  }
+}
+
+void PlatformEventHandler::HandleWheelEvent(int action_type,
+                                            float float_event_data[]) {
+  float root_point[2] = {float_event_data[0], float_event_data[1]};
+  if (action_type == 0 || !wheel_target_) {
+    wheel_target_ = FindTarget(root_point[0], root_point[1]);
+  }
+  if (action_type == 2 || action_type == 3) {
+    wheel_target_ = nullptr;
+    return;
+  }
+  if (action_type != 1 || !wheel_target_) {
+    return;
+  }
+
+  float target_point[2] = {root_point[0], root_point[1]};
+  GetTargetPoint(wheel_target_, target_point, root_point);
+  float page_point[2] = {root_point[0], root_point[1]};
+  platform_ref_->GetEventTargetHelper()->ConvertPointFromTargetToPageRootTarget(
+      page_point, target_tree_, page_point);
+  float client_point[2] = {root_point[0], root_point[1]};
+  platform_ref_->GetEventTargetHelper()->ConvertPointFromTargetToScreen(
+      client_point, target_tree_, client_point);
+
+  auto params = lepus::Dictionary::Create();
+  float coordinate_scale =
+      platform_ref_->GetEventTargetHelper()->GetDevicePixelRatio();
+  if (coordinate_scale <= 0) {
+    coordinate_scale = 1;
+  }
+  params->SetValue("x", target_point[0] / coordinate_scale);
+  params->SetValue("y", target_point[1] / coordinate_scale);
+  params->SetValue("pageX", page_point[0] / coordinate_scale);
+  params->SetValue("pageY", page_point[1] / coordinate_scale);
+  params->SetValue("clientX", client_point[0] / coordinate_scale);
+  params->SetValue("clientY", client_point[1] / coordinate_scale);
+  params->SetValue("deltaX", float_event_data[2] / coordinate_scale);
+  params->SetValue("deltaY", float_event_data[3] / coordinate_scale);
+  auto wheel_event = fml::MakeRefCounted<event::Event>(
+      "wheel", event::Event::EventType::kWheelEvent,
+      event::Event::Capture::kYes, event::Event::Bubbles::kYes,
+      event::Event::Cancelable::kNo, event::Event::ComposedMode::kScoped,
+      event::Event::PhaseType::kNone);
+  wheel_event->MergeEventDetail(lepus::Value(std::move(params)));
+  platform_ref_->GetEventEmitter()->SendEvent(wheel_target_->Sign(),
+                                              std::move(wheel_event));
+}
+
+void PlatformEventHandler::HandleKeyEvent(int int_event_data[],
+                                          float float_event_data[]) {
+  if (!focused_target_) {
+    return;
+  }
+  int action_type = int_event_data[1];
+  int key_code = int_event_data[2];
+  bool repeat = int_event_data[3] != 0;
+  if (action_type == 2) {
+    pressed_activation_keys_.erase(key_code);
+    return;
+  }
+  if (action_type != 0 && action_type != 1) {
+    return;
+  }
+
+  std::string key = DecodeKey(int_event_data);
+
+  auto params = lepus::Dictionary::Create();
+  params->SetValue("key", key);
+  params->SetValue("repeat", repeat);
+  params->SetValue("altKey", float_event_data[0] != 0);
+  params->SetValue("ctrlKey", float_event_data[1] != 0);
+  params->SetValue("shiftKey", float_event_data[2] != 0);
+  params->SetValue("metaKey", float_event_data[3] != 0);
+  auto key_event = fml::MakeRefCounted<event::KeyboardEvent>(
+      action_type == 0 ? "keydown" : "keyup", lepus::Value(std::move(params)));
+  platform_ref_->GetEventEmitter()->SendEvent(focused_target_->Sign(),
+                                              std::move(key_event));
+
+  bool is_activation_key = key == "Enter" || key == " ";
+  if (action_type == 0 && !repeat && is_activation_key) {
+    pressed_activation_keys_.insert(key_code);
+  } else if (action_type == 1 && is_activation_key &&
+             pressed_activation_keys_.erase(key_code) != 0) {
+    auto click_event = fml::MakeRefCounted<event::TouchEvent>(EVENT_CLICK);
+    platform_ref_->GetEventEmitter()->SendEvent(focused_target_->Sign(),
+                                                std::move(click_event));
+  }
+}
+
+std::string PlatformEventHandler::DecodeKey(const int int_event_data[]) {
+  int key_length = int_event_data[5];
+  std::u16string key;
+  key.reserve(key_length);
+  for (int i = 0; i < key_length; ++i) {
+    key.push_back(static_cast<char16_t>(int_event_data[6 + i]));
+  }
+  return base::U16StringToU8(key);
 }
 
 }  // namespace tasm

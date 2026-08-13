@@ -6,6 +6,7 @@ import { assertType, expectTypeOf } from 'vitest';
 import {
   IntrinsicElements,
   BaseTouchEvent,
+  BasePointerEvent,
   BaseMouseEvent,
   BaseWheelEvent,
   BaseKeyEvent,
@@ -267,6 +268,24 @@ function noop() {}
       assertType<number>(e.detail.x);
       assertType<number>(e.detail.y);
     }}
+    bindpointerdown={(e: BasePointerEvent<Target>) => {
+      expectTypeOf(e.pointerId).toEqualTypeOf<number>();
+      expectTypeOf(e.pointerType).toEqualTypeOf<'mouse' | 'pen' | 'touch'>();
+      expectTypeOf(e.isPrimary).toEqualTypeOf<boolean>();
+    }}
+    bindpointermove={(e: BasePointerEvent<Target>) => {
+      expectTypeOf(e.clientX).toEqualTypeOf<number>();
+      expectTypeOf(e.clientY).toEqualTypeOf<number>();
+    }}
+    bindpointerup={(e: BasePointerEvent<Target>) => {
+      expectTypeOf(e.buttons).toEqualTypeOf<number>();
+    }}
+    bindpointercancel={(e: BasePointerEvent<Target>) => {
+      expectTypeOf(e.pointerType).toEqualTypeOf<'mouse' | 'pen' | 'touch'>();
+    }}
+    bindclick={(e: BaseCommonEvent<Target>) => {
+      expectTypeOf(e.type).toEqualTypeOf<string>();
+    }}
   />;
 
   <view
@@ -407,7 +426,7 @@ function noop() {}
     }}
   />;
 
-  // Wheel event (PC)
+  // Wheel event
   <view
     bindwheel={(e: BaseWheelEvent<Target>) => {
       assertType<number>(e.x);
@@ -421,10 +440,15 @@ function noop() {}
     }}
   />;
 
-  // Key events (PC)
+  // Key events
   <view
     bindkeydown={(e: BaseKeyEvent<Target>) => {
       assertType<string>(e.key);
+      assertType<boolean | undefined>(e.repeat);
+      assertType<boolean | undefined>(e.altKey);
+      assertType<boolean | undefined>(e.ctrlKey);
+      assertType<boolean | undefined>(e.shiftKey);
+      assertType<boolean | undefined>(e.metaKey);
     }}
   />;
 
