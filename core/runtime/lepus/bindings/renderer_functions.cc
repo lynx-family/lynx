@@ -4195,6 +4195,23 @@ RENDERER_FUNCTION_CC(FiberAddInlineStyle) {
 
   auto element = fml::static_ref_ptr_cast<Element>(arg0->RefCounted());
   CHECK_ILLEGAL_ATTRIBUTE_CONFIG(element, FiberAddInlineStyle);
+  if (arg1->IsString()) {
+    auto property_name = arg1->StringView();
+    if (element->IsCSSInlineVariablesEnabled() &&
+        CSSProperty::IsCustomProperty(
+            property_name.data(),
+            static_cast<uint32_t>(property_name.length()))) {
+      auto css_variables = lepus::Dictionary::Create();
+      auto value = arg2->ToLepusValue();
+      css_variables->SetValue(
+          arg1->String(), value.IsString()
+                              ? value
+                              : lepus::Value(base::String(value.ToString())));
+      element->UpdateCSSVariable(lepus::Value(std::move(css_variables)));
+      ON_NODE_MODIFIED(element);
+      RETURN_UNDEFINED();
+    }
+  }
   // If the arg1 is a string, then arg1->Number() will return 0, which is an
   // illegal CSS property id. And then, execute
   // CSSProperty::GetPropertyID(arg1->String()) to get the CSS property id.

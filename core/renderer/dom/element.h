@@ -1472,6 +1472,9 @@ class Element : public lepus::RefCounted,
    * Element API for updating css variables
    * @param variables the css variables to be updated from JS.
    */
+  // Updates variable storage and invalidation only. The caller owns the
+  // pipeline flush.
+  void UpdateCSSVariable(const lepus::Value& variables);
   void UpdateCSSVariable(const lepus::Value& variables,
                          std::shared_ptr<PipelineOptions>& pipeline_option);
   // The caller batches the pipeline flush after updating all matched elements.
