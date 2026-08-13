@@ -9,13 +9,14 @@
 #import <Lynx/LynxShadowNodeOwner.h>
 #import <Lynx/LynxUIMethodProcessor.h>
 #import <ServalMarkdown/ServalMarkdownConstants.h>
+#import <ServalMarkdown/ServalMarkdownView.h>
 
 #import <XElement/LynxUIMarkdownShadowNode.h>
 #import "adaptor/LynxMarkdownBundle.h"
-#import "adaptor/LynxServalMarkdownViewWrapper.h"
 
 @implementation LynxUIMarkdownV2 {
-  LynxMarkdownBundleV2 *_bundle;
+  ServalMarkdownView *_markdownView;
+  __weak LynxUIMarkdownShadowNodeV2 *_shadowNode;
 }
 
 - (LynxMarkdownViewV2 *)createView {
@@ -31,13 +32,30 @@
 - (void)onReceiveUIOperation:(id)value {
   [super onReceiveUIOperation:value];
   if (value != nil && [value isKindOfClass:[LynxMarkdownBundleV2 class]]) {
-    _bundle = (LynxMarkdownBundleV2 *)value;
-    [self.view setBundle:_bundle];
+    LynxMarkdownBundleV2 *bundle = (LynxMarkdownBundleV2 *)value;
+    _shadowNode = bundle.shadowNode;
+    [self updateContentOffset];
+    _markdownView = [self.view setBundle:bundle];
   }
 }
 
-- (LynxServalMarkdownViewWrapper *)markdownView {
-  return _bundle != nil ? _bundle.markdownView : nil;
+- (void)frameDidChange {
+  [super frameDidChange];
+  [self updateContentOffset];
+}
+
+- (ServalMarkdownView *)markdownView {
+  return _markdownView;
+}
+
+- (CGPoint)contentOffset {
+  return CGPointMake(self.padding.left + self.border.left, self.padding.top + self.border.top);
+}
+
+- (void)updateContentOffset {
+  CGPoint contentOffset = [self contentOffset];
+  [_shadowNode setMarkdownContentOffset:contentOffset];
+  [self.view setContentOffset:contentOffset];
 }
 
 - (ServalMarkdownIndexType)toIndexType:(id)typeValue {
@@ -65,7 +83,7 @@
   return kServalMarkdownCharRangeTypeChar;
 }
 
-- (NSArray<NSNumber *> *)getSelectionRange:(LynxServalMarkdownViewWrapper *)markdown
+- (NSArray<NSNumber *> *)getSelectionRange:(ServalMarkdownView *)markdown
                                     StartX:(CGFloat)startX
                                     StartY:(CGFloat)startY
                                       EndX:(CGFloat)endX
@@ -103,7 +121,7 @@
 }
 
 LYNX_UI_METHOD(getContent) {
-  LynxServalMarkdownViewWrapper *markdown = [self markdownView];
+  ServalMarkdownView *markdown = [self markdownView];
   if (markdown == nil) {
     callback(kUIMethodUnknown, @"no ui for node");
     return;
@@ -134,39 +152,40 @@ LYNX_UI_METHOD(getContent) {
 }
 
 LYNX_UI_METHOD(pauseAnimation) {
-  LynxServalMarkdownViewWrapper *markdown = [self markdownView];
-  if (markdown == nil) {
+  ServalMarkdownView *markdown = [self markdownView];
+  if (markdown == nil || _shadowNode == nil) {
     callback(kUIMethodUnknown, @"animation not start");
     return;
   }
-  // TODO: send to layout thread
-  [markdown pauseAnimation];
+  [markdown pauseRenderUpdate];
+  NSInteger animationStep = [markdown getRenderedAnimationStep];
+  if (![_shadowNode pauseAnimation]) {
+    [markdown resumeRenderUpdate];
+    callback(kUIMethodUnknown, @"animation not start");
+    return;
+  }
   callback(
       kUIMethodSuccess,
-      @{@"animationStep" : @([markdown getAnimationStep])});
+      @{@"animationStep" : @(animationStep)});
 }
 
 LYNX_UI_METHOD(resumeAnimation) {
-  LynxServalMarkdownViewWrapper *markdown = [self markdownView];
-  if (markdown == nil) {
+  ServalMarkdownView *markdown = [self markdownView];
+  if (markdown == nil || _shadowNode == nil) {
     callback(kUIMethodUnknown, @"animation not start");
     return;
   }
-  // TODO: send to layout thread
   NSInteger animationStep = -1;
   if ([params[@"animationStep"] isKindOfClass:[NSNumber class]]) {
     animationStep = [params[@"animationStep"] integerValue];
   }
-  if (animationStep >= 0) {
-    [markdown resumeAnimation:(int)animationStep];
-  } else {
-    [markdown resumeAnimation];
-  }
-  callback(kUIMethodSuccess, nil);
+  BOOL success = [_shadowNode resumeAnimation:animationStep];
+  [markdown resumeRenderUpdate];
+  callback(success ? kUIMethodSuccess : kUIMethodUnknown, success ? nil : @"animation not start");
 }
 
 LYNX_UI_METHOD(getTextBoundingRect) {
-  LynxServalMarkdownViewWrapper *markdown = [self markdownView];
+  ServalMarkdownView *markdown = [self markdownView];
   if (markdown == nil) {
     callback(kUIMethodUnknown, @"no ui for node");
     return;
@@ -192,7 +211,7 @@ LYNX_UI_METHOD(getTextBoundingRect) {
 }
 
 LYNX_UI_METHOD(getCharIndexByPoint) {
-  LynxServalMarkdownViewWrapper *markdown = [self markdownView];
+  ServalMarkdownView *markdown = [self markdownView];
   if (markdown == nil) {
     callback(kUIMethodUnknown, @"no ui for node");
     return;
@@ -204,10 +223,9 @@ LYNX_UI_METHOD(getCharIndexByPoint) {
     return;
   }
 
-  CGFloat translateX = self.padding.left + self.border.left;
-  CGFloat translateY = self.padding.top + self.border.top;
-  NSInteger index = [markdown getCharIndexByPoint:(float)(x.doubleValue - translateX)
-                                                y:(float)(y.doubleValue - translateY)
+  CGPoint contentOffset = [self contentOffset];
+  NSInteger index = [markdown getCharIndexByPoint:(float)(x.doubleValue - contentOffset.x)
+                                                y:(float)(y.doubleValue - contentOffset.y)
                                         indexType:[self toIndexType:params[@"indexType"]]];
   if (index < 0) {
     callback(kUIMethodUnknown, @"can not find char index");
@@ -219,7 +237,7 @@ LYNX_UI_METHOD(getCharIndexByPoint) {
 }
 
 LYNX_UI_METHOD(setTextSelection) {
-  LynxServalMarkdownViewWrapper *markdown = [self markdownView];
+  ServalMarkdownView *markdown = [self markdownView];
   if (markdown == nil) {
     callback(kUIMethodUnknown, @"no ui for node");
     return;
@@ -234,14 +252,13 @@ LYNX_UI_METHOD(setTextSelection) {
     return;
   }
 
-  CGFloat translateX = self.padding.left + self.border.left;
-  CGFloat translateY = self.padding.top + self.border.top;
+  CGPoint contentOffset = [self contentOffset];
   NSArray<NSNumber *> *range =
       [self getSelectionRange:markdown
-                       StartX:startX.doubleValue - translateX
-                       StartY:startY.doubleValue - translateY
-                         EndX:endX.doubleValue - translateX
-                         EndY:endY.doubleValue - translateY
+                       StartX:startX.doubleValue - contentOffset.x
+                       StartY:startY.doubleValue - contentOffset.y
+                         EndX:endX.doubleValue - contentOffset.x
+                         EndY:endY.doubleValue - contentOffset.y
                 SelectionType:[self toSelectionRangeType:params[@"selectionTextType"]]];
   if (range == nil || range.count < 2) {
     callback(kUIMethodUnknown, @"Can not set text selection.");
@@ -270,7 +287,7 @@ LYNX_UI_METHOD(setTextSelection) {
 }
 
 LYNX_UI_METHOD(getSelectedText) {
-  LynxServalMarkdownViewWrapper *markdown = [self markdownView];
+  ServalMarkdownView *markdown = [self markdownView];
   if (markdown == nil) {
     callback(kUIMethodUnknown, @"no ui for node");
     return;
@@ -279,7 +296,7 @@ LYNX_UI_METHOD(getSelectedText) {
 }
 
 LYNX_UI_METHOD(getParseResult) {
-  LynxServalMarkdownViewWrapper *markdown = [self markdownView];
+  ServalMarkdownView *markdown = [self markdownView];
   if (markdown == nil) {
     callback(kUIMethodUnknown, @"parse not finished");
     return;
@@ -326,7 +343,7 @@ LYNX_UI_METHOD(getParseResult) {
 }
 
 LYNX_UI_METHOD(getImages) {
-  LynxServalMarkdownViewWrapper *markdown = [self markdownView];
+  ServalMarkdownView *markdown = [self markdownView];
   if (markdown == nil) {
     callback(kUIMethodUnknown, @"parse not finished");
     return;
@@ -340,9 +357,10 @@ LYNX_UI_METHOD(getImages) {
                              Y:(CGFloat)y
                         Radius:(CGFloat)radius
                       TextRect:(CGRect)rect {
+  CGPoint contentOffset = [self contentOffset];
   return @{
-    @"x" : @(rect.origin.x + x + self.padding.left + self.border.left),
-    @"y" : @(rect.origin.y + y + self.padding.top + self.border.top),
+    @"x" : @(rect.origin.x + x + contentOffset.x),
+    @"y" : @(rect.origin.y + y + contentOffset.y),
     @"radius" : @(radius),
   };
 }
@@ -368,14 +386,21 @@ LYNX_UI_METHOD(getImages) {
 }
 
 - (NSDictionary *)getMapFromRect:(CGRect)textRect lineBox:(CGRect)lineBox {
+  CGPoint contentOffset = [self contentOffset];
   return @{
-    @"left" : @(textRect.origin.x + CGRectGetMinX(lineBox) + self.padding.left + self.border.left),
-    @"top" : @(textRect.origin.y + CGRectGetMinY(lineBox) + self.padding.top + self.border.top),
-    @"right" : @(textRect.origin.x + CGRectGetMaxX(lineBox) + self.padding.left + self.border.left),
-    @"bottom" : @(textRect.origin.y + CGRectGetMaxY(lineBox) + self.padding.top + self.border.top),
+    @"left" : @(textRect.origin.x + CGRectGetMinX(lineBox) + contentOffset.x),
+    @"top" : @(textRect.origin.y + CGRectGetMinY(lineBox) + contentOffset.y),
+    @"right" : @(textRect.origin.x + CGRectGetMaxX(lineBox) + contentOffset.x),
+    @"bottom" : @(textRect.origin.y + CGRectGetMaxY(lineBox) + contentOffset.y),
     @"width" : @(CGRectGetWidth(lineBox)),
     @"height" : @(CGRectGetHeight(lineBox)),
   };
+}
+
+- (void)dealloc {
+  [self.view setBundle:nil];
+  _markdownView = nil;
+  _shadowNode = nil;
 }
 
 @end

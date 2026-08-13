@@ -75,6 +75,7 @@ static LynxFontStyleType LynxMarkdownToFontStyle(NSInteger style) {
   NSMutableDictionary<NSString *, id> *_imageCache;
   NSMutableDictionary<NSString *, LynxMarkdownInlineViewHandle *> *_inlineViewCache;
   NSMutableDictionary<NSString *, UIFont *> *_fontCache;
+  BOOL _released;
 }
 
 - (instancetype)initWithHost:(id<LynxMarkdownResourceLoaderHost>)host {
@@ -85,12 +86,17 @@ static LynxFontStyleType LynxMarkdownToFontStyle(NSInteger style) {
     _imageCache = [NSMutableDictionary dictionary];
     _inlineViewCache = [NSMutableDictionary dictionary];
     _fontCache = [NSMutableDictionary dictionary];
+    _released = NO;
   }
   return self;
 }
 
 - (void)releaseResources {
   @synchronized(self) {
+    if (_released) {
+      return;
+    }
+    _released = YES;
     [_imageCache removeAllObjects];
     [_inlineViewCache removeAllObjects];
     [_fontCache removeAllObjects];
@@ -103,6 +109,9 @@ static LynxFontStyleType LynxMarkdownToFontStyle(NSInteger style) {
   }
 
   @synchronized(self) {
+    if (_released) {
+      return nil;
+    }
     id cached = _imageCache[url];
     if ([cached isKindOfClass:[UIImage class]]) {
       return (UIImage *)cached;
@@ -146,6 +155,9 @@ static LynxFontStyleType LynxMarkdownToFontStyle(NSInteger style) {
                    }
                    BOOL shouldRequestLayout = NO;
                    @synchronized(strongSelf) {
+                     if (strongSelf->_released) {
+                       return;
+                     }
                      if (image != nil) {
                        strongSelf->_imageCache[url] = image;
                        shouldRequestLayout = YES;
@@ -172,6 +184,9 @@ static LynxFontStyleType LynxMarkdownToFontStyle(NSInteger style) {
   NSString *familyName = family == nil ? @"" : family;
   NSString *fontKey = [NSString stringWithFormat:@"%@_%d_%d", familyName, weight, style];
   @synchronized(self) {
+    if (_released) {
+      return nil;
+    }
     UIFont *cachedFont = _fontCache[fontKey];
     if (cachedFont != nil) {
       return cachedFont;
@@ -193,7 +208,9 @@ static LynxFontStyleType LynxMarkdownToFontStyle(NSInteger style) {
 
   if (font != nil) {
     @synchronized(self) {
-      _fontCache[fontKey] = font;
+      if (!_released) {
+        _fontCache[fontKey] = font;
+      }
     }
   }
   return font;
@@ -205,6 +222,9 @@ static LynxFontStyleType LynxMarkdownToFontStyle(NSInteger style) {
   }
 
   @synchronized(self) {
+    if (_released) {
+      return nil;
+    }
     LynxMarkdownInlineViewHandle *cachedHandle = _inlineViewCache[idSelector];
     if (cachedHandle != nil) {
       return cachedHandle;
@@ -230,6 +250,9 @@ static LynxFontStyleType LynxMarkdownToFontStyle(NSInteger style) {
   LynxMarkdownInlineViewHandle *handle =
       [[LynxMarkdownInlineViewHandle alloc] initWithLayoutNode:targetNode host:_host];
   @synchronized(self) {
+    if (_released) {
+      return nil;
+    }
     _inlineViewCache[idSelector] = handle;
   }
   return handle;
@@ -237,6 +260,9 @@ static LynxFontStyleType LynxMarkdownToFontStyle(NSInteger style) {
 
 - (void)onFontFaceLoad:(NSString *)family Weight:(int)weight Style:(int)style {
   @synchronized(self) {
+    if (_released) {
+      return;
+    }
     [_fontCache removeAllObjects];
   }
   id<LynxMarkdownResourceLoaderHost> host = _host;
@@ -247,6 +273,11 @@ static LynxFontStyleType LynxMarkdownToFontStyle(NSInteger style) {
 }
 
 - (void)onImageLoaded:(NSString *)url {
+  @synchronized(self) {
+    if (_released) {
+      return;
+    }
+  }
   id<LynxMarkdownResourceLoaderHost> host = _host;
   if (host == nil || [host markdownHostDestroyed]) {
     return;

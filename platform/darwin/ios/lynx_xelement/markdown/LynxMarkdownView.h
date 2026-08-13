@@ -7,10 +7,12 @@
 NS_ASSUME_NONNULL_BEGIN
 
 @class LynxMarkdownBundleV2;
+@class ServalMarkdownView;
 
 @interface LynxMarkdownViewV2 : UIView
 
-- (void)setBundle:(nullable LynxMarkdownBundleV2 *)bundle;
+- (nullable ServalMarkdownView *)setBundle:(nullable LynxMarkdownBundleV2 *)bundle;
+- (void)setContentOffset:(CGPoint)contentOffset;
 
 @end
 
