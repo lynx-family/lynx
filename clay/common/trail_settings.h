@@ -20,6 +20,7 @@ namespace setting {
 
 LYNX_SETTING_KEY(CLAY_PRECOMPILE_SKITY_SHADERS, bool,
                  "clay_precompile_skity_shaders");
+LYNX_SETTING_KEY(OPT_THREAD, bool, "opt_thread");
 
 }  // namespace setting
 }  // namespace clay
