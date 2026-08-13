@@ -1,5 +1,8 @@
 # CHANGELOG
 
+## 4.3.1
+- Add `android-overlay-scope` to `<overlay>` typings.
+
 ## 4.3.0
 - Add missing `repeat`, `altKey`, `shiftKey`, `ctrlKey`, and `metaKey` fields to `BaseKeyEvent`.
 
