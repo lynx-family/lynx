@@ -1345,8 +1345,6 @@ class Element : public lepus::RefCounted,
 
   virtual bool is_list() const { return false; }
 
-  virtual bool is_template() const { return false; }
-
   virtual bool is_wrapper() const { return false; }
 
   virtual bool is_component() const { return false; }
@@ -1744,9 +1742,6 @@ class Element : public lepus::RefCounted,
   void HandleContainerInsertion(Element* parent, Element* child, Element* ref);
   void InsertLogicalChildBefore(const fml::RefPtr<Element>& child,
                                 Element* ref_node);
-  Element* ReplaceTemplateChildIfNeeded(
-      base::InlineVector<fml::RefPtr<Element>,
-                         kChildrenInlineVectorSize>::iterator child_iter);
   void ResetDirectionAwareProperty(const CSSPropertyID& id,
                                    const CSSValue& value);
   void TryDoDirectionRelatedCSSChange(CSSPropertyID id, const CSSValue& value,

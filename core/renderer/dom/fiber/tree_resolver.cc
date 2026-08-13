@@ -21,7 +21,6 @@
 #include "core/renderer/dom/fiber/page_element.h"
 #include "core/renderer/dom/fiber/raw_text_element.h"
 #include "core/renderer/dom/fiber/scroll_element.h"
-#include "core/renderer/dom/fiber/template_element.h"
 #include "core/renderer/dom/fiber/text_element.h"
 #include "core/renderer/dom/fiber/tree_resolver.h"
 #include "core/renderer/dom/fiber/view_element.h"
@@ -123,10 +122,10 @@ void RegisterSlotTarget(base::Vector<fml::RefPtr<Element>>* targets,
   }
 }
 
-void RegisterElementSlotMountPoint(base::Vector<ElementSlotMountPoint>* targets,
-                                   int32_t slot_index,
-                                   const fml::RefPtr<Element>& parent,
-                                   const fml::RefPtr<Element>& ref_node) {
+void RegisterChildSlotMountPoint(base::Vector<ChildSlotMountPoint>* targets,
+                                 int32_t slot_index,
+                                 const fml::RefPtr<Element>& parent,
+                                 const fml::RefPtr<Element>& ref_node) {
   if (targets == nullptr || slot_index < 0 || parent == nullptr) {
     return;
   }
@@ -356,7 +355,8 @@ lepus::Value ResolveAttributeSlotValue(const lepus::Value& attribute_slots,
 
 void ClearPreviousTemplateSpreadAttributes(
     Element* element, const TemplateAttributes& template_attributes,
-    const lepus::Value& previous_attribute_slots) {
+    const lepus::Value& previous_attribute_slots,
+    TemplateAttributeApplyMode mode) {
   if (!previous_attribute_slots.IsArrayOrJSArray()) {
     return;
   }
@@ -370,17 +370,17 @@ void ClearPreviousTemplateSpreadAttributes(
     if (!previous_value.IsObject()) {
       continue;
     }
-    tasm::ForEachLepusValue(
-        previous_value, [element](const auto& key, const auto&) {
-          if (RemoveTemplateDataAttribute(element, key.String())) {
-            return;
-          }
-          // Re-apply previous spread keys with an empty value to clear keys
-          // that disappeared from the current spread object. data-* is handled
-          // above because __AddDataset preserves empty values.
-          ApplyTemplateAttributeValue(element, key.String(), lepus::Value(),
-                                      TemplateAttributeApplyMode::kAll);
-        });
+    tasm::ForEachLepusValue(previous_value, [element, mode](const auto& key,
+                                                            const auto&) {
+      if (mode != TemplateAttributeApplyMode::kEventOnly &&
+          RemoveTemplateDataAttribute(element, key.String())) {
+        return;
+      }
+      // Re-apply previous spread keys with an empty value to clear keys
+      // that disappeared from the current spread object. data-* is handled
+      // above because __AddDataset preserves empty values.
+      ApplyTemplateAttributeValue(element, key.String(), lepus::Value(), mode);
+    });
   }
 }
 
@@ -394,10 +394,10 @@ void ApplyTemplateAttributesToElementInternal(
   const auto& template_attributes = element->template_attributes();
   const bool rebuild_static_attributes = previous_attribute_slots != nullptr;
   DCHECK(!rebuild_static_attributes ||
-         mode == TemplateAttributeApplyMode::kAll);
+         mode != TemplateAttributeApplyMode::kEventOnly);
   if (rebuild_static_attributes) {
     ClearPreviousTemplateSpreadAttributes(element, *template_attributes,
-                                          *previous_attribute_slots);
+                                          *previous_attribute_slots, mode);
   }
   bool has_applied_spread = false;
   for (const auto& attr : *template_attributes) {
@@ -443,6 +443,14 @@ void TreeResolver::ApplyTemplateNonEventAttributesToElement(
     Element* element, const lepus::Value& attribute_slots) {
   ApplyTemplateAttributesToElementInternal(
       element, nullptr, attribute_slots,
+      TemplateAttributeApplyMode::kNonEventOnly);
+}
+
+void TreeResolver::ApplyTemplateNonEventAttributesToElement(
+    Element* element, const lepus::Value& previous_attribute_slots,
+    const lepus::Value& attribute_slots) {
+  ApplyTemplateAttributesToElementInternal(
+      element, &previous_attribute_slots, attribute_slots,
       TemplateAttributeApplyMode::kNonEventOnly);
 }
 
@@ -883,14 +891,14 @@ fml::RefPtr<Element> TreeResolver::FromElementInfo(
       if (generated != nullptr &&
           (attr.type_ == ATTRIBUTE_BINDING_TYPE_DYNAMIC ||
            attr.type_ == ATTRIBUTE_BINDING_TYPE_SPREAD)) {
-        // attrSlotIndex only needs to locate the affected element. Attribute
-        // re-application will happen in a later flush-oriented patch.
+        // attrSlotIndex only needs to locate the affected element. The ET owner
+        // applies the prepared value and any later direct update.
         RegisterSlotTarget(&generated->attribute_slot_targets_,
-                           static_cast<int32_t>(attr.slot_index_), res);
+                           attr.slot_index_, res);
         if (attr.type_ == ATTRIBUTE_BINDING_TYPE_SPREAD ||
             IsTemplateEventAttribute(attr.key_)) {
           RegisterSlotTarget(&generated->event_attribute_slot_targets_,
-                             static_cast<int32_t>(attr.slot_index_), res);
+                             attr.slot_index_, res);
         }
       }
     }
@@ -911,9 +919,9 @@ fml::RefPtr<Element> TreeResolver::FromElementInfo(
 
   auto it = info.children_.begin();
   while (it != info.children_.end()) {
-    base::Vector<int32_t> pending_slot_indices;
+    base::Vector<int32_t> slot_indices_before_child;
     while (it != info.children_.end() && it->tag_enum_ == ELEMENT_SLOT) {
-      pending_slot_indices.push_back(it->slot_index_);
+      slot_indices_before_child.push_back(it->slot_index_);
       ++it;
     }
 
@@ -924,9 +932,9 @@ fml::RefPtr<Element> TreeResolver::FromElementInfo(
     }
 
     if (generated != nullptr) {
-      for (auto slot_index : pending_slot_indices) {
-        RegisterElementSlotMountPoint(&generated->element_slot_targets_,
-                                      slot_index, res, materialized_child);
+      for (auto slot_index : slot_indices_before_child) {
+        RegisterChildSlotMountPoint(&generated->child_slot_targets_, slot_index,
+                                    res, materialized_child);
       }
     }
 
