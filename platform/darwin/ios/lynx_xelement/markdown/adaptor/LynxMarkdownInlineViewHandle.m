@@ -48,12 +48,6 @@ static LynxMeasureMode LynxMarkdownToLynxMeasureMode(ServalMarkdownLayoutMode mo
   return self;
 }
 
-- (void)requestMeasure {
-}
-
-- (void)requestAlign {
-}
-
 - (void)requestDraw {
 }
 
@@ -87,6 +81,8 @@ static LynxMeasureMode LynxMarkdownToLynxMeasureMode(ServalMarkdownLayoutMode mo
   _top = top;
 
   AlignParam *alignParam = [[AlignParam alloc] init];
+  // Native alignment uses the markdown content box as its coordinate origin. Lynx adds the
+  // parent's padding and border when updating the UI frame below.
   [alignParam SetAlignOffsetWithLeft:left Top:top];
   AlignContext *alignContext = [_host markdownHostAlignContext];
   if (alignContext == nil) {
@@ -134,7 +130,8 @@ static LynxMeasureMode LynxMarkdownToLynxMeasureMode(ServalMarkdownLayoutMode mo
   }
   void (^updateUI)(void) = ^{
     CGRect frame = ui.frame;
-    frame.origin = CGPointMake(left, top);
+    CGPoint contentOffset = [self->_host markdownHostContentOffset];
+    frame.origin = CGPointMake(left + contentOffset.x, top + contentOffset.y);
     [ui setFrame:frame];
     [ui frameDidChange];
   };

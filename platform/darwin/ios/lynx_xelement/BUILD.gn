@@ -318,8 +318,6 @@ subspec_target("Markdown") {
     "markdown/adaptor/LynxMarkdownInlineViewHandle.m",
     "markdown/adaptor/LynxMarkdownResourceLoader.h",
     "markdown/adaptor/LynxMarkdownResourceLoader.m",
-    "markdown/adaptor/LynxServalMarkdownViewWrapper.h",
-    "markdown/adaptor/LynxServalMarkdownViewWrapper.m",
   ]
   public_header_files = [
     "markdown/LynxUIMarkdownShadowNode.h",
@@ -329,7 +327,7 @@ subspec_target("Markdown") {
 
   dependency = [ [
         "ServalMarkdown",
-        "0.1.1",
+        "0.2.4",
       ] ]
 
   dependency += lynx_dependency
