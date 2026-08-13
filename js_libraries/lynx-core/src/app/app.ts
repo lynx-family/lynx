@@ -502,7 +502,9 @@ export abstract class BaseApp<
   /**
    * @internal
    * @static
-   * The LynxGroup level store backing cross-card module sharing.
+   * The App-runtime (JS context) level store backing cross-card module
+   * sharing, kept on `nativeGlobal` so its lifetime follows the shared
+   * context itself rather than any one card's App class.
    *
    * Modules loaded through `requireModuleAsync` are evaluated at most once
    * per JS context: `descriptors` memoizes the module exports per requested
@@ -519,9 +521,15 @@ export abstract class BaseApp<
    * (`app-service.js`, wrapped background entries) whose side effects must
    * run once per card, so it never shares.
    */
-  private static _$sharedModuleDescriptors: Record<string, unknown> = {};
-  private static _$sharedChunkInstances: Record<string, { exports: unknown }> =
-    {};
+  private static get _$sharedModuleDescriptors(): Record<string, unknown> {
+    return (nativeGlobal._$sharedModuleDescriptors ??= {});
+  }
+  private static get _$sharedChunkInstances(): Record<
+    string,
+    { exports: unknown }
+  > {
+    return (nativeGlobal._$sharedChunkInstances ??= {});
+  }
 
   /**
    * @internal
