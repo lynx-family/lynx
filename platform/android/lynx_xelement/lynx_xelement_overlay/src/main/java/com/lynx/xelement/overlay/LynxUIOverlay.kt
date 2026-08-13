@@ -38,6 +38,7 @@ open class LynxUIOverlay(context: LynxContext, params: Any?): UIGroup<AndroidVie
         const val PROP_FULL_SCREEN = "android-full-screen"
         const val PROP_ANDROID_HIDE_NAVIGATION_BAR = "android-hide-navigation-bar";
         const val PROP_CONTAINER_POPUP_TAG = "android-container-popup-tag"
+        const val PROP_ANDROID_OVERLAY_SCOPE = "android-overlay-scope"
         const val PROP_ADAPT_EDGE_TO_EDGE = "android-adapt-edge-to-edge"
         const val PROP_ANDROID_NAVIGATION_BAR_STYLE = "android-navigation-bar-style"
     }
@@ -143,6 +144,7 @@ open class LynxUIOverlay(context: LynxContext, params: Any?): UIGroup<AndroidVie
     override fun setParent(parent: UIParent?) {
         super.setParent(parent)
         mOverlayView.parent = parent
+        mOverlayView.onProxyParentChanged()
     }
 
     override fun onDetach() {
