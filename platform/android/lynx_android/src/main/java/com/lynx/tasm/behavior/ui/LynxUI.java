@@ -1493,8 +1493,7 @@ public abstract class LynxUI<T extends View> extends LynxBaseUI implements IProc
 
   @LynxProp(name = "clip-path")
   public void setClipPath(@Nullable ReadableArray basicShape) {
-    mClipPath =
-        BasicShape.CreateFromReadableArray(basicShape, mContext.getScreenMetrics().scaledDensity);
+    mClipPath = BasicShape.CreateFromReadableArray(basicShape, mContext.getScreenMetrics().density);
   }
 
   @LynxProp(name = PropsConstants.OFFSET_PATH)
@@ -1502,7 +1501,7 @@ public abstract class LynxUI<T extends View> extends LynxBaseUI implements IProc
     if (mRawOffsetShape != basicShape) {
       mRawOffsetShape = basicShape;
       mOffsetPath =
-          BasicShape.CreateFromReadableArray(basicShape, mContext.getScreenMetrics().scaledDensity);
+          BasicShape.CreateFromReadableArray(basicShape, mContext.getScreenMetrics().density);
       mOffsetHasChanged = true;
     }
   }
