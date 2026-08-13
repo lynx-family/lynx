@@ -7,25 +7,42 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyFloat;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import android.graphics.Matrix;
 import android.graphics.PointF;
 import android.os.SystemClock;
+import android.view.InputDevice;
+import android.view.KeyEvent;
 import android.view.MotionEvent;
+import android.widget.EditText;
 import com.lynx.react.bridge.DynamicFromArray;
 import com.lynx.react.bridge.JavaOnlyArray;
+import com.lynx.react.bridge.JavaOnlyMap;
 import com.lynx.react.bridge.ReadableMap;
+import com.lynx.tasm.EventEmitter;
 import com.lynx.tasm.LynxEventEmitter;
 import com.lynx.tasm.LynxTemplateRender;
 import com.lynx.tasm.behavior.event.EventTarget;
 import com.lynx.tasm.behavior.event.EventTargetBase;
 import com.lynx.tasm.behavior.ui.LynxBaseUI;
+import com.lynx.tasm.behavior.ui.LynxUI;
 import com.lynx.tasm.behavior.ui.UIBody;
+import com.lynx.tasm.behavior.ui.UIGroup;
 import com.lynx.tasm.behavior.ui.view.AndroidView;
 import com.lynx.tasm.behavior.ui.view.UIView;
 import com.lynx.tasm.event.EventsListener;
 import com.lynx.tasm.event.LynxEventDetail;
+import com.lynx.tasm.event.LynxTouchEvent;
 import com.lynx.tasm.gesture.arena.GestureArenaManager;
 import com.lynx.tasm.gesture.detector.GestureDetector;
 import com.lynx.tasm.gesture.handler.GestureConstants;
@@ -38,6 +55,8 @@ import java.util.Map;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 
 public class TouchEventDispatcherTest {
   private LynxContext mContext;
@@ -47,6 +66,7 @@ public class TouchEventDispatcherTest {
 
   public static class MockEventTarget implements EventTarget {
     public int mSign;
+    private HashMap<String, EventTarget> mChildrenLynxPageUI;
 
     MockEventTarget(int sign) {
       mSign = sign;
@@ -232,11 +252,13 @@ public class TouchEventDispatcherTest {
 
     @Override
     public HashMap<String, EventTarget> getChildrenLynxPageUI() {
-      return null;
+      return mChildrenLynxPageUI;
     }
 
     @Override
-    public void setChildrenLynxPageUI(HashMap<String, EventTarget> childrenLynxPageUI) {}
+    public void setChildrenLynxPageUI(HashMap<String, EventTarget> childrenLynxPageUI) {
+      mChildrenLynxPageUI = childrenLynxPageUI;
+    }
 
     @Override
     public EventTarget getRootLynxPageUI() {
@@ -327,6 +349,136 @@ public class TouchEventDispatcherTest {
       e.printStackTrace();
       assertEquals(1, 0, 0);
     }
+  }
+
+  @Test
+  public void testTouchStartIsDispatchedBeforePointerDown() {
+    EventEmitter eventEmitter = mock(EventEmitter.class);
+    mContext.setEventEmitter(eventEmitter);
+    UIGroup root = mock(UIGroup.class);
+    LynxBaseUI target = mock(LynxBaseUI.class);
+    when(target.getSign()).thenReturn(17);
+    when(root.hitTest(anyFloat(), anyFloat())).thenReturn(target);
+    MotionEvent event = MotionEvent.obtain(
+        SystemClock.uptimeMillis(), SystemClock.uptimeMillis(), MotionEvent.ACTION_DOWN, 10, 20, 0);
+
+    assertTrue(mDispatcher.handleFirstTouchDown(event, root));
+
+    InOrder order = inOrder(eventEmitter);
+    order.verify(eventEmitter)
+        .sendTouchEvent(argThat(touchEvent -> "touchstart".equals(touchEvent.getName())));
+    order.verify(eventEmitter)
+        .sendBubbleEvent(eq("pointerdown"), eq(17), any(JavaOnlyMap.class));
+    event.recycle();
+  }
+
+  @Test
+  public void testNativeTextInputDoesNotSynthesizeKeyboardClick() {
+    EventEmitter eventEmitter = mock(EventEmitter.class);
+    mContext.setEventEmitter(eventEmitter);
+    LynxUI target = mock(LynxUI.class);
+    when(target.getSign()).thenReturn(17);
+    when(target.getView()).thenReturn(mock(EditText.class));
+    mDispatcher.setFocusedUI(target);
+
+    mDispatcher.dispatchKeyEvent(new KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_ENTER));
+    mDispatcher.dispatchKeyEvent(new KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_ENTER));
+
+    verify(eventEmitter)
+        .sendBubbleEvent(eq("keydown"), eq(17), any(JavaOnlyMap.class));
+    verify(eventEmitter)
+        .sendBubbleEvent(eq("keyup"), eq(17), any(JavaOnlyMap.class));
+    verify(eventEmitter, never()).sendTouchEvent(any(LynxTouchEvent.class));
+  }
+
+  @Test
+  public void testCanceledActivationKeyDoesNotSynthesizeClick() {
+    EventEmitter eventEmitter = mock(EventEmitter.class);
+    mContext.setEventEmitter(eventEmitter);
+    LynxBaseUI target = mock(LynxBaseUI.class);
+    when(target.getSign()).thenReturn(17);
+    mDispatcher.setFocusedUI(target);
+    KeyEvent canceledUp = new KeyEvent(0, 1, KeyEvent.ACTION_UP, KeyEvent.KEYCODE_ENTER, 0, 0,
+        -1, 0, KeyEvent.FLAG_CANCELED);
+
+    mDispatcher.dispatchKeyEvent(new KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_ENTER));
+    mDispatcher.dispatchKeyEvent(canceledUp);
+
+    verify(eventEmitter)
+        .sendBubbleEvent(eq("keydown"), eq(17), any(JavaOnlyMap.class));
+    verify(eventEmitter)
+        .sendBubbleEvent(eq("keyup"), eq(17), any(JavaOnlyMap.class));
+    verify(eventEmitter, never()).sendTouchEvent(any(LynxTouchEvent.class));
+  }
+
+  @Test
+  public void testWheelTargetsInnermostChildLynxPage() {
+    EventEmitter parentEmitter = mock(EventEmitter.class);
+    mContext.setEventEmitter(parentEmitter);
+    UIGroup parentRoot = mock(UIGroup.class);
+    MockEventTarget frameTarget = new MockEventTarget(17);
+    when(parentRoot.hitTest(anyFloat(), anyFloat())).thenReturn(frameTarget);
+
+    LynxContext childContext = TestingUtils.getLynxContext();
+    EventEmitter childEmitter = mock(EventEmitter.class);
+    childContext.setEventEmitter(childEmitter);
+    LynxUIOwner childOwner =
+        new LynxUIOwner(childContext, null, new UIBody.UIBodyView(childContext));
+    TouchEventDispatcher childDispatcher = new TouchEventDispatcher(childOwner);
+    childContext.setTouchEventDispatcher(childDispatcher);
+    UIBody childRoot = mock(UIBody.class);
+    MockEventTarget childTarget = new MockEventTarget(23);
+    when(childRoot.getLynxContext()).thenReturn(childContext);
+    when(childRoot.hitTest(anyFloat(), anyFloat())).thenReturn(childTarget);
+    HashMap<String, EventTarget> children = new HashMap<>();
+    children.put(String.valueOf(System.identityHashCode(frameTarget)), childRoot);
+    frameTarget.setChildrenLynxPageUI(children);
+
+    MotionEvent.PointerProperties properties = new MotionEvent.PointerProperties();
+    properties.id = 0;
+    properties.toolType = MotionEvent.TOOL_TYPE_MOUSE;
+    MotionEvent.PointerCoords coordinates = new MotionEvent.PointerCoords();
+    coordinates.x = 10;
+    coordinates.y = 20;
+    coordinates.setAxisValue(MotionEvent.AXIS_VSCROLL, 1);
+    MotionEvent event = MotionEvent.obtain(0, 1, MotionEvent.ACTION_SCROLL, 1,
+        new MotionEvent.PointerProperties[] {properties},
+        new MotionEvent.PointerCoords[] {coordinates}, 0, 0, 1, 1, 0, 0,
+        InputDevice.SOURCE_MOUSE, 0);
+
+    mDispatcher.onGenericMotionEvent(event, parentRoot);
+
+    verify(childEmitter)
+        .sendBubbleEvent(eq("wheel"), eq(23), any(JavaOnlyMap.class));
+    verify(parentEmitter, never())
+        .sendBubbleEvent(eq("wheel"), anyInt(), any(JavaOnlyMap.class));
+    event.recycle();
+  }
+
+  @Test
+  public void testStylusHoverHasNoPressedButtons() {
+    EventEmitter eventEmitter = mock(EventEmitter.class);
+    mContext.setEventEmitter(eventEmitter);
+    UIGroup root = mock(UIGroup.class);
+    MockEventTarget target = new MockEventTarget(17);
+    when(root.hitTest(anyFloat(), anyFloat())).thenReturn(target);
+    MotionEvent.PointerProperties properties = new MotionEvent.PointerProperties();
+    properties.id = 0;
+    properties.toolType = MotionEvent.TOOL_TYPE_STYLUS;
+    MotionEvent.PointerCoords coordinates = new MotionEvent.PointerCoords();
+    coordinates.x = 10;
+    coordinates.y = 20;
+    MotionEvent event = MotionEvent.obtain(0, 1, MotionEvent.ACTION_HOVER_MOVE, 1,
+        new MotionEvent.PointerProperties[] {properties},
+        new MotionEvent.PointerCoords[] {coordinates}, 0, 0, 1, 1, 0, 0,
+        InputDevice.SOURCE_STYLUS, 0);
+
+    mDispatcher.onGenericMotionEvent(event, root);
+
+    ArgumentCaptor<JavaOnlyMap> params = ArgumentCaptor.forClass(JavaOnlyMap.class);
+    verify(eventEmitter).sendBubbleEvent(eq("pointermove"), eq(17), params.capture());
+    assertEquals(0, params.getValue().getInt("buttons"));
+    event.recycle();
   }
 
   @Test

@@ -129,6 +129,20 @@ static void SendMultiTouchEvent(JNIEnv *env, jobject jcaller, jlong ptr,
       static_cast<int64_t>(timestamp));
 }
 
+static void SendBubbleEvent(JNIEnv *env, jobject jcaller, jlong ptr,
+                            jstring name, jint tag, jobject params,
+                            jint length) {
+  auto value = ConvertJavaData(env, params, length);
+  if (!value.IsTable()) {
+    return;
+  }
+  lynx::shell::LynxEngineProxyAndroid *engine_proxy =
+      reinterpret_cast<lynx::shell::LynxEngineProxyAndroid *>(ptr);
+  engine_proxy->SendBubbleEvent(
+      lynx::base::android::JNIConvertHelper::ConvertToString(env, name),
+      static_cast<int32_t>(tag), PubLepusValue(std::move(value)));
+}
+
 static void SendCustomEvent(JNIEnv *env, jobject jcaller, jlong ptr,
                             jstring name, jint tag, jobject params, jint length,
                             jstring params_name) {

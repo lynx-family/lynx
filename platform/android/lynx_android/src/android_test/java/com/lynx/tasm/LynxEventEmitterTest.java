@@ -3,12 +3,14 @@
 // LICENSE file in the root directory of this source tree.
 
 package com.lynx.tasm;
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.fail;
 
 import androidx.annotation.NonNull;
+import com.lynx.react.bridge.JavaOnlyMap;
 import com.lynx.tasm.common.LepusBuffer;
 import com.lynx.tasm.core.LynxEngineProxy;
 import com.lynx.tasm.event.LynxCustomEvent;
@@ -27,6 +29,9 @@ public class LynxEventEmitterTest {
 
   LynxTouchEvent mTouchEvent = null;
   LynxCustomEvent mCustomEvent = null;
+  String mBubbleEventName = null;
+  int mBubbleEventTag = -1;
+  JavaOnlyMap mBubbleEventParams = null;
 
   int mGestureTag = -1;
   int mGestureID = -1;
@@ -80,6 +85,13 @@ public class LynxEventEmitterTest {
     }
 
     @Override
+    void sendBubbleEvent(String name, int tag, JavaOnlyMap params) {
+      mBubbleEventName = name;
+      mBubbleEventTag = tag;
+      mBubbleEventParams = params;
+    }
+
+    @Override
     void sendCustomEvent(LynxCustomEvent event) {
       mCustomEvent = event;
     }
@@ -123,6 +135,9 @@ public class LynxEventEmitterTest {
   private void reset() {
     mTouchEvent = null;
     mCustomEvent = null;
+    mBubbleEventName = null;
+    mBubbleEventTag = -1;
+    mBubbleEventParams = null;
 
     mGestureTag = -1;
     mGestureID = -1;
@@ -239,6 +254,27 @@ public class LynxEventEmitterTest {
     assertEquals(mLynxEvent, tapEvent);
     assertEquals(mTapCount, 0);
     assertEquals(mTouchEvent, tapEvent);
+  }
+
+  @Test
+  public void testSendBubbleEvent() {
+    JavaOnlyMap params = new JavaOnlyMap();
+    params.putInt("pointerId", 3);
+
+    mEventEmitter.mEngineProxy = null;
+    mEventEmitter.sendBubbleEvent("pointerdown", 11, params);
+    assertNull(mBubbleEventName);
+
+    mEventEmitter.mEngineProxy = new MockEngineProxyWrapper(null);
+    mEventEmitter.sendBubbleEvent("pointerdown", 11, params);
+    assertEquals("pointerdown", mBubbleEventName);
+    assertEquals(11, mBubbleEventTag);
+    assertSame(params, mBubbleEventParams);
+
+    reset();
+    mEventEmitter.setInPreLoad(true);
+    mEventEmitter.sendBubbleEvent("pointerdown", 11, params);
+    assertNull(mBubbleEventName);
   }
 
   @Test

@@ -1320,17 +1320,47 @@ public class LynxView extends UIBodyView implements ILynxSecurityTarget {
 
   @Override
   public boolean dispatchKeyEvent(KeyEvent event) {
-    if ((lynxUIRenderer() == null) || (!lynxUIRenderer().needHandleDispatchKeyEvent())) {
-      return super.dispatchKeyEvent(event);
+    ILynxUIRenderer renderer = lynxUIRenderer();
+    boolean rendererConsumed = false;
+    if (renderer != null && renderer.needHandleDispatchKeyEvent()
+        && !isFocusInChildLynxView()) {
+      rendererConsumed = renderer.dispatchKeyEvent(event);
+    }
+    if (rendererConsumed) {
+      if (mLynxTemplateRender != null) {
+        mLynxTemplateRender.onDispatchInputEvent(event);
+      }
+      return true;
     }
 
-    boolean consumed = lynxUIRenderer().dispatchKeyEvent(event);
+    boolean consumed = super.dispatchKeyEvent(event);
 
     if (consumed && mLynxTemplateRender != null) {
       mLynxTemplateRender.onDispatchInputEvent(event);
     }
 
     return consumed;
+  }
+
+  private boolean isFocusInChildLynxView() {
+    View focusedView = findFocus();
+    while (focusedView != null && focusedView != this) {
+      if (focusedView instanceof LynxView) {
+        return true;
+      }
+      ViewParent parent = focusedView.getParent();
+      focusedView = parent instanceof View ? (View) parent : null;
+    }
+    return false;
+  }
+
+  @Override
+  public boolean dispatchGenericMotionEvent(MotionEvent event) {
+    ILynxUIRenderer renderer = lynxUIRenderer();
+    if (renderer != null && !renderer.shouldInvokeNativeViewMethod() && !isChildLynxPageUI()) {
+      renderer.dispatchGenericMotionEvent(event);
+    }
+    return super.dispatchGenericMotionEvent(event);
   }
 
   /**

@@ -4,6 +4,7 @@
 package com.lynx.tasm.behavior;
 
 import android.graphics.PointF;
+import android.view.KeyEvent;
 import android.view.MotionEvent;
 
 public interface IPaintingContext {
@@ -21,6 +22,10 @@ public interface IPaintingContext {
   void setLynxEngineActorForPlatformContextRef(long ptr);
 
   boolean dispatchPlatformMotionEvent(MotionEvent ev, int rootSign);
+
+  default boolean dispatchPlatformKeyEvent(KeyEvent event, String key, int rootSign) {
+    return false;
+  }
 
   void dispatchPlatformLongPress();
 

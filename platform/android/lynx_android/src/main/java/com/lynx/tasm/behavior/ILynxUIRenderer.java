@@ -99,6 +99,8 @@ public interface ILynxUIRenderer {
 
   boolean onInterceptTouchEvent(MotionEvent ev);
 
+  default void dispatchGenericMotionEvent(MotionEvent event) {}
+
   boolean consumeSlideEvent(MotionEvent ev);
 
   boolean blockNativeEvent(MotionEvent ev);

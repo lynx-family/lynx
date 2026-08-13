@@ -393,6 +393,14 @@ public class LynxUIRenderer implements ILynxUIRenderer {
     return (mEventDispatcher != null) && mEventDispatcher.onInterceptTouchEvent(ev);
   }
 
+  @Override
+  public void dispatchGenericMotionEvent(MotionEvent event) {
+    EnsureEventDispatcher();
+    if (mEventDispatcher != null) {
+      mEventDispatcher.onGenericMotionEvent(event, null);
+    }
+  }
+
   /**
    * @brief init TouchEventDispatcher when it's null.
    * @detail create TouchEventDispatcher instance and init some config. Call when it is uncertain
@@ -552,11 +560,15 @@ public class LynxUIRenderer implements ILynxUIRenderer {
 
   @Override
   public boolean needHandleDispatchKeyEvent() {
-    return false;
+    return true;
   }
 
   @Override
   public boolean dispatchKeyEvent(KeyEvent event) {
+    EnsureEventDispatcher();
+    if (mEventDispatcher != null) {
+      mEventDispatcher.dispatchKeyEvent(event);
+    }
     return false;
   }
 

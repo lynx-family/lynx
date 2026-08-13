@@ -1754,6 +1754,7 @@ public class abstract com::lynx::tasm::EventEmitter :  {
   public abstract void com.lynx.tasm.EventEmitter.sendTouchEvent(LynxTouchEvent event);
   public abstract boolean com.lynx.tasm.EventEmitter.onLynxEvent(LynxEvent event);
   public abstract void com.lynx.tasm.EventEmitter.sendMultiTouchEvent(LynxTouchEvent event);
+  public void com.lynx.tasm.EventEmitter.sendBubbleEvent(String name, int tag, JavaOnlyMap params);
   public abstract void com.lynx.tasm.EventEmitter.sendCustomEvent(LynxCustomEvent event);
   public abstract void com.lynx.tasm.EventEmitter.sendGestureEvent(int gestureId, LynxCustomEvent event);
   public abstract void com.lynx.tasm.EventEmitter.onPseudoStatusChanged(int sign, int preStatus, int currentStatus);
@@ -2771,6 +2772,7 @@ public interface com::lynx::tasm::behavior::ILynxUIRenderer {
   public LynxBaseUI com.lynx.tasm.behavior.ILynxUIRenderer.findLynxUIByIndex(@NonNull int index);
   public boolean com.lynx.tasm.behavior.ILynxUIRenderer.onTouchEvent(MotionEvent ev, UIGroup rootUi);
   public boolean com.lynx.tasm.behavior.ILynxUIRenderer.onInterceptTouchEvent(MotionEvent ev);
+  public default void com.lynx.tasm.behavior.ILynxUIRenderer.dispatchGenericMotionEvent(MotionEvent event);
   public boolean com.lynx.tasm.behavior.ILynxUIRenderer.consumeSlideEvent(MotionEvent ev);
   public boolean com.lynx.tasm.behavior.ILynxUIRenderer.blockNativeEvent(MotionEvent ev);
   public ThreadStrategyForRendering com.lynx.tasm.behavior.ILynxUIRenderer.getSupportedThreadStrategy(ThreadStrategyForRendering threadStrategy);
@@ -3183,6 +3185,7 @@ public interface com::lynx::tasm::behavior::IPaintingContext {
   public int com.lynx.tasm.behavior.IPaintingContext.getTargetHeight(int sign);
   public void com.lynx.tasm.behavior.IPaintingContext.setLynxEngineActorForPlatformContextRef(long ptr);
   public boolean com.lynx.tasm.behavior.IPaintingContext.dispatchPlatformMotionEvent(MotionEvent ev, int rootSign);
+  public default boolean com.lynx.tasm.behavior.IPaintingContext.dispatchPlatformKeyEvent(KeyEvent event, String key, int rootSign);
   public void com.lynx.tasm.behavior.IPaintingContext.dispatchPlatformLongPress();
   public void com.lynx.tasm.behavior.IPaintingContext.dispatchPlatformTap();
   public boolean com.lynx.tasm.behavior.IPaintingContext.isPlatformEventTargetEventThrough(int rootSign, float pointX, float pointY);
@@ -5249,6 +5252,7 @@ public class com::lynx::tasm::core::LynxEngineProxy :  {
   public void com.lynx.tasm.core.LynxEngineProxy.dispatchTaskToLynxEngine(Runnable runnable);
   public void com.lynx.tasm.core.LynxEngineProxy.sendTouchEvent(LynxTouchEvent event);
   public void com.lynx.tasm.core.LynxEngineProxy.sendMultiTouchEvent(LynxTouchEvent event);
+  public void com.lynx.tasm.core.LynxEngineProxy.sendBubbleEvent(String name, int tag, JavaOnlyMap params);
   public void com.lynx.tasm.core.LynxEngineProxy.sendCustomEvent(LynxCustomEvent event);
   public void com.lynx.tasm.core.LynxEngineProxy.sendGestureEvent(final String name, final int tag, int gestureId, final ByteBuffer params, final int length);
   public void com.lynx.tasm.core.LynxEngineProxy.onPseudoStatusChanged(final int id, final int preStatus, final int currentStatus);
@@ -5635,6 +5639,7 @@ public class com::lynx::tasm::LynxEventEmitter : com.lynx.tasm.EventEmitter {
   public void com.lynx.tasm.LynxEventEmitter.sendTouchEvent(LynxTouchEvent event);
   public boolean com.lynx.tasm.LynxEventEmitter.onLynxEvent(LynxEvent event);
   public void com.lynx.tasm.LynxEventEmitter.sendMultiTouchEvent(LynxTouchEvent event);
+  public void com.lynx.tasm.LynxEventEmitter.sendBubbleEvent(String name, int tag, JavaOnlyMap params);
   public void com.lynx.tasm.LynxEventEmitter.sendCustomEvent(LynxCustomEvent event);
   public void com.lynx.tasm.LynxEventEmitter.sendGestureEvent(int gestureId, LynxCustomEvent event);
   public void com.lynx.tasm.LynxEventEmitter.onPseudoStatusChanged(int sign, int preStatus, int currentStatus);
@@ -7519,6 +7524,7 @@ public class com::lynx::tasm::behavior::LynxUIRenderer : com.lynx.tasm.behavior.
   public LynxBaseUI com.lynx.tasm.behavior.LynxUIRenderer.findLynxUIByIndex(@NonNull int index);
   public boolean com.lynx.tasm.behavior.LynxUIRenderer.onTouchEvent(MotionEvent ev, UIGroup rootUi);
   public boolean com.lynx.tasm.behavior.LynxUIRenderer.onInterceptTouchEvent(MotionEvent ev);
+  public void com.lynx.tasm.behavior.LynxUIRenderer.dispatchGenericMotionEvent(MotionEvent event);
   public void com.lynx.tasm.behavior.LynxUIRenderer.EnsureEventDispatcher();
   public boolean com.lynx.tasm.behavior.LynxUIRenderer.consumeSlideEvent(MotionEvent ev);
   public boolean com.lynx.tasm.behavior.LynxUIRenderer.blockNativeEvent(MotionEvent ev);
@@ -7689,6 +7695,7 @@ public class com::lynx::tasm::LynxView : com.lynx.tasm.behavior.ui.UIBody.UIBody
   public void com.lynx.tasm.LynxView.destroy();
   public ThreadStrategyForRendering com.lynx.tasm.LynxView.getThreadStrategyForRendering();
   public boolean com.lynx.tasm.LynxView.dispatchKeyEvent(KeyEvent event);
+  public boolean com.lynx.tasm.LynxView.dispatchGenericMotionEvent(MotionEvent event);
   public boolean com.lynx.tasm.LynxView.dispatchTouchEvent(MotionEvent ev);
   public boolean com.lynx.tasm.LynxView.onInterceptTouchEvent(MotionEvent ev);
   public boolean com.lynx.tasm.LynxView.onTouchEvent(MotionEvent ev);
@@ -8299,6 +8306,7 @@ public class com::lynx::tasm::behavior::render::NativePaintingContext : com.lynx
   public void com.lynx.tasm.behavior.render.NativePaintingContext.attachUIBodyView(UIBody.UIBodyView view);
   public void com.lynx.tasm.behavior.render.NativePaintingContext.setLynxEngineActorForPlatformContextRef(long ptr);
   public boolean com.lynx.tasm.behavior.render.NativePaintingContext.dispatchPlatformMotionEvent(MotionEvent ev, int rootSign);
+  public boolean com.lynx.tasm.behavior.render.NativePaintingContext.dispatchPlatformKeyEvent(KeyEvent event, String key, int rootSign);
   public void com.lynx.tasm.behavior.render.NativePaintingContext.dispatchPlatformLongPress();
   public void com.lynx.tasm.behavior.render.NativePaintingContext.dispatchPlatformTap();
   public boolean com.lynx.tasm.behavior.render.NativePaintingContext.isPlatformEventTargetEventThrough(int rootSign, float pointX, float pointY);

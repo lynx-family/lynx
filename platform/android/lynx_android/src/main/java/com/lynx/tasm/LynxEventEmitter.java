@@ -6,6 +6,7 @@ package com.lynx.tasm;
 
 import android.os.Handler;
 import android.os.Looper;
+import com.lynx.react.bridge.JavaOnlyMap;
 import com.lynx.tasm.base.LLog;
 import com.lynx.tasm.behavior.LynxContext;
 import com.lynx.tasm.behavior.LynxIntersectionObserverManager;
@@ -47,6 +48,12 @@ public class LynxEventEmitter extends EventEmitter {
     void sendMultiTouchEvent(LynxTouchEvent event) {
       if (mEngineProxy != null) {
         mEngineProxy.sendMultiTouchEvent(event);
+      }
+    }
+
+    void sendBubbleEvent(String name, int tag, JavaOnlyMap params) {
+      if (mEngineProxy != null) {
+        mEngineProxy.sendBubbleEvent(name, tag, params);
       }
     }
 
@@ -211,6 +218,16 @@ public class LynxEventEmitter extends EventEmitter {
       LLog.e(TAG,
           "sendMultiTouchEvent event: " + event.getName()
               + " failed since mEngineProxy is null or in preload.");
+    }
+  }
+
+  @Override
+  public void sendBubbleEvent(String name, int tag, JavaOnlyMap params) {
+    if (mEngineProxy != null && !mInPreLoad) {
+      mEngineProxy.sendBubbleEvent(name, tag, params);
+    } else {
+      LLog.e(TAG,
+          "sendBubbleEvent event: " + name + " failed since mEngineProxy is null or in preload.");
     }
   }
 

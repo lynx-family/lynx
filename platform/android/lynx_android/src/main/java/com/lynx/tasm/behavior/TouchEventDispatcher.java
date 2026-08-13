@@ -16,10 +16,14 @@ import android.content.Context;
 import android.graphics.PointF;
 import android.graphics.Rect;
 import android.graphics.RectF;
+import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
+import android.util.TypedValue;
+import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.ViewConfiguration;
+import android.widget.EditText;
 import androidx.annotation.NonNull;
 import com.lynx.devtoolwrapper.CDPResultCallback;
 import com.lynx.devtoolwrapper.LogBoxLogLevel;
@@ -35,6 +39,7 @@ import com.lynx.tasm.base.LLog;
 import com.lynx.tasm.behavior.event.EventTarget;
 import com.lynx.tasm.behavior.event.EventTargetBase;
 import com.lynx.tasm.behavior.ui.LynxBaseUI;
+import com.lynx.tasm.behavior.ui.LynxUI;
 import com.lynx.tasm.behavior.ui.UIBody;
 import com.lynx.tasm.behavior.ui.UIGroup;
 import com.lynx.tasm.behavior.ui.utils.LynxUIHelper;
@@ -59,6 +64,16 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 public class TouchEventDispatcher {
+  private static final String EVENT_KEY_DOWN = "keydown";
+  private static final String EVENT_KEY_UP = "keyup";
+  private static final String EVENT_POINTER_CANCEL = "pointercancel";
+  private static final String EVENT_POINTER_DOWN = "pointerdown";
+  private static final String EVENT_POINTER_MOVE = "pointermove";
+  private static final String EVENT_POINTER_UP = "pointerup";
+  private static final String EVENT_WHEEL = "wheel";
+  private static final int INVALID_POINTER_ID = -1;
+  private static final long WHEEL_TARGET_LATCH_TIMEOUT_MS = 500;
+
   private static class EventTargetDetail {
     private final EventTarget mActiveUI;
     private final PointF mDownPoint;
@@ -137,6 +152,12 @@ public class TouchEventDispatcher {
   private boolean mDispatchingGestureArena = false;
   private boolean mPendingPlatformGestureStatusCheck = false;
   private boolean mPanGestureRecognized = false;
+  private int mPrimaryPointerId = INVALID_POINTER_ID;
+  private final HashMap<Integer, PointF> mPointerPositions = new HashMap<>();
+  private final HashMap<Integer, EventTarget> mKeyActivationTargets = new HashMap<>();
+  private EventTarget mWheelTarget;
+  private long mLastWheelEventTime;
+  private UIGroup mWheelEventRootUI;
 
   private static final String TAG = "LynxTouchEventDispatcher";
 
@@ -459,6 +480,7 @@ public class TouchEventDispatcher {
     mHasMultiTouch = false;
     mActiveUIMap.clear();
     mActiveTargetMap.clear();
+    mPointerPositions.clear();
   }
 
   private void initClickEnv() {
@@ -686,6 +708,8 @@ public class TouchEventDispatcher {
     mHasMultiTouch = false;
     mActiveUIMap.clear();
     mActiveTargetMap.clear();
+    mPointerPositions.clear();
+    mPrimaryPointerId = INVALID_POINTER_ID;
     mActiveEventRootUI = null;
     mDispatchInCurrentLynxPageOnly = false;
     mPreTarget = mActiveUI;
@@ -854,6 +878,326 @@ public class TouchEventDispatcher {
     eventEmitter().sendTouchEvent(mFirstLynxTouchEvent);
   }
 
+  private float getLynxCoordinateScale() {
+    float density = mUIOwner.getContext().getScreenMetrics().density;
+    return density > 0 ? density : 1;
+  }
+
+  private JavaOnlyMap createPositionEventParams(EventTarget target, MotionEvent ev, int index) {
+    LynxTouchEvent.Point pagePoint = new Point(ev.getX(index), ev.getY(index));
+    LynxTouchEvent.Point targetPoint = convertToViewPoint(target, pagePoint);
+    PointF screenPoint = LynxUIHelper.convertPointFromUIToScreen(
+        mUIOwner.getRootUI(), new PointF(pagePoint.getX(), pagePoint.getY()));
+    float scale = getLynxCoordinateScale();
+    JavaOnlyMap params = new JavaOnlyMap();
+    params.putDouble("x", targetPoint.getX() / scale);
+    params.putDouble("y", targetPoint.getY() / scale);
+    params.putDouble("pageX", pagePoint.getX() / scale);
+    params.putDouble("pageY", pagePoint.getY() / scale);
+    params.putDouble("clientX", screenPoint.x / scale);
+    params.putDouble("clientY", screenPoint.y / scale);
+    params.putLong("timestamp", System.currentTimeMillis());
+    return params;
+  }
+
+  private String getPointerType(MotionEvent ev, int index) {
+    switch (ev.getToolType(index)) {
+      case MotionEvent.TOOL_TYPE_MOUSE:
+        return "mouse";
+      case MotionEvent.TOOL_TYPE_STYLUS:
+      case MotionEvent.TOOL_TYPE_ERASER:
+        return "pen";
+      case MotionEvent.TOOL_TYPE_FINGER:
+      case MotionEvent.TOOL_TYPE_UNKNOWN:
+      default:
+        return "touch";
+    }
+  }
+
+  private int getWebButton(MotionEvent ev) {
+    int action = ev.getActionMasked();
+    if (action != MotionEvent.ACTION_DOWN && action != MotionEvent.ACTION_POINTER_DOWN
+        && action != MotionEvent.ACTION_UP && action != MotionEvent.ACTION_POINTER_UP) {
+      return -1;
+    }
+    int actionButton = Build.VERSION.SDK_INT >= Build.VERSION_CODES.M ? ev.getActionButton() : 0;
+    if (actionButton == MotionEvent.BUTTON_TERTIARY) {
+      return 1;
+    }
+    if (actionButton == MotionEvent.BUTTON_SECONDARY) {
+      return 2;
+    }
+    if (actionButton == MotionEvent.BUTTON_BACK) {
+      return 3;
+    }
+    if (actionButton == MotionEvent.BUTTON_FORWARD) {
+      return 4;
+    }
+    return 0;
+  }
+
+  private int getWebButtons(MotionEvent ev, int index) {
+    int action = ev.getActionMasked();
+    if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_POINTER_UP
+        || action == MotionEvent.ACTION_CANCEL || action == MotionEvent.ACTION_HOVER_MOVE
+        || action == MotionEvent.ACTION_HOVER_ENTER || action == MotionEvent.ACTION_HOVER_EXIT) {
+      return 0;
+    }
+    if (!"mouse".equals(getPointerType(ev, index))) {
+      return 1;
+    }
+    int androidButtons = ev.getButtonState();
+    int webButtons = 0;
+    if ((androidButtons & MotionEvent.BUTTON_PRIMARY) != 0) {
+      webButtons |= 1;
+    }
+    if ((androidButtons & MotionEvent.BUTTON_SECONDARY) != 0) {
+      webButtons |= 2;
+    }
+    if ((androidButtons & MotionEvent.BUTTON_TERTIARY) != 0) {
+      webButtons |= 4;
+    }
+    if ((androidButtons & MotionEvent.BUTTON_BACK) != 0) {
+      webButtons |= 8;
+    }
+    if ((androidButtons & MotionEvent.BUTTON_FORWARD) != 0) {
+      webButtons |= 16;
+    }
+    return webButtons;
+  }
+
+  private void dispatchPointerEvent(
+      EventTarget target, String eventName, MotionEvent ev, int index, boolean isPrimary) {
+    if (target == null || eventEmitter() == null) {
+      return;
+    }
+    JavaOnlyMap params = createPositionEventParams(target, ev, index);
+    params.putInt("pointerId", ev.getPointerId(index));
+    params.putString("pointerType", getPointerType(ev, index));
+    params.putBoolean("isPrimary", isPrimary);
+    params.putInt("button", getWebButton(ev));
+    params.putInt("buttons", getWebButtons(ev, index));
+    eventEmitter().sendBubbleEvent(eventName, target.getSign(), params);
+  }
+
+  private void dispatchActivePointerEvent(String eventName, MotionEvent ev, int index) {
+    int pointerId = ev.getPointerId(index);
+    EventTargetDetail detail = mActiveUIMap.get(pointerId);
+    dispatchPointerEvent(
+        detail != null ? detail.getUI() : null, eventName, ev, index, pointerId == mPrimaryPointerId);
+  }
+
+  private List<Integer> updatePointerPositions(MotionEvent ev) {
+    List<Integer> changedIndices = new ArrayList<>();
+    for (int index = 0; index < ev.getPointerCount(); index++) {
+      int pointerId = ev.getPointerId(index);
+      PointF previous = mPointerPositions.get(pointerId);
+      float x = ev.getX(index);
+      float y = ev.getY(index);
+      if (previous == null || previous.x != x || previous.y != y) {
+        changedIndices.add(index);
+        mPointerPositions.put(pointerId, new PointF(x, y));
+      }
+    }
+    return changedIndices;
+  }
+
+  private float getScrollFactor(boolean horizontal) {
+    ViewConfiguration configuration = ViewConfiguration.get(mUIOwner.getContext());
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+      if (horizontal) {
+        return configuration.getScaledHorizontalScrollFactor();
+      }
+      return configuration.getScaledVerticalScrollFactor();
+    }
+    TypedValue value = new TypedValue();
+    if (mUIOwner.getContext().getTheme().resolveAttribute(
+            android.R.attr.listPreferredItemHeight, value, true)) {
+      return value.getDimension(mUIOwner.getContext().getResources().getDisplayMetrics());
+    }
+    return 1;
+  }
+
+  private EventTarget getWheelTarget(MotionEvent ev, UIGroup rootUi) {
+    UIGroup eventRoot = resolveEventRootUI(rootUi);
+    long eventTime = ev.getEventTime();
+    if (mWheelTarget == null || eventRoot != mWheelEventRootUI
+        || eventTime - mLastWheelEventTime > WHEEL_TARGET_LATCH_TIMEOUT_MS
+        || eventTime < mLastWheelEventTime) {
+      mWheelTarget = findUI(ev, 0, eventRoot);
+      mWheelEventRootUI = eventRoot;
+    }
+    mLastWheelEventTime = eventTime;
+    return mWheelTarget;
+  }
+
+  private void dispatchWheelEvent(MotionEvent ev, EventTarget target) {
+    if (target == null || eventEmitter() == null) {
+      return;
+    }
+    JavaOnlyMap params = createPositionEventParams(target, ev, 0);
+    float scale = getLynxCoordinateScale();
+    params.putDouble(
+        "deltaX", -ev.getAxisValue(MotionEvent.AXIS_HSCROLL) * getScrollFactor(true) / scale);
+    params.putDouble(
+        "deltaY", -ev.getAxisValue(MotionEvent.AXIS_VSCROLL) * getScrollFactor(false) / scale);
+    eventEmitter().sendBubbleEvent(EVENT_WHEEL, target.getSign(), params);
+  }
+
+  private boolean dispatchGenericMotionEventToChildLynxPage(
+      MotionEvent ev, EventTarget target) {
+    if (target == null || target.getChildrenLynxPageUI() == null) {
+      return false;
+    }
+    UIBody childLynxPageUI = (UIBody) target.getChildrenLynxPageUI().get(
+        String.valueOf(System.identityHashCode(target)));
+    if (childLynxPageUI == null || childLynxPageUI.getLynxContext() == null) {
+      return false;
+    }
+    TouchEventDispatcher childDispatcher =
+        childLynxPageUI.getLynxContext().getTouchEventDispatcher();
+    if (childDispatcher == null) {
+      return false;
+    }
+    LynxTouchEvent.Point childPoint =
+        convertToViewPoint(target, new Point(ev.getX(), ev.getY()));
+    PointF originalLocation = new PointF(ev.getX(), ev.getY());
+    ev.setLocation(childPoint.getX(), childPoint.getY());
+    try {
+      childDispatcher.onGenericMotionEvent(ev, childLynxPageUI);
+    } finally {
+      restoreEventLocation(ev, originalLocation);
+    }
+    return true;
+  }
+
+  void onGenericMotionEvent(MotionEvent ev, UIGroup rootUi) {
+    int action = ev.getActionMasked();
+    EventTarget target = null;
+    if (action == MotionEvent.ACTION_SCROLL) {
+      target = getWheelTarget(ev, rootUi);
+    } else if (action == MotionEvent.ACTION_HOVER_MOVE) {
+      target = findUI(ev, 0, resolveEventRootUI(rootUi));
+    }
+    if (dispatchGenericMotionEventToChildLynxPage(ev, target)) {
+      return;
+    }
+    IPaintingContext paintingContext = getPlatformEventPaintingContext();
+    if (paintingContext != null) {
+      paintingContext.dispatchPlatformMotionEvent(ev, getPlatformEventRootSign(rootUi));
+      return;
+    }
+    if (action == MotionEvent.ACTION_SCROLL) {
+      dispatchWheelEvent(ev, target);
+    } else if (action == MotionEvent.ACTION_HOVER_MOVE) {
+      dispatchPointerEvent(target, EVENT_POINTER_MOVE, ev, 0, true);
+    }
+  }
+
+  private static boolean isActivationKey(int keyCode) {
+    return keyCode == KeyEvent.KEYCODE_ENTER || keyCode == KeyEvent.KEYCODE_NUMPAD_ENTER
+        || keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_SPACE;
+  }
+
+  private static String getKey(KeyEvent event) {
+    switch (event.getKeyCode()) {
+      case KeyEvent.KEYCODE_ENTER:
+      case KeyEvent.KEYCODE_NUMPAD_ENTER:
+      case KeyEvent.KEYCODE_DPAD_CENTER:
+        return "Enter";
+      case KeyEvent.KEYCODE_SPACE:
+        return " ";
+      case KeyEvent.KEYCODE_TAB:
+        return "Tab";
+      case KeyEvent.KEYCODE_ESCAPE:
+        return "Escape";
+      case KeyEvent.KEYCODE_DEL:
+        return "Backspace";
+      case KeyEvent.KEYCODE_FORWARD_DEL:
+        return "Delete";
+      case KeyEvent.KEYCODE_DPAD_LEFT:
+        return "ArrowLeft";
+      case KeyEvent.KEYCODE_DPAD_RIGHT:
+        return "ArrowRight";
+      case KeyEvent.KEYCODE_DPAD_UP:
+        return "ArrowUp";
+      case KeyEvent.KEYCODE_DPAD_DOWN:
+        return "ArrowDown";
+      case KeyEvent.KEYCODE_MOVE_HOME:
+        return "Home";
+      case KeyEvent.KEYCODE_MOVE_END:
+        return "End";
+      case KeyEvent.KEYCODE_PAGE_UP:
+        return "PageUp";
+      case KeyEvent.KEYCODE_PAGE_DOWN:
+        return "PageDown";
+      default:
+        int unicode = event.getUnicodeChar(event.getMetaState());
+        if (Character.isValidCodePoint(unicode) && unicode != 0) {
+          return new String(Character.toChars(unicode));
+        }
+        return "Unidentified";
+    }
+  }
+
+  private void dispatchKeyEventToTarget(EventTarget target, String eventName, KeyEvent event) {
+    if (target == null || eventEmitter() == null) {
+      return;
+    }
+    JavaOnlyMap params = new JavaOnlyMap();
+    params.putString("key", getKey(event));
+    params.putBoolean("repeat", event.getRepeatCount() > 0);
+    params.putBoolean("altKey", event.isAltPressed());
+    params.putBoolean("ctrlKey", event.isCtrlPressed());
+    params.putBoolean("shiftKey", event.isShiftPressed());
+    params.putBoolean("metaKey", event.isMetaPressed());
+    params.putLong("timestamp", System.currentTimeMillis());
+    eventEmitter().sendBubbleEvent(eventName, target.getSign(), params);
+  }
+
+  private static boolean isNativeTextInput(EventTarget target) {
+    return target instanceof LynxUI && ((LynxUI<?>) target).getView() instanceof EditText;
+  }
+
+  private void dispatchKeyboardClick(EventTarget target) {
+    if (target == null || eventEmitter() == null) {
+      return;
+    }
+    Point point = new Point(0, 0);
+    LynxTouchEvent event =
+        new LynxTouchEvent(target.getSign(), EVENT_CLICK, point, point, point);
+    event.setTarget(target);
+    event.setTimestamp(System.currentTimeMillis());
+    eventEmitter().sendTouchEvent(event);
+  }
+
+  void dispatchKeyEvent(KeyEvent event) {
+    IPaintingContext paintingContext = getPlatformEventPaintingContext();
+    if (paintingContext != null) {
+      if (!(mUIOwner.getRootUI().getBodyView().findFocus() instanceof EditText)) {
+        paintingContext.dispatchPlatformKeyEvent(
+            event, getKey(event), getPlatformEventRootSign(null));
+      }
+      return;
+    }
+    if (event.getAction() == KeyEvent.ACTION_DOWN) {
+      EventTarget target = mFocusedUI;
+      dispatchKeyEventToTarget(target, EVENT_KEY_DOWN, event);
+      if (event.getRepeatCount() == 0 && isActivationKey(event.getKeyCode()) && target != null
+          && !isNativeTextInput(target)) {
+        mKeyActivationTargets.put(event.getKeyCode(), target);
+      }
+    } else if (event.getAction() == KeyEvent.ACTION_UP) {
+      EventTarget target = mFocusedUI;
+      dispatchKeyEventToTarget(target, EVENT_KEY_UP, event);
+      EventTarget activationTarget = mKeyActivationTargets.remove(event.getKeyCode());
+      if (!event.isCanceled() && isActivationKey(event.getKeyCode()) && activationTarget == target
+          && !isNativeTextInput(target)) {
+        dispatchKeyboardClick(activationTarget);
+      }
+    }
+  }
+
   /**
    * Used to output logs to the console of DevTool. This function is effective only when DevTool is
    * connected.
@@ -979,6 +1323,8 @@ public class TouchEventDispatcher {
     initPanInterceptEnv();
     mActiveUIMap.put(ev.getPointerId(0), new EventTargetDetail(mActiveUI, ev.getX(0), ev.getY(0)));
     mActiveTargetMap.put(mActiveUI.getSign(), mActiveUI);
+    mPrimaryPointerId = ev.getPointerId(0);
+    mPointerPositions.put(mPrimaryPointerId, new PointF(ev.getX(0), ev.getY(0)));
 
     // set the active ui to gesture arena
     if (mGestureArenaManager != null) {
@@ -993,6 +1339,7 @@ public class TouchEventDispatcher {
     } else {
       dispatchEvent(mActiveUI, EVENT_TOUCH_START, ev);
     }
+    dispatchActivePointerEvent(EVENT_POINTER_DOWN, ev, 0);
 
     // TODO(hexionghui): For the :active logic, it should only support single finger. But on the
     // Android side, touching two fingers at the same time will trigger onTouchEvent twice,
@@ -1026,11 +1373,13 @@ public class TouchEventDispatcher {
     mActiveUIMap.put(ev.getPointerId(index),
         new EventTargetDetail(active_target, ev.getX(index), ev.getY(index)));
     mActiveTargetMap.put(active_target.getSign(), active_target);
+    mPointerPositions.put(ev.getPointerId(index), new PointF(ev.getX(index), ev.getY(index)));
     if (mEnableMultiTouch) {
       JavaOnlyMap map = new JavaOnlyMap();
       addMap(map, ev, index);
       dispatchEvent(EVENT_TOUCH_START, ev, map);
     }
+    dispatchActivePointerEvent(EVENT_POINTER_DOWN, ev, index);
 
     if (mActiveUI != null && mActiveUI.getChildrenLynxPageUI() != null) {
       UIBody childLynxPageUI = (UIBody) mActiveUI.getChildrenLynxPageUI().get(
@@ -1049,6 +1398,7 @@ public class TouchEventDispatcher {
   }
 
   public void handleTouchMove(MotionEvent ev) {
+    List<Integer> changedPointerIndices = updatePointerPositions(ev);
     if (shouldTriggerMove(ev)) {
       mTouchMoving = true;
       if (mEnableMultiTouch) {
@@ -1064,6 +1414,10 @@ public class TouchEventDispatcher {
           dispatchEvent(mActiveUI, EVENT_TOUCH_MOVE, ev);
         }
       }
+    }
+
+    for (int index : changedPointerIndices) {
+      dispatchActivePointerEvent(EVENT_POINTER_MOVE, ev, index);
     }
 
     if (mActiveUI != null && mActiveUI.getChildrenLynxPageUI() != null) {
@@ -1091,7 +1445,9 @@ public class TouchEventDispatcher {
       addMap(map, ev, index);
       dispatchEvent(EVENT_TOUCH_END, ev, map);
     }
+    dispatchActivePointerEvent(EVENT_POINTER_UP, ev, index);
     mActiveUIMap.remove(ev.getPointerId(index));
+    mPointerPositions.remove(ev.getPointerId(index));
 
     if (mActiveUI != null && mActiveUI.getChildrenLynxPageUI() != null) {
       UIBody childLynxPageUI = (UIBody) mActiveUI.getChildrenLynxPageUI().get(
@@ -1131,6 +1487,8 @@ public class TouchEventDispatcher {
     } else {
       dispatchEvent(mActiveUI, EVENT_TOUCH_END, ev);
     }
+    dispatchActivePointerEvent(EVENT_POINTER_UP, ev, 0);
+    mPointerPositions.remove(ev.getPointerId(0));
     // TODO(hexionghui): Fix the problem: In single-finger mode, only when the last finger
     // is lifted, :active will be disabled.
     onActionUpOrCancel(ev);
@@ -1159,6 +1517,10 @@ public class TouchEventDispatcher {
       dispatchEvent(EVENT_TOUCH_CANCEL, ev, map);
     } else {
       dispatchEvent(mActiveUI, EVENT_TOUCH_CANCEL, ev);
+    }
+
+    for (int index = 0; index < ev.getPointerCount(); index++) {
+      dispatchActivePointerEvent(EVENT_POINTER_CANCEL, ev, index);
     }
 
     onActionUpOrCancel(ev);
@@ -1509,6 +1871,14 @@ public class TouchEventDispatcher {
     mActiveUI = null;
     mFocusedUI = null;
     mActiveClickList.clear();
+    mActiveUIMap.clear();
+    mActiveTargetMap.clear();
+    mPointerPositions.clear();
+    mKeyActivationTargets.clear();
+    mPrimaryPointerId = INVALID_POINTER_ID;
+    mWheelTarget = null;
+    mWheelEventRootUI = null;
+    mLastWheelEventTime = 0;
   }
 
   public void startInterceptPanGestures(EventTarget.PanInterceptDirection direction) {

@@ -65,30 +65,74 @@ void SetLynxEngineActorForPlatformContextRef(JNIEnv *env, jobject /*jcaller*/,
 jboolean DispatchPlatformInputEvent(JNIEnv *env, jobject /*jcaller*/,
                                     jlong nativePtr, jintArray iEventData,
                                     jfloatArray fEventData) {
-  // Get the NativePaintingCtxAndroid instance from the native pointer
   if (nativePtr == 0 || iEventData == nullptr || fEventData == nullptr) {
     return JNI_FALSE;
   }
 
-  lynx::tasm::NativePaintingCtxAndroid *context =
-      reinterpret_cast<lynx::tasm::NativePaintingCtxAndroid *>(nativePtr);
+  const jsize i_event_data_size = env->GetArrayLength(iEventData);
+  const jsize f_event_data_size = env->GetArrayLength(fEventData);
+  if (i_event_data_size < 1) {
+    return JNI_FALSE;
+  }
 
-  jsize i_event_data_size = env->GetArrayLength(iEventData);
-  jint *i_event_data = env->GetIntArrayElements(iEventData, JNI_FALSE);
-  if (i_event_data == nullptr) {
+  std::vector<jint> i_event_data(i_event_data_size);
+  env->GetIntArrayRegion(iEventData, 0, i_event_data_size, i_event_data.data());
+  if (env->ExceptionCheck()) {
     return JNI_FALSE;
   }
-  jfloat *f_event_data = env->GetFloatArrayElements(fEventData, JNI_FALSE);
-  if (f_event_data == nullptr) {
-    env->ReleaseIntArrayElements(iEventData, i_event_data, 0);
+
+  const int event_type = i_event_data[0];
+  switch (event_type) {
+    case 0: {
+      if (i_event_data_size < 4 || i_event_data[1] < 0 || i_event_data[1] > 3 ||
+          i_event_data[3] < 0) {
+        return JNI_FALSE;
+      }
+      const int pointer_count = i_event_data[3];
+      if (f_event_data_size != pointer_count * 7) {
+        return JNI_FALSE;
+      }
+      break;
+    }
+    case 1: {
+      if (i_event_data_size < 6 || f_event_data_size < 4 ||
+          i_event_data[1] < 0 || i_event_data[1] > 2) {
+        return JNI_FALSE;
+      }
+      const int key_length = i_event_data[5];
+      if (key_length < 0 || key_length != i_event_data_size - 6) {
+        return JNI_FALSE;
+      }
+      for (int i = 0; i < key_length; ++i) {
+        if (i_event_data[6 + i] < 0 || i_event_data[6 + i] > 0xFFFF) {
+          return JNI_FALSE;
+        }
+      }
+      break;
+    }
+    case 2:
+      if (i_event_data_size < 2 || f_event_data_size < 4 ||
+          i_event_data[1] < 0 || i_event_data[1] > 3) {
+        return JNI_FALSE;
+      }
+      break;
+    default:
+      return JNI_FALSE;
+  }
+
+  std::vector<jfloat> f_event_data(f_event_data_size);
+  env->GetFloatArrayRegion(fEventData, 0, f_event_data_size,
+                           f_event_data.data());
+  if (env->ExceptionCheck()) {
     return JNI_FALSE;
   }
+
+  auto *context =
+      reinterpret_cast<lynx::tasm::NativePaintingCtxAndroid *>(nativePtr);
   auto platform_ref =
       std::static_pointer_cast<lynx::tasm::NativePaintingCtxAndroidRef>(
           context->GetPlatformRef());
   if (platform_ref == nullptr) {
-    env->ReleaseIntArrayElements(iEventData, i_event_data, 0);
-    env->ReleaseFloatArrayElements(fEventData, f_event_data, 0);
     return JNI_FALSE;
   }
 
@@ -97,9 +141,7 @@ jboolean DispatchPlatformInputEvent(JNIEnv *env, jobject /*jcaller*/,
     event_target_root_id = i_event_data[4];
   }
   auto res = platform_ref->DispatchPlatformInputEvent(
-      i_event_data, f_event_data, event_target_root_id);
-  env->ReleaseIntArrayElements(iEventData, i_event_data, 0);
-  env->ReleaseFloatArrayElements(fEventData, f_event_data, 0);
+      i_event_data.data(), f_event_data.data(), event_target_root_id);
   return res;
 }
 

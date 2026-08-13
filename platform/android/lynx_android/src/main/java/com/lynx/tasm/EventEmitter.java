@@ -7,6 +7,7 @@ package com.lynx.tasm;
 import android.os.Handler;
 import android.os.Looper;
 import androidx.annotation.NonNull;
+import com.lynx.react.bridge.JavaOnlyMap;
 import com.lynx.tasm.base.LLog;
 import com.lynx.tasm.behavior.LynxContext;
 import com.lynx.tasm.behavior.LynxIntersectionObserverManager;
@@ -56,6 +57,8 @@ public abstract class EventEmitter {
   public abstract boolean onLynxEvent(LynxEvent event);
 
   public abstract void sendMultiTouchEvent(LynxTouchEvent event);
+
+  public void sendBubbleEvent(String name, int tag, JavaOnlyMap params) {}
 
   public abstract void sendCustomEvent(LynxCustomEvent event);
 

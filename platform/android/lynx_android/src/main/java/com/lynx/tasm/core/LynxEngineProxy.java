@@ -4,6 +4,7 @@
 
 package com.lynx.tasm.core;
 
+import com.lynx.react.bridge.JavaOnlyMap;
 import com.lynx.tasm.base.CalledByNative;
 import com.lynx.tasm.base.LLog;
 import com.lynx.tasm.common.LepusBuffer;
@@ -82,6 +83,22 @@ public final class LynxEngineProxy {
         int length = buffer == null ? 0 : buffer.position();
         nativeSendMultiTouchEvent(
             mNativePtr, event.getName(), buffer, length, event.getTimestamp());
+      }
+    });
+  }
+
+  public void sendBubbleEvent(String name, int tag, JavaOnlyMap params) {
+    UIThreadUtils.runOnUiThreadImmediately(new Runnable() {
+      @Override
+      public void run() {
+        if (mNativePtr == 0) {
+          LLog.e(TAG, "sendBubbleEvent failed since mNativePtr is null");
+          return;
+        }
+
+        ByteBuffer buffer = LepusBuffer.INSTANCE.encodeMessage(params);
+        int length = buffer == null ? 0 : buffer.position();
+        nativeSendBubbleEvent(mNativePtr, name, tag, buffer, length);
       }
     });
   }
@@ -266,6 +283,9 @@ public final class LynxEngineProxy {
 
   private native void nativeSendMultiTouchEvent(
       long nativePtr, String name, ByteBuffer params, int length, long timestamp);
+
+  private native void nativeSendBubbleEvent(
+      long nativePtr, String name, int tag, ByteBuffer params, int length);
 
   private native void nativeSendCustomEvent(
       long nativePtr, String name, int tag, ByteBuffer params, int length, String paramsName);
