@@ -73,13 +73,24 @@ def get_digest(paths: list[Path]) -> str:
     return digest.hexdigest()
 
 
+def extra_files_path(extra_files: list[str]) -> list[Path]:
+    return [Path(path) for path in extra_files]
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--target", type=str, default="")
+    parser.add_argument(
+        "--extra-file",
+        action="append",
+        default=[],
+        help="extra file to include in the digest; relative paths are resolved from the current working directory",
+    )
     args = parser.parse_args()
 
     targets = split_targets(args.target)
     paths = deps_files_path(targets, LYNX_ROOT_DIR, "habitat")
+    paths.extend(extra_files_path(args.extra_file))
 
     # ...-${{ runner.os }}-${{ steps.hab.outputs.HABITAT_TARGETS }}-${{ steps.hab.outputs.HABITAT_DEPS_FILE_DIGEST }}
     # for the cache key of deps with no target:
