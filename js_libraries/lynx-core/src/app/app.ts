@@ -43,6 +43,30 @@ import { reportError } from '../modules/report';
 import LynxJSBI from '../common/jsbi';
 import { CachedFunctionProxy } from '../util/cachedFunctionProxy';
 import { getPromiseMaybePolyfill } from '../util/setup-promise';
+import {
+  getAppRuntimeGlobals,
+  getSharedPromiseCtor,
+  registerAppRuntimeDriver,
+  unregisterAppRuntimeDriver,
+} from './appRuntime';
+
+/**
+ * App-level callbacks a UI framework registers via
+ * `lynx.registerAppEventHandlers`. See `_$appEventHandlers` in BaseApp.
+ */
+export interface AppEventHandlers {
+  onLifecycleEvent?: (args: unknown) => void;
+  publishEvent?: (handlerName: string, data: unknown) => void;
+  publicComponentEvent?: (
+    componentId: string,
+    handlerName: string,
+    data: unknown
+  ) => void;
+  updateGlobalProps?: (newData: object) => void;
+  updateCardData?: (...args: unknown[]) => void;
+  onAppReload?: (...args: unknown[]) => void;
+  onDestroyLifetime?: () => void;
+}
 import { createReadableStreamClass, Request, Response } from '../modules/fetch';
 import { MessageEventType } from '../lynx';
 import { TraceEventDef } from '../util/TraceEventDef';
@@ -155,10 +179,29 @@ export abstract class BaseApp<
     } else {
       const { lynx } = options;
 
-      this.setTimeout = this.nativeApp.setTimeout;
-      this.setInterval = this.nativeApp.setInterval;
-      this.clearInterval = this.nativeApp.clearInterval;
-      this.clearTimeout = this.nativeApp.clearTimeout;
+      // Cards come and go inside a shared context; the timers handed to
+      // modules must not die with the card that loaded them. Register this
+      // card as a timer driver and expose the context-level routers, so
+      // whatever a shared module captures stays valid for the lifetime of
+      // the App runtime.
+      registerAppRuntimeDriver({
+        id: this.nativeAppId,
+        durable: this._$isAppRuntimeHost(),
+        setTimeout: this.nativeApp.setTimeout,
+        clearTimeout: this.nativeApp.clearTimeout,
+        setInterval: this.nativeApp.setInterval,
+        clearInterval: this.nativeApp.clearInterval,
+        queueMicrotask: (cb) => lynx.queueMicrotask(cb),
+        requestAnimationFrame: (cb) => this._nativeApp?.requestAnimationFrame(cb),
+        cancelAnimationFrame: (id) =>
+          this._nativeApp?.cancelAnimationFrame(id as number),
+        onUnhandledRejection: (reason) => this._$reportUnhandledRejection(reason),
+      });
+      const appRuntimeGlobals = getAppRuntimeGlobals();
+      this.setTimeout = appRuntimeGlobals.setTimeout;
+      this.setInterval = appRuntimeGlobals.setInterval;
+      this.clearInterval = appRuntimeGlobals.clearInterval;
+      this.clearTimeout = appRuntimeGlobals.clearTimeout;
 
       this.modules = {};
       this._apiList = {};
@@ -270,6 +313,7 @@ export abstract class BaseApp<
   };
 
   destroy() {
+    unregisterAppRuntimeDriver(this.nativeAppId);
     this.__removeInternalEventListeners();
     this._nativeApp = null;
     this._params = null;
@@ -1041,34 +1085,59 @@ export abstract class BaseApp<
     clearTimeout: LynxClearTimeout,
     lynx: NativeLynxProxy
   ) {
-    const PromiseConstructor = getPromiseMaybePolyfill(
-      setTimeout,
-      (id, reason: Error) => {
-        try {
-          if (reason) {
-            if (!reason.stack) {
-              reason = new Error(JSON.stringify(reason));
+    // One Promise implementation per JS context, driven by the App-runtime
+    // timers: a Promise captured by a shared module keeps settling after
+    // the card that created it is gone. The first card to reach here fixes
+    // the polyfill flavor for the context.
+    const PromiseConstructor = getSharedPromiseCtor(
+      (rtSetTimeout, rtClearTimeout, rtQueueMicrotask, onUnhandledRejection) =>
+        getPromiseMaybePolyfill(
+          rtSetTimeout as LynxSetTimeout,
+          (id, reason: Error) => {
+            try {
+              if (reason) {
+                if (!reason.stack) {
+                  reason = new Error(JSON.stringify(reason));
+                }
+                reason.name = 'unhandled rejection';
+                onUnhandledRejection(reason);
+              }
+            } catch (err) {
+              // just ignore
             }
-            reason.name = 'unhandled rejection';
-            this.handleUserError(reason);
-          }
-        } catch (err) {
-          // just ignore
-        }
-      },
-      clearTimeout,
-      lynx.queueMicrotask,
-      this._params?.pageConfigSubset?.enableMicrotaskPromisePolyfill ?? false
+          },
+          rtClearTimeout as LynxClearTimeout,
+          rtQueueMicrotask,
+          this._params?.pageConfigSubset?.enableMicrotaskPromisePolyfill ??
+            false
+        )
     );
     this.resolvedPromise = PromiseConstructor.resolve();
     return PromiseConstructor;
   }
 
+  /**
+   * Whether this app hosts the App runtime (the standalone background
+   * runtime that is not attached to any LynxView). Overridden by
+   * StandaloneApp; card apps are transient drivers.
+   */
+  protected _$isAppRuntimeHost(): boolean {
+    return false;
+  }
+
+  private _$reportUnhandledRejection(reason: Error): void {
+    try {
+      this.handleUserError(reason);
+    } catch (err) {
+      // just ignore
+    }
+  }
+
   requestAnimationFrame = (callback: () => void) =>
-    this._nativeApp.requestAnimationFrame(callback);
+    getAppRuntimeGlobals().requestAnimationFrame(callback) as number;
 
   cancelAnimationFrame = (animationId: number) =>
-    this._nativeApp.cancelAnimationFrame(animationId);
+    getAppRuntimeGlobals().cancelAnimationFrame(animationId);
 
   protected addInternalEventListener(
     contextProxyType: ContextProxyType,
@@ -1189,10 +1258,60 @@ export abstract class BaseApp<
   }
 
   /**
+   * @internal
+   * Handlers a UI framework registers to receive app-level callbacks.
+   *
+   * This replaces the historical pattern of frameworks mutating properties
+   * on the injected `tt` (this App instance): the engine keeps invoking the
+   * same-named methods on the app object, and the App forwards to whatever
+   * the framework registered here. Frameworks reach this through
+   * `lynx.registerAppEventHandlers(...)` and never touch `lynxCoreInject`.
+   */
+  private _$appEventHandlers: AppEventHandlers = {};
+
+  registerAppEventHandlers(handlers: AppEventHandlers): void {
+    Object.assign(this._$appEventHandlers, handlers);
+  }
+
+  publishEvent(handlerName: string, data: unknown): void {
+    this._$appEventHandlers.publishEvent?.(handlerName, data);
+  }
+
+  publicComponentEvent(
+    componentId: string,
+    handlerName: string,
+    data: unknown
+  ): void {
+    this._$appEventHandlers.publicComponentEvent?.(
+      componentId,
+      handlerName,
+      data
+    );
+  }
+
+  updateCardData(...args: unknown[]): void {
+    this._$appEventHandlers.updateCardData?.(...args);
+  }
+
+  onAppReload(...args: unknown[]): void {
+    this._$appEventHandlers.onAppReload?.(...args);
+  }
+
+  callDestroyLifetimeFun(): void {
+    this._$appEventHandlers.onDestroyLifetime?.();
+  }
+
+  processCardConfig(): void {
+    // Kept for the engine's property lookup; frameworks no longer rely on it.
+  }
+
+  /**
    *  override by subclass
    * @param newData
    */
-  updateGlobalProps(newData: object): void {}
+  updateGlobalProps(newData: object): void {
+    this._$appEventHandlers.updateGlobalProps?.(newData);
+  }
 
   /**
    *  override by subclass
@@ -1217,7 +1336,9 @@ export abstract class BaseApp<
         [key: string]: unknown;
       }
     ]
-  ): void {}
+  ): void {
+    this._$appEventHandlers.onLifecycleEvent?.(args);
+  }
 
   /**
    *  override by subclass

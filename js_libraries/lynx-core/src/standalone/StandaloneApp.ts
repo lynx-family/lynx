@@ -8,6 +8,15 @@ import { Lynx, NativeLynxProxy } from '../lynx';
 import { CachedFunctionProxy } from '../util';
 
 export default class StandaloneApp extends BaseApp {
+  /**
+   * The standalone background runtime is the App runtime host: it is not
+   * attached to any LynxView and outlives every card in the group, so it
+   * is the preferred durable driver for context-level timers.
+   */
+  protected override _$isAppRuntimeHost(): boolean {
+    return true;
+  }
+
   constructor(options: AppProxyParams<NativeApp>, params: loadCardParams) {
     super(options, undefined);
     try {

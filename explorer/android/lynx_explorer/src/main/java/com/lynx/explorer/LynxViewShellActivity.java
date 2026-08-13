@@ -34,6 +34,8 @@ import com.lynx.explorer.provider.DemoGenericResourceFetcher;
 import com.lynx.explorer.provider.DemoMediaResourceFetcher;
 import com.lynx.explorer.provider.DemoTemplateResourceFetcher;
 import com.lynx.explorer.utils.QueryMapUtils;
+import com.lynx.tasm.LynxBackgroundRuntime;
+import com.lynx.tasm.LynxBackgroundRuntimeOptions;
 import com.lynx.tasm.LynxBooleanOption;
 import com.lynx.tasm.LynxGroup;
 import com.lynx.tasm.LynxView;
@@ -70,12 +72,27 @@ public class LynxViewShellActivity extends AppCompatActivity {
   // param share one LynxGroup, and thus one background JS context.
   private static final Map<String, LynxGroup> sNamedGroups = new HashMap<>();
 
-  private static synchronized LynxGroup getOrCreateNamedGroup(String name) {
+  // The standalone App runtime per group: a LynxBackgroundRuntime that is not
+  // attached to any LynxView. It joins the group's shared JS context first
+  // and outlives every card, so context-level state (shared modules, the
+  // App-runtime timers, the shared Promise) survives card destruction.
+  private static final Map<String, LynxBackgroundRuntime> sNamedAppRuntimes = new HashMap<>();
+
+  private static synchronized LynxGroup getOrCreateNamedGroup(Context context, String name) {
     LynxGroup group = sNamedGroups.get(name);
     if (group == null) {
       group = new LynxGroup.LynxGroupBuilder().setGroupName(name).build();
       sNamedGroups.put(name, group);
       Log.d(TAG, "Created shared-context LynxGroup name=" + name + " id=" + group.getID());
+
+      LynxBackgroundRuntimeOptions options = new LynxBackgroundRuntimeOptions();
+      options.setLynxGroup(group);
+      LynxBackgroundRuntime appRuntime =
+          new LynxBackgroundRuntime(context.getApplicationContext(), options);
+      appRuntime.evaluateJavaScript(
+          "app-runtime-bootstrap.js", "console.info('[app-runtime] started for group " + name + "')");
+      sNamedAppRuntimes.put(name, appRuntime);
+      Log.d(TAG, "Created standalone App runtime for group " + name);
     }
     return group;
   }
@@ -324,7 +341,7 @@ public class LynxViewShellActivity extends AppCompatActivity {
     boolean enableNapiAddon = queryMap.getBoolean("enable_napi_addon", false);
 
     if (queryMap.contains("group")) {
-      builder.setLynxGroup(getOrCreateNamedGroup(queryMap.getString("group")));
+      builder.setLynxGroup(getOrCreateNamedGroup(this, queryMap.getString("group")));
     }
 
     LynxView lynxView = builder.build(this);

@@ -56,7 +56,9 @@ export class Lynx {
   }
 
   setTimeout: LynxSetTimeout = this.getApp().wrapReport(
-    this.getNativeApp().setTimeout,
+    // Routed through the App-runtime globals so callbacks survive the
+    // card that scheduled them (see appRuntime.ts).
+    this.getApp().setTimeout,
     'setTimeout Error'
   );
 
@@ -269,6 +271,18 @@ export class Lynx {
 
   getDevtool = this.getNativeLynx().getDevtool;
   getCoreContext = this.getNativeLynx().getCoreContext;
+
+  /**
+   * Registers the UI framework's app-level callbacks (lifecycle, events,
+   * card data, reload, destroy). This is the sanctioned replacement for
+   * mutating the injected `tt`: the engine keeps calling the App object,
+   * and the App forwards to these handlers.
+   */
+  registerAppEventHandlers = (
+    handlers: Parameters<BaseApp['registerAppEventHandlers']>[0]
+  ): void => {
+    this.getApp().registerAppEventHandlers(handlers);
+  };
   getJSContext = this.getNativeLynx().getJSContext;
   getUIContext = this.getNativeLynx().getUIContext;
   getNative = this.getNativeLynx().getNative;
