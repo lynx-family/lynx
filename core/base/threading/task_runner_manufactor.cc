@@ -475,3 +475,18 @@ fml::ConcurrentMessageLoop& TaskRunnerManufactor::GetConcurrentLoop(
 
 }  // namespace base
 }  // namespace lynx
+
+extern "C" LYNX_EXPORT void LynxPostTaskToNormalPriorityWorker(
+    void (*task)(void*), void* context) {
+  if (task == nullptr) {
+    return;
+  }
+  lynx::base::TaskRunnerManufactor::PostTaskToConcurrentLoop(
+      [task, context]() { task(context); },
+      lynx::base::ConcurrentTaskType::NORMAL_PRIORITY);
+}
+
+extern "C" LYNX_EXPORT bool LynxIsOnNormalPriorityWorker() {
+  return lynx::base::TaskRunnerManufactor::IsOnConcurrentLoopWorker(
+      lynx::base::ConcurrentTaskType::NORMAL_PRIORITY);
+}
