@@ -3,9 +3,10 @@
 // LICENSE file in the root directory of this source tree.
 
 #import <Lynx/LynxWeakProxy.h>
+#import <ServalMarkdown/MarkdownMeasurer.h>
+#import <ServalMarkdown/ServalMarkdownView.h>
 #import <XElement/LynxMarkdownView.h>
 #import "adaptor/LynxMarkdownBundle.h"
-#import "adaptor/LynxServalMarkdownViewWrapper.h"
 
 @interface LynxMarkdownViewV2 ()
 
@@ -14,8 +15,11 @@
 @end
 
 @implementation LynxMarkdownViewV2 {
-  LynxServalMarkdownViewWrapper *_markdownView;
+  ServalMarkdownView *_markdownView;
+  MarkdownMeasurer *_markdownMeasurer;
   CADisplayLink *_displayLink;
+  CGSize _measuredSize;
+  CGPoint _contentOffset;
 }
 
 - (instancetype)init {
@@ -31,31 +35,51 @@
   [self invalidateDisplayLink];
 }
 
-- (void)setBundle:(LynxMarkdownBundleV2 *_Nullable)bundle {
-  LynxServalMarkdownViewWrapper *newMarkdownView = bundle != nil ? bundle.markdownView : nil;
-  if (newMarkdownView == _markdownView) {
-    [self setNeedsDisplay];
-    return;
+- (ServalMarkdownView *_Nullable)setBundle:(LynxMarkdownBundleV2 *_Nullable)bundle {
+  MarkdownMeasurer *newMarkdownMeasurer = bundle.markdownMeasurer;
+  if (newMarkdownMeasurer != _markdownMeasurer) {
+    [_markdownView removeFromSuperview];
+    _markdownView = nil;
+    _markdownMeasurer = nil;
+
+    if (newMarkdownMeasurer != nil) {
+      ServalMarkdownView *newMarkdownView = [[ServalMarkdownView alloc] initWithCreateMeasurer:NO];
+      if ([newMarkdownView attachMarkdownMeasurer:newMarkdownMeasurer]) {
+        [newMarkdownView disableInternalVSync:YES];
+        _markdownMeasurer = newMarkdownMeasurer;
+        _markdownView = newMarkdownView;
+        [self addSubview:_markdownView];
+        [self sendSubviewToBack:_markdownView];
+      }
+    }
   }
-  if (newMarkdownView != nil) {
+
+  if (_markdownView != nil) {
     [self createDisplayLink];
   } else {
     [self invalidateDisplayLink];
   }
-
-  [_markdownView removeFromSuperview];
-  _markdownView = newMarkdownView;
-
-  if (_markdownView != nil) {
-    [self addSubview:_markdownView];
-    [self sendSubviewToBack:_markdownView];
-  }
+  _measuredSize = bundle != nil ? bundle.measuredSize : CGSizeZero;
+  [self layoutMarkdownView];
   [self setNeedsDisplay];
+  return _markdownView;
+}
+
+- (void)setContentOffset:(CGPoint)contentOffset {
+  if (CGPointEqualToPoint(_contentOffset, contentOffset)) {
+    return;
+  }
+  _contentOffset = contentOffset;
+  [self layoutMarkdownView];
 }
 
 - (void)layoutSubviews {
   [super layoutSubviews];
-  _markdownView.frame = self.bounds;
+  [self layoutMarkdownView];
+}
+
+- (void)layoutMarkdownView {
+  _markdownView.frame = (CGRect){_contentOffset, _measuredSize};
 }
 
 - (void)createDisplayLink {

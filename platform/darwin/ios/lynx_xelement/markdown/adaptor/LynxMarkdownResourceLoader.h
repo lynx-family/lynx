@@ -18,6 +18,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (nullable LynxUIOwner *)markdownHostUIOwner;
 - (nullable MeasureContext *)markdownHostMeasureContext;
 - (nullable AlignContext *)markdownHostAlignContext;
+- (CGPoint)markdownHostContentOffset;
 - (void)onImageLoaded:(NSString *)url;
 - (void)onFontLoaded:(NSString *)family Weight:(int)weight Style:(int)style;
 @end

@@ -6,4 +6,16 @@
 
 @implementation LynxMarkdownBundleV2
 
+- (instancetype)initWithMarkdownMeasurer:(MarkdownMeasurer *_Nullable)markdownMeasurer
+                              shadowNode:(LynxUIMarkdownShadowNodeV2 *_Nullable)shadowNode
+                            measuredSize:(CGSize)measuredSize {
+  self = [super init];
+  if (self != nil) {
+    _markdownMeasurer = markdownMeasurer;
+    _shadowNode = shadowNode;
+    _measuredSize = measuredSize;
+  }
+  return self;
+}
+
 @end
