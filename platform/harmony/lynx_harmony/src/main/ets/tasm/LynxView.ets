@@ -62,6 +62,20 @@ export enum ThreadStrategyForRendering {
 }
 
 /**
+ * Experimental options for embedded rendering scenarios. Options can be
+ * combined with bitwise OR.
+ */
+export enum EmbeddedMode {
+  UNSET = 0,
+  EMBEDDED_MODE_BASE = 1 << 0,
+  ENGINE_POOL = 1 << 1,
+  LAYOUT_IN_ELEMENT = 1 << 2,
+  FRAGMENT_LAYER_RENDER = 1 << 3,
+  USE_TEXT_SERVICE = 1 << 4,
+  EMBEDDED_MODE_ALL = EMBEDDED_MODE_BASE | ENGINE_POOL | LAYOUT_IN_ELEMENT,
+}
+
+/**
  * Preferred color scheme for media query evaluation (prefers-color-scheme).
  */
 export enum ColorScheme {
@@ -99,6 +113,7 @@ export interface LynxViewBuilder {
   fontScale?: number;
   colorScheme?: ColorScheme;
   enableMultiAsyncThread?: boolean;
+  embeddedMode?: EmbeddedMode;
 }
 
 @Builder
@@ -219,6 +234,7 @@ export struct LynxView {
   private measuredSize: Size = { width: 0, height: 0 };
   private hasAppeared: boolean = false;
   threadMode: ThreadStrategyForRendering = ThreadStrategyForRendering.ALL_ON_UI;
+  embeddedMode: EmbeddedMode = EmbeddedMode.UNSET;
   backgroundRuntimeOptions: LynxBackgroundRuntimeOptions = new LynxBackgroundRuntimeOptions();
   enableAirStrictMode? = false;
   lynxImageConfig?: LynxImageConfig;
@@ -248,6 +264,7 @@ export struct LynxView {
     this.beforeLoadTemplate = builder.beforeLoadTemplate ?? ((context: LynxContext) => {
     });
     this.threadMode = builder.threadMode ?? ThreadStrategyForRendering.ALL_ON_UI;
+    this.embeddedMode = builder.embeddedMode ?? EmbeddedMode.UNSET;
     this.backgroundRuntimeOptions = new LynxBackgroundRuntimeOptions(builder.backgroundRuntimeOptions);
     this.enableAirStrictMode = builder.enableAirStrictMode ?? false;
     this.lynxImageConfig = builder.lynxImageConfig;
@@ -284,6 +301,7 @@ export struct LynxView {
       onReuse: this.onReuse,
       beforeLoadTemplate: this.beforeLoadTemplate,
       threadMode: this.threadMode,
+      embeddedMode: this.embeddedMode,
       backgroundRuntimeOptions: this.backgroundRuntimeOptions,
       enableAirStrictMode: this.enableAirStrictMode,
       lynxImageConfig: this.lynxImageConfig,
@@ -361,7 +379,8 @@ export struct LynxView {
       new LynxTemplateRenderer(this.viewId, this.clients, providers, !this.uiRendererCreator,
         this.uiRendererCreator ? ThreadStrategyForRendering.ALL_ON_UI : this.threadMode,
         this.backgroundRuntimeOptions, this, !this.enableAirStrictMode,
-        this.moduleManager, this.sendableModuleManager, this.enableMultiAsyncThread, this.screenSize);
+        this.moduleManager, this.sendableModuleManager, this.enableMultiAsyncThread, this.screenSize,
+        this.embeddedMode);
     if (this.platformConfig) {
       this.templateRenderer.setPlatformConfig(this.platformConfig);
     }

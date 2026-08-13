@@ -130,11 +130,12 @@ export class LynxTemplateRenderer {
   nativeAttach(density: number): void;
 
   nativeReset(ui_delegate: number[], providers: (Object | undefined)[], width: number, height: number,
-    isHostRenderer: boolean, perfController: PerformanceCollector, threadMode: number, groupId: string,
+    isHostRenderer: boolean, perfController: PerformanceCollector | undefined, threadMode: number, groupId: string,
     jsGroupThreadName: string, useQuickjs: boolean, enableJSGroupThread: boolean, preloadJSPaths: string[], enableBytecode: boolean,
     bytecodeSourceUrl: string, enableJSRuntime: boolean, moduleManagerArgs: Object[],
     sendableModuleManagerArgs: Object[], backgroundRuntime: NativeLynxBackgroundRuntime,
-    whiteBoard: LynxWhiteBoard | undefined, enableMultiAsyncThread: boolean, viewId: number): void;
+    whiteBoard: LynxWhiteBoard | undefined, enableMultiAsyncThread: boolean, viewId: number,
+    embeddedMode?: number): void;
 
   nativeDetach(): void;
 
