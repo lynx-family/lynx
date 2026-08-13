@@ -98,22 +98,12 @@ class ParagraphTTText : public Paragraph {
  private:
   friend class ParagraphTTTextTest_KeepsIndexesInSyncForEmbeddedNull_Test;
 
-  struct TextBaselineOffsetRange {
-    size_t start;
-    size_t end;
-    float offset;
-  };
-
-  void AddTextRunWithBaselineOffset(tttext::Style& style,
-                                    const std::string& content);
-
   std::shared_ptr<FontCollection> font_collection_;
   std::unique_ptr<tttext::Paragraph> paragraph_;
   std::unique_ptr<tttext::LayoutRegion> region_;
   std::vector<LineMetrics> line_metrics_;
   std::vector<size_t> placeholder_pos_;
   TTTextIndexMapper index_mapper_;
-  std::vector<TextBaselineOffsetRange> text_baseline_offsets_;
   bool need_trim_space_ = false;
 #ifdef ENABLE_SKITY
   skity::Paint sk_paint_;

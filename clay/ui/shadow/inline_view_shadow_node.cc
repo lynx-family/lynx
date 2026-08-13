@@ -31,9 +31,7 @@ void InlineViewShadowNode::TextLayout(LayoutContext* context) {
   builder->PushStyle(text_style_.value());
   txt::PlaceholderRun placeholder(
       Width(), Height(), txt::PlaceholderAlignment::kBaseline,
-      txt::TextBaseline::kAlphabetic,
-      (measured_baseline_ > 0.f ? measured_baseline_ : Height()) +
-          baseline_offset_);
+      txt::TextBaseline::kAlphabetic, Height() + baseline_offset_);
   start_glyph_ =
       static_cast<LayoutContextText*>(context)->TextSizeIncludingPlaceholders();
   end_glyph_ = start_glyph_ + 1;
@@ -50,9 +48,7 @@ void InlineViewShadowNode::ResetTextLayout() {
 
 MeasureResult InlineViewShadowNode::MeasureNativeNode(
     const MeasureConstraint& constraint) {
-  auto result = owner_->MeasureNativeNode(this, constraint);
-  measured_baseline_ = result.baseline;
-  return result;
+  return owner_->MeasureNativeNode(this, constraint);
 }
 
 void InlineViewShadowNode::AlignNativeNode(float top, float left) {

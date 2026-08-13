@@ -20,10 +20,8 @@
 #include <map>
 #include <vector>
 
-#include "skity/geometry/rect.hpp"
-
 #ifndef ENABLE_SKITY
-#include "clay/third_party/txt/src/txt/run_metrics.h"
+#include "run_metrics.h"
 #endif
 
 namespace txt {
@@ -74,20 +72,6 @@ class LineMetrics {
 #endif
 
   LineMetrics() = default;
-
-  // Returns the logical box occupied by this line. This is intentionally
-  // independent from the tight glyph/run bounds: leading introduced by line
-  // height remains part of the line for hit testing and selection painting.
-  skity::Rect GetLineBox() const {
-    return skity::Rect::MakeLTRB(left, baseline - ascent, left + width,
-                                 baseline + descent);
-  }
-
-  bool ContainsInLineBox(double x, double y) const {
-    const auto line_box = GetLineBox();
-    return x >= line_box.Left() && x <= line_box.Right() &&
-           y >= line_box.Top() && y <= line_box.Bottom();
-  }
 
   LineMetrics(size_t start,
               size_t end,
