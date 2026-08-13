@@ -7,6 +7,10 @@
 #include "core/base/threading/js_thread_config_getter.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
+extern "C" void LynxPostTaskToNormalPriorityWorker(void (*task)(void*),
+                                                   void* context);
+extern "C" bool LynxIsOnNormalPriorityWorker();
+
 namespace lynx {
 namespace base {
 
@@ -167,6 +171,21 @@ TEST_F(TaskRunnerManufactorTest, IsOnConcurrentLoopWorker) {
 
   high_priority_latch.Wait();
   normal_priority_latch.Wait();
+}
+
+TEST_F(TaskRunnerManufactorTest, ExportedNormalPriorityWorkerBridge) {
+  EXPECT_FALSE(LynxIsOnNormalPriorityWorker());
+  fml::CountDownLatch latch(1);
+
+  LynxPostTaskToNormalPriorityWorker(
+      [](void* context) {
+        auto* task_latch = static_cast<fml::CountDownLatch*>(context);
+        EXPECT_TRUE(LynxIsOnNormalPriorityWorker());
+        task_latch->CountDown();
+      },
+      &latch);
+
+  latch.Wait();
 }
 
 TEST_F(TaskRunnerManufactorTest, GetRunnerIsIdempotent) {
