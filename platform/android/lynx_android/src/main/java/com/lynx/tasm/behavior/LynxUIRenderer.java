@@ -121,6 +121,8 @@ public class LynxUIRenderer implements ILynxUIRenderer {
       mLynxUIOwner = new LynxUIOwner(lynxContext, behaviorRegistry, body);
     } else {
       mLynxUIOwner.attachLynxContext(lynxContext);
+    }
+    if (mHasInited) {
       mLynxUIOwner.attachUIBodyView(body);
     }
     if (body == null) {

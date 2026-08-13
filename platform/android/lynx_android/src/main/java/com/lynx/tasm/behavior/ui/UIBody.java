@@ -128,6 +128,9 @@ public class UIBody extends UIGroup<UIBodyView> {
    * @param view
    */
   synchronized public void attachUIBodyView(UIBodyView view, LynxContext context) {
+    if (mContext.isEmbeddedModeOn() && !mContext.isEnginePoolEnabled() && mBodyView == view) {
+      return;
+    }
     mAttachTask = new OnceTask<>(new Callable<Void>() {
       @Override
       public Void call() throws Exception {

@@ -51,6 +51,7 @@ public class LynxViewBuilder
   Uri uri = null;
   ILynxViewGroup lynxViewGroup;
   boolean hasInheritedGroupRuntimeOptions = false;
+  private boolean enableNativeLifecycleOptimization = false;
 
   public LynxViewBuilder() {
     LynxEnv.inst().lazyInitIfNeeded();
@@ -111,6 +112,22 @@ public class LynxViewBuilder
       lynxViewConfig.put(key, value);
     }
     return this;
+  }
+
+  /**
+   * Enables the optimized native lifecycle path for this LynxView. When enabled,
+   * LynxTemplateRender skips the per-JNI-call AtomicLifecycle lock.
+   *
+   * <p>This API is experimental and disabled by default.
+   */
+  @RestrictTo(RestrictTo.Scope.LIBRARY)
+  public LynxViewBuilder setEnableNativeLifecycleOptimization(boolean enable) {
+    enableNativeLifecycleOptimization = enable;
+    return this;
+  }
+
+  boolean isNativeLifecycleOptimizationEnabled() {
+    return enableNativeLifecycleOptimization;
   }
 
   public LynxViewBuilder setLynxViewGroup(ILynxViewGroup group) {

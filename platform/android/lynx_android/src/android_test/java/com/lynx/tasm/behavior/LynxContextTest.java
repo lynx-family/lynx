@@ -4,6 +4,7 @@
 package com.lynx.tasm.behavior;
 
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
 import android.content.Context;
@@ -16,17 +17,19 @@ import org.junit.Test;
 
 public class LynxContextTest {
   private LynxContext mContext;
+  private Context mAndroidContext;
+  private DisplayMetrics mDisplayMetrics;
 
   @Before
   public void setUp() throws Exception {
-    Context context =
+    mAndroidContext =
         InstrumentationRegistry.getInstrumentation().getTargetContext().getApplicationContext();
-    DisplayMetricsHolder.updateOrInitDisplayMetrics(context, 3.0f);
-    DisplayMetrics displayMetrics = new DisplayMetrics();
-    displayMetrics.widthPixels = 1080;
-    displayMetrics.heightPixels = 1920;
-    displayMetrics.density = 3.0f;
-    mContext = new LynxContext(context, displayMetrics) {
+    DisplayMetricsHolder.updateOrInitDisplayMetrics(mAndroidContext, 3.0f);
+    mDisplayMetrics = new DisplayMetrics();
+    mDisplayMetrics.widthPixels = 1080;
+    mDisplayMetrics.heightPixels = 1920;
+    mDisplayMetrics.density = 3.0f;
+    mContext = new LynxContext(mAndroidContext, mDisplayMetrics) {
       @Override
       public void handleException(Exception e) {}
     };
@@ -47,5 +50,15 @@ public class LynxContextTest {
 
     mContext.markFallbackProcess(false);
     assertFalse(mContext.isFallbackProcess());
+  }
+
+  @Test
+  public void takeScreenMetricsOwnership() {
+    LynxContext context = new LynxContext(mAndroidContext, mDisplayMetrics, true) {
+      @Override
+      public void handleException(Exception e) {}
+    };
+
+    assertSame(mDisplayMetrics, context.getScreenMetrics());
   }
 }

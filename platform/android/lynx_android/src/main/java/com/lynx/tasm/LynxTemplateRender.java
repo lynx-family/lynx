@@ -119,7 +119,7 @@ public class LynxTemplateRender
     private final WeakReference<LynxTemplateRender> mRenderRef;
 
     RenderLynxContext(Context base, DisplayMetrics screenMetrics, LynxTemplateRender render) {
-      super(base, screenMetrics);
+      super(base, screenMetrics, true);
       mRenderRef = new WeakReference<>(render);
     }
 
@@ -168,8 +168,6 @@ public class LynxTemplateRender
       }
     }
   }
-
-  private final TemplateAssembler mTemplateAssembler = new TemplateAssembler();
 
   private InnerPageLoadListener mPageLoadListener;
   private ViewLayoutTick mViewLayoutTick;
@@ -270,7 +268,6 @@ public class LynxTemplateRender
   private boolean mEnableSkipUpdateViewportOnInitWhenMeasureSpecEmpty;
 
   private boolean mEnableJSRuntime;
-
   private boolean mEnableAirStrictMode;
 
   private JSProxy mJSProxy;
@@ -282,6 +279,7 @@ public class LynxTemplateRender
   private Map<Double, PlatformCallBack> platformCallBackMap = new HashMap<>();
 
   private AtomicBoolean mIsDestroyed = new AtomicBoolean(true);
+  private boolean mEnableNativeLifecycleOptimization;
   private long mNativeLifecycle;
   // Destory mNativeLifecycle when no reference to LynxTemplateRender.
   private CleanupReference mCleanupReference = null;
@@ -311,9 +309,8 @@ public class LynxTemplateRender
   @Nullable private LynxEngine mLynxEngineRef;
 
   private LynxModuleFactory mMainThreadModuleFactory;
-  @NonNull
-  private final LynxMemoryUsageFetcher mMemoryUsageFetcher =
-      new LynxTemplateRenderMemoryUsageFetcher(this);
+  @Nullable private LynxMemoryUsageFetcher mMemoryUsageFetcher;
+  private boolean mMemoryUsageFetcherRegistered;
 
   @Keep
   public LynxTemplateRender(Context context, UIBodyView bodyView, LynxViewBuilder builder) {
@@ -415,6 +412,7 @@ public class LynxTemplateRender
     mTemplateProvider = builder.templateProvider;
     mEnableSyncFlush = mLynxViewConfigProvider.isEnableSyncFlush();
     mEnableJSRuntime = mLynxViewConfigProvider.isEnableJSRuntime();
+    mEnableNativeLifecycleOptimization = builder.isNativeLifecycleOptimizationEnabled();
     mEnableGenericResourceFetcher =
         checkEnableGenericResourceFetcher(mLynxViewConfigProvider.isEnableGenericResourceFetcher());
     mEnableAirStrictMode = mLynxViewConfigProvider.isEnableAirStrictMode();
@@ -423,8 +421,12 @@ public class LynxTemplateRender
     if (mBodyView != null) {
       mBodyView.setTimingCollector(mPerformanceController);
     }
-    mLynxRuntimeOptions =
-        new LynxBackgroundRuntimeOptions(mLynxViewConfigProvider.getLynxRuntimeOptions());
+    // Static embedded pages do not initialize a JS runtime or native modules. Keep the
+    // runtime options lazy in this case; compatibility APIs can still initialize them later.
+    if (!isStaticEmbeddedMode()) {
+      mLynxRuntimeOptions =
+          new LynxBackgroundRuntimeOptions(mLynxViewConfigProvider.getLynxRuntimeOptions());
+    }
 
     mAsyncRender = (mThreadStrategyForRendering == ThreadStrategyForRendering.MULTI_THREADS
         || mThreadStrategyForRendering == ThreadStrategyForRendering.MOST_ON_TASM);
@@ -451,19 +453,18 @@ public class LynxTemplateRender
     // compatibility, some caller still using its related interface.
     DisplayMetricsHolder.updateOrInitDisplayMetrics(context, mLynxViewConfigProvider.getDensity());
     DisplayMetrics screenMetrics = DisplayMetricsHolder.getScreenDisplayMetrics();
-    if (mLynxViewConfigProvider.getScreenWidth() != DisplayMetricsHolder.UNDEFINE_SCREEN_SIZE_VALUE
-        && mLynxViewConfigProvider.getScreenHeight()
-            != DisplayMetricsHolder.UNDEFINE_SCREEN_SIZE_VALUE) {
-      screenMetrics.widthPixels = mLynxViewConfigProvider.getScreenWidth();
-      screenMetrics.heightPixels = mLynxViewConfigProvider.getScreenHeight();
+    int screenWidth = mLynxViewConfigProvider.getScreenWidth();
+    int screenHeight = mLynxViewConfigProvider.getScreenHeight();
+    if (screenWidth != DisplayMetricsHolder.UNDEFINE_SCREEN_SIZE_VALUE
+        && screenHeight != DisplayMetricsHolder.UNDEFINE_SCREEN_SIZE_VALUE) {
+      screenMetrics.widthPixels = screenWidth;
+      screenMetrics.heightPixels = screenHeight;
     }
 
     // Prepare for env
     mLynxContext = new RenderLynxContext(
         context != null ? context : LynxEnv.inst().getAppContext(), screenMetrics, this);
     mLynxContext.setRuntimeCacheManager(this.mCacheManager);
-    mTemplateAssembler.setLynxContext(mLynxContext);
-
     mLynxContext.setEmbeddedMode(mEmbeddedMode);
     mLynxContext.setEnableReuseEngine(mEnableReuseEngine || mEnableCacheEngine);
     mLynxContext.setPerfController(mPerformanceController);
@@ -585,6 +586,14 @@ public class LynxTemplateRender
   private void setUserModules(LynxModuleFactory factory) {
     factory.setLynxModuleExtraData(mLynxViewBuilder.lynxModuleExtraData);
     factory.addModuleParamWrapper(mLynxRuntimeOptions.getWrappers());
+  }
+
+  private boolean isStaticEmbeddedMode() {
+    return !mEnableJSRuntime && EmbeddedMode.isBaseModeEnable(mEmbeddedMode);
+  }
+
+  private boolean isNativeLifecycleValid(long nativeLifecycle) {
+    return mEnableNativeLifecycleOptimization || nativeLifecycle != 0;
   }
 
   private void setUpMainThreadModuleFactory() {
@@ -1049,24 +1058,22 @@ public class LynxTemplateRender
 
     lynxUIRenderer.attachNativeFacade(mNativeFacade);
     lynxUIRenderer.setLynxEngineForPlatformContextRef(mNativePtr);
-    mNativeLifecycle = nativeLifecycleCreate();
-    mCleanupReference = new CleanupReference(this, new CleanupOnUiThread(mNativeLifecycle), true);
+    if (!mEnableNativeLifecycleOptimization) {
+      mNativeLifecycle = nativeLifecycleCreate();
+      mCleanupReference = new CleanupReference(this, new CleanupOnUiThread(mNativeLifecycle), true);
+    }
     mLynxContext.setListNodeInfoFetcher(new ListNodeInfoFetcher(this));
     mLynxContext.setEnableVSyncAligned(enableVSyncAligned);
     if (mDevTool != null) {
       mDevTool.onTemplateAssemblerCreated(mNativePtr);
     }
 
-    LynxProviderRegistry providerRegistry = new LynxProviderRegistry();
-    for (Map.Entry<String, LynxResourceProvider> global :
-        LynxEnv.inst().getResourceProvider().entrySet()) {
-      providerRegistry.addLynxResourceProvider(global.getKey(), global.getValue());
+    LynxBackgroundRuntimeOptions providerRuntimeOptions = mLynxRuntimeOptions;
+    if (providerRuntimeOptions == null) {
+      providerRuntimeOptions = mLynxViewConfigProvider.getLynxRuntimeOptions();
     }
-    for (Map.Entry<String, LynxResourceProvider> local :
-        mLynxRuntimeOptions.getAllResourceProviders()) {
-      providerRegistry.addLynxResourceProvider(local.getKey(), local.getValue());
-    }
-    mLynxContext.setProviderRegistry(providerRegistry);
+    mLynxContext.setProviderRegistry(
+        new LazyProviderRegistry(LynxEnv.inst().getResourceProvider(), providerRuntimeOptions));
 
     mLynxContext.setFontLoader(mLynxViewBuilder.fontLoader);
     mLynxContext.setImageFetcher(mLynxViewBuilder.imageFetcher);
@@ -1075,7 +1082,7 @@ public class LynxTemplateRender
     mNativeFacade.setLynxContext(mLynxContext);
     int instanceId = nativeGetInstanceId(mNativePtr, mNativeLifecycle);
     if (instanceId >= 0) {
-      mLynxContext.setInstanceId(instanceId);
+      mLynxContext.setInstanceId(instanceId, !isStaticEmbeddedMode());
       mPerformanceController.setInstanceId(instanceId);
     }
     registerMemoryUsageFetcherIfNeeded();
@@ -1130,13 +1137,19 @@ public class LynxTemplateRender
       }
     }
 
-    mIntersectionObserverManager = new LynxIntersectionObserverManager(mLynxContext, mJSProxy);
-    mLynxContext.setIntersectionObserverManager(mIntersectionObserverManager);
+    if (!isStaticEmbeddedMode()) {
+      mIntersectionObserverManager = new LynxIntersectionObserverManager(mLynxContext, mJSProxy);
+      mLynxContext.setIntersectionObserverManager(mIntersectionObserverManager);
+    }
 
-    initEngineAndLayoutProxies();
+    if (!isStaticEmbeddedMode()) {
+      initEngineAndLayoutProxies();
+    }
 
     EventEmitter eventEmitter = new LynxEventEmitter(mEngineProxy);
-    eventEmitter.addObserver(mIntersectionObserverManager);
+    if (mIntersectionObserverManager != null) {
+      eventEmitter.addObserver(mIntersectionObserverManager);
+    }
     eventEmitter.registerEventReporter(mNativeFacade);
     eventEmitter.registerEventFallback(this);
     mLynxContext.setEventEmitter(eventEmitter);
@@ -3255,10 +3268,14 @@ public class LynxTemplateRender
       mLynxUIRender.attachNativeFacade(mNativeFacade);
       mLynxUIRender.setLynxEngineForPlatformContextRef(mNativePtr);
 
-      initEngineAndLayoutProxies();
+      if (!isStaticEmbeddedMode()) {
+        initEngineAndLayoutProxies();
+      }
 
       EventEmitter eventEmitter = new LynxEventEmitter(mEngineProxy);
-      eventEmitter.addObserver(mIntersectionObserverManager);
+      if (mIntersectionObserverManager != null) {
+        eventEmitter.addObserver(mIntersectionObserverManager);
+      }
       eventEmitter.registerEventReporter(mNativeFacade);
       eventEmitter.registerEventFallback(this);
       mLynxContext.setEventEmitter(eventEmitter);
@@ -3649,8 +3666,8 @@ public class LynxTemplateRender
 
   boolean takeBTSHeapSnapshot(
       @NonNull String outputPath, @Nullable LynxConsumer<Boolean> callback) {
-    if (!checkIfEnvPrepared() || mNativePtr == 0 || mNativeLifecycle == 0 || mIsDestroyed.get()
-        || mHasDestroy || mDestroying) {
+    if (!checkIfEnvPrepared() || mNativePtr == 0 || !isNativeLifecycleValid(mNativeLifecycle)
+        || mIsDestroyed.get() || mHasDestroy || mDestroying) {
       return false;
     }
     return nativeTakeBTSHeapSnapshotToFile(mNativePtr, mNativeLifecycle, outputPath, callback);
@@ -3694,6 +3711,10 @@ public class LynxTemplateRender
   }
 
   public void runOnTasmThread(Runnable runnable) {
+    // Static embedded pages defer LynxEngineProxy creation until a TASM task is actually needed.
+    if (mEngineProxy == null) {
+      initEngineAndLayoutProxies();
+    }
     if (mEngineProxy == null) {
       LLog.i(TAG, "runOnTasmThread failed, engine proxy is null.");
       return;
@@ -3748,12 +3769,13 @@ public class LynxTemplateRender
   }
 
   public void setEnableBytecode(boolean enableUserBytecode, String url) {
-    if (mLynxRuntimeOptions.isEnableUserBytecode() == enableUserBytecode
-        && Objects.equals(mLynxRuntimeOptions.getBytecodeSourceUrl(), url)) {
+    LynxBackgroundRuntimeOptions runtimeOptions = ensureLynxRuntimeOptions();
+    if (runtimeOptions.isEnableUserBytecode() == enableUserBytecode
+        && Objects.equals(runtimeOptions.getBytecodeSourceUrl(), url)) {
       return;
     }
-    mLynxRuntimeOptions.setEnableUserBytecode(enableUserBytecode);
-    mLynxRuntimeOptions.setBytecodeSourceUrl(url);
+    runtimeOptions.setEnableUserBytecode(enableUserBytecode);
+    runtimeOptions.setBytecodeSourceUrl(url);
     if (mNativePtr != 0) {
       nativeSetEnableBytecode(mNativePtr, mNativeLifecycle, enableUserBytecode, url);
     }
@@ -3915,7 +3937,7 @@ public class LynxTemplateRender
     NativeFacade facade = mNativeFacade;
     long nativePtr = mNativePtr;
     long nativeLifecycle = mNativeLifecycle;
-    if ((facade == null) || (nativePtr == 0) || (nativeLifecycle == 0)) {
+    if ((facade == null) || (nativePtr == 0) || !isNativeLifecycleValid(nativeLifecycle)) {
       LLog.e(TAG, "LoadTemplateBundle before inited");
       return;
     }
@@ -3960,7 +3982,7 @@ public class LynxTemplateRender
     NativeFacade facade = mNativeFacade;
     long nativePtr = mNativePtr;
     long nativeLifecycle = mNativeLifecycle;
-    if ((facade == null) || (nativePtr == 0) || (nativeLifecycle == 0)) {
+    if ((facade == null) || (nativePtr == 0) || !isNativeLifecycleValid(nativeLifecycle)) {
       LLog.e(TAG, "Load ssr data before inited");
       return;
     }
@@ -3988,7 +4010,7 @@ public class LynxTemplateRender
     NativeFacade facade = mNativeFacade;
     long nativePtr = mNativePtr;
     long nativeLifecycle = mNativeLifecycle;
-    if (facade == null || nativePtr == 0 || nativeLifecycle == 0) {
+    if (facade == null || nativePtr == 0 || !isNativeLifecycleValid(nativeLifecycle)) {
       LLog.e(TAG, "Load Template before inited");
       return;
     }
@@ -4129,16 +4151,30 @@ public class LynxTemplateRender
     }
   }
 
-  private void initEngineAndLayoutProxies() {
+  private synchronized void initEngineAndLayoutProxies() {
+    if (mEngineProxy != null || mNativePtr == 0 || mNativeFacade == null) {
+      return;
+    }
     mEngineProxy = new LynxEngineProxy(mNativePtr);
     mNativeFacade.setEngineProxy(mEngineProxy);
     if (mLynxContext == null) {
       LLog.e(TAG, "mLynxContext is null, can not set LayoutProxy");
     } else {
       mLynxContext.setEngineProxy(mEngineProxy);
-      mLayoutProxy = new LynxLayoutProxy(mNativePtr);
-      mLynxContext.setLayoutProxy(mLayoutProxy);
+      if ((mEmbeddedMode & EmbeddedMode.LAYOUT_IN_ELEMENT) == 0) {
+        mLayoutProxy = new LynxLayoutProxy(mNativePtr);
+        mLynxContext.setLayoutProxy(mLayoutProxy);
+      }
     }
+  }
+
+  private LynxBackgroundRuntimeOptions ensureLynxRuntimeOptions() {
+    if (mLynxRuntimeOptions == null) {
+      LynxBackgroundRuntimeOptions options = mLynxViewConfigProvider.getLynxRuntimeOptions();
+      mLynxRuntimeOptions = options == null ? new LynxBackgroundRuntimeOptions()
+                                            : new LynxBackgroundRuntimeOptions(options);
+    }
+    return mLynxRuntimeOptions;
   }
 
   // TODO(hexionghui): This interface will be deleted later. Since
@@ -4222,11 +4258,70 @@ public class LynxTemplateRender
   }
 
   private void registerMemoryUsageFetcherIfNeeded() {
+    if (mMemoryUsageFetcherRegistered || EmbeddedMode.isBaseModeEnable(mEmbeddedMode)) {
+      return;
+    }
+    if (mMemoryUsageFetcher == null) {
+      mMemoryUsageFetcher = new LynxTemplateRenderMemoryUsageFetcher(this);
+    }
     LynxGlobalMemoryUsageCollector.getInstance().registerMemoryUsageFetcher(mMemoryUsageFetcher);
+    mMemoryUsageFetcherRegistered = true;
   }
 
   private void unregisterMemoryUsageFetcherIfNeeded() {
+    if (!mMemoryUsageFetcherRegistered || mMemoryUsageFetcher == null) {
+      return;
+    }
     LynxGlobalMemoryUsageCollector.getInstance().unregisterMemoryUsageFetcher(mMemoryUsageFetcher);
+    mMemoryUsageFetcherRegistered = false;
+  }
+
+  private static final class LazyProviderRegistry extends LynxProviderRegistry {
+    private final Map<String, LynxResourceProvider> mGlobalProviders;
+    private final LynxBackgroundRuntimeOptions mRuntimeOptions;
+    private boolean mInitialized;
+
+    LazyProviderRegistry(
+        Map<String, LynxResourceProvider> globalProviders, LynxBackgroundRuntimeOptions options) {
+      mGlobalProviders = globalProviders;
+      mRuntimeOptions = options;
+    }
+
+    private void ensureProviders() {
+      if (mInitialized) {
+        return;
+      }
+      mInitialized = true;
+      if (mGlobalProviders != null) {
+        for (Map.Entry<String, LynxResourceProvider> global : mGlobalProviders.entrySet()) {
+          super.addLynxResourceProvider(global.getKey(), global.getValue());
+        }
+      }
+      if (mRuntimeOptions != null) {
+        for (Map.Entry<String, LynxResourceProvider> local :
+            mRuntimeOptions.getAllResourceProviders()) {
+          super.addLynxResourceProvider(local.getKey(), local.getValue());
+        }
+      }
+    }
+
+    @Override
+    public void addLynxResourceProvider(String key, LynxResourceProvider provider) {
+      ensureProviders();
+      super.addLynxResourceProvider(key, provider);
+    }
+
+    @Override
+    public LynxResourceProvider getProviderByKey(String key) {
+      ensureProviders();
+      return super.getProviderByKey(key);
+    }
+
+    @Override
+    public void clear() {
+      mInitialized = true;
+      super.clear();
+    }
   }
 
   void queryNativeMemoryUsageForGlobalCollectorAsync(
@@ -4236,8 +4331,8 @@ public class LynxTemplateRender
       // but this class owns the private native bridge and reads these UI-thread-owned fields here.
       long nativePtr = mNativePtr;
       long nativeLifecycle = mNativeLifecycle;
-      if (nativePtr == 0 || nativeLifecycle == 0 || mIsDestroyed.get() || mHasDestroy
-          || mDestroying) {
+      if (nativePtr == 0 || !isNativeLifecycleValid(nativeLifecycle) || mIsDestroyed.get()
+          || mHasDestroy || mDestroying) {
         nativeQueryNativeMemoryUsageAsync(0L, 0L, receiver);
         return;
       }
@@ -4261,8 +4356,8 @@ public class LynxTemplateRender
     }
 
     // need ensure destroy native on ui thread
-    UIThreadUtils.runOnUiThreadImmediately(
-        new DestroyTask(mNativePtr, mNativeLifecycle, this, mNativeFacade));
+    UIThreadUtils.runOnUiThreadImmediately(new DestroyTask(
+        mNativePtr, mNativeLifecycle, mEnableNativeLifecycleOptimization, this, mNativeFacade));
 
     if (shouldCacheLynxEngine) {
       LynxEngine lynxEngine = mLynxEngineRef;
@@ -4308,21 +4403,26 @@ public class LynxTemplateRender
   private static class DestroyTask implements Runnable {
     private long mNativePtr;
     private long mNativeLifecycle;
+    private final boolean mNativeLifecycleOptimizationEnabled;
     private volatile NativeFacade mNativeFacade;
     private LynxTemplateRender mRenderer;
 
-    public DestroyTask(long nativePtr, long nativeLifecycle, LynxTemplateRender renderer,
+    public DestroyTask(long nativePtr, long nativeLifecycle,
+        boolean nativeLifecycleOptimizationEnabled, LynxTemplateRender renderer,
         NativeFacade nativeFacade) {
       mNativePtr = nativePtr;
       mNativeLifecycle = nativeLifecycle;
-      mRenderer = ((nativeLifecycle != 0) && (nativePtr != 0)) ? renderer : null;
+      mNativeLifecycleOptimizationEnabled = nativeLifecycleOptimizationEnabled;
+      mRenderer = ((nativeLifecycleOptimizationEnabled || nativeLifecycle != 0) && nativePtr != 0)
+          ? renderer
+          : null;
       mNativeFacade = nativeFacade;
     }
 
     @Override
     public void run() {
-      if ((mNativeLifecycle != 0) && (mNativePtr != 0)) {
-        if (nativeLifecycleTryTerminate(mNativeLifecycle)) {
+      if (mNativePtr != 0) {
+        if (mNativeLifecycleOptimizationEnabled || nativeLifecycleTryTerminate(mNativeLifecycle)) {
           nativeDestroy(mNativePtr);
           mNativePtr = 0;
           mNativeLifecycle = 0;
