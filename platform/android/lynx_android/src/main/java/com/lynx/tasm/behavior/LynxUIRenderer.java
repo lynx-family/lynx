@@ -54,7 +54,6 @@ import com.lynx.tasm.behavior.ui.UIBody;
 import com.lynx.tasm.behavior.ui.UIBody.UIBodyView;
 import com.lynx.tasm.behavior.ui.UIGroup;
 import com.lynx.tasm.performance.longtasktiming.LynxLongTaskMonitor;
-import com.lynx.tasm.utils.DisplayMetricsHolder;
 import com.lynx.tasm.utils.UIThreadUtils;
 import com.lynx.tasm.utils.UnitUtils;
 import java.lang.ref.WeakReference;
@@ -622,36 +621,47 @@ public class LynxUIRenderer implements ILynxUIRenderer {
       // pixel copy for e2e and some special circumstances, switch off by default
       // Above Android 8.0, use PixelCopy
       if (LynxEnv.inst().isPixelCopyEnabled() && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        View rootView = view.getRootView();
+        Object viewRoot = rootView.getParent();
+        if (viewRoot == null) {
+          view.draw(canvas);
+          return;
+        }
+
         int[] location = new int[2];
+        int[] rootLocation = new int[2];
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
           view.getLocationInSurface(location);
+          rootView.getLocationInSurface(rootLocation);
         } else {
           view.getLocationInWindow(location);
+          rootView.getLocationInWindow(rootLocation);
         }
 
         Class<?> clazz = Class.forName("android.view.ViewRootImpl");
         Field field = clazz.getDeclaredField("mSurface");
-        if (view.getRootView().getParent() == null) {
-          view.draw(canvas);
-          return;
-        }
-        Surface surface = (Surface) field.get(view.getRootView().getParent());
+        field.setAccessible(true);
+        Surface surface = (Surface) field.get(viewRoot);
 
-        // Compute intersection with the screen to avoid out-of-bounds requests
-        DisplayMetrics dm = DisplayMetricsHolder.getRealScreenDisplayMetrics(view.getContext());
-        int surfaceWidth = dm.widthPixels;
-        int surfaceHeight = dm.heightPixels;
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+          // getLocationInSurface() is unavailable before Android Q. PixelCopy still expects
+          // surface coordinates, so account for the window's surface insets explicitly.
+          Rect surfaceInsets = getSurfaceInsets(clazz, viewRoot);
+          if (surfaceInsets != null) {
+            location[0] += surfaceInsets.left;
+            location[1] += surfaceInsets.top;
+            rootLocation[0] += surfaceInsets.left;
+            rootLocation[1] += surfaceInsets.top;
+          }
+        }
 
         // When LynxView size is unrestricted and the parent supports scrolling,
-        // scrolling upward can make its position relative to the screen negative.
-        // PixelCopy only copies pixels from the on-screen visible viewport, so we
-        // clamp the copy region to the screen bounds to avoid out-of-range and
-        // negative coordinates.
-        int left = Math.max(0, location[0]);
-        int top = Math.max(0, location[1]);
-        int right = Math.min(location[0] + view.getWidth(), surfaceWidth);
-        int bottom = Math.min(location[1] + view.getHeight(), surfaceHeight);
-        Rect srcRect = new Rect(left, top, right, bottom);
+        // scrolling can move it outside its window. Clamp the request to the root view's
+        // content bounds in the same surface coordinate space. A PopupWindow surface can be
+        // wider than the physical screen because of shadow insets, so screen bounds are not a
+        // valid substitute here.
+        Rect srcRect = calculatePixelCopyRect(location, view.getWidth(), view.getHeight(),
+            rootLocation, rootView.getWidth(), rootView.getHeight());
 
         int copyWidth = Math.max(0, srcRect.width());
         int copyHeight = Math.max(0, srcRect.height());
@@ -683,8 +693,8 @@ public class LynxUIRenderer implements ILynxUIRenderer {
           }
         }
         // Draw visible region onto the large bitmap at the correct offset; leave other areas blank
-        int drawX = left - location[0];
-        int drawY = top - location[1];
+        int drawX = srcRect.left - location[0];
+        int drawY = srcRect.top - location[1];
         canvas.drawBitmap(copyBitmap, drawX, drawY, null);
         copyBitmap.recycle();
       } else {
@@ -692,6 +702,30 @@ public class LynxUIRenderer implements ILynxUIRenderer {
       }
     } catch (Throwable e) {
       e.printStackTrace();
+    }
+  }
+
+  static Rect calculatePixelCopyRect(
+      int[] location, int width, int height, int[] rootLocation, int rootWidth, int rootHeight) {
+    Rect srcRect = new Rect(location[0], location[1], location[0] + width, location[1] + height);
+    Rect rootRect = new Rect(rootLocation[0], rootLocation[1], rootLocation[0] + rootWidth,
+        rootLocation[1] + rootHeight);
+    if (!srcRect.intersect(rootRect)) {
+      srcRect.setEmpty();
+    }
+    return srcRect;
+  }
+
+  private static Rect getSurfaceInsets(Class<?> viewRootClass, Object viewRoot) {
+    try {
+      Field windowAttributesField = viewRootClass.getDeclaredField("mWindowAttributes");
+      windowAttributesField.setAccessible(true);
+      Object windowAttributes = windowAttributesField.get(viewRoot);
+      Field surfaceInsetsField = windowAttributes.getClass().getDeclaredField("surfaceInsets");
+      surfaceInsetsField.setAccessible(true);
+      return (Rect) surfaceInsetsField.get(windowAttributes);
+    } catch (Throwable ignored) {
+      return null;
     }
   }
 
