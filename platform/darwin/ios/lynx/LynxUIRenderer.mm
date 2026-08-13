@@ -71,6 +71,15 @@ lynx::tasm::NativePaintingCtxPlatformDarwinRef *CastToNativePaintingCtxPlatformR
     (const std::shared_ptr<lynx::shell::LynxActor<lynx::shell::LynxEngine>> &)engineActor;
 @end
 
+@interface LynxEventHandler (LynxUIRendererKeyboardEventHandling)
+- (BOOL)canBecomeFirstResponderForKeyboardEvents;
+- (void)handlePressesBegan:(NSSet<UIPress *> *)presses withEvent:(nullable UIPressesEvent *)event;
+- (void)handlePressesChanged:(NSSet<UIPress *> *)presses withEvent:(nullable UIPressesEvent *)event;
+- (void)handlePressesEnded:(NSSet<UIPress *> *)presses withEvent:(nullable UIPressesEvent *)event;
+- (void)handlePressesCancelled:(NSSet<UIPress *> *)presses
+                     withEvent:(nullable UIPressesEvent *)event;
+@end
+
 static id<LynxServiceTextProtocol> getTextService() {
   static id<LynxServiceTextProtocol> sService = nil;
   static dispatch_once_t onceToken;
@@ -93,6 +102,8 @@ static id<LynxServiceTextProtocol> getTextService() {
   LynxEventEmitter *_eventEmitter;
   LynxKeyboardEventDispatcher *_keyboardEventDispatcher;
   LynxUIIntersectionObserverManager *_intersectionObserverManager;
+  NSMutableDictionary<NSNumber *, NSNumber *> *_legacyPrimaryPointerIDs;
+  NSMutableDictionary<NSNumber *, NSMutableSet<NSNumber *> *> *_legacyActivePointerIDs;
 
   BOOL _enableGenericResourceLoader;
   std::shared_ptr<lynx::tasm::PaintingCtxPlatformRef> _paintingCtxPlatformRef;
@@ -108,6 +119,8 @@ static id<LynxServiceTextProtocol> getTextService() {
     _containerView = containerView;
     _providerRegistry = providerRegistry;
     _textra = 0;
+    _legacyPrimaryPointerIDs = [NSMutableDictionary dictionary];
+    _legacyActivePointerIDs = [NSMutableDictionary dictionary];
     _enableGenericResourceLoader =
         [self checkEnableGenericResourceFetcher:builder.enableGenericResourceFetcher];
     [self setupUIOwnerWithBuilder:builder];
@@ -315,6 +328,28 @@ static id<LynxServiceTextProtocol> getTextService() {
                     andEvent:event];
 }
 
+- (BOOL)canBecomeFirstResponderForKeyboardEvents {
+  return [_eventHandler canBecomeFirstResponderForKeyboardEvents];
+}
+
+- (void)handlePressesBegan:(NSSet<UIPress *> *)presses withEvent:(nullable UIPressesEvent *)event {
+  [_eventHandler handlePressesBegan:presses withEvent:event];
+}
+
+- (void)handlePressesChanged:(NSSet<UIPress *> *)presses
+                   withEvent:(nullable UIPressesEvent *)event {
+  [_eventHandler handlePressesChanged:presses withEvent:event];
+}
+
+- (void)handlePressesEnded:(NSSet<UIPress *> *)presses withEvent:(nullable UIPressesEvent *)event {
+  [_eventHandler handlePressesEnded:presses withEvent:event];
+}
+
+- (void)handlePressesCancelled:(NSSet<UIPress *> *)presses
+                     withEvent:(nullable UIPressesEvent *)event {
+  [_eventHandler handlePressesCancelled:presses withEvent:event];
+}
+
 - (UIView *)eventHandlerRootView {
   return nil;
 }
@@ -355,6 +390,8 @@ static id<LynxServiceTextProtocol> getTextService() {
 
 - (void)reset {
   [_uiOwner reset];
+  [_legacyPrimaryPointerIDs removeAllObjects];
+  [_legacyActivePointerIDs removeAllObjects];
 
   _textra = 0;
   if (auto *platform_ref = CastToNativePaintingCtxPlatformRef(_paintingCtxPlatformRef)) {
@@ -383,9 +420,101 @@ static id<LynxServiceTextProtocol> getTextService() {
   }
 }
 
+- (NSArray *)expandLegacyPointerEventData:(NSArray *)eventData
+                                   action:(NSInteger)action
+                              pointerType:(NSInteger)pointerType
+                             pointerCount:(NSInteger)pointerCount {
+  if (_legacyPrimaryPointerIDs == nil) {
+    _legacyPrimaryPointerIDs = [NSMutableDictionary dictionary];
+    _legacyActivePointerIDs = [NSMutableDictionary dictionary];
+  }
+
+  NSNumber *pointerTypeKey = @(pointerType);
+  NSMutableSet<NSNumber *> *activePointerIDs = _legacyActivePointerIDs[pointerTypeKey];
+  if (activePointerIDs == nil) {
+    activePointerIDs = [NSMutableSet set];
+    _legacyActivePointerIDs[pointerTypeKey] = activePointerIDs;
+  }
+
+  NSMutableArray<NSNumber *> *pointerIDs = [NSMutableArray arrayWithCapacity:pointerCount];
+  for (NSInteger index = 0; index < pointerCount; ++index) {
+    NSNumber *pointerID = @([eventData[(NSUInteger)index * 3] integerValue]);
+    [pointerIDs addObject:pointerID];
+    [activePointerIDs addObject:pointerID];
+  }
+  NSNumber *primaryPointerID = _legacyPrimaryPointerIDs[pointerTypeKey];
+  if (primaryPointerID == nil && pointerIDs.count != 0) {
+    primaryPointerID = pointerIDs.firstObject;
+    _legacyPrimaryPointerIDs[pointerTypeKey] = primaryPointerID;
+  }
+
+  NSInteger button = action == 0 || action == 1 ? 0 : -1;
+  NSInteger buttons = action == 0 || action == 2 ? 1 : 0;
+  NSMutableArray *expandedEventData =
+      [NSMutableArray arrayWithCapacity:(NSUInteger)pointerCount * 7];
+  for (NSInteger index = 0; index < pointerCount; ++index) {
+    NSUInteger offset = (NSUInteger)index * 3;
+    NSNumber *pointerID = pointerIDs[index];
+    [expandedEventData addObject:pointerID];
+    [expandedEventData addObject:eventData[offset + 1]];
+    [expandedEventData addObject:eventData[offset + 2]];
+    [expandedEventData addObject:pointerTypeKey];
+    [expandedEventData addObject:@([pointerID isEqualToNumber:primaryPointerID])];
+    [expandedEventData addObject:@(button)];
+    [expandedEventData addObject:@(buttons)];
+  }
+
+  if (action == 1 || action == 3) {
+    [activePointerIDs minusSet:[NSSet setWithArray:pointerIDs]];
+    if (activePointerIDs.count == 0) {
+      [_legacyActivePointerIDs removeObjectForKey:pointerTypeKey];
+      [_legacyPrimaryPointerIDs removeObjectForKey:pointerTypeKey];
+    }
+  }
+  return expandedEventData;
+}
+
 - (BOOL)DispatchPlatformInputEvent:(NSArray *)iEventData withData:(NSArray *)fEventData {
   auto *platform_ref = CastToNativePaintingCtxPlatformRef(_paintingCtxPlatformRef);
   if (platform_ref == nullptr) {
+    return NO;
+  }
+
+  if (iEventData.count == 0) {
+    return NO;
+  }
+  NSArray *normalizedFloatEventData = fEventData;
+  NSInteger eventType = [iEventData[0] integerValue];
+  if (eventType == 0) {
+    if (iEventData.count < 4) {
+      return NO;
+    }
+    NSInteger pointerCount = [iEventData[3] integerValue];
+    if (pointerCount < 0) {
+      return NO;
+    }
+    NSUInteger legacyFloatCount = (NSUInteger)pointerCount * 3;
+    NSUInteger currentFloatCount = (NSUInteger)pointerCount * 7;
+    if (fEventData.count == legacyFloatCount) {
+      NSInteger action = [iEventData[1] integerValue];
+      NSInteger eventSource = [iEventData[2] integerValue];
+      NSInteger pointerType = eventSource == 2 ? 2 : (eventSource == 3 ? 1 : 0);
+      normalizedFloatEventData = [self expandLegacyPointerEventData:fEventData
+                                                             action:action
+                                                        pointerType:pointerType
+                                                       pointerCount:pointerCount];
+    } else if (fEventData.count != currentFloatCount) {
+      return NO;
+    }
+  } else if (eventType == 1) {
+    if (iEventData.count < 6 || fEventData.count < 4) {
+      return NO;
+    }
+    NSInteger keyLength = [iEventData[5] integerValue];
+    if (keyLength < 0 || iEventData.count != (NSUInteger)keyLength + 6) {
+      return NO;
+    }
+  } else if (eventType == 2 && (iEventData.count < 2 || fEventData.count < 4)) {
     return NO;
   }
 
@@ -398,15 +527,16 @@ static id<LynxServiceTextProtocol> getTextService() {
     int_event_data[idx] = [obj intValue];
   }];
 
-  NSUInteger float_event_data_count = fEventData.count;
+  NSUInteger float_event_data_count = normalizedFloatEventData.count;
   float *float_event_data = (float *)malloc(float_event_data_count * sizeof(float));
   if (float_event_data == NULL) {
     free(int_event_data);
     return NO;
   }
-  [fEventData enumerateObjectsUsingBlock:^(id _Nonnull obj, NSUInteger idx, BOOL *_Nonnull stop) {
-    float_event_data[idx] = [obj floatValue];
-  }];
+  [normalizedFloatEventData
+      enumerateObjectsUsingBlock:^(id _Nonnull obj, NSUInteger idx, BOOL *_Nonnull stop) {
+        float_event_data[idx] = [obj floatValue];
+      }];
 
   int32_t event_target_root_id = kRootId;
   if (int_event_data_count > 4) {

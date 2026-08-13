@@ -28,6 +28,47 @@
 #include <map>
 #include <set>
 
+typedef NS_ENUM(NSInteger, LynxPointerAction) {
+  LynxPointerActionDown = 0,
+  LynxPointerActionUp = 1,
+  LynxPointerActionMove = 2,
+  LynxPointerActionCancel = 3,
+};
+
+typedef NS_ENUM(NSInteger, LynxPointerType) {
+  LynxPointerTypeTouch = 0,
+  LynxPointerTypeMouse = 1,
+  LynxPointerTypePen = 2,
+};
+
+static NSString* const LynxEventPointerDown = @"pointerdown";
+static NSString* const LynxEventPointerMove = @"pointermove";
+static NSString* const LynxEventPointerUp = @"pointerup";
+static NSString* const LynxEventPointerCancel = @"pointercancel";
+
+static int64_t LynxCurrentTimestampMilliseconds(void) {
+  return (int64_t)([[NSDate date] timeIntervalSince1970] * 1000);
+}
+
+@interface LynxEventEmitter (LynxBubbleEvent)
+
+- (void)dispatchBubbleEvent:(NSString*)eventName
+                 targetSign:(NSInteger)targetSign
+                     params:(NSDictionary*)params;
+
+@end
+
+@interface LynxPointerState : NSObject
+
+@property(nonatomic) LynxPointerType pointerType;
+@property(nonatomic) BOOL primary;
+@property(nonatomic) NSInteger buttons;
+
+@end
+
+@implementation LynxPointerState
+@end
+
 @interface EventTargetDetail : NSObject
 
 @property(nonatomic) CGPoint downPoint;
@@ -91,6 +132,8 @@
   NSTimeInterval _timestamp;
   NSString* _preTargetInlineCSSText;
   NSMutableDictionary* _touchesIDMap;
+  NSMutableDictionary<NSString*, LynxPointerState*>* _pointerStates;
+  NSMutableDictionary<NSNumber*, NSNumber*>* _primaryPointerIDs;
 }
 
 - (instancetype)initWithEventHandler:(LynxEventHandler*)eventHandler {
@@ -125,6 +168,8 @@
     reuse_touches_id_ = std::set<uint32_t>();
     _outerGestures = [NSMutableDictionary dictionary];
     _touchesIDMap = [NSMutableDictionary dictionary];
+    _pointerStates = [NSMutableDictionary dictionary];
+    _primaryPointerIDs = [NSMutableDictionary dictionary];
   }
   return self;
 }
@@ -180,6 +225,8 @@
   reuse_id_pool_.clear();
   reuse_touches_id_.clear();
   [_touchesIDMap removeAllObjects];
+  [_pointerStates removeAllObjects];
+  [_primaryPointerIDs removeAllObjects];
 }
 
 - (void)initClickEnv {
@@ -242,6 +289,8 @@
   reuse_id_pool_.clear();
   reuse_touches_id_.clear();
   [_touchesIDMap removeAllObjects];
+  [_pointerStates removeAllObjects];
+  [_primaryPointerIDs removeAllObjects];
   [_outerGestures removeAllObjects];
 }
 
@@ -370,6 +419,194 @@
   return event;
 }
 
+- (NSArray<UITouch*>*)sortedTouches:(NSSet<UITouch*>*)touches {
+  return [[touches allObjects]
+      sortedArrayUsingComparator:^NSComparisonResult(UITouch* lhs, UITouch* rhs) {
+        if (lhs.timestamp < rhs.timestamp) {
+          return NSOrderedAscending;
+        }
+        if (lhs.timestamp > rhs.timestamp) {
+          return NSOrderedDescending;
+        }
+        if (lhs.hash < rhs.hash) {
+          return NSOrderedAscending;
+        }
+        if (lhs.hash > rhs.hash) {
+          return NSOrderedDescending;
+        }
+        return NSOrderedSame;
+      }];
+}
+
+- (LynxPointerType)pointerTypeForTouch:(UITouch*)touch {
+  if (touch.type == UITouchTypePencil) {
+    return LynxPointerTypePen;
+  }
+  if (@available(iOS 13.4, *)) {
+    if (touch.type == UITouchTypeIndirectPointer) {
+      return LynxPointerTypeMouse;
+    }
+  }
+  return LynxPointerTypeTouch;
+}
+
+- (NSString*)pointerTypeName:(LynxPointerType)pointerType {
+  switch (pointerType) {
+    case LynxPointerTypeMouse:
+      return @"mouse";
+    case LynxPointerTypePen:
+      return @"pen";
+    case LynxPointerTypeTouch:
+      return @"touch";
+  }
+  return @"touch";
+}
+
+- (NSString*)pointerEventNameForAction:(LynxPointerAction)action {
+  switch (action) {
+    case LynxPointerActionDown:
+      return LynxEventPointerDown;
+    case LynxPointerActionMove:
+      return LynxEventPointerMove;
+    case LynxPointerActionUp:
+      return LynxEventPointerUp;
+    case LynxPointerActionCancel:
+      return LynxEventPointerCancel;
+  }
+  return LynxEventPointerCancel;
+}
+
+- (NSInteger)changedButtonFromButtons:(NSInteger)previousButtons
+                            toButtons:(NSInteger)currentButtons
+                               action:(LynxPointerAction)action {
+  if (action == LynxPointerActionCancel) {
+    return -1;
+  }
+  NSInteger changedButtons = previousButtons ^ currentButtons;
+  if ((changedButtons & 1) != 0) {
+    return 0;
+  }
+  if ((changedButtons & 2) != 0) {
+    return 2;
+  }
+  if ((changedButtons & 4) != 0) {
+    return 1;
+  }
+  const NSInteger maximumButtonBit = (NSInteger)(sizeof(NSInteger) * 8 - 1);
+  for (NSInteger bit = 3; bit < maximumButtonBit; ++bit) {
+    if ((changedButtons & ((NSInteger)1 << bit)) != 0) {
+      return bit;
+    }
+  }
+  return -1;
+}
+
+- (LynxPointerState*)preparePointerStateForTouch:(UITouch*)touch
+                                       pointerID:(NSNumber*)pointerID
+                                          action:(LynxPointerAction)action
+                                           event:(UIEvent*)event
+                                          button:(NSInteger*)button
+                                         buttons:(NSInteger*)buttons {
+  NSString* touchKey = [NSString stringWithFormat:@"%ld", touch.hash];
+  LynxPointerState* state = _pointerStates[touchKey];
+  if (state == nil) {
+    state = [LynxPointerState new];
+    state.pointerType = [self pointerTypeForTouch:touch];
+    NSNumber* primaryPointerID = _primaryPointerIDs[@(state.pointerType)];
+    state.primary = primaryPointerID == nil;
+    if (state.primary) {
+      _primaryPointerIDs[@(state.pointerType)] = pointerID;
+    }
+    _pointerStates[touchKey] = state;
+  }
+
+  NSInteger currentButtons = 0;
+  if (state.pointerType == LynxPointerTypeMouse) {
+    if (@available(iOS 13.4, *)) {
+      currentButtons = event == nil ? state.buttons : event.buttonMask;
+    }
+    if (action == LynxPointerActionDown && currentButtons == 0) {
+      currentButtons = 1;
+    }
+  } else if (action == LynxPointerActionDown || action == LynxPointerActionMove) {
+    currentButtons = 1;
+  }
+  if (action == LynxPointerActionUp || action == LynxPointerActionCancel) {
+    currentButtons = 0;
+  }
+
+  *button = [self changedButtonFromButtons:state.buttons toButtons:currentButtons action:action];
+  *buttons = currentButtons;
+  state.buttons = currentButtons;
+  return state;
+}
+
+- (void)finishPointerStateForTouch:(UITouch*)touch action:(LynxPointerAction)action {
+  if (action != LynxPointerActionUp && action != LynxPointerActionCancel) {
+    return;
+  }
+  NSString* touchKey = [NSString stringWithFormat:@"%ld", touch.hash];
+  LynxPointerState* state = _pointerStates[touchKey];
+  LynxPointerType pointerType = state.pointerType;
+  [_pointerStates removeObjectForKey:touchKey];
+  for (LynxPointerState* activeState in _pointerStates.allValues) {
+    if (activeState.pointerType == pointerType) {
+      return;
+    }
+  }
+  [_primaryPointerIDs removeObjectForKey:@(pointerType)];
+}
+
+- (void)dispatchPointerEvents:(NSSet<UITouch*>*)touches
+                       action:(LynxPointerAction)action
+                        event:(UIEvent*)event {
+  NSString* eventName = [self pointerEventNameForAction:action];
+  for (UITouch* touch in [self sortedTouches:touches]) {
+    auto detailIterator = touches_map_.find(touch);
+    if (detailIterator == touches_map_.end()) {
+      continue;
+    }
+    EventTargetDetail* detail = detailIterator->second;
+    id<LynxEventTarget> target = detail.ui;
+    if (target == nil) {
+      continue;
+    }
+
+    NSInteger button = -1;
+    NSInteger buttons = 0;
+    LynxPointerState* state = [self preparePointerStateForTouch:touch
+                                                      pointerID:detail.identifier
+                                                         action:action
+                                                          event:event
+                                                         button:&button
+                                                        buttons:&buttons];
+    CGPoint clientPoint = [touch locationInView:nil];
+    CGPoint pagePoint = [touch locationInView:_eventHandler.rootView];
+    CGPoint targetPoint = pagePoint;
+    if ([target isKindOfClass:[LynxUI class]]) {
+      targetPoint = [touch locationInView:((LynxUI*)target).view];
+    }
+    NSDictionary* params = @{
+      @"pointerId" : detail.identifier,
+      @"pointerType" : [self pointerTypeName:state.pointerType],
+      @"isPrimary" : @(state.primary),
+      @"button" : @(button),
+      @"buttons" : @(buttons),
+      @"x" : @(targetPoint.x),
+      @"y" : @(targetPoint.y),
+      @"pageX" : @(pagePoint.x),
+      @"pageY" : @(pagePoint.y),
+      @"clientX" : @(clientPoint.x),
+      @"clientY" : @(clientPoint.y),
+      @"timestamp" : @(LynxCurrentTimestampMilliseconds()),
+    };
+    [_eventHandler.eventEmitter dispatchBubbleEvent:eventName
+                                         targetSign:target.signature
+                                             params:params];
+    [self finishPointerStateForTouch:touch action:action];
+  }
+}
+
 - (BOOL)dispatchPlatformUIEvent:(NSSet<UITouch*>*)touches
                       withEvent:(UIEvent*)event
                         forType:(NSInteger)actionType {
@@ -417,21 +654,36 @@
   LynxTemplateRender* templateRender =
       ((LynxView*)_eventHandler.uiOwner.uiContext.rootView).templateRender;
   if (templateRender && touches && event) {
-    NSArray* touchArray = [touches allObjects];
-    NSInteger eventSource = ((UITouch*)touchArray.firstObject).type;
+    NSArray<UITouch*>* touchArray = [self sortedTouches:touches];
+    NSInteger eventSource = [self pointerTypeForTouch:touchArray.firstObject];
     NSUInteger pointerCount = touches.count;
     NSInteger eventRootSign = [_eventHandler eventRootSign];
     // iEventData: [event_type, action_type, event_source, pointer_count, event_root_sign, ...]
     NSArray* iEventData = @[ @0, @(actionType), @(eventSource), @(pointerCount), @(eventRootSign) ];
-    // fEventData: [pointer_id, pointer_x, pointer_y, ...]
-    NSMutableArray* fEventData = [NSMutableArray arrayWithCapacity:pointerCount * 3];
+    // fEventData: [pointer_id, pointer_x, pointer_y, pointer_type, is_primary, button, buttons,
+    // ...]
+    NSMutableArray* fEventData = [NSMutableArray arrayWithCapacity:pointerCount * 7];
     for (NSUInteger i = 0; i < pointerCount; i++) {
       UITouch* touch = touchArray[i];
       NSString* key = [NSString stringWithFormat:@"%ld", touch.hash];
+      NSNumber* pointerID = [_touchesIDMap valueForKey:key] ?: @0;
+      NSInteger button = -1;
+      NSInteger buttons = 0;
+      LynxPointerState* state = [self preparePointerStateForTouch:touch
+                                                        pointerID:pointerID
+                                                           action:(LynxPointerAction)actionType
+                                                            event:event
+                                                           button:&button
+                                                          buttons:&buttons];
       CGPoint point = [touch locationInView:_eventHandler.rootView];
-      [fEventData addObject:[_touchesIDMap valueForKey:key]];
+      [fEventData addObject:pointerID];
       [fEventData addObject:@(point.x)];
       [fEventData addObject:@(point.y)];
+      [fEventData addObject:@(state.pointerType)];
+      [fEventData addObject:@(state.primary)];
+      [fEventData addObject:@(button)];
+      [fEventData addObject:@(buttons)];
+      [self finishPointerStateForTouch:touch action:(LynxPointerAction)actionType];
     }
     [templateRender DispatchPlatformInputEvent:iEventData withData:fEventData];
   }
@@ -766,6 +1018,7 @@
     }
   }
   [_target dispatchTouch:LynxEventTouchStart touches:touches withEvent:event];
+  [self dispatchPointerEvents:touches action:LynxPointerActionDown event:event];
 
   LynxRootUI* childLynxPage =
       _eventHandler.touchTarget
@@ -828,6 +1081,7 @@
       [self dispatchEvent:LynxEventTouchCancel
                  toTarget:_target
                     touch:[self findFirstValidTouch:touches]];
+      [self dispatchPointerEvents:_touches action:LynxPointerActionCancel event:_event];
       return YES;
     }
   }
@@ -857,6 +1111,7 @@
 
   NSMutableDictionary<NSString*, NSMutableArray<NSMutableArray*>*>* dict =
       [NSMutableDictionary new];
+  NSMutableSet<UITouch*>* changedTouches = [NSMutableSet set];
 
   UITouch* firstTouch = [self findFirstValidTouch:touches];
 
@@ -874,6 +1129,7 @@
     BOOL pointChanged = point.x != detail.preTouchPoint.x || point.y != detail.preTouchPoint.y;
     if (pointChanged) {
       [self addMap:dict touch:touch];
+      [changedTouches addObject:touch];
     }
     detail.preTouchPoint = point;
 
@@ -948,6 +1204,7 @@
     [self dispatchTouchAndEvent:LynxEventTouchMove params:dict];
   }
   [_target dispatchTouch:LynxEventTouchMove touches:touches withEvent:event];
+  [self dispatchPointerEvents:changedTouches action:LynxPointerActionMove event:event];
 
   LynxRootUI* childLynxPage =
       _eventHandler.touchTarget
@@ -1030,6 +1287,9 @@
     LynxTouchEvent* touchEvent = nil;
     if (!_enableMultiTouch && _target) {
       touchEvent = [self dispatchEvent:LynxEventTouchEnd toTarget:_target touch:touch];
+      [self dispatchPointerEvents:[NSSet setWithObject:touch]
+                           action:LynxPointerActionUp
+                            event:event];
       // TODO(hexionghui): Fix the problem: Multiple click events are triggered when
       // multiple fingers touch at the same time.
       // For the click event, it only support single finger.
@@ -1061,6 +1321,7 @@
 
   if (_enableMultiTouch) {
     [self dispatchTouchAndEvent:LynxEventTouchEnd params:dict];
+    [self dispatchPointerEvents:touches action:LynxPointerActionUp event:event];
     for (UITouch* touch in touches) {
       reuse_id_pool_.insert([touches_map_[touch].identifier intValue]);
       touches_map_.erase(touch);
@@ -1147,6 +1408,9 @@
 
     if (!_enableMultiTouch && _target) {
       touchEvent = [self dispatchEvent:LynxEventTouchCancel toTarget:_target touch:touch];
+      [self dispatchPointerEvents:[NSSet setWithObject:touch]
+                           action:LynxPointerActionCancel
+                            event:event];
     }
 
     BOOL shouldDispatchGesture = [self shouldDispatchGestureForTouch:touch firstTouch:firstTouch];
@@ -1174,6 +1438,7 @@
 
   if (_enableMultiTouch) {
     [self dispatchTouchAndEvent:LynxEventTouchCancel params:dict];
+    [self dispatchPointerEvents:touches action:LynxPointerActionCancel event:event];
     for (UITouch* touch in touches) {
       reuse_id_pool_.insert([touches_map_[touch].identifier intValue]);
       touches_map_.erase(touch);
@@ -1376,7 +1641,8 @@
 
   auto res = ![self isDescendantOfLynxView:otherGestureRecognizer];
   if (res == YES && _touchBegin == YES && _touchEndOrCancel == NO) {
-    if (![self dispatchPlatformUIEvent:_touches withEvent:_event forType:3]) {
+    NSSet<UITouch*>* platformUITouches = [_platformUITouches copy];
+    if (![self dispatchPlatformUIEvent:platformUITouches withEvent:_event forType:3]) {
       _timestamp = [[NSDate date] timeIntervalSince1970];
       if ([LynxEnv.sharedInstance highlightTouchEnabled]) {
         [self showMessageOnConsole:
@@ -1409,6 +1675,7 @@
         }
         [self dispatchTouchAndEvent:LynxEventTouchCancel params:dict];
       }
+      [self dispatchPointerEvents:_touches action:LynxPointerActionCancel event:_event];
       [_target dispatchTouch:LynxEventTouchCancel touches:_touches withEvent:_event];
 
       LynxRootUI* childLynxPage =

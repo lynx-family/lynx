@@ -26,6 +26,18 @@
 
 static const int64_t kCurrentLynxPageOnlyEventID = INT64_MIN;
 
+static int64_t LynxCurrentTimestampMilliseconds(void) {
+  return (int64_t)([[NSDate date] timeIntervalSince1970] * 1000);
+}
+
+@interface LynxEventEmitter (LynxBubbleEvent)
+
+- (void)dispatchBubbleEvent:(NSString*)eventName
+                 targetSign:(NSInteger)targetSign
+                     params:(NSDictionary*)params;
+
+@end
+
 static BOOL ShouldDispatchTouchEventInCurrentLynxPageOnly(LynxUI* rootUI) {
   id pageRootUI = rootUI.context.rootUI;
   return rootUI != nil && pageRootUI != nil && rootUI != pageRootUI;
@@ -51,7 +63,7 @@ static BOOL LynxGestureMatchesPanInterceptClasses(UIGestureRecognizer* gesture, 
 @end
 
 #pragma mark - LynxEventHandler
-@interface LynxEventHandler ()
+@interface LynxEventHandler () <UIGestureRecognizerDelegate>
 
 @property(nonatomic, readwrite) BOOL gestureRecognized;
 @property(nonatomic, assign) BOOL dispatchTouchEventInCurrentLynxPageOnly;
@@ -364,6 +376,12 @@ static const NSInteger kLynxFragmentLayerDefaultRootSign = 10;
   LynxCustomGestureRecognizer* _customPlatformGesture;
   UIPanGestureRecognizer* _panGestureRecognizer;
   PanGestureRecognizerDelegate* _panGestureDelegate;
+  UIPanGestureRecognizer* _wheelGestureRecognizer;
+  UIGestureRecognizer* _hoverGestureRecognizer;
+  __weak id<LynxEventTarget> _wheelTarget;
+  __weak LynxEventHandler* _wheelChildEventHandler;
+  __weak id<LynxEventTarget> _focusedEventTarget;
+  NSMutableDictionary<NSNumber*, id<LynxEventTarget>>* _pressedKeyTargets;
   float range_;
   NSMutableSet* _set;
   NSMutableSet* _setOfPropsChanged;
@@ -375,6 +393,7 @@ static const NSInteger kLynxFragmentLayerDefaultRootSign = 10;
   _touchRecognizer.target = nil;
   _touchRecognizer.preTarget = nil;
   _touchRecognizer.gestureArenaManager = nil;
+  _wheelGestureRecognizer.delegate = nil;
   if ([NSThread isMainThread] && _customPlatformGesture && _rootView) {
     _customPlatformGesture.delegate = nil;
     [_rootView removeGestureRecognizer:_customPlatformGesture];
@@ -423,6 +442,23 @@ static const NSInteger kLynxFragmentLayerDefaultRootSign = 10;
     _tapRecognizer.cancelsTouchesInView = YES;
     [_rootView addGestureRecognizer:_tapRecognizer];
 
+    if (@available(iOS 13.4, *)) {
+      _wheelGestureRecognizer =
+          [[UIPanGestureRecognizer alloc] initWithTarget:self
+                                                  action:@selector(dispatchWheelEvent:)];
+      _wheelGestureRecognizer.delegate = self;
+      _wheelGestureRecognizer.allowedScrollTypesMask = UIScrollTypeMaskAll;
+      _wheelGestureRecognizer.allowedTouchTypes = @[];
+      _wheelGestureRecognizer.cancelsTouchesInView = NO;
+      [_rootView addGestureRecognizer:_wheelGestureRecognizer];
+
+      _hoverGestureRecognizer =
+          [[UIHoverGestureRecognizer alloc] initWithTarget:self
+                                                    action:@selector(dispatchHoverEvent:)];
+      _hoverGestureRecognizer.cancelsTouchesInView = NO;
+      [_rootView addGestureRecognizer:_hoverGestureRecognizer];
+    }
+
     if (!_isFragmentLayerRendererOn) {
       [_touchRecognizer setupVelocityTracker:_rootView];
     }
@@ -442,6 +478,7 @@ static const NSInteger kLynxFragmentLayerDefaultRootSign = 10;
     self.gestureRecognized = NO;
     _set = [NSMutableSet set];
     _setOfPropsChanged = [NSMutableSet set];
+    _pressedKeyTargets = [NSMutableDictionary dictionary];
   }
   return self;
 }
@@ -451,6 +488,12 @@ static const NSInteger kLynxFragmentLayerDefaultRootSign = 10;
   [_rootView addGestureRecognizer:_touchRecognizer];
   [_rootView addGestureRecognizer:_longPressRecognizer];
   [_rootView addGestureRecognizer:_tapRecognizer];
+  if (_wheelGestureRecognizer != nil) {
+    [_rootView addGestureRecognizer:_wheelGestureRecognizer];
+  }
+  if (_hoverGestureRecognizer != nil) {
+    [_rootView addGestureRecognizer:_hoverGestureRecognizer];
+  }
   if (!_isFragmentLayerRendererOn) {
     if (_customPlatformGesture != nil) {
       [_rootView addGestureRecognizer:_customPlatformGesture];
@@ -465,6 +508,12 @@ static const NSInteger kLynxFragmentLayerDefaultRootSign = 10;
   [_rootView removeGestureRecognizer:_touchRecognizer];
   [_rootView removeGestureRecognizer:_longPressRecognizer];
   [_rootView removeGestureRecognizer:_tapRecognizer];
+  if (_wheelGestureRecognizer != nil) {
+    [_rootView removeGestureRecognizer:_wheelGestureRecognizer];
+  }
+  if (_hoverGestureRecognizer != nil) {
+    [_rootView removeGestureRecognizer:_hoverGestureRecognizer];
+  }
   if (!_isFragmentLayerRendererOn) {
     if (_customPlatformGesture != nil) {
       [_rootView removeGestureRecognizer:_customPlatformGesture];
@@ -487,6 +536,153 @@ static const NSInteger kLynxFragmentLayerDefaultRootSign = 10;
                                                                  targetSign:ui.signature
                                                                      detail:detail];
   return gestureEventInfo;
+}
+
+- (LynxEventHandler*)childEventHandlerForTarget:(id<LynxEventTarget>)target {
+  LynxRootUI* childLynxPage = target.childrenLynxPageUI[[NSString stringWithFormat:@"%p", target]];
+  if ([childLynxPage.view respondsToSelector:@selector(isChildLynxPage)] &&
+      childLynxPage.view.isChildLynxPage) {
+    return childLynxPage.context.eventHandler;
+  }
+  return nil;
+}
+
+- (BOOL)gestureRecognizer:(UIGestureRecognizer*)gestureRecognizer
+    shouldRecognizeSimultaneouslyWithGestureRecognizer:
+        (UIGestureRecognizer*)otherGestureRecognizer {
+  return gestureRecognizer == _wheelGestureRecognizer;
+}
+
+- (void)dispatchWheelEvent:(UIPanGestureRecognizer*)sender {
+  NSInteger action = -1;
+  switch (sender.state) {
+    case UIGestureRecognizerStateBegan:
+      action = 0;
+      break;
+    case UIGestureRecognizerStateChanged:
+      action = 1;
+      break;
+    case UIGestureRecognizerStateEnded:
+      action = 2;
+      break;
+    case UIGestureRecognizerStateCancelled:
+      action = 3;
+      break;
+    default:
+      return;
+  }
+
+  CGPoint pagePoint = [sender locationInView:_rootView];
+  if (sender.state == UIGestureRecognizerStateBegan) {
+    id<LynxEventTarget> target = [self hitTestInner:pagePoint withEvent:nil];
+    _wheelChildEventHandler = [self childEventHandlerForTarget:target];
+    if (_wheelChildEventHandler == nil && !_isFragmentLayerRendererOn) {
+      _wheelTarget = target;
+    }
+  }
+  if (_wheelChildEventHandler != nil) {
+    [_wheelChildEventHandler dispatchWheelEvent:sender];
+    if (sender.state == UIGestureRecognizerStateEnded ||
+        sender.state == UIGestureRecognizerStateCancelled) {
+      _wheelChildEventHandler = nil;
+    }
+    return;
+  }
+
+  CGPoint delta = [sender translationInView:_rootView];
+  [sender setTranslation:CGPointZero inView:_rootView];
+
+  if (_isFragmentLayerRendererOn) {
+    LynxTemplateRender* templateRender = ((LynxView*)_uiOwner.uiContext.rootView).templateRender;
+    void (^dispatchWheelAction)(NSInteger, CGPoint) = ^(NSInteger wheelAction, CGPoint wheelDelta) {
+      NSArray* iEventData = @[ @2, @(wheelAction), @0, @1, @([self eventRootSign]) ];
+      NSArray* fEventData = @[ @(pagePoint.x), @(pagePoint.y), @(wheelDelta.x), @(wheelDelta.y) ];
+      [templateRender DispatchPlatformInputEvent:iEventData withData:fEventData];
+    };
+    BOOL hasDelta = delta.x != 0 || delta.y != 0;
+    if (action == 0) {
+      dispatchWheelAction(action, CGPointZero);
+      if (hasDelta) {
+        dispatchWheelAction(1, delta);
+      }
+    } else if (action == 1) {
+      dispatchWheelAction(action, delta);
+    } else {
+      if (hasDelta) {
+        dispatchWheelAction(1, delta);
+      }
+      dispatchWheelAction(action, CGPointZero);
+    }
+  } else if (_wheelTarget != nil && (delta.x != 0 || delta.y != 0)) {
+    CGPoint clientPoint = [sender locationInView:nil];
+    CGPoint targetPoint = pagePoint;
+    if ([_wheelTarget isKindOfClass:[LynxUI class]]) {
+      targetPoint = [sender locationInView:((LynxUI*)_wheelTarget).view];
+    }
+    NSDictionary* params = @{
+      @"x" : @(targetPoint.x),
+      @"y" : @(targetPoint.y),
+      @"pageX" : @(pagePoint.x),
+      @"pageY" : @(pagePoint.y),
+      @"clientX" : @(clientPoint.x),
+      @"clientY" : @(clientPoint.y),
+      @"deltaX" : @(delta.x),
+      @"deltaY" : @(delta.y),
+      @"timestamp" : @(LynxCurrentTimestampMilliseconds()),
+    };
+    [_eventEmitter dispatchBubbleEvent:@"wheel" targetSign:_wheelTarget.signature params:params];
+  }
+
+  if (sender.state == UIGestureRecognizerStateEnded ||
+      sender.state == UIGestureRecognizerStateCancelled) {
+    _wheelTarget = nil;
+  }
+}
+
+- (void)dispatchHoverEvent:(UIHoverGestureRecognizer*)sender API_AVAILABLE(ios(13.4)) {
+  if (sender.state != UIGestureRecognizerStateBegan &&
+      sender.state != UIGestureRecognizerStateChanged) {
+    return;
+  }
+
+  CGPoint pagePoint = [sender locationInView:_rootView];
+  id<LynxEventTarget> target = [self hitTestInner:pagePoint withEvent:nil];
+  LynxEventHandler* childEventHandler = [self childEventHandlerForTarget:target];
+  if (childEventHandler != nil) {
+    [childEventHandler dispatchHoverEvent:sender];
+    return;
+  }
+  if (_isFragmentLayerRendererOn) {
+    LynxTemplateRender* templateRender = ((LynxView*)_uiOwner.uiContext.rootView).templateRender;
+    NSArray* iEventData = @[ @0, @2, @1, @1, @([self eventRootSign]) ];
+    NSArray* fEventData = @[ @0, @(pagePoint.x), @(pagePoint.y), @1, @1, @(-1), @0 ];
+    [templateRender DispatchPlatformInputEvent:iEventData withData:fEventData];
+    return;
+  }
+
+  if (target == nil) {
+    return;
+  }
+  CGPoint clientPoint = [sender locationInView:nil];
+  CGPoint targetPoint = pagePoint;
+  if ([target isKindOfClass:[LynxUI class]]) {
+    targetPoint = [sender locationInView:((LynxUI*)target).view];
+  }
+  NSDictionary* params = @{
+    @"pointerId" : @0,
+    @"pointerType" : @"mouse",
+    @"isPrimary" : @YES,
+    @"button" : @(-1),
+    @"buttons" : @0,
+    @"x" : @(targetPoint.x),
+    @"y" : @(targetPoint.y),
+    @"pageX" : @(pagePoint.x),
+    @"pageY" : @(pagePoint.y),
+    @"clientX" : @(clientPoint.x),
+    @"clientY" : @(clientPoint.y),
+    @"timestamp" : @(LynxCurrentTimestampMilliseconds()),
+  };
+  [_eventEmitter dispatchBubbleEvent:@"pointermove" targetSign:target.signature params:params];
 }
 
 - (BOOL)touchUI:(id<LynxEventTarget>)ui isDescendantOfUI:(id<LynxEventTarget>)pre {
@@ -1211,6 +1407,215 @@ static const NSInteger kLynxFragmentLayerDefaultRootSign = 10;
   return _rootUI != nil ? _rootUI.sign : kLynxFragmentLayerDefaultRootSign;
 }
 
+- (NSString*)webKeyForPress:(UIPress*)press {
+  if (@available(iOS 13.4, *)) {
+    UIKey* key = press.key;
+    if (key == nil) {
+      return nil;
+    }
+    switch (key.keyCode) {
+      case UIKeyboardHIDUsageKeyboardReturnOrEnter:
+      case UIKeyboardHIDUsageKeypadEnter:
+        return @"Enter";
+      case UIKeyboardHIDUsageKeyboardEscape:
+        return @"Escape";
+      case UIKeyboardHIDUsageKeyboardDeleteOrBackspace:
+        return @"Backspace";
+      case UIKeyboardHIDUsageKeyboardTab:
+        return @"Tab";
+      case UIKeyboardHIDUsageKeyboardSpacebar:
+        return @" ";
+      case UIKeyboardHIDUsageKeyboardHome:
+        return @"Home";
+      case UIKeyboardHIDUsageKeyboardPageUp:
+        return @"PageUp";
+      case UIKeyboardHIDUsageKeyboardDeleteForward:
+        return @"Delete";
+      case UIKeyboardHIDUsageKeyboardEnd:
+        return @"End";
+      case UIKeyboardHIDUsageKeyboardPageDown:
+        return @"PageDown";
+      case UIKeyboardHIDUsageKeyboardRightArrow:
+        return @"ArrowRight";
+      case UIKeyboardHIDUsageKeyboardLeftArrow:
+        return @"ArrowLeft";
+      case UIKeyboardHIDUsageKeyboardDownArrow:
+        return @"ArrowDown";
+      case UIKeyboardHIDUsageKeyboardUpArrow:
+        return @"ArrowUp";
+      case UIKeyboardHIDUsageKeyboardCapsLock:
+        return @"CapsLock";
+      case UIKeyboardHIDUsageKeyboardLeftControl:
+      case UIKeyboardHIDUsageKeyboardRightControl:
+        return @"Control";
+      case UIKeyboardHIDUsageKeyboardLeftShift:
+      case UIKeyboardHIDUsageKeyboardRightShift:
+        return @"Shift";
+      case UIKeyboardHIDUsageKeyboardLeftAlt:
+      case UIKeyboardHIDUsageKeyboardRightAlt:
+        return @"Alt";
+      case UIKeyboardHIDUsageKeyboardLeftGUI:
+      case UIKeyboardHIDUsageKeyboardRightGUI:
+        return @"Meta";
+      default:
+        break;
+    }
+    if (key.keyCode >= UIKeyboardHIDUsageKeyboardF1 &&
+        key.keyCode <= UIKeyboardHIDUsageKeyboardF12) {
+      return [NSString stringWithFormat:@"F%ld", key.keyCode - UIKeyboardHIDUsageKeyboardF1 + 1];
+    }
+    return key.characters.length == 0 ? nil : key.characters;
+  }
+  return nil;
+}
+
+- (void)dispatchKeyEvent:(NSString*)eventName
+                  action:(NSInteger)action
+                   press:(UIPress*)press
+                  repeat:(BOOL)repeat
+                  target:(id<LynxEventTarget>)target {
+  if (target == nil) {
+    return;
+  }
+  if (@available(iOS 13.4, *)) {
+    NSString* keyName = [self webKeyForPress:press];
+    if (keyName == nil) {
+      return;
+    }
+    UIKeyModifierFlags modifiers = press.key.modifierFlags;
+    if (_isFragmentLayerRendererOn) {
+      NSInteger keyValue = press.key.keyCode;
+      if (press.key.keyCode == UIKeyboardHIDUsageKeyboardReturnOrEnter ||
+          press.key.keyCode == UIKeyboardHIDUsageKeypadEnter) {
+        keyValue = 13;
+      } else if (press.key.keyCode == UIKeyboardHIDUsageKeyboardSpacebar) {
+        keyValue = 32;
+      } else if (press.key.characters.length == 1) {
+        keyValue = [press.key.characters characterAtIndex:0];
+      }
+      LynxTemplateRender* templateRender = ((LynxView*)_uiOwner.uiContext.rootView).templateRender;
+      NSMutableArray* iEventData =
+          [NSMutableArray arrayWithObjects:@1, @(action), @(keyValue), @(repeat),
+                                           @([self eventRootSign]), @(keyName.length), nil];
+      for (NSUInteger index = 0; index < keyName.length; ++index) {
+        [iEventData addObject:@([keyName characterAtIndex:index])];
+      }
+      NSArray* fEventData = @[
+        @((modifiers & UIKeyModifierAlternate) != 0), @((modifiers & UIKeyModifierControl) != 0),
+        @((modifiers & UIKeyModifierShift) != 0), @((modifiers & UIKeyModifierCommand) != 0)
+      ];
+      [templateRender DispatchPlatformInputEvent:iEventData withData:fEventData];
+      return;
+    }
+    NSDictionary* params = @{
+      @"key" : keyName,
+      @"repeat" : @(repeat),
+      @"altKey" : @((modifiers & UIKeyModifierAlternate) != 0),
+      @"ctrlKey" : @((modifiers & UIKeyModifierControl) != 0),
+      @"shiftKey" : @((modifiers & UIKeyModifierShift) != 0),
+      @"metaKey" : @((modifiers & UIKeyModifierCommand) != 0),
+      @"timestamp" : @(LynxCurrentTimestampMilliseconds()),
+    };
+    [_eventEmitter dispatchBubbleEvent:eventName targetSign:target.signature params:params];
+  }
+}
+
+- (void)dispatchKeyboardClickToTarget:(id<LynxEventTarget>)target {
+  if (target == nil) {
+    return;
+  }
+  LynxTouchEvent* event = [[LynxTouchEvent alloc] initWithName:LynxEventClick
+                                                     targetTag:target.signature
+                                                   clientPoint:CGPointZero
+                                                     pagePoint:CGPointZero
+                                                     viewPoint:CGPointZero];
+  event.eventTarget = target;
+  event.timestamp = [[NSDate date] timeIntervalSince1970];
+  [self markDispatchInCurrentLynxPageOnlyIfNeeded:event];
+  [_eventEmitter dispatchTouchEvent:event];
+}
+
+- (BOOL)isActivationPress:(UIPress*)press {
+  if (@available(iOS 13.4, *)) {
+    UIKeyboardHIDUsage keyCode = press.key.keyCode;
+    return keyCode == UIKeyboardHIDUsageKeyboardReturnOrEnter ||
+           keyCode == UIKeyboardHIDUsageKeypadEnter ||
+           keyCode == UIKeyboardHIDUsageKeyboardSpacebar;
+  }
+  return NO;
+}
+
+- (BOOL)canBecomeFirstResponderForKeyboardEvents {
+  return _focusedEventTarget != nil;
+}
+
+- (void)handlePressesBegan:(NSSet<UIPress*>*)presses withEvent:(nullable UIPressesEvent*)event {
+  if (@available(iOS 13.4, *)) {
+    for (UIPress* press in presses) {
+      if (press.key == nil) {
+        continue;
+      }
+      NSNumber* keyCode = @(press.key.keyCode);
+      id<LynxEventTarget> target = _pressedKeyTargets[keyCode];
+      BOOL repeat = target != nil;
+      if (target == nil) {
+        target = _focusedEventTarget;
+        if (target != nil) {
+          _pressedKeyTargets[keyCode] = target;
+        }
+      }
+      [self dispatchKeyEvent:@"keydown" action:0 press:press repeat:repeat target:target];
+    }
+  }
+}
+
+- (void)handlePressesChanged:(NSSet<UIPress*>*)presses withEvent:(nullable UIPressesEvent*)event {
+  if (@available(iOS 13.4, *)) {
+    for (UIPress* press in presses) {
+      if (press.key == nil) {
+        continue;
+      }
+      NSNumber* keyCode = @(press.key.keyCode);
+      id<LynxEventTarget> target = _pressedKeyTargets[keyCode] ?: _focusedEventTarget;
+      if (target != nil) {
+        _pressedKeyTargets[keyCode] = target;
+      }
+      [self dispatchKeyEvent:@"keydown" action:0 press:press repeat:YES target:target];
+    }
+  }
+}
+
+- (void)handlePressesEnded:(NSSet<UIPress*>*)presses withEvent:(nullable UIPressesEvent*)event {
+  if (@available(iOS 13.4, *)) {
+    for (UIPress* press in presses) {
+      if (press.key == nil) {
+        continue;
+      }
+      NSNumber* keyCode = @(press.key.keyCode);
+      id<LynxEventTarget> target = _pressedKeyTargets[keyCode];
+      [self dispatchKeyEvent:@"keyup" action:1 press:press repeat:NO target:target];
+      if (!_isFragmentLayerRendererOn && target != nil && [self isActivationPress:press]) {
+        [self dispatchKeyboardClickToTarget:target];
+      }
+      [_pressedKeyTargets removeObjectForKey:keyCode];
+    }
+  }
+}
+
+- (void)handlePressesCancelled:(NSSet<UIPress*>*)presses withEvent:(nullable UIPressesEvent*)event {
+  if (@available(iOS 13.4, *)) {
+    for (UIPress* press in presses) {
+      if (press.key == nil) {
+        continue;
+      }
+      NSNumber* keyCode = @(press.key.keyCode);
+      id<LynxEventTarget> target = _pressedKeyTargets[keyCode];
+      [self dispatchKeyEvent:@"keyup" action:2 press:press repeat:NO target:target];
+      [_pressedKeyTargets removeObjectForKey:keyCode];
+    }
+  }
+}
+
 // TODO(songshourui.null): opt me
 // In TCProject's UITextView case, when user chose "SelectAll" or "Select", the keyboard
 // will be dismissed. Since in some cases, UITextEffectsWindow hitest function is not
@@ -1299,15 +1704,45 @@ static const NSInteger kLynxFragmentLayerDefaultRootSign = 10;
       withContainer:(UIView*)container
            andPoint:(CGPoint)point
            andEvent:(UIEvent*)event {
-  if ([self needEndEditing:view] &&
+  LynxEventHandler* childEventHandler = [self childEventHandlerForTarget:target];
+  if (childEventHandler != nil) {
+    _focusedEventTarget = nil;
+    [_pressedKeyTargets removeAllObjects];
+    CGPoint childPoint = [container convertPoint:point toView:childEventHandler.rootView];
+    [childEventHandler handleFocus:childEventHandler.touchTarget
+                            onView:view
+                     withContainer:childEventHandler.rootView
+                          andPoint:childPoint
+                          andEvent:event];
+    return;
+  }
+
+  BOOL needsEndEditing = [self needEndEditing:view];
+  if (target == nil || !needsEndEditing || [target ignoreFocus]) {
+    _focusedEventTarget = nil;
+    [_pressedKeyTargets removeAllObjects];
+  } else if (_focusedEventTarget != target) {
+    _focusedEventTarget = target;
+    [_pressedKeyTargets removeAllObjects];
+  }
+
+  BOOL shouldEndEditing =
+      needsEndEditing &&
       ![[[[view superview] superview] superview] isKindOfClass:[UITextView class]] &&
       ![target ignoreFocus] &&
-      ![self tapOnUICalloutBarButton:container withPoint:point andEvent:event]) {
+      ![self tapOnUICalloutBarButton:container withPoint:point andEvent:event];
+  if (shouldEndEditing) {
     // To free our touch handler from being blocked, dispatch endEditing asynchronously.
     // TODO(hexionghui): Use resignFirstResponder and becomeFirstResponder to replace endEditing.
     __weak UIView* weakView = container;
+    __weak typeof(self) weakSelf = self;
+    __weak id<LynxEventTarget> weakTarget = target;
     dispatch_async(dispatch_get_main_queue(), ^{
+      __strong typeof(weakSelf) strongSelf = weakSelf;
       [weakView endEditing:true];
+      if (strongSelf != nil && weakTarget != nil && strongSelf->_focusedEventTarget == weakTarget) {
+        [weakView becomeFirstResponder];
+      }
     });
   }
 }

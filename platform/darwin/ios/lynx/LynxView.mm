@@ -46,6 +46,16 @@
     }                                       \
   } while (0)
 
+@protocol LynxUIRendererKeyboardEventHandling <NSObject>
+
+- (BOOL)canBecomeFirstResponderForKeyboardEvents;
+- (void)handlePressesBegan:(NSSet<UIPress*>*)presses withEvent:(nullable UIPressesEvent*)event;
+- (void)handlePressesChanged:(NSSet<UIPress*>*)presses withEvent:(nullable UIPressesEvent*)event;
+- (void)handlePressesEnded:(NSSet<UIPress*>*)presses withEvent:(nullable UIPressesEvent*)event;
+- (void)handlePressesCancelled:(NSSet<UIPress*>*)presses withEvent:(nullable UIPressesEvent*)event;
+
+@end
+
 @interface LynxView () <LynxTemplateRenderDelegate>
 
 @end
@@ -389,6 +399,69 @@
   // TODO should update viewport here?
   [super setFrame:frame];
   [_templateRender.lynxUIRenderer onSetFrame:frame];
+}
+
+- (BOOL)canBecomeFirstResponder {
+  id<LynxUIRendererKeyboardEventHandling> renderer =
+      (id<LynxUIRendererKeyboardEventHandling>)_templateRender.lynxUIRenderer;
+  BOOL canReceiveKeyboardEvents =
+      [renderer respondsToSelector:@selector(canBecomeFirstResponderForKeyboardEvents)] &&
+      [renderer canBecomeFirstResponderForKeyboardEvents];
+  return canReceiveKeyboardEvents || [super canBecomeFirstResponder];
+}
+
+- (NSSet<UIPress*>*)keyboardPressesOwnedByThisView:(NSSet<UIPress*>*)presses {
+  NSMutableSet<UIPress*>* ownedPresses = [NSMutableSet setWithCapacity:presses.count];
+  for (UIPress* press in presses) {
+    if (press.responder == self) {
+      [ownedPresses addObject:press];
+    }
+  }
+  return ownedPresses;
+}
+
+- (void)pressesBegan:(NSSet<UIPress*>*)presses withEvent:(nullable UIPressesEvent*)event {
+  id<LynxUIRendererKeyboardEventHandling> renderer =
+      (id<LynxUIRendererKeyboardEventHandling>)_templateRender.lynxUIRenderer;
+  NSSet<UIPress*>* ownedPresses = [self keyboardPressesOwnedByThisView:presses];
+  if (ownedPresses.count != 0 && [renderer respondsToSelector:@selector(handlePressesBegan:
+                                                                                 withEvent:)]) {
+    [renderer handlePressesBegan:ownedPresses withEvent:event];
+  }
+  [super pressesBegan:presses withEvent:event];
+}
+
+- (void)pressesChanged:(NSSet<UIPress*>*)presses withEvent:(nullable UIPressesEvent*)event {
+  id<LynxUIRendererKeyboardEventHandling> renderer =
+      (id<LynxUIRendererKeyboardEventHandling>)_templateRender.lynxUIRenderer;
+  NSSet<UIPress*>* ownedPresses = [self keyboardPressesOwnedByThisView:presses];
+  if (ownedPresses.count != 0 && [renderer respondsToSelector:@selector(handlePressesChanged:
+                                                                                   withEvent:)]) {
+    [renderer handlePressesChanged:ownedPresses withEvent:event];
+  }
+  [super pressesChanged:presses withEvent:event];
+}
+
+- (void)pressesEnded:(NSSet<UIPress*>*)presses withEvent:(nullable UIPressesEvent*)event {
+  id<LynxUIRendererKeyboardEventHandling> renderer =
+      (id<LynxUIRendererKeyboardEventHandling>)_templateRender.lynxUIRenderer;
+  NSSet<UIPress*>* ownedPresses = [self keyboardPressesOwnedByThisView:presses];
+  if (ownedPresses.count != 0 && [renderer respondsToSelector:@selector(handlePressesEnded:
+                                                                                 withEvent:)]) {
+    [renderer handlePressesEnded:ownedPresses withEvent:event];
+  }
+  [super pressesEnded:presses withEvent:event];
+}
+
+- (void)pressesCancelled:(NSSet<UIPress*>*)presses withEvent:(nullable UIPressesEvent*)event {
+  id<LynxUIRendererKeyboardEventHandling> renderer =
+      (id<LynxUIRendererKeyboardEventHandling>)_templateRender.lynxUIRenderer;
+  NSSet<UIPress*>* ownedPresses = [self keyboardPressesOwnedByThisView:presses];
+  if (ownedPresses.count != 0 && [renderer respondsToSelector:@selector(handlePressesCancelled:
+                                                                                     withEvent:)]) {
+    [renderer handlePressesCancelled:ownedPresses withEvent:event];
+  }
+  [super pressesCancelled:presses withEvent:event];
 }
 
 - (UIView*)hitTest:(CGPoint)point withEvent:(UIEvent*)event {

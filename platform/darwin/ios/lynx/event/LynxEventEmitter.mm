@@ -8,9 +8,12 @@
 #import <Lynx/LynxLog.h>
 #import <Lynx/LynxRootUI.h>
 #import <Lynx/LynxTemplateData+Converter.h>
+#import "LynxEngineProxy+Native.h"
 #import "LynxUIIntersectionObserver.h"
 
 #include <limits>
+
+#include "core/value_wrapper/value_impl_lepus.h"
 
 using namespace lynx::tasm;
 using namespace lynx::lepus;
@@ -151,6 +154,18 @@ static constexpr int64_t kCurrentLynxPageOnlyEventID = std::numeric_limits<int64
 
 - (void)sendCustomEvent:(LynxCustomEvent*)event {
   [self dispatchCustomEvent:event];
+}
+
+- (void)dispatchBubbleEvent:(NSString*)eventName
+                 targetSign:(NSInteger)targetSign
+                     params:(NSDictionary*)params {
+  if (_engineProxy == nil || [_engineProxy nativeProxy] == nullptr) {
+    _LogE(@"dispatchBubbleEvent event: %@ failed since engineProxy is nil", eventName);
+    return;
+  }
+  [_engineProxy nativeProxy]->SendBubbleEvent([eventName UTF8String],
+                                              static_cast<int32_t>(targetSign),
+                                              PubLepusValue(LynxConvertToLepusValue(params)));
 }
 
 - (void)onPseudoStatusChanged:(int32_t)tag

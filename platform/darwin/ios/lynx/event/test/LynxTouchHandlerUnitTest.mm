@@ -14,6 +14,7 @@
 #import <Lynx/LynxTemplateRender+Internal.h>
 #import <Lynx/LynxTouchHandler+Internal.h>
 #import <Lynx/LynxTouchHandler.h>
+#import <Lynx/LynxUIRenderer.h>
 #import <Lynx/LynxUIView.h>
 #import <Lynx/LynxView+Internal.h>
 #import <Lynx/LynxWeakProxy.h>
@@ -22,6 +23,23 @@
 @interface LynxTouchHandler ()
 
 - (void)onTouchesMoveWithTarget:(id<LynxEventTarget>)target;
+- (BOOL)dispatchPlatformUIEvent:(NSSet<UITouch*>*)touches
+                      withEvent:(UIEvent*)event
+                        forType:(NSInteger)actionType;
+- (BOOL)isDescendantOfLynxView:(UIGestureRecognizer*)gesture;
+- (BOOL)blockNativeEvent:(UIGestureRecognizer*)gestureRecognizer;
+- (BOOL)enableSimultaneousTouch;
+- (BOOL)gestureRecognizer:(UIGestureRecognizer*)gestureRecognizer
+    shouldRecognizeSimultaneouslyWithGestureRecognizer:(UIGestureRecognizer*)otherGestureRecognizer;
+
+@end
+
+@interface LynxUIRenderer (LynxPlatformInputEventTest)
+
+- (NSArray*)expandLegacyPointerEventData:(NSArray*)eventData
+                                  action:(NSInteger)action
+                             pointerType:(NSInteger)pointerType
+                            pointerCount:(NSInteger)pointerCount;
 
 @end
 
@@ -233,6 +251,19 @@
   OCMStub([mockUIContext lynxContext]).andReturn(mockLynxContext);
   OCMStub([mockUIContext rootView]).andReturn(mockRootView);
   OCMStub([mockRootView templateRender]).andReturn(mockTemplateRender);
+  __block NSArray* capturedIEventData = nil;
+  __block NSArray* capturedFEventData = nil;
+  OCMStub([mockTemplateRender DispatchPlatformInputEvent:[OCMArg any] withData:[OCMArg any]])
+      .andDo(^(NSInvocation* invocation) {
+        __unsafe_unretained NSArray* iEventData = nil;
+        __unsafe_unretained NSArray* fEventData = nil;
+        [invocation getArgument:&iEventData atIndex:2];
+        [invocation getArgument:&fEventData atIndex:3];
+        capturedIEventData = [iEventData copy];
+        capturedFEventData = [fEventData copy];
+        BOOL consumed = NO;
+        [invocation setReturnValue:&consumed];
+      });
 
   // 3. Test Case: isFragmentLayerRenderOn is YES
   __block BOOL stubReturnValue = YES;
@@ -256,6 +287,8 @@
 
   // Verify touchesBegan
   [touchHandler touchesBegan:touches withEvent:event];
+  XCTAssertEqualObjects(capturedIEventData, (@[ @0, @0, @0, @1, @0 ]));
+  XCTAssertEqualObjects(capturedFEventData, (@[ @0, @10, @20, @0, @YES, @0, @1 ]));
   OCMVerify([mockTemplateRender DispatchPlatformInputEvent:[OCMArg any] withData:[OCMArg any]]);
   OCMVerify(never(), [touchHandler touchesBeganInner:OCMArg.any withEvent:OCMArg.any]);
 
@@ -281,6 +314,76 @@
   // Verify touchesBegan
   [touchHandler touchesBegan:touches withEvent:event];
   OCMVerify([touchHandler touchesBeganInner:touches withEvent:event]);
+}
+
+- (void)testFragmentGestureConflictCancelsPlatformTouches {
+  LynxEventHandler* eventHandler = OCMClassMock([LynxEventHandler class]);
+  LynxTouchHandler* touchHandler =
+      OCMPartialMock([[LynxTouchHandler alloc] initWithEventHandler:eventHandler]);
+  UITouch* platformTouch = OCMClassMock([UITouch class]);
+  UITouch* legacyTouch = OCMClassMock([UITouch class]);
+  NSSet<UITouch*>* platformTouches = [NSSet setWithObject:platformTouch];
+  [touchHandler setValue:[platformTouches mutableCopy] forKey:@"platformUITouches"];
+  [touchHandler setValue:[NSMutableSet setWithObject:legacyTouch] forKey:@"touches"];
+  [touchHandler setValue:@YES forKey:@"touchBegin"];
+  [touchHandler setValue:@NO forKey:@"touchEndOrCancel"];
+
+  UIEvent* event = OCMClassMock([UIEvent class]);
+  [touchHandler setValue:event forKey:@"event"];
+  UIGestureRecognizer* lynxGesture = OCMClassMock([UIGestureRecognizer class]);
+  UIGestureRecognizer* externalGesture = OCMClassMock([UIGestureRecognizer class]);
+  OCMStub([touchHandler isDescendantOfLynxView:externalGesture]).andReturn(NO);
+  OCMStub([touchHandler blockNativeEvent:lynxGesture]).andReturn(NO);
+  OCMStub([touchHandler enableSimultaneousTouch]).andReturn(NO);
+
+  __block NSSet<UITouch*>* cancelledTouches = nil;
+  OCMStub([touchHandler dispatchPlatformUIEvent:[OCMArg any] withEvent:event forType:3])
+      .andDo(^(NSInvocation* invocation) {
+        __unsafe_unretained NSSet<UITouch*>* touches = nil;
+        [invocation getArgument:&touches atIndex:2];
+        cancelledTouches = [touches copy];
+        BOOL consumed = YES;
+        [invocation setReturnValue:&consumed];
+      });
+
+  [touchHandler gestureRecognizer:lynxGesture
+      shouldRecognizeSimultaneouslyWithGestureRecognizer:externalGesture];
+
+  XCTAssertEqualObjects(cancelledTouches, platformTouches);
+  XCTAssertFalse([cancelledTouches containsObject:legacyTouch]);
+}
+
+- (void)testLegacyPointerPrimaryRemainsReservedUntilTypeEnds {
+  LynxUIRenderer* renderer = [LynxUIRenderer new];
+  NSArray* primaryDown = [renderer expandLegacyPointerEventData:@[ @10, @0, @0 ]
+                                                         action:0
+                                                    pointerType:0
+                                                   pointerCount:1];
+  NSArray* secondaryDown = [renderer expandLegacyPointerEventData:@[ @11, @0, @0 ]
+                                                           action:0
+                                                      pointerType:0
+                                                     pointerCount:1];
+  NSArray* primaryUp = [renderer expandLegacyPointerEventData:@[ @10, @0, @0 ]
+                                                       action:1
+                                                  pointerType:0
+                                                 pointerCount:1];
+  NSArray* thirdDown = [renderer expandLegacyPointerEventData:@[ @12, @0, @0 ]
+                                                       action:0
+                                                  pointerType:0
+                                                 pointerCount:1];
+
+  XCTAssertEqualObjects(primaryDown[4], @YES);
+  XCTAssertEqualObjects(secondaryDown[4], @NO);
+  XCTAssertEqualObjects(primaryUp[4], @YES);
+  XCTAssertEqualObjects(thirdDown[4], @NO);
+
+  [renderer expandLegacyPointerEventData:@[ @11, @0, @0 ] action:1 pointerType:0 pointerCount:1];
+  [renderer expandLegacyPointerEventData:@[ @12, @0, @0 ] action:1 pointerType:0 pointerCount:1];
+  NSArray* nextPrimaryDown = [renderer expandLegacyPointerEventData:@[ @13, @0, @0 ]
+                                                             action:0
+                                                        pointerType:0
+                                                       pointerCount:1];
+  XCTAssertEqualObjects(nextPrimaryDown[4], @YES);
 }
 
 - (NSInteger)getGestureArenaMemberId {
