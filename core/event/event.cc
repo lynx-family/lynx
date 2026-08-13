@@ -125,12 +125,22 @@ void Event::HandleEventBaseDetail(bool is_core_event) {
 
 void Event::HandleEventCustomDetail() {}
 
+void Event::MergeEventDetail(const lepus::Value& detail) {
+  if (!detail.IsTable()) {
+    return;
+  }
+  for (const auto& item : *detail.Table()) {
+    detail_.Table()->SetValue(item.first, item.second);
+  }
+}
+
 bool Event::IsCaptureBubbleEvent() {
   return event_type_ == EventType::kTouchEvent ||
          event_type_ == EventType::kCustomEvent ||
          event_type_ == EventType::kMouseEvent ||
          event_type_ == EventType::kWheelEvent ||
-         event_type_ == EventType::kKeyboardEvent;
+         event_type_ == EventType::kKeyboardEvent ||
+         event_type_ == EventType::kPointerEvent;
 }
 
 }  // namespace event

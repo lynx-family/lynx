@@ -11,6 +11,7 @@
 #include "base/trace/native/trace_event.h"
 #include "core/event/custom_event.h"
 #include "core/event/event_dispatcher.h"
+#include "core/event/keyboard_event.h"
 #include "core/event/touch_event.h"
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/dom/vdom/radon/radon_component.h"
@@ -47,6 +48,23 @@ namespace tasm {
 #define EVENT_LONG_PRESS "longpress"
 
 constexpr const static char *kDetail = "detail";
+
+static event::Event::EventType GetBubbleEventType(const std::string &name) {
+  if (name == "pointerdown" || name == "pointermove" || name == "pointerup" ||
+      name == "pointercancel") {
+    return event::Event::EventType::kPointerEvent;
+  }
+  if (name == "wheel") {
+    return event::Event::EventType::kWheelEvent;
+  }
+  if (name == "keydown" || name == "keyup") {
+    return event::Event::EventType::kKeyboardEvent;
+  }
+  if (name.compare(0, 5, "mouse") == 0) {
+    return event::Event::EventType::kMouseEvent;
+  }
+  return event::Event::EventType::kNone;
+}
 
 static void AddTimestampProperty(lepus::Dictionary *params,
                                  int64_t timestamp = 0) {
@@ -541,6 +559,36 @@ void TouchEventHandler::HandleBubbleEvent(TemplateAssembler *tasm,
   // https://developer.mozilla.org/en-US/docs/Web/API/Element/mouseleave_event
   if (name.compare("mouseenter") == 0 || name.compare("mouseleave") == 0) {
     bubbles = false;
+  }
+
+  auto event_type = GetBubbleEventType(name);
+  if (event_type != event::Event::EventType::kNone) {
+    params->SetValue("type", name);
+  }
+  if (tasm->EnableEventHandleRefactor() &&
+      event_type != event::Event::EventType::kNone) {
+    auto target = node_manager_->Get(tag);
+    if (!target) {
+      LOGE("HandleBubbleEvent error: the target is null.");
+      return;
+    }
+    fml::RefPtr<event::Event> input_event;
+    if (event_type == event::Event::EventType::kKeyboardEvent) {
+      input_event =
+          fml::MakeRefCounted<event::KeyboardEvent>(name, lepus::Value(params));
+    } else {
+      bool cancelable = event_type == event::Event::EventType::kMouseEvent ||
+                        event_type == event::Event::EventType::kPointerEvent;
+      input_event = fml::MakeRefCounted<event::Event>(
+          name, event_type, event::Event::Capture::kYes,
+          bubbles ? event::Event::Bubbles::kYes : event::Event::Bubbles::kNo,
+          cancelable ? event::Event::Cancelable::kYes
+                     : event::Event::Cancelable::kNo,
+          event::Event::ComposedMode::kScoped, event::Event::PhaseType::kNone);
+      input_event->MergeEventDetail(lepus::Value(params));
+    }
+    event::EventDispatcher::DispatchEvent(*target, std::move(input_event));
+    return;
   }
 
   EventContext context = {

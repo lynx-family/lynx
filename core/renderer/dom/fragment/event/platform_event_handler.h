@@ -54,8 +54,8 @@ class PlatformEventHandler {
                     int int_event_data[], float float_event_data[]);
   void OnTap();
   void OnLongPress();
-  void DispatchPointerEvent(const std::string& name,
-                            const lepus::Value& target_pointer_map);
+  void DispatchTouchEvent(const std::string& name,
+                          const lepus::Value& target_pointer_map);
 
   void OnGestureRecognized(int sign);
   void SetFocusedTarget(fml::RefPtr<PlatformEventTarget> focused_target);
@@ -97,6 +97,12 @@ class PlatformEventHandler {
                       float target_point[2], float page_point[2]);
   void AddTargetPointerMap(lepus::Value& target_pointer_map,
                            PlatformPointerEvent& event);
+  void DispatchPointerEvents(
+      const std::string& name, PlatformPointerEvent& event,
+      const std::unordered_set<int>* changed_pointer_ids = nullptr);
+  void HandleWheelEvent(int action_type, float float_event_data[]);
+  static std::string DecodeKey(const int int_event_data[]);
+  void HandleKeyEvent(int int_event_data[], float float_event_data[]);
 
   // owned by NativePaintingCtxPlatformRef
   NativePaintingCtxPlatformRef* platform_ref_{nullptr};
@@ -106,14 +112,17 @@ class PlatformEventHandler {
   fml::RefPtr<PlatformEventTarget> target_tree_{nullptr};
   fml::RefPtr<PlatformEventTarget> first_target_{nullptr};
   fml::RefPtr<PlatformEventTarget> focused_target_{nullptr};
+  fml::RefPtr<PlatformEventTarget> wheel_target_{nullptr};
   std::vector<fml::RefPtr<PlatformEventTarget>> event_target_chain_;
   std::deque<fml::RefPtr<PlatformEventTarget>> click_target_chain_;
   std::unordered_map<int, PlatformEventTargetDetail> target_pointer_map_;
   std::unordered_set<int> gesture_recognized_target_set_;
+  std::unordered_set<int> pressed_activation_keys_;
   std::unordered_map<int32_t, std::array<float, 2>> scroll_offset_for_tap_;
   bool has_pointer_moved_{false};
   bool first_pointer_moved_{false};
   bool first_pointer_outside_{false};
+  int primary_pointer_id_{-1};
   float first_pointer_down_point_[2]{0.f};
 
   // config

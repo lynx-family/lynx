@@ -61,8 +61,7 @@ lepus::Value LepusClosureEventListener::ConvertEventToLepusValue(
     value.SetProperty(BASE_STATIC_STRING(runtime::kOrigin),
                       lepus::Value(message_event->GetOriginString()));
   }
-  if (event->event_type() == event::Event::EventType::kTouchEvent ||
-      event->event_type() == event::Event::EventType::kCustomEvent) {
+  if (event->IsCaptureBubbleEvent()) {
     event->HandleEventBaseDetail();
     auto event_detail = lepus::Value::Clone(event->detail());
     BASE_STATIC_STRING_DECL(kEventRef, "ref");

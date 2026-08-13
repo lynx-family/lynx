@@ -139,6 +139,83 @@ TEST_F(TouchEventHandlerTest, SendGlobalEventToCoreContext) {
   EXPECT_EQ(received_params.Array()->get(0), info);
 }
 
+TEST_F(TouchEventHandlerTest, HandleBubbleInputEventWithRefactoredDispatcher) {
+  auto page_config = std::make_shared<PageConfig>();
+  page_config->SetEnableEventHandleRefactor(true);
+  tasm_->page_config_ = page_config;
+  tasm_->page_proxy()->element_manager()->SetConfig(page_config);
+
+  auto element =
+      tasm_->page_proxy()->element_manager()->CreateFiberElement("view");
+  element->MarkAttached();
+  int call_count = 0;
+  lepus::Value received_detail;
+  element->AddEventListener(
+      "pointerdown", std::make_shared<event::ClosureEventListener>(
+                         [&call_count, &received_detail](lepus::Value args) {
+                           ++call_count;
+                           received_detail =
+                               lepus::Value::Clone(args.Array()->get(1));
+                         }));
+
+  auto params = lepus::Dictionary::Create();
+  params->SetValue("pointerId", 3);
+  params->SetValue("pointerType", "mouse");
+  touch_event_handler_->HandleBubbleEvent(tasm_.get(), "", "pointerdown",
+                                          element->impl_id(), params);
+
+  EXPECT_EQ(call_count, 1);
+  ASSERT_TRUE(received_detail.IsTable());
+  EXPECT_EQ(received_detail.Table()->GetValue("pointerId").Number(), 3);
+  EXPECT_EQ(received_detail.Table()->GetValue("pointerType").StdString(),
+            "mouse");
+  EXPECT_EQ(received_detail.Table()->GetValue("type").StdString(),
+            "pointerdown");
+
+  int key_count = 0;
+  lepus::Value received_key_detail;
+  element->AddEventListener(
+      "keydown", std::make_shared<event::ClosureEventListener>(
+                     [&key_count, &received_key_detail](lepus::Value args) {
+                       ++key_count;
+                       received_key_detail =
+                           lepus::Value::Clone(args.Array()->get(1));
+                     }));
+  auto key_params = lepus::Dictionary::Create();
+  key_params->SetValue("key", "Enter");
+  key_params->SetValue("repeat", false);
+  touch_event_handler_->HandleBubbleEvent(tasm_.get(), "", "keydown",
+                                          element->impl_id(), key_params);
+  EXPECT_EQ(key_count, 1);
+  EXPECT_EQ(received_key_detail.Table()->GetValue("key").StdString(), "Enter");
+
+  int wheel_count = 0;
+  element->AddEventListener(
+      "wheel",
+      std::make_shared<event::ClosureEventListener>(
+          [&wheel_count](lepus::Value args) {
+            ++wheel_count;
+            EXPECT_EQ(args.Array()->get(1).Table()->GetValue("deltaY").Number(),
+                      12);
+          }));
+  auto wheel_params = lepus::Dictionary::Create();
+  wheel_params->SetValue("deltaY", 12);
+  touch_event_handler_->HandleBubbleEvent(tasm_.get(), "", "wheel",
+                                          element->impl_id(), wheel_params);
+  EXPECT_EQ(wheel_count, 1);
+}
+
+TEST_F(TouchEventHandlerTest,
+       HandleBubbleInputEventAddsTypeForLegacyDispatcher) {
+  auto element =
+      tasm_->page_proxy()->element_manager()->CreateFiberElement("view");
+  element->MarkAttached();
+  auto params = lepus::Dictionary::Create();
+  touch_event_handler_->HandleBubbleEvent(tasm_.get(), "", "pointerdown",
+                                          element->impl_id(), params);
+  EXPECT_EQ(params->GetValue("type").StdString(), "pointerdown");
+}
+
 TEST_F(TouchEventHandlerTest, TestHandleTriggerComponentEvent0) {
   touch_event_handler_->HandleTriggerComponentEvent(nullptr, "xxxx",
                                                     lepus::Value());
