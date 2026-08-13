@@ -420,6 +420,11 @@ void InspectorUIExecutor::LynxGetRectToWindow(
   CHECK_NULL_AND_LOG_RETURN(devtool_platform_facade_,
                             "devtool_platform_facade_ is null");
   auto dict = devtool_platform_facade_->GetRectToWindow();
+  if (dict.size() < 4) {
+    sender->SendErrorResponse(message["id"].asInt64(),
+                              "Lynx.getRectToWindow is unavailable");
+    return;
+  }
   rect["left"] = dict[0];
   rect["top"] = dict[1];
   rect["width"] = dict[2];
