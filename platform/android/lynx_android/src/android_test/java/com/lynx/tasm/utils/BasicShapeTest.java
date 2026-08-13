@@ -18,11 +18,11 @@ public class BasicShapeTest {
     BasicShape shape = new BasicShape(StyleConstants.BASIC_SHAPE_TYPE_UNKNOWN);
     assertNull(shape.getPath(100, 100));
 
-    shape = new BasicShape("a b c d e", new DisplayMetrics().scaledDensity);
+    shape = new BasicShape("a b c d e", new DisplayMetrics().density);
     assertNull(shape.getPath(100, 100));
 
     shape = new BasicShape(
-        "M 0 200 L 0,75 A 5,5 0,0,1 150,75 L 200 200 z", new DisplayMetrics().scaledDensity);
+        "M 0 200 L 0,75 A 5,5 0,0,1 150,75 L 200 200 z", new DisplayMetrics().density);
     assertNotNull(shape.getPath(100, 100));
 
     // params array null check
@@ -113,7 +113,7 @@ public class BasicShapeTest {
       array.pushDouble(30);
       array.pushInt(1);
     }
-    shape = BasicShape.CreateFromReadableArray(array, new DisplayMetrics().scaledDensity);
+    shape = BasicShape.CreateFromReadableArray(array, new DisplayMetrics().density);
     assertNotNull(shape);
     assertNotNull(shape.getPath(100, 100));
     assertFalse(shape.getPath(100, 100).isEmpty());
@@ -122,7 +122,7 @@ public class BasicShapeTest {
       array.pushDouble(30);
       array.pushInt(1);
     }
-    shape = BasicShape.CreateFromReadableArray(array, new DisplayMetrics().scaledDensity);
+    shape = BasicShape.CreateFromReadableArray(array, new DisplayMetrics().density);
     assertNotNull(shape);
     assertNotNull(shape.getPath(100, 100));
     assertFalse(shape.getPath(100, 100).isEmpty());
@@ -142,7 +142,7 @@ public class BasicShapeTest {
       array.pushDouble(30);
       array.pushInt(1);
     }
-    shape = BasicShape.CreateFromReadableArray(array, new DisplayMetrics().scaledDensity);
+    shape = BasicShape.CreateFromReadableArray(array, new DisplayMetrics().density);
     assertNotNull(shape);
     assertNotNull(shape.getPath(100, 100));
     assertFalse(shape.getPath(100, 100).isEmpty());
@@ -152,13 +152,12 @@ public class BasicShapeTest {
   public void createShape() {
     JavaOnlyArray array = new JavaOnlyArray();
     array.pushInt(StyleConstants.BASIC_SHAPE_TYPE_UNKNOWN);
-    BasicShape shape =
-        BasicShape.CreateFromReadableArray(array, new DisplayMetrics().scaledDensity);
+    BasicShape shape = BasicShape.CreateFromReadableArray(array, new DisplayMetrics().density);
     assertNull(shape);
     array.clear();
 
     array.pushInt(StyleConstants.BASIC_SHAPE_TYPE_CIRCLE);
-    shape = BasicShape.CreateFromReadableArray(array, new DisplayMetrics().scaledDensity);
+    shape = BasicShape.CreateFromReadableArray(array, new DisplayMetrics().density);
     assertNull(shape);
     array.pushDouble(30);
     array.pushInt(1);
@@ -166,7 +165,7 @@ public class BasicShapeTest {
     array.pushInt(1);
     array.pushDouble(30);
     array.pushInt(1);
-    shape = BasicShape.CreateFromReadableArray(array, new DisplayMetrics().scaledDensity);
+    shape = BasicShape.CreateFromReadableArray(array, new DisplayMetrics().density);
     assertNotNull(shape);
     assertNotNull(shape.getPath(100, 100));
 
@@ -178,11 +177,11 @@ public class BasicShapeTest {
     array.pushInt(1);
     array.pushDouble(30);
     array.pushInt(1);
-    shape = BasicShape.CreateFromReadableArray(array, new DisplayMetrics().scaledDensity);
+    shape = BasicShape.CreateFromReadableArray(array, new DisplayMetrics().density);
     assertNull(shape);
     array.pushDouble(30);
     array.pushInt(1);
-    shape = BasicShape.CreateFromReadableArray(array, new DisplayMetrics().scaledDensity);
+    shape = BasicShape.CreateFromReadableArray(array, new DisplayMetrics().density);
     assertNotNull(shape);
     assertNotNull(shape.getPath(100, 100));
     assertFalse(shape.getPath(100, 100).isEmpty());
@@ -195,15 +194,15 @@ public class BasicShapeTest {
     array.pushInt(1);
     array.pushDouble(30);
     array.pushInt(1);
-    shape = BasicShape.CreateFromReadableArray(array, new DisplayMetrics().scaledDensity);
+    shape = BasicShape.CreateFromReadableArray(array, new DisplayMetrics().density);
     assertNull(shape);
     array.pushDouble(30);
     array.pushInt(1);
-    shape = BasicShape.CreateFromReadableArray(array, new DisplayMetrics().scaledDensity);
+    shape = BasicShape.CreateFromReadableArray(array, new DisplayMetrics().density);
     assertNull(shape);
     array.pushDouble(30);
     array.pushInt(1);
-    shape = BasicShape.CreateFromReadableArray(array, new DisplayMetrics().scaledDensity);
+    shape = BasicShape.CreateFromReadableArray(array, new DisplayMetrics().density);
     assertNotNull(shape);
     assertNotNull(shape.getPath(100, 100));
     assertFalse(shape.getPath(100, 100).isEmpty());
@@ -216,11 +215,11 @@ public class BasicShapeTest {
     array.pushInt(1);
     array.pushDouble(30);
     array.pushInt(1);
-    shape = BasicShape.CreateFromReadableArray(array, new DisplayMetrics().scaledDensity);
+    shape = BasicShape.CreateFromReadableArray(array, new DisplayMetrics().density);
     assertNull(shape);
     array.pushDouble(30);
     array.pushInt(1);
-    shape = BasicShape.CreateFromReadableArray(array, new DisplayMetrics().scaledDensity);
+    shape = BasicShape.CreateFromReadableArray(array, new DisplayMetrics().density);
     assertNotNull(shape);
     assertEquals(4, shape.params.length);
     array.pushDouble(30);
@@ -239,7 +238,7 @@ public class BasicShapeTest {
     array.pushInt(1);
     array.pushDouble(30);
     array.pushInt(1);
-    shape = BasicShape.CreateFromReadableArray(array, new DisplayMetrics().scaledDensity);
+    shape = BasicShape.CreateFromReadableArray(array, new DisplayMetrics().density);
     assertNotNull(shape);
   }
 }
