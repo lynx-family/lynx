@@ -39,6 +39,12 @@ static std::vector<float> BuildTransformValue(float start) {
   return transform_value;
 }
 
+class UnavailableRectDevToolPlatformFacadeMock
+    : public testing::DevToolPlatformFacadeMock {
+ public:
+  std::vector<float> GetRectToWindow() const override { return {}; }
+};
+
 class InspectorUIExecutorTest : public ::testing::Test {
  public:
   InspectorUIExecutorTest() = default;
@@ -203,6 +209,21 @@ TEST_F(InspectorUIExecutorTest, InsertTextTest) {
   EXPECT_EQ(facade->inserted_text_, "hello");
   EXPECT_EQ(devtool::MockReceiver::GetInstance().received_message_.second,
             "{\n   \"id\" : 41,\n   \"result\" : {}\n}\n");
+}
+
+TEST_F(InspectorUIExecutorTest, GetRectToWindowReturnsErrorWhenUnavailable) {
+  auto facade = std::make_shared<UnavailableRectDevToolPlatformFacadeMock>();
+  ui_executor_->SetDevToolPlatformFacade(facade);
+
+  Json::Value message;
+  message["id"] = 42;
+
+  ui_executor_->LynxGetRectToWindow(message_sender_, message);
+
+  EXPECT_EQ(devtool::MockReceiver::GetInstance().received_message_.second,
+            "{\n   \"error\" : {\n      \"code\" : -32601,\n"
+            "      \"message\" : \"Lynx.getRectToWindow is unavailable\"\n"
+            "   },\n   \"id\" : 42\n}\n");
 }
 
 TEST_F(InspectorUIExecutorTest, GetBoxModelReturnsOverlaySnapshotCase) {
