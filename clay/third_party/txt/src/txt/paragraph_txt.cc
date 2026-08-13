@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "paragraph_txt.h"
+#include "clay/third_party/txt/src/txt/paragraph_txt.h"
 
 #include <hb.h>
 #include <minikin/Layout.h>
@@ -29,13 +29,13 @@
 
 #include "clay/fml/logging.h"
 #include "font_collection_skia.h"
-#include "font_skia.h"
-#include "minikin/FontLanguageListCache.h"
-#include "minikin/GraphemeBreak.h"
-#include "minikin/HbFontCache.h"
-#include "minikin/LayoutUtils.h"
-#include "minikin/LineBreaker.h"
-#include "minikin/MinikinFont.h"
+#include "clay/third_party/txt/src/minikin/FontLanguageListCache.h"
+#include "clay/third_party/txt/src/minikin/GraphemeBreak.h"
+#include "clay/third_party/txt/src/minikin/HbFontCache.h"
+#include "clay/third_party/txt/src/minikin/LayoutUtils.h"
+#include "clay/third_party/txt/src/minikin/LineBreaker.h"
+#include "clay/third_party/txt/src/minikin/MinikinFont.h"
+#include "clay/third_party/txt/src/txt/font_skia.h"
 #include "third_party/skia/include/core/SkCanvas.h"
 #include "third_party/skia/include/core/SkFont.h"
 #include "third_party/skia/include/core/SkFontMetrics.h"
@@ -1822,6 +1822,14 @@ std::vector<Paragraph::TextBox> ParagraphTxt::GetRectsForRange(
                                box.rect.Right(), line.baseline + line.descent),
                            box.direction);
       }
+    } else if (rect_height_style == RectHeightStyle::kLineBox) {
+      const auto line_box = line.GetLineBox();
+      for (const Paragraph::TextBox& box : kv.second.boxes) {
+        boxes.emplace_back(
+            skity::Rect::MakeLTRB(box.rect.Left(), line_box.Top(),
+                                  box.rect.Right(), line_box.Bottom()),
+            box.direction);
+      }
     } else if (rect_height_style ==
                RectHeightStyle::kIncludeLineSpacingMiddle) {
       SkScalar adjusted_bottom = line.baseline + line.descent;
@@ -1891,7 +1899,7 @@ Paragraph::PositionWithAffinity ParagraphTxt::GetGlyphPositionAtCoordinate(
 
   size_t y_index;
   for (y_index = 0; y_index < final_line_count_ - 1; ++y_index) {
-    if (dy < line_metrics_[y_index].height)
+    if (dy <= line_metrics_[y_index].GetLineBox().Bottom())
       break;
   }
 
