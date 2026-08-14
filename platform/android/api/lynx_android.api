@@ -6850,9 +6850,8 @@ public interface com::lynx::tasm::behavior::LynxShadowNode {
 }
 
 public class com::lynx::tasm::behavior::ui::list::LynxSnapHelper :  {
-  public double com.lynx.tasm.behavior.ui.list.LynxSnapHelper.mSnapAlignmentMillisecondsPerPx mSnapAlignmentMillisecondsPerPx;
-  public com.lynx.tasm.behavior.ui.list.LynxSnapHelper.LynxSnapHelper(double snapAlignmentFactor, int snapAlignmentOffset, double snapAlignmentMillisecondsPerPx, LynxSnapHooks snapHooks);
-  public com.lynx.tasm.behavior.ui.list.LynxSnapHelper.LynxSnapHelper(double snapAlignmentFactor, int snapAlignmentOffset, double snapAlignmentMillisecondsPerPx, int maxSnapCount, LynxSnapHooks snapHooks);
+  public com.lynx.tasm.behavior.ui.list.LynxSnapHelper.LynxSnapHelper(float snapAlignmentFactor, int snapAlignmentOffset, LynxSnapHooks snapHooks);
+  public com.lynx.tasm.behavior.ui.list.LynxSnapHelper.LynxSnapHelper(float snapAlignmentFactor, int snapAlignmentOffset, int maxSnapCount, LynxSnapHooks snapHooks);
   public int[] com.lynx.tasm.behavior.ui.list.LynxSnapHelper.findTargetSnapOffset(int velocityX, int velocityY, boolean isVertical, boolean isRtl);
 }
 
@@ -8360,13 +8359,12 @@ public class com::lynx::tasm::behavior::ui::scroll::NestedHorizontalScrollView :
 }
 
 public class com::lynx::tasm::behavior::ui::list::container::NestedScrollContainerView : FrameLayout, NestedScrollingParent3, NestedScrollingChild3, ScrollingView {
-  public LynxSnapHelper com.lynx.tasm.behavior.ui.list.container.NestedScrollContainerView.mSnapHelper mSnapHelper;
-  public boolean com.lynx.tasm.behavior.ui.list.container.NestedScrollContainerView.mIsDuringAutoScroll mIsDuringAutoScroll;
   public final float com.lynx.tasm.behavior.ui.list.container.NestedScrollContainerView.LIST_AUTOMATIC_MAX_FLING_RATIO LIST_AUTOMATIC_MAX_FLING_RATIO;
   public final int com.lynx.tasm.behavior.ui.list.container.NestedScrollContainerView.SCROLL_STATE_IDLE SCROLL_STATE_IDLE;
   public final int com.lynx.tasm.behavior.ui.list.container.NestedScrollContainerView.SCROLL_STATE_DRAGGING SCROLL_STATE_DRAGGING;
   public final int com.lynx.tasm.behavior.ui.list.container.NestedScrollContainerView.SCROLL_STATE_FLING SCROLL_STATE_FLING;
   public final int com.lynx.tasm.behavior.ui.list.container.NestedScrollContainerView.SCROLL_STATE_SCROLL_ANIMATION SCROLL_STATE_SCROLL_ANIMATION;
+  public boolean com.lynx.tasm.behavior.ui.list.container.NestedScrollContainerView.mIsDuringAutoScroll mIsDuringAutoScroll;
   public com.lynx.tasm.behavior.ui.list.container.NestedScrollContainerView.NestedScrollContainerView(@NonNull Context context);
   public com.lynx.tasm.behavior.ui.list.container.NestedScrollContainerView.NestedScrollContainerView(@NonNull Context context, @Nullable AttributeSet attrs);
   public com.lynx.tasm.behavior.ui.list.container.NestedScrollContainerView.NestedScrollContainerView( @NonNull Context context, @Nullable AttributeSet attrs, int defStyleAttr);
@@ -11527,7 +11525,6 @@ public class com::lynx::tasm::behavior::ui::list::container::UIListContainer : c
   public void com.lynx.tasm.behavior.ui.list.container.UIListContainer.destroy();
   public void com.lynx.tasm.behavior.ui.list.container.UIListContainer.updateContentSizeAndOffset(float contentSize, float deltaX, float deltaY);
   public void com.lynx.tasm.behavior.ui.list.container.UIListContainer.setPagingAlignment(ReadableMap params);
-  public void com.lynx.tasm.behavior.ui.list.container.UIListContainer.willSnapTo(int position, int currentOffsetX, int currentOffsetY, int targetOffsetX, int targetOffsetY);
   public void com.lynx.tasm.behavior.ui.list.container.UIListContainer.setMaxFlingDistanceRatio(Dynamic value);
   public void com.lynx.tasm.behavior.ui.list.container.UIListContainer.setEnableScroll(boolean value);
   public void com.lynx.tasm.behavior.ui.list.container.UIListContainer.setForceCanScroll(boolean value);

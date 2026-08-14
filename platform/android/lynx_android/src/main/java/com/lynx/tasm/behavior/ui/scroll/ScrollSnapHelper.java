@@ -151,12 +151,11 @@ public final class ScrollSnapHelper {
   public ScrollSnapHelper(
       double alignmentFactor, int alignmentOffset, int maxSnapCount, ScrollContainerHooks hooks) {
     if (alignmentFactor < 0 || alignmentFactor > 1) {
-      hooks.handleError(
-          "item-snap invalid! The factor should be constrained to the range of [0,1].");
+      hooks.handleError("The factor should be constrained to the range of [0,1].");
       alignmentFactor = 0;
     }
     if (maxSnapCount < DEFAULT_MAX_SNAP_COUNT) {
-      hooks.handleError("item-snap invalid! The maxSnapCount should be greater than 0.");
+      hooks.handleError("The maxSnapCount should be greater than 0.");
       maxSnapCount = DEFAULT_MAX_SNAP_COUNT;
     }
     mAlignmentFactor = alignmentFactor;

@@ -40,6 +40,7 @@ import com.lynx.tasm.behavior.LynxUIMethodConstants;
 import com.lynx.tasm.behavior.ui.IDrawChildHook;
 import com.lynx.tasm.behavior.ui.LynxBaseUI;
 import com.lynx.tasm.behavior.ui.list.LynxSnapHelper;
+import com.lynx.tasm.behavior.ui.scroll.ScrollSnapHelper;
 import com.lynx.tasm.behavior.ui.utils.LynxUIHelper;
 import com.lynx.tasm.behavior.ui.view.ComponentView;
 import com.lynx.tasm.behavior.ui.view.UIComponent;
@@ -68,6 +69,7 @@ public class UIListContainer extends UISimpleView<ListContainerView>
     implements NestedScrollContainerView.OnScrollStateChangeListener,
                UIComponent.NodeReadyListener {
   private static final String TAG = "UIListContainer";
+  private static final String EVENT_SNAP = "snap";
   public static final int INVALID_SCROLL_ESTIMATED_OFFSET = -1;
   private static final boolean DEBUG = false;
   private static final int DEFAULT_FADE_IN_ANIMATION_DURATION = 100;
@@ -101,7 +103,7 @@ public class UIListContainer extends UISimpleView<ListContainerView>
   private boolean mEnableInsertPlatformViewOperation = false;
   private boolean mHasWarnedAutoScrollStartDefaultChange = false;
   private int mScrollingEstimatedOffset = INVALID_SCROLL_ESTIMATED_OFFSET;
-
+  private boolean mPendingScrollSnapHelperRtlWarning = false;
   private ListContainerProxy mListContainerProxy = null;
 
   private final NestedScrollContainerView.CustomScrollHook mCustomScrollHook =
@@ -565,14 +567,11 @@ public class UIListContainer extends UISimpleView<ListContainerView>
 
   @LynxProp(name = "item-snap")
   public void setPagingAlignment(ReadableMap params) {
-    if (params != null && params.size() > 0) {
-      double factor = params.getDouble("factor");
-      if (factor < 0 || factor > 1) {
-        getLynxContext().handleLynxError(
-            new LynxError(LynxSubErrorCode.E_COMPONENT_LIST_INVALID_PROPS_ARG, "item-snap invalid!",
-                "The factor should be constrained to the range of [0,1].", LynxError.LEVEL_WARN));
-        factor = 0;
-      }
+    if (params == null || params.size() == 0) {
+      mPendingScrollSnapHelperRtlWarning = false;
+      mView.setLynxSnapHelper(null, 0.f);
+      mView.setScrollSnapHelper(null, 0.f);
+    } else {
       int offset = params.getInt("offset", 0);
       if (Math.abs(offset) > 0) {
         // The unit of offset is changed from ppx to px on Android platform in Lynx SDK version 3.7.
@@ -580,115 +579,298 @@ public class UIListContainer extends UISimpleView<ListContainerView>
             LynxSubErrorCode.E_COMPONENT_LIST_INVALID_PROPS_ARG,
             "The unit of offset is changed from ppx to px on Android platform in Lynx SDK version 3.7. If Lynx SDK version < 3.7, you can use Math.round(offset * PixelRatio).",
             "", LynxError.LEVEL_WARN));
-        offset = (int) PixelUtils.dipToPx(offset);
       }
-      // The logic here is copied form the SnapHelper provided by Android.
-      // TODO: Speed up the snap. In the future, the easing-curve should be able to be customized.
-      double snapAlignmentMillisecondsPerPx = 50f / mContext.getScreenMetrics().densityDpi;
-      int maxSnapCount = 1;
-      if (params.hasKey("maxSnapCount")) {
-        maxSnapCount = params.getInt("maxSnapCount", 1);
-        if (maxSnapCount < 1) {
-          getLynxContext().handleLynxError(new LynxError(
-              LynxSubErrorCode.E_COMPONENT_LIST_INVALID_PROPS_ARG, "item-snap invalid!",
-              "The maxSnapCount should be greater than 0.", LynxError.LEVEL_WARN));
-          maxSnapCount = 1;
-        }
+      boolean useScrollSnapHelper = params.getBoolean("useScrollSnapHelper", true);
+      double factor = params.getDouble("factor");
+      if (factor < 0 || factor > 1) {
+        factor = 0;
       }
-      mView.mSnapHelper = new LynxSnapHelper(factor, offset, snapAlignmentMillisecondsPerPx,
-          maxSnapCount, new LynxSnapHelper.LynxSnapHooks() {
-            @Override
-            public int getScrollX() {
-              return getView().getScrollX();
-            }
-
-            @Override
-            public int getScrollY() {
-              return getView().getScrollY();
-            }
-
-            @Override
-            public int getScrollHeight() {
-              return getView().getHeight();
-            }
-
-            @Override
-            public int getScrollWidth() {
-              return getView().getWidth();
-            }
-
-            @Override
-            public int getContentHeight() {
-              return getView().getLinearLayout().getHeight();
-            }
-
-            @Override
-            public int getContentWidth() {
-              return getView().getLinearLayout().getWidth();
-            }
-
-            @Override
-            public int getChildrenCount() {
-              return getView().getLinearLayout().getChildCount();
-            }
-
-            @Override
-            public int getVirtualChildrenCount() {
-              return mItemKeys.size();
-            }
-
-            @Override
-            public View getChildAtIndex(int index) {
-              return getView().getLinearLayout().getChildAt(index);
-            }
-
-            @Override
-            public View getViewAtPosition(int position) {
-              String itemKey = (String) mItemKeys.get(position);
-              for (int i = 0; i < mView.getLinearLayout().getChildCount(); i++) {
-                View view = mView.getLinearLayout().getChildAt(i);
-                if (itemKey.equals(
-                        ((UIComponent) ((ComponentView) view).getDrawChildHook()).getItemKey())) {
-                  return view;
-                }
-              }
-              return null;
-            }
-
-            @Override
-            public int getIndexFromView(View view) {
-              if (view instanceof ComponentView
-                  && ((ComponentView) view).getDrawChildHook() instanceof UIComponent) {
-                String itemKey =
-                    ((UIComponent) ((ComponentView) view).getDrawChildHook()).getItemKey();
-                if (mItemKeys.contains(itemKey)) {
-                  return mItemKeys.indexOf(itemKey);
-                }
-              }
-              return -1;
-            }
-
-            @Override
-            public void willSnapTo(int position, int currentOffsetX, int currentOffsetY,
-                int targetOffsetX, int targetOffsetY) {
-              UIListContainer.this.willSnapTo(
-                  position, currentOffsetX, currentOffsetY, targetOffsetX, targetOffsetY);
-            }
-          });
-      return;
+      mPendingScrollSnapHelperRtlWarning = useScrollSnapHelper && Math.abs(factor) > 0.f;
+      // Use the shared ScrollSnapHelper by default. If a compatibility issue is found, set
+      // useScrollSnapHelper: false in item-snap to fully restore the legacy LynxSnapHelper path.
+      if (useScrollSnapHelper) {
+        createScrollSnapHelper(params);
+      } else {
+        createLynxSnapHelper(params);
+      }
     }
-    mView.mSnapHelper = null;
   }
 
-  public void willSnapTo(
+  private void createScrollSnapHelper(ReadableMap params) {
+    // The logic here is copied form the SnapHelper provided by Android.
+    // TODO: Speed up the snap. In the future, the easing-curve should be able to be customized.
+    float snapAlignmentMillisecondsPerPx = 50f / mContext.getScreenMetrics().densityDpi;
+    mView.setScrollSnapHelper(
+        new ScrollSnapHelper(params, createScrollSnapHooks()), snapAlignmentMillisecondsPerPx);
+  }
+
+  private void createLynxSnapHelper(ReadableMap params) {
+    double factor = params.getDouble("factor");
+    if (factor < 0 || factor > 1) {
+      getLynxContext().handleLynxError(
+          new LynxError(LynxSubErrorCode.E_COMPONENT_LIST_INVALID_PROPS_ARG, "item-snap invalid!",
+              "The factor should be constrained to the range of [0,1].", LynxError.LEVEL_WARN));
+      factor = 0;
+    }
+
+    int offset = params.getInt("offset", 0);
+    if (Math.abs(offset) > 0) {
+      // Convert offset from px to pixel.
+      offset = (int) PixelUtils.dipToPx(offset);
+    }
+
+    int maxSnapCount = 1;
+    if (params.hasKey("maxSnapCount")) {
+      maxSnapCount = params.getInt("maxSnapCount", 1);
+      if (maxSnapCount < 1) {
+        getLynxContext().handleLynxError(
+            new LynxError(LynxSubErrorCode.E_COMPONENT_LIST_INVALID_PROPS_ARG, "item-snap invalid!",
+                "The maxSnapCount should be greater than 0.", LynxError.LEVEL_WARN));
+        maxSnapCount = 1;
+      }
+    }
+    // The logic here is copied form the SnapHelper provided by Android.
+    // TODO: Speed up the snap. In the future, the easing-curve should be able to be customized.
+    float snapAlignmentMillisecondsPerPx = 50f / mContext.getScreenMetrics().densityDpi;
+    mView.setLynxSnapHelper(
+        new LynxSnapHelper((float) factor, offset, maxSnapCount, createLynxSnapHooks()),
+        snapAlignmentMillisecondsPerPx);
+  }
+
+  private LynxSnapHelper.LynxSnapHooks createLynxSnapHooks() {
+    return new LynxSnapHelper.LynxSnapHooks() {
+      @Override
+      public int getScrollX() {
+        return mView.getScrollX();
+      }
+
+      @Override
+      public int getScrollY() {
+        return mView.getScrollY();
+      }
+
+      @Override
+      public int getScrollHeight() {
+        return mView.getHeight();
+      }
+
+      @Override
+      public int getScrollWidth() {
+        return mView.getWidth();
+      }
+
+      @Override
+      public int getContentHeight() {
+        return mView.getLinearLayout().getHeight();
+      }
+
+      @Override
+      public int getContentWidth() {
+        return mView.getLinearLayout().getWidth();
+      }
+
+      @Override
+      public int getChildrenCount() {
+        return mView.getLinearLayout().getChildCount();
+      }
+
+      @Override
+      public int getVirtualChildrenCount() {
+        return mItemKeys.size();
+      }
+
+      @Override
+      public View getChildAtIndex(int index) {
+        return mView.getLinearLayout().getChildAt(index);
+      }
+
+      @Override
+      public View getViewAtPosition(int position) {
+        String itemKey = (String) mItemKeys.get(position);
+        for (int i = 0; i < mView.getLinearLayout().getChildCount(); i++) {
+          View view = mView.getLinearLayout().getChildAt(i);
+          if (itemKey.equals(
+                  ((UIComponent) ((ComponentView) view).getDrawChildHook()).getItemKey())) {
+            return view;
+          }
+        }
+        return null;
+      }
+
+      @Override
+      public int getIndexFromView(View view) {
+        if (view instanceof ComponentView
+            && ((ComponentView) view).getDrawChildHook() instanceof UIComponent) {
+          String itemKey = ((UIComponent) ((ComponentView) view).getDrawChildHook()).getItemKey();
+          if (mItemKeys.contains(itemKey)) {
+            return mItemKeys.indexOf(itemKey);
+          }
+        }
+        return -1;
+      }
+
+      @Override
+      public void willSnapTo(int position, int currentOffsetX, int currentOffsetY,
+          int targetOffsetX, int targetOffsetY) {
+        UIListContainer.this.willSnapTo(
+            position, currentOffsetX, currentOffsetY, targetOffsetX, targetOffsetY);
+      }
+    };
+  }
+
+  private ScrollSnapHelper.ScrollContainerHooks createScrollSnapHooks() {
+    return new ScrollSnapHelper.ScrollContainerHooks() {
+      @Override
+      public int getCurrentOffset() {
+        if (!mIsVertical && isRtl()) {
+          // Android starts a horizontal RTL list at its maximum physical scrollX. Convert
+          // it to the logical offset used by ScrollSnapHelper, where the first item starts at zero.
+          // For example, contentWidth = 900 and viewportWidth = 300 give maxOffset = 600. The first
+          // screen has physical scrollX = 600, so its logical offset is 600 - 600 = 0. After
+          // scrolling left to physical scrollX = 300, its logical offset is 600 - 300 = 300.
+          return getMaxOffset() - mView.getScrollX();
+        } else {
+          return mIsVertical ? mView.getScrollY() : mView.getScrollX();
+        }
+      }
+
+      @Override
+      public int getMinOffset() {
+        return 0;
+      }
+
+      @Override
+      public int getMaxOffset() {
+        return mView.getScrollRange();
+      }
+
+      @Override
+      public int getViewportSize() {
+        return mIsVertical ? mView.getHeight() : mView.getWidth();
+      }
+
+      @Override
+      public List<ScrollSnapHelper.SnapItem> getSnapItems() {
+        LinearLayout linearLayout = mView.getLinearLayout();
+        int childCount = linearLayout.getChildCount();
+        List<ScrollSnapHelper.SnapItem> snapItems = new ArrayList<>(childCount);
+        // Snapshot only currently attached children for one virtual-list target calculation. Each
+        // candidate must carry its real data index instead of its View index; otherwise recycling
+        // or non-candidate children would cause the event position to become misaligned.
+        for (int i = 0; i < childCount; i++) {
+          View child = linearLayout.getChildAt(i);
+          ScrollSnapHelper.SnapItem snapItem = createSnapItem(child);
+          if (snapItem != null) {
+            snapItems.add(snapItem);
+          }
+        }
+        return snapItems;
+      }
+
+      @Nullable
+      @Override
+      public ScrollSnapHelper.SnapItem getAdjacentSnapItem(int index, boolean forward) {
+        if (mItemKeys.isEmpty() || index < 0 || index >= mItemKeys.size()) {
+          return null;
+        }
+        // ScrollSnapHelper's forward flag means that the normalized logical offset is increasing.
+        // The adapter has already converted the RTL velocity, current offset, and item start into
+        // logical coordinates, so do not reverse the direction again. For both LTR and RTL, the
+        // positive logical direction corresponds to increasing data indices.
+        int adjacentIndex = index + (forward ? 1 : -1);
+        // Preserve the legacy LynxSnapHelper boundary behavior by clamping an out-of-range index
+        // to the first or last item. A fling at a list boundary therefore snaps back to the
+        // boundary item instead of returning no target.
+        adjacentIndex = Math.max(0, Math.min(adjacentIndex, mItemKeys.size() - 1));
+        return createSnapItem(findSnapViewAtPosition(adjacentIndex));
+      }
+
+      @Override
+      public void willSnapTo(int index, int currentOffset, int targetOffset) {
+        // Continue reading both current-axis coordinates from the View. The currentOffset passed
+        // by the helper is only for main-axis target calculation and must not replace a retained
+        // cross-axis position with zero.
+        int currentOffsetX = mView.getScrollX();
+        int currentOffsetY = mView.getScrollY();
+        int targetOffsetX = mIsVertical ? 0 : targetOffset;
+        int targetOffsetY = mIsVertical ? targetOffset : 0;
+        if (!mIsVertical && isRtl()) {
+          // ScrollSnapHelper returns a logical offset that increases from the content's right
+          // edge, while the snap event retains List's physical Android scrollX. Apply the same
+          // conversion as startScroll so targetScrollLeft matches the animation's final position.
+          targetOffsetX = getMaxOffset() - targetOffset;
+        }
+        UIListContainer.this.willSnapTo(
+            index, currentOffsetX, currentOffsetY, targetOffsetX, targetOffsetY);
+      }
+
+      @Override
+      public void handleError(String message) {
+        // Let the helper validate shared options while List preserves its existing error code and
+        // structured warning format.
+        getLynxContext().handleLynxError(
+            new LynxError(LynxSubErrorCode.E_COMPONENT_LIST_INVALID_PROPS_ARG, "item-snap invalid!",
+                message, LynxError.LEVEL_WARN));
+      }
+    };
+  }
+
+  @Nullable
+  private View findSnapViewAtPosition(int position) {
+    if (position < 0 || position >= mItemKeys.size()) {
+      return null;
+    }
+    String itemKey = mItemKeys.getString(position);
+    LinearLayout linearLayout = mView.getLinearLayout();
+    for (int i = 0; i < linearLayout.getChildCount(); i++) {
+      View childView = linearLayout.getChildAt(i);
+      if (childView instanceof ComponentView) {
+        ComponentView componentView = (ComponentView) childView;
+        if (componentView.getDrawChildHook() instanceof UIComponent) {
+          UIComponent childComponent = (UIComponent) componentView.getDrawChildHook();
+          if (TextUtils.equals(itemKey, childComponent.getItemKey())) {
+            return childView;
+          }
+        }
+      }
+    }
+    return null;
+  }
+
+  @Nullable
+  private ScrollSnapHelper.SnapItem createSnapItem(@Nullable View child) {
+    if (child instanceof ComponentView) {
+      ComponentView componentView = (ComponentView) child;
+      if (componentView.getDrawChildHook() instanceof UIComponent) {
+        UIComponent component = (UIComponent) componentView.getDrawChildHook();
+        int index = mItemKeys.indexOf(component.getItemKey());
+        if (index != -1) {
+          int start = mIsVertical ? child.getTop() : child.getLeft();
+          int size = mIsVertical ? child.getHeight() : child.getWidth();
+          if (!mIsVertical && isRtl()) {
+            // Convert Android's left-based physical position into a logical position that
+            // increases from the content's right edge.
+            start = mView.getLinearLayout().getWidth() - child.getLeft() - child.getWidth();
+          }
+          // This is the item's index in the complete data source.
+          return new ScrollSnapHelper.SnapItem(index, start, size);
+        }
+      }
+    }
+    return null;
+  }
+
+  private void willSnapTo(
       int position, int currentOffsetX, int currentOffsetY, int targetOffsetX, int targetOffsetY) {
-    LynxDetailEvent event = new LynxDetailEvent(getSign(), "snap");
-    event.addDetail("position", position);
-    event.addDetail("currentScrollLeft", PixelUtils.pxToDip(currentOffsetX));
-    event.addDetail("currentScrollTop", PixelUtils.pxToDip(currentOffsetY));
-    event.addDetail("targetScrollLeft", PixelUtils.pxToDip(targetOffsetX));
-    event.addDetail("targetScrollTop", PixelUtils.pxToDip(targetOffsetY));
-    mContext.getEventEmitter().sendCustomEvent(event);
+    if (getEvents() != null && getEvents().containsKey(EVENT_SNAP)) {
+      LynxDetailEvent event = new LynxDetailEvent(getSign(), EVENT_SNAP);
+      event.addDetail("position", position);
+      event.addDetail("currentScrollLeft", PixelUtils.pxToDip(currentOffsetX));
+      event.addDetail("currentScrollTop", PixelUtils.pxToDip(currentOffsetY));
+      event.addDetail("targetScrollLeft", PixelUtils.pxToDip(targetOffsetX));
+      event.addDetail("targetScrollTop", PixelUtils.pxToDip(targetOffsetY));
+      mContext.getEventEmitter().sendCustomEvent(event);
+    }
   }
 
   @LynxProp(name = "experimental-max-fling-distance-ratio")
@@ -1480,6 +1662,16 @@ public class UIListContainer extends UISimpleView<ListContainerView>
       // If the flag is absent from the first props update, lock it to the default
       // disabled state so later dynamic updates cannot enable it.
       mView.mDeferChildMutationInDraw = false;
+    }
+    if (mPendingScrollSnapHelperRtlWarning && !mIsVertical && isRtl()) {
+      getLynxContext().handleLynxError(
+          new LynxError(LynxSubErrorCode.E_COMPONENT_LIST_INVALID_PROPS_ARG,
+              "Using ScrollSnapHelper with a non-zero factor may change item-snap alignment in "
+                  + "horizontal RTL lists.",
+              "", LynxError.LEVEL_WARN));
+      // All props and styles have been applied before onPropsUpdated. Clear the pending flag after
+      // reporting once so unrelated subsequent prop updates do not emit the same warning again.
+      mPendingScrollSnapHelperRtlWarning = false;
     }
   }
 

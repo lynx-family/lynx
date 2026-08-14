@@ -27,6 +27,7 @@ import androidx.core.view.ScrollingView;
 import androidx.core.view.ViewCompat;
 import com.lynx.tasm.base.LLog;
 import com.lynx.tasm.behavior.ui.list.LynxSnapHelper;
+import com.lynx.tasm.behavior.ui.scroll.ScrollSnapHelper;
 import java.util.ArrayList;
 
 public class NestedScrollContainerView
@@ -34,7 +35,6 @@ public class NestedScrollContainerView
   private static final String TAG = "UIListContainer.NestedScrollContainerView";
   private static final boolean DEBUG = false;
   private static final boolean PAGING_DEBUG = false;
-  public LynxSnapHelper mSnapHelper = null;
 
   public static final float LIST_AUTOMATIC_MAX_FLING_RATIO = Float.MAX_VALUE;
 
@@ -82,6 +82,13 @@ public class NestedScrollContainerView
   /** The scroll distance consumed by this view. */
   private final int[] mScrollStepConsumed = new int[2];
   private final int[] mTargetScrollOffset = new int[2];
+  /**
+   * @deprecated
+   * Retains the legacy LynxSnapHelper so item-snap can quickly fall back to the old behavior.
+   */
+  private LynxSnapHelper mLynxSnapHelper = null;
+  private ScrollSnapHelper mScrollSnapHelper = null;
+  private float mSnapAlignmentMillisecondsPerPx = 0;
   private VelocityTracker mVelocityTracker;
   protected ScrollHelper mScrollHelper;
   private ArrayList<OnScrollStateChangeListener> mOnScrollStateChangeListeners =
@@ -603,7 +610,7 @@ public class NestedScrollContainerView
       mLastScrollY = getScrollY();
       mTotalDeltaX = 0;
       mTotalDeltaY = 0;
-      if (mSnapHelper == null) {
+      if (!hasSnapHelper()) {
         float[] limitedFlingDistance = getLimitedFlingDistance(mLastScrollX, mLastScrollY);
         mScroller.fling(mLastScrollX, mLastScrollY, velocityX, velocityY, Integer.MIN_VALUE,
             Integer.MAX_VALUE, Integer.MIN_VALUE, Integer.MAX_VALUE, 0, 0,
@@ -615,7 +622,7 @@ public class NestedScrollContainerView
     }
 
     public boolean paging() {
-      if (mSnapHelper == null) {
+      if (!hasSnapHelper()) {
         return false;
       }
       if (mScrollState == SCROLL_STATE_IDLE) {
@@ -638,11 +645,36 @@ public class NestedScrollContainerView
     }
 
     private void pagingInternal(int velocityX, int velocityY) {
-      int[] out = mSnapHelper.findTargetSnapOffset(velocityX, velocityY, mIsVertical, isRtl());
-      int dx = out[0] - mLastScrollX;
-      int dy = out[1] - mLastScrollY;
-      int time = (int) (Math.ceil(Math.ceil(Math.abs(mIsVertical ? dy : dx)
-                            * mSnapHelper.mSnapAlignmentMillisecondsPerPx))
+      int targetX;
+      int targetY;
+      if (mScrollSnapHelper != null) {
+        int logicalVelocity = mIsVertical ? velocityY : velocityX;
+        if (!mIsVertical && isRtl()) {
+          // velocityX / velocityY already represents the content velocity in screen coordinates,
+          // rather than the finger velocity. ScrollSnapHelper uses logical coordinates, where a
+          // positive velocity scrolls toward the logical end. In horizontal RTL, the logical
+          // offset increases in the opposite direction from the physical scrollX, so negate it.
+          logicalVelocity = -velocityX;
+        }
+        ScrollSnapHelper.SnapTarget target = mScrollSnapHelper.findSnapTarget(logicalVelocity);
+        targetX = mIsVertical ? 0 : target.targetOffset;
+        targetY = mIsVertical ? target.targetOffset : 0;
+        if (!mIsVertical && isRtl()) {
+          // ScrollSnapHelper returns a targetOffset that increases in the logical direction,
+          // while Android's startScroll uses the physical scrollX. Their directions are opposite
+          // in horizontal RTL, so convert the target back to physical coordinates first.
+          targetX = getScrollRange() - targetX;
+        }
+      } else {
+        int[] target =
+            mLynxSnapHelper.findTargetSnapOffset(velocityX, velocityY, mIsVertical, isRtl());
+        targetX = target[0];
+        targetY = target[1];
+      }
+      int dx = targetX - mLastScrollX;
+      int dy = targetY - mLastScrollY;
+      int time = (int) (Math.ceil(Math.ceil(
+                            Math.abs(mIsVertical ? dy : dx) * mSnapAlignmentMillisecondsPerPx))
           / .3356);
       if (time < 100) {
         time = 100;
@@ -859,6 +891,24 @@ public class NestedScrollContainerView
     mIsVertical = isVertical;
   }
 
+  void setScrollSnapHelper(
+      @Nullable ScrollSnapHelper snapHelper, float snapAlignmentMillisecondsPerPx) {
+    mLynxSnapHelper = null;
+    mScrollSnapHelper = snapHelper;
+    mSnapAlignmentMillisecondsPerPx = snapAlignmentMillisecondsPerPx;
+  }
+
+  void setLynxSnapHelper(
+      @Nullable LynxSnapHelper lynxSnapHelper, float snapAlignmentMillisecondsPerPx) {
+    mLynxSnapHelper = lynxSnapHelper;
+    mScrollSnapHelper = null;
+    mSnapAlignmentMillisecondsPerPx = snapAlignmentMillisecondsPerPx;
+  }
+
+  private boolean hasSnapHelper() {
+    return mScrollSnapHelper != null || mLynxSnapHelper != null;
+  }
+
   public void setCustomScrollHook(CustomScrollHook customScrollHook) {
     if (mScrollHelper != null) {
       mScrollHelper.mCustomScrollHook = customScrollHook;
@@ -989,7 +1039,7 @@ public class NestedScrollContainerView
 
   private void onNestedScrollInternal(@NonNull View target, int dxConsumed, int dyConsumed,
       int dxUnconsumed, int dyUnconsumed, int type, @Nullable int[] consumed) {
-    if (mSnapHelper != null && type == TYPE_NON_TOUCH) {
+    if (hasSnapHelper() && type == TYPE_NON_TOUCH) {
       if (PAGING_DEBUG) {
         LLog.i(TAG,
             "onNestedScroll with TYPE_NON_TOUCH: dxConsumed=" + dxConsumed + ", dyConsumed="
@@ -1182,7 +1232,7 @@ public class NestedScrollContainerView
       if (PAGING_DEBUG) {
         LLog.i(TAG, "onStopNestedScroll: type=" + type + ", state=" + mScrollState);
       }
-      if (mSnapHelper == null || !mScrollHelper.paging()) {
+      if (!hasSnapHelper() || !mScrollHelper.paging()) {
         setScrollState(SCROLL_STATE_IDLE);
       }
     }
@@ -1221,7 +1271,7 @@ public class NestedScrollContainerView
   @Override
   public boolean onNestedPreFling(View target, float velocityX, float velocityY) {
     boolean nestedParentConsumeFling = this.dispatchNestedPreFling(velocityX, velocityY);
-    if (mSnapHelper != null && target != null && !nestedParentConsumeFling) {
+    if (hasSnapHelper() && target != null && !nestedParentConsumeFling) {
       // Note: If list uses item snap, and nested parent does not consume fling, we need to consume
       // fling if needed.
       boolean selfConsumeFling = mIsVertical
