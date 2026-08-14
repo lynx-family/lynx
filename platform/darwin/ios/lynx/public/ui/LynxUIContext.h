@@ -16,6 +16,7 @@
 #import <Lynx/LynxScrollListener.h>
 #import <Lynx/LynxTemplateResourceFetcher.h>
 #import <Lynx/LynxUIListProtocol.h>
+#import <Lynx/LynxViewportMetrics.h>
 
 NS_ASSUME_NONNULL_BEGIN
 @class LynxRootUI;
@@ -58,7 +59,8 @@ typedef void (^LynxClaySnapshotCompletion)(UIImage* _Nullable image);
 @property(nonatomic, weak) id lynxModuleExtraData;
 @property(nonatomic, assign, readwrite) int64_t shellPtr;
 @property(nonatomic, strong, nullable) id<ListNodeInfoFetcherProtocol> fetcher;
-@property(nonatomic, readwrite) LynxScreenMetrics* screenMetrics;
+@property(nonatomic, strong, readwrite) LynxScreenMetrics* screenMetrics;
+@property(nonatomic, strong, nullable, readonly) LynxViewportMetrics* viewportMetrics;
 @property(nonatomic, readonly) LynxUIIntersectionObserverManager* intersectionManager;
 @property(nonatomic) LynxUIExposure* uiExposure;
 @property(nonatomic, strong, nullable, readonly) NSDictionary* keyframesDict;

@@ -5220,6 +5220,11 @@ void Element::UpdateDynamicElementStyleRecursively(uint32_t style,
     }
   }
 
+  if (IsOverlay() && (style & DynamicCSSStylesManager::kUpdateScreenMetrics)) {
+    inner_force_update |= true;
+    MarkLayoutDirty();
+  }
+
   if ((dynamic_style_flags_ > 0 || inner_force_update) && !is_wrapper()) {
     // Style could never be "all" here.
     NotifyUnitValuesUpdatedToAnimation(style);

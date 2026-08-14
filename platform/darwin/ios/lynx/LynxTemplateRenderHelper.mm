@@ -24,6 +24,7 @@
 #import <Lynx/LynxLog.h>
 #import <Lynx/LynxProviderRegistry.h>
 #import <Lynx/LynxResourceModule.h>
+#import <Lynx/LynxScreenMetrics.h>
 #import <Lynx/LynxService.h>
 #import <Lynx/LynxServiceExtensionProtocol.h>
 #import <Lynx/LynxSetModule.h>
@@ -542,6 +543,16 @@ bool HasNativePaintingCtxPlatformRef(lynx::tasm::PaintingCtxPlatformImpl* painti
 - (void)setUpWithBuilder:(LynxViewBuilder*)builder screenSize:(CGSize)screenSize {
   /// UIRenderer
   [self setUpUIRendererWithBuilder:builder screenSize:screenSize];
+
+  if ([_lynxUIRenderer respondsToSelector:@selector(updateScreenMetrics:)]) {
+    LynxScreenMetrics* screenMetrics =
+        [[LynxScreenMetrics alloc] initWithScreenSize:builder.screenSize scale:builder.screenScale];
+    [_lynxUIRenderer updateScreenMetrics:screenMetrics];
+  }
+  if (_isEngineInitFromReusePool &&
+      [_lynxUIRenderer respondsToSelector:@selector(updateViewportMetrics:)]) {
+    [_lynxUIRenderer updateViewportMetrics:nil];
+  }
 
   /// LynxShell
   [self setUpLynxShellWithLastInstanceId:kUnknownInstanceId];

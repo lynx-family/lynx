@@ -35,6 +35,8 @@ static const CGFloat kLynxMaxVelocity = 10000.0;
                                                selector:@selector(tick:)];
     [_displayLink addToRunLoop:[NSRunLoop mainRunLoop] forMode:NSRunLoopCommonModes];
     _displayLink.paused = YES;
+    // TODO(xiamengfei.moonface): [ResizableWindowScale] Check whether this should use window or
+    // physical screen metrics.
     _threshold = 0.5f / [[UIScreen mainScreen] scale];
     if (@available(iOS 10.3, *)) {
       _proMotion = UIScreen.mainScreen.maximumFramesPerSecond > 60;
