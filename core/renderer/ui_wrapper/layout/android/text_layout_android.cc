@@ -658,8 +658,8 @@ void TextLayoutAndroid::AppendImageProps(ImageElement* image_element,
   props->AddProp(kPropImageLoopCount);
   props->AddProp(image_element->paint_info().loop_count);
 
-  // mode
-  // TBD
+  props->AddProp(kPropImageMode);
+  props->AddProp(static_cast<int>(image_element->paint_info().mode));
 
   // size
   props->AddProp(kPropRectSize);

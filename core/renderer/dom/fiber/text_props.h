@@ -52,6 +52,7 @@ enum TextPropertyKeyID {
   kPropColorConicGradient = 108,
   kPropImageProps = 109,
   kPropImageLoopCount = 110,
+  kPropImageMode = 111,
 
   kTextPropEnd = 0xFF,
 };

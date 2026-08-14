@@ -83,6 +83,18 @@ inline int32_t ImageElement::GetImageNodeInfo<OSType::kIOS>() const {
   return kCommonBuiltInNodeInfo;
 }
 
+template <>
+inline int32_t ImageElement::GetImageNodeInfo<OSType::kHarmony>() const {
+  if (has_auto_size_) {
+    return kCustomBuiltInNodeInfo;
+  }
+  // Layout-in-Element keeps inline images in the platform UI tree. Fragment
+  // Layer renders them through the display list instead.
+  return is_inline_element() && EnableFragmentLayerRender()
+             ? kVirtualBuiltInNodeInfo
+             : kCommonBuiltInNodeInfo;
+}
+
 }  // namespace tasm
 }  // namespace lynx
 

@@ -8,6 +8,7 @@
 #include <cstdint>
 #include <memory>
 #include <unordered_map>
+#include <vector>
 
 #include "base/include/fml/memory/ref_counted.h"
 #include "core/public/layout_node_value.h"
@@ -37,10 +38,19 @@ class TextMeasurerHarmony final {
   fml::RefPtr<harmony::ParagraphHarmony> GetParagraph(int32_t id) const;
 
  private:
+  struct InlinePlaceholderInfo {
+    int32_t sign;
+    int32_t char_index;
+    LayoutResult size;
+    float line_height;
+  };
+
   harmony::LynxContext* context_{nullptr};
   std::shared_ptr<harmony::FontCollectionHarmony> font_collection_;
   std::unordered_map<int32_t, fml::RefPtr<harmony::ParagraphHarmony>>
       paragraphs_;
+  std::unordered_map<int32_t, std::vector<InlinePlaceholderInfo>>
+      inline_placeholders_;
 };
 
 }  // namespace tasm
