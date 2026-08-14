@@ -2126,6 +2126,14 @@ void PageView::OnPlatformPerformInputAction(int client_id) {
   input_client_manager_->InvokePerformAction(client_id);
 }
 
+bool PageView::OnPlatformPerformTextInputSelector(int client_id,
+                                                  const std::string& selector) {
+  if (!input_client_manager_) {
+    return false;
+  }
+  return input_client_manager_->InvokePerformSelector(client_id, selector);
+}
+
 void PageView::SetScrollFluencyMonitorDelegate(
     std::shared_ptr<ScrollFluencyMonitorDelegate> delegate) {
   clay::Puppet<clay::Owner::kPlatform, InstrumentationService> instrumentation =

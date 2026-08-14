@@ -55,6 +55,10 @@ TextInputController::TextInputController(PageView* page_view, int client_id,
   callback.on_perform_action = [weak = weak_factory_.GetWeakPtr()]() {
     weak->PerformAction();
   };
+  callback.on_perform_selector =
+      [weak = weak_factory_.GetWeakPtr()](const std::string& selector) {
+        return weak && weak->PerformSelector(selector);
+      };
 
   manager->AddClientCallback(client_id, callback);
 #endif
@@ -153,6 +157,10 @@ void TextInputController::UpdateEditingState(std::string text,
 }
 
 void TextInputController::PerformAction() { client_->PerformAction(); }
+
+bool TextInputController::PerformSelector(const std::string& selector) {
+  return client_->PerformSelector(selector);
+}
 
 void TextInputController::SetMultiline(bool multiline) {
   multiline_ = multiline;

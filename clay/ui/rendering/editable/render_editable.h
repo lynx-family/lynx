@@ -59,6 +59,14 @@ class RenderEditable : public RenderBox {
   TextRange GetWordBoundary(size_t offset) {
     return painter_->GetWordBoundary(offset);
   }
+  // Returns the next word boundary used by editing commands (for example,
+  // Option+Left/Right on macOS). Unlike GetWordBoundary(), this skips word
+  // breaks inside runs of Unicode space separators and punctuation, matching
+  // Flutter's WordBoundary.moveByWordBoundary behavior.
+  size_t GetWordBoundaryForMove(size_t position, HorizontalDirection direction);
+  TextRange GetLineRangeForPosition(size_t offset) {
+    return painter_->GetLineRangeForPosition(offset);
+  }
 
   void SetRoughTextLineHeight(float rough_text_height) {
     rough_text_height_ = rough_text_height;

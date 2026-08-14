@@ -6,6 +6,7 @@
 #define CLAY_UI_COMMON_INPUT_CLIENT_MANAGER_H_
 
 #include <functional>
+#include <string>
 #include <unordered_map>
 
 #include "clay/fml/logging.h"
@@ -23,6 +24,7 @@ class InputClientManager {
                        uint64_t selection_extent, uint64_t composing_base)>
         on_update_edit_state;
     std::function<void()> on_perform_action;
+    std::function<bool(const std::string&)> on_perform_selector;
   };
 
   void AddClientCallback(int client_id, const TextInputCallback& callback) {
@@ -64,6 +66,14 @@ class InputClientManager {
       return;
     }
     it->second.on_perform_action();
+  }
+
+  bool InvokePerformSelector(int client_id, const std::string& selector) {
+    auto it = text_input_callbacks_.find(client_id);
+    if (it == text_input_callbacks_.end() || !it->second.on_perform_selector) {
+      return false;
+    }
+    return it->second.on_perform_selector(selector);
   }
 
  private:

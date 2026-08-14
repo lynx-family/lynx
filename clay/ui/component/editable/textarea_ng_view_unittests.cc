@@ -3,6 +3,7 @@
 // LICENSE file in the root directory of this source tree.
 
 #include "clay/public/style_types.h"
+#include "clay/ui/common/input_client_manager.h"
 #include "clay/ui/component/css_property.h"
 #include "clay/ui/component/editable/textarea_ng_view.h"
 #include "clay/ui/component/page_view.h"
@@ -96,6 +97,62 @@ TEST_F_UI(TextAreaNGViewTest, invalidEditingRanges) {
   EXPECT_EQ(value.composing_range(), TextRange(0));
   EXPECT_FALSE(value.composing());
   Layout();
+}
+
+TEST_F_UI(TextAreaNGViewTest, platformTextInputSelectorBridge) {
+  constexpr int kClientId = 101;
+  TextAreaNGView *text_area = new TextAreaNGView(kClientId, page_.get());
+  page_->AddChild(text_area);
+  text_area->SetBound(0, 0, 200, 200);
+  text_area->editable_view_->UpdateEditingState(
+      "alpha beta", TextSelection(5, 5, Affinity::kDownstream), TextRange(0),
+      Affinity::kDownstream);
+  Layout();
+  text_area->focus({}, [](LynxUIMethodResult, clay::Value) {});
+
+  InputClientManager::TextInputCallback callback;
+  callback.on_perform_selector =
+      [editable = text_area->editable_view_](const std::string &selector) {
+        return editable->PerformSelector(selector);
+      };
+  page_->GetInputClientManager()->AddClientCallback(kClientId, callback);
+
+  EXPECT_TRUE(
+      page_->OnPlatformPerformTextInputSelector(kClientId, "selectAll:"));
+  EXPECT_EQ(text_area->editable_view_->GetTextEditingValue().selection(),
+            TextRange(0, 10));
+  EXPECT_FALSE(page_->OnPlatformPerformTextInputSelector(
+      kClientId, "unsupportedSelector:"));
+}
+
+TEST_F_UI(TextAreaNGViewTest, moveByWordBoundarySkipsPunctuationAndSpaces) {
+  constexpr int kClientId = 102;
+  TextAreaNGView *text_area = new TextAreaNGView(kClientId, page_.get());
+  page_->AddChild(text_area);
+  text_area->SetBound(0, 0, 200, 200);
+  text_area->editable_view_->UpdateEditingState(
+      "one,  two\nthree", TextSelection(3, 3, Affinity::kDownstream),
+      TextRange(0), Affinity::kDownstream);
+  Layout();
+  text_area->focus({}, [](LynxUIMethodResult, clay::Value) {});
+
+  EXPECT_TRUE(text_area->editable_view_->PerformSelector("moveWordRight:"));
+  EXPECT_EQ(text_area->editable_view_->GetTextEditingValue().selection(),
+            TextRange(9));
+  EXPECT_TRUE(text_area->editable_view_->PerformSelector("moveWordLeft:"));
+  EXPECT_EQ(text_area->editable_view_->GetTextEditingValue().selection(),
+            TextRange(6));
+  EXPECT_TRUE(text_area->editable_view_->PerformSelector("moveWordLeft:"));
+  EXPECT_EQ(text_area->editable_view_->GetTextEditingValue().selection(),
+            TextRange(0));
+
+  text_area->editable_view_->UpdateEditingState(
+      "one,  two\nthree", TextSelection(3, 3, Affinity::kDownstream),
+      TextRange(0), Affinity::kDownstream);
+  EXPECT_TRUE(text_area->editable_view_->PerformSelector(
+      "moveWordRightAndModifySelection:"));
+  EXPECT_EQ(text_area->editable_view_->GetTextEditingValue().selection(),
+            TextRange(3, 9));
 }
 
 };  // namespace clay

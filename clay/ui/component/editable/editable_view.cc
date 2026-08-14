@@ -1,6 +1,7 @@
 // Copyright 2021 The Lynx Authors. All rights reserved.
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
+// cspell:ignore Backtab
 
 #include "clay/ui/component/editable/editable_view.h"
 
@@ -747,6 +748,14 @@ bool EditableView::OnKeyEventInternal(const KeyEvent* key_event) {
     return false;
   }
 
+#if defined(OS_MAC)
+  // Let NSTextInputContext translate real macOS key events into editing
+  // selectors. Synthesized events still use Clay's platform-neutral fallback.
+  if (editing_ && !key_event->GetSynthesized()) {
+    return false;
+  }
+#endif
+
   if (ApplyHotKey(key_event)) {
     return true;
   }
@@ -1398,92 +1407,43 @@ void EditableView::HandleCtrlHotKey(LogicalKeyboardKey key_code) {
 
 void EditableView::HandleWinCtrlAndMacCommandHotKey(
     LogicalKeyboardKey key_code) {
-  const auto& text_editing_value = GetTextEditingValue();
   switch (key_code) {
-    case KeyCode::kKeyV: {
-      // Paste from clipboard.
-#if defined(OS_WIN) || defined(OS_MAC) || defined(ENABLE_HEADLESS)
-      auto clip_board_data = page_view()->GetClipboardData();
-      OnCommitText(lynx::base::U16StringToU8(clip_board_data));
-#endif
+    case KeyCode::kKeyV:
+      PerformSelector("paste:");
       break;
-    }
     case KeyCode::kKeyC:
-    case KeyCode::kKeyX: {
-      // Copy to clipboard.
-      std::u16string selected = u"";
-      const auto& selection = text_editing_value.selection();
-      if (!selection.collapsed()) {
-        selected = text_editing_value.GetU16Text().substr(
-            selection.start(), selection.end() - selection.start());
-#if defined(OS_WIN) || defined(OS_MAC) || defined(ENABLE_HEADLESS)
-        page_view()->SetClipboardData(selected);
-#endif
-        if (key_code == KeyCode::kKeyX) {
-          DoDelete();
-        }
-      }
+      PerformSelector("copy:");
       break;
-    }
-    case KeyCode::kKeyA: {
-      // Select all.
-      auto text_editing_value = GetTextEditingValue();
-      text_editing_value.SetSelection(text_editing_value.text_range());
-      SetTextEditingValue(text_editing_value);
+    case KeyCode::kKeyX:
+      PerformSelector("cut:");
       break;
-    }
-    case KeyCode::kKeyZ: {
-      // Revoke.
-      // SetRawContent(revoke_cache_, true);
-      text_editing_history_state_->Undo();
+    case KeyCode::kKeyA:
+      PerformSelector("selectAll:");
       break;
-    }
+    case KeyCode::kKeyZ:
+      PerformSelector("undo:");
+      break;
     default:
       break;
   }
 }
 
 bool EditableView::HandleShiftHotKey(LogicalKeyboardKey key_code) {
-  // Move 'extent' value left/right/up/down.
-  auto text_editing_value = GetTextEditingValue();
-  auto current_selection = TextRange(text_editing_value.selection());
   switch (key_code) {
-    case KeyCode::kArrowLeft: {
-      if (text_editing_value.selection().extent() ==
-          text_editing_value.text_range().start()) {
-        break;
-      }
-      auto prev = FindNextOrPrevCharacterSelection(true);
-      text_editing_value.SetSelection(
-          TextRange(current_selection.base(), prev.start()));
-      SetTextEditingValue(text_editing_value);
-      break;
-    }
-    case KeyCode::kArrowRight: {
-      if (text_editing_value.selection().extent() ==
-          text_editing_value.text_range().end()) {
-        break;
-      }
-      auto next = FindNextOrPrevCharacterSelection(false);
-      text_editing_value.SetSelection(
-          TextRange(current_selection.base(), next.end()));
-      SetTextEditingValue(text_editing_value);
-      break;
-    }
+    case KeyCode::kArrowLeft:
+      return PerformSelector("moveLeftAndModifySelection:");
+    case KeyCode::kArrowRight:
+      return PerformSelector("moveRightAndModifySelection:");
     case KeyCode::kArrowUp:
-      GetRenderEditable()->MoveCaretUpDown(VerticalDirection::kUp, true);
-      break;
+      return PerformSelector("moveUpAndModifySelection:");
     case KeyCode::kArrowDown:
-      GetRenderEditable()->MoveCaretUpDown(VerticalDirection::kDown, true);
-      break;
-
+      return PerformSelector("moveDownAndModifySelection:");
     default:
       // other cases should be handled as normal key, e.g:
       // shift + '2' -> '@'
       // shift + 'a' -> 'A'
       return false;
   }
-  return true;
 }
 
 void EditableView::ResetGestureRecognizers() {
@@ -1606,6 +1566,158 @@ void EditableView::UpdateEditingState(std::string text, TextSelection selection,
 
 void EditableView::PerformAction() { OnPerformAction(keyboard_action_); }
 
+void EditableView::MoveSelection(size_t position, bool modify_selection) {
+  const auto& value = GetTextEditingValue();
+  position = std::min(position, value.GetU16Length());
+  GetRenderEditable()->SetSelection(
+      modify_selection ? TextRange(value.selection().base(), position)
+                       : TextRange(position));
+}
+
+void EditableView::DeleteSelectionTo(size_t position) {
+  auto value = GetTextEditingValue();
+  if (!value.selection().collapsed()) {
+    DoBackspace();
+    return;
+  }
+  position = std::min(position, value.GetU16Length());
+  if (position == value.selection().extent()) {
+    return;
+  }
+  value.SetSelection(TextRange(value.selection().extent(), position));
+  SetTextEditingValue(value, false, false);
+  DoBackspace();
+}
+
+bool EditableView::PerformSelector(const std::string& selector) {
+  if (!editing_ || disabled_) {
+    return false;
+  }
+
+  const auto selection = GetTextEditingValue().selection();
+  const size_t extent = selection.extent();
+  const size_t text_length = GetTextEditingValue().GetU16Length();
+  if (selector == "selectAll:") {
+    auto value = GetTextEditingValue();
+    value.SetSelection(value.text_range());
+    SetTextEditingValue(value);
+  } else if (selector == "copy:" || selector == "cut:") {
+    if (!selection.collapsed()) {
+      page_view()->SetClipboardData(GetTextEditingValue().GetU16Text().substr(
+          selection.start(), selection.length()));
+      if (selector == "cut:" && !readonly_) {
+        DoBackspace();
+      }
+    }
+  } else if (selector == "paste:") {
+    if (!readonly_) {
+      OnCommitText(lynx::base::U16StringToU8(page_view()->GetClipboardData()));
+    }
+  } else if (selector == "undo:") {
+    if (!readonly_ && text_editing_history_state_) {
+      text_editing_history_state_->Undo();
+    }
+  } else if (selector == "redo:") {
+    if (!readonly_ && text_editing_history_state_) {
+      text_editing_history_state_->Redo();
+    }
+  } else if (selector == "moveLeft:" || selector == "moveRight:" ||
+             selector == "moveBackward:" || selector == "moveForward:") {
+    const bool left = selector == "moveLeft:" || selector == "moveBackward:";
+    if (!selection.collapsed()) {
+      MoveSelection(left ? selection.start() : selection.end(), false);
+    } else {
+      auto range = FindNextOrPrevCharacterSelection(left);
+      MoveSelection(left ? range.start() : range.end(), false);
+    }
+  } else if (selector == "moveLeftAndModifySelection:" ||
+             selector == "moveRightAndModifySelection:" ||
+             selector == "moveBackwardAndModifySelection:" ||
+             selector == "moveForwardAndModifySelection:") {
+    const bool left = selector == "moveLeftAndModifySelection:" ||
+                      selector == "moveBackwardAndModifySelection:";
+    auto range = FindNextOrPrevCharacterSelection(left);
+    MoveSelection(left ? range.start() : range.end(), true);
+  } else if (selector == "moveUp:" || selector == "moveDown:" ||
+             selector == "moveUpAndModifySelection:" ||
+             selector == "moveDownAndModifySelection:") {
+    const bool up =
+        selector == "moveUp:" || selector == "moveUpAndModifySelection:";
+    const bool modify = selector == "moveUpAndModifySelection:" ||
+                        selector == "moveDownAndModifySelection:";
+    GetRenderEditable()->MoveCaretUpDown(
+        up ? VerticalDirection::kUp : VerticalDirection::kDown, modify);
+  } else if (selector == "moveWordLeft:" || selector == "moveWordBackward:" ||
+             selector == "moveWordLeftAndModifySelection:" ||
+             selector == "moveWordBackwardAndModifySelection:") {
+    MoveSelection(GetRenderEditable()->GetWordBoundaryForMove(
+                      extent, HorizontalDirection::kLeft),
+                  selector == "moveWordLeftAndModifySelection:" ||
+                      selector == "moveWordBackwardAndModifySelection:");
+  } else if (selector == "moveWordRight:" || selector == "moveWordForward:" ||
+             selector == "moveWordRightAndModifySelection:" ||
+             selector == "moveWordForwardAndModifySelection:") {
+    MoveSelection(GetRenderEditable()->GetWordBoundaryForMove(
+                      extent, HorizontalDirection::kRight),
+                  selector == "moveWordRightAndModifySelection:" ||
+                      selector == "moveWordForwardAndModifySelection:");
+  } else if (selector == "moveToBeginningOfDocument:" ||
+             selector == "moveToBeginningOfDocumentAndModifySelection:") {
+    MoveSelection(0,
+                  selector == "moveToBeginningOfDocumentAndModifySelection:");
+  } else if (selector == "moveToEndOfDocument:" ||
+             selector == "moveToEndOfDocumentAndModifySelection:") {
+    MoveSelection(text_length,
+                  selector == "moveToEndOfDocumentAndModifySelection:");
+  } else if (selector == "moveToBeginningOfLine:" ||
+             selector == "moveToBeginningOfLineAndModifySelection:" ||
+             selector == "moveToEndOfLine:" ||
+             selector == "moveToEndOfLineAndModifySelection:" ||
+             selector == "moveToLeftEndOfLine:" ||
+             selector == "moveToLeftEndOfLineAndModifySelection:" ||
+             selector == "moveToRightEndOfLine:" ||
+             selector == "moveToRightEndOfLineAndModifySelection:") {
+    const auto line = GetRenderEditable()->GetLineRangeForPosition(extent);
+    const bool beginning =
+        selector == "moveToBeginningOfLine:" ||
+        selector == "moveToBeginningOfLineAndModifySelection:" ||
+        selector == "moveToLeftEndOfLine:" ||
+        selector == "moveToLeftEndOfLineAndModifySelection:";
+    const bool modify =
+        selector.find("AndModifySelection:") != std::string::npos;
+    MoveSelection(beginning ? line.start() : line.end(), modify);
+  } else if (selector == "deleteBackward:" || selector == "deleteForward:") {
+    if (!readonly_) {
+      selector == "deleteBackward:" ? DoBackspace() : DoDelete();
+    }
+  } else if (selector == "deleteWordBackward:" ||
+             selector == "deleteWordForward:") {
+    if (!readonly_) {
+      DeleteSelectionTo(selector == "deleteWordBackward:"
+                            ? GetRenderEditable()->GetWordBoundaryForMove(
+                                  extent, HorizontalDirection::kLeft)
+                            : GetRenderEditable()->GetWordBoundaryForMove(
+                                  extent, HorizontalDirection::kRight));
+    }
+  } else if (selector == "deleteToBeginningOfLine:" ||
+             selector == "deleteToEndOfLine:") {
+    if (!readonly_) {
+      const auto line = GetRenderEditable()->GetLineRangeForPosition(extent);
+      DeleteSelectionTo(selector == "deleteToBeginningOfLine:" ? line.start()
+                                                               : line.end());
+    }
+  } else if (selector == "insertTab:" || selector == "insertBacktab:") {
+    auto* root_focus_manager =
+        page_view()->GetFocusManager()->GetRootFocusManager();
+    root_focus_manager->DoTraversal(selector == "insertTab:"
+                                        ? FocusManager::Direction::kDown
+                                        : FocusManager::Direction::kUp);
+  } else {
+    return false;
+  }
+  return true;
+}
+
 Transform EditableView::ToGlobalTransform() const {
   return BaseView::LocalToGlobalTransform();
 }
@@ -1717,14 +1829,15 @@ TextEditingHistoryState::TextEditingHistoryState(EditableView* editable_view)
   Push();
 }
 
-void TextEditingHistoryState::Redo() { Update(*stack_.Redo()); }
+void TextEditingHistoryState::Redo() { Update(stack_.Redo()); }
 
 void TextEditingHistoryState::Undo() {
   if (throttle_timer_ && !throttle_timer_->Stopped()) {
     throttle_timer_->Stop();
-    Update(stack_.CurrentValue());
+    stack_.Push(editable_view_->GetTextEditingValue());
+    Update(stack_.Undo());
   } else {
-    Update(*stack_.Undo());
+    Update(stack_.Undo());
   }
 }
 
@@ -1746,7 +1859,7 @@ void TextEditingHistoryState::Push() {
 
 void TextEditingHistoryState::Update(
     std::optional<TextEditingValue> new_value) {
-  if (new_value.has_value() &&
+  if (!new_value.has_value() ||
       *new_value == editable_view_->GetTextEditingValue()) {
     return;
   }

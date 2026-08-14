@@ -467,6 +467,8 @@ class PageView : public BaseView,
                                  uint64_t composing_base);
 
   void OnPlatformPerformInputAction(int client_id);
+  bool OnPlatformPerformTextInputSelector(int client_id,
+                                          const std::string& selector);
 
   virtual void OnFlingStart();
   virtual void OnFlingEnd();

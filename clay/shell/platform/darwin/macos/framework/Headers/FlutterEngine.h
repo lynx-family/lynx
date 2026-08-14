@@ -113,6 +113,8 @@ FLUTTER_DARWIN_EXPORT
 
 - (void)performInputAction:(int)client_id;
 
+- (BOOL)performTextInputSelector:(const char* _Nonnull)selector clientID:(int)client_id;
+
 - (void)performMouseDragLeave;
 - (void)performMouseDragEnterAndOverAtPoint:(NSPoint)point;
 - (void)performMouseDragDropAtPoint:(NSPoint)point

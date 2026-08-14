@@ -648,6 +648,13 @@ static char markerKey;
 }
 
 - (void)doCommandBySelector:(SEL)selector {
+  NSString* name = NSStringFromSelector(selector);
+  if (_flutterEngine && _clientID &&
+      [_flutterEngine performTextInputSelector:name.UTF8String clientID:_clientID.intValue]) {
+    _eventProducedOutput = YES;
+    return;
+  }
+
   _eventProducedOutput |= selector != NSSelectorFromString(@"noop:");
   if ([self respondsToSelector:selector]) {
     // Note: The more obvious [self performSelector...] doesn't give ARC enough information to
@@ -663,9 +670,8 @@ static char markerKey;
     return;
   }
 
-  // Group multiple selectors received within a single run loop turn so that
-  // the framework can process them in single microtask.
-  NSString* name = NSStringFromSelector(selector);
+  // Preserve Flutter's selector batching for commands that Clay does not
+  // consume through performTextInputSelector above.
   if (_pendingSelectors == nil) {
     _pendingSelectors = [NSMutableArray array];
   }

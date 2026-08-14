@@ -29,6 +29,7 @@ class TextInputClient {
   virtual void UpdateEditingState(std::string text, TextSelection selection,
                                   TextRange composing, Affinity affinity) = 0;
   virtual void PerformAction() = 0;
+  virtual bool PerformSelector(const std::string& selector) = 0;
 };
 
 class TextInputController {
@@ -53,6 +54,7 @@ class TextInputController {
   void UpdateEditingState(std::string text, TextSelection selection,
                           TextRange composing, Affinity affinity);
   void PerformAction();
+  bool PerformSelector(const std::string& selector);
 
   bool ConnectKeyboard() { return connect_keyboard_; }
 

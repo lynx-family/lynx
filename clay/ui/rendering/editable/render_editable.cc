@@ -4,6 +4,9 @@
 
 #include "clay/ui/rendering/editable/render_editable.h"
 
+#include <unicode/uchar.h>
+#include <unicode/utf16.h>
+
 #include <algorithm>
 #include <cstddef>
 #include <memory>
@@ -33,12 +36,93 @@ constexpr float kCaretWidth = 2.f;
 constexpr float kCaretVerticalPreserveSpace = 2.f;
 constexpr uint32_t kSelectionColor = 0xff90caf9;  // material blue[200]
 
+bool IsHardWordBreak(UChar32 character) {
+  switch (character) {
+    case 0x000A:  // Line Feed
+    case 0x0085:  // New Line
+    case 0x000B:  // Vertical Tab
+    case 0x000C:  // Form Feed
+    case 0x2028:  // Line Separator
+    case 0x2029:  // Paragraph Separator
+      return true;
+    default:
+      return false;
+  }
+}
+
+UChar32 CodePointAt(const std::u16string& text, size_t index) {
+  UChar32 character;
+  int32_t offset = static_cast<int32_t>(index);
+  U16_GET(text.data(), 0, offset, static_cast<int32_t>(text.size()), character);
+  return character;
+}
+
+// Flutter's WordBoundary.moveByWordBoundary skips a break when the character
+// immediately inside it is a Unicode space separator or punctuation. Newlines
+// and the document edges remain hard boundaries.
+bool ShouldStopAtWordBoundary(const std::u16string& text, size_t offset,
+                              bool forward) {
+  if (offset == 0 || offset >= text.size()) {
+    return true;
+  }
+  const size_t inner_index = forward ? offset - 1 : offset;
+  const size_t outer_index = forward ? offset : offset - 1;
+  const UChar32 inner = CodePointAt(text, inner_index);
+  const UChar32 outer = CodePointAt(text, outer_index);
+  if (IsHardWordBreak(inner) || IsHardWordBreak(outer)) {
+    return true;
+  }
+  return u_charType(inner) != U_SPACE_SEPARATOR && !u_ispunct(inner);
+}
+
 }  // namespace
 
 RenderEditable::RenderEditable()
     : painter_(std::make_unique<TextPainter>()), weak_factory_(this) {
   SetPaddingLeft(2);
   SetPaddingRight(2);
+}
+
+size_t RenderEditable::GetWordBoundaryForMove(size_t position,
+                                              HorizontalDirection direction) {
+  const auto& text = GetTextEditingValue().GetU16Text();
+  if (text.empty()) {
+    return 0;
+  }
+
+  position = std::min(position, text.size());
+  if (direction == HorizontalDirection::kRight) {
+    if (position == text.size()) {
+      return position;
+    }
+    const auto initial = painter_->GetWordBoundary(position);
+    size_t offset = initial.end();
+    while (offset < text.size() &&
+           !ShouldStopAtWordBoundary(text, offset, true)) {
+      const auto range = painter_->GetWordBoundary(offset);
+      const size_t next = range.end();
+      if (next <= offset) {
+        break;
+      }
+      offset = next;
+    }
+    return std::min(offset, text.size());
+  }
+
+  if (position == 0) {
+    return 0;
+  }
+  const auto initial = painter_->GetWordBoundary(position - 1);
+  size_t offset = initial.start();
+  while (offset > 0 && !ShouldStopAtWordBoundary(text, offset, false)) {
+    const auto range = painter_->GetWordBoundary(offset - 1);
+    const size_t previous = range.start();
+    if (previous >= offset) {
+      break;
+    }
+    offset = previous;
+  }
+  return offset;
 }
 
 void RenderEditable::SetSelection(const TextRange& selection,
