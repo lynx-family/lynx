@@ -15,6 +15,8 @@
 #import "LynxUIRenderer.h"
 #import "LynxUIRendererCreator.h"
 
+#include <cmath>
+
 @implementation LynxViewBuilder
 
 - (LynxConfig *)config {
@@ -192,10 +194,33 @@
 }
 
 - (CGSize)screenSize {
-  if (_lynxViewGroup) {
-    return _lynxViewGroup.screenSize;
+  CGSize screenSize = [super screenSize];
+  if (std::isfinite(screenSize.width) && std::isfinite(screenSize.height) && screenSize.width > 0 &&
+      screenSize.height > 0) {
+    return screenSize;
   }
-  return [super screenSize];
+  if (_lynxViewGroup) {
+    CGSize groupScreenSize = _lynxViewGroup.screenSize;
+    if (std::isfinite(groupScreenSize.width) && std::isfinite(groupScreenSize.height) &&
+        groupScreenSize.width > 0 && groupScreenSize.height > 0) {
+      return groupScreenSize;
+    }
+  }
+  return screenSize;
+}
+
+- (CGFloat)screenScale {
+  CGFloat screenScale = [super screenScale];
+  if (std::isfinite(screenScale) && screenScale > 0) {
+    return screenScale;
+  }
+  if (_lynxViewGroup) {
+    CGFloat groupScreenScale = _lynxViewGroup.screenScale;
+    if (std::isfinite(groupScreenScale) && groupScreenScale > 0) {
+      return groupScreenScale;
+    }
+  }
+  return screenScale;
 }
 
 - (BOOL)debuggable {

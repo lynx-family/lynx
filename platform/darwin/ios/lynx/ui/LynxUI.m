@@ -1609,10 +1609,15 @@ LYNX_UI_METHOD(takeScreenshot) {
   if (invoker) {
     image = [invoker takeScreenshot:self.view
                 withBackgroundColor:_backgroundManager.backgroundColor
+                              // TODO(xiamengfei.moonface): [ResizableWindowScale] Check whether
+                              // this should use window or physical screen metrics.
                               scale:[UIScreen mainScreen].scale * scale];
   } else {
-    UIGraphicsBeginImageContextWithOptions(self.view.frame.size, NO,
-                                           [UIScreen mainScreen].scale * scale);
+    UIGraphicsBeginImageContextWithOptions(
+        self.view.frame.size, NO,
+        // TODO(xiamengfei.moonface): [ResizableWindowScale] Check whether this should use window or
+        // physical screen metrics.
+        [UIScreen mainScreen].scale * scale);
     if (_backgroundManager.backgroundColor &&
         ![_backgroundManager.backgroundColor isEqual:[UIColor clearColor]]) {
       CGRect rect = CGRectMake(0, 0, self.view.frame.size.width, self.view.frame.size.height);

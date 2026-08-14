@@ -117,8 +117,7 @@ static id<LynxServiceTextProtocol> getTextService() {
 
 - (void)setupUIOwnerWithBuilder:(LynxViewBuilder *)builder {
   LynxScreenMetrics *screenMetrics =
-      [[LynxScreenMetrics alloc] initWithScreenSize:builder.screenSize
-                                              scale:[UIScreen mainScreen].scale];
+      [[LynxScreenMetrics alloc] initWithScreenSize:builder.screenSize scale:builder.screenScale];
   _uiOwner = [[LynxUIOwner alloc] initWithContainerView:_containerView
                                       componentRegistry:builder.config.componentRegistry
                                           screenMetrics:screenMetrics
@@ -478,6 +477,18 @@ static id<LynxServiceTextProtocol> getTextService() {
 - (void)updateScreenWidth:(CGFloat)width height:(CGFloat)height {
   if (_uiOwner != nil && _uiOwner.uiContext != nil) {
     [_uiOwner.uiContext updateScreenSize:CGSizeMake(width, height)];
+  }
+}
+
+- (void)updateScreenMetrics:(LynxScreenMetrics *)screenMetrics {
+  if (_uiOwner != nil && _uiOwner.uiContext != nil) {
+    [_uiOwner.uiContext updateScreenMetrics:screenMetrics];
+  }
+}
+
+- (void)updateViewportMetrics:(nullable LynxViewportMetrics *)viewportMetrics {
+  if (_uiOwner != nil && _uiOwner.uiContext != nil) {
+    [_uiOwner.uiContext updateViewportMetrics:viewportMetrics];
   }
 }
 

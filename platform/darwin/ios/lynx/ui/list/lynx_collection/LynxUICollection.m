@@ -156,6 +156,9 @@ static const CGFloat SCROLL_BY_EPSILON = 0.1f;
   if (@available(iOS 11, *)) {
     collectionView.contentInsetAdjustmentBehavior = UIScrollViewContentInsetAdjustmentNever;
   }
+  if (@available(iOS 13.0, *)) {
+    collectionView.automaticallyAdjustsScrollIndicatorInsets = NO;
+  }
 
   if ([self isAsync]) {
     // Add feature counter to count when this async-list is set to true

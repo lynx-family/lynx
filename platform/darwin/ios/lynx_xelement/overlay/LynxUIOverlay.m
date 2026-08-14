@@ -9,6 +9,7 @@
 #import <Lynx/LynxNativeLayoutNode.h>
 #import <Lynx/LynxPropsProcessor.h>
 #import <Lynx/LynxRootUI.h>
+#import <Lynx/LynxShadowNodeOwner.h>
 #import <Lynx/LynxSizeValue.h>
 #import <Lynx/LynxTouchHandler.h>
 #import <Lynx/LynxUI+Internal.h>
@@ -21,6 +22,12 @@
 #import <XElement/LynxOverlayGlobalManager.h>
 #import <XElement/LynxUIOverlay.h>
 
+@interface LynxUIOverlayShadowNode ()
+
+@property(atomic, assign) CGRect customRect;
+
+@end
+
 @implementation LynxUIOverlayShadowNode
 
 LYNX_LAZY_REGISTER_SHADOW_NODE("overlay")
@@ -29,6 +36,7 @@ LYNX_LAZY_REGISTER_SHADOW_NODE("overlay")
   if (self = [super initWithSign:sign tagName:tagName]) {
     // enable custom-layout by default
     self.hasCustomLayout = YES;
+    self.customRect = CGRectNull;
   }
   return self;
 }
@@ -43,11 +51,11 @@ LYNX_LAZY_REGISTER_SHADOW_NODE("overlay")
     if ([obj isKindOfClass:[LynxNativeLayoutNode class]]) {
       // Overlay's frame is always equal to the screen, its child should be measured correctly
       MeasureParam *childParam = [[MeasureParam alloc]
-          initWithWidth:[LynxUIOverlayShadowNode windowBounds].size.width -
-                        obj.style.computedMarginLeft - obj.style.computedMarginRight
+          initWithWidth:[self getMeasureBounds].size.width - obj.style.computedMarginLeft -
+                        obj.style.computedMarginRight
               WidthMode:LynxMeasureModeDefinite
-                 Height:[LynxUIOverlayShadowNode windowBounds].size.height -
-                        obj.style.computedMarginTop - obj.style.computedMarginBottom
+                 Height:[self getMeasureBounds].size.height - obj.style.computedMarginTop -
+                        obj.style.computedMarginBottom
              HeightMode:LynxMeasureModeDefinite];
       LynxNativeLayoutNode *child = (LynxNativeLayoutNode *)obj;
       [child measureWithMeasureParam:childParam MeasureContext:context];
@@ -68,6 +76,59 @@ LYNX_LAZY_REGISTER_SHADOW_NODE("overlay")
       [child alignWithAlignParam:param AlignContext:context];
     }
   }];
+}
+
+- (void)updateCustomRect:(CGRect)customLayout {
+  if (CGRectEqualToRect(customLayout, self.customRect)) {
+    return;
+  }
+  self.customRect = customLayout;
+  @synchronized(self) {
+    [self internalSetNeedsLayoutForce];
+  }
+}
+
++ (UIViewController *)findCustomViewControllerWith:(Class)customViewControllerClass
+                                          rootView:(UIView *)rootView {
+  UIViewController *customViewController = nil;
+
+  UIResponder *responder = rootView;
+  while (responder && ![responder isKindOfClass:customViewControllerClass]) {
+    responder = responder.nextResponder;
+  }
+  customViewController = (UIViewController *)responder;
+
+  // Can not find target UIViewController, try to find target UIView
+  if (!customViewController) {
+    UIView *view = rootView;
+    while (view && ![view isKindOfClass:customViewControllerClass]) {
+      view = view.superview;
+    }
+    // It's safe to cast from UIView to UIViewController. TODO: (xiamengfei.moonface) adapt to
+    // UIView
+    customViewController = (UIViewController *)view;
+  }
+
+  return customViewController;
+}
+
+- (CGRect)getMeasureBounds {
+  if (CGRectIsNull(self.customRect)) {
+    return [LynxUIOverlayShadowNode windowBounds];
+  } else {
+    return self.customRect;
+  }
+}
+
++ (CGRect)getBoundsWithMode:(LynxOverlayMode)mode
+             viewController:(UIViewController *)viewController {
+  if (mode == LynxOverlayModeWindow) {
+    return [LynxUIOverlayShadowNode windowBounds];
+  } else {
+    return [LynxOverlayGlobalManager getTopViewControllerWithMode:mode
+                                             customViewController:viewController]
+        .bounds;
+  }
 }
 
 + (CGRect)windowBounds {
@@ -111,6 +172,8 @@ typedef NS_ENUM(NSInteger, LynxOverlayTouchEvent) {
 @property(nonatomic, assign) BOOL notAdjustLeftMargin;
 
 @property(nonatomic, assign) BOOL notAdjustTopMargin;
+
+@property(nonatomic, assign) BOOL followModeEdge;
 
 @end
 
@@ -157,9 +220,13 @@ LYNX_LAZY_REGISTER_UI("overlay")
   if (!self.context.rootUI) {
     return;
   }
+  CGRect modeRect = self.followModeEdge
+                        ? [LynxUIOverlayShadowNode getBoundsWithMode:self.mode
+                                                      viewController:self.customViewController]
+                        : [LynxUIOverlayShadowNode windowBounds];
 
   // Overlay's frame must be equal to UIScreen
-  self.view.frame = [LynxUIOverlayShadowNode windowBounds];
+  self.view.frame = modeRect;
 
   // add Overlay's view to global container according to its level and mode
   UIView *container =
@@ -172,9 +239,14 @@ LYNX_LAZY_REGISTER_UI("overlay")
   CGPoint offset = [[self windowContainer] convertPoint:CGPointZero toView:container];
 
   CGRect rect = {(self.notAdjustLeftMargin ? 0 : offset.x),
-                 (self.notAdjustTopMargin ? 0 : offset.y),
-                 [LynxUIOverlayShadowNode windowBounds].size};
+                 (self.notAdjustTopMargin ? 0 : offset.y), modeRect.size};
   self.view.frame = rect;
+
+  if (self.followModeEdge) {
+    LynxUIOverlayShadowNode *node =
+        (LynxUIOverlayShadowNode *)[self.context.nodeOwner nodeWithSign:self.sign];
+    [node updateCustomRect:rect];
+  }
 
   // make sure Overlay is always at the front
   if (self.willBecomeVisible) {
@@ -283,6 +355,8 @@ LYNX_PROP_SETTER("visible", setVisible, BOOL) {
   }
   self.visible = value;
 }
+
+LYNX_PROP_SETTER("ios-follow-mode-edge", iOSFollowModeEdge, BOOL) { self.followModeEdge = value; }
 
 // legacy API
 LYNX_PROP_SETTER("allow-pan-gesture", setAllowPanGesture, BOOL) { self.allowPanGesture = value; }
@@ -438,23 +512,9 @@ LYNX_PROP_SETTER("pointer-events", setPointerEvents, NSInteger) {
 
 - (UIViewController *)customViewController {
   if (![_customViewController isKindOfClass:self.customViewControllerClass]) {
-    _customViewController = nil;
-    UIResponder *responder = self.parent.view;
-    while (responder && ![responder isKindOfClass:self.customViewControllerClass]) {
-      responder = responder.nextResponder;
-    }
-    _customViewController = (UIViewController *)responder;
-
-    // Can not find target UIViewController, try to find target UIView
-    if (!_customViewController) {
-      UIView *view = self.parent.view;
-      while (view && ![view isKindOfClass:self.customViewControllerClass]) {
-        view = view.superview;
-      }
-      // It's safe to cast from UIView to UIViewController. TODO: (xiamengfei.moonface) adapt to
-      // UIView
-      _customViewController = (UIViewController *)view;
-    }
+    _customViewController =
+        [LynxUIOverlayShadowNode findCustomViewControllerWith:self.customViewControllerClass
+                                                     rootView:self.parent.view];
   }
   return _customViewController;
 }

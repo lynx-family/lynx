@@ -180,7 +180,11 @@
   NSMutableDictionary* context = [NSMutableDictionary dictionary];
 
   if ([[contextInfo objectForKey:LynxImageFetcherContextKeyDownsampling] boolValue]) {
+    // TODO(xiamengfei.moonface): [ResizableWindowScale] Check whether this should use window or
+    // physical screen metrics.
     CGSize thumbnailSize = CGSizeMake(targetSize.width * [UIScreen mainScreen].scale,
+                                      // TODO(xiamengfei.moonface): [ResizableWindowScale] Check
+                                      // whether this should use window or physical screen metrics.
                                       targetSize.height * [UIScreen mainScreen].scale);
     context[SDWebImageContextImageThumbnailPixelSize] = [NSValue valueWithCGSize:thumbnailSize];
   }
