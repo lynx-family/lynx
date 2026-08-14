@@ -136,6 +136,33 @@ public class ScrollSnapHelperTest {
   }
 
   @Test
+  public void testExtraDistanceStartsAboveVelocityThreshold() {
+    TestHooks hooks = new TestHooks(10, 0, 900, 100, createItems(10, 100));
+    ScrollSnapHelper helper = new ScrollSnapHelper(0, 0, 3, hooks);
+
+    SnapTarget thresholdTarget = helper.findSnapTarget(2000);
+    SnapTarget projectedTarget = helper.findSnapTarget(3000);
+
+    assertEquals(1, thresholdTarget.index);
+    assertEquals(100, thresholdTarget.targetOffset);
+    assertEquals(2, projectedTarget.index);
+    assertEquals(200, projectedTarget.targetOffset);
+  }
+
+  @Test
+  public void testMultiStepSnapCollapsesBoundaryCandidates() {
+    TestHooks hooks = new TestHooks(50, 0, 150, 250,
+        Arrays.asList(new SnapItem(0, 0, 80), new SnapItem(1, 80, 80), new SnapItem(2, 160, 80),
+            new SnapItem(3, 240, 80), new SnapItem(4, 320, 80)));
+
+    SnapTarget target = new ScrollSnapHelper(0, 0, 3, hooks).findSnapTarget(10000);
+
+    // Items 2-4 share the end boundary; the item whose raw offset first reaches it represents it.
+    assertEquals(2, target.index);
+    assertEquals(150, target.targetOffset);
+  }
+
+  @Test
   public void testMultiStepSnapCountsRawIndicesWhenEventIndicesHaveGaps() {
     // Verify that source indices can include a skipped bounce child, which counts toward
     // maxSnapCount even though the bounce view is not a snap candidate.

@@ -32,9 +32,7 @@ public class LynxSnapHelperTest {
 
   @Test
   public void testSnap() {
-    double snapAlignmentMillisecondsPerPx = 100f / lynxContext.getScreenMetrics().densityDpi;
-    LynxSnapHelper snapHelper = createVerticalSnapHelper(
-        500, 500, 10, 3, 20, 0, 20, snapAlignmentMillisecondsPerPx, 1, null);
+    LynxSnapHelper snapHelper = createVerticalSnapHelper(500, 500, 10, 3, 20, 0, 20, 1, null);
 
     int[] out = snapHelper.findTargetSnapOffset(0, 100, true, false);
     assertEquals(0, out[0]);
@@ -100,12 +98,12 @@ public class LynxSnapHelperTest {
   private LynxSnapHelper createVerticalSnapHelper(int viewportHeight, int itemHeight, int itemCount,
       int currentOffset, int maxSnapCount, SnapResult snapResult) {
     return createVerticalSnapHelper(viewportHeight, itemHeight, itemCount, itemCount, currentOffset,
-        0, 0, 0, maxSnapCount, snapResult);
+        0, 0, maxSnapCount, snapResult);
   }
 
   private LynxSnapHelper createVerticalSnapHelper(int viewportHeight, int itemHeight, int itemCount,
-      int childrenCount, int currentOffset, double snapAlignmentFactor, int snapAlignmentOffset,
-      double snapAlignmentMillisecondsPerPx, int maxSnapCount, SnapResult snapResult) {
+      int childrenCount, int currentOffset, float snapAlignmentFactor, int snapAlignmentOffset,
+      int maxSnapCount, SnapResult snapResult) {
     ScrollView scrollView = new ScrollView(lynxContext);
     scrollView.setLayoutParams(new ViewGroup.LayoutParams(VIEWPORT_WIDTH, viewportHeight));
     scrollView.layout(0, 0, VIEWPORT_WIDTH, viewportHeight);
@@ -130,8 +128,8 @@ public class LynxSnapHelperTest {
     }
     scrollView.scrollTo(0, currentOffset);
 
-    return new LynxSnapHelper(snapAlignmentFactor, snapAlignmentOffset,
-        snapAlignmentMillisecondsPerPx, maxSnapCount, new LynxSnapHelper.LynxSnapHooks() {
+    return new LynxSnapHelper(
+        snapAlignmentFactor, snapAlignmentOffset, maxSnapCount, new LynxSnapHelper.LynxSnapHooks() {
           @Override
           public int getScrollX() {
             return scrollView.getScrollX();

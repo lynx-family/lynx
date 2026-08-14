@@ -37,22 +37,19 @@ public class LynxSnapHelper {
   private LynxSnapHooks mSnapHooks = null;
   private boolean mIsVertical = true;
   private boolean mIsRtl = false;
-  private double mSnapAlignmentFactor = -1;
+  private float mSnapAlignmentFactor = -1;
   private int mSnapAlignmentOffset = 0;
   private int mMaxSnapCount = DEFAULT_MAX_SNAP_COUNT;
-  public double mSnapAlignmentMillisecondsPerPx = 0;
 
-  public LynxSnapHelper(double snapAlignmentFactor, int snapAlignmentOffset,
-      double snapAlignmentMillisecondsPerPx, LynxSnapHooks snapHooks) {
-    this(snapAlignmentFactor, snapAlignmentOffset, snapAlignmentMillisecondsPerPx,
-        DEFAULT_MAX_SNAP_COUNT, snapHooks);
+  public LynxSnapHelper(
+      float snapAlignmentFactor, int snapAlignmentOffset, LynxSnapHooks snapHooks) {
+    this(snapAlignmentFactor, snapAlignmentOffset, DEFAULT_MAX_SNAP_COUNT, snapHooks);
   }
 
-  public LynxSnapHelper(double snapAlignmentFactor, int snapAlignmentOffset,
-      double snapAlignmentMillisecondsPerPx, int maxSnapCount, LynxSnapHooks snapHooks) {
+  public LynxSnapHelper(float snapAlignmentFactor, int snapAlignmentOffset, int maxSnapCount,
+      LynxSnapHooks snapHooks) {
     mSnapAlignmentFactor = snapAlignmentFactor;
     mSnapAlignmentOffset = snapAlignmentOffset;
-    mSnapAlignmentMillisecondsPerPx = snapAlignmentMillisecondsPerPx;
     mMaxSnapCount = Math.max(DEFAULT_MAX_SNAP_COUNT, maxSnapCount);
     mSnapHooks = snapHooks;
   }
