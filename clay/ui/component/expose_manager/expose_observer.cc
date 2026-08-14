@@ -10,6 +10,7 @@
 #include <utility>
 
 #include "base/include/string/string_utils.h"
+#include "base/trace/native/trace_event.h"
 #include "clay/ui/common/attribute_utils.h"
 #include "clay/ui/common/value_utils.h"
 #include "clay/ui/component/base_view.h"
@@ -133,6 +134,8 @@ void ExposeObserver::NotifyGlobalEvent(bool appear) {
 }
 
 void ExposeObserver::NotifyExposureEvent(bool appear) {
+  TRACE_EVENT("clay", CLAY_EXPOSE_OBSERVER_NOTIFY_EXPOSURE_EVENT, "appear",
+              appear, "view_id", attached_view_ ? attached_view_->id() : -1);
   if (expose_attrs_.exposure_should_notify_appear_ ||
       expose_attrs_.exposure_should_notify_disappear_) {
     NotifyAppearEvent(appear);
@@ -171,6 +174,8 @@ void ExposeObserver::CheckForIntersectionWithTarget() {
   if (!exposure_host_visible_ && !is_detaching_) {
     return;
   }
+  TRACE_EVENT("clay", CLAY_EXPOSE_OBSERVER_CHECK_FOR_INTERSECTION_WITH_TARGET,
+              "view_id", attached_view_->id());
   now_entry_ = std::make_unique<IntersectionObserverEntry>();
 
   FloatRect target_rect =
