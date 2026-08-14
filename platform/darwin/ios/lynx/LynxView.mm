@@ -466,7 +466,15 @@
 #pragma mark - View
 
 - (void)updateScreenMetricsWithWidth:(CGFloat)width height:(CGFloat)height {
-  [_templateRender updateScreenMetricsWithWidth:width height:height];
+  [_templateRender updateScreenMetricsWithWidth:width height:height scale:0];
+}
+
+- (void)updateScreenMetricsWithWidth:(CGFloat)width height:(CGFloat)height scale:(CGFloat)scale {
+  [_templateRender updateScreenMetricsWithWidth:width height:height scale:scale];
+}
+
+- (void)updateScreenMetrics:(LynxScreenMetrics*)screenMetrics {
+  [_templateRender updateScreenMetrics:screenMetrics];
 }
 
 /**

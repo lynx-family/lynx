@@ -26,6 +26,7 @@ public_shared_sources = [
   "LynxUIInlineImage.h",
   "LynxUIRendererCreatorProtocol.h",
   "LynxURL.h",
+  "LynxViewportMetrics.h",
   "LynxWasmFuncRegistry.h",
   "animation/LynxAnimationDelegate.h",
   "animation/LynxAnimationInfo.h",

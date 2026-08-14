@@ -6,6 +6,11 @@
 #import <Lynx/LynxUnitUtils.h>
 #import <XCTest/XCTest.h>
 
+@interface LynxScreenMetrics (UnitTestMutable)
+- (void)setScreenSize:(CGSize)screenSize;
+- (void)setScale:(CGFloat)scale;
+@end
+
 @interface LynxUnitUtilsUnitTest : XCTestCase
 
 @end
@@ -100,11 +105,10 @@
 
 - (void)testToPtFromUnitValueWithScreenMetrics {
   CGFloat ptValue = 0;
-  LynxScreenMetrics* screenMertics = [[LynxScreenMetrics alloc] init];
-  [screenMertics setScreenSize:CGSizeMake(828, 1338)];
-  [screenMertics setScale:3];
+  LynxScreenMetrics* screenMetrics =
+      [[LynxScreenMetrics alloc] initWithScreenSize:CGSizeMake(828, 1338) scale:3];
 
-  ptValue = [LynxUnitUtils toPtWithScreenMetrics:screenMertics
+  ptValue = [LynxUnitUtils toPtWithScreenMetrics:screenMetrics
                                        unitValue:@"375rpx"
                                     rootFontSize:0
                                      curFontSize:0
@@ -113,7 +117,7 @@
                                    withDefaultPt:0];
   XCTAssertTrue([self floatEqualFirst:ptValue toSecond:414]);
 
-  ptValue = [LynxUnitUtils toPtWithScreenMetrics:screenMertics
+  ptValue = [LynxUnitUtils toPtWithScreenMetrics:screenMetrics
                                        unitValue:@"105.4ppx"
                                     rootFontSize:0
                                      curFontSize:0

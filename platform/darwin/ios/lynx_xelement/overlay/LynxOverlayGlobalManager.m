@@ -104,7 +104,7 @@
   return array;
 }
 
-- (UIView *)getTopViewControllerWithMode:(LynxOverlayMode)mode
++ (UIView *)getTopViewControllerWithMode:(LynxOverlayMode)mode
                     customViewController:(UIViewController *)customViewController {
   UIView *topContainer = nil;
   switch (mode) {
@@ -136,8 +136,9 @@
       customViewController:(UIViewController *)customViewController {
   // Firstly, get the top container by the mode
 
-  UIView *topContainer = [self getTopViewControllerWithMode:mode
-                                       customViewController:customViewController];
+  UIView *topContainer =
+      [LynxOverlayGlobalManager getTopViewControllerWithMode:mode
+                                        customViewController:customViewController];
 
   NSInteger identifier = [self identifierWithModel:mode withContainer:topContainer];
 
@@ -188,8 +189,9 @@
                    withMode:(LynxOverlayMode)mode
        customViewController:(UIViewController *)customViewController {
   // Firstly, get the top container by the mode
-  UIView *topContainer = [self getTopViewControllerWithMode:mode
-                                       customViewController:customViewController];
+  UIView *topContainer =
+      [LynxOverlayGlobalManager getTopViewControllerWithMode:mode
+                                        customViewController:customViewController];
 
   // Secondly, get the level container inside the top container with the specific level
   UIView *levelContainer = [self levelContainerAt:level withModel:mode withContainer:topContainer];
@@ -267,7 +269,7 @@
   return mode + (uintptr_t)container;
 }
 
-- (UIView *)modalContainer {
++ (UIView *)modalContainer {
   UIViewController *topController = [LynxUIKitAPIAdapter getForegroundKeyWindow].rootViewController;
   while (topController.presentedViewController) {
     topController = topController.presentedViewController;
@@ -275,13 +277,13 @@
   return topController.view;
 }
 
-- (UIView *)topContainer {
++ (UIView *)topContainer {
   UIViewController *rootController =
       [LynxUIKitAPIAdapter getForegroundKeyWindow].rootViewController;
   return [self topViewControllerForController:rootController].view;
 }
 
-- (UIViewController *)topViewControllerForController:(UIViewController *)rootViewController {
++ (UIViewController *)topViewControllerForController:(UIViewController *)rootViewController {
   if ([rootViewController isKindOfClass:[UINavigationController class]]) {
     UINavigationController *navigationController = (UINavigationController *)rootViewController;
     return [self topViewControllerForController:[navigationController.viewControllers lastObject]];
@@ -296,7 +298,7 @@
   return rootViewController;
 }
 
-- (UIView *)pageContainer {
++ (UIView *)pageContainer {
   UIViewController *topController;
   UIViewController *rootController =
       [LynxUIKitAPIAdapter getForegroundKeyWindow].rootViewController;
@@ -308,7 +310,7 @@
   return topController.view;
 }
 
-- (UIView *)windowContainer {
++ (UIView *)windowContainer {
   return [LynxUIKitAPIAdapter getForegroundKeyWindow];
 }
 
