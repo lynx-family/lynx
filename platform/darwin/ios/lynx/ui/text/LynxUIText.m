@@ -144,6 +144,8 @@ LYNX_PROPS_GROUP_DECLARE(
     [self.children
         enumerateObjectsUsingBlock:^(LynxUI *_Nonnull child, NSUInteger idx, BOOL *_Nonnull stop) {
           if (child.sign == attachment.sign) {
+            // TODO(xiamengfei.moonface): [ResizableWindowScale] Check whether this should use
+            // window or physical screen metrics.
             CGFloat scale = [UIScreen mainScreen].scale;
             if (attachment.nativeAttachment) {
               if (CGRectIsEmpty(attachment.frame) && ![child.view isHidden]) {
