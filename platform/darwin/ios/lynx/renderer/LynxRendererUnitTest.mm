@@ -220,7 +220,7 @@
   [[view renderer] applyTransform:rotate];
 
   lynx::tasm::DisplayList list;
-  lynx::tasm::DisplayListItem begin;
+  lynx::tasm::DisplayListItem begin{};
   begin.type = lynx::tasm::DisplayListOpType::kBegin;
   begin.payload.begin.id = 13;
   begin.payload.begin.type = static_cast<int32_t>(PlatformRendererType::kView);
@@ -229,7 +229,7 @@
   begin.payload.begin.w = 120.0f;
   begin.payload.begin.h = 120.0f;
   list.AppendItem(begin);
-  lynx::tasm::DisplayListItem end;
+  lynx::tasm::DisplayListItem end{};
   end.type = lynx::tasm::DisplayListOpType::kEnd;
   list.AppendItem(end);
   renderer.OnUpdateDisplayList(std::move(list));
@@ -243,6 +243,68 @@
   XCTAssertEqualWithAccuracy(view.layer.transform.m22, 0.70710677f, 0.001f);
   XCTAssertEqualWithAccuracy(view.layer.transform.m41, 60.0f, 0.001f);
   XCTAssertEqualWithAccuracy(view.layer.transform.m42, -24.852814f, 0.001f);
+}
+
+- (void)testPlatformRendererDarwinKeepsTopLeftAnchorForSubtreeOnlyTransformUpdate {
+  lynx::tasm::PlatformRendererContextDarwin context(nil);
+  lynx::tasm::PlatformRendererDarwin renderer(&context, 13, PlatformRendererType::kView);
+  UIView<LynxRendererHost>* view = renderer.GetUIView();
+  XCTAssertNotNil(view);
+
+  lynx::tasm::DisplayList initialList;
+  lynx::tasm::DisplayListItem begin{};
+  begin.type = lynx::tasm::DisplayListOpType::kBegin;
+  begin.payload.begin.id = 13;
+  begin.payload.begin.type = static_cast<int32_t>(PlatformRendererType::kView);
+  begin.payload.begin.x = 135.0f;
+  begin.payload.begin.y = 45.0f;
+  begin.payload.begin.w = 120.0f;
+  begin.payload.begin.h = 120.0f;
+  initialList.AppendItem(begin);
+  lynx::tasm::DisplayListItem end{};
+  end.type = lynx::tasm::DisplayListOpType::kEnd;
+  initialList.AppendItem(end);
+  renderer.UpdateDisplayList(std::move(initialList));
+
+  XCTAssertTrue(CGPointEqualToPoint(view.layer.anchorPoint, CGPointZero));
+  XCTAssertTrue(CGPointEqualToPoint(view.layer.position, CGPointMake(135.0f, 45.0f)));
+
+  float rotate[16] = {
+      0.70710677f, 0.70710677f, 0.0f, 0.0f, -0.70710677f, 0.70710677f, 0.0f, 0.0f,
+      0.0f,        0.0f,        1.0f, 0.0f, 60.0f,        -24.852814f, 0.0f, 1.0f,
+  };
+  lynx::tasm::SubtreeProperty transform{};
+  transform.type = lynx::tasm::DisplayListSubtreePropertyOpType::kTransform;
+  memcpy(transform.data.transform, rotate, sizeof(rotate));
+  lynx::tasm::DisplayList subtreeOnlyList;
+  subtreeOnlyList.AddSubtreeProperty(transform);
+  renderer.UpdateDisplayList(std::move(subtreeOnlyList));
+
+  XCTAssertTrue(CGPointEqualToPoint(view.layer.anchorPoint, CGPointZero));
+  XCTAssertTrue(CGPointEqualToPoint(view.layer.position, CGPointMake(135.0f, 45.0f)));
+  CGPoint transformedCenter = CGPointApplyAffineTransform(
+      CGPointMake(60.0f, 60.0f), CATransform3DGetAffineTransform(view.layer.transform));
+  XCTAssertEqualWithAccuracy(transformedCenter.x, 60.0f, 0.001f);
+  XCTAssertEqualWithAccuracy(transformedCenter.y, 60.0f, 0.001f);
+}
+
+- (void)testApplyTransformRestoresTopLeftAnchorForRendererHost {
+  LynxContainerView* hostView =
+      [[LynxContainerView alloc] initWithFrame:CGRectMake(10.0f, 20.0f, 120.0f, 80.0f)];
+  hostView.layer.anchorPoint = CGPointMake(0.25f, 0.75f);
+  hostView.layer.position = CGPointMake(40.0f, 80.0f);
+  LynxRenderer* renderer = [[LynxRenderer alloc] initWithRenderHost:hostView
+                                                            andSign:1
+                                                         andContext:nil];
+
+  float identity[16] = {
+      1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f,
+      0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f,
+  };
+  [renderer applyTransform:identity];
+
+  XCTAssertTrue(CGPointEqualToPoint(hostView.layer.anchorPoint, CGPointZero));
+  XCTAssertTrue(CGPointEqualToPoint(hostView.layer.position, CGPointMake(10.0f, 20.0f)));
 }
 
 - (void)testApplyTransformScale {

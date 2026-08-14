@@ -13,6 +13,30 @@
 
 #import "LynxFilterUtil.h"
 
+namespace {
+
+void UseTopLeftAnchorPreservingLayoutOrigin(UIView* view) {
+  CALayer* layer = view.layer;
+  if (layer == nil || CGPointEqualToPoint(layer.anchorPoint, CGPointZero)) {
+    return;
+  }
+
+  if (CATransform3DIsIdentity(layer.transform)) {
+    CGRect frame = view.frame;
+    layer.anchorPoint = CGPointZero;
+    [view setFrame:frame];
+    return;
+  }
+
+  CGPoint position = layer.position;
+  position.x -= layer.anchorPoint.x * layer.bounds.size.width;
+  position.y -= layer.anchorPoint.y * layer.bounds.size.height;
+  layer.anchorPoint = CGPointZero;
+  layer.position = position;
+}
+
+}  // namespace
+
 @implementation LynxRenderer {
   __weak UIView<LynxRendererHost>* _host;
   LynxDisplayListApplier* _applier;
@@ -99,16 +123,19 @@
     return;
   }
 
+  CALayer* layer = _host.layer;
   CGRect layoutFrame;
-  if (CATransform3DIsIdentity(_host.layer.transform)) {
+  if (CATransform3DIsIdentity(layer.transform)) {
     layoutFrame = _host.frame;
-    if (CGPointEqualToPoint(layoutFrame.origin, offset)) {
+    BOOL anchorPointChanged = !CGPointEqualToPoint(layer.anchorPoint, CGPointZero);
+    BOOL originChanged = !CGPointEqualToPoint(layoutFrame.origin, offset);
+    if (!anchorPointChanged && !originChanged) {
       return;
     }
     layoutFrame.origin = offset;
+    layer.anchorPoint = CGPointZero;
     [_host setFrame:layoutFrame];
   } else {
-    CALayer* layer = _host.layer;
     BOOL anchorPointChanged = !CGPointEqualToPoint(layer.anchorPoint, CGPointZero);
     BOOL positionChanged = !CGPointEqualToPoint(layer.position, offset);
     if (!anchorPointChanged && !positionChanged) {
@@ -180,6 +207,12 @@
   if (!_host || m == nullptr) {
     return;
   }
+
+  // FLR matrices already contain transform-origin. Keep CALayer on a neutral
+  // top-left anchor so Core Animation does not apply another pivot. This also
+  // restores the FLR geometry contract if a platform-backed host changed its
+  // anchor while processing attributes.
+  UseTopLeftAnchorPreservingLayoutOrigin(_host);
 
   CATransform3D transform;
 

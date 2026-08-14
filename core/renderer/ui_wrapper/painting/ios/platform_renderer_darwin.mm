@@ -37,15 +37,16 @@ UIEdgeInsets UIEdgeInsetsFromLayoutMetrics(const float* metrics) {
 }
 
 void LynxCUIApplyLayoutFrame(UIView* view, CGRect layout_frame) {
+  // CUI subtree transform matrices already bake transform-origin. Consume them
+  // with top-left anchor semantics even when the current matrix is identity, so
+  // later subtree-only transform updates do not apply an extra Core Animation
+  // pivot.
+  view.layer.anchorPoint = CGPointZero;
   if (CATransform3DIsIdentity(view.layer.transform)) {
-    view.layer.anchorPoint = CGPointMake(0.5f, 0.5f);
     [view setFrame:layout_frame];
     return;
   }
 
-  // CUI subtree transform matrices already bake transform-origin. Consume them
-  // with top-left anchor semantics so iOS does not apply an extra center pivot.
-  view.layer.anchorPoint = CGPointZero;
   CGRect bounds = view.bounds;
   bounds.size = layout_frame.size;
   view.bounds = bounds;
