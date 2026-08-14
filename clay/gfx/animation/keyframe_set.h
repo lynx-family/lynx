@@ -201,9 +201,11 @@ class TransformKeyframeSet : public KeyframeSet {
    * @param fraction The elapsed fraction of the animation
    * @return The animated value.
    */
-  TransformOperations GetValue(float fraction) const;
+  lynx::gfx::TransformOperations GetValue(float fraction) const;
 
   void AddKeyframe(std::unique_ptr<TransformKeyframe> keyframe);
+
+  bool DoesNotAnimateStackingZ(float underlying_stacking_z) const;
 
   using Keyframes = std::vector<std::unique_ptr<TransformKeyframe>>;
 
@@ -214,7 +216,7 @@ class TransformKeyframeSet : public KeyframeSet {
   // same time.
   Keyframes keyframes_;
 
-  TransformOperations original_value_ = TransformOperations();
+  lynx::gfx::TransformOperations original_value_;
 };
 
 class FilterKeyframeSet : public KeyframeSet {

@@ -5,12 +5,12 @@
 #include "clay/gfx/geometry/filter_operations.h"
 
 #include <algorithm>
+#include <cmath>
 #include <cstddef>
 #include <memory>
 #include <utility>
 
 #include "clay/fml/logging.h"
-#include "clay/gfx/geometry/transform_operation.h"
 
 namespace clay {
 
@@ -161,8 +161,8 @@ void FilterOperation::Bake() {
     case FilterOperation::kTypeHueRotate: {
       if (value != 0) {
         float rad = value * 3.1415926 / 180;
-        float cos_hue = std::cosf(rad);
-        float sin_hue = std::sinf(rad);
+        float cos_hue = std::cos(rad);
+        float sin_hue = std::sin(rad);
         color_matrix = {0.213f + cos_hue * 0.787f - sin_hue * 0.213f,
                         0.715f - cos_hue * 0.715f - sin_hue * 0.715f,
                         0.072f - cos_hue * 0.072f + sin_hue * 0.928f,

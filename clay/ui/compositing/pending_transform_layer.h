@@ -10,9 +10,9 @@
 #include <variant>
 
 #include "clay/gfx/geometry/float_point.h"
-#include "clay/gfx/geometry/transform_operations.h"
 #include "clay/ui/compositing/frame_builder.h"
 #include "clay/ui/compositing/pending_offset_layer.h"
+#include "gfx/geometry/transform_operations.h"
 
 namespace clay {
 
@@ -20,8 +20,9 @@ class PendingTransformLayer : public PendingOffsetLayer {
  public:
   explicit PendingTransformLayer(const skity::Matrix& transform,
                                  const FloatPoint& offset = FloatPoint());
-  PendingTransformLayer(const TransformOperations& transform,
+  PendingTransformLayer(const lynx::gfx::TransformOperations& transform,
                         const FloatPoint& transform_origin,
+                        float perspective = 0.0f,
                         const FloatPoint& offset = FloatPoint());
   ~PendingTransformLayer() override;
 
@@ -36,8 +37,9 @@ class PendingTransformLayer : public PendingOffsetLayer {
  private:
   void AddToFrame(FrameBuilder* builder, const FloatPoint& offset) override;
 
-  std::variant<skity::Matrix, TransformOperations> transform_;
+  std::variant<skity::Matrix, lynx::gfx::TransformOperations> transform_;
   FloatPoint transform_origin_;
+  float perspective_{0.0f};
 };
 
 }  // namespace clay

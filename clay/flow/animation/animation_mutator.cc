@@ -174,14 +174,14 @@ void AnimationMutator::OnTransitionEvent(
 }
 
 void TransformMutator::GetProperty(ClayAnimationPropertyType type,
-                                   clay::TransformOperations& value) {
+                                   lynx::gfx::TransformOperations& value) {
   if (type == ClayAnimationPropertyType::kTransform) {
     value = transform_;
   }
 }
 
 void TransformMutator::SetProperty(ClayAnimationPropertyType type,
-                                   const clay::TransformOperations& value,
+                                   const lynx::gfx::TransformOperations& value,
                                    bool skip_update_for_raster_animation) {
   if (type == ClayAnimationPropertyType::kTransform) {
     transform_ = value;

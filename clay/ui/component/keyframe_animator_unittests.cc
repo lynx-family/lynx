@@ -12,6 +12,7 @@
 #include "clay/gfx/animation/keyframe.h"
 #include "clay/gfx/animation/keyframes_manager.h"
 #include "clay/gfx/animation/value_animator.h"
+#include "clay/gfx/geometry/transform_operations_utils.h"
 #include "clay/gfx/geometry/transform_raw.h"
 #include "clay/gfx/style/length.h"
 #include "clay/public/value.h"
@@ -133,6 +134,19 @@ Value MakeTranslateXCalcValue(double percent, double fixed) {
   transform.emplace_back(Value(std::move(op)));
   return Value(std::move(transform));
 }
+
+Value MakeTranslate3dValue(double x, double y, double z) {
+  Value::Array op;
+  op.emplace_back(static_cast<int32_t>(ClayTransformType::kTranslate3d));
+  for (double value : {x, y, z}) {
+    op.emplace_back(value);
+    op.emplace_back(static_cast<int32_t>(LengthUnit::kNum));
+  }
+
+  Value::Array transform;
+  transform.emplace_back(Value(std::move(op)));
+  return Value(std::move(transform));
+}
 }  // namespace
 
 TEST(TransformOperationsTest, TranslateYPercentageDetectionUsesFirstSlot) {
@@ -177,15 +191,137 @@ TEST_F_UI(KeyFrameTest, TransformKeyframeCalcResolvesOnClone) {
 
   auto start_value = transform_set->GetValue(0.f);
   ASSERT_EQ(start_value.size(), 1u);
-  EXPECT_FLOAT_EQ(start_value.at(0).translate.x, 110.f);
+  EXPECT_FLOAT_EQ(start_value.GetOperations()[0].translate.x.value, 110.f);
 
   auto mid_value = transform_set->GetValue(0.5f);
   ASSERT_EQ(mid_value.size(), 1u);
-  EXPECT_FLOAT_EQ(mid_value.at(0).translate.x, 120.f);
+  EXPECT_FLOAT_EQ(mid_value.GetOperations()[0].translate.x.value, 120.f);
 
   auto end_value = transform_set->GetValue(1.f);
   ASSERT_EQ(end_value.size(), 1u);
-  EXPECT_FLOAT_EQ(end_value.at(0).translate.x, 130.f);
+  EXPECT_FLOAT_EQ(end_value.GetOperations()[0].translate.x.value, 130.f);
+}
+
+TEST(TransformKeyframeTest, InterpolatesTranslate3dTogether) {
+  TransformRaw start_raw{};
+  start_raw.type = static_cast<int>(ClayTransformType::kTranslate3d);
+  start_raw.values[0] = Length(10.f, LengthUnit::kNum);
+  start_raw.values[1] = Length(20.f, LengthUnit::kNum);
+  start_raw.values[2] = Length(30.f, LengthUnit::kNum);
+
+  TransformRaw end_raw{};
+  end_raw.type = static_cast<int>(ClayTransformType::kTranslate3d);
+  end_raw.values[0] = Length(30.f, LengthUnit::kNum);
+  end_raw.values[1] = Length(40.f, LengthUnit::kNum);
+  end_raw.values[2] = Length(50.f, LengthUnit::kNum);
+
+  auto keyframe_set =
+      TransformKeyframeSet::Create(ClayAnimationPropertyType::kTransform);
+  keyframe_set->AddKeyframe(
+      TransformKeyframe::Create(0.f, ResolveTransform({start_raw}, 0.f, 0.f),
+                                Interpolator::CreateDefaultInterpolator()));
+  keyframe_set->AddKeyframe(
+      TransformKeyframe::Create(1.f, ResolveTransform({end_raw}, 0.f, 0.f),
+                                Interpolator::CreateDefaultInterpolator()));
+
+  auto value = keyframe_set->GetValue(0.5f);
+  ASSERT_EQ(value.size(), 1u);
+  const auto& translate = value.GetOperations()[0].translate;
+  EXPECT_FLOAT_EQ(translate.x.value, 20.f);
+  EXPECT_FLOAT_EQ(translate.y.value, 30.f);
+  EXPECT_FLOAT_EQ(translate.z.value, 40.f);
+  EXPECT_FLOAT_EQ(GetTranslateZ(value), 40.f);
+}
+
+TEST(TransformKeyframeTest, MissingEndpointsAndRemovalKeepCompleteValue) {
+  class TransformTarget : public FixedSizeAnimatorTarget {
+   public:
+    TransformTarget() : FixedSizeAnimatorTarget(FloatSize(0.f, 0.f)) {}
+
+    using AnimatorTarget::GetProperty;
+    using AnimatorTarget::SetProperty;
+
+    void GetProperty(ClayAnimationPropertyType,
+                     lynx::gfx::TransformOperations& value) override {
+      value = value_;
+    }
+    void SetProperty(ClayAnimationPropertyType,
+                     const lynx::gfx::TransformOperations& value,
+                     bool) override {
+      value_ = value;
+    }
+
+    lynx::gfx::TransformOperations value_;
+  } target;
+  target.value_.AppendTranslate({5.f, lynx::gfx::LengthUnit::kNumber},
+                                {6.f, lynx::gfx::LengthUnit::kNumber},
+                                {7.f, lynx::gfx::LengthUnit::kNumber});
+
+  KeyframesManager manager(&target);
+  auto keyframe_set =
+      TransformKeyframeSet::Create(ClayAnimationPropertyType::kTransform);
+  keyframe_set->SetKeyframesManager(&manager);
+  lynx::gfx::TransformOperations middle;
+  middle.AppendTranslate({0.f, lynx::gfx::LengthUnit::kNumber},
+                         {0.f, lynx::gfx::LengthUnit::kNumber},
+                         {20.f, lynx::gfx::LengthUnit::kNumber});
+  keyframe_set->AddKeyframe(TransformKeyframe::Create(
+      0.5f, middle, Interpolator::CreateDefaultInterpolator()));
+
+  ValueAnimator animation;
+  keyframe_set->OnAnimationPrepare(animation);
+  keyframe_set->OnAnimationUpdate(animation);
+  EXPECT_FLOAT_EQ(GetTranslateZ(keyframe_set->GetValue(0.f)), 7.f);
+  EXPECT_FLOAT_EQ(GetTranslateZ(keyframe_set->GetValue(1.f)), 7.f);
+
+  target.value_ = middle;
+  keyframe_set->OnAnimationRemove(animation);
+  EXPECT_TRUE(
+      target.value_.ApproximatelyEqual(keyframe_set->GetValue(0.f), 0.f));
+  EXPECT_FLOAT_EQ(GetTranslateZ(target.value_), 7.f);
+}
+
+TEST_F_UI(KeyFrameTest,
+          RasterEnabledAnimationUpdatesVisualTransformAndStackingZ) {
+  page_->SetRasterAnimationEnabled(true);
+  animator_view_->SetBound(0, 0, 100, 100);
+
+  Value::Map start_properties;
+  start_properties.emplace("transform", MakeTranslate3dValue(10, 20, 30));
+  Value::Map end_properties;
+  end_properties.emplace("transform", MakeTranslate3dValue(30, 40, 50));
+  Value::Map keyframes;
+  keyframes.emplace("0.000000", Value(std::move(start_properties)));
+  keyframes.emplace("1.000000", Value(std::move(end_properties)));
+  page_->SetKeyframesData(
+      Value{{"transform_test", Value(std::move(keyframes))}});
+
+  AnimationData data{"transform_test",
+                     1000,
+                     -500,
+                     TimingFunctionData(),
+                     1,
+                     ClayAnimationFillModeType::kBoth,
+                     ClayAnimationDirectionType::kNormal,
+                     ClayAnimationPlayStateType::kPaused};
+  animator_view_->SetAnimation({data});
+  animator_view_->OnNodeReady();
+  ASSERT_EQ(animator_view_->KeyframesMgr()->animations().size(), 1u);
+  EXPECT_EQ(animator_view_->KeyframesMgr()
+                ->animations()
+                .front()
+                .animator->GetFrameUpdateMode(),
+            ValueAnimator::FrameUpdateMode::kUpdateValues);
+  animator_view_->GetAnimationHandler()->DoAnimationFrame(
+      fml::TimePoint::Now().ToEpochDelta().ToMilliseconds());
+
+  ASSERT_EQ(animator_view_->GetTransformOps().size(), 1u);
+  const auto& translate =
+      animator_view_->GetTransformOps().GetOperations()[0].translate;
+  EXPECT_FLOAT_EQ(translate.x.value, 20.f);
+  EXPECT_FLOAT_EQ(translate.y.value, 30.f);
+  EXPECT_FLOAT_EQ(translate.z.value, 40.f);
+  EXPECT_FLOAT_EQ(animator_view_->render_object()->GetTranslateZ(), 40.f);
 }
 
 TEST_F_UI(KeyFrameTest, TransitionStartsAfterNodeReady) {
@@ -1040,6 +1176,28 @@ TEST_F_UI(KeyFrameTest, RasterTransitionUsesLifecycleOnlyUiAnimator) {
   EXPECT_FLOAT_EQ(animator_view_->render_object()->Opacity(), 1.f);
 }
 
+TEST_F_UI(KeyFrameTest,
+          RasterTransformTransitionWithStackingZKeepsUiValueUpdates) {
+  page_->SetRasterAnimationEnabled(true);
+
+  TransitionData transition;
+  transition.property = ClayAnimationPropertyType::kTransform;
+  transition.duration = 160;
+  animator_view_->SetTransition({transition});
+  animator_view_->OnNodeReady();
+
+  lynx::gfx::TransformOperations target_value;
+  target_value.AppendTranslate({0.f, lynx::gfx::LengthUnit::kNumber},
+                               {0.f, lynx::gfx::LengthUnit::kNumber},
+                               {100.f, lynx::gfx::LengthUnit::kNumber});
+  animator_view_->SetTransform(target_value, FloatPoint());
+
+  auto animators = animator_view_->TransitionMgr()->GetStartedAnimators();
+  ASSERT_EQ(animators.size(), 1u);
+  EXPECT_EQ(animators.front()->GetFrameUpdateMode(),
+            ValueAnimator::FrameUpdateMode::kUpdateValues);
+}
+
 TEST_F_UI(KeyFrameTest, RasterTransitionCanBeClonedDuringDelay) {
   page_->SetRasterAnimationEnabled(true);
 
@@ -1102,14 +1260,18 @@ TEST_F_UI(KeyFrameTest, HitTestUsesRasterTransformPresentationValue) {
   animator_view_->SetTransition({transition});
   animator_view_->OnNodeReady();
 
-  TransformOperations target_transform;
-  target_transform.AppendTranslate(100.f, 0.f, 0.f);
+  lynx::gfx::TransformOperations target_transform;
+  target_transform.AppendTranslate({100.0f, lynx::gfx::LengthUnit::kNumber},
+                                   {0.0f, lynx::gfx::LengthUnit::kNumber},
+                                   {0.0f, lynx::gfx::LengthUnit::kNumber});
   animator_view_->SetTransform(target_transform, FloatPoint(0.f, 0.f));
   const int64_t start_time =
       fml::TimePoint::Now().ToEpochDelta().ToMilliseconds() - 50000;
   page_->GetAnimationHandler()->DoAnimationFrame(start_time);
   auto animators = animator_view_->TransitionMgr()->GetStartedAnimators();
   ASSERT_EQ(animators.size(), 1u);
+  EXPECT_EQ(animators.front()->GetFrameUpdateMode(),
+            ValueAnimator::FrameUpdateMode::kLifecycleOnly);
   // GetPresentationTransform() and GetPointBySelf() sample independently.
   // Pause the animator so both calls use the same presentation state.
   animators.front()->Pause();

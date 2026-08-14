@@ -53,6 +53,8 @@ source_set("gfx") {
     "../fml:fml",
   ]
 
+  public_deps = [ "../../gfx:gfx" ]
+
   configs += [ "../:config" ]
 
   if (enable_skity) {
@@ -110,6 +112,7 @@ if (enable_unittests) {
       "animation/cubic_bezier_interpolator_unittests.cc",
       "animation/value_animator_unittests.cc",
       "atrributes_testing.h",
+      "geometry/transform_operations_utils_unittests.cc",
       "gpu_object_unittests.cc",
       "image/image_data_cache_unittests.cc",
       "paint_unittests.cc",

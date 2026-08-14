@@ -13,7 +13,7 @@
 #include <variant>
 
 #include "clay/flow/layers/container_layer.h"
-#include "clay/gfx/geometry/transform_operations.h"
+#include "gfx/geometry/transform_operations.h"
 
 namespace clay {
 
@@ -23,8 +23,9 @@ namespace clay {
 class TransformLayer : public ContainerLayer {
  public:
   explicit TransformLayer(const skity::Matrix& transform = skity::Matrix());
-  TransformLayer(const clay::TransformOperations& transform, skity::Vec2 origin,
-                 skity::Vec2 offset);
+  TransformLayer(const lynx::gfx::TransformOperations& transform,
+                 skity::Vec2 origin, skity::Vec2 offset,
+                 float perspective = 0.0f);
 
   void Diff(DiffContext* context, const Layer* old_layer) override;
 
@@ -33,7 +34,7 @@ class TransformLayer : public ContainerLayer {
   void Paint(PaintContext& context) const override;
 
   skity::Matrix GetMatrix() const;
-  clay::TransformOperations GetTransform() const;
+  lynx::gfx::TransformOperations GetTransform() const;
 
 #ifndef NDEBUG
   std::string DebugName() const override { return "TransformLayer"; }
@@ -41,9 +42,10 @@ class TransformLayer : public ContainerLayer {
 #endif
 
  private:
-  std::variant<skity::Matrix, clay::TransformOperations> transform_;
+  std::variant<skity::Matrix, lynx::gfx::TransformOperations> transform_;
   skity::Vec2 origin_;
   skity::Vec2 offset_;
+  float perspective_ = 0.0f;
 
   BASE_DISALLOW_COPY_AND_ASSIGN(TransformLayer);
 };

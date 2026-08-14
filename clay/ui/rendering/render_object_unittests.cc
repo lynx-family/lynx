@@ -168,8 +168,10 @@ TEST_F(RenderObjectTest, PaintOrder) {
   EXPECT_EQ(nodeList[1]->ChildrenPaintingOrderIsDirtyForTesting(), false);
 
   // Set translate-z = 1 for node 4.
-  TransformOperations transform3;
-  transform3.AppendTranslate(0, 0, 1);
+  lynx::gfx::TransformOperations transform3;
+  transform3.AppendTranslate({0.0f, lynx::gfx::LengthUnit::kNumber},
+                             {0.0f, lynx::gfx::LengthUnit::kNumber},
+                             {1.0f, lynx::gfx::LengthUnit::kNumber});
   nodeList[4]->SetTransformOperations(transform3);
   EXPECT_EQ(nodeList[1]->ChildrenPaintingOrderIsDirtyForTesting(), true);
   const auto& sorted3 = nodeList[1]->GetSortedChildrenForTesting();
@@ -196,8 +198,10 @@ TEST_F(RenderObjectTest, PaintOrder) {
   EXPECT_EQ(sorted5[3], nodeList[4].get());
 
   // Set translate-z = 1 for obj.
-  TransformOperations transform6;
-  transform6.AppendTranslate(0, 0, 1);
+  lynx::gfx::TransformOperations transform6;
+  transform6.AppendTranslate({0.0f, lynx::gfx::LengthUnit::kNumber},
+                             {0.0f, lynx::gfx::LengthUnit::kNumber},
+                             {1.0f, lynx::gfx::LengthUnit::kNumber});
   obj->SetTransformOperations(transform6);
   const auto& sorted6 = nodeList[1]->GetSortedChildrenForTesting();
   EXPECT_EQ(sorted6[0], nodeList[5].get());
@@ -206,8 +210,7 @@ TEST_F(RenderObjectTest, PaintOrder) {
   EXPECT_EQ(sorted6[3], obj.get());
 
   // Set translate-z = 0 for obj and node 4.
-  TransformOperations transform7;
-  transform7.AppendTranslate(0, 0, 0);
+  lynx::gfx::TransformOperations transform7;
   nodeList[4]->SetTransformOperations(transform7);
   obj->SetTransformOperations(transform7);
   EXPECT_EQ(nodeList[1]->ChildrenPaintingOrderIsDirtyForTesting(), true);
@@ -226,11 +229,32 @@ TEST_F(RenderObjectTest, PaintOrder) {
   EXPECT_EQ(sorted8[2], obj.get());
 
   // Update root node‘s painting order shouldn't trigger a crash.
-  TransformOperations transform8;
-  transform8.AppendTranslate(0, 0, 1);
+  lynx::gfx::TransformOperations transform8;
+  transform8.AppendTranslate({0.0f, lynx::gfx::LengthUnit::kNumber},
+                             {0.0f, lynx::gfx::LengthUnit::kNumber},
+                             {1.0f, lynx::gfx::LengthUnit::kNumber});
   auto* root = nodeList[0].get();
   root->SetTransformOperations(transform8);
   root->SetPaintingOrder(1);
+}
+
+TEST_F(RenderObjectTest, TranslateZUpdatesBelowOperationTolerance) {
+  lynx::gfx::TransformOperations initial;
+  initial.AppendTranslate({0.0f, lynx::gfx::LengthUnit::kNumber},
+                          {0.0f, lynx::gfx::LengthUnit::kNumber},
+                          {1.0f, lynx::gfx::LengthUnit::kNumber});
+  nodeList[4]->SetTransformOperations(initial);
+  nodeList[1]->GetSortedChildrenForTesting();
+  ASSERT_FALSE(nodeList[1]->ChildrenPaintingOrderIsDirtyForTesting());
+
+  lynx::gfx::TransformOperations updated;
+  updated.AppendTranslate({0.0f, lynx::gfx::LengthUnit::kNumber},
+                          {0.0f, lynx::gfx::LengthUnit::kNumber},
+                          {1.0001f, lynx::gfx::LengthUnit::kNumber});
+  nodeList[4]->SetTransformOperations(updated);
+
+  EXPECT_FLOAT_EQ(nodeList[4]->GetTranslateZ(), 1.0001f);
+  EXPECT_TRUE(nodeList[1]->ChildrenPaintingOrderIsDirtyForTesting());
 }
 
 TEST(RenderObjectStandaloneTest, SkipDetachedChildDuringPrePaintTraversal) {

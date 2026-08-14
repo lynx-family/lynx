@@ -400,8 +400,10 @@ TEST_F_UI(BaseViewWithChildrenTest, PaintOrder) {
   EXPECT_EQ(ChildrenPaintingOrderIsDirtyForTesting(nodeList[1].get()), false);
 
   // Set translate-z = 1 for node 4.
-  TransformOperations transform3;
-  transform3.AppendTranslate(0, 0, 1);
+  lynx::gfx::TransformOperations transform3;
+  transform3.AppendTranslate({0.0f, lynx::gfx::LengthUnit::kNumber},
+                             {0.0f, lynx::gfx::LengthUnit::kNumber},
+                             {1.0f, lynx::gfx::LengthUnit::kNumber});
   nodeList[4]->SetProperty(ClayAnimationPropertyType::kTransform, transform3,
                            false);
   EXPECT_EQ(ChildrenPaintingOrderIsDirtyForTesting(nodeList[1].get()), true);
@@ -429,8 +431,10 @@ TEST_F_UI(BaseViewWithChildrenTest, PaintOrder) {
   EXPECT_EQ(sorted5[3], nodeList[4].get());
 
   // Set translate-z = 1 for obj.
-  TransformOperations transform6;
-  transform6.AppendTranslate(0, 0, 1);
+  lynx::gfx::TransformOperations transform6;
+  transform6.AppendTranslate({0.0f, lynx::gfx::LengthUnit::kNumber},
+                             {0.0f, lynx::gfx::LengthUnit::kNumber},
+                             {1.0f, lynx::gfx::LengthUnit::kNumber});
   obj->SetProperty(ClayAnimationPropertyType::kTransform, transform6, false);
   const auto& sorted6 = GetSortedChildrenForTesting(nodeList[1].get());
   EXPECT_EQ(sorted6[0], nodeList[5].get());
@@ -439,8 +443,7 @@ TEST_F_UI(BaseViewWithChildrenTest, PaintOrder) {
   EXPECT_EQ(sorted6[3], obj);
 
   // Set translate-z = 0 for obj and node 4.
-  TransformOperations transform7;
-  transform7.AppendTranslate(0, 0, 0);
+  lynx::gfx::TransformOperations transform7;
   nodeList[4]->SetProperty(ClayAnimationPropertyType::kTransform, transform7,
                            false);
   obj->SetProperty(ClayAnimationPropertyType::kTransform, transform7, false);
@@ -460,11 +463,35 @@ TEST_F_UI(BaseViewWithChildrenTest, PaintOrder) {
   EXPECT_EQ(sorted8[2], obj);
 
   // Update root node‘s painting order shouldn't trigger a crash.
-  TransformOperations transform8;
-  transform8.AppendTranslate(0, 0, 1);
+  lynx::gfx::TransformOperations transform8;
+  transform8.AppendTranslate({0.0f, lynx::gfx::LengthUnit::kNumber},
+                             {0.0f, lynx::gfx::LengthUnit::kNumber},
+                             {1.0f, lynx::gfx::LengthUnit::kNumber});
   auto* root = nodeList[0].get();
   root->SetProperty(ClayAnimationPropertyType::kTransform, transform8, false);
   root->SetPaintingOrder(1);
+}
+
+TEST_F_UI(BaseViewWithChildrenTest,
+          RasterAnimationFrameUpdatesStackingOrderOnly) {
+  page_->SetRasterAnimationEnabled(true);
+  const auto& initial_order = GetSortedChildrenForTesting(nodeList[1].get());
+  EXPECT_EQ(initial_order[0], nodeList[3].get());
+
+  lynx::gfx::TransformOperations value;
+  value.AppendTranslate({10.0f, lynx::gfx::LengthUnit::kNumber},
+                        {20.0f, lynx::gfx::LengthUnit::kNumber},
+                        {30.0f, lynx::gfx::LengthUnit::kNumber});
+  nodeList[3]->SetProperty(ClayAnimationPropertyType::kTransform, value, true);
+
+  EXPECT_FLOAT_EQ(nodeList[3]->render_object()->GetTranslateZ(), 30.0f);
+  EXPECT_EQ(ChildrenPaintingOrderIsDirtyForTesting(nodeList[1].get()), true);
+  const auto& updated_order = GetSortedChildrenForTesting(nodeList[1].get());
+  EXPECT_EQ(updated_order.back(), nodeList[3].get());
+  const auto matrix = nodeList[3]->render_object()->GetTransform().matrix();
+  EXPECT_FLOAT_EQ(matrix.Get(0, 3), 10.0f);
+  EXPECT_FLOAT_EQ(matrix.Get(1, 3), 20.0f);
+  EXPECT_FLOAT_EQ(matrix.Get(2, 3), 0.0f);
 }
 
 TEST_F_UI(BaseViewTest, OnBoundChange) {
@@ -498,6 +525,29 @@ TEST_F_UI(BaseViewTest, OnBoundChange) {
 
   EXPECT_CALL(mock_view, OnBoundsChanged(::testing::_, ::testing::_)).Times(0);
   mock_view.SetBound(10, 10, 200, 300);
+}
+
+TEST_F_UI(BaseViewTest, GfxTransformPercentageTracksContentSize) {
+  BaseView view(std::make_unique<RenderContainer>(), page_.get());
+  lynx::gfx::TransformOperations operations;
+  operations.AppendTranslate({50.0f, lynx::gfx::LengthUnit::kPercent},
+                             {25.0f, lynx::gfx::LengthUnit::kPercent},
+                             {0.0f, lynx::gfx::LengthUnit::kNumber});
+
+  view.SetBound(0.0f, 0.0f, 100.0f, 200.0f);
+  view.SetTransform(operations, {});
+  ASSERT_EQ(view.GetTransformOps().size(), 1u);
+  EXPECT_FLOAT_EQ(view.GetTransformOps().GetOperations()[0].translate.x.value,
+                  50.0f);
+  EXPECT_FLOAT_EQ(view.GetTransformOps().GetOperations()[0].translate.y.value,
+                  50.0f);
+
+  view.SetBound(0.0f, 0.0f, 200.0f, 400.0f);
+  ASSERT_EQ(view.GetTransformOps().size(), 1u);
+  EXPECT_FLOAT_EQ(view.GetTransformOps().GetOperations()[0].translate.x.value,
+                  100.0f);
+  EXPECT_FLOAT_EQ(view.GetTransformOps().GetOperations()[0].translate.y.value,
+                  100.0f);
 }
 
 }  // namespace clay

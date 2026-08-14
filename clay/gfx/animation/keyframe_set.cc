@@ -4,6 +4,8 @@
 
 #include "clay/gfx/animation/keyframe_set.h"
 
+#include <algorithm>
+#include <cmath>
 #include <limits>
 #include <optional>
 #include <sstream>
@@ -15,6 +17,7 @@
 #include "clay/gfx/animation/keyframes_manager.h"
 #include "clay/gfx/animation/type_evaluator.h"
 #include "clay/gfx/geometry/filter_operations.h"
+#include "clay/gfx/geometry/transform_operations_utils.h"
 #include "clay/public/clay.h"
 #include "clay/public/style_types.h"
 
@@ -258,8 +261,20 @@ void RawTransformKeyframeSet::AddKeyframe(
         has_percentage_values_ |= op.values[0].IsRelative();
         has_percentage_values_ |= op.values[1].IsRelative();
         break;
-      default:
-        FML_LOG(ERROR) << "Unsupported transform type " << op.type;
+      case ClayTransformType::kNone:
+      case ClayTransformType::kTranslateZ:
+      case ClayTransformType::kRotate:
+      case ClayTransformType::kRotateX:
+      case ClayTransformType::kRotateY:
+      case ClayTransformType::kRotateZ:
+      case ClayTransformType::kScale:
+      case ClayTransformType::kScaleX:
+      case ClayTransformType::kScaleY:
+      case ClayTransformType::kSkew:
+      case ClayTransformType::kSkewX:
+      case ClayTransformType::kSkewY:
+      case ClayTransformType::kMatrix:
+      case ClayTransformType::kMatrix3d:
         break;
     }
   }
@@ -277,9 +292,9 @@ std::unique_ptr<KeyframeSet> RawTransformKeyframeSet::Clone(
         manager->GetTarget()->PercentageResolutionSize();
     to_return->AddKeyframe(TransformKeyframe::Create(
         keyframe->GetFraction(),
-        TransformOperations(keyframe->Operations(),
-                            percentage_resolution_size.width(),
-                            percentage_resolution_size.height()),
+        ResolveTransform(keyframe->Operations(),
+                         percentage_resolution_size.width(),
+                         percentage_resolution_size.height()),
         keyframe->GetInterpolator()->Clone()));
   }
 
@@ -313,6 +328,16 @@ TransformKeyframeSet::~TransformKeyframeSet() = default;
 void TransformKeyframeSet::AddKeyframe(
     std::unique_ptr<TransformKeyframe> keyframe) {
   InsertKeyframe(std::move(keyframe), &keyframes_);
+}
+
+bool TransformKeyframeSet::DoesNotAnimateStackingZ(
+    float underlying_stacking_z) const {
+  constexpr float kTolerance = 1e-6f;
+  return std::all_of(keyframes_.begin(), keyframes_.end(),
+                     [underlying_stacking_z](const auto& keyframe) {
+                       return std::abs(GetTranslateZ(keyframe->Value()) -
+                                       underlying_stacking_z) <= kTolerance;
+                     });
 }
 
 std::unique_ptr<KeyframeSet> TransformKeyframeSet::Clone(
@@ -356,7 +381,8 @@ void TransformKeyframeSet::OnAnimationUpdate(ValueAnimator& animation) {
   }
 }
 
-TransformOperations TransformKeyframeSet::GetValue(float fraction) const {
+lynx::gfx::TransformOperations TransformKeyframeSet::GetValue(
+    float fraction) const {
   return clay::GetValue(fraction, keyframes_);
 }
 

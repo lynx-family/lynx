@@ -5,8 +5,10 @@
 #ifndef CLAY_GFX_ANIMATION_TRANSITION_MANAGER_H_
 #define CLAY_GFX_ANIMATION_TRANSITION_MANAGER_H_
 
+#include <cmath>
 #include <map>
 #include <memory>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
@@ -17,6 +19,7 @@
 #include "clay/gfx/animation/transition_data.h"
 #include "clay/gfx/animation/type_evaluator.h"
 #include "clay/gfx/animation/value_animator.h"
+#include "clay/gfx/geometry/transform_operations_utils.h"
 
 namespace clay {
 
@@ -172,7 +175,12 @@ bool TransitionManager::TransitionWithTiming(
       animator->AddListener(active_transitions_[type].second.get());
       animator->SetAnimationHandler(target_->GetAnimationHandler());
       animator->SetAnimationTarget(target_);
-      if (target_->CanRunAnimationOnRaster(type)) {
+      bool can_run_lifecycle_only = target_->CanRunAnimationOnRaster(type);
+      if constexpr (std::is_same_v<T, lynx::gfx::TransformOperations>) {
+        can_run_lifecycle_only &=
+            std::abs(GetTranslateZ(old_value) - GetTranslateZ(value)) <= 1e-6f;
+      }
+      if (can_run_lifecycle_only) {
         animator->SetFrameUpdateMode(
             ValueAnimator::FrameUpdateMode::kLifecycleOnly);
       }
