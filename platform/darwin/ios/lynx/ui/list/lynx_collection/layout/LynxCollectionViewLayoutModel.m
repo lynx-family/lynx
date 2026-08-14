@@ -4,6 +4,7 @@
 
 #import <Foundation/Foundation.h>
 #import <Lynx/LynxCollectionViewLayoutModel.h>
+#import <Lynx/LynxUIKitAPIAdapter.h>
 
 @implementation LynxCollectionViewLayoutModel
 
@@ -35,11 +36,13 @@
 }
 
 + (CGFloat)defaultHeight {
-  return [UIScreen mainScreen].bounds.size.height;
+  return [LynxUIKitAPIAdapter getKeyWindow] ? [LynxUIKitAPIAdapter getKeyWindow].bounds.size.height
+                                            : [UIScreen mainScreen].bounds.size.height;
 }
 
 + (CGFloat)defaultWidth {
-  return [UIScreen mainScreen].bounds.size.width;
+  return [LynxUIKitAPIAdapter getKeyWindow] ? [LynxUIKitAPIAdapter getKeyWindow].bounds.size.width
+                                            : [UIScreen mainScreen].bounds.size.width;
 }
 
 - (id)copyWithZone:(NSZone*)zone {

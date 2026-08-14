@@ -81,6 +81,13 @@
 @property(nonatomic, assign) CGSize screenSize;
 
 /**
+ * You can set a logical device-pixel ratio for this LynxView.
+ * A non-positive value means not configured. A Builder may inherit its Group value; otherwise the
+ * system screen scale is used.
+ */
+@property(nonatomic, assign) CGFloat screenScale;
+
+/**
  * indicates lynx view can be debug or not
  * when switch enableDevtool is disabled and
  * switch enableDevtoolForDebuggableView is enabled

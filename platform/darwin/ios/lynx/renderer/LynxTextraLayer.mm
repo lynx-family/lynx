@@ -18,6 +18,8 @@
     _textID = textID;
     _rendererContext = rendererContext;
     self.delegate = self;
+    // TODO(xiamengfei.moonface): [ResizableWindowScale] Check whether this should use window or
+    // physical screen metrics.
     self.contentsScale = [UIScreen mainScreen].scale;
   }
   return self;

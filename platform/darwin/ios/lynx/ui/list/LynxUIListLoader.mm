@@ -393,7 +393,7 @@ static const CGFloat kLynxUIListLoaderScreenWidthInRpx = 750.;
     // estimatedHeight provided by props must be a number, indicating the height for corresponding
     // component, with unit as `rpx` the screen width is defined as `750rpx`, compute the scale of
     // the unit of current iOS device to `rpx`
-    CGFloat scale = [UIScreen mainScreen].bounds.size.width / kLynxUIListLoaderScreenWidthInRpx;
+    CGFloat scale = self.context.screenMetrics.screenSize.width / kLynxUIListLoaderScreenWidthInRpx;
     NSMutableDictionary<NSIndexPath *, NSNumber *> *estimatedHeights =
         [[NSMutableDictionary alloc] initWithCapacity:estimatedHeightsRef.size()];
     for (std::size_t i = 0; i < estimatedHeightsRef.size(); ++i) {

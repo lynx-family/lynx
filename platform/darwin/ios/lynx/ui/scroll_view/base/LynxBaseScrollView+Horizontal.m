@@ -57,6 +57,8 @@
   CGFloat offset = [self getScrollOffsetHorizontally];
   CGFloat scrollRange[2] = {0, 0};
   [self getScrollRangeHorizontally:&scrollRange];
+  // TODO(xiamengfei.moonface): [ResizableWindowScale] Check whether this should use window or
+  // physical screen metrics.
   if (offset >= scrollRange[1] - 1.0 / UIScreen.mainScreen.scale) {
     return NO;
   } else {
