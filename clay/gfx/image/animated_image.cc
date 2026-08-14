@@ -22,7 +22,6 @@ std::shared_ptr<AnimatedImage> AnimatedImage::Make(
   image->frame_timer_ = std::make_unique<fml::OneshotTimer>(task_runner);
   image->orig_info_ = ImageInfo::makeWH(platform_image->GetWidth(),
                                         platform_image->GetHeight());
-  image->StartAnimate();
   return image;
 }
 
@@ -30,6 +29,9 @@ void AnimatedImage::Upload(fml::RefPtr<GPUUnrefQueue> unref_queue, Size size) {
   if (!unref_queue || !unref_queue->GetContext()) {
     FML_LOG(ERROR) << "AnimatedImage::Upload: unref_queue or context is null";
     return;
+  }
+  if (!is_running_) {
+    OnNotifyAnimationFrame();
   }
   if (!gpu_image_.object()) {
     auto pixmap = image_->ToBitmap();
@@ -65,16 +67,16 @@ void AnimatedImage::NextFrame() {
   if (image_->GetDuration() <= 0) {
     return;
   }
-  frame_timer_->Start(
-      fml::TimeDelta::FromMilliseconds(image_->GetDuration()),
-      [weak = weak_from_this()] {
-        if (auto self = weak.lock()) {
-          auto animated_image = static_cast<AnimatedImage*>(self.get());
-          animated_image->image_->DrawFrame(
-              fml::TimePoint::Now().ToEpochDelta().ToMilliseconds(),
-              [animated_image] { animated_image->OnNotifyAnimationFrame(); });
-        }
-      });
+  frame_timer_->Start(fml::TimeDelta::FromMilliseconds(image_->GetDuration()),
+                      [weak = weak_from_this()] {
+                        if (auto self = weak.lock()) {
+                          auto animated_image =
+                              static_cast<AnimatedImage*>(self.get());
+                          animated_image->image_->DrawFrame([animated_image] {
+                            animated_image->OnNotifyAnimationFrame();
+                          });
+                        }
+                      });
 }
 
 void AnimatedImage::SetAutoPlay(bool auto_play) {
@@ -96,11 +98,43 @@ void AnimatedImage::ResumeAnimation() {
 }
 
 void AnimatedImage::OnNotifyAnimationFrame() {
+  if (!IsAnyInstanceVisible()) {
+    is_running_ = false;
+    return;
+  }
   for (auto& instance : instances_) {
     instance->OnNotifyAnimationFrame();
   }
   NextFrame();
   gpu_image_.reset();
+  is_running_ = true;
+}
+
+void AnimatedImage::OnInstanceCreated(BaseImageInstance* instance) {
+  BaseImage::OnInstanceCreated(instance);
+  if (instances_.size() <= 1) {
+    StartAnimate();
+  }
+}
+
+void AnimatedImage::OnInstanceDestroyed(BaseImageInstance* instance) {
+  BaseImage::OnInstanceDestroyed(instance);
+  if (instances_.empty()) {
+    StopAnimation();
+    frame_timer_->Stop();
+  }
+}
+
+bool AnimatedImage::IsAnyInstanceVisible() const {
+  if (instances_.empty()) {
+    return false;
+  }
+  for (auto& instance : instances_) {
+    if (instance->IsVisible()) {
+      return true;
+    }
+  }
+  return false;
 }
 
 }  // namespace clay

@@ -127,6 +127,7 @@ void RenderImage::SetPlaceholderImage(
 #else
 void RenderImage::SetImage(std::unique_ptr<BaseImageInstance> image_instance) {
   if (image_instance) {
+    image_instance->SetVisibleCallback([this]() { return IsActualVisible(); });
     auto image = image_instance->GetImage();
     if (image && image->GetType() == ImageType::kAnimated) {
       auto animated_image = std::static_pointer_cast<AnimatedImage>(image);
@@ -153,6 +154,10 @@ void RenderImage::SetPlaceholderImage(
     return;
   }
   placeholder_resource_ = std::move(placeholder_resource);
+  if (placeholder_resource_) {
+    placeholder_resource_->SetVisibleCallback(
+        [this]() { return IsActualVisible(); });
+  }
   MarkNeedsPaint();
   AdjustSizeIfNeeded();
 }

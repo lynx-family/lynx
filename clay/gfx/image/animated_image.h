@@ -30,14 +30,20 @@ class AnimatedImage : public BaseImage {
   void PauseAnimation();
   void ResumeAnimation();
 
+  void OnInstanceCreated(BaseImageInstance* instance) override;
+  void OnInstanceDestroyed(BaseImageInstance* instance) override;
+
  private:
   AnimatedImage() = default;
 
   void NextFrame();
   void OnNotifyAnimationFrame();
 
+  bool IsAnyInstanceVisible() const;
+
  private:
   std::unique_ptr<fml::OneshotTimer> frame_timer_;
+  bool is_running_ = false;
 };
 
 }  // namespace clay

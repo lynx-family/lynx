@@ -27,12 +27,16 @@ class BaseImageInstance {
   fml::RefPtr<GraphicsImage> GetGraphicsImage() const;
 
   void SetAnimationFrameCallback(std::function<void()> func);
+  void SetVisibleCallback(std::function<bool()> func);
 
   void OnNotifyAnimationFrame();
+
+  bool IsVisible() const;
 
  protected:
   std::shared_ptr<BaseImage> image_;
   std::function<void()> animation_frame_callback_;
+  std::function<bool()> visible_callback_;
 };
 
 }  // namespace clay

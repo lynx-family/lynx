@@ -39,9 +39,20 @@ void BaseImageInstance::SetAnimationFrameCallback(std::function<void()> func) {
   animation_frame_callback_ = std::move(func);
 }
 
+void BaseImageInstance::SetVisibleCallback(std::function<bool()> func) {
+  visible_callback_ = std::move(func);
+}
+
 void BaseImageInstance::OnNotifyAnimationFrame() {
   if (animation_frame_callback_) {
     animation_frame_callback_();
   }
+}
+
+bool BaseImageInstance::IsVisible() const {
+  if (visible_callback_) {
+    return visible_callback_();
+  }
+  return true;
 }
 }  // namespace clay

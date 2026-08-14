@@ -24,8 +24,7 @@ class PlatformImage : public std::enable_shared_from_this<PlatformImage> {
 
   virtual std::shared_ptr<skity::Pixmap> ToBitmap() = 0;
 
-  virtual void DrawFrame(int64_t frame_time,
-                         std::function<void()> on_frame_changed) = 0;
+  virtual void DrawFrame(std::function<void()> on_frame_changed) = 0;
   virtual bool IsAnimated() = 0;
   virtual void SetAutoPlay(bool auto_play) = 0;
   virtual void SetLoopCount(int loop_count) = 0;
