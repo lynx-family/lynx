@@ -53,8 +53,17 @@
   return self;
 }
 
+- (void)updateScreenMetrics:(LynxScreenMetrics*)screenMetrics {
+  _screenMetrics = screenMetrics;
+}
+
+- (void)updateViewportMetrics:(nullable LynxViewportMetrics*)viewportMetrics {
+  _viewportMetrics = viewportMetrics;
+}
+
 - (void)updateScreenSize:(CGSize)screenSize {
-  [_screenMetrics setLynxScreenSize:screenSize];
+  _screenMetrics = [[LynxScreenMetrics alloc] initWithScreenSize:screenSize
+                                                           scale:_screenMetrics.scale];
 }
 
 - (void)onGestureRecognized {

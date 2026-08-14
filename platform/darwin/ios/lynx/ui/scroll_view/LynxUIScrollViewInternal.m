@@ -306,6 +306,8 @@ LYNX_PROP_DEFINE("scroll-event-throttle", setScrollEventThrottle, NSNumber *) {
 
     // We can not move less than 1/scale pt in every frame, cause contentOffset
     // will align to 1/scale.
+    // TODO(xiamengfei.moonface): [ResizableWindowScale] Check whether this should use window or
+    // physical screen metrics.
     while (ABS(rate / preferredFramesPerSecond) < 1.0 / UIScreen.mainScreen.scale) {
       preferredFramesPerSecond -= 1;
       if (preferredFramesPerSecond == 0) {

@@ -39,7 +39,7 @@ static CGSize LynxSVGDeviceSize(UIView *host, CGSize hostSize) {
 
 static void LynxSVGSetHostImage(UIView *host, UIImage *image) {
   host.layer.contents = (__bridge id)image.CGImage;
-  host.layer.contentsScale = UIScreen.mainScreen.scale;
+  host.layer.contentsScale = host.traitCollection.displayScale;
 }
 
 static dispatch_queue_t LynxSVGRenderQueue(void) {

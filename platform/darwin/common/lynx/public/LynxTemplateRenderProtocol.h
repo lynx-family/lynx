@@ -22,6 +22,7 @@ NS_ASSUME_NONNULL_BEGIN
 @class LynxTemplateData;
 @class LynxUpdateMeta;
 @class LynxContext;
+@class LynxScreenMetrics;
 @protocol LynxModule;
 
 @protocol LynxTemplateRenderProtocol <NSObject>
@@ -177,6 +178,10 @@ NS_ASSUME_NONNULL_BEGIN
  * @param height (dp) screen screen(dp)
  */
 - (void)updateScreenMetricsWithWidth:(CGFloat)width height:(CGFloat)height;
+
+- (void)updateScreenMetricsWithWidth:(CGFloat)width height:(CGFloat)height scale:(CGFloat)scale;
+
+- (void)updateScreenMetrics:(LynxScreenMetrics*)screenMetrics;
 
 - (void)updateFontScale:(CGFloat)scale;
 

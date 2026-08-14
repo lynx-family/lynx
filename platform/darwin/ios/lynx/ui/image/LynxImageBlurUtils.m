@@ -46,6 +46,8 @@
   // A description of how to compute the box kernel width from the Gaussian
   // radius (aka standard deviation) appears in the SVG spec:
   // https://drafts.fxtf.org/filter-effects/#feGaussianBlurElement
+  // TODO(xiamengfei.moonface): [ResizableWindowScale] Check whether this should use window or
+  // physical screen metrics.
   CGFloat inputRadius = radius * [[UIScreen mainScreen] scale];
   uint32_t boxSize = floor(inputRadius * 3 * sqrt(2 * M_PI) / 4 + 0.5);
   // Force boxSize to be odd
@@ -107,6 +109,8 @@
 
   CIImage *inputCIImage = [[CIImage alloc] initWithImage:inputImage];
   CIFilter *filter = [CIFilter filterWithName:@"CIGaussianBlur"];
+  // TODO(xiamengfei.moonface): [ResizableWindowScale] Check whether this should use window or
+  // physical screen metrics.
   CGFloat inputRadius = radius * [[UIScreen mainScreen] scale];
   [filter setValue:inputCIImage forKey:kCIInputImageKey];
   [filter setValue:@(inputRadius) forKey:kCIInputRadiusKey];
