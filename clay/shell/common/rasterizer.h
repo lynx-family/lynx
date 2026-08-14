@@ -13,6 +13,7 @@
 #include <memory>
 #include <optional>
 #include <queue>
+#include <utility>
 #include <vector>
 
 #include "base/include/closure.h"
@@ -239,6 +240,10 @@ class Rasterizer final : public Stopwatch::RefreshRateUpdater,
   ///
   void AddNextFrameCallback(const fml::closure& callback);
 
+  uint64_t AddNextFrameSnapshotCallback(const fml::closure& callback);
+
+  void CompleteNextFrameSnapshotCallback(uint64_t callback_id);
+
   //----------------------------------------------------------------------------
   /// @brief      Returns a pointer to the compositor context used by this
   ///             rasterizer. This pointer will never be `nullptr`.
@@ -327,6 +332,8 @@ class Rasterizer final : public Stopwatch::RefreshRateUpdater,
 
   void FireNextFrameCallbackIfPresent();
 
+  void FireNextFrameSnapshotCallbackIfPresent();
+
   static bool NoDiscard(const clay::LayerTree& layer_tree) { return false; }
 
   const std::shared_ptr<clay::ServiceManager> service_manager_;
@@ -344,6 +351,8 @@ class Rasterizer final : public Stopwatch::RefreshRateUpdater,
   // This is the last successfully rasterized layer tree.
   std::shared_ptr<clay::LayerTree> last_layer_tree_;
   std::vector<fml::closure> next_frame_callbacks_;
+  uint64_t next_frame_snapshot_callback_id_ = 0;
+  std::vector<std::pair<uint64_t, fml::closure>> next_frame_snapshot_callbacks_;
   bool user_override_resource_cache_bytes_;
   std::optional<size_t> max_cache_bytes_;
   fml::RefPtr<GPUUnrefQueue> unref_queue_;
