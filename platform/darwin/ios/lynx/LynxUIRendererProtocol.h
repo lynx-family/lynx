@@ -24,6 +24,7 @@ NS_ASSUME_NONNULL_BEGIN
 @class LynxUIIntersectionObserverManager;
 @class LynxRootUI;
 @class LynxScreenMetrics;
+@class LynxViewportMetrics;
 @class LynxGestureArenaManager;
 @class LynxShadowNodeOwner;
 
@@ -113,6 +114,14 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)setResourceFetcherInUIOwner:(id<LynxResourceFetcher>)resourceFetcher;
 
 - (void)updateScreenWidth:(CGFloat)width height:(CGFloat)height;
+
+@optional
+
+- (void)updateScreenMetrics:(LynxScreenMetrics *)screenMetrics;
+
+- (void)updateViewportMetrics:(nullable LynxViewportMetrics *)viewportMetrics;
+
+@required
 
 - (void)pauseRootLayoutAnimation;
 

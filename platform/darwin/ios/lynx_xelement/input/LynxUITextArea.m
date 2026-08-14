@@ -207,6 +207,7 @@ LYNX_UI_METHOD(setValue) {
     line = 1;
   } else {
     CGFloat lineHeightEnumerator = firstRect.origin.y;
+    // TODO(xiamengfei.moonface): [ResizableWindowScale] Check whether this should use window or physical screen metrics.
     while (lastRect.origin.y - lineHeightEnumerator > 1.0 / UIScreen.mainScreen.scale) {
       line++;
       lineHeightEnumerator += self.inputParagraphStyle.minimumLineHeight ?: self.font.lineHeight + self.inputParagraphStyle.lineSpacing;
@@ -353,7 +354,7 @@ LYNX_UI_METHOD(setValue) {
 
 - (CGSize)adjustViewSize:(CGSize)viewSize {
   if (self.placeholder.length) {
-    CGFloat width = self.placeholderView.bounds.size.width ? : UIScreen.mainScreen.bounds.size.width;
+    CGFloat width = self.placeholderView.bounds.size.width ? : self.context.screenMetrics.screenSize.width;
     CGSize placeholderSize = [self.placeholderView sizeThatFits:CGSizeMake(width, CGFLOAT_MAX)];
     viewSize.width = MAX(viewSize.width, placeholderSize.width);
     viewSize.height = MAX(viewSize.height, placeholderSize.height);

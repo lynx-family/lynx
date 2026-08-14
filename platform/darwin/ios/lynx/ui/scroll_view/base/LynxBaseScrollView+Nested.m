@@ -112,11 +112,15 @@ typedef NS_ENUM(NSUInteger, LynxNestedScrollDirection) {
   } else {
     [scrollView getScrollRangeHorizontally:&scrollRange];
   }
+  // TODO(xiamengfei.moonface): [ResizableWindowScale] Check whether this should use window or
+  // physical screen metrics.
   CGFloat epsilon = 1.0 / UIScreen.mainScreen.scale;
   return currentOffset < scrollRange[0] - epsilon || currentOffset > scrollRange[1] + epsilon;
 }
 
 + (LynxNestedScrollDirection)directionFromAxisDelta:(CGFloat)delta {
+  // TODO(xiamengfei.moonface): [ResizableWindowScale] Check whether this should use window or
+  // physical screen metrics.
   CGFloat epsilon = 1.0 / UIScreen.mainScreen.scale;
   if (delta > epsilon) {
     return LynxNestedScrollDirectionForwards;
