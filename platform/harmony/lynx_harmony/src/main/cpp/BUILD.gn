@@ -261,7 +261,10 @@ lynx_core_source_set("cpp") {
     "ui/utils/ui_sticky_scroller.h",
   ]
 
-  deps = [ ":static_task_napi_bridge" ]
+  deps = [
+    ":static_task_napi_bridge",
+    "../../../../../../gfx:gfx",
+  ]
 
   configs = [ ":harmony_public_config" ]
   libs = [

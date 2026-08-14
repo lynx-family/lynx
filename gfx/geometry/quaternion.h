@@ -6,11 +6,13 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#ifndef CORE_STYLE_TRANSFORM_QUATERNION_H_
-#define CORE_STYLE_TRANSFORM_QUATERNION_H_
+#ifndef GFX_GEOMETRY_QUATERNION_H_
+#define GFX_GEOMETRY_QUATERNION_H_
+
+#include "gfx/gfx_export.h"
 
 namespace lynx {
-namespace transforms {
+namespace gfx {
 
 struct Euler {
   Euler(float x, float y, float z) : x(x), y(y), z(z) {}
@@ -20,7 +22,7 @@ struct Euler {
   float z{0.0f};
 };
 
-class Quaternion {
+class GFX_EXPORT Quaternion {
  public:
   constexpr Quaternion() = default;
   constexpr Quaternion(double x, double y, double z, double w)
@@ -63,7 +65,7 @@ inline Quaternion operator*(double s, const Quaternion& q) {
   return Quaternion(q.x() * s, q.y() * s, q.z() * s, q.w() * s);
 }
 
-}  // namespace transforms
+}  // namespace gfx
 }  // namespace lynx
 
-#endif  // CORE_STYLE_TRANSFORM_QUATERNION_H_
+#endif  // GFX_GEOMETRY_QUATERNION_H_

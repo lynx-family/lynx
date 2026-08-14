@@ -503,7 +503,7 @@ class LYNX_EXPORT UIBase : public std::enable_shared_from_this<UIBase>,
   void SetOffsetDistance(const lepus::Value& value);
   void SetOffsetRotate(const lepus::Value& value);
   void UpdateOffsetPathCacheIfNeeded();
-  std::optional<transforms::Matrix44> GetOffsetMatrix() const;
+  std::optional<gfx::Matrix44> GetOffsetMatrix() const;
   void SetPerspective(const lepus::Value& value);
   void SetBlockListEvent(const lepus::Value& value);
   void SetSkipRedirection(const lepus::Value& value);

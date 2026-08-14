@@ -6,12 +6,12 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#include "core/style/transform/decomposed_transform.h"
+#include "gfx/geometry/decomposed_transform.h"
 
 #include <cmath>
 
 namespace lynx {
-namespace transforms {
+namespace gfx {
 
 namespace {
 
@@ -184,7 +184,7 @@ DecomposedTransform BlendDecomposedTransforms(const DecomposedTransform& to,
   return out;
 }
 
-// Taken from http://www.w3.org/TR/css3-transforms/.
+// Taken from https://www.w3.org/TR/css-transforms-2/.
 // TODO(crbug/937296): This implementation is virtually identical to the
 // implementation in blink::TransformationMatrix with the main difference being
 // the representation of the underlying matrix. These implementations should be
@@ -212,8 +212,21 @@ bool DecomposeTransform(DecomposedTransform* decomposed_transform,
   if (std::abs(perspective_matrix.determinant()) < 1e-8) return false;
 
   if (matrix.HasPerspective()) {
-    // Not reachable in our code.
-    DCHECK(false);
+    const float right_hand_side[4] = {matrix.rc(3, 0), matrix.rc(3, 1),
+                                      matrix.rc(3, 2), matrix.rc(3, 3)};
+    Matrix44 inverse_perspective_matrix;
+    if (!perspective_matrix.invert(&inverse_perspective_matrix)) {
+      return false;
+    }
+
+    // Multiply by the transpose of the inverse perspective matrix.
+    for (int row = 0; row < 4; ++row) {
+      decomposed_transform->perspective[row] = 0.0f;
+      for (int col = 0; col < 4; ++col) {
+        decomposed_transform->perspective[row] +=
+            inverse_perspective_matrix.rc(col, row) * right_hand_side[col];
+      }
+    }
   } else {
     // No perspective.
     for (int i = 0; i < 3; ++i) decomposed_transform->perspective[i] = 0.0;
@@ -288,7 +301,7 @@ bool DecomposeTransform(DecomposedTransform* decomposed_transform,
   }
 
   // See https://en.wikipedia.org/wiki/Rotation_matrix#Quaternion.
-  // Note: deviating from spec (http://www.w3.org/TR/css3-transforms/)
+  // Note: deviating from spec (https://www.w3.org/TR/css-transforms-2/)
   // which has a degenerate case of zero off-diagonal elements in the
   // orthonormal matrix, which leads to errors in determining the sign
   // of the quaternions.
@@ -342,5 +355,5 @@ bool DecomposeTransform(DecomposedTransform* decomposed_transform,
   return true;
 }
 
-}  // namespace transforms
+}  // namespace gfx
 }  // namespace lynx

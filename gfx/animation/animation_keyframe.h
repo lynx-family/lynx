@@ -15,19 +15,10 @@
 
 #include "base/include/fml/time/time_delta.h"
 #include "gfx/animation/timing_function.h"
+#include "gfx/geometry/length.h"
 
 namespace lynx {
 namespace gfx {
-
-enum class LengthUnit : uint8_t {
-  kNumber = 0,
-  kPercent,
-};
-
-struct LengthValue {
-  float value{0.0f};
-  LengthUnit unit{LengthUnit::kNumber};
-};
 
 enum class UnitTag : uint8_t {
   kNumber = 0,

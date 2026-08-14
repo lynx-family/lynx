@@ -9,7 +9,7 @@
 #include <vector>
 
 #include "base/include/float_comparison.h"
-#include "core/style/transform/matrix44.h"
+#include "gfx/geometry/matrix44.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/base/node_manager.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_base.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_owner.h"
@@ -64,7 +64,7 @@ void LynxUIHelper::ConvertPointFromAncestorToDescendant(float res[2],
       Transform* transform = current_ui->GetTransform();
       float width = current_ui->width_, height = current_ui->height_;
       if (transform) {
-        transforms::Matrix44 invert_matrix;
+        gfx::Matrix44 invert_matrix;
         if (transform->GetTransformMatrix(width, height, 1.f, true)
                 .invert(&invert_matrix)) {
           invert_matrix.mapPoint(res, res);

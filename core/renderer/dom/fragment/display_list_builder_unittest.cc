@@ -11,7 +11,7 @@
 #include "core/renderer/starlight/style/borders_data.h"
 #include "core/renderer/ui_wrapper/painting/paint_image.h"
 #include "core/style/filter_data.h"
-#include "core/style/transform/matrix44.h"
+#include "gfx/geometry/matrix44.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 namespace lynx {
@@ -170,7 +170,7 @@ TEST_F(DisplayListBuilderTest, DrawTextOperation) {
 }
 
 TEST_F(DisplayListBuilderTest, TransformOperation) {
-  transforms::Matrix44 matrix;
+  gfx::Matrix44 matrix;
   matrix.preTranslate(50.0f, 100.0f, 0.0f);
   builder_->Transform(matrix);
 
@@ -198,7 +198,7 @@ TEST_F(DisplayListBuilderTest, MethodChaining) {
       .DrawView(123, 10.0f, 20.0f)
       .DrawImage(fml::MakeRefCounted<PaintImage>(456), -1)
       .DrawText(789, -1)
-      .Transform(transforms::Matrix44())
+      .Transform(gfx::Matrix44())
       .End();
 
   DisplayList display_list = builder_->Build();

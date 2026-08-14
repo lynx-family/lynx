@@ -6,17 +6,18 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#ifndef CORE_STYLE_TRANSFORM_DECOMPOSED_TRANSFORM_H_
-#define CORE_STYLE_TRANSFORM_DECOMPOSED_TRANSFORM_H_
+#ifndef GFX_GEOMETRY_DECOMPOSED_TRANSFORM_H_
+#define GFX_GEOMETRY_DECOMPOSED_TRANSFORM_H_
 
-#include "core/style/transform/matrix44.h"
-#include "core/style/transform/quaternion.h"
+#include "gfx/geometry/matrix44.h"
+#include "gfx/geometry/quaternion.h"
+#include "gfx/gfx_export.h"
 
 namespace lynx {
-namespace transforms {
+namespace gfx {
 // Contains the components of a factored transform. These components may be
 // blended and recomposed.
-struct DecomposedTransform {
+struct GFX_EXPORT DecomposedTransform {
   DecomposedTransform();
 
   float translate[3];
@@ -28,15 +29,15 @@ struct DecomposedTransform {
 
 // Decomposes this transform into its translation, scale, skew, perspective,
 // and rotation components following the routines detailed in this spec:
-// http://www.w3.org/TR/css3-3d-transforms/.
-bool DecomposeTransform(DecomposedTransform* decomposed_transform,
-                        const Matrix44& transform);
+// https://www.w3.org/TR/css-transforms-2/.
+GFX_EXPORT bool DecomposeTransform(DecomposedTransform* decomposed_transform,
+                                   const Matrix44& transform);
 
-DecomposedTransform BlendDecomposedTransforms(const DecomposedTransform& to,
-                                              const DecomposedTransform& from,
-                                              double progress);
+GFX_EXPORT DecomposedTransform
+BlendDecomposedTransforms(const DecomposedTransform& to,
+                          const DecomposedTransform& from, double progress);
 
-}  // namespace transforms
+}  // namespace gfx
 }  // namespace lynx
 
-#endif  // CORE_STYLE_TRANSFORM_DECOMPOSED_TRANSFORM_H_
+#endif  // GFX_GEOMETRY_DECOMPOSED_TRANSFORM_H_
