@@ -91,6 +91,14 @@ class LynxTemplateBundle final {
                                bool skip_css_decode = false,
                                std::optional<bool> is_card = std::nullopt);
 
+  // Builds a bundle from a Lynx Markup Language document beginning with
+  // <!doctype lynx> and containing a <lynx> root. Source blocks use <style>,
+  // <script thread="main">, and <script thread="background">. Blocks may
+  // interleave, but each type may occur at most once. At least one non-empty
+  // main script is required to build a TemplateBundle. Returns an empty string
+  // on success, or an error message on failure.
+  std::string FromLynxML(const std::string& source);
+
   LynxTemplateBundle()
       : css_style_manager_(std::make_shared<CSSStyleSheetManager>(nullptr)),
         string_list_(std::make_shared<std::vector<base::String>>()),
@@ -242,6 +250,11 @@ class LynxTemplateBundle final {
   };
 
   void EnsureParseTaskScheduler();
+
+  std::string BuildFromLynxMLSources(
+      const std::string& main_thread_script,
+      const std::string& background_thread_script, const std::string& style,
+      const std::string& engine_version);
 
   // header info.
   uint32_t total_size_{0};
