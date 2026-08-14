@@ -13,6 +13,10 @@ class LynxNodeApiAddonInfo {
     File jniLibsDir
     boolean required
 
+    boolean hasPrebuiltLibrary() {
+        jniLibsDir != null
+    }
+
     String getSharedLibraryName() {
         "lib${libraryName}.so"
     }
@@ -27,9 +31,6 @@ class LynxLibraryInfo {
     String androidSourceDir
     File androidDir
     String projectPath
+    String providerClassName
     List<LynxNodeApiAddonInfo> nodeApiAddons = []
-
-    String getProviderClassName() {
-        "${androidPackageName}.LynxLibraryProviderImpl"
-    }
 }

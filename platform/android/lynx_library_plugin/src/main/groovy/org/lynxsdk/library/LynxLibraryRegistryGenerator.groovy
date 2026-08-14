@@ -13,7 +13,9 @@ class LynxLibraryRegistryGenerator {
     }
 
     static String generateRegistry(List<LynxLibraryInfo> libraries) {
-        String providerEntries = libraries.collect {
+        String providerEntries = libraries.findAll {
+            it.providerClassName != null
+        }.collect {
             "      \"${it.providerClassName}\""
         }.join(',\n')
         if (providerEntries.length() == 0) {

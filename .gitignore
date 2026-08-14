@@ -88,6 +88,7 @@ explorer/darwin/ios/lynx_explorer/generated/
 explorer/darwin/ios/lynx_explorer/LynxExplorer.xcworkspace/*
 explorer/darwin/ios/lynx_explorer/LynxExplorer.xcodeproj/**
 !explorer/darwin/ios/lynx_explorer/LynxExplorer.xcodeproj/
+platform/android/lynx_library_plugin/build/
 !explorer/darwin/ios/lynx_explorer/LynxExplorer.xcodeproj/project.pbxproj
 !explorer/darwin/ios/lynx_explorer/LynxExplorer.xcodeproj/xcshareddata/
 !explorer/darwin/ios/lynx_explorer/LynxExplorer.xcodeproj/xcshareddata/**

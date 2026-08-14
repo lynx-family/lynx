@@ -337,8 +337,10 @@ dependencies {
     androidTestImplementation "com.google.auto.service:auto-service-annotations:1.0-rc5"
     androidTestAnnotationProcessor "com.google.auto.service:auto-service:1.0-rc5"
 
-    implementation 'org.lynxsdk.lynx:primjs:4.2.0-alpha.0-SNAPSHOT'
-    extractJNI 'org.lynxsdk.lynx:primjs:4.2.0-alpha.0-SNAPSHOT@aar'
+    def primjsVersion =
+        rootProject.findProperty('lynx.primjs.version') ?: '4.2.0-alpha.0-SNAPSHOT'
+    implementation "org.lynxsdk.lynx:primjs:${primjsVersion}"
+    extractJNI "org.lynxsdk.lynx:primjs:${primjsVersion}@aar"
     implementation 'org.lynxsdk.lynx:primjsWasm:4.2.0-alpha.0-SNAPSHOT'
     extractJNI 'org.lynxsdk.lynx:primjsWasm:4.2.0-alpha.0-SNAPSHOT@aar'
     extractJNI 'org.lynxsdk.lynx:v8so:11.1.277.4'

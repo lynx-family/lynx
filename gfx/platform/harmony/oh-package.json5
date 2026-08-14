@@ -5,6 +5,7 @@
   "main": "Index.ets",
   "dependencies": {
     "@lynx/lynx_base": "@param:dependencies.lynx_version",
+    "liblynxgfx.so": "file:./src/cpp/types/liblynxgfx",
   },
   "repository": "https://github.com/lynx-family/lynx",
   "author": "Lynx Authors <lynx.authors@gmail.com> (https://github.com/lynx-family/lynx)",

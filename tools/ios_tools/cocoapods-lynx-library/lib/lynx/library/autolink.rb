@@ -11,7 +11,7 @@ module Lynx
       :npm_name, :package_dir, :manifest_file, :source_dir, :podspec_path, :node_api_addons)
     ComponentInfo = Struct.new(:kind, :name, :class_name)
     NodeApiAddonInfo = Struct.new(
-      :name, :pod_name, :podspec_path, :addon_use_header, :required)
+      :name, :pod_name, :podspec_path, :addon_use_header)
 
     class Autolink
       REGISTRY_CLASS_NAME = 'LynxGeneratedLibraryRegistry'
@@ -164,9 +164,7 @@ module Lynx
             validate_addon_use_header(addon_use_header,
                                       "platforms.ios.nodeApiAddons[#{index}].addonUseHeader",
                                       manifest_file)
-            required = addon.key?('required') ? !!addon['required'] : true
-            NodeApiAddonInfo.new(name.strip, pod_name, addon_podspec_path, addon_use_header,
-                                 required)
+            NodeApiAddonInfo.new(name.strip, pod_name, addon_podspec_path, addon_use_header)
           end
         end
 

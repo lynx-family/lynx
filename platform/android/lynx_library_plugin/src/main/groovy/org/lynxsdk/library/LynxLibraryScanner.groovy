@@ -123,8 +123,28 @@ class LynxLibraryScanner {
         }
         List<LynxNodeApiAddonInfo> nodeApiAddons = parseNodeApiAddons(
             android.nodeApiAddons, packageDir, manifest)
+        String providerClassName = parseProviderClassName(
+            android, packageName.trim(), manifest)
         new LynxLibraryInfo(npmName, packageDir, manifest, packageName.trim(), sourceDir,
-            androidDir, projectPathFor(npmName), nodeApiAddons)
+            androidDir, projectPathFor(npmName), providerClassName, nodeApiAddons)
+    }
+
+    private static String parseProviderClassName(
+        Map android, String packageName, File manifest) {
+        if (!android.containsKey('providerClassName')) {
+            return "${packageName}.LynxLibraryProviderImpl"
+        }
+        Object providerClassName = android.providerClassName
+        if (providerClassName == null) {
+            return null
+        }
+        if (!(providerClassName instanceof String)
+            || providerClassName.trim().isEmpty()
+            || !(providerClassName.trim() ==~ '[A-Za-z_$][A-Za-z0-9_$]*(\\.[A-Za-z_$][A-Za-z0-9_$]*)+')) {
+            throw new GradleException(
+                "Invalid platforms.android.providerClassName in ${manifest}; expected a fully qualified Java class name or null")
+        }
+        providerClassName.trim()
     }
 
     private static List<LynxNodeApiAddonInfo> parseNodeApiAddons(
@@ -147,11 +167,23 @@ class LynxLibraryScanner {
             validateAddonName(libraryName,
                 "platforms.android.nodeApiAddons[${index}].libraryName", manifest)
 
-            String jniLibsDirName = addon.jniLibsDir ?: 'android/src/main/jniLibs'
-            File jniLibsDir = resolvePackagePath(
-                packageDir, jniLibsDirName, manifest,
-                "platforms.android.nodeApiAddons[${index}].jniLibsDir")
-            boolean required = addon.containsKey('required') ? addon.required as boolean : true
+            File jniLibsDir = null
+            if (addon.containsKey('jniLibsDir')) {
+                if (!(addon.jniLibsDir instanceof String)
+                    || addon.jniLibsDir.trim().isEmpty()) {
+                    throw new GradleException(
+                        "platforms.android.nodeApiAddons[${index}].jniLibsDir in ${manifest} must be a non-empty string")
+                }
+                String jniLibsDirName = addon.jniLibsDir.trim()
+                jniLibsDir = resolvePackagePath(
+                    packageDir, jniLibsDirName, manifest,
+                    "platforms.android.nodeApiAddons[${index}].jniLibsDir")
+            }
+            if (addon.containsKey('required') && !(addon.required instanceof Boolean)) {
+                throw new GradleException(
+                    "platforms.android.nodeApiAddons[${index}].required in ${manifest} must be a boolean")
+            }
+            boolean required = addon.containsKey('required') ? addon.required : true
             result << new LynxNodeApiAddonInfo(name, libraryName, jniLibsDir, required)
         }
         result

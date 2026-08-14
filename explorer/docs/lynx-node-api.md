@@ -45,6 +45,7 @@ Platform-specific runtime dependencies:
 Additional iOS runtime requirement:
 
 - iOS must install the PrimJS to `LynxWeakNodeAPI` bridge once during app startup before the Explorer environment is used
+- iOS hosts that integrate both `PrimJS` and `LynxWeakNodeAPI` through CocoaPods must currently enable `generate_multiple_pod_projects` to keep their different same-named Node-API headers in isolated target header maps
 
 The current open-source Explorer examples implement these prerequisites here:
 

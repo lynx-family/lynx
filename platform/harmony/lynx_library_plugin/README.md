@@ -38,3 +38,34 @@ dependency, resource directory, and AppStartup profile through HAP model APIs.
 A generated Hvigor task restores the HAP-local AppStartup sources after `clean`
 and before each target's `PreBuild`.
 Application source files and checked-in build profiles are not modified.
+
+The Harmony manifest entry supports both platform providers and Node-API
+addons:
+
+```json
+{
+  "platforms": {
+    "harmony": {
+      "packageDir": "harmony",
+      "providerExportName": null,
+      "nodeApiAddons": [
+        {
+          "name": "DemoModule",
+          "libraryName": "DemoModule",
+          "initializerExportName": "initializeNodeApiAddon",
+          "required": true
+        }
+      ]
+    }
+  }
+}
+```
+
+- Omit `providerExportName` to import the legacy
+  `LynxLibraryProviderImpl` export.
+- Set `providerExportName` to `null` for a Node-API-only HAR.
+- `initializerExportName` names an ArkTS function exported by the HAR. The
+  generated AppStartup registry calls every initializer before
+  `LynxLibraryRegistry.setupGlobal`.
+- A required initializer error fails AppStartup. An optional initializer error
+  is logged and provider registration continues.
