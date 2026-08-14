@@ -32,6 +32,7 @@
 @class LynxTemplateRender;
 @class LynxContext;
 @class LynxElement;
+@class LynxScreenMetrics;
 @protocol LynxBaseInspectorOwner;
 
 /**
@@ -259,6 +260,17 @@
  * @param height (dp) screen screen
  */
 - (void)updateScreenMetricsWithWidth:(CGFloat)width height:(CGFloat)height;
+
+/**
+ * Updates the Screen Metrics for this LynxView. Each non-positive argument keeps the current
+ * value. A non-finite argument rejects the whole update.
+ */
+- (void)updateScreenMetricsWithWidth:(CGFloat)width height:(CGFloat)height scale:(CGFloat)scale;
+
+/**
+ * Replaces the Screen Metrics for this LynxView with a complete finite positive snapshot.
+ */
+- (void)updateScreenMetrics:(nonnull LynxScreenMetrics*)screenMetrics;
 
 /**
  * @apidoc

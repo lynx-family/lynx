@@ -63,6 +63,11 @@ static Class LynxScrollCoordinatorLookupClass(NSString *name) { return NSClassFr
     if (@available(iOS 11.0, *)) {
       self.contentInsetAdjustmentBehavior = UIScrollViewContentInsetAdjustmentNever;
     }
+    if (@available(iOS 13.0, *)) {
+      self.automaticallyAdjustsScrollIndicatorInsets = NO;
+    }
+    // TODO(xiamengfei.moonface): [ResizableWindowScale] Check whether this should use window or
+    // physical screen metrics.
     self.threshold = 1.0 / UIScreen.mainScreen.scale;
     self.lynxEnableTapGestureSimultaneously = YES;
     self.forceScrollDetachWhileIdling = YES;

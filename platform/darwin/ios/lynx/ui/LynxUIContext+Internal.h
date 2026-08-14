@@ -8,12 +8,18 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
+@class LynxError;
+
 @interface LynxUIContext ()
 @property(nonatomic, assign) BOOL imageMonitorEnabled;
 @property(nonatomic, assign) BOOL devtoolEnabled;
 @property(nonatomic, assign) BOOL fixNewImageDownSampling;
 @property(nonatomic, readonly) BOOL enableEventThroughInheritFromPage;
 @property(nonatomic, strong, readwrite) LynxScrollFluency *fluencyInnerListener;
+
+- (void)updateScreenMetrics:(LynxScreenMetrics *)screenMetrics;
+- (void)updateViewportMetrics:(nullable LynxViewportMetrics *)viewportMetrics;
+- (void)updateScreenSize:(CGSize)screenSize;
 
 - (void)setUIConfig:(id<LUIConfig>)config;
 - (void)setDefaultOverflowVisible:(BOOL)enable;
