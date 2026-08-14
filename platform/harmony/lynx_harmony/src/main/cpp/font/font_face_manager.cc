@@ -18,6 +18,12 @@ namespace lynx {
 namespace tasm {
 namespace harmony {
 
+namespace {
+
+constexpr int kNoShadowNodeSign = -1;
+
+}  // namespace
+
 void FontFace::ParseAndAddSrc(const std::string& src) {
   static constexpr const char* kUrlIdent = "url(";
   static constexpr const char* kLocalIdent = "local(";
@@ -108,7 +114,9 @@ void FontFaceManager::LoadFontWithUrl(int sign, const std::string& font_family,
     // http url
     if (GetFontCollection()->GetFontLoadingState(font_family) !=
         FontCollectionHarmony::FontLoadingState::kUndefined) {
-      font_family_pending_shadow_node_[font_family].emplace_back(sign);
+      if (sign != kNoShadowNodeSign) {
+        font_family_pending_shadow_node_[font_family].emplace_back(sign);
+      }
       return;
     }
 
@@ -131,7 +139,8 @@ void FontFaceManager::LoadFontWithUrl(int sign, const std::string& font_family,
                        font_callback = std::move(font_callback),
                        response]() mutable {
             if (response.Success() && !response.data.empty()) {
-              if (shared_self->CheckNodeValid(sign)) {
+              if (sign == kNoShadowNodeSign ||
+                  shared_self->CheckNodeValid(sign)) {
                 font_callback(font_family, response.err_code, response.data,
                               response.data.size());
               }
@@ -167,6 +176,14 @@ void FontFaceManager::LoadFontWithUrl(int sign, const std::string& font_family,
           }
         });
   }
+}
+
+void FontFaceManager::LoadFontWithUrl(const std::string& font_family,
+                                      const std::string& src,
+                                      const FontFace::Type type,
+                                      FontResourceCallback callback) {
+  LoadFontWithUrl(kNoShadowNodeSign, font_family, src, type,
+                  std::move(callback));
 }
 
 void FontFaceManager::PrefetchFont(const std::string& src) {

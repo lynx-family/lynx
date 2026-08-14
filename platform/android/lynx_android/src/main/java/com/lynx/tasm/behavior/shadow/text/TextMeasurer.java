@@ -87,6 +87,7 @@ public class TextMeasurer {
   private final static int kPropColorRadialGradient = 107;
   private final static int kPropColorConicGradient = 108;
   private final static int kPropImageLoopCount = 110;
+  private final static int kPropImageMode = 111;
 
   private final static int kTextPropEnd = 0xFF;
 
@@ -344,6 +345,13 @@ public class TextMeasurer {
           int loopCount = iterator.next().getInt();
           if (inlineImageProps != null) {
             inlineImageProps.mLoopCount = loopCount;
+          }
+          break;
+
+        case kPropImageMode:
+          int imageMode = iterator.next().getInt();
+          if (inlineImageProps != null) {
+            inlineImageProps.mMode = imageMode;
           }
           break;
 
@@ -818,9 +826,7 @@ public class TextMeasurer {
     ((InlineImageSpan) imageSpan).setImageManager(lynxImageManager);
 
     lynxImageManager.setSrc(imageProps.mSrc);
-    if (imageProps.mMode != null) {
-      lynxImageManager.setMode(imageProps.mMode);
-    }
+    lynxImageManager.setMode(imageProps.mMode);
     lynxImageManager.setLoopCount(imageProps.mLoopCount);
 
     if (shadowStyle != null) {
@@ -939,7 +945,7 @@ public class TextMeasurer {
     public int mHeight;
     public int[] mMargins = new int[4];
     public String mSrc;
-    public String mMode;
+    public int mMode;
     public int mLoopCount;
     public LynxBackground mComplexBackground;
   }
