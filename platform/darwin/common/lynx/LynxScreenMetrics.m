@@ -32,10 +32,20 @@
 
 - (instancetype)initWithScreenSize:(CGSize)screenSize scale:(CGFloat)scale {
   if (self = [self init]) {
-    [self setLynxScreenSize:screenSize];
+    _screenSize = screenSize;
     _scale = scale;
   }
   return self;
+}
+
+// Keep the legacy setters for source and binary compatibility. New code should create immutable
+// snapshots with initWithScreenSize:scale: instead.
+- (void)setScreenSize:(CGSize)screenSize {
+  _screenSize = screenSize;
+}
+
+- (void)setScale:(CGFloat)scale {
+  _scale = scale;
 }
 
 - (void)setLynxScreenSize:(CGSize)screenSize {

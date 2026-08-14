@@ -38,6 +38,9 @@ NS_ASSUME_NONNULL_BEGIN
  */
 - (void)destoryUnattachedOverlay:(UIView *)overlay;
 
++ (UIView *)getTopViewControllerWithMode:(LynxOverlayMode)mode
+                    customViewController:(UIViewController *)customViewController;
+
 @end
 
 NS_ASSUME_NONNULL_END
