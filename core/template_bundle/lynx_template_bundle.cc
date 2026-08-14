@@ -6,8 +6,11 @@
 
 #include <algorithm>
 
+#include "base/include/timer/time_utils.h"
 #include "core/renderer/simple_styling/style_object.h"
 #include "core/runtime/lepus/binary_input_stream.h"
+#include "core/runtime/lepusng/quick_context.h"
+#include "core/template_bundle/lynxml/lynxml_source_observer.h"
 #include "core/template_bundle/template_codec/binary_decoder/element_binary_reader.h"
 #include "core/template_bundle/template_codec/binary_decoder/lynx_binary_lazy_reader_delegate.h"
 #include "core/template_bundle/template_codec/binary_decoder/lynx_binary_reader.h"
@@ -48,6 +51,76 @@ std::string LynxTemplateBundle::FromBinaryGreedy(
     return reader.error_message_;
   }
   *this = reader.GetTemplateBundle();
+  return "";
+}
+
+std::string LynxTemplateBundle::BuildFromLynxMLSources(
+    const std::string &main_thread_script,
+    const std::string &background_thread_script, const std::string &style,
+    const std::string &engine_version) {
+  if (main_thread_script.empty()) {
+    return "mainThreadScript must not be empty";
+  }
+
+  // TODO: Wrap and consume the background-thread source after the JS source
+  // wrapper is available.
+  // TODO: Parse and consume the style source after CSS source parsing support
+  // is available.
+
+  is_lepusng_binary_ = true;
+  context_type_ = runtime::ContextType::LepusNGContextType;
+  target_sdk_version_ =
+      engine_version.empty() ? Config::GetCurrentLynxVersion() : engine_version;
+  app_type_ = APP_TYPE_CARD;
+  enable_css_parser_ = false;
+  enable_css_variable_ = true;
+
+  compile_options_.target_sdk_version_ = target_sdk_version_;
+  compile_options_.enable_lepus_ng_ = true;
+  compile_options_.enable_fiber_arch_ = true;
+  compile_options_.arch_option_ = FIBER_ARCH;
+  compile_options_.front_end_dsl_ = FRON_END_DSL_REACT;
+  compile_options_.context_type_ = CONTEXT_TYPE_LEPUS_NG;
+  compile_options_.enable_css_selector_ = true;
+  compile_options_.enable_css_invalidation_ = true;
+
+  page_configs_ = std::make_shared<PageConfig>();
+  page_configs_->SetTargetSDKVersion(target_sdk_version_);
+  page_configs_->SetEnableStandardCSSSelector(
+      compile_options_.enable_css_selector_);
+  page_configs_->SetEnableEventHandleRefactor(true);
+  page_configs_->SetEnableCSSInvalidation(
+      compile_options_.enable_css_invalidation_);
+  page_configs_->SetEnableFiberArch(true);
+  page_configs_->SetDSL(PackageInstanceDSL::REACT);
+  page_configs_->SetBundleModuleMode(
+      PackageInstanceBundleModuleMode::RETURN_BY_FUNCTION_MODE);
+
+  auto context_bundle = std::make_shared<lepus::QuickContextBundle>();
+  context_bundle->SetSource(main_thread_script);
+  context_bundle_ = std::move(context_bundle);
+
+  return "";
+}
+
+std::string LynxTemplateBundle::FromLynxML(const std::string &source) {
+  decode_start_timestamp_ = base::CurrentSystemTimeMicroseconds();
+  decode_end_timestamp_ = 0;
+
+  auto parse_result = lynxml::ParseLynxMLSources(source);
+  if (!parse_result.error.empty()) {
+    return std::move(parse_result.error);
+  }
+
+  const auto &sources = parse_result.sources;
+  std::string error = BuildFromLynxMLSources(
+      sources.main_thread_script, sources.background_thread_script,
+      sources.style, sources.engine_version);
+  if (!error.empty()) {
+    return error;
+  }
+
+  decode_end_timestamp_ = base::CurrentSystemTimeMicroseconds();
   return "";
 }
 

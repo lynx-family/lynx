@@ -9,11 +9,16 @@ lynx_core_source_set("lynxml_parser") {
   sources = [
     "lynxml_parser.cc",
     "lynxml_parser.h",
+    "lynxml_source_observer.cc",
+    "lynxml_source_observer.h",
   ]
 }
 
 unittest_set("lynxml_parser_testset") {
-  sources = [ "lynxml_parser_unittest.cc" ]
+  sources = [
+    "lynxml_parser_unittest.cc",
+    "lynxml_source_observer_unittest.cc",
+  ]
   public_deps = [ ":lynxml_parser" ]
 }
 
