@@ -119,7 +119,7 @@ class LynxLibraryAutolinkTest < Minitest::Test
       assert_equal File.realpath(File.join(package_dir, 'ios/DemoAddon.podspec')),
                    addon.podspec_path
       assert_equal 'addon_use.h', addon.addon_use_header
-      refute addon.required
+      refute_respond_to addon, :required
     end
   end
 

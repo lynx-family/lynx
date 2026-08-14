@@ -124,6 +124,7 @@ def run_cp_so(output_path, args, abi):
         'liblynx.so': os.path.join(LYNX_DIR, 'platform', 'harmony', 'lynx_harmony', 'libs', abi),
         'liblynx_service_api.so': os.path.join(LYNX_DIR, 'platform', 'harmony', 'lynx_harmony', 'libs', abi),
         'liblynxbase.so': os.path.join(LYNX_DIR, 'base', 'platform', 'harmony', 'libs', abi),
+        'liblynxgfx.so': os.path.join(LYNX_DIR, 'gfx', 'platform', 'harmony', 'libs', abi),
         'liblynxdevtool.so': os.path.join(LYNX_DIR, 'platform', 'harmony', 'lynx_devtool', 'libs', abi),
         'liblynx_image_service.so': os.path.join(LYNX_DIR, 'platform', 'harmony', 'lynx_services', 'lynx_image_service', 'libs', abi),
         'liblynx_xelement_markdown.so': os.path.join(LYNX_DIR, 'platform', 'harmony', 'lynx_xelement', 'markdown', 'libs', abi),

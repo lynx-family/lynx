@@ -61,6 +61,94 @@ test('discovers scoped libraries and parses JSON5 Harmony metadata', () => {
   assert.equal(libraries[0].ohPackageName, '@example/demo_harmony');
 });
 
+test('discovers Node-API addons without requiring a provider export', () => {
+  const project = createProject();
+  createLibrary(project, '@example/addon', '@example/addon_harmony', {
+    harmonyManifest: {
+      providerExportName: null,
+      nodeApiAddons: [
+        {
+          name: 'demo_addon',
+          libraryName: 'demo_addon',
+          initializerExportName: 'initializeNodeApiAddon',
+          required: false,
+        },
+      ],
+    },
+  });
+
+  const library = discoverHarmonyLibraries(
+    path.join(project, 'entry'),
+    parseJson5File
+  )[0];
+
+  assert.equal(library.providerExportName, null);
+  assert.deepEqual(library.nodeApiAddons, [
+    {
+      name: 'demo_addon',
+      libraryName: 'demo_addon',
+      initializerExportName: 'initializeNodeApiAddon',
+      required: false,
+    },
+  ]);
+});
+
+test('validates Harmony provider and Node-API addon metadata', () => {
+  const invalidCases = [
+    {
+      harmonyManifest: { providerExportName: 'not-qualified.name' },
+      expected: /providerExportName must be a valid ArkTS identifier/,
+    },
+    {
+      harmonyManifest: { nodeApiAddons: {} },
+      expected: /nodeApiAddons must be an array/,
+    },
+    {
+      harmonyManifest: { nodeApiAddons: [{ name: '../bad' }] },
+      expected: /nodeApiAddons\[0\]\.name must match/,
+    },
+    {
+      harmonyManifest: {
+        nodeApiAddons: [
+          { name: 'demo', initializerExportName: 'bad-name' },
+        ],
+      },
+      expected: /initializerExportName must be a valid ArkTS identifier/,
+    },
+    {
+      harmonyManifest: {
+        nodeApiAddons: [
+          {
+            name: 'demo',
+            initializerExportName: 'initializeNodeApiAddon',
+            required: 'yes',
+          },
+        ],
+      },
+      expected: /required must be a boolean/,
+    },
+  ];
+
+  for (const [index, invalidCase] of invalidCases.entries()) {
+    const project = createProject();
+    createLibrary(
+      project,
+      `@example/invalid-${index}`,
+      `@example/invalid_${index}_harmony`,
+      { harmonyManifest: invalidCase.harmonyManifest }
+    );
+
+    assert.throws(
+      () =>
+        discoverHarmonyLibraries(
+          path.join(project, 'entry'),
+          parseJson5File
+        ),
+      invalidCase.expected
+    );
+  }
+});
+
 test('rejects Harmony package paths that escape the npm package', () => {
   const project = createProject();
   const packageRoot = createLibrary(
@@ -152,6 +240,108 @@ test('generates registry imports in stable npm package order', () => {
   assert.match(source, /LynxLibraryRegistry\.setupGlobal\(PROVIDERS\)/);
 });
 
+test('initializes Node-API addons before optional providers', () => {
+  const source = generateRegistrySource([
+    {
+      ...libraryDescriptor('@example/required', '@example/required_harmony'),
+      providerExportName: null,
+      nodeApiAddons: [
+        {
+          name: 'required_addon',
+          initializerExportName: 'initializeRequiredAddon',
+          required: true,
+        },
+      ],
+    },
+    {
+      ...libraryDescriptor('@example/optional', '@example/optional_harmony'),
+      providerExportName: 'CustomProvider',
+      nodeApiAddons: [
+        {
+          name: 'optional_addon',
+          initializerExportName: 'initializeOptionalAddon',
+          required: false,
+        },
+      ],
+    },
+  ]);
+
+  assert.doesNotMatch(
+    source,
+    /LynxLibraryProviderImpl as Provider0.*required_harmony/
+  );
+  assert.match(
+    source,
+    /import \{ CustomProvider as Provider0 \} from '@example\/optional_harmony'/
+  );
+  assert.match(
+    source,
+    /import \{ initializeOptionalAddon as InitializeNodeApiAddon0 \}/
+  );
+  assert.match(
+    source,
+    /import \{ initializeRequiredAddon as InitializeNodeApiAddon1 \}/
+  );
+  assert.ok(
+    source.indexOf('InitializeNodeApiAddon1();') <
+      source.indexOf('LynxLibraryRegistry.setupGlobal(PROVIDERS);')
+  );
+  assert.match(source, /try \{\n    InitializeNodeApiAddon0\(\);/);
+  assert.match(
+    source,
+    /Failed to initialize optional Lynx Node-API addon optional_addon/
+  );
+});
+
+test('does not load Lynx registry APIs for Node-API-only libraries', () => {
+  const source = generateRegistrySource([
+    {
+      ...libraryDescriptor('@example/addon', '@example/addon_harmony'),
+      providerExportName: null,
+      nodeApiAddons: [
+        {
+          name: 'required_addon',
+          initializerExportName: 'initializeRequiredAddon',
+          required: true,
+        },
+      ],
+    },
+  ]);
+
+  assert.doesNotMatch(source, /from '@lynx\/lynx'/);
+  assert.doesNotMatch(source, /LynxLibraryRegistry/);
+  assert.doesNotMatch(source, /PROVIDERS/);
+  assert.match(source, /InitializeNodeApiAddon0\(\);/);
+});
+
+test('does not depend on Lynx registry APIs for Node-API-only libraries', () => {
+  const project = createProject();
+  createLibrary(project, '@example/addon', '@example/addon_harmony', {
+    harmonyManifest: {
+      providerExportName: null,
+      nodeApiAddons: [
+        {
+          name: 'required_addon',
+          initializerExportName: 'initializeRequiredAddon',
+          required: true,
+        },
+      ],
+    },
+  });
+  const state = createModuleState();
+
+  const { result } = configureAutolink(project, state);
+  const registryPackage = JSON.parse(
+    fs.readFileSync(path.join(result.registryDir, 'oh-package.json5'), 'utf8')
+  );
+
+  assert.equal(registryPackage.dependencies['@lynx/lynx'], undefined);
+  assert.match(
+    registryPackage.dependencies['@example/addon_harmony'],
+    /^file:/
+  );
+});
+
 test('adds HAR nodes before configuring the HAP through model setters', () => {
   const project = createProject();
   createLibrary(project, '@example/demo', '@example/demo_harmony');
@@ -198,7 +388,10 @@ test('adds HAR nodes before configuring the HAP through model setters', () => {
   assert.match(registrySource, /new Provider0\(\)/);
   const startupTask = fs.readFileSync(
     path.join(
-      result.generatedSourceRoot,
+      project,
+      'entry',
+      'src',
+      'main',
       'ets',
       'lynx_autolink',
       'LynxAutolinkStartupTask.ets'
@@ -224,7 +417,39 @@ test('adds HAR nodes before configuring the HAP through model setters', () => {
   );
   assert.equal(
     startupProfile.startupTasks[0].srcEntry,
-    '../../build/generated/lynx-autolink/src/main/ets/lynx_autolink/LynxAutolinkStartupTask.ets'
+    './ets/lynx_autolink/LynxAutolinkStartupTask.ets'
+  );
+  assert.equal(
+    startupProfile.configEntry,
+    './ets/lynx_autolink/LynxAutolinkStartupConfig.ets'
+  );
+  assert.ok(
+    fs.existsSync(
+      path.join(
+        project,
+        'entry',
+        'src',
+        'main',
+        'ets',
+        'lynx_autolink',
+        'LynxAutolinkStartupConfig.ets'
+      )
+    )
+  );
+  assert.equal(
+    fs.readFileSync(
+      path.join(
+        project,
+        'entry',
+        'src',
+        'main',
+        'ets',
+        'lynx_autolink',
+        '.gitignore'
+      ),
+      'utf8'
+    ),
+    '*\n'
   );
   assert.deepEqual(originalModuleJson, {
     module: { name: 'entry', type: 'entry' },
@@ -299,6 +524,7 @@ test('preserves existing startup tasks and config entry', () => {
 
 test('rebases a local Lynx SDK dependency for the generated Registry HAR', () => {
   const project = createProject();
+  createLibrary(project, '@example/provider', '@example/provider_harmony');
   setLynxDependency(project, 'entry', 'file:../sdk');
   const state = {
     dependencies: { '@lynx/lynx': 'file:../sdk' },
@@ -507,7 +733,12 @@ function createLibrary(project, npmName, ohPackageName, options = {}) {
     version: '1.0.0',
   });
   writeJson(path.join(packageRoot, 'lynx.lib.json'), {
-    platforms: { harmony: { packageDir: 'harmony' } },
+    platforms: {
+      harmony: {
+        packageDir: 'harmony',
+        ...(options.harmonyManifest ?? {}),
+      },
+    },
   });
   if (options.ohPackageSource !== undefined) {
     fs.writeFileSync(
