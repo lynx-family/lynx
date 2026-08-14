@@ -188,7 +188,7 @@ void ApplyParagraphStyle(const TextStyle& clay_style,
     txt_style.has_height_override = true;
     // TODO(WeiGuoliang): lxblxb kEvenLeading not found
     txt_style.text_height_behavior = txt::TextHeightBehavior::kAll;
-    txt_style.height_type = txt::RulerType::kExact;
+    txt_style.height_type = txt::RulerType::kExactTextHeight;
   }
 
   if (clay_style.line_spacing) {

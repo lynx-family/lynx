@@ -29,12 +29,8 @@ void InlineViewShadowNode::TextLayout(LayoutContext* context) {
   TextParagraphBuilder* builder =
       static_cast<LayoutContextText*>(context)->builder();
   builder->PushStyle(text_style_.value());
-  const auto vertical_align = GetVerticalAlign();
-  const bool use_measured_baseline =
-      vertical_align.has_value() &&
-      vertical_align->type == kVerticalAlignBaseline &&
-      measured_baseline_ > 0.f;
-  const auto baseline = use_measured_baseline ? measured_baseline_ : Height();
+  const auto baseline =
+      measured_baseline_ > 0.f ? measured_baseline_ : Height();
   txt::PlaceholderRun placeholder(
       Width(), Height(), txt::PlaceholderAlignment::kBaseline,
       txt::TextBaseline::kAlphabetic, baseline + baseline_offset_);
@@ -53,7 +49,12 @@ void InlineViewShadowNode::ResetTextLayout() {
 
 MeasureResult InlineViewShadowNode::MeasureNativeNode(
     const MeasureConstraint& constraint) {
-  return owner_->MeasureNativeNode(this, constraint);
+  auto result = owner_->MeasureNativeNode(this, constraint);
+  measured_baseline_ = result.baseline;
+  occupies_full_line_ = constraint.width_mode != MeasureMode::kIndefinite &&
+                        constraint.width.has_value() && result.width > 0.f &&
+                        result.width >= *constraint.width - 0.5f;
+  return result;
 }
 
 void InlineViewShadowNode::AlignNativeNode(float top, float left) {

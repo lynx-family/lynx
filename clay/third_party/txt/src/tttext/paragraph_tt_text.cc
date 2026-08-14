@@ -21,9 +21,9 @@
 
 namespace txt {
 
-#ifdef ENABLE_SKITY
 namespace {
 
+#ifdef ENABLE_SKITY
 // TTText paints directly to skity::Canvas, so notify GraphicsCanvas after the
 // main text blob is drawn. This keeps the text paint discoverable by Clay's
 // raster color animation without changing TTText's rendering behavior.
@@ -32,25 +32,31 @@ class ClaySkityCanvasHelper final : public tttext::SkityCanvasHelper {
   explicit ClaySkityCanvasHelper(clay::GraphicsCanvas* canvas)
       : tttext::SkityCanvasHelper(canvas->GetGrCanvas()), canvas_(canvas) {}
 
-  void DrawGlyphs(const tttext::ITypefaceHelper* font, uint32_t glyph_count,
-                  const uint16_t* glyphs, const char* text,
-                  uint32_t text_bytes, float ox, float oy, float* pos_x,
-                  float* pos_y, tttext::Painter* painter) override {
+  void DrawGlyphs(const tttext::ITypefaceHelper* font,
+                  uint32_t glyph_count,
+                  const uint16_t* glyphs,
+                  const char* text,
+                  uint32_t text_bytes,
+                  float ox,
+                  float oy,
+                  float* pos_x,
+                  float* pos_y,
+                  tttext::Painter* painter) override {
     if (glyph_count == 0) {
       return;
     }
-    tttext::SkityCanvasHelper::DrawGlyphs(
-        font, glyph_count, glyphs, text, text_bytes, ox, oy, pos_x, pos_y,
-        painter);
+    tttext::SkityCanvasHelper::DrawGlyphs(font, glyph_count, glyphs, text,
+                                          text_bytes, ox, oy, pos_x, pos_y,
+                                          painter);
     canvas_->OnDrawDynamicTextBlob();
   }
 
  private:
   clay::GraphicsCanvas* canvas_;
 };
+#endif
 
 }  // namespace
-#endif
 
 class TTShapeRun : public tttext::RunDelegate {
  public:
@@ -154,10 +160,9 @@ void ParagraphTTText::Layout(double width) {
         tttext::ParagraphHorizontalAlignment::kLeft);
   }
   auto layout_halign = paragraph_style.GetHorizontalAlign();
-  auto width_mode =
-      layout_halign == tttext::ParagraphHorizontalAlignment::kLeft
-          ? tttext::LayoutMode::kAtMost
-          : tttext::LayoutMode::kDefinite;
+  auto width_mode = layout_halign == tttext::ParagraphHorizontalAlignment::kLeft
+                        ? tttext::LayoutMode::kAtMost
+                        : tttext::LayoutMode::kDefinite;
   region_ = std::make_unique<tttext::LayoutRegion>(
       width, std::numeric_limits<float>::max(), width_mode,
       tttext::LayoutMode::kAtMost);
@@ -186,6 +191,7 @@ void ParagraphTTText::Layout(double width) {
     metrics.descent = text_line->GetLineBottom() - metrics.baseline;
     float rect_ltwh[4];
     text_line->GetBoundingRectForLine(rect_ltwh);
+    metrics.left = rect_ltwh[0];
     metrics.width = rect_ltwh[2];
     metrics.height = text_line->GetLineBottom();
     metrics.line_number = k;
@@ -242,12 +248,63 @@ std::vector<Paragraph::TextBox> ParagraphTTText::GetRectsForRange(
     if (end_index <= start)
       continue;
 
-    float rect[4] = {0};
-    text_line->GetBoundingRectByCharRange(rect, std::max(start, start_index),
-                                          std::min(end, end_index));
-    result.push_back(
-        TextBox(skity::Rect::MakeXYWH(rect[0], rect[1], rect[2], rect[3]),
-                TextDirection::ltr));
+    const auto range_start = std::max(start, start_index);
+    const auto range_end = std::min(end, end_index);
+    if (rect_height_style == Paragraph::RectHeightStyle::kLineBox) {
+      float range_rect[4] = {0};
+      text_line->GetBoundingRectByCharRange(range_rect, range_start, range_end);
+      const auto line_box = line_metrics_[k].GetLineBox();
+      range_rect[1] = line_box.Top();
+      range_rect[3] = line_box.Height();
+      result.emplace_back(skity::Rect::MakeXYWH(range_rect[0], range_rect[1],
+                                                range_rect[2], range_rect[3]),
+                          TextDirection::ltr);
+      continue;
+    }
+
+    std::vector<size_t> range_boundaries = {range_start, range_end};
+    for (const auto& baseline_offset : text_baseline_offsets_) {
+      if (baseline_offset.end > range_start &&
+          baseline_offset.start < range_end) {
+        range_boundaries.push_back(
+            std::max(range_start, baseline_offset.start));
+        range_boundaries.push_back(std::min(range_end, baseline_offset.end));
+      }
+    }
+    std::sort(range_boundaries.begin(), range_boundaries.end());
+    range_boundaries.erase(
+        std::unique(range_boundaries.begin(), range_boundaries.end()),
+        range_boundaries.end());
+
+    skity::Rect line_rect;
+    bool has_line_rect = false;
+    for (size_t i = 1; i < range_boundaries.size(); ++i) {
+      const size_t segment_start = range_boundaries[i - 1];
+      const size_t segment_end = range_boundaries[i];
+      float rect[4] = {0};
+      text_line->GetBoundingRectByCharRange(rect, segment_start, segment_end);
+      for (const auto& baseline_offset : text_baseline_offsets_) {
+        if (baseline_offset.start <= segment_start &&
+            segment_start < baseline_offset.end) {
+          rect[1] += baseline_offset.offset;
+          break;
+        }
+      }
+      auto segment_rect =
+          skity::Rect::MakeXYWH(rect[0], rect[1], rect[2], rect[3]);
+      if (has_line_rect) {
+        line_rect.Join(segment_rect);
+      } else {
+        line_rect = segment_rect;
+        has_line_rect = true;
+      }
+    }
+    if (has_line_rect) {
+      result.emplace_back(
+          line_rect, GetResolvedWriteDirection() == tttext::WriteDirection::kRTL
+                         ? TextDirection::rtl
+                         : TextDirection::ltr);
+    }
   }
   return result;
 }
@@ -278,13 +335,17 @@ Paragraph::PositionWithAffinity ParagraphTTText::GetGlyphPositionAtCoordinate(
   ttoffice::tttext::CharPos result = 0;
   for (uint32_t k = 0; k < region_->GetLineCount(); k++) {
     auto* text_line = region_->GetLine(k);
-    float rect[4] = {0};
-    text_line->GetBoundingRectForLine(rect);
-    if (k == region_->GetLineCount() - 1 && dy > rect[1] + rect[3]) {
-      dy = rect[1] + rect[3];
+    const auto line_box = line_metrics_[k].GetLineBox();
+    const float line_top = line_box.Top();
+    const float line_bottom = line_box.Bottom();
+    if (k == region_->GetLineCount() - 1 && dy > line_bottom) {
+      dy = line_bottom;
     }
-    if (rect[2] != 0 && rect[3] != 0 && dy <= rect[1] + rect[3]) {
-      if ((k != 0 && dy < rect[1])) {
+    // Choose the line from its full line box rather than the tight glyph
+    // bounds. With an exact line height, the leading around the glyphs still
+    // belongs to that line and must remain horizontally selectable.
+    if (dy <= line_bottom) {
+      if (k != 0 && dy < line_top) {
         break;
       }
       auto char_pos = text_line->GetCharPosByCoordinateX(dx);
@@ -365,16 +426,24 @@ void ParagraphTTText::AddTextRun(tttext::Style& style,
   const std::u16string supported_content =
       content.substr(0, content.find(u'\0'));
   index_mapper_.AppendText(supported_content);
-  const std::string utf8_content = lynx::base::U16StringToU8(supported_content);
-  paragraph_->AddTextRun(&style, utf8_content.data(),
-                         static_cast<uint32_t>(utf8_content.size()));
+  AddTextRunWithBaselineOffset(style,
+                               lynx::base::U16StringToU8(supported_content));
 }
 void ParagraphTTText::AddTextRun(tttext::Style& style,
                                  const std::string& content) {
   const std::string supported_content = content.substr(0, content.find('\0'));
   index_mapper_.AppendText(lynx::base::U8StringToU16(supported_content));
-  paragraph_->AddTextRun(&style, supported_content.data(),
-                         static_cast<uint32_t>(supported_content.size()));
+  AddTextRunWithBaselineOffset(style, supported_content);
+}
+void ParagraphTTText::AddTextRunWithBaselineOffset(tttext::Style& style,
+                                                   const std::string& content) {
+  const size_t start = paragraph_->GetCharCount();
+  paragraph_->AddTextRun(&style, content.data(),
+                         static_cast<uint32_t>(content.size()));
+  if (style.GetBaselineOffset() != 0.f) {
+    text_baseline_offsets_.push_back(
+        {start, paragraph_->GetCharCount(), style.GetBaselineOffset()});
+  }
 }
 uint32_t ParagraphTTText::GetTextSize() const {
   return static_cast<uint32_t>(index_mapper_.GetUTF16Size());

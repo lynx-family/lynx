@@ -810,25 +810,14 @@ bool TextView::ClickOnText(size_t glyph_index,
                            const FloatPoint& point_by_paragraph,
                            txt::Paragraph* paragraph) {
   if (paragraph) {
-    auto line_metrics = paragraph->GetLineMetrics();
-    for (auto line_metric : line_metrics) {
+    const auto& line_metrics = paragraph->GetLineMetrics();
+    for (const auto& line_metric : line_metrics) {
       if (glyph_index < line_metric.start_index ||
           glyph_index >= line_metric.end_index) {
         continue;
       }
-      auto text_boxes = paragraph->GetRectsForRange(
-          std::max(int(glyph_index) - 1, int(line_metric.start_index)),
-          std::min(glyph_index + 1, line_metric.end_index),
-          txt::Paragraph::RectHeightStyle::kTight,
-          txt::Paragraph::RectWidthStyle::kTight);
-      for (auto box : text_boxes) {
-        if (point_by_paragraph.x() >= box.rect.Left() &&
-            point_by_paragraph.x() <= box.rect.Right() &&
-            point_by_paragraph.y() >= box.rect.Top() &&
-            point_by_paragraph.y() <= box.rect.Bottom()) {
-          return true;
-        }
-      }
+      return line_metric.ContainsInLineBox(point_by_paragraph.x(),
+                                           point_by_paragraph.y());
     }
   }
   return false;
@@ -1208,6 +1197,14 @@ void TextView::BringIntoView(TextBox* text_box) {
   if (scroll_view == nullptr) {
     return;
   }
+  const FloatPoint current_scroll_offset = scroll_view->GetScrollOffset();
+  FloatPoint text_content_origin = BoundsRelativeTo(scroll_view).location();
+  text_content_origin.MoveBy(current_scroll_offset);
+  text_content_origin.Move(BorderLeft() + PaddingLeft(),
+                           BorderTop() + PaddingTop());
+  TextBox text_box_in_scroll_content = *text_box;
+  text_box_in_scroll_content.rect.MoveBy(text_content_origin);
+  text_box = &text_box_in_scroll_content;
   double target_offset = 0;
   if (scroll_view->CanScrollY()) {
     auto additional_offset = std::clamp(

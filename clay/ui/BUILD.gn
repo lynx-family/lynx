@@ -226,6 +226,8 @@ if (enable_unittests) {
       ":ui_fixture_sources",
       ":ui_fixtures",
       "../../base/src:base_static",
+      "../../base/src:base_values",
+      "../../base/src:base_values_extended",
       "../common/service",
       "../flow",
       "../gfx",
@@ -235,6 +237,9 @@ if (enable_unittests) {
       "//third_party/skia/modules/skparagraph:skparagraph",
     ]
     if (is_mac) {
+      if (!enable_clay_standalone) {
+        sources += [ "../shell/common/services/initialize_service.cc" ]
+      }
       public_deps += [
         "../shell/common:platform_overlay_service_fallback",
         "../shell/common:presenter_service_fallback",

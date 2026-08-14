@@ -148,29 +148,39 @@ void RenderText::PaintText(GraphicsContext* graphics_context,
   }
   painter_->SetWidth(ContentWidth());
   painter_->SetHeight(ContentHeight());
-  double x_offset = 0;
-  // Not aligned with web behavior in bidirectional text but consistent
-  // with lynx behavior
-  if (text_paint_align_ == TextAlignment::kCenter) {
-    x_offset =
-        std::max(0.0, (ContentWidth() - paragraph_->GetLongestLine()) / 2);
-  } else if (text_paint_align_ == TextAlignment::kRight) {
-    x_offset = std::max(0.0, ContentWidth() - paragraph_->GetLongestLine());
-  } else {
-    FML_DCHECK(text_paint_align_ == TextAlignment::kLeft);
-  }
+  auto paragraph_content_offset = GetParagraphPaintOffset() - PaintOffset();
   if (HasColorRasterAnimation()) {
     graphics_context->Canvas()->OnDrawDynamicTextBlobsStart();
-    painter_->Paint(graphics_context, x_offset, line_spacing_offset_);
-    PaintInlineEmojis(graphics_context, x_offset, line_spacing_offset_);
+    painter_->Paint(graphics_context, paragraph_content_offset.x(),
+                    paragraph_content_offset.y());
+    PaintInlineEmojis(graphics_context, paragraph_content_offset.x(),
+                      paragraph_content_offset.y());
     graphics_context->Canvas()->OnDrawDynamicTextBlobsEnd();
   } else {
-    painter_->Paint(graphics_context, x_offset, line_spacing_offset_);
-    PaintInlineEmojis(graphics_context, x_offset, line_spacing_offset_);
+    painter_->Paint(graphics_context, paragraph_content_offset.x(),
+                    paragraph_content_offset.y());
+    PaintInlineEmojis(graphics_context, paragraph_content_offset.x(),
+                      paragraph_content_offset.y());
   }
   if (select_end_ != select_start_) {
     PaintSelection(graphics_context);
   }
+}
+
+FloatPoint RenderText::GetParagraphPaintOffset() const {
+  double x_offset = 0;
+  // Not aligned with web behavior in bidirectional text but consistent
+  // with lynx behavior.
+  if (paragraph_ && text_paint_align_ == TextAlignment::kCenter) {
+    x_offset =
+        std::max(0.0, (ContentWidth() - paragraph_->GetLongestLine()) / 2);
+  } else if (paragraph_ && text_paint_align_ == TextAlignment::kRight) {
+    x_offset = std::max(0.0, ContentWidth() - paragraph_->GetLongestLine());
+  } else {
+    FML_DCHECK(text_paint_align_ == TextAlignment::kLeft);
+  }
+  return PaintOffset() + FloatPoint(static_cast<float>(x_offset),
+                                    static_cast<float>(line_spacing_offset_));
 }
 
 void RenderText::PaintInlineEmojis(GraphicsContext* graphics_context,
@@ -207,12 +217,12 @@ void RenderText::SetAllSelection() {
 void RenderText::PaintSelection(GraphicsContext* context) {
   class Paint paint;
   paint.setColor(kSelectionColor);
-  auto text_boxes =
-      painter_->GetRectsForRange(std::min(select_start_, select_end_),
-                                 std::max(select_start_, select_end_),
-                                 RectHeightStyle::kMax, RectWidthStyle::kMax);
+  auto text_boxes = painter_->GetRectsForRange(
+      std::min(select_start_, select_end_),
+      std::max(select_start_, select_end_), RectHeightStyle::kLineBox,
+      RectWidthStyle::kMax);
   clay::GrPath path;
-  for (auto box : text_boxes) {
+  for (const auto& box : text_boxes) {
     PATH_ADD_RECT(path, box.rect);
   }
   context->DrawPath(path, paint);

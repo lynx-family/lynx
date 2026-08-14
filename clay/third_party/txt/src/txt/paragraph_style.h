@@ -22,9 +22,9 @@
 #include <string>
 #include <vector>
 
-#include "font_style.h"
-#include "font_weight.h"
-#include "text_style.h"
+#include "clay/third_party/txt/src/txt/font_style.h"
+#include "clay/third_party/txt/src/txt/font_weight.h"
+#include "clay/third_party/txt/src/txt/text_style.h"
 
 namespace txt {
 
@@ -42,7 +42,7 @@ enum class TextDirection {
   ltr,
 };
 
-enum RulerType { kAtLeast, kAuto, kExact };
+enum RulerType { kAtLeast, kAuto, kExact, kExactTextHeight };
 
 // Adjusts the leading over and under text.
 //

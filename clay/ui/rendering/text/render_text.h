@@ -81,6 +81,7 @@ class RenderText : public RenderBox {
 
   void SetLineSpacingOffset(double offset) { line_spacing_offset_ = offset; }
   void SetTextPaintAlign(TextAlignment align) { text_paint_align_ = align; }
+  FloatPoint GetParagraphPaintOffset() const;
 
  protected:
   std::unique_ptr<TextPainter> painter_;
