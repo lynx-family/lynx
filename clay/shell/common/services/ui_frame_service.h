@@ -8,6 +8,7 @@
 #include <future>
 #include <memory>
 
+#include "base/include/closure.h"
 #include "clay/common/service/service.h"
 #include "clay/flow/frame_timings.h"
 #include "clay/shell/common/services/sync_compositor_service.h"
@@ -40,7 +41,8 @@ class UIFrameService : public clay::Service<UIFrameService, clay::Owner::kUI> {
   // Force begin a new UI frame, which will ignore the state machine and commit
   // the layer tree immediately.
   // It's used for BeginFrameImmediately in Engine.
-  void ForceBeginFrame(std::unique_ptr<clay::FrameTimingsRecorder> recorder);
+  void ForceBeginFrame(std::unique_ptr<clay::FrameTimingsRecorder> recorder,
+                       fml::closure no_update_callback = nullptr);
 
   void PrepareForRecycle();
   void CleanForRecycle();

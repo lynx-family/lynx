@@ -317,7 +317,9 @@ void Engine::ScheduleFrame() {
   ui_frame_service_.Act([](auto& impl) { impl.RequestFrame(); });
 }
 
-void Engine::ForceBeginFrame() {
+void Engine::ForceBeginFrame() { ForceBeginFrame(nullptr); }
+
+void Engine::ForceBeginFrame(fml::closure no_update_callback) {
   clay::Puppet<clay::Owner::kUI, VsyncWaiterService> vsync_waiter_service =
       service_manager_->GetService<VsyncWaiterService>();
   const auto frame_begin_time = fml::TimePoint::Now();
@@ -328,8 +330,10 @@ void Engine::ForceBeginFrame() {
       std::make_unique<FrameTimingsRecorder>();
   recorder->RecordVsync(frame_begin_time, frame_end_time);
   recorder->RecordForced(true);
-  ui_frame_service_.Act([recorder = std::move(recorder)](auto& impl) mutable {
-    impl.ForceBeginFrame(std::move(recorder));
+  ui_frame_service_.Act([recorder = std::move(recorder),
+                         no_update_callback = std::move(no_update_callback)](
+                            auto& impl) mutable {
+    impl.ForceBeginFrame(std::move(recorder), std::move(no_update_callback));
   });
 }
 
