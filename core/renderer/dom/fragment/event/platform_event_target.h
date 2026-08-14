@@ -20,8 +20,8 @@
 #include "core/renderer/dom/fragment/event/platform_event_bundle.h"
 #include "core/renderer/dom/fragment/event/platform_event_target_exposure.h"
 #include "core/renderer/ui_wrapper/painting/platform_renderer_impl.h"
-#include "core/style/transform/matrix44.h"
 #include "core/value_wrapper/value_impl_lepus.h"
+#include "gfx/geometry/matrix44.h"
 
 namespace lynx {
 namespace tasm {
@@ -125,7 +125,7 @@ class PlatformEventTarget
   bool OverflowX() const { return overflow_x_; }
   bool OverflowY() const { return overflow_y_; }
   bool IsLayoutOnly() const { return is_layout_only_; }
-  const transforms::Matrix44* Transform() const { return transform_.get(); }
+  const gfx::Matrix44* Transform() const { return transform_.get(); }
   bool IsRoot() const { return sign_ == root_id_; }
   bool IsPageRoot() const { return IsRoot() && root_id_ == kRootId; }
   const base::Vector<PlatformEventName>& EventSet() const { return event_set_; }
@@ -285,7 +285,7 @@ class PlatformEventTarget
   bool overflow_x_{false};
   bool overflow_y_{false};
   bool is_layout_only_{false};
-  base::auto_create_optional<transforms::Matrix44> transform_;
+  base::auto_create_optional<gfx::Matrix44> transform_;
   bool scroll_offset_updated_{false};
   float scroll_offset_x_{0.f};
   float scroll_offset_y_{0.f};

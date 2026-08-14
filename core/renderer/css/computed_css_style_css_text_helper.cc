@@ -11,7 +11,7 @@
 #include "base/include/value/base_string.h"
 #include "core/renderer/css/computed_css_style.h"
 #include "core/renderer/css/css_decoder.h"
-#include "core/renderer/css/transforms/transform_operations.h"
+#include "core/renderer/css/transforms/transform_operations_helper.h"
 #include "core/renderer/starlight/style/default_layout_style.h"
 
 namespace lynx {
@@ -205,9 +205,12 @@ base::String ComputedCSSStyleCssTextHelper::TransformCSSText(
     starlight::ComputedCSSStyle* computed_css_style,
     starlight::LayoutResultForRendering ref_layout_result) {
   if (computed_css_style->transform_raw_) {
-    auto transform_operations = transforms::TransformOperations(
-        ref_layout_result, *(computed_css_style->transform_raw_));
-    return transform_operations.CssText(layouts_unit_per_px_);
+    auto transform_operations = transforms::ConvertToGfxTransformOperations(
+        *(computed_css_style->transform_raw_), ref_layout_result.size_.width_,
+        ref_layout_result.size_.height_);
+    return transforms::ConvertToCSSText(
+        transform_operations, ref_layout_result.size_.width_,
+        ref_layout_result.size_.height_, layouts_unit_per_px_);
   } else {
     return base::String();
   }

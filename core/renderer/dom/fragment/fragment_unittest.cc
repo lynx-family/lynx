@@ -32,6 +32,7 @@
 #include "core/renderer/ui_wrapper/painting/platform_renderer_impl.h"
 #include "core/renderer/utils/base/tasm_constants.h"
 #include "core/shell/testing/mock_tasm_delegate.h"
+#include "gfx/geometry/matrix44.h"
 #include "third_party/googletest/googlemock/include/gmock/gmock.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
@@ -564,7 +565,7 @@ TEST_F(FragmentTest, PlatformEventTargetHitTestAccountsForTransform) {
 
   auto child_renderer =
       fml::MakeRefCounted<TestPlatformRenderer>(1, PlatformRendererType::kView);
-  transforms::Matrix44 transform;
+  gfx::Matrix44 transform;
   transform.preTranslate(40.f, 0.f, 0.f);
   DisplayListBuilder child_builder;
   child_builder.Begin(1, PlatformRendererType::kView, 20.f, 0.f, 20.f, 20.f)

@@ -1,0 +1,20 @@
+# Copyright 2026 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+gfx_geometry_headers = [
+  "geometry/decomposed_transform.h",
+  "geometry/length.h",
+  "geometry/matrix44.h",
+  "geometry/quaternion.h",
+  "geometry/transform_operation.h",
+  "geometry/transform_operations.h",
+]
+
+gfx_geometry_sources = [
+  "geometry/decomposed_transform.cc",
+  "geometry/matrix44.cc",
+  "geometry/quaternion.cc",
+  "geometry/transform_operation.cc",
+  "geometry/transform_operations.cc",
+]
