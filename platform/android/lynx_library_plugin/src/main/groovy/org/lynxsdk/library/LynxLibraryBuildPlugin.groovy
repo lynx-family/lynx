@@ -91,7 +91,9 @@ class LynxLibraryBuildPlugin implements Plugin<Project> {
     private static void configureNodeApiAddons(
         Project project, String variantName, List<LynxLibraryInfo> libraries) {
         List<LynxLibraryInfo> librariesWithAddons = libraries.findAll { LynxLibraryInfo library ->
-            !library.nodeApiAddons.isEmpty()
+            library.nodeApiAddons.any { LynxNodeApiAddonInfo addon ->
+                addon.hasPrebuiltLibrary()
+            }
         }
         if (librariesWithAddons.isEmpty()) {
             return
@@ -110,7 +112,9 @@ class LynxLibraryBuildPlugin implements Plugin<Project> {
             task.doLast {
                 project.delete(generatedJniLibsDir)
                 librariesWithAddons.each { LynxLibraryInfo library ->
-                    library.nodeApiAddons.each { LynxNodeApiAddonInfo addon ->
+                    library.nodeApiAddons.findAll { LynxNodeApiAddonInfo addon ->
+                        addon.hasPrebuiltLibrary()
+                    }.each { LynxNodeApiAddonInfo addon ->
                         copyNodeApiAddon(project, library, addon, generatedJniLibsDir)
                     }
                 }
