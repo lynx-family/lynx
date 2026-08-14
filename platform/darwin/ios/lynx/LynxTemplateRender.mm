@@ -33,6 +33,7 @@
 #import <Lynx/LynxTraceEvent.h>
 #import <Lynx/LynxUIRenderer.h>
 #import <Lynx/LynxView.h>
+#import <Lynx/LynxViewportMetrics.h>
 #import "LynxAccessibilityModule.h"
 #import "LynxBaseConfigurator+Internal.h"
 #import "LynxCallStackUtil.h"
@@ -64,6 +65,7 @@
 - (LynxBackgroundRuntimeOptions*)effectiveLynxRuntimeOptions;
 @end
 
+#include <cmath>
 #include <functional>
 #include <memory>
 #include <utility>
@@ -188,13 +190,17 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
     }
 
     /// Member Variable
-    CGSize screenSize;
-    if (!CGSizeEqualToSize(builder.screenSize, CGSizeZero)) {
-      screenSize = builder.screenSize;
-    } else {
+    CGSize screenSize = builder.screenSize;
+    if (!std::isfinite(screenSize.width) || !std::isfinite(screenSize.height) ||
+        screenSize.width <= 0 || screenSize.height <= 0) {
       screenSize = [UIScreen mainScreen].bounds.size;
     }
+    CGFloat screenScale = builder.screenScale;
+    if (!std::isfinite(screenScale) || screenScale <= 0) {
+      screenScale = [UIScreen mainScreen].scale;
+    }
     builder.screenSize = screenSize;
+    builder.screenScale = screenScale;
     [self setUpVariableWithBuilder:builder containerView:containerView screenSize:screenSize];
 
     /// DevTool
@@ -1532,17 +1538,78 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
   CGFloat height =
       _layoutHeightMode == LynxViewSizeModeMax ? _preferredMaxLayoutHeight : _preferredLayoutHeight;
   shell_->UpdateViewport(width, widthMode, height, heightMode, needLayout);
+  if ([_lynxUIRenderer respondsToSelector:@selector(updateViewportMetrics:)]) {
+    LynxViewportMetrics* viewportMetrics =
+        [[LynxViewportMetrics alloc] initWithSize:CGSizeMake(width, height)
+                                        widthMode:_layoutWidthMode
+                                       heightMode:_layoutHeightMode];
+    [_lynxUIRenderer updateViewportMetrics:viewportMetrics];
+  }
 }
 
 - (void)updateScreenMetricsWithWidth:(CGFloat)width height:(CGFloat)height {
+  [self updateScreenMetricsWithWidth:width height:height scale:0];
+}
+
+- (void)updateScreenMetricsWithWidth:(CGFloat)width height:(CGFloat)height scale:(CGFloat)scale {
+  if (![NSThread isMainThread]) {
+    _LogE(@"updateScreenMetrics must be called on the main thread.");
+    NSAssert(NO, @"updateScreenMetrics must be called on the main thread.");
+    return;
+  }
+  if (!std::isfinite(width) || !std::isfinite(height) || !std::isfinite(scale)) {
+    _LogE(@"Rejecting non-finite Screen Metrics patch: width=%f, height=%f, scale=%f.", width,
+          height, scale);
+    return;
+  }
+
+  LynxScreenMetrics* current = [_lynxUIRenderer getScreenMetrics];
+  if (current == nil) {
+    _LogE(@"Cannot update Screen Metrics because the current metrics are unavailable.");
+    return;
+  }
+
+  CGFloat nextWidth = width > 0 ? width : current.screenSize.width;
+  CGFloat nextHeight = height > 0 ? height : current.screenSize.height;
+  CGFloat nextScale = scale > 0 ? scale : current.scale;
+  LynxScreenMetrics* next =
+      [[LynxScreenMetrics alloc] initWithScreenSize:CGSizeMake(nextWidth, nextHeight)
+                                              scale:nextScale];
+  [self updateScreenMetrics:next];
+}
+
+- (void)updateScreenMetrics:(LynxScreenMetrics*)screenMetrics {
+  if (![NSThread isMainThread]) {
+    _LogE(@"updateScreenMetrics must be called on the main thread.");
+    NSAssert(NO, @"updateScreenMetrics must be called on the main thread.");
+    return;
+  }
+  if (screenMetrics == nil || !std::isfinite(screenMetrics.screenSize.width) ||
+      !std::isfinite(screenMetrics.screenSize.height) || !std::isfinite(screenMetrics.scale) ||
+      screenMetrics.screenSize.width <= 0 || screenMetrics.screenSize.height <= 0 ||
+      screenMetrics.scale <= 0) {
+    _LogE(@"Rejecting invalid Screen Metrics replacement.");
+    return;
+  }
   if (shell_->IsDestroyed()) {
     return;
   }
 
-  CGFloat scale = [UIScreen mainScreen].scale;
-  shell_->UpdateScreenMetrics(width, height, scale);
+  LynxScreenMetrics* current = [_lynxUIRenderer getScreenMetrics];
+  if (current != nil && CGSizeEqualToSize(current.screenSize, screenMetrics.screenSize) &&
+      current.scale == screenMetrics.scale) {
+    return;
+  }
 
-  [_lynxUIRenderer updateScreenWidth:width height:height];
+  shell_->UpdateScreenMetrics(screenMetrics.screenSize.width, screenMetrics.screenSize.height,
+                              screenMetrics.scale);
+
+  if ([_lynxUIRenderer respondsToSelector:@selector(updateScreenMetrics:)]) {
+    [_lynxUIRenderer updateScreenMetrics:screenMetrics];
+  } else {
+    [_lynxUIRenderer updateScreenWidth:screenMetrics.screenSize.width
+                                height:screenMetrics.screenSize.height];
+  }
 }
 
 - (void)updateFontScale:(CGFloat)scale {
@@ -2747,6 +2814,7 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
     builder.mediaResourceFetcher = [self->_lynxUIRenderer mediaResourceFetcher];
     builder.templateResourceFetcher = [self->_lynxUIRenderer templateResourceFetcher];
     builder.screenSize = [[self->_lynxUIRenderer getScreenMetrics] screenSize];
+    builder.screenScale = [[self->_lynxUIRenderer getScreenMetrics] scale];
     builder.lynxBackgroundRuntimeOptions =
         [[LynxBackgroundRuntimeOptions alloc] initWithOptions:self->_runtimeOptions];
     builder.group = self->_group;

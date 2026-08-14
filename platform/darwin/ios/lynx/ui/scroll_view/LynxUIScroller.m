@@ -225,6 +225,9 @@ static Class<LynxScrollViewUIDelegate> kUIDelegate = nil;
   if (@available(iOS 11.0, *)) {
     scrollView.contentInsetAdjustmentBehavior = UIScrollViewContentInsetAdjustmentNever;
   }
+  if (@available(iOS 13.0, *)) {
+    scrollView.automaticallyAdjustsScrollIndicatorInsets = NO;
+  }
 
   scrollView.shouldManualExposure = YES;
   [[NSNotificationCenter defaultCenter]
@@ -1569,6 +1572,8 @@ LYNX_UI_METHOD(autoScroll) {
   __strong FlickParameter *flicker =
       [[FlickParameter alloc] initFlick:velocity
                        decelerationRate:self.view.decelerationRate
+                              // TODO(xiamengfei.moonface): [ResizableWindowScale] Check whether
+                              // this should use window or physical screen metrics.
                               threshold:0.5 / [[UIScreen mainScreen] scale]
                        oppositeBoundary:oppositeBoundary
                        positiveBoundary:positiveBoundary];
